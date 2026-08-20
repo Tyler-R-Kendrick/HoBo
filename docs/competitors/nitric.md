@@ -24,7 +24,7 @@ competitor:
 
 # Nitric — Competitor Reference
 
-> Captured for HoBo competitive analysis. Source: nitric.io/docs, github.com/nitrictech (as researched). This file documents **Nitric's** offering faithfully; the HoBo↔Nitric mapping/parity tracker lives in the [HoBo mapping](#hobo-mapping) section below.
+> Captured for HoBo competitive analysis. Source: nitric.io/docs, github.com/nitrictech (as researched). This file documents **Nitric's** offering faithfully; the HoBo↔Nitric mapping/parity tracker lives in the [primitive mapping](#primitive-mapping) section below.
 
 ## What it is
 

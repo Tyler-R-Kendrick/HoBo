@@ -401,7 +401,7 @@ Executable spike: [`../../../src/draft/technical-proofs/componentize-js-determin
 
 1. **The evaluation.** Nomad (+ Nomad Pack) was assessed as a direct scheduler/runtime/control-plane competitor and candidate substrate; full capture + parity tracker in [`../../competitors/nomad.md#primitive-mapping`](../../competitors/nomad.md#primitive-mapping).
 2. **Why displaced.** The scheduler pillar is subsumed by self-hosted wasmCloud as host of record ([ADR-0031](#adr-0031)), deterministic Matching for placement ([ADR-0033](#adr-0033)), and the Dispatcher for execution-host routing ([ADR-0071](#adr-0071)). Nomad jobspec → Manifest IR; allocation → `match.Decided`; task drivers → `component-host`/OCI adapters.
-3. **Disposition of Nomad-as-provider** (closes the floated-but-undispositioned question in [nomad.md#positioning](../../competitors/nomad.md#positioning)): **accepted-future** as a Camp deploy-target/host adapter (component-host-in-container scheduled by Nomad, or an OCI driver adapter, generatable by the generation pipeline like any adapter); **rejected** as HoBo's scheduler foundation or a core dependency. Not in the seed provider set.
+3. **Disposition of Nomad-as-provider** (closes the floated-but-undispositioned question in [nomad.md#positioning](../../competitors/nomad.md#what-it-is)): **accepted-future** as a Camp deploy-target/host adapter (component-host-in-container scheduled by Nomad, or an OCI driver adapter, generatable by the generation pipeline like any adapter); **rejected** as HoBo's scheduler foundation or a core dependency. Not in the seed provider set.
 
 ### Consequences
 - **(+)** Lineage auditable; one-way mapping becomes two-way; brownfield Nomad shops have a stated path.

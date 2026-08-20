@@ -24,7 +24,7 @@ competitor:
 
 # HashiCorp Nomad + Nomad Pack — Competitor Reference
 
-> Captured for HoBo competitive analysis. Sources: HashiCorp Developer Nomad docs and the `hashicorp/nomad-pack` repository, researched July 1, 2026. This file documents **Nomad** and **Nomad Pack** faithfully; the HoBo↔Nomad mapping/parity tracker lives in the [HoBo mapping](#hobo-mapping) section below.
+> Captured for HoBo competitive analysis. Sources: HashiCorp Developer Nomad docs and the `hashicorp/nomad-pack` repository, researched July 1, 2026. This file documents **Nomad** and **Nomad Pack** faithfully; the HoBo↔Nomad mapping/parity tracker lives in the [primitive mapping](#primitive-mapping) section below.
 
 ## What it is
 

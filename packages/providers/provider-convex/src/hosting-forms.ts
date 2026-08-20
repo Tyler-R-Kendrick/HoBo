@@ -70,12 +70,25 @@ interface HostingFormBase {
 }
 
 function deepFreeze<T>(value: T): T {
-	if (value !== null && typeof value === "object") {
-		for (const child of Object.values(value as Record<string, unknown>)) {
+	if (Array.isArray(value)) {
+		for (const child of value) {
 			deepFreeze(child);
 		}
 		Object.freeze(value);
+		return value;
 	}
+	if (
+		value === null ||
+		value === undefined ||
+		Object.prototype.toString.call(value) !== "[object Object]"
+	) {
+		return value;
+	}
+	// SAFETY: object-tag values are enumerable property bags at this freeze boundary.
+	for (const child of Object.values(value as { [key: string]: T })) {
+		deepFreeze(child);
+	}
+	Object.freeze(value);
 	return value;
 }
 

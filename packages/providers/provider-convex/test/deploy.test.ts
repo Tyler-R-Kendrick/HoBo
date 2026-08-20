@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 
-import { ConvexDeployError, deployConvexApp } from "../src/deploy.js";
+import {
+	ConvexDeployError,
+	type ConvexSpawn,
+	deployConvexApp,
+} from "../src/deploy.js";
+
+type ConvexSpawnCall = Parameters<ConvexSpawn>[0];
+
 import { ConvexCredentialsError } from "../src/management-api.js";
 import {
 	describeWorkOsAuthKit,
@@ -31,7 +38,7 @@ describe("deployConvexApp", () => {
 	});
 
 	it("invokes injected spawn with CONVEX_DEPLOY_KEY (not echoed in result)", async () => {
-		const calls: unknown[] = [];
+		const calls: ConvexSpawnCall[] = [];
 		const result = await deployConvexApp({
 			root: "/tmp/swag",
 			deployKey: "secret-key",
@@ -49,19 +56,16 @@ describe("deployConvexApp", () => {
 		expect(result.mocked).toBe(false);
 		expect(result.mode).toBe("cloud");
 		expect(calls).toHaveLength(1);
-		const call = calls[0] as {
-			env: Record<string, string>;
-			args: string[];
-			cwd: string;
-		};
-		expect(call.env.CONVEX_DEPLOY_KEY).toBe("secret-key");
+		const call = calls[0];
+		expect(call).toBeDefined();
+		expect(call?.env.CONVEX_DEPLOY_KEY).toBe("secret-key");
 		expect(call.args).toContain("convex");
 		expect(call.cwd).toContain("swag");
 		expect(JSON.stringify(result)).not.toContain("secret-key");
 	});
 
 	it("self-host path passes CONVEX_SELF_HOSTED_* and uses local URL", async () => {
-		const calls: unknown[] = [];
+		const calls: ConvexSpawnCall[] = [];
 		const result = await deployConvexApp({
 			root: "/tmp/swag",
 			selfHostedUrl: "http://127.0.0.1:3210",
@@ -79,8 +83,9 @@ describe("deployConvexApp", () => {
 		expect(result.deploymentUrl).toBe("http://127.0.0.1:3210");
 		expect(result.mode).toBe("self-hosted");
 		expect(result.mocked).toBe(false);
-		const call = calls[0] as { env: Record<string, string> };
-		expect(call.env.CONVEX_SELF_HOSTED_URL).toBe("http://127.0.0.1:3210");
+		const call = calls[0];
+		expect(call).toBeDefined();
+		expect(call?.env.CONVEX_SELF_HOSTED_URL).toBe("http://127.0.0.1:3210");
 		expect(call.env.CONVEX_SELF_HOSTED_ADMIN_KEY).toBe("name|admin-secret");
 		expect(call.env.CONVEX_DEPLOY_KEY).toBeUndefined();
 		expect(JSON.stringify(result)).not.toContain("admin-secret");

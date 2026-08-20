@@ -41,14 +41,16 @@ export async function applyDriverProgram(
 
 	const deployed = await deployConvexApp({
 		root: input.root,
-		...(input.deployKey ? { deployKey: input.deployKey } : {}),
-		...(input.selfHostedUrl ? { selfHostedUrl: input.selfHostedUrl } : {}),
+		...(input.deployKey ? { deployKey: input.deployKey } : undefined),
+		...(input.selfHostedUrl
+			? { selfHostedUrl: input.selfHostedUrl }
+			: undefined),
 		...(input.selfHostedAdminKey
 			? { selfHostedAdminKey: input.selfHostedAdminKey }
-			: {}),
+			: undefined),
 		deploymentName: program.deployment,
-		...(input.spawn ? { spawn: input.spawn } : {}),
-		...(input.mock !== undefined ? { mock: input.mock } : {}),
+		...(input.spawn ? { spawn: input.spawn } : undefined),
+		...(input.mock !== undefined ? { mock: input.mock } : undefined),
 	});
 
 	const connectionRefs = Object.freeze({

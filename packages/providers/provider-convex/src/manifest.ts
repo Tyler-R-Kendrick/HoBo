@@ -7,8 +7,12 @@ import {
 	MANIFEST_SCHEMA,
 	stableDigest,
 } from "@hobo/core";
-import type { InitialCapabilityPort } from "./equivalence.js";
-import { EQUIVALENCE_CLASSES } from "./equivalence.js";
+import {
+	EQUIVALENCE_CLASSES,
+	INITIAL_CAPABILITY_PORTS,
+	type InitialCapabilityPort,
+} from "./equivalence.js";
+import { type JsonObject, parseJsonObject } from "./json.js";
 
 // The schema ids are platform contract, so they live in @hobo/core and are
 // re-exported here to keep this package's public surface unchanged.
@@ -38,10 +42,7 @@ export type PublishedManifestDocuments = {
 // magnitudes (representative usage SKUs from Convex's public pricing page,
 // declared-provider source), so min-cost ranking has honest inputs rather
 // than uniform zeros.
-export const COST_FACTS: Record<
-	InitialCapabilityPort,
-	{ sku: string; unit: string; marginalPrice: string; included: number }
-> = {
+export const COST_FACTS = {
 	"web/service": {
 		sku: "convex.function.call",
 		unit: "call",
@@ -60,7 +61,10 @@ export const COST_FACTS: Record<
 		marginalPrice: "0.0300",
 		included: 1,
 	},
-};
+} satisfies Record<
+	InitialCapabilityPort,
+	{ sku: string; unit: string; marginalPrice: string; included: number }
+>;
 
 export interface ConvexManifestInput {
 	providerId?: string;
@@ -73,9 +77,7 @@ export function publishCapabilityManifest(
 ): PublishedManifestDocuments {
 	const providerId = input.providerId ?? CONVEX_PROVIDER_ID;
 	const regions = input.regions ?? DEFAULT_REGIONS;
-	const ports =
-		input.ports ??
-		(Object.keys(EQUIVALENCE_CLASSES) as InitialCapabilityPort[]);
+	const ports = input.ports ?? [...INITIAL_CAPABILITY_PORTS];
 	const capabilitiesDocument = {
 		schema: CAPABILITIES_SCHEMA,
 		providerId,
@@ -179,10 +181,10 @@ export function publishCapabilityManifest(
 export interface PublishedManifestParseResult {
 	ok: boolean;
 	errors: string[];
-	index: Record<string, unknown>;
-	capabilities: Record<string, unknown>;
-	auth: Record<string, unknown>;
-	cost: Record<string, unknown>;
+	index: JsonObject;
+	capabilities: JsonObject;
+	auth: JsonObject;
+	cost: JsonObject;
 }
 
 /**
@@ -192,16 +194,16 @@ export interface PublishedManifestParseResult {
 export function parsePublishedManifest(
 	documents: PublishedManifestDocuments,
 ): PublishedManifestParseResult {
-	const index = JSON.parse(
+	const index = parseJsonObject(
 		documents["/.well-known/capability-manifest/index.json"],
 	);
-	const capabilities = JSON.parse(
+	const capabilities = parseJsonObject(
 		documents["/.well-known/capability-manifest/capabilities.json"],
 	);
-	const auth = JSON.parse(
+	const auth = parseJsonObject(
 		documents["/.well-known/capability-manifest/auth.json"],
 	);
-	const cost = JSON.parse(
+	const cost = parseJsonObject(
 		documents["/.well-known/capability-manifest/cost.json"],
 	);
 	const errors: string[] = [];

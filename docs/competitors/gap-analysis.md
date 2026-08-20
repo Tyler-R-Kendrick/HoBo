@@ -368,10 +368,16 @@ a capture that does it.
 Two further items sit just below the line — real, but closer to unclaimed opportunity than to
 missing mechanism:
 
-- **N4 — the estimate-versus-actual loop is unclosed everywhere**, and HoBo holds both sides in one
-  event log ([ADR-0135](../design/adr/03-data-plane-sqlite-default.md)). [Infracost](infracost.md)
+- **N4** ✅ — **the estimate-versus-actual loop is unclosed everywhere**, and HoBo holds both sides in
+  one event log ([ADR-0135](../design/adr/03-data-plane-sqlite-default.md)). [Infracost](infracost.md)
   never sees actuals; [Kubecost](kubecost.md) and [Vantage](vantage.md) never see estimates. This is
-  the clearest *novel* feature the whole FinOps cohort leaves on the table.
+  the clearest *novel* feature the whole FinOps cohort leaves on the table. *(Closed 2026-08-20 —
+  `reconcileCost` in `@hobo/cloud`, [ADR-0166](../design/adr/03-data-plane.md#adr-0166). Integer
+  minor units; unestimated cost reported rather than dropped; unrealized estimates excluded from the
+  variance; a short observed window refused rather than reported as a saving. Residual, and it is a
+  real one: nothing produces the actuals side yet — `meter.UsageRecorded` has no producer outside
+  tests and the connectivity billing aggregator is not wired to deployments — so the loop is closed
+  as a computation before it is closed as a pipeline.)*
 - **N5 — multi-provider price data is an unresourced dependency.** Cost-aware placement
   ([ADR-0071](../design/adr/01-architecture-core.md#adr-0071)) needs accurate prices, which is
   precisely the asset [Infracost](infracost.md) and [Vantage](vantage.md) built businesses around.
@@ -573,7 +579,8 @@ Priority order, revised:
    [ADR-0122](../design/adr/07-portability-extensibility.md#adr-0122)'s WireGuard floor and the
    shipped `@hobo/connectivity` default (a live [GAPS.md](../../GAPS.md) finding, restated in the
    [Tailscale capture](tailscale.md)).
-5. **N4 — close the estimate-versus-actual loop**, the corpus's clearest unclaimed feature.
+5. ~~**N4 — close the estimate-versus-actual loop**, the corpus's clearest unclaimed feature.~~ ✅
+   The comparison landed; producing the actuals side remains unbuilt.
 6. ~~**N3 — an extension lifecycle for Resource Packs**, before the pack population makes it
    expensive.~~ ✅ The upgrade decision landed; a channel model and pack-to-pack dependencies remain
    unbuilt.

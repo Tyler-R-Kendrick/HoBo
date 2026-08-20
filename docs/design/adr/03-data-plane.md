@@ -829,3 +829,30 @@ Argo CD's `OutOfSync` plus a per-resource diff is the most valuable idea in that
 - **(+)** Gives the browsable topology surface its content: the resource tree needs something to colour, and this is it.
 - **(−)** Resolution is per-resource, not per-field. A resource that exists but is *misconfigured* reads as in-sync. Closing that needs provider-side state readback, which is a larger decision and deliberately not taken here.
 - **(−)** Accuracy is bounded by the fidelity of `resource.*` facts. A provider that does not report destruction leaves a resource looking realized.
+
+## ADR-0166
+**Estimate-versus-actual is a derived report with explicit refusals: integer minor units, unestimated cost never dropped, unrealized estimates excluded from variance, and a short observed window refused rather than reported as a saving.**
+
+**Status:** Accepted — extends [ADR-0039](02-identity-security.md#adr-0039) (cost governance), Plan 5 (plan-time estimation), and [ADR-0135](03-data-plane-sqlite-default.md) (event-sourced authority); informed by the [Infracost](../../competitors/infracost.md), [Kubecost](../../competitors/kubecost.md), [Vantage](../../competitors/vantage.md) and [OpenCost](../../competitors/opencost.md) captures; closes gap N4 in [gap-analysis](../../competitors/gap-analysis.md).
+
+### Context
+No product in the FinOps corpus compares its own estimate to the bill for the same workload. Infracost estimates at plan time and never sees actuals, so it structurally cannot learn that its estimates are systematically wrong; Kubecost, Vantage and OpenCost measure actuals and never see the estimate. The loop is open in every one of them, and it is open because closing it means holding both facts in one authoritative place — which is what an append-only deployment log already is. This is the clearest genuinely novel feature the cohort leaves on the table, and it is defensible for a structural reason rather than an effort reason.
+
+### Decision
+1. **`reconcileCost` is a pure function, not a service.** A recorded estimate plus observed actuals in, a variance report out. No new event family, no stored reconciliation state, no job — the same derive-don't-store argument as [ADR-0163](#adr-0163).
+2. **Integer minor units, one currency per report.** The repo carries four incompatible money conventions today: decimal strings on the catalog (`marginalPrice`), floats named `*Usd` in the broker and policy planes, `amount: number` in parsed cost documents, and minor units in the connectivity billing aggregator. Float accumulation is how a total lands a cent away from the invoice, and a cent is enough to get the whole surface disbelieved. Mixed currencies are refused (`currency-mismatch`) rather than summed: without an FX rate, adding them yields a number wrong in a way no reader can see.
+3. **The report must sum to the invoice.** An actual with no matching estimate is reported as `unestimated` and counted toward the total. OpenCost's idle-as-residual design exists because a cost surface that quietly omits a line is one nobody trusts twice.
+4. **A short observed window is refused, not reported.** Three days of actuals against a month's estimate is a 90% underspend that is entirely an artifact of the clock. Below full coverage the status is `insufficient-window` and no variance is computed — but both totals and the coverage fraction are still reported, because refusing the comparison is not refusing the facts.
+5. **Unrealized estimates are a separate line.** An estimate for a resource that was never charged for is an estimate that was never tested, not a saving. Folding it into the variance would let a half-failed deployment read as good cost control.
+6. **Status follows the findings, totals stay exact.** A tolerance-suppressed difference does not move the status, so the summary can never say "over" beside an empty finding list — but `totals.varianceMinorUnits` remains the exact figure that has to agree with the bill. Tolerance is expressed in basis points of the estimate and defaults to zero, so slack has to be asked for by name.
+
+### Non-goals
+- Not a pricing engine. What an estimate *should* be is N5's problem; this reconciles whatever estimate was recorded against whatever actuals were observed, which is why it is not gated on multi-provider price data.
+- Not budget enforcement. Enforcement at admission ([ADR-0039](02-identity-security.md#adr-0039) §2) remains the separate differentiated claim, and remains design-only.
+- No repo-wide money-type migration. This module fixes its own representation; unifying the other three conventions is its own work.
+
+### Consequences
+- **(+)** HoBo can state, per deployment, whether its own estimate held — the thing no product in the cohort can say about itself.
+- **(+)** The three refusals are the difference between a number finance checks once and a number finance checks monthly.
+- **(−)** Callers must convert into minor units at the boundary, and the catalog's decimal-string prices have no converter yet.
+- **(−)** Nothing produces the actuals side yet: `meter.UsageRecorded` has no producer outside tests, and the connectivity billing aggregator is not wired to deployments. The loop is closed as a computation before it is closed as a pipeline, and no surface may claim otherwise.

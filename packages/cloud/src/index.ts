@@ -194,6 +194,17 @@ export {
 	plan,
 } from "./planner/index.js";
 export {
+	buildPriceBook,
+	lookupPrice,
+	type PriceBook,
+	type PriceBookCoverage,
+	type PriceLookup,
+	type PriceLookupStatus,
+	type PriceObservation,
+	type PriceQuery,
+	priceBookCoverage,
+} from "./planner/price-feed.js";
+export {
 	assessCostObjective,
 	type CostClaimReason,
 	type CostObjectiveInput,

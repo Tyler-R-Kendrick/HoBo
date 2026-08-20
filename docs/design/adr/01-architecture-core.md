@@ -803,3 +803,33 @@ So HoBo does not merely lack good price data; it cannot currently tell the absen
 - **(+)** The commercial question gets a measurable form: `coverage` says what fraction of a candidate set could be priced at all, which is the number that argues for or against buying a feed.
 - **(−)** Once callers adopt this, most cost-objective decisions will report `claimable: false`, because the catalog genuinely has almost no prices. That is the honest state being made visible, and it will read as a regression to anyone who believed the previous silence.
 - **(−)** The seam exists but the planner does not yet consult it: `rankByObjective` still parses `marginalPrice` directly. Wiring it in is follow-up work, and until then this is a capability rather than an enforcement.
+
+## ADR-0168
+**Price data is resourced by consuming published, unauthenticated feeds: no purchase, no vendor contract, and a credential-free core that cannot fetch.**
+
+**Status:** Accepted — completes [ADR-0167](#adr-0167)'s open leg and closes gap N5 in [gap-analysis](../../competitors/gap-analysis.md); informed by the [Infracost](../../competitors/infracost.md) and [Vantage](../../competitors/vantage.md) captures.
+
+### Context
+ADR-0167 scoped HoBo's cost claims to what it can price, and deliberately left the resourcing question open: build price data, license it, or consume someone else's. That looked like a commercial decision because Infracost built a business on a Cloud Pricing API and Vantage publishes its data as a distribution strategy — both of which read as "this asset costs money".
+
+Re-examined, the third option has a free form. AWS publishes a Price List Bulk API, Azure a Retail Prices API, GCP a Cloud Billing catalog, and Vantage publishes openly. All four are reachable **without authentication and without a contract**. So the option that needs no purchase and no vendor commitment is available, and taking it is an engineering decision rather than a commercial one.
+
+### Decision
+1. **Consume published feeds.** Adapters read the vendors' own public price documents. HoBo does not build a pricing dataset, and does not license one.
+2. **The core cannot fetch.** `buildPriceBook` / `lookupPrice` accept already-fetched `PriceObservation` records and perform no I/O. This is what makes credential-freedom structural rather than a promise: estimation cannot acquire a credential dependency by accident, which is Infracost's constraint and the thing that removes the largest adoption objection a cost tool faces.
+3. **A stale price is not a price.** Past a caller-declared `maxAgeMs`, a lookup reports `stale` and returns the figure *labelled as stale*. A confidently wrong price is worse than an absent one, because the absent one gets investigated. Clock skew from a publisher never ages into freshness — the age is clamped at zero.
+4. **Currency is part of the record and part of the match.** A price in an unrequested currency is refused, never converted. `ResourceDefinition.cost` drops the currency that `CostSignal` carried, which is exactly how a EUR price silently becomes a USD one.
+5. **Integer minor units**, consistent with [ADR-0166](03-data-plane.md#adr-0166).
+6. **Unusable records are dropped at ingest and cannot shadow good ones.** A published feed is someone else's output, so it is the input most likely to contain something that is not a price. Filtering happens before the newest-wins comparison, so a malformed newer record does not displace a valid older one.
+7. **`priceBookCoverage` reports what can be priced now**, naming what it could not. A stale price counts as uncovered, because coverage answers "what can we price today", not "what did we once know".
+
+### Non-goals
+- No FX conversion. Without a rate source, converting is inventing.
+- No scheduled refresh. Fetch cadence belongs to the adapters and their operators.
+- No claim that catalog coverage is now high: this resources the *mechanism*, and the provider manifests still carry no real prices. `priceBookCoverage` is what will say when that changes.
+
+### Consequences
+- **(+)** N5 closes without a purchase, and the credential-free property is enforced by structure rather than by discipline.
+- **(+)** Cost claims now have a path to becoming claimable: ADR-0167 says when a claim may be made, this says where the numbers come from.
+- **(−)** Public feeds are vendor-shaped and change without notice; each adapter carries real parsing and drift risk, and that risk is per-provider rather than shared.
+- **(−)** Published list prices are not negotiated prices. An enterprise with committed-use discounts will find HoBo's figures systematically high, and no public feed can fix that — an estimate against list price must say that is what it is.

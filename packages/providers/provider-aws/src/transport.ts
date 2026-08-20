@@ -104,8 +104,8 @@ export class AwsTransportConfigError extends Error {
  * resolver factory should refuse a bad region at construction time rather than
  * on the first call, when a credential is already in hand.
  */
-export function parseAwsRegion(region: unknown): string {
-	if (typeof region !== "string" || !REGION_PATTERN.test(region)) {
+export function parseAwsRegion(region: string): string {
+	if (!REGION_PATTERN.test(region)) {
 		throw new AwsTransportConfigError(
 			`aws region: expected a region matching ${REGION_PATTERN.source} (for example "us-east-1"), received ${JSON.stringify(region)}; a region that does not parse would be interpolated into a hostname nobody allowlisted`,
 		);

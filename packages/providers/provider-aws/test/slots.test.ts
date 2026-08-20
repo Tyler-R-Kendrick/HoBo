@@ -1,24 +1,39 @@
-import type { SlotBindingError } from "@hobo/core";
+import { SlotBindingError } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import {
 	dynamodb,
 	eks,
 	lambda,
+	type RdsPostgresOptions,
 	rds,
 	type S3Options,
 	s3,
 	sqs,
 } from "../src/index.js";
+import { isJsonObject } from "../src/json.js";
 
 /** The code core refused a call with, or undefined if it did not refuse. */
-function refusalCode(call: () => unknown): string | undefined {
+function refusalCode(call: () => void): string | undefined {
 	try {
 		call();
 		return undefined;
 	} catch (error) {
-		return (error as SlotBindingError).code;
+		if (!(error instanceof SlotBindingError)) throw error;
+		return error.code;
 	}
+}
+
+function extraS3(json: string): S3Options {
+	// SAFETY: fixture JSON is the factory option bag, including undeclared keys
+	// that must still reach slotBinding's parse boundary.
+	return JSON.parse(json) as S3Options;
+}
+
+function extraRds(json: string): RdsPostgresOptions {
+	// SAFETY: fixture JSON is the factory option bag, including undeclared keys
+	// that must still reach slotBinding's parse boundary.
+	return JSON.parse(json) as RdsPostgresOptions;
 }
 
 /** Every factory, called with no options, plus the triple it must emit. */
@@ -109,7 +124,10 @@ describe("options land in properties and omitted options stay absent", () => {
 		expect(binding.properties).toEqual({ limits: { cpu: "500m" } });
 		expect("replicas" in binding.properties).toBe(false);
 		expect("requests" in binding.properties).toBe(false);
-		const limits = binding.properties.limits as Record<string, unknown>;
+		const limits = binding.properties.limits;
+		if (!isJsonObject(limits)) {
+			throw new Error("expected nested limits");
+		}
 		expect("memory" in limits).toBe(false);
 	});
 
@@ -123,21 +141,19 @@ describe("options land in properties and omitted options stay absent", () => {
 
 describe("the core parse boundary still applies", () => {
 	it("refuses a credential-shaped option key that bypassed the types", () => {
-		const smuggled = { apiKey: "x" } as unknown as S3Options;
+		const smuggled = extraS3('{"apiKey":"x"}');
 		expect(refusalCode(() => s3(smuggled))).toBe(
 			"SLOT_BINDING_CREDENTIAL_PROPERTY",
 		);
 	});
 
 	it("forwards an undeclared key instead of silently dropping it", () => {
-		const smuggled = { unknownKnob: 1 } as unknown as S3Options;
+		const smuggled = extraS3('{"unknownKnob":1}');
 		expect(s3(smuggled).properties).toEqual({ unknownKnob: 1 });
 	});
 
 	it("refuses a credential-shaped key on a namespaced factory too", () => {
-		const smuggled = { password: "x" } as unknown as Parameters<
-			typeof rds.postgres
-		>[0];
+		const smuggled = extraRds('{"password":"x"}');
 		expect(refusalCode(() => rds.postgres(smuggled))).toBe(
 			"SLOT_BINDING_CREDENTIAL_PROPERTY",
 		);

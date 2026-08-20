@@ -78,6 +78,16 @@ import {
 
 import { type AwsCredentials, signAwsRequest } from "@hobo/core/aws-sigv4";
 
+import {
+	isJsonArray,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "./json.js";
 import { HETZNER_PROVIDER_TARGET } from "./options.js";
 import {
 	cloudServer,
@@ -223,7 +233,7 @@ const CREDENTIAL_REF_PATTERN = /^[a-z][a-z0-9+.-]*:\/\/[^\s@]+$/u;
 const RAW_CREDENTIAL_PATTERN = /^[A-Za-z0-9]{32,}$/u;
 
 /** Anything long and token-shaped is scrubbed out of provider error text. */
-const TOKEN_SHAPED_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
+const TOKEN_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
 
 /**
  * Redact provider text before it reaches a message, a diagnostic, or a log.
@@ -231,7 +241,7 @@ const TOKEN_SHAPED_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
  * carried resource names and token fragments before.
  */
 export function redactHetznerText(text: string, limit = 400): string {
-	const scrubbed = text.replace(TOKEN_SHAPED_PATTERN, "[redacted]");
+	const scrubbed = text.replace(TOKEN_PATTERN, "[redacted]");
 	return scrubbed.length > limit ? `${scrubbed.slice(0, limit)}…` : scrubbed;
 }
 
@@ -243,60 +253,33 @@ function compareStrings(left: string, right: string): number {
 	return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
-		return false;
-	}
-	const prototype: unknown = Object.getPrototypeOf(value);
-	return prototype === Object.prototype || prototype === null;
+function optionalString(record: JsonObject, key: string): string | undefined {
+	const value = record[key];
+	return isJsonString(value) && value.trim().length > 0 ? value : undefined;
 }
 
-function optionalString(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): string | undefined {
+function optionalBoolean(record: JsonObject, key: string): boolean | undefined {
 	const value = record[key];
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return isJsonBoolean(value) ? value : undefined;
 }
 
-function optionalBoolean(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): boolean | undefined {
+function optionalInteger(record: JsonObject, key: string): number | undefined {
 	const value = record[key];
-	return typeof value === "boolean" ? value : undefined;
+	return isJsonNumber(value) && Number.isSafeInteger(value) ? value : undefined;
 }
 
-function optionalInteger(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): number | undefined {
+function nestedRecord(record: JsonObject, key: string): JsonObject {
 	const value = record[key];
-	return typeof value === "number" && Number.isSafeInteger(value)
-		? value
-		: undefined;
-}
-
-function nestedRecord(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): Readonly<Record<string, unknown>> {
-	const value = record[key];
-	return isPlainObject(value) ? value : {};
+	return isJsonObject(value) ? value : {};
 }
 
 /** Hetzner ids are numbers on every resource this module touches. */
-function identityOf(
-	record: Readonly<Record<string, unknown>>,
-	label: string,
-): string {
+function identityOf(record: JsonObject, label: string): string {
 	const value = record.id;
-	if (typeof value === "number" && Number.isSafeInteger(value)) {
+	if (isJsonNumber(value) && Number.isSafeInteger(value)) {
 		return String(value);
 	}
-	if (typeof value === "string" && value.trim().length > 0) return value;
+	if (isJsonString(value) && value.trim().length > 0) return value;
 	throw new ResolverError(
 		"RESOLVER_OUTPUT_UNPARSEABLE",
 		`${label}: Hetzner returned a record without a usable id, so the resource cannot be addressed`,
@@ -345,9 +328,11 @@ async function send(
 		headers: {
 			accept: "application/json",
 			authorization: `Bearer ${context.token}`,
-			...(body !== undefined ? { "content-type": "application/json" } : {}),
+			...(body !== undefined
+				? { "content-type": "application/json" }
+				: undefined),
 		},
-		...(body !== undefined ? { body } : {}),
+		...(body !== undefined ? { body } : undefined),
 		timeoutMs: HETZNER_MAX_TIMEOUT_MS,
 		maxResponseBytes: HETZNER_MAX_RESPONSE_BYTES,
 	});
@@ -364,27 +349,17 @@ function isNotFound(response: TransportResponse): boolean {
  * read leaves the outcome of the call unknown, and an unknown outcome is
  * refused rather than assumed.
  */
-function parseJsonRecord(
-	response: TransportResponse,
-	label: string,
-): Record<string, unknown> {
+function parseJson(response: TransportResponse, label: string): JsonValue {
 	if (response.body.trim().length === 0) return {};
-	let parsed: unknown;
 	try {
-		parsed = JSON.parse(response.body) as unknown;
+		// SAFETY: JSON.parse yields a JSON value at this document boundary.
+		return JSON.parse(response.body) as JsonValue;
 	} catch {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${label}: Hetzner returned a status ${response.status} body that is not JSON, so the outcome of the call is unknown and it is refused rather than assumed`,
 		);
 	}
-	if (!isPlainObject(parsed)) {
-		throw new ResolverError(
-			"RESOLVER_OUTPUT_UNPARSEABLE",
-			`${label}: Hetzner returned JSON that is not an object (status ${response.status}), so the resource it describes cannot be identified`,
-		);
-	}
-	return parsed;
 }
 
 /**
@@ -399,8 +374,8 @@ function providerRejection(
 ): ResolverError {
 	let detail = "no error detail was returned";
 	try {
-		const record = parseJsonRecord(response, label);
-		const error = nestedRecord(record, "error");
+		const parsed = parseJson(response, label);
+		const error = isJsonObject(parsed) ? nestedRecord(parsed, "error") : {};
 		const code = optionalString(error, "code");
 		const message = optionalString(error, "message");
 		const parts = [code, message].filter(
@@ -418,12 +393,16 @@ function providerRejection(
 }
 
 /** A successful response as a record; any 4xx/5xx is a typed refusal. */
-function expectOk(
-	response: TransportResponse,
-	label: string,
-): Record<string, unknown> {
+function expectOk(response: TransportResponse, label: string): JsonObject {
 	if (response.status >= 400) throw providerRejection(response, label);
-	return parseJsonRecord(response, label);
+	const parsed = parseJson(response, label);
+	if (!isJsonObject(parsed)) {
+		throw new ResolverError(
+			"RESOLVER_OUTPUT_UNPARSEABLE",
+			`${label}: Hetzner returned JSON that is not an object (status ${response.status}), so the resource it describes cannot be identified`,
+		);
+	}
+	return parsed;
 }
 
 // ---------------------------------------------------------------------------
@@ -437,7 +416,7 @@ interface HetznerResolverContext {
 	readonly token: string;
 	/** The deterministic resource name: `desired.name`, else the logical id. */
 	readonly name: string;
-	readonly desired: Readonly<Record<string, unknown>>;
+	readonly desired: JsonObject;
 	/** True when the caller already knows the physical id (adopt vs noop). */
 	readonly knownPhysicalId: string | undefined;
 	/** Present only on the Object Storage path; undefined elsewhere. */
@@ -459,7 +438,7 @@ interface HetznerResolverContext {
 function outcome(
 	action: ResolverAction,
 	physicalId: string,
-	outputs: Readonly<Record<string, unknown>>,
+	outputs: JsonObject,
 	diagnostics: readonly string[],
 ): ResolveOutcome {
 	return Object.freeze({
@@ -493,7 +472,7 @@ async function resolveToken(
 	resolve: (ref: string) => Promise<string>,
 ): Promise<string> {
 	const ref = request.credentialRef;
-	if (typeof ref !== "string" || ref.trim().length === 0) {
+	if (ref.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			'hetzner resolver: credentialRef is empty. Supply a locator such as "env://HCLOUD_TOKEN" or "secret://camp/hetzner-project-token" and register it with the host credential resolver; the resolver never accepts inline credential material',
@@ -524,7 +503,7 @@ async function resolveToken(
 			)}. Register the reference with the credential resolver before deploying`,
 		);
 	}
-	if (typeof material !== "string" || material.trim().length === 0) {
+	if (material.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			`hetzner resolver: credentialRef ${JSON.stringify(trimmed)} resolved to nothing. A missing credential is refused rather than retried unauthenticated, which would look like a permissions error at Hetzner`,
@@ -542,14 +521,14 @@ async function resolveObjectStorageKeys(
 	request: ResolveRequest,
 	resolve: ((ref: string) => Promise<ObjectStorageKeyPair>) | undefined,
 ): Promise<ObjectStorageKeyPair> {
-	if (typeof resolve !== "function") {
+	if (resolve === undefined) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			"hetzner object storage resolver: no resolveObjectStorageCredential was injected",
 		);
 	}
 	const ref = request.credentialRef;
-	if (typeof ref !== "string" || ref.trim().length === 0) {
+	if (ref.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			'hetzner object storage resolver: credentialRef is empty. Supply a locator such as "secret://camp/hetzner-object-storage-keys"; the resolver never accepts inline credential material',
@@ -581,9 +560,7 @@ async function resolveObjectStorageKeys(
 		);
 	}
 	if (
-		typeof keys?.accessKeyId !== "string" ||
 		keys.accessKeyId.trim().length === 0 ||
-		typeof keys.secretAccessKey !== "string" ||
 		keys.secretAccessKey.trim().length === 0
 	) {
 		throw new ResolverError(
@@ -598,10 +575,13 @@ async function resolveObjectStorageKeys(
 }
 
 function resourceName(request: ResolveRequest, productId: string): string {
-	const desiredName = optionalString(request.desired, "name");
+	const desiredName = optionalString(
+		parseJsonObject(JSON.stringify(request.desired)),
+		"name",
+	);
 	if (desiredName !== undefined) return desiredName;
 	const logicalId = request.ref.logicalId;
-	if (typeof logicalId === "string" && logicalId.trim().length > 0) {
+	if (logicalId.trim().length > 0) {
 		return logicalId;
 	}
 	throw new ResolverError(
@@ -613,9 +593,7 @@ function resourceName(request: ResolveRequest, productId: string): string {
 /** The physical id the caller already knows, if it supplied a usable one. */
 function knownPhysicalId(request: ResolveRequest): string | undefined {
 	const value = request.ref.physicalId;
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return value !== undefined && value.trim().length > 0 ? value : undefined;
 }
 
 /**
@@ -726,7 +704,7 @@ const STORAGE_BOXES: Collection = Object.freeze({
 async function findByName(
 	context: HetznerResolverContext,
 	collection: Collection,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const label = `hetzner list ${collection.listKey} named ${context.name}`;
 	const record = expectOk(
 		await send(context, {
@@ -737,14 +715,14 @@ async function findByName(
 		label,
 	);
 	const items = record[collection.listKey];
-	if (!Array.isArray(items)) {
+	if (!isJsonArray(items)) {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${label}: Hetzner returned a body without a ${JSON.stringify(collection.listKey)} array, so the collection cannot be searched and a create would risk duplicating an existing resource`,
 		);
 	}
 	const matches = items
-		.filter(isPlainObject)
+		.filter(isJsonObject)
 		.filter((item) => optionalString(item, "name") === context.name);
 	if (matches.length > 1) {
 		throw new ResolverError(
@@ -761,7 +739,7 @@ async function findByName(
  * diagnostic says plainly that this resolver did not wait.
  */
 function actionDiagnostics(
-	created: Readonly<Record<string, unknown>>,
+	created: JsonObject,
 	what: string,
 ): readonly string[] {
 	const action = nestedRecord(created, "action");
@@ -772,9 +750,7 @@ function actionDiagnostics(
 	];
 }
 
-function actionOutputs(
-	created: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function actionOutputs(created: JsonObject): JsonObject {
 	const action = nestedRecord(created, "action");
 	const id = optionalInteger(action, "id");
 	return id === undefined ? {} : { actionId: id };
@@ -784,9 +760,7 @@ function actionOutputs(
 // Cloud Servers — /v1/servers
 // ---------------------------------------------------------------------------
 
-function serverOutputs(
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function serverOutputs(record: JsonObject): JsonObject {
 	const publicNet = nestedRecord(record, "public_net");
 	const ipv4 = optionalString(nestedRecord(publicNet, "ipv4"), "ip");
 	const ipv6 = optionalString(nestedRecord(publicNet, "ipv6"), "ip");
@@ -796,23 +770,21 @@ function serverOutputs(
 	);
 	const datacenter = nestedRecord(record, "datacenter");
 	const location = optionalString(nestedRecord(datacenter, "location"), "name");
+	const name = optionalString(record, "name");
+	const status = optionalString(record, "status");
 	return {
-		...(optionalString(record, "name") !== undefined
-			? { name: optionalString(record, "name") }
-			: {}),
-		...(optionalString(record, "status") !== undefined
-			? { status: optionalString(record, "status") }
-			: {}),
-		...(ipv4 !== undefined ? { ipv4 } : {}),
-		...(ipv6 !== undefined ? { ipv6 } : {}),
-		...(serverType !== undefined ? { serverType } : {}),
-		...(location !== undefined ? { location } : {}),
+		...(name === undefined ? undefined : { name }),
+		...(status === undefined ? undefined : { status }),
+		...(ipv4 !== undefined ? { ipv4 } : undefined),
+		...(ipv6 !== undefined ? { ipv6 } : undefined),
+		...(serverType !== undefined ? { serverType } : undefined),
+		...(location !== undefined ? { location } : undefined),
 	};
 }
 
 function serverDiagnostics(
 	context: HetznerResolverContext,
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 ): readonly string[] {
 	const diagnostics: string[] = [];
 	const status = optionalString(record, "status");
@@ -889,7 +861,7 @@ const CLOUD_SERVER_SPEC: Omit<HetznerResolverSpec, "productId"> = {
 					location: requiredLocation(context, productId),
 					...(optionalBoolean(context.desired, "backups") !== undefined
 						? { backups: optionalBoolean(context.desired, "backups") }
-						: {}),
+						: undefined),
 					...(optionalString(context.desired, "placementGroup") !== undefined
 						? {
 								placement_group: optionalString(
@@ -897,7 +869,7 @@ const CLOUD_SERVER_SPEC: Omit<HetznerResolverSpec, "productId"> = {
 									"placementGroup",
 								),
 							}
-						: {}),
+						: undefined),
 				},
 			}),
 			label,
@@ -931,9 +903,7 @@ const CLOUD_SERVER_SPEC: Omit<HetznerResolverSpec, "productId"> = {
 // Load Balancers — /v1/load_balancers
 // ---------------------------------------------------------------------------
 
-function loadBalancerOutputs(
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function loadBalancerOutputs(record: JsonObject): JsonObject {
 	const publicNet = nestedRecord(record, "public_net");
 	const ipv4 = optionalString(nestedRecord(publicNet, "ipv4"), "ip");
 	const type = optionalString(
@@ -942,14 +912,13 @@ function loadBalancerOutputs(
 	);
 	const algorithm = optionalString(nestedRecord(record, "algorithm"), "type");
 	const location = optionalString(nestedRecord(record, "location"), "name");
+	const name = optionalString(record, "name");
 	return {
-		...(optionalString(record, "name") !== undefined
-			? { name: optionalString(record, "name") }
-			: {}),
-		...(ipv4 !== undefined ? { ipv4 } : {}),
-		...(type !== undefined ? { loadBalancerType: type } : {}),
-		...(algorithm !== undefined ? { algorithm } : {}),
-		...(location !== undefined ? { location } : {}),
+		...(name === undefined ? undefined : { name }),
+		...(ipv4 !== undefined ? { ipv4 } : undefined),
+		...(type !== undefined ? { loadBalancerType: type } : undefined),
+		...(algorithm !== undefined ? { algorithm } : undefined),
+		...(location !== undefined ? { location } : undefined),
 	};
 }
 
@@ -989,7 +958,7 @@ const LOAD_BALANCER_SPEC: Omit<HetznerResolverSpec, "productId"> = {
 										type: optionalString(context.desired, "algorithm"),
 									},
 								}
-							: {}),
+							: undefined),
 						...(optionalBoolean(context.desired, "publicInterface") !==
 						undefined
 							? {
@@ -998,7 +967,7 @@ const LOAD_BALANCER_SPEC: Omit<HetznerResolverSpec, "productId"> = {
 										"publicInterface",
 									),
 								}
-							: {}),
+							: undefined),
 					},
 				}),
 				label,
@@ -1063,28 +1032,24 @@ const LOAD_BALANCER_SPEC: Omit<HetznerResolverSpec, "productId"> = {
 // Volumes — /v1/volumes
 // ---------------------------------------------------------------------------
 
-function volumeOutputs(
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function volumeOutputs(record: JsonObject): JsonObject {
 	const size = optionalInteger(record, "size");
 	const location = optionalString(nestedRecord(record, "location"), "name");
 	const linuxDevice = optionalString(record, "linux_device");
+	const name = optionalString(record, "name");
+	const status = optionalString(record, "status");
 	return {
-		...(optionalString(record, "name") !== undefined
-			? { name: optionalString(record, "name") }
-			: {}),
-		...(optionalString(record, "status") !== undefined
-			? { status: optionalString(record, "status") }
-			: {}),
-		...(size !== undefined ? { sizeGb: size } : {}),
-		...(location !== undefined ? { location } : {}),
-		...(linuxDevice !== undefined ? { linuxDevice } : {}),
+		...(name === undefined ? undefined : { name }),
+		...(status === undefined ? undefined : { status }),
+		...(size !== undefined ? { sizeGb: size } : undefined),
+		...(location !== undefined ? { location } : undefined),
+		...(linuxDevice !== undefined ? { linuxDevice } : undefined),
 	};
 }
 
 function volumeDiagnostics(
 	context: HetznerResolverContext,
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 ): readonly string[] {
 	const diagnostics: string[] = [];
 	const wantedSize = optionalInteger(context.desired, "sizeGb");
@@ -1151,10 +1116,10 @@ const VOLUME_SPEC: Omit<HetznerResolverSpec, "productId"> = {
 						location: requiredLocation(context, productId),
 						...(optionalString(context.desired, "format") !== undefined
 							? { format: optionalString(context.desired, "format") }
-							: {}),
+							: undefined),
 						...(optionalBoolean(context.desired, "automount") !== undefined
 							? { automount: optionalBoolean(context.desired, "automount") }
-							: {}),
+							: undefined),
 					},
 				}),
 				label,
@@ -1250,7 +1215,7 @@ async function storageBoxPassword(
 		);
 	}
 	const material = await resolve(context.request.ref.logicalId);
-	if (typeof material !== "string" || material.length === 0) {
+	if (material.length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			`${HETZNER_STORAGE_BOX_PRODUCT_ID}: resolveStorageBoxPassword produced no material for ${JSON.stringify(context.request.ref.logicalId)}. A create sent with an empty password would either be refused by Hetzner or, worse, accepted`,
@@ -1261,19 +1226,14 @@ async function storageBoxPassword(
 }
 
 /** The `name` inside a nested `{ name, … }` reference object, if there is one. */
-function nestedName(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): string | undefined {
+function nestedName(record: JsonObject, key: string): string | undefined {
 	const nested = record[key];
-	if (typeof nested === "string") return nested;
-	if (!isPlainObject(nested)) return undefined;
+	if (isJsonString(nested)) return nested;
+	if (!isJsonObject(nested)) return undefined;
 	return optionalString(nested, "name");
 }
 
-function storageBoxOutputs(
-	observed: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function storageBoxOutputs(observed: JsonObject): JsonObject {
 	const type = nestedName(observed, "storage_box_type");
 	const location = nestedName(observed, "location");
 	const username = optionalString(observed, "username");
@@ -1281,15 +1241,15 @@ function storageBoxOutputs(
 	return {
 		name: optionalString(observed, "name") ?? "",
 		status: optionalString(observed, "status") ?? "",
-		...(type === undefined ? {} : { storageBoxType: type }),
-		...(location === undefined ? {} : { location }),
-		...(username === undefined ? {} : { username }),
-		...(server === undefined ? {} : { server }),
+		...(type === undefined ? undefined : { storageBoxType: type }),
+		...(location === undefined ? undefined : { location }),
+		...(username === undefined ? undefined : { username }),
+		...(server === undefined ? undefined : { server }),
 		// The mount surfaces a workload actually uses. Published as outputs
 		// because a binding needs them and should not have to reconstruct a
 		// hostname from the record.
 		...(server === undefined
-			? {}
+			? undefined
 			: {
 					sftpEndpoint: `sftp://${server}`,
 					sambaEndpoint: `//${server}/backup`,
@@ -1297,9 +1257,7 @@ function storageBoxOutputs(
 	};
 }
 
-function storageBoxDiagnostics(
-	observed: Readonly<Record<string, unknown>>,
-): readonly string[] {
+function storageBoxDiagnostics(observed: JsonObject): readonly string[] {
 	const status = optionalString(observed, "status");
 	const diagnostics: string[] = [];
 	if (status === "initializing") {
@@ -1350,15 +1308,15 @@ const STORAGE_BOX_SPEC: Omit<HetznerResolverSpec, "productId"> = {
 						// Resolved from the host's custody immediately before the
 						// call, and never written back to an output or a diagnostic.
 						password: await storageBoxPassword(context),
-						...(isPlainObject(context.desired.labels)
+						...(isJsonObject(context.desired.labels)
 							? { labels: context.desired.labels }
-							: {}),
+							: undefined),
 						...(Array.isArray(context.desired.sshKeys)
 							? { ssh_keys: context.desired.sshKeys }
-							: {}),
-						...(isPlainObject(context.desired.accessSettings)
+							: undefined),
+						...(isJsonObject(context.desired.accessSettings)
 							? { access_settings: context.desired.accessSettings }
-							: {}),
+							: undefined),
 					},
 				}),
 				label,
@@ -1366,7 +1324,7 @@ const STORAGE_BOX_SPEC: Omit<HetznerResolverSpec, "productId"> = {
 			// A create answers with an Action and the box; the box is what the
 			// caller needs, and the action id is published so a caller that wants
 			// to wait has something to wait on.
-			const record = isPlainObject(created[STORAGE_BOXES.itemKey])
+			const record = isJsonObject(created[STORAGE_BOXES.itemKey])
 				? nestedRecord(created, STORAGE_BOXES.itemKey)
 				: ((await findByName(context, STORAGE_BOXES)) ??
 					nestedRecord(created, STORAGE_BOXES.itemKey));
@@ -1467,7 +1425,7 @@ async function sendObjectStorage(
 	const signed = signAwsRequest({
 		method: call.method,
 		url,
-		...(call.body === undefined ? {} : { body: call.body }),
+		...(call.body === undefined ? undefined : { body: call.body }),
 		// Hetzner's S3 surface verifies a signature scoped to the location.
 		region: location,
 		service: "s3",
@@ -1479,7 +1437,7 @@ async function sendObjectStorage(
 		method: call.method,
 		url,
 		headers: lowerCaseHeaders(signed.headers),
-		...(call.body === undefined ? {} : { body: call.body }),
+		...(call.body === undefined ? undefined : { body: call.body }),
 		timeoutMs: HETZNER_MAX_TIMEOUT_MS,
 		maxResponseBytes: HETZNER_MAX_RESPONSE_BYTES,
 	});
@@ -1494,12 +1452,10 @@ async function sendObjectStorage(
  * carries one convention, which is what lets a guard, a test, or a log line
  * look for `authorization` without knowing which signer produced it.
  */
-function lowerCaseHeaders(
-	headers: Readonly<Record<string, string>>,
-): Record<string, string> {
-	const out: Record<string, string> = {};
+function lowerCaseHeaders(headers: Readonly<Record<string, string>>) {
+	const out = {};
 	for (const [name, value] of Object.entries(headers)) {
-		out[name.toLowerCase()] = value;
+		Object.assign(out, { [name.toLowerCase()]: value });
 	}
 	return out;
 }
@@ -1507,7 +1463,7 @@ function lowerCaseHeaders(
 function objectStorageOutputs(
 	context: HetznerResolverContext,
 	location: string,
-): Readonly<Record<string, unknown>> {
+): JsonObject {
 	return {
 		bucketName: context.name,
 		location,
@@ -1613,8 +1569,14 @@ interface HetznerResolverSpec {
  * ambient clock cannot be pinned by a test.
  */
 function clockOf(nowMs: HetznerResolverOptions["nowMs"]): () => number {
-	if (typeof nowMs === "function") return nowMs;
-	if (typeof nowMs === "number" && Number.isFinite(nowMs)) return () => nowMs;
+	if (nowMs === undefined) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			"the hetzner object storage resolver needs an injected nowMs (a number or a () => number). SigV4 signs a timestamp, and reading the clock inside the resolver would make a signed request untestable",
+		);
+	}
+	if (nowMs instanceof Function) return nowMs;
+	if (Number.isFinite(nowMs)) return () => nowMs;
 	throw new ResolverError(
 		"RESOLVER_PRODUCT_UNSUPPORTED",
 		"the hetzner object storage resolver needs an injected nowMs (a number or a () => number). SigV4 signs a timestamp, and reading the clock inside the resolver would make a signed request untestable",
@@ -1626,7 +1588,7 @@ function createResolver(
 	options: HetznerResolverOptions,
 ): ResourceResolver {
 	const signsRequests = spec.productId === HETZNER_OBJECT_STORAGE_PRODUCT_ID;
-	if (typeof options.resolveCredential !== "function") {
+	if (options.resolveCredential === undefined) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			"hetzner resolvers need an injected resolveCredential(ref): the resolver never reads an environment variable or a credential file itself",
@@ -1666,7 +1628,7 @@ function createResolver(
 			transport,
 			token,
 			name: resourceName(request, spec.productId),
-			desired: request.desired,
+			desired: parseJsonObject(JSON.stringify(request.desired)),
 			knownPhysicalId: knownPhysicalId(request),
 			objectStorageKeys,
 			nowMs,

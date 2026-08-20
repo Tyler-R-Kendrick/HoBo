@@ -17,7 +17,7 @@ import {
 	parseResolveRequest,
 	type ResolveOutcome,
 	type ResolveRequest,
-	type ResolverError,
+	ResolverError,
 	type ResourceResolver,
 	type TransportRequest,
 	type TransportResponse,
@@ -43,9 +43,15 @@ import {
 	hetznerResolvers,
 	redactHetznerText,
 } from "../src/index.js";
+import {
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../src/json.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
-const pact = JSON.parse(
+const pact = parseJsonObject(
 	readFileSync(
 		join(packageRoot, "../contracts/provider-hetzner-boundary.pact.json"),
 		"utf8",
@@ -58,7 +64,7 @@ const TOKEN = "fakehetznerprojecttoken0123456789abcdefgh";
 /** A 40-character token-shaped string, as providers echo them in error text. */
 const LEAKED_TOKEN = "abcdefghij0123456789ABCDEFGHIJ0123456789";
 
-type Rec = Record<string, unknown>;
+type Rec = JsonObject;
 
 interface RecordedCall {
 	readonly method: string;
@@ -106,7 +112,7 @@ function fakeTransport(
 	};
 }
 
-function json(status: number, payload: unknown): TransportResponse {
+function json(status: number, payload: JsonValue): TransportResponse {
 	return {
 		status,
 		headers: { "content-type": "application/json" },
@@ -128,7 +134,7 @@ function unexpected(call: RecordedCall): TransportResponse {
 }
 
 function bodyOf(call: RecordedCall): Rec {
-	return call.body === undefined ? {} : (JSON.parse(call.body) as Rec);
+	return call.body === undefined ? {} : parseJsonObject(call.body);
 }
 
 function nameFilter(call: RecordedCall): string | null {
@@ -181,27 +187,29 @@ function request(input: {
 			logicalId: input.logicalId,
 			...(input.physicalId !== undefined
 				? { physicalId: input.physicalId }
-				: {}),
+				: undefined),
 		},
 		desired: input.desired ?? {},
 		credentialRef: CREDENTIAL_REF,
 	});
 }
 
-async function codeOf(run: () => Promise<unknown>): Promise<string> {
+async function codeOf(run: () => Promise<void>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
-		return (error as ResolverError).code ?? "NO_CODE";
+		if (error instanceof ResolverError) return error.code;
+		throw error;
 	}
 	return "NO_ERROR_THROWN";
 }
 
-async function messageOf(run: () => Promise<unknown>): Promise<string> {
+async function messageOf(run: () => Promise<void>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
-		return (error as Error).message;
+		if (error instanceof Error) return error.message;
+		throw error;
 	}
 	return "NO_ERROR_THROWN";
 }
@@ -368,7 +376,7 @@ const STORAGE_BOX_PATH = "/v1/storage_boxes";
 /** Material the host's custody hands over. Expected in one request body only. */
 const STORAGE_BOX_PASSWORD = "c0rrect-horse-battery-staple";
 
-function storageBoxRecord(overrides: Rec = {}): Rec {
+function storageBoxRecord(overrides: Rec = {}) {
 	return {
 		id: 42,
 		name: "backups",
@@ -481,7 +489,10 @@ describe("the Storage Box resolver converges on the unified API", () => {
 		const create = fake.calls.find(
 			(call) => call.method === "POST" && call.path === STORAGE_BOX_PATH,
 		);
-		expect(bodyOf(create as RecordedCall).password).toBe(STORAGE_BOX_PASSWORD);
+		if (create === undefined) {
+			throw new Error("expected a storage box create call");
+		}
+		expect(bodyOf(create).password).toBe(STORAGE_BOX_PASSWORD);
 		// Nowhere else: not in an output, not in a diagnostic, not in a URL.
 		expect(JSON.stringify(outcome.outputs)).not.toContain(STORAGE_BOX_PASSWORD);
 		expect(JSON.stringify(outcome.diagnostics)).not.toContain(
@@ -601,12 +612,11 @@ describe("the Storage Box resolver converges on the unified API", () => {
 			return unexpected(call);
 		});
 		const resolver = resolverFor(HETZNER_STORAGE_BOX_PRODUCT_ID);
-		const outcome = parseResolveOutcome(
-			(await resolver.read(
-				storageBoxRequest(),
-				fake.transport,
-			)) as ResolveOutcome,
-		);
+		const observed = await resolver.read(storageBoxRequest(), fake.transport);
+		if (observed === undefined) {
+			throw new Error("expected a storage box read outcome");
+		}
+		const outcome = parseResolveOutcome(observed);
 		expect(outcome.diagnostics.join(" ")).toContain("initializing");
 	});
 });
@@ -657,7 +667,7 @@ describe("the registry covers exactly the products that can converge", () => {
 			Object.values(HETZNER_DEFAULT_BINDINGS)
 				.flatMap((entries) => [...(entries ?? [])])
 				.map((entry) => entry.productId)
-				.filter((id): id is string => typeof id === "string"),
+				.filter((id): id is string => isJsonString(id)),
 		);
 		const accounted = [
 			...HETZNER_RESOLVED_PRODUCT_IDS,
@@ -669,9 +679,8 @@ describe("the registry covers exactly the products that can converge", () => {
 
 	it("lists resolvers in id order and stamps the provider target", () => {
 		const resolvers = hetznerResolvers(options());
-		expect(resolvers.map((entry) => entry.productId)).toEqual(
-			[...resolvers.map((entry) => entry.productId)].sort(),
-		);
+		const ids = resolvers.map((entry) => entry.productId);
+		expect(ids).toEqual(ids.toSorted());
 		for (const resolver of resolvers) {
 			expect(resolver.providerId).toBe("hetzner");
 		}
@@ -818,12 +827,14 @@ describe("cloud servers converge", () => {
 				},
 			]),
 		);
-		const outcome = checked(
-			(await resolverFor(HETZNER_CLOUD_SERVER_PRODUCT_ID).read(
-				request(SERVER_REQUEST),
-				fake.transport,
-			)) as ResolveOutcome,
+		const observed = await resolverFor(HETZNER_CLOUD_SERVER_PRODUCT_ID).read(
+			request(SERVER_REQUEST),
+			fake.transport,
 		);
+		if (observed === undefined) {
+			throw new Error("expected a cloud server read outcome");
+		}
+		const outcome = checked(observed);
 		expect(outcome.action).not.toBe("replace");
 		expect(outcome.diagnostics.join(" ")).toContain("cannot be moved");
 	});
@@ -868,7 +879,11 @@ describe("cloud servers converge", () => {
 			fake.transport,
 		);
 		expect(fake.calls).toHaveLength(1);
-		expect(nameFilter(fake.calls[0] as RecordedCall)).toBe("api-1");
+		const listed = fake.calls[0];
+		if (listed === undefined) {
+			throw new Error("expected a list call");
+		}
+		expect(nameFilter(listed)).toBe("api-1");
 	});
 
 	it("refuses when the exact filter somehow matches twice", async () => {
@@ -1247,10 +1262,12 @@ describe("Object Storage is S3, on its own host with its own credential", () => 
 		expect(registry.get(HETZNER_CLOUD_SERVER_PRODUCT_ID)).toBeDefined();
 
 		const fake = fakeTransport(objectStorageApi());
+		const objectStorage = registry.get(HETZNER_OBJECT_STORAGE_PRODUCT_ID);
+		if (objectStorage === undefined) {
+			throw new Error("expected an object storage resolver");
+		}
 		const message = await messageOf(() =>
-			(
-				registry.get(HETZNER_OBJECT_STORAGE_PRODUCT_ID) as ResourceResolver
-			).reconcile(request(bucketRequest), fake.transport),
+			objectStorage.reconcile(request(bucketRequest), fake.transport),
 		);
 		expect(message).toContain("nowMs");
 		expect(fake.calls).toHaveLength(0);

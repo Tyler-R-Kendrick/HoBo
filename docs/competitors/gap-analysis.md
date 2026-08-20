@@ -9,7 +9,9 @@ tags: [hobo, competitors]
 
 > A cross-competitor synthesis: where HoBo's [design suite](../design/index.md) (Plans 0–48) leads, matches, or **falls short** of the full captured set — [Aspire](aspire.md), [Nitric](nitric.md), [Humanitec](humanitec.md), [Nomad](nomad.md) (scheduler pillar displaced — [ADR-0106](../design/adr/01-architecture-core.md#adr-0106)), [Convex](convex.md), [Lakebed](lakebed.md), [InsForge](insforge.md), [Antimetal](antimetal.md), [shoo.dev](shoo.md), [Dapr](dapr.md), [Encore](encore.md), [FinOps tooling](finops-tooling.md), [wasm hosts](wasm-hosts.md), and [NetScaler](netscaler.md). HoBo positions as an **AI-native meta-cloud**, competing head-on with the **Convex / [Lakebed](lakebed.md) / Nitric / [Encore](encore.md)** set ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)). Produced with the [Superpowers](../agent-tooling.md) methodology — **brainstorm → compare → review → iterate**. Companion to each folder's `differentiators.md` (their strengths) and `hobo-mapping.md` (per-feature parity ✅ has / ➕ adds / 🔜 planned).
 >
-> **➡️ For the current, complete picture jump to [§6 — Full re-evaluation (refreshed 2026-08-04)](#6-full-re-evaluation-refreshed-2026-08-04--every-capture-vs-hobo):** every one of the **36 captures** scored against the design suite *and the shipped `packages/` workspace as they stand today*, with an honest residual-item ledger. §§1–5 below are the preserved reasoning trail (historical snapshots, markers not current).
+> **➡️ For the current, complete picture jump to [§7 — Corpus-wide adversarial reconciliation (2026-08-20)](#7-corpus-wide-adversarial-reconciliation-2026-08-20--all-86-captures):** all **86** captures, every one written to the [research contract](metadata-contract.md), with three newly-named architecture-level gaps and the adversarial challenges to HoBo's own premises recorded rather than deflected. §6 remains accurate for the 36 captures it scored; §§1–5 are the preserved reasoning trail.
+>
+> **Superseded pointer — [§6 — Full re-evaluation (refreshed 2026-08-04)](#6-full-re-evaluation-refreshed-2026-08-04--every-capture-vs-hobo):** every one of the **36 captures** scored against the design suite *and the shipped `packages/` workspace as they stand today*, with an honest residual-item ledger. §§1–5 below are the preserved reasoning trail (historical snapshots, markers not current).
 >
 > **Bottom line (updated 2026-06-22):** the original analysis found the architecture broad with most gaps *tracked* as open questions, one true blind spot (**reactive / live-query**, now Plan 32/ADR-0029), and two designed-but-shallow surfaces (**AI generation**, **search/ingress**). **All of those — and every tracked open question — are now remediated in design** (gaps G1–G8 + open questions #3/#10/#15–20/#22–23, via Plans 32–36 + ADRs 0029–0043). The sections below record the original findings with their ✅ closures inline. **(Re-confirmed 2026-07-03:** all G1–G9 closures hold; the "still-backlogged infra completeness" line at the end of this preamble is **re-classified below** — most of those items were already designed, and the one genuine catalog gap is being closed in the current hardening tranche.)
 >
@@ -337,3 +339,238 @@ Not architecture gaps — the design covers them — but the captures set concre
 ### 6.6 Bottom line (refreshed 2026-08-04)
 
 The intersection bet is **still uncontested across all 36 captures** — no single competitor spans agnostic-IfC + durable event-sourced runtime + agents/generation-pipeline, self-hostable — and every competitor strength maps to a Plan/ADR (✅/➕) or composes as a provider (🔌). The correction the 2026-07-03 pass made to the older "**everything is closed / feature-complete**" framing — *honesty about stage* — holds; what the 2026-08-04 refresh adds is that the remediation wave ([docs/plans/0017](../plans/0017-remediation-roadmap.md)) **shipped three of the residuals** (placement-criteria vocabulary, the ADR-0146 residency loop, staged rollout strategies — §6.3 closed list), and the 21 newly-rowed captures surface **no new architecture gap**: their leads are shipping maturity (Heroku/Render/Railway ops polish, Fly's edge runtime, Modal's GPU serverless, Supabase's shipped Presence, Backstage's plugin ecosystem) or they compose as substrate/providers (wasmCloud, SpinKube, Crossplane, Radius, Supabase). The open set is now: **GAP-027 health-gating**, Nomad **system jobs/legacy drivers**, Dapr **bindings/lock**, **Aspire-grade local depth**, and **GPU-serverless placement depth** (§6.3), plus the standing execution-bar theme (§6.4 — agent-operability + first-run fidelity). Priority order to keep the moat credible: **(1)** land GAP-027 health-gated ordering; **(2)** prove `hobo dev` local fidelity + the agent-ops loop (Encore/InsForge bars); **(3)** design the legacy-driver/system-job residuals if brownfield demand appears; **(4)** the Dapr bindings/lock ports as a small additive tranche; **(5)** a GPU-placement vocabulary if AI-compute demand warrants chasing Modal. None is fatal; all are addressable.
+
+## 7. Corpus-wide adversarial reconciliation (2026-08-20 — all 86 captures)
+
+> **This supersedes §6 as the current-state pass.** The corpus grew from 36 captures to **86** across
+> the 2026-08 research programme, every one now written to the
+> [HoBo Competitive Research Contract](metadata-contract.md) (`contract: v1`). §6 remains accurate
+> for the captures it scored; this section reconciles the *whole* corpus and is deliberately
+> adversarial — it looks for what the previous passes' framing made hard to see.
+>
+> **The previous bottom line does not survive intact.** §6.6 concluded that the open set was five
+> named residuals plus an execution-bar theme. Fifty new captures later, that is no longer the
+> shape of the problem. Three *architecture-level* gaps surfaced that no earlier pass named, and the
+> honest reading is that HoBo's differentiation is increasingly **designed rather than shipped**
+> while the products it is measured against ship.
+
+### 7.1 New architecture-level gaps
+
+These are not execution-bar items. Each is a thing HoBo's design does not currently do, surfaced by
+a capture that does it.
+
+| # | Gap | Surfaced by | Why it is architectural |
+|---|---|---|---|
+| **N1** | **Drift is not a first-class computed fact.** HoBo can *derive* divergence between recorded intent and materialized reality from its event log. Nothing derives it, names it, or shows it to anyone unprompted. | [Argo CD](argo-cd.md) (`OutOfSync` + per-resource diff), [Flux CD](flux-cd.md), [Crossplane](crossplane.md) | Reconciliation is table stakes in this category; *showing a human the difference* is what the category's users actually buy. HoBo has the harder half (an authoritative log) and not the visible half. |
+| **N2** | **`match.Decided` is a one-shot decision that nothing revisits.** Prices, capacity, policy and residency rules all move; the recorded decision does not. | [CAST AI](cast-ai.md) (continuous re-optimization), [Rancher Fleet](rancher-fleet.md) | A placement engine whose decisions are never re-evaluated is a configuration tool with an audit trail. The fix — re-evaluation emitting a new `match.Decided` — is additive but is a genuine design extension, not polish. |
+| **N3** | **Extension lifecycle is unsolved.** Resource Packs have no install/upgrade/dependency-resolution story worth the name. | [OpenShift](openshift.md) (OLM), [Kratix](kratix.md) (Promise updates), [Backstage](backstage.md) (the plugin treadmill) | Every extensible platform in this corpus either solved this deliberately or is visibly suffering. It is the difference between an extension model and a distribution problem the user inherits. |
+
+Two further items sit just below the line — real, but closer to unclaimed opportunity than to
+missing mechanism:
+
+- **N4 — the estimate-versus-actual loop is unclosed everywhere**, and HoBo holds both sides in one
+  event log ([ADR-0135](../design/adr/03-data-plane-sqlite-default.md)). [Infracost](infracost.md)
+  never sees actuals; [Kubecost](kubecost.md) and [Vantage](vantage.md) never see estimates. This is
+  the clearest *novel* feature the whole FinOps cohort leaves on the table.
+- **N5 — multi-provider price data is an unresourced dependency.** Cost-aware placement
+  ([ADR-0071](../design/adr/01-architecture-core.md#adr-0071)) needs accurate prices, which is
+  precisely the asset [Infracost](infracost.md) and [Vantage](vantage.md) built businesses around.
+  Treating it as free is a planning error.
+
+### 7.2 Recurring findings — what the corpus says by repetition
+
+Frequency is the signal. Each of these appeared independently across unrelated products.
+
+1. **Preview environments are worthless without data** — 5 independent sources
+   ([Release](release.md), [Qovery](qovery.md), [Northflank](northflank.md), [Upsun](upsun.md),
+   [Lagoon](lagoon.md)). HoBo's residency and policy layers are what would make production-like data
+   in a preview *safe*, which is a stronger position than "we also do previews" and is not currently
+   argued anywhere.
+2. **A browsable, validating topology surface** — 6+ occurrences, and [Argo CD](argo-cd.md) supplies
+   the concrete shape (resource tree + health rollup + live-vs-desired diff). Related to N1 and the
+   reason it keeps recurring: it is the same missing surface seen from different angles.
+3. **Outbound-only connectivity; the control plane holds no standing credentials** — 5 occurrences
+   ([Harness](harness.md)'s Delegate, [Porter](porter.md), [Control Plane](control-plane.md),
+   [Flux CD](flux-cd.md), with [Argo CD](argo-cd.md) as the counter-example and
+   [Octopus Deploy](octopus-deploy.md)'s polling Tentacle arriving at it independently). This should
+   be an architectural commitment, not a deployment detail.
+4. **Import what exists** — 7 occurrences, culminating in [StackGen](stackgen.md)'s
+   inference-without-declaration and [NetScaler](netscaler.md)'s config → neutral IR → adopt
+   mechanism. `hobo import` ([ADR-0041](../design/adr/07-portability-extensibility.md#adr-0041)) is
+   stronger on paper because adoption is stateful; that advantage is unproven until it ships.
+5. **Enforcement beats evaluation.** [Flux CD](flux-cd.md)'s impersonation makes tenant overreach
+   *impossible*; a policy pack makes it *detectable*. Where HoBo can push a constraint into the
+   provider's own authorization system it should, with `@hobo/policy` as the fallback rather than the
+   mechanism.
+6. **Defaults decide whether a security model exists.** [OpenShift](openshift.md)'s restricted SCCs
+   are on; [Flux CD](flux-cd.md)'s superior isolation is off until someone sets a flag. The second
+   protects fewer clusters. HoBo's policy packs should ship restricted.
+7. **Bound your own control plane's authority.** [Tailscale](tailscale.md)'s tailnet lock and
+   [shoo.dev](shoo.md)'s pairwise subjects are vendors cryptographically limiting what they can do to
+   a customer. HoBo asks for more trust than either and offers no equivalent.
+8. **Declare, don't infer, the unknowable.** [Infracost](infracost.md)'s usage files and
+   [StackGen](stackgen.md)'s inference limits reach the same conclusion from opposite directions:
+   inference recovers behaviour, not intent, and least privilege cannot be inferred at all.
+9. **Vendors withdraw features from secondary products** ([Atlassian Compass](atlassian-compass.md)
+   retiring scaffolding templates with no replacement, within the last year). The strongest available
+   argument for manifests living in the customer's repository, and HoBo should make it explicitly.
+
+### 7.3 Adversarial challenges to HoBo's own premises
+
+The captures that argue *against* HoBo, recorded rather than deflected.
+
+- **"Why write a Bindle at all?"** ([StackGen](stackgen.md)) — if a tool can infer infrastructure
+  from existing state, declaration looks like ceremony. The answer holds in three parts: inference
+  recovers behaviour but not intent; least privilege cannot be inferred; and generated output is a
+  starting artifact, not a maintained description. But it is an answer, not a dismissal.
+- **"Your feedback loop is worse than ours"** ([System Initiative](system-initiative.md)) —
+  continuous qualification and change sets give a designer live feedback on a proposed change. HoBo's
+  `can-deploy` gate is a checkpoint, not a loop. This is a fair hit.
+- **"Most teams need less than this"** ([Kamal](kamal.md)) — for one application on a few servers,
+  HoBo is overhead and Kamal is sufficient. The comparison only favours HoBo once targets are
+  heterogeneous, and the positioning should say so rather than implying universal applicability.
+- **"You only meter what you deployed"** (the whole FinOps cohort) — HoBo-managed spend is a minority
+  of any real bill. The honest claim is *authoritative for HoBo-managed spend, integrable for the
+  rest*, never "a FinOps platform".
+- **"The abstraction exists only for heterogeneous estates"** ([OpenChoreo](openchoreo.md)) — for a
+  Kubernetes-only shop, abstracting over providers buys nothing. Conceded in that capture and worth
+  conceding in the positioning.
+- **"Distribution beats architecture"** ([Atlassian Compass](atlassian-compass.md),
+  [Backstage](backstage.md)) — in the portal category, being already-installed wins accounts
+  regardless of design quality. HoBo's response is integration, not imitation.
+- **"Incumbency in regulated delivery is near-immovable"** ([Octopus Deploy](octopus-deploy.md)) — the
+  audit trail *is* the compliance evidence, and replacing it means re-establishing years of it.
+
+### 7.4 What did not change
+
+- **The intersection bet remains uncontested across all 86 captures.** No single product spans
+  provider-abstract authoring + a recorded, scored placement decision + an event-sourced control
+  plane + an agent-addressable surface, self-hostable. [Control Plane](control-plane.md) comes
+  closest on portability and gets there by owning the runtime, so its portability ends at its edge.
+- **Every competitor strength still maps** to a Plan/ADR, composes as a provider, or is a stated
+  non-goal. Nothing in the fifty new captures requires a new plane.
+- **The deliberate non-goals of §6.5 are re-confirmed**, and one is added: HoBo does not aggregate an
+  organization's whole cloud bill and should not claim to.
+
+### 7.5 Implemented and uncommon — what HoBo actually has
+
+The inverse question, asked deliberately: capabilities that are **shipped in `packages/`** and that
+few or no captures match. These are the claims safe to make in the present tense.
+
+- **A recorded, scored placement decision** (`match.Decided`, `PortabilityReport`, ADR-0144). Every
+  other product in the corpus either names a target or optimizes within one. [Flux Network](flux-network.md)
+  is the worked proof: a cheap, low-trust candidate whose impedance is scored rather than assumed.
+- **Fail-closed residency evaluation** (`evaluateResidency`, ADR-0146). Nothing in the FinOps or
+  networking cohorts treats moving a workload as a jurisdiction decision — and both cohorts move
+  workloads.
+- **Event-sourced authority with replay** (ADR-0135). [Octopus Deploy](octopus-deploy.md) has the
+  best audit trail in the corpus and it records rather than reconstitutes.
+- **Typed contracts carrying effects and a resilience profile** (ADR-0136). [CAST AI](cast-ai.md)
+  automates spot placement against cluster-wide policy because no per-workload tolerance exists to
+  read; this is the input that would make it safe.
+- **Traits as first-class operational behaviour** (ADR-0145), where [KubeVela](kubevela.md) is the
+  only comparable vocabulary and is Kubernetes-bound.
+
+### 7.6 Design-only differentiation — must not be marketed as shipped
+
+Recorded explicitly so no downstream document upgrades intent into availability:
+
+- **Enforcement at admission** — spend caps, budget refusal ([ADR-0039](../design/adr/02-identity-security.md#adr-0039) §2). *Design-only.*
+- **Plan-time cost estimation** ([Plan 5](../design/reliability-observability-cost.md#plan-05)) — [Infracost](infracost.md) ships this today. *Design-only.*
+- **Cost-aware placement** ([ADR-0071](../design/adr/01-architecture-core.md#adr-0071)). *Design-only*, and gated on N5.
+- **Heterogeneous, non-Kubernetes cost attribution.** *Design-only*, with no stated `max(requested, usage)`-equivalent rule per target class (see [OpenCost](opencost.md)).
+- **`hobo import` stateful adopt-in-place** ([ADR-0041](../design/adr/07-portability-extensibility.md#adr-0041)) — stronger than [StackGen](stackgen.md) and [NetScaler](netscaler.md)'s codegen *on paper*. Unproven.
+- **Agent-ops legibility loop** — *proof* stage; [InsForge](insforge.md) and [Antimetal](antimetal.md) set the bar.
+
+### 7.7 Borrow rather than rebuild
+
+Mature mechanisms where reimplementation would be waste:
+
+| Mechanism | Source | Posture |
+|---|---|---|
+| Cost allocation shape and the reconcile-to-the-bill property | [OpenCost](opencost.md) | Conform and export; do not compete on measurement |
+| OAM vocabulary and the wadm render target | [KubeVela](kubevela.md) | Standard at the boundary (ADR-0108) |
+| Identity-keyed overlay networking | [Tailscale](tailscale.md), [NetBird](netbird.md) | Adopt behind the `mesh` port (ADR-0122) |
+| Reconciliation into clusters | [Argo CD](argo-cd.md), [Flux CD](flux-cd.md) | Render target; emit, don't reimplement |
+| Extension install/upgrade/dependency resolution | [OpenShift](openshift.md)'s OLM | Reference design for N3 |
+| ADC data plane | [NetScaler](netscaler.md) | Provider behind `gateway`; explicit non-goal |
+
+### 7.8 Convergence threats and historical warnings
+
+**Convergence.** Three movements narrow HoBo's differentiation if they continue:
+[Harness](harness.md) and [Humanitec](humanitec.md) adding scored, governed placement above delivery;
+the IDP cohort ([Backstage](backstage.md), [Port](port.md), [Cortex](cortex.md)) growing from catalog
+toward action; and [Control Plane](control-plane.md) already shipping cross-cloud portability by
+owning the runtime. None spans the intersection bet today. The defence is the layer above untyped
+YAML that [Argo CD](argo-cd.md)'s own users build in Helm values — currently unclaimed, and the
+clearest commercial argument in the corpus.
+
+**Historical warnings.** Approaches that were tried and should not be repeated:
+
+- **Dual authoring surfaces** — [Winglang](winglang.md)'s preflight/inflight split is the cautionary
+  tale, and the reason [Wasp](wasp.md) is a packaging path rather than a second authoring model.
+- **Feature withdrawal from a strategically secondary product** — [Atlassian Compass](atlassian-compass.md)
+  retired scaffolding templates with no replacement. Keep the customer's model in the customer's repo.
+- **Catalogs that shed their workflows become directories** — same capture, and it applies directly to
+  any HoBo surface that lists resources without acting on them.
+- **Convenience objects become lock-in** — [OpenShift](openshift.md)'s Routes and BuildConfigs are
+  easier than the portable equivalents, which is why they are everywhere. HoBo's provider escapes
+  carry the identical risk and are scoped and scored for exactly this reason.
+- **A v2 rewrite costs adoption momentum** — [Flux CD](flux-cd.md)'s GitOps Toolkit transition.
+
+### 7.9 Reconciliation record (the completion gate)
+
+Checked on 2026-08-20 against the corpus at this commit:
+
+- **86 canonical captures**, each `contract: v1`, one per product; the two cohort captures
+  ([anonymous container hosts](anon-container-hosts.md), [FinOps tooling](finops-tooling.md)) are
+  explicitly labelled as cohorts, and the latter is `status: archived` with its five products split
+  into canonical captures.
+- **Naming collisions resolved.** [Flux CD](flux-cd.md) and [Flux Network](flux-network.md) each
+  carry a disambiguation note and cross-link; the `flux` alias remains with Flux Network, its earlier
+  claimant. [Upsun](upsun.md) and [StackGen](stackgen.md) are single files under their current names
+  with prior names as aliases and `status: renamed` — no stub files.
+- **Category pages and the matrix are generated** from front matter, so index drift is structurally
+  impossible; every capture's secondary categories carry rows.
+- **No source-rich capture was degraded.** Every pre-v1 deep capture was *restructured* — headings
+  renamed, contract sections added around the existing material — and the originals' tables,
+  impedance findings and mapping legends survive verbatim.
+- **Postures are not flattened.** `directness` and `posture` are separate closed vocabularies, so a
+  provider target, a render target, an architectural analog and a head-on rival are never reduced to
+  one score.
+- **Gates green:** `docs:competitors` (86 captures, 0 problems), `test/competitor-docs.test.ts`
+  (15 tests), `lint:docs:changed`, `docs:design-lint`.
+
+Follow-up design work — N1 through N5 — is filed as separate issues with the evidence and
+dependencies recorded there (HOBO-819 through HOBO-823). This section is a reviewer's finding, not a licence to rewrite the
+architecture.
+
+### 7.10 Bottom line and priority order
+
+The corpus is complete, contract-conformant, and less flattering than the last pass. HoBo's design
+is broad and its differentiation is real; the recurring risk across 86 captures is not architecture
+but **the growing distance between designed and shipped** while comparably-positioned products
+ship — [Argo CD](argo-cd.md) shows drift, [CAST AI](cast-ai.md) re-optimizes continuously,
+[OpenShift](openshift.md) enforces safe defaults, [Flux CD](flux-cd.md) holds no credentials.
+
+Priority order, revised:
+
+1. **N1 — make drift a named, computed, visible fact** derived from the event log. It is the
+   single highest-leverage item: it closes the most-repeated recurring finding, it gives the
+   browsable topology surface its content, and HoBo already owns the hard half.
+2. **Ship restricted policy-pack defaults** (finding 6) — cheap, and it converts a design claim into
+   a protection.
+3. **N2 — re-evaluable placement**, emitting a new `match.Decided` when prices, capacity or policy
+   move.
+4. **Commit to outbound-only agent connectivity** (finding 3) as an architectural rule with a
+   written rationale, and fix the standing contradiction between
+   [ADR-0122](../design/adr/07-portability-extensibility.md#adr-0122)'s WireGuard floor and the
+   shipped `@hobo/connectivity` default (a live [GAPS.md](../../GAPS.md) finding, restated in the
+   [Tailscale capture](tailscale.md)).
+5. **N4 — close the estimate-versus-actual loop**, the corpus's clearest unclaimed feature.
+6. **N3 — an extension lifecycle for Resource Packs**, before the pack population makes it expensive.
+7. **N5 — resource the price-data dependency**, or scope cost-aware placement to what can actually be
+   priced.
+
+The §6.4 execution-bar theme (agent-operability and first-run fidelity) stands unchanged and
+unaddressed, and every item above is additive to existing machinery rather than a new plane.

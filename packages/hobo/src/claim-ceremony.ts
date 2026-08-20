@@ -88,7 +88,7 @@ export async function runClaimCeremony(
 		snapshot = {
 			...snapshot,
 			state: attached.state,
-			seq: snapshot.seq + 1,
+			seq: attached.seq,
 			commandCount: snapshot.commandCount + 1,
 		};
 	}
@@ -250,7 +250,10 @@ export async function runClaimCeremony(
 			evidenceRef: verification.evidenceRef,
 			creatorAuthorityAfterClaim: item.creatorAuthorityAfterClaim,
 		});
-		snapshot = { ...snapshot, state: verified.state, seq: snapshot.seq + 1 };
+		// The seq comes back from the append rather than being guessed: verifying
+		// ownership emits a fact, so the stream advanced by more than one and the
+		// CompleteClaimItem below would otherwise be rejected as stale.
+		snapshot = { ...snapshot, state: verified.state, seq: verified.seq };
 
 		const pending = outstandingObligations(requireItem(snapshot.state, itemId));
 		if (pending.length > 0) {

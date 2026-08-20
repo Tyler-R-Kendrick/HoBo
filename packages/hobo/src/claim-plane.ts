@@ -85,6 +85,13 @@ export async function rebuildClaimState(
 export interface ApplyClaimCommandResult {
 	readonly state: ClaimCoordinatorState;
 	readonly events: readonly ClaimEvent[];
+	/**
+	 * The stream sequence after the append, for a caller that applies a second
+	 * command without re-reading. One command is one envelope *plus one per
+	 * emitted fact*, so a caller that assumed `+1` would send a stale
+	 * `expectedSeq` on its next append and be rejected.
+	 */
+	readonly seq: number;
 }
 
 /**
@@ -129,7 +136,7 @@ export async function applyClaimCommand(
 			tenant: DEFAULT_TENANT,
 		},
 	);
-	return result;
+	return { ...result, seq: snapshot.seq + 1 + result.events.length };
 }
 
 export interface ClaimItemView {

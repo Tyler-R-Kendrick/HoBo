@@ -80,7 +80,7 @@ export function createMemoryConfigStore(options?: {
 				sensitivity,
 				...(input.value !== undefined && sensitivity !== "sensitive"
 					? { value: input.value }
-					: {}),
+					: undefined),
 			});
 			if (input.value !== undefined && sensitivity !== "sensitive") {
 				byRef.set(valueRef, input.value);

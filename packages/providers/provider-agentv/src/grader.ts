@@ -19,6 +19,10 @@ import {
 	type AgentVGrade,
 	AgentVGradeSchema,
 } from "./_generated/agent_v_grade_pb.js";
+import type { JsonValue } from "./json.js";
+
+export type { JsonValue } from "./json.js";
+export type TrajectoryInput = JsonValue;
 
 // The agentV live-eval grader (ADR-0025 optional provider; IMPL-003
 // live-eval reward attachment). Microsoft-Trace-style: a stored trajectory
@@ -67,7 +71,7 @@ export interface AgentVLiveEvalOptions {
 
 export interface AgentVLiveEvalGrader {
 	readonly graderId: string;
-	grade(trajectory: unknown): Promise<{
+	grade(trajectory: TrajectoryInput): Promise<{
 		readonly grade: AgentVGrade;
 		readonly reward: TrajectoryReward;
 	}>;
@@ -84,7 +88,7 @@ export function createAgentVLiveEvalGrader(
 
 	return {
 		graderId: GRADER_ID,
-		async grade(trajectoryInput: unknown) {
+		async grade(trajectoryInput: TrajectoryInput) {
 			// Parse, don't validate: the boundary re-parses even trusted callers.
 			const trajectory = parseTrajectory(trajectoryInput);
 			const root = trajectory.spans.find((span) => span.parentId === "");

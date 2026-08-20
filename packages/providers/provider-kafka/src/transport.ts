@@ -169,7 +169,7 @@ export function createInMemoryKafkaTransport(
 				publishedAt,
 				...(request.idempotencyKey
 					? { idempotencyKey: request.idempotencyKey }
-					: {}),
+					: undefined),
 			};
 			mustGet(logs, topic).push(entry);
 			const result: KafkaProduceResult = Object.freeze({
@@ -276,7 +276,7 @@ export function resolveKafkaTransportFromEnv(
 		env.HOBO_REDPANDA_URL ||
 		env.REDPANDA_BROKERS ||
 		env.KAFKA_BOOTSTRAP_SERVERS;
-	if (typeof raw === "string" && raw.length > 0 && options.createLive) {
+	if (raw !== undefined && raw.length > 0 && options.createLive) {
 		const servers = raw
 			.split(",")
 			.map((s) => s.trim())

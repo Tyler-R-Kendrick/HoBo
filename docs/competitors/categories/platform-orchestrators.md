@@ -17,7 +17,7 @@ Systems that own application and platform orchestration end to end: environment 
 
 This is HoBo's home category. HoBo is a control plane that turns application intent into scored, provider-matched deployments, so anything claiming to orchestrate applications across environments contests HoBo directly.
 
-## Competitors (25)
+## Competitors (26)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -46,6 +46,7 @@ This is HoBo's home category. HoBo is a control plane that turns application int
 | [**System Initiative**](../system-initiative.md) | the most architecturally ambitious rethink of infrastructure automation in the corpus — a live model with real-time qualification instead of a plan-and-apply cycle | direct | `app-graph`, `authoring`, `reconciliation`, `typed-contracts`, `agent-surface` | Continuous qualification while authoring, a 1:1 digital twin compared against observed state, and change sets as a built-in review primitive — the best feedback loop in the corpus. | System Initiative models the infrastructure you intend; HoBo describes what an application needs before a provider is chosen, and records the decision that picks one. | displace, borrow, benchmark | P1 |
 | [**Argo CD**](../argo-cd.md) | the reference GitOps controller — the corpus's clearest statement that drift is a first-class, continuously computed fact rather than an incident | overlapping | `reconciliation`, `delivery`, `environments`, `governance`, `app-graph` | Continuous drift detection with a per-resource live-vs-desired diff, plus the resource-tree UI operators actually use during an incident. | HoBo describes an application above the Kubernetes object level and records where it runs; Argo CD reconciles a path someone pointed at a cluster. | borrow, benchmark, integrate, render-target | P1 |
 | [**Flux CD**](../flux-cd.md) | the pull-model GitOps controller — the corpus's best argument that the control plane should never hold credentials to the things it manages | overlapping | `reconciliation`, `delivery`, `governance`, `identity-secrets`, `environments` | Pull-model reconciliation with service-account impersonation: nothing outside the cluster holds credentials to it, and tenant overreach is refused by the Kubernetes API rather than flagged by policy. | HoBo resolves intent to managed services, wasm hosts or a local runtime rather than only to in-cluster controllers, and scores the portability of each choice. | borrow, benchmark, integrate, render-target | P1 |
+| [**CAST AI**](../cast-ai.md) | automated cost optimization — the cohort's only actor, and the clearest demonstration that acting on cost requires a resilience contract | adjacent | `finops`, `provider-matching`, `reconciliation`, `governance` | The cohort's only actor: continuous rightsizing, bin packing and spot orchestration producing realized rather than projected savings. | HoBo chooses between heterogeneous providers rather than node shapes inside one cluster, and scores residency and portability that pure cost optimization ignores. | benchmark, borrow, integrate | P1 |
 
 ## Navigation
 

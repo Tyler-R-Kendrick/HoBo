@@ -53,6 +53,7 @@ test("empty implementation -> train -> apply artifact", async () => {
 		maxMetricCalls: 8,
 	});
 	const candidate = await engine.optimize(
+		// SAFETY: test fixture is a wire-shaped OptimizeRequest; the engine re-parses.
 		optimizeRequest(trajectories) as never,
 	);
 	assert.equal(candidate.body.case, "artifact");

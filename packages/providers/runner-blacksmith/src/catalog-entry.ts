@@ -5,6 +5,7 @@ import {
 	RUNNER_CATEGORY,
 } from "@hobo/runner-github";
 
+import { type JsonObject, parseJsonObject } from "./json.js";
 import {
 	BLACKSMITH_PROVIDER_ID,
 	COST_FACTS,
@@ -18,14 +19,14 @@ import {
 // matches @hobo/cloud's RegistrableProvider so the composition root registers
 // it without this package depending on the kernel.
 
-const FEATURES: Record<ExecutionHostCategory, string[]> = {
+const FEATURES = {
 	[RUNNER_CATEGORY]: ["ci-job", "workflow-dispatch", "fast-runner"],
 	[BUILD_MACHINE_CATEGORY]: [
 		"container-build",
 		"ghcr-publish",
 		"docker-layer-cache",
 	],
-};
+} satisfies Record<ExecutionHostCategory, string[]>;
 
 export interface BlacksmithCatalogEntry {
 	id: string;
@@ -45,8 +46,8 @@ export interface BlacksmithCatalogEntry {
 	capabilityManifest(): {
 		providerId: string;
 		published: Record<string, string>;
-		capabilities: { capabilities?: Array<Record<string, unknown>> };
-		cost: { facts?: Array<Record<string, unknown>> };
+		capabilities: JsonObject;
+		cost: JsonObject;
 	};
 }
 
@@ -90,10 +91,10 @@ export function createBlacksmithCatalogEntry(): BlacksmithCatalogEntry {
 			return {
 				providerId: BLACKSMITH_PROVIDER_ID,
 				published: { ...published },
-				capabilities: JSON.parse(
+				capabilities: parseJsonObject(
 					published["/.well-known/capability-manifest/capabilities.json"],
 				),
-				cost: JSON.parse(
+				cost: parseJsonObject(
 					published["/.well-known/capability-manifest/cost.json"],
 				),
 			};

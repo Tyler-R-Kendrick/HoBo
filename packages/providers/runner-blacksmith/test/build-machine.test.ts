@@ -103,7 +103,8 @@ describe("Blacksmith BuildMachineProvider (hobo:build-machine, replay lane)", ()
 		assert.equal(image.digest, RECORDED.image.digest);
 		assert.equal(image.mediaType, RECORDED.image.mediaType);
 		assert.equal(facts.length, 1);
-		const fact = facts[0] as CacheLaneFact;
+		const fact = facts[0];
+		assert.ok(fact);
 		assert.equal(fact.type, BUILD_CACHE_LANE_OBSERVED);
 		assert.equal(fact.type, RECORDED.fact.type);
 		assert.equal(fact.cacheLane, BLACKSMITH_CACHE_LANE);

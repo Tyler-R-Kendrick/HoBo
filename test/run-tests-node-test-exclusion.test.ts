@@ -51,9 +51,10 @@ test("node:test-style contract files stay covered by package node --test lanes",
 			? "test:contract:consumer"
 			: "test:contract:provider";
 		const packageDir = nearestPackageDir(file);
+		// SAFETY: assertion to `JSON.parse( readFileSync(path.join(packageDir, "package.json"), "utf8"), ) as { scripts?: Record<string, string> }` is required at this boundary.
 		const manifest = JSON.parse(
 			readFileSync(path.join(packageDir, "package.json"), "utf8"),
-		) as { scripts?: Record<string, string> };
+		) as { scripts?: { [name: string]: string } };
 		const script = manifest.scripts?.[lane] ?? "";
 		assert.ok(
 			script.includes("--test"),

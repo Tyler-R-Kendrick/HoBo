@@ -156,8 +156,23 @@ test("quotes are stripped only when they match and wrap the whole value", () => 
 // Field validation regexes
 // ---------------------------------------------------------------------------
 
-function capture(overrides: Record<string, string | undefined> = {}) {
-	const fields: Record<string, string | undefined> = {
+function capture(
+	overrides: Partial<{
+		slug: string;
+		name: string;
+		primary_category: string;
+		categories: string;
+		directness: string;
+		role: string;
+		posture: string;
+		hobo_surface: string;
+		evidence: string;
+		status: string;
+		research_date: string;
+		contract: string;
+	}> = {},
+) {
+	const fields = {
 		slug: "acme",
 		name: '"Acme"',
 		primary_category: "infrastructure-from-code",
@@ -205,7 +220,7 @@ async function corpus(files: Record<string, string> = {}, slug = "acme") {
 	await mkdir(path.join(root, "docs", "competitors", "categories"), {
 		recursive: true,
 	});
-	const all: Record<string, string> = {
+	const all = {
 		"docs/competitors/index.md": generated("competitor-index", "Index"),
 		"docs/competitors/matrix.md": generated("competitor-matrix", "Matrix"),
 		"docs/competitors/categories/index.md": generated(

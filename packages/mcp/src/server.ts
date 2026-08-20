@@ -20,6 +20,7 @@ import {
 	type RateLimiter,
 	type RateLimitPolicy,
 } from "./rate-limit.js";
+import { isJsonObject, isJsonString, type JsonValue } from "./json.js";
 import {
 	assertToolSurfaceParity,
 	findTool,
@@ -69,7 +70,7 @@ export interface HoboMcpServer {
 	readonly observeToolOutput: (input: {
 		auth: AuthContext;
 		tool: string;
-		output: unknown;
+		output: JsonValue;
 	}) => InertOutputObservation;
 	readonly getAuditEvents: () => readonly AuthDecisionEvent[];
 	readonly getRateLimitEvents: () => readonly RateLimitEvent[];
@@ -220,9 +221,8 @@ export function createHoboMcpServer(
 			return {
 				ok: run.exitCode === 0 && envelope.ok !== false,
 				tool: tool.name,
-				status:
-					typeof envelope.status === "string" ? envelope.status : "unknown",
-				code: typeof envelope.code === "string" ? envelope.code : "HOBO_OK",
+				status: isJsonString(envelope.status) ? envelope.status : "unknown",
+				code: isJsonString(envelope.code) ? envelope.code : "HOBO_OK",
 				output: envelope,
 				decision,
 			};
@@ -250,12 +250,26 @@ function buildArgv(verb: string, input: ToolCallInput): string[] {
 	return argv;
 }
 
-function parseEnvelope(stdout: string): Record<string, unknown> {
+export interface CliEnvelope {
+	ok?: boolean;
+	status?: string;
+	code?: string;
+	raw?: string;
+	data?: JsonValue;
+}
+
+function parseEnvelope(stdout: string): CliEnvelope {
 	try {
-		const parsed = JSON.parse(stdout) as unknown;
-		return typeof parsed === "object" && parsed !== null
-			? (parsed as Record<string, unknown>)
-			: { raw: stdout };
+		const parsed = JSON.parse(stdout);
+		if (isJsonObject(parsed)) {
+			const envelope: CliEnvelope = {};
+			if (parsed.ok === true || parsed.ok === false) envelope.ok = parsed.ok;
+			if (isJsonString(parsed.status)) envelope.status = parsed.status;
+			if (isJsonString(parsed.code)) envelope.code = parsed.code;
+			if (parsed.data !== undefined) envelope.data = parsed.data;
+			return envelope;
+		}
+		return { raw: stdout };
 	} catch {
 		return { raw: stdout };
 	}

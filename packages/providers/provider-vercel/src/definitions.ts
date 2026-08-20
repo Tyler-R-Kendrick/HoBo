@@ -194,9 +194,7 @@ function baseSemantics(
 }
 
 /** Facts common to every sponsored product, exposed for ranking. */
-function sponsoredCapabilities(): Readonly<
-	Record<string, boolean | number | string | readonly string[]>
-> {
+function sponsoredCapabilities() {
 	return {
 		bootstrap: "sponsor-backed",
 		// HoBo owns the Vercel account and bears the cost until a human claims.

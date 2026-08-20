@@ -48,8 +48,7 @@ const FORBIDDEN: readonly {
 	{ label: "claim url with code", pattern: /claim-deployment\?code=/u },
 ];
 
-function assertNoCredentials(label: string, value: unknown): void {
-	const serialized = typeof value === "string" ? value : JSON.stringify(value);
+function assertNoCredentials(label: string, serialized: string): void {
 	for (const forbidden of FORBIDDEN) {
 		expect(
 			forbidden.pattern.test(serialized),
@@ -68,13 +67,16 @@ describe("nothing this package serializes carries credential material", () => {
 	it("scans the static definition surface", () => {
 		assertNoCredentials(
 			"bootstrap disclosure",
-			SPONSORED_PROJECT_TRANSFER_BOOTSTRAP,
+			JSON.stringify(SPONSORED_PROJECT_TRANSFER_BOOTSTRAP),
 		);
 		assertNoCredentials(
 			"candidate",
-			VERCEL_SPONSORED_PROJECT_TRANSFER_CANDIDATE,
+			JSON.stringify(VERCEL_SPONSORED_PROJECT_TRANSFER_CANDIDATE),
 		);
-		assertNoCredentials("drop classification", VERCEL_DROP_CLASSIFICATION);
+		assertNoCredentials(
+			"drop classification",
+			JSON.stringify(VERCEL_DROP_CLASSIFICATION),
+		);
 	});
 
 	it("scans the lease, bundle, commands, events, and report of a full claim", () => {
@@ -131,12 +133,12 @@ describe("nothing this package serializes carries credential material", () => {
 			fencingToken: FENCE,
 		});
 
-		assertNoCredentials("lease", lease);
-		assertNoCredentials("bundle", bundle);
-		assertNoCredentials("bootstrap commands", commands);
-		assertNoCredentials("claim events", result.events);
-		assertNoCredentials("claim report", result.report);
-		assertNoCredentials("coordinator state", result.state);
+		assertNoCredentials("lease", JSON.stringify(lease));
+		assertNoCredentials("bundle", JSON.stringify(bundle));
+		assertNoCredentials("bootstrap commands", JSON.stringify(commands));
+		assertNoCredentials("claim events", JSON.stringify(result.events));
+		assertNoCredentials("claim report", JSON.stringify(result.report));
+		assertNoCredentials("coordinator state", JSON.stringify(result.state));
 	});
 
 	it("scans a rotated binding, which holds a locator and no value", () => {
@@ -149,7 +151,7 @@ describe("nothing this package serializes carries credential material", () => {
 			producerEvidenceRef: "evidence://prisma-postgres/rotation/FAKE",
 			rotatedAtMs: NOW,
 		});
-		assertNoCredentials("rotated binding", rotated);
+		assertNoCredentials("rotated binding", JSON.stringify(rotated));
 	});
 
 	it("scans errors built from hostile provider bodies", () => {
@@ -165,7 +167,10 @@ describe("nothing this package serializes carries credential material", () => {
 				body: hostileBody,
 			});
 			assertNoCredentials(`error ${status} message`, error.message);
-			assertNoCredentials(`error ${status} json`, error.toJSON());
+			assertNoCredentials(
+				`error ${status} json`,
+				JSON.stringify(error.toJSON()),
+			);
 		}
 		// Log forging via control characters is flattened too.
 		expect(
@@ -184,7 +189,7 @@ describe("nothing this package serializes carries credential material", () => {
 			returnUrl: "https://example.invalid/done",
 		});
 		assertNoCredentials("claim action toString", String(action));
-		assertNoCredentials("claim action toJSON", action);
+		assertNoCredentials("claim action toJSON", JSON.stringify(action));
 		assertNoCredentials("claim action in a template", `action: ${action}`);
 		assertNoCredentials("claim action inspected", `${action.ref}`);
 		// The one deliberate exit, which the one-time action store consumes.

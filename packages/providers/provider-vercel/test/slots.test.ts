@@ -15,6 +15,8 @@ import {
 
 /** A bag with keys the typed options do not declare, as a caller could pass. */
 function untypedBag<T>(json: string): T {
+	// SAFETY: fixture JSON is the factory option bag, including undeclared keys
+	// that must still reach slotBinding's parse boundary.
 	return JSON.parse(json) as T;
 }
 
@@ -85,9 +87,8 @@ describe("vercel slot factories", () => {
 			call();
 			expect.unreachable("credential-shaped property must be refused");
 		} catch (error) {
-			expect((error as SlotBindingError).code).toBe(
-				"SLOT_BINDING_CREDENTIAL_PROPERTY",
-			);
+			if (!(error instanceof SlotBindingError)) throw error;
+			expect(error.code).toBe("SLOT_BINDING_CREDENTIAL_PROPERTY");
 		}
 	});
 
@@ -98,9 +99,8 @@ describe("vercel slot factories", () => {
 			call();
 			expect.unreachable("non-JSON property must be refused");
 		} catch (error) {
-			expect((error as SlotBindingError).code).toBe(
-				"SLOT_BINDING_PROPERTY_NOT_JSON",
-			);
+			if (!(error instanceof SlotBindingError)) throw error;
+			expect(error.code).toBe("SLOT_BINDING_PROPERTY_NOT_JSON");
 		}
 	});
 

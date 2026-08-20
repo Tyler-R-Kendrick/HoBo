@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [delivery, environments, agent-surface]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://vercel.com/docs
     - https://vercel.com/
@@ -45,6 +46,35 @@ Vercel is **vendor-hosted** — you deploy *to Vercel*, not into your own cloud.
 | Self-host | Platform is **vendor-hosted only**; only the **Workflow SDK** runtime is portable (Local / self-host Postgres **Worlds**) |
 | Clouds | Vercel's **own** platform + edge; **not** multi-cloud / BYO-cloud provisioning |
 | License / price | Platform **proprietary**; SDKs **OSS**. **Hobby** free (non-commercial) · **Pro $20/user/mo** (+usage) · **Enterprise** custom; **usage-billed** (Active CPU **$0.128/hr**, provisioned memory **$0.0106/GB-hr**, bandwidth, Workflow events) |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Project** | A repository plus its deployment configuration (`vercel.json`) |
+| **Deployment** | An immutable build, addressable by URL — every push produces one |
+| **Preview deployment** | The per-branch/per-PR URL that made preview environments an industry expectation |
+| **Function** | Serverless compute, with **Fluid compute** and Active CPU billing changing the economics of idle time |
+| **Edge Network** | Global routing, caching and ISR |
+| **Workflow SDK** | Durable execution: `workflow` and `step` primitives — the part HoBo explicitly borrows |
+| **AI stack** | AI SDK, AI Gateway, v0, and agent tooling |
+
+The mental model is **every push is a URL**. Immutable deployments plus preview URLs turned review
+into something you click rather than something you provision, and that single idea propagated across
+the entire cohort.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `delivery` | Immutable deployments and preview URLs, the reference implementation |
+| `environments` | Preview per branch, promotion by alias |
+| `agent-surface` | A shipped AI stack — SDK, gateway, generation, agents |
+| `authoring` | Zero-config for supported frameworks; `vercel.json` when needed |
+| `replay-migration` | **The Workflow SDK's durable `workflow`/`step` model is HoBo's acknowledged borrow-source** for authoring feel |
+
+Vercel is simultaneously a borrow-source, a benchmark, and a plausible provider target — which is
+why the posture here is deliberately not "displace".
 
 ## Feature surface
 
@@ -156,9 +186,26 @@ vercel logs | certs | dns | redeploy   # ops surfaces
 - **Enterprise** — custom (SSO/SCIM, Secure Compute, higher limits, SLAs, support).
 - **Usage rates** — Fluid **Active CPU $0.128/hr** + provisioned memory **$0.0106/GB-hr**; **AI Gateway** no token markup (BYOK); **Workflows** billed on Events / Data Written / Data Retained. Monetization + the Marketplace revenue model are core to Vercel — and explicitly **out of scope** for HoBo ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)).
 
-## Differentiators
+## Architecture
 
-### Strengths (what Vercel does well — and is ahead of HoBo on)
+- **Control plane** — Vercel's hosted service: builds, deployments, aliases, routing configuration.
+- **Data plane** — a global edge network plus serverless function execution; Fluid compute keeps warm
+  capacity and bills Active CPU, which materially changes serverless cost behaviour.
+- **Execution model** — build once per push into an immutable deployment, alias to promote, route at
+  the edge with ISR for incremental regeneration.
+- **Durable execution** — the Workflow SDK provides `workflow`/`step` semantics over the same
+  serverless substrate, which is the interesting architectural move: durability as a library over
+  ephemeral compute.
+- **State authority** — Vercel's deployment history, which is immutable and alias-addressed.
+- **Portability boundary** — framework-shaped. Next.js applications are portable in principle and
+  practically advantaged on Vercel; the edge behaviour, ISR semantics and workflow runtime are the
+  platform's.
+
+## Where Vercel is stronger
+
+> Shipped, evidenced capability only.
+
+### what Vercel does well — and is ahead of HoBo on
 
 - **Best-in-class frontend DX and a real edge network.** Git-push deploys, per-push **Preview Deployments**, **ISR**, Image Optimization, and Routing Middleware on a **global CDN** — shipping at massive scale. HoBo is **not a frontend cloud** and does not compete here.
 - **Next.js gravity + ecosystem.** Vercel authors Next.js; the framework's popularity is a durable distribution moat no design-phase competitor can match.
@@ -167,7 +214,14 @@ vercel logs | certs | dns | redeploy   # ops surfaces
 - **Durable execution done ergonomically** — the **Workflow SDK's** `"use workflow"`/`"use step"` directives + `sleep` + hooks are a clean, familiar-async programming model with deterministic replay, an event log, and swappable **Worlds**. **This is the design HoBo borrows from.**
 - **Cohesive, opinionated, single-vendor platform** — one dashboard, one bill, one deploy target; low decision-cost for frontend teams.
 
-### Gaps (Vercel's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Vercel's limits — HoBo's opening
 
 - **Single-vendor platform, not multi-cloud.** You deploy *to Vercel* (built on AWS + others), not into **your own** AWS/GCP/Azure/Hetzner/Cloudflare/Fly account, and you cannot bring Pulumi/Crossplane/Terraform/OpenTofu. HoBo is a **cloud-agnostic control plane with pluggable IaC** ([Plan 4](../design/control-plane.md#plan-04), [ADR-0006](../design/adr/01-architecture-core.md#adr-0006)).
 - **Frontend-out, not a backend/infra control plane.** Vercel optimizes the framework + edge; backend infra (databases, queues, secrets, provisioning, IAM) is comparatively thin, and databases were **offloaded to the Marketplace**. HoBo is **backend-first**: a full IfC resource catalog + `.allow()` least-privilege + Resource Definitions/Matching + a Dispatcher ([Plan 21](../design/authoring-resources-wiring.md#plan-21), [Plan 25](../design/platform-engineering.md#plan-25)).
@@ -178,7 +232,25 @@ vercel logs | certs | dns | redeploy   # ops surfaces
 - **Agents are assistants on Vercel's platform, not first-class principals.** Vercel Agent and DurableAgent are powerful, but there is no **agent-as-identity** model (SVIDs, brokered tokens, capability manifests) governing *what an agent may do across clouds*. HoBo makes **agents first-class principals** ([Plan 6](../design/ai-native-agent-auth.md#plan-06)).
 - **No AI-generated providers / adopt-in-place onboarding.** v0 generates *apps*; it does not generate **cloud provider adapters/implementations**, and there is no "import my existing TF/Pulumi estate." HoBo's generation pipeline generates adapters ([Plan 23](../design/generated-stack.md#plan-23)) and `hobo import` adopts estates in place ([ADR-0041](../design/adr/07-portability-extensibility.md#adr-0041)).
 
-### Comparisons
+## Adversarial critique
+
+- **Framework gravity is the business model.** Vercel maintains the framework and the platform most
+  optimized for it; that is legitimate and it means "portable" and "equally good elsewhere" are
+  different claims.
+- **Serverless pricing is famously hard to predict.** Fluid compute and Active CPU billing improve
+  the economics and add another dimension to model; traffic spikes remain the recurring cost story.
+- **The edge is a constraint as well as a feature.** Cold starts, execution limits and regional data
+  access shape what can be built, and applications that outgrow the model must restructure.
+- **Backend workloads are second-class.** Long-running processes, stateful services and heavy
+  background work fit awkwardly; the Workflow SDK addresses part of this by adding durability rather
+  than by adding a runtime.
+- **AI stack claims move quickly.** The surface is broad and evolving; treat capability claims as
+  claims to verify rather than as settled ground.
+- **No self-host and no BYOC.** The whole model presumes Vercel operates it.
+- **Vendor-shaped configuration.** `vercel.json` describes Vercel routing and build behaviour, not an
+  application.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Vercel is a **shipping, frontend-centric, single-vendor cloud** with unmatched web/edge DX and live AI tooling; HoBo is a **design-phase, backend/infra control plane** that is **multi-cloud + wasm-polyglot + self-hostable + event-sourced/governed**. They overlap only at **durable execution**, where HoBo deliberately **borrows** Vercel's model (below). Vercel is ahead on everything frontend, edge, ecosystem, and AI-app DX **today**; HoBo's bet is breadth (clouds/languages/IaC) + a governed control plane, not out-DX-ing Vercel on the frontend.
 - **vs Encore/Nitric:** those are **cloud-agnostic IfC → your own AWS/GCP(/Azure)**; Vercel is the opposite trade — **its own managed platform** with superior frontend DX but no BYO-cloud. HoBo is closer to Encore/Nitric on *where it runs* and closer to Vercel on *durable-runtime ergonomics + AI-native posture*.
@@ -187,7 +259,9 @@ vercel logs | certs | dns | redeploy   # ops surfaces
 
 **Net:** Vercel is a category-defining Frontend Cloud that is **shipping and ahead** on frontend/edge DX, Next.js gravity, and AI-app tooling — and it is the product HoBo **learns from** rather than races on that turf. HoBo's differentiation is orthogonal: a **multi-cloud, wasm-default, self-hostable, event-sourced control plane** with agents-as-principals and a generation pipeline. From Vercel, HoBo takes exactly one thing on purpose — the **durable `workflow`/`step` ergonomics and the "Worlds" runtime-ports pattern** — and generalizes it beyond a single vendor's platform.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Vercel concept. **HoBo is design-phase throughout**, so these markers describe **design coverage**, not shipping status (Vercel ships all of it): ✅ designed at parity · ➕ designed to go further · ◐ partial/thin · 🔜 planned. Never read ✅ as "HoBo ships this."
 
@@ -232,3 +306,35 @@ Framed respectfully: Vercel proved the durable-execution DX and the pluggable-ru
 ### The one-line takeaway
 
 **Vercel is the shipping, category-defining Frontend Cloud** — ahead of design-phase HoBo on frontend/edge DX, Next.js gravity, and live AI-app tooling (v0, AI SDK, AI Gateway, Agent) — and the one competitor HoBo openly **borrows from** (durable `workflow`/`step` + "Worlds" runtime ports). HoBo doesn't try to be a better frontend cloud; it **generalizes Vercel's durable-runtime pattern** into a **multi-cloud, wasm-default, self-hostable, event-sourced, agent-native** backend control plane, with usage billing and a revenue Marketplace explicitly **out of scope** ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)).
+
+## Better-together / integration posture
+
+- **Borrow** — already recorded in [`lineage.md`](../design/lineage.md): the durable
+  `workflow`/`step` authoring feel from the Workflow SDK. This capture reaffirms it and adds a
+  second: **immutable deployment plus alias promotion** is a cleaner promotion model than most.
+- **Benchmark** — preview deployments set the industry expectation; HoBo's ephemeral Camps are
+  measured against them.
+- **Provider-target** — realistic for web-shaped Bindles.
+- Not a displace target: the overlap is real but the buyers differ.
+
+## Threats and lessons
+
+1. **Durable execution has become a platform feature, not a specialist product.** HoBo's
+   event-sourced runtime is architecturally deeper, and the authoring feel is what developers
+   actually judge — which is precisely why the borrow was recorded.
+2. **Preview URLs are the expectation HoBo inherits.** Fourth corpus occurrence of preview
+   environments as table stakes.
+3. **Framework-adjacent platforms win on integration, not on architecture.** HoBo cannot and should
+   not fight there; its ground is targets, not frameworks.
+4. **Active-CPU-style billing is a genuine innovation** in serverless economics and a reminder that
+   cost models, not just capabilities, are competitive surface.
+
+## Sources
+
+- [vercel.com/docs](https://vercel.com/docs) — projects, deployments, previews, functions, Fluid compute, `vercel.json`, Edge Network, Workflow SDK, AI stack
+- [vercel.com](https://vercel.com/) — positioning and pricing (vendor material)
+- HoBo-side: [`design/lineage.md`](../design/lineage.md) records the Workflow SDK as a borrow-source
+
+This capture predates the research contract and was restructured to it on 2026-08-19 with its
+original research preserved. Current AI-stack capabilities and pricing were not re-verified in this
+pass and are not asserted.

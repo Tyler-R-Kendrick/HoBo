@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [authoring, environments, delivery]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://docs.railway.com/
     - https://railway.com/
@@ -47,6 +48,33 @@ The strategic bet that sets Railway apart is **Railway Metal**: Railway migrated
 | AI / agents | **Railway Agent** (dashboard chat: manage services, diagnose deploys, open PRs) · **MCP** local + remote (`mcp.railway.com`) · open **agent skills** (`use-railway`) · **sandboxes** with coding agents |
 | CLI | `railway` (`up` · `run` · `link` · `logs` · `variables` · `ssh` · `connect` · `volume` · `agent` · `sandbox` …) |
 | License / price | **Proprietary, closed**; usage-based — Hobby **$5/mo**, Pro **$20/mo/seat**, Enterprise custom · RAM **$10/GB/mo** · vCPU **$20/mo** · volume **$0.15/GB/mo** · egress **$0.05/GB** |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Project** | The canvas: a visual graph of everything an application needs |
+| **Service** | A deployed workload, from a repository, image, or template |
+| **Plugin / database** | Managed backing services added to the canvas and wired by reference |
+| **Environment** | A branchable copy of the project's services and configuration |
+| **Template** | A shareable, one-click project definition — Railway's ecosystem unit |
+| **Railway Metal** | Railway's own hardware, replacing rented cloud capacity underneath the product |
+
+The mental model is **the canvas**: the application is a picture you assemble, services connect by
+reference rather than by configuration, and the picture is the shareable artifact. Railway's bet is
+that onboarding delight compounds — templates make someone else's working stack a single click.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `authoring` | **The real contest.** Assembling a canvas is the lowest-friction authoring experience in the corpus |
+| `environments` | Branchable environments with variable inheritance |
+| `delivery` | Push to deploy, with no pipeline to configure |
+| `app-graph` | The canvas *is* the graph, and it is the primary interface rather than a report |
+
+Railway does not model applications abstractly or place workloads by decision. It competes on the
+first ten minutes, which is the part of the evaluation HoBo most often loses.
 
 ## Feature surface
 
@@ -152,9 +180,24 @@ Railway is aggressively **agent-native**. The **Railway Agent** is a dashboard c
 
 Plans are a **minimum spend + metered usage**. **Trial** (one-time $5 grant) · **Hobby $5/mo** (includes $5 of usage; overage billed per-second) · **Pro $20/mo/seat** (includes $20 of usage; team collaboration, private registries, higher limits) · **Enterprise** (custom; compliance, SLAs, TAM). Per-resource rates: **RAM $10/GB/mo · vCPU $20/mo · volume storage $0.15/GB/mo · egress $0.05/GB**. Limits scale by plan (Hobby up to 6 replicas / 48 vCPU / 48 GB per service; Pro up to 42 replicas / 1,000 vCPU / 1 TB; Enterprise up to 50 replicas / 2.4 TB). Post-Metal, **Pro dropped per-seat resource charges**. Usage-based billing is core to Railway's model — and **out of scope for HoBo by design** ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)).
 
-## Differentiators
+## Architecture
 
-### Strengths (what Railway does genuinely well — and ships)
+- **Control plane** — Railway's hosted service: build orchestration, service graph, environment
+  state, and the template registry.
+- **Data plane** — Railway's own infrastructure, increasingly **Railway Metal**: owned hardware
+  rather than resold cloud capacity, which is an unusual vertical-integration bet for a PaaS.
+- **Execution model** — build from source or image, run as managed containers, wire services through
+  injected reference variables.
+- **State authority** — Railway's own model; configuration lives in the platform with optional
+  config-as-code, not in the repository by default.
+- **Portability boundary** — none claimed. Templates and the canvas are Railway artifacts, and
+  Railway Metal deepens the vertical integration rather than loosening it.
+
+## Where Railway is stronger
+
+> Shipped, evidenced capability only.
+
+### what Railway does genuinely well — and ships
 
 - **Best-in-class zero-config DX.** `git push` → built (Railpack auto-detects the stack, no Dockerfile) → live with TLS in seconds; one-click databases; instant rollbacks. This is the **shipping bar** for "it just deploys" — and HoBo, in design phase, does not yet match the polish.
 - **The Canvas.** A real-time, multiplayer, editable **project graph** is a delightful, differentiated authoring surface that most competitors (and HoBo's design) approach only as read-mostly topology views.
@@ -163,7 +206,14 @@ Plans are a **minimum spend + metered usage**. **Trial** (one-time $5 grant) · 
 - **Aggressively agent-native, today.** Railway Agent, local+remote MCP, open agent skills, and sandboxes with coding agents baked in — across nine+ AI tools. A live, shipping instance of the agent-native cloud thesis.
 - **Coherent, complete PaaS.** PR environments, private Wireguard/IPv6 networking, volumes with live-resize, config-as-code, TCP proxy, cron, functions — a full, well-integrated product.
 
-### Gaps (Railway's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Railway's limits — HoBo's opening
 
 - **Single-vendor by construction; everything runs on Railway.** No multi-cloud, **no "deploy into your own AWS/GCP/Azure," no bring-your-own-cloud, no self-host, no on-prem.** Your app, data, wiring, and canvas are Railway-specific; Metal *is* the platform. HoBo is the inverse: a **cloud-agnostic control plane** that maps one app onto any mix of providers **and self-host** (Yard-is-a-Bindle), with **pluggable IaC** (Pulumi/Crossplane/TF/OpenTofu) under the hood ([Plan 4](../design/control-plane.md#plan-04) / [ADR-0006](../design/adr/01-architecture-core.md#adr-0006)).
 - **Not infrastructure-from-code.** Railway is **config-as-code + click-ops** — you wire services on the canvas / in the dashboard, and `railway.json` configures *one service's* build/deploy. There is no "declare a resource inline in app code and the platform provisions + wires + least-privileges it." HoBo's authoring model is **IfC** — resources declared inline, collected to a manifest IR, with `.allow()` driving one-decl-three-effects (IAM + capability link + token) ([Plan 21](../design/authoring-resources-wiring.md#plan-21)).
@@ -177,7 +227,25 @@ Plans are a **minimum spend + metered usage**. **Trial** (one-time $5 grant) · 
 
 > **Not gaps — different by design.** Railway's **usage-based billing** and **template-marketplace monetization (Kickback up to 25%)** are core, healthy parts of *its* commercial model, but they are **out of HoBo's scope on purpose** ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)): HoBo is OSS with metering/showback FinOps and **no billing** ([Plan 5](../design/reliability-observability-cost.md#plan-05) / [ADR-0039](../design/adr/02-identity-security.md#adr-0039)), and its registry distributes **Resource Packs without a paid marketplace** ([ADR-0062](../design/adr/07-portability-extensibility.md#adr-0062)). Likewise, **owning the metal** is a strength HoBo does not contest — HoBo federates *any* provider (including your own hardware) rather than operating a single fleet.
 
-### Comparisons
+## Adversarial critique
+
+- **The canvas has a ceiling.** Visual assembly is superb at ten services and unwieldy at a hundred,
+  and it cannot express conditional topology, policy, or environment-dependent structure.
+- **Configuration lives in the platform, not the repository**, by default — which is convenient until
+  a team needs review, diffing, or reproducibility of the infrastructure itself.
+- **Templates are a supply chain.** One-click community stacks are the ecosystem's strength and carry
+  the usual questions about maintenance, provenance and update paths.
+- **Railway Metal concentrates risk.** Owning hardware improves margins and control and removes the
+  hyperscaler's redundancy story; capacity, region breadth and failure domains are now the vendor's
+  alone.
+- **Single-vendor, single-runtime.** No BYOC, no self-host, no path to running the same application
+  elsewhere.
+- **Managed databases are convenience-grade.** They are excellent for getting started and are not
+  positioned against a hyperscaler's durability, backup and compliance guarantees.
+- **Pricing follows usage**, so the frictionless creation of services and environments — the
+  product's best quality — is also what grows the bill.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Railway is a **single-vendor, container-centric PaaS on its own metal**, authored by canvas + config-as-code, **shipping and polished**, usage-billed, and aggressively agent-native. HoBo is a **multi-cloud + self-hostable control plane**, authored by **IfC**, running a **wasm/WIT** runtime, **event-sourced + governed**, OSS with no billing — and **design-phase**. Railway sets the bar for *DX polish, template ecosystem, and own-metal price/perf*; HoBo's edge is *breadth (any cloud + self-host), the runtime, the governance/matching planes, data-paradigm breadth, and generation-grade AI-native depth*.
 - **vs Render / Fly / Heroku:** Railway is the **canvas-first, agent-native, own-metal** challenger — more visual, and cheaper on egress/storage post-Metal.
@@ -187,7 +255,9 @@ Plans are a **minimum spend + metered usage**. **Trial** (one-time $5 grant) · 
 
 **Net:** Railway is the **polished, shipping, agent-native PaaS that owns its own hardware** — the reference for *how good the deploy experience can feel* and *what vertical integration buys in price/perf*. But it is **single-vendor by construction** (everything on Railway Metal), **container + config-centric** (not IfC, not wasm), and **ungoverned** (no event-sourcing / matching / policy planes). HoBo's opening is exactly the axes Railway forecloses — **multi-cloud + self-host + pluggable IaC, an IfC authoring model over a wasm/WIT runtime, Resource Definitions/Matching + the Dispatcher, a broad typed data-paradigm catalog, event-sourced governance, multi-tenant-app primitives, and generation-grade AI-native depth** — while HoBo openly concedes Railway's DX polish, template-marketplace network effect, and own-metal economics as real, shipping advantages it does not set out to match head-on.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Railway concept. **✅** designed at parity (anchored) · **➕** HoBo's design goes further · **◐** partial / design-phase only — Railway ships a more polished version · **🔜** planned/thin · **✗ by design** deliberately out of HoBo's scope. HoBo is **design-phase**; Railway is a shipping product, so DX-polish rows are honestly **◐**.
 
@@ -222,3 +292,35 @@ Plans are a **minimum spend + metered usage**. **Trial** (one-time $5 grant) · 
 ### The one-line takeaway
 
 **Railway proves how good a single-vendor deploy experience can feel** — an editable real-time canvas, instant git-push deploys, one-click databases, a monetized template marketplace, and its own bare-metal fleet for price/perf — all **shipping and polished** while HoBo is **design-phase**. HoBo does not contest Railway on DX polish, ecosystem, or owning the metal; its differentiation is the model Railway rejects by construction: **multi-cloud + self-host + pluggable IaC, IfC authoring over a wasm/WIT runtime, Resource Definitions/Matching + the Dispatcher, a broad typed data-paradigm catalog, event-sourced governance, multi-tenant-app primitives, and generation-grade AI-native depth** — a cloud-agnostic, governed control plane rather than one exceptionally good cloud.
+
+## Better-together / integration posture
+
+- **Benchmark**, and this is the important one: Railway sets the bar for time-to-first-deploy and for
+  how little a developer should have to know. HoBo's first-run experience is measured against this
+  whether or not the comparison is made explicitly.
+- **Borrow** — **templates as the ecosystem unit**. A shareable, one-click definition of a working
+  stack is a better distribution mechanism than documentation, and HoBo's Resource/App Packs could
+  be positioned exactly that way.
+- Not an adopt, provider, integrate or displace target — different ambitions, overlapping only at
+  the on-ramp.
+
+## Threats and lessons
+
+1. **HoBo will be compared to Railway on the first ten minutes**, by developers who never read the
+   architecture. That comparison is winnable — HoBo's local runtime starts faster than any hosted
+   platform can provision — but only if the first-run path is deliberately designed.
+2. **The canvas is the fifth corpus occurrence of a visual topology surface** that HoBo lacks. At
+   this count it is no longer a nice-to-have observation.
+3. **Templates beat documentation.** The distribution lesson is that a working stack someone can
+   clone is worth more than a guide explaining how to build one.
+4. **Vertical integration is a strategy, not a moat.** Railway Metal improves unit economics and
+   makes the lock-in deeper; it does not change what the customer can take with them.
+
+## Sources
+
+- [docs.railway.com](https://docs.railway.com/) — projects, services, plugins, environments, templates
+- [railway.com](https://railway.com/) — positioning, Railway Metal (vendor material)
+
+This capture predates the research contract and was restructured to it on 2026-08-19 with its
+original research preserved. Current pricing and Railway Metal region coverage were not re-verified
+in this pass and are not asserted.

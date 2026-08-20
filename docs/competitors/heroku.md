@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [authoring, environments, delivery, ecosystem]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://devcenter.heroku.com/
     - https://www.heroku.com/
@@ -47,6 +48,34 @@ The strategic context is unavoidable and material to a competitive read: in **Fe
 | AI | **Managed Inference and Agents** (GA May 2025; **Bedrock-backed**, OpenAI-compatible; chat/embedding/diffusion; **MCP** + tools/agents); **MCP server hosting**; **AppLink** → Salesforce Flow/Apex/Agentforce |
 | License / price | **Proprietary, closed-source**; usage-based (dynos ~$5–$1,500+/mo; add-ons metered); **no free tier since Nov 2022** |
 | Status (2026) | **Salesforce "sustaining engineering"** — new-feature freeze + no new enterprise sales (Feb 2026); existing apps continue |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **App** | The unit of deployment and billing |
+| **Dyno** | The container the app runs in, sized by type and scaled by count |
+| **Buildpack** | The build convention that turns a repository into a runnable slug — now converging on Cloud Native Buildpacks in the **Fir** generation |
+| **Add-on** | A third-party managed service attached to an app through a marketplace |
+| **Pipeline / review app** | Promotion between stages, with an app per pull request |
+| **Config var** | Environment configuration, injected and versioned with releases |
+| **Release** | An immutable slug-plus-config pairing, rollback-addressable |
+
+The mental model is the one the whole industry copied: **an app is code plus config plus attached
+resources, and `git push` is the deployment interface**. Heroku's durable contribution is not any
+feature but the *shape* — the twelve-factor decomposition that made stateless deployment routine.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `authoring` | Zero configuration: a supported repository deploys with no declaration at all |
+| `environments` | Pipelines and review apps |
+| `delivery` | Push to deploy, immutable releases, one-command rollback |
+| `ecosystem` | **The add-on marketplace** — a two-sided marketplace nobody has replicated at that scale |
+
+Heroku is the benchmark HoBo is measured against implicitly by every developer who has used it, and
+the source of the expectations HoBo inherits whether or not it competes for the same buyer.
 
 ## Feature surface
 
@@ -173,9 +202,24 @@ heroku pg:* · data:pg:* · redis:* · kafka:*
 heroku ai:models:list|info|call                    # @heroku/plugin-ai
 ```
 
-## Differentiators
+## Architecture
 
-### Strengths (what Heroku does well)
+- **Control plane** — Salesforce-operated; the customer sees an API, a CLI and a dashboard.
+- **Data plane** — Heroku's infrastructure on AWS; dynos are containers on managed capacity.
+- **Execution model** — buildpack detection and build, immutable slug, release as slug + config,
+  dyno processes scaled horizontally.
+- **The Fir generation** moves the platform toward Cloud Native Buildpacks and OCI images, which
+  makes the build artifact more standard than the original proprietary slug.
+- **State authority** — the platform's own release history, which is genuinely append-only per app
+  and is why rollback is trivial.
+- **Portability boundary** — the buildpack convention travels (Cloud Native Buildpacks are an open
+  standard); the add-on marketplace, dyno model and routing do not.
+
+## Where Heroku is stronger
+
+> Shipped, evidenced capability only.
+
+### what Heroku does well
 
 - **The lowest zero-to-deploy friction in the category, proven over 15+ years.** `git push heroku main` and a `Procfile` is still the gold standard for "code to running app in minutes." Heroku *invented* much of this vocabulary (dynos, buildpacks, slugs, config vars, add-ons) — the DX later platforms imitate.
 - **Enormous, mature ecosystem.** A **200+ add-on marketplace** of fully-managed third-party services with single-invoice billing, first-party **Heroku Data** (Postgres/Redis/Kafka) with genuine operational depth (forks, followers, rollback, Dataclips), and a decade-plus of hardened runtime, routing, and support.
@@ -184,7 +228,14 @@ heroku ai:models:list|info|call                    # @heroku/plugin-ai
 - **Credible AI-PaaS pivot.** **Managed Inference and Agents** (Bedrock-backed, OpenAI-compatible), **MCP server hosting**, and **AppLink → Agentforce** are shipping, not slideware.
 - **Cloud-native re-platforming underway.** **Fir** moves to Kubernetes/OCI/CNB with IPv6 + native OpenTelemetry + GPU dynos on the roadmap — a modern foundation.
 
-### Gaps (Heroku's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Heroku's limits — HoBo's opening
 
 - **Closed-source, single-cloud, no BYO account.** Heroku runs **only on Heroku-operated AWS**; you cannot bring your own cloud, your own account, Azure/GCP, edge, or on-prem, and there is **no self-host / open-source core**. HoBo is **cloud-agnostic with pluggable IaC** (Pulumi/Crossplane/Terraform/OpenTofu) and **self-host = hosted parity** ([Plan 4](../design/control-plane.md#plan-04)/[ADR-0006](../design/adr/01-architecture-core.md#adr-0006)).
 - **Frozen roadmap / uncertain future.** Salesforce's **Feb 2026 "sustaining engineering"** move (feature freeze, no new enterprise sales, staff cuts) means the platform's forward investment is redirected to AI — a strategic risk no amount of past polish offsets. HoBo's value is **OSS and self-hostable**, so its continuity does not depend on a single vendor's strategy.
@@ -196,7 +247,23 @@ heroku ai:models:list|info|call                    # @heroku/plugin-ai
 - **AI story is model-hosting + Salesforce glue, not agents-as-principals.** Managed Inference is an *inference endpoint*; AppLink is *Salesforce-specific* integration. There is **no first-class agent identity, capability manifest, or brokered token model** for agents acting on the platform. HoBo treats **agents as first-class principals** with SVID/OIDC tokens + MCP control ([Plan 6](../design/ai-native-agent-auth.md#plan-06)).
 - **No brownfield adoption / portability.** You migrate *onto* Heroku by writing to its conventions; leaving is a rewrite. HoBo's **`hobo import`** adopts existing TF/Pulumi/FaaS estates **in place** ([ADR-0041](../design/adr/07-portability-extensibility.md#adr-0041)).
 
-### Comparisons
+## Adversarial critique
+
+- **Stewardship has been the story for a decade.** Investment slowed markedly after acquisition,
+  free tiers were withdrawn, and platform modernization arrived late; the Fir generation is a
+  response to competitive pressure rather than a continuation of momentum.
+- **Price-to-capability ratio is poor** against every newer entrant in this cohort, which is why they
+  all exist.
+- **The dyno abstraction is dated.** Fixed sizes and process-count scaling fit 2010-era web apps and
+  fit background, GPU, actor and event-driven workloads badly.
+- **Add-ons are a dependency surface** the customer does not control: pricing, availability and
+  quality belong to third parties reached through Heroku's billing relationship.
+- **Single vendor, no BYOC, no self-host** — and unusually for this cohort, no serious pretence
+  otherwise.
+- **The twelve-factor model encodes assumptions** — stateless processes, attached backing services,
+  disposable instances — that are good defaults and quietly exclude whole workload classes.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Heroku is a **closed, single-cloud, commercially-monetized managed PaaS** with unmatched maturity and ecosystem; HoBo is an **open, multi-cloud, IfC + event-sourced + AI-native control plane** you can self-host. Heroku is the **DX benchmark** for zero-to-deploy and the **origin of the Twelve-Factor conventions** HoBo's config/secrets-as-references model ([ADR-0027](../design/adr/02-identity-security.md#adr-0027)) inherits — but it maps one app onto *Heroku's own AWS*, whereas HoBo maps one description onto *any mix of providers*. Heroku's frozen roadmap is the sharpest argument for HoBo's OSS/self-host stance.
 - **vs Encore/Nitric:** those are **infrastructure-from-code** frameworks that deploy into *your* cloud; Heroku is the **managed-PaaS incumbent** they explicitly position against on portability and lock-in. Heroku wins on ecosystem/maturity; loses on cloud-agnosticism, IfC, and open-source.
@@ -206,7 +273,9 @@ heroku ai:models:list|info|call                    # @heroku/plugin-ai
 
 **Net:** Heroku is the **most mature and polished platform in this comparison and the one HoBo owes its DX vocabulary to** — but it is **closed-source, single-cloud (Heroku-operated AWS), commercially monetized, and now roadmap-frozen**. HoBo's differentiation is the **entire axis Heroku sits on the far side of**: open-source + self-hostable, cloud-agnostic with pluggable IaC, infrastructure-from-code with typed `.allow()` wiring, an event-sourced durable runtime, a polyglot wasm/WIT contract, platform-rules (Resource Definitions/Matching + Dispatcher), and agents-as-principals — while deliberately **not** replicating Heroku's commercial-monetization machinery (dyno pricing, metered add-on marketplace, revenue share).
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Heroku concept (✅ has · ➕ goes further · ◐ designed-but-shallow · 🔜 planned · ✗ by design). Anchors point at the owning design doc/ADR; where HoBo is thin or unspecified it is marked ◐/🔜, not ✅.
 
@@ -245,3 +314,35 @@ heroku ai:models:list|info|call                    # @heroku/plugin-ai
 ### The one-line takeaway
 
 **Heroku is the platform HoBo owes its developer-experience vocabulary to** — `git push`-to-deploy, dynos, buildpacks, add-ons, config vars, Twelve-Factor — and it remains **the most mature, ecosystem-rich, operationally proven product in this set**. But it is **closed-source, locked to Heroku-operated AWS, commercially monetized, and (since Feb 2026) roadmap-frozen by Salesforce**. HoBo's opening is the whole axis Heroku sits opposite: **open-source + self-hostable, cloud-agnostic with pluggable IaC, infrastructure-from-code with typed `.allow()` wiring, an event-sourced durable runtime, a polyglot wasm/WIT contract, platform-rules (Resource Definitions/Matching + Dispatcher), and agents-as-principals** — while treating Heroku's dyno pricing, metered add-on marketplace, and revenue share as **✗-by-design non-goals ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064))**, not gaps to close.
+
+## Better-together / integration posture
+
+- **Benchmark**, and the honest framing is *lineage* rather than rivalry:
+  [`lineage.md`](../design/lineage.md) already records Heroku as a lesson and lineage source. The
+  `cf push` / `git push heroku` ergonomic is the floor HoBo's DX must clear.
+- **Borrow** — **the release as an immutable code-plus-config pair with trivial rollback**, and the
+  **marketplace shape** for HoBo's Resource/App Packs. Both are proven designs.
+- Not a displace, adopt, provider, or render target: Heroku's buyer today is largely inherited
+  rather than contested.
+
+## Threats and lessons
+
+1. **Heroku set the expectations HoBo must satisfy** — one command, no configuration, immediate
+   result — and it did so fifteen years ago. Anything slower or more ceremonious reads as regression
+   regardless of architectural merit.
+2. **A two-sided marketplace is a moat nobody in this corpus has rebuilt.** That is a distribution
+   lesson for HoBo's pack ecosystem, not a feature to copy.
+3. **Platforms decay when stewardship lapses**, and customers remember. HoBo's open core is a
+   structural answer to a risk this market has actually experienced.
+4. **Immutable release plus rollback is the minimum viable delivery model.** HoBo's event-sourced
+   promotion gives this for free and should say so in those terms.
+
+## Sources
+
+- [devcenter.heroku.com](https://devcenter.heroku.com/) — dynos, buildpacks, releases, config vars, pipelines, review apps, add-ons
+- [heroku.com](https://www.heroku.com/) — positioning and the Fir generation (vendor material)
+- HoBo-side: [`design/lineage.md`](../design/lineage.md) records Heroku as a lesson and lineage source
+
+This capture predates the research contract and was restructured to it on 2026-08-19 with its
+original research preserved. Current pricing, the Fir rollout state and add-on catalog were not
+re-verified in this pass and are not asserted.

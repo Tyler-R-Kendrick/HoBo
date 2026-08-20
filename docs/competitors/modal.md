@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [runtime-portability, provider-matching]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://modal.com/docs/guide
     - https://modal.com/
@@ -46,6 +47,34 @@ Modal's real edge is **execution performance and DX**: containers *"boot in abou
 | Clouds | **Modal-managed fleet** — you do **not** bring your own cloud account; no pluggable IaC, no on-prem/self-host |
 | AI focus | Purpose-built: LLM/image/audio/video **inference**, **fine-tuning** (multi-node), **batch/embeddings**, GPU **notebooks**, agent **sandboxes** |
 | License / price | **Proprietary hosted SaaS** (client OSS); **per-second usage billing** — Starter $0 (+$30/mo credits) · Team $250/mo (+$100/mo credits) · Enterprise custom |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **App** | A Python program whose functions are decorated for remote execution |
+| **Function** | A decorated Python function that runs in the cloud, with resources declared in the decorator |
+| **Image** | The container environment, defined in Python rather than in a Dockerfile |
+| **Volume / Dict / Queue** | Persistent and coordination primitives available to functions |
+| **Sandbox** | Isolated execution for untrusted or agent-generated code |
+| **GPU attachment** | Declared per function, with fast cold starts as the headline capability |
+
+The mental model is **infrastructure as Python decorators**. The distinguishing choice is that the
+container image itself is *defined in Python* — a single language describes the code, its
+environment, its resources and its scaling — which is a genuinely different authoring ergonomic from
+everything else in this corpus.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `authoring` | Decorator-based declaration is infrastructure-from-code in its purest shipped form |
+| `runtime-portability` | Fast-starting GPU and CPU containers on demand |
+| `provider-matching` | Resource requirements declared per function, satisfied by Modal's scheduler |
+| `agent-surface` | **Sandboxes for agent-generated code** are a shipped, well-shaped primitive |
+
+Modal contests HoBo's authoring thesis directly within one language, and its Sandboxes contest the
+agent-execution surface HoBo cares about.
 
 ## Feature surface
 
@@ -220,9 +249,25 @@ Sandboxes are **built on gVisor** (Google's `runsc` application kernel) with *"c
 
 Plans: **Starter** $0 ($30/mo free credits, 100 containers, 10 GPU concurrency) · **Team** $250/mo ($100/mo free credits, 1,000 containers, 50 GPU concurrency) · **Enterprise** custom. Regional multipliers apply. This **per-second usage-metering-and-billing business model is `✗`-by-design for HoBo**, whose stance is **no billing/monetization** ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)) with metering as OSS **showback/FinOps** only ([ADR-0039](../design/adr/02-identity-security.md#adr-0039)).
 
-## Differentiators
+## Architecture
 
-### Strengths (what Modal does well)
+- **Control plane** — Modal's hosted scheduler and image builder.
+- **Data plane** — Modal's own capacity, including GPUs, with container start times engineered as a
+  primary product characteristic rather than an implementation detail.
+- **Execution model** — the Python program is introspected, images are built from the declared
+  environment, and decorated functions are dispatched to remote containers on call.
+- **Cold start is the architecture.** Much of Modal's engineering is in making container start fast
+  enough that per-call dispatch is viable, which is what makes the decorator model feel local.
+- **State authority** — Modal's platform; the program is the description and the platform holds
+  everything else.
+- **Portability boundary** — the Python code is portable, the decorators are not. The program does
+  not run anywhere else without removing the thing that made it work.
+
+## Where Modal is stronger
+
+> Shipped, evidenced capability only.
+
+### what Modal does well
 
 - **Serverless GPUs, done well** — T4→B200 as a decorator string, `:n` for multi-GPU, ordered fallback lists, autoscale **0→1000+**, per-second billing with idle free. HoBo (design-phase) has **no shipped equivalent**; Modal is clearly ahead.
 - **Sub-second cold starts** — ~1s container boots plus **memory snapshots** (checkpoint/restore, incl. preview GPU snapshots). This performance engineering is Modal's headline moat.
@@ -232,7 +277,14 @@ Plans: **Starter** $0 ($30/mo free credits, 100 containers, 10 GPU concurrency) 
 - **Batteries-included serverless state** — Volumes, Dicts, Queues, Secrets, web endpoints (FastAPI/ASGI/WSGI), cron — all managed, all serverless.
 - **Purpose-built for AI** — inference, multi-node fine-tuning, batch/embeddings, GPU notebooks; the AI-compute workflow is first-class, not bolted on.
 
-### Gaps (Modal's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Modal's limits — HoBo's opening
 
 - **Python-only.** One language, no polyglot. HoBo's runtime contract is **language-neutral WIT** — any wasm-compiling language, with OCI-container fallback for non-wasm (Modal-style) workloads ([Plan 20](../design/wasm-runtime-wit.md#plan-20)/[ADR-0031](../design/adr/01-architecture-core.md#adr-0031)).
 - **Runs only on Modal's own fleet — no bring-your-own-cloud, no pluggable IaC, no self-host.** You cannot deploy into *your* AWS/GCP/Azure account, pin resources to providers, or run on-prem; the platform/runtime is proprietary and Modal-hosted. This is the **opposite stance** to HoBo's **cloud-agnostic control plane** onto your clouds via pluggable IaC ([Plan 4](../design/control-plane.md#plan-04)/[ADR-0006](../design/adr/01-architecture-core.md#adr-0006)), and to **self-host = hosted parity** (Yard-is-a-Bindle, [ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)).
@@ -244,7 +296,25 @@ Plans: **Starter** $0 ($30/mo free credits, 100 containers, 10 GPU concurrency) 
 - **No multi-tenant-app primitives, no cross-cloud data/migration, no `hobo import`** adopt-in-place ([ADR-0032](../design/adr/03-data-plane.md#adr-0032), [ADR-0041](../design/adr/07-portability-extensibility.md#adr-0041)).
 - **No AI-generated providers/impls or trainable functions.** Modal is where you *run* AI; it does not *generate* its own adapters or self-optimize. HoBo's generation pipeline generates providers/impls ([Plan 23](../design/generated-stack.md#plan-23)/[ADR-0010](../design/adr/03-data-plane.md#adr-0010)) and `"use training"` methods self-tune.
 
-### Comparisons
+## Adversarial critique
+
+- **Python only.** The entire authoring model depends on decorating Python functions; there is no
+  path for other languages, which is a deliberate and total scope decision.
+- **The decorators are the lock-in.** Infrastructure declared inside application code is delightful
+  and means the application and the platform cannot be separated — the same critique that applies to
+  every infrastructure-from-code product, at its sharpest here.
+- **GPU capacity is a supply problem** that no scheduler solves; availability and price are upstream
+  of the product.
+- **Cost is opaque until it is not.** Per-second GPU billing with fast scaling is efficient and hard
+  to forecast, particularly for agent workloads with unpredictable fan-out.
+- **Not a general application platform**, and does not claim to be: request/response web serving,
+  stateful services and long-lived processes are not the target.
+- **No self-host or BYOC**, so regulated workloads with data-residency constraints are largely out of
+  scope.
+- **Sandbox security is a strong claim** in an area where the threat model matters enormously;
+  isolation quality should be evaluated directly rather than assumed.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Modal is **Python-only serverless compute on its own managed fleet, GPU-first, closed, usage-billed**; HoBo is a **multi-cloud, polyglot-wasm control plane** mapping one app onto *your* clouds, event-sourced + agent-native + governed with **no billing**. They are as **complementary as competitive**: HoBo needs heavy/GPU compute and agent code-exec, and **Modal is a natural HoBo compute/GPU/sandbox provider** — HoBo could broker inference behind its `model`/`embed` ports ([Plan 23](../design/generated-stack.md#plan-23)) and route agent code-exec to Modal Sandboxes behind its **sandbox lanes** ([ADR-0076](../design/adr/02-identity-security.md#adr-0076)), while owning **identity, governance, cost, multi-cloud placement, and no-lock-in**. Modal is ahead on **GPU serverless, cold-starts, Python DX, and shipping Sandboxes**; HoBo's edge is **breadth + control-plane + agent-as-principal + portability**.
 - **vs Encore / Nitric:** Encore/Nitric are **IfC → *your* AWS/GCP(/Azure)** provisioning managed cloud services; Modal does **not** deploy into your account — it *is* the cloud, and is **compute/GPU-serverless-first** rather than app-backend/resource-first. HoBo spans both stances (control-plane onto your clouds **plus** hosting/brokering compute).
@@ -253,7 +323,9 @@ Plans: **Starter** $0 ($30/mo free credits, 100 containers, 10 GPU concurrency) 
 
 **Net:** Modal is the **serverless-GPU / AI-compute benchmark HoBo does not yet match** — genuinely ahead on GPU serverless, sub-second cold-starts, Python DX, and a **shipping** agent-code-exec Sandbox product. But Modal is **single-language, single-platform (its own fleet), closed, usage-billed, and compute-centric**. HoBo's opening is **orthogonal**: a **cloud-agnostic, polyglot-wasm control plane** that runs on *your* clouds, models **agents as principals** (not just code boxes), governs cost as **OSS showback with no billing**, and can fold **Modal itself in as a GPU/compute/sandbox provider** rather than matching it head-on.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Modal concept (✅ has · ➕ goes further · ◐ partial/thin/design-phase · 🔜 planned). **Modal ships genuinely strong tech (serverless GPU, ~1s cold starts, code-defined images, gVisor Sandboxes) that HoBo has NOT proven** — those rows are ◐/🔜 on purpose.
 
@@ -282,3 +354,34 @@ Plans: **Starter** $0 ($30/mo free credits, 100 containers, 10 GPU concurrency) 
 ### The one-line takeaway
 
 **Modal proves the serverless-GPU + infra-in-Python + agent-sandbox surface HoBo has *not* built — and is genuinely ahead there** — but it is **Python-only, locked to Modal's own fleet, closed, usage-billed, and compute-centric**. HoBo's differentiation is the surrounding system: **any-cloud + pluggable-IaC breadth, a language-neutral wasm runtime, Resource Definitions/Matching + the Dispatcher, event-sourced governance (cost/policy/contracts), agents-as-principals (not just code boxes), and OSS showback with no billing** — and the cleanest synthesis is to **fold Modal in as a GPU/compute/sandbox provider** rather than to match its serverless-GPU engine head-on.
+
+## Better-together / integration posture
+
+- **Borrow** — **Sandboxes as a first-class primitive for running untrusted or agent-generated
+  code**. HoBo's agent story needs an execution surface with exactly these properties, and Modal has
+  the clearest shipped version. Also worth borrowing: **defining the image in the same language as
+  the code**, which removes an entire artifact from the authoring loop.
+- **Provider-target** — a strong fit for GPU and batch-shaped Bindle workloads.
+- **Benchmark** — cold-start times and the decorator ergonomic.
+- Not a displace or adopt target.
+
+## Threats and lessons
+
+1. **Agent execution needs a sandbox primitive, and HoBo does not have one** (*not-present*). This
+   is a concrete gap in HoBo's AI-native claim and belongs in its own implementation issue.
+2. **Infrastructure-from-code is proven in production**, in the language its users already use, with
+   no separate manifest at all. That is the ergonomic bar for HoBo's authoring.
+3. **Defining the environment in code removes an artifact.** Dockerfiles are a separate language, a
+   separate file and a separate mental model; Modal deletes them.
+4. **Specialization is a viable strategy.** Modal does one workload class extremely well rather than
+   competing on breadth — a useful counterexample to the suite-building instinct visible elsewhere
+   in this corpus.
+
+## Sources
+
+- [modal.com/docs/guide](https://modal.com/docs/guide) — apps, functions, images, volumes, sandboxes, GPU attachment
+- [modal.com](https://modal.com/) — positioning and pricing (vendor material)
+
+This capture predates the research contract and was restructured to it on 2026-08-19 with its
+original research preserved. Current GPU inventory, pricing and sandbox isolation details were not
+re-verified in this pass and are not asserted.

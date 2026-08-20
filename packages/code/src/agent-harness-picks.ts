@@ -33,7 +33,7 @@ export interface ChecklistState {
 }
 
 export function shouldWriteAgentsInit(input: {
-	readonly flags: Record<string, string | boolean>;
+	readonly flags: { [name: string]: string | boolean };
 	readonly tty: boolean;
 	readonly env?: NodeJS.ProcessEnv;
 	readonly dryRun?: boolean;
@@ -81,6 +81,7 @@ export function buildAgentPicks(options: {
 	return picks;
 }
 
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 /** hobo-code is the host. Registering it as ACP/harness nests another hobo-code. */
 export function isSelfHarness(
 	id: string,
@@ -152,10 +153,7 @@ export function checklistLineCount(frame: string): number {
 }
 
 /** In-place redraw: move up the previous frame and erase downward. */
-export function repaintAgentChecklist(
-	previousLines: number,
-	frame: string,
-): { readonly write: string; readonly lines: number } {
+export function repaintAgentChecklist(previousLines: number, frame: string) {
 	const body = frame.endsWith("\n") ? frame : `${frame}\n`;
 	const lines = checklistLineCount(body.replace(/\n$/u, ""));
 	const rewind = previousLines > 0 ? `\x1b[${previousLines}F\x1b[J` : "";

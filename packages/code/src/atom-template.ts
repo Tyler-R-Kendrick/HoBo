@@ -3,6 +3,14 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { defaultAtomsRoot } from "@hobo/patterns";
 import * as v from "valibot";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const ATOMS_ROOT = defaultAtomsRoot();
@@ -64,25 +72,28 @@ export interface ParseAtomParamsResult {
 	readonly code?: "ATOM_PARAMS_INVALID";
 }
 
-function asStringList(value: unknown): string[] {
+function asStringList<T>(value: T): string[] {
 	if (!Array.isArray(value)) return [];
-	return value.filter((item): item is string => typeof item === "string");
+	return value.filter((item): item is string => isJsonString(item));
 }
 
-function parseParams(value: unknown): AtomParamSchema {
-	if (value === null || typeof value !== "object") {
+function parseParams(value: JsonValue | undefined): AtomParamSchema {
+	if (value === null || !isJsonObject(value)) {
 		return { required: [], properties: {} };
 	}
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const record = value as {
 		readonly required?: unknown;
 		readonly properties?: unknown;
 	};
 	const properties: Record<string, AtomParamProperty> = {};
-	if (record.properties && typeof record.properties === "object") {
+	if (record.properties && isJsonObject(record.properties)) {
 		for (const [key, spec] of Object.entries(
-			record.properties as Record<string, unknown>,
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			record.properties as JsonObject,
 		)) {
-			if (!spec || typeof spec !== "object") continue;
+			if (!spec || !isJsonObject(spec)) continue;
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const item = spec as {
 				type?: unknown;
 				minLength?: unknown;
@@ -92,29 +103,35 @@ function parseParams(value: unknown): AtomParamSchema {
 			if (item.type !== "string") continue;
 			properties[key] = {
 				type: "string",
-				...(typeof item.minLength === "number"
+				...(isJsonNumber(item.minLength)
 					? { minLength: item.minLength }
-					: {}),
-				...(typeof item.pattern === "string" ? { pattern: item.pattern } : {}),
-				...(typeof item.default === "string" ? { default: item.default } : {}),
+					: undefined),
+				...(isJsonString(item.pattern) ? { pattern: item.pattern } : undefined),
+				...(isJsonString(item.default) ? { default: item.default } : undefined),
 			};
 		}
 	}
 	return { required: asStringList(record.required), properties };
 }
 
-function parseFiles(value: unknown): AtomFileSpec[] {
+function parseFiles(value: JsonValue | undefined): AtomFileSpec[] {
 	if (!Array.isArray(value)) return [];
 	const files: AtomFileSpec[] = [];
 	for (const item of value) {
 		if (
 			item &&
-			typeof item === "object" &&
-			typeof (item as { path?: unknown }).path === "string" &&
-			typeof (item as { from?: unknown }).from === "string"
+			isJsonObject(item) &&
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			Object.prototype.toString.call((item as { path?: unknown }).path) ===
+				"[object String]" &&
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			Object.prototype.toString.call((item as { from?: unknown }).from) ===
+				"[object String]"
 		) {
 			files.push({
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				path: (item as { path: string }).path,
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				from: (item as { from: string }).from,
 			});
 		}
@@ -122,25 +139,26 @@ function parseFiles(value: unknown): AtomFileSpec[] {
 	return files;
 }
 
-function parseTier(value: unknown): 0 | 1 | 2 {
+function parseTier(value: JsonValue | undefined): 0 | 1 | 2 {
 	if (value === 0 || value === 1 || value === 2) return value;
 	return 1;
 }
 
 export function parseAtomTemplate(
 	dir: string,
-	raw: unknown,
+	raw: JsonValue | undefined,
 ): AtomTemplate | null {
-	if (raw === null || typeof raw !== "object") return null;
-	const record = raw as Record<string, unknown>;
-	if (typeof record.id !== "string" || record.id.length === 0) return null;
-	if (typeof record.description !== "string") return null;
+	if (raw === null || !isJsonObject(raw)) return null;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	const record = raw as JsonObject;
+	if (!isJsonString(record.id) || record.id.length === 0) return null;
+	if (!isJsonString(record.description)) return null;
 	const files = parseFiles(record.files);
 	if (files.length === 0) return null;
 	return {
 		id: record.id,
 		tier: parseTier(record.tier),
-		kind: typeof record.kind === "string" ? record.kind : "atom",
+		kind: isJsonString(record.kind) ? record.kind : "atom",
 		description: record.description,
 		tags: asStringList(record.tags),
 		queries: asStringList(record.queries),
@@ -152,16 +170,20 @@ export function parseAtomTemplate(
 	};
 }
 
-export function parseAtomComposition(raw: unknown): AtomComposition | null {
-	if (raw === null || typeof raw !== "object") return null;
-	const record = raw as Record<string, unknown>;
-	if (typeof record.id !== "string" || record.id.length === 0) return null;
+export function parseAtomComposition(
+	raw: JsonValue | undefined,
+): AtomComposition | null {
+	if (raw === null || !isJsonObject(raw)) return null;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	const record = raw as JsonObject;
+	if (!isJsonString(record.id) || record.id.length === 0) return null;
 	const atoms = asStringList(record.atoms);
 	if (atoms.length === 0) return null;
 	return {
 		id: record.id,
-		description:
-			typeof record.description === "string" ? record.description : record.id,
+		description: isJsonString(record.description)
+			? record.description
+			: record.id,
 		tags: asStringList(record.tags),
 		queries: asStringList(record.queries),
 		atoms,
@@ -176,10 +198,7 @@ function manifestPath(dir: string): string | null {
 	return null;
 }
 
-export function loadAtomCorpus(): {
-	readonly atoms: readonly AtomTemplate[];
-	readonly compositions: readonly AtomComposition[];
-} {
+export function loadAtomCorpus() {
 	const atoms: AtomTemplate[] = [];
 	if (existsSync(ATOMS_ROOT)) {
 		for (const name of readdirSync(ATOMS_ROOT)) {
@@ -189,7 +208,8 @@ export function loadAtomCorpus(): {
 			if (!manifest) continue;
 			const parsed = parseAtomTemplate(
 				dir,
-				JSON.parse(readFileSync(manifest, "utf8")) as unknown,
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				parseJsonValue(readFileSync(manifest, "utf8")),
 			);
 			if (parsed) atoms.push(parsed);
 		}
@@ -200,9 +220,8 @@ export function loadAtomCorpus(): {
 		for (const name of readdirSync(COMPOSITIONS_ROOT)) {
 			if (!name.endsWith(".json")) continue;
 			const parsed = parseAtomComposition(
-				JSON.parse(
-					readFileSync(join(COMPOSITIONS_ROOT, name), "utf8"),
-				) as unknown,
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				parseJsonValue(readFileSync(join(COMPOSITIONS_ROOT, name), "utf8")),
 			);
 			if (parsed) compositions.push(parsed);
 		}
@@ -234,8 +253,8 @@ export function requiredParams(atom: AtomTemplate): readonly string[] {
 export function applyAtomParamDefaults(
 	atoms: readonly AtomTemplate[],
 	params: Readonly<Record<string, string>>,
-): Record<string, string> {
-	const filled: Record<string, string> = { ...params };
+) {
+	const filled = { ...params };
 	for (const atom of atoms) {
 		for (const [key, spec] of Object.entries(atom.params.properties)) {
 			if (

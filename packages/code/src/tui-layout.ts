@@ -192,7 +192,7 @@ export function windowAround(
 	lines: readonly string[],
 	height: number,
 	selectedIndex: number,
-): { readonly lines: readonly string[]; readonly start: number } {
+) {
 	if (lines.length <= height) {
 		return { lines: padLines(lines, height), start: 0 };
 	}

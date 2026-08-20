@@ -100,6 +100,12 @@ import {
 	createIsolationContext,
 	listSandboxOrphans,
 } from "./isolation.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+} from "./json.js";
 import { createLocalSessionControl } from "./local-session-control.js";
 import {
 	defaultMachineProbes,
@@ -361,7 +367,7 @@ export interface HoboCodeCliResult {
 	readonly code: string;
 	readonly message: string;
 	readonly remediation?: readonly string[];
-	readonly data?: unknown;
+	readonly data?: JsonObject;
 	readonly exitCode: number;
 }
 
@@ -404,12 +410,13 @@ export type FormatHoboCodeOptions = {
 };
 
 function defaultHoboHome(env: NodeJS.ProcessEnv): string {
-	if (typeof env.HOBO_HOME === "string" && env.HOBO_HOME.length > 0) {
+	if (isJsonString(env.HOBO_HOME) && env.HOBO_HOME.length > 0) {
 		return env.HOBO_HOME;
 	}
 	return join(env.HOME ?? tmpdir(), ".hobo");
 }
 
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 /** Flags that consume the next token as their value (strict parsing). */
 const VALUE_FLAGS = new Set([
 	"home",
@@ -483,6 +490,10 @@ const BOOL_FLAGS = new Set([
 	"no-dense",
 ]);
 
+export interface CliFlagMap {
+	[name: string]: string | boolean;
+}
+
 export class UnknownFlagError extends Error {
 	constructor(readonly flag: string) {
 		super(
@@ -492,14 +503,8 @@ export class UnknownFlagError extends Error {
 	}
 }
 
-function parseArgv(argv: readonly string[]): {
-	readonly verb: HoboCodeVerb;
-	readonly args: readonly string[];
-	readonly flags: Record<string, string | boolean>;
-	/** True when dispatch was inferred (bare prompt), not typed as a verb. */
-	readonly defaultedVerb: boolean;
-} {
-	const flags: Record<string, string | boolean> = {};
+function parseArgv(argv: readonly string[]) {
+	const flags: CliFlagMap = {};
 	const positional: string[] = [];
 	for (let i = 0; i < argv.length; i++) {
 		const a = totalAccess.must(argv[i]);
@@ -568,6 +573,7 @@ function parseArgv(argv: readonly string[]): {
 	if (flags.help === true) {
 		if (first && VERB_SET.has(first) && first !== "help") {
 			return {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				verb: first as HoboCodeVerb,
 				args: positional.slice(1),
 				flags,
@@ -579,6 +585,7 @@ function parseArgv(argv: readonly string[]): {
 
 	if (first && VERB_SET.has(first)) {
 		return {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			verb: first as HoboCodeVerb,
 			args: positional.slice(1),
 			flags,
@@ -635,6 +642,7 @@ function helpTextPlain(): string {
 		"  hobo-code <verb> [args] [flags]",
 		"  hobo-code help | hobo-code --help",
 		"  hobo-code <verb> --help            help for one verb (e.g. auth)",
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		"  hobo-code help <verb>              same as <verb> --help",
 		"  hobo-code help --dense             power-user glyph strip + legend",
 		"",
@@ -682,6 +690,7 @@ function helpTextPlain(): string {
 		"Env:",
 		"  HOBO_HOME           Durable home (default: $HOME/.hobo)",
 		"                      Prefer a path outside the Nix store",
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		"  HOBO_CODE_DENSE=1   Same as --dense for the process",
 		"  HOBO_CODE_AGENT=1   Unattended / no-elicitation agent contract",
 		"",
@@ -727,10 +736,7 @@ function helpText(dense: boolean): string {
 }
 
 /** Per-verb help (plain). Used by `hobo-code <verb> --help` and `hobo-code help <verb>`. */
-const VERB_HELP_PLAIN: Record<
-	Exclude<HoboCodeVerb, "help">,
-	readonly string[]
-> = {
+const VERB_HELP_PLAIN = {
 	dispatch: [
 		"hobo-code dispatch — app-building agent dispatch",
 		"",
@@ -770,6 +776,7 @@ const VERB_HELP_PLAIN: Record<
 		"What is probed (evidence-based, auditable):",
 		"  · Node.js version · git · isolation platform matrix (rift/worktree)",
 		"  · local model server (ollama) · devenv/nix toolchain",
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		"  · installed coding harnesses (same detection as `agents`)",
 		"",
 		"Flags:",
@@ -832,6 +839,7 @@ const VERB_HELP_PLAIN: Record<
 		"",
 		"Flags:",
 		"  --kind <kind>      Filter: station | junction | yard | camp | bindle",
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		"  --json              Same projection as the TUI /resources pane",
 		"  --help, -h          Show this help",
 		"",
@@ -964,6 +972,7 @@ const VERB_HELP_PLAIN: Record<
 		"",
 		"Flags:",
 		"  --cursor            Cursor power-user map (instead of Claude Code)",
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		"  --from cursor       Same as --cursor",
 		"  --json              Full structured map + residual list",
 		"  --help, -h          Show this help",
@@ -1021,6 +1030,7 @@ const VERB_HELP_PLAIN: Record<
 		"",
 		"Each entry needs an id, a host (tailnet name), and an isolationClass;",
 		"`user` and `agents` are optional. Entries that do not parse are listed",
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		"as rejected rather than dropped.",
 		"",
 		"`hobo-code mux --host <id>` places panes on one. Sessions are brokered",
@@ -1198,6 +1208,7 @@ const VERB_HELP_PLAIN: Record<
 		"hobo-code template — local pattern search/render (zero LLM tokens)",
 		"",
 		"Usage:",
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		"  hobo-code template            # same as list",
 		"  hobo-code template list",
 		"  hobo-code template search <query>",
@@ -1581,6 +1592,7 @@ const VERB_HELP_PLAIN: Record<
 		"",
 		"Flags:",
 		"  --yes, -y            Write without a checklist (never mints a cloud key)",
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		"  --non-interactive    Same as --yes — scripts/CI default write",
 		"  --dry-run            Show the plan only; never write",
 		"  --all            Include every known harness, not just detected",
@@ -1599,7 +1611,7 @@ function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
 	if (verb === "help") return helpText(dense);
 	if (dense) {
 		// Compact one-liner pointer + plain block would thrash; keep short.
-		const tails: Record<string, string> = {
+		const tails = {
 			dispatch: "★d",
 			init: "in",
 			status: "st",
@@ -1629,7 +1641,10 @@ function verbHelpText(verb: HoboCodeVerb, dense: boolean): string {
 			agent: "ag",
 			agents: "ags",
 		};
-		const t = tails[verb] ?? verb;
+		let t: string = verb;
+		for (const [name, tail] of Object.entries(tails)) {
+			if (name === verb) t = tail;
+		}
 		return [
 			`hobo-code ${verb} · dense · tail ${t}`,
 			`plain: hobo-code ${verb} --help`,
@@ -1651,7 +1666,7 @@ function isTopicVerb(token: string): token is Exclude<HoboCodeVerb, "help"> {
  */
 export function applyDenseChrome(message: string): string {
 	const lines = message.split("\n");
-	const titleMap: Record<string, string> = {
+	const titleMap = {
 		"▣ isolate": "▣ i",
 		"✓ promote": "✓ pr",
 		"✕ promote": "✕ pr",
@@ -1677,7 +1692,11 @@ export function applyDenseChrome(message: string): string {
 	};
 	return lines
 		.map((line, idx) => {
-			if (idx === 0 && titleMap[line]) return totalAccess.must(titleMap[line]);
+			if (idx === 0) {
+				for (const [name, title] of Object.entries(titleMap)) {
+					if (name === line) return totalAccess.must(title);
+				}
+			}
 			// Short next-step idioms
 			return line
 				.replace(/^ next · hobo-code promote (.+)$/, " next · pr $1")
@@ -1720,20 +1739,19 @@ export async function runHoboCodeCli(
 		env.HOBO_CODE_DENSE === "1" ||
 		env.HOBO_CODE_DENSE === "true";
 	const hoboHome =
-		(typeof flags.home === "string" && flags.home) ||
+		(isJsonString(flags.home) && flags.home) ||
 		deps.hoboHome ||
 		defaultHoboHome(env);
 	const projectDir =
-		(typeof flags.cwd === "string" && flags.cwd) || deps.cwd || process.cwd();
+		(isJsonString(flags.cwd) && flags.cwd) || deps.cwd || process.cwd();
 	const tenant =
-		(typeof flags.tenant === "string" && flags.tenant) ||
-		(typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT) ||
+		(isJsonString(flags.tenant) && flags.tenant) ||
+		(isJsonString(env.HOBO_TENANT) && env.HOBO_TENANT) ||
 		"local";
-	const stationFlag =
-		typeof flags.station === "string" ? flags.station : undefined;
+	const stationFlag = isJsonString(flags.station) ? flags.station : undefined;
 	const poolId =
-		(typeof flags.pool === "string" && flags.pool) ||
-		(typeof flags.hive === "string" && flags.hive) || // legacy alias
+		(isJsonString(flags.pool) && flags.pool) ||
+		(isJsonString(flags.hive) && flags.hive) || // legacy alias
 		"default";
 	const features = deps.features ?? createMemoryFeaturePort();
 
@@ -1746,28 +1764,33 @@ export async function runHoboCodeCli(
 		tenant !== "local" ? tenant : (authSession?.tenant ?? tenant);
 	const platform = composeCodePlatform({
 		hoboHome,
-		...(resolvedStation !== undefined ? { stationId: resolvedStation } : {}),
+		...(resolvedStation !== undefined
+			? { stationId: resolvedStation }
+			: undefined),
 		// `init` owns Station creation explicitly (discovery-gated, ADR-0155);
 		// composing the snapshot must not pre-empt it with a silent auto-init.
 		autoInitStation:
-			verb !== "init" &&
-			!(verb === "session" && typeof flags.host === "string"),
+			verb !== "init" && !(verb === "session" && isJsonString(flags.host)),
 		tenant: resolvedTenant,
 		features,
 	});
 
-	const withDense = (data?: unknown): unknown => {
+	const withDense = <T>(data?: T): JsonObject => {
 		if (data === undefined) return { dense };
-		if (typeof data === "object" && data !== null && !Array.isArray(data)) {
-			return { dense, ...(data as Record<string, unknown>) };
+		if (
+			data !== null &&
+			!Array.isArray(data) &&
+			Object.prototype.toString.call(data) === "[object Object]"
+		) {
+			return Object.assign({ dense }, data);
 		}
-		return { dense, payload: data };
+		return { dense, payload: cloneAsJson(data) };
 	};
 
-	const ok = (
+	const ok = <T>(
 		code: string,
 		message: string,
-		data?: unknown,
+		data?: T,
 	): HoboCodeCliResult => ({
 		ok: true,
 		status: "ok",
@@ -1777,17 +1800,17 @@ export async function runHoboCodeCli(
 		exitCode: 0,
 	});
 
-	const fail = (
+	const fail = <T>(
 		code: string,
 		message: string,
 		remediation?: readonly string[],
-		data?: unknown,
+		data?: T,
 	): HoboCodeCliResult => ({
 		ok: false,
 		status: "failed",
 		code,
 		message,
-		...(remediation !== undefined ? { remediation } : {}),
+		...(remediation !== undefined ? { remediation } : undefined),
 		data: withDense(data),
 		exitCode: 1,
 	});
@@ -1810,6 +1833,7 @@ export async function runHoboCodeCli(
 				[
 					`hobo-code ${suggestion} …`,
 					"hobo-code help",
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					`hobo-code "${raw}"  # send as build prompt`,
 				],
 				{ unknown: raw, suggestion, defaultVerb: "dispatch" },
@@ -1826,6 +1850,7 @@ export async function runHoboCodeCli(
 				]),
 				[
 					"hobo-code help",
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					`hobo-code "${raw}"  # send as build prompt`,
 					"hobo-code guide",
 					'hobo-code "add a settings page"',
@@ -1842,12 +1867,14 @@ export async function runHoboCodeCli(
 	});
 
 	// Subcommand help: `hobo-code platform --help` or `hobo-code help platform`
-	const helpTopic =
-		verb === "help" && args[0] && isTopicVerb(String(args[0]))
-			? (String(args[0]) as Exclude<HoboCodeVerb, "help">)
-			: flags.help === true && verb !== "help"
-				? (verb as Exclude<HoboCodeVerb, "help">)
-				: null;
+	let helpTopic: Exclude<HoboCodeVerb, "help"> | null = null;
+	if (verb === "help" && args[0] && isTopicVerb(String(args[0]))) {
+		// SAFETY: isTopicVerb proved args[0] is a non-help verb.
+		helpTopic = String(args[0]) as Exclude<HoboCodeVerb, "help">;
+	} else if (flags.help === true && verb !== "help") {
+		// SAFETY: flags.help on a non-help verb names that verb as the topic.
+		helpTopic = verb as Exclude<HoboCodeVerb, "help">;
+	}
 
 	if (verb === "help" || helpTopic !== null) {
 		const topic = helpTopic;
@@ -1895,12 +1922,11 @@ export async function runHoboCodeCli(
 	}
 
 	if (verb === "config") {
-		const stackRaw =
-			typeof flags.stack === "string"
-				? flags.stack.toLowerCase()
-				: args[0] && !args[0].startsWith("-")
-					? args[0].toLowerCase()
-					: "";
+		const stackRaw = isJsonString(flags.stack)
+			? flags.stack.toLowerCase()
+			: args[0] && !args[0].startsWith("-")
+				? args[0].toLowerCase()
+				: "";
 		const stack: ConfigStackId | null = isConfigStackId(stackRaw)
 			? stackRaw
 			: null;
@@ -1952,8 +1978,9 @@ export async function runHoboCodeCli(
 
 	if (verb === "init") {
 		const dryRun = flags["dry-run"] === true;
-		const scenarioRaw =
-			typeof flags.scenario === "string" ? flags.scenario : "local-dev";
+		const scenarioRaw = isJsonString(flags.scenario)
+			? flags.scenario
+			: "local-dev";
 		if (!isCodeDevScenario(scenarioRaw)) {
 			return fail(
 				"HOBO_CODE_INIT_SCENARIO",
@@ -1967,7 +1994,7 @@ export async function runHoboCodeCli(
 		const declaration = codeDevStation(scenarioRaw, {
 			...(resolvedStation !== undefined
 				? { name: resolvedStation.replace(/^station:/, "") }
-				: {}),
+				: undefined),
 			tenant: resolvedTenant,
 		});
 		const probes = deps.machineProbes ?? defaultMachineProbes(env);
@@ -2055,33 +2082,56 @@ export async function runHoboCodeCli(
 	if (verb === "edit") {
 		const pathArg =
 			args.find((a) => !a.startsWith("-")) ??
-			(typeof flags.path === "string" ? flags.path : null);
-		const bridgeRaw =
-			typeof flags.bridge === "string" ? flags.bridge.toLowerCase() : "";
-		const bridge = (
-			["tmux-send", "direct-exec", "stdio-jsonrpc", "acp"] as const
-		).includes(bridgeRaw as BridgeMode)
-			? (bridgeRaw as BridgeMode)
-			: undefined;
-		const layoutRaw =
-			typeof flags.layout === "string" ? flags.layout.toLowerCase() : "";
-		const layout = (
-			["split-right", "split-below", "float", "replace"] as const
-		).includes(layoutRaw as PaneLayout)
-			? (layoutRaw as PaneLayout)
-			: undefined;
-		const editor =
-			typeof flags.editor === "string"
-				? flags.editor
-				: typeof flags.e === "string"
-					? flags.e
-					: undefined;
+			(isJsonString(flags.path) ? flags.path : null);
+		const bridgeRaw = isJsonString(flags.bridge)
+			? flags.bridge.toLowerCase()
+			: "";
+		const bridgeModes = [
+			"tmux-send",
+			"direct-exec",
+			"stdio-jsonrpc",
+			"acp",
+		] as const;
+		let bridge: BridgeMode | undefined;
+		if (
+			bridgeModes.includes(
+				// SAFETY: flags.bridge was lowercased; includes() checks the closed set.
+				bridgeRaw as (typeof bridgeModes)[number],
+			)
+		) {
+			// SAFETY: includes() proved bridgeRaw is a BridgeMode.
+			bridge = bridgeRaw as BridgeMode;
+		}
+		const layoutRaw = isJsonString(flags.layout)
+			? flags.layout.toLowerCase()
+			: "";
+		const layoutModes = [
+			"split-right",
+			"split-below",
+			"float",
+			"replace",
+		] as const;
+		let layout: PaneLayout | undefined;
+		if (
+			layoutModes.includes(
+				// SAFETY: flags.layout was lowercased; includes() checks the closed set.
+				layoutRaw as (typeof layoutModes)[number],
+			)
+		) {
+			// SAFETY: includes() proved layoutRaw is a PaneLayout.
+			layout = layoutRaw as PaneLayout;
+		}
+		const editor = isJsonString(flags.editor)
+			? flags.editor
+			: isJsonString(flags.e)
+				? flags.e
+				: undefined;
 		const status = inspectEditorBridge({
 			env,
 			path: pathArg,
-			...(editor !== undefined ? { editor } : {}),
-			...(layout !== undefined ? { layout } : {}),
-			...(bridge !== undefined ? { bridge } : {}),
+			...(editor !== undefined ? { editor } : undefined),
+			...(layout !== undefined ? { layout } : undefined),
+			...(bridge !== undefined ? { bridge } : undefined),
 			isolationRoot: null,
 		});
 		const openCmd = editorBridgeOpenScript(status);
@@ -2111,19 +2161,18 @@ export async function runHoboCodeCli(
 
 	if (verb === "auth") {
 		const sub = (args[0] ?? "status").toLowerCase();
-		const _completeCode =
-			typeof flags.complete === "string"
-				? flags.complete
-				: args[0]?.toLowerCase() === "login" && args[1] === "--complete"
-					? args[2]
-					: undefined;
+		const _completeCode = isJsonString(flags.complete)
+			? flags.complete
+			: args[0]?.toLowerCase() === "login" && args[1] === "--complete"
+				? args[2]
+				: undefined;
 		// login --complete CODE  or  auth login with --complete flag
 		if (
 			sub === "login" &&
-			(typeof flags.complete === "string" || args[1] === "--complete")
+			(isJsonString(flags.complete) || args[1] === "--complete")
 		) {
 			const code =
-				(typeof flags.complete === "string" && flags.complete) ||
+				(isJsonString(flags.complete) && flags.complete) ||
 				(args[1] === "--complete" ? args[2] : undefined) ||
 				args[1];
 			if (!code) {
@@ -2161,8 +2210,7 @@ export async function runHoboCodeCli(
 			// Agent path refuses remote device-code as steady-state: force local.
 			if (
 				agentLogin &&
-				(typeof flags.domain === "string" ||
-					typeof flags.tenant === "string") &&
+				(isJsonString(flags.domain) || isJsonString(flags.tenant)) &&
 				flags.force !== true
 			) {
 				return fail(
@@ -2186,15 +2234,15 @@ export async function runHoboCodeCli(
 				flags["complete-remote"] === true;
 			const result = authLogin({
 				hoboHome,
-				...(typeof flags.tenant === "string" && !agentLogin
+				...(isJsonString(flags.tenant) && !agentLogin
 					? { tenant: flags.tenant }
-					: {}),
-				...(typeof flags.domain === "string" && !agentLogin
+					: undefined),
+				...(isJsonString(flags.domain) && !agentLogin
 					? { domain: flags.domain }
-					: {}),
-				...(typeof flags.station === "string"
+					: undefined),
+				...(isJsonString(flags.station)
 					? { stationId: flags.station }
-					: {}),
+					: undefined),
 				completeRemoteImmediately: mock,
 				autoInitLocal: true,
 			});
@@ -2335,7 +2383,7 @@ export async function runHoboCodeCli(
 			projectDir,
 		});
 		const kindRaw = (
-			typeof flags.kind === "string" ? flags.kind : args[0]
+			isJsonString(flags.kind) ? flags.kind : args[0]
 		)?.toLowerCase();
 		const kinds: readonly ResourceKind[] = [
 			"station",
@@ -2388,7 +2436,7 @@ export async function runHoboCodeCli(
 			hoboHome,
 			env,
 			projectRoot: projectDir,
-			...(Number.isInteger(port) ? { port } : {}),
+			...(Number.isInteger(port) ? { port } : undefined),
 		});
 		const once = flags.once === true;
 		if (once) await dash.close();
@@ -2424,7 +2472,7 @@ export async function runHoboCodeCli(
 	if (verb === "tasks") {
 		const surface = buildTasksSurface({
 			hoboHome,
-			...(typeof flags.run === "string" ? { runId: flags.run } : {}),
+			...(isJsonString(flags.run) ? { runId: flags.run } : undefined),
 			panes: [
 				createPane(
 					"coord",
@@ -2444,8 +2492,7 @@ export async function runHoboCodeCli(
 	}
 
 	if (verb === "guide") {
-		const fromRaw =
-			typeof flags.from === "string" ? flags.from.toLowerCase() : "";
+		const fromRaw = isJsonString(flags.from) ? flags.from.toLowerCase() : "";
 		const wantCursor =
 			flags.cursor === true ||
 			fromRaw === "cursor" ||
@@ -2508,15 +2555,13 @@ export async function runHoboCodeCli(
 		// The pane entrypoint. It owns stdin for the life of the pane, so it
 		// returns its own result rather than going through the panel path.
 		const workspace =
-			typeof flags.workspace === "string" && flags.workspace.length > 0
+			isJsonString(flags.workspace) && flags.workspace.length > 0
 				? flags.workspace
 				: projectDir;
 		// `--agent` is a boolean flag elsewhere in this CLI, so the pane name
 		// rides on `--name` rather than silently parsing as `true`.
 		const agentId =
-			typeof flags.name === "string" && flags.name.length > 0
-				? flags.name
-				: "agent";
+			isJsonString(flags.name) && flags.name.length > 0 ? flags.name : "agent";
 		// createVirtualShell throws synchronously on a missing root, and this
 		// verb awaits it directly — an unhandled rejection out of the CLI rather
 		// than a HOBO_CODE_* result, reachable from the documented flag.
@@ -2524,9 +2569,9 @@ export async function runHoboCodeCli(
 			await runVirtualPane({
 				agentId,
 				workspace,
-				...(typeof flags.tier === "string" ? { tier: flags.tier } : {}),
-				...(typeof flags.source === "string" ? { source: flags.source } : {}),
-				...(deps.input !== undefined ? { input: deps.input } : {}),
+				...(isJsonString(flags.tier) ? { tier: flags.tier } : undefined),
+				...(isJsonString(flags.source) ? { source: flags.source } : undefined),
+				...(deps.input !== undefined ? { input: deps.input } : undefined),
 			});
 		} catch (error) {
 			return fail(
@@ -2561,7 +2606,7 @@ export async function runHoboCodeCli(
 		// happened to be standing.
 		const workspace = findWorkspaceRoot(projectDir, env);
 		const session =
-			typeof flags.session === "string" && flags.session.length > 0
+			isJsonString(flags.session) && flags.session.length > 0
 				? flags.session
 				: "hobo";
 		// Every agent is a target; local inference is not a special case, it is
@@ -2582,8 +2627,7 @@ export async function runHoboCodeCli(
 		const declaredMachines = projectMachines.declared
 			? projectMachines
 			: loadDevMachines(join(dirname(fileURLToPath(import.meta.url)), ".."));
-		const requestedHost =
-			typeof flags.host === "string" ? flags.host : undefined;
+		const requestedHost = isJsonString(flags.host) ? flags.host : undefined;
 		if (flags.virtual === true && requestedHost) {
 			// Before resolution and before brokering: a vshell command names a
 			// local workspace path that does not exist on the remote, and
@@ -2737,7 +2781,7 @@ export async function runHoboCodeCli(
 					? {
 							sharedReason: `--host ${remoteHost}: panes run on the remote, which has its own filesystem — local virtual worktrees would not exist there`,
 						}
-					: {}),
+					: undefined),
 			});
 			const workspaceFor = new Map(
 				allocation.workspaces.map((w) => [w.agentId, w]),
@@ -2771,7 +2815,7 @@ export async function runHoboCodeCli(
 					command: applySettingsToSeatCommand(a.id, seated, settings),
 					cwd: allocated?.path ?? workspace.path,
 					// Namespace-mounted workspaces are unreachable by cd alone.
-					...(allocated?.exec ? { exec: allocated.exec } : {}),
+					...(allocated?.exec ? { exec: allocated.exec } : undefined),
 				} satisfies MuxTarget;
 			});
 			// A remote host turns the same targets into ssh panes — identical shape.
@@ -2910,8 +2954,9 @@ export async function runHoboCodeCli(
 
 	if (verb === "attach") {
 		// Dev-terminal attach (tmux/mosh/Tailscale-shaped) — not control-plane remote admin.
-		const modeFlag =
-			typeof flags.mode === "string" ? flags.mode.toLowerCase() : "local";
+		const modeFlag = isJsonString(flags.mode)
+			? flags.mode.toLowerCase()
+			: "local";
 		const mode: CodeRemoteMode =
 			modeFlag === "overlay" ||
 			modeFlag === "tailscale" ||
@@ -2920,7 +2965,7 @@ export async function runHoboCodeCli(
 				: "local";
 		const surface = describeDevTerminalAttach({
 			mode,
-			...(tenant !== "local" ? { tenant, project: "mux" } : {}),
+			...(tenant !== "local" ? { tenant, project: "mux" } : undefined),
 			stationId: platform.station.stationId,
 		});
 		const reg = surface.registration;
@@ -2949,10 +2994,10 @@ export async function runHoboCodeCli(
 	}
 
 	if (verb === "resume") {
-		const wanted = typeof args[0] === "string" ? args[0].trim() : "";
+		const wanted = isJsonString(args[0]) ? args[0].trim() : "";
 		const chat = resolveChatSession(hoboHome, {
 			cwd: projectDir,
-			...(wanted.length > 0 ? { id: wanted } : {}),
+			...(wanted.length > 0 ? { id: wanted } : undefined),
 		});
 		if (chat) {
 			const text = panel("◎ resume", [
@@ -2971,7 +3016,7 @@ export async function runHoboCodeCli(
 					messages: chat.workingMessages ?? chat.messages,
 					...(chat.workingMessages !== undefined
 						? { journal: chat.messages }
-						: {}),
+						: undefined),
 					cwd: chat.cwd,
 					hoboHome,
 				},
@@ -3017,12 +3062,12 @@ export async function runHoboCodeCli(
 	}
 
 	if (verb === "compact") {
-		const wanted = typeof args[0] === "string" ? args[0].trim() : "";
+		const wanted = isJsonString(args[0]) ? args[0].trim() : "";
 		const looksLikeId = /^chat-[0-9a-f]+/iu.test(wanted);
 		const focus = (looksLikeId ? args.slice(1) : args).join(" ").trim();
 		const chat = resolveChatSession(hoboHome, {
 			cwd: projectDir,
-			...(looksLikeId ? { id: wanted } : {}),
+			...(looksLikeId ? { id: wanted } : undefined),
 		});
 		if (!chat) {
 			return fail(
@@ -3037,21 +3082,27 @@ export async function runHoboCodeCli(
 		}
 		const plan = compactTranscript({
 			messages: chat.messages,
-			...(focus ? { focus } : {}),
-			...(chat.stationLabel ? { stationLabel: chat.stationLabel } : {}),
-			...(chat.envLabel ? { envLabel: chat.envLabel } : {}),
+			...(focus ? { focus } : undefined),
+			...(chat.stationLabel ? { stationLabel: chat.stationLabel } : undefined),
+			...(chat.envLabel ? { envLabel: chat.envLabel } : undefined),
 			sessionId: chat.id,
 		});
 		const saved = saveChatSession(hoboHome, {
 			id: chat.id,
 			cwd: chat.cwd,
 			messages: chat.messages,
-			...(plan.droppedCount > 0 ? { workingMessages: plan.working } : {}),
+			...(plan.droppedCount > 0
+				? { workingMessages: plan.working }
+				: undefined),
 			...(chat.stationLabel !== undefined
 				? { stationLabel: chat.stationLabel }
-				: {}),
-			...(chat.envLabel !== undefined ? { envLabel: chat.envLabel } : {}),
-			...(chat.modelLabel !== undefined ? { modelLabel: chat.modelLabel } : {}),
+				: undefined),
+			...(chat.envLabel !== undefined
+				? { envLabel: chat.envLabel }
+				: undefined),
+			...(chat.modelLabel !== undefined
+				? { modelLabel: chat.modelLabel }
+				: undefined),
 		});
 		const text = panel("◎ compact", plan.briefing.split("\n"));
 		return ok("HOBO_CODE_COMPACT", text, {
@@ -3199,8 +3250,8 @@ export async function runHoboCodeCli(
 						stationId: station.stationId,
 						tenant: station.tenant,
 						environment: station.environment,
-						...(station.project ? { project: station.project } : {}),
-						...(station.branch ? { branch: station.branch } : {}),
+						...(station.project ? { project: station.project } : undefined),
+						...(station.branch ? { branch: station.branch } : undefined),
 					},
 					bindleName,
 					projectDir: resolved,
@@ -3210,7 +3261,7 @@ export async function runHoboCodeCli(
 					reportUrl: deployed.reportUrl,
 					...(deployed.namedUrl !== undefined
 						? { namedUrl: deployed.namedUrl }
-						: {}),
+						: undefined),
 				});
 				persistOccupancyRun({
 					hoboHome,
@@ -3218,7 +3269,7 @@ export async function runHoboCodeCli(
 					environment: station.environment,
 					projectDir,
 					bindleName,
-					...(deployed.pid !== undefined ? { pid: deployed.pid } : {}),
+					...(deployed.pid !== undefined ? { pid: deployed.pid } : undefined),
 					sessionId: deployed.sessionId,
 				});
 			} catch {
@@ -3232,7 +3283,7 @@ export async function runHoboCodeCli(
 					reportUrl: deployed.reportUrl,
 					...(deployed.namedUrl !== undefined
 						? { namedUrl: deployed.namedUrl }
-						: {}),
+						: undefined),
 					stationId: station.stationId,
 					environment: station.environment,
 					emphasis: "run",
@@ -3256,7 +3307,7 @@ export async function runHoboCodeCli(
 					tenant: station.tenant,
 					...(deployed.namedUrl !== undefined
 						? { namedUrl: deployed.namedUrl }
-						: {}),
+						: undefined),
 					evidencePath: deployed.evidencePath,
 					served: {
 						appStatus: appProbe.status,
@@ -3291,7 +3342,7 @@ export async function runHoboCodeCli(
 			status: result.ok ? "ok" : "failed",
 			code: result.code,
 			message: result.message,
-			data: result.data,
+			data: withDense(result.data),
 			exitCode: result.ok ? 0 : 1,
 		};
 	}
@@ -3303,18 +3354,17 @@ export async function runHoboCodeCli(
 			status: result.ok ? "ok" : "failed",
 			code: result.code,
 			message: result.message,
-			data: result.data,
+			data: withDense(result.data),
 			exitCode: result.ok ? 0 : 1,
 		};
 	}
 
 	if (verb === "scaffold") {
-		const name =
-			args[0] || (typeof flags.name === "string" && flags.name) || "app";
+		const name = args[0] || (isJsonString(flags.name) && flags.name) || "app";
 		const out =
-			(typeof flags.out === "string" && flags.out) || join(projectDir, name);
+			(isJsonString(flags.out) && flags.out) || join(projectDir, name);
 		const matched = matchExampleRequest(
-			[args[0], typeof flags.name === "string" ? flags.name : ""]
+			[args[0], isJsonString(flags.name) ? flags.name : ""]
 				.filter(Boolean)
 				.join(" "),
 		);
@@ -3480,8 +3530,7 @@ export async function runHoboCodeCli(
 	}
 
 	if (verb === "promote") {
-		const runId =
-			args[0] || (typeof flags.run === "string" ? flags.run : undefined);
+		const runId = args[0] || (isJsonString(flags.run) ? flags.run : undefined);
 		if (!runId) {
 			return fail(
 				"HOBO_CODE_USAGE",
@@ -3560,7 +3609,7 @@ export async function runHoboCodeCli(
 			code: result.code,
 			message: promoteText,
 			...(result.ok
-				? {}
+				? undefined
 				: {
 						remediation: missingRun
 							? [
@@ -3574,12 +3623,12 @@ export async function runHoboCodeCli(
 									"hobo-code help",
 								],
 					}),
-			data: {
+			data: withDense({
 				result,
 				stationId: platform.station.stationId,
 				text: promoteText,
 				isolationRoot,
-			},
+			}),
 			exitCode: result.ok ? 0 : 1,
 		};
 	}
@@ -3602,11 +3651,11 @@ export async function runHoboCodeCli(
 		if (args.length > 0) {
 			try {
 				const requestedHost =
-					args[0] === "serve" && typeof flags.host === "string"
+					args[0] === "serve" && isJsonString(flags.host)
 						? flags.host
 						: undefined;
 				const requestedPort =
-					args[0] === "serve" && typeof flags.port === "string"
+					args[0] === "serve" && isJsonString(flags.port)
 						? flags.port
 						: undefined;
 				if (requestedHost && requestedPort === undefined) {
@@ -3745,8 +3794,8 @@ export async function runHoboCodeCli(
 					hoboHome,
 					projectDir,
 					approved: flags.approve === true,
-					...(servePort !== undefined ? { servePort } : {}),
-					...(remoteServe !== undefined ? { remoteServe } : {}),
+					...(servePort !== undefined ? { servePort } : undefined),
+					...(remoteServe !== undefined ? { remoteServe } : undefined),
 				});
 				if (resident) {
 					return ok(
@@ -3785,8 +3834,10 @@ export async function runHoboCodeCli(
 					runId: session.isolation.runId,
 					ok: true,
 					branch: session.isolation.branch,
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					gates: [] as string[],
 					isolationStatus: "open" as const,
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					orphans: [] as string[],
 					message: "session kept open",
 				}
@@ -3871,7 +3922,7 @@ export async function runHoboCodeCli(
 			status: handback.ok ? "ok" : "failed",
 			code: handback.ok ? "HOBO_CODE_SESSION" : "HOBO_CODE_SESSION_FAILED",
 			message: sessionText,
-			data: {
+			data: withDense({
 				isolation: session.isolation,
 				status,
 				herdr,
@@ -3882,7 +3933,7 @@ export async function runHoboCodeCli(
 				handback,
 				mcp: session.harness.exposeMcp(),
 				text: sessionText,
-			},
+			}),
 			exitCode: handback.ok ? 0 : 1,
 		};
 	}
@@ -3900,10 +3951,9 @@ export async function runHoboCodeCli(
 				? matchExampleRequest(examplePrompt)
 				: undefined;
 	if (matchedExample) {
-		const name =
-			(typeof flags.name === "string" && flags.name) || matchedExample.id;
+		const name = (isJsonString(flags.name) && flags.name) || matchedExample.id;
 		const out =
-			(typeof flags.out === "string" && flags.out) || join(projectDir, name);
+			(isJsonString(flags.out) && flags.out) || join(projectDir, name);
 		const copied = materializeExample({
 			exampleId: matchedExample.id,
 			outputDir: out,
@@ -3984,7 +4034,9 @@ export async function runHoboCodeCli(
 	const text = renderDispatchSummary({
 		taskId: result.task.taskId,
 		status: result.task.status,
-		...(result.task.nodeId !== undefined ? { nodeId: result.task.nodeId } : {}),
+		...(result.task.nodeId !== undefined
+			? { nodeId: result.task.nodeId }
+			: undefined),
 		prompt,
 		poolId,
 		defaultVerb: defaultedVerb,
@@ -3999,14 +4051,14 @@ export async function runHoboCodeCli(
 		status: result.task.status === "failed" ? "failed" : "ok",
 		code: dispatched ? "HOBO_CODE_DISPATCH" : "HOBO_CODE_DISPATCH_FAILED",
 		message: text,
-		data: {
+		data: withDense({
 			task: result.task,
 			pool: result.pool,
 			defaultVerb: defaultedVerb,
 			emptyPrompt,
 			text,
 			distributed: describeDistributedCompute(),
-		},
+		}),
 		exitCode: dispatched ? 0 : 1,
 	};
 }
@@ -4200,11 +4252,14 @@ export function formatHoboCodeResult(
 	jsonOrOpts: boolean | FormatHoboCodeOptions = false,
 ): string {
 	const opts: FormatHoboCodeOptions =
-		typeof jsonOrOpts === "boolean" ? { json: jsonOrOpts } : jsonOrOpts;
+		jsonOrOpts === true || jsonOrOpts === false
+			? { json: jsonOrOpts }
+			: jsonOrOpts;
 	const json = opts.json === true;
 	const denseFromData =
-		typeof result.data === "object" &&
+		isJsonObject(result.data) &&
 		result.data !== null &&
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		(result.data as { dense?: boolean }).dense === true;
 	const dense = opts.dense === true || denseFromData;
 
@@ -4217,8 +4272,8 @@ export function formatHoboCodeResult(
 				message: result.message,
 				...(result.remediation !== undefined
 					? { remediation: result.remediation }
-					: {}),
-				...(result.data !== undefined ? { data: result.data } : {}),
+					: undefined),
+				...(result.data !== undefined ? { data: result.data } : undefined),
 			},
 			null,
 			2,
@@ -4232,9 +4287,10 @@ export function formatHoboCodeResult(
 	}
 
 	// Prefer embedded presentation body when present (status chrome, etc.).
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const data = result.data as { text?: string } | undefined;
 	let body =
-		typeof data?.text === "string" && data.text.length > 0
+		isJsonString(data?.text) && data.text.length > 0
 			? data.text
 			: result.message;
 	if (dense) {

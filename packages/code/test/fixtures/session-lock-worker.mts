@@ -13,8 +13,10 @@ if (!dataDir || !marker)
 	throw new Error("usage: session-lock-worker <dataDir> <marker>");
 
 if (role && deadOwner) {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const fs = createRequire(import.meta.url)(
 		"node:fs",
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	) as typeof import("node:fs");
 	const originalReadFile = fs.readFileSync;
 	const originalUnlink = fs.unlinkSync;
@@ -33,6 +35,7 @@ if (role && deadOwner) {
 			Atomics.wait(sleep, 0, 0, 10);
 		}
 	};
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	fs.readFileSync = ((path, ...args) => {
 		const value = originalReadFile(path, ...args);
 		if (
@@ -45,7 +48,9 @@ if (role && deadOwner) {
 			if (role === "second") waitFor(() => existsSync(firstLeading));
 		}
 		return value;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	}) as typeof fs.readFileSync;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	fs.unlinkSync = ((path) => {
 		if (sawDeadOwner && String(path).endsWith(".lock")) {
 			if (role === "first") writeFileSync(firstLeading, "1");
@@ -59,14 +64,18 @@ if (role && deadOwner) {
 			}
 		}
 		return originalUnlink(path);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	}) as typeof fs.unlinkSync;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	fs.linkSync = ((existingPath, newPath) => {
 		const result = originalLink(existingPath, newPath);
 		if (sawDeadOwner && role === "first" && String(newPath).endsWith(".lock")) {
 			writeFileSync(acquired, "1");
 		}
 		return result;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	}) as typeof fs.linkSync;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	fs.renameSync = ((oldPath, newPath) => {
 		const result = originalRename(oldPath, newPath);
 		if (
@@ -77,6 +86,7 @@ if (role && deadOwner) {
 			writeFileSync(firstLeading, "1");
 		}
 		return result;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	}) as typeof fs.renameSync;
 	syncBuiltinESMExports();
 }

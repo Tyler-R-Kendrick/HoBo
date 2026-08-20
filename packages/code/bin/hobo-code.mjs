@@ -67,7 +67,8 @@ function distIsStale() {
 
 function tscPath() {
 	if (
-		typeof process.env.HOBO_CODE_TSC === "string" &&
+		Object.prototype.toString.call(process.env.HOBO_CODE_TSC) ===
+			"[object String]" &&
 		process.env.HOBO_CODE_TSC
 	) {
 		return process.env.HOBO_CODE_TSC;

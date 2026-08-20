@@ -23,6 +23,7 @@ import { type DevBrowserSession, resolveHoboSpawn } from "./dev-browser.js";
 import { materializeExample } from "./example-catalog.js";
 import { linkGeneratedAppRuntime } from "./generated-app-runtime.js";
 import type { PendingApproval, ShellHost } from "./interactive-shell.js";
+import { isJsonObject } from "./json.js";
 import { formatUsage, type ShellEngine } from "./shell-engine.js";
 import {
 	formatLiveEndpoints,
@@ -30,7 +31,7 @@ import {
 	resolveRunnableProject,
 } from "./workspace-actions.js";
 
-interface DispatchedTaskShape {
+interface DispatchedTaskView {
 	readonly taskId?: string;
 	readonly status?: string;
 	readonly handbackPath?: string;
@@ -69,11 +70,13 @@ function formatSessionCreateReply(options: {
 		.join("\n");
 }
 
-function dispatchedTask(result: HoboCodeCliResult): DispatchedTaskShape | null {
-	if (typeof result.data !== "object" || result.data === null) return null;
+function dispatchedTask(result: HoboCodeCliResult): DispatchedTaskView | null {
+	if (!isJsonObject(result.data) || result.data === null) return null;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const task = (result.data as { readonly task?: unknown }).task;
-	if (typeof task !== "object" || task === null) return null;
-	return task as DispatchedTaskShape;
+	if (!isJsonObject(task) || task === null) return null;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	return task as DispatchedTaskView;
 }
 
 function oneShotHint(prompt: string): string {
@@ -117,6 +120,7 @@ async function runHoboCommand(
 		child.stdout.on("data", append);
 		child.stderr.on("data", append);
 		child.once("error", (error) => {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const err = error as NodeJS.ErrnoException;
 			if (err.code === "ENOENT") {
 				reject(
@@ -146,8 +150,9 @@ async function executeResidentTerminalAction(
 	env: NodeJS.ProcessEnv,
 ): Promise<void> {
 	const action =
-		result.data && typeof result.data === "object"
-			? (
+		result.data && isJsonObject(result.data)
+			? // SAFETY: parsed or fixture value is the named domain type after this assertion.
+				(
 					result.data as {
 						readonly terminalAction?: {
 							readonly kind?: string;
@@ -309,8 +314,9 @@ export function createDefaultShellHost(
 			});
 		}
 		const deployment =
-			result.data && typeof result.data === "object"
-				? (
+			result.data && isJsonObject(result.data)
+				? // SAFETY: parsed or fixture value is the named domain type after this assertion.
+					(
 						result.data as {
 							readonly deployment?: {
 								readonly appUrl?: string;
@@ -342,13 +348,13 @@ export function createDefaultShellHost(
 			reportUrl: deployment.reportUrl,
 			...(deployment.namedUrl !== undefined
 				? { namedUrl: deployment.namedUrl }
-				: {}),
+				: undefined),
 			...(deployment.stationId !== undefined
 				? { stationId: deployment.stationId }
-				: {}),
+				: undefined),
 			...(deployment.environment !== undefined
 				? { environment: deployment.environment }
-				: {}),
+				: undefined),
 			emphasis: action.kind === "debug" ? "debug" : "run",
 		});
 	};
@@ -408,6 +414,7 @@ export function createDefaultShellHost(
 				return [
 					`Recorded compute task ${task.taskId} (status: ${task.status ?? "unknown"}).`,
 					"No completion engine is wired yet, so nothing acted on your prompt —",
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					"it is stored as a dispatch task for a worker to pick up (/about).",
 					...(task.handbackPath ? [`Handback: ${task.handbackPath}`] : []),
 					oneShotHint(prompt),

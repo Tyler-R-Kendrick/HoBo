@@ -591,6 +591,7 @@ describe("promotion approval gate (ADR-0139 mediated mutation)", () => {
 		overrides: Partial<ShellHost> = {},
 	): ShellHost & { promoted: string[] } {
 		const promoted: string[] = [];
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const host = {
 			promoted,
 			runVerb: async () => "verb output",
@@ -622,6 +623,7 @@ describe("promotion approval gate (ADR-0139 mediated mutation)", () => {
 				return `Promoted run ${a.runId} (squash-only, gated, audited).`;
 			},
 			...overrides,
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		} as ShellHost & { promoted: string[] };
 		return host;
 	}

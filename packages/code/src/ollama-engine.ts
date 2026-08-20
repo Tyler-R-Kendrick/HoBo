@@ -13,6 +13,7 @@
 
 import { at } from "@hobo/core/total-access";
 import { AGUI_EVENT } from "./agui.js";
+import { isJsonString } from "./json.js";
 import { LOCAL_TOOL_SCHEMA, runLocalTool } from "./local-tools.js";
 import type { ToolPlanner } from "./needle-tools.js";
 import {
@@ -44,6 +45,7 @@ export function parseOllamaFrame(line: string): OllamaChatFrame | null {
 	const trimmed = line.trim();
 	if (trimmed.length === 0) return null;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		return JSON.parse(trimmed) as OllamaChatFrame;
 	} catch {
 		return null;
@@ -66,6 +68,7 @@ export function usageFromFrame(frame: OllamaChatFrame): EngineUsage {
 
 export interface OllamaModelInfo {
 	readonly name: string;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	/** Parameters as reported by the server, e.g. "1.5B" → 1.5e9. */
 	readonly parameters: number | null;
 	readonly family: string | null;
@@ -107,6 +110,7 @@ export async function probeOllama(
 				reason: `ollama HTTP ${response.status}`,
 			};
 		}
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const body = (await response.json()) as {
 			models?: {
 				name?: string;
@@ -120,7 +124,7 @@ export async function probeOllama(
 				): m is {
 					name: string;
 					details?: { parameter_size?: string; family?: string };
-				} => typeof m.name === "string",
+				} => isJsonString(m.name),
 			)
 			.map((m) => ({
 				name: m.name,
@@ -327,7 +331,8 @@ export async function createOllamaShellEngine(
 				// appear and staring at a frozen screen.
 				const decoder = new TextDecoder();
 				let buffer = "";
-				for await (const chunk of response.body as unknown as AsyncIterable<Uint8Array>) {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				for await (const chunk of response.body as AsyncIterable<Uint8Array>) {
 					buffer += decoder.decode(chunk, { stream: true });
 					const lines = buffer.split("\n");
 					buffer = lines.pop() ?? "";
@@ -397,7 +402,7 @@ export async function createOllamaShellEngine(
 					text,
 					toolCalls,
 					aborted,
-					...(aborted ? {} : { error: message }),
+					...(aborted ? undefined : { error: message }),
 					usage: usageDelta(before, cumulative),
 				};
 			} finally {

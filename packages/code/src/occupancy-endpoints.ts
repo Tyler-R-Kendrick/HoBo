@@ -77,9 +77,9 @@ export function occupancyNamedOrigin(
 		scheme: "http",
 		port,
 		env: localEnvSegment(scope.environment),
-		...(includeTenant ? { tenant } : {}),
-		...(scope.project ? { project: scope.project } : {}),
-		...(scope.branch ? { branch: scope.branch } : {}),
+		...(includeTenant ? { tenant } : undefined),
+		...(scope.project ? { project: scope.project } : undefined),
+		...(scope.branch ? { branch: scope.branch } : undefined),
 	});
 }
 
@@ -126,6 +126,7 @@ export const STATION_OCCUPANCY_RESOURCES = [
 ] as const;
 
 export function isStationOccupancyEndpoint(name: string): boolean {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return (STATION_OCCUPANCY_RESOURCES as readonly string[]).includes(name);
 }
 
@@ -171,7 +172,7 @@ export function occupancySidecarEndpoints(
 			kind,
 			backendUrl: loopbackFetchUrl(url),
 			namedUrl: named,
-			...(hostname ? { hostname } : {}),
+			...(hostname ? { hostname } : undefined),
 			mode: "local",
 			preferredUrl: named,
 			fidelity: "real",

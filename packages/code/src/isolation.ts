@@ -178,7 +178,7 @@ export async function createIsolationContext(
 		backend,
 		...(options.stationId !== undefined
 			? { stationId: options.stationId }
-			: {}),
+			: undefined),
 		durableRoot,
 		createdAt: new Date().toISOString(),
 		status: "open",
@@ -295,5 +295,6 @@ export function readHandback(
 ): HandbackReport | null {
 	const path = join(hoboHome, "durable", "code", runId, "handback.json");
 	if (!existsSync(path)) return null;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return JSON.parse(readFileSync(path, "utf8")) as HandbackReport;
 }

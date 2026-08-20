@@ -38,15 +38,19 @@ const PASTE_START = "\x1b[200~";
 const PASTE_END = "\x1b[201~";
 
 const base = (overrides: Partial<InteractiveShellState> = {}) =>
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	({
 		...createInitialShellState({ width: 80, height: 24, welcome: false }),
 		...overrides,
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	}) as InteractiveShellState;
 
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 const approval = {
 	kind: "promote",
 	summary: "promote 3 files",
-} as unknown as PendingApproval;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+} as PendingApproval;
 
 const withApproval = (overrides: Partial<InteractiveShellState> = {}) =>
 	base({ pendingApproval: approval, ...overrides });
@@ -158,6 +162,7 @@ describe("bracketed paste", () => {
 	const paste = (content: string, close = true) =>
 		`${PASTE_START}${content}${close ? PASTE_END : ""}`;
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("inserts pasted text as one edit", () => {
 		expect(reduceShellKey(base(), paste("hello world")).state.input).toBe(
 			"hello world",

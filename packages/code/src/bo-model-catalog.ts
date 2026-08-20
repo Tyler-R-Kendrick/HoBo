@@ -10,6 +10,7 @@ import { readdirSync } from "node:fs";
 import { join } from "node:path";
 import { must } from "@hobo/core/total-access";
 import { loadHarnessSettings } from "./harness-settings.js";
+import { isJsonString } from "./json.js";
 import { DEFAULT_OLLAMA_HOST } from "./ollama-engine.js";
 
 // public-contract: Bo model catalog offer schema id
@@ -140,10 +141,12 @@ export function makeModelOffer(input: {
 		label: input.label,
 		runtimeId: input.runtimeId,
 		source: input.source,
-		...(input.via !== undefined ? { via: input.via } : {}),
-		...(input.baseUrl !== undefined ? { baseUrl: input.baseUrl } : {}),
-		...(input.host !== undefined ? { host: input.host } : {}),
-		...(input.harnessId !== undefined ? { harnessId: input.harnessId } : {}),
+		...(input.via !== undefined ? { via: input.via } : undefined),
+		...(input.baseUrl !== undefined ? { baseUrl: input.baseUrl } : undefined),
+		...(input.host !== undefined ? { host: input.host } : undefined),
+		...(input.harnessId !== undefined
+			? { harnessId: input.harnessId }
+			: undefined),
 	};
 }
 
@@ -242,8 +245,9 @@ export function listBoModelOffers(
 		add(offerFromHarness(id, settings.model));
 	}
 
-	const active =
-		typeof env.HOBO_CODE_MODEL === "string" ? env.HOBO_CODE_MODEL.trim() : "";
+	const active = isJsonString(env.HOBO_CODE_MODEL)
+		? env.HOBO_CODE_MODEL.trim()
+		: "";
 	if (active) {
 		if (active.toLowerCase().startsWith("ollama/")) {
 			const tag = active.slice("ollama/".length);
@@ -274,10 +278,11 @@ export function listBoModelOffers(
 		}
 	}
 
+	const openaiBase = env.OPENAI_BASE_URL;
+	const localBase = env.HOBO_CODE_LOCAL_BASE_URL;
 	const baseUrl =
-		(typeof env.OPENAI_BASE_URL === "string" && env.OPENAI_BASE_URL.trim()) ||
-		(typeof env.HOBO_CODE_LOCAL_BASE_URL === "string" &&
-			env.HOBO_CODE_LOCAL_BASE_URL.trim()) ||
+		(isJsonString(openaiBase) && openaiBase.trim()) ||
+		(isJsonString(localBase) && localBase.trim()) ||
 		"";
 	if (baseUrl) {
 		const runtimeId =
@@ -332,7 +337,7 @@ export function cycleBoModelOffer(
 	offers: readonly BoModelOffer[],
 	index: number,
 	delta: 1 | -1,
-): { readonly index: number; readonly offer: BoModelOffer | null } {
+) {
 	if (offers.length === 0) return { index: 0, offer: null };
 	const next = (index + delta + offers.length) % offers.length;
 	return { index: next, offer: must(offers[next]) };

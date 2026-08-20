@@ -112,7 +112,7 @@ export async function brokerPaneSession(
 			preferSecretless: true,
 			...(options.ttlSeconds !== undefined
 				? { ttlSeconds: options.ttlSeconds }
-				: {}),
+				: undefined),
 			reason: `hobo-code pane for agent ${agentId}`,
 		});
 		return {
@@ -265,7 +265,7 @@ export async function openStationGateway(
 			isolationClass: context.isolationClass,
 			kind: "native",
 			credentialRef: pane.credentialRef,
-			...(reason ? { reason } : {}),
+			...(reason ? { reason } : undefined),
 		});
 	};
 	const requireUpstream = (): string => {
@@ -279,7 +279,8 @@ export async function openStationGateway(
 	const localProxies = new Set<SshAgentProxy>();
 	let closed = false;
 	return {
-		broker: gateway as unknown as PaneSessionBroker,
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		broker: gateway as PaneSessionBroker,
 		auditTypes: () => gateway.auditEvents.map((e) => e.type),
 		yardDrainCount: () => gateway.yardDrainCount,
 		async resolveSshIdentity(pane) {

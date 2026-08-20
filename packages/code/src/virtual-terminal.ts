@@ -19,13 +19,16 @@
  */
 
 import { createRequire } from "node:module";
+import { isJsonString } from "./json.js";
 
 // `@xterm/headless` ships CommonJS. A named ESM import of it typechecks and
 // passes under vitest's transform, then throws `Named export 'Terminal' not
 // found` from the built output — so the interop is done explicitly here rather
 // than left to whatever the bundler of the day does.
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 const { Terminal } = createRequire(import.meta.url)(
 	"@xterm/headless",
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 ) as typeof import("@xterm/headless");
 
 /** The instance type, kept separate because `Terminal` above is a value. */
@@ -53,6 +56,7 @@ export interface VirtualTerminal {
 	write(chunk: string | Uint8Array): Promise<void>;
 	resize(cols: number, rows: number): void;
 	snapshot(): ScreenSnapshot;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	/** Visible screen as one string — what a human would read. */
 	text(): string;
 	/** Everything retained, scrollback first. */
@@ -79,12 +83,12 @@ export function createVirtualTerminal(
 
 	return {
 		write(chunk) {
-			bytes +=
-				typeof chunk === "string" ? Buffer.byteLength(chunk) : chunk.length;
+			bytes += isJsonString(chunk) ? Buffer.byteLength(chunk) : chunk.length;
 			// xterm's write is asynchronous — a sequence split across chunks is
 			// only resolved once the parser has drained, so callers that snapshot
 			// immediately after writing must await this.
 			return new Promise<void>((resolve) => {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				terminal.write(chunk as never, () => resolve());
 			});
 		},

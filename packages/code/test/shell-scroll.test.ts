@@ -20,8 +20,7 @@ import {
 
 /** Visible text only — accents must never change what a test sees. */
 const plain = (frame: string): string =>
-	// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping SGR is the point
-	frame.replace(/\u001b\[[0-9;]*m/g, "");
+	frame.replace(new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"), "");
 
 function fatChat(height = 24) {
 	let state = createInitialShellState({

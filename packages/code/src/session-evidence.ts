@@ -4,13 +4,13 @@
  */
 import { mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-
 import { type ChatTurn, loadChatSession } from "./chat-sessions.js";
 import {
 	createEvidencePort,
 	type StoredEvidenceRecord,
 } from "./evidence-port.js";
 import type { EvidenceArtifact, EvidenceState } from "./evidence-report.js";
+import { isJsonString } from "./json.js";
 import type { EvidenceKind } from "./types.js";
 
 // public-contract: Evidence SPA binds to this session pointer schema.
@@ -107,9 +107,9 @@ export function writeCurrentSessionContext(
 		sessionId: input.sessionId,
 		cwd: input.cwd,
 		updatedAt: input.updatedAt ?? new Date().toISOString(),
-		...(input.stationLabel ? { stationLabel: input.stationLabel } : {}),
-		...(input.envLabel ? { envLabel: input.envLabel } : {}),
-		...(input.modelLabel ? { modelLabel: input.modelLabel } : {}),
+		...(input.stationLabel ? { stationLabel: input.stationLabel } : undefined),
+		...(input.envLabel ? { envLabel: input.envLabel } : undefined),
+		...(input.modelLabel ? { modelLabel: input.modelLabel } : undefined),
 	};
 	const path = currentSessionPath(hoboHome);
 	mkdirSync(dirname(path), { recursive: true });
@@ -124,27 +124,29 @@ export function readCurrentSessionContext(
 	hoboHome: string,
 ): CurrentSessionContext | undefined {
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const raw = JSON.parse(
 			readFileSync(currentSessionPath(hoboHome), "utf8"),
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		) as Partial<CurrentSessionContext>;
 		if (raw.schemaVersion !== CURRENT_SESSION_SCHEMA) return undefined;
-		if (typeof raw.sessionId !== "string" || raw.sessionId.length === 0) {
+		if (!isJsonString(raw.sessionId) || raw.sessionId.length === 0) {
 			return undefined;
 		}
-		if (typeof raw.cwd !== "string") return undefined;
-		if (typeof raw.updatedAt !== "string") return undefined;
+		if (!isJsonString(raw.cwd)) return undefined;
+		if (!isJsonString(raw.updatedAt)) return undefined;
 		return {
 			schemaVersion: CURRENT_SESSION_SCHEMA,
 			sessionId: raw.sessionId,
 			cwd: raw.cwd,
 			updatedAt: raw.updatedAt,
-			...(typeof raw.stationLabel === "string"
+			...(isJsonString(raw.stationLabel)
 				? { stationLabel: raw.stationLabel }
-				: {}),
-			...(typeof raw.envLabel === "string" ? { envLabel: raw.envLabel } : {}),
-			...(typeof raw.modelLabel === "string"
+				: undefined),
+			...(isJsonString(raw.envLabel) ? { envLabel: raw.envLabel } : undefined),
+			...(isJsonString(raw.modelLabel)
 				? { modelLabel: raw.modelLabel }
-				: {}),
+				: undefined),
 		};
 	} catch {
 		return undefined;
@@ -164,7 +166,7 @@ export function openSessionEvidencePort(
 		actor: "hobo-code:shell",
 		origin: "hobo-code:interactive-shell",
 		signingKey: "hobo-code:shell",
-		...(now ? { now } : {}),
+		...(now ? { now } : undefined),
 	});
 }
 
@@ -258,7 +260,7 @@ export function projectSessionWorkLedger(options: {
 		evidence: options.evidence ?? emptyEvidence(),
 		...(options.generatedAt !== undefined
 			? { generatedAt: options.generatedAt }
-			: {}),
+			: undefined),
 	});
 	return {
 		schemaVersion: SESSION_WORK_SCHEMA,
@@ -270,10 +272,7 @@ export function projectSessionWorkLedger(options: {
 	};
 }
 
-function emptyEvidence(): {
-	readonly records: () => readonly StoredEvidenceRecord[];
-	readonly artifact: (id: string) => undefined;
-} {
+function emptyEvidence() {
 	return {
 		records: () => [],
 		artifact: () => undefined,

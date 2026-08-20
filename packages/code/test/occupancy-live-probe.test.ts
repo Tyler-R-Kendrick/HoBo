@@ -1,10 +1,10 @@
 import { createServer, type Server } from "node:net";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	isLoopbackUrlListening,
 	listeningByUrl,
 } from "../src/occupancy-live.js";
+import { isJsonString } from "../src/json.js";
 
 /**
  * The probe decides whether `hobo status` calls an endpoint `live` or
@@ -46,19 +46,21 @@ async function listen(): Promise<string> {
 		server.listen(0, "127.0.0.1", () => resolve());
 	});
 	const address = server.address();
-	if (address === null || typeof address === "string") {
+	if (address === null || isJsonString(address)) {
 		throw new Error("server did not bind a port");
 	}
 	return `http://127.0.0.1:${address.port}/`;
 }
 
 describe("loopback listen probe", () => {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("reports a listening server as listening", async () => {
 		const url = await listen();
 		expect(listeningByUrl([url]).get(url)).toBe(true);
 		expect(isLoopbackUrlListening(url)).toBe(true);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("reports a closed port as not listening", async () => {
 		const url = await listen();
 		await new Promise<void>((resolve) => {

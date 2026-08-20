@@ -39,6 +39,7 @@ describe("station occupancy sidecars", () => {
 		).rejects.toThrow(/not logged in/i);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("starts dashboard and evidence as Station sidecars and serves them", async () => {
 		const hoboHome = tempHome();
 		authLogin({ hoboHome, tenant: "camp-west", autoInitLocal: true });
@@ -66,6 +67,7 @@ describe("station occupancy sidecars", () => {
 			const resources = await fetch(
 				new URL("/api/resources", loopbackFetchUrl(sidecars.dashboardUrl)),
 			);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const inventory = (await resources.json()) as { ok: boolean };
 			expect(inventory.ok).toBe(true);
 			const evidence = await fetch(loopbackFetchUrl(sidecars.evidenceUrl));

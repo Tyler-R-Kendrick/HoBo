@@ -12,7 +12,6 @@
  * Durable resident sessions use LocalSessionControl envelopes.
  */
 import { randomUUID } from "node:crypto";
-
 import {
 	focusedHarnessPane,
 	type HarnessSessionNode,
@@ -26,6 +25,7 @@ import {
 	listInSessionWindows,
 	refreshInSessionPanes,
 } from "./in-session-panes.js";
+import type { JsonObject } from "./json.js";
 import {
 	createLocalSessionControl,
 	sessionCommandEnvelope,
@@ -324,7 +324,7 @@ async function executeDurableAction(
 		const pane = focusedHarnessPane(ctx.harnessView);
 		const tab = session.tabs[ctx.harnessView.focusedTab];
 		let command: string;
-		let value: Record<string, unknown>;
+		let value: JsonObject;
 		switch (action.kind) {
 			case "stop":
 				command = "stopSession";

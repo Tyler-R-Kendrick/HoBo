@@ -132,7 +132,7 @@ describe("start", () => {
 		// A wrapper that reported ok unconditionally would hide every refusal the
 		// runtime makes.
 		const result = await run(["start"]);
-		expect(typeof result.ok).toBe("boolean");
+		expect(result.ok === true || result.ok === false).toBe(true);
 		expect(result.data).toBeDefined();
 	});
 

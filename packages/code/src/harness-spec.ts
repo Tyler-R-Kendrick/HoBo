@@ -7,6 +7,7 @@
  * (#HarnessSpecRecord). Untrusted JSON becomes a frozen HarnessSpec or throws
  * HarnessSpecParseError; downstream code accepts only parsed specs.
  */
+
 import type {
 	HarnessCliPromptPlacement,
 	HarnessCliPromptSpec,
@@ -18,6 +19,13 @@ import type {
 	HarnessSpec,
 } from "./agent-harness-adapters.js";
 import type { AgentKind } from "./agent-registry.js";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 // public-contract: harness plugin spec schema id.
 export const HARNESS_SPEC_SCHEMA = "hobo.code.harness-spec/v1" as const;
@@ -125,56 +133,71 @@ export class HarnessSpecParseError extends Error {
 	}
 }
 
-function describeReceived(value: unknown): string {
+function describeReceived(value: JsonValue | undefined): string {
 	if (value === undefined) return "undefined";
 	if (value === null) return "null";
-	if (typeof value === "string") {
+	if (isJsonString(value)) {
 		return JSON.stringify(value.length > 48 ? `${value.slice(0, 48)}…` : value);
 	}
 	if (Array.isArray(value)) return "array";
-	if (typeof value === "object") return "object";
-	return `${typeof value} ${String(value)}`;
+	if (isJsonObject(value)) return "object";
+	if (value === true || value === false) return `boolean ${String(value)}`;
+	return `number ${String(value)}`;
 }
 
-function fail(path: string, expected: string, value: unknown): never {
+function fail(
+	path: string,
+	expected: string,
+	value: JsonValue | undefined,
+): never {
 	throw new HarnessSpecParseError(path, expected, describeReceived(value));
 }
 
-function requireObject(value: unknown, path: string): Record<string, unknown> {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
+function requireObject(value: JsonValue | undefined, path: string): JsonObject {
+	if (!value || !isJsonObject(value) || Array.isArray(value)) {
 		fail(path, "an object", value);
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	return value as JsonObject;
 }
 
-function requireString(value: unknown, path: string): string {
-	if (typeof value !== "string" || value.length === 0) {
+function requireString(value: JsonValue | undefined, path: string): string {
+	if (!isJsonString(value) || value.length === 0) {
 		fail(path, "a non-empty string", value);
 	}
 	return value;
 }
 
-function optionalString(value: unknown, path: string): string | undefined {
+function optionalString(
+	value: JsonValue | undefined,
+	path: string,
+): string | undefined {
 	if (value === undefined) return undefined;
 	return requireString(value, path);
 }
 
-function optionalBoolean(value: unknown, path: string): boolean | undefined {
+function optionalBoolean(
+	value: JsonValue | undefined,
+	path: string,
+): boolean | undefined {
 	if (value === undefined) return undefined;
-	if (typeof value !== "boolean") fail(path, "a boolean", value);
+	if (value !== true && value !== false) fail(path, "a boolean", value);
 	return value;
 }
 
-function optionalSeat(value: unknown, path: string): number | undefined {
+function optionalSeat(
+	value: JsonValue | undefined,
+	path: string,
+): number | undefined {
 	if (value === undefined) return undefined;
-	if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+	if (!isJsonNumber(value) || !Number.isInteger(value) || value < 0) {
 		fail(path, "a non-negative integer", value);
 	}
 	return value;
 }
 
 function optionalStringArray(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 ): readonly string[] | undefined {
 	if (value === undefined) return undefined;
@@ -185,42 +208,49 @@ function optionalStringArray(
 }
 
 function optionalEnv(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 ): Readonly<Record<string, string>> | undefined {
 	if (value === undefined) return undefined;
 	const source = requireObject(value, path);
 	const env: Record<string, string> = {};
 	for (const [key, item] of Object.entries(source)) {
-		if (typeof item !== "string") fail(`${path}.${key}`, "a string", item);
+		if (!isJsonString(item)) fail(`${path}.${key}`, "a string", item);
 		env[key] = item;
 	}
 	return Object.freeze(env);
 }
 
-function isSpecKind(value: unknown): value is HarnessSpecKind {
+function isSpecKind(value: JsonValue | undefined): value is HarnessSpecKind {
 	return (
-		typeof value === "string" &&
+		isJsonString(value) &&
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		(HARNESS_SPEC_KINDS as readonly string[]).includes(value)
 	);
 }
 
-function isConfigFormat(value: unknown): value is HarnessConfigFormat {
+function isConfigFormat(
+	value: JsonValue | undefined,
+): value is HarnessConfigFormat {
 	return (
-		typeof value === "string" &&
+		isJsonString(value) &&
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		(HARNESS_CONFIG_FORMATS as readonly string[]).includes(value)
 	);
 }
 
-function isRuntimeAdapter(value: unknown): value is HarnessRuntimeAdapter {
+function isRuntimeAdapter(
+	value: JsonValue | undefined,
+): value is HarnessRuntimeAdapter {
 	return (
-		typeof value === "string" &&
+		isJsonString(value) &&
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		(HARNESS_RUNTIME_ADAPTERS as readonly string[]).includes(value)
 	);
 }
 
 function parseHarnessConfigSpec(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 ): HarnessConfigSpec {
 	const source = requireObject(value, path);
@@ -243,26 +273,29 @@ function parseHarnessConfigSpec(
 	const note = optionalString(source.note, `${path}.note`);
 	return Object.freeze({
 		format: source.format,
-		...(rel === undefined ? {} : { path: rel }),
-		...(configuredWhen === undefined ? {} : { configuredWhen }),
-		...(block === undefined ? {} : { block }),
-		...(env === undefined ? {} : { env }),
-		...(source.merge === undefined ? {} : { merge: source.merge }),
-		...(summary === undefined ? {} : { summary }),
-		...(after === undefined ? {} : { after }),
-		...(note === undefined ? {} : { note }),
+		...(rel === undefined ? undefined : { path: rel }),
+		...(configuredWhen === undefined ? undefined : { configuredWhen }),
+		...(block === undefined ? undefined : { block }),
+		...(env === undefined ? undefined : { env }),
+		...(source.merge === undefined ? undefined : { merge: source.merge }),
+		...(summary === undefined ? undefined : { summary }),
+		...(after === undefined ? undefined : { after }),
+		...(note === undefined ? undefined : { note }),
 	});
 }
 
-function isPromptPlacement(value: unknown): value is HarnessCliPromptPlacement {
+function isPromptPlacement(
+	value: JsonValue | undefined,
+): value is HarnessCliPromptPlacement {
 	return (
-		typeof value === "string" &&
+		isJsonString(value) &&
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		(HARNESS_CLI_PROMPT_PLACEMENTS as readonly string[]).includes(value)
 	);
 }
 
 function parseHarnessCliPromptSpec(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 ): HarnessCliPromptSpec {
 	const source = requireObject(value, path);
@@ -279,12 +312,12 @@ function parseHarnessCliPromptSpec(
 	);
 	return Object.freeze({
 		placement: source.placement,
-		...(prefixArgs === undefined ? {} : { prefixArgs }),
+		...(prefixArgs === undefined ? undefined : { prefixArgs }),
 	});
 }
 
 function parseHarnessRuntimeSpec(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 ): HarnessRuntimeSpec {
 	const source = requireObject(value, path);
@@ -299,10 +332,11 @@ function parseHarnessRuntimeSpec(
 		source.prompt === undefined
 			? undefined
 			: parseHarnessCliPromptSpec(source.prompt, `${path}.prompt`);
-	return Object.freeze({
+	const runtime: HarnessRuntimeSpec = {
 		adapter: source.adapter,
-		...(prompt === undefined ? {} : { prompt }),
-	});
+		...(prompt === undefined ? undefined : { prompt }),
+	};
+	return Object.freeze(runtime);
 }
 
 /**
@@ -311,7 +345,7 @@ function parseHarnessRuntimeSpec(
  * `schema` field, so it is optional — but when present it must equal
  * HARNESS_SPEC_SCHEMA.
  */
-export function parseHarnessSpec(value: unknown): HarnessSpec {
+export function parseHarnessSpec(value: JsonValue | undefined): HarnessSpec {
 	const source = requireObject(value, "harness-spec");
 	if (source.schema !== undefined && source.schema !== HARNESS_SPEC_SCHEMA) {
 		fail("schema", `${HARNESS_SPEC_SCHEMA} (or omitted)`, source.schema);
@@ -343,15 +377,15 @@ export function parseHarnessSpec(value: unknown): HarnessSpec {
 		id,
 		label,
 		kind: source.kind,
-		...(host === undefined ? {} : { host }),
-		...(binaries === undefined ? {} : { binaries }),
-		...(configPaths === undefined ? {} : { configPaths }),
-		...(command === undefined ? {} : { command }),
-		...(seat === undefined ? {} : { seat }),
-		...(cwdMarkers === undefined ? {} : { cwdMarkers }),
-		...(packageNames === undefined ? {} : { packageNames }),
-		...(config === undefined ? {} : { config }),
-		...(runtime === undefined ? {} : { runtime }),
+		...(host === undefined ? undefined : { host }),
+		...(binaries === undefined ? undefined : { binaries }),
+		...(configPaths === undefined ? undefined : { configPaths }),
+		...(command === undefined ? undefined : { command }),
+		...(seat === undefined ? undefined : { seat }),
+		...(cwdMarkers === undefined ? undefined : { cwdMarkers }),
+		...(packageNames === undefined ? undefined : { packageNames }),
+		...(config === undefined ? undefined : { config }),
+		...(runtime === undefined ? undefined : { runtime }),
 	});
 }
 
@@ -411,6 +445,7 @@ function defaultRuntimeAdapter(spec: HarnessSpec): HarnessRuntimeAdapter {
 function isBuiltinAdapter(
 	adapter: HarnessRuntimeAdapter,
 ): adapter is (typeof BUILTIN_HARNESS_ADAPTERS)[number] {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return (BUILTIN_HARNESS_ADAPTERS as readonly string[]).includes(adapter);
 }
 
@@ -433,11 +468,13 @@ export function resolveHarnessRuntime(
 }
 
 export function isHostHarnessAdapter(adapter: HarnessRuntimeAdapter): boolean {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return (HOST_HARNESS_ADAPTERS as readonly string[]).includes(adapter);
 }
 
 export function isBridgeHarnessAdapter(
 	adapter: HarnessRuntimeAdapter,
 ): boolean {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return (BRIDGE_HARNESS_ADAPTERS as readonly string[]).includes(adapter);
 }

@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../src/json.js";
 
 import {
 	parseSessionCommand,
@@ -142,7 +143,7 @@ describe("SessionControlPlane boundary pact", () => {
 		// replaced could not tell them apart, nor tell any of them from a
 		// decode error raised before the contract checks ran at all.
 		const deliveryRefusals: readonly [
-			deliveryState: Record<string, unknown>,
+			deliveryState: JsonObject,
 			message: string,
 		][] = [
 			[
@@ -248,6 +249,7 @@ describe("SessionControlPlane boundary pact", () => {
 				"create isolation context with worktree fallback when rift unavailable",
 				"cleanup leaves zero orphans and primary worktree clean",
 				"promotion is gated and squash-only",
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				"guest evidence is accepted only as a host-attributed claim",
 				"create a resident session with runtime-backed panes",
 				"detach without stopping the resident session",

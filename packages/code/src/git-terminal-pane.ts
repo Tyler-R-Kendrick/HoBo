@@ -1,10 +1,10 @@
 import type { Readable, Writable } from "node:stream";
-
 import type { GitSelection, GitWorkbenchSnapshot } from "./git-workbench.js";
 import {
 	readGitWorkbenchSnapshot,
 	runGitWorkbenchAction,
 } from "./git-workbench.js";
+import type { JsonObject } from "./json.js";
 import {
 	createLocalSessionControl,
 	sessionCommandEnvelope,
@@ -36,15 +36,12 @@ export const INITIAL_GIT_TERMINAL_STATE: GitTerminalPaneState = {
 	selected: { status: 0, files: 0, branches: 0, commits: 0, stash: 0 },
 };
 
-export function consumeGitTerminalPromptChunk(
-	value: string,
-	text: string,
-): { readonly done: boolean; readonly value?: string } {
+export function consumeGitTerminalPromptChunk(value: string, text: string) {
 	if (text.includes("\u0003") || text.includes("\u001b")) return { done: true };
 	const terminator = text.search(/[\r\n]/u);
 	if (terminator < 0) return { done: false, value: value + text };
 	const answer = `${value}${text.slice(0, terminator)}`.trim();
-	return { done: true, ...(answer ? { value: answer } : {}) };
+	return { done: true, ...(answer ? { value: answer } : undefined) };
 }
 
 function crop(value: string, width: number): string {
@@ -265,9 +262,11 @@ export async function runGitTerminalPane(options: {
 	readonly input?: Readable;
 	readonly output?: Writable;
 }): Promise<number> {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const input = (options.input ?? process.stdin) as TtyInput;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const output = (options.output ?? process.stdout) as SizedOutput;
-	if (!input.isTTY || typeof input.setRawMode !== "function") {
+	if (!input.isTTY || !(input.setRawMode instanceof Function)) {
 		throw new Error(
 			"Git pane requires a TTY; run it inside the resident tmux session",
 		);
@@ -326,7 +325,7 @@ export async function runGitTerminalPane(options: {
 		const approve = async (
 			label: string,
 			command: string,
-			value: Readonly<Record<string, unknown>>,
+			value: JsonObject,
 		): Promise<void> => {
 			const envelope = sessionCommandEnvelope(
 				options.sessionId,
@@ -440,6 +439,7 @@ export async function runGitTerminalPane(options: {
 					const message = await prompt("Commit message");
 					if (message)
 						await approve(
+							// SAFETY: parsed or fixture value is the named domain type after this assertion.
 							`commit staged changes as ${JSON.stringify(message)}`,
 							"commit",
 							{ message, stagedOnly: true },

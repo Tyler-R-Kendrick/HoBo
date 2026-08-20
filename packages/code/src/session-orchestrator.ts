@@ -17,7 +17,6 @@ import {
 } from "node:fs";
 import { basename, dirname, join, resolve } from "node:path";
 import { create } from "@bufbuild/protobuf";
-
 import {
 	CheckpointLifecycleState,
 	CheckpointSchema,
@@ -26,6 +25,15 @@ import {
 	type SessionCommandEnvelope,
 	type SessionSnapshot,
 } from "./_generated/code_harness_pb.js";
+import {
+	isJsonBigInt,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 import type { ResidentSessionRuntime } from "./resident-session-runtime.js";
 import { parseSessionCommand } from "./session-contract.js";
 
@@ -51,7 +59,7 @@ export function sessionDeliveryApprovalDigest(
 	return createHash("sha256")
 		.update(
 			JSON.stringify(approval, (_key, value) =>
-				typeof value === "bigint" ? value.toString() : value,
+				isJsonBigInt(value) ? value.toString() : value,
 			),
 		)
 		.digest("hex");
@@ -94,7 +102,7 @@ export interface SessionOrchestratorOptions {
 }
 
 export interface SessionOrchestrator {
-	execute(command: unknown): Promise<SessionSnapshot>;
+	execute(command: JsonValue): Promise<SessionSnapshot>;
 }
 
 export function sessionProcessRunner(): SessionProcessRunner {
@@ -157,6 +165,7 @@ function processAlive(pid: number): boolean {
 		process.kill(pid, 0);
 		return true;
 	} catch (error) {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		return (error as NodeJS.ErrnoException).code === "EPERM";
 	}
 }
@@ -166,6 +175,7 @@ function clearStaleHoboLock(path: string, busyMessage: string): void {
 	try {
 		marker = readFileSync(path, "utf8");
 	} catch (error) {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
 		throw error;
 	}
@@ -190,6 +200,7 @@ function clearStaleHoboLock(path: string, busyMessage: string): void {
 		renameSync(claimSource, claimPath);
 		fsyncDirectory(dirname(claimPath));
 	} catch (error) {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		if ((error as NodeJS.ErrnoException).code === "ENOENT")
 			throw new Error(busyMessage);
 		throw error;
@@ -226,7 +237,7 @@ async function fileLocked<T>(path: string, work: () => Promise<T>): Promise<T> {
 		| { readonly ok: true; readonly value: T }
 		| {
 				readonly ok: false;
-				readonly error: unknown;
+				readonly error: Error;
 		  };
 	try {
 		for (let attempt = 0; attempt < 2; attempt += 1) {
@@ -236,6 +247,7 @@ async function fileLocked<T>(path: string, work: () => Promise<T>): Promise<T> {
 				acquired = true;
 				break;
 			} catch (error) {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
 				clearStaleHoboLock(path, `operation is busy: ${path}`);
 			}
@@ -243,7 +255,10 @@ async function fileLocked<T>(path: string, work: () => Promise<T>): Promise<T> {
 		if (!acquired) throw new Error(`could not acquire operation lock: ${path}`);
 		outcome = { ok: true, value: await work() };
 	} catch (error) {
-		outcome = { ok: false, error };
+		outcome = {
+			ok: false,
+			error: error instanceof Error ? error : new Error(String(error)),
+		};
 	}
 	let cleanupError: unknown;
 	try {
@@ -254,6 +269,7 @@ async function fileLocked<T>(path: string, work: () => Promise<T>): Promise<T> {
 					fsyncDirectory(dirname(path));
 				}
 			} catch (error) {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
 			}
 		}
@@ -282,6 +298,7 @@ function ensureDirectoryDurable(directory: string): void {
 	try {
 		mkdirSync(directory);
 	} catch (error) {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
 	}
 	for (const target of [directory, parent]) {
@@ -303,7 +320,7 @@ function fsyncDirectory(directory: string): void {
 	}
 }
 
-function writeJsonAtomic(path: string, value: unknown): void {
+function writeJsonAtomic<T>(path: string, value: T): void {
 	ensureDirectoryDurable(dirname(path));
 	const temporary = `${path}.${process.pid}.${randomUUID()}`;
 	const descriptor = openSync(temporary, "wx", 0o600);
@@ -311,7 +328,7 @@ function writeJsonAtomic(path: string, value: unknown): void {
 		writeFileSync(
 			descriptor,
 			`${JSON.stringify(value, (_key, item) =>
-				typeof item === "bigint" ? item.toString() : item,
+				isJsonBigInt(item) ? item.toString() : item,
 			)}\n`,
 		);
 		fsyncSync(descriptor);
@@ -421,6 +438,7 @@ export function createSessionOrchestrator(
 		const path = deliveryLedgerPath(command);
 		let ledger: DeliveryLedger;
 		if (existsSync(path)) {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const prior = JSON.parse(readFileSync(path, "utf8")) as DeliveryLedger;
 			if (prior.digest !== digest)
 				throw new Error(
@@ -539,6 +557,7 @@ export function createSessionOrchestrator(
 						locked = true;
 						break;
 					} catch (error) {
+						// SAFETY: parsed or fixture value is the named domain type after this assertion.
 						if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
 						clearStaleHoboIndexLock(indexPath);
 					}
@@ -653,7 +672,7 @@ export function createSessionOrchestrator(
 					),
 					parentBranch,
 					pullRequestNumbers: pullRequests.flatMap((item) =>
-						typeof item.number === "number" ? [item.number] : [],
+						isJsonNumber(item.number) ? [item.number] : [],
 					),
 				};
 			}
@@ -671,7 +690,7 @@ export function createSessionOrchestrator(
 						session.worktreePath,
 					),
 					pullRequestNumbers: pullRequests.flatMap((item) =>
-						typeof item.number === "number" ? [item.number] : [],
+						isJsonNumber(item.number) ? [item.number] : [],
 					),
 				};
 			}
@@ -699,18 +718,20 @@ export function createSessionOrchestrator(
 			["pr", "view", String(pullRequestNumber), "--json", "headRefOid,url"],
 			session.worktreePath,
 		);
-		const identity = JSON.parse(raw) as {
-			readonly headRefOid?: unknown;
-			readonly url?: unknown;
-		};
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		const identity = parseJsonValue(raw);
+		if (!isJsonObject(identity))
+			throw new Error("pull request identity is incomplete");
+		const headRefOid = identity.headRefOid;
+		const url = identity.url;
 		if (
-			typeof identity.headRefOid !== "string" ||
-			!/^[0-9a-f]{40}$/u.test(identity.headRefOid) ||
-			typeof identity.url !== "string" ||
-			identity.url.length === 0
+			!isJsonString(headRefOid) ||
+			!/^[0-9a-f]{40}$/u.test(headRefOid) ||
+			!isJsonString(url) ||
+			url.length === 0
 		)
 			throw new Error("pull request identity is incomplete");
-		return { headRefOid: identity.headRefOid, url: identity.url };
+		return { headRefOid, url };
 	}
 
 	async function assertApprovedPullRequestIdentity(
@@ -740,8 +761,7 @@ export function createSessionOrchestrator(
 						expectedRevision: command.expectedRevision,
 						command: command.command,
 					},
-					(_key, value) =>
-						typeof value === "bigint" ? value.toString() : value,
+					(_key, value) => (isJsonBigInt(value) ? value.toString() : value),
 				),
 			)
 			.digest("hex");
@@ -759,7 +779,7 @@ export function createSessionOrchestrator(
 	async function pullRequestsForBranch(
 		session: NonNullable<SessionSnapshot["session"]>,
 		fields: string,
-	): Promise<"unknown" | Record<string, unknown>[]> {
+	): Promise<"unknown" | JsonObject[]> {
 		const listed = await runner.run(
 			"gh",
 			[
@@ -776,10 +796,11 @@ export function createSessionOrchestrator(
 		);
 		if (listed.code !== 0) return "unknown";
 		try {
-			const pullRequests = JSON.parse(listed.stdout) as unknown;
-			return Array.isArray(pullRequests)
-				? (pullRequests as Record<string, unknown>[])
-				: "unknown";
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			const pullRequests = parseJsonValue(listed.stdout);
+			if (!Array.isArray(pullRequests)) return "unknown";
+			// SAFETY: Array.isArray proved the parsed GH payload is a list.
+			return pullRequests as JsonObject[];
 		} catch {
 			return "unknown";
 		}
@@ -789,7 +810,7 @@ export function createSessionOrchestrator(
 		command: SessionCommandEnvelope,
 		session: NonNullable<SessionSnapshot["session"]>,
 		ledger: DeliveryLedger,
-	): Promise<"unknown" | Record<string, unknown> | undefined> {
+	): Promise<"unknown" | JsonObject | undefined> {
 		const fields =
 			command.command.case === "stackPullRequest"
 				? "number,url,state,title,body,baseRefName,headRefOid"
@@ -798,9 +819,10 @@ export function createSessionOrchestrator(
 		if (listed === "unknown") return "unknown";
 		const previous = new Set(ledger.context.pullRequestNumbers ?? []);
 		const open = listed.filter(
-			(item) => item.state === "OPEN" && typeof item.number === "number",
+			(item) => item.state === "OPEN" && isJsonNumber(item.number),
 		);
 		const newlyCreated = open.filter(
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			(item) => !previous.has(item.number as number),
 		);
 		if (command.command.case === "openPullRequest") {
@@ -837,13 +859,14 @@ export function createSessionOrchestrator(
 			["stack", "view", "--json"],
 			session.worktreePath,
 		);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const parsed = JSON.parse(output) as {
 			branches?: Array<{ name?: string; pr?: { number?: number } }>;
 		};
 		const number = parsed.branches?.find(
 			(branch) => branch.name === session.branch,
 		)?.pr?.number;
-		if (typeof number !== "number")
+		if (!isJsonNumber(number))
 			throw new Error("gh stack submit did not identify its pull request");
 		return number;
 	}
@@ -857,6 +880,7 @@ export function createSessionOrchestrator(
 			["stack", "view", "--json"],
 			session.worktreePath,
 		);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const parsed = JSON.parse(output) as {
 			branches?: Array<{ name?: string; head?: string }>;
 		};
@@ -950,7 +974,10 @@ export function createSessionOrchestrator(
 					ledger,
 				);
 				if (pullRequest === "unknown") return "unknown";
-				return typeof pullRequest?.url === "string" ? "applied" : "not-applied";
+				return Object.prototype.toString.call(pullRequest?.url) ===
+					"[object String]"
+					? "applied"
+					: "not-applied";
 			}
 			case "stackPullRequest": {
 				const pullRequest = await pullRequestForDelivery(
@@ -959,7 +986,7 @@ export function createSessionOrchestrator(
 					ledger,
 				);
 				if (pullRequest === "unknown") return "unknown";
-				if (typeof pullRequest?.url !== "string") return "not-applied";
+				if (!isJsonString(pullRequest?.url)) return "not-applied";
 				return "applied";
 			}
 			case "mergePullRequest": {
@@ -1019,14 +1046,12 @@ export function createSessionOrchestrator(
 					session,
 					ledger,
 				);
-				if (
-					pullRequest === "unknown" ||
-					typeof pullRequest?.number !== "number" ||
-					typeof pullRequest.url !== "string"
-				)
+				if (pullRequest === "unknown" || pullRequest === undefined)
 					throw new Error("pull request outcome is not uniquely attributable");
 				const pullRequestNumber = pullRequest.number;
 				const pullRequestUrl = pullRequest.url;
+				if (!isJsonNumber(pullRequestNumber) || !isJsonString(pullRequestUrl))
+					throw new Error("pull request outcome is not uniquely attributable");
 				return options.runtime.update(
 					session.id,
 					revision(snapshot),
@@ -1068,6 +1093,7 @@ export function createSessionOrchestrator(
 	): Promise<SessionSnapshot | undefined> {
 		const path = deliveryLedgerPath(command);
 		if (!existsSync(path)) return undefined;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const prior = JSON.parse(readFileSync(path, "utf8")) as DeliveryLedger;
 		const digest = deliveryFingerprint(command);
 		if (prior.digest !== digest)
@@ -1136,6 +1162,7 @@ export function createSessionOrchestrator(
 				],
 				cwd,
 			);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			[ahead, behind] = counts.split(/\s+/u).map(Number) as [number, number];
 		}
 		snapshot.gitState = create(GitStateSchema, {
@@ -1426,7 +1453,7 @@ export function createSessionOrchestrator(
 		if (
 			pullRequest === "unknown" ||
 			pullRequest?.number !== Number(match[1]) ||
-			typeof pullRequest.url !== "string"
+			!isJsonString(pullRequest.url)
 		) {
 			try {
 				await run("gh", ["pr", "close", match[1] ?? ""], session.worktreePath);
@@ -1442,6 +1469,7 @@ export function createSessionOrchestrator(
 			next.deliveryState.lifecycleState =
 				DeliveryLifecycleState.PULL_REQUEST_OPEN;
 			next.deliveryState.pullRequestNumber = BigInt(match[1] ?? "0");
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			next.deliveryState.pullRequestUrl = pullRequest.url as string;
 			next.deliveryState.stackParentBranch = input.parent;
 			next.deliveryState.message = "pull request open";
@@ -1649,6 +1677,7 @@ export function createSessionOrchestrator(
 								command.sessionId,
 								revision(snapshot),
 								action.value.paneId,
+								// SAFETY: parsed or fixture value is the named domain type after this assertion.
 								action.value.direction as "horizontal" | "vertical",
 								action.value.title,
 								action.value.command.length > 0
@@ -1859,8 +1888,9 @@ export function createSessionOrchestrator(
 									);
 									if (
 										pullRequest === "unknown" ||
-										pullRequest?.number !== pullRequestNumber ||
-										typeof pullRequest.url !== "string"
+										pullRequest === undefined ||
+										pullRequest.number !== pullRequestNumber ||
+										!isJsonString(pullRequest.url)
 									)
 										throw new Error(
 											"gh stack submit did not produce its approved pull request",

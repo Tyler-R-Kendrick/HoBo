@@ -82,16 +82,16 @@ export async function startCodeSession(
 		hoboHome: options.hoboHome,
 		...(options.stationId !== undefined
 			? { stationId: options.stationId }
-			: {}),
+			: undefined),
 		autoInitStation: options.autoInitStation !== false,
-		...(options.tenant !== undefined ? { tenant: options.tenant } : {}),
+		...(options.tenant !== undefined ? { tenant: options.tenant } : undefined),
 		features,
 		...(options.routingPolicy !== undefined
 			? { routingPolicy: options.routingPolicy }
-			: {}),
+			: undefined),
 		...(options.pinnedProvider !== undefined
 			? { pinnedProvider: options.pinnedProvider }
-			: {}),
+			: undefined),
 	});
 
 	if (!platform.features.harnessEnabled) {
@@ -188,7 +188,7 @@ export async function startCodeSession(
 		budget,
 		remote,
 		dogfood,
-		...(sidecars ? { sidecars } : {}),
+		...(sidecars ? { sidecars } : undefined),
 		status() {
 			return buildMultiplexerStatus([...panes.values()], {
 				remoteReady: true,

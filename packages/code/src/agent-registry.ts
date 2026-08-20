@@ -39,14 +39,25 @@ export function getKnownAgents(): readonly KnownAgent[] {
 }
 
 export const KNOWN_AGENTS: readonly KnownAgent[] = new Proxy(
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	[] as KnownAgent[],
 	{
 		get(_target, prop) {
 			const list = getKnownAgents();
-			const value = Reflect.get(list, prop, list);
-			return typeof value === "function"
-				? (value as (...args: unknown[]) => unknown).bind(list)
-				: value;
+			if (prop === "length") return list.length;
+			if (prop === Symbol.iterator) return list[Symbol.iterator].bind(list);
+			const index = Number(prop);
+			if (Number.isInteger(index) && String(index) === String(prop)) {
+				return list[index];
+			}
+			const descriptor = Object.getOwnPropertyDescriptor(Array.prototype, prop);
+			if (descriptor?.value instanceof Function) {
+				return descriptor.value.bind(list);
+			}
+			if (descriptor?.get instanceof Function) {
+				return descriptor.get.call(list);
+			}
+			return undefined;
 		},
 	},
 );

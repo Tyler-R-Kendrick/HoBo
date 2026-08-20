@@ -1,3 +1,9 @@
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 // public-contract: persisted browser recording evidence schema id.
 export const BROWSER_RECORDING_SCHEMA =
 	"hobo.code.browser-recording/v1" as const;
@@ -68,7 +74,7 @@ export interface CompletedBrowserRecording {
 
 /** Parse browser-produced recording evidence before the host stores or derives from it. */
 export function parseBrowserRecording(
-	input: unknown,
+	input: JsonValue | undefined,
 ): CompletedBrowserRecording {
 	const value = object(input, "recording");
 	if (value.schemaVersion !== BROWSER_RECORDING_SCHEMA)
@@ -104,7 +110,10 @@ export function parseBrowserRecording(
 	});
 }
 
-function parseAction(value: unknown, index: number): BrowserRecordingAction {
+function parseAction(
+	value: JsonValue | undefined,
+	index: number,
+): BrowserRecordingAction {
 	const action = object(value, `action ${index}`);
 	const common = {
 		sequence: integer(action.sequence, "action sequence", 1, 20_000),
@@ -134,7 +143,7 @@ function parseAction(value: unknown, index: number): BrowserRecordingAction {
 			...common,
 			type: "press",
 			key: text(action.key, "key", 128),
-			...(action.target ? { target: parseTarget(action.target) } : {}),
+			...(action.target ? { target: parseTarget(action.target) } : undefined),
 		});
 	if (action.type === "fill") {
 		const parameter = object(action.value, "fill value");
@@ -153,8 +162,13 @@ function parseAction(value: unknown, index: number): BrowserRecordingAction {
 	throw new TypeError("recording action type is invalid");
 }
 
+function titleOf(value: JsonValue | undefined): string {
+	if (!isJsonString(value)) return "";
+	return `${value}`.slice(0, 512);
+}
+
 function parseCheckpoint(
-	value: unknown,
+	value: JsonValue | undefined,
 	index: number,
 ): BrowserRecordingCheckpoint {
 	const checkpoint = object(value, `checkpoint ${index}`);
@@ -167,41 +181,38 @@ function parseCheckpoint(
 			20_000,
 		),
 		path: relativePath(checkpoint.path),
-		title:
-			typeof checkpoint.title === "string"
-				? checkpoint.title.slice(0, 512)
-				: "",
+		title: titleOf(checkpoint.title),
 	});
 }
 
-function parseTarget(value: unknown): BrowserRecordingTarget {
+function parseTarget(value: JsonValue | undefined): BrowserRecordingTarget {
 	const source = object(value, "recording target");
 	const target = Object.freeze({
-		...(typeof source.role === "string"
+		...(isJsonString(source.role)
 			? { role: text(source.role, "target role", 64) }
-			: {}),
-		...(typeof source.name === "string"
+			: undefined),
+		...(isJsonString(source.name)
 			? { name: text(source.name, "target name", 512) }
-			: {}),
-		...(typeof source.label === "string"
+			: undefined),
+		...(isJsonString(source.label)
 			? { label: text(source.label, "target label", 512) }
-			: {}),
-		...(typeof source.testId === "string"
+			: undefined),
+		...(isJsonString(source.testId)
 			? { testId: text(source.testId, "target test id", 512) }
-			: {}),
-		...(typeof source.stableId === "string"
+			: undefined),
+		...(isJsonString(source.stableId)
 			? { stableId: text(source.stableId, "target id", 512) }
-			: {}),
-		...(typeof source.css === "string"
+			: undefined),
+		...(isJsonString(source.css)
 			? { css: text(source.css, "target CSS", 2_048) }
-			: {}),
+			: undefined),
 	});
 	if (Object.keys(target).length === 0)
 		throw new TypeError("recording target is empty");
 	return target;
 }
 
-function sanitizedUrl(value: unknown, label: string): string {
+function sanitizedUrl(value: JsonValue | undefined, label: string): string {
 	let url: URL;
 	try {
 		url = new URL(text(value, label, 4_096));
@@ -212,47 +223,55 @@ function sanitizedUrl(value: unknown, label: string): string {
 		throw new TypeError(`${label} must use HTTP(S)`);
 	url.username = "";
 	url.password = "";
-	for (const key of [...url.searchParams.keys()])
+	for (const key of Array.from(url.searchParams.keys()))
 		if (/token|key|secret|password|auth/iu.test(key))
 			url.searchParams.set(key, "[redacted]");
 	return url.href;
 }
-function relativePath(value: unknown): string {
+function relativePath(value: JsonValue | undefined): string {
 	const result = text(value, "recording path", 4_096);
 	if (!result.startsWith("/"))
 		throw new TypeError("recording path must be relative");
 	return result;
 }
-function object(value: unknown, label: string): Record<string, unknown> {
-	if (!value || typeof value !== "object" || Array.isArray(value))
+function object(value: JsonValue | undefined, label: string): JsonObject {
+	if (!value || !isJsonObject(value) || Array.isArray(value))
 		throw new TypeError(`${label} must be an object`);
-	return value as Record<string, unknown>;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	return value as JsonObject;
 }
 function array(
-	value: unknown,
+	value: JsonValue | undefined,
 	label: string,
 	maximum: number,
-): readonly unknown[] {
+): readonly JsonValue[] {
 	if (!Array.isArray(value) || value.length > maximum)
 		throw new TypeError(`${label} is invalid`);
 	return value;
 }
-function text(value: unknown, label: string, maximum: number): string {
-	if (typeof value !== "string" || !value.trim() || value.length > maximum)
+function text(
+	value: JsonValue | undefined,
+	label: string,
+	maximum: number,
+): string {
+	if (!isJsonString(value) || !value.trim() || value.length > maximum)
 		throw new TypeError(`${label} is invalid`);
 	return value;
 }
 function integer(
-	value: unknown,
+	value: JsonValue | undefined,
 	label: string,
 	minimum: number,
 	maximum: number,
 ): number {
 	if (
 		!Number.isInteger(value) ||
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		(value as number) < minimum ||
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		(value as number) > maximum
 	)
 		throw new TypeError(`${label} is invalid`);
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return value as number;
 }

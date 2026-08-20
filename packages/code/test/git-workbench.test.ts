@@ -130,6 +130,7 @@ describe("Git workbench", () => {
 
 	it("reads bounded local branches, commit graph rows, and stashes", async () => {
 		const calls: readonly string[][] = [];
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const mutableCalls = calls as string[][];
 		const runner: SessionProcessRunner = {
 			async run(_command, args) {
@@ -284,6 +285,7 @@ describe("Git workbench", () => {
 		]);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("rejects a selected path that is not reported as changed", async () => {
 		const calls: string[][] = [];
 		const runner: SessionProcessRunner = {

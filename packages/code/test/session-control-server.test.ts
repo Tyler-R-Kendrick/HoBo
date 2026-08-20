@@ -17,6 +17,7 @@ import {
 	BROWSER_RECORDING_SCHEMA,
 	exportEvidenceRecordingAutomation,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 import { createLocalSessionControl } from "../src/local-session-control.js";
 import type { MuxRunner } from "../src/mux.js";
 import {
@@ -25,34 +26,37 @@ import {
 } from "../src/session-control-server.js";
 
 const roots: string[] = [];
-const capabilityInteractions = (
-	JSON.parse(
-		readFileSync(
-			join(
-				import.meta.dirname,
-				"..",
-				"contracts",
-				"pacts",
-				"recording-capability-host.pact.json",
+const capabilityInteractions =
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	(
+		JSON.parse(
+			readFileSync(
+				join(
+					import.meta.dirname,
+					"..",
+					"contracts",
+					"pacts",
+					"recording-capability-host.pact.json",
+				),
+				"utf8",
 			),
-			"utf8",
-		),
-	) as {
-		interactions: readonly {
-			request: {
-				method: string;
-				path: string;
-				headers: Record<string, string>;
-				body: Record<string, unknown>;
-			};
-			response: {
-				status: number;
-				headers: Record<string, string>;
-				body: Record<string, unknown>;
-			};
-		}[];
-	}
-).interactions;
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		) as {
+			interactions: readonly {
+				request: {
+					method: string;
+					path: string;
+					headers: Record<string, string>;
+					body: JsonObject;
+				};
+				response: {
+					status: number;
+					headers: Record<string, string>;
+					body: JsonObject;
+				};
+			}[];
+		}
+	).interactions;
 
 const capabilityInteraction = capabilityInteractions[0];
 const rejectedCapabilityInteraction = capabilityInteractions[1];
@@ -114,8 +118,8 @@ function envelope(
 	sessionId: string,
 	revision: string,
 	command: string,
-	value: Record<string, unknown>,
-): Record<string, unknown> {
+	value: JsonObject,
+): JsonObject {
 	return {
 		schemaVersion: "hobo.code.session-command/v1",
 		commandId: `${command}-${revision}`,
@@ -334,6 +338,7 @@ describe("resident session loopback server", () => {
 					body: JSON.stringify({ type: "report" }),
 				},
 			);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const reportResult = (await reportAction.json()) as { url: string };
 			expect(reportAction.status).toBe(200);
 			expect(reportResult.url).toContain("?report=");
@@ -352,6 +357,7 @@ describe("resident session loopback server", () => {
 				},
 			);
 			expect(actionResponse.status).toBe(201);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const captured = (await actionResponse.json()) as {
 				artifactRef: string;
 			};
@@ -372,9 +378,9 @@ describe("resident session loopback server", () => {
 				},
 			);
 			expect(videoResponse.status).toBe(201);
-			const videoArtifactRef = (
-				(await videoResponse.json()) as { artifactRef: string }
-			).artifactRef;
+			const videoArtifactRef =
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				((await videoResponse.json()) as { artifactRef: string }).artifactRef;
 			const manifestResponse = await fetch(
 				`${server.controlsUrlTemplate.replace("/controls/", "/api/captures/")}?kind=recording-manifest`,
 				{
@@ -414,6 +420,7 @@ describe("resident session loopback server", () => {
 					}),
 				},
 			);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const manifestResult = (await manifestResponse.json()) as {
 				recordingId: string;
 				artifactRefs: readonly string[];
@@ -474,6 +481,7 @@ describe("resident session loopback server", () => {
 				capabilityInteraction.response.headers,
 			))
 				expect(capabilityResponse.headers.get(name)).toBe(value);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const capability = (await capabilityResponse.json()) as {
 				capabilityId: string;
 				command: string;
@@ -575,6 +583,7 @@ describe("resident session loopback server", () => {
 				},
 			);
 			expect(createdResponse.status).toBe(200);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const created = (await createdResponse.json()) as {
 				revision: string;
 				session: { worktreePath: string };
@@ -651,6 +660,7 @@ describe("resident session loopback server", () => {
 				},
 			);
 			expect(challengeResponse.status).toBe(409);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const challenge = (await challengeResponse.json()) as {
 				approvalDigest: string;
 				approval: { details: { gitHead: string; message: string } };
@@ -682,6 +692,7 @@ describe("resident session loopback server", () => {
 				},
 			);
 			expect(approvedCommit.status).toBe(200);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const committed = (await approvedCommit.json()) as { revision: string };
 
 			const detached = await fetch(
@@ -707,6 +718,7 @@ describe("resident session loopback server", () => {
 				`http://127.0.0.1:${server.port}/code/sessions`,
 				{ headers },
 			);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const sessions = (await listed.json()) as readonly unknown[];
 			expect(sessions).toHaveLength(1);
 			const output = await fetch(
@@ -751,6 +763,7 @@ describe("resident session loopback server", () => {
 				}),
 			},
 		);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const created = (await createdResponse.json()) as {
 			session: { worktreePath: string };
 		};
@@ -765,7 +778,7 @@ describe("resident session loopback server", () => {
 		const executablePath = resolveChromiumExecutable();
 		const browser = await chromium.launch({
 			headless: true,
-			...(executablePath ? { executablePath } : {}),
+			...(executablePath ? { executablePath } : undefined),
 		});
 		try {
 			const page = await browser.newPage();

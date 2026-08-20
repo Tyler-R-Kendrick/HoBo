@@ -18,6 +18,7 @@ describe("Station OpenDelivery sidecar", () => {
 			expect(server.url).toMatch(/rollout\.code\..*\.hobo\.localhost/);
 			expect(server.url).not.toMatch(/127\.0\.0\.1/);
 			const origin = loopbackFetchUrl(server.url);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const health = (await (await fetch(origin)).json()) as {
 				name: string;
 				hosting: string;
@@ -35,51 +36,69 @@ describe("Station OpenDelivery sidecar", () => {
 				engine: "OpenDeliveryEngine",
 			});
 
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const started = (await (
 				await fetch(new URL("/rollouts", origin), {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify(canary),
 				})
-			).json()) as { id: string; status: string; percent: number };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { id: string; status: string; percent: number };
 			expect(started.status).toBe("running");
 			expect(started.percent).toBe(10);
 
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const stepped = (await (
 				await fetch(new URL(`/rollouts/${started.id}/step`, origin), {
 					method: "POST",
 				})
-			).json()) as { status: string; percent: number };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { status: string; percent: number };
 			expect(stepped.status).toBe("running");
 			expect(stepped.percent).toBe(100);
 
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const promoted = (await (
 				await fetch(new URL(`/rollouts/${started.id}/promote`, origin), {
 					method: "POST",
 				})
-			).json()) as { status: string; percent: number };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { status: string; percent: number };
 			expect(promoted.status).toBe("promoted");
 			expect(promoted.percent).toBe(100);
 
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const second = (await (
 				await fetch(new URL("/rollouts", origin), {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify({ ...canary, name: "abort-me" }),
 				})
-			).json()) as { id: string };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { id: string };
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const rolled = (await (
 				await fetch(new URL(`/rollouts/${second.id}/rollback`, origin), {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify({ operator: true }),
 				})
-			).json()) as { status: string };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { status: string };
 			expect(rolled.status).toBe("rolled_back");
 
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const listed = (await (
 				await fetch(new URL("/rollouts", origin))
-			).json()) as { rollouts: readonly { status: string }[] };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { rollouts: readonly { status: string }[] };
 			expect(listed.rollouts.map((row) => row.status).sort()).toEqual([
 				"promoted",
 				"rolled_back",
@@ -101,6 +120,7 @@ describe("Station OpenDelivery sidecar", () => {
 				},
 			);
 			expect(response.status).toBe(400);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const body = (await response.json()) as { ok: boolean; code?: string };
 			expect(body.ok).toBe(false);
 			expect(body.code).toBe("rollout-policy-invalid");

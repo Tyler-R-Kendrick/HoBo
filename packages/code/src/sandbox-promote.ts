@@ -207,10 +207,7 @@ export function assertMediatedOnly(agentMayWriteCanonical: boolean): void {
 	}
 }
 
-export function runPromotionGates(gates: readonly PromotionGate[]): {
-	ok: boolean;
-	failed: readonly PromotionGate[];
-} {
+export function runPromotionGates(gates: readonly PromotionGate[]) {
 	const byName = new Map(gates.map((g) => [g.name, g]));
 	const failed: PromotionGate[] = [];
 	for (const required of REQUIRED_GATES) {
@@ -345,10 +342,7 @@ export const EXTERNAL_TOKEN_TOOLS = [
 	"serena",
 ] as const;
 
-export function assertNoVendoredTokenTools(projectRoot: string): {
-	ok: boolean;
-	found: readonly string[];
-} {
+export function assertNoVendoredTokenTools(projectRoot: string) {
 	const found: string[] = [];
 	for (const tool of EXTERNAL_TOKEN_TOOLS) {
 		const candidates = [

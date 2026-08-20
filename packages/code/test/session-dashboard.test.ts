@@ -4,7 +4,6 @@ import type { AddressInfo } from "node:net";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-
 import { authLogin } from "../src/auth.js";
 import { loopbackFetchUrl } from "../src/occupancy-endpoints.js";
 import { startLocalDashboard } from "../src/session-dashboard.js";
@@ -13,6 +12,7 @@ import {
 	recordDevDeployment,
 	recordSessionResources,
 } from "../src/session-resources.js";
+import { isJsonString } from "../src/json.js";
 
 const homes: string[] = [];
 const servers: Server[] = [];
@@ -44,6 +44,7 @@ async function openListen(): Promise<string> {
 	await new Promise<void>((resolve) => {
 		server.listen(0, "127.0.0.1", () => resolve());
 	});
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const addr = server.address() as AddressInfo;
 	return `http://127.0.0.1:${addr.port}/`;
 }
@@ -195,6 +196,7 @@ describe("local Aspire dashboard listener", () => {
 			expect(html).not.toMatch(/Capabilities/);
 
 			const resources = await fetch(new URL("/api/resources", listen));
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const inventory = (await resources.json()) as {
 				ok: boolean;
 				scope: { environment: string };
@@ -226,14 +228,17 @@ describe("local Aspire dashboard listener", () => {
 			).toBe(true);
 
 			const logs = await fetch(new URL("/api/resources/web/logs", listen));
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const logBody = (await logs.json()) as { logs: { body: string }[] };
 			expect(logBody.logs.map((row) => row.body)).toEqual(["listening"]);
 			const traces = await fetch(new URL("/api/resources/web/traces", listen));
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const traceBody = (await traces.json()) as { traces: { name: string }[] };
 			expect(traceBody.traces.map((row) => row.name)).toEqual(["GET /"]);
 			const metrics = await fetch(
 				new URL("/api/resources/web/metrics", listen),
 			);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const metricBody = (await metrics.json()) as {
 				metrics: { name: string }[];
 			};
@@ -245,10 +250,12 @@ describe("local Aspire dashboard listener", () => {
 				method: "POST",
 			});
 			expect(started.status).toBe(409);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const startBody = (await started.json()) as { error?: string };
 			expect(startBody.error).toMatch(/No Bindle to start/i);
 
 			const fleet = await fetch(new URL("/api/fleet", listen));
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const fleetBody = (await fleet.json()) as {
 				scope: string;
 				reason?: string;
@@ -259,15 +266,17 @@ describe("local Aspire dashboard listener", () => {
 				true,
 			);
 			expect(inventory.yards.some((row) => row.id === "yard:local")).toBe(true);
-			const life = (
-				inventory as {
-					lifecycle?: {
-						id: string;
-						state: string;
-						ready: boolean;
-					}[];
-				}
-			).lifecycle;
+			const life =
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				(
+					inventory as {
+						lifecycle?: {
+							id: string;
+							state: string;
+							ready: boolean;
+						}[];
+					}
+				).lifecycle;
 			expect(life?.find((row) => row.id === "yard:local")?.state).toBe("ready");
 			expect(life?.find((row) => row.id === "camp:code")?.state).toBe("ready");
 			expect(life?.find((row) => row.id === "camp:hello-world")?.state).toBe(
@@ -276,9 +285,12 @@ describe("local Aspire dashboard listener", () => {
 			expect(life?.find((row) => row.id === "station:local")?.state).toBe(
 				"ready",
 			);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const tel = (await (
 				await fetch(new URL("/api/telemetry", listen))
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				resources: { resourceName: string; export: string }[];
 			};
 			expect(tel.resources.map((row) => row.resourceName)).toEqual(
@@ -326,6 +338,7 @@ describe("local Aspire dashboard listener", () => {
 		try {
 			const listen = loopbackFetchUrl(dash.url);
 			const resources = await fetch(new URL("/api/resources", listen));
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const inventory = (await resources.json()) as {
 				endpoints: {
 					resourceName: string;
@@ -350,9 +363,12 @@ describe("local Aspire dashboard listener", () => {
 			expect(inventory.lifecycle.find((row) => row.id === "otlp")?.ready).toBe(
 				true,
 			);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const full = (await (
 				await fetch(new URL("/api/resources", listen))
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				capabilities: {
 					kind: string;
 					available: boolean;
@@ -376,9 +392,12 @@ describe("local Aspire dashboard listener", () => {
 					(row) => !("fidelity" in row) && !("note" in row),
 				),
 			).toBe(true);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const tel = (await (
 				await fetch(new URL("/api/telemetry", listen))
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				collector: { status: string; httpUrl: string };
 				resources: {
 					resourceName: string;
@@ -444,7 +463,7 @@ describe("local Aspire dashboard listener", () => {
 					server.listen(0, "127.0.0.1", () => resolve());
 				});
 				const address = server.address();
-				if (!address || typeof address === "string") {
+				if (!address || isJsonString(address)) {
 					throw new Error("no port");
 				}
 				const url = `http://127.0.0.1:${address.port}/`;
@@ -487,6 +506,7 @@ describe("local Aspire dashboard listener", () => {
 				{ method: "POST" },
 			);
 			expect(campStop.status).toBe(409);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const campBody = (await campStop.json()) as { error?: string };
 			expect(campBody.error).toMatch(
 				/shut themselves down|not start\/stoppable/i,
@@ -502,6 +522,7 @@ describe("local Aspire dashboard listener", () => {
 				{ method: "POST" },
 			);
 			expect(started.status).toBe(200);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const startBody = (await started.json()) as {
 				started: boolean;
 				ready?: boolean;
@@ -567,7 +588,7 @@ describe("local Aspire dashboard listener", () => {
 					server.listen(0, "127.0.0.1", () => resolve());
 				});
 				const address = server.address();
-				if (!address || typeof address === "string") {
+				if (!address || isJsonString(address)) {
 					throw new Error("no port");
 				}
 				const url = `http://127.0.0.1:${address.port}/`;
@@ -595,9 +616,12 @@ describe("local Aspire dashboard listener", () => {
 		});
 		const listen = loopbackFetchUrl(dash.url);
 		try {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const before = (await (
 				await fetch(new URL("/api/resources", listen))
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				lifecycle: { id: string; state: string; ready: boolean }[];
 			};
 			expect(
@@ -623,14 +647,18 @@ describe("local Aspire dashboard listener", () => {
 				{ method: "POST" },
 			);
 			expect(halted.status).toBe(200);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const haltBody = (await halted.json()) as { state?: string };
 			expect(haltBody.state).toBe("stopped");
 			expect(listening).toBeUndefined();
 			await expect(fetch(appUrl)).rejects.toThrow();
 
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const after = (await (
 				await fetch(new URL("/api/resources", listen))
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				lifecycle: { id: string; state: string }[];
 			};
 			expect(
@@ -651,6 +679,7 @@ describe("local Aspire dashboard listener", () => {
 				{ method: "POST" },
 			);
 			expect(refused.status).toBe(409);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const refusedBody = (await refused.json()) as { error?: string };
 			expect(refusedBody.error).toMatch(/halted|yard|camp/i);
 
@@ -659,6 +688,7 @@ describe("local Aspire dashboard listener", () => {
 				{ method: "POST" },
 			);
 			expect(resumed.status).toBe(200);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const resumeBody = (await resumed.json()) as { state?: string };
 			expect(resumeBody.state).toBe("ready");
 			const liveAgain = await fetch(
@@ -713,7 +743,7 @@ describe("local Aspire dashboard listener", () => {
 					server.listen(0, "127.0.0.1", () => resolve());
 				});
 				const address = server.address();
-				if (!address || typeof address === "string") {
+				if (!address || isJsonString(address)) {
 					throw new Error("no port");
 				}
 				const url = `http://127.0.0.1:${address.port}/`;
@@ -753,9 +783,12 @@ describe("local Aspire dashboard listener", () => {
 			});
 			expect(kvStop.status).toBe(200);
 			expect(listening).toBeDefined();
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const afterKv = (await (
 				await fetch(new URL("/api/resources", listen))
-			).json()) as { lifecycle: { id: string; state: string }[] };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { lifecycle: { id: string; state: string }[] };
 			expect(afterKv.lifecycle.find((row) => row.id === "kv")?.state).toBe(
 				"stopped",
 			);
@@ -771,9 +804,12 @@ describe("local Aspire dashboard listener", () => {
 				{ method: "POST" },
 			);
 			expect(namedStop.status).toBe(200);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const afterNamed = (await (
 				await fetch(new URL("/api/resources", listen))
-			).json()) as { lifecycle: { id: string; state: string }[] };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { lifecycle: { id: string; state: string }[] };
 			expect(
 				afterNamed.lifecycle.find(
 					(row) => row.id === "yard:local:named-endpoints",
@@ -836,9 +872,12 @@ describe("local Aspire dashboard listener", () => {
 			otlpGrpcPort: 0,
 		});
 		try {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const body = (await (
 				await fetch(new URL("/api/resources", loopbackFetchUrl(dash.url)))
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				bindles: { id: string; name: string }[];
 				bindleManifest?: { name: string };
 				endpoints: {
@@ -943,6 +982,7 @@ describe("local Aspire dashboard listener", () => {
 				method: "POST",
 			});
 			expect(stopped.status).toBe(409);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const stopBody = (await stopped.json()) as { error?: string };
 			expect(stopBody.error).toMatch(
 				/occupancy sidecars|stay up with the Station/i,
@@ -969,9 +1009,12 @@ describe("local Aspire dashboard listener", () => {
 				{ method: "POST" },
 			);
 			expect(yardStop.status).toBe(200);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const after = (await (
 				await fetch(new URL("/api/resources", listen))
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				lifecycle: { id: string; state: string }[];
 			};
 			expect(

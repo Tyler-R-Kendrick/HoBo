@@ -114,9 +114,7 @@ export async function allocateAgentWorkspaces(
 	// the stale one.
 	const runner =
 		options.runner ??
-		riftRunner(
-			resolveRiftBinary(env, options.bundled ?? undefined)?.path ?? "rift",
-		);
+		riftRunner(resolveRiftBinary(env, options.bundled)?.path ?? "rift");
 
 	if (options.shared) {
 		return {
@@ -131,12 +129,7 @@ export async function allocateAgentWorkspaces(
 		};
 	}
 
-	let capability = await probeRift(
-		workspaceRoot,
-		runner,
-		env,
-		options.bundled ?? undefined,
-	);
+	let capability = await probeRift(workspaceRoot, runner, env, options.bundled);
 	// A sidecar that does not advertise the contract is an older build: it
 	// accepts the same flags and silently mangles the argv, so composing
 	// against it reintroduces the injection it was fixed for. Fall back to the
@@ -190,7 +183,7 @@ export async function allocateAgentWorkspaces(
 									name: agentId,
 								},
 							}
-						: {}),
+						: undefined),
 				});
 				continue;
 			}

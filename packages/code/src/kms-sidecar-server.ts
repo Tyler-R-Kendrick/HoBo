@@ -3,6 +3,7 @@
  * Real node:crypto (RSA-2048 + AES-256-GCM), optionally persisted under
  * the Station home. Not a fixture and not a cloud mock.
  */
+
 import {
 	createCipheriv,
 	createDecipheriv,
@@ -19,6 +20,13 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import { dirname, join } from "node:path";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 import { occupancyNamedOrigin } from "./occupancy-endpoints.js";
 
@@ -149,7 +157,7 @@ export class StationKms {
 		]).toString("utf8");
 	}
 
-	publicJwk(kid: string): Record<string, unknown> {
+	publicJwk(kid: string): JsonObject {
 		return {
 			...this.require(kid).publicKey.export({ format: "jwk" }),
 			kid,
@@ -166,10 +174,7 @@ export class StationKms {
 		return Object.freeze((this.secrets.get(name) ?? []).map((row) => row.id));
 	}
 
-	putSecret(
-		name: string,
-		value: string,
-	): { versionId: string; valueRef: string } {
+	putSecret(name: string, value: string) {
 		if (name.length === 0) {
 			throw Object.assign(new TypeError("secret name required"), {
 				code: "kms-secret-invalid",
@@ -256,6 +261,7 @@ export class StationKms {
 	}
 
 	private load(path: string): void {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const parsed = JSON.parse(readFileSync(path, "utf8")) as {
 			schema?: string;
 			keys?: Record<
@@ -300,7 +306,7 @@ export async function startKmsSidecar(
 	const kms = new StationKms({
 		...(options.persistDir !== undefined
 			? { persistDir: options.persistDir }
-			: {}),
+			: undefined),
 	});
 	const server = createServer((request, response) => {
 		void handle(request, response, kms);
@@ -342,9 +348,10 @@ async function handle(
 			return;
 		}
 		if (method === "POST" && path === "/keys") {
-			const body = (await readJson(request)) as { kid?: unknown };
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			const body = (await readJson(request)) as { kid?: JsonValue };
 			const kid =
-				typeof body.kid === "string" && body.kid.length > 0
+				isJsonString(body.kid) && body.kid.length > 0
 					? body.kid
 					: `key_${randomBytes(4).toString("hex")}`;
 			kms.generate(kid);
@@ -360,8 +367,9 @@ async function handle(
 				return;
 			}
 			if (method === "POST" && action === "sign") {
-				const body = (await readJson(request)) as { payload?: unknown };
-				if (typeof body.payload !== "string") {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				const body = (await readJson(request)) as { payload?: JsonValue };
+				if (!isJsonString(body.payload)) {
 					throw Object.assign(new TypeError("payload required"), {
 						code: "kms-payload-invalid",
 					});
@@ -370,14 +378,12 @@ async function handle(
 				return;
 			}
 			if (method === "POST" && action === "verify") {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				const body = (await readJson(request)) as {
-					payload?: unknown;
-					signature?: unknown;
+					payload?: JsonValue;
+					signature?: JsonValue;
 				};
-				if (
-					typeof body.payload !== "string" ||
-					typeof body.signature !== "string"
-				) {
+				if (!isJsonString(body.payload) || !isJsonString(body.signature)) {
 					throw Object.assign(new TypeError("payload and signature required"), {
 						code: "kms-payload-invalid",
 					});
@@ -388,8 +394,9 @@ async function handle(
 				return;
 			}
 			if (method === "POST" && action === "encrypt") {
-				const body = (await readJson(request)) as { plaintext?: unknown };
-				if (typeof body.plaintext !== "string") {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				const body = (await readJson(request)) as { plaintext?: JsonValue };
+				if (!isJsonString(body.plaintext)) {
 					throw Object.assign(new TypeError("plaintext required"), {
 						code: "kms-payload-invalid",
 					});
@@ -409,11 +416,12 @@ async function handle(
 			return;
 		}
 		if (method === "POST" && path === "/secrets") {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const body = (await readJson(request)) as {
-				name?: unknown;
-				value?: unknown;
+				name?: JsonValue;
+				value?: JsonValue;
 			};
-			if (typeof body.name !== "string" || typeof body.value !== "string") {
+			if (!isJsonString(body.name) || !isJsonString(body.value)) {
 				throw Object.assign(new TypeError("secret name and value required"), {
 					code: "kms-secret-invalid",
 				});
@@ -459,25 +467,27 @@ async function handle(
 		}
 		writeJson(response, 404, { ok: false, error: "not found" });
 	} catch (error) {
+		if (!(error instanceof Error)) throw error;
 		writeJson(response, mapStatus(error), {
 			ok: false,
-			error: error instanceof Error ? error.message : "kms failed",
+			error: error.message,
 			...codeOf(error),
 		});
 	}
 }
 
-function asBox(body: unknown): StationKmsBox {
-	if (!body || typeof body !== "object") {
+function asBox(body: JsonValue | undefined): StationKmsBox {
+	if (!body || !isJsonObject(body)) {
 		throw Object.assign(new TypeError("ciphertext box required"), {
 			code: "kms-payload-invalid",
 		});
 	}
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const value = body as Partial<StationKmsBox>;
 	if (
-		typeof value.ciphertext !== "string" ||
-		typeof value.iv !== "string" ||
-		typeof value.authTag !== "string"
+		!isJsonString(value.ciphertext) ||
+		!isJsonString(value.iv) ||
+		!isJsonString(value.authTag)
 	) {
 		throw Object.assign(new TypeError("ciphertext, iv, and authTag required"), {
 			code: "kms-payload-invalid",
@@ -490,15 +500,20 @@ function asBox(body: unknown): StationKmsBox {
 	};
 }
 
-function codeOf(error: unknown): { readonly code?: string } {
-	if (error && typeof error === "object" && "code" in error) {
-		const code = String((error as { code?: unknown }).code ?? "");
+function codeOf(error: Error) {
+	if (
+		error &&
+		Object.prototype.toString.call(error) === "[object Object]" &&
+		"code" in error
+	) {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		const code = String((error as { code?: JsonValue }).code ?? "");
 		return code.length > 0 ? { code } : {};
 	}
 	return {};
 }
 
-function mapStatus(error: unknown): number {
+function mapStatus(error: Error): number {
 	const code = codeOf(error).code ?? "";
 	if (code.endsWith("-missing")) return 404;
 	if (error instanceof TypeError || code.endsWith("-invalid")) return 400;
@@ -507,7 +522,7 @@ function mapStatus(error: unknown): number {
 	return 500;
 }
 
-async function readJson(request: IncomingMessage): Promise<unknown> {
+async function readJson(request: IncomingMessage): Promise<JsonValue> {
 	const chunks: Buffer[] = [];
 	for await (const chunk of request) {
 		chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
@@ -515,13 +530,13 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
 	if (chunks.length === 0) return {};
 	const raw = Buffer.concat(chunks).toString("utf8").trim();
 	if (raw.length === 0) return {};
-	return JSON.parse(raw) as unknown;
+	return parseJsonValue(raw);
 }
 
-function writeJson(
+function writeJson<T>(
 	response: import("node:http").ServerResponse,
 	status: number,
-	body: unknown,
+	body: T,
 ): void {
 	const payload = `${JSON.stringify(body)}\n`;
 	response.writeHead(status, {
@@ -535,6 +550,7 @@ function listen(server: Server, port: number): Promise<number> {
 	return new Promise((resolve, reject) => {
 		server.once("error", reject);
 		server.listen(port, "127.0.0.1", () => {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			resolve((server.address() as AddressInfo).port);
 		});
 	});

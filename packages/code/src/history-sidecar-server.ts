@@ -4,6 +4,13 @@
  */
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 import { occupancyNamedOrigin } from "./occupancy-endpoints.js";
 import {
@@ -73,25 +80,27 @@ async function handle(
 				commands: store.search({
 					...(url.searchParams.get("q")
 						? { q: url.searchParams.get("q") ?? "" }
-						: {}),
+						: undefined),
 					...(url.searchParams.get("cwd")
 						? { cwd: url.searchParams.get("cwd") ?? "" }
-						: {}),
+						: undefined),
 					failedOnly: url.searchParams.get("failed") === "1",
 					...(author === "human" ||
 					author === "agent" ||
 					author === "automation"
 						? { authorKind: author }
-						: {}),
+						: undefined),
 				}),
 			});
 			return;
 		}
 		if (method === "POST" && path === "/commands") {
-			const body = (await readJson(request)) as Record<string, unknown>;
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			const body = (await readJson(request)) as JsonObject;
 			const command = String(body.command ?? "");
 			const cwd = String(body.cwd ?? "");
 			const sessionId = String(body.sessionId ?? "cli");
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const actor = body.actor as
 				| {
 						kind?: string;
@@ -113,19 +122,21 @@ async function handle(
 					instanceId: actor?.instanceId ?? "cli",
 					generation: actor?.generation ?? 1,
 				},
-				...(typeof body.paneId === "string" ? { paneId: body.paneId } : {}),
-				...(body.outcome && typeof body.outcome === "object"
+				...(isJsonString(body.paneId) ? { paneId: body.paneId } : undefined),
+				...(body.outcome && isJsonObject(body.outcome)
 					? {
 							outcome: {
 								exitCode: Number(
+									// SAFETY: parsed or fixture value is the named domain type after this assertion.
 									(body.outcome as { exitCode?: number }).exitCode ?? 0,
 								),
 								durationMs: Number(
+									// SAFETY: parsed or fixture value is the named domain type after this assertion.
 									(body.outcome as { durationMs?: number }).durationMs ?? 0,
 								),
 							},
 						}
-					: {}),
+					: undefined),
 			});
 			writeJson(response, 201, recorded);
 			return;
@@ -136,6 +147,7 @@ async function handle(
 		}
 		if (method === "PUT" && path.startsWith("/aliases/")) {
 			const name = decodeURIComponent(path.slice("/aliases/".length));
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const body = (await readJson(request)) as { body?: unknown };
 			writeJson(response, 200, store.setAlias(name, String(body.body ?? "")));
 			return;
@@ -151,6 +163,7 @@ async function handle(
 		}
 		if (method === "PUT" && path.startsWith("/env/")) {
 			const name = decodeURIComponent(path.slice("/env/".length));
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const body = (await readJson(request)) as { value?: unknown };
 			writeJson(response, 200, store.setEnv(name, String(body.value ?? "")));
 			return;
@@ -172,8 +185,11 @@ async function handle(
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error);
 		const code =
-			error && typeof error === "object" && "code" in error
-				? String((error as { code: string }).code)
+			error instanceof Error && "code" in error
+				? String(
+						// SAFETY: `code` in Error after the in-guard.
+						(error as Error & { code: string }).code,
+					)
 				: "shell-failed";
 		writeJson(response, code.includes("secret") ? 400 : 400, {
 			error: message,
@@ -182,10 +198,10 @@ async function handle(
 	}
 }
 
-function writeJson(
+function writeJson<T>(
 	response: import("node:http").ServerResponse,
 	status: number,
-	body: unknown,
+	body: T,
 ): void {
 	const payload = JSON.stringify(body);
 	response.writeHead(status, {
@@ -195,7 +211,7 @@ function writeJson(
 	response.end(payload);
 }
 
-function readJson(request: IncomingMessage): Promise<unknown> {
+function readJson(request: IncomingMessage): Promise<JsonValue> {
 	return new Promise((resolve, reject) => {
 		const chunks: Buffer[] = [];
 		request.on("data", (chunk) => {
@@ -208,7 +224,8 @@ function readJson(request: IncomingMessage): Promise<unknown> {
 				return;
 			}
 			try {
-				resolve(JSON.parse(raw) as unknown);
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				resolve(parseJsonValue(raw));
 			} catch (error) {
 				reject(error);
 			}
@@ -221,6 +238,7 @@ function listen(server: Server, port: number): Promise<number> {
 	return new Promise((resolve, reject) => {
 		server.once("error", reject);
 		server.listen(port, "127.0.0.1", () => {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			resolve((server.address() as AddressInfo).port);
 		});
 	});

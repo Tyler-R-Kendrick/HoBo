@@ -28,13 +28,13 @@ describe("composed-hobo in-process bridge", () => {
 
 	it("loads serveProjectOnLocalYard from @hobo/hobo dist", async () => {
 		const serve = await loadServeProjectOnLocalYard();
-		expect(typeof serve).toBe("function");
+		expect(serve instanceof Function).toBe(true);
 	}, 120_000);
 
 	it("loads createComposedHoboCli from @hobo/hobo dist", async () => {
 		const create = await loadCreateComposedHoboCli();
-		expect(typeof create).toBe("function");
-		expect(typeof create().run).toBe("function");
+		expect(create instanceof Function).toBe(true);
+		expect(create().run instanceof Function).toBe(true);
 	}, 120_000);
 
 	it("runs --help in-process without PATH hobo", async () => {

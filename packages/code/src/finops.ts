@@ -25,12 +25,7 @@ export interface SpendEvent {
 
 export function createBudgetTracker(
 	policy: BudgetPolicy = DEFAULT_BUDGET_POLICY,
-): {
-	readonly record: (event: SpendEvent) => InferenceBudgetSnapshot;
-	readonly snapshot: (provider?: string) => InferenceBudgetSnapshot;
-	readonly isMonetizationEnabled: () => boolean;
-	readonly disableMonetization: () => void;
-} {
+) {
 	const spendByProvider = new Map<string, number>();
 	let monetization = policy.monetizationOptIn === true;
 
@@ -71,13 +66,7 @@ export function createBudgetTracker(
 export function sponsoredWaitState(options: {
 	readonly enabled: boolean;
 	readonly slot: "status" | "wait";
-}): {
-	readonly shown: boolean;
-	readonly inspectsCode: false;
-	readonly inspectsPrompts: false;
-	readonly slot: "status" | "wait";
-	readonly disablePath: string;
-} {
+}) {
 	return {
 		shown: options.enabled === true,
 		inspectsCode: false,

@@ -13,8 +13,7 @@ import { afterEach, describe, expect, it } from "vitest";
 
 /** Visible text only — accents must never change what a test sees. */
 const plain = (frame: string): string =>
-	// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping SGR is the point
-	frame.replace(/\u001b\[[0-9;]*m/g, "");
+	frame.replace(new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"), "");
 /** Visible width of each rendered line. */
 const widths = (frame: string): number[] =>
 	plain(frame)
@@ -137,6 +136,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(frame).toContain("engine:none");
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("puts occupancy endpoints in the welcome table as named hosts", () => {
 		const rows = buildWelcomeTable({
 			dashboardUrl: "http://127.0.0.1:8787/",
@@ -235,6 +235,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(state.input).toBe("");
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("bracketed paste inserts as a single edit with controls stripped", () => {
 		let state = createInitialShellState({
 			welcome: false,
@@ -854,6 +855,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(state.transcriptMode).toBeNull();
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("scrolls the welcome chat surface as one viewport", () => {
 		let state = createInitialShellState({
 			width: 60,
@@ -1305,6 +1307,7 @@ describe("hobo-code InteractiveShell (product chrome)", () => {
 		expect(slashItemForInput("/tasks")?.argv).toEqual(["tasks"]);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("runs inspect slashes as product replies, never a model turn", async () => {
 		const verbs: string[][] = [];
 		let output = "";

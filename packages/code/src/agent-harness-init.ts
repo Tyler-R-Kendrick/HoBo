@@ -2,6 +2,7 @@
  * Vercel-shaped coding-harness registrar for hobo-code.
  * Analog of `vercel ai-gateway coding-agents setup` — Station occupancy, not a key mint.
  */
+
 import {
 	copyFileSync,
 	existsSync,
@@ -38,6 +39,7 @@ import {
 } from "./agent-harness-picks.js";
 import { defaultProbes } from "./agent-registry.js";
 import { readAuthSession } from "./auth.js";
+import { cloneAsJson, isJsonString, type JsonValue } from "./json.js";
 import { DEFAULT_OLLAMA_HOST, probeOllama } from "./ollama-engine.js";
 
 export type { AgentsInitDestination, HarnessHunk, HarnessKind };
@@ -223,7 +225,9 @@ function catalogFor(options: {
 }) {
 	return loadHarnessCatalog({
 		cwd: options.cwd,
-		...(options.hoboHome !== undefined ? { hoboHome: options.hoboHome } : {}),
+		...(options.hoboHome !== undefined
+			? { hoboHome: options.hoboHome }
+			: undefined),
 	});
 }
 
@@ -269,14 +273,10 @@ function hunksFor(
 		readonly force?: boolean;
 		readonly hoboHome?: string;
 	},
-): {
-	readonly kind: HarnessKind;
-	readonly hunks: readonly HarnessHunk[];
-	readonly notes: readonly string[];
-} {
+) {
 	const spec = loadHarnessCatalog({
 		cwd: ctx.cwd,
-		...(ctx.hoboHome !== undefined ? { hoboHome: ctx.hoboHome } : {}),
+		...(ctx.hoboHome !== undefined ? { hoboHome: ctx.hoboHome } : undefined),
 	}).find((row) => row.id === id);
 	if (!spec) {
 		return {
@@ -302,10 +302,10 @@ export async function planAgentsInit(
 		env: options.env,
 		...(options.sidecarUrl !== undefined
 			? { sidecarUrl: options.sidecarUrl }
-			: {}),
+			: undefined),
 		...(options.probeOllamaHost !== undefined
 			? { probeOllamaHost: options.probeOllamaHost }
-			: {}),
+			: undefined),
 	});
 	if (!destResult.ok) {
 		return {
@@ -340,20 +340,25 @@ export async function planAgentsInit(
 			home: options.home,
 			dest,
 			cwd: options.cwd,
-			...(options.reconfigure === true ? { force: true } : {}),
-			...(options.hoboHome !== undefined ? { hoboHome: options.hoboHome } : {}),
+			...(options.reconfigure === true ? { force: true } : undefined),
+			...(options.hoboHome !== undefined
+				? { hoboHome: options.hoboHome }
+				: undefined),
 		});
 		const skipped = planned.hunks.some((hunk) =>
 			hunk.summary.startsWith("skip"),
 		);
-		return {
+		const entry: HarnessPlanEntry = {
 			id,
-			kind: planned.kind,
+			// SAFETY: hunksFor derives kind from the catalog HarnessKind union.
+			kind: planned.kind as HarnessKind,
 			detected: detected.has(id),
-			hunks: planned.hunks,
+			// SAFETY: hunksFor returns HarnessHunk records for this catalog id.
+			hunks: planned.hunks as readonly HarnessHunk[],
 			notes: planned.notes,
-			...(skipped ? { skipReason: "unparseable_config" } : {}),
 		};
+		if (!skipped) return entry;
+		return { ...entry, skipReason: "unparseable_config" };
 	});
 	return {
 		schema: AGENTS_INIT_SCHEMA,
@@ -466,7 +471,7 @@ export async function applyAgentsInit(
 		written,
 		skipped,
 		plan,
-		...(envScript !== undefined ? { envScript } : {}),
+		...(envScript !== undefined ? { envScript } : undefined),
 	};
 }
 
@@ -492,7 +497,7 @@ export async function promptAgentChecklist(
 ): Promise<readonly string[] | null> {
 	let state = createChecklist(picks);
 	const stdin = io.stdin;
-	const raw = typeof stdin.setRawMode === "function";
+	const raw = stdin.setRawMode instanceof Function;
 	if (raw) stdin.setRawMode(true);
 	stdin.resume();
 	stdin.setEncoding("utf8");
@@ -525,7 +530,7 @@ export async function runAgentsCli(options: {
 	readonly cwd: string;
 	readonly env: NodeJS.ProcessEnv;
 	readonly args: readonly string[];
-	readonly flags: Record<string, string | boolean>;
+	readonly flags: { [name: string]: string | boolean };
 	readonly tty?: boolean;
 	readonly choosePicks?: (
 		picks: readonly AgentPick[],
@@ -534,7 +539,7 @@ export async function runAgentsCli(options: {
 	readonly ok: boolean;
 	readonly code: string;
 	readonly message: string;
-	readonly data: unknown;
+	readonly data: JsonValue;
 }> {
 	const sub = options.args[0] ?? "list";
 	const rest = (
@@ -543,8 +548,9 @@ export async function runAgentsCli(options: {
 			: options.args
 	).filter((id) => !isSelfHarness(id));
 	const home = options.env.HOME ?? options.cwd;
-	const sidecar =
-		typeof options.flags.base === "string" ? options.flags.base : undefined;
+	const sidecar = isJsonString(options.flags.base)
+		? options.flags.base
+		: undefined;
 	const common = {
 		home,
 		cwd: options.cwd,
@@ -553,7 +559,7 @@ export async function runAgentsCli(options: {
 		ids: rest,
 		all: options.flags.all === true,
 		reconfigure: options.flags.reconfigure === true,
-		...(sidecar !== undefined ? { sidecarUrl: sidecar } : {}),
+		...(sidecar !== undefined ? { sidecarUrl: sidecar } : undefined),
 	};
 	if (sub === "init") {
 		const dry = options.flags["dry-run"] === true;
@@ -597,7 +603,7 @@ export async function runAgentsCli(options: {
 					ok: false,
 					code: "HOBO_CODE_AGENTS_ABORTED",
 					message: panelish("◎ agents init", "aborted — nothing written"),
-					data: { picks },
+					data: cloneAsJson({ picks }),
 				};
 			}
 			ids = [...chosen];
@@ -618,7 +624,7 @@ export async function runAgentsCli(options: {
 					? "HOBO_CODE_AGENTS_PLAN"
 					: "HOBO_CODE_AGENTS_NO_DEST",
 				message: text,
-				data: applied.plan,
+				data: cloneAsJson(applied.plan),
 			};
 		}
 		if (applied.reason === "needs_confirm") {
@@ -629,7 +635,7 @@ export async function runAgentsCli(options: {
 					"◎ agents init",
 					`${formatAgentsInitPlan(applied.plan)}\nre-run with --yes to write (never mints a key)`,
 				),
-				data: applied.plan,
+				data: cloneAsJson(applied.plan),
 			};
 		}
 		return {
@@ -649,16 +655,18 @@ export async function runAgentsCli(options: {
 							.filter((row) => row.length > 0)
 							.join("\n"),
 			),
-			data: applied,
+			data: cloneAsJson(applied),
 		};
 	}
 	const plan = await planAgentsInit(common);
 	const registryPath = agentsRegistryPath(options.hoboHome);
-	const registered = existsSync(registryPath)
-		? (JSON.parse(readFileSync(registryPath, "utf8")) as {
-				readonly agents?: unknown;
-			})
-		: null;
+	let registered: { readonly agents?: unknown } | null = null;
+	if (existsSync(registryPath)) {
+		// SAFETY: agents registry JSON is the on-disk { agents } document.
+		registered = JSON.parse(readFileSync(registryPath, "utf8")) as {
+			readonly agents?: unknown;
+		};
+	}
 	const title = sub === "status" ? "◎ agents status" : "◎ agents";
 	return {
 		ok: true,
@@ -687,7 +695,7 @@ export async function runAgentsCli(options: {
 					: "registry · none yet — hobo-code agents init",
 			].join("\n"),
 		),
-		data: { plan, registered },
+		data: cloneAsJson({ plan, registered }),
 	};
 }
 

@@ -9,6 +9,13 @@ import {
 } from "node:fs";
 import { createConnection, createServer, type Socket } from "node:net";
 import { dirname, isAbsolute } from "node:path";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 export interface SshAgentProxyOptions {
 	readonly socketPath: string;
@@ -168,16 +175,17 @@ export function residentProxyEnvironment(): NodeJS.ProcessEnv {
 }
 
 function parseResidentPayload(encoded: string): ResidentProxyPayload {
-	let value: unknown;
+	let value: JsonValue;
 	try {
-		value = JSON.parse(Buffer.from(encoded, "base64url").toString("utf8"));
+		value = parseJsonValue(Buffer.from(encoded, "base64url").toString("utf8"));
 	} catch {
 		throw new TypeError("invalid resident SSH agent payload");
 	}
-	if (!value || typeof value !== "object") {
+	if (!value || !isJsonObject(value)) {
 		throw new TypeError("invalid resident SSH agent payload");
 	}
-	const payload = value as Record<string, unknown>;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	const payload = value as JsonObject;
 	for (const field of [
 		"socketPath",
 		"upstreamSocket",
@@ -191,7 +199,7 @@ function parseResidentPayload(encoded: string): ResidentProxyPayload {
 		"isolationClass",
 		"credentialRef",
 	]) {
-		if (typeof payload[field] !== "string" || payload[field] === "") {
+		if (!isJsonString(payload[field]) || payload[field] === "") {
 			throw new TypeError(`invalid resident SSH agent ${field}`);
 		}
 	}
@@ -209,7 +217,22 @@ function parseResidentPayload(encoded: string): ResidentProxyPayload {
 	) {
 		throw new TypeError("invalid resident SSH agent isolationClass");
 	}
-	return payload as unknown as ResidentProxyPayload;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	return {
+		socketPath: String(payload.socketPath),
+		upstreamSocket: String(payload.upstreamSocket),
+		expiresAt: String(payload.expiresAt),
+		auditPath: String(payload.auditPath),
+		stationId: String(payload.stationId),
+		tenant: String(payload.tenant),
+		sessionId: String(payload.sessionId),
+		subject: String(payload.subject),
+		target: String(payload.target),
+		isolationClass:
+			// SAFETY: isolationClass was checked against the closed set above.
+			payload.isolationClass as ResidentProxyPayload["isolationClass"],
+		credentialRef: String(payload.credentialRef),
+	};
 }
 
 function appendAudit(
@@ -230,7 +253,7 @@ function appendAudit(
 			isolationClass: payload.isolationClass,
 			kind: "native",
 			credentialRef: payload.credentialRef,
-			...(reason ? { reason } : {}),
+			...(reason ? { reason } : undefined),
 		})}\n`,
 		{ encoding: "utf8", mode: 0o600 },
 	);

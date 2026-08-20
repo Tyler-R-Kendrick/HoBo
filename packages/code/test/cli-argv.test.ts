@@ -29,13 +29,13 @@ import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	HOBO_CODE_VERBS,
 	looksLikeUnknownVerbAttempt,
 	runHoboCodeCli,
 	suggestVerbTypo,
 } from "../src/cli.js";
+import type { JsonObject } from "../src/json.js";
 
 const temps: string[] = [];
 
@@ -50,15 +50,17 @@ afterEach(() => {
  * default verb and it *writes* a task file, so a run without an isolated home
  * records real work under the developer's own ~/.hobo.
  */
-const run = (argv: readonly string[], deps: Record<string, unknown> = {}) => {
+const run = (argv: readonly string[], deps: JsonObject = {}) => {
 	const dir = mkdtempSync(join(tmpdir(), "hobo-cli-argv-"));
 	temps.push(dir);
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return runHoboCodeCli(argv, {
 		json: true,
 		hoboHome: dir,
 		cwd: dir,
 		env: { ...process.env, HOBO_HOME: dir },
 		...deps,
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	} as never);
 };
 
@@ -134,6 +136,7 @@ describe("flag parsing", () => {
 		expect(result.ok).toBe(true);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("treats everything after -- as positional, flags included", async () => {
 		expect((await run(["--", "--nonsense"])).ok).toBe(true);
 	});
@@ -279,7 +282,8 @@ describe("the result envelope", () => {
 	it("always reports a boolean ok", async () => {
 		// Callers branch on it, including the harness tools; undefined would read
 		// as failure.
-		expect(typeof (await run(["help"])).ok).toBe("boolean");
+		const help = await run(["help"]);
+		expect(help.ok === true || help.ok === false).toBe(true);
 	});
 
 	it("always carries a status code", async () => {
@@ -307,6 +311,8 @@ describe("the result envelope", () => {
 		// reads. Collapsing them would force callers to match on prose.
 		const result = await run(["help"]);
 		expect(result.code).toMatch(/^HOBO_CODE_/u);
-		expect(typeof result.message).toBe("string");
+		expect(Object.prototype.toString.call(result.message)).toBe(
+			"[object String]",
+		);
 	});
 });

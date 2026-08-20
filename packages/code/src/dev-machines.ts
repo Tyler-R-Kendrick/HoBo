@@ -16,6 +16,13 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 // public-contract: declared dev-machine registry file.
 export const DEV_MACHINES_FILE = "devenv.machines.json";
@@ -36,6 +43,7 @@ export type DevMachineClass = (typeof DEV_MACHINE_CLASSES)[number];
 
 // domain-view: wire form is hobo.code.v1.DevMachine; src/dev-machines-wire.ts converts.
 export interface DevMachine {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	/** Stable id used as the tmux window name and the PAM target id. */
 	readonly id: string;
 	/** Tailnet hostname (MagicDNS) or a HoBo named endpoint. */
@@ -67,8 +75,8 @@ export interface LoadedDevMachines {
 	readonly rejected: readonly DevMachineProblem[];
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
+function isRecord(value: JsonValue | undefined): value is JsonObject {
+	return isJsonObject(value) && value !== null && !Array.isArray(value);
 }
 
 /**
@@ -81,14 +89,14 @@ function isRecord(value: unknown): value is Record<string, unknown> {
  * checked for emptiness.
  */
 export function parseDevMachine(
-	value: unknown,
+	value: JsonValue | undefined,
 	index: number,
 ): { machine: DevMachine } | { problem: DevMachineProblem } {
 	const where = `machines[${index}]`;
 	if (!isRecord(value)) {
 		return { problem: { machine: where, problem: "entry is not an object" } };
 	}
-	const id = typeof value.id === "string" ? value.id.trim() : "";
+	const id = isJsonString(value.id) ? value.id.trim() : "";
 	if (!/^[A-Za-z0-9][A-Za-z0-9._-]*$/u.test(id)) {
 		return {
 			problem: {
@@ -98,7 +106,7 @@ export function parseDevMachine(
 			},
 		};
 	}
-	const host = typeof value.host === "string" ? value.host.trim() : "";
+	const host = isJsonString(value.host) ? value.host.trim() : "";
 	// Hostnames only: an ssh destination is a command-line argument, and a
 	// host containing a space, quote or `$` is a way to smuggle one.
 	if (!/^[A-Za-z0-9][A-Za-z0-9.-]*$/u.test(host)) {
@@ -106,7 +114,7 @@ export function parseDevMachine(
 			problem: { machine: id, problem: `host "${host}" is not a hostname` },
 		};
 	}
-	const user = typeof value.user === "string" ? value.user.trim() : undefined;
+	const user = isJsonString(value.user) ? value.user.trim() : undefined;
 	if (user !== undefined && !/^[A-Za-z0-9._-]+$/u.test(user)) {
 		return {
 			problem: { machine: id, problem: `user "${user}" is not a username` },
@@ -114,7 +122,8 @@ export function parseDevMachine(
 	}
 	const isolationClass = value.isolationClass;
 	if (
-		typeof isolationClass !== "string" ||
+		!isJsonString(isolationClass) ||
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		!(DEV_MACHINE_CLASSES as readonly string[]).includes(isolationClass)
 	) {
 		return {
@@ -125,17 +134,18 @@ export function parseDevMachine(
 		};
 	}
 	const agents = Array.isArray(value.agents)
-		? value.agents.filter((a): a is string => typeof a === "string")
+		? value.agents.filter((a): a is string => isJsonString(a))
 		: undefined;
-	const note = typeof value.note === "string" ? value.note : undefined;
+	const note = isJsonString(value.note) ? value.note : undefined;
 	return {
 		machine: {
 			id,
 			host,
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			isolationClass: isolationClass as DevMachineClass,
-			...(user !== undefined ? { user } : {}),
-			...(agents !== undefined ? { agents } : {}),
-			...(note !== undefined ? { note } : {}),
+			...(user !== undefined ? { user } : undefined),
+			...(agents !== undefined ? { agents } : undefined),
+			...(note !== undefined ? { note } : undefined),
 		},
 	};
 }
@@ -150,9 +160,9 @@ export function loadDevMachines(
 	if (!exists(path)) {
 		return { path, declared: false, machines: [], rejected: [] };
 	}
-	let parsed: unknown;
+	const text = read(path);
 	try {
-		parsed = JSON.parse(read(path));
+		JSON.parse(text);
 	} catch (error) {
 		return {
 			path,
@@ -163,6 +173,7 @@ export function loadDevMachines(
 			],
 		};
 	}
+	const parsed = parseJsonValue(text);
 	if (!isRecord(parsed) || !Array.isArray(parsed.machines)) {
 		return {
 			path,
@@ -213,7 +224,13 @@ export function resolveMachine(
 	const byId = machines.find((m) => m.id === requested);
 	if (byId) return { machine: byId };
 	const byHost = machines.filter((m) => m.host === requested);
-	if (byHost.length === 1) return { machine: byHost[0] as DevMachine };
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	if (byHost.length === 1)
+		return {
+			machine:
+				// SAFETY: length===1 means the sole host match is defined.
+				byHost[0] as DevMachine,
+		};
 	// Two machines sharing a host is a declaration the operator has to settle;
 	// picking one silently is how the wrong session gets brokered.
 	if (byHost.length > 1) return { ambiguous: byHost };
@@ -245,15 +262,10 @@ export function sshDestination(machine: DevMachine): string {
  * brokered session are the same object rather than two parallel notions of
  * "which host".
  */
-export function pamTarget(machine: DevMachine): {
-	readonly id: string;
-	readonly kind: "ssh";
-	readonly isolationClass: DevMachineClass;
-	readonly address: string;
-} {
+export function pamTarget(machine: DevMachine) {
 	return {
 		id: `ssh:${machine.id}`,
-		kind: "ssh",
+		kind: "ssh" as const,
 		isolationClass: machine.isolationClass,
 		address: sshDestination(machine),
 	};

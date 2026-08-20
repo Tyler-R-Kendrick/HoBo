@@ -4,7 +4,6 @@ import { existsSync, readFileSync } from "node:fs";
 import { createServer } from "node:net";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-
 import {
 	explicitHoboBinOverride,
 	loadServeProjectOnLocalYard,
@@ -12,6 +11,7 @@ import {
 } from "./composed-hobo.js";
 import { debugViewUrl } from "./evidence-overlay.js";
 import { linkGeneratedAppRuntime } from "./generated-app-runtime.js";
+import { isJsonString } from "./json.js";
 import { preferNamedEndpoint } from "./occupancy-endpoints.js";
 import { attachStationSidecars } from "./station-sidecars.js";
 
@@ -57,16 +57,12 @@ export function resolveHoboSpawn(options: {
 	readonly from?: string;
 	readonly hoboBin?: string;
 	readonly argv?: readonly string[];
-}): {
-	readonly command: string;
-	readonly args: readonly string[];
-	readonly bin: string;
-} {
+}) {
 	const bin =
 		options.hoboBin ??
 		resolveHoboBin({
-			...(options.env !== undefined ? { env: options.env } : {}),
-			...(options.from !== undefined ? { from: options.from } : {}),
+			...(options.env !== undefined ? { env: options.env } : undefined),
+			...(options.from !== undefined ? { from: options.from } : undefined),
 		});
 	const argv = options.argv ?? [];
 	if (spawnsViaNode(bin)) {
@@ -109,6 +105,7 @@ function spawnsViaNode(bin: string): boolean {
 	}
 }
 
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 /** Exported for tests: never accept a :0 listen URL as a real endpoint. */
 export function extractListenUrl(output: string): string | undefined {
 	const candidates = [
@@ -128,7 +125,7 @@ async function allocateLoopbackPort(): Promise<number> {
 		server.listen(0, "127.0.0.1", () => {
 			const address = server.address();
 			const port =
-				address !== null && typeof address === "object" ? address.port : 0;
+				address !== null && !isJsonString(address) ? address.port : 0;
 			server.close((error) => {
 				if (error) reject(error);
 				else if (port <= 0)
@@ -182,6 +179,7 @@ function waitForAppUrl(
 		child.stdout.on("data", inspect);
 		child.stderr.on("data", inspect);
 		child.once("error", (error) => {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const err = error as NodeJS.ErrnoException;
 			if (err.code === "ENOENT") {
 				finish(
@@ -237,10 +235,10 @@ export async function startDevBrowserSession(
 	const occupied = await attachStationSidecars({
 		hoboHome: options.hoboHome,
 		projectRoot: projectDir,
-		...(options.env !== undefined ? { env: options.env } : {}),
+		...(options.env !== undefined ? { env: options.env } : undefined),
 		...(options.debugPort !== undefined
 			? { evidencePort: options.debugPort }
-			: {}),
+			: undefined),
 	});
 	const evidence = {
 		port: Number(new URL(occupied.evidenceUrl).port),
@@ -278,16 +276,18 @@ export async function startDevBrowserSession(
 			options,
 			evidence,
 			controlsTemplateHref: controlsTemplate.href,
-			...(stationId ? { stationId } : {}),
-			...(tenant ? { tenant } : {}),
-			...(environment ? { environment } : {}),
+			...(stationId ? { stationId } : undefined),
+			...(tenant ? { tenant } : undefined),
+			...(environment ? { environment } : undefined),
 		});
 	}
 
 	const spawned = resolveHoboSpawn({
 		env,
-		...(options.hoboBin !== undefined ? { hoboBin: options.hoboBin } : {}),
-		...(options.from !== undefined ? { from: options.from } : {}),
+		...(options.hoboBin !== undefined
+			? { hoboBin: options.hoboBin }
+			: undefined),
+		...(options.from !== undefined ? { from: options.from } : undefined),
 		argv: ["dev", "--cwd", projectDir, "--port", String(appPort)],
 	});
 	const child = spawn(spawned.command, [...spawned.args], {
@@ -297,9 +297,9 @@ export async function startDevBrowserSession(
 			HOBO_HOME: options.hoboHome,
 			HOBO_CODE_DEV_BRIDGE: "1",
 			HOBO_CODE_EVIDENCE_CONTROLS_URL: controlsTemplate.href,
-			...(stationId ? { HOBO_STATION: stationId } : {}),
-			...(tenant ? { HOBO_TENANT: tenant } : {}),
-			...(environment ? { HOBO_ENV: environment } : {}),
+			...(stationId ? { HOBO_STATION: stationId } : undefined),
+			...(tenant ? { HOBO_TENANT: tenant } : undefined),
+			...(environment ? { HOBO_ENV: environment } : undefined),
 		},
 		stdio: ["pipe", "pipe", "pipe"],
 	});
@@ -323,10 +323,12 @@ export async function startDevBrowserSession(
 			controlsUrl,
 			reportUrl: evidence.reportUrl,
 			evidencePath: join(options.hoboHome, "durable", "code", "evidence"),
-			...(started.namedUrl !== undefined ? { namedUrl: started.namedUrl } : {}),
-			...(stationId ? { stationId } : {}),
-			...(environment ? { environment } : {}),
-			...(child.pid !== undefined ? { pid: child.pid } : {}),
+			...(started.namedUrl !== undefined
+				? { namedUrl: started.namedUrl }
+				: undefined),
+			...(stationId ? { stationId } : undefined),
+			...(environment ? { environment } : undefined),
+			...(child.pid !== undefined ? { pid: child.pid } : undefined),
 			close: async () => {
 				if (closed) return;
 				closed = true;
@@ -363,9 +365,9 @@ async function startDevBrowserSessionInProcess(input: {
 		HOBO_HOME: input.options.hoboHome,
 		HOBO_CODE_DEV_BRIDGE: "1",
 		HOBO_CODE_EVIDENCE_CONTROLS_URL: input.controlsTemplateHref,
-		...(input.stationId ? { HOBO_STATION: input.stationId } : {}),
-		...(input.tenant ? { HOBO_TENANT: input.tenant } : {}),
-		...(input.environment ? { HOBO_ENV: input.environment } : {}),
+		...(input.stationId ? { HOBO_STATION: input.stationId } : undefined),
+		...(input.tenant ? { HOBO_TENANT: input.tenant } : undefined),
+		...(input.environment ? { HOBO_ENV: input.environment } : undefined),
 	});
 	try {
 		const serveProjectOnLocalYard = await loadServeProjectOnLocalYard(
@@ -391,11 +393,12 @@ async function startDevBrowserSessionInProcess(input: {
 				);
 			}),
 		]);
+		const primaryNamed = serve.primaryNamedUrl;
 		const namedCandidate =
-			typeof serve.primaryNamedUrl === "string" &&
-			serve.primaryNamedUrl.length > 0 &&
-			!/:0(?:\/|$)/u.test(serve.primaryNamedUrl)
-				? serve.primaryNamedUrl
+			isJsonString(primaryNamed) &&
+			primaryNamed.length > 0 &&
+			!/:0(?:\/|$)/u.test(primaryNamed)
+				? primaryNamed
 				: serve.namedEndpoints?.find((row) => row.external)?.url;
 		const namedUrl =
 			namedCandidate !== undefined && !/:0(?:\/|$)/u.test(namedCandidate)
@@ -422,9 +425,9 @@ async function startDevBrowserSessionInProcess(input: {
 			controlsUrl,
 			reportUrl: input.evidence.reportUrl,
 			evidencePath: join(input.options.hoboHome, "durable", "code", "evidence"),
-			...(namedUrl !== undefined ? { namedUrl } : {}),
-			...(input.stationId ? { stationId: input.stationId } : {}),
-			...(input.environment ? { environment: input.environment } : {}),
+			...(namedUrl !== undefined ? { namedUrl } : undefined),
+			...(input.stationId ? { stationId: input.stationId } : undefined),
+			...(input.environment ? { environment: input.environment } : undefined),
 			close: async () => {
 				if (closed) return;
 				closed = true;

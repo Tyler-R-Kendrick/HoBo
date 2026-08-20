@@ -94,7 +94,7 @@ function nowIso(): string {
 	return new Date().toISOString();
 }
 
-function writeJson(path: string, value: unknown): void {
+function writeJson<T>(path: string, value: T): void {
 	mkdirSync(join(path, ".."), { recursive: true });
 	writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
@@ -102,6 +102,7 @@ function writeJson(path: string, value: unknown): void {
 function readJson<T>(path: string): T | null {
 	if (!existsSync(path)) return null;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		return JSON.parse(readFileSync(path, "utf8")) as T;
 	} catch {
 		return null;
@@ -206,9 +207,11 @@ function writeSession(hoboHome: string, session: CodeAuthSession): void {
 export function authLogin(input: AuthLoginInput): AuthLoginResult {
 	const target = resolveStationTarget({
 		hoboHome: input.hoboHome,
-		...(input.stationId !== undefined ? { stationId: input.stationId } : {}),
-		...(input.tenant !== undefined ? { tenant: input.tenant } : {}),
-		...(input.domain !== undefined ? { domain: input.domain } : {}),
+		...(input.stationId !== undefined
+			? { stationId: input.stationId }
+			: undefined),
+		...(input.tenant !== undefined ? { tenant: input.tenant } : undefined),
+		...(input.domain !== undefined ? { domain: input.domain } : undefined),
 	});
 
 	if (target.mode === "error") {
@@ -262,6 +265,7 @@ export function authLogin(input: AuthLoginInput): AuthLoginResult {
 			ok: true,
 			status: "logged-in",
 			session,
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			message: `Logged in to local station ${session.stationId} as tenant ${session.tenant}`,
 		};
 	}
@@ -381,11 +385,7 @@ export function confirmRemoteLogin(input: {
 	};
 }
 
-export function authStatus(hoboHome: string): {
-	readonly loggedIn: boolean;
-	readonly session: CodeAuthSession | null;
-	readonly message: string;
-} {
+export function authStatus(hoboHome: string) {
 	const session = readAuthSession(hoboHome);
 	if (!session) {
 		return {

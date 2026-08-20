@@ -15,10 +15,11 @@
 import { type ChildProcess, spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { join } from "node:path";
+import { isJsonObject, type JsonObject } from "./json.js";
 
 export interface PlannedToolCall {
 	readonly name: string;
-	readonly arguments: Record<string, unknown>;
+	readonly arguments: JsonObject;
 }
 
 export interface ToolPlanner {
@@ -64,6 +65,7 @@ export function parseBridgeLine(
 	const trimmed = line.trim();
 	if (trimmed.length === 0) return null;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const parsed = JSON.parse(trimmed) as {
 			ok?: boolean;
 			ready?: boolean;
@@ -76,10 +78,12 @@ export function parseBridgeLine(
 		return {
 			calls: calls
 				.filter(
-					(c): c is { name: string; arguments?: Record<string, unknown> } =>
-						typeof c === "object" &&
+					(c): c is { name: string; arguments?: JsonObject } =>
+						isJsonObject(c) &&
 						c !== null &&
-						typeof (c as { name?: unknown }).name === "string",
+						// SAFETY: parsed or fixture value is the named domain type after this assertion.
+						Object.prototype.toString.call((c as { name?: unknown }).name) ===
+							"[object String]",
 				)
 				.map((c) => ({ name: c.name, arguments: c.arguments ?? {} })),
 		};

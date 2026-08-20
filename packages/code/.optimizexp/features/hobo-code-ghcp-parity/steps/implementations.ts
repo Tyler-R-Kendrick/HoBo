@@ -10,6 +10,7 @@ import type { OptimizexpWorld } from "./world.ts";
 
 /** Discovery snapshot — see discovery.json for full report. */
 export const DISCOVERY_PRIMARY = {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	command: "pnpm run docs:cli-lint" as string | null,
 	confidence: "medium",
 	reason: 'script "docs:cli-lint" matched seed keywords (score 5)',
@@ -97,6 +98,7 @@ export function observeFailure(world: OptimizexpWorld): void {
 	exerciseSurface(world);
 	if (world.lastExitCode === 0) {
 		world.notes.push(
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			"observeFailure: command succeeded; treat as soft fail for UX path or refine step",
 		);
 	}

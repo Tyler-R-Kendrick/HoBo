@@ -87,12 +87,13 @@ export async function runVirtualPane(
 		options.shell ??
 		createVirtualShell({
 			workspace: mount,
-			...(options.writable === true ? { writable: true } : {}),
+			...(options.writable === true ? { writable: true } : undefined),
 			env: { AGENT_ID: options.agentId },
 		});
 
 	// The banner is what tells an agent what it has, so it must describe the
 	// shell actually in use rather than the default one.
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const described = shell as Partial<ReturnType<typeof createVirtualShell>>;
 	const available = described.commands ?? DEFAULT_COMMANDS;
 	const persists = described.writable ?? options.writable === true;

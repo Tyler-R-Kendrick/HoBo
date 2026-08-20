@@ -30,11 +30,7 @@ afterEach(async () => {
 	roots.length = 0;
 });
 
-function fixture(): {
-	projectDir: string;
-	hoboHome: string;
-	hoboBin: string;
-} {
+function fixture() {
 	const root = mkdtempSync(join(tmpdir(), "hobo-code-bindle-dev-"));
 	roots.push(root);
 	const projectDir = join(root, "app");
@@ -225,6 +221,7 @@ describe("hobo-code Bindle development bridge", () => {
 		await expect(fetch(loopbackFetchUrl(evidenceUrl))).rejects.toThrow();
 	}, 15_000);
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("exposes /dev as a bounded Bindle/Yard probe", async () => {
 		const { projectDir, hoboHome } = fixture();
 		let started = false;

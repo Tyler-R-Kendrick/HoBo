@@ -1,6 +1,13 @@
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const INTENTS_ROOT = join(PACKAGE_ROOT, "templates", "intents");
@@ -13,31 +20,40 @@ export interface ClosedIntent {
 	readonly params: Readonly<Record<string, string>>;
 }
 
-function asStringList(value: unknown): string[] {
+function asStringList<T>(value: T): string[] {
 	if (!Array.isArray(value)) return [];
-	return value.filter((item): item is string => typeof item === "string");
+	return value.filter((item): item is string => isJsonString(item));
 }
 
-function asStringMap(value: unknown): Record<string, string> {
-	if (value === null || typeof value !== "object") return {};
-	const out: Record<string, string> = {};
-	for (const [key, item] of Object.entries(value as Record<string, unknown>)) {
-		if (typeof item === "string") out[key] = item;
+function asStringMap(value: JsonValue | undefined) {
+	if (value === null || !isJsonObject(value)) {
+		return {};
+	}
+	const out = {};
+	// SAFETY: object entries after the [object Object] guard are a JSON object.
+	for (const [key, item] of Object.entries(value as JsonObject)) {
+		if (isJsonString(item)) {
+			Object.assign(out, { [key]: item });
+		}
 	}
 	return out;
 }
 
-export function parseClosedIntent(raw: unknown): ClosedIntent | null {
-	if (raw === null || typeof raw !== "object") return null;
-	const record = raw as Record<string, unknown>;
-	if (typeof record.id !== "string" || record.id.length === 0) return null;
+export function parseClosedIntent(
+	raw: JsonValue | undefined,
+): ClosedIntent | null {
+	if (raw === null || !isJsonObject(raw)) return null;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	const record = raw as JsonObject;
+	if (!isJsonString(record.id) || record.id.length === 0) return null;
 	const atoms = asStringList(record.atoms);
 	const phrases = asStringList(record.phrases);
 	if (atoms.length === 0 || phrases.length === 0) return null;
 	return {
 		id: record.id,
-		description:
-			typeof record.description === "string" ? record.description : record.id,
+		description: isJsonString(record.description)
+			? record.description
+			: record.id,
 		phrases,
 		atoms,
 		params: asStringMap(record.params),
@@ -50,7 +66,8 @@ export function loadClosedIntents(): readonly ClosedIntent[] {
 	for (const name of readdirSync(INTENTS_ROOT)) {
 		if (!name.endsWith(".json")) continue;
 		const parsed = parseClosedIntent(
-			JSON.parse(readFileSync(join(INTENTS_ROOT, name), "utf8")) as unknown,
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			parseJsonValue(readFileSync(join(INTENTS_ROOT, name), "utf8")),
 		);
 		if (parsed) intents.push(parsed);
 	}

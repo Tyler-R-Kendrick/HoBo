@@ -39,7 +39,7 @@ export function BroadcastFrame(props: BroadcastFrameProps): TuiNode {
 				color: TUI_TOKENS.ink,
 				...(props.viewportRows !== undefined
 					? { height: props.viewportRows }
-					: {}),
+					: undefined),
 			}}
 		>
 			{props.children}
@@ -60,7 +60,7 @@ export function InkCard(props: InkCardProps): TuiNode {
 				color: TUI_TOKENS.ink,
 				...(props.viewportRows !== undefined
 					? { height: props.viewportRows }
-					: {}),
+					: undefined),
 			}}
 		>
 			{props.children}
@@ -132,10 +132,10 @@ export function AgentPanes(props: AgentPanesProps): TuiNode {
 					...formatHarnessSessionLines(props.view, {
 						...(props.attached !== undefined
 							? { attached: props.attached }
-							: {}),
+							: undefined),
 						...(props.contentWidth !== undefined
 							? { contentWidth: props.contentWidth }
-							: {}),
+							: undefined),
 					}),
 				];
 	if (props.note && props.view.sessions.length > 0 && props.attached !== true) {
@@ -218,7 +218,7 @@ export function ChatTranscript(props: ChatTranscriptProps): TuiNode {
 			scroll={props.scroll ?? 0}
 			{...(props.scrollOrigin !== undefined
 				? { scrollOrigin: props.scrollOrigin }
-				: {})}
+				: undefined)}
 		>
 			{props.messages.map((message, index) => (
 				<box
@@ -495,7 +495,7 @@ export function ShellChrome(props: ShellChromeProps): TuiNode {
 		<box id="shell" role="application" className="hobo-shell">
 			<BroadcastFrame
 				title={props.title}
-				{...(props.accent !== undefined ? { accent: props.accent } : {})}
+				{...(props.accent !== undefined ? { accent: props.accent } : undefined)}
 				id="surface"
 				viewportRows={props.viewportRows}
 				phase={props.phase ?? 0}
@@ -508,7 +508,7 @@ export function ShellChrome(props: ShellChromeProps): TuiNode {
 							? { chips: props.railChips }
 							: props.commands !== undefined
 								? { commands: props.commands }
-								: {})}
+								: undefined)}
 				/>
 				{props.overlay}
 			</BroadcastFrame>

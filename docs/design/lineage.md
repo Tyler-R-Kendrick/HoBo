@@ -102,7 +102,7 @@ the control plane is an event journal.**
 |---|---|---|---|---|
 | **Argo CD** | lesson + render target | immutable desired-state under review; gated ordered sync; drift surfacing | journal authoritative, Git a projection (publisher mode); `broker_delivery_argocd` renders Applications | [technologies/argo-cd](../technologies/argo-cd.md) |
 | **Flux CD** | lesson | OCI artifacts as signed delivery channel; controller-toolkit decomposition | reconcile from journal, not Git | [technologies/flux-cd](../technologies/flux-cd.md) |
-| **Octopus Deploy** | lesson | the delivery domain model as first-class nouns: environments, lifecycles, tenants, runbooks, approvals | promotion as policy-gated events; runbooks agent-first | [competitors/octopus-deploy](../competitors/octopus-deploy.md#hobo-mapping) |
+| **Octopus Deploy** | lesson | the delivery domain model as first-class nouns: environments, lifecycles, tenants, runbooks, approvals | promotion as policy-gated events; runbooks agent-first | [competitors/octopus-deploy](../competitors/octopus-deploy.md#primitive-mapping) |
 | **OpenGitOps / CDEvents / Serverless Workflow / OpenSLO / CloudEvents / OTel / OCSF / OpenFeature** | standards | spoken at the boundary | never absorbed (ADR-0046) | [standards index](../standards/index.md) |
 | **OSCAL** | standard | control→evidence vocabulary for compliance packs | boundary export only, no schema dependency (ADR-0146) | [standards/oscal](../standards/oscal.md) |
 | **CUE** | adopted discipline | data-model constraint language beside protobuf | constraints only, never a runtime dependency | [technologies index](../technologies/index.md) |

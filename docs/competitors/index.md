@@ -18,7 +18,7 @@ Membership, aliases, posture and freshness are declared once, in each capture's 
 
 | Category | Competitors |
 | -------- | ----------- |
-| [Comprehensive Platform Orchestrators](categories/platform-orchestrators.md) | [Appvia Wayfinder](appvia-wayfinder.md) · [CloudBolt](cloudbolt.md) · [Control Plane](control-plane.md) · [Crossplane](crossplane.md) · [Cycloid](cycloid.md) · [DuploCloud](duplocloud.md) · [Facets.cloud](facets.md) · [Harness Platform](harness.md) · [HPE Morpheus](hpe-morpheus.md) · [Humanitec](humanitec.md) · [Kratix](kratix.md) · [KubeVela](kubevela.md) · [KusionStack](kusionstack.md) · [Massdriver](massdriver.md) · [Mia-Platform](mia-platform.md) · [Nomad](nomad.md) · [OpenChoreo](openchoreo.md) · [Port](port.md) · [Porter](porter.md) · [Qovery](qovery.md) · [Radius](radius.md) · [System Initiative](system-initiative.md) · [Upsun](upsun.md) |
+| [Comprehensive Platform Orchestrators](categories/platform-orchestrators.md) | [Appvia Wayfinder](appvia-wayfinder.md) · [Argo CD](argo-cd.md) · [CloudBolt](cloudbolt.md) · [Control Plane](control-plane.md) · [Crossplane](crossplane.md) · [Cycloid](cycloid.md) · [DuploCloud](duplocloud.md) · [Facets.cloud](facets.md) · [Flux CD](flux-cd.md) · [Harness Platform](harness.md) · [HPE Morpheus](hpe-morpheus.md) · [Humanitec](humanitec.md) · [Kratix](kratix.md) · [KubeVela](kubevela.md) · [KusionStack](kusionstack.md) · [Massdriver](massdriver.md) · [Mia-Platform](mia-platform.md) · [Nomad](nomad.md) · [OpenChoreo](openchoreo.md) · [Port](port.md) · [Porter](porter.md) · [Qovery](qovery.md) · [Radius](radius.md) · [System Initiative](system-initiative.md) · [Upsun](upsun.md) |
 | [Portable Application Models & Control Planes](categories/portable-application-models.md) | [.NET Aspire](aspire.md) · [Alchemy](alchemy.md) · [Cloudify](cloudify.md) · [Crossplane](crossplane.md) · [Dapr](dapr.md) · [Facets.cloud](facets.md) · [Humanitec](humanitec.md) · [Kratix](kratix.md) · [Kubernetes](kubernetes.md) · [KubeVela](kubevela.md) · [KusionStack](kusionstack.md) · [Massdriver](massdriver.md) · [Nitric](nitric.md) · [OpenChoreo](openchoreo.md) · [Pulumi](pulumi.md) · [Radius](radius.md) · [SST](sst.md) · [System Initiative](system-initiative.md) |
 | [Cloud Application Platforms](categories/cloud-application-platforms.md) | [Anonymous container hosts](anon-container-hosts.md) · [AWS Amplify](aws-amplify.md) · [Control Plane](control-plane.md) · [Coolify](coolify.md) · [Encore](encore.md) · [Flux Network](flux-network.md) · [Fly.io](flyio.md) · [Heroku](heroku.md) · [Lagoon](lagoon.md) · [Lakebed](lakebed.md) · [Modal](modal.md) · [Netlify](netlify.md) · [Northflank](northflank.md) · [OpenShift](openshift.md) · [Porter](porter.md) · [Qovery](qovery.md) · [Railway](railway.md) · [Release](release.md) · [Render](render.md) · [Upsun](upsun.md) · [Vercel](vercel.md) |
 | [Developer Portals & IDPs](categories/developer-portals-idps.md) | [Appvia Wayfinder](appvia-wayfinder.md) · [Atlassian Compass](atlassian-compass.md) · [Backstage](backstage.md) · [Cortex](cortex.md) · [Cycloid](cycloid.md) · [Harness Platform](harness.md) · [Massdriver](massdriver.md) · [Mia-Platform](mia-platform.md) · [OpenChoreo](openchoreo.md) · [OpsLevel](opslevel.md) · [Port](port.md) · [Red Hat Developer Hub](red-hat-developer-hub.md) · [Roadie](roadie.md) |
@@ -28,13 +28,13 @@ Membership, aliases, posture and freshness are declared once, in each capture's 
 | [Self-Hosted PaaS & Server Deployment](categories/self-hosted-paas.md) | [Anonymous container hosts](anon-container-hosts.md) · [CapRover](caprover.md) · [Coolify](coolify.md) · [Dokku](dokku.md) · [Dokploy](dokploy.md) · [Kamal](kamal.md) · [Lagoon](lagoon.md) · [Northflank](northflank.md) · [ServerKit](serverkit.md) |
 | [Agentic Infrastructure & Operations](categories/agentic-infrastructure.md) | [Antimetal](antimetal.md) · [Control Plane](control-plane.md) · [Cortex](cortex.md) · [Harness Platform](harness.md) · [InsForge](insforge.md) · [Lakebed](lakebed.md) · [Port](port.md) · [StackGen](stackgen.md) · [System Initiative](system-initiative.md) · [Vercel](vercel.md) |
 | [Backend & Data Application Platforms](categories/backend-data-platforms.md) | [AWS Amplify](aws-amplify.md) · [Convex](convex.md) · [InsForge](insforge.md) · [Supabase](supabase.md) · [Wasp](wasp.md) |
-| [Delivery, Release & GitOps](categories/delivery-release-gitops.md) | [Harness Platform](harness.md) · [Kamal](kamal.md) · [Kratix](kratix.md) · [KubeVela](kubevela.md) · [Lagoon](lagoon.md) · [Octopus Deploy](octopus-deploy.md) · [OpenChoreo](openchoreo.md) · [Rancher Fleet](rancher-fleet.md) · [Release](release.md) |
+| [Delivery, Release & GitOps](categories/delivery-release-gitops.md) | [Argo CD](argo-cd.md) · [Flux CD](flux-cd.md) · [Harness Platform](harness.md) · [Kamal](kamal.md) · [Kratix](kratix.md) · [KubeVela](kubevela.md) · [Lagoon](lagoon.md) · [Octopus Deploy](octopus-deploy.md) · [OpenChoreo](openchoreo.md) · [Rancher Fleet](rancher-fleet.md) · [Release](release.md) |
 | [FinOps, Governance & Placement](categories/finops-governance-placement.md) | [Antimetal](antimetal.md) · [CloudBolt](cloudbolt.md) · [Cycloid](cycloid.md) · [DuploCloud](duplocloud.md) · [Facets.cloud](facets.md) · [FinOps tooling cohort](finops-tooling.md) · [Harness Platform](harness.md) · [HPE Morpheus](hpe-morpheus.md) |
 | [Identity, Networking & Application Delivery](categories/identity-networking-delivery.md) | [Control Plane](control-plane.md) · [NetScaler](netscaler.md) · [ServerKit](serverkit.md) · [shoo.dev](shoo.md) |
 
 Categories are many-to-many: several products appear in more than one row above, with a single canonical capture behind each link.
 
-## Canonical captures (77)
+## Canonical captures (79)
 
 | Competitor | Capture | Primary category | Directness | Role relative to HoBo |
 | ---------- | ------- | ---------------- | ---------- | --------------------- |
@@ -43,6 +43,7 @@ Categories are many-to-many: several products appear in more than one row above,
 | **Anonymous container hosts** | [`anon-container-hosts.md`](anon-container-hosts.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | adjacent | cohort capture of zero-key temporary container hosts used as the Examples Temporary host matrix |
 | **Antimetal** | [`antimetal.md`](antimetal.md) | [`agentic-infrastructure`](categories/agentic-infrastructure.md) | adjacent | AI-native production-operations layer (world model, RCA, agent handoff) — SRE/operator benchmark |
 | **Appvia Wayfinder** | [`appvia-wayfinder.md`](appvia-wayfinder.md) | [`hybrid-multicloud-enterprise`](categories/hybrid-multicloud-enterprise.md) | overlapping | workspace-scoped self-service platform whose Cloud Resource Plans are the same curated-choice mechanism HoBo expresses as Bindle kinds |
+| **Argo CD** | [`argo-cd.md`](argo-cd.md) | [`delivery-release-gitops`](categories/delivery-release-gitops.md) | overlapping | the reference GitOps controller — the corpus's clearest statement that drift is a first-class, continuously computed fact rather than an incident |
 | **Atlassian Compass** | [`atlassian-compass.md`](atlassian-compass.md) | [`developer-portals-idps`](categories/developer-portals-idps.md) | complementary | ecosystem-distribution portal — a reminder that in this category integration reach and vendor commitment matter more than architecture |
 | **AWS Amplify** | [`aws-amplify.md`](aws-amplify.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | overlapping | Gen-2 code-first TypeScript fullstack backend on AWS CDK — IfC-in-TS analog, AWS-only |
 | **Backstage** | [`backstage.md`](backstage.md) | [`developer-portals-idps`](categories/developer-portals-idps.md) | complementary | CNCF developer portal framework — complementary front-end to a HoBo control plane |
@@ -63,6 +64,7 @@ Categories are many-to-many: several products appear in more than one row above,
 | **Encore** | [`encore.md`](encore.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | direct | infrastructure-from-code for TS/Go that provisions into your cloud — closest product analog |
 | **Facets.cloud** | [`facets.md`](facets.md) | [`platform-orchestrators`](categories/platform-orchestrators.md) | direct | declarative environment orchestrator — the closest commercial product to HoBo's intent-to-provider thesis, realized through generated Terraform/Helm |
 | **FinOps tooling cohort** | [`finops-tooling.md`](finops-tooling.md) | [`finops-governance-placement`](categories/finops-governance-placement.md) | adjacent | cohort capture of cost allocation/estimation/optimization tooling; superseded per product as individual captures land |
+| **Flux CD** | [`flux-cd.md`](flux-cd.md) | [`delivery-release-gitops`](categories/delivery-release-gitops.md) | overlapping | the pull-model GitOps controller — the corpus's best argument that the control plane should never hold credentials to the things it manages |
 | **Flux Network** | [`flux-network.md`](flux-network.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | adjacent | decentralized container host with a Git-to-Flux deploy UX (Orbit) — compute provider target, not an actor runtime |
 | **Fly.io** | [`flyio.md`](flyio.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | global app platform on Firecracker microVMs — edge PaaS competitor and provider target |
 | **Harness Platform** | [`harness.md`](harness.md) | [`platform-orchestrators`](categories/platform-orchestrators.md) | overlapping | modular commercial DevOps platform whose CD, IDP, IaCM and cost modules each contest a different HoBo surface |
@@ -125,7 +127,9 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | `amazee.io lagoon` | [Lagoon](lagoon.md) |
 | `amplify gen 2` | [AWS Amplify](aws-amplify.md) |
 | `appcd` | [StackGen](stackgen.md) |
+| `applicationset` | [Argo CD](argo-cd.md) |
 | `appvia` | [Appvia Wayfinder](appvia-wayfinder.md) |
+| `argocd` | [Argo CD](argo-cd.md) |
 | `captainduckduck` | [CapRover](caprover.md) |
 | `choreo idp` | [OpenChoreo](openchoreo.md) |
 | `choreo-idp` | [OpenChoreo](openchoreo.md) |
@@ -149,8 +153,12 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | `fermyon` | [Spin / Fermyon](spin-fermyon.md) |
 | `fleet` | [Rancher Fleet](rancher-fleet.md) |
 | `flux` | [Flux Network](flux-network.md) |
+| `flux v2` | [Flux CD](flux-cd.md) |
+| `flux2` | [Flux CD](flux-cd.md) |
+| `fluxcd` | [Flux CD](flux-cd.md) |
 | `fly` | [Fly.io](flyio.md) |
 | `getport.io` | [Port](port.md) |
+| `gitops toolkit` | [Flux CD](flux-cd.md) |
 | `harness delegate` | [Harness Platform](harness.md) |
 | `harness.io` | [Harness Platform](harness.md) |
 | `hashicorp nomad` | [Nomad](nomad.md) |

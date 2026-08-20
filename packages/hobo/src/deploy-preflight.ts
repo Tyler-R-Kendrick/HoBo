@@ -1,4 +1,5 @@
 import { must } from "@hobo/core/total-access";
+import { isJsonString } from "./json.js";
 // Operator preflight for the deploy path: report which REAL cloud backend the
 // current environment selects (mirroring `selectIacProvider`'s precedence) and,
 // when on the in-memory fallback, exactly what to set to go live. Pure and
@@ -41,7 +42,7 @@ export interface DeployTargetDescription {
 }
 
 const has = (env: Record<string, string | undefined>, key: string): boolean =>
-	typeof env[key] === "string" && must(env[key]).length > 0;
+	isJsonString(env[key]) && must(env[key]).length > 0;
 
 /**
  * Describe the deploy target selected by `env` (defaults to `process.env`),

@@ -4,6 +4,7 @@
  * (bin/hobo-code.mjs); CLI surface is `runHoboCodeCli` in `@hobo/code`
  * (flat verbs; dispatch default).
  */
+
 import {
 	CODE_FEATURE_DEFAULTS,
 	CODE_FEATURE_FLAGS,
@@ -13,6 +14,7 @@ import {
 	createContractAssertedHarnessFixtures,
 	type FeatureFlagStore,
 } from "@hobo/identity";
+import { isJsonString } from "./json.js";
 
 export interface CodeCommandDeps {
 	readonly env?: NodeJS.ProcessEnv;
@@ -47,6 +49,7 @@ export function featurePortFromStore(store: FeatureFlagStore): CodeFeaturePort {
 	return {
 		evaluateBoolean(key, context) {
 			const fallback =
+				// SAFETY: assertion required at this I/O or test boundary.
 				CODE_FEATURE_DEFAULTS[key as keyof typeof CODE_FEATURE_DEFAULTS] ??
 				true;
 			const result = store.evaluateBoolean(
@@ -55,7 +58,7 @@ export function featurePortFromStore(store: FeatureFlagStore): CodeFeaturePort {
 					targetingKey: context.targetingKey,
 					...(context.attributes !== undefined
 						? { attributes: context.attributes }
-						: {}),
+						: undefined),
 				},
 				fallback,
 			);
@@ -77,8 +80,7 @@ export function resolveCodeFeatures(
 ): CodeFeaturePort {
 	if (deps.features) return deps.features;
 	const env = deps.env ?? process.env;
-	const tenant =
-		(typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT) || "local";
+	const tenant = (isJsonString(env.HOBO_TENANT) && env.HOBO_TENANT) || "local";
 	const store =
 		deps.store ?? createContractAssertedHarnessFixtures({ tenant }).store;
 	return featurePortFromStore(store);

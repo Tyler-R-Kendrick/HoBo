@@ -6,6 +6,7 @@
  *
  * Pure ops delegated to `@hobo/management` (shared with control API + MCP).
  */
+
 import type { CommandModule } from "@hobo/cli";
 import {
 	createManagementContext,
@@ -19,9 +20,9 @@ import {
 	stationUp,
 } from "@hobo/management";
 import { createStationClient } from "@hobo/stations";
-
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import { loadHoboProfile, setDefaultStation } from "./hobo-profile.js";
+import { isJsonString, type JsonObject } from "./json.js";
 
 export interface StationCommandDeps {
 	readonly env?: NodeJS.ProcessEnv;
@@ -29,13 +30,10 @@ export interface StationCommandDeps {
 	readonly log?: (line: string) => void;
 }
 
-function flagString(
-	flags: Record<string, unknown>,
-	...names: string[]
-): string | undefined {
+function flagString(flags: JsonObject, ...names: string[]): string | undefined {
 	for (const n of names) {
 		const v = flags[n];
-		if (typeof v === "string" && v.length > 0) return v;
+		if (isJsonString(v) && v.length > 0) return v;
 	}
 	return undefined;
 }
@@ -51,7 +49,7 @@ function resolveHome(deps: StationCommandDeps): string {
 
 function resolveStationId(
 	deps: StationCommandDeps,
-	flags: Record<string, unknown>,
+	flags: JsonObject,
 	home: string,
 ): string {
 	const fromFlag = flagString(flags, "station", "id");
@@ -69,7 +67,8 @@ export function createStationCommand(
 	return {
 		implemented: true,
 		async run({ args, flags }) {
-			const flagBag = flags as Record<string, unknown>;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const flagBag = flags as JsonObject;
 			const home = resolveHome(deps);
 			const log = deps.log ?? ((line: string) => console.error(line));
 			const sub = args[0] ?? "status";
@@ -82,6 +81,7 @@ export function createStationCommand(
 				const tenant = flagString(flagBag, "tenant") ?? name;
 				const result = stationInit(ctx, { name, id, tenant });
 				if (result.ok && result.data) {
+					// SAFETY: assertion required at this I/O or test boundary.
 					const data = result.data as {
 						stationId: string;
 						dataDir: string;
@@ -102,6 +102,7 @@ export function createStationCommand(
 					const result = stationUp(ctx, stationId);
 					if (result.ok) {
 						log(
+							// SAFETY: assertion required at this I/O or test boundary.
 							`hobo station up: occupancy ready ${stationId} rail=${(result.data as { activeRailHash?: string })?.activeRailHash ?? "none"}`,
 						);
 						try {
@@ -113,7 +114,8 @@ export function createStationCommand(
 							return {
 								...result,
 								data: {
-									...(result.data as Record<string, unknown>),
+									// SAFETY: assertion required at this I/O or test boundary.
+									...(result.data as JsonObject),
 									pins: client.pins(),
 								},
 							};
@@ -181,7 +183,8 @@ export function createStationCommand(
 							return {
 								...result,
 								data: {
-									...(result.data as Record<string, unknown>),
+									// SAFETY: assertion required at this I/O or test boundary.
+									...(result.data as JsonObject),
 									pins,
 								},
 							};

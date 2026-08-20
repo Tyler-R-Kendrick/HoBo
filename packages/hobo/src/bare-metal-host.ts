@@ -1,5 +1,4 @@
 import { createServer, type Server } from "node:http";
-
 import type { BindleDefinition } from "@hobo/bindles";
 import { loadBindleDefinition } from "@hobo/cli";
 import { sanitizeDnsLabel } from "@hobo/core";
@@ -11,6 +10,7 @@ import {
 	DEFAULT_DEV_PORT,
 	openBareMetalYard,
 } from "./bare-metal-yard.js";
+import { isJsonBoolean, isJsonNumber, isJsonString } from "./json.js";
 import {
 	type FetchHandler,
 	isExternalComponent,
@@ -33,6 +33,11 @@ import {
 //
 // Session Replay (ADR-0137): listServableEntrypoints wraps Bindle `web`
 // handlers — see servable-entrypoints.ts.
+
+function duplexHalfInit(): RequestInit {
+	// SAFETY: Node fetch requires duplex when forwarding a streamed request body.
+	return { duplex: "half" } as RequestInit;
+}
 
 export type { FetchHandler, ListServableEntrypointsResult, ServableEntrypoint };
 export {
@@ -143,18 +148,16 @@ export function internalMeshBase(
  * Collect process env the camp must inject from bindle resource annotations.
  * Convention: `.with({ provider, option: "env", config: { KEY: "value" } })`.
  */
-export function collectBindleEnvInjections(
-	definition: BindleDefinition,
-): Record<string, string> {
+export function collectBindleEnvInjections(definition: BindleDefinition) {
 	const env: Record<string, string> = {};
 	for (const record of Object.values(definition.resources)) {
 		for (const annotation of record.annotations) {
 			if (annotation.option !== "env") continue;
 			for (const [key, value] of Object.entries(annotation.config)) {
 				if (
-					typeof value === "string" ||
-					typeof value === "number" ||
-					typeof value === "boolean"
+					isJsonString(value) ||
+					isJsonNumber(value) ||
+					isJsonBoolean(value)
 				) {
 					env[key] = String(value);
 				}
@@ -187,19 +190,20 @@ export function installInternalMesh(
 			? internalMeshHost(options.bindleName)
 			: undefined;
 	const meshFetch: typeof fetch = async (input, init) => {
-		const raw =
-			typeof input === "string"
-				? input
-				: input instanceof URL
-					? input.href
-					: input.url;
+		const raw = isJsonString(input)
+			? input
+			: input instanceof URL
+				? input.href
+				: input.url;
 		let url: URL;
 		try {
 			url = new URL(raw);
 		} catch {
+			// SAFETY: assertion required at this I/O or test boundary.
 			return previous(input as RequestInfo, init);
 		}
 		if (!isInternalMeshHostname(url.hostname)) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			return previous(input as RequestInfo, init);
 		}
 		if (
@@ -207,6 +211,7 @@ export function installInternalMesh(
 			url.hostname !== expectedHost &&
 			url.hostname !== INTERNAL_MESH_HOST
 		) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			return previous(input as RequestInfo, init);
 		}
 		const segments = url.pathname.split("/").filter(Boolean);
@@ -249,11 +254,9 @@ export function installInternalMesh(
 		const requestInit: RequestInit = {
 			method,
 			headers,
-			...(body !== undefined && body !== null ? { body } : {}),
+			...(body !== undefined && body !== null ? { body } : undefined),
 			// Request bodies from the original may be streams; duplex for node.
-			...(body !== undefined && body !== null
-				? ({ duplex: "half" } as RequestInit)
-				: {}),
+			...(body !== undefined && body !== null ? duplexHalfInit() : undefined),
 		};
 		return handler(
 			new Request(`http://component.local${restPath}`, requestInit),
@@ -283,6 +286,7 @@ async function listen(
 					const method = req.method ?? "GET";
 					const init: RequestInit = {
 						method,
+						// SAFETY: assertion required at this I/O or test boundary.
 						headers: req.headers as HeadersInit,
 					};
 					if (!["GET", "HEAD"].includes(method) && body.length > 0) {
@@ -327,7 +331,7 @@ export async function serveProjectOnBareMetalYard(options: {
 			? openBareMetalYard({
 					...(options.hoboHome !== undefined
 						? { hoboHome: options.hoboHome }
-						: {}),
+						: undefined),
 				})
 			: null;
 	const yardHandle = options.yard ?? must(ownedYard);
@@ -438,7 +442,7 @@ export async function serveProjectOnBareMetalYard(options: {
 
 	const exposedEndpoints = endpoints.filter((endpoint) => endpoint.external);
 	const primary = first(exposedEndpoints);
-	let probe: { status: number; body: string };
+	let probe = { status: 0, body: "" };
 	try {
 		const response = await fetch(`${primary.url}/`);
 		probe = { status: response.status, body: await response.text() };

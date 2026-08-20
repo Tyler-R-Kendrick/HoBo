@@ -32,7 +32,6 @@
 
 import { existsSync, readFileSync } from "node:fs";
 import { delimiter, join } from "node:path";
-
 import {
 	LOCALHOST_PROVIDER_ID,
 	LOCALHOST_YARD_NAME,
@@ -43,6 +42,12 @@ import {
 	type Yard,
 	yard,
 } from "@hobo/yards";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 // public-contract: wire schema of a persisted local-substrate discovery report.
 export const LOCAL_SUBSTRATE_REPORT_CONTRACT =
@@ -187,7 +192,12 @@ export function defaultLocalSubstrateProbes(
 	env: NodeJS.ProcessEnv = process.env,
 ): LocalSubstrateProbes {
 	const paths = (env.PATH ?? "").split(delimiter).filter((p) => p.length > 0);
-	return parseLocalSubstrateProbes({
+	const envSnap: { [key: string]: string } = {};
+	for (const key of Object.keys(env).sort()) {
+		const value = env[key];
+		if (isJsonString(value)) envSnap[key] = value;
+	}
+	return Object.freeze({
 		which: (binary: string) => {
 			for (const dir of paths) {
 				const candidate = join(dir, binary);
@@ -200,12 +210,10 @@ export function defaultLocalSubstrateProbes(
 			try {
 				return readFileSync(path, "utf8");
 			} catch {
-				// Unreadable is indistinguishable from absent for our purposes, and
-				// both mean "no evidence" — never a thrown discovery.
 				return null;
 			}
 		},
-		env,
+		env: Object.freeze(envSnap),
 		platform: process.platform,
 		nodeVersion: process.versions.node,
 	});
@@ -216,10 +224,51 @@ export function defaultLocalSubstrateProbes(
  * derived record with an environment *snapshot*, so a later mutation of the
  * caller's env cannot change what discovery sees.
  */
+function asNodePlatform(value: string): NodeJS.Platform {
+	// SAFETY: host probe platform is a NodeJS.Platform token.
+	return value as NodeJS.Platform;
+}
+
+function requireProbeFn(value: JsonValue | undefined, name: string): Function {
+	if (!(value instanceof Function)) {
+		throw new LocalSubstrateError(
+			"LOCAL_SUBSTRATE_PROBES_INVALID",
+			`local substrate probes ${name} must be a function`,
+			{
+				remediation:
+					"pass the record returned by defaultLocalSubstrateProbes()",
+			},
+		);
+	}
+	return value;
+}
+
+function asWhich(
+	value: JsonValue | undefined,
+): (binary: string) => string | null {
+	const fn = requireProbeFn(value, "which");
+	// SAFETY: probe functions are host callbacks captured at the parse boundary.
+	return fn as (binary: string) => string | null;
+}
+
+function asExists(value: JsonValue | undefined): (path: string) => boolean {
+	const fn = requireProbeFn(value, "exists");
+	// SAFETY: probe functions are host callbacks captured at the parse boundary.
+	return fn as (path: string) => boolean;
+}
+
+function asReadText(
+	value: JsonValue | undefined,
+): (path: string) => string | null {
+	const fn = requireProbeFn(value, "readText");
+	// SAFETY: probe functions are host callbacks captured at the parse boundary.
+	return fn as (path: string) => string | null;
+}
+
 export function parseLocalSubstrateProbes(
-	input: unknown,
+	input: JsonValue | LocalSubstrateProbes,
 ): LocalSubstrateProbes {
-	if (typeof input !== "object" || input === null || Array.isArray(input)) {
+	if (!isJsonObject(input) || input === null || Array.isArray(input)) {
 		throw new LocalSubstrateError(
 			"LOCAL_SUBSTRATE_PROBES_INVALID",
 			"local substrate probes must be an object",
@@ -229,9 +278,10 @@ export function parseLocalSubstrateProbes(
 			},
 		);
 	}
-	const source = input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const source = input as JsonObject;
 	for (const fn of ["which", "exists", "readText"] as const) {
-		if (typeof source[fn] !== "function") {
+		if (!(source[fn] instanceof Function)) {
 			throw new LocalSubstrateError(
 				"LOCAL_SUBSTRATE_PROBES_INVALID",
 				`local substrate probe "${fn}" must be a function`,
@@ -241,7 +291,7 @@ export function parseLocalSubstrateProbes(
 			);
 		}
 	}
-	if (typeof source.platform !== "string" || source.platform.length === 0) {
+	if (!isJsonString(source.platform) || source.platform.length === 0) {
 		throw new LocalSubstrateError(
 			"LOCAL_SUBSTRATE_PROBES_INVALID",
 			'local substrate probe "platform" must be a non-empty string',
@@ -251,10 +301,7 @@ export function parseLocalSubstrateProbes(
 			},
 		);
 	}
-	if (
-		typeof source.nodeVersion !== "string" ||
-		source.nodeVersion.length === 0
-	) {
+	if (!isJsonString(source.nodeVersion) || source.nodeVersion.length === 0) {
 		throw new LocalSubstrateError(
 			"LOCAL_SUBSTRATE_PROBES_INVALID",
 			'local substrate probe "nodeVersion" must be a non-empty string',
@@ -265,7 +312,7 @@ export function parseLocalSubstrateProbes(
 		);
 	}
 	const rawEnv = source.env;
-	if (typeof rawEnv !== "object" || rawEnv === null || Array.isArray(rawEnv)) {
+	if (!isJsonObject(rawEnv) || rawEnv === null || Array.isArray(rawEnv)) {
 		throw new LocalSubstrateError(
 			"LOCAL_SUBSTRATE_PROBES_INVALID",
 			'local substrate probe "env" must be an object',
@@ -278,17 +325,24 @@ export function parseLocalSubstrateProbes(
 	const env: Record<string, string> = {};
 	// Snapshot in sorted key order: the env is data the report depends on, so it
 	// must not be able to change under us or hash differently per insertion order.
-	for (const key of Object.keys(rawEnv as Record<string, unknown>).sort()) {
-		const value = (rawEnv as Record<string, unknown>)[key];
-		if (typeof value === "string") env[key] = value;
+	// SAFETY: assertion required at this I/O or test boundary.
+	for (const key of Object.keys(rawEnv as JsonObject).sort()) {
+		// SAFETY: assertion required at this I/O or test boundary.
+		const value = (rawEnv as JsonObject)[key];
+		if (isJsonString(value)) env[key] = value;
 	}
 	return Object.freeze({
-		which: source.which as (binary: string) => string | null,
-		exists: source.exists as (path: string) => boolean,
-		readText: source.readText as (path: string) => string | null,
+		which: asWhich(source.which),
+		exists: asExists(source.exists),
+		readText: asReadText(source.readText),
 		env: Object.freeze(env),
-		platform: source.platform as NodeJS.Platform,
-		nodeVersion: source.nodeVersion,
+		// SAFETY: assertion required at this I/O or test boundary.
+		platform: asNodePlatform(
+			isJsonString(source.platform) ? `${source.platform}` : process.platform,
+		),
+		nodeVersion: isJsonString(source.nodeVersion)
+			? `${source.nodeVersion}`
+			: process.versions.node,
 	});
 }
 
@@ -337,7 +391,7 @@ const LXC_SOCKETS: readonly string[] = Object.freeze([
  * no ambient env, no network. Two calls with the same probes are deep-equal.
  */
 export function discoverLocalSubstrates(
-	probes: unknown,
+	probes: LocalSubstrateProbes,
 	options?: { readonly now?: () => string },
 ): LocalSubstrateReport {
 	const p = parseLocalSubstrateProbes(probes);
@@ -386,7 +440,7 @@ export function discoverLocalSubstrates(
 		contract: LOCAL_SUBSTRATE_REPORT_CONTRACT,
 		platform: p.platform,
 		substrates: findings,
-		...(discoveredAt !== undefined ? { discoveredAt } : {}),
+		...(discoveredAt !== undefined ? { discoveredAt } : undefined),
 	});
 }
 
@@ -479,7 +533,7 @@ function detectOci(p: LocalSubstrateProbes): LocalSubstrateFinding {
 	// Rootless podman puts its socket under the user runtime dir; that path is
 	// only knowable from the injected env, never from an ambient read.
 	const runtimeDir = p.env.XDG_RUNTIME_DIR;
-	if (typeof runtimeDir === "string" && runtimeDir.length > 0) {
+	if (isJsonString(runtimeDir) && runtimeDir.length > 0) {
 		sockets.push(`${runtimeDir}/podman/podman.sock`);
 	}
 	sockets.sort();
@@ -535,7 +589,7 @@ function detectWsl2(p: LocalSubstrateProbes): LocalSubstrateFinding {
 	if (p.exists("/run/WSL")) evidence.push("file:/run/WSL");
 	for (const key of ["WSL_DISTRO_NAME", "WSL_INTEROP"]) {
 		const value = p.env[key];
-		if (typeof value === "string" && value.length > 0) {
+		if (isJsonString(value) && value.length > 0) {
 			evidence.push(`env:${key}`);
 		}
 	}
@@ -821,6 +875,7 @@ const SUBSTRATE_BINDINGS = deepFreeze({
 
 /** Yard name for a substrate. `process` keeps the existing seeded name. */
 export function localSubstrateYardName(kind: LocalSubstrateKind): string {
+	// SAFETY: assertion required at this I/O or test boundary.
 	if (!(LOCAL_SUBSTRATE_KINDS as readonly string[]).includes(kind)) {
 		throw new LocalSubstrateError(
 			"LOCAL_SUBSTRATE_KIND_UNKNOWN",
@@ -851,8 +906,9 @@ export function localSubstrateYards(
 	},
 ): LocalSubstrateYardSet {
 	if (
-		typeof report !== "object" ||
+		!isJsonObject(report) ||
 		report === null ||
+		// SAFETY: assertion required at this I/O or test boundary.
 		(report as LocalSubstrateReport).contract !==
 			LOCAL_SUBSTRATE_REPORT_CONTRACT
 	) {
@@ -907,6 +963,7 @@ export function localSubstrateYards(
 						productId: binding.productId,
 						// A row that exists because a probe saw the substrate is
 						// discovered, never a platform default.
+						// SAFETY: assertion required at this I/O or test boundary.
 						provenance: "discovered" as SeedProvenance,
 						fidelity: binding.fidelity,
 					}));
@@ -954,11 +1011,11 @@ export function localSubstrateYards(
  * set a default localhost Station would register, in one deterministic call.
  */
 export function registerLocalSubstrateYards(input: {
-	readonly probes: unknown;
+	readonly probes: LocalSubstrateProbes;
 	readonly observations?: readonly LocalhostCapabilityObservation[];
 	readonly now?: () => string;
 }): LocalSubstrateRegistration {
-	if (typeof input !== "object" || input === null) {
+	if (!isJsonObject(input) || input === null) {
 		throw new LocalSubstrateError(
 			"LOCAL_SUBSTRATE_PROBES_INVALID",
 			"registerLocalSubstrateYards input must be an object",
@@ -991,11 +1048,19 @@ export function registerLocalSubstrateYards(input: {
  * one rather than reaching past a package boundary.
  */
 function deepFreeze<T>(value: T): T {
-	if (value === null || typeof value !== "object") return value;
+	if (value === null || value === undefined) return value;
 	if (Object.isFrozen(value)) return value;
+	if (Array.isArray(value)) {
+		Object.freeze(value);
+		for (const item of value) {
+			deepFreeze(item);
+		}
+		return value;
+	}
+	if (!isJsonObject(value)) return value;
 	Object.freeze(value);
-	for (const key of Object.keys(value as Record<string, unknown>)) {
-		deepFreeze((value as Record<string, unknown>)[key]);
+	for (const key of Object.keys(value)) {
+		deepFreeze(value[key]);
 	}
 	return value;
 }

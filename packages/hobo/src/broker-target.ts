@@ -7,7 +7,9 @@
  *   3. Persisted profile default under HOBO_HOME
  *   4. Embedded local broker
  */
+
 import { loadHoboProfile } from "./hobo-profile.js";
+import { isJsonString } from "./json.js";
 
 export type BrokerTargetKind = "local" | "remote";
 export type BrokerDeployMode = "auth" | "anonymous";
@@ -39,11 +41,11 @@ export function resolveBrokerUriFromFlags(
 	flags: BrokerTargetFlags,
 ): string | null {
 	const a =
-		typeof flags.broker === "string" && flags.broker.trim().length > 0
+		isJsonString(flags.broker) && flags.broker.trim().length > 0
 			? flags.broker.trim()
 			: null;
 	const b =
-		typeof flags.brokerUri === "string" && flags.brokerUri.trim().length > 0
+		isJsonString(flags.brokerUri) && flags.brokerUri.trim().length > 0
 			? flags.brokerUri.trim()
 			: null;
 	return a ?? b;
@@ -73,7 +75,7 @@ export function resolveBrokerTarget(input: {
 	}
 
 	const fromEnvRaw = env.HOBO_BROKER ?? env.HOBO_BROKER_URI;
-	if (typeof fromEnvRaw === "string" && fromEnvRaw.trim().length > 0) {
+	if (isJsonString(fromEnvRaw) && fromEnvRaw.trim().length > 0) {
 		return {
 			kind: "remote",
 			uri: normalizeBrokerUri(fromEnvRaw.trim()),

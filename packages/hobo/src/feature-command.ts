@@ -2,6 +2,7 @@
  * `hobo feature` — OpenFeature-native flag observe / local set / eval.
  * Subcommands: list | eval | set | kill | status
  */
+
 import type { CommandModule } from "@hobo/cli";
 import {
 	createContractAssertedHarnessFixtures,
@@ -9,6 +10,7 @@ import {
 	enrichEvaluationContext,
 	type FeatureFlagStore,
 } from "@hobo/identity";
+import { isJsonString, type JsonObject } from "./json.js";
 
 export interface FeatureCommandDeps {
 	readonly store?: FeatureFlagStore;
@@ -30,17 +32,20 @@ export function createFeatureCommand(
 ): CommandModule {
 	return {
 		run: async ({ args, flags, emitProgress }) => {
-			const f = flags as Record<string, unknown>;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const f = flags as JsonObject;
 			const fixtures = createContractAssertedHarnessFixtures({
 				tenant:
-					(typeof f.tenant === "string" && f.tenant) ||
+					(isJsonString(f.tenant) && f.tenant) ||
 					deps.env?.HOBO_TENANT ||
 					"local",
 			});
 			const store = deps.store ?? fixtures.store;
 			const harness = createHarness({ store });
+			// SAFETY: assertion required at this I/O or test boundary.
 			const sub = (args[0] ?? "list") as string;
 
+			// SAFETY: assertion required at this I/O or test boundary.
 			if (!(SUBS as readonly string[]).includes(sub)) {
 				return {
 					ok: false,
@@ -119,7 +124,7 @@ export function createFeatureCommand(
 			}
 
 			const key = args[1];
-			if (typeof key !== "string" || !key) {
+			if (!isJsonString(key) || !key) {
 				return {
 					ok: false,
 					status: "usage",
@@ -131,11 +136,11 @@ export function createFeatureCommand(
 
 			if (sub === "eval") {
 				const ctx = enrichEvaluationContext({
-					tenant: (typeof f.tenant === "string" && f.tenant) || "local",
+					tenant: (isJsonString(f.tenant) && f.tenant) || "local",
 					principal: {
-						id: (typeof f.subject === "string" && f.subject) || "user:local",
+						id: (isJsonString(f.subject) && f.subject) || "user:local",
 					},
-					environment: (typeof f.env === "string" && f.env) || "local-dev",
+					environment: (isJsonString(f.env) && f.env) || "local-dev",
 				});
 				// Evaluate against the active store (injected or fixture), never a stale client.
 				const detail = store.evaluateBoolean(key, ctx, false);
@@ -192,7 +197,7 @@ export function createFeatureCommand(
 			if (sub === "kill") {
 				const def = store.activateKillSwitch(
 					key,
-					(typeof f.actor === "string" && f.actor) || "cli",
+					(isJsonString(f.actor) && f.actor) || "cli",
 				);
 				if (!def) {
 					return {

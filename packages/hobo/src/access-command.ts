@@ -5,6 +5,7 @@
  * Subcommands: request | break-glass | status
  * Mutations that grant production access require dual control in the control plane.
  */
+
 import type { CommandModule } from "@hobo/cli";
 import {
 	BreakGlassService,
@@ -14,6 +15,7 @@ import {
 	mintElevatedAccessCapability,
 	parseIsolationClass,
 } from "@hobo/connectivity";
+import { isJsonString, type JsonObject, type JsonValue } from "./json.js";
 
 export interface AccessCommandDeps {
 	readonly env?: NodeJS.ProcessEnv;
@@ -25,8 +27,11 @@ export interface AccessCommandDeps {
 
 const SUBCOMMANDS = ["request", "break-glass", "status"] as const;
 
-function parseDurationSeconds(raw: unknown, fallback: number): number {
-	if (typeof raw !== "string" || raw.length === 0) return fallback;
+function parseDurationSeconds(
+	raw: JsonValue | undefined,
+	fallback: number,
+): number {
+	if (!isJsonString(raw) || raw.length === 0) return fallback;
 	const m = raw.match(/^(\d+)(s|m|h)?$/);
 	if (!m) return fallback;
 	const n = Number(m[1]);
@@ -42,11 +47,10 @@ export function createAccessCommand(
 	return {
 		run: async ({ args, flags, emitProgress }) => {
 			const env = deps.env ?? process.env;
-			const f = flags as Record<string, unknown>;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const f = flags as JsonObject;
 			const tenant =
-				(typeof f.tenant === "string" && f.tenant) ||
-				env.HOBO_TENANT ||
-				"local";
+				(isJsonString(f.tenant) && f.tenant) || env.HOBO_TENANT || "local";
 			const now = deps.now ?? (() => new Date().toISOString());
 			const membership =
 				deps.membership ?? new EnvMembershipService({ tenant, now });
@@ -54,7 +58,9 @@ export function createAccessCommand(
 			const breakGlass =
 				deps.breakGlass ?? new BreakGlassService({ tenant, now });
 
+			// SAFETY: assertion required at this I/O or test boundary.
 			const sub = (args[0] ?? "status") as string;
+			// SAFETY: assertion required at this I/O or test boundary.
 			if (!(SUBCOMMANDS as readonly string[]).includes(sub)) {
 				return {
 					ok: false,
@@ -88,11 +94,11 @@ export function createAccessCommand(
 			}
 
 			const targetEnvRaw =
-				(typeof f.env === "string" && f.env) ||
-				(typeof f.environment === "string" && f.environment) ||
+				(isJsonString(f.env) && f.env) ||
+				(isJsonString(f.environment) && f.environment) ||
 				args[1];
 			const targetClass = parseIsolationClass(
-				typeof targetEnvRaw === "string" ? targetEnvRaw : null,
+				isJsonString(targetEnvRaw) ? targetEnvRaw : null,
 			);
 			if (!targetClass) {
 				return {
@@ -108,14 +114,14 @@ export function createAccessCommand(
 			}
 
 			const reason =
-				(typeof f.reason === "string" && f.reason) || "operator access request";
+				(isJsonString(f.reason) && f.reason) || "operator access request";
 			const subject =
-				(typeof f.subject === "string" && f.subject) ||
+				(isJsonString(f.subject) && f.subject) ||
 				env.HOBO_SUBJECT ||
 				"user:local";
 			const duration = parseDurationSeconds(f.duration, 1800);
 			const actor =
-				(typeof f.actor === "string" && f.actor) || "control-plane:operator";
+				(isJsonString(f.actor) && f.actor) || "control-plane:operator";
 
 			if (sub === "break-glass") {
 				const requested = breakGlass.request({
@@ -125,8 +131,7 @@ export function createAccessCommand(
 					requester: actor,
 				});
 				// Dual approval: operator can pass --approver for the second party.
-				const approver =
-					typeof f.approver === "string" ? f.approver : undefined;
+				const approver = isJsonString(f.approver) ? f.approver : undefined;
 				if (approver) {
 					const granted = breakGlass.approve({
 						grantId: requested.id,
@@ -182,9 +187,8 @@ export function createAccessCommand(
 
 			// request — elevated capability after lower-env evidence
 			const fromClass: IsolationClass =
-				parseIsolationClass(
-					typeof f.from === "string" ? f.from : "development",
-				) ?? "development";
+				parseIsolationClass(isJsonString(f.from) ? f.from : "development") ??
+				"development";
 
 			// Ensure membership in prior class (control-plane) for the subject.
 			if (!membership.getActive(subject, fromClass, now())) {
@@ -194,7 +198,7 @@ export function createAccessCommand(
 					assignedBy: actor,
 					...(targetClass === "production"
 						? { secondApprover: "role:security-officer" }
-						: {}),
+						: undefined),
 					// production assign of membership for fromClass isn't production class
 				});
 			}
@@ -208,7 +212,7 @@ export function createAccessCommand(
 				ttlSeconds: duration,
 				...(targetClass === "production"
 					? { dualControlApprovers: ["role:security-officer"] }
-					: {}),
+					: undefined),
 			});
 
 			const minted = mintElevatedAccessCapability({

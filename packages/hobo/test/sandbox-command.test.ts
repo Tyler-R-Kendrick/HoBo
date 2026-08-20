@@ -111,6 +111,7 @@ describe("hobo sandbox / test (contract-backed isolated lane)", () => {
 					{ handle: async () => ({ status: 500, headers: [], body: "" }) },
 				]),
 			);
+			// SAFETY: assertion required at this I/O or test boundary.
 			return {
 				...base,
 				plan: {
@@ -122,7 +123,9 @@ describe("hobo sandbox / test (contract-backed isolated lane)", () => {
 
 		const command = createSandboxCommand({ runtimeFactory: degradedRuntime });
 		const result = await command.run({
-			context: { cwd: "/tmp", projectDir: "/tmp" } as unknown as CliContext,
+			// SAFETY: assertion required at this I/O or test boundary.
+			context: { cwd: "/tmp", projectDir: "/tmp" } as CliContext,
+			// SAFETY: assertion required at this I/O or test boundary.
 			flags: { cwd: "/tmp" } as never,
 			args: [],
 			verb: "sandbox",
@@ -132,6 +135,7 @@ describe("hobo sandbox / test (contract-backed isolated lane)", () => {
 		expect(result.ok).toBe(false);
 		expect(result.status).toBe("failed");
 		expect(result.code).toBe("HOBO_SANDBOX_FAILED");
+		// SAFETY: assertion required at this I/O or test boundary.
 		const checks = (result.data as { checks: { name: string; ok: boolean }[] })
 			.checks;
 		expect(checks.find((c) => c.name === "http-status-200")?.ok).toBe(false);

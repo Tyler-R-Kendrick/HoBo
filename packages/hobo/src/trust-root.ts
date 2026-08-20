@@ -12,14 +12,15 @@
  * correct outcome: "I never said whose attestations I accept" and "nobody
  * attested this" should not lead to different deployments.
  */
+
 import { createPublicKey, verify as verifySignature } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-
 import type {
 	EvidenceVerificationRequest,
 	EvidenceVerifier,
 } from "@hobo/trust";
+import { isJsonObject, isJsonString, type JsonValue } from "./json.js";
 
 /** Directory under `HOBO_HOME` holding published trust roots. */
 // public-contract: operators publish accepted roots under this stable path.
@@ -53,22 +54,26 @@ export class TrustRootError extends Error {
 	}
 }
 
-function parseTrustRoot(fileName: string, value: unknown): TrustRootRecord {
-	if (typeof value !== "object" || value === null) {
+function parseTrustRoot(
+	fileName: string,
+	value: JsonValue | undefined,
+): TrustRootRecord {
+	if (!isJsonObject(value) || value === null) {
 		throw new TrustRootError(
 			"trust-root-invalid",
 			`trust-root-invalid: ${fileName} is not an object`,
 		);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	const record = value as Partial<TrustRootRecord>;
-	if (typeof record.id !== "string" || record.id.length === 0) {
+	if (!isJsonString(record.id) || record.id.length === 0) {
 		throw new TrustRootError(
 			"trust-root-invalid",
 			`trust-root-invalid: ${fileName} declares no id`,
 		);
 	}
 	if (
-		typeof record.publicKeyPem !== "string" ||
+		!isJsonString(record.publicKeyPem) ||
 		!record.publicKeyPem.includes("BEGIN PUBLIC KEY")
 	) {
 		throw new TrustRootError(
@@ -79,7 +84,7 @@ function parseTrustRoot(fileName: string, value: unknown): TrustRootRecord {
 	if (
 		record.providerIds !== undefined &&
 		(!Array.isArray(record.providerIds) ||
-			record.providerIds.some((entry) => typeof entry !== "string"))
+			record.providerIds.some((entry) => !isJsonString(entry)))
 	) {
 		throw new TrustRootError(
 			"trust-root-invalid",
@@ -91,7 +96,7 @@ function parseTrustRoot(fileName: string, value: unknown): TrustRootRecord {
 		publicKeyPem: record.publicKeyPem,
 		...(record.providerIds !== undefined
 			? { providerIds: [...record.providerIds] }
-			: {}),
+			: undefined),
 	};
 }
 
@@ -104,6 +109,7 @@ export async function loadTrustRoots(
 	try {
 		entries = await readdir(directory);
 	} catch (cause) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		if ((cause as NodeJS.ErrnoException).code === "ENOENT") return [];
 		throw new TrustRootError(
 			"trust-roots-unreadable",
@@ -115,7 +121,7 @@ export async function loadTrustRoots(
 	for (const entry of [...entries].sort()) {
 		if (!entry.endsWith(".json")) continue;
 		const path = join(directory, entry);
-		let parsed: unknown;
+		let parsed: JsonValue;
 		try {
 			parsed = JSON.parse(await readFile(path, "utf8"));
 		} catch (cause) {

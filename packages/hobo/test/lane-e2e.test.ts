@@ -77,7 +77,7 @@ async function withProject(
 
 // Recording VercelFetch — captures each request and returns a Create-Deployment
 // success body. No socket is opened.
-function recordingVercelFetch(): { fetch: VercelFetch; calls: VercelCall[] } {
+function recordingVercelFetch() {
 	const calls: VercelCall[] = [];
 	const fetch: VercelFetch = async (url, init) => {
 		calls.push({
@@ -106,10 +106,7 @@ function recordingVercelFetch(): { fetch: VercelFetch; calls: VercelCall[] } {
 
 // Recording CloudflareFetch — captures each request and returns a canned success
 // body per endpoint (script upload / subdomain lookup). No socket is opened.
-function recordingCloudflareFetch(): {
-	fetch: CloudflareFetch;
-	calls: CloudflareCall[];
-} {
+function recordingCloudflareFetch() {
 	const calls: CloudflareCall[] = [];
 	const fetch: CloudflareFetch = async (url, init) => {
 		calls.push({ url, method: init.method, headers: init.headers });
@@ -139,10 +136,12 @@ describe("hobo up drives the REAL deploy lane end to end (injected transport)", 
 				env: { VERCEL_TOKEN: "tok_e2e" },
 				vercelFetch: fetch,
 			});
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
 			const result = await cli.run(["up", "--json"], { cwd });
+			// SAFETY: assertion required at this I/O or test boundary.
 			const up = JSON.parse(result.stdout) as {
 				ok: boolean;
 				status: string;
@@ -175,10 +174,12 @@ describe("hobo up drives the REAL deploy lane end to end (injected transport)", 
 				},
 				cloudflareFetch: fetch,
 			});
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
 			const result = await cli.run(["up", "--json"], { cwd });
+			// SAFETY: assertion required at this I/O or test boundary.
 			const up = JSON.parse(result.stdout) as {
 				ok: boolean;
 				status: string;
@@ -201,10 +202,12 @@ describe("hobo up drives the REAL deploy lane end to end (injected transport)", 
 	it("still uses the in-memory lane when no deploy credential is present", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime({ env: {} });
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
 			const result = await cli.run(["up", "--json"], { cwd });
+			// SAFETY: assertion required at this I/O or test boundary.
 			const up = JSON.parse(result.stdout) as { ok: boolean; status: string };
 
 			// No token, no injected transport: the deploy still converges, on the

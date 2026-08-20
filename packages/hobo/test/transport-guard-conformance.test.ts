@@ -54,10 +54,7 @@ import { describe, expect, it } from "vitest";
 /** A transport that records whether it was ever reached. A refused request
  *  must never arrive here — a guard that "refuses" after sending has already
  *  leaked the credential it exists to protect. */
-function spyInner(): {
-	readonly transport: HttpTransport;
-	reached: () => number;
-} {
+function spyInner() {
 	let calls = 0;
 	return {
 		transport: async () => {
@@ -246,11 +243,12 @@ async function expectRefusal(
 ): Promise<void> {
 	const error = await call.then(
 		() => undefined,
-		(reason: unknown) => reason,
+		(reason: Error) => reason,
 	);
 	expect(error, "guarded call resolved instead of refusing").toBeInstanceOf(
 		Error,
 	);
+	// SAFETY: assertion required at this I/O or test boundary.
 	const thrown = error as Error & { code?: unknown };
 	expect(thrown.name).toBe("TransportGuardError");
 	expect(thrown.code).toBe(code);

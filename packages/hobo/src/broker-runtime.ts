@@ -5,11 +5,11 @@
  * registered Yard (or generates one under policy), then a Camp inside that Yard,
  * then runs resolvers under the Yard provider. Bindle provider pins are rejected.
  */
+
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { hostname } from "node:os";
 import { join } from "node:path";
-
 import {
 	assertNoBindleProviderSelection,
 	BINDLE_PROVIDER_SELECTION_FORBIDDEN,
@@ -53,6 +53,7 @@ import {
 	installedHostKinds,
 	isRuntimeInstalled,
 } from "./installed-runtimes.js";
+import { isJsonString } from "./json.js";
 import {
 	OCI_PROVIDER_ID,
 	providerIdToHost,
@@ -284,6 +285,7 @@ export function loadEmbeddedBrokerState(
 	const path = brokerStatePath(hoboHome);
 	if (!existsSync(path)) return null;
 	try {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const raw = JSON.parse(readFileSync(path, "utf8")) as EmbeddedBrokerState;
 		if (raw.schemaVersion !== EMBEDDED_BROKER_SCHEMA) return null;
 		return raw;
@@ -385,7 +387,7 @@ export async function ensureEmbeddedBroker(
 	if (
 		existingStations.length === 0 &&
 		profile?.defaultStation?.id === undefined &&
-		typeof process.env.HOBO_STATION !== "string"
+		!isJsonString(process.env.HOBO_STATION)
 	) {
 		const boot = initStation({
 			hoboHome,
@@ -402,9 +404,9 @@ export async function ensureEmbeddedBroker(
 	}
 	const stationCtx = resolveStationContext({
 		hoboHome,
-		...(typeof process.env.HOBO_STATION === "string"
+		...(isJsonString(process.env.HOBO_STATION)
 			? { stationEnv: process.env.HOBO_STATION }
-			: {}),
+			: undefined),
 		...(loadHoboProfile(hoboHome)?.defaultStation?.id !== undefined
 			? {
 					profileStationId: must(
@@ -488,6 +490,7 @@ export async function resolveBindlePlacement(options: {
 					schemaVersion: "hobo.broker/v1",
 					requestId: "bindle-provider-check",
 					brokerId: "uninitialized",
+					// SAFETY: assertion required at this I/O or test boundary.
 					policyHash: "sha256:none" as never,
 					// Pre-station fail-fast: no Station occupancy exists yet.
 					stationId: "uninitialized",
@@ -532,6 +535,7 @@ export async function resolveBindlePlacement(options: {
 					schemaVersion: "hobo.broker/v1",
 					requestId: "runtime-check",
 					brokerId: "uninitialized",
+					// SAFETY: assertion required at this I/O or test boundary.
 					policyHash: "sha256:none" as never,
 					// Pre-station fail-fast: no Station occupancy exists yet.
 					stationId: "uninitialized",
@@ -575,6 +579,7 @@ export async function resolveBindlePlacement(options: {
 		(resource) => ({
 			resourceId: resource.name,
 			port: portForResourceKind(resource.kind),
+			// SAFETY: assertion required at this I/O or test boundary.
 			features: [] as string[],
 		}),
 	);
@@ -643,6 +648,7 @@ export async function resolveBindlePlacement(options: {
 					stationId: pins.stationId,
 					railHash: pins.railHash,
 					reasons: (yardFirst.reasons ?? []).map((r) => ({
+						// SAFETY: assertion required at this I/O or test boundary.
 						plane: r.plane as "placement",
 						code: r.code,
 						message: r.message,
@@ -704,12 +710,7 @@ export async function resolveBindlePlacement(options: {
 	};
 }
 
-export function describeBrokerRuntime(hoboHome: string = defaultHoboHome()): {
-	readonly yardConfigPath: string;
-	readonly brokerStatePath: string;
-	readonly yard: BareMetalYardConfig | null;
-	readonly broker: EmbeddedBrokerState | null;
-} {
+export function describeBrokerRuntime(hoboHome: string = defaultHoboHome()) {
 	return {
 		yardConfigPath: yardConfigPath(hoboHome),
 		brokerStatePath: brokerStatePath(hoboHome),

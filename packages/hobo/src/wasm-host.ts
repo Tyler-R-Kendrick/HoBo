@@ -22,6 +22,7 @@ import {
 	type ComponentHostKind,
 	normalizeComponentHostKind,
 } from "./bare-metal-yard.js";
+import { isJsonString, type JsonObject } from "./json.js";
 import { serveBindleOnLocalYard } from "./local-yard-serve.js";
 import { serveProjectOnHost } from "./multi-host-serve.js";
 
@@ -52,9 +53,7 @@ export function probeWasmHostInstall(
 		env.HOBO_WASMTIME_BIN,
 		env.HOME ? `${env.HOME}/.hobo/tools/wasmtime` : undefined,
 		"wasmtime",
-	].filter(
-		(value): value is string => typeof value === "string" && value.length > 0,
-	);
+	].filter((value): value is string => isJsonString(value) && value.length > 0);
 
 	const notes: string[] = [];
 	const componentHosts = {
@@ -152,7 +151,7 @@ export async function serveProjectOnLocalYard(options: {
 			readonly isolateBoundary: string;
 			readonly wasmtimeVersion?: string;
 			readonly wasmPaths?: readonly string[];
-			readonly details?: Readonly<Record<string, unknown>>;
+			readonly details?: JsonObject;
 		};
 	}
 > {
@@ -161,7 +160,7 @@ export async function serveProjectOnLocalYard(options: {
 			? (await import("./bare-metal-yard.js")).openBareMetalYard({
 					...(options.hoboHome !== undefined
 						? { hoboHome: options.hoboHome }
-						: {}),
+						: undefined),
 				})
 			: null;
 	const yard = options.yard ?? must(owned);

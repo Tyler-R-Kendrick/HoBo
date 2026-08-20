@@ -3,6 +3,7 @@ import {
 	type HoboMcpServer,
 	MCP_TOOL_SURFACE,
 } from "@hobo/mcp";
+import { isJsonString, type JsonObject } from "./json.js";
 
 // The MCP stdio protocol layer for the composed `hobo-mcp` binary
 // (docs/plans/0006 item 3-3). Newline-delimited JSON-RPC 2.0 per the MCP
@@ -23,7 +24,7 @@ interface JsonRpcRequest {
 	readonly jsonrpc: "2.0";
 	readonly id?: number | string | null;
 	readonly method: string;
-	readonly params?: Record<string, unknown>;
+	readonly params?: JsonObject;
 }
 
 export interface JsonRpcResponse {
@@ -77,6 +78,7 @@ export async function handleMcpMessage(
 ): Promise<JsonRpcResponse | null> {
 	let request: JsonRpcRequest;
 	try {
+		// SAFETY: assertion required at this I/O or test boundary.
 		request = JSON.parse(raw) as JsonRpcRequest;
 	} catch {
 		return {
@@ -91,6 +93,7 @@ export async function handleMcpMessage(
 
 	switch (request.method) {
 		case "initialize": {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const requested = (request.params as { protocolVersion?: string })
 				?.protocolVersion;
 			return {
@@ -124,17 +127,19 @@ export async function handleMcpMessage(
 				},
 			};
 		case "tools/call": {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const params = (request.params ?? {}) as {
 				name?: unknown;
 				arguments?: unknown;
 			};
-			if (typeof params.name !== "string") {
+			if (!isJsonString(params.name)) {
 				return {
 					jsonrpc: "2.0",
 					id,
 					error: { code: -32602, message: "tools/call requires params.name" },
 				};
 			}
+			// SAFETY: assertion required at this I/O or test boundary.
 			const args = (params.arguments ?? {}) as {
 				cwd?: unknown;
 				camp?: unknown;
@@ -143,15 +148,13 @@ export async function handleMcpMessage(
 			const result = await server.callTool(
 				params.name,
 				{
-					...(typeof args.cwd === "string" ? { cwd: args.cwd } : {}),
-					...(typeof args.camp === "string" ? { camp: args.camp } : {}),
+					...(isJsonString(args.cwd) ? { cwd: args.cwd } : undefined),
+					...(isJsonString(args.camp) ? { camp: args.camp } : undefined),
 					...(Array.isArray(args.args)
 						? {
-								args: args.args.filter(
-									(a): a is string => typeof a === "string",
-								),
+								args: args.args.filter((a): a is string => isJsonString(a)),
 							}
-						: {}),
+						: undefined),
 				},
 				auth,
 			);

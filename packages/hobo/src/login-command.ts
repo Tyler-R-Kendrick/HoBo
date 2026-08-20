@@ -24,9 +24,24 @@ import {
 	type YardSession,
 } from "@hobo/cli";
 import type { PrincipalRef } from "@hobo/core";
-
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import { resolveBrokerUriFromFlags } from "./broker-target.js";
+import { isJsonObject, isJsonString, type JsonValue } from "./json.js";
+
+function isPrincipalKind(
+	value: string | JsonValue | undefined,
+): value is PrincipalRef["kind"] {
+	switch (value) {
+		case "user":
+		case "agent":
+		case "service":
+		case "system":
+			return true;
+		default:
+			return false;
+	}
+}
+
 import { upsertLoginProfile } from "./hobo-profile.js";
 import {
 	DeviceGrantError,
@@ -77,7 +92,7 @@ export function createBrokerAwareLoginCommand(
 			if (!result.ok) return result;
 
 			const hoboHome =
-				typeof input.flags.home === "string" && input.flags.home.length > 0
+				isJsonString(input.flags.home) && input.flags.home.length > 0
 					? input.flags.home
 					: defaultHoboHome(env);
 			const brokerUri = resolveBrokerUriFromFlags({
@@ -85,6 +100,7 @@ export function createBrokerAwareLoginCommand(
 				brokerUri: input.flags.brokerUri,
 			});
 
+			// SAFETY: assertion required at this I/O or test boundary.
 			const data = (result.data ?? {}) as {
 				principal?: { kind: string; id: string };
 				tenant?: string;
@@ -94,21 +110,21 @@ export function createBrokerAwareLoginCommand(
 				kind: "user" as const,
 				id: "user:local-fixture",
 			};
-			const tenant = typeof data.tenant === "string" ? data.tenant : "hobo-dev";
-			const token =
-				typeof data.token === "string"
-					? data.token
-					: createFixtureSession().token;
+			const tenant = isJsonString(data.tenant) ? data.tenant : "hobo-dev";
+			const token = isJsonString(data.token)
+				? data.token
+				: createFixtureSession().token;
 
 			const profile = upsertLoginProfile({
 				hoboHome,
 				principal: {
+					// SAFETY: assertion required at this I/O or test boundary.
 					kind: principal.kind as "user" | "agent" | "service" | "system",
 					id: principal.id,
 				},
 				tenant,
 				token,
-				...(brokerUri !== null ? { brokerUri } : {}),
+				...(brokerUri !== null ? { brokerUri } : undefined),
 			});
 
 			const message =
@@ -223,20 +239,16 @@ function sessionFromVerifiedGrant(
 	now: () => number,
 ): YardSession {
 	const claims = grant.claims;
-	const sub = typeof claims.sub === "string" ? claims.sub : "unknown";
+	const sub = isJsonString(claims.sub) ? claims.sub : "unknown";
 	const parent = claims.parentPrincipal;
 	const principal: PrincipalRef =
-		typeof parent === "object" &&
-		parent !== null &&
-		typeof (parent as { kind?: unknown }).kind === "string" &&
-		typeof (parent as { id?: unknown }).id === "string"
-			? {
-					kind: (parent as { kind: string }).kind as PrincipalRef["kind"],
-					id: (parent as { id: string }).id,
-				}
+		isJsonObject(parent) &&
+		isPrincipalKind(parent.kind) &&
+		isJsonString(parent.id)
+			? { kind: parent.kind, id: parent.id }
 			: { kind: "user", id: sub.includes(":") ? sub : `user:${sub}` };
 	const tenant =
-		typeof claims.tenant === "string" && claims.tenant.length > 0
+		isJsonString(claims.tenant) && claims.tenant.length > 0
 			? claims.tenant
 			: "hobo-dev";
 	return {

@@ -61,10 +61,10 @@ export async function ensureAllRuntimeHosts(options: {
 		results.push(
 			await host.ensure({
 				hoboHome: options.hoboHome,
-				...(options.env !== undefined ? { env: options.env } : {}),
+				...(options.env !== undefined ? { env: options.env } : undefined),
 				...(options.emitProgress !== undefined
 					? { emitProgress: options.emitProgress }
-					: {}),
+					: undefined),
 			}),
 		);
 	}
@@ -98,7 +98,7 @@ export async function buildPrivateComponentSpecs(options: {
 			handler: entry.handler,
 			...(entry.modulePath !== undefined
 				? { modulePath: entry.modulePath }
-				: {}),
+				: undefined),
 		}));
 	}
 
@@ -115,7 +115,7 @@ export async function buildPrivateComponentSpecs(options: {
 			hoboHome: options.hoboHome,
 			...(entry.modulePath !== undefined
 				? { modulePath: entry.modulePath }
-				: {}),
+				: undefined),
 			emitProgress: emit,
 		});
 		if (kind === "wasm") {
@@ -125,7 +125,7 @@ export async function buildPrivateComponentSpecs(options: {
 				wasmPath: prepared.wasmPath,
 				...(entry.modulePath !== undefined
 					? { modulePath: entry.modulePath }
-					: {}),
+					: undefined),
 			});
 		} else {
 			// oci: packed wasm artifact; mesh traffic goes through real port-forward.
@@ -135,7 +135,7 @@ export async function buildPrivateComponentSpecs(options: {
 				wasmPath: prepared.wasmPath,
 				...(entry.modulePath !== undefined
 					? { modulePath: entry.modulePath }
-					: {}),
+					: undefined),
 			});
 		}
 	}
@@ -163,7 +163,7 @@ export async function servePrivateOnHost(options: {
 		privateEntries: options.privateEntries,
 		...(options.emitProgress !== undefined
 			? { emitProgress: options.emitProgress }
-			: {}),
+			: undefined),
 	});
 	return host.servePrivate({
 		hoboHome: options.hoboHome,
@@ -171,9 +171,9 @@ export async function servePrivateOnHost(options: {
 		privateComponents,
 		...(options.bindleEnv !== undefined
 			? { bindleEnv: options.bindleEnv }
-			: {}),
+			: undefined),
 		...(options.emitProgress !== undefined
 			? { emitProgress: options.emitProgress }
-			: {}),
+			: undefined),
 	});
 }

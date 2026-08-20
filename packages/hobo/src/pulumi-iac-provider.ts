@@ -9,8 +9,14 @@ import {
 	type IacProvider,
 	type ResourcePlan,
 } from "@hobo/cloud";
-import type { CloudProvider, EventEnvelope, EventStore } from "@hobo/core";
+import type {
+	CloudProvider,
+	EventEnvelope,
+	EventStore,
+	IacProgramDocument,
+} from "@hobo/core";
 import { createPulumiAutomationAdapter } from "@hobo/iac-pulumi";
+import { isJsonString, type JsonObject, type JsonValue } from "./json.js";
 
 // ---------------------------------------------------------------------------
 // The REAL IaC backend on the deploy path (S0-01 integration gap closed).
@@ -51,25 +57,25 @@ interface PulumiPreviewDiff {
 	readonly dirty: boolean;
 }
 interface PulumiApplyOutputs {
-	readonly resources: Record<string, unknown>;
-	readonly stackOutputs?: Record<string, unknown>;
-	readonly bindings?: Record<string, unknown>;
+	readonly resources: JsonObject;
+	readonly stackOutputs?: JsonObject;
+	readonly bindings?: JsonObject;
 }
 interface PulumiDriftReport {
 	readonly drifted: boolean;
 }
 export interface PulumiAutomationAdapter {
 	readonly id: string;
-	preview(program: unknown): Promise<PulumiPreviewDiff>;
-	apply(program: unknown): Promise<PulumiApplyOutputs>;
-	destroy(program: unknown): Promise<unknown>;
-	refresh(program: unknown): Promise<PulumiDriftReport>;
+	preview(program: IacProgramDocument): Promise<PulumiPreviewDiff>;
+	apply(program: IacProgramDocument): Promise<PulumiApplyOutputs>;
+	destroy(program: IacProgramDocument): Promise<JsonValue>;
+	refresh(program: IacProgramDocument): Promise<PulumiDriftReport>;
 	// Estate discovery seam (optional — spy/test adapters may omit it): the full
 	// per-resource-stack state the adapter's backend holds, `{ [stackKey]:
 	// { resources } }`. Drives `hobo drift`/`hobo import`; the real CLI engine
 	// fails closed with a typed PulumiEngineUnavailableError when the pulumi
 	// binary is missing.
-	snapshotState?(): Record<string, unknown>;
+	snapshotState?(): JsonObject;
 }
 
 export interface PulumiBackedIacProviderOptions {
@@ -90,6 +96,7 @@ function planFromStream(
 	let plan: DeploymentPlan | undefined;
 	for (const event of events) {
 		if (event.type === CLOUD_EVENTS.DeploymentPlanned) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			plan = (event.data as { plan: DeploymentPlan }).plan;
 		}
 	}
@@ -102,10 +109,10 @@ function planFromStream(
 function toIacOutputs(result: PulumiApplyOutputs): IacOutputs {
 	const outputs: IacOutputs = {};
 	for (const [key, value] of Object.entries(result.stackOutputs ?? {})) {
-		if (typeof value === "string") outputs[key] = value;
+		if (isJsonString(value)) outputs[key] = value;
 	}
 	for (const [key, value] of Object.entries(result.bindings ?? {})) {
-		if (typeof value === "string") outputs[key] = value;
+		if (isJsonString(value)) outputs[key] = value;
 	}
 	return outputs;
 }
@@ -114,9 +121,11 @@ export function createPulumiBackedIacProvider(
 	options: PulumiBackedIacProviderOptions,
 ): IacProvider {
 	const { store } = options;
-	const adapter =
-		options.adapter ??
-		(createPulumiAutomationAdapter() as PulumiAutomationAdapter);
+	let adapter = options.adapter;
+	if (adapter === undefined) {
+		// SAFETY: the in-memory automation adapter implements PulumiAutomationAdapter.
+		adapter = createPulumiAutomationAdapter() as PulumiAutomationAdapter;
+	}
 	const providersById = new Map<string, CloudProvider>(
 		options.providers.map((provider) => [provider.id, provider]),
 	);
@@ -133,7 +142,9 @@ export function createPulumiBackedIacProvider(
 	// whose in-memory Pulumi state is likewise empty) — there is genuinely nothing
 	// to realize, so the mutating paths no-op rather than fabricate a plan. The
 	// apply path REQUIRES a resolved plan and rejects `undefined`.
-	async function realizeFor(program: IacProgram): Promise<unknown | undefined> {
+	async function realizeFor(
+		program: IacProgram,
+	): Promise<IacProgramDocument | undefined> {
 		const events = await collectStream(
 			store,
 			`deployment:${program.deploymentId}`,

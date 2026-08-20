@@ -53,6 +53,7 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 			{ cwd: hoboHome },
 		);
 		expect(result.stdout.length).toBeGreaterThan(0);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const envelope = JSON.parse(result.stdout) as {
 			ok: boolean;
 			code: string;
@@ -80,6 +81,7 @@ describe("Yard / Camp / component host + hobo-managed sandboxes", () => {
 			["yard", "init", "--home", hoboHome, "--host", "isolated-wasm", "--json"],
 			{ cwd: hoboHome },
 		);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const envelope = JSON.parse(init.stdout) as {
 			ok: boolean;
 			message: string;

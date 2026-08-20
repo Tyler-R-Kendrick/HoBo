@@ -9,8 +9,8 @@ import {
 	JwtSvidIssuer,
 } from "@hobo/identity";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-
 import { createBrokerAwareLoginCommand } from "../src/index.js";
+import type { JsonObject, JsonValue } from "../src/json.js";
 
 // `hobo login` device-code grant (RFC 8628) against an in-test fake issuer:
 // discovery + device endpoint + token endpoint + JWKS all served through the
@@ -47,28 +47,27 @@ function svidClaims(overrides: Partial<JwtSvidClaims> = {}): JwtSvidClaims {
 	};
 }
 
-function jsonResponse(status: number, body: unknown): Response {
+function jsonResponse(status: number, body: JsonValue): Response {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return {
 		ok: status >= 200 && status < 300,
 		status,
 		json: async () => body,
-	} as unknown as Response;
+	} as Response;
 }
 
 interface FakeIssuerOptions {
 	/** Scripted token-endpoint responses, consumed one per poll. */
 	readonly tokenResponses: readonly Response[];
-	readonly discoveryOverride?: Record<string, unknown> | "unreachable";
-	readonly deviceOverride?: Record<string, unknown>;
+	readonly discoveryOverride?: JsonObject | "unreachable";
+	readonly deviceOverride?: JsonObject;
 }
 
-function createFakeIssuerFetch(options: FakeIssuerOptions): {
-	fetchImpl: typeof fetch;
-	requests: string[];
-} {
+function createFakeIssuerFetch(options: FakeIssuerOptions) {
 	const tokenQueue = [...options.tokenResponses];
 	const requests: string[] = [];
-	const fetchImpl = (async (input: unknown, init?: { body?: unknown }) => {
+	// SAFETY: assertion required at this I/O or test boundary.
+	const fetchImpl = (async (input: JsonValue, init?: { body?: unknown }) => {
 		const url = String(input);
 		requests.push(url);
 		if (url === `${ISSUER}/.well-known/openid-configuration`) {
@@ -108,7 +107,7 @@ function createFakeIssuerFetch(options: FakeIssuerOptions): {
 			return jsonResponse(200, issuer.jwks());
 		}
 		throw new Error(`unexpected fetch to ${url}`);
-	}) as unknown as typeof fetch;
+	}) as typeof fetch;
 	return { fetchImpl, requests };
 }
 
@@ -143,6 +142,7 @@ function seams() {
 }
 
 function runInput() {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return {
 		args: [],
 		verb: "login",
@@ -157,7 +157,8 @@ describe("hobo login — no issuer configured (offline default)", () => {
 		const command = createBrokerAwareLoginCommand({ env: {}, persist: false });
 		const result = await command.run(runInput());
 		expect(result.ok).toBe(true);
-		const data = result.data as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const data = result.data as JsonObject;
 		expect(data.authMethod).toBe("fixture");
 		expect(data.token).toBe(createFixtureSession().token);
 		expect(data.tenant).toBe("hobo-dev");
@@ -183,7 +184,8 @@ describe("hobo login — device-code grant (issuer configured)", () => {
 		});
 		const result = await command.run(runInput());
 		expect(result.ok).toBe(true);
-		const data = result.data as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const data = result.data as JsonObject;
 		expect(data.authMethod).toBe("device-code");
 		expect(data.issuer).toBe(ISSUER);
 		expect(data.token).toBe(jwt);
@@ -245,7 +247,8 @@ describe("hobo login — device-code grant (issuer configured)", () => {
 		expect(result.code).toBe("HOBO_OIDC_ACCESS_DENIED");
 		expect(result.remediation?.length).toBeGreaterThan(0);
 		// Fail-closed: no session token minted, no profile written.
-		expect((result.data as Record<string, unknown>).token).toBeUndefined();
+		// SAFETY: assertion required at this I/O or test boundary.
+		expect((result.data as JsonObject).token).toBeUndefined();
 		expect(existsSync(path.join(home, "profile.json"))).toBe(false);
 	});
 

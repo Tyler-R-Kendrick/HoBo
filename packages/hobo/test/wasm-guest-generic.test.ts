@@ -16,10 +16,7 @@ afterEach(() => {
 	}
 });
 
-function fixtureProject(files: Record<string, string>): {
-	dir: string;
-	hoboHome: string;
-} {
+function fixtureProject(files: Record<string, string>) {
 	const dir = mkdtempSync(join(tmpdir(), "hobo-wasm-fixture-"));
 	const hoboHome = mkdtempSync(join(tmpdir(), "hobo-home-"));
 	cleanups.push(() => rmSync(dir, { recursive: true, force: true }));

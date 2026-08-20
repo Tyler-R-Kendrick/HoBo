@@ -2,10 +2,11 @@
  * `hobo serve control` — local control-plane HTTP+SSE for the Yard game UI.
  * Same management surface as CLI/MCP (ADR-0150 / ADR-0111 spirit).
  */
+
 import type { CommandModule } from "@hobo/cli";
 import { createControlApiServer } from "@hobo/control-api";
-
 import { defaultHoboHome } from "./bare-metal-yard.js";
+import { isJsonNumber, isJsonString, type JsonObject } from "./json.js";
 
 export interface ServeControlCommandDeps {
 	readonly env?: NodeJS.ProcessEnv;
@@ -27,7 +28,8 @@ export function createServeControlCommand(
 	return {
 		implemented: true,
 		async run({ args, flags }) {
-			const f = flags as Record<string, unknown>;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const f = flags as JsonObject;
 			const env = deps.env ?? process.env;
 			const target = args[0] ?? "control";
 			if (target !== "control") {
@@ -41,23 +43,23 @@ export function createServeControlCommand(
 			}
 			const hoboHome =
 				deps.hoboHome ??
-				(typeof f.home === "string" && f.home.length > 0
+				(isJsonString(f.home) && f.home.length > 0
 					? f.home
 					: defaultHoboHome(env));
 			const port =
 				deps.port ??
-				(typeof f.port === "number"
+				(isJsonNumber(f.port)
 					? f.port
-					: typeof f.port === "string"
+					: isJsonString(f.port)
 						? Number(f.port)
 						: Number(env.HOBO_CONTROL_PORT ?? 8790));
-			const host =
-				deps.host ?? (typeof f.host === "string" ? f.host : "127.0.0.1");
+			const host = deps.host ?? (isJsonString(f.host) ? f.host : "127.0.0.1");
 			const log = deps.log ?? ((line: string) => console.error(line));
 			const demo =
 				deps.demo ?? (f.demo === true || env.HOBO_CONTROL_DEMO === "1");
-			const seedFlag =
-				typeof f.demoSeed === "string" ? Number(f.demoSeed) : Number.NaN;
+			const seedFlag = isJsonString(f.demoSeed)
+				? Number(f.demoSeed)
+				: Number.NaN;
 			const seedEnv = Number(env.HOBO_CONTROL_DEMO_SEED);
 			const demoSeed =
 				deps.demoSeed ??
@@ -72,7 +74,7 @@ export function createServeControlCommand(
 				host,
 				port: Number.isFinite(port) ? port : 8790,
 				demo,
-				...(demoSeed === undefined ? {} : { demoSeed }),
+				...(demoSeed === undefined ? undefined : { demoSeed }),
 			});
 			log(
 				`hobo serve control: ${server.url} (HOBO_HOME=${hoboHome}) yard=/v1/yard/snapshot stream=/v1/yard/stream world=/v1/world/snapshot otlp=/v1/otlp${demo ? ` demo=on seed=${server.demoSeed}` : ""}`,

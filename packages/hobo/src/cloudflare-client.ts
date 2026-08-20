@@ -32,6 +32,14 @@
 
 // The default Workers `compatibility_date`. Fixed (not "today") so the formed
 // request is deterministic and reproducible across runs/tests.
+import { isJsonString, type JsonValue } from "./json.js";
+
+interface CloudflareFetchInit {
+	readonly method?: string;
+	readonly headers?: { readonly [header: string]: string };
+	readonly body?: FormData | string;
+}
+
 const DEFAULT_COMPATIBILITY_DATE = "2025-01-01";
 const DEFAULT_MODULE_FILE_NAME = "worker.mjs";
 const DEFAULT_BASE_URL = "https://api.cloudflare.com/client/v4";
@@ -67,7 +75,7 @@ export interface CloudflareFetchResponse {
 	readonly ok: boolean;
 	readonly status: number;
 	text(): Promise<string>;
-	json(): Promise<unknown>;
+	json(): Promise<JsonValue>;
 }
 
 export type CloudflareFetch = (
@@ -103,15 +111,17 @@ export interface CloudflareClient {
 // Node 18+ and modern runtimes expose a global `fetch`; we adapt it without
 // importing DOM lib types.
 const globalFetch: CloudflareFetch = (url, init) => {
-	const fetchImpl = (
-		globalThis as unknown as {
-			fetch?: (
-				input: string,
-				init: unknown,
-			) => Promise<CloudflareFetchResponse>;
-		}
-	).fetch;
-	if (typeof fetchImpl !== "function") {
+	const fetchImpl =
+		// SAFETY: assertion required at this I/O or test boundary.
+		(
+			globalThis as {
+				fetch?: (
+					input: string,
+					init: CloudflareFetchInit,
+				) => Promise<CloudflareFetchResponse>;
+			}
+		).fetch;
+	if (!(fetchImpl instanceof Function)) {
 		throw new Error(
 			"cloudflare-client: no global fetch available; inject one via createCloudflareClient({ fetch })",
 		);
@@ -209,13 +219,13 @@ export function createCloudflareClient(
 				{ method: "GET", headers: { Authorization: `Bearer ${token}` } },
 			);
 			await assertOk(subdomainResponse, "get account subdomain");
+			// SAFETY: assertion required at this I/O or test boundary.
 			const parsed = (await subdomainResponse.json()) as {
 				result?: { subdomain?: unknown };
 			};
-			const subdomain =
-				typeof parsed.result?.subdomain === "string"
-					? parsed.result.subdomain
-					: "";
+			const subdomain = isJsonString(parsed.result?.subdomain)
+				? parsed.result.subdomain
+				: "";
 			const url =
 				subdomain.length > 0
 					? `https://${input.scriptName}.${subdomain}.workers.dev`

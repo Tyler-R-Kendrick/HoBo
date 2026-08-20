@@ -59,9 +59,7 @@ interface ResourceDrift {
 
 const DRIFT_ACTOR: PrincipalRef = { kind: "user", id: "user:drift" };
 
-function isEngineUnavailable(
-	error: unknown,
-): error is Error & { code: string } {
+function isEngineUnavailable(error: Error): error is Error & { code: string } {
 	return (
 		error instanceof Error && error.name === "PulumiEngineUnavailableError"
 	);
@@ -133,7 +131,7 @@ export function createDriftCommand(deps: DriftCommandDeps = {}): CommandModule {
 			const adapter = selectPulumiEstateAdapter({
 				store: runtime.store,
 				env,
-				...(deps.adapter !== undefined ? { adapter: deps.adapter } : {}),
+				...(deps.adapter !== undefined ? { adapter: deps.adapter } : undefined),
 			});
 			let estate: readonly EstateResourceState[];
 			try {
@@ -155,7 +153,7 @@ export function createDriftCommand(deps: DriftCommandDeps = {}): CommandModule {
 									}),
 								);
 			} catch (error) {
-				if (isEngineUnavailable(error)) {
+				if (error instanceof Error && isEngineUnavailable(error)) {
 					return {
 						ok: false,
 						status: "backend_unavailable",
@@ -191,13 +189,13 @@ export function createDriftCommand(deps: DriftCommandDeps = {}): CommandModule {
 				store: runtime.store,
 				providers,
 				env,
-				...(deps.adapter !== undefined ? { adapter: deps.adapter } : {}),
+				...(deps.adapter !== undefined ? { adapter: deps.adapter } : undefined),
 				...(deps.vercelFetch !== undefined
 					? { vercelFetch: deps.vercelFetch }
-					: {}),
+					: undefined),
 				...(deps.cloudflareFetch !== undefined
 					? { cloudflareFetch: deps.cloudflareFetch }
-					: {}),
+					: undefined),
 			});
 
 			// resourceId -> providerId, from the recorded match decisions.
@@ -231,7 +229,7 @@ export function createDriftCommand(deps: DriftCommandDeps = {}): CommandModule {
 					const report = await iac.refresh(program);
 					drifted = report.drift;
 				} catch (error) {
-					if (isEngineUnavailable(error)) {
+					if (error instanceof Error && isEngineUnavailable(error)) {
 						return {
 							ok: false,
 							status: "backend_unavailable",
@@ -314,7 +312,7 @@ export function createDriftCommand(deps: DriftCommandDeps = {}): CommandModule {
 						: 0,
 				actor: DRIFT_ACTOR,
 				tenant: DEFAULT_TENANT,
-				...(fenceToken !== undefined ? { fenceToken } : {}),
+				...(fenceToken !== undefined ? { fenceToken } : undefined),
 			});
 
 			return {
@@ -325,7 +323,7 @@ export function createDriftCommand(deps: DriftCommandDeps = {}): CommandModule {
 					? `hobo drift: all ${results.length} resource(s) in sync with ${backend}`
 					: `hobo drift: ${drifted.length} of ${results.length} resource(s) drifted (${drifted.join(", ")})`,
 				...(inSync
-					? {}
+					? undefined
 					: {
 							remediation: [
 								`Run \`hobo up\` to reconcile the drifted resource(s): ${drifted.join(", ")}.`,

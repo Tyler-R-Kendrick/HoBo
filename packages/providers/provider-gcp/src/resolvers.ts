@@ -78,6 +78,16 @@ import {
 	type TransportResponse,
 } from "@hobo/core";
 
+import {
+	isJsonArray,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "./json.js";
 import { GCP_PROVIDER_TARGET } from "./options.js";
 import {
 	apiGateway,
@@ -261,7 +271,7 @@ const CREDENTIAL_REF_PATTERN = /^[a-z][a-z0-9+.-]*:\/\/[^\s@]+$/u;
 const RAW_CREDENTIAL_PATTERN = /^[A-Za-z0-9._~+/-]{20,}=*$/u;
 
 /** Anything long and token-shaped is scrubbed out of provider error text. */
-const TOKEN_SHAPED_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
+const TOKEN_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
 
 /** A Cloud Run operation name: `projects/…/locations/…/operations/…`. */
 const RUN_OPERATION_NAME_PATTERN =
@@ -283,7 +293,7 @@ const DATABASE_VERSION_PATTERN = /^[A-Z][A-Z0-9_]{0,63}$/u;
  * carried resource paths and token fragments before.
  */
 export function redactGcpText(text: string, limit = 400): string {
-	const scrubbed = text.replace(TOKEN_SHAPED_PATTERN, "[redacted]");
+	const scrubbed = text.replace(TOKEN_PATTERN, "[redacted]");
 	return scrubbed.length > limit ? `${scrubbed.slice(0, limit)}…` : scrubbed;
 }
 
@@ -291,73 +301,42 @@ export function redactGcpText(text: string, limit = 400): string {
 // Small shared parsers
 // ---------------------------------------------------------------------------
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
-		return false;
-	}
-	const prototype: unknown = Object.getPrototypeOf(value);
-	return prototype === Object.prototype || prototype === null;
-}
-
 function compareStrings(left: string, right: string): number {
 	return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function optionalString(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): string | undefined {
+function optionalString(record: JsonObject, key: string): string | undefined {
 	const value = record[key];
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return isJsonString(value) && value.trim().length > 0 ? value : undefined;
 }
 
-function optionalBoolean(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): boolean | undefined {
+function optionalBoolean(record: JsonObject, key: string): boolean | undefined {
 	const value = record[key];
-	return typeof value === "boolean" ? value : undefined;
+	return isJsonBoolean(value) ? value : undefined;
 }
 
-function optionalInteger(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): number | undefined {
+function optionalInteger(record: JsonObject, key: string): number | undefined {
 	const value = record[key];
-	return typeof value === "number" && Number.isSafeInteger(value)
-		? value
-		: undefined;
+	return isJsonNumber(value) && Number.isSafeInteger(value) ? value : undefined;
 }
 
-function optionalNumber(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): number | undefined {
+function optionalNumber(record: JsonObject, key: string): number | undefined {
 	const value = record[key];
-	return typeof value === "number" && Number.isFinite(value)
-		? value
-		: undefined;
+	return isJsonNumber(value) && Number.isFinite(value) ? value : undefined;
 }
 
 function optionalStringArray(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 	key: string,
 ): readonly string[] | undefined {
 	const value = record[key];
-	if (!Array.isArray(value)) return undefined;
-	return value.every((entry): entry is string => typeof entry === "string")
-		? [...value]
-		: undefined;
+	if (!isJsonArray(value)) return undefined;
+	return value.every(isJsonString) ? [...value] : undefined;
 }
 
-function nestedRecord(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): Readonly<Record<string, unknown>> {
+function nestedRecord(record: JsonObject, key: string): JsonObject {
 	const value = record[key];
-	return isPlainObject(value) ? value : {};
+	return isJsonObject(value) ? value : {};
 }
 
 // ---------------------------------------------------------------------------
@@ -391,9 +370,11 @@ async function send(
 		headers: {
 			accept: "application/json",
 			authorization: `Bearer ${context.token}`,
-			...(body !== undefined ? { "content-type": "application/json" } : {}),
+			...(body !== undefined
+				? { "content-type": "application/json" }
+				: undefined),
 		},
-		...(body !== undefined ? { body } : {}),
+		...(body !== undefined ? { body } : undefined),
 		timeoutMs: GCP_MAX_TIMEOUT_MS,
 		maxResponseBytes: GCP_MAX_RESPONSE_BYTES,
 	});
@@ -416,21 +397,25 @@ function isAlreadyExists(response: TransportResponse): boolean {
  * leaves the outcome of the call unknown, and an unknown outcome is refused
  * rather than assumed.
  */
-function parseJsonRecord(
-	response: TransportResponse,
-	label: string,
-): Record<string, unknown> {
+function parseJson(response: TransportResponse, label: string): JsonValue {
 	if (response.body.trim().length === 0) return {};
-	let parsed: unknown;
 	try {
-		parsed = JSON.parse(response.body) as unknown;
+		// SAFETY: JSON.parse yields a JSON value at this document boundary.
+		return JSON.parse(response.body) as JsonValue;
 	} catch {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${label}: Google returned a status ${response.status} body that is not JSON, so the outcome of the call is unknown and it is refused rather than assumed`,
 		);
 	}
-	if (!isPlainObject(parsed)) {
+}
+
+function parseJsonRecord(
+	response: TransportResponse,
+	label: string,
+): JsonObject {
+	const parsed = parseJson(response, label);
+	if (!isJsonObject(parsed)) {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${label}: Google returned JSON that is not an object (status ${response.status}), so the resource it describes cannot be identified`,
@@ -470,19 +455,12 @@ function providerRejection(
 }
 
 /** A successful response as a record; any 4xx/5xx is a typed refusal. */
-function expectOk(
-	response: TransportResponse,
-	label: string,
-): Record<string, unknown> {
+function expectOk(response: TransportResponse, label: string): JsonObject {
 	if (response.status >= 400) throw providerRejection(response, label);
 	return parseJsonRecord(response, label);
 }
 
-function requireString(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-	label: string,
-): string {
+function requireString(record: JsonObject, key: string, label: string): string {
 	const value = optionalString(record, key);
 	if (value === undefined) {
 		throw new ResolverError(
@@ -512,7 +490,7 @@ interface GcpOperation {
  * exists to avoid.
  */
 function parseOperation(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 	label: string,
 	namePattern: RegExp,
 ): GcpOperation {
@@ -532,17 +510,15 @@ function parseOperation(
 }
 
 /** `{error:{message}}` (LRO) and `{error:{errors:[{message}]}}` (Cloud SQL). */
-function operationErrorText(
-	record: Readonly<Record<string, unknown>>,
-): string | undefined {
+function operationErrorText(record: JsonObject): string | undefined {
 	const error = record.error;
-	if (!isPlainObject(error)) return undefined;
+	if (!isJsonObject(error)) return undefined;
 	const direct = optionalString(error, "message");
 	if (direct !== undefined) return redactGcpText(direct);
 	const errors = error.errors;
-	if (Array.isArray(errors)) {
+	if (isJsonArray(errors)) {
 		const messages = errors
-			.filter(isPlainObject)
+			.filter(isJsonObject)
 			.map((entry) => optionalString(entry, "message"))
 			.filter((entry): entry is string => entry !== undefined);
 		if (messages.length > 0) return redactGcpText(messages.join("; "));
@@ -610,7 +586,7 @@ interface GcpResolverContext {
 	readonly projectId: string;
 	/** The deterministic resource name: `desired.name`, else the logical id. */
 	readonly name: string;
-	readonly desired: Readonly<Record<string, unknown>>;
+	readonly desired: JsonObject;
 	/** True when the caller already knows the physical id (adopt vs noop). */
 	readonly knownPhysicalId: string | undefined;
 	readonly poll: GcpOperationPollBudget;
@@ -619,7 +595,7 @@ interface GcpResolverContext {
 function outcome(
 	action: ResolverAction,
 	physicalId: string,
-	outputs: Readonly<Record<string, unknown>>,
+	outputs: JsonObject,
 	diagnostics: readonly string[],
 ): ResolveOutcome {
 	return Object.freeze({
@@ -642,7 +618,7 @@ function settledAction(context: GcpResolverContext): ResolverAction {
 }
 
 function assertProjectId(projectId: string): string {
-	if (typeof projectId !== "string" || projectId.trim().length === 0) {
+	if (projectId.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			"gcp resolvers need a projectId: every Google API path is project-scoped, and guessing one would target the wrong project",
@@ -677,7 +653,7 @@ async function resolveToken(
 	resolve: (ref: string) => Promise<string>,
 ): Promise<string> {
 	const ref = request.credentialRef;
-	if (typeof ref !== "string" || ref.trim().length === 0) {
+	if (ref.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			'gcp resolver: credentialRef is empty. Supply a locator such as "env://GOOGLE_OAUTH_ACCESS_TOKEN" or "secret://camp/gcp-access-token" and register it with the host credential resolver; the resolver never accepts inline credential material',
@@ -708,7 +684,7 @@ async function resolveToken(
 			)}. Register the reference with the credential resolver before deploying`,
 		);
 	}
-	if (typeof material !== "string" || material.trim().length === 0) {
+	if (material.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			`gcp resolver: credentialRef ${JSON.stringify(trimmed)} resolved to nothing. A missing credential is refused rather than retried unauthenticated, which would look like a permissions error at Google`,
@@ -718,10 +694,13 @@ async function resolveToken(
 }
 
 function resourceName(request: ResolveRequest, productId: string): string {
-	const desiredName = optionalString(request.desired, "name");
+	const desiredName = optionalString(
+		parseJsonObject(JSON.stringify(request.desired)),
+		"name",
+	);
 	if (desiredName !== undefined) return desiredName;
 	const logicalId = request.ref.logicalId;
-	if (typeof logicalId === "string" && logicalId.trim().length > 0) {
+	if (logicalId.trim().length > 0) {
 		return logicalId;
 	}
 	throw new ResolverError(
@@ -733,9 +712,7 @@ function resourceName(request: ResolveRequest, productId: string): string {
 /** The physical id the caller already knows, if it supplied a usable one. */
 function knownPhysicalId(request: ResolveRequest): string | undefined {
 	const value = request.ref.physicalId;
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return value !== undefined && value.trim().length > 0 ? value : undefined;
 }
 
 /**
@@ -791,7 +768,7 @@ function createResolver(
 			token,
 			projectId,
 			name: resourceName(request, spec.productId),
-			desired: request.desired,
+			desired: parseJsonObject(JSON.stringify(request.desired)),
 			knownPhysicalId: knownPhysicalId(request),
 			poll,
 		};
@@ -841,8 +818,8 @@ function desiredPublicAccessPrevention(
 
 function bucketOutputs(
 	context: GcpResolverContext,
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+	record: JsonObject,
+): JsonObject {
 	const location = optionalString(record, "location");
 	const storageClass = optionalString(record, "storageClass");
 	const iam = nestedRecord(record, "iamConfiguration");
@@ -852,15 +829,17 @@ function bucketOutputs(
 	);
 	return {
 		bucketName: context.name,
-		...(location !== undefined ? { location } : {}),
-		...(storageClass !== undefined ? { storageClass } : {}),
-		...(uniform !== undefined ? { uniformBucketLevelAccess: uniform } : {}),
+		...(location !== undefined ? { location } : undefined),
+		...(storageClass !== undefined ? { storageClass } : undefined),
+		...(uniform !== undefined
+			? { uniformBucketLevelAccess: uniform }
+			: undefined),
 	};
 }
 
 function bucketDiagnostics(
 	context: GcpResolverContext,
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 ): readonly string[] {
 	const diagnostics: string[] = [];
 	const wanted =
@@ -882,15 +861,15 @@ function bucketDiagnostics(
 /** The mutable deltas, as a PATCH body; `undefined` when nothing drifted. */
 function bucketPatch(
 	context: GcpResolverContext,
-	record: Readonly<Record<string, unknown>>,
-): Record<string, unknown> | undefined {
-	const patch: Record<string, unknown> = {};
+	record: JsonObject,
+): JsonObject | undefined {
+	const patch = {};
 	const storageClass = desiredStorageClass(context);
 	if (
 		storageClass !== undefined &&
 		storageClass !== optionalString(record, "storageClass")?.toUpperCase()
 	) {
-		patch.storageClass = storageClass;
+		Object.assign(patch, { storageClass });
 	}
 	const versioning = optionalBoolean(context.desired, "versioning");
 	if (
@@ -898,10 +877,10 @@ function bucketPatch(
 		versioning !==
 			(optionalBoolean(nestedRecord(record, "versioning"), "enabled") ?? false)
 	) {
-		patch.versioning = { enabled: versioning };
+		Object.assign(patch, { versioning: { enabled: versioning } });
 	}
 	const iam = nestedRecord(record, "iamConfiguration");
-	const iamPatch: Record<string, unknown> = {};
+	const iamPatch = {};
 	const uniform = optionalBoolean(context.desired, "uniformBucketLevelAccess");
 	if (
 		uniform !== undefined &&
@@ -911,22 +890,26 @@ function bucketPatch(
 				"enabled",
 			) ?? false)
 	) {
-		iamPatch.uniformBucketLevelAccess = { enabled: uniform };
+		Object.assign(iamPatch, {
+			uniformBucketLevelAccess: { enabled: uniform },
+		});
 	}
 	const prevention = desiredPublicAccessPrevention(context);
 	if (
 		prevention !== undefined &&
 		prevention !== optionalString(iam, "publicAccessPrevention")
 	) {
-		iamPatch.publicAccessPrevention = prevention;
+		Object.assign(iamPatch, { publicAccessPrevention: prevention });
 	}
-	if (Object.keys(iamPatch).length > 0) patch.iamConfiguration = iamPatch;
+	if (Object.keys(iamPatch).length > 0) {
+		Object.assign(patch, { iamConfiguration: iamPatch });
+	}
 	return Object.keys(patch).length > 0 ? patch : undefined;
 }
 
 async function readBucket(
 	context: GcpResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const label = `cloud storage read bucket ${context.name}`;
 	const response = await send("cloudStorage", context, {
 		method: "GET",
@@ -965,10 +948,10 @@ const CLOUD_STORAGE_SPEC: Omit<GcpResolverSpec, "productId"> = {
 			const iamConfiguration = {
 				...(uniform !== undefined
 					? { uniformBucketLevelAccess: { enabled: uniform } }
-					: {}),
+					: undefined),
 				...(prevention !== undefined
 					? { publicAccessPrevention: prevention }
-					: {}),
+					: undefined),
 			};
 			const created = expectOk(
 				await send("cloudStorage", context, {
@@ -976,14 +959,14 @@ const CLOUD_STORAGE_SPEC: Omit<GcpResolverSpec, "productId"> = {
 					path: bucketCreatePath(context),
 					json: {
 						name: context.name,
-						...(location !== undefined ? { location } : {}),
-						...(storageClass !== undefined ? { storageClass } : {}),
+						...(location !== undefined ? { location } : undefined),
+						...(storageClass !== undefined ? { storageClass } : undefined),
 						...(versioning !== undefined
 							? { versioning: { enabled: versioning } }
-							: {}),
+							: undefined),
 						...(Object.keys(iamConfiguration).length > 0
 							? { iamConfiguration }
-							: {}),
+							: undefined),
 					},
 				}),
 				label,
@@ -1047,13 +1030,15 @@ function retentionDuration(context: GcpResolverContext): string | undefined {
 
 function topicOutputs(
 	context: GcpResolverContext,
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+	record: JsonObject,
+): JsonObject {
 	const retention = optionalString(record, "messageRetentionDuration");
 	return {
 		resourceName: topicResourceName(context),
 		topicId: context.name,
-		...(retention !== undefined ? { messageRetentionDuration: retention } : {}),
+		...(retention !== undefined
+			? { messageRetentionDuration: retention }
+			: undefined),
 	};
 }
 
@@ -1074,7 +1059,7 @@ function topicDiagnostics(context: GcpResolverContext): readonly string[] {
 
 async function readTopic(
 	context: GcpResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const response = await send("pubsub", context, {
 		method: "GET",
 		path: topicPath(context),
@@ -1106,7 +1091,7 @@ const PUBSUB_TOPIC_SPEC: Omit<GcpResolverSpec, "productId"> = {
 				json: {
 					...(retention !== undefined
 						? { messageRetentionDuration: retention }
-						: {}),
+						: undefined),
 				},
 			});
 			if (isAlreadyExists(response)) {
@@ -1202,10 +1187,7 @@ function vaultCreatePath(context: GcpResolverContext): string {
  * for user-managed replicas would place their data in regions they did not ask
  * for, which is a residency decision this resolver may not take.
  */
-function replicationPolicy(context: GcpResolverContext): {
-	readonly mode: string;
-	readonly body: Record<string, unknown>;
-} {
+function replicationPolicy(context: GcpResolverContext) {
 	const mode = optionalString(context.desired, "replication");
 	if (mode === undefined) {
 		throw new ResolverError(
@@ -1240,32 +1222,30 @@ function replicationPolicy(context: GcpResolverContext): {
 }
 
 /** What Google says the replication is, in the same vocabulary the request uses. */
-function observedReplication(
-	record: Readonly<Record<string, unknown>>,
-): string | undefined {
+function observedReplication(record: JsonObject): string | undefined {
 	const replication = nestedRecord(record, "replication");
-	if (isPlainObject(replication.automatic)) return "automatic";
-	if (isPlainObject(replication.userManaged)) return "user-managed";
+	if (isJsonObject(replication.automatic)) return "automatic";
+	if (isJsonObject(replication.userManaged)) return "user-managed";
 	return undefined;
 }
 
 function vaultOutputs(
 	context: GcpResolverContext,
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+	record: JsonObject,
+): JsonObject {
 	const replication = observedReplication(record);
 	return {
 		resourceName: vaultResourceName(context),
 		// Deliberately the *locator*, never a version payload: this resolver
 		// creates the container and never reads or writes material into it.
 		latestVersionRef: `${vaultResourceName(context)}/versions/latest`,
-		...(replication !== undefined ? { replication } : {}),
+		...(replication !== undefined ? { replication } : undefined),
 	};
 }
 
 function vaultDiagnostics(
 	context: GcpResolverContext,
-	record: Readonly<Record<string, unknown>> | undefined,
+	record: JsonObject | undefined,
 ): readonly string[] {
 	const diagnostics: string[] = [
 		"this resolver creates the secret container only; no version is ever written, because a resolver that handled material would put it in the deploy record",
@@ -1287,7 +1267,7 @@ function vaultDiagnostics(
 
 async function readVault(
 	context: GcpResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const response = await send("secretManager", context, {
 		method: "GET",
 		path: vaultPath(context),
@@ -1383,26 +1363,24 @@ function queuePath(context: GcpResolverContext, location: string): string {
 	return `${queueCollectionPath(context, location)}/${encodeURIComponent(context.name)}`;
 }
 
-function queueRateLimits(
-	context: GcpResolverContext,
-): Record<string, unknown> | undefined {
+function queueRateLimits(context: GcpResolverContext): JsonObject | undefined {
 	const perSecond = optionalNumber(context.desired, "maxDispatchesPerSecond");
 	const concurrent = optionalInteger(
 		context.desired,
 		"maxConcurrentDispatches",
 	);
 	const limits = {
-		...(perSecond !== undefined ? { maxDispatchesPerSecond: perSecond } : {}),
+		...(perSecond !== undefined
+			? { maxDispatchesPerSecond: perSecond }
+			: undefined),
 		...(concurrent !== undefined
 			? { maxConcurrentDispatches: concurrent }
-			: {}),
+			: undefined),
 	};
 	return Object.keys(limits).length > 0 ? limits : undefined;
 }
 
-function queueRetryConfig(
-	context: GcpResolverContext,
-): Record<string, unknown> | undefined {
+function queueRetryConfig(context: GcpResolverContext): JsonObject | undefined {
 	const maxAttempts = optionalInteger(context.desired, "maxAttempts");
 	return maxAttempts === undefined ? undefined : { maxAttempts };
 }
@@ -1410,26 +1388,24 @@ function queueRetryConfig(
 function queueOutputs(
 	context: GcpResolverContext,
 	location: string,
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+	record: JsonObject,
+): JsonObject {
 	const state = optionalString(record, "state");
 	return {
 		resourceName: queueResourceName(context, location),
 		queueId: context.name,
 		location,
-		...(state !== undefined ? { state } : {}),
+		...(state !== undefined ? { state } : undefined),
 	};
 }
 
 /** Which mutable fields drifted, as `(updateMask, body)`; `undefined` if none. */
 function queueDelta(
 	context: GcpResolverContext,
-	record: Readonly<Record<string, unknown>>,
-):
-	| { readonly mask: readonly string[]; readonly body: Record<string, unknown> }
-	| undefined {
+	record: JsonObject,
+): { readonly mask: readonly string[]; readonly body: JsonObject } | undefined {
 	const mask: string[] = [];
-	const body: Record<string, unknown> = {};
+	const body = {};
 	const rateLimits = queueRateLimits(context);
 	if (rateLimits !== undefined) {
 		const observed = nestedRecord(record, "rateLimits");
@@ -1437,7 +1413,7 @@ function queueDelta(
 			([key, value]) => observed[key] !== value,
 		);
 		if (drifted.length > 0) {
-			body.rateLimits = rateLimits;
+			Object.assign(body, { rateLimits });
 			for (const [key] of drifted) mask.push(`rateLimits.${key}`);
 		}
 	}
@@ -1448,7 +1424,7 @@ function queueDelta(
 			([key, value]) => observed[key] !== value,
 		);
 		if (drifted.length > 0) {
-			body.retryConfig = retryConfig;
+			Object.assign(body, { retryConfig });
 			for (const [key] of drifted) mask.push(`retryConfig.${key}`);
 		}
 	}
@@ -1460,7 +1436,7 @@ function queueDelta(
 async function readQueue(
 	context: GcpResolverContext,
 	location: string,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const response = await send("cloudTasks", context, {
 		method: "GET",
 		path: queuePath(context, location),
@@ -1494,8 +1470,8 @@ const CLOUD_TASKS_SPEC: Omit<GcpResolverSpec, "productId"> = {
 				path: queueCollectionPath(context, location),
 				json: {
 					name: queueResourceName(context, location),
-					...(rateLimits !== undefined ? { rateLimits } : {}),
-					...(retryConfig !== undefined ? { retryConfig } : {}),
+					...(rateLimits !== undefined ? { rateLimits } : undefined),
+					...(retryConfig !== undefined ? { retryConfig } : undefined),
 				},
 			});
 			if (isAlreadyExists(response)) {
@@ -1600,23 +1576,23 @@ function databaseVersion(
 	return value;
 }
 
-function sqlSettings(context: GcpResolverContext): Record<string, unknown> {
+function sqlSettings(context: GcpResolverContext): JsonObject {
 	const tier = optionalString(context.desired, "tier");
 	const storageGb = optionalInteger(context.desired, "storageGb");
 	const highAvailability = optionalBoolean(context.desired, "highAvailability");
 	return {
-		...(tier !== undefined ? { tier } : {}),
-		...(storageGb !== undefined ? { dataDiskSizeGb: storageGb } : {}),
+		...(tier !== undefined ? { tier } : undefined),
+		...(storageGb !== undefined ? { dataDiskSizeGb: storageGb } : undefined),
 		...(highAvailability !== undefined
 			? { availabilityType: highAvailability ? "REGIONAL" : "ZONAL" }
-			: {}),
+			: undefined),
 	};
 }
 
 function sqlOutputs(
 	context: GcpResolverContext,
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+	record: JsonObject,
+): JsonObject {
 	const settings = nestedRecord(record, "settings");
 	const region = optionalString(record, "region");
 	const version = optionalString(record, "databaseVersion");
@@ -1626,17 +1602,17 @@ function sqlOutputs(
 	return {
 		instanceId: context.name,
 		resourceName: sqlResourceName(context),
-		...(region !== undefined ? { region } : {}),
-		...(version !== undefined ? { databaseVersion: version } : {}),
-		...(state !== undefined ? { state } : {}),
-		...(connectionName !== undefined ? { connectionName } : {}),
-		...(tier !== undefined ? { tier } : {}),
+		...(region !== undefined ? { region } : undefined),
+		...(version !== undefined ? { databaseVersion: version } : undefined),
+		...(state !== undefined ? { state } : undefined),
+		...(connectionName !== undefined ? { connectionName } : undefined),
+		...(tier !== undefined ? { tier } : undefined),
 	};
 }
 
 function sqlImmutableDiagnostics(
 	context: GcpResolverContext,
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 	productId: string,
 	example: string,
 ): readonly string[] {
@@ -1670,8 +1646,8 @@ function sqlImmutableDiagnostics(
 
 function sqlSettingsDelta(
 	context: GcpResolverContext,
-	record: Readonly<Record<string, unknown>>,
-): Record<string, unknown> | undefined {
+	record: JsonObject,
+): JsonObject | undefined {
 	const wanted = sqlSettings(context);
 	const observed = nestedRecord(record, "settings");
 	const delta = Object.fromEntries(
@@ -1682,7 +1658,7 @@ function sqlSettingsDelta(
 
 async function readSqlInstance(
 	context: GcpResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const response = await send("cloudSql", context, {
 		method: "GET",
 		path: sqlInstancePath(context),
@@ -1754,7 +1730,9 @@ function cloudSqlSpec(
 						json: {
 							name: context.name,
 							region,
-							...(version !== undefined ? { databaseVersion: version } : {}),
+							...(version !== undefined
+								? { databaseVersion: version }
+								: undefined),
 							settings,
 						},
 					},
@@ -1936,64 +1914,59 @@ function requiredImage(context: GcpResolverContext, productId: string): string {
 	return image;
 }
 
-function runContainer(
-	context: GcpResolverContext,
-	image: string,
-): Record<string, unknown> {
+function runContainer(context: GcpResolverContext, image: string): JsonObject {
 	const cpu = optionalString(context.desired, "cpu");
 	const memory = optionalString(context.desired, "memory");
 	const limits = {
-		...(cpu !== undefined ? { cpu } : {}),
-		...(memory !== undefined ? { memory } : {}),
+		...(cpu !== undefined ? { cpu } : undefined),
+		...(memory !== undefined ? { memory } : undefined),
 	};
 	return {
 		image,
-		...(Object.keys(limits).length > 0 ? { resources: { limits } } : {}),
+		...(Object.keys(limits).length > 0 ? { resources: { limits } } : undefined),
 	};
 }
 
-function serviceBody(
-	context: GcpResolverContext,
-	image: string,
-): Record<string, unknown> {
+function serviceBody(context: GcpResolverContext, image: string): JsonObject {
 	const minInstances = optionalInteger(context.desired, "minInstances");
 	const maxInstances = optionalInteger(context.desired, "maxInstances");
 	const concurrency = optionalInteger(context.desired, "concurrency");
 	const ingress = runIngress(context);
 	const scaling = {
-		...(minInstances !== undefined ? { minInstanceCount: minInstances } : {}),
-		...(maxInstances !== undefined ? { maxInstanceCount: maxInstances } : {}),
+		...(minInstances !== undefined
+			? { minInstanceCount: minInstances }
+			: undefined),
+		...(maxInstances !== undefined
+			? { maxInstanceCount: maxInstances }
+			: undefined),
 	};
 	return {
-		...(ingress !== undefined ? { ingress } : {}),
+		...(ingress !== undefined ? { ingress } : undefined),
 		template: {
 			containers: [runContainer(context, image)],
-			...(Object.keys(scaling).length > 0 ? { scaling } : {}),
+			...(Object.keys(scaling).length > 0 ? { scaling } : undefined),
 			...(concurrency !== undefined
 				? { maxInstanceRequestConcurrency: concurrency }
-				: {}),
+				: undefined),
 		},
 	};
 }
 
-function jobBody(
-	context: GcpResolverContext,
-	image: string,
-): Record<string, unknown> {
+function jobBody(context: GcpResolverContext, image: string): JsonObject {
 	const tasks = optionalInteger(context.desired, "tasks");
 	const parallelism = optionalInteger(context.desired, "parallelism");
 	const maxRetries = optionalInteger(context.desired, "maxRetries");
 	const timeoutSeconds = optionalInteger(context.desired, "taskTimeoutSeconds");
 	return {
 		template: {
-			...(tasks !== undefined ? { taskCount: tasks } : {}),
-			...(parallelism !== undefined ? { parallelism } : {}),
+			...(tasks !== undefined ? { taskCount: tasks } : undefined),
+			...(parallelism !== undefined ? { parallelism } : undefined),
 			template: {
 				containers: [runContainer(context, image)],
-				...(maxRetries !== undefined ? { maxRetries } : {}),
+				...(maxRetries !== undefined ? { maxRetries } : undefined),
 				...(timeoutSeconds !== undefined
 					? { timeout: `${timeoutSeconds}s` }
-					: {}),
+					: undefined),
 			},
 		},
 	};
@@ -2001,22 +1974,22 @@ function jobBody(
 
 /** The image Cloud Run reports for the first container, if it reports one. */
 function observedImage(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 	path: readonly string[],
 ): string | undefined {
-	let cursor: Readonly<Record<string, unknown>> = record;
+	let cursor: JsonObject = record;
 	for (const key of path) cursor = nestedRecord(cursor, key);
 	const containers = cursor.containers;
 	if (!Array.isArray(containers)) return undefined;
 	const first = containers[0];
-	return isPlainObject(first) ? optionalString(first, "image") : undefined;
+	return isJsonObject(first) ? optionalString(first, "image") : undefined;
 }
 
 function serviceOutputs(
 	context: GcpResolverContext,
 	location: string,
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+	record: JsonObject,
+): JsonObject {
 	const uri = optionalString(record, "uri");
 	const ingress = optionalString(record, "ingress");
 	const image = observedImage(record, ["template"]);
@@ -2024,23 +1997,23 @@ function serviceOutputs(
 		resourceName: runResourceName(context, location, "services"),
 		serviceId: context.name,
 		location,
-		...(uri !== undefined ? { uri } : {}),
-		...(ingress !== undefined ? { ingress } : {}),
-		...(image !== undefined ? { image } : {}),
+		...(uri !== undefined ? { uri } : undefined),
+		...(ingress !== undefined ? { ingress } : undefined),
+		...(image !== undefined ? { image } : undefined),
 	};
 }
 
 function jobOutputs(
 	context: GcpResolverContext,
 	location: string,
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+	record: JsonObject,
+): JsonObject {
 	const image = observedImage(record, ["template", "template"]);
 	return {
 		resourceName: runResourceName(context, location, "jobs"),
 		jobId: context.name,
 		location,
-		...(image !== undefined ? { image } : {}),
+		...(image !== undefined ? { image } : undefined),
 	};
 }
 
@@ -2048,7 +2021,7 @@ async function readRunResource(
 	context: GcpResolverContext,
 	location: string,
 	kind: "services" | "jobs",
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const response = await send("cloudRun", context, {
 		method: "GET",
 		path: runResourcePath(context, location, kind),
@@ -2086,22 +2059,19 @@ async function runRunOperation(
 function cloudRunSpec(
 	productId: string,
 	kind: "services" | "jobs",
-	buildBody: (
-		context: GcpResolverContext,
-		image: string,
-	) => Record<string, unknown>,
+	buildBody: (context: GcpResolverContext, image: string) => JsonObject,
 	buildOutputs: (
 		context: GcpResolverContext,
 		location: string,
-		record: Readonly<Record<string, unknown>>,
-	) => Readonly<Record<string, unknown>>,
+		record: JsonObject,
+	) => JsonObject,
 	templatePath: readonly string[],
 ): Omit<GcpResolverSpec, "productId"> {
 	const idQuery = kind === "services" ? "serviceId" : "jobId";
 
 	function drifted(
 		context: GcpResolverContext,
-		record: Readonly<Record<string, unknown>>,
+		record: JsonObject,
 	): readonly string[] {
 		const changes: string[] = [];
 		const image = optionalString(context.desired, "image");
@@ -2351,8 +2321,8 @@ function redisMemoryGb(context: GcpResolverContext): number {
 function redisOutputs(
 	context: GcpResolverContext,
 	location: string,
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+	record: JsonObject,
+): JsonObject {
 	const host = optionalString(record, "host");
 	const port = optionalInteger(record, "port");
 	const state = optionalString(record, "state");
@@ -2362,12 +2332,12 @@ function redisOutputs(
 	return {
 		instanceId: context.name,
 		resourceName: redisResourceName(context, location),
-		...(host !== undefined ? { host } : {}),
-		...(port !== undefined ? { port } : {}),
-		...(state !== undefined ? { state } : {}),
-		...(tier !== undefined ? { tier } : {}),
-		...(memorySizeGb !== undefined ? { memorySizeGb } : {}),
-		...(version !== undefined ? { redisVersion: version } : {}),
+		...(host !== undefined ? { host } : undefined),
+		...(port !== undefined ? { port } : undefined),
+		...(state !== undefined ? { state } : undefined),
+		...(tier !== undefined ? { tier } : undefined),
+		...(memorySizeGb !== undefined ? { memorySizeGb } : undefined),
+		...(version !== undefined ? { redisVersion: version } : undefined),
 	};
 }
 
@@ -2383,7 +2353,7 @@ function redisOutputs(
 function redisImmutableDiagnostics(
 	context: GcpResolverContext,
 	location: string,
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 ): readonly string[] {
 	const diagnostics: string[] = [];
 	const wantedTier = redisTier(context);
@@ -2420,7 +2390,7 @@ function redisImmutableDiagnostics(
 async function readRedisInstance(
 	context: GcpResolverContext,
 	location: string,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const response = await send("memorystore", context, {
 		method: "GET",
 		path: redisInstancePath(context, location),
@@ -2488,8 +2458,8 @@ const MEMORYSTORE_REDIS_SPEC: Omit<GcpResolverSpec, "productId"> = {
 					path: `${redisCollectionPath(context, location)}?instanceId=${encodeURIComponent(context.name)}`,
 					json: {
 						memorySizeGb: redisMemoryGb(context),
-						...(tier !== undefined ? { tier } : {}),
-						...(version !== undefined ? { redisVersion: version } : {}),
+						...(tier !== undefined ? { tier } : undefined),
+						...(version !== undefined ? { redisVersion: version } : undefined),
 					},
 				},
 				label,

@@ -13,7 +13,7 @@ import {
 	parseResolveRequest,
 	type ResolveOutcome,
 	type ResolveRequest,
-	type ResolverError,
+	ResolverError,
 	type ResourceResolver,
 	type TransportRequest,
 	type TransportResponse,
@@ -40,6 +40,12 @@ import {
 	guardedGcpTransport,
 	redactGcpText,
 } from "../src/index.js";
+import {
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../src/json.js";
 
 const PROJECT_ID = "hobo-demo";
 const CREDENTIAL_REF = "env://GOOGLE_OAUTH_ACCESS_TOKEN";
@@ -48,7 +54,7 @@ const TOKEN = "ya29fakeaccesstokenvalue0123456789ABCDEF";
 /** A 40-character token-shaped string, as Google echoes them in error text. */
 const LEAKED_TOKEN = "abcdefghij0123456789ABCDEFGHIJ0123456789";
 
-type Rec = Record<string, unknown>;
+type Rec = JsonObject;
 
 interface RecordedCall {
 	readonly method: string;
@@ -96,7 +102,7 @@ function fakeTransport(
 	};
 }
 
-function json(status: number, payload: unknown): TransportResponse {
+function json(status: number, payload: JsonValue): TransportResponse {
 	return {
 		status,
 		headers: { "content-type": "application/json" },
@@ -125,7 +131,7 @@ function unexpected(call: RecordedCall): TransportResponse {
 }
 
 function bodyOf(call: RecordedCall): Rec {
-	return call.body === undefined ? {} : (JSON.parse(call.body) as Rec);
+	return call.body === undefined ? {} : parseJsonObject(call.body);
 }
 
 function options(
@@ -163,27 +169,29 @@ function request(input: {
 			logicalId: input.logicalId,
 			...(input.physicalId !== undefined
 				? { physicalId: input.physicalId }
-				: {}),
+				: undefined),
 		},
 		desired: input.desired ?? {},
 		credentialRef: CREDENTIAL_REF,
 	});
 }
 
-async function codeOf(run: () => Promise<unknown>): Promise<string> {
+async function codeOf(run: () => Promise<void>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
-		return (error as ResolverError).code ?? "NO_CODE";
+		if (error instanceof ResolverError) return error.code;
+		throw error;
 	}
 	return "NO_ERROR_THROWN";
 }
 
-async function messageOf(run: () => Promise<unknown>): Promise<string> {
+async function messageOf(run: () => Promise<void>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
-		return (error as Error).message;
+		if (error instanceof Error) return error.message;
+		throw error;
 	}
 	return "NO_ERROR_THROWN";
 }
@@ -220,7 +228,8 @@ function bucketApi(initial?: Rec): (call: RecordedCall) => TransportResponse {
 			return json(200, bucket);
 		}
 		if (call.method === "PATCH" && call.path === BUCKET_PATH) {
-			bucket = { ...(bucket ?? {}), ...bodyOf(call) };
+			bucket =
+				bucket === undefined ? bodyOf(call) : { ...bucket, ...bodyOf(call) };
 			return json(200, bucket);
 		}
 		if (call.method === "DELETE" && call.path === BUCKET_PATH) {
@@ -257,8 +266,8 @@ function topicApi(config: { readonly conflictOnCreate?: boolean } = {}) {
 		}
 		if (call.method === "PATCH" && call.path === TOPIC_PATH) {
 			const sent = bodyOf(call);
-			const patch = (sent.topic ?? {}) as Rec;
-			topic = { ...(topic ?? {}), ...patch };
+			const patch = isJsonObject(sent.topic) ? sent.topic : {};
+			topic = topic === undefined ? { ...patch } : { ...topic, ...patch };
 			return json(200, topic);
 		}
 		if (call.method === "DELETE" && call.path === TOPIC_PATH) {
@@ -309,7 +318,8 @@ function queueApi() {
 			return json(200, queue);
 		}
 		if (call.method === "PATCH" && call.path === QUEUE_PATH) {
-			queue = { ...(queue ?? {}), ...bodyOf(call) };
+			queue =
+				queue === undefined ? bodyOf(call) : { ...queue, ...bodyOf(call) };
 			return json(200, queue);
 		}
 		if (call.method === "DELETE" && call.path === QUEUE_PATH) {
@@ -363,7 +373,7 @@ function sqlApi(config: SqlApiConfig = {}) {
 							errors: [{ code: "PERMISSION", message: config.failWith }],
 						},
 					}
-				: {}),
+				: undefined),
 		});
 	}
 
@@ -379,10 +389,10 @@ function sqlApi(config: SqlApiConfig = {}) {
 			pending = "patch";
 			const sent = bodyOf(call);
 			instance = {
-				...(instance ?? {}),
+				...(instance === undefined ? undefined : instance),
 				settings: {
-					...((instance?.settings ?? {}) as Rec),
-					...((sent.settings ?? {}) as Rec),
+					...(isJsonObject(instance?.settings) ? instance.settings : undefined),
+					...(isJsonObject(sent.settings) ? sent.settings : undefined),
 				},
 			};
 			return operation();
@@ -438,13 +448,14 @@ function redisApi(config: RedisApiConfig = {}) {
 			};
 		}
 		if (done && pending === "patch") {
-			instance = { ...(instance ?? {}), ...sent };
+			instance =
+				instance === undefined ? { ...sent } : { ...instance, ...sent };
 		}
 		if (done && pending === "delete") instance = undefined;
 		return json(200, {
 			name: config.operationName ?? REDIS_OPERATION_NAME,
 			done,
-			...(done ? { response: instance ?? {} } : {}),
+			...(done ? { response: instance ?? {} } : undefined),
 		});
 	}
 
@@ -501,7 +512,7 @@ function runApi(config: { readonly pollsUntilDone?: number } = {}) {
 		return json(200, {
 			name: "projects/hobo-demo/locations/us-central1/operations/op-run-1",
 			done,
-			...(done ? { response: service ?? {} } : {}),
+			...(done ? { response: service ?? {} } : undefined),
 		});
 	}
 
@@ -781,7 +792,11 @@ describe("cloud storage bucket resolver", () => {
 		);
 		expect(outcome.action).toBe("update");
 		expect(fake.countOf("PATCH", BUCKET_PATH)).toBe(1);
-		expect(bodyOf(fake.calls.at(-1) as RecordedCall)).toMatchObject({
+		const patched = fake.calls.at(-1);
+		if (patched === undefined) {
+			throw new Error("expected a PATCH call");
+		}
+		expect(bodyOf(patched)).toMatchObject({
 			versioning: { enabled: true },
 		});
 	});
@@ -1363,7 +1378,10 @@ describe("memorystore redis resolver", () => {
 			(call) => call.method === "POST" && call.path === REDIS_COLLECTION,
 		);
 		expect(create?.search).toBe("?instanceId=session-cache");
-		expect(bodyOf(create as RecordedCall)).toEqual({
+		if (create === undefined) {
+			throw new Error("expected a create call");
+		}
+		expect(bodyOf(create)).toEqual({
 			memorySizeGb: 1,
 			tier: "BASIC",
 			redisVersion: "REDIS_7_0",
@@ -1419,7 +1437,10 @@ describe("memorystore redis resolver", () => {
 		expect(outcome.outputs.memorySizeGb).toBe(5);
 		const patch = fake.calls.find((call) => call.method === "PATCH");
 		expect(patch?.search).toBe("?updateMask=memorySizeGb");
-		expect(bodyOf(patch as RecordedCall)).toEqual({ memorySizeGb: 5 });
+		if (patch === undefined) {
+			throw new Error("expected a PATCH call");
+		}
+		expect(bodyOf(patch)).toEqual({ memorySizeGb: 5 });
 	});
 
 	it("reports tier and version drift instead of applying it", async () => {
@@ -1612,6 +1633,8 @@ describe("memorystore redis resolver", () => {
 describe("gcp resolver credentials", () => {
 	it("refuses a credentialRef that carries material rather than a locator", async () => {
 		const fake = fakeTransport(bucketApi());
+		// SAFETY: fixture skips parseResolveRequest so the resolver still refuses
+		// a material-shaped credentialRef.
 		const raw = {
 			...BUCKET_REQUEST,
 			credentialRef: "ya29aVeryLongRawAccessTokenValue0123456789",
@@ -1625,6 +1648,8 @@ describe("gcp resolver credentials", () => {
 			),
 		).toBe("RESOLVER_CREDENTIAL_NOT_A_REF");
 
+		// SAFETY: fixture skips parseResolveRequest so the resolver still refuses
+		// a non-locator credentialRef.
 		const bare = {
 			...BUCKET_REQUEST,
 			credentialRef: "not-a-locator",
@@ -1642,6 +1667,8 @@ describe("gcp resolver credentials", () => {
 
 	it("refuses an empty or unresolvable credentialRef with remediation", async () => {
 		const fake = fakeTransport(bucketApi());
+		// SAFETY: fixture skips parseResolveRequest so the resolver still refuses
+		// a blank credentialRef.
 		const empty = { ...BUCKET_REQUEST, credentialRef: "  " } as ResolveRequest;
 		expect(
 			await codeOf(() =>

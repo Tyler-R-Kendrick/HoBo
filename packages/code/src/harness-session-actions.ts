@@ -190,13 +190,19 @@ async function executeMuxAction(
 					note: "no focused pane to stop",
 				};
 			}
-			await runner.run([
-				"kill-window",
-				"-t",
-				window.target.includes("%")
-					? `${sessionTarget(session)}:${window.name}`
-					: window.target,
-			]);
+			// A `%`-prefixed target is a pane id, and killing by pane id kills
+			// whichever window that pane currently sits in — right only until a
+			// split moves it. So address the window by name instead.
+			//
+			// This previously read `${sessionTarget(session)}:${window.name}`, but
+			// `sessionTarget` already ends in the colon, so it built `hobo::codex`,
+			// which tmux cannot resolve. Nothing checks the exit code here, so the
+			// kill silently failed and the note below still said the window
+			// stopped. Spelled out the way the select-window call below does it.
+			const killTarget = window.target.includes("%")
+				? `${session}:${window.name}`
+				: window.target;
+			await runner.run(["kill-window", "-t", killTarget]);
 			const { view, panes: next } = await refreshMux(panes, runner);
 			return {
 				harnessView: view,

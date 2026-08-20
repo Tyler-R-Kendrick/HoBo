@@ -46,11 +46,30 @@ describe("optimizexp feature hobo-code-hermetic-durable bindings", () => {
 		assertClearStatus(world);
 	});
 
-	it("observeFailure checks isolate durable purity", () => {
+	it("observeFailure checks isolate durable purity", async () => {
 		const world = createWorld("hobo-code-hermetic-durable");
 		setFeatureContext(world, "hobo-code-hermetic-durable");
-		observeFailure(world);
+		await observeFailure(world);
 		expect(world.lastExitCode).toBe(0);
 		assertErrorActionable(world);
+	});
+
+	it("puts the durable root outside the sandbox", async () => {
+		// The property the step exists to check, asserted directly rather than
+		// only through an exit code: an isolated run's durable output must not
+		// live inside the disposable worktree, or cleaning up the sandbox would
+		// delete the handback along with it.
+		const world = createWorld("hobo-code-hermetic-durable");
+		setFeatureContext(world, "hobo-code-hermetic-durable");
+		await observeFailure(world);
+		const observed = JSON.parse(world.lastStdout ?? "{}") as {
+			rootPath?: string;
+			durableRoot?: string;
+			pureSeparation?: boolean;
+		};
+		expect(observed.pureSeparation).toBe(true);
+		expect(observed.rootPath).toContain("sandboxes");
+		expect(observed.durableRoot).toContain("durable");
+		expect(observed.rootPath).not.toBe(observed.durableRoot);
 	});
 });

@@ -1,7 +1,8 @@
-import { mkdirSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { stripSgr as plain } from "../src/ansi.js";
 import {
 	answerBtw,
@@ -25,6 +26,30 @@ const overlayFixture = join(
 	"visual",
 	"shell-btw-overlay.tui.txt",
 );
+
+/** See `tui-visual.test.ts` — same reasoning, same escape hatch. */
+const UPDATE = process.env.HOBO_UPDATE_VISUAL === "1";
+
+const temps: string[] = [];
+
+afterEach(() => {
+	for (const dir of temps.splice(0)) {
+		rmSync(dir, { recursive: true, force: true });
+	}
+});
+
+/**
+ * An empty HoBo home and an empty environment, so the chrome strip renders
+ * the signed-out Station rather than whatever signed in earlier in the run.
+ */
+function isolated(): {
+	readonly hoboHome: string;
+	readonly env: NodeJS.ProcessEnv;
+} {
+	const hoboHome = mkdtempSync(join(tmpdir(), "hobo-btw-home-"));
+	temps.push(hoboHome);
+	return { hoboHome, env: {} };
+}
 
 describe("btw side-chat", () => {
 	it("matches btw / /btw prefixes and dismiss words", () => {
@@ -141,6 +166,7 @@ describe("btw side-chat", () => {
 			height: 24,
 			welcome: false,
 			reducedMotion: true,
+			...isolated(),
 		});
 		state = {
 			...state,
@@ -166,8 +192,13 @@ describe("btw side-chat", () => {
 		expect(findDescendantById(tree, "btw-aside")?.id).toBe("btw-aside");
 		expect(query(tree, ".overlay")).toBeDefined();
 		const frame = plain(renderShellFrame(state));
-		mkdirSync(dirname(overlayFixture), { recursive: true });
-		writeFileSync(overlayFixture, `${frame}\n`, "utf8");
+		if (UPDATE) {
+			writeFileSync(overlayFixture, `${frame}\n`, "utf8");
+		} else {
+			expect(frame).toBe(
+				readFileSync(overlayFixture, "utf8").replace(/\n$/u, ""),
+			);
+		}
 		expect(frame).toMatch(/hello world/i);
 		expect(frame).toMatch(/btw/);
 		expect(frame).toMatch(/live/i);

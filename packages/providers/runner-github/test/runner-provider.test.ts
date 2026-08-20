@@ -45,7 +45,7 @@ function mockTransport(overrides: { conclusion?: string } = {}) {
 			url,
 			method: init.method,
 			headers: init.headers,
-			...(init.body === undefined ? {} : { body: init.body }),
+			...(init.body === undefined ? undefined : { body: init.body }),
 		});
 		if (url.includes("/dispatches")) {
 			return {
@@ -103,7 +103,8 @@ describe("GitHub Actions RunnerProvider (hobo:runner, replay lane)", () => {
 			command: "pnpm test",
 		});
 
-		const dispatch = requests[0] as RecordedRequest;
+		const dispatch = requests[0];
+		assert.ok(dispatch);
 		const recorded = pact.interactions[0];
 		assert.ok(dispatch.url.endsWith(recorded.request.path));
 		assert.equal(dispatch.method, recorded.request.method);
@@ -165,8 +166,7 @@ describe("GitHub Actions RunnerProvider (hobo:runner, replay lane)", () => {
 
 		await assert.rejects(
 			provider.run({ jobId: "job-4" }),
-			(error: unknown) =>
-				error instanceof GithubApiError && error.status === 422,
+			(error: Error) => error instanceof GithubApiError && error.status === 422,
 		);
 	});
 });
@@ -186,8 +186,8 @@ describe.runIf(Boolean(live))(
 		it("dispatches and tracks a real workflow run", async () => {
 			const provider = createGithubRunnerProvider({
 				client: createGithubActionsClient({
-					owner: process.env.HOBO_GITHUB_OWNER as string,
-					repo: process.env.HOBO_GITHUB_REPO as string,
+					owner: process.env.HOBO_GITHUB_OWNER ?? "",
+					repo: process.env.HOBO_GITHUB_REPO ?? "",
 					token: envTokenProvider(),
 				}),
 				workflow: process.env.HOBO_GITHUB_WORKFLOW ?? RUNNER_WORKFLOW_DEFAULT,

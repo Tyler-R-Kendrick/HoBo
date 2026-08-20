@@ -97,18 +97,23 @@ export function exerciseSurface(world: OptimizexpWorld): void {
 	// second call creates new home — re-login into one home for realism
 	cleanup(login.home);
 	const home = mkdtempSync(path.join(tmpdir(), "oxp-agent-run-"));
+	// Bounded like `runHoboCode` above. An unbounded spawn here can hang the
+	// whole run rather than failing, and the symptom — vitest's own timeout —
+	// points at the test rather than at the subprocess that stopped answering.
 	const login2 = spawnSync(
 		"node",
 		["--import", "tsx", BIN, "auth", "login", "--agent"],
 		{
 			cwd: PKG,
 			encoding: "utf8",
+			timeout: 60_000,
 			env: { ...process.env, HOBO_HOME: home, HOBO_CODE_AGENT: "1" },
 		},
 	);
 	const agent = spawnSync("node", ["--import", "tsx", BIN, "agent"], {
 		cwd: PKG,
 		encoding: "utf8",
+		timeout: 60_000,
 		env: { ...process.env, HOBO_HOME: home, HOBO_CODE_AGENT: "1" },
 	});
 	cleanup(home);

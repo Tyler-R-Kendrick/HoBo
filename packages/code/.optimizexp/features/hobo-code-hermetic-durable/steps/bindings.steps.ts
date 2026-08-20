@@ -65,9 +65,14 @@ When(
 	},
 );
 
-When("I observe the failure as this persona", function (this: OptimizexpWorld) {
-	observeFailure(w(this));
-});
+When(
+	"I observe the failure as this persona",
+	async function (this: OptimizexpWorld) {
+		// Returned, not fire-and-forget: cucumber waits on the promise, so the
+		// Then steps see the world this step actually populated.
+		await observeFailure(w(this));
+	},
+);
 
 Then(
 	"I receive clear status about what happened",

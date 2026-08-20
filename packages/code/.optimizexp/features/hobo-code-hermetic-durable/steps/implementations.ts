@@ -106,11 +106,16 @@ export function exerciseSurface(world: OptimizexpWorld): void {
 	}
 }
 
-export function observeFailure(world: OptimizexpWorld): void {
+export async function observeFailure(world: OptimizexpWorld): Promise<void> {
 	const project = mkdtempSync(path.join(tmpdir(), "oxp-hc-iso-p-"));
 	const home = mkdtempSync(path.join(tmpdir(), "oxp-hc-iso-h-"));
 	world.lastCommand = "createIsolationContext (pure separation)";
-	const ctx = createIsolationContext({
+	// `createIsolationContext` is async. Without the await, `ctx` was a Promise,
+	// every field read came back undefined, the purity check reported a failure
+	// that had not happened — and the cleanup below deleted the directories out
+	// from under the still-running write, which surfaced as an unhandled ENOENT
+	// rejection rather than as anything pointing at this line.
+	const ctx = await createIsolationContext({
 		projectRoot: project,
 		hoboHome: home,
 		runId: "run-oxp-hermetic",

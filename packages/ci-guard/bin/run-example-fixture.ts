@@ -1,8 +1,14 @@
 #!/usr/bin/env node
-import { runExampleFixture } from "../src/fixture-runner.js";
+import { type FixturePhase, runExampleFixture } from "../src/fixture-runner.js";
 
-function parseArgs(argv: readonly string[]): Record<string, string> {
-	const parsed: Record<string, string> = {};
+interface ExampleFixtureCliArgs {
+	fixture?: string;
+	phase?: string;
+	"run-id"?: string;
+}
+
+function parseArgs(argv: readonly string[]): ExampleFixtureCliArgs {
+	const parsed: ExampleFixtureCliArgs = {};
 	for (let index = 0; index < argv.length; index += 1) {
 		const arg = argv[index];
 		if (!arg?.startsWith("--")) {
@@ -10,32 +16,49 @@ function parseArgs(argv: readonly string[]): Record<string, string> {
 		}
 		const key = arg.slice(2);
 		const next = argv[index + 1];
+		const value = next && !next.startsWith("--") ? next : "true";
 		if (next && !next.startsWith("--")) {
-			parsed[key] = next;
 			index += 1;
-		} else {
-			parsed[key] = "true";
+		}
+		if (key === "fixture") {
+			parsed.fixture = value;
+		} else if (key === "phase") {
+			parsed.phase = value;
+		} else if (key === "run-id") {
+			parsed["run-id"] = value;
 		}
 	}
 	return parsed;
 }
 
+function parseFixturePhase(value: string): FixturePhase | undefined {
+	if (
+		value === "deploy-and-assert" ||
+		value === "teardown" ||
+		value === "sweep-orphans"
+	) {
+		return value;
+	}
+	return undefined;
+}
+
 async function main(): Promise<void> {
 	const args = parseArgs(process.argv.slice(2));
 	const fixture = args.fixture;
-	const phase = args.phase as
-		| "deploy-and-assert"
-		| "teardown"
-		| "sweep-orphans"
-		| undefined;
+	const phaseArg = args.phase;
 	const runId = args["run-id"] ?? process.env.GITHUB_RUN_ID ?? "local-run";
 
-	if (!fixture || !phase) {
+	if (!fixture || !phaseArg) {
 		console.error(
 			"usage: run-example-fixture.ts --fixture <path> --phase <phase> --run-id <id>",
 		);
 		process.exitCode = 1;
 		return;
+	}
+
+	const phase = parseFixturePhase(phaseArg);
+	if (phase === undefined) {
+		throw new Error(`unknown phase: ${phaseArg}`);
 	}
 
 	if (process.env.GITHUB_ACTIONS === "true") {
@@ -67,7 +90,7 @@ function assertGitHubOidcEnvironment(): void {
 	}
 }
 
-main().catch((error: unknown) => {
+main().catch((error) => {
 	console.error(error instanceof Error ? error.message : String(error));
 	process.exitCode = 1;
 });

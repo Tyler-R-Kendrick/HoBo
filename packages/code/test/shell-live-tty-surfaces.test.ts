@@ -67,12 +67,28 @@ function fakeStdin() {
 	});
 }
 
-/** A stdout that claims to be a terminal and records what was painted. */
+/**
+ * A stdout that claims to be a terminal, records what was painted, and says
+ * when the first real frame arrived.
+ *
+ * "Real" excludes the setup escapes the shell emits before it has anything to
+ * show — entering the alternate screen, hiding the cursor. Waiting on those
+ * would be waiting on nothing.
+ */
 function fakeStdout(columns = 80, rows = 24) {
 	const chunks: string[] = [];
+	let announcePainted: (() => void) | undefined;
+	const painted = new Promise<void>((resolve) => {
+		announcePainted = resolve;
+	});
 	const stream = new Writable({
 		write(chunk, _encoding, done) {
-			chunks.push(String(chunk));
+			const text = String(chunk);
+			chunks.push(text);
+			// Anything left after stripping the escapes is content on screen.
+			if (text.replace(/\[[0-9;?]*[A-Za-z]/gu, "").trim().length > 0) {
+				announcePainted?.();
+			}
 			done();
 		},
 	});
@@ -81,6 +97,7 @@ function fakeStdout(columns = 80, rows = 24) {
 		columns,
 		rows,
 		text: () => chunks.join(""),
+		firstPaint: painted,
 	});
 }
 
@@ -113,16 +130,20 @@ async function live(
 	const prompts: string[] = [];
 	const verbs: string[][] = [];
 
-	// The first key waits for the initial paint. A key that lands before the
-	// frame is drawn tests a shell that is not yet on screen, which is not the
-	// shell a user meets — and, for the assertions that read what was painted,
-	// would compare against an empty terminal.
+	// Keys start after the first frame is actually on screen, not after a fixed
+	// delay. A key that lands before the shell has painted tests a shell the
+	// user never meets, and for the assertions that read what was painted it
+	// would compare against an empty terminal — passing vacuously. Waiting on
+	// the paint itself is also what keeps this file honest under the coverage
+	// lane, where instrumentation makes every startup slower than a guess.
 	const gap = options.gap ?? 150;
-	let delay = 200;
-	for (const key of keys) {
-		setTimeout(() => stdin.write(key), delay);
-		delay += gap;
-	}
+	void stdout.firstPaint.then(() => {
+		let delay = 0;
+		for (const key of keys) {
+			setTimeout(() => stdin.write(key), delay);
+			delay += gap;
+		}
+	});
 
 	const code = await runInteractiveShell({
 		stdin: stdin as never,

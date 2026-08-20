@@ -527,6 +527,7 @@ Use these lanes instead:
 - `pnpm test:component` for real-browser component behavior with mocked service boundaries.
 - `pnpm test:behavior` for Gherkin/Cucumber or Playwright-driven behavior specs with Pact-derived mocks.
 - `pnpm test:visual` for deterministic visual state regression.
+- `pnpm test:chaos` for the resilience suites described under "Chaos lanes" below.
 - `pnpm eval:agent:mock` for deterministic agent evals.
 - `pnpm test:property` for fast-check control-plane oracles in `@hobo/fuzz` (simulators only).
 - `pnpm test:fuzz` for Jazzer-shaped serialized-input smoke (does not start a long campaign).
@@ -583,6 +584,11 @@ recording the measured score and the date; raise `thresholds.break` as the score
 improves rather than setting a number nobody can pass.
 
 ### Chaos lanes, and which one proves what
+
+Run them with `pnpm test:chaos`. The suites long predated that lane and until
+recently had none — they executed only as a side effect of a package's broad
+test run, so "is the chaos surface green?" was not a question anyone could ask
+directly. The lane keys on the `chaos` marker already present in their filenames.
 
 Two chaos suites exist and they are **not** interchangeable. Conflating them is
 how a suite ends up proving neither half.

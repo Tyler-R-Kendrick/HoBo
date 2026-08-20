@@ -17,7 +17,6 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
-
 import {
 	type LocalTempTransport,
 	parseWebernetesLocalEndpoint,
@@ -25,12 +24,19 @@ import {
 	WEBERNETES_REJECTED_CODE,
 	WebernetesInputRejectedError,
 } from "../src/index.js";
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	parseJsonObject,
+} from "../src/json.js";
 
 type PactMessage = {
 	readonly description: string;
 	readonly request: {
 		readonly type: string;
-		readonly body: Record<string, unknown>;
+		readonly body: JsonObject;
 	};
 	readonly response: {
 		readonly body: { readonly stationUrl: string; readonly claimUrl: string };
@@ -45,7 +51,7 @@ type PactFile = {
 };
 
 function loadPact(): PactFile {
-	const decoded: unknown = JSON.parse(
+	const decoded = parseJsonObject(
 		readFileSync(
 			fileURLToPath(
 				new URL(
@@ -56,23 +62,59 @@ function loadPact(): PactFile {
 			"utf8",
 		),
 	);
-	if (typeof decoded !== "object" || decoded === null) {
-		throw new Error("the pact file is not a JSON object");
-	}
-	const candidate = decoded as Partial<PactFile>;
-	if (
-		!Array.isArray(candidate.interactions) ||
-		candidate.interactions.length === 0
-	) {
+	const interactionsRaw = decoded.interactions;
+	if (!isJsonArray(interactionsRaw) || interactionsRaw.length === 0) {
 		throw new Error("the pact file declares no interactions");
 	}
-	if (
-		candidate.consumer?.name === undefined ||
-		candidate.provider?.name === undefined
-	) {
+	const consumer = isJsonObject(decoded.consumer)
+		? decoded.consumer
+		: undefined;
+	const provider = isJsonObject(decoded.provider)
+		? decoded.provider
+		: undefined;
+	if (!isJsonString(consumer?.name) || !isJsonString(provider?.name)) {
 		throw new Error("the pact file is missing its consumer or provider name");
 	}
-	return candidate as PactFile;
+	const interactions: PactMessage[] = [];
+	for (const entry of interactionsRaw) {
+		if (!isJsonObject(entry) || !isJsonString(entry.description)) {
+			throw new Error("the pact file has a malformed interaction");
+		}
+		const request = isJsonObject(entry.request) ? entry.request : undefined;
+		const response = isJsonObject(entry.response) ? entry.response : undefined;
+		const reqBody = isJsonObject(request?.body) ? request.body : undefined;
+		const resBody = isJsonObject(response?.body) ? response.body : undefined;
+		if (
+			reqBody === undefined ||
+			resBody === undefined ||
+			!isJsonString(request?.type) ||
+			!isJsonString(resBody.stationUrl) ||
+			!isJsonString(resBody.claimUrl)
+		) {
+			throw new Error("the pact file has a malformed interaction");
+		}
+		const providerStates: { name: string }[] = [];
+		if (isJsonArray(entry.providerStates)) {
+			for (const state of entry.providerStates) {
+				if (isJsonObject(state) && isJsonString(state.name)) {
+					providerStates.push({ name: state.name });
+				}
+			}
+		}
+		interactions.push({
+			description: entry.description,
+			request: { type: request.type, body: reqBody },
+			response: {
+				body: { stationUrl: resBody.stationUrl, claimUrl: resBody.claimUrl },
+			},
+			...(providerStates.length > 0 ? { providerStates } : undefined),
+		});
+	}
+	return {
+		consumer: { name: consumer.name },
+		provider: { name: provider.name },
+		interactions,
+	};
 }
 
 const pact = loadPact();
@@ -104,7 +146,9 @@ function transportFor(
 }
 
 function stationIdOf(entry: PactMessage): string {
-	return entry.request.body.stationId as string;
+	return isJsonString(entry.request.body.stationId)
+		? entry.request.body.stationId
+		: "";
 }
 
 describe("the pact file itself", () => {
@@ -184,7 +228,7 @@ describe("station replies the host must not produce, verified against the pact",
 					transport: transportFor(entry),
 				}),
 			).rejects.toSatisfy(
-				(error: unknown) =>
+				(error: Error) =>
 					error instanceof WebernetesInputRejectedError &&
 					error.code === WEBERNETES_REJECTED_CODE &&
 					error.field === "stationUrl",

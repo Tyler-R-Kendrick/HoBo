@@ -3090,6 +3090,11 @@ export async function runInteractiveShell(
 			}
 			return;
 		}
+		// The non-streaming turn is in flight too. Without this the flag stays
+		// false for the whole completion — only the `finally` below cleared it —
+		// so a scripted quit drained nothing, Esc could not cancel the turn, and
+		// every other `turnInFlight` guard read "idle" while a turn was running.
+		turnInFlight = true;
 		try {
 			const text = await options.host.complete(prompt);
 			if (quit) return;

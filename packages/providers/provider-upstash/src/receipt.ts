@@ -17,6 +17,7 @@ import type {
 import { UPSTASH_BINDING_PROFILE_REFS } from "./definition.js";
 import type { UpstashClaimState, UpstashTemporaryRedis } from "./driver.js";
 import { UpstashProviderError } from "./errors.js";
+import { type JsonValue, parseJsonValue } from "./json.js";
 import type { DomainView } from "./wire.js";
 
 // domain-view: this surface has exactly one transport, so it is a literal here
@@ -112,9 +113,15 @@ export type CredentialScanHit = {
 	readonly excerpt: string;
 };
 
+function jsonView(
+	value: JsonValue | UpstashProvisionReceipt | readonly UpstashProviderFact[],
+): JsonValue {
+	return parseJsonValue(JSON.stringify(value));
+}
+
 /** Scan any JSON-serializable value for credential material. */
 export function scanForCredentialMaterial(
-	value: unknown,
+	value: JsonValue,
 ): readonly CredentialScanHit[] {
 	const serialized = JSON.stringify(value) ?? "";
 	const hits: CredentialScanHit[] = [];
@@ -132,7 +139,10 @@ export function scanForCredentialMaterial(
 	return hits;
 }
 
-export function assertNoCredentialMaterial(value: unknown, what: string): void {
+export function assertNoCredentialMaterial(
+	value: JsonValue,
+	what: string,
+): void {
 	const hits = scanForCredentialMaterial(value);
 	if (hits.length === 0) return;
 	throw new UpstashProviderError(
@@ -158,10 +168,10 @@ export function toProvisionReceipt(
 		},
 		...(record.credentialRef !== undefined
 			? { credentialRef: record.credentialRef }
-			: {}),
+			: undefined),
 		...(record.restUrlRef !== undefined
 			? { restUrlRef: record.restUrlRef }
-			: {}),
+			: undefined),
 		expiresAtIso: record.expiresAtIso,
 		expiresAtMs: record.expiresAtMs,
 		statedTtlDays: record.statedTtlDays,
@@ -182,7 +192,10 @@ export function toProvisionReceipt(
 		migrationProfiles: [],
 		teardown: "expiry-only",
 	};
-	assertNoCredentialMaterial(receipt, "the Upstash provision receipt");
+	assertNoCredentialMaterial(
+		jsonView(receipt),
+		"the Upstash provision receipt",
+	);
 	return receipt;
 }
 
@@ -232,6 +245,6 @@ export function toProviderFacts(
 			detail: { expiresAtIso: record.expiresAtIso },
 		});
 	}
-	assertNoCredentialMaterial(facts, "the Upstash provider facts");
+	assertNoCredentialMaterial(jsonView(facts), "the Upstash provider facts");
 	return facts;
 }

@@ -43,7 +43,7 @@ describe("createUpstashClient.createDatabase", () => {
 
 		await assert.rejects(
 			client.createDatabase({ idempotencyKey: "my-app-database" }),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "PROVIDER_CONTRACT_CHANGED",
 		);
 		// The provider derives the id from the key, so a bad key must not
@@ -66,7 +66,7 @@ describe("createUpstashClient.createDatabase", () => {
 
 		await assert.rejects(
 			client.createDatabase({ idempotencyKey: FAKE_DATABASE_ID }),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) &&
 				error.code === "PROVIDER_CONTRACT_CHANGED" &&
 				/no longer a safe adoption/u.test(error.message),
@@ -105,7 +105,7 @@ describe("createUpstashClient.createDatabase", () => {
 
 		await assert.rejects(
 			client.createDatabase({ idempotencyKey: FAKE_DATABASE_ID }),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "PROVIDER_OPERATION_AMBIGUOUS",
 		);
 
@@ -146,7 +146,7 @@ describe("createUpstashClient.createDatabase", () => {
 
 		await assert.rejects(
 			client.createDatabase({ idempotencyKey: FAKE_DATABASE_ID }),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "PROVIDER_OPERATION_AMBIGUOUS",
 		);
 
@@ -180,7 +180,7 @@ describe("createUpstashClient.createDatabase", () => {
 
 		await assert.rejects(
 			client.createDatabase({ idempotencyKey: FAKE_DATABASE_ID }),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "PROVIDER_RATE_LIMITED",
 		);
 		assert.equal((await store.get(FAKE_DATABASE_ID))?.state, "failed");
@@ -219,7 +219,7 @@ describe("createUpstashClient.getMetrics", () => {
 				`https://upstash.com/start-redis/metrics/${FAKE_DATABASE_ID}`,
 				FAKE_DATABASE_ID,
 			),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "LEASE_EXPIRED",
 		);
 	});

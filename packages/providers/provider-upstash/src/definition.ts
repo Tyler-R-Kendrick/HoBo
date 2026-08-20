@@ -17,7 +17,6 @@
 import type {
 	BindleRuntime,
 	ClaimAtomicity,
-	ContinuityGrade,
 	CreatorAuthorityAfterClaim,
 	ProfileImplementation,
 	ProviderClass,
@@ -142,9 +141,7 @@ export const UPSTASH_PROFILE_IMPLEMENTATIONS: readonly ProfileImplementation[] =
  * against a real endpoint, and the reference store's bound is the reference
  * store's, not Upstash's.
  */
-export const UPSTASH_STRUCTURED_CAPABILITIES: Readonly<
-	Record<string, boolean | number | string | readonly string[]>
-> = {
+export const UPSTASH_STRUCTURED_CAPABILITIES = {
 	ttl: true,
 	atomicIncrement: true,
 	sortedSets: true,
@@ -193,17 +190,7 @@ const UPSTASH_RUNTIME_MODELS: readonly BindleRuntime[] = [
 	"serverless_faas",
 ];
 
-const UPSTASH_CONTINUITY: {
-	readonly endpoint: ContinuityGrade;
-	readonly data: ContinuityGrade;
-	readonly credentials:
-		| "revoked"
-		| "rotated"
-		| "reauthorized"
-		| "retained"
-		| "unknown"
-		| "not-applicable";
-} = {
+const UPSTASH_CONTINUITY = {
 	// Claiming moves the existing database into an account. The endpoint and
 	// the data are the same ones; what changes is that the expiry is lifted.
 	endpoint: "preserved",
@@ -212,7 +199,7 @@ const UPSTASH_CONTINUITY: {
 	// rotation in the console ends that, which is why rotation is a *blocking*
 	// post-claim action rather than an optional tidy-up.
 	credentials: "retained",
-};
+} as const;
 
 const UPSTASH_PROVIDER_CLASS: ProviderClass = "verified-emerging";
 const UPSTASH_CREATOR_AUTHORITY: CreatorAuthorityAfterClaim = "rotatable";
@@ -410,7 +397,7 @@ export function createUpstashResourceSemantics(
 		providerClass: candidate.providerClass,
 		...(candidate.evidenceExpiresAtMs !== undefined
 			? { evidenceExpiresAtMs: candidate.evidenceExpiresAtMs }
-			: {}),
+			: undefined),
 		evidenceSignatureValid: candidate.evidenceSignatureValid,
 		creatorAuthorityAfterClaim: candidate.creatorAuthorityAfterClaim,
 		claimAtomicity: candidate.claimAtomicity,

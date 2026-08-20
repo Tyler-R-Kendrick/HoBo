@@ -330,7 +330,7 @@ export function createUpstashTemporaryRedisDriver(
 			urlRef,
 			...(database.expiresAtMs !== undefined
 				? { expiresAtMs: database.expiresAtMs }
-				: {}),
+				: undefined),
 			producerEvidenceRef,
 		});
 
@@ -418,8 +418,10 @@ export function createUpstashTemporaryRedisDriver(
 			return toRecord(database, {
 				resourceRef: input.resourceRef,
 				adopted: true,
-				...(input.claim !== undefined ? { claim: input.claim } : {}),
-				...(input.rotation !== undefined ? { rotation: input.rotation } : {}),
+				...(input.claim !== undefined ? { claim: input.claim } : undefined),
+				...(input.rotation !== undefined
+					? { rotation: input.rotation }
+					: undefined),
 			});
 		},
 

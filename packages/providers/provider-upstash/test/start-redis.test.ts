@@ -203,7 +203,7 @@ describe("parseStartRedisMetrics", () => {
 		assert.throws(
 			() =>
 				parseStartRedisMetrics("<html>maintenance</html>", FAKE_DATABASE_ID),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "PROVIDER_CONTRACT_CHANGED",
 		);
 	});
@@ -212,7 +212,7 @@ describe("parseStartRedisMetrics", () => {
 		assert.throws(
 			() =>
 				parseStartRedisMetrics(JSON.stringify({ keys: -1 }), FAKE_DATABASE_ID),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "PROVIDER_CONTRACT_CHANGED",
 		);
 	});

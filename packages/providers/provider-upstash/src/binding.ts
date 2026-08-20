@@ -49,11 +49,13 @@ export function restEndpointRef(host: string): NonSecretEndpointRef {
 export function buildUpstashCapabilityBinding(
 	input: BuildBindingInput,
 ): CapabilityBinding {
-	const metadataRefs: Record<string, string> = {
+	const metadataRefs = {
 		databaseId: input.databaseId,
 		restEndpointHost: input.restEndpointHost,
+		...(input.urlRef !== undefined
+			? { restUrlRef: input.urlRef.ref }
+			: undefined),
 	};
-	if (input.urlRef !== undefined) metadataRefs.restUrlRef = input.urlRef.ref;
 
 	const binding: CapabilityBindingInput = {
 		schemaVersion: "hobo.capability-binding/v1",
@@ -74,7 +76,7 @@ export function buildUpstashCapabilityBinding(
 		metadataRefs,
 		...(input.expiresAtMs !== undefined
 			? { expiresAtMs: input.expiresAtMs }
-			: {}),
+			: undefined),
 		// The lease cannot be extended by an API call. Claiming is what
 		// removes the expiry, and that is a human action, not a renewal.
 		renewable: false,
@@ -93,7 +95,10 @@ export function buildUpstashCapabilityBinding(
 		throw new UpstashProviderError(
 			"SECRET_REFERENCE_INVALID",
 			"the temporary database did not produce a valid portable binding",
-			{ cause, detail: { bindingId: input.bindingId } },
+			{
+				cause: cause instanceof Error ? cause : new Error(String(cause)),
+				detail: { bindingId: input.bindingId },
+			},
 		);
 	}
 }

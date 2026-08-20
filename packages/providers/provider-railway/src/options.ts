@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json.js";
+
 // public-contract: provider target accepted by authoring options.
 export const PROVIDER_TARGET = "railway";
 
@@ -6,12 +8,12 @@ export interface TypedOptionBlock {
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
-	options: Record<string, unknown>;
+	options: JsonObject;
 }
 
 export const railway = {
 	with: {
-		service(options: Record<string, unknown> = {}): TypedOptionBlock {
+		service(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"compute",
 				"service",
@@ -19,7 +21,7 @@ export const railway = {
 				options,
 			);
 		},
-		redis(options: Record<string, unknown> = {}): TypedOptionBlock {
+		redis(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock("kv", "redis", {}, options);
 		},
 	},
@@ -28,8 +30,8 @@ export const railway = {
 function optionBlock(
 	port: string,
 	optionName: string,
-	defaults: Record<string, unknown>,
-	options: Record<string, unknown>,
+	defaults: JsonObject,
+	options: JsonObject,
 ): TypedOptionBlock {
 	return {
 		providerId: PROVIDER_TARGET,

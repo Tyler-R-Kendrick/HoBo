@@ -7,6 +7,12 @@ import {
 	type PolicyPack,
 	type ResidencyGateVerdict,
 } from "@hobo/contracts";
+import {
+	cloneAsJson,
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 import type {
 	BillingPolicy,
@@ -29,7 +35,7 @@ import type {
 export interface GateDecision {
 	effect: GatekeeperEffect;
 	reasons: RejectionReason[];
-	events: Array<Record<string, unknown>>;
+	events: Array<JsonObject>;
 }
 
 // OPA-shaped: a decision request document in, an effect + reasons out. The
@@ -57,8 +63,8 @@ export interface BillingPlane {
 export interface DeliveryTicket {
 	engine: string;
 	target: string;
-	document: Record<string, unknown>;
-	response?: Record<string, unknown>;
+	document: JsonObject;
+	response?: JsonObject;
 }
 
 export interface DeliveryPlane {
@@ -89,10 +95,10 @@ export function createGatekeeperGatePlane(
 				},
 				...(options.policyPack !== undefined
 					? { policyPack: options.policyPack }
-					: {}),
+					: undefined),
 				...(options.residency !== undefined
 					? { residency: options.residency }
-					: {}),
+					: undefined),
 				costQuota: input.costQuota,
 			});
 			const reasons: RejectionReason[] = decision.reasons.map((reason) => ({
@@ -107,7 +113,14 @@ export function createGatekeeperGatePlane(
 				code: reason.code,
 				message: reason.message,
 			}));
-			return { effect: decision.decision, reasons, events: decision.events };
+			return {
+				effect: decision.decision,
+				reasons,
+				events: decision.events.map((event) => {
+					const json = cloneAsJson(event);
+					return isJsonObject(json) ? json : { value: json };
+				}),
+			};
 		},
 	};
 }
@@ -141,7 +154,7 @@ export function createBillingPlane(): BillingPlane {
 export function renderArgoApplication(
 	receipt: ResolutionReceipt,
 	policy: DeliveryPolicy,
-): Record<string, unknown> {
+): JsonObject {
 	return {
 		apiVersion: "argoproj.io/v1alpha1",
 		kind: "Application",
@@ -182,7 +195,8 @@ export function createDeliveryPlane(): DeliveryPlane {
 			return {
 				engine: "in-proc",
 				target: receipt.brokerId,
-				document: { receipt: receipt as unknown as Record<string, unknown> },
+				// SAFETY: assertion required at this I/O or test boundary.
+				document: { receipt: cloneAsJson(receipt) },
 			};
 		},
 	};
@@ -197,7 +211,7 @@ export type FetchLike = (
 		headers: Record<string, string>;
 		body: string;
 	},
-) => Promise<{ status: number; json(): Promise<unknown> }>;
+) => Promise<{ status: number; json(): Promise<JsonValue> }>;
 
 export interface ArgoCdDeliveryPlaneOptions {
 	endpoint: string;
@@ -229,7 +243,7 @@ export function createArgoCdDeliveryPlane(
 			const token = options.tokenProvider
 				? await options.tokenProvider()
 				: undefined;
-			let response: { status: number; json(): Promise<unknown> };
+			let response: { status: number; json(): Promise<JsonValue> };
 			try {
 				response = await options.fetchFn(
 					`${options.endpoint.replace(/\/$/u, "")}/api/v1/applications`,
@@ -239,7 +253,7 @@ export function createArgoCdDeliveryPlane(
 							"content-type": "application/json",
 							...(token !== undefined
 								? { authorization: `Bearer ${token}` }
-								: {}),
+								: undefined),
 						},
 						body: JSON.stringify(document),
 					},
@@ -256,7 +270,8 @@ export function createArgoCdDeliveryPlane(
 					`Argo CD rejected the Application (HTTP ${response.status})`,
 				);
 			}
-			const body = (await response.json()) as Record<string, unknown>;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const body = (await response.json()) as JsonObject;
 			return {
 				engine: "argo",
 				target: options.endpoint,

@@ -1,3 +1,10 @@
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import { BrokerParseError } from "./policies.js";
 
 // Anonymous-to-owned resolution evidence (ADR-0151). A guest deployment is
@@ -122,14 +129,14 @@ export interface GuestResolutionEvidence {
 	cleanupPolicy: CleanupPolicy;
 }
 
-function requireString(value: unknown, field: string): string {
-	if (typeof value !== "string" || value.length === 0) {
+function requireString(value: JsonValue | undefined, field: string): string {
+	if (!isJsonString(value) || value.length === 0) {
 		throw fail(GUEST_CODE, `${field} must be a non-empty string`);
 	}
 	return value;
 }
 
-function requireDigest(value: unknown, field: string): string {
+function requireDigest(value: JsonValue | undefined, field: string): string {
 	const text = requireString(value, field);
 	if (!DIGEST.test(text)) {
 		throw fail(GUEST_CODE, `${field} must be a sha256:<hex64> digest`);
@@ -137,7 +144,7 @@ function requireDigest(value: unknown, field: string): string {
 	return text;
 }
 
-function requireInstant(value: unknown, field: string): string {
+function requireInstant(value: JsonValue | undefined, field: string): string {
 	const text = requireString(value, field);
 	if (!INSTANT.test(text)) {
 		throw fail(GUEST_CODE, `${field} must be an ISO-8601 instant`);
@@ -145,30 +152,35 @@ function requireInstant(value: unknown, field: string): string {
 	return text;
 }
 
-function optionalInstant(value: unknown, field: string): string | undefined {
+function optionalInstant(
+	value: JsonValue | undefined,
+	field: string,
+): string | undefined {
 	return value === undefined ? undefined : requireInstant(value, field);
 }
 
 function requireMember<T extends string>(
-	value: unknown,
+	value: JsonValue | undefined,
 	allowed: readonly T[],
 	field: string,
 ): T {
-	if (typeof value !== "string" || !allowed.includes(value as T)) {
+	// SAFETY: assertion required at this I/O or test boundary.
+	if (!isJsonString(value) || !allowed.includes(value as T)) {
 		throw fail(GUEST_CODE, `${field} must be one of ${allowed.join(" | ")}`);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return value as T;
 }
 
-function requireCount(value: unknown, field: string): number {
-	if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+function requireCount(value: JsonValue | undefined, field: string): number {
+	if (!isJsonNumber(value) || !Number.isInteger(value) || value < 0) {
 		throw fail(GUEST_CODE, `${field} must be a non-negative integer`);
 	}
 	return value;
 }
 
 function requireStrings(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
 	{ minimum }: { minimum: number },
 ): readonly string[] {
@@ -187,7 +199,7 @@ function requireStrings(
 }
 
 function optionalStrings(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
 ): readonly string[] | undefined {
 	return value === undefined
@@ -218,12 +230,13 @@ function assertSponsorBudgetMatchesBootstrap(
 }
 
 export function parseGuestResolutionInput(
-	value: unknown,
+	value: JsonValue | undefined,
 ): GuestResolutionInput {
-	if (value === null || typeof value !== "object") {
+	if (value === null || !isJsonObject(value)) {
 		throw fail(GUEST_CODE, "guest resolution input must be an object");
 	}
-	const raw = value as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const raw = value as JsonObject;
 	const bootstrapClass = requireMember(
 		raw.bootstrapClass,
 		BOOTSTRAP_CLASSES,
@@ -260,13 +273,14 @@ export function parseGuestResolutionInput(
 }
 
 export function parseGuestPlacementEvidence(
-	value: unknown,
+	value: JsonValue | undefined,
 	index: number,
 ): GuestPlacementEvidence {
-	if (value === null || typeof value !== "object") {
+	if (value === null || !isJsonObject(value)) {
 		throw fail(GUEST_CODE, `guest.placements[${index}] must be an object`);
 	}
-	const raw = value as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const raw = value as JsonObject;
 	const field = `guest.placements[${index}]`;
 	const realization = requireMember(
 		raw.realization,
@@ -315,12 +329,13 @@ export function parseGuestPlacementEvidence(
 }
 
 export function parseGuestResolutionEvidence(
-	value: unknown,
+	value: JsonValue | undefined,
 ): GuestResolutionEvidence {
-	if (value === null || typeof value !== "object") {
+	if (value === null || !isJsonObject(value)) {
 		throw fail(GUEST_CODE, "guest resolution evidence must be an object");
 	}
-	const raw = value as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const raw = value as JsonObject;
 	const placementsRaw = raw.placements;
 	if (!Array.isArray(placementsRaw) || placementsRaw.length === 0) {
 		throw fail(

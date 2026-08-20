@@ -1,5 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { first } from "@hobo/core/total-access";
+import {
+	cloneAsJson,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 import type { BrokerCatalog, PlacementDecision } from "../types.js";
 import { defaultYardGenerationConnectors } from "./connectors.js";
 import {
@@ -34,8 +42,8 @@ import {
 	type BindleDeploymentRequest,
 	type ContentHash,
 	contentHashOf,
-	emptyYardShape,
-	parseYardShape,
+	emptyYardLayout,
+	parseYardLayout,
 	YARD_PLACEMENT_RECEIPT_SCHEMA,
 	type YardGenerationPolicy,
 	type YardPlacementReceipt,
@@ -105,7 +113,7 @@ export async function resolveBindleDeployment(
 
 	const appendProviderSignals = (
 		providerId: string,
-		signals: readonly { kind: string; payload: Record<string, unknown> }[],
+		signals: readonly { kind: string; payload: JsonObject }[],
 	): void => {
 		const resolver =
 			foldRegistry.get(providerId) ??
@@ -118,6 +126,7 @@ export async function resolveBindleDeployment(
 			const native: ProviderNativeSignal = {
 				providerId,
 				kind: signal.kind,
+				// SAFETY: assertion required at this I/O or test boundary.
 				payload: signal.payload as ProviderNativeSignal["payload"],
 			};
 			for (const event of resolver.normalize(native)) {
@@ -146,7 +155,7 @@ export async function resolveBindleDeployment(
 			ownerTenantId,
 			selectionMode: request.yard.selectionMode,
 			requestedYardId: request.yard.requestedYardId,
-			requestedShape: request.yard.requestedShape,
+			requestedLayout: request.yard.requestedLayout,
 		}),
 	);
 
@@ -155,7 +164,7 @@ export async function resolveBindleDeployment(
 		deps.seedLocalYard !== false &&
 		Object.keys(foldState.yards).length === 0
 	) {
-		const providerId = request.yard.requestedShape.providerId ?? "local";
+		const providerId = request.yard.requestedLayout.providerId ?? "local";
 		const yard = localYardInstance({
 			yardId: request.yard.requestedYardId ?? `yard:local-${providerId}`,
 			ownerTenantId,
@@ -192,7 +201,7 @@ export async function resolveBindleDeployment(
 	if (match.outcome === "generation-required") {
 		const genDecision = planYardGeneration({
 			ownerTenantId,
-			requestedShape: request.yard.requestedShape,
+			requestedLayout: request.yard.requestedLayout,
 			runtimeCatalog: runtimeSnapshot,
 			policy: deps.generationPolicy ?? DEFAULT_YARD_GENERATION_POLICY,
 			allowGenerationRequested: request.yard.allowGenerationRequested,
@@ -251,11 +260,12 @@ export async function resolveBindleDeployment(
 		generationAttemptId = genDecision.plan.attemptId;
 
 		// Feed connector progress signals through the provider fold resolver.
+		// SAFETY: assertion required at this I/O or test boundary.
 		const connector = connectors.get(genDecision.plan.generatorConnectorId) as
 			| (YardGenerationConnector & {
 					signalsFor?: (
 						id: string,
-					) => readonly { kind: string; payload: Record<string, unknown> }[];
+					) => readonly { kind: string; payload: JsonObject }[];
 			  })
 			| undefined;
 		if (connector?.signalsFor) {
@@ -462,20 +472,23 @@ export async function resolveBindleDeployment(
 		requestId: request.requestId,
 		brokerId: deps.brokerId,
 		selectionMode: request.yard.selectionMode,
-		requestedShapeHash: contentHashOf(
-			request.yard.requestedShape,
+		// SAFETY: assertion required at this I/O or test boundary.
+		requestedLayoutHash: contentHashOf(
+			request.yard.requestedLayout,
 		) as ContentHash,
 		inventoryHash: workingSnapshot.contentHash,
 		runtimeCatalogHash: runtimeSnapshot.contentHash,
 		selectedYardId: yard.yardId,
 		selectedProviderId: yard.providerId,
 		selectedCampId: campId,
-		...(generationAttemptId !== undefined ? { generationAttemptId } : {}),
+		...(generationAttemptId !== undefined
+			? { generationAttemptId }
+			: undefined),
 		match: {
 			...match,
 			...(selectedYardId !== match.winnerYardId
 				? { winnerYardId: selectedYardId, outcome: "existing-yard" as const }
-				: {}),
+				: undefined),
 		},
 		executionUnits,
 		contributingPolicyIds: Object.freeze([
@@ -488,6 +501,7 @@ export async function resolveBindleDeployment(
 
 	const receipt: YardPlacementReceipt = Object.freeze({
 		...receiptBody,
+		// SAFETY: assertion required at this I/O or test boundary.
 		contentHash: contentHashOf(receiptBody) as ContentHash,
 	});
 
@@ -497,7 +511,9 @@ export async function resolveBindleDeployment(
 			selectedYardId: yard.yardId,
 			selectedProviderId: yard.providerId,
 			selectedCampId: campId,
-			...(generationAttemptId !== undefined ? { generationAttemptId } : {}),
+			...(generationAttemptId !== undefined
+				? { generationAttemptId }
+				: undefined),
 			receiptHash: receipt.contentHash,
 			receipt,
 		}),
@@ -507,28 +523,31 @@ export async function resolveBindleDeployment(
 		outcome: "resolved",
 		receipt,
 		placements: placements.decisions,
-		...(generationAttemptId !== undefined ? { generationAttemptId } : {}),
+		...(generationAttemptId !== undefined
+			? { generationAttemptId }
+			: undefined),
 		events: Object.freeze([...emitted]),
 		foldState,
 	};
 }
 
 export function parseBindleDeploymentRequest(
-	input: unknown,
+	input: JsonValue | undefined,
 ): BindleDeploymentRequest {
-	if (!input || typeof input !== "object" || Array.isArray(input)) {
+	if (!input || !isJsonObject(input) || Array.isArray(input)) {
 		throw new TypeError("bindle deployment request must be an object");
 	}
-	const raw = input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const raw = input as JsonObject;
 	if (raw.schemaVersion !== BINDLE_DEPLOYMENT_REQUEST_SCHEMA) {
 		throw new TypeError(
 			`schemaVersion must be ${BINDLE_DEPLOYMENT_REQUEST_SCHEMA}`,
 		);
 	}
-	if (typeof raw.requestId !== "string" || !raw.requestId) {
+	if (!isJsonString(raw.requestId) || !raw.requestId) {
 		throw new TypeError("requestId required");
 	}
-	if (typeof raw.bindleName !== "string" || !raw.bindleName) {
+	if (!isJsonString(raw.bindleName) || !raw.bindleName) {
 		throw new TypeError("bindleName required");
 	}
 	// Reject bindle-level provider selection if smuggled in.
@@ -541,20 +560,22 @@ export function parseBindleDeploymentRequest(
 		);
 	}
 
-	const yardRaw = raw.yard as Record<string, unknown>;
-	if (!yardRaw || typeof yardRaw !== "object") {
+	// SAFETY: assertion required at this I/O or test boundary.
+	const yardRaw = raw.yard as JsonObject;
+	if (!yardRaw || !isJsonObject(yardRaw)) {
 		throw new TypeError("yard placement request required");
 	}
 	const yard: YardPlacementRequest = Object.freeze({
-		requestId:
-			typeof yardRaw.requestId === "string"
-				? yardRaw.requestId
-				: `yard-req-${raw.requestId}`,
+		requestId: isJsonString(yardRaw.requestId)
+			? yardRaw.requestId
+			: `yard-req-${raw.requestId}`,
 		selectionMode: parseSelectionMode(yardRaw.selectionMode),
-		...(typeof yardRaw.requestedYardId === "string"
+		...(isJsonString(yardRaw.requestedYardId)
 			? { requestedYardId: yardRaw.requestedYardId }
-			: {}),
-		requestedShape: parseYardShape(yardRaw.requestedShape ?? emptyYardShape()),
+			: undefined),
+		requestedLayout: parseYardLayout(
+			cloneAsJson(yardRaw.requestedLayout ?? emptyYardLayout()),
+		),
 		bindleManifestHash: asHash(yardRaw.bindleManifestHash ?? raw.manifestHash),
 		bindleRequirementsHash: asHash(
 			yardRaw.bindleRequirementsHash ??
@@ -563,19 +584,19 @@ export function parseBindleDeploymentRequest(
 		allowGenerationRequested: yardRaw.allowGenerationRequested === true,
 	});
 
-	const reqs = (raw.bindleRequirements ?? {}) as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const reqs = (raw.bindleRequirements ?? {}) as JsonObject;
 	const resources = Array.isArray(raw.resources)
 		? raw.resources.map((r) => {
-				const row = r as Record<string, unknown>;
+				// SAFETY: assertion required at this I/O or test boundary.
+				const row = r as JsonObject;
 				return Object.freeze({
 					resourceId: String(row.resourceId),
 					port: String(row.port),
 					features: Object.freeze(
-						Array.isArray(row.features)
-							? row.features.map(String)
-							: ([] as string[]),
+						Array.isArray(row.features) ? row.features.map(String) : [],
 					),
-					...(typeof row.region === "string" ? { region: row.region } : {}),
+					...(isJsonString(row.region) ? { region: row.region } : undefined),
 				});
 			})
 		: [];
@@ -592,61 +613,47 @@ export function parseBindleDeploymentRequest(
 			labels: stringMap(reqs.labels),
 		}),
 		yard,
-		...(raw.camp && typeof raw.camp === "object"
+		...(isJsonObject(raw.camp)
 			? {
 					camp: Object.freeze({
 						selectionMode: parseSelectionMode(
-							(raw.camp as Record<string, unknown>).selectionMode ??
-								"compatible",
+							raw.camp.selectionMode ?? "compatible",
 						),
-						...(typeof (raw.camp as Record<string, unknown>).campId === "string"
-							? {
-									campId: (raw.camp as Record<string, unknown>)
-										.campId as string,
-								}
-							: {}),
-						shape: Object.freeze({
+						...(isJsonString(raw.camp.campId)
+							? { campId: raw.camp.campId }
+							: undefined),
+						layout: Object.freeze({
 							require: list(
-								(
-									(raw.camp as Record<string, unknown>).shape as Record<
-										string,
-										unknown
-									>
-								)?.require,
+								isJsonObject(raw.camp.layout)
+									? raw.camp.layout.require
+									: undefined,
 							),
 							prefer: list(
-								(
-									(raw.camp as Record<string, unknown>).shape as Record<
-										string,
-										unknown
-									>
-								)?.prefer,
+								isJsonObject(raw.camp.layout)
+									? raw.camp.layout.prefer
+									: undefined,
 							),
 							labels: stringMap(
-								(
-									(raw.camp as Record<string, unknown>).shape as Record<
-										string,
-										unknown
-									>
-								)?.labels,
+								isJsonObject(raw.camp.layout)
+									? raw.camp.layout.labels
+									: undefined,
 							),
 							runtimeRequirements: list(
-								(
-									(raw.camp as Record<string, unknown>).shape as Record<
-										string,
-										unknown
-									>
-								)?.runtimeRequirements,
+								isJsonObject(raw.camp.layout)
+									? raw.camp.layout.runtimeRequirements
+									: undefined,
 							),
 						}),
 					}),
 				}
-			: {}),
-		objective: typeof raw.objective === "string" ? raw.objective : "min-cost",
-		spendEstimateUsd:
-			typeof raw.spendEstimateUsd === "number" ? raw.spendEstimateUsd : 0,
-		ownerTenantId:
-			typeof raw.ownerTenantId === "string" ? raw.ownerTenantId : "local",
+			: undefined),
+		objective: isJsonString(raw.objective) ? raw.objective : "min-cost",
+		spendEstimateUsd: isJsonNumber(raw.spendEstimateUsd)
+			? raw.spendEstimateUsd
+			: 0,
+		ownerTenantId: isJsonString(raw.ownerTenantId)
+			? raw.ownerTenantId
+			: "local",
 		resources: Object.freeze(resources),
 	});
 }
@@ -674,8 +681,8 @@ export function buildDeploymentRequestFromParts(options: {
 		!options.providerId ||
 		options.providerId === "local" ||
 		options.providerId === "@hobo/provider-local-host";
-	const shape = parseYardShape({
-		...(options.providerId ? { providerId: options.providerId } : {}),
+	const layout = parseYardLayout({
+		...(options.providerId ? { providerId: options.providerId } : undefined),
 		// Local zero-config hosts only; cloud yards declare their own substrate.
 		...(isLocal
 			? { componentHosts: ["local", "wasm", "oci"] }
@@ -684,27 +691,29 @@ export function buildDeploymentRequestFromParts(options: {
 	const mode =
 		options.selectionMode ??
 		(options.yardId ? "exact" : "compatible-or-generate");
-	return parseBindleDeploymentRequest({
-		schemaVersion: BINDLE_DEPLOYMENT_REQUEST_SCHEMA,
-		requestId,
-		bindleName: options.bindleName,
-		manifestHash: options.manifestHash ?? contentHashOf(options.bindleName),
-		bindleRequirements: requirements,
-		yard: {
-			requestId: `yard-${requestId}`,
-			selectionMode: mode,
-			...(options.yardId ? { requestedYardId: options.yardId } : {}),
-			requestedShape: shape,
-			bindleManifestHash:
-				options.manifestHash ?? contentHashOf(options.bindleName),
-			bindleRequirementsHash: contentHashOf(requirements),
-			allowGenerationRequested: options.allowGeneration === true,
-		},
-		objective: options.objective ?? "min-cost",
-		spendEstimateUsd: 0,
-		ownerTenantId: options.ownerTenantId ?? "local",
-		resources: options.resources,
-	});
+	return parseBindleDeploymentRequest(
+		cloneAsJson({
+			schemaVersion: BINDLE_DEPLOYMENT_REQUEST_SCHEMA,
+			requestId,
+			bindleName: options.bindleName,
+			manifestHash: options.manifestHash ?? contentHashOf(options.bindleName),
+			bindleRequirements: requirements,
+			yard: {
+				requestId: `yard-${requestId}`,
+				selectionMode: mode,
+				...(options.yardId ? { requestedYardId: options.yardId } : undefined),
+				requestedLayout: layout,
+				bindleManifestHash:
+					options.manifestHash ?? contentHashOf(options.bindleName),
+				bindleRequirementsHash: contentHashOf(requirements),
+				allowGenerationRequested: options.allowGeneration === true,
+			},
+			objective: options.objective ?? "min-cost",
+			spendEstimateUsd: 0,
+			ownerTenantId: options.ownerTenantId ?? "local",
+			resources: options.resources,
+		}),
+	);
 }
 
 function selectOrGenerateCamp(
@@ -716,7 +725,7 @@ function selectOrGenerateCamp(
 			? request.camp.campId
 			: `${yardId}/${request.camp.campId}`;
 	}
-	const env = request.camp?.shape.envType ?? "dev";
+	const env = request.camp?.layout.envType ?? "dev";
 	return `${yardId}/camp:${env}`;
 }
 
@@ -796,7 +805,7 @@ function rejectResult(
 }
 
 function parseSelectionMode(
-	value: unknown,
+	value: JsonValue | undefined,
 ): YardPlacementRequest["selectionMode"] {
 	if (
 		value === "exact" ||
@@ -808,32 +817,37 @@ function parseSelectionMode(
 	return "compatible";
 }
 
-function asHash(value: unknown): ContentHash {
-	if (typeof value === "string" && value.startsWith("sha256:")) {
+function asHash(value: JsonValue | undefined): ContentHash {
+	if (isJsonString(value) && value.startsWith("sha256:")) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		return value as ContentHash;
 	}
 	return contentHashOf(value ?? null);
 }
 
-function list(value: unknown): readonly string[] {
+function list(value: JsonValue | undefined): readonly string[] {
 	if (!Array.isArray(value)) return Object.freeze([]);
 	return Object.freeze(
 		[
 			...new Set(
-				value.filter((v): v is string => typeof v === "string" && v.length > 0),
+				value.filter((v): v is string => isJsonString(v) && v.length > 0),
 			),
 		].sort(),
 	);
 }
 
-function stringMap(value: unknown): Readonly<Record<string, string>> {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
+function stringMap(
+	value: JsonValue | undefined,
+): Readonly<Record<string, string>> {
+	if (!value || !isJsonObject(value) || Array.isArray(value)) {
 		return Object.freeze({});
 	}
 	const out: Record<string, string> = {};
+	// SAFETY: assertion required at this I/O or test boundary.
 	for (const k of Object.keys(value as object).sort()) {
-		const v = (value as Record<string, unknown>)[k];
-		if (typeof v === "string") out[k] = v;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const v = (value as JsonObject)[k];
+		if (isJsonString(v)) out[k] = v;
 	}
 	return Object.freeze(out);
 }

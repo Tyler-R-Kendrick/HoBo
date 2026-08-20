@@ -1,8 +1,19 @@
 import { createServer, type Server } from "node:http";
-
 import type { HoboBroker } from "./broker.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import { BrokerParseError } from "./policies.js";
 import { REJECTION_MATRIX } from "./rejections.js";
+import {
+	BROKER_SCHEMA_VERSION,
+	type PolicyHash,
+	type ResolutionReceipt,
+} from "./types.js";
 
 // The hosted authority surface: the same resolve/scale/deliver pipeline
 // exposed over HTTP so the broker can run as the hosted Meta-cloud Broker
@@ -20,7 +31,45 @@ export interface BrokerHttpRequest {
 
 export interface BrokerHttpResponse {
 	status: number;
-	body: Record<string, unknown>;
+	body: JsonObject;
+}
+
+function jsonBody<T>(value: T): JsonObject {
+	const body = cloneAsJson(value);
+	return isJsonObject(body) ? body : { value: body };
+}
+
+function brandedPolicyHash(value: string): PolicyHash {
+	// SAFETY: receipt parse already proved a non-empty policy hash string.
+	return value as PolicyHash;
+}
+
+function parseHttpResolutionReceipt(value: JsonObject): ResolutionReceipt {
+	if (
+		!isJsonString(value.requestId) ||
+		!isJsonString(value.brokerId) ||
+		!isJsonString(value.catalogHash) ||
+		!isJsonString(value.policyHash) ||
+		!isJsonString(value.placementPolicyId) ||
+		!isJsonString(value.stationId) ||
+		!isJsonString(value.railHash)
+	) {
+		throw new BrokerParseError(
+			"invalid-receipt",
+			"deliver requires a complete resolution receipt",
+		);
+	}
+	return {
+		schemaVersion: BROKER_SCHEMA_VERSION,
+		requestId: value.requestId,
+		brokerId: value.brokerId,
+		catalogHash: value.catalogHash,
+		policyHash: brandedPolicyHash(value.policyHash),
+		placementPolicyId: value.placementPolicyId,
+		placements: [],
+		stationId: value.stationId,
+		railHash: value.railHash,
+	};
 }
 
 // Status mapping mirrors the resolution pact: 200 resolved, 402 when the
@@ -35,43 +84,53 @@ export function createBrokerHttpHandler(
 	return async (request) => {
 		try {
 			if (request.method === "POST" && request.path === "/broker/resolve") {
-				const resolution = await broker.resolve(request.body);
+				const resolution = await broker.resolve(cloneAsJson(request.body));
 				if (resolution.outcome === "resolved") {
 					return {
 						status: 200,
-						body: {
+						body: jsonBody({
 							outcome: resolution.outcome,
-							receipt: resolution.receipt as unknown as Record<string, unknown>,
+							receipt: resolution.receipt,
 							...(resolution.signature !== undefined
 								? { signature: { ...resolution.signature } }
-								: {}),
+								: undefined),
 							events: resolution.events,
-						},
+						}),
 					};
 				}
 				return {
 					status: rejectionStatus(resolution.rejection?.reasons[0]?.plane),
-					body: {
+					body: jsonBody({
 						outcome: resolution.outcome,
-						rejection: resolution.rejection as unknown as Record<
-							string,
-							unknown
-						>,
+						rejection: resolution.rejection,
 						...(resolution.signature !== undefined
 							? { signature: { ...resolution.signature } }
-							: {}),
+							: undefined),
 						events: resolution.events,
-					},
+					}),
 				};
 			}
 			if (request.method === "POST" && request.path === "/broker/scale") {
-				const { directive, events } = broker.scale(request.body);
-				return { status: 200, body: { directive: { ...directive }, events } };
+				const { directive, events } = broker.scale(cloneAsJson(request.body));
+				return {
+					status: 200,
+					body: jsonBody({ directive: { ...directive }, events }),
+				};
 			}
 			if (request.method === "POST" && request.path === "/broker/deliver") {
-				const receipt = request.body as Parameters<HoboBroker["deliver"]>[0];
+				const payload = cloneAsJson(request.body);
+				if (!isJsonObject(payload) || !isJsonString(payload.requestId)) {
+					throw new BrokerParseError(
+						"invalid-receipt",
+						"deliver requires a resolution receipt object",
+					);
+				}
+				const receipt = parseHttpResolutionReceipt(payload);
 				const { ticket, events } = await broker.deliver(receipt);
-				return { status: 200, body: { ticket: { ...ticket }, events } };
+				return {
+					status: 200,
+					body: jsonBody({ ticket: { ...ticket }, events }),
+				};
 			}
 			if (
 				request.method === "GET" &&
@@ -97,8 +156,8 @@ export function createBrokerHttpHandler(
 				};
 			}
 			const code =
-				error instanceof Error && "code" in error
-					? String((error as { code: unknown }).code)
+				error instanceof Error && "code" in error && isJsonString(error.code)
+					? error.code
 					: "broker-internal";
 			return {
 				status: 502,
@@ -120,7 +179,7 @@ export function serveBroker(
 		req.on("data", (chunk: Buffer) => chunks.push(chunk));
 		req.on("end", () => {
 			const raw = Buffer.concat(chunks).toString("utf8");
-			let body: unknown;
+			let body: JsonValue;
 			try {
 				body = raw.length > 0 ? JSON.parse(raw) : undefined;
 			} catch {

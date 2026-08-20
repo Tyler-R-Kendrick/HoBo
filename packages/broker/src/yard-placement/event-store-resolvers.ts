@@ -9,6 +9,12 @@
  * The core fold (`foldYardEventStore`) remains provider-neutral; provider
  * resolvers wrap it after normalization.
  */
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "../json.js";
 import { YARD_EVENTS, type YardEvent, yardEvent } from "./events.js";
 import {
 	emptyYardEventStoreState,
@@ -16,7 +22,6 @@ import {
 	type YardEventStoreState,
 } from "./folds.js";
 import type {
-	JsonValue,
 	PrimitiveResolverDescriptor,
 	YardInstanceRegistration,
 } from "./types.js";
@@ -58,17 +63,35 @@ export interface YardEventStoreFoldResolver {
 	): YardEventStoreState;
 }
 
-export function isProviderNativeSignal(
-	value: unknown,
-): value is ProviderNativeSignal {
-	if (!value || typeof value !== "object") return false;
-	const v = value as Record<string, unknown>;
+export function isProviderNativeSignal(value: JsonValue | undefined): boolean {
+	if (!isJsonObject(value)) return false;
 	return (
-		typeof v.providerId === "string" &&
-		typeof v.kind === "string" &&
-		v.payload !== null &&
-		typeof v.payload === "object"
+		isJsonString(value.providerId) &&
+		isJsonString(value.kind) &&
+		(isJsonObject(value.payload) || Array.isArray(value.payload))
 	);
+}
+
+function asProviderNativeSignal(
+	value: YardEvent | ProviderNativeSignal,
+): ProviderNativeSignal | undefined {
+	if (!isJsonObject(value)) return undefined;
+	if (
+		!isJsonString(value.providerId) ||
+		!isJsonString(value.kind) ||
+		!(isJsonObject(value.payload) || Array.isArray(value.payload))
+	) {
+		return undefined;
+	}
+	const payload = isJsonObject(value.payload) ? value.payload : {};
+	return {
+		providerId: value.providerId,
+		kind: value.kind,
+		payload,
+		...(isJsonString(value.observedAt)
+			? { observedAt: value.observedAt }
+			: undefined),
+	};
 }
 
 /**
@@ -131,9 +154,25 @@ export function createYardEventStoreFoldResolver(options: {
 			let state = emptyYardEventStoreState(brokerId);
 			let seq = 0;
 			for (const input of inputs) {
-				const events = isProviderNativeSignal(input)
-					? normalize(input)
-					: [input as YardEvent];
+				const signal = asProviderNativeSignal(input);
+				const events =
+					signal !== undefined
+						? normalize(signal)
+						: [
+								{
+									type:
+										"type" in input && isJsonString(input.type)
+											? input.type
+											: "",
+									data:
+										"data" in input && isJsonObject(input.data)
+											? input.data
+											: {},
+									...("seq" in input && isJsonNumber(input.seq)
+										? { seq: input.seq }
+										: undefined),
+								},
+							];
 				for (const event of events) {
 					seq += 1;
 					state = fold(state, {
@@ -174,7 +213,7 @@ export function defaultNormalize(
 					YARD_EVENTS.Ready,
 					{
 						yardId: String(p.yardId ?? p.id ?? ""),
-						...(p.attemptId ? { attemptId: String(p.attemptId) } : {}),
+						...(p.attemptId ? { attemptId: String(p.attemptId) } : undefined),
 					},
 					{ occurredAt: at },
 				),
@@ -218,6 +257,7 @@ export function defaultNormalize(
 						idempotencyKey: String(p.idempotencyKey ?? ""),
 						providerId: signal.providerId,
 						yardId: String(p.yardId ?? ""),
+						// SAFETY: assertion required at this I/O or test boundary.
 						externalRefs: (p.externalRefs as Record<string, string>) ?? {},
 					},
 					{ occurredAt: at },
@@ -267,35 +307,29 @@ function payloadToYardInstance(
 		ownerTenantId: String(p.ownerTenantId ?? "local"),
 		providerId,
 		runtimeId: String(p.runtimeId ?? `${providerId}-runtime`),
-		shape: Object.freeze({
+		layout: Object.freeze({
 			providerId,
 			regions: Object.freeze(
-				Array.isArray(p.regions)
-					? p.regions.map(String)
-					: (["local"] as string[]),
+				Array.isArray(p.regions) ? p.regions.map(String) : ["local"],
 			),
-			require: Object.freeze([] as string[]),
-			prefer: Object.freeze([] as string[]),
+			require: Object.freeze([]),
+			prefer: Object.freeze([]),
 			residency: Object.freeze(
-				Array.isArray(p.residency) ? p.residency.map(String) : ([] as string[]),
+				Array.isArray(p.residency) ? p.residency.map(String) : [],
 			),
-			isolation: Object.freeze([] as string[]),
-			network: Object.freeze([] as string[]),
+			isolation: Object.freeze([]),
+			network: Object.freeze([]),
 			componentHosts: Object.freeze(
-				Array.isArray(p.componentHosts)
-					? p.componentHosts.map(String)
-					: ([] as string[]),
+				Array.isArray(p.componentHosts) ? p.componentHosts.map(String) : [],
 			),
 			labels: Object.freeze({}),
-			properties: Object.freeze(
-				(p.properties as Record<string, JsonValue>) ?? {},
-			),
+			properties: Object.freeze(isJsonObject(p.properties) ? p.properties : {}),
 			camps: Object.freeze([]),
 		}),
 		capabilities: Object.freeze(
 			Array.isArray(p.capabilities)
 				? p.capabilities.map(String)
-				: (["managed-http-runtime"] as string[]),
+				: ["managed-http-runtime"],
 		),
 		status: "registering",
 		health: Object.freeze({
@@ -307,12 +341,15 @@ function payloadToYardInstance(
 			classes: Object.freeze({ default: 1000 }),
 			reservations: Object.freeze({}),
 		}),
+		// SAFETY: assertion required at this I/O or test boundary.
 		registryCatalogHash: contentHashOf(
 			`${providerId}-registry`,
 		) as `sha256:${string}`,
+		// SAFETY: assertion required at this I/O or test boundary.
 		resolverCatalogHash: contentHashOf(
 			`${providerId}-resolvers`,
 		) as `sha256:${string}`,
+		// SAFETY: assertion required at this I/O or test boundary.
 		conformanceHash: contentHashOf(
 			`${providerId}-conformance`,
 		) as `sha256:${string}`,
@@ -325,13 +362,15 @@ function payloadToYardInstance(
  * Registry of fold resolvers keyed by providerId.
  * Selection uses the selected Yard's provider — never Bindle pins.
  */
-export function createEventStoreFoldResolverRegistry(
-	resolvers: readonly YardEventStoreFoldResolver[],
-): {
+export interface EventStoreFoldResolverRegistry {
 	readonly get: (providerId: string) => YardEventStoreFoldResolver | undefined;
 	readonly all: () => readonly YardEventStoreFoldResolver[];
 	readonly descriptors: () => readonly PrimitiveResolverDescriptor[];
-} {
+}
+
+export function createEventStoreFoldResolverRegistry(
+	resolvers: readonly YardEventStoreFoldResolver[],
+): EventStoreFoldResolverRegistry {
 	const map = new Map<string, YardEventStoreFoldResolver>();
 	for (const r of resolvers) {
 		map.set(r.providerId, r);

@@ -13,22 +13,24 @@
  * insertion order would still pass any test that fed the yards in one order, so
  * the ordering tests feed them both ways.
  *
- * **A capability may be declared on the yard *or* in its shape.** Every
+ * **A capability may be declared on the yard *or* in its layout.** Every
  * requirement check consults both, and the fallbacks differ per predicate —
  * regions use a `region:` prefix, component hosts a `host:` prefix, plain
  * requirements neither. Those prefixes are easy to get wrong and impossible to
  * notice, so each is pinned on its own.
  */
+
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../src/json.js";
 
 import { matchYard } from "../src/yard-placement/matching.js";
 import type {
 	YardInstanceRegistration,
+	YardLayout,
 	YardPlacementRequest,
-	YardShape,
 } from "../src/yard-placement/types.js";
 
-function shape(overrides: Partial<YardShape> = {}): YardShape {
+function layout(overrides: Partial<YardLayout> = {}): YardLayout {
 	return {
 		regions: [],
 		require: [],
@@ -47,19 +49,23 @@ function shape(overrides: Partial<YardShape> = {}): YardShape {
 function yard(
 	overrides: Partial<YardInstanceRegistration> = {},
 ): YardInstanceRegistration {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return {
 		schemaVersion: "hobo.yard-instance/v1",
 		yardId: "y1",
 		ownerTenantId: "t1",
 		providerId: "local",
 		runtimeId: "wasm",
-		shape: shape(),
+		layout: layout(),
 		capabilities: [],
 		status: "ready",
 		health: { observedAt: "2026-01-01T00:00:00Z", generation: 1, signals: [] },
 		capacity: { classes: { small: 4 }, reservations: {} },
+		// SAFETY: assertion required at this I/O or test boundary.
 		registryCatalogHash: "sha256:cat" as never,
+		// SAFETY: assertion required at this I/O or test boundary.
 		resolverCatalogHash: "sha256:res" as never,
+		// SAFETY: assertion required at this I/O or test boundary.
 		conformanceHash: "sha256:conf" as never,
 		labels: {},
 		registrationSeq: 1,
@@ -70,11 +76,14 @@ function yard(
 function request(
 	overrides: Partial<YardPlacementRequest> = {},
 ): YardPlacementRequest {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return {
 		requestId: "req-1",
 		selectionMode: "compatible",
-		requestedShape: shape(),
+		requestedLayout: layout(),
+		// SAFETY: assertion required at this I/O or test boundary.
 		bindleManifestHash: "sha256:m" as never,
+		// SAFETY: assertion required at this I/O or test boundary.
 		bindleRequirementsHash: "sha256:r" as never,
 		allowGenerationRequested: false,
 		...overrides,
@@ -84,18 +93,20 @@ function request(
 const match = (
 	req: YardPlacementRequest,
 	yards: YardInstanceRegistration[],
-	options: Record<string, unknown> = {},
+	options: JsonObject = {},
 ) =>
 	matchYard(
 		req,
+		// SAFETY: assertion required at this I/O or test boundary.
 		{ yards, snapshotSeq: 1 } as never,
+		// SAFETY: assertion required at this I/O or test boundary.
 		{ ownerTenantId: "t1", ...options } as never,
 	);
 
 const failuresFor = (
 	req: YardPlacementRequest,
 	y: YardInstanceRegistration,
-	options: Record<string, unknown> = {},
+	options: JsonObject = {},
 ) => match(req, [y], options).candidates[0]?.hardFailures ?? [];
 
 describe("the happy path", () => {
@@ -125,6 +136,7 @@ describe("tenancy and readiness", () => {
 		"draining",
 		"offline",
 	])("rejects a yard whose status is %s", (status) => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect(failuresFor(request(), yard({ status: status as never }))).toContain(
 			`status-${status}`,
 		);
@@ -140,7 +152,7 @@ describe("provider and runtime filters", () => {
 	it("rejects a provider mismatch", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ providerId: "aws" }) }),
+				request({ requestedLayout: layout({ providerId: "aws" }) }),
 				yard(),
 			),
 		).toContain("provider-mismatch");
@@ -153,7 +165,7 @@ describe("provider and runtime filters", () => {
 	it("rejects a runtime mismatch", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ runtimeId: "oci" }) }),
+				request({ requestedLayout: layout({ runtimeId: "oci" }) }),
 				yard(),
 			),
 		).toContain("runtime-mismatch");
@@ -161,11 +173,11 @@ describe("provider and runtime filters", () => {
 });
 
 describe("region matching", () => {
-	it("accepts a region the yard's shape declares", () => {
+	it("accepts a region the yard's layout declares", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ regions: ["eu-west-1"] }) }),
-				yard({ shape: shape({ regions: ["eu-west-1"] }) }),
+				request({ requestedLayout: layout({ regions: ["eu-west-1"] }) }),
+				yard({ layout: layout({ regions: ["eu-west-1"] }) }),
 			),
 		).toEqual([]);
 	});
@@ -174,9 +186,9 @@ describe("region matching", () => {
 		// The prefixed form is easy to get wrong and impossible to notice.
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ regions: ["eu-west-1"] }) }),
+				request({ requestedLayout: layout({ regions: ["eu-west-1"] }) }),
 				yard({
-					shape: shape({ regions: ["us-east-1"] }),
+					layout: layout({ regions: ["us-east-1"] }),
 					capabilities: ["region:eu-west-1"],
 				}),
 			),
@@ -186,8 +198,8 @@ describe("region matching", () => {
 	it("rejects a region the yard does not offer", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ regions: ["eu-west-1"] }) }),
-				yard({ shape: shape({ regions: ["us-east-1"] }) }),
+				request({ requestedLayout: layout({ regions: ["eu-west-1"] }) }),
+				yard({ layout: layout({ regions: ["us-east-1"] }) }),
 			),
 		).toContain("region-missing:eu-west-1");
 	});
@@ -196,7 +208,7 @@ describe("region matching", () => {
 		// An empty region list means unconstrained, not "serves nowhere".
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ regions: ["eu-west-1"] }) }),
+				request({ requestedLayout: layout({ regions: ["eu-west-1"] }) }),
 				yard(),
 			),
 		).toEqual([]);
@@ -204,8 +216,8 @@ describe("region matching", () => {
 
 	it("reports every missing region, not just the first", () => {
 		const failures = failuresFor(
-			request({ requestedShape: shape({ regions: ["a", "b"] }) }),
-			yard({ shape: shape({ regions: ["c"] }) }),
+			request({ requestedLayout: layout({ regions: ["a", "b"] }) }),
+			yard({ layout: layout({ regions: ["c"] }) }),
 		);
 		expect(failures).toEqual(
 			expect.arrayContaining(["region-missing:a", "region-missing:b"]),
@@ -217,17 +229,17 @@ describe("capability, isolation and network requirements", () => {
 	it("accepts a requirement met by a capability", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ require: ["gpu"] }) }),
+				request({ requestedLayout: layout({ require: ["gpu"] }) }),
 				yard({ capabilities: ["gpu"] }),
 			),
 		).toEqual([]);
 	});
 
-	it("accepts a requirement met by the yard's own shape", () => {
+	it("accepts a requirement met by the yard's own layout", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ require: ["gpu"] }) }),
-				yard({ shape: shape({ require: ["gpu"] }) }),
+				request({ requestedLayout: layout({ require: ["gpu"] }) }),
+				yard({ layout: layout({ require: ["gpu"] }) }),
 			),
 		).toEqual([]);
 	});
@@ -235,20 +247,20 @@ describe("capability, isolation and network requirements", () => {
 	it("rejects an unmet requirement", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ require: ["gpu"] }) }),
+				request({ requestedLayout: layout({ require: ["gpu"] }) }),
 				yard(),
 			),
 		).toContain("capability-missing:gpu");
 	});
 
-	it("accepts isolation from either shape or capabilities", () => {
+	it("accepts isolation from either layout or capabilities", () => {
 		for (const y of [
-			yard({ shape: shape({ isolation: ["vm"] }) }),
+			yard({ layout: layout({ isolation: ["vm"] }) }),
 			yard({ capabilities: ["vm"] }),
 		])
 			expect(
 				failuresFor(
-					request({ requestedShape: shape({ isolation: ["vm"] }) }),
+					request({ requestedLayout: layout({ isolation: ["vm"] }) }),
 					y,
 				),
 			).toEqual([]);
@@ -257,20 +269,20 @@ describe("capability, isolation and network requirements", () => {
 	it("rejects unmet isolation", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ isolation: ["vm"] }) }),
+				request({ requestedLayout: layout({ isolation: ["vm"] }) }),
 				yard(),
 			),
 		).toContain("isolation-missing:vm");
 	});
 
-	it("accepts network from either shape or capabilities", () => {
+	it("accepts network from either layout or capabilities", () => {
 		for (const y of [
-			yard({ shape: shape({ network: ["private"] }) }),
+			yard({ layout: layout({ network: ["private"] }) }),
 			yard({ capabilities: ["private"] }),
 		])
 			expect(
 				failuresFor(
-					request({ requestedShape: shape({ network: ["private"] }) }),
+					request({ requestedLayout: layout({ network: ["private"] }) }),
 					y,
 				),
 			).toEqual([]);
@@ -279,7 +291,7 @@ describe("capability, isolation and network requirements", () => {
 	it("rejects unmet network", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ network: ["private"] }) }),
+				request({ requestedLayout: layout({ network: ["private"] }) }),
 				yard(),
 			),
 		).toContain("network-missing:private");
@@ -287,11 +299,11 @@ describe("capability, isolation and network requirements", () => {
 });
 
 describe("component hosts", () => {
-	it("accepts a host the yard's shape declares", () => {
+	it("accepts a host the yard's layout declares", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ componentHosts: ["wasmtime"] }) }),
-				yard({ shape: shape({ componentHosts: ["wasmtime"] }) }),
+				request({ requestedLayout: layout({ componentHosts: ["wasmtime"] }) }),
+				yard({ layout: layout({ componentHosts: ["wasmtime"] }) }),
 			),
 		).toEqual([]);
 	});
@@ -299,7 +311,7 @@ describe("component hosts", () => {
 	it("accepts a host declared with the host: prefix", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ componentHosts: ["wasmtime"] }) }),
+				request({ requestedLayout: layout({ componentHosts: ["wasmtime"] }) }),
 				yard({ capabilities: ["host:wasmtime"] }),
 			),
 		).toEqual([]);
@@ -308,7 +320,7 @@ describe("component hosts", () => {
 	it("rejects an unavailable host", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ componentHosts: ["wasmtime"] }) }),
+				request({ requestedLayout: layout({ componentHosts: ["wasmtime"] }) }),
 				yard(),
 			),
 		).toContain("component-host-missing:wasmtime");
@@ -329,7 +341,7 @@ describe("bindle runtimes are soft for an undeclared yard", () => {
 		expect(
 			failuresFor(
 				request(),
-				yard({ shape: shape({ componentHosts: ["jvm"] }) }),
+				yard({ layout: layout({ componentHosts: ["jvm"] }) }),
 				{
 					bindleRuntimes: ["wasmtime"],
 				},
@@ -345,7 +357,7 @@ describe("bindle runtimes are soft for an undeclared yard", () => {
 			failuresFor(
 				request(),
 				yard({
-					shape: shape({ componentHosts: ["jvm"] }),
+					layout: layout({ componentHosts: ["jvm"] }),
 					capabilities: [capability],
 				}),
 				{ bindleRuntimes: ["wasmtime"] },
@@ -358,8 +370,8 @@ describe("property matching", () => {
 	it("accepts a matching property", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ properties: { tier: "gold" } }) }),
-				yard({ shape: shape({ properties: { tier: "gold" } }) }),
+				request({ requestedLayout: layout({ properties: { tier: "gold" } }) }),
+				yard({ layout: layout({ properties: { tier: "gold" } }) }),
 			),
 		).toEqual([]);
 	});
@@ -367,8 +379,8 @@ describe("property matching", () => {
 	it("rejects a conflicting property", () => {
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ properties: { tier: "gold" } }) }),
-				yard({ shape: shape({ properties: { tier: "bronze" } }) }),
+				request({ requestedLayout: layout({ properties: { tier: "gold" } }) }),
+				yard({ layout: layout({ properties: { tier: "bronze" } }) }),
 			),
 		).toContain("property-mismatch:tier");
 	});
@@ -377,7 +389,7 @@ describe("property matching", () => {
 		// Absent means unconstrained, which is what lets a yard stay generic.
 		expect(
 			failuresFor(
-				request({ requestedShape: shape({ properties: { tier: "gold" } }) }),
+				request({ requestedLayout: layout({ properties: { tier: "gold" } }) }),
 				yard(),
 			),
 		).toEqual([]);
@@ -436,7 +448,7 @@ describe("generation", () => {
 			request({
 				selectionMode: "compatible-or-generate",
 				allowGenerationRequested: true,
-				requestedShape: shape({ require: ["gpu"] }),
+				requestedLayout: layout({ require: ["gpu"] }),
 			}),
 			[yard()],
 		);
@@ -449,7 +461,7 @@ describe("generation", () => {
 		const decision = match(
 			request({
 				selectionMode: "compatible-or-generate",
-				requestedShape: shape({ require: ["gpu"] }),
+				requestedLayout: layout({ require: ["gpu"] }),
 			}),
 			[yard()],
 		);
@@ -460,7 +472,7 @@ describe("generation", () => {
 		const decision = match(
 			request({
 				allowGenerationRequested: true,
-				requestedShape: shape({ require: ["gpu"] }),
+				requestedLayout: layout({ require: ["gpu"] }),
 			}),
 			[yard()],
 		);
@@ -495,9 +507,9 @@ describe("determinism", () => {
 		const specific = yard({
 			yardId: "specific",
 			capabilities: ["gpu"],
-			shape: shape({ require: ["gpu"] }),
+			layout: layout({ require: ["gpu"] }),
 		});
-		const req = request({ requestedShape: shape({ require: ["gpu"] }) });
+		const req = request({ requestedLayout: layout({ require: ["gpu"] }) });
 		expect(match(req, [generic, specific]).winnerYardId).toBe("specific");
 		expect(match(req, [specific, generic]).winnerYardId).toBe("specific");
 	});

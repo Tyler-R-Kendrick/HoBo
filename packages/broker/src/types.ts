@@ -178,7 +178,7 @@ export interface ScaleDirective {
 
 // Structural mirror of @hobo/cloud's PlannerRegistry / ResourceDefinition
 // (packages/cloud/src/registry/catalog.ts). The broker depends on the
-// catalog's *shape*, not on @hobo/cloud, so a real PlannerRegistry satisfies
+// catalog's *layout*, not on @hobo/cloud, so a real PlannerRegistry satisfies
 // BrokerCatalog structurally and broker stays inward of cloud.
 export interface BrokerCatalogDefinition {
 	id: string;

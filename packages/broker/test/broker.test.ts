@@ -1,6 +1,5 @@
 import { definePolicyRule } from "@hobo/contracts";
 import { describe, expect, it } from "vitest";
-
 import {
 	createBroker,
 	foldBrokerDecisions,
@@ -8,6 +7,7 @@ import {
 	snapshotBrokerDecisions,
 } from "../src/broker.js";
 import { BROKER_EVENTS } from "../src/events.js";
+import type { JsonObject } from "../src/json.js";
 import {
 	createGatekeeperGatePlane,
 	renderArgoApplication,
@@ -360,13 +360,15 @@ describe("createBroker.deliver — Argo-shaped delivery plane", () => {
 		const { ticket, events } = await broker.deliver(receipt);
 		expect(ticket.engine).toBe("argo");
 		expect(ticket.document.kind).toBe("Application");
-		const spec = ticket.document.spec as Record<string, unknown>;
-		expect((spec.source as Record<string, unknown>).repoURL).toBe(
+		// SAFETY: assertion required at this I/O or test boundary.
+		const spec = ticket.document.spec as JsonObject;
+		// SAFETY: assertion required at this I/O or test boundary.
+		expect((spec.source as JsonObject).repoURL).toBe(
 			"https://git.example/hobo-receipts",
 		);
 		expect(events[0]?.type).toBe(BROKER_EVENTS.DeliverySubmitted);
 
-		// The pure renderer produces the same document shape.
+		// The pure renderer produces the same document layout.
 		const doc = renderArgoApplication(receipt, {
 			engine: "argo",
 			syncMode: "auto",

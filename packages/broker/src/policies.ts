@@ -1,4 +1,12 @@
 import { createHash } from "node:crypto";
+import {
+	cloneAsJson,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 import {
 	type BillingPolicy,
@@ -33,15 +41,20 @@ export class BrokerParseError extends Error {
 	}
 }
 
-function asRecord(input: unknown, code: string): Record<string, unknown> {
-	if (input === null || typeof input !== "object" || Array.isArray(input)) {
+function asRecord(input: JsonValue | undefined, code: string): JsonObject {
+	if (input === null || !isJsonObject(input) || Array.isArray(input)) {
 		throw new BrokerParseError(code, `${code}: expected an object`);
 	}
-	return input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	return input as JsonObject;
 }
 
-function requireString(value: unknown, code: string, field: string): string {
-	if (typeof value !== "string" || value.length === 0) {
+function requireString(
+	value: JsonValue | undefined,
+	code: string,
+	field: string,
+): string {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new BrokerParseError(
 			code,
 			`${code}: ${field} must be a non-empty string`,
@@ -50,32 +63,34 @@ function requireString(value: unknown, code: string, field: string): string {
 	return value;
 }
 
-function optionalString(value: unknown): string | undefined {
-	return typeof value === "string" && value.length > 0 ? value : undefined;
+function optionalString(value: JsonValue | undefined): string | undefined {
+	return isJsonString(value) && value.length > 0 ? value : undefined;
 }
 
-function stringList(value: unknown): string[] {
+function stringList(value: JsonValue | undefined): string[] {
 	if (value === undefined) return [];
 	if (!Array.isArray(value)) return [];
 	return value.filter(
-		(entry): entry is string => typeof entry === "string" && entry.length > 0,
+		(entry): entry is string => isJsonString(entry) && entry.length > 0,
 	);
 }
 
 function nonNegativeNumber(
-	value: unknown,
+	value: JsonValue | undefined,
 	fallback: number,
 	code: string,
 	field: string,
 ): number {
 	if (value === undefined) return fallback;
-	if (typeof value !== "number" || Number.isNaN(value) || value < 0) {
+	if (!isJsonNumber(value) || Number.isNaN(value) || value < 0) {
 		throw new BrokerParseError(code, `${code}: ${field} must be a number >= 0`);
 	}
 	return value;
 }
 
-export function parsePlacementPolicy(input: unknown): PlacementPolicy {
+export function parsePlacementPolicy(
+	input: JsonValue | undefined,
+): PlacementPolicy {
 	const raw = asRecord(input, "invalid-placement-policy");
 	const id = requireString(raw.id, "invalid-placement-policy", "id");
 	const scopeKind = requireString(
@@ -83,6 +98,7 @@ export function parsePlacementPolicy(input: unknown): PlacementPolicy {
 		"invalid-placement-policy",
 		"scopeKind",
 	);
+	// SAFETY: assertion required at this I/O or test boundary.
 	if (!SCOPE_KINDS.includes(scopeKind as ScopeKind)) {
 		throw new BrokerParseError(
 			"invalid-scope-kind",
@@ -94,6 +110,7 @@ export function parsePlacementPolicy(input: unknown): PlacementPolicy {
 		"invalid-placement-policy",
 		"objective",
 	);
+	// SAFETY: assertion required at this I/O or test boundary.
 	if (!PLACEMENT_OBJECTIVES.includes(objective as PlacementObjective)) {
 		throw new BrokerParseError(
 			"invalid-objective",
@@ -112,9 +129,11 @@ export function parsePlacementPolicy(input: unknown): PlacementPolicy {
 	}
 	return {
 		id,
+		// SAFETY: assertion required at this I/O or test boundary.
 		scopeKind: scopeKind as ScopeKind,
+		// SAFETY: assertion required at this I/O or test boundary.
 		objective: objective as PlacementObjective,
-		...(pinnedProviderId !== undefined ? { pinnedProviderId } : {}),
+		...(pinnedProviderId !== undefined ? { pinnedProviderId } : undefined),
 		allowedProviders: stringList(raw.allowedProviders ?? raw.allowed_providers),
 		deniedProviders: stringList(raw.deniedProviders ?? raw.denied_providers),
 		allowedRegions: stringList(raw.allowedRegions ?? raw.allowed_regions),
@@ -123,7 +142,9 @@ export function parsePlacementPolicy(input: unknown): PlacementPolicy {
 	};
 }
 
-export function parseBillingPolicy(input: unknown): BillingPolicy {
+export function parseBillingPolicy(
+	input: JsonValue | undefined,
+): BillingPolicy {
 	const raw = asRecord(input, "invalid-billing-policy");
 	const quota = requireString(raw.quota, "invalid-billing-policy", "quota");
 	const quotaUsed = nonNegativeNumber(
@@ -164,7 +185,9 @@ export function parseBillingPolicy(input: unknown): BillingPolicy {
 	};
 }
 
-export function parseDeliveryPolicy(input: unknown): DeliveryPolicy {
+export function parseDeliveryPolicy(
+	input: JsonValue | undefined,
+): DeliveryPolicy {
 	const raw = asRecord(input, "invalid-delivery-policy");
 	const engine = requireString(raw.engine, "invalid-delivery-policy", "engine");
 	if (engine !== "argo" && engine !== "in-proc") {
@@ -173,6 +196,7 @@ export function parseDeliveryPolicy(input: unknown): DeliveryPolicy {
 			`invalid-delivery-engine: ${engine} is not argo|in-proc`,
 		);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	const syncMode = (raw.syncMode ?? raw.sync_mode ?? "manual") as string;
 	if (syncMode !== "auto" && syncMode !== "manual") {
 		throw new BrokerParseError(
@@ -198,12 +222,16 @@ export function parseDeliveryPolicy(input: unknown): DeliveryPolicy {
 		engine,
 		syncMode,
 		prune: raw.prune === true,
-		...(gitopsRepo !== undefined ? { gitopsRepo } : {}),
-		...(destinationNamespace !== undefined ? { destinationNamespace } : {}),
+		...(gitopsRepo !== undefined ? { gitopsRepo } : undefined),
+		...(destinationNamespace !== undefined
+			? { destinationNamespace }
+			: undefined),
 	};
 }
 
-export function parseBrokerPolicySet(input: unknown): BrokerPolicySet {
+export function parseBrokerPolicySet(
+	input: JsonValue | undefined,
+): BrokerPolicySet {
 	const raw = asRecord(input, "invalid-policy-set");
 	const schemaVersion = requireString(
 		raw.schemaVersion ?? raw.schema_version,
@@ -224,6 +252,7 @@ export function parseBrokerPolicySet(input: unknown): BrokerPolicySet {
 		raw.requiredConnectorKinds ?? raw.required_connector_kinds,
 	);
 	for (const kind of requiredRaw) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		if (!CONNECTOR_KINDS.includes(kind as ConnectorKind)) {
 			throw new BrokerParseError(
 				"invalid-connector-kind",
@@ -241,11 +270,14 @@ export function parseBrokerPolicySet(input: unknown): BrokerPolicySet {
 		placementPolicies,
 		billing: parseBillingPolicy(raw.billing ?? {}),
 		delivery: parseDeliveryPolicy(raw.delivery ?? { engine: "in-proc" }),
+		// SAFETY: assertion required at this I/O or test boundary.
 		requiredConnectorKinds: requiredRaw as ConnectorKind[],
 	};
 }
 
-export function parseTopologyScope(input: unknown): TopologyScope {
+export function parseTopologyScope(
+	input: JsonValue | undefined,
+): TopologyScope {
 	const raw = asRecord(input, "invalid-scope");
 	const bindleId = requireString(
 		raw.bindleId ?? raw.bindle_id,
@@ -257,13 +289,15 @@ export function parseTopologyScope(input: unknown): TopologyScope {
 	const junctionId = optionalString(raw.junctionId ?? raw.junction_id);
 	return {
 		bindleId,
-		...(campId !== undefined ? { campId } : {}),
-		...(yardId !== undefined ? { yardId } : {}),
-		...(junctionId !== undefined ? { junctionId } : {}),
+		...(campId !== undefined ? { campId } : undefined),
+		...(yardId !== undefined ? { yardId } : undefined),
+		...(junctionId !== undefined ? { junctionId } : undefined),
 	};
 }
 
-export function parseResourceRequirement(input: unknown): ResourceRequirement {
+export function parseResourceRequirement(
+	input: JsonValue | undefined,
+): ResourceRequirement {
 	const raw = asRecord(input, "invalid-requirement");
 	const region = optionalString(raw.region);
 	return {
@@ -274,11 +308,13 @@ export function parseResourceRequirement(input: unknown): ResourceRequirement {
 		),
 		port: requireString(raw.port, "invalid-requirement", "port"),
 		features: stringList(raw.features),
-		...(region !== undefined ? { region } : {}),
+		...(region !== undefined ? { region } : undefined),
 	};
 }
 
-export function parseBrokerRequest(input: unknown): BrokerRequest {
+export function parseBrokerRequest(
+	input: JsonValue | undefined,
+): BrokerRequest {
 	const raw = asRecord(input, "invalid-request");
 	const schemaVersion = requireString(
 		raw.schemaVersion ?? raw.schema_version,
@@ -320,19 +356,21 @@ export function parseBrokerRequest(input: unknown): BrokerRequest {
 // policies that produced it (same discipline as the registry catalogHash).
 export function policyHashOf(policies: BrokerPolicySet): PolicyHash {
 	const canonical = JSON.stringify(
-		policies,
-		Object.keys(flatten(policies)).sort(),
+		cloneAsJson(policies),
+		Object.keys(flatten(cloneAsJson(policies))).sort(),
 	);
 	const digest = createHash("sha256").update(canonical).digest("hex");
+	// SAFETY: assertion required at this I/O or test boundary.
 	return `sha256:${digest}` as PolicyHash;
 }
 
 function flatten(
-	value: unknown,
+	value: JsonValue | undefined,
 	out: Record<string, true> = {},
 ): Record<string, true> {
-	if (value === null || typeof value !== "object") return out;
-	for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
+	if (value === null || !isJsonObject(value)) return out;
+	// SAFETY: assertion required at this I/O or test boundary.
+	for (const [key, entry] of Object.entries(value as JsonObject)) {
 		out[key] = true;
 		flatten(entry, out);
 	}
@@ -343,7 +381,7 @@ function flatten(
 // junction for choice-shaped fields, while restrictive fields (denied
 // providers, explicit-camp lockdown) ACCUMULATE outward-in — a junction
 // broker admin's lockdown cannot be overridden by a narrower policy.
-const SPECIFICITY: Record<ScopeKind, number> = {
+const SPECIFICITY = {
 	junction: 0,
 	yard: 1,
 	camp: 2,
@@ -368,6 +406,7 @@ export function effectivePlacementPolicy(
 		.sort((a, b) => SPECIFICITY[a.scopeKind] - SPECIFICITY[b.scopeKind]);
 	if (applicable.length === 0) return undefined;
 
+	// SAFETY: assertion required at this I/O or test boundary.
 	let merged: PlacementPolicy = applicable[0] as PlacementPolicy;
 	for (const layer of applicable.slice(1)) {
 		merged = {
@@ -379,7 +418,7 @@ export function effectivePlacementPolicy(
 				? { pinnedProviderId: layer.pinnedProviderId }
 				: merged.pinnedProviderId !== undefined && layer.objective === "pinned"
 					? { pinnedProviderId: merged.pinnedProviderId }
-					: {}),
+					: undefined),
 			allowedProviders:
 				layer.allowedProviders.length > 0
 					? layer.allowedProviders

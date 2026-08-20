@@ -57,7 +57,7 @@ export {
 	localYardInstance,
 	type YardInventoryEvent,
 } from "./inventory.js";
-export { matchYard, shapeSubsetCompatible } from "./matching.js";
+export { layoutSubsetCompatible, matchYard } from "./matching.js";
 export {
 	buildExecutionUnits,
 	composeResolverPins,
@@ -69,17 +69,17 @@ export {
 	BINDLE_DEPLOYMENT_REQUEST_SCHEMA,
 	type BindleDeploymentRequest,
 	type BindleRequirementsView,
+	type CampLayout,
 	type CampPlacementRequest,
-	type CampShape,
 	type ContentHash,
 	contentHashOf,
 	type ExecutionUnit,
-	emptyYardShape,
+	emptyYardLayout,
 	type JsonValue,
 	type PrimitiveResolverConfig,
 	type PrimitiveResolverDescriptor,
-	parseCampShape,
-	parseYardShape,
+	parseCampLayout,
+	parseYardLayout,
 	type ResolverPin,
 	type ScopeSelector,
 	YARD_GENERATION_PLAN_SCHEMA,
@@ -94,6 +94,7 @@ export {
 	type YardGenerationResult,
 	type YardInstanceRegistration,
 	type YardInventorySnapshot,
+	type YardLayout,
 	type YardMatchDecision,
 	type YardMatchSpecificity,
 	type YardPlacementReceipt,
@@ -101,5 +102,4 @@ export {
 	type YardRuntimeCatalogSnapshot,
 	type YardRuntimeRegistration,
 	type YardSelectionMode,
-	type YardShape,
 } from "./types.js";

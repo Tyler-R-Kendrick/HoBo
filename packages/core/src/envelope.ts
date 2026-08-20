@@ -66,10 +66,12 @@ const PRINCIPAL_KINDS = new Set<PrincipalKind>([
 ]);
 const EVENT_TYPE_PATTERN = /^[a-z][a-z0-9]*\.[A-Z][A-Za-z0-9]*$/;
 
-export function createEventEnvelope(
-	input: JsonValue | undefined,
-): EventEnvelope {
-	const source = expectObject(input, "event envelope", EnvelopeParseError);
+export function createEventEnvelope<T>(input: T): EventEnvelope {
+	const source = expectObject(
+		cloneAsJson(input),
+		"event envelope",
+		EnvelopeParseError,
+	);
 	return parseEventEnvelope(
 		cloneAsJson({
 			id: source.id,
@@ -90,10 +92,12 @@ export function createEventEnvelope(
 	);
 }
 
-export function parseEventEnvelope(
-	input: JsonValue | undefined,
-): EventEnvelope {
-	const source = expectObject(input, "event envelope", EnvelopeParseError);
+export function parseEventEnvelope<T>(input: T): EventEnvelope {
+	const source = expectObject(
+		cloneAsJson(input),
+		"event envelope",
+		EnvelopeParseError,
+	);
 	const type = nonEmptyString(source.type, "type", EnvelopeParseError);
 	if (!EVENT_TYPE_PATTERN.test(type)) {
 		throw new EnvelopeParseError(

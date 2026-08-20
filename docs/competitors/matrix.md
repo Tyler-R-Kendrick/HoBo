@@ -32,11 +32,14 @@ tags: [hobo, competitors, matrix]
 | **Alchemy** | [`alchemy.md`](alchemy.md) | — | `infrastructure-from-code` | `infrastructure-from-code` · `portable-application-models` | direct | authoring, typed-contracts, reconciliation, extensibility | borrow, benchmark | mixed | active | 2026-08-19 | v1 |
 | **Anonymous container hosts** | [`anon-container-hosts.md`](anon-container-hosts.md) | openpouch, clawdship, ttl.sh, zerodeploy, dockup | `cloud-application-platforms` | `cloud-application-platforms` · `self-hosted-paas` | adjacent | provider-matching, delivery | benchmark, provider-target | mixed | active | 2026-08-12 | pre-v1 |
 | **Antimetal** | [`antimetal.md`](antimetal.md) | — | `agentic-infrastructure` | `agentic-infrastructure` · `finops-governance-placement` | adjacent | observability, agent-surface, finops | benchmark, integrate | mixed | active | 2026-08-12 | pre-v1 |
+| **Appvia Wayfinder** | [`appvia-wayfinder.md`](appvia-wayfinder.md) | wayfinder, appvia | `hybrid-multicloud-enterprise` | `hybrid-multicloud-enterprise` · `platform-orchestrators` · `developer-portals-idps` | overlapping | environments, governance, provider-matching, identity-secrets, app-graph | benchmark, borrow | mixed | active | 2026-08-20 | v1 |
 | **.NET Aspire** | [`aspire.md`](aspire.md) | dotnet aspire | `infrastructure-from-code` | `infrastructure-from-code` · `portable-application-models` · `runtime-substrates` | direct | authoring, app-graph, wiring, environments | borrow, benchmark | mixed | active | 2026-08-20 | v1 |
 | **Atlassian Compass** | [`atlassian-compass.md`](atlassian-compass.md) | compass | `developer-portals-idps` | `developer-portals-idps` | complementary | app-graph, governance | integrate, benchmark | mixed | active | 2026-08-20 | v1 |
 | **AWS Amplify** | [`aws-amplify.md`](aws-amplify.md) | amplify gen 2 | `infrastructure-from-code` | `infrastructure-from-code` · `backend-data-platforms` · `cloud-application-platforms` | overlapping | authoring, typed-contracts, wiring | benchmark | mixed | active | 2026-08-19 | v1 |
 | **Backstage** | [`backstage.md`](backstage.md) | spotify backstage | `developer-portals-idps` | `developer-portals-idps` | complementary | governance, ecosystem, extensibility | integrate, borrow | mixed | active | 2026-08-19 | v1 |
 | **celld** | [`celld.md`](celld.md) | — | `runtime-substrates` | `runtime-substrates` | adjacent | runtime-portability, reconciliation | adopt, provider-target | mixed | active | 2026-08-20 | v1 |
+| **CloudBolt** | [`cloudbolt.md`](cloudbolt.md) | cloudbolt software | `hybrid-multicloud-enterprise` | `hybrid-multicloud-enterprise` · `finops-governance-placement` · `platform-orchestrators` | overlapping | provider-matching, governance, finops, environments | benchmark | mixed | active | 2026-08-20 | v1 |
+| **Cloudify** | [`cloudify.md`](cloudify.md) | cloudify orchestrator | `hybrid-multicloud-enterprise` | `hybrid-multicloud-enterprise` · `portable-application-models` | overlapping | app-graph, typed-contracts, wiring, provider-matching, extensibility | benchmark, borrow | mixed | active | 2026-08-20 | v1 |
 | **Control Plane** | [`control-plane.md`](control-plane.md) | controlplane.com, cpln | `platform-orchestrators` | `platform-orchestrators` · `cloud-application-platforms` · `hybrid-multicloud-enterprise` · `runtime-substrates` · `identity-networking-delivery` · `agentic-infrastructure` | direct | runtime-portability, provider-matching, environments, identity-secrets, app-graph | displace, benchmark, borrow, provider-target | mixed | active | 2026-08-19 | v1 |
 | **Convex** | [`convex.md`](convex.md) | — | `backend-data-platforms` | `backend-data-platforms` | adjacent | typed-contracts, wiring, runtime-portability | borrow, provider-target | mixed | active | 2026-08-12 | pre-v1 |
 | **Cortex** | [`cortex.md`](cortex.md) | cortex.io | `developer-portals-idps` | `developer-portals-idps` · `agentic-infrastructure` | complementary | app-graph, governance, observability | integrate, benchmark, borrow | mixed | active | 2026-08-20 | v1 |
@@ -51,6 +54,7 @@ tags: [hobo, competitors, matrix]
 | **Fly.io** | [`flyio.md`](flyio.md) | fly | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | environments, runtime-portability, delivery | provider-target, benchmark | mixed | active | 2026-08-19 | v1 |
 | **Harness Platform** | [`harness.md`](harness.md) | harness.io, harness delegate | `platform-orchestrators` | `platform-orchestrators` · `delivery-release-gitops` · `developer-portals-idps` · `finops-governance-placement` · `agentic-infrastructure` | overlapping | delivery, governance, environments, finops, extensibility, observability | benchmark, borrow, integrate | mixed | active | 2026-08-19 | v1 |
 | **Heroku** | [`heroku.md`](heroku.md) | — | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | authoring, environments, delivery, ecosystem | benchmark | mixed | active | 2026-08-19 | v1 |
+| **HPE Morpheus** | [`hpe-morpheus.md`](hpe-morpheus.md) | morpheus data, morpheus cmp | `hybrid-multicloud-enterprise` | `hybrid-multicloud-enterprise` · `platform-orchestrators` · `finops-governance-placement` | overlapping | provider-matching, environments, governance, finops, delivery | benchmark, borrow | mixed | active | 2026-08-20 | v1 |
 | **Humanitec** | [`humanitec.md`](humanitec.md) | — | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` | direct | app-graph, environments, provider-matching, governance | displace, benchmark | mixed | active | 2026-08-19 | v1 |
 | **InsForge** | [`insforge.md`](insforge.md) | — | `backend-data-platforms` | `backend-data-platforms` · `agentic-infrastructure` | adjacent | agent-surface, typed-contracts | benchmark, provider-target | mixed | active | 2026-08-12 | pre-v1 |
 | **Kratix** | [`kratix.md`](kratix.md) | syntasso kratix, ske | `portable-application-models` | `portable-application-models` · `platform-orchestrators` · `delivery-release-gitops` | overlapping | typed-contracts, extensibility, provider-matching, delivery, app-graph | borrow, benchmark, integrate | mixed | active | 2026-08-19 | v1 |
@@ -70,6 +74,7 @@ tags: [hobo, competitors, matrix]
 | **Octopus Deploy** | [`octopus-deploy.md`](octopus-deploy.md) | octopus | `delivery-release-gitops` | `delivery-release-gitops` | overlapping | delivery, governance, environments | borrow, benchmark | mixed | active | 2026-08-12 | pre-v1 |
 | **OpenChoreo** | [`openchoreo.md`](openchoreo.md) | choreo-idp, choreo idp | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` · `developer-portals-idps` · `delivery-release-gitops` | direct | app-graph, environments, typed-contracts, delivery, governance, wiring | displace, borrow, benchmark | mixed | active | 2026-08-19 | v1 |
 | **OpenShift** | [`openshift.md`](openshift.md) | okd, red hat openshift | `runtime-substrates` | `runtime-substrates` · `hybrid-multicloud-enterprise` · `cloud-application-platforms` | adjacent | runtime-portability, governance, delivery, extensibility | provider-target, benchmark, borrow | mixed | active | 2026-08-20 | v1 |
+| **OpenStack** | [`openstack.md`](openstack.md) | openinfra | `hybrid-multicloud-enterprise` | `hybrid-multicloud-enterprise` · `runtime-substrates` | complementary | provider-matching, runtime-portability, governance | provider-target, benchmark | mixed | active | 2026-08-20 | v1 |
 | **OpsLevel** | [`opslevel.md`](opslevel.md) | opslevel.com | `developer-portals-idps` | `developer-portals-idps` | complementary | app-graph, governance | integrate, borrow, benchmark | mixed | active | 2026-08-20 | v1 |
 | **Port** | [`port.md`](port.md) | getport.io, port.io | `developer-portals-idps` | `developer-portals-idps` · `platform-orchestrators` · `agentic-infrastructure` | complementary | app-graph, governance, extensibility, agent-surface | integrate, borrow, benchmark | mixed | active | 2026-08-20 | v1 |
 | **Porter** | [`porter.md`](porter.md) | porter.run | `cloud-application-platforms` | `cloud-application-platforms` · `platform-orchestrators` · `hybrid-multicloud-enterprise` | overlapping | environments, delivery, provider-matching, identity-secrets, finops | benchmark, provider-target, borrow | mixed | active | 2026-08-19 | v1 |
@@ -77,6 +82,7 @@ tags: [hobo, competitors, matrix]
 | **Qovery** | [`qovery.md`](qovery.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `platform-orchestrators` | direct | environments, delivery, provider-matching | displace, benchmark | mixed | active | 2026-08-19 | v1 |
 | **Radius** | [`radius.md`](radius.md) | radapp | `portable-application-models` | `portable-application-models` · `platform-orchestrators` | overlapping | app-graph, typed-contracts, environments | borrow | mixed | active | 2026-08-19 | v1 |
 | **Railway** | [`railway.md`](railway.md) | — | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | authoring, environments, delivery | benchmark | mixed | active | 2026-08-19 | v1 |
+| **Rancher Fleet** | [`rancher-fleet.md`](rancher-fleet.md) | fleet, suse fleet | `hybrid-multicloud-enterprise` | `hybrid-multicloud-enterprise` · `delivery-release-gitops` · `runtime-substrates` | adjacent | delivery, provider-matching, reconciliation, environments | borrow, benchmark, integrate | mixed | active | 2026-08-20 | v1 |
 | **Red Hat Developer Hub** | [`red-hat-developer-hub.md`](red-hat-developer-hub.md) | rhdh, developer hub | `developer-portals-idps` | `developer-portals-idps` · `hybrid-multicloud-enterprise` | complementary | app-graph, governance, extensibility | integrate, benchmark, borrow | mixed | active | 2026-08-20 | v1 |
 | **Release** | [`release.md`](release.md) | release.com, releasehub | `cloud-application-platforms` | `cloud-application-platforms` · `delivery-release-gitops` | adjacent | environments, delivery, app-graph | benchmark, borrow | mixed | active | 2026-08-19 | v1 |
 | **Render** | [`render.md`](render.md) | — | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | authoring, environments, delivery | benchmark | mixed | active | 2026-08-19 | v1 |
@@ -149,22 +155,28 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Upsun](upsun.md) | 2026-08-19 | 1 | fresh |
 | [Vercel](vercel.md) | 2026-08-19 | 1 | fresh |
 | [Winglang](winglang.md) | 2026-08-19 | 1 | fresh |
+| [Appvia Wayfinder](appvia-wayfinder.md) | 2026-08-20 | 0 | fresh |
 | [.NET Aspire](aspire.md) | 2026-08-20 | 0 | fresh |
 | [Atlassian Compass](atlassian-compass.md) | 2026-08-20 | 0 | fresh |
 | [celld](celld.md) | 2026-08-20 | 0 | fresh |
+| [CloudBolt](cloudbolt.md) | 2026-08-20 | 0 | fresh |
+| [Cloudify](cloudify.md) | 2026-08-20 | 0 | fresh |
 | [Cortex](cortex.md) | 2026-08-20 | 0 | fresh |
+| [HPE Morpheus](hpe-morpheus.md) | 2026-08-20 | 0 | fresh |
 | [Kubernetes](kubernetes.md) | 2026-08-20 | 0 | fresh |
 | [Nitric](nitric.md) | 2026-08-20 | 0 | fresh |
 | [Nomad](nomad.md) | 2026-08-20 | 0 | fresh |
 | [OpenShift](openshift.md) | 2026-08-20 | 0 | fresh |
+| [OpenStack](openstack.md) | 2026-08-20 | 0 | fresh |
 | [OpsLevel](opslevel.md) | 2026-08-20 | 0 | fresh |
 | [Port](port.md) | 2026-08-20 | 0 | fresh |
 | [Pulumi](pulumi.md) | 2026-08-20 | 0 | fresh |
+| [Rancher Fleet](rancher-fleet.md) | 2026-08-20 | 0 | fresh |
 | [Red Hat Developer Hub](red-hat-developer-hub.md) | 2026-08-20 | 0 | fresh |
 | [Rivet](rivet.md) | 2026-08-20 | 0 | fresh |
 | [Roadie](roadie.md) | 2026-08-20 | 0 | fresh |
 | [wasmCloud](wasmcloud.md) | 2026-08-20 | 0 | fresh |
 
-_64 canonical captures across 13 categories; 50 at contract v1._
+_70 canonical captures across 13 categories; 56 at contract v1._
 
 <!-- END GENERATED: competitor-matrix -->

@@ -17,7 +17,7 @@ Delivery controllers, release orchestration, GitOps reconciliation, environment 
 
 HoBo's stage gates and promotion events live here. The question is whether HoBo's event-sourced promotion model beats a dedicated delivery tool bolted on.
 
-## Competitors (7)
+## Competitors (8)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -28,6 +28,7 @@ HoBo's stage gates and promotion events live here. The question is whether HoBo'
 | [**Kratix**](../kratix.md) | framework for building platform APIs — Promises bundle contract, fulfilment and placement, which is the packaging idea HoBo's Bindle kinds most resemble | overlapping | `typed-contracts`, `extensibility`, `provider-matching`, `delivery`, `app-graph` | The Promise bundles contract, prerequisites, fulfilment and placement into one versioned product, fulfilled by arbitrary containers so it can wrap any process. | Arbitrary fulfilment cannot be reasoned about; HoBo trades that reach for typed ports whose impedance, effects and cost are analysable before execution. | borrow, benchmark, integrate | P2 |
 | [**Lagoon**](../lagoon.md) | open-source delivery platform whose local-equals-production promise is built on reusing the developer's existing docker-compose file as the source of truth | adjacent | `authoring`, `environments`, `delivery`, `runtime-portability` | The lowest-ceremony on-ramp anywhere: annotate the docker-compose.yml you already have, and the same images run locally and in production. | HoBo types the capability rather than naming a translation, and can target managed services, wasm hosts or a local runtime instead of always emitting Kubernetes objects. | benchmark, borrow | P2 |
 | [**Release**](../release.md) | specialist in the one surface HoBo keeps finding it lacks — ephemeral environments that actually look like production, data included | adjacent | `environments`, `delivery`, `app-graph` | A specialist that sells nothing but ephemeral environments: template-plus-defaults determinism, branch tracking, automatic teardown, production parity as the stated design target. | HoBo describes applications rather than environments, and its residency and policy layers are what make production-like data in a preview safe rather than merely convenient. | benchmark, borrow | P2 |
+| [**Rancher Fleet**](../rancher-fleet.md) | fleet-scale GitOps whose Bundle-to-BundleDeployment split is the clearest separation of definition from per-target realization in the corpus | adjacent | `delivery`, `provider-matching`, `reconciliation`, `environments` | Built for the number of targets HoBo talks about but has not faced: per-cluster BundleDeployments with their own customizations and their own status, so partial fleet rollouts stay legible. | Fleet targets clusters by label; HoBo targets heterogeneous providers by scored decision, and its definition describes capabilities rather than Kubernetes resources. | borrow, benchmark, integrate | P2 |
 
 ## Navigation
 

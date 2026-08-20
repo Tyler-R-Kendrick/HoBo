@@ -12,6 +12,12 @@
  * structurally against {@link NETLIFY_CLAIM_URL_PREFIX}; the README records that
  * as verified-by-shape rather than documented.
  */
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	parseJsonValue,
+} from "./json.js";
 import { NetlifyProviderError, redactProviderText } from "./provider-errors.js";
 
 /**
@@ -64,12 +70,12 @@ function contractChanged(
 	return new NetlifyProviderError("PROVIDER_CONTRACT_CHANGED", message, {
 		...(preview !== undefined
 			? { detail: { preview: redactProviderText(preview, 80) } }
-			: {}),
+			: undefined),
 	});
 }
 
 /** Pull the single JSON document out of otherwise chatty CLI output. */
-function extractJsonObject(stdout: string): Record<string, unknown> {
+function extractJsonObject(stdout: string): JsonObject {
 	const start = stdout.indexOf("{");
 	const end = stdout.lastIndexOf("}");
 	if (start < 0 || end <= start) {
@@ -78,36 +84,31 @@ function extractJsonObject(stdout: string): Record<string, unknown> {
 			stdout,
 		);
 	}
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(stdout.slice(start, end + 1));
-	} catch {
+	const parsed = parseJsonValue(stdout.slice(start, end + 1));
+	if (!isJsonObject(parsed)) {
 		throw contractChanged(
-			"netlify deploy --json produced output that is not parseable JSON",
+			parsed === null
+				? "netlify deploy --json produced output that is not parseable JSON"
+				: "netlify deploy --json did not produce a JSON object",
 			stdout,
 		);
 	}
-	if (parsed === null || typeof parsed !== "object" || Array.isArray(parsed)) {
-		throw contractChanged(
-			"netlify deploy --json did not produce a JSON object",
-		);
-	}
-	return parsed as Record<string, unknown>;
+	return parsed;
 }
 
 function stringField(
-	body: Record<string, unknown>,
+	body: JsonObject,
 	keys: readonly string[],
 ): string | undefined {
 	for (const key of keys) {
 		const value = body[key];
-		if (typeof value === "string" && value.length > 0) return value;
+		if (isJsonString(value) && value.length > 0) return value;
 	}
 	return undefined;
 }
 
 function requireStringField(
-	body: Record<string, unknown>,
+	body: JsonObject,
 	keys: readonly string[],
 	what: string,
 ): string {
@@ -152,7 +153,7 @@ export function assertClaimActionIsNetlify(claimUrl: string): void {
 }
 
 function findClaimUrl(
-	body: Record<string, unknown>,
+	body: JsonObject,
 	rawOutput: string,
 	siteId: string,
 ): string {
@@ -224,7 +225,7 @@ export function parseAnonymousDeployOutput(
 		siteUrl,
 		...(deployUrlRaw !== undefined
 			? { deployUrl: normalizeHttpsUrl(deployUrlRaw, "the deploy URL") }
-			: {}),
+			: undefined),
 		claimUrlPlaintext: findClaimUrl(body, combined, siteId),
 		claimDeadlineMs: input.observedAtMs + NETLIFY_ANONYMOUS_CLAIM_WINDOW_MS,
 		expirySource: "documented-window",

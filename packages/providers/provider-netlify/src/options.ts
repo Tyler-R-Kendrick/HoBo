@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json.js";
+
 // public-contract: provider target accepted by authoring options.
 export const PROVIDER_TARGET = "netlify";
 
@@ -6,12 +8,12 @@ export interface TypedOptionBlock {
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
-	options: Record<string, unknown>;
+	options: JsonObject;
 }
 
 export const netlify = {
 	with: {
-		site(options: Record<string, unknown> = {}): TypedOptionBlock {
+		site(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock("compute", "site", { framework: "static" }, options);
 		},
 	},
@@ -20,8 +22,8 @@ export const netlify = {
 function optionBlock(
 	port: string,
 	optionName: string,
-	defaults: Record<string, unknown>,
-	options: Record<string, unknown>,
+	defaults: JsonObject,
+	options: JsonObject,
 ): TypedOptionBlock {
 	return {
 		providerId: PROVIDER_TARGET,

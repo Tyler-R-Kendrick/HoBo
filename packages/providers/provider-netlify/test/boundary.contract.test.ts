@@ -14,13 +14,22 @@ import {
 	type SecretResolverPort,
 	type TransportResponse,
 } from "../src/index.js";
+import {
+	isJsonArray,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../src/json.js";
 
 type PactInteraction = {
 	readonly description: string;
 	readonly request: { readonly method: string; readonly path: string };
 	readonly response: {
 		readonly status: number;
-		readonly body?: Record<string, unknown>;
+		readonly body?: JsonObject;
 	};
 };
 
@@ -36,17 +45,96 @@ type PactDocument = {
 	readonly interactions: readonly PactInteraction[];
 };
 
-const pact = JSON.parse(
-	readFileSync(
-		path.join(
-			path.dirname(fileURLToPath(import.meta.url)),
-			"..",
-			"contracts",
-			"provider-netlify-site-api.pact.json",
+function jsonStringList(value: JsonValue | undefined): readonly string[] {
+	if (!isJsonArray(value)) return [];
+	const items: string[] = [];
+	for (const entry of value) {
+		if (isJsonString(entry)) items.push(entry);
+	}
+	return items;
+}
+
+function parseInteraction(entry: JsonObject): PactInteraction | undefined {
+	const request = isJsonObject(entry.request) ? entry.request : undefined;
+	const response = isJsonObject(entry.response) ? entry.response : undefined;
+	if (
+		!isJsonString(entry.description) ||
+		request === undefined ||
+		response === undefined ||
+		!isJsonString(request.method) ||
+		!isJsonString(request.path)
+	) {
+		return undefined;
+	}
+	return {
+		description: entry.description,
+		request: { method: request.method, path: request.path },
+		response: {
+			status: isJsonNumber(response.status) ? response.status : 0,
+			...(isJsonObject(response.body) ? { body: response.body } : undefined),
+		},
+	};
+}
+
+function loadPact(): PactDocument {
+	const decoded = parseJsonObject(
+		readFileSync(
+			path.join(
+				path.dirname(fileURLToPath(import.meta.url)),
+				"..",
+				"contracts",
+				"provider-netlify-site-api.pact.json",
+			),
+			"utf8",
 		),
-		"utf8",
-	),
-) as PactDocument;
+	);
+	const consumer = isJsonObject(decoded.consumer)
+		? decoded.consumer
+		: undefined;
+	const provider = isJsonObject(decoded.provider)
+		? decoded.provider
+		: undefined;
+	const metadata = isJsonObject(decoded.metadata)
+		? decoded.metadata
+		: undefined;
+	const boundary = isJsonObject(metadata?.boundary)
+		? metadata.boundary
+		: undefined;
+	const interactionsRaw = decoded.interactions;
+	if (
+		!isJsonString(consumer?.name) ||
+		!isJsonString(provider?.name) ||
+		!isJsonString(boundary?.claimCeremonyHost) ||
+		!isJsonArray(interactionsRaw) ||
+		interactionsRaw.length === 0
+	) {
+		throw new Error("the pact file is malformed");
+	}
+	const interactions: PactInteraction[] = [];
+	for (const entry of interactionsRaw) {
+		if (!isJsonObject(entry)) {
+			throw new Error("the pact file has a malformed interaction");
+		}
+		const parsed = parseInteraction(entry);
+		if (parsed === undefined) {
+			throw new Error("the pact file has a malformed interaction");
+		}
+		interactions.push(parsed);
+	}
+	return {
+		consumer: { name: consumer.name },
+		provider: { name: provider.name },
+		metadata: {
+			boundary: {
+				allowedHosts: jsonStringList(boundary.allowedHosts),
+				claimCeremonyHost: boundary.claimCeremonyHost,
+			},
+		},
+		interactions,
+	};
+}
+
+const pact = loadPact();
 
 /** Replays the contract: an unlisted request is a contract violation. */
 const transport: NetlifyTransport = {
@@ -63,7 +151,7 @@ const transport: NetlifyTransport = {
 		const response: TransportResponse = {
 			status: found.response.status,
 			headers: {},
-			body: JSON.stringify(found.response.body ?? {}),
+			body: JSON.stringify(found.response.body ?? null),
 		};
 		return response;
 	},
@@ -136,15 +224,15 @@ describe("NetlifySiteApi pact (consumer contract)", () => {
 	});
 
 	it("fails closed when the site response carries no owning account", async () => {
-		let caught: unknown;
 		try {
 			await client().readSite({ siteId: "site-contract-drift", tokenRef });
+			throw new Error("expected a provider error");
 		} catch (error) {
-			caught = error;
+			if (!(error instanceof Error)) throw error;
+			expect(isNetlifyProviderError(error)).toBe(true);
+			if (isNetlifyProviderError(error)) {
+				expect(error.code).toBe("PROVIDER_CONTRACT_CHANGED");
+			}
 		}
-		expect(isNetlifyProviderError(caught)).toBe(true);
-		expect(isNetlifyProviderError(caught) && caught.code).toBe(
-			"PROVIDER_CONTRACT_CHANGED",
-		);
 	});
 });

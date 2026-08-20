@@ -9,6 +9,7 @@
 import type { SecretRef } from "@hobo/bindings";
 
 import { resolveSecret, type SecretResolverPort } from "./custody.js";
+import { isJsonObject, isJsonString, parseJsonValue } from "./json.js";
 import {
 	NetlifyProviderError,
 	providerErrorForStatus,
@@ -71,29 +72,32 @@ export type NetlifyClient = {
 };
 
 function parseSite(body: string): NetlifySite {
-	let parsed: unknown;
+	let parsed: ReturnType<typeof parseJsonValue>;
 	try {
-		parsed = JSON.parse(body);
+		parsed = parseJsonValue(body);
+		if (parsed === null && body.trim() !== "null") {
+			// SAFETY: parseJsonValue returns null both for JSON null and for
+			// unparseable text; only the latter is a parse failure.
+			throw new Error("not json");
+		}
 	} catch {
 		throw new NetlifyProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			"netlify site response was not json",
 		);
 	}
-	if (typeof parsed !== "object" || parsed === null || Array.isArray(parsed)) {
+	if (!isJsonObject(parsed)) {
 		throw new NetlifyProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			"netlify site response was not an object",
 		);
 	}
-	const record = parsed as Readonly<Record<string, unknown>>;
-	const id = typeof record.id === "string" ? record.id : undefined;
-	const accountId =
-		typeof record.account_id === "string"
-			? record.account_id
-			: typeof record.account_slug === "string"
-				? record.account_slug
-				: undefined;
+	const id = isJsonString(parsed.id) ? parsed.id : undefined;
+	const accountId = isJsonString(parsed.account_id)
+		? parsed.account_id
+		: isJsonString(parsed.account_slug)
+			? parsed.account_slug
+			: undefined;
 	if (id === undefined || accountId === undefined) {
 		// Without an owning account there is no ownership fact to compare, and a
 		// verification that cannot compare must not pass.
@@ -108,18 +112,20 @@ function parseSite(body: string): NetlifySite {
 			},
 		);
 	}
+	const accountSlug = isJsonString(parsed.account_slug)
+		? parsed.account_slug
+		: undefined;
+	const url = isJsonString(parsed.ssl_url)
+		? parsed.ssl_url
+		: isJsonString(parsed.url)
+			? parsed.url
+			: undefined;
 	return {
 		id,
-		name: typeof record.name === "string" ? record.name : id,
+		name: isJsonString(parsed.name) ? parsed.name : id,
 		accountId,
-		...(typeof record.account_slug === "string"
-			? { accountSlug: record.account_slug }
-			: {}),
-		...(typeof record.ssl_url === "string"
-			? { url: record.ssl_url }
-			: typeof record.url === "string"
-				? { url: record.url }
-				: {}),
+		...(accountSlug !== undefined ? { accountSlug } : undefined),
+		...(url !== undefined ? { url } : undefined),
 	};
 }
 
@@ -225,7 +231,9 @@ export function createInMemoryIdempotencyStore(): IdempotencyStore {
 			if (existing !== undefined) {
 				return {
 					key,
-					...(existing.siteId !== undefined ? { siteId: existing.siteId } : {}),
+					...(existing.siteId !== undefined
+						? { siteId: existing.siteId }
+						: undefined),
 					state: "replayed",
 				};
 			}
@@ -240,7 +248,9 @@ export function createInMemoryIdempotencyStore(): IdempotencyStore {
 			if (existing === undefined) return undefined;
 			return {
 				key,
-				...(existing.siteId !== undefined ? { siteId: existing.siteId } : {}),
+				...(existing.siteId !== undefined
+					? { siteId: existing.siteId }
+					: undefined),
 				state: "replayed",
 			};
 		},

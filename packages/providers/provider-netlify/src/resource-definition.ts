@@ -110,7 +110,7 @@ export function semanticsToSelectionCandidate(
 		providerClass: semantics.providerClass,
 		...(semantics.evidenceExpiresAtMs !== undefined
 			? { evidenceExpiresAtMs: semantics.evidenceExpiresAtMs }
-			: {}),
+			: undefined),
 		evidenceSignatureValid: semantics.evidenceSignatureValid,
 		creatorAuthorityAfterClaim: semantics.creatorAuthorityAfterClaim,
 		claimAtomicity: semantics.claimAtomicity,

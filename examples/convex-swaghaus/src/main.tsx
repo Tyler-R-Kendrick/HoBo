@@ -6,6 +6,7 @@ import { ConvexProviderWithAuthKit } from "@convex-dev/workos";
 import { AuthKitProvider, useAuth } from "@workos-inc/authkit-react";
 import "./index.css";
 
+// SAFETY: assertion to `import.meta.env.VITE_CONVEX_URL as string` is required at this boundary.
 const convex = new ConvexReactClient(import.meta.env.VITE_CONVEX_URL as string);
 
 ReactDOM.createRoot(document.getElementById("root")!).render(

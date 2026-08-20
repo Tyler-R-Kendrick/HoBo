@@ -1,6 +1,6 @@
 import { canonicalManifestHash, type ManifestV1 } from "@hobo/bindles";
 import type { EventInput, EventStore, PrincipalRef } from "@hobo/core";
-import type { ActorHost } from "@hobo/data";
+import type { ActorHost, JsonObject } from "@hobo/data";
 import {
 	type Aggregate,
 	AggregateInvariantError,
@@ -61,7 +61,11 @@ export class UnauthorizedCommandError extends Error {
 // Stubbed authorization (S2-01 scope): only attributable principals may issue
 // deploy commands. Full tenant/scope enforcement is S3 (MCP auth).
 export function authorize(actor: PrincipalRef): AuthzResult {
-	if (!actor || typeof actor.id !== "string" || actor.id.length === 0) {
+	if (
+		!actor ||
+		Object.prototype.toString.call(actor.id) !== "[object String]" ||
+		actor.id.length === 0
+	) {
 		return { allowed: false, reason: "missing principal" };
 	}
 	if (actor.kind === "system") {
@@ -93,15 +97,14 @@ const deploymentAggregate: Aggregate<
 				`deployment ${command.deploymentId} already requested`,
 			);
 		}
-		emitter.emit(
-			"deployment.Requested",
-			deploymentRequested({
-				deploymentId: command.deploymentId,
-				bindleHash: command.bindleHash,
-				tenant: command.tenant,
-				config: command.config ?? {},
-			}).data as Record<string, unknown>,
-		);
+		const requested = deploymentRequested({
+			deploymentId: command.deploymentId,
+			bindleHash: command.bindleHash,
+			tenant: command.tenant,
+			config: command.config ?? {},
+		});
+		// SAFETY: DeploymentRequested payload is JSON event data.
+		emitter.emit("deployment.Requested", requested.data as JsonObject);
 	},
 });
 
@@ -153,7 +156,7 @@ export async function deploy(
 			actor: context.actor,
 			...(context.correlationId !== undefined
 				? { correlationId: context.correlationId }
-				: {}),
+				: undefined),
 		},
 	);
 
@@ -197,7 +200,7 @@ export async function deploy(
 		fenceToken: requested.fenceToken,
 		...(context.correlationId !== undefined
 			? { correlationId: context.correlationId }
-			: {}),
+			: undefined),
 	});
 
 	if (outcome.ok) {

@@ -10,9 +10,12 @@ import { createPortDescriptor } from "@hobo/core";
 
 export const MCP_CONTROL_SURFACE_INTERFACE = "hobo:mcp/control-surface";
 
-export const MCP_CONTROL_SURFACE_PORT: ProviderPort = createPortDescriptor({
+const mcpControlSurfaceDescriptor = createPortDescriptor({
 	kind: "provider",
 	name: "mcp-control-surface",
 	interface: MCP_CONTROL_SURFACE_INTERFACE,
 	stability: "preview",
-}) as ProviderPort;
+});
+export const MCP_CONTROL_SURFACE_PORT: ProviderPort =
+	// SAFETY: PortDescriptor with kind provider is this surface's ProviderPort.
+	mcpControlSurfaceDescriptor as ProviderPort;

@@ -10,6 +10,7 @@ import {
 	isMigrationReactiveEvent,
 } from "@hobo/identity";
 
+import { isJsonString, type JsonValue } from "./json.js";
 import {
 	type CapabilityScope,
 	MCP_TOOL_SURFACE,
@@ -160,16 +161,15 @@ export interface InertOutputObservation {
 export function observeToolOutput(input: {
 	auth: AuthContext;
 	tool: string;
-	output: unknown;
+	output: JsonValue;
 	surface?: readonly ToolDescriptor[];
 }): InertOutputObservation {
 	const surface = input.surface ?? MCP_TOOL_SURFACE;
 	const before = authorizedToolNames(input.auth, surface);
 	// The output is data. It is recorded for audit but has no authority.
-	const recordedText =
-		typeof input.output === "string"
-			? input.output
-			: JSON.stringify(input.output);
+	const recordedText = isJsonString(input.output)
+		? input.output
+		: JSON.stringify(input.output);
 	// Recompute from the SVID scope — the ONLY source of authority.
 	const after = authorizedToolNames(input.auth, surface);
 	return {
@@ -208,7 +208,7 @@ export async function resolveAuthContext(
 	const result = await identity.authenticateAtGateway({
 		token: input.token,
 		audience: input.audience,
-		...(input.now !== undefined ? { now: input.now } : {}),
+		...(input.now !== undefined ? { now: input.now } : undefined),
 	});
 	if (result.status !== "authenticated") {
 		return { ok: false, reason: result.reason };

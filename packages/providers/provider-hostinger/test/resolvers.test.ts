@@ -18,7 +18,7 @@ import {
 	parseResolveRequest,
 	type ResolveOutcome,
 	type ResolveRequest,
-	type ResolverError,
+	ResolverError,
 	type ResourceResolver,
 	type TransportRequest,
 	type TransportResponse,
@@ -44,9 +44,18 @@ import {
 	hostingerResolvers,
 	redactHostingerText,
 } from "../src/index.js";
+import {
+	isJsonArray,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../src/json.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
-const pact = JSON.parse(
+const pact = parseJsonObject(
 	readFileSync(
 		join(packageRoot, "../contracts/provider-hostinger-boundary.pact.json"),
 		"utf8",
@@ -59,7 +68,7 @@ const TOKEN = "fakehostingeraccounttoken0123456789abcd";
 /** A 40-character token-shaped string, as providers echo them in error text. */
 const LEAKED_TOKEN = "abcdefghij0123456789ABCDEFGHIJ0123456789";
 
-type Rec = Record<string, unknown>;
+type Rec = JsonObject;
 
 interface RecordedCall {
 	readonly method: string;
@@ -106,7 +115,7 @@ function fakeTransport(
 	};
 }
 
-function json(status: number, payload: unknown): TransportResponse {
+function json(status: number, payload: JsonValue): TransportResponse {
 	return {
 		status,
 		headers: { "content-type": "application/json" },
@@ -125,7 +134,7 @@ function unexpected(call: RecordedCall): TransportResponse {
 }
 
 function bodyOf(call: RecordedCall): Rec {
-	return call.body === undefined ? {} : (JSON.parse(call.body) as Rec);
+	return call.body === undefined ? {} : parseJsonObject(call.body);
 }
 
 function options(
@@ -163,27 +172,29 @@ function request(input: {
 			logicalId: input.logicalId,
 			...(input.physicalId !== undefined
 				? { physicalId: input.physicalId }
-				: {}),
+				: undefined),
 		},
 		desired: input.desired ?? {},
 		credentialRef: CREDENTIAL_REF,
 	});
 }
 
-async function codeOf(run: () => Promise<unknown>): Promise<string> {
+async function codeOf(run: () => Promise<void>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
-		return (error as ResolverError).code ?? "NO_CODE";
+		if (error instanceof ResolverError) return error.code;
+		throw error;
 	}
 	return "NO_ERROR_THROWN";
 }
 
-async function messageOf(run: () => Promise<unknown>): Promise<string> {
+async function messageOf(run: () => Promise<void>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
-		return (error as Error).message;
+		if (error instanceof Error) return error.message;
+		throw error;
 	}
 	return "NO_ERROR_THROWN";
 }
@@ -200,7 +211,7 @@ function checked(outcome: ResolveOutcome): ResolveOutcome {
 const MACHINES = "/api/vps/v1/virtual-machines";
 const ZONE = "/api/dns/v1/zones/example.com";
 
-function runningMachine(overrides: Rec = {}): Rec {
+function runningMachine(overrides: Rec = {}) {
 	return {
 		id: 12345,
 		hostname: "api-1",
@@ -259,7 +270,8 @@ function dnsApi(initial?: Rec[]): (call: RecordedCall) => TransportResponse {
 			return zone === undefined ? notFound() : json(200, zone);
 		}
 		if (call.method === "PUT" && call.path === ZONE) {
-			zone = bodyOf(call).zone as Rec[];
+			const zoneBody = bodyOf(call).zone;
+			zone = isJsonArray(zoneBody) ? zoneBody.filter(isJsonObject) : [];
 			return json(200, { message: "zone updated" });
 		}
 		if (call.method === "DELETE" && call.path === ZONE) {
@@ -302,7 +314,7 @@ const ORDER_ID = 8675309;
 /** Material the host's custody hands over. Expected in one request body only. */
 const DATABASE_PASSWORD = "c0rrect-horse-battery-staple";
 
-function websiteRecord(overrides: Rec = {}): Rec {
+function websiteRecord(overrides: Rec = {}) {
 	return {
 		domain: "example.com",
 		vhost_type: "main",
@@ -366,7 +378,10 @@ describe("the website resolvers fill a plan without buying one", () => {
 		expect(outcome.physicalId).toBe("example.com");
 		expect(outcome.outputs.hostingAccount).toBe(ACCOUNT);
 		const create = fake.calls.find((call) => call.method === "POST");
-		expect(bodyOf(create as RecordedCall).order_id).toBe(ORDER_ID);
+		if (create === undefined) {
+			throw new Error("expected a create call");
+		}
+		expect(bodyOf(create).order_id).toBe(ORDER_ID);
 	});
 
 	/** The property the whole design exists to have. */
@@ -490,17 +505,19 @@ describe("the website resolvers fill a plan without buying one", () => {
 				: unexpected(call),
 		);
 		const resolver = resolverFor(HOSTINGER_WEB_HOSTING_PRODUCT_ID);
-		const outcome = parseResolveOutcome(
-			(await resolver.read(
-				websiteRequest(HOSTINGER_WEB_HOSTING_PRODUCT_ID),
-				fake.transport,
-			)) as ResolveOutcome,
+		const read = await resolver.read(
+			websiteRequest(HOSTINGER_WEB_HOSTING_PRODUCT_ID),
+			fake.transport,
 		);
+		if (read === undefined) {
+			throw new Error("expected a read outcome");
+		}
+		const outcome = parseResolveOutcome(read);
 		expect(outcome.diagnostics.join(" ")).toContain("disabled");
 	});
 });
 
-function databaseRecord(overrides: Rec = {}): Rec {
+function databaseRecord(overrides: Rec = {}) {
 	return {
 		name: "appdb",
 		user: "appuser",
@@ -590,7 +607,10 @@ describe("the MySQL resolver converges a database inside a hosting account", () 
 			await resolver.reconcile(databaseRequest(), fake.transport),
 		);
 		const create = fake.calls.find((call) => call.method === "POST");
-		expect(bodyOf(create as RecordedCall).password).toBe(DATABASE_PASSWORD);
+		if (create === undefined) {
+			throw new Error("expected a create call");
+		}
+		expect(bodyOf(create).password).toBe(DATABASE_PASSWORD);
 		expect(JSON.stringify(outcome.outputs)).not.toContain(DATABASE_PASSWORD);
 		expect(JSON.stringify(outcome.diagnostics)).not.toContain(
 			DATABASE_PASSWORD,
@@ -722,7 +742,7 @@ describe("the registry covers exactly the products with a convergent API", () =>
 			Object.values(HOSTINGER_DEFAULT_BINDINGS)
 				.flatMap((entries) => [...(entries ?? [])])
 				.map((entry) => entry.productId)
-				.filter((id): id is string => typeof id === "string"),
+				.filter((id): id is string => id !== undefined),
 		);
 		const accounted = [
 			...HOSTINGER_RESOLVED_PRODUCT_IDS,
@@ -735,7 +755,7 @@ describe("the registry covers exactly the products with a convergent API", () =>
 	it("lists resolvers in id order and stamps the provider target", () => {
 		const resolvers = hostingerResolvers(options());
 		expect(resolvers.map((entry) => entry.productId)).toEqual(
-			[...resolvers.map((entry) => entry.productId)].sort(),
+			resolvers.map((entry) => entry.productId).toSorted(),
 		);
 		for (const resolver of resolvers) {
 			expect(resolver.providerId).toBe("hostinger");
@@ -808,20 +828,34 @@ describe("VPS adopt-and-converge", () => {
 	});
 
 	it("matches the adopt-twice interaction the pact records", async () => {
-		const interaction = pact.interactions.find(
-			(entry: { description: string }) =>
+		const interactions = pact.interactions;
+		if (!isJsonArray(interactions)) {
+			throw new Error("the pact file is malformed");
+		}
+		const interaction = interactions.find(
+			(entry) =>
+				isJsonObject(entry) &&
 				entry.description ===
-				"adopt an already-purchased VPS by hostname, twice, without mutating it",
+					"adopt an already-purchased VPS by hostname, twice, without mutating it",
 		);
+		if (!isJsonObject(interaction) || !isJsonObject(interaction.request)) {
+			throw new Error("the pact is missing the adopt-twice interaction");
+		}
+		const body = isJsonObject(interaction.request.body)
+			? interaction.request.body
+			: {};
+		const productId = isJsonString(body.productId) ? body.productId : "";
+		const logicalId = isJsonString(body.logicalId) ? body.logicalId : "";
+		const desired = isJsonObject(body.desired) ? body.desired : {};
 		const fake = fakeTransport(vpsApi([runningMachine()]));
-		const resolver = resolverFor(interaction.request.body.productId);
+		const resolver = resolverFor(productId);
 		const first = checked(
 			await resolver.reconcile(
 				request({
 					slot: "web",
-					productId: interaction.request.body.productId,
-					logicalId: interaction.request.body.logicalId,
-					desired: interaction.request.body.desired,
+					productId,
+					logicalId,
+					desired,
 				}),
 				fake.transport,
 			),
@@ -830,20 +864,24 @@ describe("VPS adopt-and-converge", () => {
 			await resolver.reconcile(
 				request({
 					slot: "web",
-					productId: interaction.request.body.productId,
-					logicalId: interaction.request.body.logicalId,
+					productId,
+					logicalId,
 					physicalId: first.physicalId,
-					desired: interaction.request.body.desired,
+					desired,
 				}),
 				fake.transport,
 			),
 		);
-		expect(first.contract).toBe(interaction.response.body.contract);
-		expect(first.action).toBe(interaction.response.body.action);
+		const response = isJsonObject(interaction.response)
+			? interaction.response
+			: {};
+		const recorded = isJsonObject(response.body) ? response.body : {};
+		expect(first.contract).toBe(recorded.contract);
+		expect(first.action).toBe(recorded.action);
 		expect(fake.mutating()).toHaveLength(
-			interaction.response.body.mutatingCalls,
+			isJsonNumber(recorded.mutatingCalls) ? recorded.mutatingCalls : 0,
 		);
-		expect(second.action).toBe(interaction.response.body.reconcileTwiceAction);
+		expect(second.action).toBe(recorded.reconcileTwiceAction);
 		expect(second.physicalId).toBe(first.physicalId);
 	});
 
@@ -869,8 +907,11 @@ describe("VPS adopt-and-converge", () => {
 		expect(outcome.action).toBe("create");
 		expect(outcome.physicalId).toBe("999");
 		const setup = fake.calls.find((call) => call.path.endsWith("/setup"));
-		expect(bodyOf(setup as RecordedCall).hostname).toBe("api-1");
-		expect(bodyOf(setup as RecordedCall).public_key).toEqual({ id: 7 });
+		if (setup === undefined) {
+			throw new Error("expected a setup call");
+		}
+		expect(bodyOf(setup).hostname).toBe("api-1");
+		expect(bodyOf(setup).public_key).toEqual({ id: 7 });
 		expect(outcome.diagnostics.join(" ")).toContain("accepted, not confirmed");
 	});
 
@@ -1027,8 +1068,11 @@ describe("DNS zones converge", () => {
 		);
 		expect(outcome.action).toBe("update");
 		const put = fake.calls.find((call) => call.method === "PUT");
-		expect(bodyOf(put as RecordedCall).overwrite).toBe(true);
-		expect(bodyOf(put as RecordedCall).zone).toEqual(ZONE_RECORDS);
+		if (put === undefined) {
+			throw new Error("expected a PUT call");
+		}
+		expect(bodyOf(put).overwrite).toBe(true);
+		expect(bodyOf(put).zone).toEqual(ZONE_RECORDS);
 		expect(outcome.diagnostics.join(" ")).toContain("drops any record");
 	});
 

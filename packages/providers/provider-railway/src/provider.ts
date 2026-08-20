@@ -52,21 +52,19 @@ function makeCapability(classKey: InitialCapabilityPort): Capability {
 	};
 }
 
-const PORT_TO_CLASS = Object.fromEntries(
-	INITIAL_CAPABILITY_PORTS.map((key) => [EQUIVALENCE_CLASSES[key].port, key]),
-) as Record<string, InitialCapabilityPort>;
-
 /**
  * Every parsed port has a class by construction — `RailwayPortKind` is derived
- * from this very table — so this lookup is total and the throw is a repo bug,
- * not an input error.
+ * from this very table — so this lookup is total.
  */
 function equivalenceFor(port: RailwayPortKind) {
-	const classKey = PORT_TO_CLASS[port];
-	if (!classKey) {
-		throw new Error(`railway equivalence table is missing port ${port}`);
+	switch (port) {
+		case "compute":
+			return EQUIVALENCE_CLASSES["web/service"];
+		case "kv":
+			return EQUIVALENCE_CLASSES.kv;
+		case "queue":
+			return EQUIVALENCE_CLASSES.queue;
 	}
-	return EQUIVALENCE_CLASSES[classKey];
 }
 
 export function createRailwayProvider(): CloudProvider {
@@ -81,7 +79,12 @@ export function createRailwayProvider(): CloudProvider {
 			// The plan crosses the parser here, so nothing below re-checks the
 			// port or the name: `parsed.port` is realizable and `parsed.name` is
 			// already a DNS label.
-			const parsed = parseRailwayResourcePlan(plan);
+			const parsed = parseRailwayResourcePlan({
+				name: plan.name,
+				port: plan.port,
+				...(plan.require === undefined ? undefined : { require: plan.require }),
+				...(plan.prefer === undefined ? undefined : { prefer: plan.prefer }),
+			});
 			const mapping = equivalenceFor(parsed.port);
 			return {
 				driver: {

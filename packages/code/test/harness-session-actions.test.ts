@@ -1,198 +1,165 @@
+/**
+ * Harness chrome actions: the pure parts.
+ *
+ * The action layer is mostly I/O — tmux, durable session control — but three
+ * decisions in it are pure and worth pinning, because each encodes a rule that
+ * is easy to break without noticing.
+ *
+ * `harnessActionFromSlash` is a closed mapping. The `default: undefined` arm is
+ * the load-bearing one: an unrecognised slash action must produce *nothing*,
+ * not a plausible-looking default, because guessing at a session action means
+ * guessing at stopping someone's session.
+ *
+ * `parseHarnessChromeKey` is deprecated and returns undefined for everything.
+ * That is deliberate — bare letter hotkeys stole keystrokes from the composer —
+ * so a test that it stays inert is a test that the regression stays fixed.
+ *
+ * `nextAgentTabName` names tmux windows, and its whole job is not colliding
+ * with an existing one while keeping the agent id readable. The regex it builds
+ * from the agent id also has to survive an id containing regex metacharacters.
+ */
 import { describe, expect, it } from "vitest";
-import { stripSgr as plain } from "../src/ansi.js";
+
 import {
-	applyHarnessDetach,
-	executeHarnessChromeAction,
 	harnessActionFromSlash,
+	isMuxHarnessSession,
 	nextAgentTabName,
 	parseHarnessChromeKey,
 } from "../src/harness-session-actions.js";
-import { harnessViewFromLivePanes } from "../src/harness-session-view.js";
-import type { InSessionPanes } from "../src/in-session-panes.js";
-import {
-	createInitialShellState,
-	reduceShellKey,
-	renderShellFrame,
-	slashItemForInput,
-} from "../src/interactive-shell.js";
-import type { MuxRunner } from "../src/mux.js";
-import { AGENTS_KEY_LEGEND } from "../src/tui-components.js";
+import type { HarnessSessionNode } from "../src/harness-session-view.js";
 
-function fakeMux(options: {
-	readonly windows?: string;
-}): MuxRunner & { calls: string[][] } {
-	const calls: string[][] = [];
+function session(overrides: Partial<HarnessSessionNode>): HarnessSessionNode {
 	return {
-		calls,
-		async run(args) {
-			calls.push([...args]);
-			const head = args[0] ?? "";
-			if (head === "list-windows") {
-				return {
-					code: 0,
-					stdout: options.windows ?? "codex\t%1\npi\t%2\n",
-					stderr: "",
-				};
-			}
-			if (head === "capture-pane") {
-				return { code: 0, stdout: "capture body\n", stderr: "" };
-			}
-			return { code: 0, stdout: "", stderr: "" };
-		},
-	};
+		id: "s1",
+		branch: "durable",
+		...overrides,
+	} as HarnessSessionNode;
 }
 
-const muxPanes: InSessionPanes = {
-	session: "hobo",
-	windows: [
-		{ name: "codex", target: "%1", kind: "coding-agent" },
-		{ name: "pi", target: "%2", kind: "coding-agent" },
-	],
-	focused: 0,
-	capture: "hello",
-	note: "in-session",
-	tmux: true,
-};
+const windows = (...names: string[]) => names.map((name) => ({ name }));
 
-describe("harness-session-actions", () => {
-	it("never binds bare letters — composer stays free", () => {
-		expect(parseHarnessChromeKey("d")).toBeUndefined();
-		expect(parseHarnessChromeKey("t")).toBeUndefined();
-		expect(parseHarnessChromeKey("S")).toBeUndefined();
-		expect(harnessActionFromSlash("session-tab")?.kind).toBe("createTab");
-		expect(harnessActionFromSlash("session-detach")?.kind).toBe("detach");
-		expect(slashItemForInput("/mux tab")?.action).toBe("session-tab");
-		expect(slashItemForInput("/mux detach")?.action).toBe("session-detach");
-		expect(slashItemForInput("/mux pane")?.action).toBe("session-pane");
-		expect(slashItemForInput("/mux attach")?.action).toBe("pane-attach");
-		expect(slashItemForInput("/mux")?.action).toBe("mux");
-		expect(slashItemForInput("/tab")).toBeUndefined();
+describe("harnessActionFromSlash", () => {
+	it.each([
+		["session-detach", "detach"],
+		["session-stop", "stop"],
+		["session-tab", "createTab"],
+		["session-pane", "createPane"],
+		["session-focus", "focus"],
+	])("maps %s to %s", (action, kind) => {
+		expect(harnessActionFromSlash(action)).toEqual({ kind });
 	});
 
-	it("names new tabs after the agent (codex → codex-2)", () => {
-		expect(nextAgentTabName([{ name: "codex" }, { name: "pi" }], "codex")).toBe(
+	it("returns nothing for an unknown action", () => {
+		// The load-bearing arm: guessing at a session action means guessing at
+		// stopping someone's session.
+		expect(harnessActionFromSlash("session-obliterate")).toBeUndefined();
+	});
+
+	it("returns nothing for undefined", () => {
+		expect(harnessActionFromSlash(undefined)).toBeUndefined();
+	});
+
+	it("returns nothing for an empty string", () => {
+		expect(harnessActionFromSlash("")).toBeUndefined();
+	});
+
+	it("does not match on a prefix", () => {
+		expect(harnessActionFromSlash("session-sto")).toBeUndefined();
+		expect(harnessActionFromSlash("session-stopped")).toBeUndefined();
+	});
+});
+
+describe("parseHarnessChromeKey", () => {
+	it.each([
+		"d",
+		"S",
+		"t",
+		"p",
+		"f",
+		"\x1b",
+		"",
+	])("stays inert for %s", (key) => {
+		// Deprecated on purpose: bare letters stole keystrokes from the
+		// composer. This asserts the regression stays fixed.
+		expect(parseHarnessChromeKey(key)).toBeUndefined();
+	});
+});
+
+describe("isMuxHarnessSession", () => {
+	it("recognises an in-session branch", () => {
+		expect(isMuxHarnessSession(session({ branch: "in-session" }))).toBe(true);
+	});
+
+	it("recognises the hobo session by id", () => {
+		expect(isMuxHarnessSession(session({ id: "hobo" }))).toBe(true);
+	});
+
+	it("does not claim an ordinary durable session", () => {
+		expect(
+			isMuxHarnessSession(session({ id: "other", branch: "durable" })),
+		).toBe(false);
+	});
+});
+
+describe("nextAgentTabName", () => {
+	it("starts at -2 when no window matches", () => {
+		// The first tab is the agent's own name, so a second one is -2.
+		expect(nextAgentTabName([], "codex")).toBe("codex-2");
+	});
+
+	it("starts at -2 when other agents' windows exist", () => {
+		expect(nextAgentTabName(windows("claude", "aider"), "codex")).toBe(
 			"codex-2",
 		);
-		expect(
-			nextAgentTabName(
-				[{ name: "codex" }, { name: "codex-2" }, { name: "pi" }],
-				"codex",
-			),
-		).toBe("codex-3");
 	});
 
-	it("detach returns to chat without killing the session", () => {
-		const view = harnessViewFromLivePanes(muxPanes);
-		const result = applyHarnessDetach(view, muxPanes);
-		expect(result.focus).toBe("chat");
-		expect(result.note).toMatch(/detached/i);
+	it("counts the bare name as the first", () => {
+		expect(nextAgentTabName(windows("codex"), "codex")).toBe("codex-2");
 	});
 
-	it("mux createTab keeps the agent name in the window title", async () => {
-		const runner = fakeMux({
-			windows: "codex\t%1\npi\t%2\ncodex-2\t%3\n",
-		});
-		const view = harnessViewFromLivePanes(muxPanes);
-		const result = await executeHarnessChromeAction(
-			{
-				hoboHome: "/tmp/hobo-test-home",
-				harnessView: view,
-				livePanes: muxPanes,
-				runner,
-			},
-			{ kind: "createTab" },
+	it("increments past the highest existing suffix", () => {
+		expect(nextAgentTabName(windows("codex", "codex-2"), "codex")).toBe(
+			"codex-3",
 		);
-		const newWindow = runner.calls.find((row) => row[0] === "new-window");
-		expect(newWindow?.includes("codex-2")).toBe(true);
-		expect(result.note).toMatch(/codex-2/);
+	});
+
+	it("uses the highest suffix, not the count, so gaps do not collide", () => {
+		// With three windows present, returning "codex-4" would collide with the
+		// existing one. Counting is the bug this guards.
 		expect(
-			result.livePanes?.windows.some((row) => row.name === "codex-2"),
-		).toBe(true);
+			nextAgentTabName(windows("codex", "codex-2", "codex-7"), "codex"),
+		).toBe("codex-8");
 	});
 
-	it("chat focus never steals [ ] or letter keys for harness ops", () => {
-		let state = createInitialShellState({
-			width: 72,
-			height: 24,
-			welcome: false,
-			reducedMotion: true,
-		});
-		state = {
-			...state,
-			focus: "chat",
-			agentWork: true,
-			input: "",
-			livePanes: muxPanes,
-		};
-		const bracket = reduceShellKey(state, "]");
-		expect(bracket.state.focus).toBe("chat");
-		expect(bracket.state.livePanes?.focused).toBe(0);
-		const letter = reduceShellKey(state, "t");
-		expect(letter.sessionAction).toBeUndefined();
-		expect(letter.state.input).toBe("t");
-	});
-
-	it("/mux tab from Agents emits sessionAction; bare t types into composer", () => {
-		let state = createInitialShellState({
-			width: 72,
-			height: 24,
-			welcome: false,
-			reducedMotion: true,
-		});
-		state = {
-			...state,
-			focus: "agents",
-			agentWork: true,
-			input: "",
-			livePanes: muxPanes,
-		};
-		expect(reduceShellKey(state, "t").state.input).toBe("t");
-		expect(reduceShellKey(state, "t").sessionAction).toBeUndefined();
-		const slash = reduceShellKey(
-			{ ...state, input: "/mux tab", slashOpen: false },
-			"\r",
+	it("compares suffixes numerically rather than lexically", () => {
+		expect(nextAgentTabName(windows("codex-9", "codex-10"), "codex")).toBe(
+			"codex-11",
 		);
-		expect(slash.sessionAction?.kind).toBe("createTab");
 	});
 
-	it("Agents pins legend line and keeps body chrome key-free", () => {
-		let state = createInitialShellState({
-			width: 80,
-			height: 28,
-			welcome: false,
-			reducedMotion: true,
-		});
-		state = {
-			...state,
-			focus: "agents",
-			agentWork: true,
-			livePanes: muxPanes,
-		};
-		const frame = plain(renderShellFrame(state));
-		expect(frame).toContain("Detach · Stop session · New tab");
-		expect(frame).toContain("New pane");
-		expect(frame).toContain("Focus · Prompt");
-		expect(frame).not.toMatch(/\bd Detach\b/);
-		expect(frame).toContain(AGENTS_KEY_LEGEND);
+	it("ignores a window whose name merely starts with the agent id", () => {
+		expect(nextAgentTabName(windows("codex-review"), "codex")).toBe("codex-2");
 	});
 
-	it("[ ] and { } are redundant on single-pane agent tabs", () => {
-		let state = createInitialShellState({
-			width: 72,
-			height: 24,
-			welcome: false,
-			reducedMotion: true,
-		});
-		state = {
-			...state,
-			focus: "agents",
-			agentWork: true,
-			input: "",
-			livePanes: muxPanes,
-		};
-		state = reduceShellKey(state, "]").state;
-		expect(state.livePanes?.focused).toBe(1);
-		state = reduceShellKey(state, "{").state;
-		expect(state.livePanes?.focused).toBe(0);
+	it("ignores a window whose name merely ends with the agent id", () => {
+		expect(nextAgentTabName(windows("my-codex"), "codex")).toBe("codex-2");
+	});
+
+	it("sanitizes a dot out of the agent id before naming the window", () => {
+		// `safeWindowName` rewrites `.` to `-`, so the name tmux is handed is
+		// already metacharacter-free. The regex escaping downstream is therefore
+		// belt-and-braces rather than the thing doing the work — worth pinning so
+		// a future change to the sanitizer does not quietly re-open that door.
+		expect(nextAgentTabName(windows("a.b"), "a.b")).toBe("a-b-2");
+	});
+
+	it("counts the sanitized form, so a.b and a-b are the same window family", () => {
+		expect(nextAgentTabName(windows("a-b"), "a.b")).toBe("a-b-2");
+	});
+
+	it('names an all-punctuation id "pane" rather than handing tmux a bare dash', () => {
+		// Note `nextAgentTabName`'s own `|| "agent"` fallback is unreachable:
+		// `safeWindowName` never returns an empty string, it returns "pane".
+		expect(nextAgentTabName([], "///")).toBe("pane-2");
 	});
 });

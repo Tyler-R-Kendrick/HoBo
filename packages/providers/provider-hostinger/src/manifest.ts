@@ -7,8 +7,11 @@ import {
 	MANIFEST_SCHEMA,
 	stableDigest,
 } from "@hobo/core";
-import type { InitialCapabilityPort } from "./equivalence.js";
-import { EQUIVALENCE_CLASSES } from "./equivalence.js";
+import {
+	EQUIVALENCE_CLASSES,
+	INITIAL_CAPABILITY_PORTS,
+	type InitialCapabilityPort,
+} from "./equivalence.js";
 
 // The schema ids are platform contract, so they live in @hobo/core and are
 // re-exported here to keep this package's public surface unchanged.
@@ -60,10 +63,7 @@ export type PublishedManifestDocuments = {
 // marginal cost of the database itself really is nothing. The `included: 730`
 // free-tier fact is what carries the "it comes with the plan" meaning; a
 // nonzero invented price would be the dishonest choice here.
-export const COST_FACTS: Record<
-	InitialCapabilityPort,
-	{ sku: string; unit: string; marginalPrice: string; included: number }
-> = {
+export const COST_FACTS = {
 	"web/service": {
 		sku: "hostinger.vps.kvm1.instance-hour",
 		unit: "instance-hour",
@@ -89,9 +89,7 @@ export function publishCapabilityManifest(
 ): PublishedManifestDocuments {
 	const providerId = input.providerId ?? HOSTINGER_PROVIDER_ID;
 	const regions = input.regions ?? DEFAULT_REGIONS;
-	const ports =
-		input.ports ??
-		(Object.keys(EQUIVALENCE_CLASSES) as InitialCapabilityPort[]);
+	const ports = input.ports ?? INITIAL_CAPABILITY_PORTS;
 	const capabilitiesDocument = {
 		schema: CAPABILITIES_SCHEMA,
 		providerId,

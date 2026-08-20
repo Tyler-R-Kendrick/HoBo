@@ -3,6 +3,7 @@ import {
 	INITIAL_CAPABILITY_PORTS,
 	type InitialCapabilityPort,
 } from "./equivalence.js";
+import { parseJsonObject } from "./json.js";
 import {
 	COST_FACTS,
 	DEFAULT_REGIONS,
@@ -58,10 +59,16 @@ function makeCapability(classKey: InitialCapabilityPort): Capability {
 	};
 }
 
-const PORT_TO_CLASS: Record<string, InitialCapabilityPort> = {
-	compute: "web/service",
-	database: "database/mysql",
-};
+function classForPort(port: string): InitialCapabilityPort | undefined {
+	switch (port) {
+		case "compute":
+			return "web/service";
+		case "database":
+			return "database/mysql";
+		default:
+			return undefined;
+	}
+}
 
 export interface HostingerProviderOptions {
 	regions?: string[];
@@ -93,19 +100,20 @@ export function createHostingerProvider(
 			return {
 				providerId: HOSTINGER_PROVIDER_ID,
 				published,
-				capabilities: JSON.parse(
-					published["/.well-known/capability-manifest/capabilities.json"],
+				capabilities: parseJsonObject(
+					published["/.well-known/capability-manifest/capabilities.json"] ??
+						"{}",
 				),
-				auth: JSON.parse(
-					published["/.well-known/capability-manifest/auth.json"],
+				auth: parseJsonObject(
+					published["/.well-known/capability-manifest/auth.json"] ?? "{}",
 				),
-				cost: JSON.parse(
-					published["/.well-known/capability-manifest/cost.json"],
+				cost: parseJsonObject(
+					published["/.well-known/capability-manifest/cost.json"] ?? "{}",
 				),
 			};
 		},
 		client(port: PortKind, outputs: Outputs): ProviderClient {
-			const classKey = PORT_TO_CLASS[port];
+			const classKey = classForPort(port);
 			if (!classKey) {
 				throw new Error(`hostinger provider has no client for port ${port}`);
 			}

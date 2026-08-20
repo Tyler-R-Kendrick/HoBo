@@ -768,3 +768,38 @@ The counter-risk is well known: a system that continuously re-optimizes and cann
 - **(+)** Price joins later as one more changed-input reason without reshaping the mechanism.
 - **(−)** Price is **not** an input yet: cost-aware re-placement needs multi-provider price data HoBo does not have (tracked as the N5 gap). Today the trigger set is catalog, objective and residency only.
 - **(−)** Nothing schedules this. It is a pure verdict function; deciding *when* to call it — on catalog publish, on policy change, periodically — is a separate decision.
+
+## ADR-0167
+**Cost-aware placement is scoped to what HoBo can actually price: an unpriced offering is not a free one, and a cost-optimality claim is withheld when the candidate set cannot support it.**
+
+**Status:** Accepted — scopes [ADR-0071](#adr-0071) (cost-aware placement) and Plan 5 (plan-time estimation); informed by the [Infracost](../../competitors/infracost.md) and [Vantage](../../competitors/vantage.md) captures; closes gap N5 in [gap-analysis](../../competitors/gap-analysis.md) on the scoping leg. **The resourcing leg — build, license, or consume a price feed — remains an open commercial decision and is deliberately not taken here.**
+
+### Context
+ADR-0071 makes placement cost-aware and Plan 5 estimates at plan time. Both rest on accurate multi-provider price data, and the design treated that data as free. It is not: Infracost built a business around a Cloud Pricing API, and Vantage publishes prices as a distribution strategy precisely because assembling them is expensive. Treating the dependency as costless is a planning error.
+
+The error is not only in the plan. It is in the catalog, where it has a concrete and currently active failure mode:
+
+- `ResourceDefinition.cost.marginalPrice` is a bare decimal string. The `currency` that `CostSignal` carries is dropped by `definitionsFor`, and no source or staleness travels with the number.
+- Every default in the repo — `@hobo/sdk`, the local provider, the event-rehydration path — is `marginalPrice: "0"`.
+- The planner ranks with `Number.parseFloat(def.cost.marginalPrice)`. Under `min-cost`, a provider that declared **nothing** therefore scores zero and outranks every provider that declared a real price. Silence wins the auction.
+- An unparseable price becomes `+Infinity` and quietly loses, so a typo in a manifest is indistinguishable from an expensive offering.
+
+So HoBo does not merely lack good price data; it cannot currently tell the absence of a price from a price of zero, which is the specific way a cost claim becomes false rather than imprecise.
+
+### Decision
+1. **A price states what it is worth.** `classifyPriceQuality` yields `priced`, `unpriced`, or `unparseable`. A bare `"0"` is `unpriced` — it is the repo-wide default, not an offer of free compute. `unparseable` stays distinct from `unpriced` because a malformed price is a fixable defect while a missing one is a data-coverage problem someone has to resource; collapsing them hides the typo for as long as the manifest lives.
+2. **A genuinely free offering stays expressible** via `priceDeclared`, so free tiers remain modellable. The difference between a claim and a default is that someone said it.
+3. **A cost-optimality claim is withheld, not faked.** `assessCostObjective` reports whether a cost-objective decision may be described as the cheapest option, and names the candidates that prevented it. Ranking still happens — a planner that refuses to place anything is worse than one that places without boasting — but the *claim* is separated from the *placement*, and only the claim depends on complete price data.
+4. **Non-cost objectives are unaffected.** Latency ranking does not rest on price, so unpriced candidates are not that verdict's business.
+5. **Estimation stays credential-free.** Infracost's constraint — price without touching the customer's cloud account — removes the largest adoption objection for a cost tool, and applies unchanged to HoBo's estimation path. Nothing in this ADR introduces a credential dependency on the estimation side.
+
+### Non-goals
+- **Not a decision to acquire price data.** Building, licensing, or consuming a feed is a commercial commitment with an owner who is not this ADR. What this ADR does is make the absence visible and non-silent, so the commercial decision can be made on evidence instead of on an assumption that the data is free.
+- Not a repricing of the catalog: no provider manifest gains a price here, and coverage today is close to zero.
+- Not a currency model. `marginalPrice` still carries no currency; that gap is recorded, not closed.
+
+### Consequences
+- **(+)** The active fault — unpriced outranking priced under `min-cost` — becomes detectable, and the surface that would have claimed "cheapest" can now decline to.
+- **(+)** The commercial question gets a measurable form: `coverage` says what fraction of a candidate set could be priced at all, which is the number that argues for or against buying a feed.
+- **(−)** Once callers adopt this, most cost-objective decisions will report `claimable: false`, because the catalog genuinely has almost no prices. That is the honest state being made visible, and it will read as a regression to anyone who believed the previous silence.
+- **(−)** The seam exists but the planner does not yet consult it: `rankByObjective` still parses `marginalPrice` directly. Wiring it in is follow-up work, and until then this is a capability rather than an enforcement.

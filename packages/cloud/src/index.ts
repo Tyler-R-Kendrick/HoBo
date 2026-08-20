@@ -194,6 +194,17 @@ export {
 	plan,
 } from "./planner/index.js";
 export {
+	assessCostObjective,
+	type CostClaimReason,
+	type CostObjectiveInput,
+	type CostObjectiveVerdict,
+	classifyPriceQuality,
+	type DeclaredCost,
+	definitionPriceQuality,
+	type PricedCandidate,
+	type PriceQuality,
+} from "./planner/price-quality.js";
+export {
 	capabilityRequirementFromBindleRequirements,
 	matchCapabilityRequirement,
 	type ProfileMatchAccepted,

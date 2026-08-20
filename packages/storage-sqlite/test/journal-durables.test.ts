@@ -30,7 +30,6 @@ import {
 	StaleFenceError,
 } from "../src/index.js";
 
-let tick = 0;
 /** A clock that advances only when a test asks it to. */
 function controllableClock(startMs = Date.parse("2026-07-27T12:00:00.000Z")) {
 	let ms = startMs;
@@ -43,7 +42,6 @@ function controllableClock(startMs = Date.parse("2026-07-27T12:00:00.000Z")) {
 }
 
 function journal(clock = controllableClock()) {
-	tick += 1;
 	return {
 		j: new SqliteJournal(createMemoryNodeSqliteDriver(), {
 			clock,

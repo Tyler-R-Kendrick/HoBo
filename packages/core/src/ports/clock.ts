@@ -1,4 +1,5 @@
 import { CoreParseError } from "../errors.js";
+import type { JsonValue } from "../json.js";
 import {
 	deepFreeze,
 	isoTimestamp,
@@ -151,7 +152,7 @@ export class ClockParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_CLOCK_PARSE", path, expected, received, message);
@@ -169,18 +170,22 @@ export class NondeterministicClockError extends Error {
 }
 
 export function parseIsoInstant(value: string): IsoInstant {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return isoTimestamp(value, "instant", ClockParseError) as IsoInstant;
 }
 
 export function parseTimerId(value: string): TimerId {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return nonEmptyString(value, "timerId", ClockParseError) as TimerId;
 }
 
 export function parseScheduleId(value: string): ScheduleId {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return nonEmptyString(value, "scheduleId", ClockParseError) as ScheduleId;
 }
 
 export function parseFireId(value: string): FireId {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return nonEmptyString(value, "fireId", ClockParseError) as FireId;
 }
 
@@ -244,14 +249,14 @@ export function createFiredTimer(record: {
 		order: nonNegativeInteger(record.order, "order", ClockParseError),
 		...(record.timer_id !== undefined
 			? { timerId: parseTimerId(record.timer_id) }
-			: {}),
+			: undefined),
 		...(record.run_id !== undefined
 			? { runId: parseRunId(record.run_id) }
-			: {}),
-		...(record.label !== undefined ? { label: record.label } : {}),
+			: undefined),
+		...(record.label !== undefined ? { label: record.label } : undefined),
 		...(record.schedule_id !== undefined
 			? { scheduleId: parseScheduleId(record.schedule_id) }
-			: {}),
+			: undefined),
 		...(record.occurrence !== undefined
 			? {
 					occurrence: nonNegativeInteger(
@@ -260,7 +265,7 @@ export function createFiredTimer(record: {
 						ClockParseError,
 					),
 				}
-			: {}),
+			: undefined),
 	};
 	return deepFreeze(fired);
 }

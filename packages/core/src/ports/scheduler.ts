@@ -1,4 +1,5 @@
 import { CoreParseError } from "../errors.js";
+import type { JsonValue } from "../json.js";
 import {
 	deepFreeze,
 	nonNegativeInteger,
@@ -48,7 +49,7 @@ export class SchedulerParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_SCHEDULER_PARSE", path, expected, received, message);
@@ -84,6 +85,6 @@ export function parseIntervalCronSpec(record: {
 						SchedulerParseError,
 					),
 				}
-			: {}),
+			: undefined),
 	});
 }

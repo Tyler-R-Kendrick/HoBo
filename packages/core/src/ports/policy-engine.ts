@@ -5,6 +5,7 @@
  * attribute-based rules, Rego/OPA, time windows, etc. without rewriting callers.
  */
 
+import type { JsonObject } from "../json.js";
 import type { TenantId } from "./tenant.js";
 
 export type PolicyDecisionEffect = "allow" | "deny";
@@ -29,7 +30,7 @@ export interface PolicyRequest {
 	readonly subject: PolicySubject;
 	readonly action: string;
 	readonly resource: PolicyResource;
-	readonly context?: Readonly<Record<string, unknown>>;
+	readonly context?: JsonObject;
 }
 
 export interface PolicyDecision {
@@ -82,7 +83,7 @@ export function allowDecision(
 		effect: "allow",
 		engineId,
 		reasons,
-		...(obligations !== undefined ? { obligations } : {}),
+		...(obligations !== undefined ? { obligations } : undefined),
 		audit: {
 			decidedAt: new Date().toISOString(),
 			tenantId: request.subject.tenantId,

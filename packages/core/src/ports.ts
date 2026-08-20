@@ -1,4 +1,5 @@
 import { PortDescriptorParseError } from "./errors.js";
+import type { JsonValue } from "./json.js";
 import {
 	deepFreeze,
 	enumValue,
@@ -36,7 +37,9 @@ const STABILITIES = new Set<InterfaceStability>([
 const WIT_INTERFACE_REF =
 	/^[a-z][a-z0-9-]*:[a-z0-9-]+\/[a-z0-9-]+(?:@[0-9]+\.[0-9]+\.[0-9]+)?$/;
 
-export function createPortDescriptor(input: unknown): PortDescriptor {
+export function createPortDescriptor(
+	input: JsonValue | undefined,
+): PortDescriptor {
 	const source = expectObject(
 		input,
 		"port descriptor",
@@ -56,7 +59,10 @@ export function createPortDescriptor(input: unknown): PortDescriptor {
 	return deepFreeze(descriptor);
 }
 
-function parseInterfaceRef(value: unknown, field: string): string {
+function parseInterfaceRef(
+	value: JsonValue | undefined,
+	field: string,
+): string {
 	const ref = nonEmptyString(value, field, PortDescriptorParseError);
 	if (!WIT_INTERFACE_REF.test(ref)) {
 		throw new PortDescriptorParseError(field, "WIT-style interface ref", value);

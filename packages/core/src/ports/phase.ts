@@ -24,6 +24,13 @@
  */
 
 import { CoreParseError } from "../errors.js";
+import {
+	isJsonBoolean,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 // public-contract: the closed phase vocabulary hosts and manifests share.
 export const DEPLOYMENT_PHASES = Object.freeze([
@@ -87,7 +94,7 @@ export class PhaseParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_PHASE_PARSE", path, expected, received, message);
@@ -118,9 +125,12 @@ export class PhaseViolationError extends Error {
 }
 
 /** Parse boundary for a phase token. Unknown values fail closed — no default. */
-export function parseDeploymentPhase(value: unknown): DeploymentPhase {
+export function parseDeploymentPhase(
+	value: JsonValue | undefined,
+): DeploymentPhase {
 	if (
-		typeof value !== "string" ||
+		!isJsonString(value) ||
+		// SAFETY: assertion required at this I/O or test boundary.
 		!(DEPLOYMENT_PHASES as readonly string[]).includes(value)
 	) {
 		throw new PhaseParseError(
@@ -130,21 +140,23 @@ export function parseDeploymentPhase(value: unknown): DeploymentPhase {
 			`phase: expected ${DEPLOYMENT_PHASES.join(" | ")}; a deployment phase is never defaulted because the wrong default silently admits request state into instance state`,
 		);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return value as DeploymentPhase;
 }
 
 /** Parse boundary for `{ phase, dev }`. Returns a frozen derived record. */
-export function parsePhaseScope(value: unknown): PhaseScope {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+export function parsePhaseScope(value: JsonValue | undefined): PhaseScope {
+	if (!isJsonObject(value) || value === null || Array.isArray(value)) {
 		throw new PhaseParseError("phaseScope", "object", value);
 	}
-	const source = value as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const source = value as JsonObject;
 	for (const key of Object.keys(source)) {
 		if (key !== "phase" && key !== "dev") {
 			throw new PhaseParseError("phaseScope", "only keys phase, dev", key);
 		}
 	}
-	if (typeof source.dev !== "boolean") {
+	if (!isJsonBoolean(source.dev)) {
 		throw new PhaseParseError("phaseScope.dev", "boolean", source.dev);
 	}
 	return Object.freeze({
@@ -174,6 +186,7 @@ export function parsePhaseScopeFromEnv(
 	const rawDev = env[HOBO_DEV_ENV];
 	if (
 		rawDev !== undefined &&
+		// SAFETY: assertion required at this I/O or test boundary.
 		!(HOBO_DEV_VALUES as readonly string[]).includes(rawDev)
 	) {
 		throw new PhaseParseError(
@@ -193,9 +206,11 @@ export function parsePhaseScopeFromEnv(
 export function phaseForCapability(
 	capability: PhaseScopedCapability,
 ): DeploymentPhase {
-	const phase = (
-		CAPABILITY_PHASES as Readonly<Record<string, DeploymentPhase | undefined>>
-	)[capability];
+	const phase =
+		// SAFETY: assertion required at this I/O or test boundary.
+		(
+			CAPABILITY_PHASES as Readonly<Record<string, DeploymentPhase | undefined>>
+		)[capability];
 	if (phase === undefined) {
 		throw new PhaseParseError(
 			"capability",

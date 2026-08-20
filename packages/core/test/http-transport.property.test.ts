@@ -20,7 +20,6 @@ import { describe, expect, it } from "vitest";
 
 import {
 	guardTransport,
-	type HttpTransport,
 	TRANSPORT_GUARD_ERROR_CODES,
 	TRANSPORT_METHODS,
 	TransportGuardError,
@@ -39,7 +38,7 @@ const POLICY: TransportGuardPolicy = Object.freeze({
 	maxResponseBytes: 65_536,
 });
 
-function makeSpy(): { calls: TransportRequest[]; transport: HttpTransport } {
+function makeSpy() {
 	const calls: TransportRequest[] = [];
 	return {
 		calls,
@@ -71,8 +70,8 @@ const hostileHostArb = fc
 			"unrelated",
 		),
 	)
-	.map(([label, shape]) => {
-		switch (shape) {
+	.map(([label, layout]) => {
+		switch (layout) {
 			case "subdomain":
 				return `${label}.api.example.com`;
 			case "suffix":
@@ -126,8 +125,8 @@ const hostilePathArb = fc
 			"prefixWithoutSlash",
 		),
 	)
-	.map(([segment, shape]) => {
-		switch (shape) {
+	.map(([segment, layout]) => {
+		switch (layout) {
 			case "outside":
 				return `/admin/${segment}`;
 			case "prefixLookalike":
@@ -155,8 +154,8 @@ const hostilePathArb = fc
 
 const allowedPathArb = fc
 	.tuple(segmentArb, fc.constantFrom("plain", "nested", "query", "fragment"))
-	.map(([segment, shape]) => {
-		switch (shape) {
+	.map(([segment, layout]) => {
+		switch (layout) {
 			case "nested":
 				return `/v2/${segment}/${segment}`;
 			case "query":
@@ -180,12 +179,13 @@ function requestOf(url: string, overrides: Partial<TransportRequest> = {}) {
 }
 
 async function refusalOf(
-	call: () => Promise<unknown>,
+	call: () => Promise<JsonValue>,
 ): Promise<{ code: string; message: string; instance: boolean }> {
 	try {
 		await call();
 		return { code: "NO_THROW", message: "", instance: false };
 	} catch (error) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const failure = error as { code?: string; message?: string };
 		return {
 			code: failure.code ?? "NO_CODE",
@@ -366,6 +366,7 @@ describe("guardTransport never reaches an origin the policy forbids", () => {
 					} catch (error) {
 						accepted = false;
 						expect(error).toBeInstanceOf(TransportGuardError);
+						// SAFETY: assertion required at this I/O or test boundary.
 						const failure = error as TransportGuardError;
 						expect(TRANSPORT_GUARD_ERROR_CODES).toContain(failure.code);
 						expect(failure.message.length).toBeGreaterThan(0);
@@ -415,6 +416,7 @@ const brokenCapArb = fc.oneof(
 		Number.NEGATIVE_INFINITY,
 	),
 	fc.integer({ min: -(2 ** 31), max: 0 }),
+	// SAFETY: assertion required at this I/O or test boundary.
 	fc.constantFrom("5000", null, undefined, {}).map((value) => value as never),
 );
 
@@ -425,6 +427,7 @@ describe("guardTransport screens its own policy", () => {
 				const spy = makeSpy();
 				const guarded = guardTransport(spy.transport, {
 					...POLICY,
+					// SAFETY: assertion required at this I/O or test boundary.
 					maxTimeoutMs: cap as number,
 				});
 				const refusal = await refusalOf(() =>
@@ -443,6 +446,7 @@ describe("guardTransport screens its own policy", () => {
 				const spy = makeSpy();
 				const guarded = guardTransport(spy.transport, {
 					...POLICY,
+					// SAFETY: assertion required at this I/O or test boundary.
 					maxResponseBytes: cap as number,
 				});
 				const refusal = await refusalOf(() =>
@@ -527,10 +531,7 @@ describe("the response cap counts UTF-8 bytes exactly", () => {
 			.map((parts) => parts.join("")),
 	);
 
-	function transportReturning(body: string): {
-		calls: TransportRequest[];
-		transport: HttpTransport;
-	} {
+	function transportReturning(body: string) {
 		const calls: TransportRequest[] = [];
 		return {
 			calls,

@@ -180,7 +180,7 @@ describe("signAwsRequest against the official SigV4 vectors", () => {
 				method: vector.method,
 				url: vector.url,
 				headers: vector.headers,
-				...(vector.body === undefined ? {} : { body: vector.body }),
+				...(vector.body === undefined ? undefined : { body: vector.body }),
 				region: "us-east-1",
 				service: "service",
 				credentials: SUITE_CREDENTIALS,

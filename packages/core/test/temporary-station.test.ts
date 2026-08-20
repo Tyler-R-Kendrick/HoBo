@@ -4,7 +4,7 @@ import {
 	TEMPORARY_ENVIRONMENT_STATION_SCHEMA,
 	TEMPORARY_STATION_TTL_MS,
 	temporaryStationExpiresAt,
-	temporaryStationToAnonymousSessionShape,
+	temporaryStationToAnonymousSessionView,
 	temporaryStationTtlSeconds,
 } from "../src/ports/temporary-station.js";
 
@@ -19,7 +19,7 @@ describe("temporary Environment Station contract", () => {
 
 	it("projects onto broker AnonymousSession-aligned shape", () => {
 		const expiresAt = temporaryStationExpiresAt(60_000, 1_700_000_000_000);
-		const shape = temporaryStationToAnonymousSessionShape({
+		const fixture = temporaryStationToAnonymousSessionView({
 			stationId: "st-1",
 			stationUrl: "https://anon.example/app",
 			claimUrl: "https://claim.example/c",
@@ -28,7 +28,7 @@ describe("temporary Environment Station contract", () => {
 			anonymous: true,
 			temporary: true,
 		});
-		expect(shape).toEqual({
+		expect(fixture).toEqual({
 			stationId: "st-1",
 			providerId: "lakebed",
 			claimUrl: "https://claim.example/c",
@@ -38,7 +38,7 @@ describe("temporary Environment Station contract", () => {
 			anonymous: true,
 			temporary: true,
 		});
-		expect(shape.ttlSeconds).toBeGreaterThan(0);
+		expect(fixture.ttlSeconds).toBeGreaterThan(0);
 	});
 
 	it("parse-don't-validate rejects incomplete results", () => {

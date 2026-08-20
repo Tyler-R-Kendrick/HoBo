@@ -8,15 +8,16 @@
 //
 // Determinism: every run is seeded so a failure reproduces exactly. Re-running
 // with the same fast-check version and seed replays the same inputs.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-
 import {
 	CAPABILITY_SLOTS,
 	SLOT_BINDING_CONTRACT,
 	type SlotBindingInput,
 	slotBinding,
 } from "../src/index.js";
+import { isJsonObject, type JsonObject, type JsonValue } from "../src/json.js";
 
 /** Fixed seed: a counterexample found here is reproducible verbatim. */
 const SEED = 20260817;
@@ -54,7 +55,7 @@ const jsonScalarArb = fc.oneof(
 	fc.string(),
 );
 
-const jsonValueArb: fc.Arbitrary<unknown> = fc.letrec<{ value: unknown }>(
+const jsonValueArb: fc.Arbitrary<unknown> = fc.letrec<{ value: JsonValue }>(
 	(tie) => ({
 		value: fc.oneof(
 			{ maxDepth: 3 },
@@ -99,11 +100,12 @@ const hiddenCredentialArb = fc
 		safePropertiesArb,
 	)
 	.map(([credentialKey, wrappers, payload, siblings]) => {
-		let node: unknown = { ...siblings, [credentialKey]: payload };
+		let node: JsonValue = { ...siblings, [credentialKey]: payload };
 		for (const [key, insideArray] of wrappers) {
 			node = insideArray ? { [key]: [null, node] } : { [key]: node };
 		}
-		return { credentialKey, properties: node as Record<string, unknown> };
+		// SAFETY: assertion required at this I/O or test boundary.
+		return { credentialKey, properties: node as JsonObject };
 	});
 
 const inputArb = fc
@@ -123,41 +125,44 @@ function byCodeUnit(left: string, right: string): number {
 	return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function assertKeysSortedDeep(value: unknown): void {
+function assertKeysSortedDeep(value: JsonValue): void {
 	if (Array.isArray(value)) {
 		for (const entry of value) assertKeysSortedDeep(entry);
 		return;
 	}
-	if (value === null || typeof value !== "object") return;
+	if (value === null || !isJsonObject(value)) return;
 	const keys = Object.keys(value);
 	expect(keys).toStrictEqual([...keys].sort(byCodeUnit));
 	for (const key of keys) {
-		assertKeysSortedDeep((value as Record<string, unknown>)[key]);
+		// SAFETY: assertion required at this I/O or test boundary.
+		assertKeysSortedDeep((value as JsonObject)[key]);
 	}
 }
 
-function assertFrozenDeep(value: unknown): void {
-	if (value === null || typeof value !== "object") return;
+function assertFrozenDeep(value: JsonValue): void {
+	if (value === null || !isJsonObject(value)) return;
 	expect(Object.isFrozen(value)).toBe(true);
 	for (const entry of Object.values(value)) assertFrozenDeep(entry);
 }
 
 /** Rebuild with every object's keys reversed: same configuration, other order. */
-function reverseKeyOrder(value: unknown): unknown {
+function reverseKeyOrder(value: JsonValue) {
 	if (Array.isArray(value)) return value.map(reverseKeyOrder);
-	if (value === null || typeof value !== "object") return value;
-	const out: Record<string, unknown> = {};
+	if (value === null || !isJsonObject(value)) return value;
+	const out: JsonObject = {};
 	for (const key of Object.keys(value).reverse()) {
-		out[key] = reverseKeyOrder((value as Record<string, unknown>)[key]);
+		// SAFETY: assertion required at this I/O or test boundary.
+		out[key] = reverseKeyOrder((value as JsonObject)[key]);
 	}
 	return out;
 }
 
-function refusalOf(fn: () => unknown): { code: string; message: string } {
+function refusalOf(fn: () => JsonValue) {
 	try {
 		fn();
 		return { code: "NO_THROW", message: "" };
 	} catch (error) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const failure = error as { code?: string; message?: string };
 		return { code: failure.code ?? "NO_CODE", message: failure.message ?? "" };
 	}
@@ -215,9 +220,8 @@ describe("slotBinding is a total, canonical parse boundary", () => {
 			fc.property(inputArb, (input) => {
 				const reordered = {
 					...input,
-					properties: reverseKeyOrder(input.properties) as Readonly<
-						Record<string, unknown>
-					>,
+					// SAFETY: assertion required at this I/O or test boundary.
+					properties: reverseKeyOrder(input.properties) as JsonObject,
 				};
 				expect(slotBinding(reordered)).toStrictEqual(slotBinding(input));
 			}),

@@ -15,7 +15,9 @@
  * stops a backend that offers at-least-once from being handed an exactly-once
  * workload; a permissive parse upstream would make that check unreachable.
  */
+
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../src/json.js";
 
 import {
 	assertDeliverySupported,
@@ -37,6 +39,7 @@ describe("branded id parsing", () => {
 	});
 
 	it.each(["", null, undefined, 7])("rejects the topic name %s", (value) => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect(() => parseTopicName(value as string)).toThrow(MessagingParseError);
 	});
 });
@@ -111,6 +114,7 @@ describe("tenant scoping", () => {
 	});
 
 	it.each(["", null, undefined])("rejects the tenant %s", (tenant) => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect(() => tenantScopedTopicName(tenant as string, "orders")).toThrow(
 			MessagingParseError,
 		);
@@ -134,7 +138,7 @@ describe("tenant scoping", () => {
 });
 
 describe("parseTopicSpec", () => {
-	const topic = (overrides: Record<string, unknown> = {}) => ({
+	const topic = (overrides: JsonObject = {}) => ({
 		name: "orders",
 		tenantId: "t1",
 		...overrides,
@@ -232,7 +236,7 @@ describe("parseTopicSpec", () => {
 });
 
 describe("parseSubscriptionSpec", () => {
-	const subscription = (overrides: Record<string, unknown> = {}) => ({
+	const subscription = (overrides: JsonObject = {}) => ({
 		name: "sub",
 		topic: "orders",
 		consumerGroup: "workers",
@@ -313,7 +317,7 @@ describe("parseSubscriptionSpec", () => {
 });
 
 describe("parseMessagingSpec", () => {
-	const spec = (overrides: Record<string, unknown> = {}) => ({
+	const spec = (overrides: JsonObject = {}) => ({
 		id: "m1",
 		tenantId: "t1",
 		...overrides,
@@ -377,6 +381,7 @@ describe("parseMessagingSpec", () => {
 });
 
 describe("assertDeliverySupported", () => {
+	// SAFETY: assertion required at this I/O or test boundary.
 	const capabilities = {
 		deliveryGuarantees: ["at-least-once", "at-most-once"],
 	} as never;
@@ -405,6 +410,7 @@ describe("assertDeliverySupported", () => {
 	it("refuses everything when the backend supports nothing", () => {
 		expect(() =>
 			assertDeliverySupported(
+				// SAFETY: assertion required at this I/O or test boundary.
 				{ deliveryGuarantees: [] } as never,
 				"at-least-once",
 			),

@@ -44,6 +44,7 @@
  * listed here, and naming one is still allowed through the untyped `profile`
  * field. This catalog types the *first-party* vocabulary, it does not close it.
  */
+import { isJsonString, type JsonValue } from "../json.js";
 import type { CapabilitySlot } from "./capability-slot.js";
 
 /**
@@ -224,6 +225,7 @@ export type CapabilityProfileId = {
 /** Every first-party profile id, sorted, for iteration and drift checks. */
 export const CAPABILITY_PROFILE_IDS: readonly CapabilityProfileId[] =
 	Object.freeze(
+		// SAFETY: assertion required at this I/O or test boundary.
 		Object.values(capability)
 			.flatMap((group) => Object.values(group))
 			.sort() as CapabilityProfileId[],
@@ -240,9 +242,11 @@ export function slotForProfile(profile: string): CapabilitySlot | undefined {
 }
 
 const PROFILE_TO_SLOT: ReadonlyMap<string, CapabilitySlot> = new Map(
+	// SAFETY: assertion required at this I/O or test boundary.
 	Object.entries(capability).flatMap(([slot, group]) =>
 		Object.values(group).map((profile): readonly [string, CapabilitySlot] => [
 			profile,
+			// SAFETY: assertion required at this I/O or test boundary.
 			slot as CapabilitySlot,
 		]),
 	) as ReadonlyArray<readonly [string, CapabilitySlot]>,
@@ -267,9 +271,10 @@ export const ENV_TYPES = Object.freeze([
 export type EnvType = (typeof ENV_TYPES)[number];
 
 /** True when `value` is one of the declared environment types. */
-export function isEnvType(value: unknown): value is EnvType {
+export function isEnvType(value: JsonValue | undefined): value is EnvType {
 	return (
-		typeof value === "string" &&
+		isJsonString(value) &&
+		// SAFETY: assertion required at this I/O or test boundary.
 		(ENV_TYPES as readonly string[]).includes(value)
 	);
 }

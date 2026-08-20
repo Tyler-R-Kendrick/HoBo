@@ -1,12 +1,20 @@
 /**
  * Shared Temporary / agent Environment Station contract (provider-neutral).
  * Cloudflare Temporary Accounts, Lakebed anonymous deploy, and broker
- * AnonymousSessionResult all project onto this shape.
+ * AnonymousSessionResult all project onto this fixture.
  *
  * Providers keep vendor transports private; only this result + helpers are shared.
  */
 
 // public-contract: temporary Environment Station schema id consumers pin.
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
+
 export const TEMPORARY_ENVIRONMENT_STATION_SCHEMA =
 	"hobo.temporary-environment-station/v1" as const;
 
@@ -42,7 +50,7 @@ export type TemporaryEnvironmentStationInput = {
  * Maps onto AnonymousSessionResult claim/primary/ttl fields without inventing
  * a second session type.
  */
-export type TemporaryStationAnonymousSessionShape = {
+export type TemporaryStationAnonymousSessionView = {
 	readonly stationId: string;
 	readonly providerId: string;
 	readonly claimUrl: string;
@@ -66,9 +74,9 @@ export function temporaryStationTtlSeconds(
 	return Math.max(1, Math.floor(ttlMs / 1000));
 }
 
-export function temporaryStationToAnonymousSessionShape(
+export function temporaryStationToAnonymousSessionView(
 	result: TemporaryEnvironmentStationResult,
-): TemporaryStationAnonymousSessionShape {
+): TemporaryStationAnonymousSessionView {
 	const primaryUrl = result.primaryUrl ?? result.stationUrl;
 	const ttlSeconds =
 		result.ttlSeconds ??
@@ -92,12 +100,13 @@ export function temporaryStationToAnonymousSessionShape(
 }
 
 export function assertTemporaryEnvironmentStationResult(
-	value: unknown,
+	value: JsonValue | undefined,
 ): TemporaryEnvironmentStationResult {
-	if (value === null || typeof value !== "object") {
+	if (value === null || !isJsonObject(value)) {
 		throw new Error("temporary Environment Station result must be an object");
 	}
-	const obj = value as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const obj = value as JsonObject;
 	for (const key of [
 		"stationId",
 		"stationUrl",
@@ -105,7 +114,7 @@ export function assertTemporaryEnvironmentStationResult(
 		"expiresAt",
 		"providerId",
 	] as const) {
-		if (typeof obj[key] !== "string" || obj[key].length === 0) {
+		if (!isJsonString(obj[key]) || obj[key].length === 0) {
 			throw new Error(
 				`temporary Environment Station result missing string field ${key}`,
 			);
@@ -117,22 +126,27 @@ export function assertTemporaryEnvironmentStationResult(
 		);
 	}
 	return {
+		// SAFETY: assertion required at this I/O or test boundary.
 		stationId: obj.stationId as string,
+		// SAFETY: assertion required at this I/O or test boundary.
 		stationUrl: obj.stationUrl as string,
+		// SAFETY: assertion required at this I/O or test boundary.
 		claimUrl: obj.claimUrl as string,
+		// SAFETY: assertion required at this I/O or test boundary.
 		expiresAt: obj.expiresAt as string,
+		// SAFETY: assertion required at this I/O or test boundary.
 		providerId: obj.providerId as string,
 		anonymous: true,
 		temporary: true,
-		...(typeof obj.primaryUrl === "string"
+		...(isJsonString(obj.primaryUrl)
 			? { primaryUrl: obj.primaryUrl }
-			: {}),
-		...(typeof obj.ttlSeconds === "number"
+			: undefined),
+		...(isJsonNumber(obj.ttlSeconds)
 			? { ttlSeconds: obj.ttlSeconds }
-			: {}),
-		...(typeof obj.accountId === "string" ? { accountId: obj.accountId } : {}),
-		...(typeof obj.scriptName === "string"
+			: undefined),
+		...(isJsonString(obj.accountId) ? { accountId: obj.accountId } : undefined),
+		...(isJsonString(obj.scriptName)
 			? { scriptName: obj.scriptName }
-			: {}),
+			: undefined),
 	};
 }

@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import type { JsonObject } from "../src/json.js";
 
 import {
 	hashTrajectory,
@@ -22,7 +23,7 @@ function goldenRegion() {
 	};
 }
 
-function goldenTrajectory(overrides: Record<string, unknown> = {}) {
+function goldenTrajectory(overrides: JsonObject = {}) {
 	return {
 		id: "trajectory-1",
 		traceparent: "00-4bf92f3577b34da6a3ce929d0e0e4736-00f067aa0ba902b7-01",
@@ -129,6 +130,7 @@ test("rejects a malformed traceparent", () => {
 
 test("rejects an unknown OpenInference span kind", () => {
 	const trajectory = goldenTrajectory();
+	// SAFETY: assertion required at this I/O or test boundary.
 	(trajectory.spans[0] as { kind: string }).kind = "MYSTERY";
 	assert.throws(() => parseTrajectory(trajectory), TrainingEngineParseError);
 });
@@ -187,6 +189,7 @@ test("parses a patch candidate and rejects out-of-region edits (ADR-0048)", () =
 			edits: [{ startOffset: 14, endOffset: 34, replacement: "return x;" }],
 		},
 	};
+	// SAFETY: assertion required at this I/O or test boundary.
 	const candidate = parseTrainingCandidate(base, goldenRegion() as never);
 	assert.equal(candidate.body.case, "patch");
 
@@ -198,6 +201,7 @@ test("parses a patch candidate and rejects out-of-region edits (ADR-0048)", () =
 		},
 	};
 	assert.throws(
+		// SAFETY: assertion required at this I/O or test boundary.
 		() => parseTrainingCandidate(outOfRegion, goldenRegion() as never),
 		TrainingEngineParseError,
 	);

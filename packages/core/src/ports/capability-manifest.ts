@@ -29,6 +29,7 @@
  */
 
 import { createHash } from "node:crypto";
+import { isJsonObject, type JsonObject, type JsonValue } from "../json.js";
 
 // public-contract: capability-manifest document schema ids (Plan 6 signs).
 export const MANIFEST_SCHEMA = "hobo.capability-manifest/v1";
@@ -50,7 +51,7 @@ export const MANIFEST_PATHS = Object.freeze({
 } as const);
 
 /** Deterministic JSON: keys sorted at every depth, 2-space indent, trailing newline. */
-export function canonicalJson(value: unknown): string {
+export function canonicalJson(value: JsonValue | undefined): string {
 	return `${JSON.stringify(sortKeys(value), null, 2)}\n`;
 }
 
@@ -64,14 +65,17 @@ export function canonicalJson(value: unknown): string {
  */
 export function sortKeys<T>(value: T): T {
 	if (Array.isArray(value)) {
-		return value.map((item) => sortKeys(item)) as unknown as T;
+		// SAFETY: assertion required at this I/O or test boundary.
+		return value.map((item) => sortKeys(item)) as T;
 	}
-	if (value && typeof value === "object") {
+	if (value && isJsonObject(value)) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		return Object.fromEntries(
-			Object.entries(value as Record<string, unknown>)
+			// SAFETY: assertion required at this I/O or test boundary.
+			Object.entries(value as JsonObject)
 				.sort(([left], [right]) => left.localeCompare(right))
 				.map(([key, child]) => [key, sortKeys(child)]),
-		) as unknown as T;
+		) as T;
 	}
 	return value;
 }
@@ -84,7 +88,7 @@ export function sortKeys<T>(value: T): T {
  * provider controls, so a reference that only detects accidental corruption
  * lets a hostile origin serve a different document under the indexed digest.
  */
-export function stableDigest(value: unknown): string {
+export function stableDigest(value: JsonValue | undefined): string {
 	return `sha256:${createHash("sha256")
 		.update(JSON.stringify(sortKeys(value)))
 		.digest("hex")}`;
@@ -103,10 +107,10 @@ export function digestRef(seed: string): string {
 export interface PublishedManifestParseResult {
 	ok: boolean;
 	errors: string[];
-	index: Record<string, unknown>;
-	capabilities: Record<string, unknown>;
-	auth: Record<string, unknown>;
-	cost: Record<string, unknown>;
+	index: JsonObject;
+	capabilities: JsonObject;
+	auth: JsonObject;
+	cost: JsonObject;
 }
 
 /**

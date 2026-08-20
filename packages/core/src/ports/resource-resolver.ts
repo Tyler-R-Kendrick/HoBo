@@ -32,6 +32,15 @@
  * of import order. No clock, no randomness, no ambient environment reads.
  */
 
+import {
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonBag,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 import { deepFreeze } from "../parse-utils.js";
 import { CAPABILITY_SLOTS, type CapabilitySlot } from "./capability-slot.js";
 import type { HttpTransport } from "./http-transport.js";
@@ -86,9 +95,9 @@ export interface ResolvedResourceRef {
 export interface ResolveRequest {
 	readonly ref: ResolvedResourceRef;
 	/** Realization parameters: the desired state, non-sensitive only. */
-	readonly desired: Readonly<Record<string, unknown>>;
+	readonly desired: JsonObject;
 	/** Last known provider outputs, when the caller has them. */
-	readonly observed?: Readonly<Record<string, unknown>>;
+	readonly observed?: JsonObject;
 	/** LOCATOR only, never a value. See the module note on the credential law. */
 	readonly credentialRef: string;
 }
@@ -98,7 +107,7 @@ export interface ResolveOutcome {
 	readonly contract: typeof RESOLVER_CONTRACT;
 	readonly action: ResolverAction;
 	readonly physicalId: string;
-	readonly outputs: Readonly<Record<string, unknown>>;
+	readonly outputs: JsonObject;
 	readonly diagnostics: readonly string[];
 }
 
@@ -142,11 +151,11 @@ export class ResolverError extends Error {
 	readonly code: ResolverErrorCode;
 	readonly productId?: string;
 
-	constructor(code: ResolverErrorCode, message: string, productId?: unknown) {
+	constructor(code: ResolverErrorCode, message: string, productId?: JsonValue) {
 		super(message);
 		this.name = "ResolverError";
 		this.code = code;
-		if (typeof productId === "string" && productId.length > 0) {
+		if (isJsonString(productId) && productId.length > 0) {
 			this.productId = productId;
 		}
 	}
@@ -157,7 +166,9 @@ export class ResolverError extends Error {
  * whose property-bag keys are sorted, so two authorings of the same request
  * are deep-equal and hash identically.
  */
-export function parseResolveRequest(input: unknown): ResolveRequest {
+export function parseResolveRequest(
+	input: JsonValue | undefined,
+): ResolveRequest {
 	const source = expectRecord(
 		input,
 		"resolve request",
@@ -184,7 +195,7 @@ export function parseResolveRequest(input: unknown): ResolveRequest {
 	return deepFreeze({
 		ref,
 		desired,
-		...(observed !== undefined ? { observed } : {}),
+		...(observed !== undefined ? { observed } : undefined),
 		credentialRef,
 	});
 }
@@ -194,7 +205,9 @@ export function parseResolveRequest(input: unknown): ResolveRequest {
  * least trusted code in the deploy path — it is shaped by a remote API's
  * response — so its output crosses a boundary like any other external input.
  */
-export function parseResolveOutcome(input: unknown): ResolveOutcome {
+export function parseResolveOutcome(
+	input: JsonValue | undefined,
+): ResolveOutcome {
 	const source = expectRecord(
 		input,
 		"resolve outcome",
@@ -208,7 +221,8 @@ export function parseResolveOutcome(input: unknown): ResolveOutcome {
 	}
 	const action = source.action;
 	if (
-		typeof action !== "string" ||
+		!isJsonString(action) ||
+		// SAFETY: assertion required at this I/O or test boundary.
 		!(RESOLVER_ACTIONS as readonly string[]).includes(action)
 	) {
 		throw new ResolverError(
@@ -217,7 +231,7 @@ export function parseResolveOutcome(input: unknown): ResolveOutcome {
 		);
 	}
 	const physicalId = source.physicalId;
-	if (typeof physicalId !== "string" || physicalId.trim().length === 0) {
+	if (!isJsonString(physicalId) || physicalId.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`physicalId: expected the provider-assigned id as a non-empty string, received ${JSON.stringify(physicalId)}`,
@@ -233,6 +247,7 @@ export function parseResolveOutcome(input: unknown): ResolveOutcome {
 
 	return deepFreeze({
 		contract: RESOLVER_CONTRACT,
+		// SAFETY: assertion required at this I/O or test boundary.
 		action: action as ResolverAction,
 		physicalId,
 		outputs,
@@ -260,7 +275,7 @@ export function createResolverRegistry(
 	}
 	const byProduct = new Map<string, ResourceResolver>();
 	for (const resolver of resolvers) {
-		assertResolverShape(resolver);
+		assertResolverContract(resolver);
 		const existing = byProduct.get(resolver.productId);
 		if (existing !== undefined) {
 			throw new ResolverError(
@@ -288,37 +303,35 @@ export function createResolverRegistry(
 	});
 }
 
-function assertResolverShape(
-	value: unknown,
-): asserts value is ResourceResolver {
-	if (value === null || typeof value !== "object") {
-		throw new ResolverError(
-			"RESOLVER_PRODUCT_UNSUPPORTED",
-			`resolver registry: expected a resolver object, received ${describe(value)}`,
-		);
-	}
-	const candidate = value as Record<string, unknown>;
+function assertResolverContract(value: ResourceResolver): void {
 	for (const field of ["providerId", "productId"] as const) {
-		const id = candidate[field];
-		if (typeof id !== "string" || !RESOLVER_ID_PATTERN.test(id)) {
+		const id = value[field];
+		if (!isJsonString(id) || !RESOLVER_ID_PATTERN.test(id)) {
 			throw new ResolverError(
 				"RESOLVER_PRODUCT_UNSUPPORTED",
 				`resolver ${field}: expected a lowercase id matching ${RESOLVER_ID_PATTERN.source}, received ${JSON.stringify(id)}`,
 			);
 		}
 	}
-	for (const method of ["reconcile", "delete"] as const) {
-		if (typeof candidate[method] !== "function") {
-			throw new ResolverError(
-				"RESOLVER_PRODUCT_UNSUPPORTED",
-				`resolver ${JSON.stringify(candidate.productId)} is missing the required ${method}() method`,
-				candidate.productId,
-			);
-		}
+	if (!(value.reconcile instanceof Function)) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`resolver ${JSON.stringify(value.productId)} is missing the required reconcile() method`,
+			value.productId,
+		);
+	}
+	if (!(value.delete instanceof Function)) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`resolver ${JSON.stringify(value.productId)} is missing the required delete() method`,
+			value.productId,
+		);
 	}
 }
 
-function parseResolvedResourceRef(value: unknown): ResolvedResourceRef {
+function parseResolvedResourceRef(
+	value: JsonValue | undefined,
+): ResolvedResourceRef {
 	const source = expectRecord(
 		value,
 		"resolve request ref",
@@ -326,7 +339,8 @@ function parseResolvedResourceRef(value: unknown): ResolvedResourceRef {
 	);
 	const slot = source.slot;
 	if (
-		typeof slot !== "string" ||
+		!isJsonString(slot) ||
+		// SAFETY: assertion required at this I/O or test boundary.
 		!(CAPABILITY_SLOTS as readonly string[]).includes(slot)
 	) {
 		throw new ResolverError(
@@ -335,14 +349,14 @@ function parseResolvedResourceRef(value: unknown): ResolvedResourceRef {
 		);
 	}
 	const productId = source.productId;
-	if (typeof productId !== "string" || !RESOLVER_ID_PATTERN.test(productId)) {
+	if (!isJsonString(productId) || !RESOLVER_ID_PATTERN.test(productId)) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			`ref.productId: expected a lowercase id matching ${RESOLVER_ID_PATTERN.source}, received ${JSON.stringify(productId)}; a request that names no product cannot be routed to a resolver`,
 		);
 	}
 	const logicalId = source.logicalId;
-	if (typeof logicalId !== "string" || !LOGICAL_ID_PATTERN.test(logicalId)) {
+	if (!isJsonString(logicalId) || !LOGICAL_ID_PATTERN.test(logicalId)) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			`ref.logicalId: expected a stable author id matching ${LOGICAL_ID_PATTERN.source}, received ${JSON.stringify(logicalId)}`,
@@ -352,7 +366,7 @@ function parseResolvedResourceRef(value: unknown): ResolvedResourceRef {
 	const physicalId = source.physicalId;
 	if (
 		physicalId !== undefined &&
-		(typeof physicalId !== "string" || physicalId.trim().length === 0)
+		(!isJsonString(physicalId) || physicalId.trim().length === 0)
 	) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
@@ -362,10 +376,11 @@ function parseResolvedResourceRef(value: unknown): ResolvedResourceRef {
 	}
 
 	return {
+		// SAFETY: assertion required at this I/O or test boundary.
 		slot: slot as CapabilitySlot,
 		productId,
 		logicalId,
-		...(physicalId !== undefined ? { physicalId } : {}),
+		...(physicalId !== undefined ? { physicalId } : undefined),
 	};
 }
 
@@ -373,7 +388,10 @@ function parseResolvedResourceRef(value: unknown): ResolvedResourceRef {
  * The credential law, enforced. Every refusal below is a value the caller was
  * about to put in a record that gets logged, hashed, and replayed.
  */
-function parseCredentialRef(value: unknown, productId: string): string {
+function parseCredentialRef(
+	value: JsonValue | undefined,
+	productId: string,
+): string {
 	if (value === undefined || value === null) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
@@ -381,14 +399,14 @@ function parseCredentialRef(value: unknown, productId: string): string {
 			productId,
 		);
 	}
-	if (typeof value !== "string" || value.trim().length === 0) {
+	if (!isJsonString(value) || value.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			`credentialRef: expected a non-empty locator string, received ${describe(value)}`,
 			productId,
 		);
 	}
-	const reason = credentialValueShape(value);
+	const reason = credentialValueLayout(value);
 	if (reason !== undefined) {
 		// The offending value is never echoed: this refusal exists precisely
 		// because the value is material.
@@ -402,7 +420,7 @@ function parseCredentialRef(value: unknown, productId: string): string {
 }
 
 /** Returns why a string reads as material, or `undefined` if it is a locator. */
-function credentialValueShape(value: string): string | undefined {
+function credentialValueLayout(value: string): string | undefined {
 	if (value.length > MAX_CREDENTIAL_REF_LENGTH) {
 		return `it is ${value.length} characters, past the ${MAX_CREDENTIAL_REF_LENGTH}-character locator bound`;
 	}
@@ -432,7 +450,7 @@ function credentialValueShape(value: string): string | undefined {
 	return undefined;
 }
 
-function parseDiagnostics(value: unknown): readonly string[] {
+function parseDiagnostics(value: JsonValue | undefined): readonly string[] {
 	if (value === undefined) return Object.freeze([]);
 	if (!Array.isArray(value)) {
 		throw new ResolverError(
@@ -442,7 +460,7 @@ function parseDiagnostics(value: unknown): readonly string[] {
 	}
 	const out: string[] = [];
 	for (const [index, entry] of value.entries()) {
-		if (typeof entry !== "string" || entry.trim().length === 0) {
+		if (!isJsonString(entry) || entry.trim().length === 0) {
 			throw new ResolverError(
 				"RESOLVER_OUTPUT_UNPARSEABLE",
 				`diagnostics[${index}]: expected a non-empty string, received ${describe(entry)}`,
@@ -461,37 +479,38 @@ function parseDiagnostics(value: unknown): readonly string[] {
  * down is exactly as leaked as one at the root.
  */
 function canonicalizeBag(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
 	productId: string | undefined,
-	shapeCode: ResolverErrorCode,
-): Readonly<Record<string, unknown>> {
+	catalogCode: ResolverErrorCode,
+): JsonObject {
 	if (value === undefined) return {};
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
+	if (value === null || !isJsonObject(value) || Array.isArray(value)) {
 		throw new ResolverError(
-			shapeCode,
+			catalogCode,
 			`${field}: expected a JSON object, received ${describe(value)}`,
 			productId,
 		);
 	}
 	return canonicalizeRecord(
-		value as Record<string, unknown>,
+		// SAFETY: assertion required at this I/O or test boundary.
+		value as JsonObject,
 		field,
 		productId,
-		shapeCode,
-		new Set<object>(),
+		catalogCode,
+		new Set<JsonObject | JsonValue[]>(),
 	);
 }
 
 function canonicalizeRecord(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 	path: string,
 	productId: string | undefined,
-	shapeCode: ResolverErrorCode,
-	seen: Set<object>,
-): Readonly<Record<string, unknown>> {
-	enterCycleGuard(record, path, productId, shapeCode, seen);
-	const out: Record<string, unknown> = {};
+	catalogCode: ResolverErrorCode,
+	seen: Set<JsonObject | JsonValue[]>,
+): JsonObject {
+	enterCycleGuard(record, path, productId, catalogCode, seen);
+	const out: JsonBag = {};
 	// Code-unit sort: locale-independent so two authorings agree byte for byte.
 	for (const key of Object.keys(record).sort(compare)) {
 		if (CREDENTIAL_KEY_PATTERN.test(key)) {
@@ -505,7 +524,7 @@ function canonicalizeRecord(
 			record[key],
 			`${path}.${key}`,
 			productId,
-			shapeCode,
+			catalogCode,
 			seen,
 		);
 	}
@@ -514,23 +533,19 @@ function canonicalizeRecord(
 }
 
 function canonicalizeValue(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 	productId: string | undefined,
-	shapeCode: ResolverErrorCode,
-	seen: Set<object>,
-): unknown {
-	if (
-		value === null ||
-		typeof value === "boolean" ||
-		typeof value === "string"
-	) {
+	catalogCode: ResolverErrorCode,
+	seen: Set<JsonObject | JsonValue[]>,
+): JsonValue {
+	if (value === null || isJsonBoolean(value) || isJsonString(value)) {
 		return value;
 	}
-	if (typeof value === "number") {
+	if (isJsonNumber(value)) {
 		if (!Number.isFinite(value)) {
 			throw new ResolverError(
-				shapeCode,
+				catalogCode,
 				`${path}: ${String(value)} has no JSON representation`,
 				productId,
 			);
@@ -538,33 +553,39 @@ function canonicalizeValue(
 		return value;
 	}
 	if (Array.isArray(value)) {
-		enterCycleGuard(value, path, productId, shapeCode, seen);
+		enterCycleGuard(value, path, productId, catalogCode, seen);
 		const out = value.map((entry, index) =>
-			canonicalizeValue(entry, `${path}[${index}]`, productId, shapeCode, seen),
+			canonicalizeValue(
+				entry,
+				`${path}[${index}]`,
+				productId,
+				catalogCode,
+				seen,
+			),
 		);
 		seen.delete(value);
 		return out;
 	}
 	if (isPlainObject(value)) {
-		return canonicalizeRecord(value, path, productId, shapeCode, seen);
+		return canonicalizeRecord(value, path, productId, catalogCode, seen);
 	}
 	throw new ResolverError(
-		shapeCode,
+		catalogCode,
 		`${path}: expected a JSON-safe value (null, boolean, finite number, string, array, plain object), received ${describe(value)}`,
 		productId,
 	);
 }
 
 function enterCycleGuard(
-	value: object,
+	value: JsonObject | JsonValue[],
 	path: string,
 	productId: string | undefined,
-	shapeCode: ResolverErrorCode,
-	seen: Set<object>,
+	catalogCode: ResolverErrorCode,
+	seen: Set<JsonObject | JsonValue[]>,
 ): void {
 	if (seen.has(value)) {
 		throw new ResolverError(
-			shapeCode,
+			catalogCode,
 			`${path}: the property bag contains a cycle, which has no JSON representation`,
 			productId,
 		);
@@ -573,37 +594,36 @@ function enterCycleGuard(
 }
 
 function expectRecord(
-	value: unknown,
+	value: JsonValue | undefined,
 	label: string,
 	code: ResolverErrorCode,
-): Record<string, unknown> {
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
+): JsonObject {
+	if (value === null || !isJsonObject(value) || Array.isArray(value)) {
 		throw new ResolverError(
 			code,
 			`${label}: expected an object, received ${describe(value)}`,
 		);
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	return value as JsonObject;
 }
 
 /** Plain data only: a class instance carries behavior a record cannot serialize. */
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	if (value === null || typeof value !== "object") return false;
+function isPlainObject(value: JsonValue | undefined): value is JsonObject {
+	if (value === null || !isJsonObject(value)) return false;
 	const prototype: unknown = Object.getPrototypeOf(value);
 	return prototype === Object.prototype || prototype === null;
 }
 
-function describe(value: unknown): string {
+function describe(value: JsonValue | undefined): string {
 	if (value === null) return "null";
 	if (value === undefined) return "undefined";
 	if (Array.isArray(value)) return "an array";
-	if (typeof value === "object") {
+	if (isJsonObject(value)) {
 		const name: unknown = value.constructor?.name;
-		return typeof name === "string"
-			? `a ${name} instance`
-			: "a non-plain object";
+		return isJsonString(name) ? `a ${name} instance` : "a non-plain object";
 	}
-	return `a ${typeof value}`;
+	return `a ${Object.prototype.toString.call(value)}`;
 }
 
 /** Code-unit comparison: locale-independent so ordering is reproducible. */

@@ -1,4 +1,5 @@
 import { CoreParseError } from "./errors.js";
+import type { JsonValue } from "./json.js";
 import { deepFreeze, nonEmptyString } from "./parse-utils.js";
 
 // The one registry primitive (ADR-0156 §3, extension-points.md). HoBo's
@@ -17,7 +18,7 @@ export class ExtensionRegistryError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_EXTENSION_REGISTRY", path, expected, received, message);
@@ -32,7 +33,9 @@ export type ExtensionPointId = string & {
 };
 
 /** Parse `hobo.<name>/v<major>` or throw. */
-export function parseExtensionPointId(value: unknown): ExtensionPointId {
+export function parseExtensionPointId(
+	value: JsonValue | undefined,
+): ExtensionPointId {
 	const raw = nonEmptyString(value, "extensionPoint", ExtensionRegistryError);
 	if (!EXTENSION_POINT_PATTERN.test(raw)) {
 		throw new ExtensionRegistryError(
@@ -41,6 +44,7 @@ export function parseExtensionPointId(value: unknown): ExtensionPointId {
 			raw,
 		);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return raw as ExtensionPointId;
 }
 
@@ -75,7 +79,7 @@ export interface ExtensionRegistry<T> {
  * connectivity implementations) are this configuration.
  */
 export function createExtensionRegistry<T>(
-	point: unknown,
+	point: JsonValue,
 	entries: ReadonlyArray<readonly [string, T]> = [],
 	options?: ExtensionRegistryOptions,
 ): ExtensionRegistry<T> {
@@ -98,7 +102,7 @@ export function createExtensionRegistry<T>(
 
 	const byId = new Map<string, T>();
 
-	const add = (id: unknown, extension: T): void => {
+	const add = (id: JsonValue, extension: T): void => {
 		const parsedId = nonEmptyString(id, "id", ExtensionRegistryError);
 		if (byId.has(parsedId) && duplicates === "throw") {
 			throw new ExtensionRegistryError(

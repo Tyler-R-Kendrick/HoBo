@@ -1,3 +1,4 @@
+import type { JsonValue } from "../json.js";
 import { createPortDescriptor, type PortDescriptor } from "../ports.js";
 
 // The canonical ActorHost port (ADR-0156). Before ADR-0156 this seam was
@@ -26,7 +27,7 @@ export const ACTOR_HOST_PORT_DESCRIPTOR: PortDescriptor = createPortDescriptor({
 /** A folded actor event: a discriminated `type` plus an open payload. */
 export interface FoldEvent {
 	type: string;
-	[key: string]: unknown;
+	[key: string]: JsonValue;
 }
 
 /**

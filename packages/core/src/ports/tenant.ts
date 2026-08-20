@@ -26,6 +26,7 @@ export function parseTenantId(raw: string): TenantId {
 	if (trimmed.length === 0) {
 		throw new TypeError("tenantId must be non-empty");
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return trimmed as TenantId;
 }
 
@@ -34,6 +35,7 @@ export function parseProjectId(raw: string): ProjectId {
 	if (trimmed.length === 0) {
 		throw new TypeError("projectId must be non-empty");
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return trimmed as ProjectId;
 }
 
@@ -89,10 +91,12 @@ export function tenantContextFromEnv(
 		tenantId: parseTenantId(tenantRaw),
 		...(projectRaw !== undefined && projectRaw.trim() !== ""
 			? { projectId: parseProjectId(projectRaw) }
-			: {}),
+			: undefined),
 		...(branchRaw !== undefined && branchRaw.trim() !== ""
 			? { branch: branchRaw }
-			: {}),
-		...(envName !== undefined && envName.trim() !== "" ? { env: envName } : {}),
+			: undefined),
+		...(envName !== undefined && envName.trim() !== ""
+			? { env: envName }
+			: undefined),
 	};
 }

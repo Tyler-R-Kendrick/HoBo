@@ -5,6 +5,8 @@
  * adapters must not import each other.
  */
 
+import { isJsonString, type JsonObject, type JsonValue } from "../json.js";
+
 export const HOBO_RUNTIME_HOST_KINDS = [
 	"local",
 	"wasm",
@@ -28,7 +30,7 @@ export interface RuntimeEnsureResult {
 	readonly kind: HoboRuntimeHostKind;
 	readonly ready: boolean;
 	readonly notes: readonly string[];
-	readonly details?: Readonly<Record<string, unknown>>;
+	readonly details?: JsonObject;
 }
 
 export interface PrivateComponentSpec {
@@ -57,7 +59,7 @@ export interface ServePrivateContext {
 export interface IsolationInfo {
 	readonly isolateBoundary: string;
 	readonly privateSandboxes: number;
-	readonly details?: Readonly<Record<string, unknown>>;
+	readonly details?: JsonObject;
 }
 
 export interface PrivateServeResult {
@@ -77,10 +79,11 @@ export interface HoboRuntimeHost {
 }
 
 export function isHoboRuntimeHostKind(
-	value: unknown,
+	value: JsonValue | undefined,
 ): value is HoboRuntimeHostKind {
 	return (
-		typeof value === "string" &&
+		isJsonString(value) &&
+		// SAFETY: assertion required at this I/O or test boundary.
 		(HOBO_RUNTIME_HOST_KINDS as readonly string[]).includes(value)
 	);
 }

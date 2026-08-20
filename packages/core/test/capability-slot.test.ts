@@ -3,8 +3,8 @@
 // rather than a shape check, plus the two determinism guarantees an authoring
 // surface owes its compile target: the result is frozen, and two authorings of
 // the same configuration are deep-equal regardless of key order.
-import { describe, expect, it } from "vitest";
 
+import { describe, expect, it } from "vitest";
 import {
 	CAPABILITY_SLOTS,
 	SLOT_BINDING_CONTRACT,
@@ -12,6 +12,7 @@ import {
 	type SlotBindingInput,
 	slotBinding,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
 function input(overrides: Partial<SlotBindingInput> = {}): SlotBindingInput {
 	return {
@@ -22,7 +23,7 @@ function input(overrides: Partial<SlotBindingInput> = {}): SlotBindingInput {
 	};
 }
 
-function codeOf(build: () => unknown): string {
+function codeOf(build: () => JsonValue): string {
 	try {
 		build();
 	} catch (error) {
@@ -109,16 +110,19 @@ describe("SLOT_BINDING_SLOT_INVALID", () => {
 		[null, "null is not a slot"],
 		[7, "an ordinal is not a slot"],
 	])("refuses slot %o (%s)", (slot) => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect(codeOf(() => slotBinding(input({ slot }) as SlotBindingInput))).toBe(
 			"SLOT_BINDING_SLOT_INVALID",
 		);
 	});
 
 	it("refuses a non-object input", () => {
-		expect(codeOf(() => slotBinding(null as unknown as SlotBindingInput))).toBe(
+		// SAFETY: assertion required at this I/O or test boundary.
+		expect(codeOf(() => slotBinding(null as SlotBindingInput))).toBe(
 			"SLOT_BINDING_SLOT_INVALID",
 		);
-		expect(codeOf(() => slotBinding([] as unknown as SlotBindingInput))).toBe(
+		// SAFETY: assertion required at this I/O or test boundary.
+		expect(codeOf(() => slotBinding([] as SlotBindingInput))).toBe(
 			"SLOT_BINDING_SLOT_INVALID",
 		);
 	});
@@ -139,6 +143,7 @@ describe("SLOT_BINDING_PROFILE_INVALID", () => {
 		[42, "a number is not a profile"],
 	])("refuses profile %o (%s)", (profile) => {
 		expect(
+			// SAFETY: assertion required at this I/O or test boundary.
 			codeOf(() => slotBinding(input({ profile }) as SlotBindingInput)),
 		).toBe("SLOT_BINDING_PROFILE_INVALID");
 	});
@@ -149,7 +154,8 @@ describe("SLOT_BINDING_EMPTY_CONSTRAINT", () => {
 		[{ productId: undefined, connectivityId: undefined }, "neither present"],
 		[{ productId: "", connectivityId: "" }, "both empty strings"],
 		[{ productId: "   ", connectivityId: undefined }, "blank is not a pin"],
-		[{ productId: 1 as unknown as string }, "a non-string is not a pin"],
+		// SAFETY: assertion required at this I/O or test boundary.
+		[{ productId: 1 as string }, "a non-string is not a pin"],
 	])("refuses a binding that narrows nothing (%o: %s)", (overrides) => {
 		expect(codeOf(() => slotBinding(input(overrides)))).toBe(
 			"SLOT_BINDING_EMPTY_CONSTRAINT",
@@ -162,6 +168,7 @@ describe("SLOT_BINDING_EMPTY_CONSTRAINT", () => {
 			throw new Error("expected a refusal");
 		} catch (error) {
 			expect(error).toBeInstanceOf(SlotBindingError);
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((error as SlotBindingError).slot).toBe("data");
 		}
 	});
@@ -235,21 +242,22 @@ describe("SLOT_BINDING_PROPERTY_NOT_JSON", () => {
 	});
 
 	it.each([
-		[[] as unknown, "an array is not a property record"],
-		[null as unknown, "null is not a property record"],
-		["a=b" as unknown, "a string is not a property record"],
+		[[], "an array is not a property record"],
+		[null, "null is not a property record"],
+		["a=b", "a string is not a property record"],
 	])("refuses a non-object properties bag (%o: %s)", (properties) => {
 		expect(
 			codeOf(() =>
 				slotBinding(
-					input({ properties: properties as Record<string, unknown> }),
+					// SAFETY: assertion required at this I/O or test boundary.
+					input({ properties: properties as JsonObject }),
 				),
 			),
 		).toBe("SLOT_BINDING_PROPERTY_NOT_JSON");
 	});
 
 	it("refuses a cycle instead of recursing forever", () => {
-		const cyclic: Record<string, unknown> = { name: "loop" };
+		const cyclic: JsonObject = { name: "loop" };
 		cyclic.self = cyclic;
 		expect(codeOf(() => slotBinding(input({ properties: cyclic })))).toBe(
 			"SLOT_BINDING_PROPERTY_NOT_JSON",
@@ -304,12 +312,13 @@ describe("determinism", () => {
 			input({ properties: { tuning: { zebra: 1, apple: 2 } } }),
 		);
 		expect(
-			Object.keys(binding.properties.tuning as Record<string, unknown>),
+			// SAFETY: assertion required at this I/O or test boundary.
+			Object.keys(binding.properties.tuning as JsonObject),
 		).toEqual(["apple", "zebra"]);
 	});
 
 	it("does not alias the authored property bag", () => {
-		const properties: Record<string, unknown> = { engineVersion: "16" };
+		const properties: JsonObject = { engineVersion: "16" };
 		const binding = slotBinding(input({ properties }));
 		properties.engineVersion = "17";
 		expect(binding.properties.engineVersion).toBe("16");

@@ -55,6 +55,7 @@
  */
 
 import { createHash, createHmac } from "node:crypto";
+import { isJsonString } from "../json.js";
 
 // public-contract: the algorithm token SigV4 stamps on the Authorization header and the string-to-sign.
 export const AWS_SIGV4_ALGORITHM = "AWS4-HMAC-SHA256";
@@ -156,10 +157,7 @@ function decodeOrPassThrough(value: string): string {
 	}
 }
 
-function amzTimestamps(now: Date): {
-	readonly amzDate: string;
-	readonly dateStamp: string;
-} {
+function amzTimestamps(now: Date) {
 	// 2015-08-30T12:36:00.000Z -> 20150830T123600Z
 	const iso = now.toISOString().replace(/[:-]|\.\d{3}/gu, "");
 	const amzDate = iso.endsWith("Z") ? iso : `${iso}Z`;
@@ -217,6 +215,7 @@ function collectHeaders(
 	for (const [name, value] of Object.entries(supplied ?? {})) {
 		const key = name.toLowerCase();
 		const existing = collected.get(key) ?? [];
+		// SAFETY: assertion required at this I/O or test boundary.
 		for (const entry of Array.isArray(value) ? value : [value as string]) {
 			existing.push(normalizeHeaderValue(entry));
 		}
@@ -244,7 +243,7 @@ export function signAwsRequest(input: SignAwsRequestInput): SignedAwsRequest {
 		collected.set("x-amz-content-sha256", [payloadHash]);
 	}
 	if (
-		typeof input.credentials.sessionToken === "string" &&
+		isJsonString(input.credentials.sessionToken) &&
 		input.credentials.sessionToken.length > 0
 	) {
 		collected.set("x-amz-security-token", [input.credentials.sessionToken]);

@@ -6,9 +6,11 @@ Production CI fabric guard (HOBO-586). Historical HOBO-6 draft remains under
 ## Parse, Don't Validate
 
 Untrusted workflow YAML and contract JSON cross exactly one parser boundary:
-`parseCiFabricContract(input: unknown): CiFabricContract`. Downstream modules
-(`validateCiFabricContract`, fixture runner, CLIs) accept only the refined
-parsed domain types — never raw DTOs plus repeated boolean checks.
+`parseCiFabricContract(input: JsonValue | undefined): CiFabricContract`.
+`JSON.parse` is decoded into the package-local `JsonValue` tree (`src/json.ts`)
+before that call. Downstream modules (`validateCiFabricContract`, fixture
+runner, CLIs) accept only the refined parsed domain types — never raw DTOs plus
+repeated boolean checks.
 
 ## Event Architecture
 

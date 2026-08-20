@@ -89,6 +89,13 @@ const categories: Record<string, string[]> = {
 		// marker in `contract-consumer` above instead.
 		"test/*provider*.test.ts",
 	],
+	// Chaos suites already existed and were documented in AGENTS.md ("Chaos
+	// lanes, and which one proves what") but had no lane of their own: they ran
+	// only as a side effect of a package's broad test run, so there was no way
+	// to ask "is the chaos surface green" without running everything. The glob
+	// keys on the `chaos` marker in the filename, which is how the two suites
+	// AGENTS.md distinguishes are already named.
+	chaos: ["packages/**/test/*chaos*.test.ts"],
 	dom: ["tests/dom/**/*test.ts", "test/dom/**/*test.ts"],
 	component: ["tests/component/**/*test.ts", "test/component/**/*test.ts"],
 	behavior: ["tests/behavior/**/*test.ts", "features/**/*.feature"],

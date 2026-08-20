@@ -131,7 +131,9 @@ export type Competitor = {
 
 type Raw = Record<string, string | string[]>;
 
-function frontMatter(text: string): { body: string; raw: Raw } | undefined {
+export function frontMatter(
+	text: string,
+): { body: string; raw: Raw } | undefined {
 	const match = /^---\r?\n([\s\S]*?)\r?\n---\r?\n?/.exec(text);
 	if (!match) return undefined;
 	return { body: text.slice(match[0].length), raw: parseBlock(match[1] ?? "") };
@@ -142,7 +144,7 @@ function frontMatter(text: string): { body: string; raw: Raw } | undefined {
  * inline `[a, b]` sequences, and `- item` block sequences. Anything else is
  * left alone — other front-matter keys are not ours to interpret.
  */
-function parseBlock(source: string): Raw {
+export function parseBlock(source: string): Raw {
 	const lines = source.split(/\r?\n/);
 	const start = lines.findIndex((line) => /^competitor:\s*$/.test(line));
 	if (start === -1) return {};
@@ -153,7 +155,15 @@ function parseBlock(source: string): Raw {
 		if (!/^\s/.test(line)) break; // dedent: end of the competitor mapping
 		const item = /^\s+-\s+(.*)$/.exec(line);
 		if (item && key) {
-			(raw[key] as string[]).push(unquote(item[1] ?? ""));
+			// Only a key opened as an empty sequence (`sources:` with nothing on
+			// the line) accumulates items. A `- item` under a *scalar* key is
+			// malformed input, and blindly pushing crashed the whole gate with
+			// `raw[key].push is not a function` — a TypeError instead of a
+			// reported problem. The scalar stands and the stray item is dropped;
+			// the required-field checks downstream report anything genuinely
+			// missing, which is where a parse error belongs.
+			const current = raw[key];
+			if (Array.isArray(current)) current.push(unquote(item[1] ?? ""));
 			continue;
 		}
 		const pair = /^\s+([a-z_]+):\s*(.*)$/.exec(line);
@@ -375,7 +385,14 @@ function checkLinks(
 	}
 }
 
-function renderMatrix(competitors: Competitor[]) {
+/**
+ * The freshness ledger ages every capture against a clock. That clock is a
+ * parameter rather than a call to `Date.now()` inside the loop: with the call
+ * inlined, this function's output changed every day, which made it impossible
+ * to characterize with a snapshot and meant nothing ever pinned the table's
+ * shape. Production still passes the wall clock; tests pass a fixed instant.
+ */
+export function renderMatrix(competitors: Competitor[], now: number) {
 	const rows = [...competitors].sort((a, b) => a.slug.localeCompare(b.slug));
 	const lines: string[] = [];
 	lines.push("");
@@ -398,7 +415,6 @@ function renderMatrix(competitors: Competitor[]) {
 	lines.push("");
 	lines.push("| Competitor | Researched | Age (days) | State |");
 	lines.push("| ---------- | ---------- | ---------- | ----- |");
-	const now = Date.now();
 	for (const row of [...rows].sort((a, b) =>
 		a.research_date.localeCompare(b.research_date),
 	)) {
@@ -439,7 +455,7 @@ function byName(a: Competitor, b: Competitor) {
 	return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
 }
 
-function renderIndex(competitors: Competitor[]) {
+export function renderIndex(competitors: Competitor[]) {
 	const lines: string[] = [""];
 	lines.push(`## Categories (${CATEGORIES.length})`);
 	lines.push("");
@@ -490,7 +506,7 @@ function renderIndex(competitors: Competitor[]) {
 	return lines.join("\n");
 }
 
-function renderCategoryIndex(competitors: Competitor[]) {
+export function renderCategoryIndex(competitors: Competitor[]) {
 	const lines: string[] = [
 		"",
 		"| Category | Competitors |",
@@ -509,6 +525,8 @@ function renderCategoryIndex(competitors: Competitor[]) {
 export async function checkCompetitorDocs(options: {
 	root: string;
 	fix?: boolean;
+	/** Injectable clock for the freshness ledger; defaults to the wall clock. */
+	now?: number;
 }): Promise<{ problems: Problem[]; competitors: Competitor[] }> {
 	const { root, fix = false } = options;
 	const dir = path.join(root, "docs/competitors");
@@ -675,7 +693,7 @@ export async function checkCompetitorDocs(options: {
 	syncGenerated(
 		"docs/competitors/matrix.md",
 		"competitor-matrix",
-		() => renderMatrix(competitors),
+		() => renderMatrix(competitors, options.now ?? Date.now()),
 		"missing generated cross-category matrix",
 	);
 	syncGenerated(
@@ -694,20 +712,48 @@ export async function checkCompetitorDocs(options: {
 	return { problems, competitors };
 }
 
+/**
+ * The CLI body, as a function rather than a top-level `if`.
+ *
+ * Extracted so it can be tested: as an inline block it was unreachable from any
+ * test, which left the exit code, the problem formatting and the summary line —
+ * the parts CI and every human actually read — as the single largest untested
+ * region of this file. Returns the exit code instead of calling `process.exit`
+ * so a test can assert it without tearing down the runner.
+ */
+export async function main(options: {
+	root: string;
+	argv: readonly string[];
+	now?: number;
+	log?: (message: string) => void;
+	error?: (message: string) => void;
+}): Promise<number> {
+	const log = options.log ?? console.log;
+	const error = options.error ?? console.error;
+	const { problems, competitors } = await checkCompetitorDocs({
+		root: options.root,
+		fix: options.argv.includes("--fix"),
+		...(options.now === undefined ? {} : { now: options.now }),
+	});
+	for (const problem of problems)
+		error(
+			`${problem.file}:${problem.line} competitor-docs - ${problem.message}`,
+		);
+	log(
+		`competitor-docs: ${competitors.length} canonical captures checked, ${problems.length} problem(s).`,
+	);
+	return problems.length > 0 ? 1 : 0;
+}
+
 const invokedDirectly =
 	process.argv[1] !== undefined &&
 	path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (invokedDirectly) {
-	const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-	const fix = process.argv.includes("--fix");
-	const { problems, competitors } = await checkCompetitorDocs({ root, fix });
-	for (const problem of problems)
-		console.error(
-			`${problem.file}:${problem.line} competitor-docs - ${problem.message}`,
-		);
-	console.log(
-		`competitor-docs: ${competitors.length} canonical captures checked, ${problems.length} problem(s).`,
+	process.exit(
+		await main({
+			root: path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."),
+			argv: process.argv,
+		}),
 	);
-	process.exit(problems.length > 0 ? 1 : 0);
 }

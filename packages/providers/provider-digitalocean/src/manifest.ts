@@ -7,8 +7,11 @@ import {
 	MANIFEST_SCHEMA,
 	stableDigest,
 } from "@hobo/core";
-import type { InitialCapabilityPort } from "./equivalence.js";
-import { EQUIVALENCE_CLASSES } from "./equivalence.js";
+import {
+	EQUIVALENCE_CLASSES,
+	INITIAL_CAPABILITY_PORTS,
+	type InitialCapabilityPort,
+} from "./equivalence.js";
 
 // The schema ids are platform contract, so they live in @hobo/core and are
 // re-exported here to keep this package's public surface unchanged.
@@ -53,10 +56,7 @@ export type PublishedManifestDocuments = {
 // of these per month at a fixed plan size; the monthly plan price is divided by
 // 730 to express the same fact per hour, because a marginal price the ranker
 // cannot compare across providers is not a usable input.
-export const COST_FACTS: Record<
-	InitialCapabilityPort,
-	{ sku: string; unit: string; marginalPrice: string; included: number }
-> = {
+export const COST_FACTS = {
 	"web/service": {
 		sku: "digitalocean.app-platform.basic-xxs.instance-hour",
 		unit: "instance-hour",
@@ -94,9 +94,7 @@ export function publishCapabilityManifest(
 ): PublishedManifestDocuments {
 	const providerId = input.providerId ?? DIGITALOCEAN_PROVIDER_ID;
 	const regions = input.regions ?? DEFAULT_REGIONS;
-	const ports =
-		input.ports ??
-		(Object.keys(EQUIVALENCE_CLASSES) as InitialCapabilityPort[]);
+	const ports = input.ports ?? [...INITIAL_CAPABILITY_PORTS];
 	const capabilitiesDocument = {
 		schema: CAPABILITIES_SCHEMA,
 		providerId,

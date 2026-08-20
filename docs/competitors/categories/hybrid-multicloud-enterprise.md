@@ -17,7 +17,7 @@ Enterprise hybrid/multicloud provisioning, governance, catalog, lifecycle, and a
 
 These systems already sell the multicloud promise to enterprises. HoBo competes on honesty — scored portability and impedance limits instead of a uniform-abstraction claim.
 
-## Competitors (8)
+## Competitors (9)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -29,6 +29,7 @@ These systems already sell the multicloud promise to enterprises. HoBo competes 
 | [**DuploCloud**](../duplocloud.md) | compliance-first provisioning platform — competes for the same buyer by selling audit evidence rather than portability | overlapping | `governance`, `provider-matching`, `environments`, `identity-secrets`, `observability` | Continuous, framework-mapped compliance evidence (SOC 2/HIPAA/PCI/HITRUST/NIST) with drift detection, from a control plane installed inside the customer's own cloud account. | HoBo's append-only decision log is audit evidence by construction rather than generated, and residency is a typed fail-closed port — but HoBo's evidence pack is design-only today. | benchmark, borrow, displace | P2 |
 | [**Cycloid**](../cycloid.md) | self-service portal over templated IaC whose pre-provision cost estimation and auto-generated topology view are the surfaces HoBo most visibly lacks | overlapping | `authoring`, `environments`, `finops`, `observability`, `governance`, `app-graph` | Cost visible while the choice is being made (open-source TerraCost inside StackForms) and topology diagrams generated from Terraform source so they cannot go stale. | Cycloid has no application model and decides no placement: a form cannot express a dependency graph, and governance by dropdown cannot express a context-dependent rule. | benchmark, borrow, integrate | P2 |
 | [**Porter**](../porter.md) | BYOC PaaS that owns the customer's cluster — the clearest example of the credit-and-account argument HoBo also makes | overlapping | `environments`, `delivery`, `provider-matching`, `identity-secrets`, `finops` | Your account, your credits, your cluster — provisioned across AWS/GCP/Azure with role assumption and workload identity federation, no static credentials stored. | HoBo makes the same BYOC argument without a standing cluster or a 30-45 minute provisioning floor, and places per workload rather than per account. | benchmark, provider-target, borrow | P2 |
+| [**Red Hat Developer Hub**](../red-hat-developer-hub.md) | supported Backstage distribution whose dynamic plugin loading solves the maintenance problem that makes self-hosted Backstage expensive | complementary | `app-graph`, `governance`, `extensibility` | Dynamic, configuration-driven plugin loading removes the fork-build-upgrade treadmill that makes self-hosted Backstage expensive, with enterprise support behind it. | HoBo is the control plane a portal fronts; its wasm component model is a stronger version of the same runtime-loading instinct. | integrate, benchmark, borrow | P3 |
 
 ## Navigation
 

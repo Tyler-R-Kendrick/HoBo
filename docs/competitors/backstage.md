@@ -15,7 +15,8 @@ competitor:
   hobo_surface: [governance, ecosystem, extensibility]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://backstage.io/docs/overview/what-is-backstage/
     - https://github.com/backstage/backstage
@@ -53,6 +54,34 @@ The crucial framing for HoBo: **Backstage does not run, deploy, or provision any
 | AI | **None in core**; Spotify's **AiKA** AI knowledge assistant is a commercial plugin |
 | Origin / governance | **Spotify** (2016) → OSS (Mar 2020) → **CNCF Sandbox** (Sep 2020) → **CNCF Incubating** (Mar 15, 2022) |
 | License / commercial | **Apache-2.0** OSS core; **Spotify Portal for Backstage** (no-code managed distribution, GA **Oct 2025**) + **premium Spotify plugin bundle** (Soundcheck, RBAC, Skill Exchange, Insights, Pulse, AiKA) — **closed-source, annual subscription, contact-sales** |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Catalog entity** | Component, System, API, Resource, Group, User — declared in `catalog-info.yaml` files in the customer's own repositories |
+| **Software Template** | A scaffolder template that generates a new repository along a golden path |
+| **TechDocs** | Docs-as-code: repository Markdown compiled into searchable documentation |
+| **Plugin** | The extension unit — and, upstream, a build-time dependency compiled into the customer's own Backstage image |
+| **Processor / provider** | Catalog ingestion extension points |
+
+The mental model is **a framework, not a product**: Backstage ships the primitives and the customer
+builds their portal from them. That is the source of both its ecosystem and its cost — the same
+decision that produced Roadie and Red Hat Developer Hub as businesses.
+
+## How it competes with HoBo
+
+Backstage is **complementary by construction**, and [`lineage.md`](../design/lineage.md) already
+records the posture: a portal HoBo should feed, not replace.
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `app-graph` | The catalog is the de-facto standard representation of an engineering estate |
+| `extensibility` | The largest plugin ecosystem in the developer-portal category |
+| `governance` | Templates standardize how new work starts; permissions govern who sees what |
+
+Backstage surfaces and links; it does not decide, place, or execute. The contest is over the
+developer's attention, not over the control plane.
 
 ## Feature surface
 
@@ -186,9 +215,26 @@ The **Kubernetes plugin** is *"a tool that's designed around the needs of servic
 
 Assembling and operating open-source Backstage is real engineering (a React/Node monorepo you build, upgrade, and run). To lower that bar, **Spotify** offers **Portal for Backstage** — previewed May 2024 as a **no-code**, *"Backstage in a box"* distribution (*"Fast setup with no coding required,"* a *"friendly plugin installer,"* a working portal *"in under 10 minutes"*) and made **generally available in October 2025** as a **commercial product**. Alongside it, the **premium Spotify plugin bundle** — **Soundcheck** (standards/scorecards), **RBAC**, **Skill Exchange**, **Insights** (analytics), **Pulse** (surveys), and **AiKA** (AI knowledge assistant) — is **closed-source (license owned by Spotify)** and sold as an **annual subscription flexed to Backstage usage/capacity, no public list price, contact-sales**. These *"complement the open source platform,"* and revenue *"can be reinvested into developing … more plugins."* For HoBo this is simply out of scope: **HoBo takes monetization out of design scope entirely** ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)), so Spotify's commercial layer is neither a competitive threat nor a template HoBo follows.
 
-## Differentiators
+## Architecture
 
-### Strengths (what Backstage does well)
+- **Control plane** — a Node.js application the customer builds, deploys and operates. Upstream
+  Backstage is delivered as a scaffolded codebase, not a binary.
+- **Data plane** — none. Every plugin surfaces another system; Backstage controls nothing.
+- **Catalog ingestion** — entities are declared in `catalog-info.yaml` files discovered from
+  repositories, then processed and enriched.
+- **Plugin composition is build-time**, which is the architectural fact that drives the whole
+  ecosystem around it: adding a plugin means changing code, rebuilding an image, and re-merging on
+  every upgrade. Red Hat's dynamic plugin loading exists to undo exactly this.
+- **State authority** — the customer's repositories for entity declarations; the catalog database is
+  a projection.
+- **Portability boundary** — excellent for the model (upstream YAML in the customer's repos), poor
+  for the deployment (a bespoke fork the customer maintains forever).
+
+## Where Backstage is stronger
+
+> Shipped, evidenced capability only.
+
+### what Backstage does well
 
 - **The canonical developer-portal metamodel.** `catalog-info.yaml` + entity kinds + derived relations is the industry-standard way to describe *"what software exists, who owns it, and how it relates."* It's a clean, adopted, faithfully-designed graph.
 - **A mature, opinionated scaffolder.** Templates (form → actions → catalog registration) are a battle-tested golden-path launcher, with a broad action library.
@@ -197,7 +243,14 @@ Assembling and operating open-source Backstage is real engineering (a React/Node
 - **CNCF-Incubating, vendor-neutral, Apache-2.0**, with enormous adoption and a commercial on-ramp (Spotify Portal) for teams that don't want to self-operate.
 - **TechDocs** — docs-like-code is a genuinely good, well-integrated pillar.
 
-### Gaps (Backstage's limits — where HoBo lives, *underneath*)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Backstage's limits — where HoBo lives, *underneath*
 
 These are **category boundaries**, not defects — Backstage is deliberately a portal. But each is a thing HoBo *is* and Backstage *is not*:
 
@@ -209,7 +262,24 @@ These are **category boundaries**, not defects — Backstage is deliberately a p
 - **Portal-scoped permissions only.** The permission framework governs portal actions (opt-in, code-authored, no core RBAC UI); it does not gate real deploys or platform mutations. HoBo's **org governance** ([ADR-0074](../design/adr/02-identity-security.md#adr-0074)) governs the platform itself.
 - **You build and operate the portal.** OSS Backstage is a React/Node monorepo you assemble, upgrade, and host (or pay Spotify to). That's the *portal* — it says nothing about running your *product*.
 
-### Comparisons
+## Adversarial critique
+
+- **The maintenance burden is the defining criticism**, and it is structural rather than incidental:
+  a build-time plugin model plus a fast-moving upstream means every installation is a fork with a
+  permanent upgrade cost. An entire commercial category — Roadie, Red Hat Developer Hub, and others
+  — exists to sell relief from it.
+- **Declared catalogs go stale.** `catalog-info.yaml` describes what someone said was true; the
+  auto-discovering competitors in this cohort are attacking a real failure mode.
+- **It is a framework sold as a portal.** Adoption is an engineering project with staffing, not a
+  purchase, and organizations routinely underestimate that.
+- **Plugin quality is uneven**, as in any large community ecosystem, and the plugin surface is also
+  the security surface — plugins run inside the portal with its credentials.
+- **No enforcement.** Backstage can show that a service lacks an owner; it cannot prevent the next
+  one from shipping without one.
+- **Spotify's stewardship plus a commercial offering** is a normal and healthy arrangement that
+  adopters should still evaluate, as with any vendor-led open-source project.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Different layers of the stack. **Backstage is the *portal* (catalog + templates + docs + plugins over your tools); HoBo is the *control plane + runtime* (provision + run + govern).** They are **complementary**: Backstage answers *"what exists and how do I start something,"* HoBo answers *"make it exist and keep it running, anywhere, auditably."* A Backstage catalog could be **fed from** HoBo's resource graph, and a Backstage instance could be a **presentation layer over a HoBo Yard**. HoBo does **not** aim to be a portal framework — that is squarely Backstage's domain.
 - **vs Humanitec / Nomad (control-plane competitors):** those are closer to HoBo's category (orchestration/platform-orchestrator). Backstage is the **UI/catalog** teams put *in front of* a Humanitec or a Nomad — it composes with control planes rather than being one.
@@ -218,7 +288,9 @@ These are **category boundaries**, not defects — Backstage is deliberately a p
 
 **Net:** Backstage is the **canonical developer portal** and the clearest proof that the **catalog + golden-path-templates + plugin** model is what teams want at the *surface* — and its **ecosystem + portal maturity are genuinely ahead of design-phase HoBo**. But it is a **presentation/metadata/workflow-launcher layer with no runtime, no provisioning, no durable execution, no native AI, and no platform-level governance.** HoBo is the **layer beneath**: the control plane + runtime that *makes the catalog's entries real and keeps them running*. The honest relationship is **complementary** — "HoBo is the platform Backstage would surface" — and the only place they touch is HoBo's own dashboard/status-pages + generated developer catalog, which cover a *slice* of Backstage's surface without HoBo ever trying to *be* Backstage.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Backstage concept (✅ has · ➕ goes further · ◐ partial/thinner · 🔜 planned). **Read the whole table as "adjacent surface overlap," not "head-on parity"** — Backstage is a portal; most rows map to HoBo's *dashboard/catalog/packaging* surface, and several Backstage strengths (plugin ecosystem, portal maturity) are places HoBo is **behind**, by design, because HoBo is not a portal framework.
 
@@ -247,3 +319,39 @@ Credit where due: **Backstage's plugin ecosystem (140+ marketplace + large commu
 ### The one-line takeaway
 
 **Backstage is the portal; HoBo is the platform the portal points at.** Backstage catalogs, scaffolds, and surfaces — over tools it never runs — and its ecosystem/UX maturity are a real, ahead-of-HoBo strength; HoBo provisions, runs, and governs — cloud-agnostic, wasm-durable, event-sourced, AI-native — the substrate whose reality Backstage would *display*. They are **complementary, not competitive**: the natural end state is a Backstage instance rendering a **HoBo Yard**, with HoBo's resource graph feeding the catalog and HoBo doing the one thing Backstage structurally cannot — making the entries real and keeping them alive.
+
+## Better-together / integration posture
+
+- **Integrate** — the settled posture, and the right one: HoBo is a control plane that a Backstage
+  portal can front. HoBo should be a first-class catalog source and a scaffolder action target.
+- **Borrow** — **the entity model's role separation** (Component / System / API / Resource / Group /
+  User) is a well-designed vocabulary, and **keeping the model in the customer's repositories** is a
+  principle HoBo shares and states less clearly.
+- **Standard** — `catalog-info.yaml` is a de-facto standard worth emitting rather than competing with.
+- **Benchmark** — on ecosystem breadth, which HoBo will not match and should not try to.
+- Not a displace target. Building a portal would be a strategic error, and this capture's purpose is
+  partly to make that judgement explicit and durable.
+
+## Threats and lessons
+
+1. **Whoever owns the portal owns the developer relationship.** Six products in this cohort compete
+   for that surface. HoBo's answer is to be the best thing behind it, and to make that integration
+   trivial — which is a documentation and adapter task, not a product pivot.
+2. **Build-time extension models create permanent cost.** Backstage's ecosystem is its strength and
+   its plugin model is why distributions exist. HoBo's runtime-loaded components are the answer to
+   this, and the argument should be made explicitly against this example.
+3. **A declared catalog is a promise; a derived catalog is a fact.** HoBo's event log makes it a
+   better catalog source than most systems Backstage ingests from, and that is a concrete
+   integration pitch rather than an abstract advantage.
+4. **The category's economics favour managed distributions.** Open source plus operational burden
+   reliably produces a services market — a pattern worth remembering for HoBo's own open core.
+
+## Sources
+
+- [backstage.io](https://backstage.io/) and [what is Backstage](https://backstage.io/docs/overview/what-is-backstage/) — framework positioning, catalog, TechDocs, templates, plugins
+- [backstage/backstage](https://github.com/backstage/backstage) — source, Apache-2.0, CNCF project status
+- HoBo-side: [`design/lineage.md`](../design/lineage.md) records Backstage as a complementary portal, not a rival
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Current plugin-ecosystem size, release cadence and the Spotify Portal
+commercial offering were not re-verified in this pass and are not asserted.

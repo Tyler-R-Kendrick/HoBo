@@ -17,7 +17,7 @@ AI-native infrastructure modeling, autonomous remediation, agent tool surfaces, 
 
 HoBo is AI-native by design. This category tests whether HoBo's policy-gated, audited agent surface beats products already shipping autonomous operations.
 
-## Competitors (6)
+## Competitors (8)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -27,6 +27,8 @@ HoBo is AI-native by design. This category tests whether HoBo's policy-gated, au
 | [**Vercel**](../vercel.md) | frontend cloud plus durable Workflow SDK and AI stack — borrow-source promoted to full parity capture | overlapping | `delivery`, `environments`, `agent-surface` | Exceptional delivery pipeline plus a durable workflow and AI stack. | HoBo's durable execution is event-sourced and portable, not tied to one hosting vendor. | benchmark, borrow, provider-target | P1 |
 | [**Harness Platform**](../harness.md) | modular commercial DevOps platform whose CD, IDP, IaCM and cost modules each contest a different HoBo surface | overlapping | `delivery`, `governance`, `environments`, `finops`, `extensibility`, `observability` | AIDA agent features span pipeline generation and failure triage across nine shipped modules. | HoBo gates agent actions through boundary contracts and records each decision as an event, rather than surfacing assistance inside a pipeline UI. | benchmark, borrow, integrate | P2 |
 | [**Control Plane**](../control-plane.md) | multi-cloud virtual-cloud runtime — the shipped product closest to HoBo's portability claim, solved at the runtime and identity layer rather than the manifest layer | direct | `runtime-portability`, `provider-matching`, `environments`, `identity-secrets`, `app-graph` | Positions as the virtual cloud for AI-native teams, with workload identity that lets agent workloads reach cloud resources without stored credentials. | HoBo gates agent actions at typed boundary contracts and records each decision, rather than relying on the runtime being uniform. | displace, benchmark, borrow, provider-target | P2 |
+| [**Port**](../port.md) | schema-first developer portal whose Blueprint model is the strongest catalog abstraction in the corpus — a front end HoBo should serve, not fight | complementary | `app-graph`, `governance`, `extensibility`, `agent-surface` | Blueprints let an organization define its own entity types and relations, with auto-discovery keeping the catalog true and a shipped MCP surface over it. | Port models what exists; HoBo decides what should happen. A scorecard reports fifteen non-compliant services, policy.Decided stops the sixteenth. | integrate, borrow, benchmark | P1 |
+| [**Cortex**](../cortex.md) | catalog-and-scorecards portal whose managed integrations and ownership inference are the operational bar for keeping an estate legible | complementary | `app-graph`, `governance`, `observability` | Vendor-managed integrations and first-class ownership resolution — including inference against an org chart — so the catalog stays true without customer maintenance. | HoBo derives its graph from an authoritative event log rather than reconciling systems that may disagree, and enforces at admission rather than reporting after. | integrate, benchmark, borrow | P2 |
 
 ## Navigation
 

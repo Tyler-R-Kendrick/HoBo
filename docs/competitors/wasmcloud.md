@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [runtime-portability, extensibility, typed-contracts]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-20
+  contract: v1
   sources:
     - https://wasmcloud.com/docs
     - https://github.com/wasmCloud/wasmCloud
@@ -48,6 +49,40 @@ The mental model is **components + capabilities, late-bound**. A component *impo
 | Tooling | **`wash`** CLI (build/dev/up/app deploy/push/pull/call/link); artifacts distributed as **OCI** images (`ghcr.io/wasmcloud/…`) |
 | Kubernetes | **`wasmcloud-operator`** — CRDs (`WasmCloudHostConfig`, …) run hosts + wadm apps on K8s "without … custom nodes"; K8s-secrets integration |
 | Not in scope | Cloud-resource **provisioning/IaC**, **infrastructure-from-code** authoring, an **event-sourced app runtime**, **AI generation / agents-as-principals** — the layers HoBo adds |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Component** | The deployable code unit: a WebAssembly component with a WIT-described interface |
+| **Capability provider** | A pluggable implementation of a capability (key-value, messaging, HTTP) that components reach through their interfaces |
+| **Link** | Runtime wiring between a component and a provider — the binding is a control-plane operation, not a compile-time dependency |
+| **Host** | The Wasmtime-based runtime executing components; the trusted compute base |
+| **Lattice** | The NATS-backed mesh joining hosts into one location-independent address space |
+| **wRPC** | WIT-over-RPC — how a call crosses a host boundary without the caller knowing |
+| **wadm** | Declarative application manifests, expressed in OAM vocabulary |
+| **wash** | The CLI and local development loop |
+
+The mental model is **deny by default, wired at runtime**: a component can do nothing except what its
+imports allow, and what satisfies those imports is decided by a link at deploy time rather than by a
+dependency at build time. Late binding of capabilities is the property HoBo's entire portability
+argument rests on.
+
+## How it competes with HoBo
+
+wasmCloud is **adopted, not contested**: it is HoBo's default component host
+([ADR-0031](../design/adr/01-architecture-core.md#adr-0031)), and `wadm` is a HoBo render target
+([ADR-0108](../design/adr/01-architecture-core.md#adr-0108)).
+
+| Surface | Relationship |
+| ------- | ------------ |
+| `runtime-portability` | Provided by wasmCloud, not competed for |
+| `typed-contracts` | WIT is the shared interface language — HoBo's ports are WIT worlds |
+| `wiring` | Links are the runtime realization of HoBo's `bind` |
+| `extensibility` | Capability providers are one realization path for HoBo's adapters |
+
+The division is clean: **wasmCloud owns the host, HoBo owns the model.** HoBo decides what should
+run where and why; wasmCloud runs it and wires it.
 
 ## Feature surface
 
@@ -170,9 +205,26 @@ wash inspect        # inspect a component/provider (signing info)
 
 wasmCloud runs **on** Kubernetes via the **`wasmcloud-operator`**: "an operator for managing a set of wasmCloud hosts running on Kubernetes and managing wasmCloud applications using wadm," driven by CRDs (hosts via `WasmCloudHostConfig`) so you "tell it which lattice and how many hosts you want" and it reconciles the deployment — "without having to modify your cluster or use custom nodes." It integrates Kubernetes secrets (and cloud backends such as AWS Secrets Manager and Vault). This matters for HoBo: because wasmCloud can sit *on top of* an existing K8s cluster, HoBo can treat **Kubernetes as one provider target** under its pluggable IaC ([Plan 4](../design/control-plane.md#plan-04)) while still presenting the uniform wasmCloud host/lattice above it.
 
-## Differentiators
+## Architecture
 
-### Strengths (what wasmCloud does well)
+- **Host** — Wasmtime executing components with a capability-based security model; nothing is
+  ambient.
+- **Lattice** — NATS-based, giving location independence: a component addresses a capability, not a
+  host, and the lattice routes.
+- **Links** — the control plane sets them; changing a link changes what satisfies an import without
+  rebuilding the component.
+- **wRPC** — carries WIT-typed calls across hosts, which is what makes the lattice transparent.
+- **State authority** — wadm manifests plus lattice state; wasmCloud is a runtime, not a system of
+  record.
+- **Portability boundary** — genuinely strong at the component boundary and bounded by provider
+  coverage: a component is portable, a capability is only as portable as the providers implementing
+  it.
+
+## Where wasmCloud is stronger
+
+> Shipped, evidenced capability only.
+
+### what wasmCloud does well
 
 - **Standards-first substrate** — Component Model + WASI 0.2 + WIT give **vendor-neutral, language-neutral contracts**. A component is portable code against an interface, not a framework binding. This is the single most important property HoBo inherits.
 - **Runtime-swappable capabilities via links** — capabilities are "pluggable and extensible at runtime — you do not need to ship a new host to update or extend capabilities." Change the backing store/broker by changing a link.
@@ -182,7 +234,12 @@ wasmCloud runs **on** Kubernetes via the **`wasmcloud-operator`**: "an operator 
 - **Declarative, reconciled deployment (wadm)** — Kubernetes-like desired-state orchestration that is Wasm-native, with spread/daemon scaling and link wiring in one OAM manifest.
 - **CNCF-governed and OCI-native** — Incubating maturity, open governance, artifacts distributed as ordinary OCI images; a `wasmcloud-operator` brings it to existing K8s estates.
 
-### Gaps (what wasmCloud leaves to HoBo)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent.
+
+### what wasmCloud leaves to HoBo
 
 These are **not weaknesses** — they are, by design, the layers *above* the runtime substrate that wasmCloud does not attempt and HoBo supplies:
 
@@ -193,7 +250,26 @@ These are **not weaknesses** — they are, by design, the layers *above* the run
 - **No AI-native surface.** No **agents-as-principals** (identities, token brokering, MCP control), no **AI generation pipeline** for providers/implementations, no trainable functions. HoBo adds agents as principals ([Plan 6](../design/ai-native-agent-auth.md#plan-06)) and a conformance-gated **generation pipeline** ([Plan 23](../design/generated-stack.md#plan-23)/[ADR-0010](../design/adr/03-data-plane.md#adr-0010)).
 - **NATS operational surface.** The lattice assumes NATS; running, scaling, and securing it is on the operator. HoBo folds the whole substrate into a self-hostable **Yard-is-a-Bindle** so self-host equals hosted parity ([Plan 4](../design/control-plane.md#plan-04)), with commercialization out of design scope ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)).
 
-### Comparisons
+## Adversarial critique
+
+- **The component model is still maturing.** Toolchain support varies sharply by language, and
+  building a component is harder than building a container for most teams today. This is the single
+  largest adoption risk HoBo inherits by adopting wasmCloud.
+- **NATS is a hard dependency** and an operational surface: the lattice's availability, security and
+  scaling characteristics are NATS's.
+- **Capability-provider coverage is the practical ceiling.** Late binding is only useful where a
+  provider exists for the target; the catalog is far smaller than any container ecosystem.
+- **Debugging across the membrane is harder.** A wRPC call that fails between hosts gives less
+  context than an in-process call or an HTTP request with a trace header.
+- **Ecosystem size.** CNCF governance and real adopters, and orders of magnitude smaller than
+  Kubernetes' ecosystem — which matters for hiring, tooling and community answers.
+- **Performance characteristics are workload-dependent.** Wasm start-up is excellent; sustained
+  compute-heavy or memory-heavy workloads are a different profile from native containers.
+- **Adopting a substrate transfers its risk.** HoBo's runtime story depends on wasmCloud's project
+  health and on the component model's trajectory, and that dependency should be stated rather than
+  assumed away.
+
+### Comparisons with adjacent tools
 
 - **vs Kubernetes / Nomad:** wasmCloud schedules **Wasm components + providers over a lattice**, not containers over nodes — a much lighter, capability-linked unit. It is complementary, not rival: the `wasmcloud-operator` runs wasmCloud *on* Kubernetes, and HoBo treats K8s as one provider target beneath the wasmCloud host.
 - **vs Dapr:** both give **portable capability APIs** (Dapr building blocks ↔ WASI/WIT ports) with pluggable components and no provisioning. Dapr is an out-of-process **sidecar** over HTTP/gRPC; wasmCloud is **in-process Wasm** linked over **wRPC**. HoBo unifies both stances — WIT ports (Dapr-like portability) realized on the wasmCloud Component Model (in-process, capability-secure).
@@ -203,7 +279,9 @@ These are **not weaknesses** — they are, by design, the layers *above* the run
 
 **Net:** wasmCloud is the **shipping CNCF substrate HoBo builds on**. HoBo adopts the component/provider/link/host/lattice/wRPC/wadm model essentially unchanged and adds the layers wasmCloud deliberately leaves out — cloud-resource **provisioning + pluggable IaC**, a **control plane** (Resource Definitions/Matching, the Dispatcher, contracts/policy/cost/governance), a **durable event-sourced application runtime**, and an **AI-native** generation + agent-principal surface. It is a **superset relationship, not a rivalry**: wasmCloud is the foundation, HoBo is the meta-cloud built on it.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > How each wasmCloud concept lands in HoBo. **✅ = HoBo adopts this directly · ➕ = HoBo adds provisioning/control-plane/AI-native on top · ◐ = HoBo adopts and extends · 🔜 = designed but thin/iteration hook.** The founding decision — a **self-hosted wasmCloud lattice is HoBo's default component-host** — is [ADR-0031](../design/adr/01-architecture-core.md#adr-0031); the **wRPC membrane** is [ADR-0069](../design/adr/01-architecture-core.md#adr-0069); the runtime + ports are [Plan 20](../design/wasm-runtime-wit.md#plan-20). HoBo is **design-phase**; wasmCloud is a **shipping CNCF runtime HoBo depends on**.
 
@@ -252,3 +330,35 @@ wasmCloud already ships the two hardest properties HoBo needs at the runtime lay
 ### The one-line takeaway
 
 **wasmCloud is the runtime substrate HoBo stands on, not a rival to displace.** It ships the component/provider/link/host/lattice/wRPC/wadm foundation HoBo adopts wholesale; HoBo's entire differentiation is the superset built *above* it — multi-cloud provisioning + pluggable IaC, Resource Definitions/Matching + the Dispatcher, contracts/policy/cost/governance planes, a durable event-sourced application runtime, and AI-native generation with agents-as-principals.
+
+## Better-together / integration posture
+
+- **Adopt** — the settled posture: wasmCloud is HoBo's default component host (ADR-0031).
+- **Render-target** — HoBo renders manifest IR to `wadm` (ADR-0108), which speaks OAM vocabulary
+  shared with KubeVela.
+- **Standard** — WIT and WASI are spoken at the boundary, never absorbed as HoBo's internal model,
+  per the governing rule in [`lineage.md`](../design/lineage.md).
+- Not a displace target in any reading.
+
+## Threats and lessons
+
+1. **HoBo's runtime bet rides on the component model's trajectory.** That is a real, named risk, and
+   the mitigation is already architectural: OCI containers remain a fallback and wasmCloud is one
+   host among several.
+2. **Late binding of capabilities is the mechanism behind HoBo's portability claim.** Links are what
+   make "the same component, a different provider" true rather than aspirational — worth stating
+   explicitly whenever the portability argument is made.
+3. **Provider coverage is the number to watch**, not host features. Portability is bounded by what
+   has been implemented, which is exactly what `PortabilityReport` exists to make visible.
+4. **Toolchain friction is the adoption blocker.** If building a component is harder than building a
+   container, the model's advantages never get evaluated.
+
+## Sources
+
+- [wasmcloud.com/docs](https://wasmcloud.com/docs) — components, capability providers, links, hosts, lattice, wRPC, wadm, wash
+- [wasmCloud/wasmCloud](https://github.com/wasmCloud/wasmCloud) — source, CNCF project status
+- HoBo-side: [ADR-0031](../design/adr/01-architecture-core.md#adr-0031) (default host), [ADR-0108](../design/adr/01-architecture-core.md#adr-0108) (wadm render target), [`design/lineage.md`](../design/lineage.md)
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Current provider catalog size and language toolchain maturity were not
+re-verified in this pass and are not asserted.

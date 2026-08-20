@@ -15,7 +15,8 @@ competitor:
   hobo_surface: [provider-matching, runtime-portability, reconciliation]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-20
+  contract: v1
   sources:
     - https://developer.hashicorp.com/nomad/docs
     - https://github.com/hashicorp/nomad
@@ -25,7 +26,7 @@ competitor:
 
 > Captured for HoBo competitive analysis. Sources: HashiCorp Developer Nomad docs and the `hashicorp/nomad-pack` repository, researched July 1, 2026. This file documents **Nomad** and **Nomad Pack** faithfully; the HoBo↔Nomad mapping/parity tracker lives in the [HoBo mapping](#hobo-mapping) section below.
 
-## Positioning
+## What it is
 
 - **Nomad:** a simple, flexible scheduler/orchestrator for containers, binaries, batch jobs, and other workloads across on-prem and cloud infrastructure.
 - **Nomad Pack:** a templating/packaging layer for Nomad job specifications: deploy popular apps, reuse internal patterns, and share jobspecs through registries.
@@ -51,6 +52,34 @@ Nomad jobspec / Nomad Pack
 **Workload types.** Nomad covers service jobs, batch jobs, system jobs, parameterized/on-demand jobs, periodic jobs, and dispatch-style runs. This is broader than serverless-backend frameworks: Nomad is a general scheduler.
 
 **Integration-first, not batteries-included cloud resources.** Nomad intentionally delegates service mesh/discovery to Consul, secrets to Vault or Nomad Variables/templates, storage to CSI/host volumes, networking to CNI/host networking, autoscaling to Nomad Autoscaler, and infrastructure provisioning to external IaC/cluster management.
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Job** | The unit of work, declared in HCL jobspec: groups of tasks with constraints and update strategy |
+| **Task group** | Co-scheduled tasks sharing a network namespace and allocation |
+| **Task driver** | How a task actually runs — Docker, `exec`, Java, QEMU, or a custom driver |
+| **Allocation** | A scheduled instance of a task group on a specific client node |
+| **Constraint / affinity / spread** | Declarative placement controls the scheduler evaluates |
+| **Nomad Pack** | Reusable, parameterized jobspec packaging |
+| **Server / client** | The Raft-backed scheduler cluster and the agents that run allocations |
+
+The mental model is **one scheduler, many workload shapes**. Nomad's distinguishing decision is that
+containers are one driver among several: it schedules binaries, JVMs and VMs with the same
+primitives, which is why it fits estates Kubernetes does not.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `provider-matching` | **The closest analog to HoBo's matching in this cohort** — constraints, affinities and spread are a declarative placement language the scheduler evaluates |
+| `runtime-portability` | Multiple task drivers, so the same scheduler covers heterogeneous workloads |
+| `reconciliation` | Allocation lifecycle and rescheduling |
+
+[`lineage.md`](../design/lineage.md) records Nomad as a **pillar, pivoted**: the heterogeneous
+scheduling and federation intent are taken, realized through the wasmCloud lattice and the
+Junction/Yard/Camp hierarchy rather than through a Nomad cluster.
 
 ## Feature surface
 
@@ -134,7 +163,24 @@ nomad-pack status prometheus
 nomad-pack destroy prometheus
 ```
 
-## Differentiators
+## Architecture
+
+- **Servers** — a Raft-replicated cluster holding state and running the scheduler; leader election
+  and consensus are the availability model.
+- **Clients** — agents on each node advertising fingerprinted resources and running allocations.
+- **Scheduling** — an evaluation produces a plan: feasibility filtering by constraints, then ranking
+  by affinities and bin-packing. This is genuinely a scored placement decision, made by the
+  scheduler rather than declared by the user.
+- **Federation** — multi-region and multi-datacenter with request forwarding.
+- **State authority** — Raft-backed server state; allocations are the durable record of what runs
+  where.
+- **Portability boundary** — Nomad schedules onto its own clients. Jobs are portable across Nomad
+  clusters and nowhere else; the driver abstraction covers workload shape, not provider.
+
+## Where Nomad is stronger
+
+> Shipped, evidenced capability only.
+
 
 ### Headline differentiators
 
@@ -166,7 +212,9 @@ nomad-pack destroy prometheus
 - **No WASM Component Model contract.** Wasm can be run if packaged behind a driver/container, but Nomad does not make WIT interfaces the provider contract.
 - **Multi-cloud means schedule-anywhere, not provider-portable app resources.** A Nomad job can run in many environments; its backing services are still environment-specific unless external tooling standardizes them.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > For every Nomad/Nomad Pack feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · ↔ = adjacent/composable · 🔜 = planned/iteration hook. HoBo design lives in [`../design/`](../design/index.md). The displacement decision — why self-hosted wasmCloud ([ADR-0031](../design/adr/01-architecture-core.md#adr-0031)) + Matching ([ADR-0033](../design/adr/01-architecture-core.md#adr-0033)) + Dispatcher ([ADR-0071](../design/adr/01-architecture-core.md#adr-0071)) subsume the scheduler pillar, and Nomad's accepted-future deploy-target disposition — is recorded in [ADR-0106](../design/adr/01-architecture-core.md#adr-0106). Rows with no committed design text anchor to an explicit iteration hook, never to a bare status.
 
@@ -240,3 +288,67 @@ nomad-pack destroy prometheus
 - HashiCorp Developer — Nomad Variables and workload identity release/upgrade notes: <https://developer.hashicorp.com/nomad/docs/concepts/variables>, <https://developer.hashicorp.com/nomad/docs/release-notes/v1-10-x>
 - HashiCorp Developer — Nomad Pack command docs: <https://developer.hashicorp.com/nomad/tools/nomad-pack/commands/registry/add>
 - GitHub — `hashicorp/nomad-pack`: <https://github.com/hashicorp/nomad-pack>
+
+## Adversarial critique
+
+- **Ecosystem gravity went to Kubernetes.** Nomad is widely agreed to be simpler and better
+  operationally for many estates, and lost the ecosystem battle regardless. Tooling, hiring and
+  third-party integration all reflect that.
+- **Licensing changed.** HashiCorp's move from MPL to the Business Source License in 2023 altered
+  the open-source proposition for the whole product family, and OpenTofu's existence shows how
+  seriously the ecosystem took it. This is a strategic risk for anyone standing on it.
+- **The IBM acquisition adds stewardship uncertainty** that adopters should weigh, independent of the
+  technology.
+- **Scheduling is not a platform.** Nomad places workloads; service discovery, secrets, mesh and CI
+  are Consul, Vault and other products — the suite is the answer, and the suite is the coupling.
+- **Jobspec is operational, not application-level.** It describes how to run a thing, not what an
+  application needs, so it sits below the abstraction HoBo is arguing for.
+- **Raft cluster operations** — quorum, snapshots, upgrades — are real work, smaller than Kubernetes'
+  and not nothing.
+
+## Where HoBo is stronger or intentionally different
+
+- **HoBo matches capabilities to providers; Nomad matches workloads to nodes** (*implemented*). Both
+  are scored placement, at different altitudes — Nomad's decides *which machine*, HoBo's decides
+  *which cloud service or host*.
+- **The decision is recorded and replayable** (*implemented*, `match.Decided` on an event log);
+  Nomad's evaluation produces an allocation, not an explanation.
+- **Not tied to one scheduler's clients** (*implemented*): HoBo targets provider services, wasm
+  hosts, or local runtimes, and a Nomad cluster could be one of them.
+- **Fail-closed residency** (*implemented*, ADR-0146); Nomad's datacenter constraints are placement
+  hints without a jurisdiction model.
+- **Honest caveat.** Nomad's scheduler is production-proven at very large scale; HoBo's matching is
+  implemented but has not been exercised anywhere near that hard.
+
+## Better-together / integration posture
+
+- **Borrow** — recorded in [`lineage.md`](../design/lineage.md): heterogeneous scheduling and
+  federation intent. Worth adding explicitly — **constraint / affinity / spread as a declarative
+  placement vocabulary** is a well-designed language for expressing placement preferences, and HoBo's
+  matching inputs would benefit from being that legible.
+- **Provider-target** — a Nomad cluster is a plausible Camp substrate.
+- **Benchmark** on scheduler behaviour under bin-packing pressure and on multi-region federation.
+- Not an adopt or displace target.
+
+## Threats and lessons
+
+1. **Being better is not sufficient.** Nomad's operational simplicity was real and Kubernetes won on
+   ecosystem. The lesson for HoBo is that architectural advantage must be paired with an adoption
+   path, not assumed to speak for itself.
+2. **Licence changes are an ecosystem-level risk.** The BSL move is exactly why HoBo's adapter model
+   keeps no engine primary (ADR-0006), and why an open core matters to buyers who have lived through
+   one.
+3. **Placement vocabulary is worth stealing.** Constraints, affinities and spread give users a way to
+   express intent about placement that HoBo's scoring inputs currently lack.
+4. **Scheduling alone is not a platform** — the suite requirement is what made Nomad harder to adopt
+   than its core suggested.
+
+## Sources
+
+- [Nomad documentation](https://developer.hashicorp.com/nomad/docs) — jobspec, task drivers, scheduling, constraints, federation, Nomad Pack
+- [hashicorp/nomad](https://github.com/hashicorp/nomad) — source and current licence
+- HoBo-side: [`design/lineage.md`](../design/lineage.md) records Nomad as a pivoted pillar
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Current licence terms and post-acquisition roadmap were not
+re-verified in this pass and are not asserted.

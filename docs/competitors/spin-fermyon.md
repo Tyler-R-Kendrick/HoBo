@@ -15,7 +15,8 @@ competitor:
   hobo_surface: [runtime-portability, extensibility]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://spinframework.dev/
     - https://www.spinkube.dev/
@@ -47,6 +48,32 @@ Where HoBo is a **cloud-agnostic control plane + durable runtime** that maps one
 | Density (FP4K) | **>1,500 apps/node** (up to ~5,000), scale-to-zero, sub-ms cold start — "~50× more apps per node" than containers |
 | AI | **Serverless AI** — LLM inference host API (`ai_models`, e.g. `llama2-chat`); **no** AI *generation* / agent-identity story |
 | License / owner | **Spin + SpinKube: Apache-2.0, CNCF sandbox**; Fermyon Cloud/Platform/Wasm-Functions commercial; **Fermyon acquired by Akamai (Dec 2025)** |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Spin application** | A `spin.toml`-declared set of components with triggers |
+| **Component** | A WebAssembly component handling a trigger |
+| **Trigger** | What invokes a component — HTTP, Redis, cron |
+| **Runtime config** | Where backing services (key-value, SQL, vaults) are bound |
+| **SpinKube** | The Kubernetes operator running Spin applications as first-class cluster workloads |
+| **Fermyon platform** | The commercial/hosted side (Fermyon Cloud, Wasm Functions) |
+
+The mental model is **wasm serverless with near-zero cold start**: a component is instantiated per
+request, and because instantiation is sub-millisecond, per-request isolation is affordable in a way
+container-per-request never was.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `runtime-portability` | Wasm components running on several hosts, including Kubernetes via SpinKube |
+| `extensibility` | Trigger and runtime-config model |
+
+Spin is a **host**, not a control plane: HoBo treats SpinKube as a `component-host` adapter
+([ADR-0031](../design/adr/01-architecture-core.md#adr-0031)) rather than as a rival, and renders to
+it as one target among several.
 
 ## Feature surface
 
@@ -136,9 +163,24 @@ Spin ships **built-in host capabilities** a component calls through its SDK; acc
 
 Spin apps are **WebAssembly Component-Model** units behind **WIT** interfaces (the `spin:up` world + `wasi:*` interfaces), so the host↔guest contract is standards-based and language-neutral. SDKs cover **Rust, JS/TS, Python, TinyGo**, with community SDKs for others — any Component-Model language can target Spin. The same **WIT + deny-by-default sandbox + ~1 ms cold start** properties are exactly the substrate facts catalogued in [`wasm-hosts.md`](wasm-hosts.md) and the basis HoBo cites for its own runtime ([Plan 20](../design/wasm-runtime-wit.md#plan-20)).
 
-## Differentiators
+## Architecture
 
-### Strengths (what Spin / Fermyon does well)
+- **Runtime** — Wasmtime-based, instantiating a component per request and discarding it, which is
+  what makes the isolation model affordable.
+- **Triggers** — HTTP, Redis and cron dispatch into components.
+- **Runtime config** — binds key-value, SQL and secret backends outside the component, so the same
+  component runs against different services.
+- **SpinKube** — a Kubernetes operator plus a containerd shim, so Spin applications schedule as
+  ordinary cluster workloads without a container per component.
+- **State authority** — none of its own; the platform or cluster holds it.
+- **Portability boundary** — the component is portable; the trigger model and runtime-config schema
+  are Spin's, so moving to a different wasm host means re-expressing them.
+
+## Where Spin / Fermyon is stronger
+
+> Shipped, evidenced capability only.
+
+### what Spin / Fermyon does well
 
 - **A mature, production wasm runtime — shipping for years.** This is the honest lead: where HoBo is **design-phase**, Spin/Fermyon **ship real wasm hosting today**. Wasmtime-based, deny-by-default, **~1 ms cold start / ~10 MB / <5 MB binary**.
 - **Edge-serverless at genuine scale.** Fermyon Wasm Functions on Akamai is **GA (Nov 2025)** and benchmarked at **75M RPS** with sub-ms cold starts — a production edge story HoBo does not have.
@@ -148,7 +190,14 @@ Spin apps are **WebAssembly Component-Model** units behind **WIT** interfaces (t
 - **Kubernetes-native via a containerd shim (runwasi).** SpinApps are first-class K8s custom resources scheduled by the existing control plane — reuses the OCI pipeline instead of adding new infra.
 - **Clean local↔prod parity for the app author** — `spin up` uses local SQLite/KV so code is unchanged from laptop to cloud.
 
-### Gaps (Spin / Fermyon's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Spin / Fermyon's limits — HoBo's opening
 
 - **It's a single wasm host, not a meta-cloud.** Spin/Fermyon gives you **one runtime** (and the places to run it); it has **no cloud-agnostic control plane**, no "map one app onto any mix of providers." HoBo treats a wasm host as **one adapter behind a `component-host` port** — SpinKube/wasmCloud/Wasmtime/provider-native are interchangeable per-Camp ([ADR-0031](../design/adr/01-architecture-core.md#adr-0031)/[Plan 20](../design/wasm-runtime-wit.md#plan-20)).
 - **No provisioning / no IaC layer.** Spin **does not provision cloud infrastructure** — no Pulumi/Terraform/Crossplane, no provider adapters, no "declare a resource and the platform stands it up in *your* account." Managed data exists only where the *host* offers it (Fermyon Cloud's Turso KV/SQLite). HoBo is **cloud-agnostic + IaC-pluggable** ([Plan 4](../design/control-plane.md#plan-04)/[ADR-0006](../design/adr/01-architecture-core.md#adr-0006)).
@@ -159,7 +208,24 @@ Spin apps are **WebAssembly Component-Model** units behind **WIT** interfaces (t
 - **Narrow data paradigm.** KV + SQLite + outbound MySQL/Postgres — no first-class document/graph/vector/OLAP resource in the IfC surface. HoBo formalizes a **paradigm taxonomy + opt-in packages** ([ADR-0052](../design/adr/03-data-plane.md#adr-0052)/[ADR-0081](../design/adr/03-data-plane.md#adr-0081)).
 - **Value + the managed data plane concentrate in the commercial hosts.** Fermyon Cloud / Platform-for-K8s / Wasm-Functions are the paid layer (and now **Akamai-owned**); the OSS gives you the runtime + SpinKube but not a hosted control plane. HoBo's **Yard is itself a Bindle** — self-host = hosted parity ([Plan 4](../design/control-plane.md#plan-04)) — and monetization is out of design scope ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)).
 
-### Comparisons
+## Adversarial critique
+
+- **Per-request instantiation shapes what fits.** Stateless request handlers are ideal; long-lived
+  connections, in-memory caches, and stateful sessions are awkward or impossible.
+- **The trigger set is narrow.** HTTP, Redis and cron cover common cases and leave queues, streams
+  and event buses to be reached through other means.
+- **Two overlapping ecosystems.** Spin's component model and wasmCloud's overlap heavily while
+  differing in wiring philosophy — Spin binds through runtime config, wasmCloud through lattice
+  links. A team must choose, and the choice is not obviously reversible.
+- **Commercial trajectory has shifted.** Fermyon's hosted offering and packaging have changed
+  direction more than once, and adopters should evaluate the current state rather than assume
+  continuity; this capture does not assert a specific status.
+- **Wasm ecosystem maturity** is the shared constraint across this whole cohort — toolchain support
+  varies sharply by language.
+- **SpinKube reintroduces Kubernetes** as the operational substrate for teams that adopted wasm
+  partly to avoid it.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Spin/Fermyon is a **wasm host + places to run it**; HoBo is a **cloud-agnostic control plane + durable runtime** that *uses* a wasm host (SpinKube among them). Spin is **ahead on the substrate** (mature runtime, edge at 75M RPS, sub-ms cold start, density) — the very properties HoBo's design *assumes*; HoBo is **ahead of the boundary** (provisioning/IaC, control-plane planes, event-sourced governance, AI-native generation). Spin/Fermyon is the clearest evidence that HoBo's **wasm-default bet is sound** *and* the clearest reminder that a runtime alone is not the platform.
 - **vs wasmCloud:** both CNCF wasm platforms; wasmCloud adds a **cross-host lattice + WIT links over wRPC/NATS** that Spin lacks, while Spin is more HTTP-app/edge-focused with a slicker single-app DX. HoBo borrows wasmCloud's **links** model and treats **both** as `component-host` adapters (see [`wasm-hosts.md`](wasm-hosts.md)).
@@ -169,7 +235,9 @@ Spin apps are **WebAssembly Component-Model** units behind **WIT** interfaces (t
 
 **Net:** Spin/Fermyon is **the wasm substrate done well and shipping in production** — and it is genuinely **ahead of design-phase HoBo on the runtime itself** (mature host, edge scale, cold-start/density economics). But it stops at the runtime: **no cloud-agnostic provisioning, no IaC, no control-plane planes, no event-sourced governance, no AI-native generation.** HoBo's differentiation is precisely **the system above a wasm host** — and it deliberately *adopts* SpinKube as **one `component-host` adapter** ([ADR-0031](../design/adr/01-architecture-core.md#adr-0031)) rather than competing with the substrate.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Spin / Fermyon concept (✅ has · ➕ goes further · ◐ partial/thin · 🔜 planned). Substrate items HoBo *adopts as adapters*; platform items are HoBo's net-new above the host.
 
@@ -200,3 +268,33 @@ Spin/Fermyon is **not primarily a HoBo competitor — it's a HoBo dependency-sha
 ### The one-line takeaway
 
 **Spin/Fermyon proves — in production — the wasm substrate HoBo bets on, and is ahead of design-phase HoBo on the runtime itself** (mature host, edge at 75M RPS, sub-ms cold start, extreme density). But it is a **single wasm host with no cloud-agnostic provisioning, no IaC, no control-plane planes, no event-sourced governance, and no AI-native generation** — so HoBo **adopts SpinKube as one `component-host` adapter** ([ADR-0031](../design/adr/01-architecture-core.md#adr-0031)) and differentiates entirely on the system *above* the host: any-cloud + pluggable-IaC provisioning, Resource Definitions/Matching + the Dispatcher, an event-sourced durable runtime, and AI-native generation with agents-as-principals.
+
+## Better-together / integration posture
+
+- **Adopt / render-target** — SpinKube is a `component-host` adapter (ADR-0031); HoBo renders to it.
+- **Benchmark** on cold start and on the `spin new` → running loop.
+- **Borrow** — **runtime config as the binding seam**: keeping backend selection outside the
+  component is the same instinct as wasmCloud links, expressed more simply, and worth studying for
+  HoBo's own local development ergonomics.
+- Not a displace target.
+
+## Threats and lessons
+
+1. **Wasm hosts are converging on the same shape** — component, trigger, external binding — which
+   validates HoBo's substrate bet and makes host choice a genuine portability question. That question
+   is exactly what `PortabilityReport` answers, and no wasm-native tooling answers it.
+2. **Per-request instantiation is a real architectural advantage** for the workloads it fits, and a
+   hard constraint for the ones it does not. HoBo's kinds should make that distinction visible rather
+   than hiding it behind "runs anywhere".
+3. **Ecosystem fragmentation is the risk to the whole wasm bet.** Two component ecosystems with
+   different wiring models split an already-small community.
+
+## Sources
+
+- [spinframework.dev](https://spinframework.dev/) — Spin applications, components, triggers, runtime config
+- [spinkube.dev](https://www.spinkube.dev/) — Kubernetes operator and containerd shim
+- [fermyon.com](https://www.fermyon.com/) — commercial platform (vendor material)
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Fermyon's current commercial packaging and the Spin trigger catalog
+were not re-verified in this pass and are not asserted.

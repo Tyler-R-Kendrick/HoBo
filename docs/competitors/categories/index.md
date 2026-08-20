@@ -14,12 +14,12 @@ tags: [hobo, competitors, category]
 | Category | Competitors |
 | -------- | ----------- |
 | [Comprehensive Platform Orchestrators](platform-orchestrators.md) | 19 |
-| [Portable Application Models & Control Planes](portable-application-models.md) | 15 |
-| [Cloud Application Platforms](cloud-application-platforms.md) | 19 |
+| [Portable Application Models & Control Planes](portable-application-models.md) | 16 |
+| [Cloud Application Platforms](cloud-application-platforms.md) | 20 |
 | [Developer Portals & IDPs](developer-portals-idps.md) | 12 |
 | [Infrastructure-from-Code & Authoring](infrastructure-from-code.md) | 10 |
-| [Runtime & Distributed Application Substrates](runtime-substrates.md) | 11 |
-| [Hybrid & Multicloud Enterprise Orchestration](hybrid-multicloud-enterprise.md) | 10 |
+| [Runtime & Distributed Application Substrates](runtime-substrates.md) | 13 |
+| [Hybrid & Multicloud Enterprise Orchestration](hybrid-multicloud-enterprise.md) | 12 |
 | [Self-Hosted PaaS & Server Deployment](self-hosted-paas.md) | 4 |
 | [Agentic Infrastructure & Operations](agentic-infrastructure.md) | 8 |
 | [Backend & Data Application Platforms](backend-data-platforms.md) | 5 |

@@ -168,6 +168,7 @@ describe("argument arrays stop shell injection but not option injection", () => 
 			assertInertArgument("--prod", "site name");
 			expect.unreachable("a flag-shaped value must be refused");
 		} catch (error) {
+			if (!(error instanceof Error)) throw error;
 			expect(isNetlifyProviderError(error)).toBe(true);
 			if (isNetlifyProviderError(error)) {
 				expect(error.code).toBe("PROVIDER_CONTRACT_CHANGED");
@@ -207,9 +208,13 @@ describe("an anonymous deploy cannot see a Netlify credential", () => {
 		expect(env.CI).toBe("1");
 		expect(env.NETLIFY_CLI_TELEMETRY_DISABLED).toBe("1");
 		for (const key of Object.keys(env)) {
-			const known =
-				(ANONYMOUS_ENV_ALLOWLIST as readonly string[]).includes(key) ||
-				["CI", "NETLIFY_CLI_TELEMETRY_DISABLED", "NO_COLOR"].includes(key);
+			const knownKeys: readonly string[] = [
+				...ANONYMOUS_ENV_ALLOWLIST,
+				"CI",
+				"NETLIFY_CLI_TELEMETRY_DISABLED",
+				"NO_COLOR",
+			];
+			const known = knownKeys.includes(key);
 			expect(known, `unexpected variable ${key}`).toBe(true);
 		}
 	});

@@ -27,16 +27,35 @@ export const PROVIDER_ERROR_CODES = [
 
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[number];
 
-export type ProviderErrorDetail = Readonly<
-	Record<string, string | number | boolean>
->;
+export type ProviderErrorDetail = {
+	readonly status?: number;
+	readonly method?: string;
+	readonly operation?: string;
+	readonly body?: string;
+	readonly guard?: string;
+	readonly purpose?: string;
+	readonly resourceRef?: string;
+	readonly label?: string;
+	readonly hits?: number;
+	readonly preview?: string;
+	readonly siteId?: string;
+	readonly exitCode?: number;
+	readonly stderr?: string;
+	readonly haveId?: boolean;
+	readonly haveAccount?: boolean;
+	readonly adoptable?: boolean;
+	readonly claimDeadlineMs?: number;
+	readonly expirySource?: string;
+	readonly bundleId?: string;
+	readonly bundleStatus?: string;
+};
 
 export type ProviderErrorOptions = {
 	/** Safe to repeat the operation verbatim. Ambiguity is never retryable. */
 	readonly retryable?: boolean;
 	readonly retryAfterMs?: number;
 	readonly detail?: ProviderErrorDetail;
-	readonly cause?: unknown;
+	readonly cause?: Error;
 };
 
 /** Shapes that must never survive into an error message, log line, or receipt. */
@@ -60,8 +79,14 @@ const CREDENTIAL_PATTERNS: readonly RegExp[] = [
 	/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/giu,
 ];
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point — CLI output is full of them and an unflattened escape sequence can forge a log record.
-const CONTROL_CHARS = /[\u0000-\u001f\u007f]/gu;
+function flattenControlChars(text: string): string {
+	let out = "";
+	for (const ch of text) {
+		const code = ch.charCodeAt(0);
+		out += code <= 31 || code === 127 ? " " : ch;
+	}
+	return out;
+}
 
 /**
  * Replace anything credential-shaped with a marker and flatten control
@@ -72,11 +97,60 @@ export function redactProviderText(text: string, maxLength = 256): string {
 	let out = text;
 	for (const pattern of CREDENTIAL_PATTERNS)
 		out = out.replace(pattern, "[redacted]");
-	out = out
-		.replace(CONTROL_CHARS, " ")
+	out = flattenControlChars(out)
 		.replace(/\s{2,}/gu, " ")
 		.trim();
 	return out.length > maxLength ? `${out.slice(0, maxLength)}…` : out;
+}
+
+function redactOptionalText(value: string | undefined): string | undefined {
+	return value === undefined ? undefined : redactProviderText(value, 160);
+}
+
+function redactDetail(detail: ProviderErrorDetail): ProviderErrorDetail {
+	const method = redactOptionalText(detail.method);
+	const operation = redactOptionalText(detail.operation);
+	const body = redactOptionalText(detail.body);
+	const guard = redactOptionalText(detail.guard);
+	const purpose = redactOptionalText(detail.purpose);
+	const resourceRef = redactOptionalText(detail.resourceRef);
+	const label = redactOptionalText(detail.label);
+	const preview = redactOptionalText(detail.preview);
+	const siteId = redactOptionalText(detail.siteId);
+	const stderr = redactOptionalText(detail.stderr);
+	const expirySource = redactOptionalText(detail.expirySource);
+	const bundleId = redactOptionalText(detail.bundleId);
+	const bundleStatus = redactOptionalText(detail.bundleStatus);
+	return {
+		...(detail.status !== undefined ? { status: detail.status } : undefined),
+		...(method !== undefined ? { method } : undefined),
+		...(operation !== undefined ? { operation } : undefined),
+		...(body !== undefined ? { body } : undefined),
+		...(guard !== undefined ? { guard } : undefined),
+		...(purpose !== undefined ? { purpose } : undefined),
+		...(resourceRef !== undefined ? { resourceRef } : undefined),
+		...(label !== undefined ? { label } : undefined),
+		...(detail.hits !== undefined ? { hits: detail.hits } : undefined),
+		...(preview !== undefined ? { preview } : undefined),
+		...(siteId !== undefined ? { siteId } : undefined),
+		...(detail.exitCode !== undefined
+			? { exitCode: detail.exitCode }
+			: undefined),
+		...(stderr !== undefined ? { stderr } : undefined),
+		...(detail.haveId !== undefined ? { haveId: detail.haveId } : undefined),
+		...(detail.haveAccount !== undefined
+			? { haveAccount: detail.haveAccount }
+			: undefined),
+		...(detail.adoptable !== undefined
+			? { adoptable: detail.adoptable }
+			: undefined),
+		...(detail.claimDeadlineMs !== undefined
+			? { claimDeadlineMs: detail.claimDeadlineMs }
+			: undefined),
+		...(expirySource !== undefined ? { expirySource } : undefined),
+		...(bundleId !== undefined ? { bundleId } : undefined),
+		...(bundleStatus !== undefined ? { bundleStatus } : undefined),
+	};
 }
 
 export class NetlifyProviderError extends Error {
@@ -92,25 +166,18 @@ export class NetlifyProviderError extends Error {
 	) {
 		super(
 			redactProviderText(message),
-			options.cause !== undefined ? { cause: options.cause } : {},
+			options.cause !== undefined ? { cause: options.cause } : undefined,
 		);
 		this.name = "NetlifyProviderError";
 		this.code = code;
 		this.retryable = options.retryable ?? false;
 		if (options.retryAfterMs !== undefined)
 			this.retryAfterMs = options.retryAfterMs;
-		this.detail = Object.freeze({ ...(options.detail ?? {}) });
+		this.detail = Object.freeze(redactDetail(options.detail ?? {}));
 	}
 
 	/** Receipt-safe projection. Already redacted by construction. */
-	toJSON(): {
-		readonly name: string;
-		readonly code: ProviderErrorCode;
-		readonly message: string;
-		readonly retryable: boolean;
-		readonly retryAfterMs?: number;
-		readonly detail: ProviderErrorDetail;
-	} {
+	toJSON() {
 		return {
 			name: this.name,
 			code: this.code,
@@ -118,14 +185,14 @@ export class NetlifyProviderError extends Error {
 			retryable: this.retryable,
 			...(this.retryAfterMs !== undefined
 				? { retryAfterMs: this.retryAfterMs }
-				: {}),
+				: undefined),
 			detail: this.detail,
 		};
 	}
 }
 
 export function isNetlifyProviderError(
-	value: unknown,
+	value: Error,
 ): value is NetlifyProviderError {
 	return value instanceof NetlifyProviderError;
 }
@@ -154,7 +221,7 @@ export function providerErrorForStatus(
 		status,
 		method: context.method,
 		operation: context.operation,
-		...(body ? { body } : {}),
+		...(body !== "" ? { body } : undefined),
 	};
 	if (status === 429) {
 		return new NetlifyProviderError(
@@ -164,7 +231,7 @@ export function providerErrorForStatus(
 				retryable: true,
 				...(context.retryAfterMs !== undefined
 					? { retryAfterMs: context.retryAfterMs }
-					: {}),
+					: undefined),
 				detail,
 			},
 		);

@@ -11,7 +11,9 @@ tags: [hobo, sdlc, anti-slop, oxlint]
 main
  └── sdlc/anti-slop-01-vendor      #1179 plugin, skill mirrors, oxlint 1.79, lint:slop:changed
   └── sdlc/anti-slop-02-precommit  #1180 relevant-check-policy + tests
-   └── sdlc/anti-slop-03-scripts-warnings  ignore agent-skill dirs; scripts/lib/inspectable
+   └── sdlc/anti-slop-03-scripts-warnings  #1185 ignore agent-skill dirs; scripts/lib/inspectable
+    └── sdlc/anti-slop-04-test     #1187 root competitor/council tests
+     └── sdlc/anti-slop-05-examples  remaining mixed example files → 0 findings
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -33,4 +35,8 @@ Each follow-up PR should take **one file (or a tight cluster) to zero
 findings**, then stop. Do not edit a file that still has other anti-slop
 errors.
 
-Cleared: entire `scripts/` tree (layer 3). Layer 4: root test files. Layer 5 (in progress): SAFETY-clean example files committed; remaining mixed example files follow.
+Cleared: entire `scripts/` tree (layer 3). Layer 4: root competitor/council tests.
+Layer 5: example files taken to zero findings (named JsonValue parse
+boundaries, UsageReader returns, Firecrawl client injection instead of
+`vi.mock`). Next: `site/` then `packages/` / `src/draft/` file-complete
+slices. Full-repo `lint:slop --deny-warnings` is still red until those land.

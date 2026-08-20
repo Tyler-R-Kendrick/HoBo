@@ -19,10 +19,10 @@ export function HighlightedFeature({
   highlightedComponent,
   tilt,
 }: FeatureProps) {
-  const tiltToClass: Record<Required<FeatureProps>["tilt"], string> = {
+  const tiltToClass = {
     left: "rotate-1",
     right: "-rotate-1",
-  };
+  } as const;
 
   return (
     <div
@@ -33,7 +33,7 @@ export function HighlightedFeature({
     >
       <div className="flex-1 flex-col">
         <h2 className="mb-2 text-4xl font-bold">{name}</h2>
-        {typeof description === "string" ? (
+        {Object.prototype.toString.call(description) === "[object String]" ? (
           <p className="text-muted-foreground">{description}</p>
         ) : (
           description

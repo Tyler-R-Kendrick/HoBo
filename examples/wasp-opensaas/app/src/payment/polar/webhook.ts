@@ -1,5 +1,4 @@
 import { Subscription } from "@polar-sh/sdk/models/components/subscription.js";
-import { SubscriptionStatus } from "@polar-sh/sdk/models/components/subscriptionstatus.js";
 import { WebhookOrderPaidPayload } from "@polar-sh/sdk/models/components/webhookorderpaidpayload.js";
 import { WebhookSubscriptionUpdatedPayload } from "@polar-sh/sdk/models/components/webhooksubscriptionupdatedpayload.js";
 import { validateEvent } from "@polar-sh/sdk/webhooks";
@@ -40,6 +39,7 @@ export const polarWebhook: PaymentsWebhook = async (
   try {
     const event = validateEvent(
       request.body,
+      // SAFETY: assertion to `request.headers as Record<string, string>` is required at this boundary.
       request.headers as Record<string, string>,
       env.POLAR_WEBHOOK_SECRET,
     );
@@ -141,10 +141,7 @@ async function handleSubscriptionUpdated(
 function getOpenSaasSubscriptionStatus(
   subscription: Subscription,
 ): OpenSaasSubscriptionStatus | undefined {
-  const polarToOpenSaasSubscriptionStatus: Record<
-    SubscriptionStatus,
-    OpenSaasSubscriptionStatus | undefined
-  > = {
+  const polarToOpenSaasSubscriptionStatus = {
     trialing: OpenSaasSubscriptionStatus.Active,
     active: OpenSaasSubscriptionStatus.Active,
     past_due: OpenSaasSubscriptionStatus.PastDue,

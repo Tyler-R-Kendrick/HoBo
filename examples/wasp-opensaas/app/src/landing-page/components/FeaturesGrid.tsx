@@ -61,21 +61,18 @@ function FeaturesGridItem({
   size = "medium",
   fullWidthIcon = true,
 }: GridFeature) {
-  const gridFeatureSizeToClasses: Record<GridFeature["size"], string> = {
+  const gridFeatureSizeToClasses = {
     small: "col-span-1",
     medium: "col-span-2 md:col-span-2 lg:col-span-2",
     large: "col-span-2 md:col-span-2 lg:col-span-2 row-span-2",
   };
 
-  const directionToClass: Record<
-    NonNullable<GridFeature["direction"]>,
-    string
-  > = {
+  const directionToClass = {
     col: "flex-col",
     row: "flex-row",
     "row-reverse": "flex-row-reverse",
     "col-reverse": "flex-col-reverse",
-  };
+  } as const;
 
   const gridFeatureCard = (
     <Card

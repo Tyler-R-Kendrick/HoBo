@@ -13,6 +13,8 @@
  * the spawn/git shell lives in src/bin/local-gate.ts.
  */
 
+import type { JsonObject } from "./parse.js";
+
 export interface GateCommand {
 	/** Stable identifier, e.g. "agent-check". */
 	id: string;
@@ -97,7 +99,7 @@ export interface GateReport {
 	host: string;
 	results: readonly GateCommandResult[];
 	/** golden.Ran per command, golden.Passed only when everything exited 0. */
-	events: ReadonlyArray<{ family: string; payload: Record<string, unknown> }>;
+	events: ReadonlyArray<{ family: string; payload: JsonObject }>;
 	markdown: string;
 }
 
@@ -111,7 +113,7 @@ export function foldGateReport(options: {
 	const passed =
 		options.results.length > 0 &&
 		options.results.every((result) => result.exitCode === 0);
-	const events: Array<{ family: string; payload: Record<string, unknown> }> =
+	const events: Array<{ family: string; payload: JsonObject }> =
 		options.results.map((result) => ({
 			family: "golden.Ran",
 			payload: {

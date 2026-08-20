@@ -2,11 +2,12 @@ import { bindle } from "@hobo/bindles";
 import { intent, trainable } from "@hobo/runtime";
 
 type Todo = { id: string; text: string; completed: boolean };
+type TodoList = { items: Todo[] };
 
 @trainable
 class Todos {
 	@intent("List all todos")
-	list(): { items: Todo[] } {
+	list(): TodoList {
 		return { items: [] };
 	}
 

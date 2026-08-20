@@ -113,6 +113,7 @@ function UserCurrentSubscriptionPlan({
     subscriptionPlanMessage = formatSubscriptionStatusMessage(
       parsePaymentPlanId(subscriptionPlan),
       datePaid,
+      // SAFETY: assertion to `subscriptionStatus as SubscriptionStatus` is required at this boundary.
       subscriptionStatus as SubscriptionStatus,
     );
   }
@@ -135,7 +136,7 @@ function formatSubscriptionStatusMessage(
   subscriptionStatus: SubscriptionStatus,
 ): string {
   const paymentPlanName = prettyPaymentPlanName(subscriptionPlan);
-  const statusToMessage: Record<SubscriptionStatus, string> = {
+  const statusToMessage = {
     active: `${paymentPlanName}`,
     past_due: `Payment for your ${paymentPlanName} plan is past due! Please update your subscription payment information.`,
     cancel_at_period_end: `Your ${paymentPlanName} plan subscription has been canceled, but remains active until the end of the current billing period: ${prettyPrintEndOfBillingPeriod(

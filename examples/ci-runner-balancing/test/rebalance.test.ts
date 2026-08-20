@@ -19,15 +19,24 @@ import { DEFAULT_REGISTRY_DOCUMENT } from "../src/registry.js";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 
-function memoryDeps(options: {
-	current?: Record<string, string>;
-	usage?: Array<{
-		providerId: string;
-		spendUsd?: number;
-		unitsUsed?: number;
-		known?: boolean;
-	}>;
-}): { deps: RebalanceDeps; writes: Array<{ name: string; value: string }> } {
+interface MemoryUsage {
+	providerId: string;
+	spendUsd?: number;
+	unitsUsed?: number;
+	known?: boolean;
+}
+
+interface MemoryOptions {
+	current?: { readonly [name: string]: string };
+	usage?: MemoryUsage[];
+}
+
+interface MemoryHarness {
+	deps: RebalanceDeps;
+	writes: Array<{ name: string; value: string }>;
+}
+
+function memoryDeps(options: MemoryOptions): MemoryHarness {
 	const current = new Map(Object.entries(options.current ?? {}));
 	const writes: Array<{ name: string; value: string }> = [];
 	const usageSources: UsageSource[] = (options.usage ?? []).map((entry) => ({
@@ -146,6 +155,7 @@ describe("runRebalance", () => {
 	});
 
 	it("replays the shipped last-resort fixture: a spending-limit hard block fails over to the requesting machine", async () => {
+		// SAFETY: assertion to `JSON.parse( await readFile( path.join(HERE, "..", "fixtures", "last-resort-failover.fixture.json"), "utf8", ), ) as { cu` is required at this boundary.
 		const fixture = JSON.parse(
 			await readFile(
 				path.join(HERE, "..", "fixtures", "last-resort-failover.fixture.json"),
@@ -195,6 +205,7 @@ describe("runRebalance", () => {
 	});
 
 	it("replays the shipped free-credit-rotation fixture to the Blacksmith rung", async () => {
+		// SAFETY: assertion to `JSON.parse( await readFile( path.join(HERE, "..", "fixtures", "free-credit-rotation.fixture.json"), "utf8", ), ) as { cu` is required at this boundary.
 		const fixture = JSON.parse(
 			await readFile(
 				path.join(HERE, "..", "fixtures", "free-credit-rotation.fixture.json"),

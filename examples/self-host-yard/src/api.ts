@@ -26,15 +26,37 @@ const components = new Map<string, { health: Health; note: string }>([
  * either holds a parsed `IncidentReport` or the boundary refused with a
  * `TypeError`.
  */
-export function parseIncidentReport(raw: unknown): IncidentReport {
-	if (typeof raw !== "object" || raw === null) {
+type JsonObject = { readonly [key: string]: JsonValue };
+type JsonValue =
+	| string
+	| number
+	| boolean
+	| null
+	| JsonValue[]
+	| JsonObject;
+
+function isJsonObject(value: JsonValue): value is JsonObject {
+	return (
+		value !== null &&
+		!Array.isArray(value) &&
+		Object.prototype.toString.call(value) === "[object Object]"
+	);
+}
+
+function isJsonString(value: JsonValue | undefined): value is string {
+	return Object.prototype.toString.call(value) === "[object String]";
+}
+
+export function parseIncidentReport(raw: JsonValue): IncidentReport {
+	if (!isJsonObject(raw)) {
 		throw new TypeError("incident body must be a JSON object");
 	}
-	const { component, note } = raw as { component?: unknown; note?: unknown };
-	if (typeof component !== "string" || component.trim().length === 0) {
+	const component = raw.component;
+	const note = raw.note;
+	if (!isJsonString(component) || component.trim().length === 0) {
 		throw new TypeError("incident component must be a non-empty string");
 	}
-	if (typeof note !== "string" || note.trim().length === 0) {
+	if (!isJsonString(note) || note.trim().length === 0) {
 		throw new TypeError("incident note must be a non-empty string");
 	}
 	return create(IncidentReportSchema, {
@@ -68,7 +90,9 @@ export async function statusApi(request: Request): Promise<Response> {
 	if (request.method === "POST" && url.pathname === "/incidents") {
 		let incident: IncidentReport;
 		try {
-			incident = parseIncidentReport(await request.json());
+			const body = await request.json();
+			// SAFETY: request JSON is untyped; parseIncidentReport is the boundary.
+			incident = parseIncidentReport(body as JsonValue);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return Response.json({ error: message }, { status: 400 });

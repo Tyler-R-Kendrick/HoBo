@@ -712,20 +712,48 @@ export async function checkCompetitorDocs(options: {
 	return { problems, competitors };
 }
 
+/**
+ * The CLI body, as a function rather than a top-level `if`.
+ *
+ * Extracted so it can be tested: as an inline block it was unreachable from any
+ * test, which left the exit code, the problem formatting and the summary line —
+ * the parts CI and every human actually read — as the single largest untested
+ * region of this file. Returns the exit code instead of calling `process.exit`
+ * so a test can assert it without tearing down the runner.
+ */
+export async function main(options: {
+	root: string;
+	argv: readonly string[];
+	now?: number;
+	log?: (message: string) => void;
+	error?: (message: string) => void;
+}): Promise<number> {
+	const log = options.log ?? console.log;
+	const error = options.error ?? console.error;
+	const { problems, competitors } = await checkCompetitorDocs({
+		root: options.root,
+		fix: options.argv.includes("--fix"),
+		...(options.now === undefined ? {} : { now: options.now }),
+	});
+	for (const problem of problems)
+		error(
+			`${problem.file}:${problem.line} competitor-docs - ${problem.message}`,
+		);
+	log(
+		`competitor-docs: ${competitors.length} canonical captures checked, ${problems.length} problem(s).`,
+	);
+	return problems.length > 0 ? 1 : 0;
+}
+
 const invokedDirectly =
 	process.argv[1] !== undefined &&
 	path.resolve(process.argv[1]) === fileURLToPath(import.meta.url);
 
 if (invokedDirectly) {
-	const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
-	const fix = process.argv.includes("--fix");
-	const { problems, competitors } = await checkCompetitorDocs({ root, fix });
-	for (const problem of problems)
-		console.error(
-			`${problem.file}:${problem.line} competitor-docs - ${problem.message}`,
-		);
-	console.log(
-		`competitor-docs: ${competitors.length} canonical captures checked, ${problems.length} problem(s).`,
+	process.exit(
+		await main({
+			root: path.resolve(path.dirname(fileURLToPath(import.meta.url)), ".."),
+			argv: process.argv,
+		}),
 	);
-	process.exit(problems.length > 0 ? 1 : 0);
 }

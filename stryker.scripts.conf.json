@@ -32,12 +32,12 @@
   "thresholds": {
     "high": 90,
     "low": 80,
-    "break": 60
+    "break": 80
   },
   "timeoutMS": 20000,
   "concurrency": 4,
   "plugins": [
     "@stryker-mutator/vitest-runner"
   ],
-  "_baseline": "Measured 2026-08-20 on first run: 69.45% overall (432 killed, 148 survived, 42 with no coverage), 47 seconds. break is set at 60 to hold the line already achieved rather than fail from day one; raise it as the score improves. The 42 no-coverage mutants are almost entirely the CLI entry point (`invokedDirectly` and the process.exit path), which unit tests deliberately do not drive."
+  "_baseline": "Measured 2026-08-20: 81.27% (512 killed, 99 survived, 19 no coverage), 56 seconds. Started at 69.45% and was raised past 80 by targeting the surviving mutants directly -- extracting the CLI body from a top-level `if` so its exit code and output could be tested at all, then pinning each regex from BOTH sides of its boundary. break is set at 80 to hold that line. The 19 no-coverage mutants are the module-level `invokedDirectly` guard, which cannot be exercised in-process."
 }

@@ -17,7 +17,7 @@ Systems that own application and platform orchestration end to end: environment 
 
 This is HoBo's home category. HoBo is a control plane that turns application intent into scored, provider-matched deployments, so anything claiming to orchestrate applications across environments contests HoBo directly.
 
-## Competitors (18)
+## Competitors (19)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -39,6 +39,7 @@ This is HoBo's home category. HoBo is a control plane that turns application int
 | [**Kratix**](../kratix.md) | framework for building platform APIs — Promises bundle contract, fulfilment and placement, which is the packaging idea HoBo's Bindle kinds most resemble | overlapping | `typed-contracts`, `extensibility`, `provider-matching`, `delivery`, `app-graph` | The Promise bundles contract, prerequisites, fulfilment and placement into one versioned product, fulfilled by arbitrary containers so it can wrap any process. | Arbitrary fulfilment cannot be reasoned about; HoBo trades that reach for typed ports whose impedance, effects and cost are analysable before execution. | borrow, benchmark, integrate | P2 |
 | [**Upsun**](../upsun.md) | environment-per-branch PaaS whose cloned-production-data preview environments are the strongest ephemeral-environment implementation in the corpus | overlapping | `environments`, `authoring`, `delivery`, `app-graph`, `wiring` | Branch-as-environment with production data cloned on the fly — the reference implementation of ephemeral environments, and the half most competitors skip. | HoBo describes applications independently of any one host and can clone data under residency and policy control rather than by default; Upsun YAML is worthless outside Upsun. | benchmark, borrow, provider-target | P1 |
 | [**Porter**](../porter.md) | BYOC PaaS that owns the customer's cluster — the clearest example of the credit-and-account argument HoBo also makes | overlapping | `environments`, `delivery`, `provider-matching`, `identity-secrets`, `finops` | Your account, your credits, your cluster — provisioned across AWS/GCP/Azure with role assumption and workload identity federation, no static credentials stored. | HoBo makes the same BYOC argument without a standing cluster or a 30-45 minute provisioning floor, and places per workload rather than per account. | benchmark, provider-target, borrow | P2 |
+| [**Port**](../port.md) | schema-first developer portal whose Blueprint model is the strongest catalog abstraction in the corpus — a front end HoBo should serve, not fight | complementary | `app-graph`, `governance`, `extensibility`, `agent-surface` | Blueprints let an organization define its own entity types and relations, with auto-discovery keeping the catalog true and a shipped MCP surface over it. | Port models what exists; HoBo decides what should happen. A scorecard reports fifteen non-compliant services, policy.Decided stops the sixteenth. | integrate, borrow, benchmark | P1 |
 
 ## Navigation
 

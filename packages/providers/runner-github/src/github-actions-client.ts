@@ -1,3 +1,11 @@
+import {
+	isJsonArray,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "./json.js";
+
 // @hobo/runner-github — the REAL GitHub Actions REST client.
 //
 // This forms the requests for GitHub's Actions endpoints and parses the
@@ -37,7 +45,7 @@ export interface GithubFetchResponse {
 	readonly ok: boolean;
 	readonly status: number;
 	text(): Promise<string>;
-	json(): Promise<unknown>;
+	json(): Promise<JsonValue>;
 }
 
 export type GithubFetch = (
@@ -115,12 +123,9 @@ export interface GithubActionsClient {
 }
 
 const globalFetch: GithubFetch = (url, init) => {
-	const fetchImpl = (
-		globalThis as unknown as {
-			fetch?: (input: string, init: unknown) => Promise<GithubFetchResponse>;
-		}
-	).fetch;
-	if (typeof fetchImpl !== "function") {
+	const fetchImpl = globalThis.fetch;
+	const tag = Object.prototype.toString.call(fetchImpl);
+	if (tag !== "[object Function]" && tag !== "[object AsyncFunction]") {
 		throw new Error(
 			"runner-github: no global fetch available; inject one via createGithubActionsClient({ fetch })",
 		);
@@ -167,7 +172,7 @@ export function createGithubActionsClient(
 		const response = await transport(url, {
 			method,
 			headers: await headers(),
-			...(body === undefined ? {} : { body }),
+			...(body === undefined ? undefined : { body }),
 		});
 		if (!response.ok) {
 			const detail = await response.text();
@@ -179,24 +184,23 @@ export function createGithubActionsClient(
 		return response;
 	}
 
-	function parseRun(raw: unknown): WorkflowRun {
-		const run = raw as {
-			id?: number;
-			status?: string;
-			conclusion?: string | null;
-			html_url?: string;
-		};
-		if (typeof run?.id !== "number") {
+	function parseRun(raw: JsonValue): WorkflowRun {
+		if (!isJsonObject(raw) || !isJsonNumber(raw.id)) {
 			throw new GithubApiError(
 				"runner-github: workflow run response missing numeric id",
 				200,
 			);
 		}
 		return {
-			id: run.id,
-			status: run.status ?? "queued",
-			conclusion: run.conclusion ?? null,
-			htmlUrl: run.html_url ?? "",
+			id: raw.id,
+			status: isJsonString(raw.status) ? raw.status : "queued",
+			conclusion:
+				raw.conclusion === null
+					? null
+					: isJsonString(raw.conclusion)
+						? raw.conclusion
+						: null,
+			htmlUrl: isJsonString(raw.html_url) ? raw.html_url : "",
 		};
 	}
 
@@ -214,10 +218,12 @@ export function createGithubActionsClient(
 				"GET",
 				`${repoBase}/actions/workflows/${encodeURIComponent(workflow)}/runs?event=workflow_dispatch&per_page=1`,
 			);
-			const payload = (await response.json()) as {
-				workflow_runs?: unknown[];
-			};
-			const first = payload.workflow_runs?.[0];
+			const payload = await response.json();
+			const runs =
+				isJsonObject(payload) && isJsonArray(payload.workflow_runs)
+					? payload.workflow_runs
+					: [];
+			const first = runs[0];
 			return first === undefined ? undefined : parseRun(first);
 		},
 
@@ -234,9 +240,13 @@ export function createGithubActionsClient(
 				"GET",
 				`${baseUrl}/orgs/${options.owner}/packages/container/${encodeURIComponent(packageName)}/versions?per_page=1`,
 			);
-			const versions = (await response.json()) as Array<{ name?: string }>;
-			const digest = versions?.[0]?.name;
-			if (typeof digest !== "string" || !digest.startsWith("sha256:")) {
+			const versions = await response.json();
+			const first = isJsonArray(versions) ? versions[0] : undefined;
+			const digest =
+				isJsonObject(first) && isJsonString(first.name)
+					? first.name
+					: undefined;
+			if (digest === undefined || !digest.startsWith("sha256:")) {
 				throw new GithubApiError(
 					`runner-github: package ${packageName} has no sha256 version digest yet`,
 					200,

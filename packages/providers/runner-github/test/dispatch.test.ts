@@ -33,7 +33,7 @@ function fixtureSibling(
 					...manifest.cost,
 					facts: [
 						{
-							...(manifest.cost.facts[0] as (typeof manifest.cost.facts)[0]),
+							...manifest.cost.facts[0],
 							marginalPrice,
 						},
 					],

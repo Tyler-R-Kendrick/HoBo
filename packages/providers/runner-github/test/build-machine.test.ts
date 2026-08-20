@@ -77,7 +77,7 @@ function machine(
 			fetch: transport,
 		}),
 		owner: "hobo-dev",
-		...(creditBudget === undefined ? {} : { creditBudget }),
+		...(creditBudget === undefined ? undefined : { creditBudget }),
 		tracking: { wait: async () => {}, intervalMs: 0 },
 	});
 }

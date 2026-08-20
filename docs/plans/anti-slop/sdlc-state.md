@@ -24,7 +24,8 @@ main
              └── sdlc/anti-slop-13-providers-github-lakebed  #1205 github + lakebed
               └── sdlc/anti-slop-14-providers-railway-convex  #1207 railway + convex
                └── sdlc/anti-slop-15-providers-kafka-webernetes-ttl  #1209 webernetes + kafka + ttl-sh
-                └── sdlc/anti-slop-16-providers-neon-prisma  neon + prisma-postgres
+                └── sdlc/anti-slop-16-providers-neon-prisma  #1211 neon + prisma-postgres
+                 └── sdlc/anti-slop-17-providers-browser-wasm  browser-wasm
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -56,7 +57,8 @@ blacksmith).
 Layer 12: runner-depot + provider-flux.
 Layer 13: runner-github + provider-lakebed.
 Layer 14: provider-railway + provider-convex.
-Layer 15: provider-webernetes + provider-kafka + provider-ttl-sh. Next:
-remaining `packages/providers/*` (cloud majors), then `packages/code`,
-`hobo`, `core`, `broker`, `src/draft/`. Full-repo
-`lint:slop --deny-warnings` is still red until those land.
+Layer 15: provider-webernetes + provider-kafka + provider-ttl-sh.
+Layer 16: provider-neon + provider-prisma-postgres. Next: remaining
+`packages/providers/*` (cloud majors), then `packages/code`, `hobo`,
+`core`, `broker`, `src/draft/`. Full-repo `lint:slop --deny-warnings`
+is still red until those land.

@@ -16,6 +16,15 @@ import {
 	contractChanged,
 	redactHostText,
 } from "./errors.js";
+import {
+	isJsonArray,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import { decodeText, headerOf } from "./transport.js";
 
 const DNS_1123_LABEL = /^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$/u;
@@ -42,11 +51,33 @@ export type PersistenceMode = (typeof PERSISTENCE_MODES)[number];
 export const GUEST_PORTS = ["compute", "kv", "queue"] as const;
 export type GuestPort = (typeof GUEST_PORTS)[number];
 
-export const RESOURCE_CLASS_FOR_PORT: Readonly<Record<GuestPort, string>> = {
+export const RESOURCE_CLASS_FOR_PORT = {
 	compute: "browser-wasm:guest",
 	kv: "browser-wasm:kv",
 	queue: "browser-wasm:queue",
-};
+} as const;
+
+function isGuestPort(value: string): value is GuestPort {
+	switch (value) {
+		case "compute":
+		case "kv":
+		case "queue":
+			return true;
+		default:
+			return false;
+	}
+}
+
+function isPersistenceMode(value: string): value is PersistenceMode {
+	switch (value) {
+		case "opfs-sahpool":
+		case "transient-memory":
+		case "unavailable":
+			return true;
+		default:
+			return false;
+	}
+}
 
 /** 64 KiB — the WebAssembly page. Memory limits are whole pages or nothing. */
 export const WASM_PAGE_BYTES = 65_536;
@@ -105,13 +136,7 @@ export function createWebCryptoDigest(
 	subtle: SubtleCrypto = globalThis.crypto.subtle,
 ): DigestPort {
 	return async (bytes) => {
-		const buffer = await subtle.digest(
-			"SHA-256",
-			bytes.buffer.slice(
-				bytes.byteOffset,
-				bytes.byteOffset + bytes.byteLength,
-			) as ArrayBuffer,
-		);
+		const buffer = await subtle.digest("SHA-256", bytes.slice());
 		const hex = Array.from(new Uint8Array(buffer))
 			.map((byte) => byte.toString(16).padStart(2, "0"))
 			.join("");
@@ -119,34 +144,24 @@ export function createWebCryptoDigest(
 	};
 }
 
-function decodeJsonObject(
-	body: Uint8Array,
-	what: string,
-): Record<string, unknown> {
+function decodeJsonObject(body: Uint8Array, what: string): JsonObject {
 	const text = decodeText(body);
-	let decoded: unknown;
+	let decoded: JsonValue;
 	try {
-		decoded = JSON.parse(text) as unknown;
+		// SAFETY: JSON.parse yields a JSON value at this document boundary.
+		decoded = JSON.parse(text) as JsonValue;
 	} catch {
 		contractChanged(`${what} was not JSON`, {
 			preview: redactHostText(text, 80),
 		});
 	}
-	if (
-		typeof decoded !== "object" ||
-		decoded === null ||
-		Array.isArray(decoded)
-	) {
+	if (!isJsonObject(decoded)) {
 		contractChanged(`${what} was not a JSON object`);
 	}
-	return decoded as Record<string, unknown>;
+	return decoded;
 }
 
-function requireSchema(
-	record: Record<string, unknown>,
-	schema: string,
-	what: string,
-): void {
+function requireSchema(record: JsonObject, schema: string, what: string): void {
 	if (record.schemaVersion !== schema) {
 		// A missing or different schema id is a contract change, not something
 		// to shrug at: the fields below are only meaningful under this one.
@@ -157,25 +172,25 @@ function requireSchema(
 }
 
 function requireBoolean(
-	record: Record<string, unknown>,
+	record: JsonObject,
 	key: string,
 	what: string,
 ): boolean {
 	const value = record[key];
-	if (typeof value !== "boolean") {
+	if (!isJsonBoolean(value)) {
 		contractChanged(`${what} field ${key} is not a boolean`);
 	}
 	return value;
 }
 
 function requireMemoryLimit(
-	record: Record<string, unknown>,
+	record: JsonObject,
 	key: string,
 	what: string,
 ): number {
 	const value = record[key];
 	if (
-		typeof value !== "number" ||
+		!isJsonNumber(value) ||
 		!Number.isInteger(value) ||
 		value < MIN_MEMORY_LIMIT_BYTES ||
 		value > MAX_MEMORY_LIMIT_BYTES
@@ -194,34 +209,28 @@ function requireMemoryLimit(
 	return value;
 }
 
-function requirePersistence(
-	record: Record<string, unknown>,
-	what: string,
-): PersistenceMode {
+function requirePersistence(record: JsonObject, what: string): PersistenceMode {
 	const value = record.persistence;
-	if (
-		typeof value !== "string" ||
-		!(PERSISTENCE_MODES as readonly string[]).includes(value)
-	) {
+	if (!isJsonString(value) || !isPersistenceMode(value)) {
 		contractChanged(
 			`${what} reports persistence ${redactHostText(String(value), 32)}, which is not one of the documented modes`,
 		);
 	}
-	return value as PersistenceMode;
+	return value;
 }
 
 function requireWitIds(
-	record: Record<string, unknown>,
+	record: JsonObject,
 	key: string,
 	what: string,
 ): readonly string[] {
 	const value = record[key];
 	if (value === undefined) return [];
-	if (!Array.isArray(value)) {
+	if (!isJsonArray(value)) {
 		contractChanged(`${what} field ${key} is not a list`);
 	}
 	return value.map((entry) => {
-		if (typeof entry !== "string" || !WIT_ID.test(entry)) {
+		if (!isJsonString(entry) || !WIT_ID.test(entry)) {
 			contractChanged(
 				`${what} field ${key} holds ${redactHostText(String(entry), 64)}, which is not a WIT interface id`,
 			);
@@ -236,7 +245,7 @@ export function parseHostCapabilities(body: Uint8Array): HostCapabilities {
 	requireSchema(record, HOST_CAPABILITIES_SCHEMA, "host capabilities");
 
 	const origin = record.origin;
-	if (typeof origin !== "string") {
+	if (!isJsonString(origin)) {
 		contractChanged("host capabilities origin is not a string");
 	}
 	let parsedOrigin: URL;
@@ -289,7 +298,7 @@ export function parseGuestManifest(
 	requireSchema(record, GUEST_MANIFEST_SCHEMA, "guest manifest");
 
 	const guestId = record.guestId;
-	if (typeof guestId !== "string" || !DNS_1123_LABEL.test(guestId)) {
+	if (!isJsonString(guestId) || !DNS_1123_LABEL.test(guestId)) {
 		contractChanged("guest manifest guestId is not an RFC 1123 label");
 	}
 	if (guestId !== expected.guestId) {
@@ -301,29 +310,26 @@ export function parseGuestManifest(
 	}
 
 	const port = record.port;
-	if (
-		typeof port !== "string" ||
-		!(GUEST_PORTS as readonly string[]).includes(port)
-	) {
+	if (!isJsonString(port) || !isGuestPort(port)) {
 		contractChanged(
 			`guest manifest port ${redactHostText(String(port), 32)} is not one this provider serves`,
 		);
 	}
 	const resourceClass = record.resourceClass;
-	if (resourceClass !== RESOURCE_CLASS_FOR_PORT[port as GuestPort]) {
+	if (resourceClass !== RESOURCE_CLASS_FOR_PORT[port]) {
 		contractChanged(
 			`guest manifest resourceClass does not match its ${port} port`,
 		);
 	}
 
 	const world = record.world;
-	if (typeof world !== "string" || !WIT_ID.test(world)) {
+	if (!isJsonString(world) || !WIT_ID.test(world)) {
 		contractChanged("guest manifest world is not a WIT world id");
 	}
 
 	const componentPath = record.componentPath;
 	if (
-		typeof componentPath !== "string" ||
+		!isJsonString(componentPath) ||
 		!SAME_ORIGIN_PATH.test(componentPath) ||
 		!componentPath.endsWith(".wasm")
 	) {
@@ -338,10 +344,7 @@ export function parseGuestManifest(
 	}
 
 	const contentDigest = record.contentDigest;
-	if (
-		typeof contentDigest !== "string" ||
-		!CONTENT_DIGEST.test(contentDigest)
-	) {
+	if (!isJsonString(contentDigest) || !CONTENT_DIGEST.test(contentDigest)) {
 		contractChanged(
 			"guest manifest contentDigest is not a sha256-<hex> digest",
 		);
@@ -349,7 +352,7 @@ export function parseGuestManifest(
 
 	const byteLength = record.byteLength;
 	if (
-		typeof byteLength !== "number" ||
+		!isJsonNumber(byteLength) ||
 		!Number.isInteger(byteLength) ||
 		byteLength < MIN_COMPONENT_BYTES ||
 		byteLength > MAX_COMPONENT_BYTES
@@ -366,7 +369,7 @@ export function parseGuestManifest(
 
 	return {
 		guestId,
-		port: port as GuestPort,
+		port,
 		resourceClass,
 		world,
 		componentPath,
@@ -399,15 +402,14 @@ export function parseHostFault(body: Uint8Array): HostFault {
 		);
 	}
 	const guestId = record.guestId;
-	if (typeof guestId !== "string" || !DNS_1123_LABEL.test(guestId)) {
+	if (!isJsonString(guestId) || !DNS_1123_LABEL.test(guestId)) {
 		contractChanged("host fault guestId is not an RFC 1123 label");
 	}
 	return {
 		code,
-		message:
-			typeof record.message === "string"
-				? redactHostText(record.message, 512)
-				: "",
+		message: isJsonString(record.message)
+			? redactHostText(record.message, 512)
+			: "",
 		guestId,
 	};
 }

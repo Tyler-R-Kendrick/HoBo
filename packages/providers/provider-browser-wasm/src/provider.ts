@@ -41,9 +41,18 @@ function makeCapability(classKey: InitialCapabilityPort): Capability {
 	};
 }
 
-const PORT_TO_CLASS = Object.fromEntries(
-	INITIAL_CAPABILITY_PORTS.map((key) => [EQUIVALENCE_CLASSES[key].port, key]),
-) as Record<string, InitialCapabilityPort>;
+function classForPort(port: string): InitialCapabilityPort | undefined {
+	switch (port) {
+		case "compute":
+			return "web/service";
+		case "kv":
+			return "kv";
+		case "queue":
+			return "queue";
+		default:
+			return undefined;
+	}
+}
 
 export function createBrowserWasmProvider(): CloudProvider {
 	const capabilities = INITIAL_CAPABILITY_PORTS.map((key) =>
@@ -54,7 +63,7 @@ export function createBrowserWasmProvider(): CloudProvider {
 		regions: ["global"],
 		capabilities,
 		realize(plan: ResourcePlan) {
-			const classKey = PORT_TO_CLASS[plan.port];
+			const classKey = classForPort(plan.port);
 			if (!classKey) {
 				throw new Error(`${PROVIDER_TARGET} cannot realize port ${plan.port}`);
 			}
@@ -85,7 +94,7 @@ export function createBrowserWasmProvider(): CloudProvider {
 			};
 		},
 		client(port: PortKind, outputs: Outputs): ProviderClient {
-			const classKey = PORT_TO_CLASS[port];
+			const classKey = classForPort(port);
 			if (!classKey) throw new Error(`no client for port ${port}`);
 			const mapping = EQUIVALENCE_CLASSES[classKey];
 			return {

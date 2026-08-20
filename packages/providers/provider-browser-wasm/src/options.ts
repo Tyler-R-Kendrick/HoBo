@@ -1,3 +1,4 @@
+import type { JsonObject } from "./json.js";
 import { type GuestPlacement, parseGuestPlacement } from "./placement.js";
 
 // public-contract: provider target accepted by authoring options.
@@ -8,12 +9,12 @@ export interface TypedOptionBlock {
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
-	options: Record<string, unknown>;
+	options: JsonObject;
 }
 
 export const browserWasm = {
 	with: {
-		guest(options: Record<string, unknown> = {}): TypedOptionBlock {
+		guest(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock("compute", "guest", { runtime: "wit" }, options);
 		},
 		/**
@@ -21,7 +22,7 @@ export const browserWasm = {
 		 * bag crosses `parseGuestPlacement` here, so the block either holds a
 		 * placement a document could actually host or it does not exist.
 		 */
-		placement(options: Record<string, unknown>): TypedOptionBlock & {
+		placement(options: JsonObject): TypedOptionBlock & {
 			readonly placement: GuestPlacement;
 		} {
 			const placement = parseGuestPlacement(options);
@@ -37,8 +38,8 @@ export const browserWasm = {
 function optionBlock(
 	port: string,
 	optionName: string,
-	defaults: Record<string, unknown>,
-	options: Record<string, unknown>,
+	defaults: JsonObject,
+	options: JsonObject,
 ): TypedOptionBlock {
 	return {
 		providerId: PROVIDER_TARGET,

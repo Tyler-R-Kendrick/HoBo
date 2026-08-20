@@ -9,6 +9,14 @@
  */
 import { BrowserWasmProviderError } from "./errors.js";
 import {
+	isJsonArray,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "./json.js";
+import {
 	GUEST_PORTS,
 	type GuestPort,
 	MAX_MEMORY_LIMIT_BYTES,
@@ -51,38 +59,50 @@ export type GuestPlacement = {
 	readonly requiredImports: readonly string[];
 };
 
-function rejected(message: string, detail?: Record<string, string | number>) {
+function rejected(
+	message: string,
+	detail?: { value?: string; memoryLimitBytes?: number },
+) {
 	return new BrowserWasmProviderError("PLACEMENT_REJECTED", message, {
-		...(detail !== undefined ? { detail } : {}),
+		...(detail !== undefined ? { detail } : undefined),
 	});
 }
 
-export function parseGuestPlacement(input: unknown): GuestPlacement {
-	if (typeof input !== "object" || input === null || Array.isArray(input)) {
+function isGuestPort(value: string): value is GuestPort {
+	switch (value) {
+		case "compute":
+		case "kv":
+		case "queue":
+			return true;
+		default:
+			return false;
+	}
+}
+
+export function parseGuestPlacement(
+	input: JsonValue | undefined,
+): GuestPlacement {
+	if (!isJsonObject(input)) {
 		throw rejected("a placement must be an object");
 	}
-	const record = input as Record<string, unknown>;
+	const record = input;
 
 	const guestId = record.guestId;
-	if (typeof guestId !== "string" || !DNS_1123_LABEL.test(guestId)) {
+	if (!isJsonString(guestId) || !DNS_1123_LABEL.test(guestId)) {
 		// The guest id becomes a DNS label in the station URL, so it is bounded
 		// by DNS rules rather than by what a filesystem would tolerate.
 		throw rejected("guestId is not an RFC 1123 label", {
-			value:
-				typeof guestId === "string" ? guestId.slice(0, 64) : typeof guestId,
+			value: isJsonString(guestId) ? guestId.slice(0, 64) : "not-a-string",
 		});
 	}
 
 	const port = record.port === undefined ? "compute" : record.port;
-	if (
-		typeof port !== "string" ||
-		!(GUEST_PORTS as readonly string[]).includes(port)
-	) {
+	if (!isJsonString(port) || !isGuestPort(port)) {
 		throw rejected(`port must be one of ${GUEST_PORTS.join(", ")}`);
 	}
 
 	const world = record.world === undefined ? DEFAULT_WORLD : record.world;
-	if (typeof world !== "string" || !WIT_ID.test(world)) {
+	if (!isJsonString(world) || !WIT_ID.test(world)) {
 		throw rejected("world is not a WIT world id");
 	}
 
@@ -99,7 +119,7 @@ export function parseGuestPlacement(input: unknown): GuestPlacement {
 			? DEFAULT_MEMORY_LIMIT_BYTES
 			: record.memoryLimitBytes;
 	if (
-		typeof memoryLimitBytes !== "number" ||
+		!isJsonNumber(memoryLimitBytes) ||
 		!Number.isInteger(memoryLimitBytes) ||
 		memoryLimitBytes < MIN_MEMORY_LIMIT_BYTES ||
 		memoryLimitBytes > MAX_MEMORY_LIMIT_BYTES
@@ -117,7 +137,7 @@ export function parseGuestPlacement(input: unknown): GuestPlacement {
 
 	const sharedMemory =
 		record.sharedMemory === undefined ? false : record.sharedMemory;
-	if (typeof sharedMemory !== "boolean") {
+	if (!isJsonBoolean(sharedMemory)) {
 		throw rejected("sharedMemory must be a boolean");
 	}
 
@@ -126,7 +146,7 @@ export function parseGuestPlacement(input: unknown): GuestPlacement {
 			? DEFAULT_EPOCH_DEADLINE_MS
 			: record.epochDeadlineMs;
 	if (
-		typeof epochDeadlineMs !== "number" ||
+		!isJsonNumber(epochDeadlineMs) ||
 		!Number.isInteger(epochDeadlineMs) ||
 		epochDeadlineMs < 1 ||
 		epochDeadlineMs > MAX_EPOCH_DEADLINE_MS
@@ -137,24 +157,23 @@ export function parseGuestPlacement(input: unknown): GuestPlacement {
 	}
 
 	const rawImports = record.requiredImports;
-	const requiredImports =
-		rawImports === undefined
-			? []
-			: Array.isArray(rawImports)
-				? rawImports.map((entry) => {
-						if (typeof entry !== "string" || !WIT_ID.test(entry)) {
-							throw rejected("requiredImports holds a non-WIT interface id");
-						}
-						return entry;
-					})
-				: (() => {
-						throw rejected("requiredImports must be a list");
-					})();
+	let requiredImports: readonly string[] = [];
+	if (rawImports !== undefined) {
+		if (!isJsonArray(rawImports)) {
+			throw rejected("requiredImports must be a list");
+		}
+		requiredImports = rawImports.map((entry) => {
+			if (!isJsonString(entry) || !WIT_ID.test(entry)) {
+				throw rejected("requiredImports holds a non-WIT interface id");
+			}
+			return entry;
+		});
+	}
 
 	return Object.freeze({
 		guestId,
-		port: port as GuestPort,
-		resourceClass: RESOURCE_CLASS_FOR_PORT[port as GuestPort],
+		port,
+		resourceClass: RESOURCE_CLASS_FOR_PORT[port],
 		world,
 		persistence,
 		memoryLimitBytes,

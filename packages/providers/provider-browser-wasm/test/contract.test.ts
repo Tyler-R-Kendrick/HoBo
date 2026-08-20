@@ -30,6 +30,15 @@ import {
 	provisionGuest,
 	releaseGuest,
 } from "../src/index.js";
+import {
+	isJsonArray,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../src/json.js";
 import type { HostAssetTransport, TransportRequest } from "../src/transport.js";
 
 const HOST_ORIGIN = "https://try-site.browser-wasm.hobo.localhost";
@@ -47,7 +56,7 @@ type PactInteraction = {
 		readonly status: number;
 		readonly headers?: PactHeaders;
 		readonly encoding?: "base64";
-		readonly body?: unknown;
+		readonly body?: JsonValue;
 	};
 };
 
@@ -60,39 +69,93 @@ type PactFile = {
 	readonly interactions: readonly PactInteraction[];
 };
 
+function jsonStringMap(value: JsonValue | undefined) {
+	if (!isJsonObject(value)) return {};
+	const mapped: { [key: string]: string } = {};
+	for (const [key, entry] of Object.entries(value)) {
+		if (isJsonString(entry)) mapped[key] = entry;
+	}
+	return mapped;
+}
+
+function parseInteraction(entry: JsonObject): PactInteraction | undefined {
+	const request = isJsonObject(entry.request) ? entry.request : undefined;
+	const response = isJsonObject(entry.response) ? entry.response : undefined;
+	if (
+		!isJsonString(entry.description) ||
+		request === undefined ||
+		response === undefined ||
+		!isJsonString(request.method) ||
+		!isJsonString(request.path)
+	) {
+		return undefined;
+	}
+	return {
+		description: entry.description,
+		request: {
+			method: request.method,
+			path: request.path,
+			headers: jsonStringMap(request.headers),
+		},
+		response: {
+			status: isJsonNumber(response.status) ? response.status : 0,
+			headers: jsonStringMap(response.headers),
+			...(response.encoding === "base64" ? { encoding: "base64" } : undefined),
+			body: response.body,
+		},
+	};
+}
+
 function loadPact(): PactFile {
-	const raw = readFileSync(
-		fileURLToPath(
-			new URL(
-				"../contracts/provider-browser-wasm-host-origin.pact.json",
-				import.meta.url,
+	const decoded = parseJsonObject(
+		readFileSync(
+			fileURLToPath(
+				new URL(
+					"../contracts/provider-browser-wasm-host-origin.pact.json",
+					import.meta.url,
+				),
 			),
+			"utf8",
 		),
-		"utf8",
 	);
-	const decoded: unknown = JSON.parse(raw);
-	if (typeof decoded !== "object" || decoded === null) {
-		throw new Error("the pact file is not a JSON object");
-	}
-	const candidate = decoded as Partial<PactFile>;
+	const consumer = isJsonObject(decoded.consumer)
+		? decoded.consumer
+		: undefined;
+	const provider = isJsonObject(decoded.provider)
+		? decoded.provider
+		: undefined;
+	const metadata = isJsonObject(decoded.metadata)
+		? decoded.metadata
+		: undefined;
+	const source = isJsonObject(metadata?.source) ? metadata.source : undefined;
+	const interactionsRaw = decoded.interactions;
 	if (
-		!Array.isArray(candidate.interactions) ||
-		candidate.interactions.length === 0
+		!isJsonString(consumer?.name) ||
+		!isJsonString(provider?.name) ||
+		!isJsonString(source?.checkedAt) ||
+		!isJsonString(source?.url) ||
+		!isJsonArray(interactionsRaw) ||
+		interactionsRaw.length === 0
 	) {
-		throw new Error("the pact file declares no interactions");
+		throw new Error("the pact file is malformed");
 	}
-	if (
-		candidate.consumer?.name === undefined ||
-		candidate.provider?.name === undefined
-	) {
-		throw new Error("the pact file is missing its consumer or provider name");
+	const interactions: PactInteraction[] = [];
+	for (const entry of interactionsRaw) {
+		if (!isJsonObject(entry)) {
+			throw new Error("the pact file has a malformed interaction");
+		}
+		const parsed = parseInteraction(entry);
+		if (parsed === undefined) {
+			throw new Error("the pact file has a malformed interaction");
+		}
+		interactions.push(parsed);
 	}
-	if (candidate.metadata?.source?.checkedAt === undefined) {
-		throw new Error(
-			"the pact file does not record when its source was checked",
-		);
-	}
-	return candidate as PactFile;
+	return {
+		consumer: { name: consumer.name },
+		provider: { name: provider.name },
+		metadata: { source: { url: source.url, checkedAt: source.checkedAt } },
+		interactions,
+	};
 }
 
 const pact = loadPact();
@@ -126,6 +189,14 @@ function bodyBytes(response: PactInteraction["response"]): Uint8Array {
 type RecordingTransport = HostAssetTransport & {
 	readonly requests: readonly TransportRequest[];
 };
+
+function recordedRequest(transport: RecordingTransport): TransportRequest {
+	const request = transport.requests[0];
+	if (request === undefined) {
+		throw new Error("the client made no request");
+	}
+	return request;
+}
 
 function transportReplaying(
 	...interactions: readonly PactInteraction[]
@@ -262,10 +333,7 @@ describe("host capabilities, verified against the pact", () => {
 
 		const host = await clientOver(transport).fetchHostCapabilities();
 
-		assertMatchesPactRequest(
-			transport.requests[0] as TransportRequest,
-			capabilities,
-		);
+		assertMatchesPactRequest(recordedRequest(transport), capabilities);
 		expect(host.origin).toBe(HOST_ORIGIN);
 		expect(host.crossOriginIsolated).toBe(true);
 		expect(host.persistence).toBe("opfs-sahpool");
@@ -291,10 +359,7 @@ describe("the guest manifest, verified against the pact", () => {
 
 		await clientOver(transport).fetchGuestManifest("try-site");
 
-		assertMatchesPactRequest(
-			transport.requests[0] as TransportRequest,
-			manifestInteraction,
-		);
+		assertMatchesPactRequest(recordedRequest(transport), manifestInteraction);
 	});
 
 	it("parses the recorded manifest into a bounded record", async () => {
@@ -317,7 +382,7 @@ describe("the guest manifest, verified against the pact", () => {
 		await expect(
 			clientOver(transport).fetchGuestManifest("other-guest"),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				isBrowserWasmProviderError(error) &&
 				error.code === "PROVIDER_CONTRACT_CHANGED",
 		);
@@ -329,7 +394,7 @@ describe("the guest manifest, verified against the pact", () => {
 		await expect(
 			clientOver(transport).fetchGuestManifest("ghost"),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				isBrowserWasmProviderError(error) &&
 				error.code === "BUNDLE_UNAVAILABLE" &&
 				error.detail.faultCode === "GUEST_NOT_FOUND",
@@ -352,7 +417,7 @@ describe("the component bundle, verified against the pact", () => {
 		const { artifact, bytes } =
 			await clientOver(transport).fetchComponent(manifest);
 
-		assertMatchesPactRequest(transport.requests[0] as TransportRequest, bundle);
+		assertMatchesPactRequest(recordedRequest(transport), bundle);
 		expect(bytes.byteLength).toBe(8);
 		expect(artifact.contentDigest).toBe(manifest.contentDigest);
 		expect(artifact.componentModel).toBe(true);
@@ -370,7 +435,7 @@ describe("the component bundle, verified against the pact", () => {
 		await expect(
 			clientOver(transport).fetchComponent(manifest),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				isBrowserWasmProviderError(error) &&
 				error.code === "BUNDLE_NOT_A_COMPONENT",
 		);
@@ -385,7 +450,7 @@ describe("the component bundle, verified against the pact", () => {
 		await expect(
 			clientOver(transport).fetchComponent(manifest),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				isBrowserWasmProviderError(error) &&
 				error.code === "BUNDLE_DIGEST_MISMATCH",
 		);
@@ -402,7 +467,7 @@ describe("the component bundle, verified against the pact", () => {
 		await expect(
 			clientOver(transport).fetchComponent(manifest),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				isBrowserWasmProviderError(error) &&
 				error.code === "BUNDLE_NOT_A_COMPONENT",
 		);
@@ -452,7 +517,7 @@ describe("provisioning end to end, replayed from the pact", () => {
 				placement,
 			}),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				isBrowserWasmProviderError(error) && error.code === "HOST_UNSUPPORTED",
 		);
 		expect(transport.requests).toHaveLength(2);
@@ -473,7 +538,7 @@ describe("provisioning end to end, replayed from the pact", () => {
 				placement,
 			}),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				isBrowserWasmProviderError(error) &&
 				error.code === "PERSISTENCE_UNAVAILABLE",
 		);
@@ -514,7 +579,7 @@ describe("provisioning end to end, replayed from the pact", () => {
 				}),
 			}),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				isBrowserWasmProviderError(error) && error.code === "HOST_UNSUPPORTED",
 		);
 	});
@@ -577,7 +642,7 @@ describe("release", () => {
 				now: () => Date.UTC(2026, 7, 8, 13, 0, 0),
 			}),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				isBrowserWasmProviderError(error) &&
 				error.code === "CLEANUP_INCOMPLETE",
 		);
@@ -600,7 +665,7 @@ describe("the default runtime", () => {
 				dropPartition: true,
 			}),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				isBrowserWasmProviderError(error) && error.code === "HOST_UNSUPPORTED",
 		);
 	});

@@ -74,6 +74,17 @@ export {
 } from "./errors.js";
 
 export {
+	comparePackVersions,
+	latestSatisfying,
+	type PackUpgradeAction,
+	type PackUpgradeInput,
+	type PackUpgradeReason,
+	type PackUpgradeVerdict,
+	planPackUpgrade,
+	type UpgradeCandidate,
+} from "./lifecycle.js";
+
+export {
 	PACK_CONFIG_FIELD_KINDS,
 	PACK_MANIFEST_SCHEMA_VERSION,
 	PACK_OPERATION_KINDS,

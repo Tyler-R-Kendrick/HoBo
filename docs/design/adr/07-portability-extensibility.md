@@ -858,3 +858,30 @@ HoBo's Plan 09 pyramid specifies unit, conformance, integration, E2E, determinis
 - **(+)** CI secrets stop being pasted: the credential surface is auditable resources.
 - **(−)** Three lanes behind one API is real implementation surface; the in-process lane depends on runtime-local completeness (its "Out" list shrinks or the lane's labels say so).
 - **(−)** Deploy caching correctness now matters to test UX: a hash-stability bug becomes a flaky-suite bug.
+
+## ADR-0165
+**Pack upgrade is a decision with named refusals: numeric version ordering, majors crossed only by name, dropped profile claims and unverified targets blocked rather than skipped.**
+
+**Status:** Accepted — extends [ADR-0062](#adr-0062) (registry distribution) and [ADR-0145](01-architecture-core.md#adr-0145) (traits/distribution); informed by the [OpenShift](../../competitors/openshift.md), [Kratix](../../competitors/kratix.md) and [Backstage](../../competitors/backstage.md) captures; closes gap N3 in [gap-analysis](../../competitors/gap-analysis.md).
+
+### Context
+`@hobo/pack-framework` parses a pack version and stops there: `parsePackVersion` is a format check, and no comparator exists anywhere in the repo. "Is this pack newer?" — the first question of any upgrade — was literally unanswerable in code, so there was also nowhere to put the rules governing whether an upgrade may proceed. Three captures make the cost concrete. OpenShift's Operator Lifecycle Manager treats install, upgrade and dependency resolution as one deliberately designed problem. Kratix versions Promises. Backstage did not solve it, and the plugin treadmill is what that looks like at scale. The corpus contains no example of an extensible platform that got away with leaving this implicit.
+
+### Decision
+1. **`comparePackVersions` orders numerically per field.** Lexical comparison of `<major>.<minor>.<patch>` puts `1.10.0` below `1.9.0`, which would select a nine-release-stale version and call it an upgrade. `latestSatisfying(versions, major)` is the in-major selector built on it.
+2. **`planPackUpgrade` returns a verdict, not an install.** `hold` / `upgrade` / `blocked`, plus the reasons, the majors that exist, and the profiles a move would drop. Fetching and swapping stay with whatever performs the install, so an upgrade that happened — or did not — can say why afterwards.
+3. **A major is a wall, not a step.** A new major is always reported and never taken until `acceptMajor` names it. Accepting major N is consent to N alone: an intervening major is not skipped past on the way to a higher accepted one.
+4. **A dropped profile claim blocks.** Consumers selected the pack because it implements a capability profile; a version that stops implementing it is not an upgrade for them. A major bump explains a breaking change without excusing one that was never named, so this check survives `acceptMajor`.
+5. **Unverified is blocked, never skipped.** When the version that should be taken has not passed `verifyPackManifest`, the verdict refuses it *by name* rather than quietly settling for an older one — silently staying behind while a surface reports "up to date" is the worse failure. Verification status is reported by the caller, which is the only party holding the trust anchors.
+6. **Downgrades are never automatic.** A resolver that selects a lower version on its own has invented a rollback nobody asked for.
+
+### Non-goals
+- Not an installer, a downloader, or a channel/subscription model. This is the decision, not the mechanism.
+- No pack-to-pack dependency graph: packs declare capability profiles, not other packs, so there is no graph to resolve today. The profile-claim check is the half of "dependency resolution" the current data supports, and the half that actually breaks consumers.
+- No new npm dependency. The repo has no `semver` package and does not acquire one for this.
+
+### Consequences
+- **(+)** Pack versions are orderable for the first time, which unblocks any surface that wants to show "an upgrade is available".
+- **(+)** The two refusals are visible facts rather than absences: an operator learns that a new major shipped, and learns that a candidate could not be verified, instead of seeing a quiet `hold` in both cases.
+- **(−)** `acceptMajor` puts a real decision in front of an operator on every major, which is friction by design and will be experienced as friction.
+- **(−)** The profile-claim check is only as good as the claims: a pack that keeps a profile id while degrading behind it passes. Conformance evidence, not this function, is what catches that.

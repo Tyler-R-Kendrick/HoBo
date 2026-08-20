@@ -363,7 +363,7 @@ a capture that does it.
 |---|---|---|---|
 | **N1** ✅ | **Drift is not a first-class computed fact.** *(Closed 2026-08-20 — `computeDrift` in `@hobo/cloud`, [ADR-0163](../design/adr/03-data-plane.md#adr-0163). Derived, not stored; classified by typed lifecycle rather than field diff.)* HoBo can *derive* divergence between recorded intent and materialized reality from its event log. Nothing derives it, names it, or shows it to anyone unprompted. | [Argo CD](argo-cd.md) (`OutOfSync` + per-resource diff), [Flux CD](flux-cd.md), [Crossplane](crossplane.md) | Reconciliation is table stakes in this category; *showing a human the difference* is what the category's users actually buy. HoBo has the harder half (an authoritative log) and not the visible half. |
 | **N2** ✅ | **`match.Decided` is a one-shot decision that nothing revisits.** *(Closed 2026-08-20 — `evaluateReplacement` in `@hobo/cloud`, [ADR-0164](../design/adr/01-architecture-core.md#adr-0164). Verdict separate from re-match; price still pending N5.)* Prices, capacity, policy and residency rules all move; the recorded decision does not. | [CAST AI](cast-ai.md) (continuous re-optimization), [Rancher Fleet](rancher-fleet.md) | A placement engine whose decisions are never re-evaluated is a configuration tool with an audit trail. The fix — re-evaluation emitting a new `match.Decided` — is additive but is a genuine design extension, not polish. |
-| **N3** | **Extension lifecycle is unsolved.** Resource Packs have no install/upgrade/dependency-resolution story worth the name. | [OpenShift](openshift.md) (OLM), [Kratix](kratix.md) (Promise updates), [Backstage](backstage.md) (the plugin treadmill) | Every extensible platform in this corpus either solved this deliberately or is visibly suffering. It is the difference between an extension model and a distribution problem the user inherits. |
+| **N3** ✅ | **Extension lifecycle is unsolved.** *(Closed 2026-08-20 — `comparePackVersions` and `planPackUpgrade` in `@hobo/pack-framework`, [ADR-0165](../design/adr/07-portability-extensibility.md#adr-0165). Versions are orderable; majors cross only by name; dropped profile claims and unverified targets block rather than skip. Residuals: no pack-to-pack dependency graph — packs declare profiles, not packs — and no channel/subscription model, so nothing schedules the check.)* Resource Packs have no install/upgrade/dependency-resolution story worth the name. | [OpenShift](openshift.md) (OLM), [Kratix](kratix.md) (Promise updates), [Backstage](backstage.md) (the plugin treadmill) | Every extensible platform in this corpus either solved this deliberately or is visibly suffering. It is the difference between an extension model and a distribution problem the user inherits. |
 
 Two further items sit just below the line — real, but closer to unclaimed opportunity than to
 missing mechanism:
@@ -574,7 +574,9 @@ Priority order, revised:
    shipped `@hobo/connectivity` default (a live [GAPS.md](../../GAPS.md) finding, restated in the
    [Tailscale capture](tailscale.md)).
 5. **N4 — close the estimate-versus-actual loop**, the corpus's clearest unclaimed feature.
-6. **N3 — an extension lifecycle for Resource Packs**, before the pack population makes it expensive.
+6. ~~**N3 — an extension lifecycle for Resource Packs**, before the pack population makes it
+   expensive.~~ ✅ The upgrade decision landed; a channel model and pack-to-pack dependencies remain
+   unbuilt.
 7. **N5 — resource the price-data dependency**, or scope cost-aware placement to what can actually be
    priced.
 

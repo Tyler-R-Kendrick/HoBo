@@ -62,6 +62,7 @@ export async function buildCopilotLaunch(input: {
 	const key = await input.credential();
 	return Object.freeze({
 		command: COPILOT_ACP_COMMAND,
+		// SAFETY: assertion to `] as string[]), env` is required at this boundary.
 		args: Object.freeze(["--acp"] as string[]),
 		env: Object.freeze({
 			...scrubEnvironment(input.sandbox),

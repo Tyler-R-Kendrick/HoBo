@@ -61,10 +61,12 @@ export function registerCodeNamedEndpoint(options: {
 		resource: "code",
 		app: "mux",
 		mode,
-		...(options.tenant !== undefined ? { tenant: options.tenant } : {}),
-		...(options.project !== undefined ? { project: options.project } : {}),
-		...(options.branch !== undefined ? { branch: options.branch } : {}),
-		...(options.env !== undefined ? { env: options.env } : {}),
+		...(options.tenant !== undefined ? { tenant: options.tenant } : undefined),
+		...(options.project !== undefined
+			? { project: options.project }
+			: undefined),
+		...(options.branch !== undefined ? { branch: options.branch } : undefined),
+		...(options.env !== undefined ? { env: options.env } : undefined),
 	} as const;
 
 	const host = getNamedEndpointHost(params);
@@ -99,10 +101,12 @@ export function describeDevTerminalAttach(options: {
 }): DevTerminalAttachSurface {
 	const registration = registerCodeNamedEndpoint({
 		mode: options.mode ?? "local",
-		...(options.tenant !== undefined ? { tenant: options.tenant } : {}),
-		...(options.project !== undefined ? { project: options.project } : {}),
-		...(options.branch !== undefined ? { branch: options.branch } : {}),
-		...(options.env !== undefined ? { env: options.env } : {}),
+		...(options.tenant !== undefined ? { tenant: options.tenant } : undefined),
+		...(options.project !== undefined
+			? { project: options.project }
+			: undefined),
+		...(options.branch !== undefined ? { branch: options.branch } : undefined),
+		...(options.env !== undefined ? { env: options.env } : undefined),
 	});
 	const host = registration.host;
 	const mode = registration.mode;

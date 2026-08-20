@@ -16,6 +16,13 @@ import {
 	resolveHarnessRuntime,
 	VERCEL_SANDBOX_PACKAGE,
 } from "./harness-spec.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 export type HarnessV1Event =
 	| { readonly type: "text-start"; readonly id: string }
@@ -33,7 +40,7 @@ export interface HarnessUsage {
 }
 
 export interface HarnessTurnHandle {
-	readonly submitToolResult: (result?: unknown) => Promise<void>;
+	readonly submitToolResult: (result?: JsonValue) => Promise<void>;
 	readonly done: Promise<void>;
 }
 
@@ -66,14 +73,14 @@ export interface HarnessResumeState {
 	readonly type: "resume-session";
 	readonly harnessId: string;
 	readonly specificationVersion: "harness-v1";
-	readonly data: Readonly<Record<string, unknown>>;
+	readonly data: JsonObject;
 }
 
 export interface HarnessContinueState {
 	readonly type: "continue-turn";
 	readonly harnessId: string;
 	readonly specificationVersion: "harness-v1";
-	readonly data: Readonly<Record<string, unknown>>;
+	readonly data: JsonObject;
 }
 
 export interface HarnessV1 {
@@ -119,16 +126,17 @@ const EMPTY_USAGE: HarnessUsage = {
 };
 
 function promptText(prompt: HarnessPrompt): string {
-	if (typeof prompt === "string") return prompt;
+	if (isJsonString(prompt)) return prompt;
 	const content = prompt.content;
-	if (typeof content === "string") return content;
+	if (isJsonString(content)) return content;
 	if (Array.isArray(content)) {
 		return content
 			.map((part) => {
-				if (typeof part === "string") return part;
-				if (part && typeof part === "object" && "text" in part) {
+				if (isJsonString(part)) return part;
+				if (part && isJsonObject(part) && "text" in part) {
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					const text = (part as { text?: unknown }).text;
-					return typeof text === "string" ? text : "";
+					return isJsonString(text) ? text : "";
 				}
 				return "";
 			})
@@ -223,10 +231,11 @@ async function loadBuiltinHarness(
 ): Promise<HarnessV1> {
 	if (importBuiltin) return importBuiltin(resolved.packageName);
 	try {
-		const loaded = (await import(resolved.packageName as string)) as Record<
-			string,
-			unknown
-		>;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		const loaded = (await import(
+			// SAFETY: packageName is a compile-time builtin adapter specifier.
+			resolved.packageName as string
+		)) as HarnessModule;
 		const harness = pickBuiltinExport(loaded);
 		if (!harness) {
 			throw new Error(
@@ -242,9 +251,11 @@ async function loadBuiltinHarness(
 	}
 }
 
-function pickBuiltinExport(
-	mod: Record<string, unknown>,
-): HarnessV1 | undefined {
+interface HarnessModule {
+	[name: string]: JsonValue | ((...args: never[]) => JsonValue) | undefined;
+}
+
+function pickBuiltinExport(mod: HarnessModule): HarnessV1 | undefined {
 	const factories = [
 		"claudeCode",
 		"codex",
@@ -265,8 +276,8 @@ function pickBuiltinExport(
 	];
 	for (const name of factories) {
 		const value = mod[name];
-		if (typeof value === "function") {
-			const created = (value as () => unknown)();
+		if (value instanceof Function) {
+			const created = cloneAsJson(value());
 			if (isHarnessV1(created)) return created;
 		}
 		if (isHarnessV1(value)) return value;
@@ -275,13 +286,13 @@ function pickBuiltinExport(
 	return undefined;
 }
 
-function isHarnessV1(value: unknown): value is HarnessV1 {
-	if (!value || typeof value !== "object") return false;
-	const row = value as HarnessV1;
+function isHarnessV1<T>(value: T): value is T & HarnessV1 {
+	if (!value || !isJsonObject(value)) return false;
+	const row = value;
 	return (
 		row.specificationVersion === "harness-v1" &&
-		typeof row.harnessId === "string" &&
-		typeof row.doStart === "function"
+		isJsonString(row.harnessId) &&
+		row.doStart instanceof Function
 	);
 }
 
@@ -293,10 +304,7 @@ function cliTurnInput(
 	return cwd === undefined ? { command, prompt } : { command, prompt, cwd };
 }
 
-export function cliPromptInvocation(
-	spec: HarnessSpec,
-	prompt: string,
-): { command: string; args: readonly string[]; stdin?: string } {
+export function cliPromptInvocation(spec: HarnessSpec, prompt: string) {
 	const command = spec.command;
 	if (!command) {
 		throw new Error(`cli adapter requires command on harness spec ${spec.id}`);
@@ -313,7 +321,7 @@ function defaultSpawnCli(input: SpawnCliInput): Promise<SpawnCliResult> {
 		const child = spawn(input.command, [...input.args], {
 			env: process.env,
 			stdio: ["pipe", "pipe", "pipe"],
-			...(input.cwd === undefined ? {} : { cwd: input.cwd }),
+			...(input.cwd === undefined ? undefined : { cwd: input.cwd }),
 		});
 		let stdout = "";
 		let stderr = "";
@@ -350,16 +358,20 @@ async function runCliPrompt(
 			command: invocation.command,
 			prompt,
 			args: invocation.args,
-			...(options.cwd === undefined ? {} : { cwd: options.cwd }),
-			...(invocation.stdin === undefined ? {} : { stdin: invocation.stdin }),
+			...(options.cwd === undefined ? undefined : { cwd: options.cwd }),
+			...(invocation.stdin === undefined
+				? undefined
+				: { stdin: invocation.stdin }),
 		});
 	}
 	const spawnCli = options.spawnCli ?? defaultSpawnCli;
 	const result = await spawnCli({
 		command: invocation.command,
 		args: invocation.args,
-		...(options.cwd === undefined ? {} : { cwd: options.cwd }),
-		...(invocation.stdin === undefined ? {} : { stdin: invocation.stdin }),
+		...(options.cwd === undefined ? undefined : { cwd: options.cwd }),
+		...(invocation.stdin === undefined
+			? undefined
+			: { stdin: invocation.stdin }),
 	});
 	if (result.code !== 0) {
 		const detail = result.stderr.trim() || result.stdout.trim();
@@ -429,7 +441,7 @@ export async function createHarnessV1(
 export interface HarnessAgentLike {
 	readonly createSession: (options?: {
 		readonly sessionId?: string;
-	}) => Promise<unknown>;
+	}) => Promise<JsonValue>;
 }
 
 export interface CreateHarnessAgentOptions extends CreateHarnessV1Options {
@@ -441,7 +453,7 @@ export interface CreateHarnessAgentOptions extends CreateHarnessV1Options {
 		readonly instructions?: string;
 	}) => HarnessAgentLike | Promise<HarnessAgentLike>;
 	readonly importJustBashSandbox?: () => Promise<{
-		createJustBashSandbox: (settings?: unknown) => unknown;
+		createJustBashSandbox: (settings?: JsonValue) => JsonValue;
 	}>;
 	readonly importHarnessAgent?: () => Promise<{
 		HarnessAgent: new (settings: {
@@ -455,8 +467,8 @@ export interface CreateHarnessAgentOptions extends CreateHarnessV1Options {
 async function resolveSandbox(
 	resolved: ResolvedHarnessRuntime,
 	options: CreateHarnessAgentOptions,
-): Promise<unknown> {
-	if (options.sandbox !== undefined) return options.sandbox;
+): Promise<JsonValue> {
+	if (options.sandbox !== undefined) return cloneAsJson(options.sandbox);
 	if (resolved.adapter === "skip") {
 		throw new Error(
 			`${resolved.adapter} is not a runnable coding harness (host or inference)`,
@@ -471,12 +483,20 @@ async function resolveSandbox(
 		throw new Error(`adapter ${resolved.adapter} has no sandbox mapping`);
 	}
 	try {
-		const loaded = options.importJustBashSandbox
-			? await options.importJustBashSandbox()
-			: ((await import(JUST_BASH_SANDBOX_PACKAGE as string)) as {
-					createJustBashSandbox: (settings?: unknown) => unknown;
-				});
-		if (typeof loaded.createJustBashSandbox !== "function") {
+		let loaded: {
+			createJustBashSandbox: (settings?: JsonValue) => JsonValue;
+		};
+		if (options.importJustBashSandbox) {
+			loaded = await options.importJustBashSandbox();
+		} else {
+			// SAFETY: JUST_BASH_SANDBOX_PACKAGE is a compile-time package specifier.
+			const specifier = JUST_BASH_SANDBOX_PACKAGE as string;
+			// SAFETY: the just-bash package exports createJustBashSandbox.
+			loaded = (await import(specifier)) as {
+				createJustBashSandbox: (settings?: JsonValue) => JsonValue;
+			};
+		}
+		if (!(loaded.createJustBashSandbox instanceof Function)) {
 			throw new Error(
 				`${JUST_BASH_SANDBOX_PACKAGE} loaded but exported no createJustBashSandbox`,
 			);
@@ -512,23 +532,33 @@ export async function createHarnessAgent(
 		harness,
 		sandbox,
 		...(options.instructions === undefined
-			? {}
+			? undefined
 			: { instructions: options.instructions }),
 	};
 	if (options.createAgent) {
 		return options.createAgent(agentSettings);
 	}
 	try {
-		const loaded = options.importHarnessAgent
-			? await options.importHarnessAgent()
-			: ((await import(`${HARNESS_AGENT_PACKAGE}/agent`)) as {
-					HarnessAgent: new (settings: {
-						harness: HarnessV1;
-						sandbox: unknown;
-						instructions?: string;
-					}) => HarnessAgentLike;
-				});
-		if (typeof loaded.HarnessAgent !== "function") {
+		let loaded: {
+			HarnessAgent: new (settings: {
+				harness: HarnessV1;
+				sandbox: unknown;
+				instructions?: string;
+			}) => HarnessAgentLike;
+		};
+		if (options.importHarnessAgent) {
+			loaded = await options.importHarnessAgent();
+		} else {
+			// SAFETY: the harness-agent package exports the HarnessAgent class.
+			loaded = (await import(`${HARNESS_AGENT_PACKAGE}/agent`)) as {
+				HarnessAgent: new (settings: {
+					harness: HarnessV1;
+					sandbox: unknown;
+					instructions?: string;
+				}) => HarnessAgentLike;
+			};
+		}
+		if (!(loaded.HarnessAgent instanceof Function)) {
 			throw new Error(
 				`${HARNESS_AGENT_PACKAGE}/agent loaded but exported no HarnessAgent`,
 			);

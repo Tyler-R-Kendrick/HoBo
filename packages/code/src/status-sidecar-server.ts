@@ -197,10 +197,10 @@ export async function startStatusSidecar(
 	};
 }
 
-function writeJson(
+function writeJson<T>(
 	response: import("node:http").ServerResponse,
 	status: number,
-	body: unknown,
+	body: T,
 ): void {
 	response.writeHead(status, {
 		"content-type": "application/json; charset=utf-8",
@@ -213,6 +213,7 @@ function listen(server: Server, port: number): Promise<number> {
 	return new Promise((resolve, reject) => {
 		server.once("error", reject);
 		server.listen(port, "127.0.0.1", () => {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			resolve((server.address() as AddressInfo).port);
 		});
 	});

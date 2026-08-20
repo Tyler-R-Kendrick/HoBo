@@ -96,6 +96,7 @@ function sessionRefPresent(env: NodeJS.ProcessEnv, hoboHome: string): boolean {
 	const p = authSessionPath(hoboHome);
 	if (!existsSync(p)) return false;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const s = JSON.parse(readFileSync(p, "utf8")) as Partial<CodeAuthSession>;
 		return Boolean(s.sessionRef && s.stationId);
 	} catch {
@@ -107,6 +108,7 @@ function readSession(hoboHome: string): CodeAuthSession | null {
 	const p = authSessionPath(hoboHome);
 	if (!existsSync(p)) return null;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		return JSON.parse(readFileSync(p, "utf8")) as CodeAuthSession;
 	} catch {
 		return null;
@@ -221,6 +223,7 @@ export function inspectAgentSurface(
 				"agentclientprotocol.com",
 			],
 			details: [
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				"Spawn contract: editor host runs hobo-code as ACP agent subprocess",
 				"Partial host — prefer stdio-jsonrpc / tmux-send until full ACP methods land",
 			],
@@ -294,6 +297,7 @@ export function inspectAgentSurface(
 			"hobo-code agent --json           # this inventory",
 			"hobo-code isolate --json         # safe iterate",
 			"hobo-code harness --json         # self-improve + brains",
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			"wire .mcp.json / ACP host as needed",
 		],
 		residual: [

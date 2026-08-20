@@ -22,7 +22,7 @@ export interface MultiplexerStatus {
 	readonly clickableRegions: readonly string[];
 }
 
-const STATE_GLYPH: Record<AgentSemanticState, string> = {
+const STATE_GLYPH = {
 	idle: "○",
 	working: "●",
 	blocked: "▲",
@@ -137,10 +137,8 @@ function pad(s: string, n: number): string {
 	return s + " ".repeat(n - s.length);
 }
 
-function countStates(
-	panes: readonly AgentPaneState[],
-): Record<AgentSemanticState, number> {
-	const counts: Record<AgentSemanticState, number> = {
+function countStates(panes: readonly AgentPaneState[]) {
+	const counts = {
 		idle: 0,
 		working: 0,
 		blocked: 0,
@@ -178,7 +176,7 @@ export interface StatusRenderOptions {
 	readonly plain?: boolean;
 }
 
-const STATE_WORD: Record<AgentSemanticState, string> = {
+const STATE_WORD = {
 	idle: "idle",
 	working: "working",
 	blocked: "blocked",
@@ -261,7 +259,7 @@ export function renderStatusText(
 			(offline !== null ? `hobo-code·idle·${offline}` : undefined);
 		return renderDefaultLoadingScreen({
 			...loadOpts,
-			...(cue !== undefined ? { cue } : {}),
+			...(cue !== undefined ? { cue } : undefined),
 		});
 	}
 	const counts = countStates(status.panes);

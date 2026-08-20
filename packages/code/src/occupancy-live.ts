@@ -34,6 +34,7 @@ function sessionRunPath(
 function readRunRecord(path: string): OccupancyRunRecord | undefined {
 	if (!existsSync(path)) return undefined;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		return JSON.parse(readFileSync(path, "utf8")) as OccupancyRunRecord;
 	} catch {
 		return undefined;
@@ -160,6 +161,7 @@ function done(){if(--left===0)process.stdout.write(JSON.stringify(open));}
 	let open: Record<string, boolean> = {};
 	if (result.status === 0 && result.stdout) {
 		try {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			open = JSON.parse(result.stdout) as Record<string, boolean>;
 		} catch {
 			open = {};

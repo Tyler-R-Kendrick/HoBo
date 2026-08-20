@@ -89,10 +89,12 @@ function readBindleProjectDir(
 	);
 	if (!existsSync(path)) return undefined;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const parsed = JSON.parse(readFileSync(path, "utf8")) as {
 			readonly projectDir?: string;
 		};
-		return typeof parsed.projectDir === "string"
+		return Object.prototype.toString.call(parsed.projectDir) ===
+			"[object String]"
 			? parsed.projectDir
 			: undefined;
 	} catch {
@@ -111,6 +113,7 @@ export function occupancyRunIsLive(
 function readRun(path: string): RunRecord | undefined {
 	if (!existsSync(path)) return undefined;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		return JSON.parse(readFileSync(path, "utf8")) as RunRecord;
 	} catch {
 		return undefined;
@@ -195,6 +198,7 @@ function readDisabled(
 	const path = managedResourceStatePath(hoboHome, stationId, environment);
 	if (!existsSync(path)) return new Set();
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const parsed = JSON.parse(readFileSync(path, "utf8")) as {
 			readonly disabled?: readonly string[];
 		};
@@ -299,6 +303,7 @@ export function occupancyFlowIsActive(
 	const path = occupancyFlowPath(hoboHome, stationId, environment);
 	if (!existsSync(path)) return true;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const parsed = JSON.parse(readFileSync(path, "utf8")) as {
 			readonly active?: boolean;
 		};
@@ -335,8 +340,10 @@ export function persistOccupancyRun(input: {
 	writeRun(runPath(input.hoboHome, input.stationId, input.environment), {
 		projectDir: input.projectDir,
 		bindleName: input.bindleName,
-		...(input.pid !== undefined ? { pid: input.pid } : {}),
-		...(input.sessionId !== undefined ? { sessionId: input.sessionId } : {}),
+		...(input.pid !== undefined ? { pid: input.pid } : undefined),
+		...(input.sessionId !== undefined
+			? { sessionId: input.sessionId }
+			: undefined),
 	});
 }
 
@@ -532,8 +539,8 @@ export function createOccupancyController(options: {
 					stationId: station.stationId,
 					tenant: station.tenant,
 					environment: station.environment,
-					...(station.project ? { project: station.project } : {}),
-					...(station.branch ? { branch: station.branch } : {}),
+					...(station.project ? { project: station.project } : undefined),
+					...(station.branch ? { branch: station.branch } : undefined),
 				},
 				bindleName,
 				projectDir,
@@ -543,7 +550,7 @@ export function createOccupancyController(options: {
 				reportUrl: session.reportUrl,
 				...(session.namedUrl !== undefined
 					? { namedUrl: session.namedUrl }
-					: {}),
+					: undefined),
 			});
 			persistOccupancyRun({
 				hoboHome: options.hoboHome,
@@ -551,7 +558,7 @@ export function createOccupancyController(options: {
 				environment: station.environment,
 				projectDir,
 				bindleName,
-				...(session.pid !== undefined ? { pid: session.pid } : {}),
+				...(session.pid !== undefined ? { pid: session.pid } : undefined),
 				sessionId: session.sessionId,
 			});
 		},

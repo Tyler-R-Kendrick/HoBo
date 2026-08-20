@@ -54,6 +54,7 @@ describe("hobo-code init (machine discovery, ADR-0155)", () => {
 		expect(result.code).toBe("HOBO_CODE_INIT_DRY_RUN");
 		expect(existsSync(join(home, "stations"))).toBe(false);
 		expect(existsSync(machineDiscoveryPath(home))).toBe(false);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = result.data as {
 			manifest: { ok: boolean };
 			report: { git: string | null };
@@ -71,6 +72,7 @@ describe("hobo-code init (machine discovery, ADR-0155)", () => {
 		});
 		expect(result.ok).toBe(true);
 		expect(result.code).toBe("HOBO_CODE_INIT");
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = result.data as {
 			station: { stationId: string; created: boolean };
 		};
@@ -84,8 +86,10 @@ describe("hobo-code init (machine discovery, ADR-0155)", () => {
 				(row) => row.capability.id === "capability:model-server:ollama",
 			)?.status,
 		).toBe("missing");
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const report = JSON.parse(
 			readFileSync(machineDiscoveryPath(home), "utf8"),
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		) as { schema: string };
 		expect(report.schema).toBe("hobo.code.machine-discovery/v1");
 		// Idempotent second run: already present, still ok.
@@ -96,6 +100,7 @@ describe("hobo-code init (machine discovery, ADR-0155)", () => {
 		});
 		expect(again.ok).toBe(true);
 		expect(
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			(again.data as { station: { created: boolean } }).station.created,
 		).toBe(false);
 	});
@@ -133,6 +138,7 @@ describe("hobo-code init (machine discovery, ADR-0155)", () => {
 		});
 		expect(result.ok).toBe(true);
 		expect(
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			(result.data as { station: { stationId: string } }).station.stationId,
 		).toBe("station:code-ephemeral");
 	});

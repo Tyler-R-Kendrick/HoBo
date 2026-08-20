@@ -82,7 +82,7 @@ export class SlashCommandProvider implements AutocompleteProvider {
 		cursorLine: number,
 		_cursorCol: number,
 		item: AutocompleteItem,
-	): { lines: string[]; cursorLine: number; cursorCol: number } {
+	) {
 		const next = [...lines];
 		next[cursorLine] = item.value;
 		return {

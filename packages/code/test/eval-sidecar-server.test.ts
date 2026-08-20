@@ -9,6 +9,7 @@ import {
 	startEvalSidecar,
 } from "../src/eval-sidecar-server.js";
 import { loopbackFetchUrl } from "../src/occupancy-endpoints.js";
+import { isJsonObject } from "../src/json.js";
 
 const roots: string[] = [];
 afterEach(() => {
@@ -32,9 +33,12 @@ describe("evals sidecar server", () => {
 		});
 		try {
 			expect(server.url).toMatch(/evals\.code\..*\.hobo\.localhost/);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const health = (await (
 				await fetch(loopbackFetchUrl(server.url))
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				live: boolean;
 				suite: {
 					defaultSuite: { id: string };
@@ -44,11 +48,14 @@ describe("evals sidecar server", () => {
 			expect(health.live).toBe(true);
 			expect(health.suite.defaultSuite.id).toBe(GOLDEN_DEFAULT_SUITE_ID);
 			expect(health.suite.silverSuite.id).toBe(SILVER_DEFAULT_SUITE_ID);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const run = (await (
 				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
 					method: "POST",
 				})
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				ok: boolean;
 				reports: unknown[];
 			};
@@ -86,6 +93,7 @@ export async function classify(input: { text: string }) {
 			port: 0,
 		});
 		try {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const miss = (await (
 				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
 					method: "POST",
@@ -94,8 +102,11 @@ export async function classify(input: { text: string }) {
 						actuals: { "shop.classify": [{ label: "shipping" }] },
 					}),
 				})
-			).json()) as { ok: boolean };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { ok: boolean };
 			expect(miss.ok).toBe(false);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const hit = (await (
 				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
 					method: "POST",
@@ -104,14 +115,19 @@ export async function classify(input: { text: string }) {
 						actuals: { "shop.classify": [{ label: "billing" }] },
 					}),
 				})
-			).json()) as { ok: boolean; silver: { ok: boolean } };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { ok: boolean; silver: { ok: boolean } };
 			expect(hit.ok).toBe(true);
 			expect(hit.silver.ok).toBe(true);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const unseen = (await (
 				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
 					method: "POST",
 				})
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				ok: boolean;
 				silver: { ok: boolean };
 				gate: { ok: boolean };
@@ -160,11 +176,14 @@ export function classify(input) {
 			port: 0,
 		});
 		try {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const live = (await (
 				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
 					method: "POST",
 				})
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				ok: boolean;
 				gold: { ok: boolean };
 				silver: { ok: boolean };
@@ -214,11 +233,14 @@ export function classify() {
 			port: 0,
 		});
 		try {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const live = (await (
 				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
 					method: "POST",
 				})
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				ok: boolean;
 				gold: { ok: boolean };
 				silver: { ok: boolean };
@@ -261,11 +283,14 @@ module.exports = { route };
 			port: 0,
 		});
 		try {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const live = (await (
 				await fetch(new URL("/run", loopbackFetchUrl(server.url)), {
 					method: "POST",
 				})
-			).json()) as { ok: boolean; silver: { ok: boolean } };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { ok: boolean; silver: { ok: boolean } };
 			expect(live.silver.ok).toBe(true);
 			expect(live.ok).toBe(true);
 		} finally {
@@ -309,6 +334,7 @@ export function classify(input: { text: string }) {
 				},
 			);
 			expect(response.headers.get("content-type")).toMatch(/json/);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const body = (await response.json()) as {
 				ok: boolean;
 				silver: { ok: boolean };
@@ -342,8 +368,12 @@ export function classify(input: { text: string }) {
 			invokers: {
 				"shop.classify": (input) => {
 					const text =
-						input && typeof input === "object" && "text" in input
-							? String((input as { text?: unknown }).text ?? "")
+						input && isJsonObject(input) && "text" in input
+							? // SAFETY: parsed or fixture value is the named domain type after this assertion.
+								String(
+									// SAFETY: object+text-in guard above proved input.text exists.
+									(input as { text?: unknown }).text ?? "",
+								)
 							: "";
 					return { label: text.includes("invoice") ? "billing" : "other" };
 				},

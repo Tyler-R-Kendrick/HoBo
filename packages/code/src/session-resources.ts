@@ -7,9 +7,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
-
 import { isHoboHierarchicalName, sanitizeDnsLabel } from "@hobo/core";
-
 import {
 	type InspectedBindle,
 	inspectBindleProject,
@@ -18,6 +16,13 @@ import {
 } from "./bindle-inspect.js";
 import { type CampEvalSidecar, EVAL_SIDECAR_NAME } from "./eval-sidecar.js";
 import { assembleCampEvalSidecar } from "./eval-sidecar-server.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import {
 	isStationOccupancyEndpoint,
 	OCCUPANCY_NAMED_APP,
@@ -203,7 +208,7 @@ const TOPOLOGY_KINDS: readonly ResourceKind[] = [
 	"bindle",
 ];
 
-const REMEDIATION: Record<ResourceKind, string> = {
+const REMEDIATION = {
 	station: "no occupied Station — run: hobo-code auth login",
 	junction: "no junction in this occupancy — none federated",
 	yard: "no yard history — local Station should auto-seed yard:local",
@@ -258,10 +263,12 @@ function emptyScope(view: AuthedStationView): SessionScope {
 		stationId: view.stationId,
 		tenant: view.tenant,
 		environment: view.environment,
-		...(view.project ? { project: view.project } : {}),
-		...(view.branch ? { branch: view.branch } : {}),
-		...(view.railHash ? { railHash: view.railHash } : {}),
-		...(view.occupancyStatus ? { occupancyStatus: view.occupancyStatus } : {}),
+		...(view.project ? { project: view.project } : undefined),
+		...(view.branch ? { branch: view.branch } : undefined),
+		...(view.railHash ? { railHash: view.railHash } : undefined),
+		...(view.occupancyStatus
+			? { occupancyStatus: view.occupancyStatus }
+			: undefined),
 	};
 }
 
@@ -393,15 +400,17 @@ interface SnapshotFile {
 	readonly endpoints: readonly EndpointRecord[];
 }
 
-function parseSnapshot(raw: unknown): SnapshotFile | null {
-	if (!raw || typeof raw !== "object") return null;
+function parseSnapshot(raw: JsonValue | undefined): SnapshotFile | null {
+	if (!raw || !isJsonObject(raw)) return null;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const value = raw as Partial<SnapshotFile>;
 	if (value.schema !== SESSION_RESOURCES_SCHEMA) return null;
-	if (typeof value.recordedAt !== "string") return null;
-	if (!value.scope || typeof value.scope !== "object") return null;
+	if (!isJsonString(value.recordedAt)) return null;
+	if (!value.scope || !isJsonObject(value.scope)) return null;
 	if (!Array.isArray(value.nodes) || !Array.isArray(value.endpoints)) {
 		return null;
 	}
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return value as SnapshotFile;
 }
 
@@ -485,13 +494,14 @@ export function recordSessionResources(
 function readJsonFile<T>(path: string): T | undefined {
 	if (!existsSync(path)) return undefined;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		return JSON.parse(readFileSync(path, "utf8")) as T;
 	} catch {
 		return undefined;
 	}
 }
 
-function writeJsonFile(path: string, value: unknown): void {
+function writeJsonFile(path: string, value: JsonValue | undefined): void {
 	mkdirSync(dirname(path), { recursive: true });
 	writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
@@ -505,33 +515,21 @@ function sidecarSnapshotPath(hoboHome: string, stationId: string): string {
 	);
 }
 
-function loadSidecarSnapshot(
-	hoboHome: string,
-	stationId: string,
-): {
-	readonly dashboardUrl?: string;
-	readonly evidenceUrl?: string;
-	readonly evidenceReportUrl?: string;
-	readonly evidenceControlsUrl?: string;
-	readonly otlpHttpUrl?: string;
-	readonly evalsUrl?: string;
-	readonly rolloutUrl?: string;
-	readonly experimentUrl?: string;
-	readonly kmsUrl?: string;
-	readonly historyUrl?: string;
-} {
+function loadSidecarSnapshot(hoboHome: string, stationId: string) {
 	const path = sidecarSnapshotPath(hoboHome, stationId);
 	if (!existsSync(path)) return {};
 	try {
-		const parsed = JSON.parse(readFileSync(path, "utf8")) as Record<
-			string,
-			unknown
-		>;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		const parsed = JSON.parse(readFileSync(path, "utf8")) as JsonObject;
 		if (parsed.schema !== "hobo.code.station-sidecars/v1") return {};
-		const text = (key: string): string | undefined =>
-			typeof parsed[key] === "string" && parsed[key].length > 0
-				? (parsed[key] as string)
-				: undefined;
+		const text = (key: string): string | undefined => {
+			const value = parsed[key];
+			if (!isJsonString(value) || value.length === 0) {
+				return undefined;
+			}
+			// SAFETY: toString guard above proved parsed[key] is a string.
+			return value as string;
+		};
 		const dashboardUrl = text("dashboardUrl");
 		const evidenceUrl = text("evidenceUrl");
 		const evidenceReportUrl = text("evidenceReportUrl");
@@ -543,16 +541,18 @@ function loadSidecarSnapshot(
 		const kmsUrl = text("kmsUrl");
 		const historyUrl = text("historyUrl");
 		return {
-			...(dashboardUrl !== undefined ? { dashboardUrl } : {}),
-			...(evidenceUrl !== undefined ? { evidenceUrl } : {}),
-			...(evidenceReportUrl !== undefined ? { evidenceReportUrl } : {}),
-			...(evidenceControlsUrl !== undefined ? { evidenceControlsUrl } : {}),
-			...(otlpHttpUrl !== undefined ? { otlpHttpUrl } : {}),
-			...(evalsUrl !== undefined ? { evalsUrl } : {}),
-			...(rolloutUrl !== undefined ? { rolloutUrl } : {}),
-			...(experimentUrl !== undefined ? { experimentUrl } : {}),
-			...(kmsUrl !== undefined ? { kmsUrl } : {}),
-			...(historyUrl !== undefined ? { historyUrl } : {}),
+			...(dashboardUrl !== undefined ? { dashboardUrl } : undefined),
+			...(evidenceUrl !== undefined ? { evidenceUrl } : undefined),
+			...(evidenceReportUrl !== undefined ? { evidenceReportUrl } : undefined),
+			...(evidenceControlsUrl !== undefined
+				? { evidenceControlsUrl }
+				: undefined),
+			...(otlpHttpUrl !== undefined ? { otlpHttpUrl } : undefined),
+			...(evalsUrl !== undefined ? { evalsUrl } : undefined),
+			...(rolloutUrl !== undefined ? { rolloutUrl } : undefined),
+			...(experimentUrl !== undefined ? { experimentUrl } : undefined),
+			...(kmsUrl !== undefined ? { kmsUrl } : undefined),
+			...(historyUrl !== undefined ? { historyUrl } : undefined),
 		};
 	} catch {
 		return {};
@@ -635,11 +635,7 @@ function localOccupancySeed(
 	view: AuthedStationView,
 	projectDir: string | undefined,
 	existingIds: ReadonlySet<string>,
-): {
-	readonly nodes: readonly TopologyNode[];
-	readonly camp?: OccupancyCampConfig;
-	readonly bindleManifest?: OccupancyBindleManifest;
-} {
+) {
 	if (view.mode !== "local") {
 		return { nodes: [] };
 	}
@@ -716,7 +712,7 @@ function bindleManifestFor(
 		})),
 		envKeys: inspected.envKeys,
 		requirements: inspected.requirements,
-		...(projectDir !== undefined ? { projectDir } : {}),
+		...(projectDir !== undefined ? { projectDir } : undefined),
 	};
 }
 
@@ -853,8 +849,8 @@ function toEndpointRow(
 				: "serving",
 		freshness: options.freshness,
 		resolvedAddresses: resolved,
-		...(listenPort !== undefined ? { listenPort } : {}),
-		...(dnsMissing ? { unresolvedReason: "nxdomain" } : {}),
+		...(listenPort !== undefined ? { listenPort } : undefined),
+		...(dnsMissing ? { unresolvedReason: "nxdomain" } : undefined),
 	};
 }
 
@@ -867,7 +863,7 @@ export function assembleSessionResources(
 		env,
 		...(options.ensureLocalLogin !== undefined
 			? { ensureLocalLogin: options.ensureLocalLogin }
-			: {}),
+			: undefined),
 	});
 	const scope = emptyScope(view);
 	const lookupHost = options.lookupHost ?? defaultLookupHost;
@@ -1056,12 +1052,14 @@ export function assembleSessionResources(
 			camps,
 			bindles,
 			endpoints: endpointRows,
-			...(bindleManifest !== undefined ? { bindleManifest } : {}),
-			...(view.railHash !== undefined ? { railHash: view.railHash } : {}),
+			...(bindleManifest !== undefined ? { bindleManifest } : undefined),
+			...(view.railHash !== undefined
+				? { railHash: view.railHash }
+				: undefined),
 			evals,
 		}),
-		...(camp ? { camp } : {}),
-		...(bindleManifest ? { bindleManifest } : {}),
+		...(camp ? { camp } : undefined),
+		...(bindleManifest ? { bindleManifest } : undefined),
 		evals,
 	};
 }
@@ -1212,7 +1210,7 @@ export function filterSessionResources(
 		scope: inventory.scope,
 		...(kind === "station" && inventory.station
 			? { station: inventory.station }
-			: {}),
+			: undefined),
 		peers: kind === "station" ? inventory.peers : [],
 		junctions: kind === "junction" ? inventory.junctions : [],
 		yards: kind === "yard" ? inventory.yards : [],
@@ -1222,11 +1220,11 @@ export function filterSessionResources(
 		capabilities: inventory.capabilities,
 		managed: inventory.managed.filter((row) => row.ownerKind === kind),
 		missing: inventory.missing.filter((row) => row.kind === kind),
-		...(inventory.camp ? { camp: inventory.camp } : {}),
+		...(inventory.camp ? { camp: inventory.camp } : undefined),
 		...(inventory.bindleManifest
 			? { bindleManifest: inventory.bindleManifest }
-			: {}),
-		...(inventory.evals ? { evals: inventory.evals } : {}),
+			: undefined),
+		...(inventory.evals ? { evals: inventory.evals } : undefined),
 	};
 }
 
@@ -1398,7 +1396,7 @@ export function recordDevDeployment(input: {
 			kind: "http",
 			backendUrl: input.appUrl,
 			namedUrl: named,
-			...(hostname !== undefined ? { hostname } : {}),
+			...(hostname !== undefined ? { hostname } : undefined),
 			mode: "local",
 			preferredUrl: named,
 			fidelity: "real",
@@ -1458,15 +1456,15 @@ export function recordDevDeployment(input: {
 				requirements: ["managed-http-runtime"],
 				...(input.projectDir !== undefined
 					? { projectDir: input.projectDir }
-					: {}),
+					: undefined),
 			};
 	const dir = sessionDir(
 		input.hoboHome,
 		input.scope.stationId,
 		input.scope.environment,
 	);
-	writeJsonFile(join(dir, "camp.json"), camp);
-	writeJsonFile(join(dir, "bindle.json"), bindleManifest);
+	writeJsonFile(join(dir, "camp.json"), cloneAsJson(camp));
+	writeJsonFile(join(dir, "bindle.json"), cloneAsJson(bindleManifest));
 	const appCampId = userCampId(bindleName);
 	recordSessionResources({
 		hoboHome: input.hoboHome,

@@ -3,6 +3,7 @@
  * Never prints secret values—only env names and presence.
  */
 import { HOBO_AGENT_MODEL } from "./harness-customization.js";
+import { isJsonString } from "./json.js";
 
 // public-contract: models status payload
 export const CODE_MODELS_SCHEMA = "hobo.code.models/v1" as const;
@@ -39,8 +40,7 @@ export function inspectModels(
 	env: NodeJS.ProcessEnv = process.env,
 ): ModelsStatus {
 	const fromEnv =
-		typeof env.HOBO_CODE_MODEL === "string" &&
-		env.HOBO_CODE_MODEL.trim().length > 0
+		isJsonString(env.HOBO_CODE_MODEL) && env.HOBO_CODE_MODEL.trim().length > 0
 			? env.HOBO_CODE_MODEL.trim()
 			: null;
 	const byok = BYOK_ENV_NAMES.map((name) => ({

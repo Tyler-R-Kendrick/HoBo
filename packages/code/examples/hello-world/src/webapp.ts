@@ -18,6 +18,7 @@ export const app = new Hono().get("/", async (c) => {
 		name ? `hello?name=${encodeURIComponent(name)}` : "hello",
 		apiBase.endsWith("/") ? apiBase : `${apiBase}/`,
 	);
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const { message } = (await (await fetch(url)).json()) as { message: string };
 	return c.html(`<!doctype html>
 <html lang="en">

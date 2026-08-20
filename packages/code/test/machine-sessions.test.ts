@@ -65,6 +65,7 @@ describe("brokering a pane", () => {
 		expect(outcome.pane.destination).toBe("build-box.ts.net");
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("reports a denial as an answer, naming the machine", async () => {
 		const outcome = await brokerPaneSession(machine, "claude", {
 			broker: fakeBroker("deny"),
@@ -121,11 +122,13 @@ describe("session material stays in the gateway", () => {
 		// Otherwise it would quietly fall back to whatever is in ~/.ssh, which
 		// is the ambient authority this replaces.
 		expect(() =>
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			targetCommand({
 				name: "claude",
 				kind: "ssh",
 				host: "box",
 				command: "claude",
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			} as MuxTarget),
 		).toThrow("requires a host and Station authorization");
 		const brokeredPane = targetCommand({

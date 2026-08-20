@@ -1,8 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
-
 import { createFilesystemDualFixtures, loadPlayerPayload } from "@hobo/replay";
-
 import {
 	AgentLifecycleState,
 	PaneLifecycleState,
@@ -10,6 +8,7 @@ import {
 } from "./_generated/code_harness_pb.js";
 import type { DevMachine } from "./dev-machines.js";
 import { sshDestination } from "./dev-machines.js";
+import type { JsonObject } from "./json.js";
 import {
 	createLocalSessionControl,
 	type LocalSessionControl,
@@ -157,7 +156,7 @@ async function commandFor(
 	approved: boolean,
 	sessionId: string,
 	command: string,
-	value: Readonly<Record<string, unknown>>,
+	value: JsonObject,
 ): Promise<SessionSnapshot> {
 	const control = createLocalSessionControl({ hoboHome });
 	try {
@@ -374,7 +373,9 @@ export async function runResidentSessionCli(input: {
 					kind: "serve-sessions",
 					hoboHome: input.hoboHome,
 					projectRoot: input.projectDir,
-					...(input.servePort !== undefined ? { port: input.servePort } : {}),
+					...(input.servePort !== undefined
+						? { port: input.servePort }
+						: undefined),
 				},
 			},
 		};
@@ -442,8 +443,8 @@ export async function runResidentSessionCli(input: {
 				runner: sessionProcessRunner(),
 				sourceSessionId: sessionId,
 				actorId,
-				...(args[1] ? { checkpointId: args[1] } : {}),
-				...(args[2] ? { name: args.slice(2).join(" ") } : {}),
+				...(args[1] ? { checkpointId: args[1] } : undefined),
+				...(args[2] ? { name: args.slice(2).join(" ") } : undefined),
 			});
 			return {
 				message: `forked ${summary(forked.snapshot)} from checkpoint ${forked.sourceCheckpoint.id}`,
@@ -502,7 +503,7 @@ export async function runResidentSessionCli(input: {
 	}
 
 	let command: string;
-	let value: Record<string, unknown>;
+	let value: JsonObject;
 	switch (operation) {
 		case "attach":
 		case "switch":
@@ -678,7 +679,7 @@ export async function runResidentSessionCli(input: {
 					}
 				: operation === "detach"
 					? { terminalAction: { kind: "detach-session" } }
-					: {}),
+					: undefined),
 		},
 	};
 }

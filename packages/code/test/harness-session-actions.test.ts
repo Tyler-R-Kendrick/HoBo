@@ -29,10 +29,12 @@ import {
 import type { HarnessSessionNode } from "../src/harness-session-view.js";
 
 function session(overrides: Partial<HarnessSessionNode>): HarnessSessionNode {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return {
 		id: "s1",
 		branch: "durable",
 		...overrides,
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	} as HarnessSessionNode;
 }
 
@@ -113,6 +115,7 @@ describe("nextAgentTabName", () => {
 		);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("counts the bare name as the first", () => {
 		expect(nextAgentTabName(windows("codex"), "codex")).toBe("codex-2");
 	});

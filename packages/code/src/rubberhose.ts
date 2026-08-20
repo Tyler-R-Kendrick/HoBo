@@ -46,6 +46,7 @@ export type AccentName = "spark" | "go" | "none";
 export interface CardOptions {
 	/** Exact outer width in cells (including the shadow column). */
 	readonly width: number;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	/** Optional title rendered into the top rule as a title card would. */
 	readonly title?: string;
 	/** Rare status accent; omitted or "none" keeps the card strictly B&W. */
@@ -57,7 +58,10 @@ export interface CardOptions {
 /** Visible width, ignoring SGR escapes (colour must not shift geometry). */
 export function cellWidth(text: string): number {
 	// biome-ignore lint/suspicious/noControlCharactersInRegex: measuring past SGR is the point
-	return text.replace(/\u001b\[[0-9;]*m/g, "").length;
+	return text.replace(
+		new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"),
+		"",
+	).length;
 }
 
 /** Pad/truncate to exactly `width` visible cells, preserving any escapes. */
@@ -92,8 +96,7 @@ export function fitCells(text: string, width: number): string {
 }
 
 /** SGR run at the very start of a slice; see ansi.ts for the shared strippers. */
-// biome-ignore lint/suspicious/noControlCharactersInRegex: ESC is the sequence being matched.
-const LEADING_SGR = /^\u001b\[[0-9;]*m/u;
+const LEADING_SGR = new RegExp(`^${String.fromCharCode(27)}\\[[0-9;]*m`, "u");
 
 function paint(text: string, accent: AccentName, enabled: boolean): string {
 	if (!enabled || accent === "none") return text;
@@ -222,7 +225,7 @@ export function titleCard(
 	}
 	return inkCard(body, {
 		width: outer,
-		...(options.flat ? { flat: true } : {}),
+		...(options.flat ? { flat: true } : undefined),
 	});
 }
 

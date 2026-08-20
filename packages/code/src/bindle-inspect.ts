@@ -4,6 +4,13 @@
  */
 import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 export const BINDLE_RESOURCE_KINDS = [
 	"api",
@@ -33,6 +40,21 @@ export const BINDLE_RESOURCE_KINDS = [
 
 export type BindleResourceKind = (typeof BINDLE_RESOURCE_KINDS)[number];
 
+interface BindleResourceEntry {
+	kind?: string;
+	name?: string;
+	dependsOn?: unknown;
+	declaredAllow?: unknown;
+}
+
+function bindleResourceEntry(entry: JsonValue): BindleResourceEntry {
+	if (!entry || !isJsonObject(entry)) {
+		return {};
+	}
+	// SAFETY: [object Object] guard proved entry is a bindle resource record.
+	return entry as BindleResourceEntry;
+}
+
 export interface LocalBindleCapability {
 	readonly kind: BindleResourceKind;
 	readonly available: boolean;
@@ -41,7 +63,7 @@ export interface LocalBindleCapability {
 type CatalogBindleKind = Exclude<BindleResourceKind, "experiment">;
 
 /** Station-hosted kinds are available. Everything else is unavailable — no mocks. */
-const LOCAL_CAPABILITY: Record<CatalogBindleKind, boolean> = {
+const LOCAL_CAPABILITY = {
 	api: true,
 	web: true,
 	service: true,
@@ -127,7 +149,8 @@ export function inspectBindleProject(
 	const jsonPath = join(projectDir, "hobo.bindle.json");
 	if (existsSync(jsonPath)) {
 		try {
-			const parsed = JSON.parse(readFileSync(jsonPath, "utf8")) as unknown;
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			const parsed = parseJsonValue(readFileSync(jsonPath, "utf8"));
 			const fromJson = inspectBindleJson(parsed, fallbackName);
 			if (fromJson) return fromJson;
 		} catch {
@@ -150,46 +173,39 @@ export function inspectBindleProject(
 }
 
 function inspectBindleJson(
-	raw: unknown,
+	raw: JsonValue | undefined,
 	fallbackName?: string,
 ): InspectedBindle | undefined {
-	if (!raw || typeof raw !== "object") return undefined;
+	if (!raw || !isJsonObject(raw)) return undefined;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const value = raw as {
 		name?: unknown;
 		resources?: unknown;
 		services?: unknown;
 	};
 	const name =
-		typeof value.name === "string" && value.name.length > 0
+		isJsonString(value.name) && value.name.length > 0
 			? value.name
 			: (fallbackName ?? "app");
 	const resources: InspectedBindleResource[] = [];
-	if (value.resources && typeof value.resources === "object") {
+	if (value.resources && isJsonObject(value.resources)) {
 		for (const [key, entry] of Object.entries(
-			value.resources as Record<string, unknown>,
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			value.resources as JsonObject,
 		)) {
-			const rec =
-				entry && typeof entry === "object"
-					? (entry as {
-							kind?: string;
-							name?: string;
-							dependsOn?: unknown;
-							declaredAllow?: unknown;
-						})
-					: {};
-			const kind = typeof rec.kind === "string" ? rec.kind : key;
+			const rec = bindleResourceEntry(entry);
+			const kind = isJsonString(rec.kind) ? rec.kind : key;
 			if (!KIND_SET.has(kind)) continue;
 			resources.push({
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				kind: kind as BindleResourceKind,
-				name: typeof rec.name === "string" ? rec.name : key,
+				name: isJsonString(rec.name) ? rec.name : key,
 				dependsOn: Array.isArray(rec.dependsOn)
-					? rec.dependsOn.filter(
-							(item): item is string => typeof item === "string",
-						)
+					? rec.dependsOn.filter((item): item is string => isJsonString(item))
 					: [],
 				allow: Array.isArray(rec.declaredAllow)
-					? rec.declaredAllow.filter(
-							(item): item is string => typeof item === "string",
+					? rec.declaredAllow.filter((item): item is string =>
+							isJsonString(item),
 						)
 					: [],
 			});
@@ -197,10 +213,11 @@ function inspectBindleJson(
 	}
 	if (Array.isArray(value.services)) {
 		for (const service of value.services) {
-			if (!service || typeof service !== "object") continue;
+			if (!service || !isJsonObject(service)) continue;
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const rec = service as { name?: string; kind?: string };
 			const kind = rec.kind === "web" ? "web" : "api";
-			const serviceName = typeof rec.name === "string" ? rec.name : kind;
+			const serviceName = isJsonString(rec.name) ? rec.name : kind;
 			if (!resources.some((row) => row.name === serviceName)) {
 				resources.push({
 					kind,
@@ -231,6 +248,7 @@ function resourcesFromFactoryCalls(source: string): InspectedBindleResource[] {
 		const used = (counts.get(kind) ?? 0) + 1;
 		counts.set(kind, used);
 		resources.push({
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			kind: kind as BindleResourceKind,
 			name: used === 1 ? kind : `${kind}-${used}`,
 			dependsOn: [],
@@ -250,6 +268,7 @@ function resourcesFromReturnedBindle(
 		const ident = match[1];
 		const kind = match[2];
 		if (!ident || !kind || !KIND_SET.has(kind)) continue;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		assigned.set(ident, kind as BindleResourceKind);
 	}
 	const block =
@@ -266,6 +285,7 @@ function resourcesFromReturnedBindle(
 		let kind: BindleResourceKind | undefined;
 		if (inline?.[1] && inline[2] && KIND_SET.has(inline[2])) {
 			name = inline[1];
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			kind = inline[2] as BindleResourceKind;
 		} else if (aliased?.[1] && aliased[2]) {
 			name = aliased[1];

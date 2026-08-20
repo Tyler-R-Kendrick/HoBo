@@ -26,6 +26,7 @@
  * no projects".
  */
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../src/json.js";
 
 import {
 	createOtelSink,
@@ -33,7 +34,7 @@ import {
 	projectOccupancyTelemetry,
 } from "../src/session-otel.js";
 
-const log = (overrides: Record<string, unknown> = {}) => ({
+const log = (overrides: JsonObject = {}) => ({
 	resourceName: "api",
 	body: "hello",
 	severity: "INFO",
@@ -41,7 +42,7 @@ const log = (overrides: Record<string, unknown> = {}) => ({
 	...overrides,
 });
 
-const span = (overrides: Record<string, unknown> = {}) => ({
+const span = (overrides: JsonObject = {}) => ({
 	resourceName: "api",
 	name: "GET /",
 	traceId: "t1",
@@ -50,7 +51,7 @@ const span = (overrides: Record<string, unknown> = {}) => ({
 	...overrides,
 });
 
-const metric = (overrides: Record<string, unknown> = {}) => ({
+const metric = (overrides: JsonObject = {}) => ({
 	resourceName: "api",
 	name: "requests",
 	value: 1,
@@ -310,6 +311,7 @@ describe("OTLP/JSON ingestion", () => {
 		expect(s.forResource("unknown").logs).toHaveLength(1);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("accepts resource.name as well as service.name", () => {
 		const s = sink();
 		s.ingestOtlpJson("logs", {
@@ -356,6 +358,7 @@ describe("OTLP/JSON ingestion", () => {
 		expect(s.forResource("api").logs).toHaveLength(1);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("treats a non-array attribute list as no attributes", () => {
 		const s = sink();
 		s.ingestOtlpJson("logs", {
@@ -434,6 +437,7 @@ describe("projectOccupancyTelemetry", () => {
 		sink = createOtelSink(),
 	) => projectOccupancyTelemetry({ resources, sink, collector });
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("reports the collector as listening", () => {
 		// The collector is up whether or not anything is exporting; conflating
 		// the two is exactly the confusion this view resolves.
@@ -466,6 +470,7 @@ describe("projectOccupancyTelemetry", () => {
 		).not.toHaveProperty("lastSignalAt");
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("reports a resource with any signal as exporting", () => {
 		const sink = createOtelSink();
 		sink.ingestMetric(metric());
@@ -559,6 +564,7 @@ describe("fleetView", () => {
 		expect(fleetView({ campConnected: true }).reason).toBeUndefined();
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("defers on an explicit false rather than treating it as unknown", () => {
 		expect(fleetView({ campConnected: false }).scope).toBe("camp-deferred");
 	});

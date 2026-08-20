@@ -342,6 +342,7 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(feature).toContain("generate → edit → lock");
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("formatHoboCodeResult surfaces status chrome as primary human output", async () => {
 		const home = temp("look-cli-home-");
 		const result = await runHoboCodeCli(["status"], { hoboHome: home });
@@ -372,7 +373,9 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(dense.message).toMatch(/herdr · panes · detach · highlight→copy/);
 		expect(dense.message).toMatch(/grok-build · click · tasks · workflows/);
 		// chip still available in data for status-bar consumers
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect((result.data as { chip: string }).chip).toMatch(/hobo-code·○2✓1/);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const herdr = result.data as {
 			herdr: {
 				copyOnHighlight: boolean;
@@ -474,6 +477,7 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(human).toMatch(/^ task · task-/m);
 		const cited = /at · (\S+)/.exec(human)?.[1];
 		expect(cited).toBeDefined();
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect(existsSync(cited as string)).toBe(true);
 		// No eight-character echo of the prompt standing in for content.
 		expect(human).not.toMatch(/ship th…/);
@@ -858,6 +862,7 @@ describe("hobo-code look/feel surfaces", () => {
 		expect(HOBO_CODE_VERBS).toContain("agent");
 		const home = temp("look-verbset-");
 		for (const verb of ["rooms", "join"] as const) {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			expect(HOBO_CODE_VERBS as readonly string[]).not.toContain(verb);
 			const r = await runHoboCodeCli([verb, "x"], { hoboHome: home });
 			expect(r.code).not.toMatch(

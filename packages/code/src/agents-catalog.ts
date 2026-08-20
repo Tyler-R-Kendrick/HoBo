@@ -157,8 +157,8 @@ function readEveSubtree(
 		id,
 		path: dir,
 		source,
-		...(parentId !== undefined ? { parentId } : {}),
-		...(description !== undefined ? { description } : {}),
+		...(parentId !== undefined ? { parentId } : undefined),
+		...(description !== undefined ? { description } : undefined),
 		children,
 	};
 }
@@ -205,7 +205,7 @@ export function discoverProjectEveAgents(
 				id: "agent",
 				path: legacyRoot,
 				source: "legacy-agent",
-				...(description !== undefined ? { description } : {}),
+				...(description !== undefined ? { description } : undefined),
 				children: legacyChildren,
 			});
 		} else {
@@ -296,7 +296,7 @@ function eveToCatalogNode(agent: ProjectEveAgent): AgentsCatalogNode {
 		path: agent.path,
 		...(agent.description !== undefined
 			? { description: agent.description }
-			: {}),
+			: undefined),
 		children: agent.children.map(eveToCatalogNode),
 	};
 }
@@ -373,11 +373,13 @@ export function flattenVisible(
 				depth,
 				expandable,
 				expanded,
-				...(node.harnessId !== undefined ? { harnessId: node.harnessId } : {}),
-				...(node.path !== undefined ? { path: node.path } : {}),
+				...(node.harnessId !== undefined
+					? { harnessId: node.harnessId }
+					: undefined),
+				...(node.path !== undefined ? { path: node.path } : undefined),
 				...(node.description !== undefined
 					? { description: node.description }
-					: {}),
+					: undefined),
 			});
 			if (expanded) walk(node.children, depth + 1);
 		}
@@ -433,7 +435,7 @@ function pickFromRow(row: AgentsCatalogFlatRow): AgentsCatalogPick | undefined {
 			label: row.label,
 			...(row.description !== undefined
 				? { description: row.description }
-				: {}),
+				: undefined),
 		};
 	}
 	return undefined;
@@ -532,6 +534,7 @@ export function reduceAgentsCatalogKey(
 	return { state };
 }
 
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 /** Format subagent inspect pick as product chat lines. */
 export function formatEveInspectPick(
 	pick: Extract<AgentsCatalogPick, { kind: "configure-eve" }>,

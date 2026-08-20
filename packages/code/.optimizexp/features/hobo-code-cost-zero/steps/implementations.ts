@@ -13,6 +13,7 @@ const BIN = "src/bin/hobo-code.ts";
 
 export const DISCOVERY_PRIMARY = {
 	command:
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		"pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts cost" as
 			| string
 			| null,
@@ -26,10 +27,7 @@ export const IMPLEMENTATION_STATUS = {
 	failurePath: "wired",
 } as const;
 
-function runHoboCode(
-	args: string[],
-	extraEnv: Record<string, string> = {},
-): { status: number | null; stdout: string; stderr: string } {
+function runHoboCode(args: string[], extraEnv: Record<string, string> = {}) {
 	const home = mkdtempSync(path.join(tmpdir(), "oxp-cost-home-"));
 	const r = spawnSync("node", ["--import", "tsx", BIN, ...args], {
 		cwd: PKG,

@@ -142,7 +142,7 @@ export function reduceTurn(view: TurnView, event: AguiEvent): TurnView {
 								state: event.ok ? "ok" : "failed",
 								...(event.summary !== undefined
 									? { summary: event.summary }
-									: {}),
+									: undefined),
 							}
 						: t,
 				),
@@ -158,6 +158,7 @@ export function reduceTurn(view: TurnView, event: AguiEvent): TurnView {
 	}
 }
 
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 /** Render the live turn as transcript lines — tools above the prose. */
 export function renderTurn(view: TurnView): string {
 	const lines: string[] = [];

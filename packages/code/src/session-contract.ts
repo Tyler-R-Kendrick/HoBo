@@ -174,7 +174,10 @@ function validateCommand(command: SessionCommandEnvelope["command"]): void {
 	}
 }
 
-export function parseSessionCommand(input: unknown): SessionCommandEnvelope {
+export function parseSessionCommand(
+	input: JsonValue | undefined,
+): SessionCommandEnvelope {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const command = fromJson(SessionCommandEnvelopeSchema, input as JsonValue);
 	if (command.schemaVersion !== SESSION_COMMAND_SCHEMA) {
 		throw new TypeError(`schemaVersion must be ${SESSION_COMMAND_SCHEMA}`);
@@ -189,7 +192,10 @@ export function parseSessionCommand(input: unknown): SessionCommandEnvelope {
 	return command;
 }
 
-export function parseSessionSnapshot(input: unknown): SessionSnapshot {
+export function parseSessionSnapshot(
+	input: JsonValue | undefined,
+): SessionSnapshot {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const snapshot = fromJson(SessionSnapshotSchema, input as JsonValue);
 	if (snapshot.schemaVersion !== SESSION_SNAPSHOT_SCHEMA) {
 		throw new TypeError(`schemaVersion must be ${SESSION_SNAPSHOT_SCHEMA}`);
@@ -323,7 +329,7 @@ export function parseSessionSnapshot(input: unknown): SessionSnapshot {
 	return snapshot;
 }
 
-export function sessionSnapshotJson(snapshot: SessionSnapshot): unknown {
+export function sessionSnapshotJson(snapshot: SessionSnapshot): JsonValue {
 	return toJson(SessionSnapshotSchema, snapshot, { alwaysEmitImplicit: true });
 }
 

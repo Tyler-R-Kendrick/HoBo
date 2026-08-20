@@ -23,8 +23,10 @@ describe("hobo-code bin launcher", () => {
 	});
 
 	it("stale rebuild compiles @hobo/code only and does not fan out @hobo/core", () => {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const pkg = JSON.parse(
 			readFileSync(join(pkgRoot, "package.json"), "utf8"),
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		) as { scripts?: Record<string, string> };
 		const prebuild = pkg.scripts?.prebuild ?? "";
 		expect(prebuild).not.toMatch(/@hobo\/core/);
@@ -179,6 +181,7 @@ process.on("SIGTERM", close);
 			if (child.pid === undefined)
 				throw new Error("launcher has no process id");
 			process.kill(child.pid, "SIGTERM");
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const [status] = (await once(child, "exit")) as [
 				number | null,
 				string | null,

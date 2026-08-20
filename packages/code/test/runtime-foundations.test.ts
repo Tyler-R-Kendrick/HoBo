@@ -144,6 +144,7 @@ describe("hobo-code runtime foundations (Eve · DeepAgents+OpenShell+MxC · Worl
 	it("help data payload includes eve, secure sandbox, worlds", async () => {
 		const help = await runHoboCodeCli(["help"]);
 		expect(help.ok).toBe(true);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = help.data as {
 			subagents: { framework: string };
 			secureSandbox: { stack: string[] };

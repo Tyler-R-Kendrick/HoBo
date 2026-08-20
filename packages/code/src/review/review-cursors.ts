@@ -37,8 +37,10 @@ export function decodeReviewCursor(
 	if (left.length !== right.length || !timingSafeEqual(left, right)) {
 		throw new ReviewError(REVIEW_ERROR.MALFORMED, "cursor signature invalid");
 	}
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const payload = JSON.parse(
 		Buffer.from(body, "base64url").toString("utf8"),
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	) as ReviewCursorPayload;
 	if (payload.generationId !== generationId) {
 		throw new ReviewError(

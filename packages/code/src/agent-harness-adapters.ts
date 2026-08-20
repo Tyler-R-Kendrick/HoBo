@@ -4,8 +4,15 @@
  */
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
-
 import type { HarnessSpecKind } from "./harness-spec.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 export type HarnessConfigFormat =
 	| "toml-append"
@@ -155,9 +162,10 @@ function jsonEnv(
 	if (!rel || !envSpec) return [];
 	const path = resolveHomePath(ctx.home, rel);
 	const existing = existsSync(path) ? readFileSync(path, "utf8") : "{}";
-	let parsed: Record<string, unknown> = {};
+	let parsed: JsonObject = {};
 	try {
-		parsed = JSON.parse(existing) as Record<string, unknown>;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		parsed = JSON.parse(existing) as JsonObject;
 	} catch {
 		return [
 			{
@@ -169,10 +177,17 @@ function jsonEnv(
 		];
 	}
 	const env =
-		typeof parsed.env === "object" && parsed.env !== null
-			? { ...(parsed.env as Record<string, string>) }
+		isJsonObject(parsed.env) && parsed.env !== null
+			? // SAFETY: parsed or fixture value is the named domain type after this assertion.
+				{
+					...// SAFETY: [object Object] guard proved parsed.env is a string map.
+					(parsed.env as Record<string, string>),
+				}
 			: {};
-	const wanted: Record<string, string> = {};
+	interface WantedEnv {
+		[name: string]: string;
+	}
+	const wanted: WantedEnv = {};
 	for (const [key, value] of Object.entries(envSpec)) {
 		wanted[key] = interpolateDest(value, ctx.dest);
 	}
@@ -193,35 +208,42 @@ function jsonEnv(
 	];
 }
 
-function interpolateDeep(value: unknown, dest: AgentsInitDestination): unknown {
-	if (typeof value === "string") return interpolateDest(value, dest);
+function interpolateDeep(
+	value: JsonValue | undefined,
+	dest: AgentsInitDestination,
+): JsonValue {
+	if (isJsonString(value)) return interpolateDest(value, dest);
 	if (Array.isArray(value)) {
 		return value.map((item) => interpolateDeep(item, dest));
 	}
-	if (value && typeof value === "object") {
-		const out: Record<string, unknown> = {};
+	if (value && isJsonObject(value)) {
+		const out: JsonObject = {};
 		for (const [key, child] of Object.entries(value)) {
-			out[key] = interpolateDeep(child, dest);
+			Object.assign(out, { [key]: interpolateDeep(child, dest) });
 		}
 		return out;
 	}
-	return value;
+	return value ?? null;
 }
 
-function deepMerge(base: unknown, overlay: unknown): unknown {
-	if (
-		Array.isArray(overlay) ||
-		overlay === null ||
-		typeof overlay !== "object"
-	) {
-		return overlay;
+function deepMerge(
+	base: JsonValue | undefined,
+	overlay: JsonValue | undefined,
+): JsonValue {
+	if (Array.isArray(overlay) || overlay === null || !isJsonObject(overlay)) {
+		return overlay ?? null;
 	}
 	const root =
-		base && typeof base === "object" && !Array.isArray(base)
-			? { ...(base as Record<string, unknown>) }
+		base && isJsonObject(base) && !Array.isArray(base)
+			? // SAFETY: parsed or fixture value is the named domain type after this assertion.
+				{
+					...// SAFETY: [object Object] guard proved base is a JSON object.
+					(base as JsonObject),
+				}
 			: {};
 	for (const [key, child] of Object.entries(
-		overlay as Record<string, unknown>,
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		overlay as JsonObject,
 	)) {
 		root[key] = deepMerge(root[key], child);
 	}
@@ -245,9 +267,9 @@ function jsonMerge(
 	) {
 		return [];
 	}
-	let parsed: unknown = {};
+	let parsed: JsonValue = null;
 	try {
-		parsed = JSON.parse(existing);
+		parsed = parseJsonValue(existing);
 	} catch {
 		return [
 			{
@@ -258,7 +280,7 @@ function jsonMerge(
 			},
 		];
 	}
-	const next = deepMerge(parsed, interpolateDeep(merge, ctx.dest));
+	const next = deepMerge(parsed, interpolateDeep(cloneAsJson(merge), ctx.dest));
 	return [
 		{
 			path,

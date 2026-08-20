@@ -11,6 +11,7 @@ import type { OptimizexpWorld } from "./world.ts";
 /** Discovery snapshot — see discovery.json for full report. */
 export const DISCOVERY_PRIMARY = {
 	command:
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		"pnpm --filter @hobo/code exec node --import tsx src/bin/hobo-code.ts help" as
 			| string
 			| null,
@@ -100,6 +101,7 @@ export function observeFailure(world: OptimizexpWorld): void {
 	exerciseSurface(world);
 	if (world.lastExitCode === 0) {
 		world.notes.push(
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			"observeFailure: command succeeded; treat as soft fail for UX path or refine step",
 		);
 	}

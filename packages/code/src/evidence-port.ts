@@ -13,6 +13,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
+import type { JsonValue } from "./json.js";
 
 import { parseGuestEvidenceSubmission } from "./parse.js";
 import type { EvidenceKind, GuestEvidenceSubmission } from "./types.js";
@@ -57,6 +58,7 @@ export function createEvidencePort(options: {
 	const artifact = (id: string): StoredEvidenceArtifact | undefined => {
 		const digest = artifactDigest(id);
 		if (!existsSync(metadataPath(id))) return undefined;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const value = JSON.parse(readFileSync(metadataPath(id), "utf8")) as Omit<
 			StoredEvidenceArtifact,
 			"size"
@@ -150,7 +152,7 @@ export function createEvidencePort(options: {
 				},
 			};
 		},
-		submit(input: unknown): string {
+		submit(input: JsonValue | undefined): string {
 			const submission = parseGuestEvidenceSubmission(input);
 			for (const ref of submission.artifactRefs) readArtifact(ref);
 			const id = randomUUID();
@@ -168,7 +170,7 @@ export function createEvidencePort(options: {
 					? {
 							signature: `hmac-sha256:${signatureFor(unsignedRecord).toString("hex")}`,
 						}
-					: {}),
+					: undefined),
 			};
 			appendFileSync(recordsPath, `${JSON.stringify(record)}\n`, {
 				encoding: "utf8",
@@ -178,28 +180,34 @@ export function createEvidencePort(options: {
 		},
 		records(kind?: EvidenceKind): readonly StoredEvidenceRecord[] {
 			if (!existsSync(recordsPath)) return [];
-			return readFileSync(recordsPath, "utf8")
-				.split("\n")
-				.filter(Boolean)
-				.map((line) => JSON.parse(line) as StoredEvidenceRecord)
-				.map((record) => {
-					if (record.kind !== "note") return record;
-					const signature = record.signature?.match(
-						/^hmac-sha256:([a-f0-9]{64})$/u,
-					)?.[1];
-					const { signature: _signature, ...unsignedRecord } = record;
-					if (
-						!signature ||
-						!timingSafeEqual(
-							Buffer.from(signature, "hex"),
-							signatureFor(unsignedRecord),
-						)
-					) {
-						throw new Error(`evidence note signature mismatch: ${record.id}`);
-					}
-					return record;
-				})
-				.filter((record) => kind === undefined || record.kind === kind);
+			return (
+				readFileSync(recordsPath, "utf8")
+					.split("\n")
+					.filter(Boolean)
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
+					.map((line) => {
+						// SAFETY: each records file line is a StoredEvidenceRecord JSON object.
+						return JSON.parse(line) as StoredEvidenceRecord;
+					})
+					.map((record) => {
+						if (record.kind !== "note") return record;
+						const signature = record.signature?.match(
+							/^hmac-sha256:([a-f0-9]{64})$/u,
+						)?.[1];
+						const { signature: _signature, ...unsignedRecord } = record;
+						if (
+							!signature ||
+							!timingSafeEqual(
+								Buffer.from(signature, "hex"),
+								signatureFor(unsignedRecord),
+							)
+						) {
+							throw new Error(`evidence note signature mismatch: ${record.id}`);
+						}
+						return record;
+					})
+					.filter((record) => kind === undefined || record.kind === kind)
+			);
 		},
 	};
 }

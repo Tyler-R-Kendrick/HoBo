@@ -5,6 +5,14 @@
 import { randomBytes } from "node:crypto";
 import { mkdirSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 const SCHEMA = "hobo.code.chat-session/v1";
 
@@ -79,12 +87,16 @@ export function saveChatSession(
 						at: message.at,
 					})),
 				}
-			: {}),
+			: undefined),
 		...(input.stationLabel !== undefined
 			? { stationLabel: input.stationLabel }
-			: {}),
-		...(input.envLabel !== undefined ? { envLabel: input.envLabel } : {}),
-		...(input.modelLabel !== undefined ? { modelLabel: input.modelLabel } : {}),
+			: undefined),
+		...(input.envLabel !== undefined
+			? { envLabel: input.envLabel }
+			: undefined),
+		...(input.modelLabel !== undefined
+			? { modelLabel: input.modelLabel }
+			: undefined),
 	};
 	const dir = chatSessionsDir(hoboHome);
 	mkdirSync(dir, { recursive: true });
@@ -101,9 +113,10 @@ export function loadChatSession(
 	id: string,
 ): ChatSessionRecord | undefined {
 	try {
-		const raw = JSON.parse(
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		const raw = parseJsonValue(
 			readFileSync(join(chatSessionsDir(hoboHome), `${id}.json`), "utf8"),
-		) as unknown;
+		);
 		return parseChatSession(raw);
 	} catch {
 		return undefined;
@@ -148,13 +161,16 @@ export function resolveChatSession(
 	return rows[0];
 }
 
-function parseChatSession(raw: unknown): ChatSessionRecord | undefined {
-	if (!raw || typeof raw !== "object" || Array.isArray(raw)) return undefined;
-	const row = raw as Record<string, unknown>;
+function parseChatSession(
+	raw: JsonValue | undefined,
+): ChatSessionRecord | undefined {
+	if (!raw || !isJsonObject(raw) || Array.isArray(raw)) return undefined;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	const row = raw as JsonObject;
 	if (row.schemaVersion !== SCHEMA) return undefined;
-	if (typeof row.id !== "string" || row.id.length === 0) return undefined;
-	if (typeof row.cwd !== "string") return undefined;
-	if (typeof row.createdAt !== "number" || typeof row.updatedAt !== "number") {
+	if (!isJsonString(row.id) || row.id.length === 0) return undefined;
+	if (!isJsonString(row.cwd)) return undefined;
+	if (!isJsonNumber(row.createdAt) || !isJsonNumber(row.updatedAt)) {
 		return undefined;
 	}
 	if (!Array.isArray(row.messages)) return undefined;
@@ -170,33 +186,35 @@ function parseChatSession(raw: unknown): ChatSessionRecord | undefined {
 		createdAt: row.createdAt,
 		updatedAt: row.updatedAt,
 		messages,
-		...(workingMessages !== undefined ? { workingMessages } : {}),
-		...(typeof row.stationLabel === "string"
+		...(workingMessages !== undefined ? { workingMessages } : undefined),
+		...(isJsonString(row.stationLabel)
 			? { stationLabel: row.stationLabel }
-			: {}),
-		...(typeof row.envLabel === "string" ? { envLabel: row.envLabel } : {}),
-		...(typeof row.modelLabel === "string"
+			: undefined),
+		...(isJsonString(row.envLabel) ? { envLabel: row.envLabel } : undefined),
+		...(isJsonString(row.modelLabel)
 			? { modelLabel: row.modelLabel }
-			: {}),
+			: undefined),
 	};
 }
 
 function parseTurns(raw: readonly unknown[]): ChatTurn[] | undefined {
 	const messages: ChatTurn[] = [];
 	for (const item of raw) {
-		if (!item || typeof item !== "object" || Array.isArray(item))
-			return undefined;
-		const turn = item as Record<string, unknown>;
+		if (!item || !isJsonObject(item) || Array.isArray(item)) return undefined;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		const turn = item as JsonObject;
 		if (
-			typeof turn.role !== "string" ||
+			!isJsonString(turn.role) ||
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			!ROLES.has(turn.role as ChatTurnRole)
 		) {
 			return undefined;
 		}
-		if (typeof turn.text !== "string" || typeof turn.at !== "number") {
+		if (!isJsonString(turn.text) || !isJsonNumber(turn.at)) {
 			return undefined;
 		}
 		messages.push({
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			role: turn.role as ChatTurnRole,
 			text: turn.text,
 			at: turn.at,

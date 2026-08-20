@@ -15,6 +15,7 @@ describe("Station OpenExperiment sidecar", () => {
 			expect(server.url).toMatch(/experiment\.code\..*\.hobo\.localhost/);
 			expect(server.url).not.toMatch(/127\.0\.0\.1/);
 			const origin = loopbackFetchUrl(server.url);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const health = (await (await fetch(origin)).json()) as {
 				name: string;
 				hosting: string;
@@ -32,32 +33,41 @@ describe("Station OpenExperiment sidecar", () => {
 				engine: "OpenExperimentEngine",
 			});
 
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const defined = (await (
 				await fetch(new URL("/experiments", origin), {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify(checkout),
 				})
-			).json()) as { name: string; flag: string };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { name: string; flag: string };
 			expect(defined).toMatchObject(checkout);
 
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const assigned = (await (
 				await fetch(new URL("/experiments/checkout-cta/assign", origin), {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify({ targetingKey: "user-1" }),
 				})
-			).json()) as { variant: string; subjectKey: string };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { variant: string; subjectKey: string };
 			expect(assigned.subjectKey).toBe("user-1");
 			expect(["control", "treatment"]).toContain(assigned.variant);
 
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const again = (await (
 				await fetch(new URL("/experiments/checkout-cta/assign", origin), {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify({ targetingKey: "user-1" }),
 				})
-			).json()) as { variant: string };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { variant: string };
 			expect(again.variant).toBe(assigned.variant);
 
 			const exposed = await fetch(
@@ -70,9 +80,12 @@ describe("Station OpenExperiment sidecar", () => {
 			);
 			expect(exposed.status).toBe(200);
 
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const analysis = (await (
 				await fetch(new URL("/experiments/checkout-cta/analyze", origin))
-			).json()) as { experiment?: string } | null;
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { experiment?: string } | null;
 			expect(analysis).toBeTruthy();
 		} finally {
 			await server.close();
@@ -91,6 +104,7 @@ describe("Station OpenExperiment sidecar", () => {
 				},
 			);
 			expect(response.status).toBe(400);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const body = (await response.json()) as { ok: boolean; code?: string };
 			expect(body.ok).toBe(false);
 			expect(body.code).toBe("experiment-definition-invalid");

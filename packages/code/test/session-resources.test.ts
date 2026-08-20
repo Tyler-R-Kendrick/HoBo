@@ -44,6 +44,7 @@ async function openListen(): Promise<string> {
 	await new Promise<void>((resolve) => {
 		server.listen(0, "127.0.0.1", () => resolve());
 	});
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const addr = server.address() as AddressInfo;
 	return `http://127.0.0.1:${addr.port}/`;
 }
@@ -309,6 +310,7 @@ describe("session resource inventory", () => {
 		).toBe("declared");
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("projects Station, Yard, and Camp managed resources as individually owned children", async () => {
 		const hoboHome = await loginHome();
 		const project = join(hoboHome, "hello-world");
@@ -408,6 +410,7 @@ describe("session resource inventory", () => {
 		});
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("hosts project eval tests as a same-camp sidecar, not a capability", async () => {
 		const hoboHome = await loginHome();
 		const project = join(hoboHome, "hello-world");

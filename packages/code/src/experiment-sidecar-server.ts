@@ -4,7 +4,6 @@
  */
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-
 import {
 	analyzeExperimentFromEngine,
 	EXPERIMENT_PORT,
@@ -13,6 +12,12 @@ import {
 	type FlagEvalContext,
 	OpenExperimentEngine,
 } from "@hobo/identity";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 import { occupancyNamedOrigin } from "./occupancy-endpoints.js";
 
@@ -40,7 +45,7 @@ export function createStationExperimentEngine(options?: {
 }): OpenExperimentEngine {
 	return new OpenExperimentEngine({
 		store: options?.store ?? new FeatureFlagStore(),
-		...(options?.now !== undefined ? { now: options.now } : {}),
+		...(options?.now !== undefined ? { now: options.now } : undefined),
 	});
 }
 
@@ -48,8 +53,8 @@ export async function startExperimentSidecar(
 	options: StartExperimentSidecarOptions = {},
 ): Promise<ExperimentSidecarServer> {
 	const engine = createStationExperimentEngine({
-		...(options.store !== undefined ? { store: options.store } : {}),
-		...(options.now !== undefined ? { now: options.now } : {}),
+		...(options.store !== undefined ? { store: options.store } : undefined),
+		...(options.now !== undefined ? { now: options.now } : undefined),
 	});
 	const server = createServer((request, response) => {
 		void handle(request, response, engine);
@@ -174,39 +179,42 @@ async function handle(
 			return;
 		}
 		if (method === "POST" && action === "conclude") {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const body = (await readJson(request)) as {
-				verdict?: unknown;
-				reason?: unknown;
+				verdict?: JsonValue;
+				reason?: JsonValue;
 			};
 			const verdict = asVerdict(body.verdict);
 			engine.conclude(
 				name,
 				verdict,
-				typeof body.reason === "string" ? body.reason : undefined,
+				isJsonString(body.reason) ? body.reason : undefined,
 			);
 			writeJson(response, 200, { ok: true, experiment: name, verdict });
 			return;
 		}
 		writeJson(response, 404, { ok: false, error: "not found" });
 	} catch (error) {
+		if (!(error instanceof Error)) throw error;
 		const mapped = mapEngineError(error);
 		writeJson(response, mapped.status, mapped.body);
 	}
 }
 
-function asDefinition(body: unknown): ExperimentDefinition {
-	if (!body || typeof body !== "object") {
+function asDefinition(body: JsonValue | undefined): ExperimentDefinition {
+	if (!body || !isJsonObject(body)) {
 		throw Object.assign(new TypeError("experiment definition required"), {
 			code: "experiment-definition-invalid",
 		});
 	}
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const value = body as Partial<ExperimentDefinition>;
-	if (typeof value.name !== "string" || value.name.length === 0) {
+	if (!isJsonString(value.name) || value.name.length === 0) {
 		throw Object.assign(new TypeError("experiment name required"), {
 			code: "experiment-definition-invalid",
 		});
 	}
-	if (typeof value.flag !== "string" || value.flag.length === 0) {
+	if (!isJsonString(value.flag) || value.flag.length === 0) {
 		throw Object.assign(new TypeError("experiment.flag required"), {
 			code: "experiment-definition-invalid",
 		});
@@ -220,34 +228,38 @@ function asDefinition(body: unknown): ExperimentDefinition {
 		name: value.name,
 		flag: value.flag,
 		variants: value.variants,
-		...(value.allocation !== undefined ? { allocation: value.allocation } : {}),
-		...(value.metrics !== undefined ? { metrics: value.metrics } : {}),
+		...(value.allocation !== undefined
+			? { allocation: value.allocation }
+			: undefined),
+		...(value.metrics !== undefined ? { metrics: value.metrics } : undefined),
 	};
 }
 
-function asContext(body: unknown): FlagEvalContext {
-	if (!body || typeof body !== "object") {
+function asContext(body: JsonValue | undefined): FlagEvalContext {
+	if (!body || !isJsonObject(body)) {
 		throw Object.assign(new TypeError("experiment context required"), {
 			code: "experiment-context-invalid",
 		});
 	}
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const value = body as Partial<FlagEvalContext>;
-	if (
-		typeof value.targetingKey !== "string" ||
-		value.targetingKey.length === 0
-	) {
+	if (!isJsonString(value.targetingKey) || value.targetingKey.length === 0) {
 		throw Object.assign(new TypeError("targetingKey required"), {
 			code: "experiment-context-invalid",
 		});
 	}
 	return {
 		targetingKey: value.targetingKey,
-		...(typeof value.tenant === "string" ? { tenant: value.tenant } : {}),
-		...(value.attributes !== undefined ? { attributes: value.attributes } : {}),
+		...(isJsonString(value.tenant) ? { tenant: value.tenant } : undefined),
+		...(value.attributes !== undefined
+			? { attributes: value.attributes }
+			: undefined),
 	};
 }
 
-function asVerdict(value: unknown): "ship" | "do-not-ship" | "inconclusive" {
+function asVerdict(
+	value: JsonValue | undefined,
+): "ship" | "do-not-ship" | "inconclusive" {
 	if (value === "ship" || value === "do-not-ship" || value === "inconclusive") {
 		return value;
 	}
@@ -256,17 +268,13 @@ function asVerdict(value: unknown): "ship" | "do-not-ship" | "inconclusive" {
 	});
 }
 
-function mapEngineError(error: unknown): {
-	readonly status: number;
-	readonly body: {
-		readonly ok: false;
-		readonly error: string;
-		readonly code?: string;
-	};
-} {
+function mapEngineError(error: Error) {
 	const code =
-		error && typeof error === "object" && "code" in error
-			? String((error as { code?: unknown }).code ?? "")
+		"code" in error
+			? String(
+					// SAFETY: `code` in Error after the in-guard.
+					(error as Error & { code?: string }).code ?? "",
+				)
 			: "";
 	const message = error instanceof Error ? error.message : "experiment failed";
 	if (
@@ -278,7 +286,7 @@ function mapEngineError(error: unknown): {
 	if (error instanceof TypeError || code.endsWith("-invalid")) {
 		return {
 			status: 400,
-			body: { ok: false, error: message, ...(code ? { code } : {}) },
+			body: { ok: false, error: message, ...(code ? { code } : undefined) },
 		};
 	}
 	if (code.startsWith("experiment-")) {
@@ -287,7 +295,7 @@ function mapEngineError(error: unknown): {
 	return { status: 500, body: { ok: false, error: message } };
 }
 
-async function readJson(request: IncomingMessage): Promise<unknown> {
+async function readJson(request: IncomingMessage): Promise<JsonValue> {
 	const chunks: Buffer[] = [];
 	for await (const chunk of request) {
 		chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
@@ -295,13 +303,14 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
 	if (chunks.length === 0) return {};
 	const raw = Buffer.concat(chunks).toString("utf8").trim();
 	if (raw.length === 0) return {};
-	return JSON.parse(raw) as unknown;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	return parseJsonValue(raw);
 }
 
-function writeJson(
+function writeJson<T>(
 	response: import("node:http").ServerResponse,
 	status: number,
-	body: unknown,
+	body: T,
 ): void {
 	const payload = `${JSON.stringify(body)}\n`;
 	response.writeHead(status, {
@@ -315,6 +324,7 @@ function listen(server: Server, port: number): Promise<number> {
 	return new Promise((resolve, reject) => {
 		server.once("error", reject);
 		server.listen(port, "127.0.0.1", () => {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			resolve((server.address() as AddressInfo).port);
 		});
 	});

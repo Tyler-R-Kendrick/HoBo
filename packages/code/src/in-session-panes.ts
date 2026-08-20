@@ -241,10 +241,9 @@ export async function ensureInSessionPanes(options: {
 		);
 	}
 	const cwd = options.cwd ?? process.cwd();
+	const homeValue = (options.env ?? process.env).HOME;
 	const userHome =
-		typeof (options.env ?? process.env).HOME === "string"
-			? ((options.env ?? process.env).HOME as string)
-			: (process.env.HOME ?? "");
+		homeValue && homeValue.length > 0 ? homeValue : (process.env.HOME ?? "");
 	const hoboHome =
 		options.hoboHome && options.hoboHome.length > 0
 			? options.hoboHome

@@ -6,8 +6,15 @@
 import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import { join, relative } from "node:path";
 import { pathToFileURL } from "node:url";
-
 import { GOLDEN_DEFAULT_SUITE_ID, SILVER_DEFAULT_SUITE_ID } from "@hobo/evals";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 // public-contract: occupancy name of the always-on trainable evals sidecar
 export const EVAL_SIDECAR_NAME = "evals" as const;
@@ -49,7 +56,7 @@ export type TrainableRegionForm =
 	| "decorator";
 
 export interface TrainableExample {
-	readonly input: unknown;
+	readonly input: JsonValue;
 	readonly output: unknown;
 }
 
@@ -103,21 +110,23 @@ export function inspectProjectEvalTests(
 export async function loadTrainableInvokers(
 	projectDir: string,
 	regions: readonly TrainableRegion[],
-): Promise<Readonly<Record<string, (input: unknown) => unknown>>> {
-	const invokers: Record<string, (input: unknown) => unknown> = {};
+): Promise<
+	Readonly<Record<string, (input: JsonValue | undefined) => JsonValue>>
+> {
+	const invokers: Record<string, (input: JsonValue | undefined) => JsonValue> =
+		{};
 	for (const region of regions) {
 		const short = region.methodRef.split(".").pop() ?? region.methodRef;
 		for (const file of invokerCandidateFiles(region.file)) {
 			const abs = join(projectDir, file);
 			if (!existsSync(abs)) continue;
 			try {
-				const mod = (await import(pathToFileURL(abs).href)) as Record<
-					string,
-					unknown
-				>;
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				const mod = (await import(pathToFileURL(abs).href)) as JsonObject;
 				const candidate = pickInvokerExport(mod, short);
 				if (candidate) {
-					invokers[region.methodRef] = (input: unknown) => candidate(input);
+					invokers[region.methodRef] = (input: JsonValue | undefined) =>
+						candidate(input);
 					break;
 				}
 			} catch {
@@ -143,24 +152,26 @@ function invokerCandidateFiles(file: string): readonly string[] {
 	return out;
 }
 
+function asInvoker<T>(
+	value: T,
+): ((input: JsonValue | undefined) => JsonValue) | undefined {
+	if (!(value instanceof Function)) return undefined;
+	return (input) => cloneAsJson(value(input));
+}
+
 function pickInvokerExport(
-	mod: Record<string, unknown>,
+	mod: JsonObject,
 	short: string,
-): ((input: unknown) => unknown) | undefined {
-	const named = mod[short];
-	if (typeof named === "function") {
-		return named as (input: unknown) => unknown;
-	}
+): ((input: JsonValue | undefined) => JsonValue) | undefined {
+	const named = asInvoker(mod[short]);
+	if (named) return named;
 	const fallbacks = [mod.default, mod.fn, mod];
 	for (const value of fallbacks) {
-		if (typeof value === "function") {
-			return value as (input: unknown) => unknown;
-		}
-		if (value && typeof value === "object") {
-			const nested = (value as Record<string, unknown>)[short];
-			if (typeof nested === "function") {
-				return nested as (input: unknown) => unknown;
-			}
+		const invoker = asInvoker(value);
+		if (invoker) return invoker;
+		if (value && isJsonObject(value)) {
+			const nested = asInvoker(value[short]);
+			if (nested) return nested;
 		}
 	}
 	return undefined;
@@ -209,7 +220,7 @@ export function campEvalSidecar(
 			source: "trainable-property-fuzz",
 		},
 		trainable,
-		...(project !== undefined ? { project } : {}),
+		...(project !== undefined ? { project } : undefined),
 	};
 }
 
@@ -217,7 +228,7 @@ function evalScriptCommand(projectDir: string): string | undefined {
 	const manifest = readPackageScripts(projectDir);
 	if (!manifest) return undefined;
 	for (const name of SCRIPT_CANDIDATES) {
-		if (typeof manifest[name] === "string" && manifest[name].length > 0) {
+		if (isJsonString(manifest[name]) && manifest[name].length > 0) {
 			return `pnpm run ${name}`;
 		}
 	}
@@ -230,15 +241,17 @@ function readPackageScripts(
 	const path = join(projectDir, "package.json");
 	if (!existsSync(path)) return undefined;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const parsed = JSON.parse(readFileSync(path, "utf8")) as {
 			scripts?: unknown;
 		};
-		if (!parsed.scripts || typeof parsed.scripts !== "object") return undefined;
+		if (!parsed.scripts || !isJsonObject(parsed.scripts)) return undefined;
 		const scripts: Record<string, string> = {};
 		for (const [key, value] of Object.entries(
-			parsed.scripts as Record<string, unknown>,
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			parsed.scripts as JsonObject,
 		)) {
-			if (typeof value === "string" && value.length > 0) scripts[key] = value;
+			if (isJsonString(value) && value.length > 0) scripts[key] = value;
 		}
 		return scripts;
 	} catch {
@@ -387,24 +400,28 @@ function extractTrainingExamples(
 	if (!Array.isArray(parsed)) return [];
 	const examples: TrainableExample[] = [];
 	for (const row of parsed) {
-		if (!row || typeof row !== "object") continue;
-		const record = row as { input?: unknown; output?: unknown };
+		if (!row || !isJsonObject(row)) continue;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		const record = row as { input?: JsonValue; output?: unknown };
 		if (!Object.hasOwn(record, "input") || !Object.hasOwn(record, "output")) {
 			continue;
 		}
-		examples.push({ input: record.input, output: record.output });
+		examples.push({
+			input: record.input ?? null,
+			output: cloneAsJson(record.output),
+		});
 	}
 	return examples;
 }
 
-function parseJsData(text: string): unknown {
+function parseJsData(text: string): JsonValue {
 	const quoted = text
 		.replace(/'/g, '"')
 		.replace(/([,{[]\s*)([A-Za-z_]\w*)\s*:/gu, '$1"$2":')
 		.replace(/,(\s*[}\]])/gu, "$1");
 	try {
-		return JSON.parse(quoted);
+		return parseJsonValue(quoted);
 	} catch {
-		return undefined;
+		return null;
 	}
 }

@@ -67,7 +67,7 @@ export function exportEvidenceRecordingAutomation(
 		recording: replayable,
 		...(options.sourceArtifactRef
 			? { sourceArtifactRef: options.sourceArtifactRef }
-			: {}),
+			: undefined),
 	});
 	const spec = renderSpec(replayable);
 	const source = `${JSON.stringify(replayable, null, 2)}\n`;
@@ -78,7 +78,7 @@ export function exportEvidenceRecordingAutomation(
 		sourceRecordingId: replayable.id,
 		...(options.sourceArtifactRef
 			? { sourceArtifactRef: options.sourceArtifactRef }
-			: {}),
+			: undefined),
 		replayability: requiredEnvironment.length > 0 ? "needs-input" : "ready",
 		requiredEnvironment,
 		artifacts: Object.freeze([
@@ -101,6 +101,7 @@ function parseReplayableBrowserRecording(
 		throw new TypeError(
 			"cross-origin recordings cannot be exported for playback",
 		);
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return recording as ReplayableBrowserRecording;
 }
 
@@ -200,10 +201,7 @@ function renderAction(
 	throw new TypeError("recorded action type is unsupported");
 }
 
-function renderTarget(target: BrowserRecordingTarget | undefined): {
-	readonly candidates: readonly string[];
-	readonly label: string;
-} {
+function renderTarget(target: BrowserRecordingTarget | undefined) {
 	if (!target) throw new TypeError("recorded action requires a target");
 	const candidates: string[] = [];
 	if (target.role)
@@ -259,6 +257,7 @@ ${steps}
 
 \`${input.command}\`
 
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 Set \`HOBO_AUTOMATION_BASE_URL\` to replay against another deployment and run this command from the project root containing \`.hobo/recordings\`. Playback uses a stable ordered action sequence and fixed-time semantic-locator waits, pins the recorded viewport plus locale, timezone, color scheme, reduced motion, serial execution, and zero retries. Recorded offsets remain evidence rather than sleeps so replay does not depend on workstation timing. New checkpoint screenshots are emitted as test evidence on every run; locator ambiguity or recorded route/title drift fails closed.
 `;
 }

@@ -109,11 +109,11 @@ function loadBoOffers(
 ): readonly BoModelOffer[] {
 	return listBoModelOffers({
 		hoboHome,
-		...(options?.env !== undefined ? { env: options.env } : {}),
-		...(options?.ollama !== undefined ? { ollama: options.ollama } : {}),
+		...(options?.env !== undefined ? { env: options.env } : undefined),
+		...(options?.ollama !== undefined ? { ollama: options.ollama } : undefined),
 		...(options?.harnessIds !== undefined
 			? { harnessIds: options.harnessIds }
-			: {}),
+			: undefined),
 	});
 }
 
@@ -150,25 +150,17 @@ function withModelSelection(
 	});
 }
 
-function selectionFromLoaded(loaded: HarnessSettings): {
-	readonly modelId?: string;
-	readonly via?: string;
-	readonly apiEndpoint?: string;
-} {
+function selectionFromLoaded(loaded: HarnessSettings) {
 	return {
-		...(loaded.modelId !== undefined ? { modelId: loaded.modelId } : {}),
-		...(loaded.via !== undefined ? { via: loaded.via } : {}),
+		...(loaded.modelId !== undefined ? { modelId: loaded.modelId } : undefined),
+		...(loaded.via !== undefined ? { via: loaded.via } : undefined),
 		...(loaded.apiEndpoint !== undefined
 			? { apiEndpoint: loaded.apiEndpoint }
-			: {}),
+			: undefined),
 	};
 }
 
-function selectionFromOffer(offer: BoModelOffer): {
-	readonly modelId: string;
-	readonly via: string;
-	readonly apiEndpoint: string;
-} {
+function selectionFromOffer(offer: BoModelOffer) {
 	return {
 		modelId: offer.id,
 		via: offer.via ?? "",
@@ -188,8 +180,8 @@ export function openHarnessConfigure(
 			? loadBoOffers(hoboHome, catalog)
 			: listHarnessModelOffers(harnessId, {
 					hoboHome,
-					...(catalog?.env !== undefined ? { env: catalog.env } : {}),
-					...(catalog?.live !== undefined ? { live: catalog.live } : {}),
+					...(catalog?.env !== undefined ? { env: catalog.env } : undefined),
+					...(catalog?.live !== undefined ? { live: catalog.live } : undefined),
 				});
 	return withModelSelection({
 		target: { kind: "harness", harnessId, label },
@@ -621,9 +613,9 @@ function saveConfigure(
 		schema: "hobo.code.harness-settings/v1",
 		id,
 		model: state.model.trim(),
-		...(modelId !== undefined ? { modelId } : {}),
-		...(via !== undefined ? { via } : {}),
-		...(apiEndpoint !== undefined ? { apiEndpoint } : {}),
+		...(modelId !== undefined ? { modelId } : undefined),
+		...(via !== undefined ? { via } : undefined),
+		...(apiEndpoint !== undefined ? { apiEndpoint } : undefined),
 		effort: state.effort,
 	};
 	const path = saveHarnessSettings(hoboHome, settings, scope);
@@ -632,7 +624,7 @@ function saveConfigure(
 		settings,
 		scope,
 		path,
-		...(state.parent ? { returnTo: state.parent } : {}),
+		...(state.parent ? { returnTo: state.parent } : undefined),
 	};
 }
 

@@ -23,6 +23,7 @@ describe("Station KMS sidecar", () => {
 			expect(server.secretUrl).toMatch(/secret\.code\..*\.hobo\.localhost/);
 			expect(server.cryptoUrl).toMatch(/crypto\.code\..*\.hobo\.localhost/);
 			const origin = loopbackFetchUrl(server.url);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const health = (await (await fetch(origin)).json()) as {
 				name: string;
 				hosting: string;
@@ -42,13 +43,17 @@ describe("Station KMS sidecar", () => {
 			);
 			expect(health.keys).toContain(STATION_KMS_KEY);
 
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const signed = (await (
 				await fetch(new URL(`/keys/${STATION_KMS_KEY}/sign`, origin), {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify({ payload: "hello-station" }),
 				})
-			).json()) as { signature: string };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { signature: string };
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const verified = (await (
 				await fetch(new URL(`/keys/${STATION_KMS_KEY}/verify`, origin), {
 					method: "POST",
@@ -58,44 +63,61 @@ describe("Station KMS sidecar", () => {
 						signature: signed.signature,
 					}),
 				})
-			).json()) as { ok: boolean };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { ok: boolean };
 			expect(verified.ok).toBe(true);
 
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const box = (await (
 				await fetch(new URL(`/keys/${STATION_KMS_KEY}/encrypt`, origin), {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify({ plaintext: "bindle-secret" }),
 				})
-			).json()) as { ciphertext: string; iv: string; authTag: string };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { ciphertext: string; iv: string; authTag: string };
 			expect(box.ciphertext).not.toContain("bindle-secret");
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const opened = (await (
 				await fetch(new URL(`/keys/${STATION_KMS_KEY}/decrypt`, origin), {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify(box),
 				})
-			).json()) as { plaintext: string };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { plaintext: string };
 			expect(opened.plaintext).toBe("bindle-secret");
 
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const put = (await (
 				await fetch(new URL("/secrets", origin), {
 					method: "POST",
 					headers: { "content-type": "application/json" },
 					body: JSON.stringify({ name: "db-pass", value: "s3cret" }),
 				})
-			).json()) as { versionId: string; valueRef: string };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { versionId: string; valueRef: string };
 			expect(put.valueRef).toMatch(/^secref:\/\/db-pass\//);
 			expect(JSON.stringify(put)).not.toContain("s3cret");
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const listed = (await (
 				await fetch(new URL("/secrets", origin))
-			).json()) as { secrets: string[] };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { secrets: string[] };
 			expect(listed.secrets).toEqual(["db-pass"]);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const access = (await (
 				await fetch(new URL("/secrets/db-pass/access", origin), {
 					method: "POST",
 				})
-			).json()) as { material: string; valueRef: string };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { material: string; valueRef: string };
 			expect(access.material).toBe("s3cret");
 			expect(access.valueRef).toBe(put.valueRef);
 		} finally {

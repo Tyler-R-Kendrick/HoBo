@@ -29,8 +29,10 @@ describe("atom acceptance fixtures", () => {
 		for (const atom of corpus.atoms) {
 			expect(
 				() =>
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					JSON.parse(
 						readFileSync(join(atom.dir, "acceptance.json"), "utf8"),
+						// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					) as AcceptanceFixture,
 			).not.toThrow();
 		}
@@ -38,8 +40,10 @@ describe("atom acceptance fixtures", () => {
 
 	for (const atom of corpus.atoms) {
 		it(`renders ${atom.id} deterministically`, () => {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const fixture = JSON.parse(
 				readFileSync(join(atom.dir, "acceptance.json"), "utf8"),
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			) as AcceptanceFixture;
 			const parsed = parseAtomParams([atom], fixture.params ?? {});
 			expect(parsed.ok).toBe(true);

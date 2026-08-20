@@ -25,14 +25,7 @@ export function redactCommand(command: string): string {
 		.replace(/((?:token|password)=)\S+/giu, "$1***");
 }
 
-export function redactOutput(
-	text: string,
-	maxBytes = 8192,
-): {
-	readonly text: string;
-	readonly truncated: boolean;
-	readonly sensitivity: CommandSensitivity;
-} {
+export function redactOutput(text: string, maxBytes = 8192) {
 	const redacted = redactCommand(text);
 	const sensitivity = classifyCommand(text);
 	if (redacted.length <= maxBytes) {

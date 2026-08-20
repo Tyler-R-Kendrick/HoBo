@@ -1,5 +1,6 @@
 import { randomUUID } from "node:crypto";
 import { join } from "node:path";
+import type { JsonObject, JsonValue } from "./json.js";
 
 import { type MuxRunner, tmuxRunner } from "./mux.js";
 import {
@@ -35,7 +36,7 @@ export interface LocalSessionControl {
 		lines?: number,
 	): Promise<string>;
 	execute(
-		command: unknown,
+		command: JsonValue,
 		approval?: boolean | string,
 	): Promise<SessionSnapshot>;
 	tmuxName(sessionId: string): string;
@@ -61,7 +62,7 @@ export function createLocalSessionControl(
 			return createSessionOrchestrator({
 				runtime,
 				worktreesDir,
-				...(options.runner ? { runner: options.runner } : {}),
+				...(options.runner ? { runner: options.runner } : undefined),
 				authorize: async (action, snapshot) =>
 					(approval === true ||
 						approval === sessionDeliveryApprovalDigest(action)) &&
@@ -79,8 +80,8 @@ export function sessionCommandEnvelope(
 	expectedRevision: bigint,
 	actorId: string,
 	command: string,
-	value: Readonly<Record<string, unknown>>,
-): Record<string, unknown> {
+	value: JsonObject,
+): JsonObject {
 	return {
 		schemaVersion: "hobo.code.session-command/v1",
 		commandId: randomUUID(),

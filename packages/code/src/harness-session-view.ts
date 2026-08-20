@@ -177,7 +177,7 @@ export function harnessViewFromSnapshot(
 								agent: provider,
 								agentLabel: harnessDisplayLabel(provider),
 							}
-						: {}),
+						: undefined),
 					agentStatus: agentStatusFromRun(run?.lifecycleState),
 					focused: pane.id === snapshot.focusedPaneId,
 					capture: options.captureByPaneId?.[pane.id] ?? "",
@@ -283,6 +283,7 @@ export function harnessViewFromHerdrApiSnapshot(
 	const workspaces = snapshot.workspaces ?? [];
 	const focusedId =
 		snapshot.focused_workspace_id ??
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		workspaces.find((row) => (row as { focused?: boolean }).focused)
 			?.workspace_id ??
 		workspaces[0]?.workspace_id;
@@ -306,8 +307,9 @@ export function harnessViewFromHerdrApiSnapshot(
 										agent,
 										agentLabel: harnessDisplayLabel(agent),
 									}
-								: {}),
+								: undefined),
 							agentStatus:
+								// SAFETY: parsed or fixture value is the named domain type after this assertion.
 								(pane.agent_status as HarnessAgentStatus) ?? "unknown",
 							focused: pane.focused === true,
 							capture: options.captureByPaneId?.[pane.pane_id] ?? "",

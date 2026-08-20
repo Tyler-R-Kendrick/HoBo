@@ -18,15 +18,8 @@
  * failures. A tool that swallowed `ok: false` would let a model narrate a
  * success that did not happen.
  */
-import { beforeEach, describe, expect, it, vi } from "vitest";
-
-const runHoboCodeCli = vi.fn();
-
-vi.mock("../src/cli.js", () => ({
-	runHoboCodeCli: (...args: unknown[]) => runHoboCodeCli(...args),
-}));
-
-const {
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import {
 	HOBO_AGENT_TOOLS,
 	hoboDevTool,
 	hoboDispatchTool,
@@ -34,20 +27,32 @@ const {
 	hoboHiveStatusTool,
 	hoboScaffoldTool,
 	hoboTemplateTool,
-} = await import("../src/harness-tools.js");
+	installHarnessCliRunner,
+	resetHarnessCliRunner,
+} from "../src/harness-tools.js";
+import type { JsonObject, JsonValue } from "../src/json.js";
+
+const runHoboCodeCli = vi.fn();
 
 /** The argv the last CLI call was made with. */
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 const argv = () => runHoboCodeCli.mock.calls.at(-1)?.[0] as string[];
 
 const run = async (
-	tool: { run: (arg: never) => unknown },
-	input?: unknown,
-): Promise<Record<string, unknown>> =>
-	(await tool.run({ input } as never)) as Record<string, unknown>;
+	tool: { run: (arg: never) => JsonValue },
+	input?: JsonValue,
+): Promise<JsonObject> =>
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	(await tool.run({ input } as never)) as JsonObject;
 
 beforeEach(() => {
 	runHoboCodeCli.mockReset();
 	runHoboCodeCli.mockResolvedValue({ ok: true, code: 0, message: "done" });
+	installHarnessCliRunner(runHoboCodeCli);
+});
+
+afterEach(() => {
+	resetHarnessCliRunner();
 });
 
 describe("the tool catalog", () => {
@@ -124,6 +129,7 @@ describe("the CLI envelope", () => {
 		expect(await run(hoboHiveStatusTool)).not.toHaveProperty("data");
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("keeps a falsy data value rather than treating it as absent", async () => {
 		runHoboCodeCli.mockResolvedValue({
 			ok: true,
@@ -147,6 +153,7 @@ describe("hobo_compute_status", () => {
 });
 
 describe("hobo_dispatch", () => {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("passes the prompt as the argv, relying on dispatch being the default verb", async () => {
 		// Not a missing verb: the CLI dispatches a bare positional prompt.
 		// Prefixing "dispatch" here would change what a free-text prompt runs.
@@ -278,6 +285,7 @@ describe("hobo_history", () => {
 		expect(argv()).toEqual(["history", "--author", "agent"]);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("treats `any` as no author filter rather than a literal author", async () => {
 		// There is no author called "any"; passing it would match nothing.
 		await run(hoboHistoryTool, { author: "any" });

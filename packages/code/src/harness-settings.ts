@@ -12,6 +12,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { at, must } from "@hobo/core/total-access";
 import { parseModelId } from "./bo-model-catalog.js";
+import { isJsonString, type JsonObject } from "./json.js";
 
 // public-contract: durable harness/subagent settings schema id
 export const HARNESS_SETTINGS_SCHEMA = "hobo.code.harness-settings/v1" as const;
@@ -46,6 +47,7 @@ export interface HarnessSettings {
 }
 
 export function isEffortLevel(value: string): value is EffortLevel {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return (EFFORT_LEVELS as readonly string[]).includes(value);
 }
 
@@ -111,12 +113,12 @@ export function migrateLegacyModelPurl(purl: string): {
 	}
 	return {
 		modelId: `${provider}/${model}`,
-		...(qualifiers.via ? { via: qualifiers.via } : {}),
+		...(qualifiers.via ? { via: qualifiers.via } : undefined),
 		...(qualifiers.base_url || qualifiers.api_endpoint
 			? {
 					apiEndpoint: qualifiers.base_url || qualifiers.api_endpoint,
 				}
-			: {}),
+			: undefined),
 	};
 }
 
@@ -129,29 +131,26 @@ export function loadHarnessSettings(
 	const fallback = defaultHarnessSettings(id);
 	if (!existsSync(path)) return fallback;
 	try {
-		const raw = JSON.parse(readFileSync(path, "utf8")) as Record<
-			string,
-			unknown
-		>;
-		const model =
-			typeof raw.model === "string" ? raw.model.trim() : fallback.model;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		const raw = JSON.parse(readFileSync(path, "utf8")) as JsonObject;
+		const model = isJsonString(raw.model) ? raw.model.trim() : fallback.model;
 		let modelId =
-			typeof raw.modelId === "string" && raw.modelId.trim().length > 0
+			isJsonString(raw.modelId) && raw.modelId.trim().length > 0
 				? raw.modelId.trim()
 				: undefined;
 		let via =
-			typeof raw.via === "string" && raw.via.trim().length > 0
+			isJsonString(raw.via) && raw.via.trim().length > 0
 				? raw.via.trim()
 				: undefined;
 		let apiEndpoint =
-			typeof raw.apiEndpoint === "string" && raw.apiEndpoint.trim().length > 0
+			isJsonString(raw.apiEndpoint) && raw.apiEndpoint.trim().length > 0
 				? raw.apiEndpoint.trim()
 				: undefined;
 
 		// Legacy Package-URL field from earlier builds.
 		if (
 			!modelId &&
-			typeof raw.modelPurl === "string" &&
+			isJsonString(raw.modelPurl) &&
 			raw.modelPurl.trim().length > 0
 		) {
 			const migrated = migrateLegacyModelPurl(raw.modelPurl);
@@ -166,16 +165,17 @@ export function loadHarnessSettings(
 			modelId = undefined;
 		}
 
-		const effortRaw =
-			typeof raw.effort === "string" ? raw.effort.trim() : fallback.effort;
+		const effortRaw = isJsonString(raw.effort)
+			? raw.effort.trim()
+			: fallback.effort;
 		const effort = isEffortLevel(effortRaw) ? effortRaw : fallback.effort;
 		return {
 			schema: HARNESS_SETTINGS_SCHEMA,
 			id,
 			model,
-			...(modelId !== undefined ? { modelId } : {}),
-			...(via !== undefined ? { via } : {}),
-			...(apiEndpoint !== undefined ? { apiEndpoint } : {}),
+			...(modelId !== undefined ? { modelId } : undefined),
+			...(via !== undefined ? { via } : undefined),
+			...(apiEndpoint !== undefined ? { apiEndpoint } : undefined),
 			effort,
 		};
 	} catch {
@@ -196,13 +196,13 @@ export function saveHarnessSettings(
 		model: settings.model.trim(),
 		...(settings.modelId && settings.modelId.trim().length > 0
 			? { modelId: settings.modelId.trim() }
-			: {}),
+			: undefined),
 		...(settings.via && settings.via.trim().length > 0
 			? { via: settings.via.trim() }
-			: {}),
+			: undefined),
 		...(settings.apiEndpoint && settings.apiEndpoint.trim().length > 0
 			? { apiEndpoint: settings.apiEndpoint.trim() }
-			: {}),
+			: undefined),
 		effort: settings.effort,
 	};
 	writeFileSync(path, `${JSON.stringify(body, null, 2)}\n`, "utf8");
@@ -221,10 +221,7 @@ function shellQuote(value: string): string {
 }
 
 /** Env vars the seated CLI needs for a configured compatible API endpoint. */
-export function seatEnvForHarness(
-	agentId: string,
-	settings: HarnessSettings,
-): Readonly<Record<string, string>> {
+export function seatEnvForHarness(agentId: string, settings: HarnessSettings) {
 	const endpoint = resolveHarnessApiEndpoint(settings);
 	if (!endpoint) return {};
 	const id = agentId.trim().toLowerCase();
@@ -288,7 +285,7 @@ function envAssignmentPrefix(
 	settings: HarnessSettings,
 	agentId: string,
 ): string {
-	const merged: Record<string, string> = { ...env };
+	const merged = { ...env };
 	const id = agentId.trim().toLowerCase();
 	if (id === "claude") {
 		merged.CLAUDE_CODE_EFFORT_LEVEL = settings.effort;

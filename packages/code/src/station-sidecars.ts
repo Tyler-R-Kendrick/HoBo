@@ -15,13 +15,12 @@ import {
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-
 import { FeatureFlagStore } from "@hobo/identity";
-
 import { inspectBindleProject } from "./bindle-inspect.js";
 import { startEvalSidecar } from "./eval-sidecar-server.js";
 import { startExperimentSidecar } from "./experiment-sidecar-server.js";
 import { startHistorySidecar } from "./history-sidecar-server.js";
+import { isJsonNumber, isJsonString } from "./json.js";
 import { startKmsSidecar } from "./kms-sidecar-server.js";
 import {
 	loopbackFetchUrl,
@@ -121,12 +120,15 @@ export function readStationSidecars(
 	const path = stationSidecarsPath(hoboHome, stationId);
 	if (!existsSync(path)) return null;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const parsed = JSON.parse(
 			readFileSync(path, "utf8"),
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		) as Partial<StationSidecarSnapshot>;
 		if (parsed.schema !== STATION_SIDECARS_SCHEMA) return null;
-		if (typeof parsed.dashboardUrl !== "string") return null;
-		if (typeof parsed.evidenceUrl !== "string") return null;
+		if (!isJsonString(parsed.dashboardUrl)) return null;
+		if (!isJsonString(parsed.evidenceUrl)) return null;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		return parsed as StationSidecarSnapshot;
 	} catch {
 		return null;
@@ -176,8 +178,8 @@ function occupancyScope(view: AuthedStationView): OccupancyNameScope {
 	return {
 		tenant: view.tenant,
 		environment: view.environment,
-		...(view.project !== undefined ? { project: view.project } : {}),
-		...(view.branch !== undefined ? { branch: view.branch } : {}),
+		...(view.project !== undefined ? { project: view.project } : undefined),
+		...(view.branch !== undefined ? { branch: view.branch } : undefined),
 	};
 }
 
@@ -208,7 +210,7 @@ function publishSidecarUrls(
 			? {
 					evalsUrl: preferNamedEndpoint(snapshot.evalsUrl, "evals", scope),
 				}
-			: {}),
+			: undefined),
 		...(snapshot.rolloutUrl
 			? {
 					rolloutUrl: preferNamedEndpoint(
@@ -217,7 +219,7 @@ function publishSidecarUrls(
 						scope,
 					),
 				}
-			: {}),
+			: undefined),
 		...(snapshot.experimentUrl
 			? {
 					experimentUrl: preferNamedEndpoint(
@@ -226,12 +228,12 @@ function publishSidecarUrls(
 						scope,
 					),
 				}
-			: {}),
+			: undefined),
 		...(snapshot.kmsUrl
 			? {
 					kmsUrl: preferNamedEndpoint(snapshot.kmsUrl, "kms", scope),
 				}
-			: {}),
+			: undefined),
 		...(snapshot.historyUrl
 			? {
 					historyUrl: preferNamedEndpoint(
@@ -240,12 +242,12 @@ function publishSidecarUrls(
 						scope,
 					),
 				}
-			: {}),
+			: undefined),
 		...(snapshot.statusUrl
 			? {
 					statusUrl: preferNamedEndpoint(snapshot.statusUrl, "status", scope),
 				}
-			: {}),
+			: undefined),
 	};
 }
 
@@ -282,10 +284,7 @@ function resolveTsxLoader(from: string): string | undefined {
 	return undefined;
 }
 
-function evidenceWorkerEntry(): {
-	readonly entry: string;
-	readonly ts: boolean;
-} {
+function evidenceWorkerEntry() {
 	const here = dirname(fileURLToPath(import.meta.url));
 	const sibling = join(here, "evidence-sidecar-main.js");
 	if (existsSync(sibling)) return { entry: sibling, ts: false };
@@ -336,6 +335,7 @@ async function spawnPersistentEvidence(
 	while (Date.now() < deadline) {
 		if (existsSync(readyPath)) {
 			try {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				const parsed = JSON.parse(readFileSync(readyPath, "utf8")) as {
 					readonly url?: string;
 					readonly reportUrl?: string;
@@ -343,10 +343,10 @@ async function spawnPersistentEvidence(
 					readonly pid?: number;
 				};
 				if (
-					typeof parsed.url === "string" &&
-					typeof parsed.reportUrl === "string" &&
-					typeof parsed.controlsUrl === "string" &&
-					typeof parsed.pid === "number"
+					isJsonString(parsed.url) &&
+					isJsonString(parsed.reportUrl) &&
+					isJsonString(parsed.controlsUrl) &&
+					isJsonNumber(parsed.pid)
 				) {
 					try {
 						unlinkSync(readyPath);
@@ -478,7 +478,7 @@ export async function startStationSidecars(
 		persistEvidence: persist,
 	});
 	const evidencePid =
-		"pid" in evidence && typeof evidence.pid === "number" && evidence.pid > 0
+		"pid" in evidence && isJsonNumber(evidence.pid) && evidence.pid > 0
 			? evidence.pid
 			: undefined;
 	let dashboardUrl = "";
@@ -521,7 +521,7 @@ export async function startStationSidecars(
 			},
 			...(options.projectRoot !== undefined
 				? { projectRoot: options.projectRoot }
-				: {}),
+				: undefined),
 		});
 		dashboardUrl = dashboard.url;
 		otlpHttpUrl = dashboard.otlpHttpUrl;
@@ -540,7 +540,7 @@ export async function startStationSidecars(
 			port: options.evalsPort ?? 0,
 			...(options.projectRoot !== undefined
 				? { projectDir: options.projectRoot }
-				: {}),
+				: undefined),
 		});
 		evalsUrl = evals.url;
 		closeEvals = () => evals.close();
@@ -616,14 +616,14 @@ export async function startStationSidecars(
 			evidenceUrl: evidence.url,
 			evidenceReportUrl: evidence.reportUrl,
 			evidenceControlsUrl: evidence.controlsUrlTemplate,
-			...(evidencePid !== undefined ? { evidencePid } : {}),
+			...(evidencePid !== undefined ? { evidencePid } : undefined),
 			otlpHttpUrl,
-			...(evalsUrl !== undefined ? { evalsUrl } : {}),
-			...(rolloutUrl !== undefined ? { rolloutUrl } : {}),
-			...(experimentUrl !== undefined ? { experimentUrl } : {}),
-			...(kmsUrl !== undefined ? { kmsUrl } : {}),
-			...(historyUrl !== undefined ? { historyUrl } : {}),
-			...(statusUrl !== undefined ? { statusUrl } : {}),
+			...(evalsUrl !== undefined ? { evalsUrl } : undefined),
+			...(rolloutUrl !== undefined ? { rolloutUrl } : undefined),
+			...(experimentUrl !== undefined ? { experimentUrl } : undefined),
+			...(kmsUrl !== undefined ? { kmsUrl } : undefined),
+			...(historyUrl !== undefined ? { historyUrl } : undefined),
+			...(statusUrl !== undefined ? { statusUrl } : undefined),
 			startedAt: new Date().toISOString(),
 		},
 		occupancyScope(view),

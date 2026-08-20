@@ -55,15 +55,7 @@ export function cqReflectHook(): CqReflectHook {
 	};
 }
 
-export function dogfoodSummary(stationId: string): {
-	readonly stations: StationOccupancyRef;
-	readonly trails: readonly CodeTrailRef[];
-	readonly cq: CqReflectHook;
-	readonly finops: true;
-	readonly openFeature: true;
-	readonly harness: true;
-	readonly connectivity: true;
-} {
+export function dogfoodSummary(stationId: string) {
 	return {
 		stations: dogfoodStationOccupancy(stationId),
 		trails: codeImprovementTrails(),

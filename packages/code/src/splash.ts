@@ -24,10 +24,12 @@ import {
 	HOBO_LOGO_TUI_ROWS,
 	HOBO_LOGO_TUI_SOURCE,
 } from "./_generated-art/hobo-logo-tui.js";
+import { isJsonNumber } from "./json.js";
 
 /** Cadence from bo-idle export (~95ms/frame on site BoIdle.astro). */
 export const BO_IDLE_TICK_MS = 95;
 export const BO_IDLE_FRAME_COUNT = 12;
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 /** rest = 0, bounce = 1..10, blink = 11 — same clips as BoIdle.astro. */
 export const BO_IDLE_REST = 0;
 export const BO_IDLE_BLINK = 11;
@@ -125,7 +127,7 @@ export function selectBoIdleFrame(
 	> = {},
 ): number {
 	if (options.reducedMotion === true) return BO_IDLE_REST;
-	if (typeof options.frame === "number" && Number.isFinite(options.frame)) {
+	if (isJsonNumber(options.frame) && Number.isFinite(options.frame)) {
 		const n = Math.trunc(options.frame);
 		return (
 			((n % BO_IDLE_FRAME_COUNT) + BO_IDLE_FRAME_COUNT) % BO_IDLE_FRAME_COUNT
@@ -162,13 +164,7 @@ export function boIdleClipName(frame: number): BoIdleClip {
 /**
  * Measure painted surface: line count + max line width + per-line widths.
  */
-export function measureLoadingSurface(text: string): {
-	readonly lines: number;
-	readonly maxWidth: number;
-	readonly lineWidths: readonly number[];
-	readonly fixedWidth: boolean;
-	readonly matchesCanvas: boolean;
-} {
+export function measureLoadingSurface(text: string) {
 	const rows = text.length === 0 ? [] : text.split("\n");
 	const lineWidths = rows.map((l) => l.length);
 	const maxWidth = lineWidths.length > 0 ? Math.max(...lineWidths) : 0;

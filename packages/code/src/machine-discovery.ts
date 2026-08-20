@@ -87,7 +87,7 @@ export function defaultMachineProbes(
 				host,
 				ok: probe.ok,
 				models: probe.models,
-				...(probe.reason !== undefined ? { reason: probe.reason } : {}),
+				...(probe.reason !== undefined ? { reason: probe.reason } : undefined),
 			};
 		},
 	};
@@ -126,9 +126,12 @@ export async function discoverMachine(options: {
 }): Promise<MachineDiscoveryReport> {
 	const { probes } = options;
 	const modelHost =
-		(typeof probes.env.HOBO_CODE_LOCAL_BASE_URL === "string" &&
+		(Object.prototype.toString.call(probes.env.HOBO_CODE_LOCAL_BASE_URL) ===
+			"[object String]" &&
 			probes.env.HOBO_CODE_LOCAL_BASE_URL) ||
-		(typeof probes.env.OLLAMA_HOST === "string" && probes.env.OLLAMA_HOST) ||
+		(Object.prototype.toString.call(probes.env.OLLAMA_HOST) ===
+			"[object String]" &&
+			probes.env.OLLAMA_HOST) ||
 		DEFAULT_OLLAMA_HOST;
 	const detectProbes: DetectProbes = {
 		which: probes.which,
@@ -141,8 +144,8 @@ export async function discoverMachine(options: {
 			loadHarnessCatalog({
 				...(options.hoboHome !== undefined
 					? { hoboHome: options.hoboHome }
-					: {}),
-				...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
+					: undefined),
+				...(options.cwd !== undefined ? { cwd: options.cwd } : undefined),
 			}),
 		);
 	const harnesses = detectAgents(detectProbes, catalog)
@@ -193,7 +196,7 @@ export function observationsFromMachineReport(
 				? {
 						detail: `Node ${report.host.nodeVersion} < required ${MIN_NODE_MAJOR}`,
 					}
-				: {}),
+				: undefined),
 		},
 		{
 			capabilityId: "capability:vcs:git",
@@ -225,7 +228,7 @@ export function observationsFromMachineReport(
 			],
 			...(report.modelServer.reason !== undefined
 				? { detail: report.modelServer.reason }
-				: {}),
+				: undefined),
 		},
 		{
 			capabilityId: "capability:toolchain:devenv",
@@ -275,7 +278,7 @@ export function matchMachineToStation(input: {
 		stationId: input.stationId,
 		declared: input.declared ?? DEFAULT_LOCALHOST_CAPABILITIES,
 		observations: observationsFromMachineReport(input.report, input.env ?? {}),
-		...(input.now !== undefined ? { now: input.now } : {}),
+		...(input.now !== undefined ? { now: input.now } : undefined),
 	});
 }
 

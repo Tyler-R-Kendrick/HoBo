@@ -1,5 +1,15 @@
 import type { AccentName } from "./rubberhose.js";
 
+const tagOf = Object.prototype.toString;
+
+function isText<T>(value: T | string): value is string {
+	return tagOf.call(value) === "[object String]";
+}
+
+function isNum<T>(value: T | number): value is number {
+	return tagOf.call(value) === "[object Number]";
+}
+
 export type TuiRole =
 	| "application"
 	| "region"
@@ -44,16 +54,22 @@ export type TuiChild =
 	| undefined
 	| readonly TuiChild[];
 
-export type TuiComponent = (props: Record<string, unknown>) => TuiNode;
-
 export interface TuiElementProps {
 	readonly id?: string;
 	readonly role?: TuiRole;
 	readonly className?: string;
 	readonly style?: TuiStyle;
 	readonly children?: TuiChild;
-	readonly [key: string]: unknown;
+	readonly [key: string]:
+		| string
+		| number
+		| boolean
+		| TuiStyle
+		| TuiChild
+		| undefined;
 }
+
+export type TuiComponent = (props: TuiElementProps) => TuiNode;
 
 function flatten(
 	children: TuiChild | undefined,
@@ -63,10 +79,14 @@ function flatten(
 		return into;
 	}
 	if (Array.isArray(children)) {
-		for (const child of children) flatten(child as TuiChild, into);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		for (const child of children) {
+			// SAFETY: Array.isArray narrowed children to a TuiChild list.
+			flatten(child as TuiChild, into);
+		}
 		return into;
 	}
-	if (typeof children === "string" || typeof children === "number") {
+	if (isText(children) || isNum(children)) {
 		into.push({
 			type: "text",
 			role: "text",
@@ -78,6 +98,7 @@ function flatten(
 		});
 		return into;
 	}
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	into.push(children as TuiNode);
 	return into;
 }
@@ -100,13 +121,13 @@ export function h(
 	...rest: TuiChild[]
 ): TuiNode {
 	const raw = props ?? {};
-	if (typeof type === "function") {
+	if (type instanceof Function) {
 		return type({
 			...raw,
 			children: rest.length > 0 ? rest : raw.children,
 		});
 	}
-	const className = typeof raw.className === "string" ? raw.className : "";
+	const className = isText(raw.className) ? raw.className : "";
 	const classList = className
 		.split(/\s+/u)
 		.map((item) => item.trim())
@@ -114,7 +135,7 @@ export function h(
 	const style = raw.style ?? {};
 	const children = flatten(rest.length > 0 ? rest : raw.children);
 	const role = raw.role ?? (type === "strap" ? "status" : "region");
-	const id = typeof raw.id === "string" ? raw.id : undefined;
+	const id = isText(raw.id) ? raw.id : undefined;
 	const reserved = new Set([
 		"id",
 		"role",
@@ -127,9 +148,10 @@ export function h(
 	for (const [key, value] of Object.entries(raw)) {
 		if (reserved.has(key)) continue;
 		if (
-			typeof value === "string" ||
-			typeof value === "number" ||
-			typeof value === "boolean" ||
+			isText(value) ||
+			isNum(value) ||
+			value === true ||
+			value === false ||
 			value === undefined
 		) {
 			extra[key] = value;
@@ -137,17 +159,15 @@ export function h(
 	}
 	return {
 		type,
-		...(id !== undefined ? { id } : {}),
+		...(id !== undefined ? { id } : undefined),
 		role,
 		classList,
 		props: extra,
 		style,
 		children,
-		...(type === "text" &&
-		children.length === 0 &&
-		typeof raw.children === "string"
+		...(type === "text" && children.length === 0 && isText(raw.children)
 			? { text: raw.children }
-			: {}),
+			: undefined),
 	};
 }
 

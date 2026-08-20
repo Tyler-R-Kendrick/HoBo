@@ -85,7 +85,9 @@ export async function resolveShellEngine(
 			sandboxRoot: options.sandboxRoot,
 			runId: options.runId,
 			instructions: options.instructions,
-			...(options.env.OLLAMA_HOST ? { host: options.env.OLLAMA_HOST } : {}),
+			...(options.env.OLLAMA_HOST
+				? { host: options.env.OLLAMA_HOST }
+				: undefined),
 			...(localModelFromSpec(options.env.HOBO_CODE_MODEL)
 				? {
 						model: must(
@@ -93,7 +95,7 @@ export async function resolveShellEngine(
 							"localModelFromSpec(options.env.HOBO_CODE_MODEL)",
 						),
 					}
-				: {}),
+				: undefined),
 		});
 		if (local.engine) return { engine: local.engine };
 		reasons.push(local.reason);

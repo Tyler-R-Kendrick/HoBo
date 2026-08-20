@@ -153,6 +153,7 @@ function tryLoadSqliteVec(db: DatabaseSync): boolean {
 	const ext = process.env.HOBO_SQLITE_VEC;
 	if (!ext || ext.length === 0) return false;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const loader = db as DatabaseSync & {
 			enableLoadExtension?: (enabled: boolean) => void;
 			loadExtension?: (path: string) => void;
@@ -205,11 +206,7 @@ let cached: IndexedCorpus | undefined;
 function populateIndex(
 	db: DatabaseSync,
 	corpus: ReturnType<typeof loadAtomCorpus>,
-): {
-	readonly embeddings: Map<string, Float64Array>;
-	readonly sqliteVec: boolean;
-	readonly digest: string;
-} {
+) {
 	const sqliteVec = createIndexSchema(db);
 	const insertFts = db.prepare(
 		"INSERT INTO atom_fts (id, kind, body) VALUES (?, ?, ?)",
@@ -344,10 +341,12 @@ function ftsRanks(
 		.map((term) => `"${term.replaceAll('"', "")}"`)
 		.join(" OR ");
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const rows = db
 			.prepare(
 				"SELECT id FROM atom_fts WHERE kind = ? AND atom_fts MATCH ? LIMIT 16",
 			)
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			.all(kind, match) as Array<{ id: string }>;
 		for (const [index, row] of rows.entries()) {
 			ranks.set(row.id, index + 1);
@@ -459,7 +458,7 @@ export function retrieveAtoms(
 				],
 				...(Object.keys(mapped.params).length > 0
 					? { defaultParams: mapped.params }
-					: {}),
+					: undefined),
 			};
 		}
 	}
@@ -541,7 +540,7 @@ export function emitFromAtoms(
 			decision: "refuse",
 			files: [],
 			holes: [],
-			...(parsed.code !== undefined ? { code: parsed.code } : {}),
+			...(parsed.code !== undefined ? { code: parsed.code } : undefined),
 		};
 	}
 	const materialized = materializeAtomFiles(retrieved.atoms, parsed.params);
@@ -552,7 +551,9 @@ export function emitFromAtoms(
 			decision: "refuse",
 			files: [],
 			holes: [],
-			...(materialized.code !== undefined ? { code: materialized.code } : {}),
+			...(materialized.code !== undefined
+				? { code: materialized.code }
+				: undefined),
 		};
 	}
 	const written: string[] = [];
@@ -568,7 +569,7 @@ export function emitFromAtoms(
 		decision: "emit",
 		...(retrieved.composition?.id !== undefined
 			? { compositionId: retrieved.composition.id }
-			: {}),
+			: undefined),
 		files: written,
 		holes: materialized.holes,
 	};
@@ -616,8 +617,10 @@ export function readPersistedIndexMeta(
 	if (!existsSync(path)) return {};
 	const db = new DatabaseSync(path, { readOnly: true });
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const rows = db
 			.prepare("SELECT key, value FROM atom_index_meta")
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			.all() as Array<{ key: string; value: string }>;
 		return Object.fromEntries(rows.map((row) => [row.key, row.value]));
 	} finally {

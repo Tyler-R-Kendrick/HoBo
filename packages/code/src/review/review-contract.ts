@@ -5,7 +5,6 @@
 // are the materialized view / read store.
 
 import { fromJson, type JsonValue, toJson } from "@bufbuild/protobuf";
-
 import {
 	type ReviewCommandEnvelope,
 	ReviewCommandEnvelopeSchema,
@@ -14,6 +13,7 @@ import {
 	ReviewSnapshotSchema,
 	ReviewTargetKind,
 } from "../_generated/code_review_pb.js";
+import { isJsonObject } from "../json.js";
 import { REVIEW_ERROR, ReviewError } from "./review-errors.js";
 
 // public-contract: clients pin the review command envelope version.
@@ -30,13 +30,16 @@ function required(value: string, field: string): void {
 	}
 }
 
-export function parseReviewCommand(input: unknown): ReviewCommandEnvelope {
-	if (input === null || typeof input !== "object") {
+export function parseReviewCommand(
+	input: JsonValue | undefined,
+): ReviewCommandEnvelope {
+	if (input === null || !isJsonObject(input)) {
 		throw new ReviewError(
 			REVIEW_ERROR.MALFORMED,
 			"review command must be an object",
 		);
 	}
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const envelope = fromJson(ReviewCommandEnvelopeSchema, input as JsonValue, {
 		ignoreUnknownFields: false,
 	});
@@ -84,13 +87,16 @@ export function parseReviewCommand(input: unknown): ReviewCommandEnvelope {
 	return envelope;
 }
 
-export function parseReviewSnapshot(input: unknown): ReviewSnapshot {
-	if (input === null || typeof input !== "object") {
+export function parseReviewSnapshot(
+	input: JsonValue | undefined,
+): ReviewSnapshot {
+	if (input === null || !isJsonObject(input)) {
 		throw new ReviewError(
 			REVIEW_ERROR.CORRUPT,
 			"review snapshot must be an object",
 		);
 	}
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const snapshot = fromJson(ReviewSnapshotSchema, input as JsonValue, {
 		ignoreUnknownFields: false,
 	});

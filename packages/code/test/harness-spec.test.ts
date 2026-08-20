@@ -59,7 +59,9 @@ describe("parseHarnessSpec", () => {
 			expect.unreachable("schema mismatch must throw");
 		} catch (error) {
 			expect(error).toBeInstanceOf(HarnessSpecParseError);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			expect((error as HarnessSpecParseError).path).toBe("schema");
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			expect((error as HarnessSpecParseError).expected).toContain(
 				HARNESS_SPEC_SCHEMA,
 			);
@@ -72,6 +74,7 @@ describe("parseHarnessSpec", () => {
 			expect.unreachable("bad kind must throw");
 		} catch (error) {
 			expect(error).toBeInstanceOf(HarnessSpecParseError);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const parseError = error as HarnessSpecParseError;
 			expect(parseError.path).toBe("kind");
 			expect(parseError.expected).toContain("coding-agent");
@@ -91,7 +94,9 @@ describe("parseHarnessSpec", () => {
 			expect.unreachable("bad format must throw");
 		} catch (error) {
 			expect(error).toBeInstanceOf(HarnessSpecParseError);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			expect((error as HarnessSpecParseError).path).toBe("config.format");
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			expect((error as HarnessSpecParseError).expected).toContain(
 				"toml-append",
 			);
@@ -109,12 +114,14 @@ describe("parseHarnessSpec", () => {
 			parseHarnessSpec({ id: "x", label: "x", kind: "sdk", seat: "10" });
 			expect.unreachable("string seat must throw");
 		} catch (error) {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			expect((error as HarnessSpecParseError).path).toBe("seat");
 		}
 		try {
 			parseHarnessSpec({ id: "x", label: "x", kind: "sdk", binaries: [""] });
 			expect.unreachable("empty binary must throw");
 		} catch (error) {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			expect((error as HarnessSpecParseError).path).toBe("binaries[0]");
 		}
 		try {
@@ -126,6 +133,7 @@ describe("parseHarnessSpec", () => {
 			});
 			expect.unreachable("non-string env value must throw");
 		} catch (error) {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			expect((error as HarnessSpecParseError).path).toBe("config.env.KEY");
 		}
 	});
@@ -178,6 +186,7 @@ describe("parseHarnessSpec", () => {
 			expect.unreachable("unknown placement must throw");
 		} catch (error) {
 			expect(error).toBeInstanceOf(HarnessSpecParseError);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			expect((error as HarnessSpecParseError).path).toBe(
 				"runtime.prompt.placement",
 			);

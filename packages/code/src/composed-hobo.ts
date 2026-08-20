@@ -13,8 +13,8 @@
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
-
 import { findRepoRoot } from "./generated-app-runtime.js";
+import { isJsonString } from "./json.js";
 
 export type ServeProjectOnLocalYard = (options: {
 	readonly projectDir: string;
@@ -52,7 +52,7 @@ export function explicitHoboBinOverride(
 	env: NodeJS.ProcessEnv = process.env,
 ): string | undefined {
 	const override = [env.HOBO_CODE_HOBO_BIN, env.HOBO_BIN]
-		.map((value) => (typeof value === "string" ? value.trim() : ""))
+		.map((value) => (isJsonString(value) ? value.trim() : ""))
 		.find((value) => value.length > 0);
 	return override;
 }
@@ -144,10 +144,11 @@ export async function loadServeProjectOnLocalYard(
 	from?: string,
 ): Promise<ServeProjectOnLocalYard> {
 	const file = resolveHoboDistModule("wasm-host.js", from);
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const mod = (await import(pathToFileURL(file).href)) as {
 		readonly serveProjectOnLocalYard?: ServeProjectOnLocalYard;
 	};
-	if (typeof mod.serveProjectOnLocalYard !== "function") {
+	if (!(mod.serveProjectOnLocalYard instanceof Function)) {
 		throw new Error(
 			"@hobo/hobo dist/wasm-host.js has no serveProjectOnLocalYard export",
 		);
@@ -159,10 +160,11 @@ export async function loadCreateComposedHoboCli(
 	from?: string,
 ): Promise<() => ComposedHoboCli> {
 	const file = resolveHoboDistModule("cli.js", from);
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const mod = (await import(pathToFileURL(file).href)) as {
 		readonly createComposedHoboCli?: () => ComposedHoboCli;
 	};
-	if (typeof mod.createComposedHoboCli !== "function") {
+	if (!(mod.createComposedHoboCli instanceof Function)) {
 		throw new Error(
 			"@hobo/hobo dist/cli.js has no createComposedHoboCli export",
 		);
@@ -170,6 +172,7 @@ export async function loadCreateComposedHoboCli(
 	return mod.createComposedHoboCli;
 }
 
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 /** Run a composed `hobo` verb in-process (same wiring as the `hobo` binary). */
 export async function runComposedHobo(
 	argv: readonly string[],
@@ -195,8 +198,8 @@ export async function runComposedHobo(
 	}
 	try {
 		const result = await create().run(argv, {
-			...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
-			...(options.env !== undefined ? { env: options.env } : {}),
+			...(options.cwd !== undefined ? { cwd: options.cwd } : undefined),
+			...(options.env !== undefined ? { env: options.env } : undefined),
 			onProgress: (message) => {
 				progress.push(message);
 			},

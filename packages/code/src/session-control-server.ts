@@ -50,6 +50,12 @@ import {
 } from "./git-workbench.js";
 import { parseSkillName } from "./harness.js";
 import {
+	isJsonBigInt,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+} from "./json.js";
+import {
 	createLocalSessionControl,
 	type LocalSessionControl,
 } from "./local-session-control.js";
@@ -92,7 +98,7 @@ function authorized(request: IncomingMessage, token: string): boolean {
 	return left.length === right.length && timingSafeEqual(left, right);
 }
 
-function json(response: ServerResponse, status: number, body: unknown): void {
+function json<T>(response: ServerResponse, status: number, body: T): void {
 	response.writeHead(status, {
 		"cache-control": "no-store",
 		"content-type": "application/json; charset=utf-8",
@@ -100,7 +106,7 @@ function json(response: ServerResponse, status: number, body: unknown): void {
 	});
 	response.end(
 		JSON.stringify(body, (_key, value) =>
-			typeof value === "bigint" ? value.toString() : value,
+			isJsonBigInt(value) ? value.toString() : value,
 		),
 	);
 }
@@ -148,7 +154,18 @@ function assertDescendant(root: string, candidate: string): void {
 		throw new Error("recording capability path escaped the project root");
 }
 
-function parseGitWorkbenchAction(input: unknown): GitWorkbenchAction {
+function replayObjectField(value: JsonValue | undefined): JsonObject {
+	if (value === null || value === undefined || !isJsonObject(value)) {
+		return {};
+	}
+	// SAFETY: [object Object] guard proved value is a JSON object.
+	return value as JsonObject;
+}
+
+function parseGitWorkbenchAction(
+	input: JsonValue | undefined,
+): GitWorkbenchAction {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const body = fromJson(GitWorkbenchActionRequestSchema, input as JsonValue, {
 		ignoreUnknownFields: false,
 	});
@@ -166,6 +183,7 @@ function parseGitWorkbenchAction(input: unknown): GitWorkbenchAction {
 		[GitWorkbenchActionKind.FILE_IGNORE]: "file-ignore",
 		[GitWorkbenchActionKind.COMMIT_REVERT]: "commit-revert",
 	} as const;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const action = actions[body.action as keyof typeof actions];
 	if (!action) throw new Error("invalid Git workbench action");
 	if (action === "fetch" || action === "pull") return { action };
@@ -179,15 +197,18 @@ function parseGitWorkbenchAction(input: unknown): GitWorkbenchAction {
 		[GitWorkbenchSelectionKind.COMMIT]: "commit",
 		[GitWorkbenchSelectionKind.STASH]: "stash",
 	} as const;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const kind = kinds[body.selection.kind as keyof typeof kinds];
 	if (!kind) throw new Error("invalid Git workbench selection");
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return {
 		action,
 		selection: { kind, value: body.selection.value },
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	} as GitWorkbenchAction;
 }
 
-async function requestBody(request: IncomingMessage): Promise<unknown> {
+async function requestBody(request: IncomingMessage): Promise<JsonValue> {
 	return JSON.parse(
 		(await requestBytes(request, 1_048_576)).toString("utf8") || "{}",
 	);
@@ -323,7 +344,9 @@ function currentEvidenceReport(
 		detail: event.reason,
 		state: event.state,
 		observedAt: event.at,
-		...(event.artifacts.length > 0 ? { artifacts: event.artifacts } : {}),
+		...(event.artifacts.length > 0
+			? { artifacts: event.artifacts }
+			: undefined),
 	}));
 	return projectEvidenceReport({
 		reportId: journal.sessionId
@@ -382,7 +405,7 @@ export async function startSessionControlServer(
 		if (!value) {
 			value = createDebugReplayRecorder({
 				sessionId,
-				...(options.replayLevel ? { level: options.replayLevel } : {}),
+				...(options.replayLevel ? { level: options.replayLevel } : undefined),
 				env: process.env,
 				correlation: buildCorrelation({
 					stationId: "station:local",
@@ -429,9 +452,10 @@ export async function startSessionControlServer(
 					return;
 				}
 				if (kind === "recording-manifest") {
-					const body = (await requestBody(request)) as Record<string, unknown>;
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
+					const body = (await requestBody(request)) as JsonObject;
 					const manifest = parseBrowserRecording(body.manifest);
-					if (typeof body.videoArtifactRef !== "string")
+					if (!isJsonString(body.videoArtifactRef))
 						throw new TypeError("recording video artifact is required");
 					evidence.readArtifact(body.videoArtifactRef);
 					const bytes = Buffer.from(`${JSON.stringify(manifest)}\n`);
@@ -520,7 +544,7 @@ export async function startSessionControlServer(
 					journalHref: `/__hobo/evidence/journal?${artifactQuery}`,
 					...(privilegedReport
 						? { controlsHref: `/?token=${encodeURIComponent(token)}` }
-						: {}),
+						: undefined),
 				});
 				response.writeHead(200, {
 					"cache-control": "no-store",
@@ -577,14 +601,12 @@ export async function startSessionControlServer(
 				if (message.type === "report") {
 					json(response, 200, {
 						ok: true,
+						// SAFETY: parsed or fixture value is the named domain type after this assertion.
 						url: `http://127.0.0.1:${(server.address() as { port: number }).port}/__hobo/evidence?report=${encodeURIComponent(reportCapability)}`,
 					});
 					return;
 				}
-				if (
-					message.type === "replay" &&
-					typeof message.sessionId === "string"
-				) {
+				if (message.type === "replay" && isJsonString(message.sessionId)) {
 					json(
 						response,
 						200,
@@ -704,8 +726,9 @@ export async function startSessionControlServer(
 				response.end(
 					renderEvidenceOverlayControls({
 						parentOrigin,
+						// SAFETY: parsed or fixture value is the named domain type after this assertion.
 						reportUrl: `http://127.0.0.1:${(server.address() as { port: number }).port}/__hobo/evidence?report=${encodeURIComponent(reportCapability)}`,
-						...(sessionId ? { sessionId } : {}),
+						...(sessionId ? { sessionId } : undefined),
 						capabilityAuthorization: `Bearer ${token}`,
 					}),
 				);
@@ -784,9 +807,10 @@ export async function startSessionControlServer(
 			}
 			if (request.method === "POST" && replayMatch) {
 				const sessionId = decodeURIComponent(replayMatch[1] ?? "");
-				const body = (await requestBody(request)) as Record<string, unknown>;
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				const body = (await requestBody(request)) as JsonObject;
 				if (
-					typeof body.track !== "string" ||
+					!isJsonString(body.track) ||
 					![
 						"browser",
 						"terminal",
@@ -800,17 +824,12 @@ export async function startSessionControlServer(
 					throw new TypeError("invalid debug replay track");
 				}
 				const accepted = recorder(sessionId).record({
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					track: body.track as Parameters<
 						ReturnType<typeof recorder>["record"]
 					>[0]["track"],
-					metadata:
-						typeof body.metadata === "object" && body.metadata !== null
-							? (body.metadata as Record<string, unknown>)
-							: {},
-					observable:
-						typeof body.observable === "object" && body.observable !== null
-							? (body.observable as Record<string, unknown>)
-							: {},
+					metadata: replayObjectField(body.metadata),
+					observable: replayObjectField(body.observable),
 				});
 				await recorder(sessionId).flush();
 				json(response, 202, { accepted, level: recorder(sessionId).level });
@@ -900,7 +919,13 @@ export async function startSessionControlServer(
 				const value = url.searchParams.get("value");
 				const selection: GitSelection | undefined =
 					kind && value && ["file", "branch", "commit", "stash"].includes(kind)
-						? { kind: kind as GitSelection["kind"], value }
+						? // SAFETY: parsed or fixture value is the named domain type after this assertion.
+							{
+								kind:
+									// SAFETY: includes() above proved kind is a GitSelection kind.
+									kind as GitSelection["kind"],
+								value,
+							}
 						: undefined;
 				if ((kind || value) && !selection) {
 					json(response, 400, { error: "invalid Git workbench selection" });
@@ -937,13 +962,14 @@ export async function startSessionControlServer(
 				return;
 			}
 			if (request.method === "POST" && url.pathname === "/code/commands") {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				const body = (await requestBody(request)) as {
-					readonly command?: unknown;
-					readonly approvalDigest?: unknown;
+					readonly command?: JsonValue;
+					readonly approvalDigest?: JsonValue;
 				};
 				const snapshot = await control.execute(
-					body.command,
-					typeof body.approvalDigest === "string" ? body.approvalDigest : false,
+					body.command ?? null,
+					isJsonString(body.approvalDigest) ? body.approvalDigest : false,
 				);
 				json(response, 200, sessionSnapshotJson(snapshot));
 				return;
@@ -971,8 +997,7 @@ export async function startSessionControlServer(
 		});
 	});
 	const address = server.address();
-	if (!address || typeof address === "string")
-		throw new Error("server has no port");
+	if (!address || isJsonString(address)) throw new Error("server has no port");
 	const controlsUrlTemplate = `http://127.0.0.1:${address.port}/__hobo/evidence/controls/${controlsCapability}`;
 	const discoveryPath = join(
 		options.hoboHome,

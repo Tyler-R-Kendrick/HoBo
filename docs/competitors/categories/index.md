@@ -25,7 +25,7 @@ tags: [hobo, competitors, category]
 | [Backend & Data Application Platforms](backend-data-platforms.md) | 5 |
 | [Delivery, Release & GitOps](delivery-release-gitops.md) | 11 |
 | [FinOps, Governance & Placement](finops-governance-placement.md) | 13 |
-| [Identity, Networking & Application Delivery](identity-networking-delivery.md) | 4 |
+| [Identity, Networking & Application Delivery](identity-networking-delivery.md) | 6 |
 
 <!-- END GENERATED: category-index -->
 

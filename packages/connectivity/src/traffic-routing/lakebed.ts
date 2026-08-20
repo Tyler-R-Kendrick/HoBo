@@ -11,6 +11,7 @@ import {
 	type RoutingRule,
 	type TrafficRoutingPort,
 } from "@hobo/core";
+import { cloneAsJson, type JsonObject } from "../json.js";
 
 /** Minimal driver-program shape emitted for Lakebed deploy-time binding. */
 export interface LakebedTrafficDriverProgram {
@@ -23,7 +24,7 @@ export interface LakebedTrafficDriverProgram {
 		readonly name: string;
 		readonly type: "lakebed:traffic-route";
 		readonly provider: "lakebed";
-		readonly inputs: Readonly<Record<string, unknown>>;
+		readonly inputs: JsonObject;
 		readonly outputs: readonly string[];
 	}[];
 	readonly outputs: Readonly<Record<string, string>>;
@@ -90,15 +91,17 @@ export function createLakebedTrafficRouting(
 			const unmet = unsupported(plan);
 			const canRealize = realizedRuleCount(plan) > 0;
 			if (!canRealize) {
-				const result = parseApplyResult({
-					planId: plan.planId,
-					provider: "lakebed",
-					realized: "none",
-					notes: ["Lakebed cannot realize the declared routing plan shape"],
-					appliedRules: 0,
-					unmet,
-					capabilities: [],
-				});
+				const result = parseApplyResult(
+					cloneAsJson({
+						planId: plan.planId,
+						provider: "lakebed",
+						realized: "none",
+						notes: ["Lakebed cannot realize the declared routing plan shape"],
+						appliedRules: 0,
+						unmet,
+						capabilities: [],
+					}),
+				);
 				applied.set(plan.planId, {
 					plan,
 					result,
@@ -143,23 +146,29 @@ export function createLakebedTrafficRouting(
 					: canRealize
 						? "partial"
 						: "none";
-			const result = parseApplyResult({
-				planId: plan.planId,
-				provider: "lakebed",
-				realized,
-				notes:
-					realized === "full"
-						? []
-						: [
-								...(unmet.length > 0
-									? ["unsupported routing features use declared backend order"]
-									: []),
-								...deployNotes,
-							],
-				appliedRules: realizedRuleCount(plan),
-				...(layerUnmet.length === 0 ? {} : { unmet: [...new Set(layerUnmet)] }),
-				capabilities: ["weighted-backends"],
-			});
+			const result = parseApplyResult(
+				cloneAsJson({
+					planId: plan.planId,
+					provider: "lakebed",
+					realized,
+					notes:
+						realized === "full"
+							? []
+							: [
+									...(unmet.length > 0
+										? [
+												"unsupported routing features use declared backend order",
+											]
+										: []),
+									...deployNotes,
+								],
+					appliedRules: realizedRuleCount(plan),
+					...(layerUnmet.length === 0
+						? undefined
+						: { unmet: [...new Set(layerUnmet)] }),
+					capabilities: ["weighted-backends"],
+				}),
+			);
 			applied.set(plan.planId, {
 				plan,
 				result,
@@ -181,19 +190,23 @@ export function createLakebedTrafficRouting(
 			const current = applied.get(planId);
 			if (!current) return null;
 			if (current.revoked) {
-				return parseRoutingStatus({
-					planId,
-					active: false,
-					realized: "none",
-					notes: ["routing plan revoked"],
-				});
+				return parseRoutingStatus(
+					cloneAsJson({
+						planId,
+						active: false,
+						realized: "none",
+						notes: ["routing plan revoked"],
+					}),
+				);
 			}
-			return parseRoutingStatus({
-				planId,
-				active: current.result.realized !== "none",
-				realized: current.result.realized,
-				notes: current.result.notes,
-			});
+			return parseRoutingStatus(
+				cloneAsJson({
+					planId,
+					active: current.result.realized !== "none",
+					realized: current.result.realized,
+					notes: current.result.notes,
+				}),
+			);
 		},
 		select(planId, routingKey, ruleIndex = 0) {
 			const current = applied.get(planId);
@@ -211,13 +224,15 @@ export function createLakebedTrafficRouting(
 		async revoke(planId) {
 			const current = applied.get(planId);
 			if (!current) {
-				return parseRevokeResult({
-					ok: false,
-					notes: ["routing plan not found"],
-				});
+				return parseRevokeResult(
+					cloneAsJson({
+						ok: false,
+						notes: ["routing plan not found"],
+					}),
+				);
 			}
 			current.revoked = true;
-			return parseRevokeResult({ ok: true, notes: [] });
+			return parseRevokeResult(cloneAsJson({ ok: true, notes: [] }));
 		},
 	};
 }
@@ -252,11 +267,13 @@ export function buildTrafficRouteProgram(
 						id: backend.id,
 						service: backend.service,
 						...(backend.endpoint === undefined
-							? {}
+							? undefined
 							: { endpoint: backend.endpoint }),
-						...(backend.weight === undefined ? {} : { weight: backend.weight }),
+						...(backend.weight === undefined
+							? undefined
+							: { weight: backend.weight }),
 						...(backend.locationHints === undefined
-							? {}
+							? undefined
 							: { locationHints: [...backend.locationHints] }),
 					})),
 					rules: plan.intent.rules.map((rule) => ({
@@ -266,13 +283,13 @@ export function buildTrafficRouteProgram(
 									match: {
 										...(rule.match.pathPrefix
 											? { pathPrefix: rule.match.pathPrefix }
-											: {}),
+											: undefined),
 										...(rule.match.headers
 											? { headers: { ...rule.match.headers } }
-											: {}),
+											: undefined),
 									},
 								}
-							: {}),
+							: undefined),
 						backends: rule.backends.map((backend) => backend.id),
 					})),
 				},

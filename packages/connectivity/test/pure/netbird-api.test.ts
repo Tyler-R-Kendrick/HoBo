@@ -12,7 +12,9 @@
  * contract this client has with a real deployment, and they are what a version
  * bump would break.
  */
+
 import { describe, expect, it } from "vitest";
+import { isJsonObject, isJsonString, type JsonValue } from "../../src/json.js";
 
 import { createNetbirdApiClient } from "../../src/overlay/netbird-api.js";
 
@@ -20,7 +22,7 @@ type Recorded = {
 	url: string;
 	method: string;
 	headers: Record<string, string>;
-	body: unknown;
+	body: JsonValue;
 };
 
 /**
@@ -31,27 +33,30 @@ function fakeFetch(
 	routes: Record<string, { status?: number; body?: unknown; text?: string }>,
 ) {
 	const calls: Recorded[] = [];
+	// SAFETY: assertion required at this I/O or test boundary.
 	const impl = (async (url: string | URL, init?: RequestInit) => {
-		const href = typeof url === "string" ? url : url.toString();
+		const href = isJsonString(url) ? url : url.toString();
 		const method = init?.method ?? "GET";
 		const path = new URL(href).pathname;
 		calls.push({
 			url: href,
 			method,
+			// SAFETY: assertion required at this I/O or test boundary.
 			headers: (init?.headers ?? {}) as Record<string, string>,
-			body: typeof init?.body === "string" ? JSON.parse(init.body) : init?.body,
+			body: isJsonString(init?.body) ? JSON.parse(init.body) : init?.body,
 		});
 		const route = routes[`${method} ${path}`];
 		const status = route?.status ?? (route === undefined ? 404 : 200);
 		const text =
 			route?.text ??
 			(route?.body === undefined ? "" : JSON.stringify(route.body));
+		// SAFETY: assertion required at this I/O or test boundary.
 		return {
 			ok: status >= 200 && status < 300,
 			status,
 			text: async () => text,
-		} as unknown as Response;
-	}) as unknown as typeof fetch;
+		} as Response;
+	}) as typeof fetch;
 	return { impl, calls };
 }
 
@@ -117,7 +122,12 @@ describe("enrollPeer", () => {
 			fetchImpl: impl,
 		});
 		await client.enrollPeer({ name: "n", setupKey: "PERCALL" });
-		expect((calls[0]?.body as { key: string }).key).toBe("PERCALL");
+		// SAFETY: assertion required at this I/O or test boundary.
+		const call = calls[0];
+		if (call === undefined || !isJsonObject(call.body)) {
+			throw new Error("expected enroll body");
+		}
+		expect(call.body.key).toBe("PERCALL");
 	});
 
 	it("falls back to /api/peers when validation is unavailable", async () => {

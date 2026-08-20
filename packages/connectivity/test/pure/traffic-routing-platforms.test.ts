@@ -5,6 +5,7 @@ import {
 	parseRoutingPlan,
 } from "@hobo/core";
 import { describe, expect, it } from "vitest";
+import { isJsonString } from "../../src/json.js";
 
 import { createInMemoryMeteringSink } from "../../src/metering/sinks.js";
 import { createFunnelTrafficRouting } from "../../src/traffic-routing/funnel.js";
@@ -208,8 +209,7 @@ describe("Vercel traffic routing (production)", () => {
 		const fetchImpl: typeof fetch = async (input, init) => {
 			const url = String(input);
 			const method = (init?.method ?? "GET").toUpperCase();
-			const body =
-				typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
+			const body = isJsonString(init?.body) ? JSON.parse(init.body) : undefined;
 			calls.push({ url, method, body });
 			if (url.includes("/rolling-release/config") && method === "PATCH") {
 				return Response.json({
@@ -267,8 +267,7 @@ describe("Vercel traffic routing (production)", () => {
 		const fetchImpl: typeof fetch = async (input, init) => {
 			const url = String(input);
 			const method = (init?.method ?? "GET").toUpperCase();
-			const body =
-				typeof init?.body === "string" ? JSON.parse(init.body) : undefined;
+			const body = isJsonString(init?.body) ? JSON.parse(init.body) : undefined;
 			if (url.endsWith("/routes") && method === "PUT") {
 				return Response.json({
 					version: {

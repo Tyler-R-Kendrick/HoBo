@@ -4,6 +4,12 @@ import type {
 	OverlayProviderKind,
 	PublicDnsConfig,
 } from "@hobo/core";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 export interface ConnectivityConfig {
 	readonly overlay: {
@@ -66,18 +72,26 @@ export const DEFAULT_CONNECTIVITY_CONFIG: ConnectivityConfig = {
 	},
 };
 
-export function parseConnectivityConfig(raw: unknown): ConnectivityConfig {
-	if (raw === null || raw === undefined || typeof raw !== "object") {
+export function parseConnectivityConfig(raw: JsonValue): ConnectivityConfig {
+	if (raw === null || raw === undefined || !isJsonObject(raw)) {
 		return DEFAULT_CONNECTIVITY_CONFIG;
 	}
-	const obj = raw as Record<string, unknown>;
-	const overlay = (obj.overlay ?? {}) as Record<string, unknown>;
-	const dns = (obj.dns ?? {}) as Record<string, unknown>;
-	const dnsPublic = (dns.public ?? {}) as Record<string, unknown>;
-	const naming = (obj.naming ?? {}) as Record<string, unknown>;
-	const metering = (obj.metering ?? {}) as Record<string, unknown>;
-	const tenancy = (obj.tenancy ?? {}) as Record<string, unknown>;
-	const policy = (obj.policy ?? {}) as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const obj = raw as JsonObject;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const overlay = (obj.overlay ?? {}) as JsonObject;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const dns = (obj.dns ?? {}) as JsonObject;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const dnsPublic = (dns.public ?? {}) as JsonObject;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const naming = (obj.naming ?? {}) as JsonObject;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const metering = (obj.metering ?? {}) as JsonObject;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const tenancy = (obj.tenancy ?? {}) as JsonObject;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const policy = (obj.policy ?? {}) as JsonObject;
 
 	const managedBy = parseManagedBy(dnsPublic.managedBy);
 	const provider = parseProvider(dnsPublic.provider);
@@ -87,9 +101,8 @@ export function parseConnectivityConfig(raw: unknown): ConnectivityConfig {
 		overlay: {
 			provider: overlayProvider,
 			magicDnsDomains: Array.isArray(overlay.magicDnsDomains)
-				? (overlay.magicDnsDomains as unknown[]).filter(
-						(s): s is string => typeof s === "string",
-					)
+				? // SAFETY: assertion required at this I/O or test boundary.
+					overlay.magicDnsDomains.filter((s): s is string => isJsonString(s))
 				: DEFAULT_CONNECTIVITY_CONFIG.overlay.magicDnsDomains,
 			enableFunnel: overlay.enableFunnel !== false,
 		},
@@ -97,43 +110,43 @@ export function parseConnectivityConfig(raw: unknown): ConnectivityConfig {
 			public: {
 				managedBy,
 				provider,
-				...(typeof dnsPublic.zone === "string" ? { zone: dnsPublic.zone } : {}),
+				...(isJsonString(dnsPublic.zone)
+					? { zone: dnsPublic.zone }
+					: undefined),
 				...(dnsPublic.credentials &&
-				typeof dnsPublic.credentials === "object" &&
+				isJsonObject(dnsPublic.credentials) &&
 				dnsPublic.credentials !== null
 					? {
 							credentials: Object.fromEntries(
 								Object.entries(
-									dnsPublic.credentials as Record<string, unknown>,
-								).filter(
-									(entry): entry is [string, string] =>
-										typeof entry[1] === "string",
+									// SAFETY: assertion required at this I/O or test boundary.
+									dnsPublic.credentials as JsonObject,
+								).filter((entry): entry is [string, string] =>
+									isJsonString(entry[1]),
 								),
 							),
 						}
-					: {}),
+					: undefined),
 				...(Array.isArray(dnsPublic.allowedGatewaySuffixes)
 					? {
-							allowedGatewaySuffixes: (
-								dnsPublic.allowedGatewaySuffixes as unknown[]
-							).filter((s): s is string => typeof s === "string"),
+							allowedGatewaySuffixes: dnsPublic.allowedGatewaySuffixes.filter(
+								(s): s is string => isJsonString(s),
+							),
 						}
-					: {}),
+					: undefined),
 			},
 		},
 		naming: {
 			multiTenant: naming.multiTenant === true,
-			defaultEnv:
-				typeof naming.defaultEnv === "string" ? naming.defaultEnv : "prod",
-			localTld:
-				typeof naming.localTld === "string" ? naming.localTld : "localhost",
-			overlayTld:
-				typeof naming.overlayTld === "string" ? naming.overlayTld : "test",
+			defaultEnv: isJsonString(naming.defaultEnv) ? naming.defaultEnv : "prod",
+			localTld: isJsonString(naming.localTld) ? naming.localTld : "localhost",
+			overlayTld: isJsonString(naming.overlayTld) ? naming.overlayTld : "test",
 		},
 		metering: {
 			enabled: metering.enabled !== false,
 			sinks: Array.isArray(metering.sinks)
-				? (metering.sinks as unknown[]).filter(
+				? // SAFETY: assertion required at this I/O or test boundary.
+					metering.sinks.filter(
 						(s): s is "memory" | "log" | "billing" =>
 							s === "memory" || s === "log" || s === "billing",
 					)
@@ -148,17 +161,17 @@ export function parseConnectivityConfig(raw: unknown): ConnectivityConfig {
 		},
 		policy: {
 			engine: policy.engine === "opa" ? "opa" : "tag-acl",
-			...(typeof policy.opaUrl === "string" ? { opaUrl: policy.opaUrl } : {}),
+			...(isJsonString(policy.opaUrl) ? { opaUrl: policy.opaUrl } : undefined),
 		},
 	};
 }
 
-function parseManagedBy(raw: unknown): DnsManagedBy {
+function parseManagedBy(raw: JsonValue | undefined): DnsManagedBy {
 	if (raw === "hobo" || raw === "cloud-provider" || raw === "none") return raw;
 	return "none";
 }
 
-function parseProvider(raw: unknown): DnsProviderKind {
+function parseProvider(raw: JsonValue | undefined): DnsProviderKind {
 	const allowed: DnsProviderKind[] = [
 		"cloudflare",
 		"route53",
@@ -169,13 +182,15 @@ function parseProvider(raw: unknown): DnsProviderKind {
 		"memory",
 		"none",
 	];
-	if (typeof raw === "string" && (allowed as string[]).includes(raw)) {
+	// SAFETY: assertion required at this I/O or test boundary.
+	if (isJsonString(raw) && (allowed as string[]).includes(raw)) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		return raw as DnsProviderKind;
 	}
 	return "none";
 }
 
-function parseOverlay(raw: unknown): OverlayProviderKind {
+function parseOverlay(raw: JsonValue | undefined): OverlayProviderKind {
 	if (raw === "netbird") return "netbird";
 	return "tailscale";
 }

@@ -1,5 +1,4 @@
 import { spawnSync } from "node:child_process";
-
 import {
 	allowDecision,
 	createUsageEvent,
@@ -9,6 +8,13 @@ import {
 	type PolicyEngine,
 	type PolicyRequest,
 } from "@hobo/core";
+import {
+	cloneAsJson,
+	isJsonBoolean,
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 import {
 	evaluateRegoLite,
@@ -70,6 +76,7 @@ export function createOpaPolicyEngine(
 						body: JSON.stringify({ input: toOpaInput(request) }),
 					});
 					if (res.ok) {
+						// SAFETY: assertion required at this I/O or test boundary.
 						const body = (await res.json()) as {
 							result?:
 								| boolean
@@ -79,7 +86,7 @@ export function createOpaPolicyEngine(
 										obligations?: string[];
 								  };
 						};
-						decision = fromOpaResult(request, body.result);
+						decision = fromOpaResult(request, cloneAsJson(body.result));
 					}
 				} catch {
 					// fall through
@@ -117,36 +124,38 @@ export function createOpaPolicyEngine(
 	};
 }
 
-function toOpaInput(request: PolicyRequest): Record<string, unknown> {
-	return {
+function toOpaInput(request: PolicyRequest): JsonObject {
+	const json = cloneAsJson({
 		subject: {
 			identity: request.subject.identity,
 			tenant_id: request.subject.tenantId,
-			tags: request.subject.tags,
-			attributes: request.subject.attributes ?? {},
+			tags: [...request.subject.tags],
+			attributes: { ...request.subject.attributes },
 		},
 		action: request.action,
 		resource: {
 			kind: request.resource.kind,
 			id: request.resource.id,
 			tenant_id: request.resource.tenantId,
-			tags: request.resource.tags ?? [],
-			attributes: request.resource.attributes ?? {},
+			tags: [...(request.resource.tags ?? [])],
+			attributes: { ...request.resource.attributes },
 		},
 		context: request.context ?? {},
-	};
+	});
+	return isJsonObject(json) ? json : {};
 }
 
 function fromOpaResult(
 	request: PolicyRequest,
-	result: unknown,
+	result: JsonValue,
 ): PolicyDecision {
-	if (typeof result === "boolean") {
+	if (isJsonBoolean(result)) {
 		return result
 			? allowDecision(OPA_POLICY_ENGINE_ID, request, ["opa:allow"])
 			: denyDecision(OPA_POLICY_ENGINE_ID, request, ["opa:deny"]);
 	}
-	if (result && typeof result === "object") {
+	if (result && isJsonObject(result)) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const obj = result as {
 			allow?: boolean;
 			reasons?: string[];
@@ -192,11 +201,12 @@ function evalViaOpaCli(
 	);
 	if (result.status !== 0) return null;
 	try {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const parsed = JSON.parse(result.stdout) as {
 			result?: readonly { expressions?: readonly { value?: unknown }[] }[];
 		};
 		const value = parsed.result?.[0]?.expressions?.[0]?.value;
-		return fromOpaResult(request, value);
+		return fromOpaResult(request, cloneAsJson(value));
 	} catch {
 		return null;
 	}

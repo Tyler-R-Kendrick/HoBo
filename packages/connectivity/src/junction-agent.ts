@@ -7,7 +7,6 @@ import {
 	parseTenantId,
 	type TenantId,
 } from "@hobo/core";
-
 import {
 	createJunctionDynamicDnsRegistrar,
 	type DynamicDnsTarget,
@@ -18,6 +17,7 @@ import {
 	isolationClassTag,
 	parseIsolationClass,
 } from "./env-isolation/types.js";
+import { isJsonString } from "./json.js";
 
 export type JunctionAgentRole = "junction" | "broker";
 
@@ -74,10 +74,9 @@ export function createJunctionAgent(options: {
 	readonly publicDns?: PublicDnsManager;
 	readonly emitProgress?: (message: string) => void;
 }): JunctionAgent {
-	const tenantId =
-		typeof options.config.tenantId === "string"
-			? parseTenantId(options.config.tenantId)
-			: options.config.tenantId;
+	const tenantId = isJsonString(options.config.tenantId)
+		? parseTenantId(options.config.tenantId)
+		: options.config.tenantId;
 	const role = options.config.role ?? "junction";
 	let running = false;
 	let overlayIps: string[] = [];
@@ -88,13 +87,15 @@ export function createJunctionAgent(options: {
 					tenantId,
 					dns: options.publicDns,
 					overlay: options.overlay,
-					...(options.policy !== undefined ? { policy: options.policy } : {}),
+					...(options.policy !== undefined
+						? { policy: options.policy }
+						: undefined),
 					...(options.metering !== undefined
 						? { metering: options.metering }
-						: {}),
+						: undefined),
 					...(options.emitProgress !== undefined
 						? { emitProgress: options.emitProgress }
-						: {}),
+						: undefined),
 				})
 			: null;
 
@@ -127,10 +128,10 @@ export function createJunctionAgent(options: {
 					env: isolationClass,
 					...(options.config.cloud !== undefined
 						? { cloud: options.config.cloud }
-						: {}),
+						: undefined),
 					...(options.config.overlayNetworkId !== undefined
 						? { overlayNetworkId: options.config.overlayNetworkId }
-						: {}),
+						: undefined),
 				}),
 				envTag,
 			];
@@ -179,10 +180,10 @@ export function createJunctionAgent(options: {
 				tags,
 				...(options.config.authKey !== undefined
 					? { authKey: options.config.authKey }
-					: {}),
+					: undefined),
 				...(options.emitProgress !== undefined
 					? { emitProgress: options.emitProgress }
-					: {}),
+					: undefined),
 			});
 			running = join.ready || join.identity.nodeId.startsWith("stub:");
 			overlayIps = [...join.identity.overlayIps];

@@ -189,9 +189,9 @@ export function tenantFromSlug(
 		displayName: slug,
 		createdAt: new Date().toISOString(),
 		isolationMode: mode,
-		...(mode !== "soft" ? { overlayNetworkId: `overlay-${slug}` } : {}),
+		...(mode !== "soft" ? { overlayNetworkId: `overlay-${slug}` } : undefined),
 		...(mode === "hard-control-plane"
 			? { controlPlanePartition: `cp-${slug}` }
-			: {}),
+			: undefined),
 	};
 }

@@ -2,8 +2,10 @@
  * Pure Tailscale ACL document for environment network isolation.
  * Apply via Tailscale API (createTailscaleApiClient) when credentials present.
  */
+
 import type { IsolationClass } from "../env-isolation/types.js";
 import { ISOLATION_CLASSES } from "../env-isolation/types.js";
+import type { JsonValue } from "../json.js";
 
 // public-contract: generated ACL schema version.
 export const ENV_ISOLATION_TAILSCALE_ACL_SCHEMA =
@@ -98,11 +100,11 @@ export async function applyEnvIsolationAclHints(input: {
 	readonly tailscale?: {
 		readonly setDnsPreferences: (prefs: {
 			readonly magicDNS?: boolean;
-		}) => Promise<unknown>;
+		}) => Promise<JsonValue>;
 		readonly putSplitDns?: (
 			domains: readonly string[],
 			nameservers: readonly string[],
-		) => Promise<unknown>;
+		) => Promise<JsonValue>;
 	};
 }): Promise<{
 	readonly applied: boolean;

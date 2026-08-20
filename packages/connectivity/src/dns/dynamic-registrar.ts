@@ -8,6 +8,7 @@ import {
 	parseTenantId,
 	type TenantId,
 } from "@hobo/core";
+import { isJsonString } from "../json.js";
 
 export interface DynamicDnsTarget {
 	readonly resource: string;
@@ -59,10 +60,9 @@ export function createJunctionDynamicDnsRegistrar(options: {
 	readonly tld?: string;
 	readonly emitProgress?: (message: string) => void;
 }): JunctionDynamicDnsRegistrar {
-	const tenantId =
-		typeof options.tenantId === "string"
-			? parseTenantId(options.tenantId)
-			: options.tenantId;
+	const tenantId = isJsonString(options.tenantId)
+		? parseTenantId(options.tenantId)
+		: options.tenantId;
 	let targets: DynamicDnsTarget[] = [];
 	const gateways = new Map<string, string>();
 	let lastResults: DynamicDnsRegistrationResult[] = [];
@@ -89,10 +89,14 @@ export function createJunctionDynamicDnsRegistrar(options: {
 					app: target.app,
 					mode: "overlay",
 					tenant: tenantId,
-					...(target.env !== undefined ? { env: target.env } : {}),
-					...(target.branch !== undefined ? { branch: target.branch } : {}),
-					...(target.project !== undefined ? { project: target.project } : {}),
-					...(options.tld !== undefined ? { tld: options.tld } : {}),
+					...(target.env !== undefined ? { env: target.env } : undefined),
+					...(target.branch !== undefined
+						? { branch: target.branch }
+						: undefined),
+					...(target.project !== undefined
+						? { project: target.project }
+						: undefined),
+					...(options.tld !== undefined ? { tld: options.tld } : undefined),
 				});
 
 				if (options.policy) {
@@ -131,7 +135,7 @@ export function createJunctionDynamicDnsRegistrar(options: {
 						backendUrl: target.backendUrl,
 						...(options.emitProgress
 							? { emitProgress: options.emitProgress }
-							: {}),
+							: undefined),
 					});
 					notes.push(...funnel.notes);
 					gateway = funnel.gatewayHostname;

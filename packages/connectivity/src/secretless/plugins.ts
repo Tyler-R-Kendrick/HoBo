@@ -119,11 +119,15 @@ const DEFAULT_PLUGINS: readonly ProtocolPlugin[] = Object.freeze([
 	redisPlugin,
 ]);
 
-export function createPluginRegistry(extra: readonly ProtocolPlugin[] = []): {
+export interface ProtocolPluginRegistry {
 	get: (id: string) => ProtocolPlugin | undefined;
 	list: () => readonly ProtocolPlugin[];
 	register: (plugin: ProtocolPlugin) => void;
-} {
+}
+
+export function createPluginRegistry(
+	extra: readonly ProtocolPlugin[] = [],
+): ProtocolPluginRegistry {
 	const map = new Map<string, ProtocolPlugin>();
 	for (const p of [...DEFAULT_PLUGINS, ...extra]) {
 		map.set(p.id, p);

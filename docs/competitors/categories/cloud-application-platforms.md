@@ -17,7 +17,7 @@ Managed platforms that own application and environment lifecycle, services, prev
 
 These are what a developer actually compares 'just deploy my app' against. They set the DX bar HoBo must clear, and most are also candidate provider targets.
 
-## Competitors (18)
+## Competitors (19)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -39,6 +39,7 @@ These are what a developer actually compares 'just deploy my app' against. They 
 | [**Upsun**](../upsun.md) *(primary)* | environment-per-branch PaaS whose cloned-production-data preview environments are the strongest ephemeral-environment implementation in the corpus | overlapping | `environments`, `authoring`, `delivery`, `app-graph`, `wiring` | Branch-as-environment with production data cloned on the fly — the reference implementation of ephemeral environments, and the half most competitors skip. | HoBo describes applications independently of any one host and can clone data under residency and policy control rather than by default; Upsun YAML is worthless outside Upsun. | benchmark, borrow, provider-target | P1 |
 | [**Porter**](../porter.md) *(primary)* | BYOC PaaS that owns the customer's cluster — the clearest example of the credit-and-account argument HoBo also makes | overlapping | `environments`, `delivery`, `provider-matching`, `identity-secrets`, `finops` | Your account, your credits, your cluster — provisioned across AWS/GCP/Azure with role assumption and workload identity federation, no static credentials stored. | HoBo makes the same BYOC argument without a standing cluster or a 30-45 minute provisioning floor, and places per workload rather than per account. | benchmark, provider-target, borrow | P2 |
 | [**Lagoon**](../lagoon.md) *(primary)* | open-source delivery platform whose local-equals-production promise is built on reusing the developer's existing docker-compose file as the source of truth | adjacent | `authoring`, `environments`, `delivery`, `runtime-portability` | The lowest-ceremony on-ramp anywhere: annotate the docker-compose.yml you already have, and the same images run locally and in production. | HoBo types the capability rather than naming a translation, and can target managed services, wasm hosts or a local runtime instead of always emitting Kubernetes objects. | benchmark, borrow | P2 |
+| [**Release**](../release.md) *(primary)* | specialist in the one surface HoBo keeps finding it lacks — ephemeral environments that actually look like production, data included | adjacent | `environments`, `delivery`, `app-graph` | A specialist that sells nothing but ephemeral environments: template-plus-defaults determinism, branch tracking, automatic teardown, production parity as the stated design target. | HoBo describes applications rather than environments, and its residency and policy layers are what make production-like data in a preview safe rather than merely convenient. | benchmark, borrow | P2 |
 
 ## Navigation
 

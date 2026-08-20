@@ -3,6 +3,7 @@ import {
 	INITIAL_CAPABILITY_PORTS,
 	type InitialCapabilityPort,
 } from "./equivalence.js";
+import { parseJsonObject } from "./json.js";
 import {
 	COST_FACTS,
 	DEFAULT_REGIONS,
@@ -58,12 +59,24 @@ function makeCapability(classKey: InitialCapabilityPort): Capability {
 	};
 }
 
-const PORT_TO_CLASS: Record<string, InitialCapabilityPort> = {
+const PORT_TO_CLASS = {
 	compute: "web/service",
 	kv: "kv",
 	objectStore: "objectStore",
 	database: "database/reactive",
-};
+} satisfies Record<string, InitialCapabilityPort>;
+
+function classForPort(port: string): InitialCapabilityPort | undefined {
+	switch (port) {
+		case "compute":
+		case "kv":
+		case "objectStore":
+		case "database":
+			return PORT_TO_CLASS[port];
+		default:
+			return undefined;
+	}
+}
 
 export interface LakebedProviderOptions {
 	regions?: string[];
@@ -95,20 +108,20 @@ export function createLakebedProvider(
 			return {
 				providerId: LAKEBED_PROVIDER_ID,
 				published,
-				capabilities: JSON.parse(
+				capabilities: parseJsonObject(
 					published["/.well-known/capability-manifest/capabilities.json"],
 				),
-				auth: JSON.parse(
+				auth: parseJsonObject(
 					published["/.well-known/capability-manifest/auth.json"],
 				),
-				cost: JSON.parse(
+				cost: parseJsonObject(
 					published["/.well-known/capability-manifest/cost.json"],
 				),
 			};
 		},
 		client(port: PortKind, outputs: Outputs): ProviderClient {
-			const classKey = PORT_TO_CLASS[port];
-			if (!classKey) {
+			const classKey = classForPort(port);
+			if (classKey === undefined) {
 				throw new Error(`lakebed provider has no client for port ${port}`);
 			}
 			const mapping = EQUIVALENCE_CLASSES[classKey];

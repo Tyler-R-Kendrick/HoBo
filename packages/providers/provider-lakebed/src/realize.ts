@@ -12,7 +12,8 @@ import {
 	EQUIVALENCE_CLASSES,
 	type InitialCapabilityPort,
 } from "./equivalence.js";
-import { LAKEBED_PROVIDER_TARGET, type TypedOptionBlock } from "./options.js";
+import type { JsonObject, JsonValue } from "./json.js";
+import { LAKEBED_PROVIDER_TARGET } from "./options.js";
 import type { ResourcePlan } from "./types.js";
 
 // Reverse of EQUIVALENCE_CLASSES: capability PortKind -> equivalence class key.
@@ -25,21 +26,21 @@ const PORT_TO_CLASS = {
 
 export type RealizablePort = keyof typeof PORT_TO_CLASS;
 
-const OUTPUTS_BY_CLASS: Record<string, string[]> = {
+const OUTPUTS_BY_CLASS = {
 	"lakebed:capsule": ["url", "capsuleId", "binding"],
 	"lakebed:capsule-kv": ["namespace", "binding"],
 	"lakebed:file-store": ["storeName", "binding"],
 	"lakebed:reactive-db": ["endpoint", "binding"],
 	"lakebed:traffic-route": ["routeId", "binding"],
-};
+} satisfies Record<string, string[]>;
 
-const PRIMARY_OUTPUT: Record<string, string> = {
+const PRIMARY_OUTPUT = {
 	"lakebed:capsule": "url",
 	"lakebed:capsule-kv": "namespace",
 	"lakebed:file-store": "storeName",
 	"lakebed:reactive-db": "endpoint",
 	"lakebed:traffic-route": "routeId",
-};
+} satisfies Record<string, string>;
 
 export function isRealizablePort(port: string): port is RealizablePort {
 	return port in PORT_TO_CLASS;
@@ -58,13 +59,18 @@ export function mergeLakebedOptions(
 	// `.with(...)` builder emits the shared TypedOptionBlock shape, and
 	// foreign-provider blocks drop below by providerId.
 	options: ResourcePlan["options"] = [],
-): Record<string, unknown> {
-	const merged: Record<string, unknown> = {};
-	for (const block of options as TypedOptionBlock[]) {
+): JsonObject {
+	const merged: { [key: string]: JsonValue } = {};
+	for (const block of options) {
 		if (block.providerId !== LAKEBED_PROVIDER_TARGET) {
 			continue;
 		}
-		Object.assign(merged, block.options);
+		const inner = block.options;
+		if (Object.prototype.toString.call(inner) !== "[object Object]") {
+			continue;
+		}
+		// SAFETY: lakebed option payloads are JSON at this merge boundary.
+		Object.assign(merged, inner as JsonObject);
 	}
 	return merged;
 }
@@ -91,12 +97,38 @@ function buildResource(
 			options: mergeLakebedOptions(plan.options),
 			bindings,
 		},
-		outputs: OUTPUTS_BY_CLASS[mapping.resourceClass] ?? ["binding"],
+		outputs: outputsForClass(mapping.resourceClass),
 	};
 }
 
+function outputsForClass(resourceClass: string): string[] {
+	switch (resourceClass) {
+		case "lakebed:capsule":
+		case "lakebed:capsule-kv":
+		case "lakebed:file-store":
+		case "lakebed:reactive-db":
+		case "lakebed:traffic-route":
+			return OUTPUTS_BY_CLASS[resourceClass];
+		default:
+			return ["binding"];
+	}
+}
+
+function primaryOutputName(type: string): string {
+	switch (type) {
+		case "lakebed:capsule":
+		case "lakebed:capsule-kv":
+		case "lakebed:file-store":
+		case "lakebed:reactive-db":
+		case "lakebed:traffic-route":
+			return PRIMARY_OUTPUT[type];
+		default:
+			return "binding";
+	}
+}
+
 function primaryRef(resource: DriverResource): string {
-	const output = PRIMARY_OUTPUT[resource.type] ?? "binding";
+	const output = primaryOutputName(resource.type);
 	return `\${resources.${resource.name}.outputs.${output}}`;
 }
 
@@ -105,13 +137,11 @@ function primaryRef(resource: DriverResource): string {
  * deploy-driver program (ADR-0127: a Driver, not IaC — the closed PaaS
  * exposes a deploy surface, not infrastructure state).
  */
-export function realizeResourcePlan(plan: ResourcePlan): {
-	driver: DriverProgram;
-} {
+export function realizeResourcePlan(plan: ResourcePlan) {
 	const resource = buildResource(plan, false);
 	const deploymentId = plan.deploymentId ?? plan.name;
 	return {
-		driver: {
+		driver: assertDriverProgram({
 			apiVersion: DRIVER_PROGRAM_API_VERSION,
 			kind: DRIVER_PROGRAM_KIND,
 			driver: LAKEBED_DRIVER,
@@ -119,7 +149,7 @@ export function realizeResourcePlan(plan: ResourcePlan): {
 			capsule: `capsule/${deploymentId}`,
 			resources: [resource],
 			outputs: { [`${plan.name}.endpoint`]: primaryRef(resource) },
-		},
+		}),
 	};
 }
 
@@ -131,15 +161,18 @@ export function realizeResourcePlan(plan: ResourcePlan): {
 export function realizeResourcePlans(
 	plans: ResourcePlan[],
 	options: { deploymentId?: string } = {},
-): { driver: DriverProgram } {
+) {
 	if (plans.length === 0) {
 		throw new Error("cannot realize an empty deployment plan");
 	}
 	const resources = plans.map((plan) => buildResource(plan, true));
 	const deploymentId = options.deploymentId ?? "hello-bindle-lakebed";
-	const first = resources[0] as DriverResource;
+	const first = resources[0];
+	if (first === undefined) {
+		throw new Error("cannot realize an empty deployment plan");
+	}
 	return {
-		driver: {
+		driver: assertDriverProgram({
 			apiVersion: DRIVER_PROGRAM_API_VERSION,
 			kind: DRIVER_PROGRAM_KIND,
 			driver: LAKEBED_DRIVER,
@@ -147,7 +180,7 @@ export function realizeResourcePlans(
 			capsule: `capsule/${deploymentId}`,
 			resources,
 			outputs: { endpoint: primaryRef(first) },
-		},
+		}),
 	};
 }
 
@@ -159,7 +192,7 @@ export function realizeResourcePlans(
 export function realizeTrafficRoutingPlan(
 	plan: RoutingPlan,
 	options: { deploymentId?: string; capsule?: string } = {},
-): { driver: DriverProgram } {
+) {
 	const deploymentId =
 		options.deploymentId?.trim() || sanitizeDriverId(plan.planId) || "traffic";
 	const capsule =
@@ -178,11 +211,13 @@ export function realizeTrafficRoutingPlan(
 				id: backend.id,
 				service: backend.service,
 				...(backend.endpoint === undefined
-					? {}
+					? undefined
 					: { endpoint: backend.endpoint }),
-				...(backend.weight === undefined ? {} : { weight: backend.weight }),
+				...(backend.weight === undefined
+					? undefined
+					: { weight: backend.weight }),
 				...(backend.locationHints === undefined
-					? {}
+					? undefined
 					: { locationHints: [...backend.locationHints] }),
 			})),
 			rules: plan.intent.rules.map((rule) => ({
@@ -192,13 +227,13 @@ export function realizeTrafficRoutingPlan(
 							match: {
 								...(rule.match.pathPrefix
 									? { pathPrefix: rule.match.pathPrefix }
-									: {}),
+									: undefined),
 								...(rule.match.headers
 									? { headers: { ...rule.match.headers } }
-									: {}),
+									: undefined),
 							},
 						}
-					: {}),
+					: undefined),
 				backends: rule.backends.map((backend) => backend.id),
 			})),
 		},

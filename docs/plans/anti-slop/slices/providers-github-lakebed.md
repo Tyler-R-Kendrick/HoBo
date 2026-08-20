@@ -9,6 +9,11 @@ tags: [hobo, anti-slop, oxlint, providers]
 
 Layer `sdlc/anti-slop-13-providers-github-lakebed`.
 
-Cleared so far (oxlint `--deny-warnings`):
+These packages are oxlint `--deny-warnings` clean:
 
 - `@hobo/runner-github`
+- `@hobo/provider-lakebed`
+
+Named `JsonValue` parse at GitHub Actions and Lakebed JSON boundaries.
+Empty-object spreads use `undefined`. Remaining `as` assertions carry a
+`SAFETY:` comment on the preceding line.

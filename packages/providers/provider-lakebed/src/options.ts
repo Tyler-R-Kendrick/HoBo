@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json.js";
+
 // public-contract: the provider target id `.with(...)` option blocks carry.
 export const LAKEBED_PROVIDER_TARGET = "lakebed";
 
@@ -9,7 +11,7 @@ export type TypedOptionBlock = {
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
-	options: Record<string, unknown>;
+	options: JsonObject;
 };
 
 // The provider-specific options pattern (sdk-api.md "the core promise"): typed,
@@ -17,7 +19,7 @@ export type TypedOptionBlock = {
 // targets many clouds unedited, including the competitor's.
 export const lakebed = {
 	with: {
-		capsule(options: Record<string, unknown> = {}): TypedOptionBlock {
+		capsule(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"compute",
 				"capsule",
@@ -25,7 +27,7 @@ export const lakebed = {
 				options,
 			);
 		},
-		reactiveDb(options: Record<string, unknown> = {}): TypedOptionBlock {
+		reactiveDb(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"database",
 				"reactiveDb",
@@ -33,7 +35,7 @@ export const lakebed = {
 				options,
 			);
 		},
-		files(options: Record<string, unknown> = {}): TypedOptionBlock {
+		files(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"objectStore",
 				"files",
@@ -47,8 +49,8 @@ export const lakebed = {
 function optionBlock(
 	port: string,
 	optionName: string,
-	defaults: Record<string, unknown>,
-	options: Record<string, unknown>,
+	defaults: JsonObject,
+	options: JsonObject,
 ): TypedOptionBlock {
 	return {
 		providerId: LAKEBED_PROVIDER_TARGET,

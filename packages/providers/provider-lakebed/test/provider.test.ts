@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
-
 import {
 	createLakebedProvider,
 	LAKEBED_PROVIDER_ID,
@@ -8,6 +7,7 @@ import {
 	LAKEBED_TRAFFIC_ROUTING_PROFILE,
 	parsePublishedManifest,
 } from "../src/index.js";
+import { isJsonObject } from "../src/json.js";
 
 function capabilityFor(port: string) {
 	const provider = createLakebedProvider();
@@ -81,17 +81,15 @@ describe("capabilityManifest: published well-known bundle", () => {
 
 	it("advertises the four honestly-scoped capabilities", () => {
 		const provider = createLakebedProvider();
-		const capabilities = (
-			provider.capabilityManifest().capabilities as {
-				capabilities: Array<Record<string, unknown>>;
-			}
-		).capabilities;
-		assert.deepEqual(capabilities.map((c) => c.port).sort(), [
-			"compute",
-			"database",
-			"kv",
-			"objectStore",
-		]);
+		const capabilitiesDoc = provider.capabilityManifest().capabilities;
+		const capabilities = isJsonObject(capabilitiesDoc)
+			? capabilitiesDoc.capabilities
+			: undefined;
+		assert.ok(Array.isArray(capabilities));
+		assert.deepEqual(
+			capabilities.map((c) => (isJsonObject(c) ? c.port : undefined)).sort(),
+			["compute", "database", "kv", "objectStore"],
+		);
 	});
 });
 

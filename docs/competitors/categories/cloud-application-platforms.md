@@ -17,7 +17,7 @@ Managed platforms that own application and environment lifecycle, services, prev
 
 These are what a developer actually compares 'just deploy my app' against. They set the DX bar HoBo must clear, and most are also candidate provider targets.
 
-## Competitors (20)
+## Competitors (21)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -41,6 +41,7 @@ These are what a developer actually compares 'just deploy my app' against. They 
 | [**Lagoon**](../lagoon.md) *(primary)* | open-source delivery platform whose local-equals-production promise is built on reusing the developer's existing docker-compose file as the source of truth | adjacent | `authoring`, `environments`, `delivery`, `runtime-portability` | The lowest-ceremony on-ramp anywhere: annotate the docker-compose.yml you already have, and the same images run locally and in production. | HoBo types the capability rather than naming a translation, and can target managed services, wasm hosts or a local runtime instead of always emitting Kubernetes objects. | benchmark, borrow | P2 |
 | [**Release**](../release.md) *(primary)* | specialist in the one surface HoBo keeps finding it lacks — ephemeral environments that actually look like production, data included | adjacent | `environments`, `delivery`, `app-graph` | A specialist that sells nothing but ephemeral environments: template-plus-defaults determinism, branch tracking, automatic teardown, production parity as the stated design target. | HoBo describes applications rather than environments, and its residency and policy layers are what make production-like data in a preview safe rather than merely convenient. | benchmark, borrow | P2 |
 | [**OpenShift**](../openshift.md) | the enterprise Kubernetes distribution — a provider target, and the clearest evidence that a platform's defaults matter more than its capabilities | adjacent | `runtime-portability`, `governance`, `delivery`, `extensibility` | Secure defaults enforced at admission, operator lifecycle management, and an assembled stack whose upgrades include the node OS. | HoBo does not require a cluster at all, and its OpenShift-specific equivalents would be provider escapes — scoped and reported rather than the convenient default. | provider-target, benchmark, borrow | P2 |
+| [**Coolify**](../coolify.md) | the leading open-source self-hosted PaaS — the clearest demonstration that the Heroku experience can be delivered on a rented VPS with no vendor | overlapping | `authoring`, `delivery`, `environments`, `provider-matching` | Free, open, and complete for its scope: TLS, backups, previews and a 280+ service catalog on servers you own, deployable in minutes. | Coolify deploys containers to servers you pick from a dropdown; HoBo describes capabilities and scores a realization across heterogeneous providers. | benchmark, borrow | P2 |
 
 ## Navigation
 

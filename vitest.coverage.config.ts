@@ -52,6 +52,30 @@ export default defineConfig({
 			],
 			reporter: ["text-summary", "json-summary"],
 			reportsDirectory: "./.coverage",
+			/**
+			 * A ratchet, not a target.
+			 *
+			 * Measured 2026-08-20 over 766 files / 8,532 tests:
+			 * statements 77.74%, branches 65.84%, functions 82.27%, lines 79.12%.
+			 * These thresholds sit a hair under those numbers so the lane fails on
+			 * *regression* while the climb to the 80% goal is in progress.
+			 *
+			 * Set at the measured line rather than at the goal deliberately, for the
+			 * reason the Stryker configs already give: a gate nobody can pass gets
+			 * deleted, not met. Raise each number as the real one improves; never
+			 * lower one to make a red build green.
+			 *
+			 * The goal is 80% on every metric. Branches are the long pole at 65.84%,
+			 * and the leverage is concentrated — `packages/code` is 15,445 statements
+			 * at 77.1%, and packages/testing, pixel-village, ci-guard, camps and
+			 * control-yard all sit under 62%.
+			 */
+			thresholds: {
+				statements: 77.5,
+				branches: 65.5,
+				functions: 82,
+				lines: 79,
+			},
 		},
 	},
 });

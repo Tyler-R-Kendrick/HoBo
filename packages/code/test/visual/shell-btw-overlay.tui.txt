@@ -6,8 +6,8 @@
  █▌                                ┃parent · Created hello-world.          ┃▒▐█▒
  █▌                                ┃you · what's going on                  ┃▒▐█▒
  █▌                                ┃btw · btw · idle · focus chat          ┃▒▐█▒
- █▌                                ┃station local@local-dev · env — ·      ┃▒▐█▒
- █▌                                ┃engine:none · dispatch-only            ┃▒▐█▒
+ █▌                                ┃station auth:out · env — · engine:none…┃▒▐█▒
+ █▌                                ┃dispatch-only                          ┃▒▐█▒
  █▌                                ┃you · make a hello world app           ┃▒▐█▒
  █▌                                ┃Bo · Created hello-world.              ┃▒▐█▒
  █▌                                ┃2 main-chat message(s) borrowed. Esc   ┃▒▐█▒
@@ -20,4 +20,4 @@
  ▀█▄    ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▪   ▄█▀▒
   ▀▀▀██████████████████████████████████████████████████████████████████████▀▀▀ ▒
    ▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒▒
-(••) hobo-code  ·  Hobo Bo  ·  local@local-dev  ·  engine:none  ·  $0.00/$5.00 …
+(••) hobo-code  ·  Hobo Bo  ·  auth:out  ·  engine:none  ·  $0.00/$5.00 · cheap…

@@ -52,7 +52,8 @@ describe("anon Temporary Convex backend (fail-closed live)", () => {
 			expect.unreachable("should throw");
 		} catch (error) {
 			expect(error).toBeInstanceOf(ConvexAnonBackendError);
-			const err = error as ConvexAnonBackendError;
+			if (!(error instanceof ConvexAnonBackendError)) return;
+			const err = error;
 			expect(err.rejections.some((r) => r.host === "instanode")).toBe(true);
 			expect(err.rejections.some((r) => r.host === "openpouch-anon")).toBe(
 				true,

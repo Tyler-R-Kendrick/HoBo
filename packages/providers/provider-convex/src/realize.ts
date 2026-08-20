@@ -12,19 +12,31 @@ import {
 	type DriverResource,
 } from "./driver-program.js";
 import { EQUIVALENCE_CLASSES } from "./equivalence.js";
+import type { JsonValue } from "./json.js";
 import { CONVEX_PROVIDER_ID } from "./manifest.js";
 import type { ResourcePlan } from "./types.js";
 
-const PORT_TO_CLASS: Record<string, keyof typeof EQUIVALENCE_CLASSES> = {
+const PORT_TO_CLASS = {
 	compute: "web/service",
 	database: "database/reactive",
 	objectStore: "objectStore",
-};
+} satisfies Record<string, keyof typeof EQUIVALENCE_CLASSES>;
 
-export function realizeResourcePlan(plan: ResourcePlan): {
-	driver: DriverProgram;
-} {
-	const classKey = PORT_TO_CLASS[plan.port];
+function classForPort(
+	port: string,
+): keyof typeof EQUIVALENCE_CLASSES | undefined {
+	switch (port) {
+		case "compute":
+		case "database":
+		case "objectStore":
+			return PORT_TO_CLASS[port];
+		default:
+			return undefined;
+	}
+}
+
+export function realizeResourcePlan(plan: ResourcePlan) {
+	const classKey = classForPort(plan.port);
 	if (!classKey) {
 		throw new Error(
 			`convex provider cannot realize port ${plan.port}; supported: ${Object.keys(PORT_TO_CLASS).join(", ")}`,
@@ -51,7 +63,12 @@ export function realizeResourcePlan(plan: ResourcePlan): {
 		provider: CONVEX_PROVIDER_ID,
 		inputs: {
 			deployment: "${resources.deployment.outputs.deploymentName}",
-			...(plan.options?.length ? { options: plan.options } : {}),
+			...(plan.options?.length
+				? {
+						// SAFETY: option blocks are JSON-serializable at this driver boundary.
+						options: JSON.parse(JSON.stringify(plan.options)) as JsonValue,
+					}
+				: undefined),
 		},
 		outputs:
 			classKey === "database/reactive"
@@ -61,7 +78,7 @@ export function realizeResourcePlan(plan: ResourcePlan): {
 					: ["httpUrl", "connectionRef"],
 	};
 
-	const program: DriverProgram = {
+	const program = {
 		apiVersion: DRIVER_PROGRAM_API_VERSION,
 		kind: DRIVER_PROGRAM_KIND,
 		driver: CONVEX_DRIVER,
@@ -72,6 +89,6 @@ export function realizeResourcePlan(plan: ResourcePlan): {
 			deploymentUrl: "${resources.deployment.outputs.url}",
 			connectionRef: `\${resources.${plan.name}.outputs.connectionRef}`,
 		},
-	};
+	} satisfies DriverProgram;
 	return { driver: assertDriverProgram(program) };
 }

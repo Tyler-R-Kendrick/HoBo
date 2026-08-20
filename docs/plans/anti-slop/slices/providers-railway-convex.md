@@ -9,6 +9,11 @@ tags: [hobo, anti-slop, oxlint, providers]
 
 Layer `sdlc/anti-slop-14-providers-railway-convex`.
 
-Cleared so far (oxlint `--deny-warnings`):
+These packages are oxlint `--deny-warnings` clean:
 
 - `@hobo/provider-railway`
+- `@hobo/provider-convex`
+
+Named `JsonValue` parse at Railway plans/pacts and Convex management/manifest
+JSON. Empty-object spreads use `undefined`. Remaining `as` assertions carry a
+`SAFETY:` comment on the preceding line.

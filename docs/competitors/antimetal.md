@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [observability, agent-surface, finops]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-20
+  contract: v1
   sources:
     - https://antimetal.com/
     - https://docs.antimetal.com/
@@ -22,7 +23,7 @@ competitor:
 
 # Antimetal - Competitor Reference
 
-> Captured for HoBo competitive analysis (researched 2026-07-01). Sources: [product site](https://antimetal.com/), [docs overview](https://docs.antimetal.com/), [quick start](https://docs.antimetal.com/quick-start), [MCP docs](https://docs.antimetal.com/connect), [integrations](https://docs.antimetal.com/integrations/overview), [issue lifecycle](https://docs.antimetal.com/product/issue-lifecycle), [fixes](https://docs.antimetal.com/product/fixes), [security](https://docs.antimetal.com/admin/security), [API reference](https://docs.antimetal.com/api-reference/introduction), [Antimetal for coding agents](https://antimetal.com/blog/introducing-antimetal-for-coding-agents), [world-model post](https://antimetal.com/blog/building-a-unified-model-of-software-systems), [invisible-infrastructure post](https://antimetal.com/blog/the-future-of-infrastructure-is-invisible), [skills repo](https://github.com/antimetal/skills), [system-agent repo](https://github.com/antimetal/system-agent), [Terraform AWS module](https://github.com/antimetal/terraform-aws-antimetal), and [TechCrunch 2023 funding/product context](https://techcrunch.com/2023/05/08/antimetal-is-putting-ai-to-work-to-root-out-cloud-cost-inefficiencies/). Antimetal is adjacent to HoBo: it is not a meta-cloud or infrastructure-from-code runtime, but it strongly overlaps HoBo's Operator Agents, SRE incident, patchability, MCP, and production-context-for-agents story. HoBo mapping lives in [HoBo mapping](#hobo-mapping).
+> Captured for HoBo competitive analysis (researched 2026-07-01). Sources: [product site](https://antimetal.com/), [docs overview](https://docs.antimetal.com/), [quick start](https://docs.antimetal.com/quick-start), [MCP docs](https://docs.antimetal.com/connect), [integrations](https://docs.antimetal.com/integrations/overview), [issue lifecycle](https://docs.antimetal.com/product/issue-lifecycle), [fixes](https://docs.antimetal.com/product/fixes), [security](https://docs.antimetal.com/admin/security), [API reference](https://docs.antimetal.com/api-reference/introduction), [Antimetal for coding agents](https://antimetal.com/blog/introducing-antimetal-for-coding-agents), [world-model post](https://antimetal.com/blog/building-a-unified-model-of-software-systems), [invisible-infrastructure post](https://antimetal.com/blog/the-future-of-infrastructure-is-invisible), [skills repo](https://github.com/antimetal/skills), [system-agent repo](https://github.com/antimetal/system-agent), [Terraform AWS module](https://github.com/antimetal/terraform-aws-antimetal), and [TechCrunch 2023 funding/product context](https://techcrunch.com/2023/05/08/antimetal-is-putting-ai-to-work-to-root-out-cloud-cost-inefficiencies/). Antimetal is adjacent to HoBo: it is not a meta-cloud or infrastructure-from-code runtime, but it strongly overlaps HoBo's Operator Agents, SRE incident, patchability, MCP, and production-context-for-agents story. HoBo mapping lives in [HoBo mapping](#primitive-mapping).
 
 ## What it is
 
@@ -50,6 +51,31 @@ The key distinction is **operator context**. Antimetal does not ask developers t
 | Earlier public framing | Began as AWS cost-optimization automation; current site/docs are broader production operations |
 
 Antimetal is not a Humanitec/Nitric/Encore-style provisioning system. It competes with HoBo where HoBo promises that agents can understand and repair production from canonical control-plane state, event history, contracts, projections, and policy-governed patch flows.
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **World model** | A continuously-maintained model of the production estate and how its parts relate |
+| **Signal / incident** | The observed problem the system reasons about |
+| **Root-cause analysis** | Automated diagnosis over the world model rather than over raw telemetry |
+| **Fix** | A proposed or applied remediation |
+| **Agent handoff** | The path from Antimetal's diagnosis into a coding agent or MCP-connected tool |
+
+The mental model is **the platform understands your production system well enough to explain and
+repair it**. Where observability tools show signals and leave interpretation to a human, Antimetal
+maintains a model and reasons over it.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `observability` | Automated diagnosis rather than dashboards |
+| `agent-surface` | **The sharpest overlap** — agents acting on production with a model behind them |
+| `finops` | Cost as one dimension of the operational model |
+
+Antimetal is **adjacent**: it operates estates rather than describing applications. Its relevance is
+as the operator-side benchmark for HoBo's AI-native claim.
 
 ## Feature surface
 
@@ -154,7 +180,20 @@ Antimetal publishes supporting repos:
 
 These are not an open-source Antimetal control plane. They are the connection layer around a hosted product.
 
-## Differentiators
+## Architecture
+
+- **Ingestion** — connects to cloud accounts and observability sources to build the world model.
+- **Reasoning layer** — the differentiator: diagnosis runs over a structured model of the estate, not
+  over log text, which is why the output is explanatory rather than correlational.
+- **Action** — remediation proposed or applied, with handoff into coding agents and MCP-connected
+  tooling for changes that belong in code.
+- **State authority** — the world model, derived from the customer's live estate.
+- **Portability boundary** — none claimed; it observes and acts on what exists.
+
+## Where Antimetal is stronger
+
+> Shipped, evidenced capability only.
+
 
 1. **Production evidence in the coding-agent loop.** Antimetal makes runtime incidents, artifacts, traces, logs, and topology visible to coding agents through MCP and skills.
 2. **World model above existing tools.** It does not ask teams to migrate observability stacks. It normalizes across tools the team already uses.
@@ -163,7 +202,8 @@ These are not an open-source Antimetal control plane. They are the connection la
 5. **Integration breadth.** The biggest moat is connector coverage plus learned cross-tool correlations.
 6. **SRE wedge with agent UX.** It sells an immediate painkiller: investigate this incident and give my coding agent the context to fix it.
 
-## Gaps a competitor could exploit
+## Adversarial critique
+
 
 1. **Not the source of truth for deployment.** Antimetal observes and reasons over production; it does not own the canonical app/resource graph, provider selection, deployment sets, policy decisions, or resource lifecycle.
 2. **Fixes are advisory by design.** Docs say Antimetal does not run tests or builds. The system can propose patches, but correctness still depends on downstream repo gates and human review.
@@ -172,7 +212,9 @@ These are not an open-source Antimetal control plane. They are the connection la
 5. **No portable runtime/data-plane contract.** Antimetal does not define WIT/protobuf/CUE/Pact boundaries, portable providers, Camps, Yards, or data-migration equivalence classes.
 6. **No provisioning-time prevention loop.** It can patrol and suggest prevention, but it is not the planner that rejects unsafe deployments before they become production state.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 | Antimetal feature | HoBo equivalent / delta | Status |
 |---|---|---|
@@ -201,3 +243,45 @@ It does create concrete execution pressure. A credible HoBo operator surface sho
 6. preserve contract, type, test, and policy gates as part of the fix path.
 
 HoBo's differentiation is not "also has an incident bot." It is that HoBo can make the incident bot operate over the same event-sourced control plane that planned, deployed, governed, and can safely patch the system.
+
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract.
+
+- **HoBo prevents at admission** (*implemented*, `policy.Decided`); Antimetal diagnoses afterwards.
+  These are complementary rather than competing, and the honest framing is that HoBo's controls
+  reduce the incidents Antimetal exists to explain.
+- **The decision log is a diagnosis substrate** (*implemented*, ADR-0135): HoBo already records why
+  each placement and policy decision was made, which is a stronger input to root-cause analysis than
+  an inferred model.
+- **Agent actions are contract-bounded and recorded** (*implemented*) rather than granted broad
+  production access.
+- **Honest caveat.** On automated diagnosis and remediation, Antimetal ships a capability HoBo does
+  not have and does not currently plan.
+
+## Better-together / integration posture
+
+- **Integrate** — the natural composition: HoBo's event log as an input to Antimetal-style reasoning,
+  since a record of intended decisions is exactly what root-cause analysis lacks.
+- **Benchmark** on the operator experience for AI-native claims.
+- **Borrow** — the framing that **a model of the system beats a stream of signals**, which is an
+  argument for surfacing HoBo's graph and decision history rather than only storing them.
+- Not an adopt, provider or displace target.
+
+## Threats and lessons
+
+1. **A recorded decision history is a diagnosis asset HoBo has and does not use.** Every product in
+   this space infers what the estate looks like; HoBo knows why it looks that way. That is a
+   differentiated input worth exposing.
+2. **Prevention and diagnosis are complementary**, and positioning HoBo against operations tooling
+   would be a category error.
+3. **Broad production read access is the cost of this category**, and a reason customers may prefer a
+   control plane that already holds the relevant history.
+
+## Sources
+
+- [antimetal.com](https://antimetal.com/) and [docs.antimetal.com](https://docs.antimetal.com/) — world model, RCA, remediation, agent handoff (vendor material)
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Operational evidence for autonomous remediation was not verified and is
+recorded as a vendor claim.

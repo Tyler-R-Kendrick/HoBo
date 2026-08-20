@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [typed-contracts, identity-secrets]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://supabase.com/docs
     - https://github.com/supabase/supabase
@@ -45,6 +46,32 @@ Supabase is **mature and massively adopted** — ~105k GitHub stars, a **$5B val
 | CLI / dev | **`supabase` CLI** — full local **Docker** stack (Studio · Postgres · PostgREST · Realtime · Storage · Auth · Edge Functions · Mailpit), migrations, `functions`, **branching**, `gen types` |
 | Deploy | **Managed cloud** (its own platform) **or** **self-host via Docker Compose** (community-supported; some platform features excluded) |
 | License / price | **Apache-2.0** OSS core; **Free $0** / **Pro $25/mo** + usage / **Team $599/mo** / Enterprise; **compute billed hourly per project** |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Postgres** | The actual product — everything else is a service around a real Postgres database |
+| **Row Level Security (RLS)** | Authorization expressed as database policy rather than application code |
+| **PostgREST** | The auto-generated REST API over the schema |
+| **Realtime** | Change streams and presence over Postgres replication |
+| **Auth (GoTrue)** | Identity, sessions and JWTs that RLS policies consume |
+| **Storage / Edge Functions / pgvector** | Object storage, serverless compute, and vector search |
+
+The mental model is **Postgres with the boring parts built**. Supabase's insight is that a real
+database with a real schema is the right foundation, and that most backend work is the plumbing
+around it — so ship the plumbing and leave the database standard.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `typed-contracts` | Schema-derived types and an auto-generated API |
+| `identity-secrets` | Auth plus RLS is authorization at the data layer |
+| `runtime-portability` | **Genuinely strong**: it is Postgres, and Postgres runs everywhere |
+
+Supabase is a **provider target** for HoBo's data and auth ports rather than a competitor for the
+control plane.
 
 ## Feature surface
 
@@ -126,9 +153,24 @@ The **Supabase MCP server** (`https://mcp.supabase.com/mcp`, OAuth via dynamic c
 - **Enterprise — custom:** designated support, 24×7 support, BYO-cloud, uptime SLAs, custom limits.
 - **Compute** is *"billed hourly. Each project runs its own instance"* — **Micro $10/mo up to 16XL $3,730/mo**.
 
-## Differentiators
+## Architecture
 
-### Strengths (what Supabase does well)
+- **Postgres is the centre**, not an implementation detail: schema, extensions, RLS and replication
+  are the mechanism for everything above.
+- **Services around it** — PostgREST for the API, GoTrue for auth, Realtime for change streams,
+  Storage for objects — each independently deployable and open source.
+- **RLS as the authorization model** means policy lives with the data and applies to every client
+  regardless of path, which is a stronger property than middleware checks.
+- **State authority** — Postgres.
+- **Portability boundary** — **the best in this cohort.** The database is standard Postgres; a dump
+  restores anywhere. What does not travel is the surrounding services' configuration, and even those
+  are open source and self-hostable.
+
+## Where Supabase is stronger
+
+> Shipped, evidenced capability only.
+
+### what Supabase does well
 
 - **Postgres depth, not a bespoke store** — a real dedicated Postgres per project: 30+ years of Postgres, full SQL/joins/transactions/extensions, and a **portable, no-lock-in** database you can `pg_dump` out.
 - **Coherent, integrated BaaS** — Auth + REST/GraphQL + Realtime + Storage + Edge Functions + Vector that *"work together out of the box"*; **best-in-class BaaS DX**.
@@ -140,7 +182,14 @@ The **Supabase MCP server** (`https://mcp.supabase.com/mcp`, OAuth via dynamic c
 - **Mature and massively adopted** — ~105k stars, $5B valuation, huge ecosystem: a **proven, shipping product** (where HoBo is design-phase).
 - **MCP server** — AI agents introspect and manage projects (SQL, migrations, functions, branches) under the developer's scope.
 
-### Gaps (Supabase's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Supabase's limits — HoBo's opening
 
 - **Single Postgres backend — not cloud-/paradigm-agnostic.** Everything *is* Postgres + extensions. There is **no multi-cloud provider portability, no pluggable IaC, no "same app → N clouds"**, and **no non-SQL paradigm** as a first-class primitive (document/graph/wide-column/OLAP are "use an extension or bolt it on"). HoBo is genuinely multi-cloud with **cloud-agnostic WIT ports + pluggable IaC** ([Plan 4](../design/control-plane.md#plan-04)/[ADR-0006](../design/adr/01-architecture-core.md#adr-0006)) and a **paradigm taxonomy** with opt-in packages ([ADR-0052](../design/adr/03-data-plane.md#adr-0052)/[ADR-0081](../design/adr/03-data-plane.md#adr-0081)).
 - **It is Supabase's own platform** — self-host is real but **loses platform features** (branching, PITR, managed backups, advanced analytics, Vector Buckets, ETL, management API) and is community-supported: **self-host ≠ hosted parity**. HoBo's **Yard is itself a Bindle** — self-host = hosted parity ([Plan 4](../design/control-plane.md#plan-04)) — and monetization is out of scope ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)).
@@ -151,7 +200,22 @@ The **Supabase MCP server** (`https://mcp.supabase.com/mcp`, OAuth via dynamic c
 - **Multi-tenancy is RLS — a building block, not an app-tenant model.** No tenancy-model spectrum, per-tenant isolation-by-construction, quota/residency/lifecycle, or cross-tenant-leak gate. HoBo ships **multi-tenant-app primitives** ([ADR-0079](../design/adr/02-identity-security.md#adr-0079)/[ADR-0080](../design/adr/02-identity-security.md#adr-0080)).
 - **Usage/compute pricing scales with usage — by design.** MAU, egress, storage, and **hourly per-project compute** all meter. HoBo removes **billing/monetization** from scope ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)); metering/showback is OSS FinOps ([ADR-0039](../design/adr/02-identity-security.md#adr-0039)).
 
-### Comparisons
+## Adversarial critique
+
+- **RLS is powerful and easy to get wrong.** Authorization expressed as SQL policy is elegant and
+  concentrates risk in a place many teams review less carefully than application code; a wrong policy
+  is a data breach.
+- **The auto-generated API couples the client to the schema**, so a refactor is a breaking change for
+  every consumer.
+- **Realtime is replication-derived**, not a query-invalidation engine — it tells you rows changed,
+  not that your answer changed, which is a meaningfully weaker contract than Convex's.
+- **Self-hosting the full stack is substantially harder than using the hosted product**, and the gap
+  between the two is where most operational surprises live.
+- **Connection management** is the classic Postgres-at-scale problem and arrives with serverless
+  clients.
+- **Breadth versus depth** — auth, storage, functions and vector search each compete with specialists.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Supabase is a **mature, shipping, single-Postgres open-source BaaS on its own (self-hostable) platform**; HoBo is a **design-phase cloud-agnostic meta-cloud** — many clouds, many paradigms, event-sourced + AI-native + governed. Supabase **sets the BaaS DX bar** and ships Realtime **Presence** that HoBo only just *designed* as a composition of `websocket` rooms + reactor + the new `cache` port + an opt-in `@hobo/presence` package ([ADR-0119](../design/adr/03-data-plane.md#adr-0119)). Honest read: HoBo is **behind on shipped collaboration primitives**, ahead on **breadth + governance + AI-native depth + cross-cloud portability**.
 - **vs Convex / InsForge:** adjacent BaaS. Supabase is **Postgres/SQL-first, open-source, self-hostable**; Convex is a reactive **document DB** with TypeScript functions; InsForge is an **AI-agent-native** BaaS. All three are **possible HoBo provider targets** — backends HoBo could deploy *onto* (Supabase Auth is **already a named `hobo:auth` adapter**; a Supabase Postgres could realize `hobo:data`, its Storage a `bucket`).
@@ -160,7 +224,9 @@ The **Supabase MCP server** (`https://mcp.supabase.com/mcp`, OAuth via dynamic c
 
 **Net:** Supabase is the **leading open-source Postgres BaaS** — real Postgres depth, RLS, Auth, Realtime (incl. shipping **Presence**), Storage, Edge Functions, and `pgvector`, with huge adoption and best-in-class BaaS DX — and it even **ships collaboration primitives HoBo has only designed** ([ADR-0119](../design/adr/03-data-plane.md#adr-0119)). But it is a **single-Postgres-backend, own-platform** product. HoBo's differentiation is the surrounding **meta-cloud**: cloud-agnostic ports + pluggable IaC, multi-paradigm data, an event-sourced governed control plane (Matching/Dispatcher/cost/policy), agents-as-principals + a generation pipeline, cross-cloud portability, multi-tenant-app primitives, and self-host = hosted parity — **and HoBo can target Supabase itself as one provider among many**.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Supabase concept (✅ has · ➕ goes further · ◐ thin/partial · 🔜 designed-not-shipped · ✗ out-of-scope-by-design). HoBo is **design-phase**; Supabase is **shipping** — statuses describe HoBo's *design* parity, not running software.
 
@@ -191,3 +257,31 @@ Supabase is a **mature, shipping product** with years of production usage; HoBo 
 ### The one-line takeaway
 
 **Supabase proves the open-source Postgres-BaaS model at scale** — Auth, RLS, Realtime (incl. **shipping Presence**), Storage, Edge Functions, and `pgvector` on a portable Postgres — and even ships collaboration primitives HoBo has only just designed ([ADR-0119](../design/adr/03-data-plane.md#adr-0119)). HoBo's differentiation is **everything around a single backend**: cloud-agnostic ports + pluggable IaC, multi-paradigm data, an event-sourced governed control plane, agents-as-principals + a generation pipeline, cross-cloud portability, multi-tenant-app primitives, and self-host = hosted parity — **with the option to consume Supabase itself as one provider among many.**
+
+## Better-together / integration posture
+
+- **Provider-target** — a first-class realization behind HoBo's data, auth and storage ports.
+- **Borrow** — **authorization expressed as data-layer policy**. RLS's property that policy applies
+  regardless of access path is exactly what HoBo's policy layer should aspire to at its own
+  boundaries.
+- **Benchmark** on schema-to-working-API time.
+- Not an adopt or displace target.
+
+## Threats and lessons
+
+1. **Standard Postgres is the strongest portability story in this corpus** — better than any
+   abstraction, because it needs none. A useful reminder that adopting a standard can beat
+   abstracting over several.
+2. **Policy that travels with the data** is stronger than policy enforced at a gateway, and worth
+   examining for HoBo's own contract boundaries.
+3. **Change streams are not live queries.** The distinction between "rows changed" and "your answer
+   changed" is the whole gap Convex fills, and it is worth being precise about.
+
+## Sources
+
+- [supabase.com/docs](https://supabase.com/docs) — Postgres, RLS, PostgREST, Auth, Realtime, Storage, Edge Functions, pgvector
+- [supabase/supabase](https://github.com/supabase/supabase) — source and licensing
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Self-hosting parity and current service maturity were not re-verified in
+this pass and are not asserted.

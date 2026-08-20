@@ -17,7 +17,7 @@ Systems that own application and platform orchestration end to end: environment 
 
 This is HoBo's home category. HoBo is a control plane that turns application intent into scored, provider-matched deployments, so anything claiming to orchestrate applications across environments contests HoBo directly.
 
-## Competitors (22)
+## Competitors (23)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -43,6 +43,7 @@ This is HoBo's home category. HoBo is a control plane that turns application int
 | [**Appvia Wayfinder**](../appvia-wayfinder.md) | workspace-scoped self-service platform whose Cloud Resource Plans are the same curated-choice mechanism HoBo expresses as Bindle kinds | overlapping | `environments`, `governance`, `provider-matching`, `identity-secrets`, `app-graph` | The workspace fuses team, access and infrastructure into one boundary users can reason about, with admin-curated Cloud Resource Plans for self-service. | HoBo scores among candidates and declares impedance rather than offering a curated menu, and residency is a typed fail-closed evaluation rather than a plan an admin remembered to restrict. | benchmark, borrow | P3 |
 | [**HPE Morpheus**](../hpe-morpheus.md) | the incumbent enterprise cloud-management platform — where hybrid estates already have a self-service catalog, and the integration breadth HoBo will be measured against | overlapping | `provider-matching`, `environments`, `governance`, `finops`, `delivery` | Integration breadth into what enterprises actually run — VMware, Nutanix, OpenStack — plus a broad governance engine covering quotas, approvals, naming and tagging. | Morpheus unifies the request, not the workload; HoBo describes the application, scores the realization, and makes cost an input to placement rather than a report. | benchmark, borrow | P2 |
 | [**CloudBolt**](../cloudbolt.md) | cloud management platform pivoting toward FinOps — evidence that the CMP category's centre of gravity has moved from provisioning to cost | overlapping | `provider-matching`, `governance`, `finops`, `environments` | Programmable extension in a general-purpose language, with a FinOps emphasis that reads the category's budget shift correctly. | Cost that reports is being commoditized; HoBo makes cost decide placement, and its extension points are typed contracts rather than unversioned plugins. | benchmark | P3 |
+| [**System Initiative**](../system-initiative.md) | the most architecturally ambitious rethink of infrastructure automation in the corpus — a live model with real-time qualification instead of a plan-and-apply cycle | direct | `app-graph`, `authoring`, `reconciliation`, `typed-contracts`, `agent-surface` | Continuous qualification while authoring, a 1:1 digital twin compared against observed state, and change sets as a built-in review primitive — the best feedback loop in the corpus. | System Initiative models the infrastructure you intend; HoBo describes what an application needs before a provider is chosen, and records the decision that picks one. | displace, borrow, benchmark | P1 |
 
 ## Navigation
 

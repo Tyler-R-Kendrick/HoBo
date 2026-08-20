@@ -14,14 +14,15 @@ competitor:
   hobo_surface: [agent-surface, authoring, delivery]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-20
+  contract: v1
   sources:
     - https://docs.lakebed.dev/
 ---
 
 # Lakebed — Competitor Reference
 
-> Captured for HoBo competitive analysis (research as of 2026-07, from [docs.lakebed.dev](https://docs.lakebed.dev/) / [llms.txt](https://docs.lakebed.dev/llms.txt) / [llms-full.txt](https://docs.lakebed.dev/llms-full.txt)). A faithful capture of Lakebed's developer surface — capsule layout, server/client contracts, CLI, deploy, auth, and inspection — reproduced as factual API/CLI excerpts under the [fair-use note](index.md#sources--fair-use). HoBo↔Lakebed parity in [HoBo mapping](#hobo-mapping).
+> Captured for HoBo competitive analysis (research as of 2026-07, from [docs.lakebed.dev](https://docs.lakebed.dev/) / [llms.txt](https://docs.lakebed.dev/llms.txt) / [llms-full.txt](https://docs.lakebed.dev/llms-full.txt)). A faithful capture of Lakebed's developer surface — capsule layout, server/client contracts, CLI, deploy, auth, and inspection — reproduced as factual API/CLI excerpts under the [fair-use note](index.md#sources--fair-use). HoBo↔Lakebed parity in [HoBo mapping](#primitive-mapping).
 
 **Lakebed** is an **alpha-stage, agent-native CLI and runtime** for building small **full-stack TypeScript apps** called **capsules** — *"the whole app"* in one directory: server contract, Preact client, typed state, auth, logs, and a deploy URL. Agents are the primary builder persona: machine-readable docs (`llms.txt`, `llms-full.txt`, `docs.json`) and a single `capsule()` server definition are meant to be authored, inspected, and deployed without leaving code.
 
@@ -41,11 +42,34 @@ competitor:
 
 Lakebed is a **named head-on competitor** to HoBo as an **AI-native meta-cloud** ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)): it optimizes ruthlessly for agent-authored, instant-on full-stack apps on a closed runtime. HoBo tracks it because vision.md borrows its onboarding and machine-readable-contract ethos while deliberately offering cloud-agnostic ports, durable workflows, and adopt-in-place migration.
 
-## Positioning
+## What it is
 
 Lakebed targets **agents and developers building small full-stack TypeScript apps** where the platform owns the runtime, database, auth, bundling, and hosting. The pitch is operational simplicity: *"If you are an agent building with Lakebed, treat the capsule directory as the whole app. Write the server contract, write the Preact client, run the Lakebed CLI, inspect the runtime state, and deploy without leaving code."* ([docs.lakebed.dev](https://docs.lakebed.dev/))
 
 HoBo names Lakebed in the **Convex / Lakebed / Nitric** head-on set because both products promise AI-native developer velocity — but Lakebed is a **closed single-runtime PaaS**, while HoBo is a **cloud-agnostic control plane + durable runtime** that can self-host and import existing estates.
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Capsule** | The deployable unit — the platform's application abstraction |
+| **Sync RPC** | The calling convention between capsules |
+| **`llms.txt`** | The agent-facing description of the platform, published as a first-class artifact |
+
+The mental model is **a PaaS whose primary user is an agent**. Lakebed's positioning treats the
+coding agent as the consumer of the platform, with documentation and interfaces shaped accordingly.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `agent-surface` | Agent-first platform interfaces |
+| `authoring` | Capsules as the application abstraction |
+| `delivery` | Deployment of capsules |
+
+Lakebed is recorded in this corpus as a **named head-on competitor** on the agent-native PaaS
+positioning, and the honest assessment is that the positioning overlaps far more than the
+architecture does.
 
 ## Feature surface
 
@@ -237,7 +261,20 @@ Client helpers: `useAuth()`, `SignInWithGoogle`, `signInWithGoogle()`, `signOut(
 | Arbitrary dependencies | ❌ (v0) — no arbitrary npm imports; Lakebed-provided Preact modules + relative imports only |
 | Migration off-platform | Rewrite off the `lakebed/server` + `lakebed/client` SDK — no import/adopt path documented |
 
-## Differentiators
+## Architecture
+
+- **Closed platform.** Capsules run on Lakebed; there is no self-hosting story and no portable
+  artifact.
+- **Sync RPC** between capsules as the composition mechanism.
+- **`llms.txt`** as the agent-discovery surface — a small, genuinely good idea: publishing a
+  machine-readable description of the platform so an agent can use it without scraping documentation.
+- **State authority** — the platform's.
+- **Portability boundary** — none. A capsule is a Lakebed artifact.
+
+## Where Lakebed is stronger
+
+> Shipped, evidenced capability only.
+
 
 ### Headline differentiators
 
@@ -248,7 +285,8 @@ Client helpers: `useAuth()`, `SignInWithGoogle`, `signInWithGoogle()`, `signOut(
 5. **Inspectable runtime** — `db list` / `db dump` / `logs` / `inspect` before guessing at state.
 6. **Machine-readable + simple auth** — guest + Google sign-in with minimal ceremony.
 
-### Gaps / limitations (opportunities for HoBo)
+## Adversarial critique
+
 
 - **Closed single runtime** — capsules run on Lakebed's hosted runtime; no cloud-agnostic ports or provider mix.
 - **No self-host parity** — cannot run the production runtime on your own infra (unlike HoBo's Yard-is-a-Bindle model).
@@ -259,7 +297,9 @@ Client helpers: `useAuth()`, `SignInWithGoogle`, `signInWithGoogle()`, `signOut(
 - **V0 platform limits** — no file storage, no arbitrary npm deps, no Node built-ins, local state resets on dev restart.
 - **Alpha maturity** — docs describe v0 constraints explicitly; production hardening (multi-region, enterprise governance) is not surfaced.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > For every Lakebed feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · 🔜 = planned, see iteration hooks. HoBo design lives in [`../design/`](../design/index.md).
 
@@ -325,3 +365,33 @@ In-repo characterizations consolidated into this capture (cross-checked, not con
 - `docs/design/adr/07-portability-extensibility.md#adr-0041` (`hobo import lakebed`)
 
 These files are **competitive-research notes** under [`index.md#sources--fair-use`](index.md#sources--fair-use): factual interface excerpts are quoted for commentary and parity comparison; product names and documentation remain Lakebed's property.
+
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract.
+
+- **Open and self-hostable** (*implemented*): HoBo runs locally, in-browser and hosted, against
+  providers the customer chooses.
+- **Agent actions are contract-bounded and recorded** (*implemented*), which is a materially
+  different claim from agent-friendly documentation.
+- **Provider-abstract description** (*implemented*) versus a platform-specific capsule.
+- **Honest caveat.** Lakebed ships a running platform; HoBo's provider coverage is partial (see the
+  [live provider matrix](../design/live-provider-matrix.md)).
+
+## Better-together / integration posture
+
+- **Displace** — this is the corpus's clearest head-on positioning competitor for the agent-native
+  platform narrative, and should be treated as such.
+- **Borrow** — **`llms.txt` as a first-class agent-discovery artifact**. HoBo already publishes
+  `site/public/llms.txt`; the lesson is to treat it as a product surface rather than a documentation
+  convenience.
+- Not an adopt, provider or integrate target.
+
+## Threats and lessons
+
+1. **The agent-native narrative is contested**, and narrative alone is winnable by whoever markets
+   hardest. HoBo's defensible version is mechanical — contracts, policy gates, recorded decisions —
+   and must be stated that way rather than as a claim to be AI-native.
+2. **Closed platforms make the openness argument for you.** An agent-operated platform that cannot be
+   self-hosted is a strong illustration of why HoBo's posture matters.
+3. **`llms.txt` is cheap and effective**, and worth maintaining deliberately.

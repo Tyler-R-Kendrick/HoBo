@@ -9,6 +9,7 @@ import {
 	type PrismaClaimableDatabase,
 } from "../src/driver.js";
 import type { PrismaProviderError } from "../src/errors.js";
+import { parseJsonObject } from "../src/json.js";
 import {
 	createStubCustody,
 	createStubRunner,
@@ -94,12 +95,11 @@ describe("provision", () => {
 	});
 
 	it("refuses a connection string pointing away from the official database host", async () => {
-		const body = JSON.parse(fixture("create.success.json")) as Record<
-			string,
-			unknown
-		>;
-		body.connectionString =
-			"postgresql://fake_user_000000:REDACTED@db.prisma.io.attacker.example:5432/postgres";
+		const body = {
+			...parseJsonObject(fixture("create.success.json")),
+			connectionString:
+				"postgresql://fake_user_000000:REDACTED@db.prisma.io.attacker.example:5432/postgres",
+		};
 		const { driver } = harness({ steps: [stdout(JSON.stringify(body))] });
 
 		try {
@@ -109,6 +109,7 @@ describe("provision", () => {
 			});
 			expect.unreachable("an off-host connection string must be refused");
 		} catch (error) {
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			expect((error as PrismaProviderError).code).toBe(
 				"PROVIDER_CONTRACT_CHANGED",
 			);

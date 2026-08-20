@@ -17,6 +17,7 @@ import type {
 	PrismaClaimState,
 } from "./driver.js";
 import { PrismaProviderError } from "./errors.js";
+import { type JsonValue, parseJsonValue } from "./json.js";
 import type { DomainView, WireFields } from "./wire.js";
 
 export const PRISMA_BINDING_PROFILE_REFS = ["binding.postgresql/v1"] as const;
@@ -99,8 +100,14 @@ export type CredentialScanHit = {
 	readonly excerpt: string;
 };
 
+function jsonView(
+	value: JsonValue | PrismaProvisionReceipt | readonly PrismaProviderFact[],
+): JsonValue {
+	return parseJsonValue(JSON.stringify(value));
+}
+
 export function scanForCredentialMaterial(
-	value: unknown,
+	value: JsonValue,
 ): readonly CredentialScanHit[] {
 	const serialized = JSON.stringify(value) ?? "";
 	const hits: CredentialScanHit[] = [];
@@ -116,7 +123,10 @@ export function scanForCredentialMaterial(
 	return hits;
 }
 
-export function assertNoCredentialMaterial(value: unknown, what: string): void {
+export function assertNoCredentialMaterial(
+	value: JsonValue,
+	what: string,
+): void {
 	const hits = scanForCredentialMaterial(value);
 	if (hits.length === 0) return;
 	throw new PrismaProviderError(
@@ -140,12 +150,12 @@ export function toProvisionReceipt(
 			host: record.endpoint.host,
 			...(record.endpoint.port !== undefined
 				? { port: record.endpoint.port }
-				: {}),
+				: undefined),
 			tls: record.endpoint.tls,
 		},
 		...(record.credentialRef !== undefined
 			? { credentialRef: record.credentialRef }
-			: {}),
+			: undefined),
 		expiresAtIso: record.expiresAtIso,
 		expiresAtMs: record.expiresAtMs,
 		expirySource: record.expirySource,
@@ -166,7 +176,10 @@ export function toProvisionReceipt(
 		bindingProfiles: PRISMA_BINDING_PROFILE_REFS,
 		migrationProfiles: PRISMA_MIGRATION_PROFILE_REFS,
 	};
-	assertNoCredentialMaterial(receipt, "the Prisma Postgres provision receipt");
+	assertNoCredentialMaterial(
+		jsonView(receipt),
+		"the Prisma Postgres provision receipt",
+	);
 	return receipt;
 }
 
@@ -222,6 +235,9 @@ export function toProviderFacts(
 			},
 		});
 	}
-	assertNoCredentialMaterial(facts, "the Prisma Postgres provider facts");
+	assertNoCredentialMaterial(
+		jsonView(facts),
+		"the Prisma Postgres provider facts",
+	);
 	return facts;
 }

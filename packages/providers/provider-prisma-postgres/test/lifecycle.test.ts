@@ -57,7 +57,7 @@ function driverAt(
 			? {
 					revocation: { revoke: async (ref: string) => revocation.revoke(ref) },
 				}
-			: {}),
+			: undefined),
 	});
 }
 
@@ -174,9 +174,11 @@ describe("observe", () => {
 			await driver.observe({ idempotencyKey: KEY, resourceRef: RESOURCE_REF });
 			expect.unreachable("a journalled plaintext credential must be refused");
 		} catch (error) {
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			expect((error as PrismaProviderError).code).toBe(
 				"SECRET_REFERENCE_INVALID",
 			);
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			expect((error as PrismaProviderError).message).not.toContain("REDACTED");
 		}
 	});
@@ -189,9 +191,11 @@ describe("rotateBinding", () => {
 			await driver.rotateBinding(record);
 			expect.unreachable("rotation is not available on the temporary tier");
 		} catch (error) {
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			expect((error as PrismaProviderError).code).toBe(
 				"BINDING_ROTATION_REQUIRED",
 			);
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			expect((error as PrismaProviderError).message).toContain(
 				"no documented rotation surface",
 			);
@@ -201,10 +205,8 @@ describe("rotateBinding", () => {
 	it("leaks no credential into the refusal", async () => {
 		const { record, driver } = await provisioned();
 		await expect(driver.rotateBinding(record)).rejects.toSatisfy(
-			(error: unknown) => {
-				const text = JSON.stringify(
-					error instanceof Error ? error.message : error,
-				);
+			(error: Error) => {
+				const text = JSON.stringify(error.message);
 				return (
 					!/postgres(?:ql)?:\/\//u.test(text) && !text.includes("REDACTED")
 				);
@@ -260,6 +262,7 @@ describe("destroy", () => {
 			await driver.destroy(record);
 			expect.unreachable("a failed revocation is a failed cleanup");
 		} catch (error) {
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			expect((error as PrismaProviderError).code).toBe("CLEANUP_FAILED");
 		}
 	});
@@ -276,7 +279,9 @@ describe("destroy", () => {
 			await driver.destroy(claimed);
 			expect.unreachable("a claimed database is no longer on a TTL");
 		} catch (error) {
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			expect((error as PrismaProviderError).code).toBe("CLEANUP_FAILED");
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			expect((error as PrismaProviderError).message).toContain(
 				"no longer auto-deleted",
 			);

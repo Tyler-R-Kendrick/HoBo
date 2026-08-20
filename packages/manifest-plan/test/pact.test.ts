@@ -4,6 +4,7 @@ import { describe, expect, it } from "vitest";
 
 import {
 	hashDeploymentPlan,
+	type PlanParseInput,
 	parseDeploymentPlan,
 	ResourcePlanError,
 } from "../src/index.js";
@@ -20,13 +21,19 @@ import {
  * the digest the pact declares.
  */
 
-type Interaction = {
+interface PactInteraction {
 	description: string;
-	request: { body: { plan: unknown } };
+	request: { body: { plan: PlanParseInput } };
 	response: { body: { planHash?: string; error?: string; path?: string } };
-};
+}
 
-const pact = JSON.parse(
+interface PactFile {
+	consumer: { name: string };
+	provider: { name: string };
+	interactions: PactInteraction[];
+}
+
+const pact: PactFile = JSON.parse(
 	readFileSync(
 		fileURLToPath(
 			new URL(
@@ -36,11 +43,7 @@ const pact = JSON.parse(
 		),
 		"utf8",
 	),
-) as {
-	consumer: { name: string };
-	provider: { name: string };
-	interactions: Interaction[];
-};
+);
 
 describe(`PACT ${pact.consumer.name} -> ${pact.provider.name}`, () => {
 	it("declares the interactions this suite verifies", () => {
@@ -69,15 +72,18 @@ describe(`PACT ${pact.consumer.name} -> ${pact.provider.name}`, () => {
 	it.each(
 		refusalCases.map((i) => [i.description, i] as const),
 	)("%s", (_description, interaction) => {
-		let thrown: unknown;
+		let thrown: ResourcePlanError | undefined;
 		try {
 			parseDeploymentPlan(interaction.request.body.plan);
 		} catch (error) {
-			thrown = error;
+			if (error instanceof ResourcePlanError) thrown = error;
+			else throw error;
 		}
 		expect(thrown).toBeInstanceOf(ResourcePlanError);
-		const error = thrown as ResourcePlanError;
-		expect(error.code).toBe(interaction.response.body.error);
-		expect(error.path).toBe(interaction.response.body.path);
+		if (thrown === undefined) {
+			throw new Error("expected ResourcePlanError");
+		}
+		expect(thrown.code).toBe(interaction.response.body.error);
+		expect(thrown.path).toBe(interaction.response.body.path);
 	});
 });

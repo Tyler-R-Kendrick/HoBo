@@ -60,7 +60,7 @@ the control plane is an event journal.**
 
 | Influence | Posture | What HoBo takes | Where it diverges | Capture |
 |---|---|---|---|---|
-| **Humanitec** | pillar-adjacent borrow-source | Resource Definitions + Matching, Driver taxonomy, Deployment Sets/Deltas, env types, 5-plane IDP framing | auditable `match.Decided`, wasm-first, event-sourced, OSS core | [competitors/humanitec](../competitors/humanitec.md#hobo-mapping) |
+| **Humanitec** | pillar-adjacent borrow-source | Resource Definitions + Matching, Driver taxonomy, Deployment Sets/Deltas, env types, 5-plane IDP framing | auditable `match.Decided`, wasm-first, event-sourced, OSS core | [competitors/humanitec](../competitors/humanitec.md#primitive-mapping) |
 | **Radius** | borrow-source | Recipes→definitions seam, Connections, Application Graph, recipe output contract | dynamic scored Matching vs static env binding | [competitors/radius](../competitors/radius.md#hobo-mapping) |
 | **Crossplane** | borrow-source + adapter | reconciliation model, dev/platform separation, XRD/Composition≈definition schema/realization (ADR-0144) | not K8s-bound; Crossplane is also a pluggable IaC adapter (ADR-0006) | [competitors/crossplane](../competitors/crossplane.md#hobo-mapping) |
 | **Cloud Foundry / PCF** | lesson + lineage | the original `cf push` app-centric contract, buildpack-style DX floor, org/space governance instinct | no opinionated monolithic platform; ports + matching instead | [technologies/cloud-foundry-pcf](../technologies/cloud-foundry-pcf.md) |

@@ -17,7 +17,7 @@ Runtimes, schedulers, component hosts, actor systems, service building blocks, a
 
 Some of these HoBo adopts (wasmCloud), some it targets, and some genuinely compete for the runtime layer. The distinction matters: adopting a substrate is not losing a category.
 
-## Competitors (10)
+## Competitors (11)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -31,6 +31,7 @@ Some of these HoBo adopts (wasmCloud), some it targets, and some genuinely compe
 | [**.NET Aspire**](../aspire.md) | code-first app composition, local orchestration and deploy — closest authoring analog outside TypeScript | direct | `authoring`, `app-graph`, `wiring`, `environments` | Mature code-first composition with first-class local orchestration and a large .NET ecosystem. | HoBo is language-neutral, provider-abstract via Bindle kinds, and carries residency/portability scoring Aspire has no notion of. | borrow, benchmark | P1 |
 | [**Flux Network**](../flux-network.md) | decentralized container host with a Git-to-Flux deploy UX (Orbit) — compute provider target, not an actor runtime | adjacent | `provider-matching`, `runtime-portability` | Decentralized capacity with genuinely independent operators. | HoBo treats it as a scored provider target subject to the same residency and impedance rules as any hyperscaler. | provider-target | P3 |
 | [**Modal**](../modal.md) | Python-first serverless compute for AI/ML with agent Sandboxes — AI-native compute competitor | adjacent | `runtime-portability`, `provider-matching` | Best-in-class serverless GPU cold-start and Python ergonomics. | HoBo treats GPU compute as a Bindle kind with provider matching rather than a single vendor runtime. | provider-target, benchmark | P3 |
+| [**Control Plane**](../control-plane.md) | multi-cloud virtual-cloud runtime — the shipped product closest to HoBo's portability claim, solved at the runtime and identity layer rather than the manifest layer | direct | `runtime-portability`, `provider-matching`, `environments`, `identity-secrets`, `app-graph` | Portability that works: GVCs span AWS/Azure/GCP and BYOK clusters, with credential-free Universal Cloud Identity and a global/location/internal mTLS endpoint scheme. | Control Plane makes workloads portable by owning the runtime, so the portability ends at its edge; a Bindle deploys through the provider's own services and survives HoBo's absence. | displace, benchmark, borrow, provider-target | P1 |
 
 ## Navigation
 

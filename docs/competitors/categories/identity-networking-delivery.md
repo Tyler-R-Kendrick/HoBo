@@ -17,13 +17,14 @@ Identity-aware networking, secretless connectivity, ADC/gateway, mesh, exposure,
 
 HoBo's connectivity and identity ports must be credible against dedicated products; most are integration or provider targets rather than rivals.
 
-## Competitors (3)
+## Competitors (4)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
 | [**NetScaler**](../netscaler.md) *(primary)* | application delivery controller plus its IaC surface — candidate gateway provider and hobo-import analog | complementary | `governance`, `identity-secrets` | Enterprise-grade L4-L7 delivery with a real config-to-IaC migration path. | HoBo's gateway port abstracts ADC behaviour; NetScaler is a provider target and an import-tooling lesson. | provider-target, borrow | P3 |
 | [**shoo.dev**](../shoo.md) *(primary)* | zero-config Google sign-in auth broker (PKCE + ES256/JWKS) — identity integration target | complementary | `identity-secrets` | Genuinely zero-config sign-in with standards-based PKCE/JWKS. | HoBo's identity port covers workload and agent identity, not just human sign-in. | integrate, provider-target | P3 |
 | [**ServerKit**](../serverkit.md) | self-hosted open-source server control panel with a Go agent fleet — node-attach/Relay reference | adjacent | `delivery`, `observability`, `identity-secrets` | Complete self-host control panel including mail, WAF, backups and an agent fleet. | HoBo's node-attach path is contract-driven and auditable rather than panel-driven. | benchmark, borrow | P3 |
+| [**Control Plane**](../control-plane.md) | multi-cloud virtual-cloud runtime — the shipped product closest to HoBo's portability claim, solved at the runtime and identity layer rather than the manifest layer | direct | `runtime-portability`, `provider-matching`, `environments`, `identity-secrets`, `app-graph` | Portability that works: GVCs span AWS/Azure/GCP and BYOK clusters, with credential-free Universal Cloud Identity and a global/location/internal mTLS endpoint scheme. | Control Plane makes workloads portable by owning the runtime, so the portability ends at its edge; a Bindle deploys through the provider's own services and survives HoBo's absence. | displace, benchmark, borrow, provider-target | P1 |
 
 ## Navigation
 

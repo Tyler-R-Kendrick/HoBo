@@ -17,11 +17,13 @@ Delivery controllers, release orchestration, GitOps reconciliation, environment 
 
 HoBo's stage gates and promotion events live here. The question is whether HoBo's event-sourced promotion model beats a dedicated delivery tool bolted on.
 
-## Competitors (1)
+## Competitors (3)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
 | [**Octopus Deploy**](../octopus-deploy.md) *(primary)* | release orchestration and deployment automation — lesson source for promotion, stage gates and runbooks | overlapping | `delivery`, `governance`, `environments` | Deep release orchestration: lifecycles, tenants, runbooks, manual interventions. | HoBo models promotion as event-sourced stage gates inside the control plane rather than a separate deployment tool. | borrow, benchmark | P2 |
+| [**Harness Platform**](../harness.md) | modular commercial DevOps platform whose CD, IDP, IaCM and cost modules each contest a different HoBo surface | overlapping | `delivery`, `governance`, `environments`, `finops`, `extensibility`, `observability` | Nine shipped modules on one governed platform: mature CD/GitOps with approvals and Continuous Verification, OPA policy, audit, and an outbound-only Delegate that needs no ingress. | Harness automates delivery to infrastructure you already chose; HoBo owns the layer above — a provider-abstract application description resolved by a scored, recorded decision. | benchmark, borrow, integrate | P1 |
+| [**OpenChoreo**](../openchoreo.md) | open-source Kubernetes IDP with an explicit developer-intent abstraction layer and a cell-based runtime boundary | direct | `app-graph`, `environments`, `typed-contracts`, `delivery`, `governance`, `wiring` | Open source, CNCF Sandbox, self-hosted, with Cells that make isolation, traffic policy and observability boundaries enforced at runtime rather than merely described. | OpenChoreo abstracts over Kubernetes; HoBo abstracts over providers, of which Kubernetes is one — the advantage exists only for heterogeneous estates, and HoBo should concede that. | displace, borrow, benchmark | P1 |
 
 ## Navigation
 

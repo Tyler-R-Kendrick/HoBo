@@ -320,9 +320,26 @@ function checkSections(
 		.filter((line) => /^#{2,3}\s/.test(line))
 		.map((line) => line.replace(/^#+\s*/, "").toLowerCase());
 	for (const section of REQUIRED_SECTIONS) {
-		const needle = section
-			.replace("<competitor>", competitor.name)
-			.toLowerCase();
+		// The competitor-strengths heading names the product, and captures shorten
+		// long product names in headings ("Harness" for "Harness Platform"), so match
+		// the shape rather than the exact name — but never let HoBo's own heading
+		// satisfy it.
+		if (section === "Where <competitor> is stronger") {
+			if (
+				!headings.some(
+					(heading) =>
+						/^where .+ (is|are) stronger/.test(heading) &&
+						!heading.startsWith("where hobo"),
+				)
+			)
+				problems.push({
+					file: competitor.file,
+					line: 1,
+					message: `missing required section heading for "${section}"`,
+				});
+			continue;
+		}
+		const needle = section.toLowerCase();
 		const key = needle.split(" is stronger")[0] as string;
 		if (!headings.some((heading) => heading.includes(key)))
 			problems.push({

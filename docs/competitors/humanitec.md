@@ -9,20 +9,31 @@ competitor:
   primary_category: platform-orchestrators
   categories: [platform-orchestrators, portable-application-models]
   directness: direct
-  role: "Platform Orchestrator for IDPs with dynamic configuration management — head-on orchestrator competitor"
+  role: "Platform Orchestrator for IDPs — the product that proved the dynamic-configuration abstraction HoBo's matching layer descends from"
   posture: [displace, benchmark]
   hobo_surface: [app-graph, environments, provider-matching, governance]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
-    - https://developer.humanitec.com/
-    - https://humanitec.com/
+    - https://developer.humanitec.com/platform-orchestrator/docs/introduction/overview/
+    - https://developer.humanitec.com/platform-orchestrator/docs/platform-orchestrator/resources/resource-definitions/
+    - https://developer.humanitec.com/platform-orchestrator/docs/deploy/score/
+    - https://developer.humanitec.com/new-orchestrator/docs/what-is-the-new-orchestrator/core-concepts/
+    - https://humanitec.com/products/platform-orchestrator
 ---
 
 # Humanitec — Competitor Reference
 
-> Captured for HoBo competitive analysis (research as of 2026). This documents **Humanitec's Platform Orchestrator** faithfully; the HoBo↔Humanitec parity tracker lives in the [HoBo mapping](#hobo-mapping) section below.
+> Captured for HoBo competitive analysis under the HoBo Competitive Research Contract.
+> Research date **2026-08-19** (this capture predates the contract and was restructured to it, with
+> its original research preserved rather than replaced). The HoBo↔Humanitec parity tracker lives in
+> the [primitive mapping](#hobo-mapping) section below.
+>
+> **Reading the mapping tables.** Their ✅ / ➕ / 🔜 marks record HoBo's *design* status, not shipped
+> behaviour: ✅ means "designed at parity", not "implemented". Sections below that make claims about
+> HoBo's actual state label them **implemented**, **proof**, or **design-only** explicitly.
 
 ## What it is
 
@@ -30,7 +41,26 @@ The **Platform Orchestrator** is a cloud-agnostic, multi-compute orchestration e
 
 Two audiences share it: developers (who write Score) and platform engineers (who write Resource Definitions). Within the common IDP "5-plane" reference architecture — Developer Control Plane (workload specs, portals), Integration & Delivery Plane (CI, registries, the Orchestrator, CD), Resource Plane (clusters, DBs, storage, DNS, VMs, serverless), Monitoring & Logging, and Security — the Orchestrator sits in plane 2 and drives plane 3.
 
-The core mental model is **Read → Match → Create → Deploy**: read developer intent (Score) plus platform config (Resource Definitions); match the needed resource to context (`env_type`, `app`, `env`, `resource_class`, `resource_id`); select the best Resource Definition by specificity score; build a Resource Graph (DAG); execute Drivers; and record an immutable Deployment Set plus a Delta. The single source of truth is Score (*what*) combined with Resource Definitions (*how*). The current generation is compute-agnostic — "any compute, any cloud," meaning VMs, Kubernetes, serverless, or anything Terraform/OpenTofu can manage — while retaining the projects/environments/resource-graph abstractions.
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Score** | An open, platform-agnostic, container-based workload specification Humanitec contributes to: a developer describes a workload and its resource dependencies, and the CLI can convert a Score file to deployable manifests |
+| **Resource Definition** | "Defines how and when a Resource should be provisioned" — a Resource Type, a Resource Driver plus its inputs, and **Matching Criteria** saying when this definition applies |
+| **Matching Criteria** | The selection rule, resolved by *specificity*: weights are summed across the criteria's parts, so "an empty Matching Criteria would score 0, one containing just an Environment ID would score 4 and one containing an Application ID and Environment Type would score 3", and the highest total wins |
+| **Driver** | The execution mechanism a definition uses (terraform, template, echo, container, custom webhook) |
+| **Resource Graph** | The DAG of application and infrastructure resources, executed topologically with outputs flowing between nodes |
+| **Deployment Set / Delta** | An immutable snapshot of a deployment, and the mutable diff applied to it |
+| **Application / Environment / Environment Type** | The lifecycle nouns, and the dimensions Matching Criteria select on |
+
+The core mental model is **Read → Match → Create → Deploy** (RMCD), which the Orchestrator "follows …
+for every Application Deployment": Read processes the Deployment Delta, "typically derived from a
+Score file"; Match "identifies the Deployment context using the metadata associated with the
+Deployment … the Application, the target Environment, and its Environment Type" and aligns it "with
+the appropriate Resource Definitions for the given context"; Create "formulates application
+configurations and initiates the Resource Definitions"; Deploy applies the result.
+
+Concretely: read developer intent (Score) plus platform config (Resource Definitions); match the needed resource to context (`env_type`, `app`, `env`, `resource_class`, `resource_id`); select the best Resource Definition by specificity score; build a Resource Graph (DAG); execute Drivers; and record an immutable Deployment Set plus a Delta. The single source of truth is Score (*what*) combined with Resource Definitions (*how*). The current generation is compute-agnostic — "any compute, any cloud," meaning VMs, Kubernetes, serverless, or anything Terraform/OpenTofu can manage — while retaining the projects/environments/resource-graph abstractions.
 
 ## Feature surface
 
@@ -192,9 +222,48 @@ Drivers are the core extension (HTTP PUT/DELETE implementing the driver interfac
 - **Free / community:** a free trial (no card); a free community version is mentioned (limits not fully public).
 - **Pricing:** not publicly disclosed — demo/contact required, an adoption and comparison friction point.
 
-## Differentiators
+## Architecture
 
-### Strengths (what is genuinely strong)
+- **Control plane** — the Orchestrator: SaaS, self-hosted, or air-gapped. Holds Resource
+  Definitions, Deployment Sets/Deltas, the Resource Graph, RBAC and audit.
+- **Data plane** — the customer's clusters, databases, DNS, VMs and serverless targets. The current
+  generation is compute-agnostic: "any compute, any cloud", meaning anything Terraform/OpenTofu can
+  manage, not only Kubernetes.
+- **Connectivity** — the **Agent** provides an outbound-only reverse tunnel into private networks;
+  the **Operator** handles secret provisioning inside the cluster so credentials need not transit
+  the control plane.
+- **Execution model** — RMCD per deployment: match definitions by specificity, build the Resource
+  Graph, execute Drivers topologically, record an immutable Deployment Set plus a Delta.
+- **State authority** — Deployment Sets (immutable) and Deltas (diffs) in the Orchestrator, plus
+  whatever state the Drivers' own IaC keeps. This is the closest thing in the corpus to an
+  event-shaped authority, but it is a snapshot-and-diff model rather than an append-only log: there
+  is no replay of *decisions*, only a record of *results*.
+- **Portability boundary** — genuinely broad, because Drivers delegate to IaC. The boundary is that
+  portability is a property of the Resource Definitions a platform team wrote, not of the workload
+  spec: Score is portable, the realization is bespoke per organization.
+
+## How it competes with HoBo
+
+Humanitec is the **direct architectural ancestor** of HoBo's matching layer, and remains its most
+direct competitor on that surface. [`lineage.md`](../design/lineage.md) records it as a
+pillar-adjacent borrow-source, and this capture does not soften that: the Resource
+Definitions + Matching + Drivers + Sets/Deltas engine is the shape HoBo adopted.
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `app-graph` | The Resource Graph is a real, queryable app+infra DAG with output flow |
+| `provider-matching` | **The sharpest contest.** Specificity-scored Matching Criteria are HoBo's matching layer, shipped and enterprise-proven |
+| `environments` | Applications / Environments / Environment Types, with cloning and ephemeral environments |
+| `governance` | RBAC, approval workflows, drift detection, immutable audit |
+| `extensibility` | Drivers, Resource Packs, an open Score spec, a Terraform provider |
+
+The difference is not the abstraction — HoBo agrees with the abstraction — but what the platform can
+*prove* about its own decisions, what it can run on, and who owns the code. Those three, and not
+"dynamic configuration", are HoBo's argument here.
+
+## Where Humanitec is stronger
+
+> Shipped, evidenced capability only.
 
 1. **Dynamic configuration management** — Score (intent) + Resource Definitions (rules) + **Matching** → environment-specific config generated at deploy time. The cleanest dev-vs-platform separation in the market.
 2. **Resource Graph** — a real, queryable DAG of app + infra with co-provisioning and output flow; topologically executed.
@@ -204,7 +273,7 @@ Drivers are the core extension (HTTP PUT/DELETE implementing the driver interfac
 6. **Enterprise reach** — SaaS + self-hosted + air-gapped; the Agent for private networks; regulated/sovereign markets.
 7. **Ecosystem** — Resource Packs, the open Score spec, a Terraform provider, open-source drivers, and MCP for AI agents.
 
-### Positioning against adjacent tools (Humanitec's framing)
+### Positioning against adjacent tools (Humanitec's own framing — vendor claims, recorded as such)
 
 - **vs Backstage** — complementary, not competitive. Backstage is a developer **portal** (catalog/scaffolding, OSS framework); Humanitec is the **backend orchestrator** (config generation, provisioning). "Deploy Humanitec first, layer Backstage on top"; Humanitec argues Backstage is framework-heavy DIY.
 - **vs Terraform / Pulumi** — Humanitec is the **orchestration layer above** IaC: it orchestrates and standardizes TF execution via drivers (declarative, policy-driven) rather than replacing it.
@@ -212,7 +281,9 @@ Drivers are the core extension (HTTP PUT/DELETE implementing the driver interfac
 - **vs ArgoCD / Flux** — GitOps operators sync Git→cluster; Humanitec **generates** what to sync (and adds multi-stage workflows, approvals, policy), then can hand off to Argo/Flux.
 - **vs Qovery / Northflank / Nitric** — those are simpler PaaS/serverless-first; Humanitec is enterprise-grade orchestration with deep policy/governance and a single app+infra graph (more upfront config, more control).
 
-### Gaps (HoBo's openings)
+## Adversarial critique
+
+> Lock-in, coupling, operational cost, and weaknesses — several of which are also HoBo's openings.
 
 1. **K8s-centric; weak serverless** — no first-class Cloud Run/Lambda compute → HoBo leads with **wasm components + OCI fallback**, polyglot.
 2. **Steep learning curve** — many interlocking concepts (Resource Types/Definitions/Drivers/Runners/Manifests), and docs lag features → HoBo's **IfC-default** authoring plus mapping-as-sugar keeps the simple path simple.
@@ -225,7 +296,9 @@ Drivers are the core extension (HTTP PUT/DELETE implementing the driver interfac
 
 > Net: Humanitec proves the orchestrator abstraction and governance; HoBo adopts that engine and adds a polyglot wasm runtime, event-sourced auditability, AI-native generation, and OSS openness. Because Humanitec is mature, enterprise-grade, and now explicitly AI-first, HoBo cannot win on "AI-native" alone — it must combine Humanitec's best engine (Resource Definitions + Matching, drivers, sets/deltas, governance) with what Humanitec lacks: a wasm-first polyglot runtime, event-sourced replay/time-travel plus auditable matching decisions, AI-generated definitions/implementations, IfC-default simplicity, and an OSS core.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > For every Humanitec feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · 🔜 = planned/roadmap. HoBo design lives in [`../../design/`](../design/index.md).
 
@@ -272,16 +345,20 @@ Drivers are the core extension (HTTP PUT/DELETE implementing the driver interfac
 | Self-hosted + air-gapped | Self-host = hosted (the Yard is a Bindle) + Agent | ✅ | [04](../design/control-plane.md#plan-04) |
 | IDP "5-plane" framing | HoBo = Integration & Delivery plane orchestrator | ✅ | [00](../design/vision.md#plan-00), [17](../design/vision.md#plan-17) |
 
-### Where HoBo deliberately exceeds Humanitec
+## Where HoBo is stronger or intentionally different
 
-| Capability | HoBo doc |
-|---|---|
-| **Auditable matching** (`match.Decided` events — "why this infra", replayable) | [25](../design/platform-engineering.md#plan-25), [11](../design/data-plane.md#plan-11) |
-| **WASM-first polyglot runtime** (not K8s-centric) | [20](../design/wasm-runtime-wit.md#plan-20) |
-| **Event-sourced replay/time-travel + DR-as-replay** | [11](../design/data-plane.md#plan-11), [05](../design/reliability-observability-cost.md#plan-05) |
-| **AI-generated Resource Definitions, Packs & implementations** (not human-only) | [23](../design/generated-stack.md#plan-23), [06](../design/ai-native-agent-auth.md#plan-06) |
-| **IfC-default simplicity** + mapping-as-sugar (lower learning curve) | [02](../design/sdk-api.md#plan-02), [25](../design/platform-engineering.md#plan-25) |
-| **OSS core + WIT-standard ports** (less lock-in) | [17](../design/vision.md#plan-17), [24](../design/wasm-runtime-wit.md#plan-20) |
+State labels: **implemented** = shipped in `packages/`; **proof** = draft/proof material;
+**design-only** = design intent. See the [live provider matrix](../design/live-provider-matrix.md)
+for HoBo's honest coverage caveats.
+
+| Capability | State | HoBo doc |
+|---|---|---|
+| **Auditable matching** (`match.Decided` events — "why this infra", replayable) | implemented | [25](../design/platform-engineering.md#plan-25), [11](../design/data-plane.md#plan-11) |
+| **WASM-first polyglot runtime** (not K8s-centric) | mixed — wasmCloud host adopted, provider breadth partial | [20](../design/wasm-runtime-wit.md#plan-20) |
+| **Event-sourced replay/time-travel + DR-as-replay** | implemented (ADR-0135) | [11](../design/data-plane.md#plan-11), [05](../design/reliability-observability-cost.md#plan-05) |
+| **AI-generated Resource Definitions, Packs & implementations** (not human-only) | proof | [23](../design/generated-stack.md#plan-23), [06](../design/ai-native-agent-auth.md#plan-06) |
+| **IfC-default simplicity** + mapping-as-sugar (lower learning curve) | implemented | [02](../design/sdk-api.md#plan-02), [25](../design/platform-engineering.md#plan-25) |
+| **OSS core + WIT-standard ports** (less lock-in) | implemented | [17](../design/vision.md#plan-17), [24](../design/wasm-runtime-wit.md#plan-20) |
 
 ### Open parity items (iteration hooks)
 
@@ -289,3 +366,45 @@ Drivers are the core extension (HTTP PUT/DELETE implementing the driver interfac
 - Whether `echo`/BYO resources participate in drift/reconcile or are read-only.
 - Agent transport + multi-cluster routing details.
 - Matching scoring exactly mirroring Humanitec vs a HoBo refinement (explicit priorities).
+
+## Better-together / integration posture
+
+- **Borrow** — already done, and worth stating plainly: Resource Definitions + Matching, the Driver
+  taxonomy, Deployment Sets/Deltas, and the Agent's outbound-only tunnel are all recorded as
+  borrow-sources in [`lineage.md`](../design/lineage.md). Humanitec is the single largest influence
+  on HoBo's platform-engineering layer.
+- **Displace** — for the buyer who wants an orchestrator, this is the incumbent to unseat, on
+  auditability, runtime breadth and openness rather than on the core abstraction.
+- **Standard** — **Score** is an open specification Humanitec contributes to, and treating it as an
+  interop standard (importable into HoBo) is strictly better than competing with it.
+- **Benchmark** — governance depth, air-gapped operation, and the Resource Pack ecosystem.
+- Not an adopt, provider, or render target.
+
+## Threats and lessons
+
+1. **The engine is proven; the argument has to be elsewhere.** Matching-by-specificity works at
+   enterprise scale. HoBo cannot claim the idea — it can claim that the decision is *recorded and
+   replayable* (`match.Decided`), that the runtime is not Kubernetes-shaped, and that the core is
+   open. Positioning that leads with "dynamic configuration" concedes the ground.
+2. **Score is the interop lever.** An open workload spec with an existing user base is the cheapest
+   possible on-ramp into HoBo. Supporting Score import is worth more than a proprietary equivalent.
+3. **Specificity scoring is subtly opaque.** Summed weights decide which definition wins, and
+   nothing explains the outcome to the user. That is precisely the gap `match.Decided` fills, and it
+   is a concrete, demonstrable differentiator rather than a philosophical one.
+4. **Snapshot-and-diff is not replay.** Deployment Sets and Deltas get close enough that the
+   distinction must be made carefully and honestly: Humanitec records results immutably; HoBo
+   records *decisions* append-only. Overstating this difference would be as damaging as ignoring it.
+5. **Enterprise reach is a moat.** SaaS + self-hosted + air-gapped, with an Agent for private
+   networks, addresses regulated and sovereign markets HoBo's design contemplates but has not
+   proven.
+
+## Sources
+
+- [Platform Orchestrator overview](https://developer.humanitec.com/platform-orchestrator/docs/introduction/overview/) — product boundary and positioning
+- [Resource Definitions](https://developer.humanitec.com/platform-orchestrator/docs/platform-orchestrator/resources/resource-definitions/) — definition structure, Resource Types, Drivers, Matching Criteria and specificity weights
+- [Core concepts](https://developer.humanitec.com/new-orchestrator/docs/what-is-the-new-orchestrator/core-concepts/) — the Read → Match → Create → Deploy sequence
+- [Score](https://developer.humanitec.com/platform-orchestrator/docs/deploy/score/) and [score.dev](https://docs.score.dev) — the open workload specification
+- [Platform Orchestrator product page](https://humanitec.com/products/platform-orchestrator) and [infrastructure orchestration](https://humanitec.com/infrastructure-orchestration) — vendor positioning, recorded as claims
+
+Pricing specifics, current edition boundaries, and the operational maturity of the AI/MCP surface
+were not re-verified in this pass and are not asserted.

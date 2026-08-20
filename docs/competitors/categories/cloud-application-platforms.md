@@ -17,7 +17,7 @@ Managed platforms that own application and environment lifecycle, services, prev
 
 These are what a developer actually compares 'just deploy my app' against. They set the DX bar HoBo must clear, and most are also candidate provider targets.
 
-## Competitors (14)
+## Competitors (15)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -35,6 +35,7 @@ These are what a developer actually compares 'just deploy my app' against. They 
 | [**Vercel**](../vercel.md) *(primary)* | frontend cloud plus durable Workflow SDK and AI stack — borrow-source promoted to full parity capture | overlapping | `delivery`, `environments`, `agent-surface` | Exceptional delivery pipeline plus a durable workflow and AI stack. | HoBo's durable execution is event-sourced and portable, not tied to one hosting vendor. | benchmark, borrow, provider-target | P1 |
 | [**AWS Amplify**](../aws-amplify.md) | Gen-2 code-first TypeScript fullstack backend on AWS CDK — IfC-in-TS analog, AWS-only | overlapping | `authoring`, `typed-contracts`, `wiring` | Deeply integrated AWS backend generation with strong typed client codegen. | HoBo refuses single-cloud lock-in: the same manifest scores and deploys across providers. | benchmark | P3 |
 | [**Encore**](../encore.md) | infrastructure-from-code for TS/Go that provisions into your cloud — closest product analog | direct | `authoring`, `app-graph`, `wiring`, `environments`, `delivery` | Full IfC product with hosted cloud, previews and observability already shipped. | HoBo separates intent from provider and scores portability instead of owning the cloud account. | displace, benchmark | P1 |
+| [**Control Plane**](../control-plane.md) | multi-cloud virtual-cloud runtime — the shipped product closest to HoBo's portability claim, solved at the runtime and identity layer rather than the manifest layer | direct | `runtime-portability`, `provider-matching`, `environments`, `identity-secrets`, `app-graph` | Portability that works: GVCs span AWS/Azure/GCP and BYOK clusters, with credential-free Universal Cloud Identity and a global/location/internal mTLS endpoint scheme. | Control Plane makes workloads portable by owning the runtime, so the portability ends at its edge; a Bindle deploys through the provider's own services and survives HoBo's absence. | displace, benchmark, borrow, provider-target | P1 |
 
 ## Navigation
 

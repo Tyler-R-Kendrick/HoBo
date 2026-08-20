@@ -20,6 +20,13 @@
  * subject and a deadline rather than a boolean somebody flipped.
  */
 import { TtlShProviderError } from "./errors.js";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import type { TtlWindow } from "./reference.js";
 
 /**
@@ -98,6 +105,7 @@ export function parseOwnerControlledRegistry(
 			`${host} is an anonymous expiring registry; promoting into it changes the expiry date and nothing about who is responsible for the bytes`,
 		);
 	}
+	// SAFETY: host passed REGISTRY_HOST, length, and ephemeral-registry checks.
 	return host as OwnerControlledRegistry;
 }
 
@@ -152,12 +160,8 @@ export type ArtifactPayload = EphemeralPayload | AcknowledgedTemporaryHandoff;
 
 const MEDIA_TYPE = /^[a-z0-9][a-z0-9!#$&^_.+-]*\/[a-z0-9][a-z0-9!#$&^_.+-]*$/u;
 
-function parseArtifactType(input: unknown): string {
-	if (
-		typeof input !== "string" ||
-		!MEDIA_TYPE.test(input) ||
-		input.length > 255
-	) {
+function parseArtifactType(input: JsonValue | undefined): string {
+	if (!isJsonString(input) || !MEDIA_TYPE.test(input) || input.length > 255) {
 		throw new TtlShProviderError(
 			"INVALID_IMAGE_REFERENCE",
 			"artifactType must be a media type such as application/vnd.oci.image.config.v1+json",
@@ -166,12 +170,8 @@ function parseArtifactType(input: unknown): string {
 	return input;
 }
 
-function requireSentence(input: unknown, field: string): string {
-	if (
-		typeof input !== "string" ||
-		input.trim().length < 8 ||
-		input.length > 512
-	) {
+function requireSentence(input: JsonValue | undefined, field: string): string {
+	if (!isJsonString(input) || input.trim().length < 8 || input.length > 512) {
 		durableUseRefused(
 			`${field} must be 8-512 characters describing the actual answer`,
 		);
@@ -179,33 +179,31 @@ function requireSentence(input: unknown, field: string): string {
 	return input.trim();
 }
 
-function asRecord(
-	input: unknown,
-	what: string,
-): Readonly<Record<string, unknown>> {
-	if (typeof input !== "object" || input === null || Array.isArray(input)) {
+function asJsonObject(input: JsonValue | undefined, what: string): JsonObject {
+	if (!isJsonObject(input)) {
 		throw new TtlShProviderError(
 			"INVALID_IMAGE_REFERENCE",
 			`${what} must be an object`,
 		);
 	}
-	return input as Readonly<Record<string, unknown>>;
+	return input;
 }
 
 function parseAcknowledgement(
-	input: unknown,
+	input: JsonValue | undefined,
 	ttl: TtlWindow,
 ): TemporaryHandoffAcknowledgement {
-	const raw = asRecord(input, "acknowledgement");
+	const raw = asJsonObject(input, "acknowledgement");
 	if (
+		!isJsonNumber(raw.promoteWithinMinutes) ||
 		!Number.isInteger(raw.promoteWithinMinutes) ||
-		Number(raw.promoteWithinMinutes) < 1
+		raw.promoteWithinMinutes < 1
 	) {
 		durableUseRefused(
 			"acknowledgement.promoteWithinMinutes must be a whole number of minutes",
 		);
 	}
-	const deadline = Number(raw.promoteWithinMinutes);
+	const deadline = raw.promoteWithinMinutes;
 	if (deadline > ttl.minutes) {
 		// A promotion deadline after the artifact expires is not a plan, it is a
 		// hope. Refusing it here is the difference between an operator who finds
@@ -214,7 +212,7 @@ function parseAcknowledgement(
 			`promotion deadline of ${deadline} minutes falls after the artifact's ${ttl.minutes} minute TTL; the artifact would be gone before the promotion was due`,
 		);
 	}
-	if (typeof raw.promotionTarget !== "string") {
+	if (!isJsonString(raw.promotionTarget)) {
 		promotionTargetInvalid(
 			"acknowledgement.promotionTarget must name an owner-controlled registry",
 		);
@@ -232,11 +230,29 @@ function parseAcknowledgement(
 }
 
 function isEphemeralKind(value: string): value is EphemeralPayloadKind {
-	return (EPHEMERAL_PAYLOAD_KINDS as readonly string[]).includes(value);
+	switch (value) {
+		case "ci-build-image":
+		case "integration-test-fixture":
+		case "cross-machine-handoff":
+		case "pack-candidate-image":
+			return true;
+		default:
+			return false;
+	}
 }
 
 function isRefusedKind(value: string): value is RefusedPayloadKind {
-	return (REFUSED_PAYLOAD_KINDS as readonly string[]).includes(value);
+	switch (value) {
+		case "application-state":
+		case "database-backup":
+		case "event-store-journal":
+		case "secret-material":
+		case "audit-log":
+		case "only-copy-of-anything":
+			return true;
+		default:
+			return false;
+	}
 }
 
 /**
@@ -248,11 +264,11 @@ function isRefusedKind(value: string): value is RefusedPayloadKind {
  * or in none.
  */
 export function parseArtifactPayload(
-	input: unknown,
+	input: JsonValue | undefined,
 	ttl: TtlWindow,
 ): ArtifactPayload {
-	const raw = asRecord(input, "payload");
-	if (typeof raw.kind !== "string") {
+	const raw = asJsonObject(input, "payload");
+	if (!isJsonString(raw.kind)) {
 		throw new TtlShProviderError(
 			"INVALID_IMAGE_REFERENCE",
 			"payload.kind must be a string",

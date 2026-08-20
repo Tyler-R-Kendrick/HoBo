@@ -24,7 +24,11 @@
  * one. Two *different* digests under one reference is a refusal: a reference
  * whose content silently changed is a reference nobody can verify.
  */
-import { redactProviderText, TtlShProviderError } from "./errors.js";
+import {
+	containsControlChar,
+	redactProviderText,
+	TtlShProviderError,
+} from "./errors.js";
 import {
 	expiresAtMs,
 	parseArtifactDigest,
@@ -93,9 +97,6 @@ export const PUSH_TOOL_ALLOWLIST = ["crane"] as const;
  */
 export const PUSH_FLAG_ALLOWLIST = ["--platform=all"] as const;
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: detecting a control character is the point; a NUL in an argv element truncates the argument the child actually receives.
-const NUL_OR_CONTROL = /[\u0000-\u001f\u007f]/u;
-
 const ARGV_CREDENTIAL_PATTERNS: readonly RegExp[] = [
 	/^--?(?:password|password-stdin|username|token|auth|creds?)\b/iu,
 	/\/\/[^/\s:@]+:[^/\s:@]+@/u,
@@ -110,7 +111,7 @@ function assertArgvValue(value: string, what: string): string {
 			`${what} must be 1-1024 characters`,
 		);
 	}
-	if (NUL_OR_CONTROL.test(value)) {
+	if (containsControlChar(value)) {
 		throw new TtlShProviderError(
 			"UNSAFE_TOOL_INVOCATION",
 			`${what} contains a control character and cannot be passed to a child process`,
@@ -127,8 +128,14 @@ export function assertArgvSafe(argv: readonly string[]): readonly string[] {
 			"refusing to run an empty argv",
 		);
 	}
-	const binary = argv[0] as string;
-	if (!(PUSH_TOOL_ALLOWLIST as readonly string[]).includes(binary)) {
+	const binary = argv[0];
+	if (binary === undefined) {
+		throw new TtlShProviderError(
+			"UNSAFE_TOOL_INVOCATION",
+			"refusing to run an empty argv",
+		);
+	}
+	if (!isAllowedPushTool(binary)) {
 		throw new TtlShProviderError(
 			"UNSAFE_TOOL_INVOCATION",
 			`refusing to spawn ${JSON.stringify(binary)}; only ${PUSH_TOOL_ALLOWLIST.join(", ")} may push for this provider`,
@@ -146,7 +153,7 @@ export function assertArgvSafe(argv: readonly string[]): readonly string[] {
 			}
 		}
 		if (element.startsWith("-") && element !== binary) {
-			if (!(PUSH_FLAG_ALLOWLIST as readonly string[]).includes(element)) {
+			if (!isAllowedPushFlag(element)) {
 				throw new TtlShProviderError(
 					"UNSAFE_TOOL_INVOCATION",
 					`refusing the unallowlisted flag ${JSON.stringify(element)}`,
@@ -156,6 +163,20 @@ export function assertArgvSafe(argv: readonly string[]): readonly string[] {
 		}
 	}
 	return argv;
+}
+
+function isAllowedPushTool(binary: string): boolean {
+	for (const allowed of PUSH_TOOL_ALLOWLIST) {
+		if (allowed === binary) return true;
+	}
+	return false;
+}
+
+function isAllowedPushFlag(flag: string): boolean {
+	for (const allowed of PUSH_FLAG_ALLOWLIST) {
+		if (allowed === flag) return true;
+	}
+	return false;
 }
 
 export type CranePushInput = {
@@ -208,7 +229,9 @@ export function createCranePushExecutor(options: {
 			const argv = buildCranePushArgv({
 				reference: request.reference,
 				artifactPath: request.artifact.path,
-				...(options.binary !== undefined ? { binary: options.binary } : {}),
+				...(options.binary !== undefined
+					? { binary: options.binary }
+					: undefined),
 			});
 
 			let result: ProcessResult;
@@ -224,7 +247,10 @@ export function createCranePushExecutor(options: {
 				throw new TtlShProviderError(
 					"PROVIDER_OPERATION_AMBIGUOUS",
 					"the push did not complete; re-push the same digest to find out whether the artifact is there",
-					{ cause, detail: { reference: request.reference.pullReference } },
+					{
+						cause: cause instanceof Error ? cause : new Error(String(cause)),
+						detail: { reference: request.reference.pullReference },
+					},
 				);
 			}
 
@@ -263,7 +289,14 @@ export function createCranePushExecutor(options: {
 					"the push tool reported no digest, so there is nothing to pin the artifact to",
 				);
 			}
-			const digest = parseArtifactDigest(reported[0]);
+			const reportedDigest = reported[0];
+			if (reportedDigest === undefined) {
+				throw new TtlShProviderError(
+					"PROVIDER_CONTRACT_CHANGED",
+					"the push tool reported no digest, so there is nothing to pin the artifact to",
+				);
+			}
+			const digest = parseArtifactDigest(reportedDigest);
 			if (digest !== request.artifact.digest) {
 				// A different digest is different content. Recording the
 				// declared one would produce a receipt that does not describe
@@ -416,7 +449,8 @@ export async function pushArtifact(
 			state: "failed",
 			attemptedAtMs: input.nowMs,
 		});
-		throw cause;
+		if (cause instanceof Error) throw cause;
+		throw new Error(String(cause));
 	}
 
 	const expires = expiresAtMs(input.reference, input.nowMs);

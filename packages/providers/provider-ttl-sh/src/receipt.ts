@@ -31,6 +31,7 @@ import {
 	TTL_SH_OWNERSHIP_TRANSITION_MODE,
 } from "./definition.js";
 import { TtlShProviderError } from "./errors.js";
+import { type JsonValue, parseJsonValue } from "./json.js";
 import type { TtlShPushRecord } from "./push.js";
 import type { TtlShNameKind } from "./reference.js";
 
@@ -126,9 +127,20 @@ export type CredentialScanHit = {
 	readonly excerpt: string;
 };
 
+function jsonView(
+	value:
+		| JsonValue
+		| TtlShProvisionReceipt
+		| TtlShProviderFact
+		| readonly TtlShProviderFact[]
+		| GuestLease,
+): JsonValue {
+	return parseJsonValue(JSON.stringify(value));
+}
+
 /** Scan any JSON-serializable value for credential material. */
 export function scanForCredentialMaterial(
-	value: unknown,
+	value: JsonValue,
 ): readonly CredentialScanHit[] {
 	let serialized = JSON.stringify(value) ?? "";
 	for (const pattern of PRESERVED)
@@ -148,7 +160,10 @@ export function scanForCredentialMaterial(
 	return hits;
 }
 
-export function assertNoCredentialMaterial(value: unknown, what: string): void {
+export function assertNoCredentialMaterial(
+	value: JsonValue,
+	what: string,
+): void {
 	const hits = scanForCredentialMaterial(value);
 	if (hits.length === 0) return;
 	throw new TtlShProviderError(
@@ -193,7 +208,7 @@ export function toProvisionReceipt(
 		bindingProfiles: [...TTL_SH_BINDING_PROFILE_REFS],
 		migrationProfiles: [],
 	};
-	assertNoCredentialMaterial(receipt, "the ttl.sh provision receipt");
+	assertNoCredentialMaterial(jsonView(receipt), "the ttl.sh provision receipt");
 	return receipt;
 }
 
@@ -233,7 +248,7 @@ export function toProviderFacts(
 			},
 		});
 	}
-	assertNoCredentialMaterial(facts, "the ttl.sh provider facts");
+	assertNoCredentialMaterial(jsonView(facts), "the ttl.sh provider facts");
 	return facts;
 }
 
@@ -268,6 +283,6 @@ export function toGuestLease(
 		status: "active",
 		fencingToken: input.fencingToken,
 	};
-	assertNoCredentialMaterial(lease, "the ttl.sh guest lease");
+	assertNoCredentialMaterial(jsonView(lease), "the ttl.sh guest lease");
 	return lease;
 }

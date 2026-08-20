@@ -77,9 +77,6 @@ export function selectRelevantChecks(
 	const staged = Boolean(options.staged);
 	const includeBuild = Boolean(options.includeBuild);
 	const includeBroadSweeps = Boolean(options.includeBroadSweeps || options.all);
-	const rootPackageJsonScriptsOnlyChanged = Boolean(
-		options.rootPackageJsonScriptsOnlyChanged,
-	);
 	const workspacePackageExists =
 		options.workspacePackageExists ?? defaultWorkspacePackageExists;
 
@@ -159,7 +156,7 @@ export function selectRelevantChecks(
 	const pactChanged = touchedAny([/(^|\/)pacts\//u, /\.pact\.json$/u]);
 	const rootPactChanged = files.some(
 		(file) =>
-			(/(^|\/)pacts\//u.test(file) || /\.pact\.json$/u.test(file)) &&
+			(/(^|\/)pacts\//u.test(file) || file.endsWith(".pact.json")) &&
 			!workspaceFor(file),
 	);
 	const uiChanged =
@@ -251,6 +248,24 @@ export function selectRelevantChecks(
 			args: ["run", "lint:code"],
 			reason:
 				"Biome code formatting is enforced for source or automation changes",
+		});
+	}
+
+	const slopLintChanged =
+		sourceChanged ||
+		automationChanged ||
+		touchedAny([/^oxlint\.config\.ts$/u, /^tools\/oxlint\//u]);
+	if (slopLintChanged) {
+		checks.push({
+			command: "pnpm",
+			args: [
+				"run",
+				"lint:slop:changed",
+				"--",
+				staged ? "--staged" : `--base=${options.base}`,
+			],
+			reason:
+				"anti-slop Oxlint rules enforced on changed TS/JS files (warnings denied); pre-existing backlog stays out of scope",
 		});
 	}
 
@@ -355,11 +370,7 @@ export function selectRelevantChecks(
 		});
 	}
 
-	if (
-		files.some((file) =>
-			/^\.(claude|agents)\/skills\/(draft|optimizexp|repo|sdlc)\//u.test(file),
-		)
-	) {
+	if (files.some((file) => /^\.(claude|agents)\/skills\//u.test(file))) {
 		checks.push({
 			command: "pnpm",
 			args: ["run", "skills:mirror-check"],

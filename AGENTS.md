@@ -531,6 +531,56 @@ Use these lanes instead:
 - `pnpm test:property` for fast-check control-plane oracles in `@hobo/fuzz` (simulators only).
 - `pnpm test:fuzz` for Jazzer-shaped serialized-input smoke (does not start a long campaign).
 - `pnpm test:fuzz:nightly` for the docker-gated RESTler/Toxiproxy/Testcontainers plan. Skip without Docker. Never live Azure/AWS/GCP/paid SaaS.
+- `pnpm test:mutation` for the mutation-score gate. Scoped on purpose — see "Mutation testing" below.
+
+### Characterization (approval) tests — for generated artifacts
+
+Rule-based tests assert *behaviour* ("an unknown category is rejected").
+Characterization tests assert *output* — the exact bytes a generator emits.
+Anything in this repo that **writes a committed file a human later reads** needs
+one, because rule tests do not notice a changed column, a dropped separator, or
+a re-ordered sort: they notice only what they were told to look for, and a
+generator's whole surface is what it produced.
+
+The repo's Verify/ApprovalTests equivalent is vitest's **`toMatchFileSnapshot`**,
+with the approved artifact committed under a sibling `__snapshots__/` directory:
+
+```ts
+await expect(renderMatrix(CORPUS, NOW)).toMatchFileSnapshot(
+    path.join(here, "__snapshots__", "competitor-matrix.md"),
+);
+```
+
+Non-negotiables, because approval testing dies the same way every time:
+
+- **Approve a fixed fixture, never live data.** Snapshotting the real corpus
+  repaints the approved file on every unrelated change and trains everyone to
+  run `-u` without reading the diff. Build a small fixture that exercises the
+  branches which vary the output.
+- **Keep the snapshot in its own file, in its target format.** The approved
+  artifact for a markdown generator is reviewable markdown. Inline snapshots
+  bury it in a test file where nobody reads it as the thing it is.
+- **The generator must be a pure function of its inputs.** A `Date.now()`,
+  `Math.random()`, or filesystem read inside the renderer makes the output
+  unapprovable — inject the clock or the data instead. If a snapshot needs
+  regenerating on a schedule, the code under it has a testability defect.
+- **`vitest -u` is a deliberate act.** A changed snapshot in a diff is a
+  reviewer asking "did you mean to change what 90 documents look like?"
+
+Reference implementation: `test/competitor-docs.characterization.test.ts`.
+
+### Mutation testing
+
+`pnpm test:mutation` runs Stryker. Line coverage proves a test *executed* a
+line; mutation score proves a test would **notice** if that line changed.
+
+It is scoped deliberately, not aspirationally: each config names the specific
+modules where a silently-passing test is most dangerous — parse boundaries that
+guard credentials, transport reach, canonical ordering, and the validators that
+gate other lanes. Mutating everything would take far longer than anyone will
+wait, and a gate nobody runs is not a gate. Configs carry a `_baseline` comment
+recording the measured score and the date; raise `thresholds.break` as the score
+improves rather than setting a number nobody can pass.
 
 ### Chaos lanes, and which one proves what
 

@@ -375,7 +375,14 @@ function checkLinks(
 	}
 }
 
-function renderMatrix(competitors: Competitor[]) {
+/**
+ * The freshness ledger ages every capture against a clock. That clock is a
+ * parameter rather than a call to `Date.now()` inside the loop: with the call
+ * inlined, this function's output changed every day, which made it impossible
+ * to characterize with a snapshot and meant nothing ever pinned the table's
+ * shape. Production still passes the wall clock; tests pass a fixed instant.
+ */
+export function renderMatrix(competitors: Competitor[], now: number) {
 	const rows = [...competitors].sort((a, b) => a.slug.localeCompare(b.slug));
 	const lines: string[] = [];
 	lines.push("");
@@ -398,7 +405,6 @@ function renderMatrix(competitors: Competitor[]) {
 	lines.push("");
 	lines.push("| Competitor | Researched | Age (days) | State |");
 	lines.push("| ---------- | ---------- | ---------- | ----- |");
-	const now = Date.now();
 	for (const row of [...rows].sort((a, b) =>
 		a.research_date.localeCompare(b.research_date),
 	)) {
@@ -439,7 +445,7 @@ function byName(a: Competitor, b: Competitor) {
 	return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
 }
 
-function renderIndex(competitors: Competitor[]) {
+export function renderIndex(competitors: Competitor[]) {
 	const lines: string[] = [""];
 	lines.push(`## Categories (${CATEGORIES.length})`);
 	lines.push("");
@@ -490,7 +496,7 @@ function renderIndex(competitors: Competitor[]) {
 	return lines.join("\n");
 }
 
-function renderCategoryIndex(competitors: Competitor[]) {
+export function renderCategoryIndex(competitors: Competitor[]) {
 	const lines: string[] = [
 		"",
 		"| Category | Competitors |",
@@ -509,6 +515,8 @@ function renderCategoryIndex(competitors: Competitor[]) {
 export async function checkCompetitorDocs(options: {
 	root: string;
 	fix?: boolean;
+	/** Injectable clock for the freshness ledger; defaults to the wall clock. */
+	now?: number;
 }): Promise<{ problems: Problem[]; competitors: Competitor[] }> {
 	const { root, fix = false } = options;
 	const dir = path.join(root, "docs/competitors");
@@ -675,7 +683,7 @@ export async function checkCompetitorDocs(options: {
 	syncGenerated(
 		"docs/competitors/matrix.md",
 		"competitor-matrix",
-		() => renderMatrix(competitors),
+		() => renderMatrix(competitors, options.now ?? Date.now()),
 		"missing generated cross-category matrix",
 	);
 	syncGenerated(

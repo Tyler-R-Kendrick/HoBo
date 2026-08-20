@@ -174,6 +174,7 @@ describe("secret containment", () => {
 			throw new Error("expected the scan to reject a bearer token");
 		} catch (error) {
 			expect(error).toBeInstanceOf(OfferSecretLeakError);
+			// SAFETY: assertion to `error as OfferSecretLeakError` is required at this boundary.
 			const failure = error as OfferSecretLeakError;
 			expect(failure.path).toBe("offer.payload.trustEvidenceRefs[0]");
 			expect(failure.message).not.toContain("sk_live_abcdefghijklmnop");

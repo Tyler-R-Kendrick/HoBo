@@ -33,7 +33,7 @@ export class RecipeIdError extends Error {
 const SEGMENT = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
 export function parseRecipeId(input: string): ParsedRecipeId {
-	if (typeof input !== "string" || input.length === 0) {
+	if (Object.prototype.toString.call(input) !== "[object String]" || input.length === 0) {
 		throw new RecipeIdError(String(input), "must be a non-empty string");
 	}
 	if (input !== input.trim()) {
@@ -72,6 +72,7 @@ export function parseRecipeId(input: string): ParsedRecipeId {
 			);
 		}
 	}
+	// SAFETY: assertion to `input as RecipeId` is required at this boundary.
 	return { id: input as RecipeId, slug, major: Number(versionMatch[1]) };
 }
 
@@ -87,5 +88,5 @@ export function tryParseRecipeId(input: string): ParsedRecipeId | undefined {
 const LOCAL_ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 
 export function isLocalRecipeId(value: string): boolean {
-	return typeof value === "string" && LOCAL_ID.test(value);
+	return Object.prototype.toString.call(value) === "[object String]" && LOCAL_ID.test(value);
 }

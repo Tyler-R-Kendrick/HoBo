@@ -1,3 +1,4 @@
+import { isJsonNumber, type JsonObject } from "./json.js";
 import type { BillingPlane } from "./planes.js";
 import type { RejectionReason } from "./types.js";
 
@@ -21,9 +22,10 @@ export function foldMeteredUsage(
 	let sampleCount = 0;
 	for (const event of events) {
 		if (event.type !== METER_USAGE_RECORDED_EVENT) continue;
-		const data = (event.data ?? {}) as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const data = (event.data ?? {}) as JsonObject;
 		const cost = data.costUsd;
-		if (typeof cost === "number" && Number.isFinite(cost) && cost >= 0) {
+		if (isJsonNumber(cost) && Number.isFinite(cost) && cost >= 0) {
 			spentUsd += cost;
 			sampleCount += 1;
 		}

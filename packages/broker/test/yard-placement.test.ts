@@ -74,7 +74,7 @@ describe("yard-first placement", () => {
 			runtimeId: "azure-yard/v1",
 			providerId: "azure",
 			version: "1",
-			supportedShape: {
+			supportedLayout: {
 				regions: ["eastus2"],
 				capabilities: [],
 				requireProperties: [],
@@ -90,7 +90,7 @@ describe("yard-first placement", () => {
 		});
 		const decision = planYardGeneration({
 			ownerTenantId: "t1",
-			requestedShape: {
+			requestedLayout: {
 				providerId: "azure",
 				regions: [],
 				require: [],
@@ -128,7 +128,7 @@ describe("yard-first placement", () => {
 				requestId: "r1",
 				selectionMode: "exact",
 				requestedYardId: "yard:missing",
-				requestedShape: {
+				requestedLayout: {
 					providerId: LOCAL_HOST_PROVIDER_ID,
 					regions: [],
 					require: [],
@@ -162,7 +162,7 @@ describe("yard-first placement", () => {
 });
 
 describe("residency hard filter (ADR-0146)", () => {
-	function residencyShape(residency: readonly string[]) {
+	function residencyLayout(residency: readonly string[]) {
 		return {
 			regions: [],
 			require: [],
@@ -181,7 +181,7 @@ describe("residency hard filter (ADR-0146)", () => {
 		return {
 			requestId: "r-res",
 			selectionMode: "compatible" as const,
-			requestedShape: residencyShape(residency),
+			requestedLayout: residencyLayout(residency),
 			bindleManifestHash: contentHashOf("m"),
 			bindleRequirementsHash: contentHashOf("req"),
 			allowGenerationRequested: false,

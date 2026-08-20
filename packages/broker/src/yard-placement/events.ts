@@ -3,6 +3,13 @@
  * Every decision is a fact; inventory and generation sagas rebuild via pure folds.
  */
 
+import {
+	cloneAsJson,
+	isJsonObject,
+	type JsonBag,
+	type JsonObject,
+} from "../json.js";
+
 export const YARD_EVENTS = {
 	PlacementRequested: "yard.PlacementRequested",
 	MatchDecided: "yard.MatchDecided",
@@ -31,20 +38,23 @@ export type YardEventType = (typeof YARD_EVENTS)[keyof typeof YARD_EVENTS];
 
 export interface YardEvent {
 	readonly type: YardEventType | string;
-	readonly data: Readonly<Record<string, unknown>>;
+	readonly data: JsonObject;
 	readonly seq?: number;
 	readonly occurredAt?: string;
 }
 
-export function yardEvent(
+export function yardEvent<T>(
 	type: YardEventType,
-	data: Readonly<Record<string, unknown>>,
+	data: T,
 	meta?: { readonly seq?: number; readonly occurredAt?: string },
 ): YardEvent {
+	const json = cloneAsJson(data);
+	const record: JsonBag = {};
+	Object.assign(record, isJsonObject(json) ? json : { value: json });
 	return Object.freeze({
 		type,
-		data: Object.freeze({ ...data }),
-		...(meta?.seq !== undefined ? { seq: meta.seq } : {}),
+		data: Object.freeze(record),
+		...(meta?.seq !== undefined ? { seq: meta.seq } : undefined),
 		...(meta?.occurredAt !== undefined
 			? { occurredAt: meta.occurredAt }
 			: { occurredAt: new Date().toISOString() }),
@@ -57,5 +67,6 @@ export const YARD_EVENT_READ_SET: readonly string[] = Object.freeze(
 );
 
 export function isYardEventType(type: string): type is YardEventType {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return (Object.values(YARD_EVENTS) as string[]).includes(type);
 }

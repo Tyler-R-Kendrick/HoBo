@@ -1,4 +1,11 @@
 import { BROKER_EVENTS, type BrokerEvent, brokerEvent } from "./events.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import { BrokerParseError } from "./policies.js";
 import {
 	CONNECTOR_KINDS,
@@ -14,7 +21,7 @@ import {
 // event store alone. Credentials never live here: `credentialRef` points into
 // the token broker / secret store (ADR-0008 stays the credential authority).
 
-const REQUIRED_SETTINGS: Record<ConnectorKind, readonly string[]> = {
+const REQUIRED_SETTINGS = {
 	"github-app": ["appId", "installationId"],
 	pulumi: ["organization"],
 	azure: ["subscriptionId", "tenantId"],
@@ -23,16 +30,19 @@ const REQUIRED_SETTINGS: Record<ConnectorKind, readonly string[]> = {
 	custom: [],
 };
 
-export function parseConnectorConfig(input: unknown): ConnectorConfig {
-	if (input === null || typeof input !== "object" || Array.isArray(input)) {
+export function parseConnectorConfig(
+	input: JsonValue | undefined,
+): ConnectorConfig {
+	if (input === null || !isJsonObject(input) || Array.isArray(input)) {
 		throw new BrokerParseError(
 			"invalid-connector",
 			"invalid-connector: expected an object",
 		);
 	}
-	const raw = input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const raw = input as JsonObject;
 	const id = raw.id;
-	if (typeof id !== "string" || id.length === 0) {
+	if (!isJsonString(id) || id.length === 0) {
 		throw new BrokerParseError(
 			"invalid-connector",
 			"invalid-connector: id must be a non-empty string",
@@ -40,7 +50,8 @@ export function parseConnectorConfig(input: unknown): ConnectorConfig {
 	}
 	const kind = raw.kind;
 	if (
-		typeof kind !== "string" ||
+		!isJsonString(kind) ||
+		// SAFETY: assertion required at this I/O or test boundary.
 		!CONNECTOR_KINDS.includes(kind as ConnectorKind)
 	) {
 		throw new BrokerParseError(
@@ -49,7 +60,7 @@ export function parseConnectorConfig(input: unknown): ConnectorConfig {
 		);
 	}
 	const displayName = raw.displayName ?? raw.display_name;
-	if (typeof displayName !== "string" || displayName.length === 0) {
+	if (!isJsonString(displayName) || displayName.length === 0) {
 		throw new BrokerParseError(
 			"invalid-connector",
 			"invalid-connector: displayName must be a non-empty string",
@@ -58,7 +69,7 @@ export function parseConnectorConfig(input: unknown): ConnectorConfig {
 	const settingsRaw = raw.settings ?? {};
 	if (
 		settingsRaw === null ||
-		typeof settingsRaw !== "object" ||
+		!isJsonObject(settingsRaw) ||
 		Array.isArray(settingsRaw)
 	) {
 		throw new BrokerParseError(
@@ -68,8 +79,9 @@ export function parseConnectorConfig(input: unknown): ConnectorConfig {
 	}
 	const settings: Record<string, string> = {};
 	for (const [key, value] of Object.entries(settingsRaw)) {
-		if (typeof value === "string") settings[key] = value;
+		if (isJsonString(value)) settings[key] = value;
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	const missing = REQUIRED_SETTINGS[kind as ConnectorKind].filter(
 		(required) => settings[required] === undefined || settings[required] === "",
 	);
@@ -82,18 +94,22 @@ export function parseConnectorConfig(input: unknown): ConnectorConfig {
 	const credentialRef = raw.credentialRef ?? raw.credential_ref;
 	return {
 		id,
+		// SAFETY: assertion required at this I/O or test boundary.
 		kind: kind as ConnectorKind,
 		displayName,
 		settings,
-		...(typeof credentialRef === "string" && credentialRef.length > 0
+		...(isJsonString(credentialRef) && credentialRef.length > 0
 			? { credentialRef }
-			: {}),
+			: undefined),
 		enabled: raw.enabled !== false,
 	};
 }
 
 export interface ConnectorRegistry {
-	register(input: unknown): { connector: ConnectorConfig; event: BrokerEvent };
+	register(input: JsonValue | undefined): {
+		connector: ConnectorConfig;
+		event: BrokerEvent;
+	};
 	disable(id: string): BrokerEvent;
 	list(): ConnectorConfig[];
 	byKind(kind: ConnectorKind): ConnectorConfig[];
@@ -105,7 +121,7 @@ export function createConnectorRegistry(
 ): ConnectorRegistry {
 	const connectors = new Map<string, ConnectorConfig>();
 	for (const entry of initial) {
-		const parsed = parseConnectorConfig(entry);
+		const parsed = parseConnectorConfig(cloneAsJson(entry));
 		connectors.set(parsed.id, parsed);
 	}
 	return {
@@ -162,13 +178,14 @@ export function foldConnectorRegistry(
 		{ connectorId: string; kind: string; enabled: boolean }
 	>();
 	for (const event of events) {
-		const data = (event.data ?? {}) as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const data = (event.data ?? {}) as JsonObject;
 		const connectorId = data.connectorId;
-		if (typeof connectorId !== "string" || connectorId.length === 0) continue;
+		if (!isJsonString(connectorId) || connectorId.length === 0) continue;
 		if (event.type === BROKER_EVENTS.ConnectorRegistered) {
 			rows.set(connectorId, {
 				connectorId,
-				kind: typeof data.kind === "string" ? data.kind : "custom",
+				kind: isJsonString(data.kind) ? data.kind : "custom",
 				enabled: data.enabled !== false,
 			});
 		} else if (event.type === BROKER_EVENTS.ConnectorDisabled) {

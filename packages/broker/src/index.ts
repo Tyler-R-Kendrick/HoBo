@@ -199,7 +199,7 @@ export {
 	matchYard,
 	type ProviderNativeSignal,
 	parseBindleDeploymentRequest,
-	parseYardShape,
+	parseYardLayout,
 	planYardGeneration,
 	resolveBindleDeployment,
 	restoreYardEventStore,
@@ -216,12 +216,12 @@ export {
 	type YardGenerationPolicy,
 	type YardInstanceRegistration,
 	type YardInventorySnapshot,
+	type YardLayout,
 	type YardMatchDecision,
 	type YardPlacementReceipt,
 	type YardPlacementRequest,
 	type YardRuntimeRegistration,
 	type YardSelectionMode,
-	type YardShape,
 	yardEvent,
 } from "./yard-placement/index.js";
 

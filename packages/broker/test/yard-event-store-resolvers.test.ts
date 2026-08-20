@@ -12,7 +12,9 @@
  * provider signals and already-normalized events, and assigns sequence numbers.
  * Those two behaviours together are what make replay deterministic.
  */
+
 import { describe, expect, it } from "vitest";
+import { isJsonObject, type JsonObject } from "../src/json.js";
 
 import {
 	createAwsYardEventStoreFoldResolver,
@@ -33,9 +35,10 @@ const AT = "2026-01-01T00:00:00.000Z";
 
 const signal = (
 	kind: string,
-	payload: Record<string, unknown> = {},
+	payload: JsonObject = {},
 	providerId = "local",
 ): ProviderNativeSignal =>
+	// SAFETY: assertion required at this I/O or test boundary.
 	({ providerId, kind, payload, observedAt: AT }) as ProviderNativeSignal;
 
 describe("isProviderNativeSignal", () => {
@@ -60,7 +63,7 @@ describe("isProviderNativeSignal", () => {
 
 	it("accepts an array payload, since arrays are objects", () => {
 		// Documented as current behaviour rather than endorsed: the guard checks
-		// shape, and the normalizers only read named keys.
+		// layout, and the normalizers only read named keys.
 		expect(
 			isProviderNativeSignal({ providerId: "p", kind: "k", payload: [] }),
 		).toBe(true);
@@ -112,6 +115,7 @@ describe("defaultNormalize", () => {
 	});
 
 	it("stamps a wall-clock time when the signal carries none", () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const [event] = defaultNormalize({
 			providerId: "local",
 			kind: "yard.ready",
@@ -171,6 +175,7 @@ describe("foldAll", () => {
 		// top of it without going through normalize() at all.
 		const mixed = resolver.foldAll("b", [
 			signal("componentHost.ready", { yardId: "y1" }),
+			// SAFETY: assertion required at this I/O or test boundary.
 			{ type: YARD_EVENTS.Ready, data: { yardId: "y1" } } as never,
 		]);
 		expect(Object.keys(mixed.yards)).toContain("y1");
@@ -188,6 +193,7 @@ describe("foldAll", () => {
 
 	it("preserves an explicit seq rather than overwriting it", () => {
 		const state = resolver.foldAll("b", [
+			// SAFETY: assertion required at this I/O or test boundary.
 			{ type: YARD_EVENTS.Ready, data: { yardId: "y" }, seq: 99 } as never,
 		]);
 		expect(state.seq).toBe(99);
@@ -253,20 +259,28 @@ describe("local resolver", () => {
 
 	it("defaults component hosts to local, wasm and oci", () => {
 		const [registered] = resolver.normalize(signal("componentHost.ready"));
-		const yard = (registered?.data as { yard: Record<string, unknown> }).yard;
-		expect((yard.shape as { componentHosts: string[] }).componentHosts).toEqual(
-			["local", "wasm", "oci"],
-		);
+		if (!isJsonObject(registered?.data)) {
+			throw new Error("expected registered yard data");
+		}
+		const yard = registered.data.yard;
+		if (!isJsonObject(yard) || !isJsonObject(yard.layout)) {
+			throw new Error("expected yard layout");
+		}
+		expect(yard.layout.componentHosts).toEqual(["local", "wasm", "oci"]);
 	});
 
 	it("keeps component hosts the signal declares", () => {
 		const [registered] = resolver.normalize(
 			signal("componentHost.ready", { componentHosts: ["wasm"] }),
 		);
-		const yard = (registered?.data as { yard: Record<string, unknown> }).yard;
-		expect((yard.shape as { componentHosts: string[] }).componentHosts).toEqual(
-			["wasm"],
-		);
+		if (!isJsonObject(registered?.data)) {
+			throw new Error("expected registered yard data");
+		}
+		const yard = registered.data.yard;
+		if (!isJsonObject(yard) || !isJsonObject(yard.layout)) {
+			throw new Error("expected yard layout");
+		}
+		expect(yard.layout.componentHosts).toEqual(["wasm"]);
 	});
 
 	it("falls through to the default mapping for other signals", () => {

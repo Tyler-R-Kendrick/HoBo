@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-
 import { buildCedarRequest, createCedarGatePlane } from "../../src/cedar.js";
+import type { JsonValue } from "../../src/json.js";
 import type { FetchLike } from "../../src/planes.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
@@ -16,7 +16,7 @@ const pact = JSON.parse(
 
 function mockFetchFor(interaction: {
 	request: { path: string };
-	response: { status: number; body: unknown };
+	response: { status: number; body: JsonValue };
 }): FetchLike {
 	return async (url) => {
 		expect(url.endsWith(interaction.request.path)).toBe(true);

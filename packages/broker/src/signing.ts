@@ -7,6 +7,12 @@ import {
 	generateKeyPairSync,
 	type KeyObject,
 } from "node:crypto";
+import {
+	cloneAsJson,
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 import { BrokerParseError } from "./policies.js";
 import type { ResolutionReceipt, ResolutionRejection } from "./types.js";
@@ -31,17 +37,22 @@ export interface ResolutionSignature {
 
 // Canonical JSON: recursively key-sorted, no whitespace — the same document
 // always serializes to the same bytes, so signatures are replayable.
-export function canonicalResolutionJson(value: unknown): string {
+export function canonicalResolutionJson<T>(value: T): string {
+	return canonicalJsonValue(cloneAsJson(value));
+}
+
+function canonicalJsonValue(value: JsonValue): string {
 	if (Array.isArray(value)) {
-		return `[${value.map(canonicalResolutionJson).join(",")}]`;
+		return `[${value.map(canonicalJsonValue).join(",")}]`;
 	}
-	if (value !== null && typeof value === "object") {
-		const entries = Object.entries(value as Record<string, unknown>)
+	if (value !== null && isJsonObject(value)) {
+		// SAFETY: assertion required at this I/O or test boundary.
+		const entries = Object.entries(value as JsonObject)
 			.filter(([, entryValue]) => entryValue !== undefined)
 			.sort(([a], [b]) => a.localeCompare(b))
 			.map(
 				([key, entryValue]) =>
-					`${JSON.stringify(key)}:${canonicalResolutionJson(entryValue)}`,
+					`${JSON.stringify(key)}:${canonicalJsonValue(entryValue)}`,
 			);
 		return `{${entries.join(",")}}`;
 	}

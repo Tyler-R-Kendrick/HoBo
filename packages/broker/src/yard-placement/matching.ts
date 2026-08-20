@@ -4,17 +4,18 @@ import {
 	parseJurisdictionId,
 } from "@hobo/core";
 import { first } from "@hobo/core/total-access";
+import type { JsonObject } from "../json.js";
 import {
 	type ContentHash,
 	contentHashOf,
 	type YardCandidateDecision,
 	type YardInstanceRegistration,
 	type YardInventorySnapshot,
+	type YardLayout,
 	type YardMatchDecision,
 	type YardMatchSpecificity,
 	type YardPlacementRequest,
 	type YardSelectionMode,
-	type YardShape,
 } from "./types.js";
 
 /**
@@ -31,7 +32,8 @@ export function matchYard(
 		readonly bindleRuntimes?: readonly string[];
 	},
 ): YardMatchDecision {
-	const shapeHash = contentHashOf(request.requestedShape) as ContentHash;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const layoutHash = contentHashOf(request.requestedLayout) as ContentHash;
 	const candidates: YardCandidateDecision[] = inventory.yards
 		.map((yard) =>
 			evaluateCandidate(yard, request, {
@@ -47,14 +49,14 @@ export function matchYard(
 	if (mode === "exact") {
 		const id = request.requestedYardId;
 		if (!id) {
-			return decision(request, shapeHash, inventory, candidates, options, {
+			return decision(request, layoutHash, inventory, candidates, options, {
 				outcome: "rejected",
 				rationale: "exact mode requires requestedYardId",
 			});
 		}
 		const hit = compatible.find((c) => c.yardId === id);
 		if (hit) {
-			return decision(request, shapeHash, inventory, candidates, options, {
+			return decision(request, layoutHash, inventory, candidates, options, {
 				outcome: "existing-yard",
 				winnerYardId: hit.yardId,
 				rationale: `exact yard ${hit.yardId}`,
@@ -62,12 +64,12 @@ export function matchYard(
 		}
 		// Exact missing: generation only when allowGenerationRequested and policy later allows.
 		if (request.allowGenerationRequested) {
-			return decision(request, shapeHash, inventory, candidates, options, {
+			return decision(request, layoutHash, inventory, candidates, options, {
 				outcome: "generation-required",
 				rationale: `exact yard ${id} missing; generation requested`,
 			});
 		}
-		return decision(request, shapeHash, inventory, candidates, options, {
+		return decision(request, layoutHash, inventory, candidates, options, {
 			outcome: "rejected",
 			rationale: `exact yard ${id} not ready in inventory`,
 		});
@@ -75,7 +77,7 @@ export function matchYard(
 
 	if (compatible.length > 0) {
 		const winner = first(compatible);
-		return decision(request, shapeHash, inventory, candidates, options, {
+		return decision(request, layoutHash, inventory, candidates, options, {
 			outcome: "existing-yard",
 			winnerYardId: winner.yardId,
 			rationale: `compatible yard ${winner.yardId}`,
@@ -83,13 +85,13 @@ export function matchYard(
 	}
 
 	if (mode === "compatible-or-generate" && request.allowGenerationRequested) {
-		return decision(request, shapeHash, inventory, candidates, options, {
+		return decision(request, layoutHash, inventory, candidates, options, {
 			outcome: "generation-required",
 			rationale: "no compatible ready yard; generation requested",
 		});
 	}
 
-	return decision(request, shapeHash, inventory, candidates, options, {
+	return decision(request, layoutHash, inventory, candidates, options, {
 		outcome: "rejected",
 		rationale: "no compatible ready yard in inventory snapshot",
 	});
@@ -104,7 +106,7 @@ function evaluateCandidate(
 	},
 ): YardCandidateDecision {
 	const hardFailures: string[] = [];
-	const shape = request.requestedShape;
+	const layout = request.requestedLayout;
 
 	if (yard.ownerTenantId !== ctx.ownerTenantId) {
 		hardFailures.push("owner-tenant-mismatch");
@@ -117,48 +119,54 @@ function evaluateCandidate(
 			hardFailures.push("exact-id-mismatch");
 		}
 	}
-	if (shape.providerId && yard.providerId !== shape.providerId) {
+	if (layout.providerId && yard.providerId !== layout.providerId) {
 		hardFailures.push("provider-mismatch");
 	}
-	if (shape.runtimeId && yard.runtimeId !== shape.runtimeId) {
+	if (layout.runtimeId && yard.runtimeId !== layout.runtimeId) {
 		hardFailures.push("runtime-mismatch");
 	}
-	for (const region of shape.regions) {
+	for (const region of layout.regions) {
 		if (
-			yard.shape.regions.length > 0 &&
-			!yard.shape.regions.includes(region) &&
+			yard.layout.regions.length > 0 &&
+			!yard.layout.regions.includes(region) &&
 			!yard.capabilities.includes(`region:${region}`)
 		) {
 			hardFailures.push(`region-missing:${region}`);
 		}
 	}
-	for (const req of shape.require) {
-		if (!yard.capabilities.includes(req) && !yard.shape.require.includes(req)) {
+	for (const req of layout.require) {
+		if (
+			!yard.capabilities.includes(req) &&
+			!yard.layout.require.includes(req)
+		) {
 			hardFailures.push(`capability-missing:${req}`);
 		}
 	}
-	for (const iso of shape.isolation) {
+	for (const iso of layout.isolation) {
 		if (
-			!yard.shape.isolation.includes(iso) &&
+			!yard.layout.isolation.includes(iso) &&
 			!yard.capabilities.includes(iso)
 		) {
 			hardFailures.push(`isolation-missing:${iso}`);
 		}
 	}
-	for (const net of shape.network) {
-		if (!yard.shape.network.includes(net) && !yard.capabilities.includes(net)) {
+	for (const net of layout.network) {
+		if (
+			!yard.layout.network.includes(net) &&
+			!yard.capabilities.includes(net)
+		) {
 			hardFailures.push(`network-missing:${net}`);
 		}
 	}
-	for (const entry of shape.residency) {
+	for (const entry of layout.residency) {
 		const failure = residencyFailure(entry, yard);
 		if (failure !== undefined) {
 			hardFailures.push(failure);
 		}
 	}
-	for (const host of shape.componentHosts) {
+	for (const host of layout.componentHosts) {
 		if (
-			!yard.shape.componentHosts.includes(host) &&
+			!yard.layout.componentHosts.includes(host) &&
 			!yard.capabilities.includes(`host:${host}`)
 		) {
 			hardFailures.push(`component-host-missing:${host}`);
@@ -167,17 +175,17 @@ function evaluateCandidate(
 	for (const runtime of ctx.bindleRuntimes) {
 		if (
 			!yard.capabilities.includes(`runtime:${runtime}`) &&
-			!yard.shape.componentHosts.includes(runtime) &&
+			!yard.layout.componentHosts.includes(runtime) &&
 			!yard.capabilities.includes(runtime)
 		) {
 			// Soft for empty local yards that accept any; hard if yard declares hosts.
-			if (yard.shape.componentHosts.length > 0) {
+			if (yard.layout.componentHosts.length > 0) {
 				hardFailures.push(`bindle-runtime-missing:${runtime}`);
 			}
 		}
 	}
-	for (const [key, value] of Object.entries(shape.properties)) {
-		const actual = yard.shape.properties[key];
+	for (const [key, value] of Object.entries(layout.properties)) {
+		const actual = yard.layout.properties[key];
 		if (actual !== undefined && actual !== value) {
 			hardFailures.push(`property-mismatch:${key}`);
 		}
@@ -188,15 +196,16 @@ function evaluateCandidate(
 			request.requestedYardId && yard.yardId === request.requestedYardId
 				? 1
 				: 0,
-		provider: shape.providerId && yard.providerId === shape.providerId ? 1 : 0,
-		runtime: shape.runtimeId && yard.runtimeId === shape.runtimeId ? 1 : 0,
-		exactLabels: countExactLabels(shape.labels, yard.labels),
+		provider:
+			layout.providerId && yard.providerId === layout.providerId ? 1 : 0,
+		runtime: layout.runtimeId && yard.runtimeId === layout.runtimeId ? 1 : 0,
+		exactLabels: countExactLabels(layout.labels, yard.labels),
 		exactProperties: countExactProperties(
-			shape.properties,
-			yard.shape.properties,
+			layout.properties,
+			yard.layout.properties,
 		),
-		hardCapabilities: shape.require.filter(
-			(r) => yard.capabilities.includes(r) || yard.shape.require.includes(r),
+		hardCapabilities: layout.require.filter(
+			(r) => yard.capabilities.includes(r) || yard.layout.require.includes(r),
 		).length,
 	};
 
@@ -219,7 +228,7 @@ function evaluateCandidate(
  * Residency hard filter (ADR-0146). A requested entry is either a bare
  * jurisdiction id ("eu") or "classification:jurisdiction" ("pii:eu"). It is
  * satisfied when the yard explicitly guarantees the entry in its own
- * shape.residency, or when EVERY region the yard declares maps inside the
+ * layout.residency, or when EVERY region the yard declares maps inside the
  * entry's jurisdiction via the fail-closed core evaluator. A yard with no
  * declared regions cannot attest geography, so any residency request fails.
  */
@@ -227,7 +236,7 @@ function residencyFailure(
 	entry: string,
 	yard: YardInstanceRegistration,
 ): string | undefined {
-	if (yard.shape.residency.includes(entry)) return undefined;
+	if (yard.layout.residency.includes(entry)) return undefined;
 	const separator = entry.indexOf(":");
 	const jurisdictionRaw = separator === -1 ? entry : entry.slice(separator + 1);
 	try {
@@ -235,10 +244,10 @@ function residencyFailure(
 			parseDataClassification(entry.slice(0, separator));
 		}
 		const jurisdiction = parseJurisdictionId(jurisdictionRaw);
-		if (yard.shape.regions.length === 0) {
+		if (yard.layout.regions.length === 0) {
 			return `residency-unattested:${entry}`;
 		}
-		for (const region of yard.shape.regions) {
+		for (const region of yard.layout.regions) {
 			const evaluation = evaluateResidency({
 				constraint: {
 					classifications: [],
@@ -274,7 +283,8 @@ function compareCandidates(
 		"hardCapabilities",
 	];
 	for (const key of keys) {
-		if (sa[key] !== sb[key]) return (sb[key] as number) - (sa[key] as number);
+		// SAFETY: assertion required at this I/O or test boundary.
+		if (sa[key] !== sb[key]) return Number(sb[key]) - Number(sa[key]);
 	}
 	// Objective: prefer higher capacity for min-cost reuse; stable yard id tiebreak.
 	if (objective === "min-cost") {
@@ -297,8 +307,8 @@ function countExactLabels(
 }
 
 function countExactProperties(
-	requested: Readonly<Record<string, unknown>>,
-	actual: Readonly<Record<string, unknown>>,
+	requested: JsonObject,
+	actual: JsonObject,
 ): number {
 	let n = 0;
 	for (const [k, v] of Object.entries(requested)) {
@@ -309,7 +319,7 @@ function countExactProperties(
 
 function decision(
 	request: YardPlacementRequest,
-	shapeHash: ContentHash,
+	layoutHash: ContentHash,
 	inventory: YardInventorySnapshot,
 	candidates: readonly YardCandidateDecision[],
 	options: { readonly contributingPolicyIds?: readonly string[] },
@@ -322,13 +332,13 @@ function decision(
 	return Object.freeze({
 		...(request.requestedYardId !== undefined
 			? { requestedYardId: request.requestedYardId }
-			: {}),
+			: undefined),
 		selectionMode: request.selectionMode,
-		requestedShapeHash: shapeHash,
+		requestedLayoutHash: layoutHash,
 		inventoryHash: inventory.contentHash,
 		...(result.winnerYardId !== undefined
 			? { winnerYardId: result.winnerYardId }
-			: {}),
+			: undefined),
 		candidates: Object.freeze(candidates),
 		contributingPolicyIds: Object.freeze([
 			...(options.contributingPolicyIds ?? []),
@@ -339,9 +349,9 @@ function decision(
 }
 
 /** Shape compatibility is directional: requested ⊆ yard guarantees. */
-export function shapeSubsetCompatible(
-	requested: YardShape,
-	actual: YardShape,
+export function layoutSubsetCompatible(
+	requested: YardLayout,
+	actual: YardLayout,
 	capabilities: readonly string[],
 ): boolean {
 	if (requested.providerId && actual.providerId !== requested.providerId) {

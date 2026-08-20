@@ -23,11 +23,11 @@
  *
  * **The snapshot round-trip is schema-guarded in one direction only.** Restore
  * refuses an unknown schema rather than best-efforting it, because a fold state
- * restored under the wrong shape is a broker confidently serving placements
+ * restored under the wrong layout is a broker confidently serving placements
  * from a projection it never built.
  */
-import { describe, expect, it } from "vitest";
 
+import { describe, expect, it } from "vitest";
 import {
 	emptyYardEventStoreState,
 	foldYardEventStore,
@@ -39,6 +39,7 @@ import {
 	YARD_EVENTS,
 	yardEvent,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
 const yardOf = (yardId: string) =>
 	localYardInstance({ yardId, ownerTenantId: "t1", providerId: "local" });
@@ -333,7 +334,7 @@ describe("capacity updates", () => {
 });
 
 describe("generation attempts", () => {
-	const started = (data: Record<string, unknown>) =>
+	const started = (data: JsonObject) =>
 		fold([YARD_EVENTS.GenerationStarted, data]);
 
 	it("records an attempt under its id", () => {
@@ -493,7 +494,7 @@ describe("the idempotency lease", () => {
 	]);
 
 	it("refuses a second attempt while the holder is still live", () => {
-		// Two attempts on one key is the normal shape of a retry. If the loser
+		// Two attempts on one key is the normal layout of a retry. If the loser
 		// could take the key, the caller would end up tracking an attempt that
 		// is not the one holding the provisioned infrastructure.
 		const state = foldYardEventStore(
@@ -664,13 +665,13 @@ describe("placement decisions", () => {
 		winnerYardId?: string,
 	) => ({
 		selectionMode: "auto",
-		requestedShapeHash: "sha256:shape",
+		requestedLayoutHash: "sha256:layout",
 		inventoryHash: "sha256:inv",
 		candidates: [],
 		contributingPolicyIds: [],
 		outcome,
 		rationale: "test",
-		...(winnerYardId ? { winnerYardId } : {}),
+		...(winnerYardId ? { winnerYardId } : undefined),
 	});
 
 	it("opens a request as pending", () => {
@@ -846,7 +847,7 @@ describe("placement rejections", () => {
 					requestId: "r1",
 					match: {
 						selectionMode: "auto",
-						requestedShapeHash: "sha256:s",
+						requestedLayoutHash: "sha256:s",
 						inventoryHash: "sha256:i",
 						candidates: [],
 						contributingPolicyIds: [],
@@ -975,7 +976,7 @@ describe("the snapshot round trip", () => {
 	});
 
 	it("refuses an unknown schema rather than best-efforting it", () => {
-		// A state restored under the wrong shape is a broker confidently serving
+		// A state restored under the wrong layout is a broker confidently serving
 		// placements from a projection it never built.
 		expect(() =>
 			restoreYardEventStore(

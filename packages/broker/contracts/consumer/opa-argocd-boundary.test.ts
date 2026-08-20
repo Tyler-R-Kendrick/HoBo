@@ -2,6 +2,7 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import type { JsonObject, JsonValue } from "../../src/json.js";
 
 import { createOpaGatePlane } from "../../src/opa.js";
 import {
@@ -30,7 +31,7 @@ const argoPact = JSON.parse(
 // testing policy — mocked service boundaries derived from Pact contracts).
 function mockFetchFor(interaction: {
 	request: { path: string };
-	response: { status: number; body: unknown };
+	response: { status: number; body: JsonValue };
 }): FetchLike {
 	return async (url) => {
 		expect(url.endsWith(interaction.request.path)).toBe(true);
@@ -115,6 +116,7 @@ describe("Argo CD delivery-plane boundary (consumer side of the pact)", () => {
 		requestId,
 		brokerId: "broker:yard-1",
 		catalogHash: "sha256:catalog-abc",
+		// SAFETY: assertion required at this I/O or test boundary.
 		policyHash: "sha256:policy-abc" as PolicyHash,
 		placementPolicyId: "pp-bindle",
 		placements: [],
@@ -139,7 +141,8 @@ describe("Argo CD delivery-plane boundary (consumer side of the pact)", () => {
 			deliveryPolicy,
 		);
 		expect(ticket.engine).toBe("argo");
-		const metadata = ticket.document.metadata as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const metadata = ticket.document.metadata as JsonObject;
 		expect(metadata.name).toBe(interaction.request.body.metadata.name);
 		expect(ticket.response).toEqual(interaction.response.body);
 	});

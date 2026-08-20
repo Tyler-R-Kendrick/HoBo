@@ -39,7 +39,10 @@ export function step<A extends unknown[], R>(
 	options: StepOptions & { name?: string } = {},
 ): StepDefinition<A, R> {
 	const { name, ...rest } = options;
-	return defineStep(name ?? handler.name ?? "step", handler, rest);
+	// `||`, not `??`: an anonymous body has `name === ""`, and a nullish check
+	// would let that empty name reach `defineStep`, which refuses it. The
+	// documented fallback would then never fire.
+	return defineStep(name || handler.name || "step", handler, rest);
 }
 
 /**

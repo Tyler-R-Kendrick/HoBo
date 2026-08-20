@@ -1,7 +1,3 @@
-import { mkdtempSync, writeFileSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { join } from "node:path";
-
 import type { ReviewFileSummary } from "../_generated/code_review_pb.js";
 import type { SessionProcessRunner } from "../session-orchestrator.js";
 import { REVIEW_ERROR, ReviewError } from "./review-errors.js";
@@ -45,8 +41,4 @@ export async function applyHunkPatch(
 			REVIEW_ERROR.PATCH_CONFLICT,
 			"postimage write-tree failed",
 		);
-	void mkdtempSync;
-	void writeFileSync;
-	void join;
-	void tmpdir;
 }

@@ -15,21 +15,27 @@ const repoRoot = path.resolve(
 	"..",
 );
 
-type Overrides = Partial<Record<string, string>>;
+const captureDefaults = {
+	slug: "acme",
+	name: '"Acme"',
+	primary_category: "infrastructure-from-code",
+	categories: "[infrastructure-from-code]",
+	directness: "direct",
+	role: '"authoring analog"',
+	posture: "[borrow]",
+	hobo_surface: "[authoring]",
+	evidence: "design-only",
+	status: "active",
+	research_date: "2026-01-01",
+};
 
-function capture(overrides: Overrides = {}) {
-	const fields: Record<string, string> = {
-		slug: "acme",
-		name: '"Acme"',
-		primary_category: "infrastructure-from-code",
-		categories: "[infrastructure-from-code]",
-		directness: "direct",
-		role: '"authoring analog"',
-		posture: "[borrow]",
-		hobo_surface: "[authoring]",
-		evidence: "design-only",
-		status: "active",
-		research_date: "2026-01-01",
+type CaptureOverrides = Partial<
+	typeof captureDefaults & { aliases: string; contract: string }
+>;
+
+function capture(overrides: CaptureOverrides = {}) {
+	const fields = {
+		...captureDefaults,
 		...overrides,
 	};
 	const lines = ["---", "type: Competitive Reference", "competitor:"];

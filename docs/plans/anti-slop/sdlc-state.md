@@ -33,5 +33,5 @@ Each follow-up PR should take **one file (or a tight cluster) to zero
 findings**, then stop. Do not edit a file that still has other anti-slop
 errors.
 
-Cleared (this layer): entire `scripts/` tree (58 files, 0 oxlint
-findings with `--deny-warnings`).
+Cleared: entire `scripts/` tree (layer 3). This layer: root `test/`
+competitor-docs and designer-council files.

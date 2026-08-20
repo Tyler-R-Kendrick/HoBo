@@ -2,6 +2,7 @@ export {
 	type ControlApiServer,
 	type ControlApiServerOptions,
 	createControlApiServer,
+	PayloadTooLargeError,
 } from "./server.js";
 
 // public-contract

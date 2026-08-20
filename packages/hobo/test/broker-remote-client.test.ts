@@ -20,13 +20,12 @@
  * could be repointed mid-deploy by a changed document, so that place and claim
  * for one deployment went to two different brokers.
  */
-
 import { describe, expect, it } from "vitest";
+
 import {
 	createRemoteBrokerClient,
 	RemoteBrokerClientError,
 } from "../src/broker-remote-client.js";
-import type { JsonValue } from "../src/json.js";
 
 const BROKER = "https://broker.example";
 

@@ -24,7 +24,7 @@ competitor:
 
 # Aspire — Competitor Reference
 
-> Captured for HoBo competitive analysis (research as of 2026) — the deepest capture in this folder. C# and CLI excerpts are quoted as illustrative competitive reference (see the [fair-use note](index.md#sources--fair-use)). The HoBo↔Aspire parity tracker lives at the end, under [HoBo mapping](#hobo-mapping).
+> Captured for HoBo competitive analysis (research as of 2026) — the deepest capture in this folder. C# and CLI excerpts are quoted as illustrative competitive reference (see the [fair-use note](index.md#sources--fair-use)). The HoBo↔Aspire parity tracker lives at the end, under [primitive mapping](#primitive-mapping).
 
 ## What it is
 

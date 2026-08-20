@@ -75,11 +75,11 @@ the control plane is an event journal.**
 
 | Influence | Posture | What HoBo takes | Where it diverges | Capture |
 |---|---|---|---|---|
-| **wasmCloud** | adopted substrate | lattice default (ADR-0031), capability providers, wRPC links, wadm | HoBo owns the model; wasmCloud is a host | [competitors/wasmcloud](../competitors/wasmcloud.md#hobo-mapping) |
+| **wasmCloud** | adopted substrate | lattice default (ADR-0031), capability providers, wRPC links, wadm | HoBo owns the model; wasmCloud is a host | [competitors/wasmcloud](../competitors/wasmcloud.md#primitive-mapping) |
 | **WASI / Component Model** | standard | ports as WIT interfaces, components as the deployable unit | — | [design/wasm-runtime-wit](./wasm-runtime-wit.md#plan-20) |
-| **Dapr** | analog (closest architectural) | building-block APIs over swappable components — the *goal* | membrane (typed links) instead of a sidecar; Dapr also a runtime adapter | [competitors/dapr](../competitors/dapr.md#hobo-mapping) |
+| **Dapr** | analog (closest architectural) | building-block APIs over swappable components — the *goal* | membrane (typed links) instead of a sidecar; Dapr also a runtime adapter | [competitors/dapr](../competitors/dapr.md#primitive-mapping) |
 | **Istio / Linkerd / Envoy (service mesh)** | lesson | platform-owned identity/mTLS, traffic policy, resilience, telemetry | interpose on WIT links, not packets; mesh = optional adapter, never core (ADR-0143) | [patterns/service-mesh](../patterns/service-mesh.md) |
-| **Nomad** | pillar (P1, pivoted) | heterogeneous scheduling, placement, federation intent | realized via wasmCloud lattice + Junction⊃Yard⊃Camp (ADR-0031/0106) | [competitors/nomad](../competitors/nomad.md#hobo-mapping) |
+| **Nomad** | pillar (P1, pivoted) | heterogeneous scheduling, placement, federation intent | realized via wasmCloud lattice + Junction⊃Yard⊃Camp (ADR-0031/0106) | [competitors/nomad](../competitors/nomad.md#primitive-mapping) |
 | **Temporal** | analog | durable execution benchmark; history-replay mechanism generalized platform-wide | in-process over the journal; replay-gate not SDK sandbox | [technologies/temporal](../technologies/temporal.md) |
 | **Vercel Workflows** | borrow-source | the durable `workflow`/`step` authoring feel | — | [competitors/vercel](../competitors/vercel.md#primitive-mapping) |
 | **Tailscale / WireGuard** | adopted adapter | identity-keyed overlay, Funnel exposure, zero-config expectation (ADR-0122/0143) | overlay behind the `mesh` port; Headscale/Netbird for sovereign Yards | [technologies/tailscale](../technologies/tailscale.md) |

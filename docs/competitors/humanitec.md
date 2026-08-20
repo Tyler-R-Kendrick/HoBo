@@ -29,7 +29,7 @@ competitor:
 > Captured for HoBo competitive analysis under the HoBo Competitive Research Contract.
 > Research date **2026-08-19** (this capture predates the contract and was restructured to it, with
 > its original research preserved rather than replaced). The HoBo↔Humanitec parity tracker lives in
-> the [primitive mapping](#hobo-mapping) section below.
+> the [primitive mapping](#primitive-mapping) section below.
 >
 > **Reading the mapping tables.** Their ✅ / ➕ / 🔜 marks record HoBo's *design* status, not shipped
 > behaviour: ✅ means "designed at parity", not "implemented". Sections below that make claims about

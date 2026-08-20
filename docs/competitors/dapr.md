@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [typed-contracts, runtime-portability, wiring, identity-secrets]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://docs.dapr.io/concepts/building-blocks-concept/
     - https://github.com/dapr/dapr
@@ -49,6 +50,34 @@ The mental model has three pieces:
 | Deploy target | self-hosted processes or **Kubernetes** (prod is K8s-centric) |
 | AI | **Conversation** building block (LLM API + PII obfuscation) + agentic features |
 | License / governance | Apache-2.0, **CNCF graduated** |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Building block** | A portable API for a distributed-systems concern: state, pub/sub, bindings, actors, secrets, configuration, workflow, conversation |
+| **Component** | A YAML-configured implementation backing a building block (Redis for state, Kafka for pub/sub) |
+| **Sidecar** | The `daprd` process alongside the application, serving the building-block APIs over HTTP and gRPC |
+| **Actor** | Dapr's virtual-actor implementation, with turn-based concurrency and state |
+| **Workflow** | Durable execution built on the actor runtime |
+| **Resiliency policy** | Declarative retry, timeout and circuit-breaker configuration applied to component calls |
+
+The mental model is **the same API everywhere, with the implementation swapped by configuration**.
+An application calls "save state"; which store answers is a YAML file. That is the goal HoBo shares,
+and [`lineage.md`](../design/lineage.md) records Dapr as the closest architectural analog.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `typed-contracts` | **The core overlap.** Building-block APIs are exactly the abstraction HoBo expresses as Bindle kinds |
+| `runtime-portability` | Same implementation swapped by configuration |
+| `wiring` | Component configuration binds an application to a backing service |
+| `identity-secrets` | The secrets building block and sidecar-mediated access |
+
+The divergence is **where the abstraction lives**: Dapr puts it in a sidecar on the request path;
+HoBo puts it at the component boundary as a typed link. Dapr's is language-agnostic without
+compilation; HoBo's has no per-call process hop and can be type-checked.
 
 ## Feature surface
 
@@ -96,9 +125,26 @@ Dapr runs as a **sidecar process** (`daprd`) next to each app instance. The app 
 
 This matters for HoBo because Dapr proves the **portable-API + pluggable-adapter** pattern at scale (CNCF-graduated, huge component catalog) — strong validation of HoBo's ports/capability-providers. HoBo's deltas: it pushes the *same* abstraction **up into the control plane** (one `.allow()`-scoped declaration drives provisioning **+** the runtime link **+** the token, [Plan 21](../design/authoring-resources-wiring.md#plan-21)), runs adapters **in-process as wasm components** (no per-app sidecar, [ADR-0031](../design/adr/01-architecture-core.md#adr-0031)), makes the **conformance suite the trust boundary** for adapters (incl. **AI-generated** ones, [Plan 23](../design/generated-stack.md#plan-23)), and **event-sources** every infra + credential fact ([Plan 11](../design/data-plane.md#plan-11)).
 
-## Differentiators
+## Architecture
 
-### Strengths (what Dapr does well)
+- **Sidecar model** — `daprd` runs beside each application instance; all building-block calls go
+  through it over localhost HTTP or gRPC.
+- **Component resolution** — YAML declares which implementation backs each building block, scoped by
+  namespace and application.
+- **Actors and workflows** — implemented in the sidecar, with placement services coordinating actor
+  distribution.
+- **Resiliency** — declarative policies applied by the sidecar, so retry and circuit-breaking are
+  platform behaviour rather than application code. This is a shipped analog of HoBo's contract
+  effects (ADR-0136).
+- **State authority** — the backing components hold state; Dapr holds configuration.
+- **Portability boundary** — real and lowest-common-denominator: a building block exposes what all
+  its implementations can do, and provider-specific capability is reached by leaving the abstraction.
+
+## Where Dapr is stronger
+
+> Shipped, evidenced capability only.
+
+### what Dapr does well
 
 - **The portable-API + pluggable-component model, proven.** CNCF-graduated with a large, community-extensible component catalog across 12 building blocks — the clearest existing validation of HoBo's ports/capability-provider spine.
 - **Truly polyglot** via the sidecar (any language that speaks HTTP/gRPC).
@@ -107,7 +153,14 @@ This matters for HoBo because Dapr proves the **portable-API + pluggable-adapter
 - **Backend-swappable without code changes** — change component YAML, not app code.
 - **Vendor-neutral** (Apache-2.0, CNCF) — no lock-in to a single cloud or company.
 
-### Gaps (what Dapr does *not* do — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### what Dapr does *not* do — HoBo's opening
 
 - **No provisioning / infrastructure-from-code.** Dapr abstracts *using* a backend; you still create + own Redis/Kafka/DynamoDB and wire connection settings. There's no `deploy`, no topology graph, no cloud-agnostic provisioning. **This is the biggest gap vs HoBo** (and vs Encore/Nitric).
 - **Sidecar tax + K8s-centric prod.** A sidecar per app instance (latency/memory/lifecycle) and a Kubernetes control plane in production — operational weight HoBo's in-process wasm component-host ([ADR-0031](../design/adr/01-architecture-core.md#adr-0031)) avoids.
@@ -115,7 +168,25 @@ This matters for HoBo because Dapr proves the **portable-API + pluggable-adapter
 - **No infra event-sourcing / audit-replay.** Dapr traces requests, but doesn't event-source *infra + credential changes* the way HoBo does ([Plan 11](../design/data-plane.md#plan-11)).
 - **Adapters are hand-written.** No AI-generated-adapter pipeline or conformance-as-trust-boundary (HoBo's generation pipeline, [Plan 23](../design/generated-stack.md#plan-23)).
 
-### Comparisons
+## Adversarial critique
+
+- **The sidecar is on every request path.** A localhost hop per call is latency, memory per pod, and
+  another process to supervise, upgrade and debug. At scale the sidecar fleet is a substantial share
+  of cluster resources.
+- **Lowest-common-denominator APIs.** The state building block must work for Redis, Postgres,
+  DynamoDB and a dozen others, so it exposes what they share and the interesting capabilities of each
+  are unreachable through it.
+- **YAML component configuration is untyped.** Nothing checks at build time that the application's
+  expectations match the configured component; failures appear at runtime.
+- **Kubernetes is the assumed deployment** in practice, despite self-hosted modes existing.
+- **Actor and workflow semantics are subtle**, and their failure modes (placement changes,
+  reminders, reentrancy) are where production surprises live.
+- **Version coupling.** Application, sidecar and control plane versions must stay compatible across a
+  fleet, which is a recurring operational tax.
+- **Breadth invites partial adoption**, and a system using two building blocks gets the sidecar cost
+  without much of the portability benefit.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Dapr is a **runtime/data-plane** abstraction (use-the-infra); HoBo is a **control-plane + runtime** abstraction (provision-*and*-use, agnostic, event-sourced, AI-native). They could even compose — a HoBo `Camp` could realize ports onto a Dapr-backed runtime, or Dapr components could inspire HoBo capability providers.
 - **vs Nitric / Encore:** Nitric and Encore are **infrastructure-from-code** (declare-and-provision); Dapr is **runtime-only** (declare-the-API, bring-the-infra). HoBo spans both (IfC provisioning *plus* portable runtime ports).
@@ -124,7 +195,9 @@ This matters for HoBo because Dapr proves the **portable-API + pluggable-adapter
 
 **Net:** Dapr is the strongest evidence that HoBo's ports/adapters bet is sound — and a sharp reminder that HoBo's *differentiation* is everything **above** the runtime API: provisioning (IfC), the control-plane planes (cost/policy/contracts/matching), event-sourced audit, agents-as-principals, and AI-generated adapters.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Dapr concept (✅ has · ➕ goes further · 🔜 planned/iteration hook), and where the two architectures diverge. Rows marked 🔜 must cite a design anchor or an explicit iteration hook — never a bare ✅.
 
@@ -149,3 +222,36 @@ This matters for HoBo because Dapr proves the **portable-API + pluggable-adapter
 **The one-line takeaway:** Dapr ≈ HoBo's runtime ports + capability providers, made concrete at the sidecar layer — and nothing above it. HoBo's whole differentiation is the layers Dapr leaves out: provisioning (IfC), the agnostic control plane with cost/policy/contracts/matching, event-sourced audit, agents/end-users as first-class principals, and AI-generated adapters. The closeness of the *runtime* mapping is the strongest external validation that HoBo's ports/adapters foundation is the right one.
 
 **Could Dapr compose with HoBo?** **Yes — supported as an optional Camp runtime** ([ADR-0138](../design/adr/01-architecture-core.md#adr-0138)). Package `@hobo/runtime-dapr` realizes ActorHost + `wasi:messaging` (pub/sub, including `pubsub.kafka`) + partial workflow mapping onto Dapr building blocks when a Camp selects `runtimeRequirements: ["dapr"]`. HoBo still provisions backing services (Kafka, etc.), injects secretless identity (`svidBindingRef`), generates component YAML from Resource Definitions, and keeps Matching/policy/cost/junctions authoritative. **In-process wasm remains the default** ([ADR-0031](../design/adr/01-architecture-core.md#adr-0031)); Dapr is never a replacement of the preferred path. Dapr's component catalog remains a useful reference corpus for AI-generated HoBo capability providers.
+
+## Better-together / integration posture
+
+- **Borrow** — recorded in [`lineage.md`](../design/lineage.md): the building-block goal is HoBo's
+  goal. This capture adds a second borrow worth making explicit — **declarative resiliency policy**
+  is a shipped precedent for HoBo's `ResilienceProfile` (ADR-0136).
+- **Standard** — the building-block vocabulary is worth speaking at the boundary.
+- **Integrate** — Dapr is a plausible runtime adapter where a customer already runs it.
+- **Benchmark** on component-catalog breadth, which is the honest measure of a portability claim.
+- Not a displace target: different layers, converging goals.
+
+## Threats and lessons
+
+1. **Dapr proves the demand and exposes the cost.** Portable building blocks are wanted; a sidecar
+   per instance is what people pay for them today. HoBo's link-time binding is the argument for a
+   cheaper mechanism, and it only lands if the catalog is comparable.
+2. **Lowest-common-denominator is the trap every portable API falls into.** HoBo's answer —
+   declaring impedance rather than pretending uniformity — is the differentiator, and Dapr is the
+   clearest illustration of the problem it solves.
+3. **Untyped configuration is where portable systems break.** A YAML file that says Redis while the
+   application assumes transactions is a runtime failure HoBo's typed contracts should make
+   impossible.
+4. **Sidecar economics change with scale.** Worth quantifying when arguing for the alternative.
+
+## Sources
+
+- [docs.dapr.io](https://docs.dapr.io/) and [building blocks](https://docs.dapr.io/concepts/building-blocks-concept/) — building blocks, components, sidecar, actors, workflows, resiliency
+- [dapr/dapr](https://github.com/dapr/dapr) — source, CNCF graduated project
+- HoBo-side: [`design/lineage.md`](../design/lineage.md) records Dapr as the closest architectural analog
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Current component catalog size and per-building-block maturity were not
+re-verified in this pass and are not asserted.

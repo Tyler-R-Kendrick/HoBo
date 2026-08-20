@@ -44,7 +44,7 @@ model.** Pinned by
 map; "OAM remains a wadm render target only") and ADR-0108 (manifest IR →
 wadm/OAM application manifest; `scaling {min,max}` → spreadscaler; wadm's
 link trait ≈ manifest `bind`, per
-[competitors/wasmcloud](../competitors/wasmcloud.md#hobo-mapping)). The
+[competitors/wasmcloud](../competitors/wasmcloud.md#primitive-mapping)). The
 concept mapping, now including HoBo's first-class Trait
 ([ADR-0145](../design/adr/01-architecture-core.md#adr-0145)):
 

@@ -17,7 +17,7 @@ Runtimes, schedulers, component hosts, actor systems, service building blocks, a
 
 Some of these HoBo adopts (wasmCloud), some it targets, and some genuinely compete for the runtime layer. The distinction matters: adopting a substrate is not losing a category.
 
-## Competitors (11)
+## Competitors (13)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -32,6 +32,8 @@ Some of these HoBo adopts (wasmCloud), some it targets, and some genuinely compe
 | [**Flux Network**](../flux-network.md) | decentralized container host with a Git-to-Flux deploy UX (Orbit) — compute provider target, not an actor runtime | adjacent | `provider-matching`, `runtime-portability` | Decentralized capacity with genuinely independent operators. | HoBo treats it as a scored provider target subject to the same residency and impedance rules as any hyperscaler. | provider-target | P3 |
 | [**Modal**](../modal.md) | Python-first serverless compute for AI/ML with agent Sandboxes — AI-native compute competitor | adjacent | `runtime-portability`, `provider-matching` | Best-in-class serverless GPU cold-start and Python ergonomics. | HoBo treats GPU compute as a Bindle kind with provider matching rather than a single vendor runtime. | provider-target, benchmark | P3 |
 | [**Control Plane**](../control-plane.md) | multi-cloud virtual-cloud runtime — the shipped product closest to HoBo's portability claim, solved at the runtime and identity layer rather than the manifest layer | direct | `runtime-portability`, `provider-matching`, `environments`, `identity-secrets`, `app-graph` | Portability that works: GVCs span AWS/Azure/GCP and BYOK clusters, with credential-free Universal Cloud Identity and a global/location/internal mTLS endpoint scheme. | Control Plane makes workloads portable by owning the runtime, so the portability ends at its edge; a Bindle deploys through the provider's own services and survives HoBo's absence. | displace, benchmark, borrow, provider-target | P1 |
+| [**Kubernetes**](../kubernetes.md) *(primary)* | the default substrate almost every competitor assumes — a target HoBo supports and a premise HoBo declines | adjacent | `reconciliation`, `runtime-portability`, `provider-matching`, `extensibility`, `governance` | The ecosystem: every vendor integrates, every cloud offers it managed, every engineer can be hired for it — plus CRDs, the best extensibility decision in this corpus. | HoBo declines the premise. A cluster must exist and be paid for before anything runs; local, browser and hosted runtimes address the entire segment below that floor. | adopt, provider-target, borrow, standard | P1 |
+| [**OpenShift**](../openshift.md) *(primary)* | the enterprise Kubernetes distribution — a provider target, and the clearest evidence that a platform's defaults matter more than its capabilities | adjacent | `runtime-portability`, `governance`, `delivery`, `extensibility` | Secure defaults enforced at admission, operator lifecycle management, and an assembled stack whose upgrades include the node OS. | HoBo does not require a cluster at all, and its OpenShift-specific equivalents would be provider escapes — scoped and reported rather than the convenient default. | provider-target, benchmark, borrow | P2 |
 
 ## Navigation
 

@@ -15,7 +15,8 @@ competitor:
   hobo_surface: [authoring, app-graph, wiring, environments]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-20
+  contract: v1
   sources:
     - https://learn.microsoft.com/dotnet/aspire/
     - https://github.com/dotnet/aspire
@@ -61,6 +62,37 @@ aspire-manifest.json → publishers  ── azd→ACA · Docker Compose · Kuber
 | License / hosting | **MIT**, self-hosted; no SaaS |
 
 Against the others in this folder: it is dev-to-deploy *tooling*, not a platform — unlike **Humanitec** ([humanitec.md](humanitec.md)), an enterprise Platform Orchestrator with matching, RBAC, policy, cost, and a hosted control plane. Like **Nitric** ([nitric.md](nitric.md)) it is infrastructure-from-code, but Nitric targets serverless with a Go plugin runtime, whereas Aspire is broader app composition plus local-dev parity and OTel.
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **AppHost** | The composition program: a typed project that declares the whole distributed application |
+| **Resource** | A project, container, executable or cloud service participating in the app graph |
+| **`WithReference`** | The wiring primitive — connect one resource to another and let connection details flow |
+| **`WaitFor`** | Ordering and readiness dependency between resources |
+| **Annotation** | Metadata attached to a resource, which is how the model is extended |
+| **Manifest** | The intermediate representation the AppHost emits for deployment tooling |
+| **Integration** | A packaged component (database, cache, queue) with client and hosting halves |
+
+The mental model is **the topology is a typed program**. The AppHost is compiled, refactorable and
+IDE-navigable; `aspire run` stands the whole graph up locally, and the same program emits a manifest
+for deployment. HoBo's wiring model and manifest IR both descend from this design.
+
+## How it competes with HoBo
+
+Aspire is recorded in [`lineage.md`](../design/lineage.md) as a **pillar**: `WithReference` wiring,
+annotations and the manifest IR are taken from here.
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `authoring` | **Direct.** A typed composition program is exactly HoBo's authoring thesis |
+| `app-graph` | The AppHost graph, with a shipped local dashboard over it |
+| `wiring` | `WithReference` is the reference implementation of typed dependency wiring |
+| `environments` | Local orchestration parity with the deployed shape |
+
+The divergence: Aspire is .NET-first and stops at emitting a manifest. HoBo is language-neutral and
+owns what happens after the manifest — matching, placement, policy, promotion.
 
 ## Feature surface
 
@@ -420,7 +452,24 @@ Polyglot support repositions Aspire as language-agnostic. Python arrives via `Ad
 
 AI shows up two ways: as integrations (`AddAzureOpenAI`, `AddGitHubModel`, `AddOllama` — shown in the catalog above) and as GitHub Copilot in the dashboard for log summarization and root-cause when run from VS/VS Code.
 
-## Differentiators
+## Architecture
+
+- **Authoring plane** — the AppHost program, compiled and run.
+- **Local orchestration** — `aspire run` starts containers and processes together, with a dashboard
+  showing logs, traces and dependencies. The local experience is the product's strongest asset.
+- **Deployment** — the AppHost emits a **manifest IR**, which downstream tooling turns into Azure,
+  Kubernetes or other targets. Aspire deliberately does not own deployment.
+- **Extension model** — annotations on resources, plus integrations packaged as libraries.
+- **State authority** — none of its own; the program is the description and the deployment target
+  holds the state.
+- **Portability boundary** — the manifest is the seam. What the manifest can express travels; what a
+  target adds beyond it does not. Aspire's honesty about stopping at the manifest is a design
+  strength, not a gap.
+
+## Where .NET Aspire is stronger
+
+> Shipped, evidenced capability only.
+
 
 What is genuinely strong:
 
@@ -453,7 +502,9 @@ Head-to-head:
 
 The net for HoBo: Aspire nails the developer inner loop — code-first wiring, local parity, a manifest IR, and observability — which is why HoBo adopts its wiring + manifest model ([Plan 21](../design/authoring-resources-wiring.md#plan-21)). HoBo then adds what Aspire lacks: a platform-rules/matching layer ([Plan 25](../design/platform-engineering.md#plan-25)), a wasm-first polyglot runtime ([Plan 20](../design/wasm-runtime-wit.md#plan-20)), event-sourced replay/audit ([Plan 11](../design/data-plane.md#plan-11)), agent-native AI generation ([Plan 6](../design/ai-native-agent-auth.md#plan-06)), and a hosted, multi-tenant, governed control plane.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 For every Aspire feature, the HoBo equivalent and the design doc that owns it. ✅ = designed at parity · ➕ = HoBo goes further · ◐ = designed but shallow/deferred · 🔜 = planned. HoBo design lives in [`../design/`](../design/index.md). Aspire directly inspired HoBo's wiring/manifest layer, so parity here is high by design. Rows marked ◐ must anchor to an explicit design gap or iteration hook — never a bare status; health/readiness-gate gaps anchor to the [Plan 4 iteration hook](../design/control-plane.md#health-gated-dependency-ordering-iteration-hook).
 
@@ -503,3 +554,65 @@ For every Aspire feature, the HoBo equivalent and the design doc that owns it. �
 ### What HoBo borrows wholesale (credit Aspire)
 
 `WithReference`-style wiring, uniform config for any component/container, annotations as extensibility, and the **manifest as deploy IR** — adopted in [Plan 21](../design/authoring-resources-wiring.md#plan-21). HoBo's contribution is wrapping that ergonomic core in a wasm runtime, a matching/platform layer, event-sourcing, and a governed hosted plane.
+
+## Adversarial critique
+
+- **.NET-first is the defining constraint.** Polyglot support exists and the authoring language is
+  C#; a team with no .NET presence pays a large entry cost to describe a Python and Go system.
+- **The manifest is an intermediate representation, not a contract.** It varies with tooling versions
+  and target support, so "the same AppHost deploys anywhere" holds only where a publisher exists.
+- **Deployment is somebody else's problem, by design.** That keeps Aspire clean and means the hard
+  parts — placement, policy, promotion, drift — are outside its scope, so it cannot be evaluated as a
+  platform.
+- **Local parity is approximate.** Containers and processes locally are not the managed services
+  used in production; the dashboard's fidelity is to the composition, not to production behaviour.
+- **Microsoft ecosystem gravity.** Azure targets are the best-supported path, and the further from
+  that the more assembly is required.
+- **Rapid evolution.** The model has moved quickly across versions, which is healthy for the product
+  and a real cost for teams standardizing on it.
+
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`; **proof** =
+draft/proof material; **design-only** = design intent.
+
+- **Language-neutral by construction** (*implemented*). WIT ports and wasm components mean the
+  authoring language is not the runtime language, and the polyglot story is structural rather than
+  additive.
+- **HoBo owns what happens after the manifest** (*implemented*): scored matching, recorded decisions,
+  policy gates, promotion. Aspire stops where HoBo starts.
+- **Portability is measured** (*implemented*, ADR-0144).
+- **Event-sourced control plane with replay** (*implemented*, ADR-0135).
+- **Fail-closed residency** (*implemented*, ADR-0146).
+- **Honest caveat.** Aspire's local development experience — one command for the whole graph, with a
+  dashboard — is better than HoBo's today, and it is the surface developers judge first.
+
+## Better-together / integration posture
+
+- **Borrow** — already recorded in [`lineage.md`](../design/lineage.md): `WithReference` wiring,
+  annotations as the extension mechanism, and the manifest IR. This capture reaffirms all three.
+- **Benchmark** — the local orchestration experience and dashboard set the bar for `hobo dev`.
+- **Integrate** — an Aspire manifest is a plausible *input* to HoBo: the AppHost describes the graph,
+  HoBo decides where it lands. That composition is coherent and worth prototyping.
+- Not a displace target: different scopes.
+
+## Threats and lessons
+
+1. **Composition-as-a-typed-program is validated** by a major vendor with real adoption. HoBo's
+   argument is what it does with the graph, not that it has one.
+2. **Local-first is the strongest adoption vector in this cohort.** `aspire run` gives value before
+   any cloud account exists — the same property HoBo's local runtime has and does not market.
+3. **Stopping at the manifest is a legitimate strategy** and leaves the whole placement problem
+   unclaimed, which is precisely HoBo's territory.
+4. **Annotations as an extension mechanism** are simpler than a plugin API and map directly onto
+   HoBo's trait model (ADR-0145).
+
+## Sources
+
+- [Aspire documentation](https://learn.microsoft.com/dotnet/aspire/) — AppHost, resources, `WithReference`, `WaitFor`, integrations, manifest
+- [dotnet/aspire](https://github.com/dotnet/aspire) — source and MIT licence
+- HoBo-side: [`design/lineage.md`](../design/lineage.md) records Aspire as a pillar influence
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. Current publisher coverage and version-to-version manifest changes were
+not re-verified in this pass and are not asserted.

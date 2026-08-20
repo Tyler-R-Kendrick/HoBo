@@ -15,7 +15,8 @@ competitor:
   hobo_surface: [authoring, typed-contracts]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://www.winglang.io/docs/
     - https://github.com/winglang/wing
@@ -52,6 +53,30 @@ The mental model is the same **authoring-time IfC** idea HoBo adopts ([Plan 21](
 | Testing | `test "…" { }` blocks execute against the simulator (or any target) |
 | License / status | **MIT**; **pre-release** (v0.85.x, last release 2025-02-03); **Wing Cloud company shut down 2025-04-09**; OSS project largely paused/community |
 | Company | Wing Cloud — founded Apr 2022, **$20M seed (Jul 2023)**, **shut down Apr 2025** |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Preflight code** | Code that runs at compile time and defines infrastructure |
+| **Inflight code** | Code that runs at runtime inside the deployed compute |
+| **Resource** | A cloud object with both preflight (definition) and inflight (usage) faces |
+| **Compiler target** | The output platform — Terraform for a cloud, or the local simulator |
+| **Wing Simulator** | A local implementation of the resource model with a visual console |
+
+The mental model is **the language knows which phase your code is in**. Marking code preflight or
+inflight lets the compiler enforce what can cross the boundary and derive the permissions a runtime
+function needs. It is the most conceptually ambitious idea in this cohort.
+
+## How it competes with HoBo
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `authoring` | A dedicated language with phase-aware semantics |
+| `typed-contracts` | Resources typed across the preflight/inflight boundary |
+
+Winglang competes on authoring elegance and is, more importantly for this corpus, **a cautionary
+tale**: Wing Cloud, the company behind it, shut down in 2025.
 
 ## Feature surface
 
@@ -132,9 +157,23 @@ Wing's SDK is written in **TypeScript** and exported via **JSII** (the same tech
 - **Language is OSS but pre-release.** MIT-licensed; README banner: *"🚧 This is a pre-release."* Last release **v0.85.49 (2025-02-03)**; ~5.4k GitHub stars, 100+ contributors.
 - **Maintenance uncertain.** A maintainer wrote (2024-12-15) *"we plan to keep Winglang open in the long term, as almost all programming languages are,"* but a community member later (2025-06) asked *"is it still the case? The project seems abandoned,"* and the hosted **docs site has been reported down**. Treat production adoption as carrying **real project-viability risk**.
 
-## Differentiators
+## Architecture
 
-### Strengths (what Wing does well)
+- **Compiler** — Wing source compiles to Terraform for cloud targets, or runs against the simulator
+  locally.
+- **Phase separation** — enforced by the compiler; permission derivation falls out of knowing which
+  inflight code touches which resource.
+- **Simulator** — a local implementation of the resource model with a visual console, giving instant
+  feedback without deploying.
+- **State authority** — Terraform state for deployed infrastructure.
+- **Portability boundary** — whatever the compiler targets. The language is the abstraction, so
+  portability is a compiler feature rather than a runtime one.
+
+## Where Winglang is stronger
+
+> Shipped, evidenced capability only.
+
+### what Wing does well
 
 - **The purest articulation of "infra and runtime are one program."** Not a framework bolted onto a host language — a **language** where the **preflight/inflight** phase split is a type-system primitive. Conceptually the cleanest cloud-authoring model in the field.
 - **Automatic, capture-based least-privilege IAM** — permissions **inferred** from what inflight code actually does; no `.allow()`, no policy JSON. The most ergonomic permission story in the category.
@@ -142,7 +181,14 @@ Wing's SDK is written in **TypeScript** and exported via **JSII** (the same tech
 - **Cloud-portable standard library** (`cloud.*`) compiling to **Terraform (AWS/Azure/GCP)** or **AWS CDK** — one program, multiple clouds/engines.
 - **A real, shipped artifact** with a 100+ contributor community and CDK-author pedigree — credit it honestly against HoBo's design-phase status.
 
-### Gaps (Wing's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. This capture predates the
+contract; where it says "design-phase", read **design-only** unless labelled otherwise, and see
+the [live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Wing's limits — HoBo's opening
 
 - **It's a NEW LANGUAGE — the adoption cost is the whole ballgame.** Using Wing means writing `.w`, retraining the team, and leaving behind your existing TS/Go/Python/Rust code, mature editor/debugger tooling, libraries, and hiring pool. Wing's *own post-mortem* points at this ("the market might not have been ready to adopt an entirely new language"). HoBo authors in **WIT over any wasm-compiling language** ([Plan 20](../design/wasm-runtime-wit.md#plan-20)/[ADR-0069](../design/adr/01-architecture-core.md#adr-0069)/[ADR-0072](../design/adr/01-architecture-core.md#adr-0072)) — **no new language, no rewrite**.
 - **Compiles to Terraform/CloudFormation only — no pluggable IaC.** The provisioning engine is fixed to **CDKTF or AWS CDK**; you cannot swap in **Pulumi/Crossplane/OpenTofu**, nor pin specific resources to specific engines. HoBo keeps IaC tools as **pluggable adapters *under* the authoring layer** ([Plan 4](../design/control-plane.md#plan-04)/[ADR-0006](../design/adr/01-architecture-core.md#adr-0006)).
@@ -153,7 +199,22 @@ Wing's SDK is written in **TypeScript** and exported via **JSII** (the same tech
 - **No multi-tenant-app primitives, no cross-cloud data story** (migration/portability/consistency) — and **no adopt-in-place onboarding** (Wing is greenfield-by-construction: a new language). HoBo ships `hobo import` for existing TF/Pulumi/FaaS estates ([ADR-0041](../design/adr/07-portability-extensibility.md#adr-0041)).
 - **Project-viability risk is now *realized*, not hypothetical.** The **company is gone (Apr 2025)**, the language is **pre-release** and largely paused, and the docs site has been reported down. This is the sharpest reminder that **great DX ≠ a sustainable platform** — precisely why HoBo is **OSS with self-host = hosted parity** and keeps monetization out of design scope ([Plan 4](../design/control-plane.md#plan-04)/[ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)).
 
-### Comparisons
+## Adversarial critique
+
+- **The company shut down in 2025.** This is the most important fact in the capture. The project is
+  open source and the commercial entity behind it is gone, which changes maintenance expectations
+  regardless of the design's quality.
+- **A new language is the largest possible adoption ask.** Tooling, editors, hiring, debugging,
+  libraries and ecosystem all restart at zero — and this cohort shows that even excellent ideas lose
+  to lower-ceremony alternatives.
+- **Compile-to-Terraform inherits Terraform**, including state and drift, one abstraction further
+  away from the operator.
+- **Simulator fidelity is bounded.** A local implementation of cloud services is an approximation,
+  and the gap appears exactly where production problems live.
+- **Phase separation is elegant and restrictive**, with a learning curve on top of the new syntax.
+- **Ecosystem is now community-scale**, which is a very different proposition from a funded project.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Wing = a **new language** unifying infra+runtime, compiling to TF/CDK, JS runtime, superb simulator; HoBo = **no new language** (WIT over any wasm language), **pluggable IaC**, a **durable event-sourced** runtime, **AI-native**, and **governed**. Wing's **preflight/inflight** split is the closest external analog to HoBo's **authoring-time IfC vs wasm runtime** split — HoBo achieves the same separation *without forcing a language change*. Wing's `sim` + Console is the bar `hobo dev` targets; HoBo formalizes it as a **fidelity matrix** (simulate/mock/Camp-only) with `hobo verify` ([ADR-0042](../design/adr/07-portability-extensibility.md#adr-0042)).
 - **vs Nitric:** both are cloud-agnostic authoring. Nitric is an **SDK inside existing languages** (Node/Python/Go/Dart) over a gRPC membrane with **explicit `.allow()`**; Wing is a **whole language** with **inferred** permissions. Nitric keeps your language; Wing replaces it — HoBo keeps your language *and* infers/unifies effects via `.allow()` (IAM + wasm link + token).
@@ -164,7 +225,9 @@ Wing's SDK is written in **TypeScript** and exported via **JSII** (the same tech
 
 **Net:** Wing is the **purest expression of the cloud-agnostic authoring thesis**, and its **preflight/inflight** phase split validates HoBo's authoring-vs-runtime separation more cleanly than any competitor — but it makes the **maximal bet** (a *new language*), ships a **JS-only runtime** compiling to **TF/CDK only**, has **no durable/event-sourced/AI-native/governed** layers, and — decisively — **its company shut down in April 2025**, leaving a pre-release, community-uncertain artifact. HoBo takes the same authoring idea **without the language tax** (WIT over any wasm language), adds pluggable IaC, a durable event-sourced runtime, AI-native depth, and control-plane governance — and its **OSS + self-host = hosted** model is designed to survive exactly the sustainability failure Wing hit.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Wing concept (✅ has · ➕ goes further · 🔜 planned). HoBo is **design-phase**; Wing shipped a real language + simulator — anchors below credit both sides honestly.
 
@@ -194,3 +257,33 @@ Wing is the **strongest external evidence for HoBo's authoring model**: an indep
 ### The one-line takeaway
 
 **Wing proves HoBo's preflight/inflight-style authoring split and local-simulator DX are the right instincts** — and, by shutting down its company in April 2025, also proves the trap HoBo is designed to avoid: a **new-language** bet with a **JS-only runtime**, **TF/CDK-only** provisioning, **no durable/AI-native/governed** layers, and **no sustainable model**. HoBo keeps the authoring insight, drops the language, and adds the entire meta-cloud system around it: **WIT-over-any-language + pluggable IaC + a durable event-sourced runtime + AI-native depth + control-plane governance, OSS with self-host = hosted.**
+
+## Better-together / integration posture
+
+- **Borrow** — **the preflight/inflight distinction as a concept**, which cleanly explains why
+  build-time and run-time code have different capabilities. HoBo's authoring makes the same
+  distinction implicitly and could explain it this well.
+- **Benchmark** — the simulator's instant local feedback.
+- Not a displace, adopt, provider, or render target.
+
+## Threats and lessons
+
+1. **A better idea in a new language loses to a good-enough idea in an existing one.** This is the
+   clearest available evidence for HoBo's TypeScript choice, and it should be cited when that choice
+   is questioned.
+2. **The commercial failure is the lesson, not the design.** Language-sized bets need ecosystem-sized
+   funding, and running out is a normal outcome.
+3. **Phase separation deserves better vocabulary in HoBo's docs** — HoBo already has the distinction
+   and never names it.
+4. **Local simulation is valuable and never sufficient.** Every product in this cohort that offers it
+   also inherits its fidelity gap.
+
+## Sources
+
+- [winglang.io/docs](https://www.winglang.io/docs/) — preflight/inflight, resources, compiler targets, simulator
+- [winglang/wing](https://github.com/winglang/wing) — source and licence
+
+This capture predates the research contract and was restructured to it on 2026-08-20 with its
+original research preserved. The project's current maintenance status after Wing Cloud's 2025
+shutdown was not independently verified in this pass; treat activity claims as requiring a fresh
+check.

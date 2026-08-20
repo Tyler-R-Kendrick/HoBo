@@ -378,10 +378,18 @@ missing mechanism:
   real one: nothing produces the actuals side yet — `meter.UsageRecorded` has no producer outside
   tests and the connectivity billing aggregator is not wired to deployments — so the loop is closed
   as a computation before it is closed as a pipeline.)*
-- **N5 — multi-provider price data is an unresourced dependency.** Cost-aware placement
+- **N5** ◐ — **multi-provider price data is an unresourced dependency.** Cost-aware placement
   ([ADR-0071](../design/adr/01-architecture-core.md#adr-0071)) needs accurate prices, which is
   precisely the asset [Infracost](infracost.md) and [Vantage](vantage.md) built businesses around.
-  Treating it as free is a planning error.
+  Treating it as free is a planning error. *(Scoping leg closed 2026-08-20 —
+  `classifyPriceQuality` / `assessCostObjective` in `@hobo/cloud`,
+  [ADR-0167](../design/adr/01-architecture-core.md#adr-0167). An unpriced offering is no longer
+  indistinguishable from a free one, and a cost-optimality claim is withheld when the candidate set
+  cannot support it. This also fixed an active fault: every provider default is `marginalPrice: "0"`,
+  so under `min-cost` a provider that declared nothing outranked every provider that declared a real
+  price.* **The resourcing leg — build, license, or consume a price feed — is an open commercial
+  decision and is deliberately not taken. Catalog price coverage today is near zero, and the planner
+  does not yet consult the new seam.**)
 
 ### 7.2 Recurring findings — what the corpus says by repetition
 
@@ -584,8 +592,9 @@ Priority order, revised:
 6. ~~**N3 — an extension lifecycle for Resource Packs**, before the pack population makes it
    expensive.~~ ✅ The upgrade decision landed; a channel model and pack-to-pack dependencies remain
    unbuilt.
-7. **N5 — resource the price-data dependency**, or scope cost-aware placement to what can actually be
-   priced.
+7. **N5 — resource the price-data dependency.** ◐ The scoping half is done: cost claims now refuse
+   to be made on inputs that cannot support them. Whether to build, license or consume a price feed
+   remains an open commercial decision.
 
 The §6.4 execution-bar theme (agent-operability and first-run fidelity) stands unchanged and
 unaddressed, and every item above is additive to existing machinery rather than a new plane.

@@ -73,6 +73,7 @@ export function parseArtifactDigest(input: string): TtlShDigest {
 			"digest must be sha256: followed by 64 lowercase hex characters",
 		);
 	}
+	// SAFETY: input matched sha256: plus 64 lowercase hex characters.
 	return input as TtlShDigest;
 }
 

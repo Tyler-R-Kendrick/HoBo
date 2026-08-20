@@ -2,12 +2,14 @@
  * Offline fixtures. Nothing here reaches the network, and every identifier is
  * obviously fake: a fixed UUID and repeating-hex digests.
  */
-import type {
-	ProcessResult,
-	ProcessRunner,
-	TransportRequest,
-	TransportResponse,
-	TtlShTransport,
+import {
+	type ProcessResult,
+	type ProcessRunner,
+	type TransportRequest,
+	type TransportResponse,
+	type TtlShErrorCode,
+	TtlShProviderError,
+	type TtlShTransport,
 } from "../../src/index.js";
 
 // Hex letters on purpose: an all-digit UUID would make the uppercase-refusal
@@ -33,9 +35,49 @@ export type StubTransport = TtlShTransport & {
 	readonly requests: readonly TransportRequest[];
 };
 
+export function expectTtlShCode(
+	run: () => void,
+	code: TtlShErrorCode,
+): TtlShProviderError {
+	try {
+		run();
+	} catch (error) {
+		if (error instanceof TtlShProviderError && error.code === code) {
+			return error;
+		}
+		throw error;
+	}
+	throw new Error(`expected TtlShProviderError ${code}`);
+}
+
+export function expectTtlShProviderError(run: () => void): TtlShProviderError {
+	try {
+		run();
+	} catch (error) {
+		if (error instanceof TtlShProviderError) return error;
+		throw error;
+	}
+	throw new Error("expected TtlShProviderError");
+}
+
+export async function rejectTtlShCode(
+	run: () => Promise<object | undefined>,
+	code: TtlShErrorCode,
+): Promise<TtlShProviderError> {
+	try {
+		await run();
+	} catch (error) {
+		if (error instanceof TtlShProviderError && error.code === code) {
+			return error;
+		}
+		throw error;
+	}
+	throw new Error(`expected TtlShProviderError ${code}`);
+}
+
 export function createStubTransport(options: {
 	readonly script?: readonly StubResponse[];
-	readonly throws?: readonly unknown[];
+	readonly throws?: readonly Error[];
 }): StubTransport {
 	const requests: TransportRequest[] = [];
 	const script = [...(options.script ?? [{ status: 200, body: "{}" }])];
@@ -70,7 +112,7 @@ export type StubRunner = ProcessRunner & {
 
 export function createStubRunner(options: {
 	readonly results?: readonly ProcessResult[];
-	readonly throws?: readonly unknown[];
+	readonly throws?: readonly Error[];
 }): StubRunner {
 	const invocations: {
 		argv: readonly string[];

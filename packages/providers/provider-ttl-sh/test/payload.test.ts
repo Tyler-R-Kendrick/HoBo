@@ -11,7 +11,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
-import { isTtlShProviderError } from "../src/errors.js";
 import {
 	EPHEMERAL_PAYLOAD_KINDS,
 	isAcknowledgedTemporaryHandoff,
@@ -20,12 +19,14 @@ import {
 	REFUSED_PAYLOAD_KINDS,
 } from "../src/payload.js";
 import { parseTtlWindow } from "../src/reference.js";
+import { expectTtlShCode } from "./fixtures/index.js";
 
 const ONE_HOUR = parseTtlWindow("1h");
 const FIVE_MINUTES = parseTtlWindow("5m");
 
-const failsWith = (code: string) => (error: unknown) =>
-	isTtlShProviderError(error) && error.code === code;
+function namesMatch(left: string, right: string): boolean {
+	return left === right;
+}
 
 const BUILD_IMAGE = {
 	kind: "ci-build-image",
@@ -61,21 +62,21 @@ describe("parseArtifactPayload", () => {
 
 	for (const kind of REFUSED_PAYLOAD_KINDS) {
 		it(`refuses ${kind} as durable state`, () => {
-			assert.throws(
+			expectTtlShCode(
 				() => parseArtifactPayload({ ...BUILD_IMAGE, kind }, ONE_HOUR),
-				failsWith("ARTIFACT_DURABLE_USE_REFUSED"),
+				"ARTIFACT_DURABLE_USE_REFUSED",
 			);
 		});
 	}
 
 	it("refuses an unknown kind rather than treating it as reproducible", () => {
-		assert.throws(
+		expectTtlShCode(
 			() =>
 				parseArtifactPayload(
 					{ ...BUILD_IMAGE, kind: "probably-fine" },
 					ONE_HOUR,
 				),
-			failsWith("ARTIFACT_DURABLE_USE_REFUSED"),
+			"ARTIFACT_DURABLE_USE_REFUSED",
 		);
 	});
 
@@ -83,28 +84,28 @@ describe("parseArtifactPayload", () => {
 		// Without this the recovery procedure is somebody's memory, and the
 		// artifact is gone by the time anybody looks for it.
 		const { reproducedBy: _dropped, ...rest } = BUILD_IMAGE;
-		assert.throws(
+		expectTtlShCode(
 			() => parseArtifactPayload(rest, ONE_HOUR),
-			failsWith("ARTIFACT_DURABLE_USE_REFUSED"),
+			"ARTIFACT_DURABLE_USE_REFUSED",
 		);
 	});
 
 	it("refuses a placeholder answer that is technically a string", () => {
-		assert.throws(
+		expectTtlShCode(
 			() =>
 				parseArtifactPayload({ ...BUILD_IMAGE, reproducedBy: "n/a" }, ONE_HOUR),
-			failsWith("ARTIFACT_DURABLE_USE_REFUSED"),
+			"ARTIFACT_DURABLE_USE_REFUSED",
 		);
 	});
 
 	it("refuses a media type that is not one", () => {
-		assert.throws(
+		expectTtlShCode(
 			() =>
 				parseArtifactPayload(
 					{ ...BUILD_IMAGE, artifactType: "tarball" },
 					ONE_HOUR,
 				),
-			failsWith("INVALID_IMAGE_REFERENCE"),
+			"INVALID_IMAGE_REFERENCE",
 		);
 	});
 });
@@ -131,7 +132,7 @@ describe("an accepted temporary handoff", () => {
 	it("refuses a promotion deadline that falls after the artifact expires", () => {
 		// A deadline past the TTL is not a plan, it is a hope: the artifact is
 		// gone before the promotion is due.
-		assert.throws(
+		expectTtlShCode(
 			() =>
 				parseArtifactPayload(
 					{
@@ -141,13 +142,13 @@ describe("an accepted temporary handoff", () => {
 					},
 					FIVE_MINUTES,
 				),
-			failsWith("ARTIFACT_DURABLE_USE_REFUSED"),
+			"ARTIFACT_DURABLE_USE_REFUSED",
 		);
 	});
 
 	it("refuses an acknowledgement with no durable copy behind it", () => {
 		const { durableCopyLocation: _dropped, ...rest } = ACKNOWLEDGEMENT;
-		assert.throws(
+		expectTtlShCode(
 			() =>
 				parseArtifactPayload(
 					{
@@ -157,12 +158,12 @@ describe("an accepted temporary handoff", () => {
 					},
 					ONE_HOUR,
 				),
-			failsWith("ARTIFACT_DURABLE_USE_REFUSED"),
+			"ARTIFACT_DURABLE_USE_REFUSED",
 		);
 	});
 
 	it("refuses an acknowledgement whose promotion target is another ephemeral registry", () => {
-		assert.throws(
+		expectTtlShCode(
 			() =>
 				parseArtifactPayload(
 					{
@@ -172,7 +173,7 @@ describe("an accepted temporary handoff", () => {
 					},
 					ONE_HOUR,
 				),
-			failsWith("PROMOTION_TARGET_INVALID"),
+			"PROMOTION_TARGET_INVALID",
 		);
 	});
 });
@@ -203,9 +204,9 @@ describe("parseOwnerControlledRegistry", () => {
 		["a host with a path", "registry.acme.example.com/acme"],
 	] as const) {
 		it(`refuses ${reason}`, () => {
-			assert.throws(
+			expectTtlShCode(
 				() => parseOwnerControlledRegistry(host),
-				failsWith("PROMOTION_TARGET_INVALID"),
+				"PROMOTION_TARGET_INVALID",
 			);
 		});
 	}
@@ -222,9 +223,11 @@ describe("the types themselves", () => {
 		//   //                                   ^ not assignable
 		assert.ok(REFUSED_PAYLOAD_KINDS.length > 0);
 		for (const refused of REFUSED_PAYLOAD_KINDS) {
-			assert.ok(
-				!(EPHEMERAL_PAYLOAD_KINDS as readonly string[]).includes(refused),
-			);
+			let found = false;
+			for (const kind of EPHEMERAL_PAYLOAD_KINDS) {
+				if (namesMatch(kind, refused)) found = true;
+			}
+			assert.equal(found, false);
 		}
 	});
 });

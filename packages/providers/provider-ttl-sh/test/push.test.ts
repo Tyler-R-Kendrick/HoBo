@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
-import { isTtlShProviderError, TtlShProviderError } from "../src/errors.js";
+import { TtlShProviderError } from "../src/errors.js";
 import {
 	assertArgvSafe,
 	assertLeaseLive,
@@ -17,11 +17,13 @@ import {
 } from "../src/reference.js";
 import {
 	createStubRunner,
+	expectTtlShCode,
 	FAKE_DIGEST,
 	FAKE_UUID_NAME,
 	LEAKED_TOKEN,
 	NOW_MS,
 	OTHER_DIGEST,
+	rejectTtlShCode,
 } from "./fixtures/index.js";
 
 const REFERENCE = createTtlShImageReference({
@@ -34,9 +36,6 @@ const ARTIFACT = {
 	digest: DIGEST,
 	sizeBytes: 4096,
 } as const;
-
-const failsWith = (code: string) => (error: unknown) =>
-	isTtlShProviderError(error) && error.code === code;
 
 function inputFor(
 	executor: OciPushExecutor,
@@ -76,38 +75,35 @@ describe("buildCranePushArgv", () => {
 	});
 
 	it("refuses a binary outside the allowlist", () => {
-		assert.throws(
+		expectTtlShCode(
 			() =>
 				buildCranePushArgv({
 					reference: REFERENCE,
 					artifactPath: "/tmp/app.tar",
 					binary: "curl",
 				}),
-			failsWith("UNSAFE_TOOL_INVOCATION"),
+			"UNSAFE_TOOL_INVOCATION",
 		);
 	});
 });
 
 describe("assertArgvSafe", () => {
 	it("refuses an empty argv", () => {
-		assert.throws(
-			() => assertArgvSafe([]),
-			failsWith("UNSAFE_TOOL_INVOCATION"),
-		);
+		expectTtlShCode(() => assertArgvSafe([]), "UNSAFE_TOOL_INVOCATION");
 	});
 
 	it("refuses a NUL, which truncates the argument the child receives", () => {
-		assert.throws(
+		expectTtlShCode(
 			() =>
 				assertArgvSafe(["crane", "push", "/tmp/app\u0000.tar", "ttl.sh/x:1h"]),
-			failsWith("UNSAFE_TOOL_INVOCATION"),
+			"UNSAFE_TOOL_INVOCATION",
 		);
 	});
 
 	it("refuses a newline, which forges a log line", () => {
-		assert.throws(
+		expectTtlShCode(
 			() => assertArgvSafe(["crane", "push", "/tmp/app\ntar", "ttl.sh/x:1h"]),
-			failsWith("UNSAFE_TOOL_INVOCATION"),
+			"UNSAFE_TOOL_INVOCATION",
 		);
 	});
 
@@ -118,9 +114,9 @@ describe("assertArgvSafe", () => {
 		["a bearer header", "Bearer abc"],
 	] as const) {
 		it(`refuses ${reason}`, () => {
-			assert.throws(
+			expectTtlShCode(
 				() => assertArgvSafe(["crane", "push", element, "ttl.sh/x:1h"]),
-				failsWith("CREDENTIAL_REFUSED"),
+				"CREDENTIAL_REFUSED",
 			);
 		});
 	}
@@ -128,16 +124,16 @@ describe("assertArgvSafe", () => {
 	it("refuses an unallowlisted flag rather than forwarding it", () => {
 		// --insecure would drop TLS to a registry that already has no
 		// authentication, which is the one combination worth refusing loudly.
-		assert.throws(
+		expectTtlShCode(
 			() => assertArgvSafe(["crane", "push", "--insecure", "/tmp/app.tar"]),
-			failsWith("UNSAFE_TOOL_INVOCATION"),
+			"UNSAFE_TOOL_INVOCATION",
 		);
 	});
 
 	it("refuses an over-long argv element", () => {
-		assert.throws(
+		expectTtlShCode(
 			() => assertArgvSafe(["crane", "push", "x".repeat(1025)]),
-			failsWith("UNSAFE_TOOL_INVOCATION"),
+			"UNSAFE_TOOL_INVOCATION",
 		);
 	});
 });
@@ -170,13 +166,14 @@ describe("createCranePushExecutor", () => {
 			results: [{ code: 0, stdout: `${OTHER_DIGEST}\n`, stderr: "" }],
 		});
 
-		await assert.rejects(
-			createCranePushExecutor({ runner }).push({
-				reference: REFERENCE,
-				artifact: ARTIFACT,
-				timeoutMs: 30_000,
-			}),
-			failsWith("PROVIDER_CONTRACT_CHANGED"),
+		await rejectTtlShCode(
+			() =>
+				createCranePushExecutor({ runner }).push({
+					reference: REFERENCE,
+					artifact: ARTIFACT,
+					timeoutMs: 30_000,
+				}),
+			"PROVIDER_CONTRACT_CHANGED",
 		);
 	});
 
@@ -185,13 +182,14 @@ describe("createCranePushExecutor", () => {
 			results: [{ code: 0, stdout: "done\n", stderr: "" }],
 		});
 
-		await assert.rejects(
-			createCranePushExecutor({ runner }).push({
-				reference: REFERENCE,
-				artifact: ARTIFACT,
-				timeoutMs: 30_000,
-			}),
-			failsWith("PROVIDER_CONTRACT_CHANGED"),
+		await rejectTtlShCode(
+			() =>
+				createCranePushExecutor({ runner }).push({
+					reference: REFERENCE,
+					artifact: ARTIFACT,
+					timeoutMs: 30_000,
+				}),
+			"PROVIDER_CONTRACT_CHANGED",
 		);
 	});
 
@@ -206,34 +204,32 @@ describe("createCranePushExecutor", () => {
 			],
 		});
 
-		await assert.rejects(
-			createCranePushExecutor({ runner }).push({
-				reference: REFERENCE,
-				artifact: ARTIFACT,
-				timeoutMs: 30_000,
-			}),
-			(error: unknown) =>
-				isTtlShProviderError(error) &&
-				error.code === "PROVIDER_RATE_LIMITED" &&
-				error.retryable,
+		const error = await rejectTtlShCode(
+			() =>
+				createCranePushExecutor({ runner }).push({
+					reference: REFERENCE,
+					artifact: ARTIFACT,
+					timeoutMs: 30_000,
+				}),
+			"PROVIDER_RATE_LIMITED",
 		);
+		assert.equal(error.retryable, true);
 	});
 
 	it("maps a dropped connection to ambiguity rather than to failure", async () => {
 		const runner = createStubRunner({ throws: [new Error("spawn timed out")] });
 
-		await assert.rejects(
-			createCranePushExecutor({ runner }).push({
-				reference: REFERENCE,
-				artifact: ARTIFACT,
-				timeoutMs: 30_000,
-			}),
-			(error: unknown) =>
-				isTtlShProviderError(error) &&
-				error.code === "PROVIDER_OPERATION_AMBIGUOUS" &&
-				// Unknown is never presented as safe to redo blindly.
-				error.retryable === false,
+		const error = await rejectTtlShCode(
+			() =>
+				createCranePushExecutor({ runner }).push({
+					reference: REFERENCE,
+					artifact: ARTIFACT,
+					timeoutMs: 30_000,
+				}),
+			"PROVIDER_OPERATION_AMBIGUOUS",
 		);
+		// Unknown is never presented as safe to redo blindly.
+		assert.equal(error.retryable, false);
 	});
 
 	it("maps a definite tool failure to ARTIFACT_PUSH_FAILED and redacts its stderr", async () => {
@@ -247,17 +243,16 @@ describe("createCranePushExecutor", () => {
 			],
 		});
 
-		await assert.rejects(
-			createCranePushExecutor({ runner }).push({
-				reference: REFERENCE,
-				artifact: ARTIFACT,
-				timeoutMs: 30_000,
-			}),
-			(error: unknown) =>
-				isTtlShProviderError(error) &&
-				error.code === "ARTIFACT_PUSH_FAILED" &&
-				!JSON.stringify(error.toJSON()).includes(LEAKED_TOKEN),
+		const error = await rejectTtlShCode(
+			() =>
+				createCranePushExecutor({ runner }).push({
+					reference: REFERENCE,
+					artifact: ARTIFACT,
+					timeoutMs: 30_000,
+				}),
+			"ARTIFACT_PUSH_FAILED",
 		);
+		assert.equal(JSON.stringify(error.toJSON()).includes(LEAKED_TOKEN), false);
 	});
 });
 
@@ -298,16 +293,17 @@ describe("pushArtifact", () => {
 		const ledger = createInMemoryPushLedger();
 		await pushArtifact(inputFor(okExecutor({ count: 0 }), ledger));
 
-		await assert.rejects(
-			pushArtifact({
-				...inputFor(okExecutor({ count: 0 }), ledger),
-				artifact: {
-					path: "/tmp/other.tar",
-					digest: parseArtifactDigest(OTHER_DIGEST),
-					sizeBytes: 8192,
-				},
-			}),
-			failsWith("REFERENCE_REUSED"),
+		await rejectTtlShCode(
+			() =>
+				pushArtifact({
+					...inputFor(okExecutor({ count: 0 }), ledger),
+					artifact: {
+						path: "/tmp/other.tar",
+						digest: parseArtifactDigest(OTHER_DIGEST),
+						sizeBytes: 8192,
+					},
+				}),
+			"REFERENCE_REUSED",
 		);
 	});
 
@@ -336,9 +332,9 @@ describe("pushArtifact", () => {
 			},
 		};
 
-		await assert.rejects(
-			pushArtifact(inputFor(ambiguous, ledger)),
-			failsWith("PROVIDER_OPERATION_AMBIGUOUS"),
+		await rejectTtlShCode(
+			() => pushArtifact(inputFor(ambiguous, ledger)),
+			"PROVIDER_OPERATION_AMBIGUOUS",
 		);
 		assert.equal(
 			(await ledger.get(REFERENCE.pullReference))?.state,
@@ -357,9 +353,9 @@ describe("pushArtifact", () => {
 			},
 		};
 
-		await assert.rejects(
-			pushArtifact(inputFor(failing, ledger)),
-			failsWith("ARTIFACT_PUSH_FAILED"),
+		await rejectTtlShCode(
+			() => pushArtifact(inputFor(failing, ledger)),
+			"ARTIFACT_PUSH_FAILED",
 		);
 		assert.equal((await ledger.get(REFERENCE.pullReference))?.state, "failed");
 	});
@@ -376,9 +372,9 @@ describe("assertLeaseLive", () => {
 		);
 
 		assert.doesNotThrow(() => assertLeaseLive(record, NOW_MS + 60_000));
-		assert.throws(
+		expectTtlShCode(
 			() => assertLeaseLive(record, NOW_MS + 60 * 60_000),
-			failsWith("LEASE_EXPIRED"),
+			"LEASE_EXPIRED",
 		);
 	});
 });

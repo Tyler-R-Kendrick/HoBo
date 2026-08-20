@@ -8,7 +8,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
-import { isTtlShProviderError } from "../src/errors.js";
 import { parseArtifactPayload } from "../src/payload.js";
 import {
 	buildCraneCopyArgv,
@@ -19,7 +18,7 @@ import {
 } from "../src/promotion.js";
 import type {
 	ProcessResult,
-	ProcessRunner,
+	ProcessRunOptions,
 	TtlShPushRecord,
 } from "../src/push.js";
 import {
@@ -27,6 +26,7 @@ import {
 	parseTtlWindow,
 	referenceForDigest,
 } from "../src/reference.js";
+import { expectTtlShCode, rejectTtlShCode } from "./fixtures/index.js";
 
 const DIGEST = parseArtifactDigest(
 	"sha256:1111111111111111111111111111111111111111111111111111111111111111",
@@ -38,18 +38,9 @@ const OTHER_DIGEST = parseArtifactDigest(
 const PUSHED_AT = 1_800_000_000_000;
 const ONE_HOUR_MS = 60 * 60_000;
 
-const failsWith = (code: string) => (error: unknown) =>
-	isTtlShProviderError(error) && error.code === code;
-
 function recordedRunner(
-	result: Partial<ProcessResult> & { readonly throws?: unknown },
-): {
-	readonly runner: ProcessRunner;
-	readonly calls: {
-		argv: readonly string[];
-		env: Readonly<Record<string, string>>;
-	}[];
-} {
+	result: Partial<ProcessResult> & { readonly throws?: Error },
+) {
 	const calls: {
 		argv: readonly string[];
 		env: Readonly<Record<string, string>>;
@@ -57,7 +48,7 @@ function recordedRunner(
 	return {
 		calls,
 		runner: {
-			async run(argv, options) {
+			async run(argv: readonly string[], options: ProcessRunOptions) {
 				calls.push({ argv, env: options.env });
 				if (result.throws !== undefined) throw result.throws;
 				return {
@@ -128,30 +119,30 @@ describe("parsePromotionTarget", () => {
 	});
 
 	it("refuses a traversal component in the one place slashes are allowed", () => {
-		assert.throws(
+		expectTtlShCode(
 			() => parsePromotionTarget({ ...TARGET, repository: "acme/../etc" }),
-			failsWith("PROMOTION_TARGET_INVALID"),
+			"PROMOTION_TARGET_INVALID",
 		);
 	});
 
 	it("refuses an uppercase repository, which is not a valid OCI name", () => {
-		assert.throws(
+		expectTtlShCode(
 			() => parsePromotionTarget({ ...TARGET, repository: "Acme/Payments" }),
-			failsWith("PROMOTION_TARGET_INVALID"),
+			"PROMOTION_TARGET_INVALID",
 		);
 	});
 
 	it("refuses a tag that could be read as a flag", () => {
-		assert.throws(
+		expectTtlShCode(
 			() => parsePromotionTarget({ ...TARGET, tag: "--force" }),
-			failsWith("PROMOTION_TARGET_INVALID"),
+			"PROMOTION_TARGET_INVALID",
 		);
 	});
 
 	it("refuses promoting back into the ephemeral registry", () => {
-		assert.throws(
+		expectTtlShCode(
 			() => parsePromotionTarget({ ...TARGET, registry: "ttl.sh" }),
-			failsWith("PROMOTION_TARGET_INVALID"),
+			"PROMOTION_TARGET_INVALID",
 		);
 	});
 });
@@ -172,14 +163,14 @@ describe("buildCraneCopyArgv", () => {
 	});
 
 	it("refuses a binary outside the allowlist", () => {
-		assert.throws(
+		expectTtlShCode(
 			() =>
 				buildCraneCopyArgv({
 					source: pushRecord(),
 					target: TARGET,
 					binary: "docker",
 				}),
-			failsWith("UNSAFE_TOOL_INVOCATION"),
+			"UNSAFE_TOOL_INVOCATION",
 		);
 	});
 });
@@ -245,15 +236,16 @@ describe("promoteArtifact", () => {
 			tag: "build-42",
 		});
 
-		await assert.rejects(
-			promoteArtifact({
-				runner,
-				record: pushRecord(),
-				target: elsewhere,
-				payload: HANDOFF_PAYLOAD,
-				nowMs: PUSHED_AT + 60_000,
-			}),
-			failsWith("PROMOTION_TARGET_INVALID"),
+		await rejectTtlShCode(
+			() =>
+				promoteArtifact({
+					runner,
+					record: pushRecord(),
+					target: elsewhere,
+					payload: HANDOFF_PAYLOAD,
+					nowMs: PUSHED_AT + 60_000,
+				}),
+			"PROMOTION_TARGET_INVALID",
 		);
 		assert.equal(calls.length, 0);
 	});
@@ -261,15 +253,16 @@ describe("promoteArtifact", () => {
 	it("refuses an expired lease before spawning anything", async () => {
 		const { runner, calls } = recordedRunner({ stdout: DIGEST });
 
-		await assert.rejects(
-			promoteArtifact({
-				runner,
-				record: pushRecord(),
-				target: TARGET,
-				payload: BUILD_PAYLOAD,
-				nowMs: PUSHED_AT + ONE_HOUR_MS,
-			}),
-			failsWith("LEASE_EXPIRED"),
+		await rejectTtlShCode(
+			() =>
+				promoteArtifact({
+					runner,
+					record: pushRecord(),
+					target: TARGET,
+					payload: BUILD_PAYLOAD,
+					nowMs: PUSHED_AT + ONE_HOUR_MS,
+				}),
+			"LEASE_EXPIRED",
 		);
 		assert.equal(
 			calls.length,
@@ -297,15 +290,16 @@ describe("promoteArtifact", () => {
 		// different content. Both are real on an anonymous registry.
 		const { runner } = recordedRunner({ stdout: `copied ${OTHER_DIGEST}` });
 
-		await assert.rejects(
-			promoteArtifact({
-				runner,
-				record: pushRecord(),
-				target: TARGET,
-				payload: BUILD_PAYLOAD,
-				nowMs: PUSHED_AT + 60_000,
-			}),
-			failsWith("PROVIDER_CONTRACT_CHANGED"),
+		await rejectTtlShCode(
+			() =>
+				promoteArtifact({
+					runner,
+					record: pushRecord(),
+					target: TARGET,
+					payload: BUILD_PAYLOAD,
+					nowMs: PUSHED_AT + 60_000,
+				}),
+			"PROVIDER_CONTRACT_CHANGED",
 		);
 	});
 
@@ -316,22 +310,20 @@ describe("promoteArtifact", () => {
 				"denied: authorization failed for token=ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ012345",
 		});
 
-		await assert.rejects(
-			promoteArtifact({
-				runner,
-				record: pushRecord(),
-				target: TARGET,
-				payload: BUILD_PAYLOAD,
-				nowMs: PUSHED_AT + 60_000,
-			}),
-			(error: unknown) => {
-				assert.ok(failsWith("ARTIFACT_PUSH_FAILED")(error));
-				assert.ok(error instanceof Error);
-				assert.ok(
-					!error.message.includes("ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"),
-				);
-				return true;
-			},
+		const error = await rejectTtlShCode(
+			() =>
+				promoteArtifact({
+					runner,
+					record: pushRecord(),
+					target: TARGET,
+					payload: BUILD_PAYLOAD,
+					nowMs: PUSHED_AT + 60_000,
+				}),
+			"ARTIFACT_PUSH_FAILED",
+		);
+		assert.equal(
+			error.message.includes("ghp_ABCDEFGHIJKLMNOPQRSTUVWXYZ012345"),
+			false,
 		);
 	});
 
@@ -340,15 +332,16 @@ describe("promoteArtifact", () => {
 		// caller to assume nothing happened.
 		const { runner } = recordedRunner({ throws: new Error("ETIMEDOUT") });
 
-		await assert.rejects(
-			promoteArtifact({
-				runner,
-				record: pushRecord(),
-				target: TARGET,
-				payload: BUILD_PAYLOAD,
-				nowMs: PUSHED_AT + 60_000,
-			}),
-			failsWith("PROVIDER_OPERATION_AMBIGUOUS"),
+		await rejectTtlShCode(
+			() =>
+				promoteArtifact({
+					runner,
+					record: pushRecord(),
+					target: TARGET,
+					payload: BUILD_PAYLOAD,
+					nowMs: PUSHED_AT + 60_000,
+				}),
+			"PROVIDER_OPERATION_AMBIGUOUS",
 		);
 	});
 

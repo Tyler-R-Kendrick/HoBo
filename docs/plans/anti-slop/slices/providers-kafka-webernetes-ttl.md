@@ -13,8 +13,11 @@ These packages are oxlint `--deny-warnings` clean:
 
 - `@hobo/provider-webernetes`
 - `@hobo/provider-kafka`
+- `@hobo/provider-ttl-sh`
 
-Named `JsonValue` parse at webernetes plans/pacts and Kafka cluster/topic JSON.
-Empty-object spreads use `undefined`. Remaining `as` assertions carry a
-`SAFETY:` comment on the preceding line. Tests use core `parseTopicName` /
-`parseTenantId` helpers instead of `as never`.
+Named `JsonValue` parse at webernetes plans/pacts, Kafka cluster/topic JSON,
+and ttl.sh payload/pact/receipt scan boundaries. Empty-object spreads use
+`undefined`. Remaining `as` assertions carry a `SAFETY:` comment on the
+preceding line. Control-character flattening no longer uses control-regex
+literals. Tests use core `parseTopicName` / `parseTenantId` helpers instead of
+`as never`.

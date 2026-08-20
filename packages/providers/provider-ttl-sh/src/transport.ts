@@ -98,7 +98,10 @@ export function assertAllowedEndpoint(
 	try {
 		return assertAllowedEndpointCore(url, corePolicy(policy));
 	} catch (cause) {
-		throw asProviderError(cause, url);
+		throw asProviderError(
+			cause instanceof Error ? cause : new Error(String(cause)),
+			url,
+		);
 	}
 }
 
@@ -124,11 +127,7 @@ export function assertNoCredentialHeaders(
 	headers: Readonly<Record<string, string>>,
 ): void {
 	for (const key of Object.keys(headers)) {
-		if (
-			(FORBIDDEN_REQUEST_HEADERS as readonly string[]).includes(
-				key.toLowerCase(),
-			)
-		) {
+		if (isForbiddenRequestHeader(key.toLowerCase())) {
 			throw new TtlShProviderError(
 				"CREDENTIAL_REFUSED",
 				`refusing to send ${key.toLowerCase()} to ${TTL_SH_REGISTRY_HOST}; the service documents no authentication, so a credential here could only be an accident`,
@@ -159,7 +158,19 @@ function corePolicy(policy: TransportPolicy) {
  * so a credential there could only leak. Collapsing it into the generic
  * transport refusal would lose that.
  */
-function asProviderError(cause: unknown, url?: string): unknown {
+function isForbiddenRequestHeader(name: string): boolean {
+	switch (name) {
+		case "authorization":
+		case "proxy-authorization":
+		case "cookie":
+		case "x-registry-auth":
+			return true;
+		default:
+			return false;
+	}
+}
+
+function asProviderError(cause: Error, url?: string): Error {
 	if (!(cause instanceof TransportGuardError)) return cause;
 	if (url !== undefined && hasEmbeddedUserinfo(url)) {
 		return new TtlShProviderError(
@@ -180,7 +191,29 @@ function asProviderError(cause: unknown, url?: string): unknown {
 	return new TtlShProviderError(
 		endpointRefusal ? "TRANSPORT_NOT_ALLOWED" : "PROVIDER_CONTRACT_CHANGED",
 		cause.message,
-		{ detail: { guard: cause.code, ...cause.detail } },
+		{
+			detail: {
+				guard: cause.code,
+				...(cause.detail.location !== undefined
+					? { location: cause.detail.location }
+					: undefined),
+				...(cause.detail.host !== undefined
+					? { host: cause.detail.host }
+					: undefined),
+				...(cause.detail.path !== undefined
+					? { path: cause.detail.path }
+					: undefined),
+				...(cause.detail.url !== undefined
+					? { url: cause.detail.url }
+					: undefined),
+				...(cause.detail.port !== undefined
+					? { port: cause.detail.port }
+					: undefined),
+				...(cause.detail.allowed !== undefined
+					? { allowed: cause.detail.allowed }
+					: undefined),
+			},
+		},
 	);
 }
 
@@ -191,10 +224,10 @@ export function createGuardedTransport(
 	const guarded = guardTransport(
 		async (request) =>
 			await inner.request({
-				method: request.method as TransportMethod,
+				method: request.method,
 				url: request.url,
 				headers: request.headers,
-				...(request.body === undefined ? {} : { body: request.body }),
+				...(request.body === undefined ? undefined : { body: request.body }),
 				timeoutMs: request.timeoutMs,
 				maxResponseBytes: request.maxResponseBytes,
 			}),
@@ -213,12 +246,15 @@ export function createGuardedTransport(
 					method: request.method,
 					url: request.url,
 					headers: request.headers,
-					...(request.body === undefined ? {} : { body: request.body }),
+					...(request.body === undefined ? undefined : { body: request.body }),
 					timeoutMs: request.timeoutMs,
 					maxResponseBytes: request.maxResponseBytes,
 				});
 			} catch (cause) {
-				throw asProviderError(cause, request.url);
+				throw asProviderError(
+					cause instanceof Error ? cause : new Error(String(cause)),
+					request.url,
+				);
 			}
 
 			if (response.status === 401 || response.status === 403) {
@@ -257,7 +293,7 @@ export function createFetchTransport(options: {
 				const response = await fetchImpl(request.url, {
 					method: request.method,
 					headers: { ...request.headers },
-					...(request.body !== undefined ? { body: request.body } : {}),
+					...(request.body !== undefined ? { body: request.body } : undefined),
 					redirect: "manual",
 					signal: controller.signal,
 				});
@@ -279,7 +315,10 @@ export function createFetchTransport(options: {
 				throw new TtlShProviderError(
 					"PROVIDER_OPERATION_AMBIGUOUS",
 					`${request.method} to ${TTL_SH_REGISTRY_HOST} did not complete`,
-					{ cause, detail: { method: request.method } },
+					{
+						cause: cause instanceof Error ? cause : new Error(String(cause)),
+						detail: { method: request.method },
+					},
 				);
 			} finally {
 				clearTimeout(timer);

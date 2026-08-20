@@ -33,5 +33,4 @@ Each follow-up PR should take **one file (or a tight cluster) to zero
 findings**, then stop. Do not edit a file that still has other anti-slop
 errors.
 
-Cleared: entire `scripts/` tree (layer 3). This layer: root `test/`
-competitor-docs and designer-council files.
+Cleared: entire `scripts/` tree (layer 3). Layer 4: root test files. Layer 5 (in progress): SAFETY-clean example files committed; remaining mixed example files follow.

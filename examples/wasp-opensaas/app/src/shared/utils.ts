@@ -61,5 +61,6 @@ export function throttleWithTrailingInvocation(
     isTrailingInvocationPending = false;
   };
 
+  // SAFETY: assertion to `throttledFn as typeof throttledFn & { cancel: () => void }` is required at this boundary.
   return throttledFn as typeof throttledFn & { cancel: () => void };
 }

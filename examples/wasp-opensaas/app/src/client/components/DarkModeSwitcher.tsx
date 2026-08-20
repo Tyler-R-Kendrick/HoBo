@@ -19,7 +19,7 @@ export function DarkModeSwitcher() {
           aria-label="Toggle dark mode"
           checked={!isInLightMode}
           onChange={() => {
-            if (typeof setColorMode === "function") {
+            if ((Object.prototype.toString.call(setColorMode) === "[object Function]" || Object.prototype.toString.call(setColorMode) === "[object AsyncFunction]")) {
               setColorMode(isInLightMode ? "dark" : "light");
             }
           }}

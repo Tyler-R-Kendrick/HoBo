@@ -18,13 +18,13 @@ import { stripeEnvSchema } from "./payment/stripe/env";
 // to also remove its env schema import and `...schema.shape` below.
 export const serverEnvValidationSchema = defineEnvValidationSchema(
   z.object({
-    ...authEnvSchema.shape,
-    ...stripeEnvSchema.shape,
-    ...lemonSqueezyEnvSchema.shape,
-    ...polarEnvSchema.shape,
-    ...demoAiAppEnvSchema.shape,
-    ...fileUploadEnvSchema.shape,
-    ...plausibleEnvSchema.shape,
-    ...googleAnalyticsEnvSchema.shape,
+    ...authEnvSchema["shape"],
+    ...stripeEnvSchema["shape"],
+    ...lemonSqueezyEnvSchema["shape"],
+    ...polarEnvSchema["shape"],
+    ...demoAiAppEnvSchema["shape"],
+    ...fileUploadEnvSchema["shape"],
+    ...plausibleEnvSchema["shape"],
+    ...googleAnalyticsEnvSchema["shape"],
   }),
 );

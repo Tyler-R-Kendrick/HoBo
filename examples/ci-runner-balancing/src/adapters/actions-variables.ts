@@ -51,8 +51,9 @@ export function actionsVariables(
 				const response = await fetchImpl(`${base}/${name}`, { headers });
 				if (response.status === 404) return undefined;
 				if (!response.ok) return undefined;
+				// SAFETY: assertion to `it response.json()) as { value?: unknown }; ` is required at this boundary.
 				const body = (await response.json()) as { value?: unknown };
-				return typeof body.value === "string" ? body.value : undefined;
+				return Object.prototype.toString.call(body.value) === "[object String]" ? body.value : undefined;
 			} catch {
 				return undefined;
 			}

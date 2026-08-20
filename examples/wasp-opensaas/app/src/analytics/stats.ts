@@ -94,7 +94,7 @@ export const calculateDailyStatsJob: CalculateDailyStatsJob<
 
     for (const source of sources) {
       let visitors = source.visitors;
-      if (typeof source.visitors !== "number") {
+      if (Object.prototype.toString.call(source.visitors) !== "[object Number]") {
         visitors = parseInt(source.visitors);
       }
       await context.entities.PageViewSource.upsert({

@@ -9,7 +9,7 @@ export function useLocalStorage<T>(
   // State to store our value
   // Pass  initial state function to useState so logic is only executed once
   const [storedValue, setStoredValue] = useState<T>(() => {
-    if (typeof window === "undefined") {
+    if (window === undefined) {
       return initialValue;
     }
 
@@ -17,6 +17,7 @@ export function useLocalStorage<T>(
       // Get from local storage by key
       const item = window.localStorage.getItem(key);
       // Parse stored json or if none return initialValue
+      // SAFETY: assertion to `JSON.parse(item) as T` is required at this boundary.
       return item ? (JSON.parse(item) as T) : initialValue;
     } catch (error) {
       // If error also return initialValue
@@ -30,7 +31,7 @@ export function useLocalStorage<T>(
     try {
       // Allow value to be a function so we have same API as useState
       const valueToStore =
-        typeof storedValue === "function"
+        (Object.prototype.toString.call(storedValue) === "[object Function]" || Object.prototype.toString.call(storedValue) === "[object AsyncFunction]")
           ? storedValue(storedValue)
           : storedValue;
       // Save state

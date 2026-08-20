@@ -4,7 +4,6 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseRoutingPlan } from "@hobo/core";
 import { describe, it } from "vitest";
-
 import {
 	assertDriverProgram,
 	LAKEBED_DRIVER,
@@ -14,6 +13,7 @@ import {
 	realizeResourcePlans,
 	realizeTrafficRoutingPlan,
 } from "../src/index.js";
+import { isJsonObject } from "../src/json.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const pact = JSON.parse(
@@ -52,8 +52,11 @@ describe("realize: ResourcePlan -> lakebed-deploy DRIVER program (ADR-0127)", ()
 		assertDriverProgram(driver);
 		assert.equal(driver.resources.length, 3);
 		const api = driver.resources.find((r) => r.name === "api");
+		assert.ok(api);
+		const bindings = api.inputs.bindings;
+		assert.ok(Array.isArray(bindings));
 		assert.deepEqual(
-			(api?.inputs.bindings as Array<{ ref: string }>).map((b) => b.ref),
+			bindings.map((b) => (isJsonObject(b) ? b.ref : undefined)),
 			["${resources.state.outputs.binding}"],
 		);
 	});
@@ -128,9 +131,8 @@ describe("realize: ResourcePlan -> lakebed-deploy DRIVER program (ADR-0127)", ()
 		assertDriverProgram(driver);
 		assert.equal(driver.resources[0]?.type, "lakebed:traffic-route");
 		assert.equal(driver.capsule, "capsule/shop");
-		assert.equal(
-			(driver.resources[0]?.inputs as { planId: string }).planId,
-			"plan:checkout",
-		);
+		const route = driver.resources[0];
+		assert.ok(route);
+		assert.equal(route.inputs.planId, "plan:checkout");
 	});
 });

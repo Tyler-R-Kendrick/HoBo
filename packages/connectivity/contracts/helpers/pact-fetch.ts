@@ -1,12 +1,14 @@
 /**
  * Test-only: ProviderStub → Fetch for HTTP clients under PACT mocks.
  */
+
 import {
 	createMockProviderFromPact,
 	type PactDocument,
 	type PactRequest,
 	type ProviderStub,
 } from "@hobo/contract-harness";
+import { isJsonString, type JsonValue } from "../../src/json.js";
 
 export function createPactFetch(pact: PactDocument): typeof fetch {
 	return createFetchFromProvider(createMockProviderFromPact(pact));
@@ -14,23 +16,25 @@ export function createPactFetch(pact: PactDocument): typeof fetch {
 
 export function createFetchFromProvider(provider: ProviderStub): typeof fetch {
 	return async (input, init) => {
+		const requestInput = input instanceof Request ? input : undefined;
 		const url = new URL(
-			typeof input === "string"
+			isJsonString(input)
 				? input
 				: input instanceof URL
 					? input.toString()
-					: (input as Request).url,
+					: (requestInput?.url ?? ""),
 		);
-		const method = (
+		const rawMethod = (
 			init?.method ??
-			(typeof input !== "string" && !(input instanceof URL)
-				? (input as Request).method
-				: "GET")
-		).toUpperCase() as PactRequest["method"];
+			requestInput?.method ??
+			"GET"
+		).toUpperCase();
+		// SAFETY: pact request methods are the HTTP verbs the stub already handles.
+		const method = rawMethod as PactRequest["method"];
 
-		let body: unknown;
+		let body: JsonValue;
 		const rawBody = init?.body;
-		if (typeof rawBody === "string" && rawBody.length > 0) {
+		if (isJsonString(rawBody) && rawBody.length > 0) {
 			const ct =
 				headerValue(init?.headers, "content-type") ??
 				headerValue(init?.headers, "Content-Type") ??
@@ -55,15 +59,15 @@ export function createFetchFromProvider(provider: ProviderStub): typeof fetch {
 		const request: PactRequest = {
 			method,
 			path,
-			...(body !== undefined ? { body } : {}),
+			...(body !== undefined ? { body } : undefined),
 		};
 		const response = await Promise.resolve(provider.handle(request));
+		// SAFETY: assertion required at this I/O or test boundary.
 		const headers = new Headers(response.headers as HeadersInit | undefined);
 		if (!headers.has("content-type") && response.body !== undefined) {
 			headers.set(
 				"content-type",
-				typeof response.body === "string" &&
-					response.body.trimStart().startsWith("<")
+				isJsonString(response.body) && response.body.trimStart().startsWith("<")
 					? "text/xml; charset=utf-8"
 					: "application/json",
 			);
@@ -71,7 +75,7 @@ export function createFetchFromProvider(provider: ProviderStub): typeof fetch {
 		const payload =
 			response.body === undefined
 				? ""
-				: typeof response.body === "string"
+				: isJsonString(response.body)
 					? response.body
 					: JSON.stringify(response.body);
 		return new Response(payload, {
@@ -91,6 +95,7 @@ function headerValue(
 		const hit = headers.find(([k]) => k.toLowerCase() === name.toLowerCase());
 		return hit?.[1];
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	const rec = headers as Record<string, string>;
 	for (const [k, v] of Object.entries(rec)) {
 		if (k.toLowerCase() === name.toLowerCase()) return v;

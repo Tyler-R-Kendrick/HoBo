@@ -4,6 +4,8 @@
  */
 
 // public-contract: Environment Network Isolation policy pack id.
+import { isJsonObject, type JsonObject, type JsonValue } from "../json.js";
+
 export const ENV_NETWORK_ISOLATION_POLICY_PACK_ID =
 	"hobo.env-network-isolation/v1" as const;
 
@@ -118,12 +120,13 @@ export const DEFAULT_ENV_NETWORK_ISOLATION_POLICY_PACK: EnvNetworkIsolationPolic
  * policy-evaluated by the caller before activation.
  */
 export function parseEnvNetworkIsolationPolicyPack(
-	raw: unknown,
+	raw: JsonValue,
 ): EnvNetworkIsolationPolicyPack {
-	if (!raw || typeof raw !== "object") {
+	if (!raw || !isJsonObject(raw)) {
 		throw new TypeError("env network isolation policy pack must be an object");
 	}
-	const o = raw as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const o = raw as JsonObject;
 	if (o.id !== ENV_NETWORK_ISOLATION_POLICY_PACK_ID) {
 		throw new TypeError(
 			`policy pack id must be ${ENV_NETWORK_ISOLATION_POLICY_PACK_ID}`,

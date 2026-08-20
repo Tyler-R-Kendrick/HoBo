@@ -136,10 +136,12 @@ export function createSecretlessConnector(
 				expiresAt: expireAt(t),
 				hasCredential: true as const,
 				isolation,
-				...(input.tenantId !== undefined ? { tenantId: input.tenantId } : {}),
+				...(input.tenantId !== undefined
+					? { tenantId: input.tenantId }
+					: undefined),
 				...(input.workloadId !== undefined
 					? { workloadId: input.workloadId }
-					: {}),
+					: undefined),
 			});
 			leases.set(leaseId, {
 				lease,
@@ -244,9 +246,15 @@ export function openPostgresSecretlessLease(
 		protocol: "postgres",
 		targetRef: input.targetRef,
 		credentialMaterial: input.credentialMaterial,
-		...(input.namedHost !== undefined ? { namedHost: input.namedHost } : {}),
-		...(input.tenantId !== undefined ? { tenantId: input.tenantId } : {}),
-		...(input.workloadId !== undefined ? { workloadId: input.workloadId } : {}),
+		...(input.namedHost !== undefined
+			? { namedHost: input.namedHost }
+			: undefined),
+		...(input.tenantId !== undefined
+			? { tenantId: input.tenantId }
+			: undefined),
+		...(input.workloadId !== undefined
+			? { workloadId: input.workloadId }
+			: undefined),
 	});
 }
 
@@ -263,8 +271,12 @@ export function openMysqlSecretlessLease(
 		protocol: "mysql",
 		targetRef: input.targetRef,
 		credentialMaterial: input.credentialMaterial,
-		...(input.namedHost !== undefined ? { namedHost: input.namedHost } : {}),
-		...(input.tenantId !== undefined ? { tenantId: input.tenantId } : {}),
+		...(input.namedHost !== undefined
+			? { namedHost: input.namedHost }
+			: undefined),
+		...(input.tenantId !== undefined
+			? { tenantId: input.tenantId }
+			: undefined),
 	});
 }
 
@@ -281,7 +293,11 @@ export function openRedisSecretlessLease(
 		protocol: "redis",
 		targetRef: input.targetRef,
 		credentialMaterial: input.credentialMaterial,
-		...(input.namedHost !== undefined ? { namedHost: input.namedHost } : {}),
-		...(input.tenantId !== undefined ? { tenantId: input.tenantId } : {}),
+		...(input.namedHost !== undefined
+			? { namedHost: input.namedHost }
+			: undefined),
+		...(input.tenantId !== undefined
+			? { tenantId: input.tenantId }
+			: undefined),
 	});
 }

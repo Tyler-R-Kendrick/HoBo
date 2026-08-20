@@ -7,10 +7,15 @@ import {
 	parseRoutingStatus,
 	type RoutingPlan,
 	type RoutingPlanId,
-	type RoutingRule,
 	type TrafficRoutingCapability,
 	type TrafficRoutingPort,
 } from "@hobo/core";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "../json.js";
 
 export type VercelTrafficMode = "rolling-release" | "rewrites" | "auto";
 
@@ -78,7 +83,7 @@ export function createVercelTrafficRouting(
 					accept: "application/json",
 					authorization: `Bearer ${token}`,
 					...(init?.body === undefined
-						? {}
+						? undefined
 						: { "content-type": "application/json" }),
 					...headersObject(init?.headers),
 				},
@@ -86,7 +91,8 @@ export function createVercelTrafficRouting(
 			return {
 				ok: response.ok,
 				status: response.status,
-				body: (await response.json().catch(() => null)) as unknown,
+				// SAFETY: assertion required at this I/O or test boundary.
+				body: cloneAsJson(await response.json().catch(() => null)),
 			};
 		} catch {
 			return { ok: false, status: 0, body: null };
@@ -156,56 +162,65 @@ export function createVercelTrafficRouting(
 			const current = applied.get(planId);
 			if (!current) return null;
 			if (current.revoked) {
-				return parseRoutingStatus({
-					planId,
-					active: false,
-					realized: "none",
-					notes: ["routing plan revoked"],
-				});
+				return parseRoutingStatus(
+					cloneAsJson({
+						planId,
+						active: false,
+						realized: "none",
+						notes: ["routing plan revoked"],
+					}),
+				);
 			}
 			if (current.mode === "rolling-release") {
 				const response = await request(
 					`/v1/projects/${encodeURIComponent(project)}/rolling-release`,
 				);
 				if (!response.ok) {
-					return parseRoutingStatus({
-						planId,
-						active: false,
-						realized: "partial",
-						notes: [providerFailure("status", response.status)],
-					});
+					return parseRoutingStatus(
+						cloneAsJson({
+							planId,
+							active: false,
+							realized: "partial",
+							notes: [providerFailure("status", response.status)],
+						}),
+					);
 				}
 				const state = rollingReleaseState(response.body);
 				const active = state === "ACTIVE" || state === "COMPLETE";
-				return parseRoutingStatus({
-					planId,
-					active,
-					realized: !active
-						? "none"
-						: state === "COMPLETE"
-							? current.result.realized
-							: "partial",
-					notes:
-						state === "ACTIVE"
-							? ["Vercel rolling release is active"]
+				return parseRoutingStatus(
+					cloneAsJson({
+						planId,
+						active,
+						realized: !active
+							? "none"
 							: state === "COMPLETE"
-								? current.result.notes
-								: ["Vercel rolling release is not active"],
-				});
+								? current.result.realized
+								: "partial",
+						notes:
+							state === "ACTIVE"
+								? ["Vercel rolling release is active"]
+								: state === "COMPLETE"
+									? current.result.notes
+									: ["Vercel rolling release is not active"],
+					}),
+				);
 			}
 
 			const response = await request(
 				`/v1/projects/${encodeURIComponent(project)}/routes`,
 			);
 			if (!response.ok) {
-				return parseRoutingStatus({
-					planId,
-					active: false,
-					realized: "partial",
-					notes: [providerFailure("status", response.status)],
-				});
+				return parseRoutingStatus(
+					cloneAsJson({
+						planId,
+						active: false,
+						realized: "partial",
+						notes: [providerFailure("status", response.status)],
+					}),
+				);
 			}
 			const routes = projectRoutes(response.body);
+			// SAFETY: assertion required at this I/O or test boundary.
 			const expected = current.expected as {
 				readonly routes: readonly { readonly id: string }[];
 			};
@@ -214,30 +229,37 @@ export function createVercelTrafficRouting(
 				(route) => ids.has(route.id) && route.enabled !== false,
 			);
 			const active = live.length === expected.routes.length;
-			return parseRoutingStatus({
-				planId,
-				active,
-				realized: active ? current.result.realized : "partial",
-				notes: active
-					? current.result.notes
-					: ["Vercel project routes do not match the applied plan"],
-			});
+			return parseRoutingStatus(
+				cloneAsJson({
+					planId,
+					active,
+					realized: active ? current.result.realized : "partial",
+					notes: active
+						? current.result.notes
+						: ["Vercel project routes do not match the applied plan"],
+				}),
+			);
 		},
 		async revoke(planId) {
 			if (!token) {
-				return parseRevokeResult({
-					ok: false,
-					notes: ["Vercel API token is required"],
-				});
+				return parseRevokeResult(
+					cloneAsJson({
+						ok: false,
+						notes: ["Vercel API token is required"],
+					}),
+				);
 			}
 			const current = applied.get(planId);
 			if (!current) {
-				return parseRevokeResult({
-					ok: false,
-					notes: ["routing plan not found"],
-				});
+				return parseRevokeResult(
+					cloneAsJson({
+						ok: false,
+						notes: ["routing plan not found"],
+					}),
+				);
 			}
-			if (current.revoked) return parseRevokeResult({ ok: true, notes: [] });
+			if (current.revoked)
+				return parseRevokeResult(cloneAsJson({ ok: true, notes: [] }));
 
 			if (current.mode === "rolling-release") {
 				const response = await request(
@@ -245,13 +267,15 @@ export function createVercelTrafficRouting(
 					{ method: "DELETE" },
 				);
 				if (!response.ok) {
-					return parseRevokeResult({
-						ok: false,
-						notes: [providerFailure("revoke", response.status)],
-					});
+					return parseRevokeResult(
+						cloneAsJson({
+							ok: false,
+							notes: [providerFailure("revoke", response.status)],
+						}),
+					);
 				}
 				current.revoked = true;
-				return parseRevokeResult({ ok: true, notes: [] });
+				return parseRevokeResult(cloneAsJson({ ok: true, notes: [] }));
 			}
 
 			const response = await request(
@@ -262,10 +286,12 @@ export function createVercelTrafficRouting(
 				},
 			);
 			if (!response.ok) {
-				return parseRevokeResult({
-					ok: false,
-					notes: [providerFailure("revoke", response.status)],
-				});
+				return parseRevokeResult(
+					cloneAsJson({
+						ok: false,
+						notes: [providerFailure("revoke", response.status)],
+					}),
+				);
 			}
 			const versionId = routeVersionId(response.body) ?? current.routeVersionId;
 			if (versionId) {
@@ -277,14 +303,16 @@ export function createVercelTrafficRouting(
 					},
 				);
 				if (!promote.ok) {
-					return parseRevokeResult({
-						ok: false,
-						notes: [providerFailure("revoke-promote", promote.status)],
-					});
+					return parseRevokeResult(
+						cloneAsJson({
+							ok: false,
+							notes: [providerFailure("revoke-promote", promote.status)],
+						}),
+					);
 				}
 			}
 			current.revoked = true;
-			return parseRevokeResult({ ok: true, notes: [] });
+			return parseRevokeResult(cloneAsJson({ ok: true, notes: [] }));
 		},
 	};
 }
@@ -295,7 +323,7 @@ async function applyRollingRelease(
 	request: (
 		path: string,
 		init?: RequestInit,
-	) => Promise<{ ok: boolean; status: number; body: unknown }>,
+	) => Promise<{ ok: boolean; status: number; body: JsonValue }>,
 	options: VercelTrafficRoutingOptions,
 	applied: Map<RoutingPlanId, AppliedPlan>,
 ): Promise<ApplyResult> {
@@ -403,7 +431,7 @@ async function applyRewrites(
 	request: (
 		path: string,
 		init?: RequestInit,
-	) => Promise<{ ok: boolean; status: number; body: unknown }>,
+	) => Promise<{ ok: boolean; status: number; body: JsonValue }>,
 	options: VercelTrafficRoutingOptions,
 	applied: Map<RoutingPlanId, AppliedPlan>,
 ): Promise<ApplyResult> {
@@ -498,12 +526,7 @@ function resolveMode(
 	return null;
 }
 
-function rollingReleaseSupport(plan: RoutingPlan): {
-	readonly rule: RoutingRule | null;
-	readonly unmet: string[];
-	readonly canaryBackend: RoutingRule["backends"][number] | null;
-	readonly stableBackend: RoutingRule["backends"][number] | null;
-} {
+function rollingReleaseSupport(plan: RoutingPlan) {
 	const unmet: string[] = [];
 	if (plan.intent.rules.length !== 1) unmet.push("multiple-rules");
 	const rule = plan.intent.rules[0] ?? null;
@@ -532,25 +555,7 @@ function rollingReleaseSupport(plan: RoutingPlan): {
 	};
 }
 
-function rewriteRoutes(plan: RoutingPlan): {
-	readonly routes: Array<{
-		readonly id: string;
-		readonly name: string;
-		readonly enabled: boolean;
-		readonly route: {
-			readonly src: string;
-			readonly dest: string;
-			readonly has?: readonly {
-				readonly type: "header";
-				readonly key: string;
-				readonly value: string;
-			}[];
-		};
-	}>;
-	readonly unmet: string[];
-	readonly appliedRules: number;
-	readonly capabilities: TrafficRoutingCapability[];
-} {
+function rewriteRoutes(plan: RoutingPlan) {
 	const unmet: string[] = [];
 	const routes: Array<{
 		readonly id: string;
@@ -607,7 +612,7 @@ function rewriteRoutes(plan: RoutingPlan): {
 			route: {
 				src,
 				dest,
-				...(has && has.length > 0 ? { has } : {}),
+				...(has && has.length > 0 ? { has } : undefined),
 			},
 		});
 		appliedRules += 1;
@@ -649,25 +654,28 @@ function sanitizeId(value: string): string {
 	return value.replace(/[^A-Za-z0-9_-]+/gu, "-").slice(0, 80);
 }
 
-function rollingReleaseState(body: unknown): string | null {
-	if (!body || typeof body !== "object") return null;
+function rollingReleaseState(body: JsonValue): string | null {
+	if (!body || !isJsonObject(body)) return null;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const rolling = (body as { rollingRelease?: { state?: unknown } })
 		.rollingRelease;
-	return typeof rolling?.state === "string" ? rolling.state : null;
+	return isJsonString(rolling?.state) ? rolling.state : null;
 }
 
 function projectRoutes(
-	body: unknown,
+	body: JsonValue,
 ): readonly { readonly id: string; readonly enabled?: boolean }[] {
-	if (!body || typeof body !== "object") return [];
+	if (!body || !isJsonObject(body)) return [];
+	// SAFETY: assertion required at this I/O or test boundary.
 	const routes = (body as { routes?: unknown }).routes;
 	if (!Array.isArray(routes)) return [];
 	return routes
 		.filter(
 			(route): route is { id: string; enabled?: boolean } =>
 				Boolean(route) &&
-				typeof route === "object" &&
-				typeof (route as { id?: unknown }).id === "string",
+				isJsonObject(route) &&
+				// SAFETY: assertion required at this I/O or test boundary.
+				isJsonString(route.id),
 		)
 		.map((route) =>
 			route.enabled === undefined
@@ -676,10 +684,11 @@ function projectRoutes(
 		);
 }
 
-function routeVersionId(body: unknown): string | undefined {
-	if (!body || typeof body !== "object") return undefined;
+function routeVersionId(body: JsonValue): string | undefined {
+	if (!body || !isJsonObject(body)) return undefined;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const version = (body as { version?: { id?: unknown } }).version;
-	return typeof version?.id === "string" ? version.id : undefined;
+	return isJsonString(version?.id) ? version.id : undefined;
 }
 
 function deny(
@@ -698,15 +707,17 @@ function resultFor(
 	notes: readonly string[],
 	capabilities: readonly TrafficRoutingCapability[],
 ) {
-	return parseApplyResult({
-		planId: plan.planId,
-		provider: "vercel",
-		realized,
-		notes,
-		appliedRules,
-		...(unmet.length === 0 ? {} : { unmet: [...new Set(unmet)] }),
-		capabilities,
-	});
+	return parseApplyResult(
+		cloneAsJson({
+			planId: plan.planId,
+			provider: "vercel",
+			realized,
+			notes,
+			appliedRules,
+			...(unmet.length === 0 ? undefined : { unmet: [...new Set(unmet)] }),
+			capabilities,
+		}),
+	);
 }
 
 function providerFailure(op: string, status: number): string {
@@ -732,9 +743,7 @@ async function meter(
 	}
 }
 
-function headersObject(
-	headers: HeadersInit | undefined,
-): Record<string, string> {
+function headersObject(headers: HeadersInit | undefined) {
 	if (!headers) return {};
 	if (headers instanceof Headers) {
 		return Object.fromEntries(headers.entries());

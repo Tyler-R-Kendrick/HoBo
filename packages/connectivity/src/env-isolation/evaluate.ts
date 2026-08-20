@@ -2,7 +2,9 @@
  * Shared env-isolation evaluation used by TagAcl and rego-lite paths.
  * Fail closed; network membership is a signal only.
  */
+
 import type { PolicyRequest } from "@hobo/core";
+import { isJsonString } from "../json.js";
 import { verifyElevatedAccessCapability } from "./elevated-capability.js";
 import type { BreakGlassService, CrossEnvGrantStore } from "./grants.js";
 import type { EnvMembershipService } from "./membership.js";
@@ -240,10 +242,9 @@ export function evaluateEnvIsolation(
 	}
 
 	// Context may carry elevated token / grant on request.context
-	const ctxElevated =
-		typeof request.context?.elevatedToken === "string"
-			? request.context.elevatedToken
-			: undefined;
+	const ctxElevated = isJsonString(request.context?.elevatedToken)
+		? request.context.elevatedToken
+		: undefined;
 	if (ctxElevated && resourceClass && !ctx.elevatedToken) {
 		const audience = `${resourceClass}-access`;
 		const verified = verifyElevatedAccessCapability({

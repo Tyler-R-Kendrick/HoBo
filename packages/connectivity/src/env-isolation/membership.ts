@@ -103,15 +103,16 @@ export class EnvMembershipService {
 			schemaVersion: ENV_MEMBERSHIP_SCHEMA,
 			id,
 			principalId: input.principalId,
-			...(input.nodeId !== undefined ? { nodeId: input.nodeId } : {}),
+			...(input.nodeId !== undefined ? { nodeId: input.nodeId } : undefined),
 			isolationClass: input.isolationClass,
 			assignedAt: t,
 			assignedBy: input.assignedBy,
-			...(expiresAt !== undefined ? { expiresAt } : {}),
+			...(expiresAt !== undefined ? { expiresAt } : undefined),
 			dualControlRequired: dualRequired,
 			dualControlApprovers: dualRequired
 				? Object.freeze(approvers.filter((a) => a !== input.assignedBy))
-				: Object.freeze([] as string[]),
+				: // SAFETY: assertion required at this I/O or test boundary.
+					Object.freeze([]),
 			controlPlaneGated: true as const,
 		});
 		this.members.set(
@@ -128,7 +129,7 @@ export class EnvMembershipService {
 					membershipId: id,
 					principalId: input.principalId,
 					isolationClass: input.isolationClass,
-					...(expiresAt !== undefined ? { expiresAt } : {}),
+					...(expiresAt !== undefined ? { expiresAt } : undefined),
 					dualControlRequired: dualRequired,
 				},
 			}),

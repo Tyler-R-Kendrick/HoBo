@@ -4,6 +4,8 @@
  */
 
 // public-contract: environment network isolation class labels.
+import { isJsonString } from "../json.js";
+
 export const ISOLATION_CLASSES = Object.freeze([
 	"local-dev",
 	"preview",
@@ -51,21 +53,22 @@ export function parseIsolationClass(
 	input: string | readonly string[] | undefined | null,
 ): IsolationClass | null {
 	if (input === undefined || input === null) return null;
-	if (typeof input === "string") {
-		const raw = input.startsWith(ENV_TAG_PREFIX)
-			? input.slice(ENV_TAG_PREFIX.length)
-			: input;
-		const key = raw.trim().toLowerCase();
-		return ALIASES[key] ?? null;
-	}
-	for (const tag of input) {
-		if (typeof tag !== "string") continue;
-		if (tag.startsWith(ENV_TAG_PREFIX)) {
-			const parsed = parseIsolationClass(tag);
-			if (parsed) return parsed;
+	if (Array.isArray(input)) {
+		for (const tag of input) {
+			if (!isJsonString(tag)) continue;
+			if (tag.startsWith(ENV_TAG_PREFIX)) {
+				const parsed = parseIsolationClass(tag);
+				if (parsed) return parsed;
+			}
 		}
+		return null;
 	}
-	return null;
+	const text = `${input}`;
+	const raw = text.startsWith(ENV_TAG_PREFIX)
+		? text.slice(ENV_TAG_PREFIX.length)
+		: text;
+	const key = raw.trim().toLowerCase();
+	return ALIASES[key] ?? null;
 }
 
 export function isolationClassTag(

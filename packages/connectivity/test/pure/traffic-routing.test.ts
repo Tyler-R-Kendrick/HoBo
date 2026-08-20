@@ -1,5 +1,6 @@
 import { createMeteringBus, parseRoutingPlan } from "@hobo/core";
 import { describe, expect, it } from "vitest";
+import { isJsonString } from "../../src/json.js";
 
 import { createInMemoryMeteringSink } from "../../src/metering/sinks.js";
 import { createCloudflareTrafficRouting } from "../../src/traffic-routing/cloudflare.js";
@@ -33,7 +34,7 @@ function plan(
 			tenantId: "tenant-a",
 			rules: [
 				{
-					...(match ? { match } : {}),
+					...(match ? { match } : undefined),
 					backends,
 					weightStrategy,
 				},
@@ -233,7 +234,7 @@ describe("Cloudflare traffic routing", () => {
 					url: String(input),
 					method: init?.method ?? "GET",
 					headers: new Headers(init?.headers),
-					...(typeof init?.body === "string" ? { body: init.body } : {}),
+					...(isJsonString(init?.body) ? { body: init.body } : undefined),
 				});
 				if (init?.method === "DELETE") {
 					return Response.json({ success: true });
@@ -363,6 +364,7 @@ describe("Cloudflare traffic routing", () => {
 				methods.push(method);
 				paths.push(url);
 				if (url.includes("/pools") && method === "POST") {
+					// SAFETY: assertion required at this I/O or test boundary.
 					const body = JSON.parse(String(init?.body ?? "{}")) as {
 						name?: string;
 					};

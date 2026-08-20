@@ -132,7 +132,7 @@ async function meter(
 				effect: decision.effect,
 				action: request.action,
 				engineId: TAG_ACL_POLICY_ENGINE_ID,
-				...(extra ?? {}),
+				...extra,
 			},
 		}),
 	);

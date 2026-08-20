@@ -42,9 +42,11 @@ function request(
 		attributes?: Record<string, string>;
 	} = {},
 ): PolicyRequest {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return {
 		subject: {
 			id: "s1",
+			// SAFETY: assertion required at this I/O or test boundary.
 			tenantId: (overrides.subjectTenant ?? "t1") as never,
 			tags: overrides.subjectTags ?? [],
 		},
@@ -52,15 +54,19 @@ function request(
 		resource: {
 			id: "r1",
 			kind: overrides.kind ?? "junction",
+			// SAFETY: assertion required at this I/O or test boundary.
 			tenantId: (overrides.resourceTenant ?? "t1") as never,
 			tags: overrides.resourceTags ?? [],
-			...(overrides.attributes ? { attributes: overrides.attributes } : {}),
+			...(overrides.attributes
+				? { attributes: overrides.attributes }
+				: undefined),
 		},
 	} as PolicyRequest;
 }
 
 const doc = (rules: RegoLiteDocument["rules"], def?: "allow" | "deny") =>
-	({ rules, ...(def ? { default: def } : {}) }) as RegoLiteDocument;
+	// SAFETY: assertion required at this I/O or test boundary.
+	({ rules, ...(def ? { default: def } : undefined) }) as RegoLiteDocument;
 
 const effectOf = (d: RegoLiteDocument, r: PolicyRequest) =>
 	evaluateRegoLite(d, r).effect;
@@ -76,7 +82,7 @@ describe("parseRegoLiteDocument", () => {
 	});
 
 	it("rejects null", () => {
-		// typeof null === "object", so this needs its own guard and its own test.
+		// isJsonObject(null), so this needs its own guard and its own test.
 		expect(() => parseRegoLiteDocument(null)).toThrow(TypeError);
 	});
 

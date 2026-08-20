@@ -39,26 +39,24 @@ export function synthesizeTryRuntimeFromDeclared(
 }
 
 function actionForMethod(methodName: string): RuntimeAction {
-	const known: Record<string, RuntimeAction> = {
-		greet: "greet",
-		health: "health",
-		read: "read",
-		increment: "increment",
-		reset: "reset",
-		list: "list",
-		create: "create",
-		delete: "delete",
-		toggle: "toggle",
-		enqueue: "enqueue",
-		drain: "drain",
-	};
-	const action = known[methodName];
-	if (!action) {
-		throw new TypeError(
-			`Cannot synthesize try-runtime action for method ${methodName}`,
-		);
+	switch (methodName) {
+		case "greet":
+		case "health":
+		case "read":
+		case "increment":
+		case "reset":
+		case "list":
+		case "create":
+		case "delete":
+		case "toggle":
+		case "enqueue":
+		case "drain":
+			return methodName;
+		default:
+			throw new TypeError(
+				`Cannot synthesize try-runtime action for method ${methodName}`,
+			);
 	}
-	return action;
 }
 
 function kebab(value: string): string {

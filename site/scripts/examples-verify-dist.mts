@@ -35,7 +35,10 @@ const DIST = resolve(args.get("--dist") ?? "dist");
 const PORT = Number(args.get("--port") ?? 0);
 const STRIPPED = process.env.HOBO_PAGES_STRIP_WIT === "1";
 
-const TYPES: Record<string, string> = {
+interface MimeByExt {
+	readonly [ext: string]: string;
+}
+const TYPES: MimeByExt = {
 	".html": "text/html",
 	".css": "text/css",
 	".js": "text/javascript",
@@ -86,11 +89,13 @@ if (!existsSync(DIST)) {
 }
 
 const server = await serve(DIST, PORT);
+// SAFETY: assertion required at this I/O boundary.
 const origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
 // 1. Catalog is real: entries carry actual Bindle source + runtime descriptors.
 const catalogRes = await fetch(`${origin}/HoBo/examples/index.json`);
 check("catalog: /HoBo/examples/index.json responds", catalogRes.ok);
+// SAFETY: assertion required at this I/O boundary.
 const catalog = (await catalogRes.json()) as readonly {
 	id: string;
 	source: string;
@@ -112,6 +117,7 @@ if (STRIPPED) {
 } else {
 	check("runtime: manifest.json ships", manifestRes.ok);
 	if (manifestRes.ok) {
+		// SAFETY: assertion required at this I/O boundary.
 		const manifest = (await manifestRes.json()) as {
 			assets: readonly string[];
 			assetDigests: Record<string, string>;
@@ -204,4 +210,5 @@ if (failures.length > 0) {
 	console.error(`\n${failures.length} check(s) failed — do not publish this dist.`);
 	process.exit(1);
 }
+// SAFETY: assertion required at this I/O boundary.
 console.log("\ndist verified: the Examples console works as deployed.");

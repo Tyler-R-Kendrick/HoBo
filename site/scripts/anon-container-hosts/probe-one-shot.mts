@@ -6,6 +6,7 @@
  *   HOBO_DEBUG_RUN_ID=probe-1 node --import tsx site/scripts/anon-container-hosts/probe-one-shot.mts
  *   HOBO_ANON_PROBE=openpouch|clawdship|zerodeploy|all (default: all)
  */
+import { type JsonObject } from "../../src/lib/json-inspect.js";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -20,7 +21,7 @@ const LOG_URL =
 function debugLog(
 	hypothesisId: string,
 	message: string,
-	data: Record<string, unknown>,
+	data: JsonObject,
 ): void {
 	// #region agent log
 	fetch(LOG_URL, {
@@ -87,9 +88,9 @@ CMD ["npm", "start"]
 
 async function main(): Promise<void> {
 	const which = (process.env.HOBO_ANON_PROBE ?? "all").toLowerCase();
-	const targets = which === "all"
-		? (["openpouch", "clawdship", "zerodeploy"] as const)
-		: ([which] as readonly string[]);
+	const allTargets = ["openpouch", "clawdship", "zerodeploy"] as const;
+	const targets: readonly string[] =
+		which === "all" ? allTargets : [which];
 
 	debugLog("H0", "probe start", { targets: [...targets] });
 	const workDir = await stageTinyNode();

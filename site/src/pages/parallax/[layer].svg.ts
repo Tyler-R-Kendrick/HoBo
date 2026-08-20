@@ -8,6 +8,7 @@ import { paint, THEMES, TRAIL_LAYERS } from "../../lib/trail-art";
 
 const tiles: ReadonlyMap<string, string> = new Map(
 	TRAIL_LAYERS.flatMap((layer) =>
+		// SAFETY: THEMES is a const key map; Object.keys preserves those keys.
 		(Object.keys(THEMES) as Array<keyof typeof THEMES>).map(
 			(theme) => [`${layer.key}-${theme}`, paint(layer.svg, theme)] as const,
 		),

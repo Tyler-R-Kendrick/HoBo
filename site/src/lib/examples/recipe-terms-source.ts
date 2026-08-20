@@ -67,7 +67,7 @@ function unique(values: readonly string[]): readonly string[] {
 export function termsFor(recipe: SolutionRecipe): RecipeTerm {
 	const deadlines = recipe.placements
 		.map((placement) => placement.claim.deadlineMsFromStart)
-		.filter((value): value is number => typeof value === "number");
+		.filter((value): value is number => Number.isFinite(value));
 
 	return {
 		recipeId: recipe.id,

@@ -17,6 +17,11 @@ import {
 	type BrowserStationInvokeRequest,
 	type BrowserStationInvokeResponse,
 } from "./guest-source.js";
+import type { JsonValue } from "../../json-inspect.js";
+
+type GuestModule = {
+	invoke(request: BrowserStationInvokeRequest): BrowserStationInvokeResponse;
+};
 
 const counterRuntime = {
 	schemaVersion: "hobo.try-runtime/v1" as const,
@@ -41,7 +46,10 @@ const counterRuntime = {
 	],
 };
 
-function manifest(overrides: Record<string, unknown> = {}) {
+function manifest(
+	overrides: { readonly [key: string]: JsonValue | undefined } = {},
+) {
+	// SAFETY: test fixture is a JSON manifest with field overrides at this boundary.
 	return parseBrowserRuntimeManifest({
 		schemaVersion: "hobo.browser-wit-runtime/v1",
 		entryModule: "station.js",
@@ -56,7 +64,7 @@ function manifest(overrides: Record<string, unknown> = {}) {
 			"station.component.wasm": `sha256:${"a".repeat(64)}`,
 		},
 		...overrides,
-	});
+	} as JsonValue);
 }
 
 describe("browser WIT Environment Station", () => {
@@ -64,11 +72,10 @@ describe("browser WIT Environment Station", () => {
 		const source = buildBrowserStationGuestSource([
 			{ id: "hello-counter", runtime: counterRuntime },
 		]);
+		// SAFETY: data-URL guest module exports invoke() from the generated source.
 		const guest = (await import(
 			`data:text/javascript,${encodeURIComponent(source)}`
-		)) as {
-			invoke(request: BrowserStationInvokeRequest): BrowserStationInvokeResponse;
-		};
+		)) as GuestModule;
 
 		const response = guest.invoke({
 						exampleId: "hello-counter",
@@ -100,12 +107,11 @@ describe("browser WIT Environment Station", () => {
 				handlersSource: hello.handlersSource,
 			},
 		]);
+		// SAFETY: data-URL guest module exports invoke() from the generated source.
 		const guest = (await import(
 			`data:text/javascript,${encodeURIComponent(source)}`
-		)) as {
-			invoke(request: BrowserStationInvokeRequest): BrowserStationInvokeResponse;
-		};
-		const invoke = (body: unknown) => {
+		)) as GuestModule;
+		const invoke = (body: JsonValue) => {
 			const response = guest.invoke({
 				exampleId: "hello-world",
 				stationId: "station:browser:test",
@@ -139,12 +145,11 @@ describe("browser WIT Environment Station", () => {
 				handlersSource: todos.handlersSource,
 			},
 		]);
+		// SAFETY: data-URL guest module exports invoke() from the generated source.
 		const guest = (await import(
 			`data:text/javascript,${encodeURIComponent(source)}`
-		)) as {
-			invoke(request: BrowserStationInvokeRequest): BrowserStationInvokeResponse;
-		};
-		const invoke = (method: string, path: string, body?: unknown) => {
+		)) as GuestModule;
+		const invoke = (method: string, path: string, body?: JsonValue) => {
 			const response = guest.invoke({
 				exampleId: "todo-api",
 				stationId: "station:browser:test",
@@ -201,12 +206,11 @@ describe("browser WIT Environment Station", () => {
 				},
 			},
 		]);
+		// SAFETY: data-URL guest module exports invoke() from the generated source.
 		const guest = (await import(
 			`data:text/javascript,${encodeURIComponent(source)}`
-		)) as {
-			invoke(request: BrowserStationInvokeRequest): BrowserStationInvokeResponse;
-		};
-		const invoke = (method: string, path: string, body?: unknown) =>
+		)) as GuestModule;
+		const invoke = (method: string, path: string, body?: JsonValue) =>
 			((response) => ({ status: response.status, body: JSON.parse(response.bodyJson) }))(
 				guest.invoke({
 					exampleId: "kv-notes",
@@ -378,6 +382,7 @@ describe("browser WIT Environment Station", () => {
 
 describe("browserWitRuntimeAvailable", () => {
 	it("is false when the Pages host 404s the manifest", async () => {
+		// SAFETY: fetch double returns a 404 Response for the missing manifest.
 		const fetchImpl = (async () => new Response("missing", { status: 404 })) as typeof fetch;
 		await expect(
 			browserWitRuntimeAvailable("https://example.test/HoBo/examples/runtime", fetchImpl),
@@ -385,6 +390,7 @@ describe("browserWitRuntimeAvailable", () => {
 	});
 
 	it("is true when the manifest is published", async () => {
+		// SAFETY: fetch double returns a published manifest Response.
 		const fetchImpl = (async () => new Response("{}", { status: 200 })) as typeof fetch;
 		await expect(
 			browserWitRuntimeAvailable("/HoBo/examples/runtime", fetchImpl),

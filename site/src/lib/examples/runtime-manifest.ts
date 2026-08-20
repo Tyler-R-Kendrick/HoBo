@@ -1,3 +1,10 @@
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "../json-inspect.js";
+
 const DIGEST = /^sha256:[a-f0-9]{64}$/u;
 const ASSET = /^[a-z0-9][a-z0-9._-]*$/u;
 
@@ -8,80 +15,134 @@ export interface BrowserRuntimeManifest {
 	readonly sourceDigest: `sha256:${string}`;
 	readonly buildDigest: `sha256:${string}`;
 	readonly witWorld: "hobo:try/browser-station@0.1.0";
-	readonly toolchain: {
-		readonly jco: string;
-		readonly componentizeJs: string;
-		readonly esbuild: string;
-	};
+	readonly toolchain: BrowserRuntimeToolchain;
 	readonly assets: readonly string[];
-	readonly assetDigests: Readonly<Record<string, `sha256:${string}`>>;
+	readonly assetDigests: Sha256DigestMap;
+}
+
+export interface BrowserRuntimeToolchain {
+	readonly jco: string;
+	readonly componentizeJs: string;
+	readonly esbuild: string;
+}
+
+export interface Sha256DigestMap {
+	readonly [asset: string]: `sha256:${string}`;
+}
+
+interface MutableSha256DigestMap {
+	[asset: string]: `sha256:${string}`;
 }
 
 export function parseBrowserRuntimeManifest(
-	value: unknown,
+	value: JsonValue,
 ): BrowserRuntimeManifest {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
+	if (!isJsonObject(value)) {
 		throw new TypeError("Browser WIT runtime manifest must be an object");
 	}
-	const input = value as Record<string, unknown>;
-	if (input.schemaVersion !== "hobo.browser-wit-runtime/v1") {
+	if (value.schemaVersion !== "hobo.browser-wit-runtime/v1") {
 		throw new TypeError("Browser WIT runtime schemaVersion is invalid");
 	}
 	if (
-		input.witWorld !== "hobo:try/browser-station@0.1.0" ||
-		typeof input.entryModule !== "string" ||
-		!input.entryModule.endsWith(".js") ||
-		!ASSET.test(input.entryModule) ||
-		!isDigest(input.componentDigest) ||
-		!isDigest(input.sourceDigest) ||
-		!isDigest(input.buildDigest)
+		value.witWorld !== "hobo:try/browser-station@0.1.0" ||
+		!isJsonString(value.entryModule) ||
+		!value.entryModule.endsWith(".js") ||
+		!ASSET.test(value.entryModule) ||
+		!isDigest(value.componentDigest) ||
+		!isDigest(value.sourceDigest) ||
+		!isDigest(value.buildDigest)
 	) {
 		throw new TypeError("Browser WIT runtime provenance is invalid");
 	}
+	const assets = parseAssets(value.assets, value.entryModule);
+	const assetDigests = parseAssetDigests(
+		value.assetDigests,
+		assets,
+		value.componentDigest,
+	);
+	const toolchain = parseToolchain(value.toolchain);
+	return {
+		schemaVersion: "hobo.browser-wit-runtime/v1",
+		entryModule: value.entryModule,
+		componentDigest: value.componentDigest,
+		sourceDigest: value.sourceDigest,
+		buildDigest: value.buildDigest,
+		witWorld: "hobo:try/browser-station@0.1.0",
+		toolchain,
+		assets,
+		assetDigests,
+	};
+}
+
+function parseAssets(
+	value: JsonValue | undefined,
+	entryModule: string,
+): string[] {
+	if (!isJsonArray(value) || value.length === 0) {
+		throw new TypeError("Browser WIT runtime assets are invalid");
+	}
+	const assets: string[] = [];
+	for (const asset of value) {
+		if (!isJsonString(asset) || !ASSET.test(asset)) {
+			throw new TypeError("Browser WIT runtime assets are invalid");
+		}
+		assets.push(asset);
+	}
 	if (
-		!Array.isArray(input.assets) ||
-		input.assets.length === 0 ||
-		input.assets.some((asset) => typeof asset !== "string" || !ASSET.test(asset)) ||
-		new Set(input.assets).size !== input.assets.length ||
-		!input.assets.includes(input.entryModule) ||
-		!input.assets.includes("station.component.wasm")
+		new Set(assets).size !== assets.length ||
+		!assets.includes(entryModule) ||
+		!assets.includes("station.component.wasm")
 	) {
 		throw new TypeError("Browser WIT runtime assets are invalid");
 	}
-	if (
-		!input.assetDigests ||
-		typeof input.assetDigests !== "object" ||
-		Array.isArray(input.assetDigests)
-	) {
-		throw new TypeError("Browser WIT runtime assetDigests are invalid");
-	}
-	const assets = input.assets as string[];
-	const assetDigests = input.assetDigests as Record<string, unknown>;
-	if (
-		Object.keys(assetDigests).sort().join("\0") !== assets.toSorted().join("\0") ||
-		assets.some((asset) => !isDigest(assetDigests[asset])) ||
-		assetDigests["station.component.wasm"] !== input.componentDigest
-	) {
-		throw new TypeError("Browser WIT runtime assetDigests are invalid");
-	}
-	if (
-		!input.toolchain ||
-		typeof input.toolchain !== "object" ||
-		Array.isArray(input.toolchain)
-	) {
-		throw new TypeError("Browser WIT runtime toolchain is invalid");
-	}
-	const toolchain = input.toolchain as Record<string, unknown>;
-	if (
-		typeof toolchain.jco !== "string" ||
-		typeof toolchain.componentizeJs !== "string" ||
-		typeof toolchain.esbuild !== "string"
-	) {
-		throw new TypeError("Browser WIT runtime toolchain is invalid");
-	}
-	return input as unknown as BrowserRuntimeManifest;
+	return assets;
 }
 
-function isDigest(value: unknown): value is `sha256:${string}` {
-	return typeof value === "string" && DIGEST.test(value);
+function parseAssetDigests(
+	value: JsonValue | undefined,
+	assets: readonly string[],
+	componentDigest: `sha256:${string}`,
+): Sha256DigestMap {
+	if (!isJsonObject(value)) {
+		throw new TypeError("Browser WIT runtime assetDigests are invalid");
+	}
+	if (Object.keys(value).sort().join("\0") !== assets.toSorted().join("\0")) {
+		throw new TypeError("Browser WIT runtime assetDigests are invalid");
+	}
+	const assetDigests: MutableSha256DigestMap = {};
+	for (const asset of assets) {
+		const digest = value[asset];
+		if (!isDigest(digest)) {
+			throw new TypeError("Browser WIT runtime assetDigests are invalid");
+		}
+		assetDigests[asset] = digest;
+	}
+	if (assetDigests["station.component.wasm"] !== componentDigest) {
+		throw new TypeError("Browser WIT runtime assetDigests are invalid");
+	}
+	return assetDigests;
+}
+
+function parseToolchain(
+	value: JsonValue | undefined,
+): BrowserRuntimeToolchain {
+	if (!isJsonObject(value)) {
+		throw new TypeError("Browser WIT runtime toolchain is invalid");
+	}
+	if (
+		!isJsonString(value.jco) ||
+		!isJsonString(value.componentizeJs) ||
+		!isJsonString(value.esbuild)
+	) {
+		throw new TypeError("Browser WIT runtime toolchain is invalid");
+	}
+	return {
+		jco: value.jco,
+		componentizeJs: value.componentizeJs,
+		esbuild: value.esbuild,
+	};
+}
+
+function isDigest(value: JsonValue | undefined): value is `sha256:${string}` {
+	return isJsonString(value) && DIGEST.test(value);
 }

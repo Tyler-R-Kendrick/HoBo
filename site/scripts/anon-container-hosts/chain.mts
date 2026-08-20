@@ -2,6 +2,7 @@
  * Ordered anon container/host chain — one-shot per host + cooldown.
  * Never loops. Never re-probes blacklisted dead APIs (Instanode).
  */
+import type { DebugFields } from "../../src/lib/json-inspect.js";
 import {
 	isRateLimitMessage,
 	readHostCooldown,
@@ -59,7 +60,7 @@ function debugLog(
 	hypothesisId: string,
 	location: string,
 	message: string,
-	data: Record<string, unknown>,
+	data: DebugFields,
 ): void {
 	// #region agent log
 	fetch("http://127.0.0.1:7655/ingest/eac23247-0462-43c4-8e6e-14b2a6cecba6", {

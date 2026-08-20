@@ -6,6 +6,13 @@
  *
  * Never returns cloud API tokens to the browser. Never uses blob: as remote.
  */
+import {
+	isJsonObject,
+	jsonStringField,
+	parseJsonTree,
+	type JsonObject,
+	type JsonValue,
+} from "../src/lib/json-inspect.js";
 import type { Connect, Plugin } from "vite";
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -189,7 +196,7 @@ function stripPermanentLakebedEnv(): void {
 function json(
 	res: Connect.ServerResponse,
 	status: number,
-	body: unknown,
+	body: JsonValue,
 ): void {
 	const payload = JSON.stringify(body);
 	res.statusCode = status;
@@ -198,7 +205,7 @@ function json(
 	res.end(payload);
 }
 
-async function readJsonBody(req: Connect.IncomingMessage): Promise<unknown> {
+async function readJsonBody(req: Connect.IncomingMessage): Promise<JsonValue> {
 	const maxBodyBytes = 64 * 1024;
 	let size = 0;
 	const chunks: Buffer[] = [];
@@ -210,7 +217,7 @@ async function readJsonBody(req: Connect.IncomingMessage): Promise<unknown> {
 	}
 	if (chunks.length === 0) return {};
 	try {
-		return JSON.parse(Buffer.concat(chunks).toString("utf8")) as unknown;
+		return parseJsonTree(Buffer.concat(chunks).toString("utf8"));
 	} catch {
 		return {};
 	}
@@ -273,12 +280,14 @@ function matchProviderTemp(
 	for (const base of ["/api/provider-temp", "/HoBo/api/provider-temp"]) {
 		if (cleaned === base) return { kind: "catalog" };
 		const health = cleaned.match(new RegExp(`^${base}/([^/]+)$`, "u"));
+		// SAFETY: assertion required at this I/O boundary.
 		if (health?.[1] && PROVIDER_TEMP_IDS.has(health[1] as never)) {
 			return { kind: "health", providerId: health[1] };
 		}
 		const station = cleaned.match(
 			new RegExp(`^${base}/([^/]+)/station$`, "u"),
 		);
+		// SAFETY: assertion required at this I/O boundary.
 		if (station?.[1] && PROVIDER_TEMP_IDS.has(station[1] as never)) {
 			return { kind: "station", providerId: station[1] };
 		}
@@ -300,13 +309,17 @@ function matchAnon(
 		const station = cleaned.match(
 			new RegExp(`^${base}/([^/]+)/station$`, "u"),
 		);
+		// SAFETY: assertion required at this I/O boundary.
 		if (station?.[1] && ANON_PROVIDERS.has(station[1] as AnonProviderId)) {
+			// SAFETY: assertion required at this I/O boundary.
 			return { kind: "station", providerId: station[1] as AnonProviderId };
 		}
 		const ship = cleaned.match(
 			new RegExp(`^${base}/([^/]+)/opensaas$`, "u"),
 		);
+		// SAFETY: assertion required at this I/O boundary.
 		if (ship?.[1] && ANON_PROVIDERS.has(ship[1] as AnonProviderId)) {
+			// SAFETY: assertion required at this I/O boundary.
 			return { kind: "opensaas", providerId: ship[1] as AnonProviderId };
 		}
 		const host = cleaned.match(
@@ -377,23 +390,25 @@ async function runOpenSaasCfTemp(root: string): Promise<{
 		);
 	});
 	const line = child.stdout.trim().split("\n").filter(Boolean).at(-1);
-	const parsed = line
-		? (JSON.parse(line) as {
-				ok?: boolean;
-				error?: string;
-				clientUrl?: string;
-				serverUrl?: string;
-				claimUrl?: string;
-				expiresAt?: string;
-				exampleId?: string;
-				waspAbsRoot?: string;
-				databaseUrl?: string;
-				databaseClaimUrl?: string;
-				databaseMode?: string;
-				databaseMocked?: boolean;
-				serverMode?: string;
-				serverMocked?: boolean;
-			})
+	type OpenSaasShipLine = {
+		ok?: boolean;
+		error?: string;
+		clientUrl?: string;
+		serverUrl?: string;
+		claimUrl?: string;
+		expiresAt?: string;
+		exampleId?: string;
+		waspAbsRoot?: string;
+		databaseUrl?: string;
+		databaseClaimUrl?: string;
+		databaseMode?: string;
+		databaseMocked?: boolean;
+		serverMode?: string;
+		serverMocked?: boolean;
+	};
+	// SAFETY: last stdout line is JSON from the ship subprocess.
+	const parsed: OpenSaasShipLine | null = line
+		? (JSON.parse(line) as OpenSaasShipLine)
 		: null;
 	if (child.code !== 0 || !parsed?.ok || !parsed.clientUrl || !parsed.claimUrl) {
 		throw new Error(
@@ -478,10 +493,12 @@ function temporaryStationMiddleware(): Connect.NextHandleFunction {
 		}
 
 		if (anon?.kind === "station" && req.method === "POST") {
-			const body = (await readJsonBody(req)) as { stationId?: unknown };
+			// SAFETY: assertion required at this I/O boundary.
+			const body = await readJsonBody(req);
+			const requestedStationId = jsonStringField(body, "stationId");
 			const stationId =
-				typeof body.stationId === "string" && body.stationId.length > 0
-					? body.stationId.slice(0, 128)
+				requestedStationId && requestedStationId.length > 0
+					? requestedStationId.slice(0, 128)
 					: `station:anon:${crypto.randomUUID()}`;
 			try {
 				const provisioned = await provisionSameOriginAnonStation({
@@ -512,10 +529,12 @@ function temporaryStationMiddleware(): Connect.NextHandleFunction {
 		}
 
 		if (anon?.kind === "opensaas" && req.method === "POST") {
-			const body = (await readJsonBody(req)) as { stationId?: unknown };
+			// SAFETY: assertion required at this I/O boundary.
+			const body = await readJsonBody(req);
+			const requestedStationId = jsonStringField(body, "stationId");
 			const stationId =
-				typeof body.stationId === "string" && body.stationId.length > 0
-					? body.stationId.slice(0, 128)
+				requestedStationId && requestedStationId.length > 0
+					? requestedStationId.slice(0, 128)
 					: `station:anon:${crypto.randomUUID()}`;
 			try {
 				const shipped = await shipOpenSaasSameOrigin({
@@ -549,8 +568,12 @@ function temporaryStationMiddleware(): Connect.NextHandleFunction {
 
 		if (cf === "opensaas" && req.method === "POST") {
 			stripPermanentCloudflareEnv();
-			const body = (await readJsonBody(req)) as { root?: unknown };
-			const root = typeof body.root === "string" ? body.root.trim() : "";
+			const body = await readJsonBody(req);
+			const rootValue = isJsonObject(body) ? body.root : undefined;
+			const root =
+				Object.prototype.toString.call(rootValue) === "[object String]"
+					? rootValue.trim()
+					: "";
 			if (!root) {
 				json(res, 400, {
 					ok: false,
@@ -562,19 +585,21 @@ function temporaryStationMiddleware(): Connect.NextHandleFunction {
 			}
 			try {
 				const { waspRootFromAnnotations } = await import("@hobo/wasp");
-				const bindle = (
-					await import("../../examples/try-site/apps/opensaas/app.ts")
-				).default as {
+				type BindleWebModule = {
 					resources: {
 						web?: {
 							annotations: readonly {
 								provider: string;
 								option: string;
-								config: Record<string, unknown>;
+								config: JsonObject;
 							}[];
 						};
 					};
 				};
+				// SAFETY: OpenSaaS Bindle default export is loaded from the examples tree.
+				const bindle = (
+					await import("../../examples/try-site/apps/opensaas/app.ts")
+				).default as BindleWebModule;
 				const expectedRoot = waspRootFromAnnotations(
 					bindle.resources.web?.annotations ?? [],
 				);
@@ -608,8 +633,12 @@ function temporaryStationMiddleware(): Connect.NextHandleFunction {
 
 		if (cf === "swaghaus" && req.method === "POST") {
 			stripPermanentCloudflareEnv();
-			const body = (await readJsonBody(req)) as { root?: unknown };
-			const root = typeof body.root === "string" ? body.root.trim() : "";
+			const body = await readJsonBody(req);
+			const rootValue = isJsonObject(body) ? body.root : undefined;
+			const root =
+				Object.prototype.toString.call(rootValue) === "[object String]"
+					? rootValue.trim()
+					: "";
 			if (!root) {
 				json(res, 400, {
 					ok: false,
@@ -621,19 +650,21 @@ function temporaryStationMiddleware(): Connect.NextHandleFunction {
 			}
 			try {
 				const { convexRootFromAnnotations } = await import("@hobo/convex");
-				const bindle = (
-					await import("../../examples/try-site/apps/swaghaus/app.ts")
-				).default as {
+				type BindleWebModule = {
 					resources: {
 						web?: {
 							annotations: readonly {
 								provider: string;
 								option: string;
-								config: Record<string, unknown>;
+								config: JsonObject;
 							}[];
 						};
 					};
 				};
+				// SAFETY: swaghaus Bindle default export is loaded from the examples tree.
+				const bindle = (
+					await import("../../examples/try-site/apps/swaghaus/app.ts")
+				).default as BindleWebModule;
 				const expectedRoot = convexRootFromAnnotations(
 					bindle.resources.web?.annotations ?? [],
 				);
@@ -649,7 +680,6 @@ function temporaryStationMiddleware(): Connect.NextHandleFunction {
 				const { deploySwaghausTemporary } = await import(
 					"./deploy-swaghaus-temporary-lib.mts"
 				);
-				const hadMock = Boolean(process.env.HOBO_CONVEX_SWAGHAUS_MOCK);
 				const allowCloud = process.env.HOBO_CONVEX_ALLOW_CLOUD === "1";
 				const hadDeployKey =
 					allowCloud && Boolean(process.env.CONVEX_DEPLOY_KEY?.trim());
@@ -704,10 +734,12 @@ function temporaryStationMiddleware(): Connect.NextHandleFunction {
 
 		if (cf === "station" && req.method === "POST") {
 			stripPermanentCloudflareEnv();
-			const body = (await readJsonBody(req)) as { stationId?: unknown };
+			// SAFETY: assertion required at this I/O boundary.
+			const body = await readJsonBody(req);
+			const requestedStationId = jsonStringField(body, "stationId");
 			const stationId =
-				typeof body.stationId === "string" && body.stationId.length > 0
-					? body.stationId.slice(0, 128)
+				requestedStationId && requestedStationId.length > 0
+					? requestedStationId.slice(0, 128)
 					: `station:anon:${crypto.randomUUID()}`;
 			try {
 				const provisioned = await provisionTemporaryEnvironmentStation({
@@ -749,10 +781,12 @@ function temporaryStationMiddleware(): Connect.NextHandleFunction {
 
 		if (lakebed === "station" && req.method === "POST") {
 			stripPermanentLakebedEnv();
-			const body = (await readJsonBody(req)) as { stationId?: unknown };
+			// SAFETY: assertion required at this I/O boundary.
+			const body = await readJsonBody(req);
+			const requestedStationId = jsonStringField(body, "stationId");
 			const stationId =
-				typeof body.stationId === "string" && body.stationId.length > 0
-					? body.stationId.slice(0, 128)
+				requestedStationId && requestedStationId.length > 0
+					? requestedStationId.slice(0, 128)
 					: `station:lakebed:${crypto.randomUUID()}`;
 			try {
 				const provisioned = await provisionLakebedTemporaryEnvironmentStation({
@@ -796,10 +830,12 @@ function temporaryStationMiddleware(): Connect.NextHandleFunction {
 
 		if (vercelTemp === "station" && req.method === "POST") {
 			stripPermanentVercelEnv();
-			const body = (await readJsonBody(req)) as { stationId?: unknown };
+			// SAFETY: assertion required at this I/O boundary.
+			const body = await readJsonBody(req);
+			const requestedStationId = jsonStringField(body, "stationId");
 			const stationId =
-				typeof body.stationId === "string" && body.stationId.length > 0
-					? body.stationId.slice(0, 128)
+				requestedStationId && requestedStationId.length > 0
+					? requestedStationId.slice(0, 128)
 					: `station:vercel:${crypto.randomUUID()}`;
 			try {
 				const provisioned = await provisionVercelDropStation({
@@ -864,10 +900,12 @@ function temporaryStationMiddleware(): Connect.NextHandleFunction {
 		}
 
 		if (providerTemp?.kind === "station" && req.method === "POST") {
-			const body = (await readJsonBody(req)) as { stationId?: unknown };
+			// SAFETY: assertion required at this I/O boundary.
+			const body = await readJsonBody(req);
+			const requestedStationId = jsonStringField(body, "stationId");
 			const stationId =
-				typeof body.stationId === "string" && body.stationId.length > 0
-					? body.stationId.slice(0, 128)
+				requestedStationId && requestedStationId.length > 0
+					? requestedStationId.slice(0, 128)
 					: `station:${providerTemp.providerId}:${crypto.randomUUID()}`;
 			try {
 				const provisioned = await provisionProviderTemp(

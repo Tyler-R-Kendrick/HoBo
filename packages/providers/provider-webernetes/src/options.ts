@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json.js";
+
 // public-contract: provider target accepted by authoring options.
 export const PROVIDER_TARGET = "webernetes";
 
@@ -6,12 +8,12 @@ export interface TypedOptionBlock {
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
-	options: Record<string, unknown>;
+	options: JsonObject;
 }
 
 export const webernetes = {
 	with: {
-		pod(options: Record<string, unknown> = {}): TypedOptionBlock {
+		pod(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock("compute", "pod", { runtime: "container" }, options);
 		},
 	},
@@ -20,8 +22,8 @@ export const webernetes = {
 function optionBlock(
 	port: string,
 	optionName: string,
-	defaults: Record<string, unknown>,
-	options: Record<string, unknown>,
+	defaults: JsonObject,
+	options: JsonObject,
 ): TypedOptionBlock {
 	return {
 		providerId: PROVIDER_TARGET,

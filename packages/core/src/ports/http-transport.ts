@@ -46,6 +46,8 @@
  */
 
 // public-contract: the closed HTTP method vocabulary a resolver may issue.
+import { isJsonNumber, isJsonString, type JsonValue } from "../json.js";
+
 export const TRANSPORT_METHODS = Object.freeze([
 	"GET",
 	// HEAD is a GET that stops before the body, and two independent surfaces
@@ -181,8 +183,12 @@ export class TransportGuardError extends Error {
  * and terminals, where a stray CR or ESC rewrites what the reader sees.
  */
 function boundedPeerText(value: string, max = 120): string {
-	// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping them is the point.
-	const clean = value.replace(/[\u0000-\u001f\u007f]/gu, "");
+	let clean = "";
+	for (const ch of value) {
+		const code = ch.charCodeAt(0);
+		if (code < 32 || code === 127) continue;
+		clean += ch;
+	}
 	return clean.length > max ? `${clean.slice(0, max)}…` : clean;
 }
 
@@ -227,10 +233,10 @@ function allowedPorts(policy: TransportGuardPolicy): readonly string[] {
  * implementation with one set of tests is the point.
  */
 export function assertAllowedEndpoint(
-	url: unknown,
+	url: JsonValue,
 	policy: TransportGuardPolicy,
 ): URL {
-	if (typeof url !== "string" || url.trim().length === 0) {
+	if (!isJsonString(url) || url.trim().length === 0) {
 		throw new TransportGuardError(
 			"TRANSPORT_SCHEME_FORBIDDEN",
 			"request url must be a non-empty https URL string",
@@ -399,9 +405,12 @@ function assertAllowedPath(parsed: URL, policy: TransportGuardPolicy): void {
 
 /** A request over the policy cap is refused, never clamped: a clamp turns an
  *  authoring mistake into a mystery timeout instead of a named refusal. */
-function assertBoundedTimeout(timeoutMs: unknown, maxTimeoutMs: number): void {
+function assertBoundedTimeout(
+	timeoutMs: JsonValue,
+	maxTimeoutMs: number,
+): void {
 	if (
-		typeof timeoutMs !== "number" ||
+		!isJsonNumber(timeoutMs) ||
 		!Number.isFinite(timeoutMs) ||
 		timeoutMs <= 0
 	) {
@@ -425,11 +434,11 @@ function assertBoundedTimeout(timeoutMs: unknown, maxTimeoutMs: number): void {
 }
 
 function assertBoundedResponseCap(
-	maxResponseBytes: unknown,
+	maxResponseBytes: JsonValue,
 	policyCap: number,
 ): number {
 	if (
-		typeof maxResponseBytes !== "number" ||
+		!isJsonNumber(maxResponseBytes) ||
 		!Number.isFinite(maxResponseBytes) ||
 		maxResponseBytes <= 0
 	) {

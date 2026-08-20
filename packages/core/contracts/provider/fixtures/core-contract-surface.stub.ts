@@ -3,16 +3,14 @@ import type {
 	PactResponse,
 	ProviderStub,
 } from "@hobo/contract-harness";
+import { isJsonObject } from "../../../src/json.js";
 
 export const coreContractSurfaceStub: ProviderStub = {
 	name: "CoreContractSurface",
 	handle(request: PactRequest): PactResponse {
-		const schemaVersion =
-			typeof request.body === "object" &&
-			request.body !== null &&
-			!Array.isArray(request.body)
-				? (request.body as Record<string, unknown>).schemaVersion
-				: undefined;
+		const schemaVersion = isJsonObject(request.body)
+			? request.body.schemaVersion
+			: undefined;
 
 		if (schemaVersion === "hobo.core/v0") {
 			return {

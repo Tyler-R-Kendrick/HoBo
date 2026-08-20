@@ -1,3 +1,4 @@
+import { isJsonString } from "../json.js";
 import type {
 	CapabilityDiagnostic,
 	CapabilityUsageResult,
@@ -55,7 +56,7 @@ export function inferCapabilityUsage({
 	sourceText: string;
 	fileName?: string;
 }): CapabilityUsageResult {
-	if (typeof sourceText !== "string") {
+	if (!isJsonString(sourceText)) {
 		throw new TypeError("sourceText must be a string");
 	}
 
@@ -87,7 +88,7 @@ export function inferCapabilityUsage({
 			resource: resourceId,
 			variable,
 			factory,
-			...(port !== undefined ? { port } : {}),
+			...(port !== undefined ? { port } : undefined),
 			component: COMPONENT_FACTORIES.has(factory),
 			declaredAllow: parseAllowList(allowText ?? ""),
 			operations: new Set<string>(),
@@ -144,7 +145,7 @@ export function inferCapabilityUsage({
 			Object.freeze({
 				resource: resource.resource,
 				factory: resource.factory,
-				...(resource.port !== undefined ? { port: resource.port } : {}),
+				...(resource.port !== undefined ? { port: resource.port } : undefined),
 				declaredAllow: Object.freeze([...resource.declaredAllow].sort()),
 				operations: Object.freeze([...resource.operations].sort()),
 			}),

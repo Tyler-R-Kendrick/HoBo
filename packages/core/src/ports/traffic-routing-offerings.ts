@@ -1,3 +1,4 @@
+import { cloneAsJson, isJsonString, type JsonValue } from "../json.js";
 import { deepFreeze, enumValue, expectObject } from "../parse-utils.js";
 import {
 	matchResourceOfferings,
@@ -120,20 +121,20 @@ export const DEFAULT_TRAFFIC_ROUTING_FALLBACKS: readonly TrafficRoutingOfferingI
 	];
 
 export function parseTrafficRoutingOfferingId(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "offeringId",
 ): TrafficRoutingOfferingId {
 	return enumValue(value, OFFERINGS, path, TrafficRoutingParseError);
 }
 
 export function parseTrafficRoutingOffering(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "offering",
 ): TrafficRoutingOffering {
 	const input = expectObject(value, path, TrafficRoutingParseError);
 	const features = Array.isArray(input.features)
 		? input.features.map((feature, index) => {
-				if (typeof feature !== "string" || feature.trim().length === 0) {
+				if (!isJsonString(feature) || feature.trim().length === 0) {
 					throw new TrafficRoutingParseError(
 						`${path}.features[${index}]`,
 						"non-empty string",
@@ -162,7 +163,7 @@ export function parseTrafficRoutingOffering(
 }
 
 export function parseTrafficRoutingProviderProfile(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "profile",
 ): TrafficRoutingProviderProfile {
 	const input = expectObject(value, path, TrafficRoutingParseError);
@@ -240,6 +241,6 @@ export function offering(
 	});
 }
 
-function fail(path: string, expected: string, received: unknown): never {
-	throw new TrafficRoutingParseError(path, expected, received);
+function fail<T>(path: string, expected: string, received: T): never {
+	throw new TrafficRoutingParseError(path, expected, cloneAsJson(received));
 }

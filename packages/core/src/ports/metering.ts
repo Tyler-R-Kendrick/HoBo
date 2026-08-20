@@ -71,7 +71,9 @@ export function createUsageEvent(input: {
 		quantity: input.quantity ?? 1,
 		unit: input.unit ?? "count",
 		timestamp: input.timestamp ?? new Date().toISOString(),
-		...(input.metadata !== undefined ? { metadata: input.metadata } : {}),
+		...(input.metadata !== undefined
+			? { metadata: input.metadata }
+			: undefined),
 	};
 }
 

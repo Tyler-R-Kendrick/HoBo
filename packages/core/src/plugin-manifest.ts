@@ -3,6 +3,7 @@ import {
 	type ExtensionPointId,
 	parseExtensionPointId,
 } from "./extension-registry.js";
+import { isJsonObject, type JsonObject, type JsonValue } from "./json.js";
 import {
 	assertNoExtra,
 	deepFreeze,
@@ -26,7 +27,7 @@ export class PluginManifestParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_PLUGIN_MANIFEST_PARSE", path, expected, received, message);
@@ -61,7 +62,9 @@ const MANIFEST_KEYS = ["schema", "entry", "extensions"] as const;
 const EXTENSION_KEYS = ["point", "export", "id"] as const;
 
 /** Parse a `hobo.plugin/v1` manifest object (the `hobo` package.json key). */
-export function parsePluginManifest(value: unknown): HoboPluginManifest {
+export function parsePluginManifest(
+	value: JsonValue | undefined,
+): HoboPluginManifest {
 	const source = expectObject(value, "hobo", PluginManifestParseError);
 	assertNoExtra(source, "hobo", MANIFEST_KEYS, PluginManifestParseError);
 	if (source.schema !== PLUGIN_MANIFEST_SCHEMA) {
@@ -112,7 +115,11 @@ export function parsePluginManifest(value: unknown): HoboPluginManifest {
 			record.id === undefined
 				? undefined
 				: nonEmptyString(record.id, `${field}.id`, PluginManifestParseError);
-		return { point, export: exportName, ...(id !== undefined ? { id } : {}) };
+		return {
+			point,
+			export: exportName,
+			...(id !== undefined ? { id } : undefined),
+		};
 	});
 
 	return deepFreeze({ schema: PLUGIN_MANIFEST_SCHEMA, entry, extensions });
@@ -130,7 +137,9 @@ export interface PluginPackageManifest {
  * distinct, detectable condition (`isPluginPackageJson`), not a parse error
  * with a confusing path.
  */
-export function parsePluginPackageJson(value: unknown): PluginPackageManifest {
+export function parsePluginPackageJson(
+	value: JsonValue | undefined,
+): PluginPackageManifest {
 	const source = expectObject(value, "package.json", PluginManifestParseError);
 	const packageName = nonEmptyString(
 		source.name,
@@ -152,11 +161,12 @@ export function parsePluginPackageJson(value: unknown): PluginPackageManifest {
 }
 
 /** True when the value looks like a package.json carrying a `hobo` key. */
-export function isPluginPackageJson(value: unknown): boolean {
+export function isPluginPackageJson(value: JsonValue | undefined): boolean {
 	return (
-		typeof value === "object" &&
+		isJsonObject(value) &&
 		value !== null &&
 		!Array.isArray(value) &&
-		(value as Record<string, unknown>).hobo !== undefined
+		// SAFETY: assertion required at this I/O or test boundary.
+		(value as JsonObject).hobo !== undefined
 	);
 }

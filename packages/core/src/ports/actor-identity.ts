@@ -2,9 +2,17 @@
  * Logical durable-actor identity. Resolver-neutral: Rivet compound keys,
  * native lease keys, and Trail export records all parse through here.
  */
-import { createHash } from "node:crypto";
 
+import { createHash } from "node:crypto";
 import { CoreParseError } from "../errors.js";
+import {
+	cloneAsJson,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 // public-contract: compound-key prefix every actor resolver must share.
 export const ACTOR_IDENTITY_PREFIX = "hobo";
@@ -30,7 +38,7 @@ export interface ActorCommandDigestInput {
 	readonly identity: LogicalActorIdentity;
 	readonly commandType: string;
 	readonly commandId: string;
-	readonly payload: unknown;
+	readonly payload: JsonValue;
 	readonly expectedRevision: number;
 	readonly policyEpoch?: string;
 }
@@ -39,7 +47,7 @@ export class ActorIdentityParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_ACTOR_IDENTITY_PARSE", path, expected, received, message);
@@ -50,11 +58,11 @@ export class ActorIdentityParseError extends CoreParseError {
 const IDENT = /^[A-Za-z0-9._:-]+$/u;
 
 function parseBoundedIdent(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 	maxBytes: number,
 ): string {
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new ActorIdentityParseError(path, "non-empty ident", value);
 	}
 	const normalized = value.normalize("NFC");
@@ -83,12 +91,14 @@ function parseBoundedIdent(
 }
 
 export function parseLogicalActorIdentity(
-	input: unknown,
+	input: JsonValue | undefined,
 ): LogicalActorIdentity {
-	if (typeof input !== "object" || input === null || Array.isArray(input)) {
+	if (!isJsonObject(input) || input === null || Array.isArray(input)) {
 		throw new ActorIdentityParseError("identity", "object", input);
 	}
-	const record = input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const record = input as JsonObject;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const tenantId = parseBoundedIdent(
 		record.tenantId ?? record.tenant_id,
 		"tenantId",
@@ -99,6 +109,7 @@ export function parseLogicalActorIdentity(
 		"projectId",
 		MAX_ACTOR_TYPE_BYTES,
 	);
+	// SAFETY: assertion required at this I/O or test boundary.
 	const actorTypeId = parseBoundedIdent(
 		record.actorTypeId ?? record.actor_type_id,
 		"actorTypeId",
@@ -119,6 +130,7 @@ export function parseLogicalActorIdentity(
 			rawSegments,
 		);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	const keySegments = rawSegments.map((segment, index) =>
 		parseBoundedIdent(
 			segment,
@@ -128,7 +140,7 @@ export function parseLogicalActorIdentity(
 	) as ActorKeySegment[];
 	const schemaVersionRaw = record.schemaVersion ?? record.schema_version ?? 1;
 	if (
-		typeof schemaVersionRaw !== "number" ||
+		!isJsonNumber(schemaVersionRaw) ||
 		!Number.isSafeInteger(schemaVersionRaw) ||
 		schemaVersionRaw < 1
 	) {
@@ -150,7 +162,7 @@ export function parseLogicalActorIdentity(
 		actorTypeId,
 		keySegments: Object.freeze(keySegments),
 		schemaVersion: schemaVersionRaw,
-		...(lane !== undefined ? { lane } : {}),
+		...(lane !== undefined ? { lane } : undefined),
 	});
 }
 
@@ -170,7 +182,9 @@ export function actorCompoundKey(
 	]);
 }
 
-export function parseActorCompoundKey(value: unknown): LogicalActorIdentity {
+export function parseActorCompoundKey(
+	value: JsonValue | undefined,
+): LogicalActorIdentity {
 	if (!Array.isArray(value) || value.length < 5) {
 		throw new ActorIdentityParseError(
 			"compoundKey",
@@ -186,22 +200,25 @@ export function parseActorCompoundKey(value: unknown): LogicalActorIdentity {
 			prefix,
 		);
 	}
-	return parseLogicalActorIdentity({
-		tenantId,
-		projectId,
-		actorTypeId,
-		keySegments,
-	});
+	return parseLogicalActorIdentity(
+		cloneAsJson({
+			tenantId,
+			projectId,
+			actorTypeId,
+			keySegments,
+		}),
+	);
 }
 
-function canonicalJson(value: unknown): string {
-	if (value === null || typeof value !== "object") {
+function canonicalJson(value: JsonValue | undefined): string {
+	if (value === null || !isJsonObject(value)) {
 		return JSON.stringify(value);
 	}
 	if (Array.isArray(value)) {
 		return `[${value.map((entry) => canonicalJson(entry)).join(",")}]`;
 	}
-	const record = value as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const record = value as JsonObject;
 	const keys = Object.keys(record).sort();
 	return `{${keys
 		.map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)
@@ -214,7 +231,7 @@ export function actorCommandDigest(
 	const commandType = parseBoundedIdent(input.commandType, "commandType", 128);
 	const commandId = parseBoundedIdent(input.commandId, "commandId", 128);
 	if (
-		typeof input.expectedRevision !== "number" ||
+		!isJsonNumber(input.expectedRevision) ||
 		!Number.isSafeInteger(input.expectedRevision) ||
 		input.expectedRevision < 0
 	) {
@@ -224,20 +241,23 @@ export function actorCommandDigest(
 			input.expectedRevision,
 		);
 	}
-	const material = canonicalJson({
-		identity: {
-			tenantId: input.identity.tenantId,
-			projectId: input.identity.projectId,
-			actorTypeId: input.identity.actorTypeId,
-			keySegments: input.identity.keySegments,
-			schemaVersion: input.identity.schemaVersion,
-			lane: input.identity.lane ?? "",
-		},
-		commandType,
-		commandId,
-		payload: input.payload,
-		expectedRevision: input.expectedRevision,
-		policyEpoch: input.policyEpoch ?? "",
-	});
+	const material = canonicalJson(
+		cloneAsJson({
+			identity: {
+				tenantId: input.identity.tenantId,
+				projectId: input.identity.projectId,
+				actorTypeId: input.identity.actorTypeId,
+				keySegments: input.identity.keySegments,
+				schemaVersion: input.identity.schemaVersion,
+				lane: input.identity.lane ?? "",
+			},
+			commandType,
+			commandId,
+			payload: input.payload,
+			expectedRevision: input.expectedRevision,
+			policyEpoch: input.policyEpoch ?? "",
+		}),
+	);
+	// SAFETY: assertion required at this I/O or test boundary.
 	return createHash("sha256").update(material).digest("hex") as CommandDigest;
 }

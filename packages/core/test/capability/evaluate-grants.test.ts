@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-
 import {
 	CapabilityParseError,
 	evaluateCapabilityGrants,
 	inferCapabilityUsage,
 	parseCapabilityGrant,
 } from "../../src/capability/index.js";
+import type { JsonObject } from "../../src/json.js";
 
 const sourceText = `
   import { api, kv } from "@hobo/bindles";
@@ -39,8 +39,8 @@ describe("evaluateCapabilityGrants", () => {
 
 		expect(result.ok).toBe(true);
 		expect(
-			(result.manifest as { resources: Record<string, unknown> }).resources
-				.todos,
+			// SAFETY: assertion required at this I/O or test boundary.
+			(result.manifest as { resources: JsonObject }).resources.todos,
 		).toEqual(
 			expect.objectContaining({
 				usage: {

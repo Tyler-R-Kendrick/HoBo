@@ -16,6 +16,14 @@
  */
 
 import { CoreParseError } from "../errors.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonBag,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 import { deepFreeze } from "../parse-utils.js";
 
 // public-contract: the schema id every realization engine reports back under.
@@ -40,7 +48,7 @@ export class RealizationResultParseError extends CoreParseError {
 		rejection: RealizationResultRejection,
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super(
@@ -67,7 +75,7 @@ export interface RealizedResourceRecord {
 	 */
 	readonly providerId: string;
 	/** Non-sensitive outputs of this resource; secret values never ride here. */
-	readonly outputs: Readonly<Record<string, unknown>>;
+	readonly outputs: JsonObject;
 }
 
 // domain-view: parsed derived type; wire form is SecretRefRecord in data-models/realization_result.proto.
@@ -80,7 +88,7 @@ export interface SecretRefRecord {
 export interface RealizationBindingRecord {
 	/** Binding key or `${resources.<name>.outputs.<key>}` placeholder. */
 	readonly key: string;
-	readonly value: unknown;
+	readonly value: JsonValue;
 }
 
 // domain-view: parsed derived type; wire form is RealizationResultRecord in data-models/realization_result.proto.
@@ -89,7 +97,7 @@ export interface RealizationResult {
 	/** Realized/adopted backing resources, sorted by name. */
 	readonly resources: readonly RealizedResourceRecord[];
 	/** Non-sensitive stack outputs for dependents, keys sorted. */
-	readonly values: Readonly<Record<string, unknown>>;
+	readonly values: JsonObject;
 	/** Resolved binding entries, sorted by key. */
 	readonly bindings: readonly RealizationBindingRecord[];
 	/** REFERENCES ONLY — the fail-closed ref-only rule, keys sorted. */
@@ -108,18 +116,24 @@ const SECRET_REF_PATTERN = /^[a-z][a-z0-9+.-]*:\/\/\S+$/i;
 const SECRET_KEY_PATTERN =
 	/secret|password|passwd|credential|token|api[_-]?key|private[_-]?key|access[_-]?key|(^|[._-])key([._-]|$)/i;
 
-export function isSecretRefString(value: unknown): value is string {
-	return typeof value === "string" && SECRET_REF_PATTERN.test(value);
+export function isSecretRefString(
+	value: JsonValue | undefined,
+): value is string {
+	return isJsonString(value) && SECRET_REF_PATTERN.test(value);
 }
 
 export function looksLikeSecretKey(key: string): boolean {
 	return SECRET_KEY_PATTERN.test(key);
 }
 
-function rejectRawSecret(path: string, key: string, value: unknown): void {
+function rejectRawSecret(
+	path: string,
+	key: string,
+	value: JsonValue | undefined,
+): void {
 	if (
 		looksLikeSecretKey(key) &&
-		typeof value === "string" &&
+		isJsonString(value) &&
 		!isSecretRefString(value)
 	) {
 		throw new RealizationResultParseError(
@@ -133,22 +147,23 @@ function rejectRawSecret(path: string, key: string, value: unknown): void {
 }
 
 function plainObject(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 	rejection: RealizationResultRejection,
-): Record<string, unknown> {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
+): JsonObject {
+	if (!value || !isJsonObject(value) || Array.isArray(value)) {
 		throw new RealizationResultParseError(rejection, path, "object", value);
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	return value as JsonObject;
 }
 
 function requireString(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 	rejection: RealizationResultRejection,
 ): string {
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new RealizationResultParseError(
 			rejection,
 			path,
@@ -159,11 +174,9 @@ function requireString(
 	return value;
 }
 
-function sortedRecord<T>(
-	entries: readonly (readonly [string, T])[],
-): Record<string, T> {
+function sortedRecord<T>(entries: readonly (readonly [string, T])[]) {
 	const sorted = [...entries].sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-	const record: Record<string, T> = {};
+	const record: { [key: string]: T } = {};
 	for (const [key, value] of sorted) {
 		record[key] = value;
 	}
@@ -171,7 +184,7 @@ function sortedRecord<T>(
 }
 
 function parseRealizedResource(
-	raw: unknown,
+	raw: JsonValue | undefined,
 	index: number,
 ): RealizedResourceRecord {
 	const path = `resources[${index}]`;
@@ -202,15 +215,13 @@ function parseRealizedResource(
 	};
 }
 
-function parseSecretRef(raw: unknown, path: string): SecretRefRecord {
-	const candidate =
-		typeof raw === "string"
-			? raw
-			: (
-					plainObject(raw, path, "invalid-secret-ref") as {
-						secretRef?: unknown;
-					}
-				).secretRef;
+function parseSecretRef(
+	raw: JsonValue | undefined,
+	path: string,
+): SecretRefRecord {
+	const candidate = isJsonString(raw)
+		? raw
+		: plainObject(raw, path, "invalid-secret-ref").secretRef;
 	if (!isSecretRefString(candidate)) {
 		throw new RealizationResultParseError(
 			"invalid-secret-ref",
@@ -228,7 +239,9 @@ function parseSecretRef(raw: unknown, path: string): SecretRefRecord {
  * sorted) or throws `RealizationResultParseError`. Fail-closed on secrets: a
  * raw secret-looking string value anywhere is a rejection, never a warning.
  */
-export function parseRealizationResult(raw: unknown): RealizationResult {
+export function parseRealizationResult(
+	raw: JsonValue | undefined,
+): RealizationResult {
 	const input = plainObject(raw, "realizationResult", "not-an-object");
 	if (input.schema !== REALIZATION_RESULT_SCHEMA) {
 		throw new RealizationResultParseError(
@@ -290,6 +303,14 @@ export function parseRealizationResult(raw: unknown): RealizationResult {
 			const record = plainObject(entry, path, "invalid-binding");
 			const key = requireString(record.key, `${path}.key`, "invalid-binding");
 			rejectRawSecret("bindings", key, record.value);
+			if (record.value === undefined) {
+				throw new RealizationResultParseError(
+					"invalid-binding",
+					`${path}.value`,
+					"JSON value",
+					record.value,
+				);
+			}
 			return { key, value: record.value };
 		},
 	);
@@ -342,8 +363,8 @@ export interface IacOutputsLike {
 			}
 		>
 	>;
-	readonly stackOutputs?: Readonly<Record<string, unknown>>;
-	readonly bindings?: Readonly<Record<string, unknown>>;
+	readonly stackOutputs?: JsonObject;
+	readonly bindings?: JsonObject;
 }
 
 /**
@@ -358,7 +379,7 @@ export function fromIacOutputs(
 	options: { readonly defaultResourceClass?: string } = {},
 ): RealizationResult {
 	const resourceEntries = plainObject(
-		outputs.resources,
+		cloneAsJson(outputs.resources),
 		"iacOutputs.resources",
 		"invalid-resource",
 	);
@@ -371,22 +392,17 @@ export function fromIacOutputs(
 		return {
 			name,
 			resourceClass:
-				typeof record.type === "string" && record.type.length > 0
+				isJsonString(record.type) && record.type.length > 0
 					? record.type
 					: (options.defaultResourceClass ?? "iac-resource"),
 			providerId:
-				typeof record.id === "string" && record.id.length > 0
-					? record.id
-					: name,
-			outputs:
-				record.outputs && typeof record.outputs === "object"
-					? (record.outputs as Record<string, unknown>)
-					: {},
+				isJsonString(record.id) && record.id.length > 0 ? record.id : name,
+			outputs: isJsonObject(record.outputs) ? record.outputs : {},
 		};
 	});
 
-	const secrets: Record<string, unknown> = {};
-	const values: Record<string, unknown> = {};
+	const secrets: JsonBag = {};
+	const values: JsonBag = {};
 	for (const [key, value] of Object.entries(outputs.stackOutputs ?? {})) {
 		if (looksLikeSecretKey(key) && isSecretRefString(value)) {
 			secrets[key] = { secretRef: value };
@@ -394,7 +410,7 @@ export function fromIacOutputs(
 			values[key] = value;
 		}
 	}
-	const bindings: { key: string; value: unknown }[] = [];
+	const bindings: { key: string; value: JsonValue }[] = [];
 	for (const [key, value] of Object.entries(outputs.bindings ?? {})) {
 		if (looksLikeSecretKey(key) && isSecretRefString(value)) {
 			secrets[key] = { secretRef: value };
@@ -403,20 +419,22 @@ export function fromIacOutputs(
 		}
 	}
 
-	return parseRealizationResult({
-		schema: REALIZATION_RESULT_SCHEMA,
-		resources,
-		values,
-		bindings,
-		secrets,
-	});
+	return parseRealizationResult(
+		cloneAsJson({
+			schema: REALIZATION_RESULT_SCHEMA,
+			resources,
+			values,
+			bindings,
+			secrets,
+		}),
+	);
 }
 
 /** Radius-semantics driver/recipe result: `{values, secrets, resources}`. */
 export interface RecipeOutputsLike {
-	readonly values?: Readonly<Record<string, unknown>>;
+	readonly values?: JsonObject;
 	/** Refs only — bare ref strings and `{secretRef}` / `{ref}` records. */
-	readonly secrets?: Readonly<Record<string, unknown>>;
+	readonly secrets?: JsonObject;
 	readonly resources?: readonly {
 		readonly name?: unknown;
 		readonly resourceClass?: unknown;
@@ -440,56 +458,53 @@ export function fromRecipeOutputs(
 ): RealizationResult {
 	const resources = (outputs.resources ?? []).map((entry, index) => {
 		const record = plainObject(
-			entry,
+			cloneAsJson(entry),
 			`recipeOutputs.resources[${index}]`,
 			"invalid-resource",
 		);
 		const name = record.name;
 		const resourceClass =
-			typeof record.resourceClass === "string" &&
-			record.resourceClass.length > 0
+			isJsonString(record.resourceClass) && record.resourceClass.length > 0
 				? record.resourceClass
-				: typeof record.type === "string" && record.type.length > 0
+				: isJsonString(record.type) && record.type.length > 0
 					? record.type
 					: (options.defaultResourceClass ?? "recipe-resource");
 		const providerId =
-			typeof record.providerId === "string" && record.providerId.length > 0
+			isJsonString(record.providerId) && record.providerId.length > 0
 				? record.providerId
-				: typeof record.id === "string" && record.id.length > 0
+				: isJsonString(record.id) && record.id.length > 0
 					? record.id
 					: name;
 		return {
 			name,
 			resourceClass,
 			providerId,
-			outputs:
-				record.outputs && typeof record.outputs === "object"
-					? (record.outputs as Record<string, unknown>)
-					: {},
+			outputs: isJsonObject(record.outputs) ? record.outputs : {},
 		};
 	});
 
-	const secrets: Record<string, unknown> = {};
+	const secrets: JsonBag = {};
 	for (const [name, ref] of Object.entries(outputs.secrets ?? {})) {
-		if (typeof ref === "string") {
+		if (isJsonString(ref)) {
 			secrets[name] = { secretRef: ref };
 		} else if (
-			ref &&
-			typeof ref === "object" &&
-			typeof (ref as { ref?: unknown }).ref === "string" &&
-			(ref as { secretRef?: unknown }).secretRef === undefined
+			isJsonObject(ref) &&
+			isJsonString(ref.ref) &&
+			ref.secretRef === undefined
 		) {
-			secrets[name] = { secretRef: (ref as { ref: string }).ref };
+			secrets[name] = { secretRef: ref.ref };
 		} else {
 			secrets[name] = ref;
 		}
 	}
 
-	return parseRealizationResult({
-		schema: REALIZATION_RESULT_SCHEMA,
-		resources,
-		values: outputs.values ?? {},
-		bindings: [],
-		secrets,
-	});
+	return parseRealizationResult(
+		cloneAsJson({
+			schema: REALIZATION_RESULT_SCHEMA,
+			resources,
+			values: outputs.values ?? {},
+			bindings: [],
+			secrets,
+		}),
+	);
 }

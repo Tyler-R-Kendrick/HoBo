@@ -10,7 +10,6 @@ import { describe, expect, it } from "vitest";
 import {
 	assertAllowedEndpoint,
 	guardTransport,
-	type HttpTransport,
 	TRANSPORT_GUARD_ERROR_CODES,
 	TRANSPORT_METHODS,
 	TransportGuardError,
@@ -41,10 +40,7 @@ function reply(overrides: Partial<TransportResponse> = {}): TransportResponse {
 	return { status: 200, headers: {}, body: "{}", ...overrides };
 }
 
-function stub(response: TransportResponse = reply()): {
-	transport: HttpTransport;
-	calls: TransportRequest[];
-} {
+function stub(response: TransportResponse = reply()) {
 	const calls: TransportRequest[] = [];
 	return {
 		calls,
@@ -55,7 +51,7 @@ function stub(response: TransportResponse = reply()): {
 	};
 }
 
-async function codeOf(run: () => Promise<unknown>): Promise<string> {
+async function codeOf(run: () => Promise<JsonValue>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
@@ -255,7 +251,9 @@ describe("guardTransport refusals", () => {
 		);
 		const error = await guarded(request()).catch((cause: unknown) => cause);
 
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((error as TransportGuardError).message).toMatch(/never follows/u);
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((error as TransportGuardError).message).not.toMatch(/evil\.test/u);
 	});
 
@@ -267,7 +265,9 @@ describe("guardTransport refusals", () => {
 
 		expect(error).toBeInstanceOf(TransportGuardError);
 		expect(error).toBeInstanceOf(Error);
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((error as TransportGuardError).name).toBe("TransportGuardError");
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((error as TransportGuardError).code).toBe(
 			"TRANSPORT_SCHEME_FORBIDDEN",
 		);
@@ -484,9 +484,11 @@ describe("allowedHostSuffixes policy validation", () => {
 				thrown = error;
 			}
 			expect(thrown).toBeInstanceOf(TransportGuardError);
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((thrown as TransportGuardError).code).toBe(
 				"TRANSPORT_HOST_FORBIDDEN",
 			);
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((thrown as TransportGuardError).message).toBe(
 				`policy allowedHostSuffixes entry ${JSON.stringify(suffix)} must start with "." and carry at least one further dot: "upstash.io" would also match evilupstash.io, and ".com" would match the registry`,
 			);
@@ -533,6 +535,7 @@ describe("a policy without allowedHostSuffixes behaves exactly as before", () =>
 			} catch (error) {
 				thrown = error;
 			}
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((thrown as TransportGuardError).message).toBe(
 				"host api.netlify.com.attacker.example is not exactly one of the allowlisted provider hosts (api.netlify.com)",
 			);

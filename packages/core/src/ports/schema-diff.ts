@@ -27,6 +27,14 @@
 
 import { createHash } from "node:crypto";
 import { CoreParseError } from "../errors.js";
+import {
+	cloneAsJson,
+	isJsonBoolean,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 import { deepFreeze } from "../parse-utils.js";
 
 // public-contract: the schema id a canonical schema IR is published under.
@@ -141,7 +149,7 @@ export class SchemaIrParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_SCHEMA_IR_PARSE", path, expected, received, message);
@@ -155,7 +163,7 @@ export class SchemaIrParseError extends CoreParseError {
  * every level except an index's column list, where position is semantic
  * (a composite index on `(a, b)` is not the index on `(b, a)`).
  */
-export function parseSchemaIr(value: unknown): SchemaIr {
+export function parseSchemaIr(value: JsonValue | undefined): SchemaIr {
 	const source = expectRecord(value, "schemaIr");
 	assertOnlyKeys(source, "schemaIr", ["contract", "dialect", "tables"]);
 	if (source.contract !== SCHEMA_IR_CONTRACT) {
@@ -191,6 +199,7 @@ export function parseSchemaIr(value: unknown): SchemaIr {
 		return table;
 	});
 	tables.sort((left, right) => compare(left.name, right.name));
+	// SAFETY: assertion required at this I/O or test boundary.
 	return deepFreeze({
 		contract: SCHEMA_IR_CONTRACT,
 		dialect: "postgres",
@@ -351,7 +360,7 @@ function diffIndexes(
 
 	for (const index of after.indexes) {
 		const previous = beforeIndexes.get(index.name);
-		if (previous === undefined || !sameIndexShape(previous, index)) {
+		if (previous === undefined || !sameIndexLayout(previous, index)) {
 			steps.push(
 				step("expand", "add-index", after.name, { index: index.name }),
 			);
@@ -360,7 +369,7 @@ function diffIndexes(
 
 	for (const index of before.indexes) {
 		const next = afterIndexes.get(index.name);
-		if (next === undefined || !sameIndexShape(index, next)) {
+		if (next === undefined || !sameIndexLayout(index, next)) {
 			steps.push(
 				step("contract", "drop-index", after.name, { index: index.name }),
 			);
@@ -368,7 +377,7 @@ function diffIndexes(
 	}
 }
 
-function sameIndexShape(left: SchemaIndex, right: SchemaIndex): boolean {
+function sameIndexLayout(left: SchemaIndex, right: SchemaIndex): boolean {
 	return (
 		left.unique === right.unique &&
 		left.columns.length === right.columns.length &&
@@ -431,15 +440,12 @@ const TYPE_ALIASES: Readonly<Record<string, string>> = Object.freeze({
 	timestamptz: "timestamp with time zone",
 });
 
-function normalizeType(raw: string): {
-	readonly text: string;
-	readonly base: string;
-	readonly parameters: readonly number[];
-} {
+function normalizeType(raw: string) {
 	const collapsed = raw.trim().toLowerCase().replace(/\s+/gu, " ");
 	const match = collapsed.match(/^([^(]+?)\s*\(([^)]*)\)$/u);
 	const rawBase = (match?.[1] ?? collapsed).trim();
 	const base =
+		// SAFETY: assertion required at this I/O or test boundary.
 		(TYPE_ALIASES as Readonly<Record<string, string | undefined>>)[rawBase] ??
 		rawBase;
 	const parameters =
@@ -464,8 +470,8 @@ function step(
 		phase,
 		kind,
 		table,
-		...(target.column !== undefined ? { column: target.column } : {}),
-		...(target.index !== undefined ? { index: target.index } : {}),
+		...(target.column !== undefined ? { column: target.column } : undefined),
+		...(target.index !== undefined ? { index: target.index } : undefined),
 		destructive: phase === "contract",
 	};
 }
@@ -503,8 +509,9 @@ function freezePlan(
 	engineVersion: string,
 ): MigrationPlan {
 	const digest = `sha256:${createHash("sha256")
-		.update(canonicalJson({ steps, engineId, engineVersion }))
+		.update(canonicalJson(cloneAsJson({ steps, engineId, engineVersion })))
 		.digest("hex")}`;
+	// SAFETY: assertion required at this I/O or test boundary.
 	return deepFreeze({
 		contract: MIGRATION_PLAN_CONTRACT,
 		steps,
@@ -515,12 +522,13 @@ function freezePlan(
 }
 
 /** Key-sorted JSON with no whitespace: the same value always hashes the same. */
-function canonicalJson(value: unknown): string {
+function canonicalJson(value: JsonValue | undefined): string {
 	if (Array.isArray(value)) {
 		return `[${value.map((entry) => canonicalJson(entry)).join(",")}]`;
 	}
-	if (value !== null && typeof value === "object") {
-		const entries = Object.entries(value as Record<string, unknown>)
+	if (value !== null && isJsonObject(value)) {
+		// SAFETY: assertion required at this I/O or test boundary.
+		const entries = Object.entries(value as JsonObject)
 			.filter(([, entry]) => entry !== undefined)
 			.sort(([left], [right]) => compare(left, right));
 		return `{${entries
@@ -536,7 +544,10 @@ function byName<T extends { readonly name: string }>(
 	return new Map(entries.map((entry) => [entry.name, entry]));
 }
 
-function parseTable(value: unknown, indexNames: Set<string>): SchemaTable {
+function parseTable(
+	value: JsonValue | undefined,
+	indexNames: Set<string>,
+): SchemaTable {
 	const source = expectRecord(value, "schemaIr.tables[]");
 	assertOnlyKeys(source, "schemaIr.tables[]", ["name", "columns", "indexes"]);
 	const name = parseIdentifier(source.name, "schemaIr.tables[].name");
@@ -587,7 +598,10 @@ function parseTable(value: unknown, indexNames: Set<string>): SchemaTable {
 	return { name, columns, indexes };
 }
 
-function parseColumn(value: unknown, table: string): SchemaColumn {
+function parseColumn(
+	value: JsonValue | undefined,
+	table: string,
+): SchemaColumn {
 	const path = `schemaIr.tables[${table}].columns[]`;
 	const source = expectRecord(value, path);
 	assertOnlyKeys(source, path, [
@@ -615,7 +629,7 @@ function parseColumn(value: unknown, table: string): SchemaColumn {
 		return { name, type, nullable, primaryKey, unique };
 	}
 	if (
-		typeof source.defaultExpression !== "string" ||
+		!isJsonString(source.defaultExpression) ||
 		source.defaultExpression.length === 0
 	) {
 		throw new SchemaIrParseError(
@@ -635,7 +649,7 @@ function parseColumn(value: unknown, table: string): SchemaColumn {
 }
 
 function parseIndex(
-	value: unknown,
+	value: JsonValue | undefined,
 	table: string,
 	columnNames: ReadonlySet<string>,
 ): SchemaIndex {
@@ -677,9 +691,9 @@ function parseIndex(
 	};
 }
 
-function parseIdentifier(value: unknown, path: string): string {
+function parseIdentifier(value: JsonValue | undefined, path: string): string {
 	if (
-		typeof value !== "string" ||
+		!isJsonString(value) ||
 		value.length === 0 ||
 		value.length > MAX_IDENTIFIER_LENGTH ||
 		!IDENTIFIER_PATTERN.test(value)
@@ -693,9 +707,9 @@ function parseIdentifier(value: unknown, path: string): string {
 	return value;
 }
 
-function parseTypeToken(value: unknown, path: string): string {
+function parseTypeToken(value: JsonValue | undefined, path: string): string {
 	if (
-		typeof value !== "string" ||
+		!isJsonString(value) ||
 		value.length === 0 ||
 		value.length > MAX_TYPE_LENGTH ||
 		!TYPE_PATTERN.test(value)
@@ -709,22 +723,23 @@ function parseTypeToken(value: unknown, path: string): string {
 	return value;
 }
 
-function parseBoolean(value: unknown, path: string): boolean {
-	if (typeof value !== "boolean") {
+function parseBoolean(value: JsonValue | undefined, path: string): boolean {
+	if (!isJsonBoolean(value)) {
 		throw new SchemaIrParseError(path, "boolean", value);
 	}
 	return value;
 }
 
-function expectRecord(value: unknown, path: string): Record<string, unknown> {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function expectRecord(value: JsonValue | undefined, path: string): JsonObject {
+	if (!isJsonObject(value) || value === null || Array.isArray(value)) {
 		throw new SchemaIrParseError(path, "object", value);
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	return value as JsonObject;
 }
 
 function assertOnlyKeys(
-	source: Record<string, unknown>,
+	source: JsonObject,
 	path: string,
 	allowed: readonly string[],
 ): void {

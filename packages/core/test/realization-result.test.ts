@@ -10,6 +10,7 @@
  */
 
 import { describeConcern } from "@hobo/contract-harness";
+import type { JsonObject, JsonValue } from "../src/json.js";
 import {
 	fromIacOutputs,
 	fromRecipeOutputs,
@@ -20,35 +21,32 @@ import {
 	RealizationResultParseError,
 } from "../src/ports/realization-result.js";
 
-const withSchema = (body: Record<string, unknown> = {}) => ({
+const withSchema = (body: JsonObject = {}) => ({
 	schema: REALIZATION_RESULT_SCHEMA,
 	...body,
 });
 
 /** Whatever threw, described as data. */
-function rejectionOf(run: () => unknown, secrets: readonly string[]) {
+function rejectionOf(run: () => JsonValue, secrets: readonly string[]) {
 	try {
 		run();
 		return { threw: false };
 	} catch (error) {
-		const typed = error instanceof RealizationResultParseError;
-		const message = String((error as Error).message);
+		const typed =
+			error instanceof RealizationResultParseError ? error : undefined;
+		const message = error instanceof Error ? error.message : String(error);
 		return {
 			threw: true,
-			typed,
-			rejection: typed
-				? (error as RealizationResultParseError).rejection
-				: null,
-			received: typed
-				? ((error as RealizationResultParseError).received ?? null)
-				: null,
-			// Empty is the assertion: a rejection must not echo the secret it caught.
+			typed: typed !== undefined,
+			rejection: typed !== undefined ? typed.rejection : null,
+			received: typed !== undefined ? (typed.received ?? null) : null,
 			leaks: secrets.filter((secret) => message.includes(secret)),
 		};
 	}
 }
 
 const names = (result: { resources: readonly unknown[] }) =>
+	// SAFETY: assertion required at this I/O or test boundary.
 	(result.resources as readonly Record<string, string>[]).map((resource) => ({
 		name: resource.name,
 		resourceClass: resource.resourceClass,
@@ -59,12 +57,11 @@ describeConcern("realization result", {
 	cases: `${import.meta.dirname}/realization-result.cases.jsonl`,
 	subject: () => ({
 		/** Parse a body that already carries the schema key. */
-		parse: (body?: Record<string, unknown>) =>
-			parseRealizationResult(withSchema(body)),
-		parseRejection: (body: unknown, secrets: readonly string[] = []) =>
+		parse: (body?: JsonObject) => parseRealizationResult(withSchema(body)),
+		parseRejection: (body: JsonValue, secrets: readonly string[] = []) =>
 			rejectionOf(() => parseRealizationResult(body), secrets),
 		/** Parsing its own output must be a fixed point. */
-		isRoundTripStable: (body?: Record<string, unknown>) => {
+		isRoundTripStable: (body?: JsonObject) => {
 			const once = parseRealizationResult(withSchema(body));
 			const twice = parseRealizationResult(JSON.parse(JSON.stringify(once)));
 			return JSON.stringify(once) === JSON.stringify(twice);

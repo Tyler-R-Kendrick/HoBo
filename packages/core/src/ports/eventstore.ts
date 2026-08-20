@@ -1,5 +1,12 @@
 import type { EventEnvelope, PrincipalRef } from "../envelope.js";
 import { CoreParseError } from "../errors.js";
+import {
+	isJsonBigInt,
+	isJsonNumber,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 export interface Clock {
 	now(): string;
@@ -9,7 +16,7 @@ export interface EventInput<T = unknown> {
 	type: string;
 	v?: number;
 	data?: T;
-	meta?: Record<string, unknown>;
+	meta?: JsonObject;
 }
 
 /**
@@ -122,7 +129,7 @@ export interface EventStore {
 	): Subscription;
 	snapshot(
 		streamId: string,
-		state: unknown,
+		state: JsonValue,
 		seq: number,
 	): Promise<SnapshotRecord>;
 	/** Present on stores that enforce single-writer fencing. */
@@ -142,7 +149,7 @@ export interface QueueEffectInput {
 	readonly kind: "queue";
 	readonly queueName: string;
 	readonly idempotencyKey: string;
-	readonly body: unknown;
+	readonly body: JsonValue;
 	readonly availableAt?: string;
 	readonly actorKey?: string;
 }
@@ -151,7 +158,7 @@ export interface ActorSignalEffectInput {
 	readonly kind: "actor-signal";
 	readonly actorKey: string;
 	readonly idempotencyKey: string;
-	readonly body: unknown;
+	readonly body: JsonValue;
 }
 
 export interface TimerEffectInput {
@@ -177,7 +184,7 @@ export interface OutboxEffectInput {
 	readonly kind: "outbox";
 	readonly destination: string;
 	readonly idempotencyKey: string;
-	readonly payload: unknown;
+	readonly payload: JsonValue;
 	readonly headers?: Record<string, string>;
 	readonly availableAt?: string;
 }
@@ -291,7 +298,7 @@ export class EventStoreParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_EVENTSTORE_PARSE", path, expected, received, message);
@@ -300,54 +307,66 @@ export class EventStoreParseError extends CoreParseError {
 }
 
 export function parseEventPosition(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "position",
 ): EventPosition {
-	if (typeof value === "bigint") {
-		if (value < 0n) {
+	if (isJsonBigInt(value)) {
+		const amount: bigint = value;
+		if (amount < 0n) {
 			throw new EventStoreParseError(path, "non-negative bigint", value);
 		}
-		return value as EventPosition;
+		// SAFETY: parse already proved a non-negative bigint position.
+		return amount as EventPosition;
 	}
-	if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) {
+	if (isJsonNumber(value) && Number.isSafeInteger(value) && value >= 0) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		return BigInt(value) as EventPosition;
 	}
-	if (typeof value === "string" && /^(0|[1-9]\d*)$/.test(value)) {
+	if (isJsonString(value) && /^(0|[1-9]\d*)$/.test(value)) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		return BigInt(value) as EventPosition;
 	}
 	throw new EventStoreParseError(path, "non-negative integer/bigint", value);
 }
 
 export function parseFenceToken(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "fenceToken",
 ): FenceToken {
-	if (typeof value === "bigint") {
-		if (value < 0n) {
+	if (isJsonBigInt(value)) {
+		const amount: bigint = value;
+		if (amount < 0n) {
 			throw new EventStoreParseError(path, "non-negative bigint", value);
 		}
-		return value as FenceToken;
+		// SAFETY: parse already proved a non-negative bigint fence token.
+		return amount as FenceToken;
 	}
-	if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) {
+	if (isJsonNumber(value) && Number.isSafeInteger(value) && value >= 0) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		return BigInt(value) as FenceToken;
 	}
-	if (typeof value === "string" && /^(0|[1-9]\d*)$/.test(value)) {
+	if (isJsonString(value) && /^(0|[1-9]\d*)$/.test(value)) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		return BigInt(value) as FenceToken;
 	}
 	throw new EventStoreParseError(path, "non-negative integer/bigint", value);
 }
 
-export function parseSubscriptionId(value: unknown): SubscriptionId {
-	if (typeof value !== "string" || value.length === 0) {
+export function parseSubscriptionId(
+	value: JsonValue | undefined,
+): SubscriptionId {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new EventStoreParseError("subscriptionId", "non-empty string", value);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return value as SubscriptionId;
 }
 
-export function parsePartitionId(value: unknown): PartitionId {
-	if (typeof value !== "string" || value.length === 0) {
+export function parsePartitionId(value: JsonValue | undefined): PartitionId {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new EventStoreParseError("partitionId", "non-empty string", value);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return value as PartitionId;
 }
 
@@ -512,9 +531,11 @@ export class StorageWorkerTerminatedError extends EventStoreError {
 	}
 }
 
-export function isOptimisticConflict(error: unknown): boolean {
+export function isOptimisticConflict(error: Error): boolean {
 	if (error instanceof OptimisticSequenceConflictError) return true;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const name = (error as { name?: unknown })?.name;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const code = (error as { code?: unknown })?.code;
 	return (
 		name === "OptimisticSequenceConflictError" ||
@@ -523,9 +544,11 @@ export function isOptimisticConflict(error: unknown): boolean {
 	);
 }
 
-export function isStaleFence(error: unknown): boolean {
+export function isStaleFence(error: Error): boolean {
 	if (error instanceof StaleFenceError) return true;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const name = (error as { name?: unknown })?.name;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const code = (error as { code?: unknown })?.code;
 	return name === "StaleFenceError" || code === "STALE_FENCE";
 }

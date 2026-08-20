@@ -18,7 +18,9 @@
  * several levels; "invalid weight" without `plan.intent.rules[2].backends[1]`
  * is unactionable on anything real.
  */
+
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../src/json.js";
 
 import {
 	parseBackendRef,
@@ -33,25 +35,25 @@ import {
 	TrafficRoutingParseError,
 } from "../src/ports/traffic-routing.js";
 
-const backend = (overrides: Record<string, unknown> = {}) => ({
+const backend = (overrides: JsonObject = {}) => ({
 	id: "b1",
 	service: "api",
 	...overrides,
 });
 
-const rule = (overrides: Record<string, unknown> = {}) => ({
+const rule = (overrides: JsonObject = {}) => ({
 	backends: [backend()],
 	...overrides,
 });
 
-const intent = (overrides: Record<string, unknown> = {}) => ({
+const intent = (overrides: JsonObject = {}) => ({
 	service: "api",
 	tenantId: "t1",
 	rules: [rule()],
 	...overrides,
 });
 
-const plan = (overrides: Record<string, unknown> = {}) => ({
+const plan = (overrides: JsonObject = {}) => ({
 	planId: "p1",
 	intent: intent(),
 	backends: [backend()],

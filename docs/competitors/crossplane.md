@@ -14,7 +14,8 @@ competitor:
   hobo_surface: [typed-contracts, provider-matching, reconciliation, extensibility]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://docs.crossplane.io/
     - https://github.com/crossplane/crossplane
@@ -45,6 +46,38 @@ Two layers stack on that base. **Providers** add the low-level catalog: each pro
 | Programmability | **Composition Functions** — Go / Python / KCL / Go-templates, run as gRPC servers in pods; enable loops, conditionals, dynamic generation |
 | AI | Upbound's *"AI-native / intelligent control plane"* direction (UXP 2.0); Crossplane itself is **API-first** — agents drive it via the Kubernetes API |
 | License / commercial | **Apache-2.0** OSS (CNCF-graduated); **Upbound** sells **UXP** distribution, **Spaces** (control-plane-as-a-service), and a **Marketplace** (signed providers, SBOMs, LTS) |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Provider** | An OCI package (`xpkg`) of CRDs plus controllers for one external API |
+| **Managed Resource (MR)** | One external resource as a Kubernetes object, with `spec.forProvider` as the desired state |
+| **ProviderConfig** | Credentials and connection settings for a provider |
+| **XRD** (CompositeResourceDefinition) | The custom API a platform team publishes |
+| **Composition** | The template mapping an XR to a set of managed resources, with a pipeline mode running functions |
+| **Composite Resource (XR) / Claim** | The instance a consumer creates against the published API |
+| **Composition Function** | Programmable composition in Go/Python/KCL over gRPC — loops, conditionals, generation |
+
+The mental model is **the Kubernetes controller pattern applied to everything**: desired state is a
+Kubernetes object, a controller converges reality toward it continuously, and platform teams publish
+their own APIs by defining XRDs and the Compositions that satisfy them. Everything else — RBAC,
+GitOps, admission control, observability — comes free because everything is a Kubernetes object.
+
+## How it competes with HoBo
+
+Crossplane is **explicitly not a head-on competitor** in HoBo's own posture: it is a borrow-source
+for reconciliation and the developer/platform separation, and a pluggable `IacProvider` adapter when
+a Camp's substrate is Kubernetes ([ADR-0006](../design/adr/01-architecture-core.md#adr-0006)). The
+overlap that does exist:
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `typed-contracts` | XRDs publish typed platform APIs — the same seam Bindle kinds occupy |
+| `reconciliation` | **Crossplane's strongest surface**, and the model HoBo borrows rather than rivals |
+| `provider-matching` | Composition selection by type/label selector, versus HoBo's scored, recorded matching |
+| `extensibility` | An enormous provider ecosystem, largely Upjet-generated from Terraform schemas |
+| `app-graph` | Only in v2, and as orchestration of Kubernetes objects rather than an application model |
 
 ## Feature surface
 
@@ -192,9 +225,30 @@ Even here the substrate is unchanged: composing a `Deployment` **orchestrates a 
 
 **Upbound** — Crossplane's creator — sells the enterprise layer: **UXP (Upbound Crossplane / "Universal Crossplane")**, an opinionated, enterprise-hardened distribution (free Community + commercial licenses), now marketed as an *"AI-native control plane"* (UXP 2.0); **Spaces**, a **control-planes-as-a-service** hosting environment that runs UXP for you (or self-managed on your own cluster); and the **Upbound Marketplace**, offering verified providers with long-term support, **package signing, SBOMs, and vulnerability remediation**. The OSS project runs standalone on any Kubernetes cluster with no Upbound dependency.
 
-## Differentiators
+## Architecture
 
-### Strengths (what Crossplane does well)
+- **Control plane** — Crossplane controllers in a Kubernetes cluster; **a running cluster is
+  required**, and state lives in **etcd**.
+- **Data plane** — the external APIs each provider reaches; managed resources are the projection of
+  those APIs into Kubernetes objects.
+- **Execution model** — continuous, level-triggered reconciliation: controllers converge each
+  managed resource toward `spec.forProvider`, correcting drift indefinitely rather than at apply
+  time. This is the property Terraform-style engines do not have and the reason Crossplane is worth
+  borrowing from.
+- **Composition pipeline** — functions run as gRPC services, transforming the desired-state document
+  before resources are created.
+- **State authority** — etcd, plus the external systems themselves as observed state. Declarative and
+  self-correcting; no decision log.
+- **Scaling boundary** — CRD count, etcd pressure and per-provider controller memory are the real
+  limits, and they arrive well before the abstraction does.
+- **Portability boundary** — Crossplane provisions anything with an API, from any cluster; it does
+  not make workloads portable, and it cannot exist without Kubernetes.
+
+## Where Crossplane is stronger
+
+> Shipped, evidenced capability only — and Crossplane is the most mature system in this corpus.
+
+### What Crossplane does well
 
 - **Mature, CNCF-graduated (Nov 2025), production-proven at real scale** — 100+ releases, 3,000+ contributors, 450+ organizations. This is a battle-tested control plane, not a design.
 - **Rock-solid reconciliation** — the Kubernetes controller pattern applied to infrastructure: continuous drift correction, self-healing, level-triggered convergence. The robustness HoBo's design aspires to and explicitly borrows.
@@ -204,7 +258,14 @@ Even here the substrate is unchanged: composing a `Deployment` **orchestrates a 
 - **Real programmability** — composition functions (Go/Python/KCL, gRPC) add loops, conditionals, and generation over static YAML.
 - **A managed path** — Upbound Spaces/UXP for teams who don't want to operate it themselves.
 
-### Gaps (Crossplane's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels follow the research contract: **implemented** = shipped in `packages/`; **proof** =
+draft/proof material; **design-only** = design intent. This capture was written when more of HoBo
+was design; the ◐/🔜 marks in the mapping table below record that honestly, and the
+[live provider matrix](../design/live-provider-matrix.md) carries the current caveats.
+
+### Crossplane's limits, and what HoBo does instead
 
 - **Kubernetes-bound.** It **requires a running Kubernetes cluster**; state lives in **etcd**; every resource is a **CRD**; scaling means managing CRD/etcd/controller-memory pressure. HoBo treats **Kubernetes/Crossplane as an optional substrate adapter, never a requirement** — *"Kubernetes/Crossplane is an optional execution substrate adapter, never a requirement"* ([control-plane.md](../design/control-plane.md#plan-04)); the Yard runs on a language-native core and the default wasm host is self-hosted wasmCloud ([ADR-0031](../design/adr/01-architecture-core.md#adr-0031)).
 - **YAML, not code-first infrastructure-from-code.** Authoring is declarative YAML CRDs (Providers / MRs / XRDs / Compositions); functions are code but the composition graph is YAML. There is **no "declare a resource inline where your app uses it" + `.allow()`**. HoBo is **IfC + `.allow()` code-first** — one declaration yields IAM + a wasm capability link + an agent token scope ([Plan 21](../design/authoring-resources-wiring.md#plan-21)).
@@ -214,18 +275,40 @@ Even here the substrate is unchanged: composing a `Deployment` **orchestrates a 
 - **Composition selection is not auditable "why this infra."** A Composition binds to an XR by type/label selector; there is no first-class recorded decision explaining *which* realization was chosen for *which* context. HoBo's **Matching** scores Resource Definitions by context and records a **`match.Decided`** event — an auditable "why this infra" (explicitly "Humanitec parity", [Plan 25](../design/platform-engineering.md#plan-25) / [ADR-0033](../design/adr/01-architecture-core.md#adr-0033)).
 - **Higher operational complexity.** Adopting Crossplane means operating **Kubernetes + Crossplane + a fleet of provider pods** (each provider is controllers + CRDs, often memory-hungry) + function pods + etcd + upgrades. That is the "must run K8s" tax; a small team pays a large operational floor. HoBo's **self-host = hosted** (the Yard is itself a Bindle, [Plan 04](../design/control-plane.md#plan-04)) without mandating a control cluster.
 
-### Comparisons
+## Adversarial critique
+
+- **Kubernetes is mandatory, and that is the whole critique.** A cluster must exist, be operated, and
+  be scaled before a single external resource is provisioned. For a small team the operational floor
+  exceeds the problem being solved.
+- **etcd and CRDs are the scaling wall.** Thousands of managed resources mean thousands of CRs in
+  etcd, plus a controller per provider holding them in memory. The failure mode is not "the
+  abstraction is wrong" but "the substrate ran out".
+- **YAML composition is a programming language in disguise.** Composition functions exist precisely
+  because static YAML could not express loops and conditionals — an admission that the authoring
+  model outgrew its format.
+- **Upjet-generated providers inherit Terraform's model**, including its resource granularity and
+  occasionally its bugs, one abstraction layer further from the user.
+- **Composition selection is unexplained.** Type and label selectors bind a Composition to an XR;
+  nothing records why that realization was appropriate for that context.
+- **Provider fleet operations.** Each provider is controllers plus CRDs, frequently memory-hungry,
+  each on its own release cadence, all requiring upgrade coordination.
+- **It is not an application runtime**, and v2's application composition is still orchestration of
+  Kubernetes objects rather than execution of an application.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** **Not head-on.** Crossplane is a **K8s-native infrastructure control plane** (YAML/CRDs, reconciliation, huge provider ecosystem); HoBo is a **cloud-agnostic control plane + durable wasm runtime** that (a) **borrows** Crossplane's reconciliation + dev/platform separation ([vision.md](../design/vision.md)), and (b) can **drive Crossplane as one pluggable IaC adapter** ([ADR-0006](../design/adr/01-architecture-core.md#adr-0006)) — *"Crossplane = the adapter used when a Camp's substrate is Kubernetes"* ([control-plane.md](../design/control-plane.md#plan-04)). Adjacent + borrow-source + adapter, not a replacement target.
 - **vs Terraform / Pulumi / OpenTofu:** Crossplane is a **continuously-reconciling control plane** where the others are (drift-aware) apply engines. HoBo keeps **all four as `IacProvider` adapters, none primary** ([ADR-0006](../design/adr/01-architecture-core.md#adr-0006)); Crossplane provider config flows through `.with(...)` (e.g. composition selectors).
-- **vs Humanitec:** the closest conceptual sibling — both realize *"developer requests an abstract resource → platform maps it to concrete infra."* Crossplane's XRD/Composition ≈ Humanitec's Resource Definitions + Matching, as Kubernetes CRDs. HoBo aligns with the **Humanitec Matching model** (records `match.Decided`) but can realize via Crossplane underneath — see [`humanitec.md`](humanitec.md#hobo-mapping).
+- **vs Humanitec:** the closest conceptual sibling — both realize *"developer requests an abstract resource → platform maps it to concrete infra."* Crossplane's XRD/Composition ≈ Humanitec's Resource Definitions + Matching, as Kubernetes CRDs. HoBo aligns with the **Humanitec Matching model** (records `match.Decided`) but can realize via Crossplane underneath — see [`humanitec.md`](humanitec.md#primitive-mapping).
 - **vs Radius:** HoBo borrows from *"Crossplane/Radius"* jointly ([vision.md](../design/vision.md)); Radius is more application-graph-centric (recipes) over similar reconciliation — both inform HoBo's `bindle()` vs `camp()`/`yard()` split.
 - **vs Encore / Nitric / Aspire:** those are **app-side IfC** (declare resources in app code); Crossplane is the **platform-side realization/reconcile engine** that could sit underneath them. HoBo unifies both layers — IfC authoring on top, Crossplane/TF/Pulumi/OpenTofu as realization adapters below.
 - **vs wasmCloud (HoBo's default host):** wasmCloud *can* run on Kubernetes but doesn't require it; Crossplane requires it. Different layer, different substrate assumption.
 
 **Net:** Crossplane is the **mature, CNCF-graduated realization engine** HoBo treats as a **pluggable IaC adapter** and a **borrow-source** (reconciliation + dev/platform separation) — **not a head-on competitor**. Its limits — Kubernetes-bound, YAML-not-IfC, infrastructure-not-application-runtime, no wasm, no agents-as-principals or provider generation, high operational complexity — are precisely the seams HoBo's design targets, while HoBo can still **stand on Crossplane** where a Camp's substrate is Kubernetes. Crossplane's advantages today (provider-ecosystem breadth, reconciliation robustness at scale, K8s-native operational maturity) are real and shipping; HoBo is **design-phase**, so those remain Crossplane's to keep.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Crossplane concept (✅ has · ➕ goes further · ◐ thinner/behind today · 🔜 planned). **HoBo is design-phase; Crossplane is a mature graduated CNCF project** — where that maturity leads, HoBo is marked ◐/🔜 honestly.
 
@@ -248,6 +331,43 @@ Even here the substrate is unchanged: composing a `Deployment` **orchestrates a 
 | **Upbound Spaces / UXP** (control-plane-as-a-service) | **self-host = hosted** (Yard is itself a Bindle, [Plan 04](../design/control-plane.md#plan-04)); OSS, monetization out of design scope ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)) | ➕/different | No commercial control-plane SKU |
 | **Provider-ecosystem breadth** (mature, Upjet-generated) | HoBo provider set + generation pipeline ([Plan 23](../design/generated-stack.md#plan-23)) | ◐/🔜 | **Crossplane far ahead today**; HoBo is design-phase |
 | **Reconciliation robustness at real scale** | Delta→Set reconcile ([Plan 04](../design/control-plane.md#plan-04)) | ◐ | Designed, not yet battle-tested like Crossplane |
+
+## Better-together / integration posture
+
+- **Borrow** — reconciliation and the developer/platform separation, taken wholesale and credited in
+  [`lineage.md`](../design/lineage.md).
+- **Integrate / adapter** — Crossplane is a first-party `IacProvider` alongside Pulumi, Terraform and
+  OpenTofu, none primary ([ADR-0006](../design/adr/01-architecture-core.md#adr-0006)); when a Camp's
+  substrate is Kubernetes, HoBo realizes resources *through* Crossplane.
+- **Benchmark** — provider-ecosystem breadth and reconciliation robustness at scale are Crossplane's
+  to keep, and are the standard HoBo's own realization layer is measured against.
+- Not a displace target, and HoBo's materials should not present it as one.
+
+## Threats and lessons
+
+1. **Continuous reconciliation is the property that matters most**, and it is the hardest to
+   retrofit. HoBo borrows the model; it has not yet proven it at Crossplane's scale, and saying so
+   plainly is more credible than implying parity.
+2. **Ecosystem breadth is bought, not designed.** Upjet generates providers from Terraform schemas —
+   a mechanical path to hundreds of integrations. HoBo's generation pipeline is the analogous bet and
+   should be evaluated against Upjet's actual results, not against hand-authoring.
+3. **The operational floor is a market segmentation.** Crossplane's Kubernetes requirement cedes the
+   entire small-team and local-development segment. HoBo's local and browser runtimes address exactly
+   that gap, and that is a sharper wedge than any feature comparison.
+4. **Composition selection remains unexplained across this whole cohort** — Crossplane's selectors,
+   Radius's static bindings, Kusion's single workspace. Recorded, scored selection is HoBo's
+   consistent differentiator against all of them.
+
+## Sources
+
+- [crossplane.io](https://www.crossplane.io/) and [docs.crossplane.io](https://docs.crossplane.io/) — providers, managed resources, XRDs, Compositions, composition functions, v2 changes
+- [crossplane/crossplane](https://github.com/crossplane/crossplane) — source, Apache-2.0, CNCF graduation status
+- [Upbound](https://www.upbound.io/) — Upjet provider generation, Marketplace, Spaces/UXP (vendor material, recorded as claims)
+- HoBo-side: [`design/lineage.md`](../design/lineage.md), ADR-0006, ADR-0144, and the plan references cited inline
+
+This capture predates the research contract and was restructured to it on 2026-08-19 with its
+original research preserved. Release-by-release v2 detail and current Upbound commercial packaging
+were not re-verified in this pass and are not asserted.
 
 ### Crossplane-as-borrow-source and IaC adapter (not a target to replace)
 

@@ -17,7 +17,7 @@ Developer authoring frameworks that infer or provision infrastructure from appli
 
 HoBo's authoring surface is an IfC surface. This category is the most direct contest over how a developer declares what their application needs.
 
-## Competitors (8)
+## Competitors (9)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -29,6 +29,7 @@ HoBo's authoring surface is an IfC surface. This category is the most direct con
 | [**SST**](../sst.md) *(primary)* | infrastructure-from-code full-stack framework on Pulumi/Terraform with typed Linking — close product analog | direct | `authoring`, `typed-contracts`, `wiring`, `environments` | Huge provider reach via Pulumi/Terraform plus excellent live local dev. | HoBo's portability is scored, and its state authority is an event log rather than a stack state file. | displace, borrow, benchmark | P1 |
 | [**Wasp**](../wasp.md) *(primary)* | Rails-like full-stack framework driven by a declarative .wasp spec — App-Kit inspiration and packaging path | adjacent | `authoring`, `app-graph` | Very fast full-stack scaffolding from one declarative spec. | HoBo's spec drives provider-portable deployment, not a fixed React/Node/Prisma stack. | borrow, benchmark | P3 |
 | [**Winglang**](../winglang.md) *(primary)* | cloud-oriented language compiling to Terraform — authoring analog and cautionary tale (Wing Cloud shut down 2025) | adjacent | `authoring`, `typed-contracts` | Novel preflight/inflight language design for cloud code. | HoBo stays in ordinary TypeScript; Winglang is also a cautionary tale about language-sized bets. | borrow, benchmark | P3 |
+| [**KusionStack**](../kusionstack.md) | open-source intent-driven orchestrator whose AppConfiguration-matched-to-Workspace pipeline is the closest published architecture to HoBo's own | direct | `authoring`, `typed-contracts`, `app-graph`, `provider-matching`, `environments`, `extensibility` | Open source with essentially HoBo's pipeline shipped: KCL-typed AppConfiguration matched against a Workspace to generate an inspectable Spec, then applied. | Kusion composes intent with the one chosen workspace; HoBo scores candidate providers and records the choice, which is what makes cost- and residency-aware placement expressible at all. | displace, borrow, benchmark | P1 |
 
 ## Navigation
 

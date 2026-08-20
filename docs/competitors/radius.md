@@ -15,7 +15,8 @@ competitor:
   hobo_surface: [app-graph, typed-contracts, environments]
   evidence: mixed
   status: active
-  research_date: 2026-08-12
+  research_date: 2026-08-19
+  contract: v1
   sources:
     - https://docs.radapp.io/concepts/
     - https://github.com/radius-project/radius
@@ -47,6 +48,39 @@ The developer never picks infra: they declare an abstract resource (`db 'Applica
 | CLI / UI | `rad` (init/run/deploy/app graph/recipe/env/resource/group/install/bicep publish); web **Dashboard** |
 | AI | **Resource Types** pitched for AI apps (swap model providers without rewrites); no agent-identity / generation-pipeline story |
 | License / status | **Apache-2.0**; **CNCF Sandbox** (Apr 2024); incubated by **Microsoft Azure Incubations** (Oct 2023); written in **Go** |
+
+## Core primitives and mental model
+
+| Primitive | What it is |
+| --------- | ---------- |
+| **Application** | The first-class deployable unit grouping resources and their connections |
+| **Resource Type** | The developer-facing abstraction (a database, a cache) — the contract between developer and operator |
+| **Recipe** | The operator-owned, environment-bound realization of a Resource Type, backed by Terraform or Bicep |
+| **Environment** | The landing zone binding recipes and providers for one lifecycle stage |
+| **Connection** | A declared dependency between resources, auto-injecting configuration and expressing reachability |
+| **Application Graph** | The automatically derived graph of resources and connections, exposed via CLI, API and Dashboard |
+
+The mental model is **one abstraction, many environment-bound realizations**: a developer names a
+Resource Type; the operator has bound that type to a Recipe per Environment; deploying the same
+application to a different Environment produces different infrastructure with no application change.
+That idea — swap by binding, not by editing the app — is the thing HoBo borrows.
+
+## How it competes with HoBo
+
+Radius is a **borrow-source before it is a competitor**, and this capture keeps that framing rather
+than inflating the overlap. The contested surfaces:
+
+| Contested HoBo surface | The contest |
+| ---------------------- | ----------- |
+| `app-graph` | The Application Graph is shipped, live, and visible in a Dashboard — ahead of HoBo's equivalent |
+| `typed-contracts` | Resource Types are the developer/operator contract seam |
+| `environments` | Environments bind recipes and providers per stage |
+| `provider-matching` | **The sharpest contest, and the clearest divergence.** Radius binds one recipe per type per environment; HoBo scores candidates and records the decision |
+| `wiring` | Connections inject configuration and express reachability |
+
+HoBo agrees with Radius's model and diverges on substrate (wasm and an event log versus Kubernetes),
+authoring (in-code IfC versus Bicep files), and — most importantly — on whether the realization is a
+static binding or a scored, recorded decision.
 
 ## Feature surface
 
@@ -133,9 +167,29 @@ The developer never picks infra: they declare an abstract resource (`db 'Applica
 - **Providers** are the cloud credentials/integrations (Kubernetes, AWS, Azure) an Environment uses, managed separately from developer credentials. Radius is *"open-source and multi-cloud from the start,"* deploying across dev environments, on-prem, and public clouds with one toolchain.
 - **Dapr is built into Radius**, so apps can use Dapr's microservice building blocks (state stores, pub/sub) as first-class app resources.
 
-## Differentiators
+## Architecture
 
-### Strengths (what Radius does well — and what HoBo borrows)
+- **Control plane** — the Radius control plane runs **on Kubernetes**, as controllers plus an API
+  server, reconciling Applications, Environments and Resource Types.
+- **Data plane** — applications deploy primarily as Kubernetes workloads, with cloud resources
+  provisioned alongside them by recipes.
+- **Execution model** — deploying an Application resolves each Resource Type through the Environment's
+  bound Recipe, then executes that recipe's Terraform or Bicep backend; Connections are resolved into
+  injected configuration afterwards.
+- **State authority** — Kubernetes resources plus the recipe backends' own state (Terraform state or
+  ARM deployment history). Reconciled and declarative; no event log and no decision replay.
+- **Application graph derivation** — the graph is derived from declared Connections and provisioned
+  resources rather than maintained by hand, which is why it stays current.
+- **Portability boundary** — recipes make *infrastructure* swappable per environment; the control
+  plane and the workload substrate remain Kubernetes. The abstraction is portable across clouds, not
+  across runtimes.
+
+## Where Radius is stronger
+
+> Shipped, evidenced capability only. Several of these are things HoBo has as design and Radius has
+> as running software — that asymmetry is the point of this section.
+
+### What Radius does well — and what HoBo borrows
 
 - **A mature, shipping app-model + recipe ecosystem.** Radius is a real CNCF Sandbox project with a stable Application/Environment/Resource-Type model, a **shipping Dashboard**, an app-graph API, and a growing recipe catalog. HoBo's equivalents are **designed, not shipping** — credit Radius for proving the model in production.
 - **Clean dev-vs-platform separation.** The developer authors an abstract app; the operator owns Environments + Recipes + policy. This is precisely the seam HoBo adopts (`bindle()` vs `camp()`/`yard()`), and Radius is the clearest reference implementation of it ([vision.md:72](../design/vision.md)).
@@ -144,7 +198,14 @@ The developer never picks infra: they declare an abstract resource (`db 'Applica
 - **Multi-cloud + on-prem** with reused Terraform modules, and **Dapr built in**.
 - **Apache-2.0, vendor-neutral (CNCF)** governance.
 
-### Gaps (Radius's limits — HoBo's opening)
+## Where HoBo is stronger or intentionally different
+
+State labels below follow the research contract: **implemented** = shipped in `packages/`;
+**proof** = draft/proof material; **design-only** = design intent. The original capture was written
+when more of this was design; where a claim is still design-only it says so. See the
+[live provider matrix](../design/live-provider-matrix.md) for HoBo's honest coverage caveats.
+
+### Radius's limits, and what HoBo does instead
 
 - **Kubernetes-centric today.** The Radius control plane runs on Kubernetes and apps deploy primarily as K8s workloads; there is no bespoke portable runtime. HoBo's substrate is a **wasm-default polyglot runtime** on a self-hosted wasmCloud lattice ([Plan 20](../design/wasm-runtime-wit.md#plan-20)/[ADR-0031](../design/adr/01-architecture-core.md#adr-0031)) — K8s is one target, not the floor.
 - **Bicep / IaC-file authoring, not code-first IfC.** Apps are declared in **Bicep** and recipes in **Bicep/Terraform** — declarative IaC files, not resources declared inline in general-purpose application code. HoBo is **Infrastructure-from-Code**: resources + wiring declared in-code and collected by running the component, with `.allow()` driving least-privilege ([Plan 21](../design/authoring-resources-wiring.md#plan-21)).
@@ -154,7 +215,28 @@ The developer never picks infra: they declare an abstract resource (`db 'Applica
 - **Recipe selection is a static Environment binding, not an auditable cost-routed decision.** An Environment names one Recipe per Resource Type; there is no recorded, replayable "*why did this resource land on this infra?*" and no budget-aware routing of the choice. HoBo's **Matching** records the winner, its score, rejected candidates, and the objective as a **`match.Decided`** event ([Plan 25](../design/platform-engineering.md#plan-25)/[ADR-0033](../design/adr/01-architecture-core.md#adr-0033)), and the credit/budget-aware **Dispatcher** ([ADR-0071](../design/adr/01-architecture-core.md#adr-0071)) cost-routes realization.
 - **No agents-as-principals, no generation pipeline.** The AI story is *Resource Types make swapping model providers easier* — real, but it is not agents-as-first-class-identities or AI-generated providers/implementations. HoBo issues agents SVIDs + brokered tokens + an MCP control surface ([Plan 6](../design/ai-native-agent-auth.md#plan-06)) and **generates + certifies** providers and impls ([Plan 23](../design/generated-stack.md#plan-23)/[ADR-0010](../design/adr/03-data-plane.md#adr-0010)).
 
-### Comparisons
+## Adversarial critique
+
+- **Kubernetes is the floor, not a target.** The control plane runs on Kubernetes and applications
+  deploy primarily as Kubernetes workloads. "Multi-cloud" means recipes provision cloud resources;
+  it does not mean the application runs somewhere that is not a cluster.
+- **Bicep is a niche authoring language.** Outside the Azure ecosystem, Bicep is unfamiliar, and
+  choosing it as the application-authoring surface narrows the addressable audience regardless of
+  the model's quality.
+- **Static Environment→Recipe binding cannot express conditional realization.** One recipe per
+  resource type per environment is predictable and inflexible: no budget-aware choice, no residency
+  constraint, no candidate ranking, and no recorded rationale.
+- **Recipes inherit their backends' failure modes** — Terraform state and drift, or Bicep/ARM
+  deployment semantics — and surface them through an abstraction that did not create them.
+- **Connections are reachability plus configuration, not authorization.** Injecting environment
+  variables is not the same as minting a least-privilege grant; teams must still solve IAM
+  separately, which is where most security incidents actually originate.
+- **Sandbox-stage maturity and adoption.** CNCF Sandbox is the earliest tier; the ecosystem of
+  recipes and the operational track record outside the founding vendor's orbit remain limited.
+- **No decision record.** The application graph shows what exists; nothing explains why a given
+  realization was chosen.
+
+### Comparisons with adjacent tools
 
 - **vs HoBo:** Radius is a **Bicep/K8s app-platform with operator-owned Recipes**; HoBo is a **code-first IfC → any-cloud, wasm-default, event-sourced, AI-native meta-cloud**. They **agree on the app-model + dev/platform seam** — HoBo borrows it deliberately — and diverge on substrate (wasm + event log vs K8s), authoring (in-code IfC vs Bicep files), and governance (auditable cost-routed Matching vs static Environment bindings). Adjacent, not head-on.
 - **vs Nitric / Encore:** Nitric and Encore are **code-first IfC** (declare resources in app code); Radius is **IaC-file-first** (Bicep app + Bicep/Terraform recipes) with a stronger *operator/platform-engineering* posture (Environments, Recipes, Resource Types as an explicit IDP contract). HoBo takes IfC authoring from Nitric/Encore **and** the platform-rules layer from Radius/Humanitec.
@@ -164,7 +246,9 @@ The developer never picks infra: they declare an abstract resource (`db 'Applica
 
 **Net:** Radius is a **borrow-source, not a rival** — it is the cleanest shipping proof of the two ideas HoBo takes from it: an **operator-owned recipe/equivalence-class layer** and a **dev-vs-platform separation** over a portable app graph. HoBo's differentiation is everything under and around that seam: a **wasm-default polyglot runtime** and **durable event-sourced control+data plane** (Radius has neither), **code-first IfC with `.allow()`** (vs Bicep/IaC files), **auditable cost-routed Matching** (`match.Decided` vs a static Environment→Recipe binding), **any-cloud + pluggable IaC** beyond a K8s-hosted control plane, and **AI-native depth** (agents-as-principals + a generation pipeline). Radius validates the model HoBo borrows; HoBo generalizes it.
 
-## HoBo mapping
+## Primitive mapping
+
+<a id="hobo-mapping"></a>
 
 > HoBo's equivalent for each Radius concept (✅ designed at parity · ➕ goes further · ◐ thinner/less mature than Radius today · 🔜 planned). **Honesty note:** Radius is a **shipping CNCF platform**; HoBo is **design-phase** — where Radius has real running surface (Dashboard, app-graph API, recipe catalog) and HoBo has a design, that is flagged ◐/🔜.
 
@@ -188,10 +272,51 @@ The developer never picks infra: they declare an abstract resource (`db 'Applica
 | *(Environment binding, not recorded)* | **auditable Matching** — `match.Decided` records winner + ranking + rejected + objective ([Plan 25](../design/platform-engineering.md#plan-25)) | ➕ replayable "why did this land here?" |
 | Apache-2.0, CNCF vendor-neutral | HoBo OSS; **self-host = hosted parity** (the Yard is a Bindle); monetization out of design scope ([ADR-0064](../design/adr/07-portability-extensibility.md#adr-0064)) | ✅ OSS posture |
 
-### The one borrowing HoBo takes (and how it generalizes it)
+## Better-together / integration posture
+
+- **Borrow** — the posture [`lineage.md`](../design/lineage.md) already records, and this capture
+  reaffirms it: the Recipe (an operator-owned, environment-bound realization behind a
+  developer-facing Resource Type) and the developer/operator separation are taken deliberately. The
+  section below states exactly what HoBo adds on top.
+- **Benchmark** — the shipping Dashboard, the live application-graph API, and the recipe catalog are
+  the bar for HoBo's equivalent surfaces, all of which are thinner today.
+- **Standard-adjacent** — Radius, OAM/KubeVela and HoBo converge on the same role separation;
+  speaking that shared vocabulary lowers HoBo's explanation cost.
+- Not a displace target. Radius is adjacent, not head-on, and this capture does not inflate the
+  overlap: it is a borrow-source first.
+
+## Threats and lessons
+
+1. **Radius proves the seam HoBo bets on, which is reassuring and dangerous.** A CNCF project
+   shipping the developer/operator separation validates the model — and means HoBo cannot claim the
+   idea, only its generalization: scored selection, recorded decisions, non-Kubernetes substrates.
+2. **Shipping surface beats designed surface in evaluations.** A live application graph and
+   Dashboard are what a prospect sees first. This is the fifth independent occurrence in this corpus
+   of the same missing HoBo surface, and it should be its own implementation issue rather than a
+   recurring note.
+3. **Recipe selection is the weak point to press on.** A static environment binding cannot answer
+   "why here?" — and that question is exactly what regulated and cost-sensitive buyers ask. HoBo's
+   `match.Decided` is the answer, and it should be demonstrated rather than described.
+4. **Authoring-language choice is strategic.** Radius's Bicep bet narrows its audience; the lesson
+   for HoBo is that its own TypeScript-plus-CUE split needs to stay ordinary enough to avoid the
+   same trap.
+
+## What HoBo takes from Radius, and how it generalizes it
 
 Radius's **Recipe** — an operator-owned, environment-bound, IaC-backed implementation behind a developer-facing Resource Type — is the concrete shape HoBo adopts for its **Resource Definitions + provider equivalence classes** ([Plan 25](../design/platform-engineering.md#plan-25)). HoBo keeps the ergonomics (one abstract resource, many env-specific realizations, swap by binding not by app-edit) and adds three things Radius does not: (a) selection is **specificity-scored Matching**, not a single static Environment binding; (b) the choice is **recorded as a replayable `match.Decided` event** with the full ranking + rejected candidates + objective — an auditable answer to *"why did this resource land on this infra?"*; and (c) the realization is **cost-routed** by the credit/budget-aware Dispatcher ([ADR-0071](../design/adr/01-architecture-core.md#adr-0071)). The **dev-vs-platform separation** — Radius's Developers-define-Applications / Operators-define-Environments — is borrowed wholesale as HoBo's `bindle()` vs `camp()`/`yard()` scopes ([vision.md:72](../design/vision.md)).
 
-### The one-line takeaway
+## The one-line takeaway
 
 **Radius proves the app-model + operator-owned recipe/equivalence-class layer + dev-vs-platform separation that HoBo borrows** — and ships it as a real CNCF platform with a live app graph, Dashboard, and recipe ecosystem. But Radius is **Kubernetes-hosted, Bicep/IaC-file-authored, runtime-less (no durable event-sourced app runtime, no wasm), with static (non-auditable, non-cost-routed) recipe selection and no agents-as-principals/generation pipeline.** HoBo takes the borrowed seam and rebuilds it on a **wasm-default, event-sourced, code-first IfC, any-cloud, AI-native** substrate with **auditable cost-routed Matching** — adjacent to Radius, not head-on.
+
+## Sources
+
+- [Radius documentation](https://docs.radapp.io/concepts/) — Applications, Environments, Resource Types, Recipes, Connections, application graph
+- [radapp.io](https://radapp.io/) — positioning and project status
+- [radius-project/radius](https://github.com/radius-project/radius) — source, Apache-2.0 licence, CNCF Sandbox status
+- HoBo-side: [`design/lineage.md`](../design/lineage.md), [`standards/oam`](../standards/oam.md), and the plan/ADR references cited inline throughout this capture
+
+This capture was first written before the research contract existed and was restructured to it on
+2026-08-19; its original research is preserved. Recipe-catalog breadth and current adoption evidence
+were not re-verified in this pass and are not asserted.
+

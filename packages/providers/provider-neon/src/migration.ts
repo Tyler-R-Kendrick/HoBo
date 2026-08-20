@@ -15,7 +15,11 @@ import type { SecretRef } from "@hobo/bindings";
 
 import { parsePostgresConnectionUri } from "./connection-string.js";
 import { resolveSecret, type SecretResolverPort } from "./custody.js";
-import { NeonProviderError, redactProviderText } from "./errors.js";
+import {
+	containsControlChar,
+	NeonProviderError,
+	redactProviderText,
+} from "./errors.js";
 
 export type ProcessRunOptions = {
 	readonly env: Readonly<Record<string, string>>;
@@ -71,9 +75,6 @@ export type PgRestoreSpec = {
 	readonly binary?: string;
 };
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: detecting a control character is the point; a NUL in an argv element truncates the argument the child actually receives.
-const NUL_OR_CONTROL = /[\u0000-\u001f\u007f]/u;
-
 /**
  * Argv elements are inert, but a value containing NUL truncates in `execve`
  * and a value containing a newline forges log lines, so both are refused.
@@ -85,7 +86,7 @@ function assertArgvValue(value: string, what: string): string {
 			`${what} must be 1-1024 characters`,
 		);
 	}
-	if (NUL_OR_CONTROL.test(value)) {
+	if (containsControlChar(value)) {
 		throw new NeonProviderError(
 			"MIGRATION_FAILED",
 			`${what} contains a control character and cannot be passed to a child process`,
@@ -338,7 +339,7 @@ export function createPostgresMigrationDriver(
 		const result = await options.runner.run(assertArgvSafe(argv), {
 			env,
 			timeoutMs,
-			...(stdin !== undefined ? { stdin } : {}),
+			...(stdin !== undefined ? { stdin } : undefined),
 		});
 		const stderr = redactProviderText(result.stderr, 512);
 		if (result.code !== 0) {
@@ -364,8 +365,10 @@ export function createPostgresMigrationDriver(
 					format: input.format ?? "custom",
 					...(input.schemaOnly !== undefined
 						? { schemaOnly: input.schemaOnly }
-						: {}),
-					...(input.noOwner !== undefined ? { noOwner: input.noOwner } : {}),
+						: undefined),
+					...(input.noOwner !== undefined
+						? { noOwner: input.noOwner }
+						: undefined),
 				}),
 				libpqEnv(target, password),
 				input.timeoutMs ?? defaultTimeoutMs,
@@ -381,10 +384,12 @@ export function createPostgresMigrationDriver(
 				buildPgRestoreArgv({
 					target,
 					filePath: input.filePath,
-					...(input.noOwner !== undefined ? { noOwner: input.noOwner } : {}),
+					...(input.noOwner !== undefined
+						? { noOwner: input.noOwner }
+						: undefined),
 					...(input.cleanFirst !== undefined
 						? { cleanFirst: input.cleanFirst }
-						: {}),
+						: undefined),
 				}),
 				libpqEnv(target, password),
 				input.timeoutMs ?? defaultTimeoutMs,

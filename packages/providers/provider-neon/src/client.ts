@@ -118,7 +118,7 @@ export function createNeonClient(options: NeonClientOptions): NeonClient {
 		Math.min(options.maxReadAttempts ?? 3, 6),
 	);
 	const retryBaseDelayMs = options.retryBaseDelayMs ?? 250;
-	const headers: Readonly<Record<string, string>> = {
+	const headers = {
 		"content-type": "application/json",
 		accept: "application/json",
 		"user-agent": options.userAgent ?? "hobo-provider-neon/0.0.1",
@@ -152,12 +152,13 @@ export function createNeonClient(options: NeonClientOptions): NeonClient {
 					{ detail: { status: response.status, databaseId } },
 				);
 			}
+			const retryAfter = retryAfterMs(response.headers);
 			const error = providerErrorForStatus(response.status, {
 				method: "GET",
 				body: response.body,
-				...(retryAfterMs(response.headers) !== undefined
-					? { retryAfterMs: retryAfterMs(response.headers) as number }
-					: {}),
+				...(retryAfter !== undefined
+					? { retryAfterMs: retryAfter }
+					: undefined),
 			});
 			if (!error.retryable) throw error;
 			lastError = error;
@@ -226,7 +227,7 @@ export function createNeonClient(options: NeonClientOptions): NeonClient {
 					ref: input.ref,
 					...(input.enableLogicalReplication !== undefined
 						? { enable_logical_replication: input.enableLogicalReplication }
-						: {}),
+						: undefined),
 				}),
 				timeoutMs: policy.timeoutMs,
 				maxResponseBytes: policy.maxResponseBytes,
@@ -237,7 +238,10 @@ export function createNeonClient(options: NeonClientOptions): NeonClient {
 			throw new NeonProviderError(
 				"PROVIDER_OPERATION_AMBIGUOUS",
 				"the create request did not complete; the database may or may not exist",
-				{ cause, detail: { idempotencyKey: input.idempotencyKey } },
+				{
+					cause: cause instanceof Error ? cause : new Error(String(cause)),
+					detail: { idempotencyKey: input.idempotencyKey },
+				},
 			);
 		}
 
@@ -253,12 +257,11 @@ export function createNeonClient(options: NeonClientOptions): NeonClient {
 			return { response: parsed, adopted: false };
 		}
 
+		const retryAfter = retryAfterMs(response.headers);
 		const error = providerErrorForStatus(response.status, {
 			method: "POST",
 			body: response.body,
-			...(retryAfterMs(response.headers) !== undefined
-				? { retryAfterMs: retryAfterMs(response.headers) as number }
-				: {}),
+			...(retryAfter !== undefined ? { retryAfterMs: retryAfter } : undefined),
 		});
 		if (error.code === "PROVIDER_OPERATION_AMBIGUOUS") {
 			// Deliberately left in-flight.

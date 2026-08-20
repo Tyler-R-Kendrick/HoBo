@@ -6,7 +6,7 @@
  * publish; `username` is kept off receipts because it is half of a
  * user/password pair and gives an attacker a free guess.
  */
-import { NeonProviderError } from "./errors.js";
+import { containsControlChar, NeonProviderError } from "./errors.js";
 
 export type PostgresConnectionParts = {
 	readonly host: string;
@@ -55,8 +55,7 @@ export function parsePostgresConnectionUri(
 	if (
 		database === "" ||
 		database.length > 128 ||
-		// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point — a database name carrying one must never reach an argv element or a log line.
-		/[\u0000-\u001f]/u.test(database)
+		containsControlChar(database)
 	) {
 		throw new NeonProviderError(
 			"PROVIDER_CONTRACT_CHANGED",

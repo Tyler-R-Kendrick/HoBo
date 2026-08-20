@@ -76,8 +76,9 @@ tags: [hobo, competitors, matrix]
 | **Massdriver** | [`massdriver.md`](massdriver.md) | massdriver.cloud | `platform-orchestrators` | `platform-orchestrators` · `portable-application-models` · `hybrid-multicloud-enterprise` · `developer-portals-idps` | direct | typed-contracts, wiring, app-graph, environments, extensibility, governance | displace, borrow, benchmark | mixed | active | 2026-08-19 | v1 |
 | **Mia-Platform** | [`mia-platform.md`](mia-platform.md) | mia platform, miaplatform | `platform-orchestrators` | `platform-orchestrators` · `developer-portals-idps` · `hybrid-multicloud-enterprise` | direct | app-graph, environments, governance, agent-surface, extensibility, delivery | displace, benchmark, borrow | mixed | active | 2026-08-19 | v1 |
 | **Modal** | [`modal.md`](modal.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `runtime-substrates` | adjacent | runtime-portability, provider-matching | provider-target, benchmark | mixed | active | 2026-08-19 | v1 |
+| **NetBird** | [`netbird.md`](netbird.md) | net bird | `identity-networking-delivery` | `identity-networking-delivery` | complementary | identity-secrets, runtime-portability, governance | adopt, provider-target, borrow | mixed | active | 2026-08-20 | pre-v1 |
 | **Netlify** | [`netlify.md`](netlify.md) | — | `cloud-application-platforms` | `cloud-application-platforms` | overlapping | delivery, environments | benchmark, provider-target | mixed | active | 2026-08-19 | v1 |
-| **NetScaler** | [`netscaler.md`](netscaler.md) | citrix adc, netscaler adc | `identity-networking-delivery` | `identity-networking-delivery` | complementary | governance, identity-secrets | provider-target, borrow | mixed | active | 2026-08-12 | pre-v1 |
+| **NetScaler** | [`netscaler.md`](netscaler.md) | citrix adc, netscaler adc | `identity-networking-delivery` | `identity-networking-delivery` | complementary | governance, identity-secrets | provider-target, borrow | mixed | active | 2026-08-20 | v1 |
 | **Nitric** | [`nitric.md`](nitric.md) | nitrictech | `infrastructure-from-code` | `infrastructure-from-code` · `portable-application-models` | overlapping | authoring, typed-contracts, provider-matching, runtime-portability | borrow, benchmark | mixed | active | 2026-08-20 | v1 |
 | **Nomad** | [`nomad.md`](nomad.md) | nomad pack, hashicorp nomad | `runtime-substrates` | `runtime-substrates` · `platform-orchestrators` | overlapping | provider-matching, runtime-portability, reconciliation | borrow, provider-target, benchmark | mixed | active | 2026-08-20 | v1 |
 | **Northflank** | [`northflank.md`](northflank.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `self-hosted-paas` | overlapping | environments, delivery, governance | benchmark | mixed | active | 2026-08-19 | v1 |
@@ -100,12 +101,13 @@ tags: [hobo, competitors, matrix]
 | **Rivet** | [`rivet.md`](rivet.md) | rivetkit | `runtime-substrates` | `runtime-substrates` | adjacent | runtime-portability, replay-migration | adopt, provider-target | mixed | active | 2026-08-20 | v1 |
 | **Roadie** | [`roadie.md`](roadie.md) | roadie.io | `developer-portals-idps` | `developer-portals-idps` | complementary | app-graph, extensibility | integrate, benchmark, borrow | mixed | active | 2026-08-20 | v1 |
 | **ServerKit** | [`serverkit.md`](serverkit.md) | — | `self-hosted-paas` | `self-hosted-paas` · `identity-networking-delivery` | adjacent | delivery, observability, identity-secrets | benchmark, borrow | mixed | active | 2026-08-20 | v1 |
-| **shoo.dev** | [`shoo.md`](shoo.md) | — | `identity-networking-delivery` | `identity-networking-delivery` | complementary | identity-secrets | integrate, provider-target | mixed | active | 2026-08-12 | pre-v1 |
+| **shoo.dev** | [`shoo.md`](shoo.md) | — | `identity-networking-delivery` | `identity-networking-delivery` | complementary | identity-secrets | integrate, provider-target | mixed | active | 2026-08-20 | v1 |
 | **Spin / Fermyon** | [`spin-fermyon.md`](spin-fermyon.md) | spin, spinkube, fermyon | `runtime-substrates` | `runtime-substrates` | adjacent | runtime-portability, extensibility | adopt, render-target | mixed | active | 2026-08-19 | v1 |
 | **SST** | [`sst.md`](sst.md) | sst ion | `infrastructure-from-code` | `infrastructure-from-code` · `portable-application-models` | direct | authoring, typed-contracts, wiring, environments | displace, borrow, benchmark | mixed | active | 2026-08-19 | v1 |
 | **StackGen** | [`stackgen.md`](stackgen.md) | appcd | `agentic-infrastructure` | `agentic-infrastructure` · `infrastructure-from-code` | overlapping | authoring, app-graph, governance, typed-contracts | benchmark, borrow | mixed | renamed | 2026-08-20 | v1 |
 | **Supabase** | [`supabase.md`](supabase.md) | — | `backend-data-platforms` | `backend-data-platforms` | adjacent | typed-contracts, identity-secrets | provider-target, benchmark | mixed | active | 2026-08-19 | v1 |
 | **System Initiative** | [`system-initiative.md`](system-initiative.md) | systeminit, si | `agentic-infrastructure` | `agentic-infrastructure` · `portable-application-models` · `platform-orchestrators` | direct | app-graph, authoring, reconciliation, typed-contracts, agent-surface | displace, borrow, benchmark | mixed | active | 2026-08-20 | v1 |
+| **Tailscale** | [`tailscale.md`](tailscale.md) | tailnet, headscale | `identity-networking-delivery` | `identity-networking-delivery` | complementary | identity-secrets, runtime-portability, governance | adopt, provider-target, borrow, benchmark | mixed | active | 2026-08-20 | pre-v1 |
 | **Upsun** | [`upsun.md`](upsun.md) | platform.sh, platformsh, upsun fixed | `cloud-application-platforms` | `cloud-application-platforms` · `platform-orchestrators` | overlapping | environments, authoring, delivery, app-graph, wiring | benchmark, borrow, provider-target | mixed | renamed | 2026-08-19 | v1 |
 | **Vantage** | [`vantage.md`](vantage.md) | — | `finops-governance-placement` | `finops-governance-placement` | adjacent | finops, governance, observability | benchmark, integrate, borrow | mixed | active | 2026-08-20 | pre-v1 |
 | **Vercel** | [`vercel.md`](vercel.md) | — | `cloud-application-platforms` | `cloud-application-platforms` · `agentic-infrastructure` | overlapping | delivery, environments, agent-surface | benchmark, borrow, provider-target | mixed | active | 2026-08-19 | v1 |
@@ -121,8 +123,6 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | Competitor | Researched | Age (days) | State |
 | ---------- | ---------- | ---------- | ----- |
 | [Anonymous container hosts](anon-container-hosts.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
-| [NetScaler](netscaler.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
-| [shoo.dev](shoo.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
 | [Wasm host landscape](wasm-hosts.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
 | [Wasp](wasp.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
 | [Flux Network](flux-network.md) | 2026-08-15 | 5 | pre-v1 — rewrite to contract |
@@ -186,6 +186,8 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Kubecost](kubecost.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
 | [Kubernetes](kubernetes.md) | 2026-08-20 | 0 | fresh |
 | [Lakebed](lakebed.md) | 2026-08-20 | 0 | fresh |
+| [NetBird](netbird.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
+| [NetScaler](netscaler.md) | 2026-08-20 | 0 | fresh |
 | [Nitric](nitric.md) | 2026-08-20 | 0 | fresh |
 | [Nomad](nomad.md) | 2026-08-20 | 0 | fresh |
 | [Octopus Deploy](octopus-deploy.md) | 2026-08-20 | 0 | fresh |
@@ -200,11 +202,13 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 | [Rivet](rivet.md) | 2026-08-20 | 0 | fresh |
 | [Roadie](roadie.md) | 2026-08-20 | 0 | fresh |
 | [ServerKit](serverkit.md) | 2026-08-20 | 0 | fresh |
+| [shoo.dev](shoo.md) | 2026-08-20 | 0 | fresh |
 | [StackGen](stackgen.md) | 2026-08-20 | 0 | fresh |
 | [System Initiative](system-initiative.md) | 2026-08-20 | 0 | fresh |
+| [Tailscale](tailscale.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
 | [Vantage](vantage.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
 | [wasmCloud](wasmcloud.md) | 2026-08-20 | 0 | fresh |
 
-_84 canonical captures across 13 categories; 70 at contract v1._
+_86 canonical captures across 13 categories; 72 at contract v1._
 
 <!-- END GENERATED: competitor-matrix -->

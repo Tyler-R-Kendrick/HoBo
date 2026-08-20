@@ -30,11 +30,11 @@ Membership, aliases, posture and freshness are declared once, in each capture's 
 | [Backend & Data Application Platforms](categories/backend-data-platforms.md) | [AWS Amplify](aws-amplify.md) · [Convex](convex.md) · [InsForge](insforge.md) · [Supabase](supabase.md) · [Wasp](wasp.md) |
 | [Delivery, Release & GitOps](categories/delivery-release-gitops.md) | [Argo CD](argo-cd.md) · [Flux CD](flux-cd.md) · [Harness Platform](harness.md) · [Kamal](kamal.md) · [Kratix](kratix.md) · [KubeVela](kubevela.md) · [Lagoon](lagoon.md) · [Octopus Deploy](octopus-deploy.md) · [OpenChoreo](openchoreo.md) · [Rancher Fleet](rancher-fleet.md) · [Release](release.md) |
 | [FinOps, Governance & Placement](categories/finops-governance-placement.md) | [Antimetal](antimetal.md) · [CAST AI](cast-ai.md) · [CloudBolt](cloudbolt.md) · [Cycloid](cycloid.md) · [DuploCloud](duplocloud.md) · [Facets.cloud](facets.md) · [FinOps tooling cohort](finops-tooling.md) · [Harness Platform](harness.md) · [HPE Morpheus](hpe-morpheus.md) · [Infracost](infracost.md) · [Kubecost](kubecost.md) · [OpenCost](opencost.md) · [Vantage](vantage.md) |
-| [Identity, Networking & Application Delivery](categories/identity-networking-delivery.md) | [Control Plane](control-plane.md) · [NetScaler](netscaler.md) · [ServerKit](serverkit.md) · [shoo.dev](shoo.md) |
+| [Identity, Networking & Application Delivery](categories/identity-networking-delivery.md) | [Control Plane](control-plane.md) · [NetBird](netbird.md) · [NetScaler](netscaler.md) · [ServerKit](serverkit.md) · [shoo.dev](shoo.md) · [Tailscale](tailscale.md) |
 
 Categories are many-to-many: several products appear in more than one row above, with a single canonical capture behind each link.
 
-## Canonical captures (84)
+## Canonical captures (86)
 
 | Competitor | Capture | Primary category | Directness | Role relative to HoBo |
 | ---------- | ------- | ---------------- | ---------- | --------------------- |
@@ -85,6 +85,7 @@ Categories are many-to-many: several products appear in more than one row above,
 | **Massdriver** | [`massdriver.md`](massdriver.md) | [`platform-orchestrators`](categories/platform-orchestrators.md) | direct | bundle-and-artifact platform whose JSON-Schema connection contracts are the closest shipped analog to HoBo's typed capability wiring |
 | **Mia-Platform** | [`mia-platform.md`](mia-platform.md) | [`platform-orchestrators`](categories/platform-orchestrators.md) | direct | enterprise platform orchestrator plus developer portal — owns the same application-to-environment span HoBo does, in one commercial suite |
 | **Modal** | [`modal.md`](modal.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | adjacent | Python-first serverless compute for AI/ML with agent Sandboxes — AI-native compute competitor |
+| **NetBird** | [`netbird.md`](netbird.md) | [`identity-networking-delivery`](categories/identity-networking-delivery.md) | complementary | self-hostable identity-keyed overlay — the adapter that makes HoBo's air-gapped and sovereign connectivity story credible |
 | **Netlify** | [`netlify.md`](netlify.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | composable-web platform (Functions/Edge, Blobs, Netlify DB) — frontend PaaS benchmark |
 | **NetScaler** | [`netscaler.md`](netscaler.md) | [`identity-networking-delivery`](categories/identity-networking-delivery.md) | complementary | application delivery controller plus its IaC surface — candidate gateway provider and hobo-import analog |
 | **Nitric** | [`nitric.md`](nitric.md) | [`infrastructure-from-code`](categories/infrastructure-from-code.md) | overlapping | cloud-agnostic infrastructure-from-code framework — authoring analog for typed resource declaration |
@@ -115,6 +116,7 @@ Categories are many-to-many: several products appear in more than one row above,
 | **StackGen** | [`stackgen.md`](stackgen.md) | [`agentic-infrastructure`](categories/agentic-infrastructure.md) | overlapping | infrastructure inferred from unannotated source — the one product that removes the declaration step entirely, and the sharpest test of whether HoBo's authoring step is necessary |
 | **Supabase** | [`supabase.md`](supabase.md) | [`backend-data-platforms`](categories/backend-data-platforms.md) | adjacent | open-source Postgres BaaS — adjacent platform and possible provider target |
 | **System Initiative** | [`system-initiative.md`](system-initiative.md) | [`agentic-infrastructure`](categories/agentic-infrastructure.md) | direct | the most architecturally ambitious rethink of infrastructure automation in the corpus — a live model with real-time qualification instead of a plan-and-apply cycle |
+| **Tailscale** | [`tailscale.md`](tailscale.md) | [`identity-networking-delivery`](categories/identity-networking-delivery.md) | complementary | identity-keyed overlay network — an adopted adapter, and the strongest working demonstration that identity, not address, should determine reachability |
 | **Upsun** | [`upsun.md`](upsun.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | environment-per-branch PaaS whose cloned-production-data preview environments are the strongest ephemeral-environment implementation in the corpus |
 | **Vantage** | [`vantage.md`](vantage.md) | [`finops-governance-placement`](categories/finops-governance-placement.md) | adjacent | multi-cloud cost observability — the corpus's evidence that attribution is an organizational problem before it is a technical one |
 | **Vercel** | [`vercel.md`](vercel.md) | [`cloud-application-platforms`](categories/cloud-application-platforms.md) | overlapping | frontend cloud plus durable Workflow SDK and AI stack — borrow-source promoted to full parity capture |
@@ -169,6 +171,7 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | `harness delegate` | [Harness Platform](harness.md) |
 | `harness.io` | [Harness Platform](harness.md) |
 | `hashicorp nomad` | [Nomad](nomad.md) |
+| `headscale` | [Tailscale](tailscale.md) |
 | `k8s` | [Kubernetes](kubernetes.md) |
 | `kamal deploy` | [Kamal](kamal.md) |
 | `kcl` | [KusionStack](kusionstack.md) |
@@ -180,6 +183,7 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | `morpheus cmp` | [HPE Morpheus](hpe-morpheus.md) |
 | `morpheus data` | [HPE Morpheus](hpe-morpheus.md) |
 | `mrsk` | [Kamal](kamal.md) |
+| `net bird` | [NetBird](netbird.md) |
 | `netscaler adc` | [NetScaler](netscaler.md) |
 | `nitrictech` | [Nitric](nitric.md) |
 | `nomad pack` | [Nomad](nomad.md) |
@@ -215,6 +219,7 @@ Renamed, acquired, and commonly-abbreviated products resolve to one canonical ca
 | `suse fleet` | [Rancher Fleet](rancher-fleet.md) |
 | `syntasso kratix` | [Kratix](kratix.md) |
 | `systeminit` | [System Initiative](system-initiative.md) |
+| `tailnet` | [Tailscale](tailscale.md) |
 | `ttl.sh` | [Anonymous container hosts](anon-container-hosts.md) |
 | `upsun fixed` | [Upsun](upsun.md) |
 | `uselagoon` | [Lagoon](lagoon.md) |

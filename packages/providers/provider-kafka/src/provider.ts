@@ -1,5 +1,7 @@
 import { MESSAGING_WIT_INTERFACE } from "@hobo/core";
 
+import { type JsonValue, parseJsonValue } from "./json.js";
+
 import { KAFKA_PROVIDER_ID, publishCapabilityManifest } from "./manifest.js";
 import { createKafkaMessaging } from "./messaging.js";
 import { localRedpandaCluster, realizeKafkaResources } from "./realize.js";
@@ -21,8 +23,8 @@ export interface KafkaCapabilityProvider {
 	readonly capabilities: typeof KAFKA_MESSAGING_CAPABILITIES;
 	capabilityManifest(): ReturnType<typeof publishCapabilityManifest>;
 	realize(input: {
-		cluster?: unknown;
-		topics?: readonly unknown[];
+		cluster?: JsonValue;
+		topics?: readonly JsonValue[];
 	}): KafkaRealizeResult;
 	createMessaging(options?: {
 		live?: boolean;
@@ -44,10 +46,10 @@ export function createKafkaProvider(
 		witExports: [MESSAGING_WIT_INTERFACE, "hobo:queue/queue@0.1.0"],
 		capabilities: KAFKA_MESSAGING_CAPABILITIES,
 		capabilityManifest: () => publishCapabilityManifest(),
-		realize(input: { cluster?: unknown; topics?: readonly unknown[] }) {
+		realize(input: { cluster?: JsonValue; topics?: readonly JsonValue[] }) {
 			return realizeKafkaResources({
-				cluster: input.cluster ?? cluster,
-				...(input.topics !== undefined ? { topics: input.topics } : {}),
+				cluster: input.cluster ?? parseJsonValue(JSON.stringify(cluster)),
+				...(input.topics !== undefined ? { topics: input.topics } : undefined),
 			});
 		},
 		createMessaging(opts?: {
@@ -57,8 +59,8 @@ export function createKafkaProvider(
 			const transport = opts?.transport ?? defaultTransport;
 			return createKafkaMessaging({
 				cluster,
-				...(transport ? { transport } : {}),
-				...(opts?.live !== undefined ? { live: opts.live } : {}),
+				...(transport ? { transport } : undefined),
+				...(opts?.live !== undefined ? { live: opts.live } : undefined),
 			});
 		},
 	});

@@ -1,3 +1,9 @@
+import {
+	parseConsumerGroupId,
+	parseSubscriptionName,
+	parseTenantId,
+	parseTopicName,
+} from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -13,28 +19,39 @@ describe("kafka live DLQ", () => {
 			transport: createInMemoryKafkaTransport(),
 		});
 		await bus.ensureSubscription({
-			name: "s" as never,
-			topic: "fail" as never,
-			consumerGroup: "g" as never,
-			tenantId: "acme" as never,
+			name: parseSubscriptionName("s"),
+			topic: parseTopicName("fail"),
+			consumerGroup: parseConsumerGroupId("g"),
+			tenantId: parseTenantId("acme"),
 			delivery: "at-least-once",
 			maxDeliveryAttempts: 2,
 		});
-		await bus.publish("fail" as never, { x: 1 });
+		await bus.publish(parseTopicName("fail"), { x: 1 });
 
-		const r1 = await bus.subscribe("fail" as never, "g" as never, async () => {
-			throw new Error("boom");
-		});
+		const r1 = await bus.subscribe(
+			parseTopicName("fail"),
+			parseConsumerGroupId("g"),
+			async () => {
+				throw new Error("boom");
+			},
+		);
 		expect(r1.handled).toBe(0);
 		expect(r1.deadLettered).toBe(0);
 
-		const r2 = await bus.subscribe("fail" as never, "g" as never, async () => {
-			throw new Error("boom");
-		});
+		const r2 = await bus.subscribe(
+			parseTopicName("fail"),
+			parseConsumerGroupId("g"),
+			async () => {
+				throw new Error("boom");
+			},
+		);
 		expect(r2.deadLettered).toBe(1);
 
 		// Group advanced — no further redelivery.
-		const again = await bus.consume("fail" as never, "g" as never);
+		const again = await bus.consume(
+			parseTopicName("fail"),
+			parseConsumerGroupId("g"),
+		);
 		expect(again).toHaveLength(0);
 
 		const types = bus.events().map((e) => e.type);

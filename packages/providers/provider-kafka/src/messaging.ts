@@ -27,6 +27,7 @@ import {
 	parseConsumerGroupId,
 	parseMessagingLeaseId,
 	parseMessagingMessageId,
+	parseTenantId,
 	parseTopicName,
 	type SubscriptionSpec,
 	type TenantId,
@@ -91,9 +92,9 @@ export function createKafkaMessaging(
 		const inner = createInMemoryMessaging({
 			tenantId: cluster.tenantId,
 			capabilities,
-			...(options.now ? { now: options.now } : {}),
+			...(options.now ? { now: options.now } : undefined),
 		});
-		return Object.freeze({
+		const simulated: KafkaMessaging = {
 			backend: "native-kafka",
 			capabilities,
 			cluster,
@@ -109,11 +110,7 @@ export function createKafkaMessaging(
 			},
 			ensureSubscription: (spec: SubscriptionSpec) =>
 				inner.ensureSubscription(spec),
-			async publish(
-				topic: TopicName,
-				body: unknown,
-				publishOptions?: PublishOptions,
-			) {
+			async publish(topic, body, publishOptions) {
 				return publishViaInner(
 					inner,
 					cluster,
@@ -155,7 +152,8 @@ export function createKafkaMessaging(
 			) => inner.nack(id, lease, reason),
 			events: () => inner.events(),
 			async flush() {},
-		});
+		};
+		return Object.freeze(simulated);
 	}
 
 	// Live path: every I/O goes through the broker transport.
@@ -163,7 +161,7 @@ export function createKafkaMessaging(
 	const pendingCommits = new Map<string, { topic: string; group: string }>();
 	const pendingOps: Promise<void>[] = [];
 	const subscriptions = new Map<string, SubscriptionSpec>();
-	const tenantId = cluster.tenantId as TenantId;
+	const tenantId = parseTenantId(cluster.tenantId);
 	const now = options.now ?? (() => new Date().toISOString());
 
 	const emitLocal = (
@@ -237,10 +235,10 @@ export function createKafkaMessaging(
 				topic: physical,
 				key: publishOptions.key ?? "",
 				body,
-				headers: { ...(publishOptions.headers ?? {}) },
+				headers: { ...publishOptions.headers },
 				...(publishOptions.idempotencyKey
 					? { idempotencyKey: publishOptions.idempotencyKey }
-					: {}),
+					: undefined),
 			});
 			const result: PublishResult = Object.freeze({
 				messageId: produced.messageId,
@@ -481,11 +479,11 @@ async function nackAsync(
 	});
 }
 
-async function publishViaInner(
+async function publishViaInner<TBody>(
 	inner: Messaging,
 	cluster: KafkaClusterSpec,
 	topic: TopicName,
-	body: unknown,
+	body: TBody,
 	publishOptions: PublishOptions | undefined,
 	metering: MeteringBus | undefined,
 	fidelity: "simulated" | "live",
@@ -500,7 +498,7 @@ async function publishViaInner(
 	if (metering) {
 		await metering.emit(
 			createUsageEvent({
-				tenantId: cluster.tenantId as TenantId,
+				tenantId: parseTenantId(cluster.tenantId),
 				eventType: "messaging.publish",
 				resource: tenantScopedTopicName(cluster.tenantId, topic),
 				quantity: 1,
@@ -527,7 +525,7 @@ async function meterConsume(
 	if (!metering || quantity === 0) return;
 	await metering.emit(
 		createUsageEvent({
-			tenantId: cluster.tenantId as TenantId,
+			tenantId: parseTenantId(cluster.tenantId),
 			eventType: "messaging.consume",
 			resource: tenantScopedTopicName(cluster.tenantId, String(topic)),
 			quantity,

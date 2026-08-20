@@ -17,7 +17,7 @@ Developer-facing catalogs, scaffolding, self-service workflows, scorecards, and 
 
 A portal can absorb the surface developers touch. HoBo must be the control plane a portal calls, not a thing a portal replaces.
 
-## Competitors (12)
+## Competitors (13)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -33,6 +33,7 @@ A portal can absorb the surface developers touch. HoBo must be the control plane
 | [**Red Hat Developer Hub**](../red-hat-developer-hub.md) *(primary)* | supported Backstage distribution whose dynamic plugin loading solves the maintenance problem that makes self-hosted Backstage expensive | complementary | `app-graph`, `governance`, `extensibility` | Dynamic, configuration-driven plugin loading removes the fork-build-upgrade treadmill that makes self-hosted Backstage expensive, with enterprise support behind it. | HoBo is the control plane a portal fronts; its wasm component model is a stronger version of the same runtime-loading instinct. | integrate, benchmark, borrow | P3 |
 | [**Roadie**](../roadie.md) *(primary)* | hosted Backstage whose exit story — your catalog and templates stay yours — is the cleanest lock-in answer in this cohort | complementary | `app-graph`, `extensibility` | Managed Backstage with the cleanest exit story in the cohort: catalog YAML and templates stay in the customer's repositories in an open format. | Not a control plane at all — Roadie is a portal HoBo should feed, and its portability principle is one HoBo shares and states less clearly. | integrate, benchmark, borrow | P3 |
 | [**Atlassian Compass**](../atlassian-compass.md) *(primary)* | ecosystem-distribution portal — a reminder that in this category integration reach and vendor commitment matter more than architecture | complementary | `app-graph`, `governance` | Distribution: for an Atlassian-standardized organization the catalog arrives pre-wired to the issues, docs and repositories people already use. | HoBo keeps the model in the customer's repository; Compass keeps it in Atlassian's format, and retired scaffolding templates in December 2025 with no replacement. | integrate, benchmark | P3 |
+| [**Appvia Wayfinder**](../appvia-wayfinder.md) | workspace-scoped self-service platform whose Cloud Resource Plans are the same curated-choice mechanism HoBo expresses as Bindle kinds | overlapping | `environments`, `governance`, `provider-matching`, `identity-secrets`, `app-graph` | The workspace fuses team, access and infrastructure into one boundary users can reason about, with admin-curated Cloud Resource Plans for self-service. | HoBo scores among candidates and declares impedance rather than offering a curated menu, and residency is a typed fail-closed evaluation rather than a plan an admin remembered to restrict. | benchmark, borrow | P3 |
 
 ## Navigation
 

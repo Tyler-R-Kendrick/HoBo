@@ -17,7 +17,7 @@ Application-intent models, programmable resource/capability abstractions, compos
 
 HoBo's Bindle kinds, BoundaryContracts and PortabilityReport are exactly an application model plus a portability claim. Every alternative model competes for the same authoring mindshare.
 
-## Competitors (16)
+## Competitors (17)
 
 | Competitor | Role in this category | Directness | Contested HoBo surface | Competitor advantage | HoBo distinction | Posture | Priority |
 | ---------- | --------------------- | ---------- | ---------------------- | -------------------- | ---------------- | ------- | -------- |
@@ -37,6 +37,7 @@ HoBo's Bindle kinds, BoundaryContracts and PortabilityReport are exactly an appl
 | [**Kratix**](../kratix.md) *(primary)* | framework for building platform APIs — Promises bundle contract, fulfilment and placement, which is the packaging idea HoBo's Bindle kinds most resemble | overlapping | `typed-contracts`, `extensibility`, `provider-matching`, `delivery`, `app-graph` | The Promise bundles contract, prerequisites, fulfilment and placement into one versioned product, fulfilled by arbitrary containers so it can wrap any process. | Arbitrary fulfilment cannot be reasoned about; HoBo trades that reach for typed ports whose impedance, effects and cost are analysable before execution. | borrow, benchmark, integrate | P2 |
 | [**Pulumi**](../pulumi.md) | the IaC engine HoBo stands on — an adopted adapter and borrow-source whose authoring model HoBo agrees with and whose altitude it deliberately sits above | adjacent | `authoring`, `typed-contracts`, `reconciliation`, `extensibility`, `wiring` | The Terraform bridge gives it the largest provider ecosystem in existence, Output<T> derives ordering from data flow, and the Automation API makes the engine embeddable. | Pulumi describes resources; HoBo describes capabilities and decides which resources satisfy them — and HoBo delegates downward to Pulumi rather than competing with it. | adopt, borrow, benchmark, integrate | P1 |
 | [**Kubernetes**](../kubernetes.md) | the default substrate almost every competitor assumes — a target HoBo supports and a premise HoBo declines | adjacent | `reconciliation`, `runtime-portability`, `provider-matching`, `extensibility`, `governance` | The ecosystem: every vendor integrates, every cloud offers it managed, every engineer can be hired for it — plus CRDs, the best extensibility decision in this corpus. | HoBo declines the premise. A cluster must exist and be paid for before anything runs; local, browser and hosted runtimes address the entire segment below that floor. | adopt, provider-target, borrow, standard | P1 |
+| [**Cloudify**](../cloudify.md) | the TOSCA-lineage orchestrator — the corpus's clearest cautionary tale about standards-based portable application models | overlapping | `app-graph`, `typed-contracts`, `wiring`, `provider-matching`, `extensibility` | Typed relationships carry their own lifecycle hooks and Service Composition wraps a deployment as a node — a richer topology model than HoBo has. | HoBo authoring is developer-facing and its portability is measured rather than inherited from standard conformance — the exact gap TOSCA left open. | benchmark, borrow | P2 |
 
 ## Navigation
 

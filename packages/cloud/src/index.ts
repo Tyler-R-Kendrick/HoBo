@@ -230,6 +230,14 @@ export {
 	type ResourceLifecycle,
 } from "./projections/deployment-view.js";
 export {
+	evaluateReplacement,
+	type PriorPlacement,
+	type ReplacementAction,
+	type ReplacementInputs,
+	type ReplacementReason,
+	type ReplacementVerdict,
+} from "./planner/replacement.js";
+export {
 	computeDrift,
 	type DriftFinding,
 	type DriftKind,

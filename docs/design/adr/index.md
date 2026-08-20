@@ -172,3 +172,4 @@
 | 0161 | Better Auth as the default self-hosted full-featured `hobo:auth` adapter, packaged as an auth bundle over existing ports | [identity-security](02-identity-security.md#adr-0161) |
 | 0162 | Package tiering: a tier base library is legitimate only when the base package's whole public surface *is* the tier's vocabulary; per-group verdicts retiring the banked-edge allowlist | [architecture-core](01-architecture-core.md#adr-0162) |
 | 0163 | Drift as a derived fact computed from the deployment view — typed-lifecycle classification, `converging`/`unknown` first-class, imported estates exempt from unplanned findings | [data-plane](03-data-plane.md#adr-0163) |
+| 0164 | Placement is re-evaluable: a verdict step separate from re-matching, residency outranking opportunity, movement requiring declared consent, prior decision carried forward | [architecture-core](01-architecture-core.md#adr-0164) |

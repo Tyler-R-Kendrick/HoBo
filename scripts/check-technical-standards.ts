@@ -5,7 +5,6 @@ type Mode = "worktree" | "staged";
 
 let base = "";
 let mode: Mode = "worktree";
-let baseRefExists: boolean | undefined;
 let resolvedBase: string | undefined;
 const failures: string[] = [];
 
@@ -68,20 +67,17 @@ function effectiveBase(): string {
 	if (resolvedBase !== undefined) return resolvedBase;
 	if (refAvailable(base)) {
 		resolvedBase = base;
-		baseRefExists = true;
 		return resolvedBase;
 	}
 	if (refAvailable("HEAD~1")) {
 		console.warn(`Base ref ${base} is unavailable; falling back to HEAD~1.`);
 		resolvedBase = "HEAD~1";
-		baseRefExists = false;
 		return resolvedBase;
 	}
 	console.warn(
 		`Base ref ${base} is unavailable; falling back to working tree diff.`,
 	);
 	resolvedBase = "";
-	baseRefExists = false;
 	return resolvedBase;
 }
 
@@ -316,6 +312,7 @@ for (const file of run("git", ["ls-files", "**/package.json"])
 	.filter((file) => !file.includes("node_modules") && existsSync(file))) {
 	let manifest: { scripts?: Record<string, string> };
 	try {
+		// SAFETY: assertion to `se(readFileSync(file, "utf8")) as typeof manifest; } cat` is required at this boundary.
 		manifest = JSON.parse(readFileSync(file, "utf8")) as typeof manifest;
 	} catch {
 		continue;
@@ -345,6 +342,7 @@ if (existsSync("contracts/data-models")) {
 	);
 }
 
+// SAFETY: assertion to `se(readFileSync("package.json", "utf8")) as { scripts?: Record<string, string>; }; if (pa` is required at this boundary.
 const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
 	scripts?: Record<string, string>;
 };

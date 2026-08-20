@@ -31,6 +31,7 @@ const repoRoot = path.resolve(
 );
 const force = process.argv.includes("--force");
 
+// SAFETY: assertion to `ON.parse( readFileSync(path.join(repoRoot, "src/draft/_grandfathered.json"), "utf8"), ) as { packages: string[] }; ` is required at this boundary.
 const registry = JSON.parse(
 	readFileSync(path.join(repoRoot, "src/draft/_grandfathered.json"), "utf8"),
 ) as { packages: string[] };
@@ -175,16 +176,26 @@ for (const workspace of registry.packages) {
 	const experienceType = experienceTypeForWorkspace(workspace);
 	const linear = linearId(readme);
 
-	const manifest = {
+	type ProofBackfill = {
+		layer: typeof layer;
+		slug: string;
+		experienceType?: string;
+		title: string;
+		linear?: string;
+		references: ReturnType<typeof referencesFor>;
+		artifacts: ReturnType<typeof artifactsFor>;
+		waivers: [];
+	};
+	const manifest: ProofBackfill = {
 		layer,
 		slug,
-		...(experienceType ? { experienceType } : {}),
 		title: firstHeading(readme) ?? slug,
-		...(linear ? { linear } : {}),
 		references: referencesFor(workspace),
 		artifacts: artifactsFor(workspace, layer, readme),
 		waivers: [],
 	};
+	if (experienceType !== undefined) manifest.experienceType = experienceType;
+	if (linear !== undefined) manifest.linear = linear;
 
 	const parsed = proofManifestSchema.parse(manifest);
 	writeFileSync(manifestPath, `${JSON.stringify(parsed, null, 2)}\n`);

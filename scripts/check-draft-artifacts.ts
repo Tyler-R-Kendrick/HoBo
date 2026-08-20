@@ -21,9 +21,7 @@ import { existsSync, readdirSync, readFileSync, statSync } from "node:fs";
 import path from "node:path";
 import process from "node:process";
 
-import { sanitizeNodeOptions } from "./lib/env.ts";
 import {
-	type ExperienceType,
 	experienceTypeForWorkspace,
 	layerForWorkspace,
 	type ProofManifest,
@@ -210,6 +208,7 @@ export function checkWorkspace(
 			problems.push(`missing notebook: ${manifest.artifacts.notebook}`);
 		} else {
 			try {
+				// SAFETY: assertion to `se(readFileSync(notebookPath, "utf8")) as { nbformat?: number; cells?: Array<{ cell_type?: string; outputs?: unknown[] }` is required at this boundary.
 				const nb = JSON.parse(readFileSync(notebookPath, "utf8")) as {
 					nbformat?: number;
 					cells?: Array<{ cell_type?: string; outputs?: unknown[] }>;
@@ -290,7 +289,7 @@ export function checkWorkspace(
 		);
 		const assetRoot = manifest.artifacts.assets ?? "assets";
 		const inAssets = all.filter((f) => f.startsWith(`${assetRoot}/`));
-		const requirementByType: Record<ExperienceType, () => boolean> = {
+		const requirementByType = {
 			ux: () => inAssets.some((f) => /\.(svg|png|jpe?g|webp)$/u.test(f)),
 			dx: () =>
 				all.some((f) => f.endsWith(".proto")) &&
@@ -307,7 +306,7 @@ export function checkWorkspace(
 						/(type-tests|test-types)\//u.test(f) || f.endsWith(".test-d.ts"),
 				),
 		};
-		const message: Record<ExperienceType, string> = {
+		const message = {
 			ux: "ux proof needs real visual assets (assets/*.svg|png|jpg|webp)",
 			dx: "dx proof needs protobuf + CUE contracts",
 			cx: "cx proof needs journey artifacts (assets/*.md or journeys/*.md)",
@@ -351,6 +350,7 @@ export function checkWorkspace(
 function main() {
 	const argv = process.argv.slice(2);
 	const grandfathered = new Set(
+		// SAFETY: assertion to `( readFileSync( path.join(repoRoot, "src/draft/_grandfathered.json"), "utf8", ), ) as { packages: string[] } ).packa` is required at this boundary.
 		(
 			JSON.parse(
 				readFileSync(

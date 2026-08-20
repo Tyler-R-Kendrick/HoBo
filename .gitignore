@@ -75,6 +75,8 @@ examples/wasp-opensaas/e2e-tests/
 # Python bytecode (media/scripts, spriterrific runs)
 __pycache__/
 packages/core/.stryker-tmp/
+# Stryker's JSON/HTML report output (written when --reporters includes json).
+reports/mutation/
 # Root mutation lane (stryker.scripts.conf.json) sandboxes here.
 .stryker-tmp/
 

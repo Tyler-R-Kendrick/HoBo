@@ -16,13 +16,17 @@ export {
 	type CommandResult,
 	type Decide,
 	defineAggregate,
+	type EventEmitOptions,
 } from "./aggregate.js";
 export {
+	type ActorLeaseGrant,
+	type ActorLeaseJournal,
 	createDurableActorHost,
 	type DurableActorHostOptions,
 } from "./durable-actor-host.js";
 export {
 	AggregateStaleFenceError,
+	type ErrorSignal,
 	isOptimisticConflict,
 	isStaleFenceError,
 	ProjectionWriteError,
@@ -43,6 +47,7 @@ export {
 	type FoldSpec,
 	foldEvents,
 } from "./fold.js";
+export type { Inspectable, JsonObject, JsonValue } from "./json.js";
 export {
 	PROJECTION_INTERFACE,
 	PROJECTION_PORT,

@@ -6,6 +6,12 @@ import {
 	createProjectionSinkReboundEvent,
 	type DataFact,
 } from "./events.js";
+import {
+	hasFunctionTag,
+	type Inspectable,
+	isObjectLike,
+	parseOffendingSeq,
+} from "./json.js";
 import type { UpcasterRegistry } from "./upcaster.js";
 
 // A projection is the read-model fold: a deterministic, read-only `(row, event)
@@ -60,11 +66,17 @@ function clone<T>(value: T): T {
 }
 
 function deepFreeze<T>(value: T): T {
-	if (value && typeof value === "object" && !Object.isFrozen(value)) {
-		Object.freeze(value);
-		for (const key of Object.keys(value as Record<string, unknown>)) {
-			deepFreeze((value as Record<string, unknown>)[key]);
-		}
+	if (value === undefined || value === null) return value;
+	// SAFETY: freeze walks own properties of object-like values; primitives return above.
+	const inspectable = value as Inspectable;
+	if (!isObjectLike(inspectable) || Object.isFrozen(inspectable)) return value;
+	Object.freeze(inspectable);
+	if (Array.isArray(inspectable)) {
+		for (const item of inspectable) deepFreeze(item);
+		return value;
+	}
+	for (const key of Object.keys(inspectable)) {
+		deepFreeze(inspectable[key]);
 	}
 	return value;
 }
@@ -77,7 +89,7 @@ export function defineProjection<Row>(
 	definition: ProjectionDefinition<Row>,
 ): Projection<Row> {
 	if (!definition.name) throw new TypeError("projection name is required");
-	if (typeof definition.key !== "function") {
+	if (!hasFunctionTag(definition.key)) {
 		throw new TypeError("projection key must be a function");
 	}
 	const handlers = new Map<string, ApplyHandler<Row>>(
@@ -92,9 +104,8 @@ export function defineProjection<Row>(
 		const materialized = [...events];
 		for (const event of materialized) {
 			if (isQuarantineFact(event)) {
-				const offending = (event.data as { offendingSeq?: unknown })
-					?.offendingSeq;
-				if (typeof offending === "number") quarantinedSeqs.add(offending);
+				const offending = parseOffendingSeq(event.data);
+				if (offending !== undefined) quarantinedSeqs.add(offending);
 			}
 		}
 

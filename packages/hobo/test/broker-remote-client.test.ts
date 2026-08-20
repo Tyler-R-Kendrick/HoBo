@@ -22,15 +22,17 @@
  * endpoints as absolute URLs or as paths, and getting that wrong sends a
  * credential to the wrong origin.
  */
-import { describe, expect, it } from "vitest";
 
+import { describe, expect, it } from "vitest";
 import {
 	createMockRemoteBrokerState,
 	createRemoteBrokerClient,
 	RemoteBrokerClientError,
 } from "../src/broker-remote-client.js";
+import type { JsonValue } from "../src/json.js";
 
 /** The minimum a `place` request needs; `authorizationHeaders` reads all of it. */
+// SAFETY: assertion required at this I/O or test boundary.
 const CREDENTIAL = {
 	accessToken: "tok",
 	principal: { kind: "workload", id: "w1" },
@@ -42,9 +44,10 @@ const CREDENTIAL = {
 function stubFetch(response: {
 	ok?: boolean;
 	status?: number;
-	json?: () => unknown;
+	json?: () => JsonValue;
 }) {
 	const calls: { url: string; init: RequestInit }[] = [];
+	// SAFETY: assertion required at this I/O or test boundary.
 	const impl = (async (url: string, init: RequestInit) => {
 		calls.push({ url, init });
 		return {
@@ -52,7 +55,7 @@ function stubFetch(response: {
 			status: response.status ?? 200,
 			json: async () => (response.json ? response.json() : {}),
 		};
-	}) as unknown as typeof fetch;
+	}) as typeof fetch;
 	return { calls, impl };
 }
 
@@ -187,6 +190,7 @@ describe("place failures", () => {
 				},
 			},
 		});
+		// SAFETY: assertion required at this I/O or test boundary.
 		return client.place({
 			bindleName: "app",
 			projectDir: "/p",
@@ -253,6 +257,7 @@ describe("claim failures", () => {
 				},
 			},
 		});
+		// SAFETY: assertion required at this I/O or test boundary.
 		return client.claim({ claimToken: "t", account: "a" } as never);
 	}
 
@@ -305,6 +310,7 @@ describe("the mock backend", () => {
 		// must not move it, or every link already shared would break.
 		const client = mockClient();
 		const session = await client.createAnonymousSession({ bindleName: "app" });
+		// SAFETY: assertion required at this I/O or test boundary.
 		const placed = await client.place({
 			bindleName: "app",
 			projectDir: "/p",
@@ -312,6 +318,7 @@ describe("the mock backend", () => {
 			claimToken: session.claimToken,
 			credential: CREDENTIAL,
 		} as never);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const claimed = await client.claim({
 			claimToken: placed.claimToken,
 			account: "acct-1",

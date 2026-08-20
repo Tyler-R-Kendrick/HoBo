@@ -2,8 +2,8 @@
  * Shared Yard → Camp serve path for all component hosts
  * (local | wasm | oci | cloud-native).
  */
-import { createServer, type Server } from "node:http";
 
+import { createServer, type Server } from "node:http";
 import { discoveryEnvForDependency, readDependencyConfig } from "@hobo/bindles";
 import { loadBindleDefinition } from "@hobo/cli";
 import {
@@ -43,12 +43,29 @@ import {
 	openBareMetalYard,
 } from "./bare-metal-yard.js";
 import { servePrivateOnHost } from "./host-registry.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+
+interface ResolvedDependency {
+	httpUrl?: string;
+	connectionString?: string;
+}
+
+function jsonObjectFrom(value: JsonValue): JsonObject {
+	const cloned = cloneAsJson(value);
+	return isJsonObject(cloned) ? cloned : {};
+}
 
 function modulePathFromAnnotations(
 	annotations:
 		| readonly {
 				readonly option: string;
-				readonly config: Record<string, unknown>;
+				readonly config: { readonly [key: string]: JsonValue | undefined };
 		  }[]
 		| undefined,
 ): string | undefined {
@@ -61,7 +78,7 @@ function modulePathFromAnnotations(
 			annotation.config.path ??
 			annotation.config.module ??
 			annotation.config.source;
-		if (typeof path === "string" && path.length > 0) return path;
+		if (isJsonString(path) && path.length > 0) return path;
 	}
 	return undefined;
 }
@@ -75,6 +92,7 @@ async function webRequestToHttp(request: Request): Promise<HttpRequest> {
 	return {
 		method: request.method,
 		path: `${url.pathname}${url.search}`,
+		// SAFETY: assertion required at this I/O or test boundary.
 		headers: [...request.headers.entries()] as [string, string][],
 		body,
 	};
@@ -97,22 +115,24 @@ function componentDescriptor(
 		imports: [],
 		exports: {
 			[HTTP_INCOMING_HANDLER]: {
-				handle: async (httpReq: unknown): Promise<HttpResponse> => {
-					const req = httpReq as HttpRequest;
+				// SAFETY: component host table is untyped at the descriptor boundary.
+				handle: (async (httpReq: HttpRequest): Promise<HttpResponse> => {
+					const req = httpReq;
 					const webReq = new Request(`http://component.local${req.path}`, {
 						method: req.method,
 						headers: Object.fromEntries(req.headers),
 						...(req.body && req.method !== "GET" && req.method !== "HEAD"
 							? { body: req.body }
-							: {}),
+							: undefined),
 					});
 					const webRes = await handler(webReq);
 					return {
 						status: webRes.status,
+						// SAFETY: assertion required at this I/O or test boundary.
 						headers: [...webRes.headers.entries()] as [string, string][],
 						body: await webRes.text(),
 					};
-				},
+				}) as ParsedComponentDescriptor["exports"][string][string],
 			},
 		},
 	};
@@ -129,7 +149,7 @@ async function listen(handler: FetchHandler, port: number): Promise<Server> {
 			const body = Buffer.concat(chunks);
 			const headers = new Headers();
 			for (const [key, value] of Object.entries(req.headers)) {
-				if (typeof value === "string") headers.set(key, value);
+				if (isJsonString(value)) headers.set(key, value);
 				else if (Array.isArray(value)) headers.set(key, value.join(", "));
 			}
 			const init: RequestInit = {
@@ -164,7 +184,7 @@ export type MultiHostServeResult = BareMetalServeResult & {
 		readonly privateWorkers: number;
 		readonly meshHost: typeof INTERNAL_MESH_HOST;
 		readonly isolateBoundary: string;
-		readonly details?: Readonly<Record<string, unknown>>;
+		readonly details?: JsonObject;
 		readonly wasmtimeVersion?: string;
 		readonly wasmPaths?: readonly string[];
 	};
@@ -233,17 +253,18 @@ export async function serveProjectOnHost(options: {
 		if (depConfig === null && record.kind !== "external") continue;
 		const config = depConfig ?? (record.kind === "external" ? {} : null);
 		if (config === null) continue;
-		const resolved: { httpUrl?: string; connectionString?: string } = {};
-		if (typeof config.connectionString === "string") {
+		const resolved: ResolvedDependency = {};
+		if (isJsonString(config.connectionString)) {
 			resolved.connectionString = config.connectionString;
 		}
 		if (
 			config.endpoints &&
-			typeof config.endpoints === "object" &&
+			isJsonObject(config.endpoints) &&
 			config.endpoints !== null
 		) {
-			const http = (config.endpoints as Record<string, unknown>).http;
-			if (typeof http === "string") resolved.httpUrl = http;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const http = (config.endpoints as JsonObject).http;
+			if (isJsonString(http)) resolved.httpUrl = http;
 		}
 		// Mesh URL for dependency kinds served on the camp mesh.
 		if (
@@ -272,14 +293,20 @@ export async function serveProjectOnHost(options: {
 			emitProgress: emit,
 			privateEntries: privateEntries.map((entry) => {
 				const moduleOverride = modulePathFromAnnotations(
-					definition.resources[entry.name]?.annotations,
+					// SAFETY: bindle annotation config is a JSON object at the serve boundary.
+					definition.resources[entry.name]?.annotations as
+						| readonly {
+								readonly option: string;
+								readonly config: JsonObject;
+						  }[]
+						| undefined,
 				);
 				return {
 					name: entry.name,
 					handler: entry.handler,
 					...(moduleOverride !== undefined
 						? { modulePath: moduleOverride }
-						: {}),
+						: undefined),
 				};
 			}),
 		});
@@ -375,7 +402,7 @@ export async function serveProjectOnHost(options: {
 
 	const exposedEndpoints = endpoints.filter((e) => e.external);
 	const primary = first(exposedEndpoints, "exposedEndpoints");
-	let probe: { status: number; body: string };
+	let probe = { status: 0, body: "" };
 	try {
 		const response = await fetch(`${primary.url}/`);
 		probe = { status: response.status, body: await response.text() };
@@ -450,13 +477,17 @@ export async function serveProjectOnHost(options: {
 			privateWorkers: privateServe.isolation.privateSandboxes,
 			meshHost: INTERNAL_MESH_HOST,
 			isolateBoundary: privateServe.isolation.isolateBoundary,
-			details,
-			...(typeof details.wasmtimeVersion === "string"
+			details: jsonObjectFrom(cloneAsJson(details)),
+			...(isJsonString(details.wasmtimeVersion)
 				? { wasmtimeVersion: details.wasmtimeVersion }
-				: {}),
+				: undefined),
 			...(Array.isArray(details.wasmPaths)
-				? { wasmPaths: details.wasmPaths as string[] }
-				: {}),
+				? {
+						wasmPaths: details.wasmPaths.filter((entry): entry is string =>
+							isJsonString(entry),
+						),
+					}
+				: undefined),
 		},
 	};
 }

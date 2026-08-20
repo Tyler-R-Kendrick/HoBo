@@ -6,9 +6,9 @@
  * Mutations for retention/erase are local dual-fixture ops; production view
  * remains policy/PAM gated inside @hobo/replay.
  */
+
 import { homedir } from "node:os";
 import { join } from "node:path";
-
 import type { CommandModule } from "@hobo/cli";
 import { must } from "@hobo/core/total-access";
 import {
@@ -17,6 +17,7 @@ import {
 	type ReplayService,
 } from "@hobo/replay";
 import { loadHoboProfile } from "./hobo-profile.js";
+import { isJsonString, type JsonObject } from "./json.js";
 
 export interface ReplayCommandDeps {
 	readonly env?: NodeJS.ProcessEnv;
@@ -37,7 +38,7 @@ type Subcommand = (typeof SUBCOMMANDS)[number];
 
 /** Local HOBO_HOME resolution without pulling Yard/compose graph. */
 function defaultHoboHome(env: NodeJS.ProcessEnv = process.env): string {
-	if (typeof env.HOBO_HOME === "string" && env.HOBO_HOME.length > 0) {
+	if (isJsonString(env.HOBO_HOME) && env.HOBO_HOME.length > 0) {
 		return env.HOBO_HOME;
 	}
 	return join(homedir(), ".hobo");
@@ -50,13 +51,13 @@ function resolveHome(deps: ReplayCommandDeps): string {
 
 function resolveStationId(
 	deps: ReplayCommandDeps,
-	flags: Record<string, unknown>,
+	flags: JsonObject,
 	home: string,
 ): string {
 	const flag = flags.station ?? flags.id;
-	if (typeof flag === "string" && flag.length > 0) return flag;
+	if (isJsonString(flag) && flag.length > 0) return flag;
 	const env = deps.env ?? process.env;
-	if (typeof env.HOBO_STATION === "string" && env.HOBO_STATION.length > 0) {
+	if (isJsonString(env.HOBO_STATION) && env.HOBO_STATION.length > 0) {
 		return env.HOBO_STATION;
 	}
 	const profile = loadHoboProfile(home);
@@ -92,10 +93,13 @@ export function createReplayCommand(
 		run: async ({ args, flags, emitProgress }) => {
 			const env = deps.env ?? process.env;
 			const home = resolveHome(deps);
-			const flagBag = flags as Record<string, unknown>;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const flagBag = flags as JsonObject;
 			const stationId = resolveStationId(deps, flagBag, home);
+			// SAFETY: assertion required at this I/O or test boundary.
 			const sub = (args[0] ?? "list") as string;
 
+			// SAFETY: assertion required at this I/O or test boundary.
 			if (!(SUBCOMMANDS as readonly string[]).includes(sub)) {
 				return {
 					ok: false,
@@ -136,21 +140,19 @@ export function createReplayCommand(
 			}
 
 			if (sub === "list") {
-				const errorId =
-					typeof flagBag.error === "string"
-						? flagBag.error
-						: typeof flagBag.errorId === "string"
-							? flagBag.errorId
-							: undefined;
-				const trailId =
-					typeof flagBag.trail === "string"
-						? flagBag.trail
-						: typeof flagBag.trailId === "string"
-							? flagBag.trailId
-							: undefined;
+				const errorId = isJsonString(flagBag.error)
+					? flagBag.error
+					: isJsonString(flagBag.errorId)
+						? flagBag.errorId
+						: undefined;
+				const trailId = isJsonString(flagBag.trail)
+					? flagBag.trail
+					: isJsonString(flagBag.trailId)
+						? flagBag.trailId
+						: undefined;
 				const sessions = await service.list({
-					...(errorId !== undefined ? { errorId } : {}),
-					...(trailId !== undefined ? { trailId } : {}),
+					...(errorId !== undefined ? { errorId } : undefined),
+					...(trailId !== undefined ? { trailId } : undefined),
 				});
 				emitProgress(`replay list: ${sessions.length} session(s)`);
 				return {
@@ -179,7 +181,7 @@ export function createReplayCommand(
 			const sessionId = args[1];
 			if (
 				(sub === "get" || sub === "open" || sub === "summarize") &&
-				(typeof sessionId !== "string" || sessionId.length === 0)
+				(!isJsonString(sessionId) || sessionId.length === 0)
 			) {
 				return {
 					ok: false,

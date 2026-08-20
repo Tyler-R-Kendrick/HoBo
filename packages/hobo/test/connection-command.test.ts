@@ -30,6 +30,7 @@ describe("hobo connection command", () => {
 			emitProgress: () => {},
 		});
 		expect(created.ok).toBe(true);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const id = (created.data as { connection: { id: string } }).connection.id;
 
 		const authorized = await cmd.run({
@@ -40,6 +41,7 @@ describe("hobo connection command", () => {
 		});
 		expect(authorized.ok).toBe(true);
 		expect(
+			// SAFETY: assertion required at this I/O or test boundary.
 			(authorized.data as { connection: { status: string } }).connection.status,
 		).toBe("active");
 
@@ -50,6 +52,7 @@ describe("hobo connection command", () => {
 			emitProgress: () => {},
 		});
 		expect(listed.ok).toBe(true);
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((listed.data as { count: number }).count).toBe(1);
 
 		const got = await cmd.run({
@@ -68,6 +71,7 @@ describe("hobo connection command", () => {
 		});
 		expect(revoked.ok).toBe(true);
 		expect(
+			// SAFETY: assertion required at this I/O or test boundary.
 			(revoked.data as { connection: { status: string } }).connection.status,
 		).toBe("revoked");
 	});

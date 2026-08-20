@@ -25,6 +25,7 @@ function envelope(stdout: string): any {
 describe("createGenerateCommand", () => {
 	it("generates + registers a provider from a port spec, visible in registry", async () => {
 		const runtime = createDefaultYardRuntime();
+		// SAFETY: assertion required at this I/O or test boundary.
 		openStores.push(runtime.store as RuntimeLocalEventStore);
 		const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -53,6 +54,7 @@ describe("createGenerateCommand", () => {
 
 	it("defaults to a kv port when none is given", async () => {
 		const runtime = createDefaultYardRuntime();
+		// SAFETY: assertion required at this I/O or test boundary.
 		openStores.push(runtime.store as RuntimeLocalEventStore);
 		const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -65,6 +67,7 @@ describe("createGenerateCommand", () => {
 
 	it("refuses to overwrite an existing provider name", async () => {
 		const runtime = createDefaultYardRuntime();
+		// SAFETY: assertion required at this I/O or test boundary.
 		openStores.push(runtime.store as RuntimeLocalEventStore);
 		const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -78,6 +81,7 @@ describe("createGenerateCommand", () => {
 
 	it("requires a name", async () => {
 		const runtime = createDefaultYardRuntime();
+		// SAFETY: assertion required at this I/O or test boundary.
 		openStores.push(runtime.store as RuntimeLocalEventStore);
 		const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -88,7 +92,9 @@ describe("createGenerateCommand", () => {
 
 	it("reports unavailable when no runtime is wired", async () => {
 		const result = await createGenerateCommand().run({
-			context: { cwd: "/tmp", projectDir: "/tmp" } as unknown as CliContext,
+			// SAFETY: assertion required at this I/O or test boundary.
+			context: { cwd: "/tmp", projectDir: "/tmp" } as CliContext,
+			// SAFETY: assertion required at this I/O or test boundary.
 			flags: { cwd: "/tmp" } as never,
 			args: ["x"],
 			verb: "generate",

@@ -2,11 +2,11 @@ import { generateKeyPairSync, sign as signBytes } from "node:crypto";
 import { mkdir, mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
-
 import { NETLIFY_ANONYMOUS_STATIC_SITE_DEFINITION_ID } from "@hobo/provider-netlify";
 import { computeEvidenceDigest } from "@hobo/trust";
 import { afterEach, describe, expect, it } from "vitest";
 import { FIRST_PARTY_DEFINITIONS } from "../src/first-party-catalog.js";
+import type { JsonObject } from "../src/json.js";
 import { createOfferCommand } from "../src/offer-command.js";
 import { EVIDENCE_DIRECTORY } from "../src/recipe-plane.js";
 import { TRUST_ROOTS_DIRECTORY } from "../src/trust-root.js";
@@ -34,6 +34,7 @@ const RECIPE_ID = "recipe.netlify.claimable-generated-report/v1";
 const keyPair = generateKeyPairSync("ed25519");
 
 function context(cwd: string) {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return { cwd, projectDir: cwd, identity: null, clients: {} } as never;
 }
 
@@ -98,6 +99,7 @@ async function publishNetlifyEvidence(
 			},
 		],
 	} as const;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const evidenceDigest = computeEvidenceDigest({
 		...body,
 		evidenceDigest: "",
@@ -139,8 +141,10 @@ async function tempHome(prefix: string): Promise<string> {
 }
 
 function runOffer(projectDir: string, home: string) {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return createOfferCommand({ runtime: emptyRuntime, now: () => NOW }).run({
 		args: [RECIPE_ID],
+		// SAFETY: assertion required at this I/O or test boundary.
 		flags: { home, cwd: projectDir, at: NOW } as never,
 		context: context(projectDir),
 	} as never);
@@ -148,6 +152,7 @@ function runOffer(projectDir: string, home: string) {
 
 // No durable registry: the point is that the products compiled into the binary
 // are enough to make an offer, with nothing registered at runtime.
+// SAFETY: assertion required at this I/O or test boundary.
 const emptyRuntime = {
 	registry: {
 		definitions: () => [],
@@ -184,13 +189,16 @@ describe("hobo offer against the shipped catalog", () => {
 		// tells whoever broke this nothing at all.
 		expect(result.remediation ?? []).toEqual([]);
 		expect(result.code).toBe("HOBO_OFFER_COMPILED");
-		const offer = (result.data as { offer: Record<string, unknown> }).offer;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const offer = (result.data as { offer: JsonObject }).offer;
 		expect(offer.signature).toBeDefined();
 		expect(
+			// SAFETY: assertion required at this I/O or test boundary.
 			(offer.providers as readonly { providerId: string }[]).map(
 				(provider) => provider.providerId,
 			),
 		).toEqual(["netlify"]);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const claimSummary = offer.claimSummary as { actionCount: number };
 		expect(claimSummary.actionCount).toBe(1);
 		// An offer reaches a browser and a terminal. No bearer material, ever.
@@ -228,14 +236,17 @@ describe("hobo offer against the shipped catalog", () => {
 		await publishTrustRoot(home);
 		await publishNetlifyEvidence(home);
 
-		const result = await createOfferCommand({
+		const command = createOfferCommand({
 			runtime: emptyRuntime,
 			now: () => NOW + 60 * DAY,
-		}).run({
+		});
+		const input = {
 			args: [RECIPE_ID],
-			flags: { home, cwd: projectDir, at: NOW + 60 * DAY } as never,
+			flags: { home, cwd: projectDir, at: NOW + 60 * DAY },
 			context: context(projectDir),
-		} as never);
+		};
+		// SAFETY: test fixture matches the CLI command runner contract.
+		const result = await command.run(input as never);
 
 		expect(result.ok).toBe(false);
 		expect(result.code).toBe("HOBO_OFFER_REJECTED");

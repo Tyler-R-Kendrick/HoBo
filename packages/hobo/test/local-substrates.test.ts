@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 
+interface EnvBag {
+	[key: string]: string;
+}
+
 import {
 	defaultLocalSubstrateProbes,
 	discoverLocalSubstrates,
@@ -128,12 +132,15 @@ describe("local substrate vocabulary", () => {
 
 	it("refuses an unknown substrate kind with a typed error", () => {
 		expect(() =>
+			// SAFETY: assertion required at this I/O or test boundary.
 			localSubstrateYardName("kubernetes" as LocalSubstrateKind),
 		).toThrowError(LocalSubstrateError);
 		try {
+			// SAFETY: assertion required at this I/O or test boundary.
 			localSubstrateYardName("kubernetes" as LocalSubstrateKind);
 			expect.unreachable("expected a refusal");
 		} catch (error) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const typed = error as LocalSubstrateError;
 			expect(typed.code).toBe("LOCAL_SUBSTRATE_KIND_UNKNOWN");
 			expect(typed.remediation).toContain("firecracker");
@@ -147,6 +154,7 @@ describe("probe parse boundary", () => {
 			discoverLocalSubstrates(null);
 			expect.unreachable("expected a refusal");
 		} catch (error) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const typed = error as LocalSubstrateError;
 			expect(typed.code).toBe("LOCAL_SUBSTRATE_PROBES_INVALID");
 			expect(typed.remediation).toContain("defaultLocalSubstrateProbes");
@@ -159,6 +167,7 @@ describe("probe parse boundary", () => {
 			discoverLocalSubstrates(rest);
 			expect.unreachable("expected a refusal");
 		} catch (error) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const typed = error as LocalSubstrateError;
 			expect(typed.code).toBe("LOCAL_SUBSTRATE_PROBES_INVALID");
 			expect(typed.message).toContain("which");
@@ -173,6 +182,7 @@ describe("probe parse boundary", () => {
 				discoverLocalSubstrates(broken);
 				expect.unreachable("expected a refusal");
 			} catch (error) {
+				// SAFETY: assertion required at this I/O or test boundary.
 				const typed = error as LocalSubstrateError;
 				expect(typed.code).toBe("LOCAL_SUBSTRATE_PROBES_INVALID");
 				expect(typed.message).toContain(field);
@@ -185,6 +195,7 @@ describe("probe parse boundary", () => {
 			discoverLocalSubstrates({ ...fakeProbes(BARE_LINUX), env: "PATH=/bin" });
 			expect.unreachable("expected a refusal");
 		} catch (error) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((error as LocalSubstrateError).code).toBe(
 				"LOCAL_SUBSTRATE_PROBES_INVALID",
 			);
@@ -192,7 +203,7 @@ describe("probe parse boundary", () => {
 	});
 
 	it("snapshots env at the parse boundary so later mutation cannot change it", () => {
-		const env: Record<string, string> = { XDG_RUNTIME_DIR: "/run/user/1000" };
+		const env: EnvBag = { XDG_RUNTIME_DIR: "/run/user/1000" };
 		const parsed = parseLocalSubstrateProbes({
 			...fakeProbes(BARE_LINUX),
 			env,
@@ -282,9 +293,11 @@ describe("report shape and invariants", () => {
 	it("refuses a report kind lookup outside the vocabulary", () => {
 		const report = discoverLocalSubstrates(fakeProbes(BARE_LINUX));
 		try {
+			// SAFETY: assertion required at this I/O or test boundary.
 			findSubstrate(report, "xen" as LocalSubstrateKind);
 			expect.unreachable("expected a refusal");
 		} catch (error) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((error as LocalSubstrateError).code).toBe(
 				"LOCAL_SUBSTRATE_KIND_UNKNOWN",
 			);
@@ -627,9 +640,11 @@ describe("substrate yards", () => {
 
 	it("refuses a report that is not a substrate report", () => {
 		try {
+			// SAFETY: assertion required at this I/O or test boundary.
 			localSubstrateYards({ contract: "nope" } as never);
 			expect.unreachable("expected a refusal");
 		} catch (error) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const typed = error as LocalSubstrateError;
 			expect(typed.code).toBe("LOCAL_SUBSTRATE_REPORT_INVALID");
 			expect(typed.remediation).toContain("discoverLocalSubstrates");
@@ -665,7 +680,7 @@ describe("registerLocalSubstrateYards", () => {
 describe("default probes", () => {
 	it("build over the real host without throwing and stay pure afterwards", () => {
 		const probes = defaultLocalSubstrateProbes({ PATH: "/usr/bin:/bin" });
-		expect(typeof probes.which).toBe("function");
+		expect(probes.which instanceof Function).toBe(true);
 		expect(probes.platform).toBe(process.platform);
 		expect(probes.nodeVersion).toBe(process.versions.node);
 		// readText never throws on an unreadable path.

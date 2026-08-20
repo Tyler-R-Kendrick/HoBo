@@ -6,8 +6,11 @@ import { createDoctorCommand } from "../src/doctor-command.js";
 // present to satisfy the contract shape without exercising it.
 function runInput(emit: (m: string) => void) {
 	return {
+		// SAFETY: assertion required at this I/O or test boundary.
 		context: {} as never,
+		// SAFETY: assertion required at this I/O or test boundary.
 		flags: {} as never,
+		// SAFETY: assertion required at this I/O or test boundary.
 		args: [] as readonly string[],
 		verb: "doctor",
 		emitProgress: emit,

@@ -1,6 +1,5 @@
 import { readdir, readFile } from "node:fs/promises";
 import { join } from "node:path";
-
 import {
 	createConnectivityRegistry,
 	STANDARD_CONNECTIVITY,
@@ -43,8 +42,8 @@ import {
 	parseTrustEvidence,
 	type TrustEvidence,
 } from "@hobo/trust";
-
 import { FIRST_PARTY_DEFINITIONS } from "./first-party-catalog.js";
+import { isJsonObject } from "./json.js";
 import { stationEvidenceVerifier } from "./trust-root.js";
 
 // The composition root for the anonymous deployment plane.
@@ -120,6 +119,7 @@ export async function loadTrustEvidence(
 	try {
 		entries = await readdir(directory);
 	} catch (cause) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		if ((cause as NodeJS.ErrnoException).code === "ENOENT") {
 			return [];
 		}
@@ -149,12 +149,11 @@ export async function loadTrustEvidence(
 		// alongside its provenance; a hand-exported document is the evidence
 		// itself. Both are legitimate on disk, so unwrap when wrapped.
 		const document =
-			typeof parsedJson === "object" &&
-			parsedJson !== null &&
-			"evidence" in parsedJson
-				? (parsedJson as { evidence: unknown }).evidence
+			isJsonObject(parsedJson) && parsedJson.evidence !== undefined
+				? parsedJson.evidence
 				: parsedJson;
 		try {
+			// SAFETY: assertion required at this I/O or test boundary.
 			evidence.push(parseTrustEvidence(document as never));
 		} catch (cause) {
 			throw new RecipePlaneError(
@@ -218,6 +217,7 @@ export function definitionsOf(
 	runtime: YardRuntime,
 ): readonly ResourceDefinitionVNext[] {
 	const registered =
+		// SAFETY: assertion required at this I/O or test boundary.
 		runtime.registry.definitions() as readonly ResourceDefinitionVNext[];
 	const byId = new Map<string, ResourceDefinitionVNext>();
 	for (const definition of FIRST_PARTY_DEFINITIONS)
@@ -307,6 +307,7 @@ export function deploymentRequestFromBindle(
 	const bucket = (primitive: BindlePrimitive) => {
 		const existing = byPrimitive.get(primitive);
 		if (existing !== undefined) return existing;
+		// SAFETY: assertion required at this I/O or test boundary.
 		const created = { required: [] as string[], preferred: [] as string[] };
 		byPrimitive.set(primitive, created);
 		return created;
@@ -345,7 +346,9 @@ export function deploymentRequestFromBindle(
 					profileId,
 					weight: 1,
 				})),
-				...(runtimes.length > 0 ? { runtime: { allowed: runtimes } } : {}),
+				...(runtimes.length > 0
+					? { runtime: { allowed: runtimes } }
+					: undefined),
 			}),
 		});
 		for (const dependency of resource.dependsOn) {
@@ -376,7 +379,7 @@ export function deploymentRequestFromBindle(
  * These are the base profiles in the standard registry, so an unconstrained
  * request stays satisfiable rather than resolving to nothing.
  */
-const BASE_PROFILE_PATH: Readonly<Record<BindlePrimitive, string>> = {
+const BASE_PROFILE_PATH = {
 	web: "static",
 	api: "http",
 	service: "worker",
@@ -390,6 +393,7 @@ const BASE_PROFILE_PATH: Readonly<Record<BindlePrimitive, string>> = {
 };
 
 function isBindlePrimitive(value: string): value is BindlePrimitive {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return (BINDLE_PRIMITIVES as readonly string[]).includes(value);
 }
 

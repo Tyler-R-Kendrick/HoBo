@@ -188,6 +188,7 @@ export const FIRST_PARTY_CANDIDATES: readonly SelectionCandidate[] =
 				port: definition.port,
 				// The projection reads only the semantics block, and both sides
 				// took that block from the same provider declaration.
+				// SAFETY: assertion required at this I/O or test boundary.
 				semantics: definition.semantics as never,
 			}),
 		),

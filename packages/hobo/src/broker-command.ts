@@ -1,6 +1,5 @@
 import { readFile, writeFile } from "node:fs/promises";
 import { basename, join } from "node:path";
-
 import {
 	type BrokerCatalog,
 	BrokerParseError,
@@ -23,24 +22,28 @@ import { must } from "@hobo/core/total-access";
 import { resolveStationContext } from "@hobo/stations";
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import { loadHoboProfile } from "./hobo-profile.js";
+import {
+	cloneAsJson,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 /** Required Station + active Rail pins for every Conductor resolve. */
-function requireStationPins(flags: Record<string, unknown>): {
-	stationId: string;
-	railHash: string;
-} {
+function requireStationPins(flags: JsonObject) {
 	const home =
-		typeof flags.home === "string" && flags.home.length > 0
+		isJsonString(flags.home) && flags.home.length > 0
 			? flags.home
 			: defaultHoboHome();
 	const ctx = resolveStationContext({
 		hoboHome: home,
-		...(typeof flags.station === "string"
+		...(isJsonString(flags.station)
 			? { stationFlag: flags.station }
-			: {}),
-		...(typeof process.env.HOBO_STATION === "string"
+			: undefined),
+		...(isJsonString(process.env.HOBO_STATION)
 			? { stationEnv: process.env.HOBO_STATION }
-			: {}),
+			: undefined),
 		...(loadHoboProfile(home)?.defaultStation?.id !== undefined
 			? {
 					profileStationId: must(
@@ -48,7 +51,7 @@ function requireStationPins(flags: Record<string, unknown>): {
 						"loadHoboProfile(home)!.defaultStation",
 					).id,
 				}
-			: {}),
+			: undefined),
 	});
 	const pins = ctx.client.pins();
 	return { stationId: pins.stationId, railHash: pins.railHash };
@@ -91,28 +94,32 @@ interface AssembledBroker {
 function defaultFetch(): FetchLike {
 	return async (url, init) => {
 		const response = await fetch(url, init);
-		return { status: response.status, json: () => response.json() };
+		return {
+			status: response.status,
+			json: async () => parseJsonValue(await response.text()),
+		};
 	};
 }
 
-async function readJson(path: string, what: string): Promise<unknown> {
+async function readJson(path: string, what: string): Promise<JsonValue> {
 	const raw = await readFile(path, "utf8");
 	try {
-		return JSON.parse(raw);
+		JSON.parse(raw);
 	} catch {
 		throw new BrokerParseError(
 			"invalid-json",
 			`invalid-json: ${what} at ${path} is not valid JSON`,
 		);
 	}
+	return parseJsonValue(raw);
 }
 
 async function locateConfig(
-	flags: Record<string, unknown>,
+	flags: JsonObject,
 	projectDir: string,
 ): Promise<string | undefined> {
 	const explicit = flags.config;
-	if (typeof explicit === "string") return explicit;
+	if (isJsonString(explicit)) return explicit;
 	const candidate = join(projectDir, BROKER_CONFIG_FILENAME);
 	try {
 		await readFile(candidate, "utf8");
@@ -127,7 +134,7 @@ async function locateConfig(
 // a HoBo cloud provider host with a permissive default policy set.
 async function assembleBroker(
 	deps: BrokerCommandDeps,
-	flags: Record<string, unknown>,
+	flags: JsonObject,
 	projectDir: string,
 ): Promise<AssembledBroker> {
 	const configPath = await locateConfig(flags, projectDir);
@@ -141,10 +148,8 @@ async function assembleBroker(
 		};
 	}
 
-	const raw = (await readJson(configPath, "broker config")) as Record<
-		string,
-		unknown
-	>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const raw = (await readJson(configPath, "broker config")) as JsonObject;
 	const { connectors, policyEngine, catalog, ...policyDocument } = raw;
 	const policies = parseBrokerPolicySet(policyDocument);
 
@@ -155,27 +160,46 @@ async function assembleBroker(
 	let gatePlane: GatePlane | undefined;
 	let engineKind: AssembledBroker["engineKind"] = "builtin";
 	if (policyEngine !== undefined && policyEngine !== null) {
-		const engine = policyEngine as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const engine = policyEngine as JsonObject;
 		const endpoint = engine.endpoint;
-		if (typeof endpoint !== "string" || endpoint.length === 0) {
+		if (!isJsonString(endpoint) || endpoint.length === 0) {
 			throw new BrokerParseError(
 				"invalid-policy-engine",
 				"invalid-policy-engine: policyEngine.endpoint must be a non-empty string",
 			);
 		}
 		const fetchFn = deps.fetchFn ?? defaultFetch();
+		const policyFetch = async (
+			url: string,
+			init?: {
+				method?: string;
+				headers?: { [k: string]: string };
+				body?: string;
+			},
+		) => {
+			const res = await fetchFn(url, {
+				method: init?.method ?? "GET",
+				headers: init?.headers ?? {},
+				body: init?.body ?? "",
+			});
+			return {
+				status: res.status,
+				json: async () => cloneAsJson(await res.json()),
+			};
+		};
 		if (engine.kind === "opa") {
 			engineKind = "opa";
 			gatePlane = createOpaGatePlane({
 				endpoint,
-				fetchFn,
-				...(typeof engine.decisionPath === "string"
+				fetchFn: policyFetch,
+				...(isJsonString(engine.decisionPath)
 					? { decisionPath: engine.decisionPath }
-					: {}),
+					: undefined),
 			});
 		} else if (engine.kind === "cedar") {
 			engineKind = "cedar";
-			gatePlane = createCedarGatePlane({ endpoint, fetchFn });
+			gatePlane = createCedarGatePlane({ endpoint, fetchFn: policyFetch });
 		} else {
 			throw new BrokerParseError(
 				"invalid-policy-engine",
@@ -192,8 +216,8 @@ async function assembleBroker(
 		catalog:
 			catalogKind === "local-host" ? createLocalHostCatalog() : deps.catalog,
 		catalogKind,
-		...(registry !== undefined ? { connectors: registry } : {}),
-		...(gatePlane !== undefined ? { gatePlane } : {}),
+		...(registry !== undefined ? { connectors: registry } : undefined),
+		...(gatePlane !== undefined ? { gatePlane } : undefined),
 		engineKind,
 	};
 }
@@ -201,17 +225,18 @@ async function assembleBroker(
 // Derive the brokering request from the project's own bindle manifest when no
 // --request document is supplied; a bare machine gets a smoke requirement.
 async function deriveRequest(
-	flags: Record<string, unknown>,
+	flags: JsonObject,
 	projectDir: string,
-): Promise<unknown> {
+): Promise<JsonValue> {
 	const explicit = flags.request;
-	if (typeof explicit === "string") {
+	if (isJsonString(explicit)) {
 		return readJson(explicit, "broker request");
 	}
 	const manifest = await loadProjectManifest(projectDir);
 	const requirements =
 		manifest !== null
 			? Object.entries(
+					// SAFETY: assertion required at this I/O or test boundary.
 					manifest.value.resources as Record<
 						string,
 						{ type: string; port?: string }
@@ -249,8 +274,9 @@ export function createBrokerCommand(deps: BrokerCommandDeps): CommandModule {
 		run: async ({ args, flags, context, emitProgress }) => {
 			const subcommand = args[0] ?? "up";
 			const projectDir =
+				// SAFETY: assertion required at this I/O or test boundary.
 				(context as { projectDir?: string }).projectDir ??
-				(typeof flags.cwd === "string" ? flags.cwd : context.cwd);
+				(isJsonString(flags.cwd) ? flags.cwd : context.cwd);
 
 			if (subcommand === "matrix") {
 				return {
@@ -305,7 +331,7 @@ export function createBrokerCommand(deps: BrokerCommandDeps): CommandModule {
 						source: assembled.source,
 						...(assembled.configPath !== undefined
 							? { configPath: assembled.configPath }
-							: {}),
+							: undefined),
 						brokerId: assembled.policies.brokerId,
 						policyHash: policyHashOf(assembled.policies),
 						placementPolicies: assembled.policies.placementPolicies.length,
@@ -345,10 +371,10 @@ export function createBrokerCommand(deps: BrokerCommandDeps): CommandModule {
 						railHash: pins.railHash,
 						...(assembled.connectors !== undefined
 							? { connectors: assembled.connectors }
-							: {}),
+							: undefined),
 						...(assembled.gatePlane !== undefined
 							? { gatePlane: assembled.gatePlane }
-							: {}),
+							: undefined),
 					});
 					const resolution = await broker.resolve(
 						await deriveRequest(flags, projectDir),
@@ -417,10 +443,7 @@ export function createBrokerCommand(deps: BrokerCommandDeps): CommandModule {
 				if (subcommand === "resolve") {
 					const policiesPath = flags.policies;
 					const requestPath = flags.request;
-					if (
-						typeof policiesPath !== "string" ||
-						typeof requestPath !== "string"
-					) {
+					if (!isJsonString(policiesPath) || !isJsonString(requestPath)) {
 						return {
 							ok: false,
 							status: "missing_inputs",

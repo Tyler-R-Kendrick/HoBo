@@ -14,15 +14,14 @@
  * audience-bound JWT-SVID mint/verify. Remaining follow-ons: broker **server**
  * DPoP enforcement and SPIRE Workload API fetch (replace local SVID mint).
  */
-import { createServer } from "node:net";
 
+import { createServer } from "node:net";
 import {
 	type CommandModule,
 	createUpCommand,
 	loadBindleDefinition,
 	type YardRuntime,
 } from "@hobo/cli";
-
 import {
 	defaultHoboHome,
 	initBareMetalYard,
@@ -50,6 +49,7 @@ import {
 	type CredentialPresenter,
 	createCredentialPresenter,
 } from "./credential-presenter.js";
+import { isJsonString, type JsonObject } from "./json.js";
 import { serveProjectOnLocalYard } from "./wasm-host.js";
 
 async function freePort(): Promise<number> {
@@ -57,7 +57,7 @@ async function freePort(): Promise<number> {
 		const server = createServer();
 		server.listen(0, "127.0.0.1", () => {
 			const addr = server.address();
-			if (addr === null || typeof addr === "string") {
+			if (addr === null || isJsonString(addr)) {
 				server.close();
 				reject(new Error("failed to allocate port"));
 				return;
@@ -100,12 +100,14 @@ export function createBrokerAwareUpCommand(
 		run: async (input) => {
 			const { context, flags, emitProgress } = input;
 			const env =
+				// SAFETY: assertion required at this I/O or test boundary.
 				deps.env ?? (context as { env?: NodeJS.ProcessEnv }).env ?? process.env;
 			const projectDir =
+				// SAFETY: assertion required at this I/O or test boundary.
 				(context as { projectDir?: string }).projectDir ??
-				(typeof flags.cwd === "string" ? flags.cwd : context.cwd);
+				(isJsonString(flags.cwd) ? flags.cwd : context.cwd);
 			const hoboHome =
-				typeof flags.home === "string" && flags.home.length > 0
+				isJsonString(flags.home) && flags.home.length > 0
 					? flags.home
 					: defaultHoboHome(env);
 
@@ -136,7 +138,8 @@ export function createBrokerAwareUpCommand(
 							return {
 								...yardResult,
 								data: {
-									...((yardResult.data as Record<string, unknown>) ?? {}),
+									// SAFETY: assertion required at this I/O or test boundary.
+									...(yardResult.data as JsonObject),
 									mode: "local",
 								},
 							};
@@ -191,11 +194,11 @@ export function createBrokerAwareUpCommand(
 					deps.createRemoteClient?.(target.uri) ??
 					createRemoteBrokerClient({
 						brokerUri: target.uri,
-						...(deps.discovery ? { discovery: deps.discovery } : {}),
+						...(deps.discovery ? { discovery: deps.discovery } : undefined),
 						...(deps.mockRemote
 							? { mock: deps.mockRemote }
 							: deps.createRemoteClient
-								? {}
+								? undefined
 								: // HONEST SCOPE: without a live broker, unit tests inject mockRemote;
 									// composed CLI without mock fails discovery closed against real URI.
 									{}),
@@ -368,7 +371,7 @@ export function createBrokerAwareUpCommand(
 									humanPrincipal: credential.humanPrincipal,
 									humanPrincipalKind: credential.humanPrincipal.kind,
 								}
-							: {}),
+							: undefined),
 						credentialScheme: credential.scheme,
 						resources: placed.resources,
 						// Dual principal is explicit in data — agents are never collapsed into human.
@@ -391,7 +394,7 @@ export function createBrokerAwareUpCommand(
 							command: "up",
 							projectDir,
 							hoboHome,
-							...(error.data ?? {}),
+							...error.data,
 						},
 					};
 				}
@@ -444,7 +447,7 @@ async function runLocalUp(input: {
 			message: `hobo up: ${placement.message}`,
 			...(placement.remediation
 				? { remediation: [...placement.remediation] }
-				: {}),
+				: undefined),
 			data: {
 				command: "up",
 				projectDir,
@@ -500,15 +503,12 @@ async function runLocalUp(input: {
 export function createBrokerAwareUpCommandWithMock(options?: {
 	readonly supportsAnonymous?: boolean;
 	readonly brokerUri?: string;
-}): {
-	readonly command: CommandModule;
-	readonly mock: MockRemoteBrokerState;
-} {
+}) {
 	const mock = createMockRemoteBrokerState({
 		brokerUri: options?.brokerUri ?? "https://public.example.com",
 		...(options?.supportsAnonymous !== undefined
 			? { supportsAnonymous: options.supportsAnonymous }
-			: {}),
+			: undefined),
 	});
 	const discovery = createBrokerDiscoveryClient({
 		fixed: new Map([

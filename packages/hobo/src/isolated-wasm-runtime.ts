@@ -33,5 +33,6 @@ export async function serveProjectOnIsolatedWasm(options: {
 		...options,
 		componentHost: "wasm",
 	});
+	// SAFETY: assertion required at this I/O or test boundary.
 	return result as IsolatedWasmServeResult;
 }

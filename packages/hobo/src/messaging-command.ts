@@ -13,6 +13,7 @@ import {
 	createDaprRuntimeHost,
 	diagnoseDaprReadiness,
 } from "@hobo/runtime-dapr";
+import { cloneAsJson, isJsonString } from "./json.js";
 
 export interface MessagingCommandDeps {
 	readonly env?: Record<string, string | undefined>;
@@ -29,12 +30,12 @@ export function createMessagingCommand(
 			const sub = args[0] ?? "status";
 			const tenantId =
 				deps.tenantId ??
-				(typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT
+				(isJsonString(env.HOBO_TENANT) && env.HOBO_TENANT
 					? env.HOBO_TENANT
 					: "local");
 			const campId =
 				deps.campId ??
-				(typeof env.HOBO_CAMP === "string" && env.HOBO_CAMP
+				(isJsonString(env.HOBO_CAMP) && env.HOBO_CAMP
 					? env.HOBO_CAMP
 					: "default");
 
@@ -46,7 +47,7 @@ export function createMessagingCommand(
 			if (sub === "component-yaml" || sub === "dry-run-yaml") {
 				const binding =
 					args[1] ??
-					(typeof env.HOBO_KAFKA_BOOTSTRAP_BINDING === "string"
+					(isJsonString(env.HOBO_KAFKA_BOOTSTRAP_BINDING)
 						? env.HOBO_KAFKA_BOOTSTRAP_BINDING
 						: "fromBinding:kafka-bootstrap");
 				const yaml = daprBundle.generateKafkaPubsubYaml(binding);
@@ -70,7 +71,7 @@ export function createMessagingCommand(
 
 			if (sub === "realize") {
 				const realized = provider.realize({
-					cluster: localRedpandaCluster(tenantId),
+					cluster: cloneAsJson(localRedpandaCluster(tenantId)),
 					topics: [
 						{
 							name: args[1] ?? "events",

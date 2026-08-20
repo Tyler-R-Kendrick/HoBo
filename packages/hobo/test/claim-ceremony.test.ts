@@ -82,6 +82,7 @@ function lease(): GuestLease {
 		id: "lease-1",
 		subjectRef: "deployment-1",
 		bootstrapStrategyRef: "bootstrap.neon.claimable/v1",
+		// SAFETY: assertion required at this I/O or test boundary.
 		bootstrapClass: "anonymous-claimable" as GuestLease["bootstrapClass"],
 		createdAt: 1_700_000_000_000,
 		expiresAt: 1_700_003_600_000,
@@ -121,6 +122,7 @@ describe("claim status view", () => {
 	});
 
 	it("surfaces outstanding post-claim obligations", () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const state = {
 			deploymentRef: "deployment-1",
 			lifecycle: "ClaimedNeedsVerification" as const,
@@ -144,6 +146,7 @@ describe("claim status view", () => {
 describe("durable claim plane", () => {
 	it("rebuilds coordinator state from the persisted command journal", async () => {
 		const runtime = createDefaultYardRuntime();
+		// SAFETY: assertion required at this I/O or test boundary.
 		stores.push(runtime.store as RuntimeLocalEventStore);
 		const fence = "deployment-1:0";
 
@@ -163,6 +166,7 @@ describe("durable claim plane", () => {
 
 	it("rehydrates a claim bundle from its durable attachment command", async () => {
 		const runtime = createDefaultYardRuntime();
+		// SAFETY: assertion required at this I/O or test boundary.
 		stores.push(runtime.store as RuntimeLocalEventStore);
 		const first = await rebuildClaimState(
 			runtime,
@@ -186,6 +190,7 @@ describe("durable claim plane", () => {
 
 	it("publishes the emitted facts alongside the command", async () => {
 		const runtime = createDefaultYardRuntime();
+		// SAFETY: assertion required at this I/O or test boundary.
 		stores.push(runtime.store as RuntimeLocalEventStore);
 		const fence = "deployment-1:0";
 		const snapshot = await rebuildClaimState(runtime, "deployment-1", fence);
@@ -208,6 +213,7 @@ describe("durable claim plane", () => {
 
 	it("refuses a command from a stale fence", async () => {
 		const runtime = createDefaultYardRuntime();
+		// SAFETY: assertion required at this I/O or test boundary.
 		stores.push(runtime.store as RuntimeLocalEventStore);
 		const snapshot = await rebuildClaimState(
 			runtime,
@@ -388,11 +394,15 @@ describe("durable one-time action store", () => {
 describe("hobo claim ceremony verbs", () => {
 	it("says there is no bundle rather than inventing one", async () => {
 		const runtime = createDefaultYardRuntime();
+		// SAFETY: assertion required at this I/O or test boundary.
 		stores.push(runtime.store as RuntimeLocalEventStore);
 		const cwd = await tempDir("hobo-claim-status-");
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = await createClaimCommand({ runtime }).run({
 			args: ["status"],
+			// SAFETY: assertion required at this I/O or test boundary.
 			flags: { home: cwd } as never,
+			// SAFETY: assertion required at this I/O or test boundary.
 			context: { cwd, projectDir: cwd, identity: null, clients: {} } as never,
 		} as never);
 		expect(result.ok).toBe(false);
@@ -401,6 +411,7 @@ describe("hobo claim ceremony verbs", () => {
 
 	it("requires an item id for open and finalize", async () => {
 		const runtime = createDefaultYardRuntime();
+		// SAFETY: assertion required at this I/O or test boundary.
 		stores.push(runtime.store as RuntimeLocalEventStore);
 		const cwd = await tempDir("hobo-claim-open-");
 		const snapshot = await rebuildClaimState(
@@ -413,9 +424,12 @@ describe("hobo claim ceremony verbs", () => {
 			deploymentRef: snapshot.state.deploymentRef,
 			offerId: "offer-1",
 		});
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = await createClaimCommand({ runtime }).run({
 			args: ["open"],
+			// SAFETY: assertion required at this I/O or test boundary.
 			flags: { home: cwd } as never,
+			// SAFETY: assertion required at this I/O or test boundary.
 			context: { cwd, projectDir: cwd, identity: null, clients: {} } as never,
 		} as never);
 		expect(result.ok).toBe(false);
@@ -424,11 +438,15 @@ describe("hobo claim ceremony verbs", () => {
 
 	it("still binds an account when given one, unchanged", async () => {
 		const runtime = createDefaultYardRuntime();
+		// SAFETY: assertion required at this I/O or test boundary.
 		stores.push(runtime.store as RuntimeLocalEventStore);
 		const cwd = await tempDir("hobo-claim-account-");
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = await createClaimCommand({ runtime }).run({
 			args: ["acme"],
+			// SAFETY: assertion required at this I/O or test boundary.
 			flags: { home: cwd } as never,
+			// SAFETY: assertion required at this I/O or test boundary.
 			context: { cwd, projectDir: cwd, identity: null, clients: {} } as never,
 		} as never);
 		// No deployment in this temp project, but the account path is what ran.

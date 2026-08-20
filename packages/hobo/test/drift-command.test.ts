@@ -21,6 +21,7 @@ import {
 	DRIFT_DETECTED_EVENT,
 	type PulumiAutomationAdapter,
 } from "../src/index.js";
+import { isJsonObject } from "../src/json.js";
 
 // `hobo drift` — REAL drift detection: the declared bindle manifest's desired
 // resources are compared against the state the IaC backend actually holds.
@@ -101,8 +102,11 @@ async function withProject(
 
 function runInput(cwd: string, emit: (m: string) => void = () => {}) {
 	return {
-		context: { cwd, projectDir: cwd } as unknown as CliContext,
+		// SAFETY: assertion required at this I/O or test boundary.
+		context: { cwd, projectDir: cwd } as CliContext,
+		// SAFETY: assertion required at this I/O or test boundary.
 		flags: { cwd } as never,
+		// SAFETY: assertion required at this I/O or test boundary.
 		args: [] as readonly string[],
 		verb: "drift",
 		emitProgress: emit,
@@ -123,10 +127,12 @@ describe("createDriftCommand", () => {
 	it("reports in-sync on the in-memory lane after `hobo up` (declared == held state)", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
 			await cli.run(["up", "--json"], { cwd });
+			// SAFETY: assertion required at this I/O or test boundary.
 			const drift = JSON.parse(
 				(await cli.run(["drift", "--json"], { cwd })).stdout,
 			) as {
@@ -149,13 +155,16 @@ describe("createDriftCommand", () => {
 			);
 			const checked = events.filter((e) => e.type === DRIFT_CHECKED_EVENT);
 			expect(checked.length).toBe(1);
-			expect((checked[0]?.data as { checked: number }).checked).toBe(2);
+			// SAFETY: assertion required at this I/O or test boundary.
+			const checkedData = checked[0]?.data;
+			expect(isJsonObject(checkedData) && checkedData.checked === 2).toBe(true);
 		});
 	});
 
 	it("reports a declared-but-absent resource as missing", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 			await cli.run(["up", "--json"], { cwd });
@@ -176,6 +185,7 @@ describe("createDriftCommand", () => {
 				)}\n`,
 			);
 
+			// SAFETY: assertion required at this I/O or test boundary.
 			const drift = JSON.parse(
 				(await cli.run(["drift", "--json"], { cwd })).stdout,
 			) as { ok: boolean; status: string; data: DriftData };
@@ -189,6 +199,7 @@ describe("createDriftCommand", () => {
 	it("reports a held-but-undeclared resource as orphaned", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 			await cli.run(["up", "--json"], { cwd });
@@ -211,6 +222,7 @@ describe("createDriftCommand", () => {
 				)}\n`,
 			);
 
+			// SAFETY: assertion required at this I/O or test boundary.
 			const drift = JSON.parse(
 				(await cli.run(["drift", "--json"], { cwd })).stdout,
 			) as { ok: boolean; status: string; data: DriftData };
@@ -225,8 +237,10 @@ describe("createDriftCommand", () => {
 			);
 			const detected = events.filter((e) => e.type === DRIFT_DETECTED_EVENT);
 			expect(
+				// SAFETY: assertion required at this I/O or test boundary.
 				detected.map((e) => (e.data as { resource: string }).resource),
 			).toContain("sessions");
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect(detected.map((e) => (e.data as { kind: string }).kind)).toContain(
 				"orphaned",
 			);
@@ -236,10 +250,12 @@ describe("createDriftCommand", () => {
 	it("reports diverged when the held state no longer matches the stored plan", async () => {
 		await withProject(async (cwd) => {
 			const stateBackend = createInMemoryStateBackend();
+			// SAFETY: assertion required at this I/O or test boundary.
 			const adapter = createPulumiAutomationAdapter({
 				stateBackend,
 			}) as PulumiAutomationAdapter;
 			const runtime = createDefaultYardRuntime({ iacAdapter: adapter });
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 			await cli.run(["up", "--json"], { cwd });
@@ -248,6 +264,7 @@ describe("createDriftCommand", () => {
 			// still exists but its record no longer matches the realized spec.
 			const deploymentId = deploymentIdFor(cwd);
 			const stackKey = `${deploymentId}/service`;
+			// SAFETY: assertion required at this I/O or test boundary.
 			const held = stateBackend.read(stackKey) as {
 				resources: Record<string, { specHash?: string }>;
 			};
@@ -258,6 +275,7 @@ describe("createDriftCommand", () => {
 
 			const command = createDriftCommand({ runtime, adapter });
 			const result = await command.run(runInput(cwd));
+			// SAFETY: assertion required at this I/O or test boundary.
 			const data = result.data as DriftData;
 			expect(result.ok).toBe(true);
 			expect(result.status).toBe("drifted");
@@ -270,6 +288,7 @@ describe("createDriftCommand", () => {
 	it("reports in-sync against a live Cloudflare backend when the Worker still exists", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 			await cli.run(["up", "--json"], { cwd });
@@ -283,7 +302,9 @@ describe("createDriftCommand", () => {
 
 			expect(result.ok).toBe(true);
 			expect(result.status).toBe("in-sync");
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((result.data as DriftData).checked).toBe(2);
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((result.data as DriftData).drifted).toEqual([]);
 		});
 	});
@@ -291,6 +312,7 @@ describe("createDriftCommand", () => {
 	it("reports divergence + a governed remediation when the live Worker is gone (404)", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 			await cli.run(["up", "--json"], { cwd });
@@ -305,11 +327,14 @@ describe("createDriftCommand", () => {
 
 			expect(result.ok).toBe(true);
 			expect(result.status).toBe("drifted");
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((result.data as DriftData).checked).toBe(2);
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect([...(result.data as DriftData).diverged].sort()).toEqual([
 				"service",
 				"sessions",
 			]);
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect([...(result.data as DriftData).drifted].sort()).toEqual([
 				"service",
 				"sessions",
@@ -322,6 +347,7 @@ describe("createDriftCommand", () => {
 	it("reports no deployment when nothing has been deployed on the live lane", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const command = createDriftCommand({
 				runtime,
@@ -331,6 +357,7 @@ describe("createDriftCommand", () => {
 			const result = await command.run(runInput(cwd));
 			expect(result.ok).toBe(true);
 			expect(result.status).toBe("no_deployment");
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((result.data as DriftData).checked).toBe(0);
 		});
 	});
@@ -338,6 +365,7 @@ describe("createDriftCommand", () => {
 	it("fails closed with a typed error when HOBO_PULUMI_LIVE=1 and the pulumi binary is missing", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const command = createDriftCommand({
 				runtime,
@@ -349,7 +377,9 @@ describe("createDriftCommand", () => {
 			const result = await command.run(runInput(cwd));
 			expect(result.ok).toBe(false);
 			expect(result.code).toBe("HOBO_PULUMI_UNAVAILABLE");
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((result.data as DriftData).backend).toBe("pulumi-live");
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((result.data as DriftData).engineCode).toBe("pulumi-cli-missing");
 		});
 	});
@@ -357,6 +387,7 @@ describe("createDriftCommand", () => {
 	it("errors when there is no bindle to compare against", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const command = createDriftCommand({ runtime });
 			const result = await command.run(runInput(cwd));

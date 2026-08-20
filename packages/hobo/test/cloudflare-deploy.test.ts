@@ -43,17 +43,14 @@ interface RecordedCall {
 // success body per endpoint (upload / enable-subdomain / get-subdomain). No socket
 // is opened. `subdomain` is the account workers.dev subdomain surfaced by the
 // GET /workers/subdomain response.
-function mockFetch(
-	subdomain = "acme",
-	status = 200,
-): { fetch: CloudflareFetch; calls: RecordedCall[] } {
+function mockFetch(subdomain = "acme", status = 200) {
 	const calls: RecordedCall[] = [];
 	const fetch: CloudflareFetch = async (url, init) => {
 		calls.push({
 			url,
 			method: init.method,
 			headers: init.headers,
-			...(init.body !== undefined ? { body: init.body } : {}),
+			...(init.body !== undefined ? { body: init.body } : undefined),
 		});
 		const body = url.endsWith("/workers/subdomain")
 			? { result: { subdomain }, success: true }
@@ -116,9 +113,11 @@ describe("createCloudflareClient.uploadWorker (mocked fetch, no network)", () =>
 		// The multipart body: a metadata part naming the ESM main_module + the module
 		// file part typed application/javascript+module.
 		expect(upload.body).toBeInstanceOf(FormData);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const form = upload.body as FormData;
 		const metadataPart = form.get("metadata");
 		expect(metadataPart).toBeInstanceOf(Blob);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const metadata = JSON.parse(await (metadataPart as Blob).text()) as {
 			main_module: string;
 			compatibility_date: string;
@@ -127,7 +126,9 @@ describe("createCloudflareClient.uploadWorker (mocked fetch, no network)", () =>
 		expect(metadata.compatibility_date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
 		const modulePart = form.get("worker.mjs");
 		expect(modulePart).toBeInstanceOf(Blob);
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((modulePart as Blob).type).toBe("application/javascript+module");
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect(await (modulePart as Blob).text()).toContain("export default");
 
 		// 2) Enable workers.dev route for the script.
@@ -137,6 +138,7 @@ describe("createCloudflareClient.uploadWorker (mocked fetch, no network)", () =>
 		);
 		expect(enable.method).toBe("POST");
 		expect(enable.headers.Authorization).toBe("Bearer cf_secret");
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect(JSON.parse(enable.body as string)).toEqual({ enabled: true });
 
 		// 3) Derive the deployed URL from the account subdomain.
@@ -180,17 +182,14 @@ describe("createCloudflareClient.uploadWorker (mocked fetch, no network)", () =>
 });
 
 describe("createCloudflareClient.scriptExists (mocked fetch, no network)", () => {
-	function getMock(status: number): {
-		fetch: CloudflareFetch;
-		calls: RecordedCall[];
-	} {
+	function getMock(status: number) {
 		const calls: RecordedCall[] = [];
 		const fetch: CloudflareFetch = async (url, init) => {
 			calls.push({
 				url,
 				method: init.method,
 				headers: init.headers,
-				...(init.body !== undefined ? { body: init.body } : {}),
+				...(init.body !== undefined ? { body: init.body } : undefined),
 			});
 			const response: CloudflareFetchResponse = {
 				ok: status >= 200 && status < 300,
@@ -256,7 +255,9 @@ describe("createCloudflareDeployProvider (mocked fetch, no network)", () => {
 
 		// The upload carried the exact committed module bytes.
 		const upload = first(calls);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const form = upload.body as FormData;
+		// SAFETY: assertion required at this I/O or test boundary.
 		const uploaded = await (form.get("worker.mjs") as Blob).text();
 		expect(uploaded).toBe(readFileSync(WORKER_MODULE, "utf-8"));
 
@@ -304,14 +305,16 @@ describe("selectIacProvider env-gated selection (Cloudflare + Vercel + fallback)
 	// (it reads them lazily on apply), so a light stand-in suffices for a
 	// selection-only assertion.
 	const pulumiDeps = {
-		store: {} as unknown as EventStore,
+		// SAFETY: assertion required at this I/O or test boundary.
+		store: {} as EventStore,
 		providers: [],
 	};
 	const { fetch: cfFetch } = mockFetch("acme");
 
 	let savedCfToken: string | undefined;
 	let savedCfAccount: string | undefined;
-	let savedVercel: string | undefined;
+	let savedVercel = process.env.VERCEL_TOKEN;
+
 	afterEach(() => {
 		const restore = (key: string, value: string | undefined): void => {
 			if (value === undefined) delete process.env[key];

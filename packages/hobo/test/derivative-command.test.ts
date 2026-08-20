@@ -5,12 +5,12 @@ import type { CliContext, YardRuntime } from "@hobo/cli";
 import { collectStream } from "@hobo/cloud";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	createComposedHoboCli,
 	createDefaultYardRuntime,
 	createDerivativeCommand,
 } from "../src/index.js";
+import { isJsonObject, isJsonString } from "../src/json.js";
 
 // `hobo derivative <read|upgrade>` manages a derived HoBo fork via its
 // derivative.json descriptor (ADR-0057): read reports it; upgrade records the
@@ -86,7 +86,9 @@ async function seedTicketCorpus(
 
 function runInput(cwd: string, args: readonly string[]) {
 	return {
-		context: { cwd, projectDir: cwd } as unknown as CliContext,
+		// SAFETY: assertion required at this I/O or test boundary.
+		context: { cwd, projectDir: cwd } as CliContext,
+		// SAFETY: assertion required at this I/O or test boundary.
 		flags: { cwd } as never,
 		args,
 		verb: "derivative",
@@ -98,6 +100,7 @@ describe("createDerivativeCommand", () => {
 	it("reads the derivative descriptor (string upcasters parse to named steps)", async () => {
 		await withProject(DESCRIPTOR, async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -122,6 +125,7 @@ describe("createDerivativeCommand", () => {
 	it("defaults to `read` when no subcommand is given", async () => {
 		await withProject(DESCRIPTOR, async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -136,6 +140,7 @@ describe("createDerivativeCommand", () => {
 	it("runs the upgrade ceremony to the descriptor's target", async () => {
 		await withProject(DESCRIPTOR, async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -173,6 +178,7 @@ describe("createDerivativeCommand", () => {
 			},
 			async (cwd) => {
 				const runtime = createDefaultYardRuntime();
+				// SAFETY: assertion required at this I/O or test boundary.
 				openStores.push(runtime.store as RuntimeLocalEventStore);
 				await seedTicketCorpus(runtime, "ticket:corpus");
 
@@ -181,6 +187,7 @@ describe("createDerivativeCommand", () => {
 
 				expect(result.ok).toBe(true);
 				expect(result.status).toBe("upgraded");
+				// SAFETY: assertion required at this I/O or test boundary.
 				const data = result.data as {
 					upcastersRun: string[];
 					upcasted: Array<{
@@ -241,6 +248,7 @@ describe("createDerivativeCommand", () => {
 			},
 			async (cwd) => {
 				const runtime = createDefaultYardRuntime();
+				// SAFETY: assertion required at this I/O or test boundary.
 				openStores.push(runtime.store as RuntimeLocalEventStore);
 				await seedTicketCorpus(runtime, "ticket:corpus");
 
@@ -250,11 +258,13 @@ describe("createDerivativeCommand", () => {
 				expect(result.ok).toBe(false);
 				expect(result.status).toBe("upgrade_failed");
 				expect(result.code).toBe("HOBO_DERIVATIVE_UPGRADE_FAILED");
-				const conformance = (
-					result.data as {
-						conformance: { ok: boolean; errors: string[] };
-					}
-				).conformance;
+				const conformance =
+					// SAFETY: assertion required at this I/O or test boundary.
+					(
+						result.data as {
+							conformance: { ok: boolean; errors: string[] };
+						}
+					).conformance;
 				expect(conformance.ok).toBe(false);
 				expect(conformance.errors.length).toBeGreaterThan(0);
 				expect(conformance.errors[0]).toMatch(/cannot rename missing field/);
@@ -268,9 +278,13 @@ describe("createDerivativeCommand", () => {
 					"derivative.UpgradeStarted",
 					"derivative.UpgradeFailed",
 				]);
-				expect((ceremony[1]?.data as { reason: string }).reason).toMatch(
-					/seam conformance failed/,
-				);
+				// SAFETY: assertion required at this I/O or test boundary.
+				const failed = ceremony[1]?.data;
+				expect(
+					isJsonObject(failed) && isJsonString(failed.reason)
+						? failed.reason
+						: "",
+				).toMatch(/seam conformance failed/);
 			},
 		);
 	});
@@ -280,6 +294,7 @@ describe("createDerivativeCommand", () => {
 			{ name: "no-target", version: "2.0.0", upcasters: [] },
 			async (cwd) => {
 				const runtime = createDefaultYardRuntime();
+				// SAFETY: assertion required at this I/O or test boundary.
 				openStores.push(runtime.store as RuntimeLocalEventStore);
 				const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -295,6 +310,7 @@ describe("createDerivativeCommand", () => {
 	it("errors when there is no descriptor", async () => {
 		await withProject(null, async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -308,7 +324,9 @@ describe("createDerivativeCommand", () => {
 
 	it("reports unavailable when no runtime is wired", async () => {
 		const result = await createDerivativeCommand().run({
-			context: { cwd: "/tmp", projectDir: "/tmp" } as unknown as CliContext,
+			// SAFETY: assertion required at this I/O or test boundary.
+			context: { cwd: "/tmp", projectDir: "/tmp" } as CliContext,
+			// SAFETY: assertion required at this I/O or test boundary.
 			flags: { cwd: "/tmp" } as never,
 			args: ["read"],
 			verb: "derivative",

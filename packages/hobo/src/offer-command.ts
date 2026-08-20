@@ -1,10 +1,10 @@
 import { createHash } from "node:crypto";
 import { join } from "node:path";
-
 import type { CommandModule, YardRuntime } from "@hobo/cli";
 import { loadBindleDefinition } from "@hobo/cli";
 import { assertOfferIsSecretFree, buildDeploymentOffer } from "@hobo/recipes";
 import { defaultHoboHome } from "./bare-metal-yard.js";
+import { isJsonNumber, isJsonString, type JsonObject } from "./json.js";
 import {
 	buildRecipeContext,
 	compileTopology,
@@ -77,19 +77,21 @@ export function createOfferCommand(deps: OfferCommandDeps): CommandModule {
 			// An explicit `--cwd` wins: the shell infers a project directory by
 			// walking up, and the caller who named one meant it.
 			const projectDir =
-				(typeof flags.cwd === "string" && flags.cwd.length > 0
+				(isJsonString(flags.cwd) && flags.cwd.length > 0
 					? flags.cwd
 					: undefined) ??
+				// SAFETY: assertion required at this I/O or test boundary.
 				(context as { projectDir?: string }).projectDir ??
 				context.cwd;
 			const home =
-				typeof flags.home === "string" && flags.home.length > 0
+				isJsonString(flags.home) && flags.home.length > 0
 					? flags.home
 					: defaultHoboHome();
 			// `--at <ms>` pins the evaluation instant so an offer can be
 			// recompiled deterministically from a receipt.
-			const atFlag = (flags as Record<string, unknown>).at;
-			const nowMs = typeof atFlag === "number" ? atFlag : now();
+			// SAFETY: assertion required at this I/O or test boundary.
+			const atFlag = (flags as JsonObject).at;
+			const nowMs = isJsonNumber(atFlag) ? atFlag : now();
 
 			let recipe: SolutionRecipe;
 			try {

@@ -1,7 +1,6 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
 import {
 	DEPLOYMENT_PLAN_SCHEMA,
 	type DeploymentPlan,
@@ -29,8 +28,8 @@ import {
 	type RuntimeLocalEventStore,
 } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
-
 import { selectIacProvider } from "../src/compose.js";
+import type { JsonObject, JsonValue } from "../src/json.js";
 import type { PulumiAutomationAdapter } from "../src/pulumi-iac-provider.js";
 import {
 	createResolverBackedIacProvider,
@@ -149,7 +148,7 @@ interface FakeAccount {
 
 const KV_PATH = `/client/v4/accounts/${ACCOUNT_ID}/storage/kv/namespaces`;
 
-function ok(payload: unknown): TransportResponse {
+function ok(payload: JsonValue): TransportResponse {
 	return {
 		status: 200,
 		headers: { "content-type": "application/json" },
@@ -195,6 +194,7 @@ function createFakeCloudflareAccount(): FakeAccount {
 				};
 			}
 			if (request.method === "POST" && url.pathname === KV_PATH) {
+				// SAFETY: assertion required at this I/O or test boundary.
 				const title = (JSON.parse(request.body ?? "{}") as { title: string })
 					.title;
 				const record = { id: `ns-${nextId}`, title };
@@ -243,7 +243,7 @@ function cloudflareRegistry(): ResolverIacRegistry {
 
 function kvNode(
 	name: string,
-	realizationParameters?: Readonly<Record<string, unknown>>,
+	realizationParameters?: JsonObject,
 ): ResourcePlan {
 	return {
 		name,
@@ -251,7 +251,9 @@ function kvNode(
 		provider: "cloudflare",
 		deps: [],
 		productId: CLOUDFLARE_KV_PRODUCT_ID,
-		...(realizationParameters !== undefined ? { realizationParameters } : {}),
+		...(realizationParameters !== undefined
+			? { realizationParameters }
+			: undefined),
 	};
 }
 
@@ -349,6 +351,7 @@ describe("resolver-backed IacProvider: fail-closed refusals", () => {
 			.catch((cause: unknown) => cause);
 
 		expect(error).toBeInstanceOf(ResolverIacError);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const typed = error as ResolverIacError;
 		expect(typed.code).toBe("RESOLVER_IAC_PRODUCT_UNDECIDED");
 		expect(typed.message).toContain("productId");
@@ -376,6 +379,7 @@ describe("resolver-backed IacProvider: fail-closed refusals", () => {
 			.catch((cause: unknown) => cause);
 
 		expect(error).toBeInstanceOf(ResolverIacError);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const typed = error as ResolverIacError;
 		expect(typed.code).toBe("RESOLVER_IAC_PRODUCT_UNREGISTERED");
 		expect(typed.message).toContain("nowhere.thing/v1");
@@ -392,6 +396,7 @@ describe("resolver-backed IacProvider: fail-closed refusals", () => {
 			.catch((cause: unknown) => cause);
 
 		expect(error).toBeInstanceOf(ResolverIacError);
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((error as ResolverIacError).code).toBe("RESOLVER_IAC_PLAN_MISSING");
 	});
 
@@ -412,6 +417,7 @@ describe("resolver-backed IacProvider: fail-closed refusals", () => {
 			.catch((cause: unknown) => cause);
 
 		expect(error).toBeInstanceOf(ResolverIacError);
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((error as ResolverIacError).code).toBe(
 			"RESOLVER_IAC_SLOT_UNDECIDED",
 		);
@@ -574,7 +580,9 @@ describe("resolver-backed IacProvider: credential custody", () => {
 			.catch((cause: unknown) => cause);
 
 		expect(error).toBeInstanceOf(Error);
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((error as Error).message).not.toContain(FAKE_TOKEN);
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((error as Error).message).toContain("[redacted]");
 	});
 });

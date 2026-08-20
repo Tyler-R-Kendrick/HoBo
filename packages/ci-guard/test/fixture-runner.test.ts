@@ -11,12 +11,18 @@
  * Everything is driven through a temp `eventsPath`, so no test touches the real
  * `test-results/` directory.
  */
-import { mkdtemp, readFile, writeFile, mkdir } from "node:fs/promises";
+import { mkdir, mkdtemp, readFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { runExampleFixture } from "../src/fixture-runner.js";
+import {
+	isJsonNumber,
+	isJsonObject,
+	type JsonObject,
+	parseJsonTree,
+} from "../src/json.js";
 
 /**
  * The contract pins the E2E fixture to this exact path, and `deploy-and-assert`
@@ -42,12 +48,18 @@ async function workspace() {
 	return { root, fixture, eventsPath: path.join(root, "events.jsonl") };
 }
 
-async function events(eventsPath: string): Promise<Record<string, unknown>[]> {
+async function events(eventsPath: string): Promise<JsonObject[]> {
 	const text = await readFile(eventsPath, "utf8");
 	return text
 		.split("\n")
 		.filter((line) => line.length > 0)
-		.map((line) => JSON.parse(line) as Record<string, unknown>);
+		.map((line) => {
+			const parsed = parseJsonTree(line);
+			if (!isJsonObject(parsed)) {
+				throw new Error("event line must be a JSON object");
+			}
+			return parsed;
+		});
 }
 
 describe("deploy-and-assert", () => {
@@ -71,7 +83,7 @@ describe("deploy-and-assert", () => {
 		for (const event of recorded) {
 			expect(event.runId).toBe("run-1");
 			expect(event.fixture).toBe(fixture);
-			expect(typeof event.recordedAtMs).toBe("number");
+			expect(isJsonNumber(event.recordedAtMs)).toBe(true);
 		}
 	});
 
@@ -168,7 +180,7 @@ describe("sweep-orphans", () => {
 		const recorded = await events(eventsPath);
 		expect(recorded[0]?.type).toBe("e2e.OrphanSwept");
 		expect(recorded[0]?.selector).toBeTruthy();
-		expect(typeof recorded[0]?.maxAgeMinutes).toBe("number");
+		expect(isJsonNumber(recorded[0]?.maxAgeMinutes)).toBe(true);
 	});
 });
 

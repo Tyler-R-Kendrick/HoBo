@@ -89,6 +89,16 @@ import {
 	type TransportResponse,
 } from "@hobo/core";
 
+import {
+	isJsonArray,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "./json.js";
 import { AZURE_PROVIDER_TARGET } from "./options.js";
 import {
 	aks,
@@ -318,7 +328,7 @@ const CREDENTIAL_REF_PATTERN = /^[a-z][a-z0-9+.-]*:\/\/[^\s@]+$/u;
 const RAW_CREDENTIAL_PATTERN = /^[A-Za-z0-9_.-]{16,}$/u;
 
 /** Anything long and token-shaped is scrubbed out of provider error text. */
-const TOKEN_SHAPED_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
+const TOKEN_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
 
 // ---------------------------------------------------------------------------
 // Small pure helpers
@@ -328,56 +338,45 @@ function compareStrings(left: string, right: string): number {
 	return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
-		return false;
-	}
-	const prototype: unknown = Object.getPrototypeOf(value);
-	return prototype === Object.prototype || prototype === null;
-}
-
 function optionalString(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject | undefined,
 	key: string,
 ): string | undefined {
+	if (record === undefined) return undefined;
 	const value = record[key];
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return isJsonString(value) && value.trim().length > 0 ? value : undefined;
 }
 
 function optionalBoolean(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject | undefined,
 	key: string,
 ): boolean | undefined {
+	if (record === undefined) return undefined;
 	const value = record[key];
-	return typeof value === "boolean" ? value : undefined;
+	return isJsonBoolean(value) ? value : undefined;
 }
 
 function optionalNumber(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject | undefined,
 	key: string,
 ): number | undefined {
+	if (record === undefined) return undefined;
 	const value = record[key];
-	return typeof value === "number" && Number.isFinite(value)
-		? value
-		: undefined;
+	return isJsonNumber(value) && Number.isFinite(value) ? value : undefined;
 }
 
 function optionalInteger(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject | undefined,
 	key: string,
 ): number | undefined {
 	const value = optionalNumber(record, key);
 	return value !== undefined && Number.isSafeInteger(value) ? value : undefined;
 }
 
-function nestedRecord(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): Readonly<Record<string, unknown>> {
+function nestedRecord(record: JsonObject | undefined, key: string): JsonObject {
+	if (record === undefined) return {};
 	const value = record[key];
-	return isPlainObject(value) ? value : {};
+	return isJsonObject(value) ? value : {};
 }
 
 /** Case-insensitive header lookup: header names are not case-significant. */
@@ -399,7 +398,7 @@ function headerValue(
  * every segment is long and token-shaped, so this catches it too.
  */
 export function redactAzureText(text: string, limit = 400): string {
-	const scrubbed = text.replace(TOKEN_SHAPED_PATTERN, "[redacted]");
+	const scrubbed = text.replace(TOKEN_PATTERN, "[redacted]");
 	return scrubbed.length > limit ? `${scrubbed.slice(0, limit)}…` : scrubbed;
 }
 
@@ -451,7 +450,7 @@ interface AzureResolverContext {
 	readonly resourceGroup: string;
 	/** The deterministic resource name: `desired.<nameKey>`, else the logical id. */
 	readonly name: string;
-	readonly desired: Readonly<Record<string, unknown>>;
+	readonly desired: JsonObject;
 	/** True when the caller already knows the physical id (adopt vs noop). */
 	readonly knownPhysicalId: string | undefined;
 	readonly pollBudget: number;
@@ -476,23 +475,29 @@ function resourceId(context: AzureResolverContext, suffix: string): string {
 	return `${AZURE_ARM_BASE_PATH}${groupPath(context, suffix)}`;
 }
 
+interface AzureCall {
+	readonly method: TransportMethod;
+	readonly url: string;
+	readonly json?: unknown;
+}
+
 async function callArm(
 	context: AzureResolverContext,
-	method: TransportMethod,
-	url: string,
-	json?: unknown,
+	call: AzureCall,
 ): Promise<TransportResponse> {
-	const body = json === undefined ? undefined : JSON.stringify(json);
+	const body = call.json === undefined ? undefined : JSON.stringify(call.json);
 	return context.transport({
-		method,
-		url,
+		method: call.method,
+		url: call.url,
 		headers: {
 			accept: "application/json",
 			// The single place the resolved material is ever written.
 			authorization: `Bearer ${context.token}`,
-			...(body !== undefined ? { "content-type": "application/json" } : {}),
+			...(body !== undefined
+				? { "content-type": "application/json" }
+				: undefined),
 		},
-		...(body !== undefined ? { body } : {}),
+		...(body !== undefined ? { body } : undefined),
 		timeoutMs: AZURE_MAX_TIMEOUT_MS,
 		maxResponseBytes: AZURE_MAX_RESPONSE_BYTES,
 	});
@@ -508,19 +513,20 @@ async function callArm(
 function parseArmBody(
 	response: TransportResponse,
 	label: string,
-): Record<string, unknown> | undefined {
-	const text = typeof response.body === "string" ? response.body.trim() : "";
+): JsonObject | undefined {
+	const text = response.body.trim();
 	if (text.length === 0) return undefined;
-	let parsed: unknown;
+	let parsed: JsonValue;
 	try {
-		parsed = JSON.parse(text) as unknown;
+		// SAFETY: JSON.parse yields a JSON value at this ARM document boundary.
+		parsed = JSON.parse(text) as JsonValue;
 	} catch {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${label}: Azure returned a status ${response.status} body that is not JSON, so the outcome of the call is unknown and it is refused rather than assumed; retry, and if it repeats the ARM contract or the pinned api-version has changed`,
 		);
 	}
-	if (!isPlainObject(parsed)) {
+	if (!isJsonObject(parsed)) {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${label}: Azure returned JSON that is not an ARM resource object (status ${response.status})`,
@@ -530,9 +536,9 @@ function parseArmBody(
 }
 
 /** Flatten ARM's `{ error: { code, message, details } }` into redacted text. */
-function armErrorText(body: Record<string, unknown> | undefined): string {
+function armErrorText(body: JsonObject | undefined): string {
 	if (body === undefined) return "no error detail was returned";
-	const error = isPlainObject(body.error) ? body.error : body;
+	const error = isJsonObject(body.error) ? body.error : body;
 	const code = optionalString(error, "code");
 	const message = optionalString(error, "message");
 	const parts: string[] = [];
@@ -545,7 +551,7 @@ function armErrorText(body: Record<string, unknown> | undefined): string {
 /** Any 4xx/5xx becomes a typed, redacted refusal. */
 function assertArmOk(response: TransportResponse, label: string): void {
 	if (response.status < 400) return;
-	let body: Record<string, unknown> | undefined;
+	let body: JsonObject | undefined;
 	try {
 		body = parseArmBody(response, label);
 	} catch {
@@ -577,9 +583,7 @@ function isTerminalFailure(state: string | undefined): boolean {
 }
 
 /** `properties.provisioningState`, lowercased for comparison. */
-function provisioningState(
-	body: Record<string, unknown> | undefined,
-): string | undefined {
+function provisioningState(body: JsonObject | undefined): string | undefined {
 	if (body === undefined) return undefined;
 	const state = optionalString(
 		nestedRecord(body, "properties"),
@@ -589,9 +593,7 @@ function provisioningState(
 }
 
 /** The async-operation document's own `status`, lowercased. */
-function operationState(
-	body: Record<string, unknown> | undefined,
-): string | undefined {
+function operationState(body: JsonObject | undefined): string | undefined {
 	if (body === undefined) return undefined;
 	return optionalString(body, "status")?.toLowerCase();
 }
@@ -599,7 +601,7 @@ function operationState(
 /** What a long-running write settled into. */
 interface ArmWriteResult {
 	/** The resource as ARM last described it, when a terminal read got one. */
-	readonly body: Record<string, unknown> | undefined;
+	readonly body: JsonObject | undefined;
 	/** Non-empty exactly when the operation was accepted but not confirmed. */
 	readonly diagnostics: readonly string[];
 	/** `false` means: ARM took the write, and this package cannot say it landed. */
@@ -734,7 +736,7 @@ async function pollUntilTerminal(
 ): Promise<ArmWriteResult> {
 	for (let attempt = 1; attempt <= context.pollBudget; attempt += 1) {
 		await context.waitBetweenPolls(attempt);
-		const response = await callArm(context, "GET", pollUrl);
+		const response = await callArm(context, { method: "GET", url: pollUrl });
 		if (kind === "location" && response.status === 202) continue;
 		assertArmOk(response, `${label} (operation poll ${attempt})`);
 		const body = parseArmBody(response, `${label} (operation poll ${attempt})`);
@@ -798,12 +800,11 @@ async function readResourceBody(
 	resourcePath: string,
 	apiVersion: string,
 	label: string,
-): Promise<Record<string, unknown> | undefined> {
-	const response = await callArm(
-		context,
-		"GET",
-		azureArmUrl(resourcePath, apiVersion),
-	);
+): Promise<JsonObject | undefined> {
+	const response = await callArm(context, {
+		method: "GET",
+		url: azureArmUrl(resourcePath, apiVersion),
+	});
 	if (response.status === 404) return undefined;
 	assertArmOk(response, `${label} (final read)`);
 	return parseArmBody(response, `${label} (final read)`);
@@ -816,12 +817,11 @@ async function armGet(
 	resourcePath: string,
 	apiVersion: string,
 	label: string,
-): Promise<Record<string, unknown> | undefined> {
-	const response = await callArm(
-		context,
-		"GET",
-		azureArmUrl(resourcePath, apiVersion),
-	);
+): Promise<JsonObject | undefined> {
+	const response = await callArm(context, {
+		method: "GET",
+		url: azureArmUrl(resourcePath, apiVersion),
+	});
 	if (response.status === 404) return undefined;
 	assertArmOk(response, label);
 	return parseArmBody(response, label);
@@ -842,11 +842,10 @@ async function armDelete(
 	apiVersion: string,
 	label: string,
 ): Promise<void> {
-	const response = await callArm(
-		context,
-		"DELETE",
-		azureArmUrl(resourcePath, apiVersion),
-	);
+	const response = await callArm(context, {
+		method: "DELETE",
+		url: azureArmUrl(resourcePath, apiVersion),
+	});
 	if (response.status === 404 || response.status === 204) return;
 	const settled = await settleWrite(
 		context,
@@ -870,7 +869,7 @@ async function armDelete(
 function outcome(
 	action: ResolverAction,
 	physicalId: string,
-	outputs: Readonly<Record<string, unknown>>,
+	outputs: JsonObject,
 	diagnostics: readonly string[],
 ): ResolveOutcome {
 	return Object.freeze({
@@ -894,7 +893,7 @@ function settledAction(context: AzureResolverContext): ResolverAction {
 }
 
 function assertSubscriptionId(value: string): string {
-	if (typeof value !== "string" || !SUBSCRIPTION_ID_PATTERN.test(value)) {
+	if (!SUBSCRIPTION_ID_PATTERN.test(value)) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			"azure resolvers need a subscriptionId GUID: every ARM path is subscription-scoped, and a malformed one would be pasted straight into a URL path",
@@ -904,7 +903,7 @@ function assertSubscriptionId(value: string): string {
 }
 
 function assertResourceGroup(value: string): string {
-	if (typeof value !== "string" || !RESOURCE_GROUP_PATTERN.test(value)) {
+	if (!RESOURCE_GROUP_PATTERN.test(value)) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			"azure resolvers need a resourceGroup matching ARM's name grammar (alphanumerics, underscore, parentheses, hyphen and period, up to 90 characters, not ending in a period)",
@@ -942,7 +941,7 @@ async function resolveToken(
 	resolve: (ref: string) => Promise<string>,
 ): Promise<string> {
 	const ref = request.credentialRef;
-	if (typeof ref !== "string" || ref.trim().length === 0) {
+	if (ref.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			'azure resolver: credentialRef is empty. Supply a locator such as "env://AZURE_ARM_ACCESS_TOKEN" or "secret://camp/azure-arm-token" and register it with the host credential resolver; the resolver never accepts inline credential material',
@@ -973,7 +972,7 @@ async function resolveToken(
 			)}. Register the reference with the credential resolver before deploying`,
 		);
 	}
-	if (typeof material !== "string" || material.trim().length === 0) {
+	if (material.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			`azure resolver: credentialRef ${JSON.stringify(trimmed)} resolved to nothing. A missing credential is refused rather than retried unauthenticated, which would look like a permissions error at the provider`,
@@ -992,12 +991,13 @@ function resourceName(
 	productId: string,
 	nameKeys: readonly string[],
 ): string {
+	const desired = parseJsonObject(JSON.stringify(request.desired));
 	for (const key of nameKeys) {
-		const value = optionalString(request.desired, key);
+		const value = optionalString(desired, key);
 		if (value !== undefined) return value;
 	}
 	const logicalId = request.ref.logicalId;
-	if (typeof logicalId === "string" && logicalId.trim().length > 0) {
+	if (logicalId.trim().length > 0) {
 		return logicalId;
 	}
 	throw new ResolverError(
@@ -1009,9 +1009,7 @@ function resourceName(
 /** The physical id the caller already knows, if it supplied a usable one. */
 function knownPhysicalId(request: ResolveRequest): string | undefined {
 	const value = request.ref.physicalId;
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return value !== undefined && value.trim().length > 0 ? value : undefined;
 }
 
 /** A required `desired` field, refused by name with what to add. */
@@ -1076,7 +1074,7 @@ function createResolver(
 			subscriptionId,
 			resourceGroup,
 			name: resourceName(request, spec.productId, nameKeys),
-			desired: request.desired,
+			desired: parseJsonObject(JSON.stringify(request.desired)),
 			knownPhysicalId: knownPhysicalId(request),
 			pollBudget,
 			waitBetweenPolls,
@@ -1171,14 +1169,15 @@ function blobContainerSuffix(account: string, name: string): string {
 function blobContainerOutputs(
 	account: string,
 	name: string,
-	body: Record<string, unknown> | undefined,
-): Readonly<Record<string, unknown>> {
-	const properties = body === undefined ? {} : nestedRecord(body, "properties");
+	body: JsonObject | undefined,
+): JsonObject {
+	const properties =
+		body === undefined ? undefined : nestedRecord(body, "properties");
 	const publicAccess = optionalString(properties, "publicAccess");
 	return {
 		containerName: name,
 		storageAccount: account,
-		...(publicAccess !== undefined ? { publicAccess } : {}),
+		...(publicAccess !== undefined ? { publicAccess } : undefined),
 	};
 }
 
@@ -1236,16 +1235,15 @@ const BLOB_STORAGE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 		if (observed === undefined) {
 			const created = await settleWrite(
 				context,
-				await callArm(
-					context,
-					"PUT",
-					azureArmUrl(path, AZURE_STORAGE_API_VERSION),
-					{
+				await callArm(context, {
+					method: "PUT",
+					url: azureArmUrl(path, AZURE_STORAGE_API_VERSION),
+					json: {
 						properties: {
-							...(publicAccess !== undefined ? { publicAccess } : {}),
+							...(publicAccess !== undefined ? { publicAccess } : undefined),
 						},
 					},
-				),
+				}),
 				path,
 				AZURE_STORAGE_API_VERSION,
 				label,
@@ -1266,12 +1264,11 @@ const BLOB_STORAGE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 			// drop metadata a human set out of band.
 			const updated = await settleWrite(
 				context,
-				await callArm(
-					context,
-					"PUT",
-					azureArmUrl(path, AZURE_STORAGE_API_VERSION),
-					{ properties: { ...observedProperties, publicAccess } },
-				),
+				await callArm(context, {
+					method: "PUT",
+					url: azureArmUrl(path, AZURE_STORAGE_API_VERSION),
+					json: { properties: { ...observedProperties, publicAccess } },
+				}),
 				path,
 				AZURE_STORAGE_API_VERSION,
 				label,
@@ -1314,10 +1311,7 @@ function storageQueueSuffix(account: string, name: string): string {
 	return `${storageAccountSuffix(account)}/queueServices/default/queues/${encodeURIComponent(name)}`;
 }
 
-function storageQueueOutputs(
-	account: string,
-	name: string,
-): Readonly<Record<string, unknown>> {
+function storageQueueOutputs(account: string, name: string): JsonObject {
 	return { queueName: name, storageAccount: account };
 }
 
@@ -1394,12 +1388,11 @@ const STORAGE_QUEUE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 		}
 		const created = await settleWrite(
 			context,
-			await callArm(
-				context,
-				"PUT",
-				azureArmUrl(path, AZURE_STORAGE_API_VERSION),
-				{ properties: {} },
-			),
+			await callArm(context, {
+				method: "PUT",
+				url: azureArmUrl(path, AZURE_STORAGE_API_VERSION),
+				json: { properties: {} },
+			}),
 			path,
 			AZURE_STORAGE_API_VERSION,
 			label,
@@ -1482,13 +1475,14 @@ const SERVICE_BUS_READ_ONLY_PROPERTIES = Object.freeze([
 ]);
 
 function withoutReadOnly(
-	properties: Readonly<Record<string, unknown>>,
+	properties: JsonObject,
 	readOnly: readonly string[],
-): Record<string, unknown> {
-	const out: Record<string, unknown> = {};
+): JsonObject {
+	const out = {};
 	for (const key of Object.keys(properties).sort(compareStrings)) {
 		if (readOnly.includes(key)) continue;
-		out[key] = properties[key];
+		const value = properties[key];
+		if (value !== undefined) Object.assign(out, { [key]: value });
 	}
 	return out;
 }
@@ -1502,19 +1496,19 @@ function serviceBusTopicSuffix(namespace: string, name: string): string {
 }
 
 /** The mutable slice of a Service Bus queue the binding names. */
-function serviceBusQueueDeltas(
-	context: AzureResolverContext,
-): Record<string, unknown> {
-	const out: Record<string, unknown> = {};
+function serviceBusQueueDeltas(context: AzureResolverContext): JsonObject {
+	const out = {};
 	const lockSeconds = optionalInteger(context.desired, "lockDurationSeconds");
 	if (lockSeconds !== undefined) {
-		out.lockDuration = secondsToIso8601Duration(lockSeconds);
+		Object.assign(out, { lockDuration: secondsToIso8601Duration(lockSeconds) });
 	}
 	const maxDelivery = optionalInteger(context.desired, "maxDeliveryCount");
-	if (maxDelivery !== undefined) out.maxDeliveryCount = maxDelivery;
+	if (maxDelivery !== undefined) {
+		Object.assign(out, { maxDeliveryCount: maxDelivery });
+	}
 	const deadLetter = optionalBoolean(context.desired, "deadLetterOnExpiration");
 	if (deadLetter !== undefined) {
-		out.deadLetteringOnMessageExpiration = deadLetter;
+		Object.assign(out, { deadLetteringOnMessageExpiration: deadLetter });
 	}
 	return out;
 }
@@ -1522,7 +1516,7 @@ function serviceBusQueueDeltas(
 /** True when the observed entity already satisfies every named delta. */
 function serviceBusQueueSettled(
 	context: AzureResolverContext,
-	properties: Readonly<Record<string, unknown>>,
+	properties: JsonObject,
 ): boolean {
 	const lockSeconds = optionalInteger(context.desired, "lockDurationSeconds");
 	if (lockSeconds !== undefined) {
@@ -1552,7 +1546,7 @@ function serviceBusQueueSettled(
  *  correcting it would mean deleting a queue and its messages. */
 function serviceBusQueueDiagnostics(
 	context: AzureResolverContext,
-	properties: Readonly<Record<string, unknown>>,
+	properties: JsonObject,
 ): readonly string[] {
 	const wanted = optionalBoolean(context.desired, "sessionsEnabled");
 	const actual = optionalBoolean(properties, "requiresSession");
@@ -1567,9 +1561,10 @@ function serviceBusQueueDiagnostics(
 function serviceBusQueueOutputs(
 	namespace: string,
 	name: string,
-	body: Record<string, unknown> | undefined,
-): Readonly<Record<string, unknown>> {
-	const properties = body === undefined ? {} : nestedRecord(body, "properties");
+	body: JsonObject | undefined,
+): JsonObject {
+	const properties =
+		body === undefined ? undefined : nestedRecord(body, "properties");
 	const status = optionalString(properties, "status");
 	const lockDuration = optionalString(properties, "lockDuration");
 	const maxDeliveryCount = optionalInteger(properties, "maxDeliveryCount");
@@ -1577,10 +1572,10 @@ function serviceBusQueueOutputs(
 	return {
 		namespace,
 		queueName: name,
-		...(lockDuration !== undefined ? { lockDuration } : {}),
-		...(maxDeliveryCount !== undefined ? { maxDeliveryCount } : {}),
-		...(requiresSession !== undefined ? { requiresSession } : {}),
-		...(status !== undefined ? { status } : {}),
+		...(lockDuration !== undefined ? { lockDuration } : undefined),
+		...(maxDeliveryCount !== undefined ? { maxDeliveryCount } : undefined),
+		...(requiresSession !== undefined ? { requiresSession } : undefined),
+		...(status !== undefined ? { status } : undefined),
 	};
 }
 
@@ -1626,17 +1621,18 @@ const SERVICE_BUS_QUEUE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 			const sessions = optionalBoolean(context.desired, "sessionsEnabled");
 			const created = await settleWrite(
 				context,
-				await callArm(
-					context,
-					"PUT",
-					azureArmUrl(path, AZURE_SERVICE_BUS_API_VERSION),
-					{
+				await callArm(context, {
+					method: "PUT",
+					url: azureArmUrl(path, AZURE_SERVICE_BUS_API_VERSION),
+					json: {
 						properties: {
 							...deltas,
-							...(sessions !== undefined ? { requiresSession: sessions } : {}),
+							...(sessions !== undefined
+								? { requiresSession: sessions }
+								: undefined),
 						},
 					},
-				),
+				}),
 				path,
 				AZURE_SERVICE_BUS_API_VERSION,
 				label,
@@ -1661,17 +1657,16 @@ const SERVICE_BUS_QUEUE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 		}
 		const updated = await settleWrite(
 			context,
-			await callArm(
-				context,
-				"PUT",
-				azureArmUrl(path, AZURE_SERVICE_BUS_API_VERSION),
-				{
+			await callArm(context, {
+				method: "PUT",
+				url: azureArmUrl(path, AZURE_SERVICE_BUS_API_VERSION),
+				json: {
 					properties: {
 						...withoutReadOnly(properties, SERVICE_BUS_READ_ONLY_PROPERTIES),
 						...deltas,
 					},
 				},
-			),
+			}),
 			path,
 			AZURE_SERVICE_BUS_API_VERSION,
 			label,
@@ -1700,16 +1695,14 @@ const SERVICE_BUS_QUEUE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 };
 
 /** `maxSizeMb` is the mutable slice of a topic the binding names. */
-function serviceBusTopicDeltas(
-	context: AzureResolverContext,
-): Record<string, unknown> {
+function serviceBusTopicDeltas(context: AzureResolverContext) {
 	const maxSize = optionalInteger(context.desired, "maxSizeMb");
-	return maxSize === undefined ? {} : { maxSizeInMegabytes: maxSize };
+	return maxSize === undefined ? undefined : { maxSizeInMegabytes: maxSize };
 }
 
 function serviceBusTopicSettled(
 	context: AzureResolverContext,
-	properties: Readonly<Record<string, unknown>>,
+	properties: JsonObject,
 ): boolean {
 	const maxSize = optionalInteger(context.desired, "maxSizeMb");
 	return (
@@ -1721,7 +1714,7 @@ function serviceBusTopicSettled(
 /** Duplicate detection and partitioning are fixed at create on Service Bus. */
 function serviceBusTopicDiagnostics(
 	context: AzureResolverContext,
-	properties: Readonly<Record<string, unknown>>,
+	properties: JsonObject,
 ): readonly string[] {
 	const diagnostics: string[] = [];
 	const wantedDuplicates = optionalBoolean(
@@ -1758,18 +1751,19 @@ function serviceBusTopicDiagnostics(
 function serviceBusTopicOutputs(
 	namespace: string,
 	name: string,
-	body: Record<string, unknown> | undefined,
-): Readonly<Record<string, unknown>> {
-	const properties = body === undefined ? {} : nestedRecord(body, "properties");
+	body: JsonObject | undefined,
+): JsonObject {
+	const properties =
+		body === undefined ? undefined : nestedRecord(body, "properties");
 	const status = optionalString(properties, "status");
 	const maxSizeInMegabytes = optionalInteger(properties, "maxSizeInMegabytes");
 	const enablePartitioning = optionalBoolean(properties, "enablePartitioning");
 	return {
 		namespace,
 		topicName: name,
-		...(enablePartitioning !== undefined ? { enablePartitioning } : {}),
-		...(maxSizeInMegabytes !== undefined ? { maxSizeInMegabytes } : {}),
-		...(status !== undefined ? { status } : {}),
+		...(enablePartitioning !== undefined ? { enablePartitioning } : undefined),
+		...(maxSizeInMegabytes !== undefined ? { maxSizeInMegabytes } : undefined),
+		...(status !== undefined ? { status } : undefined),
 	};
 }
 
@@ -1816,22 +1810,21 @@ const SERVICE_BUS_TOPIC_SPEC: Omit<AzureResolverSpec, "productId"> = {
 			const partitioned = optionalBoolean(context.desired, "partitioned");
 			const created = await settleWrite(
 				context,
-				await callArm(
-					context,
-					"PUT",
-					azureArmUrl(path, AZURE_SERVICE_BUS_API_VERSION),
-					{
+				await callArm(context, {
+					method: "PUT",
+					url: azureArmUrl(path, AZURE_SERVICE_BUS_API_VERSION),
+					json: {
 						properties: {
 							...deltas,
 							...(duplicates !== undefined
 								? { requiresDuplicateDetection: duplicates }
-								: {}),
+								: undefined),
 							...(partitioned !== undefined
 								? { enablePartitioning: partitioned }
-								: {}),
+								: undefined),
 						},
 					},
-				),
+				}),
 				path,
 				AZURE_SERVICE_BUS_API_VERSION,
 				label,
@@ -1856,17 +1849,16 @@ const SERVICE_BUS_TOPIC_SPEC: Omit<AzureResolverSpec, "productId"> = {
 		}
 		const updated = await settleWrite(
 			context,
-			await callArm(
-				context,
-				"PUT",
-				azureArmUrl(path, AZURE_SERVICE_BUS_API_VERSION),
-				{
+			await callArm(context, {
+				method: "PUT",
+				url: azureArmUrl(path, AZURE_SERVICE_BUS_API_VERSION),
+				json: {
 					properties: {
 						...withoutReadOnly(properties, SERVICE_BUS_READ_ONLY_PROPERTIES),
 						...deltas,
 					},
 				},
-			),
+			}),
 			path,
 			AZURE_SERVICE_BUS_API_VERSION,
 			label,
@@ -1908,29 +1900,24 @@ const KEY_VAULT_FALLBACK_SKU = "standard";
 
 function keyVaultOutputs(
 	name: string,
-	body: Record<string, unknown> | undefined,
-): Readonly<Record<string, unknown>> {
-	const properties = body === undefined ? {} : nestedRecord(body, "properties");
+	body: JsonObject | undefined,
+): JsonObject {
+	const properties =
+		body === undefined ? undefined : nestedRecord(body, "properties");
 	const vaultUri = optionalString(properties, "vaultUri");
 	const state = optionalString(properties, "provisioningState");
 	const rbac = optionalBoolean(properties, "enableRbacAuthorization");
 	return {
 		vaultName: name,
-		...(rbac !== undefined ? { enableRbacAuthorization: rbac } : {}),
-		...(state !== undefined ? { provisioningState: state } : {}),
-		...(vaultUri !== undefined ? { vaultUri } : {}),
+		...(rbac !== undefined ? { enableRbacAuthorization: rbac } : undefined),
+		...(state !== undefined ? { provisioningState: state } : undefined),
+		...(vaultUri !== undefined ? { vaultUri } : undefined),
 	};
 }
 
 /** The mutable slice of a vault the binding names. */
-function keyVaultDeltas(
-	context: AzureResolverContext,
-	properties: Readonly<Record<string, unknown>>,
-): {
-	readonly patch: Record<string, unknown>;
-	readonly diagnostics: readonly string[];
-} {
-	const patch: Record<string, unknown> = {};
+function keyVaultDeltas(context: AzureResolverContext, properties: JsonObject) {
+	const patch = {};
 	const diagnostics: string[] = [];
 
 	const rbac = optionalBoolean(context.desired, "rbacAuthorization");
@@ -1938,12 +1925,12 @@ function keyVaultDeltas(
 		rbac !== undefined &&
 		optionalBoolean(properties, "enableRbacAuthorization") !== rbac
 	) {
-		patch.enableRbacAuthorization = rbac;
+		Object.assign(patch, { enableRbacAuthorization: rbac });
 	}
 	const purge = optionalBoolean(context.desired, "purgeProtection");
 	const observedPurge = optionalBoolean(properties, "enablePurgeProtection");
 	if (purge === true && observedPurge !== true) {
-		patch.enablePurgeProtection = true;
+		Object.assign(patch, { enablePurgeProtection: true });
 	}
 	if (purge === false && observedPurge === true) {
 		// ARM has no way back: purge protection is permanent once enabled.
@@ -1957,7 +1944,7 @@ function keyVaultDeltas(
 /** Immutable-at-create fields, reported rather than corrected. */
 function keyVaultImmutableDiagnostics(
 	context: AzureResolverContext,
-	body: Record<string, unknown>,
+	body: JsonObject,
 ): readonly string[] {
 	const properties = nestedRecord(body, "properties");
 	const diagnostics: string[] = [];
@@ -2034,11 +2021,10 @@ const KEY_VAULT_SPEC: Omit<AzureResolverSpec, "productId"> = {
 			const purge = optionalBoolean(context.desired, "purgeProtection");
 			const created = await settleWrite(
 				context,
-				await callArm(
-					context,
-					"PUT",
-					azureArmUrl(path, AZURE_KEY_VAULT_API_VERSION),
-					{
+				await callArm(context, {
+					method: "PUT",
+					url: azureArmUrl(path, AZURE_KEY_VAULT_API_VERSION),
+					json: {
 						location,
 						properties: {
 							sku: {
@@ -2046,11 +2032,13 @@ const KEY_VAULT_SPEC: Omit<AzureResolverSpec, "productId"> = {
 								name: skuName ?? KEY_VAULT_FALLBACK_SKU,
 							},
 							tenantId,
-							...(rbac !== undefined ? { enableRbacAuthorization: rbac } : {}),
-							...(purge === true ? { enablePurgeProtection: true } : {}),
+							...(rbac !== undefined
+								? { enableRbacAuthorization: rbac }
+								: undefined),
+							...(purge === true ? { enablePurgeProtection: true } : undefined),
 						},
 					},
-				),
+				}),
 				path,
 				AZURE_KEY_VAULT_API_VERSION,
 				label,
@@ -2084,12 +2072,11 @@ const KEY_VAULT_SPEC: Omit<AzureResolverSpec, "productId"> = {
 		}
 		const updated = await settleWrite(
 			context,
-			await callArm(
-				context,
-				"PATCH",
-				azureArmUrl(path, AZURE_KEY_VAULT_API_VERSION),
-				{ properties: patch },
-			),
+			await callArm(context, {
+				method: "PATCH",
+				url: azureArmUrl(path, AZURE_KEY_VAULT_API_VERSION),
+				json: { properties: patch },
+			}),
 			path,
 			AZURE_KEY_VAULT_API_VERSION,
 			label,
@@ -2132,7 +2119,7 @@ const COSMOS_CONSISTENCY_BY_BINDING: Readonly<Record<string, string>> =
 
 function cosmosConsistencyPolicy(
 	context: AzureResolverContext,
-): Record<string, unknown> | undefined {
+): JsonObject | undefined {
 	const level = optionalString(context.desired, "consistencyLevel");
 	if (level === undefined) return undefined;
 	const armLevel = COSMOS_CONSISTENCY_BY_BINDING[level];
@@ -2168,11 +2155,9 @@ function cosmosConsistencyPolicy(
 	};
 }
 
-function cosmosOutputs(
-	name: string,
-	body: Record<string, unknown> | undefined,
-): Readonly<Record<string, unknown>> {
-	const properties = body === undefined ? {} : nestedRecord(body, "properties");
+function cosmosOutputs(name: string, body: JsonObject | undefined): JsonObject {
+	const properties =
+		body === undefined ? undefined : nestedRecord(body, "properties");
 	const endpoint = optionalString(properties, "documentEndpoint");
 	const state = optionalString(properties, "provisioningState");
 	const consistency = optionalString(
@@ -2183,16 +2168,16 @@ function cosmosOutputs(
 		accountName: name,
 		...(consistency !== undefined
 			? { defaultConsistencyLevel: consistency }
-			: {}),
-		...(endpoint !== undefined ? { documentEndpoint: endpoint } : {}),
-		...(state !== undefined ? { provisioningState: state } : {}),
+			: undefined),
+		...(endpoint !== undefined ? { documentEndpoint: endpoint } : undefined),
+		...(state !== undefined ? { provisioningState: state } : undefined),
 	};
 }
 
 /** Serverless is a capability flag, and capabilities are fixed at create. */
 function cosmosImmutableDiagnostics(
 	context: AzureResolverContext,
-	body: Record<string, unknown>,
+	body: JsonObject,
 ): readonly string[] {
 	const diagnostics: string[] = [];
 	const mode = optionalString(context.desired, "throughputMode");
@@ -2200,7 +2185,7 @@ function cosmosImmutableDiagnostics(
 		const capabilities = nestedRecord(body, "properties").capabilities;
 		const names = Array.isArray(capabilities)
 			? capabilities
-					.filter(isPlainObject)
+					.filter(isJsonObject)
 					.map((entry) => optionalString(entry, "name"))
 			: [];
 		const serverless = names.includes("EnableServerless");
@@ -2269,26 +2254,27 @@ const COSMOS_DB_SPEC: Omit<AzureResolverSpec, "productId"> = {
 				optionalString(context.desired, "throughputMode") === "serverless";
 			const created = await settleWrite(
 				context,
-				await callArm(
-					context,
-					"PUT",
-					azureArmUrl(path, AZURE_COSMOS_API_VERSION),
-					{
+				await callArm(context, {
+					method: "PUT",
+					url: azureArmUrl(path, AZURE_COSMOS_API_VERSION),
+					json: {
 						kind: "GlobalDocumentDB",
 						location,
 						properties: {
 							databaseAccountOfferType: "Standard",
 							locations: [{ failoverPriority: 0, locationName: location }],
-							...(consistencyPolicy !== undefined ? { consistencyPolicy } : {}),
+							...(consistencyPolicy !== undefined
+								? { consistencyPolicy }
+								: undefined),
 							...(serverless
 								? { capabilities: [{ name: "EnableServerless" }] }
-								: {}),
+								: undefined),
 							...(multiRegionWrites !== undefined
 								? { enableMultipleWriteLocations: multiRegionWrites }
-								: {}),
+								: undefined),
 						},
 					},
-				),
+				}),
 				path,
 				AZURE_COSMOS_API_VERSION,
 				label,
@@ -2303,7 +2289,7 @@ const COSMOS_DB_SPEC: Omit<AzureResolverSpec, "productId"> = {
 
 		const properties = nestedRecord(observed, "properties");
 		const immutable = cosmosImmutableDiagnostics(context, observed);
-		const patch: Record<string, unknown> = {};
+		const patch = {};
 		if (consistencyPolicy !== undefined) {
 			const current = nestedRecord(properties, "consistencyPolicy");
 			const sameLevel =
@@ -2318,7 +2304,7 @@ const COSMOS_DB_SPEC: Omit<AzureResolverSpec, "productId"> = {
 				optionalInteger(current, "maxIntervalInSeconds") ===
 					consistencyPolicy.maxIntervalInSeconds;
 			if (!(sameLevel && samePrefix && sameInterval)) {
-				patch.consistencyPolicy = consistencyPolicy;
+				Object.assign(patch, { consistencyPolicy });
 			}
 		}
 		if (
@@ -2326,7 +2312,9 @@ const COSMOS_DB_SPEC: Omit<AzureResolverSpec, "productId"> = {
 			optionalBoolean(properties, "enableMultipleWriteLocations") !==
 				multiRegionWrites
 		) {
-			patch.enableMultipleWriteLocations = multiRegionWrites;
+			Object.assign(patch, {
+				enableMultipleWriteLocations: multiRegionWrites,
+			});
 		}
 		if (Object.keys(patch).length === 0) {
 			return outcome(
@@ -2338,12 +2326,11 @@ const COSMOS_DB_SPEC: Omit<AzureResolverSpec, "productId"> = {
 		}
 		const updated = await settleWrite(
 			context,
-			await callArm(
-				context,
-				"PATCH",
-				azureArmUrl(path, AZURE_COSMOS_API_VERSION),
-				{ properties: patch },
-			),
+			await callArm(context, {
+				method: "PATCH",
+				url: azureArmUrl(path, AZURE_COSMOS_API_VERSION),
+				json: { properties: patch },
+			}),
 			path,
 			AZURE_COSMOS_API_VERSION,
 			label,
@@ -2381,7 +2368,7 @@ function containerAppSuffix(name: string): string {
 function containerAppTemplate(
 	context: AzureResolverContext,
 	image: string,
-): Record<string, unknown> {
+): JsonObject {
 	const cpu = optionalNumber(context.desired, "cpu");
 	const memory = optionalString(context.desired, "memory");
 	if ((cpu === undefined) !== (memory === undefined)) {
@@ -2393,9 +2380,13 @@ function containerAppTemplate(
 	}
 	const minReplicas = optionalInteger(context.desired, "minReplicas");
 	const maxReplicas = optionalInteger(context.desired, "maxReplicas");
-	const scale: Record<string, unknown> = {};
-	if (minReplicas !== undefined) scale.minReplicas = minReplicas;
-	if (maxReplicas !== undefined) scale.maxReplicas = maxReplicas;
+	const scale = {};
+	if (minReplicas !== undefined) {
+		Object.assign(scale, { minReplicas });
+	}
+	if (maxReplicas !== undefined) {
+		Object.assign(scale, { maxReplicas });
+	}
 	return {
 		containers: [
 			{
@@ -2403,10 +2394,10 @@ function containerAppTemplate(
 				name: context.name,
 				...(cpu !== undefined && memory !== undefined
 					? { resources: { cpu, memory } }
-					: {}),
+					: undefined),
 			},
 		],
-		...(Object.keys(scale).length > 0 ? { scale } : {}),
+		...(Object.keys(scale).length > 0 ? { scale } : undefined),
 	};
 }
 
@@ -2415,7 +2406,9 @@ function containerAppTemplate(
  * existing ingress in place, which is a different statement than the binding's
  * `ingress: "none"`.
  */
-function containerAppIngress(context: AzureResolverContext): unknown {
+function containerAppIngress(
+	context: AzureResolverContext,
+): JsonValue | undefined {
 	const ingress = optionalString(context.desired, "ingress");
 	if (ingress === undefined) return undefined;
 	if (ingress === "none") return null;
@@ -2439,9 +2432,10 @@ function containerAppIngress(context: AzureResolverContext): unknown {
 
 function containerAppOutputs(
 	name: string,
-	body: Record<string, unknown> | undefined,
-): Readonly<Record<string, unknown>> {
-	const properties = body === undefined ? {} : nestedRecord(body, "properties");
+	body: JsonObject | undefined,
+): JsonObject {
+	const properties =
+		body === undefined ? undefined : nestedRecord(body, "properties");
 	const state = optionalString(properties, "provisioningState");
 	const revision = optionalString(properties, "latestRevisionName");
 	const fqdn = optionalString(
@@ -2450,15 +2444,15 @@ function containerAppOutputs(
 	);
 	return {
 		appName: name,
-		...(fqdn !== undefined ? { fqdn } : {}),
-		...(revision !== undefined ? { latestRevisionName: revision } : {}),
-		...(state !== undefined ? { provisioningState: state } : {}),
+		...(fqdn !== undefined ? { fqdn } : undefined),
+		...(revision !== undefined ? { latestRevisionName: revision } : undefined),
+		...(state !== undefined ? { provisioningState: state } : undefined),
 	};
 }
 
 function containerAppImmutableDiagnostics(
 	context: AzureResolverContext,
-	body: Record<string, unknown>,
+	body: JsonObject,
 ): readonly string[] {
 	const properties = nestedRecord(body, "properties");
 	const diagnostics: string[] = [];
@@ -2493,16 +2487,14 @@ function containerAppImmutableDiagnostics(
 /** True when the observed app already runs the declared image and shape. */
 function containerAppSettled(
 	context: AzureResolverContext,
-	properties: Readonly<Record<string, unknown>>,
+	properties: JsonObject,
 	image: string,
-	ingress: unknown,
+	ingress: JsonValue | undefined,
 ): boolean {
 	const template = nestedRecord(properties, "template");
 	const containers = template.containers;
-	const first =
-		Array.isArray(containers) && isPlainObject(containers[0])
-			? containers[0]
-			: {};
+	const first: JsonObject =
+		isJsonArray(containers) && isJsonObject(containers[0]) ? containers[0] : {};
 	if (optionalString(first, "image") !== image) return false;
 
 	const resources = nestedRecord(first, "resources");
@@ -2538,7 +2530,7 @@ function containerAppSettled(
 	);
 	const hasIngress = Object.keys(observedIngress).length > 0;
 	if (ingress === null) return !hasIngress;
-	if (!isPlainObject(ingress)) return true;
+	if (!isJsonObject(ingress)) return true;
 	return (
 		hasIngress &&
 		optionalBoolean(observedIngress, "external") === ingress.external &&
@@ -2598,19 +2590,20 @@ const CONTAINER_APPS_SPEC: Omit<AzureResolverSpec, "productId"> = {
 			);
 			const created = await settleWrite(
 				context,
-				await callArm(
-					context,
-					"PUT",
-					azureArmUrl(path, AZURE_CONTAINER_APPS_API_VERSION),
-					{
+				await callArm(context, {
+					method: "PUT",
+					url: azureArmUrl(path, AZURE_CONTAINER_APPS_API_VERSION),
+					json: {
 						location,
 						properties: {
 							managedEnvironmentId,
 							template,
-							...(ingress === undefined ? {} : { configuration: { ingress } }),
+							...(ingress === undefined
+								? undefined
+								: { configuration: { ingress } }),
 						},
 					},
-				),
+				}),
 				path,
 				AZURE_CONTAINER_APPS_API_VERSION,
 				label,
@@ -2635,17 +2628,18 @@ const CONTAINER_APPS_SPEC: Omit<AzureResolverSpec, "productId"> = {
 		}
 		const updated = await settleWrite(
 			context,
-			await callArm(
-				context,
-				"PATCH",
-				azureArmUrl(path, AZURE_CONTAINER_APPS_API_VERSION),
-				{
+			await callArm(context, {
+				method: "PATCH",
+				url: azureArmUrl(path, AZURE_CONTAINER_APPS_API_VERSION),
+				json: {
 					properties: {
 						template,
-						...(ingress === undefined ? {} : { configuration: { ingress } }),
+						...(ingress === undefined
+							? undefined
+							: { configuration: { ingress } }),
 					},
 				},
-			),
+			}),
 			path,
 			AZURE_CONTAINER_APPS_API_VERSION,
 			label,
@@ -2710,11 +2704,9 @@ function redisSkuName(context: AzureResolverContext): string | undefined {
 	return canonical;
 }
 
-function redisOutputs(
-	name: string,
-	body: Record<string, unknown> | undefined,
-): Readonly<Record<string, unknown>> {
-	const properties = body === undefined ? {} : nestedRecord(body, "properties");
+function redisOutputs(name: string, body: JsonObject | undefined): JsonObject {
+	const properties =
+		body === undefined ? undefined : nestedRecord(body, "properties");
 	const sku = nestedRecord(properties, "sku");
 	const hostName = optionalString(properties, "hostName");
 	const sslPort = optionalInteger(properties, "sslPort");
@@ -2725,13 +2717,13 @@ function redisOutputs(
 	const version = optionalString(properties, "redisVersion");
 	return {
 		cacheName: name,
-		...(hostName !== undefined ? { hostName } : {}),
-		...(sslPort !== undefined ? { sslPort } : {}),
-		...(state !== undefined ? { provisioningState: state } : {}),
-		...(skuName !== undefined ? { skuName } : {}),
-		...(capacity !== undefined ? { capacity } : {}),
-		...(shardCount !== undefined ? { shardCount } : {}),
-		...(version !== undefined ? { redisVersion: version } : {}),
+		...(hostName !== undefined ? { hostName } : undefined),
+		...(sslPort !== undefined ? { sslPort } : undefined),
+		...(state !== undefined ? { provisioningState: state } : undefined),
+		...(skuName !== undefined ? { skuName } : undefined),
+		...(capacity !== undefined ? { capacity } : undefined),
+		...(shardCount !== undefined ? { shardCount } : undefined),
+		...(version !== undefined ? { redisVersion: version } : undefined),
 	};
 }
 
@@ -2759,7 +2751,7 @@ function redisShardCount(
 /** Fields fixed when the cache was created, reported rather than corrected. */
 function redisImmutableDiagnostics(
 	context: AzureResolverContext,
-	body: Record<string, unknown>,
+	body: JsonObject,
 ): readonly string[] {
 	const diagnostics: string[] = [];
 	const properties = nestedRecord(body, "properties");
@@ -2851,11 +2843,10 @@ const REDIS_CACHE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 			const shardCount = redisShardCount(context, canonicalSku);
 			const created = await settleWrite(
 				context,
-				await callArm(
-					context,
-					"PUT",
-					azureArmUrl(path, AZURE_CACHE_API_VERSION),
-					{
+				await callArm(context, {
+					method: "PUT",
+					url: azureArmUrl(path, AZURE_CACHE_API_VERSION),
+					json: {
 						location,
 						properties: {
 							sku: {
@@ -2863,10 +2854,10 @@ const REDIS_CACHE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 								family,
 								name: canonicalSku,
 							},
-							...(shardCount !== undefined ? { shardCount } : {}),
+							...(shardCount !== undefined ? { shardCount } : undefined),
 						},
 					},
-				),
+				}),
 				path,
 				AZURE_CACHE_API_VERSION,
 				label,
@@ -2886,7 +2877,7 @@ const REDIS_CACHE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 		const properties = nestedRecord(observed, "properties");
 		const sku = nestedRecord(properties, "sku");
 		const immutable = redisImmutableDiagnostics(context, observed);
-		const patch: Record<string, unknown> = {};
+		const patch = {};
 
 		// Only a scale *within* the observed tier is applied. Sending the declared
 		// tier here would turn a drift check into a migration; the mismatch is in
@@ -2898,18 +2889,20 @@ const REDIS_CACHE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 			observedSku !== undefined &&
 			optionalInteger(sku, "capacity") !== wantedCapacity
 		) {
-			patch.sku = {
-				capacity: wantedCapacity,
-				family: REDIS_FAMILY_BY_SKU[observedSku] ?? "C",
-				name: observedSku,
-			};
+			Object.assign(patch, {
+				sku: {
+					capacity: wantedCapacity,
+					family: REDIS_FAMILY_BY_SKU[observedSku] ?? "C",
+					name: observedSku,
+				},
+			});
 		}
 		if (
 			optionalBoolean(context.desired, "clustered") === true &&
 			observedSku === "Premium" &&
 			(optionalInteger(properties, "shardCount") ?? 0) === 0
 		) {
-			patch.shardCount = 1;
+			Object.assign(patch, { shardCount: 1 });
 		}
 
 		if (Object.keys(patch).length === 0) {
@@ -2922,12 +2915,11 @@ const REDIS_CACHE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 		}
 		const updated = await settleWrite(
 			context,
-			await callArm(
-				context,
-				"PATCH",
-				azureArmUrl(path, AZURE_CACHE_API_VERSION),
-				{ properties: patch },
-			),
+			await callArm(context, {
+				method: "PATCH",
+				url: azureArmUrl(path, AZURE_CACHE_API_VERSION),
+				json: { properties: patch },
+			}),
 			path,
 			AZURE_CACHE_API_VERSION,
 			label,
@@ -2961,11 +2953,11 @@ function cosmosTableThroughputSuffix(account: string, table: string): string {
 }
 
 /** What the account's `capabilities` array actually says. */
-function accountCapabilities(body: Record<string, unknown>): readonly string[] {
+function accountCapabilities(body: JsonObject): readonly string[] {
 	const capabilities = nestedRecord(body, "properties").capabilities;
 	return Array.isArray(capabilities)
 		? capabilities
-				.filter(isPlainObject)
+				.filter(isJsonObject)
 				.map((entry) => optionalString(entry, "name"))
 				.filter((name): name is string => name !== undefined)
 		: [];
@@ -3020,18 +3012,15 @@ async function requireTableAccount(context: AzureResolverContext): Promise<{
 function cosmosTableOutputs(
 	account: string,
 	table: string,
-	body: Record<string, unknown> | undefined,
+	body: JsonObject | undefined,
 	throughput: number | undefined,
-): Readonly<Record<string, unknown>> {
-	const resource = nestedRecord(
-		nestedRecord(body ?? {}, "properties"),
-		"resource",
-	);
+): JsonObject {
+	const resource = nestedRecord(nestedRecord(body, "properties"), "resource");
 	const tableId = optionalString(resource, "id");
 	return {
 		tableName: tableId ?? table,
 		databaseAccount: account,
-		...(throughput !== undefined ? { throughput } : {}),
+		...(throughput !== undefined ? { throughput } : undefined),
 	};
 }
 
@@ -3132,11 +3121,10 @@ const COSMOS_TABLE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 		if (observed === undefined) {
 			const created = await settleWrite(
 				context,
-				await callArm(
-					context,
-					"PUT",
-					azureArmUrl(path, AZURE_COSMOS_API_VERSION),
-					{
+				await callArm(context, {
+					method: "PUT",
+					url: azureArmUrl(path, AZURE_COSMOS_API_VERSION),
+					json: {
 						properties: {
 							resource: { id: context.name },
 							// `options` is omitted entirely on a serverless account: an
@@ -3144,10 +3132,10 @@ const COSMOS_TABLE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 							// rejects a throughput on an account that has none.
 							...(wantedRu !== undefined
 								? { options: { throughput: wantedRu } }
-								: {}),
+								: undefined),
 						},
 					},
-				),
+				}),
 				path,
 				AZURE_COSMOS_API_VERSION,
 				label,
@@ -3193,12 +3181,11 @@ const COSMOS_TABLE_SPEC: Omit<AzureResolverSpec, "productId"> = {
 		);
 		const updated = await settleWrite(
 			context,
-			await callArm(
-				context,
-				"PUT",
-				azureArmUrl(throughputPath, AZURE_COSMOS_API_VERSION),
-				{ properties: { resource: { throughput: wantedRu } } },
-			),
+			await callArm(context, {
+				method: "PUT",
+				url: azureArmUrl(throughputPath, AZURE_COSMOS_API_VERSION),
+				json: { properties: { resource: { throughput: wantedRu } } },
+			}),
 			throughputPath,
 			AZURE_COSMOS_API_VERSION,
 			`${label} throughput`,

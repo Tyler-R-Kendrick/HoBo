@@ -48,6 +48,15 @@ export const AZURE_ARM_ALLOWED_HOSTS = Object.freeze([
 	"management.azure.com",
 ] as const);
 
+export type AzureArmHost = (typeof AZURE_ARM_ALLOWED_HOSTS)[number];
+
+function isAzureArmHost(host: string): host is AzureArmHost {
+	for (const known of AZURE_ARM_ALLOWED_HOSTS) {
+		if (known === host) return true;
+	}
+	return false;
+}
+
 /**
  * The single subscription-scoped prefix. Every endpoint the resolvers use is
  * `/subscriptions/{subscriptionId}/…`, and so is every ARM async-operation
@@ -107,7 +116,7 @@ export function guardedAzureTransport(inner: HttpTransport): HttpTransport {
  * repaired one.
  */
 export function azureArmUrl(path: string, apiVersion: string): string {
-	if (typeof apiVersion !== "string" || apiVersion.trim().length === 0) {
+	if (apiVersion.trim().length === 0) {
 		throw new TypeError(
 			"azureArmUrl: an explicit api-version is required — ARM refuses a call without one and serializes a different resource model for the wrong one",
 		);
@@ -142,9 +151,7 @@ export function azureOperationUrl(
 		return undefined;
 	}
 	if (parsed.protocol !== "https:") return undefined;
-	if (
-		!(AZURE_ARM_ALLOWED_HOSTS as readonly string[]).includes(parsed.hostname)
-	) {
+	if (!isAzureArmHost(parsed.hostname)) {
 		return undefined;
 	}
 	if (!parsed.pathname.startsWith(AZURE_ARM_ALLOWED_PATH_PREFIXES[0])) {

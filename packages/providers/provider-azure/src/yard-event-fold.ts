@@ -3,13 +3,7 @@
  * Normalizes Azure control-plane signals (RG, ACA env, etc.) into yard.* facts.
  */
 
-type JsonValue =
-	| null
-	| boolean
-	| number
-	| string
-	| readonly JsonValue[]
-	| Readonly<{ readonly [key: string]: JsonValue }>;
+import { isJsonArray, type JsonObject } from "./json.js";
 
 // Lightweight structural types so provider does not hard-depend on broker at runtime
 // for descriptor shape (broker imports provider defaults; provider exports pure fold).
@@ -23,13 +17,13 @@ export const AZURE_EVENT_STORE_RESOLVER_ID =
 export interface AzureProviderNativeSignal {
 	readonly providerId: "azure";
 	readonly kind: string;
-	readonly payload: Readonly<Record<string, JsonValue>>;
+	readonly payload: JsonObject;
 	readonly observedAt?: string;
 }
 
 export interface AzureYardEvent {
 	readonly type: string;
-	readonly data: Readonly<Record<string, unknown>>;
+	readonly data: JsonObject;
 	readonly occurredAt?: string;
 }
 
@@ -166,9 +160,7 @@ export function azureEventStoreFoldDescriptor() {
 	});
 }
 
-function azureYardFromPayload(
-	p: Readonly<Record<string, JsonValue>>,
-): Record<string, unknown> {
+function azureYardFromPayload(p: JsonObject) {
 	const yardId = String(p.yardId ?? p.id ?? "yard:azure");
 	const now = new Date().toISOString();
 	return {
@@ -177,9 +169,9 @@ function azureYardFromPayload(
 		ownerTenantId: String(p.ownerTenantId ?? "local"),
 		providerId: "azure",
 		runtimeId: String(p.runtimeId ?? "azure.yard-runtime/v1"),
-		shape: {
+		layout: {
 			providerId: "azure",
-			regions: Array.isArray(p.regions) ? p.regions.map(String) : ["eastus2"],
+			regions: isJsonArray(p.regions) ? p.regions.map(String) : ["eastus2"],
 			require: ["managed-container-substrate", "private-network"],
 			prefer: [],
 			residency: [],
@@ -190,9 +182,11 @@ function azureYardFromPayload(
 			properties: {
 				...(p.subscriptionRef
 					? { "azure.subscriptionRef": p.subscriptionRef }
-					: {}),
-				...(p.tenantRef ? { "azure.tenantRef": p.tenantRef } : {}),
-				...(p.resourceGroup ? { "azure.resourceGroup": p.resourceGroup } : {}),
+					: undefined),
+				...(p.tenantRef ? { "azure.tenantRef": p.tenantRef } : undefined),
+				...(p.resourceGroup
+					? { "azure.resourceGroup": p.resourceGroup }
+					: undefined),
 			},
 			camps: [],
 		},

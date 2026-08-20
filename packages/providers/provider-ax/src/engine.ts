@@ -17,6 +17,12 @@ import {
 	type Trajectory,
 } from "@hobo/core";
 import { AxEnginePayloadSchema } from "./_generated/ax_engine_payload_pb.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 // The built-in training engine (ADR-0025 "built-in-opto"), implemented on ax
 // (ADR-0125). Engine-internal: selected behind the hobo:training-engine
@@ -49,18 +55,17 @@ export interface AxTrainingEngineOptions {
 }
 
 interface TrajectoryIo {
-	readonly input: Record<string, unknown>;
-	readonly output: Record<string, unknown>;
+	readonly input: JsonObject;
+	readonly output: JsonObject;
 	readonly reward: number;
 }
 
-function parseJsonRecord(value: string): Record<string, unknown> | null {
+function parseJsonRecord(value: string): JsonObject | null {
 	if (value.length === 0) return null;
 	try {
-		const parsed = JSON.parse(value);
-		return parsed && typeof parsed === "object" && !Array.isArray(parsed)
-			? (parsed as Record<string, unknown>)
-			: null;
+		// SAFETY: JSON.parse yields a JSON value at the recorded span I/O boundary.
+		const parsed = JSON.parse(value) as JsonValue;
+		return isJsonObject(parsed) ? parsed : null;
 	} catch {
 		return null;
 	}
@@ -89,7 +94,7 @@ function deriveSignature(
 			`optimize request ${request.requestId} has no trajectory with recorded root-span inputs/outputs`,
 		);
 	}
-	const fields = (record: Record<string, unknown>) =>
+	const fields = (record: JsonObject) =>
 		Object.keys(record)
 			.sort()
 			.map((key) => `${key}:string`)
@@ -98,10 +103,14 @@ function deriveSignature(
 	return `"${objective}" ${fields(first.input)} -> ${fields(first.output)}`;
 }
 
-function toExample(io: TrajectoryIo): Record<string, string> {
-	const example: Record<string, string> = {};
+function jsonFieldString(value: JsonValue): string {
+	return isJsonString(value) ? value : JSON.stringify(value);
+}
+
+function toExample(io: TrajectoryIo) {
+	const example: { [key: string]: string } = {};
 	for (const [key, value] of Object.entries({ ...io.input, ...io.output })) {
-		example[key] = typeof value === "string" ? value : JSON.stringify(value);
+		example[key] = jsonFieldString(value);
 	}
 	return example;
 }
@@ -111,38 +120,44 @@ function toExample(io: TrajectoryIo): Record<string, string> {
  * recorded output fields, scaled by the trajectory's live-eval reward — the
  * optimizer maximizes agreement with well-rewarded real executions.
  */
-function recordedOutputMetric(
+function jsonValueFromWire(value: string): JsonValue {
+	// SAFETY: JSON.parse of a JSON.stringify round-trip is a JSON value.
+	return JSON.parse(value) as JsonValue;
+}
+
+function scorePrediction(
 	outputs: readonly TrajectoryIo[],
-): (arg: {
-	readonly prediction: unknown;
-	readonly example: Record<string, unknown>;
-}) => number {
-	return ({ prediction, example }) => {
-		const match = outputs.find((io) =>
-			Object.entries(io.input).every(
-				([key, value]) =>
-					String(example[key] ?? "") ===
-					(typeof value === "string" ? value : JSON.stringify(value)),
-			),
-		);
-		const expected = match ?? outputs[0];
-		if (!expected) return 0;
-		const predicted = prediction as Record<string, unknown>;
-		const keys = Object.keys(expected.output);
-		if (keys.length === 0) return 0;
-		const expectedExample = toExample(expected);
-		const agreement =
-			keys.filter(
-				(key) =>
-					String(predicted?.[key] ?? "") === (expectedExample[key] ?? ""),
-			).length / keys.length;
-		return agreement * expected.reward;
-	};
+	prediction: JsonValue,
+	example: JsonObject,
+): number {
+	const match = outputs.find((io) =>
+		Object.entries(io.input).every(
+			([key, value]) => String(example[key] ?? "") === jsonFieldString(value),
+		),
+	);
+	const expected = match ?? outputs[0];
+	if (!expected) return 0;
+	const predicted = isJsonObject(prediction) ? prediction : {};
+	const keys = Object.keys(expected.output);
+	if (keys.length === 0) return 0;
+	const expectedExample = toExample(expected);
+	const agreement =
+		keys.filter(
+			(key) => String(predicted[key] ?? "") === (expectedExample[key] ?? ""),
+		).length / keys.length;
+	return agreement * expected.reward;
+}
+
+function instructionOf(value: JsonValue | null): string | undefined {
+	if (!isJsonObject(value)) return undefined;
+	const instruction = value.instruction;
+	return isJsonString(instruction) ? instruction : undefined;
 }
 
 export function createAxTrainingEngine(
 	options: AxTrainingEngineOptions,
 ): TrainingEnginePort {
+	// SAFETY: engine ids are opaque branded strings at this provider boundary.
 	const engineId = (options.engineId ?? BUILT_IN_ENGINE_ID) as TrainingEngineId;
 
 	return {
@@ -155,19 +170,37 @@ export function createAxTrainingEngine(
 				.filter((io): io is TrajectoryIo => io !== null);
 			const program = ax(deriveSignature(parsed, ios));
 			const examples = ios.map((io) => toExample(io));
-			const metric = recordedOutputMetric(ios);
 
-			let axSerialized: unknown = null;
+			let axSerialized: JsonValue | null = null;
 			try {
-				const result = await axOptimize(program, examples, metric, {
-					studentAI: options.ai,
-					...(options.teacherAI ? { teacherAI: options.teacherAI } : {}),
-					maxMetricCalls: options.maxMetricCalls ?? DEFAULT_MAX_METRIC_CALLS,
-					bootstrap: true,
-					verbose: false,
-				});
+				const result = await axOptimize(
+					program,
+					examples,
+					({ prediction, example }) => {
+						const predicted = jsonValueFromWire(JSON.stringify(prediction));
+						const exampleJson = jsonValueFromWire(JSON.stringify(example));
+						return scorePrediction(
+							ios,
+							predicted,
+							isJsonObject(exampleJson) ? exampleJson : {},
+						);
+					},
+					{
+						studentAI: options.ai,
+						...(options.teacherAI
+							? { teacherAI: options.teacherAI }
+							: undefined),
+						maxMetricCalls: options.maxMetricCalls ?? DEFAULT_MAX_METRIC_CALLS,
+						bootstrap: true,
+						verbose: false,
+					},
+				);
 				if (result.optimizedProgram) {
-					axSerialized = axSerializeOptimizedProgram(result.optimizedProgram);
+					axSerialized = jsonValueFromWire(
+						JSON.stringify(
+							axSerializeOptimizedProgram(result.optimizedProgram),
+						),
+					);
 				}
 			} catch {
 				// Optimizer failure degrades to the deterministic floor below —
@@ -191,9 +224,7 @@ export function createAxTrainingEngine(
 				: "";
 			const programJson = serializeTrainingArtifactProgram({
 				instructions:
-					((axSerialized as { instruction?: string } | null)?.instruction ??
-						parsed.rubric?.objective) ||
-					"",
+					(instructionOf(axSerialized) ?? parsed.rubric?.objective) || "",
 				demos: ios
 					.filter((io) => io.reward >= DEMO_REWARD_FLOOR)
 					.map((io) => ({ input: io.input, output: io.output })),

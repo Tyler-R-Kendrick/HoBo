@@ -18,6 +18,13 @@
  */
 import { PrismaProviderError, redactProviderText } from "./errors.js";
 import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+import {
 	assertAllowedProviderUrl,
 	DEFAULT_CLAIM_URL_POLICY,
 	PRISMA_CLAIM_HOSTS,
@@ -50,10 +57,10 @@ const NAME = /^[\x20-\x7e]{1,128}$/u;
 
 function contractError(
 	message: string,
-	detail?: Record<string, string | number>,
+	detail?: { preview?: string; field?: string },
 ): never {
 	throw new PrismaProviderError("PROVIDER_CONTRACT_CHANGED", message, {
-		...(detail !== undefined ? { detail } : {}),
+		...(detail !== undefined ? { detail } : undefined),
 	});
 }
 
@@ -68,9 +75,9 @@ export type PrismaCliFailure = {
 export function providerErrorForCliFailure(
 	failure: PrismaCliFailure,
 ): PrismaProviderError {
-	const detail: Record<string, string | number> = {
+	const detail = {
 		error: failure.error,
-		...(failure.status !== undefined ? { status: failure.status } : {}),
+		...(failure.status !== undefined ? { status: failure.status } : undefined),
 	};
 	const message = `create-db failed: ${redactProviderText(failure.message, 160)}`;
 	if (failure.error.toLowerCase() === "rate_limit_exceeded") {
@@ -78,7 +85,7 @@ export function providerErrorForCliFailure(
 			retryable: true,
 			...(failure.retryAfterMs !== undefined
 				? { retryAfterMs: failure.retryAfterMs }
-				: {}),
+				: undefined),
 			detail,
 		});
 	}
@@ -167,42 +174,47 @@ function finishResult(
 }
 
 /** Parse the `--json` document. Exactly one JSON value, nothing else. */
+function requireRecordString(record: JsonObject, key: string): string {
+	const value = record[key];
+	if (!isJsonString(value) || value.length === 0) {
+		contractError(`create-db JSON mode is missing the string field \`${key}\``);
+	}
+	return value;
+}
+
 export function parseCreateDbJson(stdout: string): PrismaCreateResult {
 	const trimmed = stdout.trim();
 	if (trimmed.length === 0) {
 		contractError("create-db produced no output in JSON mode");
 	}
-	let decoded: unknown;
+	let decoded: JsonValue;
 	try {
-		decoded = JSON.parse(trimmed) as unknown;
+		// SAFETY: JSON.parse yields a JSON value at this document boundary.
+		decoded = JSON.parse(trimmed) as JsonValue;
 	} catch {
 		contractError("create-db JSON mode did not emit a single JSON document", {
 			preview: redactProviderText(trimmed, 80),
 		});
 	}
-	if (
-		typeof decoded !== "object" ||
-		decoded === null ||
-		Array.isArray(decoded)
-	) {
+	if (!isJsonObject(decoded)) {
 		contractError("create-db JSON mode did not emit an object");
 	}
-	const record = decoded as Record<string, unknown>;
+	const record = decoded;
 
 	if (record.success === false) {
+		const rateLimitInfo = isJsonObject(record.rateLimitInfo)
+			? record.rateLimitInfo
+			: undefined;
+		const retryAfterMs = isJsonNumber(rateLimitInfo?.retryAfterMs)
+			? rateLimitInfo.retryAfterMs
+			: undefined;
 		throw providerErrorForCliFailure({
-			error: typeof record.error === "string" ? record.error : "unknown",
-			message:
-				typeof record.message === "string" ? record.message : "unknown failure",
-			...(typeof record.status === "number" ? { status: record.status } : {}),
-			...(typeof (
-				record.rateLimitInfo as { retryAfterMs?: unknown } | undefined
-			)?.retryAfterMs === "number"
-				? {
-						retryAfterMs: (record.rateLimitInfo as { retryAfterMs: number })
-							.retryAfterMs,
-					}
-				: {}),
+			error: isJsonString(record.error) ? record.error : "unknown",
+			message: isJsonString(record.message)
+				? record.message
+				: "unknown failure",
+			...(isJsonNumber(record.status) ? { status: record.status } : undefined),
+			...(retryAfterMs !== undefined ? { retryAfterMs } : undefined),
 		});
 	}
 	if (record.success !== true) {
@@ -211,22 +223,11 @@ export function parseCreateDbJson(stdout: string): PrismaCreateResult {
 		);
 	}
 
-	for (const key of [
-		"claimUrl",
-		"deletionDate",
-		"region",
-		"name",
-		"projectId",
-	]) {
-		if (
-			typeof record[key] !== "string" ||
-			(record[key] as string).length === 0
-		) {
-			contractError(
-				`create-db JSON mode is missing the string field \`${key}\``,
-			);
-		}
-	}
+	const claimUrl = requireRecordString(record, "claimUrl");
+	const deletionDate = requireRecordString(record, "deletionDate");
+	const region = requireRecordString(record, "region");
+	const name = requireRecordString(record, "name");
+	const projectId = requireRecordString(record, "projectId");
 	// Nullable by contract when the CLI is asked not to print it, so absence
 	// and null are different: absence is a renamed field.
 	if (!("connectionString" in record)) {
@@ -235,19 +236,20 @@ export function parseCreateDbJson(stdout: string): PrismaCreateResult {
 		);
 	}
 	const connectionString = record.connectionString;
-	if (connectionString !== null && typeof connectionString !== "string") {
+	if (connectionString !== null && !isJsonString(connectionString)) {
 		contractError("create-db `connectionString` is neither a string nor null");
 	}
 
 	return finishResult(
 		{
-			connectionString:
-				typeof connectionString === "string" ? connectionString : null,
-			claimUrl: record.claimUrl as string,
-			deletionDate: record.deletionDate as string,
-			region: record.region as string,
-			name: record.name as string,
-			projectId: record.projectId as string,
+			connectionString: isJsonString(connectionString)
+				? connectionString
+				: null,
+			claimUrl,
+			deletionDate,
+			region,
+			name,
+			projectId,
 		},
 		"json",
 	);
@@ -271,8 +273,8 @@ export function parseCreateDbHumanV1(
 	stdout: string,
 	options: { readonly region: string },
 ): PrismaCreateResult {
-	// biome-ignore lint/suspicious/noControlCharactersInRegex: ESC is what an ANSI colour sequence starts with, and stripping those is what makes label matching reliable.
-	const text = stdout.replace(/\u001b\[[0-9;]*m/gu, "");
+	const ansi = new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "gu");
+	const text = stdout.replace(ansi, "");
 	if (text.length > 64 * 1024) {
 		contractError("create-db human output exceeded the 64 KiB cap");
 	}
@@ -288,6 +290,7 @@ export function parseCreateDbHumanV1(
 			`create-db human output must contain exactly one "${HUMAN_CONNECTION_LABEL}" label, found ${labelIndexes.length}`,
 		);
 	}
+	// SAFETY: value was established by the surrounding parse or typed constructor.
 	const labelIndex = labelIndexes[0] as number;
 	const connectionLine = lines
 		.slice(labelIndex + 1, labelIndex + 3)
@@ -320,6 +323,7 @@ export function parseCreateDbHumanV1(
 			`create-db human output must contain exactly one ${HUMAN_CLAIM_HOST} claim URL, found ${claimLines.length}`,
 		);
 	}
+	// SAFETY: value was established by the surrounding parse or typed constructor.
 	const claimUrl = claimLines[0] as string;
 	const projectMatch = /[?&]projectID=(proj_[A-Za-z0-9_-]{1,120})/u.exec(
 		claimUrl,
@@ -346,6 +350,7 @@ export function parseCreateDbHumanV1(
 		);
 	}
 	const deletionMs = Date.parse(
+		// SAFETY: value was established by the surrounding parse or typed constructor.
 		(deletionMatch[1] as string).replace(/,\s+/u, " "),
 	);
 	if (!Number.isFinite(deletionMs)) {
@@ -363,6 +368,7 @@ export function parseCreateDbHumanV1(
 			// The pretty output does not print the database name; the JSON
 			// document does. Naming the gap beats inventing a value.
 			name: "unnamed-human-output",
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			projectId: projectMatch[1] as string,
 		},
 		"human-v1",

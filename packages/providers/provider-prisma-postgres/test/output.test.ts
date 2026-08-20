@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
-import type { PrismaProviderError } from "../src/errors.js";
+import { PrismaProviderError } from "../src/errors.js";
+import { parseJsonObject } from "../src/json.js";
 import { parseCreateDbHumanV1, parseCreateDbJson } from "../src/output.js";
 import { fixture } from "./harness.js";
 
@@ -23,10 +24,10 @@ describe("parseCreateDbJson", () => {
 			parseCreateDbJson(fixture("create.rate-limited.json"));
 			expect.unreachable("a rate-limit document must throw");
 		} catch (error) {
-			const providerError = error as PrismaProviderError;
-			expect(providerError.code).toBe("PROVIDER_RATE_LIMITED");
-			expect(providerError.retryable).toBe(true);
-			expect(providerError.retryAfterMs).toBe(60_000);
+			if (!(error instanceof PrismaProviderError)) throw error;
+			expect(error.code).toBe("PROVIDER_RATE_LIMITED");
+			expect(error.retryable).toBe(true);
+			expect(error.retryAfterMs).toBe(60_000);
 		}
 	});
 
@@ -35,9 +36,8 @@ describe("parseCreateDbJson", () => {
 			parseCreateDbJson(fixture("create.api-error-500.json"));
 			expect.unreachable("an upstream 5xx must throw");
 		} catch (error) {
-			expect((error as PrismaProviderError).code).toBe(
-				"PROVIDER_OPERATION_AMBIGUOUS",
-			);
+			if (!(error instanceof PrismaProviderError)) throw error;
+			expect(error.code).toBe("PROVIDER_OPERATION_AMBIGUOUS");
 		}
 	});
 
@@ -46,11 +46,9 @@ describe("parseCreateDbJson", () => {
 			parseCreateDbJson(fixture("create.malformed.txt"));
 			expect.unreachable("malformed JSON must throw");
 		} catch (error) {
-			const providerError = error as PrismaProviderError;
-			expect(providerError.code).toBe("PROVIDER_CONTRACT_CHANGED");
-			expect(JSON.stringify(providerError.toJSON())).not.toContain(
-				"postgresql://",
-			);
+			if (!(error instanceof PrismaProviderError)) throw error;
+			expect(error.code).toBe("PROVIDER_CONTRACT_CHANGED");
+			expect(JSON.stringify(error.toJSON())).not.toContain("postgresql://");
 		}
 	});
 
@@ -61,11 +59,10 @@ describe("parseCreateDbJson", () => {
 	});
 
 	it("rejects a project id that is not a proj_ identifier", () => {
-		const body = JSON.parse(fixture("create.success.json")) as Record<
-			string,
-			unknown
-		>;
-		body.projectId = "../../admin";
+		const body = {
+			...parseJsonObject(fixture("create.success.json")),
+			projectId: "../../admin",
+		};
 		expect(() => parseCreateDbJson(JSON.stringify(body))).toThrowError(
 			/`proj_…` identifier/u,
 		);

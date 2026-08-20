@@ -11,6 +11,7 @@ import {
 } from "../src/client.js";
 import { createPrismaClaimableDatabaseDriver } from "../src/driver.js";
 import { PrismaProviderError } from "../src/errors.js";
+import { parseJsonValue } from "../src/json.js";
 import {
 	scanForCredentialMaterial,
 	toProviderFacts,
@@ -74,7 +75,7 @@ describe("no credential material in serialized outputs", () => {
 		const output = await artifacts();
 		for (const [name, value] of Object.entries(output)) {
 			expect(
-				scanForCredentialMaterial(value),
+				scanForCredentialMaterial(parseJsonValue(JSON.stringify(value))),
 				`${name} leaked credential material`,
 			).toEqual([]);
 		}
@@ -98,7 +99,9 @@ describe("no credential material in serialized outputs", () => {
 		expect(error.message).not.toContain("postgresql://");
 		expect(error.message).not.toContain("prisma+postgres://");
 		expect(error.message).not.toContain("Bearer abc");
-		expect(scanForCredentialMaterial(error.toJSON())).toEqual([]);
+		expect(
+			scanForCredentialMaterial(parseJsonValue(JSON.stringify(error.toJSON()))),
+		).toEqual([]);
 	});
 
 	it("actually detects a leak when one is planted", () => {

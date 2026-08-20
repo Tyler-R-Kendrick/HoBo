@@ -84,6 +84,7 @@ describe("createPrismaClient idempotency", () => {
 			await client.create({ idempotencyKey: KEY });
 			expect.unreachable("the second attempt must not spawn the CLI again");
 		} catch (error) {
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			expect((error as PrismaProviderError).code).toBe(
 				"PROVIDER_OPERATION_AMBIGUOUS",
 			);

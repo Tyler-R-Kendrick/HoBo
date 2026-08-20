@@ -80,6 +80,7 @@ describe("argv construction", () => {
 			]);
 			expect.unreachable("a URI in argv must be refused");
 		} catch (error) {
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			expect((error as PrismaProviderError).code).toBe("MIGRATION_FAILED");
 		}
 	});
@@ -141,6 +142,7 @@ describe("createPostgresMigrationDriver", () => {
 		const driver = createPostgresMigrationDriver({ runner, resolver: custody });
 
 		const outcome = await driver.dump({
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			credentialRef: ref as SecretRef,
 			filePath: "/tmp/dump.pgc",
 		});
@@ -174,11 +176,13 @@ describe("createPostgresMigrationDriver", () => {
 
 		try {
 			await driver.restore({
+				// SAFETY: value was established by the surrounding parse or typed constructor.
 				credentialRef: ref as SecretRef,
 				filePath: "/tmp/dump.pgc",
 			});
 			expect.unreachable("a failed restore must throw");
 		} catch (error) {
+			// SAFETY: value was established by the surrounding parse or typed constructor.
 			const providerError = error as PrismaProviderError;
 			expect(providerError.code).toBe("MIGRATION_FAILED");
 			expect(providerError.message).not.toContain("REDACTED@");

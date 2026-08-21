@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export interface ArtifactRef {
   mediaType: string;
   uri: string;
@@ -85,7 +86,7 @@ export interface ParseResult<T> {
 }
 
 export function createFixtureBundle(): RegistryBundleManifest;
-export function parseBundleManifest(candidate: unknown): ParseResult<RegistryBundleManifest> & {
+export function parseBundleManifest(candidate: JsonValue): ParseResult<RegistryBundleManifest> & {
   resolvedListings: Array<{
     name: string;
     kind: string;
@@ -95,5 +96,5 @@ export function parseBundleManifest(candidate: unknown): ParseResult<RegistryBun
 };
 export function serializeBundleManifest(manifest: RegistryBundleManifest): string;
 export function deserializeBundleManifest(text: string): ReturnType<typeof parseBundleManifest>;
-export function parseBundleImportEvent(candidate: unknown): ParseResult<RegistryBundleImportedEvent>;
-export function canonicalJson(value: unknown): string;
+export function parseBundleImportEvent(candidate: JsonValue): ParseResult<RegistryBundleImportedEvent>;
+export function canonicalJson(value: JsonValue): string;

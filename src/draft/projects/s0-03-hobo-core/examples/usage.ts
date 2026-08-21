@@ -22,11 +22,13 @@ import {
 	PortDescriptorParseError,
 	toCloudEvent,
 } from "../src/index.ts";
+import { type JsonValue } from "../src/json.js";
 
-const fixture = (name: string): unknown =>
+
+const fixture = (name: string): JsonValue =>
 	JSON.parse(readFileSync(new URL(`../test/fixtures/${name}`, import.meta.url), "utf8"));
 
-function mustThrow<E extends CoreParseError>(fn: () => unknown, kind: new (...args: never[]) => E): E {
+function mustThrow<E extends CoreParseError, T>(fn: () => T, kind: new (...args: never[]) => E): E {
 	try {
 		fn();
 	} catch (error) {

@@ -1,5 +1,7 @@
 import { cloneJson, deepFreeze, expectObject } from "./parse-utils.js";
 import { EnvelopeParseError } from "./errors.js";
+import { type JsonValue } from "./json.js";
+
 
 export const CORE_SCHEMA_VERSION = "hobo.core/v1";
 
@@ -38,7 +40,7 @@ export interface PublicTypeSurfaceResult {
   errors: string[];
 }
 
-export function assertCoreApiSnapshot(snapshot: unknown): typeof CORE_API_SNAPSHOT {
+export function assertCoreApiSnapshot(snapshot: JsonValue): typeof CORE_API_SNAPSHOT {
   const source = expectObject(snapshot, "API snapshot", EnvelopeParseError);
   const expected = JSON.stringify(CORE_API_SNAPSHOT.exports);
   const actual = JSON.stringify(source.exports);
@@ -47,10 +49,11 @@ export function assertCoreApiSnapshot(snapshot: unknown): typeof CORE_API_SNAPSH
       "public API snapshot drift: update snapshot deliberately with a breaking-change note",
     );
   }
+  // SAFETY: `return deepFreeze(cloneJson(source)) as typeof CORE_API_SNAPSHOT;` is required at this I/O or test boundary.
   return deepFreeze(cloneJson(source)) as typeof CORE_API_SNAPSHOT;
 }
 
-export function validatePublicTypeSurface(declarationText: unknown): PublicTypeSurfaceResult {
+export function validatePublicTypeSurface(declarationText: JsonValue): PublicTypeSurfaceResult {
   const errors: string[] = [];
   const text = String(declarationText ?? "");
   if (PROVIDER_LEAK_PATTERN.test(text)) {

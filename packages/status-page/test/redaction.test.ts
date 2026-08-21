@@ -78,6 +78,7 @@ describe("redaction scanning", () => {
 		try {
 			assertPublishable("leak token=abcdef012345");
 		} catch (error) {
+			// SAFETY: assertPublishable throws StatusPageRedactionError by contract.
 			expect((error as StatusPageRedactionError).violations[0]?.rule).toBe(
 				"secret-assignment",
 			);

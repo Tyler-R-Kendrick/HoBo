@@ -5,6 +5,7 @@ import type {
 	TenantId,
 } from "@hobo/core";
 
+import type { StringBag } from "../json.js";
 import { type AwsCredentials, createRoute53SigV4Signer } from "./aws-sigv4.js";
 import { createCloudflareDnsProvider } from "./cloudflare-provider.js";
 
@@ -72,7 +73,7 @@ export function createRoute53DnsProvider(
 		secretAccessKey: options.secretAccessKey,
 		...(options.sessionToken !== undefined
 			? { sessionToken: options.sessionToken }
-			: {}),
+			: undefined),
 	};
 	const sign =
 		options.signRequest ??
@@ -94,7 +95,7 @@ export function createRoute53DnsProvider(
 		url: string,
 		body?: string,
 	): Promise<Response> {
-		const baseHeaders: Record<string, string> = {
+		const baseHeaders: StringBag = {
 			Host: new URL(url).host,
 		};
 		if (body !== undefined) {
@@ -121,7 +122,7 @@ export function createRoute53DnsProvider(
 		return fetchImpl(url, {
 			method,
 			headers,
-			...(body !== undefined ? { body } : {}),
+			...(body !== undefined ? { body } : undefined),
 		});
 	}
 
@@ -283,6 +284,7 @@ export function parseListResourceRecordSets(xml: string): readonly DnsRecord[] {
 	for (let match = setRe.exec(xml); match !== null; match = setRe.exec(xml)) {
 		const block = match[1] ?? "";
 		const name = textBetween(block, "Name")?.replace(/\.$/, "") ?? "";
+		// SAFETY: assertion required at this I/O or test boundary.
 		const type = textBetween(block, "Type") as DnsRecordType | null;
 		const ttlRaw = textBetween(block, "TTL");
 		const value = textBetween(block, "Value")?.replace(/\.$/, "") ?? "";
@@ -294,7 +296,7 @@ export function parseListResourceRecordSets(xml: string): readonly DnsRecord[] {
 			name,
 			type,
 			content: value,
-			...(ttlRaw !== null ? { ttl: Number(ttlRaw) } : {}),
+			...(ttlRaw !== null ? { ttl: Number(ttlRaw) } : undefined),
 			gatewayTarget: type === "CNAME",
 		});
 	}
@@ -329,8 +331,8 @@ export function createDnsProviderFromConfig(input: {
 			apiToken: token,
 			...(creds.zoneId || input.zoneId
 				? { zoneId: creds.zoneId ?? input.zoneId }
-				: {}),
-			...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {}),
+				: undefined),
+			...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : undefined),
 		});
 	}
 	if (input.kind === "route53") {
@@ -349,13 +351,13 @@ export function createDnsProviderFromConfig(input: {
 				? {
 						sessionToken: creds.sessionToken ?? creds.AWS_SESSION_TOKEN,
 					}
-				: {}),
-			...(creds.region ? { region: creds.region } : {}),
+				: undefined),
+			...(creds.region ? { region: creds.region } : undefined),
 			...(creds.hostedZoneId || input.zoneId
 				? { hostedZoneId: creds.hostedZoneId ?? input.zoneId }
-				: {}),
-			...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : {}),
-			...(input.signRequest ? { signRequest: input.signRequest } : {}),
+				: undefined),
+			...(input.fetchImpl ? { fetchImpl: input.fetchImpl } : undefined),
+			...(input.signRequest ? { signRequest: input.signRequest } : undefined),
 			allowUnsigned: input.allowUnsigned === true,
 		});
 	}

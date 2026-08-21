@@ -17,15 +17,15 @@
  * `fetchImpl` and `signRequest` are both injected, so nothing here signs with
  * real credentials or touches the network.
  */
-import { describe, expect, it } from "vitest";
 
 import { parseTenantId } from "@hobo/core";
-
+import { describe, expect, it } from "vitest";
 import {
 	createDnsProviderFromConfig,
 	createRoute53DnsProvider,
 	parseListResourceRecordSets,
 } from "../../src/dns/route53-provider.js";
+import { isJsonString, type JsonObject } from "../../src/json.js";
 
 const TENANT = parseTenantId("acme");
 const ZONE = "example.com";
@@ -44,23 +44,26 @@ function scripted(
 ) {
 	const calls: Call[] = [];
 	let index = 0;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const impl = (async (url: string | URL, init?: RequestInit) => {
 		calls.push({
 			url: String(url),
 			method: init?.method ?? "GET",
+			// SAFETY: assertion required at this I/O or test boundary.
 			headers: (init?.headers ?? {}) as Record<string, string>,
-			...(typeof init?.body === "string" ? { body: init.body } : {}),
+			...(isJsonString(init?.body) ? { body: init.body } : undefined),
 		});
 		const next = responses[Math.min(index, responses.length - 1)];
 		index += 1;
 		if (next && "throws" in next) throw new Error(next.throws);
 		const status = next?.status ?? 200;
+		// SAFETY: assertion required at this I/O or test boundary.
 		return {
 			ok: status >= 200 && status < 300,
 			status,
 			text: async () => (next && "text" in next ? next.text : ""),
-		} as unknown as Response;
-	}) as unknown as typeof fetch;
+		} as Response;
+	}) as typeof fetch;
 	return { impl, calls };
 }
 
@@ -77,10 +80,7 @@ const listXml = (
 		)
 		.join("")}${complete ? "</ListResourceRecordSetsResponse>" : ""}`;
 
-const provider = (
-	fetchImpl: typeof fetch,
-	extra: Record<string, unknown> = {},
-) =>
+const provider = (fetchImpl: typeof fetch, extra: JsonObject = {}) =>
 	createRoute53DnsProvider({
 		accessKeyId: "AKIA",
 		secretAccessKey: "secret",

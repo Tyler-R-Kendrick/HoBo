@@ -2,6 +2,7 @@
  * Secretless session material mint/verify for PAM sessions.
  * Audience-bound, short-lived, HMAC or ES256 — same discipline as JWT-SVID.
  */
+
 import {
 	createHash,
 	createHmac,
@@ -10,8 +11,8 @@ import {
 	type KeyObject,
 	randomBytes,
 } from "node:crypto";
-
 import type { IsolationClass } from "../env-isolation/types.js";
+import { isJsonString, type JsonValue } from "../json.js";
 import type { PamKind } from "./types.js";
 
 export type SessionClaims = Readonly<{
@@ -27,7 +28,7 @@ export type SessionClaims = Readonly<{
 }>;
 
 function b64url(data: Buffer | string): string {
-	const buf = typeof data === "string" ? Buffer.from(data, "utf8") : data;
+	const buf = isJsonString(data) ? Buffer.from(data, "utf8") : data;
 	return buf
 		.toString("base64")
 		.replace(/=/g, "")
@@ -35,13 +36,14 @@ function b64url(data: Buffer | string): string {
 		.replace(/\//g, "_");
 }
 
-function b64urlJson(value: unknown): string {
+function b64urlJson(value: JsonValue): string {
 	return b64url(JSON.stringify(value));
 }
 
 function decodeB64urlJson<T>(input: string): T {
 	const pad = input.length % 4 === 0 ? "" : "=".repeat(4 - (input.length % 4));
 	const b64 = input.replace(/-/g, "+").replace(/_/g, "/") + pad;
+	// SAFETY: assertion required at this I/O or test boundary.
 	return JSON.parse(Buffer.from(b64, "base64").toString("utf8")) as T;
 }
 
@@ -74,7 +76,7 @@ export function mintSessionToken(input: {
 		readonly now?: number;
 	};
 	readonly keys: SessionBrokerKeys;
-}): { token: string; claims: SessionClaims; credentialRef: string } {
+}) {
 	const now = input.claims.now ?? Math.floor(Date.now() / 1000);
 	const claims: SessionClaims = Object.freeze({
 		sid: input.claims.sid,
@@ -134,6 +136,7 @@ export function verifySessionToken(input: {
 				reason: "session token malformed",
 			};
 		}
+		// SAFETY: assertion required at this I/O or test boundary.
 		const [hB64, pB64, sB64] = parts as [string, string, string];
 		const header = decodeB64urlJson<{ alg?: string }>(hB64);
 		const claims = decodeB64urlJson<SessionClaims>(pB64);

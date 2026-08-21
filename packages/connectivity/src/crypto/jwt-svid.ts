@@ -3,6 +3,7 @@
  * Production: replace HMAC with SPIRE Workload API fetch; verification uses
  * the same claim shape (sub=spiffe id, aud, exp, iat).
  */
+
 import {
 	createHmac,
 	createPrivateKey,
@@ -13,6 +14,13 @@ import {
 	type KeyObject,
 	randomBytes,
 } from "node:crypto";
+import {
+	cloneAsJson,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+} from "../json.js";
 
 /** Default HMAC only allowed in development / explicit opt-in. */
 export const DEFAULT_SVID_HMAC_SECRET = "hobo-local-svid-dev-only" as const;
@@ -69,7 +77,7 @@ export interface MintedJwtSvid {
 }
 
 function b64url(data: Buffer | string): string {
-	const buf = typeof data === "string" ? Buffer.from(data, "utf8") : data;
+	const buf = isJsonString(data) ? Buffer.from(data, "utf8") : data;
 	return buf
 		.toString("base64")
 		.replace(/=/g, "")
@@ -77,13 +85,26 @@ function b64url(data: Buffer | string): string {
 		.replace(/\//g, "_");
 }
 
-function b64urlJson(value: unknown): string {
-	return b64url(JSON.stringify(value));
+function isCryptoKey(value: KeyObject | JsonObject): value is KeyObject {
+	return "export" in value && value.export instanceof Function;
+}
+
+function jwkFrom(value: KeyObject | JsonObject): JsonWebKey {
+	if (isJsonObject(value)) {
+		// SAFETY: JWK parse boundary for SPIFFE JWT-SVID issuer keys.
+		return value as JsonWebKey;
+	}
+	return {};
+}
+
+function b64urlJson<T>(value: T): string {
+	return b64url(JSON.stringify(cloneAsJson(value)));
 }
 
 function decodeB64urlJson<T>(input: string): T {
 	const pad = input.length % 4 === 0 ? "" : "=".repeat(4 - (input.length % 4));
 	const b64 = input.replace(/-/g, "+").replace(/_/g, "/") + pad;
+	// SAFETY: assertion required at this I/O or test boundary.
 	return JSON.parse(Buffer.from(b64, "base64").toString("utf8")) as T;
 }
 
@@ -102,7 +123,7 @@ export function mintJwtSvid(input: {
 	readonly env?: NodeJS.ProcessEnv;
 	readonly allowDefaultSecret?: boolean;
 	/** ES256 private key (JWK or KeyObject). */
-	readonly privateKey?: KeyObject | Record<string, unknown>;
+	readonly privateKey?: KeyObject | JsonObject;
 	readonly kid?: string;
 }): MintedJwtSvid {
 	const now = input.now ?? Math.floor(Date.now() / 1000);
@@ -116,22 +137,27 @@ export function mintJwtSvid(input: {
 		aud,
 		iat: now,
 		exp: now + ttl,
-		...(input.issuer !== undefined ? { iss: input.issuer } : {}),
+		...(input.issuer !== undefined ? { iss: input.issuer } : undefined),
 		jti: randomBytes(16).toString("hex"),
 	};
 
 	if (input.privateKey) {
-		const key =
-			typeof (input.privateKey as KeyObject).export === "function"
-				? (input.privateKey as KeyObject)
-				: createPrivateKey({
-						key: input.privateKey as Record<string, unknown>,
-						format: "jwk",
-					});
+		const privateKey = input.privateKey;
+		let key: KeyObject;
+		if (isCryptoKey(privateKey)) {
+			key = privateKey;
+		} else {
+			// SAFETY: JWK object already parsed at the mint boundary.
+			const keyInput = {
+				format: "jwk",
+				key: jwkFrom(privateKey),
+			} as Parameters<typeof createPrivateKey>[0];
+			key = createPrivateKey(keyInput);
+		}
 		const header = {
 			alg: "ES256",
 			typ: "JWT",
-			...(input.kid !== undefined ? { kid: input.kid } : {}),
+			...(input.kid !== undefined ? { kid: input.kid } : undefined),
 		};
 		const signingInput = `${b64urlJson(header)}.${b64urlJson(claims)}`;
 		const sig = cryptoSign("SHA256", Buffer.from(signingInput, "utf8"), {
@@ -146,11 +172,13 @@ export function mintJwtSvid(input: {
 	}
 
 	const secret = resolveSvidHmacSecret({
-		...(input.hmacSecret !== undefined ? { hmacSecret: input.hmacSecret } : {}),
-		...(input.env !== undefined ? { env: input.env } : {}),
+		...(input.hmacSecret !== undefined
+			? { hmacSecret: input.hmacSecret }
+			: undefined),
+		...(input.env !== undefined ? { env: input.env } : undefined),
 		...(input.allowDefaultSecret !== undefined
 			? { allowDefaultSecret: input.allowDefaultSecret }
-			: {}),
+			: undefined),
 	});
 	const header = { alg: "HS256", typ: "JWT" };
 	const signingInput = `${b64urlJson(header)}.${b64urlJson(claims)}`;
@@ -168,7 +196,7 @@ export function verifyJwtSvid(input: {
 	readonly token: string;
 	readonly audience: string;
 	readonly hmacSecret?: string;
-	readonly publicKey?: KeyObject | Record<string, unknown>;
+	readonly publicKey?: KeyObject | JsonObject;
 	readonly now?: number;
 	readonly maxClockSkewSeconds?: number;
 }): JwtSvidClaims {
@@ -176,6 +204,7 @@ export function verifyJwtSvid(input: {
 	if (parts.length !== 3) {
 		throw new Error("jwt-svid: malformed token");
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	const [hB64, pB64, sB64] = parts as [string, string, string];
 	const header = decodeB64urlJson<{ alg?: string }>(hB64);
 	const claims = decodeB64urlJson<JwtSvidClaims>(pB64);
@@ -186,15 +215,17 @@ export function verifyJwtSvid(input: {
 		throw new Error("jwt-svid: sub must be a spiffe id");
 	}
 	const aud = Array.isArray(claims.aud)
-		? claims.aud
-		: [claims.aud as unknown as string];
+		? [...claims.aud]
+		: isJsonString(claims.aud)
+			? [claims.aud]
+			: [];
 	if (!aud.includes(input.audience)) {
 		throw new Error("jwt-svid: audience mismatch");
 	}
-	if (typeof claims.exp !== "number" || claims.exp + skew < now) {
+	if (!isJsonNumber(claims.exp) || claims.exp + skew < now) {
 		throw new Error("jwt-svid: token expired");
 	}
-	if (typeof claims.iat === "number" && claims.iat - skew > now) {
+	if (isJsonNumber(claims.iat) && claims.iat - skew > now) {
 		throw new Error("jwt-svid: iat in the future");
 	}
 
@@ -203,13 +234,18 @@ export function verifyJwtSvid(input: {
 		if (!input.publicKey) {
 			throw new Error("jwt-svid: publicKey required for ES256");
 		}
-		const key =
-			typeof (input.publicKey as KeyObject).export === "function"
-				? (input.publicKey as KeyObject)
-				: createPublicKey({
-						key: input.publicKey as Record<string, unknown>,
-						format: "jwk",
-					});
+		const publicKey = input.publicKey;
+		let key: KeyObject;
+		if (isCryptoKey(publicKey)) {
+			key = publicKey;
+		} else {
+			// SAFETY: JWK object already parsed at the verify boundary.
+			const keyInput = {
+				format: "jwk",
+				key: jwkFrom(publicKey),
+			} as Parameters<typeof createPublicKey>[0];
+			key = createPublicKey(keyInput);
+		}
 		const pad = sB64.length % 4 === 0 ? "" : "=".repeat(4 - (sB64.length % 4));
 		const sig = Buffer.from(
 			sB64.replace(/-/g, "+").replace(/_/g, "/") + pad,
@@ -245,7 +281,7 @@ export function verifyJwtSvid(input: {
 		const secret = resolveSvidHmacSecret({
 			...(input.hmacSecret !== undefined
 				? { hmacSecret: input.hmacSecret }
-				: {}),
+				: undefined),
 			allowDefaultSecret: true,
 		});
 		const expected = createHmac("sha256", secret)
@@ -261,20 +297,17 @@ export function verifyJwtSvid(input: {
 }
 
 /** Generate an ES256 key pair suitable for a local trust domain issuer. */
-export function generateSvidIssuerKeys(): {
-	readonly privateKey: KeyObject;
-	readonly publicKey: KeyObject;
-	readonly publicJwk: Record<string, unknown>;
-	readonly privateJwk: Record<string, unknown>;
-} {
+export function generateSvidIssuerKeys() {
 	const { privateKey, publicKey } = generateKeyPairSync("ec", {
 		namedCurve: "P-256",
 	});
 	return {
 		privateKey,
 		publicKey,
-		publicJwk: publicKey.export({ format: "jwk" }) as Record<string, unknown>,
-		privateJwk: privateKey.export({ format: "jwk" }) as Record<string, unknown>,
+		// SAFETY: assertion required at this I/O or test boundary.
+		publicJwk: publicKey.export({ format: "jwk" }) as JsonObject,
+		// SAFETY: assertion required at this I/O or test boundary.
+		privateJwk: privateKey.export({ format: "jwk" }) as JsonObject,
 	};
 }
 

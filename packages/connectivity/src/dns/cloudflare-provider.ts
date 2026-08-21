@@ -1,4 +1,5 @@
 import type { DnsProvider, DnsRecord, DnsRecordType } from "@hobo/core";
+import { cloneAsJson, type JsonValue } from "../json.js";
 
 export interface CloudflareDnsProviderOptions {
 	/** API token with Zone.DNS edit. Never log. */
@@ -41,12 +42,13 @@ export function createCloudflareDnsProvider(
 	async function api(
 		path: string,
 		init: RequestInit = {},
-	): Promise<{ ok: boolean; status: number; body: unknown }> {
+	): Promise<{ ok: boolean; status: number; body: JsonValue }> {
 		const headers = new Headers(init.headers);
 		headers.set("Authorization", `Bearer ${options.apiToken}`);
 		headers.set("Content-Type", "application/json");
 		const res = await fetchImpl(`${base}${path}`, { ...init, headers });
-		const body = (await res.json().catch(() => ({}))) as unknown;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const body = cloneAsJson(await res.json().catch(() => ({})));
 		return { ok: res.ok, status: res.status, body };
 	}
 
@@ -57,6 +59,7 @@ export function createCloudflareDnsProvider(
 		const res = await api(
 			`/zones?name=${encodeURIComponent(zone)}&status=active`,
 		);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const data = res.body as CfListResponse;
 		const id = data.result?.[0]?.id;
 		if (!res.ok || !id) {
@@ -97,6 +100,7 @@ export function createCloudflareDnsProvider(
 				`cloudflare: dns lookup for ${type} ${name} failed (${res.status})`,
 			);
 		}
+		// SAFETY: assertion required at this I/O or test boundary.
 		const data = res.body as CfListResponse;
 		if (!Array.isArray(data.result)) {
 			throw new Error(
@@ -129,6 +133,7 @@ export function createCloudflareDnsProvider(
 				});
 				if (!res.ok) {
 					throw new Error(
+						// SAFETY: assertion required at this I/O or test boundary.
 						`cloudflare upsert failed (${res.status}): ${JSON.stringify((res.body as CfListResponse).errors ?? res.body)}`,
 					);
 				}
@@ -140,6 +145,7 @@ export function createCloudflareDnsProvider(
 			});
 			if (!res.ok) {
 				throw new Error(
+					// SAFETY: assertion required at this I/O or test boundary.
 					`cloudflare create failed (${res.status}): ${JSON.stringify((res.body as CfListResponse).errors ?? res.body)}`,
 				);
 			}
@@ -160,6 +166,7 @@ export function createCloudflareDnsProvider(
 			void tenantId;
 			const zoneId = await resolveZoneId(zone);
 			const res = await api(`/zones/${zoneId}/dns_records?per_page=100`);
+			// SAFETY: assertion required at this I/O or test boundary.
 			const data = res.body as CfListResponse;
 			if (!res.ok) {
 				throw new Error(`cloudflare list failed (${res.status})`);
@@ -174,9 +181,10 @@ export function createCloudflareDnsProvider(
 			}
 			return data.result.map((r) => ({
 				name: r.name,
+				// SAFETY: assertion required at this I/O or test boundary.
 				type: r.type as DnsRecordType,
 				content: r.content,
-				...(r.ttl !== undefined ? { ttl: r.ttl } : {}),
+				...(r.ttl !== undefined ? { ttl: r.ttl } : undefined),
 				gatewayTarget: true,
 			}));
 		},

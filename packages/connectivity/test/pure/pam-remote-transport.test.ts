@@ -24,7 +24,9 @@
  * outlive its remote session is a caller who thinks they still have access
  * after the control plane has revoked it.
  */
+
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../../src/json.js";
 
 import {
 	createRemoteTransport,
@@ -36,26 +38,30 @@ type Call = { url: string; init: RequestInit };
 function transport(
 	kind: string,
 	script: { status?: number; body?: unknown; text?: string }[] = [],
-	options: Record<string, unknown> = {},
+	options: JsonObject = {},
 ) {
 	const calls: Call[] = [];
 	let n = 0;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const fetchImpl = (async (url: string | URL, init: RequestInit = {}) => {
 		calls.push({ url: String(url), init });
 		const entry = script[n++] ?? { body: {} };
 		const status = entry.status ?? 200;
 		const text = entry.text ?? JSON.stringify(entry.body ?? {});
+		// SAFETY: assertion required at this I/O or test boundary.
 		return {
 			ok: status >= 200 && status < 300,
 			status,
 			text: async () => text,
-		} as unknown as Response;
-	}) as unknown as typeof fetch;
+		} as Response;
+	}) as typeof fetch;
 	return {
 		calls,
 		sent: (i = 0) =>
-			JSON.parse(String(calls[i]?.init.body)) as Record<string, unknown>,
+			// SAFETY: assertion required at this I/O or test boundary.
+			JSON.parse(String(calls[i]?.init.body)) as JsonObject,
 		api: createRemoteTransport({
+			// SAFETY: assertion required at this I/O or test boundary.
 			kind: kind as never,
 			endpoint: "https://pam.example.com",
 			authToken: "pam-secret",
@@ -68,6 +74,7 @@ function transport(
 const request = {
 	subject: "alice",
 	target: "db-prod",
+	// SAFETY: assertion required at this I/O or test boundary.
 	isolationClass: "production" as never,
 	ttlSeconds: 600,
 };
@@ -95,15 +102,27 @@ describe("the request envelope", () => {
 	it("bears the control-plane token", async () => {
 		const t = transport("teleport");
 		await t.api.authorizeSession(request);
+		const call = t.calls[0];
+		if (call === undefined) throw new Error("expected a request");
+		const headers = call.init.headers;
 		expect(
-			(t.calls[0]?.init.headers as Record<string, string>).authorization,
+			headers &&
+				!Array.isArray(headers) &&
+				!(headers instanceof Headers) &&
+				headers.authorization,
 		).toBe("Bearer pam-secret");
 	});
 
 	it("declares and accepts JSON", async () => {
 		const t = transport("teleport");
 		await t.api.authorizeSession(request);
-		const headers = t.calls[0]?.init.headers as Record<string, string>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const first = t.calls[0];
+		if (first === undefined) throw new Error("expected a request");
+		const headers = first.init.headers;
+		if (!headers || headers instanceof Headers || Array.isArray(headers)) {
+			throw new Error("expected header object");
+		}
 		expect(headers["content-type"]).toBe("application/json");
 		expect(headers.accept).toBe("application/json");
 	});
@@ -130,7 +149,8 @@ describe("the request envelope", () => {
 		const t = transport("teleport", [{ status: 503, text: "down" }]);
 		const error = await t.api
 			.authorizeSession(request)
-			.catch((err: unknown) => err as { code?: string; status?: number });
+			// SAFETY: assertion required at this I/O or test boundary.
+			.catch((error: Error) => error);
 		expect(error.code).toBe("pam-remote-error");
 		expect(error.status).toBe(503);
 	});
@@ -139,7 +159,8 @@ describe("the request envelope", () => {
 		const t = transport("teleport", [{ status: 500, text: "x".repeat(4000) }]);
 		const error = await t.api
 			.authorizeSession(request)
-			.catch((err: unknown) => err as Error);
+			// SAFETY: assertion required at this I/O or test boundary.
+			.catch((error: Error) => error);
 		expect(error.message.length).toBeLessThan(400);
 	});
 
@@ -431,8 +452,14 @@ describe("revocation", () => {
 	it("sends no content type, since it sends no body", async () => {
 		const t = transport("nova");
 		await t.api.revokeSession("n1");
+		const first = t.calls[0];
+		if (first === undefined) throw new Error("expected a request");
+		const headers = first.init.headers;
 		expect(
-			(t.calls[0]?.init.headers as Record<string, string>)["content-type"],
+			headers &&
+				!Array.isArray(headers) &&
+				!(headers instanceof Headers) &&
+				headers["content-type"],
 		).toBeUndefined();
 	});
 
@@ -454,20 +481,24 @@ describe("revocation", () => {
 		const t = transport("nova", [{ status: 500 }]);
 		const error = await t.api
 			.revokeSession("n1")
-			.catch((err: unknown) => err as { code?: string });
+			// SAFETY: assertion required at this I/O or test boundary.
+			.catch((error: Error) => error);
 		expect(error.code).toBe("pam-remote-error");
 	});
 
 	it("still fails usefully when the failure body cannot be read", async () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const fetchImpl = (async () =>
+			// SAFETY: assertion required at this I/O or test boundary.
 			({
 				ok: false,
 				status: 502,
 				text: async () => {
 					throw new Error("stream closed");
 				},
-			}) as unknown as Response) as unknown as typeof fetch;
+			}) as Response) as typeof fetch;
 		const api = createRemoteTransport({
+			// SAFETY: assertion required at this I/O or test boundary.
 			kind: "nova" as never,
 			endpoint: "https://pam.example.com",
 			authToken: "t",
@@ -478,6 +509,7 @@ describe("revocation", () => {
 });
 
 describe("mergeRemoteIntoHandle", () => {
+	// SAFETY: assertion required at this I/O or test boundary.
 	const local = {
 		credentialRef: "hobo-pam://session/local-1",
 		expiresAt: "2030-01-01T00:00:00.000Z",
@@ -514,11 +546,12 @@ describe("mergeRemoteIntoHandle", () => {
 		// The local signature is what HoBo verifies; replacing it with a remote
 		// credential would make the handle unverifiable.
 		expect(
+			// SAFETY: assertion required at this I/O or test boundary.
 			(
 				mergeRemoteIntoHandle({
 					local,
 					remote: remote("2030-01-01T00:00:00.000Z"),
-				}) as unknown as Record<string, unknown>
+				}) as JsonObject
 			).sessionToken,
 		).toBe("signed-locally");
 	});
@@ -570,8 +603,7 @@ describe("mergeRemoteIntoHandle", () => {
 			local,
 			remote: remote("2029-01-01T00:00:00.000Z"),
 		});
-		expect((local as { expiresAt: string }).expiresAt).toBe(
-			"2030-01-01T00:00:00.000Z",
-		);
+		// SAFETY: assertion required at this I/O or test boundary.
+		expect(local.expiresAt).toBe("2030-01-01T00:00:00.000Z");
 	});
 });

@@ -21,7 +21,9 @@
  * another session has since overwritten would break that session, so the
  * cleanup compares before deleting.
  */
+
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../../src/json.js";
 
 import {
 	attachNamedEndpoints,
@@ -30,10 +32,13 @@ import {
 	listNamedEndpointSessions,
 } from "../../src/local/named-endpoints.js";
 
+// SAFETY: assertion required at this I/O or test boundary.
 const OFF = { enabled: false } as never;
+// SAFETY: assertion required at this I/O or test boundary.
 const ON = { enabled: true, binPath: "/usr/bin/portless" } as never;
 
-function endpoint(overrides: Record<string, unknown> = {}) {
+function endpoint(overrides: JsonObject = {}) {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return {
 		resourceName: "web",
 		kind: "service",
@@ -45,8 +50,9 @@ function endpoint(overrides: Record<string, unknown> = {}) {
 }
 
 let session = 0;
-async function attach(options: Record<string, unknown> = {}) {
+async function attach(options: JsonObject = {}) {
 	session += 1;
+	// SAFETY: assertion required at this I/O or test boundary.
 	return attachNamedEndpoints({
 		app: "myapp",
 		endpoints: [endpoint()],
@@ -106,6 +112,7 @@ describe("scheme and port selection", () => {
 	it("does not use https when portless is enabled but has no binary", async () => {
 		// "Enabled" without a binary cannot terminate anything.
 		const result = await attach({
+			// SAFETY: assertion required at this I/O or test boundary.
 			forcePortless: { enabled: true } as never,
 		});
 		expect(result.namedEndpoints[0]?.url.startsWith("http://")).toBe(true);
@@ -259,6 +266,7 @@ describe("the primary URL", () => {
 
 describe("the session registry", () => {
 	it("registers the session under its id", async () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = await attachNamedEndpoints({
 			app: "myapp",
 			endpoints: [endpoint()],
@@ -275,6 +283,7 @@ describe("the session registry", () => {
 	});
 
 	it("lists sessions with their endpoint counts", async () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = await attachNamedEndpoints({
 			app: "myapp",
 			endpoints: [endpoint()],
@@ -290,6 +299,7 @@ describe("the session registry", () => {
 	});
 
 	it("removes the session on close", async () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = await attachNamedEndpoints({
 			app: "myapp",
 			endpoints: [endpoint()],
@@ -361,6 +371,7 @@ describe("progress reporting", () => {
 	it("relays a portless hint when there is one", async () => {
 		const lines: string[] = [];
 		await attach({
+			// SAFETY: assertion required at this I/O or test boundary.
 			forcePortless: { enabled: false, hint: "install portless" } as never,
 			emitProgress: (m: string) => lines.push(m),
 		});
@@ -380,6 +391,7 @@ describe("createNamedPreferringBindingResolver", () => {
 	])("resolves the %s property to the preferred URL", async (property) => {
 		const named = await attach({ forcePortless: OFF });
 		const resolver = createNamedPreferringBindingResolver({ named });
+		// SAFETY: assertion required at this I/O or test boundary.
 		const resolved = await resolver.resolve("web" as never, property);
 		expect(resolved.value).toBe("http://127.0.0.1:3000");
 	});
@@ -388,6 +400,7 @@ describe("createNamedPreferringBindingResolver", () => {
 		// The source label is how a caller knows whether it got a named URL.
 		const named = await attach({ forcePortless: OFF });
 		const resolver = createNamedPreferringBindingResolver({ named });
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((await resolver.resolve("web" as never, "url")).source).toBe(
 			"service-discovery",
 		);
@@ -396,6 +409,7 @@ describe("createNamedPreferringBindingResolver", () => {
 	it("labels the source named when portless fronts the endpoint", async () => {
 		const named = await attach({ forcePortless: ON });
 		const resolver = createNamedPreferringBindingResolver({ named });
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((await resolver.resolve("web" as never, "url")).source).toBe(
 			"named",
 		);
@@ -407,10 +421,12 @@ describe("createNamedPreferringBindingResolver", () => {
 			named,
 			fallback: {
 				async resolve() {
+					// SAFETY: assertion required at this I/O or test boundary.
 					return { value: "from-fallback", source: "fallback" as never };
 				},
 			},
 		});
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((await resolver.resolve("web" as never, "port")).value).toBe(
 			"from-fallback",
 		);
@@ -422,10 +438,12 @@ describe("createNamedPreferringBindingResolver", () => {
 			named,
 			fallback: {
 				async resolve() {
+					// SAFETY: assertion required at this I/O or test boundary.
 					return { value: "from-fallback", source: "fallback" as never };
 				},
 			},
 		});
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((await resolver.resolve("other" as never, "url")).value).toBe(
 			"from-fallback",
 		);
@@ -435,6 +453,7 @@ describe("createNamedPreferringBindingResolver", () => {
 		// Better than returning undefined: the caller learns which binding.
 		const named = await attach();
 		const resolver = createNamedPreferringBindingResolver({ named });
+		// SAFETY: assertion required at this I/O or test boundary.
 		await expect(resolver.resolve("other" as never, "url")).rejects.toThrow(
 			/no binding for other\.url/u,
 		);

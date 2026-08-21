@@ -127,24 +127,24 @@ export async function attachNamedEndpoints(options: {
 			resource: endpoint.resourceName,
 			app: options.app,
 			mode: endpointMode,
-			...(includeTenant ? { tenant: tenant.tenantId } : {}),
+			...(includeTenant ? { tenant: tenant.tenantId } : undefined),
 			...(options.env !== undefined
 				? { env: options.env }
 				: tenant.env !== undefined
 					? { env: tenant.env }
 					: endpointMode === "local"
 						? { env: "local" }
-						: {}),
+						: undefined),
 			...(options.branch !== undefined
 				? { branch: options.branch }
 				: tenant.branch !== undefined
 					? { branch: tenant.branch }
-					: {}),
+					: undefined),
 			...(options.project !== undefined
 				? { project: options.project }
 				: tenant.projectId !== undefined
 					? { project: tenant.projectId }
-					: {}),
+					: undefined),
 		};
 
 		const hostname = getNamedEndpointHost(params);
@@ -161,7 +161,7 @@ export async function attachNamedEndpoints(options: {
 				: getNamedEndpoint({
 						...params,
 						scheme: "http",
-						...(backendPort !== undefined ? { port: backendPort } : {}),
+						...(backendPort !== undefined ? { port: backendPort } : undefined),
 					});
 
 		const backendUrl = endpoint.backendUrl;

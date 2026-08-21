@@ -174,6 +174,7 @@ export function createTailscaleOverlay(options?: {
 			let overlayIps: string[] = [];
 			let dnsName: string | undefined;
 			try {
+				// SAFETY: assertion required at this I/O or test boundary.
 				const parsed = JSON.parse(statusProbe.stdout) as {
 					Self?: {
 						ID?: string;
@@ -204,7 +205,7 @@ export function createTailscaleOverlay(options?: {
 						provider: "tailscale",
 						ready: true,
 						ips: overlayIps.join(","),
-						...(dnsName !== undefined ? { dnsName } : {}),
+						...(dnsName !== undefined ? { dnsName } : undefined),
 					},
 				}),
 			);
@@ -275,13 +276,13 @@ export function createTailscaleOverlay(options?: {
 						apiKey,
 						...(options?.tailnet !== undefined
 							? { tailnet: options.tailnet }
-							: {}),
+							: undefined),
 						...(options?.apiBase !== undefined
 							? { apiBase: options.apiBase }
-							: {}),
+							: undefined),
 						...(options?.fetchImpl !== undefined
 							? { fetchImpl: options.fetchImpl }
-							: {}),
+							: undefined),
 					});
 					await api.setDnsPreferences({ magicDNS: true });
 					const map = await api.putSplitDns(domains, nameservers);
@@ -411,6 +412,7 @@ export function createTailscaleOverlay(options?: {
 				const status = run(["status", "--json"]);
 				if (status.ok) {
 					try {
+						// SAFETY: assertion required at this I/O or test boundary.
 						const parsed = JSON.parse(status.stdout) as {
 							Self?: { DNSName?: string };
 						};

@@ -11,6 +11,7 @@ import {
 	type RoutingRule,
 	type TrafficRoutingPort,
 } from "@hobo/core";
+import { cloneAsJson } from "../json.js";
 
 export interface SimpleTrafficRouting extends TrafficRoutingPort {
 	readonly provider: "simple";
@@ -34,18 +35,20 @@ export function createSimpleTrafficRouting(options?: {
 		async apply(plan) {
 			const unmet = unsupported(plan);
 			const realized = unmet.length === 0 ? "full" : "partial";
-			const result = parseApplyResult({
-				planId: plan.planId,
-				provider: "simple",
-				realized,
-				notes:
-					realized === "full"
-						? []
-						: ["unsupported routing features use declared backend order"],
-				appliedRules: realizedRuleCount(plan),
-				...(unmet.length === 0 ? {} : { unmet }),
-				capabilities: ["weighted-backends"],
-			});
+			const result = parseApplyResult(
+				cloneAsJson({
+					planId: plan.planId,
+					provider: "simple",
+					realized,
+					notes:
+						realized === "full"
+							? []
+							: ["unsupported routing features use declared backend order"],
+					appliedRules: realizedRuleCount(plan),
+					...(unmet.length === 0 ? undefined : { unmet }),
+					capabilities: ["weighted-backends"],
+				}),
+			);
 			plans.set(plan.planId, plan);
 			results.set(plan.planId, result);
 			revoked.delete(plan.planId);
@@ -67,19 +70,23 @@ export function createSimpleTrafficRouting(options?: {
 			const result = results.get(planId);
 			if (!result) return null;
 			if (revoked.has(planId)) {
-				return parseRoutingStatus({
-					planId,
-					active: false,
-					realized: "none",
-					notes: ["routing plan revoked"],
-				});
+				return parseRoutingStatus(
+					cloneAsJson({
+						planId,
+						active: false,
+						realized: "none",
+						notes: ["routing plan revoked"],
+					}),
+				);
 			}
-			return parseRoutingStatus({
-				planId,
-				active: true,
-				realized: result.realized,
-				notes: result.notes,
-			});
+			return parseRoutingStatus(
+				cloneAsJson({
+					planId,
+					active: true,
+					realized: result.realized,
+					notes: result.notes,
+				}),
+			);
 		},
 		select(planId, routingKey, ruleIndex = 0) {
 			if (revoked.has(planId)) return null;
@@ -89,13 +96,15 @@ export function createSimpleTrafficRouting(options?: {
 		},
 		async revoke(planId) {
 			if (!plans.has(planId)) {
-				return parseRevokeResult({
-					ok: false,
-					notes: ["routing plan not found"],
-				});
+				return parseRevokeResult(
+					cloneAsJson({
+						ok: false,
+						notes: ["routing plan not found"],
+					}),
+				);
 			}
 			revoked.add(planId);
-			return parseRevokeResult({ ok: true, notes: [] });
+			return parseRevokeResult(cloneAsJson({ ok: true, notes: [] }));
 		},
 	};
 }

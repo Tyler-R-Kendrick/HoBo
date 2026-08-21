@@ -3,15 +3,16 @@
  * Used by PACT consumer/provider tests (structurally compatible with
  * `@hobo/contract-harness` ProviderStub — no production harness dependency).
  */
+
 import {
 	createMeteringBus,
 	getNamedEndpoint,
 	type PolicyRequest,
 	parseTenantId,
 } from "@hobo/core";
-
 import { createMemoryDnsProvider } from "./dns/memory-provider.js";
 import { createPublicDnsManager } from "./dns/public-dns-manager.js";
+import { isJsonString, type JsonObject } from "./json.js";
 import { createInMemoryMeteringSink } from "./metering/sinks.js";
 import { createOpaPolicyEngine } from "./policy/opa-engine.js";
 import { HOBO_DEFAULT_POLICY_DOCUMENT } from "./policy/rego-lite.js";
@@ -111,9 +112,9 @@ function handleNamedEndpoint(
 			resource,
 			app,
 			mode,
-			...(env !== undefined ? { env } : {}),
-			...(tenant !== undefined ? { tenant } : {}),
-			...(branch !== undefined ? { branch } : {}),
+			...(env !== undefined ? { env } : undefined),
+			...(tenant !== undefined ? { tenant } : undefined),
+			...(branch !== undefined ? { branch } : undefined),
 		});
 		return {
 			status: 200,
@@ -141,16 +142,17 @@ async function handlePolicy(
 	tagEngine: ReturnType<typeof createTagAclPolicyEngine>,
 	opaEngine: ReturnType<typeof createOpaPolicyEngine>,
 ): Promise<ConnectivityHostResponse> {
-	const body = (request.body ?? {}) as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const body = (request.body ?? {}) as JsonObject;
 	const engineKind = body.engine === "opa" ? "opa" : "tag-acl";
 	const subjectTenant = String(body.subjectTenant ?? "local");
 	const resourceTenant = String(body.resourceTenant ?? subjectTenant);
 	const action = String(body.action ?? "read");
 	const tags = Array.isArray(body.subjectTags)
-		? body.subjectTags.filter((t): t is string => typeof t === "string")
+		? body.subjectTags.filter((t): t is string => isJsonString(t))
 		: [];
 	const resourceTags = Array.isArray(body.resourceTags)
-		? body.resourceTags.filter((t): t is string => typeof t === "string")
+		? body.resourceTags.filter((t): t is string => isJsonString(t))
 		: [];
 	// Env isolation: ensure both sides carry env: tags (default development for
 	// same-tenant contract paths when omitted).
@@ -178,7 +180,7 @@ async function handlePolicy(
 			tags: resTags,
 			...(body.resourceShared === true
 				? { attributes: { shared: "true" } }
-				: {}),
+				: undefined),
 		},
 	};
 	const decision =
@@ -199,7 +201,8 @@ async function handleDnsReconcile(
 	request: ConnectivityHostRequest,
 	dns: ReturnType<typeof createPublicDnsManager>,
 ): Promise<ConnectivityHostResponse> {
-	const body = (request.body ?? {}) as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const body = (request.body ?? {}) as JsonObject;
 	try {
 		const result = await dns.reconcileEntrypoint({
 			tenantId: parseTenantId(String(body.tenantId ?? "acme")),
@@ -227,7 +230,8 @@ async function handleDnsSuggest(
 	request: ConnectivityHostRequest,
 	dns: ReturnType<typeof createPublicDnsManager>,
 ): Promise<ConnectivityHostResponse> {
-	const body = (request.body ?? {}) as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const body = (request.body ?? {}) as JsonObject;
 	try {
 		const suggested = await dns.suggestEntrypoint({
 			tenantId: parseTenantId(String(body.tenantId ?? "acme")),

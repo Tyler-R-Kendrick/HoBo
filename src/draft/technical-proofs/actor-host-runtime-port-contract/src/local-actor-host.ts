@@ -6,8 +6,24 @@ import {
 } from "./actor-host-runtime-port.js";
 import { createManualClock } from "./actor-host-runtime-port.js";
 import { parseActorKey, parseHolderId, type ActorKey, type HolderId } from "./parse.js";
+import { isJsonNumber, isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const ACTOR_STREAM_PREFIX = "actor:";
+
+export interface ActorLease {
+  key: ActorKey;
+  holderId: HolderId;
+  fenceToken: bigint;
+  readonly expiresAt: string;
+  renew(): {
+    key: ActorKey;
+    holderId: HolderId;
+    fenceToken: bigint;
+    expiresAt: string;
+  };
+  release(): void;
+}
 
 export interface LocalActorHostOptions {
   clock?: ReturnType<typeof createManualClock>;
@@ -27,7 +43,7 @@ export function createLocalActorHost(options: LocalActorHostOptions = {}) {
     });
   const leaseTtlMs = requirePositiveInteger(options.leaseTtlMs ?? 30_000, "leaseTtlMs");
   const leases = new Map<string, LeaseRecord>();
-  const leaseRecords = new WeakMap<object, LeaseRecord>();
+  const leaseRecords = new WeakMap<ActorLease, LeaseRecord>();
   const snapshots = new Map<string, SnapshotRecord>();
 
   return {
@@ -74,7 +90,7 @@ export function createLocalActorHost(options: LocalActorHostOptions = {}) {
 
     state<S>(key: string, request: { initialState: S; fold: (state: S, event: DomainEvent) => S }) {
       const actorKey = parseActorKey(key);
-      if (typeof request.fold !== "function") {
+      if (!(request.fold instanceof Function)) {
         throw new TypeError("request.fold must be a function");
       }
       if (!("initialState" in request)) {
@@ -89,7 +105,7 @@ export function createLocalActorHost(options: LocalActorHostOptions = {}) {
         eventStore,
         clock,
         snapshots,
-        validateLease(lease: object) {
+        validateLease(lease: ActorLease) {
           return validateLeaseForAppend(leases, leaseRecords, clock, actorKey, lease);
         },
       });
@@ -107,13 +123,13 @@ interface LeaseRecord {
 
 interface SnapshotRecord {
   seq: number;
-  state: unknown;
+  state: JsonValue;
   savedAt: string;
 }
 
 interface DomainEvent {
   type: string;
-  [key: string]: unknown;
+  [key: string]: JsonValue;
 }
 
 class EventStoreActorState<S> {
@@ -125,10 +141,10 @@ class EventStoreActorState<S> {
     eventStore: ReturnType<typeof createRuntimeLocalEventStore>;
     clock: ReturnType<typeof createManualClock>;
     snapshots: Map<string, SnapshotRecord>;
-    validateLease: (lease: object) => LeaseRecord;
+    validateLease: (lease: ActorLease) => LeaseRecord;
   }) {}
 
-  async append(lease: object, event: DomainEvent) {
+  async append(lease: ActorLease, event: DomainEvent) {
     const leaseRecord = this.config.validateLease(lease);
     const body = normalizeDomainEvent(event);
     const events = await this.config.eventStore.read(this.config.streamId);
@@ -160,6 +176,7 @@ class EventStoreActorState<S> {
     const snapshot = this.config.snapshots.get(this.config.key);
     const snapshotSeq = snapshot?.seq ?? 0;
     const events = await this.config.eventStore.read(this.config.streamId, snapshotSeq + 1);
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     let state = structuredClone(snapshot?.state ?? this.config.initialState) as S;
     const domainEvents = extractDomainEvents(events);
 
@@ -177,7 +194,7 @@ class EventStoreActorState<S> {
     };
   }
 
-  async passivate(lease: object) {
+  async passivate(lease: ActorLease) {
     if (!lease) {
       throw new TypeError("passivate requires a lease");
     }
@@ -209,9 +226,7 @@ class EventStoreActorState<S> {
       appendOptions(events.length, "system"),
     );
 
-    if (typeof (lease as { release?: () => void }).release === "function") {
-      (lease as { release: () => void }).release();
-    }
+    lease.release();
 
     return {
       streamId: this.config.key,
@@ -234,7 +249,7 @@ function appendOptions(expectedSeq: number, holderId: string) {
 }
 
 function extractDomainEvents(
-  envelopes: Array<{ type: string; data?: Record<string, unknown> }>,
+  envelopes: Array<{ type: string; data?: JsonObject }>,
 ): DomainEvent[] {
   const domainEvents: DomainEvent[] = [];
   for (const envelope of envelopes) {
@@ -242,8 +257,8 @@ function extractDomainEvents(
       continue;
     }
     const domainEvent = envelope.data?.domainEvent;
-    if (domainEvent && typeof domainEvent === "object" && !Array.isArray(domainEvent)) {
-      domainEvents.push(domainEvent as DomainEvent);
+    if (isJsonObject(domainEvent) && isJsonString(domainEvent.type)) {
+      domainEvents.push({ ...domainEvent, type: domainEvent.type });
     }
   }
   return domainEvents;
@@ -255,7 +270,7 @@ function createLeaseFacade(
     clock: ReturnType<typeof createManualClock>;
     leaseTtlMs: number;
     leases: Map<string, LeaseRecord>;
-    leaseRecords: WeakMap<object, LeaseRecord>;
+    leaseRecords: WeakMap<ActorLease, LeaseRecord>;
   },
 ) {
   const lease = {
@@ -294,10 +309,10 @@ function createLeaseFacade(
 
 function validateLeaseForAppend(
   leases: Map<string, LeaseRecord>,
-  leaseRecords: WeakMap<object, LeaseRecord>,
+  leaseRecords: WeakMap<ActorLease, LeaseRecord>,
   clock: ReturnType<typeof createManualClock>,
   key: ActorKey,
-  lease: object,
+  lease: ActorLease,
 ) {
   const leaseRecord = leaseRecords.get(lease);
   if (!leaseRecord || leaseRecord.key !== key) {
@@ -323,29 +338,29 @@ function sameLease(current: LeaseRecord | undefined, record: LeaseRecord): boole
   );
 }
 
-function normalizeDomainEvent(event: unknown): DomainEvent {
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
+function normalizeDomainEvent(event: JsonValue): DomainEvent {
+  if (!event || !isJsonObject(event)) {
     throw new TypeError("event must be an object");
   }
-  const type = requireNonEmptyString((event as DomainEvent).type, "event.type");
-  return Object.freeze({
+  const type = requireNonEmptyString(event.type, "event.type");
+  return {
     ...structuredClone(event),
     type,
-  }) as DomainEvent;
+  };
 }
 
-function requireNonEmptyString(value: unknown, fieldName: string): string {
-  if (typeof value !== "string" || value.length === 0) {
+function requireNonEmptyString(value: JsonValue, fieldName: string): string {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
 }
 
-function requirePositiveInteger(value: unknown, fieldName: string): number {
-  if (!Number.isInteger(value) || (value as number) <= 0) {
+function requirePositiveInteger(value: JsonValue, fieldName: string): number {
+  if (!isJsonNumber(value) || !Number.isInteger(value) || value <= 0) {
     throw new TypeError(`${fieldName} must be a positive integer`);
   }
-  return value as number;
+  return value;
 }
 
 function formatInstant(timestampMs: number): string {

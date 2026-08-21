@@ -31,12 +31,9 @@ describe("the handle a container starts as", () => {
 		// not fields on the handle itself. Reaching for `handle.image` gets
 		// `undefined` rather than an error, so this is exactly the kind of thing
 		// that surfaces as a blank field in a plan.
-		expect(
-			(container() as unknown as { image?: string }).image,
-		).toBeUndefined();
-		const resource = container().manifest() as unknown as {
-			image?: string;
-		};
+		// SAFETY: the handle contract intentionally keeps image off the public handle.
+		expect("image" in container()).toBe(false);
+		const resource = container().manifest();
 		expect(resource.image).toBe("ghcr.io/example/api:1");
 	});
 
@@ -44,9 +41,8 @@ describe("the handle a container starts as", () => {
 		// The default artifact is what makes `addContainer` usable with nothing
 		// but a source. Omitting it would push the choice onto every caller, and
 		// they would each pick differently.
-		const resource = container().manifest() as unknown as {
-			build?: Record<string, unknown>;
-		};
+		const resource = container().manifest();
+		// SAFETY: the manifest builder owns this JSON build object shape.
 		expect(resource.build).toMatchObject({
 			provider: "hobo:build",
 			source: "ghcr.io/example/api:1",
@@ -81,6 +77,7 @@ describe("the handle a container starts as", () => {
 		// rather than here where the author wrote it.
 		for (const target of [{ name: "db" }, undefined, null, "db", 7]) {
 			expect(() =>
+				// SAFETY: invalid values are deliberately injected to test the boundary.
 				addContainer("api", "img", { bind: { db: target } as never }),
 			).toThrow(BindReferenceError);
 		}
@@ -294,6 +291,7 @@ describe("withBindMount", () => {
 	it("honours an explicit read-only mount", () => {
 		const handle = container();
 		handle.withBindMount?.("./config", "/etc/app", true);
+		// SAFETY: bind-mount annotations expose the tested readOnly field shape.
 		expect(
 			(handle.annotations.bindMounts as { readOnly: boolean }[])[0]?.readOnly,
 		).toBe(true);
@@ -321,6 +319,7 @@ describe("withArgs", () => {
 		// arrays; without the flatten a nested array would reach the command line
 		// as a comma-joined string.
 		const handle = container();
+		// SAFETY: the invalid nested array is deliberately injected to test flattening.
 		handle.withArgs?.(["--a", "--b"] as never, "--c");
 		expect(handle.annotations.args).toEqual(["--a", "--b", "--c"]);
 	});
@@ -376,14 +375,17 @@ describe("withLifetime", () => {
 		// "not persistent", and the data would be gone.
 		const handle = container();
 		for (const lifetime of ["ephemeral", "forever", "", "SESSION"]) {
+			// SAFETY: invalid values are deliberately injected to test rejection.
 			expect(() => handle.withLifetime?.(lifetime as never)).toThrow(
 				BindReferenceError,
 			);
 		}
 		try {
+			// SAFETY: invalid values are deliberately injected to test rejection.
 			handle.withLifetime?.("ephemeral" as never);
 			expect.unreachable("an unknown lifetime must be refused");
 		} catch (error) {
+			// SAFETY: this catch follows the BindReferenceError assertion above.
 			expect((error as BindReferenceError).message).toContain(
 				"session, persistent",
 			);
@@ -394,6 +396,7 @@ describe("withLifetime", () => {
 		// A refusal that had already written the value would leave the handle
 		// carrying exactly the thing the check rejected.
 		const handle = container();
+		// SAFETY: invalid values are deliberately injected to test rejection.
 		expect(() => handle.withLifetime?.("ephemeral" as never)).toThrow();
 		expect(handle.annotations.lifetime).toBeUndefined();
 	});
@@ -423,6 +426,7 @@ describe("waitFor and waitForCompletion", () => {
 		// Callers hold handles, not strings. Requiring the name would make every
 		// dependency edge a place to typo a resource id.
 		const handle = container();
+		// SAFETY: a component handle is deliberately passed through the boundary.
 		handle.waitFor?.(addContainer("db", "postgres:16") as never);
 		expect(handle.annotations.waitFor).toEqual([{ to: "db", until: "ready" }]);
 	});
@@ -440,6 +444,7 @@ describe("waitFor and waitForCompletion", () => {
 		// bad reference.
 		const handle = container();
 		for (const dependency of [undefined, null, 7, {}, { name: 7 }, []]) {
+			// SAFETY: invalid values are deliberately injected to test rejection.
 			expect(() => handle.waitFor?.(dependency as never)).toThrow(
 				BindReferenceError,
 			);
@@ -470,6 +475,7 @@ describe("waitFor and waitForCompletion", () => {
 			handle.waitForCompletion?.("bad name");
 			expect.unreachable("a malformed dependency must be refused");
 		} catch (error) {
+			// SAFETY: this catch follows the BindReferenceError assertion above.
 			expect((error as BindReferenceError).message).toMatch(
 				/resources\.api\.waitForCompletion|waitForCompletion/u,
 			);
@@ -483,6 +489,7 @@ describe("withDnsRecord", () => {
 		// record an intent nothing downstream honours — a hostname the author
 		// believes exists and nothing ever creates.
 		const handle = container();
+		// SAFETY: invalid values are deliberately injected to test rejection.
 		expect(() => handle.withDnsRecord?.({} as never)).toThrow(
 			BindReferenceError,
 		);
@@ -491,9 +498,11 @@ describe("withDnsRecord", () => {
 	it("says where DNS does belong", () => {
 		const handle = container();
 		try {
+			// SAFETY: invalid values are deliberately injected to test rejection.
 			handle.withDnsRecord?.({} as never);
 			expect.unreachable("DNS must be refused here");
 		} catch (error) {
+			// SAFETY: this catch follows the Error assertion above.
 			expect((error as Error).message).toContain("Yard-level");
 		}
 	});

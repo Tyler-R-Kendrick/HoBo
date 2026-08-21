@@ -18,7 +18,6 @@
  * that would send a build looking for a directory nobody named.
  */
 import { describe, expect, it } from "vitest";
-
 import {
 	APP_KIT_KINDS,
 	appKitLabel,
@@ -29,6 +28,7 @@ import {
 } from "../src/app-kits.js";
 import { connectorDefinition, defineConnector } from "../src/connector.js";
 import { env } from "../src/env.js";
+import type { JsonValue } from "../src/json.js";
 import { secretRef } from "../src/secret-ref.js";
 import {
 	CONVEX_WEBAPP_METADATA,
@@ -97,7 +97,7 @@ describe("App Kit classification", () => {
 		// asserts the runtime half: no kind returns undefined or its own name.
 		for (const kind of APP_KIT_KINDS) {
 			const label = appKitLabel(kind);
-			expect(typeof label).toBe("string");
+			expect(label).toBeTypeOf("string");
 			expect(label.length).toBeGreaterThan(0);
 			expect(label).toMatch(/Kit$/u);
 		}
@@ -130,9 +130,14 @@ describe("App Kit classification", () => {
 
 describe("webApp detection", () => {
 	/** A framework-style binding: a function carrying a stamped meta symbol. */
-	function stamped(symbol: symbol, meta: unknown) {
-		const binding = () => undefined;
-		(binding as unknown as Record<symbol, unknown>)[symbol] = meta;
+	type StampedBinding = (() => undefined) & {
+		[symbol: symbol]: JsonValue | undefined;
+	};
+	function stamped(symbol: symbol, meta: JsonValue) {
+		// SAFETY: this test binding deliberately models a framework symbol bag.
+		const binding = (() => undefined) as StampedBinding;
+		binding[symbol] = meta;
+		// SAFETY: the fixture is intentionally passed through the untyped binding boundary.
 		return binding as never;
 	}
 
@@ -168,11 +173,12 @@ describe("webApp detection", () => {
 			framework: "neutral",
 			root: "./neutral",
 		});
-		(binding as unknown as Record<symbol, unknown>)[WASP_WEBAPP_METADATA] = {
+		binding[WASP_WEBAPP_METADATA] = {
 			framework: "wasp",
 			root: "./wasp",
 		};
 		expect(
+			// SAFETY: the preceding fixture establishes a valid web-app annotation.
 			(
 				webAppAnnotationFromBinding(binding) as {
 					config: { framework: string };
@@ -185,12 +191,14 @@ describe("webApp detection", () => {
 		// The stamp lives on a framework's binding *function*. Anything else is
 		// simply not a web app, which is a normal answer rather than an error.
 		for (const binding of [undefined, null, {}, "app", 7, []]) {
+			// SAFETY: invalid fixtures test the parser boundary.
 			expect(webAppAnnotationFromBinding(binding as never)).toBeUndefined();
 		}
 	});
 
 	it("answers undefined for a function carrying no stamp", () => {
 		expect(
+			// SAFETY: an un-stamped function fixture tests the parser boundary.
 			webAppAnnotationFromBinding((() => undefined) as never),
 		).toBeUndefined();
 	});
@@ -235,6 +243,7 @@ describe("webApp detection", () => {
 			stamped(WEBAPP_META, { framework: "astro", root: "./web" }),
 		);
 		expect(Object.isFrozen(annotation)).toBe(true);
+		// SAFETY: the returned annotation contract includes a config object.
 		expect(Object.isFrozen((annotation as { config: object }).config)).toBe(
 			true,
 		);
@@ -246,7 +255,9 @@ describe("webApp detection", () => {
 		const annotation = webAppAnnotationFromBinding(
 			stamped(WEBAPP_META, { framework: "astro", root: "./web" }),
 		);
+		// SAFETY: the returned annotation is the valid provider annotation under test.
 		expect(isWebAppAnnotation(annotation as never)).toBe(true);
+		// SAFETY: invalid provider fixtures test the parser boundary.
 		expect(
 			isWebAppAnnotation({
 				provider: "other",
@@ -254,6 +265,7 @@ describe("webApp detection", () => {
 				config: {},
 			} as never),
 		).toBe(false);
+		// SAFETY: invalid option fixtures test the parser boundary.
 		expect(
 			isWebAppAnnotation({
 				provider: "hobo",
@@ -316,7 +328,7 @@ describe("the env dual surface", () => {
 		// schema field. A caller reaching for one must not find the other
 		// missing, since both are documented as the same import.
 		for (const builder of ["string", "boolean", "int", "json"] as const) {
-			expect(typeof env[builder]).toBe("function");
+			expect(env[builder]).toBeTypeOf("function");
 		}
 	});
 
@@ -373,6 +385,7 @@ describe("the connector registry", () => {
 	it("copies the definition rather than storing the caller's object", () => {
 		// `{ ...definition }`. Storing the caller's object would let a later edit
 		// change a registration that is already frozen from the registry's side.
+		// SAFETY: this fixture is narrowed to the connector definition contract.
 		const source = definition("acme.test.copied") as {
 			kind: "connector-definition";
 			id: string;
@@ -387,6 +400,7 @@ describe("the connector registry", () => {
 		// The kind discriminates this from every other stamped object a package
 		// might export. Registering one would put a non-connector into the
 		// registry under a connector symbol.
+		// SAFETY: invalid kind fixtures test the parser boundary.
 		expect(() =>
 			defineConnector({
 				...definition("acme.test.kind"),
@@ -403,6 +417,7 @@ describe("the connector registry", () => {
 			{ kind: "connector-definition", id: "a", origin: "" },
 			{ kind: "connector-definition", id: "", origin: "https://example.test" },
 		]) {
+			// SAFETY: partial fixtures test the parser boundary.
 			expect(() => defineConnector(partial as never)).toThrow(TypeError);
 		}
 	});
@@ -413,10 +428,12 @@ describe("the connector registry", () => {
 		// an import is missing.
 		try {
 			connectorDefinition(
+				// SAFETY: an unknown symbol fixture tests the registry boundary.
 				Symbol.for("hobo.connector/never.registered") as never,
 			);
 			expect.unreachable("an unregistered connector must be refused");
 		} catch (error) {
+			// SAFETY: this catch follows the Error assertion above.
 			expect((error as Error).message).toContain("import the package");
 		}
 	});

@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export const REQUIRED_BOUNDARIES = ["service", "ux", "security", "support"] as const;
 
 type Boundary = (typeof REQUIRED_BOUNDARIES)[number];
@@ -435,7 +436,17 @@ export function canCreateSupportDebugFollowUp({
   return Boolean(m0Accepted) && IMPLEMENTATION_PHASES.has(phase);
 }
 
-export function classifySupportDebugRequest(request: unknown): { owner: string; inScope: boolean } {
+export interface ScopeClassification {
+  owner: string;
+  inScope: boolean;
+}
+
+export interface ScopeValidation {
+  ok: boolean;
+  errors: string[];
+}
+
+export function classifySupportDebugRequest(request: JsonValue): ScopeClassification {
   const text = String(request ?? "").toLowerCase();
 
   if (/\b(provider credential|credential secret|secret material|raw customer data|unredacted)\b/.test(text)) {
@@ -463,13 +474,14 @@ export function classifySupportDebugRequest(request: unknown): { owner: string; 
   return { owner: "Support & Debug Tools", inScope: true };
 }
 
-export function validateSupportDebugToolsScope(scope: unknown): { ok: boolean; errors: string[] } {
+export function validateSupportDebugToolsScope(scope: JsonValue): ScopeValidation {
   const errors: string[] = [];
 
-  if (!scope || typeof scope !== "object") {
+  if (!scope || !isJsonObject(scope)) {
     return { ok: false, errors: ["scope record is required"] };
   }
 
+  // SAFETY: `const record = scope as Partial<SupportDebugToolsScope>;` is required at this I/O or test boundary.
   const record = scope as Partial<SupportDebugToolsScope>;
 
   if (record.issue !== "HOBO-426") {

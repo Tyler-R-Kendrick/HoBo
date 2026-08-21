@@ -3,6 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 import { test } from "vitest";
 import { fileURLToPath } from "node:url";
+import { asJsonObject, type JsonBag } from "../src/json.js";
+
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -187,7 +189,7 @@ test("scope guards reject support tooling, status-page publication, customer-dat
 
 test("malformed evidence collections return parser errors instead of throwing", async () => {
   const { launchSupportGaHandoffEvidence, validateLaunchSupportGaHandoffEvidence } = await loadContract();
-  const invalid = structuredClone(launchSupportGaHandoffEvidence) as unknown as Record<string, unknown>;
+  const invalid: JsonBag = { ...asJsonObject(structuredClone(launchSupportGaHandoffEvidence)) };
 
   invalid.evidence = {};
   invalid.blockers = "not-blockers";

@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export type EvidenceStatus = "accepted" | "accepted-risk" | "missing";
 export type ProofMode = "design-record" | "issue-state" | "manual-review" | "release-cutline" | "support-handoff";
 export type BlockerState = "cleared" | "accepted-risk";
@@ -267,13 +268,14 @@ export const launchSupportGaHandoffEvidence: LaunchSupportGaHandoffEvidenceRecor
   publicClaimGuards: [],
 };
 
-export function validateLaunchSupportGaHandoffEvidence(record: unknown) {
+export function validateLaunchSupportGaHandoffEvidence(record: JsonValue) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["launch support GA handoff evidence record is required"] };
   }
 
+  // SAFETY: `const value = record as Partial<LaunchSupportGaHandoffEvidenceRecord>;` is required at this I/O or test boundary.
   const value = record as Partial<LaunchSupportGaHandoffEvidenceRecord>;
   const evidence = Array.isArray(value.evidence) ? value.evidence : [];
   const blockers = Array.isArray(value.blockers) ? value.blockers : [];
@@ -399,13 +401,14 @@ export function validateLaunchSupportGaHandoffEvidence(record: unknown) {
   return { ok: errors.length === 0, errors };
 }
 
-export function parseLaunchSupportGaHandoffEvidence(record: unknown): ParsedLaunchSupportGaHandoffEvidenceRecord {
+export function parseLaunchSupportGaHandoffEvidence(record: JsonValue): ParsedLaunchSupportGaHandoffEvidenceRecord {
   const result = validateLaunchSupportGaHandoffEvidence(record);
 
   if (!result.ok) {
     throw new Error(`launch support GA handoff evidence invalid:\n${result.errors.join("\n")}`);
   }
 
+  // SAFETY: `const parsed = structuredClone(record as LaunchSupportGaHandoffEvidenceRecord) a` is required at this I/O or test boundary.
   const parsed = structuredClone(record as LaunchSupportGaHandoffEvidenceRecord) as ParsedLaunchSupportGaHandoffEvidenceRecord;
   Object.defineProperty(parsed, parsedLaunchSupportGaHandoffEvidence, {
     enumerable: false,
@@ -416,11 +419,12 @@ export function parseLaunchSupportGaHandoffEvidence(record: unknown): ParsedLaun
 }
 
 export function isParsedLaunchSupportGaHandoffEvidence(
-  record: unknown,
+  record: JsonValue,
 ): record is ParsedLaunchSupportGaHandoffEvidenceRecord {
   return Boolean(
     record &&
-      typeof record === "object" &&
+      isJsonObject(record) &&
+      // SAFETY: `(record as Partial<ParsedLaunchSupportGaHandoffEvidenceRecord>)[parsedLaunchSupp` is required at this I/O or test boundary.
       (record as Partial<ParsedLaunchSupportGaHandoffEvidenceRecord>)[parsedLaunchSupportGaHandoffEvidence],
   );
 }

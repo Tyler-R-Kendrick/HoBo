@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export const REQUIRED_BOUNDARIES = ["service", "ux", "security", "support"] as const;
 
 type Boundary = (typeof REQUIRED_BOUNDARIES)[number];
@@ -409,7 +410,17 @@ export function canCreateAuditExplorerFollowUp({
   return Boolean(m0Accepted) && IMPLEMENTATION_PHASES.has(phase);
 }
 
-export function classifyAuditExplorerRequest(request: unknown): { owner: string; inScope: boolean } {
+export interface ScopeClassification {
+  owner: string;
+  inScope: boolean;
+}
+
+export interface ScopeValidation {
+  ok: boolean;
+  errors: string[];
+}
+
+export function classifyAuditExplorerRequest(request: JsonValue): ScopeClassification {
   const text = String(request ?? "").toLowerCase();
 
   if (/\b(provider credential|credential secret|secret material|leak|cross-tenant)\b/.test(text)) {
@@ -437,13 +448,14 @@ export function classifyAuditExplorerRequest(request: unknown): { owner: string;
   return { owner: "Audit Explorer", inScope: true };
 }
 
-export function validateAuditExplorerScope(scope: unknown): { ok: boolean; errors: string[] } {
+export function validateAuditExplorerScope(scope: JsonValue): ScopeValidation {
   const errors: string[] = [];
 
-  if (!scope || typeof scope !== "object") {
+  if (!scope || !isJsonObject(scope)) {
     return { ok: false, errors: ["scope record is required"] };
   }
 
+  // SAFETY: `const record = scope as Partial<AuditExplorerScope>;` is required at this I/O or test boundary.
   const record = scope as Partial<AuditExplorerScope>;
 
   if (record.issue !== "HOBO-427") {

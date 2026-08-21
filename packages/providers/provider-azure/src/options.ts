@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json.js";
+
 // public-contract: the provider target id `.with(...)` option blocks carry.
 export const AZURE_PROVIDER_TARGET = "azure";
 
@@ -9,7 +11,7 @@ export type TypedOptionBlock = {
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
-	options: Record<string, unknown>;
+	options: JsonObject;
 };
 
 // The provider-specific options pattern (sdk-api.md "the core promise"): typed,
@@ -17,7 +19,7 @@ export type TypedOptionBlock = {
 // targets many clouds unedited.
 export const azure = {
 	with: {
-		containerApps(options: Record<string, unknown> = {}): TypedOptionBlock {
+		containerApps(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"compute",
 				"containerApps",
@@ -25,7 +27,7 @@ export const azure = {
 				options,
 			);
 		},
-		postgres(options: Record<string, unknown> = {}): TypedOptionBlock {
+		postgres(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"database",
 				"postgres",
@@ -33,7 +35,7 @@ export const azure = {
 				options,
 			);
 		},
-		blob(options: Record<string, unknown> = {}): TypedOptionBlock {
+		blob(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"objectStore",
 				"blob",
@@ -41,7 +43,7 @@ export const azure = {
 				options,
 			);
 		},
-		cosmos(options: Record<string, unknown> = {}): TypedOptionBlock {
+		cosmos(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"kv",
 				"cosmos",
@@ -49,7 +51,7 @@ export const azure = {
 				options,
 			);
 		},
-		serviceBus(options: Record<string, unknown> = {}): TypedOptionBlock {
+		serviceBus(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"queue",
 				"serviceBus",
@@ -57,7 +59,7 @@ export const azure = {
 				options,
 			);
 		},
-		redis(options: Record<string, unknown> = {}): TypedOptionBlock {
+		redis(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"cache",
 				"redis",
@@ -71,8 +73,8 @@ export const azure = {
 function optionBlock(
 	port: string,
 	optionName: string,
-	defaults: Record<string, unknown>,
-	options: Record<string, unknown>,
+	defaults: JsonObject,
+	options: JsonObject,
 ): TypedOptionBlock {
 	return {
 		providerId: AZURE_PROVIDER_TARGET,

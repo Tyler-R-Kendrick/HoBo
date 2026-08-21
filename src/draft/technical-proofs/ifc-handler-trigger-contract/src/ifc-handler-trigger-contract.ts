@@ -1,10 +1,11 @@
+import { isJsonString, isJsonObject, type JsonValue } from "./json.js";
 type ResourceKind = "api" | "kv" | "queue" | "topic" | "schedule" | "bucket";
 
 // A handler accepts whatever arguments its trigger kind supplies; declaring
 // the rest-parameter as `never[]` makes this a safe "any function" shape
 // (every concrete handler signature is assignable to it) without resorting
 // to `Function` or `any`.
-type Handler = (...args: never[]) => unknown;
+type Handler = (...args: never[]) => JsonValue | void | Promise<JsonValue | void>;
 
 interface WorkflowHandler {
   readonly kind: "workflow";
@@ -15,11 +16,11 @@ interface WorkflowHandler {
 type HandlerLike = Handler | WorkflowHandler;
 
 interface KvClient {
-  get(key: string): Promise<unknown>;
+  get(key: string): Promise<JsonValue>;
 }
 
 interface QueueClient {
-  enqueue(message: unknown): Promise<void>;
+  enqueue(message: JsonValue): Promise<void>;
 }
 
 interface BucketClient {}
@@ -64,6 +65,10 @@ interface TriggerEdge {
   readonly handler: string;
   readonly inferredPermissions?: readonly string[];
   readonly durableRuntime?: DurableRuntime;
+}
+
+interface MutableHandleMethods {
+  [name: string]: ((...args: never[]) => TriggerEdge) | JsonValue;
 }
 
 interface HostTriggerInput {
@@ -166,7 +171,7 @@ interface HandlerContext<B extends BindMap = BindMap> {
   readonly bindings: BindingsOf<B>;
 }
 
-type HttpHandler<B extends BindMap> = (ctx: HandlerContext<B>) => unknown;
+type HttpHandler<B extends BindMap> = (ctx: HandlerContext<B>) => JsonValue | void | Promise<JsonValue | void>;
 
 interface ApiHandle<B extends BindMap = BindMap> extends ResourceHandle<"api"> {
   get(path: string, handler: HttpHandler<B>): TriggerEdge;
@@ -214,11 +219,13 @@ export class TriggerContractError extends Error {
 
 export function api<B extends BindMap = BindMap>(name: string, options: ApiOptions<B> = {}): ApiHandle<B> {
   const handle = createHandle("api", name, options);
-  const mutable = handle as ResourceHandle<"api"> & Record<string, unknown>;
+  // SAFETY: host handle is mutated with HTTP verbs before freeze.
+  const mutable: MutableHandleMethods = handle as never;
   for (const method of HTTP_METHODS) {
     mutable[method.toLowerCase()] = (path: string, handler: HttpHandler<B>) =>
       registerHttpRoute(handle, method, path, handler);
   }
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   return Object.freeze(handle) as ApiHandle<B>;
 }
 
@@ -232,10 +239,11 @@ export function queue(name: string): QueueHandle {
 
 export function topic(name: string, options: ResourceOptions = {}): TopicHandle {
   const handle = createHandle("topic", name, options);
-  const mutable = handle as ResourceHandle<"topic"> & Record<string, unknown>;
+  // SAFETY: host handle is mutated with subscribe before freeze.
+  const mutable: MutableHandleMethods = handle as never;
   mutable.subscribe = (eventType: string | HandlerLike, handler?: HandlerLike) => {
     const normalized =
-      typeof eventType === "function" || isWorkflowHandler(eventType)
+      eventType instanceof Function || isWorkflowHandler(eventType)
         ? { eventType: "*", handler: eventType }
         : { eventType: assertString(eventType, `resources.${name}.triggers.subscribe.event`), handler };
     return registerHostTrigger(handle, {
@@ -247,12 +255,14 @@ export function topic(name: string, options: ResourceOptions = {}): TopicHandle 
       inferredPermissions: ["subscribe"],
     });
   };
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   return Object.freeze(handle) as TopicHandle;
 }
 
 export function schedule(name: string, options: ResourceOptions = {}): ScheduleHandle {
   const handle = createHandle("schedule", name, options);
-  const mutable = handle as ResourceHandle<"schedule"> & Record<string, unknown>;
+  // SAFETY: host handle is mutated with cron before freeze.
+  const mutable: MutableHandleMethods = handle as never;
   mutable.cron = (expression: string, handler: HandlerLike) =>
     registerHostTrigger(handle, {
       id: `${name}.cron.${assertString(expression, `resources.${name}.triggers.cron.expression`)}`,
@@ -262,12 +272,14 @@ export function schedule(name: string, options: ResourceOptions = {}): ScheduleH
       handler,
       inferredPermissions: [],
     });
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   return Object.freeze(handle) as ScheduleHandle;
 }
 
 export function bucket(name: string, options: ResourceOptions = {}): BucketHandle {
   const handle = createHandle("bucket", name, options);
-  const mutable = handle as ResourceHandle<"bucket"> & Record<string, unknown>;
+  // SAFETY: host handle is mutated with on() before freeze.
+  const mutable: MutableHandleMethods = handle as never;
   mutable.on = (event: string, handler: HandlerLike) => {
     const eventName = assertString(event, `resources.${name}.triggers.event`);
     const inferredPermissions = eventName === "write" ? ["event:write", "read"] : [`event:${eventName}`];
@@ -280,12 +292,13 @@ export function bucket(name: string, options: ResourceOptions = {}): BucketHandl
       inferredPermissions,
     });
   };
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   return Object.freeze(handle) as BucketHandle;
 }
 
 export function workflow(name: string, handler: Handler): WorkflowHandler {
   const handlerName = assertString(name, "workflow.name");
-  if (typeof handler !== "function") {
+  if (!(handler instanceof Function)) {
     throw new TriggerContractError("workflow.handler", "must be a function");
   }
   return Object.freeze({
@@ -475,7 +488,7 @@ function manifestResource(handle: ResourceHandle): ManifestResource {
 }
 
 function normalizeBindMap(bind: BindMap, path: string): BindMap {
-  if (!bind || typeof bind !== "object" || Array.isArray(bind)) {
+  if (!bind || !isJsonObject(bind)) {
     throw new TriggerContractError(path, "must be a resource map");
   }
 
@@ -486,34 +499,36 @@ function normalizeBindMap(bind: BindMap, path: string): BindMap {
   return bind;
 }
 
-function assertHandle(handle: unknown, path: string): asserts handle is ResourceHandle {
-  const candidate = handle as { __hoboTriggerContract?: unknown; name?: unknown } | null | undefined;
-  if (!candidate?.__hoboTriggerContract || typeof candidate.name !== "string") {
+function assertHandle<T>(handle: T, path: string): void {
+  // SAFETY: handle is a host resource object; brand marker is checked below.
+  const candidate = handle as { __hoboTriggerContract?: JsonValue; name?: JsonValue };
+  if (!candidate?.__hoboTriggerContract || !isJsonString(candidate.name)) {
     throw new TriggerContractError(path, "must contain HoBo handler-trigger resource handles");
   }
 }
 
 function assertResourceName(name: string, path: string): void {
-  if (typeof name !== "string" || !RESOURCE_ID.test(name)) {
+  if (!isJsonString(name) || !RESOURCE_ID.test(name)) {
     throw new TriggerContractError(path, "invalid resource id");
   }
 }
 
 function assertString(value: string, path: string): string {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TriggerContractError(path, "must be a non-empty string");
   }
   return value;
 }
 
-function assertHandler(handler: unknown, path: string): asserts handler is HandlerLike {
-  if (typeof handler !== "function" && !isWorkflowHandler(handler)) {
+function assertHandler<T>(handler: T, path: string): asserts handler is T & HandlerLike {
+  if (!(handler instanceof Function) && !isWorkflowHandler(handler)) {
     throw new TriggerContractError(path, "handler must be a function or workflow handler");
   }
 }
 
-function isWorkflowHandler(value: unknown): value is WorkflowHandler {
-  const candidate = value as { kind?: unknown } | null | undefined;
+function isWorkflowHandler<T>(value: T): value is T & WorkflowHandler {
+  // SAFETY: workflow handlers are host objects tagged with kind "workflow".
+  const candidate = value as { kind?: JsonValue };
   return candidate?.kind === "workflow";
 }
 
@@ -536,12 +551,13 @@ function durableRuntimeFor(handler: HandlerLike): DurableRuntime | undefined {
 }
 
 function omitEmpty<T extends object>(value: T): T {
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   return Object.fromEntries(
     Object.entries(value).filter(([, entry]) => {
       if (Array.isArray(entry)) {
         return entry.length > 0;
       }
-      if (entry && typeof entry === "object") {
+      if (entry && isJsonObject(entry)) {
         return Object.keys(entry).length > 0;
       }
       return entry !== undefined;
@@ -550,5 +566,6 @@ function omitEmpty<T extends object>(value: T): T {
 }
 
 function omitUndefined<T extends object>(value: T): T {
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as T;
 }

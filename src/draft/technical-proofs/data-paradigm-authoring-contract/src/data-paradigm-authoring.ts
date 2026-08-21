@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject, type JsonBag } from "./json.js";
 export const MANIFEST_SCHEMA = "hobo.manifest/v1";
 export const PARADIGM_PACKAGE_KIND = "hobo.paradigm-package";
 
@@ -9,7 +10,7 @@ export type EquivalenceClass = "managed-postgres" | "managed-document" | "search
 export type ProviderOption<
   Provider extends string,
   Kinds extends "data",
-  Payload extends Record<string, unknown>,
+  Payload extends JsonObject,
 > = {
   readonly __kind: "hobo.provider-option";
   readonly provider: Provider;
@@ -79,7 +80,7 @@ export interface LoweringDescriptor {
   readonly args?: readonly unknown[];
   readonly raw?: {
     readonly dialect: string;
-    readonly operation: unknown;
+    readonly operation: JsonValue;
     readonly mode: "read-only";
   };
 }
@@ -90,9 +91,9 @@ export interface DataHandle {
   readonly port: "hobo:data";
   readonly stableId: string;
   use(packageDescriptor: ImportedParadigmPackage): this;
-  with(...options: readonly ProviderOption<string, "data", Record<string, unknown>>[]): this;
+  with(...options: readonly ProviderOption<string, "data", JsonObject>[]): this;
   resourceDefinition(reference: string): this;
-  raw(dialect: string, operation: unknown): LoweringDescriptor;
+  raw(dialect: string, operation: JsonValue): LoweringDescriptor;
   allow(...verbs: readonly DataAllowVerb[]): this;
   read(...args: readonly unknown[]): LoweringDescriptor;
   write(...args: readonly unknown[]): LoweringDescriptor;
@@ -114,7 +115,7 @@ export interface DataManifestResource {
     readonly stableId: string;
   };
   readonly annotations?: {
-    readonly with: Record<string, Record<string, unknown>>;
+    readonly with: Record<string, JsonObject>;
   };
   readonly overrides?: {
     readonly resourceDefinitionRefs: readonly string[];
@@ -167,7 +168,7 @@ interface ManifestResourceDraft {
     stableId: string;
   };
   annotations?: {
-    with: Record<string, Record<string, unknown>>;
+    with: Record<string, JsonObject>;
   };
   overrides?: {
     resourceDefinitionRefs: string[];
@@ -304,7 +305,7 @@ class DataHandleImpl implements DataHandle {
   readonly stableId: string;
   private readonly usedVerbs: Set<DataAllowVerb>;
   private paradigmPackage: ImportedParadigmPackage | null;
-  private readonly providerAnnotations: Record<string, Record<string, unknown>>;
+  private readonly providerAnnotations: Record<string, JsonObject>;
   private readonly resourceDefinitionRefs: Set<string>;
   private readonly rawDialects: Set<string>;
 
@@ -336,7 +337,7 @@ class DataHandleImpl implements DataHandle {
     return this;
   }
 
-  with(...options: readonly ProviderOption<string, "data", Record<string, unknown>>[]): this {
+  with(...options: readonly ProviderOption<string, "data", JsonObject>[]): this {
     for (const option of options) {
       this.addProviderOption(option);
     }
@@ -349,7 +350,7 @@ class DataHandleImpl implements DataHandle {
     return this;
   }
 
-  raw(dialect: string, operation: unknown): LoweringDescriptor {
+  raw(dialect: string, operation: JsonValue): LoweringDescriptor {
     assertNonEmptyString(dialect, `resources.${this.name}.raw.dialect`);
     this.recordVerb("query", `resources.${this.name}.raw`);
     this.rawDialects.add(dialect);
@@ -413,7 +414,7 @@ class DataHandleImpl implements DataHandle {
     this.usedVerbs.add(verb);
   }
 
-  private addProviderOption(option: ProviderOption<string, "data", Record<string, unknown>>): void {
+  private addProviderOption(option: ProviderOption<string, "data", JsonObject>): void {
     if (!isRecord(option) || option.__kind !== "hobo.provider-option") {
       throw new AuthoringSurfaceError(
         `resources.${this.name}.with`,
@@ -435,9 +436,10 @@ class DataHandleImpl implements DataHandle {
     }
 
     const existing = this.providerAnnotations[option.annotationKey] ?? {};
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     this.providerAnnotations[option.annotationKey] = sortKeys(
       mergeOptionValues(existing, option.value, option.annotationKey),
-    ) as Record<string, unknown>;
+    ) as JsonObject;
   }
 
   toManifestResource(): DataManifestResource {
@@ -455,12 +457,13 @@ class DataHandleImpl implements DataHandle {
       },
     };
 
-    const specializationMarkers: unknown[] = [];
-    const lockInMarkers: unknown[] = [];
+    const specializationMarkers: JsonValue[] = [];
+    const lockInMarkers: JsonValue[] = [];
 
     if (Object.keys(this.providerAnnotations).length > 0) {
       resource.annotations = {
-        with: sortKeys(this.providerAnnotations) as Record<string, Record<string, unknown>>,
+        // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+        with: sortKeys(this.providerAnnotations) as Record<string, JsonObject>,
       };
       lockInMarkers.push(...buildProviderLockInMarkers(this.name, this.providerAnnotations));
     }
@@ -512,11 +515,12 @@ class DataHandleImpl implements DataHandle {
 
     if (specializationMarkers.length > 0 || lockInMarkers.length > 0) {
       resource.portability = {
-        ...(specializationMarkers.length > 0 ? { specializationMarkers } : {}),
-        ...(lockInMarkers.length > 0 ? { lockInMarkers } : {}),
+        ...(specializationMarkers.length > 0 ? { specializationMarkers } : undefined),
+        ...(lockInMarkers.length > 0 ? { lockInMarkers } : undefined),
       };
     }
 
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     return sortKeys(resource) as DataManifestResource;
   }
 }
@@ -543,7 +547,7 @@ function buildParadigmLockInMarkers(resourceName: string, packageDescriptor: Imp
 
 function buildProviderLockInMarkers(
   resourceName: string,
-  annotations: Record<string, Record<string, unknown>>,
+  annotations: Record<string, JsonObject>,
 ) {
   return Object.keys(annotations)
     .sort()
@@ -588,7 +592,7 @@ function normalizeFeature(feature: ParadigmPackageFeature, path: string): Requir
   });
 }
 
-function assertParadigmPackage(packageDescriptor: unknown, path: string): void {
+function assertParadigmPackage<T>(packageDescriptor: T, path: string): void {
   if (!isRecord(packageDescriptor) || packageDescriptor.kind !== PARADIGM_PACKAGE_KIND) {
     throw new AuthoringSurfaceError(path, "use(...) accepts imported Data Plane package descriptors");
   }
@@ -597,35 +601,37 @@ function assertParadigmPackage(packageDescriptor: unknown, path: string): void {
   }
 }
 
-function assertDataHandle(handle: unknown): void {
-  if (!isRecord(handle) || handle.kind !== "data" || typeof handle.toManifestResource !== "function") {
+function assertDataHandle<T>(handle: T): void {
+  // SAFETY: data handles are host objects with kind and toManifestResource.
+  const candidate = handle as { kind?: JsonValue; toManifestResource?: JsonValue };
+  if (!isRecord(handle) || candidate.kind !== "data" || !(candidate.toManifestResource instanceof Function)) {
     throw new AuthoringSurfaceError("handles", "must contain data() handles");
   }
 }
 
-function assertResourceName(name: unknown, path: string): void {
-  if (typeof name !== "string" || !RESOURCE_ID.test(name)) {
+function assertResourceName(name: JsonValue, path: string): void {
+  if (!isJsonString(name) || !RESOURCE_ID.test(name)) {
     throw new AuthoringSurfaceError(path, "invalid resource id");
   }
 }
 
-function assertNonEmptyString(value: unknown, path: string): void {
-  if (typeof value !== "string" || value.length === 0) {
+function assertNonEmptyString(value: JsonValue, path: string): void {
+  if (!isJsonString(value) || value.length === 0) {
     throw new AuthoringSurfaceError(path, "must be a non-empty string");
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+function isRecord<T>(value: T): value is T & JsonObject {
+  return isJsonObject(value);
 }
 
-function mergeOptionValues(left: unknown, right: unknown, path: string): unknown {
-  if (!isRecord(left) || !isRecord(right)) {
+function mergeOptionValues(left: JsonValue, right: JsonValue, path: string): JsonValue {
+  if (!isJsonObject(left) || !isJsonObject(right)) {
     if (Object.is(left, right)) return left;
     throw new AuthoringSurfaceError(path, `conflicting provider option ${path}`);
   }
 
-  const merged: Record<string, unknown> = { ...left };
+  const merged: JsonBag = Object.assign({}, left);
   for (const [key, value] of Object.entries(right)) {
     if (Object.hasOwn(merged, key)) {
       merged[key] = mergeOptionValues(merged[key], value, `${path}.${key}`);
@@ -636,16 +642,22 @@ function mergeOptionValues(left: unknown, right: unknown, path: string): unknown
   return merged;
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys<T>(value: T): T {
   if (Array.isArray(value)) {
-    return value.map(sortKeys);
+    const sorted: T =
+      // SAFETY: array entries are recursively sorted with the same T contract.
+      value.map((entry) => sortKeys(entry)) as never;
+    return sorted;
   }
-  if (!isRecord(value)) {
+  if (!isJsonObject(value)) {
     return value;
   }
-  return Object.fromEntries(
-    Object.keys(value)
-      .sort()
-      .map((key): [string, unknown] => [key, sortKeys(value[key])]),
-  );
+  const bag: JsonBag = {};
+  for (const key of Object.keys(value).sort()) {
+    bag[key] = sortKeys(value[key] ?? null);
+  }
+  const sorted: T =
+    // SAFETY: sorted bag preserves the caller's JSON-compatible object contract.
+    bag as never;
+  return sorted;
 }

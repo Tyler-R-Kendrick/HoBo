@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export const MANIFEST_SCHEMA: "hobo.manifest/v1";
 export const PARADIGM_PACKAGE_KIND: "hobo.paradigm-package";
 
@@ -9,7 +10,7 @@ export type EquivalenceClass = "managed-postgres" | "managed-document" | "search
 export type ProviderOption<
   Provider extends string,
   Kinds extends "data",
-  Payload extends Record<string, unknown>,
+  Payload extends JsonObject,
 > = {
   readonly __kind: "hobo.provider-option";
   readonly provider: Provider;
@@ -74,9 +75,9 @@ export interface DataHandle {
   readonly port: "hobo:data";
   readonly stableId: string;
   use(packageDescriptor: ImportedParadigmPackage): this;
-  with(...options: readonly ProviderOption<string, "data", Record<string, unknown>>[]): this;
+  with(...options: readonly ProviderOption<string, "data", JsonObject>[]): this;
   resourceDefinition(reference: string): this;
-  raw(dialect: string, operation: unknown): LoweringDescriptor;
+  raw(dialect: string, operation: JsonValue): LoweringDescriptor;
   allow(...verbs: readonly DataAllowVerb[]): this;
   read(...args: readonly unknown[]): LoweringDescriptor;
   write(...args: readonly unknown[]): LoweringDescriptor;
@@ -96,7 +97,7 @@ export interface LoweringDescriptor {
   readonly args: readonly unknown[];
   readonly raw?: {
     readonly dialect: string;
-    readonly operation: unknown;
+    readonly operation: JsonValue;
     readonly mode: "read-only";
   };
 }
@@ -114,7 +115,7 @@ export interface DataManifestResource {
     readonly stableId: string;
   };
   readonly annotations?: {
-    readonly with: Record<string, Record<string, unknown>>;
+    readonly with: Record<string, JsonObject>;
   };
   readonly overrides?: {
     readonly resourceDefinitionRefs: readonly string[];

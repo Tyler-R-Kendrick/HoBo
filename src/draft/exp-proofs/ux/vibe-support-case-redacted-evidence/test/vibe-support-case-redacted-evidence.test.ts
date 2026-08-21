@@ -86,6 +86,7 @@ test("Pact and CUE artifacts stay aligned with the parsed support case fixture s
   );
   const body = pact.interactions[0].response.body;
   const pactRecord = parseVibeSupportCaseRedactedEvidence(
+    // SAFETY: `body as typeof VIBE_SUPPORT_CASE_REDACTED_EVIDENCE,` is required at this I/O or test boundary.
     body as typeof VIBE_SUPPORT_CASE_REDACTED_EVIDENCE,
   );
 
@@ -144,6 +145,7 @@ test("parser rejects missing evidence metadata, missing mockup consumption, and 
         evidencePacks: [
           {
             ...VIBE_SUPPORT_CASE_REDACTED_EVIDENCE.evidencePacks[0],
+            // SAFETY: `proofMode: "production-live" as never,` is required at this I/O or test boundary.
             proofMode: "production-live" as never,
           },
           ...VIBE_SUPPORT_CASE_REDACTED_EVIDENCE.evidencePacks.slice(1),

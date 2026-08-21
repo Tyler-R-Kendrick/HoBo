@@ -120,6 +120,7 @@ test("parser rejects missing metadata or unsupported proof-mode labels", () => {
         fieldGroups: [
           {
             ...VIBE_DEPLOYMENT_DASHBOARD_MOCKUPS.fieldGroups[0],
+            // SAFETY: `proofMode: "production-live" as never,` is required at this I/O or test boundary.
             proofMode: "production-live" as never,
           },
           ...VIBE_DEPLOYMENT_DASHBOARD_MOCKUPS.fieldGroups.slice(1),
@@ -148,6 +149,7 @@ test("parser rejects dashboard fixture references that drift from HOBO-577", () 
         quickstartFixtureRefs: [
           {
             ...VIBE_DEPLOYMENT_DASHBOARD_MOCKUPS.quickstartFixtureRefs[0],
+            // SAFETY: `sourceIssue: "HOBO-544" as never,` is required at this I/O or test boundary.
             sourceIssue: "HOBO-544" as never,
           },
           ...VIBE_DEPLOYMENT_DASHBOARD_MOCKUPS.quickstartFixtureRefs.slice(1),

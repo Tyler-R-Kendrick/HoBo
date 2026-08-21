@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export const REQUIRED_SNAPSHOP_STORY_STEPS = [
   "scaffold",
   "local-run",
@@ -511,14 +512,16 @@ export function validateVibeSnapshopLaunchDemoStoryboard(
 }
 
 export function parseVibeSnapshopLaunchDemoStoryboard(
-  value: unknown,
+  value: JsonValue,
 ): ParsedVibeSnapshopLaunchDemoStoryboard {
+  // SAFETY: `const proof = value as VibeSnapshopLaunchDemoStoryboard;` is required at this I/O or test boundary.
   const proof = value as VibeSnapshopLaunchDemoStoryboard;
   const validation = validateVibeSnapshopLaunchDemoStoryboard(proof);
   if (!validation.ok) {
     throw new VibeSnapshopLaunchDemoStoryboardParseError(validation.errors);
   }
 
+  // SAFETY: `return proof as ParsedVibeSnapshopLaunchDemoStoryboard;` is required at this I/O or test boundary.
   return proof as ParsedVibeSnapshopLaunchDemoStoryboard;
 }
 

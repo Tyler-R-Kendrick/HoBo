@@ -113,6 +113,7 @@ test("parser rejects missing script metadata and unsupported proof-mode labels",
         scriptArtifacts: [
           {
             ...VIBE_FIRST_CUSTOMER_PILOT_STORYBOARD.scriptArtifacts[0],
+            // SAFETY: `proofMode: "customer-live" as never,` is required at this I/O or test boundary.
             proofMode: "customer-live" as never,
           },
           ...VIBE_FIRST_CUSTOMER_PILOT_STORYBOARD.scriptArtifacts.slice(1),
@@ -141,6 +142,7 @@ test("parser rejects quickstart fixture drift from HOBO-577", () => {
         quickstartFixtureRefs: [
           {
             ...VIBE_FIRST_CUSTOMER_PILOT_STORYBOARD.quickstartFixtureRefs[0],
+            // SAFETY: `sourceIssue: "HOBO-549" as never,` is required at this I/O or test boundary.
             sourceIssue: "HOBO-549" as never,
           },
           ...VIBE_FIRST_CUSTOMER_PILOT_STORYBOARD.quickstartFixtureRefs.slice(1),

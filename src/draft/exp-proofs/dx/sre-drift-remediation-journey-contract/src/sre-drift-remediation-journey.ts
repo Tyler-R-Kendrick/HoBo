@@ -15,6 +15,8 @@ import {
   createProjectionReadStore,
   diagnoseIncident,
 } from "../../../../technical-proofs/sre-diagnose-projection-contract/src/sre-diagnose-projection.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const SRE_DRIFT_REMEDIATION_JOURNEY_VERSION =
   "hobo.sre-drift-remediation-journey/v1";
@@ -399,7 +401,7 @@ function approvalRejectedEvent({ drift, approval, operator }) {
 }
 
 function normalizeDrift(candidate = {}) {
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     throw new TypeError("drift must be an object");
   }
   if (candidate.type !== "resource.DriftDetected") {
@@ -592,7 +594,7 @@ function appendFlattened(target, source) {
 }
 
 function normalizeStreamEvent(event, index) {
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
+  if (!event || !isJsonObject(event) || Array.isArray(event)) {
     throw new TypeError("stream event must be an object");
   }
   return {
@@ -622,7 +624,7 @@ function validateIso(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new TypeError(`${fieldName} is required`);
   }
   return value.trim();
@@ -636,7 +638,7 @@ function slug(value) {
 }
 
 function freeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   if (value instanceof Map || value instanceof Set) {

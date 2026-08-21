@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const TOPOLOGY_CONTRACT_VERSION = "hobo.topology-objects/v1" as const;
 
 // domain-view: parse-produced draft-proof record; its wire form is the ProviderSelection proto message in data-models/.
@@ -5,7 +6,7 @@ export interface ProviderSelection {
   readonly kind: "provider-selection";
   readonly providerId: string;
   readonly selector: string;
-  readonly options: Readonly<Record<string, unknown>>;
+  readonly options: Readonly<JsonObject>;
 }
 
 export interface BindleResourceDescriptor {
@@ -35,7 +36,7 @@ export interface Camp {
   readonly env: string;
   readonly envType: string;
   readonly providerId: string;
-  readonly runtime: unknown;
+  readonly runtime: JsonValue;
   readonly bindle: Bindle;
   readonly mappings: {
     readonly defaultProvider: ProviderSelection | null;
@@ -82,10 +83,10 @@ export type BindleResourceInput =
       readonly stableId?: string;
       readonly portRef?: readonly string[];
       readonly provider?: string;
-      readonly defaultProvider?: unknown;
-      readonly tiers?: unknown;
-      readonly bindings?: unknown;
-      readonly providerAnnotations?: unknown;
+      readonly defaultProvider?: JsonValue;
+      readonly tiers?: JsonValue;
+      readonly bindings?: JsonValue;
+      readonly providerAnnotations?: JsonValue;
       readonly options?: { readonly providerOptions?: unknown };
       readonly annotations?: { readonly with?: unknown };
     };
@@ -93,7 +94,7 @@ export type BindleResourceInput =
 export function providerSelection(
   providerId: string,
   selector = "default",
-  options: Readonly<Record<string, unknown>> = {},
+  options: Readonly<JsonObject> = {},
 ): ProviderSelection {
   requireName("providerId", providerId);
   requireName("selector", selector);
@@ -111,7 +112,7 @@ export function providerSelection(
 
 export function bindle(name: string, builder: (collector: BindleCollector) => void): Bindle {
   requireName("bindle name", name);
-  if (typeof builder !== "function") {
+  if (!(builder instanceof Function)) {
     throw new TypeError("bindle builder must be a function");
   }
 
@@ -188,7 +189,7 @@ export function camp(name: string, config: CampConfig): Camp {
 
 export interface CampConfig {
   readonly bindle: Bindle;
-  readonly runtime: unknown;
+  readonly runtime: JsonValue;
   readonly envType?: string;
   readonly defaultProvider?: ProviderSelection;
   readonly tiers?: Readonly<Record<string, ProviderSelection>>;
@@ -264,7 +265,7 @@ export function descriptorFromHandle(handle: {
 
 function normalizeResourceDescriptor(resource: BindleResourceInput): BindleResourceDescriptor {
   const descriptor =
-    typeof resource?.toDescriptor === "function" ? resource.toDescriptor() : resource;
+    resource?.toDescriptor instanceof Function ? resource.toDescriptor() : resource;
   if (!isPlainObject(descriptor)) {
     throw new TypeError("Bindle resources must be descriptor objects");
   }
@@ -287,7 +288,7 @@ function normalizeResourceDescriptor(resource: BindleResourceInput): BindleResou
 }
 
 function assertNoProviderSpecificFields(value: BindleResourceInput): void {
-  if (!value || typeof value !== "object") return;
+  if (!value || !isJsonObject(value)) return;
   const annotations = value.annotations?.with;
   const providerOptions = value.options?.providerOptions;
   if (
@@ -362,10 +363,15 @@ function buildResolutionPrecedence(
   );
 }
 
+interface ProviderSelectionPick {
+  key: string | null;
+  selector: ProviderSelection | null;
+}
+
 function firstSelection(
   map: Readonly<Record<string, ProviderSelection>>,
   keys: readonly string[],
-): { key: string | null; selector: ProviderSelection | null } {
+): ProviderSelectionPick {
   for (const key of keys) {
     if (map[key]) {
       return { key, selector: map[key]! };
@@ -374,7 +380,12 @@ function firstSelection(
   return { key: null, selector: null };
 }
 
-function normalizeCampId(name: string, providerId: string): { id: string; env: string } {
+interface CampId {
+  id: string;
+  env: string;
+}
+
+function normalizeCampId(name: string, providerId: string): CampId {
   const suffix = `-${providerId}`;
   if (name.endsWith(suffix)) {
     const env = name.slice(0, -suffix.length);
@@ -413,16 +424,16 @@ function requireArray<T>(value: readonly T[] | undefined, fieldName: string): re
 }
 
 function requireName(label: string, value: string): void {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+function isPlainObject(value: JsonValue): value is JsonObject {
+  return Boolean(value && isJsonObject(value) && !Array.isArray(value));
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: JsonValue): JsonValue {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
@@ -437,7 +448,7 @@ function sortKeys(value: unknown): unknown {
 }
 
 function deepFreeze<T>(value: T): T {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

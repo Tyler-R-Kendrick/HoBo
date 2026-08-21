@@ -230,7 +230,7 @@ export default defineConfig({
 				"packages/mcp/**": { statements: 95, branches: 85, functions: 96, lines: 97 },
 				"packages/packs/**": { statements: 88, branches: 83, functions: 93, lines: 87 },
 				"packages/patterns/**": { statements: 90, branches: 82, functions: 95, lines: 91 },
-				"packages/pixel-village/**": { statements: 58, branches: 56, functions: 60, lines: 58 },
+				"packages/pixel-village/**": { statements: 58, branches: 57, functions: 60, lines: 59 },
 				"packages/policy/**": { statements: 97, branches: 95, functions: 100, lines: 97 },
 				"packages/providers/provider-aws/**": { statements: 93, branches: 80, functions: 98, lines: 93 },
 				"packages/providers/provider-ax/**": { statements: 95, branches: 70, functions: 100, lines: 100 },

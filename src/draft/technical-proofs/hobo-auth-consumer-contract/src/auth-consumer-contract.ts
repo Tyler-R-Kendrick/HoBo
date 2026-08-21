@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const AUTH_CONSUMER_CONTRACT_SCHEMA_VERSION = "hobo.auth.consumer-contract/v1";
 export const AUTH_CONSUMER_CONTRACT_SCHEMA_ID =
@@ -42,8 +44,8 @@ export function defineAuthConsumerContract(input) {
     canDeployGate,
     verificationBoundary: {
       devModeAsserts: [
-        "principal-shape",
-        "claims-shape",
+        "principal-claim",
+        "claims-claim",
         "roles",
         "tenancy",
         "scopes",
@@ -99,7 +101,7 @@ export function assertAuthFixtureSatisfiesContract(contract, fixture) {
   if (ctxUser.kind !== normalizedContract.subject.kind) {
     throw new Error("ctx.user kind does not satisfy auth contract");
   }
-  assertClaimShape(normalizedContract, ctxUser.claims);
+  assertClaimContract(normalizedContract, ctxUser.claims);
   assertIncludes(ctxUser.roles, normalizedContract.subject.requiredRoles, "role");
   assertIncludes(ctxUser.scopes, normalizedContract.subject.requiredScopes, "scope");
   if (ctxUser.tenant?.platform !== normalizedContract.subject.tenancy.platformTenant) {
@@ -186,18 +188,18 @@ function normalizeRequiredClaims(claims, idClaim) {
   }
 
   const normalized = {};
-  for (const [name, shape] of Object.entries(claims).sort(([left], [right]) =>
+  for (const [name, claim] of Object.entries(claims).sort(([left], [right]) =>
     left.localeCompare(right),
   )) {
-    assertObject(shape, `subject.requiredClaims.${name}`);
-    if (shape.type === "string") {
-      assertAllowedProperties(shape, `subject.requiredClaims.${name}`, new Set(["type"]));
+    assertObject(claim, `subject.requiredClaims.${name}`);
+    if (claim.type === "string") {
+      assertAllowedProperties(claim, `subject.requiredClaims.${name}`, new Set(["type"]));
       normalized[name] = { type: "string" };
       continue;
     }
-    if (Array.isArray(shape.enum)) {
-      assertAllowedProperties(shape, `subject.requiredClaims.${name}`, new Set(["enum"]));
-      normalized[name] = { enum: normalizeStringSet(shape.enum, `subject.requiredClaims.${name}.enum`) };
+    if (Array.isArray(claim.enum)) {
+      assertAllowedProperties(claim, `subject.requiredClaims.${name}`, new Set(["enum"]));
+      normalized[name] = { enum: normalizeStringSet(claim.enum, `subject.requiredClaims.${name}.enum`) };
       continue;
     }
     throw new Error(`claim '${name}' must declare type:string or enum`);
@@ -316,10 +318,10 @@ function normalizeRoleOverrides(contract, roleOverrides) {
 function buildClaims(contract, tenant, overrides) {
   assertObject(overrides, "session claim overrides");
   const claims = {};
-  for (const [name, shape] of Object.entries(contract.subject.requiredClaims)) {
+  for (const [name, claim] of Object.entries(contract.subject.requiredClaims)) {
     const value = Object.hasOwn(overrides, name)
       ? normalizeClaimOverride(contract, name, overrides[name])
-      : defaultClaimValue(name, shape);
+      : defaultClaimValue(name, claim);
     claims[name] = value;
   }
   claims[contract.subject.tenancy.appTenantClaim] = tenant;
@@ -337,31 +339,31 @@ function normalizeClaimOverride(contract, name, value) {
   return value;
 }
 
-function defaultClaimValue(name, shape) {
+function defaultClaimValue(name, claim) {
   if (name === "sub") {
     return "fixture-user";
   }
   if (name === "email") {
     return "fixture@example.test";
   }
-  if (shape.enum) {
-    return shape.enum[0];
+  if (claim.enum) {
+    return claim.enum[0];
   }
   return `${name}-fixture`;
 }
 
-function assertClaimShape(contract, claims) {
+function assertClaimContract(contract, claims) {
   assertObject(claims, "ctx.user.claims");
-  for (const [name, shape] of Object.entries(contract.subject.requiredClaims)) {
+  for (const [name, claim] of Object.entries(contract.subject.requiredClaims)) {
     const value = claims[name];
-    if (shape.type === "string") {
-      if (typeof value !== "string" || value.length === 0) {
+    if (claim.type === "string") {
+      if (!isJsonString(value) || value.length === 0) {
         throw new Error(`claim '${name}' must be a string`);
       }
       continue;
     }
-    if (!shape.enum.includes(value)) {
-      throw new Error(`claim '${name}' must be one of ${shape.enum.join(", ")}`);
+    if (!claim.enum.includes(value)) {
+      throw new Error(`claim '${name}' must be one of ${claim.enum.join(", ")}`);
     }
   }
 }
@@ -391,7 +393,7 @@ function sortForJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortForJson);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.keys(value)
         .sort()
@@ -406,7 +408,7 @@ function normalizeStringSet(values, field) {
     throw new Error(`${field} must be an array`);
   }
   const normalized = [...new Set(values.map((value, index) => {
-    if (typeof value !== "string" || value.length === 0) {
+    if (!isJsonString(value) || value.length === 0) {
       throw new Error(`${field}[${index}] must be a non-empty string`);
     }
     return value;
@@ -422,14 +424,14 @@ function assertLiteral(value, field, expected) {
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
 }
 
 function assertObject(value, field) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  if (!isJsonObject(value)) {
     throw new Error(`${field} must be an object`);
   }
 }
@@ -444,7 +446,7 @@ function assertAllowedProperties(value, field, allowedProperties) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const nested of Object.values(value)) {

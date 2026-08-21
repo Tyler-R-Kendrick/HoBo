@@ -8,7 +8,9 @@
  * populated yet, and a history that skips a step whose content changed applies
  * a migration nobody ran.
  */
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion -- malformed fixtures require boundary casts. */
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../src/json.js";
 
 import {
 	defineTrail,
@@ -20,21 +22,23 @@ import {
 	wireTrailPhaseDependencies,
 } from "../src/index.js";
 
-function step(id: string, kind: string, extra: Record<string, unknown> = {}) {
+function step(id: string, kind: string, extra: JsonObject = {}) {
+	// SAFETY: test steps intentionally bypass the production parser.
 	return { id, kind, ...extra } as never;
 }
 
-function codeOf(error: unknown): string | undefined {
-	return (error as { code?: string }).code;
+type CodedError = Error & { readonly code?: string };
+function codeOf(error: CodedError): string | undefined {
+	return error.code;
 }
 
-function expectRejection(run: () => unknown, code: string): void {
+function expectRejection(run: () => void, code: string): void {
 	try {
 		run();
 	} catch (error) {
 		// The code is how a caller distinguishes an authoring mistake from a
 		// runtime failure; both reach the same catch otherwise.
-		expect(codeOf(error), (error as Error).message).toBe(code);
+		expect(codeOf(/* SAFETY: caught errors are parser failures. */ error as CodedError), error.message).toBe(code);
 		return;
 	}
 	expect.unreachable(`expected a ${code} rejection`);
@@ -87,8 +91,9 @@ describe("defineTrail", () => {
 		]) {
 			// The pair identifies the trail in history; without both, two
 			// different migrations could share a history row.
-			expectRejection(
-				() => defineTrail(input as never),
+				expectRejection(
+					// SAFETY: malformed fixtures intentionally bypass the parser type.
+					() => defineTrail(input as never),
 				"trail-definition-invalid",
 			);
 		}
@@ -96,6 +101,7 @@ describe("defineTrail", () => {
 
 	it("requires either steps or a recipe list", () => {
 		expectRejection(
+			// SAFETY: this fixture omits required fields to test rejection.
 			() => defineTrail({ id: "t1", version: "1.0.0" } as never),
 			"trail-definition-empty",
 		);
@@ -106,7 +112,8 @@ describe("defineTrail", () => {
 					version: "1.0.0",
 					steps: [],
 					recipeList: [],
-				} as never),
+					// SAFETY: this fixture omits required fields to test rejection.
+				} /* SAFETY: malformed fixture intentionally bypasses the parser type. */ as never),
 			"trail-definition-empty",
 		);
 	});
@@ -126,6 +133,7 @@ describe("defineTrail", () => {
 				defineTrail({
 					id: "t1",
 					version: "1.0.0",
+					// SAFETY: malformed step fixture tests parser rejection.
 					steps: [{ id: "s1" } as never],
 				}),
 			"trail-step-invalid",
@@ -416,7 +424,7 @@ describe("orderTrailSteps", () => {
 });
 
 describe("TrailHistoryStore", () => {
-	const entry = (overrides: Record<string, unknown> = {}) =>
+	const entry = (overrides: JsonObject = {}) =>
 		({
 			trailId: "t1",
 			stepId: "s1",
@@ -426,7 +434,8 @@ describe("TrailHistoryStore", () => {
 			status: "applied",
 			appliedAt: "2026-08-08T00:00:00.000Z",
 			...overrides,
-		}) as never;
+		// SAFETY: override fixtures intentionally bypass the production parser.
+		}) /* SAFETY: override fixture intentionally bypasses the parser type. */ as never;
 
 	it("records an entry and stamps the schema version", () => {
 		const store = new TrailHistoryStore();

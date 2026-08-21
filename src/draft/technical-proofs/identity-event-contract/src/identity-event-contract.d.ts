@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export const IDENTITY_EVENT_SCHEMA_VERSION: "hobo.identity-events/v1";
 export const IDENTITY_EVENT_TYPES: readonly string[];
 export const CREDENTIAL_AUDIT_RETENTION: {
@@ -23,16 +24,16 @@ export interface IdentityEvent {
   correlationId: string;
   causationId: string;
   retention: typeof CREDENTIAL_AUDIT_RETENTION;
-  data: Record<string, unknown>;
+  data: JsonObject;
 }
 
 export function createIdentityEvent(
   type: string,
-  data: Record<string, unknown>,
+  data: JsonObject,
   overrides?: Partial<IdentityEvent>,
 ): IdentityEvent;
 export function createFixtureEventForType(type: string): IdentityEvent;
-export function validateIdentityEvent(event: unknown): { ok: boolean; errors: string[] };
+export function validateIdentityEvent(event: JsonValue): { ok: boolean; errors: string[] };
 export function roundTripIdentityEvent(event: IdentityEvent): IdentityEvent;
 export function foldCredentialAudit(events: IdentityEvent[]): {
   chains: Array<{
@@ -48,5 +49,5 @@ export function foldCredentialAudit(events: IdentityEvent[]): {
   }>;
   grantsById: Record<string, IdentityEvent>;
   revokedGrantIds: string[];
-  anomalies: Array<Record<string, unknown>>;
+  anomalies: Array<JsonObject>;
 };

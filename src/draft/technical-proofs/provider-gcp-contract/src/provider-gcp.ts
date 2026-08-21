@@ -5,6 +5,8 @@ import {
   outputPlaceholder,
   validateEmission
 } from "../../hobo-realize-emission-contract/src/realize-emission-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const GCP_PROVIDER_ID = "@hobo/provider-gcp";
 export const GCP_PROVIDER_VERSION = "hobo.provider-gcp/v1";
@@ -280,7 +282,7 @@ export function mergeGcpResolvedOptions(_provider, optionBlocks = []) {
       optionName: block.optionName ?? prior.optionName,
       options: {
         ...prior.options,
-        ...(block.options ?? {})
+        ...block.options
       }
     });
   }
@@ -661,26 +663,26 @@ function normalizeCampEvidence(evidence = "pass", capability) {
     iam: true,
     mtls: true,
     quota: true,
-    ...(evidence[capability] ?? evidence.default ?? {})
+    ...(evidence[capability] ?? evidence.default)
   };
 }
 
 function normalizeHintValues(value) {
   if (Array.isArray(value)) return new Set(value);
-  if (!value || typeof value !== "object") return new Set();
+  if (!value || !isJsonObject(value)) return new Set();
 
   const features = new Set();
   for (const [key, hintValue] of Object.entries(value)) {
     if (key === "region") continue;
     features.add(key);
-    if (typeof hintValue === "string") features.add(hintValue);
+    if (isJsonString(hintValue)) features.add(hintValue);
   }
   return features;
 }
 
 function normalizePreferHints(value, definition) {
   if (Array.isArray(value)) return value.filter((feature) => definition.features.includes(feature));
-  if (!value || typeof value !== "object") return [];
+  if (!value || !isJsonObject(value)) return [];
   return Object.keys(value);
 }
 

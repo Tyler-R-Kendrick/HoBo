@@ -5,6 +5,8 @@ import {
   decideResourceDefinition,
   matchingDecisionToEvent
 } from "../../matching-engine-skeleton-contract/src/matching-engine.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const PLATFORM_ENGINEER_FLOW_VERSION = "hobo.platform-engineer-flow/v1";
 
@@ -261,10 +263,10 @@ function normalizeManifest(manifest, errors) {
 
   const seen = new Set();
   const resources = manifest.resources.map((resource, index) => {
-    if (typeof resource?.id !== "string" || resource.id.length === 0) {
+    if (!isJsonString(resource?.id) || resource.id.length === 0) {
       errors.push(`resource[${index}].id is required`);
     }
-    if (typeof resource?.type !== "string" || resource.type.length === 0) {
+    if (!isJsonString(resource?.type) || resource.type.length === 0) {
       errors.push(`resource[${index}].type is required`);
     }
     if (seen.has(resource.id)) {
@@ -386,7 +388,7 @@ function canonicalize(value) {
   if (Array.isArray(value)) {
     return value.map(canonicalize);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(

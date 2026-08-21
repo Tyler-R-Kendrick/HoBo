@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const REQUIRED_PROFILE_FIELDS = [
   "industry",
   "team-type",
@@ -145,7 +146,7 @@ export const PERSONA_OPERATING_PROFILE_CONTRACT = {
 export function validateOperatingProfileContract(contract) {
   const errors = [];
 
-  if (!contract || typeof contract !== "object") {
+  if (!contract || !isJsonObject(contract)) {
     return { ok: false, errors: ["contract is required"] };
   }
 
@@ -217,7 +218,7 @@ export function validateOperatingProfileContract(contract) {
 export function validateRecommendationMemoryClaim(claim) {
   const errors = [];
 
-  if (!claim || typeof claim !== "object") {
+  if (!claim || !isJsonObject(claim)) {
     return { ok: false, errors: ["recommendation memory claim is required"] };
   }
 
@@ -272,7 +273,7 @@ function hasValue(value) {
   if (Array.isArray(value)) {
     return value.length > 0;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.keys(value).length > 0;
   }
   return value !== undefined && value !== null && value !== "";

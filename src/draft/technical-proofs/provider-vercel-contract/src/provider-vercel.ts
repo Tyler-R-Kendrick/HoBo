@@ -285,7 +285,7 @@ export function runVercelProviderContract(provider) {
     }
   }
   for (const builder of ["web", "function", "blob", "neonPostgres", "upstashKv"]) {
-    if (typeof provider.with?.[builder] !== "function") {
+    if (!(provider.with?.[builder] instanceof Function)) {
       errors.push(`missing Vercel .with builder ${builder}`);
     }
   }
@@ -308,7 +308,7 @@ export function runVercelProviderContract(provider) {
   return {
     ok: errors.length === 0,
     checked: capabilityPorts,
-    ...(errors.length > 0 ? { errors } : {})
+    ...(errors.length > 0 ? { errors } : undefined)
   };
 }
 
@@ -498,7 +498,7 @@ function negotiateVercel(port, hints = {}) {
   return {
     requireSatisfied: missing.length === 0,
     preferHonored: Object.keys(prefer),
-    ...(missing.length > 0 ? { missing, reason } : {})
+    ...(missing.length > 0 ? { missing, reason } : undefined)
   };
 }
 

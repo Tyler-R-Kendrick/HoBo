@@ -1,9 +1,11 @@
 import { createHash } from "node:crypto";
+import { isJsonObject } from "./json.js";
+
 
 const REPORT_VERSION = "hobo.portabilityReport/v1";
 const DEPLOYMENT_PLANNED_EVENT = "deployment.Planned";
 
-const SHARED_CONFORMANCE_CLAIMS = Object.freeze(["compute", "database", "objectStore", "queue", "cache"]);
+const _SHARED_CONFORMANCE_CLAIMS = Object.freeze(["compute", "database", "objectStore", "queue", "cache"]);
 const FLY_CAPABILITY_CLAIMS = Object.freeze(["compute", "volume", "database", "objectStore", "queue", "cache"]);
 const RESOURCE_CLASSES = Object.freeze({
   compute: {
@@ -122,9 +124,9 @@ class FlyProvider {
     this.resources = new Map();
     this.nextId = 0;
     this.manifest = deepFreeze({ claimedCapabilities: [...FLY_CAPABILITY_CLAIMS] });
-    this.capabilities = Object.freeze([
-      ...FLY_CAPABILITY_CLAIMS.map((type) => ({ type, ...RESOURCE_CLASSES[type] }))
-    ]);
+    this.capabilities = Object.freeze(
+      FLY_CAPABILITY_CLAIMS.map((type) => ({ type, ...RESOURCE_CLASSES[type] })),
+    );
     this.defaultDefinitions = deepFreeze(
       Object.entries(RESOURCE_CLASSES).map(([type, equivalence]) => ({
         id: `fly.default.${type}`,
@@ -503,7 +505,7 @@ function sha256(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   Object.freeze(value);

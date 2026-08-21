@@ -5,6 +5,7 @@ import {
 	generateKeyPairSync,
 	type KeyObject,
 } from "node:crypto";
+import { isJsonNumber, isJsonString, type JsonObject } from "./json.js";
 
 export const JWT_ALGORITHM = "RS256";
 
@@ -12,7 +13,7 @@ export type KmsLike = Readonly<{
 	hasKey(kid: string): boolean;
 	generateRsaKey(kid: string): void;
 	sign(kid: string, payload: string): Buffer;
-	publicJwk(kid: string): Record<string, unknown>;
+	publicJwk(kid: string): JsonObject;
 }>;
 
 export function createInMemoryKms(): KmsLike {
@@ -57,6 +58,10 @@ export function createInMemoryKms(): KmsLike {
 			};
 		},
 	};
+}
+
+export interface JsonWebKeySet {
+	readonly keys: JsonObject[];
 }
 
 export type OidcDiscovery = Readonly<{
@@ -112,7 +117,7 @@ export class JwtSvidIssuer {
 		};
 	}
 
-	jwks(): Readonly<{ keys: Record<string, unknown>[] }> {
+	jwks(): JsonWebKeySet {
 		return { keys: this.jwksKeyIds.map((kid) => this.kms.publicJwk(kid)) };
 	}
 
@@ -137,25 +142,27 @@ export class JwtSvidIssuer {
 
 export async function verifyJwtWithJwks(
 	token: string,
-	jwks: Readonly<{ keys: Record<string, unknown>[] }>,
+	jwks: Readonly<{ keys: JsonObject[] }>,
 	options: { issuer: string; audience: string; now: number },
 ): Promise<{
-	header: Record<string, unknown>;
-	claims: Record<string, unknown>;
+	header: JsonObject;
+	claims: JsonObject;
 }> {
 	const [encodedHeader, encodedClaims, encodedSignature] = token.split(".");
 	if (!encodedHeader || !encodedClaims || !encodedSignature) {
 		throw new Error("JWT must have three segments");
 	}
 
+	// SAFETY: assertion to `JSON.parse( fromBase64Url(encodedHeader).toString("utf8"), ) as JsonObject` is required at this boundary.
 	const header = JSON.parse(
 		fromBase64Url(encodedHeader).toString("utf8"),
-	) as Record<string, unknown>;
+	) as JsonObject;
+	// SAFETY: assertion to `JSON.parse( fromBase64Url(encodedClaims).toString("utf8"), ) as JsonObject` is required at this boundary.
 	const claims = JSON.parse(
 		fromBase64Url(encodedClaims).toString("utf8"),
-	) as Record<string, unknown>;
+	) as JsonObject;
 	const kid = header.kid;
-	if (typeof kid !== "string") {
+	if (!isJsonString(kid)) {
 		throw new Error("JWT header missing kid");
 	}
 	const key = jwks.keys.find((candidate) => candidate.kid === kid);
@@ -185,17 +192,17 @@ export async function verifyJwtWithJwks(
 	}
 	const exp = claims.exp;
 	const nbf = claims.nbf;
-	if (typeof exp !== "number" || exp <= options.now) {
+	if (!isJsonNumber(exp) || exp <= options.now) {
 		throw new Error("JWT is expired");
 	}
-	if (typeof nbf !== "number" || nbf > options.now) {
+	if (!isJsonNumber(nbf) || nbf > options.now) {
 		throw new Error("JWT is not yet valid");
 	}
 
 	return { header, claims };
 }
 
-function toBase64UrlJson(value: unknown): string {
+function toBase64UrlJson<T>(value: T): string {
 	return toBase64Url(Buffer.from(JSON.stringify(value)));
 }
 

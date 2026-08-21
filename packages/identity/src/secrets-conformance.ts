@@ -3,6 +3,8 @@
  * ADR-0027 acceptance criterion.
  */
 // Value side must not be a scrubbed placeholder ([OK]) or short enum/config token.
+import { isJsonString } from "./json.js";
+
 const PLAINTEXT_PATTERNS: readonly RegExp[] = Object.freeze([
 	/"password"\s*:\s*"(?!\[OK\])[^"]{4,}"/i,
 	/"secret"\s*:\s*"(?!\[OK\])[^"]{8,}"/i,
@@ -38,9 +40,9 @@ export function assertNoPlaintextConformance(surfaces: {
 	const hits: PlaintextScanHit[] = [];
 	const allow = surfaces.allowSubstrings ?? [];
 
-	const check = (surface: string, value: unknown) => {
+	const check = <T>(surface: string, value: T) => {
 		if (value === undefined) return;
-		let json = typeof value === "string" ? value : JSON.stringify(value);
+		let json = isJsonString(value) ? value : JSON.stringify(value);
 		for (const a of allow) {
 			json = json.split(a).join("[ALLOWED]");
 		}

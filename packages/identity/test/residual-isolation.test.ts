@@ -14,6 +14,7 @@ import {
  */
 describe("residual secrets isolation", () => {
 	it("identity package does not depend on adapter-openbao", () => {
+		// SAFETY: assertion to `JSON.parse( readFileSync(new URL("../package.json", import.meta.url), "utf8"), ) as { dependencies?: Record<string, stri` is required at this boundary.
 		const pkg = JSON.parse(
 			readFileSync(new URL("../package.json", import.meta.url), "utf8"),
 		) as { dependencies?: Record<string, string> };

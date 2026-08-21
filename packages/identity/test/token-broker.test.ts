@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-
 import {
 	type ActiveSvidRecord,
 	createFixtureHostAttestor,
@@ -9,6 +8,7 @@ import {
 	mintOidcFederationAssertion,
 	TokenBroker,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
 const ISSUER_URL = "https://identity.yard.example";
 const NOW = "2026-06-25T15:00:00.000Z";
@@ -21,7 +21,7 @@ const CODE_DIGEST =
 // the in-memory vault; the secret-scan test below proves it never leaks out.
 const FIXTURE_ROOT_SECRET = "fixture-root-credential-3f9a-DO-NOT-SHIP";
 
-function launchMeasurement(overrides: Record<string, unknown> = {}) {
+function launchMeasurement(overrides: JsonObject = {}) {
 	return {
 		runId: "run-20260625-identity-628",
 		tenant: "tenant-a",

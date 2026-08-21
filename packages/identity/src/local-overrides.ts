@@ -22,6 +22,7 @@ export type LocalOverrideFile = Readonly<{
 export type LocalOverrideError = Error & { code: string };
 
 function fail(code: string, message: string): never {
+	// SAFETY: assertion to `ject.assign(new Error(message), { code }) as LocalOverrideError; ` is required at this boundary.
 	throw Object.assign(new Error(message), { code }) as LocalOverrideError;
 }
 
@@ -90,6 +91,7 @@ export function decryptLocalOverrides(
 		decipher.update(Buffer.from(file.ciphertext, "base64")),
 		decipher.final(),
 	]).toString("utf8");
+	// SAFETY: assertion to `ON.parse(plain) as Record<string, string | number | boolean>; ` is required at this boundary.
 	const parsed = JSON.parse(plain) as Record<string, string | number | boolean>;
 	for (const k of Object.keys(parsed)) {
 		if (!file.allowedKeys.includes(k)) {

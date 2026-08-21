@@ -1,4 +1,10 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 export const ATTESTATION_SCHEMA_VERSION = "hobo.workload-attestation/v1";
 
@@ -27,7 +33,7 @@ export type LaunchMeasurement = Readonly<{
 export type AttestationDocument = Readonly<{
 	schemaVersion: string;
 	runId: string;
-	claimed: Readonly<Record<string, unknown>>;
+	claimed: JsonObject;
 	launchMeasurement: LaunchMeasurement;
 	hostSignature: Readonly<{
 		algorithm: string;
@@ -70,7 +76,7 @@ export function createFixtureHostAttestor(options: {
 	return {
 		createDocument(input: {
 			launchMeasurement: LaunchMeasurement;
-			claimed?: Readonly<Record<string, unknown>>;
+			claimed?: JsonObject;
 		}): AttestationDocument {
 			const measured = { ...input.launchMeasurement };
 			return {
@@ -92,8 +98,8 @@ export function createFixtureHostAttestor(options: {
 	};
 }
 
-export function verifyWorkloadAttestation(
-	document: unknown,
+export function verifyWorkloadAttestation<T>(
+	document: T,
 	options: {
 		knownImageDigests?: readonly string[];
 		hostPublicKeys?: readonly {
@@ -119,6 +125,7 @@ export function verifyWorkloadAttestation(
 		return fail("launch-measurement-invalid");
 	}
 
+	// SAFETY: assertion to `document.launchMeasurement as LaunchMeasurement` is required at this boundary.
 	const measurement = document.launchMeasurement as LaunchMeasurement;
 	const measurementError = validateLaunchMeasurement(measurement);
 	if (measurementError) {
@@ -133,6 +140,7 @@ export function verifyWorkloadAttestation(
 	if (
 		!verifyHostSignature(
 			measurement,
+			// SAFETY: assertion to `document.hostSignature as AttestationDocument["hostSignature"]` is required at this boundary.
 			document.hostSignature as AttestationDocument["hostSignature"],
 			options.hostPublicKeys ?? [],
 		)
@@ -166,7 +174,8 @@ export function verifyWorkloadAttestation(
 	};
 
 	const claimConflict = detectClaimConflict(
-		document.claimed as Record<string, unknown>,
+		// SAFETY: assertion to `document.claimed as JsonObject` is required at this boundary.
+		document.claimed as JsonObject,
 		measurement,
 	);
 	if (claimConflict) {
@@ -261,7 +270,7 @@ function validateLaunchMeasurement(
 }
 
 function detectClaimConflict(
-	claimed: Record<string, unknown>,
+	claimed: JsonObject,
 	measurement: LaunchMeasurement,
 ): { field: string; claimed: unknown; measured: unknown } | undefined {
 	if (claimed.tenant !== undefined && claimed.tenant !== measurement.tenant) {
@@ -274,15 +283,15 @@ function detectClaimConflict(
 	return undefined;
 }
 
-function isPrincipal(value: unknown): value is PrincipalRef {
+function isPrincipal(value: JsonValue): value is PrincipalRef {
 	return (
 		isPlainObject(value) &&
-		typeof value.kind === "string" &&
+		isJsonString(value.kind) &&
 		PRINCIPAL_KINDS.has(value.kind) &&
-		typeof value.id === "string"
+		isJsonString(value.id)
 	);
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
+function isPlainObject<T>(value: T): value is T & JsonObject {
+	return isJsonObject(value) && value !== null && !Array.isArray(value);
 }

@@ -12,9 +12,11 @@
  * the pure `applyRolloutEvent` reducer, so `replayRolloutJournal` reconstructs
  * identical state from the journal by construction.
  */
+
 import { createHash, randomUUID } from "node:crypto";
 import { first, must } from "@hobo/core/total-access";
 import type { FeatureFlagStore } from "./feature-flag-store.js";
+import { asJsonObject, type JsonObject } from "./json.js";
 
 // public-contract: OpenDelivery port id.
 export const DELIVERY_PORT = "hobo:delivery" as const;
@@ -44,7 +46,7 @@ export type RolloutEvent = Readonly<{
 	schemaVersion: typeof ROLLOUT_EVENT_SCHEMA;
 	seq: number;
 	time: string;
-	data: Readonly<Record<string, unknown>>;
+	data: JsonObject;
 }>;
 
 /** Ordered target group executed in parallel (bounded) within a staged stage. */
@@ -183,7 +185,9 @@ export function applyRolloutEvent(
 	if (event.type === ROLLOUT_EVENTS.Started) {
 		return Object.freeze({
 			id: String(d.rolloutId),
-			policy: freezePolicy(d.policy as RolloutPolicy),
+			// SAFETY: assertion to `y as RolloutPolicy), s` is required at this boundary.
+			// SAFETY: journal policy is restored to RolloutPolicy at this fold.
+			policy: freezePolicy(d.policy as never),
 			status: "running" as const,
 			stageIndex: 0,
 			percent: Number(d.percent),
@@ -212,12 +216,15 @@ export function applyRolloutEvent(
 					d.gatewayWeightPercent ?? prev.gatewayWeightPercent,
 				),
 				updatedAt: event.time,
-				...(isGrouped(stage) ? { staged: EMPTY_STAGED_PROGRESS } : {}),
+				...(isGrouped(stage) ? { staged: EMPTY_STAGED_PROGRESS } : undefined),
 			});
 		}
 		case ROLLOUT_EVENTS.GroupProgressed: {
 			const staged = prev.staged ?? EMPTY_STAGED_PROGRESS;
-			const outcomes = (d.outcomes ?? []) as readonly RolloutTargetOutcome[];
+			// SAFETY: assertion to `omes ?? []) as readonly RolloutTargetOutcome[]; co` is required at this boundary.
+			const rawOutcomes = d.outcomes ?? [];
+			// SAFETY: journal outcomes are restored to RolloutTargetOutcome[].
+			const outcomes: readonly RolloutTargetOutcome[] = rawOutcomes as never;
 			const completed = [...staged.completedTargets];
 			const failed = [...staged.failedTargets];
 			for (const o of outcomes) {
@@ -253,11 +260,12 @@ export function applyRolloutEvent(
 		case ROLLOUT_EVENTS.ApprovalRequested: {
 			return Object.freeze({
 				...baseState(prev),
-				...(prev.staged !== undefined ? { staged: prev.staged } : {}),
+				...(prev.staged !== undefined ? { staged: prev.staged } : undefined),
 				status: "awaiting_approval" as const,
 				pendingApproval: Object.freeze({
 					stageIndex: Number(d.stageIndex),
 					groupIndex: Number(d.groupIndex ?? 0),
+					// SAFETY: assertion to `e === "group" ? "group" : "stage") as "stage" | "group", }` is required at this boundary.
 					scope: (d.scope === "group" ? "group" : "stage") as "stage" | "group",
 				}),
 				updatedAt: event.time,
@@ -266,7 +274,7 @@ export function applyRolloutEvent(
 		case ROLLOUT_EVENTS.ApprovalGranted: {
 			return Object.freeze({
 				...baseState(prev),
-				...(prev.staged !== undefined ? { staged: prev.staged } : {}),
+				...(prev.staged !== undefined ? { staged: prev.staged } : undefined),
 				status: "running" as const,
 				updatedAt: event.time,
 			});
@@ -274,7 +282,7 @@ export function applyRolloutEvent(
 		case ROLLOUT_EVENTS.Halted: {
 			return Object.freeze({
 				...baseState(prev),
-				...(prev.staged !== undefined ? { staged: prev.staged } : {}),
+				...(prev.staged !== undefined ? { staged: prev.staged } : undefined),
 				status: "halted" as const,
 				resumeFrom: Object.freeze({
 					stageIndex: Number(d.stageIndex),
@@ -705,7 +713,7 @@ export class OpenDeliveryEngine {
 					? {
 							groups: Object.freeze((stage.groups ?? []).map((g) => g.name)),
 						}
-					: {}),
+					: undefined),
 			},
 		);
 		this.applyFlagPercent(prev.policy.flag, percent);
@@ -728,13 +736,13 @@ export class OpenDeliveryEngine {
 			defaultVariant: existing?.defaultVariant,
 			...(existing?.migrationId !== undefined
 				? { migrationId: existing.migrationId }
-				: {}),
+				: undefined),
 			...(existing?.metadata !== undefined
 				? { metadata: existing.metadata }
-				: {}),
+				: undefined),
 			...(existing?.targeting !== undefined
 				? { targeting: existing.targeting }
-				: {}),
+				: undefined),
 		});
 	}
 
@@ -749,21 +757,19 @@ export class OpenDeliveryEngine {
 	}
 
 	/** Emit one journal event and fold it into state via the pure reducer. */
-	private transition(
-		type: RolloutEvent["type"],
-		data: Readonly<Record<string, unknown>>,
-	): RolloutState {
+	private transition<T>(type: RolloutEvent["type"], data: T): RolloutState {
 		this.seq += 1;
+		const bag = asJsonObject(data);
 		const event: RolloutEvent = Object.freeze({
 			id: `evt-${type}-${this.seq}`,
 			type,
 			schemaVersion: ROLLOUT_EVENT_SCHEMA,
 			seq: this.seq,
 			time: this.now(),
-			data: Object.freeze({ ...data }),
+			data: bag,
 		});
 		this.events.push(event);
-		const rolloutId = String(data.rolloutId);
+		const rolloutId = String(bag.rolloutId);
 		const next = applyRolloutEvent(this.rollouts.get(rolloutId), event);
 		this.rollouts.set(rolloutId, next);
 		return next;
@@ -784,7 +790,7 @@ function freezeStage(s: RolloutStage): RolloutStage {
 						),
 					),
 				}
-			: {}),
+			: undefined),
 	});
 }
 
@@ -797,7 +803,7 @@ function freezePolicy(p: RolloutPolicy): RolloutPolicy {
 		autoRollback: p.autoRollback === true,
 		...(p.gatewayWeightPercent !== undefined
 			? { gatewayWeightPercent: p.gatewayWeightPercent }
-			: {}),
+			: undefined),
 	});
 }
 

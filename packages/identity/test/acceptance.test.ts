@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-
 import { createFixtureHostAttestor, IdentityService } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
 const ISSUER_URL = "https://identity.yard.example";
 const NOW = "2026-06-25T15:00:00.000Z";
@@ -12,7 +12,7 @@ const IMAGE_DIGEST =
 const CODE_DIGEST =
 	"sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
-function launchMeasurement(overrides: Record<string, unknown> = {}) {
+function launchMeasurement(overrides: JsonObject = {}) {
 	return {
 		runId: "run-20260625-identity-628",
 		tenant: "tenant-a",
@@ -29,10 +29,7 @@ function launchMeasurement(overrides: Record<string, unknown> = {}) {
 }
 
 function attestedDocument(
-	overrides: {
-		measurement?: Record<string, unknown>;
-		claimed?: Record<string, unknown>;
-	} = {},
+	overrides: { measurement?: JsonObject; claimed?: JsonObject } = {},
 ) {
 	const attestor = createFixtureHostAttestor({ hostId: "host-firecracker-1" });
 	return {

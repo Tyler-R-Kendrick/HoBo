@@ -36,6 +36,10 @@ import {
 // public-contract: harness facade schema.
 export const HARNESS_SCHEMA = "hobo.harness/v1" as const;
 
+export interface ExposureTrack {
+	readonly variant: string;
+}
+
 export type HarnessPorts = Readonly<{
 	flags: FeatureFlagStore;
 	delivery: OpenDeliveryEngine;
@@ -82,12 +86,14 @@ export class Harness {
 		this.now = options.now ?? (() => new Date().toISOString());
 		this.delivery = new OpenDeliveryEngine({
 			store: options.store,
-			...(options.now !== undefined ? { now: options.now } : {}),
+			...(options.now !== undefined ? { now: options.now } : undefined),
 		});
 		this.experiment = new OpenExperimentEngine({
 			store: options.store,
-			...(options.now !== undefined ? { now: options.now } : {}),
-			...(options.emitOtel !== undefined ? { emitOtel: options.emitOtel } : {}),
+			...(options.now !== undefined ? { now: options.now } : undefined),
+			...(options.emitOtel !== undefined
+				? { emitOtel: options.emitOtel }
+				: undefined),
 		});
 		this.deliveryAdapter =
 			options.deliveryAdapter ?? createBuiltinDeliveryAdapter();
@@ -142,7 +148,7 @@ export class Harness {
 	trackExposure(
 		experimentName: string,
 		context: FlagEvalContext,
-	): { variant: string } {
+	): ExposureTrack {
 		const a = this.experiment.evaluateAndExpose(experimentName, context);
 		return { variant: a.variant };
 	}
@@ -186,7 +192,7 @@ export class Harness {
 		}
 		return Object.freeze({
 			rolloutId: state.id,
-			...(experimentName !== undefined ? { experimentName } : {}),
+			...(experimentName !== undefined ? { experimentName } : undefined),
 			status: state.status,
 			percent: state.percent,
 			gatewayWeightPercent: state.gatewayWeightPercent,
@@ -199,7 +205,7 @@ export class Harness {
 			),
 			...(composed
 				? { trafficSplit: composed.split, routingEvent: composed.event }
-				: {}),
+				: undefined),
 		});
 	}
 }

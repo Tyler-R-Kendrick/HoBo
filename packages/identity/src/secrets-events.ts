@@ -2,7 +2,9 @@
  * Config/secret resolution audit events (ADR-0027).
  * Values are always redacted — only refs, sources, and version-ids.
  */
+
 import { CREDENTIAL_AUDIT_RETENTION } from "./events.js";
+import type { JsonObject } from "./json.js";
 
 // public-contract: config/secret audit event schema id (ADR-0027).
 export const CONFIG_SECRET_EVENT_SCHEMA = "hobo.config-secret-events/v1";
@@ -24,7 +26,7 @@ export type ConfigSecretEvent = Readonly<{
 	correlationId: string;
 	causationId: string;
 	retention: typeof CREDENTIAL_AUDIT_RETENTION;
-	data: Readonly<Record<string, unknown>>;
+	data: JsonObject;
 }>;
 
 export function createConfigResolvedEvent(input: {
@@ -53,11 +55,13 @@ export function createConfigResolvedEvent(input: {
 			name: input.name,
 			source: input.source,
 			// Never a value — ref + classification only.
-			...(input.valueRef !== undefined ? { valueRef: input.valueRef } : {}),
+			...(input.valueRef !== undefined
+				? { valueRef: input.valueRef }
+				: undefined),
 			...(input.sensitivity !== undefined
 				? { sensitivity: input.sensitivity }
-				: {}),
-			...(input.subject !== undefined ? { subject: input.subject } : {}),
+				: undefined),
+			...(input.subject !== undefined ? { subject: input.subject } : undefined),
 			redacted: true,
 		}),
 	});
@@ -90,9 +94,11 @@ export function createSecretAccessedEvent(input: {
 			name: input.name,
 			source: input.source,
 			valueRef: input.valueRef,
-			...(input.versionId !== undefined ? { versionId: input.versionId } : {}),
-			...(input.subject !== undefined ? { subject: input.subject } : {}),
-			...(input.grantId !== undefined ? { grantId: input.grantId } : {}),
+			...(input.versionId !== undefined
+				? { versionId: input.versionId }
+				: undefined),
+			...(input.subject !== undefined ? { subject: input.subject } : undefined),
+			...(input.grantId !== undefined ? { grantId: input.grantId } : undefined),
 			// Explicit invariant for conformance oracles.
 			redacted: true,
 			plaintextPresent: false,

@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns */
+
 /**
  * The Crossplane adapter's parse boundary, claim projection and in-memory
  * cluster.

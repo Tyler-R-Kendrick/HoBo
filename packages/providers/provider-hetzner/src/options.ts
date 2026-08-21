@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json.js";
+
 // public-contract: the provider target id `.with(...)` option blocks carry.
 export const HETZNER_PROVIDER_TARGET = "hetzner";
 
@@ -9,7 +11,7 @@ export type TypedOptionBlock = {
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
-	options: Record<string, unknown>;
+	options: JsonObject;
 };
 
 // The provider-specific options pattern (sdk-api.md "the core promise"): typed,
@@ -17,7 +19,7 @@ export type TypedOptionBlock = {
 // targets many clouds unedited.
 export const hetzner = {
 	with: {
-		cloudServer(options: Record<string, unknown> = {}): TypedOptionBlock {
+		cloudServer(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"compute",
 				"cloudServer",
@@ -25,7 +27,7 @@ export const hetzner = {
 				options,
 			);
 		},
-		loadBalancer(options: Record<string, unknown> = {}): TypedOptionBlock {
+		loadBalancer(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"compute",
 				"loadBalancer",
@@ -33,7 +35,7 @@ export const hetzner = {
 				options,
 			);
 		},
-		objectStorage(options: Record<string, unknown> = {}): TypedOptionBlock {
+		objectStorage(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"objectStore",
 				"objectStorage",
@@ -41,7 +43,7 @@ export const hetzner = {
 				options,
 			);
 		},
-		volume(options: Record<string, unknown> = {}): TypedOptionBlock {
+		volume(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"compute",
 				"volume",
@@ -55,8 +57,8 @@ export const hetzner = {
 function optionBlock(
 	port: string,
 	optionName: string,
-	defaults: Record<string, unknown>,
-	options: Record<string, unknown>,
+	defaults: JsonObject,
+	options: JsonObject,
 ): TypedOptionBlock {
 	return {
 		providerId: HETZNER_PROVIDER_TARGET,

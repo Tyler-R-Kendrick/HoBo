@@ -14,6 +14,7 @@
  */
 import { describe, expect, it } from "vitest";
 
+import { isJsonObject, isJsonString, type JsonObject } from "../src/json.js";
 import {
 	HETZNER_EVENT_STORE_RESOLVER_ID,
 	hetznerEventStoreFoldDescriptor,
@@ -22,10 +23,10 @@ import {
 
 const AT = "2026-01-01T00:00:00.000Z";
 
-const signal = (kind: string, payload: Record<string, unknown> = {}) => ({
+const signal = (kind: string, payload: JsonObject = {}) => ({
 	providerId: "hetzner" as const,
 	kind,
-	payload: payload as never,
+	payload,
 	observedAt: AT,
 });
 
@@ -93,7 +94,13 @@ describe("hetzner readiness fan-out", () => {
 
 	it("registers a yard instance carrying this provider's id", () => {
 		const [registered] = ready();
-		const yard = (registered?.data as { yard: Record<string, unknown> }).yard;
+		if (registered === undefined) {
+			throw new Error("expected a registered event");
+		}
+		const yard = registered.data.yard;
+		if (!isJsonObject(yard)) {
+			throw new Error("expected a yard instance");
+		}
 		expect(yard.providerId).toBe("hetzner");
 		expect(yard.schemaVersion).toBe("hobo.yard-instance/v1");
 		expect(yard.status).toBe("registering");
@@ -120,20 +127,39 @@ describe("hetzner failure", () => {
 
 	it("falls back to a provider-specific code when none is supplied", () => {
 		const [event] = normalizeHetznerYardSignal(signal("generation.failed"));
-		expect((event?.data as { failure: { code: string } }).failure.code).toBe(
-			"hetzner-generation-failed",
-		);
+		if (event === undefined) {
+			throw new Error("expected a failure event");
+		}
+		const failure = event.data.failure;
+		if (!isJsonObject(failure) || !isJsonString(failure.code)) {
+			throw new Error("expected a failure code");
+		}
+		expect(failure.code).toBe("hetzner-generation-failed");
 	});
 
 	it("treats retryable as strictly boolean true, not merely truthy", () => {
-		for (const retryable of ["true", 1, {}, null, undefined]) {
+		for (const retryable of ["true", 1, { flagged: true }, null] as const) {
 			const [event] = normalizeHetznerYardSignal(
-				signal("generation.failed", { retryable } as Record<string, unknown>),
+				signal("generation.failed", { retryable }),
 			);
-			expect(
-				(event?.data as { failure: { retryable: boolean } }).failure.retryable,
-			).toBe(false);
+			if (event === undefined) {
+				throw new Error("expected a failure event");
+			}
+			const failure = event.data.failure;
+			if (!isJsonObject(failure)) {
+				throw new Error("expected a failure payload");
+			}
+			expect(failure.retryable).toBe(false);
 		}
+		const [missing] = normalizeHetznerYardSignal(signal("generation.failed"));
+		if (missing === undefined) {
+			throw new Error("expected a failure event");
+		}
+		const missingFailure = missing.data.failure;
+		if (!isJsonObject(missingFailure)) {
+			throw new Error("expected a failure payload");
+		}
+		expect(missingFailure.retryable).toBe(false);
 	});
 });
 
@@ -155,7 +181,7 @@ describe("hetzner unrecognized signals", () => {
 		const [event] = normalizeHetznerYardSignal({
 			providerId: "hetzner",
 			kind: "unknown",
-			payload: {} as never,
+			payload: {},
 		});
 		expect(() => new Date(event?.occurredAt ?? "").toISOString()).not.toThrow();
 	});

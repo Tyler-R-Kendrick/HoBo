@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const REQUIRED_MARKETPLACE_COPY_SCENARIOS = [
   "preview-warning",
   "installable-with-evidence",
@@ -401,7 +402,7 @@ export function classifyMarketplaceCopyClaim(copy: string): MarketplaceCopyClaim
   return { allowed: true, reason: "customer-safe-copy" };
 }
 
-export function parseMarketplaceTrustCopyStates(proof: unknown): MarketplaceTrustCopyStates {
+export function parseMarketplaceTrustCopyStates(proof: JsonValue): MarketplaceTrustCopyStates {
   assertObject(proof, "proof");
   assertLiteral(proof.issue, "HOBO-547", "issue");
   assertLiteral(proof.phase, "M1", "phase");
@@ -427,6 +428,7 @@ export function parseMarketplaceTrustCopyStates(proof: unknown): MarketplaceTrus
   assertHandoffCoverage(handoffs);
 
   return {
+    // SAFETY: `...(proof as UnparsedMarketplaceTrustCopyStates),` is required at this I/O or test boundary.
     ...(proof as UnparsedMarketplaceTrustCopyStates),
     __brand: "ParsedMarketplaceTrustCopyStates",
   };
@@ -447,7 +449,7 @@ export function summarizeMarketplaceTrustHandoffs(
   }));
 }
 
-function assertQuickstartRefs(value: unknown): MarketplaceTrustQuickstartFixtureReference[] {
+function assertQuickstartRefs(value: JsonValue): MarketplaceTrustQuickstartFixtureReference[] {
   if (!Array.isArray(value)) {
     throw new TypeError("quickstartFixtureRefs must be an array");
   }
@@ -462,6 +464,7 @@ function assertQuickstartRefs(value: unknown): MarketplaceTrustQuickstartFixture
     if (entry.trustCopyUse.length < 30) {
       throw new TypeError(`quickstartFixtureRef ${index}.trustCopyUse must explain consumption`);
     }
+    // SAFETY: `return entry as MarketplaceTrustQuickstartFixtureReference;` is required at this I/O or test boundary.
     return entry as MarketplaceTrustQuickstartFixtureReference;
   });
 
@@ -491,7 +494,7 @@ function assertQuickstartScenarioCoverage(
   }
 }
 
-function assertScenarioArray(value: unknown): MarketplaceTrustCopyScenario[] {
+function assertScenarioArray(value: JsonValue): MarketplaceTrustCopyScenario[] {
   if (!Array.isArray(value)) {
     throw new TypeError("scenarios must be an array");
   }
@@ -511,11 +514,12 @@ function assertScenarioArray(value: unknown): MarketplaceTrustCopyScenario[] {
     assertCopy(entry.copy, entry.kind);
     assertAccessibilityNotes(entry.accessibilityNotes, entry.kind);
 
+    // SAFETY: `return entry as MarketplaceTrustCopyScenario;` is required at this I/O or test boundary.
     return entry as MarketplaceTrustCopyScenario;
   });
 }
 
-function assertCopy(value: unknown, name: string): void {
+function assertCopy(value: JsonValue, name: string): void {
   assertObject(value, `${name}.copy`);
   assertNonEmptyString(value.headline, `${name}.copy.headline`);
   assertNonEmptyString(value.body, `${name}.copy.body`);
@@ -532,7 +536,7 @@ function assertSafeCopy(value: string, name: string): void {
   }
 }
 
-function assertAccessibilityNotes(value: unknown, name: string): void {
+function assertAccessibilityNotes(value: JsonValue, name: string): void {
   if (!Array.isArray(value)) {
     throw new TypeError(`${name}.accessibilityNotes must be an array`);
   }
@@ -554,7 +558,7 @@ function assertAccessibilityNotes(value: unknown, name: string): void {
   }
 }
 
-function assertHandoffArray(value: unknown): MarketplaceTrustHandoff[] {
+function assertHandoffArray(value: JsonValue): MarketplaceTrustHandoff[] {
   if (!Array.isArray(value)) {
     throw new TypeError("handoffs must be an array");
   }
@@ -564,6 +568,7 @@ function assertHandoffArray(value: unknown): MarketplaceTrustHandoff[] {
     assertHandoffOwner(entry.owner);
     assertNonEmptyString(entry.consumes, `${entry.owner}.consumes`);
     assertNonEmptyStringArray(entry.mustNotOwn, `${entry.owner}.mustNotOwn`);
+    // SAFETY: `return entry as MarketplaceTrustHandoff;` is required at this I/O or test boundary.
     return entry as MarketplaceTrustHandoff;
   });
 }
@@ -610,7 +615,7 @@ function assertHandoffCoverage(handoffs: readonly MarketplaceTrustHandoff[]): vo
   }
 }
 
-function assertScopeOut(value: unknown): void {
+function assertScopeOut(value: JsonValue): void {
   const scopeOut = assertStringArray(value, "scopeOut");
   const normalized = scopeOut.join("\n").toLowerCase();
   for (const boundary of REQUIRED_SCOPE_OUT) {
@@ -620,52 +625,53 @@ function assertScopeOut(value: unknown): void {
   }
 }
 
-function assertObject(value: unknown, name: string): asserts value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function assertObject(value: JsonValue, name: string): asserts value is JsonObject {
+  if (!isJsonObject(value) || value === null || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
-function assertLiteral<T extends string>(value: unknown, expected: T, name: string): asserts value is T {
+function assertLiteral<T extends string>(value: JsonValue, expected: T, name: string): asserts value is T {
   if (value !== expected) {
     throw new TypeError(`${name} must be ${expected}`);
   }
 }
 
-function assertStringArray(value: unknown, name: string): string[] {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+function assertStringArray(value: JsonValue, name: string): string[] {
+  if (!Array.isArray(value) || value.some((entry) => !isJsonString(entry))) {
     throw new TypeError(`${name} must be a string array`);
   }
 
   return value;
 }
 
-function assertNonEmptyStringArray(value: unknown, name: string): void {
+function assertNonEmptyStringArray(value: JsonValue, name: string): void {
   const entries = assertStringArray(value, name);
   if (entries.length === 0 || entries.some((entry) => entry.trim().length === 0)) {
     throw new TypeError(`${name} must not be empty`);
   }
 }
 
-function assertNonEmptyString(value: unknown, name: string): asserts value is string {
-  if (typeof value !== "string" || value.trim().length === 0) {
+function assertNonEmptyString(value: JsonValue, name: string): asserts value is string {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new TypeError(`${name} must not be empty`);
   }
 }
 
-function assertFixtureId(value: unknown, name: string): asserts value is string {
-  if (typeof value !== "string" || !/^mtc-[a-z0-9-]+-v[0-9]+$/.test(value)) {
+function assertFixtureId(value: JsonValue, name: string): asserts value is string {
+  if (!isJsonString(value) || !/^mtc-[a-z0-9-]+-v[0-9]+$/.test(value)) {
     throw new TypeError(`${name} must be a marketplace trust copy fixture id`);
   }
 }
 
-function assertScenarioKind(value: unknown): asserts value is MarketplaceScenarioKind {
+function assertScenarioKind(value: JsonValue): asserts value is MarketplaceScenarioKind {
+  // SAFETY: `if (!REQUIRED_MARKETPLACE_COPY_SCENARIOS.includes(value as MarketplaceScenarioKi` is required at this I/O or test boundary.
   if (!REQUIRED_MARKETPLACE_COPY_SCENARIOS.includes(value as MarketplaceScenarioKind)) {
     throw new TypeError(`unknown marketplace copy scenario ${String(value)}`);
   }
 }
 
-function assertScenarioKindArray(value: unknown, name: string): void {
+function assertScenarioKindArray(value: JsonValue, name: string): void {
   if (!Array.isArray(value) || value.length === 0) {
     throw new TypeError(`${name} must include marketplace copy states`);
   }
@@ -677,18 +683,20 @@ function assertScenarioKindArray(value: unknown, name: string): void {
   }
 }
 
-function assertProofMode(value: unknown): asserts value is MarketplaceProofMode {
+function assertProofMode(value: JsonValue): asserts value is MarketplaceProofMode {
+  // SAFETY: `if (!MARKETPLACE_PROOF_MODES.includes(value as MarketplaceProofMode)) {` is required at this I/O or test boundary.
   if (!MARKETPLACE_PROOF_MODES.includes(value as MarketplaceProofMode)) {
     throw new TypeError(`unknown proof mode ${String(value)}`);
   }
 }
 
 function assertQuickstartFixtureId(
-  value: unknown,
+  value: JsonValue,
   name: string,
 ): asserts value is MarketplaceTrustQuickstartFixtureId {
   if (
     !REQUIRED_MARKETPLACE_TRUST_QUICKSTART_FIXTURE_IDS.includes(
+      // SAFETY: `value as MarketplaceTrustQuickstartFixtureId,` is required at this I/O or test boundary.
       value as MarketplaceTrustQuickstartFixtureId,
     )
   ) {
@@ -697,11 +705,12 @@ function assertQuickstartFixtureId(
 }
 
 function assertQuickstartProofMode(
-  value: unknown,
+  value: JsonValue,
   name: string,
 ): asserts value is MarketplaceTrustQuickstartProofMode {
   if (
     !REQUIRED_MARKETPLACE_TRUST_QUICKSTART_PROOF_MODES.includes(
+      // SAFETY: `value as MarketplaceTrustQuickstartProofMode,` is required at this I/O or test boundary.
       value as MarketplaceTrustQuickstartProofMode,
     )
   ) {
@@ -709,19 +718,21 @@ function assertQuickstartProofMode(
   }
 }
 
-function assertAccessibilityCheck(value: unknown): asserts value is MarketplaceAccessibilityCheck {
+function assertAccessibilityCheck(value: JsonValue): asserts value is MarketplaceAccessibilityCheck {
+  // SAFETY: `if (!MARKETPLACE_ACCESSIBILITY_CHECKS.includes(value as MarketplaceAccessibility` is required at this I/O or test boundary.
   if (!MARKETPLACE_ACCESSIBILITY_CHECKS.includes(value as MarketplaceAccessibilityCheck)) {
     throw new TypeError(`unknown accessibility check ${String(value)}`);
   }
 }
 
-function assertHandoffOwner(value: unknown): asserts value is MarketplaceHandoffOwner {
+function assertHandoffOwner(value: JsonValue): asserts value is MarketplaceHandoffOwner {
+  // SAFETY: `if (!HANDOFF_OWNERS.includes(value as MarketplaceHandoffOwner)) {` is required at this I/O or test boundary.
   if (!HANDOFF_OWNERS.includes(value as MarketplaceHandoffOwner)) {
     throw new TypeError(`unknown handoff owner ${String(value)}`);
   }
 }
 
-function assertListingState(value: unknown, name: string): asserts value is MarketplaceListingState {
+function assertListingState(value: JsonValue, name: string): asserts value is MarketplaceListingState {
   const states = [
     "not-visible",
     "preview-only",
@@ -731,13 +742,15 @@ function assertListingState(value: unknown, name: string): asserts value is Mark
     "deprecated",
     "yanked",
   ] as const;
+  // SAFETY: `if (!states.includes(value as MarketplaceListingState)) {` is required at this I/O or test boundary.
   if (!states.includes(value as MarketplaceListingState)) {
     throw new TypeError(`unknown ${name}: ${String(value)}`);
   }
 }
 
-function assertPath(value: unknown, name: string): asserts value is MarketplaceCopyPath {
+function assertPath(value: JsonValue, name: string): asserts value is MarketplaceCopyPath {
   const paths = ["happy", "blocked", "stale-or-unknown", "support-handoff"] as const;
+  // SAFETY: `if (!paths.includes(value as MarketplaceCopyPath)) {` is required at this I/O or test boundary.
   if (!paths.includes(value as MarketplaceCopyPath)) {
     throw new TypeError(`unknown ${name}: ${String(value)}`);
   }

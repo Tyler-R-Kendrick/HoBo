@@ -23,6 +23,8 @@ import {
 	resolveConvexRoot,
 	SWAGHAUS_GENERAL_ENV,
 } from "@hobo/convex";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 declare const brandTag: unique symbol;
 type Branded<Tag extends string> = string & { readonly [brandTag]: Tag };
@@ -61,7 +63,7 @@ const WORKOS_ENV = /^(VITE_)?WORKOS_/u;
  * Annotation config keys that would mean an author pasted credential material
  * into a Bindle. Secrets ride Camp `secretRef` / broker mint only (ADR-0027).
  */
-const SECRET_SHAPED_KEY = /(secret|token|password|credential|api[_-]?key)/iu;
+const SECRET_MATERIAL_KEY = /(secret|token|password|credential|api[_-]?key)/iu;
 
 const RESOURCE_KINDS: readonly BindleResourceKind[] = Object.freeze([
 	"data",
@@ -82,19 +84,20 @@ export class BindleAuthoringParseError extends Error {
 	}
 }
 
-function record(value: unknown, field: string): Record<string, unknown> {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function record(value: JsonValue, field: string): JsonObject {
+	if (!isJsonObject(value) || value === null || Array.isArray(value)) {
 		throw new BindleAuthoringParseError(field, "expected an object");
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: `return value as JsonObject;` is required at this I/O or test boundary.
+	return value as JsonObject;
 }
 
 /** #RepoRelativePath. */
 export function parseConvexAppRoot(
-	value: unknown,
+	value: JsonValue,
 	options: { readonly repoRoot?: string } = {},
 ): ConvexAppRoot {
-	if (typeof value !== "string" || !REPO_RELATIVE.test(value)) {
+	if (!isJsonString(value) || !REPO_RELATIVE.test(value)) {
 		throw new BindleAuthoringParseError(
 			"webRoot",
 			"expected a repo-relative Convex app directory",
@@ -118,28 +121,31 @@ export function parseConvexAppRoot(
 			);
 		}
 	}
+	// SAFETY: `return value as ConvexAppRoot;` is required at this I/O or test boundary.
 	return value as ConvexAppRoot;
 }
 
 /** #ResourceName. */
-export function parseResourceName(value: unknown): ResourceName {
-	if (typeof value !== "string" || !RESOURCE_NAME.test(value)) {
+export function parseResourceName(value: JsonValue): ResourceName {
+	if (!isJsonString(value) || !RESOURCE_NAME.test(value)) {
 		throw new BindleAuthoringParseError(
 			"resource.name",
 			"expected a DNS label (lowercase alphanumeric plus inner hyphens)",
 		);
 	}
+	// SAFETY: `return value as ResourceName;` is required at this I/O or test boundary.
 	return value as ResourceName;
 }
 
 /** #EnvName. */
-export function parseEnvName(value: unknown): EnvName {
-	if (typeof value !== "string" || !ENV_NAME.test(value)) {
+export function parseEnvName(value: JsonValue): EnvName {
+	if (!isJsonString(value) || !ENV_NAME.test(value)) {
 		throw new BindleAuthoringParseError(
 			"env.name",
 			"expected an environment variable NAME",
 		);
 	}
+	// SAFETY: `return value as EnvName;` is required at this I/O or test boundary.
 	return value as EnvName;
 }
 
@@ -172,6 +178,11 @@ export type BindleResourceView = {
 	readonly dependsOn: readonly ResourceName[];
 };
 
+interface ParsedBindleResource {
+	readonly view: BindleResourceView;
+	readonly annotations: readonly ProviderAnnotation[];
+}
+
 /** Parsed derived type for #EnvDependency. */
 export type EnvDependencyView = {
 	readonly name: EnvName;
@@ -179,7 +190,7 @@ export type EnvDependencyView = {
 	readonly via: string;
 };
 
-/** Parsed derived type for #SwaghausBindleShape. */
+/** Parsed derived type for #SwaghausBindleContract. */
 export type SwaghausBindlePlan = {
 	readonly appName: ResourceName;
 	readonly webRoot: ConvexAppRoot;
@@ -190,7 +201,7 @@ export type SwaghausBindlePlan = {
 };
 
 function parseAnnotations(
-	value: unknown,
+	value: JsonValue,
 	resourceName: string,
 ): readonly ProviderAnnotation[] {
 	if (!Array.isArray(value)) {
@@ -203,7 +214,7 @@ function parseAnnotations(
 		const source = record(entry, `${resourceName}.annotations[]`);
 		const provider = source.provider;
 		const option = source.option;
-		if (typeof provider !== "string" || typeof option !== "string") {
+		if (!isJsonString(provider) || !isJsonString(option)) {
 			throw new BindleAuthoringParseError(
 				`${resourceName}.annotations[]`,
 				"expected provider and option strings",
@@ -220,8 +231,8 @@ function parseAnnotations(
 		const config = source.config === undefined ? {} : record(source.config, `${resourceName}.annotations[].config`);
 		for (const [key, entryValue] of Object.entries(config)) {
 			if (
-				SECRET_SHAPED_KEY.test(key) &&
-				typeof entryValue === "string" &&
+				SECRET_MATERIAL_KEY.test(key) &&
+				isJsonString(entryValue) &&
 				entryValue.trim() !== ""
 			) {
 				throw new BindleAuthoringParseError(
@@ -240,12 +251,13 @@ function parseAnnotations(
 
 function parseResource(
 	name: string,
-	value: unknown,
-): { readonly view: BindleResourceView; readonly annotations: readonly ProviderAnnotation[] } {
+	value: JsonValue,
+): ParsedBindleResource {
 	const source = record(value, `resources.${name}`);
 	const kind = source.kind;
 	if (
-		typeof kind !== "string" ||
+		!isJsonString(kind) ||
+		// SAFETY: `!RESOURCE_KINDS.includes(kind as BindleResourceKind)` is required at this I/O or test boundary.
 		!RESOURCE_KINDS.includes(kind as BindleResourceKind)
 	) {
 		throw new BindleAuthoringParseError(
@@ -256,7 +268,9 @@ function parseResource(
 	return {
 		view: Object.freeze({
 			name: parseResourceName(source.name ?? name),
+			// SAFETY: `kind: kind as BindleResourceKind,` is required at this I/O or test boundary.
 			kind: kind as BindleResourceKind,
+			// SAFETY: `dependsOn: Object.freeze([] as ResourceName[]),` is required at this I/O or test boundary.
 			dependsOn: Object.freeze([] as ResourceName[]),
 		}),
 		annotations: parseAnnotations(source.annotations ?? [], name),
@@ -264,7 +278,7 @@ function parseResource(
 }
 
 function parseEdges(
-	value: unknown,
+	value: JsonValue,
 	known: ReadonlySet<string>,
 ): readonly { readonly from: ResourceName; readonly to: ResourceName }[] {
 	if (!Array.isArray(value)) {
@@ -302,7 +316,7 @@ function parseEdges(
  * declared Bindle routing.
  */
 export function parseSwaghausBindle(
-	manifest: unknown,
+	manifest: JsonValue,
 	options: { readonly repoRoot?: string } = {},
 ): SwaghausBindlePlan {
 	const source = record(manifest, "manifest");

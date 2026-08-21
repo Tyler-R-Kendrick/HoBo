@@ -1,7 +1,7 @@
 # Architecture Evidence
 
 This package follows parse, don't validate. Raw fixture data crosses the single
-`parseControlPlaneApiResourceLifecycleShapes` boundary and becomes the parsed
+`parseControlPlaneApiResourceLifecycleProof` boundary and becomes the parsed
 derived type `ControlPlaneApiResourceLifecycleShapes`.
 
 ## Event Architecture

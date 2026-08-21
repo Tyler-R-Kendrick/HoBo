@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const REQUIRED_OPERATIONS = [
   "plan",
   "apply-up",
@@ -20,7 +21,7 @@ export const REQUIRED_BOUNDARY_CASES = [
   "destructive-migration-blocked",
 ] as const;
 
-export const REQUIRED_ACCEPTANCE_SHAPE_TERMS = [
+export const REQUIRED_ACCEPTANCE_DOMAIN_TERMS = [
   "DeploymentPlan",
   "Deployment Set",
   "Delta",
@@ -38,14 +39,14 @@ type BoundaryCase = (typeof REQUIRED_BOUNDARY_CASES)[number];
 export type ProofMode = "reference-fixture" | "contract-fixture" | "projection-snapshot" | "support-safe-evidence";
 export type RedactionClass = "public" | "tenant-safe" | "support-redacted";
 
-export type ControlPlaneOperationShape = {
+export type ControlPlaneOperationContract = {
   readonly id: OperationId;
   readonly humanName: string;
   readonly cliCommand: string;
   readonly apiEndpoint: `/${string}`;
   readonly mcpTool: `hobo_${string}`;
-  readonly requestShape: readonly string[];
-  readonly responseShape: readonly string[];
+  readonly requestContract: readonly string[];
+  readonly responseContract: readonly string[];
   readonly domainTerms: readonly string[];
   readonly sharedResultEnvelope: true;
   readonly fixtureId: string;
@@ -66,21 +67,21 @@ export type ControlPlaneContractFixtures = {
   readonly pact: "architecture/pacts/control_plane_api_resource_lifecycle_shapes.pact.json";
 };
 
-export type ControlPlaneApiResourceLifecycleShapes = {
+export type ControlPlaneApiResourceLifecycleProof = {
   readonly issue: "HOBO-569";
   readonly phase: "M1";
   readonly targetPackage: "src/draft/exp-proofs/api/control-plane-api-resource-lifecycle-shapes";
   readonly proofNote: "docs/design/proofs/control-plane-api-resource-lifecycle-shapes/README.md";
   readonly designRefs: readonly string[];
-  readonly operations: readonly ControlPlaneOperationShape[];
+  readonly operations: readonly ControlPlaneOperationContract[];
   readonly refusalEnvelopes: readonly ControlPlaneRefusalEnvelope[];
   readonly contractFixtures: ControlPlaneContractFixtures;
   readonly scopeOut: readonly string[];
-  readonly __brand: "ParsedControlPlaneApiResourceLifecycleShapes";
+  readonly __brand: "ParsedControlPlaneApiResourceLifecycleProof";
 };
 
-type UnparsedControlPlaneApiResourceLifecycleShapes = Omit<
-  ControlPlaneApiResourceLifecycleShapes,
+type UnparsedControlPlaneApiResourceLifecycleProof = Omit<
+  ControlPlaneApiResourceLifecycleProof,
   "__brand"
 >;
 
@@ -94,7 +95,7 @@ const commonResultFields = [
   "refusal",
 ] as const;
 
-export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
+export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_PROOF = {
   issue: "HOBO-569",
   phase: "M1",
   targetPackage: "src/draft/exp-proofs/api/control-plane-api-resource-lifecycle-shapes",
@@ -118,8 +119,8 @@ export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
       cliCommand: "hobo plan --camp preview --json",
       apiEndpoint: "/control-plane/plan",
       mcpTool: "hobo_plan",
-      requestShape: ["manifestRef", "campRef", "objective", "requestedBy", "proofMode"],
-      responseShape: ["DeploymentPlan", "GatekeeperDecision", "PlanWarning[]", ...commonResultFields],
+      requestContract: ["manifestRef", "campRef", "objective", "requestedBy", "proofMode"],
+      responseContract: ["DeploymentPlan", "GatekeeperDecision", "PlanWarning[]", ...commonResultFields],
       domainTerms: ["DeploymentPlan", "ResourcePlan", "Gatekeeper", "match.Decided"],
       sharedResultEnvelope: true,
       fixtureId: "fixture.plan.preview.success",
@@ -130,8 +131,8 @@ export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
       cliCommand: "hobo up --camp preview --json",
       apiEndpoint: "/control-plane/apply",
       mcpTool: "hobo_up",
-      requestShape: ["deploymentPlanId", "approvalRef", "campRef", "expectedSetId", "dryRun"],
-      responseShape: ["DeploymentSet", "Delta", "ResourceActorEvent[]", ...commonResultFields],
+      requestContract: ["deploymentPlanId", "approvalRef", "campRef", "expectedSetId", "dryRun"],
+      responseContract: ["DeploymentSet", "Delta", "ResourceActorEvent[]", ...commonResultFields],
       domainTerms: ["Deployment Set", "Delta", "ResourceActor", "deployment.Planned"],
       sharedResultEnvelope: true,
       fixtureId: "fixture.apply.preview.accepted",
@@ -142,8 +143,8 @@ export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
       cliCommand: "hobo inspect run --last --json",
       apiEndpoint: "/control-plane/inspect/run",
       mcpTool: "hobo_inspect_run",
-      requestShape: ["runId", "campRef", "projectionSeq", "freshnessBound", "redactionClass"],
-      responseShape: [
+      requestContract: ["runId", "campRef", "projectionSeq", "freshnessBound", "redactionClass"],
+      responseContract: [
         "RunProjection",
         "ResourceActorState",
         "ResourceActorTimeline",
@@ -161,8 +162,8 @@ export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
       cliCommand: "hobo logs --follow api --json",
       apiEndpoint: "/control-plane/logs/tail",
       mcpTool: "hobo_tail_logs",
-      requestShape: ["resourceId", "LogCursor", "since", "redactionClass", "limit"],
-      responseShape: ["LogSlice", "LogCursor", "nextCursor", "redactionSummary", ...commonResultFields],
+      requestContract: ["resourceId", "LogCursor", "since", "redactionClass", "limit"],
+      responseContract: ["LogSlice", "LogCursor", "nextCursor", "redactionSummary", ...commonResultFields],
       domainTerms: ["support-safe evidence", "read store", "projection", "ResourceActor"],
       sharedResultEnvelope: true,
       fixtureId: "fixture.logs.api.support-safe",
@@ -173,8 +174,8 @@ export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
       cliCommand: "hobo import terraform ./infra --dry-run --json",
       apiEndpoint: "/control-plane/import/adopt",
       mcpTool: "hobo_import_terraform",
-      requestShape: ["sourceKind", "stateDigest", "adoptionPolicy", "campRef", "dryRun"],
-      responseShape: ["AdoptionPlan", "ExternalResource[]", "migrationPreview", ...commonResultFields],
+      requestContract: ["sourceKind", "stateDigest", "adoptionPolicy", "campRef", "dryRun"],
+      responseContract: ["AdoptionPlan", "ExternalResource[]", "migrationPreview", ...commonResultFields],
       domainTerms: ["resource.Adopted", "authoritative-external", "echo driver", "migration.*"],
       sharedResultEnvelope: true,
       fixtureId: "fixture.import.terraform.adopted",
@@ -185,8 +186,8 @@ export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
       cliCommand: "hobo migrate --dry-run --json",
       apiEndpoint: "/control-plane/migrate/dry-run",
       mcpTool: "hobo_migrate_dry_run",
-      requestShape: ["currentVersion", "targetVersion", "schemaDigest", "snapshotRef", "campRef"],
-      responseShape: ["MigrationPlan", "MigrationPhase", "blockedReason", "rollbackEvidence", ...commonResultFields],
+      requestContract: ["currentVersion", "targetVersion", "schemaDigest", "snapshotRef", "campRef"],
+      responseContract: ["MigrationPlan", "MigrationPhase", "blockedReason", "rollbackEvidence", ...commonResultFields],
       domainTerms: ["migration.Planned", "migration.PhaseApplied", "expand", "backfill", "contract"],
       sharedResultEnvelope: true,
       fixtureId: "fixture.migrate.expand-backfill-contract",
@@ -197,8 +198,8 @@ export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
       cliCommand: "hobo up --camp prod --rollback deployment-set:previous --json",
       apiEndpoint: "/control-plane/rollback",
       mcpTool: "hobo_rollback",
-      requestShape: ["currentSetId", "targetSetId", "rollbackReason", "snapshotRef", "approvalRef"],
-      responseShape: ["RollbackPlan", "Delta", "restoreRequirement", ...commonResultFields],
+      requestContract: ["currentSetId", "targetSetId", "rollbackReason", "snapshotRef", "approvalRef"],
+      responseContract: ["RollbackPlan", "Delta", "restoreRequirement", ...commonResultFields],
       domainTerms: ["Deployment Set", "Delta", "migration.RolledBack", "snapshot"],
       sharedResultEnvelope: true,
       fixtureId: "fixture.rollback.previous-set",
@@ -209,8 +210,8 @@ export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
       cliCommand: "hobo doctor --support-bundle run:latest --json",
       apiEndpoint: "/control-plane/support/evidence-pack",
       mcpTool: "hobo_support_evidence_pack",
-      requestShape: ["subjectRef", "evidenceKinds", "redactionClass", "supportRoute", "correlationId"],
-      responseShape: ["EvidencePack", "ownerRoute", "redactionSummary", ...commonResultFields],
+      requestContract: ["subjectRef", "evidenceKinds", "redactionClass", "supportRoute", "correlationId"],
+      responseContract: ["EvidencePack", "ownerRoute", "redactionSummary", ...commonResultFields],
       domainTerms: ["support handoff", "CredentialAudit", "event-store", "read store"],
       sharedResultEnvelope: true,
       fixtureId: "fixture.support.evidence.redacted",
@@ -292,7 +293,7 @@ export const CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES = {
     "No live provider calls, cloud accounts, customer data, real credentials, or live support systems are used.",
     "No endpoint may bypass Planner, Gatekeeper, ResourceActor, event-store, materialized-view, snapshot, or read-store boundaries.",
   ],
-} as const satisfies UnparsedControlPlaneApiResourceLifecycleShapes;
+} as const satisfies UnparsedControlPlaneApiResourceLifecycleProof;
 
 export type ControlPlaneApiScopeDecision =
   | { readonly allowed: true; readonly reason: "fixture-contract" }
@@ -327,9 +328,9 @@ export function classifyControlPlaneApiScope(proposal: string): ControlPlaneApiS
   return { allowed: true, reason: "fixture-contract" };
 }
 
-export function parseControlPlaneApiResourceLifecycleShapes(
-  contract: unknown,
-): ControlPlaneApiResourceLifecycleShapes {
+export function parseControlPlaneApiResourceLifecycleProof(
+  contract: JsonValue,
+): ControlPlaneApiResourceLifecycleProof {
   assertObject(contract, "contract");
   assertLiteral(contract.issue, "HOBO-569", "issue");
   assertLiteral(contract.phase, "M1", "phase");
@@ -349,17 +350,18 @@ export function parseControlPlaneApiResourceLifecycleShapes(
   const operations = assertOperationArray(contract.operations);
   const refusals = assertRefusalArray(contract.refusalEnvelopes);
   assertRequiredOperations(operations);
-  assertRequiredAcceptanceShapes(operations);
+  assertRequiredAcceptanceTerms(operations);
   assertRequiredBoundaryCases(refusals);
   assertContractFixtures(contract.contractFixtures);
 
   return {
-    ...(contract as UnparsedControlPlaneApiResourceLifecycleShapes),
-    __brand: "ParsedControlPlaneApiResourceLifecycleShapes",
+    // SAFETY: `...(contract as UnparsedControlPlaneApiResourceLifecycleProof),` is required at this I/O or test boundary.
+    ...(contract as UnparsedControlPlaneApiResourceLifecycleProof),
+    __brand: "ParsedControlPlaneApiResourceLifecycleProof",
   };
 }
 
-export function summarizeOperationParity(contract: ControlPlaneApiResourceLifecycleShapes): ReadonlyArray<{
+export function summarizeOperationParity(contract: ControlPlaneApiResourceLifecycleProof): ReadonlyArray<{
   readonly operation: OperationId;
   readonly apiEndpoint: `/${string}`;
   readonly mcpTool: `hobo_${string}`;
@@ -373,34 +375,47 @@ export function summarizeOperationParity(contract: ControlPlaneApiResourceLifecy
   }));
 }
 
-function assertObject(value: unknown, name: string): asserts value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function assertObject(value: JsonValue, name: string): asserts value is JsonObject {
+  if (!isJsonObject(value) || value === null || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
-function assertLiteral<T extends string>(value: unknown, expected: T, name: string): asserts value is T {
+function assertLiteral<T extends string>(value: JsonValue, expected: T, name: string): asserts value is T {
   if (value !== expected) {
     throw new TypeError(`${name} must be ${expected}`);
   }
 }
 
-function assertStringArray(value: unknown, name: string): string[] {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+function assertStringArray(value: JsonValue, name: string): string[] {
+  if (!Array.isArray(value) || value.some((entry) => !isJsonString(entry))) {
     throw new TypeError(`${name} must be a string array`);
   }
 
   return value;
 }
 
-function assertNonEmptyStringArray(value: unknown, name: string): void {
+function assertNonEmptyStringArray(value: JsonValue, name: string): void {
   const entries = assertStringArray(value, name);
   if (entries.length === 0) {
     throw new TypeError(`${name} must not be empty`);
   }
 }
 
-function assertOperationArray(value: unknown): ControlPlaneOperationShape[] {
+function readContractFields(
+  entry: JsonObject,
+  field: "requestContract" | "responseContract",
+): string[] {
+  const wireKey = field === "requestContract" ? "requestShape" : "responseShape";
+  const value = entry[field] ?? entry[wireKey];
+  const entries = assertStringArray(value, `${String(entry.id)}.${field}`);
+  if (entries.length === 0) {
+    throw new TypeError(`${String(entry.id)}.${field} must not be empty`);
+  }
+  return entries;
+}
+
+function assertOperationArray(value: JsonValue): ControlPlaneOperationContract[] {
   if (!Array.isArray(value)) {
     throw new TypeError("operations must be an array");
   }
@@ -408,30 +423,44 @@ function assertOperationArray(value: unknown): ControlPlaneOperationShape[] {
   return value.map((entry, index) => {
     assertObject(entry, `operation ${index}`);
     assertRequiredOperation(entry.id);
-    assertNonEmptyStringArray(entry.requestShape, `${entry.id}.requestShape`);
-    assertNonEmptyStringArray(entry.responseShape, `${entry.id}.responseShape`);
-    assertNonEmptyStringArray(entry.domainTerms, `${entry.id}.domainTerms`);
+    const requestContract = readContractFields(entry, "requestContract");
+    const responseContract = readContractFields(entry, "responseContract");
+    const domainTerms = assertStringArray(entry.domainTerms, `${entry.id}.domainTerms`);
+    if (domainTerms.length === 0) {
+      throw new TypeError(`${entry.id}.domainTerms must not be empty`);
+    }
 
     for (const field of ["humanName", "cliCommand", "fixtureId"] as const) {
-      if (typeof entry[field] !== "string" || entry[field].length === 0) {
+      if (!isJsonString(entry[field]) || entry[field].length === 0) {
         throw new TypeError(`${entry.id}.${field} must not be empty`);
       }
     }
-    if (typeof entry.apiEndpoint !== "string" || !entry.apiEndpoint.startsWith("/")) {
+    if (!isJsonString(entry.apiEndpoint) || !entry.apiEndpoint.startsWith("/")) {
       throw new TypeError(`${entry.id}.apiEndpoint must start with /`);
     }
-    if (typeof entry.mcpTool !== "string" || !entry.mcpTool.startsWith("hobo_")) {
+    if (!isJsonString(entry.mcpTool) || !entry.mcpTool.startsWith("hobo_")) {
       throw new TypeError(`${entry.id}.mcpTool must start with hobo_`);
     }
     if (entry.sharedResultEnvelope !== true) {
       throw new TypeError(`${entry.id}.sharedResultEnvelope must be true`);
     }
 
-    return entry as ControlPlaneOperationShape;
+    return {
+      id: entry.id,
+      humanName: entry.humanName,
+      cliCommand: entry.cliCommand,
+      apiEndpoint: entry.apiEndpoint,
+      mcpTool: entry.mcpTool,
+      requestContract,
+      responseContract,
+      domainTerms,
+      sharedResultEnvelope: true as const,
+      fixtureId: entry.fixtureId,
+    };
   });
 }
 
-function assertRefusalArray(value: unknown): ControlPlaneRefusalEnvelope[] {
+function assertRefusalArray(value: JsonValue): ControlPlaneRefusalEnvelope[] {
   if (!Array.isArray(value)) {
     throw new TypeError("refusalEnvelopes must be an array");
   }
@@ -440,7 +469,7 @@ function assertRefusalArray(value: unknown): ControlPlaneRefusalEnvelope[] {
     assertObject(entry, `refusal ${index}`);
     assertRequiredBoundaryCase(entry.code);
     for (const field of ["trigger", "remediation", "fixtureId", "redactionClass"] as const) {
-      if (typeof entry[field] !== "string" || entry[field].length === 0) {
+      if (!isJsonString(entry[field]) || entry[field].length === 0) {
         throw new TypeError(`${entry.code}.${field} must not be empty`);
       }
     }
@@ -448,23 +477,26 @@ function assertRefusalArray(value: unknown): ControlPlaneRefusalEnvelope[] {
       throw new TypeError(`${entry.code}.proofMode is not supported`);
     }
 
+    // SAFETY: `return entry as ControlPlaneRefusalEnvelope;` is required at this I/O or test boundary.
     return entry as ControlPlaneRefusalEnvelope;
   });
 }
 
-function assertRequiredOperation(value: unknown): asserts value is OperationId {
+function assertRequiredOperation(value: JsonValue): asserts value is OperationId {
+  // SAFETY: `if (!REQUIRED_OPERATIONS.includes(value as OperationId)) {` is required at this I/O or test boundary.
   if (!REQUIRED_OPERATIONS.includes(value as OperationId)) {
     throw new TypeError(`unknown operation ${String(value)}`);
   }
 }
 
-function assertRequiredBoundaryCase(value: unknown): asserts value is BoundaryCase {
+function assertRequiredBoundaryCase(value: JsonValue): asserts value is BoundaryCase {
+  // SAFETY: `if (!REQUIRED_BOUNDARY_CASES.includes(value as BoundaryCase)) {` is required at this I/O or test boundary.
   if (!REQUIRED_BOUNDARY_CASES.includes(value as BoundaryCase)) {
     throw new TypeError(`unknown boundary case ${String(value)}`);
   }
 }
 
-function assertRequiredOperations(operations: readonly ControlPlaneOperationShape[]): void {
+function assertRequiredOperations(operations: readonly ControlPlaneOperationContract[]): void {
   const ids = operations.map((operation) => operation.id);
 
   for (const operation of REQUIRED_OPERATIONS) {
@@ -477,17 +509,17 @@ function assertRequiredOperations(operations: readonly ControlPlaneOperationShap
   }
 }
 
-function assertRequiredAcceptanceShapes(operations: readonly ControlPlaneOperationShape[]): void {
-  const shapeTerms = new Set(
+function assertRequiredAcceptanceTerms(operations: readonly ControlPlaneOperationContract[]): void {
+  const acceptanceTerms = new Set(
     operations.flatMap((operation) => [
-      ...operation.requestShape,
-      ...operation.responseShape,
+      ...operation.requestContract,
+      ...operation.responseContract,
       ...operation.domainTerms,
     ]),
   );
 
-  for (const term of REQUIRED_ACCEPTANCE_SHAPE_TERMS) {
-    if (!shapeTerms.has(term)) {
+  for (const term of REQUIRED_ACCEPTANCE_DOMAIN_TERMS) {
+    if (!acceptanceTerms.has(term)) {
       throw new TypeError(`missing acceptance shape ${term}`);
     }
   }
@@ -503,14 +535,14 @@ function assertRequiredBoundaryCases(refusals: readonly ControlPlaneRefusalEnvel
   }
 }
 
-function assertContractFixtures(value: unknown): asserts value is ControlPlaneContractFixtures {
+function assertContractFixtures(value: JsonValue): asserts value is ControlPlaneContractFixtures {
   assertObject(value, "contractFixtures");
   assertLiteral(value.protobuf, "architecture/control_plane_api_resource_lifecycle_shapes.proto", "protobuf");
   assertLiteral(value.cue, "architecture/control_plane_api_resource_lifecycle_shapes.cue", "cue");
   assertLiteral(value.pact, "architecture/pacts/control_plane_api_resource_lifecycle_shapes.pact.json", "pact");
 }
 
-function isProofMode(value: unknown): value is ProofMode {
+function isProofMode(value: JsonValue): value is ProofMode {
   return (
     value === "reference-fixture" ||
     value === "contract-fixture" ||

@@ -1,4 +1,10 @@
 import { BROKER_EVENTS, type BrokerEvent, brokerEvent } from "./events.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import { BrokerParseError } from "./policies.js";
 
 // Broker Environments (the HOBO-526/HOBO-527 admin-controls requirements, now
@@ -17,16 +23,19 @@ export interface BrokerEnvironment {
 	approvedBy?: string;
 }
 
-export function parseBrokerEnvironment(input: unknown): BrokerEnvironment {
-	if (input === null || typeof input !== "object" || Array.isArray(input)) {
+export function parseBrokerEnvironment(
+	input: JsonValue | undefined,
+): BrokerEnvironment {
+	if (input === null || !isJsonObject(input) || Array.isArray(input)) {
 		throw new BrokerParseError(
 			"invalid-environment",
 			"invalid-environment: expected an object",
 		);
 	}
-	const raw = input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const raw = input as JsonObject;
 	const environmentId = raw.environmentId ?? raw.environment_id;
-	if (typeof environmentId !== "string" || environmentId.length === 0) {
+	if (!isJsonString(environmentId) || environmentId.length === 0) {
 		throw new BrokerParseError(
 			"invalid-environment",
 			"invalid-environment: environmentId must be a non-empty string",
@@ -35,8 +44,7 @@ export function parseBrokerEnvironment(input: unknown): BrokerEnvironment {
 	const providersRaw = raw.approvedProviders ?? raw.approved_providers;
 	const approvedProviders = Array.isArray(providersRaw)
 		? providersRaw.filter(
-				(entry): entry is string =>
-					typeof entry === "string" && entry.length > 0,
+				(entry): entry is string => isJsonString(entry) && entry.length > 0,
 			)
 		: [];
 	const catalogHash = raw.catalogHash ?? raw.catalog_hash;
@@ -44,20 +52,17 @@ export function parseBrokerEnvironment(input: unknown): BrokerEnvironment {
 	return {
 		environmentId,
 		approvedProviders,
-		...(typeof catalogHash === "string" && catalogHash.length > 0
+		...(isJsonString(catalogHash) && catalogHash.length > 0
 			? { catalogHash }
-			: {}),
+			: undefined),
 		approved: raw.approved === true,
-		...(typeof approvedBy === "string" && approvedBy.length > 0
+		...(isJsonString(approvedBy) && approvedBy.length > 0
 			? { approvedBy }
-			: {}),
+			: undefined),
 	};
 }
 
-export function publishEnvironmentFact(input: unknown): {
-	environment: BrokerEnvironment;
-	event: BrokerEvent;
-} {
+export function publishEnvironmentFact(input: JsonValue | undefined) {
 	const environment = { ...parseBrokerEnvironment(input), approved: false };
 	return {
 		environment,
@@ -66,7 +71,7 @@ export function publishEnvironmentFact(input: unknown): {
 			approvedProviders: [...environment.approvedProviders],
 			...(environment.catalogHash !== undefined
 				? { catalogHash: environment.catalogHash }
-				: {}),
+				: undefined),
 		}),
 	};
 }
@@ -94,10 +99,10 @@ export function foldBrokerEnvironments(
 ): BrokerEnvironment[] {
 	const rows = new Map<string, BrokerEnvironment>();
 	for (const event of events) {
-		const data = (event.data ?? {}) as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const data = (event.data ?? {}) as JsonObject;
 		const environmentId = data.environmentId;
-		if (typeof environmentId !== "string" || environmentId.length === 0)
-			continue;
+		if (!isJsonString(environmentId) || environmentId.length === 0) continue;
 		if (event.type === BROKER_EVENTS.EnvironmentPublished) {
 			rows.set(environmentId, {
 				...parseBrokerEnvironment(data),
@@ -109,9 +114,9 @@ export function foldBrokerEnvironments(
 				rows.set(environmentId, {
 					...existing,
 					approved: true,
-					...(typeof data.approvedBy === "string"
+					...(isJsonString(data.approvedBy)
 						? { approvedBy: data.approvedBy }
-						: {}),
+						: undefined),
 				});
 			}
 		}

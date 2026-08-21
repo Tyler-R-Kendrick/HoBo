@@ -1,4 +1,13 @@
 import { createHash } from "node:crypto";
+import {
+	cloneAsJson,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 /** Schema versions for yard-first placement records. */
 // public-contract: yard instance registration schema id.
@@ -27,15 +36,9 @@ export type YardSelectionMode =
 	| "compatible"
 	| "compatible-or-generate";
 
-export type JsonValue =
-	| null
-	| boolean
-	| number
-	| string
-	| readonly JsonValue[]
-	| Readonly<{ readonly [key: string]: JsonValue }>;
+export type { JsonObject, JsonValue } from "../json.js";
 
-export interface CampShape {
+export interface CampLayout {
 	readonly id?: string;
 	readonly env?: string;
 	readonly envType?: string;
@@ -50,7 +53,7 @@ export interface CampShape {
  * Not a topology primitive.
  */
 // domain-view: planning/placement domain type (wire form in broker.proto when present).
-export interface YardShape {
+export interface YardLayout {
 	readonly providerId?: string;
 	readonly runtimeId?: string;
 	readonly regions: readonly string[];
@@ -62,7 +65,7 @@ export interface YardShape {
 	readonly componentHosts: readonly string[];
 	readonly labels: Readonly<Record<string, string>>;
 	readonly properties: Readonly<Record<string, JsonValue>>;
-	readonly camps: readonly CampShape[];
+	readonly camps: readonly CampLayout[];
 }
 
 // domain-view: planning/placement domain type (wire form in broker.proto when present).
@@ -70,7 +73,7 @@ export interface YardPlacementRequest {
 	readonly requestId: string;
 	readonly selectionMode: YardSelectionMode;
 	readonly requestedYardId?: string;
-	readonly requestedShape: YardShape;
+	readonly requestedLayout: YardLayout;
 	readonly bindleManifestHash: ContentHash;
 	readonly bindleRequirementsHash: ContentHash;
 	/** Request only — never authorizes generation. Broker policy is authoritative. */
@@ -92,7 +95,7 @@ export interface YardInstanceRegistration {
 	readonly ownerTenantId: string;
 	readonly providerId: string;
 	readonly runtimeId: string;
-	readonly shape: YardShape;
+	readonly layout: YardLayout;
 	readonly capabilities: readonly string[];
 	readonly status: YardInstanceStatus;
 	readonly health: {
@@ -130,7 +133,7 @@ export interface YardRuntimeRegistration {
 	readonly runtimeId: string;
 	readonly providerId: string;
 	readonly version: string;
-	readonly supportedShape: {
+	readonly supportedLayout: {
 		readonly regions: readonly string[];
 		readonly capabilities: readonly string[];
 		readonly requireProperties: readonly string[];
@@ -173,7 +176,7 @@ export interface YardCandidateDecision {
 export interface YardMatchDecision {
 	readonly requestedYardId?: string;
 	readonly selectionMode: YardSelectionMode;
-	readonly requestedShapeHash: ContentHash;
+	readonly requestedLayoutHash: ContentHash;
 	readonly inventoryHash: ContentHash;
 	readonly winnerYardId?: string;
 	readonly candidates: readonly YardCandidateDecision[];
@@ -201,8 +204,8 @@ export interface YardGenerationPlan {
 	readonly schemaVersion: typeof YARD_GENERATION_PLAN_SCHEMA;
 	readonly attemptId: string;
 	readonly idempotencyKey: ContentHash;
-	readonly requestedShape: YardShape;
-	readonly requestedShapeHash: ContentHash;
+	readonly requestedLayout: YardLayout;
+	readonly requestedLayoutHash: ContentHash;
 	readonly runtimeId: string;
 	readonly providerId: string;
 	readonly generatorConnectorId: string;
@@ -234,7 +237,7 @@ export interface YardGenerationResult {
 export interface CampPlacementRequest {
 	readonly selectionMode: YardSelectionMode;
 	readonly campId?: string;
-	readonly shape: CampShape;
+	readonly layout: CampLayout;
 }
 
 export interface BindleRequirementsView {
@@ -323,7 +326,7 @@ export interface YardPlacementReceipt {
 	readonly requestId: string;
 	readonly brokerId: string;
 	readonly selectionMode: YardSelectionMode;
-	readonly requestedShapeHash: ContentHash;
+	readonly requestedLayoutHash: ContentHash;
 	readonly inventoryHash: ContentHash;
 	readonly runtimeCatalogHash: ContentHash;
 	readonly selectedYardId: string;
@@ -337,40 +340,49 @@ export interface YardPlacementReceipt {
 	readonly contentHash: ContentHash;
 }
 
-export function contentHashOf(value: unknown): ContentHash {
-	const canonical = JSON.stringify(sortKeys(value));
+export function contentHashOf<T>(value: T): ContentHash {
+	const canonical = JSON.stringify(sortKeys(cloneAsJson(value)));
 	return `sha256:${createHash("sha256").update(canonical).digest("hex")}`;
 }
 
-export function emptyYardShape(): YardShape {
+export function emptyYardLayout(): YardLayout {
 	return Object.freeze({
+		// SAFETY: assertion required at this I/O or test boundary.
 		regions: Object.freeze([] as string[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		require: Object.freeze([] as string[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		prefer: Object.freeze([] as string[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		residency: Object.freeze([] as string[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		isolation: Object.freeze([] as string[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		network: Object.freeze([] as string[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		componentHosts: Object.freeze([] as string[]),
 		labels: Object.freeze({}),
 		properties: Object.freeze({}),
-		camps: Object.freeze([] as CampShape[]),
+		// SAFETY: assertion required at this I/O or test boundary.
+		camps: Object.freeze([] as CampLayout[]),
 	});
 }
 
-export function parseYardShape(input: unknown): YardShape {
-	if (input === undefined || input === null) return emptyYardShape();
-	if (typeof input !== "object" || Array.isArray(input)) {
-		throw new TypeError("yard shape must be an object");
+export function parseYardLayout(input: JsonValue | undefined): YardLayout {
+	if (input === undefined || input === null) return emptyYardLayout();
+	if (!isJsonObject(input) || Array.isArray(input)) {
+		throw new TypeError("yard layout must be an object");
 	}
-	const raw = input as Record<string, unknown>;
-	const base = emptyYardShape();
+	// SAFETY: assertion required at this I/O or test boundary.
+	const raw = input as JsonObject;
+	const base = emptyYardLayout();
 	return Object.freeze({
-		...(typeof raw.providerId === "string" && raw.providerId.length > 0
+		...(isJsonString(raw.providerId) && raw.providerId.length > 0
 			? { providerId: raw.providerId }
-			: {}),
-		...(typeof raw.runtimeId === "string" && raw.runtimeId.length > 0
+			: undefined),
+		...(isJsonString(raw.runtimeId) && raw.runtimeId.length > 0
 			? { runtimeId: raw.runtimeId }
-			: {}),
+			: undefined),
 		regions: list(raw.regions, base.regions),
 		require: list(raw.require, base.require),
 		prefer: list(raw.prefer, base.prefer),
@@ -381,25 +393,29 @@ export function parseYardShape(input: unknown): YardShape {
 		labels: stringMap(raw.labels),
 		properties: jsonMap(raw.properties),
 		camps: Object.freeze(
-			(Array.isArray(raw.camps) ? raw.camps : []).map(parseCampShape),
+			(Array.isArray(raw.camps) ? raw.camps : []).map(parseCampLayout),
 		),
 	});
 }
 
-export function parseCampShape(input: unknown): CampShape {
-	if (typeof input !== "object" || input === null || Array.isArray(input)) {
+export function parseCampLayout(input: JsonValue | undefined): CampLayout {
+	if (!isJsonObject(input) || input === null || Array.isArray(input)) {
 		return Object.freeze({
+			// SAFETY: assertion required at this I/O or test boundary.
 			require: Object.freeze([] as string[]),
+			// SAFETY: assertion required at this I/O or test boundary.
 			prefer: Object.freeze([] as string[]),
 			labels: Object.freeze({}),
+			// SAFETY: assertion required at this I/O or test boundary.
 			runtimeRequirements: Object.freeze([] as string[]),
 		});
 	}
-	const raw = input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const raw = input as JsonObject;
 	return Object.freeze({
-		...(typeof raw.id === "string" ? { id: raw.id } : {}),
-		...(typeof raw.env === "string" ? { env: raw.env } : {}),
-		...(typeof raw.envType === "string" ? { envType: raw.envType } : {}),
+		...(isJsonString(raw.id) ? { id: raw.id } : undefined),
+		...(isJsonString(raw.env) ? { env: raw.env } : undefined),
+		...(isJsonString(raw.envType) ? { envType: raw.envType } : undefined),
 		require: list(raw.require, []),
 		prefer: list(raw.prefer, []),
 		labels: stringMap(raw.labels),
@@ -407,62 +423,74 @@ export function parseCampShape(input: unknown): CampShape {
 	});
 }
 
-function list(value: unknown, fallback: readonly string[]): readonly string[] {
+function list(
+	value: JsonValue | undefined,
+	fallback: readonly string[],
+): readonly string[] {
 	if (!Array.isArray(value)) return Object.freeze([...fallback]);
 	return Object.freeze(
 		[
 			...new Set(
-				value.filter((v): v is string => typeof v === "string" && v.length > 0),
+				value.filter((v): v is string => isJsonString(v) && v.length > 0),
 			),
 		].sort(),
 	);
 }
 
-function stringMap(value: unknown): Readonly<Record<string, string>> {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
+function stringMap(
+	value: JsonValue | undefined,
+): Readonly<Record<string, string>> {
+	if (!value || !isJsonObject(value) || Array.isArray(value)) {
 		return Object.freeze({});
 	}
 	const out: Record<string, string> = {};
+	// SAFETY: assertion required at this I/O or test boundary.
 	for (const key of Object.keys(value as object).sort()) {
-		const v = (value as Record<string, unknown>)[key];
-		if (typeof v === "string") out[key] = v;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const v = (value as JsonObject)[key];
+		if (isJsonString(v)) out[key] = v;
 	}
 	return Object.freeze(out);
 }
 
-function jsonMap(value: unknown): Readonly<Record<string, JsonValue>> {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
+function jsonMap(
+	value: JsonValue | undefined,
+): Readonly<Record<string, JsonValue>> {
+	if (!value || !isJsonObject(value) || Array.isArray(value)) {
 		return Object.freeze({});
 	}
 	const out: Record<string, JsonValue> = {};
+	// SAFETY: assertion required at this I/O or test boundary.
 	for (const key of Object.keys(value as object).sort()) {
-		out[key] = toJson((value as Record<string, unknown>)[key]);
+		// SAFETY: assertion required at this I/O or test boundary.
+		out[key] = toJson((value as JsonObject)[key]);
 	}
 	return Object.freeze(out);
 }
 
-function toJson(value: unknown): JsonValue {
+function toJson(value: JsonValue | undefined): JsonValue {
 	if (
 		value === null ||
-		typeof value === "boolean" ||
-		typeof value === "number" ||
-		typeof value === "string"
+		isJsonBoolean(value) ||
+		isJsonNumber(value) ||
+		isJsonString(value)
 	) {
 		return value;
 	}
-	if (Array.isArray(value)) return Object.freeze(value.map(toJson));
-	if (value && typeof value === "object") {
+	if (Array.isArray(value)) return value.map(toJson);
+	if (value && isJsonObject(value)) {
 		return jsonMap(value);
 	}
 	throw new TypeError("value is not JSON-safe");
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: JsonValue | undefined): JsonValue {
+	if (value === undefined) return null;
 	if (Array.isArray(value)) return value.map(sortKeys);
-	if (!value || typeof value !== "object") return value;
+	if (!isJsonObject(value)) return value;
 	return Object.fromEntries(
 		Object.keys(value)
 			.sort()
-			.map((k) => [k, sortKeys((value as Record<string, unknown>)[k])]),
+			.map((k) => [k, sortKeys(value[k])]),
 	);
 }

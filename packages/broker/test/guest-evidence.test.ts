@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
-
 import {
 	assertGuestEvidenceMatchesOffer,
 	type GuestResolutionEvidence,
@@ -8,6 +7,7 @@ import {
 	parseGuestResolutionEvidence,
 	parseGuestResolutionInput,
 } from "../src/guest-evidence.js";
+import type { JsonObject } from "../src/json.js";
 import { canonicalResolutionJson } from "../src/signing.js";
 import type { ResolutionReceipt } from "../src/types.js";
 
@@ -16,9 +16,7 @@ const DIGEST_B = `sha256:${"b".repeat(64)}`;
 const DIGEST_C = `sha256:${"c".repeat(64)}`;
 const DIGEST_D = `sha256:${"d".repeat(64)}`;
 
-function input(
-	overrides: Partial<GuestResolutionInput> = {},
-): Record<string, unknown> {
+function input(overrides: Partial<GuestResolutionInput> = {}): JsonObject {
 	return {
 		recipeId: "claimable-webhook-inbox",
 		topologyDigest: DIGEST_A,
@@ -31,9 +29,7 @@ function input(
 	};
 }
 
-function placement(
-	overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+function placement(overrides: JsonObject = {}): JsonObject {
 	return {
 		resourceId: "api",
 		definitionId: "cloudflare.claimable-worker/v1",
@@ -47,9 +43,7 @@ function placement(
 	};
 }
 
-function evidence(
-	overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+function evidence(overrides: JsonObject = {}): JsonObject {
 	return {
 		recipeId: "claimable-webhook-inbox",
 		topologyDigest: DIGEST_A,
@@ -243,6 +237,7 @@ describe("offer and evidence agreement", () => {
 
 describe("receipt signing surface", () => {
 	it("covers guest evidence in the canonical signing payload", () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const guest = parseGuestResolutionEvidence(
 			evidence(),
 		) as GuestResolutionEvidence;
@@ -251,6 +246,7 @@ describe("receipt signing surface", () => {
 			requestId: "req-1",
 			brokerId: "broker-1",
 			catalogHash: DIGEST_A,
+			// SAFETY: assertion required at this I/O or test boundary.
 			policyHash: DIGEST_B as ResolutionReceipt["policyHash"],
 			placementPolicyId: "default",
 			placements: [

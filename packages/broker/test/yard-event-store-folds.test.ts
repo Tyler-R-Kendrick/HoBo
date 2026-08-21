@@ -208,7 +208,7 @@ describe("yard event-store folds + provider resolvers", () => {
 			runtimeId: "azure.yard-runtime/v1",
 			providerId: "azure",
 			version: "1",
-			supportedShape: {
+			supportedLayout: {
 				regions: ["eastus2"],
 				capabilities: ["managed-container-substrate"],
 				requireProperties: [],

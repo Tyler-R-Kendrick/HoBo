@@ -38,7 +38,8 @@ main
                            └── sdlc/anti-slop-27-providers-digitalocean  #1235 digitalocean
                             └── sdlc/anti-slop-28-code  #1238 @hobo/code
                              └── sdlc/anti-slop-29-hobo  #1241 packages/hobo
-                              └── sdlc/anti-slop-30-core  packages/core
+                              └── sdlc/anti-slop-30-core  #1242 packages/core
+                               └── sdlc/anti-slop-31-broker  packages/broker
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -85,6 +86,7 @@ Layer 26: provider-cloudflare (#1231).
 Layer 27: provider-digitalocean (#1235).
 Layer 28: `@hobo/code` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1238).
 Layer 29: `@hobo/hobo` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1241).
-Layer 30: `@hobo/core` oxlint `--deny-warnings` and `tsc --noEmit` clean.
-Next: `broker`, `connectivity`, runtimes, `src/draft/`. Full-repo
+Layer 30: `@hobo/core` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1242).
+Layer 31: `@hobo/broker` oxlint `--deny-warnings` and `tsc --noEmit` clean.
+Next: `connectivity`, runtimes, `src/draft/`. Full-repo
 `lint:slop --deny-warnings` is still red until those land.

@@ -4,26 +4,27 @@
  * No ambient credentials; no account farming.
  */
 
+import type { JsonObject } from "../json.js";
 import type { YardGenerationConnector } from "./generation.js";
 import type {
 	YardGenerationPlan,
 	YardGenerationResult,
+	YardLayout,
 	YardRuntimeRegistration,
-	YardShape,
 } from "./types.js";
 import { contentHashOf, YARD_GENERATION_PLAN_SCHEMA } from "./types.js";
 
 function basePlan(input: {
-	readonly requestedShape: YardShape;
+	readonly requestedLayout: YardLayout;
 	readonly runtime: YardRuntimeRegistration;
 	readonly ownerTenantId: string;
 	readonly attemptId: string;
 	readonly connectorId: string;
 }): YardGenerationPlan {
-	const shapeHash = contentHashOf(input.requestedShape);
+	const layoutHash = contentHashOf(input.requestedLayout);
 	const idempotencyKey = contentHashOf({
 		ownerTenantId: input.ownerTenantId,
-		shapeHash,
+		layoutHash,
 		runtimeId: input.runtime.runtimeId,
 		runtimeVersion: input.runtime.version,
 	});
@@ -32,8 +33,8 @@ function basePlan(input: {
 		schemaVersion: YARD_GENERATION_PLAN_SCHEMA,
 		attemptId: input.attemptId,
 		idempotencyKey,
-		requestedShape: input.requestedShape,
-		requestedShapeHash: shapeHash,
+		requestedLayout: input.requestedLayout,
+		requestedLayoutHash: layoutHash,
 		runtimeId: input.runtime.runtimeId,
 		providerId: input.runtime.providerId,
 		generatorConnectorId: input.connectorId,
@@ -55,7 +56,7 @@ function basePlan(input: {
 type AttemptState = {
 	plan: YardGenerationPlan;
 	result: YardGenerationResult;
-	signals: Array<{ kind: string; payload: Record<string, unknown> }>;
+	signals: Array<{ kind: string; payload: JsonObject }>;
 };
 
 /**
@@ -72,7 +73,7 @@ function createSimulatedConnector(options: {
 }): YardGenerationConnector & {
 	readonly signalsFor: (
 		attemptId: string,
-	) => readonly { kind: string; payload: Record<string, unknown> }[];
+	) => readonly { kind: string; payload: JsonObject }[];
 } {
 	const attempts = new Map<string, AttemptState>();
 
@@ -191,7 +192,7 @@ function createSimulatedConnector(options: {
 export function createAzureYardGenerationConnector(): YardGenerationConnector & {
 	readonly signalsFor: (
 		attemptId: string,
-	) => readonly { kind: string; payload: Record<string, unknown> }[];
+	) => readonly { kind: string; payload: JsonObject }[];
 } {
 	return createSimulatedConnector({
 		id: "connector:azure-yard-generator",
@@ -211,7 +212,7 @@ export function createAzureYardGenerationConnector(): YardGenerationConnector & 
 export function createAwsYardGenerationConnector(): YardGenerationConnector & {
 	readonly signalsFor: (
 		attemptId: string,
-	) => readonly { kind: string; payload: Record<string, unknown> }[];
+	) => readonly { kind: string; payload: JsonObject }[];
 } {
 	return createSimulatedConnector({
 		id: "connector:aws-yard-generator",
@@ -226,7 +227,7 @@ export function createAwsYardGenerationConnector(): YardGenerationConnector & {
 export function createGcpYardGenerationConnector(): YardGenerationConnector & {
 	readonly signalsFor: (
 		attemptId: string,
-	) => readonly { kind: string; payload: Record<string, unknown> }[];
+	) => readonly { kind: string; payload: JsonObject }[];
 } {
 	return createSimulatedConnector({
 		id: "connector:gcp-yard-generator",
@@ -241,7 +242,7 @@ export function createGcpYardGenerationConnector(): YardGenerationConnector & {
 export function createLocalYardGenerationConnector(): YardGenerationConnector & {
 	readonly signalsFor: (
 		attemptId: string,
-	) => readonly { kind: string; payload: Record<string, unknown> }[];
+	) => readonly { kind: string; payload: JsonObject }[];
 } {
 	return createSimulatedConnector({
 		id: "connector:local-yard-generator",

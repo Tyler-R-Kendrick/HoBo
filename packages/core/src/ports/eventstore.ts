@@ -1,8 +1,11 @@
 import type { EventEnvelope, PrincipalRef } from "../envelope.js";
 import { CoreParseError } from "../errors.js";
 import {
+	isJsonArray,
 	isJsonBigInt,
+	isJsonBoolean,
 	isJsonNumber,
+	isJsonObject,
 	isJsonString,
 	type JsonObject,
 	type JsonValue,
@@ -306,14 +309,30 @@ export class EventStoreParseError extends CoreParseError {
 	}
 }
 
-export function parseEventPosition(
-	value: JsonValue | undefined,
+function errorReceived<T>(value: T): JsonValue | undefined {
+	if (value === undefined) return undefined;
+	if (value === null) return null;
+	if (isJsonString(value)) return value;
+	if (isJsonNumber(value)) return value;
+	if (isJsonBoolean(value)) return value;
+	if (isJsonObject(value)) return value;
+	if (isJsonArray(value)) return value;
+	if (isJsonBigInt(value)) return value.toString();
+	return String(value);
+}
+
+export function parseEventPosition<T>(
+	value: T,
 	path = "position",
 ): EventPosition {
 	if (isJsonBigInt(value)) {
 		const amount: bigint = value;
 		if (amount < 0n) {
-			throw new EventStoreParseError(path, "non-negative bigint", value);
+			throw new EventStoreParseError(
+				path,
+				"non-negative bigint",
+				errorReceived(value),
+			);
 		}
 		// SAFETY: parse already proved a non-negative bigint position.
 		return amount as EventPosition;
@@ -326,17 +345,22 @@ export function parseEventPosition(
 		// SAFETY: assertion required at this I/O or test boundary.
 		return BigInt(value) as EventPosition;
 	}
-	throw new EventStoreParseError(path, "non-negative integer/bigint", value);
+	throw new EventStoreParseError(
+		path,
+		"non-negative integer/bigint",
+		errorReceived(value),
+	);
 }
 
-export function parseFenceToken(
-	value: JsonValue | undefined,
-	path = "fenceToken",
-): FenceToken {
+export function parseFenceToken<T>(value: T, path = "fenceToken"): FenceToken {
 	if (isJsonBigInt(value)) {
 		const amount: bigint = value;
 		if (amount < 0n) {
-			throw new EventStoreParseError(path, "non-negative bigint", value);
+			throw new EventStoreParseError(
+				path,
+				"non-negative bigint",
+				errorReceived(value),
+			);
 		}
 		// SAFETY: parse already proved a non-negative bigint fence token.
 		return amount as FenceToken;
@@ -349,7 +373,11 @@ export function parseFenceToken(
 		// SAFETY: assertion required at this I/O or test boundary.
 		return BigInt(value) as FenceToken;
 	}
-	throw new EventStoreParseError(path, "non-negative integer/bigint", value);
+	throw new EventStoreParseError(
+		path,
+		"non-negative integer/bigint",
+		errorReceived(value),
+	);
 }
 
 export function parseSubscriptionId(

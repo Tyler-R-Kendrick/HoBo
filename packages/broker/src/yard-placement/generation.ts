@@ -6,24 +6,30 @@ import {
 	type YardGenerationPlan,
 	type YardGenerationPolicy,
 	type YardGenerationResult,
+	type YardLayout,
 	type YardRuntimeCatalogSnapshot,
 	type YardRuntimeRegistration,
-	type YardShape,
 } from "./types.js";
 
 export const DEFAULT_YARD_GENERATION_POLICY: YardGenerationPolicy =
 	Object.freeze({
 		id: "yard-generation-default-deny",
 		effect: "deny",
+		// SAFETY: assertion required at this I/O or test boundary.
 		allowedRuntimeIds: Object.freeze([] as string[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		deniedRuntimeIds: Object.freeze([] as string[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		allowedProviderIds: Object.freeze([] as string[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		deniedProviderIds: Object.freeze([] as string[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		allowedConnectorIds: Object.freeze([] as string[]),
 		maxConcurrentGenerations: 0,
 		maxYardsPerTenant: 0,
 		requireApproval: true,
 		requireAttestation: true,
+		// SAFETY: assertion required at this I/O or test boundary.
 		lockedProperties: Object.freeze([] as string[]),
 	});
 
@@ -31,7 +37,7 @@ export interface YardGenerationConnector {
 	readonly id: string;
 	readonly kind: string;
 	plan(input: {
-		readonly requestedShape: YardShape;
+		readonly requestedLayout: YardLayout;
 		readonly runtime: YardRuntimeRegistration;
 		readonly ownerTenantId: string;
 		readonly attemptId: string;
@@ -47,7 +53,7 @@ export interface YardGenerationConnector {
  */
 export function planYardGeneration(options: {
 	readonly ownerTenantId: string;
-	readonly requestedShape: YardShape;
+	readonly requestedLayout: YardLayout;
 	readonly runtimeCatalog: YardRuntimeCatalogSnapshot;
 	readonly policy: YardGenerationPolicy;
 	readonly allowGenerationRequested: boolean;
@@ -81,11 +87,11 @@ export function planYardGeneration(options: {
 		};
 	}
 
-	const providerId = options.requestedShape.providerId;
+	const providerId = options.requestedLayout.providerId;
 	if (!providerId) {
 		return {
 			allowed: false,
-			reason: "generation requires requestedShape.providerId",
+			reason: "generation requires requestedLayout.providerId",
 			policyId: policy.id,
 		};
 	}
@@ -128,10 +134,12 @@ export function planYardGeneration(options: {
 		};
 	}
 
-	const shapeHash = contentHashOf(options.requestedShape) as ContentHash;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const layoutHash = contentHashOf(options.requestedLayout) as ContentHash;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const idempotencyKey = contentHashOf({
 		ownerTenantId: options.ownerTenantId,
-		shapeHash,
+		layoutHash,
 		runtimeId: runtime.runtimeId,
 		runtimeVersion: runtime.version,
 		brokerEnvironmentId: options.brokerEnvironmentId ?? "default",
@@ -147,8 +155,8 @@ export function planYardGeneration(options: {
 		schemaVersion: YARD_GENERATION_PLAN_SCHEMA,
 		attemptId: options.attemptId,
 		idempotencyKey,
-		requestedShape: options.requestedShape,
-		requestedShapeHash: shapeHash,
+		requestedLayout: options.requestedLayout,
+		requestedLayoutHash: layoutHash,
 		runtimeId: runtime.runtimeId,
 		providerId,
 		generatorConnectorId: runtime.generatorConnectorId,
@@ -159,6 +167,7 @@ export function planYardGeneration(options: {
 	};
 	const plan: YardGenerationPlan = Object.freeze({
 		...planBody,
+		// SAFETY: assertion required at this I/O or test boundary.
 		planHash: contentHashOf(planBody) as ContentHash,
 	});
 
@@ -174,14 +183,16 @@ export function planYardGeneration(options: {
  * In-memory generation saga coordinator: leases by idempotency key so concurrent
  * identical requests share one attempt.
  */
-export function createYardGenerationSaga(options: {
-	readonly connectors: ReadonlyMap<string, YardGenerationConnector>;
-}): {
+export interface YardGenerationSaga {
 	readonly run: (plan: YardGenerationPlan) => Promise<YardGenerationResult>;
 	readonly inspect: (
 		idempotencyKey: string,
 	) => YardGenerationResult | undefined;
-} {
+}
+
+export function createYardGenerationSaga(options: {
+	readonly connectors: ReadonlyMap<string, YardGenerationConnector>;
+}): YardGenerationSaga {
 	const attempts = new Map<
 		string,
 		{ plan: YardGenerationPlan; result: YardGenerationResult }

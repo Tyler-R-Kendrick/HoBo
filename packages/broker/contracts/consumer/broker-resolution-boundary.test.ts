@@ -2,8 +2,8 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-
 import { createBroker } from "../../src/broker.js";
+import type { JsonObject } from "../../src/json.js";
 import type {
 	BrokerCatalog,
 	BrokerCatalogDefinition,
@@ -41,7 +41,7 @@ const catalog: BrokerCatalog = {
 	],
 };
 
-function brokerWith(policies: Record<string, unknown>) {
+function brokerWith(policies: JsonObject) {
 	return createBroker({
 		stationId: "station:test",
 		railHash:

@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { asJsonObject, type JsonBag } from "../src/json.js";
+
 
 async function loadContract() {
   const module = await import("../src/dogfood-yard-ga-handoff-evidence.ts").catch((error) => ({
@@ -147,7 +149,7 @@ test("scope guards reject runtime build, live provider, customer-data, recovery,
 
 test("malformed evidence collections return parser errors instead of throwing", async () => {
   const { dogfoodYardGaHandoffEvidence, validateDogfoodYardGaHandoffEvidence } = await loadContract();
-  const invalid = structuredClone(dogfoodYardGaHandoffEvidence) as unknown as Record<string, unknown>;
+  const invalid: JsonBag = { ...asJsonObject(structuredClone(dogfoodYardGaHandoffEvidence)) };
 
   invalid.evidence = {};
   invalid.blockers = "not-blockers";

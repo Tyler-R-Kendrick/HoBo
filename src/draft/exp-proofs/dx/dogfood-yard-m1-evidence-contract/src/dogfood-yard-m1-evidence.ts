@@ -227,7 +227,12 @@ function collectDogfoodYardM1EvidenceErrors(record: DogfoodYardM1EvidenceRecord)
   return errors;
 }
 
-export function classifyDogfoodM1Decision(text: string): { owner: string; inScope: boolean } {
+export interface DogfoodM1Decision {
+  owner: string;
+  inScope: boolean;
+}
+
+export function classifyDogfoodM1Decision(text: string): DogfoodM1Decision {
   if (/\b(admin|status page controls|console)\b/i.test(text)) {
     return { owner: "Admin Console", inScope: false };
   }

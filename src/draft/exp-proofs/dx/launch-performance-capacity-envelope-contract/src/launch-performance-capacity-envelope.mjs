@@ -1,9 +1,10 @@
+import { isJsonObject } from "./json.js";
 export const REQUIRED_ENVELOPE_SECTIONS = [
   "targetWorkflows",
   "betaLoadAssumptions",
   "thresholds",
   "capacityAssumptions",
-  "loadTestFixtureShape",
+  "loadTestFixtureContract",
   "nonGoals",
 ];
 
@@ -116,7 +117,7 @@ export const LAUNCH_PERFORMANCE_CAPACITY_ENVELOPE = {
       scalingBoundary: "No live tenant traffic or customer data is used for HOBO-502 proof.",
     },
   ],
-  loadTestFixtureShape: [
+  loadTestFixtureContract: [
     {
       id: "fixture.local-smoke",
       dataSet: "local deterministic sample workspace with one project, one plan, one deploy record, and no provider calls",
@@ -184,7 +185,7 @@ export const LAUNCH_PERFORMANCE_CAPACITY_ENVELOPE = {
 export function validateLaunchPerformanceCapacityEnvelope(record) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["launch performance capacity envelope record is required"] };
   }
 
@@ -228,7 +229,7 @@ export function validateLaunchPerformanceCapacityEnvelope(record) {
     }
   }
 
-  for (const fixture of record.loadTestFixtureShape ?? []) {
+  for (const fixture of record.loadTestFixtureContract ?? []) {
     for (const field of ["dataSet", "measurementMode"]) {
       if (!fixture[field]) {
         errors.push(`${fixture.id ?? "<missing>"} missing ${field}`);

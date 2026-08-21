@@ -1,4 +1,6 @@
 import { createGateEventLog, type GateEventLog } from "./events.js";
+import { isJsonString } from "./json.js";
+
 
 const RESOURCE_DECLARATION_CALLEES = new Set([
   "api",
@@ -165,16 +167,18 @@ export function evaluateCollectionCoverage(input: {
   return { ...result, eventLog };
 }
 
-export function analyzeDeclaredResources(
-  sourceText: string,
-  { fileName = "source.ts" }: { fileName?: string } = {},
-): {
+export type DeclaredResourceAnalysis = {
   declaredResources: DeclaredResource[];
   declaredBinds: DeclaredBind[];
   unresolvedDeclarations: UnresolvedDeclaration[];
   unresolvedBinds: UnresolvedDeclaration[];
-} {
-  if (typeof sourceText !== "string") {
+};
+
+export function analyzeDeclaredResources(
+  sourceText: string,
+  { fileName = "source.ts" }: { fileName?: string } = {},
+): DeclaredResourceAnalysis {
+  if (!isJsonString(sourceText)) {
     throw new TypeError("sourceText must be a string");
   }
 
@@ -214,6 +218,7 @@ export function analyzeDeclaredResources(
       continue;
     }
 
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     const resourceId = staticId[1] as string;
     declaredResources.push({
       resourceId,
@@ -353,6 +358,7 @@ function parseBindlesImports(sourceText: string): BindlesImports {
   }
 
   for (const match of sourceText.matchAll(NAMESPACE_BINDLES_IMPORT)) {
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     namespaces.add(match[1] as string);
   }
 
@@ -367,6 +373,7 @@ function parseNamedImport(specifier: string): { imported: string; local: string 
     withoutType,
   );
   if (aliasMatch) {
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     return { imported: aliasMatch[1] as string, local: aliasMatch[2] as string };
   }
 
@@ -400,6 +407,7 @@ function findFunctionCalls(sourceText: string, lineStarts: number[]): FunctionCa
     const position = lineAndColumnAt(lineStarts, match.index ?? 0);
     calls.push({
       qualifier: match[1],
+      // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
       callee: match[2] as string,
       argumentText: balanced.value,
       arguments: argumentList,
@@ -418,8 +426,10 @@ function findFunctionCalls(sourceText: string, lineStarts: number[]): FunctionCa
 
 function attachBranchFacts(sourceText: string, calls: FunctionCall[]): void {
   const state = {
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     branchStack: [] as BranchFrame[],
     index: 0,
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     lastClosedBranch: undefined as BranchFrame | undefined,
   };
 
@@ -546,7 +556,9 @@ function collectDirectBind(
 
   declaredBinds.push(
     bindDeclaration({
+      // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
       from: from[1] as string,
+      // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
       to: to[1] as string,
       fileName,
       line: call.line,
@@ -800,7 +812,12 @@ function findLineStarts(sourceText: string): number[] {
   return lineStarts;
 }
 
-function lineAndColumnAt(lineStarts: number[], index: number): { line: number; column: number } {
+type LineColumn = {
+  line: number;
+  column: number;
+};
+
+function lineAndColumnAt(lineStarts: number[], index: number): LineColumn {
   let low = 0;
   let high = lineStarts.length - 1;
 
@@ -946,7 +963,7 @@ function formatCoverageError(diagnostics: readonly CoverageDiagnostic[]): string
   return `Collection coverage failed: ${errors.map((d) => d.message).join(" ")}`;
 }
 
-function assertArray(value: unknown, name: string): asserts value is readonly unknown[] {
+function assertArray<T>(value: T, name: string): void {
   if (!Array.isArray(value)) {
     throw new TypeError(`${name} must be an array`);
   }

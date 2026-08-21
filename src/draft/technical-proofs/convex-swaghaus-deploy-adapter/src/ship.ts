@@ -131,13 +131,13 @@ export async function shipSwaghausConvexApp(
 	const response = await deployConvexApp({
 		root: request.root,
 		deploymentName: request.deploymentName,
-		...(request.mock ? { mock: true } : {}),
-		...(input.deployKey ? { deployKey: input.deployKey } : {}),
-		...(input.selfHostedUrl ? { selfHostedUrl: input.selfHostedUrl } : {}),
+		...(request.mock ? { mock: true } : undefined),
+		...(input.deployKey ? { deployKey: input.deployKey } : undefined),
+		...(input.selfHostedUrl ? { selfHostedUrl: input.selfHostedUrl } : undefined),
 		...(input.selfHostedAdminKey
 			? { selfHostedAdminKey: input.selfHostedAdminKey }
-			: {}),
-		...(input.spawn ? { spawn: input.spawn } : {}),
+			: undefined),
+		...(input.spawn ? { spawn: input.spawn } : undefined),
 	});
 	assertShipTransition("deploying", "deployed");
 

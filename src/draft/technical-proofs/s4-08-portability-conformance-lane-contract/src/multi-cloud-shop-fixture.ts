@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isJsonObject } from "./json.js";
+
 
 export const MULTI_CLOUD_SHOP_FIXTURE = "examples/multi-cloud-shop";
 export const MULTI_CLOUD_SHOP_FIXTURE_ROOT = join(
@@ -88,7 +90,7 @@ export function createMultiCloudShopFixtureRecord(overrides = {}) {
 }
 
 function deepFreeze(value) {
-  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+  if (value && isJsonObject(value) && !Object.isFrozen(value)) {
     for (const child of Object.values(value)) {
       deepFreeze(child);
     }

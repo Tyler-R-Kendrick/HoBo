@@ -87,7 +87,8 @@ main
                                                                             └── sdlc/anti-slop-76-draft-artifact-dispatch-dagger-certify  #1335 artifact-repo+driver-dispatch+dagger+certify
                                                                              └── sdlc/anti-slop-77-draft-matching-host-projection-network  #1336 matching-engine+execution-host+projection-rebuild+tier-two
                                                                               └── sdlc/anti-slop-78-draft-local-dev-closure-agent-manifest  #1337 local-dev-authoring+closure-public-api+durable-agent+manifest
-                                                                               └── sdlc/anti-slop-79-draft-protobuf-promotion-capability  protobuf-cue+observed-promotion+capability-manifest+capability-spec
+                                                                               └── sdlc/anti-slop-79-draft-protobuf-promotion-capability  #1338 protobuf-cue+observed-promotion+capability-manifest+capability-spec
+                                                                                └── sdlc/anti-slop-80-draft-eventstore-ca-cost-revocation  camp-eventstore+internal-ca+cost-guard+session-revocation
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -186,6 +187,7 @@ Layer 75: `connectivity-policy-enforcement-contract` + `tier-three-private-inter
 Layer 76: `artifact-repo-port-contract` + `driver-dispatch-routing-contract` + `build-dagger-provider-contract` + `generation-certify-stage-contract` oxlint `--deny-warnings` clean (#1335).
 Layer 77: `matching-engine-skeleton-contract` + `execution-host-provider-contract` + `projection-rebuild-contract` + `tier-two-cross-region-network-contract` oxlint `--deny-warnings` clean (#1336).
 Layer 78: `local-dev-test-authoring-contract` + `closure-builder-public-api-contract` + `durable-agent-primitive-contract` + `hobo-manifest-contract` oxlint `--deny-warnings` clean (#1337).
-Layer 79: `s0-04-protobuf-cue-codegen` + `observed-contract-promotion-contract` + `provider-capability-manifest-contract` + `capability-spec-contract` oxlint `--deny-warnings` clean.
+Layer 79: `s0-04-protobuf-cue-codegen` + `observed-contract-promotion-contract` + `provider-capability-manifest-contract` + `capability-spec-contract` oxlint `--deny-warnings` clean (#1338).
+Layer 80: `camp-eventstore-runtime-port-contract` + `internal-ca-private-acme-contract` + `observability-cost-guard-contract` + `session-revocation-contract` oxlint `--deny-warnings` clean.
 Next: remaining `src/draft/` (larger technical-proofs, exp-proofs, projects).
 Full-repo `lint:slop --deny-warnings` is still red until those land.

@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 // domain-view: parse-produced draft-proof record; its wire form is the CollectionInput proto message in data-models/.
 export interface CollectionInput {
   readonly bindleId?: string;
@@ -52,7 +53,7 @@ export interface ResourceHandle {
   readonly stableId: string;
   readonly port: string;
   allow(...verbs: string[]): this;
-  [verb: string]: unknown;
+  [verb: string]: string | ((...args: never[]) => ResourceHandle | JsonValue);
 }
 
 export interface ComponentHandle extends ResourceHandle {
@@ -61,7 +62,7 @@ export interface ComponentHandle extends ResourceHandle {
 
 export interface CollectionResult {
   readonly bindleId: string;
-  readonly manifest: unknown;
+  readonly manifest: JsonValue;
   readonly manifestHash: string;
   readonly coverage: {
     readonly ok: boolean;
@@ -79,7 +80,7 @@ export interface CollectionFact {
   readonly type: "bindle.ResourcesCollected" | "bindle.ManifestProduced";
   readonly seq: number;
   readonly source: "resource-collection-engine";
-  readonly data: unknown;
+  readonly data: JsonValue;
 }
 
 export class CollectionEngineError extends Error {

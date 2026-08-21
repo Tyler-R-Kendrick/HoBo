@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export const DEFAULT_COMPONENT_HOST = Object.freeze({
   kind: "wasmtime",
   version: "46.0.1",
@@ -72,12 +73,12 @@ export type CollectionEvent = {
   readonly type: "bindle.ResourcesCollected" | "bindle.ManifestProduced";
   readonly seq: 1 | 2;
   readonly source: "hobo.collector";
-  readonly data: Record<string, unknown>;
+  readonly data: JsonObject;
 };
 
 export type CollectionResult = {
   readonly bindleId: string;
-  readonly manifest: Record<string, unknown>;
+  readonly manifest: JsonObject;
   readonly manifestHash: string;
   readonly coverage: CoverageSummary;
   readonly events: readonly CollectionEvent[];
@@ -120,23 +121,34 @@ export type CatalogEntry = {
   readonly allowVerbs: readonly string[];
 };
 
-export type CollectionContext = {
-  readonly effects: {
-    readonly clock: { readonly now: () => Date };
-    readonly network: {
-      readonly fetch: (target: string) => { readonly ok: false; readonly ignored: true };
-    };
+export type CollectionEffects = {
+  readonly clock: { readonly now: () => Date };
+  readonly network: {
+    readonly fetch: (target: string) => { readonly ok: false; readonly ignored: true };
   };
-  readonly bind: (from: ResourceHandle, to: ResourceHandle) => void;
-  readonly [factory: string]: unknown;
 };
+
+export type CollectionBind = (from: ResourceHandle, to: ResourceHandle) => void;
+
+export type ResourceFactory = (
+  name: string,
+  options?: { readonly bind?: JsonObject },
+) => ResourceHandle;
+
+export type CollectionContext = {
+  readonly effects: CollectionEffects;
+  readonly bind: CollectionBind;
+  readonly [factory: string]: ResourceFactory | CollectionEffects | CollectionBind;
+};
+
+export type ResourceVerbFn = (...args: JsonValue[]) => JsonObject;
 
 export type ResourceHandle = {
   readonly kind: string;
   readonly name: string;
   readonly stableId: string;
   readonly port: string;
-  readonly route: (method: string, path: string, handler?: () => unknown) => ResourceHandle;
+  readonly route: (method: string, path: string, handler?: () => void) => ResourceHandle;
   readonly allow: (...verbs: string[]) => ResourceHandle;
-  readonly [verb: string]: unknown;
+  readonly [verb: string]: string | ResourceVerbFn | ((...args: never[]) => ResourceHandle);
 };

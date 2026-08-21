@@ -1,9 +1,22 @@
 import { CATALOG } from "../../hobo-bindles-resource-catalog/src/catalog.js";
 import { declareResource, recordBindEdge, resolveResourceHandle } from "./handles.js";
-import type { CollectionContext, CollectionState, ResourceHandle } from "./types.js";
+import type {
+  CollectionBind,
+  CollectionContext,
+  CollectionEffects,
+  CollectionState,
+  ResourceFactory,
+  ResourceHandle,
+} from "./types.js";
+
+interface MutableCollectionContext {
+  effects: CollectionEffects;
+  bind: CollectionBind;
+  [factory: string]: ResourceFactory | CollectionEffects | CollectionBind;
+}
 
 export function createCollectionContext(state: CollectionState): CollectionContext {
-  const collect = {
+  const collect: MutableCollectionContext = {
     effects: {
       clock: {
         now() {
@@ -30,7 +43,7 @@ export function createCollectionContext(state: CollectionState): CollectionConte
       const target = resolveResourceHandle(to, "bind.to");
       recordBindEdge(state, owner, target);
     },
-  } as CollectionContext;
+  };
 
   for (const entry of CATALOG) {
     collect[entry.factory] = (name: string, options = {}) =>

@@ -37,7 +37,17 @@ export type StationClient = Readonly<{
 
 export function stationRoot(hoboHome: string, stationId: string): string {
 	const safe = stationId.replace(/[^a-zA-Z0-9._:-]/g, "_");
-	return join(hoboHome, "stations", safe);
+	// Replacing separators is not enough on its own, because `.` is inside the
+	// safe class: a station id of `..` sanitized to `..` and `join` then
+	// normalized it away, so `stationRoot(home, "..")` returned HOBO_HOME itself
+	// and `persistStationEvents` wrote `HOBO_HOME/events.jsonl` — outside the
+	// per-station directory entirely (`"."` landed on `stations/events.jsonl`
+	// the same way). A station id reaches here from `--station`, HOBO_STATION,
+	// and the profile, so it is attacker-adjacent input. A name that is only
+	// dots has no legitimate use, so neutralize it rather than rejecting: the
+	// resulting directory is still deterministic and still inside HOBO_HOME.
+	const contained = /^\.+$/u.test(safe) ? safe.replace(/\./g, "_") : safe;
+	return join(hoboHome, "stations", contained);
 }
 
 export function stationEventsPath(hoboHome: string, stationId: string): string {

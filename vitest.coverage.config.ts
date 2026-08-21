@@ -266,7 +266,7 @@ export default defineConfig({
 				"packages/schema-tools/**": { statements: 79, branches: 69, functions: 89, lines: 81 },
 				"packages/sdk/**": { statements: 96, branches: 89, functions: 98, lines: 96 },
 				"packages/stage-gate/**": { statements: 75, branches: 75, functions: 75, lines: 75 },
-				"packages/stations/**": { statements: 85, branches: 78, functions: 93, lines: 86 },
+				"packages/stations/**": { statements: 95, branches: 91, functions: 98, lines: 95 },
 				"packages/status-page/**": { statements: 92, branches: 82, functions: 91, lines: 93 },
 				"packages/storage-sqlite/**": { statements: 71, branches: 60, functions: 81, lines: 72 },
 				"packages/testing/**": { statements: 89, branches: 81, functions: 94, lines: 91 },

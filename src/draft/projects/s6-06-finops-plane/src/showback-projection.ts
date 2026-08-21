@@ -2,6 +2,8 @@ import { snapshotMeteringView } from "../../../technical-proofs/metering-view-pr
 import { createShowbackReport } from "../../../technical-proofs/showback-attribution-contract/src/showback-attribution.js";
 
 import { SHOWBACK_RECONCILE_SCHEMA } from "./plan-cost-estimator.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export function projectShowbackFromEvents(input) {
   const source = expectObject(input, "input");
@@ -74,7 +76,7 @@ function roundUsd(value) {
 }
 
 function expectObject(value, label) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${label} must be an object`);
   }
   return value;
@@ -88,7 +90,7 @@ function requireArray(value, label) {
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;

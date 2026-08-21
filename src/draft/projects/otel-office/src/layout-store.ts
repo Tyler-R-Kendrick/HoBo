@@ -9,6 +9,8 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { OfficeLayout } from "./layout.js";
+import { isJsonObject } from "./json.js";
+
 
 export const LAYOUT_SAVE_DEBOUNCE_MS = 200;
 
@@ -36,8 +38,9 @@ export class LayoutStore {
 	load(stationId: string): OfficeLayout | undefined {
 		try {
 			const raw = readFileSync(this.pathFor(stationId), "utf8");
+			// SAFETY: `const parsed = JSON.parse(raw) as OfficeLayout;` is required at this I/O or test boundary.
 			const parsed = JSON.parse(raw) as OfficeLayout;
-			if (typeof parsed !== "object" || parsed === null) return undefined;
+			if (!isJsonObject(parsed) || parsed === null) return undefined;
 			return parsed;
 		} catch {
 			return undefined;
@@ -67,7 +70,7 @@ export class LayoutStore {
 
 	/** Flush all debounced writes synchronously (shutdown + tests). */
 	flush(): void {
-		for (const [stationId, entry] of [...this.pending.entries()]) {
+		for (const [stationId, entry] of this.pending.entries()) {
 			clearTimeout(entry.timer);
 			this.pending.delete(stationId);
 			this.saveNow(stationId, entry.layout);

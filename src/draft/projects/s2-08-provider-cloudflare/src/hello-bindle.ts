@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export const CLOUDFLARE_PROVIDER_TARGET = "cloudflare";
 
 export interface TypedOptionBlock {
@@ -5,12 +6,12 @@ export interface TypedOptionBlock {
   port: string;
   optionName: string;
   negotiation: "prefer" | "require";
-  options: Record<string, unknown>;
+  options: JsonObject;
 }
 
 export const cloudflare = {
   with: {
-    worker(options: Record<string, unknown> = {}): TypedOptionBlock {
+    worker(options: JsonObject = {}): TypedOptionBlock {
       return optionBlock("compute", "worker", {
         compatibilityDate: "2026-01-01",
         cpuMs: 10_000,
@@ -18,14 +19,14 @@ export const cloudflare = {
         scriptSizeMb: 3,
       }, options);
     },
-    r2(options: Record<string, unknown> = {}): TypedOptionBlock {
+    r2(options: JsonObject = {}): TypedOptionBlock {
       return optionBlock("objectStore", "r2", {
         jurisdiction: "auto",
         s3Compatibility: "aws-sdk-v3-basic",
         publicAccess: false,
       }, options);
     },
-    kv(options: Record<string, unknown> = {}): TypedOptionBlock {
+    kv(options: JsonObject = {}): TypedOptionBlock {
       return optionBlock("kv", "kv", {
         ttlSeconds: 0,
         eventualConsistency: true,
@@ -35,6 +36,25 @@ export const cloudflare = {
 };
 
 // domain-view: parse-produced draft-proof record; its wire form is the HelloBindlePlan proto message in data-models/.
+export interface HelloBindleResource {
+  id: string;
+  type: string;
+  className: string;
+  require: string[];
+  colo: string;
+  options: TypedOptionBlock[];
+  build?: {
+    artifactId: string;
+    source: string;
+    target: string;
+  };
+  binds?: Array<{
+    import: string;
+    providerResourceId: string;
+    capability: string;
+  }>;
+}
+
 export interface HelloBindlePlan {
   id: string;
   context: {
@@ -44,7 +64,7 @@ export interface HelloBindlePlan {
     provider: string;
     colo: string;
   };
-  resources: Array<Record<string, unknown>>;
+  resources: HelloBindleResource[];
 }
 
 export interface HelloBindlePlanOptions {
@@ -105,8 +125,8 @@ export function createHelloBindlePlan(options: HelloBindlePlanOptions = {}): Hel
 function optionBlock(
   port: string,
   builder: string,
-  defaults: Record<string, unknown>,
-  options: Record<string, unknown>,
+  defaults: JsonObject,
+  options: JsonObject,
 ): TypedOptionBlock {
   return {
     providerId: CLOUDFLARE_PROVIDER_TARGET,

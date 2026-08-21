@@ -2,6 +2,8 @@ import { BuildError } from "./errors.js";
 import { stableStringify } from "./events.js";
 import { parseBuildRequest, type BuildRequest } from "./parse.js";
 import { runBuild } from "./build.js";
+import { isJsonNumber, type JsonValue } from "./json.js";
+
 
 export type CliRunResult = {
   readonly exitCode: number;
@@ -42,10 +44,11 @@ export function createBuildCli(options: { readonly execute?: typeof runBuild } =
 }
 
 export function registerBuildCommand(registry: {
-  register(name: string, module: { run: (input: unknown) => Promise<unknown> }): void;
+  register(name: string, module: { run: (input: JsonValue) => Promise<JsonValue> }): void;
 }): void {
   registry.register("build", {
     async run(input) {
+      // SAFETY: `const request = input as BuildRequest;` is required at this I/O or test boundary.
       const request = input as BuildRequest;
       return runBuild(request);
     },
@@ -78,7 +81,7 @@ function renderSuccess(
   };
 }
 
-function renderFailure(request: BuildRequest, error: unknown): CliRunResult {
+function renderFailure(request: BuildRequest, error: JsonValue): CliRunResult {
   const contractError =
     error instanceof BuildError
       ? error
@@ -86,7 +89,7 @@ function renderFailure(request: BuildRequest, error: unknown): CliRunResult {
           cause: error instanceof Error ? error.message : String(error),
         });
   const exitCode =
-    typeof contractError.detail.exitCode === "number"
+    isJsonNumber(contractError.detail.exitCode)
       ? contractError.detail.exitCode
       : contractError.code === "HOBO_BUILD_USAGE"
         ? 2

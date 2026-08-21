@@ -22,6 +22,7 @@ export const EQUIVALENCE_CLASSES = Object.freeze({
 export type InitialCapabilityPort = keyof typeof EQUIVALENCE_CLASSES;
 
 export const INITIAL_CAPABILITY_PORTS = Object.freeze(
+  // SAFETY: `Object.keys(EQUIVALENCE_CLASSES) as InitialCapabilityPort[],` is required at this I/O or test boundary.
   Object.keys(EQUIVALENCE_CLASSES) as InitialCapabilityPort[],
 );
 

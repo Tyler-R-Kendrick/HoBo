@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export type BuildErrorCode =
   | "HOBO_BUILD_USAGE"
   | "HOBO_BUILD_CODEGEN_DRIFT"
@@ -13,9 +14,9 @@ export type BuildErrorCode =
 
 export class BuildError extends Error {
   readonly code: BuildErrorCode;
-  readonly detail: Record<string, unknown>;
+  readonly detail: JsonObject;
 
-  constructor(code: BuildErrorCode, message: string, detail: Record<string, unknown> = {}) {
+  constructor(code: BuildErrorCode, message: string, detail: JsonObject = {}) {
     super(message);
     this.name = "BuildError";
     this.code = code;

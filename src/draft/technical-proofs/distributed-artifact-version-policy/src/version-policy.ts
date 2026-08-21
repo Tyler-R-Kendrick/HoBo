@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 export const STABILITY_TIERS = Object.freeze([
   "stable",
   "preview",
@@ -14,7 +15,7 @@ export function normalizeVersion(version) {
   return {
     canonical: formatVersion(parsed, { includeBuild: false }),
     original: version,
-    ...(parsed.build ? { build: parsed.build } : {})
+    ...(parsed.build ? { build: parsed.build } : undefined)
   };
 }
 
@@ -155,7 +156,7 @@ function parseRange(range) {
 }
 
 function parseRangeUnsafe(range) {
-  if (typeof range !== "string") {
+  if (!isJsonString(range)) {
     return { ok: false, reason: "range must be a string" };
   }
 
@@ -261,7 +262,7 @@ function crossesMajorBoundary(range) {
 }
 
 function parseVersion(version) {
-  if (typeof version !== "string") {
+  if (!isJsonString(version)) {
     throw new Error(`version must be a string: ${String(version)}`);
   }
 
@@ -274,8 +275,8 @@ function parseVersion(version) {
     major: Number(match[1]),
     minor: Number(match[2]),
     patch: Number(match[3]),
-    ...(match[4] ? { prerelease: match[4] } : {}),
-    ...(match[5] ? { build: match[5] } : {})
+    ...(match[4] ? { prerelease: match[4] } : undefined),
+    ...(match[5] ? { build: match[5] } : undefined)
   };
 }
 

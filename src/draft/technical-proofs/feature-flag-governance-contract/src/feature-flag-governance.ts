@@ -8,6 +8,8 @@ import {
   createDecisionRequest,
   POLICY_IR_SCHEMA_VERSION
 } from "../../hobo-policy-ir-contract/src/policy-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const FLAG_CHANGE_ACTION = "hobo:feature-flag:change";
 export const FLAG_CHANGE_PHASE = "runtime";
@@ -36,10 +38,10 @@ export async function evaluateFeatureFlagChangeGovernance({
 }
 
 export function fireAutoRevertObligations({ decision, signal } = {}) {
-  if (!decision || typeof decision !== "object") {
+  if (!decision || !isJsonObject(decision)) {
     throw new TypeError("decision is required");
   }
-  if (!signal || typeof signal !== "object") {
+  if (!signal || !isJsonObject(signal)) {
     throw new TypeError("signal is required");
   }
 
@@ -204,10 +206,10 @@ function createAutoRevertObligation(change) {
 }
 
 function normalizeFlagChange(change) {
-  if (!change || typeof change !== "object" || Array.isArray(change)) {
+  if (!change || !isJsonObject(change) || Array.isArray(change)) {
     throw new TypeError("change must be an object");
   }
-  if (!change.actor || typeof change.actor !== "object") {
+  if (!change.actor || !isJsonObject(change.actor)) {
     throw new TypeError("change.actor is required");
   }
 
@@ -254,7 +256,7 @@ function normalizeFlagChange(change) {
 }
 
 function requiredString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${path} must be a non-empty string`);
   }
   return value;

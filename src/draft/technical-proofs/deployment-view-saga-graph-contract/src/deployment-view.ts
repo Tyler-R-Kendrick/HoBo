@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const DEPLOYMENT_VIEW_CONTRACT_VERSION = "hobo.deployment-view/v1";
 
 const TERMINAL_STATUSES = new Set(["deployed", "rolled-back"]);
@@ -31,7 +32,7 @@ export function createDeploymentViewProjection(seedEvents = []) {
 }
 
 export function createInspectRunQuery({ eventStore, providerClient: _providerClient } = {}) {
-  if (!eventStore || typeof eventStore.readByCorrelationId !== "function") {
+  if (!eventStore || !(eventStore.readByCorrelationId instanceof Function)) {
     throw new TypeError("eventStore.readByCorrelationId must be a function");
   }
 
@@ -318,10 +319,10 @@ function normalizeEvents(seedEvents) {
 
 function assertEnvelopeLinkage(events) {
   for (const event of events) {
-    if (typeof event.correlationId !== "string" || event.correlationId.length === 0) {
+    if (!isJsonString(event.correlationId) || event.correlationId.length === 0) {
       throw new DeploymentViewError(`Event ${event.id} is missing correlationId.`);
     }
-    if (typeof event.causationId !== "string" || event.causationId.length === 0) {
+    if (!isJsonString(event.causationId) || event.causationId.length === 0) {
       throw new DeploymentViewError(`Event ${event.id} is missing causationId.`);
     }
   }
@@ -353,7 +354,7 @@ function normalizeStringArray(value) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -371,7 +372,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

@@ -24,6 +24,8 @@ import {
 import {
   runValidationStage
 } from "../../generation-validation-stage-contract/src/validation-stage.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const providerArtifactMediaType = "application/vnd.hobo.provider.layer.v1+json";
 const defaultModel = Object.freeze({
@@ -191,7 +193,7 @@ export async function generateProvider(input) {
     validationReport: certificationInput.validationReport,
     conformanceReport: certificationInput.conformanceReport,
     certification,
-    registryEvents: typeof registry.events === "function" ? registry.events() : [],
+    registryEvents: registry.events instanceof Function ? registry.events() : [],
     events: allEvents,
     replay: rebuildGenerationRun(allEvents)
   });
@@ -244,7 +246,7 @@ function sanitizeMaterials(materialRefs) {
     );
     const codes = promptInjectionFindings(rawRef);
     const requiresSanitizedRef =
-      typeof parsed.content === "string" ||
+      isJsonString(parsed.content) ||
       codes.length > 0 ||
       parsed.sanitized !== true ||
       parsed.trusted !== false;
@@ -549,21 +551,21 @@ function expectSigningKey(signingKey) {
 }
 
 function assertFunction(value, code, path) {
-  if (typeof value !== "function") {
+  if (!(value instanceof Function)) {
     throw new ProviderGenerationLoopError(code, path);
   }
   return value;
 }
 
 function assertObject(value, code, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new ProviderGenerationLoopError(code, path);
   }
   return value;
 }
 
 function nonEmptyString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new ProviderGenerationLoopError("provider_loop.expected_string", path);
   }
   return value;

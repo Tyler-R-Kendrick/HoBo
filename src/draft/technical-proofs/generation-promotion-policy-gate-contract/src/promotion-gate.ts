@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const PROMOTION_POLICY_REQUEST_SCHEMA = "hobo.policy-ir/v1";
 export const PROMOTION_GATE_SCHEMA = "hobo.gen.promotion-gate/v1";
@@ -48,7 +50,7 @@ export function buildPromotionPolicyRequest(candidateInput) {
 }
 
 export function createGenerationPromotionGate({ policyEngine, ruleset } = {}) {
-  if (!policyEngine || typeof policyEngine.evaluate !== "function") {
+  if (!policyEngine || !(policyEngine.evaluate instanceof Function)) {
     throw new PromotionGateContractError(
       "promotion.policy_engine_required",
       "$.policyEngine",
@@ -310,7 +312,7 @@ function event(candidate, seq, type, data) {
 }
 
 function normalizePolicyDecision(decision, fallbackEngineId, request) {
-  if (!decision || typeof decision !== "object" || Array.isArray(decision)) {
+  if (!decision || !isJsonObject(decision) || Array.isArray(decision)) {
     return {
       schema: "hobo.policy-ir.decision/v1",
       effect: "deny",
@@ -498,14 +500,14 @@ function parseStringArray(input, path) {
 }
 
 function expectObject(input, path) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new PromotionGateContractError("promotion.expected_object", path);
   }
   return input;
 }
 
 function assertNonEmptyString(input, path) {
-  if (typeof input !== "string" || input.trim() === "") {
+  if (!isJsonString(input) || input.trim() === "") {
     throw new PromotionGateContractError("promotion.expected_string", path);
   }
   return input;
@@ -516,7 +518,7 @@ function hashJson(value) {
 }
 
 function stableJson(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {

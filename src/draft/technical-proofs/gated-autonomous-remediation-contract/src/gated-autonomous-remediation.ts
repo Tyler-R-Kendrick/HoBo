@@ -19,6 +19,8 @@ import {
   classifyRemediationEffect,
   validateRemediationAction,
 } from "../../hobo-remediation-action-contract/src/remediation-action-contract.js";
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
+
 
 export const GATED_REMEDIATION_SCHEMA_VERSION = "hobo.gated-remediation/v1";
 export const APPROVAL_OBLIGATION_KIND = "remediation.require-approval";
@@ -323,13 +325,13 @@ function maxResourcesFor(scope) {
 
 function nextCrewSeq(events) {
   return events
-    .filter((event) => typeof event.seq === "number" && event.type?.startsWith("crew."))
+    .filter((event) => isJsonNumber(event.seq) && event.type?.startsWith("crew."))
     .reduce((max, event) => Math.max(max, event.seq), 0) + 1;
 }
 
 function nextPolicySeq(events) {
   return events
-    .filter((event) => typeof event.seq === "number" && event.type === "policy.Decided")
+    .filter((event) => isJsonNumber(event.seq) && event.type === "policy.Decided")
     .reduce((max, event) => Math.max(max, event.seq), 0) + 1;
 }
 
@@ -340,7 +342,7 @@ function sequentialClock(startIso) {
 }
 
 function lastRolloutTime(events) {
-  return [...events].reverse().find((event) => typeof event.time === "string")?.time;
+  return [...events].reverse().find((event) => isJsonString(event.time))?.time;
 }
 
 function defaultSrePrincipal() {
@@ -364,7 +366,7 @@ function requiredArray(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value;
@@ -386,7 +388,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

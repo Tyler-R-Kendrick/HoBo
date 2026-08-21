@@ -6,10 +6,12 @@
  * client against daprd. Never label fidelity `live` without a client.
  */
 
+import { isJsonObject, isJsonString, type JsonValue } from "./json.js";
+
 export interface DaprPublishRequest {
 	readonly pubsubName: string;
 	readonly topic: string;
-	readonly data: unknown;
+	readonly data: JsonValue;
 	readonly metadata?: Readonly<Record<string, string>>;
 }
 
@@ -17,13 +19,22 @@ export interface DaprInvokeActorRequest {
 	readonly actorType: string;
 	readonly actorId: string;
 	readonly method: string;
-	readonly data?: unknown;
+	readonly data?: JsonValue;
+}
+
+export interface DaprInvokeResult {
+	readonly fenceToken?: string;
+	readonly holderId?: string;
+	readonly released?: boolean;
+	readonly ok?: boolean;
+	readonly method?: string;
+	readonly key?: string;
 }
 
 export interface DaprStateRequest {
 	readonly storeName: string;
 	readonly key: string;
-	readonly value?: unknown;
+	readonly value?: JsonValue;
 }
 
 export interface DaprReminderRequest {
@@ -45,16 +56,16 @@ export interface DaprSidecarClient {
 	): Promise<
 		readonly {
 			id: string;
-			data: unknown;
+			data: JsonValue;
 			topic: string;
 			deliveryAttempt: number;
 		}[]
 	>;
 	ack(messageId: string, consumerGroup?: string): Promise<void>;
 	nack(messageId: string, consumerGroup?: string): Promise<void>;
-	invokeActor(request: DaprInvokeActorRequest): Promise<unknown>;
-	saveState(request: DaprStateRequest & { value: unknown }): Promise<void>;
-	getState(request: DaprStateRequest): Promise<unknown>;
+	invokeActor(request: DaprInvokeActorRequest): Promise<DaprInvokeResult>;
+	saveState(request: DaprStateRequest & { value: JsonValue }): Promise<void>;
+	getState(request: DaprStateRequest): Promise<JsonValue>;
 	registerReminder(
 		request: DaprReminderRequest,
 	): Promise<{ reminderId: string }>;
@@ -70,7 +81,7 @@ interface StoredPub {
 	id: string;
 	pubsubName: string;
 	topic: string;
-	data: unknown;
+	data: JsonValue;
 }
 
 interface GroupCursor {
@@ -89,7 +100,7 @@ export function createInMemoryDaprClient(
 	void options;
 	const pubs: StoredPub[] = [];
 	const groups = new Map<string, GroupCursor>();
-	const state = new Map<string, unknown>();
+	const state = new Map<string, JsonValue>();
 	const actors = new Map<string, { holder?: string; fence: bigint }>();
 	let seq = 0;
 	let reminderSeq = 0;
@@ -121,7 +132,7 @@ export function createInMemoryDaprClient(
 			const cursor = cursorFor(consumerGroup);
 			const out: {
 				id: string;
-				data: unknown;
+				data: JsonValue;
 				topic: string;
 				deliveryAttempt: number;
 			}[] = [];
@@ -165,12 +176,10 @@ export function createInMemoryDaprClient(
 			const key = `${request.actorType}/${request.actorId}`;
 			const current = actors.get(key) ?? { fence: 0n };
 			if (request.method === "acquire") {
-				const holder =
-					typeof request.data === "object" &&
-					request.data &&
-					"holderId" in request.data
-						? String((request.data as { holderId: string }).holderId)
-						: "unknown";
+				const holderId = isJsonObject(request.data)
+					? request.data.holderId
+					: undefined;
+				const holder = isJsonString(holderId) ? holderId : "unknown";
 				const next = { holder, fence: current.fence + 1n };
 				actors.set(key, next);
 				return { fenceToken: next.fence.toString(), holderId: holder };
@@ -183,11 +192,11 @@ export function createInMemoryDaprClient(
 		},
 
 		async saveState(request) {
-			state.set(`${request.storeName}::${request.key}`, request.value);
+			state.set(`${request.storeName}::${request.key}`, request.value ?? null);
 		},
 
 		async getState(request) {
-			return state.get(`${request.storeName}::${request.key}`);
+			return state.get(`${request.storeName}::${request.key}`) ?? null;
 		},
 
 		async registerReminder(request) {
@@ -219,7 +228,7 @@ export function resolveDaprClientFromEnv(
 		return createInMemoryDaprClient();
 	}
 	const endpoint =
-		(typeof env.HOBO_DAPR_ENDPOINT === "string" && env.HOBO_DAPR_ENDPOINT) ||
+		(isJsonString(env.HOBO_DAPR_ENDPOINT) && env.HOBO_DAPR_ENDPOINT) ||
 		undefined;
 	if (endpoint && options.createLive) {
 		return options.createLive(endpoint);

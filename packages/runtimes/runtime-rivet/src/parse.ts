@@ -1,44 +1,45 @@
+import { cloneAsJson, isJsonObject, isJsonString } from "./json.js";
 import {
 	RivetJournalError,
 	type RivetRuntimeConfig,
 	type RivetRuntimeMode,
 } from "./types.js";
 
-const MODES = new Set<RivetRuntimeMode>([
-	"local",
-	"runner",
-	"serverless",
-	"managed",
-]);
-
-export function parseRivetRuntimeMode(value: unknown): RivetRuntimeMode {
-	if (typeof value === "string" && MODES.has(value as RivetRuntimeMode)) {
-		return value as RivetRuntimeMode;
+export function parseRivetRuntimeMode<T>(value: T): RivetRuntimeMode {
+	const json = cloneAsJson(value);
+	if (
+		json === "local" ||
+		json === "runner" ||
+		json === "serverless" ||
+		json === "managed"
+	) {
+		return json;
 	}
 	throw new RivetJournalError(
 		"PARSE",
-		`rivet runtime mode must be local|runner|serverless|managed, got ${JSON.stringify(value)}`,
+		`rivet runtime mode must be local|runner|serverless|managed, got ${JSON.stringify(json)}`,
 	);
 }
 
-export function parseRivetRuntimeConfig(input: unknown): RivetRuntimeConfig {
-	if (typeof input !== "object" || input === null) {
+export function parseRivetRuntimeConfig<T>(input: T): RivetRuntimeConfig {
+	const json = cloneAsJson(input);
+	if (!isJsonObject(json)) {
 		throw new RivetJournalError(
 			"PARSE",
 			"rivet runtime config must be an object",
 		);
 	}
-	const record = input as Record<string, unknown>;
+	const record = json;
 	const campId = record.campId ?? record.camp_id;
 	const tenantId = record.tenantId ?? record.tenant_id;
-	if (typeof campId !== "string" || campId.length === 0) {
+	if (!isJsonString(campId) || campId.length === 0) {
 		throw new RivetJournalError("PARSE", "campId is required");
 	}
-	if (typeof tenantId !== "string" || tenantId.length === 0) {
+	if (!isJsonString(tenantId) || tenantId.length === 0) {
 		throw new RivetJournalError("PARSE", "tenantId is required");
 	}
 	const svid = record.svidBindingRef ?? record.svid_binding_ref;
-	if (typeof svid !== "string" || svid.length === 0) {
+	if (!isJsonString(svid) || svid.length === 0) {
 		throw new RivetJournalError("PARSE", "svidBindingRef is required");
 	}
 	if (svid.startsWith("secret:") || /token|password|sk-/iu.test(svid)) {
@@ -53,11 +54,7 @@ export function parseRivetRuntimeConfig(input: unknown): RivetRuntimeConfig {
 		["endpointSecretRef", endpoint],
 		["adminTokenSecretRef", admin],
 	] as const) {
-		if (
-			value !== undefined &&
-			typeof value === "string" &&
-			value.includes("://")
-		) {
+		if (value !== undefined && isJsonString(value) && value.includes("://")) {
 			throw new RivetJournalError(
 				"PARSE",
 				`${path} must be a secretRef locator, not a URL with userinfo`,
@@ -68,11 +65,11 @@ export function parseRivetRuntimeConfig(input: unknown): RivetRuntimeConfig {
 		campId,
 		tenantId,
 		mode: parseRivetRuntimeMode(record.mode ?? "local"),
-		...(typeof record.engineImageDigest === "string"
+		...(isJsonString(record.engineImageDigest)
 			? { engineImageDigest: record.engineImageDigest }
-			: {}),
-		...(typeof endpoint === "string" ? { endpointSecretRef: endpoint } : {}),
-		...(typeof admin === "string" ? { adminTokenSecretRef: admin } : {}),
+			: undefined),
+		...(isJsonString(endpoint) ? { endpointSecretRef: endpoint } : undefined),
+		...(isJsonString(admin) ? { adminTokenSecretRef: admin } : undefined),
 		svidBindingRef: svid,
 	});
 }

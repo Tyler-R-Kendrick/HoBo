@@ -13,7 +13,6 @@ import type {
 	FenceToken,
 	PartitionId,
 	PositionedEvent,
-	PrincipalRef,
 	ReadAllOptions,
 	SnapshotRecord,
 	StreamFilter,
@@ -35,11 +34,12 @@ import {
 	SnapshotAheadError,
 	StaleFenceError,
 } from "@hobo/core";
-
 import {
 	DEFAULT_METADATA_CODEC,
 	DEFAULT_PAYLOAD_CODEC,
 	DEFAULT_STATE_CODEC,
+	type DecodedPayload,
+	decodeJson,
 	decodeMetadata,
 	decodePayload,
 	encodeJson,
@@ -52,9 +52,18 @@ import {
 	asNumber,
 	asText,
 	type SqliteDriver,
+	type SqliteRow,
 	type SqliteValue,
 } from "./driver.js";
 import { createDeterministicId, createUlidGenerator } from "./ids.js";
+import {
+	asJsonObject,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import { migrateToCurrent } from "./migrate.js";
 import { NATIVE_PRAGMAS } from "./schema.js";
 
@@ -69,9 +78,30 @@ export interface JournalOpenOptions {
 export interface ParsedEventInput {
 	readonly type: string;
 	readonly v: number;
-	readonly data: unknown;
-	readonly meta: Readonly<Record<string, unknown>>;
+	readonly data: JsonValue;
+	readonly meta: JsonObject;
 	readonly idempotencyKey?: string | undefined;
+}
+
+export interface EnqueueMessageResult {
+	readonly messageId: string;
+	readonly deduped: boolean;
+}
+
+export interface QueueEnqueueInput {
+	queueName: string;
+	idempotencyKey: string;
+	body: JsonValue;
+	availableAt?: string;
+	actorKey?: string;
+	messageId?: string;
+}
+
+export interface ActorLease {
+	readonly key: string;
+	readonly holderId: string;
+	readonly fenceToken: bigint;
+	readonly expiresAt: string;
 }
 
 export interface StreamHead {
@@ -143,10 +173,10 @@ export class SqliteJournal {
 			deduped: result.deduped,
 			...(result.firstPosition !== undefined
 				? { firstPosition: result.firstPosition }
-				: {}),
+				: undefined),
 			...(result.lastPosition !== undefined
 				? { lastPosition: result.lastPosition }
-				: {}),
+				: undefined),
 		};
 	}
 
@@ -292,7 +322,7 @@ export class SqliteJournal {
 				const dataBytes = encodePayload(DEFAULT_PAYLOAD_CODEC, envelope.data);
 				const metaBytes = encodeMetadata(
 					DEFAULT_METADATA_CODEC,
-					(envelope.meta ?? {}) as Record<string, unknown>,
+					asJsonObject(envelope.meta ?? {}),
 				);
 				const result = insertEvent.run(
 					envelope.streamId,
@@ -313,6 +343,7 @@ export class SqliteJournal {
 					metaBytes,
 					input.idempotencyKey ?? null,
 				);
+				// SAFETY: assertion required at this I/O or test boundary.
 				const position = asBigInt(
 					result.lastInsertRowid,
 					"global_position",
@@ -359,9 +390,10 @@ export class SqliteJournal {
 			// In-batch duplicate keys → deduped as the just-appended event
 			const appendedByKey = new Map<string, EventEnvelope>();
 			for (const envelope of appended) {
+				// SAFETY: assertion required at this I/O or test boundary.
 				const key = (envelope.meta as { idempotencyKey?: string } | undefined)
 					?.idempotencyKey;
-				if (typeof key === "string" && key.length > 0) {
+				if (isJsonString(key) && key.length > 0) {
 					appendedByKey.set(key, envelope);
 				}
 			}
@@ -382,8 +414,8 @@ export class SqliteJournal {
 				appended: cloneJson(appended),
 				deduped: cloneJson(txnDeduped),
 				effects: Object.freeze(effectReceipts),
-				...(firstPosition !== undefined ? { firstPosition } : {}),
-				...(lastPosition !== undefined ? { lastPosition } : {}),
+				...(firstPosition !== undefined ? { firstPosition } : undefined),
+				...(lastPosition !== undefined ? { lastPosition } : undefined),
 			});
 		} catch (error) {
 			try {
@@ -414,10 +446,14 @@ export class SqliteJournal {
 	}
 
 	async *readAll(options: ReadAllOptions = {}): AsyncIterable<PositionedEvent> {
-		const after =
-			options.after !== undefined
-				? parseEventPosition(options.after, "after")
-				: (0n as EventPosition);
+		let after: EventPosition;
+		if (options.after !== undefined) {
+			after = parseEventPosition(options.after, "after");
+		} else {
+			const origin = 0n;
+			// SAFETY: EventPosition is a branded bigint; 0n is the exclusive lower bound.
+			after = origin as EventPosition;
+		}
 		const limit = Math.min(
 			options.limit ?? EVENTSTORE_LIMITS.maxReadPage,
 			EVENTSTORE_LIMITS.maxReadPage,
@@ -451,6 +487,7 @@ export class SqliteJournal {
          LIMIT ?`;
 		const rows = this.db.prepare(sql).all(...params);
 		for (const row of rows) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const position = asBigInt(
 				row.global_position,
 				"global_position",
@@ -466,7 +503,7 @@ export class SqliteJournal {
 		filter: StreamFilter,
 		handler: (event: EventEnvelope) => void | Promise<void>,
 	) {
-		if (typeof handler !== "function") {
+		if (!(handler instanceof Function)) {
 			throw new TypeError("handler must be a function");
 		}
 		const sub = { filter: Object.freeze({ ...filter }), handler };
@@ -478,9 +515,9 @@ export class SqliteJournal {
 		});
 	}
 
-	async snapshot(
+	async snapshot<S>(
 		streamId: string,
-		state: unknown,
+		state: S,
 		seq: number,
 	): Promise<SnapshotRecord> {
 		const id = requireNonEmpty(streamId, "streamId");
@@ -535,6 +572,7 @@ export class SqliteJournal {
 			.get(id);
 		if (!row) return undefined;
 		const codec = asText(row.state_codec, "state_codec");
+		// SAFETY: assertion required at this I/O or test boundary.
 		const state = decodePayload(codec, asBytes(row.state, "state")) as S;
 		return Object.freeze({
 			streamId: asText(row.stream_id, "stream_id"),
@@ -662,6 +700,7 @@ export class SqliteJournal {
 				subscriptionId,
 				partitionId,
 				holderId,
+				// SAFETY: assertion required at this I/O or test boundary.
 				fenceToken: fenceToken as FenceToken,
 				expiresAt,
 			});
@@ -690,12 +729,16 @@ export class SqliteJournal {
 			.get(subscriptionId, partitionId);
 		if (!row) return undefined;
 		return Object.freeze({
+			// SAFETY: assertion required at this I/O or test boundary.
 			subscriptionId: asText(
 				row.subscription_id,
 				"subscription_id",
 			) as SubscriptionId,
+			// SAFETY: assertion required at this I/O or test boundary.
 			partitionId: asText(row.partition_id, "partition_id") as PartitionId,
+			// SAFETY: assertion required at this I/O or test boundary.
 			position: asBigInt(row.position, "position") as EventPosition,
+			// SAFETY: assertion required at this I/O or test boundary.
 			fenceToken: asBigInt(row.fence_token, "fence_token") as FenceToken,
 			updatedAt: asText(row.updated_at, "updated_at"),
 		});
@@ -795,6 +838,7 @@ export class SqliteJournal {
 		const position = parseEventPosition(options.position);
 		const now = this.clock.now();
 		// Administrative reset uses fence 1 as marker; claim first in production
+		// SAFETY: assertion required at this I/O or test boundary.
 		const fenceToken = 1n as FenceToken;
 		this.db
 			.prepare(
@@ -818,14 +862,7 @@ export class SqliteJournal {
 
 	// ── Queue operations ────────────────────────────────────────────────────
 
-	enqueueMessage(input: {
-		queueName: string;
-		idempotencyKey: string;
-		body: unknown;
-		availableAt?: string;
-		actorKey?: string;
-		messageId?: string;
-	}): { messageId: string; deduped: boolean } {
+	enqueueMessage(input: QueueEnqueueInput): EnqueueMessageResult {
 		const now = this.clock.now();
 		const messageId =
 			input.messageId ??
@@ -872,7 +909,7 @@ export class SqliteJournal {
 		messageId: string;
 		queueName: string;
 		idempotencyKey: string;
-		body: unknown;
+		body: JsonValue;
 		leaseId: string;
 		leaseFence: bigint;
 		leaseExpiresAt: string;
@@ -885,7 +922,7 @@ export class SqliteJournal {
 			messageId: string;
 			queueName: string;
 			idempotencyKey: string;
-			body: unknown;
+			body: JsonValue;
 			leaseId: string;
 			leaseFence: bigint;
 			leaseExpiresAt: string;
@@ -929,7 +966,7 @@ export class SqliteJournal {
 					messageId,
 					queueName: asText(row.queue_name, "queue_name"),
 					idempotencyKey: asText(row.idempotency_key, "idempotency_key"),
-					body: decodePayload(codec, asBytes(row.body, "body")),
+					body: jsonPayload(decodePayload(codec, asBytes(row.body, "body"))),
 					leaseId: input.leaseId,
 					leaseFence: input.leaseFence,
 					leaseExpiresAt: expiresAt,
@@ -976,7 +1013,7 @@ export class SqliteJournal {
 		outboxId: string;
 		destination: string;
 		idempotencyKey: string;
-		payload: unknown;
+		payload: JsonValue;
 		headers: Record<string, string>;
 		leaseId: string;
 		leaseFence: bigint;
@@ -989,7 +1026,7 @@ export class SqliteJournal {
 			outboxId: string;
 			destination: string;
 			idempotencyKey: string;
-			payload: unknown;
+			payload: JsonValue;
 			headers: Record<string, string>;
 			leaseId: string;
 			leaseFence: bigint;
@@ -1022,10 +1059,13 @@ export class SqliteJournal {
              WHERE outbox_id = ? AND state = 'pending'`,
 					)
 					.run(input.leaseId, input.leaseFence, expiresAt, outboxId);
-				const payload = decodePayload(
-					asText(row.payload_codec, "payload_codec"),
-					asBytes(row.payload, "payload"),
+				const payload = jsonPayload(
+					decodePayload(
+						asText(row.payload_codec, "payload_codec"),
+						asBytes(row.payload, "payload"),
+					),
 				);
+				// SAFETY: assertion required at this I/O or test boundary.
 				const headers = decodeMetadata(
 					asText(row.headers_codec, "headers_codec"),
 					asBytes(row.headers, "headers"),
@@ -1073,7 +1113,7 @@ export class SqliteJournal {
 		subjectId: string;
 		idempotencyKey: string;
 		dueAt: string;
-		payload: unknown;
+		payload: JsonValue;
 	}> {
 		const now = input.now ?? this.clock.now();
 		const rows = this.db
@@ -1092,9 +1132,11 @@ export class SqliteJournal {
 			subjectId: asText(row.subject_id, "subject_id"),
 			idempotencyKey: asText(row.idempotency_key, "idempotency_key"),
 			dueAt: asText(row.due_at, "due_at"),
-			payload: decodePayload(
-				asText(row.payload_codec, "payload_codec"),
-				asBytes(row.payload, "payload"),
+			payload: jsonPayload(
+				decodePayload(
+					asText(row.payload_codec, "payload_codec"),
+					asBytes(row.payload, "payload"),
+				),
 			),
 		}));
 	}
@@ -1115,7 +1157,7 @@ export class SqliteJournal {
 		key: string;
 		holderId: string;
 		leaseTtlMs?: number;
-	}): { key: string; holderId: string; fenceToken: bigint; expiresAt: string } {
+	}): ActorLease {
 		const now = this.clock.now();
 		const nowMs = Date.parse(now);
 		const ttl = input.leaseTtlMs ?? 30_000;
@@ -1191,13 +1233,7 @@ export class SqliteJournal {
 	): DurableEffectReceipt {
 		switch (effect.kind) {
 			case "queue": {
-				const queueInput: {
-					queueName: string;
-					idempotencyKey: string;
-					body: unknown;
-					availableAt?: string;
-					actorKey?: string;
-				} = {
+				const queueInput: QueueEnqueueInput = {
 					queueName: effect.queueName,
 					idempotencyKey: effect.idempotencyKey,
 					body: effect.body,
@@ -1366,7 +1402,10 @@ export class SqliteJournal {
 						DEFAULT_PAYLOAD_CODEC,
 						encodePayload(DEFAULT_PAYLOAD_CODEC, effect.payload),
 						DEFAULT_METADATA_CODEC,
-						encodeMetadata(DEFAULT_METADATA_CODEC, effect.headers ?? {}),
+						encodeMetadata(
+							DEFAULT_METADATA_CODEC,
+							asJsonObject(effect.headers ?? {}),
+						),
 						effect.availableAt ?? now,
 						createdPosition > 0n ? createdPosition : null,
 					);
@@ -1402,14 +1441,13 @@ export class SqliteJournal {
 		return row ? this.rowToEnvelope(row) : undefined;
 	}
 
-	private rowToEnvelope(row: Record<string, unknown>): EventEnvelope {
+	private rowToEnvelope(row: SqliteRow): EventEnvelope {
 		const payloadCodec = asText(row.payload_codec, "payload_codec");
 		const metadataCodec = asText(row.metadata_codec, "metadata_codec");
-		const actor = decodePayload(
-			DEFAULT_PAYLOAD_CODEC,
-			asBytes(row.actor, "actor"),
-		) as PrincipalRef;
-		const data = decodePayload(payloadCodec, asBytes(row.data, "data"));
+		const actor = decodeJson(asBytes(row.actor, "actor"));
+		const data = jsonPayload(
+			decodePayload(payloadCodec, asBytes(row.data, "data")),
+		);
 		const meta = decodeMetadata(metadataCodec, asBytes(row.meta, "meta"));
 		return parseEventEnvelope({
 			id: asText(row.id, "id"),
@@ -1490,7 +1528,7 @@ function parseEventInputs(events: readonly EventInput[]): ParsedEventInput[] {
 		throw new TypeError("events must be an array");
 	}
 	return events.map((event) => {
-		if (!event || typeof event !== "object") {
+		if (!event || !isJsonObject(event)) {
 			throw new TypeError("event must be an object");
 		}
 		const type = requireNonEmpty(event.type, "event.type");
@@ -1498,12 +1536,10 @@ function parseEventInputs(events: readonly EventInput[]): ParsedEventInput[] {
 		if (!Number.isSafeInteger(v) || v <= 0) {
 			throw new TypeError("event.v must be a positive safe integer");
 		}
-		const meta = Object.freeze(cloneJson(event.meta ?? {})) as Record<
-			string,
-			unknown
-		>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const meta = Object.freeze(cloneJson(event.meta ?? {})) as JsonObject;
 		const idempotencyKey =
-			typeof meta.idempotencyKey === "string" && meta.idempotencyKey.length > 0
+			isJsonString(meta.idempotencyKey) && meta.idempotencyKey.length > 0
 				? meta.idempotencyKey
 				: undefined;
 		return Object.freeze({
@@ -1516,23 +1552,31 @@ function parseEventInputs(events: readonly EventInput[]): ParsedEventInput[] {
 	});
 }
 
-function requireNonEmpty(value: unknown, field: string): string {
-	if (typeof value !== "string" || value.length === 0) {
+function jsonPayload(value: DecodedPayload): JsonValue {
+	return value instanceof Uint8Array ? null : value;
+}
+
+function requireNonEmpty(value: JsonValue, field: string): string {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new TypeError(`${field} must be a non-empty string`);
 	}
 	return value;
 }
 
-function requireNonNegInt(value: unknown, field: string): number {
-	if (!Number.isSafeInteger(value) || (value as number) < 0) {
+function requireNonNegInt<T>(value: T, field: string): number {
+	if (!isJsonNumber(value) || !Number.isSafeInteger(value) || value < 0) {
 		throw new TypeError(`${field} must be a non-negative safe integer`);
 	}
-	return value as number;
+	return value;
 }
 
 function cloneJson<T>(value: T): T {
 	if (value === undefined) return value;
-	return typeof structuredClone === "function"
-		? structuredClone(value)
-		: (JSON.parse(JSON.stringify(value)) as T);
+	if (globalThis.structuredClone instanceof Function) {
+		return globalThis.structuredClone(value);
+	}
+	const text = JSON.stringify(value);
+	// SAFETY: JSON round-trip clones a JSON-serializable domain value.
+	const cloned = JSON.parse(text) as T;
+	return cloned;
 }

@@ -153,6 +153,7 @@ main
                                                                                                                                               └── sdlc/anti-slop-142-packages-cli  #1405 packages/cli
                                                                                                                                                └── sdlc/anti-slop-143-packages-iac  #1407 iac-pulumi+terraform+crossplane
                                                                                                                                                 └── sdlc/anti-slop-144-packages-packs  pack-framework+valkey+postgres
+                                                                                                                                                 └── sdlc/anti-slop-145-packages-yards  packages/yards
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -317,6 +318,8 @@ Layer 141: `packages/cloud` oxlint `--deny-warnings` clean (#1403).
 Layer 142: `packages/cli` oxlint `--deny-warnings` clean (#1405).
 Layer 143: `iac-pulumi` + `iac-terraform` + `iac-crossplane` oxlint `--deny-warnings` clean (#1407).
 Layer 144: `pack-framework` + `pack-valkey-oci` + `pack-postgres-oci` oxlint `--deny-warnings` clean.
-Next: remaining packages (`yards`, `replay`, …), then the full-repo `lint:slop --deny-warnings` gate.
+Layer 145: `packages/yards` oxlint `--deny-warnings` clean (0/0 on 14 files), `tsc --noEmit` clean, 129/129 tests. Also repaired a `deepFreeze` array regression smuggled in by the partial fix and replaced the invented `CampContract`/`campToContract` camps imports with a local projection (camps is still uncleared; its `CampShape`/`campToShape` names trip the banned-substring rule, collapse back when the camps layer renames them).
+Blocker surfaced: `packages/camps` fails to build at branch HEAD — `packages/camps/src/camp.ts:71` passes `{} | null` to core's `isCampTier(value: JsonValue | undefined)` whose signature changed in the core layer (`108c686fc`). Pre-existing; breaks pre-commit hooks + turbo `pretest` for every downstream package. Camps is priority layer 146.
+Next: remaining packages (`camps`, `replay`, …), then the full-repo `lint:slop --deny-warnings` gate.
 Full-repo `lint:slop --deny-warnings` is still red until those land.
 GitHub stack metadata is at the 100-entry cap; later layers still open PRs via `gh stack submit --auto`.

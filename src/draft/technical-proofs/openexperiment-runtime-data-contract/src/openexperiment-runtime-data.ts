@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const maxBasisPoints = 10_000;
 const traceparentPattern = /^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/i;
 const trafficModes = new Set(["sampled", "full"]);
@@ -242,7 +243,7 @@ function normalizeMetricRefs(metricRefs) {
 
 function normalizeEvaluationContext(context) {
   assertObject(context, "evaluation context");
-  if (isString(context.targetingKey) && context.targetingKey.length > 0) {
+  if (isJsonString(context.targetingKey) && context.targetingKey.length > 0) {
     return context;
   }
   subjectFromContext(context);
@@ -257,7 +258,7 @@ function subjectFromContext(context) {
 }
 
 function subjectKeyFromContext(context) {
-  if (isString(context.targetingKey) && context.targetingKey.length > 0) {
+  if (isJsonString(context.targetingKey) && context.targetingKey.length > 0) {
     return context.targetingKey;
   }
 
@@ -346,13 +347,13 @@ function normalizeInteger(value, label) {
 }
 
 function assertObject(value, name) {
-  if (!value || Object.prototype.toString.call(value) !== "[object Object]" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
 function requireString(value, label) {
-  if (!isString(value) || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} is required`);
   }
   return value;
@@ -362,14 +363,10 @@ function cloneValue(value) {
   if (Array.isArray(value)) {
     return value.map(cloneValue);
   }
-  if (value && Object.prototype.toString.call(value) === "[object Object]") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([key, childValue]) => [key, cloneValue(childValue)])
     );
   }
   return value;
-}
-
-function isString(value) {
-  return Object.prototype.toString.call(value) === "[object String]";
 }

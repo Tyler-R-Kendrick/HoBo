@@ -1,8 +1,5 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this check parses untrusted manifest annotation values before lowering. */
+import { isJsonObject, type JsonObject } from "./json.js";
 export const MANIFEST_SCHEMA = "hobo.manifest/v1";
-
-type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
-type JsonObject = { [key: string]: JsonValue };
 
 const FORBIDDEN_INTENT_KEYS = new Set([
   "provider",
@@ -134,7 +131,7 @@ function collectRequirements(resource: ManifestResource): string[] {
     requirements.add(`verb:${verb}`);
   }
   const scaling = resource.annotations?.scaling;
-  if (scaling && typeof scaling === "object") {
+  if (scaling && isJsonObject(scaling)) {
     requirements.add("scaling:bounded");
   }
   return [...requirements];

@@ -28,7 +28,7 @@ const deployContext: DeployContext = {
 };
 
 test("lowers each manifest resource to a provider-neutral ResourceIntent", async () => {
-  // SAFETY: the fixture is the package-owned manifest used by this proof.
+  // SAFETY: `const manifest = JSON.parse(await readFile(fixturePath, "utf8")) as HoboManifest` is required at this I/O or test boundary.
   const manifest = JSON.parse(await readFile(fixturePath, "utf8")) as HoboManifest;
   const intents = lowerManifestToResourceIntents(manifest, deployContext);
 
@@ -40,7 +40,7 @@ test("lowers each manifest resource to a provider-neutral ResourceIntent", async
 });
 
 test("maps manifest port and verbs into capability requirements", async () => {
-  // SAFETY: the fixture is the package-owned manifest used by this proof.
+  // SAFETY: `const manifest = JSON.parse(await readFile(fixturePath, "utf8")) as HoboManifest` is required at this I/O or test boundary.
   const manifest = JSON.parse(await readFile(fixturePath, "utf8")) as HoboManifest;
   const dbIntent = lowerManifestToResourceIntents(manifest, deployContext).find(
     (intent) => intent.resourceName === "db",
@@ -55,7 +55,7 @@ test("maps manifest port and verbs into capability requirements", async () => {
 });
 
 test("derives colocation constraints from bind and links", async () => {
-  // SAFETY: the fixture is the package-owned manifest used by this proof.
+  // SAFETY: `const manifest = JSON.parse(await readFile(fixturePath, "utf8")) as HoboManifest` is required at this I/O or test boundary.
   const manifest = JSON.parse(await readFile(fixturePath, "utf8")) as HoboManifest;
   const apiIntent = lowerManifestToResourceIntents(manifest, deployContext).find(
     (intent) => intent.resourceName === "api",

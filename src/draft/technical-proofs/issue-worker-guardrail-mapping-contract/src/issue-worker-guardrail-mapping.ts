@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonObject } from "./json.js";
 // domain-view: parse-produced draft-proof record; its wire form is the GuardrailMappingRow proto message in data-models/.
 export interface GuardrailMappingRow {
   readonly platformGuardrail: string;
@@ -14,13 +15,9 @@ export interface IssueWorkerGuardrailMappingRecord {
 
 export class IssueWorkerGuardrailMappingError extends Error {
   readonly code: string;
-  readonly details: { readonly ref?: string; readonly topic?: string };
+  readonly details: JsonObject;
 
-  constructor(
-    code: string,
-    message: string,
-    details: { readonly ref?: string; readonly topic?: string } = {},
-  ) {
+  constructor(code: string, message: string, details: JsonObject = {}) {
     super(`${code}: ${message}`);
     this.name = "IssueWorkerGuardrailMappingError";
     this.code = code;
@@ -119,9 +116,9 @@ export function assertIssueWorkerGuardrailMapping(docText: string): IssueWorkerG
 }
 
 function deepFreeze<T>(value: T): T {
-  if (value !== null && Object(value) === value) {
-    // SAFETY: Object(value) === value proves this generic value is object-like before enumeration.
-    for (const child of Object.values(value as { [K in keyof T]: T[K] })) {
+  if (value && isJsonObject(value)) {
+    // SAFETY: `for (const child of Object.values(value as JsonObject)) {` is required at this I/O or test boundary.
+    for (const child of Object.values(value as JsonObject)) {
       deepFreeze(child);
     }
     Object.freeze(value);

@@ -5,6 +5,8 @@ import {
   parseDecision,
   parseDecisionRequest,
 } from "../../hobo-policy-ir-contract/src/policy-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const OBLIGATION_EVENT_SCHEMA_VERSION = "hobo.policy-obligation/v1";
 export const OBLIGATION_ENGINE_ID = "hobo.obligation-engine/contract@0.1.0";
@@ -205,7 +207,7 @@ export function replayObligationEvents(events = []) {
   const ignoredEvents = [];
 
   for (const event of events) {
-    if (!event || Object.prototype.toString.call(event) !== "[object Object]") {
+    if (!event || !isJsonObject(event)) {
       ignoredEvents.push({ event, reason: "malformed-event" });
       continue;
     }
@@ -317,16 +319,15 @@ export function makeObligationEvent({
   time = new Date().toISOString(),
   data = {},
 }) {
-  const result = {
+  return {
     id: requireString(id, "id"),
     type: requireString(type, "type"),
     schemaVersion: OBLIGATION_EVENT_SCHEMA_VERSION,
     time: requireIsoTimestamp(time, "time"),
     obligationId: requireString(obligationId, "obligationId"),
+    ...(effectId === undefined ? undefined : { effectId: requireString(effectId, "effectId") }),
     data: cloneJson(data),
   };
-  if (effectId !== undefined) result.effectId = requireString(effectId, "effectId");
-  return result;
 }
 
 function normalizeCreatedObligation(event) {
@@ -424,21 +425,21 @@ function requireIsoTimestamp(input, fieldName) {
 }
 
 function requireString(input, fieldName) {
-  if (!isString(input) || input.length === 0) {
+  if (!isJsonString(input) || input.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return input;
 }
 
 function optionalString(input) {
-  if (!isString(input) || input.length === 0) {
+  if (!isJsonString(input) || input.length === 0) {
     return null;
   }
   return input;
 }
 
 function expectObject(input, fieldName) {
-  if (!input || Object.prototype.toString.call(input) !== "[object Object]" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
   return input;
@@ -449,8 +450,4 @@ function cloneJson(value) {
     return undefined;
   }
   return JSON.parse(JSON.stringify(value));
-}
-
-function isString(value) {
-  return Object.prototype.toString.call(value) === "[object String]";
 }

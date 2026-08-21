@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const INCIDENT_EVENT_TYPES = Object.freeze({
   opened: "incident.Opened",
   triaged: "incident.Triaged",
@@ -51,18 +52,17 @@ export function makeIncidentEvent(
   assertNonEmptyString(incidentId, "incidentId");
   assertNonEmptyString(correlationId, "correlationId");
 
-  const event = {
+  return {
     id,
     type,
     correlationId,
+    ...(causationId ? { causationId } : undefined),
     occurredAt: occurredAt ?? new Date(0).toISOString(),
     payload: {
       incidentId,
       ...payload,
     },
   };
-  if (causationId) event.causationId = causationId;
-  return event;
 }
 
 export function deriveIncidentOpenEvents(signals, existingIncidents = []) {
@@ -241,7 +241,7 @@ function recordSlaBreach(state, event) {
 }
 
 function validateIncidentEvent(event) {
-  if (!event || Object.prototype.toString.call(event) !== "[object Object]" || Array.isArray(event)) {
+  if (!event || !isJsonObject(event) || Array.isArray(event)) {
     throw new Error("incident event must be an object");
   }
   assertIncidentEventType(event.type);
@@ -259,7 +259,7 @@ function validateOpenedPayload(payload) {
 }
 
 function validateSourceSignal(signal) {
-  if (!signal || Object.prototype.toString.call(signal) !== "[object Object]" || Array.isArray(signal)) {
+  if (!signal || !isJsonObject(signal) || Array.isArray(signal)) {
     throw new Error("signal must be an object");
   }
   assertNonEmptyString(signal.id, "signal id");
@@ -284,13 +284,12 @@ function signalRef(signal) {
 }
 
 function timelineEntry(event) {
-  const entry = {
+  return {
     id: event.id,
     type: event.type,
     occurredAt: event.occurredAt,
+    ...(event.causationId ? { causationId: event.causationId } : undefined),
   };
-  if (event.causationId) entry.causationId = event.causationId;
-  return entry;
 }
 
 function earliestOccurredAt(events) {
@@ -310,7 +309,7 @@ function freezeIncident(state) {
 }
 
 function assertNonEmptyString(value, label) {
-  if (Object.prototype.toString.call(value) !== "[object String]" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${label} must be a non-empty string`);
   }
 }

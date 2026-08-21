@@ -81,11 +81,19 @@ export type RealComponentizeImpl = (
 	},
 ) => Promise<{ component: Uint8Array }>;
 
+type ComponentizeModule = {
+	readonly componentize?: (
+		options: Parameters<RealComponentizeImpl>[1] & {
+			readonly sourcePath: string;
+		},
+	) => Promise<{ readonly component: Uint8Array }>;
+};
+
 export interface RealComponentizeOptions {
 	/** Injected builder (tests). When present the toolchain probe is skipped. */
 	componentizeImpl?: RealComponentizeImpl;
 	/** Injected module importer (tests). Defaults to importing componentize-js. */
-	importModule?: () => Promise<unknown>;
+	importModule?: () => Promise<ComponentizeModule>;
 	/** Entry file relative to sourceRoot. Defaults to the hello-bindle shape. */
 	entry?: string;
 	/** WIT world override: inline wit text plus world naming. */
@@ -192,14 +200,15 @@ type ToolchainProbe =
 	| { readonly ok: false; readonly cause: string };
 
 async function probeToolchain(
-	importModule?: () => Promise<unknown>,
+	importModule?: () => Promise<ComponentizeModule>,
 ): Promise<ToolchainProbe> {
 	try {
+		// SAFETY: the pinned componentize-js module exposes this object-argument API.
 		const module = await (importModule
 			? importModule()
-			: import(COMPONENTIZE_JS_SPECIFIER));
-		const componentize = (module as { componentize?: unknown }).componentize;
-		if (typeof componentize !== "function") {
+			: import(COMPONENTIZE_JS_SPECIFIER)) as ComponentizeModule;
+		const componentize = module.componentize;
+		if (!componentize) {
 			return {
 				ok: false,
 				cause: "module does not export a componentize function",
@@ -207,13 +216,13 @@ async function probeToolchain(
 		}
 		const impl: RealComponentizeImpl = async (sourcePath, opts) => {
 			// componentize-js 0.21.x object-argument API (see HOBO-603 spike).
-			const output = (await componentize({
+			const output = await componentize({
 				sourcePath,
 				witPath: opts.witPath,
 				worldName: opts.worldName,
 				disableFeatures: [...opts.disableFeatures],
 				env: { ...opts.env },
-			})) as { component: Uint8Array };
+			});
 			return { component: output.component };
 		};
 		return { ok: true, impl };

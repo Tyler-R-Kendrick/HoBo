@@ -52,7 +52,13 @@ function sourceRoot(files: Record<string, string> = {}): string {
 	return dir;
 }
 
-async function messageOf(fn: () => Promise<unknown>): Promise<string> {
+type BuildResult = Awaited<ReturnType<typeof componentizeHelloBindle>>;
+type BuildOverrides = {
+	sourceDateEpoch?: string;
+	toolchain?: Partial<typeof PINNED_TOOLCHAIN>;
+};
+
+async function messageOf(fn: () => Promise<BuildResult>): Promise<string> {
 	try {
 		await fn();
 	} catch (error) {
@@ -61,7 +67,9 @@ async function messageOf(fn: () => Promise<unknown>): Promise<string> {
 	return "<did not throw>";
 }
 
-function build(root: string, overrides: Record<string, unknown> = {}) {
+
+function build(root: string, overrides: BuildOverrides = {}) {
+	// SAFETY: test overrides intentionally exercise missing and drifted toolchain fields.
 	return componentizeHelloBindle({
 		sourceRoot: root,
 		sourceDateEpoch: EPOCH,

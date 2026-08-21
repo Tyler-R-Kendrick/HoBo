@@ -7,13 +7,15 @@ import {
   createFixtureHostAttestor,
   IdentityService,
 } from "../src/index.js";
+import { type JsonObject } from "../src/json.js";
+
 
 const ISSUER_URL = "https://identity.yard.example";
 const NOW = "2026-06-25T15:00:00.000Z";
 const IMAGE_DIGEST = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa";
 const CODE_DIGEST = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 
-function launchMeasurement(overrides: Record<string, unknown> = {}) {
+function launchMeasurement(overrides: JsonObject = {}) {
   return {
     runId: "run-20260625-identity-628",
     tenant: "tenant-a",
@@ -30,8 +32,8 @@ function launchMeasurement(overrides: Record<string, unknown> = {}) {
 }
 
 function attestedDocument(overrides: {
-  measurement?: Record<string, unknown>;
-  claimed?: Record<string, unknown>;
+  measurement?: JsonObject;
+  claimed?: JsonObject;
 } = {}) {
   const attestor = createFixtureHostAttestor({ hostId: "host-firecracker-1" });
   return {
@@ -150,7 +152,7 @@ describe("S3-02 identity adversarial guards", () => {
       issuerUrl: ISSUER_URL,
       genesisKeyId: "yard-genesis-2026-07",
     });
-    const { document, hostPublicKeys } = attestedDocument();
+    const { document } = attestedDocument();
     const tampered = {
       ...document,
       hostSignature: { ...document.hostSignature, value: "00".repeat(32) },

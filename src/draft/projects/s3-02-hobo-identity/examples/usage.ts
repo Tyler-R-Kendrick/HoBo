@@ -12,6 +12,8 @@
 import { strict as assert } from "node:assert";
 
 import { createFixtureHostAttestor, IdentityService } from "../src/index.ts";
+import { type JsonObject } from "../src/json.js";
+
 
 const ISSUER_URL = "https://identity.yard.example";
 const NOW = "2026-06-25T15:00:00.000Z";
@@ -19,7 +21,7 @@ const IMAGE_DIGEST = "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
 const CODE_DIGEST = "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb";
 const SCOPE = { port: "database", resource: "shop.db", verbs: ["write"] } as const;
 
-function launchMeasurement(overrides: Record<string, unknown> = {}) {
+function launchMeasurement(overrides: JsonObject = {}) {
 	return {
 		runId: "run-20260625-identity-628",
 		tenant: "tenant-a",
@@ -64,6 +66,7 @@ const issued = await service.issueSvidFromAttestation({
 assert.equal(issued.status, "issued");
 if (issued.status !== "issued") throw new Error("unreachable");
 assert.equal(issued.svid.subject, "spiffe://yard/tenant-a/agent/deployer", "measured tenant wins over claimed");
+// SAFETY: `assert.match(issued.events[0]?.data.svidRef as string, /^tokenref:\/\/identity\/` is required at this I/O or test boundary.
 assert.match(issued.events[0]?.data.svidRef as string, /^tokenref:\/\/identity\/svid\//);
 console.log(`issued: subject=${issued.svid.subject} event=${issued.events[0]?.type} expiresAt=${issued.svid.expiresAt}`);
 console.log("tenant binding: measured tenant-a beats claimed tenant-evil");

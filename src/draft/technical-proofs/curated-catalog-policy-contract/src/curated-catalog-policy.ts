@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const CURATED_CATALOG_SCHEMA_VERSION = "hobo.curated-catalog/v1";
 export const PRE_APPROVED_ONLY_POLICY_KIND = "hobo.policy.pre-approved-catalog-only/v1";
@@ -334,8 +336,8 @@ function normalizeSelectionListing(input, bindle) {
   const listing = expectObject(input, "requestedListing");
   return {
     listingId: requireString(listing.listingId, "requestedListing.listingId"),
-    digest: typeof listing.digest === "string" ? listing.digest : null,
-    provenanceTier: typeof listing.provenanceTier === "string" ? listing.provenanceTier : null,
+    digest: isJsonString(listing.digest) ? listing.digest : null,
+    provenanceTier: isJsonString(listing.provenanceTier) ? listing.provenanceTier : null,
   };
 }
 
@@ -480,7 +482,7 @@ function expectArray(value, name) {
 }
 
 function expectObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
   return value;
@@ -491,7 +493,7 @@ function assertNonEmptyString(value, name) {
 }
 
 function requireString(value, name) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
   return value;
@@ -525,7 +527,7 @@ function shortHash(value) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {

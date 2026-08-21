@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const RESOURCE_FACTORIES = new Map([
   ["kv", "wasi:keyvalue"],
   ["database", "wasi:sql"],
@@ -32,7 +33,7 @@ export class CapabilityDeniedError extends Error {
 }
 
 export function inferCapabilityUsage({ sourceText, fileName = "bindle.ts" }) {
-  if (typeof sourceText !== "string") {
+  if (!isJsonString(sourceText)) {
     throw new TypeError("sourceText must be a string");
   }
 
@@ -109,7 +110,7 @@ export function inferCapabilityUsage({ sourceText, fileName = "bindle.ts" }) {
 }
 
 export function evaluateCapabilityGrants({ sourceText, manifest, fileName = "bindle.ts" }) {
-  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+  if (!manifest || !isJsonObject(manifest) || Array.isArray(manifest)) {
     throw new TypeError("manifest must be an object");
   }
 
@@ -301,7 +302,7 @@ class CapabilityRuntime {
 
     const provider = this.#requireProvider(link.providerId);
     const implementation = provider.exports?.[link.exportInterface]?.[operation];
-    if (typeof implementation !== "function") {
+    if (!(implementation instanceof Function)) {
       throw new CapabilityDeniedError("capability.operation-not-found", {
         componentId,
         importInterface,
@@ -395,7 +396,7 @@ function grantKey(componentId, importInterface) {
 }
 
 function assertId(id, kind) {
-  if (typeof id !== "string" || id.length === 0) {
+  if (!isJsonString(id) || id.length === 0) {
     throw new Error(`capability.${kind}-id-required`);
   }
 }
@@ -425,7 +426,7 @@ function lineAt(lineStarts, index) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

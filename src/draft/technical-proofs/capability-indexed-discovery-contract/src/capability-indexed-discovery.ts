@@ -4,6 +4,8 @@ import {
   createFixtureCapabilitySpec,
   parseCapabilitySpec,
 } from "../../capability-spec-contract/src/capability-spec.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const CAPABILITY_DISCOVERY_CONTRACT = "hobo.capability-discovery/v1";
 export const DISCOVERY_MCP_TOOL_NAME = "hobo_find_capability_listings";
@@ -77,7 +79,7 @@ export function createCapabilityDiscoveryIndex() {
 }
 
 export function createDiscoveryMcpTool(index) {
-  if (!index || typeof index.find !== "function") {
+  if (!index || !(index.find instanceof Function)) {
     throw new Error("discovery MCP tool requires an index with find(query)");
   }
 
@@ -342,17 +344,17 @@ function requireString(value, field) {
 }
 
 function isSemver(value) {
-  return typeof value === "string" && /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.test(value);
+  return isJsonString(value) && /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?$/.test(value);
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );

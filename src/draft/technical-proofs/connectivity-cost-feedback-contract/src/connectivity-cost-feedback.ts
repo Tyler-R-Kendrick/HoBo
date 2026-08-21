@@ -2,6 +2,8 @@ import {
   ConnectivityTier,
   validateConnectivityPlan
 } from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.js";
+import { isJsonObject } from "./json.js";
+
 
 const TIER_LABELS = Object.freeze({
   [ConnectivityTier.SAME_PROVIDER_REGION]: "tier-1-same-provider-region",
@@ -57,7 +59,7 @@ export function estimateConnectivityFeedback({ plan, costCatalog, latencyCatalog
       egressPerGbUsd: estimate.egressPerGbUsd,
       latencyMsP50: estimate.latencyMsP50,
       rating: estimate.rating,
-      ...(estimate.unratedReason ? { unratedReason: estimate.unratedReason } : {})
+      ...(estimate.unratedReason ? { unratedReason: estimate.unratedReason } : undefined)
     },
     topologyAnnotation: {
       edgeId: plan.edgeId,
@@ -68,7 +70,7 @@ export function estimateConnectivityFeedback({ plan, costCatalog, latencyCatalog
       estimatedEgressPerGbUsd: estimate.egressPerGbUsd,
       estimatedLatencyMsP50: estimate.latencyMsP50,
       rating: estimate.rating,
-      ...(estimate.unratedReason ? { unratedReason: estimate.unratedReason } : {})
+      ...(estimate.unratedReason ? { unratedReason: estimate.unratedReason } : undefined)
     }
   };
 }
@@ -100,7 +102,7 @@ export function detectStaleTopologyAnnotation({
 } = {}) {
   const current = estimateConnectivityFeedback({ plan: currentPlan, costCatalog, latencyCatalog });
   if (!current.ok) return current;
-  if (!existingAnnotation || typeof existingAnnotation !== "object" || Array.isArray(existingAnnotation)) {
+  if (!existingAnnotation || !isJsonObject(existingAnnotation) || Array.isArray(existingAnnotation)) {
     return invalid("connectivity-feedback.annotation.invalid", "existingAnnotation must be an object");
   }
 
@@ -125,11 +127,11 @@ function lookupTierValue({ table, tier, plan, field, allowMissing = false, missi
     }
     return invalid("connectivity-feedback.catalog.invalid", "tier catalog must be an object");
   }
-  if (typeof table !== "object" || Array.isArray(table)) {
+  if (!isJsonObject(table) || Array.isArray(table)) {
     return invalid("connectivity-feedback.catalog.invalid", "tier catalog must be an object");
   }
   const tierEntry = table[tier];
-  if (!tierEntry || typeof tierEntry !== "object" || Array.isArray(tierEntry)) {
+  if (!tierEntry || !isJsonObject(tierEntry) || Array.isArray(tierEntry)) {
     if (allowMissing) {
       return { ok: true, key, value: null, missing: true, reason: missingReason ?? `missing catalog entry for tier ${tier}` };
     }

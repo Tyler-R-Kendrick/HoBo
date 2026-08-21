@@ -2,10 +2,12 @@ import crypto from "node:crypto";
 
 import type { ReplayDivergenceRecord } from "./types.js";
 import { stableStringify } from "./equivalence.js";
+import { type JsonValue } from "./json.js";
+
 
 export class ReplayDivergenceError extends Error {
-  readonly liveState: unknown;
-  readonly replayState: unknown;
+  readonly liveState: JsonValue;
+  readonly replayState: JsonValue;
   readonly liveOrder: string[];
   readonly replayOrder: string[];
   readonly firstDivergentEventKey: string;
@@ -13,8 +15,8 @@ export class ReplayDivergenceError extends Error {
 
   constructor(input: {
     runId: string;
-    liveState: unknown;
-    replayState: unknown;
+    liveState: JsonValue;
+    replayState: JsonValue;
     liveOrder: string[];
     replayOrder: string[];
     firstDivergentEventKey?: string;
@@ -38,7 +40,7 @@ export class ReplayDivergenceError extends Error {
   }
 }
 
-export function digest(value: unknown): string {
+export function digest(value: JsonValue): string {
   return crypto.createHash("sha256").update(stableStringify(value)).digest("hex");
 }
 

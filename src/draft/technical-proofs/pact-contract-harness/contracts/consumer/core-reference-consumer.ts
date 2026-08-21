@@ -1,4 +1,6 @@
 import type { PactRequest, PactResponse, ProviderStub } from "../../src/index.js";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "../../src/json.js";
+
 
 export interface CoreContractSurface {
   readonly schemaVersion: "hobo.core/v1";
@@ -13,32 +15,31 @@ export class CoreContractSurfaceParseError extends Error {
   }
 }
 
-export function parseCoreContractSurface(body: unknown): CoreContractSurface {
-  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+export function parseCoreContractSurface(body: JsonValue): CoreContractSurface {
+  if (!isJsonObject(body)) {
     throw new CoreContractSurfaceParseError("response body must be an object");
   }
 
-  const record = body as Record<string, unknown>;
+  // SAFETY: assertion to `const record = body as JsonObject;` is required at this boundary.
+  const record = body as JsonObject;
   if (record.schemaVersion !== "hobo.core/v1") {
     throw new CoreContractSurfaceParseError(`unsupported schemaVersion: ${String(record.schemaVersion)}`);
   }
 
   const eventMappings = record.eventMappings;
   if (
-    typeof eventMappings !== "object" ||
-    eventMappings === null ||
-    Array.isArray(eventMappings) ||
-    (eventMappings as Record<string, unknown>).cloudEventSpecversion !== "1.0"
+    !isJsonObject(eventMappings) ||
+    // SAFETY: assertion to `(eventMappings as JsonObject).cloudEventSpecversion !== "1.0"` is required at this boundary.
+    (eventMappings as JsonObject).cloudEventSpecversion !== "1.0"
   ) {
     throw new CoreContractSurfaceParseError("invalid eventMappings.cloudEventSpecversion");
   }
 
   const publicSurface = record.publicSurface;
   if (
-    typeof publicSurface !== "object" ||
-    publicSurface === null ||
-    Array.isArray(publicSurface) ||
-    (publicSurface as Record<string, unknown>).ok !== true
+    !isJsonObject(publicSurface) ||
+    // SAFETY: assertion to `(publicSurface as JsonObject).ok !== true` is required at this boundary.
+    (publicSurface as JsonObject).ok !== true
   ) {
     throw new CoreContractSurfaceParseError("invalid publicSurface.ok");
   }
@@ -52,12 +53,12 @@ export function parseCoreContractSurface(body: unknown): CoreContractSurface {
 
 export async function fetchCoreContractSurface(
   provider: ProviderStub,
-  body?: unknown,
+  body?: JsonValue,
 ): Promise<CoreContractSurface> {
   const request: PactRequest = {
     method: "POST",
     path: "/core/contract-surface",
-    ...(body === undefined ? {} : { body }),
+    ...(body === undefined ? undefined : { body }),
   };
 
   const response: PactResponse = await provider.handle(request);
@@ -83,17 +84,19 @@ export async function fetchUnsupportedSchemaError(
   }
 
   const body = response.body;
-  if (typeof body !== "object" || body === null || Array.isArray(body)) {
+  if (!isJsonObject(body)) {
     throw new Error("error response body must be an object");
   }
 
-  const error = (body as Record<string, unknown>).error;
-  if (typeof error !== "object" || error === null || Array.isArray(error)) {
+  // SAFETY: assertion to `const error = (body as JsonObject).error;` is required at this boundary.
+  const error = (body as JsonObject).error;
+  if (!isJsonObject(error)) {
     throw new Error("error envelope missing");
   }
 
-  const record = error as Record<string, unknown>;
-  if (typeof record.code !== "string" || typeof record.message !== "string") {
+  // SAFETY: assertion to `const record = error as JsonObject;` is required at this boundary.
+  const record = error as JsonObject;
+  if (!isJsonString(record.code) || !isJsonString(record.message)) {
     throw new Error("error envelope must include code and message");
   }
 

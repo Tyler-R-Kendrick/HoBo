@@ -1,5 +1,7 @@
 import type { PactDocument, PactRequest, PactResponse } from "./pact.js";
 import { isRecursiveSubset } from "./subset.js";
+import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export interface ProviderStub {
   readonly name: string;
@@ -77,7 +79,7 @@ export async function verifyPact(
   };
 }
 
-function findBodyMismatch(expected: unknown, actual: unknown, path = "$"): string | undefined {
+function findBodyMismatch(expected: JsonValue, actual: JsonValue, path = "$"): string | undefined {
   if (isRecursiveSubset(expected, actual, path)) {
     return undefined;
   }
@@ -85,18 +87,19 @@ function findBodyMismatch(expected: unknown, actual: unknown, path = "$"): strin
   if (
     expected === null ||
     expected === undefined ||
-    typeof expected !== "object" ||
-    Array.isArray(expected)
+    !isJsonObject(expected)
   ) {
     return `body field ${path} does not match`;
   }
 
-  if (typeof actual !== "object" || actual === null || Array.isArray(actual)) {
+  if (!isJsonObject(actual)) {
     return `body field ${path} is missing`;
   }
 
-  const expectedRecord = expected as Record<string, unknown>;
-  const actualRecord = actual as Record<string, unknown>;
+  // SAFETY: assertion to `const expectedRecord = expected as JsonObject;` is required at this boundary.
+  const expectedRecord = expected as JsonObject;
+  // SAFETY: assertion to `const actualRecord = actual as JsonObject;` is required at this boundary.
+  const actualRecord = actual as JsonObject;
 
   for (const key of Object.keys(expectedRecord)) {
     const childPath = `${path}.${key}`;

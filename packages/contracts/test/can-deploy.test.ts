@@ -16,7 +16,7 @@ const deployedContract = createBoundaryContract({
 		channel: "orders.http",
 		operation: "order.created",
 	},
-	requiredShape: {
+	requiredLayout: {
 		format: "json-schema",
 		requiredFields: ["id", "tenantId", "total"],
 		providedFields: ["id", "tenantId", "total"],
@@ -40,7 +40,7 @@ describe("can-deploy engine", () => {
 				channel: "orders.http",
 				operation: "order.created",
 			},
-			requiredShape: {
+			requiredLayout: {
 				format: "json-schema",
 				requiredFields: ["id", "tenantId", "total"],
 				providedFields: ["id", "tenantId", "total", "currency"],
@@ -70,7 +70,7 @@ describe("can-deploy engine", () => {
 				channel: "orders.http",
 				operation: "order.created",
 			},
-			requiredShape: {
+			requiredLayout: {
 				format: "json-schema",
 				requiredFields: ["id", "total"],
 				providedFields: ["id", "total"],
@@ -107,7 +107,7 @@ describe("can-deploy engine", () => {
 				channel: "brand.new",
 				operation: "thing.created",
 			},
-			requiredShape: {
+			requiredLayout: {
 				format: "json-schema",
 				requiredFields: ["id"],
 				providedFields: ["id"],

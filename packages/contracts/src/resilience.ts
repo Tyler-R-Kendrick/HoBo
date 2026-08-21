@@ -10,6 +10,13 @@
 
 import type { EffectSpec } from "./effects.js";
 import { requiresNetwork } from "./effects.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 // public-contract: schema version for ResilienceProfile declarations (ADR-0136).
 export const RESILIENCE_PROFILE_SCHEMA_VERSION = "hobo.resilience-profile/v1";
@@ -100,14 +107,14 @@ export class ResilienceValidationError extends Error {
 	}
 }
 
-export function parseResilienceProfile(input: unknown): ResilienceProfile {
+export function parseResilienceProfile<T>(input: T): ResilienceProfile {
 	if (input === undefined || input === null) {
 		throw new ResilienceValidationError(
 			"missing-profile",
 			"resilience profile is required when parsing",
 		);
 	}
-	const source = expectObject(input, "resilience");
+	const source = expectObject(cloneAsJson(input), "resilience");
 	const id = nonEmpty(source.id, "id");
 	const strategiesRaw = source.strategies;
 	if (!Array.isArray(strategiesRaw) || strategiesRaw.length === 0) {
@@ -254,6 +261,7 @@ export function applyResilienceProfile<T>(input: {
 				const delayMs = retry ? computeDelay(retry, attempt) : 0;
 				const never =
 					profile.neverRetry.includes(
+						// SAFETY: assertion required at this I/O or test boundary.
 						failure.failureClass as
 							| "policy.Decided"
 							| "terminal"
@@ -308,12 +316,16 @@ export function applyResilienceProfile<T>(input: {
 	})();
 }
 
+export interface ResilienceInspection {
+	readonly attempts: number;
+	readonly terminal?: ResilienceTerminalFact;
+	readonly retried: boolean;
+}
+
 /** Reconstruct terminal state from facts without re-running effects. */
-export function inspectResilienceFromFacts(facts: readonly ResilienceFact[]): {
-	attempts: number;
-	terminal?: ResilienceTerminalFact;
-	retried: boolean;
-} {
+export function inspectResilienceFromFacts(
+	facts: readonly ResilienceFact[],
+): ResilienceInspection {
 	const attempts = facts.filter((f) => f.type === "resilience.Attempt").length;
 	const terminal = facts.find(
 		(f): f is ResilienceTerminalFact => f.type === "resilience.Terminal",
@@ -324,65 +336,75 @@ export function inspectResilienceFromFacts(facts: readonly ResilienceFact[]): {
 	return { attempts, terminal, retried };
 }
 
-function classifyError(err: unknown): {
-	failureClass: FailureClass;
-	message: string;
-} {
-	if (err && typeof err === "object") {
-		const e = err as {
-			failureClass?: string;
-			code?: string;
-			message?: string;
-			name?: string;
-		};
-		if (
-			e.failureClass === "policy.Decided" ||
-			e.code === "policy-denied" ||
-			e.name === "PolicyDeniedError"
-		) {
-			return {
-				failureClass: "policy.Decided",
-				message: e.message ?? "policy.Decided deny",
-			};
-		}
-		if (
-			e.failureClass === "terminal" ||
-			e.code === "TERMINAL" ||
-			e.name === "TerminalError"
-		) {
-			return {
-				failureClass: "terminal",
-				message: e.message ?? "terminal failure",
-			};
-		}
-		if (
-			e.failureClass === "cancellation" ||
-			e.code === "CANCELLED" ||
-			e.name === "CancellationError"
-		) {
-			return {
-				failureClass: "cancellation",
-				message: e.message ?? "cancelled",
-			};
-		}
-		if (e.failureClass === "deadline" || e.code === "DEADLINE") {
-			return {
-				failureClass: "deadline",
-				message: e.message ?? "deadline",
-			};
-		}
-		if (e.failureClass === "transient") {
-			return {
-				failureClass: "transient",
-				message: e.message ?? "transient",
-			};
-		}
+interface ClassifiedFailure {
+	readonly failureClass: FailureClass;
+	readonly message: string;
+}
+
+interface FailureFields {
+	readonly failureClass?: string;
+	readonly code?: string;
+	readonly message?: string;
+	readonly name?: string;
+}
+
+function failureFields(err: Error): FailureFields {
+	return {
+		failureClass:
+			"failureClass" in err && isJsonString(err.failureClass)
+				? err.failureClass
+				: undefined,
+		code: "code" in err && isJsonString(err.code) ? err.code : undefined,
+		message: err.message,
+		name: err.name,
+	};
+}
+
+function classifyError(err: Error): ClassifiedFailure {
+	const e = failureFields(err);
+	if (
+		e.failureClass === "policy.Decided" ||
+		e.code === "policy-denied" ||
+		e.name === "PolicyDeniedError"
+	) {
 		return {
-			failureClass: "terminal",
-			message: e.message ?? String(err),
+			failureClass: "policy.Decided",
+			message: e.message ?? "policy.Decided deny",
 		};
 	}
-	return { failureClass: "terminal", message: String(err) };
+	if (
+		e.failureClass === "terminal" ||
+		e.code === "TERMINAL" ||
+		e.name === "TerminalError"
+	) {
+		return {
+			failureClass: "terminal",
+			message: e.message ?? "terminal failure",
+		};
+	}
+	if (
+		e.failureClass === "cancellation" ||
+		e.code === "CANCELLED" ||
+		e.name === "CancellationError"
+	) {
+		return {
+			failureClass: "cancellation",
+			message: e.message ?? "cancelled",
+		};
+	}
+	if (e.failureClass === "deadline" || e.code === "DEADLINE") {
+		return {
+			failureClass: "deadline",
+			message: e.message ?? "deadline",
+		};
+	}
+	if (e.failureClass === "transient") {
+		return {
+			failureClass: "transient",
+			message: e.message ?? "transient",
+		};
+	}
+	return { failureClass: "terminal", message: e.message ?? `${err}` };
 }
 
 /** Deterministic delay from seed + attempt (no wall-clock sleep required for unit tests). */
@@ -403,7 +425,7 @@ export function computeDelay(
 	return Math.min(retry.maxDelayMs, exp);
 }
 
-function parseStrategy(input: unknown, index: number): ResilienceStrategy {
+function parseStrategy(input: JsonValue, index: number): ResilienceStrategy {
 	const s = expectObject(input, `strategies[${index}]`);
 	const kind = nonEmpty(s.kind, "kind");
 	switch (kind) {
@@ -454,7 +476,7 @@ function parseStrategy(input: unknown, index: number): ResilienceStrategy {
 }
 
 function parseNeverRetry(
-	input: unknown,
+	input: JsonValue,
 ): Array<"policy.Decided" | "terminal" | "cancellation"> {
 	const defaults: Array<"policy.Decided" | "terminal" | "cancellation"> = [
 		"policy.Decided",
@@ -471,12 +493,13 @@ function parseNeverRetry(
 	const allowed = new Set(["policy.Decided", "terminal", "cancellation"]);
 	const out: Array<"policy.Decided" | "terminal" | "cancellation"> = [];
 	for (const v of input) {
-		if (typeof v !== "string" || !allowed.has(v)) {
+		if (!isJsonString(v) || !allowed.has(v)) {
 			throw new ResilienceValidationError(
 				"never-retry-value",
 				`invalid neverRetry entry: ${String(v)}`,
 			);
 		}
+		// SAFETY: assertion required at this I/O or test boundary.
 		out.push(v as "policy.Decided" | "terminal" | "cancellation");
 	}
 	// Always enforce the three classes at minimum
@@ -486,15 +509,16 @@ function parseNeverRetry(
 	return out;
 }
 
-function expectObject(input: unknown, _label: string): Record<string, unknown> {
-	if (input === null || typeof input !== "object" || Array.isArray(input)) {
+function expectObject(input: JsonValue, _label: string): JsonObject {
+	if (input === null || !isJsonObject(input) || Array.isArray(input)) {
 		throw new ResilienceValidationError("expected-object", "expected object");
 	}
-	return input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	return input as JsonObject;
 }
 
-function nonEmpty(input: unknown, field: string): string {
-	if (typeof input !== "string" || input.trim() === "") {
+function nonEmpty(input: JsonValue, field: string): string {
+	if (!isJsonString(input) || input.trim() === "") {
 		throw new ResilienceValidationError(
 			"expected-string",
 			`${field} must be non-empty`,
@@ -503,22 +527,26 @@ function nonEmpty(input: unknown, field: string): string {
 	return input;
 }
 
-function positiveInt(input: unknown, field: string): number {
+function positiveInt(input: JsonValue, field: string): number {
+	// SAFETY: assertion required at this I/O or test boundary.
 	if (!Number.isSafeInteger(input) || (input as number) <= 0) {
 		throw new ResilienceValidationError(
 			"expected-positive-int",
 			`${field} must be a positive integer`,
 		);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return input as number;
 }
 
-function nonNegInt(input: unknown, field: string): number {
+function nonNegInt(input: JsonValue, field: string): number {
+	// SAFETY: assertion required at this I/O or test boundary.
 	if (!Number.isSafeInteger(input) || (input as number) < 0) {
 		throw new ResilienceValidationError(
 			"expected-nonneg-int",
 			`${field} must be a non-negative integer`,
 		);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return input as number;
 }

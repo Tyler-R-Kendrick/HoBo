@@ -23,7 +23,7 @@ describe("Contract IR", () => {
 				id: "",
 				version: "1.0.0",
 				edge: {},
-				requiredShape: {},
+				requiredLayout: {},
 			}),
 		).toThrow(ContractIrValidationError);
 		expect(() =>
@@ -37,7 +37,7 @@ describe("Contract IR", () => {
 					channel: "ch",
 					operation: "op",
 				},
-				requiredShape: { format: "json", requiredFields: ["id"] },
+				requiredLayout: { format: "json", requiredFields: ["id"] },
 			}),
 		).toThrow(/invalid-semver/);
 	});
@@ -46,7 +46,7 @@ describe("Contract IR", () => {
 		const prev = createBoundaryContract({ version: "1.0.0" });
 		const next = createBoundaryContract({
 			version: "1.1.0",
-			requiredShape: {
+			requiredLayout: {
 				format: "json-schema",
 				requiredFields: ["id", "tenantId"],
 				providedFields: ["id", "tenantId", "currency"],
@@ -60,7 +60,7 @@ describe("Contract IR", () => {
 	it("detects a removed required field as a BREAKING change with reasons", () => {
 		const prev = createBoundaryContract({
 			version: "1.0.0",
-			requiredShape: {
+			requiredLayout: {
 				format: "json-schema",
 				requiredFields: ["id", "tenantId"],
 				providedFields: ["id", "tenantId"],
@@ -69,7 +69,7 @@ describe("Contract IR", () => {
 		// api@v3 removed tenantId — the exact skew the design calls out.
 		const next = createBoundaryContract({
 			version: "3.0.0",
-			requiredShape: {
+			requiredLayout: {
 				format: "json-schema",
 				requiredFields: ["id"],
 				providedFields: ["id"],

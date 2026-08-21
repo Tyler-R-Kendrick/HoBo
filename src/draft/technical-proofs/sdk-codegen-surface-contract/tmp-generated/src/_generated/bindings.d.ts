@@ -2,9 +2,9 @@
 
 export interface DataClient<Name extends string, Verbs extends string> {
   readonly name: Name;
-  read(id: string): Verbs extends "read" ? Promise<unknown> : never;
-  write(id: string, value: unknown): Verbs extends "write" ? Promise<void> : never;
-  query(filter: unknown): Verbs extends "query" ? Promise<readonly unknown[]> : never;
+  read(id: string): Verbs extends "read" ? Promise<JsonValue> : never;
+  write(id: string, value: JsonValue): Verbs extends "write" ? Promise<void> : never;
+  query(filter: JsonValue): Verbs extends "query" ? Promise<readonly unknown[]> : never;
 }
 
 export interface BlobClient<Name extends string, Verbs extends string> {

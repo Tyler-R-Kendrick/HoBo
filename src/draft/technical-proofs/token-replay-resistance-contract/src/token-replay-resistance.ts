@@ -9,6 +9,8 @@ import {
   createIdentityEvent,
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const JWT_BEARER_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
 const DEFAULT_ISSUER = "https://identity.hobo.test";
@@ -597,7 +599,7 @@ function subjectFromIdJagAssertion(assertion) {
 }
 
 function subjectForAudit(subject) {
-  if (!subject || typeof subject !== "object" || Array.isArray(subject)) {
+  if (!subject || !isJsonObject(subject) || Array.isArray(subject)) {
     return { kind: "service", id: "yard/identity" };
   }
   const kind = subject.kind === "workload" ? "service" : subject.kind;
@@ -686,13 +688,13 @@ function requireIso(value, field) {
 }
 
 function assertObject(value, field) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  if (value === null || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${field} must be an object`);
   }
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -723,7 +725,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

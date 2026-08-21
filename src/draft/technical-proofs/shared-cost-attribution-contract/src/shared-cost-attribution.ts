@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const SHARED_COST_SCHEMA_VERSION = "hobo.shared-cost-attribution/v1";
 export const TENANT_SHOWBACK_SCHEMA_VERSION = "hobo.tenant-shared-cost-showback/v1";
@@ -445,7 +447,7 @@ function compareConsumers(left, right) {
 }
 
 function normalizeInstant(value, fieldName) {
-  if (typeof value !== "string") {
+  if (!isJsonString(value)) {
     throw new TypeError(`${fieldName} must be an ISO-8601 string`);
   }
   const timestamp = Date.parse(value);
@@ -456,7 +458,7 @@ function normalizeInstant(value, fieldName) {
 }
 
 function expectObject(value, fieldName) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
   return value;
@@ -470,7 +472,7 @@ function expectArray(value, fieldName) {
 }
 
 function requireString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -520,7 +522,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))

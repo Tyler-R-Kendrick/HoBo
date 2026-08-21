@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { ConnectivityTier } from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.js";
 import { normalizeConnectivityTier } from "../../connectivity-policy-enforcement-contract/src/connectivity-policy-enforcement.js";
 import { validateJunctionConnectivityPlan } from "../../junction-connectivity-plan-contract/src/junction-connectivity-plan.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const TOPOLOGY_OVERRIDE_CONFLICT_SCHEMA_VERSION = "hobo.topology-override-conflict/v1";
 
@@ -204,7 +206,7 @@ function validateOverrides(overrides) {
 }
 
 function validatePolicyDecision(policyDecision) {
-  if (!policyDecision || typeof policyDecision !== "object" || Array.isArray(policyDecision)) {
+  if (!policyDecision || !isJsonObject(policyDecision) || Array.isArray(policyDecision)) {
     return invalid("topology.policy-decision.invalid", "policyDecision must be an object");
   }
   if (policyDecision.phase !== "can-deploy") {
@@ -334,7 +336,7 @@ function failure({ code, reason, type, overrides, inferenceHash, topologySeq, co
     phase: "can-deploy",
     code,
     reason,
-    ...(conflict ? { conflict } : {}),
+    ...(conflict ? { conflict } : undefined),
     decisionEvent: decisionEvent(type, {
       overrides,
       inferenceHash,
@@ -395,7 +397,7 @@ function invalid(code, reason) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.length > 0;
+  return isJsonString(value) && value.length > 0;
 }
 
 function stableDigest(value) {
@@ -408,6 +410,6 @@ function canonicalJson(value) {
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
 }

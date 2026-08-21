@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const TRUST_TIER_CONTRACT_VERSION = "hobo.trust-tier-policy/v1";
 
 const TIER_RANK = Object.freeze({
@@ -172,23 +173,23 @@ function normalizePolicy(policy) {
   return Object.freeze({
     id: stringOrUnknown(parsed.id),
     minTier,
-    phase: typeof parsed.phase === "string" && parsed.phase.length > 0 ? parsed.phase : "can-deploy"
+    phase: isJsonString(parsed.phase) && parsed.phase.length > 0 ? parsed.phase : "can-deploy"
   });
 }
 
 function expectObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
   return value;
 }
 
 function stringOrUnknown(value) {
-  return typeof value === "string" && value.length > 0 ? value : "unknown";
+  return isJsonString(value) && value.length > 0 ? value : "unknown";
 }
 
 function requiredString(value, name) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
   return value;

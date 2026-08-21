@@ -15,6 +15,8 @@ import {
   type WrpcTransport,
 } from "./ports.js";
 import { negotiateWireVersion } from "./wire-version.js";
+import { isJsonString, isJsonObject, type JsonValue } from "./json.js";
+
 
 type IndexedPins = Map<
   string,
@@ -32,7 +34,7 @@ function indexPins(
 }
 
 function assertId(id: string | undefined, kind: string): asserts id is string {
-  if (typeof id !== "string" || id.length === 0) {
+  if (!isJsonString(id) || id.length === 0) {
     throw new Error(`wrpc.${kind}_id_required`);
   }
 }
@@ -45,10 +47,12 @@ export function createWrpcLinkLayer(options: {
   const floor = parseWireVersion(options.compatibilityFloor);
   const store = options.store ?? new ProviderHandlerStore();
   const transport = options.transport;
-  const codecName =
-    "codec" in transport && typeof transport.codec === "object" && transport.codec
-      ? (transport.codec as { name: string }).name
-      : "unknown";
+  const codec =
+    "codec" in transport && isJsonObject(transport.codec) ? transport.codec : undefined;
+  const namedCodec: { name?: JsonValue } =
+    // SAFETY: transport.codec is a host codec bag when present.
+    codec as never;
+  const codecName = isJsonString(namedCodec.name) ? namedCodec.name : "unknown";
 
   const components = new Map<string, { id: string; imports: IndexedPins }>();
   const providers = new Map<string, { id: string; exports: IndexedPins }>();
@@ -147,9 +151,9 @@ export function createWrpcLinkLayer(options: {
       componentId: string,
       importInterface: string,
       operation: string,
-      payload: unknown = {},
+      payload: JsonValue = {},
       options: { deadline?: string | null } = {},
-    ): Promise<unknown> {
+    ): Promise<JsonValue> {
       if (!components.has(componentId)) {
         throw new Error(`wrpc.component_not_registered: ${componentId}`);
       }

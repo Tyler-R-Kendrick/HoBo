@@ -10,6 +10,8 @@ import {
   parseInterfaceId,
   parseWireVersion,
 } from "../src/index.js";
+import { type JsonValue } from "../src/json.js";
+
 
 const KV = parseInterfaceId("wasi:keyvalue/store@0.2.0");
 const BLOB = parseInterfaceId("wasi:blobstore/blobstore@0.2.0");
@@ -84,7 +86,7 @@ test("unlinked imports fail with typed no-route instead of panicking", async () 
 
   await assert.rejects(
     () => layer.callImport("worker", KV, "get", { key: "session" }),
-    (error: unknown) => error instanceof NoRouteError && error.code === "no-route",
+    (error: JsonValue) => error instanceof NoRouteError && error.code === "no-route",
   );
   assert.equal(layer.events.some((event) => event.type === "link.Called"), false);
 });
@@ -114,7 +116,7 @@ test("a provider export cannot be reached unless the exact import is in the link
 
   await assert.rejects(
     () => layer.callImport("api", BLOB, "read", { key: "secret" }),
-    (error: unknown) =>
+    (error: JsonValue) =>
       error instanceof NoRouteError && error.routeKey === `api\0${BLOB}`,
   );
 });

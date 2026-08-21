@@ -29,11 +29,12 @@ import {
   parseGetDriftRequest,
   parseHealDriftRequest,
 } from "./parse.js";
+import { isJsonObject } from "./json.js";
+
 
 export const S605_OBSERVABILITY_DRIFT_LOOP_VERSION = "hobo.s6-05-observability-drift-loop/v1";
 
 const DEFAULT_NOW = "2026-07-02T03:00:00.000Z";
-const TRACE_IDS = ["11111111111111111111111111111111", "cccccccccccccccccccccccccccccccc"];
 const SPAN_IDS = ["aaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbb", "dddddddddddddddd", "eeeeeeeeeeeeeeee"];
 
 export async function runObservabilityDriftLoopE2E(input = {}) {
@@ -81,7 +82,7 @@ export async function runObservabilityDriftLoopE2E(input = {}) {
   });
 }
 
-export function exportControlAndDataPlaneTelemetry({ traceparent, tenant, deploymentId, runId, now }) {
+export function exportControlAndDataPlaneTelemetry({ traceparent, tenant, deploymentId, runId, now: _now }) {
   const traceCollector = createMockTraceCollector();
   const metricCollector = createMockMetricCollector();
   const logSink = createMemoryLogSink();
@@ -304,7 +305,7 @@ export function getDrift(input) {
     (entry) =>
       !request.resourceId ||
       (entry != null &&
-        typeof entry === "object" &&
+        isJsonObject(entry) &&
         "resourceId" in entry &&
         entry.resourceId === request.resourceId),
   );
@@ -320,7 +321,7 @@ export async function healDrift(input) {
   const entry = request.projection.find(
     (item) =>
       item != null &&
-      typeof item === "object" &&
+      isJsonObject(item) &&
       "resourceId" in item &&
       item.resourceId === request.resourceId,
   );
@@ -333,7 +334,7 @@ export async function healDrift(input) {
     drift: entry.drift,
     policies: {
       ...defaultDriftPolicies([{ id: request.resourceId }]),
-      ...(input?.policies ?? {}),
+      ...input?.policies,
       [request.resourceId]: {
         mode: "heal",
         environment: entry.environment ?? "staging",

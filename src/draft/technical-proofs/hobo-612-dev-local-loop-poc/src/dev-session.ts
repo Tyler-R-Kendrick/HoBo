@@ -20,12 +20,14 @@ import {
   DevStateSnapshot,
   parseDevSessionOptions,
 } from "./types.js";
+import { isJsonString, type JsonValue, type JsonObject } from "./json.js";
+
 
 export class HoboDevError extends Error {
   constructor(
     readonly code: string,
     message: string,
-    readonly detail: Record<string, unknown> = {},
+    readonly detail: JsonObject = {},
   ) {
     super(message);
     this.name = "HoboDevError";
@@ -36,7 +38,7 @@ export interface DevSession {
   readonly record: DevSessionRecord;
   handleRequest(request: { path: string; body?: unknown }): Promise<{
     status: number;
-    body: Record<string, unknown>;
+    body: JsonObject;
     state: DevStateSnapshot;
   }>;
   reloadHandler(input: { path: string; source: string }): ReturnType<typeof reloadHandler>;
@@ -48,7 +50,7 @@ export interface DevSession {
   runtimeHost: ReturnType<typeof createRuntimeLocalComponentHost>;
 }
 
-export function defineDevResource(kind: string, name: string, options: Record<string, unknown> = {}) {
+export function defineDevResource(kind: string, name: string, options: JsonObject = {}) {
   return defineResource(kind, name, options);
 }
 
@@ -199,15 +201,19 @@ function sampleCollectProject() {
   };
 }
 
-function requireNonEmptyString(value: unknown, fieldName: string): string {
-  if (typeof value !== "string" || value.length === 0) {
+function requireNonEmptyString(value: JsonValue, fieldName: string): string {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
 }
 
 function clone<T>(value: T): T {
-  return typeof structuredClone === "function"
-    ? structuredClone(value)
-    : (JSON.parse(JSON.stringify(value)) as T);
+  if (structuredClone instanceof Function) {
+    return structuredClone(value);
+  }
+  const cloned: T =
+    // SAFETY: JSON round-trip clones JSON-compatible session state.
+    JSON.parse(JSON.stringify(value)) as T;
+  return cloned;
 }

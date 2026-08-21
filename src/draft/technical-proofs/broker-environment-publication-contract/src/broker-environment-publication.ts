@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const SNAPSHOT_SCHEMA = "hobo.broker-environment-snapshot/v1";
 const PUBLICATION_VERSION = "2026-06-30.m2";
@@ -181,7 +183,7 @@ export function validateArchitectureEvidence({ architecture, proto, cue, pact })
 function parsePublication(publication) {
   const errors = [];
 
-  if (!publication || typeof publication !== "object") {
+  if (!publication || !isJsonObject(publication)) {
     return { ok: false, errors: ["publication must be an object"] };
   }
 
@@ -203,7 +205,7 @@ function parsePublication(publication) {
 }
 
 function validateProviderCapability(providerCapability, errors) {
-  if (!providerCapability || typeof providerCapability !== "object") {
+  if (!providerCapability || !isJsonObject(providerCapability)) {
     errors.push("providerCapability must be an object");
     return;
   }
@@ -242,7 +244,7 @@ function validateProviderCapability(providerCapability, errors) {
 }
 
 function validateCatalog(catalog, asOf, errors) {
-  if (!catalog || typeof catalog !== "object") {
+  if (!catalog || !isJsonObject(catalog)) {
     errors.push("catalog must be an object");
     return;
   }
@@ -258,7 +260,7 @@ function validateCatalog(catalog, asOf, errors) {
 }
 
 function validateMapping(mapping, providerCapability, errors) {
-  if (!mapping || typeof mapping !== "object") {
+  if (!mapping || !isJsonObject(mapping)) {
     errors.push("mapping must be an object");
     return;
   }
@@ -286,7 +288,7 @@ function validateMapping(mapping, providerCapability, errors) {
 }
 
 function validateApproval(approval, errors) {
-  if (!approval || typeof approval !== "object") {
+  if (!approval || !isJsonObject(approval)) {
     errors.push("approval must be an object");
     return;
   }
@@ -302,7 +304,7 @@ function validateApproval(approval, errors) {
 }
 
 function validateProvenance(provenance, errors) {
-  if (!provenance || typeof provenance !== "object") {
+  if (!provenance || !isJsonObject(provenance)) {
     errors.push("provenance must be an object");
     return;
   }
@@ -349,11 +351,11 @@ function merge(base, override = {}) {
 }
 
 function isNonEmpty(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function isShaDigest(value) {
-  return typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
+  return isJsonString(value) && /^sha256:[a-f0-9]{64}$/.test(value);
 }
 
 function requireMatch(value, pattern, message, errors) {
@@ -363,7 +365,7 @@ function requireMatch(value, pattern, message, errors) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const nested of Object.values(value)) {
@@ -376,7 +378,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

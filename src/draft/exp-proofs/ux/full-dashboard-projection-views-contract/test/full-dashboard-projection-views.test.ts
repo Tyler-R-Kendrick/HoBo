@@ -17,6 +17,8 @@ import {
   renderPseudoLocalizedDashboard,
 } from "../src/pseudo-localization.ts";
 import { auditWcag21Aa } from "../src/wcag-audit.ts";
+import { isJsonObject } from "../src/json.js";
+
 
 const BASE_STRINGS = {
   "HoBo developer dashboard": "HoBo developer dashboard",
@@ -62,11 +64,15 @@ describe("HOBO-662 full dashboard projection views", () => {
     const timeline = dashboard.views.find((view) => view.id === "deployments-timeline");
     const topology = dashboard.views.find((view) => view.id === "topology-graph");
 
-    assert.equal(timeline?.scrubberAtSeq, 12);
-    assert.equal(timeline?.projectionSource, "DeploymentView");
-    assert.ok(Array.isArray(timeline?.payload.timeline));
-    assert.equal(topology?.projectionSource, "TopologyView");
-    const edges = topology?.payload.edges as Array<Record<string, unknown>>;
+    assert.ok(timeline);
+    assert.ok(topology);
+    assert.equal(timeline.scrubberAtSeq, 12);
+    assert.equal(timeline.projectionSource, "DeploymentView");
+    assert.ok(Array.isArray(timeline.payload.timeline));
+    assert.equal(topology.projectionSource, "TopologyView");
+    const edges = Array.isArray(topology.payload.edges)
+      ? topology.payload.edges.filter(isJsonObject)
+      : [];
     assert.ok(edges.every((edge) => edge.connectivityTier && edge.estimatedCostUsd !== undefined));
   });
 
@@ -89,13 +95,17 @@ describe("HOBO-662 full dashboard projection views", () => {
     const cost = dashboard.views.find((view) => view.id === "cost-finops");
     const drift = dashboard.views.find((view) => view.id === "drift");
 
-    assert.equal(
-      (registry?.payload.providers as Array<Record<string, unknown>>)[0]?.forgeCertification,
-      "certified",
-    );
-    assert.ok((credential?.payload.grants as unknown[]).length > 0);
+    assert.ok(registry);
+    assert.ok(credential);
+    assert.ok(drift);
+    const providers = Array.isArray(registry.payload.providers) ? registry.payload.providers : [];
+    assert.ok(isJsonObject(providers[0]));
+    assert.equal(providers[0].forgeCertification, "certified");
+    assert.ok(Array.isArray(credential.payload.grants) && credential.payload.grants.length > 0);
     assert.equal(cost?.payload.showbackLabel, "tenant-acme/multi-cloud-shop/prod");
-    assert.equal((drift?.payload.items as Array<Record<string, unknown>>)[0]?.healAction, "propose-scale-down");
+    const driftItems = Array.isArray(drift.payload.items) ? drift.payload.items : [];
+    assert.ok(isJsonObject(driftItems[0]));
+    assert.equal(driftItems[0].healAction, "propose-scale-down");
   });
 
   it("Given plan, policy, promote, and stream projections When interaction views render Then inline approvals and live tail are fixture-backed", () => {
@@ -105,10 +115,14 @@ describe("HOBO-662 full dashboard projection views", () => {
     const promote = dashboard.views.find((view) => view.id === "promote-rollback");
     const liveTail = dashboard.views.find((view) => view.id === "live-tail");
 
+    assert.ok(policy);
+    assert.ok(liveTail);
     assert.equal(planPreview?.payload.approvable, true);
-    assert.equal((policy?.payload.gates as Array<Record<string, unknown>>)[0]?.status, "approved");
+    const gates = Array.isArray(policy.payload.gates) ? policy.payload.gates : [];
+    assert.ok(isJsonObject(gates[0]));
+    assert.equal(gates[0].status, "approved");
     assert.equal(promote?.payload.rollbackEnabled, true);
-    assert.ok((liveTail?.payload.logLines as unknown[]).length > 0);
+    assert.ok(Array.isArray(liveTail.payload.logLines) && liveTail.payload.logLines.length > 0);
   });
 
   it("When dashboard HTML is rendered Then automated WCAG 2.1 AA audit passes", () => {

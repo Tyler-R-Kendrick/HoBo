@@ -1,4 +1,6 @@
 import { MULTI_CLOUD_SHOP_FIXTURE } from "../../../../technical-proofs/multi-cloud-shop-provider-e2e-contract/src/multi-cloud-shop-gate.ts";
+import { type JsonObject } from "./json.js";
+
 
 export const MULTI_CLOUD_SHOP_BINDLE = MULTI_CLOUD_SHOP_FIXTURE;
 
@@ -7,14 +9,14 @@ type EventEnvelope = {
   readonly id: string;
   readonly type: string;
   readonly correlationId: string;
-  readonly data: Record<string, unknown>;
+  readonly data: JsonObject;
 };
 
 function event(
   seq: number,
   type: string,
   correlationId: string,
-  data: Record<string, unknown>,
+  data: JsonObject,
 ): EventEnvelope {
   return {
     seq,

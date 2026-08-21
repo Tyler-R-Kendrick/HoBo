@@ -8,6 +8,8 @@ import {
   canCompletePrivateBetaGate,
   validateReleaseNotesPrivateBetaEvidence
 } from "../src/release-notes-private-beta-evidence.js";
+import { asJsonObject, type JsonBag } from "../src/json.js";
+
 
 test("required private-beta evidence is listed and mapped to owning projects", () => {
   const record = assertReleaseNotesPrivateBetaEvidence(RELEASE_NOTES_PRIVATE_BETA_EVIDENCE);
@@ -88,19 +90,18 @@ test("M2 private beta gate completes only when all required evidence is accepted
 
 test("malformed evidence payloads fail closed without throwing", () => {
   const record = assertReleaseNotesPrivateBetaEvidence(RELEASE_NOTES_PRIVATE_BETA_EVIDENCE);
-  const invalid = structuredClone(record) as unknown as {
-    requiredEvidence: unknown[];
-    releaseCutline: { dependencies: unknown };
-    followUps: unknown;
-  };
+  const invalid: JsonBag = { ...asJsonObject(structuredClone(record)) };
   invalid.requiredEvidence = [
     null,
     {
-      ...record.requiredEvidence[0],
+      ...asJsonObject(record.requiredEvidence[0]),
       status: "pending-review"
     }
   ];
-  invalid.releaseCutline.dependencies = {};
+  invalid.releaseCutline = {
+    ...asJsonObject(record.releaseCutline),
+    dependencies: {},
+  };
   invalid.followUps = {};
 
   assert.doesNotThrow(() => validateReleaseNotesPrivateBetaEvidence(invalid));

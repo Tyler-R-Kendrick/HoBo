@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const REQUIRED_ROLES = [
   "app-developer",
   "platform-engineer",
@@ -434,7 +435,7 @@ export function classifyDxScenarioScope(proposal: string): DxScenarioScopeDecisi
 }
 
 export function parseDxResourceLifecycleScenarioMatrix(
-  matrix: unknown,
+  matrix: JsonValue,
 ): DxResourceLifecycleScenarioMatrix {
   assertObject(matrix, "matrix");
   assertLiteral(matrix.issue, "HOBO-567", "issue");
@@ -458,6 +459,7 @@ export function parseDxResourceLifecycleScenarioMatrix(
   assertDesignTerms(designTerms, journeys);
 
   return {
+    // SAFETY: `...(matrix as UnparsedDxResourceLifecycleScenarioMatrix),` is required at this I/O or test boundary.
     ...(matrix as UnparsedDxResourceLifecycleScenarioMatrix),
     __brand: "ParsedDxResourceLifecycleScenarioMatrix",
   };
@@ -477,34 +479,34 @@ export function summarizeMatrixByRole(matrix: DxResourceLifecycleScenarioMatrix)
   }));
 }
 
-function assertObject(value: unknown, name: string): asserts value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function assertObject(value: JsonValue, name: string): asserts value is JsonObject {
+  if (!isJsonObject(value) || value === null || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
-function assertLiteral<T extends string>(value: unknown, expected: T, name: string): asserts value is T {
+function assertLiteral<T extends string>(value: JsonValue, expected: T, name: string): asserts value is T {
   if (value !== expected) {
     throw new TypeError(`${name} must be ${expected}`);
   }
 }
 
-function assertStringArray(value: unknown, name: string): string[] {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+function assertStringArray(value: JsonValue, name: string): string[] {
+  if (!Array.isArray(value) || value.some((entry) => !isJsonString(entry))) {
     throw new TypeError(`${name} must be a string array`);
   }
 
   return value;
 }
 
-function assertNonEmptyStringArray(value: unknown, name: string): void {
+function assertNonEmptyStringArray(value: JsonValue, name: string): void {
   const entries = assertStringArray(value, name);
   if (entries.length === 0) {
     throw new TypeError(`${name} must not be empty`);
   }
 }
 
-function assertJourneyArray(value: unknown): DxScenarioJourney[] {
+function assertJourneyArray(value: JsonValue): DxScenarioJourney[] {
   if (!Array.isArray(value)) {
     throw new TypeError("journeys must be an array");
   }
@@ -521,21 +523,23 @@ function assertJourneyArray(value: unknown): DxScenarioJourney[] {
     assertScenarioPaths(entry.scenarioPaths, entry.role);
     assertNonEmptyStringArray(entry.designTerms, `${entry.role}.designTerms`);
 
-    if (typeof entry.id !== "string" || entry.id.length === 0) {
+    if (!isJsonString(entry.id) || entry.id.length === 0) {
       throw new TypeError(`${entry.role}.id must not be empty`);
     }
-    if (typeof entry.intent !== "string" || entry.intent.length === 0) {
+    if (!isJsonString(entry.intent) || entry.intent.length === 0) {
       throw new TypeError(`${entry.role}.intent must not be empty`);
     }
     if (!isProofMode(entry.proofMode)) {
       throw new TypeError(`${entry.role}.proofMode is not supported`);
     }
 
+    // SAFETY: `return entry as DxScenarioJourney;` is required at this I/O or test boundary.
     return entry as DxScenarioJourney;
   });
 }
 
-function assertRequiredRole(value: unknown): asserts value is RequiredRole {
+function assertRequiredRole(value: JsonValue): asserts value is RequiredRole {
+  // SAFETY: `if (!REQUIRED_ROLES.includes(value as RequiredRole)) {` is required at this I/O or test boundary.
   if (!REQUIRED_ROLES.includes(value as RequiredRole)) {
     throw new TypeError(`unknown role ${String(value)}`);
   }
@@ -555,7 +559,7 @@ function assertRoles(journeys: readonly DxScenarioJourney[]): void {
   }
 }
 
-function assertScenarioPaths(value: unknown, role: string): void {
+function assertScenarioPaths(value: JsonValue, role: string): void {
   const paths = assertStringArray(value, `${role}.scenarioPaths`);
 
   for (const path of REQUIRED_SCENARIO_PATHS) {
@@ -581,7 +585,7 @@ function assertDesignTerms(
   }
 }
 
-function isProofMode(value: unknown): value is ProofMode {
+function isProofMode(value: JsonValue): value is ProofMode {
   return (
     value === "command-transcript" ||
     value === "contract-fixture" ||

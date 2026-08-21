@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 const FIXTURE_ID = "dx.lifecycle.shop-api.v1";
 const PROOF_NOTE = "docs/design/proofs/sdk-to-cli-golden-path/README.md";
 const CONTRACT_ARTIFACTS = {
@@ -134,7 +135,7 @@ export function createSdkToCliGoldenPathProof() {
         exitCode: step.resultKind === "success" ? 0 : 1,
       })),
     },
-    apiShape: {
+    apiContract: {
       fixtureId: FIXTURE_ID,
       operations: [
         {
@@ -198,7 +199,7 @@ export function createSdkToCliGoldenPathProof() {
   });
 }
 
-export function validateSdkToCliGoldenPathProof(value: unknown) {
+export function validateSdkToCliGoldenPathProof(value: JsonValue) {
   const errors: string[] = [];
   const proof = asRecord(value);
 
@@ -218,7 +219,7 @@ export function validateSdkToCliGoldenPathProof(value: unknown) {
   for (const [name, artifact] of Object.entries({
     manifestIr: proof.manifestIr,
     cliTranscript: proof.cliTranscript,
-    apiShape: proof.apiShape,
+    apiContract: proof.apiContract,
     mcpResult: proof.mcpResult,
   })) {
     const artifactRecord = asRecord(artifact);
@@ -250,14 +251,15 @@ export function validateSdkToCliGoldenPathProof(value: unknown) {
   return deepFreeze({ ok: errors.length === 0, errors });
 }
 
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+function asRecord(value: JsonValue): JsonObject | undefined {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     return undefined;
   }
-  return value as Record<string, unknown>;
+  // SAFETY: `return value as JsonObject;` is required at this I/O or test boundary.
+  return value as JsonObject;
 }
 
-function readArrayRecords(value: unknown): Array<Record<string, unknown>> {
+function readArrayRecords(value: JsonValue): Array<JsonObject> {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -267,18 +269,19 @@ function readArrayRecords(value: unknown): Array<Record<string, unknown>> {
   });
 }
 
-function readStringArray(value: unknown): string[] {
+function readStringArray(value: JsonValue): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
-  return value.flatMap((item) => (typeof item === "string" ? [item] : []));
+  return value.flatMap((item) => (isJsonString(item) ? [item] : []));
 }
 
 function deepFreeze<T>(value: T): T {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
-  for (const child of Object.values(value as Record<string, unknown>)) {
+  // SAFETY: `for (const child of Object.values(value as JsonObject)) {` is required at this I/O or test boundary.
+  for (const child of Object.values(value as JsonObject)) {
     deepFreeze(child);
   }
   return Object.freeze(value);

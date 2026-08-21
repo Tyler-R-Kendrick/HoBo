@@ -12,6 +12,8 @@ import {
   serveOperationsManifest,
   validateDocsJson,
 } from "../../operations-manifests-contract/src/operations-manifests.js";
+import { isJsonNumber } from "./json.js";
+
 
 export const MCP_GATEWAY_CONTRACT_VERSION = "hobo.mcp-gateway/v1";
 export const MCP_RATE_LIMIT_ERROR = "MCP_RATE_LIMITED";
@@ -120,7 +122,7 @@ export function createHoboMcpGatewayServer(options = {}) {
       const principal = lastPrincipal;
       const tenantId = principal?.tenantId ?? principal?.tenant ?? "tenant:unknown";
       const principalId = principal?.id ?? "anonymous";
-      const now = typeof callOptions.now === "number" ? callOptions.now : Date.now();
+      const now = isJsonNumber(callOptions.now) ? callOptions.now : Date.now();
 
       const principalCheck = rateLimiter.check(`principal:${principalId}`, now);
       if (!principalCheck.ok) {

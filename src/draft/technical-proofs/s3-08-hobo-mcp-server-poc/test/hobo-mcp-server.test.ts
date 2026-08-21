@@ -3,7 +3,6 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "vitest";
 
 import { CANONICAL_VERBS, createHoboCli } from "../../hobo-cli-shell-contract/src/cli-shell.js";
-import { MCP_TOOL_SPECS } from "../../hobo-mcp-server-contract/src/mcp-server-contract.js";
 import { toolCapabilityFor } from "../../hobo-mcp-server-contract/src/mcp-svid-auth.js";
 import {
   assertSurfaceParity,
@@ -13,6 +12,8 @@ import {
   DOCUMENTED_MCP_TOOLS,
   MCP_RATE_LIMIT_ERROR,
 } from "../src/hobo-mcp-server.js";
+import { isJsonNumber } from "../src/json.js";
+
 
 const identity = { kind: "agent", id: "agent:ops", tenantId: "tenant:acme" };
 
@@ -105,7 +106,7 @@ describe("HOBO-634 @hobo/mcp gateway server POC", () => {
     assert.equal(throttled.ok, false);
     assert.equal(throttled.throttled, true);
     assert.equal(throttled.error.code, MCP_RATE_LIMIT_ERROR);
-    assert.ok(typeof throttled.error.retryAfterMs === "number");
+    assert.ok(isJsonNumber(throttled.error.retryAfterMs));
 
     const legit = await legitServer.callTool("plan", { cwd: "/repo" }, { toolCallId: "legit-1", now });
     assert.equal(legit.ok, true);

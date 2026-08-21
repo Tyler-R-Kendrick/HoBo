@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const SLO_PROMOTION_GATE_CONTRACT_VERSION = "hobo.slo-promotion-gate/v1";
 export const PROMOTION_GATE_DECIDED_EVENT = "delivery.PromotionGateDecided";
@@ -7,7 +9,7 @@ export function resolvePromotionPolicy(policy, reliabilitySnapshot) {
   assertObject(policy, "policy");
   assertObject(reliabilitySnapshot, "reliabilitySnapshot");
 
-  if (typeof policy.id !== "string" || policy.id.length === 0) {
+  if (!isJsonString(policy.id) || policy.id.length === 0) {
     throw new Error("promotion policy requires an id");
   }
   if (!Array.isArray(policy.gates) || policy.gates.length === 0) {
@@ -117,7 +119,7 @@ function verdict(verdictValue, reason, sloId) {
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${name} must be an object`);
   }
 }
@@ -133,7 +135,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

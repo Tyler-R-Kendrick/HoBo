@@ -7,6 +7,8 @@ import {
   deriveIncidentOpenEvents,
   foldIncidentStream,
 } from "../../incident-aggregate-contract/src/incident-aggregate.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const SRE_ENGINE_PORTS = Object.freeze({
   builtIn: "hobo:sre-engine/built-in@0.1.0",
@@ -133,7 +135,7 @@ function validateSignals(signals) {
   }
 
   return signals.map((signal) => {
-    if (!signal || typeof signal !== "object" || Array.isArray(signal)) {
+    if (!signal || !isJsonObject(signal) || Array.isArray(signal)) {
       throw new Error("signal must be an object");
     }
     requiredString(signal.id, "signal.id");
@@ -201,7 +203,7 @@ function validateIso(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value;
@@ -215,7 +217,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 

@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonNumber, isJsonObject } from "./json.js";
+
 
 export class SnapshotRejectedError extends Error {
   constructor(message, details = {}) {
@@ -321,7 +323,7 @@ function signSnapshot(snapshot) {
 }
 
 function stripDigest(snapshot) {
-  const { digest, ...withoutDigest } = snapshot;
+  const { digest: _digest, ...withoutDigest } = snapshot;
   return withoutDigest;
 }
 
@@ -367,7 +369,7 @@ function canonicalJson(value) {
 }
 
 function stableValue(value) {
-  if (typeof value === "number") {
+  if (isJsonNumber(value)) {
     if (Number.isNaN(value)) {
       return { "$number": "NaN" };
     }
@@ -384,7 +386,7 @@ function stableValue(value) {
     return value.map(stableValue);
   }
 
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))

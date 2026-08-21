@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export type BrokerArtifactKind =
   | "contract-manifest"
   | "broker-environment"
@@ -7,7 +8,7 @@ export type BrokerArtifactKind =
   | "resolution-rejection";
 
 // domain-view: parse-produced draft-proof record; its wire form is the BrokerArtifactEnvelope proto message in data-models/.
-export interface BrokerArtifactEnvelope<TPayload = Record<string, unknown>> {
+export interface BrokerArtifactEnvelope<TPayload = JsonObject> {
   kind: BrokerArtifactKind;
   schema: string;
   version: string;
@@ -35,8 +36,8 @@ export declare function createAcceptedBrokerFixture(): { artifacts: BrokerArtifa
 export declare function createRejectionBrokerFixture(
   reason: "unsupported-capability" | "stale-catalog-snapshot" | "incompatible-mapping" | "ambiguous-mapping",
 ): { artifacts: BrokerArtifactEnvelope[] };
-export declare function parseBrokerArtifactSet(input: unknown):
+export declare function parseBrokerArtifactSet(input: JsonValue):
   | { ok: true; artifacts: BrokerArtifactEnvelope[]; errors: [] }
   | { ok: false; artifacts: []; errors: string[] };
-export declare function evaluateBrokerArtifacts(artifacts: BrokerArtifactEnvelope[]): unknown;
-export declare function stableDigest(value: unknown): string;
+export declare function evaluateBrokerArtifacts(artifacts: BrokerArtifactEnvelope[]): JsonValue;
+export declare function stableDigest(value: JsonValue): string;

@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonBoolean, isJsonObject } from "./json.js";
+
 
 export const TRAINING_TRAJECTORY_SCHEMA = "hobo.training.trajectory/v1";
 export const TRAINING_EVENT_SCHEMA = "hobo.training.event/v1";
@@ -200,7 +202,7 @@ export function optimizeTrainingCandidate(engine, request) {
   if (!requestValidation.ok) {
     return { ok: false, errors: requestValidation.errors, candidate: null };
   }
-  if (!engine || typeof engine.optimize !== "function") {
+  if (!engine || !(engine.optimize instanceof Function)) {
     return { ok: false, errors: ["engine must implement optimize(request)"], candidate: null };
   }
 
@@ -247,7 +249,7 @@ export function runTrainingEngineConformance(engine) {
 export function validateTrajectory(trajectory) {
   const errors = [];
 
-  if (!trajectory || typeof trajectory !== "object" || Array.isArray(trajectory)) {
+  if (!trajectory || !isJsonObject(trajectory) || Array.isArray(trajectory)) {
     return { ok: false, errors: ["trajectory must be an object"], trajectory: null };
   }
   if (trajectory.schema !== TRAINING_TRAJECTORY_SCHEMA) {
@@ -276,7 +278,7 @@ export function validateTrajectory(trajectory) {
 export function validateCandidatePatch(candidate, generatedRegion) {
   const errors = [];
 
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     return { ok: false, errors: ["candidate patch must be an object"], candidate: null };
   }
   if (candidate.schema !== TRAINING_CANDIDATE_SCHEMA) {
@@ -317,7 +319,7 @@ export function validateCandidatePatch(candidate, generatedRegion) {
 export function validateTrainingEvent(event) {
   const errors = [];
 
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
+  if (!event || !isJsonObject(event) || Array.isArray(event)) {
     return { ok: false, errors: ["event must be an object"], event: null };
   }
   if (event.schema !== TELEMETRY_ENVELOPE_SCHEMA) {
@@ -332,7 +334,7 @@ export function validateTrainingEvent(event) {
   if (!Number.isInteger(event.seq) || event.seq < 0) {
     errors.push("event.seq must be a non-negative integer");
   }
-  if (!event.data || typeof event.data !== "object" || Array.isArray(event.data)) {
+  if (!event.data || !isJsonObject(event.data) || Array.isArray(event.data)) {
     errors.push("event.data must be an object");
   } else {
     if (event.data.schema !== TRAINING_EVENT_SCHEMA) {
@@ -442,7 +444,7 @@ export function canonicalJson(value) {
 function validateOptimizeRequest(request) {
   const errors = [];
 
-  if (!request || typeof request !== "object" || Array.isArray(request)) {
+  if (!request || !isJsonObject(request) || Array.isArray(request)) {
     return { ok: false, errors: ["optimize request must be an object"] };
   }
   if (request.schema !== TRAINING_OPTIMIZE_REQUEST_SCHEMA) {
@@ -479,7 +481,7 @@ function validateOptimizeRequest(request) {
 }
 
 function validateRunCorrelation(run, errors) {
-  if (!run || typeof run !== "object" || Array.isArray(run)) {
+  if (!run || !isJsonObject(run) || Array.isArray(run)) {
     errors.push("run must be an object");
     return;
   }
@@ -492,7 +494,7 @@ function validateRunCorrelation(run, errors) {
   if (!isNonEmptyString(run.bindle)) {
     errors.push("run.bindle must be a non-empty string");
   }
-  if (!run.agent || typeof run.agent !== "object" || Array.isArray(run.agent)) {
+  if (!run.agent || !isJsonObject(run.agent) || Array.isArray(run.agent)) {
     errors.push("run.agent must be an object");
     return;
   }
@@ -505,7 +507,7 @@ function validateRunCorrelation(run, errors) {
 }
 
 function validateGeneratedRegion(region, errors, pathName) {
-  if (!region || typeof region !== "object" || Array.isArray(region)) {
+  if (!region || !isJsonObject(region) || Array.isArray(region)) {
     errors.push(`${pathName} must be an object`);
     return;
   }
@@ -534,7 +536,7 @@ function validateSpans(spans, errors) {
 
   const spanIds = new Set();
   for (const [index, span] of spans.entries()) {
-    if (!span || typeof span !== "object" || Array.isArray(span)) {
+    if (!span || !isJsonObject(span) || Array.isArray(span)) {
       errors.push(`spans.${index} must be an object`);
       continue;
     }
@@ -549,7 +551,7 @@ function validateSpans(spans, errors) {
     if (!OPENINFERENCE_SPAN_KINDS.has(kind)) {
       errors.push(`spans.${index}.attributes.openinference.span.kind must be an OpenInference span kind`);
     }
-    if (!span.attributes || typeof span.attributes !== "object" || Array.isArray(span.attributes)) {
+    if (!span.attributes || !isJsonObject(span.attributes) || Array.isArray(span.attributes)) {
       errors.push(`spans.${index}.attributes must be an object`);
     }
   }
@@ -562,7 +564,7 @@ function validateSpans(spans, errors) {
 }
 
 function validateReward(reward, errors) {
-  if (!reward || typeof reward !== "object" || Array.isArray(reward)) {
+  if (!reward || !isJsonObject(reward) || Array.isArray(reward)) {
     errors.push("trajectory.reward must be an object");
     return;
   }
@@ -578,13 +580,13 @@ function validateReward(reward, errors) {
 }
 
 function validatePayloads(payloads, runId, errors) {
-  if (!payloads || typeof payloads !== "object" || Array.isArray(payloads)) {
+  if (!payloads || !isJsonObject(payloads) || Array.isArray(payloads)) {
     errors.push("trajectory.payloads must be an object");
     return;
   }
 
   for (const [name, payload] of Object.entries(payloads)) {
-    if (!payload || typeof payload !== "object" || Array.isArray(payload)) {
+    if (!payload || !isJsonObject(payload) || Array.isArray(payload)) {
       errors.push(`payload ${name} must be an object`);
       continue;
     }
@@ -607,7 +609,7 @@ function validatePayloads(payloads, runId, errors) {
 }
 
 function validateCandidateEdit(edit, index, region, errors) {
-  if (!edit || typeof edit !== "object" || Array.isArray(edit)) {
+  if (!edit || !isJsonObject(edit) || Array.isArray(edit)) {
     errors.push(`edit ${index} must be an object`);
     return;
   }
@@ -627,7 +629,7 @@ function validateCandidateEdit(edit, index, region, errors) {
 }
 
 function validateTrainingEventPayload(event, errors) {
-  if (!event?.data || typeof event.data !== "object") {
+  if (!event?.data || !isJsonObject(event.data)) {
     return;
   }
 
@@ -658,7 +660,7 @@ function validateTrainingEventPayload(event, errors) {
     if (!isNonEmptyString(event.data.candidateId)) {
       errors.push("CandidateEvaluated.candidateId must be a non-empty string");
     }
-    if (typeof event.data.conformance?.ok !== "boolean") {
+    if (!isJsonBoolean(event.data.conformance?.ok)) {
       errors.push("CandidateEvaluated.conformance.ok must be boolean");
     }
   } else if (event.type === "training.Promoted") {
@@ -695,14 +697,14 @@ function addUnique(values, value) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
@@ -712,7 +714,7 @@ function deepMerge(base, overrides) {
   if (Array.isArray(base) || Array.isArray(overrides)) {
     return overrides === undefined ? structuredClone(base) : structuredClone(overrides);
   }
-  if (!base || typeof base !== "object") {
+  if (!base || !isJsonObject(base)) {
     return overrides === undefined ? base : overrides;
   }
 

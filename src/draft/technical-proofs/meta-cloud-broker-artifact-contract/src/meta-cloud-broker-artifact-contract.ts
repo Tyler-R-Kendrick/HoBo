@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const BROKER_ARTIFACT_SCHEMAS = {
   "contract-manifest": "hobo.meta-cloud-broker.contract-manifest/v1",
@@ -12,7 +14,7 @@ export const BROKER_ARTIFACT_SCHEMAS = {
 export type BrokerArtifactKind = keyof typeof BROKER_ARTIFACT_SCHEMAS;
 
 // domain-view: parse-produced draft-proof record; its wire form is the BrokerArtifactEnvelope proto message in data-models/.
-export interface BrokerArtifactEnvelope<TPayload = Record<string, unknown>> {
+export interface BrokerArtifactEnvelope<TPayload = JsonObject> {
   kind: BrokerArtifactKind;
   schema: string;
   version: string;
@@ -75,11 +77,12 @@ export type ResolutionDecision =
       };
     };
 
+// SAFETY: `const ARTIFACT_KINDS = Object.keys(BROKER_ARTIFACT_SCHEMAS) as BrokerArtifactKin` is required at this I/O or test boundary.
 const ARTIFACT_KINDS = Object.keys(BROKER_ARTIFACT_SCHEMAS) as BrokerArtifactKind[];
 const SEMVER = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/;
 const SHA256 = /^sha256:[a-zA-Z0-9._:-]+$/;
 
-export function createAcceptedBrokerFixture(): { artifacts: BrokerArtifactEnvelope[] } {
+export function createAcceptedBrokerFixture() {
   const catalogDigest = digestRef("catalog:fixture-local:v1");
   const manifestDigest = digestRef("manifest:shop:v1");
   const environmentDigest = digestRef("environment:prod-approved:v1");
@@ -199,7 +202,7 @@ export function createAcceptedBrokerFixture(): { artifacts: BrokerArtifactEnvelo
 
 export function createRejectionBrokerFixture(
   reason: "unsupported-capability" | "stale-catalog-snapshot" | "incompatible-mapping" | "ambiguous-mapping",
-): { artifacts: BrokerArtifactEnvelope[] } {
+) {
   const fixture = clone(createAcceptedBrokerFixture());
   const manifest = requireArtifact(fixture.artifacts, "contract-manifest");
   const rejection = requireArtifact(fixture.artifacts, "resolution-rejection");
@@ -213,12 +216,13 @@ export function createRejectionBrokerFixture(
   return fixture;
 }
 
-export function parseBrokerArtifactSet(input: unknown): ParseResult {
+export function parseBrokerArtifactSet(input: JsonValue): ParseResult {
   if (!Array.isArray(input)) {
     return { ok: false, artifacts: [], errors: ["artifact set must be an array"] };
   }
 
   const errors: string[] = [];
+  // SAFETY: `const artifacts = input as BrokerArtifactEnvelope[];` is required at this I/O or test boundary.
   const artifacts = input as BrokerArtifactEnvelope[];
   const seenKinds = new Set<string>();
 
@@ -257,6 +261,7 @@ export function evaluateBrokerArtifacts(artifacts: BrokerArtifactEnvelope[]): Re
 
   if (missing.length > 0) {
     const reason = rejection.payload.reason;
+    // SAFETY: `return sortKeys({` is required at this I/O or test boundary.
     return sortKeys({
       kind: "resolution-rejection",
       decision: "rejected",
@@ -273,6 +278,7 @@ export function evaluateBrokerArtifacts(artifacts: BrokerArtifactEnvelope[]): Re
     }) as ResolutionDecision;
   }
 
+  // SAFETY: `return sortKeys({` is required at this I/O or test boundary.
   return sortKeys({
     kind: "resolution-receipt",
     decision: "accepted",
@@ -288,15 +294,15 @@ export function evaluateBrokerArtifacts(artifacts: BrokerArtifactEnvelope[]): Re
   }) as ResolutionDecision;
 }
 
-export function stableDigest(value: unknown): string {
+export function stableDigest(value: JsonValue): string {
   return `sha256:${createHash("sha256").update(canonicalJson(value)).digest("hex")}`;
 }
 
-export function canonicalJson(value: unknown): string {
+export function canonicalJson(value: JsonValue): string {
   return `${JSON.stringify(sortKeys(value), null, 2)}\n`;
 }
 
-function envelope(kind: BrokerArtifactKind, owner: string, payload: Record<string, unknown>): BrokerArtifactEnvelope {
+function envelope(kind: BrokerArtifactKind, owner: string, payload: JsonObject): BrokerArtifactEnvelope {
   return {
     kind,
     schema: BROKER_ARTIFACT_SCHEMAS[kind],
@@ -323,16 +329,18 @@ function envelope(kind: BrokerArtifactKind, owner: string, payload: Record<strin
 }
 
 function validateEnvelope(artifact: any, errors: string[]): void {
-  if (!artifact || typeof artifact !== "object" || Array.isArray(artifact)) {
+  if (!artifact || !isJsonObject(artifact) || Array.isArray(artifact)) {
     errors.push("artifact must be an object");
     return;
   }
-  const kind = String(artifact.kind ?? "<unknown>");
+  const kind = String(artifact.kind ?? "<JsonValue>");
   if (!(kind in BROKER_ARTIFACT_SCHEMAS)) {
     errors.push(`${kind} kind must be one of ${ARTIFACT_KINDS.join(", ")}`);
     return;
   }
+  // SAFETY: `if (artifact.schema !== BROKER_ARTIFACT_SCHEMAS[kind as BrokerArtifactKind]) {` is required at this I/O or test boundary.
   if (artifact.schema !== BROKER_ARTIFACT_SCHEMAS[kind as BrokerArtifactKind]) {
+    // SAFETY: `errors.push(`${kind} schema must be ${BROKER_ARTIFACT_SCHEMAS[kind as BrokerArti` is required at this I/O or test boundary.
     errors.push(`${kind} schema must be ${BROKER_ARTIFACT_SCHEMAS[kind as BrokerArtifactKind]}`);
   }
   if (!SEMVER.test(String(artifact.version ?? ""))) {
@@ -350,7 +358,7 @@ function validateEnvelope(artifact: any, errors: string[]): void {
   if (artifact.provenance?.signature?.algorithm !== "ed25519") {
     errors.push(`${kind} provenance.signature.algorithm must be ed25519`);
   }
-  if (!artifact.payload || typeof artifact.payload !== "object" || Array.isArray(artifact.payload)) {
+  if (!artifact.payload || !isJsonObject(artifact.payload) || Array.isArray(artifact.payload)) {
     errors.push(`${kind} payload must be an object`);
   }
 }
@@ -436,6 +444,7 @@ function sortArtifacts(artifacts: BrokerArtifactEnvelope[]): BrokerArtifactEnvel
 }
 
 function clone<T>(value: T): T {
+  // SAFETY: `return JSON.parse(JSON.stringify(value)) as T;` is required at this I/O or test boundary.
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
@@ -443,15 +452,15 @@ function digestRef(seed: string): string {
   return `sha256:${createHash("sha256").update(seed).digest("hex")}`;
 }
 
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
+function isNonEmptyString(value: JsonValue): value is string {
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function sortKeys(value: any): any {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

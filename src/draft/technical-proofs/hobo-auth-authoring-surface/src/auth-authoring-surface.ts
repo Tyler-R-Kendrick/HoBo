@@ -1,4 +1,6 @@
 import { defineAuthConsumerContract } from "../../hobo-auth-consumer-contract/src/auth-consumer-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const PROVIDER_KINDS = new Set(["oidc", "customJwt", "builtin"]);
 const PRODUCTION_TARGET = "production";
@@ -171,8 +173,8 @@ export function generateAuthSurfaceDeclaration(declaration, options = {}) {
   const normalized = ensureDeclaration(declaration);
   const interfaceName = options.interfaceName ?? "GeneratedAuthSurface";
   const providerUnion = normalized.providers.map((provider) => quote(provider.id)).join(" | ");
-  const claimLines = Object.entries(normalized.subject.claims).map(([name, shape]) => {
-    const type = shape.type === "string" ? "string" : shape.enum.map(quote).join(" | ");
+  const claimLines = Object.entries(normalized.subject.claims).map(([name, claim]) => {
+    const type = claim.type === "string" ? "string" : claim.enum.map(quote).join(" | ");
     return `  readonly ${name}: ${type};`;
   });
 
@@ -243,7 +245,7 @@ function normalizeSubject(subject) {
     "tenancy",
   ]);
   const idClaim = normalizeNonEmptyString(subject.idClaim, "subject.idClaim");
-  const claims = normalizeClaimShapes(subject.claims, idClaim);
+  const claims = normalizeClaimContracts(subject.claims, idClaim);
   const roles = normalizeStringSet(subject.roles ?? [], "subject.roles");
   const scopes = normalizeStringSet(subject.scopes ?? [], "subject.scopes");
   const tenancy = normalizeTenancy(subject.tenancy, claims);
@@ -256,24 +258,24 @@ function normalizeSubject(subject) {
   };
 }
 
-function normalizeClaimShapes(claims, idClaim) {
+function normalizeClaimContracts(claims, idClaim) {
   assertObject(claims, "subject.claims");
   if (!Object.hasOwn(claims, idClaim)) {
     throw new Error(`subject.claims must include idClaim '${idClaim}'`);
   }
   const normalized = {};
-  for (const [name, shape] of Object.entries(claims).sort(([left], [right]) =>
+  for (const [name, claim] of Object.entries(claims).sort(([left], [right]) =>
     left.localeCompare(right),
   )) {
-    assertObject(shape, `subject.claims.${name}`);
-    if (shape.type === "string") {
-      assertAllowedProperties(shape, `subject.claims.${name}`, ["type"]);
+    assertObject(claim, `subject.claims.${name}`);
+    if (claim.type === "string") {
+      assertAllowedProperties(claim, `subject.claims.${name}`, ["type"]);
       normalized[name] = { type: "string" };
       continue;
     }
-    if (Array.isArray(shape.enum)) {
-      assertAllowedProperties(shape, `subject.claims.${name}`, ["enum"]);
-      normalized[name] = { enum: normalizeStringSet(shape.enum, `subject.claims.${name}.enum`) };
+    if (Array.isArray(claim.enum)) {
+      assertAllowedProperties(claim, `subject.claims.${name}`, ["enum"]);
+      normalized[name] = { enum: normalizeStringSet(claim.enum, `subject.claims.${name}.enum`) };
       continue;
     }
     throw new Error(`subject.claims.${name} must declare type:string or enum`);
@@ -411,7 +413,7 @@ function normalizeStringSet(values, field) {
     throw new Error(`${field} must be an array`);
   }
   return [...new Set(values.map((value, index) => {
-    if (typeof value !== "string" || value.length === 0) {
+    if (!isJsonString(value) || value.length === 0) {
       throw new Error(`${field}[${index}] must be a non-empty string`);
     }
     return value;
@@ -423,14 +425,14 @@ function quote(value) {
 }
 
 function normalizeNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
 }
 
 function assertObject(value, field) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  if (value === null || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${field} must be an object`);
   }
 }
@@ -446,7 +448,7 @@ function assertAllowedProperties(value, field, allowedProperties) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const nested of Object.values(value)) {

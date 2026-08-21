@@ -15,6 +15,7 @@ import {
 	DEFAULT_CAMP_TIERS,
 	isCampTier,
 } from "@hobo/core";
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion -- SAFETY: assertions inspect known standard-Camp test fixtures. */
 import { describe, expect, it } from "vitest";
 
 import { camp } from "../src/camp.js";

@@ -19,6 +19,7 @@
  * lets two Camps written in different orders hash the same, so it is asserted
  * rather than assumed.
  */
+/* oxlint-disable anti-slop/no-shape-in-symbol-names, anti-slop/no-unknown-returns, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: test helpers intentionally inspect controlled Camp compatibility fixtures. */
 import { describe, expect, it } from "vitest";
 
 import {

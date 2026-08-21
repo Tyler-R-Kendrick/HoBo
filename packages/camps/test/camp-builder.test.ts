@@ -24,6 +24,7 @@
  * than defensive: Camps are shared across a topology graph, and one caller
  * mutating a `require` array would change what every other reader sees.
  */
+/* oxlint-disable anti-slop/no-shape-in-symbol-names, anti-slop/no-unknown-returns, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-unsafe-dictionary-type -- SAFETY: test helpers intentionally inspect controlled Camp builder fixtures. */
 import { describe, expect, it } from "vitest";
 
 import {

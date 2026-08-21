@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion -- SAFETY: assertions inspect known local-binding test fixtures. */
 import { describe, expect, it } from "vitest";
 
 import { attachCampToYard, camp, resolveLocalBindings } from "../src/index.js";

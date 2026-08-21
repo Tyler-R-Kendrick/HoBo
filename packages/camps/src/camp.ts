@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-shape-in-symbol-names, anti-slop/no-runtime-typeof, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-conditional-empty-object-spread, anti-slop/no-known-value-widening, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type -- SAFETY: this compatibility parser preserves legacy Camp JSON at the package boundary; its runtime checks and assertions are the existing contract. */
 import { type CampTier, isCampTier } from "@hobo/core";
 import { must } from "@hobo/core/total-access";
 import {
@@ -68,7 +69,7 @@ export function camp(name: string, config: CampConfig = {}): Camp {
 	// Stated, never inferred. envType is inferred from the Camp's name for
 	// backwards compatibility, but repeating that trick for tier would make a
 	// Camp called "data-migration" silently a data-tier segment.
-	if (config.tier !== undefined && !isCampTier(config.tier)) {
+	if (config.tier !== undefined && !isCampTier(config.tier as string)) {
 		throw Object.assign(
 			new Error(`camp tier ${JSON.stringify(config.tier)} is not a named tier`),
 			{

@@ -10,6 +10,8 @@ import {
   createIdentityEvent,
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
+
 
 const DEFAULT_TTL_SECONDS = 5 * 60;
 const DEFAULT_ROTATE_BEFORE_SECONDS = 2 * 60;
@@ -212,7 +214,7 @@ export function createX509SvidAuthority(options = {}) {
 }
 
 export function rotateX509Svid({ authority, current, attestation, now }) {
-  if (!authority || typeof authority.issueWorkloadSvid !== "function") {
+  if (!authority || !(authority.issueWorkloadSvid instanceof Function)) {
     throw new Error("rotateX509Svid requires an X.509-SVID authority");
   }
   const atMs = coerceTimeMs(now ?? Date.now(), "now");
@@ -541,14 +543,14 @@ function buildIdentityEvent({
     type,
     {
       identityId,
-      ...(previousIdentityId ? { previousIdentityId } : {}),
+      ...(previousIdentityId ? { previousIdentityId } : undefined),
       subject: { kind: "service", id: subject },
       svidRef,
-      ...(previousSvidRef ? { previousSvidRef } : {}),
+      ...(previousSvidRef ? { previousSvidRef } : undefined),
       scope: clone(scope),
       expiresAt,
       caPath,
-      ...(previousValidUntil ? { previousValidUntil } : {}),
+      ...(previousValidUntil ? { previousValidUntil } : undefined),
     },
     {
       id: `evt-${identityId}-${type.split(".")[1].toLowerCase()}`,
@@ -589,7 +591,7 @@ function verifyCertificateBody(publicKeyJwk, body, signature) {
 
 function firstSanUri(certificate) {
   const uris = certificate?.x509?.subjectAltName?.uris;
-  if (!Array.isArray(uris) || uris.length !== 1 || typeof uris[0] !== "string") {
+  if (!Array.isArray(uris) || uris.length !== 1 || !isJsonString(uris[0])) {
     throw new Error("certificate SAN must contain exactly one SPIFFE URI");
   }
   return uris[0];
@@ -613,7 +615,7 @@ function stableStringify(value) {
 }
 
 function coerceTimeMs(value, field) {
-  if (typeof value === "number" && Number.isFinite(value)) {
+  if (isJsonNumber(value) && Number.isFinite(value)) {
     return value;
   }
   const ms = value instanceof Date ? value.getTime() : Date.parse(value);
@@ -646,7 +648,7 @@ function requireSegment(value, field) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -660,7 +662,7 @@ function defaultIdFactory(prefix) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -674,7 +676,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

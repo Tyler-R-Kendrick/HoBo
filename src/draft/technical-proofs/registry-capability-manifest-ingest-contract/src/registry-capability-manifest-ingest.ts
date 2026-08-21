@@ -8,6 +8,8 @@ import {
   stableDigest,
   validateCapabilityManifest,
 } from "../../provider-capability-manifest-contract/src/provider-capability-manifest.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const REGISTRY_INGEST_CONTRACT = "hobo.registry-capability-manifest-ingest/v1";
 export const WELL_KNOWN_PREFIX = "/.well-known/capability-manifest/";
@@ -171,8 +173,8 @@ export function createCapabilityRegistry() {
         contract: REGISTRY_INGEST_CONTRACT,
         query: {
           port,
-          ...(regions.size > 0 ? { regions: [...regions] } : {}),
-          ...(features.size > 0 ? { features: [...features] } : {}),
+          ...(regions.size > 0 ? { regions: [...regions] } : undefined),
+          ...(features.size > 0 ? { features: [...features] } : undefined),
         },
         results: matches,
         remediation:
@@ -222,7 +224,7 @@ export function buildCloudflareWellKnownBundle({
     issuer: "https://providers.cloudflare.hobo.local",
   }),
 } = {}) {
-  if (!provider || typeof provider.capabilityManifest !== "function") {
+  if (!provider || !(provider.capabilityManifest instanceof Function)) {
     throw new Error("cloudflare well-known bundle requires a provider with capabilityManifest()");
   }
 
@@ -243,7 +245,7 @@ export function buildCloudflareWellKnownBundle({
 }
 
 function parseWellKnownDocuments(documents) {
-  if (!documents || typeof documents !== "object" || Array.isArray(documents)) {
+  if (!documents || !isJsonObject(documents) || Array.isArray(documents)) {
     throw new Error("well-known documents must be an object");
   }
 
@@ -277,7 +279,7 @@ function parseWellKnownDocuments(documents) {
 }
 
 function verifySignedIndex(index, documentsByPath, trust) {
-  if (!index || typeof index !== "object" || Array.isArray(index)) {
+  if (!index || !isJsonObject(index) || Array.isArray(index)) {
     throw new Error("index.json must be an object");
   }
   if (!index.signature) {
@@ -564,14 +566,14 @@ function deepClone(value) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

@@ -242,7 +242,7 @@ function ticketProjectionInput() {
     table: "support_ticket_view",
     key: (event) => event.streamId,
     initialState: { comments: 0, id: "", status: "open", title: "" },
-    rowShape: {
+    rowContract: {
       fields: [
         { name: "id", type: "string", primaryKey: true },
         { name: "title", type: "string" },
@@ -272,7 +272,7 @@ function defineScalarProjection() {
     readModel: "support:metrics/metric-view@1.0.0",
     table: "metric_view",
     key: (event) => event.streamId,
-    rowShape: {
+    rowContract: {
       fields: [
         { name: "id", type: "string", primaryKey: true },
         { name: "active", type: "bool" },

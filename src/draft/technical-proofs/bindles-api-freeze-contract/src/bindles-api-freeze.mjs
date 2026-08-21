@@ -5,6 +5,7 @@ import { evaluateCollectionCoverage } from "../../collection-coverage-gate-contr
 import { createConnectorBinding } from "../../connector-authoring-contract/src/connector-authoring.mjs";
 import { inferConnectorScopes } from "../../../exp-proofs/api/xaa-scope-inference-contract/src/xaa-scope-inference.mjs";
 import { createRawView } from "../../raw-driver-escape-hatch-contract/src/raw-driver-escape-hatch.js";
+import { isJsonString, isJsonObject } from "./json.js";
 
 const SNAPSHOT_VERSION = "hobo.bindles.public-api/v1";
 const FORBIDDEN_PUBLIC_SYMBOL = /aws|azure|gcp|cloudflare|rds|fargate|cosmos|internal|cloud/i;
@@ -38,9 +39,9 @@ export function createBindlesPublicApiSnapshot(bindles = catalogModule) {
   const knownExports = new Set(["CATALOG", "catalogFactoryNames", "secretRef", ...factoryNames]);
   const factoryExports = bindles.CATALOG.map((entry) => ({
     name: entry.factory,
-    kind: typeof bindles[entry.factory] === "function" ? "resource-factory" : "missing-resource-factory",
+    kind: bindles[entry.factory] instanceof Function ? "resource-factory" : "missing-resource-factory",
     signature:
-      typeof bindles[entry.factory] === "function"
+      bindles[entry.factory] instanceof Function
         ? `${entry.factory}(name: string): ResourceHandle<"${entry.factory}", ${allowUnion(entry.allowVerbs)}>`
         : `${entry.factory}: missing`,
     portRef: [...entry.portRef],
@@ -72,16 +73,16 @@ export function createBindlesPublicApiSnapshot(bindles = catalogModule) {
       ...factoryExports,
       {
         name: "catalogFactoryNames",
-        kind: typeof bindles.catalogFactoryNames === "function" ? "catalog-helper" : "missing-helper",
+        kind: bindles.catalogFactoryNames instanceof Function ? "catalog-helper" : "missing-helper",
         signature:
-          typeof bindles.catalogFactoryNames === "function"
+          bindles.catalogFactoryNames instanceof Function
             ? "catalogFactoryNames(): readonly string[]"
             : "catalogFactoryNames: missing",
       },
       {
         name: "secretRef",
-        kind: typeof bindles.secretRef === "function" ? "helper" : "missing-helper",
-        signature: typeof bindles.secretRef === "function" ? "secretRef(ref: string): SecretRef" : "secretRef: missing",
+        kind: bindles.secretRef instanceof Function ? "helper" : "missing-helper",
+        signature: bindles.secretRef instanceof Function ? "secretRef(ref: string): SecretRef" : "secretRef: missing",
       },
       ...extraExports,
     ],
@@ -234,8 +235,8 @@ export function assertManifestFreeze(actual, expected) {
   return actual;
 }
 
-export function assertSchemaVersionBumpForShapeChange(previous, candidate) {
-  const changedPaths = shapeDiffPaths(previous, candidate);
+export function assertSchemaVersionBumpForContractChange(previous, candidate) {
+  const changedPaths = contractDiffPaths(previous, candidate);
   if (changedPaths.length > 0 && previous.schema === candidate.schema) {
     throw new ApiFreezeError(
       "MANIFEST_SCHEMA_VERSION_REQUIRED",
@@ -478,7 +479,7 @@ function diffPaths(before, after, path = "") {
   return paths;
 }
 
-function shapeDiffPaths(before, after, path = "") {
+function contractDiffPaths(before, after, path = "") {
   if (Array.isArray(before) || Array.isArray(after)) {
     if (!Array.isArray(before) || !Array.isArray(after)) {
       return [path || "$"];
@@ -490,12 +491,12 @@ function shapeDiffPaths(before, after, path = "") {
         paths.push(`${path}[${index}]`);
         continue;
       }
-      paths.push(...shapeDiffPaths(before[index], after[index], `${path}[${index}]`));
+      paths.push(...contractDiffPaths(before[index], after[index], `${path}[${index}]`));
     }
     return paths;
   }
   if (!isRecord(before) || !isRecord(after)) {
-    return typeof before === typeof after ? [] : [path || "$"];
+    return Object.prototype.toString.call(before) === Object.prototype.toString.call(after) ? [] : [path || "$"];
   }
 
   const paths = [];
@@ -506,7 +507,7 @@ function shapeDiffPaths(before, after, path = "") {
       paths.push(childPath);
       continue;
     }
-    paths.push(...shapeDiffPaths(before[key], after[key], childPath));
+    paths.push(...contractDiffPaths(before[key], after[key], childPath));
   }
   return paths;
 }
@@ -531,7 +532,7 @@ function sortKeys(value) {
 }
 
 function visitStrings(value, path, visitor) {
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     visitor(value, path);
     return;
   }
@@ -547,7 +548,7 @@ function visitStrings(value, path, visitor) {
 }
 
 function assertNonEmptyString(value, name) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
 }
@@ -573,9 +574,9 @@ function deepFreeze(value) {
 }
 
 function clone(value) {
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }
 
 function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return isJsonObject(value);
 }

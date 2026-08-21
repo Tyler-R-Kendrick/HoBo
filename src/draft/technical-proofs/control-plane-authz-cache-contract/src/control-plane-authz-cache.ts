@@ -4,6 +4,8 @@ import {
   createDecisionRequest,
   createPolicyDecidedEvent,
 } from "../../hobo-policy-ir-contract/src/policy-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const CONTROL_PLANE_AUTHZ_CACHE_CONTRACT_VERSION = "hobo.control-plane-authz-cache/v1";
 export const CONTROL_PLANE_AUTHZ_ENGINE_ID = "hobo.control-plane-authz-cache@0.1.0";
@@ -44,13 +46,13 @@ export function createControlPlaneAuthorizer({
   nfr = CONTROL_PLANE_AUTHZ_NFR,
   auditSink = async () => {},
 } = {}) {
-  if (typeof policyEvaluator !== "function") {
+  if (!(policyEvaluator instanceof Function)) {
     throw new TypeError("policyEvaluator must be a function");
   }
-  if (!clock || typeof clock.nowMs !== "function") {
+  if (!clock || !(clock.nowMs instanceof Function)) {
     throw new TypeError("clock must expose nowMs()");
   }
-  if (typeof auditSink !== "function") {
+  if (!(auditSink instanceof Function)) {
     throw new TypeError("auditSink must be a function");
   }
 
@@ -253,7 +255,7 @@ export function runControlPlaneAuthzBenchmark({
   packDigest,
   iterations = 1_000,
 } = {}) {
-  if (!authorizer || typeof authorizer.evaluate !== "function" || typeof authorizer.getMetrics !== "function") {
+  if (!authorizer || !(authorizer.evaluate instanceof Function) || !(authorizer.getMetrics instanceof Function)) {
     throw new TypeError("authorizer must expose evaluate() and getMetrics()");
   }
   const count = normalizePositiveInteger(iterations, "iterations");
@@ -369,7 +371,7 @@ function decisionCacheKey(request, { packVersion, packDigest }) {
 }
 
 function normalizeEvaluationInput(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError("evaluate input must be an object");
   }
   if (Object.hasOwn(input, "request")) {
@@ -421,7 +423,7 @@ function normalizePositiveInteger(value, name) {
 }
 
 function requireString(value, name) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
   return value;
@@ -431,7 +433,7 @@ function deepMerge(base, overrides) {
   if (Array.isArray(base) || Array.isArray(overrides)) {
     return overrides === undefined ? structuredClone(base) : structuredClone(overrides);
   }
-  if (!base || typeof base !== "object") {
+  if (!base || !isJsonObject(base)) {
     return overrides === undefined ? base : overrides;
   }
 

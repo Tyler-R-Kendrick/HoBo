@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export function createCutoverDnsAdapter({ domain, liveRecords = [] } = {}) {
   const defaultDomain = requireString(domain, "domain");
   const liveZones = new Map([[defaultDomain, new Map()]]);
@@ -97,7 +98,7 @@ export async function runHealthCheckedCutover(request) {
 }
 
 function normalizeRequest(request) {
-  if (!request || typeof request !== "object") {
+  if (!request || !isJsonObject(request)) {
     throw new Error("cutover request is required");
   }
   const domain = requireString(request.domain, "domain");
@@ -105,7 +106,7 @@ function normalizeRequest(request) {
   const recordName = requireString(request.recordName, "recordName");
   const validation = request.validation;
   const adapter = request.adapter;
-  if (!adapter || typeof adapter.inspectLiveZone !== "function" || typeof adapter.replaceLiveRecord !== "function") {
+  if (!adapter || !(adapter.inspectLiveZone instanceof Function) || !(adapter.replaceLiveRecord instanceof Function)) {
     throw new Error("cutover adapter must expose inspectLiveZone and replaceLiveRecord");
   }
 
@@ -154,7 +155,7 @@ function refusalReason(request) {
 }
 
 function normalizeTtlPrecondition(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     throw new Error("ttlPrecondition is required");
   }
   return {
@@ -233,7 +234,7 @@ function cutoverEvent(type, request, data) {
 function cutoverResult(status, events, reason) {
   return Object.freeze({
     status,
-    ...(reason ? { reason } : {}),
+    ...(reason ? { reason } : undefined),
     events: events.map((event) => deepFreeze(event)),
   });
 }
@@ -287,7 +288,7 @@ function sortJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortJson);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -298,14 +299,14 @@ function sortJson(value) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value.trim();
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

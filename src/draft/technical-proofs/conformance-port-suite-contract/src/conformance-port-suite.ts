@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 const reportSchema = "hobo.conformance.port-suite-report/v1";
 const suiteSchema = "hobo.conformance.port-suite/v1";
 
@@ -19,7 +20,7 @@ const languageSpecificGoldenIrKeys = new Set([
 ]);
 
 export function createConformanceSuite(definition) {
-  if (!definition || typeof definition !== "object") {
+  if (!definition || !isJsonObject(definition)) {
     throw new TypeError("conformance suite definition is required");
   }
   if (!definition.id) {
@@ -68,7 +69,7 @@ export async function runConformanceSuite(definition, adapter, options = {}) {
       }
     }
 
-    if (typeof adapter?.[functionName] !== "function") {
+    if (!(adapter?.[functionName] instanceof Function)) {
       failures.push({
         code: "adapter.missing-function",
         caseId: suiteCase.id,
@@ -295,7 +296,7 @@ function compareExpected({ assertions, failures, suiteCase, actual }) {
 }
 
 function normalizeAdapterResult(result) {
-  if (isPlainObject(result) && hasHarnessResultShape(result)) {
+  if (isPlainObject(result) && hasHarnessResultContract(result)) {
     return {
       output: cloneData(result.output),
       goldenIr: cloneData(result.goldenIr ?? []),
@@ -310,7 +311,7 @@ function normalizeAdapterResult(result) {
   };
 }
 
-function hasHarnessResultShape(result) {
+function hasHarnessResultContract(result) {
   return (
     Object.hasOwn(result, "output") ||
     Object.hasOwn(result, "goldenIr") ||
@@ -348,7 +349,11 @@ function firstDiff(expected, actual, path = "$") {
     return null;
   }
 
-  if (typeof expected !== typeof actual || expected === null || actual === null) {
+  if (
+    Object.prototype.toString.call(expected) !== Object.prototype.toString.call(actual) ||
+    expected === null ||
+    actual === null
+  ) {
     return {
       path,
       expected,
@@ -384,7 +389,7 @@ function firstDiff(expected, actual, path = "$") {
     return null;
   }
 
-  if (typeof expected === "object") {
+  if (isJsonObject(expected)) {
     const keys = unique([...Object.keys(expected), ...Object.keys(actual)]);
     for (const key of keys) {
       const diff = firstDiff(expected[key], actual[key], joinPath(path, key));
@@ -449,5 +454,5 @@ function cloneData(value) {
 }
 
 function isPlainObject(value) {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
+  return value !== null && isJsonObject(value) && !Array.isArray(value);
 }

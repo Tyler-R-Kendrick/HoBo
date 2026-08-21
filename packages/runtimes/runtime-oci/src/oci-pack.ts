@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import type { JsonBag } from "./json.js";
 
 export const WASM_COMPONENT_MEDIA_TYPE =
 	"application/vnd.wasm.component.v1+wasm" as const;
@@ -93,14 +94,14 @@ export function deploymentManifests(options: {
 	const labels = {
 		"hobo.dev/resource": options.resourceName,
 		"hobo.dev/host": "oci",
-		...(options.labels ?? {}),
+		...options.labels,
 	};
 	const env = Object.entries(options.bindleEnv ?? {}).map(([k, v]) => ({
 		name: k,
 		value: v,
 	}));
 	const containerPort = options.containerPort ?? 8080;
-	const container: Record<string, unknown> = {
+	const container: JsonBag = {
 		name: "component",
 		image: options.imageRef,
 		ports: [{ containerPort }],

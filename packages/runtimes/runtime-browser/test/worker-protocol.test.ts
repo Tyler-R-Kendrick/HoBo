@@ -17,7 +17,9 @@
  * Both check `id`, since the id is what correlates a reply to its caller: an
  * unidentified message cannot be routed to the promise waiting on it.
  */
+
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../src/json.js";
 
 import {
 	isBrowserStorageResponse,
@@ -39,11 +41,12 @@ describe("parseBrowserStorageRequest", () => {
 	});
 
 	it("keeps the operation's own fields", () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const parsed = parseBrowserStorageRequest({
 			id: "r1",
 			op: "append",
 			stream: "yard",
-		}) as unknown as Record<string, unknown>;
+		}) as JsonObject;
 		expect(parsed.stream).toBe("yard");
 	});
 

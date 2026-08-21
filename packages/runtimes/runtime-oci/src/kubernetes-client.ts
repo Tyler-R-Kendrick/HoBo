@@ -95,9 +95,11 @@ export function createKubectlKubernetesClient(
 		createProcessKubectlTransport({
 			...(options.kubectlBin !== undefined
 				? { kubectlBin: options.kubectlBin }
-				: {}),
-			...(options.context !== undefined ? { context: options.context } : {}),
-			...(options.env !== undefined ? { env: options.env } : {}),
+				: undefined),
+			...(options.context !== undefined
+				? { context: options.context }
+				: undefined),
+			...(options.env !== undefined ? { env: options.env } : undefined),
 		});
 	const ensureNamespace = options.ensureNamespace ?? true;
 	let namespaceReady = false;
@@ -141,6 +143,7 @@ export function createKubectlKubernetesClient(
 					notes: ["kubectl client unavailable", JSON.stringify(version.body)],
 				};
 			}
+			// SAFETY: assertion required at this I/O or test boundary.
 			const versionBody = version.body as {
 				clientVersion?: string;
 				kubectlBin?: string;
@@ -154,6 +157,7 @@ export function createKubectlKubernetesClient(
 				method: "POST",
 				path: "/kubectl/cluster-info",
 			});
+			// SAFETY: assertion required at this I/O or test boundary.
 			const clusterBody = (cluster.body ?? {}) as {
 				reachable?: boolean;
 				detail?: string;
@@ -215,6 +219,7 @@ export function createKubectlKubernetesClient(
 					`port-forward failed: ${JSON.stringify(response.body)}`,
 				);
 			}
+			// SAFETY: assertion required at this I/O or test boundary.
 			const body = response.body as {
 				loopbackUrl: string;
 				localPort: number;
@@ -241,8 +246,8 @@ export function createKubectlKubernetesClient(
 					path: options.path,
 					...(options.headers !== undefined
 						? { headers: options.headers }
-						: {}),
-					...(options.body !== undefined ? { body: options.body } : {}),
+						: undefined),
+					...(options.body !== undefined ? { body: options.body } : undefined),
 				},
 			});
 			if (response.status >= 400) {
@@ -250,6 +255,7 @@ export function createKubectlKubernetesClient(
 					`http-proxy failed: ${JSON.stringify(response.body)}`,
 				);
 			}
+			// SAFETY: assertion required at this I/O or test boundary.
 			const body = response.body as {
 				status: number;
 				headers?: Record<string, string>;
@@ -259,8 +265,8 @@ export function createKubectlKubernetesClient(
 			return {
 				status: body.status,
 				headers: body.headers ?? {},
-				...(body.json !== undefined ? { json: body.json } : {}),
-				...(body.text !== undefined ? { text: body.text } : {}),
+				...(body.json !== undefined ? { json: body.json } : undefined),
+				...(body.text !== undefined ? { text: body.text } : undefined),
 			};
 		},
 		async delete(name) {

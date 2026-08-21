@@ -15,6 +15,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { isJsonString } from "./json.js";
 
 // public-contract: pinned kubectl client for oci host ensure.
 export const PINNED_KUBECTL_VERSION = "1.31.0" as const;
@@ -55,6 +56,7 @@ function tryKubectl(bin: string): { version: string } | null {
 		return m?.[1] ? { version: m[1] } : { version: "0.0.0" };
 	}
 	try {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const j = JSON.parse(r.stdout) as {
 			clientVersion?: { gitVersion?: string };
 		};
@@ -82,7 +84,7 @@ export async function ensureKubectlBinary(
 	const emit = options.emitProgress ?? (() => {});
 
 	const fromEnv = env.HOBO_KUBECTL_BIN;
-	if (typeof fromEnv === "string" && fromEnv.length > 0) {
+	if (isJsonString(fromEnv) && fromEnv.length > 0) {
 		const probed = tryKubectl(fromEnv);
 		if (probed) {
 			return { binPath: fromEnv, version: probed.version, source: "env" };
@@ -166,10 +168,7 @@ export function isKubectlPresent(
 	env?: NodeJS.ProcessEnv,
 ): boolean {
 	const e = env ?? process.env;
-	if (
-		typeof e.HOBO_KUBECTL_BIN === "string" &&
-		existsSync(e.HOBO_KUBECTL_BIN)
-	) {
+	if (isJsonString(e.HOBO_KUBECTL_BIN) && existsSync(e.HOBO_KUBECTL_BIN)) {
 		return true;
 	}
 	if (existsSync(kubectlToolsPath(hoboHome))) return true;

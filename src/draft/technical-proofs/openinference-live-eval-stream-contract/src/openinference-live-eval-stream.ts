@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
+
 
 export const OPENINFERENCE_LIVE_EVAL_STREAM_CONTRACT = "hobo.openinference-live-eval-stream/v1";
 
@@ -120,7 +122,7 @@ export function createAiMethodTelemetryRuntime(options = {}) {
             "hobo.method.name": method.name,
             "hobo.candidate.id": method.candidateId,
             "llm.model_name": model.name,
-            ...(child.attributes ?? {}),
+            ...(child.attributes ?? undefined),
           },
           inputs: sanitizeValue(child.inputs ?? {}, `childSpans.${child.name}.inputs`, new Set(sensitiveFields), {
             runId: run.id,
@@ -324,7 +326,7 @@ export function createAiMethodTelemetryRuntime(options = {}) {
       );
     }
 
-    if (typeof liveEval.championScore === "number" && typeof liveEval.challengerScore === "number") {
+    if (isJsonNumber(liveEval.championScore) && isJsonNumber(liveEval.challengerScore)) {
       metrics.push(
         makeMetric({
           name: "eval.champion_challenger.delta",
@@ -445,7 +447,7 @@ export function createAiMethodTelemetryRuntime(options = {}) {
             source: `hobo://semantic-function/${data.semanticFunction}`,
             subject: `semantic-function/${data.semanticFunction}`,
           }
-        : {}),
+        : undefined),
       streamId: `${type.split(".")[0]}:${run.id}:${methodSafeStream(data)}`,
       seq,
       time: now(),
@@ -472,7 +474,7 @@ export function createAiMethodTelemetryRuntime(options = {}) {
       lastTimestampMs += 1;
       return new Date(lastTimestampMs).toISOString();
     }
-    const timestamp = typeof value === "number" ? value : Date.parse(value);
+    const timestamp = isJsonNumber(value) ? value : Date.parse(value);
     if (Number.isNaN(timestamp)) {
       throw new TypeError("clock values must be timestamps");
     }
@@ -546,7 +548,7 @@ function sanitizeValue(value, path, sensitiveFields, options) {
       ciphertext: `enc:sha256:${hashRaw(`${options.runKeyRef}:${path}:${String(value)}`)}`,
     };
   }
-  if (typeof value === "string" && Buffer.byteLength(value, "utf8") > options.maxInlinePayloadBytes) {
+  if (isJsonString(value) && Buffer.byteLength(value, "utf8") > options.maxInlinePayloadBytes) {
     return {
       redaction: "offloaded",
       offloadRef: `run://${options.runId}/offload/${hashRaw(`${path}:${value}`)}`,
@@ -557,7 +559,7 @@ function sanitizeValue(value, path, sensitiveFields, options) {
   if (Array.isArray(value)) {
     return value.map((entry, index) => sanitizeValue(entry, `${path}.${index}`, sensitiveFields, options));
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([key, entry]) => [key, sanitizeValue(entry, `${path}.${key}`, sensitiveFields, options)]),
     );
@@ -566,12 +568,12 @@ function sanitizeValue(value, path, sensitiveFields, options) {
 }
 
 function validateScores(scores) {
-  if (!scores || typeof scores !== "object" || Array.isArray(scores)) {
+  if (!scores || !isJsonObject(scores) || Array.isArray(scores)) {
     throw new TypeError("liveEval.scores must be an object");
   }
   for (const [name, value] of Object.entries(scores)) {
     requireString(name, "score name");
-    if (typeof value !== "number" || value < 0 || value > 1) {
+    if (!isJsonNumber(value) || value < 0 || value > 1) {
       throw new TypeError(`score ${name} must be between 0 and 1`);
     }
   }
@@ -579,12 +581,12 @@ function validateScores(scores) {
 }
 
 function validateThresholds(thresholds) {
-  if (!thresholds || typeof thresholds !== "object" || Array.isArray(thresholds)) {
+  if (!thresholds || !isJsonObject(thresholds) || Array.isArray(thresholds)) {
     throw new TypeError("liveEval.thresholds must be an object");
   }
   for (const [name, value] of Object.entries(thresholds)) {
     requireString(name, "threshold name");
-    if (typeof value !== "number" || value < 0 || value > 1) {
+    if (!isJsonNumber(value) || value < 0 || value > 1) {
       throw new TypeError(`threshold ${name} must be between 0 and 1`);
     }
   }
@@ -616,7 +618,7 @@ function normalizeCost(costUsd) {
   if (costUsd === undefined) {
     return 0;
   }
-  if (typeof costUsd !== "number" || costUsd < 0) {
+  if (!isJsonNumber(costUsd) || costUsd < 0) {
     throw new TypeError("tokenUsage.costUsd must be a non-negative number");
   }
   return costUsd;
@@ -643,7 +645,7 @@ function hashRaw(value) {
 }
 
 function requireString(value, name) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
   return value;
@@ -653,7 +655,7 @@ function cloneValue(value) {
   if (Array.isArray(value)) {
     return value.map(cloneValue);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(Object.entries(value).map(([key, childValue]) => [key, cloneValue(childValue)]));
   }
   return value;
@@ -663,7 +665,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

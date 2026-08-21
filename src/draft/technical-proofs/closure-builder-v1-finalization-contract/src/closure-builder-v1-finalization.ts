@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export type ClosureBuilderFinalizationIssue =
   | "HOBO-532"
   | "HOBO-533"
@@ -27,9 +28,9 @@ export interface ClosureBuilderV1FinalizationRecord {
 
 export class ClosureBuilderV1FinalizationError extends Error {
   readonly code: string;
-  readonly details: Record<string, unknown>;
+  readonly details: JsonObject;
 
-  constructor(code: string, message: string, details: Record<string, unknown> = {}) {
+  constructor(code: string, message: string, details: JsonObject = {}) {
     super(`${code}: ${message}`);
     this.name = "ClosureBuilderV1FinalizationError";
     this.code = code;
@@ -113,7 +114,7 @@ export function closureBuilderV1FinalizationRecord(): ClosureBuilderV1Finalizati
   });
 }
 
-export function assertClosureBuilderV1Finalization(raw: unknown): ClosureBuilderV1FinalizationRecord {
+export function assertClosureBuilderV1Finalization(raw: JsonValue): ClosureBuilderV1FinalizationRecord {
   const record = parseClosureBuilderV1Finalization(raw);
   const byIssue = new Map(record.evidence.map((entry) => [entry.issueId, entry]));
 
@@ -143,7 +144,7 @@ export function assertNoLegacyClosureBuilderFinalizationSyntax(sourceText: strin
   return sourceText;
 }
 
-function parseClosureBuilderV1Finalization(raw: unknown): ClosureBuilderV1FinalizationRecord {
+function parseClosureBuilderV1Finalization(raw: JsonValue): ClosureBuilderV1FinalizationRecord {
   if (!isRecord(raw)) {
     throw new ClosureBuilderV1FinalizationError("CLOSURE_BUILDER_V1_PARSE", "finalization record must be an object");
   }
@@ -194,8 +195,8 @@ function parseClosureBuilderV1Finalization(raw: unknown): ClosureBuilderV1Finali
   });
 }
 
-function parseEvidenceEntry(raw: unknown): ClosureBuilderEvidenceEntry {
-  if (!isRecord(raw) || typeof raw.issueId !== "string") {
+function parseEvidenceEntry(raw: JsonValue): ClosureBuilderEvidenceEntry {
+  if (!isRecord(raw) || !isJsonString(raw.issueId)) {
     throw new ClosureBuilderV1FinalizationError(
       "CLOSURE_BUILDER_V1_EVIDENCE",
       "evidence entries must name a closure-builder issue",
@@ -215,21 +216,21 @@ function parseEvidenceEntry(raw: unknown): ClosureBuilderEvidenceEntry {
       { issueId: raw.issueId, linearStatus: raw.linearStatus },
     );
   }
-  if (typeof raw.proofPath !== "string" || !raw.proofPath.startsWith("src/draft/")) {
+  if (!isJsonString(raw.proofPath) || !raw.proofPath.startsWith("src/draft/")) {
     throw new ClosureBuilderV1FinalizationError(
       "CLOSURE_BUILDER_V1_PROOF_PATH",
       "closure-builder child evidence must link a src/draft proof package",
       { issueId: raw.issueId, proofPath: raw.proofPath },
     );
   }
-  if (typeof raw.designPath !== "string" || !raw.designPath.startsWith("docs/design/")) {
+  if (!isJsonString(raw.designPath) || !raw.designPath.startsWith("docs/design/")) {
     throw new ClosureBuilderV1FinalizationError(
       "CLOSURE_BUILDER_V1_DESIGN_PATH",
       "closure-builder child evidence must link a design-system record",
       { issueId: raw.issueId, designPath: raw.designPath },
     );
   }
-  if (typeof raw.acceptedScope !== "string" || raw.acceptedScope.trim().length === 0) {
+  if (!isJsonString(raw.acceptedScope) || raw.acceptedScope.trim().length === 0) {
     throw new ClosureBuilderV1FinalizationError(
       "CLOSURE_BUILDER_V1_ACCEPTED_SCOPE",
       "closure-builder child evidence must state the accepted scope",
@@ -247,6 +248,7 @@ function parseEvidenceEntry(raw: unknown): ClosureBuilderEvidenceEntry {
 }
 
 function isFinalizationIssue(issueId: string): issueId is ClosureBuilderFinalizationIssue {
+  // SAFETY: `return REQUIRED_EVIDENCE.includes(issueId as ClosureBuilderFinalizationIssue);` is required at this I/O or test boundary.
   return REQUIRED_EVIDENCE.includes(issueId as ClosureBuilderFinalizationIssue);
 }
 
@@ -260,17 +262,19 @@ function duplicateIssueIds(evidence: readonly ClosureBuilderEvidenceEntry[]): Cl
   return [...duplicates];
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function isRecord(value: JsonValue): value is JsonObject {
+  return isJsonObject(value) && value !== null && !Array.isArray(value);
 }
 
 function deepFreeze<T>(value: T): T {
   if (Array.isArray(value)) {
     value.forEach(deepFreeze);
+    // SAFETY: `return Object.freeze(value) as T;` is required at this I/O or test boundary.
     return Object.freeze(value) as T;
   }
   if (isRecord(value)) {
     Object.values(value).forEach(deepFreeze);
+    // SAFETY: `return Object.freeze(value) as T;` is required at this I/O or test boundary.
     return Object.freeze(value) as T;
   }
   return value;

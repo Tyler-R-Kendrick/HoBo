@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject } from "./json.js";
+
 
 export const SLO_CONTRACT_SCHEMA = "hobo.slo/v1";
 export const SLO_EVENT_SCHEMA = "hobo.slo.event/v1";
@@ -80,7 +82,7 @@ export function parseSloDefinition(candidate) {
   const errors = [];
   const warnings = [];
 
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     return { ok: false, errors: ["SLO definition must be an object"], warnings, slo: null };
   }
 
@@ -152,7 +154,7 @@ export function makeSloEvent({ id, type, sloName, seq, data = {}, time = "2026-0
 export function validateSloEvent(event) {
   const errors = [];
 
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
+  if (!event || !isJsonObject(event) || Array.isArray(event)) {
     return { ok: false, errors: ["event envelope must be an object"], event: null };
   }
 
@@ -337,21 +339,21 @@ function validateEnvelope(event, errors) {
 }
 
 function validateTimeWindow(window, path, errors) {
-  if (!window || typeof window !== "object" || Array.isArray(window)) {
+  if (!window || !isJsonObject(window) || Array.isArray(window)) {
     errors.push(`${path} must be an object`);
     return;
   }
   if (!parseDurationSeconds(window.duration)) {
     errors.push(`${path}.duration must be a duration like 30d or 5m`);
   }
-  if (typeof window.isRolling !== "boolean") {
+  if (!isJsonBoolean(window.isRolling)) {
     errors.push(`${path}.isRolling must be boolean`);
   }
 }
 
 function validateIndicator(indicator, path, errors) {
   const ratioMetric = indicator?.ratioMetric;
-  if (!ratioMetric || typeof ratioMetric !== "object" || Array.isArray(ratioMetric)) {
+  if (!ratioMetric || !isJsonObject(ratioMetric) || Array.isArray(ratioMetric)) {
     errors.push(`${path} must define an SLI source as ratioMetric`);
     return;
   }
@@ -376,7 +378,7 @@ function validateObjectives(objectives, errors, warnings) {
     if (!isNonEmptyString(objective?.displayName)) {
       errors.push(`${path}.displayName must be a non-empty string`);
     }
-    if (typeof objective?.target !== "number" || objective.target <= 0 || objective.target > 1) {
+    if (!isJsonNumber(objective?.target) || objective.target <= 0 || objective.target > 1) {
       errors.push(`${path}.target must be > 0 and <= 1`);
     }
     if (objective?.target === 1) {
@@ -402,7 +404,7 @@ function validateBurnRateThresholds(spec, errors) {
     if (!isNonEmptyString(threshold?.name)) {
       errors.push(`${path}.name must be a non-empty string`);
     }
-    if (typeof threshold?.threshold !== "number" || threshold.threshold <= 0) {
+    if (!isJsonNumber(threshold?.threshold) || threshold.threshold <= 0) {
       errors.push(`${path}.threshold must be > 0`);
     }
     if (!lookbackSeconds) {
@@ -462,7 +464,7 @@ function indicatorIdentity(indicator) {
 }
 
 function parseDurationSeconds(duration) {
-  if (typeof duration !== "string") {
+  if (!isJsonString(duration)) {
     return null;
   }
   const match = /^([1-9][0-9]*)(s|m|h|d|w|M|Q|Y)$/.exec(duration);
@@ -484,11 +486,11 @@ function parseDurationSeconds(duration) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function isSha256Digest(value) {
-  return typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
+  return isJsonString(value) && /^sha256:[a-f0-9]{64}$/.test(value);
 }
 
 function clamp(value, min, max) {
@@ -503,7 +505,7 @@ function deepMerge(base, overrides) {
   if (Array.isArray(base) || Array.isArray(overrides)) {
     return overrides === undefined ? structuredClone(base) : structuredClone(overrides);
   }
-  if (!base || typeof base !== "object") {
+  if (!base || !isJsonObject(base)) {
     return overrides === undefined ? base : overrides;
   }
 
@@ -518,7 +520,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

@@ -79,7 +79,8 @@ main
                                                                     └── sdlc/anti-slop-68-draft-non-iac-mcp-componentize  #1327 non-iac-adapters+mcp-server+componentize
                                                                      └── sdlc/anti-slop-69-draft-policy-planner-adapters  #1328 built-in-policy+planner-dag+policy-adapters
                                                                       └── sdlc/anti-slop-70-draft-eval-overlay-dispatcher  #1329 eval-promotion+overlay-mesh+dispatcher-credits
-                                                                       └── sdlc/anti-slop-71-draft-resource-operator-closure  resource-definition+operator-ports+closure-lowering
+                                                                       └── sdlc/anti-slop-71-draft-resource-operator-closure  #1330 resource-definition+operator-ports+closure-lowering
+                                                                        └── sdlc/anti-slop-72-draft-slo-events-closure-eval  slo+events+closure-v1+live-eval
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -170,6 +171,7 @@ Layer 67: `relational-projection-sink-contract` + `registry-capability-manifest-
 Layer 68: `non-iac-driver-adapters-contract` + `hobo-mcp-server-contract` + `hobo-componentize` oxlint `--deny-warnings` clean (#1327).
 Layer 69: `built-in-policy-engine-contract` + `planner-dag-skeleton-contract` + `policy-engine-provider-adapters-contract` oxlint `--deny-warnings` clean (#1328).
 Layer 70: `eval-promotion-gate-contract` + `tier-four-overlay-mesh-contract` + `dispatcher-maximize-credits-contract` oxlint `--deny-warnings` clean (#1329).
-Layer 71: `resource-definition-driver-contract` + `operator-integration-ports-contract` + `closure-builder-manifest-lowering-contract` oxlint `--deny-warnings` clean.
+Layer 71: `resource-definition-driver-contract` + `operator-integration-ports-contract` + `closure-builder-manifest-lowering-contract` oxlint `--deny-warnings` clean (#1330).
+Layer 72: `slo-as-code-contract` + `control-plane-event-schema-contract` + `closure-builder-v1-finalization-contract` + `openinference-live-eval-stream-contract` oxlint `--deny-warnings` clean.
 Next: remaining `src/draft/` (larger technical-proofs, exp-proofs, projects).
 Full-repo `lint:slop --deny-warnings` is still red until those land.

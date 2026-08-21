@@ -1,3 +1,4 @@
+import { isJsonString, type JsonValue } from "./json.js";
 const SEMVER_RE =
   /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 const INTERFACE_ID_RE =
@@ -16,20 +17,20 @@ export type TransportKind = "in-process" | "lattice";
 
 export interface WitCodec {
   readonly name: string;
-  encode(value: unknown): unknown;
-  decode(value: unknown): unknown;
+  encode(value: JsonValue): JsonValue;
+  decode(value: JsonValue): JsonValue;
 }
 
 export interface TransportInvocation {
   link: EstablishedLink;
   operation: string;
-  payload: unknown;
+  payload: JsonValue;
   deadline: string | null;
 }
 
 export interface WrpcTransport {
   readonly kind: TransportKind;
-  invoke(invocation: TransportInvocation): Promise<unknown>;
+  invoke(invocation: TransportInvocation): Promise<JsonValue>;
 }
 
 // domain-view: parse-produced draft-proof record; its wire form is the InterfacePin proto message in data-models/.
@@ -40,9 +41,9 @@ export interface InterfacePin {
 }
 
 export type ProviderHandler = (
-  payload: unknown,
+  payload: JsonValue,
   context: TransportInvocation,
-) => unknown | Promise<unknown>;
+) => JsonValue | void | Promise<JsonValue | void>;
 
 export interface ComponentRegistration {
   id: string;
@@ -128,9 +129,9 @@ export interface WrpcLinkPort {
     componentId: string,
     importInterface: string,
     operation: string,
-    payload?: unknown,
+    payload?: JsonValue,
     options?: { deadline?: string | null },
-  ): Promise<unknown>;
+  ): Promise<JsonValue>;
   readonly events: readonly MembraneEvent[];
 }
 
@@ -195,7 +196,7 @@ export class WireVersionIncompatibleError extends Error {
 }
 
 export function parseWireVersion(raw: string): WireVersion {
-  if (typeof raw !== "string" || !SEMVER_RE.test(raw)) {
+  if (!isJsonString(raw) || !SEMVER_RE.test(raw)) {
     throw new Error(`wrpc.invalid_semver: ${String(raw)}`);
   }
   const [core] = raw.split(/[+-]/, 1);
@@ -204,12 +205,13 @@ export function parseWireVersion(raw: string): WireVersion {
 }
 
 export function parseInterfaceId(raw: string): InterfaceId {
-  if (typeof raw !== "string" || raw.length === 0) {
+  if (!isJsonString(raw) || raw.length === 0) {
     throw new Error("wrpc.interface_id_required");
   }
   if (!INTERFACE_ID_RE.test(raw)) {
     throw new Error(`wrpc.invalid_interface_id: ${raw}`);
   }
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   return raw as InterfaceId;
 }
 

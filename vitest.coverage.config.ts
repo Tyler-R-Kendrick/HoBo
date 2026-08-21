@@ -231,7 +231,7 @@ export default defineConfig({
 				"packages/packs/**": { statements: 88, branches: 83, functions: 93, lines: 87 },
 				"packages/patterns/**": { statements: 78, branches: 68, functions: 82, lines: 80 },
 				"packages/pixel-village/**": { statements: 47, branches: 43, functions: 50, lines: 47 },
-				"packages/policy/**": { statements: 84, branches: 77, functions: 93, lines: 84 },
+				"packages/policy/**": { statements: 97, branches: 95, functions: 100, lines: 97 },
 				"packages/providers/provider-aws/**": { statements: 87, branches: 69, functions: 92, lines: 88 },
 				"packages/providers/provider-ax/**": { statements: 88, branches: 55, functions: 98, lines: 95 },
 				"packages/providers/provider-azure/**": { statements: 89, branches: 73, functions: 93, lines: 90 },

@@ -23,8 +23,8 @@ import {
 	tenantScopedConsumerGroup,
 	tenantScopedTopicName,
 } from "@hobo/core";
-
 import type { DaprSidecarClient } from "./dapr-client.js";
+import { cloneAsJson } from "./json.js";
 import type { DaprRuntimeConfig } from "./types.js";
 
 export interface DaprMessagingOptions {
@@ -71,7 +71,7 @@ export function createDaprMessaging(
 		const inner = createInMemoryMessaging({
 			tenantId: config.tenantId,
 			capabilities: { ...capabilities },
-			...(options.now ? { now: options.now } : {}),
+			...(options.now ? { now: options.now } : undefined),
 		});
 		const simulated: DaprMessaging = {
 			backend: "dapr-pubsub",
@@ -122,6 +122,7 @@ export function createDaprMessaging(
 		string,
 		{ topic: string; group: string; maxDeliveryAttempts: number }
 	>();
+	// SAFETY: assertion required at this I/O or test boundary.
 	const tenantId = config.tenantId as TenantId;
 	const now = options.now ?? (() => new Date().toISOString());
 	const emit = (
@@ -182,10 +183,12 @@ export function createDaprMessaging(
 			const { id } = await client.publish({
 				pubsubName: config.defaultPubsubName,
 				topic: physical,
-				data: body,
+				data: cloneAsJson(body),
 				metadata: {
-					...(publishOptions?.headers ?? {}),
-					...(publishOptions?.key ? { partitionKey: publishOptions.key } : {}),
+					...publishOptions?.headers,
+					...(publishOptions?.key
+						? { partitionKey: publishOptions.key }
+						: undefined),
 				},
 			});
 			const messageId = parseMessagingMessageId(id);
@@ -404,6 +407,7 @@ async function meter(
 	if (!metering || quantity === 0) return;
 	await metering.emit(
 		createUsageEvent({
+			// SAFETY: assertion required at this I/O or test boundary.
 			tenantId: config.tenantId as TenantId,
 			eventType,
 			resource: tenantScopedTopicName(config.tenantId, String(topic)),

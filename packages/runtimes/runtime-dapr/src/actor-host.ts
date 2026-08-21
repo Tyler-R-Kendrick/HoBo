@@ -13,6 +13,7 @@ import {
 	type ActorLease,
 	type ActorStateHandle,
 	createUsageEvent,
+	type FoldEvent,
 	type MeteringBus,
 	type TenantId,
 } from "@hobo/core";
@@ -79,7 +80,7 @@ interface LeaseRec {
 }
 
 interface StreamRec {
-	events: Array<{ type: string; [key: string]: unknown }>;
+	events: FoldEvent[];
 }
 
 export interface CreateDaprActorHostOptions {
@@ -104,16 +105,6 @@ export function createDaprActorHost(
 	const fidelity: "simulated" | "live" = client ? "live" : "simulated";
 	const leases = new Map<string, LeaseRec>();
 	const streams = new Map<string, StreamRec>();
-	const folds = new Map<
-		string,
-		{
-			initial: unknown;
-			fold: (
-				s: unknown,
-				e: { type: string; [key: string]: unknown },
-			) => unknown;
-		}
-	>();
 	const lifecycle: DaprActorLifecycleEvent[] = [];
 	let reminderSeq = 0;
 
@@ -168,6 +159,7 @@ export function createDaprActorHost(
 			if (options.metering) {
 				void options.metering.emit(
 					createUsageEvent({
+						// SAFETY: assertion required at this I/O or test boundary.
 						tenantId: options.config.tenantId as TenantId,
 						eventType: "messaging.actor.activate",
 						resource: actorKey,
@@ -211,13 +203,6 @@ export function createDaprActorHost(
 
 		state(key, request) {
 			if (!streams.has(key)) streams.set(key, { events: [] });
-			folds.set(key, {
-				initial: request.initialState,
-				fold: request.fold as (
-					s: unknown,
-					e: { type: string; [key: string]: unknown },
-				) => unknown,
-			});
 			const streamId = `dapr-actor://${options.config.appId}/${key}`;
 
 			return {
@@ -252,16 +237,14 @@ export function createDaprActorHost(
 				},
 				read() {
 					const stream = streams.get(key) ?? { events: [] };
-					const foldRec = folds.get(key);
-					let state = foldRec?.initial ?? request.initialState;
-					const fold = foldRec?.fold ?? request.fold;
+					let state = request.initialState;
 					for (const event of stream.events) {
-						state = fold(state as never, event) as never;
+						state = request.fold(state, event);
 					}
 					return {
 						streamId,
 						seq: stream.events.length,
-						state: state as never,
+						state,
 					};
 				},
 			};

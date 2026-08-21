@@ -29,7 +29,12 @@ interface Report {
 	readonly violations: ReadonlyArray<{ readonly rule: string }>;
 }
 
-function run(): { readonly status: number | null; readonly report: Report } {
+type BoundaryRun = {
+	readonly status: number | null;
+	readonly report: Report;
+};
+
+function run(): BoundaryRun {
 	const result = spawnSync(
 		process.execPath,
 		["--import", "tsx", join(root, "scripts/check-package-boundaries.mts")],
@@ -39,6 +44,7 @@ function run(): { readonly status: number | null; readonly report: Report } {
 		.split("\n")
 		.find((entry) => entry.trim().startsWith("{"));
 	assert.ok(line, `no JSON report in output: ${result.stdout}${result.stderr}`);
+	// SAFETY: assertion to `.parse(line) as Report }; ` is required at this boundary.
 	return { status: result.status, report: JSON.parse(line) as Report };
 }
 

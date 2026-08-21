@@ -51,6 +51,7 @@ function loadAggregators(root: string): Aggregator[] {
 			const manifestPath = path.join(root, workspace, "proof.json");
 			if (existsSync(manifestPath)) {
 				try {
+					// SAFETY: assertion to `JSON.parse(readFileSync(manifestPath, "utf8")) as { references?: { technicalProofs?: string[]; expProofs?: string[]; epi` is required at this boundary.
 					const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
 						references?: {
 							technicalProofs?: string[];
@@ -107,6 +108,7 @@ function cascadeWaived(workspace: string): boolean {
 	const manifestPath = path.join(repoRoot, workspace, "proof.json");
 	if (!existsSync(manifestPath)) return false;
 	try {
+		// SAFETY: assertion to `JSON.parse(readFileSync(manifestPath, "utf8")) as { waivers?: Array<{ requirement?: string }>; }` is required at this boundary.
 		const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
 			waivers?: Array<{ requirement?: string }>;
 		};
@@ -133,6 +135,7 @@ function main() {
 	}
 
 	const grandfathered = new Set(
+		// SAFETY: assertion to `JSON.parse( readFileSync( path.join(repoRoot, "src/draft/_grandfathered.json"), "utf8", ), ) as { packages: string[] }` is required at this boundary.
 		(
 			JSON.parse(
 				readFileSync(

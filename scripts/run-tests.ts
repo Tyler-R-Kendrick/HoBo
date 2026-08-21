@@ -26,7 +26,7 @@ const broadAgentCategories = new Set([
 	"all",
 ]);
 
-const categories: Record<string, string[]> = {
+const categories = {
 	unit: rootOnly
 		? ["test/*test.ts", "test/*test.mjs"]
 		: [
@@ -109,7 +109,11 @@ const categories: Record<string, string[]> = {
 	"agent-live": ["evals/**/*.live.test.ts", "test/evals/**/*.live.test.ts"],
 };
 
-const patterns = categories[category];
+type CategoryKey = keyof typeof categories;
+function isCategoryKey(name: string): name is CategoryKey {
+	return Object.hasOwn(categories, name);
+}
+const patterns = isCategoryKey(category) ? categories[category] : undefined;
 if (!patterns) {
 	console.error(`unknown test category: ${category}`);
 	process.exit(1);

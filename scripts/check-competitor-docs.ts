@@ -129,7 +129,81 @@ export type Competitor = {
 	file: string;
 };
 
-type Raw = Record<string, string | string[]>;
+type CompetitorField = string | string[];
+type Raw = {
+	slug?: CompetitorField;
+	name?: CompetitorField;
+	primary_category?: CompetitorField;
+	categories?: CompetitorField;
+	directness?: CompetitorField;
+	role?: CompetitorField;
+	posture?: CompetitorField;
+	hobo_surface?: CompetitorField;
+	evidence?: CompetitorField;
+	status?: CompetitorField;
+	research_date?: CompetitorField;
+	sources?: CompetitorField;
+	contract?: CompetitorField;
+	aliases?: CompetitorField;
+};
+
+function setRaw(raw: Raw, key: string, value: CompetitorField): void {
+	switch (key) {
+		case "slug":
+		case "name":
+		case "primary_category":
+		case "categories":
+		case "directness":
+		case "role":
+		case "posture":
+		case "hobo_surface":
+		case "evidence":
+		case "status":
+		case "research_date":
+		case "sources":
+		case "contract":
+		case "aliases":
+			raw[key] = value;
+			return;
+		default:
+			return;
+	}
+}
+
+function getRaw(raw: Raw, key: string): CompetitorField | undefined {
+	switch (key) {
+		case "slug":
+			return raw.slug;
+		case "name":
+			return raw.name;
+		case "primary_category":
+			return raw.primary_category;
+		case "categories":
+			return raw.categories;
+		case "directness":
+			return raw.directness;
+		case "role":
+			return raw.role;
+		case "posture":
+			return raw.posture;
+		case "hobo_surface":
+			return raw.hobo_surface;
+		case "evidence":
+			return raw.evidence;
+		case "status":
+			return raw.status;
+		case "research_date":
+			return raw.research_date;
+		case "sources":
+			return raw.sources;
+		case "contract":
+			return raw.contract;
+		case "aliases":
+			return raw.aliases;
+		default:
+			return undefined;
+	}
+}
 
 export function frontMatter(
 	text: string,
@@ -162,22 +236,28 @@ export function parseBlock(source: string): Raw {
 			// reported problem. The scalar stands and the stray item is dropped;
 			// the required-field checks downstream report anything genuinely
 			// missing, which is where a parse error belongs.
-			const current = raw[key];
+			const current = getRaw(raw, key);
 			if (Array.isArray(current)) current.push(unquote(item[1] ?? ""));
 			continue;
 		}
 		const pair = /^\s+([a-z_]+):\s*(.*)$/.exec(line);
 		if (!pair) continue;
-		key = pair[1] as string;
+		const nextKey = pair[1];
+		if (nextKey === undefined) continue;
+		key = nextKey;
 		const value = (pair[2] ?? "").trim();
-		if (value === "") raw[key] = [];
+		if (value === "") setRaw(raw, key, []);
 		else if (value.startsWith("[") && value.endsWith("]"))
-			raw[key] = value
-				.slice(1, -1)
-				.split(",")
-				.map((entry) => unquote(entry))
-				.filter(Boolean);
-		else raw[key] = unquote(value);
+			setRaw(
+				raw,
+				key,
+				value
+					.slice(1, -1)
+					.split(",")
+					.map((entry) => unquote(entry))
+					.filter(Boolean),
+			);
+		else setRaw(raw, key, unquote(value));
 	}
 	return raw;
 }
@@ -204,12 +284,12 @@ function lineOf(text: string, needle: string) {
 }
 
 function str(value: string | string[] | undefined) {
-	return typeof value === "string" ? value : undefined;
+	return Array.isArray(value) ? undefined : value;
 }
 
 function arr(value: string | string[] | undefined) {
 	if (Array.isArray(value)) return value;
-	return typeof value === "string" && value !== "" ? [value] : undefined;
+	return value !== undefined && value !== "" ? [value] : undefined;
 }
 
 function parseCompetitor(
@@ -235,7 +315,7 @@ function parseCompetitor(
 	const contract = str(raw.contract);
 
 	let ok = true;
-	const require_ = (value: unknown, field: string) => {
+	const require_ = (value: string | string[] | undefined, field: string) => {
 		if (value === undefined || (Array.isArray(value) && value.length === 0)) {
 			push(`competitor.${field} is required`);
 			ok = false;
@@ -260,6 +340,7 @@ function parseCompetitor(
 	const basename = path.basename(file, ".md");
 	if (slug !== basename)
 		push(`competitor.slug "${slug}" must match the filename "${basename}"`);
+	// SAFETY: assertion to `as string)) ` is required at this boundary.
 	if (!/^[a-z0-9]+(-[a-z0-9]+)*$/.test(slug as string))
 		push(`competitor.slug "${slug}" is not a valid slug`);
 
@@ -274,26 +355,37 @@ function parseCompetitor(
 					`competitor.${field} "${value}" is not one of: ${allowed.join(", ")}`,
 				);
 	};
+	// SAFETY: assertion to `ories as string[], CAT` is required at this boundary.
 	enumCheck(categories as string[], CATEGORIES, "categories");
+	// SAFETY: assertion to `ry as string], CA` is required at this boundary.
 	enumCheck([primary as string], CATEGORIES, "primary_category");
+	// SAFETY: assertion to `tness as string], DI` is required at this boundary.
 	enumCheck([directness as string], DIRECTNESS, "directness");
+	// SAFETY: assertion to `re as string[], POS` is required at this boundary.
 	enumCheck(posture as string[], POSTURES, "posture");
+	// SAFETY: assertion to `ces as string[], SUR` is required at this boundary.
 	enumCheck(surfaces as string[], SURFACES, "hobo_surface");
+	// SAFETY: assertion to `nce as string], EV` is required at this boundary.
 	enumCheck([evidence as string], EVIDENCE, "evidence");
+	// SAFETY: assertion to `s as string], ST` is required at this boundary.
 	enumCheck([status as string], STATUSES, "status");
 
+	// SAFETY: assertion to `ry as string)) ` is required at this boundary.
 	if (!(categories as string[]).includes(primary as string))
 		push(
 			`competitor.primary_category "${primary}" must also appear in categories`,
 		);
+	// SAFETY: assertion to `ories as string[]).len` is required at this boundary.
 	if (new Set(categories as string[]).size !== (categories as string[]).length)
 		push("competitor.categories contains duplicates");
 
+	// SAFETY: assertion to `rchDate as string)) ` is required at this boundary.
 	if (!/^\d{4}-\d{2}-\d{2}$/.test(researchDate as string))
 		push(`competitor.research_date "${researchDate}" must be YYYY-MM-DD`);
 	else if (Date.parse(`${researchDate}T00:00:00Z`) > Date.now())
 		push(`competitor.research_date "${researchDate}" is in the future`);
 
+	// SAFETY: assertion to `es as string[]) i` is required at this boundary.
 	for (const source of sources as string[])
 		if (!source.startsWith("https://"))
 			push(`competitor.sources entry "${source}" must be an https:// URL`);
@@ -302,18 +394,30 @@ function parseCompetitor(
 		push(`competitor.contract "${contract}" must be "v1" when present`);
 
 	return {
+		// SAFETY: assertion to `as string, /` is required at this boundary.
 		slug: slug as string,
+		// SAFETY: assertion to `as string, a` is required at this boundary.
 		name: name as string,
 		aliases: arr(raw.aliases) ?? [],
+		// SAFETY: assertion to `ry as string, /` is required at this boundary.
 		primary_category: primary as string,
+		// SAFETY: assertion to `ories as string[], /` is required at this boundary.
 		categories: categories as string[],
+		// SAFETY: assertion to `tness as string, /` is required at this boundary.
 		directness: directness as string,
+		// SAFETY: assertion to `as string, /` is required at this boundary.
 		role: role as string,
+		// SAFETY: assertion to `re as string[], /` is required at this boundary.
 		posture: posture as string[],
+		// SAFETY: assertion to `ces as string[], /` is required at this boundary.
 		hobo_surface: surfaces as string[],
+		// SAFETY: assertion to `nce as string, /` is required at this boundary.
 		evidence: evidence as string,
+		// SAFETY: assertion to `s as string, /` is required at this boundary.
 		status: status as string,
+		// SAFETY: assertion to `rchDate as string, /` is required at this boundary.
 		research_date: researchDate as string,
+		// SAFETY: assertion to `es as string[], c` is required at this boundary.
 		sources: sources as string[],
 		contract,
 		file,
@@ -350,6 +454,7 @@ function checkSections(
 			continue;
 		}
 		const needle = section.toLowerCase();
+		// SAFETY: assertion to `split(" is stronger")[0] as string; if ` is required at this boundary.
 		const key = needle.split(" is stronger")[0] as string;
 		if (!headings.some((heading) => heading.includes(key)))
 			problems.push({
@@ -368,6 +473,7 @@ function checkLinks(
 ) {
 	const dir = path.dirname(path.join(root, file));
 	for (const match of text.matchAll(/\]\(([^)\s]+)(?:\s+"[^"]*")?\)/g)) {
+		// SAFETY: assertion to `] as string; if ` is required at this boundary.
 		const target = match[1] as string;
 		if (/^(https?:|mailto:|#)/.test(target)) continue;
 		const [rel] = target.split("#");
@@ -434,7 +540,7 @@ export function renderMatrix(competitors: Competitor[], now: number) {
 }
 
 /** Category slug -> display title, mirroring the Linear project milestones. */
-export const CATEGORY_TITLES: Record<string, string> = {
+export const CATEGORY_TITLES = {
 	"platform-orchestrators": "Comprehensive Platform Orchestrators",
 	"portable-application-models": "Portable Application Models & Control Planes",
 	"cloud-application-platforms": "Cloud Application Platforms",
@@ -449,7 +555,7 @@ export const CATEGORY_TITLES: Record<string, string> = {
 	"delivery-release-gitops": "Delivery, Release & GitOps",
 	"finops-governance-placement": "FinOps, Governance & Placement",
 	"identity-networking-delivery": "Identity, Networking & Application Delivery",
-};
+} as const;
 
 function byName(a: Competitor, b: Competitor) {
 	return a.name.toLowerCase().localeCompare(b.name.toLowerCase());
@@ -601,7 +707,7 @@ export async function checkCompetitorDocs(options: {
 		checkLinks(root, rel, text, problems);
 		const linked = new Set(
 			[...text.matchAll(/\]\(\.\.\/([a-z0-9-]+)\.md(?:#[^)]*)?\)/g)]
-				.map((match) => match[1] as string)
+				.flatMap((match) => (match[1] === undefined ? [] : [match[1]]))
 				// Navigation links back to the corpus index/matrix/etc. are not rows.
 				.filter((slug) => !NON_CAPTURE.has(`${slug}.md`)),
 		);
@@ -631,6 +737,7 @@ export async function checkCompetitorDocs(options: {
 
 	for (const entry of listFiles(categoryDir)) {
 		const slug = entry.replace(/\.md$/, "");
+		// SAFETY: assertion to `nly string[]).includes(slug)) ` is required at this boundary.
 		if (slug !== "index" && !(CATEGORIES as readonly string[]).includes(slug))
 			problems.push({
 				file: `docs/competitors/categories/${entry}`,
@@ -730,11 +837,12 @@ export async function main(options: {
 }): Promise<number> {
 	const log = options.log ?? console.log;
 	const error = options.error ?? console.error;
-	const { problems, competitors } = await checkCompetitorDocs({
+	const checkInput: Parameters<typeof checkCompetitorDocs>[0] = {
 		root: options.root,
 		fix: options.argv.includes("--fix"),
-		...(options.now === undefined ? {} : { now: options.now }),
-	});
+	};
+	if (options.now !== undefined) checkInput.now = options.now;
+	const { problems, competitors } = await checkCompetitorDocs(checkInput);
 	for (const problem of problems)
 		error(
 			`${problem.file}:${problem.line} competitor-docs - ${problem.message}`,

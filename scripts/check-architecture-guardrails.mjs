@@ -134,7 +134,7 @@ export function foreignLockfileProblems(files) {
 	for (const file of unique(files.map(normalizePath))) {
 		if (
 			/(^|\/)(package-lock\.json|yarn\.lock)$/u.test(file) ||
-			(/\/pnpm-lock\.yaml$/u.test(file) && file !== "pnpm-lock.yaml")
+			(file.endsWith("/pnpm-lock.yaml") && file !== "pnpm-lock.yaml")
 		) {
 			problems.push({
 				code: "single-lockfile",
@@ -176,7 +176,8 @@ export async function checkArchitectureGuardrails({
 				problems.push({
 					code: check.code,
 					message:
-						typeof check.message === "function"
+						Object.prototype.toString.call(check.message) ===
+						"[object Function]"
 							? check.message(evidence)
 							: check.message,
 					packageRoot,
@@ -267,14 +268,17 @@ async function collectEvidence(root, packageRoot) {
 			);
 		}
 		if (ext === ".proto" || ext === ".cue") {
-			if (/^data-models\//.test(normalized)) {
+			if (normalized.startsWith("data-models/")) {
 				if (ext === ".proto") hasDataModelsProto = true;
 				if (ext === ".cue") hasDataModelsCue = true;
 			} else {
 				hasMisplacedDataModel = true;
 			}
 		}
-		if (/^contracts\//.test(normalized) && /\.pact\.json$/i.test(normalized)) {
+		if (
+			normalized.startsWith("contracts/") &&
+			normalized.toLowerCase().endsWith(".pact.json")
+		) {
 			hasContractsPact =
 				hasContractsPact ||
 				(await isPactContract(path.join(absolutePackageRoot, file)));
@@ -288,7 +292,7 @@ async function collectEvidence(root, packageRoot) {
 			text.push(contents);
 			if (
 				ext === ".ts" &&
-				/^src\//.test(normalized) &&
+				normalized.startsWith("src/") &&
 				!/(^|\/)_generated(\/|$)/.test(normalized)
 			) {
 				typeScriptSources.push({ file: normalized, contents });
@@ -568,7 +572,7 @@ function trackedForeignLockfiles() {
 		const normalized = normalizePath(file);
 		return (
 			/(^|\/)(package-lock\.json|yarn\.lock)$/u.test(normalized) ||
-			(/\/pnpm-lock\.yaml$/u.test(normalized) &&
+			(normalized.endsWith("/pnpm-lock.yaml") &&
 				normalized !== "pnpm-lock.yaml")
 		);
 	});

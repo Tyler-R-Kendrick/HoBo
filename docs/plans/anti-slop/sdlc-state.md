@@ -10,7 +10,8 @@ tags: [hobo, sdlc, anti-slop, oxlint]
 ```text
 main
  └── sdlc/anti-slop-01-vendor      #1179 plugin, skill mirrors, oxlint 1.79, lint:slop:changed
-  └── sdlc/anti-slop-02-precommit  #1180 relevant-check-policy + tests (this layer)
+  └── sdlc/anti-slop-02-precommit  #1180 relevant-check-policy + tests
+   └── sdlc/anti-slop-03-scripts-warnings  ignore agent-skill dirs; scripts/lib/inspectable
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -31,3 +32,6 @@ The changed-file gate lints the **whole file**. A warning-only pass over
 Each follow-up PR should take **one file (or a tight cluster) to zero
 findings**, then stop. Do not edit a file that still has other anti-slop
 errors.
+
+Cleared (this layer): entire `scripts/` tree (58 files, 0 oxlint
+findings with `--deny-warnings`).

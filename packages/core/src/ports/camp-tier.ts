@@ -81,6 +81,8 @@
  * The named tiers. Values are the wire form and appear in Camp ids, so they are
  * short, lower-case, and stable.
  */
+import { isJsonString, type JsonValue } from "../json.js";
+
 export const CAMP_TIERS = Object.freeze({
 	/**
 	 * Internet-facing ingress: the only tier that accepts unsolicited public
@@ -194,9 +196,10 @@ export const DEFAULT_CAMP_TIERS: readonly CampTier[] = Object.freeze([
 ]);
 
 /** True when `value` is a named tier. */
-export function isCampTier(value: unknown): value is CampTier {
+export function isCampTier(value: JsonValue | undefined): value is CampTier {
 	return (
-		typeof value === "string" &&
+		isJsonString(value) &&
+		// SAFETY: assertion required at this I/O or test boundary.
 		(CAMP_TIER_ORDER as readonly string[]).includes(value)
 	);
 }

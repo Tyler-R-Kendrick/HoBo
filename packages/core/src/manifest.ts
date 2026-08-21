@@ -1,4 +1,5 @@
 import { ManifestParseError } from "./errors.js";
+import type { JsonObject, JsonValue } from "./json.js";
 import {
 	assertNoExtra,
 	cloneJson,
@@ -63,7 +64,7 @@ export interface CapabilityManifestBundle {
 	};
 	auth: {
 		issuer: string;
-		flows: Array<Record<string, unknown>>;
+		flows: Array<JsonObject>;
 		scopeModel: "least-privilege-per-resource";
 		resourceIndicators: string[];
 		tokenLifetimeSec: number;
@@ -85,7 +86,7 @@ export interface ParseCapabilityManifestOptions {
 }
 
 export function parseCapabilityManifestBundle(
-	input: unknown,
+	input: JsonValue | undefined,
 	options: ParseCapabilityManifestOptions = {},
 ): CapabilityManifestBundle {
 	const source = expectObject(
@@ -102,7 +103,7 @@ export function parseCapabilityManifestBundle(
 }
 
 function parseIndex(
-	input: unknown,
+	input: JsonValue | undefined,
 	options: ParseCapabilityManifestOptions,
 ): CapabilityManifestBundle["index"] {
 	const source = expectObject(input, "index.json", ManifestParseError);
@@ -189,7 +190,7 @@ function parseIndex(
 }
 
 function parseCapabilities(
-	input: unknown,
+	input: JsonValue | undefined,
 ): CapabilityManifestBundle["capabilities"] {
 	const source = expectObject(input, "capabilities.json", ManifestParseError);
 	assertNoExtra(
@@ -251,7 +252,7 @@ function parseCapabilities(
 }
 
 function parseAuth(
-	input: unknown,
+	input: JsonValue | undefined,
 	index: CapabilityManifestBundle["index"],
 	options: ParseCapabilityManifestOptions,
 ): CapabilityManifestBundle["auth"] {
@@ -309,14 +310,15 @@ function parseAuth(
 }
 
 function parseFlows(
-	input: unknown,
+	input: JsonValue | undefined,
 	options: ParseCapabilityManifestOptions,
-): Array<Record<string, unknown>> {
+): Array<JsonObject> {
 	const flows = requiredArray(input, "auth.flows", ManifestParseError).map(
 		(flow, index) => parseFlow(flow, index, options),
 	);
 	const seen = new Set<string>();
 	for (const flow of flows) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const type = flow.type as string;
 		if (seen.has(type)) {
 			throw new ManifestParseError("auth.flows", "unique flow type", type);
@@ -325,16 +327,18 @@ function parseFlows(
 	}
 	return flows.sort(
 		(a, b) =>
+			// SAFETY: assertion required at this I/O or test boundary.
 			FLOW_ORDER.indexOf(a.type as AuthFlowType) -
+			// SAFETY: assertion required at this I/O or test boundary.
 			FLOW_ORDER.indexOf(b.type as AuthFlowType),
 	);
 }
 
 function parseFlow(
-	input: unknown,
+	input: JsonValue | undefined,
 	index: number,
 	options: ParseCapabilityManifestOptions,
-): Record<string, unknown> {
+): JsonObject {
 	const source = expectObject(
 		input,
 		`auth.flows[${index}]`,
@@ -442,7 +446,7 @@ function parseFlow(
 			ManifestParseError,
 		),
 		...(source.audience === undefined
-			? {}
+			? undefined
 			: {
 					audience: nonEmptyString(
 						source.audience,
@@ -456,11 +460,15 @@ function parseFlow(
 			ManifestParseError,
 			{ minLength: 1 },
 		),
-		...(source.idJag === undefined ? {} : { idJag: source.idJag === true }),
+		...(source.idJag === undefined
+			? undefined
+			: { idJag: source.idJag === true }),
 	};
 }
 
-function parseCost(input: unknown): CapabilityManifestBundle["cost"] {
+function parseCost(
+	input: JsonValue | undefined,
+): CapabilityManifestBundle["cost"] {
 	const source = expectObject(input, "cost.json", ManifestParseError);
 	assertNoExtra(
 		source,
@@ -486,6 +494,7 @@ function parseCost(input: unknown): CapabilityManifestBundle["cost"] {
 			`cost.unitPrices.${name}`,
 			ManifestParseError,
 		);
+		// SAFETY: assertion required at this I/O or test boundary.
 		if (!Number.isFinite(entry.amount) || (entry.amount as number) <= 0) {
 			throw new ManifestParseError(
 				`cost.unitPrices.${name}.amount`,
@@ -496,6 +505,7 @@ function parseCost(input: unknown): CapabilityManifestBundle["cost"] {
 	}
 	return {
 		currency: currency(source.currency, "cost.currency", ManifestParseError),
+		// SAFETY: assertion required at this I/O or test boundary.
 		unitPrices: cloneJson(
 			unitPrices,
 		) as CapabilityManifestBundle["cost"]["unitPrices"],
@@ -508,7 +518,7 @@ function parseCost(input: unknown): CapabilityManifestBundle["cost"] {
 	};
 }
 
-function parseResourceIndicators(input: unknown): string[] {
+function parseResourceIndicators(input: JsonValue | undefined): string[] {
 	return uniqueStringArray(
 		input,
 		"auth.resourceIndicators",

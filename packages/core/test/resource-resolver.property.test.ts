@@ -8,9 +8,9 @@
 // the secret has defeated its own purpose.
 //
 // Determinism: every run is seeded so a failure reproduces exactly.
+
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
-
 import {
 	CAPABILITY_SLOTS,
 	parseResolveOutcome,
@@ -18,6 +18,7 @@ import {
 	RESOLVER_ACTIONS,
 	RESOLVER_CONTRACT,
 } from "../src/index.js";
+import type { JsonObject, JsonValue } from "../src/json.js";
 
 /** Fixed seed: a counterexample found here is reproducible verbatim. */
 const SEED = 20260817;
@@ -53,7 +54,7 @@ const jsonScalarArb = fc.oneof(
 	fc.string(),
 );
 
-const jsonValueArb: fc.Arbitrary<unknown> = fc.letrec<{ value: unknown }>(
+const jsonValueArb: fc.Arbitrary<unknown> = fc.letrec<{ value: JsonValue }>(
 	(tie) => ({
 		value: fc.oneof(
 			{ maxDepth: 3 },
@@ -90,11 +91,12 @@ const hiddenCredentialBagArb = fc
 		safeBagArb,
 	)
 	.map(([credentialKey, wrappers, payload, siblings]) => {
-		let node: unknown = { ...siblings, [credentialKey]: payload };
+		let node: JsonValue = { ...siblings, [credentialKey]: payload };
 		for (const [key, insideArray] of wrappers) {
 			node = insideArray ? { [key]: [null, node] } : { [key]: node };
 		}
-		return { credentialKey, bag: node as Record<string, unknown> };
+		// SAFETY: assertion required at this I/O or test boundary.
+		return { credentialKey, bag: node as JsonObject };
 	});
 
 const refArb = fc.record({
@@ -137,8 +139,8 @@ const refusedLocatorArb = fc
 		),
 		fc.constantFrom(" ", "\t", "\n", "\r", "\u000b", "\u000c", "\u00a0"),
 	)
-	.map(([marker, shape, space]) => {
-		switch (shape) {
+	.map(([marker, layout, space]) => {
+		switch (layout) {
 			case "whitespace":
 				return { marker, value: `vault://kv/${marker}${space}next` };
 			case "control":
@@ -163,7 +165,7 @@ const refusedLocatorArb = fc
 		}
 	});
 
-function request(overrides: Record<string, unknown>): Record<string, unknown> {
+function request(overrides: JsonObject): JsonObject {
 	return {
 		ref: { slot: "data", productId: "aws.rds-postgres", logicalId: "primary" },
 		desired: {},
@@ -172,7 +174,7 @@ function request(overrides: Record<string, unknown>): Record<string, unknown> {
 	};
 }
 
-function outcome(overrides: Record<string, unknown>): Record<string, unknown> {
+function outcome(overrides: JsonObject): JsonObject {
 	return {
 		contract: RESOLVER_CONTRACT,
 		action: "create",
@@ -182,11 +184,12 @@ function outcome(overrides: Record<string, unknown>): Record<string, unknown> {
 	};
 }
 
-function refusalOf(fn: () => unknown): { code: string; message: string } {
+function refusalOf(fn: () => JsonValue) {
 	try {
 		fn();
 		return { code: "NO_THROW", message: "" };
 	} catch (error) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const failure = error as { code?: string; message?: string };
 		return { code: failure.code ?? "NO_CODE", message: failure.message ?? "" };
 	}

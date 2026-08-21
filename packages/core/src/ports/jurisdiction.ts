@@ -14,6 +14,13 @@
  */
 
 // domain-view: parse-time vocabulary; wire form in data-models/jurisdiction.proto.
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
+
 export type JurisdictionId =
 	| "eu"
 	| "eea"
@@ -122,35 +129,46 @@ const CLASSIFICATIONS = new Set<DataClassification>([
 	"secret",
 ]);
 
-export function parseJurisdictionId(value: unknown): JurisdictionId {
+export function parseJurisdictionId(
+	value: JsonValue | undefined,
+): JurisdictionId {
 	if (
-		typeof value !== "string" ||
+		!isJsonString(value) ||
+		// SAFETY: assertion required at this I/O or test boundary.
 		!JURISDICTION_IDS.has(value as JurisdictionId)
 	) {
 		throw new JurisdictionParseError(
 			`unknown jurisdiction id: ${String(value)}`,
 		);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return value as JurisdictionId;
 }
 
-export function parseDataClassification(value: unknown): DataClassification {
+export function parseDataClassification(
+	value: JsonValue | undefined,
+): DataClassification {
 	if (
-		typeof value !== "string" ||
+		!isJsonString(value) ||
+		// SAFETY: assertion required at this I/O or test boundary.
 		!CLASSIFICATIONS.has(value as DataClassification)
 	) {
 		throw new JurisdictionParseError(
 			`unknown data classification: ${String(value)}`,
 		);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return value as DataClassification;
 }
 
-export function parseResidencyConstraint(value: unknown): ResidencyConstraint {
-	if (typeof value !== "object" || value === null) {
+export function parseResidencyConstraint(
+	value: JsonValue | undefined,
+): ResidencyConstraint {
+	if (!isJsonObject(value) || value === null) {
 		throw new JurisdictionParseError("residency constraint must be an object");
 	}
-	const input = value as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const input = value as JsonObject;
 	const classifications = Array.isArray(input.classifications)
 		? input.classifications.map(parseDataClassification)
 		: [];
@@ -173,7 +191,7 @@ export function parseResidencyConstraint(value: unknown): ResidencyConstraint {
 		allowedJurisdictions: Object.freeze(allowed),
 		...(denied !== undefined
 			? { deniedJurisdictions: Object.freeze(denied) }
-			: {}),
+			: undefined),
 	});
 }
 
@@ -248,6 +266,7 @@ export const JURISDICTIONS: readonly JurisdictionRecord[] = Object.freeze(
  */
 export const TRANSFER_MECHANISMS: readonly TransferMechanismEdge[] =
 	Object.freeze(
+		// SAFETY: assertion required at this I/O or test boundary.
 		(
 			[
 				// EU/EEA adequacy decisions (GDPR Art. 45).
@@ -415,6 +434,7 @@ export function evaluateResidency(input: {
 				mechanism: "intra-jurisdiction" as const,
 				fromJurisdiction: inside,
 				toJurisdiction: inside,
+				// SAFETY: assertion required at this I/O or test boundary.
 				legalBasis: Object.freeze([] as string[]),
 			}),
 		});

@@ -3,9 +3,30 @@ import type {
 	ManifestParseError,
 	PortDescriptorParseError,
 } from "./errors.js";
+import {
+	isJsonArray,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+
+type ParseErrorClass =
+	| typeof EnvelopeParseError
+	| typeof ManifestParseError
+	| typeof PortDescriptorParseError;
 
 export function deepFreeze<T>(value: T): T {
-	if (value && typeof value === "object") {
+	if (value === null || value === undefined) return value;
+	if (Array.isArray(value)) {
+		Object.freeze(value);
+		for (const nested of value) {
+			deepFreeze(nested);
+		}
+		return value;
+	}
+	if (isJsonObject(value)) {
 		Object.freeze(value);
 		for (const nested of Object.values(value)) {
 			deepFreeze(nested);
@@ -18,31 +39,26 @@ export function cloneJson<T>(value: T): T {
 	if (value === undefined) {
 		return value;
 	}
+	// SAFETY: JSON round-trip clones a JSON-serializable domain value.
 	return JSON.parse(JSON.stringify(value)) as T;
 }
 
 export function expectObject(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
-): Record<string, unknown> {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
+	ErrorClass: ParseErrorClass,
+): JsonObject {
+	if (!isJsonObject(value)) {
 		throw new ErrorClass(field, "object", value);
 	}
-	return value as Record<string, unknown>;
+	return value;
 }
 
 export function assertNoExtra(
-	value: Record<string, unknown>,
+	value: JsonObject,
 	field: string,
 	allowed: readonly string[],
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
+	ErrorClass: ParseErrorClass,
 ): void {
 	const allowedSet = new Set(allowed);
 	for (const key of Object.keys(value)) {
@@ -53,32 +69,26 @@ export function assertNoExtra(
 }
 
 export function requiredArray(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
-): unknown[] {
-	if (!Array.isArray(value) || value.length === 0) {
+	ErrorClass: ParseErrorClass,
+): JsonValue[] {
+	if (!isJsonArray(value) || value.length === 0) {
 		throw new ErrorClass(field, "non-empty array", value);
 	}
 	return value;
 }
 
 export function uniqueStringArray(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
+	ErrorClass: ParseErrorClass,
 	options: { minLength?: number } = {},
 ): string[] {
 	const array =
 		options.minLength !== undefined
 			? requiredArray(value, field, ErrorClass)
-			: Array.isArray(value)
+			: isJsonArray(value)
 				? value
 				: [];
 	const seen = new Set<string>();
@@ -93,73 +103,63 @@ export function uniqueStringArray(
 }
 
 export function enumValue<T extends string>(
-	value: unknown,
+	value: JsonValue | undefined,
 	allowed: ReadonlySet<T>,
 	field: string,
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
+	ErrorClass: ParseErrorClass,
 ): T {
-	if (typeof value !== "string" || !allowed.has(value as T)) {
+	if (!isJsonString(value)) {
 		throw new ErrorClass(field, [...allowed].join(" | "), value);
 	}
-	return value as T;
+	for (const allowedValue of allowed) {
+		if (value === allowedValue) {
+			return allowedValue;
+		}
+	}
+	throw new ErrorClass(field, [...allowed].join(" | "), value);
 }
 
 export function nonEmptyString(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
+	ErrorClass: ParseErrorClass,
 ): string {
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new ErrorClass(field, "non-empty string", value);
 	}
 	return value;
 }
 
 export function nonNegativeInteger(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
+	ErrorClass: ParseErrorClass,
 ): number {
-	if (!Number.isSafeInteger(value) || (value as number) < 0) {
+	if (!isJsonNumber(value) || !Number.isSafeInteger(value) || value < 0) {
 		throw new ErrorClass(field, "non-negative integer", value);
 	}
-	return value as number;
+	return value;
 }
 
 export function positiveInteger(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
+	ErrorClass: ParseErrorClass,
 	options: { max?: number } = {},
 ): number {
-	if (!Number.isSafeInteger(value) || (value as number) <= 0) {
+	if (!isJsonNumber(value) || !Number.isSafeInteger(value) || value <= 0) {
 		throw new ErrorClass(field, "positive integer", value);
 	}
-	if (options.max !== undefined && (value as number) > options.max) {
+	if (options.max !== undefined && value > options.max) {
 		throw new ErrorClass(field, `integer <= ${options.max}`, value);
 	}
-	return value as number;
+	return value;
 }
 
 export function isoTimestamp(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
+	ErrorClass: ParseErrorClass,
 ): string {
 	const timestamp = nonEmptyString(value, field, ErrorClass);
 	if (Number.isNaN(Date.parse(timestamp))) {
@@ -169,12 +169,9 @@ export function isoTimestamp(
 }
 
 export function httpsUrl(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
+	ErrorClass: ParseErrorClass,
 ): string {
 	const url = nonEmptyString(value, field, ErrorClass);
 	if (!/^https:\/\/[^/\s]+(?:\/[^\s]*)?$/.test(url)) {
@@ -184,12 +181,9 @@ export function httpsUrl(
 }
 
 export function sha256Ref(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
+	ErrorClass: ParseErrorClass,
 ): string {
 	const ref = nonEmptyString(value, field, ErrorClass);
 	if (!/^sha256:[a-f0-9]{64}$/.test(ref)) {
@@ -199,12 +193,9 @@ export function sha256Ref(
 }
 
 export function currency(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
+	ErrorClass: ParseErrorClass,
 ): string {
 	const code = nonEmptyString(value, field, ErrorClass);
 	if (!/^[A-Z]{3}$/.test(code)) {
@@ -214,12 +205,9 @@ export function currency(
 }
 
 export function headerName(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
+	ErrorClass: ParseErrorClass,
 ): string {
 	const header = nonEmptyString(value, field, ErrorClass);
 	if (!/^[A-Za-z][A-Za-z0-9-]*$/.test(header)) {
@@ -229,13 +217,11 @@ export function headerName(
 }
 
 export function canonicalJsonObject(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
-	ErrorClass:
-		| typeof EnvelopeParseError
-		| typeof ManifestParseError
-		| typeof PortDescriptorParseError,
-): Record<string, unknown> {
+	ErrorClass: ParseErrorClass,
+): JsonObject {
 	const source = expectObject(value, field, ErrorClass);
-	return cloneJson(source);
+	const cloned = cloneJson(source);
+	return isJsonObject(cloned) ? cloned : {};
 }

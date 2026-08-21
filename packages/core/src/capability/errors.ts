@@ -1,11 +1,12 @@
 import { CoreParseError } from "../errors.js";
+import type { JsonValue } from "../json.js";
 import type { CapabilityDenialCode } from "./types.js";
 
 export class CapabilityParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_CAPABILITY_PARSE", path, expected, received, message);

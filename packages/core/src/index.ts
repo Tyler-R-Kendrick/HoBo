@@ -638,14 +638,14 @@ export {
 export type {
 	TemporaryEnvironmentStationInput,
 	TemporaryEnvironmentStationResult,
-	TemporaryStationAnonymousSessionShape,
+	TemporaryStationAnonymousSessionView,
 } from "./ports/temporary-station.js";
 export {
 	assertTemporaryEnvironmentStationResult,
 	TEMPORARY_ENVIRONMENT_STATION_SCHEMA,
 	TEMPORARY_STATION_TTL_MS,
 	temporaryStationExpiresAt,
-	temporaryStationToAnonymousSessionShape,
+	temporaryStationToAnonymousSessionView,
 	temporaryStationTtlSeconds,
 } from "./ports/temporary-station.js";
 export type {

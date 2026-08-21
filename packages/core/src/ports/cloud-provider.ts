@@ -1,3 +1,4 @@
+import type { JsonObject } from "../json.js";
 import { createPortDescriptor, type PortDescriptor } from "../ports.js";
 
 // The canonical CloudProvider port (ADR-0156, control-plane.md "Port &
@@ -35,7 +36,7 @@ export const CLOUD_PROVIDER_PORT_DESCRIPTOR: PortDescriptor =
  */
 export type CapabilityPortKind = string;
 
-export type Outputs = Record<string, unknown>;
+export type Outputs = JsonObject;
 
 /** Requested capability shape a provider must satisfy/negotiate. */
 export interface PortRequest {
@@ -77,9 +78,9 @@ export type PublishedManifestDocuments = Record<string, string>;
 export interface CapabilityManifest {
 	providerId: string;
 	published: PublishedManifestDocuments;
-	capabilities: Record<string, unknown>;
-	auth: Record<string, unknown>;
-	cost: Record<string, unknown>;
+	capabilities: JsonObject;
+	auth: JsonObject;
+	cost: JsonObject;
 }
 
 /** Runtime binding client returned for `ctx.bindings`. */
@@ -94,7 +95,7 @@ export interface ProviderClient {
  * Provider-scoped typed-options block (`.with(...)`, ADR-0007). The concrete
  * shape is provider-owned; at the port boundary it is an opaque record.
  */
-export type TypedOptionBlock = Record<string, unknown>;
+export type TypedOptionBlock = JsonObject;
 
 // domain-view: structural IaC resource DTO shared across provider emit sides;
 // the executing IaC adapter validates the full program wire form.
@@ -102,7 +103,7 @@ export interface IacResource {
 	name: string;
 	type: string;
 	provider: string;
-	inputs: Record<string, unknown>;
+	inputs: JsonObject;
 	outputs: string[];
 }
 

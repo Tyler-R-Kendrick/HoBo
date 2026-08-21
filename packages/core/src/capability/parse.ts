@@ -1,3 +1,4 @@
+import type { JsonValue } from "../json.js";
 import {
 	enumValue,
 	expectObject,
@@ -14,7 +15,9 @@ const CAPABILITY_GRANT_KEYS = [
 	"operations",
 ] as const;
 
-export function parseCapabilityGrant(input: unknown): CapabilityGrant {
+export function parseCapabilityGrant(
+	input: JsonValue | undefined,
+): CapabilityGrant {
 	const source = expectObject(input, "CapabilityGrant", CapabilityParseError);
 	const allowedKeys = new Set<string>(CAPABILITY_GRANT_KEYS);
 	for (const key of Object.keys(source)) {
@@ -53,7 +56,7 @@ export function parseCapabilityGrant(input: unknown): CapabilityGrant {
 }
 
 export function parseCapabilityGrantList(
-	input: unknown,
+	input: JsonValue | undefined,
 ): readonly CapabilityGrant[] {
 	if (!Array.isArray(input)) {
 		throw new CapabilityParseError("grants", "array", input);
@@ -77,7 +80,7 @@ export function parseCapabilityGrantList(
 }
 
 export function assertCapabilityDenialCode(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
 ): import("./types.js").CapabilityDenialCode {
 	const allowed = new Set([

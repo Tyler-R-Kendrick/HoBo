@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
+import { isJsonString } from "../../src/json.js";
 
 export interface S3Object {
 	bytes: Buffer;
@@ -115,11 +116,7 @@ export async function startS3CasServer(): Promise<S3CasServer> {
 					);
 					return;
 				}
-				if (
-					typeof ifMatch === "string" &&
-					existing &&
-					existing.etag !== ifMatch
-				) {
+				if (isJsonString(ifMatch) && existing && existing.etag !== ifMatch) {
 					res.statusCode = 412;
 					res.setHeader("content-type", "application/xml");
 					res.end(
@@ -141,6 +138,7 @@ export async function startS3CasServer(): Promise<S3CasServer> {
 	await new Promise<void>((resolve) => {
 		server.listen(0, "127.0.0.1", () => resolve());
 	});
+	// SAFETY: assertion required at this I/O or test boundary.
 	const port = (server.address() as AddressInfo).port;
 	return {
 		url: `http://127.0.0.1:${port}`,

@@ -25,5 +25,5 @@ const emission = realizeCloudflarePlan(provider, plan);
 
 CLOUDFLARE_PROVIDER_ID satisfies "@hobo/provider-cloudflare";
 manifest.claimedCapabilities satisfies Array<"compute" | "objectStore" | "database" | "kv" | "queue" | "dns">;
-evaluation satisfies Record<string, unknown>;
-emission satisfies Record<string, unknown>;
+evaluation satisfies { type: string; provider: string };
+emission satisfies { apiVersion: string; provider: string; planId: string };

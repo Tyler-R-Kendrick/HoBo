@@ -25,14 +25,12 @@ const compiled: CompiledCampMapping = compileCampMapping({ campId: "prod", resou
 const registered = registerCompiledDefinitions({ register: () => compiled.definitions }, compiled);
 const providerId: string = registered[0]?.provider ?? "";
 
-if (false) {
-  // @ts-expect-error provider target objects must name a provider.
-  const missingProvider: CampMapping = { defaultProvider: { driver: "terraform" } };
+// @ts-expect-error provider target objects must name a provider.
+const missingProvider: CampMapping = { defaultProvider: { driver: "terraform" } };
 
-  // @ts-expect-error resources must declare the abstract port type.
-  const missingType: CampResource = { id: "shop.db", serviceModel: "saas" };
+// @ts-expect-error resources must declare the abstract port type.
+const missingType: CampResource = { id: "shop.db", serviceModel: "saas" };
 
-  void [missingProvider, missingType];
-}
+void [missingProvider, missingType];
 
 void providerId;

@@ -1,4 +1,6 @@
 import { defineResource } from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const CAMP_MAPPING_SUGAR_VERSION = "hobo.camp-mapping-sugar/v1";
 
@@ -13,15 +15,15 @@ export function compileCampMapping({ campId, resources, mapping }) {
 
   if (normalizedMapping.defaultProvider !== undefined) {
     const target = normalizeProviderTarget(normalizedMapping.defaultProvider, "defaultProvider");
-    for (const group of uniqueResourceShapes(normalizedResources)) {
+    for (const group of uniqueResourceKinds(normalizedResources)) {
       addDefinition({
         definitions,
         sources,
         campId,
         source: "defaultProvider",
-        id: `camp.${slug(campId)}.default.${shapeSuffix(group.shape)}`,
+        id: `camp.${slug(campId)}.default.${kindSuffix(group.kind)}`,
         target,
-        shape: group.shape,
+        kind: group.kind,
         match: {},
         resourceIds: group.resourceIds
       });
@@ -35,16 +37,16 @@ export function compileCampMapping({ campId, resources, mapping }) {
     }
 
     const target = normalizeProviderTarget(tier.target, `tier ${tier.rawName}`);
-    for (const group of uniqueResourceShapes(tierResources)) {
+    for (const group of uniqueResourceKinds(tierResources)) {
       addDefinition({
         definitions,
         sources,
         campId,
         source: "tiers",
         serviceModel: tier.serviceModel,
-        id: `camp.${slug(campId)}.tier.${tier.serviceModel}.${shapeSuffix(group.shape)}`,
+        id: `camp.${slug(campId)}.tier.${tier.serviceModel}.${kindSuffix(group.kind)}`,
         target,
-        shape: group.shape,
+        kind: group.kind,
         match: { resourceClass: tier.serviceModel },
         resourceIds: group.resourceIds
       });
@@ -65,7 +67,7 @@ export function compileCampMapping({ campId, resources, mapping }) {
       source: "bindings",
       id: `camp.${slug(campId)}.binding.${slug(resourceId)}`,
       target,
-      shape: resourceShape(resource),
+      kind: resourceKind(resource),
       match: { resourceId },
       resourceIds: [resourceId]
     });
@@ -82,7 +84,7 @@ export function compileCampMapping({ campId, resources, mapping }) {
 }
 
 export function registerCompiledDefinitions(catalog, compiled) {
-  if (typeof catalog?.register !== "function") {
+  if (!(catalog?.register instanceof Function)) {
     throw new Error("catalog with register(definition) is required");
   }
   if (!Array.isArray(compiled?.definitions)) {
@@ -92,13 +94,13 @@ export function registerCompiledDefinitions(catalog, compiled) {
   return compiled.definitions.flatMap((definition) => catalog.register(definition));
 }
 
-function addDefinition({ definitions, sources, campId, source, serviceModel, id, target, shape, match, resourceIds }) {
+function addDefinition({ definitions, sources, campId, source, serviceModel, id, target, kind, match, resourceIds }) {
   const definition = defineResource({
     id,
-    type: shape.type,
-    engine: target.engine ?? shape.engine,
-    className: target.className ?? shape.className,
-    paradigm: target.paradigm ?? shape.paradigm,
+    type: kind.type,
+    engine: target.engine ?? kind.engine,
+    className: target.className ?? kind.className,
+    paradigm: target.paradigm ?? kind.paradigm,
     provider: target.provider,
     driver: target.driver,
     with: target.with,
@@ -113,7 +115,7 @@ function addDefinition({ definitions, sources, campId, source, serviceModel, id,
     sugar: source,
     campId,
     resourceIds: [...resourceIds],
-    ...(serviceModel ? { serviceModel } : {})
+    ...(serviceModel ? { serviceModel } : undefined)
   });
 }
 
@@ -197,30 +199,29 @@ function normalizeProviderTarget(target, label) {
   };
 }
 
-function uniqueResourceShapes(resources) {
+function uniqueResourceKinds(resources) {
   const groups = new Map();
   for (const resource of resources) {
-    const shape = resourceShape(resource);
-    const key = JSON.stringify(sortKeys(shape));
-    const group = groups.get(key) ?? { shape, resourceIds: [] };
+    const kind = resourceKind(resource);
+    const key = JSON.stringify(sortKeys(kind));
+    const group = groups.get(key) ?? { kind, resourceIds: [] };
     group.resourceIds.push(resource.id);
     groups.set(key, group);
   }
   return [...groups.values()];
 }
 
-function resourceShape(resource) {
-  return {
-    type: resource.type,
-    ...(resource.engine ? { engine: resource.engine } : {}),
-    ...(resource.className ? { className: resource.className } : {}),
-    ...(resource.paradigm ? { paradigm: resource.paradigm } : {})
-  };
+function resourceKind(resource) {
+  const kind = { type: resource.type };
+  if (resource.engine) kind.engine = resource.engine;
+  if (resource.className) kind.className = resource.className;
+  if (resource.paradigm) kind.paradigm = resource.paradigm;
+  return kind;
 }
 
 function assertNoCompiledDefinitionCollisions(definitions) {
   const byId = new Map();
-  const byMatchShape = new Map();
+  const byMatchKey = new Map();
 
   for (const definition of definitions) {
     const existingId = byId.get(definition.id);
@@ -229,25 +230,25 @@ function assertNoCompiledDefinitionCollisions(definitions) {
     }
     byId.set(definition.id, definition);
 
-    const matchShape = JSON.stringify(sortKeys({
+    const matchKey = JSON.stringify(sortKeys({
       type: definition.type,
       engine: definition.engine,
       className: definition.className,
       paradigm: definition.paradigm,
       match: definition.match
     }));
-    const existingShape = byMatchShape.get(matchShape);
-    if (existingShape) {
+    const existingMatch = byMatchKey.get(matchKey);
+    if (existingMatch) {
       throw new Error(
-        `compiled definition collision: ${existingShape.id} and ${definition.id} share resource shape and match criteria`
+        `compiled definition collision: ${existingMatch.id} and ${definition.id} share resource kind and match criteria`
       );
     }
-    byMatchShape.set(matchShape, definition);
+    byMatchKey.set(matchKey, definition);
   }
 }
 
-function shapeSuffix(shape) {
-  return [shape.type, shape.engine, shape.className, shape.paradigm].filter(Boolean).map(slug).join(".");
+function kindSuffix(kind) {
+  return [kind.type, kind.engine, kind.className, kind.paradigm].filter(Boolean).map(slug).join(".");
 }
 
 function normalizeServiceModel(value, label) {
@@ -266,18 +267,18 @@ function optionalString(value) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function isPlainObject(value) {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+  return isJsonObject(value);
 }
 
 function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

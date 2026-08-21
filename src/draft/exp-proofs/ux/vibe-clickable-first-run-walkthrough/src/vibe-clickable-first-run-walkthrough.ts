@@ -345,12 +345,18 @@ export function parseVibeClickableFirstRunWalkthrough(
     throw new VibeClickableFirstRunWalkthroughParseError(validation.errors);
   }
 
+  // SAFETY: `return walkthrough as ParsedVibeClickableFirstRunWalkthrough;` is required at this I/O or test boundary.
   return walkthrough as ParsedVibeClickableFirstRunWalkthrough;
+}
+
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
 }
 
 export function validateVibeClickableFirstRunWalkthrough(
   walkthrough: VibeClickableFirstRunWalkthrough,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (walkthrough.issue !== "HOBO-559") {

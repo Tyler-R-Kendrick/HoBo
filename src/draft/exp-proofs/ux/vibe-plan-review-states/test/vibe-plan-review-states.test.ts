@@ -122,6 +122,7 @@ test("parser rejects missing state metadata, unsupported proof modes, and quicks
         planStates: [
           {
             ...VIBE_PLAN_REVIEW_STATES.planStates[0],
+            // SAFETY: `proofMode: "production-live" as never,` is required at this I/O or test boundary.
             proofMode: "production-live" as never,
           },
           ...VIBE_PLAN_REVIEW_STATES.planStates.slice(1),

@@ -51,6 +51,7 @@ test("personas and owner boundaries cover product, DX, support, release, securit
 });
 
 test("validation rejects scope creep and proofless follow-up work", () => {
+  // SAFETY: `const invalid = structuredClone(COMPATIBILITY_MATRIX_SCOPE) as typeof COMPATIBIL` is required at this I/O or test boundary.
   const invalid = structuredClone(COMPATIBILITY_MATRIX_SCOPE) as typeof COMPATIBILITY_MATRIX_SCOPE & {
     scopeIn: Array<{ id: string; summary: string; workKind?: string }>;
   };

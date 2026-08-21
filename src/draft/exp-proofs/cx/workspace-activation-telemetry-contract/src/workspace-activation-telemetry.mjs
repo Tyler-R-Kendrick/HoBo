@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const REQUIRED_ACTIVATION_EVENTS = [
   "account-created",
   "workspace-created",
@@ -142,7 +143,7 @@ export const WORKSPACE_ACTIVATION_TELEMETRY_CONTRACT = {
 export function validateActivationContract(contract) {
   const errors = [];
 
-  if (!contract || typeof contract !== "object") {
+  if (!contract || !isJsonObject(contract)) {
     return { ok: false, errors: ["contract is required"] };
   }
 
@@ -204,7 +205,7 @@ export function validateActivationContract(contract) {
 export function validateTelemetryClaim(claim, { launchClaim = false } = {}) {
   const errors = [];
 
-  if (!claim || typeof claim !== "object") {
+  if (!claim || !isJsonObject(claim)) {
     return { ok: false, errors: ["telemetry claim is required"] };
   }
 
@@ -231,7 +232,7 @@ function hasValue(value) {
   if (Array.isArray(value)) {
     return value.length > 0;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.keys(value).length > 0;
   }
   return value !== undefined && value !== null && value !== "";

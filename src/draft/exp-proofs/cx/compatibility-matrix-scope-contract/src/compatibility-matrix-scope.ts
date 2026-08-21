@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const REQUIRED_SCOPE_SECTIONS = [
   "goal",
   "primaryPersonas",
@@ -135,7 +136,7 @@ export const COMPATIBILITY_MATRIX_SCOPE: CompatibilityMatrixScopeRecord = {
 export function validateCompatibilityMatrixScope(record: Partial<CompatibilityMatrixScopeRecord> | null | undefined) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["compatibility matrix scope record is required"] };
   }
 
@@ -175,5 +176,5 @@ function hasSection(record: Partial<CompatibilityMatrixScopeRecord>, section: Re
   if (Array.isArray(value)) {
     return value.length > 0;
   }
-  return typeof value === "string" && value.length > 0;
+  return isJsonString(value) && value.length > 0;
 }

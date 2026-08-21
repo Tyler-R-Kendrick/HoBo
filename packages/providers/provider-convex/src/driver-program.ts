@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json.js";
+
 // Convex realizes resources through its Management API as a DRIVER (Plan 25
 // driver taxonomy: terraform/template/echo/container/custom-webhook), NOT an
 // IaC backend — a closed BaaS exposes a deploy surface, not infrastructure
@@ -15,7 +17,7 @@ export interface DriverResource {
 	name: string;
 	type: string;
 	provider: string;
-	inputs: Record<string, unknown>;
+	inputs: JsonObject;
 	outputs: string[];
 }
 
@@ -69,15 +71,20 @@ export function assertDriverProgram(program: DriverProgram): DriverProgram {
 		names.set(resource.name, resource);
 	}
 	for (const value of Object.values(program.outputs)) {
-		if (typeof value !== "string" || !value.startsWith("${resources.")) {
+		if (!value.startsWith("${resources.")) {
 			continue;
 		}
 		const match = OUTPUT_REF.exec(value);
 		if (!match) {
 			throw new Error(`invalid output reference ${value}`);
 		}
-		const resource = names.get(match[1] as string);
-		if (!resource?.outputs.includes(match[2] as string)) {
+		const resourceName = match[1];
+		const outputName = match[2];
+		if (resourceName === undefined || outputName === undefined) {
+			throw new Error(`invalid output reference ${value}`);
+		}
+		const resource = names.get(resourceName);
+		if (!resource?.outputs.includes(outputName)) {
 			throw new Error(`unresolved output reference ${value}`);
 		}
 	}

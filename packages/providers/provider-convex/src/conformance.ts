@@ -343,11 +343,11 @@ function worstResult(
 	previous: ConformanceCheckResult | undefined,
 	incoming: ConformanceCheckResult,
 ): ConformanceCheckResult {
-	const rank: Record<ConformanceCheckResult, number> = {
+	const rank = {
 		fail: 0,
 		unknown: 1,
 		pass: 2,
-	};
+	} satisfies Record<ConformanceCheckResult, number>;
 	if (previous === undefined) return incoming;
 	return rank[incoming] < rank[previous] ? incoming : previous;
 }

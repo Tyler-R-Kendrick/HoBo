@@ -46,15 +46,25 @@ export interface ImpedanceFinding {
  * Pure and deterministic: safe on the Matching-adjacent path. Findings are
  * evidence for the PortabilityReport; only paradigm mismatches block.
  */
+function isParadigmMismatch(value: string): boolean {
+	switch (value) {
+		case "relational":
+		case "kv":
+		case "graph":
+		case "lake":
+		case "olap":
+			return true;
+		default:
+			return false;
+	}
+}
+
 export function convexImpedanceFindings(input: {
 	readonly paradigm?: string;
 	readonly features?: readonly string[];
 }): readonly ImpedanceFinding[] {
 	const findings: ImpedanceFinding[] = [];
-	if (
-		input.paradigm !== undefined &&
-		(CONVEX_PARADIGM_MISMATCHES as readonly string[]).includes(input.paradigm)
-	) {
+	if (input.paradigm !== undefined && isParadigmMismatch(input.paradigm)) {
 		findings.push({
 			code: "paradigm-mismatch",
 			severity: "block",

@@ -76,7 +76,7 @@ describe("capability manifest", () => {
 
 	it("auth document publishes brokered posture and never a static key", () => {
 		const provider = createConvexProvider();
-		const auth = provider.capabilityManifest().auth as Record<string, unknown>;
+		const auth = provider.capabilityManifest().auth;
 		assert.equal(auth.mode, "deploy-key-brokered");
 		assert.equal(auth.staticSecrets, false);
 		assert.ok(!("staticKey" in auth));

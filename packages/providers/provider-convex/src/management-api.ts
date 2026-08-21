@@ -6,6 +6,13 @@
 // no-op. Env inspection is presence-only; values are never logged or echoed.
 
 // public-contract: default Management API base consumers may override.
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "./json.js";
+
 export const CONVEX_MANAGEMENT_API_BASE = "https://api.convex.dev/v1";
 
 export interface ConvexManagementClientOptions {
@@ -49,7 +56,7 @@ export function createConvexManagementClient(
 	);
 	const fetchImpl = options.fetchImpl ?? globalThis.fetch;
 
-	async function request(path: string, init?: RequestInit): Promise<unknown> {
+	async function request(path: string, init?: RequestInit): Promise<JsonValue> {
 		if (!deployKey) {
 			throw new ConvexCredentialsError();
 		}
@@ -59,7 +66,7 @@ export function createConvexManagementClient(
 				accept: "application/json",
 				authorization: `Bearer ${deployKey}`,
 				...(init?.body === undefined
-					? {}
+					? undefined
 					: { "content-type": "application/json" }),
 			},
 		});
@@ -68,33 +75,34 @@ export function createConvexManagementClient(
 				`convex management API ${path} failed with ${response.status}`,
 			);
 		}
-		return response.json();
+		// SAFETY: fetch json() is a JSON value at this management-API boundary.
+		return (await response.json()) as JsonValue;
 	}
 
-	function parseDeployment(value: unknown): ConvexDeploymentInfo {
-		// Parse-don't-validate: untrusted API payloads become parsed derived
-		// types or throw — nothing downstream re-checks broad DTOs.
-		if (typeof value !== "object" || value === null) {
+	function parseDeployment(value: JsonValue): ConvexDeploymentInfo {
+		if (!isJsonObject(value)) {
 			throw new Error("convex deployment payload must be an object");
 		}
-		const record = value as Record<string, unknown>;
-		for (const field of ["name", "url", "state"] as const) {
-			if (typeof record[field] !== "string" || record[field] === "") {
-				throw new Error(`convex deployment payload missing ${field}`);
-			}
+		const name = value.name;
+		const url = value.url;
+		const state = value.state;
+		if (!isJsonString(name) || name.length === 0) {
+			throw new Error("convex deployment payload missing name");
 		}
-		return Object.freeze({
-			name: record.name as string,
-			url: record.url as string,
-			state: record.state as string,
-		});
+		if (!isJsonString(url) || url.length === 0) {
+			throw new Error("convex deployment payload missing url");
+		}
+		if (!isJsonString(state) || state.length === 0) {
+			throw new Error("convex deployment payload missing state");
+		}
+		return Object.freeze({ name, url, state });
 	}
 
 	return {
 		live: Boolean(deployKey),
 		async listDeployments() {
 			const payload = await request("/deployments");
-			if (!Array.isArray(payload)) {
+			if (!isJsonArray(payload)) {
 				throw new Error("convex deployments payload must be an array");
 			}
 			return Object.freeze(payload.map(parseDeployment));

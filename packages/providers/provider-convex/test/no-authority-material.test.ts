@@ -22,9 +22,9 @@ import {
 } from "../src/strong-claim.js";
 
 /** Shapes taken from the official deploy-key documentation. */
-const ADMIN_KEY_SHAPE = "bold-hyena-681|01c2aaaabbbbccccdddd0c09c";
-const PROD_DEPLOY_KEY_SHAPE = "prod:qualified-jaguar-123|eyJ2MTIzNDU2Nzg5MD0=";
-const PREVIEW_DEPLOY_KEY_SHAPE =
+const ADMIN_KEY_SAMPLE = "bold-hyena-681|01c2aaaabbbbccccdddd0c09c";
+const PROD_DEPLOY_KEY_SAMPLE = "prod:qualified-jaguar-123|eyJ2MTIzNDU2Nzg5MD0=";
+const PREVIEW_DEPLOY_KEY_SAMPLE =
 	"preview:team-slug:project-slug|eyJ2MTIzNDU2Nz0=";
 
 const K0 = parseAuthorityRef("secretref://hobo/convex/b0/k0");
@@ -78,9 +78,9 @@ function driver(
 
 describe("no admin key material anywhere", () => {
 	it("recognizes the documented Convex key shapes", () => {
-		expect(looksLikeAuthorityMaterial(ADMIN_KEY_SHAPE)).toBe(true);
-		expect(looksLikeAuthorityMaterial(PROD_DEPLOY_KEY_SHAPE)).toBe(true);
-		expect(looksLikeAuthorityMaterial(PREVIEW_DEPLOY_KEY_SHAPE)).toBe(true);
+		expect(looksLikeAuthorityMaterial(ADMIN_KEY_SAMPLE)).toBe(true);
+		expect(looksLikeAuthorityMaterial(PROD_DEPLOY_KEY_SAMPLE)).toBe(true);
+		expect(looksLikeAuthorityMaterial(PREVIEW_DEPLOY_KEY_SAMPLE)).toBe(true);
 		expect(looksLikeAuthorityMaterial("secretref://hobo/convex/b1/k1")).toBe(
 			false,
 		);
@@ -92,7 +92,7 @@ describe("no admin key material anywhere", () => {
 	it("throws when a leak is nested anywhere in a payload", () => {
 		expect(() =>
 			assertNoAuthorityMaterial(
-				{ receipt: { notes: [{ detail: ADMIN_KEY_SHAPE }] } },
+				{ receipt: { notes: [{ detail: ADMIN_KEY_SAMPLE }] } },
 				"a test payload",
 			),
 		).toThrow(StrongClaimSecretLeakError);
@@ -164,7 +164,7 @@ describe("no admin key material anywhere", () => {
 	});
 
 	it("refuses to accept a driver-supplied destination carrying key material", () => {
-		expect(() => parseAuthorityRef(ADMIN_KEY_SHAPE)).toThrow(
+		expect(() => parseAuthorityRef(ADMIN_KEY_SAMPLE)).toThrow(
 			StrongClaimSecretLeakError,
 		);
 	});

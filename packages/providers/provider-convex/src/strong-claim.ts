@@ -27,6 +27,7 @@
  */
 
 import type { ConvexHostingFormId } from "./hosting-forms.js";
+import type { JsonValue } from "./json.js";
 
 // public-contract: strong-claim record schema id consumers pin.
 export const STRONG_CLAIM_SCHEMA = "hobo.provider-convex.strong-claim/v1";
@@ -91,12 +92,13 @@ export function parseAuthorityRef(value: string): AuthorityRef {
 	if (looksLikeAuthorityMaterial(trimmed)) {
 		throw new StrongClaimSecretLeakError("an authority reference");
 	}
+	// SAFETY: parseAuthorityRef rejects empty and key-shaped strings at this boundary.
 	return trimmed as AuthorityRef;
 }
 
 /** Throws when any string anywhere in `value` looks like key material. */
 export function assertNoAuthorityMaterial(
-	value: unknown,
+	value: JsonValue | StrongClaimEvent | StrongClaimReceipt,
 	context: string,
 ): void {
 	const serialized = JSON.stringify(value) ?? "";
@@ -721,10 +723,7 @@ export function decideStrongClaim(
 export function applyStrongClaim(
 	state: StrongClaimState,
 	command: StrongClaimCommand,
-): {
-	readonly state: StrongClaimState;
-	readonly decision: StrongClaimDecision;
-} {
+) {
 	const decision = decideStrongClaim(state, command);
 	if (!decision.ok) return { state, decision };
 
@@ -1007,7 +1006,9 @@ export async function runStrongClaim(
 			type: "ImportIntoDestination",
 			artifactRef: artifact.artifactRef,
 			ok: imported.ok,
-			...(imported.reason === undefined ? {} : { reason: imported.reason }),
+			...(imported.reason === undefined
+				? undefined
+				: { reason: imported.reason }),
 		});
 		if (state.failure !== null) return finish();
 
@@ -1028,7 +1029,9 @@ export async function runStrongClaim(
 			type: "CutoverConnector",
 			connectorId: cutover.connectorId,
 			ok: cutover.ok,
-			...(cutover.reason === undefined ? {} : { reason: cutover.reason }),
+			...(cutover.reason === undefined
+				? undefined
+				: { reason: cutover.reason }),
 		});
 		if (state.failure !== null) return finish();
 

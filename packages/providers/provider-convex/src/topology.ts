@@ -9,10 +9,7 @@ const LOOPBACK_HOST = /^(?:localhost|127\.0\.0\.1|0\.0\.0\.0|\[::1\]|::1)$/iu;
 
 export type FrontendPlacement = "remote-public" | "local";
 
-export function classifyConvexBackendUrl(url: string): {
-	readonly kind: "loopback" | "private" | "public" | "invalid";
-	readonly host: string | null;
-} {
+export function classifyConvexBackendUrl(url: string) {
 	try {
 		const parsed = new URL(url);
 		const host = parsed.hostname;

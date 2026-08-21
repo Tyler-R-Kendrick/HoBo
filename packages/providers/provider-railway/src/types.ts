@@ -1,3 +1,5 @@
+import type { JsonObject, JsonValue } from "./json.js";
+
 export type PortKind = string;
 export type Outputs = Record<string, string>;
 export type PortRequest = { port: string; features?: string[] };
@@ -21,7 +23,7 @@ export type ResourcePlan = {
 	port: string;
 	require?: string[];
 	prefer?: string[];
-	options?: Record<string, unknown>;
+	options?: JsonObject;
 };
 export type ProviderClient = {
 	port: string;
@@ -32,9 +34,9 @@ export type ProviderClient = {
 export type CapabilityManifest = {
 	providerId: string;
 	published: Record<string, string>;
-	capabilities: unknown;
-	auth: unknown;
-	cost: unknown;
+	capabilities: JsonValue;
+	auth: JsonValue;
+	cost: JsonValue;
 };
 export type CloudProvider = {
 	id: string;

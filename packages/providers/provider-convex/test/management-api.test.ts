@@ -21,10 +21,11 @@ describe("management API — credential-gated, fail-closed", () => {
 		const calls: { url: string; auth: string | undefined }[] = [];
 		const client = createConvexManagementClient({
 			deployKey: "test-key",
-			fetchImpl: (async (url: RequestInfo | URL, init?: RequestInit) => {
+			fetchImpl: async (url, init) => {
+				const headers = new Headers(init?.headers);
 				calls.push({
 					url: String(url),
-					auth: (init?.headers as Record<string, string>)?.authorization,
+					auth: headers.get("authorization") ?? undefined,
 				});
 				return new Response(
 					JSON.stringify([
@@ -36,7 +37,7 @@ describe("management API — credential-gated, fail-closed", () => {
 					]),
 					{ status: 200 },
 				);
-			}) as typeof fetch,
+			},
 		});
 		const deployments = await client.listDeployments();
 		assert.equal(deployments[0]?.name, "orders-us");
@@ -47,10 +48,10 @@ describe("management API — credential-gated, fail-closed", () => {
 	it("parse-don't-validate rejects malformed deployment payloads", async () => {
 		const client = createConvexManagementClient({
 			deployKey: "test-key",
-			fetchImpl: (async () =>
+			fetchImpl: async () =>
 				new Response(JSON.stringify([{ name: "x" }]), {
 					status: 200,
-				})) as typeof fetch,
+				}),
 		});
 		await assert.rejects(() => client.listDeployments(), /missing url/u);
 	});

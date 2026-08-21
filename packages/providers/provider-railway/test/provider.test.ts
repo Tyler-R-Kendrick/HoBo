@@ -32,13 +32,16 @@ describe("@hobo/provider-railway", () => {
 			stationId: "st-1",
 		}).then(
 			() => undefined,
-			(cause: unknown) => cause,
+			(cause: Error) => cause,
 		);
 		expect(
 			refused,
 			"temporary provisioning resolved instead of refusing",
 		).toBeInstanceOf(TemporaryProvisionUnavailableError);
-		const error = refused as TemporaryProvisionUnavailableError;
+		if (!(refused instanceof TemporaryProvisionUnavailableError)) {
+			throw new Error("expected TemporaryProvisionUnavailableError");
+		}
+		const error = refused;
 		// Literals, not `railwayTemporaryStationRefusal()`: comparing the
 		// refusal to the same function that produced it asserts nothing at all
 		// — it stays green through any change to the payload.

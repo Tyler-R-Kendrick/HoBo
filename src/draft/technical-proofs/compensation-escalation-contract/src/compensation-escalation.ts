@@ -20,7 +20,7 @@ export async function runCompensationEscalation({
   let order;
   try {
     order = reverseTopologicalProvisionedOrder(resources, provisioned);
-  } catch (error) {
+  } catch {
     return await escalate({
       deploymentId,
       events,

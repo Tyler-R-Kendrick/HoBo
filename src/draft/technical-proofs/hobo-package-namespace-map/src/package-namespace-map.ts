@@ -113,7 +113,7 @@ for (const [packageName, definition] of Object.entries(PACKAGE_NAMESPACE_MAP)) {
   }
 }
 
-export function packageForSymbol(symbol, context = {}) {
+export function packageForSymbol(symbol, _context = {}) {
   const owners = ownership.get(symbol) ?? [];
 
   if (owners.length === 0) {

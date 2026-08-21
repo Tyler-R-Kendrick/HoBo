@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 import { createHash } from "node:crypto";
 
 export const BOOTSTRAP_DECISION_VERSION = "self-host-bootstrap-ordering/v1";
@@ -214,7 +215,7 @@ function sortKeys(value) {
     return value.map(sortKeys);
   }
 
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -226,7 +227,7 @@ function sortKeys(value) {
 }
 
 function requireNonEmpty(name, value) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${name} is required`);
   }
 }

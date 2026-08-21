@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 import { createHash, generateKeyPairSync, sign, verify } from "node:crypto";
 
 import { canonicalJson } from "../../deny-ceiling-algebra-poc/src/deny-ceiling-algebra.js";
@@ -387,7 +388,7 @@ function verifyEnvelopeSignature({ payload, signature, keys, missingSignatureMes
 }
 
 function signPayload(payload, signer) {
-  const { keyId, privateKey } = signer ?? {};
+  const { keyId, privateKey } = signer ;
   return {
     alg: SIGNATURE_ALGORITHM,
     keyId: requiredString(keyId, "signer.keyId"),
@@ -501,7 +502,7 @@ function requiredObject(value, path) {
 }
 
 function requiredString(value, path) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new TypeError(`${path} must be a non-empty string`);
   }
   return value;
@@ -526,7 +527,7 @@ function clone(value) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );

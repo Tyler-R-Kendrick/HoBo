@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 export const sinkParadigms = Object.freeze([
   "native",
   "relational",
@@ -236,7 +237,7 @@ function validateMember(value, allowed, field) {
 }
 
 function requiredString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} is required`);
   }
 

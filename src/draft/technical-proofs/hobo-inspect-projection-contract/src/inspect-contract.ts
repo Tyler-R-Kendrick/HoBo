@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export function fixtureEvents() {
   return [
     runEvent(1, "run.Started", { runId: "run-1" }),
@@ -351,7 +352,7 @@ function normalizeEvents(seedEvents) {
       ...event,
       seq: assertSeq(event.seq),
       type: assertNonEmpty(event.type, "event.type"),
-      data: event.data ?? {},
+      data: event.data ,
       index,
     }))
     .sort((left, right) => left.seq - right.seq || left.index - right.index);
@@ -413,14 +414,14 @@ function assertSeq(value) {
 }
 
 function assertNonEmpty(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

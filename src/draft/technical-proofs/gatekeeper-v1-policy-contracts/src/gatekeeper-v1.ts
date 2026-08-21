@@ -29,7 +29,7 @@ export async function verifyDeployAtPoint({
   const compatibility = evaluateCanDeploy({
     target,
     camp: fixtures.camp ?? { enforcementMode: "strict" },
-    proposedSet: fixtures.proposedSet ?? {},
+    proposedSet: fixtures.proposedSet ,
     eventLog: fixtures.eventLog ?? [],
   });
 
@@ -133,7 +133,7 @@ export async function runHoboVerifyDeploy(args = [], fixtures = {}) {
   };
 }
 
-function createDeployGateEngines({ compatibility, policyDecision, obligationReplay }) {
+function createDeployGateEngines({ compatibility, policyDecision, obligationReplay: _obligationReplay }) {
   const engines = Object.fromEntries(
     STUB_GATES.map((gate) => [
       gate,

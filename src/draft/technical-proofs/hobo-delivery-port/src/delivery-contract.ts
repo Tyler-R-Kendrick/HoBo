@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 const ROLLOUT_EVENT_TYPES = new Set([
   "rollout.Started",
   "rollout.Stepped",
@@ -225,7 +226,7 @@ export function importFromCDEvent(cdEvent) {
 }
 
 export function validateRolloutEvent(event) {
-  if (!event || typeof event !== "object") {
+  if (!event || !isJsonObject(event)) {
     throw new Error("rollout event must be an object");
   }
 
@@ -308,7 +309,7 @@ function statusFor(rollout) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
 

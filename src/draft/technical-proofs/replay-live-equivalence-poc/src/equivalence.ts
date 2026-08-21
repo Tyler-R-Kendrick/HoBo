@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
+import { isJsonObject } from "./json.js";
 
 export class ReplayLiveMismatchError extends Error {
   constructor({ liveState, replayState, liveOrder, replayOrder }) {
@@ -155,7 +156,7 @@ export function stableValue(value) {
     return value.map(stableValue);
   }
 
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return stableObject(Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, stableValue(entry)])));
   }
 
@@ -188,7 +189,7 @@ function stableObject(value) {
 }
 
 function clone(value) {
-  if (typeof structuredClone === "function") {
+  if (structuredClone instanceof Function) {
     return structuredClone(value);
   }
 

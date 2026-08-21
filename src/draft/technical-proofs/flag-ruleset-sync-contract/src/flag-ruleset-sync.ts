@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 import { createBuiltInFlagProvider } from "../../built-in-flag-store-contract/src/built-in-flag-store.js";
 import {
   replayFlagEvents,
@@ -234,7 +235,7 @@ function markStale(evaluator, reason) {
 }
 
 function assertEvaluatorId(evaluatorId) {
-  if (typeof evaluatorId !== "string" || evaluatorId.length === 0) {
+  if (!isJsonString(evaluatorId) || evaluatorId.length === 0) {
     throw new Error("evaluator id is required");
   }
 }

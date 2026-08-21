@@ -158,7 +158,7 @@ export function canCreateOutcomeActivationFollowUp({ phase, m0Accepted }) {
 export function validateOutcomeActivationRail(record) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!isPlainObject(record)) {
     return { ok: false, errors: ["outcome activation rail record is required"] };
   }
   if (record.issue !== "HOBO-508") {
@@ -216,4 +216,8 @@ export function validateOutcomeActivationRail(record) {
   }
 
   return { ok: errors.length === 0, errors };
+}
+
+function isPlainObject(value) {
+  return value != null && Object.prototype.toString.call(value) === "[object Object]";
 }

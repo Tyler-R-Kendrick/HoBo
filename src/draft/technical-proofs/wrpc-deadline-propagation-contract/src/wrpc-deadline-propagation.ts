@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 export class DeadlineExceededError extends Error {
   constructor({ componentId, importInterface, operation, deadline }) {
     super("wrpc.deadline_exceeded");
@@ -128,7 +129,7 @@ class DeadlinePropagationMembrane {
     assertId(provider?.id, "provider");
     this.#providers.set(provider.id, {
       id: provider.id,
-      exports: provider.exports ?? {},
+      exports: provider.exports ,
     });
   }
 
@@ -165,7 +166,7 @@ class DeadlinePropagationMembrane {
 
     const provider = this.#requireProvider(link.providerId);
     const implementation = provider.exports?.[link.exportInterface]?.[operation];
-    if (typeof implementation !== "function") {
+    if (!(implementation instanceof Function)) {
       throw new Error(`wrpc.operation_not_found: ${link.exportInterface}.${operation}`);
     }
 
@@ -320,7 +321,7 @@ function linkKey(componentId, importInterface) {
 }
 
 function assertId(id, kind) {
-  if (typeof id !== "string" || id.length === 0) {
+  if (!isJsonString(id) || id.length === 0) {
     throw new Error(`wrpc.${kind}_id_required`);
   }
 }

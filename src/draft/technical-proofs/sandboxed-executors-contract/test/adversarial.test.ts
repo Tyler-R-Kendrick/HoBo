@@ -1,14 +1,13 @@
+import { type JsonObject } from "../src/json.js";
 import assert from "node:assert/strict";
 import { test } from "vitest";
-
 import { validateControlPlaneEvent } from "../../control-plane-event-schema-contract/src/control-plane-events.js";
-import {
-  createFixtureIacPulumiJob,
+import {  createFixtureIacPulumiJob,
   createSandboxEgressGuard,
   createSandboxedExecutor
 } from "../src/sandboxed-executors.js";
 
-function assertValidControlPlaneEvents(events: Array<Record<string, unknown>>) {
+function assertValidControlPlaneEvents(events: Array<JsonObject>) {
   for (const event of events) {
     const validation = validateControlPlaneEvent(event);
     assert.equal(validation.ok, true, validation.errors.join("\n"));

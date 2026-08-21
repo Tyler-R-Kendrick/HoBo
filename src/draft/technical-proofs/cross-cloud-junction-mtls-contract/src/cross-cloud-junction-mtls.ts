@@ -1,9 +1,9 @@
+import { isJsonString, isJsonObject } from "./json.js";
 import { ConnectivityTier, decideConnectivityTier } from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.js";
 import { enforceConnectivityCanDeploy } from "../../connectivity-policy-enforcement-contract/src/connectivity-policy-enforcement.js";
-import { estimateConnectivityFeedback } from "../../connectivity-cost-feedback-contract/src/connectivity-cost-feedback.js";
+import {  estimateConnectivityFeedback  } from "../../connectivity-cost-feedback-contract/src/connectivity-cost-feedback.js";
 import { evaluateMtlsHandshake } from "../../mtls-data-path-contract/src/mtls-data-path.js";
-import {
-  planJunctionConnectivity,
+import {  planJunctionConnectivity,
   validateJunctionConnectivityPlan
 } from "../../junction-connectivity-plan-contract/src/junction-connectivity-plan.js";
 import { projectYardManifest } from "../../yard-topology-manifest-contract/src/yard-topology-manifest.js";
@@ -148,7 +148,7 @@ export function invokeCrossCloudService({ planResult, mtlsHandshake, request = {
 }
 
 function parseCrossCloudInput(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     return invalid("cross-cloud.input.invalid", "input must be an object");
   }
 
@@ -175,7 +175,7 @@ function parseCrossCloudInput(input) {
     return invalid("cross-cloud.yards.invalid", "yardTopologies must match junction yard count");
   }
 
-  if (typeof input.environment !== "string" || input.environment.length === 0) {
+  if (!isJsonString(input.environment) || input.environment.length === 0) {
     return invalid("cross-cloud.environment.required", "environment must be a non-empty string");
   }
 

@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 const REFRESH_FIDELITY_CHECK_ID = "iac-drift.camp.refresh-fidelity";
 
 export function createDriftFidelityFixture() {
@@ -55,8 +56,8 @@ export function createDriftFidelityFixture() {
 }
 
 export function evaluateRefreshReport({ desired, observed }) {
-  const desiredResources = desired.resources ?? {};
-  const observedResources = observed.resources ?? {};
+  const desiredResources = desired.resources ;
+  const observedResources = observed.resources ;
   const resourceIds = [...new Set([...Object.keys(desiredResources), ...Object.keys(observedResources)])].sort();
   const resources = [];
   const ignoredNormalized = [];
@@ -207,8 +208,8 @@ export async function runRefreshFidelityConformance(provider, { fixture, observe
 function diffResource(desiredResource, observedResource, ignoredNormalized) {
   const normalizedPaths = new Set(desiredResource.normalizedPaths ?? []);
   return [
-    ...diffObject("spec", desiredResource.spec ?? {}, observedResource.spec ?? {}, desiredResource.id, normalizedPaths, ignoredNormalized),
-    ...diffObject("observed", desiredResource.observed ?? {}, observedResource.observed ?? {}, desiredResource.id, normalizedPaths, ignoredNormalized),
+    ...diffObject("spec", desiredResource.spec , observedResource.spec , desiredResource.id, normalizedPaths, ignoredNormalized),
+    ...diffObject("observed", desiredResource.observed , observedResource.observed , desiredResource.id, normalizedPaths, ignoredNormalized),
   ];
 }
 
@@ -281,7 +282,7 @@ function selectAction(resource, reasons) {
 }
 
 function isPlainObject(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return isJsonObject(value) && value !== null && !Array.isArray(value);
 }
 
 function isDeepEqual(left, right) {

@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 import { stableDigest } from "../../control-plane-event-schema-contract/src/control-plane-events.js";
 
 export const CONTRACT_VERSION = "sandboxed-executors-contract/v1";
@@ -25,7 +26,7 @@ export const CONTRACT_VERSION = "sandboxed-executors-contract/v1";
  * @property {string} stackName
  * @property {"preview" | "apply"} action
  * @property {string[]} output
- * @property {Record<string, unknown>} [outputs]
+ * @property {JsonObject} [outputs]
  * @property {SandboxEgressAttempt[]} [egressAttempts]
  */
 
@@ -35,7 +36,7 @@ export const CONTRACT_VERSION = "sandboxed-executors-contract/v1";
  * @property {string} serviceId
  * @property {"build"} action
  * @property {string[]} output
- * @property {Record<string, unknown>} [outputs]
+ * @property {JsonObject} [outputs]
  * @property {SandboxEgressAttempt[]} [egressAttempts]
  */
 
@@ -106,7 +107,7 @@ export function createSandboxEgressGuard(allowedTargets) {
 }
 
 export function parseExecutorJob(raw) {
-  if (!raw || typeof raw !== "object") {
+  if (!raw || !isJsonObject(raw)) {
     throw new Error("executor job must be an object");
   }
 

@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 import { createHash } from "node:crypto";
 import { execFileSync } from "node:child_process";
 import { existsSync } from "node:fs";
@@ -466,11 +467,11 @@ function normalizeSourceModel(sources) {
   const allow = toStableValue(sources.allow);
   const bindle = toStableValue(sources.bindle);
 
-  const resources = Object.entries(zod.resources ?? {})
+  const resources = Object.entries(zod.resources )
     .map(([name, resource]) => ({
       name,
       typeName: pascalCase(name),
-      fields: Object.entries(resource.fields ?? {}).map(([fieldName, field]) => ({
+      fields: Object.entries(resource.fields ).map(([fieldName, field]) => ({
         name: fieldName,
         type: renderFieldType(field),
       })),
@@ -482,7 +483,7 @@ function normalizeSourceModel(sources) {
     });
   }
 
-  const scopes = Object.entries(allow.scopes ?? {})
+  const scopes = Object.entries(allow.scopes )
     .map(([name, scope]) => ({
       name,
       grants: [...(scope.grants ?? [])].sort(),
@@ -496,7 +497,7 @@ function normalizeSourceModel(sources) {
       resources: [...(entry.resources ?? [])].sort(),
       steps: [...(entry.steps ?? [])].sort(),
       workflows: [...(entry.workflows ?? [])].sort(),
-      with: Object.entries(entry.with ?? {})
+      with: Object.entries(entry.with )
         .map(([name, values]) => ({ name, values: [...values].sort() }))
         .sort((left, right) => left.name.localeCompare(right.name)),
     }))
@@ -715,7 +716,7 @@ function toStableValue(value) {
     return value.map(toStableValue).sort(stableCompare);
   }
 
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .map(([key, entry]) => [key, toStableValue(entry)])

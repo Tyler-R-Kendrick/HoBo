@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 import {
   createGenerationCertifyStage,
   createInMemoryCertificationRegistry,
@@ -244,14 +245,14 @@ function digest(value, path) {
 }
 
 function expectObject(value, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new ForgeSigningRegistryError("forge.object_required", path);
   }
   return value;
 }
 
 function nonEmptyString(value, path) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new ForgeSigningRegistryError("forge.string_required", path);
   }
   return value;

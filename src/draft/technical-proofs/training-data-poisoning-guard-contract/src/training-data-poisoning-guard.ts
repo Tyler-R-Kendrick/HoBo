@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const TRAINING_DATA_POISONING_GUARD_CONTRACT = "hobo.training-data-poisoning-guard/v1";
 
 export function createPoisoningGuard(options = {}) {
@@ -187,7 +188,7 @@ function normalizeTrajectories(trajectories) {
       sourceFingerprint,
       reward,
       contractPassed: trajectory.contractPassed !== false,
-      output: structuredClone(trajectory.output ?? {}),
+      output: structuredClone(trajectory.output ),
     });
   }
   return normalized;
@@ -204,7 +205,7 @@ function groupLabels(labels) {
       trajectoryId,
       labelerId: requireString(label?.labelerId, "label.labelerId"),
       reward: requireReward(label?.reward, "label.reward"),
-      scores: structuredClone(label?.scores ?? {}),
+      scores: structuredClone(label?.scores ),
     };
     grouped.set(trajectoryId, [...(grouped.get(trajectoryId) ?? []), entry]);
   }
@@ -264,7 +265,7 @@ function orderEvents(events) {
 }
 
 function requireString(value, name) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
   return value;
@@ -299,7 +300,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

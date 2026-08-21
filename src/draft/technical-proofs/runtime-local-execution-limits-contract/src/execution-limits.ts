@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 const DEFAULT_LIMITS = Object.freeze({
   fuel: 10_000,
   epochTicks: 10_000,
@@ -68,7 +69,7 @@ class RuntimeLocalExecutionHost {
 
   loadComponent(component) {
     assertId(component?.id, "component");
-    if (typeof component.guest?.run !== "function") {
+    if (!(component.guest?.run instanceof Function)) {
       throw new Error(`component_host.guest_required: ${component.id}`);
     }
 
@@ -255,7 +256,7 @@ function positiveInteger(value, name) {
 }
 
 function assertId(id, kind) {
-  if (typeof id !== "string" || id.length === 0) {
+  if (!isJsonString(id) || id.length === 0) {
     throw new Error(`component_host.${kind}_id_required`);
   }
 }

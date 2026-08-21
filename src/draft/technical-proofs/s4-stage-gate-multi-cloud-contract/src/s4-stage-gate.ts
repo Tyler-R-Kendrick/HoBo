@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 import {
   createPortableMultiCloudShopRun,
   verifyMultiCloudShopGate,
@@ -30,10 +31,10 @@ export class S4StageGateError extends Error {
 }
 
 export function createS4StageGateEvidence(overrides = {}) {
-  const portability = createPortableMultiCloudShopRun(overrides.portability ?? {});
-  const crossCloudMtls = createCrossCloudMtlsEvidence(overrides.crossCloudMtls ?? {});
-  const j3ProviderSwitch = createJ3ProviderSwitchEvidence(portability, overrides.j3ProviderSwitch ?? {});
-  const matchingResolution = createMatchingResolutionEvidence(overrides.matchingResolution ?? {});
+  const portability = createPortableMultiCloudShopRun(overrides.portability );
+  const crossCloudMtls = createCrossCloudMtlsEvidence(overrides.crossCloudMtls );
+  const j3ProviderSwitch = createJ3ProviderSwitchEvidence(portability, overrides.j3ProviderSwitch );
+  const matchingResolution = createMatchingResolutionEvidence(overrides.matchingResolution );
 
   return deepFreeze({
     schema: S4_STAGE_GATE_SCHEMA,
@@ -76,7 +77,7 @@ export function verifyS4StageGate(evidence) {
 
   validateCiLane(evidence?.ciLane, failures);
 
-  const portabilityReport = verifyMultiCloudShopGate(evidence?.portability ?? {});
+  const portabilityReport = verifyMultiCloudShopGate(evidence?.portability );
   if (!portabilityReport.ok) {
     failures.push(...portabilityReport.failures.map((failure) => ({
       ...failure,
@@ -325,7 +326,7 @@ function validateCiLane(ciLane = {}, failures) {
 }
 
 function validateCrossCloudMtls(crossCloudMtls = {}, failures) {
-  const connection = crossCloudMtls.connection ?? {};
+  const connection = crossCloudMtls.connection ;
   if (connection.ok !== true) {
     failures.push({
       code: "mtls.session-failed",
@@ -393,8 +394,8 @@ function validateJ3ProviderSwitch(j3 = {}, portability = {}, failures) {
 }
 
 function validateMatchingResolution(matching = {}, failures) {
-  const decision = matching.decision ?? {};
-  const event = matching.event ?? {};
+  const decision = matching.decision ;
+  const event = matching.event ;
 
   if (decision.ok !== true) {
     failures.push({
@@ -440,7 +441,7 @@ function attestation(resource) {
 }
 
 function deepFreeze(value) {
-  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+  if (value && isJsonObject(value) && !Object.isFrozen(value)) {
     for (const child of Object.values(value)) {
       deepFreeze(child);
     }

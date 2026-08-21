@@ -28,7 +28,7 @@ export function computeSloStatus({
   if (!parsed.ok) {
     throw new Error(parsed.errors.join("\n"));
   }
-  if (!sliSource || typeof sliSource.readRatioSamples !== "function") {
+  if (!sliSource || !(sliSource.readRatioSamples instanceof Function)) {
     throw new Error("sliSource must expose readRatioSamples({ definition, from, to })");
   }
 

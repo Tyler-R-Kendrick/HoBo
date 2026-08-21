@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this conformance test intentionally casts controlled fake-streamer values to exercise runtime contract failures. */
+
 /**
  * The Streamer runtime-port conformance suite.
  *

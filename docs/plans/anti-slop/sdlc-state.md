@@ -113,7 +113,8 @@ main
                                                                                                       └── sdlc/anti-slop-102-draft-token-adopt-champion-host  #1361 token-broker+adopt-in-place+champion-challenger+component-host
                                                                                                        └── sdlc/anti-slop-103-draft-staleness-delta-dr-experiment  #1362 staleness+delta-set+disaster-recovery+experiment-stats
                                                                                                         └── sdlc/anti-slop-104-draft-gate-gql-catalog-jwt-login-principal-iac  #1363 gatekeeper+graphql+bindles+jwt+login+principal+crossplane+pulumi
-                                                                                                         └── sdlc/anti-slop-105-draft-livefix-mcp-oidc-ops-projection-reactor  live-fix+mcp+oidc+ops+projection+reactor+ranking
+                                                                                                         └── sdlc/anti-slop-105-draft-livefix-mcp-oidc-ops-projection-reactor  #1364 live-fix+mcp+oidc+ops+projection+reactor+ranking
+                                                                                                          └── sdlc/anti-slop-106-draft-registry-runbook-pulumi-slo-sre  registry-publish+runbook+pulumi-adapter+effects+showback+slo+sre
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -238,7 +239,8 @@ Layer 101: `runaway-spend-circuit-breaker-contract` + `sdk-flag-surface-contract
 Layer 102: `token-broker-skeleton-contract` + `adopt-in-place-contract` + `champion-challenger-promotion-contract` + `component-host-adapter-certification-spike` oxlint `--deny-warnings` clean (#1361).
 Layer 103: `cross-camp-bounded-staleness-contract` + `delta-set-apply-reconcile-contract` + `disaster-recovery-failover-contract` + `experiment-statistical-analysis-contract` oxlint `--deny-warnings` clean (#1362).
 Layer 104: `gatekeeper-verify-contract` + `graphql-facade-runtime-contract` + `hobo-bindles-resource-catalog` + `hobo-jwt-svid-contract` + `hobo-login-claim-contract` + `hobo-principal-ref-contract` + `iac-crossplane-backend-contract` + `iac-pulumi-backend-contract` oxlint `--deny-warnings` clean (#1363).
-Layer 105: `live-fix-gated-candidate-contract` + `mcp-server-hardening-contract` + `oidc-federation-sts-contract` + `operations-manifests-contract` + `projection-consistency-reactivity-contract` + `projection-sink-change-feed-conformance-contract` + `reactor-skeleton-contract` + `region-objective-ranking-contract` oxlint `--deny-warnings` clean.
+Layer 105: `live-fix-gated-candidate-contract` + `mcp-server-hardening-contract` + `oidc-federation-sts-contract` + `operations-manifests-contract` + `projection-consistency-reactivity-contract` + `projection-sink-change-feed-conformance-contract` + `reactor-skeleton-contract` + `region-objective-ranking-contract` oxlint `--deny-warnings` clean (#1364).
+Layer 106: `registry-publish-flow-contract` + `runbook-execution-engine-contract` + `s2-06-iac-pulumi-automation-adapter` + `s3-05-allow-triple-effects-poc` + `showback-attribution-contract` + `slo-gaming-guard-contract` + `slo-gated-rollback-analysis-contract` + `sre-mttd-mttr-postmortem-contract` oxlint `--deny-warnings` clean.
 Next: remaining 7-count `src/draft/technical-proofs`, then lower counts, then exp-proofs, projects.
 Full-repo `lint:slop --deny-warnings` is still red until those land.
 GitHub stack metadata is at the 100-entry cap; later layers still open PRs via `gh stack submit --auto`.

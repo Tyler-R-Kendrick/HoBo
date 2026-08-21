@@ -5,6 +5,7 @@ import {
 	RUNNER_CATEGORY,
 } from "@hobo/runner-github";
 
+import { type JsonObject, parseJsonObject } from "./json.js";
 import {
 	COST_FACTS,
 	DEFAULT_REGIONS,
@@ -18,14 +19,14 @@ import {
 // @hobo/cloud's RegistrableProvider so the composition root registers it
 // without this package depending on the kernel.
 
-const FEATURES: Record<ExecutionHostCategory, string[]> = {
+const FEATURES = {
 	[RUNNER_CATEGORY]: ["ci-job", "workflow-dispatch", "depot-managed-runner"],
 	[BUILD_MACHINE_CATEGORY]: [
 		"container-build",
 		"remote-buildkit",
 		"shared-cache",
 	],
-};
+} satisfies Record<ExecutionHostCategory, string[]>;
 
 export interface DepotCatalogEntry {
 	id: string;
@@ -45,8 +46,8 @@ export interface DepotCatalogEntry {
 	capabilityManifest(): {
 		providerId: string;
 		published: Record<string, string>;
-		capabilities: { capabilities?: Array<Record<string, unknown>> };
-		cost: { facts?: Array<Record<string, unknown>> };
+		capabilities: JsonObject;
+		cost: JsonObject;
 	};
 }
 
@@ -90,10 +91,10 @@ export function createDepotCatalogEntry(): DepotCatalogEntry {
 			return {
 				providerId: DEPOT_PROVIDER_ID,
 				published: { ...published },
-				capabilities: JSON.parse(
+				capabilities: parseJsonObject(
 					published["/.well-known/capability-manifest/capabilities.json"],
 				),
-				cost: JSON.parse(
+				cost: parseJsonObject(
 					published["/.well-known/capability-manifest/cost.json"],
 				),
 			};

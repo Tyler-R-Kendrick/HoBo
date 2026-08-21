@@ -19,7 +19,8 @@ main
         └── sdlc/anti-slop-08-data       #1197 @hobo/data
          └── sdlc/anti-slop-09-recipes   #1199 @hobo/recipes
           └── sdlc/anti-slop-10-mcp      #1202 @hobo/mcp + cloud gateway
-           └── sdlc/anti-slop-11-providers-small  config/agentv/cedar/opa/ax/blacksmith
+           └── sdlc/anti-slop-11-providers-small  #1203 config/agentv/cedar/opa/ax/blacksmith
+            └── sdlc/anti-slop-12-providers-runners  depot + flux
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -47,6 +48,8 @@ UsageReader returns, Firecrawl client injection instead of `vi.mock`).
 Layer 6: `site/` oxlint-clean (`site/src/lib/json-inspect.ts`).
 Layer 7–10: connectors, data, recipes, mcp.
 Layer 11: smallest provider packages (config, agentv, cedar, opa, ax,
-blacksmith). Next: remaining `packages/providers/*`, then `packages/code`,
-`hobo`, `core`, `broker`, `src/draft/`. Full-repo
+blacksmith).
+Layer 12: runner-depot + provider-flux. Next: remaining
+`packages/providers/*` (github, lakebed, railway, convex, cloud majors),
+then `packages/code`, `hobo`, `core`, `broker`, `src/draft/`. Full-repo
 `lint:slop --deny-warnings` is still red until those land.

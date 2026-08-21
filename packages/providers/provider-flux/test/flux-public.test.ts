@@ -3,8 +3,10 @@ import { describe, expect, it } from "vitest";
 import {
 	applyFluxDeploy,
 	FLUX_RIVET_RUNNER_RECIPE,
+	type JsonValue,
 	parseFluxDeploySpec,
 } from "../src/index.js";
+import { isJsonArray, isJsonNumber, isJsonObject } from "../src/json.js";
 
 describe("flux public live probes", () => {
 	it("reaches the public Flux apps API without credentials", async () => {
@@ -12,23 +14,24 @@ describe("flux public live probes", () => {
 			"https://api.runonflux.io/apps/whitelistedrepositories",
 		);
 		expect(response.ok).toBe(true);
-		const body = (await response.json()) as {
-			status?: string;
-			data?: unknown;
-		};
+		// SAFETY: fetch json() is a JSON value at this live-probe boundary.
+		const body = (await response.json()) as JsonValue;
+		expect(isJsonObject(body)).toBe(true);
+		if (!isJsonObject(body)) return;
 		expect(body.status).toBe("success");
-		expect(Array.isArray(body.data)).toBe(true);
+		expect(isJsonArray(body.data)).toBe(true);
 	});
 
 	it("reaches daemon getinfo and does not treat it as actor HA", async () => {
 		const response = await fetch("https://api.runonflux.io/daemon/getinfo");
 		expect(response.ok).toBe(true);
-		const body = (await response.json()) as {
-			status?: string;
-			data?: { connections?: number };
-		};
+		// SAFETY: fetch json() is a JSON value at this live-probe boundary.
+		const body = (await response.json()) as JsonValue;
+		expect(isJsonObject(body)).toBe(true);
+		if (!isJsonObject(body)) return;
 		expect(body.status).toBe("success");
-		expect(typeof body.data?.connections).toBe("number");
+		const data = isJsonObject(body.data) ? body.data : undefined;
+		expect(isJsonNumber(data?.connections)).toBe(true);
 	});
 
 	it("still refuses to apply an actor primitive to Flux after a live probe", () => {

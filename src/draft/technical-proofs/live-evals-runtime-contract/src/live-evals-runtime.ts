@@ -3,6 +3,8 @@ import {
   makeEvalEvent,
   validatePromotionGate,
 } from "../../eval-promotion-gate-contract/src/eval-promotion-gate.js";
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
+
 
 export const LIVE_EVALS_RUNTIME_CONTRACT = "hobo.live-evals-runtime/v1";
 
@@ -235,21 +237,21 @@ export function createLiveEvalRuntime({ gate }) {
 }
 
 function normalizeBatch(batch) {
-  if (!batch || typeof batch !== "object" || Array.isArray(batch)) {
+  if (!batch || !isJsonObject(batch) || Array.isArray(batch)) {
     throw new TypeError("batch must be an object");
   }
   if (!["champion", "challenger"].includes(batch.arm)) {
     throw new TypeError("arm must be champion or challenger");
   }
   for (const field of ["semanticFunction", "candidateId", "championId"]) {
-    if (typeof batch[field] !== "string" || batch[field].length === 0) {
+    if (!isJsonString(batch[field]) || batch[field].length === 0) {
       throw new TypeError(`${field} must be a non-empty string`);
     }
   }
-  if (!batch.labelBatch || typeof batch.labelBatch !== "object") {
+  if (!batch.labelBatch || !isJsonObject(batch.labelBatch)) {
     throw new TypeError("labelBatch must be an object");
   }
-  if (typeof batch.labelBatch.id !== "string" || batch.labelBatch.id.length === 0) {
+  if (!isJsonString(batch.labelBatch.id) || batch.labelBatch.id.length === 0) {
     throw new TypeError("labelBatch.id must be a non-empty string");
   }
   if (!Array.isArray(batch.labelBatch.labels) || batch.labelBatch.labels.length === 0) {
@@ -283,13 +285,13 @@ function detectPoisonedLabelBatch(labelBatch) {
 }
 
 function requireLabel(label) {
-  if (!label || typeof label !== "object" || Array.isArray(label)) {
+  if (!label || !isJsonObject(label) || Array.isArray(label)) {
     throw new TypeError("label must be an object");
   }
-  if (typeof label.trajectoryId !== "string" || label.trajectoryId.length === 0) {
+  if (!isJsonString(label.trajectoryId) || label.trajectoryId.length === 0) {
     throw new TypeError("label.trajectoryId must be a non-empty string");
   }
-  if (typeof label.reward !== "number" || label.reward < 0 || label.reward > 1) {
+  if (!isJsonNumber(label.reward) || label.reward < 0 || label.reward > 1) {
     throw new TypeError("label.reward must be between 0 and 1");
   }
 }
@@ -317,7 +319,7 @@ function result(value) {
     failures: [],
     gateMoved: false,
     ...value,
-    rewardWrites: value.rewardWrites.map(({ event, ...write }) => write),
+    rewardWrites: value.rewardWrites.map(({ event: _event, ...write }) => write),
   };
 }
 
@@ -345,7 +347,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

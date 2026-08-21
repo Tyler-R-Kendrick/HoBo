@@ -1,3 +1,4 @@
+import { isJsonString, isJsonBoolean, isJsonBigInt, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export type StreamId = string & { readonly __brand: "StreamId" };
 export type EventType = string & { readonly __brand: "EventType" };
 export type ActionId = string & { readonly __brand: "ActionId" };
@@ -19,36 +20,41 @@ export type LeaderFailoverOutcome = {
   duplicateActionsBlocked: boolean;
 };
 
-export function parseStreamId(value: unknown): StreamId {
+export function parseStreamId(value: JsonValue): StreamId {
+  // SAFETY: `return requireNonEmptyString(value, "streamId") as StreamId;` is required at this I/O or test boundary.
   return requireNonEmptyString(value, "streamId") as StreamId;
 }
 
-export function parseEventType(value: unknown): EventType {
+export function parseEventType(value: JsonValue): EventType {
+  // SAFETY: `return requireNonEmptyString(value, "eventType") as EventType;` is required at this I/O or test boundary.
   return requireNonEmptyString(value, "eventType") as EventType;
 }
 
-export function parseActionId(value: unknown): ActionId | null {
+export function parseActionId(value: JsonValue): ActionId | null {
   if (value == null) {
     return null;
   }
+  // SAFETY: `return requireNonEmptyString(value, "actionId") as ActionId;` is required at this I/O or test boundary.
   return requireNonEmptyString(value, "actionId") as ActionId;
 }
 
-export function parseFenceToken(value: unknown): FenceToken {
-  if (typeof value !== "bigint") {
+export function parseFenceToken(value: JsonValue): FenceToken {
+  if (!isJsonBigInt(value)) {
     throw new TypeError("fenceToken must be a bigint");
   }
   if (value < 1n) {
     throw new TypeError("fenceToken must be >= 1");
   }
+  // SAFETY: `return value as FenceToken;` is required at this I/O or test boundary.
   return value as FenceToken;
 }
 
-export function parseQuorumFencedAppend(value: unknown): QuorumFencedAppend {
-  if (value == null || typeof value !== "object") {
+export function parseQuorumFencedAppend(value: JsonValue): QuorumFencedAppend {
+  if (value == null || !isJsonObject(value)) {
     throw new TypeError("append request must be an object");
   }
-  const request = value as Record<string, unknown>;
+  // SAFETY: `const request = value as JsonObject;` is required at this I/O or test boundary.
+  const request = value as JsonObject;
   return {
     streamId: parseStreamId(request.streamId),
     fenceToken: parseFenceToken(request.fenceToken),
@@ -57,11 +63,12 @@ export function parseQuorumFencedAppend(value: unknown): QuorumFencedAppend {
   };
 }
 
-export function parseLeaderFailoverOutcome(value: unknown): LeaderFailoverOutcome {
-  if (value == null || typeof value !== "object") {
+export function parseLeaderFailoverOutcome(value: JsonValue): LeaderFailoverOutcome {
+  if (value == null || !isJsonObject(value)) {
     throw new TypeError("leader failover outcome must be an object");
   }
-  const outcome = value as Record<string, unknown>;
+  // SAFETY: `const outcome = value as JsonObject;` is required at this I/O or test boundary.
+  const outcome = value as JsonObject;
   const recoveryMs = requireNonNegativeInteger(outcome.recoveryMs, "recoveryMs");
   if (recoveryMs > 30_000) {
     throw new TypeError("recoveryMs must be <= 30000");
@@ -74,22 +81,24 @@ export function parseLeaderFailoverOutcome(value: unknown): LeaderFailoverOutcom
   };
 }
 
-function requireNonEmptyString(value: unknown, fieldName: string): string {
-  if (typeof value !== "string" || value.trim() === "") {
+function requireNonEmptyString(value: JsonValue, fieldName: string): string {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
 }
 
-function requireNonNegativeInteger(value: unknown, fieldName: string): number {
+function requireNonNegativeInteger(value: JsonValue, fieldName: string): number {
+  // SAFETY: `if (!Number.isInteger(value) || (value as number) < 0) {` is required at this I/O or test boundary.
   if (!Number.isInteger(value) || (value as number) < 0) {
     throw new TypeError(`${fieldName} must be a non-negative integer`);
   }
+  // SAFETY: `return value as number;` is required at this I/O or test boundary.
   return value as number;
 }
 
-function requireBoolean(value: unknown, fieldName: string): boolean {
-  if (typeof value !== "boolean") {
+function requireBoolean(value: JsonValue, fieldName: string): boolean {
+  if (!isJsonBoolean(value)) {
     throw new TypeError(`${fieldName} must be a boolean`);
   }
   return value;

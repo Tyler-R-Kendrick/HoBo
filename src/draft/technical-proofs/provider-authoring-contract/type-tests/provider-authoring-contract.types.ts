@@ -6,6 +6,7 @@ import {
   type PortClient,
   type ProviderOptionBlock
 } from "../src/provider-authoring-contract.js";
+import { type JsonValue } from "../src/json.js";
 
 type AwsRdsOptions = {
   instanceClass: string;
@@ -65,62 +66,60 @@ const azureBlock: ProviderOptionBlock<"azure", "database", AzurePostgresOptions>
 
 mergeResolvedProviderOptions(aws, [aws.with.rds({ instanceClass: "db.t4g.micro" })]);
 
-if (false) {
-  // @ts-expect-error scoped option builder names are exact.
-  aws.with.typo({ instanceClass: "db.t4g.micro" });
+// @ts-expect-error scoped option builder names are exact.
+aws.with.typo({ instanceClass: "db.t4g.micro" });
 
-  // @ts-expect-error scoped option builder payloads preserve provider-specific option types.
-  aws.with.rds({ sku: "B_Standard_B1ms" });
+// @ts-expect-error scoped option builder payloads preserve provider-specific option types.
+aws.with.rds({ sku: "B_Standard_B1ms" });
 
-  // @ts-expect-error azure option blocks cannot be merged into the resolved aws provider.
-  mergeResolvedProviderOptions(aws, [azureBlock]);
+// @ts-expect-error azure option blocks cannot be merged into the resolved aws provider.
+mergeResolvedProviderOptions(aws, [azureBlock]);
 
-  // @ts-expect-error provider option builders cannot target undeclared ports.
-  defineProvider<"bad", readonly [CapabilitySpec<"database">], { database: PortClient<"database", "bad"> }, {
-    readonly queue: ReturnType<typeof createOptionBuilder<"bad", "queue", { fifo: boolean }>>;
-  }>({
-    id: "bad",
-    capabilities: [{ port: "database", stability: "stable" }] as const,
-    with: {
-      queue: createOptionBuilder<"bad", "queue", { fifo: boolean }>("bad", "queue", "queue")
-    },
-    client() {
-      return { port: "database", providerId: "bad" };
-    },
-    capabilityManifest() {
-      return {
-        providerId: "bad",
-        capabilities: [{ port: "database", stability: "stable" }],
-        auth: { mode: "brokered" },
-        optionBuilders: ["queue"]
-      };
-    }
-  });
+// @ts-expect-error provider option builders cannot target undeclared ports.
+defineProvider<"bad", readonly [CapabilitySpec<"database">], { database: PortClient<"database", "bad"> }, {
+  readonly queue: ReturnType<typeof createOptionBuilder<"bad", "queue", { fifo: boolean }>>;
+}>({
+  id: "bad",
+  capabilities: [{ port: "database", stability: "stable" }] as const,
+  with: {
+    queue: createOptionBuilder<"bad", "queue", { fifo: boolean }>("bad", "queue", "queue")
+  },
+  client() {
+    return { port: "database", providerId: "bad" };
+  },
+  capabilityManifest() {
+    return {
+      providerId: "bad",
+      capabilities: [{ port: "database", stability: "stable" }],
+      auth: { mode: "brokered" },
+      optionBuilders: ["queue"]
+    };
+  }
+});
 
-  type BadClients = { database: unknown };
-  // @ts-expect-error unknown is not an acceptable typed client surface.
-  defineProvider<"unknown-client", readonly [CapabilitySpec<"database">], BadClients, {
-    readonly database: ReturnType<typeof createOptionBuilder<"unknown-client", "database", {}>>;
-  }>({
-    id: "unknown-client",
-    capabilities: [{ port: "database", stability: "stable" }] as const,
-    with: {
-      database: createOptionBuilder<"unknown-client", "database", {}>(
-        "unknown-client",
-        "database",
-        "database"
-      )
-    },
-    client() {
-      return {};
-    },
-    capabilityManifest() {
-      return {
-        providerId: "unknown-client",
-        capabilities: [{ port: "database", stability: "stable" }],
-        auth: { mode: "brokered" },
-        optionBuilders: ["database"]
-      };
-    }
-  });
-}
+type BadClients = { database: JsonValue };
+// @ts-expect-error JsonValue is not an acceptable typed client surface.
+defineProvider<"unknown-client", readonly [CapabilitySpec<"database">], BadClients, {
+  readonly database: ReturnType<typeof createOptionBuilder<"unknown-client", "database", {}>>;
+}>({
+  id: "unknown-client",
+  capabilities: [{ port: "database", stability: "stable" }] as const,
+  with: {
+    database: createOptionBuilder<"unknown-client", "database", {}>(
+      "unknown-client",
+      "database",
+      "database"
+    )
+  },
+  client() {
+    return {};
+  },
+  capabilityManifest() {
+    return {
+      providerId: "unknown-client",
+      capabilities: [{ port: "database", stability: "stable" }],
+      auth: { mode: "brokered" },
+      optionBuilders: ["database"]
+    };
+  }
+});

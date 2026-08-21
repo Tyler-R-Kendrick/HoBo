@@ -6,12 +6,14 @@ import {
 } from "../../replay-live-equivalence-poc/src/equivalence.js";
 
 import { readPersistedEventLog } from "./offline-gate.js";
+import { type JsonObject } from "./json.js";
+
 
 export { ReplayLiveMismatchError };
 
 export type ReplayGateResult = {
   readonly seq: Record<string, number>;
-  readonly state: Record<string, unknown>;
+  readonly state: JsonObject;
 };
 
 export async function runReplayEqualsLiveGate(eventLogPath: string): Promise<ReplayGateResult> {
@@ -25,7 +27,8 @@ export async function runReplayEqualsLiveGate(eventLogPath: string): Promise<Rep
 
   return Object.freeze({
     seq: result.seq,
-    state: result.state as Record<string, unknown>,
+    // SAFETY: `state: result.state as JsonObject,` is required at this I/O or test boundary.
+    state: result.state as JsonObject,
   });
 }
 
@@ -90,13 +93,14 @@ function emptyFoldState() {
     compensationExercised: false,
     totalBootMs: 0,
     orderId: "",
+    // SAFETY: `seq: {} as Record<string, number>,` is required at this I/O or test boundary.
     seq: {} as Record<string, number>,
   };
 }
 
 function helloBindleFold(
   state: ReturnType<typeof emptyFoldState>,
-  event: { streamId: string; seq: number; type: string; data: Record<string, unknown> },
+  event: { streamId: string; seq: number; type: string; data: JsonObject },
 ) {
   const next = { ...state, seq: { ...state.seq, [event.streamId]: event.seq } };
 

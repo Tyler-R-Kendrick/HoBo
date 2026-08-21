@@ -20,8 +20,8 @@
  * hash the same regardless of key order — otherwise replay disagrees with the
  * original for a reason nobody can see.
  */
-import { describe, expect, it } from "vitest";
 
+import { describe, expect, it } from "vitest";
 import {
 	canonicalJson,
 	createDispatcherRegistry,
@@ -30,10 +30,11 @@ import {
 	parseCreditLedgerView,
 	stableHash,
 } from "../src/dispatcher.js";
+import type { JsonObject } from "../src/json.js";
 
 const LEDGER_DIGEST = `sha256:${"1".repeat(64)}`;
 
-function ledgerView(overrides: Record<string, unknown> = {}) {
+function ledgerView(overrides: JsonObject = {}) {
 	return {
 		view: "CreditLedgerView",
 		seq: 91,
@@ -44,7 +45,7 @@ function ledgerView(overrides: Record<string, unknown> = {}) {
 	};
 }
 
-function account(providerId: string, overrides: Record<string, unknown> = {}) {
+function account(providerId: string, overrides: JsonObject = {}) {
 	return {
 		providerId,
 		dimension: "runner.minutes",
@@ -57,7 +58,7 @@ function account(providerId: string, overrides: Record<string, unknown> = {}) {
 	};
 }
 
-function runner(id: string, overrides: Record<string, unknown> = {}) {
+function runner(id: string, overrides: JsonObject = {}) {
 	return {
 		id,
 		providerId: id,
@@ -70,7 +71,7 @@ function runner(id: string, overrides: Record<string, unknown> = {}) {
 	};
 }
 
-const dispatch = (overrides: Record<string, unknown> = {}) =>
+const dispatch = (overrides: JsonObject = {}) =>
 	decideDispatch({
 		registry: createDispatcherRegistry([runner("a")]),
 		category: "runner",
@@ -151,6 +152,7 @@ describe("createDispatcherRegistry", () => {
 	});
 
 	it("rejects a non-array provider list", () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect(() => createDispatcherRegistry({} as never)).toThrow(TypeError);
 	});
 
@@ -184,6 +186,7 @@ describe("createDispatcherRegistry", () => {
 
 describe("decideDispatch refusals", () => {
 	it("rejects a non-object request", () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect(() => decideDispatch(null as never)).toThrow(TypeError);
 	});
 

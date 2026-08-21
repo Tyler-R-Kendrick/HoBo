@@ -45,7 +45,8 @@ main
                                   └── sdlc/anti-slop-34-contracts  #1249 packages/contracts
                                    └── sdlc/anti-slop-35-stations  #1251 packages/stations
                                     └── sdlc/anti-slop-36-storage-sqlite  #1254 packages/storage-sqlite
-                                     └── sdlc/anti-slop-37-policy  packages/policy
+                                     └── sdlc/anti-slop-37-policy  #1256 packages/policy
+                                      └── sdlc/anti-slop-38-dispatcher  packages/dispatcher
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and

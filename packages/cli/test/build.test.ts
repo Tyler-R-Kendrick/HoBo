@@ -8,6 +8,8 @@ import {
 	createHoboCli,
 	writeBuildFixtureProject,
 } from "../src/index.js";
+import { type JsonValue } from "../src/json.js";
+
 
 describe("hobo build", () => {
 	it("emits wasm and OCI fallback artifacts with JSON digests", async () => {
@@ -43,7 +45,7 @@ describe("hobo build", () => {
 	});
 
 	it("digests are stable on repeat and across clean checkouts", async () => {
-		let cleanCheckoutArtifacts: unknown;
+		let cleanCheckoutArtifacts: JsonValue;
 
 		await withSeededBuildProject(async (projectRoot) => {
 			const first = JSON.parse(

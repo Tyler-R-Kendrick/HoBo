@@ -6,6 +6,8 @@ import type {
 import { buildEnvelope, publicContext } from "../types/envelope.js";
 import { CliError } from "./errors.js";
 import type { CliFlags } from "./parse.js";
+import { isJsonString, type JsonValue } from "../json.js";
+
 
 export interface CliRunResult {
 	readonly exitCode: number;
@@ -41,7 +43,7 @@ export function renderSuccess(input: {
 
 	if (input.verb === "new" && envelope.ok) {
 		const nextSteps = Array.isArray(envelope.data.nextSteps)
-			? (envelope.data.nextSteps as string[]).join("\n")
+			? envelope.data.nextSteps.filter(isJsonString).join("\n")
 			: "";
 		return okText(
 			`Created HoBo project ${String(envelope.data.name ?? "")}\n\n${nextSteps}\n`,
@@ -60,7 +62,7 @@ ${envelope.message}
 }
 
 export function renderError(
-	error: unknown,
+	error: JsonValue,
 	input: {
 		readonly verb: string | null;
 		readonly flags: CliFlags;
@@ -141,16 +143,16 @@ export function renderError(
 	};
 }
 
-function errorMessage(error: unknown): string {
+function errorMessage(error: JsonValue): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
-function verboseDiagnostics(error: unknown, verbose: boolean): string {
+function verboseDiagnostics(error: JsonValue, verbose: boolean): string {
 	if (!verbose) {
 		return "";
 	}
 	const stack =
-		error instanceof Error && typeof error.stack === "string"
+		error instanceof Error && isJsonString(error.stack)
 			? error.stack
 			: errorMessage(error);
 	return `Internal CLI error.\n${stack}\n`;

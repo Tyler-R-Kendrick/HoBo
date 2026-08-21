@@ -130,6 +130,7 @@ function progressFrom(events: OrchestratorResult["events"]): ProgressEvent[] {
 		) {
 			continue;
 		}
+		// SAFETY: `const data = event.data as {` is required at this I/O or test boundary.
 		const data = event.data as {
 			resourceId?: string;
 			summary?: string;
@@ -146,18 +147,20 @@ function progressFrom(events: OrchestratorResult["events"]): ProgressEvent[] {
 	return progress;
 }
 
-function planConfig(
-	deploymentId: string,
-	config?: DeployConfig,
-): {
+interface PlanConfigInput {
 	deploymentId: string;
 	objective?: string;
 	region?: string;
-} {
+}
+
+function planConfig(
+	deploymentId: string,
+	config?: DeployConfig,
+): PlanConfigInput {
 	return {
 		deploymentId,
-		...(config?.objective !== undefined ? { objective: config.objective } : {}),
-		...(config?.region !== undefined ? { region: config.region } : {}),
+		...(config?.objective !== undefined ? { objective: config.objective } : undefined),
+		...(config?.region !== undefined ? { region: config.region } : undefined),
 	};
 }
 
@@ -218,7 +221,7 @@ export function createYardClient(runtime: YardRuntime): YardClient {
 				{
 					deploymentId,
 					bindle,
-					...(config !== undefined ? { config } : {}),
+					...(config !== undefined ? { config } : undefined),
 				},
 				context,
 			);

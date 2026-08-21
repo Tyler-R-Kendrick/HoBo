@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 
 import type { BuildArtifact, BuildManifest, TargetRuntime } from "./parse.js";
 import { BUILD_MANIFEST_SCHEMA } from "./parse.js";
+import { isJsonObject, type JsonBag, type JsonValue } from "../json.js";
+
 
 export type BuildStartedEvent = {
 	readonly type: "build.Started";
@@ -60,20 +62,14 @@ export function projectBuildManifest(
 	};
 }
 
-export function stableStringify(value: unknown): string {
+export function stableStringify(value: JsonValue): string {
 	return `${JSON.stringify(value, replacer)}\n`;
 
-	function replacer(
-		this: Record<string, unknown>,
-		_key: string,
-		inner: unknown,
-	): unknown {
-		if (inner && typeof inner === "object" && !Array.isArray(inner)) {
-			const sorted: Record<string, unknown> = {};
-			for (const childKey of Object.keys(
-				inner as Record<string, unknown>,
-			).sort()) {
-				sorted[childKey] = (inner as Record<string, unknown>)[childKey];
+	function replacer(_key: string, inner: JsonValue): JsonValue {
+		if (inner && isJsonObject(inner) && !Array.isArray(inner)) {
+			const sorted: JsonBag = {};
+			for (const childKey of Object.keys(inner).sort()) {
+				sorted[childKey] = inner[childKey] ?? null;
 			}
 			return sorted;
 		}

@@ -8,6 +8,8 @@ import {
 	type GenerateAgentDocsInput,
 	generateAgentDocs,
 } from "./generate.js";
+import { type JsonObject } from "../json.js";
+
 
 // S3-05 — the agent-docs freshness gate. Mirrors src/build/codegen-gate.ts
 // (assertGeneratedFresh): regenerate the artifact set from the single source
@@ -29,7 +31,7 @@ export class AgentDocsError extends Error {
 	constructor(
 		readonly code: string,
 		message: string,
-		readonly detail: Record<string, unknown> = {},
+		readonly detail: JsonObject = {},
 	) {
 		super(message);
 		this.name = "AgentDocsError";

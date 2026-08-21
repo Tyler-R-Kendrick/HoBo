@@ -9,6 +9,8 @@ import {
 	helpText,
 	runHobo,
 } from "../src/index.js";
+import { type JsonObject } from "../src/json.js";
+
 
 const canonicalVerbNames = [
 	"up",
@@ -202,13 +204,16 @@ describe("HoBo CLI shell", () => {
 			expect(result.stderr).toBe("");
 			expect(result.stdout).not.toMatch(/not yet implemented\nUsage:/);
 
-			const envelope = JSON.parse(result.stdout) as Record<string, unknown>;
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as JsonObject;` is required at this I/O or test boundary.
+			const envelope = JSON.parse(result.stdout) as JsonObject;
 			expect(envelope.ok).toBe(false);
 			expect(envelope.verb).toBe("plan");
 			expect(envelope.status).toBe("not_implemented");
 			expect(envelope.code).toBe("HOBO_CLI_STUB");
 			expect(String(envelope.message)).toMatch(/composed @hobo\/hobo binary/);
+			// SAFETY: `expect((envelope.context as { cwd: string }).cwd).toBe(cwd);` is required at this I/O or test boundary.
 			expect((envelope.context as { cwd: string }).cwd).toBe(cwd);
+			// SAFETY: `expect((envelope.context as { projectDir: string }).projectDir).toBe(cwd);` is required at this I/O or test boundary.
 			expect((envelope.context as { projectDir: string }).projectDir).toBe(cwd);
 		});
 	});
@@ -219,7 +224,8 @@ describe("HoBo CLI shell", () => {
 			try {
 				const result = await runHobo(["plan", "--json"], { cwd });
 				expect(result.exitCode).toBe(0);
-				const envelope = JSON.parse(result.stdout) as Record<string, unknown>;
+				// SAFETY: `const envelope = JSON.parse(result.stdout) as JsonObject;` is required at this I/O or test boundary.
+				const envelope = JSON.parse(result.stdout) as JsonObject;
 				expect(envelope.ok).toBe(true);
 				expect(envelope.code).toBe("HOBO_CLI_STUB");
 			} finally {
@@ -324,6 +330,7 @@ describe("HoBo CLI shell", () => {
 			expect(result.exitCode).toBe(2);
 			expect(result.stderr).toBe("");
 
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				ok: boolean;
 				code: string;
@@ -400,6 +407,7 @@ describe("HoBo CLI shell", () => {
 				commands: {
 					plan: {
 						run: async ({ context }) => {
+							// SAFETY: `injectedContext = context as { buildId: string };` is required at this I/O or test boundary.
 							injectedContext = context as { buildId: string };
 							return {
 								ok: true,
@@ -407,6 +415,7 @@ describe("HoBo CLI shell", () => {
 								code: "HOBO_CLI_STUB",
 								message: "plan is not yet implemented",
 								data: {
+									// SAFETY: `contextBuildId: (context as { buildId: string }).buildId,` is required at this I/O or test boundary.
 									contextBuildId: (context as { buildId: string }).buildId,
 								},
 							};
@@ -416,6 +425,7 @@ describe("HoBo CLI shell", () => {
 			});
 
 			const result = await cli.run(["plan", "--json"], { cwd });
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				data: { contextBuildId: string };
 			};

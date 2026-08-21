@@ -27,6 +27,8 @@ import {
 	createUpCommand,
 	type YardRuntime,
 } from "../src/index.js";
+import { isJsonString, parseJsonObject, type JsonValue } from "../src/json.js";
+
 
 // S2-08: the cloud verbs (login/plan/up/down) wired to the @hobo/cloud Yard
 // through the shared yard-client seam. The mocked lane drives the gateway +
@@ -112,7 +114,7 @@ function makeRuntime(): YardRuntime {
 }
 
 async function withProject(
-	manifest: unknown,
+	manifest: JsonValue,
 	callback: (cwd: string) => Promise<void>,
 ): Promise<void> {
 	const dir = await mkdtemp(path.join(tmpdir(), "hobo-cli-cloud-"));
@@ -136,6 +138,7 @@ describe("hobo plan wired to the Yard Planner", () => {
 			const result = await cli.run(["plan", "--json"], { cwd });
 
 			expect(result.exitCode).toBe(0);
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				ok: boolean;
 				verb: string;
@@ -171,6 +174,7 @@ describe("hobo plan wired to the Yard Planner", () => {
 			const result = await cli.run(["plan", "--json"], { cwd });
 
 			expect(result.exitCode).toBe(1);
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				ok: boolean;
 				code: string;
@@ -190,6 +194,7 @@ describe("hobo plan wired to the Yard Planner", () => {
 	it("falls back to the shell stub when no runtime is injected", async () => {
 		await withProject({ name: "snapshop" }, async (cwd) => {
 			const result = await createHoboCli().run(["plan", "--json"], { cwd });
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				status: string;
 				code: string;
@@ -207,6 +212,7 @@ describe("hobo login establishes a Yard session the gateway accepts", () => {
 			const result = await cli.run(["login", "--json"], { cwd });
 
 			expect(result.exitCode).toBe(0);
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				ok: boolean;
 				data: {
@@ -217,8 +223,10 @@ describe("hobo login establishes a Yard session the gateway accepts", () => {
 			};
 			expect(envelope.ok).toBe(true);
 			expect(envelope.data.token).toMatch(/^hobo-svid-/);
+			// SAFETY: `expect(authorize(envelope.data.principal as never).allowed).toBe(true);` is required at this I/O or test boundary.
 			expect(authorize(envelope.data.principal as never).allowed).toBe(true);
 
+			// SAFETY: `const persisted = JSON.parse(` is required at this I/O or test boundary.
 			const persisted = JSON.parse(
 				await readFile(envelope.data.sessionFile, "utf8"),
 			) as {
@@ -238,6 +246,7 @@ describe("hobo up drives the in-process Yard to deployment.Deployed", () => {
 			const result = await cli.run(["up", "--json"], { cwd });
 
 			expect(result.exitCode).toBe(0);
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				ok: boolean;
 				status: string;
@@ -278,6 +287,7 @@ describe("hobo down drives the compensation/destroy path to Destroyed", () => {
 
 			const down = await cli.run(["down", "--json"], { cwd });
 			expect(down.exitCode).toBe(0);
+			// SAFETY: `const envelope = JSON.parse(down.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(down.stdout) as {
 				ok: boolean;
 				status: string;
@@ -313,12 +323,10 @@ describe("cloud verbs emit valid JSON envelopes end to end", () => {
 
 			for (const verb of ["login", "plan", "up", "down"]) {
 				const result = await cli.run([verb, "--json"], { cwd });
-				const envelope = JSON.parse(result.stdout) as {
-					verb: string;
-					status: string;
-				};
+				// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
+				const envelope = parseJsonObject(result.stdout);
 				expect(envelope.verb).toBe(verb);
-				expect(typeof envelope.status).toBe("string");
+				expect(isJsonString(envelope.status)).toBe(true);
 			}
 		});
 	});

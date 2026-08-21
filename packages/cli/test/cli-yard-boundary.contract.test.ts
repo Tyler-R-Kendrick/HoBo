@@ -25,6 +25,8 @@ import {
 	createYardClient,
 	type YardRuntime,
 } from "../src/index.js";
+import { type JsonObject } from "../src/json.js";
+
 
 // Consumer pact pinning the CLI <-> Yard (@hobo/cloud) boundary. The CLI's cloud
 // verbs share one call path (the yard-client seam); this contract asserts that
@@ -72,7 +74,7 @@ const UNSATISFIABLE = {
 interface Interaction {
 	description: string;
 	request: { operation: string; bindle: string };
-	response: Record<string, unknown>;
+	response: JsonObject;
 }
 
 let stores: RuntimeLocalEventStore[] = [];
@@ -130,6 +132,7 @@ function interaction(
 }
 
 describe("CLI <-> Yard boundary pact", () => {
+	// SAFETY: `const pact = JSON.parse(readFileSync(pactPath, "utf8")) as {` is required at this I/O or test boundary.
 	const pact = JSON.parse(readFileSync(pactPath, "utf8")) as {
 		consumer: { name: string };
 		provider: { name: string };

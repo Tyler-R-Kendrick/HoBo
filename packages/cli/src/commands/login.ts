@@ -23,8 +23,8 @@ export function createLoginCommand(deps: LoginCommandDeps = {}): CommandModule {
 			const session =
 				deps.session ??
 				createFixtureSession({
-					...(deps.tenant !== undefined ? { tenant: deps.tenant } : {}),
-					...(deps.subject !== undefined ? { subject: deps.subject } : {}),
+					...(deps.tenant !== undefined ? { tenant: deps.tenant } : undefined),
+					...(deps.subject !== undefined ? { subject: deps.subject } : undefined),
 				});
 
 			let sessionFile: string | null = null;
@@ -44,7 +44,7 @@ export function createLoginCommand(deps: LoginCommandDeps = {}): CommandModule {
 					principal: session.principal,
 					token: session.token,
 					issuedAt: session.issuedAt,
-					...(sessionFile !== null ? { sessionFile } : {}),
+					...(sessionFile !== null ? { sessionFile } : undefined),
 				},
 			};
 		},

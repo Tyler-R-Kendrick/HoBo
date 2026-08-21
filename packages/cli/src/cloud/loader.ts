@@ -11,6 +11,8 @@ import {
 } from "@hobo/bindles";
 
 import { BindleImportError } from "../shell/errors.js";
+import { isJsonString, isJsonObject, type JsonValue } from "../json.js";
+
 
 // The TypeScript-source bindle loader (docs/plans/0006 item 3-1). It
 // materializes the collection target the cloud verbs operate on from the
@@ -57,12 +59,14 @@ export async function loadBindleDefinition(
 			continue;
 		}
 
-		let module: Record<string, unknown>;
+		type BindleModule = {
+			default?: JsonValue;
+			bindle?: JsonValue;
+		};
+		let module: BindleModule;
 		try {
-			module = (await import(pathToFileURL(absolute).href)) as Record<
-				string,
-				unknown
-			>;
+			// SAFETY: ESM namespace from a local bindle source file.
+			module = (await import(pathToFileURL(absolute).href)) as BindleModule;
 		} catch (error) {
 			if (isUncompiledTypeScript(candidate, error)) {
 				continue;
@@ -70,14 +74,16 @@ export async function loadBindleDefinition(
 			throw new BindleImportError(absolute, error);
 		}
 
-		const definition = (module.default ?? module.bindle) as unknown;
-		return isBindleDefinition(definition) ? definition : null;
+		const definition = module.default ?? module.bindle;
+		return definition !== undefined && isBindleDefinition(definition)
+			? definition
+			: null;
 	}
 
 	return null;
 }
 
-function isUncompiledTypeScript(candidate: string, error: unknown): boolean {
+function isUncompiledTypeScript(candidate: string, error: JsonValue): boolean {
 	if (!/\.(ts|mts)$/u.test(candidate)) return false;
 	const message = error instanceof Error ? error.message : String(error);
 	return /ERR_UNKNOWN_FILE_EXTENSION|Unknown file extension|\.ts['"]/u.test(
@@ -85,20 +91,21 @@ function isUncompiledTypeScript(candidate: string, error: unknown): boolean {
 	);
 }
 
-function isBindleDefinition(value: unknown): value is BindleDefinition {
-	if (value === null || typeof value !== "object") {
+function isBindleDefinition(value: JsonValue): value is BindleDefinition {
+	if (value === null || !isJsonObject(value)) {
 		return false;
 	}
+	// SAFETY: `const candidate = value as {` is required at this I/O or test boundary.
 	const candidate = value as {
-		name?: unknown;
-		resources?: unknown;
-		edges?: unknown;
+		name?: JsonValue;
+		resources?: JsonValue;
+		edges?: JsonValue;
 	};
 	return (
-		typeof candidate.name === "string" &&
+		isJsonString(candidate.name) &&
 		candidate.name.length > 0 &&
 		candidate.resources !== null &&
-		typeof candidate.resources === "object" &&
+		isJsonObject(candidate.resources) &&
 		Array.isArray(candidate.edges)
 	);
 }
@@ -108,7 +115,35 @@ function isBindleDefinition(value: unknown): value is BindleDefinition {
 const COMPONENT_KINDS = new Set(["api", "web", "service"]);
 
 // The wiring layer's `data()` paradigm string for each backing-resource kind.
-const DATA_PARADIGM: Record<string, string> = {
+interface DataParadigmMap {
+	data: string;
+	kv: string;
+	bucket: string;
+	queue: string;
+	topic: string;
+	secret: string;
+}
+
+function paradigmFor(kind: string): string {
+	switch (kind) {
+		case "data":
+			return DATA_PARADIGM.data;
+		case "kv":
+			return DATA_PARADIGM.kv;
+		case "bucket":
+			return DATA_PARADIGM.bucket;
+		case "queue":
+			return DATA_PARADIGM.queue;
+		case "topic":
+			return DATA_PARADIGM.topic;
+		case "secret":
+			return DATA_PARADIGM.secret;
+		default:
+			return kind;
+	}
+}
+
+const DATA_PARADIGM: DataParadigmMap = {
 	data: "relational",
 	kv: "key-value",
 	bucket: "object",
@@ -142,7 +177,7 @@ export function targetFromBindleDefinition(
 				backing.set(
 					name,
 					collect.data(name, {
-						paradigm: DATA_PARADIGM[record.kind] ?? record.kind,
+						paradigm: paradigmFor(record.kind),
 					}),
 				);
 			}

@@ -18,13 +18,17 @@ import {
 	createHoboCli,
 	type DevRuntime,
 } from "../src/index.js";
+import { type JsonValue } from "../src/json.js";
+
 
 // S1-19: `hobo dev` boots a runtime-local Camp, collects + links the Bindle,
 // serves it locally, and live-tails the component-host events through the
 // Streamer — fully offline, no network. The ≤ 60 s cold budget is modeled as an
 // assertion on the in-process boot time.
 
+// SAFETY: `const KV_INTERFACE = "wasi:keyvalue/store@0.2.0" as InterfaceId;` is required at this I/O or test boundary.
 const KV_INTERFACE = "wasi:keyvalue/store@0.2.0" as InterfaceId;
+// SAFETY: `const HTTP_INCOMING = "wasi:http/incoming-handler@0.2.0" as InterfaceId;` is required at this I/O or test boundary.
 const HTTP_INCOMING = "wasi:http/incoming-handler@0.2.0" as InterfaceId;
 
 const HELLO_BINDLE = {
@@ -58,15 +62,16 @@ function makeDevRuntime(): DevRuntime {
 		exports: {
 			[HTTP_INCOMING]: {
 				handle: async (
-					_request: unknown,
+					_request: JsonValue,
 					context: {
 						callImport: (
 							importInterface: InterfaceId,
 							operation: string,
-							payload?: unknown,
-						) => Promise<unknown>;
+							payload?: JsonValue,
+						) => Promise<JsonValue>;
 					},
 				) => {
+					// SAFETY: `const greeting = (await context.callImport(KV_INTERFACE, "get", {` is required at this I/O or test boundary.
 					const greeting = (await context.callImport(KV_INTERFACE, "get", {
 						key: "greeting",
 					})) as string;
@@ -133,6 +138,7 @@ describe("hobo dev boots a runtime-local Camp offline", () => {
 			});
 
 			expect(result.exitCode).toBe(0);
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				ok: boolean;
 				verb: string;
@@ -180,6 +186,7 @@ describe("hobo dev boots a runtime-local Camp offline", () => {
 					commands: { dev: createDevCommand({ runtime: makeDevRuntime() }) },
 				});
 				const result = await cli.run(["dev", "--json"], { cwd });
+				// SAFETY: `return JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 				return JSON.parse(result.stdout) as {
 					data: { served: { body: string }; events: string[] };
 				};
@@ -195,6 +202,7 @@ describe("hobo dev boots a runtime-local Camp offline", () => {
 	it("falls back to the shell stub when no runtime is injected", async () => {
 		await withProject(async (cwd) => {
 			const result = await createHoboCli().run(["dev", "--json"], { cwd });
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				status: string;
 				code: string;

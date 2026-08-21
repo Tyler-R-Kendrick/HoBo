@@ -1,13 +1,15 @@
-export function sortKeys<T>(value: T): T {
-  if (Array.isArray(value)) {
-    return value.map((entry) => sortKeys(entry)) as T;
+import { isJsonArray, isJsonObject, type JsonBag, type JsonValue } from "./json.js";
+
+export function sortKeys(value: JsonValue): JsonValue {
+  if (isJsonArray(value)) {
+    return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!isJsonObject(value)) {
     return value;
   }
-  return Object.fromEntries(
-    Object.keys(value)
-      .sort()
-      .map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
-  ) as T;
+  const bag: JsonBag = {};
+  for (const key of Object.keys(value).sort()) {
+    bag[key] = sortKeys(value[key] ?? null);
+  }
+  return bag;
 }

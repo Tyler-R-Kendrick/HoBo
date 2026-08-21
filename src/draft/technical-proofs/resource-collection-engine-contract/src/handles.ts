@@ -6,6 +6,8 @@ import type {
   ResourceHandle,
   ResourceRecord,
 } from "./types.js";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const COMPONENT_FACTORIES = new Set(["api", "web", "service", "job"]);
 export const DEFAULT_EXPORTS_BY_FACTORY = Object.freeze({
@@ -16,27 +18,29 @@ export const DEFAULT_EXPORTS_BY_FACTORY = Object.freeze({
 });
 export const RESOURCE_ID = /^[A-Za-z][A-Za-z0-9_-]*$/;
 
-export function assertResourceName(name: unknown, path: string): asserts name is string {
-  if (typeof name !== "string" || !RESOURCE_ID.test(name)) {
+export function assertResourceName(name: JsonValue, path: string): asserts name is string {
+  if (!isJsonString(name) || !RESOURCE_ID.test(name)) {
     throw new CollectionEngineError(path, "invalid resource id");
   }
 }
 
 export function resolveResourceHandle(
-  handle: unknown,
+  handle: ResourceHandle | JsonObject,
   path: string,
 ): ResolvedResource {
-  if (!handle || typeof handle !== "object") {
+  if (!handle || !isJsonObject(handle)) {
     throw new CollectionEngineError(path, "must reference a collected resource handle");
   }
-  const candidate = handle as ResourceHandle;
-  if (typeof candidate.name !== "string" || typeof candidate.port !== "string") {
+  const name = handle.name;
+  const port = handle.port;
+  const kind = handle.kind;
+  if (!isJsonString(name) || !isJsonString(port)) {
     throw new CollectionEngineError(path, "must reference a collected resource handle");
   }
   return {
-    kind: String(candidate.kind),
-    name: candidate.name,
-    port: candidate.port,
+    kind: isJsonString(kind) ? kind : String(kind),
+    name,
+    port,
   };
 }
 
@@ -61,7 +65,7 @@ export function declareResource(
   state: CollectionState,
   entry: CatalogEntry,
   name: string,
-  options: { bind?: Record<string, unknown> } = {},
+  options: { bind?: JsonObject } = {},
 ): ResourceHandle {
   assertResourceName(name, `${entry.factory}.name`);
   if (state.resources.has(name)) {
@@ -101,7 +105,7 @@ export function createHandle(
     name: record.name,
     stableId: record.stableId,
     port: record.port,
-    route(method: string, path: string, handler?: () => unknown) {
+    route(method: string, path: string, handler?: () => void) {
       if (!COMPONENT_FACTORIES.has(record.kind)) {
         throw new CollectionEngineError(
           `resources.${record.name}.route`,
@@ -112,7 +116,7 @@ export function createHandle(
         method: String(method).toUpperCase(),
         path: String(path),
       });
-      if (typeof handler === "function") {
+      if (handler instanceof Function) {
         handler();
       }
       return handle;
@@ -134,7 +138,7 @@ export function createHandle(
   };
 
   for (const verb of entry.allowVerbs) {
-    handle[verb] = (...args: unknown[]) => {
+    handle[verb] = (...args: JsonValue[]) => {
       record.usedVerbs.add(verb);
       return Object.freeze({
         lowersTo: "hobo:sdk",

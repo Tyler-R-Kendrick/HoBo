@@ -4,22 +4,22 @@ import {
   clientTypeFor,
 } from "./handles.js";
 import type { ComponentHost, ResourceRecord } from "./types.js";
+import { isJsonObject, type JsonBag, type JsonObject } from "./json.js";
 
-function omitEmpty<T extends Record<string, unknown>>(value: T): T {
-  return Object.fromEntries(
-    Object.entries(value).filter(([, entry]) => {
-      if (Array.isArray(entry)) {
-        return entry.length > 0;
-      }
-      if (entry && typeof entry === "object") {
-        return Object.keys(entry).length > 0;
-      }
-      return entry !== undefined;
-    }),
-  ) as T;
+const factoryExports: { readonly [factory: string]: readonly string[] } = DEFAULT_EXPORTS_BY_FACTORY;
+
+function omitEmpty(value: JsonObject): JsonObject {
+  const bag: JsonBag = {};
+  for (const [key, entry] of Object.entries(value)) {
+    if (Array.isArray(entry) && entry.length === 0) continue;
+    if (isJsonObject(entry) && Object.keys(entry).length === 0) continue;
+    if (entry === undefined) continue;
+    bag[key] = entry;
+  }
+  return bag;
 }
 
-function manifestResource(record: ResourceRecord): Record<string, unknown> {
+function manifestResource(record: ResourceRecord): JsonObject {
   if (COMPONENT_FACTORIES.has(record.kind)) {
     const links = [...record.bindAliases.values()].map((target) => ({
       import: target.port,
@@ -29,9 +29,7 @@ function manifestResource(record: ResourceRecord): Record<string, unknown> {
       type: "component.v1",
       kind: record.kind,
       runtime: "wasm",
-      exports: DEFAULT_EXPORTS_BY_FACTORY[
-        record.kind as keyof typeof DEFAULT_EXPORTS_BY_FACTORY
-      ] ?? [],
+      exports: factoryExports[record.kind] ?? [],
       links,
       routes: record.routes,
       bindings: Object.fromEntries(
@@ -72,7 +70,7 @@ export function assembleManifest({
 }: {
   componentHost: ComponentHost;
   resources: Map<string, ResourceRecord>;
-}): Record<string, unknown> {
+}): JsonObject {
   return {
     schema: "hobo.manifest/v1",
     componentHost,

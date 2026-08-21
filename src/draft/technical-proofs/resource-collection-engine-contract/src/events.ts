@@ -2,14 +2,16 @@ import { createHash } from "node:crypto";
 
 import { sortKeys } from "./sort-keys.js";
 import type { CollectionEvent, CoverageSummary } from "./types.js";
+import { type JsonValue, type JsonObject } from "./json.js";
 
-function stableDigest(value: unknown): string {
+
+function stableDigest(value: JsonValue): string {
   return createHash("sha256").update(JSON.stringify(sortKeys(value))).digest("hex");
 }
 
 function createFact(
   type: CollectionEvent["type"],
-  data: Record<string, unknown>,
+  data: JsonObject,
   seq: 1 | 2,
 ): CollectionEvent {
   return {
@@ -30,7 +32,7 @@ export function createCollectionEvents({
   coverage,
 }: {
   bindleId: string;
-  manifest: Record<string, unknown>;
+  manifest: JsonObject;
   manifestHash: string;
   observedResourceIds: string[];
   observedBindKeys: string[];

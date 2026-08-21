@@ -47,6 +47,22 @@ function connectionStorePath(hoboHome: string): string {
 	return join(hoboHome, "connections", "events.jsonl");
 }
 
+/**
+ * Every connection event in the shared store, across all tenants.
+ *
+ * Callers must filter: this is the raw file, and the only two places that read
+ * it are the per-tenant load (which keeps its own) and the persist (which keeps
+ * everyone else's).
+ */
+function readAllConnectionEvents(hoboHome: string): ConnectionEvent[] {
+	const path = connectionStorePath(hoboHome);
+	if (!existsSync(path)) return [];
+	return readFileSync(path, "utf8")
+		.split("\n")
+		.filter(Boolean)
+		.map((line) => JSON.parse(line) as ConnectionEvent);
+}
+
 function loadProfileDefaultStation(
 	hoboHome: string,
 ): { id: string } | undefined {
@@ -126,21 +142,38 @@ export function createManagementContext(
 					...(home.now !== undefined ? { now: home.now } : {}),
 				});
 			}
-			const lines = readFileSync(path, "utf8").split("\n").filter(Boolean);
-			const events = lines.map((line) => JSON.parse(line) as ConnectionEvent);
+			// Only this tenant's events. The store is a single shared file, and
+			// `ConnectionService` is constructed for one tenant: it guards
+			// *mutations* with `assertSameTenant`, but `list()` and `get()` read
+			// `byId` unfiltered, so whatever `fromEvents` is handed is what a
+			// caller can see. Feeding it the whole file let any tenant list and
+			// get every other tenant's connections — provider, subject,
+			// stationId, granted scopes and credentialRef — because the service
+			// was told those events were its own.
+			const events = readAllConnectionEvents(hoboHome).filter(
+				(event) => event.tenant === tenant,
+			);
 			return ConnectionService.fromEvents(events, {
 				tenant,
 				vault,
 				...(home.now !== undefined ? { now: home.now } : {}),
 			});
 		},
-		persistConnections: (_tenant: string, service: ConnectionService) => {
+		persistConnections: (tenant: string, service: ConnectionService) => {
 			const dir = join(hoboHome, "connections");
 			mkdirSync(dir, { recursive: true });
 			const path = connectionStorePath(hoboHome);
+			// Merge, never replace. The service now holds only this tenant's
+			// events, so writing `service.events` alone would delete every other
+			// tenant's history from the shared file — the filter above and this
+			// merge are one change and must not be separated.
+			const foreign = readAllConnectionEvents(hoboHome).filter(
+				(event) => event.tenant !== tenant,
+			);
+			const merged = [...foreign, ...service.events];
 			writeFileSync(
 				path,
-				`${service.events.map((e) => JSON.stringify(e)).join("\n")}\n`,
+				`${merged.map((e) => JSON.stringify(e)).join("\n")}\n`,
 				"utf8",
 			);
 		},

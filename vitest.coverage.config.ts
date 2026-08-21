@@ -259,7 +259,7 @@ export default defineConfig({
 				"packages/providers/runner-github/**": { statements: 82, branches: 78, functions: 87, lines: 83 },
 				"packages/recipes/**": { statements: 89, branches: 82, functions: 95, lines: 90 },
 				"packages/registry/**": { statements: 93, branches: 86, functions: 98, lines: 94 },
-				"packages/replay/**": { statements: 83, branches: 76, functions: 80, lines: 85 },
+				"packages/replay/**": { statements: 87, branches: 81, functions: 82, lines: 89 },
 				"packages/rift/**": { statements: 71, branches: 58, functions: 83, lines: 72 },
 				"packages/runtime/**": { statements: 85, branches: 75, functions: 84, lines: 85 },
 				"packages/runtimes/**": { statements: 70, branches: 57, functions: 74, lines: 70 },

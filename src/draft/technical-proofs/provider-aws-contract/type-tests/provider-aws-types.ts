@@ -1,5 +1,7 @@
 import type * as ProviderAwsContract from "../src/provider-aws.d.mts";
 import type { AwsProvider } from "../src/provider-aws.d.mts";
+import { type JsonObject } from "../src/json.js";
+
 
 declare const aws: typeof ProviderAwsContract.aws;
 declare const createAwsProvider: typeof ProviderAwsContract.createAwsProvider;
@@ -21,13 +23,11 @@ rds.options.storageGb satisfies number;
 fargate.options.memoryMb satisfies number;
 appRunner.options.ingress satisfies "public" | "private";
 client.connectionString satisfies string;
-emission satisfies Record<string, unknown>;
+emission satisfies JsonObject;
 manifest.capabilities[0].resourceClasses satisfies string[];
 
 // @ts-expect-error RDS options reject untyped option escape hatches.
 aws.with.rds({ rawTerraformResourceType: "aws_db_instance" });
 
-if (false) {
-  // @ts-expect-error client is typed to declared AWS ports only.
-  provider.client("email", {});
-}
+// @ts-expect-error client is typed to declared AWS ports only.
+provider.client("email", {});

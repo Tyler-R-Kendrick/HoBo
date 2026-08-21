@@ -1,5 +1,7 @@
 import type * as ProviderGcpContract from "../src/provider-gcp.d.mts";
 import type { GcpProvider } from "../src/provider-gcp.d.mts";
+import { type JsonObject } from "../src/json.js";
+
 
 declare const createGcpMultiCloudShopPlan: typeof ProviderGcpContract.createGcpMultiCloudShopPlan;
 declare const createGcpProvider: typeof ProviderGcpContract.createGcpProvider;
@@ -22,13 +24,11 @@ cloudRun.options.ingress satisfies "all" | "internal" | "internal-and-cloud-load
 cloudRun.options.cpuAlwaysAllocated satisfies boolean;
 pubSub.options.ordering satisfies boolean;
 client.connectionString satisfies string;
-emission satisfies Record<string, unknown>;
+emission satisfies JsonObject;
 manifest.capabilities[0].resourceClasses satisfies string[];
 
 // @ts-expect-error Cloud SQL options reject untyped option escape hatches.
 gcp.with.cloudSql({ rawTerraformResourceType: "google_sql_database_instance" });
 
-if (false) {
-  // @ts-expect-error client is typed to declared GCP ports only.
-  provider.client("email", {});
-}
+// @ts-expect-error client is typed to declared GCP ports only.
+provider.client("email", {});

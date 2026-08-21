@@ -110,7 +110,7 @@ test("multi-cloud-shop fixture preserves topology and bindings against the exist
   const awsEmission = realizeAwsPlan(createAwsProvider(), createAwsMultiCloudShopPlan());
   const gcpEmission = realizeGcpPlan(createGcpProvider(), createGcpMultiCloudShopPlan());
 
-  assert.deepEqual(portableShape(gcpEmission), portableShape(awsEmission));
+  assert.deepEqual(portableRecord(gcpEmission), portableRecord(awsEmission));
 });
 
 test("provider-scoped .with blocks only affect GCP-resolved resources and report GCP-only features", () => {
@@ -219,7 +219,7 @@ test("unsupported regions, missing require facts, and project quota exhaustion r
   assert.equal(quota.reason.resourceId, "web");
 });
 
-function portableShape(emission) {
+function portableRecord(emission) {
   return {
     resources: emission.iac.nodes.map((node) => ({
       id: node.id,

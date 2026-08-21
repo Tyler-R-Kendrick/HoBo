@@ -22,16 +22,18 @@ import {
  * see, so tightening a refusal without updating the contract fails here.
  */
 
+type PactValue = string | number | boolean | null | PactValue[] | PactBody;
+type PactBody = { readonly [key: string]: PactValue };
 type Interaction = {
 	readonly description: string;
-	readonly request: { readonly body: unknown };
+	readonly request: { readonly body: PactBody };
 	readonly response: {
 		readonly status: number;
-		readonly body: Record<string, unknown>;
+		readonly body: PactBody;
 	};
 };
 
-const PACT = JSON.parse(
+const PACT_SOURCE = JSON.parse(
 	readFileSync(
 		fileURLToPath(
 			new URL(
@@ -41,7 +43,10 @@ const PACT = JSON.parse(
 		),
 		"utf8",
 	),
-) as {
+	);
+
+// SAFETY: PACT_SOURCE is the repository-owned Pact schema under test.
+const PACT = PACT_SOURCE as {
 	consumer: { name: string };
 	provider: { name: string };
 	interactions: readonly Interaction[];
@@ -80,6 +85,7 @@ describe("hobo-resource-intent-declaration (provider contract)", () => {
 				thrown = error;
 			}
 			expect(thrown).toBeInstanceOf(ResourceIntentError);
+			// SAFETY: the preceding assertion verifies the caught value is ResourceIntentError.
 			const error = thrown as ResourceIntentError;
 			expect(error.code).toBe(interaction.response.body.code);
 			expect(error.path).toBe(interaction.response.body.path);

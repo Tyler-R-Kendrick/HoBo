@@ -22,6 +22,7 @@
  * mechanism behind it rather than a hypothetical.
  */
 import { redactProviderText, TtlShProviderError } from "./errors.js";
+import { parseJsonValue } from "./json.js";
 import {
 	type ArtifactPayload,
 	isAcknowledgedTemporaryHandoff,
@@ -163,11 +164,7 @@ export function promotionUrgency(input: {
 	readonly record: TtlShPushRecord;
 	readonly payload: ArtifactPayload;
 	readonly nowMs: number;
-}): {
-	readonly expired: boolean;
-	readonly remainingMs: number;
-	readonly dueInMs: number;
-} {
+}) {
 	const remainingMs = Math.max(input.record.expiresAtMs - input.nowMs, 0);
 	const expired = input.record.expiresAtMs <= input.nowMs;
 	if (!isAcknowledgedTemporaryHandoff(input.payload)) {
@@ -212,7 +209,7 @@ export async function promoteArtifact(
 	const argv = buildCraneCopyArgv({
 		source: input.record,
 		target: input.target,
-		...(input.binary !== undefined ? { binary: input.binary } : {}),
+		...(input.binary !== undefined ? { binary: input.binary } : undefined),
 	});
 
 	let result: Awaited<ReturnType<ProcessRunner["run"]>>;
@@ -228,7 +225,10 @@ export async function promoteArtifact(
 		throw new TtlShProviderError(
 			"PROVIDER_OPERATION_AMBIGUOUS",
 			"the promotion did not complete; the target may hold a partial upload, and re-running the same digest copy is the way to find out",
-			{ cause, detail: { target: input.target.ref } },
+			{
+				cause: cause instanceof Error ? cause : new Error(String(cause)),
+				detail: { target: input.target.ref },
+			},
 		);
 	}
 
@@ -241,14 +241,18 @@ export async function promoteArtifact(
 	}
 
 	const reported = REPORTED_DIGEST.exec(`${result.stdout}\n${result.stderr}`);
-	if (reported !== null && parseArtifactDigest(reported[0]) !== expected) {
+	const reportedDigest = reported?.[0];
+	if (
+		reportedDigest !== undefined &&
+		parseArtifactDigest(reportedDigest) !== expected
+	) {
 		// Either the tool copied something else or the source name now resolves to
 		// different content. Both are real on an anonymous registry, and neither is
 		// a successful promotion.
 		throw new TtlShProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			"the promoted copy reports a different digest than the source artifact",
-			{ detail: { expected, reported: reported[0] } },
+			{ detail: { expected, reported: reportedDigest } },
 		);
 	}
 
@@ -293,6 +297,9 @@ export function toPromotionFacts(
 			},
 		},
 	];
-	assertNoCredentialMaterial(facts, "the ttl.sh promotion facts");
+	assertNoCredentialMaterial(
+		parseJsonValue(JSON.stringify(facts)),
+		"the ttl.sh promotion facts",
+	);
 	return facts;
 }

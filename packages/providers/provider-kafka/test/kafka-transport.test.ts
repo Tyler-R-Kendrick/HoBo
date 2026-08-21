@@ -1,3 +1,4 @@
+import { parseConsumerGroupId, parseTopicName } from "@hobo/core";
 import { first } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import {
@@ -33,7 +34,7 @@ describe("kafka live transport path", () => {
 		expect(bus.fidelity).toBe("live");
 		expect(bus.transport).toBe(transport);
 
-		const topic = "orders" as never;
+		const topic = parseTopicName("orders");
 		await bus.publish(topic, { id: 1 }, { key: "k1", idempotencyKey: "ik1" });
 		const dedup = await bus.publish(
 			topic,
@@ -42,7 +43,7 @@ describe("kafka live transport path", () => {
 		);
 		expect(dedup.deduped).toBe(true);
 
-		const batch = await bus.consume(topic, "workers" as never, {
+		const batch = await bus.consume(topic, parseConsumerGroupId("workers"), {
 			maxMessages: 10,
 		});
 		expect(batch).toHaveLength(1);
@@ -51,7 +52,7 @@ describe("kafka live transport path", () => {
 		bus.ack(first(batch).messageId, first(batch).leaseId);
 		await bus.flush?.();
 
-		const again = await bus.consume(topic, "workers" as never);
+		const again = await bus.consume(topic, parseConsumerGroupId("workers"));
 		expect(again).toHaveLength(0);
 
 		const types = bus.events().map((e) => e.type);
@@ -86,7 +87,7 @@ describe("kafka live transport path", () => {
 			cluster: localRedpandaCluster("acme"),
 			transport: spy,
 		});
-		await bus.publish("t" as never, { x: 1 });
+		await bus.publish(parseTopicName("t"), { x: 1 });
 		expect(produceCalls).toHaveLength(1);
 		expect(bus.fidelity).toBe("live");
 	});

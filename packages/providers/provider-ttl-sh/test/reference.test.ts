@@ -1,7 +1,6 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
-import { isTtlShProviderError } from "../src/errors.js";
 import {
 	contentAddressedNameFor,
 	createTtlShImageReference,
@@ -15,14 +14,13 @@ import {
 	TTL_SH_MAX_TTL_MINUTES,
 } from "../src/reference.js";
 import {
+	expectTtlShCode,
+	expectTtlShProviderError,
 	FAKE_CONTENT_NAME,
 	FAKE_DIGEST,
 	FAKE_UUID_NAME,
 	NOW_MS,
 } from "./fixtures/index.js";
-
-const failsWith = (code: string) => (error: unknown) =>
-	isTtlShProviderError(error) && error.code === code;
 
 describe("parseTtlShImageReference", () => {
 	it("parses a UUID-named reference", () => {
@@ -52,9 +50,9 @@ describe("parseTtlShImageReference", () => {
 		it(`refuses ${reason}`, () => {
 			// The push carries no credential, so a wrong host does not fail —
 			// it succeeds somewhere that keeps the layers.
-			assert.throws(
+			expectTtlShCode(
 				() => parseTtlShImageReference(input),
-				failsWith("TRANSPORT_NOT_ALLOWED"),
+				"TRANSPORT_NOT_ALLOWED",
 			);
 		});
 	}
@@ -73,17 +71,14 @@ describe("parseTtlShImageReference", () => {
 		["an empty string", ""],
 	] as const) {
 		it(`refuses ${reason}`, () => {
-			assert.throws(
-				() => parseTtlShImageReference(input),
-				(error: unknown) => isTtlShProviderError(error),
-			);
+			expectTtlShProviderError(() => parseTtlShImageReference(input));
 		});
 	}
 
 	it("refuses a reference longer than the bound", () => {
-		assert.throws(
+		expectTtlShCode(
 			() => parseTtlShImageReference(`ttl.sh/${"a".repeat(200)}:1h`),
-			failsWith("INVALID_IMAGE_REFERENCE"),
+			"INVALID_IMAGE_REFERENCE",
 		);
 	});
 });
@@ -100,24 +95,24 @@ describe("parseArtifactName", () => {
 		it(`refuses the guessable name ${JSON.stringify(guessable)}`, () => {
 			// ttl.sh is unauthenticated in both directions: the name is the
 			// only thing between the image and whoever tries it.
-			assert.throws(
+			expectTtlShCode(
 				() => parseArtifactName(guessable),
-				failsWith("GUESSABLE_ARTIFACT_NAME"),
+				"GUESSABLE_ARTIFACT_NAME",
 			);
 		});
 	}
 
 	it("refuses a UUID with an uppercase digit, which would resolve elsewhere", () => {
-		assert.throws(
+		expectTtlShCode(
 			() => parseArtifactName(FAKE_UUID_NAME.toUpperCase()),
-			failsWith("GUESSABLE_ARTIFACT_NAME"),
+			"GUESSABLE_ARTIFACT_NAME",
 		);
 	});
 
 	it("refuses a name that only looks content-addressed", () => {
-		assert.throws(
+		expectTtlShCode(
 			() => parseArtifactName("sha256-deadbeef"),
-			failsWith("GUESSABLE_ARTIFACT_NAME"),
+			"GUESSABLE_ARTIFACT_NAME",
 		);
 	});
 
@@ -140,29 +135,29 @@ describe("parseTtlWindow", () => {
 	it("refuses a TTL over the documented 24h ceiling", () => {
 		// Refused rather than clamped: a caller planning around 48 hours is
 		// planning around a lease that will not exist.
-		assert.throws(() => parseTtlWindow("25h"), failsWith("TTL_OUT_OF_RANGE"));
-		assert.throws(() => parseTtlWindow("1441m"), failsWith("TTL_OUT_OF_RANGE"));
+		expectTtlShCode(() => parseTtlWindow("25h"), "TTL_OUT_OF_RANGE");
+		expectTtlShCode(() => parseTtlWindow("1441m"), "TTL_OUT_OF_RANGE");
 	});
 
 	it("refuses an undocumented unit rather than translating it", () => {
-		assert.throws(() => parseTtlWindow("1d"), failsWith("TTL_OUT_OF_RANGE"));
-		assert.throws(() => parseTtlWindow("30s"), failsWith("TTL_OUT_OF_RANGE"));
+		expectTtlShCode(() => parseTtlWindow("1d"), "TTL_OUT_OF_RANGE");
+		expectTtlShCode(() => parseTtlWindow("30s"), "TTL_OUT_OF_RANGE");
 	});
 
 	it("refuses a zero, negative, or non-numeric TTL", () => {
-		assert.throws(() => parseTtlWindow("0m"), failsWith("TTL_OUT_OF_RANGE"));
-		assert.throws(() => parseTtlWindow("-1h"), failsWith("TTL_OUT_OF_RANGE"));
-		assert.throws(() => parseTtlWindow("h"), failsWith("TTL_OUT_OF_RANGE"));
-		assert.throws(() => parseTtlWindow("01h"), failsWith("TTL_OUT_OF_RANGE"));
+		expectTtlShCode(() => parseTtlWindow("0m"), "TTL_OUT_OF_RANGE");
+		expectTtlShCode(() => parseTtlWindow("-1h"), "TTL_OUT_OF_RANGE");
+		expectTtlShCode(() => parseTtlWindow("h"), "TTL_OUT_OF_RANGE");
+		expectTtlShCode(() => parseTtlWindow("01h"), "TTL_OUT_OF_RANGE");
 	});
 });
 
 describe("digests and derived references", () => {
 	it("parses a well-formed digest and refuses a malformed one", () => {
 		assert.equal(parseArtifactDigest(FAKE_DIGEST), FAKE_DIGEST);
-		assert.throws(
+		expectTtlShCode(
 			() => parseArtifactDigest("sha512:0000"),
-			failsWith("INVALID_IMAGE_REFERENCE"),
+			"INVALID_IMAGE_REFERENCE",
 		);
 	});
 
@@ -197,10 +192,7 @@ describe("expiry", () => {
 			name: FAKE_UUID_NAME,
 			ttl: "1h",
 		});
-		assert.throws(
-			() => expiresAtMs(reference, 0),
-			failsWith("INVALID_IMAGE_REFERENCE"),
-		);
+		expectTtlShCode(() => expiresAtMs(reference, 0), "INVALID_IMAGE_REFERENCE");
 	});
 
 	it("addresses the manifest under the /v2/ API surface", () => {

@@ -28,7 +28,9 @@ export function diagnoseKafkaReadiness(
 
 	const servers =
 		input.cluster?.bootstrapServers ??
-		(typeof redpandaEnv === "string" ? redpandaEnv.split(",") : []);
+		(redpandaEnv !== undefined && redpandaEnv.length > 0
+			? redpandaEnv.split(",")
+			: []);
 	const brokersReachable =
 		servers.length > 0 ? (input.probeBrokers?.(servers) ?? false) : false;
 

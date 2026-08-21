@@ -1,11 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
-import {
-	isTtlShProviderError,
-	redactProviderText,
-	ttlShErrorForStatus,
-} from "../src/errors.js";
+import { redactProviderText, ttlShErrorForStatus } from "../src/errors.js";
 import {
 	assertAllowedEndpoint,
 	assertNoCredentialHeaders,
@@ -14,9 +10,11 @@ import {
 } from "../src/transport.js";
 import {
 	createStubTransport,
+	expectTtlShCode,
 	FAKE_DIGEST,
 	FAKE_UUID_NAME,
 	LEAKED_TOKEN,
+	rejectTtlShCode,
 } from "./fixtures/index.js";
 
 const MANIFEST_URL = `https://ttl.sh/v2/${FAKE_UUID_NAME}/manifests/1h`;
@@ -28,9 +26,6 @@ const REQUEST = {
 	timeoutMs: 5_000,
 	maxResponseBytes: 64 * 1024,
 } as const;
-
-const failsWith = (code: string) => (error: unknown) =>
-	isTtlShProviderError(error) && error.code === code;
 
 describe("assertAllowedEndpoint", () => {
 	it("accepts a manifest read on the registry API surface", () => {
@@ -64,21 +59,21 @@ describe("assertAllowedEndpoint", () => {
 		["a malformed URL", "not-a-url"],
 	] as const) {
 		it(`refuses ${reason}`, () => {
-			assert.throws(
+			expectTtlShCode(
 				() => assertAllowedEndpoint(url, TTL_SH_REGISTRY_POLICY),
-				failsWith("TRANSPORT_NOT_ALLOWED"),
+				"TRANSPORT_NOT_ALLOWED",
 			);
 		});
 	}
 
 	it("refuses userinfo as a credential rather than as a bad URL", () => {
-		assert.throws(
+		expectTtlShCode(
 			() =>
 				assertAllowedEndpoint(
 					`https://user:${LEAKED_TOKEN}@ttl.sh/v2/`,
 					TTL_SH_REGISTRY_POLICY,
 				),
-			failsWith("CREDENTIAL_REFUSED"),
+			"CREDENTIAL_REFUSED",
 		);
 	});
 });
@@ -92,9 +87,9 @@ describe("assertNoCredentialHeaders", () => {
 		"x-registry-auth",
 	]) {
 		it(`refuses a ${header} header`, () => {
-			assert.throws(
+			expectTtlShCode(
 				() => assertNoCredentialHeaders({ [header]: `Bearer ${LEAKED_TOKEN}` }),
-				failsWith("CREDENTIAL_REFUSED"),
+				"CREDENTIAL_REFUSED",
 			);
 		});
 	}
@@ -122,12 +117,13 @@ describe("createGuardedTransport", () => {
 	it("refuses to send a credential even when the URL is allowlisted", async () => {
 		const stub = createStubTransport({});
 
-		await assert.rejects(
-			createGuardedTransport(stub).request({
-				...REQUEST,
-				headers: { authorization: `Bearer ${LEAKED_TOKEN}` },
-			}),
-			failsWith("CREDENTIAL_REFUSED"),
+		await rejectTtlShCode(
+			() =>
+				createGuardedTransport(stub).request({
+					...REQUEST,
+					headers: { authorization: `Bearer ${LEAKED_TOKEN}` },
+				}),
+			"CREDENTIAL_REFUSED",
 		);
 		// Refused before the request left the process.
 		assert.equal(stub.requests.length, 0);
@@ -144,13 +140,11 @@ describe("createGuardedTransport", () => {
 			],
 		});
 
-		await assert.rejects(
-			createGuardedTransport(stub).request(REQUEST),
-			(error: unknown) =>
-				isTtlShProviderError(error) &&
-				error.code === "PROVIDER_CONTRACT_CHANGED" &&
-				/never follows/u.test(error.message),
+		const error = await rejectTtlShCode(
+			() => createGuardedTransport(stub).request(REQUEST),
+			"PROVIDER_CONTRACT_CHANGED",
 		);
+		assert.match(error.message, /never follows/u);
 	});
 
 	it("treats an authentication challenge as a contract change", async () => {
@@ -166,9 +160,9 @@ describe("createGuardedTransport", () => {
 			],
 		});
 
-		await assert.rejects(
-			createGuardedTransport(stub).request(REQUEST),
-			failsWith("PROVIDER_CONTRACT_CHANGED"),
+		await rejectTtlShCode(
+			() => createGuardedTransport(stub).request(REQUEST),
+			"PROVIDER_CONTRACT_CHANGED",
 		);
 	});
 
@@ -182,12 +176,13 @@ describe("createGuardedTransport", () => {
 			],
 		});
 
-		await assert.rejects(
-			createGuardedTransport(stub).request({
-				...REQUEST,
-				maxResponseBytes: TTL_SH_REGISTRY_POLICY.maxResponseBytes,
-			}),
-			failsWith("PROVIDER_CONTRACT_CHANGED"),
+		await rejectTtlShCode(
+			() =>
+				createGuardedTransport(stub).request({
+					...REQUEST,
+					maxResponseBytes: TTL_SH_REGISTRY_POLICY.maxResponseBytes,
+				}),
+			"PROVIDER_CONTRACT_CHANGED",
 		);
 	});
 
@@ -198,9 +193,9 @@ describe("createGuardedTransport", () => {
 			],
 		});
 
-		await assert.rejects(
-			createGuardedTransport(stub).request(REQUEST),
-			failsWith("PROVIDER_CONTRACT_CHANGED"),
+		await rejectTtlShCode(
+			() => createGuardedTransport(stub).request(REQUEST),
+			"PROVIDER_CONTRACT_CHANGED",
 		);
 	});
 
@@ -211,17 +206,16 @@ describe("createGuardedTransport", () => {
 		// shared guard refuses and names the bound instead.
 		const stub = createStubTransport({});
 
-		await assert.rejects(
-			createGuardedTransport(stub).request({
-				...REQUEST,
-				timeoutMs: 10 * 60_000,
-				maxResponseBytes: 100 * 1024 * 1024,
-			}),
-			(error: unknown) =>
-				isTtlShProviderError(error) &&
-				error.code === "PROVIDER_CONTRACT_CHANGED" &&
-				/exceeds the policy cap/u.test(error.message),
+		const error = await rejectTtlShCode(
+			() =>
+				createGuardedTransport(stub).request({
+					...REQUEST,
+					timeoutMs: 10 * 60_000,
+					maxResponseBytes: 100 * 1024 * 1024,
+				}),
+			"PROVIDER_CONTRACT_CHANGED",
 		);
+		assert.match(error.message, /exceeds the policy cap/u);
 		assert.equal(stub.requests.length, 0);
 	});
 

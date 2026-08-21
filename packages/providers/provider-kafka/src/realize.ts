@@ -1,5 +1,6 @@
 import { MESSAGING_WIT_INTERFACE } from "@hobo/core";
 
+import { isJsonObject, isJsonString, type JsonValue } from "./json.js";
 import { parseKafkaClusterSpec, parseKafkaTopicResource } from "./parse.js";
 import type {
 	KafkaClusterSpec,
@@ -8,8 +9,8 @@ import type {
 } from "./types.js";
 
 export interface RealizeKafkaInput {
-	readonly cluster: unknown;
-	readonly topics?: readonly unknown[];
+	readonly cluster: JsonValue;
+	readonly topics?: readonly JsonValue[];
 }
 
 /**
@@ -21,16 +22,18 @@ export function realizeKafkaResources(
 	input: RealizeKafkaInput,
 ): KafkaRealizeResult {
 	const cluster = parseKafkaClusterSpec(input.cluster);
-	const topics: KafkaTopicResource[] = (input.topics ?? []).map((t) =>
-		parseKafkaTopicResource({
-			...(t as object),
-			cluster: (t as { cluster?: string }).cluster ?? cluster.name,
-			tenantId:
-				(t as { tenantId?: string; tenant_id?: string }).tenantId ??
-				(t as { tenant_id?: string }).tenant_id ??
-				cluster.tenantId,
-		}),
-	);
+	const topics: KafkaTopicResource[] = (input.topics ?? []).map((t) => {
+		const topic = isJsonObject(t) ? t : {};
+		return parseKafkaTopicResource({
+			...topic,
+			cluster: isJsonString(topic.cluster) ? topic.cluster : cluster.name,
+			tenantId: isJsonString(topic.tenantId)
+				? topic.tenantId
+				: isJsonString(topic.tenant_id)
+					? topic.tenant_id
+					: cluster.tenantId,
+		});
+	});
 
 	const iacHints = [
 		`kafka.cluster:${cluster.kind}:${cluster.name}`,

@@ -26,7 +26,6 @@ import type {
 	BindleRuntime,
 	CapabilityProfileDescriptor,
 	ClaimAtomicity,
-	ContinuityGrade,
 	CreatorAuthorityAfterClaim,
 	ProfileImplementation,
 	ProviderClass,
@@ -227,9 +226,7 @@ export const TTL_SH_PROFILE_IMPLEMENTATIONS: readonly ProfileImplementation[] =
  * are what a policy gate reads to refuse this product for anything that needs
  * to still be there tomorrow, or to be removable on request.
  */
-export const TTL_SH_STRUCTURED_CAPABILITIES: Readonly<
-	Record<string, boolean | number | string | readonly string[]>
-> = {
+export const TTL_SH_STRUCTURED_CAPABILITIES = {
 	digestAddressed: true,
 	tls: true,
 	anonymousPush: true,
@@ -256,17 +253,7 @@ export const TTL_SH_STRUCTURED_CAPABILITIES: Readonly<
  */
 const TTL_SH_RUNTIME_MODELS: readonly BindleRuntime[] = ["oci"];
 
-const TTL_SH_CONTINUITY: {
-	readonly endpoint: ContinuityGrade;
-	readonly data: ContinuityGrade;
-	readonly credentials:
-		| "revoked"
-		| "rotated"
-		| "reauthorized"
-		| "retained"
-		| "unknown"
-		| "not-applicable";
-} = {
+const TTL_SH_CONTINUITY = {
 	// There is no claim, so there is no "after" for an endpoint to survive
 	// into. The reference simply stops resolving.
 	endpoint: "not-applicable",
@@ -275,7 +262,7 @@ const TTL_SH_CONTINUITY: {
 	data: "discarded",
 	// None were ever issued.
 	credentials: "not-applicable",
-};
+} as const;
 
 /**
  * `experimental`.
@@ -498,7 +485,7 @@ export function createTtlShResourceSemantics(
 		providerClass: candidate.providerClass,
 		...(candidate.evidenceExpiresAtMs !== undefined
 			? { evidenceExpiresAtMs: candidate.evidenceExpiresAtMs }
-			: {}),
+			: undefined),
 		evidenceSignatureValid: candidate.evidenceSignatureValid,
 		creatorAuthorityAfterClaim: candidate.creatorAuthorityAfterClaim,
 		claimAtomicity: candidate.claimAtomicity,

@@ -13,16 +13,23 @@
  */
 
 import {
-	EQUIVALENCE_CLASSES,
-	INITIAL_CAPABILITY_PORTS,
-} from "./equivalence.js";
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
-/** Every port the equivalence table actually claims — derived, not restated. */
-export const WEBERNETES_PORTS = Object.freeze(
-	INITIAL_CAPABILITY_PORTS.map((key) => EQUIVALENCE_CLASSES[key].port),
-) as readonly ("compute" | "kv" | "queue")[];
+export type { JsonObject, JsonValue } from "./json.js";
 
-export type WebernetesPortKind = (typeof WEBERNETES_PORTS)[number];
+export type WebernetesPortKind = "compute" | "kv" | "queue";
+
+/** Every port the equivalence table actually claims. */
+export const WEBERNETES_PORTS = [
+	"compute",
+	"kv",
+	"queue",
+] satisfies readonly WebernetesPortKind[];
 
 export type WebernetesFeature = string & {
 	readonly __webernetesFeature: unique symbol;
@@ -88,27 +95,32 @@ const BINDING_KEY = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/u;
 const STATION_ID = /^[A-Za-z0-9][\w.:-]{0,127}$/u;
 const IPV4 = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/u;
 
-function record(
-	value: unknown,
-	field: string,
-): Readonly<Record<string, unknown>> {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function record(value: JsonValue, field: string): JsonObject {
+	if (!isJsonObject(value)) {
 		throw new WebernetesInputRejectedError(field, "expected an object");
 	}
-	return value as Readonly<Record<string, unknown>>;
+	return value;
+}
+
+function isWebernetesPort(value: string): value is WebernetesPortKind {
+	switch (value) {
+		case "compute":
+		case "kv":
+		case "queue":
+			return true;
+		default:
+			return false;
+	}
 }
 
 export function webernetesPortOrUndefined(
-	value: unknown,
+	value: JsonValue | undefined,
 ): WebernetesPortKind | undefined {
-	return typeof value === "string" &&
-		(WEBERNETES_PORTS as readonly string[]).includes(value)
-		? (value as WebernetesPortKind)
-		: undefined;
+	return isJsonString(value) && isWebernetesPort(value) ? value : undefined;
 }
 
 export function parseWebernetesPort(
-	value: unknown,
+	value: JsonValue | undefined,
 	field = "port",
 ): WebernetesPortKind {
 	const port = webernetesPortOrUndefined(value);
@@ -122,44 +134,46 @@ export function parseWebernetesPort(
 }
 
 export function parseWebernetesResourceName(
-	value: unknown,
+	value: JsonValue | undefined,
 	field = "name",
 ): WebernetesResourceName {
-	if (typeof value !== "string" || !DNS_LABEL.test(value)) {
+	if (!isJsonString(value) || !DNS_LABEL.test(value)) {
 		throw new WebernetesInputRejectedError(
 			field,
 			"expected a DNS label (lowercase alphanumeric and hyphens, 1-63 chars)",
 		);
 	}
+	// SAFETY: DNS_LABEL is the WebernetesResourceName contract at this parse boundary.
 	return value as WebernetesResourceName;
 }
 
 function parseFeatures(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
 ): readonly WebernetesFeature[] {
 	if (value === undefined) return Object.freeze([]);
-	if (!Array.isArray(value)) {
+	if (!isJsonArray(value)) {
 		throw new WebernetesInputRejectedError(
 			field,
 			"expected an array of features",
 		);
 	}
-	return Object.freeze(
-		value.map((entry) => {
-			if (typeof entry !== "string" || !FEATURE.test(entry)) {
-				throw new WebernetesInputRejectedError(
-					field,
-					`feature names are lowercase and hyphenated; got ${JSON.stringify(entry)}`,
-				);
-			}
-			return entry as WebernetesFeature;
-		}),
-	);
+	const features: WebernetesFeature[] = [];
+	for (const entry of value) {
+		if (!isJsonString(entry) || !FEATURE.test(entry)) {
+			throw new WebernetesInputRejectedError(
+				field,
+				`feature names are lowercase and hyphenated; got ${JSON.stringify(entry)}`,
+			);
+		}
+		// SAFETY: FEATURE is the WebernetesFeature contract at this parse boundary.
+		features.push(entry as WebernetesFeature);
+	}
+	return Object.freeze(features);
 }
 
 export function parseWebernetesResourcePlan(
-	value: unknown,
+	value: JsonValue,
 ): WebernetesResourcePlan {
 	const raw = record(value, "plan");
 	return Object.freeze({
@@ -170,9 +184,9 @@ export function parseWebernetesResourcePlan(
 	});
 }
 
-export function parseWebernetesBindings(value: unknown): WebernetesBindings {
+export function parseWebernetesBindings(value: JsonValue): WebernetesBindings {
 	const raw = record(value, "bindings");
-	const parsed: Record<string, string> = {};
+	const parsed: { [key: string]: string } = {};
 	for (const [key, entry] of Object.entries(raw)) {
 		if (!BINDING_KEY.test(key)) {
 			throw new WebernetesInputRejectedError(
@@ -180,7 +194,7 @@ export function parseWebernetesBindings(value: unknown): WebernetesBindings {
 				`binding key ${JSON.stringify(key)} is not an identifier`,
 			);
 		}
-		if (typeof entry !== "string" || !isPrintableLine(entry)) {
+		if (!isJsonString(entry) || !isPrintableLine(entry)) {
 			throw new WebernetesInputRejectedError(
 				`bindings.${key}`,
 				"expected a printable single-line string of at most 2048 characters",
@@ -191,8 +205,8 @@ export function parseWebernetesBindings(value: unknown): WebernetesBindings {
 	return Object.freeze(parsed);
 }
 
-export function parseWebernetesStationId(value: unknown): string {
-	if (typeof value !== "string" || !STATION_ID.test(value)) {
+export function parseWebernetesStationId(value: JsonValue | undefined): string {
+	if (!isJsonString(value) || !STATION_ID.test(value)) {
 		throw new WebernetesInputRejectedError(
 			"stationId",
 			"expected an opaque id of at most 128 characters from [A-Za-z0-9._:-] starting alphanumeric",
@@ -211,7 +225,9 @@ function isPrivateIpv4(host: string): boolean {
 	if (!match) return false;
 	const octets = match.slice(1, 5).map((part) => Number(part));
 	if (octets.some((octet) => Number.isNaN(octet) || octet > 255)) return false;
-	const [first, second] = octets as [number, number, number, number];
+	const first = octets[0];
+	const second = octets[1];
+	if (first === undefined || second === undefined) return false;
 	if (first === 10) return true;
 	if (first === 172 && second >= 16 && second <= 31) return true;
 	return first === 192 && second === 168;
@@ -232,10 +248,10 @@ function localityOf(host: string): WebernetesEndpointLocality | undefined {
 }
 
 export function parseWebernetesLocalEndpoint(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
 ): WebernetesLocalEndpoint {
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new WebernetesInputRejectedError(field, "expected an absolute URL");
 	}
 	let url: URL;
@@ -288,7 +304,7 @@ export type WebernetesStationDeployment = {
  * property of the type rather than a hope about the transport.
  */
 export function parseWebernetesStationDeployment(
-	value: unknown,
+	value: JsonValue,
 ): WebernetesStationDeployment {
 	const raw = record(value, "deployment");
 	return Object.freeze({

@@ -54,16 +54,38 @@ export const TTL_SH_ERROR_CODES = [
 
 export type TtlShErrorCode = (typeof TTL_SH_ERROR_CODES)[number];
 
-export type TtlShErrorDetail = Readonly<
-	Record<string, string | number | boolean>
->;
+export type TtlShErrorDetail = {
+	readonly status?: number;
+	readonly method?: string;
+	readonly body?: string;
+	readonly header?: string;
+	readonly guard?: string;
+	readonly location?: string;
+	readonly host?: string;
+	readonly path?: string;
+	readonly url?: string;
+	readonly port?: string;
+	readonly allowed?: string;
+	readonly binary?: string;
+	readonly flag?: string;
+	readonly code?: number;
+	readonly pullReference?: string;
+	readonly reported?: string;
+	readonly declared?: string;
+	readonly agreed?: string;
+	readonly requested?: string;
+	readonly target?: string;
+	readonly reference?: string;
+	readonly stderr?: string;
+	readonly expected?: string;
+};
 
 export type TtlShErrorOptions = {
 	/** Safe to repeat the operation verbatim. Ambiguity is never retryable. */
 	readonly retryable?: boolean;
 	readonly retryAfterMs?: number;
 	readonly detail?: TtlShErrorDetail;
-	readonly cause?: unknown;
+	readonly cause?: Error;
 };
 
 /**
@@ -71,7 +93,7 @@ export type TtlShErrorOptions = {
  * content-addressed name derived from it. Both are masked out before the credential
  * rules run and restored afterwards.
  */
-const DIGEST_SHAPED = /\bsha(?:256|512)[:-][0-9a-f]{32,128}\b/giu;
+const DIGEST_PATTERN = /\bsha(?:256|512)[:-][0-9a-f]{32,128}\b/giu;
 
 const DIGEST_PLACEHOLDER = "\u0001DIGEST\u0002";
 
@@ -91,8 +113,22 @@ const CREDENTIAL_PATTERNS: readonly RegExp[] = [
 	/\b[A-Za-z0-9+_-]{40,}={0,2}\b/gu,
 ];
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: flattening control characters out of registry text is the point; a raw CR/LF in a message is log forging.
-const CONTROL_CHARS = /[\u0000-\u001f\u007f]/gu;
+function flattenControlChars(text: string): string {
+	let out = "";
+	for (const ch of text) {
+		const code = ch.charCodeAt(0);
+		out += code <= 31 || code === 127 ? " " : ch;
+	}
+	return out;
+}
+
+export function containsControlChar(text: string): boolean {
+	for (const ch of text) {
+		const code = ch.charCodeAt(0);
+		if (code <= 31 || code === 127) return true;
+	}
+	return false;
+}
 
 /**
  * Redact credential-shaped material and flatten control characters.
@@ -102,7 +138,7 @@ const CONTROL_CHARS = /[\u0000-\u001f\u007f]/gu;
  */
 export function redactProviderText(text: string, maxLength = 256): string {
 	const digests: string[] = [];
-	let out = text.replace(DIGEST_SHAPED, (match) => {
+	let out = text.replace(DIGEST_PATTERN, (match) => {
 		digests.push(match);
 		return DIGEST_PLACEHOLDER;
 	});
@@ -113,19 +149,61 @@ export function redactProviderText(text: string, maxLength = 256): string {
 		new RegExp(DIGEST_PLACEHOLDER, "gu"),
 		() => digests[index++] ?? "",
 	);
-	out = out.replace(CONTROL_CHARS, " ").trim();
+	out = flattenControlChars(out).trim();
 	return out.length > maxLength ? `${out.slice(0, maxLength)}…` : out;
 }
 
-function redactDetail(
-	detail: TtlShErrorDetail,
-): Record<string, string | number | boolean> {
-	const out: Record<string, string | number | boolean> = {};
-	for (const [key, value] of Object.entries(detail)) {
-		out[key] =
-			typeof value === "string" ? redactProviderText(value, 180) : value;
-	}
-	return out;
+function redactOptionalText(value: string | undefined): string | undefined {
+	return value === undefined ? undefined : redactProviderText(value, 180);
+}
+
+function redactDetail(detail: TtlShErrorDetail): TtlShErrorDetail {
+	const method = redactOptionalText(detail.method);
+	const body = redactOptionalText(detail.body);
+	const header = redactOptionalText(detail.header);
+	const guard = redactOptionalText(detail.guard);
+	const location = redactOptionalText(detail.location);
+	const host = redactOptionalText(detail.host);
+	const path = redactOptionalText(detail.path);
+	const url = redactOptionalText(detail.url);
+	const port = redactOptionalText(detail.port);
+	const allowed = redactOptionalText(detail.allowed);
+	const binary = redactOptionalText(detail.binary);
+	const flag = redactOptionalText(detail.flag);
+	const pullReference = redactOptionalText(detail.pullReference);
+	const reported = redactOptionalText(detail.reported);
+	const declared = redactOptionalText(detail.declared);
+	const agreed = redactOptionalText(detail.agreed);
+	const requested = redactOptionalText(detail.requested);
+	const target = redactOptionalText(detail.target);
+	const reference = redactOptionalText(detail.reference);
+	const stderr = redactOptionalText(detail.stderr);
+	const expected = redactOptionalText(detail.expected);
+	return {
+		...(detail.status !== undefined ? { status: detail.status } : undefined),
+		...(method !== undefined ? { method } : undefined),
+		...(body !== undefined ? { body } : undefined),
+		...(header !== undefined ? { header } : undefined),
+		...(guard !== undefined ? { guard } : undefined),
+		...(location !== undefined ? { location } : undefined),
+		...(host !== undefined ? { host } : undefined),
+		...(path !== undefined ? { path } : undefined),
+		...(url !== undefined ? { url } : undefined),
+		...(port !== undefined ? { port } : undefined),
+		...(allowed !== undefined ? { allowed } : undefined),
+		...(binary !== undefined ? { binary } : undefined),
+		...(flag !== undefined ? { flag } : undefined),
+		...(detail.code !== undefined ? { code: detail.code } : undefined),
+		...(pullReference !== undefined ? { pullReference } : undefined),
+		...(reported !== undefined ? { reported } : undefined),
+		...(declared !== undefined ? { declared } : undefined),
+		...(agreed !== undefined ? { agreed } : undefined),
+		...(requested !== undefined ? { requested } : undefined),
+		...(target !== undefined ? { target } : undefined),
+		...(reference !== undefined ? { reference } : undefined),
+		...(stderr !== undefined ? { stderr } : undefined),
+		...(expected !== undefined ? { expected } : undefined),
+	};
 }
 
 export class TtlShProviderError extends Error {
@@ -141,7 +219,7 @@ export class TtlShProviderError extends Error {
 	) {
 		super(
 			redactProviderText(message),
-			options.cause !== undefined ? { cause: options.cause } : {},
+			options.cause !== undefined ? { cause: options.cause } : undefined,
 		);
 		this.name = "TtlShProviderError";
 		this.code = code;
@@ -155,14 +233,7 @@ export class TtlShProviderError extends Error {
 	}
 
 	/** Receipt-safe projection. Already redacted by construction. */
-	toJSON(): {
-		readonly name: string;
-		readonly code: TtlShErrorCode;
-		readonly message: string;
-		readonly retryable: boolean;
-		readonly retryAfterMs?: number;
-		readonly detail: TtlShErrorDetail;
-	} {
+	toJSON() {
 		return {
 			name: this.name,
 			code: this.code,
@@ -170,14 +241,14 @@ export class TtlShProviderError extends Error {
 			retryable: this.retryable,
 			...(this.retryAfterMs !== undefined
 				? { retryAfterMs: this.retryAfterMs }
-				: {}),
+				: undefined),
 			detail: this.detail,
 		};
 	}
 }
 
 export function isTtlShProviderError(
-	value: unknown,
+	value: Error,
 ): value is TtlShProviderError {
 	return value instanceof TtlShProviderError;
 }
@@ -202,10 +273,10 @@ export function ttlShErrorForStatus(
 ): TtlShProviderError {
 	const body =
 		options.body === undefined ? "" : redactProviderText(options.body, 180);
-	const detail: TtlShErrorDetail = {
+	const detail = {
 		status,
 		method: options.method,
-		...(body ? { body } : {}),
+		...(body ? { body } : undefined),
 	};
 	if (status === 401 || status === 403) {
 		return new TtlShProviderError(
@@ -229,7 +300,7 @@ export function ttlShErrorForStatus(
 				retryable: true,
 				...(options.retryAfterMs !== undefined
 					? { retryAfterMs: options.retryAfterMs }
-					: {}),
+					: undefined),
 				detail,
 			},
 		);

@@ -23,6 +23,13 @@ import {
 } from "./errors.js";
 import { AUTH_ADAPTER_CONTRACT, BETTER_AUTH_ADAPTER_ID } from "./ids.js";
 import {
+	isJsonBoolean,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+import {
 	type BetterAuthSecretRef,
 	parseBetterAuthSecretRef,
 } from "./secret-locator.js";
@@ -86,19 +93,20 @@ function refuse(
 	throw new BetterAuthConfigError(code, message, remediation);
 }
 
-function expectObject(value: unknown, field: string): Record<string, unknown> {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function expectObject<T>(value: T, field: string): JsonObject {
+	if (!isJsonObject(value) || value === null || Array.isArray(value)) {
 		refuse(
 			"BETTER_AUTH_CONFIG_SHAPE_INVALID",
 			`${field} must be an object`,
 			`pass ${field} as a plain object literal`,
 		);
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: assertion to `e as JsonObject; } ` is required at this boundary.
+	return value as JsonObject;
 }
 
 function assertKnownKeys(
-	value: Record<string, unknown>,
+	value: JsonObject,
 	field: string,
 	allowed: readonly string[],
 ): void {
@@ -121,8 +129,8 @@ function assertKnownKeys(
 	}
 }
 
-function parseEnabledBlock(
-	value: unknown,
+function parseEnabledBlock<T>(
+	value: T,
 	field: string,
 	fallback: boolean,
 ): { readonly enabled: boolean } {
@@ -132,7 +140,7 @@ function parseEnabledBlock(
 	const block = expectObject(value, field);
 	assertKnownKeys(block, field, ["enabled"]);
 	const enabled = block.enabled;
-	if (typeof enabled !== "boolean") {
+	if (!isJsonBoolean(enabled)) {
 		refuse(
 			"BETTER_AUTH_CONFIG_SHAPE_INVALID",
 			`${field}.enabled must be a boolean`,
@@ -142,8 +150,8 @@ function parseEnabledBlock(
 	return Object.freeze({ enabled });
 }
 
-function parseBasePath(value: unknown): string {
-	if (typeof value !== "string" || value.length === 0) {
+function parseBasePath<T>(value: T): string {
+	if (!isJsonString(value) || value.length === 0) {
 		refuse(
 			"BETTER_AUTH_BASE_PATH_INVALID",
 			"basePath is required and must be a non-empty string",
@@ -160,11 +168,11 @@ function parseBasePath(value: unknown): string {
 	return value;
 }
 
-function parseDatabase(value: unknown): { readonly profile: string } {
+function parseDatabase<T>(value: T): { readonly profile: string } {
 	const block = expectObject(value, "database");
 	assertKnownKeys(block, "database", ["profile"]);
 	const profile = block.profile;
-	if (typeof profile !== "string" || !DATA_PROFILE.test(profile)) {
+	if (!isJsonString(profile) || !DATA_PROFILE.test(profile)) {
 		refuse(
 			"BETTER_AUTH_DATABASE_PROFILE_INVALID",
 			"database.profile must name a data-family capability profile",
@@ -174,7 +182,7 @@ function parseDatabase(value: unknown): { readonly profile: string } {
 	return Object.freeze({ profile });
 }
 
-function parseSocialProviders(value: unknown): readonly string[] {
+function parseSocialProviders<T>(value: T): readonly string[] {
 	if (value === undefined) {
 		return Object.freeze([]);
 	}
@@ -187,7 +195,7 @@ function parseSocialProviders(value: unknown): readonly string[] {
 	}
 	const slugs = new Set<string>();
 	for (const entry of value) {
-		if (typeof entry !== "string" || !SOCIAL_PROVIDER.test(entry)) {
+		if (!isJsonString(entry) || !SOCIAL_PROVIDER.test(entry)) {
 			refuse(
 				"BETTER_AUTH_SOCIAL_PROVIDER_INVALID",
 				"each socialProviders entry must be a lowercase slug",
@@ -206,7 +214,7 @@ function parseSocialProviders(value: unknown): readonly string[] {
  * @throws {BetterAuthConfigError} with a `code` and `remediation` for every
  * refusal. Nothing partially parsed is ever returned.
  */
-export function parseBetterAuthConfig(input: unknown): BetterAuthConfig {
+export function parseBetterAuthConfig(input: JsonValue): BetterAuthConfig {
 	const raw = expectObject(input, "config");
 	assertKnownKeys(raw, "config", CONFIG_KEYS);
 

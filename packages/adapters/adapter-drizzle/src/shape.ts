@@ -16,6 +16,14 @@
  */
 
 /** Well-known Drizzle registry symbols (see `Table.Symbol` in `drizzle-orm`). */
+import {
+	isJsonBoolean,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+
 export const DRIZZLE_NAME_SYMBOL = Symbol.for("drizzle:Name");
 export const DRIZZLE_COLUMNS_SYMBOL = Symbol.for("drizzle:Columns");
 export const DRIZZLE_EXTRA_CONFIG_COLUMNS_SYMBOL = Symbol.for(
@@ -41,80 +49,97 @@ const NON_POSTGRES_COLUMN_PREFIXES = Object.freeze([
 	"SingleStore",
 ] as const);
 
-export type UnknownRecord = Readonly<Record<string, unknown>>;
+export type UnknownRecord = JsonObject;
+export type ExtraConfigBuilder = (columns: UnknownRecord) => JsonValue;
+
+/** Host object published by drizzle-orm (string and well-known symbol keys). */
+export interface DrizzleHost {
+	readonly [key: string]: JsonValue | undefined;
+}
+
+interface SymbolBag {
+	[key: symbol]: JsonValue | ExtraConfigBuilder | undefined;
+}
 
 /** Narrows to an indexable object without asserting anything about its keys. */
-export function asRecord(value: unknown): UnknownRecord | undefined {
-	return typeof value === "object" && value !== null
-		? (value as UnknownRecord)
-		: undefined;
+export function asRecord<T>(value: T): UnknownRecord | undefined {
+	return isJsonObject(value) ? value : undefined;
 }
 
-function symbolValue(value: object, symbol: symbol): unknown {
-	return (value as Record<symbol, unknown>)[symbol];
+function symbolValue<T>(
+	value: T,
+	symbol: symbol,
+): JsonValue | ExtraConfigBuilder | undefined {
+	if (value === null || value === undefined) return undefined;
+	// SAFETY: drizzle hosts carry well-known registry symbols at this boundary.
+	const bag: SymbolBag = value as never;
+	return bag[symbol];
 }
 
-function ownSymbolsOf(value: object): readonly symbol[] {
+function ownSymbolsOf<T>(value: T): readonly symbol[] {
 	const seen: symbol[] = [];
-	let cursor: object | null = value;
+	let cursor: object | null = null;
+	if (value !== null && value !== undefined) {
+		// SAFETY: drizzle hosts are objects walked for registry symbols.
+		cursor = value as never;
+	}
 	while (cursor !== null && cursor !== Object.prototype) {
 		seen.push(...Object.getOwnPropertySymbols(cursor));
+		// SAFETY: prototype walk stays on object hosts at this drizzle boundary.
 		cursor = Object.getPrototypeOf(cursor) as object | null;
 	}
 	return seen;
 }
 
 /** A Drizzle table publishes both a SQL name and a column map under registry symbols. */
-export function isDrizzleTable(value: unknown): value is object {
-	if (typeof value !== "object" || value === null) return false;
+export function isDrizzleTable<T>(value: T): value is T & DrizzleHost {
+	if (!isJsonObject(value)) return false;
 	if (symbolValue(value, DRIZZLE_IS_VIEW_SYMBOL) === true) return false;
 	return (
-		typeof symbolValue(value, DRIZZLE_NAME_SYMBOL) === "string" &&
+		isJsonString(symbolValue(value, DRIZZLE_NAME_SYMBOL)) &&
 		asRecord(symbolValue(value, DRIZZLE_COLUMNS_SYMBOL)) !== undefined
 	);
 }
 
-export function isDrizzleView(value: unknown): value is object {
+export function isDrizzleView<T>(value: T): value is T & DrizzleHost {
 	return (
-		typeof value === "object" &&
-		value !== null &&
-		symbolValue(value, DRIZZLE_IS_VIEW_SYMBOL) === true
+		isJsonObject(value) && symbolValue(value, DRIZZLE_IS_VIEW_SYMBOL) === true
 	);
 }
 
-export function tableName(table: object): string {
+export function tableName<T>(table: T): string {
 	const name = symbolValue(table, DRIZZLE_NAME_SYMBOL);
-	return typeof name === "string" ? name : "";
+	return isJsonString(name) ? name : "";
 }
 
 /** The non-default postgres schema a table is bound to, when it declares one. */
-export function tableSchema(table: object): string | undefined {
+export function tableSchema<T>(table: T): string | undefined {
 	const schema = symbolValue(table, DRIZZLE_SCHEMA_SYMBOL);
-	return typeof schema === "string" && schema.length > 0 ? schema : undefined;
+	return isJsonString(schema) && schema.length > 0 ? schema : undefined;
 }
 
-export function tableColumns(table: object): UnknownRecord {
+export function tableColumns<T>(table: T): UnknownRecord {
 	return asRecord(symbolValue(table, DRIZZLE_COLUMNS_SYMBOL)) ?? {};
 }
 
-export function extraConfigColumns(table: object): UnknownRecord {
+export function extraConfigColumns<T>(table: T): UnknownRecord {
 	return (
 		asRecord(symbolValue(table, DRIZZLE_EXTRA_CONFIG_COLUMNS_SYMBOL)) ??
 		tableColumns(table)
 	);
 }
 
-export function extraConfigBuilder(
-	table: object,
-): ((columns: UnknownRecord) => unknown) | undefined {
+export function extraConfigBuilder<T>(
+	table: T,
+): ExtraConfigBuilder | undefined {
 	const builder = symbolValue(table, DRIZZLE_EXTRA_CONFIG_BUILDER_SYMBOL);
-	return typeof builder === "function"
-		? (builder as (columns: UnknownRecord) => unknown)
-		: undefined;
+	if (!(builder instanceof Function)) return undefined;
+	// SAFETY: extra-config builder is the ExtraConfigBuilder callback at this boundary.
+	return builder as ExtraConfigBuilder;
 }
 
 /** True when the table carries at least one inline foreign key under any dialect symbol. */
-export function hasInlineForeignKeys(table: object): boolean {
+export function hasInlineForeignKeys<T>(table: T): boolean {
 	for (const symbol of ownSymbolsOf(table)) {
 		if (symbol.description?.endsWith(INLINE_FOREIGN_KEYS_SUFFIX) !== true) {
 			continue;
@@ -133,22 +158,22 @@ export interface DrizzleColumnLike {
 	readonly primary?: boolean;
 	readonly isUnique?: boolean;
 	readonly hasDefault?: boolean;
-	readonly default?: unknown;
-	readonly defaultFn?: unknown;
-	readonly getSQLType?: () => unknown;
+	readonly default?: JsonValue;
+	readonly defaultFn?: JsonValue;
+	readonly getSQLType?: () => JsonValue;
 }
 
 /** A column descriptor is anything with a SQL name plus one readable type source. */
-export function isDrizzleColumn(value: unknown): value is DrizzleColumnLike {
+export function isDrizzleColumn<T>(value: T): value is T & DrizzleColumnLike {
 	const record = asRecord(value);
 	if (record === undefined) return false;
-	if (typeof record.name !== "string" || record.name.length === 0) {
+	if (!isJsonString(record.name) || record.name.length === 0) {
 		return false;
 	}
 	return (
-		typeof record.getSQLType === "function" ||
-		typeof record.columnType === "string" ||
-		typeof record.dataType === "string"
+		record.getSQLType instanceof Function ||
+		isJsonString(record.columnType) ||
+		isJsonString(record.dataType)
 	);
 }
 
@@ -163,22 +188,20 @@ export function readColumnSqlType(
 ): string | undefined {
 	const rendered = renderedSqlType(column);
 	if (rendered !== undefined) return rendered;
-	if (typeof column.columnType === "string" && column.columnType.length > 0) {
+	if (isJsonString(column.columnType) && column.columnType.length > 0) {
 		return normalizeColumnType(column.columnType);
 	}
-	if (typeof column.dataType === "string" && column.dataType.length > 0) {
+	if (isJsonString(column.dataType) && column.dataType.length > 0) {
 		return column.dataType;
 	}
 	return undefined;
 }
 
 function renderedSqlType(column: DrizzleColumnLike): string | undefined {
-	if (typeof column.getSQLType !== "function") return undefined;
+	if (!(column.getSQLType instanceof Function)) return undefined;
 	try {
 		const rendered = column.getSQLType();
-		return typeof rendered === "string" && rendered.length > 0
-			? rendered
-			: undefined;
+		return isJsonString(rendered) && rendered.length > 0 ? rendered : undefined;
 	} catch {
 		return undefined;
 	}
@@ -196,7 +219,7 @@ function normalizeColumnType(columnType: string): string {
 
 export function isNonPostgresColumn(column: DrizzleColumnLike): boolean {
 	const columnType = column.columnType;
-	if (typeof columnType !== "string") return false;
+	if (!isJsonString(columnType)) return false;
 	return NON_POSTGRES_COLUMN_PREFIXES.some((prefix) =>
 		columnType.startsWith(prefix),
 	);
@@ -214,21 +237,20 @@ export interface DrizzleIndexLike {
  * name, the columns, and (for indexes) a `unique` flag. Anything that does not
  * present all three is refused so the caller can record it as impedance.
  */
-export function readIndexBuilder(value: unknown): DrizzleIndexLike | undefined {
+export function readIndexBuilder<T>(value: T): DrizzleIndexLike | undefined {
 	const builder = asRecord(value);
 	const config = asRecord(builder?.config);
 	if (config === undefined) return undefined;
 	const name = config.name;
 	const columns = config.columns;
 	const unique = config.unique;
-	if (typeof name !== "string" || name.length === 0) return undefined;
+	if (!isJsonString(name) || name.length === 0) return undefined;
 	if (!Array.isArray(columns) || columns.length === 0) return undefined;
-	if (typeof unique !== "boolean") return undefined;
+	if (!isJsonBoolean(unique)) return undefined;
 	const columnNames: string[] = [];
 	for (const entry of columns) {
-		const columnName =
-			typeof entry === "string" ? entry : asRecord(entry)?.name;
-		if (typeof columnName !== "string" || columnName.length === 0) {
+		const columnName = isJsonString(entry) ? entry : asRecord(entry)?.name;
+		if (!isJsonString(columnName) || columnName.length === 0) {
 			return undefined;
 		}
 		columnNames.push(columnName);

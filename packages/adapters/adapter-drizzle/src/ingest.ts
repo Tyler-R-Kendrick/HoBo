@@ -24,6 +24,16 @@ import {
 } from "@hobo/core";
 import { DrizzleAdapterError } from "./errors.js";
 import { type DrizzleImpedanceFinding, sortImpedance } from "./impedance.js";
+import {
+	cloneAsJson,
+	isJsonBigInt,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import { compareText } from "./order.js";
 import {
 	asRecord,
@@ -59,10 +69,10 @@ export interface DrizzleIngestResult {
  * dropped and never thrown over.
  */
 export function ingestDrizzleSchema(
-	moduleExports: Readonly<Record<string, unknown>>,
+	moduleExports: JsonObject,
 	options?: DrizzleIngestOptions,
 ): DrizzleIngestResult {
-	if (typeof moduleExports !== "object" || moduleExports === null) {
+	if (!isJsonObject(moduleExports) || moduleExports === null) {
 		throw new DrizzleAdapterError(
 			"DRIZZLE_INGEST_INPUT_INVALID",
 			"ingestDrizzleSchema expects a module namespace object of exports.",
@@ -115,11 +125,13 @@ export function ingestDrizzleSchema(
 	const tables = [...tablesByName.values()].sort((left, right) =>
 		compareText(left.name, right.name),
 	);
-	const schema = parseSchemaIr({
-		contract: SCHEMA_IR_CONTRACT,
-		dialect: "postgres",
-		tables,
-	});
+	const schema = parseSchemaIr(
+		cloneAsJson({
+			contract: SCHEMA_IR_CONTRACT,
+			dialect: "postgres",
+			tables,
+		}),
+	);
 
 	return Object.freeze({
 		schema,
@@ -127,9 +139,9 @@ export function ingestDrizzleSchema(
 	});
 }
 
-function readTable(
+function readTable<T>(
 	exportKey: string,
-	table: object,
+	table: T,
 	findings: DrizzleImpedanceFinding[],
 ): SchemaTable | undefined {
 	const name = tableName(table);
@@ -213,7 +225,7 @@ function readColumn(
 		nullable: column.notNull !== true && !primaryKey,
 		primaryKey,
 		unique: column.isUnique === true,
-		...(defaultExpression !== undefined ? { defaultExpression } : {}),
+		...(defaultExpression !== undefined ? { defaultExpression } : undefined),
 	});
 }
 
@@ -229,7 +241,7 @@ function readDefault(
 ): string | undefined {
 	const hasDefault = column.hasDefault === true || column.default !== undefined;
 	if (!hasDefault) return undefined;
-	if (typeof column.defaultFn === "function") {
+	if (column.defaultFn instanceof Function) {
 		findings.push({
 			code: "DRIZZLE_DEFAULT_UNREPRESENTABLE",
 			detail: `Column "${column.name}" of table "${table}" has a runtime default function; it is applied by Drizzle at insert time and is not part of the schema.`,
@@ -237,11 +249,11 @@ function readDefault(
 		return undefined;
 	}
 	const value = column.default;
-	if (typeof value === "string") return `'${value.replace(/'/gu, "''")}'`;
-	if (typeof value === "number" || typeof value === "bigint") {
+	if (isJsonString(value)) return `'${value.replace(/'/gu, "''")}'`;
+	if (isJsonNumber(value) || isJsonBigInt(value)) {
 		return String(value);
 	}
-	if (typeof value === "boolean") return value ? "true" : "false";
+	if (isJsonBoolean(value)) return value ? "true" : "false";
 	if (value === null) return "null";
 	findings.push({
 		code: "DRIZZLE_DEFAULT_UNREPRESENTABLE",
@@ -257,15 +269,15 @@ function readDefault(
  * returns builders this adapter cannot read, produces a finding rather than a
  * crash or a silently index-free table.
  */
-function readIndexes(
+function readIndexes<T>(
 	table: string,
-	tableValue: object,
+	tableValue: T,
 	findings: DrizzleImpedanceFinding[],
 ): SchemaIndex[] {
 	const builder = extraConfigBuilder(tableValue);
 	if (builder === undefined) return [];
 
-	let produced: unknown;
+	let produced: JsonValue;
 	try {
 		produced = builder(extraConfigColumns(tableValue));
 	} catch (cause) {
@@ -307,36 +319,48 @@ function readIndexes(
 }
 
 function extraConfigEntries(
-	produced: unknown,
-): readonly (readonly [string, unknown])[] | undefined {
+	produced: JsonValue,
+): readonly (readonly [string, JsonValue])[] | undefined {
 	if (Array.isArray(produced)) {
 		return produced.map(
-			(entry, index) => [String(index), entry] as readonly [string, unknown],
+			// SAFETY: assertion to `ing(index), entry] as readonly [string, unknown], ` is required at this boundary.
+			(entry, index) => [String(index), entry] as readonly [string, JsonValue],
 		);
 	}
 	const record = asRecord(produced);
 	if (record === undefined) return undefined;
-	return Object.keys(record)
-		.sort()
-		.map((key) => [key, record[key]] as readonly [string, unknown]);
+	return (
+		Object.keys(record)
+			.sort()
+			// SAFETY: assertion to `, record[key]] as readonly [string, unknown]); }` is required at this boundary.
+			.map((key) => [key, record[key] ?? null] as const)
+	);
 }
 
 /** Short, deterministic description of an unknown value for finding details. */
-function describe(value: unknown): string {
+function describe<T>(value: T): string {
 	if (value === null) return "null";
 	if (Array.isArray(value)) return "array";
 	if (value instanceof Error) return `${value.name}: ${value.message}`;
-	const type = typeof value;
-	if (type !== "object") return type;
-	const named = constructorName(value as object);
+	if (isJsonString(value)) return "string";
+	if (isJsonNumber(value)) return "number";
+	if (isJsonBoolean(value)) return "boolean";
+	if (value === undefined) return "undefined";
+	if (value instanceof Function) return "function";
+	const named = constructorName(value);
 	return named === undefined ? "object" : `object<${named}>`;
 }
 
+interface ConstructorHost {
+	readonly constructor?: { readonly name: string };
+}
+
 /** Class name of a non-plain object, so a finding can name what it met. */
-function constructorName(value: object): string | undefined {
-	const prototype: unknown = Object.getPrototypeOf(value);
+function constructorName<T>(value: T): string | undefined {
+	const prototype = Object.getPrototypeOf(value);
 	if (prototype === null || prototype === Object.prototype) return undefined;
-	const factory = (prototype as { readonly constructor?: unknown }).constructor;
-	if (typeof factory !== "function") return undefined;
+	// SAFETY: prototype constructor is the host's class factory at this boundary.
+	const factory = (prototype as ConstructorHost).constructor;
+	if (!(factory instanceof Function)) return undefined;
 	return factory.name.length > 0 ? factory.name : undefined;
 }

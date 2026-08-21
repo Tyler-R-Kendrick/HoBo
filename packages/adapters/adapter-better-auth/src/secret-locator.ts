@@ -20,6 +20,7 @@
  */
 
 import { BetterAuthConfigError } from "./errors.js";
+import { isJsonString } from "./json.js";
 
 declare const secretRefBrand: unique symbol;
 
@@ -72,7 +73,7 @@ const INLINE_SECRET_MARKERS: readonly RegExp[] = Object.freeze([
 const REMEDIATE_INLINE =
 	'deposit the signing secret into brokered custody and reference it, e.g. secretRef: "hobo-secret://camp/auth/better-auth-signing-key"; HoBo never stores signing material in an authored config';
 
-const REMEDIATE_SHAPE = `secretRef must be a <scheme>://<authority>/<path> locator using one of: ${BETTER_AUTH_SECRET_REF_SCHEMES.join(", ")}`;
+const REMEDIATE_CONTRACT = `secretRef must be a <scheme>://<authority>/<path> locator using one of: ${BETTER_AUTH_SECRET_REF_SCHEMES.join(", ")}`;
 
 function refuseInline(message: string): never {
 	// The offending input is never interpolated — it is probably a live secret.
@@ -83,11 +84,11 @@ function refuseInline(message: string): never {
 	);
 }
 
-function refuseShape(message: string): never {
+function refuseLocator(message: string): never {
 	throw new BetterAuthConfigError(
 		"BETTER_AUTH_SECRET_REF_INVALID",
 		message,
-		REMEDIATE_SHAPE,
+		REMEDIATE_CONTRACT,
 	);
 }
 
@@ -98,44 +99,48 @@ function refuseShape(message: string): never {
  * input looks like a value, and `BETTER_AUTH_SECRET_REF_INVALID` when it is
  * locator-shaped but malformed or in an unregistered scheme.
  */
-export function parseBetterAuthSecretRef(input: unknown): BetterAuthSecretRef {
-	if (typeof input !== "string" || input.length === 0) {
-		refuseShape("secretRef must be a non-empty string locator");
+export function parseBetterAuthSecretRef<T>(input: T): BetterAuthSecretRef {
+	if (!isJsonString(input) || input.length === 0) {
+		refuseLocator("secretRef must be a non-empty string locator");
 	}
-	if (input.length > MAX_LOCATOR_LENGTH) {
-		refuseShape(
+	const locator = `${input}`;
+	if (locator.length > MAX_LOCATOR_LENGTH) {
+		refuseLocator(
 			`secretRef exceeds the ${MAX_LOCATOR_LENGTH} character locator limit`,
 		);
 	}
-	if (hasControlCharacter(input)) {
-		refuseShape("secretRef contains control characters");
+	if (hasControlCharacter(locator)) {
+		refuseLocator("secretRef contains control characters");
 	}
 	for (const marker of INLINE_SECRET_MARKERS) {
-		if (marker.test(input)) {
+		if (marker.test(locator)) {
 			refuseInline(
 				"secretRef looks like a plaintext credential, not a custody locator",
 			);
 		}
 	}
 
-	const separator = input.indexOf("://");
+	const separator = locator.indexOf("://");
 	if (separator <= 0) {
 		// No scheme at all: an opaque string here is the secret itself.
 		refuseInline("secretRef carries no locator scheme, so it reads as a value");
 	}
 
-	const scheme = input.slice(0, separator);
+	const scheme = locator.slice(0, separator);
 	if (scheme !== scheme.toLowerCase()) {
-		refuseShape("secretRef scheme must be lowercase");
+		refuseLocator("secretRef scheme must be lowercase");
 	}
+	// SAFETY: assertion to `UTH_SECRET_REF_SCHEMES as readonly string[]).includ` is required at this boundary.
 	if (!(BETTER_AUTH_SECRET_REF_SCHEMES as readonly string[]).includes(scheme)) {
-		refuseShape(`secretRef scheme ${JSON.stringify(scheme)} is not registered`);
+		refuseLocator(
+			`secretRef scheme ${JSON.stringify(scheme)} is not registered`,
+		);
 	}
 
-	const rest = input.slice(separator + 3);
+	const rest = locator.slice(separator + 3);
 	const firstSlash = rest.indexOf("/");
 	if (firstSlash <= 0) {
-		refuseShape("secretRef must name an authority and a path");
+		refuseLocator("secretRef must name an authority and a path");
 	}
 	const authority = rest.slice(0, firstSlash);
 	const pathAndFragment = rest.slice(firstSlash + 1);
@@ -143,31 +148,32 @@ export function parseBetterAuthSecretRef(input: unknown): BetterAuthSecretRef {
 		refuseInline("secretRef authority embeds userinfo credentials");
 	}
 	if (/\s/u.test(rest)) {
-		refuseShape("secretRef contains whitespace");
+		refuseLocator("secretRef contains whitespace");
 	}
 	if (pathAndFragment.length === 0) {
-		refuseShape("secretRef path segment is empty");
+		refuseLocator("secretRef path segment is empty");
 	}
 
 	const [path = "", ...extraFragments] = pathAndFragment.split("#");
 	if (extraFragments.length > 1) {
-		refuseShape("secretRef carries more than one fragment separator");
+		refuseLocator("secretRef carries more than one fragment separator");
 	}
 	if (path.length === 0) {
-		refuseShape("secretRef path segment is empty");
+		refuseLocator("secretRef path segment is empty");
 	}
 	if (path.includes("?")) {
-		refuseShape("secretRef path must not carry a query string");
+		refuseLocator("secretRef path must not carry a query string");
 	}
 	for (const segment of path.split("/")) {
 		if (segment === "" || segment === "." || segment === "..") {
-			refuseShape(
+			refuseLocator(
 				"secretRef path must not contain empty or traversal segments",
 			);
 		}
 	}
 
-	return input as BetterAuthSecretRef;
+	// SAFETY: assertion to ` BetterAuthSecretRef; } /**` is required at this boundary.
+	return locator as BetterAuthSecretRef;
 }
 
 /** The scheme half of an already-parsed locator. */
@@ -175,5 +181,6 @@ export function betterAuthSecretRefScheme(
 	ref: BetterAuthSecretRef,
 ): BetterAuthSecretRefScheme {
 	const separator = ref.indexOf("://");
+	// SAFETY: assertion to `e(0, separator) as BetterAuthSecretRefScheme; } ` is required at this boundary.
 	return ref.slice(0, separator) as BetterAuthSecretRefScheme;
 }

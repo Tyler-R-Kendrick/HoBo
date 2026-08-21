@@ -26,6 +26,7 @@ import {
 	type BetterAuthClaimsErrorCode,
 } from "./errors.js";
 import { BETTER_AUTH_CLAIMS_MAPPING_VERSION } from "./ids.js";
+import { isJsonObject, type JsonObject } from "./json.js";
 
 export type ClaimsMappingExpectation =
 	| { readonly outcome: "mapped"; readonly principal: MappedPrincipal }
@@ -49,9 +50,9 @@ export interface ClaimsMappingConformanceResult {
 
 const VERSION = BETTER_AUTH_CLAIMS_MAPPING_VERSION;
 
-function mapped(
+function mapped<T>(
 	name: string,
-	claims: unknown,
+	claims: T,
 	principal: MappedPrincipal,
 ): ClaimsMappingCase {
 	return Object.freeze({
@@ -61,9 +62,9 @@ function mapped(
 	});
 }
 
-function refused(
+function refused<T>(
 	name: string,
-	claims: unknown,
+	claims: T,
 	code: BetterAuthClaimsErrorCode,
 ): ClaimsMappingCase {
 	return Object.freeze({
@@ -230,7 +231,7 @@ export const BETTER_AUTH_CLAIMS_CONFORMANCE_CASES: readonly ClaimsMappingCase[] 
 		),
 	]);
 
-function describe(value: unknown): string {
+function describe<T>(value: T): string {
 	try {
 		return JSON.stringify(value) ?? String(value);
 	} catch {
@@ -239,23 +240,25 @@ function describe(value: unknown): string {
 }
 
 /** Key-order-independent structural equality over JSON-shaped values. */
-function deepEqual(left: unknown, right: unknown): boolean {
-	if (left === right) return true;
+function deepEqual<T, U>(left: T, right: U): boolean {
+	if (Object.is(left, right)) return true;
 	if (Array.isArray(left) || Array.isArray(right)) {
 		if (!Array.isArray(left) || !Array.isArray(right)) return false;
 		if (left.length !== right.length) return false;
 		return left.every((entry, index) => deepEqual(entry, right[index]));
 	}
 	if (
-		typeof left !== "object" ||
-		typeof right !== "object" ||
+		!isJsonObject(left) ||
+		!isJsonObject(right) ||
 		left === null ||
 		right === null
 	) {
 		return false;
 	}
-	const leftRecord = left as Record<string, unknown>;
-	const rightRecord = right as Record<string, unknown>;
+	// SAFETY: assertion to `ft as JsonObject; ` is required at this boundary.
+	const leftRecord = left as JsonObject;
+	// SAFETY: assertion to `ght as JsonObject; ` is required at this boundary.
+	const rightRecord = right as JsonObject;
 	const leftKeys = Object.keys(leftRecord).sort();
 	const rightKeys = Object.keys(rightRecord).sort();
 	if (leftKeys.length !== rightKeys.length) return false;
@@ -273,7 +276,7 @@ function deepEqual(left: unknown, right: unknown): boolean {
  */
 export function runClaimsMappingConformance(options?: {
 	readonly cases?: readonly ClaimsMappingCase[];
-	readonly map?: (claims: unknown) => MappedPrincipal;
+	readonly map?: <T>(claims: T) => MappedPrincipal;
 }): ClaimsMappingConformanceResult {
 	const cases = options?.cases ?? BETTER_AUTH_CLAIMS_CONFORMANCE_CASES;
 	const map = options?.map ?? mapClaimsToPrincipal;
@@ -345,7 +348,7 @@ export function unexercisedAcceptedClaimKeys(
 	for (const testCase of cases) {
 		if (testCase.expected.outcome !== "mapped") continue;
 		const claims = testCase.claims;
-		if (typeof claims !== "object" || claims === null) continue;
+		if (!isJsonObject(claims) || claims === null) continue;
 		for (const key of Object.keys(claims)) {
 			seen.add(key);
 		}

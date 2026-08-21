@@ -23,7 +23,7 @@ import { DrizzleAdapterError } from "./errors.js";
  * Mirror of `@hobo/trails`'s `DataMigrationPlan`. Duplicated structurally
  * rather than imported because adapters may not depend on layer-3 packages.
  */
-export interface DataMigrationPlanShape {
+export interface DataMigrationPlanRecord {
 	readonly migrationId: string;
 	readonly expand: readonly string[];
 	readonly backfill: readonly string[];
@@ -44,9 +44,9 @@ export interface ToDataMigrationPlanInput {
 	};
 }
 
-export function toDataMigrationPlanShape(
+export function toDataMigrationPlan(
 	input: ToDataMigrationPlanInput,
-): DataMigrationPlanShape {
+): DataMigrationPlanRecord {
 	const sqlByStep = new Map<string, string>();
 	for (const statement of input.emitted) {
 		sqlByStep.set(stepKey(statement.step), statement.sql);
@@ -86,7 +86,7 @@ export function toDataMigrationPlanShape(
 			afterBackfill: input.verify.afterBackfill,
 			...(input.verify.afterContract !== undefined
 				? { afterContract: input.verify.afterContract }
-				: {}),
+				: undefined),
 		}),
 	});
 }

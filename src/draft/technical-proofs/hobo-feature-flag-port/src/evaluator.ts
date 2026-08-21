@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject } from "./json.js";
 const reason = {
   error: "error",
   default: "default"
@@ -18,7 +19,7 @@ export function createEvaluator(provider, hooks = []) {
         context,
         provider,
         hooks,
-        validate: (value) => typeof value === "boolean"
+        validate: (value) => isJsonBoolean(value)
       });
     },
 
@@ -31,7 +32,7 @@ export function createEvaluator(provider, hooks = []) {
         context,
         provider,
         hooks,
-        validate: (value) => typeof value === "string"
+        validate: (value) => isJsonString(value)
       });
     },
 
@@ -44,7 +45,7 @@ export function createEvaluator(provider, hooks = []) {
         context,
         provider,
         hooks,
-        validate: (value) => typeof value === "number" && Number.isFinite(value)
+        validate: (value) => isJsonNumber(value) && Number.isFinite(value)
       });
     },
 
@@ -74,7 +75,7 @@ async function evaluate(input) {
 
   let context = normalizedContext;
   for (const hook of input.hooks) {
-    if (typeof hook.before === "function") {
+    if (hook.before instanceof Function) {
       context = (await hook.before(invocation)) ?? context;
     }
   }
@@ -97,7 +98,7 @@ async function evaluate(input) {
   } catch (cause) {
     const details = errorDetails(input, cause);
     for (const hook of input.hooks) {
-      if (typeof hook.onError === "function") {
+      if (hook.onError instanceof Function) {
         await hook.onError(invocation, details.error);
       }
     }
@@ -105,7 +106,7 @@ async function evaluate(input) {
     return details;
   } finally {
     for (const hook of input.hooks) {
-      if (typeof hook.finally === "function") {
+      if (hook.finally instanceof Function) {
         await hook.finally(invocation);
       }
     }
@@ -114,7 +115,7 @@ async function evaluate(input) {
 
 async function runAfterHooks(hooks, invocation, kind, details) {
   for (const hook of hooks) {
-    if (typeof hook.after === "function") {
+    if (hook.after instanceof Function) {
       await hook.after(invocation, { tag: kind, val: details });
     }
   }
@@ -133,7 +134,7 @@ function errorDetails(input, cause) {
 }
 
 export function isJsonValue(value) {
-  if (!value || typeof value !== "object" || typeof value.encodedJson !== "string") {
+  if (!value || !isJsonObject(value) || !isJsonString(value.encodedJson)) {
     return false;
   }
 
@@ -160,19 +161,17 @@ function isJsonSerializable(value) {
   if (value === null) {
     return true;
   }
-
-  switch (typeof value) {
-    case "boolean":
-    case "string":
-      return true;
-    case "number":
-      return Number.isFinite(value);
-    case "object":
-      if (Array.isArray(value)) {
-        return value.every(isJsonSerializable);
-      }
-      return Object.values(value).every(isJsonSerializable);
-    default:
-      return false;
+  if (isJsonBoolean(value) || isJsonString(value)) {
+    return true;
   }
+  if (isJsonNumber(value)) {
+    return Number.isFinite(value);
+  }
+  if (Array.isArray(value)) {
+    return value.every(isJsonSerializable);
+  }
+  if (isJsonObject(value)) {
+    return Object.values(value).every(isJsonSerializable);
+  }
+  return false;
 }

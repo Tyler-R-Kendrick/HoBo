@@ -1,4 +1,6 @@
 import { randomBytes } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const TRACE_CONTEXT_CONTRACT = "hobo.trace-context/v1";
 
@@ -89,7 +91,7 @@ export function createTraceContextRuntime(options = {}) {
   }
 
   function withSpan(parentEnvelope, name, attributes, operation) {
-    if (typeof operation !== "function") {
+    if (!(operation instanceof Function)) {
       throw new TypeError("operation must be a function");
     }
 
@@ -108,7 +110,7 @@ export function createTraceContextRuntime(options = {}) {
       parentSpanId: parent.spanId,
       causationId: parentEnvelope.id,
       correlationId: parentEnvelope.correlationId,
-      attributes: { ...(attributes ?? {}) },
+      attributes: { ...attributes },
     };
 
     const startedAt = now();
@@ -136,7 +138,7 @@ export function createTraceContextRuntime(options = {}) {
       correlationId: parentEnvelope.correlationId ?? parentEnvelope.id,
       data: overrides?.data ?? {},
       meta: {
-        ...(overrides?.meta ?? {}),
+        ...overrides?.meta,
         traceparent: formatTraceparent(parent.traceId, parent.spanId, parent.flags),
       },
     };
@@ -148,7 +150,7 @@ export function createTraceContextRuntime(options = {}) {
   }
 
   function dequeue(message) {
-    const envelope = typeof message === "string" ? JSON.parse(message) : cloneEnvelope(message);
+    const envelope = isJsonString(message) ? JSON.parse(message) : cloneEnvelope(message);
     ensureTraceContext(envelope);
     return envelope;
   }
@@ -164,7 +166,7 @@ export function createTraceContextRuntime(options = {}) {
 }
 
 function parseTraceparent(value) {
-  if (typeof value !== "string") {
+  if (!isJsonString(value)) {
     return null;
   }
   const match = TRACEPARENT_PATTERN.exec(value);
@@ -200,7 +202,7 @@ function finishSpan(span, observedEnd) {
     startedAt: span.startedAt,
     endedAt: clockSkewAdjusted ? span.startedAt : observedEnd,
     attributes: span.attributes,
-    ...(clockSkewAdjusted ? { clockSkewAdjusted: true } : {}),
+    ...(clockSkewAdjusted ? { clockSkewAdjusted: true } : undefined),
   };
 }
 
@@ -209,14 +211,14 @@ function formatTraceparent(traceId, spanId, flags = "01") {
 }
 
 function cloneEnvelope(envelope) {
-  if (!envelope || typeof envelope !== "object") {
+  if (!envelope || !isJsonObject(envelope)) {
     throw new TypeError("envelope must be an object");
   }
   return {
     ...envelope,
     actor: clonePlain(envelope.actor),
     data: clonePlain(envelope.data),
-    meta: { ...(envelope.meta ?? {}) },
+    meta: { ...envelope.meta },
   };
 }
 
@@ -228,7 +230,7 @@ function clonePlain(value) {
 }
 
 function normalizeGeneratedId(value, expectedLength, fieldName) {
-  if (typeof value !== "string" || !/^[0-9a-f]+$/.test(value) || value.length !== expectedLength) {
+  if (!isJsonString(value) || !/^[0-9a-f]+$/.test(value) || value.length !== expectedLength) {
     throw new TypeError(`${fieldName} must be ${expectedLength} lowercase hex characters`);
   }
   if ((expectedLength === 32 && value === ZERO_TRACE_ID) || (expectedLength === 16 && value === ZERO_SPAN_ID)) {
@@ -238,7 +240,7 @@ function normalizeGeneratedId(value, expectedLength, fieldName) {
 }
 
 function requireString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;

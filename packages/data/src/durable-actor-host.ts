@@ -1,16 +1,32 @@
 // Durable ActorHost backed by @hobo/storage-sqlite actor_leases table.
 // In-memory host remains the deterministic default for pure unit tests.
 
-import type { SqliteJournal } from "@hobo/storage-sqlite";
-
 import {
 	type ActorHost,
 	type AggregateLease,
 	LeaseConflictError,
 } from "./actor-host.js";
+import { isStaleFenceError } from "./errors.js";
+import { parseNonEmptyString } from "./json.js";
+
+export interface ActorLeaseGrant {
+	key: string;
+	holderId: string;
+	fenceToken: bigint;
+	expiresAt: string;
+}
+
+export interface ActorLeaseJournal {
+	acquireActorLease(input: {
+		key: string;
+		holderId: string;
+		leaseTtlMs?: number;
+	}): ActorLeaseGrant;
+	releaseActorLease(key: string, holderId: string, fenceToken: bigint): void;
+}
 
 export interface DurableActorHostOptions {
-	journal: SqliteJournal;
+	journal: ActorLeaseJournal;
 	leaseTtlMs?: number;
 }
 
@@ -22,13 +38,11 @@ export function createDurableActorHost(
 
 	return Object.freeze({
 		acquire(key: string, request: { holderId: string }): AggregateLease {
-			if (typeof key !== "string" || key.length === 0) {
-				throw new TypeError("key must be a non-empty string");
-			}
-			const holderId = request?.holderId;
-			if (typeof holderId !== "string" || holderId.length === 0) {
-				throw new TypeError("request.holderId must be a non-empty string");
-			}
+			parseNonEmptyString(key, "key");
+			const holderId = parseNonEmptyString(
+				request?.holderId,
+				"request.holderId",
+			);
 			try {
 				const lease = journal.acquireActorLease({
 					key,
@@ -49,11 +63,9 @@ export function createDurableActorHost(
 					},
 				});
 			} catch (error) {
-				const name = (error as { name?: string })?.name;
-				const code = (error as { code?: string })?.code;
-				if (name === "StaleFenceError" || code === "STALE_FENCE") {
+				if (error instanceof Error && isStaleFenceError(error)) {
 					throw new LeaseConflictError(
-						`lease conflict for ${key}: ${(error as Error).message}`,
+						`lease conflict for ${key}: ${error.message}`,
 					);
 				}
 				throw error;

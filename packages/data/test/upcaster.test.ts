@@ -2,6 +2,19 @@ import type { EventEnvelope } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import { createUpcasterRegistry, foldEvents } from "../src/index.js";
+import { parseTotalCents } from "./helpers.js";
+
+interface TotalState {
+	totalCents: number;
+}
+
+interface CountState {
+	count: number;
+}
+
+interface SeenState {
+	seen: number[];
+}
 
 // Minimal envelope factory for pure fold/upcast unit tests.
 function evt(
@@ -13,8 +26,11 @@ function evt(
 		ts: "2026-06-26T00:00:00.000Z",
 		actor: { kind: "user", id: "u1" },
 		tenant: "tenant-a",
-		...partial,
-	} as EventEnvelope;
+		type: partial.type,
+		seq: partial.seq,
+		v: partial.v,
+		data: partial.data,
+	};
 }
 
 describe("upcaster registry", () => {
@@ -45,10 +61,10 @@ describe("upcaster registry", () => {
 		}));
 
 		const spec = {
-			initialState: { totalCents: 0 } as { totalCents: number },
-			evolve: (state: { totalCents: number }, event: EventEnvelope) =>
+			initialState: { totalCents: 0 } satisfies TotalState,
+			evolve: (state: TotalState, event: EventEnvelope) =>
 				event.type === "order.Placed"
-					? { totalCents: (event.data as { totalCents: number }).totalCents }
+					? { totalCents: parseTotalCents(event.data) }
 					: state,
 			upcasters: registry,
 		};
@@ -72,8 +88,8 @@ describe("upcaster registry", () => {
 describe("poison-event quarantine", () => {
 	it("records a quarantine when an evolve throws and keeps folding", () => {
 		const spec = {
-			initialState: { count: 0 } as { count: number },
-			evolve: (state: { count: number }, event: EventEnvelope) => {
+			initialState: { count: 0 } satisfies CountState,
+			evolve: (state: CountState, event: EventEnvelope) => {
 				if (event.type === "order.Poison") throw new Error("decode-error");
 				return { count: state.count + 1 };
 			},
@@ -102,8 +118,8 @@ describe("poison-event quarantine", () => {
 
 	it("deterministically skips a seq already neutralized by a persisted *.Quarantined fact", () => {
 		const spec = {
-			initialState: { seen: [] as number[] },
-			evolve: (state: { seen: number[] }, event: EventEnvelope) => ({
+			initialState: { seen: [] } satisfies SeenState,
+			evolve: (state: SeenState, event: EventEnvelope) => ({
 				seen: [...state.seen, event.seq],
 			}),
 		};

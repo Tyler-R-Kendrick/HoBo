@@ -1,5 +1,7 @@
 import type { EventEnvelope } from "@hobo/core";
 
+import { hasFunctionTag } from "./json.js";
+
 // Chained, forward-only schema evolution for event bodies (data-plane.md
 // §Schema evolution). An upcaster is a pure `vN -> vN+1` transform of an event's
 // `data` payload; readers apply the chain from the stored `v` up to the current
@@ -23,7 +25,7 @@ export function createUpcasterRegistry(): UpcasterRegistry {
 
 	const registry: UpcasterRegistry = {
 		register(type, fromVersion, up) {
-			if (typeof up !== "function") {
+			if (!hasFunctionTag(up)) {
 				throw new TypeError("upcaster must be a function");
 			}
 			if (!Number.isInteger(fromVersion) || fromVersion < 1) {
@@ -54,7 +56,8 @@ export function createUpcasterRegistry(): UpcasterRegistry {
 			let version = event.v;
 			let data = event.data;
 			while (chain.has(version)) {
-				const up = chain.get(version) as Upcaster;
+				const up = chain.get(version);
+				if (up === undefined) break;
 				data = up(data);
 				version += 1;
 			}

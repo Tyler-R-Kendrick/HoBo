@@ -41,18 +41,16 @@ if (outcome.status === "failed") {
   void failedCheck;
 }
 
-if (false) {
-  // @ts-expect-error validation check kinds are closed over the four required gate checks.
-  const unsupported: CheckKind = "cert-issued";
+// @ts-expect-error validation check kinds are closed over the four required gate checks.
+const unsupported: CheckKind = "cert-issued";
 
-  // @ts-expect-error validation requests must stage through the shadow DNS path.
-  const missingStage: DomainValidationRequest = {
-    domain: "shop.example",
-    changeId: "bad",
-    camp: "prod-us",
-  };
+// @ts-expect-error validation requests must stage through the shadow DNS path.
+const missingStage: DomainValidationRequest = {
+  domain: "shop.example",
+  changeId: "bad",
+  camp: "prod-us",
+};
 
-  void [unsupported, missingStage];
-}
+void [unsupported, missingStage];
 
 void [checkKinds, outcome];

@@ -2,6 +2,8 @@ import {
   ConnectivityTier,
   validateConnectivityPlan
 } from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const CONNECTIVITY_POLICY_ENFORCEMENT_SCHEMA_VERSION = "hobo.connectivity-policy-enforcement/v1";
 
@@ -43,7 +45,7 @@ const TIER_NAMES = new Map([
 
 export function normalizeConnectivityTier(value) {
   if (VALID_TIERS.has(value)) return value;
-  if (typeof value !== "string") return undefined;
+  if (!isJsonString(value)) return undefined;
   return TIER_NAMES.get(value.trim().toLowerCase());
 }
 
@@ -288,7 +290,7 @@ function evaluateMandatoryConstraints({ requestedTier, externalEgress, constrain
 }
 
 function validatePolicyDecision(decision, phase) {
-  if (!decision || typeof decision !== "object" || Array.isArray(decision)) {
+  if (!decision || !isJsonObject(decision) || Array.isArray(decision)) {
     return invalid("connectivity.policy-decision.invalid", "policyDecision must be an object");
   }
   if (decision.phase !== phase) {
@@ -297,14 +299,14 @@ function validatePolicyDecision(decision, phase) {
   if (!["allow", "deny"].includes(decision.effect)) {
     return invalid("connectivity.policy-decision.effect", "policyDecision.effect must be allow or deny");
   }
-  if (typeof decision.decisionId !== "string" || decision.decisionId.length === 0) {
+  if (!isJsonString(decision.decisionId) || decision.decisionId.length === 0) {
     return invalid("connectivity.policy-decision.id", "policyDecision.decisionId must be a non-empty string");
   }
   return { ok: true };
 }
 
 function validateResidencyStream(stream) {
-  if (!stream || typeof stream !== "object" || Array.isArray(stream)) {
+  if (!stream || !isJsonObject(stream) || Array.isArray(stream)) {
     return invalid("connectivity.stream.invalid", "stream must be an object");
   }
   for (const [field, value] of [
@@ -315,14 +317,14 @@ function validateResidencyStream(stream) {
     ["targetCamp.region", stream.targetCamp?.region],
     ["dataResidency.tag", stream.dataResidency?.tag]
   ]) {
-    if (typeof value !== "string" || value.length === 0) {
+    if (!isJsonString(value) || value.length === 0) {
       return invalid("connectivity.stream.required-field", `${field} must be a non-empty string`);
     }
   }
   if (!Array.isArray(stream.dataResidency.allowedRegions) || stream.dataResidency.allowedRegions.length === 0) {
     return invalid("connectivity.stream.residency", "dataResidency.allowedRegions must be a non-empty array");
   }
-  if (stream.dataResidency.allowedRegions.some((region) => typeof region !== "string" || region.length === 0)) {
+  if (stream.dataResidency.allowedRegions.some((region) => !isJsonString(region) || region.length === 0)) {
     return invalid("connectivity.stream.residency", "dataResidency.allowedRegions entries must be non-empty strings");
   }
   return { ok: true };
@@ -332,7 +334,7 @@ function findRegionPin(obligations = []) {
   return obligations.find((obligation) => (
     obligation &&
     obligation.type === "region-pin" &&
-    typeof obligation.region === "string" &&
+    isJsonString(obligation.region) &&
     obligation.region.length > 0
   ));
 }

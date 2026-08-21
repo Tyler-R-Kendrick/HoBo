@@ -6,6 +6,8 @@ import {
   evaluateMtlsHandshake,
   parseWorkloadSpiffeId
 } from "../../mtls-data-path-contract/src/mtls-data-path.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const TIER_THREE_PRIVATE_INTERCONNECT_SCHEMA_VERSION = "hobo.tier-three-private-interconnect/v1";
 
@@ -14,7 +16,7 @@ const OVERLAY_CAPABILITY = "overlay-mesh";
 const PUBLIC_MTLS_CAPABILITY = "public-mtls";
 
 export function realizeTierThreePrivateInterconnect(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     return invalid("tier3.input.invalid", "input must be an object");
   }
 
@@ -166,7 +168,7 @@ export function determineTierThreeFallback({ plan, providerInterconnectCatalog, 
 }
 
 export function resolveTierThreeBinding(link, providerOutputs) {
-  if (!link || typeof link !== "object" || Array.isArray(link)) {
+  if (!link || !isJsonObject(link) || Array.isArray(link)) {
     return invalid("tier3.link.invalid", "link must be an object");
   }
 
@@ -183,10 +185,10 @@ export function resolveTierThreeBinding(link, providerOutputs) {
 }
 
 export function canReachTierThreePeer(link, attempt) {
-  if (!link || typeof link !== "object" || Array.isArray(link)) {
+  if (!link || !isJsonObject(link) || Array.isArray(link)) {
     return invalid("tier3.link.invalid", "link must be an object");
   }
-  if (!attempt || typeof attempt !== "object" || Array.isArray(attempt)) {
+  if (!attempt || !isJsonObject(attempt) || Array.isArray(attempt)) {
     return invalid("tier3.reachability.invalid", "attempt must be an object");
   }
 
@@ -216,10 +218,10 @@ export function canReachTierThreePeer(link, attempt) {
 }
 
 export function evaluateTierThreeProvisionedState(link, observedState) {
-  if (!link || typeof link !== "object" || Array.isArray(link)) {
+  if (!link || !isJsonObject(link) || Array.isArray(link)) {
     return invalid("tier3.link.invalid", "link must be an object");
   }
-  if (!observedState || typeof observedState !== "object" || Array.isArray(observedState)) {
+  if (!observedState || !isJsonObject(observedState) || Array.isArray(observedState)) {
     return invalid("tier3.observed-state.invalid", "observedState must be an object");
   }
 
@@ -261,7 +263,7 @@ function validateTierThreePlan(plan) {
     return invalid("tier3.plan.provider-match", "tier 3 requires source and target in different providers");
   }
 
-  if (typeof plan.parameters.equivalenceClassId !== "string" || plan.parameters.equivalenceClassId.length === 0) {
+  if (!isJsonString(plan.parameters.equivalenceClassId) || plan.parameters.equivalenceClassId.length === 0) {
     return invalid("tier3.plan.equivalence-class-missing", "parameters.equivalenceClassId must be a non-empty string");
   }
 
@@ -314,7 +316,7 @@ function resolvePrivateInterconnect(providerInterconnectCatalog, plan) {
   }
 
   for (const field of ["interconnectKind", "sourceAttachmentRef", "targetServiceRef"]) {
-    if (typeof entry[field] !== "string" || entry[field].length === 0) {
+    if (!isJsonString(entry[field]) || entry[field].length === 0) {
       return invalid("tier3.interconnect-catalog.invalid", `interconnect.${field} must be a non-empty string`);
     }
   }
@@ -365,17 +367,17 @@ function resolveBindingForResource({
   targetProvider,
   providerOutputs
 }) {
-  if (!providerOutputs || typeof providerOutputs !== "object" || Array.isArray(providerOutputs)) {
+  if (!providerOutputs || !isJsonObject(providerOutputs) || Array.isArray(providerOutputs)) {
     return invalid("tier3.provider-outputs.invalid", "providerOutputs must be an object keyed by resource id");
   }
 
   const outputs = providerOutputs[targetResourceId];
-  if (!outputs || typeof outputs !== "object" || Array.isArray(outputs)) {
+  if (!outputs || !isJsonObject(outputs) || Array.isArray(outputs)) {
     return invalid("tier3.endpoint.missing", `provider outputs missing for ${targetResourceId}`);
   }
 
   const endpoint = outputs[DEFAULT_PROVIDER_OUTPUT_KEY];
-  if (typeof endpoint !== "string" || endpoint.length === 0) {
+  if (!isJsonString(endpoint) || endpoint.length === 0) {
     return invalid("tier3.endpoint.missing", `${targetResourceId}.${DEFAULT_PROVIDER_OUTPUT_KEY} must be a non-empty string`);
   }
 
@@ -400,7 +402,7 @@ function normalizeVerbs(verbs = ["connect"]) {
   const seen = new Set();
   const normalized = [];
   for (const verb of verbs) {
-    if (typeof verb !== "string" || verb.length === 0) {
+    if (!isJsonString(verb) || verb.length === 0) {
       return invalid("tier3.verbs.invalid", "verbs entries must be non-empty strings");
     }
     if (!seen.has(verb)) {
@@ -412,7 +414,7 @@ function normalizeVerbs(verbs = ["connect"]) {
 }
 
 function isStringArray(value) {
-  return Array.isArray(value) && value.every((entry) => typeof entry === "string" && entry.length > 0);
+  return Array.isArray(value) && value.every((entry) => isJsonString(entry) && entry.length > 0);
 }
 
 function invalid(code, reason) {

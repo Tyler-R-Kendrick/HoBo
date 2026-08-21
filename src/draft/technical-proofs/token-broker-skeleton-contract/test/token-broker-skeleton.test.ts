@@ -7,6 +7,7 @@ import {
   createTokenContext,
   createTokenBroker,
 } from "../src/token-broker-skeleton.js";
+import { isJsonObject } from "../src/json.js";
 
 const fixedNow = () => new Date("2026-06-25T10:00:00.000Z");
 
@@ -313,7 +314,7 @@ function hasForbiddenAuditKey(value, forbiddenKey) {
   if (Array.isArray(value)) {
     return value.some((entry) => hasForbiddenAuditKey(entry, forbiddenKey));
   }
-  if (value === null || Object.prototype.toString.call(value) !== "[object Object]") {
+  if (!value || !isJsonObject(value)) {
     return false;
   }
   return Object.entries(value).some(([key, nested]) =>

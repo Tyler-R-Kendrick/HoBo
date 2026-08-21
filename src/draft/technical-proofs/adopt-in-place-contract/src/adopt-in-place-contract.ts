@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const ADOPT_IN_PLACE_CONTRACT_VERSION = "hobo.adopt-in-place/v1";
 
@@ -618,7 +620,7 @@ function stableJson(value) {
   if (Array.isArray(value)) {
     return `[${value.map(stableJson).join(",")}]`;
   }
-  if (isObjectLike(value)) {
+  if (value && isJsonObject(value)) {
     return `{${Object.keys(value)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
@@ -628,10 +630,14 @@ function stableJson(value) {
 }
 
 function clonePlainObject(value, label) {
-  if (!isPlainObject(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new AdoptInPlaceError("invalid-object", `${label} must be an object`);
   }
   return structuredClone(value);
+}
+
+function isPlainObject(value) {
+  return Boolean(value) && isJsonObject(value) && !Array.isArray(value);
 }
 
 function uniqueStrings(values, label) {
@@ -642,13 +648,13 @@ function uniqueStrings(values, label) {
 }
 
 function assertId(id, label) {
-  if (!isNonEmptyString(id)) {
+  if (!id || !isJsonString(id)) {
     throw new AdoptInPlaceError("invalid-id", `${label} requires a string id`);
   }
 }
 
 function deepFreeze(value) {
-  if (!isObjectLike(value) || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 
@@ -657,16 +663,4 @@ function deepFreeze(value) {
     deepFreeze(child);
   }
   return value;
-}
-
-function isObjectLike(value) {
-  return value !== null && (Array.isArray(value) || Object.prototype.toString.call(value) === "[object Object]");
-}
-
-function isPlainObject(value) {
-  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
-}
-
-function isNonEmptyString(value) {
-  return Object.prototype.toString.call(value) === "[object String]" && value.length > 0;
 }

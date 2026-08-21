@@ -1,9 +1,11 @@
 import { createHash } from "node:crypto";
-import { mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, mkdtemp, readdir, readFile, writeFile } from "node:fs/promises";
 import { basename, dirname, join, relative, sep } from "node:path";
 import { tmpdir } from "node:os";
 
 import type { ComponentizeSpec, SourceFileDigest } from "./types.js";
+import { type JsonValue } from "./json.js";
+
 
 const FORBIDDEN_PATTERNS: ReadonlyArray<readonly [string, RegExp]> = [
   ["Date.now", /\bDate\.now\s*\(/],
@@ -132,7 +134,7 @@ function sha256Text(text: string): string {
   return `sha256:${createHash("sha256").update(text).digest("hex")}`;
 }
 
-function stableStringify(value: unknown): string {
+function stableStringify(value: JsonValue): string {
   return JSON.stringify(value);
 }
 

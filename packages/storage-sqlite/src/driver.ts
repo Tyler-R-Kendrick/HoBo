@@ -3,6 +3,8 @@
  * (SQLite WASM). Semantic logic never imports Node or browser APIs.
  */
 
+import { isJsonBigInt, isJsonNumber, isJsonString } from "./json.js";
+
 export type SqliteValue =
 	| null
 	| number
@@ -16,10 +18,14 @@ export interface SqliteRunResult {
 	readonly lastInsertRowid: number | bigint;
 }
 
+export interface SqliteRow {
+	readonly [key: string]: SqliteValue | undefined;
+}
+
 export interface SqliteStatement {
 	run(...params: SqliteValue[]): SqliteRunResult;
-	get(...params: SqliteValue[]): Record<string, unknown> | undefined;
-	all(...params: SqliteValue[]): Record<string, unknown>[];
+	get(...params: SqliteValue[]): SqliteRow | undefined;
+	all(...params: SqliteValue[]): SqliteRow[];
 }
 
 export interface SqliteDriver {
@@ -37,20 +43,20 @@ export interface SqliteDriver {
 	close(): void;
 }
 
-export function asBigInt(value: unknown, field: string): bigint {
-	if (typeof value === "bigint") return value;
-	if (typeof value === "number" && Number.isSafeInteger(value)) {
+export function asBigInt<T>(value: T, field: string): bigint {
+	if (isJsonBigInt(value)) return value;
+	if (isJsonNumber(value) && Number.isSafeInteger(value)) {
 		return BigInt(value);
 	}
-	if (typeof value === "string" && /^-?\d+$/.test(value)) {
+	if (isJsonString(value) && /^-?\d+$/.test(value)) {
 		return BigInt(value);
 	}
-	throw new TypeError(`${field} must be integer/bigint, got ${typeof value}`);
+	throw new TypeError(`${field} must be integer/bigint`);
 }
 
-export function asNumber(value: unknown, field: string): number {
-	if (typeof value === "number" && Number.isFinite(value)) return value;
-	if (typeof value === "bigint") {
+export function asNumber<T>(value: T, field: string): number {
+	if (isJsonNumber(value) && Number.isFinite(value)) return value;
+	if (isJsonBigInt(value)) {
 		if (
 			value > BigInt(Number.MAX_SAFE_INTEGER) ||
 			value < BigInt(Number.MIN_SAFE_INTEGER)
@@ -59,33 +65,26 @@ export function asNumber(value: unknown, field: string): number {
 		}
 		return Number(value);
 	}
-	if (
-		typeof value === "string" &&
-		value !== "" &&
-		Number.isFinite(Number(value))
-	) {
+	if (isJsonString(value) && value !== "" && Number.isFinite(Number(value))) {
 		return Number(value);
 	}
 	throw new TypeError(`${field} must be a number`);
 }
 
-export function asText(value: unknown, field: string): string {
-	if (typeof value === "string") return value;
+export function asText<T>(value: T, field: string): string {
+	if (isJsonString(value)) return value;
 	throw new TypeError(`${field} must be a string`);
 }
 
-export function asNullableText(value: unknown): string | null {
+export function asNullableText<T>(value: T): string | null {
 	if (value === null || value === undefined) return null;
-	if (typeof value === "string") return value;
+	if (isJsonString(value)) return value;
 	throw new TypeError("expected string or null");
 }
 
-export function asBytes(value: unknown, field: string): Uint8Array {
+export function asBytes<T>(value: T, field: string): Uint8Array {
 	if (value instanceof Uint8Array) return value;
-	if (typeof Buffer !== "undefined" && Buffer.isBuffer(value)) {
-		return new Uint8Array(value);
-	}
-	if (typeof value === "string") {
+	if (isJsonString(value)) {
 		return new TextEncoder().encode(value);
 	}
 	throw new TypeError(`${field} must be bytes`);

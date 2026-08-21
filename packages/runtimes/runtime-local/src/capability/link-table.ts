@@ -6,6 +6,7 @@ import {
 	type LinkCalledEvent,
 	type LinkEstablishedEvent,
 } from "@hobo/core";
+import { isJsonString, type JsonValue } from "../json.js";
 
 export interface CapabilityHandle {
 	componentId: string;
@@ -17,7 +18,10 @@ export interface CapabilityLinkTable {
 	registerComponent(input: { id: string; imports: readonly string[] }): void;
 	registerProvider(input: {
 		id: string;
-		exports: Record<string, Record<string, (...args: unknown[]) => unknown>>;
+		exports: Record<
+			string,
+			Record<string, (...args: JsonValue[]) => JsonValue>
+		>;
 	}): void;
 	link(input: {
 		componentId: string;
@@ -32,8 +36,8 @@ export interface CapabilityLinkTable {
 	callWithHandle(
 		handle: CapabilityHandle,
 		operation: string,
-		payload?: unknown,
-	): Promise<unknown>;
+		payload?: JsonValue,
+	): Promise<JsonValue>;
 	events(): readonly CapabilityLinkTableEvent[];
 }
 
@@ -44,7 +48,7 @@ interface StoredComponent {
 
 interface StoredProvider {
 	id: string;
-	exports: Record<string, Record<string, (...args: unknown[]) => unknown>>;
+	exports: Record<string, Record<string, (...args: JsonValue[]) => JsonValue>>;
 }
 
 interface StoredGrant {
@@ -230,7 +234,7 @@ export function createCapabilityLinkTable({
 
 			const implementation =
 				provider.exports[link.exportInterface]?.[operation];
-			if (typeof implementation !== "function") {
+			if (!(implementation instanceof Function)) {
 				deny("capability.operation-not-found", {
 					componentId,
 					importInterface,
@@ -273,7 +277,7 @@ function grantKey(componentId: string, importInterface: string): string {
 }
 
 function assertId(id: string, kind: "component" | "provider"): void {
-	if (typeof id !== "string" || id.length === 0) {
+	if (!isJsonString(id) || id.length === 0) {
 		throw new Error(`capability.${kind}-id-required`);
 	}
 }

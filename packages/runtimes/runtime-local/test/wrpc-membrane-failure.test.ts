@@ -4,7 +4,6 @@ import {
 	parseWireVersion,
 } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
 import {
 	AmbiguousCommitError,
 	classifyToRuntimeError,
@@ -15,6 +14,7 @@ import {
 	MembraneBackpressureError,
 	type RuntimeMembraneError,
 } from "../src/index.js";
+import { isJsonString, type JsonValue } from "../src/json.js";
 
 const KV = parseInterfaceId("wasi:keyvalue/store@0.2.0");
 const FUTURE_DEADLINE = "2999-01-01T00:00:00.000Z";
@@ -28,8 +28,14 @@ function kvPin() {
 	};
 }
 
+interface MembraneHandlerMap {
+	readonly [operation: string]: (
+		payload: JsonValue,
+	) => JsonValue | Promise<JsonValue>;
+}
+
 function createLayer(
-	handlers: Record<string, (payload: unknown) => unknown | Promise<unknown>>,
+	handlers: MembraneHandlerMap,
 	options: { maxInFlight?: number; clock?: { nowMs(): number } } = {},
 ) {
 	const store = new ProviderHandlerStore();
@@ -43,8 +49,8 @@ function createLayer(
 		store,
 		...(options.maxInFlight !== undefined
 			? { maxInFlight: options.maxInFlight }
-			: {}),
-		...(options.clock !== undefined ? { clock: options.clock } : {}),
+			: undefined),
+		...(options.clock !== undefined ? { clock: options.clock } : undefined),
 	});
 	layer.registerComponent({ id: "api", imports: [kvPin()] });
 	layer.registerProvider({
@@ -107,6 +113,7 @@ describe("membrane failure semantics (S1-23)", () => {
 		}
 
 		expect(caught).toBeInstanceOf(DeadlineExceededError);
+		// SAFETY: assertion to `caught as DeadlineExceededError` is required at this boundary.
 		expect((caught as DeadlineExceededError).kind).toBe("cancelled");
 		expect(classifyToRuntimeError(caught).tag).toBe("cancelled");
 		// The failed call is not recorded as a completed link.Called.
@@ -141,7 +148,9 @@ describe("membrane failure semantics (S1-23)", () => {
 		}
 
 		expect(caught).toBeInstanceOf(MembraneBackpressureError);
+		// SAFETY: assertion to `caught as MembraneBackpressureError` is required at this boundary.
 		expect((caught as MembraneBackpressureError).kind).toBe("retryable");
+		// SAFETY: assertion to `caught as MembraneBackpressureError` is required at this boundary.
 		expect((caught as MembraneBackpressureError).retryable).toBe(true);
 		expect(classifyToRuntimeError(caught).tag).toBe("retryable");
 
@@ -170,7 +179,9 @@ describe("membrane failure semantics (S1-23)", () => {
 		}
 
 		expect(caught).toBeInstanceOf(AmbiguousCommitError);
+		// SAFETY: assertion to `caught as AmbiguousCommitError` is required at this boundary.
 		expect((caught as AmbiguousCommitError).kind).toBe("ambiguous-commit");
+		// SAFETY: assertion to `caught as AmbiguousCommitError` is required at this boundary.
 		expect((caught as AmbiguousCommitError).ambiguousCommit).toBe(true);
 		expect(classifyToRuntimeError(caught).tag).toBe("ambiguous-commit");
 	});
@@ -214,7 +225,7 @@ describe("membrane failure semantics (S1-23)", () => {
 		for (const error of errors) {
 			const variant = error.toVariant();
 			expect(variant.tag).toBe(error.kind);
-			expect(typeof variant.val).toBe("string");
+			expect(isJsonString(variant.val)).toBe(true);
 		}
 	});
 });

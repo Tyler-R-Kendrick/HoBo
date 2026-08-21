@@ -1,7 +1,6 @@
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-
 import type { RuntimeDurabilityBackend } from "@hobo/conformance/runtime-port";
 import { must, mustGet } from "@hobo/core/total-access";
 import { createInMemoryActorHost } from "../../src/actor-host/in-memory.js";
@@ -9,6 +8,7 @@ import {
 	createManualClock,
 	createRuntimeLocalEventStore,
 } from "../../src/index.js";
+import { isJsonString, type JsonValue } from "../../src/json.js";
 import { createRuntimeLocalQueueClock } from "../../src/replay.js";
 
 export function createRuntimeLocalDurabilityBackend(
@@ -68,14 +68,14 @@ function createBrokenFenceActorHost() {
 			key: string,
 			request: {
 				fold?: (
-					state: unknown,
+					state: JsonValue,
 					event: { type: string; amount?: number },
-				) => unknown;
-				initialState?: unknown;
+				) => JsonValue;
+				initialState?: JsonValue;
 			} = {},
 		) {
 			const actorKey = requireNonEmptyString(key, "key");
-			if (typeof request.fold !== "function") {
+			if (!(request.fold instanceof Function)) {
 				throw new TypeError("request.fold must be a function");
 			}
 			// Bind it here: the narrowing above does not survive into the nested
@@ -97,8 +97,10 @@ function createBrokenFenceActorHost() {
 					});
 				},
 				read() {
+					// SAFETY: assertion to `structuredClone(initialState) as { value: number }` is required at this boundary.
 					let state = structuredClone(initialState) as { value: number };
 					for (const event of stream.events) {
+						// SAFETY: assertion to `fold(state, structuredClone(event)) as { value: number; }` is required at this boundary.
 						state = fold(state, structuredClone(event)) as {
 							value: number;
 						};
@@ -124,8 +126,8 @@ function getBrokenStream(
 	return mustGet(streams, key);
 }
 
-function requireNonEmptyString(value: unknown, fieldName: string): string {
-	if (typeof value !== "string" || value.length === 0) {
+function requireNonEmptyString(value: JsonValue, fieldName: string): string {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new TypeError(`${fieldName} must be a non-empty string`);
 	}
 	return value;

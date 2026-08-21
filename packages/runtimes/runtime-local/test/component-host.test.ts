@@ -7,15 +7,18 @@ import {
 	createInProcessWasmtimeEngine,
 	createRuntimeLocalComponentHost,
 } from "../src/index.js";
+import type { JsonValue } from "../src/json.js";
 import {
 	helloBindleComponent,
 	helloBindleProvider,
 } from "./fixtures/hello-bindle.js";
 
-function collectEvents(): {
+interface EventCollector {
 	events: ComponentHostEvent[];
 	appendEvent: (event: ComponentHostEvent) => void;
-} {
+}
+
+function collectEvents(): EventCollector {
 	const events: ComponentHostEvent[] = [];
 	return {
 		events,
@@ -58,15 +61,22 @@ describe("runtime-local component host", () => {
 							callImport: (
 								importInterface: string,
 								operation: string,
-								payload?: unknown,
-							) => Promise<unknown>;
+								payload?: JsonValue,
+							) => Promise<JsonValue>;
 						},
 					) => {
-						const upstream = (await context.callImport(
+						interface UpstreamHttp {
+							status: number;
+							headers: [string, string][];
+							body: string;
+						}
+						const raw = await context.callImport(
 							"wasi:http/outgoing-handler@0.2.0",
 							"handle",
 							request,
-						)) as { status: number; headers: [string, string][]; body: string };
+						);
+						// SAFETY: outgoing handler returns HTTP fields at this test boundary.
+						const upstream = raw as UpstreamHttp;
 						return {
 							status: upstream.status,
 							headers: upstream.headers,

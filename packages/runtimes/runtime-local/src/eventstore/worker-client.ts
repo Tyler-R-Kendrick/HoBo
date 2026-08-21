@@ -5,7 +5,6 @@
 
 import { fileURLToPath } from "node:url";
 import { Worker } from "node:worker_threads";
-
 import type {
 	AppendOptions,
 	AppendResult,
@@ -17,6 +16,7 @@ import type {
 	SnapshotRecord,
 } from "@hobo/core";
 import { StorageWorkerTerminatedError } from "@hobo/core";
+import { isJsonObject, isJsonString, type JsonValue } from "../json.js";
 
 import type {
 	StorageWorkerRequest,
@@ -33,7 +33,7 @@ export class StorageWorkerClient {
 	private readonly pending = new Map<
 		string,
 		{
-			resolve: (value: unknown) => void;
+			resolve: (value: RevivedValue) => void;
 			reject: (error: Error) => void;
 		}
 	>();
@@ -65,7 +65,7 @@ export class StorageWorkerClient {
 				const err = new Error(msg.error.message);
 				err.name = msg.error.name;
 				if (msg.error.code) {
-					(err as { code?: string }).code = msg.error.code;
+					Object.assign(err, { code: msg.error.code });
 				}
 				slot.reject(err);
 			}
@@ -95,7 +95,7 @@ export class StorageWorkerClient {
 		this.pending.clear();
 	}
 
-	private call(request: StorageWorkerRequest): Promise<unknown> {
+	private call(request: StorageWorkerRequest): Promise<RevivedValue> {
 		const worker = this.ensureWorker();
 		return new Promise((resolve, reject) => {
 			this.pending.set(request.id, { resolve, reject });
@@ -107,26 +107,30 @@ export class StorageWorkerClient {
 		return `req-${++this.seq}`;
 	}
 
-	append(
+	async append(
 		streamId: string,
 		events: EventInput[],
 		options: AppendOptions,
 	): Promise<AppendResult> {
-		return this.call({
+		const revived = await this.call({
 			id: this.nextId(),
 			op: "append",
 			streamId,
 			events,
 			options,
-		}) as Promise<AppendResult>;
+		});
+		// SAFETY: append worker payload is AppendResult after bigint revive.
+		return revived as never;
 	}
 
-	commit(request: DurableCommitRequest): Promise<DurableCommitResult> {
-		return this.call({
+	async commit(request: DurableCommitRequest): Promise<DurableCommitResult> {
+		const revived = await this.call({
 			id: this.nextId(),
 			op: "commit",
 			request,
-		}) as Promise<DurableCommitResult>;
+		});
+		// SAFETY: commit worker payload is DurableCommitResult after bigint revive.
+		return revived as never;
 	}
 
 	async read(streamId: string, fromSeq?: number): Promise<EventEnvelope[]> {
@@ -134,37 +138,48 @@ export class StorageWorkerClient {
 			fromSeq === undefined
 				? { id: this.nextId(), op: "read", streamId }
 				: { id: this.nextId(), op: "read", streamId, fromSeq };
-		return this.call(req) as Promise<EventEnvelope[]>;
+		const revived = await this.call(req);
+		// SAFETY: read worker payload is EventEnvelope[] after bigint revive.
+		return revived as never;
 	}
 
-	async readAll(options?: ReadAllOptions): Promise<unknown[]> {
+	async readAll(options?: ReadAllOptions): Promise<RevivedValue[]> {
 		const req: StorageWorkerRequest =
 			options === undefined
 				? { id: this.nextId(), op: "readAll" }
 				: { id: this.nextId(), op: "readAll", options };
-		return this.call(req) as Promise<unknown[]>;
+		const revived = await this.call(req);
+		if (!Array.isArray(revived)) {
+			throw new TypeError("readAll worker payload must be an array");
+		}
+		return revived;
 	}
 
-	snapshot(
+	async snapshot(
 		streamId: string,
-		state: unknown,
+		state: JsonValue,
 		seq: number,
 	): Promise<SnapshotRecord> {
-		return this.call({
+		const revived = await this.call({
 			id: this.nextId(),
 			op: "snapshot",
 			streamId,
 			state,
 			seq,
-		}) as Promise<SnapshotRecord>;
+		});
+		// SAFETY: snapshot worker payload is SnapshotRecord after bigint revive.
+		return revived as never;
 	}
 
-	loadSnapshot(streamId: string): Promise<SnapshotRecord | undefined> {
-		return this.call({
+	async loadSnapshot(streamId: string): Promise<SnapshotRecord | undefined> {
+		const revived = await this.call({
 			id: this.nextId(),
 			op: "loadSnapshot",
 			streamId,
-		}) as Promise<SnapshotRecord | undefined>;
+		});
+		if (revived === null) return undefined;
+		// SAFETY: loadSnapshot worker payload is SnapshotRecord after bigint revive.
+		return revived as never;
 	}
 
 	async close(): Promise<void> {
@@ -179,19 +194,24 @@ export class StorageWorkerClient {
 	}
 }
 
-function reviveBigints(value: unknown): unknown {
+export type RevivedValue = JsonValue | bigint | RevivedValue[] | RevivedBag;
+
+export interface RevivedBag {
+	[key: string]: RevivedValue;
+}
+
+function reviveBigints(value: JsonValue): RevivedValue {
 	if (Array.isArray(value)) return value.map(reviveBigints);
-	if (value && typeof value === "object") {
-		const obj = value as Record<string, unknown>;
+	if (value && isJsonObject(value)) {
 		if (
-			Object.keys(obj).length === 1 &&
-			typeof obj.$bigint === "string" &&
-			/^-?\d+$/.test(obj.$bigint)
+			Object.keys(value).length === 1 &&
+			isJsonString(value.$bigint) &&
+			/^-?\d+$/.test(value.$bigint)
 		) {
-			return BigInt(obj.$bigint);
+			return BigInt(value.$bigint);
 		}
-		const out: Record<string, unknown> = {};
-		for (const [k, v] of Object.entries(obj)) {
+		const out: RevivedBag = {};
+		for (const [k, v] of Object.entries(value)) {
 			out[k] = reviveBigints(v);
 		}
 		return out;

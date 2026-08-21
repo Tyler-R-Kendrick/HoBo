@@ -65,7 +65,7 @@ export function replayClockTrace(
 		if (entry.type === "timer.scheduled") {
 			replay.clock.sleep(parseRunId(entry.runId), entry.delayMs, {
 				idempotencyKey: entry.idempotencyKey,
-				...(entry.label !== undefined ? { label: entry.label } : {}),
+				...(entry.label !== undefined ? { label: entry.label } : undefined),
 			});
 		} else if (entry.type === "cron.scheduled") {
 			replay.clock.cron(parseScheduleId(entry.scheduleId), {

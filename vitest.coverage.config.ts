@@ -205,7 +205,7 @@ export default defineConfig({
 				"packages/connectivity/**": { statements: 87, branches: 80, functions: 89, lines: 88 },
 				"packages/connectors/**": { statements: 88, branches: 80, functions: 86, lines: 88 },
 				"packages/contract-harness/**": { statements: 86, branches: 85, functions: 98, lines: 85 },
-				"packages/contracts/**": { statements: 85, branches: 72, functions: 87, lines: 85 },
+				"packages/contracts/**": { statements: 90, branches: 81, functions: 89, lines: 90 },
 				"packages/control-api/**": { statements: 96, branches: 90, functions: 100, lines: 96 },
 				"packages/control-yard/**": { statements: 93, branches: 87, functions: 91, lines: 93 },
 				"packages/convex/**": { statements: 99, branches: 94, functions: 99, lines: 99 },

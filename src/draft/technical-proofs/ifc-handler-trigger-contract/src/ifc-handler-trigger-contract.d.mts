@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export interface TriggerEdge {
   readonly id: string;
   readonly kind: "http.route" | "topic.subscribe" | "schedule.cron" | "bucket.on";
@@ -33,23 +34,23 @@ export interface BindingDescriptor {
 }
 
 export interface KvClient {
-  get(key: string): Promise<unknown>;
-  set(key: string, value: unknown): Promise<void>;
+  get(key: string): Promise<JsonValue>;
+  set(key: string, value: JsonValue): Promise<void>;
   delete(key: string): Promise<void>;
 }
 
 export interface QueueClient {
-  enqueue(message: unknown): Promise<void>;
-  dequeue(): Promise<unknown>;
+  enqueue(message: JsonValue): Promise<void>;
+  dequeue(): Promise<JsonValue>;
 }
 
 export interface TopicClient {
-  publish(message: unknown): Promise<void>;
+  publish(message: JsonValue): Promise<void>;
 }
 
 export interface BucketClient {
-  read(key: string): Promise<unknown>;
-  write(key: string, value: unknown): Promise<void>;
+  read(key: string): Promise<JsonValue>;
+  write(key: string, value: JsonValue): Promise<void>;
   delete(key: string): Promise<void>;
 }
 
@@ -64,16 +65,16 @@ export type BindingClients<Bindings extends BindingMap> = {
 export interface HandlerContext<Bindings extends BindingMap = {}> {
   readonly params: Readonly<Record<string, string>>;
   json<T = unknown>(): Promise<T>;
-  readonly body: unknown;
+  readonly body: JsonValue;
   readonly bindings: BindingClients<Bindings>;
   readonly config: Readonly<Record<string, string>>;
-  readonly user?: unknown;
-  readonly identity?: unknown;
+  readonly user?: JsonValue;
+  readonly identity?: JsonValue;
 }
 
 export type Handler<Bindings extends BindingMap = {}> = (
   ctx: HandlerContext<Bindings>,
-) => unknown | Promise<unknown>;
+) => JsonValue | void | Promise<JsonValue | void>;
 
 export interface ApiHandle<Bindings extends BindingMap = {}> extends ResourceHandle<"api", never> {
   get(path: string, handler: Handler<Bindings>): TriggerEdge;
@@ -98,7 +99,7 @@ export interface BucketHandle extends ResourceHandle<"bucket", BucketClient> {
 export interface WorkflowHandler {
   readonly kind: "workflow";
   readonly name: string;
-  readonly handler: (...args: unknown[]) => unknown;
+  readonly handler: (...args: JsonValue[]) => JsonValue | void | Promise<JsonValue | void>;
 }
 
 export class TriggerContractError extends Error {
@@ -116,10 +117,10 @@ export function queue(name: string): ResourceHandle<"queue", QueueClient>;
 export function topic(name: string, options?: { durableEvents?: boolean }): TopicHandle;
 export function schedule(name: string, options?: { durableEvents?: boolean }): ScheduleHandle;
 export function bucket(name: string, options?: { durableEvents?: boolean }): BucketHandle;
-export function workflow(name: string, handler: (...args: unknown[]) => unknown): WorkflowHandler;
+export function workflow(name: string, handler: (...args: JsonValue[]) => JsonValue | void | Promise<JsonValue | void>): WorkflowHandler;
 
 export function compileHandlerManifest(
-  resources: readonly ResourceHandle<string, unknown>[],
+  resources: readonly ResourceHandle<string, JsonValue>[],
   options?: {
     readonly triggers?: readonly TriggerEdge[];
     readonly componentHost?: {
@@ -133,6 +134,6 @@ export function compileHandlerManifest(
     readonly kind: string;
     readonly version: string;
   };
-  readonly resources: Record<string, unknown>;
+  readonly resources: JsonObject;
   readonly triggerEdges?: readonly TriggerEdge[];
 };

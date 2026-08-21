@@ -1,4 +1,6 @@
 import { api, kv, queue } from "../src/ifc-handler-trigger-contract.js";
+import { type JsonValue } from "../src/json.js";
+
 
 async function assertHandlerContextTypes() {
   const todos = kv("todos");
@@ -7,11 +9,11 @@ async function assertHandlerContextTypes() {
 
   app.get("/todos/:id", async (ctx) => {
     const id: string = ctx.params.id;
-    const item: unknown = await ctx.bindings.todos.get(id);
+    const item: JsonValue = await ctx.bindings.todos.get(id);
     await ctx.bindings.orders.enqueue({ id, item });
 
     // @ts-expect-error only declared bindings are exposed.
-    ctx.bindings.missing;
+    void ctx.bindings.missing;
 
     // @ts-expect-error kv clients do not expose queue operations.
     await ctx.bindings.todos.enqueue({ id });

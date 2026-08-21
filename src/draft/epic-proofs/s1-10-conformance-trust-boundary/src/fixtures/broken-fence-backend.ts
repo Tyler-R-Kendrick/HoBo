@@ -1,3 +1,4 @@
+import { type JsonValue, isJsonString } from "../json.js";
 import { createRuntimeLocalDurabilityBackend } from "./reference-backend.js";
 import type { RuntimeDurabilityBackend } from "../runtime-port/types.js";
 
@@ -11,8 +12,16 @@ export function createBrokenFenceRuntimeBackend(): RuntimeDurabilityBackend {
   });
 }
 
+type BrokenStreamEvent = {
+  type: string;
+  amount?: number;
+  streamId: string;
+  seq: number;
+  fenceToken?: bigint;
+};
+
 function createBrokenFenceActorHost() {
-  const streams = new Map();
+  const streams = new Map<string, { events: BrokenStreamEvent[] }>();
   const leases = new Map();
 
   return Object.freeze({
@@ -34,9 +43,9 @@ function createBrokenFenceActorHost() {
       return lease;
     },
 
-    state(key: string, request: { fold?: (state: unknown, event: { type: string; amount?: number }) => unknown; initialState?: unknown } = {}) {
+    state<T>(key: string, request: { fold?: (state: T, event: { type: string; amount?: number }) => T; initialState?: T } = {}) {
       const actorKey = requireNonEmptyString(key, "key");
-      if (typeof request.fold !== "function") {
+      if (!(request.fold instanceof Function)) {
         throw new TypeError("request.fold must be a function");
       }
       const stream = getBrokenStream(streams, actorKey);
@@ -58,9 +67,11 @@ function createBrokenFenceActorHost() {
           });
         },
         read() {
-          let state = clone(initialState) as { value: number };
+          let state = clone(initialState);
           for (const event of stream.events) {
-            state = request.fold!(state, clone(event)) as { value: number };
+            // SAFETY: fold is generic over T; clone(initialState) starts as T | undefined.
+            const current: T = state as T;
+            state = request.fold!(current, clone(event));
           }
           return Object.freeze({
             streamId: actorKey,
@@ -76,15 +87,15 @@ function createBrokenFenceActorHost() {
   });
 }
 
-function getBrokenStream(streams: Map<string, { events: unknown[] }>, key: string) {
+function getBrokenStream(streams: Map<string, { events: BrokenStreamEvent[] }>, key: string) {
   if (!streams.has(key)) {
     streams.set(key, { events: [] });
   }
   return streams.get(key)!;
 }
 
-function requireNonEmptyString(value: unknown, fieldName: string): string {
-  if (typeof value !== "string" || value.length === 0) {
+function requireNonEmptyString(value: JsonValue, fieldName: string): string {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -94,7 +105,7 @@ function clone<T>(value: T): T {
   if (value === undefined) {
     return value;
   }
-  return typeof structuredClone === "function"
+  return structuredClone instanceof Function
     ? structuredClone(value)
     : JSON.parse(JSON.stringify(value));
 }

@@ -1,11 +1,13 @@
+import { type JsonObject, type JsonValue, isJsonObject } from "../json.js";
 import type { RuntimePortConformanceReport } from "./types.js";
 
-export function parseRuntimePortReport(raw: unknown): RuntimePortConformanceReport {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+export function parseRuntimePortReport(raw: JsonValue): RuntimePortConformanceReport {
+  if (!raw || !isJsonObject(raw) || Array.isArray(raw)) {
     throw new TypeError("report must be an object");
   }
 
-  const source = raw as Record<string, unknown>;
+  // SAFETY: assertion to `raw as JsonObject` is required at this boundary.
+  const source = raw as JsonObject;
   const contract = source.contract;
   if (contract !== "hobo.runtime-port-conformance/v1") {
     throw new TypeError("contract must be hobo.runtime-port-conformance/v1");
@@ -21,9 +23,10 @@ export function parseRuntimePortReport(raw: unknown): RuntimePortConformanceRepo
     throw new TypeError("status must be fail iff failures is non-empty");
   }
 
-  const coverage = source.coverage as { local?: Record<string, unknown> } | undefined;
+  // SAFETY: assertion to `source.coverage as { local?: JsonObject } | undefined` is required at this boundary.
+  const coverage = source.coverage as { local?: JsonObject } | undefined;
   const local = coverage?.local;
-  if (!local || typeof local !== "object") {
+  if (!local || !isJsonObject(local)) {
     throw new TypeError("coverage.local is required");
   }
 
@@ -34,6 +37,7 @@ export function parseRuntimePortReport(raw: unknown): RuntimePortConformanceRepo
     throw new TypeError("coverage.local.passed + failed must equal total");
   }
 
+  // SAFETY: assertion to `Object.freeze({ contract, backend: String(source.backend ?? ""), status, checks: Object.freeze(Array.isArray(source.chec` is required at this boundary.
   return Object.freeze({
     contract,
     backend: String(source.backend ?? ""),

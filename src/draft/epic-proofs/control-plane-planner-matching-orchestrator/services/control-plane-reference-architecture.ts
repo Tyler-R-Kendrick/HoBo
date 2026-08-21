@@ -128,7 +128,7 @@ export async function runControlPlaneReferenceSimulation(options = {}) {
     },
     driverDispatch: {
       selectedDrivers: ["terraform", "template", "echo", "container", "custom-webhook"],
-      passthroughShape: ["context", "inputs", "oldState", "outputs", "manifests", "state"]
+      passthroughFields: ["context", "inputs", "oldState", "outputs", "manifests", "state"]
     },
     drift: {
       loopDetected: true,

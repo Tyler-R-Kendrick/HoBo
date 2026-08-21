@@ -32,6 +32,7 @@ export function parseRequiredSessionCommands(): readonly string[] {
       actorId: "proof",
       sessionId: "session-1",
       expectedRevision: "0",
+      // SAFETY: assertion to `name as keyof typeof bodies` is required at this boundary.
       [name]: bodies[name as keyof typeof bodies]
     }).command.case
   ).filter((name): name is string => name !== undefined);

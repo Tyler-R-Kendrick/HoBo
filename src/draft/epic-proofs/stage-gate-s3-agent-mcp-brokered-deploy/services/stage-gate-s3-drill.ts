@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "../src/json.js";
 import { createHash } from "node:crypto";
 
 import { buildSignedAuthManifestEnvelope } from "../../../technical-proofs/hobo-auth-json-contract/src/auth-json.js";
@@ -301,7 +302,7 @@ async function applySelfCorrection(mcp, failedDeploy) {
 function replayJourney(events) {
   const digest = createHash("sha256").update(JSON.stringify(events)).digest("hex");
   const tokenTrail = events
-    .filter((event) => typeof event.type === "string" && event.type.startsWith("token."))
+    .filter((event) => isJsonString(event.type) && event.type.startsWith("token."))
     .map((event) => event.type);
   const deploySucceeded = events.some((event) => event.type === "deployment.Succeeded");
   return deepFreeze({
@@ -453,7 +454,7 @@ function summarizeJourney(steps) {
 }
 
 function deepFreeze(value) {
-  if (value && typeof value === "object") {
+  if (Array.isArray(value) || (value && isJsonObject(value))) {
     for (const entry of Object.values(value)) {
       deepFreeze(entry);
     }

@@ -1,5 +1,4 @@
 import { RUNTIME_PORT_CHECKS } from "./checks.js";
-import { proveCheckoutDurability } from "./checkout-proof.js";
 import { parseRuntimePortReport } from "./parse.js";
 import {
   RUNTIME_PORT_CONFORMANCE_VERSION,
@@ -18,7 +17,7 @@ export { parseRuntimePortReport } from "./parse.js";
 export async function runRuntimePortDurabilitySuite(
   createBackend: () => RuntimeDurabilityBackend,
 ): Promise<RuntimePortConformanceReport> {
-  if (typeof createBackend !== "function") {
+  if (!(createBackend instanceof Function)) {
     throw new TypeError("createBackend must be a function");
   }
 

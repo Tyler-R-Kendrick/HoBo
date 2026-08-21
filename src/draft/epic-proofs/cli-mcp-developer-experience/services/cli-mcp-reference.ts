@@ -1,3 +1,4 @@
+import { isJsonObject } from "../src/json.js";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -454,7 +455,7 @@ function summarizeGitops(result) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || Object.isFrozen(value) || !(Array.isArray(value) || isJsonObject(value))) {
     return value;
   }
   for (const nested of Object.values(value)) {

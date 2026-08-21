@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "../src/json.js";
 import { createHash } from "node:crypto";
 
 import {
@@ -381,14 +382,14 @@ function makeEvent(request, seq, type, data) {
 }
 
 function expectObject(value, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${path} must be an object`);
   }
   return value;
 }
 
 function expectString(value, path) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${path} must be a non-empty string`);
   }
   return value;

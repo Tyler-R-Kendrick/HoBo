@@ -1,3 +1,5 @@
+import { isJsonString, isJsonObject } from "../json.js";
+
 export const ACTOR_HOST_RUNTIME_PORT_VERSION = "hobo.actor-host-runtime-port/v1";
 
 export class LeaseConflictError extends Error {
@@ -75,7 +77,7 @@ export function createInMemoryActorHost(options = {}) {
 
     state(key, request = {}) {
       const actorKey = requireNonEmptyString(key, "key");
-      if (typeof request.fold !== "function") {
+      if (!(request.fold instanceof Function)) {
         throw new TypeError("request.fold must be a function");
       }
       if (!("initialState" in request)) {
@@ -243,7 +245,7 @@ function getStream(streams, key) {
 }
 
 function normalizeEvent(event) {
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
+  if (!event || !isJsonObject(event) || Array.isArray(event)) {
     throw new TypeError("event must be an object");
   }
   const type = requireNonEmptyString(event.type, "event.type");
@@ -254,7 +256,7 @@ function normalizeEvent(event) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -269,7 +271,7 @@ function requirePositiveInteger(value, fieldName) {
 
 function normalizeInstantMs(value, fieldName) {
   const timestamp = Date.parse(value);
-  if (typeof value !== "string" || Number.isNaN(timestamp)) {
+  if (!isJsonString(value) || Number.isNaN(timestamp)) {
     throw new TypeError(`${fieldName} must be a valid ISO-8601 string`);
   }
   return timestamp;

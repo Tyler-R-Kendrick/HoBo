@@ -211,7 +211,7 @@ export default defineConfig({
 				"packages/convex/**": { statements: 99, branches: 94, functions: 99, lines: 99 },
 				"packages/core/**": { statements: 88, branches: 78, functions: 91, lines: 89 },
 				"packages/data/**": { statements: 89, branches: 84, functions: 85, lines: 91 },
-				"packages/data-postgres/**": { statements: 85, branches: 74, functions: 95, lines: 86 },
+				"packages/data-postgres/**": { statements: 97, branches: 94, functions: 97, lines: 96 },
 				"packages/dispatcher/**": { statements: 87, branches: 73, functions: 93, lines: 89 },
 				"packages/evals/**": { statements: 90, branches: 89, functions: 94, lines: 91 },
 				"packages/events/**": { statements: 91, branches: 82, functions: 87, lines: 93 },

@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const CAMP_EVENTSTORE_RUNTIME_PORT_CONTRACT_VERSION =
   "hobo.camp-eventstore-runtime-port/v1";
 
@@ -105,7 +106,7 @@ export function createRuntimeLocalEventStore(options = {}) {
     },
 
     subscribe(filter, handler) {
-      if (typeof handler !== "function") {
+      if (!(handler instanceof Function)) {
         throw new TypeError("handler must be a function");
       }
       const normalized = normalizeFilter(filter);
@@ -142,7 +143,7 @@ export function createRuntimeLocalEventStore(options = {}) {
       let state = cloneRequired(foldOptions.initialState, "foldOptions.initialState");
       const quarantined = [];
 
-      for (const event of [...stream.events]) {
+      for (const event of stream.events) {
         if (isQuarantineEvent(event) || stream.quarantinedSeqs.has(event.seq)) {
           continue;
         }
@@ -175,7 +176,7 @@ export function createRuntimeLocalEventStore(options = {}) {
 }
 
 export async function runEventStoreConformance(createStore) {
-  if (typeof createStore !== "function") {
+  if (!(createStore instanceof Function)) {
     throw new TypeError("createStore must be a function");
   }
 
@@ -341,10 +342,10 @@ function getStream(streams, streamId) {
 }
 
 function normalizeHandlers(handlers) {
-  if (!handlers || typeof handlers !== "object" || Array.isArray(handlers)) {
+  if (!handlers || !isJsonObject(handlers) || Array.isArray(handlers)) {
     throw new TypeError("foldOptions.handlers must be an object");
   }
-  return new Map(Object.entries(handlers).filter(([, handler]) => typeof handler === "function"));
+  return new Map(Object.entries(handlers).filter(([, handler]) => handler instanceof Function));
 }
 
 function isQuarantineEvent(event) {
@@ -364,7 +365,7 @@ function normalizeEventInputs(events) {
     throw new TypeError("events must be a non-empty array");
   }
   return events.map((event) => {
-    if (!event || typeof event !== "object" || Array.isArray(event)) {
+    if (!event || !isJsonObject(event) || Array.isArray(event)) {
       throw new TypeError("event must be an object");
     }
     return event;
@@ -372,7 +373,7 @@ function normalizeEventInputs(events) {
 }
 
 function normalizeFilter(filter) {
-  if (!filter || typeof filter !== "object" || Array.isArray(filter)) {
+  if (!filter || !isJsonObject(filter) || Array.isArray(filter)) {
     throw new TypeError("filter must be an object");
   }
   return Object.freeze({
@@ -397,7 +398,7 @@ function normalizeSeq(value, fieldName) {
 
 function normalizeInstant(value, fieldName) {
   const ms = Date.parse(value);
-  if (typeof value !== "string" || Number.isNaN(ms)) {
+  if (!isJsonString(value) || Number.isNaN(ms)) {
     throw new TypeError(`${fieldName} must be a valid ISO-8601 string`);
   }
   return ms;
@@ -411,7 +412,7 @@ function optionalString(value, fieldName) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -421,7 +422,7 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }
 
 function cloneRequired(value, fieldName) {

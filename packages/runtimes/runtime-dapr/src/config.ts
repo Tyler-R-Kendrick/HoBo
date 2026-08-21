@@ -1,17 +1,24 @@
 import { MessagingParseError } from "@hobo/core";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "./json.js";
 
 import type { DaprDeployMode, DaprRuntimeConfig } from "./types.js";
 
-function nonEmpty(value: unknown, field: string): string {
-	if (typeof value !== "string" || value.length === 0) {
+function nonEmpty(value: JsonValue | undefined, field: string): string {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new MessagingParseError(field, "non-empty string", value);
 	}
 	return value;
 }
 
-export function parseDaprDeployMode(value: unknown): DaprDeployMode {
-	if (value === "self-hosted" || value === "kubernetes") return value;
-	throw new MessagingParseError("mode", "self-hosted|kubernetes", value);
+export function parseDaprDeployMode<T>(value: T): DaprDeployMode {
+	const json = cloneAsJson(value);
+	if (json === "self-hosted" || json === "kubernetes") return json;
+	throw new MessagingParseError("mode", "self-hosted|kubernetes", json);
 }
 
 /**
@@ -30,11 +37,12 @@ export function tenantScopedAppId(
 	return `${tenant}.${camp}.${name}`;
 }
 
-export function parseDaprRuntimeConfig(input: unknown): DaprRuntimeConfig {
-	if (!input || typeof input !== "object") {
-		throw new MessagingParseError("DaprRuntimeConfig", "object", input);
+export function parseDaprRuntimeConfig<T>(input: T): DaprRuntimeConfig {
+	const json = cloneAsJson(input);
+	if (!isJsonObject(json)) {
+		throw new MessagingParseError("DaprRuntimeConfig", "object", json);
 	}
-	const src = input as Record<string, unknown>;
+	const src = json;
 	const tenantId = nonEmpty(src.tenantId ?? src.tenant_id, "tenantId");
 	const campId = nonEmpty(src.campId ?? src.camp_id, "campId");
 	const app = nonEmpty(src.appId ?? src.app_id ?? "app", "appId");
@@ -61,14 +69,14 @@ export function parseDaprRuntimeConfig(input: unknown): DaprRuntimeConfig {
 		),
 		...(src.grpcEndpoint || src.grpc_endpoint
 			? { grpcEndpoint: String(src.grpcEndpoint ?? src.grpc_endpoint) }
-			: {}),
+			: undefined),
 		...(src.placementAddress || src.placement_address
 			? {
 					placementAddress: String(
 						src.placementAddress ?? src.placement_address,
 					),
 				}
-			: {}),
+			: undefined),
 	};
 	return Object.freeze(config);
 }

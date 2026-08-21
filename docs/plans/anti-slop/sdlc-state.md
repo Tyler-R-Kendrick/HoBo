@@ -48,7 +48,8 @@ main
                                      └── sdlc/anti-slop-37-policy  #1256 packages/policy
                                       └── sdlc/anti-slop-38-dispatcher  #1258 packages/dispatcher
                                        └── sdlc/anti-slop-39-runtimes-small  #1261 wasm+celld+cloud-native
-                                        └── sdlc/anti-slop-40-runtimes-browser-oci  browser+oci
+                                        └── sdlc/anti-slop-40-runtimes-browser-oci  #1263 browser+oci
+                                         └── sdlc/anti-slop-41-runtimes-dapr-rivet  dapr+rivet
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -107,6 +108,8 @@ Layer 38: `@hobo/dispatcher` oxlint `--deny-warnings` and `tsc --noEmit` clean (
 Layer 39: `@hobo/runtime-wasm` + `@hobo/runtime-celld` + `@hobo/runtime-cloud-native`
 oxlint `--deny-warnings` and `tsc --noEmit` clean (#1261).
 Layer 40: `@hobo/runtime-browser` + `@hobo/runtime-oci` oxlint `--deny-warnings`
+and `tsc --noEmit` clean (#1263).
+Layer 41: `@hobo/runtime-dapr` + `@hobo/runtime-rivet` oxlint `--deny-warnings`
 and `tsc --noEmit` clean.
-Next: remaining `packages/runtimes` (dapr, rivet, local), then `src/draft/`.
+Next: remaining `packages/runtimes` (`runtime-local`), then `src/draft/`.
 Full-repo `lint:slop --deny-warnings` is still red until those land.

@@ -1,12 +1,16 @@
 import { createRivetActorHost, type RivetActorHost } from "./actor-host.js";
 import { type ActorLocalJournal, createActorLocalJournal } from "./journal.js";
 import { parseRivetRuntimeConfig } from "./parse.js";
-import type { RivetDoctorReport, RivetRuntimeConfig } from "./types.js";
+import type {
+	RivetDoctorReport,
+	RivetRuntimeConfig,
+	RivetRuntimeMode,
+} from "./types.js";
 
 export interface RivetRuntimeHostOptions {
 	readonly tenantId: string;
 	readonly campId: string;
-	readonly mode?: unknown;
+	readonly mode?: RivetRuntimeMode;
 	readonly journalPath?: string;
 }
 

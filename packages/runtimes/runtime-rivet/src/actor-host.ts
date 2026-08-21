@@ -4,11 +4,12 @@ import {
 	type ActorStateHandle,
 	actorCommandDigest,
 	actorCompoundKey,
+	type FoldEvent,
 	type LogicalActorIdentity,
 	parseLogicalActorIdentity,
 } from "@hobo/core";
-
 import type { ActorLocalJournal } from "./journal.js";
+import { cloneAsJson, type JsonValue, parseJsonValue } from "./json.js";
 import { RivetJournalError } from "./types.js";
 
 /** Core `ActorLease` (ADR-0156) tagged with the Rivet placement. */
@@ -25,19 +26,16 @@ export interface RivetActorHost extends ActorHost {
 	readonly fidelity: "local-sqlite" | "rivetkit";
 	acquire(key: string, request: { holderId: string }): RivetActorLease;
 	accept(input: {
-		identity: unknown;
+		identity: JsonValue;
 		commandId: string;
 		commandType: string;
-		payload: unknown;
+		payload: JsonValue;
 		expectedRevision: number;
 	}): { status: string; duplicate: boolean; digest: string };
 	processNext(
-		identity: unknown,
-		fold: (
-			state: unknown,
-			event: { type: string; [key: string]: unknown },
-		) => unknown,
-		initialState: unknown,
+		identity: JsonValue,
+		fold: (state: JsonValue, event: FoldEvent) => JsonValue,
+		initialState: JsonValue,
 	): { revision: number; commandId: string } | undefined;
 }
 
@@ -84,7 +82,7 @@ export function createRivetActorHost(options: {
 			return lease;
 		},
 		state(key, request) {
-			const events: Array<{ type: string; [key: string]: unknown }> = [];
+			const events: FoldEvent[] = [];
 			return {
 				append(lease, event) {
 					if (leases.get(key) !== lease) {
@@ -135,12 +133,12 @@ export function createRivetActorHost(options: {
 			for (const fact of facts) {
 				state = fold(state, {
 					type: fact.type,
-					payload: JSON.parse(new TextDecoder().decode(fact.payload)),
+					payload: parseJsonValue(new TextDecoder().decode(fact.payload)),
 				});
 			}
 			const decided = fold(state, {
 				type: claimed.commandType,
-				payload: JSON.parse(claimed.payloadJson),
+				payload: parseJsonValue(claimed.payloadJson),
 			});
 			const payload = new TextEncoder().encode(JSON.stringify(decided));
 			const committed = journal.commitCommand({
@@ -155,7 +153,9 @@ export function createRivetActorHost(options: {
 						metadataJson: "{}",
 						tenant: identity.tenantId,
 						project: identity.projectId,
-						...(identity.lane !== undefined ? { lane: identity.lane } : {}),
+						...(identity.lane !== undefined
+							? { lane: identity.lane }
+							: undefined),
 					},
 				],
 			});
@@ -169,8 +169,10 @@ export function createRivetActorHost(options: {
 	};
 }
 
-export function rivetStreamId(identity: unknown): string {
-	return actorCompoundKey(parseLogicalActorIdentity(identity)).join("/");
+export function rivetStreamId<T>(identity: T): string {
+	return actorCompoundKey(
+		parseLogicalActorIdentity(cloneAsJson(identity)),
+	).join("/");
 }
 
 export function assertNoWaitTrue(

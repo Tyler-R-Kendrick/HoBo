@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 import type { DaprDoctorReport, DaprRuntimeConfig } from "./types.js";
 
 export interface DaprDoctorInput {
@@ -19,7 +20,7 @@ export function diagnoseDaprReadiness(
 	const daprCliAvailable = input.probeCli?.() ?? Boolean(cliHint);
 	const endpoint =
 		input.config?.httpEndpoint ??
-		(typeof env.HOBO_DAPR_ENDPOINT === "string"
+		(isJsonString(env.HOBO_DAPR_ENDPOINT)
 			? env.HOBO_DAPR_ENDPOINT
 			: "http://127.0.0.1:3500");
 	const runtimeReachable = input.probeRuntime?.(endpoint) ?? false;

@@ -36,7 +36,7 @@ describe("rivetkit live baremetal", () => {
 					"--input-type=commonjs",
 					"-e",
 					`import("rivetkit").then((m) => {
-  if (typeof m.actor !== "function" || typeof m.setup !== "function") {
+  if (!(m.actor instanceof Function) || !(m.setup instanceof Function)) {
     throw new Error("cjs dynamic import did not yield actor/setup");
   }
   process.stdout.write("cjs-ok");
@@ -80,10 +80,8 @@ describe("rivetkit live baremetal", () => {
 		const home = await mkdtemp(join(tmpdir(), "hobo-rivet-home-"));
 		process.env.HOME = home;
 		try {
-			const rivet = (await loadRivetkit()) as {
-				actor: (def: unknown) => unknown;
-				setup: (def: unknown) => Parameters<typeof setupTest>[1];
-			};
+			// SAFETY: assertion required at this I/O or test boundary.
+			const rivet = await loadRivetkit();
 			const ping = rivet.actor({
 				state: { n: 0 },
 				actions: { ping: () => "pong" },
@@ -97,15 +95,17 @@ describe("rivetkit live baremetal", () => {
 				},
 			});
 			const { client } = await setupTest(ctx, registry);
-			const handle = (
-				client as {
-					ping: {
-						getOrCreate: (key: string[]) => {
-							ping: () => Promise<unknown>;
-						};
-					};
-				}
-			).ping.getOrCreate([`live-${Date.now()}`]);
+			interface LivePingHandle {
+				ping: () => Promise<string>;
+			}
+			interface LivePingClient {
+				ping: {
+					getOrCreate: (key: string[]) => LivePingHandle;
+				};
+			}
+			// SAFETY: setupTest client is the ping actor registry under test.
+			const pingClient = client as LivePingClient;
+			const handle = pingClient.ping.getOrCreate([`live-${Date.now()}`]);
 			expect(await handle.ping()).toBe("pong");
 		} finally {
 			if (previousHome === undefined) {

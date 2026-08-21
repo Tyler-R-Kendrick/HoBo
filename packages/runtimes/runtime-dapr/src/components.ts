@@ -4,6 +4,7 @@
  */
 
 import { MessagingParseError } from "@hobo/core";
+import { cloneAsJson, isJsonObject } from "./json.js";
 
 import type { DaprComponentSpec, DaprComponentYaml } from "./types.js";
 
@@ -16,16 +17,14 @@ const FORBIDDEN_META = [
 	"apiKey",
 ];
 
-export function parseDaprComponentSpec(input: unknown): DaprComponentSpec {
-	if (!input || typeof input !== "object") {
-		throw new MessagingParseError("DaprComponentSpec", "object", input);
+export function parseDaprComponentSpec<T>(input: T): DaprComponentSpec {
+	const json = cloneAsJson(input);
+	if (!isJsonObject(json)) {
+		throw new MessagingParseError("DaprComponentSpec", "object", json);
 	}
-	const src = input as Record<string, unknown>;
+	const src = json;
 	const metadata: Record<string, string> = {};
-	const rawMeta =
-		src.metadata && typeof src.metadata === "object"
-			? (src.metadata as Record<string, unknown>)
-			: {};
+	const rawMeta = isJsonObject(src.metadata) ? src.metadata : {};
 	for (const [k, v] of Object.entries(rawMeta)) {
 		if (FORBIDDEN_META.includes(k)) {
 			throw new MessagingParseError(
@@ -55,7 +54,7 @@ export function generateDaprComponentYaml(
 	spec: DaprComponentSpec,
 ): DaprComponentYaml {
 	if (!spec.name || !spec.type) {
-		throw new MessagingParseError("component", "name+type", spec);
+		throw new MessagingParseError("component", "name+type", cloneAsJson(spec));
 	}
 	const metaLines = Object.entries(spec.metadata)
 		.map(([k, v]) => `    - name: ${k}\n      value: "${v}"`)

@@ -58,11 +58,11 @@ export function createDaprRuntimeHost(
 
 	const actors = createDaprActorHost({
 		config,
-		...(client ? { client } : {}),
+		...(client ? { client } : undefined),
 	});
 	const messaging = createDaprMessaging({
 		config,
-		...(client ? { client } : {}),
+		...(client ? { client } : undefined),
 	});
 
 	const host: HoboRuntimeHost = {
@@ -79,7 +79,7 @@ export function createDaprRuntimeHost(
 								return true;
 							},
 						}
-					: {}),
+					: undefined),
 			});
 			const fidelity = client ? "live" : doctor.fidelity;
 			emit(

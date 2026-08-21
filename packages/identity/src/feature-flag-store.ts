@@ -3,8 +3,10 @@
  * Single store for continuous identity cohorts + general application flags.
  * No parallel flag system. Evaluation is pure over (ruleset@seq, context).
  */
+
 import { createHash, randomUUID } from "node:crypto";
 import { must } from "@hobo/core/total-access";
+import { isJsonBoolean, type JsonObject } from "./json.js";
 
 // public-contract: flag event schema version.
 export const FLAG_EVENT_SCHEMA_VERSION = "hobo.flag-events/v1" as const;
@@ -28,14 +30,10 @@ export type FlagEvent = Readonly<{
 	schemaVersion: typeof FLAG_EVENT_SCHEMA_VERSION;
 	seq: number;
 	time: string;
-	data: Readonly<Record<string, unknown>>;
+	data: JsonObject;
 }>;
 
-export type FlagValue =
-	| boolean
-	| string
-	| number
-	| Readonly<Record<string, unknown>>;
+export type FlagValue = boolean | string | number | JsonObject;
 
 export type FlagState = "ENABLED" | "DISABLED";
 
@@ -191,9 +189,13 @@ export class FeatureFlagStore {
 			input.variants ??
 			existing?.variants ??
 			Object.freeze({
+				// SAFETY: assertion to ` FlagValue, //` is required at this boundary.
 				control: false as FlagValue,
+				// SAFETY: assertion to `FlagValue, //` is required at this boundary.
 				treatment: true as FlagValue,
+				// SAFETY: assertion to `FlagValue, //` is required at this boundary.
 				on: true as FlagValue,
+				// SAFETY: assertion to ` FlagValue, });` is required at this boundary.
 				off: false as FlagValue,
 			});
 		const defaultVariant =
@@ -215,20 +217,20 @@ export class FeatureFlagStore {
 				? { targeting: freezeTargeting(input.targeting) }
 				: existing?.targeting !== undefined
 					? { targeting: existing.targeting }
-					: {}),
+					: undefined),
 			killSwitch: input.killSwitch ?? existing?.killSwitch ?? false,
 			...(input.migrationId !== undefined
 				? { migrationId: input.migrationId }
 				: existing?.migrationId !== undefined
 					? { migrationId: existing.migrationId }
-					: {}),
+					: undefined),
 			autoAbortOnDualFailure:
 				input.autoAbortOnDualFailure ??
 				existing?.autoAbortOnDualFailure ??
 				false,
 			metadata: Object.freeze({
-				...(existing?.metadata ?? {}),
-				...(input.metadata ?? {}),
+				...existing?.metadata,
+				...input.metadata,
 			}),
 			seq: nextSeq,
 			updatedAt: t,
@@ -252,7 +254,7 @@ export class FeatureFlagStore {
 					killSwitch: def.killSwitch,
 					...(def.migrationId !== undefined
 						? { migrationId: def.migrationId }
-						: {}),
+						: undefined),
 					autoAbortOnDualFailure: def.autoAbortOnDualFailure,
 				}),
 			}),
@@ -277,8 +279,9 @@ export class FeatureFlagStore {
 		defaultValue = false,
 	): FlagEvaluation {
 		const detail = this.evaluate(key, context, defaultValue);
-		const boolVal =
-			typeof detail.value === "boolean" ? detail.value : Boolean(detail.value);
+		const boolVal = isJsonBoolean(detail.value)
+			? detail.value
+			: Boolean(detail.value);
 		const evaluation: FlagEvaluation = Object.freeze({
 			flagKey: detail.flagKey,
 			value: boolVal,
@@ -303,12 +306,11 @@ export class FeatureFlagStore {
 			const evaluation: DetailEvaluation = Object.freeze({
 				flagKey: key,
 				value: defaultValue,
-				variant:
-					typeof defaultValue === "boolean"
-						? defaultValue
-							? "on"
-							: "off"
-						: "default",
+				variant: isJsonBoolean(defaultValue)
+					? defaultValue
+						? "on"
+						: "off"
+					: "default",
 				reason: def ? ("disabled" as const) : ("fail-safe-default" as const),
 				rulesetSeq: def?.seq ?? 0,
 				contextDigest,
@@ -464,7 +466,7 @@ export class FeatureFlagStore {
 			defaultValue: existing.defaultValue,
 			...(existing.migrationId !== undefined
 				? { migrationId: existing.migrationId }
-				: {}),
+				: undefined),
 			metadata: { ...existing.metadata, killSwitchActor: actor },
 		});
 		this.events.push(
@@ -498,7 +500,7 @@ export class FeatureFlagStore {
 			defaultValue: existing.defaultValue,
 			...(existing.migrationId !== undefined
 				? { migrationId: existing.migrationId }
-				: {}),
+				: undefined),
 		});
 	}
 
@@ -564,13 +566,13 @@ function freezeTargeting(t: FlagTargeting): FlagTargeting {
 						),
 					}),
 				}
-			: {}),
-		...(t.stickyKey !== undefined ? { stickyKey: t.stickyKey } : {}),
+			: undefined),
+		...(t.stickyKey !== undefined ? { stickyKey: t.stickyKey } : undefined),
 		...(t.rules !== undefined
 			? {
 					rules: Object.freeze(t.rules.map((r) => Object.freeze({ ...r }))),
 				}
-			: {}),
+			: undefined),
 	});
 }
 

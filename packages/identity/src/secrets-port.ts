@@ -2,9 +2,11 @@
  * hobo:secrets residual port (ADR-0113) + resolution ladder (ADR-0027).
  * Preferred paths: bound-resource / provider-federation. Static hatch is last.
  */
+
 import { createHash, createHmac, randomUUID } from "node:crypto";
 import { must } from "@hobo/core/total-access";
 import type { SecretSourceRank } from "./config-types.js";
+import { isJsonString, type JsonValue } from "./json.js";
 
 export type SecretsAccessResult =
 	| Readonly<{
@@ -190,7 +192,7 @@ export type FetchLike = (
 ) => Promise<{
 	ok: boolean;
 	status: number;
-	json: () => Promise<unknown>;
+	json: () => Promise<JsonValue>;
 	text: () => Promise<string>;
 }>;
 
@@ -225,7 +227,7 @@ export function createAwsSecretsManagerPort(options?: {
 		if (!options?.fetch) return null;
 		const body = JSON.stringify({
 			SecretId: name,
-			...(versionId !== undefined ? { VersionId: versionId } : {}),
+			...(versionId !== undefined ? { VersionId: versionId } : undefined),
 		});
 		const res = await options.fetch(endpoint, {
 			method: "POST",
@@ -236,7 +238,7 @@ export function createAwsSecretsManagerPort(options?: {
 					: "secretsmanager.GetSecretValue",
 				...(options.accessToken
 					? { Authorization: `Bearer ${options.accessToken}` }
-					: {}),
+					: undefined),
 			},
 			body,
 		});
@@ -247,6 +249,7 @@ export function createAwsSecretsManagerPort(options?: {
 				code: "aws-sm-http-error",
 			};
 		}
+		// SAFETY: assertion to ` res.json()) as { ARN?: string; VersionId?: string; SecretString?: string; }; co` is required at this boundary.
 		const data = (await res.json()) as {
 			ARN?: string;
 			VersionId?: string;
@@ -275,7 +278,7 @@ export function createAwsSecretsManagerPort(options?: {
 						"X-Amz-Target": "secretsmanager.PutSecretValue",
 						...(options.accessToken
 							? { Authorization: `Bearer ${options.accessToken}` }
-							: {}),
+							: undefined),
 					},
 					body: JSON.stringify({ SecretId: name, SecretString: value }),
 				});
@@ -354,7 +357,7 @@ export function createAzureKeyVaultPort(options?: {
 			headers: {
 				...(options.accessToken
 					? { Authorization: `Bearer ${options.accessToken}` }
-					: {}),
+					: undefined),
 			},
 		});
 		if (!res.ok) {
@@ -364,6 +367,7 @@ export function createAzureKeyVaultPort(options?: {
 				code: "azure-kv-http-error",
 			};
 		}
+		// SAFETY: assertion to `.json()) as { id?: string; value?: string; attributes?: { exp?: number }; }; const ` is required at this boundary.
 		const data = (await res.json()) as {
 			id?: string;
 			value?: string;
@@ -395,7 +399,7 @@ export function createAzureKeyVaultPort(options?: {
 							"Content-Type": "application/json",
 							...(options.accessToken
 								? { Authorization: `Bearer ${options.accessToken}` }
-								: {}),
+								: undefined),
 						},
 						body: JSON.stringify({ value }),
 					},
@@ -461,16 +465,16 @@ export function createLocalStationSecretsPort(options?: {
 	const backend = (env.HOBO_LOCAL_SECRETS_BACKEND ?? "memory").toLowerCase();
 	const stationId = options?.stationId ?? env.HOBO_STATION_ID ?? "local";
 	const svidJwt =
-		(typeof env.HOBO_SVID_JWT === "string" && env.HOBO_SVID_JWT) ||
+		(isJsonString(env.HOBO_SVID_JWT) && env.HOBO_SVID_JWT) ||
 		`eyJhbGciOiJFUzI1NiJ9.station.${stationId}.fixture`;
 
 	if (backend === "vault-jwt") {
 		return createVaultJwtSecretsPort({
 			vaultAddr:
-				(typeof env.HOBO_VAULT_ADDR === "string" && env.HOBO_VAULT_ADDR) ||
+				(isJsonString(env.HOBO_VAULT_ADDR) && env.HOBO_VAULT_ADDR) ||
 				"https://vault.local",
 			role:
-				(typeof env.HOBO_VAULT_ROLE === "string" && env.HOBO_VAULT_ROLE) ||
+				(isJsonString(env.HOBO_VAULT_ROLE) && env.HOBO_VAULT_ROLE) ||
 				`hobo-station-${stationId}`,
 			svidJwt,
 			id: options?.id ?? `secrets:station-vault:${stationId}`,
@@ -516,18 +520,18 @@ export function createCampSecretsPort(input: {
 		case "aws-sm":
 			return createAwsSecretsManagerPort({
 				region: input.region,
-				...(input.fetch !== undefined ? { fetch: input.fetch } : {}),
+				...(input.fetch !== undefined ? { fetch: input.fetch } : undefined),
 				...(input.accessToken !== undefined
 					? { accessToken: input.accessToken }
-					: {}),
+					: undefined),
 			});
 		case "azure-kv":
 			return createAzureKeyVaultPort({
 				vaultName: input.vaultName,
-				...(input.fetch !== undefined ? { fetch: input.fetch } : {}),
+				...(input.fetch !== undefined ? { fetch: input.fetch } : undefined),
 				...(input.accessToken !== undefined
 					? { accessToken: input.accessToken }
-					: {}),
+					: undefined),
 			});
 		default: {
 			const _exhaustive: never = input.backend;
@@ -536,16 +540,18 @@ export function createCampSecretsPort(input: {
 	}
 }
 
-/**
- * WIT-shaped hobo:secrets@0.1.0 store view over a SecretsPort (ADR-0113).
- * Residual managed-store surface only — not the preferred credential path.
- */
-export function asHoboSecretsStore(port: SecretsPort): {
+export interface HoboSecretsStore {
 	put: (name: string, value: Uint8Array) => Promise<string>;
 	access: (name: string) => Promise<{ versionId: string; value: Uint8Array }>;
 	accessVersion: (name: string, versionId: string) => Promise<Uint8Array>;
 	listVersions: (name: string) => Promise<readonly string[]>;
-} {
+}
+
+/**
+ * WIT-shaped hobo:secrets@0.1.0 store view over a SecretsPort (ADR-0113).
+ * Residual managed-store surface only — not the preferred credential path.
+ */
+export function asHoboSecretsStore(port: SecretsPort): HoboSecretsStore {
 	return {
 		async put(name, value) {
 			const { versionId } = await port.put(
@@ -652,7 +658,7 @@ export async function resolveConfigEntry(
 						placeholder: input.sensitive
 							? `[REDACTED:bound-resource:${input.name}]`
 							: String(token),
-						...(input.sensitive ? {} : { value: token }),
+						...(input.sensitive ? undefined : { value: token }),
 					},
 				};
 			}

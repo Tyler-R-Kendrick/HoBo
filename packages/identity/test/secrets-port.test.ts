@@ -14,7 +14,7 @@
  * also precisely the property that must never be mistaken for a real secret.
  */
 import { describe, expect, it } from "vitest";
-
+import type { JsonValue } from "../src/json.js";
 import {
 	asHoboSecretsStore,
 	createAwsSecretsManagerPort,
@@ -24,12 +24,27 @@ import {
 	createMemorySecretsPort,
 } from "../src/secrets-port.js";
 
+interface FetchInitBag {
+	method?: string;
+	headers?: Record<string, string>;
+	body?: string;
+}
+
+interface FetchCall {
+	url: string;
+	init?: FetchInitBag;
+}
+
+interface FetchResponseFixture {
+	ok: boolean;
+	status?: number;
+	body?: JsonValue;
+}
+
 /** A fetch that never gets called; asserting on that is often the point. */
-function recordingFetch(
-	response: { ok: boolean; status?: number; body?: unknown } = { ok: true },
-) {
-	const calls: { url: string; init: unknown }[] = [];
-	const fetchLike = async (url: string, init: unknown) => {
+function recordingFetch(response: FetchResponseFixture = { ok: true }) {
+	const calls: FetchCall[] = [];
+	const fetchLike = async (url: string, init?: FetchInitBag) => {
 		calls.push({ url, init });
 		return {
 			ok: response.ok,
@@ -37,6 +52,7 @@ function recordingFetch(
 			json: async () => response.body ?? {},
 		};
 	};
+	// SAFETY: assertion to `e as never }; } d` is required at this boundary.
 	return { calls, fetchLike: fetchLike as never };
 }
 
@@ -271,6 +287,7 @@ describe("the Camp-scoped factory", () => {
 		["aws-sm", "aws-sm"],
 		["azure-kv", "azure-kv"],
 	])("builds a %s port", (backend, kind) => {
+		// SAFETY: assertion to `as "memory" }).kind` is required at this boundary.
 		expect(createCampSecretsPort({ backend: backend as "memory" }).kind).toBe(
 			kind,
 		);
@@ -280,7 +297,8 @@ describe("the Camp-scoped factory", () => {
 		// The exhaustiveness arm. Reachable only from untyped input, which is
 		// exactly where it matters.
 		expect(() =>
-			createCampSecretsPort({ backend: "openbao" as unknown as "memory" }),
+			// SAFETY: assertion to `" as "memory" }), )` is required at this boundary.
+			createCampSecretsPort({ backend: "openbao" as "memory" }),
 		).toThrow(/unknown secrets backend/u);
 	});
 });

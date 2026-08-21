@@ -3,7 +3,9 @@
  * Evaluation is high-volume / low-privilege; mutations are policy-gated.
  * Emits policy.Decided-compatible records; production high-risk may require approval.
  */
+
 import { randomUUID } from "node:crypto";
+import type { JsonObject, JsonValue } from "./json.js";
 
 // public-contract: flag mutation action for PolicyEngine.
 export const FLAG_CHANGE_ACTION = "hobo:flag:change" as const;
@@ -56,7 +58,7 @@ export type FlagMutationDecision = Readonly<{
 		id: string;
 		type: "policy.Decided";
 		time: string;
-		data: Readonly<Record<string, unknown>>;
+		data: JsonObject;
 	}>;
 }>;
 
@@ -177,37 +179,37 @@ export function gateFlagMutation(
 	});
 }
 
+export interface FlagDefineInput {
+	readonly key: string;
+	readonly percentage?: number;
+	readonly enabled?: boolean;
+	readonly killSwitch?: boolean;
+	readonly state?: "ENABLED" | "DISABLED";
+	readonly [k: string]: JsonValue | undefined;
+}
+
+export interface FlagPolicyDefineInput extends FlagDefineInput {
+	readonly environment: string;
+	readonly actor?: string;
+	readonly tenant?: string;
+	readonly approvalSatisfied?: boolean;
+}
+
+export interface FlagPolicyDefineResult {
+	readonly decision: FlagMutationDecision;
+	readonly defined: JsonValue | null;
+}
+
 /**
  * Apply store.define only when policy allows (or approval already satisfied).
  */
 export function applyPolicyGatedDefine(
 	store: {
-		define: (input: {
-			readonly key: string;
-			readonly percentage?: number;
-			readonly enabled?: boolean;
-			readonly killSwitch?: boolean;
-			readonly state?: "ENABLED" | "DISABLED";
-			readonly [k: string]: unknown;
-		}) => unknown;
+		define: (input: FlagDefineInput) => JsonValue;
 		get: (key: string) => { percentage?: number } | undefined;
 	},
-	input: {
-		readonly key: string;
-		readonly percentage?: number;
-		readonly enabled?: boolean;
-		readonly killSwitch?: boolean;
-		readonly state?: "ENABLED" | "DISABLED";
-		readonly environment: string;
-		readonly actor?: string;
-		readonly tenant?: string;
-		readonly approvalSatisfied?: boolean;
-		readonly [k: string]: unknown;
-	},
-): {
-	readonly decision: FlagMutationDecision;
-	readonly defined: unknown | null;
-} {
+	input: FlagPolicyDefineInput,
+): FlagPolicyDefineResult {
 	const existing = store.get(input.key);
 	const decision = gateFlagMutation({
 		action: FLAG_CHANGE_ACTION,
@@ -235,6 +237,7 @@ export function applyPolicyGatedDefine(
 		approvalSatisfied: _ap,
 		...rest
 	} = input;
+	// SAFETY: assertion to `st as Parameters<typeof store.define>[0]);` is required at this boundary.
 	const defined = store.define(rest as Parameters<typeof store.define>[0]);
 	return { decision, defined };
 }
@@ -249,6 +252,7 @@ function decide(input: {
 	riskReasons: readonly FlagMutationRiskReason[];
 	obligations: readonly FlagMutationObligation[];
 }): FlagMutationDecision {
+	// SAFETY: frozen decision is FlagMutationDecision at this policy boundary.
 	return Object.freeze({
 		schemaVersion: FLAG_POLICY_SCHEMA,
 		effect: input.effect,
@@ -269,9 +273,13 @@ function decide(input: {
 				reason: input.reason,
 				riskReasons: input.riskReasons,
 				obligations: input.obligations,
-				...(input.req.actor !== undefined ? { actor: input.req.actor } : {}),
-				...(input.req.tenant !== undefined ? { tenant: input.req.tenant } : {}),
+				...(input.req.actor !== undefined
+					? { actor: input.req.actor }
+					: undefined),
+				...(input.req.tenant !== undefined
+					? { tenant: input.req.tenant }
+					: undefined),
 			}),
 		}),
-	});
+	}) as never;
 }

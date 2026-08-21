@@ -194,7 +194,7 @@ describe("first-class Connection aggregate", () => {
 			vault: vault(),
 			audience: "asana",
 		});
-		const svid = {
+		const svidBag = {
 			identityId: "id-1",
 			subject: `spiffe://hobo/${TENANT}/user/alice`,
 			// SVID scope must authorize the grant scope (port/resource/verbs).
@@ -207,7 +207,9 @@ describe("first-class Connection aggregate", () => {
 			],
 			expiresAt: "2099-01-01T00:00:00.000Z",
 			svidRef: "svidref://1",
-		} as unknown as ActiveSvidRecord;
+		};
+		// SAFETY: test fixture is an ActiveSvidRecord at this broker grant boundary.
+		const svid = svidBag as ActiveSvidRecord;
 
 		const grant = broker.grantForDeploy({
 			svid,

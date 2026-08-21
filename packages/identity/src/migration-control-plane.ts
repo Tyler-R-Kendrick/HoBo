@@ -89,7 +89,7 @@ export class IdentityMigrationControlPlane {
 			tenant: options.tenant,
 			...(options.vaultRoot !== undefined
 				? { vaultRoot: options.vaultRoot }
-				: {}),
+				: undefined),
 			now: this.now,
 		});
 	}
@@ -205,7 +205,7 @@ export class IdentityMigrationControlPlane {
 				target: pair.target,
 				...(input?.subjectHint !== undefined
 					? { subjectHint: input.subjectHint }
-					: {}),
+					: undefined),
 			});
 			if (!verified.ok) {
 				// Fail-closed: still record failure path on aggregate if active.
@@ -354,8 +354,8 @@ export class IdentityMigrationControlPlane {
 		const record = this.service.snapshot();
 		return Object.freeze({
 			migration: record,
-			...(flag !== undefined ? { flag } : {}),
-			...(matchAudit !== undefined ? { matchAudit } : {}),
+			...(flag !== undefined ? { flag } : undefined),
+			...(matchAudit !== undefined ? { matchAudit } : undefined),
 			agentRebinds: this.pendingAgentRebinds(),
 			status: migrationStatusView(record),
 		});
@@ -366,22 +366,26 @@ export class IdentityMigrationControlPlane {
  * Convenience: from a Yard-move or adapter Matching signal, run the full
  * continuous path start without any Bindle fields.
  */
+export interface ContinuousMigrationStart {
+	plane: IdentityMigrationControlPlane;
+	progress: ControlPlaneProgress;
+	decision: IdentityMigrationMatchDecision;
+}
+
 export function startContinuousMigrationFromMatch(
 	input: MatchingMigrationInput & {
 		readonly vaultRoot?: string;
 		readonly now?: () => string;
 	},
-): {
-	plane: IdentityMigrationControlPlane;
-	progress: ControlPlaneProgress;
-	decision: IdentityMigrationMatchDecision;
-} {
+): ContinuousMigrationStart {
 	const plane = new IdentityMigrationControlPlane({
 		tenant: input.tenant,
-		...(input.vaultRoot !== undefined ? { vaultRoot: input.vaultRoot } : {}),
+		...(input.vaultRoot !== undefined
+			? { vaultRoot: input.vaultRoot }
+			: undefined),
 		...(input.now !== undefined
 			? { now: () => must(input.now, "input.now") }
-			: {}),
+			: undefined),
 	});
 	const decision = decideIdentityMigration(input);
 	const progress = plane.onMatchingDecision(input);
@@ -427,8 +431,8 @@ export function matchingSignalsFromResourceDecision(input: {
 		tenant: input.tenant,
 		sourceAdapter: source,
 		targetAdapter: target,
-		...(input.yardMove ? { yardMove: true } : {}),
-		...(input.spectrumPromotion ? { spectrumPromotion: true } : {}),
-		...(input.residencyShift ? { residencyShift: true } : {}),
+		...(input.yardMove ? { yardMove: true } : undefined),
+		...(input.spectrumPromotion ? { spectrumPromotion: true } : undefined),
+		...(input.residencyShift ? { residencyShift: true } : undefined),
 	};
 }

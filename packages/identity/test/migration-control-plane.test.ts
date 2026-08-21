@@ -49,7 +49,7 @@ describe("IdentityMigrationControlPlane (hands-off continuous path)", () => {
 			"Object.keys(mid.migration?.links ?? {})",
 		);
 		const inCohort = plane.principalInRamp(principal);
-		expect(typeof inCohort.value).toBe("boolean");
+		expect(inCohort.value === true || inCohort.value === false).toBe(true);
 		// flag.Evaluated is sampled (default 1%); force path still defines/changes flags.
 		expect(plane.flags.events.some((e) => e.type === "flag.Defined")).toBe(
 			true,

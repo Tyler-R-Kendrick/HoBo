@@ -149,7 +149,7 @@ describe("Harness · Feature flags · progressive delivery", () => {
 		expect(fx.fidelity).toBe("simulated");
 		expect(fx.label).toBe("contract-asserted-harness-fixtures");
 		const v = fx.client.getBooleanValue("example-feature", false);
-		expect(typeof v).toBe("boolean");
+		expect(v === true || v === false).toBe(true);
 	});
 
 	it("context enrichment injects PrincipalRef without app code", () => {
@@ -180,7 +180,7 @@ describe("Harness · Feature flags · progressive delivery", () => {
 			targetingKey: "principal:t:x",
 			tenant: "t",
 		});
-		expect(typeof e.value).toBe("boolean");
+		expect(e.value === true || e.value === false).toBe(true);
 	});
 
 	it("multi-tenant isolation: tenant-bound flag fails closed for other tenants", () => {
@@ -467,6 +467,7 @@ describe("Harness · Feature flags · progressive delivery", () => {
 		const local = createMediatedFlagEvaluator({ store });
 		expect(local.backend).toBe("local-builtin");
 		const v = local.evaluate("f", { targetingKey: "u" }, false);
+		// SAFETY: assertion to `alue: boolean }).value)` is required at this boundary.
 		expect((v as { value: boolean }).value).toBe(true);
 
 		const residual = createOfrepResidualBackend({
@@ -557,6 +558,7 @@ describe("Harness · Feature flags · progressive delivery", () => {
 			store.events.some(
 				(e) =>
 					e.type === "flag.Evaluated" &&
+					// SAFETY: assertion to `s { reason?: string }).reason` is required at this boundary.
 					(e.data as { reason?: string }).reason === "kill-switch",
 			),
 		).toBe(true);

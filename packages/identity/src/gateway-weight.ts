@@ -2,9 +2,10 @@
  * Compose OpenDelivery gateway weights onto ADR-0035 weighted routing.
  * Pure: maps rollout percent → traffic split; emits domain.RoutingChanged facts.
  */
-import { createHash, randomUUID } from "node:crypto";
 
+import { createHash, randomUUID } from "node:crypto";
 import type { OpenDeliveryEngine, RolloutState } from "./harness-delivery.js";
+import type { JsonObject } from "./json.js";
 
 // public-contract: gateway weight composition schema.
 export const GATEWAY_WEIGHT_SCHEMA = "hobo.gateway-weight/v1" as const;
@@ -38,7 +39,7 @@ export type DomainRoutingEvent = Readonly<{
 	schemaVersion: typeof GATEWAY_WEIGHT_SCHEMA;
 	seq: number;
 	time: string;
-	data: Readonly<Record<string, unknown>>;
+	data: JsonObject;
 }>;
 
 /**
@@ -66,8 +67,8 @@ export function trafficWeightSplitFromPercent(
 		}),
 		...(options?.rolloutId !== undefined
 			? { rolloutId: options.rolloutId }
-			: {}),
-		...(options?.flag !== undefined ? { flag: options.flag } : {}),
+			: undefined),
+		...(options?.flag !== undefined ? { flag: options.flag } : undefined),
 	});
 }
 

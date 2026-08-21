@@ -2,7 +2,9 @@
  * OpenFeature EvaluationContext enrichment from continuous identity + HoBo scope.
  * Zero application code required — harness injects this automatically.
  */
+
 import type { FlagEvalContext } from "./feature-flag-store.js";
+import type { StringBag } from "./json.js";
 
 export type PrincipalRefLike = Readonly<{
 	kind?: string;
@@ -50,33 +52,39 @@ export function enrichEvaluationContext(
 		scope.appTenant ??
 		overrides?.tenant;
 
-	const attributes: Record<string, string> = {
+	const attributes: StringBag = {
 		"identity.userId": principalId,
 		targetingKey: principalId,
-		...(tenant !== undefined ? { tenant, "identity.tenant": tenant } : {}),
-		...(scope.project !== undefined ? { project: scope.project } : {}),
+		...(tenant !== undefined
+			? { tenant, "identity.tenant": tenant }
+			: undefined),
+		...(scope.project !== undefined ? { project: scope.project } : undefined),
 		...(scope.environment !== undefined
 			? { environment: scope.environment, env: scope.environment }
-			: {}),
-		...(scope.env !== undefined ? { env: scope.env } : {}),
-		...(scope.camp !== undefined ? { camp: scope.camp } : {}),
-		...(scope.yard !== undefined ? { yard: scope.yard } : {}),
-		...(scope.junction !== undefined ? { junction: scope.junction } : {}),
-		...(scope.station !== undefined ? { station: scope.station } : {}),
-		...(scope.stack !== undefined ? { stack: scope.stack } : {}),
-		...(scope.branch !== undefined ? { branch: scope.branch } : {}),
-		...(scope.preview !== undefined ? { preview: scope.preview } : {}),
-		...(scope.appTenant !== undefined ? { appTenant: scope.appTenant } : {}),
+			: undefined),
+		...(scope.env !== undefined ? { env: scope.env } : undefined),
+		...(scope.camp !== undefined ? { camp: scope.camp } : undefined),
+		...(scope.yard !== undefined ? { yard: scope.yard } : undefined),
+		...(scope.junction !== undefined
+			? { junction: scope.junction }
+			: undefined),
+		...(scope.station !== undefined ? { station: scope.station } : undefined),
+		...(scope.stack !== undefined ? { stack: scope.stack } : undefined),
+		...(scope.branch !== undefined ? { branch: scope.branch } : undefined),
+		...(scope.preview !== undefined ? { preview: scope.preview } : undefined),
+		...(scope.appTenant !== undefined
+			? { appTenant: scope.appTenant }
+			: undefined),
 		...(scope.principal?.kind !== undefined
 			? { "identity.kind": scope.principal.kind }
-			: {}),
-		...(scope.request ?? {}),
-		...(overrides?.attributes ?? {}),
+			: undefined),
+		...scope.request,
+		...overrides?.attributes,
 	};
 
 	return Object.freeze({
 		targetingKey: overrides?.targetingKey ?? principalId,
-		...(tenant !== undefined ? { tenant } : {}),
+		...(tenant !== undefined ? { tenant } : undefined),
 		attributes: Object.freeze(attributes),
 	});
 }

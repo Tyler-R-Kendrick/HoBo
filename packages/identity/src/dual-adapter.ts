@@ -144,6 +144,11 @@ export function mintDualAudienceGrant(input: {
 	});
 }
 
+export interface DualGrantVerification {
+	readonly ok: boolean;
+	readonly code?: string;
+}
+
 /**
  * Verify dual-audience material without exposing it in return value for agent paths.
  */
@@ -151,7 +156,7 @@ export function verifyDualAudienceGrant(input: {
 	readonly grant: DualAudienceGrant;
 	readonly vaultRoot: string;
 	readonly now?: string;
-}): { ok: boolean; code?: string } {
+}): DualGrantVerification {
 	const now = input.now ?? new Date().toISOString();
 	if (Date.parse(now) >= Date.parse(input.grant.expiresAt)) {
 		return { ok: false, code: "dual-grant-expired" };

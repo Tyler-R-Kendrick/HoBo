@@ -2,7 +2,9 @@
  * First-class Connection event family (durable broker-owned aggregate).
  * Shares never-compact credential-audit retention with token/identity events.
  */
+
 import { CREDENTIAL_AUDIT_RETENTION } from "./events.js";
+import { asJsonObject, isJsonString, type JsonObject } from "./json.js";
 
 // public-contract: connection event envelope schema version.
 export const CONNECTION_EVENT_SCHEMA_VERSION = "hobo.connection-events/v1";
@@ -53,10 +55,10 @@ export type ConnectionEvent = Readonly<{
 	correlationId: string;
 	causationId: string;
 	retention: typeof CREDENTIAL_AUDIT_RETENTION;
-	data: Readonly<Record<string, unknown>>;
+	data: JsonObject;
 }>;
 
-function baseEvent(
+function baseEvent<T>(
 	type: ConnectionEventType,
 	input: {
 		connectionId: string;
@@ -65,7 +67,7 @@ function baseEvent(
 		time?: string;
 		causationId?: string;
 		actorId?: string;
-		data: Readonly<Record<string, unknown>>;
+		data: T;
 	},
 ): ConnectionEvent {
 	const time = input.time ?? new Date().toISOString();
@@ -84,7 +86,10 @@ function baseEvent(
 		causationId:
 			input.causationId ?? `cmd-connection-${input.connectionId}-${type}`,
 		retention: CREDENTIAL_AUDIT_RETENTION,
-		data: Object.freeze({ connectionId: input.connectionId, ...input.data }),
+		data: asJsonObject({
+			connectionId: input.connectionId,
+			...input.data,
+		}),
 	});
 }
 
@@ -102,7 +107,7 @@ export function createConnectionCreatedEvent(input: {
 	seq?: number;
 	time?: string;
 }): ConnectionEvent {
-	if (typeof input.stationId !== "string" || input.stationId.length === 0) {
+	if (!isJsonString(input.stationId) || input.stationId.length === 0) {
 		throw new TypeError("connection.Created requires stationId");
 	}
 	return baseEvent(CONNECTION_EVENTS.Created, {
@@ -111,7 +116,7 @@ export function createConnectionCreatedEvent(input: {
 		seq: input.seq,
 		time: input.time,
 		data: {
-			...(input.alias !== undefined ? { alias: input.alias } : {}),
+			...(input.alias !== undefined ? { alias: input.alias } : undefined),
 			provider: input.provider,
 			flow: input.flow,
 			subject: input.subject,
@@ -158,7 +163,7 @@ export function createConnectionAuthorizedEvent(input: {
 			grantedScopes: Object.freeze([...input.grantedScopes]),
 			...(input.installationId !== undefined
 				? { installationId: input.installationId }
-				: {}),
+				: undefined),
 			subject: input.subject,
 			// Opaque vault reference only — never the secret.
 			credentialRef: input.credentialRef,
@@ -210,7 +215,7 @@ export function createConnectionHealthChangedEvent(input: {
 			time: input.time,
 			data: {
 				status: input.status,
-				...(input.reason !== undefined ? { reason: input.reason } : {}),
+				...(input.reason !== undefined ? { reason: input.reason } : undefined),
 			},
 		},
 	);
@@ -265,7 +270,7 @@ export function validateConnectionEvent(event: ConnectionEvent): void {
 			"connection event must carry never-compact credential-audit retention",
 		);
 	}
-	if (typeof event.data.connectionId !== "string") {
+	if (!isJsonString(event.data.connectionId)) {
 		throw new Error("connection event missing connectionId");
 	}
 }
@@ -273,5 +278,6 @@ export function validateConnectionEvent(event: ConnectionEvent): void {
 export function isConnectionEventType(
 	type: string,
 ): type is ConnectionEventType {
+	// SAFETY: assertion to `ject.values(CONNECTION_EVENTS) as string[]).` is required at this boundary.
 	return (Object.values(CONNECTION_EVENTS) as string[]).includes(type);
 }

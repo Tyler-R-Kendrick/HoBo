@@ -14,6 +14,12 @@ import type { IdentityMigrationService } from "./migration-aggregate.js";
 export const MIGRATION_COHORT_FLAG_SCHEMA =
 	"hobo.identity-migration-cohort-flag/v1" as const;
 
+export interface MigrationRampAdvance {
+	flag: MigrationCohortFlag;
+	aborted: boolean;
+	record: ReturnType<IdentityMigrationService["snapshot"]>;
+}
+
 export type MigrationCohortFlag = Readonly<{
 	schemaVersion: typeof MIGRATION_COHORT_FLAG_SCHEMA;
 	flagId: string;
@@ -57,7 +63,7 @@ export function createMigrationCohortFlag(input: {
 		percentage,
 		enabled: true,
 		autoAbortOnDualFailure: true as const,
-		...(definition !== undefined ? { definition } : {}),
+		...(definition !== undefined ? { definition } : undefined),
 	});
 }
 
@@ -70,11 +76,7 @@ export function advanceMigrationRamp(input: {
 	readonly targetPercent: number;
 	readonly dualConsistencyOk: boolean;
 	readonly store?: FeatureFlagStore;
-}): {
-	flag: MigrationCohortFlag;
-	aborted: boolean;
-	record: ReturnType<IdentityMigrationService["snapshot"]>;
-} {
+}): MigrationRampAdvance {
 	const snap = input.service.snapshot();
 	if (!snap) {
 		throw Object.assign(new Error("no active migration"), {
@@ -94,7 +96,7 @@ export function advanceMigrationRamp(input: {
 			migrationId: snap.id,
 			tenant: snap.tenant,
 			percentage: 0,
-			...(input.store !== undefined ? { store: input.store } : {}),
+			...(input.store !== undefined ? { store: input.store } : undefined),
 		});
 		if (input.store) {
 			input.store.define({
@@ -120,7 +122,7 @@ export function advanceMigrationRamp(input: {
 		migrationId: record.id,
 		tenant: record.tenant,
 		percentage: record.rampPercent,
-		...(input.store !== undefined ? { store: input.store } : {}),
+		...(input.store !== undefined ? { store: input.store } : undefined),
 	});
 	return { flag, aborted: false, record };
 }
@@ -141,7 +143,7 @@ export function principalInMigrationCohort(input: {
 			migrationCohortFlagKey(input.migrationId),
 			{
 				targetingKey: input.principalRef,
-				...(input.tenant !== undefined ? { tenant: input.tenant } : {}),
+				...(input.tenant !== undefined ? { tenant: input.tenant } : undefined),
 			},
 			false,
 		);

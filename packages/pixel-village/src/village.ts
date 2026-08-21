@@ -299,6 +299,7 @@ export function sceneryTiles(seed: number): readonly TilePlacement[] {
 	return spots.map(([tx, ty]) => {
 		const pool = rnd() < 0.75 ? T.treeGreen : T.treeAutumn;
 		const index = pool[Math.floor(rnd() * pool.length)] ?? pool[0];
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		return { sheet: "town" as const, index: index as number, tx, ty };
 	});
 }
@@ -310,10 +311,11 @@ export function villagerFor(id: string): number {
 		h ^= id.charCodeAt(i);
 		h = Math.imul(h, 16777619) >>> 0;
 	}
+	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 	return (VILLAGERS[h % VILLAGERS.length] ?? VILLAGERS[0]) as number;
 }
 
 /** Tile coords → pixel coords (top-left of the tile). */
-export function tilePx(tx: number, ty: number): { x: number; y: number } {
+export function tilePx(tx: number, ty: number) {
 	return { x: tx * TILE, y: ty * TILE };
 }

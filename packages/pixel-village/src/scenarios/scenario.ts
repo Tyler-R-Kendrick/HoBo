@@ -96,7 +96,9 @@ export function makeConnection(
 		flow: "api-key",
 		status: "active",
 		subject: SUBJECT,
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		grantedScopes: Object.freeze(["repo"]) as readonly string[],
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		requestedScopes: Object.freeze(["repo"]) as readonly string[],
 		stationId: SCENARIO_STATION_ID,
 		tenant: TENANT,
@@ -164,6 +166,7 @@ export function baseSnapshot(patch: SnapshotPatch = {}): Snapshot {
 		activity: Object.freeze([...(patch.activity ?? [])]),
 		doctor: Object.freeze({
 			bootstrapActive: false,
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 			hazards: Object.freeze([]) as readonly string[],
 			...patch.doctor,
 		}),

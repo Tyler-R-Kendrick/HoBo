@@ -8,6 +8,7 @@ import {
 	beat,
 	makeConnection,
 	makeRail,
+	type SnapshotPatch,
 	type YardScenario,
 	zoneRegion,
 } from "./scenario.js";
@@ -32,13 +33,15 @@ export const deploySaga: YardScenario = Object.freeze({
 			phase === 2 ? "active" : phase === 1 ? "approved" : "draft";
 		const bootstrapActive = phase === 0;
 		return baseSnapshot({
-			occupancy: {
-				...(phase === 2 ? { activeRailHash: RAIL_HASH } : {}),
-				bootstrapRailHash: BOOTSTRAP_HASH,
-				bootstrapActive,
-				connectionCount: 1,
-				seq: 1 + phase,
-			},
+			occupancy: Object.assign(
+				{
+					bootstrapRailHash: BOOTSTRAP_HASH,
+					bootstrapActive,
+					connectionCount: 1,
+					seq: 1 + phase,
+				} satisfies NonNullable<SnapshotPatch["occupancy"]>,
+				phase === 2 ? ({ activeRailHash: RAIL_HASH } as const) : undefined,
+			),
 			rails: [
 				makeRail({ contentHash: RAIL_HASH, activationStatus }),
 				makeRail({

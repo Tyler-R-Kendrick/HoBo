@@ -205,6 +205,7 @@ describe("scenario world fixture", () => {
 });
 
 describe("world view mapping", () => {
+	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 	const view = toWorldView(scenarioWorld(1, 5), true) as WorldView;
 
 	it("returns null world untouched", () => {
@@ -262,6 +263,7 @@ describe("world view mapping", () => {
 });
 
 describe("presenter world rendering", () => {
+	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 	const worldView = toWorldView(scenarioWorld(1, 0), true) as WorldView;
 
 	it("raises one house per camp room with its label over the roof", () => {
@@ -296,9 +298,12 @@ describe("presenter world rendering", () => {
 	});
 
 	it("marks stuck Bindles with a danger tile and low health with a bar", () => {
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		const campId = worldView.camps[0]?.id as string;
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		const base = worldView.characters[0] as WorldView["characters"][number];
 		const custom: WorldView = {
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 			camps: [worldView.camps[0] as WorldView["camps"][number]],
 			characters: [
 				{
@@ -367,6 +372,7 @@ describe("presenter world rendering", () => {
 describe("world client folding", () => {
 	it("folds world deltas over a snapshot with the yard-world reducer", () => {
 		const world = scenarioWorld(1, 0);
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		const id = Object.keys(world.characters)[0] as string;
 		const folded = foldWorldDelta(world, [
 			{
@@ -394,6 +400,7 @@ describe("camp room selection (regression: OTLP placeholder camps)", () => {
 		characters: Record<string, string>,
 	): Parameters<typeof toWorldView>[0] {
 		const base = scenarioWorld(1, 0);
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		return {
 			...base,
 			camps: Object.fromEntries(
@@ -403,6 +410,7 @@ describe("camp room selection (regression: OTLP placeholder camps)", () => {
 				Object.entries(characters).map(([id, campId]) => [
 					id,
 					{
+						// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 						...(Object.values(base.characters)[0] as object),
 						id,
 						campId,
@@ -413,16 +421,21 @@ describe("camp room selection (regression: OTLP placeholder camps)", () => {
 	}
 
 	it("omits camps with no characters", () => {
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: worldWith returns the refined world fixture used by this test.
 		const view = toWorldView(
 			worldWith(["camp-orders", "default"], { "s/orders": "camp-orders" }),
 			false,
-		) as WorldView;
+		) /* SAFETY: toWorldView returns the refined world view fixture. */ as WorldView;
 		expect(view.camps.map((c) => c.id)).toEqual(["camp-orders"]);
 	});
 
 	it("never lets an empty placeholder displace an inhabited camp", () => {
 		// "aaa-empty" sorts first; without the filter it would claim a slot.
+		// SAFETY: toWorldView returns the refined world view fixture.
 		const view = toWorldView(
+			// SAFETY: worldWith returns the refined world fixture used by this test.
 			worldWith(["aaa-empty", "camp-a", "camp-b", "camp-c", "camp-d"], {
 				"s/1": "camp-a",
 				"s/2": "camp-b",

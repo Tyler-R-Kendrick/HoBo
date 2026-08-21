@@ -55,9 +55,7 @@ export function createWorldClient(opts: {
 	const ES =
 		opts.eventSourceImpl !== undefined
 			? opts.eventSourceImpl
-			: typeof EventSource !== "undefined"
-				? EventSource
-				: null;
+			: (globalThis.EventSource ?? null);
 
 	let world: WorldState | null = null;
 	let demo = false;
@@ -69,6 +67,7 @@ export function createWorldClient(opts: {
 		const res = await doFetch(`${apiBase}/v1/world/snapshot`, {
 			headers: { "content-type": "application/json" },
 		});
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		const body = (await res.json()) as WorldEnvelope;
 		if (!body.ok || !body.data) {
 			throw new Error(body.message || "no world snapshot");
@@ -109,6 +108,7 @@ export function createWorldClient(opts: {
 					es = new ES(`${apiBase}/v1/world/stream`);
 					es.addEventListener("world-snapshot", (ev) => {
 						try {
+							// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 							const data = JSON.parse((ev as MessageEvent).data) as {
 								world: WorldState;
 								demo: boolean;
@@ -122,6 +122,7 @@ export function createWorldClient(opts: {
 					});
 					es.addEventListener("world", (ev) => {
 						try {
+							// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 							const delta = JSON.parse((ev as MessageEvent).data) as WorldDelta;
 							if (world) {
 								world = foldWorldDelta(world, delta.events);

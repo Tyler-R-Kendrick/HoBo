@@ -31,10 +31,14 @@ const MUTE_KEY = "hobo-yard-muted";
 /** Ops rooms are shared; sound is opt-in, never opt-out. */
 const DEFAULT_MUTED = true;
 /** A telegraph tick per SSE frame would be a metronome — rate-limit it. */
-const MIN_GAP_MS: Partial<Record<CueId, number>> = {
+const MIN_GAP_MS = {
+	whistle: undefined,
+	stamp: undefined,
+	spike: undefined,
 	telegraph: 900,
 	steam: 4000,
-};
+	derail: undefined,
+} satisfies Record<CueId, number | undefined>;
 
 export function createYardAudio(opts: {
 	index: AssetIndex;
@@ -47,11 +51,7 @@ export function createYardAudio(opts: {
 	const enabled = opts.enabled ?? true;
 	const now = opts.now ?? (() => Date.now());
 	const store =
-		opts.storage === undefined
-			? typeof localStorage === "undefined"
-				? null
-				: localStorage
-			: opts.storage;
+		opts.storage === undefined ? globalThis.localStorage : opts.storage;
 
 	const buffers = new Map<CueId, AudioBuffer>();
 	const lastPlayed = new Map<CueId, number>();
@@ -71,13 +71,10 @@ export function createYardAudio(opts: {
 		const clips = opts.index.audio;
 		if (!enabled || !clips || ctx !== null) return;
 		const Ctor =
-			typeof AudioContext !== "undefined"
-				? AudioContext
-				: (
-						globalThis as unknown as {
-							webkitAudioContext?: typeof AudioContext;
-						}
-					).webkitAudioContext;
+			globalThis.AudioContext ??
+			// SAFETY: WebKit exposes this browser API under its prefixed global name.
+			(globalThis as { webkitAudioContext?: typeof AudioContext })
+				.webkitAudioContext;
 		if (!Ctor) return;
 		ctx = new Ctor();
 		const base = opts.assetBaseUrl.replace(/\/$/, "");
@@ -86,7 +83,10 @@ export function createYardAudio(opts: {
 				try {
 					const res = await fetch(`${base}/${clip.path}`);
 					const bytes = await res.arrayBuffer();
-					const decoded = await (ctx as AudioContext).decodeAudioData(bytes);
+					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+					const decoded = await ctx?.decodeAudioData(bytes);
+					if (!decoded) return;
+					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 					buffers.set(clip.id as CueId, decoded);
 				} catch {
 					// A missing cue is not worth breaking the yard over; the

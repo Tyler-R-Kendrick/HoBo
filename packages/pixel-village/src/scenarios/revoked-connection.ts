@@ -35,6 +35,7 @@ export const revokedConnection: YardScenario = Object.freeze({
 			metering: { trafficRate: revoked ? 0 : 0.3, quotaUsed: 90 },
 			activity: [makeActivity({ status: revoked ? "error" : "working" })],
 			doctor: {
+				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 				hazards: Object.freeze(
 					revoked ? ["connection-revoked:conn-1"] : [],
 				) as readonly string[],

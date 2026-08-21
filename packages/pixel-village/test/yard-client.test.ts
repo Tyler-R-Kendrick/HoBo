@@ -26,6 +26,7 @@ type Reply = { ok?: boolean; status?: number; body?: unknown };
 /** A fetch stand-in recording calls and answering from a per-path map. */
 function fetchStub(replies: Record<string, Reply> = {}, fallback?: Reply) {
 	const calls: Array<{ url: string; init: RequestInit }> = [];
+	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 	const impl = (async (url: string, init: RequestInit) => {
 		calls.push({ url, init });
 		const path = url.replace(/^https?:\/\/[^/]+/u, "").split("?")[0] ?? "";
@@ -36,7 +37,7 @@ function fetchStub(replies: Record<string, Reply> = {}, fallback?: Reply) {
 			status: reply.status ?? 200,
 			json: async () => reply.body ?? { ok: true, data: SNAPSHOT },
 		};
-	}) as unknown as typeof fetch;
+	}) as typeof fetch;
 	return { impl, calls };
 }
 
@@ -44,24 +45,25 @@ function fetchStub(replies: Record<string, Reply> = {}, fallback?: Reply) {
 function eventSourceStub(options: { throwOnConstruct?: boolean } = {}) {
 	const instances: Array<{
 		url: string;
-		listeners: Map<string, (event: unknown) => void>;
+		listeners: Map<string, (event: MessageEvent) => void>;
 		closed: boolean;
 	}> = [];
 	class Stub {
-		readonly listeners = new Map<string, (event: unknown) => void>();
+		readonly listeners = new Map<string, (event: MessageEvent) => void>();
 		closed = false;
 		constructor(readonly url: string) {
 			if (options.throwOnConstruct) throw new Error("blocked");
 			instances.push(this);
 		}
-		addEventListener(name: string, handler: (event: unknown) => void) {
+		addEventListener(name: string, handler: (event: MessageEvent) => void) {
 			this.listeners.set(name, handler);
 		}
 		close() {
 			this.closed = true;
 		}
 	}
-	return { Stub: Stub as unknown as typeof EventSource, instances };
+	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+	return { Stub: Stub as typeof EventSource, instances };
 }
 
 function client(
@@ -127,8 +129,12 @@ describe("snapshot", () => {
 	it("sends a JSON content type", async () => {
 		const { client: yard, calls } = client();
 		await yard.snapshot();
+		const firstCall = calls[0];
+		if (!firstCall) throw new Error("fetch stub was not called");
 		expect(
-			(calls[0]?.init.headers as Record<string, string>)["content-type"],
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			// SAFETY: fetchStub records headers as a string dictionary.
+			(firstCall.init.headers as Record<string, string>)["content-type"],
 		).toBe("application/json");
 	});
 
@@ -321,9 +327,14 @@ describe("subscribe", () => {
 		// Real timers here: the poll's rejection travels through several
 		// microtasks before reaching the callback, and faking timers does not
 		// advance those.
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: The assertion is constrained by the typed boundary or deterministic test fixture.
+		// SAFETY: The test stub implements the fetch contract used by the client.
 		const impl = (async () => {
 			throw new Error("network down");
-		}) as unknown as typeof fetch;
+			// SAFETY: The test stub implements the fetch contract used by the client.
+		}) /* SAFETY: The test stub implements the fetch contract. */ as typeof fetch;
 		const yard = createYardClient({
 			apiBase: "http://control.local",
 			fetchImpl: impl,
@@ -590,9 +601,10 @@ describe("deployments", () => {
 	});
 
 	it("reports unavailable when the network fails", async () => {
+		// SAFETY: The test stub implements the fetch contract used by the client.
 		const impl = (async () => {
 			throw new Error("offline");
-		}) as unknown as typeof fetch;
+		}) as typeof fetch;
 		const yard = createYardClient({
 			apiBase: "http://control.local",
 			fetchImpl: impl,

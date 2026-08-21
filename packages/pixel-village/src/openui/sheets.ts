@@ -235,9 +235,18 @@ export type SheetConfirmHandlers = Readonly<{
 	connectionAuthorize: (input: { idOrAlias: string }) => ManagementResult;
 	stationRailsActivate: (input: { hashOrId: string }) => ManagementResult;
 	stationRailsApprove: (input: { hashOrId: string }) => ManagementResult;
-	stationRailsPublish: (input: Record<string, unknown>) => ManagementResult;
+	stationRailsPublish: (input: {
+		stationId?: string;
+		id?: string;
+		name?: string;
+		version?: string;
+	}) => ManagementResult;
 	doctorSnapshot: () => ManagementResult;
 }>;
+
+type ConnectionCreateInput = Parameters<
+	SheetConfirmHandlers["connectionCreate"]
+>[0];
 
 /** Confirm a sheet with field values → management op. */
 export function confirmSheet(
@@ -247,12 +256,7 @@ export function confirmSheet(
 ): ManagementResult {
 	switch (sheet.confirmOp) {
 		case "connectionCreate": {
-			const input: {
-				provider: string;
-				alias?: string;
-				scopes?: string[];
-				stationId?: string;
-			} = {
+			const input: ConnectionCreateInput = {
 				provider: String(values.provider ?? ""),
 			};
 			if (values.alias !== undefined && String(values.alias).length > 0) {

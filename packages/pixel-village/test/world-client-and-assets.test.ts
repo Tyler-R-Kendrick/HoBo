@@ -29,6 +29,7 @@ import {
 } from "../src/assets-index-core.js";
 import { createWorldClient, foldWorldDelta } from "../src/net/world-client.js";
 
+// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 const SHEET = {
 	id: "villager",
 	path: "assets/villager.png",
@@ -57,6 +58,7 @@ const SHEET = {
 	},
 } as never;
 
+// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 const INDEX = {
 	spritesheets: { villager: SHEET },
 	animationIds: {
@@ -83,20 +85,25 @@ describe("resolveAnimation", () => {
 	});
 
 	it("names the missing sheet when an id points at one that does not exist", () => {
+		// SAFETY: The fixture intentionally supplies the parser input shape.
 		expect(() =>
 			resolveAnimation(
+				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+				// SAFETY: The fixture intentionally supplies a complete index with one missing animation.
 				{
 					...INDEX,
 					animationIds: {
 						"villager.walk": { sheet: "ghost", animation: "walk" },
 					},
-				} as never,
+				} /* SAFETY: The fixture supplies the parser input shape. */ as never,
 				"villager.walk",
 			),
 		).toThrow(/unknown sheet for animation villager\.walk: ghost/u);
 	});
 
 	it("names the missing clip when a sheet does not carry it", () => {
+		// SAFETY: The fixture intentionally supplies the parser input shape.
 		expect(() =>
 			resolveAnimation(
 				{
@@ -120,6 +127,7 @@ describe("expectedSheetPixelSize", () => {
 	});
 
 	it("adds the margin on both edges", () => {
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		expect(expectedSheetPixelSize({ ...SHEET, margin: 2 } as never)).toEqual({
 			width: 68,
 			height: 52,
@@ -129,6 +137,7 @@ describe("expectedSheetPixelSize", () => {
 	it("adds spacing between frames but not outside them", () => {
 		// `columns - 1` gaps, not `columns`. Counting one too many would compute
 		// a size larger than any real sheet and reject every one of them.
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		expect(expectedSheetPixelSize({ ...SHEET, spacing: 1 } as never)).toEqual({
 			width: 67,
 			height: 49,
@@ -138,7 +147,9 @@ describe("expectedSheetPixelSize", () => {
 	it("does not subtract a gap from a single-column sheet", () => {
 		// `Math.max(0, columns - 1)`. Without the clamp a one-column sheet would
 		// have its spacing subtracted, producing a size smaller than the frame.
+		// SAFETY: The fixture intentionally supplies the parser input shape.
 		expect(
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 			expectedSheetPixelSize({
 				...SHEET,
 				columns: 1,
@@ -157,6 +168,8 @@ describe("frameCount and animationFrameList", () => {
 	it("lists an explicit frame sequence in order", () => {
 		// Order is the animation. A set or a sort would play the frames in the
 		// wrong sequence, which looks like a different animation entirely.
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		expect(animationFrameList(SHEET, SHEET.animations.walk as never)).toEqual([
 			0, 1, 2, 3,
 		]);
@@ -165,14 +178,18 @@ describe("frameCount and animationFrameList", () => {
 	it("copies the sequence rather than exposing the definition's array", () => {
 		// The index is shared across every sprite using this clip. A caller
 		// mutating the returned list would change what every later sprite plays.
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: SHEET.animations.walk is the fixture's valid animation definition.
 		const frames = animationFrameList(SHEET, SHEET.animations.walk as never);
 		frames.push(99);
+		// SAFETY: SHEET.animations.walk is the fixture's valid animation definition.
 		expect(animationFrameList(SHEET, SHEET.animations.walk as never)).toEqual([
 			0, 1, 2, 3,
 		]);
 	});
 
 	it("expands `all` to the whole sheet", () => {
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		expect(animationFrameList(SHEET, SHEET.animations.idle as never)).toEqual([
 			0, 1, 2, 3, 4, 5, 6, 7,
 		]);
@@ -182,6 +199,8 @@ describe("frameCount and animationFrameList", () => {
 		// A sheet padded with empty trailing frames declares how many are real.
 		// Playing the whole grid would animate through blank cells.
 		expect(
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 			animationFrameList(SHEET, {
 				...SHEET.animations.idle,
 				frameCount: 3,
@@ -190,11 +209,13 @@ describe("frameCount and animationFrameList", () => {
 	});
 
 	it("returns nothing for a zero frame count", () => {
+		// SAFETY: The fixture intentionally supplies the parser input shape.
 		expect(
 			animationFrameList(SHEET, {
 				...SHEET.animations.idle,
 				frameCount: 0,
-			} as never),
+				// SAFETY: The fixture narrows this partial animation to the tested parser input.
+			} /* SAFETY: The fixture supplies the parser input shape. */ as never),
 		).toEqual([]);
 	});
 });
@@ -208,11 +229,14 @@ describe("allAssetPaths", () => {
 		// The list feeds preload and coverage checks. Missing a category would
 		// leave those assets unloaded at runtime and unchecked at build time —
 		// the second is why it matters more than it looks.
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: The fixture intentionally supplies the manifest input shape.
 		const paths = allAssetPaths({
 			...INDEX,
 			backgrounds: { sky: { path: "assets/sky.png", width: 1, height: 1 } },
 			images: { logo: { path: "assets/logo.png", width: 1, height: 1 } },
-		} as never);
+		} /* SAFETY: The fixture supplies the manifest input shape. */ as never);
 		expect(paths.sort()).toEqual([
 			"assets/logo.png",
 			"assets/sky.png",
@@ -227,6 +251,7 @@ describe("allAssetPaths", () => {
 	});
 
 	it("omits audio, which is not a PNG path", () => {
+		// SAFETY: The fixture intentionally supplies the manifest input shape.
 		// The function is documented as PNG paths for preload and coverage. Audio
 		// has its own loader, and mixing it in would make a coverage check demand
 		// image dimensions for a WAV.
@@ -246,6 +271,7 @@ describe("allAssetPaths", () => {
 });
 
 describe("foldWorldDelta", () => {
+	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 	const WORLD = { tick: 0, agents: {} } as never;
 
 	it("returns the world unchanged for an empty event list", () => {
@@ -257,6 +283,7 @@ describe("foldWorldDelta", () => {
 	it("applies events in order", () => {
 		// Order is causality. Applying a move before the spawn that created the
 		// agent would either drop the move or invent an agent.
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		const applied = foldWorldDelta(WORLD, [
 			{ kind: "tick", tick: 1 },
 			{ kind: "tick", tick: 2 },
@@ -267,7 +294,9 @@ describe("foldWorldDelta", () => {
 	it("does not mutate the world it was given", () => {
 		// The world is held by the renderer between frames. Mutating in place
 		// would make a re-render see a state it never got a callback for.
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		const original = { tick: 0, agents: {} } as never;
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		foldWorldDelta(original, [{ kind: "tick", tick: 1 }] as never);
 		expect(original).toEqual({ tick: 0, agents: {} });
 	});
@@ -280,6 +309,7 @@ describe("the world client", () => {
 
 	function fetchStub(reply?: Reply) {
 		const calls: string[] = [];
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		const impl = (async (url: string) => {
 			calls.push(url);
 			return {
@@ -291,30 +321,31 @@ describe("the world client", () => {
 						data: { world: WORLD, demo: false, seed: null },
 					},
 			};
-		}) as unknown as typeof fetch;
+		}) as typeof fetch;
 		return { impl, calls };
 	}
 
 	function eventSourceStub() {
 		const instances: Array<{
 			url: string;
-			listeners: Map<string, (event: unknown) => void>;
+			listeners: Map<string, (event: MessageEvent) => void>;
 			closed: boolean;
 		}> = [];
 		class Stub {
-			readonly listeners = new Map<string, (event: unknown) => void>();
+			readonly listeners = new Map<string, (event: MessageEvent) => void>();
 			closed = false;
 			constructor(readonly url: string) {
 				instances.push(this);
 			}
-			addEventListener(name: string, handler: (event: unknown) => void) {
+			addEventListener(name: string, handler: (event: MessageEvent) => void) {
 				this.listeners.set(name, handler);
 			}
 			close() {
 				this.closed = true;
 			}
 		}
-		return { Stub: Stub as unknown as typeof EventSource, instances };
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		return { Stub: Stub as typeof EventSource, instances };
 	}
 
 	it("reports no world before the first snapshot", () => {

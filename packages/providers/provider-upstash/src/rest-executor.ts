@@ -23,6 +23,13 @@ import type {
 
 import { providerErrorForStatus, UpstashProviderError } from "./errors.js";
 import {
+	isJsonArray,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "./json.js";
+import {
 	createGuardedTransport,
 	type TransportPolicy,
 	UPSTASH_DATA_PLANE_POLICY,
@@ -52,7 +59,7 @@ export type UpstashRestExecutorOptions = {
  * asserting a cast. Anything outside the RESP value space — an object, a
  * boolean, a non-finite number — is a contract change, not a value to coerce.
  */
-function parseRedisValue(value: unknown, depth = 0): RedisValue {
+function parseRedisValue(value: JsonValue, depth = 0): RedisValue {
 	if (depth > 16) {
 		throw new UpstashProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
@@ -60,8 +67,8 @@ function parseRedisValue(value: unknown, depth = 0): RedisValue {
 		);
 	}
 	if (value === null) return null;
-	if (typeof value === "string") return value;
-	if (typeof value === "number") {
+	if (isJsonString(value)) return value;
+	if (isJsonNumber(value)) {
 		if (!Number.isFinite(value)) {
 			throw new UpstashProviderError(
 				"PROVIDER_CONTRACT_CHANGED",
@@ -70,41 +77,37 @@ function parseRedisValue(value: unknown, depth = 0): RedisValue {
 		}
 		return value;
 	}
-	if (Array.isArray(value)) {
+	if (isJsonArray(value)) {
 		return value.map((entry) => parseRedisValue(entry, depth + 1));
 	}
 	throw new UpstashProviderError(
 		"PROVIDER_CONTRACT_CHANGED",
-		`redis reply contained an unsupported ${typeof value} value`,
+		"redis reply contained an unsupported JSON value",
 	);
 }
 
 export function parseRestReply(body: string): RedisReply {
-	let decoded: unknown;
+	let decoded: JsonValue;
 	try {
-		decoded = JSON.parse(body) as unknown;
+		// SAFETY: JSON.parse yields a JSON value at this document boundary.
+		decoded = JSON.parse(body) as JsonValue;
 	} catch (cause) {
 		throw new UpstashProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			"the REST endpoint returned a body that is not JSON",
-			{ cause },
+			{
+				cause: cause instanceof Error ? cause : new Error(String(cause)),
+			},
 		);
 	}
-	if (
-		typeof decoded !== "object" ||
-		decoded === null ||
-		Array.isArray(decoded)
-	) {
+	if (!isJsonObject(decoded)) {
 		throw new UpstashProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			"the REST endpoint returned something other than a result envelope",
 		);
 	}
-	const envelope = decoded as {
-		readonly result?: unknown;
-		readonly error?: unknown;
-	};
-	if (typeof envelope.error === "string") {
+	const envelope = decoded;
+	if (isJsonString(envelope.error)) {
 		// A command-level error (WRONGTYPE, "value is not an integer") is a
 		// legitimate Redis reply, not a driver failure. The suite asserts on
 		// several of them.
@@ -116,7 +119,14 @@ export function parseRestReply(body: string): RedisReply {
 			"the REST envelope carried neither a result nor an error",
 		);
 	}
-	return { kind: "value", value: parseRedisValue(envelope.result) };
+	const result = envelope.result;
+	if (result === undefined) {
+		throw new UpstashProviderError(
+			"PROVIDER_CONTRACT_CHANGED",
+			"the REST envelope carried neither a result nor an error",
+		);
+	}
+	return { kind: "value", value: parseRedisValue(result) };
 }
 
 const COMMAND_VERB = /^[A-Za-z][A-Za-z0-9._-]{0,31}$/u;

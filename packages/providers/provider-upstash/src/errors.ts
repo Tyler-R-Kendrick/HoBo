@@ -33,16 +33,35 @@ export const PROVIDER_ERROR_CODES = [
 
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[number];
 
-export type ProviderErrorDetail = Readonly<
-	Record<string, string | number | boolean>
->;
+export type ProviderErrorDetail = {
+	readonly status?: number;
+	readonly method?: string;
+	readonly body?: string;
+	readonly guard?: string;
+	readonly idempotencyKey?: string;
+	readonly returnedId?: string;
+	readonly databaseId?: string;
+	readonly expected?: string;
+	readonly observed?: string;
+	readonly verb?: string;
+	readonly preview?: string;
+	readonly length?: number;
+	readonly bindingId?: string;
+	readonly purpose?: string;
+	readonly resourceRef?: string;
+	readonly expiresAtIso?: string;
+	readonly expiresAtMs?: number;
+	readonly claimState?: string;
+	readonly claimUrl?: string;
+	readonly location?: string;
+};
 
 export type ProviderErrorOptions = {
 	/** Safe to repeat the operation verbatim. Ambiguity is never retryable. */
 	readonly retryable?: boolean;
 	readonly retryAfterMs?: number;
 	readonly detail?: ProviderErrorDetail;
-	readonly cause?: unknown;
+	readonly cause?: Error;
 };
 
 /**
@@ -64,10 +83,22 @@ const CREDENTIAL_PATTERNS: readonly RegExp[] = [
 	/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/giu,
 ];
 
-// Stripping control characters out of provider text is the point: a newline in
-// an error message is how untrusted text forges a log record.
-// biome-ignore lint/suspicious/noControlCharactersInRegex: matching them is the purpose
-const CONTROL_CHARS = /[\u0000-\u001f\u007f]/gu;
+function flattenControlChars(text: string): string {
+	let out = "";
+	for (const ch of text) {
+		const code = ch.charCodeAt(0);
+		out += code <= 31 || code === 127 ? " " : ch;
+	}
+	return out;
+}
+
+export function containsControlChar(text: string): boolean {
+	for (const ch of text) {
+		const code = ch.charCodeAt(0);
+		if (code <= 31 || code === 127) return true;
+	}
+	return false;
+}
 
 /**
  * Replace anything credential-shaped with a marker and flatten control
@@ -77,20 +108,58 @@ export function redactProviderText(text: string, maxLength = 256): string {
 	let out = text;
 	for (const pattern of CREDENTIAL_PATTERNS)
 		out = out.replace(pattern, "[redacted]");
-	out = out
-		.replace(CONTROL_CHARS, " ")
+	out = flattenControlChars(out)
 		.replace(/\s{2,}/gu, " ")
 		.trim();
 	return out.length > maxLength ? `${out.slice(0, maxLength)}…` : out;
 }
 
+function redactOptionalText(value: string | undefined): string | undefined {
+	return value === undefined ? undefined : redactProviderText(value, 160);
+}
+
 function redactDetail(detail: ProviderErrorDetail): ProviderErrorDetail {
-	const safe: Record<string, string | number | boolean> = {};
-	for (const [key, value] of Object.entries(detail)) {
-		safe[key] =
-			typeof value === "string" ? redactProviderText(value, 160) : value;
-	}
-	return Object.freeze(safe);
+	const method = redactOptionalText(detail.method);
+	const body = redactOptionalText(detail.body);
+	const guard = redactOptionalText(detail.guard);
+	const idempotencyKey = redactOptionalText(detail.idempotencyKey);
+	const returnedId = redactOptionalText(detail.returnedId);
+	const databaseId = redactOptionalText(detail.databaseId);
+	const expected = redactOptionalText(detail.expected);
+	const observed = redactOptionalText(detail.observed);
+	const verb = redactOptionalText(detail.verb);
+	const preview = redactOptionalText(detail.preview);
+	const bindingId = redactOptionalText(detail.bindingId);
+	const purpose = redactOptionalText(detail.purpose);
+	const resourceRef = redactOptionalText(detail.resourceRef);
+	const expiresAtIso = redactOptionalText(detail.expiresAtIso);
+	const claimState = redactOptionalText(detail.claimState);
+	const claimUrl = redactOptionalText(detail.claimUrl);
+	const location = redactOptionalText(detail.location);
+	return {
+		...(detail.status !== undefined ? { status: detail.status } : undefined),
+		...(method !== undefined ? { method } : undefined),
+		...(body !== undefined ? { body } : undefined),
+		...(guard !== undefined ? { guard } : undefined),
+		...(idempotencyKey !== undefined ? { idempotencyKey } : undefined),
+		...(returnedId !== undefined ? { returnedId } : undefined),
+		...(databaseId !== undefined ? { databaseId } : undefined),
+		...(expected !== undefined ? { expected } : undefined),
+		...(observed !== undefined ? { observed } : undefined),
+		...(verb !== undefined ? { verb } : undefined),
+		...(preview !== undefined ? { preview } : undefined),
+		...(detail.length !== undefined ? { length: detail.length } : undefined),
+		...(bindingId !== undefined ? { bindingId } : undefined),
+		...(purpose !== undefined ? { purpose } : undefined),
+		...(resourceRef !== undefined ? { resourceRef } : undefined),
+		...(expiresAtIso !== undefined ? { expiresAtIso } : undefined),
+		...(detail.expiresAtMs !== undefined
+			? { expiresAtMs: detail.expiresAtMs }
+			: undefined),
+		...(claimState !== undefined ? { claimState } : undefined),
+		...(claimUrl !== undefined ? { claimUrl } : undefined),
+		...(location !== undefined ? { location } : undefined),
+	};
 }
 
 export class UpstashProviderError extends Error {
@@ -106,7 +175,7 @@ export class UpstashProviderError extends Error {
 	) {
 		super(
 			redactProviderText(message),
-			options.cause !== undefined ? { cause: options.cause } : {},
+			options.cause !== undefined ? { cause: options.cause } : undefined,
 		);
 		this.name = "UpstashProviderError";
 		this.code = code;
@@ -117,14 +186,7 @@ export class UpstashProviderError extends Error {
 	}
 
 	/** Receipt-safe projection. Already redacted by construction. */
-	toJSON(): {
-		readonly name: string;
-		readonly code: ProviderErrorCode;
-		readonly message: string;
-		readonly retryable: boolean;
-		readonly retryAfterMs?: number;
-		readonly detail: ProviderErrorDetail;
-	} {
+	toJSON() {
 		return {
 			name: this.name,
 			code: this.code,
@@ -132,13 +194,13 @@ export class UpstashProviderError extends Error {
 			retryable: this.retryable,
 			...(this.retryAfterMs !== undefined
 				? { retryAfterMs: this.retryAfterMs }
-				: {}),
+				: undefined),
 			detail: this.detail,
 		};
 	}
 }
 
-export function isProviderError(value: unknown): value is UpstashProviderError {
+export function isProviderError(value: Error): value is UpstashProviderError {
 	return value instanceof UpstashProviderError;
 }
 
@@ -162,10 +224,10 @@ export function providerErrorForStatus(
 ): UpstashProviderError {
 	const body =
 		options.body === undefined ? "" : redactProviderText(options.body, 160);
-	const detail: ProviderErrorDetail = {
+	const detail = {
 		status,
 		method: options.method,
-		...(body !== "" ? { body } : {}),
+		...(body !== "" ? { body } : undefined),
 	};
 	if (status === 429) {
 		return new UpstashProviderError(
@@ -175,7 +237,7 @@ export function providerErrorForStatus(
 				retryable: true,
 				...(options.retryAfterMs !== undefined
 					? { retryAfterMs: options.retryAfterMs }
-					: {}),
+					: undefined),
 				detail,
 			},
 		);

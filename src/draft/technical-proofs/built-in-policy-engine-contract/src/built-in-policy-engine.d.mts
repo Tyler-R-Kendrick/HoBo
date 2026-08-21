@@ -3,6 +3,8 @@ import type {
   DecisionRequest,
   Effect,
 } from "../../hobo-policy-ir-contract/src/policy-ir.d.mts";
+import { type JsonValue } from "./json.js";
+
 
 export const POLICY_IR_SCHEMA_VERSION: "hobo.policy-ir/v1";
 export type {
@@ -22,10 +24,10 @@ export interface TypescriptRuleContext {
 export interface TypescriptRuleDecision {
   effect: Effect;
   reason: string;
-  violations?: unknown[];
-  mutations?: unknown[];
-  approvals?: unknown[];
-  obligations?: Array<{ kind: string; [key: string]: unknown }>;
+  violations?: JsonValue[];
+  mutations?: JsonValue[];
+  approvals?: JsonValue[];
+  obligations?: Array<{ kind: string; [key: string]: JsonValue }>;
 }
 
 export interface TypescriptRule {
@@ -39,17 +41,17 @@ export interface PolicyRuleset {
   schemaVersion: typeof POLICY_RULESET_SCHEMA_VERSION;
   id: string;
   version: string;
-  policyPacks: unknown[];
+  policyPacks: JsonValue[];
   rules: TypescriptRule[];
 }
 
 export interface BuiltInPolicyEngine {
   engineId: string;
   executionMode: typeof BUILT_IN_POLICY_ENGINE_EXECUTION_MODE;
-  evaluate(request: unknown, ruleset: unknown): Decision;
+  evaluate(request: DecisionRequest, ruleset: PolicyRuleset): Decision;
 }
 
-export function createGoldenDecisionRequest(overrides?: unknown): DecisionRequest;
+export function createGoldenDecisionRequest(overrides?: Partial<DecisionRequest>): DecisionRequest;
 export function defineTypescriptRule(rule: {
   id: string;
   when(context: TypescriptRuleContext): boolean;
@@ -58,15 +60,15 @@ export function defineTypescriptRule(rule: {
 export function createRuleset(input?: {
   id?: string;
   version?: string;
-  policyPacks?: unknown[];
+  policyPacks?: JsonValue[];
   rules?: TypescriptRule[];
 }): PolicyRuleset;
 export function createBuiltInPolicyEngine(input?: { engineId?: string }): BuiltInPolicyEngine;
-export function evaluatePolicy(engine: BuiltInPolicyEngine, request: unknown, ruleset: unknown): Decision;
+export function evaluatePolicy(engine: BuiltInPolicyEngine, request: DecisionRequest, ruleset: PolicyRuleset): Decision;
 export function evaluateAndRecordPolicyDecision(input: {
   engine: BuiltInPolicyEngine;
-  request: unknown;
-  ruleset: unknown;
-  auditSink(event: unknown): void | Promise<void>;
+  request: DecisionRequest;
+  ruleset: PolicyRuleset;
+  auditSink(event: JsonValue): void | Promise<void>;
 }): Promise<Decision>;
-export function requestTuple(request: unknown): string;
+export function requestTuple(request: DecisionRequest): string;

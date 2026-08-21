@@ -1,4 +1,6 @@
 import type { DeploymentPlan } from "../../deployment-plan-ir-contract/src/deployment-plan-ir.d.js";
+import { type JsonObject } from "./json.js";
+
 
 export type PlannerObjective = "cost" | "latency" | "single-provider" | "carbon" | "maximize-credits";
 
@@ -18,7 +20,7 @@ export interface ManifestResource {
   bind?: string[];
   links?: Array<{ import: string; to: string }>;
   outputs?: string[];
-  env?: Record<string, unknown>;
+  env?: JsonObject;
   name?: string;
   strategy?: string;
   replication?: string;
@@ -43,7 +45,7 @@ export interface CoProvisionedResourceSpec {
   };
   deps?: string[];
   outputs?: string[];
-  inputs?: Record<string, unknown>;
+  inputs?: JsonObject;
 }
 
 export interface PlannerConfig {

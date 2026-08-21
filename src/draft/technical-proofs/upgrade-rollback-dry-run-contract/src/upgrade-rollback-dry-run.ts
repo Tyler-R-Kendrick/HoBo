@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const UPGRADE_DRY_RUN_FIXTURES = Object.freeze({
   cleanUpgrade: Object.freeze({
@@ -173,7 +175,7 @@ export const UPGRADE_DRY_RUN_FIXTURES = Object.freeze({
   }),
 });
 
-export function evaluateUpgradeDryRun(input: unknown) {
+export function evaluateUpgradeDryRun(input: JsonValue) {
   const request = parseUpgradeDryRunRequest(input);
   const blocked = request.compatibility.result === "unsupported" || request.backup.requirement.endsWith("-missing");
   const failed = Boolean(request.migration.failure);
@@ -210,11 +212,11 @@ export function classifyUpgradeDryRunDecision(decision: string) {
   return { owner: "Upgrade & Migration Engine", inScope: true };
 }
 
-export function stableDigest(value: unknown) {
+export function stableDigest(value: JsonValue) {
   return createHash("sha256").update(stableStringify(value)).digest("hex");
 }
 
-function parseUpgradeDryRunRequest(input: unknown) {
+function parseUpgradeDryRunRequest(input: JsonValue) {
   if (!isRecord(input)) {
     throw new Error("upgrade dry-run request must be an object");
   }
@@ -222,6 +224,7 @@ function parseUpgradeDryRunRequest(input: unknown) {
     throw new Error("dry-run contract does not execute live migration, rollback, provider mutation, or support automation");
   }
 
+  // SAFETY: `return input as {` is required at this I/O or test boundary.
   return input as {
     id: string;
     compatibility: { result: string };
@@ -234,7 +237,7 @@ function parseUpgradeDryRunRequest(input: unknown) {
   };
 }
 
-function stableStringify(value: unknown): string {
+function stableStringify(value: JsonValue): string {
   if (Array.isArray(value)) {
     return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
   }
@@ -247,6 +250,6 @@ function stableStringify(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function isRecord(value: JsonValue): value is JsonObject {
+  return isJsonObject(value) && value !== null && !Array.isArray(value);
 }

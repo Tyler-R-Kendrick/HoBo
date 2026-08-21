@@ -243,7 +243,7 @@ export default defineConfig({
 				"packages/providers/provider-gcp/**": { statements: 87, branches: 72, functions: 90, lines: 88 },
 				"packages/providers/provider-hetzner/**": { statements: 82, branches: 66, functions: 87, lines: 85 },
 				"packages/providers/provider-hostinger/**": { statements: 87, branches: 70, functions: 92, lines: 88 },
-				"packages/providers/provider-kafka/**": { statements: 80, branches: 64, functions: 84, lines: 81 },
+				"packages/providers/provider-kafka/**": { statements: 88, branches: 84, functions: 93, lines: 88 },
 				"packages/providers/provider-kubernetes/**": { statements: 81, branches: 70, functions: 90, lines: 81 },
 				"packages/providers/provider-lakebed/**": { statements: 82, branches: 71, functions: 80, lines: 82 },
 				"packages/providers/provider-neon/**": { statements: 84, branches: 73, functions: 93, lines: 86 },

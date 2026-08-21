@@ -180,7 +180,15 @@ function parseEvidenceJson(stdout: string | undefined): Record<string, string> {
 		}
 		return evidence;
 	} catch {
-		return { stdout: stdout.trim().slice(0, 4000) };
+		// Return the text as-is. `stdout` has already been through
+		// `trimEvidence`, which is the only place that should decide how much of
+		// a check's output to keep, because it is the only place that knows the
+		// exit code. Re-truncating here to a flat 4000 characters discarded the
+		// failure tail that `trimEvidence` had just gone to the trouble of
+		// preserving — so for a failing check that printed a long non-JSON log
+		// (a failing test suite, the common case) the record kept only the first
+		// 4000 characters and threw away the end, which is where the reason is.
+		return { stdout };
 	}
 }
 
@@ -191,6 +199,16 @@ function mergeArtifactEvidence(
 	const mediaType = evidence.media_type;
 	const byteLengthRaw = evidence.byte_length;
 	if (!digest || !mediaType || !byteLengthRaw) {
+		return undefined;
+	}
+	// `Number.parseInt` stops at the first character it cannot use, so it
+	// silently *reinterprets* a malformed length rather than rejecting it:
+	// "1.5" becomes 1, "1e3" becomes 1, "10abc" becomes 10. Each of those is a
+	// whole non-negative integer, so the checks below pass and the record ends
+	// up claiming a byte length the check never measured — which a verifier
+	// comparing the recorded length against the real artifact reads as a
+	// mismatch on a perfectly good build. Require the string to be digits.
+	if (!/^\d+$/u.test(byteLengthRaw)) {
 		return undefined;
 	}
 	const byteLength = Number.parseInt(byteLengthRaw, 10);

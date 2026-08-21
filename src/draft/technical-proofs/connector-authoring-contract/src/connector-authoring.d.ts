@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export type ExternalAuthFlowType =
   | "oauth2-xaa"
   | "oauth2-obo"
@@ -23,7 +24,7 @@ export interface ExternalAuthJson {
 export interface ConnectorCall<Scope extends string = string> {
   readonly target: string;
   readonly operation: string;
-  readonly input: unknown;
+  readonly input: JsonValue;
   readonly scope: Scope;
 }
 
@@ -34,9 +35,9 @@ export interface ConnectorBinding<Name extends string = string> {
   readonly advertisedScopes: readonly string[];
   readonly operationScopes: Readonly<Record<string, string>>;
   readonly declaredAllow?: readonly string[];
-  readonly client: Readonly<Record<string, unknown>>;
+  readonly client: Readonly<JsonObject>;
   allow(...scopes: string[]): ConnectorBinding<Name>;
-  call(operation: string, input?: unknown): ConnectorCall;
+  call(operation: string, input?: JsonValue): ConnectorCall;
 }
 
 export interface ConnectorManifestEntry {

@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export const CQRS_COMMAND_AGGREGATE_CONTRACT_VERSION:
   "hobo.cqrs-command-aggregate-contract/v1";
 
@@ -20,7 +21,7 @@ export interface EventEnvelope<Event extends DomainEvent = DomainEvent> {
   readonly type: EventType<Event>;
   readonly v: 1;
   readonly data: Event["data"];
-  readonly meta: Readonly<Record<string, unknown>>;
+  readonly meta: Readonly<JsonObject>;
 }
 
 export interface EmitResult {
@@ -35,10 +36,10 @@ export interface CommandContext<State, Event extends DomainEvent> {
   emit<const Type extends EventType<Event>>(
     type: Type,
     data: EventData<Event, Type>,
-    options?: { readonly meta?: Readonly<Record<string, unknown>> },
+    options?: { readonly meta?: Readonly<JsonObject> },
   ): EmitResult;
-  step(name: string, input?: unknown): never;
-  externalWrite(target: string, input?: unknown): never;
+  step(name: string, input?: JsonValue): never;
+  externalWrite(target: string, input?: JsonValue): never;
 }
 
 export interface CommandSpec<Input, State, Event extends DomainEvent> {

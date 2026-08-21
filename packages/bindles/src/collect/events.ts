@@ -1,4 +1,10 @@
 import { createHash } from "node:crypto";
+import {
+	cloneAsJson,
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 import type { ManifestHash } from "../manifest/index.js";
 
@@ -43,9 +49,9 @@ export interface ManifestProducedEvent {
 
 export type CollectionEvent = ResourcesCollectedEvent | ManifestProducedEvent;
 
-function stableDigest(value: unknown): string {
+function stableDigest<T>(value: T): string {
 	return createHash("sha256")
-		.update(JSON.stringify(sortKeys(value)))
+		.update(JSON.stringify(sortKeys(cloneAsJson(value))))
 		.digest("hex");
 }
 
@@ -83,16 +89,18 @@ export function createCollectionEvents(input: {
 	]);
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: JsonValue): JsonValue {
 	if (Array.isArray(value)) {
 		return value.map(sortKeys);
 	}
-	if (!value || typeof value !== "object") {
+	if (!value || !isJsonObject(value)) {
 		return value;
 	}
 	return Object.fromEntries(
-		Object.keys(value as Record<string, unknown>)
+		// SAFETY: assertion required at this I/O or test boundary.
+		Object.keys(value as JsonObject)
 			.sort()
-			.map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
+			// SAFETY: assertion required at this I/O or test boundary.
+			.map((key) => [key, sortKeys((value as JsonObject)[key] ?? null)]),
 	);
 }

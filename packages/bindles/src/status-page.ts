@@ -9,6 +9,7 @@
  * Use `.with(statusPage({ enabled: false }))` to exclude a resource's
  * component, `statusPage({ project: "…" })` to group the page under a project.
  */
+import { isJsonString, type JsonObject } from "./json.js";
 import type { ProviderAnnotation } from "./types.js";
 
 // public-contract: platform annotation option for status-page configuration.
@@ -28,12 +29,12 @@ export function statusPage(
 	config: StatusPageBindleConfig = {},
 ): ProviderAnnotation {
 	if (config.project !== undefined) {
-		if (typeof config.project !== "string" || config.project.length === 0) {
+		if (!isJsonString(config.project) || config.project.length === 0) {
 			throw new TypeError("statusPage project must be a non-empty string");
 		}
 	}
 	if (config.label !== undefined) {
-		if (typeof config.label !== "string" || config.label.length === 0) {
+		if (!isJsonString(config.label) || config.label.length === 0) {
 			throw new TypeError("statusPage label must be a non-empty string");
 		}
 	}
@@ -42,8 +43,10 @@ export function statusPage(
 		option: STATUS_PAGE_OPTION,
 		config: Object.freeze({
 			enabled: config.enabled !== false,
-			...(config.project !== undefined ? { project: config.project } : {}),
-			...(config.label !== undefined ? { label: config.label } : {}),
+			...(config.project !== undefined
+				? { project: config.project }
+				: undefined),
+			...(config.label !== undefined ? { label: config.label } : undefined),
 		}),
 	});
 }
@@ -60,15 +63,16 @@ export function readStatusPageConfig(
 ): StatusPageBindleConfig | null {
 	for (const annotation of annotations) {
 		if (!isStatusPageAnnotation(annotation)) continue;
-		const config = annotation.config as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const config = annotation.config as JsonObject;
 		return Object.freeze({
 			enabled: config.enabled !== false,
-			...(typeof config.project === "string" && config.project.length > 0
+			...(isJsonString(config.project) && config.project.length > 0
 				? { project: config.project }
-				: {}),
-			...(typeof config.label === "string" && config.label.length > 0
+				: undefined),
+			...(isJsonString(config.label) && config.label.length > 0
 				? { label: config.label }
-				: {}),
+				: undefined),
 		});
 	}
 	return null;

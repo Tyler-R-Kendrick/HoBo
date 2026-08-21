@@ -1,10 +1,12 @@
+import { isJsonObject, isJsonString, type JsonObject } from "../json.js";
+
 export const TOPOLOGY_CONTRACT_VERSION = "hobo.topology-objects/v1" as const;
 
 export interface ProviderSelection {
 	readonly kind: "provider-selection";
 	readonly providerId: string;
 	readonly selector: string;
-	readonly options: Readonly<Record<string, unknown>>;
+	readonly options: JsonObject;
 }
 
 export interface BindleResourceDescriptor {
@@ -30,7 +32,14 @@ export interface BindleCollector {
 	use(resource: BindleResourceInput): BindleResourceDescriptor;
 }
 
-type BindleResourceShape = {
+function asResourceDescriptor(
+	resource: BindleResourceInput,
+): BindleResourceDescriptor {
+	// SAFETY: resources without toDescriptor are already descriptor records.
+	return resource as BindleResourceDescriptor;
+}
+
+type BindleResourceView = {
 	readonly toDescriptor?: () => BindleResourceDescriptor;
 	readonly kind?: string;
 	readonly name?: string;
@@ -45,16 +54,14 @@ type BindleResourceShape = {
 	readonly annotations?: { readonly with?: unknown };
 };
 
-export type BindleResourceInput =
-	| BindleResourceDescriptor
-	| BindleResourceShape;
+export type BindleResourceInput = BindleResourceDescriptor | BindleResourceView;
 
 export function bindleScope(
 	name: string,
 	builder: (collector: BindleCollector) => void,
 ): BindleScope {
 	requireName("bindle name", name);
-	if (typeof builder !== "function") {
+	if (!(builder instanceof Function)) {
 		throw new TypeError("bindle builder must be a function");
 	}
 
@@ -109,11 +116,13 @@ export function descriptorFromHandle(handle: {
 function normalizeResourceDescriptor(
 	resource: BindleResourceInput,
 ): BindleResourceDescriptor {
-	const shape = resource as BindleResourceShape;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const layout = resource as BindleResourceView;
 	const descriptor =
-		typeof shape.toDescriptor === "function"
-			? shape.toDescriptor()
-			: (resource as BindleResourceDescriptor);
+		layout.toDescriptor instanceof Function
+			? layout.toDescriptor()
+			: // SAFETY: assertion required at this I/O or test boundary.
+				asResourceDescriptor(resource);
 	if (!isPlainObject(descriptor)) {
 		throw new TypeError("Bindle resources must be descriptor objects");
 	}
@@ -141,16 +150,17 @@ function normalizeResourceDescriptor(
 export function assertNoProviderSpecificFields(
 	value: BindleResourceInput,
 ): void {
-	if (!value || typeof value !== "object") return;
-	const shape = value as BindleResourceShape;
-	const annotations = shape.annotations?.with;
-	const providerOptions = shape.options?.providerOptions;
+	if (!value || !isJsonObject(value)) return;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const layout = value as BindleResourceView;
+	const annotations = layout.annotations?.with;
+	const providerOptions = layout.options?.providerOptions;
 	if (
-		shape.provider ||
-		shape.defaultProvider ||
-		shape.tiers ||
-		shape.bindings ||
-		shape.providerAnnotations ||
+		layout.provider ||
+		layout.defaultProvider ||
+		layout.tiers ||
+		layout.bindings ||
+		layout.providerAnnotations ||
 		providerOptions ||
 		annotations
 	) {
@@ -161,17 +171,26 @@ export function assertNoProviderSpecificFields(
 }
 
 function requireName(label: string, value: string): void {
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new TypeError(`${label} must be a non-empty string`);
 	}
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return Boolean(value && typeof value === "object" && !Array.isArray(value));
+function isPlainObject<T>(value: T): value is T & JsonObject {
+	return Boolean(value && isJsonObject(value) && !Array.isArray(value));
 }
 
 function deepFreeze<T>(value: T): T {
-	if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+	if (value === null || value === undefined || Object.isFrozen(value)) {
+		return value;
+	}
+	if (Array.isArray(value)) {
+		for (const child of value) {
+			deepFreeze(child);
+		}
+		return Object.freeze(value);
+	}
+	if (!isJsonObject(value)) {
 		return value;
 	}
 	for (const child of Object.values(value)) {

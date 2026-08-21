@@ -32,7 +32,7 @@ export function sessionReplay(
 			defaultSupply: "kit-local-on",
 			...(config.sampleRate !== undefined
 				? { sampleRate: config.sampleRate }
-				: {}),
+				: undefined),
 		}),
 	});
 }

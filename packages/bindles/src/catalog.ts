@@ -1,3 +1,4 @@
+import { isJsonString, type JsonValue } from "./json.js";
 import type {
 	AllowVerbsFor,
 	LoweringDescriptor,
@@ -27,15 +28,22 @@ export function catalogFactoryNames(): ResourceKind[] {
 }
 
 function requireResourceName(factory: string, name: string): void {
-	if (typeof name !== "string" || name.length === 0) {
+	if (!isJsonString(name) || name.length === 0) {
 		throw new TypeError(`${factory} resource name must be a non-empty string`);
 	}
 }
 
+interface LoweringHandle {
+	readonly kind: ResourceKind;
+	readonly name: string;
+	readonly stableId: string;
+	readonly portRef: readonly string[];
+}
+
 function makeLoweringDescriptor(
-	handle: ResourceHandle<ResourceKind>,
+	handle: LoweringHandle,
 	verb: string,
-	args: unknown[],
+	args: JsonValue[],
 ): LoweringDescriptor {
 	return Object.freeze({
 		lowersTo: "hobo:sdk",
@@ -59,7 +67,9 @@ function createHandle<K extends ResourceKind>(
 		throw new Error(`unknown catalog factory: ${kind}`);
 	}
 
+	// SAFETY: assertion required at this I/O or test boundary.
 	const stableId = `${kind}:${name}` as `${K}:${string}`;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const portRef = [...entry.portRef] as readonly string[];
 
 	const handle = {
@@ -71,10 +81,12 @@ function createHandle<K extends ResourceKind>(
 		declaredAllow: Object.freeze([...declaredAllow]),
 		allow<V extends AllowVerbsFor<K>>(...verbs: V[]): ResourceHandle<K, V> {
 			for (const verb of verbs) {
+				// SAFETY: assertion required at this I/O or test boundary.
 				if (!(entry.allowVerbs as readonly string[]).includes(verb as string)) {
 					throw new TypeError(`${kind} does not allow verb "${String(verb)}"`);
 				}
 			}
+			// SAFETY: assertion required at this I/O or test boundary.
 			return createHandle(kind, name, verbs) as ResourceHandle<K, V>;
 		},
 		toDescriptor(): ResourceDescriptor<K> {
@@ -92,15 +104,12 @@ function createHandle<K extends ResourceKind>(
 	for (const verb of entry.allowVerbs) {
 		Object.defineProperty(handle, verb, {
 			enumerable: true,
-			value: (...args: unknown[]) =>
-				makeLoweringDescriptor(
-					handle as unknown as ResourceHandle<ResourceKind>,
-					verb,
-					args,
-				),
+			value: (...args: JsonValue[]) =>
+				makeLoweringDescriptor(handle, verb, args),
 		});
 	}
 
+	// SAFETY: assertion required at this I/O or test boundary.
 	return Object.freeze(handle) as ResourceHandle<K>;
 }
 

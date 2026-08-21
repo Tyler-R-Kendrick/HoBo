@@ -81,6 +81,7 @@ describe("capability binding", () => {
 			thrown = cause;
 		}
 		expect(thrown, "plaintext credential was admitted").toBeInstanceOf(Error);
+		// SAFETY: the preceding assertion proves the caught value is an Error.
 		const error = thrown as Error & { code?: unknown };
 		expect(error.name).toBe("SecretRefError");
 		expect(error.code).toBe("SECRET_REFERENCE_EMBEDS_VALUE");
@@ -118,7 +119,8 @@ describe("capability binding", () => {
 			addressRef: { host: "ep-cool-pooler.neon.tech", port: 5432, tls: true },
 			role: "pooled",
 		};
-		const primary = base.endpoints[0] as (typeof base.endpoints)[number];
+			// SAFETY: base declares one primary endpoint and the test does not mutate it.
+			const primary = base.endpoints[0] as (typeof base.endpoints)[number];
 		const a = parseCapabilityBinding(
 			{ ...base, endpoints: [primary, pooled] },
 			parseSecretRef,
@@ -198,7 +200,9 @@ describe("connectivity resolution", () => {
 	it("rejects duplicate implementation ids", () => {
 		expect(() =>
 			createConnectivityRegistry([
+				// SAFETY: duplicate entries are intentionally supplied to test rejection.
 				STANDARD_CONNECTIVITY[0] as never,
+				// SAFETY: duplicate entries are intentionally supplied to test rejection.
 				STANDARD_CONNECTIVITY[0] as never,
 			]),
 		).toThrow(/duplicate connectivity implementation/u);

@@ -29,7 +29,7 @@ function resolution(
 	};
 }
 
-function codeOf(run: () => unknown): string {
+function codeOf(run: () => void): string {
 	try {
 		run();
 	} catch (error) {
@@ -121,6 +121,7 @@ describe("parseBindingResolution", () => {
 	])("rejects %j — %s", (overrides) => {
 		expect(() =>
 			parseBindingResolution(
+				// SAFETY: each table row deliberately overrides one runtime-validated field.
 				resolution(overrides as Partial<BindingResolution>),
 			),
 		).toThrow(BindingRecordError);

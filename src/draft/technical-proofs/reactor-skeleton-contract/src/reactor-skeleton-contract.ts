@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export class ReactorSeqRegressionError extends Error {
   constructor({ streamId, previousSeq, seq }) {
     super(`reactor append regressed ${streamId}: previous=${previousSeq}, next=${seq}`);
@@ -342,7 +343,7 @@ function normalizeSeqVector(seq) {
 }
 
 function normalizeClient(client) {
-  if (!client || typeof client.push !== "function") {
+  if (!client || !(client.push instanceof Function)) {
     throw new Error("client must expose push(event)");
   }
   return client;
@@ -352,7 +353,7 @@ function normalizeResult(value) {
   if (Array.isArray(value)) {
     return Object.freeze(value.map(clone).sort(compareRows));
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return stableObject(value);
   }
   return value;
@@ -388,20 +389,20 @@ function assertReadSetKind(kind) {
 }
 
 function assertObject(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${field} must be an object`);
   }
   return value;
 }
 
 function assertFunction(value, field) {
-  if (typeof value !== "function") {
+  if (!(value instanceof Function)) {
     throw new Error(`${field} must be a function`);
   }
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -426,5 +427,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

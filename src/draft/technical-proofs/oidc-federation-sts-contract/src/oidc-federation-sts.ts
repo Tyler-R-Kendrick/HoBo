@@ -4,6 +4,8 @@ import {
   createIdentityEvent,
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEFAULT_ASSERTION_TTL_SECONDS = 5 * 60;
 const DEFAULT_PROVIDER_TTL_SECONDS = 15 * 60;
@@ -306,7 +308,7 @@ function validateProviderTrustConfig(flow) {
   if (!isPlainObject(flow.trust)) {
     return "oidc-federation flow requires trust.oidcDiscovery";
   }
-  if (typeof flow.trust.oidcDiscovery !== "string" || flow.trust.oidcDiscovery.length === 0) {
+  if (!isJsonString(flow.trust.oidcDiscovery) || flow.trust.oidcDiscovery.length === 0) {
     return "oidc-federation flow requires trust.oidcDiscovery";
   }
 
@@ -324,7 +326,7 @@ function validateProviderTrustConfig(flow) {
 }
 
 function requireTrustField(flow, field, providerName) {
-  if (typeof flow[field] !== "string" || flow[field].length === 0) {
+  if (!isJsonString(flow[field]) || flow[field].length === 0) {
     return `${providerName} flow requires ${field}`;
   }
   return null;
@@ -531,7 +533,7 @@ function emitEvents(eventSink, events) {
 }
 
 function requireProviderSts(providerSts) {
-  if (!providerSts || typeof providerSts.exchange !== "function") {
+  if (!providerSts || !(providerSts.exchange instanceof Function)) {
     throw new Error("OIDC federation broker requires providerSts.exchange(input)");
   }
   return providerSts;
@@ -545,7 +547,7 @@ function normalizePositiveInteger(input, field) {
 }
 
 function requireString(input, field) {
-  if (typeof input !== "string" || input.length === 0) {
+  if (!isJsonString(input) || input.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return input;
@@ -571,7 +573,7 @@ function base64UrlJson(input) {
 
 function digest(input) {
   return createHash("sha256")
-    .update(typeof input === "string" ? input : JSON.stringify(input))
+    .update(isJsonString(input) ? input : JSON.stringify(input))
     .digest("hex");
 }
 
@@ -583,7 +585,7 @@ function defaultIdFactory() {
 function isPlainObject(input) {
   return (
     input !== null &&
-    typeof input === "object" &&
+    isJsonObject(input) &&
     !Array.isArray(input) &&
     (Object.getPrototypeOf(input) === Object.prototype || Object.getPrototypeOf(input) === null)
   );

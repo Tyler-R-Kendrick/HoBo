@@ -10,6 +10,8 @@ import {
   createIdentityEvent,
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const MCP_HARDENING_CONTRACT_VERSION = "hobo.mcp-hardening/v1";
 export const MCP_HARDENING_ENGINE_ID = "hobo.mcp-hardening@0.1.0";
@@ -81,7 +83,7 @@ export function createAgentPrincipal(input = {}) {
 export function createMcpSecurityGateway(options = {}) {
   const toolContracts = {
     ...DEFAULT_MCP_TOOL_CONTRACTS,
-    ...(options.toolContracts ?? {}),
+    ...(options.toolContracts),
   };
   const auditEvents = [];
   const spendByRunAndSubject = new Map();
@@ -141,7 +143,7 @@ export function createMcpSecurityGateway(options = {}) {
       return requestToken({ runId, subject, input: input.input ?? {}, tool });
     }
 
-    if (typeof tool.approvalWhen === "function" && tool.approvalWhen(input.input ?? {})) {
+    if (tool.approvalWhen instanceof Function && tool.approvalWhen(input.input ?? {})) {
       const hook = createApprovalHook({ runId, subject, toolName, tool, input: input.input ?? {} });
       const decision = recordDecision({
         runId,
@@ -568,7 +570,7 @@ function normalizePrincipalRef(input, path) {
   return {
     kind: requireString(source.kind, `${path}.kind`),
     id: requireString(source.id, `${path}.id`),
-    ...(source.roles ? { roles: normalizeStringArray(source.roles, `${path}.roles`) } : {}),
+    ...(source.roles ? { roles: normalizeStringArray(source.roles, `${path}.roles`) } : undefined),
   };
 }
 
@@ -580,7 +582,7 @@ function normalizeStringArray(input, path) {
 }
 
 function requireString(input, path) {
-  if (typeof input !== "string" || input.trim() === "") {
+  if (!isJsonString(input) || input.trim() === "") {
     throw new TypeError(`${path} must be a non-empty string`);
   }
   return input;
@@ -594,7 +596,7 @@ function normalizeNonNegativeNumber(input, path) {
 }
 
 function expectObject(input, path) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError(`${path} must be an object`);
   }
   return input;
@@ -605,7 +607,7 @@ function cloneJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   Object.freeze(value);

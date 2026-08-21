@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const CHANGE_FEED_CAPABILITY = "change-feed";
 export const DATA_CHANGED_EVENT_TYPE = "data.Changed";
 export const PROJECTION_DECLARED_EVENT_TYPE = "projection.Declared";
@@ -35,7 +36,7 @@ export function nativeLogSink() {
 }
 
 export function projectionSink(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError("projection sink must be an object");
   }
 
@@ -49,7 +50,7 @@ export function projectionSink(input) {
 }
 
 export function declareProjectionContract(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError("projection contract input is required");
   }
 
@@ -242,7 +243,7 @@ function normalizeExpectedChanges(changes) {
 }
 
 function normalizeObservedEvent(event) {
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
+  if (!event || !isJsonObject(event) || Array.isArray(event)) {
     throw new TypeError("observed event must be an object");
   }
   if (event.type !== DATA_CHANGED_EVENT_TYPE) {
@@ -352,7 +353,7 @@ function requireSeq(seq, field) {
 }
 
 function requiredString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${field} is required`);
   }
   return value;
@@ -369,12 +370,12 @@ function deepFreeze(value) {
   if (Array.isArray(value)) {
     return Object.freeze(value.map(deepFreeze));
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.freeze(Object.fromEntries(Object.entries(value).map(([key, item]) => [key, deepFreeze(item)])));
   }
   return value;
 }
 
 function clone(value) {
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

@@ -5,6 +5,8 @@ import {
   createPlannedEvent
 } from "../../control-plane-event-schema-contract/src/control-plane-events.js";
 import { specificity } from "../../matching-specificity-vectors/src/matching.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const REGION_OBJECTIVE_RANKING_VERSION = "hobo.region-objective-ranking/v1";
 
@@ -113,7 +115,7 @@ export function decideRegionObjectivePlacement({ catalog, context, objective = "
 }
 
 function rejectDefinition(definition, context) {
-  if (!definition || typeof definition !== "object" || Array.isArray(definition)) {
+  if (!definition || !isJsonObject(definition) || Array.isArray(definition)) {
     return { definitionId: "<unknown>", reason: "definition must be an object" };
   }
   if (!isNonEmptyString(definition.id)) {
@@ -384,8 +386,8 @@ function matchMismatch(match, context) {
 }
 
 function catalogSnapshot(catalog) {
-  const snapshot = typeof catalog?.snapshot === "function" ? catalog.snapshot() : catalog;
-  if (!snapshot || typeof snapshot !== "object" || !Array.isArray(snapshot.definitions)) {
+  const snapshot = catalog?.snapshot instanceof Function ? catalog.snapshot() : catalog;
+  if (!snapshot || !isJsonObject(snapshot) || !Array.isArray(snapshot.definitions)) {
     throw new Error("catalog snapshot with definitions is required");
   }
   return {
@@ -395,7 +397,7 @@ function catalogSnapshot(catalog) {
 }
 
 function assertContext(context) {
-  if (!context || typeof context !== "object" || Array.isArray(context)) {
+  if (!context || !isJsonObject(context) || Array.isArray(context)) {
     throw new Error("context must be an object");
   }
   for (const field of ["deploymentId", "resourceId", "resourceType", "resourceClass"]) {
@@ -421,7 +423,7 @@ function stableHash(value) {
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
 }
 
@@ -430,5 +432,5 @@ function descending(left, right) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.length > 0;
+  return isJsonString(value) && value.length > 0;
 }

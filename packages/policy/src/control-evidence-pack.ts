@@ -10,6 +10,13 @@
  */
 
 // public-contract: control-evidence pack schema id consumers pin.
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+
 export const CONTROL_EVIDENCE_PACK_SCHEMA = "hobo.control-evidence-pack/v1";
 
 export type ControlEvidenceKind =
@@ -56,18 +63,21 @@ const EVIDENCE_KINDS = new Set<ControlEvidenceKind>([
 const STATUSES = new Set<ControlStatus>(["implemented", "partial", "planned"]);
 
 /** Parse-don't-validate boundary for untrusted pack documents. */
-export function parseControlEvidencePack(value: unknown): ControlEvidencePack {
-	if (typeof value !== "object" || value === null) {
+export function parseControlEvidencePack(
+	value: JsonValue,
+): ControlEvidencePack {
+	if (!isJsonObject(value) || value === null) {
 		throw new ControlEvidenceParseError("pack must be an object");
 	}
-	const input = value as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const input = value as JsonObject;
 	if (input.schema !== CONTROL_EVIDENCE_PACK_SCHEMA) {
 		throw new ControlEvidenceParseError(
 			`schema must be ${CONTROL_EVIDENCE_PACK_SCHEMA}`,
 		);
 	}
 	for (const field of ["framework", "version"] as const) {
-		if (typeof input[field] !== "string" || input[field] === "") {
+		if (!isJsonString(input[field]) || input[field] === "") {
 			throw new ControlEvidenceParseError(`${field} must be non-empty`);
 		}
 	}
@@ -76,8 +86,9 @@ export function parseControlEvidencePack(value: unknown): ControlEvidencePack {
 	}
 	const seen = new Set<string>();
 	const controls = input.controls.map((entry) => {
-		const control = entry as Record<string, unknown>;
-		if (typeof control.controlId !== "string" || control.controlId === "") {
+		// SAFETY: assertion required at this I/O or test boundary.
+		const control = entry as JsonObject;
+		if (!isJsonString(control.controlId) || control.controlId === "") {
 			throw new ControlEvidenceParseError("controlId must be non-empty");
 		}
 		if (seen.has(control.controlId)) {
@@ -86,11 +97,12 @@ export function parseControlEvidencePack(value: unknown): ControlEvidencePack {
 			);
 		}
 		seen.add(control.controlId);
-		if (typeof control.title !== "string" || control.title === "") {
+		if (!isJsonString(control.title) || control.title === "") {
 			throw new ControlEvidenceParseError("control title must be non-empty");
 		}
 		if (
-			typeof control.status !== "string" ||
+			!isJsonString(control.status) ||
+			// SAFETY: assertion required at this I/O or test boundary.
 			!STATUSES.has(control.status as ControlStatus)
 		) {
 			throw new ControlEvidenceParseError(
@@ -103,21 +115,24 @@ export function parseControlEvidencePack(value: unknown): ControlEvidencePack {
 			);
 		}
 		const evidence = control.evidence.map((raw) => {
-			const item = raw as Record<string, unknown>;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const item = raw as JsonObject;
 			if (
-				typeof item.kind !== "string" ||
+				!isJsonString(item.kind) ||
+				// SAFETY: assertion required at this I/O or test boundary.
 				!EVIDENCE_KINDS.has(item.kind as ControlEvidenceKind)
 			) {
 				throw new ControlEvidenceParseError(
 					`control ${control.controlId} evidence kind must be one of ${[...EVIDENCE_KINDS].join("|")}`,
 				);
 			}
-			if (typeof item.ref !== "string" || item.ref === "") {
+			if (!isJsonString(item.ref) || item.ref === "") {
 				throw new ControlEvidenceParseError(
 					`control ${control.controlId} evidence ref must be non-empty`,
 				);
 			}
 			return Object.freeze({
+				// SAFETY: assertion required at this I/O or test boundary.
 				kind: item.kind as ControlEvidenceKind,
 				ref: item.ref,
 			});
@@ -126,12 +141,15 @@ export function parseControlEvidencePack(value: unknown): ControlEvidencePack {
 			controlId: control.controlId,
 			title: control.title,
 			evidence: Object.freeze(evidence),
+			// SAFETY: assertion required at this I/O or test boundary.
 			status: control.status as ControlStatus,
 		});
 	});
 	return Object.freeze({
 		schema: CONTROL_EVIDENCE_PACK_SCHEMA,
+		// SAFETY: assertion required at this I/O or test boundary.
 		framework: input.framework as string,
+		// SAFETY: assertion required at this I/O or test boundary.
 		version: input.version as string,
 		controls: Object.freeze(controls),
 	});

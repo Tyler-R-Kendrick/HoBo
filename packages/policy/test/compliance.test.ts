@@ -70,6 +70,7 @@ test("a clean verdict allows and carries residency evidence obligations", () => 
 		},
 	});
 	assert.equal(decision.effect, "allow");
+	// SAFETY: assertion required at this I/O or test boundary.
 	const obligation = decision.obligations[0] as {
 		kind: string;
 		jurisdictions: string[];

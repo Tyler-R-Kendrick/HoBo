@@ -44,7 +44,8 @@ main
                                  └── sdlc/anti-slop-33-bindles  #1245 packages/bindles
                                   └── sdlc/anti-slop-34-contracts  #1249 packages/contracts
                                    └── sdlc/anti-slop-35-stations  #1251 packages/stations
-                                    └── sdlc/anti-slop-36-storage-sqlite  packages/storage-sqlite
+                                    └── sdlc/anti-slop-36-storage-sqlite  #1254 packages/storage-sqlite
+                                     └── sdlc/anti-slop-37-policy  packages/policy
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -97,6 +98,7 @@ Layer 32: `@hobo/connectivity` oxlint `--deny-warnings` and `tsc --noEmit` clean
 Layer 33: `@hobo/bindles` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1245).
 Layer 34: `@hobo/contracts` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1249).
 Layer 35: `@hobo/stations` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1251).
-Layer 36: `@hobo/storage-sqlite` oxlint `--deny-warnings` and `tsc --noEmit` clean.
-Next: `@hobo/policy`, `@hobo/dispatcher`, `src/draft/`. Full-repo
-`lint:slop --deny-warnings` is still red until those land.
+Layer 36: `@hobo/storage-sqlite` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1254).
+Layer 37: `@hobo/policy` oxlint `--deny-warnings` and `tsc --noEmit` clean.
+Next: `@hobo/dispatcher`, `src/draft/`. Full-repo `lint:slop --deny-warnings`
+is still red until those land.

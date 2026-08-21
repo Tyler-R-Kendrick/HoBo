@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEFAULT_MAX_VALIDATE_TO_PROMOTE_MS = 60_000;
 const MINIMUM_VANTAGE_POINTS = 3;
@@ -302,7 +304,7 @@ function promotionFailure(validation, { failedCheck, reason, nowMs, currentDiges
 }
 
 function normalizeChange(change) {
-  if (!change || typeof change !== "object" || Array.isArray(change)) {
+  if (!change || !isJsonObject(change) || Array.isArray(change)) {
     throw new Error("domain change is required");
   }
   const domain = requireDomain(change.domain, "domain");
@@ -332,7 +334,7 @@ function normalizeChange(change) {
 }
 
 function normalizeEvidence(evidence) {
-  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) {
+  if (!evidence || !isJsonObject(evidence) || Array.isArray(evidence)) {
     throw new Error("DNS validation evidence is required");
   }
   const resolutions = requireArray(evidence.resolutions, "resolutions")
@@ -370,7 +372,7 @@ function normalizeEvidence(evidence) {
 }
 
 function normalizeRecord(record) {
-  if (!record || typeof record !== "object" || Array.isArray(record)) {
+  if (!record || !isJsonObject(record) || Array.isArray(record)) {
     throw new Error("record is required");
   }
   return {
@@ -385,14 +387,14 @@ function normalizeRecord(record) {
 }
 
 function requireLiveZone(liveZone) {
-  if (!liveZone || typeof liveZone.inspect !== "function" || typeof liveZone.write !== "function") {
+  if (!liveZone || !(liveZone.inspect instanceof Function) || !(liveZone.write instanceof Function)) {
     throw new Error("liveZone with inspect and write is required");
   }
   return liveZone;
 }
 
 function digestLiveZone(liveZone, domain) {
-  if (!liveZone || typeof liveZone.inspect !== "function") {
+  if (!liveZone || !(liveZone.inspect instanceof Function)) {
     throw new Error("liveZone with inspect is required");
   }
   return digestLiveRecords(liveZone.inspect(domain));
@@ -446,7 +448,7 @@ function requireDomain(value, field) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value.trim();
@@ -476,7 +478,7 @@ function sortJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortJson);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -491,7 +493,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   Object.freeze(value);

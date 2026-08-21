@@ -2,6 +2,8 @@ import {
   replayRollout,
   validateRolloutEvent,
 } from "../../delivery-orchestrator-skeleton-contract/src/delivery-orchestrator.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const EVENT_TYPES = Object.freeze({
   started: "rollout.Started",
@@ -443,7 +445,7 @@ function applyActionToState(state, action) {
   }
 
   if (action.kind === "deployment.reapBlue") {
-    const { retainedVersion, ...rest } = state;
+    const { retainedVersion: _retainedVersion, ...rest } = state;
     return {
       ...rest,
       reapedVersion: action.retainedVersion,
@@ -637,7 +639,7 @@ function createRolloutEvent({ rollout, type, data, seq, now }) {
 }
 
 function parseRollout(rollout) {
-  if (!rollout || typeof rollout !== "object" || Array.isArray(rollout)) {
+  if (!rollout || !isJsonObject(rollout) || Array.isArray(rollout)) {
     throw new Error("rollout must be an object");
   }
 
@@ -662,7 +664,7 @@ function parseRollout(rollout) {
 }
 
 function parseTarget(target) {
-  if (!target || typeof target !== "object" || Array.isArray(target)) {
+  if (!target || !isJsonObject(target) || Array.isArray(target)) {
     throw new Error("rollout.target must be an object");
   }
 
@@ -675,7 +677,7 @@ function parseTarget(target) {
 }
 
 function parseStrategy(strategy) {
-  if (!strategy || typeof strategy !== "object" || Array.isArray(strategy)) {
+  if (!strategy || !isJsonObject(strategy) || Array.isArray(strategy)) {
     throw new Error("rollout.strategy must be an object");
   }
 
@@ -691,7 +693,7 @@ function parseStrategy(strategy) {
 }
 
 function parseStep(step, stepIndex) {
-  if (!step || typeof step !== "object" || Array.isArray(step)) {
+  if (!step || !isJsonObject(step) || Array.isArray(step)) {
     throw new Error(`rollout.strategy.steps[${stepIndex}] must be an object`);
   }
 
@@ -908,7 +910,7 @@ function addSeconds(isoTime, seconds) {
 }
 
 function assertGateway(gateway) {
-  if (!gateway || typeof gateway.apply !== "function") {
+  if (!gateway || !(gateway.apply instanceof Function)) {
     throw new Error("gateway.apply(command) is required");
   }
 }
@@ -918,7 +920,7 @@ function isTerminal(state) {
 }
 
 function assertNonEmptyString(value, path) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${path} must be a non-empty string`);
   }
 
@@ -942,7 +944,7 @@ function cloneJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
 

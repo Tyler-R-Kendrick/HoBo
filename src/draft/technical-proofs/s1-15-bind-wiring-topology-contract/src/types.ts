@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export const MANIFEST_SCHEMA = "hobo.manifest/v1" as const;
 export const RESOURCE_ID_PATTERN = /^[A-Za-z][A-Za-z0-9_-]*$/;
 export const LAZY_TOKEN_PATTERN =
@@ -9,6 +10,7 @@ export function parseResourceId(raw: string): ResourceId {
   if (!RESOURCE_ID_PATTERN.test(raw)) {
     throw new TypeError(`invalid resource id: ${raw}`);
   }
+  // SAFETY: assertion to `return raw as ResourceId;` is required at this boundary.
   return raw as ResourceId;
 }
 
@@ -35,9 +37,9 @@ export interface ManifestResource {
   readonly env?: Readonly<Record<string, string>>;
   readonly bindings?: Readonly<Record<string, BindingMeta>>;
   readonly image?: string;
-  readonly build?: Readonly<Record<string, unknown>>;
-  readonly endpoints?: Readonly<Record<string, unknown>>;
-  readonly annotations?: Readonly<Record<string, unknown>>;
+  readonly build?: Readonly<JsonObject>;
+  readonly endpoints?: Readonly<JsonObject>;
+  readonly annotations?: Readonly<JsonObject>;
 }
 
 export interface HoboManifest {

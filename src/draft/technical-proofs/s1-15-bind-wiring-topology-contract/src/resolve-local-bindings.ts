@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import type { BindingResolverPort } from "./binding-resolver.js";
 import { LAZY_TOKEN_PATTERN, type HoboManifest, type ResolvedEnv, parseResourceId } from "./types.js";
 import type { Camp } from "./topology.js";
+import { isJsonString, isJsonObject, type JsonValue } from "./json.js";
+
 
 export class BindingResolutionError extends Error {
   readonly path: string;
@@ -67,11 +69,11 @@ export function canonicalManifestHash(manifest: HoboManifest): string {
 }
 
 async function walkStrings(
-  value: unknown,
+  value: JsonValue,
   path: string,
   visitor: (value: string, path: string) => Promise<void>,
 ): Promise<void> {
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     await visitor(value, path);
     return;
   }
@@ -81,23 +83,23 @@ async function walkStrings(
     }
     return;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     for (const [key, child] of Object.entries(value)) {
       await walkStrings(child, `${path}.${key}`, visitor);
     }
   }
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: JsonValue): JsonValue {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(
     Object.keys(value)
       .sort()
-      .map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
+      .map((key) => [key, sortKeys(value[key])]),
   );
 }

@@ -7,7 +7,7 @@ import {
   assertManifestFreeze,
   assertNoInternalCloudSymbols,
   assertPublicApiSnapshot,
-  assertSchemaVersionBumpForShapeChange,
+  assertSchemaVersionBumpForContractChange,
   createBindlesPublicApiSnapshot,
   createRepresentativeManifest,
   evaluateBindlesFreezeMatrix,
@@ -90,7 +90,7 @@ test("golden hobo.manifest/v1 IR pins representative Bindle shape and schema bum
   changedWithoutBump.resources.api.annotations.telemetry = { sink: "otel" };
 
   assert.throws(
-    () => assertSchemaVersionBumpForShapeChange(golden, changedWithoutBump),
+    () => assertSchemaVersionBumpForContractChange(golden, changedWithoutBump),
     /MANIFEST_SCHEMA_VERSION_REQUIRED/,
   );
 });

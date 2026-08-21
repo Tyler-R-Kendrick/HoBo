@@ -64,7 +64,8 @@ main
                                                      └── sdlc/anti-slop-53-draft-escape-ir-postgres  #1299 raw-driver+contract-ir+postgres
                                                       └── sdlc/anti-slop-54-draft-cloudflare-camp  #1301 cloudflare-contract+camp-mapping
                                                        └── sdlc/anti-slop-55-draft-collection-azure  #1303 collection-engine+azure-full
-                                                        └── sdlc/anti-slop-56-draft-ifc-actor-data  ifc-handler+actor-host+data-paradigm
+                                                        └── sdlc/anti-slop-56-draft-ifc-actor-data  #1305 ifc-handler+actor-host+data-paradigm
+                                                         └── sdlc/anti-slop-57-draft-portability-usage-convex  s4-08+s1-17+convex-adapter
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -140,6 +141,7 @@ Layer 52: `hobo-runtime-ts-primitives` + `multi-region-dr-replay-contract` oxlin
 Layer 53: `raw-driver-escape-hatch-contract` + `hobo-contract-ir` + `runtime-postgres-ports` oxlint `--deny-warnings` clean (#1299).
 Layer 54: `provider-cloudflare-contract` + `camp-mapping-sugar-compiler` oxlint `--deny-warnings` clean (#1301).
 Layer 55: `resource-collection-engine-contract` + `s4-03-provider-azure-full-capability-manifest` oxlint `--deny-warnings` clean (#1303).
-Layer 56: `ifc-handler-trigger-contract` + `actor-host-runtime-port-contract` + `data-paradigm-authoring-contract` oxlint `--deny-warnings` clean.
+Layer 56: `ifc-handler-trigger-contract` + `actor-host-runtime-port-contract` + `data-paradigm-authoring-contract` oxlint `--deny-warnings` clean (#1305).
+Layer 57: `s4-08-portability-conformance-lane-contract` + `s1-17-usage-permissions-coverage-poc` + `convex-swaghaus-deploy-adapter` oxlint `--deny-warnings` clean.
 Next: remaining `src/draft/` (larger technical-proofs, exp-proofs, projects).
 Full-repo `lint:slop --deny-warnings` is still red until those land.

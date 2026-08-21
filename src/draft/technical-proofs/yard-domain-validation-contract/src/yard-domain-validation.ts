@@ -9,6 +9,8 @@ import {
   routingPolicy,
 } from "../../hobo-dns-port-contract/src/dns-port.js";
 import { planGatewayRequest } from "../../gateway-realization-contract/src/gateway-realization.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const YARD_DOMAIN_CONTRACT_VERSION = "hobo.yard-domain/v1";
 
@@ -253,7 +255,7 @@ function primaryDnsRecord(declaration) {
             targets: clone(override.targets),
           })),
         }
-      : {}),
+      : undefined),
   };
 }
 
@@ -262,7 +264,7 @@ async function resolveFromAll(resolvers, record, mode = "current") {
     resolvers.map(async (resolver) => ({
       id: resolver.id,
       values: (
-        mode === "after-ttl" && typeof resolver.resolveAfterTtl === "function"
+        mode === "after-ttl" && resolver.resolveAfterTtl instanceof Function
           ? await resolver.resolveAfterTtl(record.name, record.type)
           : await resolver.resolve(record.name, record.type)
       )
@@ -293,7 +295,7 @@ function healthProbeRequests(declaration) {
 }
 
 function normalizeDeclaration(declaration) {
-  if (!declaration || typeof declaration !== "object") {
+  if (!declaration || !isJsonObject(declaration)) {
     throw new Error("Yard domain declaration is required");
   }
   if (declaration.kind !== "yard-domain" || declaration.scope !== "yard") {
@@ -315,7 +317,7 @@ function normalizeResolvers(resolvers) {
   }
   const ids = new Set();
   return resolvers.map((resolver) => {
-    if (!resolver || typeof resolver.resolve !== "function") {
+    if (!resolver || !(resolver.resolve instanceof Function)) {
       throw new Error("resolver requires a resolve function");
     }
     const id = requireString(resolver.id, "resolver id");
@@ -328,7 +330,7 @@ function normalizeResolvers(resolvers) {
 }
 
 function requireAdapter(adapter) {
-  if (!adapter || typeof adapter.inspectLiveZone !== "function") {
+  if (!adapter || !(adapter.inspectLiveZone instanceof Function)) {
     throw new Error("DNS adapter with inspectLiveZone is required");
   }
   return adapter;
@@ -395,7 +397,7 @@ function arraysEqual(left, right) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value.trim();
@@ -409,7 +411,7 @@ function sortJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortJson);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -424,7 +426,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   Object.freeze(value);

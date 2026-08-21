@@ -220,6 +220,6 @@ function validValidationInputs(overrides = {}) {
 function validGateway(options = {}) {
   return realizeGateway(
     gatewayPort("shop-edge").terminateTls().route("shop.com", "/api", service("checkout-api")).build(),
-    { health: { "checkout-api": "healthy", ...(options.health ?? {}) } },
+    { health: { "checkout-api": "healthy", ...options.health } },
   );
 }

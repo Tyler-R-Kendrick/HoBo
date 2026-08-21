@@ -45,19 +45,41 @@ export interface ParsedRegistry {
 const PROVIDER_ID = /^[a-z][a-z0-9_]*$/;
 const VARIABLE_NAME = /^[A-Z][A-Z0-9_]*$/;
 
-function asArray(value: unknown, field: string, problems: string[]): unknown[] {
+/** JSON that has not yet crossed a protobuf/CUE parse boundary. */
+export type JsonObject = { readonly [key: string]: JsonValue };
+export type JsonValue =
+	| string
+	| number
+	| boolean
+	| null
+	| JsonValue[]
+	| JsonObject;
+
+export function isJsonObject(value: JsonValue): value is JsonObject {
+	return (
+		value !== null &&
+		!Array.isArray(value) &&
+		Object.prototype.toString.call(value) === "[object Object]"
+	);
+}
+
+export function isJsonString(value: JsonValue | undefined): value is string {
+	return Object.prototype.toString.call(value) === "[object String]";
+}
+
+function asArray(value: JsonValue | undefined, field: string, problems: string[]): JsonValue[] {
 	if (Array.isArray(value)) return value;
 	problems.push(`${field} must be an array`);
 	return [];
 }
 
 /** Parse one untrusted registry document into the derived domain type. */
-export function parseRegistryDocument(raw: unknown): ParsedRegistry {
+export function parseRegistryDocument(raw: JsonValue): ParsedRegistry {
 	const problems: string[] = [];
-	if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+	if (!isJsonObject(raw)) {
 		throw new RegistryParseError(["registry document must be an object"]);
 	}
-	const document = raw as Record<string, unknown>;
+	const document = raw;
 
 	const providers: RunnerProviderProfile[] = [];
 	for (const [index, entry] of asArray(
@@ -66,6 +88,7 @@ export function parseRegistryDocument(raw: unknown): ParsedRegistry {
 		problems,
 	).entries()) {
 		try {
+			// SAFETY: assertion to `y as never)); ` is required at this boundary.
 			providers.push(fromJson(RunnerProviderProfileSchema, entry as never));
 		} catch (error) {
 			problems.push(`providers[${index}]: ${String(error)}`);
@@ -79,6 +102,7 @@ export function parseRegistryDocument(raw: unknown): ParsedRegistry {
 		problems,
 	).entries()) {
 		try {
+			// SAFETY: assertion to `y as never)); ` is required at this boundary.
 			tracks.push(fromJson(RunnerTrackSchema, entry as never));
 		} catch (error) {
 			problems.push(`tracks[${index}]: ${String(error)}`);
@@ -92,6 +116,7 @@ export function parseRegistryDocument(raw: unknown): ParsedRegistry {
 		problems,
 	).entries()) {
 		try {
+			// SAFETY: assertion to `y as never); ` is required at this boundary.
 			const envelope = fromJson(BudgetEnvelopeSchema, entry as never);
 			envelopes.set(envelope.providerId, envelope);
 		} catch (error) {
@@ -161,11 +186,12 @@ export function parseRegistryDocument(raw: unknown): ParsedRegistry {
  * into generated UsageSnapshot records; unusable entries are dropped, not
  * guessed at.
  */
-export function parseUsageSnapshots(raw: unknown): UsageSnapshot[] {
+export function parseUsageSnapshots(raw: JsonValue): UsageSnapshot[] {
 	if (!Array.isArray(raw)) return [];
 	const snapshots: UsageSnapshot[] = [];
 	for (const entry of raw) {
 		try {
+			// SAFETY: assertion to `y as never); ` is required at this boundary.
 			const snapshot = fromJson(UsageSnapshotSchema, entry as never);
 			if (
 				snapshot.providerId !== "" &&

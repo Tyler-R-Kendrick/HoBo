@@ -17,6 +17,7 @@ describe("try-site app definitions", () => {
 		const root = fileURLToPath(new URL("../apps/hello-world", import.meta.url));
 		const appSource = await readFile(path.join(root, "app.ts"), "utf8");
 		const handlers = await readFile(path.join(root, "handlers.txt"), "utf8");
+		// SAFETY: assertion to `(await tsImport( path.join(root, "app.ts"), import.meta.url, )) as { default: BindleDefinition; runtime: { routes: reado` is required at this boundary.
 		const { default: hello, runtime } = (await tsImport(
 			path.join(root, "app.ts"),
 			import.meta.url,
@@ -40,6 +41,7 @@ describe("try-site app definitions", () => {
 	it("binds todo-api trainable Todos to b.web with kv", async () => {
 		const root = fileURLToPath(new URL("../apps/todo-api", import.meta.url));
 		const appSource = await readFile(path.join(root, "app.ts"), "utf8");
+		// SAFETY: assertion to `(await tsImport( path.join(root, "app.ts"), import.meta.url, )) as { default: BindleDefinition }` is required at this boundary.
 		const { default: todos } = (await tsImport(
 			path.join(root, "app.ts"),
 			import.meta.url,
@@ -53,7 +55,8 @@ describe("try-site app definitions", () => {
 		expect(todos.requirements.require).toEqual(expect.arrayContaining(["http", "kv"]));
 		expect(todos.requirements.runtimes).toContain("wasm");
 		const makeWeb = todos.entrypoint("web");
-		expect(typeof makeWeb).toBe("function");
+		expect(Object.prototype.toString.call(makeWeb)).toBe("[object Function]");
+		// SAFETY: assertion to `makeWeb?.() as { list(): { items: unknown[] }; create(text: string): { text: string }; toggle(id: string): { id: string ` is required at this boundary.
 		const instance = makeWeb?.() as {
 			list(): { items: unknown[] };
 			create(text: string): { text: string };

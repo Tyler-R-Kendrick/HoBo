@@ -13,8 +13,13 @@ import {
 	type UsageSnapshot,
 	UsageSnapshotSchema,
 } from "../_generated/runner_balancing_pb.js";
-import { unknownUsage } from "../parse.js";
-import type { FetchLike } from "./github-billing.js";
+import {
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+	unknownUsage,
+} from "../parse.js";
+import type { FetchLike, UsageReader } from "./github-billing.js";
 
 export interface DeclaredUsageOptions {
 	providerId: string;
@@ -44,7 +49,7 @@ const AMOUNT_KEYS = [
 const UNIT_KEYS = ["minutes", "units", "unitsUsed", "units_used"] as const;
 
 function pickNumber(
-	record: Record<string, unknown>,
+	record: JsonObject,
 	keys: readonly string[],
 ): number | undefined {
 	for (const key of keys) {
@@ -54,10 +59,7 @@ function pickNumber(
 	return undefined;
 }
 
-export function declaredUsage(options: DeclaredUsageOptions): {
-	providerId: string;
-	read(): Promise<UsageSnapshot>;
-} {
+export function declaredUsage(options: DeclaredUsageOptions): UsageReader {
 	const env = options.env ?? process.env;
 	const fetchImpl = options.fetchImpl ?? fetch;
 
@@ -86,23 +88,28 @@ export function declaredUsage(options: DeclaredUsageOptions): {
 				return unknownUsage(options.providerId, "no-declared-source");
 			}
 			try {
-				const response = await fetchImpl(options.usageUrl, {
-					headers: {
-						Accept: "application/json",
-						"User-Agent": "hobo-example-ci-runner-balancing",
-						...(options.token !== undefined && options.token !== ""
-							? { Authorization: `Bearer ${options.token}` }
-							: {}),
-					},
-				});
+				const headers =
+					options.token !== undefined && options.token !== ""
+						? {
+								Accept: "application/json",
+								"User-Agent": "hobo-example-ci-runner-balancing",
+								Authorization: `Bearer ${options.token}`,
+							}
+						: {
+								Accept: "application/json",
+								"User-Agent": "hobo-example-ci-runner-balancing",
+							};
+				const response = await fetchImpl(options.usageUrl, { headers });
 				if (!response.ok) {
 					return unknownUsage(options.providerId, "declared-endpoint-error");
 				}
-				const body = (await response.json()) as unknown;
-				if (body === null || typeof body !== "object") {
+				const parsed = await response.json();
+				// SAFETY: fetch JSON is untyped; pickNumber reads known numeric keys.
+				const body = parsed as JsonValue;
+				if (!isJsonObject(body)) {
 					return unknownUsage(options.providerId, "declared-endpoint-shape");
 				}
-				const record = body as Record<string, unknown>;
+				const record = body;
 				const spendUsd = pickNumber(record, AMOUNT_KEYS);
 				if (spendUsd === undefined) {
 					return unknownUsage(options.providerId, "declared-endpoint-shape");

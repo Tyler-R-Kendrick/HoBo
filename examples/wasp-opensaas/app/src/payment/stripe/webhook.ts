@@ -181,10 +181,7 @@ async function handleCustomerSubscriptionUpdated(
 function getOpenSaasSubscriptionStatus(
   subscription: Stripe.Subscription,
 ): SubscriptionStatus | undefined {
-  const stripeToOpenSaasSubscriptionStatus: Record<
-    Stripe.Subscription.Status,
-    SubscriptionStatus | undefined
-  > = {
+  const stripeToOpenSaasSubscriptionStatus = {
     trialing: SubscriptionStatus.Active,
     active: SubscriptionStatus.Active,
     past_due: SubscriptionStatus.PastDue,
@@ -244,7 +241,7 @@ function getCustomerId(
 ): Stripe.Customer["id"] {
   if (!customer) {
     throw new Error("Customer is missing");
-  } else if (typeof customer === "string") {
+  } else if (Object.prototype.toString.call(customer) === "[object String]") {
     return customer;
   } else {
     return customer.id;

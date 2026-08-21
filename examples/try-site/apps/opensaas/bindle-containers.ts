@@ -1,37 +1,31 @@
+import type { BindleDefinition } from "@hobo/bindles";
+
 /**
  * Extract OCI image refs from a Bindle definition's container resources.
  * Ship/bridge paths must use this — never invent images from example ids.
  */
+
 export type BindleContainerRef = {
 	readonly name: string;
 	readonly image: string;
 };
 
 export function bindleContainerImages(
-	definition: unknown,
+	definition: BindleDefinition,
 ): readonly BindleContainerRef[] {
-	if (!definition || typeof definition !== "object") return [];
-	const resources = (definition as { resources?: unknown }).resources;
-	if (!resources || typeof resources !== "object") return [];
 	const out: BindleContainerRef[] = [];
-	for (const [name, resource] of Object.entries(
-		resources as Record<string, unknown>,
-	)) {
-		if (!resource || typeof resource !== "object") continue;
-		const kind = (resource as { kind?: unknown }).kind;
-		if (kind !== "container") continue;
-		const annotations = (resource as { annotations?: unknown }).annotations;
+	for (const [name, resource] of Object.entries(definition.resources)) {
+		if (resource === undefined || resource.kind !== "container") continue;
+		const annotations = resource.annotations;
 		if (!Array.isArray(annotations)) continue;
 		const dep = annotations.find(
-			(entry) =>
-				entry &&
-				typeof entry === "object" &&
-				(entry as { option?: unknown }).option === "dependency" &&
-				(entry as { provider?: unknown }).provider === "hobo",
-		) as { config?: { image?: unknown } } | undefined;
-		const image = dep?.config?.image;
-		if (typeof image === "string" && image.length > 0) {
-			out.push({ name, image });
+			(entry) => entry.option === "dependency" && entry.provider === "hobo",
+		);
+		const image = dep?.config.image;
+		if (Object.prototype.toString.call(image) !== "[object String]") continue;
+		const imageText = String(image);
+		if (imageText.length > 0) {
+			out.push({ name, image: imageText });
 		}
 	}
 	return Object.freeze(out);

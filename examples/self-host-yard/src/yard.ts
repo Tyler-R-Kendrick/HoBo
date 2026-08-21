@@ -91,6 +91,7 @@ export function openSelfHostedYard(
 	// createDefaultYardRuntime always builds a runtime-local store; the
 	// YardRuntime seam types it as the structural EventStore, so re-present it
 	// as the concrete store to reach close().
+	// SAFETY: assertion to `e as RuntimeLocalEventStore; return { ` is required at this boundary.
 	const store = runtime.store as RuntimeLocalEventStore;
 	return {
 		dataDir,

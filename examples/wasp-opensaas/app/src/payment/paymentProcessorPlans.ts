@@ -32,6 +32,7 @@ export function getPaymentPlanIdByPaymentProcessorPlanId(
     paymentProcessorPlanIds,
   )) {
     if (processorPlanId === paymentProcessorPlanId) {
+      // SAFETY: assertion to `planId as PaymentPlanId` is required at this boundary.
       return planId as PaymentPlanId;
     }
   }

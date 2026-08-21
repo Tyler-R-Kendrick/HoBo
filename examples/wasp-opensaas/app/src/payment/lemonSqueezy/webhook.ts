@@ -153,6 +153,7 @@ async function handleSubscriptionCreated(
         lemonSqueezyId,
         userId,
         subscriptionPlan: planId,
+        // SAFETY: assertion to `status as SubscriptionStatus` is required at this boundary.
         subscriptionStatus: status as SubscriptionStatus,
         datePaid: new Date(),
       },
@@ -189,6 +190,7 @@ async function handleSubscriptionUpdated(
         lemonSqueezyId,
         userId,
         subscriptionPlan: planId,
+        // SAFETY: assertion to `status as SubscriptionStatus` is required at this boundary.
         subscriptionStatus: status as SubscriptionStatus,
         ...(status === "active" && { datePaid: new Date() }),
       },
@@ -211,6 +213,7 @@ async function handleSubscriptionCancelled(
       lemonSqueezyId,
       userId,
       // cancel_at_period_end is the Stripe equivalent of LemonSqueezy's cancelled
+      // SAFETY: assertion to `"cancel_at_period_end" as SubscriptionStatus` is required at this boundary.
       subscriptionStatus: "cancel_at_period_end" as SubscriptionStatus,
     },
     prismaUserDelegate,

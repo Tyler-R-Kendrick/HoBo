@@ -1,5 +1,6 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export function createPaginatedStore({ name, indexKeys = [], rows = [] } = {}) {
-  if (typeof name !== "string" || name.length === 0) {
+  if (!isJsonString(name) || name.length === 0) {
     throw new TypeError("store name is required");
   }
 
@@ -26,7 +27,7 @@ export function decodeCursor(cursor) {
   if (cursor === null || cursor === undefined) {
     return null;
   }
-  if (typeof cursor !== "string" || cursor.length === 0) {
+  if (!isJsonString(cursor) || cursor.length === 0) {
     throw new TypeError("cursor must be an encoded string");
   }
 
@@ -39,7 +40,7 @@ export function usePaginatedQuery(orderedView, options) {
   }
   const { cursor = null, limit, onPush } = options ?? {};
   assertPositiveInteger(limit, "limit");
-  if (onPush !== undefined && typeof onPush !== "function") {
+  if (onPush !== undefined && !(onPush instanceof Function)) {
     throw new TypeError("onPush must be a function");
   }
 
@@ -151,7 +152,7 @@ class PaginatedStore {
   }
 
   subscribe(listener) {
-    if (typeof listener !== "function") {
+    if (!(listener instanceof Function)) {
       throw new TypeError("listener must be a function");
     }
     this.#listeners.add(listener);
@@ -248,7 +249,7 @@ function compareValue(left, right) {
 }
 
 function normalizeRow(row) {
-  if (!row || typeof row !== "object") {
+  if (!row || !isJsonObject(row)) {
     throw new TypeError("row must be an object");
   }
   requiredString(row.id, "row.id");
@@ -275,7 +276,7 @@ function freezePage(page) {
 }
 
 function requiredString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} is required`);
   }
 }
@@ -294,7 +295,7 @@ function stableValue(value) {
   if (Array.isArray(value)) {
     return value.map(stableValue);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return stableObject(Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, stableValue(entry)])));
   }
   return value;
@@ -308,5 +309,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

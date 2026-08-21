@@ -73,10 +73,11 @@ describe("bind reference wiring contract", () => {
       "{models.connectionString}",
     );
     assert.equal(manifest.resources["cuda-job"]?.env?.MODEL, "yolo");
-    assert.equal(
-      (manifest.resources["cuda-job"]?.annotations as { health: { path: string } }).health.path,
-      "/healthz",
-    );
+    const annotations = manifest.resources["cuda-job"]?.annotations;
+    assert.ok(annotations);
+    // SAFETY: health annotation is the container fluent surface recorded on the resource.
+    const health = (annotations as { health: { path: string } }).health;
+    assert.equal(health.path, "/healthz");
   });
 
   it("records the full addContainer fluent surface as annotations", () => {
@@ -113,11 +114,16 @@ describe("bind reference wiring contract", () => {
 
   it("rejects an invalid lifetime and an undeclarable wait dependency", () => {
     assert.throws(
+      // SAFETY: assertion to `() => addContainer("app", "ghcr.io/acme/app:1").withLifetime!("forever" as "sess` is required at this boundary.
       () => addContainer("app", "ghcr.io/acme/app:1").withLifetime!("forever" as "session"),
       /lifetime must be one of session, persistent/,
     );
     assert.throws(
-      () => addContainer("app", "ghcr.io/acme/app:1").waitFor!(42 as unknown as string),
+      () => {
+        // SAFETY: invalid waitFor id is forced through the typed handle API.
+        const waitForId: string = 42 as never;
+        addContainer("app", "ghcr.io/acme/app:1").waitFor!(waitForId);
+      },
       /resources\.app\.waitFor: must reference a declared resource handle or id/,
     );
   });

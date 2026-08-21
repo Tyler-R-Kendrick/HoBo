@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export declare const MTLS_DATA_PATH_SCHEMA_VERSION: "hobo.mtls-data-path/v1";
 
 export interface WorkloadSpiffeIdentity {
@@ -52,6 +53,6 @@ export declare function parseWorkloadSpiffeId(
   options?: { expectedTenant?: string; expectedTrustDomain?: string },
 ): WorkloadSpiffeIdentity;
 
-export declare function validateMtlsDataPathContract(contract: unknown): ValidationResult;
+export declare function validateMtlsDataPathContract(contract: JsonValue): ValidationResult;
 
 export declare function evaluateMtlsHandshake(contract: MtlsDataPathContract): MtlsHandshakeDecision;

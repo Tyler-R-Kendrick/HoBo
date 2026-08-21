@@ -16,6 +16,8 @@ import {
   OFFLINE_IMPORT_INTEGRITY_CONTRACT,
   createOfflineIntegrityImporter,
 } from "../src/offline-import-integrity.js";
+import { isJsonObject } from "../src/json.js";
+
 
 const builderKey = createFixtureSigningKey({
   keyId: "airgap-builder-key",
@@ -496,7 +498,7 @@ function bundleDigest(value) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {

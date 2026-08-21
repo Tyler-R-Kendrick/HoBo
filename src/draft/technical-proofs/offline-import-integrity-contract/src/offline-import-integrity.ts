@@ -1,5 +1,7 @@
 import { createInBoundaryRegistryMirror, createRegistryImporter } from "../../registry-import-contract/src/registry-import.js";
 import { parseBundleManifest } from "../../signed-offline-bundle-contract/src/bundle-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const OFFLINE_IMPORT_INTEGRITY_CONTRACT = "hobo.offline-import-integrity/v1";
 
@@ -324,7 +326,7 @@ function payloadFor(payloads, digest) {
   if (payloads instanceof Map) {
     return payloads.get(digest) ?? null;
   }
-  if (payloads && typeof payloads === "object" && !Array.isArray(payloads)) {
+  if (payloads && isJsonObject(payloads) && !Array.isArray(payloads)) {
     return payloads[digest] ?? null;
   }
   return null;
@@ -334,7 +336,7 @@ function proofFor(proofs, digest) {
   if (proofs instanceof Map) {
     return proofs.get(digest) ?? null;
   }
-  if (proofs && typeof proofs === "object" && !Array.isArray(proofs)) {
+  if (proofs && isJsonObject(proofs) && !Array.isArray(proofs)) {
     return proofs[digest] ?? null;
   }
   return null;
@@ -352,7 +354,7 @@ function rejected({ reasons, mirror }) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function compareVersions(left, right) {

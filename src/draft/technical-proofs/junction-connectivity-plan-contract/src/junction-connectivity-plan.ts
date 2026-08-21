@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
 import { inferJunctionConnectivity } from "../../junction-connectivity-inference-spike/src/junction-connectivity-inference.js";
+import { isJsonObject } from "./json.js";
+
 
 export const JUNCTION_CONNECTIVITY_PLAN_SCHEMA_VERSION = "hobo.junction-connectivity-plan/v1";
 
@@ -38,7 +40,7 @@ export function planJunctionConnectivity(input) {
 }
 
 export function validateJunctionConnectivityPlan(plan) {
-  if (!plan || typeof plan !== "object" || Array.isArray(plan)) {
+  if (!plan || !isJsonObject(plan) || Array.isArray(plan)) {
     return invalid("junction.plan.invalid", "plan must be an object");
   }
   if (plan.schemaVersion !== JUNCTION_CONNECTIVITY_PLAN_SCHEMA_VERSION) {
@@ -47,7 +49,7 @@ export function validateJunctionConnectivityPlan(plan) {
   if (!Array.isArray(plan.sharedStateWrites) || plan.sharedStateWrites.length !== 0) {
     return invalid("junction.shared-state.forbidden", "Junction connectivity plan must not write shared mutable state");
   }
-  if (!plan.deliveriesByYard || typeof plan.deliveriesByYard !== "object" || Array.isArray(plan.deliveriesByYard)) {
+  if (!plan.deliveriesByYard || !isJsonObject(plan.deliveriesByYard) || Array.isArray(plan.deliveriesByYard)) {
     return invalid("junction.delivery.invalid", "deliveriesByYard must be an object keyed by Yard id");
   }
 
@@ -123,12 +125,12 @@ function canonicalJson(value) {
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   Object.freeze(value);
   for (const nested of Object.values(value)) {
     deepFreeze(nested);

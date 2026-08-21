@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const MATCHING_DECISION_VERSION = "matching.specificity/v1";
 
@@ -161,7 +163,7 @@ function objectiveRank(value, objective) {
 
 function validateDefinition(definition) {
   const errors = [];
-  if (!definition || typeof definition !== "object" || Array.isArray(definition)) {
+  if (!definition || !isJsonObject(definition) || Array.isArray(definition)) {
     return ["definition must be an object"];
   }
   if (!isNonEmptyString(definition.id)) {
@@ -191,7 +193,7 @@ function criterionMismatch(criteria, context) {
 }
 
 function assertContext(context) {
-  if (!context || typeof context !== "object" || Array.isArray(context)) {
+  if (!context || !isJsonObject(context) || Array.isArray(context)) {
     throw new Error("context must be an object");
   }
   if (!isNonEmptyString(context.resourceType)) {
@@ -226,12 +228,12 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }

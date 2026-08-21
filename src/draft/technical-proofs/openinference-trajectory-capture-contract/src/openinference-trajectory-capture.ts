@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const OPENINFERENCE_TRAJECTORY_CAPTURE_CONTRACT = "hobo.openinference-trajectory-capture/v1";
 export const TRAJECTORY_SCHEMA = "hobo.training.trajectory/v1";
@@ -339,7 +341,7 @@ function sanitizeValue(value, path, sensitiveFields, runId, runKeyRef) {
   if (Array.isArray(value)) {
     return value.map((entry, index) => sanitizeValue(entry, `${path}.${index}`, sensitiveFields, runId, runKeyRef));
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([key, entry]) => [
         key,
@@ -360,14 +362,14 @@ function parseTraceparent(value) {
 }
 
 function requireString(value, name) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
   return value;
 }
 
 function requireGeneratedRegion(region) {
-  if (!region || typeof region !== "object" || Array.isArray(region)) {
+  if (!region || !isJsonObject(region) || Array.isArray(region)) {
     throw new TypeError("generatedRegion must be an object");
   }
   requireString(region.regionId, "generatedRegion.regionId");
@@ -395,7 +397,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

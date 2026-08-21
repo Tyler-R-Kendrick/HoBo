@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export const POLICY_AUTHORING_SCHEMA_VERSION: "hobo.policy-authoring/v1";
 export const POLICY_WAIVER_SCHEMA_VERSION: "hobo.policy-waiver/v1";
 export const POLICY_WAIVER_REQUESTED: "policy.WaiverRequested";
@@ -111,7 +112,7 @@ export interface PolicyWaiverEvent {
     id: string;
     roles: string[];
   };
-  data: Record<string, unknown>;
+  data: JsonObject;
 }
 
 export interface RequestedPolicyWaiver {
@@ -146,7 +147,7 @@ export interface PolicyWaiverDecision {
   effect: PolicyDecisionEffect;
   reason: string;
   target: NormalizedPolicyTarget;
-  evidence: Record<string, unknown>;
+  evidence: JsonObject;
 }
 
 export function definePolicyRule(input: {

@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const MTLS_DATA_PATH_SCHEMA_VERSION = "hobo.mtls-data-path/v1";
 
 const SPIFFE_SEGMENT_PATTERN = /^[A-Za-z0-9._-]+$/;
@@ -216,7 +217,7 @@ export function evaluateMtlsHandshake(contract) {
 }
 
 function assertSegment(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must not be empty`);
   }
   if (!SPIFFE_SEGMENT_PATTERN.test(value)) {
@@ -231,14 +232,14 @@ function isValidDate(value) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.length > 0;
+  return isJsonString(value) && value.length > 0;
 }
 
 function invalid(code, reason) {

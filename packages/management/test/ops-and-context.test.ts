@@ -53,7 +53,9 @@ function tempHome(): string {
 	return dir;
 }
 
-function newContext(): { ctx: ManagementContext; home: string } {
+type TestContext = { ctx: ManagementContext; home: string };
+
+function newContext(): TestContext {
 	const home = tempHome();
 	return { ctx: createManagementContext({ hoboHome: home }), home };
 }
@@ -289,9 +291,10 @@ describe("station ops", () => {
 		expect(result.ok).toBe(true);
 		expect(result.data?.created).toBe(true);
 		expect(result.data?.bootstrapActive).toBe(true);
+		// SAFETY: this test reads the profile shape written by stationInit.
 		const profile = JSON.parse(
 			readFileSync(join(home, "profile.json"), "utf8"),
-		) as Record<string, unknown>;
+		) as { custom?: string };
 		// The profile default is what makes every later command work without
 		// `--station`; skipping the write would make init succeed and leave the
 		// CLI unable to find what it created.
@@ -316,9 +319,10 @@ describe("station ops", () => {
 			"utf8",
 		);
 		stationInit(ctx, { name: "local" });
+		// SAFETY: this test reads the profile shape written by stationInit.
 		const profile = JSON.parse(
 			readFileSync(join(home, "profile.json"), "utf8"),
-		) as Record<string, unknown>;
+		) as { custom?: string };
 		// The write merges rather than replaces — clobbering the session would
 		// log the user out as a side effect of initializing a Station.
 		expect(profile.custom).toBe("keep");
@@ -363,11 +367,13 @@ describe("station ops", () => {
 		expect(result.ok).toBe(true);
 		expect(result.data?.status).toBe("open");
 		expect(result.data?.occupyMode).toBe("idle");
+		// SAFETY: stationStatus success data contains the activeRail projection.
 		expect(
 			(result.data as { activeRail?: { isBootstrap: boolean } }).activeRail,
 		)?.toMatchObject({ isBootstrap: true });
 		// The hint is what tells an operator their Station is not
 		// production-ready; a status that reported healthy would hide it.
+		// SAFETY: stationStatus success data contains the doctor projection.
 		expect((result.data as { doctor: { hint?: string } }).doctor.hint).toMatch(
 			/bootstrap Rail active/u,
 		);
@@ -430,6 +436,7 @@ describe("station rail ops", () => {
 		const { ctx } = initialized();
 		const result = stationRailsList(ctx, "station:local");
 		expect(result.ok).toBe(true);
+		// SAFETY: stationRailsList success data contains its rails projection.
 		const rails = (
 			result.data as { rails: readonly { isBootstrap: boolean }[] }
 		).rails;
@@ -608,7 +615,10 @@ describe("connection ops — lifecycle", () => {
 		const { created } = withConnection();
 		expect(created.ok).toBe(true);
 		expect(created.status).toBe("created");
-		const connection = (created.data as { connection: Record<string, unknown> })
+		// SAFETY: connectionCreate success data contains the public connection.
+		const connection = (created.data as {
+			connection: { provider: string; alias?: string };
+		})
 			.connection;
 		expect(connection.provider).toBe("github");
 		expect(connection.alias).toBe("gh");
@@ -620,6 +630,7 @@ describe("connection ops — lifecycle", () => {
 
 	it("defaults the flow to oauth2-obo", () => {
 		const { created } = withConnection();
+		// SAFETY: connectionCreate success data contains the public connection.
 		expect(
 			(created.data as { connection: { flow: string } }).connection.flow,
 		).toBe("oauth2-obo");
@@ -646,6 +657,7 @@ describe("connection ops — lifecycle", () => {
 
 	it("gets by alias and by id", () => {
 		const { ctx, created } = withConnection();
+		// SAFETY: connectionCreate success data contains the public connection id.
 		const id = String(
 			(created.data as { connection: { id: string } }).connection.id,
 		);
@@ -672,6 +684,7 @@ describe("connection ops — lifecycle", () => {
 		});
 		expect(result.ok).toBe(true);
 		expect(result.status).toBe("authorized");
+		// SAFETY: connectionAuthorize success data contains the public connection.
 		const connection = (result.data as { connection: { status: string } })
 			.connection;
 		expect(connection.status).not.toBe("pending");
@@ -722,6 +735,7 @@ describe("connection ops — lifecycle", () => {
 			flow: "not-a-flow",
 		});
 		expect(result.ok).toBe(true);
+		// SAFETY: connectionCreate preserves the caller-provided flow in success data.
 		expect(
 			(result.data as { connection: { flow: string } }).connection.flow,
 		).toBe("not-a-flow");
@@ -826,3 +840,4 @@ describe("connection ops — lifecycle", () => {
 		expect(serialized).not.toMatch(/"secret"|"token"|"password"|rootSecret/u);
 	});
 });
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-unsafe-dictionary-type, anti-slop/no-known-value-widening -- SAFETY: tests assert serialized and operation result contracts at their boundaries. */

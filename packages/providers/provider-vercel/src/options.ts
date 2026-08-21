@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json.js";
+
 // public-contract: provider target accepted by authoring options.
 export const PROVIDER_TARGET = "vercel";
 
@@ -6,18 +8,18 @@ export interface TypedOptionBlock {
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
-	options: Record<string, unknown>;
+	options: JsonObject;
 }
 
 export const vercel = {
 	with: {
-		web(options: Record<string, unknown> = {}): TypedOptionBlock {
+		web(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock("compute", "web", { framework: "nextjs" }, options);
 		},
-		blob(options: Record<string, unknown> = {}): TypedOptionBlock {
+		blob(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock("objectStore", "blob", { store: "assets" }, options);
 		},
-		neonPostgres(options: Record<string, unknown> = {}): TypedOptionBlock {
+		neonPostgres(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"database",
 				"neonPostgres",
@@ -25,7 +27,7 @@ export const vercel = {
 				options,
 			);
 		},
-		edgeConfig(options: Record<string, unknown> = {}): TypedOptionBlock {
+		edgeConfig(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock("kv", "edgeConfig", { store: "edge-config" }, options);
 		},
 	},
@@ -34,8 +36,8 @@ export const vercel = {
 function optionBlock(
 	port: string,
 	optionName: string,
-	defaults: Record<string, unknown>,
-	options: Record<string, unknown>,
+	defaults: JsonObject,
+	options: JsonObject,
 ): TypedOptionBlock {
 	return {
 		providerId: PROVIDER_TARGET,

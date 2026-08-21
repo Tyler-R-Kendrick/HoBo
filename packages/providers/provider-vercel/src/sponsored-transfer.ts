@@ -124,7 +124,7 @@ export type ResourceTransferCapableProvider =
  * transfer path is only real once its verification and rotation steps exist.
  */
 export const MODELLED_ASSOCIATED_RESOURCE = Object.freeze({
-	marketplaceProvider: "prisma" as ResourceTransferCapableProvider,
+	marketplaceProvider: "prisma",
 	/** The HoBo resource definition that owns this resource's own claim facts. */
 	resourceDefinitionId: "prisma.postgres/v1",
 	capabilityProfileId: "data.postgres/v1",
@@ -363,7 +363,7 @@ export function createSponsoredProjectTransferBundle(
 		mode: "project-transfer",
 		...(input.oneTimeActionRef !== undefined
 			? { oneTimeActionRef: input.oneTimeActionRef }
-			: {}),
+			: undefined),
 		deadline: input.transferCodeExpiresAt,
 		continuity: {
 			endpoint: "preserved",
@@ -385,7 +385,7 @@ export function createSponsoredProjectTransferBundle(
 		mode: "resource-claim",
 		...(input.oneTimeActionRef !== undefined
 			? { oneTimeActionRef: input.oneTimeActionRef }
-			: {}),
+			: undefined),
 		deadline: input.transferCodeExpiresAt,
 		continuity: {
 			endpoint: "rebound",
@@ -454,7 +454,9 @@ export function createSponsoredProjectTransferLease(
 		claimBy: input.transferCodeExpiresAt,
 		renewable: false,
 		renewalCount: 0,
-		...(input.costCapRef !== undefined ? { costCapRef: input.costCapRef } : {}),
+		...(input.costCapRef !== undefined
+			? { costCapRef: input.costCapRef }
+			: undefined),
 		cleanupPolicy: "delete",
 		status: "active",
 		fencingToken: input.fencingToken,
@@ -682,7 +684,7 @@ export function runSponsoredProjectTransferClaim(
 			lifecycle: state.lifecycle,
 			atomicSuccess,
 			outstandingItemIds,
-			...(failureCode !== undefined ? { failureCode } : {}),
+			...(failureCode !== undefined ? { failureCode } : undefined),
 		},
 	};
 }

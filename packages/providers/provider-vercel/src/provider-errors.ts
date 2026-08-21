@@ -25,16 +25,27 @@ export const PROVIDER_ERROR_CODES = [
 
 export type ProviderErrorCode = (typeof PROVIDER_ERROR_CODES)[number];
 
-export type ProviderErrorDetail = Readonly<
-	Record<string, string | number | boolean>
->;
+export type ProviderErrorDetail = {
+	readonly status?: number;
+	readonly method?: string;
+	readonly operation?: string;
+	readonly body?: string;
+	readonly guard?: string;
+	readonly purpose?: string;
+	readonly resourceRef?: string;
+	readonly preview?: string;
+	readonly field?: string;
+	readonly itemId?: string;
+	readonly exposureMinorUnits?: number;
+	readonly remainingBudgetMinorUnits?: number;
+};
 
 export type ProviderErrorOptions = {
 	/** Safe to repeat the operation verbatim. Ambiguity is never retryable. */
 	readonly retryable?: boolean;
 	readonly retryAfterMs?: number;
 	readonly detail?: ProviderErrorDetail;
-	readonly cause?: unknown;
+	readonly cause?: Error;
 };
 
 /** Shapes that must never survive into an error message, log line, or receipt. */
@@ -53,8 +64,14 @@ const CREDENTIAL_PATTERNS: readonly RegExp[] = [
 	/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/giu,
 ];
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point — provider output is full of them and an unflattened escape sequence can forge a log record.
-const CONTROL_CHARS = /[\u0000-\u001f\u007f]/gu;
+function flattenControlChars(text: string): string {
+	let out = "";
+	for (const ch of text) {
+		const code = ch.charCodeAt(0);
+		out += code <= 31 || code === 127 ? " " : ch;
+	}
+	return out;
+}
 
 /**
  * Replace anything credential-shaped with a marker and flatten control
@@ -64,8 +81,42 @@ export function redactProviderText(text: string, maxLength = 256): string {
 	let out = text;
 	for (const pattern of CREDENTIAL_PATTERNS)
 		out = out.replace(pattern, "[redacted]");
-	out = out.replace(CONTROL_CHARS, " ").trim();
+	out = flattenControlChars(out).trim();
 	return out.length > maxLength ? `${out.slice(0, maxLength)}…` : out;
+}
+
+function redactOptionalText(value: string | undefined): string | undefined {
+	return value === undefined ? undefined : redactProviderText(value, 160);
+}
+
+function redactDetail(detail: ProviderErrorDetail): ProviderErrorDetail {
+	const method = redactOptionalText(detail.method);
+	const operation = redactOptionalText(detail.operation);
+	const body = redactOptionalText(detail.body);
+	const guard = redactOptionalText(detail.guard);
+	const purpose = redactOptionalText(detail.purpose);
+	const resourceRef = redactOptionalText(detail.resourceRef);
+	const preview = redactOptionalText(detail.preview);
+	const field = redactOptionalText(detail.field);
+	const itemId = redactOptionalText(detail.itemId);
+	return {
+		...(detail.status !== undefined ? { status: detail.status } : undefined),
+		...(method !== undefined ? { method } : undefined),
+		...(operation !== undefined ? { operation } : undefined),
+		...(body !== undefined ? { body } : undefined),
+		...(guard !== undefined ? { guard } : undefined),
+		...(purpose !== undefined ? { purpose } : undefined),
+		...(resourceRef !== undefined ? { resourceRef } : undefined),
+		...(preview !== undefined ? { preview } : undefined),
+		...(field !== undefined ? { field } : undefined),
+		...(itemId !== undefined ? { itemId } : undefined),
+		...(detail.exposureMinorUnits !== undefined
+			? { exposureMinorUnits: detail.exposureMinorUnits }
+			: undefined),
+		...(detail.remainingBudgetMinorUnits !== undefined
+			? { remainingBudgetMinorUnits: detail.remainingBudgetMinorUnits }
+			: undefined),
+	};
 }
 
 export class VercelProviderError extends Error {
@@ -81,25 +132,18 @@ export class VercelProviderError extends Error {
 	) {
 		super(
 			redactProviderText(message),
-			options.cause !== undefined ? { cause: options.cause } : {},
+			options.cause !== undefined ? { cause: options.cause } : undefined,
 		);
 		this.name = "VercelProviderError";
 		this.code = code;
 		this.retryable = options.retryable ?? false;
 		if (options.retryAfterMs !== undefined)
 			this.retryAfterMs = options.retryAfterMs;
-		this.detail = Object.freeze({ ...(options.detail ?? {}) });
+		this.detail = Object.freeze(redactDetail(options.detail ?? {}));
 	}
 
 	/** Receipt-safe projection. Already redacted by construction. */
-	toJSON(): {
-		readonly name: string;
-		readonly code: ProviderErrorCode;
-		readonly message: string;
-		readonly retryable: boolean;
-		readonly retryAfterMs?: number;
-		readonly detail: ProviderErrorDetail;
-	} {
+	toJSON() {
 		return {
 			name: this.name,
 			code: this.code,
@@ -107,14 +151,14 @@ export class VercelProviderError extends Error {
 			retryable: this.retryable,
 			...(this.retryAfterMs !== undefined
 				? { retryAfterMs: this.retryAfterMs }
-				: {}),
+				: undefined),
 			detail: this.detail,
 		};
 	}
 }
 
 export function isVercelProviderError(
-	value: unknown,
+	value: Error,
 ): value is VercelProviderError {
 	return value instanceof VercelProviderError;
 }
@@ -142,7 +186,7 @@ export function providerErrorForStatus(
 		status,
 		method: context.method,
 		operation: context.operation,
-		...(body ? { body } : {}),
+		...(body !== "" ? { body } : undefined),
 	};
 	if (status === 429) {
 		return new VercelProviderError(
@@ -152,7 +196,7 @@ export function providerErrorForStatus(
 				retryable: true,
 				...(context.retryAfterMs !== undefined
 					? { retryAfterMs: context.retryAfterMs }
-					: {}),
+					: undefined),
 				detail,
 			},
 		);

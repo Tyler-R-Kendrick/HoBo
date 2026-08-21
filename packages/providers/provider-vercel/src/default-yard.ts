@@ -29,6 +29,7 @@
 
 import type { CapabilitySlot, SlotBinding } from "@hobo/core";
 
+import { type JsonObject, parseJsonObject } from "./json.js";
 import { PROVIDER_TARGET } from "./options.js";
 import {
 	blob,
@@ -73,7 +74,7 @@ export interface VercelYardBindingRow {
 	readonly profile: string;
 	readonly productId?: string;
 	readonly connectivityId?: string;
-	readonly properties: Readonly<Record<string, unknown>>;
+	readonly properties: JsonObject;
 }
 
 /** Raw Yard shape: provider, regions, and the allocatable row set. */
@@ -144,11 +145,11 @@ export function vercelYardRows(
 					profile: binding.profile,
 					...(binding.productId !== undefined
 						? { productId: binding.productId }
-						: {}),
+						: undefined),
 					...(binding.connectivityId !== undefined
 						? { connectivityId: binding.connectivityId }
-						: {}),
-					properties: binding.properties,
+						: undefined),
+					properties: parseJsonObject(JSON.stringify(binding.properties)),
 				}),
 			);
 		}
@@ -178,7 +179,7 @@ function canonicalRegions(
 		);
 	}
 	for (const region of source) {
-		if (typeof region !== "string" || !REGION_PATTERN.test(region)) {
+		if (!REGION_PATTERN.test(region)) {
 			throw new VercelYardSpecError(
 				"VERCEL_YARD_REGION_INVALID",
 				`region ${JSON.stringify(region)} is not a Vercel region id (lowercase letters, digits, and hyphens, for example iad1)`,

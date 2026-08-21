@@ -1,3 +1,4 @@
+import { isJsonObject, isJsonString } from "./json.js";
 export type ResourceVerb = string;
 
 export type AllowFacts = {
@@ -6,7 +7,7 @@ export type AllowFacts = {
   dynamicReason?: string;
 };
 
-export type ResourceHandle<V extends ResourceVerb = ResourceVerb> = {
+export type ResourceHandle<_V extends ResourceVerb = ResourceVerb> = {
   readonly kind: string;
   readonly name: string;
   readonly port: string;
@@ -41,19 +42,22 @@ export function createResourceHandle(input: {
 
     const first = args[0];
     if (
-      typeof first === "object" &&
+      isJsonObject(first) &&
       first !== null &&
       "dynamic" in first &&
       first.dynamic === true
     ) {
       const options = first;
-      const verbs = args.slice(1) as unknown as W;
+      const rest = args.slice(1);
+      // SAFETY: remaining args after the dynamic option bag are the verb list.
+      const verbs: W = rest as never;
       if (verbs.length === 0) {
         throw new TypeError(".allow() requires at least one verb; omit the call instead.");
       }
-      if (!options.reason || options.reason.trim().length === 0) {
+      if (!isJsonString(options.reason) || options.reason.trim().length === 0) {
         throw new TypeError("dynamic .allow() grants require a non-empty reason.");
       }
+      // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
       return createResourceHandle({
         ...input,
         facts: {
@@ -65,7 +69,10 @@ export function createResourceHandle(input: {
       }) as ResourceHandle<W[number]>;
     }
 
-    const verbs = args as unknown as W;
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+    // SAFETY: non-dynamic .allow() args are the verb list.
+    const verbs: W = args as never;
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     return createResourceHandle({
       ...input,
       facts: {

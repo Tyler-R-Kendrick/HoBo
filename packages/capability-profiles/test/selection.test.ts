@@ -12,6 +12,7 @@ import {
 	createCapabilityProfileRegistry,
 	DEFAULT_TRUST_POLICY,
 	parseCapabilityRequirement,
+	type CapabilityRequirementInput,
 	type SelectionCandidate,
 	STANDARD_CAPABILITY_PROFILES,
 	selectCapabilityImplementation,
@@ -76,10 +77,11 @@ interface CandidatePatch extends Partial<SelectionCandidate> {
 
 function toCandidate(patch: CandidatePatch): SelectionCandidate {
 	const { profiles, absent, ...rest } = patch;
-	const draft = { ...BASE, ...rest } as Record<string, unknown>;
+	// SAFETY: the patch starts from a complete candidate and only overrides known fields.
+	const draft = { ...BASE, ...rest } as SelectionCandidate;
 	if (profiles)
 		draft.implementsProfiles = profiles.map((entry) => {
-			const spec = typeof entry === "string" ? { id: entry } : entry;
+			const spec = Object(entry) === entry ? entry : { id: String(entry) };
 			return {
 				profileId: spec.id,
 				versionRange: ">=1",
@@ -89,14 +91,14 @@ function toCandidate(patch: CandidatePatch): SelectionCandidate {
 			};
 		});
 	for (const key of absent ?? []) delete draft[key];
-	return draft as unknown as SelectionCandidate;
+	return draft;
 }
 
 interface Ask {
 	readonly candidates: readonly CandidatePatch[];
 	/** Merged over the default policy: only the field under test needs naming. */
 	readonly policy?: Partial<TrustPolicy>;
-	readonly requirement?: Record<string, unknown>;
+	readonly requirement?: CapabilityRequirementInput;
 	readonly consumableBindingProfiles?: readonly string[];
 	/** Run the same candidates in reverse, to prove order does not decide. */
 	readonly reversed?: boolean;
@@ -104,23 +106,25 @@ interface Ask {
 
 function run(ask: Ask) {
 	const candidates = ask.candidates.map(toCandidate);
-	return selectCapabilityImplementation({
+	const selectionInput = {
 		requirement: parseCapabilityRequirement(
-			(ask.requirement ?? POSTGRES) as never,
+			ask.requirement ?? POSTGRES,
 		),
 		registry,
 		candidates: ask.reversed ? [...candidates].reverse() : candidates,
-		policy: ask.policy
-			? ({ ...DEFAULT_TRUST_POLICY, ...ask.policy } as TrustPolicy)
-			: DEFAULT_TRUST_POLICY,
+		policy: { ...DEFAULT_TRUST_POLICY, ...ask.policy },
 		nowMs: NOW,
-		...(ask.consumableBindingProfiles
-			? { consumableBindingProfiles: ask.consumableBindingProfiles }
-			: {}),
-	});
+	};
+	if (ask.consumableBindingProfiles) {
+		return selectCapabilityImplementation({
+			...selectionInput,
+			consumableBindingProfiles: ask.consumableBindingProfiles,
+		});
+	}
+	return selectCapabilityImplementation(selectionInput);
 }
 
-const shape = (ask: Ask) => {
+const projection = (ask: Ask) => {
 	const result = run(ask);
 	return {
 		winner: result.winner?.definitionId ?? null,
@@ -132,13 +136,13 @@ const shape = (ask: Ask) => {
 describeConcern("capability selection", {
 	cases: `${import.meta.dirname}/selection.cases.jsonl`,
 	subject: () => ({
-		select: shape,
+		select: projection,
 		/** Reordering must change neither the ranking nor the rejection evidence. */
 		isOrderIndependent: (ask: Ask) =>
-			JSON.stringify(shape({ ...ask, reversed: false })) ===
-			JSON.stringify(shape({ ...ask, reversed: true })),
+			JSON.stringify(projection({ ...ask, reversed: false })) ===
+			JSON.stringify(projection({ ...ask, reversed: true })),
 		/** Parsing is a gate of its own: a bad requirement must not reach selection. */
-		parseRequirement: (input: Record<string, unknown>) =>
-			JSON.stringify(parseCapabilityRequirement(input as never)),
+		parseRequirement: (input: CapabilityRequirementInput) =>
+			JSON.stringify(parseCapabilityRequirement(input)),
 	}),
 });

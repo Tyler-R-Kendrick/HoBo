@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const PRINCIPAL_KINDS = new Set(["user", "agent", "service"]);
 
 export const BUILT_IN_ROLES = Object.freeze({
@@ -20,7 +21,7 @@ export function createPrincipalRef(input) {
   if (!PRINCIPAL_KINDS.has(input.kind)) {
     throw new Error(`unsupported principal kind: ${input.kind}`);
   }
-  if (!input.id || typeof input.id !== "string") {
+  if (!input.id || !isJsonString(input.id)) {
     throw new Error("principal id is required");
   }
   if (input.delegatedBy?.kind === "service") {
@@ -99,12 +100,12 @@ function serializeDelegatedBy(principal) {
 
 function normalizeTenant(tenant) {
   assertObject(tenant, "tenant");
-  if (!tenant.platform || typeof tenant.platform !== "string") {
+  if (!tenant.platform || !isJsonString(tenant.platform)) {
     throw new Error("platform tenant is required");
   }
   return {
     platform: tenant.platform,
-    app: tenant.app && typeof tenant.app === "string" ? tenant.app : undefined,
+    app: tenant.app && isJsonString(tenant.app) ? tenant.app : undefined,
   };
 }
 
@@ -123,17 +124,17 @@ function normalizeStrings(values) {
   if (!Array.isArray(values)) {
     throw new Error("expected an array");
   }
-  return [...new Set(values)].filter((value) => typeof value === "string" && value.length > 0).sort();
+  return [...new Set(values)].filter((value) => isJsonString(value) && value.length > 0).sort();
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${name} must be an object`);
   }
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const nested of Object.values(value)) {

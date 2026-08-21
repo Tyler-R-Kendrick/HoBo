@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const IAC_PROGRAM_API_VERSION = "hobo.iac-program/v1";
 export const CROSSPLANE_BACKEND_CONTRACT_VERSION = "hobo.iac-crossplane/v1";
 
@@ -253,7 +254,7 @@ export async function runIacBackendConformanceSuite({ adapter, program }) {
 }
 
 export function validateIacProgram(program) {
-  if (!program || typeof program !== "object") {
+  if (!program || !isJsonObject(program)) {
     throw new CrossplaneProgramError("invalid-program", "IacProgram must be an object");
   }
   if (program.apiVersion !== IAC_PROGRAM_API_VERSION) {
@@ -415,7 +416,7 @@ function resolveStackOutputs(stackOutputs, resources) {
 }
 
 function resolveValue(value, resources) {
-  const match = typeof value === "string" ? OUTPUT_REF.exec(value) : undefined;
+  const match = isJsonString(value) ? OUTPUT_REF.exec(value) : undefined;
   if (!match) return structuredClone(value);
 
   const [, resourceName, outputName] = match;
@@ -423,7 +424,7 @@ function resolveValue(value, resources) {
 }
 
 function validateOutputReference(value, resources) {
-  if (typeof value !== "string" || !value.startsWith("${resources.")) {
+  if (!isJsonString(value) || !value.startsWith("${resources.")) {
     return;
   }
 
@@ -450,7 +451,7 @@ function stableJson(value) {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableJson(item)).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return `{${Object.keys(value)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
@@ -473,11 +474,11 @@ function deepMerge(left, right) {
 }
 
 function isPlainObject(value) {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+  return Boolean(value && isJsonObject(value) && !Array.isArray(value));
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 

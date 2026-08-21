@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 const catalogRows = [
   ["api", ["wasi:http", "hobo:http"], []],
   ["kv", ["wasi:keyvalue"], ["get", "set", "delete"]],
@@ -38,7 +39,7 @@ export function catalogFactoryNames() {
 }
 
 function requireResourceName(factory, name) {
-  if (typeof name !== "string" || name.length === 0) {
+  if (!isJsonString(name) || name.length === 0) {
     throw new TypeError(`${factory} resource name must be a non-empty string`);
   }
 }
@@ -128,7 +129,7 @@ export const ui = makeFactory("ui");
 export const experiment = makeFactory("experiment");
 
 export function secretRef(ref) {
-  if (typeof ref !== "string" || ref.length === 0) {
+  if (!isJsonString(ref) || ref.length === 0) {
     throw new TypeError("secretRef value reference must be a non-empty string");
   }
 

@@ -7,6 +7,8 @@ import {
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
 import { parseJwtSvidCompact } from "../../hobo-jwt-svid-contract/src/jwt-svid.js";
+import { isJsonObject } from "./json.js";
+
 
 const CREDENTIAL_NAME = "hobo.dev-svid";
 const DEFAULT_LOGIN_TTL_MS = 15 * 60 * 1000;
@@ -280,7 +282,7 @@ async function readCurrentIdentity({ credentialStore, now, required }) {
   };
 }
 
-function createIssuedEvent({ subject, tenant, credential, claims, now }) {
+function createIssuedEvent({ subject: _subject, tenant, credential, claims, now }) {
   const event = createIdentityEvent(
     "identity.Issued",
     {
@@ -352,14 +354,14 @@ function defaultAuthorize() {
 }
 
 function requireIssuer(issuer) {
-  if (!issuer || typeof issuer.signJwtSvid !== "function") {
+  if (!issuer || !(issuer.signJwtSvid instanceof Function)) {
     throw new Error("login contract requires a Yard Identity issuer");
   }
   return issuer;
 }
 
 function requireCredentialStore(store) {
-  if (!store || typeof store.write !== "function" || typeof store.read !== "function") {
+  if (!store || !(store.write instanceof Function) || !(store.read instanceof Function)) {
     throw new Error("login contract requires a credential store");
   }
   return store;
@@ -418,7 +420,7 @@ function sortJson(value) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -429,7 +431,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

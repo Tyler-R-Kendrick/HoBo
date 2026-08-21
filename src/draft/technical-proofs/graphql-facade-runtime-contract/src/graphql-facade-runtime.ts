@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 export function createGraphqlFacadeRuntime({ materializations, events = [], now = () => Date.now() }) {
   if (!Array.isArray(materializations) || materializations.length === 0) {
     throw new TypeError("materializations must contain at least one entry");
@@ -40,12 +41,12 @@ export function createGraphqlFacadeRuntime({ materializations, events = [], now 
         seq: snapshot.seq,
         value: clone(snapshot.value),
         cacheHit,
-        ...(refreshedBecause ? { refreshedBecause } : {}),
+        ...(refreshedBecause ? { refreshedBecause } : undefined),
       };
     },
 
     subscribe({ document, context = {}, onPush }) {
-      if (typeof onPush !== "function") {
+      if (!(onPush instanceof Function)) {
         throw new TypeError("onPush callback is required");
       }
 
@@ -158,7 +159,7 @@ function validateMaterialization(materialization) {
   if (materialization.subscriptionField !== undefined) {
     requiredString(materialization.subscriptionField, "materialization.subscriptionField");
   }
-  if (typeof materialization.fold !== "function") {
+  if (!(materialization.fold instanceof Function)) {
     throw new TypeError(`${materialization.name} fold is required`);
   }
 }
@@ -173,7 +174,7 @@ function validateEvent(event) {
 }
 
 function parseGraphqlOperation(document, expectedKind) {
-  if (typeof document !== "string") {
+  if (!isJsonString(document)) {
     throw new TypeError("GraphQL document must be a string");
   }
 
@@ -207,7 +208,7 @@ function requireField(map, fieldName, kind) {
 }
 
 function requireResolvedTenant(context) {
-  if (typeof context?.tenant !== "string" || context.tenant.length === 0) {
+  if (!isJsonString(context?.tenant) || context.tenant.length === 0) {
     throw new Error("resolved tenant is required for GraphQL materialization reads");
   }
 }
@@ -288,7 +289,7 @@ function seqAtLeast(candidate, floor) {
 }
 
 function requiredString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} is required`);
   }
 }

@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const SEGMENT_PATTERN = /^[A-Za-z0-9._-]+$/;
 const PORT_PATTERN = /^[a-z][A-Za-z0-9:-]*\/[A-Za-z0-9._-]+$/;
 const DENIED_AMBIENT_VERBS = new Set(["*", "admin", "manage"]);
@@ -65,7 +66,7 @@ export function parseJwtSvidCompact(token, options = {}) {
   }
 
   const header = decodeJwtJson(encodedHeader, "header");
-  if (!header.alg || typeof header.alg !== "string") {
+  if (!header.alg || !isJsonString(header.alg)) {
     throw new Error("JWT-SVID header must include alg");
   }
   if (header.alg.toLowerCase() === "none") {
@@ -185,7 +186,7 @@ function assertCodeVersion(codeVersion) {
 }
 
 function assertAudience(audience) {
-  if (typeof audience === "string") {
+  if (isJsonString(audience)) {
     if (!audience) {
       throw new Error("aud must not be empty");
     }
@@ -198,7 +199,7 @@ function assertAudience(audience) {
 
   const seen = new Set();
   for (const entry of audience) {
-    if (typeof entry !== "string" || !entry) {
+    if (!isJsonString(entry) || !entry) {
       throw new Error("aud entries must be non-empty strings");
     }
     if (seen.has(entry)) {
@@ -209,7 +210,7 @@ function assertAudience(audience) {
 }
 
 function assertUri(value, field) {
-  if (typeof value !== "string") {
+  if (!isJsonString(value)) {
     throw new Error(`${field} must be a URI string`);
   }
   try {
@@ -226,7 +227,7 @@ function assertUnixTime(value, field) {
 }
 
 function assertObject(value, field) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  if (value === null || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${field} must be an object`);
   }
 }
@@ -238,7 +239,7 @@ function assertSegments(segments) {
 }
 
 function assertSegment(value, field, maxLength = 128, pattern = SEGMENT_PATTERN) {
-  if (typeof value !== "string") {
+  if (!isJsonString(value)) {
     throw new Error(`${field} must be a string`);
   }
   if (value.length === 0) {

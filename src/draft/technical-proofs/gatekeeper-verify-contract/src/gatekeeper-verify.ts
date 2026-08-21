@@ -1,3 +1,4 @@
+import { isJsonString, isJsonBoolean, isJsonObject } from "./json.js";
 export const GATEKEEPER_VERIFY_SCHEMA = "hobo.gatekeeper-verify/v1";
 
 export const REQUIRED_GATES = [
@@ -25,7 +26,7 @@ export function evaluateGatekeeper({ target, request = {}, engines = {}, policy 
   }
 
   for (const gate of INCIDENT_REMEDIATION_EXEMPTIBLE_GATES) {
-    if (typeof engines[gate] === "function") {
+    if (engines[gate] instanceof Function) {
       results.push(evaluateIncidentExemptibleGate({ target, request, engines, gate }));
     }
   }
@@ -101,7 +102,7 @@ export function runHoboVerifyCommand(args = [], fixtures = {}) {
 
 function evaluateGate({ target, request, engines, gate }) {
   const engine = engines[gate];
-  if (typeof engine !== "function") {
+  if (!(engine instanceof Function)) {
     return failClosedResult({
       gate,
       reason: "missing gate engine result",
@@ -157,7 +158,7 @@ function mandatoryDisabledGateFailure({ target, request, policy, gate }) {
 }
 
 function normalizeEngineResult({ gate, result }) {
-  if (!result || typeof result !== "object" || Array.isArray(result)) {
+  if (!result || !isJsonObject(result) || Array.isArray(result)) {
     return failClosedResult({
       gate,
       reason: "gate engine returned no structured result",
@@ -175,7 +176,7 @@ function normalizeEngineResult({ gate, result }) {
     });
   }
 
-  if (typeof result.ok !== "boolean") {
+  if (!isJsonBoolean(result.ok)) {
     return failClosedResult({
       gate,
       reason: "gate engine result missing boolean ok",
@@ -240,7 +241,7 @@ function gateEvent({ target, result }) {
     reason: result.reason,
     suggestedFixes: result.suggestedFixes,
     engineId: result.engineId,
-    ...(result.exempted ? { exempted: true, originalReason: result.originalReason } : {}),
+    ...(result.exempted ? { exempted: true, originalReason: result.originalReason } : undefined),
   };
 }
 
@@ -285,5 +286,5 @@ function normalizeSuggestedFixes({ gate, ok, reason, suggestedFixes = [] }) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.length > 0;
+  return isJsonString(value) && value.length > 0;
 }

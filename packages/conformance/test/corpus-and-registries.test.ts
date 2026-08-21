@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this test intentionally casts controlled malformed fixtures to exercise runtime validation contracts. */
+
 /**
  * The replay corpus (S1-16), the deterministic seeding it rests on, and the
  * suite/adapter registries.
@@ -45,7 +47,17 @@ const FOLD_CONTEXT = {
 	random: () => 0,
 };
 
-function event(overrides: Record<string, unknown> = {}) {
+type EventFixture = {
+	id: string;
+	streamId: string;
+	seq: number;
+	type: string;
+	v: number | undefined;
+	ts: string;
+	data: { name?: string; message?: string; text?: string };
+};
+
+function event(overrides: Partial<EventFixture> = {}): EventFixture {
 	return {
 		id: "01",
 		streamId: "greeting:a",
@@ -202,7 +214,7 @@ describe("createCaseContext", () => {
 		const context = createCaseContext("s", "case-1");
 		expect(context.seed).toBe("s");
 		expect(context.caseId).toBe("case-1");
-		expect(typeof context.random()).toBe("number");
+		expect(context.random()).toBeTypeOf("number");
 	});
 
 	it("gives different cases different streams under one seed", () => {

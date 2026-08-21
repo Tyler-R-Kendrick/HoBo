@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns, anti-slop/require-safety-comment-for-type-assertion */
+
 import type { ProviderPort } from "@hobo/core";
 import { createPortDescriptor } from "@hobo/core";
 

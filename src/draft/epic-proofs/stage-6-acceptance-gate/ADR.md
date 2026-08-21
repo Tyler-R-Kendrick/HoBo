@@ -23,3 +23,10 @@ Replace fixture adapters with merged blocker seams while keeping the same `Accep
 - DR: `src/draft/technical-proofs/multi-region-dr-replay-contract` (HOBO-659)
 - Dashboard: `src/draft/exp-proofs/ux/full-dashboard-projection-views-contract` (HOBO-662)
 - Operator Crew: `src/draft/technical-proofs/s6-09-operator-crew-yard-services-contract` (HOBO-664)
+
+## Cascade absorption
+
+The dashboard proof's example-only JSON type assertion was removed to satisfy
+the anti-slop boundary rule. No Stage-6 contract, fixture, or acceptance
+criterion changes; the existing dashboard Pact and failure scenario remain the
+rollup evidence.

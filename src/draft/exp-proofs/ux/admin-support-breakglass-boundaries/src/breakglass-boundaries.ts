@@ -297,6 +297,7 @@ export function validateBreakGlassBoundaryContract(
     }
   }
 
+  // SAFETY: every literal below is a member of the required audit-event union.
   for (const eventId of [
     "breakglass.requested",
     "breakglass.approved",

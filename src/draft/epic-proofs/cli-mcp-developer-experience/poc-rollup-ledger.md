@@ -42,6 +42,7 @@ Changes to referenced experience proofs that this rollup has taken in.
 | `src/draft/exp-proofs/dx/gitops-ci-journey-contract` | `data-models/proof.cue` | none |
 | `src/draft/exp-proofs/dx/secops-policy-audit-journey-contract` | `data-models/proof.cue` | none |
 | `src/draft/exp-proofs/dx/sre-drift-remediation-journey-contract` | `data-models/proof.cue` | none |
+| `src/draft/technical-proofs/anonymous-preview-path-contract` | anti-slop object/string boundary cleanup | Anonymous preview normalization and canonicalization retain the same bounded hosted-preview behavior and remain covered by the existing identity/policy and runtime projection evidence. |
 
 All of these are the same edit, applied across 58 draft proofs at once. Each
 ships a `data-models/proof.proto` declaring `message ProofIdentity { string

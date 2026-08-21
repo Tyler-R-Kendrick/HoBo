@@ -2,7 +2,7 @@
 
 | POC | Source | Related Linear | Persona | BDD scenario | Vertical slice | Service boundaries | Pact contracts | Reference impl status | Disposition | Notes |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Telemetry envelope contract | `src/draft/technical-proofs/telemetry-envelope-contract` | HOBO-104 | SRE on-call | Telemetry envelope preserves trace and export semantics before rollback decisions. | telemetry-slo-gate | TelemetryBoundaryExport; TraceContextQueue | telemetry-boundary-export; trace-context-queue | verified | implemented_in_reference_impl | Kept versioned envelope parsing, CloudEvents, and OTLP projection. |
+| Telemetry envelope contract | `src/draft/technical-proofs/telemetry-envelope-contract` | HOBO-104 | SRE on-call | Telemetry envelope preserves trace and export semantics before rollback decisions. | telemetry-slo-gate | TelemetryBoundaryExport; TraceContextQueue | telemetry-boundary-export; trace-context-queue | verified | implemented_in_reference_impl | Kept versioned envelope parsing, CloudEvents, and OTLP projection; robust tag checks now preserve the same fail-closed boundaries. |
 | Trace context propagation | `src/draft/technical-proofs/trace-context-propagation-contract` | HOBO-241 | SRE on-call | Missing or malformed traceparent is repaired and recorded before queue handoff. | telemetry-slo-gate | TraceContextQueue | trace-context-queue | verified | implemented_in_reference_impl | Kept deterministic repair behavior; live queue implementation remains mocked. |
 | OTEL traces pipeline | `src/draft/technical-proofs/otel-traces-pipeline-contract` | HOBO-253 | SRE on-call | OTEL trace export remains deterministic under mocked collectors. | telemetry-slo-gate | TelemetryBoundaryExport | telemetry-boundary-export | verified | implemented_in_reference_impl | Kept span export and provider-context preservation. |
 | Metrics catalog pipeline | `src/draft/technical-proofs/metrics-catalog-pipeline-contract` | HOBO-257 | SRE on-call | Metric catalog export feeds SLO evaluation with declared dimensions. | telemetry-slo-gate | TelemetryBoundaryExport; SloPolicyGate | telemetry-boundary-export; slo-policy-gate | verified | implemented_in_reference_impl | Kept bounded-label metrics export. |
@@ -33,3 +33,10 @@
 | OpenInference trajectory capture | `src/draft/technical-proofs/openinference-trajectory-capture-contract` | HOBO-335 | SRE on-call | AI telemetry is captured for generation/eval loops. | telemetry-slo-gate | TelemetryBoundaryExport | telemetry-boundary-export | not_started | out_of_scope_for_this_epic | Generation/AI-safety rollup owns executable OpenInference training path. |
 | Connectivity cost feedback | `src/draft/technical-proofs/connectivity-cost-feedback-contract` | HOBO-172 | FinOps lead | Connectivity-tier cost feedback informs placement. | finops-budget-guard | MeteringCreditLedger | metering-credit-ledger | not_started | out_of_scope_for_this_epic | Networking/placement ownership; only cost boundary assumptions were retained. |
 | SLO promotion gate | `src/draft/technical-proofs/slo-promotion-gate-contract` | HOBO-303 | SRE on-call | Progressive promotion consumes SLO gate signals. | telemetry-slo-gate | SloPolicyGate | slo-policy-gate | not_started | split_follow_up | Progressive Delivery Harness owns promotion mechanics; this reference owns rollback evidence. |
+
+## Cascade absorption
+
+The telemetry leaf replaced fragile `typeof` checks with tag-based object and
+string checks. CloudEvent decoding, trace metadata normalization, envelope
+validation, and deterministic export remain covered by the existing telemetry
+simulation and Pact boundary inventory.

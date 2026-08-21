@@ -68,6 +68,13 @@ Contracts:
 - `contracts/pacts/identity-policy-boundary.pact.json`
 - `contracts/pacts/operations-manifest-boundary.pact.json`
 
+## Cascade absorption
+
+The anonymous preview proof replaced broad runtime type checks with exact
+object and string tags. The CLI/MCP rollup's bounded preview path, policy
+denials, and runtime projection contracts remain unchanged and continue to be
+covered by the existing deterministic simulation.
+
 
 ## Architecture Evidence
 

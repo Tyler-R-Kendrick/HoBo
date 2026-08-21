@@ -1,3 +1,4 @@
+import { isJsonString, isJsonBoolean, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 /**
  * Parse, don't validate — the one parser boundary of this proof.
  *
@@ -95,38 +96,39 @@ export class ConvexDeployParseError extends Error {
 	}
 }
 
-function record(value: unknown, field: string): Record<string, unknown> {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function record(value: JsonValue, field: string): JsonObject {
+	if (!isJsonObject(value)) {
 		throw new ConvexDeployParseError(field, "expected an object");
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+	return value as JsonObject;
 }
 
 function requireString(
-	source: Record<string, unknown>,
+	source: JsonObject,
 	field: string,
 ): string {
 	const value = source[field];
-	if (typeof value !== "string") {
+	if (!isJsonString(value)) {
 		throw new ConvexDeployParseError(field, "expected a string");
 	}
 	return value;
 }
 
 function requireBoolean(
-	source: Record<string, unknown>,
+	source: JsonObject,
 	field: string,
 ): boolean {
 	const value = source[field];
-	if (typeof value !== "boolean") {
+	if (!isJsonBoolean(value)) {
 		throw new ConvexDeployParseError(field, "expected a boolean");
 	}
 	return value;
 }
 
 /** #RepoRelativePath. */
-export function parseConvexAppRoot(value: unknown): ConvexAppRoot {
-	if (typeof value !== "string" || !REPO_RELATIVE.test(value)) {
+export function parseConvexAppRoot(value: JsonValue): ConvexAppRoot {
+	if (!isJsonString(value) || !REPO_RELATIVE.test(value)) {
 		throw new ConvexDeployParseError(
 			"root",
 			"expected a repo-relative Convex app directory",
@@ -135,34 +137,38 @@ export function parseConvexAppRoot(value: unknown): ConvexAppRoot {
 	if (PATH_ESCAPE.test(value)) {
 		throw new ConvexDeployParseError("root", "path escapes the repo via ..");
 	}
+	// SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
 	return value as ConvexAppRoot;
 }
 
 /** #DeploymentName. */
-export function parseDeploymentName(value: unknown): DeploymentName {
-	if (typeof value !== "string" || !DEPLOYMENT_NAME.test(value)) {
+export function parseDeploymentName(value: JsonValue): DeploymentName {
+	if (!isJsonString(value) || !DEPLOYMENT_NAME.test(value)) {
 		throw new ConvexDeployParseError(
 			"deploymentName",
 			"expected a DNS label (lowercase alphanumeric plus inner hyphens)",
 		);
 	}
+	// SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
 	return value as DeploymentName;
 }
 
 /** #EnvName. */
-export function parseEnvName(value: unknown): EnvName {
-	if (typeof value !== "string" || !ENV_NAME.test(value)) {
+export function parseEnvName(value: JsonValue): EnvName {
+	if (!isJsonString(value) || !ENV_NAME.test(value)) {
 		throw new ConvexDeployParseError(
 			"missing[]",
 			"expected an environment variable NAME",
 		);
 	}
+	// SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
 	return value as EnvName;
 }
 
-function parseDeployMode(value: unknown): DeployMode {
+function parseDeployMode(value: JsonValue): DeployMode {
 	if (
-		typeof value !== "string" ||
+		!isJsonString(value) ||
+		// SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
 		!DEPLOY_MODES.includes(value as DeployMode)
 	) {
 		throw new ConvexDeployParseError(
@@ -170,6 +176,7 @@ function parseDeployMode(value: unknown): DeployMode {
 			`expected one of ${DEPLOY_MODES.join(", ")}`,
 		);
 	}
+	// SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
 	return value as DeployMode;
 }
 
@@ -178,10 +185,10 @@ function parseDeployMode(value: unknown): DeployMode {
  * admissible, so a self-hosted lane can never claim a convex.cloud host.
  */
 export function parseDeploymentUrl(
-	value: unknown,
+	value: JsonValue,
 	mode: DeployMode,
 ): DeploymentUrl {
-	if (typeof value !== "string") {
+	if (!isJsonString(value)) {
 		throw new ConvexDeployParseError("deploymentUrl", "expected a string");
 	}
 	const isCloud = CLOUD_URL.test(value);
@@ -204,6 +211,7 @@ export function parseDeploymentUrl(
 			"expected an absolute http(s) deployment URL",
 		);
 	}
+	// SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
 	return value as DeploymentUrl;
 }
 
@@ -247,7 +255,7 @@ export type ImpedanceRecord = {
  * credential rule from deploy.ts: a non-mock deploy needs a Cloud deploy key,
  * or BOTH the self-hosted URL and its admin key.
  */
-export function parseDeployRequest(input: unknown): DeployRequest {
+export function parseDeployRequest(input: JsonValue): DeployRequest {
 	const source = record(input, "request");
 	const root = parseConvexAppRoot(source.root);
 	const deploymentName = parseDeploymentName(source.deploymentName);
@@ -276,7 +284,7 @@ export function parseDeployRequest(input: unknown): DeployRequest {
 		root,
 		deploymentName,
 		mock,
-		...(selfHostedUrl === undefined ? {} : { selfHostedUrl }),
+		...(selfHostedUrl === undefined ? undefined : { selfHostedUrl }),
 		hasDeployKey,
 		hasSelfHostedAdminKey,
 	});
@@ -288,7 +296,7 @@ export function parseDeployRequest(input: unknown): DeployRequest {
  * must agree with `mode === "mock"` — the mock lane is explicit in both
  * fields or not trusted at all.
  */
-export function parseDeployReceipt(input: unknown): DeployReceipt {
+export function parseDeployReceipt(input: JsonValue): DeployReceipt {
 	const source = record(input, "receipt");
 	if (requireBoolean(source, "ok") !== true) {
 		throw new ConvexDeployParseError("ok", "a receipt is never a failure");
@@ -327,8 +335,8 @@ export function parseDeployReceipt(input: unknown): DeployReceipt {
  */
 export function parseShipPreflight(input: {
 	readonly missing: readonly unknown[];
-	readonly remediation: unknown;
-	readonly mode: unknown;
+	readonly remediation: JsonValue;
+	readonly mode: JsonValue;
 }): ShipPreflight {
 	const mode = parseDeployMode(input.mode);
 	const missing = Object.freeze(input.missing.map(parseEnvName));
@@ -362,10 +370,12 @@ export function parseImpedanceRecords(
 		input.map((entry) => {
 			const source = record(entry, "finding");
 			const code = requireString(source, "code");
+			// SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
 			if (!(IMPEDANCE_CODES as readonly string[]).includes(code)) {
 				throw new ConvexDeployParseError("code", `unknown finding "${code}"`);
 			}
 			const severity = requireString(source, "severity");
+			// SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
 			if (!IMPEDANCE_SEVERITIES.includes(severity as ImpedanceSeverity)) {
 				throw new ConvexDeployParseError(
 					"severity",
@@ -383,7 +393,9 @@ export function parseImpedanceRecords(
 				);
 			}
 			return Object.freeze({
+				// SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
 				code: code as ImpedanceCode,
+				// SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
 				severity: severity as ImpedanceSeverity,
 				message,
 			});

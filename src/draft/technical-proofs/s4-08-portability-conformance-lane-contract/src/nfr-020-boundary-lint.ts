@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const NFR020_SCHEMA = "hobo.conformance.nfr020-boundary-lint/v1";
 
 export const AGNOSTIC_CORE_PACKAGES = Object.freeze([
@@ -81,20 +82,21 @@ export function classifyPackage(path: string): PackageClassification {
   return { kind: "unknown", layer: Number.POSITIVE_INFINITY };
 }
 
-export function parseWorkspaceEdge(input: unknown): WorkspaceEdge {
-  if (typeof input !== "object" || input === null) {
+export function parseWorkspaceEdge(input: JsonValue): WorkspaceEdge {
+  if (!isJsonObject(input) || input === null) {
     throw new Error("workspace edge must be an object");
   }
 
-  const record = input as Record<string, unknown>;
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+  const record = input as JsonObject;
   const from = record.from;
   const to = record.to;
 
-  if (typeof from !== "string" || from.length === 0) {
+  if (!isJsonString(from) || from.length === 0) {
     throw new Error("workspace edge from must be a non-empty string");
   }
 
-  if (typeof to !== "string" || to.length === 0) {
+  if (!isJsonString(to) || to.length === 0) {
     throw new Error("workspace edge to must be a non-empty string");
   }
 
@@ -112,10 +114,16 @@ export function parseWorkspaceEdge(input: unknown): WorkspaceEdge {
   return { from, to };
 }
 
+export type BoundaryLintResult = {
+  ok: boolean;
+  errors: string[];
+  schema: string;
+};
+
 export function validateNfr020BoundaryImports(
   edges: readonly WorkspaceEdge[],
   extra: readonly WorkspaceEdge[] = [],
-): { ok: boolean; errors: string[]; schema: string } {
+): BoundaryLintResult {
   const errors: string[] = [];
   const imports = [...edges, ...extra];
 

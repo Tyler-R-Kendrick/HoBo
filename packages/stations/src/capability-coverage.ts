@@ -40,6 +40,13 @@
  */
 
 // public-contract: wire schema of the Station capability coverage report.
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+
 export const STATION_CAPABILITY_COVERAGE_SCHEMA =
 	"hobo.station-capability-coverage/v1" as const;
 
@@ -168,19 +175,27 @@ export class StationCapabilityCoverageError extends Error {
 }
 
 function deepFreeze<T>(value: T): T {
-	if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+	if (value === null || value === undefined || Object.isFrozen(value)) {
 		return value;
 	}
-	for (const child of Object.values(value as object)) {
+	if (Array.isArray(value)) {
+		for (const child of value) {
+			deepFreeze(child);
+		}
+		return Object.freeze(value);
+	}
+	if (!isJsonObject(value)) {
+		return value;
+	}
+	for (const child of Object.values(value)) {
 		deepFreeze(child);
 	}
 	return Object.freeze(value);
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
+function isPlainObject<T>(value: T): value is T & JsonObject {
 	return (
-		typeof value === "object" &&
-		value !== null &&
+		isJsonObject(value) &&
 		!Array.isArray(value) &&
 		(Object.getPrototypeOf(value) === Object.prototype ||
 			Object.getPrototypeOf(value) === null)
@@ -197,14 +212,11 @@ function sortedUnique(values: readonly string[]): readonly string[] {
 }
 
 function parseProfile(
-	value: unknown,
+	value: JsonValue | undefined,
 	origin: string,
 	context?: { readonly yardName?: string },
 ): string {
-	if (
-		typeof value !== "string" ||
-		!STATION_CAPABILITY_PROFILE_PATTERN.test(value)
-	) {
+	if (!isJsonString(value) || !STATION_CAPABILITY_PROFILE_PATTERN.test(value)) {
 		throw new StationCapabilityCoverageError(
 			"STATION_COVERAGE_PROFILE_INVALID",
 			`${origin} must match <primitive-family>.<path>/v<major> (got ${JSON.stringify(value)})`,
@@ -212,8 +224,8 @@ function parseProfile(
 			{
 				...(context?.yardName !== undefined
 					? { yardName: context.yardName }
-					: {}),
-				...(typeof value === "string" ? { profile: value } : {}),
+					: undefined),
+				...(isJsonString(value) ? { profile: value } : undefined),
 			},
 		);
 	}
@@ -226,13 +238,13 @@ function parseProfile(
  * normalized away — mirrors the Yard binding parse boundary.
  */
 function parseConstraint(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: "productId" | "connectivityId",
 	yardName: string,
 	profile: string,
 ): string | undefined {
 	if (value === undefined) return undefined;
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new StationCapabilityCoverageError(
 			"STATION_COVERAGE_EMPTY_CONSTRAINT",
 			`yard ${yardName} row for ${profile}: ${field} must be a non-empty string when present`,
@@ -260,14 +272,14 @@ function parseCatalog(
 		);
 	}
 	const { yardName, providerId, bindings } = catalog;
-	if (typeof yardName !== "string" || yardName.length === 0) {
+	if (!isJsonString(yardName) || yardName.length === 0) {
 		throw new StationCapabilityCoverageError(
 			"STATION_COVERAGE_YARD_INVALID",
 			"yard catalog yardName must be a non-empty string",
 			"name the Yard the catalog came from, e.g. yard:local",
 		);
 	}
-	if (typeof providerId !== "string" || providerId.length === 0) {
+	if (!isJsonString(providerId) || providerId.length === 0) {
 		throw new StationCapabilityCoverageError(
 			"STATION_COVERAGE_YARD_INVALID",
 			`yard ${yardName} catalog providerId must be a non-empty string`,
@@ -337,8 +349,8 @@ function parseCatalog(
 			offering: {
 				yardName,
 				providerId,
-				...(productId !== undefined ? { productId } : {}),
-				...(connectivityId !== undefined ? { connectivityId } : {}),
+				...(productId !== undefined ? { productId } : undefined),
+				...(connectivityId !== undefined ? { connectivityId } : undefined),
 			},
 		});
 	}
@@ -387,7 +399,7 @@ export function aggregateStationCapabilities(
 		);
 	}
 	const { stationId, yards, expected } = input;
-	if (typeof stationId !== "string" || stationId.length === 0) {
+	if (!isJsonString(stationId) || stationId.length === 0) {
 		throw new StationCapabilityCoverageError(
 			"STATION_COVERAGE_STATION_INVALID",
 			"stationId must be a non-empty string",

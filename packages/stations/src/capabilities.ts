@@ -7,8 +7,10 @@
  * observed on the occupying host. Matching is fail-closed: a declared
  * capability with no observation is missing, never assumed present.
  */
+
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { isJsonObject, isJsonString } from "./json.js";
 
 import { stationRoot } from "./station-client.js";
 
@@ -79,10 +81,19 @@ const CAPABILITY_KINDS: readonly StationCapabilityKind[] = [
 const SLUG_PATTERN = /^[a-z0-9][a-z0-9.-]*$/;
 
 function deepFreeze<T>(value: T): T {
-	if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+	if (value === null || value === undefined || Object.isFrozen(value)) {
 		return value;
 	}
-	for (const child of Object.values(value as object)) {
+	if (Array.isArray(value)) {
+		for (const child of value) {
+			deepFreeze(child);
+		}
+		return Object.freeze(value);
+	}
+	if (!isJsonObject(value)) {
+		return value;
+	}
+	for (const child of Object.values(value)) {
 		deepFreeze(child);
 	}
 	return Object.freeze(value);
@@ -95,7 +106,7 @@ function deepFreeze<T>(value: T): T {
 export function stationCapability(
 	spec: StationCapabilitySpec,
 ): StationCapability {
-	if (!spec || typeof spec !== "object") {
+	if (!spec || !isJsonObject(spec)) {
 		throw new TypeError("station capability spec must be an object");
 	}
 	if (!CAPABILITY_KINDS.includes(spec.kind)) {
@@ -103,12 +114,12 @@ export function stationCapability(
 			`station capability kind must be one of ${CAPABILITY_KINDS.join(" | ")}`,
 		);
 	}
-	if (typeof spec.slug !== "string" || !SLUG_PATTERN.test(spec.slug)) {
+	if (!isJsonString(spec.slug) || !SLUG_PATTERN.test(spec.slug)) {
 		throw new TypeError(
 			"station capability slug must match [a-z0-9][a-z0-9.-]*",
 		);
 	}
-	if (typeof spec.title !== "string" || spec.title.length === 0) {
+	if (!isJsonString(spec.title) || spec.title.length === 0) {
 		throw new TypeError("station capability title must be a non-empty string");
 	}
 	const provenance = spec.provenance ?? "discovered";
@@ -122,8 +133,8 @@ export function stationCapability(
 		required: spec.required === true,
 		...(spec.remediation !== undefined
 			? { remediation: spec.remediation }
-			: {}),
-		metadata: { ...(spec.metadata ?? {}) },
+			: undefined),
+		metadata: { ...spec.metadata },
 	});
 }
 
@@ -168,7 +179,7 @@ export function matchStationCapabilities(input: {
 	readonly observations: readonly StationCapabilityObservation[];
 	readonly now?: () => string;
 }): StationCapabilityManifest {
-	if (typeof input.stationId !== "string" || input.stationId.length === 0) {
+	if (!isJsonString(input.stationId) || input.stationId.length === 0) {
 		throw new TypeError("stationId must be a non-empty string");
 	}
 	const byId = new Map<string, StationCapabilityObservation>();
@@ -195,7 +206,7 @@ export function matchStationCapabilities(input: {
 				evidence,
 				...(observation?.detail !== undefined
 					? { detail: observation.detail }
-					: {}),
+					: undefined),
 			}),
 		);
 		if (!present) {
@@ -239,6 +250,7 @@ export function loadStationCapabilityManifest(
 ): StationCapabilityManifest | null {
 	const path = stationCapabilitiesPath(hoboHome, stationId);
 	if (!existsSync(path)) return null;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const raw = JSON.parse(
 		readFileSync(path, "utf8"),
 	) as StationCapabilityManifest;

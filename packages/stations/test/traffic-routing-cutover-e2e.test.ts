@@ -39,6 +39,7 @@ function policyDecision(): PolicyDecision {
 function listen(server: Server): Promise<string> {
 	return new Promise((resolve) => {
 		server.listen(0, "127.0.0.1", () => {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const { port } = server.address() as AddressInfo;
 			resolve(`http://127.0.0.1:${port}`);
 		});
@@ -162,9 +163,11 @@ interface TrafficLog {
 	bodies: string[];
 }
 
-function startTrafficGenerator(): {
+interface TrafficGenerator {
 	stop: (minRequests?: number) => Promise<TrafficLog>;
-} {
+}
+
+function startTrafficGenerator(): TrafficGenerator {
 	const log: TrafficLog = { total: 0, failed: 0, bodies: [] };
 	let running = true;
 	const worker = (async () => {

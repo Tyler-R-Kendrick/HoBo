@@ -6,6 +6,7 @@ import {
 	POLICY_DECIDED_EVENT_TYPE,
 	POLICY_IR_SCHEMA_VERSION,
 } from "@hobo/policy";
+import type { JsonObject } from "./json.js";
 
 // This module COMPOSES @hobo/policy — it does not reimplement the policy engine.
 // @hobo/policy owns the decision model (the Policy IR: request/decision/effect/
@@ -40,13 +41,13 @@ export interface PolicyDecisionRequest {
 	action: string;
 	resource: { kind: string; id: string };
 	phase: string;
-	context?: Record<string, unknown>;
+	context?: JsonObject;
 }
 
 export interface PolicyRuleOutcome {
 	effect: PolicyEffect;
 	reason: string;
-	obligations?: Array<Record<string, unknown>>;
+	obligations?: Array<JsonObject>;
 	violations?: string[];
 }
 

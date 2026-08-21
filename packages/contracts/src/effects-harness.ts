@@ -12,6 +12,7 @@ import {
 	type EffectSpec,
 	isPure,
 } from "./effects.js";
+import type { JsonValue } from "./json.js";
 import {
 	applyResilienceProfile,
 	type ResilienceFact,
@@ -21,7 +22,7 @@ import {
 export interface DomainMock {
 	readonly domain: DomainEffect;
 	readonly kind: string;
-	readonly handle: (request: unknown) => unknown;
+	readonly handle: (request: JsonValue) => JsonValue;
 }
 
 export interface EffectIsolationReport {
@@ -163,6 +164,7 @@ export async function runResilienceFaultInjection(input: {
 	const failureMap = new Map((input.failures ?? []).map((f) => [f.attempt, f]));
 
 	const result = await applyResilienceProfile({
+		// SAFETY: assertion required at this I/O or test boundary.
 		profile: profile as ResilienceProfile,
 		now: () => "2026-07-27T00:00:00.000Z",
 		op: (attempt) => {
@@ -200,10 +202,17 @@ export async function runResilienceFaultInjection(input: {
 /**
  * Dual fixtures keyed on effects: pure vs domain-effect paths.
  */
-export function dualFixturesForEffects(effects: EffectSpec): {
-	purePath: { mode: "pure"; infrastructure: "none" };
-	effectPath: { mode: "effects"; mocks: DomainMock[] };
-} {
+export interface DualEffectFixtures {
+	readonly purePath: { readonly mode: "pure"; readonly infrastructure: "none" };
+	readonly effectPath: {
+		readonly mode: "effects";
+		readonly mocks: DomainMock[];
+	};
+}
+
+export function dualFixturesForEffects(
+	effects: EffectSpec,
+): DualEffectFixtures {
 	return {
 		purePath: { mode: "pure", infrastructure: "none" },
 		effectPath: {

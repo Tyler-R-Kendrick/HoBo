@@ -27,7 +27,7 @@ const DEPLOYED = createBoundaryContract({
 	id: "contract-orders-http",
 	version: "1.2.0",
 	edge,
-	requiredShape: {
+	requiredLayout: {
 		format: "json-schema",
 		requiredFields: ["id", "tenantId", "total"],
 		providedFields: ["id", "tenantId", "total"],
@@ -39,7 +39,7 @@ const COMPATIBLE = createBoundaryContract({
 	id: "contract-orders-http",
 	version: "1.3.0",
 	edge: { ...edge, producer: "checkout-api@2.4.0" },
-	requiredShape: {
+	requiredLayout: {
 		format: "json-schema",
 		requiredFields: ["id", "tenantId", "total"],
 		providedFields: ["id", "tenantId", "total", "currency"],
@@ -51,7 +51,7 @@ const BREAKING = createBoundaryContract({
 	id: "contract-orders-http",
 	version: "3.0.0",
 	edge: { ...edge, producer: "checkout-api@3.0.0" },
-	requiredShape: {
+	requiredLayout: {
 		format: "json-schema",
 		requiredFields: ["id", "total"],
 		providedFields: ["id", "total"],
@@ -76,7 +76,11 @@ const pack = (
 });
 
 /** The closures, which are the one thing a case cannot spell out. */
-const PACKS: Record<string, PolicyPack | undefined> = {
+interface PolicyPackById {
+	[id: string]: PolicyPack | undefined;
+}
+
+const PACKS: PolicyPackById = {
 	none: undefined,
 	freeze: pack("yard-prod-freeze", () => ({
 		effect: "deny",
@@ -129,12 +133,13 @@ describeConcern("gatekeeper", {
 				pack: packName = "none",
 				...rest
 			} = ask;
+			// SAFETY: assertion required at this I/O or test boundary.
 			const result = evaluateGatekeeper({
 				request: REQUEST,
 				deployedState: { contracts: [DEPLOYED] },
 				candidate: { plan: PLAN, contracts: [CONTRACTS[candidate]] },
 				costQuota: GOOD_QUOTA,
-				...(PACKS[packName] ? { policyPack: PACKS[packName] } : {}),
+				...(PACKS[packName] ? { policyPack: PACKS[packName] } : undefined),
 				...rest,
 			} as never);
 			return {

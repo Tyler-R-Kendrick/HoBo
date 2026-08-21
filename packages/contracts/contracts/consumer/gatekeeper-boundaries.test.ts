@@ -2,10 +2,10 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-
 import { evaluateCanDeploy } from "../../src/can-deploy.js";
 import { createBoundaryContract } from "../../src/contract-ir.js";
 import { evaluateGatekeeper } from "../../src/gatekeeper.js";
+import { isJsonNumber } from "../../src/json.js";
 import {
 	definePolicyRule,
 	evaluatePolicyPack,
@@ -28,7 +28,7 @@ const deployedContract = createBoundaryContract({
 		channel: "orders.http",
 		operation: "order.created",
 	},
-	requiredShape: {
+	requiredLayout: {
 		format: "json-schema",
 		requiredFields: ["id", "tenantId", "total"],
 		providedFields: ["id", "tenantId", "total"],
@@ -45,7 +45,7 @@ const compatibleCandidate = createBoundaryContract({
 		channel: "orders.http",
 		operation: "order.created",
 	},
-	requiredShape: {
+	requiredLayout: {
 		format: "json-schema",
 		requiredFields: ["id", "tenantId", "total"],
 		providedFields: ["id", "tenantId", "total", "currency"],
@@ -165,7 +165,7 @@ describe("Gatekeeper -> Obligation Engine + Cost/Quota consumer contracts", () =
 		);
 		// cost boundary: recorded ok:true with numeric remaining/limit
 		expect(result.costQuota.ok).toBe(true);
-		expect(typeof result.costQuota.remaining).toBe("number");
+		expect(isJsonNumber(result.costQuota.remaining)).toBe(true);
 		expect(result.decision).toBe("allow");
 	});
 });

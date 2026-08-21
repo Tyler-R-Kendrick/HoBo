@@ -101,7 +101,8 @@ main
                                                                                           └── sdlc/anti-slop-90-draft-x509-yard-domain  #1349 x509-svid-mtls+yard-domain-validation
                                                                                            └── sdlc/anti-slop-91-draft-capability-conformance-authz-cutover  #1350 capability-negotiation+conformance-port+authz-cache+domain-cutover
                                                                                             └── sdlc/anti-slop-92-draft-drift-gateway-chaos-secret  #1351 drift-detection+gateway-realization+golden-chaos+config-secret
-                                                                                             └── sdlc/anti-slop-93-draft-remediation-console-dapr-broker  remediation-action+operator-console+dapr-kafka+broker-resolution
+                                                                                             └── sdlc/anti-slop-93-draft-remediation-console-dapr-broker  #1352 remediation-action+operator-console+dapr-kafka+broker-resolution
+                                                                                              └── sdlc/anti-slop-94-draft-mirror-oci-page-paradigm  mirror-digest+oci-artifact+paginated-query+paradigm-idiom
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -214,6 +215,7 @@ Layer 89: `otel-traces-pipeline-contract` + `remediation-safety-gate-contract` +
 Layer 90: `x509-svid-mtls-contract` + `yard-domain-validation-contract` oxlint `--deny-warnings` clean (#1349).
 Layer 91: `capability-negotiation-contract` + `conformance-port-suite-contract` + `control-plane-authz-cache-contract` + `domain-cutover-saga-contract` oxlint `--deny-warnings` clean (#1350).
 Layer 92: `drift-detection-loop-contract` + `gateway-realization-contract` + `golden-suite-chaos-verification-contract` + `hobo-config-secret-schema-contract` oxlint `--deny-warnings` clean (#1351).
-Layer 93: `hobo-remediation-action-contract` + `human-operator-console-contract` + `messaging-dapr-kafka` + `meta-cloud-broker-resolution-contract` oxlint `--deny-warnings` clean.
+Layer 93: `hobo-remediation-action-contract` + `human-operator-console-contract` + `messaging-dapr-kafka` + `meta-cloud-broker-resolution-contract` oxlint `--deny-warnings` clean (#1352).
+Layer 94: `mirror-digest-selection-contract` + `oci-artifact-storage-contract` + `paginated-query-contract` + `paradigm-idiom-packages-contract` oxlint `--deny-warnings` clean.
 Next: remaining `src/draft/` (9-count technical-proofs, then lower, then exp-proofs, projects).
 Full-repo `lint:slop --deny-warnings` is still red until those land.

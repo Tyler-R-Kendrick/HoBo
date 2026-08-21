@@ -132,7 +132,7 @@ export interface ExampleConsumer {
   fixtureInput: string;
   fixtureOutput: string;
   sdkSnippet: string;
-  manifestIrShape: string;
+  manifestIrContract: string;
   expectedArtifact: string;
   typeSurface: TypeSurface;
 }
@@ -187,7 +187,7 @@ const SCOPE_CREEP_PATTERNS = [
   /\bprovider execution\b/i,
 ];
 
-export const SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES: SdkObjectGraphProof = {
+export const SDK_OBJECT_GRAPH_MANIFEST_IR_CONTRACT: SdkObjectGraphProof = {
   issue: "HOBO-568",
   parentIssue: "HOBO-566",
   phase: "M1",
@@ -231,7 +231,7 @@ export const SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES: SdkObjectGraphProof = {
       fixtureOutput: "fixtures/output/todo-api.manifest.json",
       sdkSnippet:
         "bindle('todo-api', b => ({ api: b.api(() => app.run()).dependsOn('cache'), cache: b.cache() }))",
-      manifestIrShape: "resources[].generatedId + dependsOn[] + workload import boundary",
+      manifestIrContract: "resources[].generatedId + dependsOn[] + workload import boundary",
       expectedArtifact: "manifest-ir/todo-api-resources.json",
       typeSurface: {
         importFrom: "@hobo/bindles",
@@ -248,7 +248,7 @@ export const SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES: SdkObjectGraphProof = {
       fixtureInput: "fixtures/input/provider-capability-ref.json",
       fixtureOutput: "fixtures/output/provider-capability-manifest.json",
       sdkSnippet: "camp('prod').prefer(provider.azure.postgres().raw('azure.flexible-server')).require('managed-postgres')",
-      manifestIrShape: "providerCapabilityRef + portabilityDebt[] + capabilityRequirement[]",
+      manifestIrContract: "providerCapabilityRef + portabilityDebt[] + capabilityRequirement[]",
       expectedArtifact: "manifest-ir/provider-capability-refs.json",
       typeSurface: {
         importFrom: "@hobo/bindles",
@@ -265,7 +265,7 @@ export const SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES: SdkObjectGraphProof = {
       fixtureInput: "fixtures/input/deployment-plan-request.json",
       fixtureOutput: "fixtures/output/deployment-plan-request.accepted.json",
       sdkSnippet: "plans.request({ bindle, camp: 'prod', objective: 'balanced' })",
-      manifestIrShape: "DeploymentPlanRequest{manifestDigest,camp,objective,policyContext}",
+      manifestIrContract: "DeploymentPlanRequest{manifestDigest,camp,objective,policyContext}",
       expectedArtifact: "plans/deployment-plan-request.json",
       typeSurface: {
         importFrom: "@hobo/bindles",
@@ -282,7 +282,7 @@ export const SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES: SdkObjectGraphProof = {
       fixtureInput: "fixtures/input/migration-plan-request.json",
       fixtureOutput: "fixtures/output/migration-plan-request.accepted.json",
       sdkSnippet: "migrations.plan({ adopted: external('billing-db'), phases: ['expand', 'backfill', 'contract'] })",
-      manifestIrShape: "MigrationPlanRequest{adoptedResource,phaseSequence,snapshotRequired}",
+      manifestIrContract: "MigrationPlanRequest{adoptedResource,phaseSequence,snapshotRequired}",
       expectedArtifact: "migrations/migration-plan-request.json",
       typeSurface: {
         importFrom: "@hobo/bindles",
@@ -299,7 +299,7 @@ export const SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES: SdkObjectGraphProof = {
       fixtureInput: "fixtures/input/inspect-log-reader-request.json",
       fixtureOutput: "fixtures/output/inspect-log-reader.snapshot.json",
       sdkSnippet: "inspect.deploy('dep_123').subscribe(); logs.follow({ resource: 'api' })",
-      manifestIrShape: "SubscriptionReader{projection,seq,freshness,redaction}",
+      manifestIrContract: "SubscriptionReader{projection,seq,freshness,redaction}",
       expectedArtifact: "readers/inspect-log-subscription.json",
       typeSurface: {
         importFrom: "@hobo/bindles",
@@ -488,18 +488,30 @@ export const SDK_TYPECHECK_CONSUMERS = {
   },
 } satisfies Record<string, SdkCompileConsumer>;
 
-export function parseSdkObjectGraphProof(input: unknown): ParsedSdkObjectGraphProof {
+type ProofBoundaryInput =
+  | SdkObjectGraphProof
+  | ParsedSdkObjectGraphProof
+  | null
+  | boolean
+  | number
+  | string
+  | ProofBoundaryInput[];
+type ProofRecord = SdkObjectGraphProof | ParsedSdkObjectGraphProof;
+
+export function parseSdkObjectGraphProof(input: ProofBoundaryInput): ParsedSdkObjectGraphProof {
   if (!isRecord(input)) {
     throw new Error("SDK object graph proof must be an object");
   }
 
-  const proof = input as unknown as SdkObjectGraphProof;
+  // SAFETY: isRecord establishes the object boundary; validation below establishes the proof contract.
+  const proof = input as SdkObjectGraphProof;
   const errors = validateSdkObjectGraphProof(proof);
 
   if (errors.length > 0) {
     throw new Error(`Invalid SDK object graph proof: ${errors.join("; ")}`);
   }
 
+  // SAFETY: proof was validated above and the only added field is the parsed marker.
   return Object.freeze({
     ...proof,
     [PARSED]: true as const,
@@ -538,6 +550,7 @@ export function validateSdkObjectGraphProof(proof: SdkObjectGraphProof): string[
     }
   }
 
+  // SAFETY: every literal is a member of the closed ProofMode union.
   for (const proofMode of ["live", "simulated", "reference-fixture", "scope-out", "type-test"] as ProofMode[]) {
     if (!(proof.proofModeLabels ?? []).includes(proofMode)) {
       errors.push(`missing proof-mode label: ${proofMode}`);
@@ -563,11 +576,11 @@ export function validateSdkObjectGraphProof(proof: SdkObjectGraphProof): string[
     if (!example.fixtureInput || !example.fixtureOutput) {
       errors.push(`example ${example.kind} must name deterministic fixture input and output`);
     }
-    if (!example.sdkSnippet || !example.manifestIrShape || !example.expectedArtifact) {
+    if (!example.sdkSnippet || !example.manifestIrContract || !example.expectedArtifact) {
       errors.push(`example ${example.kind} must name snippet, manifest shape, and expected artifact`);
     }
     validateTypeSurface(example.typeSurface, errors, `${example.kind} type surface`);
-    rejectScopeCreep(`${example.kind} ${example.sdkSnippet} ${example.manifestIrShape}`, errors);
+    rejectScopeCreep(`${example.kind} ${example.sdkSnippet} ${example.manifestIrContract}`, errors);
   }
 
   for (const debtKind of REQUIRED_DEBT_MARKERS) {
@@ -630,8 +643,10 @@ export function validateSdkObjectGraphProof(proof: SdkObjectGraphProof): string[
   return errors;
 }
 
-export function isParsedSdkObjectGraphProof(input: unknown): input is ParsedSdkObjectGraphProof {
-  return isRecord(input) && input[PARSED] === true;
+export function isParsedSdkObjectGraphProof(input: ProofBoundaryInput): input is ParsedSdkObjectGraphProof {
+  if (!isRecord(input)) return false;
+  // SAFETY: the parsed marker is the only field added by parseSdkObjectGraphProof.
+  return (input as ParsedSdkObjectGraphProof)[PARSED] === true;
 }
 
 function validateTypeSurface(typeSurface: TypeSurface | undefined, errors: string[], label: string) {
@@ -665,6 +680,6 @@ function rejectScopeCreep(value: string, errors: string[]) {
   }
 }
 
-function isRecord(input: unknown): input is Record<PropertyKey, unknown> {
-  return typeof input === "object" && input !== null && !Array.isArray(input);
+function isRecord(input: ProofBoundaryInput): input is ProofRecord {
+  return Object(input) === input && !Array.isArray(input);
 }

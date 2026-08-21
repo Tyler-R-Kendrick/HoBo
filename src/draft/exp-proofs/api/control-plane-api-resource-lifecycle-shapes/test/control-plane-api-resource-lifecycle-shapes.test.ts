@@ -3,18 +3,18 @@ import { readFileSync } from "node:fs";
 import { describe, it } from "vitest";
 
 import {
-  CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES,
-  REQUIRED_ACCEPTANCE_SHAPE_TERMS,
+  CONTROL_PLANE_API_RESOURCE_LIFECYCLE_CONTRACT,
+  REQUIRED_ACCEPTANCE_FIELD_TERMS,
   REQUIRED_BOUNDARY_CASES,
   REQUIRED_OPERATIONS,
   classifyControlPlaneApiScope,
-  parseControlPlaneApiResourceLifecycleShapes,
+  parseControlPlaneApiResourceLifecycleContract,
   summarizeOperationParity,
 } from "../src/control-plane-api-resource-lifecycle-shapes.ts";
 
 describe("control-plane API resource lifecycle shapes", () => {
   it("specifies every shared control-plane operation with request and response shapes", () => {
-    const contract = parseControlPlaneApiResourceLifecycleShapes(CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES);
+    const contract = parseControlPlaneApiResourceLifecycleContract(CONTROL_PLANE_API_RESOURCE_LIFECYCLE_CONTRACT);
 
     assert.equal(contract.issue, "HOBO-569");
     assert.equal(
@@ -28,29 +28,29 @@ describe("control-plane API resource lifecycle shapes", () => {
     );
 
     for (const operation of contract.operations) {
-      assert.ok(operation.requestShape.length > 0, `${operation.id} request`);
-      assert.ok(operation.responseShape.length > 0, `${operation.id} response`);
+      assert.ok(operation['requestShape'].length > 0, `${operation.id} request`);
+      assert.ok(operation['responseShape'].length > 0, `${operation.id} response`);
       assert.ok(operation.domainTerms.length > 0, `${operation.id} domain terms`);
     }
   });
 
   it("pins the named HOBO-569 API shape vocabulary", () => {
-    const contract = parseControlPlaneApiResourceLifecycleShapes(CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES);
-    const shapeTerms = new Set(
+    const contract = parseControlPlaneApiResourceLifecycleContract(CONTROL_PLANE_API_RESOURCE_LIFECYCLE_CONTRACT);
+    const fieldTerms = new Set(
       contract.operations.flatMap((operation) => [
-        ...operation.requestShape,
-        ...operation.responseShape,
+        ...operation['requestShape'],
+        ...operation['responseShape'],
         ...operation.domainTerms,
       ]),
     );
 
-    for (const term of REQUIRED_ACCEPTANCE_SHAPE_TERMS) {
-      assert.ok(shapeTerms.has(term), `missing ${term}`);
+    for (const term of REQUIRED_ACCEPTANCE_FIELD_TERMS) {
+      assert.ok(fieldTerms.has(term), `missing ${term}`);
     }
   });
 
   it("pins fail-closed refusal envelopes for every required boundary case", () => {
-    const contract = parseControlPlaneApiResourceLifecycleShapes(CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES);
+    const contract = parseControlPlaneApiResourceLifecycleContract(CONTROL_PLANE_API_RESOURCE_LIFECYCLE_CONTRACT);
     const refusalCodes = new Set(contract.refusalEnvelopes.map((envelope) => envelope.code));
 
     for (const code of REQUIRED_BOUNDARY_CASES) {
@@ -67,7 +67,7 @@ describe("control-plane API resource lifecycle shapes", () => {
 
   it("proves API and MCP callers receive equivalent typed results", () => {
     const parity = summarizeOperationParity(
-      parseControlPlaneApiResourceLifecycleShapes(CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES),
+      parseControlPlaneApiResourceLifecycleContract(CONTROL_PLANE_API_RESOURCE_LIFECYCLE_CONTRACT),
     );
 
     assert.equal(parity.length, REQUIRED_OPERATIONS.length);
@@ -77,7 +77,7 @@ describe("control-plane API resource lifecycle shapes", () => {
   });
 
   it("requires protobuf, CUE, and Pact fixture expectations for the boundary", () => {
-    const contract = parseControlPlaneApiResourceLifecycleShapes(CONTROL_PLANE_API_RESOURCE_LIFECYCLE_SHAPES);
+    const contract = parseControlPlaneApiResourceLifecycleContract(CONTROL_PLANE_API_RESOURCE_LIFECYCLE_CONTRACT);
 
     assert.equal(contract.contractFixtures.protobuf, "architecture/control_plane_api_resource_lifecycle_shapes.proto");
     assert.equal(contract.contractFixtures.cue, "architecture/control_plane_api_resource_lifecycle_shapes.cue");
@@ -88,6 +88,7 @@ describe("control-plane API resource lifecycle shapes", () => {
   });
 
   it("keeps Pact and CUE architecture artifacts aligned with the parsed contract shape", () => {
+    // SAFETY: the Pact fixture is read from the checked-in contract artifact and its response body is inspected below.
     const pact = JSON.parse(
       readFileSync(
         new URL(
@@ -101,7 +102,7 @@ describe("control-plane API resource lifecycle shapes", () => {
         readonly response: { readonly body: unknown };
       }>;
     };
-    const pactContract = parseControlPlaneApiResourceLifecycleShapes(
+    const pactContract = parseControlPlaneApiResourceLifecycleContract(
       pact.interactions[0].response.body,
     );
 

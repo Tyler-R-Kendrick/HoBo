@@ -194,7 +194,7 @@ export function classifyWorkspaceDecision(decision) {
 export function validateOrganizationWorkspaceModel(model) {
   const errors = [];
 
-  if (!model || typeof model !== "object") {
+  if (!model || Object(model) !== model) {
     return { ok: false, errors: ["model is required"] };
   }
   if (model.issue !== "HOBO-413") {

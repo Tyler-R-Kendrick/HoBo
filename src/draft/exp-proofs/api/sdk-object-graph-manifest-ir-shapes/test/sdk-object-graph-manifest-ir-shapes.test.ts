@@ -7,7 +7,7 @@ import {
   REQUIRED_DEBT_MARKERS,
   REQUIRED_DESIGN_ANCHORS,
   REQUIRED_EXAMPLE_KINDS,
-  SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES,
+  SDK_OBJECT_GRAPH_MANIFEST_IR_CONTRACT,
   SDK_TYPECHECK_CONSUMERS,
   type ExampleConsumer,
   isParsedSdkObjectGraphProof,
@@ -16,7 +16,7 @@ import {
 } from "../src/sdk-object-graph-manifest-ir-shapes.js";
 
 test("HOBO-568 proof parses and covers the accepted SDK object graph shape", () => {
-  const parsed = parseSdkObjectGraphProof(SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES);
+  const parsed = parseSdkObjectGraphProof(SDK_OBJECT_GRAPH_MANIFEST_IR_CONTRACT);
 
   assert.equal(isParsedSdkObjectGraphProof(parsed), true);
   assert.equal(parsed.issue, "HOBO-568");
@@ -38,7 +38,7 @@ test("example consumers compile against the public interface shape and generated
     fixtureInput: "fixtures/input/minimal.sdk.ts",
     fixtureOutput: "fixtures/output/minimal.manifest.json",
     sdkSnippet: "bindle('minimal', b => ({ api: b.api(() => app.run()), cache: b.cache() }))",
-    manifestIrShape: "resources[].generatedId + workload import boundary",
+    manifestIrContract: "resources[].generatedId + workload import boundary",
     expectedArtifact: "manifest-ir/minimal.resources.json",
     typeSurface: {
       importFrom: "@hobo/bindles",
@@ -67,7 +67,7 @@ test("typecheck consumers cover bindles, WIT bindings, manifest IR, resource ref
 });
 
 test("all required consumer examples have stable fixture ids and expected artifacts", () => {
-  const parsed = parseSdkObjectGraphProof(SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES);
+  const parsed = parseSdkObjectGraphProof(SDK_OBJECT_GRAPH_MANIFEST_IR_CONTRACT);
   const examplesByKind = new Map(parsed.exampleConsumers.map((example) => [example.kind, example]));
 
   for (const kind of REQUIRED_EXAMPLE_KINDS) {
@@ -81,7 +81,7 @@ test("all required consumer examples have stable fixture ids and expected artifa
 });
 
 test("raw provider and authoritative-external paths are surfaced as debt instead of hidden", () => {
-  const parsed = parseSdkObjectGraphProof(SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES);
+  const parsed = parseSdkObjectGraphProof(SDK_OBJECT_GRAPH_MANIFEST_IR_CONTRACT);
   const markers = new Map(parsed.debtMarkers.map((marker) => [marker.kind, marker]));
   const consumer = SDK_TYPECHECK_CONSUMERS.todoApi;
 
@@ -97,17 +97,17 @@ test("raw provider and authoritative-external paths are surfaced as debt instead
 });
 
 test("scope creep is rejected for live cloud, published SDK, production binding, and new semantic claims", () => {
-  const invalid = structuredClone(SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES);
+  const invalid = structuredClone(SDK_OBJECT_GRAPH_MANIFEST_IR_CONTRACT);
   invalid.scopeBoundary.in.push("Publish real @hobo/bindles with production bindings and live cloud provider execution.");
 
   assert.throws(() => parseSdkObjectGraphProof(invalid), /scope creep/i);
 });
 
 test("unsupported SDK semantics beyond WIT-first thin idiom layer are rejected", () => {
-  const invalid = structuredClone(SDK_OBJECT_GRAPH_MANIFEST_IR_SHAPES);
+  const invalid = structuredClone(SDK_OBJECT_GRAPH_MANIFEST_IR_CONTRACT);
   invalid.exampleConsumers[0] = {
     ...invalid.exampleConsumers[0],
-    manifestIrShape: "Adds new SDK semantics for runtime implementation retries",
+    manifestIrContract: "Adds new SDK semantics for runtime implementation retries",
   };
 
   assert.throws(() => parseSdkObjectGraphProof(invalid), /scope creep/i);
@@ -117,6 +117,7 @@ test("architecture artifacts reconcile protobuf, CUE, and Pact evidence for the 
   const architectureDir = join(import.meta.dirname, "..", "architecture");
   const proto = readFileSync(join(architectureDir, "sdk_object_graph_manifest_ir_shapes.proto"), "utf8");
   const cue = readFileSync(join(architectureDir, "sdk_object_graph_manifest_ir_shapes.cue"), "utf8");
+  // SAFETY: the committed Pact fixture is checked by the assertions immediately below.
   const pact = JSON.parse(
     readFileSync(join(architectureDir, "pacts", "sdk_object_graph_manifest_ir_shapes.pact.json"), "utf8"),
   ) as { consumer: { name: string }; provider: { name: string }; interactions: unknown[] };

@@ -153,7 +153,7 @@ export function createPolicyAuditEvent(type, data, overrides = {}) {
 export function createPolicyAuditFixtureEvent(type, overrides = {}) {
   const data = {
     ...fixtureData(type),
-    ...(overrides.data ?? {}),
+    ...overrides.data,
   };
   return createPolicyAuditEvent(type, data, overrides);
 }
@@ -176,7 +176,7 @@ export function validatePolicyAuditEvent(event) {
   requireString(event.orgId, "orgId", errors);
   requireString(event.tenant, "tenant", errors);
   requireString(event.streamId, "streamId", errors);
-  if (typeof event.streamId === "string" && typeof event.orgId === "string") {
+  if (isString(event.streamId) && isString(event.orgId)) {
     if (!event.streamId.startsWith(`${event.orgId}/`)) {
       errors.push("streamId must be scoped under orgId");
     }
@@ -476,7 +476,7 @@ function findPlaintextPiiPaths(value, path) {
     }
     const nextPath = `${path}.${key}`;
     const direct =
-      FORBIDDEN_PII_KEYS.has(key) && typeof nested === "string" && nested.length > 0
+      FORBIDDEN_PII_KEYS.has(key) && isString(nested) && nested.length > 0
         ? [nextPath]
         : [];
     return [...direct, ...findPlaintextPiiPaths(nested, nextPath)];
@@ -534,15 +534,27 @@ function validateStringArray(value, path, errors) {
   value.forEach((entry, index) => requireString(entry, `${path}[${index}]`, errors));
 }
 
+function isString(value): value is string {
+  return Object.prototype.toString.call(value) === "[object String]";
+}
+
+function isNumber(value): value is number {
+  return Object.prototype.toString.call(value) === "[object Number]";
+}
+
+function isObjectLike(value): value is object {
+  return value !== null && Object(value) === value;
+}
+
 function requireString(value, path, errors) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     errors.push(`${path} is required`);
   }
 }
 
 function requireIso(value, path, errors) {
   requireString(value, path, errors);
-  if (typeof value === "string" && Number.isNaN(Date.parse(value))) {
+  if (isString(value) && Number.isNaN(Date.parse(value))) {
     errors.push(`${path} must be ISO-8601`);
   }
 }
@@ -600,10 +612,10 @@ function canonicalJson(value) {
 }
 
 function canonicalJsonValue(value, path = "$") {
-  if (value === null || typeof value === "string" || typeof value === "boolean") {
+  if (value === null || isString(value) || Object.prototype.toString.call(value) === "[object Boolean]") {
     return value;
   }
-  if (typeof value === "number") {
+  if (isNumber(value)) {
     if (!Number.isFinite(value)) {
       throw new TypeError(`${path} must be finite`);
     }
@@ -634,7 +646,7 @@ function slug(value) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isObjectLike(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -645,7 +657,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isObjectLike(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

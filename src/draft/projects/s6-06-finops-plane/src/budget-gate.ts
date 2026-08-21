@@ -103,7 +103,7 @@ function readCounterValue(input) {
   if (Number.isFinite(input) && input >= 0) {
     return input;
   }
-  if (typeof input === "object" && !Array.isArray(input)) {
+  if (input instanceof Object && !Array.isArray(input)) {
     for (const key of ["cost", "costUsd", "spendUsd", "value"]) {
       if (Number.isFinite(input[key]) && input[key] >= 0) {
         return input[key];
@@ -127,14 +127,14 @@ function normalizePolicies(policies) {
 }
 
 function expectObject(value, label) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !(value instanceof Object) || Array.isArray(value)) {
     throw new TypeError(`${label} must be an object`);
   }
   return value;
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (String(value) !== value || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;

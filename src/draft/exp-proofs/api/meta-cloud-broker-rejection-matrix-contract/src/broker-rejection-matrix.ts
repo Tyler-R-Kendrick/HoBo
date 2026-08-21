@@ -85,8 +85,16 @@ export type SupportEvidence = Readonly<{
 
 type EvaluateInput = Readonly<{
   cases: readonly BrokerRejectionFixtureInput[];
-  yardFallbackResolver?: () => unknown;
+  yardFallbackResolver?: () => string;
 }>;
+
+type CanonicalJsonValue =
+  | null
+  | boolean
+  | number
+  | string
+  | readonly CanonicalJsonValue[]
+  | { readonly [key: string]: CanonicalJsonValue };
 
 type BuildFixturesOptions = Readonly<{
   unsafeDebugMaterial?: unknown;
@@ -152,13 +160,13 @@ export function evaluateBrokerRejectionMatrix({ cases }: EvaluateInput): BrokerR
   });
 }
 
-const caseOrder: Record<RejectionCaseId, number> = {
+const caseOrder = {
   "stale-catalog": 0,
   "incompatible-mapping": 1,
   "ambiguous-mapping": 2,
   "missing-mapping": 3,
   "unsupported-capability": 4,
-};
+} satisfies Record<RejectionCaseId, number>;
 
 function fixture(
   overrides: Pick<
@@ -190,7 +198,7 @@ function parseRejectionFixture(input: BrokerRejectionFixtureInput): BrokerReject
   ];
 
   for (const [field, value] of requiredStrings) {
-    if (typeof value !== "string" || value.length === 0) {
+    if (!isString(value) || value.length === 0) {
       throw new Error(`invalid broker rejection fixture: ${field}`);
     }
   }
@@ -274,19 +282,19 @@ function supportEvidenceFor(input: BrokerRejectionFixtureInput): SupportEvidence
   };
 }
 
-function stableId(prefix: string, value: unknown): string {
+function stableId(prefix: string, value: CanonicalJsonValue): string {
   return `${prefix}-${digestOf(value).slice("sha256:".length, "sha256:".length + 16)}`;
 }
 
-function digestOf(value: unknown): `sha256:${string}` {
+function digestOf(value: CanonicalJsonValue): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(canonicalJson(value)).digest("hex")}`;
 }
 
-function canonicalJson(value: unknown): string {
+function canonicalJson(value: CanonicalJsonValue): string {
   if (Array.isArray(value)) {
     return `[${value.map(canonicalJson).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (isCanonicalObject(value)) {
     return `{${Object.entries(value)
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`)
@@ -300,10 +308,23 @@ function sortedBy<T>(entries: readonly T[], selector: (entry: T) => string): T[]
 }
 
 function deepFreeze<T>(value: T): T {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+  if (!isObjectLike(value) || Object.isFrozen(value)) return value;
   Object.freeze(value);
-  for (const child of Object.values(value)) {
+  // SAFETY: isObjectLike establishes that Object.values receives an object container.
+  for (const child of Object.values(value as Record<string, T>)) {
     deepFreeze(child);
   }
   return value;
+}
+
+function isString(value: CanonicalJsonValue): value is string {
+  return Object.prototype.toString.call(value) === "[object String]";
+}
+
+function isCanonicalObject(value: CanonicalJsonValue): value is { readonly [key: string]: CanonicalJsonValue } {
+  return value !== null && !Array.isArray(value) && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isObjectLike<T>(value: T): value is T & object {
+  return value !== null && (Array.isArray(value) || Object.prototype.toString.call(value) === "[object Object]");
 }

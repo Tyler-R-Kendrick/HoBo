@@ -4,8 +4,6 @@ import { dirname, join } from "node:path";
 import { describe, it } from "vitest";
 import { fileURLToPath } from "node:url";
 
-const FIXTURE_DIR = join(dirname(fileURLToPath(import.meta.url)), "../test/fixtures");
-
 describe("FinOps plane boundary pact fixtures", () => {
   it("names the plan estimate, deploy gate, and showback reconcile interactions", () => {
     const pact = JSON.parse(

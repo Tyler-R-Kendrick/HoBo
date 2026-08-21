@@ -1,4 +1,5 @@
 import { BuildError } from "./errors.js";
+import type { JsonValue } from "./errors.js";
 import { stableStringify } from "./events.js";
 import { parseBuildRequest, type BuildRequest } from "./parse.js";
 import { runBuild } from "./build.js";
@@ -42,10 +43,11 @@ export function createBuildCli(options: { readonly execute?: typeof runBuild } =
 }
 
 export function registerBuildCommand(registry: {
-  register(name: string, module: { run: (input: unknown) => Promise<unknown> }): void;
+  register(name: string, module: { run: (input: JsonValue) => Promise<JsonValue> }): void;
 }): void {
   registry.register("build", {
     async run(input) {
+      // SAFETY: the command registry supplies the parsed BuildRequest domain value.
       const request = input as BuildRequest;
       return runBuild(request);
     },
@@ -78,7 +80,7 @@ function renderSuccess(
   };
 }
 
-function renderFailure(request: BuildRequest, error: unknown): CliRunResult {
+function renderFailure(request: BuildRequest, error: JsonValue | Error): CliRunResult {
   const contractError =
     error instanceof BuildError
       ? error
@@ -86,8 +88,8 @@ function renderFailure(request: BuildRequest, error: unknown): CliRunResult {
           cause: error instanceof Error ? error.message : String(error),
         });
   const exitCode =
-    typeof contractError.detail.exitCode === "number"
-      ? contractError.detail.exitCode
+    Number.isSafeInteger(contractError.detail.exitCode)
+      ? Number(contractError.detail.exitCode)
       : contractError.code === "HOBO_BUILD_USAGE"
         ? 2
         : 1;

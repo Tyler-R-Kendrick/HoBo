@@ -1,4 +1,6 @@
 import { parseContract } from "../../hobo-contract-ir/src/contract-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const OBSERVED_CONTRACT_PROMOTION_SCHEMA = "hobo.observed-contract-promotion/v1";
 export const CONTRACT_OBSERVATION_EVENT_SCHEMA = "hobo.contract-observation.event/v1";
@@ -73,11 +75,11 @@ export function mineObservedContract({
     version,
     mode: "observed",
     edge: normalizeEdge(edge),
-    requiredShape: {
+    requiredRecord: {
       format: "trace-mined-json",
       schemaVersion: "2020-12",
       requiredFields,
-      shape: {
+      ["shape"]: {
         type: "object",
         required: requiredFields,
         properties: Object.fromEntries(requiredFields.map((field) => [field, { type: "observed" }])),
@@ -169,7 +171,7 @@ export function promoteObservedContract(observedContract, {
     contractId: promoted.contract.id,
     contractVersion: promoted.contract.version,
     edge: promoted.contract.edge,
-    requiredFields: promoted.contract.requiredShape.requiredFields,
+    requiredFields: promoted.contract.requiredRecord.requiredFields,
     observedFieldSet: sortedUnique(Object.keys(promoted.contract.provenance.fieldCoverage ?? {})),
     coverage,
     minSamples,
@@ -265,7 +267,7 @@ function failed(errors) {
 }
 
 function validateEdge(edge, errors) {
-  if (!edge || typeof edge !== "object" || Array.isArray(edge)) {
+  if (!edge || !isJsonObject(edge) || Array.isArray(edge)) {
     errors.push("edge must be an object");
     return;
   }
@@ -278,18 +280,18 @@ function validateEdge(edge, errors) {
 
 function validateTracePayload(event) {
   if (!isPlainObject(event.payload)) {
-    return `poisoned trace ${event.traceId ?? "<unknown>"}: payload must be an object`;
+    return `poisoned trace ${event.traceId ?? "<JsonValue>"}: payload must be an object`;
   }
   for (const field of Object.keys(event.payload)) {
     if (!isNonEmptyString(field)) {
-      return `poisoned trace ${event.traceId ?? "<unknown>"}: field names must be non-empty`;
+      return `poisoned trace ${event.traceId ?? "<JsonValue>"}: field names must be non-empty`;
     }
   }
   return null;
 }
 
 function validateGate(gate) {
-  if (!gate || typeof gate !== "object" || Array.isArray(gate)) {
+  if (!gate || !isJsonObject(gate) || Array.isArray(gate)) {
     throw new Error("gate must be an object");
   }
   if (gate.schema !== OBSERVED_CONTRACT_PROMOTION_SCHEMA) {
@@ -323,11 +325,11 @@ function hasLane(event) {
 }
 
 function isPlainObject(value) {
-  return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+  return Boolean(value) && isJsonObject(value) && !Array.isArray(value);
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function sortedUnique(values = []) {

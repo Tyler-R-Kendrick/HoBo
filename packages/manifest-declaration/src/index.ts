@@ -271,24 +271,63 @@ const SELECTOR_KEYS: readonly string[] = ["key", "op", "values"];
 
 const AFFINITY_KEYS: readonly string[] = ["mode", "targetPort", "scope"];
 
-function asObject(value: unknown, path: string): Record<string, unknown> {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+type UnparsedValue =
+	| null
+	| boolean
+	| number
+	| string
+	| undefined
+	| readonly UnparsedValue[]
+	| { readonly [key: string]: UnparsedValue };
+type UnparsedRecord = { readonly [key: string]: UnparsedValue };
+type Mutable<T> = { -readonly [Key in keyof T]: T[Key] };
+type MutableParsedCriteria = Mutable<ParsedPlacementCriteria>;
+type MutableParsedIntent = Mutable<Omit<ParsedResourceIntent, typeof resourceIntentBrand>>;
+type MutableIntentRecord = Mutable<ResourceIntentRecord>;
+type MutableCriteriaRecord = Mutable<PlacementCriteriaRecord>;
+type MutableSelectorRecord = Mutable<PlacementPropertySelectorRecord>;
+type DecodedCriteria = {
+	selectors: UnparsedRecord[];
+	affinities: UnparsedRecord[];
+	spread?: UnparsedValue;
+	pickN?: UnparsedValue;
+};
+type DecodeInput = {
+	name: UnparsedValue;
+	port: UnparsedValue;
+	require: UnparsedValue;
+	prefer: UnparsedValue;
+	negotiation: UnparsedValue;
+	deps: UnparsedValue;
+	objective: UnparsedValue;
+	region?: UnparsedValue;
+	placement?: DecodedCriteria;
+};
+
+const objectTag = Object.prototype.toString;
+
+function asObject<T>(value: T, path: string): UnparsedRecord {
+	if (objectTag.call(value) !== "[object Object]") {
 		throw new ResourceIntentError(
 			path,
 			`expected an object, got ${describe(value)}`,
 		);
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: the tag check above excludes null, arrays, primitives, and exotic objects.
+	return value as UnparsedRecord;
 }
 
-function describe(value: unknown): string {
+function describe<T>(value: T): string {
 	if (value === null) return "null";
 	if (Array.isArray(value)) return "an array";
-	return typeof value;
+	const tag = objectTag.call(value);
+	return tag === "[object Undefined]"
+		? "undefined"
+		: tag.slice(8, -1).toLowerCase();
 }
 
 function rejectUnknownKeys(
-	record: Record<string, unknown>,
+	record: UnparsedRecord,
 	path: string,
 	allowed: readonly string[],
 ): void {
@@ -303,8 +342,8 @@ function rejectUnknownKeys(
 	}
 }
 
-function requireNonEmptyString(value: unknown, path: string): string {
-	if (typeof value !== "string") {
+function requireNonEmptyString(value: UnparsedValue, path: string): string {
+	if (objectTag.call(value) !== "[object String]") {
 		throw new ResourceIntentError(
 			path,
 			`expected a string, got ${describe(value)}`,
@@ -313,10 +352,11 @@ function requireNonEmptyString(value: unknown, path: string): string {
 	if (value === "") {
 		throw new ResourceIntentError(path, "must not be empty");
 	}
-	return value;
+	// SAFETY: the string tag check above establishes the runtime string representation.
+	return value as string;
 }
 
-function requireStringList(value: unknown, path: string): readonly string[] {
+function requireStringList(value: UnparsedValue, path: string): readonly string[] {
 	if (!Array.isArray(value)) {
 		throw new ResourceIntentError(
 			path,
@@ -344,27 +384,29 @@ function requireStringList(value: unknown, path: string): readonly string[] {
 }
 
 function requireMember<T extends string>(
-	value: unknown,
+	value: UnparsedValue,
 	path: string,
 	allowed: readonly T[],
 ): T {
-	if (typeof value !== "string") {
+	if (objectTag.call(value) !== "[object String]") {
 		throw new ResourceIntentError(
 			path,
 			`expected a string, got ${describe(value)}`,
 		);
 	}
-	if (!(allowed as readonly string[]).includes(value)) {
+	// SAFETY: the string tag check makes this cast a string before membership is checked.
+	if (!allowed.includes(value as T)) {
 		throw new ResourceIntentError(
 			path,
 			`${JSON.stringify(value)} is not one of ${allowed.join(" | ")}`,
 		);
 	}
+	// SAFETY: the string tag check and closed-vocabulary membership check establish T.
 	return value as T;
 }
 
 function parseSelector(
-	value: unknown,
+	value: UnparsedValue,
 	path: string,
 ): ParsedPlacementPropertySelector {
 	const record = asObject(value, path);
@@ -402,7 +444,7 @@ function parseSelector(
 }
 
 function parseAffinity(
-	value: unknown,
+	value: UnparsedValue,
 	path: string,
 ): ParsedPlacementAffinityRule {
 	const record = asObject(value, path);
@@ -414,7 +456,7 @@ function parseAffinity(
 	});
 }
 
-function parseCriteria(value: unknown, path: string): ParsedPlacementCriteria {
+function parseCriteria(value: UnparsedValue, path: string): ParsedPlacementCriteria {
 	const record = asObject(value, path);
 	rejectUnknownKeys(record, path, CRITERIA_KEYS);
 	if (!Array.isArray(record.selectors)) {
@@ -458,35 +500,35 @@ function parseCriteria(value: unknown, path: string): ParsedPlacementCriteria {
 		const nested = asObject(record.pickN, `${path}.pickN`);
 		rejectUnknownKeys(nested, `${path}.pickN`, ["count"]);
 		const count = nested.count;
-		if (typeof count !== "number" || !Number.isInteger(count)) {
+		if (objectTag.call(count) !== "[object Number]" || !Number.isInteger(count)) {
 			throw new ResourceIntentError(
 				`${path}.pickN.count`,
 				`expected an integer, got ${JSON.stringify(count)}`,
 			);
 		}
-		if (count < 1) {
+		// SAFETY: the number tag and integer checks establish the numeric count.
+		const numericCount = count as number;
+		if (numericCount < 1) {
 			// A cardinality of zero asks matching to find nothing, which is not a
 			// weaker constraint but an incoherent one.
 			throw new ResourceIntentError(
 				`${path}.pickN.count`,
-				`must be at least 1, got ${count}`,
+				`must be at least 1, got ${numericCount}`,
 			);
 		}
-		if (count > UINT32_MAX) {
+		if (numericCount > UINT32_MAX) {
 			throw new ResourceIntentError(
 				`${path}.pickN.count`,
-				`must fit in uint32, got ${count}`,
+				`must fit in uint32, got ${numericCount}`,
 			);
 		}
-		pickN = Object.freeze({ count });
+		pickN = Object.freeze({ count: numericCount });
 	}
 
-	return Object.freeze({
-		selectors,
-		affinities,
-		...(spread !== undefined ? { spread } : {}),
-		...(pickN !== undefined ? { pickN } : {}),
-	});
+	const result: MutableParsedCriteria = { selectors, affinities };
+	if (spread !== undefined) result.spread = spread;
+	if (pickN !== undefined) result.pickN = pickN;
+	return Object.freeze(result);
 }
 
 /**
@@ -497,7 +539,7 @@ function parseCriteria(value: unknown, path: string): ParsedPlacementCriteria {
  * structurally identical to the input it was given, so a value can be parsed,
  * encoded and parsed again without changing.
  */
-export function parseResourceIntent(input: unknown): ParsedResourceIntent {
+export function parseResourceIntent<T>(input: T): ParsedResourceIntent {
 	const record = asObject(input, "$");
 	rejectUnknownKeys(record, "$", RESOURCE_INTENT_KEYS);
 
@@ -543,17 +585,19 @@ export function parseResourceIntent(input: unknown): ParsedResourceIntent {
 		placement = parseCriteria(record.placement, "$.placement");
 	}
 
-	return Object.freeze({
+	const result: MutableParsedIntent = {
 		name,
 		port,
 		require,
 		prefer,
 		negotiation,
 		deps,
-		...(region !== undefined ? { region } : {}),
 		objective,
-		...(placement !== undefined ? { placement } : {}),
-	}) as ParsedResourceIntent;
+	};
+	if (region !== undefined) result.region = region;
+	if (placement !== undefined) result.placement = placement;
+	// SAFETY: every property was parsed above and the unique brand is never observable at runtime.
+	return Object.freeze(result) as ParsedResourceIntent;
 }
 
 /**
@@ -566,52 +610,44 @@ export function parseResourceIntent(input: unknown): ParsedResourceIntent {
 export function encodeResourceIntent(
 	intent: ParsedResourceIntent,
 ): ResourceIntentRecord {
-	return {
+	const record: MutableIntentRecord = {
 		name: intent.name,
 		port: intent.port,
-		...(intent.require.length > 0 ? { require: [...intent.require] } : {}),
-		...(intent.prefer.length > 0 ? { prefer: [...intent.prefer] } : {}),
 		negotiation: intent.negotiation,
-		...(intent.deps.length > 0 ? { deps: [...intent.deps] } : {}),
-		...(intent.region !== undefined ? { region: intent.region } : {}),
 		objective: intent.objective,
-		...(intent.placement !== undefined
-			? { placement: encodeCriteria(intent.placement) }
-			: {}),
 	};
+	if (intent.require.length > 0) record.require = [...intent.require];
+	if (intent.prefer.length > 0) record.prefer = [...intent.prefer];
+	if (intent.deps.length > 0) record.deps = [...intent.deps];
+	if (intent.region !== undefined) record.region = intent.region;
+	if (intent.placement !== undefined) record.placement = encodeCriteria(intent.placement);
+	return record;
 }
 
 function encodeCriteria(
 	criteria: ParsedPlacementCriteria,
 ): PlacementCriteriaRecord {
-	return {
-		...(criteria.selectors.length > 0
-			? {
-					selectors: criteria.selectors.map((selector) => ({
-						key: selector.key,
-						op: selector.op,
-						...(selector.values.length > 0
-							? { values: [...selector.values] }
-							: {}),
-					})),
-				}
-			: {}),
-		...(criteria.affinities.length > 0
-			? {
-					affinities: criteria.affinities.map((rule) => ({
-						mode: rule.mode,
-						target_port: rule.targetPort,
-						scope: rule.scope,
-					})),
-				}
-			: {}),
-		...(criteria.spread !== undefined
-			? { spread: { dimension: criteria.spread.dimension } }
-			: {}),
-		...(criteria.pickN !== undefined
-			? { pick_n: { count: criteria.pickN.count } }
-			: {}),
-	};
+	const record: MutableCriteriaRecord = {};
+	if (criteria.selectors.length > 0) {
+		record.selectors = criteria.selectors.map((selector) => {
+			const result: MutableSelectorRecord = {
+				key: selector.key,
+				op: selector.op,
+			};
+			if (selector.values.length > 0) result.values = [...selector.values];
+			return result;
+		});
+	}
+	if (criteria.affinities.length > 0) {
+		record.affinities = criteria.affinities.map((rule) => ({
+			mode: rule.mode,
+			target_port: rule.targetPort,
+			scope: rule.scope,
+		}));
+	}
+	if (criteria.spread !== undefined) record.spread = { dimension: criteria.spread.dimension };
+	if (criteria.pickN !== undefined) record.pick_n = { count: criteria.pickN.count };
+	return record;
 }
 
 /**
@@ -621,7 +657,7 @@ function encodeCriteria(
  * Runs the full parse boundary, so a hand-written record gets the same refusals
  * an authored value does.
  */
-export function decodeResourceIntent(record: unknown): ParsedResourceIntent {
+export function decodeResourceIntent<T>(record: T): ParsedResourceIntent {
 	const wire = asObject(record, "$");
 	const allowed = [
 		"name",
@@ -635,22 +671,21 @@ export function decodeResourceIntent(record: unknown): ParsedResourceIntent {
 		"placement",
 	];
 	rejectUnknownKeys(wire, "$", allowed);
-	return parseResourceIntent({
+	const input: DecodeInput = {
 		name: wire.name,
 		port: wire.port,
 		require: wire.require ?? [],
 		prefer: wire.prefer ?? [],
 		negotiation: wire.negotiation,
 		deps: wire.deps ?? [],
-		...("region" in wire ? { region: wire.region } : {}),
 		objective: wire.objective,
-		...("placement" in wire
-			? { placement: decodeCriteria(wire.placement) }
-			: {}),
-	});
+	};
+	if ("region" in wire) input.region = wire.region;
+	if ("placement" in wire) input.placement = decodeCriteria(wire.placement);
+	return parseResourceIntent(input);
 }
 
-function decodeCriteria(value: unknown): unknown {
+function decodeCriteria<T>(value: T): DecodedCriteria {
 	const wire = asObject(value, "$.placement");
 	rejectUnknownKeys(wire, "$.placement", [
 		"selectors",
@@ -659,7 +694,7 @@ function decodeCriteria(value: unknown): unknown {
 		"pick_n",
 	]);
 	const selectors = Array.isArray(wire.selectors) ? wire.selectors : [];
-	return {
+	const result: DecodedCriteria = {
 		selectors: selectors.map((entry, index) => {
 			const selector = asObject(entry, `$.placement.selectors[${index}]`);
 			rejectUnknownKeys(selector, `$.placement.selectors[${index}]`, [
@@ -688,9 +723,10 @@ function decodeCriteria(value: unknown): unknown {
 				};
 			},
 		),
-		...("spread" in wire ? { spread: wire.spread } : {}),
-		...("pick_n" in wire ? { pickN: wire.pick_n } : {}),
 	};
+	if ("spread" in wire) result.spread = wire.spread;
+	if ("pick_n" in wire) result.pickN = wire.pick_n;
+	return result;
 }
 
 /**
@@ -715,25 +751,24 @@ export function canonicalResourceIntentJson(
  * which mutates `intent.region` after construction.
  */
 export function toResourceIntent(intent: ParsedResourceIntent): ResourceIntent {
-	return {
+	const result: ResourceIntent = {
 		name: intent.name,
 		port: intent.port,
 		require: [...intent.require],
 		prefer: [...intent.prefer],
 		negotiation: intent.negotiation,
 		deps: [...intent.deps],
-		...(intent.region !== undefined ? { region: intent.region } : {}),
 		objective: intent.objective,
-		...(intent.placement !== undefined
-			? { placement: toPlacementCriteria(intent.placement) }
-			: {}),
 	};
+	if (intent.region !== undefined) result.region = intent.region;
+	if (intent.placement !== undefined) result.placement = toPlacementCriteria(intent.placement);
+	return result;
 }
 
 function toPlacementCriteria(
 	criteria: ParsedPlacementCriteria,
 ): PlacementCriteria {
-	return {
+	const result: PlacementCriteria = {
 		selectors: criteria.selectors.map((selector) => ({
 			key: selector.key,
 			op: selector.op,
@@ -744,11 +779,8 @@ function toPlacementCriteria(
 			targetPort: rule.targetPort,
 			scope: rule.scope,
 		})),
-		...(criteria.spread !== undefined
-			? { spread: { dimension: criteria.spread.dimension } }
-			: {}),
-		...(criteria.pickN !== undefined
-			? { pickN: { count: criteria.pickN.count } }
-			: {}),
 	};
+	if (criteria.spread !== undefined) result.spread = { dimension: criteria.spread.dimension };
+	if (criteria.pickN !== undefined) result.pickN = { count: criteria.pickN.count };
+	return result;
 }

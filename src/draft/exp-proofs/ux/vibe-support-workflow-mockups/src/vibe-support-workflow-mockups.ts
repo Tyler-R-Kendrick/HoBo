@@ -401,12 +401,18 @@ export function parseVibeSupportWorkflowMockups(
     throw new VibeSupportWorkflowMockupsParseError(validation.errors);
   }
 
+  // SAFETY: `return mockups as ParsedVibeSupportWorkflowMockups;` is required at this I/O or test boundary.
   return mockups as ParsedVibeSupportWorkflowMockups;
+}
+
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
 }
 
 export function validateVibeSupportWorkflowMockups(
   mockups: VibeSupportWorkflowMockups,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (mockups.issue !== "HOBO-550") {

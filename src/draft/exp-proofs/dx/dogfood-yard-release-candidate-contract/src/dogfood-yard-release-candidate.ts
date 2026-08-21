@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export type EvidenceStatus = "accepted" | "accepted-risk" | "missing";
 export type ProofMode = "design-record" | "reference-fixture" | "mocked-drill" | "manual-review" | "live-recording";
 export type LaunchRiskEffect = "unchanged" | "increased" | "reduced";
@@ -236,13 +237,14 @@ const FORBIDDEN_SCOPE_PATTERNS = [
   /claim .*ga/i,
 ];
 
-export function validateDogfoodYardReleaseCandidateEvidence(record: unknown) {
+export function validateDogfoodYardReleaseCandidateEvidence(record: JsonValue) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["dogfood release-candidate evidence record is required"] };
   }
 
+  // SAFETY: `const value = record as Partial<DogfoodYardReleaseCandidateEvidenceRecord>;` is required at this I/O or test boundary.
   const value = record as Partial<DogfoodYardReleaseCandidateEvidenceRecord>;
   const evidence = Array.isArray(value.evidence) ? value.evidence : [];
   const blockers = Array.isArray(value.blockers) ? value.blockers : [];
@@ -353,13 +355,14 @@ export function validateDogfoodYardReleaseCandidateEvidence(record: unknown) {
   return { ok: errors.length === 0, errors };
 }
 
-export function parseDogfoodYardReleaseCandidateEvidence(record: unknown): DogfoodYardReleaseCandidateEvidenceRecord {
+export function parseDogfoodYardReleaseCandidateEvidence(record: JsonValue): DogfoodYardReleaseCandidateEvidenceRecord {
   const result = validateDogfoodYardReleaseCandidateEvidence(record);
 
   if (!result.ok) {
     throw new Error(`dogfood release-candidate evidence invalid:\n${result.errors.join("\n")}`);
   }
 
+  // SAFETY: `return record as DogfoodYardReleaseCandidateEvidenceRecord;` is required at this I/O or test boundary.
   return record as DogfoodYardReleaseCandidateEvidenceRecord;
 }
 

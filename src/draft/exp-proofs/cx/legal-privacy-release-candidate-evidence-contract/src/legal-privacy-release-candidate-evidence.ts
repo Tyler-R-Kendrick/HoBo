@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export const REQUIRED_RELEASE_CANDIDATE_EVIDENCE_IDS = [
   "m0-checklist-baseline",
   "private-beta-legal-privacy-source",
@@ -304,13 +305,14 @@ export const legalPrivacyReleaseCandidateEvidence: LegalPrivacyReleaseCandidateE
   }
 };
 
-export function validateLegalPrivacyReleaseCandidateEvidence(record: unknown): ValidationResult {
+export function validateLegalPrivacyReleaseCandidateEvidence(record: JsonValue): ValidationResult {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["legal/privacy release-candidate evidence record is required"] };
   }
 
+  // SAFETY: `const candidate = record as Partial<LegalPrivacyReleaseCandidateEvidence>;` is required at this I/O or test boundary.
   const candidate = record as Partial<LegalPrivacyReleaseCandidateEvidence>;
 
   if (candidate.issue !== "HOBO-471") {
@@ -420,7 +422,7 @@ export function validateLegalPrivacyReleaseCandidateEvidence(record: unknown): V
 }
 
 export function assertLegalPrivacyReleaseCandidateEvidence(
-  record: unknown = legalPrivacyReleaseCandidateEvidence
+  record: JsonValue = legalPrivacyReleaseCandidateEvidence
 ): LegalPrivacyReleaseCandidateEvidence {
   const result = validateLegalPrivacyReleaseCandidateEvidence(record);
 
@@ -428,5 +430,6 @@ export function assertLegalPrivacyReleaseCandidateEvidence(
     throw new Error(`legal/privacy release-candidate evidence invalid:\n${result.errors.join("\n")}`);
   }
 
+  // SAFETY: `return record as LegalPrivacyReleaseCandidateEvidence;` is required at this I/O or test boundary.
   return record as LegalPrivacyReleaseCandidateEvidence;
 }

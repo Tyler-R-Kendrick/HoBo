@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export const REQUIRED_BOUNDARIES = ["service", "ux", "security", "support"] as const;
 
 const REQUIRED_DEPENDENCIES = [
@@ -342,21 +343,23 @@ export function classifyBillingCreditsDecision(text: string): BillingCreditsDeci
   return { owner: "Billing & Credits", inScope: true };
 }
 
-export function parseBillingCreditsScope(input: unknown): ParsedBillingCreditsScope {
+export function parseBillingCreditsScope(input: JsonValue): ParsedBillingCreditsScope {
   const result = validateBillingCreditsScope(input);
   if (!result.ok) {
     throw new Error(result.errors.join("; "));
   }
+  // SAFETY: `return Object.freeze({ ...(input as BillingCreditsScope), parsed: true as const ` is required at this I/O or test boundary.
   return Object.freeze({ ...(input as BillingCreditsScope), parsed: true as const });
 }
 
-export function validateBillingCreditsScope(input: unknown): ValidationResult {
+export function validateBillingCreditsScope(input: JsonValue): ValidationResult {
   const errors: string[] = [];
 
-  if (!input || typeof input !== "object") {
+  if (!input || !isJsonObject(input)) {
     return { ok: false, errors: ["billing and credits scope record is required"] };
   }
 
+  // SAFETY: `const record = input as BillingCreditsScope;` is required at this I/O or test boundary.
   const record = input as BillingCreditsScope;
   if (record.issue !== "HOBO-418") {
     errors.push("issue must be HOBO-418");

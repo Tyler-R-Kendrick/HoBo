@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export const REQUIRED_DASHBOARD_FIELDS = [
   "acceptedRisks",
   "blockers",
@@ -170,13 +171,14 @@ export const v1ReadinessDashboard: V1ReadinessDashboard = {
   }
 };
 
-export function validateV1ReadinessDashboard(record: unknown): ValidationResult {
+export function validateV1ReadinessDashboard(record: JsonValue): ValidationResult {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["v1 readiness dashboard record is required"] };
   }
 
+  // SAFETY: `const candidate = record as Partial<V1ReadinessDashboard>;` is required at this I/O or test boundary.
   const candidate = record as Partial<V1ReadinessDashboard>;
 
   if (candidate.issue !== "HOBO-482") {
@@ -227,12 +229,13 @@ export function validateV1ReadinessDashboard(record: unknown): ValidationResult 
   return { ok: errors.length === 0, errors };
 }
 
-export function assertV1ReadinessDashboard(record: unknown = v1ReadinessDashboard): V1ReadinessDashboard {
+export function assertV1ReadinessDashboard(record: JsonValue = v1ReadinessDashboard): V1ReadinessDashboard {
   const result = validateV1ReadinessDashboard(record);
 
   if (!result.ok) {
     throw new Error(`v1 readiness dashboard contract invalid:\n${result.errors.join("\n")}`);
   }
 
+  // SAFETY: `return record as V1ReadinessDashboard;` is required at this I/O or test boundary.
   return record as V1ReadinessDashboard;
 }

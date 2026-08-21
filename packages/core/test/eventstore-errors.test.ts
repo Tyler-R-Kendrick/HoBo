@@ -61,7 +61,7 @@ describe("parseEventPosition / parseFenceToken", () => {
 				// the rest of the code free to assume bigint and never risk the
 				// precision loss that a late `Number` coercion would introduce.
 				expect(parse(42)).toBe(42n);
-				expect(typeof parse(42)).toBe("bigint");
+				expect(parse(42)).toBeTypeOf("bigint");
 			});
 
 			it("parses a decimal string beyond MAX_SAFE_INTEGER", () => {
@@ -75,6 +75,7 @@ describe("parseEventPosition / parseFenceToken", () => {
 					parse(-1n);
 					expect.unreachable("a negative bigint must be refused");
 				} catch (error) {
+					// SAFETY: parse(-1n) above establishes the parser error type.
 					const parseError = error as EventStoreParseError;
 					// The bigint branch has its own message, because "non-negative
 					// bigint" tells the caller the type was fine and the value was not.
@@ -128,6 +129,7 @@ describe("parseEventPosition / parseFenceToken", () => {
 					parse(-1, "commit.after");
 					expect.unreachable("expected a refusal");
 				} catch (error) {
+					// SAFETY: parse(-1, ...) above establishes the parser error type.
 					expect((error as EventStoreParseError).path).toBe("commit.after");
 				}
 			});
@@ -150,13 +152,15 @@ describe("parseSubscriptionId / parsePartitionId", () => {
 				parseSubscriptionId(bad);
 				expect.unreachable("expected a refusal");
 			} catch (error) {
-				expect((error as EventStoreParseError).path).toBe("subscriptionId");
+					// SAFETY: parseSubscriptionId(bad) above establishes the parser error type.
+					expect((error as EventStoreParseError).path).toBe("subscriptionId");
 			}
 			try {
 				parsePartitionId(bad);
 				expect.unreachable("expected a refusal");
 			} catch (error) {
-				expect((error as EventStoreParseError).path).toBe("partitionId");
+					// SAFETY: parsePartitionId(bad) above establishes the parser error type.
+					expect((error as EventStoreParseError).path).toBe("partitionId");
 			}
 		}
 	});
@@ -385,7 +389,7 @@ describe("constants", () => {
 		// A `0` here instead of `0n` would compare false against every stored
 		// epoch and put every legacy stream into fenced mode on first read.
 		expect(FENCING_COMPAT.UNFENCED_EPOCH).toBe(0n);
-		expect(typeof FENCING_COMPAT.UNFENCED_EPOCH).toBe("bigint");
+		expect(FENCING_COMPAT.UNFENCED_EPOCH).toBeTypeOf("bigint");
 		expect(Object.isFrozen(FENCING_COMPAT)).toBe(true);
 	});
 });

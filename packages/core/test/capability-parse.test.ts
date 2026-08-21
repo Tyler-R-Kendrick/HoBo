@@ -26,13 +26,15 @@ const GRANT = {
 	operations: ["get", "set"],
 };
 
-function parseError(thunk: () => unknown): CapabilityParseError {
+function parseError(thunk: () => void): CapabilityParseError {
 	try {
 		thunk();
 	} catch (error) {
 		expect(error).toBeInstanceOf(CapabilityParseError);
-		return error as CapabilityParseError;
+			// SAFETY: toBeInstanceOf above establishes the caught error's class.
+			return error as CapabilityParseError;
 	}
+	// SAFETY: every reachable path above returns a CapabilityParseError.
 	return expect.unreachable("expected a CapabilityParseError") as never;
 }
 
@@ -94,8 +96,7 @@ describe("parseCapabilityGrant", () => {
 
 	it("refuses each missing required field by name", () => {
 		for (const key of ["componentId", "importInterface", "resource"] as const) {
-			const input: Record<string, unknown> = { ...GRANT };
-			delete input[key];
+			const input = { ...GRANT, [key]: undefined };
 			expect(parseError(() => parseCapabilityGrant(input)).path).toBe(key);
 		}
 	});
@@ -129,8 +130,7 @@ describe("parseCapabilityGrant", () => {
 			parseError(() => parseCapabilityGrant({ ...GRANT, operations: "get" }))
 				.expected,
 		).toBe("non-empty array");
-		const input: Record<string, unknown> = { ...GRANT };
-		delete input.operations;
+		const input = { ...GRANT, operations: undefined };
 		expect(parseError(() => parseCapabilityGrant(input)).expected).toBe(
 			"non-empty array",
 		);

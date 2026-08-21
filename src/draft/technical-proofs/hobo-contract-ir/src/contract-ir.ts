@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
 export const CONTRACT_SCHEMA = "contract.ir/v1";
 
 export const CONTRACT_MODES = Object.freeze([
@@ -30,7 +31,7 @@ const CONTRACT_KEYS = new Set([
   "version",
   "mode",
   "edge",
-  "requiredShape",
+  "requiredRecord",
   "provenance",
   "consumerRequirements",
   "interop"
@@ -54,11 +55,11 @@ export function createContractFixture({
       consumer: "worker@1.4.2",
       operation: edgeKind === "http" ? "GET /orders/{id}" : "order.created"
     },
-    requiredShape: {
+    requiredRecord: {
       format: "json-schema",
       schemaVersion: "2020-12",
       requiredFields: ["id", "tenantId"],
-      shape: {
+      schema: {
         type: "object",
         required: ["id", "tenantId"],
         properties: {
@@ -86,7 +87,7 @@ export function createContractFixture({
 export function parseContract(candidate) {
   const errors = [];
 
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate)) {
     return { ok: false, errors: ["contract must be an object"], contract: null };
   }
 
@@ -105,7 +106,7 @@ export function parseContract(candidate) {
   }
 
   validateEdge(candidate.edge, errors);
-  validateRequiredShape(candidate.requiredShape, errors);
+  validateRequiredRecord(candidate.requiredRecord, errors);
   validateProvenance(candidate.mode, candidate.provenance, errors);
   validateConsumerRequirements(candidate.consumerRequirements, errors);
 
@@ -151,11 +152,11 @@ export function importOpenApiContract(openApi, {
   contract.edge.operation = firstOperation
     ? `${firstOperation.method.toUpperCase()} ${firstOperation.path}`
     : "OPENAPI unknown";
-  contract.requiredShape = {
+  contract.requiredRecord = {
     format: "openapi",
     schemaVersion: openApi?.openapi ?? "unknown",
     requiredFields,
-    shape: sortKeys(responseSchema)
+    schema: sortKeys(responseSchema)
   };
   contract.consumerRequirements = [
     {
@@ -176,7 +177,7 @@ export function importPactContract(pact, {
   const interaction = pact?.interactions?.[0] ?? {};
   const responseBody = interaction?.response?.body;
   const requiredFields =
-    responseBody && typeof responseBody === "object" && !Array.isArray(responseBody)
+    responseBody && isJsonObject(responseBody) && !Array.isArray(responseBody)
       ? normalizeStringArray(Object.keys(responseBody))
       : [];
   const contract = createContractFixture({ edgeKind: eventType ? "event" : "http", mode: "declared" });
@@ -185,11 +186,11 @@ export function importPactContract(pact, {
   contract.edge.producer = pact?.provider?.name ?? "pact-provider";
   contract.edge.consumer = pact?.consumer?.name ?? "pact-consumer";
   contract.edge.operation = eventType ?? interaction.description ?? interaction?.request?.path ?? "PACT interaction";
-  contract.requiredShape = {
+  contract.requiredRecord = {
     format: "pact",
     schemaVersion: "pact-v3-compatible",
     requiredFields,
-    shape: {
+    schema: {
       body: sortKeys(responseBody ?? {}),
       matchingRules: sortKeys(interaction?.response?.matchingRules ?? {})
     }
@@ -216,7 +217,7 @@ export function exportOpenApiContract(contract) {
     edgeKind: parsed.contract.edge.kind,
     producer: parsed.contract.edge.producer,
     consumer: parsed.contract.edge.consumer,
-    requiredFields: parsed.contract.requiredShape.requiredFields
+    requiredFields: parsed.contract.requiredRecord.requiredFields
   };
 }
 
@@ -231,7 +232,7 @@ export function exportPactContract(contract) {
     id: parsed.contract.id,
     consumer: parsed.contract.edge.consumer,
     provider: parsed.contract.edge.producer,
-    requiredFields: parsed.contract.requiredShape.requiredFields
+    requiredFields: parsed.contract.requiredRecord.requiredFields
   };
 }
 
@@ -250,11 +251,11 @@ export function importAsyncApiContract(asyncApi, {
   contract.edge.producer = asyncApi?.info?.title ?? "asyncapi-producer";
   contract.edge.consumer = "asyncapi-consumer";
   contract.edge.operation = eventType ?? firstMessage?.channel ?? "ASYNCAPI unknown";
-  contract.requiredShape = {
+  contract.requiredRecord = {
     format: "asyncapi",
     schemaVersion: asyncApi?.asyncapi ?? "unknown",
     requiredFields,
-    shape: sortKeys(payloadSchema)
+    schema: sortKeys(payloadSchema)
   };
   contract.consumerRequirements = [
     {
@@ -277,7 +278,7 @@ export function exportAsyncApiContract(contract) {
     id: parsed.contract.id,
     channel: parsed.contract.edge.operation,
     producer: parsed.contract.edge.producer,
-    requiredFields: parsed.contract.requiredShape.requiredFields
+    requiredFields: parsed.contract.requiredRecord.requiredFields
   };
 }
 
@@ -302,11 +303,11 @@ export function importProtobufContract(proto, {
   contract.edge.producer = producer ?? proto?.package ?? "protobuf-producer";
   contract.edge.consumer = consumer ?? "protobuf-consumer";
   contract.edge.operation = message?.name ?? "PROTOBUF message";
-  contract.requiredShape = {
+  contract.requiredRecord = {
     format: "protobuf",
     schemaVersion: proto?.syntax ?? "proto3",
     requiredFields,
-    shape: sortKeys(message ?? {})
+    schema: sortKeys(message ?? {})
   };
   contract.consumerRequirements = [
     {
@@ -330,7 +331,7 @@ export function exportProtobufContract(contract) {
     message: parsed.contract.edge.operation,
     producer: parsed.contract.edge.producer,
     consumer: parsed.contract.edge.consumer,
-    requiredFields: parsed.contract.requiredShape.requiredFields
+    requiredFields: parsed.contract.requiredRecord.requiredFields
   };
 }
 
@@ -385,7 +386,7 @@ function createProvenance(mode) {
 }
 
 function validateEdge(edge, errors) {
-  if (!edge || typeof edge !== "object" || Array.isArray(edge)) {
+  if (!edge || !isJsonObject(edge)) {
     errors.push("edge must be an object");
     return;
   }
@@ -403,27 +404,27 @@ function validateEdge(edge, errors) {
   }
 }
 
-function validateRequiredShape(requiredShape, errors) {
-  if (!requiredShape || typeof requiredShape !== "object" || Array.isArray(requiredShape)) {
-    errors.push("requiredShape must be an object");
+function validateRequiredRecord(requiredRecord, errors) {
+  if (!requiredRecord || !isJsonObject(requiredRecord)) {
+    errors.push("requiredRecord must be an object");
     return;
   }
-  if (!isNonEmptyString(requiredShape.format)) {
-    errors.push("requiredShape.format must be a non-empty string");
+  if (!isNonEmptyString(requiredRecord.format)) {
+    errors.push("requiredRecord.format must be a non-empty string");
   }
-  if (!Array.isArray(requiredShape.requiredFields)) {
-    errors.push("requiredShape.requiredFields must be an array");
+  if (!Array.isArray(requiredRecord.requiredFields)) {
+    errors.push("requiredRecord.requiredFields must be an array");
   } else {
-    requiredShape.requiredFields.forEach((field, index) => {
+    requiredRecord.requiredFields.forEach((field, index) => {
       if (!isNonEmptyString(field)) {
-        errors.push(`requiredShape.requiredFields.${index} must be a non-empty string`);
+        errors.push(`requiredRecord.requiredFields.${index} must be a non-empty string`);
       }
     });
   }
 }
 
 function validateProvenance(mode, provenance, errors) {
-  if (!provenance || typeof provenance !== "object" || Array.isArray(provenance)) {
+  if (!provenance || !isJsonObject(provenance)) {
     errors.push("provenance must be an object");
     return;
   }
@@ -449,7 +450,7 @@ function validateProvenance(mode, provenance, errors) {
   }
 
   if (mode === "promoted") {
-    if (!provenance.migrationWindow || typeof provenance.migrationWindow !== "object") {
+    if (!provenance.migrationWindow || !isJsonObject(provenance.migrationWindow)) {
       errors.push("promoted contracts must carry migrationWindow");
     } else if (!Number.isInteger(provenance.migrationWindow.days) || provenance.migrationWindow.days <= 0) {
       errors.push("migrationWindow.days must be a positive integer");
@@ -458,7 +459,7 @@ function validateProvenance(mode, provenance, errors) {
 }
 
 function validateSampleCoverage(sampleCoverage, mode, errors) {
-  if (!sampleCoverage || typeof sampleCoverage !== "object" || Array.isArray(sampleCoverage)) {
+  if (!sampleCoverage || !isJsonObject(sampleCoverage)) {
     errors.push(`${mode} contracts must carry sampleCoverage`);
     return;
   }
@@ -466,7 +467,7 @@ function validateSampleCoverage(sampleCoverage, mode, errors) {
     errors.push("sampleCoverage.samples must be > 0");
   }
   if (
-    typeof sampleCoverage.coveragePct !== "number" ||
+    !isJsonNumber(sampleCoverage.coveragePct) ||
     sampleCoverage.coveragePct < 0 ||
     sampleCoverage.coveragePct > 100
   ) {
@@ -481,7 +482,7 @@ function validateConsumerRequirements(requirements, errors) {
   }
 
   requirements.forEach((requirement, index) => {
-    if (!requirement || typeof requirement !== "object" || Array.isArray(requirement)) {
+    if (!requirement || !isJsonObject(requirement)) {
       errors.push(`consumerRequirements.${index} must be an object`);
       return;
     }
@@ -505,7 +506,7 @@ function validateAllowedKeys(candidate, allowedKeys, prefix, errors) {
 function assertExternalAdapterIsNotSourceOfTruth(document) {
   if (
     document &&
-    typeof document === "object" &&
+    isJsonObject(document) &&
     ("x-hobo-mode" in document || "x-hobo-provenance" in document || "x-hobo-contract" in document)
   ) {
     throw new Error("external adapters cannot set Contract IR mode or provenance");
@@ -514,7 +515,7 @@ function assertExternalAdapterIsNotSourceOfTruth(document) {
 
 function findFirstOpenApiOperation(openApi) {
   const paths = openApi?.paths;
-  if (!paths || typeof paths !== "object") {
+  if (!paths || !isJsonObject(paths)) {
     return null;
   }
 
@@ -532,7 +533,7 @@ function findFirstOpenApiOperation(openApi) {
 
 function findFirstAsyncApiMessage(asyncApi) {
   const channels = asyncApi?.channels;
-  if (!channels || typeof channels !== "object") {
+  if (!channels || !isJsonObject(channels)) {
     return null;
   }
 
@@ -561,9 +562,9 @@ function findFirstProtobufMessage(proto) {
 function normalizeContract(contract) {
   return sortKeys({
     ...contract,
-    requiredShape: {
-      ...contract.requiredShape,
-      requiredFields: normalizeStringArray(contract.requiredShape.requiredFields)
+    requiredRecord: {
+      ...contract.requiredRecord,
+      requiredFields: normalizeStringArray(contract.requiredRecord.requiredFields)
     },
     consumerRequirements: normalizeConsumerRequirements(contract.consumerRequirements)
   });
@@ -583,18 +584,18 @@ function normalizeStringArray(values) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function isSemver(value) {
-  return typeof value === "string" && SEMVER_RE.test(value);
+  return isJsonString(value) && SEMVER_RE.test(value);
 }
 
 function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

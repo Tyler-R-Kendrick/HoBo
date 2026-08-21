@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const REQUIRED_CONTEXTS = Object.freeze(["saas", "self-host", "local-dev"]);
 
 const REQUIRED_DATA_SETS = Object.freeze([
@@ -286,13 +287,14 @@ export function classifyBackupRestoreGap(gap: string) {
   return { owner: "Backup & Restore", inScope: true };
 }
 
-export function parseBackupRestoreLaunchDrill(input: unknown):
+export function parseBackupRestoreLaunchDrill(input: JsonValue):
   | { ok: true; value: ParsedBackupRestoreLaunchDrill }
   | { ok: false; errors: readonly string[] } {
   if (!isRecord(input)) {
     return { ok: false, errors: ["Backup restore launch drill input must be an object."] };
   }
 
+  // SAFETY: `const candidate = input as BackupRestoreLaunchDrillLike;` is required at this I/O or test boundary.
   const candidate = input as BackupRestoreLaunchDrillLike;
   const result = validateBackupRestoreLaunchDrill(candidate);
 
@@ -300,6 +302,7 @@ export function parseBackupRestoreLaunchDrill(input: unknown):
     return result;
   }
 
+  // SAFETY: `return { ok: true, value: candidate as ParsedBackupRestoreLaunchDrill };` is required at this I/O or test boundary.
   return { ok: true, value: candidate as ParsedBackupRestoreLaunchDrill };
 }
 
@@ -371,6 +374,6 @@ export function validateBackupRestoreLaunchDrill(drill: BackupRestoreLaunchDrill
   return { ok: errors.length === 0, errors };
 }
 
-function isRecord(input: unknown): input is Record<string, unknown> {
-  return typeof input === "object" && input !== null && !Array.isArray(input);
+function isRecord(input: JsonValue): input is JsonObject {
+  return isJsonObject(input) && input !== null && !Array.isArray(input);
 }

@@ -324,7 +324,12 @@ function collectHostedBrokerGaHandoffEvidenceErrors(record: HostedBrokerGaHandof
   return errors;
 }
 
-export function classifyHostedBrokerGaHandoffDecision(text: string): { owner: string; inScope: boolean } {
+export interface HostedBrokerGaHandoffDecision {
+  owner: string;
+  inScope: boolean;
+}
+
+export function classifyHostedBrokerGaHandoffDecision(text: string): HostedBrokerGaHandoffDecision {
   if (/\b(release notes|upgrade guide|known limitation)\b/i.test(text)) {
     return { owner: "V1 Release Notes & Upgrade Guide", inScope: true };
   }

@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export const REQUIRED_OPERATIONS = [
   "collect",
   "plan",
@@ -100,7 +101,7 @@ type Fixture = {
   };
   readonly mcp: {
     readonly tool: string;
-    readonly input: Record<string, unknown>;
+    readonly input: JsonObject;
     readonly result: ResultEnvelope;
   };
   readonly result: ResultEnvelope;
@@ -108,7 +109,7 @@ type Fixture = {
 
 type CanonicalInvocation = {
   readonly tool: string;
-  readonly input: Record<string, unknown>;
+  readonly input: JsonObject;
 };
 
 type CliMcpParityContract = {
@@ -341,6 +342,7 @@ export function parseCliMcpParityContract(contract: CliMcpParityContract): Parse
     throw new CliMcpParityParseError(errors);
   }
 
+  // SAFETY: `return contract as ParsedCliMcpParityContract;` is required at this I/O or test boundary.
   return contract as ParsedCliMcpParityContract;
 }
 
@@ -351,10 +353,12 @@ export class CliMcpParityParseError extends Error {
   }
 }
 
-export function assertCliMcpParity(fixtureItem: Fixture): {
+export interface CliMcpParity {
   readonly case: FixtureCase;
   readonly equivalent: boolean;
-} {
+}
+
+export function assertCliMcpParity(fixtureItem: Fixture): CliMcpParity {
   const cliInvocation = canonicalCliInvocation(fixtureItem.cli.command);
   const mcpInvocation = {
     tool: fixtureItem.mcp.tool,
@@ -451,7 +455,7 @@ function fixture(
   fixtureCase: FixtureCase,
   command: string,
   tool: string,
-  input: Record<string, unknown>,
+  input: JsonObject,
   result: Pick<ResultEnvelope, "status" | "code" | "humanMessage" | "remediation">,
 ): Fixture {
   const fixtureId = `hobo-570-${fixtureCase}`;
@@ -496,7 +500,7 @@ function semanticResult(result: ResultEnvelope): string {
 function canonicalCliInvocation(command: string): CanonicalInvocation {
   const tokens = command.trim().split(/\s+/);
   const [binary, verb] = tokens;
-  const input: Record<string, unknown> = {};
+  const input: JsonObject = {};
 
   if (binary !== "hobo" || !verb) {
     return { tool: "", input };

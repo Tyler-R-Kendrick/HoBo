@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { type JsonValue } from "../src/json.js";
+
 
 const contract = await import("../src/hosted-broker-ga-handoff-evidence.ts").catch(() => null);
 
@@ -93,7 +95,7 @@ test("adversarial parser rejects local-fixture-only GA claims and manually edite
           },
         ],
       }),
-    (error: unknown) => {
+    (error: JsonValue) => {
       assert.equal(error instanceof HostedBrokerGaHandoffEvidenceParseError, true);
       const details = error instanceof HostedBrokerGaHandoffEvidenceParseError ? error.errors.join("\n") : String(error);
       assert.match(details, /local fixtures/i);

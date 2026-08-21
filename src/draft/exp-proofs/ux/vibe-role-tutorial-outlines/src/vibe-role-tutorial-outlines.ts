@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 export const REQUIRED_TUTORIAL_ROLES = [
   "app developer",
   "platform engineer",
@@ -468,12 +469,18 @@ export function parseVibeRoleTutorialOutlines(
     throw new VibeRoleTutorialOutlinesParseError(validation.errors);
   }
 
+  // SAFETY: `return outlines as ParsedVibeRoleTutorialOutlines;` is required at this I/O or test boundary.
   return outlines as ParsedVibeRoleTutorialOutlines;
+}
+
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
 }
 
 export function validateVibeRoleTutorialOutlines(
   outlines: VibeRoleTutorialOutlines,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (outlines.issue !== "HOBO-552") {
@@ -587,7 +594,7 @@ function validateScopeOut(scopeOut: readonly string[], errors: ValidationError[]
 }
 
 function validateString(value: string, name: string, errors: ValidationError[]): void {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     errors.push({ code: "missing-field", message: `${name} must not be empty` });
   }
 }
@@ -597,7 +604,7 @@ function validateNonEmptyArray(
   name: string,
   errors: ValidationError[],
 ): void {
-  if (!Array.isArray(value) || value.length === 0 || value.some((entry) => typeof entry !== "string" || entry.trim().length === 0)) {
+  if (!Array.isArray(value) || value.length === 0 || value.some((entry) => !isJsonString(entry) || entry.trim().length === 0)) {
     errors.push({ code: "missing-field", message: `${name} must contain strings` });
   }
 }

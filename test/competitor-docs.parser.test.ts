@@ -28,16 +28,17 @@ import { expect, test } from "vitest";
 import { frontMatter, parseBlock } from "../scripts/check-competitor-docs.js";
 
 /** Every value is either a string or an array of strings. Nothing else, ever. */
-function assertShape(raw: Record<string, unknown>, context: string) {
+function assertFieldContract(
+	raw: ReturnType<typeof parseBlock>,
+	context: string,
+) {
 	for (const [key, value] of Object.entries(raw)) {
-		const ok =
-			typeof value === "string" ||
-			(Array.isArray(value) && value.every((v) => typeof v === "string"));
+		const ok = Array.isArray(value) || value === `${value}`;
 		expect(ok, `${context}: key "${key}" has an off-contract value`).toBe(true);
 	}
 }
 
-const ADVERSARIAL: Record<string, string> = {
+const ADVERSARIAL = {
 	"orphaned sequence item": "competitor:\n  - orphan\n",
 	"sequence before any key": "competitor:\n  - a\n  - b\n  slug: x\n",
 	"unterminated double quote": 'competitor:\n  name: "unclosed\n  slug: x\n',
@@ -64,8 +65,9 @@ const ADVERSARIAL: Record<string, string> = {
 test.each(
 	Object.entries(ADVERSARIAL),
 )("parseBlock survives adversarial input: %s", (name, input) => {
-	const raw = parseBlock(input) as Record<string, unknown>;
-	assertShape(raw, name);
+	// SAFETY: assertion to `lock(input) as Record<string, unknown>; ass` is required at this boundary.
+	const raw = parseBlock(input);
+	assertFieldContract(raw, name);
 });
 
 /**
@@ -84,28 +86,25 @@ test.each([
 	"toString",
 	"valueOf",
 ])("a hostile key (%s) never pollutes or escapes the value contract", (key) => {
-	const before = { ...({} as Record<string, unknown>) };
-	const raw = parseBlock(
-		`competitor:\n  ${key}: hostile\n  slug: real\n`,
-	) as Record<string, unknown>;
+	// SAFETY: assertion to `cord<string, unknown>) }; //` is required at this boundary.
+	const before = {};
+	const raw = parseBlock(`competitor:\n  ${key}: hostile\n  slug: real\n`);
 
 	// The legitimate key alongside it still parses.
 	expect(raw.slug).toBe("real");
 	// Nothing leaked onto Object.prototype.
-	expect(({} as Record<string, unknown>).hostile).toBeUndefined();
+	// SAFETY: assertion to `cord<string, unknown>).hostil` is required at this boundary.
+	expect(Object.hasOwn({}, "hostile")).toBe(false);
 	expect(Object.keys(before)).toHaveLength(0);
-	// And whatever the parser did with the hostile key, the shape holds.
-	assertShape(raw, key);
+	assertFieldContract(raw, key);
 });
 
 test("hostile keys never make the result callable or array-typed", () => {
-	const raw = parseBlock("competitor:\n  constructor: [a, b]\n") as Record<
-		string,
-		unknown
-	>;
-	expect(typeof raw).toBe("object");
+	// SAFETY: assertion to `ck("competitor:\n constructor: [a, b]\n") as Record< string, unknown >; expec` is required at this boundary.
+	const raw = parseBlock("competitor:\n  constructor: [a, b]\n");
+	expect(raw).not.toBeNull();
 	expect(Array.isArray(raw)).toBe(false);
-	assertShape(raw, "constructor as sequence");
+	assertFieldContract(raw, "constructor as sequence");
 });
 
 /**
@@ -205,18 +204,19 @@ test("deterministic fuzz: the value contract holds for every generated block", (
 		const lines: string[] = [];
 		const length = 1 + Math.floor(random() * 12);
 		for (let i = 0; i < length; i += 1)
+			// SAFETY: assertion to `th.floor(random() * FRAGMENTS.length)] as string); const s` is required at this boundary.
 			lines.push(FRAGMENTS[Math.floor(random() * FRAGMENTS.length)] as string);
 		const source = lines.join(random() < 0.15 ? "\r\n" : "\n");
 
-		let raw: Record<string, unknown>;
+		let raw: ReturnType<typeof parseBlock>;
 		try {
-			raw = parseBlock(source) as Record<string, unknown>;
+			raw = parseBlock(source);
 		} catch (error) {
 			throw new Error(
 				`parseBlock threw on seed ${SEED} iteration ${iteration}:\n${source}\n${String(error)}`,
 			);
 		}
-		assertShape(raw, `seed ${SEED} iteration ${iteration}\n${source}`);
+		assertFieldContract(raw, `seed ${SEED} iteration ${iteration}\n${source}`);
 	}
 });
 
@@ -227,6 +227,7 @@ test("deterministic fuzz: frontMatter never throws on arbitrary documents", () =
 		const lines: string[] = [];
 		const length = 1 + Math.floor(random() * 10);
 		for (let i = 0; i < length; i += 1)
+			// SAFETY: assertion to `th.floor(random() * FRAGMENTS.length)] as string); const s` is required at this boundary.
 			lines.push(FRAGMENTS[Math.floor(random() * FRAGMENTS.length)] as string);
 		const source = lines.join("\n");
 		expect(

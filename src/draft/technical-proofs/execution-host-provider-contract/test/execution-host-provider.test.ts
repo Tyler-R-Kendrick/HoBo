@@ -34,7 +34,7 @@ function ledgerView(overrides = {}) {
         "runner.minutes": { freeHeadroom: 0, marginalUnitCost: 0.03 },
         "build.minutes": { freeHeadroom: 100, marginalUnitCost: 0.04 },
       },
-      ...(overrides.balances ?? {}),
+      ...overrides.balances,
     },
   };
 }

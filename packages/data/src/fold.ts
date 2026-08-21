@@ -59,8 +59,17 @@ export function foldEvents<S>(
 		seq = Math.max(seq, event.seq);
 		if (isQuarantineFact(event) || quarantinedSeqs.has(event.seq)) continue;
 
-		const upcast = spec.upcasters ? spec.upcasters.upcast(event) : event;
 		try {
+			// The upcast belongs inside the guard, not before it. The contract
+			// above says "an evolve/upcast that throws in THIS pass is recorded as
+			// a fresh quarantine record ... so one bad body never wedges the
+			// stream" — but with the upcast outside, a migration that threw on one
+			// stored body propagated straight out of foldEvents and made the whole
+			// aggregate unloadable. Permanently, because the upcaster runs again on
+			// every replay: the quarantine fact that would have neutralised the
+			// event could never be produced, since producing it required the fold
+			// to finish.
+			const upcast = spec.upcasters ? spec.upcasters.upcast(event) : event;
 			state = clone(spec.evolve(clone(state), Object.freeze(clone(upcast))));
 		} catch (cause) {
 			quarantinedSeqs.add(event.seq);

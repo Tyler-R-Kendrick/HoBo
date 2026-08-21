@@ -62,9 +62,12 @@ function fillPayload(bytes: number): string {
 	return "x".repeat(bytes);
 }
 
-export function resolveFillSizes(maxValueBytes: number | undefined): FillSizes {
+export function resolveFillSizes(maxValueBytes: number | undefined) {
 	if (maxValueBytes === undefined) {
-		return { "max-value-bytes": undefined, "over-max-value-bytes": undefined };
+		return {
+			"max-value-bytes": undefined,
+			"over-max-value-bytes": undefined,
+		} satisfies FillSizes;
 	}
 	if (!Number.isInteger(maxValueBytes) || maxValueBytes <= 0) {
 		throw new KvRedisCompatibleError(
@@ -75,13 +78,14 @@ export function resolveFillSizes(maxValueBytes: number | undefined): FillSizes {
 	return {
 		"max-value-bytes": maxValueBytes,
 		"over-max-value-bytes": maxValueBytes + 1,
-	};
+	} satisfies FillSizes;
 }
 
 /** Fill kinds a template needs. Used to decide whether a case can run at all. */
 export function requiredFills(template: CommandTemplate): readonly FillKind[] {
 	const kinds = new Set<FillKind>();
 	for (const arg of template.slice(1)) {
+		// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: CommandTemplate is the parsed command domain; this selects its string or fill variant.
 		if (typeof arg !== "string") kinds.add(arg.fill);
 	}
 	return [...kinds].sort((a, b) => a.localeCompare(b));
@@ -94,6 +98,7 @@ export function resolveCommand(
 	const [verb, ...args] = template;
 	const resolved: string[] = [];
 	for (const arg of args) {
+		// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: CommandTemplate is the parsed command domain; this selects its string or fill variant.
 		if (typeof arg !== "string") {
 			const bytes = options.fills[arg.fill];
 			if (bytes === undefined) {
@@ -125,7 +130,9 @@ export function describeCommand(command: RedisCommand): string {
 
 function sameValue(actual: RedisValue, expected: RedisValue): boolean {
 	if (Array.isArray(actual) && Array.isArray(expected)) {
+		// SAFETY: Array.isArray narrowed both recursive RedisValue arms to arrays.
 		const a = actual as readonly RedisValue[];
+		// SAFETY: Array.isArray narrowed both recursive RedisValue arms to arrays.
 		const b = expected as readonly RedisValue[];
 		return (
 			a.length === b.length &&
@@ -137,6 +144,7 @@ function sameValue(actual: RedisValue, expected: RedisValue): boolean {
 	// `TTL` is an integer over RESP and can arrive as a JSON number or a
 	// numeric string over REST. Comparing the canonical text of both is the
 	// honest reading of "the same reply".
+	// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: RedisReply is already the parsed domain value at this comparison boundary.
 	if (typeof actual === "number" || typeof expected === "number") {
 		if (actual === null || expected === null) return actual === expected;
 		return String(actual) === String(expected);
@@ -153,7 +161,9 @@ export type ExpectationOutcome = {
 function summarize(value: RedisValue): string {
 	if (value === null) return "nil";
 	if (Array.isArray(value))
+		// SAFETY: Array.isArray narrowed the recursive RedisValue arm to an array.
 		return `array(${(value as readonly RedisValue[]).length})`;
+	// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: RedisValue is the parsed reply domain at this formatting boundary.
 	if (typeof value === "number") return `integer(${value})`;
 	return value.length > 24
 		? `string(${value.length}B)`
@@ -196,9 +206,11 @@ export function evaluateExpectation(
 					};
 		case "integer-between": {
 			const numeric =
+				// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: RedisReply.value is the parsed RedisValue domain.
 				typeof reply.value === "number"
 					? reply.value
-					: typeof reply.value === "string" && /^-?\d+$/u.test(reply.value)
+					: // oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: RedisReply.value is the parsed RedisValue domain.
+						typeof reply.value === "string" && /^-?\d+$/u.test(reply.value)
 						? Number(reply.value)
 						: undefined;
 			if (numeric === undefined) {
@@ -219,6 +231,7 @@ export function evaluateExpectation(
 			if (bytes === undefined) {
 				return { ok: false, detail: `no declared size for ${expectation.of}` };
 			}
+			// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: RedisReply.value is the parsed RedisValue domain.
 			if (typeof reply.value !== "string") {
 				return {
 					ok: false,

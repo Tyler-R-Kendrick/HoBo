@@ -30,6 +30,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Readable } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -685,6 +686,19 @@ describe("every verb, run bare", () => {
 			env: isolatedEnv(),
 			hoboHome: temp("hobo-code-verb-home-"),
 			cwd: temp("hobo-code-verb-cwd-"),
+			// An stdin that is already at EOF.
+			//
+			// `vshell` owns stdin for the life of its pane and returns when stdin
+			// closes — right for a terminal, but under vitest `process.stdin`
+			// never ends, so the verb ran until the timeout and the sweep failed
+			// on it. Handing it a stream that is immediately done makes the pane
+			// open and close, which is exactly the bounded run this contract
+			// check wants.
+			//
+			// Supplied to every verb rather than just this one: a verb that grows
+			// a stdin read later should get the same bounded treatment without
+			// anyone having to remember to come back here.
+			input: Readable.from([]),
 		});
 	}
 

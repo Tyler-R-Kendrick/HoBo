@@ -386,6 +386,16 @@ export interface HoboCodeCliDeps {
 	readonly startDevSession?: typeof startDevBrowserSession;
 	readonly onDevSession?: (session: DevBrowserSession) => void;
 	readonly fetch?: typeof globalThis.fetch;
+	/**
+	 * Standard input for verbs that read it. Defaults to `process.stdin`.
+	 *
+	 * `vshell` owns stdin for the life of its pane and returns when stdin
+	 * closes, which is correct for a terminal but leaves it running forever
+	 * under a harness whose stdin never ends — so a caller that wants a bounded
+	 * run supplies one that does. `runVirtualPane` already documents this seam;
+	 * this threads it through the CLI so the verb is reachable the same way.
+	 */
+	readonly input?: NodeJS.ReadableStream;
 }
 
 export type FormatHoboCodeOptions = {
@@ -2516,6 +2526,7 @@ export async function runHoboCodeCli(
 				workspace,
 				...(typeof flags.tier === "string" ? { tier: flags.tier } : {}),
 				...(typeof flags.source === "string" ? { source: flags.source } : {}),
+				...(deps.input !== undefined ? { input: deps.input } : {}),
 			});
 		} catch (error) {
 			return fail(

@@ -7,6 +7,8 @@ import {
   createPolicyDecidedEvent,
   POLICY_IR_SCHEMA_VERSION,
 } from "../../hobo-policy-ir-contract/src/policy-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const BUILT_IN_POLICY_ENGINE_ID = "hobo.policy-engine/built-in-typescript@0.1.0";
 export const POLICY_RULESET_SCHEMA_VERSION = "hobo.policy-ruleset/v1";
@@ -85,14 +87,14 @@ export function createBuiltInPolicyEngine({ engineId = BUILT_IN_POLICY_ENGINE_ID
 }
 
 export function evaluatePolicy(engine, request, ruleset) {
-  if (!engine || typeof engine.evaluate !== "function") {
+  if (!engine || !(engine.evaluate instanceof Function)) {
     throw new TypeError("engine must implement evaluate(request, ruleset)");
   }
   return engine.evaluate(request, ruleset);
 }
 
 export async function evaluateAndRecordPolicyDecision({ engine, request, ruleset, auditSink }) {
-  if (typeof auditSink !== "function") {
+  if (!(auditSink instanceof Function)) {
     throw new TypeError("auditSink must be a function");
   }
 
@@ -170,7 +172,7 @@ function evaluateBuiltInPolicy(engineId, requestInput, rulesetInput) {
         continue;
       }
       const partial = rule.decide({ request });
-      if (!partial || typeof partial !== "object" || Array.isArray(partial)) {
+      if (!partial || !isJsonObject(partial) || Array.isArray(partial)) {
         return ruleFailureDecision(engineId, request, rule, "decision must be an object");
       }
       if (!EFFECT_RANK.has(partial.effect)) {
@@ -218,7 +220,7 @@ function evaluateBuiltInPolicy(engineId, requestInput, rulesetInput) {
 
 function compileRuleset(ruleset) {
   const errors = [];
-  if (!ruleset || typeof ruleset !== "object" || Array.isArray(ruleset)) {
+  if (!ruleset || !isJsonObject(ruleset) || Array.isArray(ruleset)) {
     return { ok: false, errors: ["ruleset must be an object"], rules: [], policyPacks: [] };
   }
   if (ruleset.schemaVersion !== POLICY_RULESET_SCHEMA_VERSION) {
@@ -254,7 +256,7 @@ function compileRuleset(ruleset) {
 }
 
 function validateRule(rule, ruleIds, errors) {
-  if (!rule || typeof rule !== "object" || Array.isArray(rule)) {
+  if (!rule || !isJsonObject(rule) || Array.isArray(rule)) {
     errors.push("rule must be an object");
     return;
   }
@@ -265,10 +267,10 @@ function validateRule(rule, ruleIds, errors) {
   } else {
     ruleIds.add(rule.id);
   }
-  if (typeof rule.when !== "function") {
+  if (!(rule.when instanceof Function)) {
     errors.push(`${rule.id ?? "rule"}: when must be a function`);
   }
-  if (typeof rule.decide !== "function") {
+  if (!(rule.decide instanceof Function)) {
     errors.push(`${rule.id ?? "rule"}: decide must be a function`);
   }
 }
@@ -374,14 +376,14 @@ function safeJson(value) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function deepMerge(base, overrides) {
   if (Array.isArray(base) || Array.isArray(overrides)) {
     return overrides === undefined ? structuredClone(base) : structuredClone(overrides);
   }
-  if (!base || typeof base !== "object") {
+  if (!base || !isJsonObject(base)) {
     return overrides === undefined ? base : overrides;
   }
 

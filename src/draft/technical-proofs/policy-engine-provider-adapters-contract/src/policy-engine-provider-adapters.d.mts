@@ -8,6 +8,8 @@ import type {
   PolicyRuleset as BuiltInPolicyRuleset,
   TypescriptRule,
 } from "../../built-in-policy-engine-contract/src/built-in-policy-engine.d.mts";
+import { type JsonValue, type JsonObject } from "./json.js";
+
 
 export const OPA_REGO_POLICY_ENGINE_ID: "hobo.policy-engine/provider-opa-rego@0.1.0";
 export const CEDAR_POLICY_ENGINE_ID: "hobo.policy-engine/provider-cedar@0.1.0";
@@ -21,7 +23,7 @@ export interface OpaInput {
   action: string;
   resource: DecisionRequest["resource"];
   phase: DecisionRequest["phase"];
-  context: Record<string, unknown>;
+  context: JsonObject;
 }
 
 export interface CedarAuthorizationRequest {
@@ -39,7 +41,7 @@ export interface CedarAuthorizationRequest {
     type: string;
     id: string;
   };
-  context: Record<string, unknown> & {
+  context: JsonObject & {
     phase: DecisionRequest["phase"];
     tuple: string;
   };
@@ -48,10 +50,10 @@ export interface CedarAuthorizationRequest {
 export interface AdapterPolicyDecision {
   effect: Effect;
   reason: string;
-  violations?: unknown[];
-  mutations?: unknown[];
-  approvals?: unknown[];
-  obligations?: Array<{ kind: string; [key: string]: unknown }>;
+  violations?: JsonValue[];
+  mutations?: JsonValue[];
+  approvals?: JsonValue[];
+  obligations?: Array<{ kind: string; [key: string]: JsonValue }>;
 }
 
 export interface OpaRegoPolicy {
@@ -71,7 +73,7 @@ export interface CedarPolicy {
 export interface PolicyEngineProviderAdapter {
   engineId: string;
   executionMode: typeof OPA_REGO_EXECUTION_MODE | typeof CEDAR_EXECUTION_MODE;
-  evaluate(request: unknown, ruleset: unknown): Decision;
+  evaluate(request: JsonValue, ruleset: JsonValue): Decision;
 }
 
 export interface PolicyEngineAdapterRuleset extends Omit<BuiltInPolicyRuleset, "rules"> {
@@ -82,8 +84,8 @@ export interface PolicyEngineAdapterRuleset extends Omit<BuiltInPolicyRuleset, "
 
 export interface ConformanceVector {
   name: string;
-  request: unknown;
-  ruleset: unknown;
+  request: JsonValue;
+  ruleset: JsonValue;
   expectedEffect: Effect;
   expectedReason?: RegExp;
 }
@@ -100,8 +102,8 @@ export interface ConformanceReport {
   }>;
 }
 
-export function mapDecisionRequestToOpaInput(request: unknown): OpaInput;
-export function mapDecisionRequestToCedarRequest(request: unknown): CedarAuthorizationRequest;
+export function mapDecisionRequestToOpaInput(request: JsonValue): OpaInput;
+export function mapDecisionRequestToCedarRequest(request: JsonValue): CedarAuthorizationRequest;
 export function defineOpaRegoPolicy(policy: {
   id: string;
   match(context: { input: OpaInput; request: DecisionRequest }): boolean;
@@ -115,7 +117,7 @@ export function defineCedarPolicy(policy: {
 export function createPolicyEngineAdapterRuleset(input?: {
   id?: string;
   version?: string;
-  policyPacks?: unknown[];
+  policyPacks?: JsonValue[];
   rules?: TypescriptRule[];
   opaPolicies?: OpaRegoPolicy[];
   cedarPolicies?: CedarPolicy[];
@@ -127,7 +129,7 @@ export function createAdapterConformanceFixture(): {
   vectors: ConformanceVector[];
 };
 export function runPolicyEngineAdapterConformance(input?: {
-  engines?: Array<BuiltInPolicyEngine | PolicyEngineProviderAdapter | { engineId: string; evaluate(request: unknown, ruleset: unknown): Decision }>;
+  engines?: Array<BuiltInPolicyEngine | PolicyEngineProviderAdapter | { engineId: string; evaluate(request: JsonValue, ruleset: JsonValue): Decision }>;
   vectors?: ConformanceVector[];
 }): ConformanceReport;
 export function assertPolicyEngineAdapterConformance(report: ConformanceReport): ConformanceReport;

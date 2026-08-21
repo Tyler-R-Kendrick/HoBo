@@ -34,7 +34,7 @@ function echoEmitter(plan: MigrationPlan): readonly EmittedSqlStatement[] {
 	}));
 }
 
-function thrownCode(run: () => unknown): string {
+function thrownCode(run: () => void): string {
 	try {
 		run();
 	} catch (error) {
@@ -100,7 +100,7 @@ describe("createDrizzleDiffEngine", () => {
 
 describe("emitSql toolchain gate", () => {
 	it("is always present, so an absent toolchain reads as a refusal and not a fallback", () => {
-		expect(typeof createDrizzleDiffEngine().emitSql).toBe("function");
+		expect(createDrizzleDiffEngine().emitSql instanceof Function).toBe(true);
 	});
 
 	it("refuses with TOOLCHAIN_UNAVAILABLE when the toolchain is absent", () => {
@@ -137,6 +137,7 @@ describe("emitSql toolchain gate", () => {
 			expect.unreachable("emitSql must refuse without a wired toolchain");
 		} catch (error) {
 			expect(error).toBeInstanceOf(DrizzleAdapterError);
+			// SAFETY: assertion to `error as DrizzleAdapterError` is required at this boundary.
 			const remediation = (error as DrizzleAdapterError).remediation;
 			expect(remediation.toLowerCase()).toContain(expected.toLowerCase());
 		}

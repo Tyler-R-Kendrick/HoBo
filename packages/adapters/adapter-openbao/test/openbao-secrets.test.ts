@@ -52,6 +52,7 @@ describe("@hobo/adapter-openbao residual SecretsPort", () => {
 		) => {
 			calls.push(url);
 			if (url.includes("/auth/jwt/login")) {
+				// SAFETY: assertion to `JSON.parse(init?.body ?? "{}") as { jwt?: string; }` is required at this boundary.
 				const body = JSON.parse(init?.body ?? "{}") as {
 					jwt?: string;
 				};

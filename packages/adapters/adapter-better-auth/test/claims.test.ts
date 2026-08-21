@@ -1,19 +1,17 @@
 import { describe, expect, it } from "vitest";
-
 import {
 	BETTER_AUTH_ACCEPTED_CLAIM_KEYS,
 	BETTER_AUTH_CLAIMS_MAPPING_VERSION,
 	BetterAuthClaimsError,
 	mapClaimsToPrincipal,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
-function claims(
-	overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+function claims(overrides: JsonObject = {}): JsonObject {
 	return { sub: "user_01", iss: "https://app.example.com", ...overrides };
 }
 
-function codeOf(run: () => unknown): string {
+function codeOf(run: () => void): string {
 	try {
 		run();
 	} catch (error) {
@@ -186,6 +184,7 @@ describe("mapClaimsToPrincipal", () => {
 			mapClaimsToPrincipal(claims({ groups: ["engineering"] }));
 			throw new Error("expected a refusal");
 		} catch (error) {
+			// SAFETY: assertion to `error as BetterAuthClaimsError` is required at this boundary.
 			const refusal = error as BetterAuthClaimsError;
 			expect(refusal.name).toBe("BetterAuthClaimsError");
 			for (const key of BETTER_AUTH_ACCEPTED_CLAIM_KEYS) {

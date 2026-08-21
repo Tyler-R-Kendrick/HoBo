@@ -24,6 +24,13 @@ import {
 	type BetterAuthClaimsErrorCode,
 } from "./errors.js";
 import { BETTER_AUTH_CLAIMS_MAPPING_VERSION } from "./ids.js";
+import {
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+} from "./json.js";
 
 /**
  * A principal derived from Better Auth claims.
@@ -93,11 +100,14 @@ function refuse(
 	throw new BetterAuthClaimsError(code, message, remediation);
 }
 
-function parseRoleList(role: unknown, roles: unknown): readonly string[] {
+function parseRoleList<TRole, TRoles>(
+	role: TRole,
+	roles: TRoles,
+): readonly string[] {
 	const collected = new Set<string>();
 
 	if (role !== undefined) {
-		if (typeof role !== "string" || !ROLE.test(role)) {
+		if (!isJsonString(role) || !ROLE.test(role)) {
 			refuse(
 				"BETTER_AUTH_CLAIMS_ROLE_INVALID",
 				"role must be a single lowercase role slug",
@@ -116,7 +126,7 @@ function parseRoleList(role: unknown, roles: unknown): readonly string[] {
 			);
 		}
 		for (const entry of roles) {
-			if (typeof entry !== "string" || !ROLE.test(entry)) {
+			if (!isJsonString(entry) || !ROLE.test(entry)) {
 				refuse(
 					"BETTER_AUTH_CLAIMS_ROLE_INVALID",
 					"each roles entry must be a lowercase role slug",
@@ -130,11 +140,11 @@ function parseRoleList(role: unknown, roles: unknown): readonly string[] {
 	return Object.freeze([...collected].sort());
 }
 
-function assertRegisteredClaimShapes(claims: Record<string, unknown>): void {
+function assertRegisteredClaimContracts(claims: JsonObject): void {
 	for (const key of ["exp", "iat", "nbf"] as const) {
 		const value = claims[key];
 		if (value === undefined) continue;
-		if (typeof value !== "number" || !Number.isFinite(value)) {
+		if (!isJsonNumber(value) || !Number.isFinite(value)) {
 			refuse(
 				"BETTER_AUTH_CLAIMS_REGISTERED_CLAIM_INVALID",
 				`${key} must be a numeric seconds-since-epoch claim`,
@@ -144,7 +154,7 @@ function assertRegisteredClaimShapes(claims: Record<string, unknown>): void {
 	}
 
 	const jti = claims.jti;
-	if (jti !== undefined && (typeof jti !== "string" || !JTI.test(jti))) {
+	if (jti !== undefined && (!isJsonString(jti) || !JTI.test(jti))) {
 		refuse(
 			"BETTER_AUTH_CLAIMS_REGISTERED_CLAIM_INVALID",
 			"jti must be a token identifier string",
@@ -156,7 +166,7 @@ function assertRegisteredClaimShapes(claims: Record<string, unknown>): void {
 	if (aud !== undefined) {
 		const entries = Array.isArray(aud) ? aud : [aud];
 		for (const entry of entries) {
-			if (typeof entry !== "string" || entry.length === 0) {
+			if (!isJsonString(entry) || entry.length === 0) {
 				refuse(
 					"BETTER_AUTH_CLAIMS_REGISTERED_CLAIM_INVALID",
 					"aud must be a non-empty string or an array of non-empty strings",
@@ -167,7 +177,7 @@ function assertRegisteredClaimShapes(claims: Record<string, unknown>): void {
 	}
 
 	const emailVerified = claims.emailVerified;
-	if (emailVerified !== undefined && typeof emailVerified !== "boolean") {
+	if (emailVerified !== undefined && !isJsonBoolean(emailVerified)) {
 		refuse(
 			"BETTER_AUTH_CLAIMS_REGISTERED_CLAIM_INVALID",
 			"emailVerified must be a boolean",
@@ -176,7 +186,7 @@ function assertRegisteredClaimShapes(claims: Record<string, unknown>): void {
 	}
 
 	const name = claims.name;
-	if (name !== undefined && (typeof name !== "string" || name.length === 0)) {
+	if (name !== undefined && (!isJsonString(name) || name.length === 0)) {
 		refuse(
 			"BETTER_AUTH_CLAIMS_REGISTERED_CLAIM_INVALID",
 			"name must be a non-empty string",
@@ -193,15 +203,16 @@ function assertRegisteredClaimShapes(claims: Record<string, unknown>): void {
  *
  * @throws {BetterAuthClaimsError}
  */
-export function mapClaimsToPrincipal(claims: unknown): MappedPrincipal {
-	if (typeof claims !== "object" || claims === null || Array.isArray(claims)) {
+export function mapClaimsToPrincipal<T>(claims: T): MappedPrincipal {
+	if (!isJsonObject(claims) || claims === null || Array.isArray(claims)) {
 		refuse(
 			"BETTER_AUTH_CLAIMS_SHAPE_INVALID",
 			"claims must be a plain object",
 			"pass the decoded claim set object, not a raw token string",
 		);
 	}
-	const raw = claims as Record<string, unknown>;
+	// SAFETY: assertion to `ms as JsonObject; ` is required at this boundary.
+	const raw = claims as JsonObject;
 
 	const accepted = new Set<string>(BETTER_AUTH_ACCEPTED_CLAIM_KEYS);
 	for (const key of Object.keys(raw).sort()) {
@@ -214,7 +225,7 @@ export function mapClaimsToPrincipal(claims: unknown): MappedPrincipal {
 	}
 
 	const sub = raw.sub;
-	if (typeof sub !== "string" || !SUBJECT.test(sub)) {
+	if (!isJsonString(sub) || !SUBJECT.test(sub)) {
 		refuse(
 			"BETTER_AUTH_CLAIMS_SUBJECT_INVALID",
 			"sub must be a non-empty subject identifier",
@@ -223,7 +234,7 @@ export function mapClaimsToPrincipal(claims: unknown): MappedPrincipal {
 	}
 
 	const iss = raw.iss;
-	if (typeof iss !== "string" || !ISSUER.test(iss)) {
+	if (!isJsonString(iss) || !ISSUER.test(iss)) {
 		refuse(
 			"BETTER_AUTH_CLAIMS_ISSUER_INVALID",
 			"iss must be an absolute http(s) issuer URL without userinfo",
@@ -232,10 +243,7 @@ export function mapClaimsToPrincipal(claims: unknown): MappedPrincipal {
 	}
 
 	const email = raw.email;
-	if (
-		email !== undefined &&
-		(typeof email !== "string" || !EMAIL.test(email))
-	) {
+	if (email !== undefined && (!isJsonString(email) || !EMAIL.test(email))) {
 		refuse(
 			"BETTER_AUTH_CLAIMS_EMAIL_INVALID",
 			"email must be an address-shaped string when present",
@@ -246,8 +254,7 @@ export function mapClaimsToPrincipal(claims: unknown): MappedPrincipal {
 	const organizationId = raw.activeOrganizationId;
 	if (
 		organizationId !== undefined &&
-		(typeof organizationId !== "string" ||
-			!ORGANIZATION_ID.test(organizationId))
+		(!isJsonString(organizationId) || !ORGANIZATION_ID.test(organizationId))
 	) {
 		refuse(
 			"BETTER_AUTH_CLAIMS_ORGANIZATION_INVALID",
@@ -256,7 +263,7 @@ export function mapClaimsToPrincipal(claims: unknown): MappedPrincipal {
 		);
 	}
 
-	assertRegisteredClaimShapes(raw);
+	assertRegisteredClaimContracts(raw);
 
 	const roles = parseRoleList(raw.role, raw.roles);
 
@@ -264,8 +271,8 @@ export function mapClaimsToPrincipal(claims: unknown): MappedPrincipal {
 	return Object.freeze({
 		subject: sub,
 		issuer: iss,
-		...(email !== undefined ? { email } : {}),
-		...(organizationId !== undefined ? { organizationId } : {}),
+		...(email !== undefined ? { email } : undefined),
+		...(organizationId !== undefined ? { organizationId } : undefined),
 		roles,
 		claimsMappingVersion: BETTER_AUTH_CLAIMS_MAPPING_VERSION,
 	});

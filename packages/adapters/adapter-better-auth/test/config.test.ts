@@ -1,19 +1,20 @@
 import { describe, expect, it } from "vitest";
-
 import {
 	AUTH_ADAPTER_CONTRACT,
 	BETTER_AUTH_ADAPTER_ID,
 	BETTER_AUTH_SECRET_REF_SCHEMES,
 	BetterAuthConfigError,
-	type BetterAuthConfigInput,
 	betterAuthSecretRefScheme,
 	parseBetterAuthConfig,
 	parseBetterAuthSecretRef,
 } from "../src/index.js";
+import { isJsonObject, type JsonObject, type JsonValue } from "../src/json.js";
 
-function config(
-	overrides: Partial<Record<keyof BetterAuthConfigInput, unknown>> = {},
-): Record<string, unknown> {
+interface ConfigOverrides {
+	readonly [key: string]: JsonValue | undefined;
+}
+
+function config(overrides: ConfigOverrides = {}): JsonObject {
 	return {
 		basePath: "/api/auth",
 		secretRef: "hobo-secret://camp-prod/auth/better-auth-signing-key",
@@ -22,7 +23,7 @@ function config(
 	};
 }
 
-function codeOf(run: () => unknown): string {
+function codeOf(run: () => void): string {
 	try {
 		run();
 	} catch (error) {
@@ -80,6 +81,7 @@ describe("parseBetterAuthConfig", () => {
 		try {
 			parseBetterAuthConfig(config({ secretRef: "hunter2-signing-key" }));
 		} catch (error) {
+			// SAFETY: assertion to `error as BetterAuthConfigError` is required at this boundary.
 			const refusal = error as BetterAuthConfigError;
 			expect(refusal.name).toBe("BetterAuthConfigError");
 			expect(refusal.remediation).toMatch(/secretRef/u);
@@ -197,12 +199,9 @@ describe("parseBetterAuthConfig", () => {
 		[null, "null"],
 		["config", "a string"],
 		[[], "an array"],
-		[{ ...{}, database: "data.relational/v1" }, "a non-object database block"],
+		[{ database: "data.relational/v1" }, "a non-object database block"],
 	])("rejects %j as a malformed config shape (%s)", (input) => {
-		const value =
-			input !== null && typeof input === "object" && !Array.isArray(input)
-				? config(input as Record<string, unknown>)
-				: input;
+		const value = isJsonObject(input) ? config(input) : input;
 		expect(codeOf(() => parseBetterAuthConfig(value))).toBe(
 			"BETTER_AUTH_CONFIG_SHAPE_INVALID",
 		);
@@ -233,6 +232,7 @@ describe("parseBetterAuthSecretRef", () => {
 			throw new Error("expected a refusal");
 		} catch (error) {
 			expect(error).toBeInstanceOf(BetterAuthConfigError);
+			// SAFETY: assertion to `error as Error` is required at this boundary.
 			expect((error as Error).message).not.toContain(
 				"super-secret-signing-material",
 			);

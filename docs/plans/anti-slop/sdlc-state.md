@@ -52,7 +52,8 @@ main
                                          └── sdlc/anti-slop-41-runtimes-dapr-rivet  #1266 dapr+rivet
                                           └── sdlc/anti-slop-42-runtimes-local  #1274 runtime-local
                                            └── sdlc/anti-slop-43-runtime-conformance  #1276 runtime+conformance
-                                            └── sdlc/anti-slop-44-identity  identity
+                                            └── sdlc/anti-slop-44-identity  #1278 identity
+                                             └── sdlc/anti-slop-45-adapters  adapters
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and

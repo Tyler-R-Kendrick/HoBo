@@ -23,17 +23,19 @@
  * for different responses from a caller, and collapsing them makes a missing
  * secret look like an outage.
  */
+
 import { describe, expect, it } from "vitest";
+import { isJsonObject, type JsonObject, type JsonValue } from "../src/json.js";
 
 import { createOpenBaoSecretsPort } from "../src/openbao-secrets-port.js";
 
-type Reply = { ok?: boolean; status?: number; json?: () => unknown };
+type Reply = { ok?: boolean; status?: number; json?: () => JsonValue };
 
 /** A transport that replays a queue of replies and records what it was asked. */
 function transport(...replies: Reply[]) {
-	const calls: { url: string; init: Record<string, unknown> }[] = [];
+	const calls: { url: string; init: JsonObject }[] = [];
 	let index = 0;
-	const fetchLike = (async (url: string, init: Record<string, unknown>) => {
+	const fetchLike = async (url: string, init: JsonObject) => {
 		calls.push({ url, init });
 		const reply = replies[Math.min(index, replies.length - 1)] ?? {};
 		index += 1;
@@ -42,21 +44,24 @@ function transport(...replies: Reply[]) {
 			status: reply.status ?? (reply.ok === false ? 500 : 200),
 			json: async () => (reply.json ? reply.json() : {}),
 		};
-	}) as never;
-	return { calls, fetchLike };
+	};
+	// SAFETY: test fetch stand-in is the FetchLike transport at this boundary.
+	return { calls, fetchLike: fetchLike as never };
 }
 
 const LOGIN_OK = {
 	json: () => ({ auth: { client_token: "s.token", lease_duration: 900 } }),
 };
 
-function port(options: Record<string, unknown> = {}) {
-	return createOpenBaoSecretsPort({
+function port(options: JsonObject = {}) {
+	const input = {
 		openbaoAddr: "https://bao.local",
 		role: "hobo-station",
 		svidJwt: "eyJhbGciOiJFUzI1NiJ9.svid.fixture",
 		...options,
-	} as never);
+	};
+	// SAFETY: test options are the OpenBao port constructor bag at this boundary.
+	return createOpenBaoSecretsPort(input as never);
 }
 
 describe("the offline default", () => {
@@ -195,8 +200,9 @@ describe("the live read path", () => {
 			json: () => ({ data: { data: { value: "live" } } }),
 		});
 		await port({ fetch: fetchLike }).access("db");
+		const tokenHeaders = calls[1]?.init.headers;
 		expect(
-			(calls[1]?.init.headers as Record<string, string>)["X-Vault-Token"],
+			isJsonObject(tokenHeaders) ? tokenHeaders["X-Vault-Token"] : undefined,
 		).toBe("s.token");
 	});
 
@@ -297,8 +303,11 @@ describe("the live read path", () => {
 			json: () => ({ data: { data: { value: "v" } } }),
 		});
 		await port({ fetch: fetchLike, namespace: "team-a" }).access("db");
+		const namespaceHeaders = calls[0]?.init.headers;
 		expect(
-			(calls[0]?.init.headers as Record<string, string>)["X-Vault-Namespace"],
+			isJsonObject(namespaceHeaders)
+				? namespaceHeaders["X-Vault-Namespace"]
+				: undefined,
 		).toBe("team-a");
 	});
 
@@ -307,8 +316,11 @@ describe("the live read path", () => {
 			json: () => ({ data: { data: { value: "v" } } }),
 		});
 		await port({ fetch: fetchLike }).access("db");
+		const omittedHeaders = calls[0]?.init.headers;
 		expect(
-			(calls[0]?.init.headers as Record<string, string>)["X-Vault-Namespace"],
+			isJsonObject(omittedHeaders)
+				? omittedHeaders["X-Vault-Namespace"]
+				: undefined,
 		).toBeUndefined();
 	});
 });

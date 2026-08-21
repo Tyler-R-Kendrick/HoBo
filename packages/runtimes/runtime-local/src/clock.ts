@@ -62,7 +62,7 @@ export function createLocalClock(store: QueueClockStore): VirtualClock {
 				fireAtMs: store.nowMs + delay,
 				firedAtMs: null,
 				firedOrder: null,
-				...(options.label !== undefined ? { label: options.label } : {}),
+				...(options.label !== undefined ? { label: options.label } : undefined),
 			};
 			store.timers.push(timer);
 			appendTrace(store, {
@@ -73,7 +73,7 @@ export function createLocalClock(store: QueueClockStore): VirtualClock {
 				delayMs: delay,
 				scheduledAtMs: timer.scheduledAtMs,
 				fireAtMs: timer.fireAtMs,
-				...(timer.label !== undefined ? { label: timer.label } : {}),
+				...(timer.label !== undefined ? { label: timer.label } : undefined),
 			});
 
 			return publicSleepTimer(timer, false);
@@ -192,7 +192,9 @@ function fireDue(store: QueueClockStore, due: DueFire): FiredTimer {
 			runId: parseRunId(due.timer.runId),
 			at: parseIsoInstant(formatInstant(due.fireAtMs)),
 			order,
-			...(due.timer.label !== undefined ? { label: due.timer.label } : {}),
+			...(due.timer.label !== undefined
+				? { label: due.timer.label }
+				: undefined),
 		});
 		appendTrace(store, {
 			type: "timer.fired",

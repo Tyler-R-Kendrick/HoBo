@@ -14,6 +14,12 @@ import {
 	type TokenBroker,
 } from "./ctx.js";
 import { WorkflowFailure } from "./errors.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	type JsonBag,
+	type JsonValue,
+} from "./json.js";
 import type { ActorHost, RuntimeClock } from "./ports.js";
 import { createDeterministicContext } from "./replay/context.js";
 import { nextEnvelope, recordEffect } from "./replay/recorder.js";
@@ -41,7 +47,7 @@ export interface WorkflowDefinition<A, R> {
 	readonly name: string;
 	readonly capabilities: ReadonlySet<Capability>;
 	readonly tools: Readonly<
-		Record<string, (input: unknown) => Promise<unknown> | unknown>
+		Record<string, (input: JsonValue) => Promise<JsonValue> | JsonValue>
 	>;
 	run(ctx: WorkflowContext, args: A): Promise<R> | R;
 }
@@ -49,7 +55,7 @@ export interface WorkflowDefinition<A, R> {
 export interface DefineWorkflowInput<A, R> {
 	name: string;
 	capabilities?: Iterable<Capability>;
-	tools?: Record<string, (input: unknown) => Promise<unknown> | unknown>;
+	tools?: Record<string, (input: JsonValue) => Promise<JsonValue> | JsonValue>;
 	run(ctx: WorkflowContext, args: A): Promise<R> | R;
 }
 
@@ -62,11 +68,12 @@ export function defineWorkflow<A, R>(
 	}
 	return Object.freeze({
 		name: input.name,
+		// SAFETY: assertion to ` Set([ ...DURABILITY_CAPABILITIES, ...(input.capabilities ?? []), ]) as ReadonlySet<Capability>, ` is required at this boundary.
 		capabilities: new Set([
 			...DURABILITY_CAPABILITIES,
 			...(input.capabilities ?? []),
 		]) as ReadonlySet<Capability>,
-		tools: Object.freeze({ ...(input.tools ?? {}) }),
+		tools: Object.freeze({ ...input.tools }),
 		run: input.run,
 	});
 }
@@ -111,7 +118,7 @@ export interface WorkflowEngine {
 		args: A,
 	): Promise<WorkflowRunHandle<R>>;
 	/** Read the journaled `run.*` events for a run. */
-	journal(runId: string): Promise<{ type: string; data: unknown }[]>;
+	journal(runId: string): Promise<{ type: string; data: JsonValue }[]>;
 	/** Adapt to the existing replay engine (`replayRun`) for replay verification. */
 	toReplayDefinition<A, R>(
 		def: WorkflowDefinition<A, R>,
@@ -142,9 +149,10 @@ export function createWorkflowEngine(
 		const journal = await store.readStream(streamId);
 		let seq = journal.at(-1)?.seq ?? 0;
 
-		async function appendEvent(type: string, data: unknown): Promise<number> {
+		async function appendEvent<T>(type: string, data: T): Promise<number> {
+			const payload = cloneAsJson(data);
 			seq += 1;
-			const envelope = nextEnvelope(streamId, seq, type, data, {
+			const envelope = nextEnvelope(streamId, seq, type, payload, {
 				meta: { idempotencyKey: `${runId}:${type}:${seq}` },
 			});
 			await recordEffect(store, envelope, seq - 1);
@@ -184,6 +192,7 @@ export function createWorkflowEngine(
 				const completed = findCompletedStep(name, index);
 				if (completed && isRecord(completed.data)) {
 					// Journaled on a prior attempt — short-circuit, do NOT re-run.
+					// SAFETY: assertion to `ed.data.result as T; }` is required at this boundary.
 					return completed.data.result as T;
 				}
 				await appendEvent("run.StepScheduled", { name, index });
@@ -219,14 +228,14 @@ export function createWorkflowEngine(
 					}
 					return;
 				}
-				const data: Record<string, unknown> = { delayMs: durationMs, index };
+				const data: JsonBag = { delayMs: durationMs, index };
 				if (sleepOptions?.label !== undefined) {
 					data.label = sleepOptions.label;
 				}
 				await appendEvent("run.SleepScheduled", data);
 			},
 			async emit(type, data) {
-				return appendEvent(type, data ?? {});
+				return appendEvent(type, data ?? null);
 			},
 			now: () => deterministic.now(),
 			random: (label) => deterministic.random(label),
@@ -240,7 +249,7 @@ export function createWorkflowEngine(
 								key: ref.key,
 								async signal(message: {
 									type: string;
-									[key: string]: unknown;
+									[key: string]: JsonValue;
 								}) {
 									const lease = host.acquire(actorKey, {
 										holderId: `${runId}:signal`,
@@ -253,9 +262,10 @@ export function createWorkflowEngine(
 									lease.release();
 									return appended.seq;
 								},
-								async state<S = unknown>() {
+								async state<S = JsonValue>() {
 									return host
 										.state<S>(actorKey, {
+											// SAFETY: assertion to `, ` is required at this boundary.
 											initialState: {} as S,
 											fold: (current) => current,
 										})
@@ -264,7 +274,7 @@ export function createWorkflowEngine(
 							};
 						},
 					}
-				: {}),
+				: undefined),
 			async tool(name, input) {
 				return effects.step(`tool:${name}`, () => {
 					const impl = def.tools[name];
@@ -273,7 +283,7 @@ export function createWorkflowEngine(
 							step: `tool:${name}`,
 						});
 					}
-					return impl(input);
+					return impl(cloneAsJson(input));
 				});
 			},
 		};
@@ -298,7 +308,7 @@ export function createWorkflowEngine(
 					error: {
 						code: error.code,
 						message: error.message,
-						...(error.step !== undefined ? { step: error.step } : {}),
+						...(error.step !== undefined ? { step: error.step } : undefined),
 					},
 				};
 			}
@@ -320,7 +330,10 @@ export function createWorkflowEngine(
 		},
 		async journal(runId) {
 			const events = await store.readStream(`run/${runId}`);
-			return events.map((event) => ({ type: event.type, data: event.data }));
+			return events.map((event) => ({
+				type: event.type,
+				data: cloneAsJson(event.data),
+			}));
 		},
 		toReplayDefinition(def) {
 			return {
@@ -345,7 +358,7 @@ export function createWorkflowEngine(
 									if (!impl) {
 										throw new Error(`tool ${name} is not registered`);
 									}
-									return impl(input);
+									return impl(cloneAsJson(input));
 								});
 							},
 						},
@@ -362,6 +375,6 @@ export function createWorkflowEngine(
 	};
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null;
+function isRecord<T>(value: T): value is T & JsonBag {
+	return isJsonObject(value);
 }

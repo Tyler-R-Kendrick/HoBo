@@ -6,6 +6,7 @@
 // refused with a typed `CapabilityDeniedError`.
 
 import { type Capability, tokenCapability, toolCapability } from "./ctx.js";
+import type { JsonValue } from "./json.js";
 import {
 	defineWorkflow,
 	type WorkflowContext,
@@ -13,7 +14,7 @@ import {
 } from "./workflow.js";
 
 /** A tool the agent may invoke (deny-by-default: must be declared to be reachable). */
-export interface AgentTool<I = unknown, O = unknown> {
+export interface AgentTool<I = JsonValue, O = JsonValue> {
 	name: string;
 	run(input: I): Promise<O> | O;
 }
@@ -40,14 +41,16 @@ export function agent<A, R>(
 		throw new TypeError("agent name must be a non-empty string");
 	}
 	const tools = input.tools ?? [];
-	const toolRegistry: Record<
-		string,
-		(value: unknown) => Promise<unknown> | unknown
-	> = {};
+	const toolRegistry: {
+		[name: string]: (value: JsonValue) => JsonValue | Promise<JsonValue>;
+	} = {};
 	const grantedCapabilities: Capability[] = [];
 
 	for (const tool of tools) {
-		toolRegistry[tool.name] = (value) => tool.run(value);
+		toolRegistry[tool.name] = (value: JsonValue) => {
+			// SAFETY: agent tools accept JSON-cloned input at this boundary.
+			return tool.run(value as never);
+		};
 		grantedCapabilities.push(toolCapability(tool.name));
 	}
 

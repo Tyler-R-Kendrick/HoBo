@@ -17,7 +17,7 @@ const END_OF_STREAM = Symbol("streamer.end");
 type Deferred<T> = {
 	promise: Promise<T>;
 	resolve: (value: T) => void;
-	reject: (error: unknown) => void;
+	reject: (error: Error) => void;
 };
 
 type ReaderState<TChunk> = {
@@ -142,6 +142,7 @@ export function createFrameJournal<TChunk>(options: {
 		},
 		close(result: StreamerRunResult) {
 			if (closed) {
+				// SAFETY: assertion to `closeResult as StreamerRunResult` is required at this boundary.
 				return closeResult as StreamerRunResult;
 			}
 
@@ -221,7 +222,7 @@ export function foldLifecycleStatus(
 
 function createDeferred<T>(): Deferred<T> {
 	let resolve!: (value: T) => void;
-	let reject!: (error: unknown) => void;
+	let reject!: (error: Error) => void;
 	const promise = new Promise<T>((resolvePromise, rejectPromise) => {
 		resolve = resolvePromise;
 		reject = rejectPromise;

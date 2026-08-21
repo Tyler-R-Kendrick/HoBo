@@ -1,3 +1,5 @@
+import type { JsonValue } from "../../src/json.js";
+
 export const HELLO_BINDLE_CAPABILITY = "hobo:examples/health-capability@0.1.0";
 
 export const helloBindleComponent = {
@@ -11,17 +13,24 @@ export const helloBindleComponent = {
 					callImport: (
 						importInterface: string,
 						operation: string,
-						payload?: unknown,
-					) => Promise<unknown>;
+						payload?: JsonValue,
+					) => Promise<JsonValue>;
 				},
 			) => {
 				if (request.path === "/health") {
-					const capability = (await context.callImport(
+					interface HealthBody {
+						status: number;
+						body: string;
+					}
+					const raw = await context.callImport(
 						HELLO_BINDLE_CAPABILITY,
 						"health",
-					)) as { status: number; body: string };
+					);
+					// SAFETY: health capability returns status/body at this test boundary.
+					const capability = raw as HealthBody;
 					return {
 						status: capability.status,
+						// SAFETY: assertion to `[] as [string, string][]` is required at this boundary.
 						headers: [] as [string, string][],
 						body: capability.body,
 					};

@@ -5,7 +5,6 @@
  */
 
 import { parentPort, workerData } from "node:worker_threads";
-
 import type {
 	AppendOptions,
 	DurableCommitRequest,
@@ -13,6 +12,12 @@ import type {
 	ReadAllOptions,
 } from "@hobo/core";
 import { createNodeSqliteDriver, SqliteJournal } from "@hobo/storage-sqlite";
+import {
+	isJsonBigInt,
+	isJsonString,
+	type JsonValue,
+	parseJsonValue,
+} from "../json.js";
 
 export type StorageWorkerRequest =
 	| {
@@ -42,7 +47,7 @@ export type StorageWorkerRequest =
 			id: string;
 			op: "snapshot";
 			streamId: string;
-			state: unknown;
+			state: JsonValue;
 			seq: number;
 	  }
 	| {
@@ -56,33 +61,39 @@ export type StorageWorkerRequest =
 	  };
 
 export type StorageWorkerResponse =
-	| { id: string; ok: true; result: unknown }
+	| { id: string; ok: true; result: JsonValue }
 	| {
 			id: string;
 			ok: false;
 			error: { name: string; message: string; code?: string };
 	  };
 
-function serializeError(error: unknown): {
-	name: string;
-	message: string;
-	code?: string;
-} {
-	if (error instanceof Error) {
-		const code = (error as { code?: string }).code;
-		return {
-			name: error.name,
-			message: error.message,
-			...(code !== undefined ? { code } : {}),
-		};
-	}
-	return { name: "Error", message: String(error) };
+interface SerializedWorkerError {
+	readonly name: string;
+	readonly message: string;
+	readonly code?: string;
+}
+
+interface CodedError {
+	readonly code?: string;
+}
+
+function serializeError(error: Error): SerializedWorkerError {
+	// SAFETY: worker errors may carry a string `code` at this boundary.
+	const coded = error as CodedError;
+	const code = isJsonString(coded.code) ? coded.code : undefined;
+	return {
+		name: error.name,
+		message: error.message,
+		...(code !== undefined ? { code } : undefined),
+	};
 }
 
 async function main(): Promise<void> {
 	if (!parentPort) {
 		throw new Error("storage-worker must run as a worker thread");
 	}
+	// SAFETY: assertion to `workerData as { dbPath: string; partitionId?: string }` is required at this boundary.
 	const data = workerData as { dbPath: string; partitionId?: string };
 	const driver = createNodeSqliteDriver({ path: data.dbPath });
 	const journal = new SqliteJournal(driver, {
@@ -125,7 +136,7 @@ async function main(): Promise<void> {
 					port.postMessage({
 						id: msg.id,
 						ok: true,
-						result: events,
+						result: serializeBigints(events),
 					} satisfies StorageWorkerResponse);
 					break;
 				}
@@ -150,7 +161,7 @@ async function main(): Promise<void> {
 					port.postMessage({
 						id: msg.id,
 						ok: true,
-						result,
+						result: serializeBigints(result),
 					} satisfies StorageWorkerResponse);
 					break;
 				}
@@ -159,7 +170,7 @@ async function main(): Promise<void> {
 					port.postMessage({
 						id: msg.id,
 						ok: true,
-						result,
+						result: result === undefined ? null : serializeBigints(result),
 					} satisfies StorageWorkerResponse);
 					break;
 				}
@@ -175,6 +186,7 @@ async function main(): Promise<void> {
 				default: {
 					const _x: never = msg;
 					port.postMessage({
+						// SAFETY: assertion to `msg as { id: string }` is required at this boundary.
 						id: (msg as { id: string }).id,
 						ok: false,
 						error: {
@@ -189,19 +201,21 @@ async function main(): Promise<void> {
 			port.postMessage({
 				id: msg.id,
 				ok: false,
-				error: serializeError(error),
+				error: serializeError(
+					error instanceof Error ? error : new Error(String(error)),
+				),
 			} satisfies StorageWorkerResponse);
 		}
 	});
 }
 
 /** JSON-safe: bigint → decimal string tagged form. */
-function serializeBigints<T>(value: T): T {
-	return JSON.parse(
+function serializeBigints<T>(value: T): JsonValue {
+	return parseJsonValue(
 		JSON.stringify(value, (_k, v) =>
-			typeof v === "bigint" ? { $bigint: v.toString(10) } : v,
+			isJsonBigInt(v) ? { $bigint: v.toString(10) } : v,
 		),
-	) as T;
+	);
 }
 
 void main();

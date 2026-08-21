@@ -10,6 +10,7 @@ import {
 	type SchedulerPort,
 	type VirtualClock,
 } from "@hobo/core";
+import { isJsonNumber, isJsonObject, type JsonValue } from "./json.js";
 
 // Local hobo:scheduler port served over the deterministic clock's cron
 // (src/clock.ts) — the D14 delegation seam. A scheduled bindle resource
@@ -38,10 +39,14 @@ export interface LocalScheduler extends SchedulerPort {
 	 * shape `CapabilityLinkTable.registerProvider` / the component host accept
 	 * (see capability/link-table.ts), keyed by the `hobo:scheduler` port token.
 	 */
-	providerExports(): Record<
-		string,
-		Record<string, (...args: unknown[]) => unknown>
-	>;
+	providerExports(): SchedulerProviderExports;
+}
+
+export interface SchedulerProviderExports {
+	readonly [port: string]: {
+		readonly every: (payload: JsonValue) => CronSchedule;
+		readonly cron: (payload: JsonValue) => never;
+	};
 }
 
 export function createLocalScheduler(clock: VirtualClock): LocalScheduler {
@@ -76,25 +81,26 @@ export function createLocalScheduler(clock: VirtualClock): LocalScheduler {
 		providerExports() {
 			return {
 				[SCHEDULER_PORT]: {
-					every: (payload: unknown): CronSchedule => {
-						const record = (payload ?? {}) as {
-							scheduleId?: unknown;
-							everyMs?: unknown;
-							startAtMs?: unknown;
-						};
+					every: (payload: JsonValue): CronSchedule => {
+						const record = isJsonObject(payload) ? payload : {};
+						const everyMs = record.everyMs ?? record.every_ms;
+						const startAtMs = record.startAtMs ?? record.start_at_ms;
+						if (!isJsonNumber(everyMs)) {
+							throw new TypeError("everyMs must be a number");
+						}
 						const spec = parseIntervalCronSpec({
-							every_ms: record.everyMs as number,
-							...(record.startAtMs !== undefined
-								? { start_at_ms: record.startAtMs as number }
-								: {}),
+							every_ms: everyMs,
+							...(isJsonNumber(startAtMs)
+								? { start_at_ms: startAtMs }
+								: undefined),
 						});
 						return scheduler.every(
 							parseScheduleId(String(record.scheduleId ?? "")),
 							spec,
 						);
 					},
-					cron: (payload: unknown): never => {
-						const expr = (payload as { expr?: unknown } | undefined)?.expr;
+					cron: (payload: JsonValue): never => {
+						const expr = isJsonObject(payload) ? payload.expr : undefined;
 						throw new CronExpressionUnsupportedError(String(expr ?? ""));
 					},
 				},

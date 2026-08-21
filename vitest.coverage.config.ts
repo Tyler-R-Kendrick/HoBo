@@ -236,7 +236,7 @@ export default defineConfig({
 				"packages/providers/provider-ax/**": { statements: 95, branches: 70, functions: 100, lines: 100 },
 				"packages/providers/provider-azure/**": { statements: 94, branches: 80, functions: 98, lines: 94 },
 				"packages/providers/provider-browser-wasm/**": { statements: 74, branches: 71, functions: 78, lines: 75 },
-				"packages/providers/provider-cloudflare/**": { statements: 84, branches: 74, functions: 88, lines: 85 },
+				"packages/providers/provider-cloudflare/**": { statements: 90, branches: 80, functions: 93, lines: 91 },
 				"packages/providers/provider-convex/**": { statements: 86, branches: 76, functions: 93, lines: 87 },
 				"packages/providers/provider-digitalocean/**": { statements: 93, branches: 80, functions: 97, lines: 93 },
 				"packages/providers/provider-flux/**": { statements: 79, branches: 74, functions: 98, lines: 79 },

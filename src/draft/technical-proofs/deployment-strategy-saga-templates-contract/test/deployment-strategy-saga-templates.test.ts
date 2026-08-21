@@ -642,7 +642,7 @@ function recordingGateway(options = {}) {
       }
 
       if (command.kind === "deployment.reapBlue") {
-        const { retainedVersion, ...rest } = this.state;
+        const { retainedVersion: _retainedVersion, ...rest } = this.state;
         this.state = {
           ...rest,
           reapedVersion: command.retainedVersion,

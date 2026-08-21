@@ -10,6 +10,8 @@ import {
   createDecisionRequest,
   createPolicyDecidedEvent,
 } from "../../hobo-policy-ir-contract/src/policy-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const USER_AUTHORIZATION_ENGINE_ID = "hobo.policy.user-authorization@0.1.0";
 
@@ -124,7 +126,7 @@ function decideOwnerClaim(request, rule) {
 
 function forgedRequestBodyViolations(request, rule) {
   const bodyClaims = request.context.requestBodyClaims;
-  if (!bodyClaims || typeof bodyClaims !== "object" || Array.isArray(bodyClaims)) {
+  if (!bodyClaims || !isJsonObject(bodyClaims) || Array.isArray(bodyClaims)) {
     return [];
   }
   const violations = [];
@@ -196,7 +198,7 @@ function createUnverifiedUserDecision(request) {
 
 function verifiedUserFromContext(ctx) {
   const user = ctx?.user;
-  if (!user || typeof user !== "object" || Array.isArray(user)) {
+  if (!user || !isJsonObject(user) || Array.isArray(user)) {
     return undefined;
   }
   if (user.verified !== true || !isNonEmptyString(user.id) || !isNonEmptyString(user.tenantId)) {
@@ -233,7 +235,7 @@ function normalizeResource(resource) {
 }
 
 function expectObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
   return value;
@@ -247,7 +249,7 @@ function nonEmptyString(value, name) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function stringArray(values) {
@@ -258,7 +260,7 @@ function stringArray(values) {
 }
 
 function requestBodyClaimHints(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     return {
       hasUserClaim: false,
       fields: [],

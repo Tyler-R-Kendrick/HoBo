@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const ROLLOUT_EVENT_TYPES = new Set([
   "rollout.Started",
   "rollout.GateEvaluated",
@@ -190,13 +191,13 @@ export function replayRollout(events) {
     completedSteps: status.completedSteps,
     gateResults,
     ignoredDuplicates,
-    ...(status.failureReason ? { failureReason: status.failureReason } : {}),
-    ...(status.rollbackReason ? { rollbackReason: status.rollbackReason } : {}),
+    ...(status.failureReason ? { failureReason: status.failureReason } : undefined),
+    ...(status.rollbackReason ? { rollbackReason: status.rollbackReason } : undefined),
   });
 }
 
 export function validateRolloutEvent(event) {
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
+  if (!event || !isJsonObject(event) || Array.isArray(event)) {
     throw new Error("rollout event must be an object");
   }
 
@@ -297,7 +298,7 @@ function rolloutEvent({ rollout, type, data, seq, now }) {
 }
 
 function parseRollout(rollout) {
-  if (!rollout || typeof rollout !== "object" || Array.isArray(rollout)) {
+  if (!rollout || !isJsonObject(rollout) || Array.isArray(rollout)) {
     throw new Error("rollout must be an object");
   }
 
@@ -318,7 +319,7 @@ function parseRollout(rollout) {
 }
 
 function parseTarget(target) {
-  if (!target || typeof target !== "object" || Array.isArray(target)) {
+  if (!target || !isJsonObject(target) || Array.isArray(target)) {
     throw new Error("rollout.target must be an object");
   }
 
@@ -330,7 +331,7 @@ function parseTarget(target) {
 }
 
 function parsePolicy(policy) {
-  if (!policy || typeof policy !== "object" || Array.isArray(policy)) {
+  if (!policy || !isJsonObject(policy) || Array.isArray(policy)) {
     throw new Error("rollout.policy must be an object");
   }
 
@@ -345,7 +346,7 @@ function parsePolicy(policy) {
 }
 
 function parseStep(step, stepIndex) {
-  if (!step || typeof step !== "object" || Array.isArray(step)) {
+  if (!step || !isJsonObject(step) || Array.isArray(step)) {
     throw new Error(`rollout.policy.steps[${stepIndex}] must be an object`);
   }
 
@@ -379,7 +380,7 @@ function isTerminal(state) {
 }
 
 function assertNonEmptyString(value, path) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${path} must be a non-empty string`);
   }
   return value;
@@ -399,7 +400,7 @@ function cloneJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
 

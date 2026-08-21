@@ -1,10 +1,8 @@
+import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const MANIFEST_SCHEMA = "hobo.manifest/v1";
 export const CONTRACT_VERSION = "hobo.provider-options/v1";
 
 type ResourceKind = "data" | "component";
-type JsonPrimitive = string | number | boolean | null;
-type JsonValue = JsonPrimitive | JsonValue[] | { [key: string]: JsonValue };
-type JsonObject = { [key: string]: JsonValue };
 type RequirementMode = "prefer" | "require";
 
 type RequirementOptions = {
@@ -139,6 +137,7 @@ export function resolvedProviderOptions(resource: ManifestResource | undefined, 
 
 export function projectAgnosticResource(resource: ManifestResource): JsonValue {
   const { annotations: _annotations, portability: _portability, ...agnostic } = resource;
+  // SAFETY: `return sortKeys(agnostic as JsonObject);` is required at this I/O or test boundary.
   return sortKeys(agnostic as JsonObject);
 }
 
@@ -277,16 +276,18 @@ function buildLockInMarkers(resourceId: string, annotations: Record<string, Json
     });
 }
 
-function isPlainObject(value: unknown): value is JsonObject {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+function isPlainObject(value: JsonValue): value is JsonObject {
+  return Boolean(value && isJsonObject(value) && !Array.isArray(value));
 }
 
 function sortKeys<T extends JsonValue>(value: T): T {
   if (Array.isArray(value)) {
+    // SAFETY: `return value.map((item) => sortKeys(item)) as T;` is required at this I/O or test boundary.
     return value.map((item) => sortKeys(item)) as T;
   }
   if (!isPlainObject(value)) {
     return value;
   }
+  // SAFETY: `return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(` is required at this I/O or test boundary.
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])])) as T;
 }

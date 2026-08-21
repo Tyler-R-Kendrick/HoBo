@@ -275,7 +275,7 @@ export default defineConfig({
 				"packages/training-pipeline/**": { statements: 92, branches: 85, functions: 94, lines: 93 },
 				"packages/trust/**": { statements: 89, branches: 87, functions: 87, lines: 89 },
 				"packages/wasp/**": { statements: 90, branches: 83, functions: 95, lines: 92 },
-				"packages/wit/**": { statements: 81, branches: 70, functions: 81, lines: 81 },
+				"packages/wit/**": { statements: 91, branches: 84, functions: 94, lines: 91 },
 				"packages/yard-world/**": { statements: 87, branches: 80, functions: 88, lines: 89 },
 				"packages/yards/**": { statements: 87, branches: 84, functions: 88, lines: 87 },
 			},

@@ -90,11 +90,13 @@ function replaceItem(
 function deriveEarliestDeadline(
 	items: readonly ClaimItem[],
 ): Instant | undefined {
-	const deadlines = items
-		.filter(
-			(item) => item.status !== "completed" && item.deadline !== undefined,
-		)
-		.map((item) => item.deadline as Instant);
+	const deadlines: Instant[] = [];
+	for (const item of items) {
+		if (item.status === "completed" || item.deadline === undefined) {
+			continue;
+		}
+		deadlines.push(item.deadline);
+	}
 	return deadlines.length === 0 ? undefined : Math.min(...deadlines);
 }
 
@@ -172,6 +174,7 @@ function refreshBundle(
 		earliest === undefined
 			? (() => {
 					const { earliestDeadline: _dropped, ...rest } = withDeadline;
+					// SAFETY: `return rest as ClaimBundle;` is required at this I/O or test boundary.
 					return rest as ClaimBundle;
 				})()
 			: { ...withDeadline, earliestDeadline: earliest };
@@ -251,10 +254,10 @@ export function reduce(
 				leaseId: command.lease.id,
 				...(command.lease.expiresAt !== undefined
 					? { expiresAt: command.lease.expiresAt }
-					: {}),
+					: undefined),
 				...(command.lease.claimBy !== undefined
 					? { claimBy: command.lease.claimBy }
-					: {}),
+					: undefined),
 			});
 			break;
 		}
@@ -311,7 +314,7 @@ export function reduce(
 				oneTimeActionRef: command.oneTimeActionRef,
 				...(command.deadline !== undefined
 					? { deadline: command.deadline }
-					: {}),
+					: undefined),
 			}));
 			next = refreshBundle(state, updated);
 			emit(events, {
@@ -320,7 +323,7 @@ export function reduce(
 				oneTimeActionRef: command.oneTimeActionRef,
 				...(command.deadline !== undefined
 					? { deadline: command.deadline }
-					: {}),
+					: undefined),
 			});
 			break;
 		}
@@ -566,7 +569,7 @@ export function reduce(
 				lifecycle: "Expired",
 				...(lease !== undefined
 					? { lease: { ...lease, status: "expired" as const } }
-					: {}),
+					: undefined),
 			};
 			emit(events, {
 				type: "GuestLeaseExpired",

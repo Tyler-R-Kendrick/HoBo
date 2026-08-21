@@ -42,10 +42,12 @@ async function writeSourceRoot(
 	return root;
 }
 
-function fixedImpl(): {
+interface FixedImpl {
 	impl: RealComponentizeImpl;
 	calls: Array<Parameters<RealComponentizeImpl>>;
-} {
+}
+
+function fixedImpl(): FixedImpl {
 	const calls: Array<Parameters<RealComponentizeImpl>> = [];
 	const impl: RealComponentizeImpl = async (sourcePath, opts) => {
 		calls.push([sourcePath, opts]);

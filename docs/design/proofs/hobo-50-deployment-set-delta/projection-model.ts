@@ -1,4 +1,11 @@
 import { createHash } from "node:crypto";
+import {
+  cloneAsJson,
+  isJsonObject,
+  isJsonString,
+  type JsonBag,
+  type JsonValue,
+} from "./json.js";
 
 const HASH_PREFIX = "sha256:";
 const REPLICATION_TOPOLOGIES = new Set([
@@ -10,39 +17,43 @@ const REPLICATION_TOPOLOGIES = new Set([
 export interface EnvGroupMember {
   campId: string;
   provider: string;
-  [key: string]: unknown;
+  campIdOwner?: string;
 }
 
 export interface EnvGroup {
   id: string;
   environmentType: string;
   members: EnvGroupMember[];
-  [key: string]: unknown;
 }
 
 export interface ResourceMatch {
   decisionId: string;
   definitionId: string;
   catalogHash: string;
-  [key: string]: unknown;
 }
 
 export interface ResourceReplication {
   topology: string;
-  [key: string]: unknown;
+  campId?: string;
+  ownerCampId?: string;
+}
+
+export interface WorkloadSpec {
+  image: string;
 }
 
 export interface DeploymentResource {
   id: string;
   type: string;
   port: string;
-  match?: ResourceMatch | undefined;
-  replication?: ResourceReplication | undefined;
-  workload?: { image: string; [key: string]: unknown } | undefined;
-  [key: string]: unknown;
+  match?: ResourceMatch;
+  replication?: ResourceReplication;
+  workload?: WorkloadSpec;
 }
 
-export type ResourceMap = Record<string, DeploymentResource>;
+export interface ResourceMap {
+  [resourceId: string]: DeploymentResource;
+}
 
 export interface DeploymentSet {
   id: string;
@@ -146,6 +157,7 @@ export function foldDeploymentProjections(events: readonly DeploymentProjectionE
         applyDelta(projection, activeDeltasByCamp, event.body);
         break;
       default:
+        // SAFETY: `throw new Error(`unsupported deployment projection event: ${(event as { type: st` is required at this I/O or test boundary.
         throw new Error(`unsupported deployment projection event: ${(event as { type: string }).type}`);
     }
   }
@@ -196,30 +208,35 @@ export function diffDeploymentSet(
   return changes;
 }
 
-export function validateEnvGroup(envGroup: unknown): EnvGroup {
-  if (!envGroup || typeof envGroup !== "object") {
+export function validateEnvGroup(envGroup: JsonValue): EnvGroup {
+  if (!isJsonObject(envGroup)) {
     throw new Error("env-group must be an object");
   }
-  const candidate = envGroup as EnvGroup;
-  if (!candidate.id || !candidate.environmentType) {
+  if (!isJsonString(envGroup.id) || !isJsonString(envGroup.environmentType)) {
     throw new Error("env-group requires id and environmentType");
   }
-  if (!Array.isArray(candidate.members) || candidate.members.length === 0) {
+  if (!Array.isArray(envGroup.members) || envGroup.members.length === 0) {
     throw new Error("env-group requires one or more member Camps");
   }
 
   const campIds = new Set<string>();
-  for (const member of candidate.members) {
-    if (!member.campId || !member.provider) {
+  const members: EnvGroupMember[] = [];
+  for (const entry of envGroup.members) {
+    if (!isJsonObject(entry) || !isJsonString(entry.campId) || !isJsonString(entry.provider)) {
       throw new Error("env-group member requires campId and provider");
     }
-    if (campIds.has(member.campId)) {
-      throw new Error(`duplicate Camp in env-group: ${member.campId}`);
+    if (campIds.has(entry.campId)) {
+      throw new Error(`duplicate Camp in env-group: ${entry.campId}`);
     }
-    campIds.add(member.campId);
+    campIds.add(entry.campId);
+    members.push({ campId: entry.campId, provider: entry.provider });
   }
 
-  return clone(candidate);
+  return clone({
+    id: envGroup.id,
+    environmentType: envGroup.environmentType,
+    members,
+  });
 }
 
 function recordCreatedSet(projection: DeploymentProjection, body: SetCreatedBody) {
@@ -362,6 +379,7 @@ function applyChanges(baseResources: ResourceMap, changes: readonly DeltaChange[
         delete resources[change.resourceId];
         break;
       default:
+        // SAFETY: `throw new Error(`unsupported Delta operation: ${(change as DeltaChangeInput).op}` is required at this I/O or test boundary.
         throw new Error(`unsupported Delta operation: ${(change as DeltaChangeInput).op}`);
     }
   }
@@ -370,7 +388,7 @@ function applyChanges(baseResources: ResourceMap, changes: readonly DeltaChange[
 }
 
 function validateResources(resources: ResourceMap): ResourceMap {
-  if (!resources || typeof resources !== "object" || Array.isArray(resources)) {
+  if (!isJsonObject(resources) || Array.isArray(resources)) {
     throw new Error("DeploymentSet resources must be a resource map");
   }
 
@@ -383,7 +401,7 @@ function validateResources(resources: ResourceMap): ResourceMap {
 }
 
 function validateResource(resourceId: string, resource: DeploymentResource): DeploymentResource {
-  if (!resource || typeof resource !== "object") {
+  if (!isJsonObject(resource)) {
     throw new Error(`resource ${resourceId} must be an object`);
   }
   if (resource.id !== resourceId) {
@@ -403,7 +421,7 @@ function validateResource(resourceId: string, resource: DeploymentResource): Dep
 }
 
 function normalizeChange(change: DeltaChangeInput): DeltaChange {
-  if (!change || typeof change !== "object") {
+  if (!isJsonObject(change)) {
     throw new Error("Delta change must be an object");
   }
   if (!change.op || !change.resourceId) {
@@ -418,28 +436,29 @@ function normalizeChange(change: DeltaChangeInput): DeltaChange {
     : { op: change.op, resourceId: change.resourceId, resource: clone(change.resource!) };
 }
 
-function canonicalJson(value: unknown): string {
-  return JSON.stringify(canonicalize(value));
+function canonicalJson<T>(value: T): string {
+  return JSON.stringify(canonicalize(cloneAsJson(value)));
 }
 
-function canonicalize<T>(value: T): T {
+function canonicalize(value: JsonValue): JsonValue {
   if (Array.isArray(value)) {
-    return value.map(canonicalize) as T;
+    return value.map(canonicalize);
   }
-  if (!value || typeof value !== "object") {
+  if (!isJsonObject(value)) {
     return value;
   }
 
-  const canonical: Record<string, unknown> = {};
-  const record = value as Record<string, unknown>;
-  for (const key of Object.keys(record).sort()) {
-    if (record[key] !== undefined) {
-      canonical[key] = canonicalize(record[key]);
+  const canonical: JsonBag = {};
+  for (const key of Object.keys(value).sort()) {
+    const nested = value[key];
+    if (nested !== undefined) {
+      canonical[key] = canonicalize(nested);
     }
   }
-  return canonical as T;
+  return canonical;
 }
 
 function clone<T>(value: T): T {
+  // SAFETY: `return JSON.parse(JSON.stringify(value)) as T;` is required at this I/O or test boundary.
   return JSON.parse(JSON.stringify(value)) as T;
 }

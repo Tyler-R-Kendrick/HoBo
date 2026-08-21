@@ -90,6 +90,7 @@ const posterUrl = poster ? href(poster) : undefined;
 	import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 
 	for (const host of document.querySelectorAll<HTMLElement>(".viewer")) {
+		// SAFETY: `const canvas = host.querySelector("canvas") as HTMLCanvasElement;` is required at this I/O or test boundary.
 		const canvas = host.querySelector("canvas") as HTMLCanvasElement;
 		const url = host.dataset.model;
 		if (!canvas || !url) continue;

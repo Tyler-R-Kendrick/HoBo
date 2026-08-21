@@ -83,16 +83,32 @@ When("the flagged cause is fixed", function (this: CoreLoopWorld) {
 	assert.ok(snap, "no snapshot loaded");
 	// The remediation the doctor's hint describes actually landing: the next
 	// projection carries no hazards and a healthy activity row.
-	this.snapshot = Object.freeze({
+	const nextSnapshot: YardProjectionSnapshot = Object.freeze({
 		...snap,
 		doctor: Object.freeze({ ...snap.doctor, hazards: Object.freeze([]) }),
 		activity: Object.freeze(
 			snap.activity.map((a) => Object.freeze({ ...a, status: "working" })),
 		),
 		seq: snap.seq + 1,
-	}) as YardProjectionSnapshot;
+	});
+	this.snapshot = nextSnapshot;
 	this.spikes?.onSeq(this.snapshot.seq);
 });
+
+function parseZoneId(zone: string): ZoneId {
+	switch (zone) {
+		case "platformRest":
+		case "bootstrapDesk":
+		case "activeRailTrack":
+		case "connectionBay":
+		case "policyBoard":
+		case "costBooth":
+		case "errorBunker":
+			return zone;
+		default:
+			throw new TypeError(`unknown zone: ${zone}`);
+	}
+}
 
 When("the operator spikes the top waybill", function (this: CoreLoopWorld) {
 	const top = desk(this)[0];
@@ -192,7 +208,8 @@ Then("Bo stands at the {string}", function (this: CoreLoopWorld, zone: string) {
 Then(
 	"the {string} zone opens a {string} waybill",
 	function (this: CoreLoopWorld, zone: string, kind: string) {
-		const routed = waybillForZone(zone as ZoneId, desk(this));
+		const zoneId = parseZoneId(zone);
+		const routed = waybillForZone(zoneId, desk(this));
 		assert.ok(routed, `${zone} routed to no waybill`);
 		assert.equal(routed.kind, kind);
 	},
@@ -202,7 +219,7 @@ Then(
 	"the {string} zone opens the top waybill",
 	function (this: CoreLoopWorld, zone: string) {
 		const offered = desk(this);
-		const routed = waybillForZone(zone as ZoneId, offered);
+		const routed = waybillForZone(parseZoneId(zone), offered);
 		assert.ok(routed, `${zone} routed to no waybill`);
 		assert.equal(routed.id, offered[0]?.id);
 	},
@@ -211,6 +228,6 @@ Then(
 Then(
 	"the {string} zone opens no waybill",
 	function (this: CoreLoopWorld, zone: string) {
-		assert.equal(waybillForZone(zone as ZoneId, desk(this)), null);
+		assert.equal(waybillForZone(parseZoneId(zone), desk(this)), null);
 	},
 );

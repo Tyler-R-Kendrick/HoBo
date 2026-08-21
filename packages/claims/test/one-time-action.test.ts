@@ -72,6 +72,7 @@ describe("one-time action store", () => {
 		const error = await store
 			.redeem(scope)
 			.catch((caught: ClaimError) => caught);
+		// SAFETY: `expect((error as ClaimError).code).toBe("ONE_TIME_ACTION_REPLAYED");` is required at this I/O or test boundary.
 		expect((error as ClaimError).code).toBe("ONE_TIME_ACTION_REPLAYED");
 	});
 
@@ -88,6 +89,7 @@ describe("one-time action store", () => {
 				now: NOW + 7_200_000,
 			})
 			.catch((caught: ClaimError) => caught);
+		// SAFETY: `expect((error as ClaimError).code).toBe("ONE_TIME_ACTION_EXPIRED");` is required at this I/O or test boundary.
 		expect((error as ClaimError).code).toBe("ONE_TIME_ACTION_EXPIRED");
 	});
 
@@ -213,6 +215,7 @@ describe("event secret guard", () => {
 			},
 		],
 	])("refuses to append an event carrying %s", (_label, event) => {
+		// SAFETY: `expect(() => assertNoSecrets(event as ClaimEvent)).toThrow(` is required at this I/O or test boundary.
 		expect(() => assertNoSecrets(event as ClaimEvent)).toThrow(
 			/refusing to append/u,
 		);

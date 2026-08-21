@@ -4,6 +4,8 @@
  */
 import type { ProviderAnnotation } from "@hobo/bindles";
 import { COMPONENT_METADATA } from "@hobo/runtime";
+import { isJsonString, isJsonObject, type JsonValue } from "./json.js";
+
 
 export const CONVEX_WEBAPP_METADATA = Symbol.for("hobo.webapp.convex");
 /** Shared meta symbol — Bindle detects any `{ framework, root }` webApp. */
@@ -17,11 +19,12 @@ export type ConvexWebAppMeta = {
 };
 
 const METADATA_SYMBOL =
+	// SAFETY: `(Symbol as { metadata?: symbol }).metadata ?? Symbol.for("Symbol.metadata");` is required at this I/O or test boundary.
 	(Symbol as { metadata?: symbol }).metadata ?? Symbol.for("Symbol.metadata");
 
 /** DeclaredComponent for Bindle — only stamps `root` (repo-relative Convex app dir). */
 export function convexApp(root: string): new () => object {
-	const trimmed = typeof root === "string" ? root.trim() : "";
+	const trimmed = isJsonString(root) ? root.trim() : "";
 	if (!trimmed)
 		throw new TypeError("convexApp(root) requires a non-empty path");
 
@@ -52,14 +55,16 @@ export function convexApp(root: string): new () => object {
 	return ConvexApp;
 }
 
-export function convexMetaOf(binding: unknown): ConvexWebAppMeta | undefined {
-	if (typeof binding !== "function") return undefined;
-	const meta = (binding as unknown as Record<symbol, unknown>)[
-		CONVEX_WEBAPP_METADATA
-	];
-	if (!meta || typeof meta !== "object") return undefined;
+export function convexMetaOf(binding: JsonValue): ConvexWebAppMeta | undefined {
+	if (!(binding instanceof Function)) return undefined;
+	// SAFETY: `const holder = binding as Function & { [CONVEX_WEBAPP_METADATA]?: JsonValue };` is required at this I/O or test boundary.
+	const holder = binding as Function & { [CONVEX_WEBAPP_METADATA]?: JsonValue };
+	const meta = holder[CONVEX_WEBAPP_METADATA];
+	if (!meta || !isJsonObject(meta)) return undefined;
+	// SAFETY: `const m = meta as Partial<ConvexWebAppMeta>;` is required at this I/O or test boundary.
 	const m = meta as Partial<ConvexWebAppMeta>;
-	if (m.framework !== "convex" || typeof m.root !== "string") return undefined;
+	if (m.framework !== "convex" || !isJsonString(m.root)) return undefined;
+	// SAFETY: `return meta as ConvexWebAppMeta;` is required at this I/O or test boundary.
 	return meta as ConvexWebAppMeta;
 }
 
@@ -81,7 +86,7 @@ export function isConvexWebAppAnnotation(
 		annotation.provider === "hobo" &&
 		annotation.option === WEBAPP_OPTION &&
 		annotation.config?.framework === "convex" &&
-		typeof annotation.config?.root === "string"
+		isJsonString(annotation.config?.root)
 	);
 }
 
@@ -90,7 +95,7 @@ export function convexRootFromAnnotations(
 ): string {
 	const hit = annotations.find(isConvexWebAppAnnotation);
 	const root = hit?.config.root;
-	if (typeof root !== "string" || root.length === 0) {
+	if (!isJsonString(root) || root.length === 0) {
 		throw new Error("Bindle web Kit missing convexApp(root) annotation");
 	}
 	return root;

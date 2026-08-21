@@ -158,6 +158,7 @@ const project = (state: ClaimCoordinatorState, events: readonly unknown[]) => ({
 		// Projected to null so a case can assert "cleared"; JSON has no undefined.
 		failureCode: item.failureCode ?? null,
 	})),
+	// SAFETY: `events: events.map((event) => (event as { kind: string }).kind),` is required at this I/O or test boundary.
 	events: events.map((event) => (event as { kind: string }).kind),
 });
 

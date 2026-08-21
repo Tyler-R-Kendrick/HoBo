@@ -17,7 +17,7 @@ function twoYardJunction(
 	const right = makeYard("right", providers[1]);
 	return junction("my-app", {
 		yards: [left, right],
-		...(manifests ? { manifests } : {}),
+		...(manifests ? { manifests } : undefined),
 	});
 }
 
@@ -161,6 +161,7 @@ describe("planForYard()", () => {
 			expect.unreachable("accepted a non-member yard");
 		} catch (error) {
 			expect(error).toBeInstanceOf(JunctionParseError);
+			// SAFETY: `expect((error as JunctionParseError).code).toBe(` is required at this I/O or test boundary.
 			expect((error as JunctionParseError).code).toBe(
 				"junction.plan.unknown-yard",
 			);

@@ -45,7 +45,10 @@ function workspaceSrcAliases(): { find: RegExp; replacement: string }[] {
 	const aliases: { find: RegExp; replacement: string }[] = [];
 	const roots = [path.join(root, "packages")];
 	while (roots.length > 0) {
-		const dir = roots.pop() as string;
+		const dir = roots.pop();
+		if (dir === undefined) {
+			continue;
+		}
 		let entries: string[];
 		try {
 			entries = readdirSync(dir);

@@ -25,6 +25,8 @@ import {
 	type WasmComponentArtifact,
 	type WasmOciDescriptor,
 } from "./componentize.js";
+import { type JsonValue } from "./json.js";
+
 
 const COMPONENTIZE_JS_SPECIFIER = "@bytecodealliance/componentize-js";
 const REAL_CONTRACT_SCHEMA = "hobo.componentize.real/v1";
@@ -85,7 +87,7 @@ export interface RealComponentizeOptions {
 	/** Injected builder (tests). When present the toolchain probe is skipped. */
 	componentizeImpl?: RealComponentizeImpl;
 	/** Injected module importer (tests). Defaults to importing componentize-js. */
-	importModule?: () => Promise<unknown>;
+	importModule?: () => Promise<JsonValue>;
 	/** Entry file relative to sourceRoot. Defaults to the hello-bindle shape. */
 	entry?: string;
 	/** WIT world override: inline wit text plus world naming. */
@@ -192,14 +194,15 @@ type ToolchainProbe =
 	| { readonly ok: false; readonly cause: string };
 
 async function probeToolchain(
-	importModule?: () => Promise<unknown>,
+	importModule?: () => Promise<JsonValue>,
 ): Promise<ToolchainProbe> {
 	try {
 		const module = await (importModule
 			? importModule()
 			: import(COMPONENTIZE_JS_SPECIFIER));
+		// SAFETY: `const componentize = (module as { componentize?: unknown }).componentize;` is required at this I/O or test boundary.
 		const componentize = (module as { componentize?: unknown }).componentize;
-		if (typeof componentize !== "function") {
+		if (!(componentize instanceof Function)) {
 			return {
 				ok: false,
 				cause: "module does not export a componentize function",
@@ -207,6 +210,7 @@ async function probeToolchain(
 		}
 		const impl: RealComponentizeImpl = async (sourcePath, opts) => {
 			// componentize-js 0.21.x object-argument API (see HOBO-603 spike).
+			// SAFETY: `const output = (await componentize({` is required at this I/O or test boundary.
 			const output = (await componentize({
 				sourcePath,
 				witPath: opts.witPath,

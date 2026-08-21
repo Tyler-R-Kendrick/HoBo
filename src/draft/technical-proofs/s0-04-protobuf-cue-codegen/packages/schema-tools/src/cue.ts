@@ -4,6 +4,8 @@ import { execFile } from "node:child_process";
 import { homedir, platform, arch } from "node:os";
 import { basename, join, resolve } from "node:path";
 import type { CueVetResult, CueViolation, DataModelPackage } from "./types.js";
+import { isJsonNumber } from "../../../src/json.js";
+
 
 const CUE_VERSION = "v0.14.0";
 
@@ -31,11 +33,12 @@ function cachedCuePath(repoRoot: string): string {
 async function runCommand(command: string, args: readonly string[], cwd?: string): Promise<{ stdout: string; stderr: string; code: number }> {
   return new Promise((resolvePromise, reject) => {
     execFile(command, [...args], { cwd, encoding: "utf8", maxBuffer: 10 * 1024 * 1024 }, (error, stdout, stderr) => {
+      // SAFETY: `if (error && (error as NodeJS.ErrnoException).code === "ENOENT") {` is required at this I/O or test boundary.
       if (error && (error as NodeJS.ErrnoException).code === "ENOENT") {
         reject(new Error(`command not found: ${command}`));
         return;
       }
-      const code = typeof error?.code === "number" ? error.code : error ? 1 : 0;
+      const code = isJsonNumber(error?.code) ? error.code : error ? 1 : 0;
       resolvePromise({ stdout: String(stdout), stderr: String(stderr), code });
     });
   });

@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export type StabilityTier = "stable" | "preview" | "experimental" | "deprecated";
 export type AvailabilityStatus = "ok" | "warn" | "error";
 
@@ -32,7 +33,7 @@ export interface CapabilitySpec {
   schema: "hobo.capability-spec/v1";
   provider: CapabilityProviderRef;
   costFactsRef?: ArtifactRef;
-  capabilityHints?: Record<string, unknown>;
+  capabilityHints?: JsonObject;
   reports: ConformanceReportRef[];
   interfaces: CapabilityDeclaration[];
 }
@@ -77,9 +78,9 @@ export function createFixtureCapabilitySpec(input?: {
   }>;
 }): CapabilitySpec;
 
-export function parseCapabilitySpec(candidate: unknown): ParseCapabilitySpecResult;
+export function parseCapabilitySpec(candidate: JsonValue): ParseCapabilitySpecResult;
 export function resolveAvailability(
   usedInterfaces: string[],
-  registeredSpecs: unknown[]
+  registeredSpecs: JsonValue[]
 ): AvailabilityResolution;
 export function parseUsedInterfaceRef(ref: string): { ref: string; interface: string; semver: string } | null;

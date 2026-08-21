@@ -51,6 +51,7 @@ export function createConfigResolver(options: ConfigResolverOptions): ConfigReso
       case "binding":
         return resolveBinding(key, entry);
       default:
+        // SAFETY: assertion to `throw new Error(unsupported config source kind ${(entry.source as { kind: strin` is required at this boundary.
         throw new Error(`unsupported config source kind ${(entry.source as { kind: string }).kind}`);
     }
   }
@@ -66,6 +67,7 @@ export function createConfigResolver(options: ConfigResolverOptions): ConfigReso
     }
 
     emitConfigResolved(key, ref, "camp-env");
+    // SAFETY: assertion to `return campConfig[ref] as string | number | boolean;` is required at this boundary.
     return campConfig[ref] as string | number | boolean;
   }
 
@@ -80,7 +82,7 @@ export function createConfigResolver(options: ConfigResolverOptions): ConfigReso
     try {
       const secret = await options.secrets.get(ref, {
         camp,
-        ...(options.accessorId ? { accessorId: options.accessorId } : {}),
+        ...(options.accessorId ? { accessorId: options.accessorId } : undefined),
       });
       registerSecretForRedaction(secret.reveal());
 

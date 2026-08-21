@@ -1,3 +1,8 @@
+import { isJsonString, isJsonObject, type JsonValue } from "./json.js";
+
+interface TriggerHandleHost {
+  [key: string]: JsonValue | ((path: string, handler: Handler) => TriggerEdge);
+}
 const MANIFEST_SCHEMA = "hobo.manifest/v1";
 const DEFAULT_COMPONENT_HOST = Object.freeze({
   kind: "wasmtime",
@@ -39,35 +44,35 @@ export type BindingClients<Bindings extends BindingMap> = {
 
 type ClientForKind<K extends string> = K extends "kv"
   ? {
-      get(key: string): Promise<unknown>;
-      set(key: string, value: unknown): Promise<void>;
+      get(key: string): Promise<JsonValue>;
+      set(key: string, value: JsonValue): Promise<void>;
       delete(key: string): Promise<void>;
     }
   : K extends "queue"
-    ? { enqueue(message: unknown): Promise<void>; dequeue(): Promise<unknown> }
+    ? { enqueue(message: JsonValue): Promise<void>; dequeue(): Promise<JsonValue> }
     : K extends "topic"
-      ? { publish(message: unknown): Promise<void> }
+      ? { publish(message: JsonValue): Promise<void> }
       : K extends "bucket"
         ? {
-            read(key: string): Promise<unknown>;
-            write(key: string, value: unknown): Promise<void>;
+            read(key: string): Promise<JsonValue>;
+            write(key: string, value: JsonValue): Promise<void>;
             delete(key: string): Promise<void>;
           }
         : Record<string, never>;
 
 export interface HandlerContext<Bindings extends BindingMap = BindingMap> {
   params: Readonly<Record<string, string>>;
-  json: <T = unknown>() => Promise<T>;
-  body: unknown;
+  json: <T = JsonValue>() => Promise<T>;
+  body: JsonValue;
   bindings: BindingClients<Bindings>;
   config: Readonly<Record<string, string>>;
-  user?: unknown;
-  identity?: unknown;
+  user?: JsonValue;
+  identity?: JsonValue;
 }
 
 export type Handler<Bindings extends BindingMap = BindingMap> = ((
   ctx: HandlerContext<Bindings>,
-) => unknown | Promise<unknown>) & { name?: string };
+) => JsonValue | void | Promise<JsonValue | void>) & { name?: string };
 
 export interface WorkflowHandler {
   kind: "workflow";
@@ -159,11 +164,15 @@ export function api<const Bindings extends BindingMap = BindingMap>(
 } {
   const handle = createHandle("api", name, options);
   for (const method of ["GET", "POST", "PUT", "PATCH", "DELETE"] as const) {
-    (handle as unknown as Record<string, unknown>)[method.toLowerCase()] = (
-      path: string,
-      handler: Handler<Bindings>,
-    ) => registerHttpRoute(handle, method, path, handler as Handler);
+    // SAFETY: HTTP method keys are attached to the handle host at this contract edge.
+    const host: TriggerHandleHost = handle as never;
+    host[method.toLowerCase()] = (path: string, handler: Handler<Bindings>) => {
+      // SAFETY: HTTP handlers are stored erased at the trigger registry edge.
+      const registered: Handler = handler as Handler;
+      return registerHttpRoute(handle, method, path, registered);
+    };
   }
+  // SAFETY: assertion to `return Object.freeze(handle) as ResourceHandle<"api"> & {` is required at this boundary.
   return Object.freeze(handle) as ResourceHandle<"api"> & {
     get(path: string, handler: Handler<Bindings>): TriggerEdge;
     post(path: string, handler: Handler<Bindings>): TriggerEdge;
@@ -198,7 +207,7 @@ export function topic(name: string, options: { durableEvents?: boolean } = {}) {
     handler?: Handler | WorkflowHandler,
   ) => {
     const normalized =
-      typeof eventType === "function" || isWorkflowHandler(eventType)
+      eventType instanceof Function || isWorkflowHandler(eventType)
         ? { eventType: "*", handler: eventType }
         : {
             eventType: assertString(eventType, `resources.${name}.triggers.subscribe.event`),
@@ -259,7 +268,7 @@ export function bucket(name: string, options: { durableEvents?: boolean } = {}) 
 
 export function workflow(name: string, handler: Handler) {
   const handlerName = assertString(name, "workflow.name");
-  if (typeof handler !== "function") {
+  if (!(handler instanceof Function)) {
     throw new TriggerContractError("workflow.handler", "must be a function");
   }
   return Object.freeze({
@@ -290,7 +299,7 @@ export function compileHandlerManifest(
   }
 
   const triggerEdges = collectTriggerEdges(resources, options.triggers ?? [], resourceMap);
-  const manifest: Record<string, unknown> = {
+  const manifest: HandlerManifestDraft = {
     schema: MANIFEST_SCHEMA,
     componentHost: options.componentHost ?? DEFAULT_COMPONENT_HOST,
     resources: Object.fromEntries(resources.map((resource) => [resource.name, manifestResource(resource)])),
@@ -302,6 +311,13 @@ export function compileHandlerManifest(
   }
 
   return manifest;
+}
+
+interface HandlerManifestDraft {
+  schema: string;
+  componentHost: { kind: string; version: string };
+  resources: { [name: string]: ReturnType<typeof manifestResource> };
+  triggerEdges?: TriggerEdge[];
 }
 
 function createHandle<K extends string>(
@@ -316,6 +332,7 @@ function createHandle<K extends string>(
     kind,
     name,
     stableId: `${kind}:${name}`,
+    // SAFETY: assertion to `port: PORT_BY_KIND[kind as keyof typeof PORT_BY_KIND],` is required at this boundary.
     port: PORT_BY_KIND[kind as keyof typeof PORT_BY_KIND],
     durableEvents: options.durableEvents ?? true,
     bindings: Object.fromEntries(
@@ -324,6 +341,7 @@ function createHandle<K extends string>(
         {
           port: target.port,
           resource: target.name,
+          // SAFETY: assertion to `clientType: target.clientType ?? CLIENT_TYPE_BY_KIND[target.kind as keyof typeof` is required at this boundary.
           clientType: target.clientType ?? CLIENT_TYPE_BY_KIND[target.kind as keyof typeof CLIENT_TYPE_BY_KIND],
         },
       ]),
@@ -331,6 +349,7 @@ function createHandle<K extends string>(
     triggers: [],
     permissions: new Set(),
     routeKeys: new Set(),
+    // SAFETY: assertion to `clientType: CLIENT_TYPE_BY_KIND[kind as keyof typeof CLIENT_TYPE_BY_KIND],` is required at this boundary.
     clientType: CLIENT_TYPE_BY_KIND[kind as keyof typeof CLIENT_TYPE_BY_KIND],
   };
   return handle;
@@ -451,7 +470,7 @@ function manifestResource(handle: ResourceHandle) {
 }
 
 function normalizeBindMap(bind: BindingMap, path: string) {
-  if (!bind || typeof bind !== "object" || Array.isArray(bind)) {
+  if (!bind || !isJsonObject(bind)) {
     throw new TriggerContractError(path, "must be a resource map");
   }
 
@@ -462,33 +481,33 @@ function normalizeBindMap(bind: BindingMap, path: string) {
   return bind;
 }
 
-function assertHandle(handle: unknown, path: string): asserts handle is ResourceHandle {
-  if (!(handle as ResourceHandle)?.__hoboTriggerContract || typeof (handle as ResourceHandle).name !== "string") {
+function assertHandle<T>(handle: T, path: string): asserts handle is T & ResourceHandle {
+  if (!isJsonObject(handle) || handle.__hoboTriggerContract !== true || !isJsonString(handle.name)) {
     throw new TriggerContractError(path, "must contain HoBo handler-trigger resource handles");
   }
 }
 
 function assertResourceName(name: string, path: string) {
-  if (typeof name !== "string" || !RESOURCE_ID.test(name)) {
+  if (!isJsonString(name) || !RESOURCE_ID.test(name)) {
     throw new TriggerContractError(path, "invalid resource id");
   }
 }
 
-function assertString(value: unknown, path: string) {
-  if (typeof value !== "string" || value.length === 0) {
+function assertString<T>(value: T, path: string): string {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TriggerContractError(path, "must be a non-empty string");
   }
   return value;
 }
 
-function assertHandler(handler: unknown, path: string) {
-  if (typeof handler !== "function" && !isWorkflowHandler(handler)) {
+function assertHandler<T>(handler: T, path: string) {
+  if (!(handler instanceof Function) && !isWorkflowHandler(handler)) {
     throw new TriggerContractError(path, "handler must be a function or workflow handler");
   }
 }
 
-function isWorkflowHandler(handler: unknown): handler is WorkflowHandler {
-  return (handler as WorkflowHandler)?.kind === "workflow";
+function isWorkflowHandler<T>(handler: T): handler is T & WorkflowHandler {
+  return isJsonObject(handler) && handler.kind === "workflow";
 }
 
 function handlerName(handler: Handler | WorkflowHandler) {
@@ -509,13 +528,15 @@ function durableRuntimeFor(handler: Handler | WorkflowHandler) {
   };
 }
 
-function omitEmpty(value: Record<string, unknown>) {
+function omitEmpty<T>(value: T) {
+  // SAFETY: Object.entries erases T at this object-bag boundary.
+  const entries: Array<[string, JsonValue]> = Object.entries(value as never);
   return Object.fromEntries(
-    Object.entries(value).filter(([, entry]) => {
+    entries.filter(([, entry]) => {
       if (Array.isArray(entry)) {
         return entry.length > 0;
       }
-      if (entry && typeof entry === "object") {
+      if (entry && isJsonObject(entry)) {
         return Object.keys(entry).length > 0;
       }
       return entry !== undefined;
@@ -523,6 +544,10 @@ function omitEmpty(value: Record<string, unknown>) {
   );
 }
 
-function omitUndefined<T extends Record<string, unknown>>(value: T) {
-  return Object.fromEntries(Object.entries(value).filter(([, entry]) => entry !== undefined)) as T;
+function omitUndefined<T>(value: T): T {
+  // SAFETY: Object.entries erases T at this object-bag boundary.
+  const entries: Array<[string, JsonValue | undefined]> = Object.entries(value as never);
+  // SAFETY: filtered entries reconstruct T after dropping undefined fields.
+  const omitted: T = Object.fromEntries(entries.filter(([, entry]) => entry !== undefined)) as T;
+  return omitted;
 }

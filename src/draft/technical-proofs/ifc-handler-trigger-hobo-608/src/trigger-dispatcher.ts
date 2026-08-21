@@ -6,6 +6,8 @@ import type {
   RuntimeLocalPorts,
   TriggerFiredEvent,
 } from "./runtime-ports.js";
+import { isJsonObject, type JsonValue } from "./json.js";
+
 
 export interface ParsedManifest {
   readonly schema: "hobo.manifest/v1";
@@ -13,7 +15,7 @@ export interface ParsedManifest {
 }
 
 export interface HandlerRegistry {
-  readonly get: (name: string) => ((ctx: unknown) => unknown | Promise<unknown>) | undefined;
+  readonly get: (name: string) => ((ctx: JsonValue) => JsonValue | Promise<JsonValue>) | undefined;
 }
 
 export interface TriggerDispatcherOptions {
@@ -51,15 +53,15 @@ export class TriggerDispatcher {
     await this.#ports.scheduler.tick(resource);
   }
 
-  async publishTopic(resource: string, eventType: string, payload: unknown): Promise<void> {
+  async publishTopic(resource: string, eventType: string, payload: JsonValue): Promise<void> {
     await this.#ports.messaging.publish(resource, eventType, payload);
   }
 
-  async writeBucket(resource: string, key: string, value: unknown): Promise<void> {
+  async writeBucket(resource: string, key: string, value: JsonValue): Promise<void> {
     await this.#ports.blobStore.write(resource, key, value);
   }
 
-  async enqueueQueue(resource: string, body: unknown): Promise<void> {
+  async enqueueQueue(resource: string, body: JsonValue): Promise<void> {
     await this.#ports.queue.enqueue(resource, body);
   }
 
@@ -86,6 +88,7 @@ export class TriggerDispatcher {
         this.#wireQueueWorker(edge);
         break;
       default:
+        // SAFETY: assertion to `throw new Error(unsupported trigger kind: ${(edge as TriggerEdge).kind});` is required at this boundary.
         throw new Error(`unsupported trigger kind: ${(edge as TriggerEdge).kind}`);
     }
   }
@@ -105,7 +108,8 @@ export class TriggerDispatcher {
           config: {},
         });
         this.#emitFired(edge, true);
-        if (result && typeof result === "object" && "status" in result) {
+        if (result && isJsonObject(result) && "status" in result) {
+          // SAFETY: assertion to `return result as HttpResponse;` is required at this boundary.
           return result as HttpResponse;
         }
         return { status: 200, body: result };

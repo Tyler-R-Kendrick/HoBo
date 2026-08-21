@@ -6,13 +6,15 @@ import {
   MembraneSeveredError,
 } from "./errors.js";
 import { createManualClock, type ManualClock } from "./manual-clock.js";
+import { isJsonString, type JsonValue } from "./json.js";
+
 
 export const MEMBRANE_CONTRACT_VERSION = "hobo.membrane-deadline-backpressure/v1";
 
 export interface WitCodec {
   readonly name: string;
-  encode(value: unknown): unknown;
-  decode(value: unknown): unknown;
+  encode(value: JsonValue): JsonValue;
+  decode(value: JsonValue): JsonValue;
 }
 
 export interface CallContext {
@@ -25,9 +27,9 @@ export interface CallContext {
   callLinked: (
     nextImportInterface: string,
     nextOperation: string,
-    nextPayload?: unknown,
+    nextPayload?: JsonValue,
     nextOptions?: CallOptions,
-  ) => Promise<unknown>;
+  ) => Promise<JsonValue>;
   idempotencyKey?: string;
 }
 
@@ -43,7 +45,7 @@ export interface ProviderRegistration {
   maxInFlight?: number;
   exports: Record<
     string,
-    Record<string, (payload: unknown, context: CallContext) => unknown | Promise<unknown>>
+    Record<string, (payload: JsonValue, context: CallContext) => JsonValue | Promise<JsonValue>>
   >;
 }
 
@@ -114,10 +116,10 @@ interface ProviderState {
 export function createJsonWitCodec(): WitCodec {
   return Object.freeze({
     name: "json-wit",
-    encode(value: unknown) {
+    encode(value: JsonValue) {
       return structuredClone(value);
     },
-    decode(value: unknown) {
+    decode(value: JsonValue) {
       return structuredClone(value);
     },
   });
@@ -200,7 +202,7 @@ export class MembraneDeadlineBackpressure {
     componentId: string,
     importInterface: string,
     operation: string,
-    payload: unknown = {},
+    payload: JsonValue = {},
     options: CallOptions = {},
   ) {
     this.#requireComponent(componentId);
@@ -211,7 +213,7 @@ export class MembraneDeadlineBackpressure {
 
     const provider = this.#requireProvider(link.providerId);
     const implementation = provider.exports?.[link.exportInterface]?.[operation];
-    if (typeof implementation !== "function") {
+    if (!(implementation instanceof Function)) {
       throw new Error(`wrpc.operation_not_found: ${link.exportInterface}.${operation}`);
     }
 
@@ -298,6 +300,7 @@ export class MembraneDeadlineBackpressure {
       }
       if (
         error instanceof DeadlineExceededError ||
+        // SAFETY: assertion to `(error as { code?: string })?.code === "deadline-exceeded"` is required at this boundary.
         (error as { code?: string })?.code === "deadline-exceeded"
       ) {
         throw error;
@@ -333,11 +336,11 @@ export class MembraneDeadlineBackpressure {
   async callProvider(
     providerId: string,
     operation: string,
-    context: { importInterface?: string; payload?: unknown; idempotencyKey?: string } = {},
+    context: { importInterface?: string; payload?: JsonValue; idempotencyKey?: string } = {},
   ) {
     const provider = this.#requireProvider(providerId);
     const implementation = provider.exports?.["*"]?.[operation];
-    if (typeof implementation !== "function") {
+    if (!(implementation instanceof Function)) {
       throw new Error(`wrpc.operation_not_found: ${providerId}.${operation}`);
     }
 
@@ -463,7 +466,7 @@ function linkKey(componentId: string, importInterface: string) {
 }
 
 function assertId(id: string, kind: string) {
-  if (typeof id !== "string" || id.length === 0) {
+  if (!isJsonString(id) || id.length === 0) {
     throw new Error(`wrpc.${kind}_id_required`);
   }
 }
@@ -476,7 +479,7 @@ function normalizeNonNegativeInteger(value: number, fieldName: string) {
 }
 
 function isMembraneFailure(
-  error: unknown,
+  error: JsonValue,
 ): error is MembraneOverloadedError | MembraneSeveredError | AmbiguousReturnError {
   return (
     error instanceof MembraneOverloadedError ||

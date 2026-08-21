@@ -7,6 +7,8 @@ import {
   validateProvenanceRecord,
   verifyProvenanceRecord
 } from "../../slsa-provenance-certification-contract/src/provenance.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const CERTIFICATION_RECORD_SCHEMA = "hobo.gen.certification-record/v1";
 
@@ -27,7 +29,7 @@ export function createGenerationCertifyStage({ registry, signingKey } = {}) {
     trustedKeys: { [signingKey?.keyId]: signingKey?.publicKeyPem }
   });
   assertSigningKey(signingKey);
-  if (!targetRegistry || typeof targetRegistry.publish !== "function") {
+  if (!targetRegistry || !(targetRegistry.publish instanceof Function)) {
     throw new CertifyStageContractError("certify.registry_required", "$.registry");
   }
 
@@ -298,7 +300,7 @@ function ensureConformanceMatchesValidation(conformanceReport, validationReport)
 
 function verificationReasons(record, trustedKeys) {
   const reasons = [];
-  const parsed = validateRecordShape(record, reasons);
+  const parsed = validateRecordContract(record, reasons);
   if (!parsed) {
     return reasons;
   }
@@ -317,19 +319,19 @@ function verificationReasons(record, trustedKeys) {
   return unique(reasons);
 }
 
-function validateRecordShape(record, reasons) {
-  if (!record || typeof record !== "object" || Array.isArray(record)) {
+function validateRecordContract(record, reasons) {
+  if (!record || !isJsonObject(record) || Array.isArray(record)) {
     reasons.push("registry.record_required");
     return null;
   }
   if (record.kind !== "generation-certification") {
     reasons.push("registry.record_kind");
   }
-  if (!record.payload || typeof record.payload !== "object" || Array.isArray(record.payload)) {
+  if (!record.payload || !isJsonObject(record.payload) || Array.isArray(record.payload)) {
     reasons.push("registry.payload_required");
     return null;
   }
-  if (!record.signature || typeof record.signature !== "object" || Array.isArray(record.signature)) {
+  if (!record.signature || !isJsonObject(record.signature) || Array.isArray(record.signature)) {
     reasons.push("registry.signature_required");
     return null;
   }
@@ -338,10 +340,10 @@ function validateRecordShape(record, reasons) {
   if (signature.alg !== supportedSignatureAlg) {
     reasons.push("registry.signature_alg");
   }
-  if (typeof signature.keyId !== "string" || signature.keyId.length === 0) {
+  if (!isJsonString(signature.keyId) || signature.keyId.length === 0) {
     reasons.push("registry.signature_key_required");
   }
-  if (typeof signature.value !== "string" || signature.value.length === 0) {
+  if (!isJsonString(signature.value) || signature.value.length === 0) {
     reasons.push("registry.signature_required");
   }
   if (signature.payloadDigest !== contentDigest(record.payload)) {
@@ -522,10 +524,10 @@ function parseDigestRef(ref, path) {
 }
 
 function withoutRef(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
-  const { ref, ...rest } = value;
+  const { ref: _ref, ...rest } = value;
   return rest;
 }
 
@@ -556,11 +558,11 @@ function expectObject(value, path) {
 }
 
 function isObject(value) {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+  return Boolean(value && isJsonObject(value) && !Array.isArray(value));
 }
 
 function nonEmptyString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new CertifyStageContractError("certify.expected_string", path);
   }
   return value;
@@ -594,7 +596,7 @@ function clone(value) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {

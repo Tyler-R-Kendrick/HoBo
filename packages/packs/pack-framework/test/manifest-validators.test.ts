@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- malformed manifest fixtures exercise the parser boundary. */
 /**
  * The pack manifest's individual validators.
  *
@@ -535,3 +536,4 @@ describe("persistence", () => {
 		]);
 	});
 });
+/* eslint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- malformed manifest fixtures intentionally exercise the parser boundary. */

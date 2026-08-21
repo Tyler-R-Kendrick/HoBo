@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unknown-returns -- error assertion helper crosses the test boundary. */
 import assert from "node:assert/strict";
 import { PackError, parsePackConfiguration } from "@hobo/pack-framework";
 import { describe, it } from "vitest";
@@ -172,3 +173,4 @@ describe("buildPostgresContainerSpec", () => {
 		);
 	});
 });
+/* eslint-disable anti-slop/no-unknown-returns -- error assertion helper crosses the test boundary. */

@@ -167,6 +167,7 @@ export function verifyPackManifest(
 		);
 	}
 
+	// SAFETY: all manifest fields and verification evidence were checked above.
 	return {
 		...manifest,
 		selectedImage,

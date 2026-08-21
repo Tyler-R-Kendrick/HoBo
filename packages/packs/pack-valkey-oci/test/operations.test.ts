@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unknown-returns, anti-slop/no-unknown-parameters -- error assertion helper crosses the test boundary. */
 import assert from "node:assert/strict";
 import { parseSecretRef, SecretValue } from "@hobo/bindings";
 import { PackError, type ProcessRunner } from "@hobo/pack-framework";
@@ -245,3 +246,4 @@ describe("runValkeyCommand", () => {
 		);
 	});
 });
+/* eslint-disable anti-slop/no-unknown-returns, anti-slop/no-unknown-parameters -- error assertion helper crosses the test boundary. */

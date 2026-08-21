@@ -1,3 +1,4 @@
+/* oxlint-disable no-control-regex -- control-character rejection is the argv safety invariant. */
 /**
  * Argv construction shared by every pack operation.
  *

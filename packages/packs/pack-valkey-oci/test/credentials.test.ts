@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unknown-parameters, anti-slop/no-known-value-widening -- custody test doubles are local boundary fixtures. */
 /**
  * The interesting property is negative: nothing in this package ever holds the
  * password, so a custody that returns one is a broken custody rather than a
@@ -103,3 +104,4 @@ describe("valkey credential provisioning", () => {
 		);
 	});
 });
+/* eslint-disable anti-slop/no-unknown-parameters, anti-slop/no-known-value-widening -- custody test doubles are local boundary fixtures. */

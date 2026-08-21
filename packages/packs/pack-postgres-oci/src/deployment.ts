@@ -119,7 +119,7 @@ export function buildPostgresContainerSpec(
 	const hostAuthMethod = config.requireString("hostAuthMethod");
 	const maxConnections = config.requireInteger("maxConnections");
 
-	const env: Record<string, string> = {
+	const env = {
 		POSTGRES_PASSWORD_FILE: POSTGRES_PASSWORD_FILE_PATH,
 		POSTGRES_USER: ownerRole,
 		POSTGRES_DB: database,

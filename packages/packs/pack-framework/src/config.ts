@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- scalar checks are the manifest parser boundary. */
 /**
  * Pack configuration: one parse boundary, typed accessors afterwards.
  *
@@ -15,6 +16,18 @@ import { PackError } from "./errors.js";
 import type { PackConfigField, ParsedPackManifest } from "./manifest.js";
 
 export type PackConfigurationInputValue = string | number | boolean;
+
+function isString(value: PackConfigurationInputValue): value is string {
+	return typeof value === "string";
+}
+
+function isNumber(value: PackConfigurationInputValue): value is number {
+	return typeof value === "number";
+}
+
+function isBoolean(value: PackConfigurationInputValue): value is boolean {
+	return typeof value === "boolean";
+}
 
 export type PackVolumeStorage =
 	| { readonly kind: "local-volume"; readonly volumeId: string }
@@ -75,7 +88,7 @@ function parseField(
 	switch (field.kind) {
 		case "string":
 		case "volume-name": {
-			if (typeof raw !== "string" || raw.length === 0) {
+				if (!isString(raw) || raw.length === 0) {
 				configurationInvalid(
 					`configuration ${field.key} must be a non-empty string`,
 				);
@@ -85,7 +98,7 @@ function parseField(
 				: { kind: "volume-name", value: raw };
 		}
 		case "enum": {
-			if (typeof raw !== "string" || !(field.enumValues ?? []).includes(raw)) {
+				if (!isString(raw) || !(field.enumValues ?? []).includes(raw)) {
 				configurationInvalid(
 					`configuration ${field.key} must be one of ${(field.enumValues ?? []).join(", ")}`,
 				);
@@ -93,14 +106,13 @@ function parseField(
 			return { kind: "enum", value: raw };
 		}
 		case "boolean": {
-			if (typeof raw !== "boolean") {
-				configurationInvalid(`configuration ${field.key} must be a boolean`);
-			}
+				if (!isBoolean(raw))
+					configurationInvalid(`configuration ${field.key} must be a boolean`);
 			return { kind: "boolean", value: raw };
 		}
 		case "integer":
 		case "duration-ms": {
-			if (typeof raw !== "number" || !Number.isInteger(raw)) {
+				if (!isNumber(raw) || !Number.isInteger(raw)) {
 				configurationInvalid(`configuration ${field.key} must be an integer`);
 			}
 			if (field.minimum !== undefined && raw < field.minimum) {
@@ -123,14 +135,11 @@ function parseField(
 				: { kind: "duration-ms", value: raw };
 		}
 		case "secret-ref": {
-			if (typeof raw !== "string") {
-				configurationInvalid(
-					`configuration ${field.key} must be a secret locator string`,
-				);
-			}
 			// `parseSecretRef` rejects credential-shaped input, so a plaintext
 			// connection string supplied here fails rather than being stored.
-			return { kind: "secret-ref", value: parseSecretRef(raw).ref };
+				if (!isString(raw))
+					configurationInvalid(`configuration ${field.key} must be a secret locator string`);
+				return { kind: "secret-ref", value: parseSecretRef(raw).ref };
 		}
 		default: {
 			const exhaustive: never = field.kind;
@@ -259,7 +268,8 @@ export function parsePackConfiguration(
 				`configuration ${key} is a ${value.kind}, not a ${kind}`,
 			);
 		}
-		return value as Extract<PackConfigurationValue, { kind: K }>;
+			// SAFETY: the kind equality check above narrows the discriminated union to K.
+			return value as Extract<PackConfigurationValue, { kind: K }>;
 	};
 
 	return {

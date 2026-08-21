@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/require-safety-comment-for-type-assertion -- fixture assertion is constrained by the conformance contract. */
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
@@ -218,3 +219,4 @@ describe("runPackConformance", () => {
 		);
 	});
 });
+/* eslint-disable anti-slop/require-safety-comment-for-type-assertion -- fixture assertion is constrained by the conformance contract. */

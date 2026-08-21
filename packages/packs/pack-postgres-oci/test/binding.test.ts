@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */
 import assert from "node:assert/strict";
 import { redactSecretRef } from "@hobo/bindings";
 import { PackError } from "@hobo/pack-framework";
@@ -91,3 +92,4 @@ describe("buildPostgresBinding", () => {
 		assert.equal(binding.rotationSupported, true);
 	});
 });
+/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */

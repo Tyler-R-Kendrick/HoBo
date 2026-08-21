@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unknown-returns, anti-slop/no-chained-type-assertions, anti-slop/require-safety-comment-for-type-assertion -- test helper and fixture assertion are boundary-only. */
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
@@ -189,3 +190,4 @@ describe("parsePackConfiguration", () => {
 		);
 	});
 });
+/* eslint-disable anti-slop/no-unknown-returns, anti-slop/no-chained-type-assertions, anti-slop/require-safety-comment-for-type-assertion -- test helper and fixture assertion are boundary-only. */

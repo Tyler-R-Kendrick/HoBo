@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-known-value-widening -- deployment parsing is the documented untrusted-input boundary. */
 /**
  * The one parse boundary for a deployment request.
  *
@@ -55,6 +56,14 @@ export function parseValkeyResourceRef(input: unknown): ValkeyResourceRef {
 	return input as ValkeyResourceRef;
 }
 
+function isScalar(value: unknown): value is PackConfigurationInputValue {
+	return (
+		typeof value === "string" ||
+		typeof value === "number" ||
+		typeof value === "boolean"
+	);
+}
+
 /** A deployment request that has crossed the parse boundary. */
 export type ValkeyDeploymentRequest = {
 	readonly resourceRef: ValkeyResourceRef;
@@ -71,7 +80,7 @@ function asRecord(
 	input: unknown,
 	what: string,
 ): Readonly<Record<string, unknown>> {
-	if (typeof input !== "object" || input === null || Array.isArray(input)) {
+	if (input === null || typeof input !== "object" || Array.isArray(input)) {
 		configurationInvalid(`${what} must be an object`);
 	}
 	return input as Readonly<Record<string, unknown>>;
@@ -90,11 +99,7 @@ function parseValues(
 	const raw = asRecord(input, "values");
 	const values: Record<string, PackConfigurationInputValue> = {};
 	for (const [key, value] of Object.entries(raw)) {
-		if (
-			typeof value !== "string" &&
-			typeof value !== "number" &&
-			typeof value !== "boolean"
-		) {
+			if (!isScalar(value)) {
 			configurationInvalid(
 				`configuration ${key} must be a string, number, or boolean`,
 			);

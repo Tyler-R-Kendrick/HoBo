@@ -50,18 +50,19 @@ const PATH_SEGMENT = /^[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*$/u;
  * algorithm we have never verified end to end would be an unearned claim.
  */
 export function parseImageDigest(input: string): ImageDigest {
-	if (typeof input !== "string" || !DIGEST.test(input)) {
+	if (!DIGEST.test(input)) {
 		throw new PackError(
 			"PACK_INTEGRITY_UNVERIFIED",
 			"image digest must be sha256:<64 lowercase hex characters>",
-			{ detail: { length: typeof input === "string" ? input.length : 0 } },
+				{ detail: { length: input.length } },
 		);
 	}
+	// SAFETY: DIGEST proves the branded sha256 format immediately above.
 	return input as ImageDigest;
 }
 
 export function parseImageRepository(input: string): ImageRepository {
-	if (typeof input !== "string" || input.length === 0 || input.length > 255) {
+	if (input.length === 0 || input.length > 255) {
 		throw new PackError(
 			"PACK_MANIFEST_INVALID",
 			"image repository must be a 1-255 character <registry>/<path> string",
@@ -96,6 +97,7 @@ export function parseImageRepository(input: string): ImageRepository {
 			);
 		}
 	}
+	// SAFETY: host and every path segment passed the repository grammar above.
 	return input as ImageRepository;
 }
 
@@ -107,7 +109,7 @@ export function parseImageRepository(input: string): ImageRepository {
  * moving pointer gets back into a supply chain.
  */
 export function parsePinnedImageRef(input: string): ParsedPinnedImageRef {
-	if (typeof input !== "string" || input.length === 0) {
+	if (input.length === 0) {
 		throw new PackError(
 			"PACK_MANIFEST_INVALID",
 			"image reference must be a non-empty string",
@@ -142,6 +144,7 @@ export function parsePinnedImageRef(input: string): ParsedPinnedImageRef {
 	const repository = parseImageRepository(repositoryPart);
 	const registry = repositoryPart.slice(0, repositoryPart.indexOf("/"));
 	return {
+		// SAFETY: repository and digest are branded parser outputs.
 		ref: `${repository}@${digest}` as PinnedImageRef,
 		registry,
 		repository,

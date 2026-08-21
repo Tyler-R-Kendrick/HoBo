@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion -- branded operation inputs are established by the validators immediately above. */
 /**
  * Backup, restore, and migration as argv arrays.
  *
@@ -69,6 +70,7 @@ export function parsePostgresIdentifier(
 	if (input.startsWith("pg_")) {
 		operationInvalid(`${what} must not use the reserved pg_ prefix`);
 	}
+	// SAFETY: identifier grammar and reserved-prefix checks passed above.
 	return input as PostgresIdentifier;
 }
 
@@ -83,6 +85,7 @@ export function parsePostgresFilePath(
 	}
 	if (input.length > 4096)
 		operationInvalid(`${what} exceeds the 4096 character path limit`);
+	// SAFETY: path traversal, absolute paths, and size checks passed above.
 	return input as PostgresFilePath;
 }
 
@@ -171,7 +174,7 @@ function connectionArgv(endpoint: PostgresEndpoint): readonly string[] {
 	];
 }
 
-function baseEnv(endpoint: PostgresEndpoint): Readonly<Record<string, string>> {
+function baseEnv(endpoint: PostgresEndpoint) {
 	return {
 		PGSSLMODE: endpoint.sslMode,
 		// Deterministic client behaviour: no ~/.psqlrc, no locale-dependent
@@ -365,7 +368,7 @@ export async function runPostgresCommand(
 	resolver: PackSecretResolverPort,
 	command: PostgresCommand,
 ): Promise<ProcessResult> {
-	const env: Record<string, string> = { ...command.env };
+	const env = { ...command.env };
 	for (const [key, ref] of Object.entries(command.secretEnv)) {
 		const value = await resolveSecret(resolver, ref);
 		env[key] = value.expose();

@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonObject, type JsonValue } from "./json.js";
+
 
 export const RESOLUTION_RECEIPT_SCHEMA = "hobo.resolution-receipt/v1";
 export const RESOLUTION_REJECTION_SCHEMA = "hobo.resolution-rejection/v1";
@@ -102,7 +104,7 @@ export type ResolutionResult =
 type ResolveInput = Readonly<{
   manifest: ContractManifest;
   environment: BrokerEnvironment;
-  yardFallbackResolver?: () => unknown;
+  yardFallbackResolver?: () => JsonValue;
 }>;
 
 type EnvironmentOverrides = Partial<
@@ -365,7 +367,7 @@ function reject({
   message: string;
   details: readonly string[];
   replay: ReplayEvidence;
-}): Readonly<{ ok: false; rejection: ResolutionRejection }> {
+}) {
   return {
     ok: false,
     rejection: signedRejection({
@@ -460,19 +462,19 @@ function acceptedCatalog(): CatalogCapability[] {
   ];
 }
 
-function stableId(prefix: string, value: unknown): string {
+function stableId(prefix: string, value: JsonValue): string {
   return `${prefix}-${digestOf(value).slice("sha256:".length, "sha256:".length + 16)}`;
 }
 
-function digestOf(value: unknown): `sha256:${string}` {
+function digestOf(value: JsonValue): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(canonicalJson(value)).digest("hex")}`;
 }
 
-function canonicalJson(value: unknown): string {
+function canonicalJson(value: JsonValue): string {
   if (Array.isArray(value)) {
     return `[${value.map(canonicalJson).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return `{${Object.entries(value)
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`)
@@ -486,11 +488,12 @@ function sortedBy<T>(entries: readonly T[], selector: (entry: T) => string): T[]
 }
 
 function clone<T>(value: T): T {
+  // SAFETY: `return JSON.parse(JSON.stringify(value)) as T;` is required at this I/O or test boundary.
   return JSON.parse(JSON.stringify(value)) as T;
 }
 
 function deepFreeze<T>(value: T): T {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) return value;
   Object.freeze(value);
   for (const child of Object.values(value)) {
     deepFreeze(child);

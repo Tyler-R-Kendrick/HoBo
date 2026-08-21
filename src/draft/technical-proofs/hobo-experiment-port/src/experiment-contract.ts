@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject } from "./json.js";
 const maxBasisPoints = 10_000;
 
 const validMetricKinds = new Set(["counter", "gauge", "histogram", "duration", "ratio"]);
@@ -135,7 +136,7 @@ export function conclude(definition, input = {}) {
   }
 
   const confidence = input.confidence ?? 0;
-  if (typeof confidence !== "number" || confidence < 0 || confidence > 1) {
+  if (!isJsonNumber(confidence) || confidence < 0 || confidence > 1) {
     throw new TypeError("analysis confidence must be between 0 and 1");
   }
 
@@ -169,7 +170,7 @@ function validateEventData(type, data) {
   if (type === "experiment.Assigned" || type === "experiment.Exposed") {
     assertPrincipalRef(data.subject);
     assertNonEmptyString(data.variantKey, "event variant key");
-    if (typeof data.sampled !== "boolean") {
+    if (!isJsonBoolean(data.sampled)) {
       throw new TypeError(`${type} requires sampled marker`);
     }
   }
@@ -186,7 +187,7 @@ function validateEventData(type, data) {
     if (!validVerdicts.has(data.verdict)) {
       throw new TypeError(`unknown analysis verdict: ${data.verdict}`);
     }
-    if (typeof data.confidence !== "number" || data.confidence < 0 || data.confidence > 1) {
+    if (!isJsonNumber(data.confidence) || data.confidence < 0 || data.confidence > 1) {
       throw new TypeError("analysis confidence must be between 0 and 1");
     }
   }
@@ -219,13 +220,13 @@ function stableHash(value) {
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
 function assertNonEmptyString(value, name) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
 }

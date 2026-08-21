@@ -11,6 +11,8 @@ import {
   canonicalManifestHash,
   validateManifest,
 } from "../../hobo-manifest-contract/src/manifest.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEFAULT_COMPONENT_HOST = { kind: "wasmtime", version: "46.0.1" };
 const DECLARATION_ORDER = ["bindle", "camp", "yard", "data", "service", "website", "step", "workflow"];
@@ -39,7 +41,7 @@ export class HoboCodeDslError extends Error {
 }
 
 export function parseHoboCode(source) {
-  if (typeof source !== "string") {
+  if (!isJsonString(source)) {
     throw new TypeError("Hobo Code source must be a string");
   }
 
@@ -504,7 +506,7 @@ function formatBehavior(kind, behavior) {
 }
 
 function astFrom(input) {
-  if (typeof input === "string") return parseHoboCode(input);
+  if (isJsonString(input)) return parseHoboCode(input);
   return normalizeAst(input);
 }
 
@@ -519,7 +521,7 @@ function stripComment(line) {
 }
 
 function required(value, name) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new HoboCodeDslError("HOBO_CODE_REQUIRED", 0, `${name} is required`);
   }
   return value;
@@ -542,7 +544,7 @@ function sortResources(values) {
 
 function compact(value) {
   if (Array.isArray(value)) return value.length > 0 ? value : undefined;
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   return Object.fromEntries(
     Object.entries(value)
       .filter(([, nested]) => nested !== undefined && (!Array.isArray(nested) || nested.length > 0))
@@ -552,7 +554,7 @@ function compact(value) {
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   return Object.fromEntries(
     Object.keys(value)
       .sort()

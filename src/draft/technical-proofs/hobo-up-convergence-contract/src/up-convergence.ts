@@ -1,4 +1,6 @@
 import { createHash, randomUUID } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const HOBO_UP_CONVERGENCE_VERSION = "hobo.up-convergence/v1";
 
@@ -409,7 +411,7 @@ function defaultDeployRevision(set, { project, campId, revision }) {
 }
 
 function normalizeManifest(manifest) {
-  if (!manifest || typeof manifest !== "object") {
+  if (!manifest || !isJsonObject(manifest)) {
     throw new HoboUpError("collectResources must return a manifest object", "invalid-manifest");
   }
   if (manifest.schema !== "hobo.manifest/v1") {
@@ -434,7 +436,7 @@ function normalizeManifest(manifest) {
 }
 
 function normalizeDeploymentSet(set) {
-  if (!set || typeof set !== "object") {
+  if (!set || !isJsonObject(set)) {
     throw new HoboUpError("planDeployment must return a DeploymentSet", "invalid-set");
   }
   const normalized = {
@@ -457,7 +459,7 @@ function normalizeDeploymentSet(set) {
 }
 
 function normalizeGateResult(gate) {
-  if (!gate || typeof gate !== "object") {
+  if (!gate || !isJsonObject(gate)) {
     throw new HoboUpError("evaluateGate must return a gate result", "invalid-gate");
   }
   if (gate.status === "passed") {
@@ -546,7 +548,7 @@ function nextSequence(events) {
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new HoboUpError(`${label} is required`, "missing-field", { label });
   }
   return value;
@@ -568,7 +570,7 @@ function canonicalize(value) {
   if (Array.isArray(value)) {
     return value.map(canonicalize);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(

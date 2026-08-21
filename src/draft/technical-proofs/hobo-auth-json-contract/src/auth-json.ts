@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const AUTH_JSON_SCHEMA_ID = "https://hobo.dev/schemas/capability/auth-json.v1.json";
 export const ID_JAG_DRAFT_VERSION = "draft-ietf-oauth-identity-assertion-authz-grant-04";
@@ -59,7 +61,7 @@ export function parseResourceIndicators(indicators) {
 
   const seen = new Set();
   return indicators.map((raw, index) => {
-    if (typeof raw !== "string" || raw.length === 0) {
+    if (!isJsonString(raw) || raw.length === 0) {
       throw new Error(`resourceIndicators[${index}] must be a non-empty string`);
     }
     if (seen.has(raw)) {
@@ -359,7 +361,7 @@ function sortForJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortForJson);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.keys(value)
         .sort()
@@ -386,7 +388,7 @@ function normalizeHttpsUrl(value, field) {
 }
 
 function parseUrl(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty URL string`);
   }
 
@@ -409,7 +411,7 @@ function parseUrl(value, field) {
 }
 
 function assertObject(value, field) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  if (value === null || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${field} must be an object`);
   }
 }
@@ -432,7 +434,7 @@ function assertEnum(value, field, allowedValues) {
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;

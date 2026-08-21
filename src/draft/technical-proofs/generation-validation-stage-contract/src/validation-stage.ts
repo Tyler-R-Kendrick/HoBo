@@ -10,6 +10,8 @@ import {
   profileDigest,
   validateSandboxProfile
 } from "../../no-egress-generation-sandbox-contract/src/contract.js";
+import { isJsonString, isJsonBoolean, isJsonObject } from "./json.js";
+
 
 const validationReportSchema = "hobo.gen.validation-report/v1";
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
@@ -332,20 +334,20 @@ function validateDigestRef(ref, code, path) {
 }
 
 function assertFunction(value, code, path) {
-  if (typeof value !== "function") {
+  if (!(value instanceof Function)) {
     throw new ValidationStageContractError(code, path);
   }
   return value;
 }
 
 function assertObject(value, code, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new ValidationStageContractError(code, path);
   }
 }
 
 function assertBoolean(value, code, path) {
-  if (typeof value !== "boolean") {
+  if (!isJsonBoolean(value)) {
     throw new ValidationStageContractError(code, path);
   }
 }
@@ -357,13 +359,13 @@ function assertEqual(actual, expected, code, path) {
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new ValidationStageContractError(code, path);
   }
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
 

@@ -7,6 +7,8 @@ import { fileURLToPath } from "node:url";
 import type { ParsedIngestion } from "./parse-sources.js";
 import { ForgeIngestionError, sha256Digest, type DigestRef } from "./events.js";
 
+
+
 const packageRoot = fileURLToPath(new URL("..", import.meta.url));
 
 export type CandidatePackageFile = {

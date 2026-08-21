@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export const PROVIDER_LOCAL_VERSION: "hobo.provider-local/v1";
 
 export const local: {
@@ -35,15 +36,15 @@ export function createLocalProvider(options?: { root?: string }): {
   root: string;
   capabilities: Array<{ port: string; backend: string; fidelity: "local" | "mock" }>;
   with: typeof local.with;
-  registerDefaultDefinitions(registry: unknown[]): unknown[];
-  capabilityManifest(): unknown;
-  realize(plan: unknown): unknown;
-  client(port: string, outputs: unknown): unknown;
+  registerDefaultDefinitions(registry: JsonValue[]): JsonValue[];
+  capabilityManifest(): JsonValue;
+  realize(plan: JsonValue): JsonValue;
+  client(port: string, outputs: JsonValue): JsonValue;
 };
 
-export function createProviderLocalFixturePlan(): unknown;
+export function createProviderLocalFixturePlan(): JsonValue;
 export function runLocalProviderConformance(provider: ReturnType<typeof createLocalProvider>): { ok: true; checked: string[] };
 export function createLocalRuntime(options: { root: string }): {
-  provision(emission: unknown, options?: { holdMs?: number }): Promise<unknown>;
+  provision(emission: JsonValue, options?: { holdMs?: number }): Promise<JsonValue>;
   destroy(deploymentId: string): Promise<{ deploymentId: string; residue: boolean; remaining: string[] }>;
 };

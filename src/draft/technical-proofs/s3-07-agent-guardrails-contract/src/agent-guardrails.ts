@@ -3,6 +3,8 @@ import {
   createDecisionRequest,
   createPolicyDecidedEvent,
 } from "../../hobo-policy-ir-contract/src/policy-ir.js";
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
+
 
 export const AGENT_GUARDRAILS_SCHEMA_VERSION = "hobo.agent-guardrails/v1";
 export const AGENT_GUARDRAILS_ENGINE_ID = "hobo.agent-guardrails/contract@0.1.0";
@@ -22,15 +24,7 @@ export const ACTION_CLASS_EFFECTS = Object.freeze([
   "deny",
 ]);
 
-const ACTION_CLASS_SET = new Set(ACTION_CLASSES);
 const ACTION_CLASS_EFFECT_SET = new Set(ACTION_CLASS_EFFECTS);
-const EFFECT_RANK = new Map([
-  ["deny", 0],
-  ["require-approval", 1],
-  ["allow-degraded", 2],
-  ["warn", 3],
-  ["allow", 4],
-]);
 
 export function classifyActionClass(action) {
   const normalized = String(action ?? "").toLowerCase();
@@ -424,7 +418,7 @@ function normalizeMeteringView(value) {
   const source = expectObject(value, "meteringView");
   return {
     seq: Number.isFinite(source.seq) ? source.seq : 0,
-    scopeCosts: source.scopeCosts && typeof source.scopeCosts === "object" ? source.scopeCosts : {},
+    scopeCosts: source.scopeCosts && isJsonObject(source.scopeCosts) ? source.scopeCosts : {},
   };
 }
 
@@ -450,11 +444,11 @@ function readAgentSpend(meteringView, agentId) {
   if (!entry) {
     return 0;
   }
-  return roundUsd(typeof entry === "number" ? entry : entry.cost ?? 0);
+  return roundUsd(isJsonNumber(entry) ? entry : entry.cost ?? 0);
 }
 
 function readCost(context) {
-  const source = context && typeof context === "object" ? context : {};
+  const source = context && isJsonObject(context) ? context : {};
   const estimate = source.costEstimateUsd ?? source.estimatedCostUsd ?? 0;
   return roundUsd(estimate);
 }
@@ -490,14 +484,14 @@ function sortEvents(eventsInput) {
 }
 
 function expectObject(value, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${path} must be an object`);
   }
   return value;
 }
 
 function expectNonEmptyString(value, path) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${path} must be a non-empty string`);
   }
   return value.trim();
@@ -507,7 +501,7 @@ function arrayOfStrings(value, path) {
   if (value === undefined) {
     return [];
   }
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+  if (!Array.isArray(value) || value.some((entry) => !isJsonString(entry))) {
     throw new Error(`${path} must be an array of strings`);
   }
   return [...value];

@@ -6,6 +6,8 @@ import {
   sign,
   verify,
 } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const SHA256_DIGEST_RE = /^sha256:[a-f0-9]{64}$/;
 const SIGNATURE_ALG = "Ed25519";
@@ -135,13 +137,13 @@ export function publishSignedArtifact({
 
 export function verifyInstallCandidate({ candidate, trustBoundary }) {
   const reasons = [];
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     return rejected(["candidate.required"]);
   }
   assertObject(trustBoundary, "trustBoundary");
 
   const artifact = candidate.artifact;
-  if (!artifact || typeof artifact !== "object" || Array.isArray(artifact)) {
+  if (!artifact || !isJsonObject(artifact) || Array.isArray(artifact)) {
     reasons.push("artifact.required");
   } else {
     const computedDigest = artifactDigest(artifact);
@@ -160,7 +162,7 @@ export function verifyInstallCandidate({ candidate, trustBoundary }) {
   }
 
   const signature = candidate.signature;
-  if (!signature || typeof signature !== "object" || Array.isArray(signature)) {
+  if (!signature || !isJsonObject(signature) || Array.isArray(signature)) {
     reasons.push("signature.required");
   } else {
     if (signature.alg !== SIGNATURE_ALG) {
@@ -190,7 +192,7 @@ export function verifyInstallCandidate({ candidate, trustBoundary }) {
   }
 
   const report = candidate.conformance?.report;
-  if (!report || typeof report !== "object" || Array.isArray(report)) {
+  if (!report || !isJsonObject(report) || Array.isArray(report)) {
     reasons.push("conformance.required");
   } else {
     if (!trustBoundary.requiredConformanceSuites.includes(report.suiteId)) {
@@ -300,13 +302,13 @@ function freezeStringList(values, name) {
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${name} must be an object`);
   }
 }
 
 function assertNonEmptyString(value, name) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${name} must be a non-empty string`);
   }
 }
@@ -330,7 +332,7 @@ function tierRank(value) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
@@ -346,7 +348,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

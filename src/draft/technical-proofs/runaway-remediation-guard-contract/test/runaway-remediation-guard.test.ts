@@ -243,8 +243,8 @@ function signal({
     targetId,
     occurredAt,
     severity: "SEV2",
-    ...(causedByActionId ? { causedByActionId } : {}),
-    ...(observedEffect ? { observedEffect } : {}),
+    ...(causedByActionId ? { causedByActionId } : undefined),
+    ...(observedEffect ? { observedEffect } : undefined),
   };
 }
 

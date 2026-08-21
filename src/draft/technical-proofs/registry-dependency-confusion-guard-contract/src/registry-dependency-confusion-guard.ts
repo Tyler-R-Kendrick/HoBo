@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const REGISTRY_DEPENDENCY_CONFUSION_GUARD_CONTRACT =
   "hobo.registry.dependency-confusion-guard/v1";
@@ -209,14 +211,14 @@ function toBuffer(value, path) {
   if (value instanceof Uint8Array) {
     return Buffer.from(value);
   }
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     return Buffer.from(value);
   }
   throw new Error(`${path} must be bytes`);
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function pushTimeline(timeline, entry) {
@@ -226,22 +228,22 @@ function pushTimeline(timeline, entry) {
 }
 
 function validateMirror(mirror) {
-  if (!mirror || typeof mirror !== "object" || Array.isArray(mirror)) {
+  if (!mirror || !isJsonObject(mirror) || Array.isArray(mirror)) {
     throw new Error("mirror must be an object");
   }
   if (!isNonEmptyString(mirror.mirrorId)) {
     throw new Error("mirror.mirrorId must be a non-empty string");
   }
-  if (typeof mirror.list !== "function") {
+  if (!(mirror.list instanceof Function)) {
     throw new Error(`${mirror.mirrorId}.list must be a function`);
   }
-  if (typeof mirror.fetch !== "function") {
+  if (!(mirror.fetch instanceof Function)) {
     throw new Error(`${mirror.mirrorId}.fetch must be a function`);
   }
 }
 
 function normalizePin(pin) {
-  if (!pin || typeof pin !== "object" || Array.isArray(pin)) {
+  if (!pin || !isJsonObject(pin) || Array.isArray(pin)) {
     throw new Error("pin must be an object");
   }
   if (!isNonEmptyString(pin.name)) {
@@ -262,7 +264,7 @@ function normalizePin(pin) {
 }
 
 function normalizeListing({ listing, mirror }) {
-  if (!listing || typeof listing !== "object" || Array.isArray(listing)) {
+  if (!listing || !isJsonObject(listing) || Array.isArray(listing)) {
     throw new Error(`${mirror.mirrorId}: listing must be an object`);
   }
   if (!isNonEmptyString(listing.name)) {

@@ -191,7 +191,7 @@ export default defineConfig({
 				"packages/auth-md/**": { statements: 85, branches: 79, functions: 81, lines: 86 },
 				"packages/bindings/**": { statements: 94, branches: 89, functions: 95, lines: 94 },
 				"packages/bindles/**": { statements: 74, branches: 65, functions: 79, lines: 75 },
-				"packages/broker/**": { statements: 76, branches: 65, functions: 84, lines: 77 },
+				"packages/broker/**": { statements: 87, branches: 80, functions: 92, lines: 87 },
 				"packages/camps/**": { statements: 80, branches: 73, functions: 82, lines: 81 },
 				"packages/capability-matrix/**": { statements: 85, branches: 60, functions: 91, lines: 87 },
 				"packages/capability-profiles/**": { statements: 86, branches: 74, functions: 98, lines: 89 },

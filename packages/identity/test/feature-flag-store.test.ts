@@ -711,8 +711,8 @@ describe("pickFractionalVariant", () => {
 	});
 
 	test("a trailing empty row still produces a string result", () => {
-		expect(typeof pickFractionalVariant(highBucketKey(), [{ a: 1 }, {}])).toBe(
-			"string",
+		expect(pickFractionalVariant(highBucketKey(), [{ a: 1 }, {}])).toEqual(
+			expect.any(String),
 		);
 	});
 

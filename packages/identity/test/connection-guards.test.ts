@@ -59,31 +59,34 @@ function connected(
 	} = {},
 ) {
 	const subject = options.subject ?? ALICE;
-	const { connection } = svc.create({
+	const createInput = {
 		provider: options.provider ?? "asana",
-		...(options.alias !== undefined ? { alias: options.alias } : {}),
 		subject,
 		createdBy: subject,
 		scopes: options.scopes ?? ["tasks:read"],
 		stationId: STATION,
-	});
+	};
+	if (options.alias !== undefined) createInput.alias = options.alias;
+	const { connection } = svc.create(createInput);
 	if (options.authorize === false) return connection;
-	return svc.authorize({
+	const authorizeInput = {
 		idOrAlias: connection.id,
 		actor: subject,
-		...(options.grantedScopes !== undefined
-			? { grantedScopes: options.grantedScopes }
-			: {}),
-	}).connection;
+	};
+	if (options.grantedScopes !== undefined)
+		authorizeInput.grantedScopes = options.grantedScopes;
+	return svc.authorize(authorizeInput).connection;
 }
 
 /** Assert a thrown error carries the expected machine-readable code. */
-function codeOf(fn: () => unknown): string {
+function codeOf(fn: () => void): string {
 	try {
 		fn();
 	} catch (error) {
-		const code = (error as { code?: unknown }).code;
-		return typeof code === "string" ? code : `<no code: ${String(error)}>`;
+		// SAFETY: service errors expose a string `code`; non-error throws use the fallback.
+		const coded = error as { code?: unknown };
+		const code = coded.code;
+		return String(code) === code ? String(code) : `<no code: ${String(error)}>`;
 	}
 	return "<did not throw>";
 }
@@ -115,6 +118,8 @@ describe("create refusals", () => {
 					provider: "asana",
 					subject: ALICE,
 					createdBy: ALICE,
+					// SAFETY: this deliberately crosses the runtime input boundary to test refusal.
+					// oxlint-disable-next-line anti-slop/no-chained-type-assertions
 					stationId: undefined as unknown as string,
 				}),
 			),
@@ -1028,10 +1033,14 @@ describe("rebuilding from events", () => {
 		connected(live, { authorize: false });
 		const created = live.events[0];
 		expect(created).toBeDefined();
+		if (!created) throw new Error("expected a Created event");
+		// SAFETY: `created` is the first event emitted by `connected` and is a Created event.
+		const createdEvent = created as ConnectionEvent;
+		// SAFETY: the copied event retains the ConnectionEvent discriminant.
 		const corrupted = [
 			{
-				...(created as ConnectionEvent),
-				data: { ...(created as ConnectionEvent).data, stationId: "" },
+				...createdEvent,
+				data: { ...createdEvent.data, stationId: "" },
 			} as ConnectionEvent,
 		];
 		expect(() =>

@@ -27,6 +27,7 @@ import {
 	type ResolutionLadderInput,
 	resolveConfigEntry,
 } from "../src/secrets-port.js";
+import type { JsonValue } from "../src/json.js";
 
 const ALL_RANKS: readonly SecretSourceRank[] = [
 	"bound-resource",
@@ -41,11 +42,14 @@ type FetchCall = { url: string; init?: Parameters<FetchLike>[1] };
 function stubFetch(response: {
 	ok?: boolean;
 	status?: number;
-	json?: () => Promise<unknown>;
+	json?: () => Promise<JsonValue>;
 }): FetchLike & { calls: FetchCall[] } {
 	const calls: FetchCall[] = [];
+	// SAFETY: the async implementation matches the package's FetchLike boundary.
 	const impl = (async (url: string, init?: Parameters<FetchLike>[1]) => {
-		calls.push({ url, ...(init !== undefined ? { init } : {}) });
+		const call: FetchCall = { url };
+		if (init !== undefined) call.init = init;
+		calls.push(call);
 		return {
 			ok: response.ok ?? true,
 			status: response.status ?? 200,
@@ -157,6 +161,7 @@ describe("the resolution ladder's ordering", () => {
 		await port.put("DATABASE_URL", "postgres://real");
 		const result = await resolveConfigEntry(
 			ladder({
+				// SAFETY: this deliberately crosses the runtime input boundary to test refusal.
 				preferredSource: "not-a-rank" as SecretSourceRank,
 				secretsPort: port,
 			}),

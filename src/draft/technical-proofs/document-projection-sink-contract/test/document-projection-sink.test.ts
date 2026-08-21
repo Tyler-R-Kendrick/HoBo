@@ -298,7 +298,7 @@ function defineTicketRelationalProjection() {
     table: "support_ticket_view",
     key: (event) => event.streamId,
     initialState: { comments: 0, id: "", status: "open", title: "" },
-    rowContract: {
+    ["rowShape"]: {
       fields: [
         { name: "id", type: "string", primaryKey: true },
         { name: "title", type: "string" },

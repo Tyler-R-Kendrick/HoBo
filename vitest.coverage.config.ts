@@ -199,7 +199,7 @@ export default defineConfig({
 				"packages/claims/**": { statements: 87, branches: 81, functions: 96, lines: 90 },
 				"packages/cli/**": { statements: 91, branches: 80, functions: 98, lines: 91 },
 				"packages/cloud/**": { statements: 91, branches: 80, functions: 92, lines: 91 },
-				"packages/code/**": { statements: 82, branches: 71, functions: 86, lines: 84 },
+				"packages/code/**": { statements: 83, branches: 72, functions: 86, lines: 84 },
 				"packages/componentize/**": { statements: 93, branches: 83, functions: 94, lines: 93 },
 				"packages/conformance/**": { statements: 91, branches: 80, functions: 94, lines: 91 },
 				"packages/connectivity/**": { statements: 87, branches: 80, functions: 89, lines: 88 },

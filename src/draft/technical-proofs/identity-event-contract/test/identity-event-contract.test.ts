@@ -168,7 +168,7 @@ describe("identity/token/session event contract", () => {
       /secret.Accessed data.value is forbidden/,
     );
     assert.match(
-      validateIdentityEvent({ ...config, data: { ...config.data, plaintext: "https:\/\/internal" } }).errors.join("\n"),
+      validateIdentityEvent({ ...config, data: { ...config.data, plaintext: "https://internal" } }).errors.join("\n"),
       /config.Resolved data.plaintext is forbidden/,
     );
   });

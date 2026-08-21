@@ -1,8 +1,10 @@
 import { bench, describe } from "vitest";
 
 import { createAuthFlagReadsetReactor, defineMaterialization } from "../src/auth-flag-readset.ts";
+import { type JsonObject } from "../src/json.js";
 
-const event = (streamId: string, seq: number, type: string, data: Record<string, unknown>) => ({
+
+const event = (streamId: string, seq: number, type: string, data: JsonObject) => ({
 	streamId,
 	seq,
 	type,

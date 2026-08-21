@@ -155,7 +155,7 @@ export function assessCostObjective(
 
 	return {
 		claimable: reason === undefined,
-		...(reason === undefined ? {} : { reason }),
+		...(reason === undefined ? undefined : { reason }),
 		unpriced,
 		unparseable,
 		coverage,

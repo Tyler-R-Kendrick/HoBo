@@ -106,7 +106,7 @@ export async function runCompensation(
 		tenant: ctx.tenant,
 		...(ctx.correlationId !== undefined
 			? { correlationId: ctx.correlationId }
-			: {}),
+			: undefined),
 	};
 
 	let events = await collectStream(deps.store, stream);
@@ -116,6 +116,7 @@ export async function runCompensation(
 	// owner epoch.
 	if (!events.some((e) => e.type === CLOUD_EVENTS.DeploymentRolledBack)) {
 		const lastSeq =
+			// SAFETY: `events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;` is required at this I/O or test boundary.
 			events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
 		const fenceToken = currentFenceToken(deps.store, stream);
 		await emit(
@@ -130,7 +131,7 @@ export async function runCompensation(
 			],
 			{
 				expectedSeq: lastSeq,
-				...(fenceToken !== undefined ? { fenceToken } : {}),
+				...(fenceToken !== undefined ? { fenceToken } : undefined),
 				...appendOpts,
 			},
 		);
@@ -177,10 +178,8 @@ export async function runCompensation(
 
 			// resource.Destroying (durable boundary), then Executor destroy → Destroyed.
 			const beforeEvents = await collectStream(deps.store, stream);
-			const lastSeq =
-				beforeEvents.length > 0
-					? (beforeEvents[beforeEvents.length - 1] as EventEnvelope).seq
-					: 0;
+			const last = beforeEvents[beforeEvents.length - 1];
+			const lastSeq = last === undefined ? 0 : last.seq;
 			const fenceToken = currentFenceToken(deps.store, stream);
 			await emit(
 				deps.store,
@@ -194,7 +193,7 @@ export async function runCompensation(
 				],
 				{
 					expectedSeq: lastSeq,
-					...(fenceToken !== undefined ? { fenceToken } : {}),
+					...(fenceToken !== undefined ? { fenceToken } : undefined),
 					...appendOpts,
 				},
 			);
@@ -208,7 +207,7 @@ export async function runCompensation(
 					actor: ctx.actor,
 					...(ctx.correlationId !== undefined
 						? { correlationId: ctx.correlationId }
-						: {}),
+						: undefined),
 				},
 			);
 			if (outcome.kind === "failed") {

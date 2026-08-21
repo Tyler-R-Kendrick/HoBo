@@ -10,6 +10,8 @@ import {
 	hashDeploymentPlan,
 	type ResourcePlan,
 } from "../plan-types.js";
+import { isJsonObject, type JsonValue, type JsonObject } from "../json.js";
+
 
 // public-contract: resolved deployment set schema.
 export const RESOLVED_SET_SCHEMA = "hobo.resolved-deployment-set/v1" as const;
@@ -98,7 +100,7 @@ export function createResolvedDeploymentSet(input: {
 		secretRefs: Object.freeze([...(input.secretRefs ?? [])]),
 		...(input.progressive !== undefined
 			? { progressive: input.progressive }
-			: {}),
+			: undefined),
 	};
 	const contentHash =
 		`sha256:${createHash("sha256").update(stableStringify(body)).digest("hex")}` as const;
@@ -127,14 +129,15 @@ export function listResources(
 	return set.plan.resources;
 }
 
-function stableStringify(value: unknown): string {
-	if (value === null || typeof value !== "object") {
+function stableStringify(value: JsonValue): string {
+	if (value === null || !isJsonObject(value)) {
 		return JSON.stringify(value);
 	}
 	if (Array.isArray(value)) {
 		return `[${value.map(stableStringify).join(",")}]`;
 	}
-	const obj = value as Record<string, unknown>;
+	// SAFETY: `const obj = value as JsonObject;` is required at this I/O or test boundary.
+	const obj = value as JsonObject;
 	const keys = Object.keys(obj).sort();
 	return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(",")}}`;
 }

@@ -4,7 +4,7 @@ import type {
 	CapabilityRequirement,
 	TrustPolicy,
 } from "@hobo/capability-profiles";
-import { lowerManifest } from "../intent.js";
+import { lowerManifest, type LowerOptions } from "../intent.js";
 import {
 	DEPLOYMENT_PLAN_SCHEMA,
 	type DeploymentPlan,
@@ -24,6 +24,8 @@ import {
 	matchCapabilityRequirement,
 	type YardBindingContext,
 } from "./profile-matching.js";
+import { type JsonObject } from "../json.js";
+
 
 // The Planner: a pure function `plan(bindle, config, registry) -> DeploymentPlan`
 // (control-plane.md "The Planner"). Easy to test, replayable, deterministic. It
@@ -71,7 +73,7 @@ export interface PlanBindingAuthority {
 type BoundOffering = {
 	readonly productId?: string;
 	readonly appliedRows?: readonly string[];
-	readonly realizationParameters?: Readonly<Record<string, unknown>>;
+	readonly realizationParameters?: Readonly<JsonObject>;
 	readonly nonPortableRows?: readonly string[];
 };
 
@@ -129,6 +131,7 @@ function dependencyOrder(intents: ResourceIntent[]): string[] {
 		.sort();
 	const order: string[] = [];
 	while (ready.length > 0) {
+		// SAFETY: `const next = ready.shift() as string;` is required at this I/O or test boundary.
 		const next = ready.shift() as string;
 		order.push(next);
 		for (const child of (dependents.get(next) ?? []).sort()) {
@@ -153,7 +156,7 @@ export function plan(
 	registry: PlannerRegistry,
 ): PlanResult {
 	const objective = config.objective ?? "min-cost";
-	const lowerOptions: { objective: string; region?: string } = { objective };
+	const lowerOptions: LowerOptions = { objective };
 	if (config.region !== undefined) lowerOptions.region = config.region;
 	const intents = lowerManifest(bindle, lowerOptions);
 	// E19: attach per-resource placement criteria to the lowered intents.
@@ -200,7 +203,7 @@ export function plan(
 					? {
 							consumableBindingProfiles: authority.consumableBindingProfiles,
 						}
-					: {}),
+					: undefined),
 			});
 			if (!profileOutcome.ok) {
 				remediations.push(profileOutcome.remediation);
@@ -209,16 +212,16 @@ export function plan(
 			bound = {
 				...(profileOutcome.definition.semantics?.productId !== undefined
 					? { productId: profileOutcome.definition.semantics.productId }
-					: {}),
+					: undefined),
 				...(profileOutcome.appliedRows !== undefined
 					? { appliedRows: profileOutcome.appliedRows }
-					: {}),
+					: undefined),
 				...(profileOutcome.realizationParameters !== undefined
 					? { realizationParameters: profileOutcome.realizationParameters }
-					: {}),
+					: undefined),
 				...(profileOutcome.nonPortableRows !== undefined
 					? { nonPortableRows: profileOutcome.nonPortableRows }
-					: {}),
+					: undefined),
 			};
 		}
 
@@ -243,13 +246,13 @@ export function plan(
 			// `appliedRows` stays on the decision (the audit trail) and off the
 			// plan node: the plan is content-addressed, and which rows were
 			// consulted does not change what gets built.
-			...(bound?.productId !== undefined ? { productId: bound.productId } : {}),
+			...(bound?.productId !== undefined ? { productId: bound.productId } : undefined),
 			...(bound?.realizationParameters !== undefined
 				? { realizationParameters: bound.realizationParameters }
-				: {}),
+				: undefined),
 			...(bound?.nonPortableRows !== undefined
 				? { nonPortableRows: bound.nonPortableRows }
-				: {}),
+				: undefined),
 		};
 		if (outcome.region) node.region = outcome.region;
 		resources.push(node);

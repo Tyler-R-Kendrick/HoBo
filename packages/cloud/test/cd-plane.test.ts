@@ -18,6 +18,8 @@ import {
 	decideFailurePath,
 	toSecretFreeOutputs,
 } from "../src/index.js";
+import { isJsonObject } from "../src/json.js";
+
 
 describe("Continuous Delivery plane (production path)", () => {
 	it("delivers resolved set under attested apply + progressive promote", async () => {
@@ -33,7 +35,7 @@ describe("Continuous Delivery plane (production path)", () => {
 		for (const step of result.apply.steps) {
 			const token = step.status.outputs.apiToken;
 			expect(token).toBeDefined();
-			if (typeof token === "object") {
+			if (isJsonObject(token)) {
 				expect(token.kind).toBe("secretRef");
 				expect(token.ref.startsWith("secretRef:")).toBe(true);
 			}
@@ -88,8 +90,8 @@ describe("Continuous Delivery plane (production path)", () => {
 			assertSecretFree(step.status);
 			const pwd = step.status.outputs.dbPassword;
 			if (pwd !== undefined) {
-				expect(typeof pwd).toBe("object");
-				if (typeof pwd === "object") {
+				expect(isJsonObject(pwd)).toBe(true);
+				if (isJsonObject(pwd)) {
 					expect(pwd.kind).toBe("secretRef");
 				}
 			}
@@ -218,7 +220,7 @@ describe("Continuous Delivery plane (production path)", () => {
 			},
 		});
 		expect(status.secretFree).toBe(true);
-		expect(typeof status.outputs.password).toBe("object");
+		expect(isJsonObject(status.outputs.password)).toBe(true);
 		assertSecretFree(status);
 		const scrubbed = toSecretFreeOutputs({
 			api_key: "xoxb-1234567890-abcdefghij",

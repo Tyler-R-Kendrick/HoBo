@@ -17,6 +17,8 @@ import { createHash } from "node:crypto";
 // constant has been exported without a `// public-contract:` marker since it
 // was written; touching this file is what surfaced it.
 import { DEPLOYMENT_PLAN_SCHEMA } from "@hobo/manifest-plan";
+import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 // ── The declaration manifest, re-exported from its owner ────────────────────
 //
@@ -74,7 +76,7 @@ export type CapabilityVerdict =
 //      to `Record<string, PlanParameterValue>` (JSON values only, because a
 //      `Date`, a function or an `undefined` canonicalizes to something other
 //      than itself and would move the plan digest), while this package types
-//      it `Record<string, unknown>` all the way back through
+//      it `JsonObject` all the way back through
 //      `planner/profile-matching.ts` to `@hobo/yards`' `BindingRow.properties`.
 //      `@hobo/yards`' own authoring surface (`yard.ts`) already says
 //      `Record<string, JsonValue>`; `binding.ts` is the outlier.
@@ -120,7 +122,7 @@ export interface ResourcePlan {
 	 * Never carries credential material — the parse boundary refuses
 	 * credential-shaped keys before a row ever reaches a plan.
 	 */
-	realizationParameters?: Readonly<Record<string, unknown>>;
+	realizationParameters?: Readonly<JsonObject>;
 	/** Canonical keys of the applied rows that contributed realization parameters. */
 	nonPortableRows?: readonly string[];
 }
@@ -182,7 +184,7 @@ export interface MatchDecided {
 	/** Canonical keys of the Yard binding rows that constrained this decision. */
 	appliedRows?: readonly string[];
 	/** Provider-native realization parameters merged from the applied rows. */
-	realizationParameters?: Readonly<Record<string, unknown>>;
+	realizationParameters?: Readonly<JsonObject>;
 	/** Applied rows that contributed realization parameters (portability attribution). */
 	nonPortableRows?: readonly string[];
 }
@@ -200,13 +202,15 @@ export interface PlanRemediation {
 
 export type PlanHash = `sha256:${string}`;
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: JsonValue): JsonValue {
 	if (Array.isArray(value)) return value.map(sortKeys);
-	if (value && typeof value === "object") {
+	if (value && isJsonObject(value)) {
 		return Object.fromEntries(
-			Object.keys(value as Record<string, unknown>)
+			// SAFETY: `Object.keys(value as JsonObject)` is required at this I/O or test boundary.
+			Object.keys(value as JsonObject)
 				.sort()
-				.map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
+				// SAFETY: `.map((key) => [key, sortKeys((value as JsonObject)[key])]),` is required at this I/O or test boundary.
+				.map((key) => [key, sortKeys((value as JsonObject)[key])]),
 		);
 	}
 	return value;

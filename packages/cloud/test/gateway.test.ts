@@ -1,4 +1,5 @@
 import { mkdtempSync, readFileSync } from "node:fs";
+import { parseJsonValue, type JsonValue } from "../src/json.js";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -41,8 +42,8 @@ afterEach(() => {
 	stores = [];
 });
 
-function fixture(name: string): unknown {
-	return JSON.parse(
+function fixture(name: string): JsonValue {
+	return parseJsonValue(
 		readFileSync(
 			fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)),
 			"utf8",

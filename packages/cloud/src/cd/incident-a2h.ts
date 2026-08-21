@@ -3,6 +3,8 @@
  * Self-heal never mutates baseline; successful fix is a proposed Delta only.
  */
 import { createHash, randomUUID } from "node:crypto";
+import { type JsonObject } from "../json.js";
+
 
 // public-contract: incident / A2H / self-heal schema.
 export const INCIDENT_CD_SCHEMA = "hobo.cd-incident/v1" as const;
@@ -22,7 +24,7 @@ export type IncidentEvent = Readonly<{
 	schemaVersion: typeof INCIDENT_CD_SCHEMA;
 	seq: number;
 	time: string;
-	data: Readonly<Record<string, unknown>>;
+	data: Readonly<JsonObject>;
 }>;
 
 export type FailureSignal =
@@ -55,7 +57,7 @@ export type A2HHandoffPackage = Readonly<{
 	deploymentId: string;
 	setId: string;
 	/** Secret-free context for humans (refs only). */
-	context: Readonly<Record<string, unknown>>;
+	context: Readonly<JsonObject>;
 	goldenDiffRef?: string;
 	blastRadius: SafetyEnvelope["blastRadius"];
 	decisionRequired: string;
@@ -121,7 +123,7 @@ export type FailureDecisionInput = Readonly<{
 	deploymentId: string;
 	setId: string;
 	/** Secret-free context only. */
-	context: Readonly<Record<string, unknown>>;
+	context: Readonly<JsonObject>;
 	goldenDiffRef?: string;
 	envelope: SafetyEnvelope;
 	selfHealAgent?: SelfHealAgentRegistration;
@@ -149,7 +151,7 @@ export function decideFailurePath(
 	let seq = 0;
 	const emit = (
 		type: IncidentEvent["type"],
-		data: Readonly<Record<string, unknown>>,
+		data: Readonly<JsonObject>,
 	) => {
 		seq += 1;
 		events.push(
@@ -188,7 +190,7 @@ export function decideFailurePath(
 			context: Object.freeze({ ...input.context }),
 			...(input.goldenDiffRef !== undefined
 				? { goldenDiffRef: input.goldenDiffRef }
-				: {}),
+				: undefined),
 			blastRadius: input.envelope.blastRadius,
 			decisionRequired: "human-remediation-or-approve-delta",
 			deadline,

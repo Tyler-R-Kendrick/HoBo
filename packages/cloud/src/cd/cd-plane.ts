@@ -152,7 +152,7 @@ export function createContinuousDeliveryPlane(
 			const apply = await worker.apply(set, {
 				...(opts.deploymentId !== undefined
 					? { deploymentId: opts.deploymentId }
-					: {}),
+					: undefined),
 			});
 
 			if (apply.status === "failed" || opts.forceFailure === "apply-failed") {
@@ -170,10 +170,10 @@ export function createContinuousDeliveryPlane(
 					envelope: opts.envelope ?? createDefaultSafetyEnvelope(),
 					...(opts.selfHealAgent !== undefined
 						? { selfHealAgent: opts.selfHealAgent }
-						: {}),
+						: undefined),
 					...(opts.attemptFixInLane !== undefined
 						? { attemptFixInLane: opts.attemptFixInLane }
-						: {}),
+						: undefined),
 				});
 				const result: ContinuousDeliveryResult = Object.freeze({
 					schemaVersion: CD_PLANE_SCHEMA,
@@ -196,7 +196,7 @@ export function createContinuousDeliveryPlane(
 				harness,
 				...(opts.healthSamples !== undefined
 					? { healthSamples: opts.healthSamples }
-					: {}),
+					: undefined),
 				analysis: opts.analysis ?? options.analysis,
 			});
 
@@ -253,10 +253,10 @@ export function createContinuousDeliveryPlane(
 					envelope: opts.envelope ?? createDefaultSafetyEnvelope(),
 					...(opts.selfHealAgent !== undefined
 						? { selfHealAgent: opts.selfHealAgent }
-						: {}),
+						: undefined),
 					...(opts.attemptFixInLane !== undefined
 						? { attemptFixInLane: opts.attemptFixInLane }
-						: {}),
+						: undefined),
 				});
 				const result: ContinuousDeliveryResult = Object.freeze({
 					schemaVersion: CD_PLANE_SCHEMA,

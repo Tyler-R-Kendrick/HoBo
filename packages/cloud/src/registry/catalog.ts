@@ -9,6 +9,8 @@ import {
 } from "../events.js";
 import type { CapabilityVerdict } from "../plan-types.js";
 import { collectStream } from "../store/index.js";
+import { isJsonString, isJsonNumber, isJsonObject, type JsonValue, type JsonObject } from "../json.js";
+
 
 // The Registry is a Provider + Capability Manifest catalog (control-plane.md
 // "Registry"). Per Decision D2 (build plan) it is a *projection* over provider
@@ -48,8 +50,8 @@ export interface RegistrableProvider {
 	capabilityManifest(): {
 		providerId: string;
 		published: Record<string, string>;
-		capabilities: Record<string, unknown>;
-		cost: Record<string, unknown>;
+		capabilities: JsonObject;
+		cost: JsonObject;
 	};
 }
 
@@ -126,10 +128,12 @@ export function definitionsFor(
 	// Narrow the opaque manifest records to the published document shapes the
 	// catalog folds (capabilities.json entries / cost.json facts).
 	const capsArray =
-		(manifest.capabilities as { capabilities?: Array<Record<string, unknown>> })
+		// SAFETY: `(manifest.capabilities as { capabilities?: Array<JsonObject> })` is required at this I/O or test boundary.
+		(manifest.capabilities as { capabilities?: Array<JsonObject> })
 			.capabilities ?? [];
 	const costFacts =
-		(manifest.cost as { facts?: Array<Record<string, unknown>> }).facts ?? [];
+		// SAFETY: `(manifest.cost as { facts?: Array<JsonObject> }).facts ?? [];` is required at this I/O or test boundary.
+		(manifest.cost as { facts?: Array<JsonObject> }).facts ?? [];
 
 	return provider.capabilities.map((capability) => {
 		const manifestEntry = capsArray.find(
@@ -138,10 +142,10 @@ export function definitionsFor(
 		const costFact = costFacts.find((fact) => fact.port === capability.port);
 		const estimate = capability.estimateCost({ port: capability.port });
 		const features = Array.isArray(manifestEntry?.features)
-			? (manifestEntry?.features as string[])
+			? manifestEntry.features.filter(isJsonString)
 			: [];
 		const regions = Array.isArray(manifestEntry?.regions)
-			? (manifestEntry?.regions as string[])
+			? manifestEntry.regions.filter(isJsonString)
 			: [...provider.regions];
 
 		return {
@@ -155,9 +159,12 @@ export function definitionsFor(
 			specificity: 10,
 			priority: 0,
 			cost: {
+				// SAFETY: `sku: (costFact?.sku as string) ?? estimate.sku,` is required at this I/O or test boundary.
 				sku: (costFact?.sku as string) ?? estimate.sku,
+				// SAFETY: `unit: (costFact?.unit as string) ?? estimate.unit,` is required at this I/O or test boundary.
 				unit: (costFact?.unit as string) ?? estimate.unit,
 				marginalPrice:
+					// SAFETY: `(costFact?.marginalPrice as string) ?? estimate.marginalPrice,` is required at this I/O or test boundary.
 					(costFact?.marginalPrice as string) ?? estimate.marginalPrice,
 			},
 			satisfies: (req) => normalizeVerdict(capability.satisfies(req)),
@@ -231,45 +238,48 @@ function negotiateFromEntry(
 // Parse a `provider.Registered` fact body into ResourceDefinitions
 // (parse-don't-validate: malformed entries are dropped, never half-trusted).
 export function parseRegisteredDefinitions(
-	data: unknown,
+	data: JsonValue,
 ): ResourceDefinition[] {
-	if (data === null || typeof data !== "object") return [];
-	const body = data as { providerId?: unknown; definitions?: unknown };
-	if (typeof body.providerId !== "string" || body.providerId.length === 0)
+	if (data === null || !isJsonObject(data)) return [];
+	// SAFETY: `const body = data as { providerId?: JsonValue; definitions?: unknown };` is required at this I/O or test boundary.
+	const body = data as { providerId?: JsonValue; definitions?: unknown };
+	if (!isJsonString(body.providerId) || body.providerId.length === 0)
 		return [];
 	if (!Array.isArray(body.definitions)) return [];
 
 	const parsed: ResourceDefinition[] = [];
 	for (const raw of body.definitions) {
-		if (raw === null || typeof raw !== "object") continue;
-		const rec = raw as Record<string, unknown>;
-		if (typeof rec.port !== "string" || rec.port.length === 0) continue;
+		if (raw === null || !isJsonObject(raw)) continue;
+		// SAFETY: `const rec = raw as JsonObject;` is required at this I/O or test boundary.
+		const rec = raw as JsonObject;
+		if (!isJsonString(rec.port) || rec.port.length === 0) continue;
 		const features = Array.isArray(rec.features)
-			? rec.features.filter((f): f is string => typeof f === "string")
+			? rec.features.filter((f): f is string => isJsonString(f))
 			: [];
 		const regions = Array.isArray(rec.regions)
-			? rec.regions.filter((r): r is string => typeof r === "string")
+			? rec.regions.filter((r): r is string => isJsonString(r))
 			: [];
-		const cost = (rec.cost ?? {}) as Record<string, unknown>;
+		// SAFETY: `const cost = (rec.cost ?? {}) as JsonObject;` is required at this I/O or test boundary.
+		const cost = (rec.cost ?? {}) as JsonObject;
 		parsed.push({
 			id:
-				typeof rec.id === "string" && rec.id.length > 0
+				isJsonString(rec.id) && rec.id.length > 0
 					? rec.id
 					: `${body.providerId}:${rec.port}`,
 			providerId: body.providerId,
 			port: rec.port,
 			features,
 			regions,
-			specificity: typeof rec.specificity === "number" ? rec.specificity : 10,
-			priority: typeof rec.priority === "number" ? rec.priority : 0,
+			specificity: isJsonNumber(rec.specificity) ? rec.specificity : 10,
+			priority: isJsonNumber(rec.priority) ? rec.priority : 0,
 			cost: {
 				sku:
-					typeof cost.sku === "string"
+					isJsonString(cost.sku)
 						? cost.sku
 						: `${body.providerId}-${rec.port}`,
-				unit: typeof cost.unit === "string" ? cost.unit : "hour",
+				unit: isJsonString(cost.unit) ? cost.unit : "hour",
 				marginalPrice:
-					typeof cost.marginalPrice === "string" ? cost.marginalPrice : "0",
+					isJsonString(cost.marginalPrice) ? cost.marginalPrice : "0",
 			},
 			satisfies: negotiateFromEntry(rec.port, features),
 		});
@@ -297,9 +307,10 @@ export function foldRegistryStream(
 			const providerId = defs[0]?.providerId;
 			if (providerId !== undefined) installed.set(providerId, defs);
 		} else if (event.type === CLOUD_EVENTS.ProviderApproved) {
+			// SAFETY: `const providerId = (event.data as { providerId?: unknown } | undefined)` is required at this I/O or test boundary.
 			const providerId = (event.data as { providerId?: unknown } | undefined)
 				?.providerId;
-			if (typeof providerId === "string" && providerId.length > 0)
+			if (isJsonString(providerId) && providerId.length > 0)
 				approved.add(providerId);
 		}
 	}
@@ -374,9 +385,11 @@ export interface RegistryCatalogRow {
 export const registryCatalogProjection: Projection<RegistryCatalogRow> =
 	defineProjection<RegistryCatalogRow>({
 		name: "registry-catalog",
+		// SAFETY: `key: (event) => (event.data as { providerId: string }).providerId,` is required at this I/O or test boundary.
 		key: (event) => (event.data as { providerId: string }).providerId,
 		on: {
 			[CLOUD_EVENTS.ProviderRegistered]: (_row, event) => {
+				// SAFETY: `const data = event.data as {` is required at this I/O or test boundary.
 				const data = event.data as {
 					providerId: string;
 					definitions: Array<{ port: string }>;

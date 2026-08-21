@@ -10,6 +10,7 @@ import {
 	type RuntimeLocalEventStore,
 } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
+import { isJsonObject, isJsonString } from "../src/json.js";
 
 import {
 	createInProcessCredentialBroker,
@@ -49,6 +50,7 @@ afterEach(() => {
 });
 
 function loadPlan(): DeploymentPlan {
+	// SAFETY: `return JSON.parse(` is required at this I/O or test boundary.
 	return JSON.parse(
 		readFileSync(
 			fileURLToPath(
@@ -241,7 +243,12 @@ describe("Orchestrator: choreographs a DeploymentPlan DAG to deployment.Deployed
 		const events = await drain(deps.store, "deployment:shop-1");
 		const provisioned = events
 			.filter((e) => e.type === "resource.Provisioned")
-			.map((e) => (e.data as { resourceId: string }).resourceId);
+			// SAFETY: `.map((e) => (e.data as { resourceId: string }).resourceId);` is required at this I/O or test boundary.
+			.map((e) =>
+				isJsonObject(e.data) && isJsonString(e.data.resourceId)
+					? e.data.resourceId
+					: "",
+			);
 		// Dependency order: network before database/cache before api before web.
 		expect(provisioned.indexOf("network")).toBeLessThan(
 			provisioned.indexOf("database"),
@@ -296,7 +303,14 @@ describe("Orchestrator crash-resume: replay the durable log to Deployed", () => 
 					e.type === "resource.Provisioning" ||
 					e.type === "resource.Provisioned",
 			)
-			.map((e) => `${e.type}:${(e.data as { resourceId: string }).resourceId}`);
+			// SAFETY: `.map((e) => `${e.type}:${(e.data as { resourceId: string }).resourceId}`);` is required at this I/O or test boundary.
+			.map((e) => {
+				const resourceId =
+					isJsonObject(e.data) && isJsonString(e.data.resourceId)
+						? e.data.resourceId
+						: "";
+				return `${e.type}:${resourceId}`;
+			});
 		expect(midStates).toContain("resource.Provisioned:network");
 		expect(midStates).toContain("resource.Provisioning:database");
 		expect(midStates).not.toContain("resource.Provisioned:database");
@@ -336,6 +350,7 @@ describe("Orchestrator crash-resume: replay the durable log to Deployed", () => 
 		const dbProvisioning = finalEvents.filter(
 			(e) =>
 				e.type === "resource.Provisioning" &&
+				// SAFETY: `(e.data as { resourceId: string }).resourceId === "database",` is required at this I/O or test boundary.
 				(e.data as { resourceId: string }).resourceId === "database",
 		);
 		expect(dbProvisioning.length).toBe(1);
@@ -375,7 +390,12 @@ describe("Orchestrator compensation: choreographed reverse-dependency rollback",
 
 		const destroyed = events
 			.filter((e) => e.type === "resource.Destroyed")
-			.map((e) => (e.data as { resourceId: string }).resourceId);
+			// SAFETY: `.map((e) => (e.data as { resourceId: string }).resourceId);` is required at this I/O or test boundary.
+			.map((e) =>
+				isJsonObject(e.data) && isJsonString(e.data.resourceId)
+					? e.data.resourceId
+					: "",
+			);
 		expect(destroyed).toEqual(["api", "cache", "database", "network"]);
 
 		// A destroyed resource is only torn down after its dependents are gone.

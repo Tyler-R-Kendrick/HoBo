@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const CHAOS_EVENT_TYPES = Object.freeze({
   experimentStarted: "chaos.ExperimentStarted",
   faultInjected: "chaos.FaultInjected",
@@ -10,7 +11,7 @@ const BASELINE_UNSAFE_SEAMS = new Set(["baseline-lease", "non-lane-tagged-egress
 
 export async function orchestrateChaosExperiment(input = {}) {
   const experiment = validateExperiment(input.experiment);
-  const now = typeof input.now === "function" ? input.now : () => new Date(0).toISOString();
+  const now = input.now instanceof Function ? input.now : () => new Date(0).toISOString();
   const policyDecision = decidePolicy(experiment, input.policyBudget, now());
   const events = [policyDecision];
   const nextChaosSeq = chaosSequence();
@@ -220,8 +221,8 @@ function abortedEvent({ experiment, seq, ts, reason, steadyState, error }) {
     data: {
       experimentId: experiment.id,
       reason,
-      ...(steadyState ? { steadyState } : {}),
-      ...(error ? { error } : {}),
+      ...(steadyState ? { steadyState } : undefined),
+      ...(error ? { error } : undefined),
       regressionTest: {
         id: `regression-${slug(experiment.id)}`,
         experimentId: experiment.id,
@@ -269,7 +270,7 @@ function result(status, executionTarget, events) {
 }
 
 function validateExperiment(experiment) {
-  if (!experiment || typeof experiment !== "object" || Array.isArray(experiment)) {
+  if (!experiment || !isJsonObject(experiment) || Array.isArray(experiment)) {
     throw new Error("experiment is required");
   }
 
@@ -300,7 +301,7 @@ function validateExperiment(experiment) {
 }
 
 function validateObject(value, fieldName) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${fieldName} is required`);
   }
   return { ...value };
@@ -314,7 +315,7 @@ function requiredArray(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value.trim();
@@ -335,7 +336,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

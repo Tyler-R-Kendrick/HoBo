@@ -6,6 +6,8 @@ import {
   createDecisionRequest,
   createPolicyDecidedEvent,
 } from "../../hobo-policy-ir-contract/src/policy-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const DATA_GOVERNANCE_POLICY_ENGINE_ID = "hobo.data-governance-policy/contract@0.1.0";
 export const DATA_GOVERNANCE_POLICY_SCHEMA_VERSION = "hobo.data-governance-policy/v1";
@@ -455,13 +457,13 @@ function readRequestedRegion(state) {
 }
 
 function readActorId(request) {
-  if (typeof request.context.actorId === "string" && request.context.actorId.length > 0) {
+  if (isJsonString(request.context.actorId) && request.context.actorId.length > 0) {
     return request.context.actorId;
   }
-  if (typeof request.subject.delegatedBy === "string") {
+  if (isJsonString(request.subject.delegatedBy)) {
     return request.subject.delegatedBy;
   }
-  if (request.subject.delegatedBy && typeof request.subject.delegatedBy === "object") {
+  if (request.subject.delegatedBy && isJsonObject(request.subject.delegatedBy)) {
     return `${request.subject.delegatedBy.kind}:${request.subject.delegatedBy.id}`;
   }
   return request.subject.id;
@@ -630,7 +632,7 @@ function optionalString(input) {
   if (input === undefined || input === null || input === "") {
     return null;
   }
-  if (typeof input !== "string") {
+  if (!isJsonString(input)) {
     throw new TypeError("expected optional string");
   }
   return input;
@@ -640,7 +642,7 @@ function optionalStringField(input, fieldName) {
   if (input === undefined || input === null || input === "") {
     return null;
   }
-  if (typeof input !== "string") {
+  if (!isJsonString(input)) {
     throw new TypeError(`${fieldName} must be a string`);
   }
   return input;
@@ -661,14 +663,14 @@ function requireNonNegativeInteger(input, fieldName) {
 }
 
 function requireString(input, fieldName) {
-  if (typeof input !== "string" || input.length === 0) {
+  if (!isJsonString(input) || input.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return input;
 }
 
 function expectObject(input, fieldName) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
   return input;

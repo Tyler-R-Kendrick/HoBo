@@ -521,4 +521,229 @@ describe("the operator command", () => {
 		expect(written[0]?.[0]).toBe("evidence.json");
 		expect(written[0]?.[1]).toContain("artifactDigest");
 	});
+	it("prints usage and exits zero for --help and -h alike", async () => {
+		// Help is a success, not a usage error. An operator running `--help` in a
+		// script must not have it read as a failed run.
+		for (const flag of ["--help", "-h"]) {
+			const { lines, options } = cliOptions(PERMITTED_ENV);
+			const result = await runLiveConformanceCli({ ...options, argv: [flag] });
+			expect(result.exitCode).toBe(0);
+			expect(lines.join("\n")).toContain("hobo-conformance-live");
+		}
+	});
+
+	it("checks --help before the required arguments", async () => {
+		// So `--help` alone prints help rather than the "both required" error,
+		// which is the state an operator is in precisely when they need help.
+		const { lines, options } = cliOptions(PERMITTED_ENV);
+		const result = await runLiveConformanceCli({
+			...options,
+			argv: ["--help"],
+		});
+		expect(result.exitCode).toBe(0);
+		expect(lines.join("\n")).not.toContain("error:");
+	});
+
+	it("names both required arguments and exits 2 when either is missing", async () => {
+		// Exit 2 for a usage error, distinct from 3 (refused) and 1 (the run
+		// failed): a wrapper script needs to tell "you typed it wrong" from
+		// "the gate said no" from "the provider broke".
+		for (const argv of [
+			[],
+			["--provider", PROVIDER_ID],
+			["--adapter", "./reference-adapter.js"],
+		]) {
+			const { lines, options } = cliOptions(PERMITTED_ENV);
+			const result = await runLiveConformanceCli({ ...options, argv });
+			expect(result.exitCode).toBe(2);
+			expect(lines.join("\n")).toContain(
+				"--provider and --adapter are both required",
+			);
+		}
+	});
+
+	it("lists every required and optional environment key in the usage text", async () => {
+		// The usage block is the only place an operator learns which gates exist.
+		// A key that stopped being documented would be a gate nobody can satisfy.
+		const { lines, options } = cliOptions(PERMITTED_ENV);
+		await runLiveConformanceCli({ ...options, argv: ["--help"] });
+		const usage = lines.join("\n");
+		for (const key of Object.values(LIVE_ENV_KEYS)) {
+			expect(usage).toContain(key);
+		}
+		// And it says what the credential reference must be — a locator, never
+		// the secret material itself.
+		expect(usage).toContain("hobo-secret://");
+	});
+
+	it("accepts a positive integer --freshness-days and ignores anything else", async () => {
+		// Silently ignoring a malformed value falls back to the default window
+		// rather than running with a NaN one, which would make every freshness
+		// comparison false and quietly pass a stale-docs run.
+		for (const value of ["30", "0", "-1", "1.5", "abc"]) {
+			const { options } = cliOptions(PERMITTED_ENV);
+			const result = await runLiveConformanceCli({
+				...options,
+				argv: [...options.argv, "--freshness-days", value],
+			});
+			expect(result.exitCode).toBe(0);
+		}
+	});
+
+	it("tolerates a trailing --freshness-days with no value", async () => {
+		const { options } = cliOptions(PERMITTED_ENV);
+		const result = await runLiveConformanceCli({
+			...options,
+			argv: [...options.argv, "--freshness-days"],
+		});
+		expect(result.exitCode).toBe(0);
+	});
+
+	it("ignores an unrecognised flag rather than failing the run", async () => {
+		const { options } = cliOptions(PERMITTED_ENV);
+		const result = await runLiveConformanceCli({
+			...options,
+			argv: [...options.argv, "--not-a-flag", "value"],
+		});
+		expect(result.exitCode).toBe(0);
+	});
+
+	it("lets a later occurrence of a flag win", async () => {
+		// Last-wins is what a shell wrapper that appends a default expects.
+		const { options } = cliOptions(PERMITTED_ENV);
+		const result = await runLiveConformanceCli({
+			...options,
+			argv: ["--provider", "wrong", ...options.argv],
+		});
+		expect(result.exitCode).toBe(0);
+	});
+
+	it("exits 1 with the adapter's message when loading it throws", async () => {
+		// Not a refusal (3) and not a usage error (2): a broken adapter module is
+		// a failed run, and the operator needs the loader's own message to fix it.
+		const { lines, options } = cliOptions(PERMITTED_ENV);
+		const result = await runLiveConformanceCli({
+			...options,
+			loadAdapter: async () => {
+				throw new TypeError("must default-export a live adapter factory");
+			},
+		});
+		expect(result.exitCode).toBe(1);
+		expect(lines.join("\n")).toContain(
+			"live conformance run failed: must default-export a live adapter factory",
+		);
+	});
+
+	it("stringifies a non-Error throw rather than printing [object Object]", async () => {
+		// `throw "boom"` from an adapter is not hypothetical, and an error path
+		// that itself produced an unreadable message would hide the cause.
+		const { lines, options } = cliOptions(PERMITTED_ENV);
+		const result = await runLiveConformanceCli({
+			...options,
+			loadAdapter: async () => {
+				throw "boom";
+			},
+		});
+		expect(result.exitCode).toBe(1);
+		expect(lines.join("\n")).toContain("live conformance run failed: boom");
+	});
+
+	it("records a stale providerDocsCheckedAt without refusing the run", async () => {
+		// Pinning a gap rather than an intent. The gate parses
+		// HOBO_CONFORMANCE_LIVE_PROVIDER_DOCS_CHECKED_AT for *shape* (YYYY-MM-DD)
+		// but never for age, and the evidence freshness window applies to the
+		// artifact's own expiry (`testedAtMs + freshnessWindowMs`) rather than to
+		// how long ago a human actually read the provider's docs. So a date
+		// twenty-six years old passes every check and the run exits 0.
+		//
+		// The date is still carried into the artifact's provenance, so a
+		// consumer *could* judge it — but nothing in this lane does, and the
+		// usage text ("date a human last read the provider's docs") reads like a
+		// gate. Flagged for whoever owns the live-lane trust model rather than
+		// changed here: deciding how stale is too stale, and whether staleness
+		// should refuse or merely downgrade the evidence, is a policy call.
+		const { lines, options } = cliOptions({
+			...PERMITTED_ENV,
+			[LIVE_ENV_KEYS.providerDocsCheckedAt]: "2000-01-01",
+		});
+		const result = await runLiveConformanceCli(options);
+		expect(result.exitCode).toBe(0);
+		// It does reach the artifact, which is what makes the gap recoverable.
+		expect(lines.join("\n")).toContain("2000-01-01");
+	});
+
+	it("refuses a providerDocsCheckedAt that is not a YYYY-MM-DD date", async () => {
+		// The shape *is* gated, and that is the half that works: an operator who
+		// exported a free-text note instead of a date is refused rather than
+		// having it recorded as provenance nobody can compare.
+		for (const value of ["yesterday", "2026-1-1", "", "20260101"]) {
+			const { lines, options } = cliOptions({
+				...PERMITTED_ENV,
+				[LIVE_ENV_KEYS.providerDocsCheckedAt]: value,
+			});
+			const result = await runLiveConformanceCli(options);
+			expect(result.exitCode).toBe(3);
+			expect(lines.join("\n")).toContain(LIVE_ENV_KEYS.providerDocsCheckedAt);
+		}
+	});
+
+	it("exits 1 when resources leaked even though every check passed", async () => {
+		// Cleanup is reported separately from conformance precisely so this case
+		// is visible: an operator whose resources leaked is being billed, and a
+		// green conformance result must not mask that.
+		const { lines, options } = cliOptions(PERMITTED_ENV);
+		const result = await runLiveConformanceCli({
+			...options,
+			loadAdapter: async () => () => ({
+				...adapterModule,
+				ports: {
+					...adapterModule.ports,
+					cleanup: (handles: readonly LiveResourceHandle[]) => ({
+						attempted: handles.map((handle) => handle.id),
+						destroyed: [],
+						leaked: handles.map((handle) => handle.id),
+						detail: "leaked",
+					}),
+				},
+			}),
+		});
+		expect(result.exitCode).toBe(1);
+		expect(lines.join("\n")).toContain("leaked 1");
+	});
+
+	it("prints the artifact to stdout when --out is absent", async () => {
+		// The default has to be usable in a pipeline, so the artifact goes to
+		// stdout rather than to a file nobody asked for.
+		const { lines, options } = cliOptions(PERMITTED_ENV);
+		const result = await runLiveConformanceCli(options);
+		expect(result.exitCode).toBe(0);
+		expect(lines.some((line) => line.trimStart().startsWith("{"))).toBe(true);
+	});
+
+	it("writes a trailing newline into the artifact file", async () => {
+		// A file without one breaks `cat`-style concatenation and shows as a
+		// no-newline-at-end-of-file diff on every commit.
+		const written: Array<[string, string]> = [];
+		const { options } = cliOptions(PERMITTED_ENV);
+		await runLiveConformanceCli({
+			...options,
+			argv: [...options.argv, "--out", "evidence.json"],
+			writeArtifact: async (file, contents) => {
+				written.push([file, contents]);
+			},
+		});
+		expect(written[0]?.[1].endsWith("\n")).toBe(true);
+	});
+
+	it("says where it wrote the artifact", async () => {
+		const { lines, options } = cliOptions(PERMITTED_ENV);
+		await runLiveConformanceCli({
+			...options,
+			argv: [...options.argv, "--out", "evidence.json"],
+			writeArtifact: async () => {},
+		});
+		expect(lines.join("\n")).toContain(
+			"wrote evidence artifact to evidence.json",
+		);
+	});
 });

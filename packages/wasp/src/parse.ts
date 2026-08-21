@@ -73,6 +73,24 @@ const ENV_KEY = /^[A-Z][A-Z0-9_]{0,127}$/u;
 const CLIENT_ENV_PREFIX = "REACT_APP_";
 const RELATIVE_PATH = /^[A-Za-z0-9._-]+(\/[A-Za-z0-9._-]+)*$/u;
 
+/**
+ * A path segment that is only dots — `.` or `..` (or `...`, which no filesystem
+ * treats specially but nothing legitimate uses either).
+ *
+ * `RELATIVE_PATH` alone does not reject traversal, despite what this module's
+ * error message says: `.` is inside `[A-Za-z0-9._-]`, so `..` is a perfectly
+ * ordinary segment as far as that character class is concerned and
+ * `../../etc` matched it. The check has to be on segment *shape*, not on the
+ * characters available.
+ *
+ * That mattered because `waspApp(root)` deliberately parses with
+ * `parseWaspRelativeRoot` alone — the marker it stamps travels into a manifest
+ * long before anything resolves it against a repository, so this is the only
+ * place a bad root can be caught before it becomes a plausible-looking
+ * declaration somewhere else.
+ */
+const DOTS_ONLY_SEGMENT = /^\.+$/u;
+
 export function isWaspEnvKey(value: unknown): value is WaspEnvKey {
 	return typeof value === "string" && ENV_KEY.test(value);
 }
@@ -97,7 +115,10 @@ export function parseWaspRelativeRoot(value: unknown, field = "root"): string {
 		throw new WaspInputRejectedError(field, "expected a non-empty path");
 	}
 	const relative = value.trim().split(path.sep).join("/");
-	if (!RELATIVE_PATH.test(relative)) {
+	if (
+		!RELATIVE_PATH.test(relative) ||
+		relative.split("/").some((segment) => DOTS_ONLY_SEGMENT.test(segment))
+	) {
 		throw new WaspInputRejectedError(
 			field,
 			`expected a repo-relative path without traversal, got ${JSON.stringify(value)}`,
@@ -192,7 +213,15 @@ export function parseWaspWebAppMeta(
 		return undefined;
 	}
 	const relative = meta.root.trim();
-	if (!RELATIVE_PATH.test(relative)) return undefined;
+	// Same traversal check as the stamping path. This is the *reading* side —
+	// a marker that arrived from a manifest written by some other version of
+	// this code, or by hand — so it cannot assume the stamping guard ran.
+	if (
+		!RELATIVE_PATH.test(relative) ||
+		relative.split("/").some((segment) => DOTS_ONLY_SEGMENT.test(segment))
+	) {
+		return undefined;
+	}
 	return Object.freeze({ framework: "wasp", root: relative });
 }
 

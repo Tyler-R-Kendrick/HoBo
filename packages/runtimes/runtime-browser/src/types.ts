@@ -4,11 +4,22 @@ import type {
 	EventInput,
 	ReadAllOptions,
 } from "@hobo/core";
+import type { JsonValue } from "./json.js";
 
 export type BrowserPersistenceMode =
 	| "opfs-sahpool"
 	| "transient-memory"
 	| "unavailable";
+
+export interface BrowserPersistenceDetectOptions {
+	readonly allowTransient?: boolean;
+	readonly multiTab?: boolean;
+}
+
+export interface BrowserPersistenceDetection {
+	readonly mode: BrowserPersistenceMode;
+	readonly reason?: string;
+}
 
 export interface BrowserStorageOpenOptions {
 	/** Logical partition name (maps to OPFS file name). */
@@ -37,7 +48,7 @@ export type BrowserStorageRequest =
 			id: string;
 			op: "snapshot";
 			streamId: string;
-			state: unknown;
+			state: JsonValue;
 			seq: number;
 	  }
 	| { id: string; op: "loadSnapshot"; streamId: string }
@@ -45,7 +56,7 @@ export type BrowserStorageRequest =
 	| { id: string; op: "shutdown" };
 
 export type BrowserStorageResponse =
-	| { id: string; ok: true; result: unknown }
+	| { id: string; ok: true; result: JsonValue }
 	| {
 			id: string;
 			ok: false;

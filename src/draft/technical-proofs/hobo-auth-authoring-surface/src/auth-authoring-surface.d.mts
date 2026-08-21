@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export type AuthProviderKind = "oidc" | "customJwt" | "builtin";
 
 export interface AuthProviderDeclaration<
@@ -24,7 +25,7 @@ export interface AppTenantContext<TenantClaim extends string = string> {
 }
 
 export interface PrincipalRef<
-  Claims extends Record<string, unknown> = Record<string, unknown>,
+  Claims extends JsonObject = JsonObject,
   TenantClaim extends string = string,
 > {
   readonly kind: "user";
@@ -36,7 +37,7 @@ export interface PrincipalRef<
 }
 
 export type AuthState<
-  Claims extends Record<string, unknown>,
+  Claims extends JsonObject,
   TenantClaim extends string,
 > =
   | { readonly status: "anonymous"; readonly user: null }
@@ -44,7 +45,7 @@ export type AuthState<
 
 export interface AuthGeneratedSurface<
   Providers extends readonly AuthProviderDeclaration[],
-  Claims extends Record<string, unknown>,
+  Claims extends JsonObject,
   TenantClaim extends string,
 > {
   readonly ctx: {
@@ -112,11 +113,11 @@ export interface AuthProviderFactories {
 
 export const auth: AuthProviderFactories;
 export function defineAuthDeclaration(input: AuthDeclarationInput): AuthDeclaration;
-export function buildAuthManifestEntry(declaration: AuthDeclaration | AuthDeclarationInput): unknown;
+export function buildAuthManifestEntry(declaration: AuthDeclaration | AuthDeclarationInput): JsonValue;
 export function emitAuthConsumerContract(
   declaration: AuthDeclaration | AuthDeclarationInput,
   options: { readonly fixtureIdpSuite: string },
-): unknown;
+): JsonValue;
 export function evaluateAuthCanDeploy(
   declaration: AuthDeclaration | AuthDeclarationInput,
   options?: { readonly target?: "dev" | "air-gap" | "production" | string },

@@ -12,6 +12,7 @@ import {
   parseBrokerArtifactSet,
   stableDigest,
 } from "../src/meta-cloud-broker-artifact-contract.js";
+import { isJsonString } from "../src/json.js";
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -29,7 +30,7 @@ test("artifact schemas and golden fixtures cover all six broker artifacts", () =
     "resolution-rejection",
   ]);
   for (const artifact of parsed.artifacts) {
-    assert.equal(typeof artifact.owner, "string");
+    assert.equal(isJsonString(artifact.owner), true);
     assert.match(artifact.version, /^\d+\.\d+\.\d+$/);
     assert.match(artifact.provenance.signature.digest, /^sha256:/);
     assert.equal(artifact.provenance.source.issue, "HOBO-522");

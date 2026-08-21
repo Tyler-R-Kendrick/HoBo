@@ -6,6 +6,8 @@ import type {
   PolicyRuleset,
   TypescriptRule,
 } from "../../built-in-policy-engine-contract/src/built-in-policy-engine.d.mts";
+import { type JsonValue, type JsonObject } from "./json.js";
+
 
 export const USER_AUTHORIZATION_ENGINE_ID: "hobo.policy.user-authorization@0.1.0";
 
@@ -63,7 +65,7 @@ export interface UserAuthorizationResult {
 export function createUserAuthorizationRuleset(input?: {
   id?: string;
   version?: string;
-  policyPacks?: unknown[];
+  policyPacks?: JsonValue[];
   rules?: TypescriptRule[];
 }): PolicyRuleset;
 export function allow(input: OwnerClaimRuleInput): AllowShorthand;
@@ -73,8 +75,8 @@ export function authorizeUserRecord(input: {
   ctx?: UserAuthorizationContext;
   action: string;
   resource: RecordResourceRef;
-  record: Record<string, unknown>;
-  requestBody?: Record<string, unknown>;
+  record: JsonObject;
+  requestBody?: JsonObject;
   ruleset?: PolicyRuleset;
   phase?: "runtime";
 }): UserAuthorizationResult;

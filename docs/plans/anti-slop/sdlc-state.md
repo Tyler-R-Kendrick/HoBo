@@ -59,7 +59,8 @@ main
                                                 └── sdlc/anti-slop-48-draft-technical-tiny  #1289 tiny technical proofs
                                                  └── sdlc/anti-slop-49-draft-technical-mid  #1291 pact+replay+policy-ir
                                                   └── sdlc/anti-slop-50-draft-technical-ifc  #1294 ifc+ctx-config+membrane
-                                                   └── sdlc/anti-slop-51-draft-s1-15  bind-wiring-topology
+                                                   └── sdlc/anti-slop-51-draft-s1-15  #1296 bind-wiring-topology
+                                                    └── sdlc/anti-slop-52-draft-runtime-primitives  runtime-ts+multi-region-dr
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -130,6 +131,7 @@ Layer 47: `src/draft/epic-proofs` oxlint `--deny-warnings` clean (#1286).
 Layer 48: 122 tiny `src/draft/technical-proofs` packages (1–3 findings) oxlint `--deny-warnings` clean (#1289).
 Layer 49: `pact-contract-harness` + `deterministic-replay-engine` + `hobo-policy-ir-contract` oxlint `--deny-warnings` clean (#1291).
 Layer 50: `ifc-handler-trigger-hobo-608` + `s1-19-ctx-config-local-resolution` + `membrane-deadline-backpressure-contract` oxlint `--deny-warnings` clean (#1294).
-Layer 51: `s1-15-bind-wiring-topology-contract` oxlint `--deny-warnings` clean.
+Layer 51: `s1-15-bind-wiring-topology-contract` oxlint `--deny-warnings` clean (#1296).
+Layer 52: `hobo-runtime-ts-primitives` + `multi-region-dr-replay-contract` oxlint `--deny-warnings` clean.
 Next: remaining `src/draft/` (larger technical-proofs, exp-proofs, projects).
 Full-repo `lint:slop --deny-warnings` is still red until those land.

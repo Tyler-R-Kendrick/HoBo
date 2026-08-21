@@ -9,11 +9,13 @@
  */
 
 /** Minimal surface we need from Hono (avoids hard-coupling to every Hono release type). */
+import { isJsonObject, type JsonValue } from "./json.js";
+
 export interface HonoFetchApp {
 	readonly fetch: (
 		request: Request,
-		Env?: unknown,
-		executionCtx?: unknown,
+		env?: JsonValue,
+		executionCtx?: JsonValue,
 	) => Response | Promise<Response>;
 }
 
@@ -49,11 +51,9 @@ export function honoEntrypoint(app: HonoFetchApp): BindleHttpEntrypoint {
 }
 
 /** Type guard for objects that look like a Hono app (have a fetch method). */
-export function isHonoFetchApp(value: unknown): value is HonoFetchApp {
-	return (
-		typeof value === "object" &&
-		value !== null &&
-		"fetch" in value &&
-		typeof (value as HonoFetchApp).fetch === "function"
-	);
+export function isHonoFetchApp<T>(value: T): value is T & HonoFetchApp {
+	if (!isJsonObject(value) || !("fetch" in value)) return false;
+	// SAFETY: Hono apps expose fetch on the host object at this boundary.
+	const host: HonoFetchApp = value as never;
+	return host.fetch instanceof Function;
 }

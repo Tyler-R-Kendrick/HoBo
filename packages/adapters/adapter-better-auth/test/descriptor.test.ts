@@ -64,6 +64,7 @@ describe("assertBetterAuthRuntimeAvailable", () => {
 			assertBetterAuthRuntimeAvailable();
 			throw new Error("expected a refusal");
 		} catch (error) {
+			// SAFETY: assertion to `error as BetterAuthRuntimeUnavailableError` is required at this boundary.
 			const refusal = error as BetterAuthRuntimeUnavailableError;
 			expect(refusal.name).toBe("BetterAuthRuntimeUnavailableError");
 			expect(refusal.code).toBe("BETTER_AUTH_RUNTIME_UNAVAILABLE");

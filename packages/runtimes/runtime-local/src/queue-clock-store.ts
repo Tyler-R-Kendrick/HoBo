@@ -136,7 +136,10 @@ export function cloneStore<T>(value: T): T {
 }
 
 function deepFreeze<T>(value: T): T {
-	if (value && isJsonObject(value)) {
+	// Arrays as well as plain objects: `store.trace` and every queue's
+	// `messages` are arrays, so a guard that admitted only plain objects would
+	// hand back a "frozen" snapshot whose queues could still be pushed to.
+	if (Array.isArray(value) || isJsonObject(value)) {
 		Object.freeze(value);
 		for (const nested of Object.values(value)) {
 			deepFreeze(nested);

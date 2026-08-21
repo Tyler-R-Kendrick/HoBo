@@ -71,7 +71,10 @@ export function parseEventInput<T>(value: T): ParsedEventInput {
 	return Object.freeze({
 		type,
 		v,
-		data: cloneJson(value.data ?? null),
+		// `{}`, not `null`: this default is persisted. Events already on disk
+		// carry `{}` for absent data, and a consumer reading `event.data.x`
+		// throws on `null` where it merely reads `undefined` on `{}`.
+		data: cloneJson(value.data ?? {}),
 		meta,
 		idempotencyKey,
 	});

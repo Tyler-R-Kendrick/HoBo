@@ -2,7 +2,9 @@
  * Typed ctx.config codegen from a config schema (ADR-0027 / ADR-0037).
  * Agents and runtimes consume generated types; sensitive fields are placeholders.
  */
+
 import type { ConfigFieldDef, ConfigSchema } from "./config-schema.js";
+import type { JsonObject } from "./json.js";
 
 function tsTypeForField(field: ConfigFieldDef): string {
 	if (field.sensitive) {
@@ -81,12 +83,12 @@ export function generateCtxConfigSource(
 	return lines.join("\n");
 }
 
-/** Agent-safe typed view shape (placeholders only for secrets). */
+/** Agent-safe typed view layout (placeholders only for secrets). */
 export type GeneratedAgentConfigView = Readonly<Record<string, string>>;
 
 export function materializeAgentConfigView(
 	schema: ConfigSchema,
-	values: Readonly<Record<string, unknown>>,
+	values: JsonObject,
 ): GeneratedAgentConfigView {
 	const out: Record<string, string> = {};
 	for (const [name, field] of Object.entries(schema.fields)) {

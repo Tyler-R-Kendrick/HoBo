@@ -8,20 +8,22 @@
  */
 
 /** True for plain objects — not null, not an array. */
-export function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
+import { isJsonObject, isJsonString, type JsonObject } from "./json.js";
+
+export function isRecord<T>(value: T): value is T & JsonObject {
+	return isJsonObject(value) && !Array.isArray(value);
 }
 
 /**
  * Depth-first walk of every string in `value`, handing the visitor the string
  * and a dotted/bracketed path to where it was found (`resources.db.url[0]`).
  */
-export function visitStrings(
-	value: unknown,
+export function visitStrings<T>(
+	value: T,
 	path: string,
 	visitor: (value: string, path: string) => void,
 ): void {
-	if (typeof value === "string") {
+	if (isJsonString(value)) {
 		visitor(value, path);
 		return;
 	}

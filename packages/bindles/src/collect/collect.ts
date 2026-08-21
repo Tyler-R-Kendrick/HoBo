@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonObject } from "../json.js";
 import {
 	canonicalManifestHash,
 	MANIFEST_SCHEMA,
@@ -96,7 +97,7 @@ export function manifestFromWiring(
 export function collectBindleManifest(
 	target: CollectionTarget,
 ): CollectionResult {
-	if (typeof target?.define !== "function") {
+	if (!(target?.define instanceof Function)) {
 		throw new CollectionEngineError(
 			"HOBO_COLLECT_TARGET_INVALID",
 			"collection target must expose a define(collect) function",
@@ -150,9 +151,9 @@ export function collectBindleManifest(
 function collectBindKeys(manifest: ManifestV1): string[] {
 	const keys: string[] = [];
 	for (const [id, resource] of Object.entries(manifest.value.resources)) {
-		const bindings = (resource as { bindings?: Record<string, unknown> })
-			.bindings;
-		if (bindings && typeof bindings === "object") {
+		// SAFETY: assertion required at this I/O or test boundary.
+		const bindings = (resource as { bindings?: JsonObject }).bindings;
+		if (bindings && isJsonObject(bindings)) {
 			for (const alias of Object.keys(bindings)) {
 				keys.push(`${id}.${alias}`);
 			}

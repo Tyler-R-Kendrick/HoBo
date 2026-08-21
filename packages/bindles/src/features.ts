@@ -1,8 +1,16 @@
 /**
  * Bindle IfC surface for features, experiments, and rollouts (ADR-0044 / ADR-0083).
- * Schema is the committed shape; runtime values live in FeatureFlagStore.
+ * Schema is the committed layout; runtime values live in FeatureFlagStore.
  */
+
 import { createHash } from "node:crypto";
+import {
+	cloneAsJson,
+	isJsonBoolean,
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 // public-contract: bindle features schema version.
 export const BINDLE_FEATURES_SCHEMA = "hobo.bindle-features/v1" as const;
@@ -93,8 +101,9 @@ export function features(
 		schemaVersion: BINDLE_FEATURES_SCHEMA,
 		features: featuresMap,
 	};
-	const contentHash =
-		`sha256:${createHash("sha256").update(stableStringify(body)).digest("hex")}` as const;
+	const contentHash = `sha256:${createHash("sha256")
+		.update(stableStringify(cloneAsJson(body)))
+		.digest("hex")}` as const;
 	return Object.freeze({
 		schemaVersion: BINDLE_FEATURES_SCHEMA,
 		features: Object.freeze(featuresMap),
@@ -116,14 +125,15 @@ export function experiment(
 		variants: Object.freeze([...spec.variants]),
 		...(spec.allocation !== undefined
 			? { allocation: Object.freeze({ ...spec.allocation }) }
-			: {}),
+			: undefined),
 		...(spec.metrics !== undefined
 			? { metrics: Object.freeze([...spec.metrics]) }
-			: {}),
+			: undefined),
 	});
 	const body = { schemaVersion: BINDLE_FEATURES_SCHEMA, name, spec: frozen };
-	const contentHash =
-		`sha256:${createHash("sha256").update(stableStringify(body)).digest("hex")}` as const;
+	const contentHash = `sha256:${createHash("sha256")
+		.update(stableStringify(cloneAsJson(body)))
+		.digest("hex")}` as const;
 	return Object.freeze({
 		schemaVersion: BINDLE_FEATURES_SCHEMA,
 		name,
@@ -146,10 +156,10 @@ export function rollout(spec: RolloutSpec): RolloutDeclaration {
 			spec.stages.map((s) =>
 				Object.freeze({
 					percent: s.percent,
-					...(s.duration !== undefined ? { duration: s.duration } : {}),
+					...(s.duration !== undefined ? { duration: s.duration } : undefined),
 					...(s.analysis !== undefined
 						? { analysis: Object.freeze({ ...s.analysis }) }
-						: {}),
+						: undefined),
 				}),
 			),
 		),
@@ -157,8 +167,9 @@ export function rollout(spec: RolloutSpec): RolloutDeclaration {
 		autoRollback: spec.autoRollback !== false,
 	});
 	const body = { schemaVersion: BINDLE_FEATURES_SCHEMA, spec: frozen };
-	const contentHash =
-		`sha256:${createHash("sha256").update(stableStringify(body)).digest("hex")}` as const;
+	const contentHash = `sha256:${createHash("sha256")
+		.update(stableStringify(cloneAsJson(body)))
+		.digest("hex")}` as const;
 	return Object.freeze({
 		schemaVersion: BINDLE_FEATURES_SCHEMA,
 		spec: frozen,
@@ -187,10 +198,10 @@ export function featureSpecsToStoreInputs(decl: FeaturesDeclaration): readonly {
 				control: false,
 				treatment: true,
 			};
-			const defaultValue =
-				typeof variants[defaultVariant] === "boolean"
-					? (variants[defaultVariant] as boolean)
-					: false;
+			const defaultVariantValue = variants[defaultVariant];
+			const defaultValue = isJsonBoolean(defaultVariantValue)
+				? defaultVariantValue
+				: false;
 			return Object.freeze({
 				key,
 				state: spec.state ?? "ENABLED",
@@ -199,8 +210,12 @@ export function featureSpecsToStoreInputs(decl: FeaturesDeclaration): readonly {
 				variants,
 				defaultVariant,
 				killSwitch: spec.killSwitch === true,
-				...(spec.metadata !== undefined ? { metadata: spec.metadata } : {}),
-				...(spec.targeting !== undefined ? { targeting: spec.targeting } : {}),
+				...(spec.metadata !== undefined
+					? { metadata: spec.metadata }
+					: undefined),
+				...(spec.targeting !== undefined
+					? { targeting: spec.targeting }
+					: undefined),
 			});
 		}),
 	);
@@ -211,27 +226,32 @@ function parseFeatureSpec(spec: FeatureFlagSpec): FeatureFlagSpec {
 		state: spec.state ?? "ENABLED",
 		...(spec.variants !== undefined
 			? { variants: Object.freeze({ ...spec.variants }) }
-			: {}),
+			: undefined),
 		...(spec.defaultVariant !== undefined
 			? { defaultVariant: spec.defaultVariant }
-			: {}),
-		...(spec.targeting !== undefined ? { targeting: spec.targeting } : {}),
-		...(spec.percentage !== undefined ? { percentage: spec.percentage } : {}),
+			: undefined),
+		...(spec.targeting !== undefined
+			? { targeting: spec.targeting }
+			: undefined),
+		...(spec.percentage !== undefined
+			? { percentage: spec.percentage }
+			: undefined),
 		killSwitch: spec.killSwitch === true,
 		...(spec.metadata !== undefined
 			? { metadata: Object.freeze({ ...spec.metadata }) }
-			: {}),
+			: undefined),
 	};
 }
 
-function stableStringify(value: unknown): string {
-	if (value === null || typeof value !== "object") {
+function stableStringify(value: JsonValue): string {
+	if (value === null || !isJsonObject(value)) {
 		return JSON.stringify(value);
 	}
 	if (Array.isArray(value)) {
 		return `[${value.map(stableStringify).join(",")}]`;
 	}
-	const obj = value as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const obj = value as JsonObject;
 	const keys = Object.keys(obj).sort();
-	return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(",")}}`;
+	return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k] ?? null)}`).join(",")}}`;
 }

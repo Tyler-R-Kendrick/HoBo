@@ -1,4 +1,5 @@
 import { parseResourceId } from "@hobo/core";
+import { isJsonObject, isJsonString, type JsonObject } from "../json.js";
 
 import {
 	BindReferenceError,
@@ -13,7 +14,15 @@ import {
 	type WiringManifest,
 } from "./types.js";
 
-export type { ComponentHandle, Handle, ResourceHandle } from "./errors.js";
+export type {
+	AnnotationValue,
+	BindMountAnnotation,
+	ComponentHandle,
+	Handle,
+	ResourceHandle,
+	VolumeAnnotation,
+	WaitForEntry,
+} from "./errors.js";
 export { BindReferenceError } from "./errors.js";
 
 export function data(
@@ -56,9 +65,9 @@ export function service(
 	}
 
 	return componentHandle("service", name, {
-		...(options.image !== undefined ? { image: options.image } : {}),
-		...(options.bind !== undefined ? { bind: options.bind } : {}),
-		...(options.env !== undefined ? { env: options.env } : {}),
+		...(options.image !== undefined ? { image: options.image } : undefined),
+		...(options.bind !== undefined ? { bind: options.bind } : undefined),
+		...(options.env !== undefined ? { env: options.env } : undefined),
 	});
 }
 
@@ -69,7 +78,7 @@ export function createComponentHandle(
 		image?: string;
 		bind?: Readonly<Record<string, ResourceHandle>>;
 		env?: Readonly<Record<string, string>>;
-		build?: Readonly<Record<string, unknown>>;
+		build?: JsonObject;
 	},
 ): ComponentHandle {
 	return componentHandle(kind, name, options);
@@ -116,7 +125,7 @@ function componentHandle(
 		image?: string;
 		bind?: Readonly<Record<string, ResourceHandle>>;
 		env?: Readonly<Record<string, string>>;
-		build?: Readonly<Record<string, unknown>>;
+		build?: JsonObject;
 	},
 ): ComponentHandle {
 	assertResourceName(name, `${kind}.name`);
@@ -137,7 +146,7 @@ function componentHandle(
 		kind,
 		name,
 		bindings,
-		env: { ...(options.env ?? {}) },
+		env: { ...options.env },
 		endpoints: {},
 		annotations: {},
 		typescript: {
@@ -195,7 +204,7 @@ function componentHandle(
 export function normalizeBindMap(
 	bind: Readonly<Record<string, ResourceHandle>> = {},
 ): Readonly<Record<string, ResourceHandle>> {
-	if (!isRecord(bind)) {
+	if (!isHandleMap(bind)) {
 		throw new BindReferenceError("bind", "must be a resource map");
 	}
 
@@ -240,7 +249,7 @@ export function validateLazyReferences(
 	resource: ManifestResource,
 	resources: Readonly<Record<string, ManifestResource>>,
 ): void {
-	visitStrings(resource, `resources.${resourceId}`, (value, path) => {
+	visitResourceStrings(resource, `resources.${resourceId}`, (value, path) => {
 		const match = LAZY_TOKEN_PATTERN.exec(value);
 		if (!match) {
 			return;
@@ -264,35 +273,35 @@ function renderCtxBindings(
 		.join("\n");
 }
 
-function visitStrings(
-	value: unknown,
+function visitResourceStrings<T>(
+	value: T,
 	path: string,
 	visitor: (value: string, path: string) => void,
 ): void {
-	if (typeof value === "string") {
+	if (isJsonString(value)) {
 		visitor(value, path);
 		return;
 	}
 	if (Array.isArray(value)) {
 		value.forEach((item, index) => {
-			visitStrings(item, `${path}[${index}]`, visitor);
+			visitResourceStrings(item, `${path}[${index}]`, visitor);
 		});
 		return;
 	}
-	if (isRecord(value)) {
+	if (isHandleMap(value)) {
 		for (const [key, child] of Object.entries(value)) {
-			visitStrings(child, `${path}.${key}`, visitor);
+			visitResourceStrings(child, `${path}.${key}`, visitor);
 		}
 	}
 }
 
-export function assertHandle(handle: unknown): asserts handle is Handle {
+export function assertHandle<T>(handle: T): asserts handle is T & Handle {
 	if (
-		!handle ||
-		typeof handle !== "object" ||
-		!["resource", "service", "container"].includes((handle as Handle).kind) ||
-		typeof (handle as Handle).name !== "string" ||
-		typeof (handle as { manifest?: unknown }).manifest !== "function"
+		!isJsonObject(handle) ||
+		!isJsonString(handle.kind) ||
+		!["resource", "service", "container"].includes(handle.kind) ||
+		!isJsonString(handle.name) ||
+		!(handle.manifest instanceof Function)
 	) {
 		throw new BindReferenceError(
 			"handles",
@@ -302,12 +311,12 @@ export function assertHandle(handle: unknown): asserts handle is Handle {
 }
 
 export function assertResourceName(name: string, path: string): void {
-	if (typeof name !== "string" || !RESOURCE_ID_PATTERN.test(name)) {
+	if (!isJsonString(name) || !RESOURCE_ID_PATTERN.test(name)) {
 		throw new BindReferenceError(path, "invalid resource id");
 	}
 	parseResourceId(name);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
+function isHandleMap<T>(value: T): value is T & JsonObject {
+	return isJsonObject(value) && !Array.isArray(value);
 }

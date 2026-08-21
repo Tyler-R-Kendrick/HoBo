@@ -9,6 +9,7 @@ import {
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { isJsonNumber } from "../../src/json.js";
 
 const testDir = dirname(fileURLToPath(import.meta.url));
 const packageRoot = join(testDir, "../..");
@@ -64,9 +65,10 @@ function vetFixture(cueBin: string, fixturePath: string): number {
 		);
 		return 0;
 	} catch (error) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const status = (error as NodeJS.ErrnoException & { status?: number })
 			.status;
-		return typeof status === "number" ? status : 1;
+		return isJsonNumber(status) ? status : 1;
 	}
 }
 

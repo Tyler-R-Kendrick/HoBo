@@ -10,10 +10,8 @@ import {
 	type IacProgram,
 	type IacResource,
 } from "./iac-program.js";
-import {
-	DIGITALOCEAN_PROVIDER_TARGET,
-	type TypedOptionBlock,
-} from "./options.js";
+import type { JsonObject } from "./json.js";
+import { DIGITALOCEAN_PROVIDER_TARGET } from "./options.js";
 import type { ResourcePlan } from "./types.js";
 
 // A container/CI image the build machine produces for a realized resource
@@ -37,19 +35,35 @@ export type RealizablePort = keyof typeof PORT_TO_CLASS;
 // Output names each DigitalOcean resource class publishes. Every class exposes
 // a `binding` output so cross-resource bind edges resolve as
 // `${resources.<dep>.outputs.binding}` references.
-const OUTPUTS_BY_CLASS: Record<string, string[]> = {
-	"digitalocean:app-platform-service": ["url", "appId", "binding"],
-	"digitalocean:spaces-bucket": ["bucketName", "endpoint", "binding"],
-	"digitalocean:managed-postgres": ["host", "connectionString", "binding"],
-	"digitalocean:managed-valkey": ["host", "port", "binding"],
-};
+function outputsForClass(resourceClass: string): readonly string[] {
+	switch (resourceClass) {
+		case "digitalocean:app-platform-service":
+			return ["url", "appId", "binding"];
+		case "digitalocean:spaces-bucket":
+			return ["bucketName", "endpoint", "binding"];
+		case "digitalocean:managed-postgres":
+			return ["host", "connectionString", "binding"];
+		case "digitalocean:managed-valkey":
+			return ["host", "port", "binding"];
+		default:
+			return ["binding"];
+	}
+}
 
-const PRIMARY_OUTPUT: Record<string, string> = {
-	"digitalocean:app-platform-service": "url",
-	"digitalocean:spaces-bucket": "bucketName",
-	"digitalocean:managed-postgres": "host",
-	"digitalocean:managed-valkey": "host",
-};
+function primaryOutput(resourceClass: string): string {
+	switch (resourceClass) {
+		case "digitalocean:app-platform-service":
+			return "url";
+		case "digitalocean:spaces-bucket":
+			return "bucketName";
+		case "digitalocean:managed-postgres":
+			return "host";
+		case "digitalocean:managed-valkey":
+			return "host";
+		default:
+			return "binding";
+	}
+}
 
 export function isRealizablePort(port: string): port is RealizablePort {
 	return port in PORT_TO_CLASS;
@@ -68,9 +82,9 @@ export function mergeDigitalOceanOptions(
 	// `.with(...)` builder emits the shared TypedOptionBlock shape, and
 	// foreign-provider blocks drop below by providerId.
 	options: ResourcePlan["options"] = [],
-): Record<string, unknown> {
-	const merged: Record<string, unknown> = {};
-	for (const block of options as TypedOptionBlock[]) {
+): JsonObject {
+	const merged = {};
+	for (const block of options) {
 		if (block.providerId !== DIGITALOCEAN_PROVIDER_TARGET) {
 			continue;
 		}
@@ -88,13 +102,13 @@ function buildResource(plan: ResourcePlan, withBindRefs: boolean): IacResource {
 			: { providerResourceId: dep },
 	);
 
-	const inputs: Record<string, unknown> = {
+	const inputs = {
 		port: plan.port,
 		providerService: mapping.providerService,
 		features: [...mapping.features],
 		options: mergeDigitalOceanOptions(plan.options),
 		bindings,
-		...(plan.region === undefined ? {} : { region: plan.region }),
+		...(plan.region === undefined ? undefined : { region: plan.region }),
 	};
 
 	return {
@@ -102,7 +116,7 @@ function buildResource(plan: ResourcePlan, withBindRefs: boolean): IacResource {
 		type: resourceClass,
 		provider: DIGITALOCEAN_IAC_PROVIDER,
 		inputs,
-		outputs: OUTPUTS_BY_CLASS[resourceClass] ?? ["binding"],
+		outputs: [...outputsForClass(resourceClass)],
 	};
 }
 
@@ -123,7 +137,7 @@ function buildSpecFor(plan: ResourcePlan): BuildSpec | undefined {
 }
 
 function primaryRef(resource: IacResource): string {
-	const output = PRIMARY_OUTPUT[resource.type] ?? "binding";
+	const output = primaryOutput(resource.type);
 	return `\${resources.${resource.name}.outputs.${output}}`;
 }
 
@@ -165,7 +179,10 @@ export function realizeResourcePlans(
 	}
 	const resources = plans.map((plan) => buildResource(plan, true));
 	const deploymentId = options.deploymentId ?? "hello-bindle-digitalocean";
-	const first = resources[0] as IacResource;
+	const first = resources[0];
+	if (first === undefined) {
+		throw new Error("cannot realize an empty deployment plan");
+	}
 	const iac: IacProgram = {
 		apiVersion: IAC_PROGRAM_API_VERSION,
 		kind: IAC_PROGRAM_KIND,

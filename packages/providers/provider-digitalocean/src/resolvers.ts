@@ -85,6 +85,15 @@ import {
 
 import { type AwsCredentials, signAwsRequest } from "@hobo/core/aws-sigv4";
 
+import {
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "./json.js";
 import { DIGITALOCEAN_PROVIDER_TARGET } from "./options.js";
 import {
 	appPlatform,
@@ -283,7 +292,7 @@ const CREDENTIAL_REF_PATTERN = /^[a-z][a-z0-9+.-]*:\/\/[^\s@]+$/u;
 const RAW_CREDENTIAL_PATTERN = /^(?:dop_v1_)?[A-Za-z0-9_-]{32,}$/u;
 
 /** Anything long and token-shaped is scrubbed out of provider error text. */
-const TOKEN_SHAPED_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
+const TOKEN_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
 
 /**
  * Redact provider text before it reaches a message, a diagnostic, or a log.
@@ -291,7 +300,7 @@ const TOKEN_SHAPED_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
  * carried resource ids and token fragments before.
  */
 export function redactDigitalOceanText(text: string, limit = 400): string {
-	const scrubbed = text.replace(TOKEN_SHAPED_PATTERN, "[redacted]");
+	const scrubbed = text.replace(TOKEN_PATTERN, "[redacted]");
 	return scrubbed.length > limit ? `${scrubbed.slice(0, limit)}…` : scrubbed;
 }
 
@@ -303,58 +312,48 @@ function compareStrings(left: string, right: string): number {
 	return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
-		return false;
-	}
-	const prototype: unknown = Object.getPrototypeOf(value);
-	return prototype === Object.prototype || prototype === null;
-}
-
 function optionalString(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject | undefined,
 	key: string,
 ): string | undefined {
+	if (record === undefined) return undefined;
 	const value = record[key];
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return isJsonString(value) && value.trim().length > 0 ? value : undefined;
 }
 
 function optionalBoolean(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject | undefined,
 	key: string,
 ): boolean | undefined {
+	if (record === undefined) return undefined;
 	const value = record[key];
-	return typeof value === "boolean" ? value : undefined;
+	return isJsonBoolean(value) ? value : undefined;
 }
 
 function optionalInteger(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject | undefined,
 	key: string,
 ): number | undefined {
+	if (record === undefined) return undefined;
 	const value = record[key];
-	return typeof value === "number" && Number.isSafeInteger(value)
-		? value
-		: undefined;
+	return isJsonNumber(value) && Number.isSafeInteger(value) ? value : undefined;
 }
 
-function nestedRecord(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): Readonly<Record<string, unknown>> {
+function nestedRecord(record: JsonObject | undefined, key: string): JsonObject {
+	if (record === undefined) return {};
 	const value = record[key];
-	return isPlainObject(value) ? value : {};
+	return isJsonObject(value) ? value : {};
+}
+
+function desiredOf(request: ResolveRequest): JsonObject {
+	return parseJsonObject(JSON.stringify(request.desired));
 }
 
 /** DigitalOcean ids are numbers on Droplets and UUID strings elsewhere. */
-function identityOf(
-	record: Readonly<Record<string, unknown>>,
-	label: string,
-): string {
+function identityOf(record: JsonObject, label: string): string {
 	const value = record.id;
-	if (typeof value === "string" && value.trim().length > 0) return value;
-	if (typeof value === "number" && Number.isSafeInteger(value)) {
+	if (isJsonString(value) && value.trim().length > 0) return value;
+	if (isJsonNumber(value) && Number.isSafeInteger(value)) {
 		return String(value);
 	}
 	throw new ResolverError(
@@ -392,9 +391,11 @@ async function send(
 		headers: {
 			accept: "application/json",
 			authorization: `Bearer ${context.token}`,
-			...(body !== undefined ? { "content-type": "application/json" } : {}),
+			...(body !== undefined
+				? { "content-type": "application/json" }
+				: undefined),
 		},
-		...(body !== undefined ? { body } : {}),
+		...(body !== undefined ? { body } : undefined),
 		timeoutMs: DIGITALOCEAN_MAX_TIMEOUT_MS,
 		maxResponseBytes: DIGITALOCEAN_MAX_RESPONSE_BYTES,
 	});
@@ -414,18 +415,19 @@ function isNotFound(response: TransportResponse): boolean {
 function parseJsonRecord(
 	response: TransportResponse,
 	label: string,
-): Record<string, unknown> {
+): JsonObject {
 	if (response.body.trim().length === 0) return {};
-	let parsed: unknown;
+	let parsed: JsonValue;
 	try {
-		parsed = JSON.parse(response.body) as unknown;
+		// SAFETY: JSON.parse yields a JSON value at this DigitalOcean document boundary.
+		parsed = JSON.parse(response.body) as JsonValue;
 	} catch {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${label}: DigitalOcean returned a status ${response.status} body that is not JSON, so the outcome of the call is unknown and it is refused rather than assumed`,
 		);
 	}
-	if (!isPlainObject(parsed)) {
+	if (!isJsonObject(parsed)) {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${label}: DigitalOcean returned JSON that is not an object (status ${response.status}), so the resource it describes cannot be identified`,
@@ -466,10 +468,7 @@ function providerRejection(
 }
 
 /** A successful response as a record; any 4xx/5xx is a typed refusal. */
-function expectOk(
-	response: TransportResponse,
-	label: string,
-): Record<string, unknown> {
+function expectOk(response: TransportResponse, label: string): JsonObject {
 	if (response.status >= 400) throw providerRejection(response, label);
 	return parseJsonRecord(response, label);
 }
@@ -485,7 +484,7 @@ interface DigitalOceanResolverContext {
 	readonly token: string;
 	/** The deterministic resource name: `desired.name`, else the logical id. */
 	readonly name: string;
-	readonly desired: Readonly<Record<string, unknown>>;
+	readonly desired: JsonObject;
 	/** True when the caller already knows the physical id (adopt vs noop). */
 	readonly knownPhysicalId: string | undefined;
 	readonly maxListPages: number;
@@ -498,14 +497,14 @@ interface DigitalOceanResolverContext {
 function outcome(
 	action: ResolverAction,
 	physicalId: string,
-	outputs: Readonly<Record<string, unknown>>,
+	outputs: { readonly [key: string]: JsonValue | undefined },
 	diagnostics: readonly string[],
 ): ResolveOutcome {
 	return Object.freeze({
 		contract: RESOLVER_CONTRACT,
 		action,
 		physicalId,
-		outputs: Object.freeze({ ...outputs }),
+		outputs: Object.freeze(parseJsonObject(JSON.stringify(outputs))),
 		diagnostics: Object.freeze([...diagnostics]),
 	});
 }
@@ -543,7 +542,7 @@ async function resolveToken(
 	resolve: (ref: string) => Promise<string>,
 ): Promise<string> {
 	const ref = request.credentialRef;
-	if (typeof ref !== "string" || ref.trim().length === 0) {
+	if (ref.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			'digitalocean resolver: credentialRef is empty. Supply a locator such as "env://DIGITALOCEAN_TOKEN" or "secret://camp/digitalocean-pat" and register it with the host credential resolver; the resolver never accepts inline credential material',
@@ -574,7 +573,7 @@ async function resolveToken(
 			)}. Register the reference with the credential resolver before deploying`,
 		);
 	}
-	if (typeof material !== "string" || material.trim().length === 0) {
+	if (material.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			`digitalocean resolver: credentialRef ${JSON.stringify(trimmed)} resolved to nothing. A missing credential is refused rather than retried unauthenticated, which would look like a permissions error at DigitalOcean`,
@@ -592,14 +591,14 @@ async function resolveSpacesKeys(
 	request: ResolveRequest,
 	resolve: ((ref: string) => Promise<SpacesKeyPair>) | undefined,
 ): Promise<SpacesKeyPair> {
-	if (typeof resolve !== "function") {
+	if (resolve === undefined) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			"digitalocean spaces resolver: no resolveSpacesCredential was injected",
 		);
 	}
 	const ref = request.credentialRef;
-	if (typeof ref !== "string" || ref.trim().length === 0) {
+	if (ref.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			'digitalocean spaces resolver: credentialRef is empty. Supply a locator such as "secret://camp/digitalocean-spaces-keys"; the resolver never accepts inline credential material',
@@ -631,9 +630,7 @@ async function resolveSpacesKeys(
 		);
 	}
 	if (
-		typeof keys?.accessKeyId !== "string" ||
 		keys.accessKeyId.trim().length === 0 ||
-		typeof keys.secretAccessKey !== "string" ||
 		keys.secretAccessKey.trim().length === 0
 	) {
 		throw new ResolverError(
@@ -648,10 +645,10 @@ async function resolveSpacesKeys(
 }
 
 function resourceName(request: ResolveRequest, productId: string): string {
-	const desiredName = optionalString(request.desired, "name");
+	const desiredName = optionalString(desiredOf(request), "name");
 	if (desiredName !== undefined) return desiredName;
 	const logicalId = request.ref.logicalId;
-	if (typeof logicalId === "string" && logicalId.trim().length > 0) {
+	if (logicalId.trim().length > 0) {
 		return logicalId;
 	}
 	throw new ResolverError(
@@ -663,9 +660,7 @@ function resourceName(request: ResolveRequest, productId: string): string {
 /** The physical id the caller already knows, if it supplied a usable one. */
 function knownPhysicalId(request: ResolveRequest): string | undefined {
 	const value = request.ref.physicalId;
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return value !== undefined && value.trim().length > 0 ? value : undefined;
 }
 
 /**
@@ -718,9 +713,7 @@ interface Collection {
 	/** The object key in a single-item response: `database`, `droplet`, … */
 	readonly itemKey: string;
 	/** Reads the caller-visible name off one record. */
-	readonly nameOf: (
-		record: Readonly<Record<string, unknown>>,
-	) => string | undefined;
+	readonly nameOf: (record: JsonObject) => string | undefined;
 }
 
 function listPath(collection: Collection, page: number): string {
@@ -742,9 +735,9 @@ function listPath(collection: Collection, page: number): string {
 async function findByName(
 	context: DigitalOceanResolverContext,
 	collection: Collection,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const label = `digitalocean list ${collection.listKey} for ${context.name}`;
-	const matches: Record<string, unknown>[] = [];
+	const matches: JsonObject[] = [];
 	for (let page = 1; page <= context.maxListPages; page += 1) {
 		const record = expectOk(
 			await send(context, { method: "GET", path: listPath(collection, page) }),
@@ -758,7 +751,7 @@ async function findByName(
 			);
 		}
 		for (const item of items) {
-			if (isPlainObject(item) && collection.nameOf(item) === context.name) {
+			if (isJsonObject(item) && collection.nameOf(item) === context.name) {
 				matches.push(item);
 			}
 		}
@@ -793,8 +786,7 @@ const DATABASE_COLLECTION: Collection = Object.freeze({
 	path: "/v2/databases",
 	listKey: "databases",
 	itemKey: "database",
-	nameOf: (record: Readonly<Record<string, unknown>>) =>
-		optionalString(record, "name"),
+	nameOf: (record: JsonObject) => optionalString(record, "name"),
 });
 
 /** Engine slugs the DigitalOcean API takes, per catalogued product. */
@@ -812,9 +804,7 @@ const DATABASE_ENGINES: Readonly<Record<string, string>> = Object.freeze({
  * deployment record keeps — so the host and port go out and the credential
  * stays where it was.
  */
-function databaseOutputs(
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function databaseOutputs(record: JsonObject) {
 	const connection = nestedRecord(record, "connection");
 	const host = optionalString(connection, "host");
 	const port = optionalInteger(connection, "port");
@@ -826,20 +816,20 @@ function databaseOutputs(
 	return {
 		...(optionalString(record, "name") !== undefined
 			? { name: optionalString(record, "name") }
-			: {}),
-		...(host !== undefined ? { host } : {}),
-		...(port !== undefined ? { port } : {}),
-		...(database !== undefined ? { database } : {}),
-		...(user !== undefined ? { user } : {}),
-		...(engine !== undefined ? { engine } : {}),
-		...(version !== undefined ? { version } : {}),
-		...(status !== undefined ? { status } : {}),
+			: undefined),
+		...(host !== undefined ? { host } : undefined),
+		...(port !== undefined ? { port } : undefined),
+		...(database !== undefined ? { database } : undefined),
+		...(user !== undefined ? { user } : undefined),
+		...(engine !== undefined ? { engine } : undefined),
+		...(version !== undefined ? { version } : undefined),
+		...(status !== undefined ? { status } : undefined),
 	};
 }
 
 function databaseDiagnostics(
 	context: DigitalOceanResolverContext,
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 	productId: string,
 ): readonly string[] {
 	const diagnostics: string[] = [];
@@ -877,7 +867,13 @@ function databaseDiagnostics(
 function databaseSpec(
 	productId: string,
 ): Omit<DigitalOceanResolverSpec, "productId"> {
-	const engine = DATABASE_ENGINES[productId] as string;
+	const engine = DATABASE_ENGINES[productId];
+	if (engine === undefined) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			`digitalocean database resolver has no engine for ${productId}`,
+		);
+	}
 	return {
 		async read(context) {
 			const observed = await findByName(context, DATABASE_COLLECTION);
@@ -911,7 +907,7 @@ function databaseSpec(
 							num_nodes: optionalInteger(context.desired, "nodeCount") ?? 1,
 							...(optionalString(context.desired, "version") !== undefined
 								? { version: optionalString(context.desired, "version") }
-								: {}),
+								: undefined),
 							...(optionalString(context.desired, "privateNetworkUuid") !==
 							undefined
 								? {
@@ -920,7 +916,7 @@ function databaseSpec(
 											"privateNetworkUuid",
 										),
 									}
-								: {}),
+								: undefined),
 							...(optionalInteger(context.desired, "storageMib") !== undefined
 								? {
 										storage_size_mib: optionalInteger(
@@ -928,7 +924,7 @@ function databaseSpec(
 											"storageMib",
 										),
 									}
-								: {}),
+								: undefined),
 						},
 					}),
 					label,
@@ -1006,49 +1002,46 @@ const DROPLET_COLLECTION: Collection = Object.freeze({
 	path: "/v2/droplets",
 	listKey: "droplets",
 	itemKey: "droplet",
-	nameOf: (record: Readonly<Record<string, unknown>>) =>
-		optionalString(record, "name"),
+	nameOf: (record: JsonObject) => optionalString(record, "name"),
 });
 
-function dropletOutputs(
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function dropletOutputs(record: JsonObject) {
 	const networks = nestedRecord(record, "networks");
 	const v4 = Array.isArray(networks.v4) ? networks.v4 : [];
 	const publicAddress = v4
-		.filter(isPlainObject)
+		.filter(isJsonObject)
 		.find((entry) => optionalString(entry, "type") === "public");
 	const privateAddress = v4
-		.filter(isPlainObject)
+		.filter(isJsonObject)
 		.find((entry) => optionalString(entry, "type") === "private");
 	const region = nestedRecord(record, "region");
 	return {
 		...(optionalString(record, "name") !== undefined
 			? { name: optionalString(record, "name") }
-			: {}),
+			: undefined),
 		...(optionalString(record, "status") !== undefined
 			? { status: optionalString(record, "status") }
-			: {}),
+			: undefined),
 		...(optionalString(record, "size_slug") !== undefined
 			? { size: optionalString(record, "size_slug") }
-			: {}),
+			: undefined),
 		...(optionalString(region, "slug") !== undefined
 			? { region: optionalString(region, "slug") }
-			: {}),
+			: undefined),
 		...(publicAddress !== undefined &&
 		optionalString(publicAddress, "ip_address") !== undefined
 			? { publicIpv4: optionalString(publicAddress, "ip_address") }
-			: {}),
+			: undefined),
 		...(privateAddress !== undefined &&
 		optionalString(privateAddress, "ip_address") !== undefined
 			? { privateIpv4: optionalString(privateAddress, "ip_address") }
-			: {}),
+			: undefined),
 	};
 }
 
 function dropletDiagnostics(
 	context: DigitalOceanResolverContext,
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 ): readonly string[] {
 	const diagnostics: string[] = [];
 	const status = optionalString(record, "status");
@@ -1126,16 +1119,16 @@ const DROPLET_SPEC: Omit<DigitalOceanResolverSpec, "productId"> = {
 					),
 					...(optionalBoolean(context.desired, "backups") !== undefined
 						? { backups: optionalBoolean(context.desired, "backups") }
-						: {}),
+						: undefined),
 					...(optionalBoolean(context.desired, "monitoring") !== undefined
 						? { monitoring: optionalBoolean(context.desired, "monitoring") }
-						: {}),
+						: undefined),
 					...(optionalBoolean(context.desired, "ipv6") !== undefined
 						? { ipv6: optionalBoolean(context.desired, "ipv6") }
-						: {}),
+						: undefined),
 					...(optionalString(context.desired, "vpcUuid") !== undefined
 						? { vpc_uuid: optionalString(context.desired, "vpcUuid") }
-						: {}),
+						: undefined),
 				},
 			}),
 			label,
@@ -1170,8 +1163,7 @@ const LOAD_BALANCER_COLLECTION: Collection = Object.freeze({
 	path: "/v2/load_balancers",
 	listKey: "load_balancers",
 	itemKey: "load_balancer",
-	nameOf: (record: Readonly<Record<string, unknown>>) =>
-		optionalString(record, "name"),
+	nameOf: (record: JsonObject) => optionalString(record, "name"),
 });
 
 /**
@@ -1189,32 +1181,28 @@ const DEFAULT_FORWARDING_RULES = Object.freeze([
 	}),
 ]);
 
-function loadBalancerOutputs(
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function loadBalancerOutputs(record: JsonObject) {
 	const region = nestedRecord(record, "region");
 	return {
 		...(optionalString(record, "name") !== undefined
 			? { name: optionalString(record, "name") }
-			: {}),
+			: undefined),
 		...(optionalString(record, "ip") !== undefined
 			? { ip: optionalString(record, "ip") }
-			: {}),
+			: undefined),
 		...(optionalString(record, "status") !== undefined
 			? { status: optionalString(record, "status") }
-			: {}),
+			: undefined),
 		...(optionalString(record, "algorithm") !== undefined
 			? { algorithm: optionalString(record, "algorithm") }
-			: {}),
+			: undefined),
 		...(optionalString(region, "slug") !== undefined
 			? { region: optionalString(region, "slug") }
-			: {}),
+			: undefined),
 	};
 }
 
-function loadBalancerDiagnostics(
-	record: Readonly<Record<string, unknown>>,
-): readonly string[] {
+function loadBalancerDiagnostics(record: JsonObject): readonly string[] {
 	const status = optionalString(record, "status");
 	return status !== undefined && status !== "active"
 		? [
@@ -1223,9 +1211,7 @@ function loadBalancerDiagnostics(
 		: [];
 }
 
-function loadBalancerBody(
-	context: DigitalOceanResolverContext,
-): Record<string, unknown> {
+function loadBalancerBody(context: DigitalOceanResolverContext) {
 	const rules = context.desired.forwardingRules;
 	return {
 		name: context.name,
@@ -1233,10 +1219,10 @@ function loadBalancerBody(
 		forwarding_rules: Array.isArray(rules) ? rules : DEFAULT_FORWARDING_RULES,
 		...(optionalString(context.desired, "algorithm") !== undefined
 			? { algorithm: optionalString(context.desired, "algorithm") }
-			: {}),
+			: undefined),
 		...(optionalInteger(context.desired, "sizeUnit") !== undefined
 			? { size_unit: optionalInteger(context.desired, "sizeUnit") }
-			: {}),
+			: undefined),
 		...(optionalBoolean(context.desired, "redirectHttpToHttps") !== undefined
 			? {
 					redirect_http_to_https: optionalBoolean(
@@ -1244,10 +1230,10 @@ function loadBalancerBody(
 						"redirectHttpToHttps",
 					),
 				}
-			: {}),
+			: undefined),
 		...(optionalString(context.desired, "vpcUuid") !== undefined
 			? { vpc_uuid: optionalString(context.desired, "vpcUuid") }
-			: {}),
+			: undefined),
 	};
 }
 
@@ -1352,13 +1338,11 @@ const APP_COLLECTION: Collection = Object.freeze({
 	listKey: "apps",
 	itemKey: "app",
 	// An app's name lives inside its spec, not at the record root.
-	nameOf: (record: Readonly<Record<string, unknown>>) =>
+	nameOf: (record: JsonObject) =>
 		optionalString(nestedRecord(record, "spec"), "name"),
 });
 
-function appOutputs(
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function appOutputs(record: JsonObject) {
 	const spec = nestedRecord(record, "spec");
 	const liveUrl = optionalString(record, "live_url");
 	const ingress = optionalString(record, "default_ingress");
@@ -1369,19 +1353,17 @@ function appOutputs(
 	return {
 		...(optionalString(spec, "name") !== undefined
 			? { name: optionalString(spec, "name") }
-			: {}),
+			: undefined),
 		...(optionalString(spec, "region") !== undefined
 			? { region: optionalString(spec, "region") }
-			: {}),
-		...(liveUrl !== undefined ? { url: liveUrl } : {}),
-		...(ingress !== undefined ? { defaultIngress: ingress } : {}),
-		...(phase !== undefined ? { phase } : {}),
+			: undefined),
+		...(liveUrl !== undefined ? { url: liveUrl } : undefined),
+		...(ingress !== undefined ? { defaultIngress: ingress } : undefined),
+		...(phase !== undefined ? { phase } : undefined),
 	};
 }
 
-function appDiagnostics(
-	record: Readonly<Record<string, unknown>>,
-): readonly string[] {
+function appDiagnostics(record: JsonObject): readonly string[] {
 	const diagnostics: string[] = [];
 	if (optionalString(record, "live_url") === undefined) {
 		diagnostics.push(
@@ -1411,12 +1393,9 @@ function appDiagnostics(
  * next reconcile. The one field this resolver owns is `name`, because the name
  * is what makes the lookup convergent.
  */
-function appSpec(
-	context: DigitalOceanResolverContext,
-	productId: string,
-): Record<string, unknown> {
+function appSpec(context: DigitalOceanResolverContext, productId: string) {
 	const spec = context.desired.spec;
-	if (!isPlainObject(spec)) {
+	if (!isJsonObject(spec)) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			`${productId}: the request carries no desired.spec. An App Platform app is defined by its spec (services, static sites, env var references, ingress); this resolver forwards the spec you authored and owns only its name, because inventing a spec would deploy something nobody wrote`,
@@ -1425,19 +1404,17 @@ function appSpec(
 	return { ...spec, name: context.name };
 }
 
-function appSpecEqual(
-	left: Readonly<Record<string, unknown>>,
-	right: Readonly<Record<string, unknown>>,
-): boolean {
+function appSpecEqual(left: JsonObject, right: JsonObject): boolean {
 	return stableJson(left) === stableJson(right);
 }
 
 /** Key-sorted JSON, so a spec compare does not depend on key order. */
-function stableJson(value: unknown): string {
+function stableJson(value: JsonValue | undefined): string {
+	if (value === undefined) return "null";
 	if (Array.isArray(value)) {
 		return `[${value.map((item) => stableJson(item)).join(",")}]`;
 	}
-	if (isPlainObject(value)) {
+	if (isJsonObject(value)) {
 		return `{${Object.keys(value)
 			.sort(compareStrings)
 			.map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
@@ -1645,9 +1622,11 @@ async function sendFunctions(
 			accept: "application/json",
 			// OpenWhisk authenticates with HTTP Basic over uuid:key.
 			authorization: `Basic ${base64Utf8(ns.basic)}`,
-			...(body !== undefined ? { "content-type": "application/json" } : {}),
+			...(body !== undefined
+				? { "content-type": "application/json" }
+				: undefined),
 		},
-		...(body !== undefined ? { body } : {}),
+		...(body !== undefined ? { body } : undefined),
 		timeoutMs: DIGITALOCEAN_MAX_TIMEOUT_MS,
 		maxResponseBytes: DIGITALOCEAN_MAX_RESPONSE_BYTES,
 	});
@@ -1674,18 +1653,16 @@ function actionPath(ns: FunctionsNamespace, name: string): string {
 }
 
 /** The action body the caller authored, with the name forced to ours. */
-function actionBody(
-	context: DigitalOceanResolverContext,
-): Record<string, unknown> {
+function actionBody(context: DigitalOceanResolverContext): JsonObject {
 	const action = context.desired.action;
-	if (!isPlainObject(action)) {
+	if (!isJsonObject(action)) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			`${DIGITALOCEAN_FUNCTIONS_PRODUCT_ID}: the request carries no desired.action. A function is defined by its exec block (runtime kind plus code, or a base64 archive), its limits and its parameters; this resolver forwards the action you authored and owns only its name. Building the code or the archive is a build step and stays outside this resolver, the same way the App Platform resolvers forward a spec rather than assembling one`,
 			DIGITALOCEAN_FUNCTIONS_PRODUCT_ID,
 		);
 	}
-	if (!isPlainObject(action.exec)) {
+	if (!isJsonObject(action.exec)) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			`${DIGITALOCEAN_FUNCTIONS_PRODUCT_ID}: desired.action carries no exec block. OpenWhisk needs at least { kind, code } — for example { kind: "nodejs:default", code: "…" } — and a function deployed without one would be accepted and fail at invoke time instead`,
@@ -1703,10 +1680,8 @@ function actionBody(
  * would report drift on every read and re-PUT forever. Comparing only what was
  * sent is what makes the second reconcile a no-op.
  */
-function authoredAction(
-	action: Readonly<Record<string, unknown>>,
-): Record<string, unknown> {
-	const exec = isPlainObject(action.exec) ? action.exec : {};
+function authoredAction(action: JsonObject): JsonObject {
+	const exec = isJsonObject(action.exec) ? action.exec : {};
 	return {
 		exec: {
 			kind: exec.kind ?? null,
@@ -1715,7 +1690,7 @@ function authoredAction(
 			main: exec.main ?? null,
 			image: exec.image ?? null,
 		},
-		limits: isPlainObject(action.limits) ? action.limits : {},
+		limits: isJsonObject(action.limits) ? action.limits : {},
 		parameters: Array.isArray(action.parameters) ? action.parameters : [],
 		annotations: Array.isArray(action.annotations) ? action.annotations : [],
 	};
@@ -1731,28 +1706,29 @@ const PLATFORM_ANNOTATION_KEYS = Object.freeze([
 	"binary",
 ]);
 
-function withoutPlatformAnnotations(
-	action: Record<string, unknown>,
-): Record<string, unknown> {
-	const annotations = (action.annotations as unknown[]).filter(
-		(item) =>
-			!isPlainObject(item) ||
-			!PLATFORM_ANNOTATION_KEYS.includes(optionalString(item, "key") ?? ""),
-	);
+function withoutPlatformAnnotations(action: JsonObject): JsonObject {
+	const raw = action.annotations;
+	const annotations = Array.isArray(raw)
+		? raw.filter(
+				(item) =>
+					!isJsonObject(item) ||
+					!PLATFORM_ANNOTATION_KEYS.includes(optionalString(item, "key") ?? ""),
+			)
+		: [];
 	return { ...action, annotations };
 }
 
 function functionOutputs(
 	context: DigitalOceanResolverContext,
 	ns: FunctionsNamespace,
-	observed: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
-	const exec = isPlainObject(observed.exec) ? observed.exec : {};
+	observed: JsonObject,
+) {
+	const exec = isJsonObject(observed.exec) ? observed.exec : undefined;
 	const web = (
 		Array.isArray(observed.annotations) ? observed.annotations : []
 	).some(
 		(item) =>
-			isPlainObject(item) &&
+			isJsonObject(item) &&
 			optionalString(item, "key") === "web-export" &&
 			item.value === true,
 	);
@@ -1761,15 +1737,17 @@ function functionOutputs(
 		namespace: ns.namespace,
 		// The host, not the key. `basic` never leaves this module.
 		apiHost: ns.apiHost,
-		...(typeof exec.kind === "string" ? { runtime: exec.kind } : {}),
-		...(typeof observed.version === "string"
+		...(exec !== undefined && isJsonString(exec.kind)
+			? { runtime: exec.kind }
+			: undefined),
+		...(isJsonString(observed.version)
 			? { version: observed.version }
-			: {}),
+			: undefined),
 		...(web
 			? {
 					url: `https://${ns.apiHost.replace(/^https:\/\//u, "")}/api/v1/web/${ns.namespace}/default/${context.name}`,
 				}
-			: {}),
+			: undefined),
 	};
 }
 
@@ -1899,9 +1877,9 @@ function ownerAppName(
 function componentSpec(
 	context: DigitalOceanResolverContext,
 	productId: string,
-): Record<string, unknown> {
+) {
 	const component = context.desired.component;
-	if (!isPlainObject(component)) {
+	if (!isJsonObject(component)) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			`${productId}: the request carries no desired.component. A worker or job component is defined by its image or source, run command, instance size and count; this resolver forwards the component you authored and owns only its name, because inventing one would deploy something nobody wrote`,
@@ -1915,24 +1893,24 @@ function componentSpec(
 async function findAppNamed(
 	context: DigitalOceanResolverContext,
 	appName: string,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	return findByName({ ...context, name: appName }, APP_COLLECTION);
 }
 
 function componentsOf(
-	spec: Readonly<Record<string, unknown>>,
+	spec: JsonObject,
 	kind: AppComponentKind,
-): readonly Record<string, unknown>[] {
+): readonly JsonObject[] {
 	const list = spec[kind];
-	return Array.isArray(list) ? list.filter(isPlainObject) : [];
+	return Array.isArray(list) ? list.filter(isJsonObject) : [];
 }
 
 function componentOutputs(
 	context: DigitalOceanResolverContext,
 	kind: AppComponentKind,
-	app: Readonly<Record<string, unknown>>,
-	component: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+	app: JsonObject,
+	component: JsonObject,
+) {
 	const appId = optionalString(app, "id");
 	const instanceSize = optionalString(component, "instance_size_slug");
 	const instanceCount = optionalInteger(component, "instance_count");
@@ -1940,12 +1918,12 @@ function componentOutputs(
 		componentName: context.name,
 		componentKind: kind === "workers" ? "worker" : "job",
 		appName: optionalString(nestedRecord(app, "spec"), "name") ?? "",
-		...(appId === undefined ? {} : { appId }),
-		...(instanceSize === undefined ? {} : { instanceSize }),
-		...(instanceCount === undefined ? {} : { instanceCount }),
+		...(appId === undefined ? undefined : { appId }),
+		...(instanceSize === undefined ? undefined : { instanceSize }),
+		...(instanceCount === undefined ? undefined : { instanceCount }),
 		...(kind === "jobs"
 			? { runsOn: optionalString(component, "kind") ?? "UNSPECIFIED" }
-			: {}),
+			: undefined),
 	};
 }
 
@@ -1955,11 +1933,11 @@ function componentOutputs(
  * Everything except the one component is carried through from what was read.
  */
 function specWithComponent(
-	app: Readonly<Record<string, unknown>>,
+	app: JsonObject,
 	kind: AppComponentKind,
 	name: string,
-	replacement: Record<string, unknown> | undefined,
-): Record<string, unknown> {
+	replacement: JsonObject | undefined,
+) {
 	const spec = nestedRecord(app, "spec");
 	const others = componentsOf(spec, kind).filter(
 		(item) => optionalString(item, "name") !== name,
@@ -1975,8 +1953,8 @@ function specWithComponent(
 				);
 	return {
 		...spec,
-		...(next.length > 0 ? { [kind]: next } : {}),
-		...(next.length === 0 && kind in spec ? { [kind]: [] } : {}),
+		...(next.length > 0 ? { [kind]: next } : undefined),
+		...(next.length === 0 && kind in spec ? { [kind]: [] } : undefined),
 	};
 }
 
@@ -1990,7 +1968,7 @@ function appComponentSpec(
 	const noun = kind === "workers" ? "worker" : "job";
 
 	function physicalId(
-		app: Readonly<Record<string, unknown>>,
+		app: JsonObject,
 		context: DigitalOceanResolverContext,
 	): string {
 		const appId = identityOf(app, `digitalocean read app for ${context.name}`);
@@ -1998,9 +1976,9 @@ function appComponentSpec(
 	}
 
 	function findComponent(
-		app: Readonly<Record<string, unknown>>,
+		app: JsonObject,
 		name: string,
-	): Record<string, unknown> | undefined {
+	): JsonObject | undefined {
 		return componentsOf(nestedRecord(app, "spec"), kind).find(
 			(item) => optionalString(item, "name") === name,
 		);
@@ -2008,10 +1986,10 @@ function appComponentSpec(
 
 	async function putSpec(
 		context: DigitalOceanResolverContext,
-		app: Readonly<Record<string, unknown>>,
-		spec: Record<string, unknown>,
+		app: JsonObject,
+		spec: JsonObject,
 		label: string,
-	): Promise<Record<string, unknown>> {
+	): Promise<JsonObject> {
 		const appId = identityOf(app, label);
 		const updated = expectOk(
 			await send(context, {
@@ -2144,7 +2122,7 @@ async function sendSpaces(
 	const signed = signAwsRequest({
 		method: call.method,
 		url,
-		...(call.body === undefined ? {} : { body: call.body }),
+		...(call.body === undefined ? undefined : { body: call.body }),
 		region,
 		// Spaces presents itself as S3; the signing service name is what makes
 		// the signature verify on their side.
@@ -2157,7 +2135,7 @@ async function sendSpaces(
 		method: call.method,
 		url,
 		headers: lowerCaseHeaders(signed.headers),
-		...(call.body === undefined ? {} : { body: call.body }),
+		...(call.body === undefined ? undefined : { body: call.body }),
 		timeoutMs: DIGITALOCEAN_MAX_TIMEOUT_MS,
 		maxResponseBytes: DIGITALOCEAN_MAX_RESPONSE_BYTES,
 	});
@@ -2172,12 +2150,10 @@ async function sendSpaces(
  * carries one convention, which is what lets a guard, a test, or a log line
  * look for `authorization` without knowing which signer produced it.
  */
-function lowerCaseHeaders(
-	headers: Readonly<Record<string, string>>,
-): Record<string, string> {
-	const out: Record<string, string> = {};
+function lowerCaseHeaders(headers: Readonly<Record<string, string>>) {
+	const out = {};
 	for (const [name, value] of Object.entries(headers)) {
-		out[name.toLowerCase()] = value;
+		Object.assign(out, { [name.toLowerCase()]: value });
 	}
 	return out;
 }
@@ -2187,10 +2163,7 @@ function bucketPath(context: DigitalOceanResolverContext): string {
 	return `/${encodeURIComponent(context.name)}`;
 }
 
-function spacesOutputs(
-	context: DigitalOceanResolverContext,
-	region: string,
-): Readonly<Record<string, unknown>> {
+function spacesOutputs(context: DigitalOceanResolverContext, region: string) {
 	return {
 		bucketName: context.name,
 		region,
@@ -2275,24 +2248,21 @@ const VOLUME_COLLECTION: Collection = Object.freeze({
 	path: "/v2/volumes",
 	listKey: "volumes",
 	itemKey: "volume",
-	nameOf: (record: Readonly<Record<string, unknown>>) =>
-		optionalString(record, "name"),
+	nameOf: (record: JsonObject) => optionalString(record, "name"),
 });
 
-function volumeOutputs(
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function volumeOutputs(record: JsonObject) {
 	const size = optionalInteger(record, "size_gigabytes");
 	const region = optionalString(nestedRecord(record, "region"), "slug");
 	return {
 		...(optionalString(record, "name") !== undefined
 			? { name: optionalString(record, "name") }
-			: {}),
-		...(size !== undefined ? { sizeGigabytes: size } : {}),
-		...(region !== undefined ? { region } : {}),
+			: undefined),
+		...(size !== undefined ? { sizeGigabytes: size } : undefined),
+		...(region !== undefined ? { region } : undefined),
 		...(optionalString(record, "filesystem_type") !== undefined
 			? { filesystemType: optionalString(record, "filesystem_type") }
-			: {}),
+			: undefined),
 	};
 }
 
@@ -2335,7 +2305,7 @@ const BLOCK_STORAGE_SPEC: Omit<DigitalOceanResolverSpec, "productId"> = {
 										"filesystemType",
 									),
 								}
-							: {}),
+							: undefined),
 					},
 				}),
 				label,
@@ -2352,13 +2322,18 @@ const BLOCK_STORAGE_SPEC: Omit<DigitalOceanResolverSpec, "productId"> = {
 		const wanted = optionalInteger(context.desired, "sizeGigabytes");
 		const actual = optionalInteger(observed, "size_gigabytes");
 		if (wanted === undefined || actual === undefined || wanted <= actual) {
-			return outcome(settledAction(context), id, volumeOutputs(observed), [
-				...(wanted !== undefined && actual !== undefined && wanted < actual
+			const diagnostics =
+				wanted !== undefined && actual !== undefined && wanted < actual
 					? [
 							`volume is ${actual} GB but the request asks for ${wanted} GB; DigitalOcean volumes only grow, so shrinking is reported for a human rather than "fixed" by replacing the volume and destroying the data on it`,
 						]
-					: []),
-			]);
+					: [];
+			return outcome(
+				settledAction(context),
+				id,
+				volumeOutputs(observed),
+				diagnostics,
+			);
 		}
 		const label = `digitalocean resize volume ${context.name}`;
 		expectOk(
@@ -2401,28 +2376,25 @@ const CLUSTER_COLLECTION: Collection = Object.freeze({
 	path: "/v2/kubernetes/clusters",
 	listKey: "kubernetes_clusters",
 	itemKey: "kubernetes_cluster",
-	nameOf: (record: Readonly<Record<string, unknown>>) =>
-		optionalString(record, "name"),
+	nameOf: (record: JsonObject) => optionalString(record, "name"),
 });
 
-function clusterOutputs(
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function clusterOutputs(record: JsonObject) {
 	const status = optionalString(nestedRecord(record, "status"), "state");
 	return {
 		...(optionalString(record, "name") !== undefined
 			? { name: optionalString(record, "name") }
-			: {}),
+			: undefined),
 		...(optionalString(record, "region") !== undefined
 			? { region: optionalString(record, "region") }
-			: {}),
+			: undefined),
 		...(optionalString(record, "version") !== undefined
 			? { version: optionalString(record, "version") }
-			: {}),
+			: undefined),
 		...(optionalString(record, "endpoint") !== undefined
 			? { endpoint: optionalString(record, "endpoint") }
-			: {}),
-		...(status !== undefined ? { status } : {}),
+			: undefined),
+		...(status !== undefined ? { status } : undefined),
 	};
 }
 
@@ -2471,7 +2443,7 @@ const KUBERNETES_CLUSTER_SPEC: Omit<DigitalOceanResolverSpec, "productId"> = {
 									? {
 											auto_scale: optionalBoolean(context.desired, "autoScale"),
 										}
-									: {}),
+									: undefined),
 							},
 						],
 					},
@@ -2513,9 +2485,7 @@ const KUBERNETES_CLUSTER_SPEC: Omit<DigitalOceanResolverSpec, "productId"> = {
 	},
 };
 
-function clusterDiagnostics(
-	record: Readonly<Record<string, unknown>>,
-): readonly string[] {
+function clusterDiagnostics(record: JsonObject): readonly string[] {
 	const state = optionalString(nestedRecord(record, "status"), "state");
 	return state !== undefined && state !== "running"
 		? [
@@ -2526,7 +2496,7 @@ function clusterDiagnostics(
 
 function clusterDriftDiagnostics(
 	context: DigitalOceanResolverContext,
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 ): readonly string[] {
 	const diagnostics: string[] = [];
 	const wantedVersion = optionalString(context.desired, "version");
@@ -2574,8 +2544,14 @@ interface DigitalOceanResolverSpec {
  * provider takes one.
  */
 function clockOf(nowMs: DigitalOceanResolverOptions["nowMs"]): () => number {
-	if (typeof nowMs === "function") return nowMs;
-	if (typeof nowMs === "number" && Number.isFinite(nowMs)) return () => nowMs;
+	if (nowMs === undefined) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			"the digitalocean spaces resolver needs an injected nowMs (a number or a () => number). SigV4 signs a timestamp, and reading the clock inside the resolver would make a signed request untestable",
+		);
+	}
+	if (nowMs instanceof Function) return nowMs;
+	if (Number.isFinite(nowMs)) return () => nowMs;
 	throw new ResolverError(
 		"RESOLVER_PRODUCT_UNSUPPORTED",
 		"the digitalocean spaces resolver needs an injected nowMs (a number or a () => number). SigV4 signs a timestamp, and reading the clock inside the resolver would make a signed request untestable",
@@ -2588,7 +2564,7 @@ function createResolver(
 ): ResourceResolver {
 	const maxListPages = assertListPages(options.maxListPages);
 	const signsRequests = spec.productId === DIGITALOCEAN_SPACES_PRODUCT_ID;
-	if (typeof options.resolveCredential !== "function") {
+	if (!(options.resolveCredential instanceof Function)) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			"digitalocean resolvers need an injected resolveCredential(ref): the resolver never reads an environment variable or a credential file itself",
@@ -2626,7 +2602,7 @@ function createResolver(
 			transport,
 			token,
 			name: resourceName(request, spec.productId),
-			desired: request.desired,
+			desired: desiredOf(request),
 			knownPhysicalId: knownPhysicalId(request),
 			maxListPages,
 			spacesKeys,

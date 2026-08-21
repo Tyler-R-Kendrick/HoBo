@@ -22,12 +22,12 @@
  * would make Matching promise a capability nothing can realize.
  */
 import { describe, expect, it } from "vitest";
-
 import {
 	EQUIVALENCE_CLASSES,
 	equivalenceForPort,
 	INITIAL_CAPABILITY_PORTS,
 } from "../src/equivalence.js";
+import type { JsonObject } from "../src/json.js";
 import { DIGITALOCEAN_PROVIDER_TARGET, digitalocean } from "../src/options.js";
 import {
 	DIGITALOCEAN_YARD_GENERATOR_CONNECTOR_ID,
@@ -36,14 +36,15 @@ import {
 	digitaloceanYardRuntimeRegistration,
 } from "../src/yard-defaults.js";
 
+// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 const factories = Object.entries(digitalocean.with) as [
 	string,
-	(options?: Record<string, unknown>) => {
+	(options?: JsonObject) => {
 		providerId: string;
 		port: string;
 		optionName: string;
 		negotiation: string;
-		options: Record<string, unknown>;
+		options: JsonObject;
 	},
 ][];
 
@@ -59,6 +60,7 @@ describe("digitalocean option blocks", () => {
 		expect(factory().providerId).toBe(DIGITALOCEAN_PROVIDER_TARGET);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it.each(factories)("%s negotiates as a preference", (_name, factory) => {
 		// `prefer` is what keeps the annotation additive. `require` would make
 		// one Bindle undeployable everywhere else.
@@ -162,6 +164,7 @@ describe("the digitalocean Yard runtime registration", () => {
 		);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("treats an empty options object as no options", () => {
 		expect(digitaloceanYardRuntimeRegistration({}).status).toBe("approved");
 	});
@@ -183,9 +186,9 @@ describe("the digitalocean Yard runtime registration", () => {
 	it("declares a non-empty supported shape", () => {
 		// An empty shape matches nothing, so the runtime would register and then
 		// never be selected.
-		const shape = digitaloceanYardRuntimeRegistration().supportedShape;
-		expect(shape.regions.length).toBeGreaterThan(0);
-		expect(shape.capabilities.length).toBeGreaterThan(0);
+		const catalog = digitaloceanYardRuntimeRegistration().supportedCatalog;
+		expect(catalog.regions.length).toBeGreaterThan(0);
+		expect(catalog.capabilities.length).toBeGreaterThan(0);
 	});
 
 	it("states the permissions generation needs", () => {
@@ -264,6 +267,7 @@ describe("the digitalocean equivalence table", () => {
 	});
 
 	it.each(rows)("looks the %s row up by port", (port, row) => {
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		expect(equivalenceForPort(port as never)).toBe(row);
 	});
 

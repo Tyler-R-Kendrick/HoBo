@@ -36,6 +36,7 @@
  * repo.
  */
 import type { CapabilitySlot, SlotBinding } from "@hobo/core";
+import { type JsonObject, parseJsonObject } from "./json.js";
 
 import { DEFAULT_REGIONS } from "./manifest.js";
 import {
@@ -61,7 +62,7 @@ export interface DigitalOceanYardBindingRow {
 	readonly profile: string;
 	readonly productId?: string;
 	readonly connectivityId?: string;
-	readonly properties: Readonly<Record<string, unknown>>;
+	readonly properties: JsonObject;
 }
 
 /** Raw Yard shape: provider, regions, and the allocatable row set. */
@@ -145,11 +146,11 @@ function toRows(
 					profile: binding.profile,
 					...(binding.productId !== undefined
 						? { productId: binding.productId }
-						: {}),
+						: undefined),
 					...(binding.connectivityId !== undefined
 						? { connectivityId: binding.connectivityId }
-						: {}),
-					properties: binding.properties,
+						: undefined),
+					properties: parseJsonObject(JSON.stringify(binding.properties)),
 				}),
 			);
 		}

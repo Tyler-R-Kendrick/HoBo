@@ -22,7 +22,7 @@ export function digitaloceanYardRuntimeRegistration(options?: {
 	readonly runtimeId: typeof DIGITALOCEAN_YARD_RUNTIME_ID;
 	readonly providerId: "digitalocean";
 	readonly version: string;
-	readonly supportedShape: {
+	readonly supportedCatalog: {
 		readonly regions: readonly string[];
 		readonly capabilities: readonly string[];
 		readonly requireProperties: readonly string[];
@@ -42,7 +42,7 @@ export function digitaloceanYardRuntimeRegistration(options?: {
 		runtimeId: DIGITALOCEAN_YARD_RUNTIME_ID,
 		providerId: "digitalocean",
 		version: "1.0.0",
-		supportedShape: Object.freeze({
+		supportedCatalog: Object.freeze({
 			regions: Object.freeze(["nyc3", "sfo3", "ams3", "fra1"]),
 			capabilities: Object.freeze([
 				"managed-container-substrate",

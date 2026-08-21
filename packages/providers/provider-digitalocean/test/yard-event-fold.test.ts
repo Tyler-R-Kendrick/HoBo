@@ -13,6 +13,7 @@
  * is honoured rather than re-stamped.
  */
 import { describe, expect, it } from "vitest";
+import { isJsonObject, type JsonObject } from "../src/json.js";
 
 import {
 	DIGITALOCEAN_EVENT_STORE_RESOLVER_ID,
@@ -22,9 +23,10 @@ import {
 
 const AT = "2026-01-01T00:00:00.000Z";
 
-const signal = (kind: string, payload: Record<string, unknown> = {}) => ({
+const signal = (kind: string, payload: JsonObject = {}) => ({
 	providerId: "digitalocean" as const,
 	kind,
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	payload: payload as never,
 	observedAt: AT,
 });
@@ -93,7 +95,8 @@ describe("digitalocean readiness fan-out", () => {
 
 	it("registers a yard instance carrying this provider's id", () => {
 		const [registered] = ready();
-		const yard = (registered?.data as { yard: Record<string, unknown> }).yard;
+		if (registered === undefined) throw new Error("expected registered event");
+		const yard = isJsonObject(registered.data.yard) ? registered.data.yard : {};
 		expect(yard.providerId).toBe("digitalocean");
 		expect(yard.schemaVersion).toBe("hobo.yard-instance/v1");
 		expect(yard.status).toBe("registering");
@@ -122,19 +125,23 @@ describe("digitalocean failure", () => {
 		const [event] = normalizeDigitalOceanYardSignal(
 			signal("generation.failed"),
 		);
-		expect((event?.data as { failure: { code: string } }).failure.code).toBe(
-			"digitalocean-generation-failed",
-		);
+		if (event === undefined) throw new Error("expected failure event");
+		const failure = isJsonObject(event.data.failure) ? event.data.failure : {};
+		expect(failure.code).toBe("digitalocean-generation-failed");
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("treats retryable as strictly boolean true, not merely truthy", () => {
 		for (const retryable of ["true", 1, {}, null, undefined]) {
 			const [event] = normalizeDigitalOceanYardSignal(
-				signal("generation.failed", { retryable } as Record<string, unknown>),
+				// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+				signal("generation.failed", { retryable } as JsonObject),
 			);
-			expect(
-				(event?.data as { failure: { retryable: boolean } }).failure.retryable,
-			).toBe(false);
+			if (event === undefined) throw new Error("expected failure event");
+			const failure = isJsonObject(event.data.failure)
+				? event.data.failure
+				: {};
+			expect(failure.retryable).toBe(false);
 		}
 	});
 });
@@ -157,6 +164,7 @@ describe("digitalocean unrecognized signals", () => {
 		const [event] = normalizeDigitalOceanYardSignal({
 			providerId: "digitalocean",
 			kind: "unknown",
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 			payload: {} as never,
 		});
 		expect(() => new Date(event?.occurredAt ?? "").toISOString()).not.toThrow();

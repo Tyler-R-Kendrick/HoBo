@@ -252,9 +252,7 @@ function resourcesFromReturnedBindle(
 		if (!ident || !kind || !KIND_SET.has(kind)) continue;
 		assigned.set(ident, kind as BindleResourceKind);
 	}
-	const block =
-		/return\s*\{([\s\S]*?)\}/u.exec(source)?.[1] ??
-		/=>\s*\(\s*\{([\s\S]*?)\}/u.exec(source)?.[1];
+	const block = returnedObjectBody(source);
 	if (block === undefined) return [];
 	const resources: InspectedBindleResource[] = [];
 	for (const part of splitObjectEntries(block)) {
@@ -283,6 +281,41 @@ function resourcesFromReturnedBindle(
 		});
 	}
 	return resources;
+}
+
+/**
+ * Extract the body of the returned resource object, matching braces rather than
+ * stopping at the first `}`.
+ *
+ * This used to be `/return\s*\{([\s\S]*?)\}/`, which is non-greedy and therefore
+ * ends at the first closing brace it meets. A resource declared with inline
+ * options — `{ cart: b.kv({ ttl: 60 }), orders: b.data() }` — closes a brace
+ * partway through the first entry, so the captured body was
+ * `" cart: b.kv({ ttl: 60 "` and *every resource declared after it silently
+ * vanished*. The Station would then never provision `orders`, and the app would
+ * fail at runtime against a dependency it had correctly declared.
+ *
+ * Scanning for the matching brace is what `splitObjectEntries` below already
+ * does for the same reason.
+ */
+function returnedObjectBody(source: string): string | undefined {
+	const opener =
+		/return\s*\{/u.exec(source) ?? /=>\s*\(\s*\{/u.exec(source) ?? undefined;
+	if (!opener) return undefined;
+	const start = opener.index + opener[0].length;
+	let depth = 1;
+	for (let index = start; index < source.length; index += 1) {
+		const char = source[index];
+		if (char === "{") depth += 1;
+		else if (char === "}") {
+			depth -= 1;
+			if (depth === 0) return source.slice(start, index);
+		}
+	}
+	// Unbalanced source (truncated file, or a `{` inside a string we do not
+	// parse). Fall back to the rest of the file rather than dropping everything:
+	// a partial read is better than reporting no resources at all.
+	return source.slice(start);
 }
 
 function splitObjectEntries(body: string): string[] {

@@ -70,8 +70,8 @@ export function errorForHostResponse(
 	const detail = {
 		status: response.status,
 		what: context.what,
-		...(faultCode !== "" ? { faultCode } : {}),
-		...(message !== "" ? { message } : {}),
+		...(faultCode !== "" ? { faultCode } : undefined),
+		...(message !== "" ? { message } : undefined),
 	};
 
 	if (response.status === 404 || faultCode === "GUEST_NOT_FOUND") {

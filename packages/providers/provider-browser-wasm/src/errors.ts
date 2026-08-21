@@ -33,7 +33,7 @@ export type BrowserWasmErrorDetail = Readonly<
 export type BrowserWasmErrorOptions = {
 	readonly retryable?: boolean;
 	readonly detail?: BrowserWasmErrorDetail;
-	readonly cause?: unknown;
+	readonly cause?: Error;
 };
 
 /** Shapes that must never survive into a message, console line, or receipt. */
@@ -45,15 +45,21 @@ const CREDENTIAL_PATTERNS: readonly RegExp[] = [
 	/\b(?:sk|pk)[-_][A-Za-z0-9_-]{8,}/gu,
 ];
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: flattening control characters out of host text is the point; a raw CR/LF in a message is log forging.
-const CONTROL_CHARS = /[\u0000-\u001f\u007f]/gu;
+function flattenControlChars(text: string): string {
+	let out = "";
+	for (const ch of text) {
+		const code = ch.charCodeAt(0);
+		out += code <= 31 || code === 127 ? " " : ch;
+	}
+	return out;
+}
 
 export function redactHostText(text: string, maxLength = 256): string {
 	let out = text;
 	for (const pattern of CREDENTIAL_PATTERNS) {
 		out = out.replace(pattern, "[redacted]");
 	}
-	out = out.replace(CONTROL_CHARS, " ").trim();
+	out = flattenControlChars(out).trim();
 	return out.length > maxLength ? `${out.slice(0, maxLength)}…` : out;
 }
 
@@ -69,17 +75,17 @@ export class BrowserWasmProviderError extends Error {
 	) {
 		super(
 			redactHostText(message),
-			options.cause !== undefined ? { cause: options.cause } : {},
+			options.cause !== undefined ? { cause: options.cause } : undefined,
 		);
 		this.name = "BrowserWasmProviderError";
 		this.code = code;
 		this.retryable = options.retryable ?? false;
-		this.detail = Object.freeze({ ...(options.detail ?? {}) });
+		this.detail = Object.freeze({ ...options.detail });
 	}
 }
 
 export function isBrowserWasmProviderError(
-	value: unknown,
+	value: Error,
 ): value is BrowserWasmProviderError {
 	return value instanceof BrowserWasmProviderError;
 }
@@ -89,6 +95,6 @@ export function contractChanged(
 	detail?: BrowserWasmErrorDetail,
 ): never {
 	throw new BrowserWasmProviderError("PROVIDER_CONTRACT_CHANGED", message, {
-		...(detail !== undefined ? { detail } : {}),
+		...(detail !== undefined ? { detail } : undefined),
 	});
 }

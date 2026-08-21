@@ -208,7 +208,10 @@ export async function provisionGuest(
 		throw new BrowserWasmProviderError(
 			"GUEST_INSTANTIATION_FAILED",
 			`${placement.guestId} did not instantiate`,
-			{ cause, detail: { guestId: placement.guestId } },
+			{
+				cause: cause instanceof Error ? cause : new Error(String(cause)),
+				detail: { guestId: placement.guestId },
+			},
 		);
 	}
 

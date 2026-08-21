@@ -211,7 +211,10 @@ export function createFetchTransport(options: {
 				throw new BrowserWasmProviderError(
 					"BUNDLE_UNAVAILABLE",
 					"the guest bundle fetch did not complete",
-					{ cause, retryable: true },
+					{
+						cause: cause instanceof Error ? cause : new Error(String(cause)),
+						retryable: true,
+					},
 				);
 			} finally {
 				clearTimeout(timer);

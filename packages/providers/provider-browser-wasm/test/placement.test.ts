@@ -6,22 +6,24 @@ import { describe, expect, it } from "vitest";
 
 import {
 	assertSameOriginAsset,
+	BrowserWasmProviderError,
 	browserWasm,
 	defaultTransportPolicy,
 	guestManifestPath,
-	isBrowserWasmProviderError,
 	isComponentPreamble,
 	parseGuestPlacement,
 	WASM_PAGE_BYTES,
 } from "../src/index.js";
+import type { JsonValue } from "../src/json.js";
 
 const HOST_ORIGIN = "https://try-site.browser-wasm.hobo.localhost";
 
-function rejects(input: unknown): unknown {
+function rejects(input: JsonValue): BrowserWasmProviderError {
 	try {
 		parseGuestPlacement(input);
 	} catch (error) {
-		return error;
+		if (error instanceof BrowserWasmProviderError) return error;
+		throw error;
 	}
 	throw new Error("expected the placement to be rejected");
 }
@@ -48,8 +50,7 @@ describe("parseGuestPlacement", () => {
 	it("rejects a guest id that would not survive as a DNS label", () => {
 		const error = rejects({ guestId: "Try_Site" });
 
-		expect(isBrowserWasmProviderError(error)).toBe(true);
-		expect((error as { code: string }).code).toBe("PLACEMENT_REJECTED");
+		expect(error.code).toBe("PLACEMENT_REJECTED");
 	});
 
 	it("rejects a memory limit that is not a whole number of wasm pages", () => {
@@ -134,7 +135,8 @@ describe("assertSameOriginAsset", () => {
 			throw new Error("expected a cross-origin bundle to be refused");
 		})();
 
-		expect((error as { code: string }).code).toBe("HOST_UNSUPPORTED");
+		if (!(error instanceof BrowserWasmProviderError)) throw error;
+		expect(error.code).toBe("HOST_UNSUPPORTED");
 	});
 
 	it("refuses a path that walks out of the /_hobo/ route", () => {

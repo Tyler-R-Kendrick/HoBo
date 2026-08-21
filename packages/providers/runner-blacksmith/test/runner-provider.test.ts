@@ -42,7 +42,7 @@ function mockTransport() {
 		requests.push({
 			url,
 			method: init.method,
-			...(init.body === undefined ? {} : { body: init.body }),
+			...(init.body === undefined ? undefined : { body: init.body }),
 		});
 		if (url.includes("/dispatches")) {
 			return {
@@ -89,7 +89,8 @@ describe("Blacksmith RunnerProvider (hobo:runner, replay lane)", () => {
 
 		const result = await provider.run({ jobId: "job-1", command: "pnpm test" });
 
-		const dispatch = requests[0] as RecordedRequest;
+		const dispatch = requests[0];
+		assert.ok(dispatch);
 		const recorded = pact.interactions[0];
 		assert.ok(dispatch.url.endsWith(recorded.request.path));
 		assert.deepEqual(JSON.parse(dispatch.body ?? "{}"), recorded.request.body);

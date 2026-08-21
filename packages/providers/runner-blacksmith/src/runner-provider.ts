@@ -49,7 +49,7 @@ export function createBlacksmithRunnerProvider(
 			return executionHostManifest(RUNNER_CATEGORY, { providerId: id });
 		},
 		async run(job: RunnerJob): Promise<RunnerResult> {
-			if (typeof job?.jobId !== "string" || job.jobId.length === 0) {
+			if (job.jobId.length === 0) {
 				throw new Error(
 					"runner-blacksmith: job.jobId must be a non-empty string",
 				);
@@ -61,7 +61,7 @@ export function createBlacksmithRunnerProvider(
 					...job.inputs,
 					job_id: job.jobId,
 					runs_on: runsOn,
-					...(job.command === undefined ? {} : { command: job.command }),
+					...(job.command === undefined ? undefined : { command: job.command }),
 				},
 			});
 			const run = await trackDispatchedRun(

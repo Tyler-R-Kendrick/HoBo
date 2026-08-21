@@ -14,7 +14,12 @@ main
    └── sdlc/anti-slop-03-scripts-warnings  #1185 ignore agent-skill dirs; scripts/lib/inspectable
     └── sdlc/anti-slop-04-test     #1187 root competitor/council tests
      └── sdlc/anti-slop-05-examples  #1192 examples/ oxlint-clean
-      └── sdlc/anti-slop-06-site     site/ oxlint-clean (json-inspect helper)
+      └── sdlc/anti-slop-06-site     #1193 site/ oxlint-clean (json-inspect helper)
+       └── sdlc/anti-slop-07-connectors  #1195 connectors + ci-guard + manifest-plan
+        └── sdlc/anti-slop-08-data       #1197 @hobo/data
+         └── sdlc/anti-slop-09-recipes   #1199 @hobo/recipes
+          └── sdlc/anti-slop-10-mcp      #1202 @hobo/mcp + cloud gateway
+           └── sdlc/anti-slop-11-providers-small  config/agentv/cedar/opa/ax/blacksmith
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -39,6 +44,9 @@ errors.
 Cleared: entire `scripts/` tree (layer 3). Layer 4: root competitor/council tests.
 Layer 5: `examples/` oxlint-clean (named JsonValue parse boundaries,
 UsageReader returns, Firecrawl client injection instead of `vi.mock`).
-Layer 6: `site/` oxlint-clean (`site/src/lib/json-inspect.ts`). Next:
-`packages/` / `src/draft/` file-complete slices. Full-repo
+Layer 6: `site/` oxlint-clean (`site/src/lib/json-inspect.ts`).
+Layer 7–10: connectors, data, recipes, mcp.
+Layer 11: smallest provider packages (config, agentv, cedar, opa, ax,
+blacksmith). Next: remaining `packages/providers/*`, then `packages/code`,
+`hobo`, `core`, `broker`, `src/draft/`. Full-repo
 `lint:slop --deny-warnings` is still red until those land.

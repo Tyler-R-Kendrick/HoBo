@@ -1,5 +1,15 @@
 import type { GatekeeperEffect, PolicyDecisionRequest } from "@hobo/contracts";
 
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+
+export type { JsonObject, JsonValue } from "./json.js";
+
 // The Cedar policy engine behind the same gate-plane port the Rego adapter
 // uses, extracted from `@hobo/broker` per docs/plans/0017 F30 (the broker
 // re-exports this adapter, so `createCedarGatePlane` keeps its original
@@ -36,18 +46,36 @@ export interface PolicyEngineReason {
 	message: string;
 }
 
+export type PolicyDecidedEvent = JsonObject;
+
 // Structural mirror of the broker's GateDecision.
 export interface PolicyEngineDecision {
 	effect: GatekeeperEffect;
 	reasons: PolicyEngineReason[];
-	events: Array<Record<string, unknown>>;
+	events: PolicyDecidedEvent[];
+}
+
+export type CostQuota = { quota: string; used: number; limit: number };
+
+export type CedarAuthorizationRequest = {
+	readonly principal: string;
+	readonly action: string;
+	readonly resource: string;
+	readonly context: JsonObject;
+};
+
+export type PolicyEngineHeaders = { readonly [key: string]: string };
+
+export interface PolicyEngineResponse {
+	status: number;
+	json(): Promise<JsonValue>;
 }
 
 // Structural mirror of the broker's GatePlane port.
 export interface PolicyEnginePlanePort {
 	evaluate(input: {
 		request: PolicyDecisionRequest;
-		costQuota: { quota: string; used: number; limit: number };
+		costQuota: CostQuota;
 	}): PolicyEngineDecision | Promise<PolicyEngineDecision>;
 }
 
@@ -57,10 +85,10 @@ export type PolicyEngineFetch = (
 	url: string,
 	init: {
 		method: string;
-		headers: Record<string, string>;
+		headers: PolicyEngineHeaders;
 		body: string;
 	},
-) => Promise<{ status: number; json(): Promise<unknown> }>;
+) => Promise<PolicyEngineResponse>;
 
 export interface CedarGatePlaneOptions {
 	endpoint: string;
@@ -75,10 +103,22 @@ function cedarEntity(kind: string, id: string): string {
 	return `${type}::"${id}"`;
 }
 
+function jsonObjectFromContext(
+	context: PolicyDecisionRequest["context"],
+): JsonObject {
+	if (context === undefined) return {};
+	const entries: Array<[string, JsonValue]> = [];
+	for (const [key, value] of Object.entries(context)) {
+		// SAFETY: policy context is JSON-serializable at the Cedar wire boundary.
+		entries.push([key, value as JsonValue]);
+	}
+	return Object.fromEntries(entries);
+}
+
 export function buildCedarRequest(input: {
 	request: PolicyDecisionRequest;
-	costQuota: { quota: string; used: number; limit: number };
-}): Record<string, unknown> {
+	costQuota: CostQuota;
+}): CedarAuthorizationRequest {
 	return {
 		principal: cedarEntity(
 			input.request.subject.kind,
@@ -91,7 +131,7 @@ export function buildCedarRequest(input: {
 		),
 		context: {
 			phase: input.request.phase,
-			...(input.request.context ?? {}),
+			...jsonObjectFromContext(input.request.context),
 			costQuota: input.costQuota,
 		},
 	};
@@ -105,6 +145,47 @@ function unavailable(message: string): PolicyEngineDecision {
 	};
 }
 
+function stringIds(value: JsonValue | undefined): string[] {
+	if (!isJsonArray(value)) return [];
+	const ids: string[] = [];
+	for (const id of value) {
+		if (isJsonString(id)) ids.push(id);
+	}
+	return ids;
+}
+
+function policySubject(subject: PolicyDecisionRequest["subject"]): JsonObject {
+	return {
+		kind: subject.kind,
+		id: subject.id,
+		...(subject.roles === undefined
+			? undefined
+			: { roles: [...subject.roles] }),
+		...(subject.scopes === undefined
+			? undefined
+			: { scopes: [...subject.scopes] }),
+	};
+}
+
+function policyDecidedEvent(
+	effect: GatekeeperEffect,
+	policyIds: readonly string[],
+	request: PolicyDecisionRequest,
+): PolicyDecidedEvent {
+	return {
+		type: "policy.Decided",
+		effect,
+		engine: CEDAR_ENGINE_ID,
+		policyIds: [...policyIds],
+		subject: policySubject(request.subject),
+		action: request.action,
+		resource: {
+			kind: request.resource.kind,
+			id: request.resource.id,
+		},
+	};
+}
+
 export function createCedarGatePlane(
 	options: CedarGatePlaneOptions,
 ): PolicyEnginePlanePort {
@@ -114,7 +195,7 @@ export function createCedarGatePlane(
 			const token = options.tokenProvider
 				? await options.tokenProvider()
 				: undefined;
-			let response: { status: number; json(): Promise<unknown> };
+			let response: PolicyEngineResponse;
 			try {
 				response = await options.fetchFn(url, {
 					method: "POST",
@@ -122,38 +203,27 @@ export function createCedarGatePlane(
 						"content-type": "application/json",
 						...(token !== undefined
 							? { authorization: `Bearer ${token}` }
-							: {}),
+							: undefined),
 					},
 					body: JSON.stringify(buildCedarRequest(input)),
 				});
 			} catch (error) {
-				return unavailable(`Cedar transport failed: ${String(error)}`);
+				const message = error instanceof Error ? error.message : String(error);
+				return unavailable(`Cedar transport failed: ${message}`);
 			}
 			if (response.status !== 200) {
 				return unavailable(`Cedar engine returned HTTP ${response.status}`);
 			}
 			// Parse-don't-validate over the untrusted verdict: only an explicit
 			// "Allow" allows; anything else fails closed to deny.
-			const body = (await response.json()) as {
-				decision?: unknown;
-				diagnostics?: { reason?: unknown; errors?: unknown };
-			};
-			const allow = body?.decision === "Allow";
-			const policyIds = Array.isArray(body?.diagnostics?.reason)
-				? body.diagnostics.reason.filter(
-						(id): id is string => typeof id === "string",
-					)
-				: [];
+			const body = await response.json();
+			const document = isJsonObject(body) ? body : {};
+			const allow = document.decision === "Allow";
+			const diagnostics = isJsonObject(document.diagnostics)
+				? document.diagnostics
+				: undefined;
+			const policyIds = stringIds(diagnostics?.reason);
 			const effect: PolicyEngineDecision["effect"] = allow ? "allow" : "deny";
-			const policyDecided: Record<string, unknown> = {
-				type: "policy.Decided",
-				effect,
-				engine: CEDAR_ENGINE_ID,
-				policyIds,
-				subject: input.request.subject,
-				action: input.request.action,
-				resource: input.request.resource,
-			};
 			return {
 				effect,
 				reasons: allow
@@ -168,7 +238,7 @@ export function createCedarGatePlane(
 										: "denied by the Cedar authorization decision",
 							},
 						],
-				events: [policyDecided],
+				events: [policyDecidedEvent(effect, policyIds, input.request)],
 			};
 		},
 	};

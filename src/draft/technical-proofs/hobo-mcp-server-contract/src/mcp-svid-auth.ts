@@ -1,4 +1,6 @@
 import { createHoboMcpServer, MCP_TOOL_SPECS } from "./mcp-server-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export function createSvidBoundHoboMcpServer(options = {}) {
   const specs = options.tools ?? MCP_TOOL_SPECS;
@@ -119,7 +121,7 @@ async function authenticateSvid({ assertion, verifySvid, now, tool, toolCallId }
       message: `${tool} requires a verified SVID-bound MCP session.`,
     };
   }
-  if (typeof verifySvid !== "function") {
+  if (!(verifySvid instanceof Function)) {
     return {
       ok: false,
       code: "MCP_AUTH_REQUIRED",
@@ -177,9 +179,9 @@ function svidFailure(result, tool) {
 function normalizeSvid(value) {
   const svid = isPlainObject(value) ? value : {};
   return {
-    id: typeof svid.id === "string" && svid.id.length > 0 ? svid.id : "svid:unknown",
-    issuer: typeof svid.issuer === "string" ? svid.issuer : undefined,
-    expiresAt: typeof svid.expiresAt === "string" ? svid.expiresAt : undefined,
+    id: isJsonString(svid.id) && svid.id.length > 0 ? svid.id : "svid:unknown",
+    issuer: isJsonString(svid.issuer) ? svid.issuer : undefined,
+    expiresAt: isJsonString(svid.expiresAt) ? svid.expiresAt : undefined,
   };
 }
 
@@ -190,10 +192,10 @@ function normalizeSvidScopeSet(scopes) {
   return scopes
     .filter(isPlainObject)
     .map((scope) => ({
-      port: typeof scope.port === "string" ? scope.port : "",
-      resource: typeof scope.resource === "string" ? scope.resource : "",
+      port: isJsonString(scope.port) ? scope.port : "",
+      resource: isJsonString(scope.resource) ? scope.resource : "",
       actions: Array.isArray(scope.actions)
-        ? scope.actions.filter((action) => typeof action === "string")
+        ? scope.actions.filter((action) => isJsonString(action))
         : [],
     }))
     .filter((scope) => scope.port && scope.resource && scope.actions.length > 0);
@@ -208,7 +210,7 @@ async function callScopedRequestToken({
   toolCallId,
   issuedTokenRefs,
 }) {
-  if (!tokenBroker || typeof tokenBroker.requestToken !== "function") {
+  if (!tokenBroker || !(tokenBroker.requestToken instanceof Function)) {
     return failure("request_token", "MCP_TOOL_UNBOUND", "request_token requires a token broker.");
   }
 
@@ -255,7 +257,7 @@ function requestedTokenScope(scope) {
     return { ok: false, message: "scope must include port, resource, and action" };
   }
   for (const field of ["port", "resource", "action"]) {
-    if (typeof scope[field] !== "string" || scope[field].length === 0) {
+    if (!isJsonString(scope[field]) || scope[field].length === 0) {
       return { ok: false, message: `scope.${field} must be a non-empty string` };
     }
   }
@@ -302,7 +304,7 @@ function sanitizeTokenResult(result, { now, toolCallId, issuedTokenRefs, auditSi
   const sanitized = stripSecrets(clone(result ?? {}));
   if (isPlainObject(sanitized.credential)) {
     sanitized.credential = normalizeShortLivedCredential(sanitized.credential, now);
-    if (typeof sanitized.credential.tokenRef === "string") {
+    if (isJsonString(sanitized.credential.tokenRef)) {
       issuedTokenRefs.add(sanitized.credential.tokenRef);
     }
   }
@@ -310,7 +312,7 @@ function sanitizeTokenResult(result, { now, toolCallId, issuedTokenRefs, auditSi
   const events = Array.isArray(sanitized.events) ? sanitized.events : [];
   sanitized.events = events.map((event) => withToolAuditContext(event, toolCallId));
   for (const event of sanitized.events) {
-    if (typeof event.type === "string" && event.type.startsWith("token.")) {
+    if (isJsonString(event.type) && event.type.startsWith("token.")) {
       emitAudit(auditSink, event);
     }
   }
@@ -332,7 +334,7 @@ function withToolAuditContext(event, toolCallId) {
   return {
     ...normalized,
     data: {
-      ...(isPlainObject(normalized.data) ? normalized.data : {}),
+      ...(isPlainObject(normalized.data) ? normalized.data : undefined),
       tool: "request_token",
       toolCallId,
     },
@@ -418,7 +420,7 @@ function clone(value) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );

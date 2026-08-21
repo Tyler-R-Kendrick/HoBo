@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
 import { COMPONENT_MEDIA_TYPE, type OciDescriptor, type WasmComponentArtifact } from "./types.js";
+import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export function buildOciDescriptor(
   artifact: WasmComponentArtifact,
@@ -47,15 +49,16 @@ export function buildOciDescriptor(
   });
 }
 
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
+function stableStringify(value: JsonValue): string {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
     return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
   }
 
-  const record = value as Record<string, unknown>;
+  // SAFETY: `const record = value as JsonObject;` is required at this I/O or test boundary.
+  const record = value as JsonObject;
   const keys = Object.keys(record).sort();
   return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
 }

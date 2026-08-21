@@ -8,6 +8,7 @@ import {
   DOCUMENTED_MCP_TOOLS,
   MCP_TOOL_SPECS,
 } from "../src/mcp-server-contract.js";
+import { isJsonBoolean } from "../src/json.js";
 
 const identity = { kind: "agent", id: "agent:ops" };
 
@@ -26,8 +27,8 @@ describe("HoBo MCP server contract", () => {
       assert.equal(tool.outputSchema.type, "object", `${tool.name} output schema must be object-shaped`);
       assert.ok(tool.description.length > 0, `${tool.name} needs a routeable description`);
       assert.ok(["read", "write"].includes(tool.access), `${tool.name} access must be explicit`);
-      assert.equal(typeof tool.annotations.readOnlyHint, "boolean");
-      assert.equal(typeof tool.annotations.destructiveHint, "boolean");
+      assert.equal(isJsonBoolean(tool.annotations.readOnlyHint), true);
+      assert.equal(isJsonBoolean(tool.annotations.destructiveHint), true);
     }
 
     assert.equal(tools.find((tool) => tool.name === "plan").access, "read");

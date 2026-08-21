@@ -3,21 +3,23 @@ import type {
   MatchContext,
   ResourceDefinition
 } from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.d.js";
+import { type JsonValue, type JsonObject } from "./json.js";
+
 
 export declare const NON_IAC_DRIVER_ADAPTERS_VERSION = "hobo.non-iac-driver-adapters/v1";
 
 export declare class NonIacDriverAdapterError extends Error {
   name: "NonIacDriverAdapterError";
   code: string;
-  details: Record<string, unknown>;
-  constructor(code: string, message: string, details?: Record<string, unknown>);
+  details: JsonObject;
+  constructor(code: string, message: string, details?: JsonObject);
 }
 
 export type ContainerScript = {
   id: string;
   command?: string;
   egress?: string[];
-  outputs?: Record<string, unknown>;
+  outputs?: JsonObject;
 };
 
 export type ContainerSandbox = {
@@ -25,7 +27,7 @@ export type ContainerSandbox = {
   image?: string;
   allowedEgress?: string[];
   network?: { allowedEgress?: string[] };
-  mounts?: unknown[];
+  mounts?: JsonValue[];
 };
 
 export type ContainerExecutorRequest = {
@@ -36,15 +38,15 @@ export type ContainerExecutorRequest = {
     runtime: string;
     image: string;
     network: { allowedEgress: string[] };
-    mounts: unknown[];
+    mounts: JsonValue[];
   };
 };
 
 export type ContainerExecutorResult = {
   status?: "succeeded" | "failed";
   execId?: string;
-  outputs: Record<string, unknown>;
-  manifests?: unknown[];
+  outputs: JsonObject;
+  manifests?: JsonValue[];
   reason?: string;
 };
 
@@ -61,13 +63,13 @@ export type WebhookRequest = {
   method: "POST";
   url: string;
   headers: Record<string, string>;
-  body: Record<string, unknown>;
+  body: JsonObject;
 };
 
 export type WebhookResponse = {
   statusCode?: number;
-  outputs: Record<string, unknown>;
-  manifests?: unknown[];
+  outputs: JsonObject;
+  manifests?: JsonValue[];
 };
 
 export type WebhookService = {
@@ -76,7 +78,7 @@ export type WebhookService = {
 };
 
 export declare function createNonIacDriverAdapters(options?: {
-  template?: { manifests?: unknown[] };
+  template?: { manifests?: JsonValue[] };
   echo?: Record<string, never>;
   container?: { executor?: ContainerExecutor };
   webhook?: {
@@ -85,9 +87,9 @@ export declare function createNonIacDriverAdapters(options?: {
     svid?: string;
     url?: string;
     signer?: (input: {
-      body: Record<string, unknown>;
+      body: JsonObject;
       context: MatchContext;
-      inputs: Record<string, unknown>;
+      inputs: JsonObject;
     }) => { svid: string; signature: string; bodyDigest?: string };
   };
 }): Driver[];
@@ -97,13 +99,13 @@ export declare function selectDriverForResourceDefinition(
   adapters: Driver[]
 ): Driver;
 
-export declare function createTemplateDriverAdapter(options?: { manifests?: unknown[] }): Driver;
+export declare function createTemplateDriverAdapter(options?: { manifests?: JsonValue[] }): Driver;
 export declare function createEchoDriverAdapter(): Driver;
 export declare function createContainerDriverAdapter(options?: { executor?: ContainerExecutor }): Driver;
 export declare function createFixtureContainerExecutor(options?: {
   execId?: string;
-  outputs?: Record<string, unknown>;
-  manifests?: unknown[];
+  outputs?: JsonObject;
+  manifests?: JsonValue[];
 }): ContainerExecutor & { calls: ContainerExecutorRequest[] };
 export declare function createCustomWebhookDriverAdapter(options?: {
   service?: WebhookService;
@@ -111,19 +113,19 @@ export declare function createCustomWebhookDriverAdapter(options?: {
   svid?: string;
   url?: string;
   signer?: (input: {
-    body: Record<string, unknown>;
+    body: JsonObject;
     context: MatchContext;
-    inputs: Record<string, unknown>;
+    inputs: JsonObject;
   }) => { svid: string; signature: string; bodyDigest?: string };
 }): Driver;
 export declare function createFixtureWebhookService(options?: {
   secret?: string;
   trustDomain?: string;
-  outputs?: Record<string, unknown>;
-  manifests?: unknown[];
+  outputs?: JsonObject;
+  manifests?: JsonValue[];
 }): WebhookService & { requests: WebhookRequest[] };
 export declare function signSvidRequest(input: {
-  body: unknown;
+  body: JsonValue;
   svid: string;
   secret: string;
 }): { svid: string; bodyDigest: string; signature: string };

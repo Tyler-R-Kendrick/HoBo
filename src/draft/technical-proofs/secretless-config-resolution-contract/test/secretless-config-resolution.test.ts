@@ -1,5 +1,6 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { isJsonString } from "../src/json.js";
 
 import {
   config,
@@ -93,7 +94,7 @@ test("resolves ladder paths (a)-(c) with brokered events and no persisted secret
   assert.equal(providerSts.calls.length, 2);
   assert.equal(secretsAdapter.reads.length, 1);
   assert.equal(secretsAdapter.reads[0].path, "prod/stripe/api-key");
-  assert.ok(secretsAdapter.reads[0].credentialRef);
+  assert.equal(isJsonString(secretsAdapter.reads[0].credentialRef), true);
 
   const validationErrors = events.flatMap((event) => validateIdentityEvent(event).errors);
   assert.deepEqual(validationErrors, []);

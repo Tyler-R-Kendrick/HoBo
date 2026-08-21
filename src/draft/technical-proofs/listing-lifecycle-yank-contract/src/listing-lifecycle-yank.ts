@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const LISTING_LIFECYCLE_YANK_CONTRACT = "hobo.listing-lifecycle-yank/v1";
 
 const YANK_SEVERITIES = Object.freeze(["low", "medium", "high", "critical"]);
@@ -293,7 +294,7 @@ function rejected(reasons) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -302,7 +303,7 @@ function requireString(value, field) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );

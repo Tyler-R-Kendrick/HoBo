@@ -46,6 +46,8 @@ export function junction(
 	name: string,
 	config: JunctionConfig,
 ): JunctionDefinition {
+	// SAFETY: this parser boundary rejects non-string runtime inputs before applying the name grammar.
+	// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: name is an untrusted parser-boundary value.
 	if (typeof name !== "string" || !JUNCTION_NAME_PATTERN.test(name)) {
 		throw new JunctionParseError(
 			"junction.name.invalid",
@@ -112,6 +114,8 @@ function parseMember(
 	input: JunctionMemberManifestInput | undefined,
 ): JunctionMemberManifest {
 	const region = input?.region ?? null;
+	// SAFETY: this parser boundary rejects non-string manifest regions before storing the refined value.
+	// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: region is an untrusted manifest value.
 	if (region !== null && (typeof region !== "string" || region.length === 0)) {
 		throw new JunctionParseError(
 			"junction.manifest.invalid",
@@ -138,6 +142,8 @@ function parseMember(
 	const residency = input?.residency ?? [];
 	if (
 		!Array.isArray(residency) ||
+		// SAFETY: this parser boundary rejects non-string residency tags before storing them.
+		// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: residency entries are untrusted manifest values.
 		residency.some((entry) => typeof entry !== "string" || entry.length === 0)
 	) {
 		throw new JunctionParseError(

@@ -21,7 +21,6 @@ import {
 import {
   createInMemoryDnsAdapter,
   createPreValidationDnsPort,
-  routingPolicy,
 } from "../../../technical-proofs/hobo-dns-port-contract/src/dns-port.js";
 import {
   createDomainValidationGate,

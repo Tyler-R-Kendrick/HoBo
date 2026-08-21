@@ -232,8 +232,6 @@ export function planCampDeployment({
 }
 
 export function applyProviderWithInert(resolvedProvider, resourceHandle, ...options) {
-  const manifest = createManifest([resourceHandle]);
-  const resource = manifest.resources[resourceHandle.id];
   const applied = [];
   const inert = [];
 
@@ -295,7 +293,7 @@ function defaultRequestsForResource(resource) {
   return defaultPortRequests()[resource.id] ?? [];
 }
 
-function bindleResourcesForCompiler(bindleObject) {
+function bindleResourcesForCompiler(_bindleObject) {
   return REFERENCE_RESOURCES.map((resource) => ({
     id: resource.id,
     type: resource.type,

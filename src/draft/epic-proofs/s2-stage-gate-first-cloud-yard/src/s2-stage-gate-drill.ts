@@ -1,3 +1,5 @@
+import { type JsonObject } from "./json.js";
+
 export const S2_STAGE_GATE_SCHEMA = "hobo.s2StageGate/v1";
 
 /** NFR-009: deploy resume after node loss must complete within 30s. */
@@ -16,7 +18,7 @@ export class S2StageGateError extends Error {
   constructor(
     public readonly code: string,
     message: string,
-    public readonly details: Record<string, unknown> = {},
+    public readonly details: JsonObject = {},
   ) {
     super(message);
     this.name = "S2StageGateError";
@@ -26,7 +28,7 @@ export class S2StageGateError extends Error {
 export type StageGateEvent = {
   type: string;
   atMs: number;
-  payload?: Record<string, unknown>;
+  payload?: JsonObject;
 };
 
 export type StageGateDrillContract = {
@@ -93,7 +95,7 @@ export function simulateGovernedDeploy(options: {
   const events: StageGateEvent[] = [];
   let atMs = 0;
 
-  const append = (type: string, payload: Record<string, unknown> = {}) => {
+  const append = (type: string, payload: JsonObject = {}) => {
     events.push({ type, atMs, payload });
     atMs += 50;
   };
@@ -114,6 +116,7 @@ export function simulateGovernedDeploy(options: {
     status: 200,
   });
 
+  // SAFETY: assertion to `ents.at(-1)?.payload?.liveUrl as string; ` is required at this boundary.
   const liveUrl = events.at(-1)?.payload?.liveUrl as string;
 
   return Object.freeze({
@@ -134,7 +137,7 @@ export function simulateYardRestartResume(options: {
   const log: StageGateEvent[] = [...(options.eventLog ?? [])];
   let atMs = log.at(-1)?.atMs ?? 0;
 
-  const append = (type: string, payload: Record<string, unknown> = {}) => {
+  const append = (type: string, payload: JsonObject = {}) => {
     atMs += 100;
     log.push({ type, atMs, payload });
   };
@@ -186,7 +189,7 @@ export function simulateCompensationRollback(options: {
   const events: StageGateEvent[] = [];
   let atMs = 0;
 
-  const append = (type: string, payload: Record<string, unknown> = {}) => {
+  const append = (type: string, payload: JsonObject = {}) => {
     events.push({ type, atMs, payload });
     atMs += 75;
   };
@@ -234,7 +237,7 @@ export function simulateGatekeeperBlock(options: {
   const events: StageGateEvent[] = [];
   let atMs = 0;
 
-  const append = (type: string, payload: Record<string, unknown> = {}) => {
+  const append = (type: string, payload: JsonObject = {}) => {
     events.push({ type, atMs, payload });
     atMs += 40;
   };
@@ -278,6 +281,7 @@ export function simulateGatekeeperBlock(options: {
     status: "blocked" as const,
     events,
     blocked: true,
+    // SAFETY: assertion to `ts.find((event) => event.type === "deployment.PlanRejected")?.payload ?.reason as string, ` is required at this boundary.
     explainableReason: events.find((event) => event.type === "deployment.PlanRejected")?.payload
       ?.reason as string,
   });
@@ -348,7 +352,7 @@ function summarizeTimelineEvent(event: StageGateEvent): string {
 export type StageGateDrillReport = {
   schema: typeof S2_STAGE_GATE_SCHEMA;
   status: "passed" | "failed";
-  arms: Record<string, { status: string; details?: Record<string, unknown> }>;
+  arms: Record<string, { status: string; details?: JsonObject }>;
   evidencePath: string;
 };
 

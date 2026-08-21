@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonObject } from "../src/json.js";
 import {
   planLiveFixCandidate,
   replayLiveFixEvents,
@@ -246,7 +247,7 @@ function parseCandidate(value) {
 }
 
 function parseGate(value, path) {
-  const gate = value && typeof value === "object" ? value : {};
+  const gate = value && isJsonObject(value) ? value : {};
   return {
     passed: gate.passed !== false,
     reportRef: nonEmptyString(gate.reportRef ?? `${path}:report`, `${path}.reportRef`),
@@ -254,7 +255,7 @@ function parseGate(value, path) {
 }
 
 function parseRollout(value = {}) {
-  const rollout = value && typeof value === "object" ? value : {};
+  const rollout = value && isJsonObject(value) ? value : {};
   return {
     id: nonEmptyString(rollout.id ?? "rollout-live-fix-001", "$.rollout.id"),
     stepId: nonEmptyString(rollout.stepId ?? "canary-observe", "$.rollout.stepId"),
@@ -271,7 +272,7 @@ function parseRollout(value = {}) {
 }
 
 function parseSloRegression(value = {}) {
-  const regression = value && typeof value === "object" ? value : {};
+  const regression = value && isJsonObject(value) ? value : {};
   const snapshot = sloSample(regression.snapshot ?? defaultRegressionSnapshot(), "$.sloRegression.snapshot");
   const windowSamples = array(regression.windowSamples ?? [
     sloSample({ seq: 20, burnRate: 13.5, remainingBudgetRatio: 0.06, status: "available" }),
@@ -287,7 +288,7 @@ function parseSloRegression(value = {}) {
 }
 
 function parseCanaryObservation(value = {}) {
-  const observation = value && typeof value === "object" ? value : {};
+  const observation = value && isJsonObject(value) ? value : {};
   const snapshot = sloSample(observation.snapshot ?? defaultHealthySnapshot(), "$.canaryObservation.snapshot");
   const windowSamples = array(observation.windowSamples ?? [snapshot], "$.canaryObservation.windowSamples")
     .map((sample, index) => sloSample(sample, `$.canaryObservation.windowSamples[${index}]`));
@@ -300,7 +301,7 @@ function parseCanaryObservation(value = {}) {
 }
 
 function parseGoldenSuite(value = {}) {
-  const goldenSuite = value && typeof value === "object" ? value : {};
+  const goldenSuite = value && isJsonObject(value) ? value : {};
   return {
     suiteId: nonEmptyString(goldenSuite.suiteId ?? "checkout-golden", "$.goldenSuite.suiteId"),
     status: nonEmptyString(goldenSuite.status ?? "passed", "$.goldenSuite.status"),
@@ -366,7 +367,7 @@ function defaultRegressionSnapshot() {
 }
 
 function object(value, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new GatedLiveFixLoopError("livefix.object_required", path);
   }
   return value;
@@ -380,7 +381,7 @@ function array(value, path) {
 }
 
 function nonEmptyString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new GatedLiveFixLoopError("livefix.string_required", path);
   }
   return value;
@@ -394,7 +395,7 @@ function integerAtLeast(value, path, minimum) {
 }
 
 function numberAtLeast(value, path, minimum) {
-  if (typeof value !== "number" || Number.isNaN(value) || value < minimum) {
+  if (!isJsonNumber(value) || Number.isNaN(value) || value < minimum) {
     throw new GatedLiveFixLoopError("livefix.number_required", path);
   }
   return value;
@@ -409,7 +410,7 @@ function parseIso(value, path) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || Object.isFrozen(value) || !(Array.isArray(value) || isJsonObject(value))) {
     return value;
   }
   for (const child of Object.values(value)) {

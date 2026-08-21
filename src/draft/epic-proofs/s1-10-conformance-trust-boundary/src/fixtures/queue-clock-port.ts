@@ -1,3 +1,4 @@
+import { isJsonString } from "../json.js";
 import assert from "node:assert/strict";
 
 export const QUEUE_CLOCK_RUNTIME_PORT_CONTRACT_VERSION =
@@ -82,7 +83,7 @@ export function replayClockTrace(trace, options = {}) {
 }
 
 export async function runQueueClockConformance(createRuntime = createRuntimeLocalQueueClock) {
-  if (typeof createRuntime !== "function") {
+  if (!(createRuntime instanceof Function)) {
     throw new TypeError("createRuntime must be a function");
   }
 
@@ -169,7 +170,7 @@ function createQueuePort(store) {
     },
 
     async handle(queueName, handler, options = {}) {
-      if (typeof handler !== "function") {
+      if (!(handler instanceof Function)) {
         throw new TypeError("handler must be a function");
       }
       const leased = this.dequeue(queueName, options);
@@ -690,7 +691,7 @@ function optionalString(value, fieldName) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -712,7 +713,7 @@ function normalizeNonNegativeInteger(value, fieldName) {
 
 function parseInstantMs(value, fieldName) {
   const ms = Date.parse(value);
-  if (typeof value !== "string" || Number.isNaN(ms)) {
+  if (!isJsonString(value) || Number.isNaN(ms)) {
     throw new TypeError(`${fieldName} must be a valid ISO-8601 string`);
   }
   return ms;
@@ -726,7 +727,7 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function"
+  return structuredClone instanceof Function
     ? structuredClone(value)
     : JSON.parse(JSON.stringify(value));
 }

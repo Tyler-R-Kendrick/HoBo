@@ -1,3 +1,4 @@
+import { isJsonObject } from "../src/json.js";
 import { createHash } from "node:crypto";
 
 import {
@@ -668,11 +669,11 @@ function digest(value) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
-    return JSON.stringify(value);
-  }
   if (Array.isArray(value)) {
     return `[${value.map(stableStringify).join(",")}]`;
+  }
+  if (value === null || !isJsonObject(value)) {
+    return JSON.stringify(value);
   }
 
   return `{${Object.keys(value)

@@ -1,3 +1,4 @@
+import { type JsonValue, isJsonObject } from "../json.js";
 import { proveCheckoutDurability } from "./checkout-proof.js";
 import type { RuntimeDurabilityBackend } from "./types.js";
 
@@ -134,15 +135,15 @@ function appendOptions(expectedSeq: number, correlationId: string) {
   };
 }
 
-function stableStringify(value: unknown) {
+function stableStringify(value: JsonValue) {
   return JSON.stringify(stableValue(value));
 }
 
-function stableValue(value: unknown): unknown {
+function stableValue(value: JsonValue): JsonValue {
   if (Array.isArray(value)) {
     return value.map(stableValue);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))

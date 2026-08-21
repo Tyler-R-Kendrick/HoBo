@@ -1,3 +1,4 @@
+import { isJsonString } from "../src/json.js";
 import { readFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
@@ -72,8 +73,8 @@ export async function loadMembraneFixture() {
 }
 
 export async function runMembraneReferenceSimulation(scenario) {
-  const scenarioId = typeof scenario === "string" ? scenario : scenario.id;
-  const scenarioFixture = typeof scenario === "string" ? (await loadMembraneFixture()).scenarios[scenario] : scenario;
+  const scenarioId = isJsonString(scenario) ? scenario : scenario.id;
+  const scenarioFixture = isJsonString(scenario) ? (await loadMembraneFixture()).scenarios[scenario] : scenario;
 
   if (!scenarioFixture) {
     throw new Error(`Unknown WIT runtime membrane scenario: ${scenarioId}`);

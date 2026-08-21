@@ -148,7 +148,8 @@ main
                                                                                                                                          └── sdlc/anti-slop-137-draft-projects-hobo-core  #1396 s0-03-hobo-core
                                                                                                                                           └── sdlc/anti-slop-138-packages-tinies  #1397 schema-tools+componentize+claims+convex+junctions
                                                                                                                                            └── sdlc/anti-slop-139-packages-rift-registry  #1398 rift+registry+training+kv-redis
-                                                                                                                                            └── sdlc/anti-slop-140-packages-pixel-village  pixel-village
+                                                                                                                                            └── sdlc/anti-slop-140-packages-pixel-village  #1401 pixel-village
+                                                                                                                                             └── sdlc/anti-slop-141-packages-cloud  packages/cloud
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -308,7 +309,8 @@ Layer 136: `s1-24-conformance-sdk` oxlint `--deny-warnings` clean (#1395).
 Layer 137: `s0-03-hobo-core` oxlint `--deny-warnings` clean (#1396). Remaining `src/draft/projects` are oxlint-clean.
 Layer 138: `schema-tools` + `componentize` + `claims` + `convex` + `junctions` plus cucumber steps, media, vitest coverage config, and the HOBO-50 projection-model proof oxlint `--deny-warnings` clean (#1397).
 Layer 139: `rift` + `registry` + `training` + `kv-redis-compatible` oxlint `--deny-warnings` clean (#1398).
-Layer 140: `pixel-village` oxlint `--deny-warnings` clean.
-Next: remaining packages (`cloud`, `cli`, `packs`, `yards`, `replay`, …), then the full-repo `lint:slop --deny-warnings` gate.
+Layer 140: `pixel-village` oxlint `--deny-warnings` clean (#1401).
+Layer 141: `packages/cloud` oxlint `--deny-warnings` clean.
+Next: remaining packages (`cli`, `packs`, `yards`, `replay`, …), then the full-repo `lint:slop --deny-warnings` gate.
 Full-repo `lint:slop --deny-warnings` is still red until those land.
 GitHub stack metadata is at the 100-entry cap; later layers still open PRs via `gh stack submit --auto`.

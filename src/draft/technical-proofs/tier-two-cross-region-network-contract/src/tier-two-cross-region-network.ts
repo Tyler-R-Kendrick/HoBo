@@ -6,6 +6,8 @@ import {
   evaluateMtlsHandshake,
   parseWorkloadSpiffeId
 } from "../../mtls-data-path-contract/src/mtls-data-path.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const TIER_TWO_CROSS_REGION_NETWORK_SCHEMA_VERSION = "hobo.tier-two-cross-region-network/v1";
 
@@ -14,7 +16,7 @@ const OVERLAY_CAPABILITY = "overlay-mesh";
 const PUBLIC_MTLS_CAPABILITY = "public-mtls";
 
 export function realizeTierTwoCrossRegionLink(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     return invalid("tier2.input.invalid", "input must be an object");
   }
 
@@ -162,7 +164,7 @@ export function determineTierTwoFallback({ plan, providerBackboneCatalog, availa
 }
 
 export function resolveTierTwoBinding(link, providerOutputs) {
-  if (!link || typeof link !== "object" || Array.isArray(link)) {
+  if (!link || !isJsonObject(link) || Array.isArray(link)) {
     return invalid("tier2.link.invalid", "link must be an object");
   }
   const result = resolveBindingForResource({
@@ -178,10 +180,10 @@ export function resolveTierTwoBinding(link, providerOutputs) {
 }
 
 export function canReachTierTwoPeer(link, attempt) {
-  if (!link || typeof link !== "object" || Array.isArray(link)) {
+  if (!link || !isJsonObject(link) || Array.isArray(link)) {
     return invalid("tier2.link.invalid", "link must be an object");
   }
-  if (!attempt || typeof attempt !== "object" || Array.isArray(attempt)) {
+  if (!attempt || !isJsonObject(attempt) || Array.isArray(attempt)) {
     return invalid("tier2.reachability.invalid", "attempt must be an object");
   }
 
@@ -231,7 +233,7 @@ function validateTierTwoPlan(plan) {
 function validateResidencyBoundary(plan) {
   const allowedRegions = plan.residency?.allowedRegions;
   if (allowedRegions === undefined) return { ok: true };
-  if (!Array.isArray(allowedRegions) || allowedRegions.some((region) => typeof region !== "string" || region.length === 0)) {
+  if (!Array.isArray(allowedRegions) || allowedRegions.some((region) => !isJsonString(region) || region.length === 0)) {
     return invalid("tier2.residency.invalid", "residency.allowedRegions must contain non-empty region strings");
   }
   if (!allowedRegions.includes(plan.source.region) || !allowedRegions.includes(plan.target.region)) {
@@ -244,7 +246,7 @@ function validateResidencyBoundary(plan) {
 }
 
 function resolveBackbonePeering(providerBackboneCatalog, plan) {
-  if (!providerBackboneCatalog || typeof providerBackboneCatalog !== "object" || Array.isArray(providerBackboneCatalog)) {
+  if (!providerBackboneCatalog || !isJsonObject(providerBackboneCatalog) || Array.isArray(providerBackboneCatalog)) {
     return invalid("tier2.backbone-catalog.invalid", "providerBackboneCatalog must be an object keyed by provider");
   }
 
@@ -260,10 +262,10 @@ function resolveBackbonePeering(providerBackboneCatalog, plan) {
   ));
 
   if (!peering) return unavailable(plan);
-  if (typeof peering.backboneRef !== "string" || peering.backboneRef.length === 0) {
+  if (!isJsonString(peering.backboneRef) || peering.backboneRef.length === 0) {
     return invalid("tier2.backbone-catalog.invalid", "peering.backboneRef must be a non-empty string");
   }
-  if (typeof peering.peeringRef !== "string" || peering.peeringRef.length === 0) {
+  if (!isJsonString(peering.peeringRef) || peering.peeringRef.length === 0) {
     return invalid("tier2.backbone-catalog.invalid", "peering.peeringRef must be a non-empty string");
   }
 
@@ -300,17 +302,17 @@ function resolveBindingForResource({
   targetRegion,
   providerOutputs
 }) {
-  if (!providerOutputs || typeof providerOutputs !== "object" || Array.isArray(providerOutputs)) {
+  if (!providerOutputs || !isJsonObject(providerOutputs) || Array.isArray(providerOutputs)) {
     return invalid("tier2.provider-outputs.invalid", "providerOutputs must be an object keyed by resource id");
   }
 
   const outputs = providerOutputs[targetResourceId];
-  if (!outputs || typeof outputs !== "object" || Array.isArray(outputs)) {
+  if (!outputs || !isJsonObject(outputs) || Array.isArray(outputs)) {
     return invalid("tier2.endpoint.missing", `provider outputs missing for ${targetResourceId}`);
   }
 
   const endpoint = outputs[DEFAULT_PROVIDER_OUTPUT_KEY];
-  if (typeof endpoint !== "string" || endpoint.length === 0) {
+  if (!isJsonString(endpoint) || endpoint.length === 0) {
     return invalid("tier2.endpoint.missing", `${targetResourceId}.${DEFAULT_PROVIDER_OUTPUT_KEY} must be a non-empty string`);
   }
 
@@ -335,7 +337,7 @@ function normalizeVerbs(verbs = ["connect"]) {
   const seen = new Set();
   const normalized = [];
   for (const verb of verbs) {
-    if (typeof verb !== "string" || verb.length === 0) {
+    if (!isJsonString(verb) || verb.length === 0) {
       return invalid("tier2.verbs.invalid", "verbs entries must be non-empty strings");
     }
     if (!seen.has(verb)) {

@@ -14,7 +14,7 @@ import {
 
 const ticketProjectionV2 = {
   name: "ticket-read-model",
-  shapeVersion: "ticket.v2",
+  schemaVersion: "ticket.v2",
   initialState() {
     return {
       commentCount: 0,
@@ -46,7 +46,7 @@ const ticketProjectionV2 = {
   toRow(state, key) {
     return {
       id: key,
-      shapeVersion: "ticket.v2",
+      schemaVersion: "ticket.v2",
       status: state.status,
       title: state.title,
       commentCount: state.commentCount,
@@ -57,7 +57,7 @@ const ticketProjectionV2 = {
 
 const vectorProjection = {
   name: "ticket-vector-index",
-  shapeVersion: "ticket-vector.v2",
+  schemaVersion: "ticket-vector.v2",
   determinism: "nondeterministic",
   key(output) {
     return output.data.ticketId;
@@ -111,7 +111,7 @@ test("large derived projection rebuilds from zero into the new read-model shape"
   assert.deepEqual(result.rows, [
     {
       id: "T-1",
-      shapeVersion: "ticket.v2",
+      schemaVersion: "ticket.v2",
       status: "closed",
       title: "router down",
       commentCount: 250,
@@ -128,7 +128,7 @@ test("large derived projection rebuilds from zero into the new read-model shape"
         phase: "backfill",
         projection: "ticket-read-model",
         targetSinkId: "ticket-read-model-v2-green",
-        shapeVersion: "ticket.v2",
+        schemaVersion: "ticket.v2",
         strategy: "rebuild-from-zero",
       },
     },
@@ -166,7 +166,7 @@ test("interrupted shard rebuild resumes from checkpoint without restart or doubl
   assert.deepEqual(resumed.rows, [
     {
       id: "T-1",
-      shapeVersion: "ticket.v2",
+      schemaVersion: "ticket.v2",
       status: "open",
       title: "router down",
       commentCount: 2,
@@ -207,7 +207,7 @@ test("snapshot-seeded rebuild folds only the tail after the snapshot position", 
   assert.deepEqual(result.metrics.appliedEventIds, ["ticket/T-1#3", "ticket/T-1#4"]);
   assert.deepEqual(result.rows[0], {
     id: "T-1",
-    shapeVersion: "ticket.v2",
+    schemaVersion: "ticket.v2",
     status: "open",
     title: "router down",
     commentCount: 3,

@@ -244,7 +244,7 @@ export default defineConfig({
 				"packages/providers/provider-hetzner/**": { statements: 95, branches: 82, functions: 97, lines: 95 },
 				"packages/providers/provider-hostinger/**": { statements: 91, branches: 80, functions: 98, lines: 92 },
 				"packages/providers/provider-kafka/**": { statements: 88, branches: 84, functions: 93, lines: 88 },
-				"packages/providers/provider-kubernetes/**": { statements: 81, branches: 70, functions: 90, lines: 81 },
+				"packages/providers/provider-kubernetes/**": { statements: 89, branches: 81, functions: 98, lines: 89 },
 				"packages/providers/provider-lakebed/**": { statements: 82, branches: 71, functions: 80, lines: 82 },
 				"packages/providers/provider-neon/**": { statements: 84, branches: 73, functions: 93, lines: 86 },
 				"packages/providers/provider-netlify/**": { statements: 84, branches: 80, functions: 82, lines: 84 },

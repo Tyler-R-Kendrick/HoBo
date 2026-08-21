@@ -70,6 +70,7 @@ export function assertAllowedEndpoint(
 	url: string,
 	policy: TransportPolicy,
 ): URL {
+	const rawPath = rawPathOf(url);
 	let parsed: URL;
 	try {
 		parsed = new URL(url);
@@ -110,19 +111,47 @@ export function assertAllowedEndpoint(
 	// object. The apiserver would normalize it; this driver refuses it. The
 	// literal check below only ever saw the literal form — the percent-encoded
 	// one survives parsing and would reach the apiserver intact.
-	if (encodesPathSeparator(parsed.pathname)) {
+	// Also the raw path: `%2F` survives parsing, but `%2E%2E` does not — it is
+	// decoded to `..` and then resolved away, so the normalized form no longer
+	// carries the encoding this check is looking for.
+	if (encodesPathSeparator(parsed.pathname) || encodesPathSeparator(rawPath)) {
 		throw new KubernetesProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			`apiserver path ${parsed.pathname} percent-encodes a path separator or dot segment, which this guard refuses rather than decodes`,
 		);
 	}
-	if (parsed.pathname.includes("//") || parsed.pathname.includes("/..")) {
+	// Checked against the *caller's* path, not `parsed.pathname`. `new URL()`
+	// resolves dot segments while parsing, so by the time the URL exists a
+	// namespaced `/api/v1/namespaces/default/../../nodes` has already become the
+	// cluster-scoped `/api/v1/nodes` — which passes the root allowlist above and
+	// reads, to every later frame, as a path the caller wrote. Inspecting the
+	// normalized form is therefore blind to the exact escalation this refusal
+	// exists to stop.
+	if (rawPath.includes("//") || /(?:^|\/)\.\.?(?:\/|$)/u.test(rawPath)) {
 		throw new KubernetesProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			"apiserver path must be already-normalized",
 		);
 	}
 	return parsed;
+}
+
+/**
+ * The path the caller actually wrote, before `new URL()` resolves anything.
+ *
+ * Everything up to the authority is scheme and host; the path starts at the
+ * first `/` after it, and ends at the query or fragment.
+ */
+function rawPathOf(url: string): string {
+	const afterScheme = url.indexOf("://");
+	const start = url.indexOf("/", afterScheme < 0 ? 0 : afterScheme + 3);
+	if (start < 0) return "";
+	const end = Math.min(
+		...[url.indexOf("?", start), url.indexOf("#", start), url.length].filter(
+			(index) => index >= 0,
+		),
+	);
+	return url.slice(start, end);
 }
 
 function headerValue(

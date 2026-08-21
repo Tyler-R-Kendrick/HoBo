@@ -216,7 +216,7 @@ export default defineConfig({
 				"packages/evals/**": { statements: 90, branches: 89, functions: 94, lines: 91 },
 				"packages/events/**": { statements: 91, branches: 82, functions: 87, lines: 93 },
 				"packages/fuzz/**": { statements: 90, branches: 80, functions: 94, lines: 92 },
-				"packages/hobo/**": { statements: 87, branches: 76, functions: 87, lines: 87 },
+				"packages/hobo/**": { statements: 87, branches: 77, functions: 88, lines: 87 },
 				"packages/iac/**": { statements: 73, branches: 65, functions: 77, lines: 73 },
 				"packages/identity/**": { statements: 90, branches: 80, functions: 92, lines: 90 },
 				"packages/junctions/**": { statements: 95, branches: 90, functions: 98, lines: 95 },

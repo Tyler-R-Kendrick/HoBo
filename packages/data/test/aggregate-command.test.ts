@@ -50,10 +50,10 @@ function counter(
 	return defineAggregate<Counter, Add>({
 		name: "counter",
 		initialState: { total: 0 },
-			evolve: (state, event) => {
-				if (event.type !== "counter.Added") return state;
-				// SAFETY: counter.Added is emitted below with this exact payload shape.
-				const data = event.data as { amount?: number };
+		evolve: (state, event) => {
+			if (event.type !== "counter.Added") return state;
+			// SAFETY: counter.Added is emitted below with this exact payload shape.
+			const data = event.data as { amount?: number };
 			return { total: state.total + (data.amount ?? 0) };
 		},
 		decide: (state, command, emit) => {
@@ -351,9 +351,9 @@ describe("the emit contract", () => {
 		const twice = defineAggregate<Counter, Add>({
 			name: "counter",
 			initialState: { total: 0 },
-				evolve: (state, event) => {
-					// SAFETY: counter.Added is emitted below with this exact payload shape.
-					const data = event.data as { amount?: number };
+			evolve: (state, event) => {
+				// SAFETY: counter.Added is emitted below with this exact payload shape.
+				const data = event.data as { amount?: number };
 				return { total: state.total + (data.amount ?? 0) };
 			},
 			decide: (_s, _c, emit) => {

@@ -8,6 +8,8 @@ import { validateGenRequest } from "../../generation-pipeline-io-contract/src/co
 import { scaffoldGenerationRequest } from "../../generation-scaffold-stage-contract/src/scaffold.js";
 import { runValidationStage } from "../../generation-validation-stage-contract/src/validation-stage.js";
 import { contentDigest } from "../../slsa-provenance-certification-contract/src/provenance.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const STUB_IMPLEMENTATION_REPAIR_BUDGET = 2;
 
@@ -505,13 +507,13 @@ function assertPinnedInputs({ seed }) {
   if (generationConfig.temperature !== 0 || generationConfig.topP !== 1) {
     throw new Error("generation.sampling_not_deterministic");
   }
-  if (typeof seed !== "string" || seed.length === 0) {
+  if (!isJsonString(seed) || seed.length === 0) {
     throw new Error("generation.seed_not_pinned");
   }
 }
 
 function assertObject(value, code, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new StubRecordingsParseError(code, path);
   }
 }
@@ -523,7 +525,7 @@ function assertEqual(actual, expected, code, path) {
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new StubRecordingsParseError(code, path);
   }
 }

@@ -10,6 +10,8 @@ import {
   runHoboPlan,
 } from "../../hobo-plan-preview-contract/src/plan-preview.js";
 import { createRunInspectorProjection } from "../../run-inspector-projection-contract/src/run-inspector.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const EXTENSION_SURFACE_VERSION = "hobo.extension-surface/v1";
 
@@ -241,7 +243,7 @@ export function createVsCodeExtensionAdapter(options = {}) {
 
 export function assertSharedExtensionHandlers(options = {}) {
   const bindings = options.bindings ?? EXTENSION_COMMAND_BINDINGS;
-  const cliVerbs = new Set((options.cliVerbs ?? CANONICAL_VERBS).map((verb) => (typeof verb === "string" ? verb : verb.name)));
+  const cliVerbs = new Set((options.cliVerbs ?? CANONICAL_VERBS).map((verb) => (isJsonString(verb) ? verb : verb.name)));
   const mcpTools = new Set((options.mcpTools ?? MCP_TOOL_SPECS).map((tool) => tool.name));
   const missing = [];
 
@@ -398,13 +400,13 @@ function findEmbeddedCredentials(value, path = []) {
   if (Array.isArray(value)) {
     return value.flatMap((entry, index) => findEmbeddedCredentials(entry, [...path, String(index)]));
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return [];
   }
 
   return Object.entries(value).flatMap(([key, child]) => {
     const childPath = [...path, key];
-    if (typeof child === "string" && isCredentialKey(key) && !isCredentialReference(child)) {
+    if (isJsonString(child) && isCredentialKey(key) && !isCredentialReference(child)) {
       return [childPath.join(".")];
     }
     return findEmbeddedCredentials(child, childPath);

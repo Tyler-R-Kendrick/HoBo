@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { isJsonString } from "./json.js";
+
 
 export const STREAMER_RUNTIME_PORT_CONTRACT_VERSION = "hobo.streamer-runtime-port/v1";
 
@@ -45,7 +47,7 @@ export function createRuntimeLocalStreamer(options = {}) {
       return toRunHandle(record);
     },
     start(workflow, runOptions = {}) {
-      if (typeof workflow !== "function") {
+      if (!(workflow instanceof Function)) {
         throw new TypeError("workflow must be a function");
       }
 
@@ -242,7 +244,7 @@ function normalizeRunId(runId) {
 }
 
 function normalizeNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -286,7 +288,7 @@ async function provesStartReturnsReadable(createRuntime) {
     await writable.write("omega");
   });
 
-  assert.equal(typeof run.runId, "string");
+  assert.equal(isJsonString(run.runId), true);
   assert.deepEqual(
     (await collect(run.readable)).map(({ seq, stream, chunk }) => ({ seq, stream, chunk })),
     [

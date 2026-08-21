@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const WEBSOCKET_STREAMER_FANOUT_CONTRACT_VERSION = "hobo.websocket-streamer-fanout/v1";
 
@@ -75,7 +77,7 @@ class WebsocketStreamerFanout {
   #channels = new Map();
 
   constructor({ streamer, yard }) {
-    if (!streamer || typeof streamer.createRun !== "function") {
+    if (!streamer || !(streamer.createRun instanceof Function)) {
       throw new TypeError("streamer must expose createRun");
     }
     this.#streamer = streamer;
@@ -388,7 +390,7 @@ function normalizeConnectionMode(mode) {
 }
 
 function normalizePrincipal(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError("principal must be an object");
   }
   const kind = assertNonEmptyString(value.kind, "principal.kind");
@@ -399,7 +401,7 @@ function normalizePrincipal(value) {
 }
 
 function assertNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;

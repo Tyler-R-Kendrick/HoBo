@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export class PermissionContractError extends Error {
   constructor(code, message, details = {}) {
     super(message);
@@ -8,7 +9,7 @@ export class PermissionContractError extends Error {
 }
 
 export function buildUsagePermissionManifest(input) {
-  if (!input || typeof input !== "object") {
+  if (!input || !isJsonObject(input)) {
     throw new TypeError("permission manifest input must be an object");
   }
 
@@ -85,11 +86,11 @@ function requiredNotGrantedFailure(resourceName, missing, granted) {
 }
 
 function assertResource(resource) {
-  if (!resource || typeof resource !== "object") {
+  if (!resource || !isJsonObject(resource)) {
     throw new TypeError("resource permission input must be an object");
   }
   for (const key of ["kind", "name", "port"]) {
-    if (typeof resource[key] !== "string" || resource[key].length === 0) {
+    if (!isJsonString(resource[key]) || resource[key].length === 0) {
       throw new TypeError(`resource ${key} must be a non-empty string`);
     }
   }

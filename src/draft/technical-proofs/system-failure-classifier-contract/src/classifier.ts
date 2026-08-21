@@ -137,8 +137,12 @@ export function makeClassificationEvent({ id, correlationId, sourceEventId, clas
   };
 }
 
+function isClassifiableFailure(value) {
+  return isJsonObject(value) || value instanceof Error;
+}
+
 function normalizeError(error) {
-  if (!error || !isJsonObject(error)) {
+  if (!isClassifiableFailure(error)) {
     return {};
   }
 

@@ -3,13 +3,7 @@
  * Normalizes ECS/VPC/control-plane signals into yard.* facts.
  */
 
-type JsonValue =
-	| null
-	| boolean
-	| number
-	| string
-	| readonly JsonValue[]
-	| Readonly<{ readonly [key: string]: JsonValue }>;
+import { isJsonArray, type JsonObject } from "./json.js";
 
 // public-contract: the event-store fold this provider is addressed by. Stored
 // events name the resolver that produced them, so a rename orphans every fact
@@ -19,13 +13,13 @@ export const AWS_EVENT_STORE_RESOLVER_ID = "aws.yard.event-store/v1" as const;
 export interface AwsProviderNativeSignal {
 	readonly providerId: "aws";
 	readonly kind: string;
-	readonly payload: Readonly<Record<string, JsonValue>>;
+	readonly payload: JsonObject;
 	readonly observedAt?: string;
 }
 
 export interface AwsYardEvent {
 	readonly type: string;
-	readonly data: Readonly<Record<string, unknown>>;
+	readonly data: JsonObject;
 	readonly occurredAt?: string;
 }
 
@@ -154,9 +148,7 @@ export function awsEventStoreFoldDescriptor() {
 	});
 }
 
-function awsYardFromPayload(
-	p: Readonly<Record<string, JsonValue>>,
-): Record<string, unknown> {
+function awsYardFromPayload(p: JsonObject) {
 	const yardId = String(p.yardId ?? p.clusterArn ?? "yard:aws");
 	const now = new Date().toISOString();
 	return {
@@ -165,9 +157,9 @@ function awsYardFromPayload(
 		ownerTenantId: String(p.ownerTenantId ?? "local"),
 		providerId: "aws",
 		runtimeId: String(p.runtimeId ?? "aws.yard-runtime/v1"),
-		shape: {
+		layout: {
 			providerId: "aws",
-			regions: Array.isArray(p.regions) ? p.regions.map(String) : ["us-east-1"],
+			regions: isJsonArray(p.regions) ? p.regions.map(String) : ["us-east-1"],
 			require: ["managed-container-substrate", "private-network"],
 			prefer: [],
 			residency: [],
@@ -176,8 +168,8 @@ function awsYardFromPayload(
 			componentHosts: [],
 			labels: {},
 			properties: {
-				...(p.accountRef ? { "aws.accountRef": p.accountRef } : {}),
-				...(p.vpcId ? { "aws.vpcId": p.vpcId } : {}),
+				...(p.accountRef ? { "aws.accountRef": p.accountRef } : undefined),
+				...(p.vpcId ? { "aws.vpcId": p.vpcId } : undefined),
 			},
 			camps: [],
 		},

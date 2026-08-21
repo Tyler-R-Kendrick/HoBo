@@ -21,7 +21,7 @@ export function awsYardRuntimeRegistration(options?: {
 	readonly runtimeId: typeof AWS_YARD_RUNTIME_ID;
 	readonly providerId: "aws";
 	readonly version: string;
-	readonly supportedShape: {
+	readonly supportedCatalog: {
 		readonly regions: readonly string[];
 		readonly capabilities: readonly string[];
 		readonly requireProperties: readonly string[];
@@ -41,7 +41,7 @@ export function awsYardRuntimeRegistration(options?: {
 		runtimeId: AWS_YARD_RUNTIME_ID,
 		providerId: "aws",
 		version: "1.0.0",
-		supportedShape: Object.freeze({
+		supportedCatalog: Object.freeze({
 			regions: Object.freeze(["us-east-1", "us-west-2", "eu-west-1"]),
 			capabilities: Object.freeze([
 				"managed-container-substrate",

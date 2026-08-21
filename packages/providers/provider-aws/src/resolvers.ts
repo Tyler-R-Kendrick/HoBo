@@ -81,6 +81,16 @@ import {
 } from "@hobo/core";
 import { type AwsCredentials, signAwsRequest } from "@hobo/core/aws-sigv4";
 
+import {
+	isJsonArray,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "./json.js";
 import { AWS_PROVIDER_TARGET } from "./options.js";
 import {
 	dynamodb,
@@ -238,7 +248,7 @@ const CREDENTIAL_REF_PATTERN = /^[a-z][a-z0-9+.-]*:\/\/[^\s@]+$/u;
 const RAW_CREDENTIAL_PATTERN = /^(?:[A-Z0-9]{16,}|[A-Za-z0-9/+=_-]{32,})$/u;
 
 /** Anything long and token-shaped is scrubbed out of provider error text. */
-const TOKEN_SHAPED_PATTERN = /[A-Za-z0-9/+=_-]{20,}/gu;
+const TOKEN_PATTERN = /[A-Za-z0-9/+=_-]{20,}/gu;
 
 /**
  * Redact provider text before it reaches a message, a diagnostic, or a log.
@@ -257,11 +267,11 @@ export function redactAwsText(
 		credentials?.sessionToken,
 		credentials?.accessKeyId,
 	]) {
-		if (typeof material === "string" && material.length >= 4) {
+		if (material !== undefined && material.length >= 4) {
 			scrubbed = scrubbed.split(material).join("[redacted]");
 		}
 	}
-	scrubbed = scrubbed.replace(TOKEN_SHAPED_PATTERN, "[redacted]");
+	scrubbed = scrubbed.replace(TOKEN_PATTERN, "[redacted]");
 	return scrubbed.length > limit ? `${scrubbed.slice(0, limit)}…` : scrubbed;
 }
 
@@ -278,7 +288,7 @@ async function resolveAwsCredentials(
 	resolve: (ref: string) => Promise<AwsCredentials>,
 ): Promise<AwsCredentials> {
 	const ref = request.credentialRef;
-	if (typeof ref !== "string" || ref.trim().length === 0) {
+	if (ref.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			'aws resolver: credentialRef is empty. Supply a locator such as "env://AWS_DEPLOY_CREDENTIALS" or "secret://camp/aws-deploy" and register it with the host credential resolver; the resolver never accepts inline credential material',
@@ -311,11 +321,7 @@ async function resolveAwsCredentials(
 		);
 	}
 	if (
-		material === null ||
-		typeof material !== "object" ||
-		typeof material.accessKeyId !== "string" ||
 		material.accessKeyId.trim().length === 0 ||
-		typeof material.secretAccessKey !== "string" ||
 		material.secretAccessKey.trim().length === 0
 	) {
 		throw new ResolverError(
@@ -334,48 +340,24 @@ function compareStrings(left: string, right: string): number {
 	return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
-		return false;
-	}
-	const prototype: unknown = Object.getPrototypeOf(value);
-	return prototype === Object.prototype || prototype === null;
+function optionalString(record: JsonObject, key: string): string | undefined {
+	const value = record[key];
+	return isJsonString(value) && value.trim().length > 0 ? value : undefined;
 }
 
-function optionalString(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): string | undefined {
+function optionalBoolean(record: JsonObject, key: string): boolean | undefined {
 	const value = record[key];
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return isJsonBoolean(value) ? value : undefined;
 }
 
-function optionalBoolean(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): boolean | undefined {
+function optionalInteger(record: JsonObject, key: string): number | undefined {
 	const value = record[key];
-	return typeof value === "boolean" ? value : undefined;
+	return isJsonNumber(value) && Number.isSafeInteger(value) ? value : undefined;
 }
 
-function optionalInteger(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): number | undefined {
+function nestedRecord(record: JsonObject, key: string): JsonObject | undefined {
 	const value = record[key];
-	return typeof value === "number" && Number.isSafeInteger(value)
-		? value
-		: undefined;
-}
-
-function nestedRecord(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): Record<string, unknown> | undefined {
-	const value = record[key];
-	return isPlainObject(value) ? value : undefined;
+	return isJsonObject(value) ? value : undefined;
 }
 
 /**
@@ -497,7 +479,7 @@ interface AwsResolverContext {
 	readonly nowMs: () => number;
 	/** The deterministic resource name: `desired.name`, else the logical id. */
 	readonly name: string;
-	readonly desired: Readonly<Record<string, unknown>>;
+	readonly desired: JsonObject;
 	/** True when the caller already knows the physical id (adopt vs noop). */
 	readonly knownPhysicalId: string | undefined;
 	redact(text: string, limit?: number): string;
@@ -518,22 +500,22 @@ async function send(
 	const signed = signAwsRequest({
 		method: call.method,
 		url,
-		headers: { ...(call.headers ?? {}) },
-		...(call.body === undefined ? {} : { body: call.body }),
+		headers: call.headers === undefined ? {} : { ...call.headers },
+		...(call.body === undefined ? undefined : { body: call.body }),
 		region: context.region,
 		service: call.service,
 		credentials: context.credentials,
 		now: new Date(context.nowMs()),
 	});
-	const headers: Record<string, string> = {};
+	const headers = {};
 	for (const [name, value] of Object.entries(signed.headers)) {
-		headers[name.toLowerCase()] = value;
+		Object.assign(headers, { [name.toLowerCase()]: value });
 	}
 	return context.transport({
 		method: call.method,
 		url,
 		headers,
-		...(call.body === undefined ? {} : { body: call.body }),
+		...(call.body === undefined ? undefined : { body: call.body }),
 		timeoutMs: AWS_MAX_TIMEOUT_MS,
 		maxResponseBytes: AWS_MAX_RESPONSE_BYTES,
 	});
@@ -543,9 +525,10 @@ function isSuccess(response: TransportResponse): boolean {
 	return response.status >= 200 && response.status < 300;
 }
 
-function tryJson(body: string): unknown {
+function tryJson(body: string): JsonValue | undefined {
 	try {
-		return JSON.parse(body) as unknown;
+		// SAFETY: JSON.parse yields a JSON value at this document boundary.
+		return JSON.parse(body) as JsonValue;
 	} catch {
 		return undefined;
 	}
@@ -559,7 +542,7 @@ function tryJson(body: string): unknown {
  */
 function jsonErrorCode(body: string): string | undefined {
 	const parsed = tryJson(body);
-	if (!isPlainObject(parsed)) return undefined;
+	if (!isJsonObject(parsed)) return undefined;
 	const declared =
 		optionalString(parsed, "__type") ?? optionalString(parsed, "code");
 	if (declared === undefined) return undefined;
@@ -571,7 +554,7 @@ function jsonErrorCode(body: string): string | undefined {
 
 function jsonErrorMessage(body: string): string | undefined {
 	const parsed = tryJson(body);
-	if (!isPlainObject(parsed)) return undefined;
+	if (!isJsonObject(parsed)) return undefined;
 	return optionalString(parsed, "message") ?? optionalString(parsed, "Message");
 }
 
@@ -580,10 +563,10 @@ function jsonResult(
 	context: AwsResolverContext,
 	response: TransportResponse,
 	label: string,
-): Record<string, unknown> {
+): JsonObject {
 	if (!isSuccess(response)) rejectJson(context, response, label);
 	const parsed = tryJson(response.body);
-	if (!isPlainObject(parsed)) {
+	if (!isJsonObject(parsed)) {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${label}: AWS returned a status ${response.status} body that is not a JSON object, so the outcome of the call is unknown and it is refused rather than assumed; retry, and if it repeats the API contract has changed`,
@@ -647,7 +630,7 @@ function unparseable(label: string, why: string): ResolverError {
 function outcome(
 	action: ResolverAction,
 	physicalId: string,
-	outputs: Readonly<Record<string, unknown>>,
+	outputs: JsonObject,
 	diagnostics: readonly string[],
 ): ResolveOutcome {
 	return Object.freeze({
@@ -671,10 +654,13 @@ function settledAction(context: AwsResolverContext): ResolverAction {
 }
 
 function resourceName(request: ResolveRequest, productId: string): string {
-	const desiredName = optionalString(request.desired, "name");
+	const desiredName = optionalString(
+		parseJsonObject(JSON.stringify(request.desired)),
+		"name",
+	);
 	if (desiredName !== undefined) return desiredName;
 	const { logicalId } = request.ref;
-	if (typeof logicalId === "string" && logicalId.trim().length > 0) {
+	if (logicalId.trim().length > 0) {
 		return logicalId;
 	}
 	throw new ResolverError(
@@ -686,9 +672,7 @@ function resourceName(request: ResolveRequest, productId: string): string {
 
 function knownPhysicalId(request: ResolveRequest): string | undefined {
 	const value = request.ref.physicalId;
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return value !== undefined && value.trim().length > 0 ? value : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -785,16 +769,13 @@ async function readS3(
 	};
 }
 
-function s3Outputs(
-	name: string,
-	observed: S3Observed,
-): Readonly<Record<string, unknown>> {
+function s3Outputs(name: string, observed: S3Observed): JsonObject {
 	return {
 		bucketName: name,
 		region: observed.location,
 		publicAccessBlocked: observed.publicAccessBlocked,
 		...(observed.versioning === undefined
-			? {}
+			? undefined
 			: { versioning: observed.versioning }),
 	};
 }
@@ -844,8 +825,9 @@ const S3_SPEC: Omit<AwsResolverSpec, "productId"> = {
 				service: "s3",
 				method: "PUT",
 				path: s3Path(context),
-				headers: body === undefined ? {} : { "content-type": "text/xml" },
-				...(body === undefined ? {} : { body }),
+				...(body === undefined
+					? undefined
+					: { headers: { "content-type": "text/xml" }, body }),
 			});
 			xmlResult(context, created, `s3 create bucket ${context.name}`);
 			action = "create";
@@ -925,7 +907,7 @@ const DYNAMODB_KEY_TYPES = Object.freeze(["S", "N", "B"] as const);
 async function dynamoCall(
 	context: AwsResolverContext,
 	operation: string,
-	payload: Readonly<Record<string, unknown>>,
+	payload: JsonObject,
 ): Promise<TransportResponse> {
 	return send(context, {
 		service: "dynamodb",
@@ -945,14 +927,18 @@ function dynamoKeyType(
 ): "S" | "N" | "B" {
 	const declared = optionalString(context.desired, key);
 	if (declared === undefined) return "S";
-	if (!(DYNAMODB_KEY_TYPES as readonly string[]).includes(declared)) {
-		throw new ResolverError(
-			"RESOLVER_PRODUCT_UNSUPPORTED",
-			`${AWS_DYNAMODB_PRODUCT_ID}: desired.${key} must be one of ${DYNAMODB_KEY_TYPES.join(" | ")}, received ${JSON.stringify(declared)}`,
-			AWS_DYNAMODB_PRODUCT_ID,
-		);
+	switch (declared) {
+		case "S":
+		case "N":
+		case "B":
+			return declared;
+		default:
+			throw new ResolverError(
+				"RESOLVER_PRODUCT_UNSUPPORTED",
+				`${AWS_DYNAMODB_PRODUCT_ID}: desired.${key} must be one of ${DYNAMODB_KEY_TYPES.join(" | ")}, received ${JSON.stringify(declared)}`,
+				AWS_DYNAMODB_PRODUCT_ID,
+			);
 	}
-	return declared as "S" | "N" | "B";
 }
 
 interface DynamoBilling {
@@ -1006,7 +992,7 @@ function dynamoBilling(context: AwsResolverContext): DynamoBilling {
 
 async function readDynamoTable(
 	context: AwsResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const label = `dynamodb describe table ${context.name}`;
 	const response = await dynamoCall(context, "DescribeTable", {
 		TableName: context.name,
@@ -1028,10 +1014,7 @@ async function readDynamoTable(
 	return table;
 }
 
-function dynamoTableArn(
-	table: Readonly<Record<string, unknown>>,
-	label: string,
-): string {
+function dynamoTableArn(table: JsonObject, label: string): string {
 	const arn = optionalString(table, "TableArn");
 	if (arn === undefined) {
 		throw unparseable(
@@ -1042,40 +1025,35 @@ function dynamoTableArn(
 	return arn;
 }
 
-function dynamoObservedMode(
-	table: Readonly<Record<string, unknown>>,
-): string | undefined {
+function dynamoObservedMode(table: JsonObject): string | undefined {
 	const summary = nestedRecord(table, "BillingModeSummary");
 	return summary === undefined
 		? undefined
 		: optionalString(summary, "BillingMode");
 }
 
-function dynamoOutputs(
-	table: Readonly<Record<string, unknown>>,
-	name: string,
-): Readonly<Record<string, unknown>> {
+function dynamoOutputs(table: JsonObject, name: string): JsonObject {
 	const status = optionalString(table, "TableStatus");
 	const mode = dynamoObservedMode(table);
 	return {
 		tableName: name,
 		tableArn: optionalString(table, "TableArn") ?? "",
-		...(status === undefined ? {} : { tableStatus: status }),
-		...(mode === undefined ? {} : { billingMode: mode }),
+		...(status === undefined ? undefined : { tableStatus: status }),
+		...(mode === undefined ? undefined : { billingMode: mode }),
 	};
 }
 
 function dynamoKeyDiagnostics(
 	context: AwsResolverContext,
-	table: Readonly<Record<string, unknown>>,
+	table: JsonObject,
 ): readonly string[] {
 	const wanted = optionalString(context.desired, "partitionKey") ?? "pk";
 	const schema = table.KeySchema;
-	if (!Array.isArray(schema)) return [];
-	const hash: unknown = schema.find(
-		(entry) => isPlainObject(entry) && entry.KeyType === "HASH",
+	if (!isJsonArray(schema)) return [];
+	const hash = schema.find(
+		(entry) => isJsonObject(entry) && entry.KeyType === "HASH",
 	);
-	const actual = isPlainObject(hash)
+	const actual = isJsonObject(hash)
 		? optionalString(hash, "AttributeName")
 		: undefined;
 	if (actual !== undefined && actual !== wanted) {
@@ -1117,6 +1095,8 @@ const DYNAMODB_SPEC: Omit<AwsResolverSpec, "productId"> = {
 			}
 			const sortKey = optionalString(context.desired, "sortKey");
 			const label = `dynamodb create table ${context.name}`;
+			const readCapacity = billing.readCapacity;
+			const writeCapacity = billing.writeCapacity;
 			const created = jsonResult(
 				context,
 				await dynamoCall(context, "CreateTable", {
@@ -1142,14 +1122,16 @@ const DYNAMODB_SPEC: Omit<AwsResolverSpec, "productId"> = {
 							: [{ AttributeName: sortKey, KeyType: "RANGE" }]),
 					],
 					BillingMode: billing.mode,
-					...(billing.mode === "PROVISIONED"
+					...(billing.mode === "PROVISIONED" &&
+					readCapacity !== undefined &&
+					writeCapacity !== undefined
 						? {
 								ProvisionedThroughput: {
-									ReadCapacityUnits: billing.readCapacity,
-									WriteCapacityUnits: billing.writeCapacity,
+									ReadCapacityUnits: readCapacity,
+									WriteCapacityUnits: writeCapacity,
 								},
 							}
-						: {}),
+						: undefined),
 				}),
 				label,
 			);
@@ -1172,19 +1154,23 @@ const DYNAMODB_SPEC: Omit<AwsResolverSpec, "productId"> = {
 		const observedMode = dynamoObservedMode(existing);
 		if (!billing.defaulted && observedMode !== billing.mode) {
 			const label = `dynamodb update table ${context.name}`;
+			const readCapacity = billing.readCapacity;
+			const writeCapacity = billing.writeCapacity;
 			const updated = jsonResult(
 				context,
 				await dynamoCall(context, "UpdateTable", {
 					TableName: context.name,
 					BillingMode: billing.mode,
-					...(billing.mode === "PROVISIONED"
+					...(billing.mode === "PROVISIONED" &&
+					readCapacity !== undefined &&
+					writeCapacity !== undefined
 						? {
 								ProvisionedThroughput: {
-									ReadCapacityUnits: billing.readCapacity,
-									WriteCapacityUnits: billing.writeCapacity,
+									ReadCapacityUnits: readCapacity,
+									WriteCapacityUnits: writeCapacity,
 								},
 							}
-						: {}),
+						: undefined),
 				}),
 				label,
 			);
@@ -1327,16 +1313,16 @@ function sqsOutputs(
 	queueUrl: string,
 	attributes: Readonly<Record<string, string>>,
 	fifo: boolean,
-): Readonly<Record<string, unknown>> {
+): JsonObject {
 	const arn = attributes.QueueArn;
 	const visibility = attributes.VisibilityTimeout;
 	return {
 		queueName: name,
 		queueUrl,
 		fifo,
-		...(arn === undefined ? {} : { queueArn: arn }),
+		...(arn === undefined ? undefined : { queueArn: arn }),
 		...(visibility === undefined
-			? {}
+			? undefined
 			: { visibilityTimeoutSeconds: Number(visibility) }),
 	};
 }
@@ -1544,13 +1530,15 @@ function snsOutputs(
 	topicArn: string,
 	attributes: Readonly<Record<string, string>>,
 	fifo: boolean,
-): Readonly<Record<string, unknown>> {
+): JsonObject {
 	const dedupe = attributes.ContentBasedDeduplication;
 	return {
 		topicName: name,
 		topicArn,
 		fifo,
-		...(dedupe === undefined ? {} : { contentBasedDeduplication: dedupe }),
+		...(dedupe === undefined
+			? undefined
+			: { contentBasedDeduplication: dedupe }),
 	};
 }
 
@@ -1655,7 +1643,7 @@ const SECRETS_TARGET_PREFIX = "secretsmanager";
 async function secretsCall(
 	context: AwsResolverContext,
 	operation: string,
-	payload: Readonly<Record<string, unknown>>,
+	payload: JsonObject,
 ): Promise<TransportResponse> {
 	return send(context, {
 		service: "secretsmanager",
@@ -1671,7 +1659,7 @@ async function secretsCall(
 
 async function readSecret(
 	context: AwsResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const response = await secretsCall(context, "DescribeSecret", {
 		SecretId: context.name,
 	});
@@ -1688,10 +1676,7 @@ async function readSecret(
 	);
 }
 
-function secretArn(
-	record: Readonly<Record<string, unknown>>,
-	label: string,
-): string {
+function secretArn(record: JsonObject, label: string): string {
 	const arn = optionalString(record, "ARN");
 	if (arn === undefined) {
 		throw unparseable(
@@ -1702,10 +1687,7 @@ function secretArn(
 	return arn;
 }
 
-function secretOutputs(
-	name: string,
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function secretOutputs(name: string, record: JsonObject): JsonObject {
 	const description = optionalString(record, "Description");
 	const kmsKeyId = optionalString(record, "KmsKeyId");
 	// The keys are `name`/`arn` rather than `secretName`/`secretArn`: core's
@@ -1716,10 +1698,10 @@ function secretOutputs(
 	return {
 		name,
 		arn: optionalString(record, "ARN") ?? "",
-		...(description === undefined ? {} : { description }),
+		...(description === undefined ? undefined : { description }),
 		// A KMS key id is a locator for a key, not key material, so it belongs in
 		// outputs the way a bucket name does.
-		...(kmsKeyId === undefined ? {} : { kmsKeyId }),
+		...(kmsKeyId === undefined ? undefined : { kmsKeyId }),
 	};
 }
 
@@ -1759,8 +1741,10 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 				context,
 				await secretsCall(context, "CreateSecret", {
 					Name: context.name,
-					...(description === undefined ? {} : { Description: description }),
-					...(kmsKeyRef === undefined ? {} : { KmsKeyId: kmsKeyRef }),
+					...(description === undefined
+						? undefined
+						: { Description: description }),
+					...(kmsKeyRef === undefined ? undefined : { KmsKeyId: kmsKeyRef }),
 				}),
 				label,
 			);
@@ -1787,8 +1771,8 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 				context,
 				await secretsCall(context, "UpdateSecret", {
 					SecretId: context.name,
-					...(descriptionDrift ? { Description: description } : {}),
-					...(keyDrift ? { KmsKeyId: kmsKeyRef } : {}),
+					...(descriptionDrift ? { Description: description } : undefined),
+					...(keyDrift ? { KmsKeyId: kmsKeyRef } : undefined),
 				}),
 				label,
 			);
@@ -1813,7 +1797,7 @@ const SECRETS_MANAGER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 			SecretId: context.name,
 			...(optionalBoolean(context.desired, "forceDelete") === true
 				? { ForceDeleteWithoutRecovery: true }
-				: {}),
+				: undefined),
 		});
 		if (
 			!isSuccess(response) &&
@@ -1835,7 +1819,7 @@ const SSM_PARAMETER_TYPES = Object.freeze(["String", "StringList"] as const);
 async function ssmCall(
 	context: AwsResolverContext,
 	operation: string,
-	payload: Readonly<Record<string, unknown>>,
+	payload: JsonObject,
 ): Promise<TransportResponse> {
 	return send(context, {
 		service: "ssm",
@@ -1862,21 +1846,24 @@ function ssmParameterType(
 	context: AwsResolverContext,
 ): "String" | "StringList" {
 	const declared = optionalString(context.desired, "type") ?? "String";
-	if (!(SSM_PARAMETER_TYPES as readonly string[]).includes(declared)) {
-		throw new ResolverError(
-			"RESOLVER_PRODUCT_UNSUPPORTED",
-			declared === "SecureString"
-				? `${AWS_SSM_PARAMETER_PRODUCT_ID}: desired.type "SecureString" is refused. Its value is the secret, and PutParameter takes that value inline — it would travel in the request record, the event log, and the plan digest. Write SecureString parameters out of band with the material in hand and let this resolver manage only non-secret parameters`
-				: `${AWS_SSM_PARAMETER_PRODUCT_ID}: desired.type must be one of ${SSM_PARAMETER_TYPES.join(" | ")}, received ${JSON.stringify(declared)}`,
-			AWS_SSM_PARAMETER_PRODUCT_ID,
-		);
+	switch (declared) {
+		case "String":
+		case "StringList":
+			return declared;
+		default:
+			throw new ResolverError(
+				"RESOLVER_PRODUCT_UNSUPPORTED",
+				declared === "SecureString"
+					? `${AWS_SSM_PARAMETER_PRODUCT_ID}: desired.type "SecureString" is refused. Its value is the secret, and PutParameter takes that value inline — it would travel in the request record, the event log, and the plan digest. Write SecureString parameters out of band with the material in hand and let this resolver manage only non-secret parameters`
+					: `${AWS_SSM_PARAMETER_PRODUCT_ID}: desired.type must be one of ${SSM_PARAMETER_TYPES.join(" | ")}, received ${JSON.stringify(declared)}`,
+				AWS_SSM_PARAMETER_PRODUCT_ID,
+			);
 	}
-	return declared as "String" | "StringList";
 }
 
 function ssmParameterValue(context: AwsResolverContext): string {
 	const value = context.desired.value;
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			`${AWS_SSM_PARAMETER_PRODUCT_ID}: desired.value is required and must be a non-empty string. A parameter cannot exist without a value, and inventing a placeholder would write a fact into the account that nobody stated`,
@@ -1888,7 +1875,7 @@ function ssmParameterValue(context: AwsResolverContext): string {
 
 async function readSsmParameter(
 	context: AwsResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const label = `ssm get parameter ${context.name}`;
 	const response = await ssmCall(context, "GetParameter", {
 		Name: context.name,
@@ -1913,18 +1900,18 @@ async function readSsmParameter(
 
 function ssmOutputs(
 	name: string,
-	parameter: Readonly<Record<string, unknown>> | undefined,
+	parameter: JsonObject | undefined,
 	tier: string | undefined,
-): Readonly<Record<string, unknown>> {
+): JsonObject {
 	const arn =
 		parameter === undefined ? undefined : optionalString(parameter, "ARN");
 	const type =
 		parameter === undefined ? undefined : optionalString(parameter, "Type");
 	return {
 		parameterName: name,
-		...(arn === undefined ? {} : { parameterArn: arn }),
-		...(type === undefined ? {} : { parameterType: type }),
-		...(tier === undefined ? {} : { parameterTier: tier }),
+		...(arn === undefined ? undefined : { parameterArn: arn }),
+		...(type === undefined ? undefined : { parameterType: type }),
+		...(tier === undefined ? undefined : { parameterTier: tier }),
 	};
 }
 
@@ -1982,7 +1969,7 @@ const SSM_PARAMETER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 					Value: value,
 					Type: type,
 					Overwrite: true,
-					...(awsTier === undefined ? {} : { Tier: awsTier }),
+					...(awsTier === undefined ? undefined : { Tier: awsTier }),
 				}),
 				`ssm put parameter ${context.name}`,
 			);
@@ -2002,7 +1989,7 @@ const SSM_PARAMETER_SPEC: Omit<AwsResolverSpec, "productId"> = {
 				Value: value,
 				Type: type,
 				Overwrite: false,
-				...(awsTier === undefined ? {} : { Tier: awsTier }),
+				...(awsTier === undefined ? undefined : { Tier: awsTier }),
 			}),
 			`ssm put parameter ${context.name}`,
 		);
@@ -2044,8 +2031,14 @@ interface AwsResolverSpec {
 }
 
 function clockOf(nowMs: AwsResolverOptions["nowMs"]): () => number {
-	if (typeof nowMs === "function") return nowMs;
-	if (typeof nowMs === "number" && Number.isFinite(nowMs)) return () => nowMs;
+	if (nowMs === undefined) {
+		throw new ResolverError(
+			"RESOLVER_PRODUCT_UNSUPPORTED",
+			"aws resolvers need an injected nowMs (a number or a () => number). SigV4 signs a timestamp, and reading the clock inside the resolver would make a signed request untestable",
+		);
+	}
+	if (nowMs instanceof Function) return nowMs;
+	if (Number.isFinite(nowMs)) return () => nowMs;
 	throw new ResolverError(
 		"RESOLVER_PRODUCT_UNSUPPORTED",
 		"aws resolvers need an injected nowMs (a number or a () => number). SigV4 signs a timestamp, and reading the clock inside the resolver would make a signed request untestable",
@@ -2058,7 +2051,7 @@ function createResolver(
 ): ResourceResolver {
 	const region = parseAwsRegion(options.region);
 	const nowMs = clockOf(options.nowMs);
-	if (typeof options.resolveCredential !== "function") {
+	if (options.resolveCredential === undefined) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			"aws resolvers need an injected resolveCredential(ref): the resolver never reads an environment variable or a credential file itself",
@@ -2087,7 +2080,7 @@ function createResolver(
 			region,
 			nowMs,
 			name: resourceName(request, spec.productId),
-			desired: request.desired,
+			desired: parseJsonObject(JSON.stringify(request.desired)),
 			knownPhysicalId: knownPhysicalId(request),
 			redact(text: string, limit = 400): string {
 				return redactAwsText(text, credentials, limit);

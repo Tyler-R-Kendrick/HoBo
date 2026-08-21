@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json.js";
+
 // public-contract: the provider target id `.with(...)` option blocks carry.
 export const AWS_PROVIDER_TARGET = "aws";
 
@@ -9,7 +11,7 @@ export type TypedOptionBlock = {
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
-	options: Record<string, unknown>;
+	options: JsonObject;
 };
 
 // The provider-specific options pattern (sdk-api.md "the core promise"): typed,
@@ -17,7 +19,7 @@ export type TypedOptionBlock = {
 // targets many clouds unedited.
 export const aws = {
 	with: {
-		fargate(options: Record<string, unknown> = {}): TypedOptionBlock {
+		fargate(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"compute",
 				"fargate",
@@ -25,7 +27,7 @@ export const aws = {
 				options,
 			);
 		},
-		rds(options: Record<string, unknown> = {}): TypedOptionBlock {
+		rds(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"database",
 				"rds",
@@ -33,7 +35,7 @@ export const aws = {
 				options,
 			);
 		},
-		s3(options: Record<string, unknown> = {}): TypedOptionBlock {
+		s3(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"objectStore",
 				"s3",
@@ -41,7 +43,7 @@ export const aws = {
 				options,
 			);
 		},
-		dynamodb(options: Record<string, unknown> = {}): TypedOptionBlock {
+		dynamodb(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"kv",
 				"dynamodb",
@@ -49,7 +51,7 @@ export const aws = {
 				options,
 			);
 		},
-		sqs(options: Record<string, unknown> = {}): TypedOptionBlock {
+		sqs(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"queue",
 				"sqs",
@@ -57,7 +59,7 @@ export const aws = {
 				options,
 			);
 		},
-		elasticache(options: Record<string, unknown> = {}): TypedOptionBlock {
+		elasticache(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"cache",
 				"elasticache",
@@ -71,8 +73,8 @@ export const aws = {
 function optionBlock(
 	port: string,
 	optionName: string,
-	defaults: Record<string, unknown>,
-	options: Record<string, unknown>,
+	defaults: JsonObject,
+	options: JsonObject,
 ): TypedOptionBlock {
 	return {
 		providerId: AWS_PROVIDER_TARGET,

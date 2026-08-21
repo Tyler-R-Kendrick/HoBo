@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export type RawDriverName = "postgres" | "mongo" | "native";
 export type ProjectionSinkSource = "projected" | "authoritative-external";
 
@@ -10,14 +11,14 @@ export interface ProjectionSinkDefinition<TDriver extends RawDriverName = RawDri
 }
 
 export interface PostgresRawDriver {
-  query(sql: string, params?: unknown[], options?: RawDriverOptions): RawDriverOperation;
-  execute(sql: string, params?: unknown[], options?: RawDriverOptions): RawDriverOperation;
+  query(sql: string, params?: JsonValue[], options?: RawDriverOptions): RawDriverOperation;
+  execute(sql: string, params?: JsonValue[], options?: RawDriverOptions): RawDriverOperation;
 }
 
 export interface MongoRawDriver {
   collection(name: string): {
-    find(filter?: Record<string, unknown>, options?: RawDriverOptions): RawDriverOperation;
-    updateOne(filter?: Record<string, unknown>, update?: Record<string, unknown>, options?: RawDriverOptions): RawDriverOperation;
+    find(filter?: JsonObject, options?: RawDriverOptions): RawDriverOperation;
+    updateOne(filter?: JsonObject, update?: JsonObject, options?: RawDriverOptions): RawDriverOperation;
   };
 }
 
@@ -39,7 +40,7 @@ export interface RawDriverOperation {
   driver: RawDriverName;
   access: "read" | "write";
   tenantScope?: string;
-  [key: string]: unknown;
+  [key: string]: JsonValue;
 }
 
 export interface RawManifestEdge {

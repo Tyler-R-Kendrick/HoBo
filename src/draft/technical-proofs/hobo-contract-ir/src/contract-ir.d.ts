@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export type ContractMode = "declared" | "inferred" | "observed" | "promoted";
 
 export type ContractEdgeKind =
@@ -22,11 +23,11 @@ export interface ContractEdge {
   operation: string;
 }
 
-export interface RequiredShape {
+export interface RequiredRecord {
   format: string;
   schemaVersion?: string;
   requiredFields: string[];
-  shape?: unknown;
+  schema?: JsonValue;
 }
 
 export interface SampleCoverage {
@@ -81,7 +82,7 @@ export interface ContractIrBase<
   version: string;
   mode: Mode;
   edge: ContractEdge;
-  requiredShape: RequiredShape;
+  requiredRecord: RequiredRecord;
   provenance: Provenance;
   consumerRequirements: ConsumerRequirement[];
   interop: {
@@ -111,16 +112,16 @@ export function createContractFixture(input?: {
   mode?: ContractMode;
   consumerRequirements?: ConsumerRequirement[];
 }): ContractIr;
-export function parseContract(candidate: unknown): ParseContractResult;
+export function parseContract(candidate: JsonValue): ParseContractResult;
 export function serializeContract(contract: ContractIr): string;
 export function deserializeContract(text: string): ParseContractResult;
-export function canonicalJson(value: unknown): string;
-export function importOpenApiContract(openApi: unknown, input?: {
+export function canonicalJson(value: JsonValue): string;
+export function importOpenApiContract(openApi: JsonValue, input?: {
   id?: string;
   producer?: string;
   consumer?: string;
 }): ContractIr;
-export function importPactContract(pact: unknown, input?: {
+export function importPactContract(pact: JsonValue, input?: {
   id?: string;
   eventType?: string;
 }): ContractIr;
@@ -139,7 +140,7 @@ export function exportPactContract(contract: ContractIr): {
   provider: string;
   requiredFields: string[];
 };
-export function importAsyncApiContract(asyncApi: unknown, input?: {
+export function importAsyncApiContract(asyncApi: JsonValue, input?: {
   id?: string;
   eventType?: string;
 }): ContractIr;
@@ -150,7 +151,7 @@ export function exportAsyncApiContract(contract: ContractIr): {
   producer: string;
   requiredFields: string[];
 };
-export function importProtobufContract(proto: unknown, input?: {
+export function importProtobufContract(proto: JsonValue, input?: {
   id?: string;
   producer?: string;
   consumer?: string;

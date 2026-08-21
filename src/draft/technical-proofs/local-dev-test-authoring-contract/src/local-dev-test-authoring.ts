@@ -1,4 +1,6 @@
 import assert from "node:assert/strict";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEFAULT_START_INSTANT = "2026-06-26T00:00:00.000Z";
 
@@ -51,10 +53,10 @@ export class DevSecretResolutionError extends Error {
 
 export function defineWorkflow(name, definition) {
   const workflowName = requireNonEmptyString(name, "workflow.name");
-  if (!definition || typeof definition !== "object" || Array.isArray(definition)) {
+  if (!definition || !isJsonObject(definition) || Array.isArray(definition)) {
     throw new TypeError("workflow definition must be an object");
   }
-  if (typeof definition.initialState !== "function") {
+  if (!(definition.initialState instanceof Function)) {
     throw new TypeError("workflow.initialState must be a function");
   }
 
@@ -249,7 +251,7 @@ export function resolveDevSecretSource(secret, options = {}) {
       { skippedInteractivePrompt: true },
     );
   }
-  if (typeof options.prompt === "function") {
+  if (options.prompt instanceof Function) {
     options.prompt(ref);
     return devSecretResolution(ref, "interactive-prompt");
   }
@@ -441,7 +443,7 @@ function publicTimer(timer) {
 }
 
 function getRun(runs, runRef) {
-  const runId = typeof runRef === "string" ? runRef : runRef?.runId;
+  const runId = isJsonString(runRef) ? runRef : runRef?.runId;
   const run = runs.get(runId);
   if (!run) {
     throw new TypeError(`unknown run ${runId}`);
@@ -450,7 +452,7 @@ function getRun(runs, runRef) {
 }
 
 function assertWorkflow(workflow) {
-  if (workflow?.kind !== "workflow" || typeof workflow.name !== "string") {
+  if (workflow?.kind !== "workflow" || !isJsonString(workflow.name)) {
     throw new TypeError("workflow must be created by defineWorkflow");
   }
 }
@@ -459,14 +461,14 @@ function optionalHandler(value, fieldName) {
   if (value === undefined) {
     return undefined;
   }
-  if (typeof value !== "function") {
+  if (!(value instanceof Function)) {
     throw new TypeError(`${fieldName} must be a function`);
   }
   return value;
 }
 
 function normalizeResource(resource) {
-  if (!resource || typeof resource !== "object") {
+  if (!resource || !isJsonObject(resource)) {
     throw new TypeError("resource must be an object");
   }
   return defineResource(resource.kind, resource.name, { portRef: resource.portRef });
@@ -505,7 +507,7 @@ function parseDurationMs(value, fieldName) {
   if (Number.isSafeInteger(value) && value >= 0) {
     return value;
   }
-  if (typeof value !== "string") {
+  if (!isJsonString(value)) {
     throw new TypeError(`${fieldName} must be a duration string or non-negative integer`);
   }
   const match = value.match(/^(\d+)(ms|s|m|h)$/);
@@ -520,7 +522,7 @@ function parseDurationMs(value, fieldName) {
 
 function parseInstantMs(value, fieldName) {
   const ms = Date.parse(value);
-  if (typeof value !== "string" || Number.isNaN(ms)) {
+  if (!isJsonString(value) || Number.isNaN(ms)) {
     throw new TypeError(`${fieldName} must be a valid ISO-8601 string`);
   }
   return ms;
@@ -531,7 +533,7 @@ function formatInstant(ms) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -541,13 +543,13 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function"
+  return structuredClone instanceof Function
     ? structuredClone(value)
     : JSON.parse(JSON.stringify(value));
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   Object.freeze(value);

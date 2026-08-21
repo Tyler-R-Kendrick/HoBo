@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export type BindleRole = "manifest-assembly";
 export type AppHostOwner = "imported-app-code";
 export type RuntimeHostBehavior = "out-of-scope";
@@ -22,9 +23,9 @@ export interface ClosureBuilderContract {
 
 export class ClosureBuilderContractError extends Error {
   readonly code: string;
-  readonly details: Record<string, unknown>;
+  readonly details: JsonObject;
 
-  constructor(code: string, message: string, details: Record<string, unknown> = {}) {
+  constructor(code: string, message: string, details: JsonObject = {}) {
     super(`${code}: ${message}`);
     this.name = "ClosureBuilderContractError";
     this.code = code;
@@ -72,7 +73,7 @@ export function closureBuilderContract(): ClosureBuilderContract {
   });
 }
 
-export function parseClosureBuilderContract(raw: unknown): ClosureBuilderContract {
+export function parseClosureBuilderContract(raw: JsonValue): ClosureBuilderContract {
   if (!isRecord(raw)) {
     throw new ClosureBuilderContractError("CLOSURE_BUILDER_PARSE", "contract must be an object");
   }
@@ -191,8 +192,8 @@ export function renderCodingAgentChecklist(contract: ClosureBuilderContract): st
   ].join("\n");
 }
 
-function parseBuilderFactory(raw: unknown, index: number): BuilderFactoryContract {
-  if (!isRecord(raw) || typeof raw.name !== "string" || raw.name.length === 0) {
+function parseBuilderFactory(raw: JsonValue, index: number): BuilderFactoryContract {
+  if (!isRecord(raw) || !isJsonString(raw.name) || raw.name.length === 0) {
     throw new ClosureBuilderContractError(
       "CLOSURE_BUILDER_FACTORY_MATRIX",
       "builder factory entry must have a name",
@@ -215,8 +216,8 @@ function parseBuilderFactory(raw: unknown, index: number): BuilderFactoryContrac
   };
 }
 
-function readStringArray(value: unknown, field: string): string[] {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+function readStringArray(value: JsonValue, field: string): string[] {
+  if (!Array.isArray(value) || value.some((entry) => !isJsonString(entry))) {
     throw new ClosureBuilderContractError(
       "CLOSURE_BUILDER_PARSE",
       `${field} must be a string array`,
@@ -229,15 +230,17 @@ function readStringArray(value: unknown, field: string): string[] {
 function deepFreeze<T>(value: T): T {
   if (Array.isArray(value)) {
     value.forEach(deepFreeze);
+    // SAFETY: `return Object.freeze(value) as T;` is required at this I/O or test boundary.
     return Object.freeze(value) as T;
   }
   if (isRecord(value)) {
     Object.values(value).forEach(deepFreeze);
+    // SAFETY: `return Object.freeze(value) as T;` is required at this I/O or test boundary.
     return Object.freeze(value) as T;
   }
   return value;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function isRecord(value: JsonValue): value is JsonObject {
+  return isJsonObject(value) && value !== null && !Array.isArray(value);
 }

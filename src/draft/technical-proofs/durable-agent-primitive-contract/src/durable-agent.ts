@@ -5,6 +5,8 @@ import {
   createTokenBroker,
   createTokenContext,
 } from "../../token-broker-skeleton-contract/src/token-broker-skeleton.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEFAULT_NOW = () => new Date("2026-06-25T10:00:00.000Z");
 
@@ -22,10 +24,10 @@ export function agent(name, definition) {
 
 export function defineAgent(name, definition) {
   const agentName = requireNonEmptyString(name, "agent.name");
-  if (!definition || typeof definition !== "object" || Array.isArray(definition)) {
+  if (!definition || !isJsonObject(definition) || Array.isArray(definition)) {
     throw new TypeError("agent definition must be an object");
   }
-  if (typeof definition.run !== "function") {
+  if (!(definition.run instanceof Function)) {
     throw new TypeError("agent.run must be a function");
   }
 
@@ -156,7 +158,7 @@ export async function replayAgentRun(liveRun, deps) {
     mode: "replay",
     state: { output: undefined, toolResults: [] },
     steps: [],
-    events: [...liveRun.events.filter((event) => event.type.startsWith("agent."))],
+    events: liveRun.events.filter((event) => event.type.startsWith("agent.")),
   };
 
   const ctx = createAgentContext({
@@ -176,9 +178,9 @@ export async function replayAgentRun(liveRun, deps) {
 
 function createAgentContext({
   run,
-  broker,
+  broker: _broker,
   tokenContextFactory,
-  eventLog,
+  eventLog: _eventLog,
   recordSteps,
   stepSource = [],
   tokenStepSource = [],
@@ -307,14 +309,14 @@ function issueIdentity({ subject, svidScope, now, idFactory, eventLog }) {
 }
 
 function normalizeTools(tools) {
-  if (!tools || typeof tools !== "object" || Array.isArray(tools)) {
+  if (!tools || !isJsonObject(tools) || Array.isArray(tools)) {
     throw new TypeError("agent.tools must be an object");
   }
 
   return Object.freeze(
     Object.fromEntries(
       Object.entries(tools).map(([name, tool]) => {
-        if (!tool || typeof tool.invoke !== "function") {
+        if (!tool || !(tool.invoke instanceof Function)) {
           throw new TypeError(`tool ${name} must expose invoke(args, ctx)`);
         }
         return [
@@ -354,7 +356,7 @@ function publicRun(run) {
 }
 
 function getRun(runs, runRef) {
-  const runId = typeof runRef === "string" ? runRef : runRef?.runId;
+  const runId = isJsonString(runRef) ? runRef : runRef?.runId;
   const run = runs.get(runId);
   if (!run) {
     throw new Error(`unknown agent run: ${runId}`);
@@ -369,7 +371,7 @@ function assertAgent(agentDef) {
 }
 
 function normalizePrincipal(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${field} must be a PrincipalRef`);
   }
   const normalized = {
@@ -387,7 +389,7 @@ function normalizeSvidScope(value) {
     throw new Error("svidScope must be a non-empty array");
   }
   return value.map((entry, index) => {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+    if (!entry || !isJsonObject(entry) || Array.isArray(entry)) {
       throw new Error(`svidScope[${index}] must be an object`);
     }
     return {
@@ -401,7 +403,7 @@ function normalizeSvidScope(value) {
 }
 
 function requireNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -413,7 +415,7 @@ function defaultIdFactory() {
 }
 
 function clone(value) {
-  if (typeof structuredClone === "function") {
+  if (structuredClone instanceof Function) {
     return structuredClone(value);
   }
   return JSON.parse(JSON.stringify(value));

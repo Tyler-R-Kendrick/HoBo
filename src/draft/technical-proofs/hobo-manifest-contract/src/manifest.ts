@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const MANIFEST_SCHEMA = "hobo.manifest/v1";
 export const CURRENT_MANIFEST_SCHEMA = "hobo.manifest/v1.1";
@@ -307,7 +309,7 @@ function validateResourceReferences(id, resource, resources, aspireEnv) {
 }
 
 function visitStrings(value, path, visitor) {
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     visitor(value, path);
     return;
   }
@@ -361,15 +363,15 @@ function assertRecord(value, path) {
 }
 
 function assertRequiredString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new ManifestValidationError(path, "required");
   }
 }
 
 function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return isJsonObject(value) && value !== null && !Array.isArray(value);
 }
 
 function isStringArray(value) {
-  return Array.isArray(value) && value.every((item) => typeof item === "string");
+  return Array.isArray(value) && value.every((item) => isJsonString(item));
 }

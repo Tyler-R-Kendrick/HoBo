@@ -5,6 +5,7 @@
 import { createHash } from "node:crypto";
 
 import type { TrailStep } from "./definition.js";
+import type { JsonObject } from "./json.js";
 
 // public-contract: data dual schema.
 export const DATA_DUAL_SCHEMA = "hobo.trail-data-dual/v1" as const;
@@ -37,14 +38,14 @@ export type DataDualResult = Readonly<{
 
 /** Oracle view over a source/target dual — simulated fixture or live stores. */
 export type DataDualView = Readonly<{
-	sourceRows: readonly Readonly<Record<string, unknown>>[];
-	targetRows: readonly Readonly<Record<string, unknown>>[];
+	sourceRows: readonly JsonObject[];
+	targetRows: readonly JsonObject[];
 	fidelity: "simulated" | "live";
 }>;
 
 export type DataDualFixture = Readonly<{
-	sourceRows: readonly Readonly<Record<string, unknown>>[];
-	targetRows: readonly Readonly<Record<string, unknown>>[];
+	sourceRows: readonly JsonObject[];
+	targetRows: readonly JsonObject[];
 	fidelity: "simulated";
 }>;
 
@@ -141,7 +142,7 @@ export function createContractAssertedDataDualFixtures(input?: {
 }
 
 function rowsChecksum(
-	rows: readonly Readonly<Record<string, unknown>>[],
+	rows: readonly JsonObject[],
 ): `sha256:${string}` {
 	return `sha256:${createHash("sha256")
 		.update(JSON.stringify(rows))

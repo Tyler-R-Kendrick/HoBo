@@ -167,10 +167,10 @@ export function createHandsOffIdentityTrail(input: {
 		tenant: input.tenant,
 		...(input.sourceAdapter !== undefined
 			? { sourceAdapter: input.sourceAdapter }
-			: {}),
+			: undefined),
 		...(input.targetAdapter !== undefined
 			? { targetAdapter: input.targetAdapter }
-			: {}),
+			: undefined),
 	});
 	const dualOracle = dualVerifyClaims({
 		mapping: fixtures.mapping,
@@ -180,7 +180,7 @@ export function createHandsOffIdentityTrail(input: {
 	});
 	const plane = new IdentityMigrationControlPlane({
 		tenant: input.tenant,
-		...(input.now !== undefined ? { now: input.now } : {}),
+		...(input.now !== undefined ? { now: input.now } : undefined),
 	});
 	const canMigrate = evaluateCanMigrate({
 		sourceAdapter: fixtures.sourceAdapter,

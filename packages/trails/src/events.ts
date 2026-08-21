@@ -30,7 +30,7 @@ export type TrailEvent = Readonly<{
 	causationId: string;
 	/** Never-compact when identity-linked. */
 	retention: "standard" | "credential-audit-never-compact";
-	data: Readonly<Record<string, unknown>>;
+	data: JsonObject;
 }>;
 
 export function createTrailEvent(
@@ -42,7 +42,7 @@ export function createTrailEvent(
 		readonly time?: string;
 		readonly causationId?: string;
 		readonly identityLinked?: boolean;
-		readonly data: Readonly<Record<string, unknown>>;
+		readonly data: JsonObject;
 	},
 ): TrailEvent {
 	// Redaction-at-capture: refuse secret-looking leaves in data.
@@ -72,3 +72,4 @@ export function createTrailEvent(
 		data: Object.freeze({ ...input.data }),
 	});
 }
+import type { JsonObject } from "./json.js";

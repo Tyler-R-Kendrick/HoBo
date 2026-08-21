@@ -6,6 +6,7 @@
  */
 import { copyFileSync, existsSync } from "node:fs";
 import { DatabaseSync } from "node:sqlite";
+import type { JsonObject } from "./json.js";
 
 export type SchemaPhase = "expand" | "backfill" | "contract";
 
@@ -33,7 +34,7 @@ export interface SchemaApplyPort {
 	 * Run a violations query; an empty result means the verification passes.
 	 * Returned rows are the violating records (evidence for the fail path).
 	 */
-	verify(violationsSql: string): readonly Readonly<Record<string, unknown>>[];
+	verify(violationsSql: string): readonly JsonObject[];
 	/** Restore the store from a snapshot ref (compensate-to-snapshot). */
 	restore(ref: SchemaSnapshotRef): void;
 	close(): void;
@@ -86,7 +87,8 @@ export function createSqliteSchemaApplyPort(
 		},
 		verify(violationsSql) {
 			return Object.freeze(
-				db.prepare(violationsSql).all() as Readonly<Record<string, unknown>>[],
+					// SAFETY: SQL result rows are JSON-shaped evidence records.
+					db.prepare(violationsSql).all() as JsonObject[],
 			);
 		},
 		restore(ref) {

@@ -239,7 +239,7 @@ export class TrailRunner {
 					return this.result({
 						schemaResults,
 						dataResults,
-						...(identityProgress !== undefined ? { identityProgress } : {}),
+						...(identityProgress !== undefined ? { identityProgress } : undefined),
 						rampPercent,
 						aborted: true,
 						cutover: false,
@@ -255,7 +255,7 @@ export class TrailRunner {
 					return this.result({
 						schemaResults,
 						dataResults,
-						...(identityProgress !== undefined ? { identityProgress } : {}),
+						...(identityProgress !== undefined ? { identityProgress } : undefined),
 						rampPercent,
 						aborted: true,
 						cutover: false,
@@ -273,7 +273,7 @@ export class TrailRunner {
 					return this.result({
 						schemaResults,
 						dataResults,
-						...(identityProgress !== undefined ? { identityProgress } : {}),
+						...(identityProgress !== undefined ? { identityProgress } : undefined),
 						rampPercent,
 						aborted: true,
 						cutover: false,
@@ -305,7 +305,7 @@ export class TrailRunner {
 						return this.result({
 							schemaResults,
 							dataResults,
-							...(identityProgress !== undefined ? { identityProgress } : {}),
+							...(identityProgress !== undefined ? { identityProgress } : undefined),
 							rampPercent,
 							aborted: true,
 							cutover: false,
@@ -343,7 +343,7 @@ export class TrailRunner {
 		return this.result({
 			schemaResults,
 			dataResults,
-			...(identityProgress !== undefined ? { identityProgress } : {}),
+				...(identityProgress !== undefined ? { identityProgress } : undefined),
 			rampPercent,
 			aborted: false,
 			cutover: this.service.snapshot()?.state === "cutover",
@@ -423,7 +423,7 @@ export class TrailRunner {
 			dataResults: Object.freeze([...input.dataResults]),
 			...(input.identityProgress !== undefined
 				? { identityProgress: input.identityProgress }
-				: {}),
+				: undefined),
 			rampPercent: compensated ? 0 : input.rampPercent,
 			aborted,
 			cutover,

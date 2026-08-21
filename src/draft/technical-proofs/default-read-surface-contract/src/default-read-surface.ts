@@ -1,4 +1,6 @@
 import { EventEmitter } from "node:events";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 let nextMaterializationId = 1;
 
@@ -7,7 +9,7 @@ export function createEventLog(seedEvents = []) {
 }
 
 export function from(...eventTypes) {
-  if (eventTypes.length === 0 || eventTypes.some((eventType) => typeof eventType !== "string" || eventType.length === 0)) {
+  if (eventTypes.length === 0 || eventTypes.some((eventType) => !isJsonString(eventType) || eventType.length === 0)) {
     throw new Error("from() requires at least one event type");
   }
 
@@ -99,12 +101,12 @@ export function distinctUntilChanged(compare = stableEqual) {
 }
 
 export function combineLatest(sources) {
-  if (!sources || typeof sources !== "object" || Array.isArray(sources)) {
+  if (!sources || !isJsonObject(sources) || Array.isArray(sources)) {
     throw new Error("combineLatest requires a named source object");
   }
 
   for (const [name, source] of Object.entries(sources)) {
-    if (typeof name !== "string" || name.length === 0 || !isMaterialization(source)) {
+    if (!isJsonString(name) || name.length === 0 || !isMaterialization(source)) {
       throw new Error("combineLatest sources must be named materializations");
     }
   }
@@ -140,7 +142,7 @@ export function buffer(size) {
 
 export function debounce({ ms, seed } = {}) {
   assertPositiveInteger(ms, "debounce.ms");
-  if (typeof seed !== "string" || seed.length === 0) {
+  if (!isJsonString(seed) || seed.length === 0) {
     throw new Error("debounce requires a deterministic seed");
   }
   return { type: "debounce", ms, seed };
@@ -199,7 +201,7 @@ class Materialization {
 
   pipe(...operators) {
     for (const operator of operators) {
-      if (!operator || typeof operator.type !== "string") {
+      if (!operator || !isJsonString(operator.type)) {
         throw new Error("pipe expects read-surface operators");
       }
     }
@@ -359,7 +361,7 @@ function normalizeEvents(events) {
 }
 
 function normalizeEvent(event) {
-  if (!event || typeof event !== "object") {
+  if (!event || !isJsonObject(event)) {
     throw new Error("event must be an object");
   }
   assertNonEmpty(event.streamId, "event.streamId");
@@ -399,7 +401,7 @@ function isMaterialization(value) {
 }
 
 function assertFunction(value, field) {
-  if (typeof value !== "function") {
+  if (!(value instanceof Function)) {
     throw new Error(`${field} requires a function`);
   }
 }
@@ -417,7 +419,7 @@ function assertNonNegativeInteger(value, field) {
 }
 
 function assertNonEmpty(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
 }
@@ -434,7 +436,7 @@ function stableValue(value) {
   if (Array.isArray(value)) {
     return value.map(stableValue);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return stableObject(Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, stableValue(entry)])));
   }
   return value;
@@ -448,5 +450,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

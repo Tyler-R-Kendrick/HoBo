@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export type PlannerObjective = "cost" | "latency" | "single-provider" | "carbon" | "maximize-credits";
 
 export interface MatchContext {
@@ -24,14 +25,14 @@ export interface ResourcePlan {
     driver: string;
   };
   context: MatchContext;
-  options: Record<string, unknown>;
+  options: JsonObject;
   deps: string[];
   strategy: string;
   replication: string;
   workloadProfile: string;
   outputs: string[];
   coProvisionedFor?: string;
-  inputs?: Record<string, unknown>;
+  inputs?: JsonObject;
 }
 
 export interface DeploymentPlan {
@@ -56,7 +57,7 @@ export interface ValidationResult {
 
 export declare const DEPLOYMENT_PLAN_IR_VERSION: "hobo.deployment-plan/v1";
 export declare function createFixtureDeploymentPlan(): DeploymentPlan;
-export declare function canonicalJson(value: unknown): string;
+export declare function canonicalJson(value: JsonValue): string;
 export declare function planContentAddress(plan: DeploymentPlan): string;
 export declare function outputPlaceholder(input: {
   type: string;

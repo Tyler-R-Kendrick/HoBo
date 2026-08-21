@@ -70,7 +70,8 @@ main
                                                            └── sdlc/anti-slop-59-draft-cloud-provider-contracts  #1311 azure+gcp+aws-contracts
                                                             └── sdlc/anti-slop-60-draft-cdktf-cqrs-projection  #1313 cdktf+cqrs+native-log
                                                              └── sdlc/anti-slop-61-draft-container-wrpc-drift  #1315 container-fallback+wrpc+drift
-                                                              └── sdlc/anti-slop-62-draft-forge-aws-catalog-trust  forge+aws-catalog+artifact-trust
+                                                              └── sdlc/anti-slop-62-draft-forge-aws-catalog-trust  #1316 forge+aws-catalog+artifact-trust
+                                                               └── sdlc/anti-slop-63-draft-snapshot-k8s  snapshot-compaction+k8s-contract
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -152,6 +153,7 @@ Layer 58: `s2-04-planner-deployment-plan-dag-poc` + `hobo-612-dev-local-loop-poc
 Layer 59: `provider-azure-contract` + `provider-gcp-contract` + `provider-aws-contract` oxlint `--deny-warnings` clean (#1311).
 Layer 60: `iac-cdktf-import-only-contract` + `cqrs-command-aggregate-contract` + `native-log-projection-contract` oxlint `--deny-warnings` clean (#1313).
 Layer 61: `container-fallback-wiring-parity-contract` + `wrpc-link-layer-contract` + `s6-05-observability-drift-loop-contract` oxlint `--deny-warnings` clean (#1315).
-Layer 62: `s5-03-forge-ingestion-contract` + `provider-aws-full-capability-catalog-contract` + `componentize-artifact-trust-contract` oxlint `--deny-warnings` clean.
+Layer 62: `s5-03-forge-ingestion-contract` + `provider-aws-full-capability-catalog-contract` + `componentize-artifact-trust-contract` oxlint `--deny-warnings` clean (#1316).
+Layer 63: `snapshot-compaction-contract` + `provider-kubernetes-contract` oxlint `--deny-warnings` clean.
 Next: remaining `src/draft/` (larger technical-proofs, exp-proofs, projects).
 Full-repo `lint:slop --deny-warnings` is still red until those land.

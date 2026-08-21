@@ -3,13 +3,7 @@
  * Normalizes VPS / DNS / control-plane signals into yard.* facts.
  */
 
-type JsonValue =
-	| null
-	| boolean
-	| number
-	| string
-	| readonly JsonValue[]
-	| Readonly<{ readonly [key: string]: JsonValue }>;
+import { isJsonArray, type JsonObject } from "./json.js";
 
 // public-contract: the event-store fold this provider is addressed by. Stored
 // events name the resolver that produced them, so a rename orphans every fact
@@ -20,13 +14,13 @@ export const HOSTINGER_EVENT_STORE_RESOLVER_ID =
 export interface HostingerProviderNativeSignal {
 	readonly providerId: "hostinger";
 	readonly kind: string;
-	readonly payload: Readonly<Record<string, JsonValue>>;
+	readonly payload: JsonObject;
 	readonly observedAt?: string;
 }
 
 export interface HostingerYardEvent {
 	readonly type: string;
-	readonly data: Readonly<Record<string, unknown>>;
+	readonly data: JsonObject;
 	readonly occurredAt?: string;
 }
 
@@ -153,9 +147,7 @@ export function hostingerEventStoreFoldDescriptor() {
 	});
 }
 
-function hostingerYardFromPayload(
-	p: Readonly<Record<string, JsonValue>>,
-): Record<string, unknown> {
+function hostingerYardFromPayload(p: JsonObject) {
 	const yardId = String(p.yardId ?? p.virtualMachineId ?? "yard:hostinger");
 	const now = new Date().toISOString();
 	return {
@@ -164,9 +156,9 @@ function hostingerYardFromPayload(
 		ownerTenantId: String(p.ownerTenantId ?? "local"),
 		providerId: "hostinger",
 		runtimeId: String(p.runtimeId ?? "hostinger.yard-runtime/v1"),
-		shape: {
+		layout: {
 			providerId: "hostinger",
-			regions: Array.isArray(p.regions) ? p.regions.map(String) : ["phx"],
+			regions: isJsonArray(p.regions) ? p.regions.map(String) : ["phx"],
 			require: ["managed-container-substrate", "private-network"],
 			prefer: [],
 			residency: [],
@@ -175,8 +167,10 @@ function hostingerYardFromPayload(
 			componentHosts: [],
 			labels: {},
 			properties: {
-				...(p.accountRef ? { "hostinger.accountRef": p.accountRef } : {}),
-				...(p.zoneId ? { "hostinger.zoneId": p.zoneId } : {}),
+				...(p.accountRef
+					? { "hostinger.accountRef": p.accountRef }
+					: undefined),
+				...(p.zoneId ? { "hostinger.zoneId": p.zoneId } : undefined),
 			},
 			camps: [],
 		},

@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json.js";
+
 // public-contract: the provider target id `.with(...)` option blocks carry.
 export const HOSTINGER_PROVIDER_TARGET = "hostinger";
 
@@ -9,7 +11,7 @@ export type TypedOptionBlock = {
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
-	options: Record<string, unknown>;
+	options: JsonObject;
 };
 
 // The provider-specific options pattern (sdk-api.md "the core promise"): typed,
@@ -17,7 +19,7 @@ export type TypedOptionBlock = {
 // targets many clouds unedited.
 export const hostinger = {
 	with: {
-		vps(options: Record<string, unknown> = {}): TypedOptionBlock {
+		vps(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"compute",
 				"vps",
@@ -25,7 +27,7 @@ export const hostinger = {
 				options,
 			);
 		},
-		webHosting(options: Record<string, unknown> = {}): TypedOptionBlock {
+		webHosting(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"compute",
 				"webHosting",
@@ -33,7 +35,7 @@ export const hostinger = {
 				options,
 			);
 		},
-		mysql(options: Record<string, unknown> = {}): TypedOptionBlock {
+		mysql(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"database",
 				"mysql",
@@ -47,8 +49,8 @@ export const hostinger = {
 function optionBlock(
 	port: string,
 	optionName: string,
-	defaults: Record<string, unknown>,
-	options: Record<string, unknown>,
+	defaults: JsonObject,
+	options: JsonObject,
 ): TypedOptionBlock {
 	return {
 		providerId: HOSTINGER_PROVIDER_TARGET,

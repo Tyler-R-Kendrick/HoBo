@@ -25,9 +25,10 @@ export const EQUIVALENCE_CLASSES = Object.freeze({
 
 export type InitialCapabilityPort = keyof typeof EQUIVALENCE_CLASSES;
 
-export const INITIAL_CAPABILITY_PORTS = Object.freeze(
-	Object.keys(EQUIVALENCE_CLASSES) as InitialCapabilityPort[],
-);
+export const INITIAL_CAPABILITY_PORTS = Object.freeze([
+	"web/service",
+	"database/mysql",
+] as const satisfies readonly InitialCapabilityPort[]);
 
 export function equivalenceForPort(port: InitialCapabilityPort) {
 	return EQUIVALENCE_CLASSES[port];

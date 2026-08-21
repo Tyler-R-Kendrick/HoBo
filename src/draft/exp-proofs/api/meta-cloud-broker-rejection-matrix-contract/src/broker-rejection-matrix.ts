@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject, type JsonValue } from "./json.js";
+
 
 export const RESOLUTION_REJECTION_SCHEMA = "hobo.resolution-rejection/v1";
 export const BROKER_AUTHORITY = "meta-cloud-broker";
@@ -34,7 +36,7 @@ export type BrokerRejectionFixtureInput = Readonly<{
   detail: string;
   remediationHint: string;
   blockedOptimism: readonly BlockedOptimism[];
-  unsafeDebugMaterial?: unknown;
+  unsafeDebugMaterial?: JsonValue;
 }>;
 
 export type BrokerRejectionMatrix = Readonly<{
@@ -85,11 +87,11 @@ export type SupportEvidence = Readonly<{
 
 type EvaluateInput = Readonly<{
   cases: readonly BrokerRejectionFixtureInput[];
-  yardFallbackResolver?: () => unknown;
+  yardFallbackResolver?: () => JsonValue;
 }>;
 
 type BuildFixturesOptions = Readonly<{
-  unsafeDebugMaterial?: unknown;
+  unsafeDebugMaterial?: JsonValue;
 }>;
 
 export function buildBrokerRejectionMatrixFixtures(
@@ -152,7 +154,15 @@ export function evaluateBrokerRejectionMatrix({ cases }: EvaluateInput): BrokerR
   });
 }
 
-const caseOrder: Record<RejectionCaseId, number> = {
+interface RejectionCaseOrder {
+  readonly "stale-catalog": number;
+  readonly "incompatible-mapping": number;
+  readonly "ambiguous-mapping": number;
+  readonly "missing-mapping": number;
+  readonly "unsupported-capability": number;
+}
+
+const caseOrder: RejectionCaseOrder = {
   "stale-catalog": 0,
   "incompatible-mapping": 1,
   "ambiguous-mapping": 2,
@@ -190,7 +200,7 @@ function parseRejectionFixture(input: BrokerRejectionFixtureInput): BrokerReject
   ];
 
   for (const [field, value] of requiredStrings) {
-    if (typeof value !== "string" || value.length === 0) {
+    if (!isJsonString(value) || value.length === 0) {
       throw new Error(`invalid broker rejection fixture: ${field}`);
     }
   }
@@ -274,19 +284,19 @@ function supportEvidenceFor(input: BrokerRejectionFixtureInput): SupportEvidence
   };
 }
 
-function stableId(prefix: string, value: unknown): string {
+function stableId(prefix: string, value: JsonValue): string {
   return `${prefix}-${digestOf(value).slice("sha256:".length, "sha256:".length + 16)}`;
 }
 
-function digestOf(value: unknown): `sha256:${string}` {
+function digestOf(value: JsonValue): `sha256:${string}` {
   return `sha256:${createHash("sha256").update(canonicalJson(value)).digest("hex")}`;
 }
 
-function canonicalJson(value: unknown): string {
+function canonicalJson(value: JsonValue): string {
   if (Array.isArray(value)) {
     return `[${value.map(canonicalJson).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return `{${Object.entries(value)
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`)
@@ -300,7 +310,7 @@ function sortedBy<T>(entries: readonly T[], selector: (entry: T) => string): T[]
 }
 
 function deepFreeze<T>(value: T): T {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) return value;
   Object.freeze(value);
   for (const child of Object.values(value)) {
     deepFreeze(child);

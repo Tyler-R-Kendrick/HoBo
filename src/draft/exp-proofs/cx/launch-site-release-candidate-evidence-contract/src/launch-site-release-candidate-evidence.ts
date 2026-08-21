@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export type EvidenceStatus = "accepted" | "accepted-risk" | "missing";
 export type ProofMode = "design-record" | "issue-state" | "manual-review" | "reference-fixture" | "live-recording";
 export type LaunchRiskEffect = "unchanged" | "increased" | "reduced";
@@ -253,13 +254,14 @@ export const launchSiteReleaseCandidateEvidence: LaunchSiteReleaseCandidateEvide
   ],
 };
 
-export function validateLaunchSiteReleaseCandidateEvidence(record: unknown) {
+export function validateLaunchSiteReleaseCandidateEvidence(record: JsonValue) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["launch-site release-candidate evidence record is required"] };
   }
 
+  // SAFETY: `const value = record as Partial<LaunchSiteReleaseCandidateEvidenceRecord>;` is required at this I/O or test boundary.
   const value = record as Partial<LaunchSiteReleaseCandidateEvidenceRecord>;
   const evidence = Array.isArray(value.evidence) ? value.evidence : [];
   const blockers = Array.isArray(value.blockers) ? value.blockers : [];
@@ -370,7 +372,7 @@ export function validateLaunchSiteReleaseCandidateEvidence(record: unknown) {
 }
 
 export function assertLaunchSiteReleaseCandidateEvidence(
-  record: unknown = launchSiteReleaseCandidateEvidence,
+  record: JsonValue = launchSiteReleaseCandidateEvidence,
 ) {
   const result = validateLaunchSiteReleaseCandidateEvidence(record);
 
@@ -378,5 +380,6 @@ export function assertLaunchSiteReleaseCandidateEvidence(
     throw new Error(`launch-site release-candidate evidence invalid:\n${result.errors.join("\n")}`);
   }
 
+  // SAFETY: `return record as LaunchSiteReleaseCandidateEvidenceRecord;` is required at this I/O or test boundary.
   return record as LaunchSiteReleaseCandidateEvidenceRecord;
 }

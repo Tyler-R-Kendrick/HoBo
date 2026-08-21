@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const PER_APP_TENANT_ROUTING_CONTRACT_VERSION = "hobo.per-app-tenant-routing/v1";
 
 export function createTenantRoutingTable(config) {
@@ -149,7 +150,7 @@ export function resolveTenantRequest(routingTable, request) {
 
 function normalizeTenant(tenant, applicationDomain) {
   assertObject(tenant, "tenant");
-  if (typeof tenant.id !== "string" || tenant.id.length === 0) {
+  if (!isJsonString(tenant.id) || tenant.id.length === 0) {
     throw new Error("tenant requires a non-empty id");
   }
 
@@ -177,7 +178,7 @@ function normalizeCustomDomain(domain, tenantId) {
   if (domain.tenantScoped !== true) {
     throw new Error(`custom domain ${host} for ${tenantId} must be tenant scoped`);
   }
-  if (typeof domain.resourceId !== "string" || domain.resourceId.length === 0) {
+  if (!isJsonString(domain.resourceId) || domain.resourceId.length === 0) {
     throw new Error(`custom domain ${host} for ${tenantId} requires a resourceId`);
   }
 
@@ -195,10 +196,10 @@ function normalizePlacement(placement, tenantId) {
   if (!["pooled", "siloed", "region-pooled"].includes(placement.mode)) {
     throw new Error(`placement for ${tenantId} has unsupported mode ${placement.mode}`);
   }
-  if (typeof placement.camp !== "string" || placement.camp.length === 0) {
+  if (!isJsonString(placement.camp) || placement.camp.length === 0) {
     throw new Error(`placement for ${tenantId} requires a camp`);
   }
-  if (typeof placement.region !== "string" || placement.region.length === 0) {
+  if (!isJsonString(placement.region) || placement.region.length === 0) {
     throw new Error(`placement for ${tenantId} requires a region`);
   }
 
@@ -211,7 +212,7 @@ function normalizePlacement(placement, tenantId) {
 
 function normalizeCertificate(certificate) {
   assertObject(certificate, "wildcard certificate");
-  if (typeof certificate.pattern !== "string" || !certificate.pattern.startsWith("*.")) {
+  if (!isJsonString(certificate.pattern) || !certificate.pattern.startsWith("*.")) {
     throw new Error("wildcard certificate requires a pattern like *.app.com");
   }
   if (certificate.status !== "issued") {
@@ -358,7 +359,7 @@ function deny(reason, extra = {}) {
 }
 
 function normalizeHost(value, name) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${name} requires a non-empty host`);
   }
 
@@ -376,7 +377,7 @@ function normalizeHost(value, name) {
 }
 
 function normalizePath(value) {
-  if (typeof value !== "string" || !value.startsWith("/")) {
+  if (!isJsonString(value) || !value.startsWith("/")) {
     throw new Error(`request path must be absolute, got ${value}`);
   }
   return value;
@@ -388,14 +389,14 @@ function normalizePathPrefix(value) {
 }
 
 function normalizeLabel(value, name) {
-  if (typeof value !== "string" || !/^[a-z0-9-]+$/i.test(value)) {
+  if (!isJsonString(value) || !/^[a-z0-9-]+$/i.test(value)) {
     throw new Error(`${name} must be a DNS label`);
   }
   return value.toLowerCase();
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${name} must be an object`);
   }
 }
@@ -408,7 +409,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   Object.freeze(value);

@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject } from "./json.js";
+
 
 export const POLICY_AUDIT_EVENT_SCHEMA_VERSION = "hobo.policy-audit-events/v1";
 
@@ -153,7 +155,7 @@ export function createPolicyAuditEvent(type, data, overrides = {}) {
 export function createPolicyAuditFixtureEvent(type, overrides = {}) {
   const data = {
     ...fixtureData(type),
-    ...(overrides.data ?? {}),
+    ...(overrides.data),
   };
   return createPolicyAuditEvent(type, data, overrides);
 }
@@ -176,7 +178,7 @@ export function validatePolicyAuditEvent(event) {
   requireString(event.orgId, "orgId", errors);
   requireString(event.tenant, "tenant", errors);
   requireString(event.streamId, "streamId", errors);
-  if (typeof event.streamId === "string" && typeof event.orgId === "string") {
+  if (isJsonString(event.streamId) && isJsonString(event.orgId)) {
     if (!event.streamId.startsWith(`${event.orgId}/`)) {
       errors.push("streamId must be scoped under orgId");
     }
@@ -476,7 +478,7 @@ function findPlaintextPiiPaths(value, path) {
     }
     const nextPath = `${path}.${key}`;
     const direct =
-      FORBIDDEN_PII_KEYS.has(key) && typeof nested === "string" && nested.length > 0
+      FORBIDDEN_PII_KEYS.has(key) && isJsonString(nested) && nested.length > 0
         ? [nextPath]
         : [];
     return [...direct, ...findPlaintextPiiPaths(nested, nextPath)];
@@ -535,14 +537,14 @@ function validateStringArray(value, path, errors) {
 }
 
 function requireString(value, path, errors) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     errors.push(`${path} is required`);
   }
 }
 
 function requireIso(value, path, errors) {
   requireString(value, path, errors);
-  if (typeof value === "string" && Number.isNaN(Date.parse(value))) {
+  if (isJsonString(value) && Number.isNaN(Date.parse(value))) {
     errors.push(`${path} must be ISO-8601`);
   }
 }
@@ -600,10 +602,10 @@ function canonicalJson(value) {
 }
 
 function canonicalJsonValue(value, path = "$") {
-  if (value === null || typeof value === "string" || typeof value === "boolean") {
+  if (value === null || isJsonString(value) || isJsonBoolean(value)) {
     return value;
   }
-  if (typeof value === "number") {
+  if (isJsonNumber(value)) {
     if (!Number.isFinite(value)) {
       throw new TypeError(`${path} must be finite`);
     }
@@ -634,7 +636,7 @@ function slug(value) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -645,7 +647,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

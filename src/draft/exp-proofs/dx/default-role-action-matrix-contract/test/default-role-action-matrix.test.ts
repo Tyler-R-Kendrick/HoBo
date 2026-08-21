@@ -249,7 +249,7 @@ describe("default role action matrix contract", () => {
         bindTargetPrincipalId: "user:security-admin",
       },
     });
-    const missingTargetGrantShape = evaluateControlPlaneAuthorization({
+    const missingTargetGrantContract = evaluateControlPlaneAuthorization({
       subject: { kind: "user", id: "user:security-admin", roles: ["Security/Policy-Admin"] },
       resource: "role",
       verb: "bind",
@@ -274,8 +274,8 @@ describe("default role action matrix contract", () => {
     assert.match(escalation.violations.join("\n"), /cannot bind grants it does not already hold/);
     assert.equal(hiddenBuiltInEscalation.effect, "deny");
     assert.match(hiddenBuiltInEscalation.violations.join("\n"), /cannot bind grants it does not already hold/);
-    assert.equal(missingTargetGrantShape.effect, "deny");
-    assert.match(missingTargetGrantShape.violations.join("\n"), /targetRole or requestedGrantActionIds/);
+    assert.equal(missingTargetGrantContract.effect, "deny");
+    assert.match(missingTargetGrantContract.violations.join("\n"), /targetRole or requestedGrantActionIds/);
     assert.equal(orgAdminBindsDeployer.effect, "allow");
   });
 

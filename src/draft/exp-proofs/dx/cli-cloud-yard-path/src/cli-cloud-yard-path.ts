@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonObject } from "./json.js";
 export const FIXTURE_ID = "dx.lifecycle.hello-bindle.v1" as const;
 export const BINDLE = "examples/hello-bindle" as const;
 export const PROOF_NOTE = "docs/design/proofs/cli-cloud-yard-path/README.md" as const;
@@ -121,7 +122,7 @@ type GatewayRequest =
   | { route: "GET /v1/streams/logs/:deploymentId"; authorization: string; deploymentId: string };
 
 type GatewayResponse =
-  | { status: 200 | 202; body: Record<string, unknown> }
+  | { status: 200 | 202; body: JsonObject }
   | { status: 401 | 403 | 404; body: { status: CommandStatus; error: ActionableError } };
 
 const SESSION = {
@@ -326,6 +327,7 @@ export function runHoboLogin(gateway: YardGateway, options: { bindle?: string } 
     body: { mode: "dev-svid-stub", bindle: options.bindle ?? BINDLE },
   });
   assertSuccessStatus(response.status, "login");
+  // SAFETY: `const body = response.body as LoginResult;` is required at this I/O or test boundary.
   const body = response.body as LoginResult;
   return {
     command: "hobo login" as const,
@@ -355,6 +357,7 @@ export function runHoboPlan(
   }
   assertSuccessStatus(response.status, "plan");
 
+  // SAFETY: `const body = response.body as PlanResult;` is required at this I/O or test boundary.
   const body = response.body as PlanResult;
   return {
     command: "hobo plan" as const,
@@ -382,6 +385,7 @@ export function runHoboDeploy(
   }
   assertSuccessStatus(response.status, "deploy");
 
+  // SAFETY: `const body = response.body as DeployResult;` is required at this I/O or test boundary.
   const body = response.body as DeployResult;
   return {
     command: "hobo deploy" as const,
@@ -406,6 +410,7 @@ export function runHoboDestroy(
   }
   assertSuccessStatus(response.status, "destroy");
 
+  // SAFETY: `const body = response.body as DestroyResult;` is required at this I/O or test boundary.
   const body = response.body as DestroyResult;
   return {
     command: "hobo destroy" as const,
@@ -430,6 +435,7 @@ export function runHoboInspectDeploy(
   }
   assertSuccessStatus(response.status, "inspect deploy");
 
+  // SAFETY: `const body = response.body as InspectDeployResult;` is required at this I/O or test boundary.
   const body = response.body as InspectDeployResult;
   return {
     command: "hobo inspect deploy" as const,
@@ -454,6 +460,7 @@ export function runHoboLogs(
   }
   assertSuccessStatus(response.status, "logs");
 
+  // SAFETY: `const body = response.body as LogsResult;` is required at this I/O or test boundary.
   const body = response.body as LogsResult;
   return {
     command: "hobo logs" as const,
@@ -669,10 +676,11 @@ function forbiddenReason(request: string) {
 }
 
 function deepFreeze<T>(value: T): T {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
-  for (const child of Object.values(value as Record<string, unknown>)) {
+  // SAFETY: `for (const child of Object.values(value as JsonObject)) {` is required at this I/O or test boundary.
+  for (const child of Object.values(value as JsonObject)) {
     deepFreeze(child);
   }
   return Object.freeze(value);

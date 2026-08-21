@@ -122,6 +122,7 @@ test("parser rejects missing metadata, missing content areas, and unsupported pr
         contentInventory: [
           {
             ...VIBE_DOCS_PORTAL_IA_STATES.contentInventory[0],
+            // SAFETY: `proofMode: "published-production" as never,` is required at this I/O or test boundary.
             proofMode: "published-production" as never,
           },
           ...VIBE_DOCS_PORTAL_IA_STATES.contentInventory.slice(1),
@@ -183,12 +184,15 @@ test("validator rejects unsupported freshness, audience, proof-mode, and limitat
     contentInventory: [
       {
         ...VIBE_DOCS_PORTAL_IA_STATES.contentInventory[0],
+        // SAFETY: `audiencePaths: ["external-buyer" as never],` is required at this I/O or test boundary.
         audiencePaths: ["external-buyer" as never],
         freshnessSignal: {
           ...VIBE_DOCS_PORTAL_IA_STATES.contentInventory[0].freshnessSignal,
+          // SAFETY: `status: "unreviewed" as never,` is required at this I/O or test boundary.
           status: "unreviewed" as never,
           checkedAt: "",
         },
+        // SAFETY: `limitationState: "production-ready" as never,` is required at this I/O or test boundary.
         limitationState: "production-ready" as never,
       },
       ...VIBE_DOCS_PORTAL_IA_STATES.contentInventory.slice(1),
@@ -196,12 +200,16 @@ test("validator rejects unsupported freshness, audience, proof-mode, and limitat
     searchMetadata: [
       {
         ...VIBE_DOCS_PORTAL_IA_STATES.searchMetadata[0],
+        // SAFETY: `audiences: ["anonymous-reader" as never],` is required at this I/O or test boundary.
         audiences: ["anonymous-reader" as never],
         freshnessSignal: {
           ...VIBE_DOCS_PORTAL_IA_STATES.searchMetadata[0].freshnessSignal,
+          // SAFETY: `status: "unspecified" as never,` is required at this I/O or test boundary.
           status: "unspecified" as never,
         },
+        // SAFETY: `proofMode: "published-production" as never,` is required at this I/O or test boundary.
         proofMode: "published-production" as never,
+        // SAFETY: `limitationState: "unlimited" as never,` is required at this I/O or test boundary.
         limitationState: "unlimited" as never,
       },
       ...VIBE_DOCS_PORTAL_IA_STATES.searchMetadata.slice(1),

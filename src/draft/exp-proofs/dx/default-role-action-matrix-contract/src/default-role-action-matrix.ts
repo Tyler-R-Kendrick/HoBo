@@ -3,6 +3,8 @@ import {
   buildControlPlaneActionId,
   expandManage,
 } from "../../../../technical-proofs/control-plane-action-taxonomy-contract/src/control-plane-action-taxonomy.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const DEFAULT_ROLE_ACTION_MATRIX_SCHEMA = "hobo.default-role-action-matrix/v1";
 
@@ -214,11 +216,11 @@ function enforceSeparationOfDuties(request, decisionBase, grantSet) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.length > 0;
+  return isJsonString(value) && value.length > 0;
 }
 
 function normalizeRequest(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError("input must be an object");
   }
   const subject = normalizeSubject(input.subject);
@@ -235,7 +237,7 @@ function normalizeRequest(input) {
 }
 
 function normalizeSubject(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError("input.subject must be an object");
   }
   const roles = Array.isArray(input.roles) ? input.roles.map((role) => requireString(role, "subject.role")) : [];
@@ -250,7 +252,7 @@ function normalizeContext(input) {
   if (input === undefined || input === null) {
     return {};
   }
-  if (typeof input !== "object" || Array.isArray(input)) {
+  if (!isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError("input.context must be an object");
   }
   return input;
@@ -333,7 +335,7 @@ function requireApproval(base, reason, obligations) {
 }
 
 function requireString(input, fieldName) {
-  if (typeof input !== "string" || input.length === 0) {
+  if (!isJsonString(input) || input.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return input;
@@ -344,7 +346,7 @@ function unique(values) {
 }
 
 function deepFreeze(value) {
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     Object.freeze(value);
     for (const child of Object.values(value)) {
       deepFreeze(child);

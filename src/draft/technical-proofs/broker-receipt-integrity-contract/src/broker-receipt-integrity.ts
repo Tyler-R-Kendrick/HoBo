@@ -1,4 +1,6 @@
 import { createHash, createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
+import { isJsonObject, type JsonValue } from "./json.js";
+
 
 const TEST_PRIVATE_KEY_PEM = `-----BEGIN PRIVATE KEY-----
 MC4CAQAwBQYDK2VwBCIEIN09KIVIR+xpIGQSyUQHyAHBHGTF/BkVYuWQLkkJAkLh
@@ -241,11 +243,11 @@ function receiptDigest(payload: ResolutionReceiptPayload): string {
   return `sha256:${createHash("sha256").update(canonicalJson(payload)).digest("hex")}`;
 }
 
-function canonicalJson(value: unknown): string {
+function canonicalJson(value: JsonValue): string {
   if (Array.isArray(value)) {
     return `[${value.map(canonicalJson).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return `{${Object.entries(value)
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`)

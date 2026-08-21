@@ -150,6 +150,7 @@ test("Gatekeeper apply-time policy remains outside broker receipt integrity", ()
     verifyResolutionReceipt({
       context,
       receipt: buildSignedResolutionReceiptFixture(context, {
+        // SAFETY: `gatekeeperBoundary: "policy-before-receipt" as never,` is required at this I/O or test boundary.
         gatekeeperBoundary: "policy-before-receipt" as never,
       }),
       now: fixedNow(),

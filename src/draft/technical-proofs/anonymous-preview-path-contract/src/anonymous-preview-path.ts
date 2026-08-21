@@ -1,4 +1,6 @@
 import { createHash, randomBytes } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEFAULT_TTL_HOURS = 24;
 const DEFAULT_PREVIEW_DOMAIN = "preview.hobo.dev";
@@ -263,7 +265,7 @@ function blockedPlan({ code, reason, now, events, retryAfterSeconds = null }) {
 }
 
 function normalizeRequest(request) {
-  if (!request || typeof request !== "object") {
+  if (!request || !isJsonObject(request)) {
     throw new Error("request is required");
   }
   const project = request.project ?? {};
@@ -293,7 +295,7 @@ function normalizeRequest(request) {
 }
 
 function normalizeRecord(record) {
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     throw new Error("anonymous preview record is required");
   }
   return {
@@ -361,7 +363,7 @@ function slug(value) {
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${label} is required`);
   }
   return value;
@@ -375,7 +377,7 @@ function canonicalize(value) {
   if (Array.isArray(value)) {
     return value.map(canonicalize);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(

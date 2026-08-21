@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const DEFAULT_SUBJECT_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token";
 
 export function createConnectorRuntime({
@@ -12,7 +13,7 @@ export function createConnectorRuntime({
   assertObject(manifest, "manifest");
   assertObject(manifest.connectors, "manifest.connectors");
   assertObject(targetCatalog, "targetCatalog");
-  if (!broker || typeof broker.exchangeToken !== "function") {
+  if (!broker || !(broker.exchangeToken instanceof Function)) {
     throw new TypeError("broker.exchangeToken must be a function");
   }
 
@@ -187,13 +188,13 @@ function sameSet(left, right) {
 }
 
 function assertObject(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${field} must be an object`);
   }
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${field} must be a non-empty string`);
   }
   return value;

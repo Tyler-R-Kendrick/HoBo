@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 import { createOperatorPrincipal } from "../../crew-event-contract/src/crew-event-contract.js";
 import {
   createIdentityEvent,
@@ -54,7 +55,7 @@ export function createEndpointMonitorOperator(input = {}) {
 export function runEndpointMonitorCycle(input = {}) {
   const operator = input.operator ?? createEndpointMonitorOperator();
   const observedAt = validateIso(input.observedAt ?? new Date(0).toISOString(), "observedAt");
-  const burnThreshold = validateBurnThreshold(input.burnThreshold ?? {});
+  const burnThreshold = validateBurnThreshold(input.burnThreshold );
   const probes = validateProbes(input.probes ?? []);
   const driftSignals = validateDriftSignals(input.driftSignals ?? []);
   const identityEvents = [];
@@ -348,7 +349,7 @@ function validateDriftSignals(signals) {
       resourceId: requiredString(signal?.resourceId, "driftSignal.resourceId"),
       correlationId: requiredString(signal?.correlationId, "driftSignal.correlationId"),
       occurredAt: validateIso(signal?.occurredAt, "driftSignal.occurredAt"),
-      payload: clone(signal?.payload ?? {}),
+      payload: clone(signal?.payload ),
     }),
   );
 }
@@ -376,7 +377,7 @@ function validateNonNegativeNumber(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value;
@@ -398,7 +399,7 @@ function fail(message) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

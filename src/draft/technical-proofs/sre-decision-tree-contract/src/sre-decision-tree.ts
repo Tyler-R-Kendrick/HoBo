@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 import {
   actionProposed,
   handoffRequested,
@@ -35,7 +36,7 @@ export function decideSreRemediation(input = {}) {
   const incident = foldIncidentStream(incidentEvents);
   const operator = input.operator ?? createSreOperator();
   const classification = classifyFailureSignal(input.signal);
-  const action = actionForSignal(classification, input.signal ?? {}, input);
+  const action = actionForSignal(classification, input.signal , input);
   const effect = classifyRemediationEffect(action);
   const branch = branchFor({ classification, effect });
   const reason = branch === "escalate" ? classification.reason : effect.reason;
@@ -210,7 +211,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 

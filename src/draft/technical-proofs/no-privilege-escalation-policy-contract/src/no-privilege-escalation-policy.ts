@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 import {
   allowRule,
   canonicalJson,
@@ -245,7 +246,7 @@ function normalizeTokenTenants(token) {
   if (!token || !Array.isArray(token.tenants)) {
     return new Set();
   }
-  return new Set(token.tenants.filter((tenant) => typeof tenant === "string" && tenant.length > 0));
+  return new Set(token.tenants.filter((tenant) => isJsonString(tenant) && tenant.length > 0));
 }
 
 function permutations(values) {

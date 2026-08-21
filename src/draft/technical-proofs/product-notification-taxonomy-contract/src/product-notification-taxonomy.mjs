@@ -262,7 +262,7 @@ export function evaluateNotificationReadiness(notificationClass, evidence = {}) 
 export function validateProductNotificationTaxonomy(record) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!isPlainObject(record)) {
     return { ok: false, errors: ["product notification taxonomy record is required"] };
   }
   if (record.issue !== "HOBO-506") {
@@ -384,4 +384,8 @@ function validateScope(record, errors) {
       errors.push(`email service implementation is scope-out: ${scopeItem}`);
     }
   }
+}
+
+function isPlainObject(value) {
+  return value != null && Object.prototype.toString.call(value) === "[object Object]";
 }

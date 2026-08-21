@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 import { createHash } from "node:crypto";
 import { execFile } from "node:child_process";
 import { mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/promises";
@@ -132,7 +133,7 @@ export async function validateToolchainLock(lock, options = {}) {
     }
   }
 
-  for (const [name, version] of Object.entries(lock.compatFloor ?? {})) {
+  for (const [name, version] of Object.entries(lock.compatFloor )) {
     if (name === "policy" || name === "baselineDecision") {
       continue;
     }
@@ -258,5 +259,5 @@ async function normalizeGeneratedTree(root) {
 }
 
 function isExactVersion(version) {
-  return typeof version === "string" && /^[0-9]+\.[0-9]+\.[0-9]+$/.test(version);
+  return isJsonString(version) && /^[0-9]+\.[0-9]+\.[0-9]+$/.test(version);
 }

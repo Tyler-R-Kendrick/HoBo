@@ -8,9 +8,10 @@
  * diagnostics, and a stale catalog snapshot downgrades trust (deploy-time
  * PlanRejected stays authoritative).
  */
+import { isJsonString } from "../src/json.js";
 import { strict as assert } from "node:assert";
-
 import {
+
 	analyzeAuthorTimeCapabilityFeedback,
 	renderHoboPlanFeedback,
 } from "../src/author-time-capability-feedback.ts";
@@ -72,7 +73,7 @@ console.log(`stale: codes=${stale.findings.map((f) => f.code).join(",")}`);
 
 // 5) The same report renders as `hobo plan` feedback text.
 const rendered = renderHoboPlanFeedback(stale);
-assert.ok(typeof rendered === "string" || Array.isArray(rendered));
+assert.ok(isJsonString(rendered) || Array.isArray(rendered));
 console.log(`rendered lines: ${(Array.isArray(rendered) ? rendered : rendered.split("\n")).length}`);
 
 console.log("CONTRACT HELD: author-time findings advise; deploy-time PlanRejected stays authoritative");

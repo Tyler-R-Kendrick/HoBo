@@ -28,7 +28,7 @@ const TRANSITIONS = Object.freeze({
 
 export function createMockExecutor(options = {}) {
   const failApply = new Set(options.failApplyResourceIds ?? []);
-  const failDestroy = new Map(Object.entries(options.failDestroy ?? {}));
+  const failDestroy = new Map(Object.entries(options.failDestroy ));
   const auditLog = [];
 
   return {
@@ -183,7 +183,7 @@ async function provisionUntilStable(contract) {
       if (result.ok) {
         emitActorTransition(contract, resource.id, "applyOk", {
           resourceId: resource.id,
-          outputs: result.outputs ?? {}
+          outputs: result.outputs 
         });
         contract.activationLog.push({
           resourceId: resource.id,
@@ -547,7 +547,7 @@ export function fixtureDeploymentPlan(overrides = {}) {
       { from: "network", to: "database", reason: "binding-output" },
       { from: "database", to: "api", reason: "binding-output" }
     ],
-    meta: { objective: "cost", ...(overrides.meta ?? {}) }
+    meta: { objective: "cost", ...(overrides.meta ) }
   };
 }
 

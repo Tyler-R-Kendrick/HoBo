@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 const STRICTNESS = new Set(["require", "prefer"]);
 
 export function createPortRequest(name, port, options = {}) {
@@ -13,7 +14,7 @@ export function createPortRequest(name, port, options = {}) {
     port,
     verbs: [...(options.verbs ?? [])],
     strictness,
-    options: structuredClone(options.options ?? {}),
+    options: structuredClone(options.options ),
   });
 }
 
@@ -216,7 +217,7 @@ function outputsFor(provider, program, status) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 

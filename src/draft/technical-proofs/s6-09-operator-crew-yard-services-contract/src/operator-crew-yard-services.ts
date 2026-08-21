@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 export const OPERATOR_CREW_YARD_SERVICES_SCHEMA_VERSION =
   "hobo.draft.operator-crew-yard-services/v1";
 
@@ -522,21 +523,21 @@ function finish(result) {
 }
 
 function parseIso(value, path) {
-  if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
+  if (!isJsonString(value) || Number.isNaN(Date.parse(value))) {
     throw new OperatorCrewYardServicesError("invalid-iso-timestamp", path);
   }
   return value;
 }
 
 function parseEnvironment(value) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new OperatorCrewYardServicesError("invalid-environment", "$.environment");
   }
   return value.trim().toLowerCase();
 }
 
 function parseSloBreachSignal(raw): SloBreachSignal {
-  const signal = raw ?? {};
+  const signal = raw ;
   if (!signal.service || !signal.correlationId) {
     throw new OperatorCrewYardServicesError(
       "invalid-slo-signal",
@@ -554,7 +555,7 @@ function parseSloBreachSignal(raw): SloBreachSignal {
 }
 
 function parseRemediation(raw): RemediationPlan {
-  const remediation = raw ?? {};
+  const remediation = raw ;
   return {
     action: remediation.action ?? "failover-provider",
     failureClass: remediation.failureClass ?? "provider-degraded",
@@ -569,7 +570,7 @@ function parseRemediation(raw): RemediationPlan {
 }
 
 function parseRollout(raw) {
-  const rollout = raw ?? {};
+  const rollout = raw ;
   return {
     id: rollout.id ?? "rollout-crew-001",
     strategy: rollout.strategy ?? "canary",
@@ -581,7 +582,7 @@ function parseRollout(raw) {
 }
 
 function parseGovernance(raw) {
-  const governance = raw ?? {};
+  const governance = raw ;
   return {
     flaggedPrompt: governance.flaggedPrompt ?? false,
     blockReason: governance.blockReason ?? null,
@@ -590,7 +591,7 @@ function parseGovernance(raw) {
 
 function parseGitOpsPrincipal(raw): CrewPrincipal {
   const base = CREW_ROSTER.gitops;
-  const principal = raw ?? {};
+  const principal = raw ;
   return {
     ...base,
     agentId: principal.agentId ?? base.agentId,
@@ -601,7 +602,7 @@ function parseGitOpsPrincipal(raw): CrewPrincipal {
 
 function parsePlatformPrincipal(raw): CrewPrincipal {
   const base = CREW_ROSTER["platform-engineer"];
-  const principal = raw ?? {};
+  const principal = raw ;
   return {
     ...base,
     agentId: principal.agentId ?? base.agentId,

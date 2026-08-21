@@ -1,5 +1,6 @@
 import { mkdir, readdir, readFile, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { isJsonString } from "./json.js";
 
 export const VALID_TEMPLATES = ["todo", "api", "agent", "fullstack"];
 
@@ -271,7 +272,7 @@ function validateTemplate(template) {
 }
 
 function validateProjectName(name) {
-  if (typeof name !== "string" || name.trim() === "") {
+  if (!isJsonString(name) || name.trim() === "") {
     throw new ProjectNameError("Invalid project name: project name cannot be empty.");
   }
   if (name !== name.trim()) {

@@ -111,7 +111,7 @@ export async function executeBuildRequest(request) {
 }
 
 export async function writeBuildFixtureProject(projectRoot, options = {}) {
-  await writeCodegenFixtureProject(projectRoot, options.codegen ?? {});
+  await writeCodegenFixtureProject(projectRoot, options.codegen );
 
   const services = options.services ?? DEFAULT_SERVICES;
   const bindlePath = join(projectRoot, "hobo.bindle.json");
@@ -273,7 +273,7 @@ function fallbackReasonFor(service, targetRuntime) {
   return null;
 }
 
-function isWasmCandidate(service) {
+function _isWasmCandidate(service) {
   return isWasmLanguage(service.language) && service.runtime !== "container";
 }
 

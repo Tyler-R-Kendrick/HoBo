@@ -1,3 +1,4 @@
+import { isJsonNumber } from "./json.js";
 export function evaluateCostRoutingPlan({
   domain,
   routes = [],
@@ -199,7 +200,7 @@ function visitResource(resourceId, resourceById, seen, reachableResourceIds) {
 }
 
 function isUsableCamp(camp) {
-  return camp.healthy !== false && camp.validated !== false && typeof camp.effectiveMarginalCost === "number";
+  return camp.healthy !== false && camp.validated !== false && isJsonNumber(camp.effectiveMarginalCost);
 }
 
 function isCostIneligible(resource) {

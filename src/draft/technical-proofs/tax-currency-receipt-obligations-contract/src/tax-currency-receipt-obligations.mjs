@@ -326,7 +326,7 @@ export function classifyUnsupportedJurisdictions(record) {
 export function validateTaxCurrencyReceiptObligations(record) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!isPlainObject(record)) {
     return { ok: false, errors: ["tax/currency/receipt obligation record is required"] };
   }
   if (record.issue !== "HOBO-513") {
@@ -415,4 +415,8 @@ export function validateTaxCurrencyReceiptObligations(record) {
     ok: errors.length === 0,
     errors,
   };
+}
+
+function isPlainObject(value) {
+  return value != null && Object.prototype.toString.call(value) === "[object Object]";
 }

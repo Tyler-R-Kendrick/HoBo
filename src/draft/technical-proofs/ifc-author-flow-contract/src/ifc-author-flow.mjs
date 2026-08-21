@@ -383,7 +383,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!isPlainObject(value)) {
     return value;
   }
   return Object.fromEntries(
@@ -392,4 +392,8 @@ function sortKeys(value) {
       .map((key) => [key, sortKeys(value[key])])
       .filter(([, entry]) => entry !== undefined),
   );
+}
+
+function isPlainObject(value) {
+  return value != null && Object.prototype.toString.call(value) === "[object Object]";
 }

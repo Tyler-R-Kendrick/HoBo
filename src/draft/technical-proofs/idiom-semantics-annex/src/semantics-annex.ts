@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export class HoboWitError extends Error {
   constructor({ tag, message }) {
     super(message);
@@ -249,7 +250,7 @@ function sortJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortJson);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
 

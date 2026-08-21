@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 import {
   MTLS_DATA_PATH_SCHEMA_VERSION,
   evaluateMtlsHandshake,
@@ -36,7 +37,7 @@ export function createInternalServiceDirectory({
       throw new Error(`${field} must be a non-empty string`);
     }
   }
-  if (typeof mtlsEvaluator !== "function") {
+  if (!(mtlsEvaluator instanceof Function)) {
     throw new Error("mtlsEvaluator must be a function");
   }
 
@@ -239,7 +240,7 @@ function requireString(value, field) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim() !== "";
+  return isJsonString(value) && value.trim() !== "";
 }
 
 function clone(value) {

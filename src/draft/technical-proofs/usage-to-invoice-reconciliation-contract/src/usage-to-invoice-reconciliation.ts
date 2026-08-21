@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const REQUIRED_FIXTURE_CASES = [
   "normal-usage",
   "late-usage",
@@ -322,7 +323,7 @@ export function validateUsageToInvoiceReconciliationContract(
 ): ValidationResult {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["usage-to-invoice reconciliation contract is required"] };
   }
   if (record.issue !== "HOBO-490") {

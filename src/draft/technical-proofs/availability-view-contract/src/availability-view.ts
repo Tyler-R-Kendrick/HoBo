@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const AVAILABILITY_VIEW_VERSION = "hobo.availability-view/v1";
 
 const DEFAULT_HOP_AVAILABILITY = 1;
@@ -18,7 +19,7 @@ export function computeAvailabilityView({
     countedNodes: [],
   };
 
-  if (!graph || !graph.root || !graph.nodes || typeof graph.nodes !== "object") {
+  if (!graph || !graph.root || !graph.nodes || !isJsonObject(graph.nodes)) {
     return invalidView({
       code: "invalid-graph",
       message: "graph requires root and nodes",

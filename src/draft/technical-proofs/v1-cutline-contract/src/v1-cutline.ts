@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const REQUIRED_READINESS_DOMAINS = [
   "reference-architecture",
   "productization",
@@ -849,7 +850,7 @@ export const v1CutlineGaHandoffEvidence = {
 export function validateV1Cutline(record) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["cutline record is required"] };
   }
 
@@ -985,7 +986,7 @@ export function validateGaHandoffEvidence(record) {
 function validateReleaseGateEvidence(record, config) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: [`${config.recordName} is required`] };
   }
 

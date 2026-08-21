@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 const RESOURCE_DECLARATION_CALLEES = new Set([
   "api",
   "auth",
@@ -66,7 +67,7 @@ export function evaluateCollectionCoverage({
 }
 
 export function analyzeDeclaredResources(sourceText, { fileName = "source.ts" } = {}) {
-  if (typeof sourceText !== "string") {
+  if (!isJsonString(sourceText)) {
     throw new TypeError("sourceText must be a string");
   }
 

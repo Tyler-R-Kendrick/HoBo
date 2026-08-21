@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
@@ -132,7 +133,7 @@ function assertPinnedToolchain(toolchain) {
 }
 
 function assertSourceDateEpoch(sourceDateEpoch) {
-  if (!sourceDateEpoch || typeof sourceDateEpoch !== "string") {
+  if (!sourceDateEpoch || !isJsonString(sourceDateEpoch)) {
     throw new Error("componentize.invalid_source_date_epoch");
   }
   const trimmed = sourceDateEpoch.trim();
@@ -303,7 +304,7 @@ function normalizePath(pathOrUrl) {
   if (pathOrUrl instanceof URL) {
     return fileURLToPath(pathOrUrl);
   }
-  if (typeof pathOrUrl === "string") {
+  if (isJsonString(pathOrUrl)) {
     return pathOrUrl;
   }
   throw new Error("componentize.source_root_required");

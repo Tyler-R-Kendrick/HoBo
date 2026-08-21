@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 import { randomUUID } from "node:crypto";
 
 export class LocalDevOrchestrationError extends Error {
@@ -187,14 +188,14 @@ export function reverseDependencyOrder(resources) {
 }
 
 function normalizeResource(raw) {
-  const annotations = raw.annotations ?? {};
+  const annotations = raw.annotations ;
   const scaling = annotations.scaling ?? null;
 
   return {
     id: raw.id,
     kind: raw.kind ?? "service",
     deps: [...(raw.deps ?? [])],
-    env: { ...(raw.env ?? {}) },
+    env: { ...(raw.env ) },
     gates: {
       explicitStartup: annotations.explicitStartup === true,
       waitFor: [...(annotations.waitFor ?? [])],
@@ -246,7 +247,7 @@ function satisfiedDeps(state, resource) {
 function resolveEnv(resource, state) {
   const resolved = {};
   for (const [key, value] of Object.entries(resource.env)) {
-    if (typeof value !== "string" || !value.startsWith("{") || !value.endsWith("}")) {
+    if (!isJsonString(value) || !value.startsWith("{") || !value.endsWith("}")) {
       resolved[key] = value;
       continue;
     }

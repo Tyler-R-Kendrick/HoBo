@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 import {
   createFlagArchived,
   validateFlagEvent
@@ -190,7 +191,7 @@ export function replayFlagDebtEvents(events = []) {
 }
 
 export function listActiveFlags(state) {
-  return Object.keys(state?.flags ?? {})
+  return Object.keys(state?.flags )
     .filter((flagKey) => state.flags[flagKey].archived !== true)
     .sort();
 }
@@ -256,7 +257,7 @@ function normalizeEntries(events) {
 }
 
 function requireFlag(state, flagKey) {
-  if (typeof flagKey !== "string" || flagKey.length === 0) {
+  if (!isJsonString(flagKey) || flagKey.length === 0) {
     throw new TypeError("flagKey is required");
   }
   const flag = state?.flags?.[flagKey];
@@ -276,7 +277,7 @@ function isActivelyTargeted(flag, evaluations) {
 function isVariantDependentEvaluation(event) {
   return (
     event.data.reason === "targeting-match" ||
-    (typeof event.data.variant === "string" &&
+    (isJsonString(event.data.variant) &&
       !["default", "off", "on", "selected"].includes(event.data.variant))
   );
 }

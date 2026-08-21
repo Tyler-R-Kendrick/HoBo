@@ -19,6 +19,13 @@ import {
 	temporaryStationTtlSeconds,
 } from "@hobo/core";
 
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 import { PROVIDER_TARGET } from "./options.js";
 
 export const NETLIFY_TEMPORARY_PROVIDER_ID = PROVIDER_TARGET;
@@ -78,16 +85,19 @@ function stripPermanentNetlifyEnv(env: NodeJS.ProcessEnv): NodeJS.ProcessEnv {
 	return next;
 }
 
+function jsonNonEmptyString(value: JsonValue | undefined): string {
+	return isJsonString(value) && value.length > 0 ? value : "";
+}
+
 function resultFromNetlifyJson(
-	parsed: Record<string, unknown>,
+	parsed: JsonObject,
 ): NetlifyAnonymousDeployResult | null {
 	const urlRaw =
-		(typeof parsed.site_url === "string" && parsed.site_url) ||
-		(typeof parsed.url === "string" && parsed.url) ||
-		(typeof parsed.deploy_url === "string" && parsed.deploy_url) ||
-		(typeof parsed.deployUrl === "string" && parsed.deployUrl) ||
-		(typeof parsed.ssl_url === "string" && parsed.ssl_url) ||
-		"";
+		jsonNonEmptyString(parsed.site_url) ||
+		jsonNonEmptyString(parsed.url) ||
+		jsonNonEmptyString(parsed.deploy_url) ||
+		jsonNonEmptyString(parsed.deployUrl) ||
+		jsonNonEmptyString(parsed.ssl_url);
 	const stationUrlRaw = urlRaw.startsWith("http")
 		? urlRaw
 		: urlRaw
@@ -96,19 +106,13 @@ function resultFromNetlifyJson(
 	// CLI may emit http://*.netlify.app — normalize to https for browsers.
 	const stationUrl = stationUrlRaw.replace(/^http:\/\//u, "https://");
 	const deployId =
-		(typeof parsed.deploy_id === "string" && parsed.deploy_id) ||
-		(typeof parsed.deployId === "string" && parsed.deployId) ||
-		(typeof parsed.site_id === "string" && parsed.site_id) ||
-		(typeof parsed.id === "string" && parsed.id) ||
-		"";
+		jsonNonEmptyString(parsed.deploy_id) ||
+		jsonNonEmptyString(parsed.deployId) ||
+		jsonNonEmptyString(parsed.site_id) ||
+		jsonNonEmptyString(parsed.id);
 	let claimUrl =
-		(typeof parsed.claim_url === "string" && parsed.claim_url) ||
-		(typeof parsed.claimUrl === "string" && parsed.claimUrl) ||
-		"";
-	const password =
-		typeof parsed.password === "string" && parsed.password.length > 0
-			? parsed.password
-			: "";
+		jsonNonEmptyString(parsed.claim_url) || jsonNonEmptyString(parsed.claimUrl);
+	const password = jsonNonEmptyString(parsed.password);
 	// Drop sites are password-gated until claimed — surface password on claimUrl.
 	if (claimUrl && password && !claimUrl.includes("password=")) {
 		const sep = claimUrl.includes("?") ? "&" : "#";
@@ -143,28 +147,20 @@ export function parseNetlifyAnonymousDeployOutput(
 	const jsonStart = trimmed.indexOf("{");
 	const jsonEnd = trimmed.lastIndexOf("}");
 	if (jsonStart >= 0 && jsonEnd > jsonStart) {
-		try {
-			const parsed = JSON.parse(
-				trimmed.slice(jsonStart, jsonEnd + 1),
-			) as Record<string, unknown>;
+		const parsed = parseJsonValue(trimmed.slice(jsonStart, jsonEnd + 1));
+		if (isJsonObject(parsed)) {
 			const fromBlob = resultFromNetlifyJson(parsed);
 			if (fromBlob) return fromBlob;
-		} catch {
-			// fall through to line / URL strategies
 		}
 	}
 
 	for (const line of trimmed.split(/\r?\n/u)) {
 		const candidate = line.trim();
 		if (!candidate.startsWith("{")) continue;
-		try {
-			const fromLine = resultFromNetlifyJson(
-				JSON.parse(candidate) as Record<string, unknown>,
-			);
-			if (fromLine) return fromLine;
-		} catch {
-			// keep scanning
-		}
+		const parsed = parseJsonValue(candidate);
+		if (!isJsonObject(parsed)) continue;
+		const fromLine = resultFromNetlifyJson(parsed);
+		if (fromLine) return fromLine;
 	}
 
 	// `netlify.app` must be the end of the *host*, not merely present somewhere
@@ -298,8 +294,8 @@ export async function provisionTemporaryEnvironmentStation(
 ): Promise<TemporaryEnvironmentStationResult> {
 	const { workDir } = await materializeNetlifyStation({
 		stationId: input.stationId,
-		...(input.files ? { files: input.files } : {}),
-		...(input.workDir ? { rootDir: input.workDir } : {}),
+		...(input.files ? { files: input.files } : undefined),
+		...(input.workDir ? { rootDir: input.workDir } : undefined),
 	});
 	const transport = input.transport ?? createNetlifyAnonymousCliTransport();
 	const deployed = await transport.deployAnonymous({

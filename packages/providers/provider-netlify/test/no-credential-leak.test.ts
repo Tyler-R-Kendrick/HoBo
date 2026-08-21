@@ -29,6 +29,7 @@ import {
 	scanForCredentialMaterial,
 	toAnonymousSiteReceipt,
 } from "../src/index.js";
+import { type JsonValue, parseJsonValue } from "../src/json.js";
 
 const FIXTURES = join(import.meta.dirname, "fixtures");
 const NOW = Date.UTC(2026, 7, 8, 12, 0, 0);
@@ -125,7 +126,7 @@ const CREDENTIAL_PATTERNS: readonly {
 	{ name: "private key block", re: /-----BEGIN [A-Z ]*PRIVATE KEY-----/u },
 ];
 
-function assertClean(label: string, value: unknown): void {
+function assertClean(label: string, value: JsonValue): void {
 	const serialized = JSON.stringify(value) ?? String(value);
 	for (const pattern of CREDENTIAL_PATTERNS) {
 		expect(pattern.re.test(serialized), `${label} leaked ${pattern.name}`).toBe(
@@ -136,7 +137,10 @@ function assertClean(label: string, value: unknown): void {
 
 describe("the site record carries locators, never material", () => {
 	it("has no claim URL anywhere in it", async () => {
-		assertClean("AnonymousSiteRecord", await record());
+		assertClean(
+			"AnonymousSiteRecord",
+			parseJsonValue(JSON.stringify(await record())),
+		);
 	});
 
 	it("still has everything an operator needs", async () => {
@@ -154,7 +158,11 @@ describe("the receipt is safe to show a human", () => {
 		const value = await record();
 		assertClean(
 			"AnonymousSiteReceipt",
-			toAnonymousSiteReceipt({ record: value, observedAtMs: NOW }),
+			parseJsonValue(
+				JSON.stringify(
+					toAnonymousSiteReceipt({ record: value, observedAtMs: NOW }),
+				),
+			),
 		);
 	});
 });
@@ -168,19 +176,25 @@ describe("plans, candidates, and definitions are clean", () => {
 			createdAtMs: NOW,
 			fencingToken: "fence-1",
 		});
-		assertClean("AnonymousClaimPlan", plan);
+		assertClean("AnonymousClaimPlan", parseJsonValue(JSON.stringify(plan)));
 	});
 
 	it("the selection candidates carry none", () => {
-		assertClean("anonymous candidate", NETLIFY_ANONYMOUS_STATIC_SITE_CANDIDATE);
+		assertClean(
+			"anonymous candidate",
+			parseJsonValue(JSON.stringify(NETLIFY_ANONYMOUS_STATIC_SITE_CANDIDATE)),
+		);
 		assertClean(
 			"authenticated candidate",
-			NETLIFY_AUTHENTICATED_SITE_CANDIDATE,
+			parseJsonValue(JSON.stringify(NETLIFY_AUTHENTICATED_SITE_CANDIDATE)),
 		);
 	});
 
 	it("the resource definitions carry none", () => {
-		assertClean("NETLIFY_DEFINITIONS", NETLIFY_DEFINITIONS);
+		assertClean(
+			"NETLIFY_DEFINITIONS",
+			parseJsonValue(JSON.stringify(NETLIFY_DEFINITIONS)),
+		);
 	});
 
 	it("the parsed observation is the one place the URL exists", () => {
@@ -216,11 +230,16 @@ describe("errors do not become an exfiltration channel", () => {
 			"the deploy was rejected",
 			{ detail: { stderr: redactProviderText("token=FAKEsecret000000", 64) } },
 		);
-		assertClean("NetlifyProviderError", {
-			code: error.code,
-			message: error.message,
-			detail: error.detail,
-		});
+		assertClean(
+			"NetlifyProviderError",
+			parseJsonValue(
+				JSON.stringify({
+					code: error.code,
+					message: error.message,
+					detail: error.detail,
+				}),
+			),
+		);
 	});
 
 	it("bounds how much output it will echo at all", () => {
@@ -248,7 +267,10 @@ describe("the scanner itself works, so a clean result means something", () => {
 	it("passes a clean record", async () => {
 		const value = await record();
 		expect(() => {
-			assertNoCredentialMaterial(value, "AnonymousSiteRecord");
+			assertNoCredentialMaterial(
+				parseJsonValue(JSON.stringify(value)),
+				"AnonymousSiteRecord",
+			);
 		}).not.toThrow();
 	});
 });

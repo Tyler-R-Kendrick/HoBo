@@ -18,23 +18,20 @@ import {
  * http" from "that host is not ours", so it is what these assertions pin.
  */
 function expectRefusal(
-	call: () => unknown,
+	call: () => void,
 	guard: string,
 	messageFragment: RegExp,
 ): void {
-	let thrown: unknown;
 	try {
 		call();
 	} catch (cause) {
-		thrown = cause;
+		if (!(cause instanceof NetlifyProviderError)) throw cause;
+		expect(cause.code).toBe("PROVIDER_CONTRACT_CHANGED");
+		expect(cause.detail).toMatchObject({ guard });
+		expect(cause.message).toMatch(messageFragment);
+		return;
 	}
-	expect(thrown, "endpoint was admitted instead of refused").toBeInstanceOf(
-		NetlifyProviderError,
-	);
-	const error = thrown as NetlifyProviderError;
-	expect(error.code).toBe("PROVIDER_CONTRACT_CHANGED");
-	expect(error.detail).toMatchObject({ guard });
-	expect(error.message).toMatch(messageFragment);
+	throw new Error("endpoint was admitted instead of refused");
 }
 
 /**

@@ -89,7 +89,7 @@ export const ANONYMOUS_ENV_ALLOWLIST = [
 export function anonymousDeployEnv(
 	source: Readonly<Record<string, string | undefined>>,
 ): Readonly<Record<string, string>> {
-	const env: Record<string, string> = {
+	const env = {
 		// Keep the CLI non-interactive and quiet about updates; an anonymous
 		// deploy has no human at the terminal to answer a prompt.
 		CI: "1",
@@ -98,13 +98,19 @@ export function anonymousDeployEnv(
 	};
 	for (const key of ANONYMOUS_ENV_ALLOWLIST) {
 		const value = source[key];
-		if (typeof value === "string" && value.length > 0) env[key] = value;
+		if (value !== undefined && value.length > 0) {
+			Object.assign(env, { [key]: value });
+		}
 	}
 	return Object.freeze(env);
 }
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: detecting a NUL byte is the point — execve truncates an argument there, so the child would receive a different value than the one that was checked.
-const ARGUMENT_CONTROL_CHARS = /[\u0000]/u;
+function argumentContainsNul(value: string): boolean {
+	for (const ch of value) {
+		if (ch.charCodeAt(0) === 0) return true;
+	}
+	return false;
+}
 
 /**
  * Check that a caller-supplied value can be passed as one argv element.
@@ -135,7 +141,7 @@ export function assertInertArgument(
 			`${label} exceeds the ${maxLength} character limit`,
 		);
 	}
-	if (ARGUMENT_CONTROL_CHARS.test(value)) {
+	if (argumentContainsNul(value)) {
 		// A NUL truncates the argument inside execve, so the child would see a
 		// different value than the one that was checked.
 		throw new NetlifyProviderError(
@@ -267,7 +273,10 @@ export function createNodeProcessRunner(): ProcessRunner {
 						new NetlifyProviderError(
 							"PROVIDER_CONTRACT_CHANGED",
 							`the netlify cli could not be started (${NETLIFY_CLI_PACKAGE_SPEC})`,
-							{ cause },
+							{
+								cause:
+									cause instanceof Error ? cause : new Error(String(cause)),
+							},
 						),
 					);
 				});

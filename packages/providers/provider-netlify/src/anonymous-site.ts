@@ -205,7 +205,7 @@ export function createNetlifyAnonymousSiteDriver(
 						detail: {
 							...(attempt.siteId !== undefined
 								? { siteId: attempt.siteId }
-								: {}),
+								: undefined),
 							adoptable: attempt.siteId !== undefined,
 						},
 					},
@@ -214,10 +214,12 @@ export function createNetlifyAnonymousSiteDriver(
 
 			const argv = buildAnonymousDeployArgv({
 				publishDir: input.publishDir,
-				...(input.siteName !== undefined ? { siteName: input.siteName } : {}),
+				...(input.siteName !== undefined
+					? { siteName: input.siteName }
+					: undefined),
 				...(input.deployMessage !== undefined
 					? { deployMessage: input.deployMessage }
-					: {}),
+					: undefined),
 			});
 			const createdAtMs = input.createdAtMs ?? options.clock();
 			const result = await options.runner.run(argv, {
@@ -303,7 +305,9 @@ export function createNetlifyAnonymousSiteDriver(
 			}
 			return {
 				...record,
-				...(access.kind === "readable" ? { siteName: access.site.name } : {}),
+				...(access.kind === "readable"
+					? { siteName: access.site.name }
+					: undefined),
 				observedAtMs,
 			};
 		},
@@ -461,7 +465,7 @@ function recordFrom(args: {
 		siteUrl: observation.siteUrl,
 		...(observation.deployUrl !== undefined
 			? { deployUrl: observation.deployUrl }
-			: {}),
+			: undefined),
 		claimUrlRef,
 		claimActionId,
 		deployedAtMs: observation.observedAtMs,
@@ -535,14 +539,14 @@ export function assertClaimSettled(state: ClaimCoordinatorState): void {
 		throw new NetlifyProviderError(
 			"CLAIM_PARTIALLY_COMPLETED",
 			`claim bundle ${bundle.id} moved some subjects and not others; it is repairable, not complete`,
-			{ detail: { bundleId: bundle.id, status: bundle.status } },
+			{ detail: { bundleId: bundle.id, bundleStatus: bundle.status } },
 		);
 	}
 	if (bundle.status === "claimed-needs-remediation") {
 		throw new NetlifyProviderError(
 			"CLAIM_REPAIR_REQUIRED",
 			`claim bundle ${bundle.id} needs remediation before it can complete`,
-			{ detail: { bundleId: bundle.id, status: bundle.status } },
+			{ detail: { bundleId: bundle.id, bundleStatus: bundle.status } },
 		);
 	}
 	if (bundle.status === "expired") {
@@ -555,10 +559,10 @@ export function assertClaimSettled(state: ClaimCoordinatorState): void {
 	throw new NetlifyProviderError(
 		"CLAIM_NOT_VERIFIED",
 		`claim bundle ${bundle.id} is ${bundle.status}`,
-		{ detail: { bundleId: bundle.id, status: bundle.status } },
+		{ detail: { bundleId: bundle.id, bundleStatus: bundle.status } },
 	);
 }
 
-export function isClaimError(value: unknown): value is ClaimError {
+export function isClaimError(value: Error): value is ClaimError {
 	return value instanceof ClaimError;
 }

@@ -252,7 +252,7 @@ export default defineConfig({
 				"packages/providers/provider-railway/**": { statements: 98, branches: 97, functions: 100, lines: 98 },
 				"packages/providers/provider-ttl-sh/**": { statements: 91, branches: 87, functions: 91, lines: 91 },
 				"packages/providers/provider-upstash/**": { statements: 84, branches: 76, functions: 87, lines: 85 },
-				"packages/providers/provider-vercel/**": { statements: 81, branches: 73, functions: 78, lines: 82 },
+				"packages/providers/provider-vercel/**": { statements: 89, branches: 82, functions: 91, lines: 89 },
 				"packages/providers/provider-webernetes/**": { statements: 82, branches: 74, functions: 88, lines: 85 },
 				"packages/providers/runner-blacksmith/**": { statements: 90, branches: 81, functions: 100, lines: 90 },
 				"packages/providers/runner-depot/**": { statements: 89, branches: 81, functions: 96, lines: 89 },

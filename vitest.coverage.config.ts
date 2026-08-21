@@ -190,7 +190,7 @@ export default defineConfig({
 				"packages/adapters/**": { statements: 91, branches: 84, functions: 97, lines: 93 },
 				"packages/auth-md/**": { statements: 87, branches: 80, functions: 83, lines: 88 },
 				"packages/bindings/**": { statements: 94, branches: 89, functions: 95, lines: 94 },
-				"packages/bindles/**": { statements: 80, branches: 71, functions: 84, lines: 81 },
+				"packages/bindles/**": { statements: 86, branches: 80, functions: 90, lines: 87 },
 				"packages/broker/**": { statements: 87, branches: 80, functions: 92, lines: 87 },
 				"packages/camps/**": { statements: 99, branches: 98, functions: 100, lines: 100 },
 				"packages/capability-matrix/**": { statements: 97, branches: 83, functions: 97, lines: 99 },

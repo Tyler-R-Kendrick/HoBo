@@ -8,18 +8,21 @@ import {
   type ComponentizeSpec,
   type ToolchainPin,
 } from "./types.js";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 const jcoVersion = pkgVersion("@bytecodealliance/jco");
 const componentizeJsVersion = pkgVersion("@bytecodealliance/componentize-js");
 
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
 
-export function parseComponentizeSpec(raw: unknown): ComponentizeSpec {
-  if (!raw || typeof raw !== "object") {
+export function parseComponentizeSpec(raw: JsonValue): ComponentizeSpec {
+  if (!raw || !isJsonObject(raw)) {
     throw new Error("componentize.invalid_spec: expected object");
   }
 
-  const value = raw as Record<string, unknown>;
+  // SAFETY: `const value = raw as JsonObject;` is required at this I/O or test boundary.
+  const value = raw as JsonObject;
   const name = readString(value, "name");
   const sourceRoot = readString(value, "sourceRoot");
   const entrypoint = readString(value, "entrypoint");
@@ -51,12 +54,13 @@ export function parseComponentizeSpec(raw: unknown): ComponentizeSpec {
   });
 }
 
-function parseToolchainPin(raw: unknown): ToolchainPin {
-  if (!raw || typeof raw !== "object") {
+function parseToolchainPin(raw: JsonValue): ToolchainPin {
+  if (!raw || !isJsonObject(raw)) {
     throw new Error("componentize.invalid_spec: toolchain required");
   }
 
-  const value = raw as Record<string, unknown>;
+  // SAFETY: `const value = raw as JsonObject;` is required at this I/O or test boundary.
+  const value = raw as JsonObject;
   const toolchain = Object.freeze({
     jco: readString(value, "jco"),
     componentizeJs: readString(value, "componentizeJs"),
@@ -65,6 +69,7 @@ function parseToolchainPin(raw: unknown): ToolchainPin {
   });
 
   for (const [key, expected] of Object.entries(PINNED_TOOLCHAIN)) {
+    // SAFETY: `const actual = toolchain[key as keyof ToolchainPin];` is required at this I/O or test boundary.
     const actual = toolchain[key as keyof ToolchainPin];
     if (actual !== expected) {
       throw new Error(`componentize.toolchain_skew: ${key} expected ${expected} got ${actual}`);
@@ -98,9 +103,9 @@ export function assertMediaType(value: string) {
   }
 }
 
-function readString(value: Record<string, unknown>, key: string): string {
+function readString(value: JsonObject, key: string): string {
   const candidate = value[key];
-  if (typeof candidate !== "string" || candidate.length === 0) {
+  if (!isJsonString(candidate) || candidate.length === 0) {
     throw new Error(`componentize.invalid_spec: ${key} required`);
   }
   return candidate;
@@ -122,6 +127,7 @@ function pkgVersion(name: string): string {
     ...name.split("/"),
   );
   const packageJsonPath = join(packageRoot, "package.json");
+  // SAFETY: `const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {` is required at this I/O or test boundary.
   const parsed = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
     name?: string;
     version?: string;

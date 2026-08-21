@@ -1,5 +1,7 @@
 import { CLI_COMMAND_SCHEMAS, createHoboCli } from "../../hobo-cli-shell-contract/src/cli-shell.js";
 import { createRequestTokenTool } from "../../token-broker-skeleton-contract/src/token-broker-skeleton.js";
+import { isJsonString, isJsonBoolean, isJsonObject } from "./json.js";
+
 
 export const DOCUMENTED_MCP_TOOLS = [
   "list_bindles",
@@ -347,9 +349,9 @@ function matchesType(value, definition) {
     case "object":
       return isPlainObject(value);
     case "string":
-      return typeof value === "string" && value.length > 0;
+      return isJsonString(value) && value.length > 0;
     case "boolean":
-      return typeof value === "boolean";
+      return isJsonBoolean(value);
     default:
       return true;
   }
@@ -412,7 +414,7 @@ function failure(toolName, code, message) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );

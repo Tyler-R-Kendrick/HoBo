@@ -10,6 +10,7 @@ import {
 	type IacResource,
 	KUBERNETES_IAC_PROVIDER,
 } from "./iac-program.js";
+import type { JsonObject } from "./json.js";
 import { PROVIDER_TARGET, type TypedOptionBlock } from "./options.js";
 import type { ResourcePlan } from "./types.js";
 
@@ -34,11 +35,19 @@ export type RealizablePort = keyof typeof PORT_TO_CLASS;
 // Service DNS name, not an external address — this provider creates no Ingress
 // and no LoadBalancer, so advertising a public hostname would be claiming
 // something it never provisioned.
-const OUTPUTS_BY_CLASS: Record<string, string[]> = {
+interface OutputsByClass {
+	readonly [resourceClass: string]: readonly string[];
+}
+
+const OUTPUTS_BY_CLASS: OutputsByClass = {
 	"kubernetes:deployment": ["url", "namespace", "binding"],
 };
 
-const PRIMARY_OUTPUT: Record<string, string> = {
+interface PrimaryOutputByClass {
+	readonly [resourceClass: string]: string;
+}
+
+const PRIMARY_OUTPUT: PrimaryOutputByClass = {
 	"kubernetes:deployment": "url",
 };
 
@@ -59,8 +68,9 @@ export function mergeKubernetesOptions(
 	// `.with(...)` builder emits the shared TypedOptionBlock shape, and
 	// foreign-provider blocks drop below by providerId.
 	options: ResourcePlan["options"] = [],
-): Record<string, unknown> {
-	const merged: Record<string, unknown> = {};
+): JsonObject {
+	const merged: JsonObject = {};
+	// SAFETY: assertion to `tions as TypedOptionBlock[]) ` is required at this boundary.
 	for (const block of options as TypedOptionBlock[]) {
 		if (block.providerId !== PROVIDER_TARGET) {
 			continue;
@@ -79,13 +89,13 @@ function buildResource(plan: ResourcePlan, withBindRefs: boolean): IacResource {
 			: { providerResourceId: dep },
 	);
 
-	const inputs: Record<string, unknown> = {
+	const inputs: JsonObject = {
 		port: plan.port,
 		providerService: mapping.providerService,
 		features: [...mapping.features],
 		options: mergeKubernetesOptions(plan.options),
 		bindings,
-		...(plan.region === undefined ? {} : { region: plan.region }),
+		...(plan.region === undefined ? undefined : { region: plan.region }),
 	};
 
 	return {
@@ -93,7 +103,7 @@ function buildResource(plan: ResourcePlan, withBindRefs: boolean): IacResource {
 		type: resourceClass,
 		provider: KUBERNETES_IAC_PROVIDER,
 		inputs,
-		outputs: OUTPUTS_BY_CLASS[resourceClass] ?? ["binding"],
+		outputs: [...(OUTPUTS_BY_CLASS[resourceClass] ?? ["binding"])],
 	};
 }
 
@@ -156,6 +166,7 @@ export function realizeResourcePlans(
 	}
 	const resources = plans.map((plan) => buildResource(plan, true));
 	const deploymentId = options.deploymentId ?? "hello-bindle-kubernetes";
+	// SAFETY: assertion to `sources[0] as IacResource; ` is required at this boundary.
 	const first = resources[0] as IacResource;
 	const iac: IacProgram = {
 		apiVersion: IAC_PROGRAM_API_VERSION,

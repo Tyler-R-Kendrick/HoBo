@@ -75,8 +75,14 @@ import {
 	type TransportMethod,
 	type TransportResponse,
 } from "@hobo/core";
-
 import { redactClusterText } from "./errors.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	type StringBag,
+} from "./json.js";
 import { PROVIDER_TARGET } from "./options.js";
 import {
 	guardedKubernetesTransport,
@@ -223,41 +229,33 @@ function compareStrings(left: string, right: string): number {
 	return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
+function isPlainObject<T>(value: T): value is T & JsonObject {
+	if (value === null || !isJsonObject(value) || Array.isArray(value)) {
 		return false;
 	}
 	const prototype: unknown = Object.getPrototypeOf(value);
 	return prototype === Object.prototype || prototype === null;
 }
 
-function optionalString(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): string | undefined {
+function optionalString(record: JsonObject, key: string): string | undefined {
 	const value = record[key];
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return isJsonString(value) && value.trim().length > 0 ? value : undefined;
 }
 
-function nestedRecord(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): Readonly<Record<string, unknown>> {
+function nestedRecord(record: JsonObject, key: string): JsonObject {
 	const value = record[key];
 	return isPlainObject(value) ? value : {};
 }
 
 /** Key-sorted JSON, so a spec compare does not depend on key order. */
-function stableJson(value: unknown): string {
+function stableJson(value: JsonValue): string {
 	if (Array.isArray(value)) {
 		return `[${value.map((item) => stableJson(item)).join(",")}]`;
 	}
 	if (isPlainObject(value)) {
 		return `{${Object.keys(value)
 			.sort(compareStrings)
-			.map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
+			.map((key) => `${JSON.stringify(key)}:${stableJson(value[key] ?? null)}`)
 			.join(",")}}`;
 	}
 	return JSON.stringify(value) ?? "null";
@@ -389,9 +387,9 @@ async function send(
 			authorization: `Bearer ${context.token}`,
 			...(body !== undefined
 				? { "content-type": call.contentType ?? "application/json" }
-				: {}),
+				: undefined),
 		},
-		...(body !== undefined ? { body } : {}),
+		...(body !== undefined ? { body } : undefined),
 		timeoutMs: RESOLVER_MAX_TIMEOUT_MS,
 		maxResponseBytes: RESOLVER_MAX_RESPONSE_BYTES,
 	});
@@ -404,11 +402,12 @@ function isNotFound(response: TransportResponse): boolean {
 function parseJsonRecord(
 	response: TransportResponse,
 	label: string,
-): Record<string, unknown> {
+): JsonObject {
 	if (response.body.trim().length === 0) return {};
-	let parsed: unknown;
+	let parsed: JsonValue;
 	try {
-		parsed = JSON.parse(response.body) as unknown;
+		// SAFETY: assertion to `) as unknown; } catch { throw new` is required at this boundary.
+		parsed = JSON.parse(response.body) as JsonValue;
 	} catch {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
@@ -454,10 +453,7 @@ function providerRejection(
 	);
 }
 
-function expectOk(
-	response: TransportResponse,
-	label: string,
-): Record<string, unknown> {
+function expectOk(response: TransportResponse, label: string): JsonObject {
 	if (response.status >= 400) throw providerRejection(response, label);
 	return parseJsonRecord(response, label);
 }
@@ -475,7 +471,7 @@ interface KubernetesResolverContext {
 	/** The deterministic object name: `desired.name`, else the logical id. */
 	readonly name: string;
 	readonly namespace: string;
-	readonly desired: Readonly<Record<string, unknown>>;
+	readonly desired: JsonObject;
 	readonly knownPhysicalId: string | undefined;
 	/**
 	 * The host's Secret custody, if it wired one. A function rather than a
@@ -491,7 +487,7 @@ interface KubernetesResolverContext {
 function outcome(
 	action: ResolverAction,
 	physicalId: string,
-	outputs: Readonly<Record<string, unknown>>,
+	outputs: JsonObject,
 	diagnostics: readonly string[],
 ): ResolveOutcome {
 	return Object.freeze({
@@ -518,7 +514,7 @@ async function resolveToken(
 	resolve: (ref: string) => Promise<string>,
 ): Promise<string> {
 	const ref = request.credentialRef;
-	if (typeof ref !== "string" || ref.trim().length === 0) {
+	if (!isJsonString(ref) || ref.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			'kubernetes resolver: credentialRef is empty. Supply a locator such as "file:///var/run/secrets/kubernetes.io/serviceaccount/token" or "secret://camp/cluster-token" and register it with the host credential resolver; the resolver never accepts inline credential material',
@@ -549,7 +545,7 @@ async function resolveToken(
 			)}. Register the reference with the credential resolver before deploying`,
 		);
 	}
-	if (typeof material !== "string" || material.trim().length === 0) {
+	if (!isJsonString(material) || material.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			`kubernetes resolver: credentialRef ${JSON.stringify(trimmed)} resolved to nothing. A missing credential is refused rather than retried unauthenticated, which would surface at the apiserver as a confusing 401`,
@@ -561,7 +557,7 @@ async function resolveToken(
 function objectName(request: ResolveRequest, productId: string): string {
 	const candidate =
 		optionalString(request.desired, "name") ??
-		(typeof request.ref.logicalId === "string" ? request.ref.logicalId : "");
+		(isJsonString(request.ref.logicalId) ? request.ref.logicalId : "");
 	if (candidate.length === 0) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
@@ -601,9 +597,7 @@ function requiredNamespace(request: ResolveRequest, productId: string): string {
 
 function knownPhysicalId(request: ResolveRequest): string | undefined {
 	const value = request.ref.physicalId;
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return isJsonString(value) && value.trim().length > 0 ? value : undefined;
 }
 
 /**
@@ -617,7 +611,7 @@ function knownPhysicalId(request: ResolveRequest): string | undefined {
 function desiredSpec(
 	context: KubernetesResolverContext,
 	productId: string,
-): Record<string, unknown> {
+): JsonObject {
 	const spec = context.desired.spec;
 	if (!isPlainObject(spec)) {
 		throw new ResolverError(
@@ -628,9 +622,7 @@ function desiredSpec(
 	return spec;
 }
 
-function desiredLabels(
-	context: KubernetesResolverContext,
-): Record<string, unknown> {
+function desiredLabels(context: KubernetesResolverContext): JsonObject {
 	const labels = context.desired.labels;
 	return isPlainObject(labels) ? labels : {};
 }
@@ -656,8 +648,8 @@ function objectPath(
 function objectBody(
 	kind: ObjectKind,
 	context: KubernetesResolverContext,
-	spec: Record<string, unknown>,
-): Record<string, unknown> {
+	spec: JsonObject,
+): JsonObject {
 	const labels = desiredLabels(context);
 	return {
 		apiVersion: kind.apiVersion,
@@ -665,7 +657,7 @@ function objectBody(
 		metadata: {
 			name: context.name,
 			namespace: context.namespace,
-			...(Object.keys(labels).length > 0 ? { labels } : {}),
+			...(Object.keys(labels).length > 0 ? { labels } : undefined),
 		},
 		spec,
 	};
@@ -684,23 +676,25 @@ function clusterDnsName(context: KubernetesResolverContext): string {
 function objectOutputs(
 	kind: ObjectKind,
 	context: KubernetesResolverContext,
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+	record: JsonObject,
+): JsonObject {
 	const metadata = nestedRecord(record, "metadata");
 	const uid = optionalString(metadata, "uid");
 	return {
 		name: context.name,
 		namespace: context.namespace,
 		kind: kind.kind,
-		...(uid !== undefined ? { uid } : {}),
-		...(kind.kind === "Service" ? { clusterDns: clusterDnsName(context) } : {}),
+		...(uid !== undefined ? { uid } : undefined),
+		...(kind.kind === "Service"
+			? { clusterDns: clusterDnsName(context) }
+			: undefined),
 	};
 }
 
 function driftDiagnostics(
 	kind: ObjectKind,
-	observed: Readonly<Record<string, unknown>>,
-	wanted: Record<string, unknown>,
+	observed: JsonObject,
+	wanted: JsonObject,
 ): readonly string[] {
 	if (stableJson(nestedRecord(observed, "spec")) === stableJson(wanted)) {
 		return [];
@@ -717,11 +711,16 @@ function driftDiagnostics(
 function builtInSpec(
 	productId: string,
 ): Omit<KubernetesResolverSpec, "productId"> {
-	const kind = OBJECT_KINDS[productId] as ObjectKind;
+	const selected = OBJECT_KINDS[productId];
+	if (selected === undefined) {
+		throw new Error(`unknown kubernetes object product ${productId}`);
+	}
+	const kind = selected;
 
+	// SAFETY: assertion to ` async function read( context: Kube` is required at this boundary.
 	async function read(
 		context: KubernetesResolverContext,
-	): Promise<Record<string, unknown> | undefined> {
+	): Promise<JsonObject | undefined> {
 		const label = `kubernetes read ${kind.kind} ${context.namespace}/${context.name}`;
 		const response = await send(context, {
 			method: "GET",
@@ -840,6 +839,7 @@ function builtInSpec(
  *   - drift is decided by comparing encoded values in memory, so a rotation
  *     converges without either version being rendered anywhere.
  */
+// SAFETY: assertion to `jectKind; /** * Base64 of the UTF-8 bytes, which is wh` is required at this boundary.
 const SECRET_KIND = OBJECT_KINDS[KUBERNETES_SECRET_PRODUCT_ID] as ObjectKind;
 
 /**
@@ -880,7 +880,7 @@ async function secretData(
 		);
 	}
 	const material = await resolve(context.request.ref.logicalId);
-	if (material === null || typeof material !== "object") {
+	if (material === null || !isJsonObject(material)) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			`${KUBERNETES_SECRET_PRODUCT_ID}: resolveSecretData did not return an object of string values for ${JSON.stringify(context.request.ref.logicalId)}`,
@@ -896,7 +896,7 @@ async function secretData(
 		);
 	}
 	for (const [key, value] of entries) {
-		if (typeof value !== "string") {
+		if (!isJsonString(value)) {
 			throw new ResolverError(
 				"RESOLVER_CREDENTIAL_MISSING",
 				// The key name is safe to print; the value is not, and is not.
@@ -909,17 +909,16 @@ async function secretData(
 }
 
 /** `{ key: base64(value) }`, which is exactly the apiserver's `data` shape. */
-function encodedData(
-	material: Readonly<Record<string, string>>,
-): Record<string, string> {
-	const out: Record<string, string> = {};
+function encodedData(material: StringBag): StringBag {
+	const out: StringBag = {};
 	for (const key of Object.keys(material).sort(compareStrings)) {
-		out[key] = base64Utf8(material[key] as string);
+		out[key] = base64Utf8(material[key] ?? "");
 	}
 	return out;
 }
 
 /**
+ // SAFETY: assertion to `tputs: what a binding n` is required at this boundary.
  * Outputs: what a binding needs to *use* the Secret, and nothing more.
  *
  * The key names are published because a projection has to name a key to mount
@@ -928,8 +927,8 @@ function encodedData(
  */
 function secretOutputs(
 	context: KubernetesResolverContext,
-	observed: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+	observed: JsonObject,
+): JsonObject {
 	const data = nestedRecord(observed, "data");
 	return {
 		...objectOutputs(SECRET_KIND, context, observed),
@@ -979,7 +978,7 @@ const SECRET_SPEC: Omit<KubernetesResolverSpec, "productId"> = {
 			metadata: {
 				name: context.name,
 				namespace: context.namespace,
-				...(Object.keys(labels).length > 0 ? { labels } : {}),
+				...(Object.keys(labels).length > 0 ? { labels } : undefined),
 			},
 			type: secretType(context),
 			data: wanted,
@@ -1087,7 +1086,7 @@ function createResolver(
 	// Parses (and refuses) the apiserver URL at construction time rather than
 	// on the first call, when a token is already in hand.
 	parseApiServerEndpoint(options.apiServerUrl);
-	if (typeof options.resolveCredential !== "function") {
+	if (!(options.resolveCredential instanceof Function)) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			"kubernetes resolvers need an injected resolveCredential(ref): the resolver never reads a kubeconfig or a projected token file itself",

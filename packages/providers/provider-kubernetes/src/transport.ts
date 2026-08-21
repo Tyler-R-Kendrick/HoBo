@@ -220,7 +220,7 @@ export function createFetchTransport(options: {
 				const response = await fetchImpl(request.url, {
 					method: request.method,
 					headers: { ...request.headers },
-					...(request.body !== undefined ? { body: request.body } : {}),
+					...(request.body !== undefined ? { body: request.body } : undefined),
 					redirect: "manual",
 					signal: controller.signal,
 				});
@@ -243,7 +243,10 @@ export function createFetchTransport(options: {
 				throw new KubernetesProviderError(
 					"PROVIDER_OPERATION_AMBIGUOUS",
 					`${request.method} to the apiserver did not complete`,
-					{ cause, detail: { method: request.method } },
+					{
+						cause: cause instanceof Error ? cause : new Error(String(cause)),
+						detail: { method: request.method },
+					},
 				);
 			} finally {
 				clearTimeout(timer);

@@ -21,7 +21,7 @@ export function kubernetesYardRuntimeRegistration(options?: {
 	readonly runtimeId: typeof KUBERNETES_YARD_RUNTIME_ID;
 	readonly providerId: "kubernetes";
 	readonly version: string;
-	readonly supportedShape: {
+	readonly supportedKind: {
 		readonly regions: readonly string[];
 		readonly capabilities: readonly string[];
 		readonly requireProperties: readonly string[];
@@ -41,7 +41,7 @@ export function kubernetesYardRuntimeRegistration(options?: {
 		runtimeId: KUBERNETES_YARD_RUNTIME_ID,
 		providerId: "kubernetes",
 		version: "1.0.0",
-		supportedShape: Object.freeze({
+		supportedKind: Object.freeze({
 			regions: Object.freeze(["in-cluster"]),
 			capabilities: Object.freeze([
 				"managed-container-substrate",

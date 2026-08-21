@@ -12,6 +12,8 @@ import {
 
 const temps: string[] = [];
 const servers: ControlApiServer[] = [];
+type JsonValue = null | boolean | number | string | JsonValue[] | JsonObject;
+type JsonObject = { [key: string]: JsonValue };
 
 afterEach(async () => {
 	for (const s of servers.splice(0)) await s.close();
@@ -29,17 +31,18 @@ async function json(
 	base: string,
 	path: string,
 	init?: RequestInit,
-): Promise<{ status: number; body: Record<string, unknown> }> {
+): Promise<{ status: number; body: JsonObject }> {
 	const res = await fetch(`${base}${path}`, {
 		...init,
 		headers: {
 			"content-type": "application/json",
-			...(init?.headers ?? {}),
+			...init?.headers,
 		},
 	});
 	return {
 		status: res.status,
-		body: (await res.json()) as Record<string, unknown>,
+		// SAFETY: fetch JSON is parsed at this test I/O boundary.
+		body: (await res.json()) as JsonObject,
 	};
 }
 
@@ -68,6 +71,7 @@ describe("@hobo/control-api", () => {
 			"/v1/yard/snapshot?stationId=station:local",
 		);
 		expect(snap.body.ok).toBe(true);
+		// SAFETY: this route's yard snapshot contract contains occupancy and rails.
 		const data = snap.body.data as {
 			occupancy: { stationId: string; status: string };
 			rails: unknown[];
@@ -96,6 +100,7 @@ describe("@hobo/control-api", () => {
 			server.url,
 			"/v1/yard/snapshot?stationId=station:local",
 		);
+		// SAFETY: this route's yard snapshot contract contains connections and metering.
 		const data2 = snap2.body.data as {
 			connections: { status: string }[];
 			metering: { trafficRate: number };

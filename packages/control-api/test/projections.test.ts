@@ -8,6 +8,8 @@ import { type ControlApiServer, createControlApiServer } from "../src/index.js";
 
 const temps: string[] = [];
 const servers: ControlApiServer[] = [];
+type JsonValue = null | boolean | number | string | JsonValue[] | JsonObject;
+type JsonObject = { [key: string]: JsonValue };
 
 afterEach(async () => {
 	for (const s of servers.splice(0)) await s.close();
@@ -25,14 +27,15 @@ async function json(
 	base: string,
 	path: string,
 	init?: RequestInit,
-): Promise<{ status: number; body: Record<string, unknown> }> {
+): Promise<{ status: number; body: JsonObject }> {
 	const res = await fetch(`${base}${path}`, {
 		...init,
-		headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+		headers: { "content-type": "application/json", ...init?.headers },
 	});
 	return {
 		status: res.status,
-		body: (await res.json()) as Record<string, unknown>,
+		// SAFETY: fetch JSON is parsed at this test I/O boundary.
+		body: (await res.json()) as JsonObject,
 	};
 }
 
@@ -104,6 +107,7 @@ describe("control-api cloud projections", () => {
 
 		const view = await json(server.url, "/v1/deployments/view");
 		expect(view.body.ok).toBe(true);
+		// SAFETY: the deployment projection response matches this route contract.
 		const data = view.body.data as {
 			available: boolean;
 			source: string;
@@ -148,6 +152,7 @@ describe("control-api cloud projections", () => {
 
 		const audit = await json(server.url, "/v1/audit/credentials");
 		expect(audit.body.ok).toBe(true);
+		// SAFETY: the credential audit response matches this route contract.
 		const data = audit.body.data as {
 			available: boolean;
 			sources: string[];
@@ -171,7 +176,8 @@ describe("control-api cloud projections", () => {
 		});
 		servers.push(server);
 		const openapi = await json(server.url, "/v1/openapi.json");
-		const paths = openapi.body.paths as Record<string, unknown>;
+		// SAFETY: the OpenAPI response contract exposes a string-keyed paths object.
+		const paths = openapi.body.paths as JsonObject;
 		expect(paths["/v1/deployments/view"]).toBeTruthy();
 		expect(paths["/v1/audit/credentials"]).toBeTruthy();
 	});

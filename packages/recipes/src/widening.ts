@@ -10,7 +10,6 @@ import type {
 	CapabilityProfileRegistry,
 	CapabilityRequirement,
 	ProfileImplementation,
-	RealizationKind,
 	RejectionCode,
 } from "@hobo/capability-profiles";
 
@@ -40,6 +39,7 @@ export type WideningNotice = {
 };
 
 export function isWideningKind(value: string): value is WideningKind {
+	// SAFETY: assertion to `DENING_KINDS as readonly string[]).` is required at this boundary.
 	return (WIDENING_KINDS as readonly string[]).includes(value);
 }
 
@@ -55,11 +55,11 @@ export function sortWidenings(
 	);
 }
 
-const REALIZATION_LEVEL: Readonly<Record<RealizationKind, number>> = {
+const REALIZATION_LEVEL = {
 	native: 0,
 	pack: 1,
 	bridge: 2,
-};
+} as const;
 
 /**
  * Compare the semantics a caller asked for against the semantics a recipe

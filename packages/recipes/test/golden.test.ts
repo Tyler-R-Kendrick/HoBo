@@ -16,6 +16,7 @@ import {
 	buildDeploymentOffer,
 	compileRecipe,
 	type DeploymentOffer,
+	type RecipeCompilationAccepted,
 	type SolutionRecipe,
 	STANDARD_SOLUTION_RECIPES,
 } from "../src/index.js";
@@ -38,7 +39,21 @@ function fileNameFor(
 	return `${recipe.id.replace(/[^a-z0-9]+/gu, "-")}.${kind}.json`;
 }
 
-function readOrWrite(name: string, actual: unknown): unknown {
+interface TopologySnapshot {
+	readonly recipeId: string;
+	readonly topologyDigest: string;
+	readonly resolutionDigest: string;
+	readonly topology: RecipeCompilationAccepted["topology"];
+	readonly claims: RecipeCompilationAccepted["claims"];
+	readonly guestLeases: RecipeCompilationAccepted["guestLeases"];
+	readonly portability: RecipeCompilationAccepted["portability"];
+	readonly widenings: RecipeCompilationAccepted["widenings"];
+	readonly trustEvidenceRefs: readonly string[];
+	readonly conformanceEvidenceRefs: readonly string[];
+	readonly sponsoredCostMinorUnits: number;
+}
+
+function readOrWrite(name: string, actual: TopologySnapshot): TopologySnapshot {
 	const path = join(GOLDEN_DIR, name);
 	const serialized = `${JSON.stringify(actual, null, "\t")}\n`;
 	if (UPDATE) {
@@ -46,14 +61,18 @@ function readOrWrite(name: string, actual: unknown): unknown {
 		writeFileSync(path, serialized, "utf8");
 		return actual;
 	}
-	return JSON.parse(readFileSync(path, "utf8")) as unknown;
+	const parsed = JSON.parse(readFileSync(path, "utf8"));
+	// SAFETY: golden files are JSON snapshots of TopologySnapshot.
+	return parsed as TopologySnapshot;
 }
 
-function resolutionOf(recipe: SolutionRecipe): {
-	readonly golden: unknown;
-	readonly actual: unknown;
+interface GoldenResolution {
+	readonly golden: TopologySnapshot;
+	readonly actual: TopologySnapshot;
 	readonly offer: DeploymentOffer;
-} {
+}
+
+function resolutionOf(recipe: SolutionRecipe): GoldenResolution {
 	const compilation = compileRecipe(compileInputFor(recipe));
 	if (!compilation.ok) {
 		throw new Error(
@@ -95,9 +114,11 @@ describe("golden resolutions", () => {
 	for (const recipe of STANDARD_SOLUTION_RECIPES) {
 		it(`${recipe.id} resolves to its recorded topology and offer`, () => {
 			const { golden, actual, offer } = resolutionOf(recipe);
+			// SAFETY: assertion to `JSON.parse(JSON.stringify(actual)) as unknown` is required at this boundary.
 			expect(JSON.parse(JSON.stringify(actual)) as unknown).toEqual(golden);
 
 			const goldenOffer = readOrWrite(fileNameFor(recipe, "offer"), offer);
+			// SAFETY: assertion to `JSON.parse(JSON.stringify(offer)) as unknown` is required at this boundary.
 			expect(JSON.parse(JSON.stringify(offer)) as unknown).toEqual(goldenOffer);
 		});
 	}

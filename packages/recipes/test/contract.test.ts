@@ -64,6 +64,7 @@ type Pact = {
 	readonly interactions: readonly Interaction[];
 };
 
+// SAFETY: assertion to `.parse( readFileSync( join( dirname(fileURLToPath(import.meta.url)), "..", "contracts", "pacts", "recipe-compiler.pact.j` is required at this boundary.
 const PACT: Pact = JSON.parse(
 	readFileSync(
 		join(
@@ -100,14 +101,21 @@ function requestFor(recipe: SolutionRecipe, realtime: string | undefined) {
 		dependencies: base.dependencies,
 		requestedSemantics: {
 			...base.requestedSemantics,
+			// SAFETY: assertion to `time as RealtimeGrade, ` is required at this boundary.
 			realtime: realtime as RealtimeGrade,
 		},
 	});
 }
 
 /** `sha256:*` and `offer/*` are shape assertions, everything else is exact. */
-function matches(expected: Json, actual: unknown, path: string): void {
-	if (typeof expected === "string" && expected.endsWith("*")) {
+type JsonObject = { readonly [k: string]: Json };
+
+function isJsonObject(value: Json): value is JsonObject {
+	return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function matches(expected: Json, actual: Json, path: string): void {
+	if (Object.prototype.toString.call(expected) === "[object String]" && expected.endsWith("*")) {
 		expect(String(actual), path).toMatch(
 			new RegExp(
 				`^${expected.slice(0, -1).replace(/[.*+?^${}()|[\]\\/]/gu, "\\$&")}`,
@@ -118,31 +126,30 @@ function matches(expected: Json, actual: unknown, path: string): void {
 	}
 	if (Array.isArray(expected)) {
 		expect(Array.isArray(actual), path).toBe(true);
-		const rows = actual as readonly unknown[];
-		expect(rows.length, path).toBe(expected.length);
+		if (!Array.isArray(actual)) return;
+		expect(actual.length, path).toBe(expected.length);
 		expected.forEach((entry, index) => {
-			matches(entry, rows[index], `${path}[${index}]`);
+			matches(entry, actual[index] ?? null, `${path}[${index}]`);
 		});
 		return;
 	}
-	if (expected !== null && typeof expected === "object") {
-		const record = expected as { readonly [k: string]: Json };
-		for (const key of Object.keys(record)) {
-			matches(
-				record[key] as Json,
-				(actual as { readonly [k: string]: unknown })[key],
-				`${path}.${key}`,
-			);
+	if (isJsonObject(expected)) {
+		expect(isJsonObject(actual), path).toBe(true);
+		if (!isJsonObject(actual)) return;
+		for (const key of Object.keys(expected)) {
+			matches(expected[key] ?? null, actual[key] ?? null, `${path}.${key}`);
 		}
 		return;
 	}
 	expect(actual, path).toEqual(expected);
 }
 
-function respond(interaction: Interaction): {
+interface PactResponse {
 	readonly status: number;
-	readonly body: unknown;
-} {
+	readonly body: Json;
+}
+
+function respond(interaction: Interaction): PactResponse {
 	const { path, body } = interaction.request;
 	const recipe = requireRecipe(body.recipeId);
 	const request = requestFor(recipe, body.requestedRealtime);

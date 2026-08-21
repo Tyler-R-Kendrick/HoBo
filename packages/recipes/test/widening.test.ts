@@ -8,6 +8,7 @@
  * than one.
  */
 import { readFileSync } from "node:fs";
+import type { CapabilityRequirementInput } from "@hobo/capability-profiles";
 import { describeConcern } from "@hobo/contract-harness";
 import {
 	buildDeploymentOffer,
@@ -15,8 +16,11 @@ import {
 	findStandardRecipe,
 	parseDeploymentRequest,
 	parseSolutionRecipe,
-	type RecipeCompilation,
+	type DeploymentRequest,
+	type RecipePolicyInput,
+	type RecipeSemantics,
 	type SolutionRecipe,
+	type SolutionRecipeInput,
 	WIDENING_KINDS,
 } from "../src/index.js";
 import {
@@ -67,7 +71,7 @@ const catalogWith = (realization: "pack" | "bridge") =>
 interface CapabilitySpec {
 	readonly ref: string;
 	readonly profileId: string;
-	readonly extra?: Record<string, unknown>;
+	readonly extra?: Partial<CapabilityRequirementInput>;
 }
 
 interface Ask {
@@ -84,32 +88,46 @@ interface Ask {
 	 */
 	readonly deliver?: {
 		readonly id: string;
-		readonly delivers: Record<string, unknown>;
+		readonly delivers: Partial<RecipeSemantics>;
 	};
 	/** Merged over the recipe's own `delivers`. */
-	readonly semantics?: Record<string, unknown>;
+	readonly semantics?: Partial<RecipeSemantics>;
 	/** A hand-built request, when the recipe's own is not the subject. */
 	readonly request?: {
 		readonly deploymentRef: string;
 		readonly capabilities: readonly CapabilitySpec[];
-		readonly dependencies?: readonly unknown[];
+		readonly dependencies?: DeploymentRequest["dependencies"];
 	};
 	readonly catalogRealization?: "pack" | "bridge";
-	readonly policy?: Record<string, unknown>;
+	readonly policy?: Partial<RecipePolicyInput>;
+}
+
+function recipeInput(recipe: SolutionRecipe): SolutionRecipeInput {
+	return {
+		schemaVersion: recipe.schemaVersion,
+		id: recipe.id,
+		displayName: recipe.displayName,
+		description: recipe.description,
+		yards: recipe.yards,
+		placements: recipe.placements,
+		edges: recipe.edges,
+		delivers: recipe.delivers,
+		bootstrap: recipe.bootstrap,
+	};
 }
 
 function compilationFor(ask: Ask) {
 	const base = RECIPES[ask.recipe];
 	const delivered = ask.deliver
 		? parseSolutionRecipe({
-				...base,
+				...recipeInput(base),
 				id: ask.deliver.id,
 				delivers: { ...base.delivers, ...ask.deliver.delivers },
-			} as never)
+			})
 		: base;
 	const recipe = ask.weaken
 		? parseSolutionRecipe({
-				...delivered,
+				...recipeInput(delivered),
 				id: ask.weaken.id,
 				placements: delivered.placements.map((placement) =>
 					ask.weaken?.placementId === undefined ||
@@ -120,32 +138,33 @@ function compilationFor(ask: Ask) {
 			})
 		: delivered;
 
+	const fromRecipe = requestForRecipe(recipe);
 	const request = ask.request
 		? parseDeploymentRequest({
 				deploymentRef: ask.request.deploymentRef,
 				capabilities: ask.request.capabilities.map((capability) =>
-					capabilityFor(
-						capability.ref,
-						capability.profileId,
-						capability.extra as never,
-					),
+					capabilityFor(capability.ref, capability.profileId, capability.extra),
 				),
-				...(ask.request.dependencies
-					? { dependencies: ask.request.dependencies }
-					: {}),
+				...(ask.request.dependencies === undefined
+					? undefined
+					: { dependencies: ask.request.dependencies }),
 				requestedSemantics: recipe.delivers,
-			} as never)
+			})
 		: ask.deliver
 			? parseDeploymentRequest({
-					...requestForRecipe(recipe),
+					deploymentRef: fromRecipe.deploymentRef,
+					capabilities: fromRecipe.capabilities,
+					dependencies: fromRecipe.dependencies,
 					requestedSemantics: base.delivers,
-				} as never)
+				})
 			: ask.semantics
 				? parseDeploymentRequest({
-						...requestForRecipe(recipe),
+						deploymentRef: fromRecipe.deploymentRef,
+						capabilities: fromRecipe.capabilities,
+						dependencies: fromRecipe.dependencies,
 						requestedSemantics: { ...recipe.delivers, ...ask.semantics },
-					} as never)
-				: requestForRecipe(recipe);
+					})
+				: fromRecipe;
 
 	const catalog = ask.catalogRealization
 		? catalogWith(ask.catalogRealization)
@@ -157,12 +176,14 @@ function compilationFor(ask: Ask) {
 		compilation: compileRecipe(
 			compileInputFor(recipe, {
 				request,
-				...(catalog
-					? { catalog, catalogDigest: catalogDigestOf(catalog) }
-					: {}),
-				...(ask.policy ? { policy: policyWith(ask.policy as never) } : {}),
-			} as never),
-		) as RecipeCompilation,
+				...(catalog === undefined
+					? undefined
+					: { catalog, catalogDigest: catalogDigestOf(catalog) }),
+				...(ask.policy === undefined
+					? undefined
+					: { policy: policyWith(ask.policy) }),
+			}),
+		),
 	};
 }
 

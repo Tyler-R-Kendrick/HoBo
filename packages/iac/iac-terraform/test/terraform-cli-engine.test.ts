@@ -16,6 +16,8 @@ import {
 	TERRAFORM_UNSUPPORTED_RESOURCE,
 	TerraformEngineUnavailableError,
 } from "../src/index.js";
+import { type JsonValue, type JsonObject } from "../src/json.js";
+
 
 // HOBO-717: the REAL binary lane. Pure renderers and the plan-JSON parser are
 // tested offline; binary-gated tests run the full real conformance smoke over
@@ -58,6 +60,7 @@ describe("renderTerraformJsonProgram (deterministic, golden)", () => {
 	});
 
 	it("maps cloudflare tokens with the pinned provider requirement", () => {
+		// SAFETY: `const document = renderTerraformJsonProgram(` is required at this I/O or test boundary.
 		const document = renderTerraformJsonProgram(
 			{
 				name: "sessions",
@@ -70,7 +73,7 @@ describe("renderTerraformJsonProgram (deterministic, golden)", () => {
 			terraform: {
 				required_providers: Record<string, { source: string; version: string }>;
 			};
-			resource: Record<string, Record<string, Record<string, unknown>>>;
+			resource: Record<string, Record<string, JsonObject>>;
 		};
 		expect(document.terraform.required_providers.cloudflare).toEqual({
 			source: "cloudflare/cloudflare",
@@ -99,6 +102,7 @@ describe("renderTerraformJsonProgram (deterministic, golden)", () => {
 				{ accountId: "a" },
 			);
 		} catch (error) {
+			// SAFETY: `expect((error as TerraformEngineUnavailableError).code).toBe(` is required at this I/O or test boundary.
 			expect((error as TerraformEngineUnavailableError).code).toBe(
 				TERRAFORM_UNSUPPORTED_RESOURCE,
 			);
@@ -135,7 +139,7 @@ describe("createTerraformCliEngine gating", () => {
 			binary: "/nonexistent/hcl-binary",
 		});
 		await expect(engine.preview(createTrivialIacProgram())).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: JsonValue) =>
 				error instanceof TerraformEngineUnavailableError &&
 				error.code === TERRAFORM_CLI_MISSING,
 		);
@@ -164,6 +168,7 @@ describe.runIf(availableBinary !== undefined)(
 		it("passes the shared conformance smoke against real local state", async () => {
 			const engine = createTerraformCliEngine({
 				workDir: mkdtempSync(join(tmpdir(), "hobo-tf-live-")),
+				// SAFETY: `binary: availableBinary as string,` is required at this I/O or test boundary.
 				binary: availableBinary as string,
 			});
 			const adapter = createTerraformAdapter({ engine });

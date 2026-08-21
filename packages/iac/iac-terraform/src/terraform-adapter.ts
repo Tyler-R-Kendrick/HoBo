@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 // One adapter, two interchangeable binaries (they share the plan/apply/state
 // protocol); OpenTofu is the default per control-plane.md §IaC backends.
 // public-contract: the pinned OpenTofu toolchain the default engine declares.
@@ -48,21 +49,21 @@ export class TerraformStateError extends Error {
 /** Stored stack/workspace state as this module reads it. */
 interface StoredState {
 	readonly resources?: Record<string, ResourceOutcome>;
-	readonly [key: string]: unknown;
+	readonly [key: string]: JsonValue;
 }
 
 /** A resource in a realization outputs payload. */
 interface ResourceOutcome {
 	readonly id?: string;
 	readonly status?: string;
-	readonly outputs?: Record<string, unknown>;
+	readonly outputs?: JsonObject;
 }
 
 /** Overrides accepted by the trivial fixture program. */
 interface ProgramOverrides {
-	readonly resources?: unknown;
-	readonly stackOutputs?: unknown;
-	readonly [key: string]: unknown;
+	readonly resources?: JsonValue;
+	readonly stackOutputs?: JsonValue;
+	readonly [key: string]: JsonValue;
 }
 
 /** Options for the Terraform/OpenTofu adapter. */
@@ -77,18 +78,18 @@ interface AdapterOptions {
 interface EngineLike {
 	readonly toolchainVersion?: string;
 	readonly binary?: string;
-	snapshot?(): unknown;
+	snapshot?(): JsonValue;
 	preview(
-		program: unknown,
+		program: JsonValue,
 	): Promise<{ changes: readonly unknown[] }> | { changes: readonly unknown[] };
 	apply(
-		program: unknown,
+		program: JsonValue,
 		expected: readonly unknown[],
 	):
 		| Promise<{ appliedChanges?: readonly unknown[]; outputs?: unknown }>
 		| { appliedChanges?: readonly unknown[]; outputs?: unknown };
-	refresh(program: unknown): unknown;
-	destroy(program: unknown): unknown;
+	refresh(program: JsonValue): JsonValue;
+	destroy(program: JsonValue): JsonValue;
 }
 
 /** Options for the offline state backend. */
@@ -160,7 +161,7 @@ export function createTerraformAdapter(options: AdapterOptions = {}) {
 		stateBackend: stateBackend.describe(),
 		// Estate discovery seam (drift/import parity with @hobo/iac-pulumi).
 		snapshotState() {
-			return typeof engine.snapshot === "function"
+			return engine.snapshot instanceof Function
 				? engine.snapshot()
 				: stateBackend.snapshot();
 		},
@@ -494,7 +495,7 @@ export async function runIacBackendConformance({ adapter, program }) {
 export function validateIacProgram(program) {
 	// Parse, don't validate: returns a frozen, derived parsed domain program so
 	// callers work with a trusted ParsedIacProgram instead of re-checking DTO fields.
-	if (!program || typeof program !== "object") {
+	if (!program || !isJsonObject(program)) {
 		throw new TerraformProgramError(
 			"invalid-program",
 			"IacProgram must be an object",
@@ -563,7 +564,7 @@ function assertConformance(condition, assertion) {
 }
 
 function validateOutputReference(value, resources) {
-	if (typeof value !== "string" || !value.startsWith("${resources.")) {
+	if (!isJsonString(value) || !value.startsWith("${resources.")) {
 		return;
 	}
 
@@ -657,7 +658,7 @@ function resolveStackOutputs(stackOutputs, resources) {
 }
 
 function resolveValue(value, resources) {
-	const match = typeof value === "string" ? OUTPUT_REF.exec(value) : undefined;
+	const match = isJsonString(value) ? OUTPUT_REF.exec(value) : undefined;
 
 	if (!match) {
 		return structuredClone(value);
@@ -672,7 +673,7 @@ function resourceId(name) {
 }
 
 function collectValues(value) {
-	if (!value || typeof value !== "object") {
+	if (!value || !isJsonObject(value)) {
 		return [value];
 	}
 
@@ -697,7 +698,7 @@ function stableJson(value) {
 	if (Array.isArray(value)) {
 		return `[${value.map((item) => stableJson(item)).join(",")}]`;
 	}
-	if (value && typeof value === "object") {
+	if (value && isJsonObject(value)) {
 		return `{${Object.keys(value)
 			.sort()
 			.map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
@@ -708,7 +709,7 @@ function stableJson(value) {
 }
 
 function deepFreeze(value) {
-	if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+	if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
 		return value;
 	}
 

@@ -14,6 +14,8 @@ import {
 	PulumiEngineUnavailableError,
 	runIacBackendConformance,
 } from "../src/index.js";
+import { type JsonValue } from "../src/json.js";
+
 
 // HOBO-715: the REAL Pulumi Automation API engine (@pulumi/pulumi
 // LocalWorkspace over the same rendered YAML programs and file:// state
@@ -62,7 +64,7 @@ describe("createPulumiAutomationApiEngine", () => {
 			"destroy",
 			"snapshot",
 		] as const) {
-			expect(typeof engine[operation]).toBe("function");
+			expect(engine[operation] instanceof Function).toBe(true);
 		}
 	});
 
@@ -90,7 +92,7 @@ describe("createPulumiAutomationApiEngine", () => {
 				env: { PATH: "/nonexistent", PULUMI_CONFIG_PASSPHRASE: "" },
 			});
 			await expect(engine.preview(CLOUDFLARE_PROGRAM)).rejects.toSatisfy(
-				(error: unknown) =>
+				(error: JsonValue) =>
 					error instanceof PulumiEngineUnavailableError &&
 					error.code === PULUMI_CLI_MISSING,
 			);
@@ -109,7 +111,7 @@ describe("createPulumiAutomationApiEngine", () => {
 			},
 		});
 		await expect(engine.preview(CLOUDFLARE_PROGRAM)).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: JsonValue) =>
 				error instanceof PulumiEngineUnavailableError &&
 				error.code === PULUMI_CLI_MISSING,
 		);

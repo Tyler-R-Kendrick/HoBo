@@ -4,6 +4,16 @@
  *
  * Endpoints follow Netbird Management HTTP API shapes (peers, setup-keys, dns).
  */
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+	type StringBag,
+} from "../json.js";
+
 export interface NetbirdApiOptions {
 	readonly managementUrl: string;
 	/** Admin/service token for management API. */
@@ -66,10 +76,10 @@ export function createNetbirdApiClient(
 	async function api(
 		method: string,
 		path: string,
-		body?: unknown,
+		body?: JsonValue,
 		auth: "admin" | "setup" | "none" = "admin",
-	): Promise<{ ok: boolean; status: number; body: unknown }> {
-		const headers: Record<string, string> = {
+	): Promise<{ ok: boolean; status: number; body: JsonValue }> {
+		const headers: StringBag = {
 			accept: "application/json",
 		};
 		if (auth === "admin" && options.accessToken) {
@@ -87,16 +97,13 @@ export function createNetbirdApiClient(
 		const res = await fetchImpl(`${base}${path}`, {
 			method,
 			headers,
-			...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+			...(body !== undefined ? { body: JSON.stringify(body) } : undefined),
 		});
 		const text = await res.text();
-		let parsed: unknown = {};
+		let parsed: JsonValue = {};
 		if (text.length > 0) {
-			try {
-				parsed = JSON.parse(text);
-			} catch {
-				parsed = { raw: text };
-			}
+			parsed = parseJsonValue(text);
+			if (parsed === null && text.length > 0) parsed = { raw: text };
 		}
 		return { ok: res.ok, status: res.status, body: parsed };
 	}
@@ -137,14 +144,14 @@ export function createNetbirdApiClient(
 				const peer = normalizePeer(alt.body);
 				return {
 					enrolled: true,
-					...(peer ? { peer } : {}),
+					...(peer ? { peer } : undefined),
 					notes: ["enrolled via /api/peers"],
 				};
 			}
 			const peer = normalizePeer(res.body);
 			return {
 				enrolled: true,
-				...(peer ? { peer } : {}),
+				...(peer ? { peer } : undefined),
 				notes: ["setup key validated"],
 			};
 		},
@@ -155,7 +162,9 @@ export function createNetbirdApiClient(
 			}
 			const list = Array.isArray(res.body)
 				? res.body
-				: ((res.body as { peers?: unknown[] }).peers ?? []);
+				: isJsonObject(res.body) && Array.isArray(res.body.peers)
+					? res.body.peers
+					: [];
 			return list
 				.map((p) => normalizePeer(p))
 				.filter((p): p is NetbirdPeer => p !== null);
@@ -177,18 +186,22 @@ export function createNetbirdApiClient(
 				? `/api/dns/nameservers/${group.id}`
 				: "/api/dns/nameservers";
 			const method = group.id ? "PUT" : "POST";
-			const res = await api(method, path, {
-				name: group.name,
-				description: group.description ?? "hobo hierarchical DNS",
-				nameservers: group.nameservers.map((ns) => ({
-					ip: ns.ip,
-					ns_type: ns.nsType ?? "udp",
-					port: 53,
-				})),
-				domains: group.domains,
-				enabled: group.enabled,
-				primary: group.primary ?? false,
-			});
+			const res = await api(
+				method,
+				path,
+				cloneAsJson({
+					name: group.name,
+					description: group.description ?? "hobo hierarchical DNS",
+					nameservers: group.nameservers.map((ns) => ({
+						ip: ns.ip,
+						ns_type: ns.nsType ?? "udp",
+						port: 53,
+					})),
+					domains: group.domains,
+					enabled: group.enabled,
+					primary: group.primary ?? false,
+				}),
+			);
 			if (!res.ok) {
 				throw new Error(`netbird upsert dns failed (${res.status})`);
 			}
@@ -206,6 +219,7 @@ export function createNetbirdApiClient(
 			if (!res.ok) {
 				throw new Error(`netbird create setup key failed (${res.status})`);
 			}
+			// SAFETY: assertion required at this I/O or test boundary.
 			const body = res.body as { id?: string; key?: string };
 			if (!body.key || !body.id) {
 				throw new Error("netbird create setup key: missing id/key in response");
@@ -215,9 +229,10 @@ export function createNetbirdApiClient(
 	};
 }
 
-function normalizePeer(raw: unknown): NetbirdPeer | null {
-	if (!raw || typeof raw !== "object") return null;
-	const o = raw as Record<string, unknown>;
+function normalizePeer(raw: JsonValue): NetbirdPeer | null {
+	if (!raw || !isJsonObject(raw)) return null;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const o = raw as JsonObject;
 	const id = String(o.id ?? o.ID ?? "");
 	const name = String(o.name ?? o.Name ?? "");
 	const ip = String(o.ip ?? o.IP ?? o.address ?? "");
@@ -227,36 +242,42 @@ function normalizePeer(raw: unknown): NetbirdPeer | null {
 		name: name || id,
 		ip,
 		connected: o.connected === true || o.Connected === true,
-		...(typeof o.dns_label === "string"
+		...(isJsonString(o.dns_label)
 			? { dnsLabel: o.dns_label }
-			: typeof o.dnsLabel === "string"
+			: isJsonString(o.dnsLabel)
 				? { dnsLabel: o.dnsLabel }
-				: {}),
+				: undefined),
 	};
 }
 
-function normalizeDnsList(raw: unknown): NetbirdDnsNameserverGroup[] {
+function normalizeDnsList(raw: JsonValue): NetbirdDnsNameserverGroup[] {
 	const list = Array.isArray(raw)
 		? raw
-		: ((raw as { groups?: unknown[] })?.groups ?? []);
+		: isJsonObject(raw) && Array.isArray(raw.groups)
+			? raw.groups
+			: [];
 	return list
 		.map((g) => normalizeDnsGroup(g))
 		.filter((g): g is NetbirdDnsNameserverGroup => g !== null);
 }
 
-function normalizeDnsGroup(raw: unknown): NetbirdDnsNameserverGroup | null {
-	if (!raw || typeof raw !== "object") return null;
-	const o = raw as Record<string, unknown>;
+function normalizeDnsGroup(raw: JsonValue): NetbirdDnsNameserverGroup | null {
+	if (!raw || !isJsonObject(raw)) return null;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const o = raw as JsonObject;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const nameserversRaw = (o.nameservers ?? o.NameServers ?? []) as unknown[];
+	// SAFETY: assertion required at this I/O or test boundary.
 	const domains = (o.domains ?? o.Domains ?? []) as unknown[];
 	return {
-		...(typeof o.id === "string" ? { id: o.id } : {}),
+		...(isJsonString(o.id) ? { id: o.id } : undefined),
 		name: String(o.name ?? o.Name ?? "hobo"),
 		nameservers: nameserversRaw.map((ns) => {
-			const n = ns as Record<string, unknown>;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const n = ns as JsonObject;
 			return {
 				ip: String(n.ip ?? n.IP ?? ""),
-				...(typeof n.ns_type === "string" ? { nsType: n.ns_type } : {}),
+				...(isJsonString(n.ns_type) ? { nsType: n.ns_type } : undefined),
 			};
 		}),
 		domains: domains.map(String),

@@ -23,10 +23,12 @@
  * against, not an exception that discards the context. `ensureCustomer` throws,
  * because there is no invoice to attach a failure to yet.
  */
+
 import { mkdtempSync, readFileSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../../src/json.js";
 
 import type { Invoice } from "../../src/metering/billing-aggregator.js";
 import {
@@ -38,7 +40,7 @@ import {
 
 const dir = () => mkdtempSync(join(tmpdir(), "hobo-billing-"));
 
-const line = (overrides: Record<string, unknown> = {}) => ({
+const line = (overrides: JsonObject = {}) => ({
 	tenantId: "t1",
 	eventType: "request",
 	quantity: 10,
@@ -50,7 +52,8 @@ const line = (overrides: Record<string, unknown> = {}) => ({
 	...overrides,
 });
 
-const invoice = (overrides: Record<string, unknown> = {}): Invoice =>
+const invoice = (overrides: JsonObject = {}): Invoice =>
+	// SAFETY: assertion required at this I/O or test boundary.
 	({
 		invoiceId: "inv-1",
 		tenantId: "t1",
@@ -126,6 +129,7 @@ describe("the file invoice ledger", () => {
 		const ledger = createFileInvoiceLedger(dir());
 		ledger.append(invoice());
 		ledger.append(invoice({ invoiceId: "inv-2", tenantId: "t2" }));
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect(ledger.list("t1" as never).map((i) => i.invoiceId)).toEqual([
 			"inv-1",
 		]);
@@ -143,6 +147,7 @@ describe("the file invoice ledger", () => {
 		// in-memory view and, on the next append, the file.
 		const ledger = createFileInvoiceLedger(dir());
 		ledger.append(invoice());
+		// SAFETY: assertion required at this I/O or test boundary.
 		(ledger.list() as Invoice[]).push(invoice({ invoiceId: "inv-x" }));
 		expect(ledger.list()).toHaveLength(1);
 	});
@@ -197,6 +202,7 @@ describe("the ledger-only provider", () => {
 	it("derives a customer id from the tenant", async () => {
 		const provider = createLedgerBillingProvider({ ledger: memoryLedger() });
 		expect(
+			// SAFETY: assertion required at this I/O or test boundary.
 			await provider.ensureCustomer?.({ tenantId: "t1" as never }),
 		).toEqual({ customerId: "cust_t1" });
 	});
@@ -212,20 +218,22 @@ describe("the Stripe-shaped provider", () => {
 
 	function stripe(
 		script: { ok?: boolean; status?: number; body?: unknown }[] = [],
-		options: Record<string, unknown> = {},
+		options: JsonObject = {},
 	) {
 		const calls: Call[] = [];
 		let n = 0;
+		// SAFETY: assertion required at this I/O or test boundary.
 		const fetchImpl = (async (url: string | URL, init: RequestInit = {}) => {
 			calls.push({ url: String(url), init });
 			const entry = script[n++] ?? { body: { id: `obj_${n}` } };
 			const status = entry.status ?? (entry.ok === false ? 402 : 200);
+			// SAFETY: assertion required at this I/O or test boundary.
 			return {
 				ok: status >= 200 && status < 300,
 				status,
 				json: async () => entry.body ?? { id: `obj_${n}` },
-			} as unknown as Response;
-		}) as unknown as typeof fetch;
+			} as Response;
+		}) as typeof fetch;
 		return {
 			calls,
 			fields: (i: number) =>
@@ -257,17 +265,25 @@ describe("the Stripe-shaped provider", () => {
 	it("authenticates with the secret key as a bearer token", async () => {
 		const s = stripe();
 		await s.provider.charge(invoice());
-		expect(
-			(s.calls[0]?.init.headers as Record<string, string>).authorization,
-		).toBe("Bearer sk_test_secret");
+		const call = s.calls[0];
+		if (call === undefined) throw new Error("expected a request");
+		const headers = call.init.headers;
+		if (!headers || headers instanceof Headers || Array.isArray(headers)) {
+			throw new Error("expected header object");
+		}
+		expect(headers.authorization).toBe("Bearer sk_test_secret");
 	});
 
 	it("posts form-encoded fields, as the Stripe REST API requires", async () => {
 		const s = stripe();
 		await s.provider.charge(invoice());
-		expect(
-			(s.calls[0]?.init.headers as Record<string, string>)["content-type"],
-		).toBe("application/x-www-form-urlencoded");
+		const call = s.calls[0];
+		if (call === undefined) throw new Error("expected a request");
+		const headers = call.init.headers;
+		if (!headers || headers instanceof Headers || Array.isArray(headers)) {
+			throw new Error("expected header object");
+		}
+		expect(headers["content-type"]).toBe("application/x-www-form-urlencoded");
 	});
 
 	it("records the invoice on the ledger before calling out", async () => {
@@ -298,6 +314,7 @@ describe("the Stripe-shaped provider", () => {
 
 	it("tags the customer with the tenant it belongs to", async () => {
 		const s = stripe();
+		// SAFETY: assertion required at this I/O or test boundary.
 		await s.provider.ensureCustomer?.({ tenantId: "t1" as never });
 		expect(s.fields(0)["metadata[tenant_id]"]).toBe("t1");
 	});
@@ -305,9 +322,11 @@ describe("the Stripe-shaped provider", () => {
 	it("sends an email and name only when it has them", async () => {
 		// A blank `email=` on a Stripe customer overwrites a real one.
 		const s = stripe();
+		// SAFETY: assertion required at this I/O or test boundary.
 		await s.provider.ensureCustomer?.({ tenantId: "t1" as never });
 		expect(s.fields(0)).not.toHaveProperty("email");
 		await s.provider.ensureCustomer?.({
+			// SAFETY: assertion required at this I/O or test boundary.
 			tenantId: "t1" as never,
 			email: "a@example.com",
 			name: "Acme",
@@ -321,6 +340,7 @@ describe("the Stripe-shaped provider", () => {
 		// exception rather than a result.
 		const s = stripe([{ status: 401, body: { error: "bad key" } }]);
 		await expect(
+			// SAFETY: assertion required at this I/O or test boundary.
 			s.provider.ensureCustomer?.({ tenantId: "t1" as never }),
 		).rejects.toThrow(/stripe ensureCustomer failed \(401\)/u);
 	});
@@ -328,9 +348,10 @@ describe("the Stripe-shaped provider", () => {
 	it("bounds the error body it quotes", async () => {
 		const s = stripe([{ status: 500, body: { detail: "x".repeat(4000) } }]);
 		const error = await s.provider
-			.ensureCustomer?.({ tenantId: "t1" as never })
-			.catch((err: unknown) => err as Error);
-		expect(String(error?.message).length).toBeLessThan(400);
+			// SAFETY: assertion required at this I/O or test boundary.
+			.ensureCustomer?.({ tenantId: "t1" })
+			.catch((error: Error) => error);
+		expect(error instanceof Error ? error.message.length : 0).toBeLessThan(400);
 	});
 
 	it("uses the invoice id as the idempotency key", async () => {
@@ -338,9 +359,13 @@ describe("the Stripe-shaped provider", () => {
 		// timeout on a successful call becomes a double charge.
 		const s = stripe();
 		await s.provider.charge(invoice());
-		expect(
-			(s.calls[1]?.init.headers as Record<string, string>)["Idempotency-Key"],
-		).toBe("inv-1");
+		const call = s.calls[1];
+		if (call === undefined) throw new Error("expected a charge request");
+		const headers = call.init.headers;
+		if (!headers || headers instanceof Headers || Array.isArray(headers)) {
+			throw new Error("expected header object");
+		}
+		expect(headers["Idempotency-Key"]).toBe("inv-1");
 	});
 
 	it("sends the amount in minor units", async () => {
@@ -430,14 +455,16 @@ describe("the Stripe-shaped provider", () => {
 	it("survives a response body that is not JSON", async () => {
 		// A gateway HTML page must not turn a declined charge into an unhandled
 		// rejection from `.json()`.
+		// SAFETY: assertion required at this I/O or test boundary.
 		const fetchImpl = (async () =>
+			// SAFETY: assertion required at this I/O or test boundary.
 			({
 				ok: true,
 				status: 200,
 				json: async () => {
 					throw new Error("not json");
 				},
-			}) as unknown as Response) as unknown as typeof fetch;
+			}) as Response) as typeof fetch;
 		const provider = createStripeBillingProvider({
 			secretKey: "sk",
 			fetchImpl,

@@ -55,11 +55,7 @@ export function mintElevatedAccessCapability(
 		readonly tenant?: string;
 		readonly events?: AccessEvent[];
 	},
-): {
-	capability: ElevatedAccessCapability;
-	token: string;
-	event: AccessEvent;
-} {
+) {
 	const t = input.now ?? new Date().toISOString();
 	const ttl = input.ttlSeconds ?? ELEVATED_CAPABILITY_TTL_SECONDS;
 	const audience = input.audience ?? `${input.isolationClass}-access`;
@@ -74,7 +70,9 @@ export function mintElevatedAccessCapability(
 		ttlSeconds: ttl,
 		issuer: "hobo:elevated-access",
 		now: Math.floor(Date.parse(t) / 1000),
-		...(input.hmacSecret !== undefined ? { hmacSecret: input.hmacSecret } : {}),
+		...(input.hmacSecret !== undefined
+			? { hmacSecret: input.hmacSecret }
+			: undefined),
 		allowDefaultSecret: input.allowDefaultSecret ?? true,
 	});
 
@@ -89,7 +87,7 @@ export function mintElevatedAccessCapability(
 		expiresAt: new Date(Date.parse(t) + ttl * 1000).toISOString(),
 		...(input.priorAuthnClass !== undefined
 			? { priorAuthnClass: input.priorAuthnClass }
-			: {}),
+			: undefined),
 		obligations: Object.freeze([
 			...(input.obligations ?? ["short-lived", "audience-bound", "audit"]),
 			`evidence:${input.evidence.kind}`,
@@ -140,7 +138,7 @@ export function verifyElevatedAccessCapability(input: {
 			hmacSecret: input.hmacSecret ?? "hobo-local-svid-dev-only",
 			...(input.now !== undefined
 				? { now: Math.floor(Date.parse(input.now) / 1000) }
-				: {}),
+				: undefined),
 		});
 		const envAud = `env:${input.expectedIsolationClass}`;
 		const aud = Array.isArray(claims.aud) ? claims.aud : [String(claims.aud)];

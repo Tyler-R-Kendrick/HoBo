@@ -2,6 +2,7 @@
  * DPoP (RFC 9449) — real ES256 (P-256) proof generation and verification.
  * Used to sender-constrain access tokens for remote agent credentials.
  */
+
 import {
 	createHash,
 	createPrivateKey,
@@ -12,6 +13,12 @@ import {
 	type KeyObject,
 	randomBytes,
 } from "node:crypto";
+import {
+	isJsonNumber,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 export interface DpopKeyPair {
 	readonly privateKey: KeyObject;
@@ -34,7 +41,7 @@ export interface MintDpopProofInput {
 	readonly htu: string;
 	readonly accessToken: string;
 	/** Optional additional claims. */
-	readonly extra?: Readonly<Record<string, unknown>>;
+	readonly extra?: JsonObject;
 	readonly now?: number;
 }
 
@@ -49,7 +56,7 @@ export interface VerifiedDpopProof {
 }
 
 function b64url(data: Buffer | string): string {
-	const buf = typeof data === "string" ? Buffer.from(data, "utf8") : data;
+	const buf = isJsonString(data) ? Buffer.from(data, "utf8") : data;
 	return buf
 		.toString("base64")
 		.replace(/=/g, "")
@@ -57,7 +64,7 @@ function b64url(data: Buffer | string): string {
 		.replace(/\//g, "_");
 }
 
-function b64urlJson(value: unknown): string {
+function b64urlJson(value: JsonValue): string {
 	return b64url(JSON.stringify(value));
 }
 
@@ -75,6 +82,7 @@ export function generateDpopKeyPair(kid?: string): DpopKeyPair {
 	const { privateKey, publicKey } = generateKeyPairSync("ec", {
 		namedCurve: "P-256",
 	});
+	// SAFETY: assertion required at this I/O or test boundary.
 	const jwk = publicKey.export({ format: "jwk" }) as {
 		x?: string;
 		y?: string;
@@ -100,7 +108,7 @@ export function generateDpopKeyPair(kid?: string): DpopKeyPair {
 }
 
 export function importDpopKeyPair(input: {
-	readonly privateJwk: Record<string, unknown>;
+	readonly privateJwk: JsonObject;
 	readonly kid?: string;
 }): DpopKeyPair {
 	const privateKey = createPrivateKey({
@@ -108,6 +116,7 @@ export function importDpopKeyPair(input: {
 		format: "jwk",
 	});
 	const publicKey = createPublicKey(privateKey);
+	// SAFETY: assertion required at this I/O or test boundary.
 	const jwk = publicKey.export({ format: "jwk" }) as {
 		x?: string;
 		y?: string;
@@ -117,7 +126,7 @@ export function importDpopKeyPair(input: {
 	}
 	const kid =
 		input.kid ??
-		(typeof input.privateJwk.kid === "string"
+		(isJsonString(input.privateJwk.kid)
 			? input.privateJwk.kid
 			: createHash("sha256")
 					.update(`${jwk.x}.${jwk.y}`)
@@ -131,13 +140,9 @@ export function importDpopKeyPair(input: {
 	};
 }
 
-export function exportDpopPrivateJwk(
-	keyPair: DpopKeyPair,
-): Record<string, unknown> {
-	const jwk = keyPair.privateKey.export({ format: "jwk" }) as Record<
-		string,
-		unknown
-	>;
+export function exportDpopPrivateJwk(keyPair: DpopKeyPair): JsonObject {
+	// SAFETY: assertion required at this I/O or test boundary.
+	const jwk = keyPair.privateKey.export({ format: "jwk" }) as JsonObject;
 	return { ...jwk, kid: keyPair.kid, alg: "ES256", use: "sig" };
 }
 
@@ -167,7 +172,7 @@ export function mintDpopProof(input: MintDpopProofInput): string {
 		iat: now,
 		jti: randomBytes(16).toString("hex"),
 		ath: accessTokenHash(input.accessToken),
-		...(input.extra ?? {}),
+		...input.extra,
 	};
 	const signingInput = `${b64urlJson(header)}.${b64urlJson(payload)}`;
 	// IEEE-P1363 (r||s) signature for JWT ES256
@@ -237,7 +242,9 @@ export function verifyDpopProof(input: {
 	if (parts.length !== 3) {
 		throw new Error("dpop: malformed proof (expected 3 JWT segments)");
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	const [hB64, pB64, sB64] = parts as [string, string, string];
+	// SAFETY: assertion required at this I/O or test boundary.
 	const header = JSON.parse(decodeB64url(hB64).toString("utf8")) as {
 		typ?: string;
 		alg?: string;
@@ -259,6 +266,7 @@ export function verifyDpopProof(input: {
 		throw new Error("dpop: header.jwk must be EC P-256 public key");
 	}
 
+	// SAFETY: assertion required at this I/O or test boundary.
 	const payload = JSON.parse(decodeB64url(pB64).toString("utf8")) as {
 		htm?: string;
 		htu?: string;
@@ -283,10 +291,10 @@ export function verifyDpopProof(input: {
 	}
 	const now = input.now ?? Math.floor(Date.now() / 1000);
 	const skew = input.maxSkewSeconds ?? 300;
-	if (typeof payload.iat !== "number" || Math.abs(now - payload.iat) > skew) {
+	if (!isJsonNumber(payload.iat) || Math.abs(now - payload.iat) > skew) {
 		throw new Error("dpop: iat outside allowed skew");
 	}
-	if (typeof payload.jti !== "string" || payload.jti.length === 0) {
+	if (!isJsonString(payload.jti) || payload.jti.length === 0) {
 		throw new Error("dpop: jti required");
 	}
 	if (input.jtiCache) {

@@ -5,6 +5,12 @@
  */
 
 import type { IsolationClass } from "../env-isolation/types.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	type JsonObject,
+	parseJsonObject,
+} from "../json.js";
 import type { PamKind, SessionHandle } from "./types.js";
 
 export type RemoteSessionResult = Readonly<{
@@ -38,10 +44,7 @@ export function createRemoteTransport(input: {
 	const base = input.endpoint.replace(/\/$/, "");
 	const auth = input.authToken;
 
-	async function post(
-		path: string,
-		body: Record<string, unknown>,
-	): Promise<Record<string, unknown>> {
+	async function post<T>(path: string, body: T): Promise<JsonObject> {
 		const res = await fetchImpl(`${base}${path}`, {
 			method: "POST",
 			headers: {
@@ -49,15 +52,11 @@ export function createRemoteTransport(input: {
 				accept: "application/json",
 				"content-type": "application/json",
 			},
-			body: JSON.stringify(body),
+			body: JSON.stringify(cloneAsJson(body)),
 		});
 		const text = await res.text();
-		let json: Record<string, unknown> = {};
-		try {
-			json = text ? (JSON.parse(text) as Record<string, unknown>) : {};
-		} catch {
-			json = { raw: text };
-		}
+		const parsed = text.length > 0 ? parseJsonObject(text) : {};
+		const json = isJsonObject(parsed) ? parsed : { raw: text };
 		if (!res.ok) {
 			throw Object.assign(
 				new Error(
@@ -129,7 +128,8 @@ export function createRemoteTransport(input: {
 						},
 					);
 					const item =
-						(body.item as Record<string, unknown> | undefined) ?? body;
+						// SAFETY: assertion required at this I/O or test boundary.
+						(body.item as JsonObject | undefined) ?? body;
 					return {
 						remoteSessionId: String(
 							item.authorization_token_id ?? item.id ?? `bd-${Date.now()}`,

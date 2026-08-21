@@ -214,7 +214,7 @@ export function createBillingAggregator(options?: {
 			invoices.push(invoice);
 
 			// Clear closed tenant buckets so the next period starts clean.
-			for (const k of [...buckets.keys()]) {
+			for (const k of buckets.keys()) {
 				if (k.startsWith(`${input.tenantId}::`)) buckets.delete(k);
 			}
 

@@ -3,11 +3,12 @@
  * Secretless session brokering + optional remote control-plane transport.
  * Production requires elevated capability verification (not network membership).
  */
-import { randomBytes } from "node:crypto";
 
+import { randomBytes } from "node:crypto";
 import { verifyElevatedAccessCapability } from "../env-isolation/elevated-capability.js";
 import { DEFAULT_ENV_NETWORK_ISOLATION_POLICY_PACK } from "../env-isolation/policy-pack.js";
 import type { IsolationClass } from "../env-isolation/types.js";
+import { isJsonNumber, isJsonString } from "../json.js";
 import { createPamAuditSink } from "./audit.js";
 import {
 	createRemoteTransport,
@@ -63,7 +64,7 @@ function parseTarget(
 	target: string | SessionTarget,
 	gatewayClass: IsolationClass,
 ): SessionTarget {
-	if (typeof target !== "string") {
+	if (!isJsonString(target)) {
 		return target;
 	}
 	const kind = target.startsWith("ssh:")
@@ -91,7 +92,9 @@ export function createPrivilegedAccessGateway(
 ): PrivilegedAccessGatewayHandle {
 	const pack = DEFAULT_ENV_NETWORK_ISOLATION_POLICY_PACK;
 	const capabilityRequired = new Set<IsolationClass>(
+		// SAFETY: assertion required at this I/O or test boundary.
 		(options.capabilityRequiredClasses ??
+			// SAFETY: assertion required at this I/O or test boundary.
 			(pack.capabilityRequiredClasses as readonly IsolationClass[])) as IsolationClass[],
 	);
 	const sinkBase = options.auditSink;
@@ -106,8 +109,10 @@ export function createPrivilegedAccessGateway(
 	const auditList = (): readonly import("./types.js").PamAuditEvent[] => {
 		if (
 			"events" in sink &&
+			// SAFETY: assertion required at this I/O or test boundary.
 			Array.isArray((sink as { events: unknown }).events)
 		) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			return (sink as { events: import("./types.js").PamAuditEvent[] }).events;
 		}
 		return yardEvents;
@@ -128,7 +133,7 @@ export function createPrivilegedAccessGateway(
 			authToken: options.transport.authToken,
 			...(options.transport.fetchImpl
 				? { fetchImpl: options.transport.fetchImpl }
-				: {}),
+				: undefined),
 		});
 	}
 
@@ -173,11 +178,8 @@ export function createPrivilegedAccessGateway(
 			return auditList();
 		},
 		get yardDrainCount() {
-			if (
-				"drainedToYard" in sink &&
-				typeof (sink as { drainedToYard: number }).drainedToYard === "number"
-			) {
-				return (sink as { drainedToYard: number }).drainedToYard;
+			if ("drainedToYard" in sink && isJsonNumber(sink.drainedToYard)) {
+				return sink.drainedToYard;
 			}
 			return yardEvents.length;
 		},
@@ -368,8 +370,8 @@ export function createPrivilegedAccessGateway(
 					ttlSeconds: ttl,
 					...(req.elevatedToken !== undefined
 						? { elevatedToken: req.elevatedToken }
-						: {}),
-					...(req.reason !== undefined ? { reason: req.reason } : {}),
+						: undefined),
+					...(req.reason !== undefined ? { reason: req.reason } : undefined),
 				});
 				handle = Object.freeze({
 					...mergeRemoteIntoHandle({
@@ -394,7 +396,7 @@ export function createPrivilegedAccessGateway(
 				isolationClass: options.isolationClass,
 				kind: options.kind,
 				credentialRef: handle.credentialRef,
-				...(req.reason !== undefined ? { reason: req.reason } : {}),
+				...(req.reason !== undefined ? { reason: req.reason } : undefined),
 			});
 			return handle;
 		},
@@ -477,7 +479,7 @@ export function createPrivilegedAccessGateway(
 				isolationClass: options.isolationClass,
 				kind: options.kind,
 				credentialRef: prev.credentialRef,
-				...(reason !== undefined ? { reason } : {}),
+				...(reason !== undefined ? { reason } : undefined),
 			});
 		},
 		listSessions() {

@@ -2,10 +2,11 @@
  * Pluggable billing provider + durable invoice store.
  * Events → BillingAggregator → BillingProvider.charge / export.
  */
+
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-
 import type { TenantId } from "@hobo/core";
+import type { JsonObject, StringBag } from "../json.js";
 
 import type { Invoice } from "./billing-aggregator.js";
 
@@ -20,7 +21,7 @@ export interface BillingChargeResult {
 	readonly status: BillingChargeStatus;
 	readonly externalId?: string;
 	readonly message?: string;
-	readonly raw?: Readonly<Record<string, unknown>>;
+	readonly raw?: JsonObject;
 }
 
 export interface BillingProvider {
@@ -51,6 +52,7 @@ export function createFileInvoiceLedger(dataDir: string): InvoiceLedger {
 		const lines = readFileSync(path, "utf8").split("\n").filter(Boolean);
 		for (const line of lines) {
 			try {
+				// SAFETY: assertion required at this I/O or test boundary.
 				cache.push(JSON.parse(line) as Invoice);
 			} catch {
 				// skip corrupt lines
@@ -127,7 +129,7 @@ export function createStripeBillingProvider(options: {
 	async function stripeForm(
 		path: string,
 		fields: Record<string, string>,
-	): Promise<{ ok: boolean; status: number; body: Record<string, unknown> }> {
+	): Promise<{ ok: boolean; status: number; body: JsonObject }> {
 		const body = new URLSearchParams(fields).toString();
 		const res = await fetchImpl(`${base}${path}`, {
 			method: "POST",
@@ -137,14 +139,12 @@ export function createStripeBillingProvider(options: {
 				// Idempotency for charge path is set by caller via fields; also allow header.
 				...(fields["metadata[invoice_id]"]
 					? { "Idempotency-Key": fields["metadata[invoice_id]"] }
-					: {}),
+					: undefined),
 			},
 			body,
 		});
-		const json = (await res.json().catch(() => ({}))) as Record<
-			string,
-			unknown
-		>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const json = (await res.json().catch(() => ({}))) as JsonObject;
 		return { ok: res.ok, status: res.status, body: json };
 	}
 
@@ -153,8 +153,8 @@ export function createStripeBillingProvider(options: {
 		async ensureCustomer(input) {
 			const res = await stripeForm("/customers", {
 				"metadata[tenant_id]": input.tenantId,
-				...(input.email ? { email: input.email } : {}),
-				...(input.name ? { name: input.name } : {}),
+				...(input.email ? { email: input.email } : undefined),
+				...(input.name ? { name: input.name } : undefined),
 			});
 			if (!res.ok) {
 				throw new Error(
@@ -169,7 +169,7 @@ export function createStripeBillingProvider(options: {
 			const customer = await this.ensureCustomer?.({
 				tenantId: invoice.tenantId,
 			});
-			const fields: Record<string, string> = {
+			const fields: StringBag = {
 				amount: String(Math.max(0, Math.floor(invoice.total))),
 				currency: (invoice.currency || options.currency || "usd").toLowerCase(),
 				"metadata[invoice_id]": invoice.invoiceId,
@@ -204,16 +204,7 @@ export function createStripeBillingProvider(options: {
 }
 
 /** Export invoice as Stripe-like line items JSON for external systems. */
-export function exportInvoiceStripeLines(invoice: Invoice): {
-	readonly currency: string;
-	readonly customer_metadata: { readonly tenant_id: string };
-	readonly lines: readonly {
-		readonly amount: number;
-		readonly currency: string;
-		readonly description: string;
-		readonly metadata: Record<string, string>;
-	}[];
-} {
+export function exportInvoiceStripeLines(invoice: Invoice) {
 	return {
 		currency: invoice.currency.toLowerCase(),
 		customer_metadata: { tenant_id: invoice.tenantId },

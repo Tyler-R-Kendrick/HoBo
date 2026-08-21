@@ -5,7 +5,6 @@
 
 import { createMeteringBus, parseTenantId } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
 import {
 	assertComposedIsolation,
 	assertLocalNamedEndpointBackend,
@@ -25,6 +24,7 @@ import {
 	tenantFromSlug,
 	verifyElevatedAccessCapability,
 } from "../../src/index.js";
+import type { JsonObject } from "../../src/json.js";
 import { createInMemoryMeteringSink } from "../../src/metering/sinks.js";
 import {
 	ENV_NETWORK_ISOLATION_REGO_DOCUMENT,
@@ -40,7 +40,7 @@ function req(
 		subjectTags?: string[];
 		resourceTags?: string[];
 		identity?: string;
-		context?: Record<string, unknown>;
+		context?: JsonObject;
 		resourceTenant?: ReturnType<typeof parseTenantId>;
 	},
 ) {
@@ -63,7 +63,7 @@ function req(
 				...(extra?.resourceTags ?? []),
 			],
 		},
-		...(extra?.context ? { context: extra.context } : {}),
+		...(extra?.context ? { context: extra.context } : undefined),
 	};
 }
 

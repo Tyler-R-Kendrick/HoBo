@@ -81,7 +81,8 @@ main
                                                                       └── sdlc/anti-slop-70-draft-eval-overlay-dispatcher  #1329 eval-promotion+overlay-mesh+dispatcher-credits
                                                                        └── sdlc/anti-slop-71-draft-resource-operator-closure  #1330 resource-definition+operator-ports+closure-lowering
                                                                         └── sdlc/anti-slop-72-draft-slo-events-closure-eval  #1331 slo+events+closure-v1+live-eval
-                                                                         └── sdlc/anti-slop-73-draft-vm-xaa-containment-policy  vm-microvm+inbound-xaa+containment+policy-port
+                                                                         └── sdlc/anti-slop-73-draft-vm-xaa-containment-policy  #1332 vm-microvm+inbound-xaa+containment+policy-port
+                                                                          └── sdlc/anti-slop-74-draft-offline-engine-federate-acme  signed-offline+contract-engine+federate+acme
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -174,6 +175,7 @@ Layer 69: `built-in-policy-engine-contract` + `planner-dag-skeleton-contract` + 
 Layer 70: `eval-promotion-gate-contract` + `tier-four-overlay-mesh-contract` + `dispatcher-maximize-credits-contract` oxlint `--deny-warnings` clean (#1329).
 Layer 71: `resource-definition-driver-contract` + `operator-integration-ports-contract` + `closure-builder-manifest-lowering-contract` oxlint `--deny-warnings` clean (#1330).
 Layer 72: `slo-as-code-contract` + `control-plane-event-schema-contract` + `closure-builder-v1-finalization-contract` + `openinference-live-eval-stream-contract` oxlint `--deny-warnings` clean (#1331).
-Layer 73: `vm-microvm-build-providers-contract` + `inbound-xaa-resource-server-contract` + `malicious-provider-containment-contract` + `policy-engine-port-contract` oxlint `--deny-warnings` clean.
+Layer 73: `vm-microvm-build-providers-contract` + `inbound-xaa-resource-server-contract` + `malicious-provider-containment-contract` + `policy-engine-port-contract` oxlint `--deny-warnings` clean (#1332).
+Layer 74: `signed-offline-bundle-contract` + `contract-engine-port-contract` + `hobo-auth-federate-verify-contract` + `acme-dns01-cert-issuance-contract` oxlint `--deny-warnings` clean.
 Next: remaining `src/draft/` (larger technical-proofs, exp-proofs, projects).
 Full-repo `lint:slop --deny-warnings` is still red until those land.

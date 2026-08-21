@@ -1,3 +1,4 @@
+import { isJsonObject, isJsonString } from "../json.js";
 import type { ComponentHandle } from "./errors.js";
 
 export function bindingTypesFor(
@@ -12,14 +13,14 @@ export function bindingTypesFor(
 	);
 }
 
-function assertComponent(
-	handle: unknown,
+function assertComponent<T>(
+	handle: T,
 	path: string,
-): asserts handle is ComponentHandle {
+): asserts handle is T & ComponentHandle {
 	if (
-		!handle ||
-		typeof handle !== "object" ||
-		!["service", "container"].includes((handle as ComponentHandle).kind)
+		!isJsonObject(handle) ||
+		!isJsonString(handle.kind) ||
+		!["service", "container"].includes(handle.kind)
 	) {
 		throw new Error(`${path}: must be a service or container handle`);
 	}

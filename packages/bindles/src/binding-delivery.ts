@@ -3,6 +3,8 @@
  * Forbidden: secret-shaped process env as a substitute for WIT links.
  */
 
+import { isJsonString } from "./json.js";
+
 export type BindingDeliveryReason = Readonly<{
 	code:
 		| "connection-strings-env"
@@ -72,7 +74,7 @@ export function evaluateBindingDeliveryGate(input: {
 					message: `forbidden secret-shaped env key ${key}`,
 				});
 			}
-			if (typeof value === "string" && looksLikeSecretEnvValue(value)) {
+			if (isJsonString(value) && looksLikeSecretEnvValue(value)) {
 				reasons.push({
 					code: /connectionString/i.test(value)
 						? "connection-string-token-env"

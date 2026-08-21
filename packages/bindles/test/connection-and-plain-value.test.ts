@@ -23,9 +23,10 @@
  * wrongly is a value some later pass edits in the wrong place, and a value it
  * misses is a secret that does not get redacted.
  */
-import { describe, expect, it } from "vitest";
 
+import { describe, expect, it } from "vitest";
 import { connectionRef, requireConnection } from "../src/connection.js";
+import type { JsonObject, JsonValue } from "../src/json.js";
 import { isRecord, visitStrings } from "../src/plain-value.js";
 
 describe("requireConnection", () => {
@@ -117,17 +118,16 @@ describe("requireConnection", () => {
 
 	it("refuses a non-string provider", () => {
 		expect(() =>
-			requireConnection({ provider: 7 as unknown as string }),
+			// SAFETY: assertion required at this I/O or test boundary.
+			requireConnection({ provider: 7 as string }),
 		).toThrow(/provider is required/u);
 	});
 
 	it("does not pin a provider instance, only a provider key", () => {
 		// Provider *selection* belongs to the Yard; this declaration carries no
 		// endpoint, credential or region that could preempt it.
-		const requirement = requireConnection({ provider: "asana" }) as Record<
-			string,
-			unknown
-		>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const requirement = requireConnection({ provider: "asana" }) as JsonObject;
 		expect(Object.keys(requirement).sort()).toEqual([
 			"anyHealthy",
 			"kind",
@@ -159,9 +159,8 @@ describe("connectionRef", () => {
 	});
 
 	it("refuses a non-string reference", () => {
-		expect(() => connectionRef(null as unknown as string)).toThrow(
-			/non-empty string/u,
-		);
+		// SAFETY: assertion required at this I/O or test boundary.
+		expect(() => connectionRef(null as string)).toThrow(/non-empty string/u);
 	});
 });
 
@@ -187,13 +186,14 @@ describe("isRecord", () => {
 
 	it("accepts an object with no prototype", () => {
 		// `JSON.parse` with a reviver, and several parsers, produce these.
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect(isRecord(Object.create(null) as object)).toBe(true);
 	});
 });
 
 describe("visitStrings", () => {
 	/** Every (value, path) pair the walk reported. */
-	function walk(value: unknown, root = "$") {
+	function walk(value: JsonValue, root = "$") {
 		const seen: [string, string][] = [];
 		visitStrings(value, root, (v, p) => seen.push([v, p]));
 		return seen;

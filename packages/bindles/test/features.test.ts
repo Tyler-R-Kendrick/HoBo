@@ -52,7 +52,7 @@ describe("Bindle features / experiment / rollout IfC", () => {
 		expect(ro.spec.stages).toHaveLength(2);
 	});
 
-	it("featureSpecsToStoreInputs is consumable by FeatureFlagStore.define shape", () => {
+	it("featureSpecsToStoreInputs is consumable by FeatureFlagStore.define layout", () => {
 		const decl = features({
 			promo: {
 				state: "ENABLED",

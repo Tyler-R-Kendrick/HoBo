@@ -324,7 +324,7 @@
     {
       "name": "parseManifest",
       "kind": "manifest-parser",
-      "signature": "parseManifest(input: unknown): ManifestV1"
+      "signature": "parseManifest(input: JsonValue): ManifestV1"
     },
     {
       "name": "serializeManifest",
@@ -509,7 +509,7 @@
     {
       "name": "readDependencyConfig",
       "kind": "dependency-helper",
-      "signature": "readDependencyConfig(annotations: readonly ProviderAnnotation[]): Readonly<Record<string, unknown>> | null"
+      "signature": "readDependencyConfig(annotations: readonly ProviderAnnotation[]): JsonObject | null"
     },
     {
       "name": "discoveryEnvForDependency",

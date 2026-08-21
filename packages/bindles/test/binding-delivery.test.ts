@@ -61,6 +61,7 @@ describe("binding-delivery membrane (ADR-0141)", () => {
 			env: { LOG_LEVEL: "info" },
 		});
 		const manifest = compileBindleManifest([db, api]);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const env = (manifest.resources.api?.env ?? {}) as Record<string, string>;
 		const gate = evaluateBindingDeliveryGate({
 			resourceEnvs: { api: env },

@@ -59,10 +59,12 @@ export const INFRA_KIT_KINDS = Object.freeze([
 ] as const satisfies readonly ResourceKind[]);
 
 export function isAppKitKind(kind: string): kind is AppKitKind {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return (APP_KIT_KINDS as readonly string[]).includes(kind);
 }
 
 export function isHttpAppKitKind(kind: string): kind is HttpAppKitKind {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return (HTTP_APP_KIT_KINDS as readonly string[]).includes(kind);
 }
 

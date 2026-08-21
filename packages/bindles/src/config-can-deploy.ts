@@ -112,6 +112,7 @@ export function evaluateSecretlessConfigGate(
 				message: `sensitive field ${name} has a default value (forbidden)`,
 			});
 		}
+		// SAFETY: assertion required at this I/O or test boundary.
 		if (!(SECRET_SOURCE_RANKS as readonly string[]).includes(field.source)) {
 			reasons.push({
 				code: "unknown-source",

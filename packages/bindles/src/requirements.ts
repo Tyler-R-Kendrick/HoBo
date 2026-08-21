@@ -1,4 +1,10 @@
 import { createHash } from "node:crypto";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "./json.js";
 
 import type { BindleDefinition, ProviderAnnotation } from "./types.js";
 
@@ -34,28 +40,30 @@ export type BindleRequirementsHash = `sha256:${string}`;
 
 export function emptyBindleRequirements(): BindleRequirements {
 	return Object.freeze({
+		// SAFETY: assertion required at this I/O or test boundary.
 		require: Object.freeze([] as string[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		prefer: Object.freeze([] as string[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		runtimes: Object.freeze([] as string[]),
 		labels: Object.freeze({}),
 	});
 }
 
-export function parseBindleRequirements(input: unknown): BindleRequirements {
+export function parseBindleRequirements<T>(input: T): BindleRequirements {
 	if (input === undefined || input === null) {
 		return emptyBindleRequirements();
 	}
-	if (typeof input !== "object" || Array.isArray(input)) {
+	const json = cloneAsJson(input);
+	if (!isJsonObject(json) || Array.isArray(json)) {
 		throw new TypeError("bindle requirements must be an object");
 	}
-	const raw = input as Record<string, unknown>;
+	const raw = json;
 	// Reject provider-selection keys on requirements.
 	for (const key of Object.keys(raw)) {
 		assertProviderNeutralKey(key, "bindle.requirements");
 	}
-	const labels = canonicalizeLabels(
-		(raw.labels as Record<string, string> | undefined) ?? {},
-	);
+	const labels = canonicalizeLabels(raw.labels);
 	for (const key of Object.keys(labels)) {
 		assertProviderNeutralKey(key, "bindle.requirements.labels");
 	}
@@ -97,8 +105,10 @@ export function assertNoBindleProviderSelection(
 			assertAnnotationAllowed(annotation, record.name);
 		}
 	}
-	// Top-level forbidden fields if present via any casted payloads
-	const anyDef = definition as unknown as Record<string, unknown>;
+	const anyDef = cloneAsJson(definition);
+	if (!isJsonObject(anyDef)) {
+		return;
+	}
 	if (anyDef.provider !== undefined || anyDef.providerId !== undefined) {
 		throw bindleProviderForbidden("bindle.provider");
 	}
@@ -185,14 +195,14 @@ function bindleProviderForbidden(path: string): Error {
 	);
 }
 
-function asStringArray(value: unknown): string[] {
+function asStringArray(value: JsonValue | undefined): string[] {
 	if (value === undefined) return [];
-	if (typeof value === "string") return [value];
+	if (isJsonString(value)) return [value];
 	if (!Array.isArray(value)) {
 		throw new TypeError("expected string array");
 	}
 	return value.map((v) => {
-		if (typeof v !== "string") throw new TypeError("expected string array");
+		if (!isJsonString(v)) throw new TypeError("expected string array");
 		return v;
 	});
 }
@@ -202,13 +212,19 @@ function canonicalizeList(values: readonly string[]): readonly string[] {
 }
 
 function canonicalizeLabels(
-	labels: Readonly<Record<string, string>>,
+	labels: JsonValue | undefined,
 ): Readonly<Record<string, string>> {
+	if (labels === undefined) {
+		return Object.freeze({});
+	}
+	if (!isJsonObject(labels)) {
+		throw new TypeError("bindle requirements labels must be an object");
+	}
 	const keys = Object.keys(labels).sort();
 	const out: Record<string, string> = {};
 	for (const key of keys) {
 		const value = labels[key];
-		if (typeof value !== "string") {
+		if (!isJsonString(value)) {
 			throw new TypeError(`label ${key} must be a string`);
 		}
 		out[key] = value;

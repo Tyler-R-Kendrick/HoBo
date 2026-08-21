@@ -1,4 +1,5 @@
 import type { ConnectionClient } from "./connection.js";
+import type { JsonObject, JsonValue } from "./json.js";
 
 export const CATALOG_ROWS = [
 	{ factory: "api", portRef: ["wasi:http", "hobo:http"], allowVerbs: [] },
@@ -140,7 +141,7 @@ export interface ResourceDescriptor<K extends ResourceKind = ResourceKind> {
 }
 
 type VerbMethodsFor<K extends ResourceKind> = {
-	[V in AllowVerbsFor<K>]: (...args: unknown[]) => LoweringDescriptor;
+	[V in AllowVerbsFor<K>]: (...args: JsonValue[]) => LoweringDescriptor;
 };
 
 export type ResourceHandle<K extends ResourceKind, A = never> = {
@@ -169,7 +170,7 @@ export interface SecretRef {
 export interface ProviderAnnotation {
 	readonly provider: string;
 	readonly option: string;
-	readonly config: Record<string, unknown>;
+	readonly config: JsonObject;
 }
 
 export interface ConnectorAuthDefinition {
@@ -269,17 +270,21 @@ export interface BindleDefinition {
 	readonly connectors?: Readonly<Record<string, BindleConnectorRecord>>;
 	readonly edges: readonly BindleEdge[];
 	readonly requirements: BindleRequirements;
-	entrypoint(
-		name: string,
-	): ((context?: BindleRuntimeContext) => unknown) | undefined;
+	entrypoint(name: string): BindleEntrypoint | undefined;
 }
 
-export type DeclaredComponent = new () => object;
+export type DeclaredComponent = new () => BindleHandlerObject;
+
+export interface BindleHandlerObject {
+	readonly [key: string]: JsonValue | undefined;
+}
+
+export type BindleEntrypoint = (
+	context?: BindleRuntimeContext,
+) => JsonValue | BindleHandlerObject;
 
 /** App entrypoint factory; the Station supplies runtime context when serving. */
-export type ComponentBinding =
-	| ((context?: BindleRuntimeContext) => unknown)
-	| DeclaredComponent;
+export type ComponentBinding = BindleEntrypoint | DeclaredComponent;
 
 export interface ExternalDependencyOptions {
 	readonly connectionString?: string;
@@ -310,8 +315,8 @@ export interface BindleBuilder {
 	// authoring site; it does not yet flow into BindleResource. Dropping the
 	// parameter would break those call sites, so it stays until the resource
 	// type carries it.
-	queue<T = unknown>(): BindleResource<"queue">;
-	topic<T = unknown>(): BindleResource<"topic">;
+	queue<_T = JsonValue>(): BindleResource<"queue">;
+	topic<_T = JsonValue>(): BindleResource<"topic">;
 	// biome-ignore-end lint/correctness/noUnusedVariables: see above
 	secret(): BindleResource<"secret">;
 	data(): BindleResource<"data">;

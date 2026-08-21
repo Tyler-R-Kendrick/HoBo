@@ -1,9 +1,14 @@
+import { isJsonObject, isJsonString } from "../json.js";
 import { isRecord } from "../plain-value.js";
 import {
+	type AnnotationValue,
+	type BindMountAnnotation,
 	BindReferenceError,
 	type ComponentHandle,
 	createComponentHandle,
 	type ResourceHandle,
+	type VolumeAnnotation,
+	type WaitForEntry,
 } from "./bind-reference.js";
 
 type DependencyRef = string | { readonly name: string };
@@ -18,8 +23,8 @@ export function addContainer(
 ): ComponentHandle {
 	const handle = createComponentHandle("container", name, {
 		image: source,
-		...(options.bind !== undefined ? { bind: options.bind } : {}),
-		...(options.env !== undefined ? { env: options.env } : {}),
+		...(options.bind !== undefined ? { bind: options.bind } : undefined),
+		...(options.env !== undefined ? { env: options.env } : undefined),
 		build: {
 			provider: "hobo:build",
 			source,
@@ -49,7 +54,7 @@ export function addContainer(
 	};
 
 	handle.withVolume = (volumeName, target) => {
-		const volumes = (handle.annotations.volumes as unknown[] | undefined) ?? [];
+		const volumes = volumeList(handle.annotations.volumes);
 		volumes.push({ name: volumeName, target });
 		handle.annotations.volumes = volumes;
 		return handle;
@@ -67,24 +72,25 @@ export function addContainer(
 			port,
 			...(endpointOptions.targetPort !== undefined
 				? { targetPort: endpointOptions.targetPort }
-				: {}),
+				: undefined),
 			...(endpointOptions.external !== undefined
 				? { external: endpointOptions.external }
-				: {}),
+				: undefined),
 			...(endpointOptions.protocol !== undefined
 				? { protocol: endpointOptions.protocol }
-				: {}),
+				: undefined),
 		});
 
 	handle.withArgs = (...args) => {
-		const flat = (handle.annotations.args as unknown[] | undefined) ?? [];
-		handle.annotations.args = [...flat, ...args.flat()];
+		handle.annotations.args = [
+			...stringList(handle.annotations.args),
+			...args.flat(),
+		];
 		return handle;
 	};
 
 	handle.withBindMount = (mountSource, target, readOnly = false) => {
-		const mounts =
-			(handle.annotations.bindMounts as unknown[] | undefined) ?? [];
+		const mounts = bindMountList(handle.annotations.bindMounts);
 		mounts.push({ source: mountSource, target, readOnly });
 		handle.annotations.bindMounts = mounts;
 		return handle;
@@ -129,22 +135,77 @@ function recordWait(
 	until: "ready" | "completed",
 ): void {
 	const target = resolveDependencyName(dependency);
-	if (typeof target !== "string" || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(target)) {
+	if (!isJsonString(target) || !/^[A-Za-z][A-Za-z0-9_-]*$/.test(target)) {
 		throw new BindReferenceError(
 			`resources.${ownerName}.${key}`,
 			"must reference a declared resource handle or id",
 		);
 	}
-	const waits = (handle.annotations[key] as unknown[] | undefined) ?? [];
+	const waits = waitList(handle.annotations[key]);
 	waits.push({ to: target, until });
 	handle.annotations[key] = waits;
 }
 
+function stringList(value: AnnotationValue | undefined): string[] {
+	if (!Array.isArray(value)) return [];
+	const out: string[] = [];
+	for (const item of value) {
+		if (isJsonString(item)) out.push(item);
+	}
+	return out;
+}
+
+function volumeList(value: AnnotationValue | undefined): VolumeAnnotation[] {
+	if (!Array.isArray(value)) return [];
+	const out: VolumeAnnotation[] = [];
+	for (const item of value) {
+		if (isJsonString(item) || !isJsonObject(item)) continue;
+		if (
+			isJsonString(item.name) &&
+			isJsonString(item.target) &&
+			item.source === undefined
+		) {
+			out.push({ name: item.name, target: item.target });
+		}
+	}
+	return out;
+}
+
+function bindMountList(
+	value: AnnotationValue | undefined,
+): BindMountAnnotation[] {
+	if (!Array.isArray(value)) return [];
+	const out: BindMountAnnotation[] = [];
+	for (const item of value) {
+		if (isJsonString(item) || !isJsonObject(item)) continue;
+		if (isJsonString(item.source) && isJsonString(item.target)) {
+			out.push({
+				source: item.source,
+				target: item.target,
+				readOnly: item.readOnly === true,
+			});
+		}
+	}
+	return out;
+}
+
+function waitList(value: AnnotationValue | undefined): WaitForEntry[] {
+	if (!Array.isArray(value)) return [];
+	const out: WaitForEntry[] = [];
+	for (const item of value) {
+		if (isJsonString(item) || !isJsonObject(item)) continue;
+		if (isJsonString(item.to) && isJsonString(item.until)) {
+			out.push({ to: item.to, until: item.until });
+		}
+	}
+	return out;
+}
+
 function resolveDependencyName(dependency: DependencyRef): string | null {
-	if (typeof dependency === "string") {
+	if (isJsonString(dependency)) {
 		return dependency;
 	}
-	if (isRecord(dependency) && typeof dependency.name === "string") {
+	if (isRecord(dependency) && isJsonString(dependency.name)) {
 		return dependency.name;
 	}
 	return null;

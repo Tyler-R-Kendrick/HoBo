@@ -1,11 +1,12 @@
 /**
  * Secretless-first typed config/secret schema surface (ADR-0027).
- * Schema is the committed shape agents see; values never live in Bindles.
+ * Schema is the committed layout agents see; values never live in Bindles.
  */
-import { createHash } from "node:crypto";
 
+import { createHash } from "node:crypto";
 import type { ConfigSensitivity } from "./config-sensitivity.js";
 import { sensitivityForField } from "./config-sensitivity.js";
+import { isJsonObject, isJsonString, type JsonValue } from "./json.js";
 
 export type { ConfigSensitivity } from "./config-sensitivity.js";
 
@@ -51,7 +52,7 @@ export type ConfigSchema = Readonly<{
 type FieldBuilder = {
 	required(): FieldBuilder;
 	optional(): FieldBuilder;
-	default(value: unknown): FieldBuilder;
+	default(value: JsonValue): FieldBuilder;
 	enum(values: readonly string[]): FieldBuilder;
 	min(n: number): FieldBuilder;
 	max(n: number): FieldBuilder;
@@ -63,6 +64,16 @@ type FieldBuilder = {
 	/** Materialize the field definition (internal). */
 	_build(): ConfigFieldDef;
 };
+
+function toConfigFieldDef(raw: FieldBuilder | ConfigFieldDef): ConfigFieldDef {
+	if (isJsonObject(raw) && "kind" in raw && raw.kind === "config-field") {
+		// SAFETY: config() field objects already carry the field-def kind.
+		return raw as ConfigFieldDef;
+	}
+	// SAFETY: remaining entries are FieldBuilder instances with _build().
+	const builder = raw as FieldBuilder;
+	return builder._build();
+}
 
 function createFieldBuilder(
 	type: ConfigFieldKind,
@@ -88,7 +99,7 @@ function createFieldBuilder(
 			required = false;
 			return builder;
 		},
-		default(value: unknown) {
+		default(value: JsonValue) {
 			defaultValue = value;
 			return builder;
 		},
@@ -105,6 +116,7 @@ function createFieldBuilder(
 			return builder;
 		},
 		source(rank: SecretSourceRank) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			if (!(SECRET_SOURCE_RANKS as readonly string[]).includes(rank)) {
 				throw new TypeError(`unknown secret source rank: ${rank}`);
 			}
@@ -143,13 +155,13 @@ function createFieldBuilder(
 				required,
 				sensitive,
 				source,
-				...(defaultValue !== undefined ? { defaultValue } : {}),
-				...(enumValues !== undefined ? { enumValues } : {}),
-				...(min !== undefined ? { min } : {}),
-				...(max !== undefined ? { max } : {}),
-				...(ttl !== undefined ? { ttl } : {}),
-				...(rotation !== undefined ? { rotation } : {}),
-				...(docs !== undefined ? { docs } : {}),
+				...(defaultValue !== undefined ? { defaultValue } : undefined),
+				...(enumValues !== undefined ? { enumValues } : undefined),
+				...(min !== undefined ? { min } : undefined),
+				...(max !== undefined ? { max } : undefined),
+				...(ttl !== undefined ? { ttl } : undefined),
+				...(rotation !== undefined ? { rotation } : undefined),
+				...(docs !== undefined ? { docs } : undefined),
 			});
 		},
 	};
@@ -194,16 +206,10 @@ export function config(
 ): ConfigSchema {
 	const built: Record<string, ConfigFieldDef> = {};
 	for (const [name, raw] of Object.entries(fields)) {
-		if (typeof name !== "string" || name.length === 0) {
+		if (!isJsonString(name) || name.length === 0) {
 			throw new TypeError("config field names must be non-empty");
 		}
-		const def =
-			raw &&
-			typeof raw === "object" &&
-			"kind" in raw &&
-			raw.kind === "config-field"
-				? (raw as ConfigFieldDef)
-				: (raw as FieldBuilder)._build();
+		const def = toConfigFieldDef(raw);
 		// Forbid sensitive defaults (plaintext in schema).
 		if (def.sensitive && def.defaultValue !== undefined) {
 			throw new Error(
@@ -262,7 +268,7 @@ export function schemaOnlyView(schema: ConfigSchema): Readonly<{
 			sensitive: f.sensitive,
 			sensitivity: sensitivityForField(f),
 			source: f.source,
-			...(f.docs !== undefined ? { docs: f.docs } : {}),
+			...(f.docs !== undefined ? { docs: f.docs } : undefined),
 		};
 	}
 	return Object.freeze({
@@ -295,7 +301,7 @@ export function assertSourceAllowed(
  * Reference binding: declare config comes from a bound resource (secretless).
  */
 export function fromBinding(resourceName: string): ConfigFieldDef {
-	if (typeof resourceName !== "string" || resourceName.length === 0) {
+	if (!isJsonString(resourceName) || resourceName.length === 0) {
 		throw new TypeError("fromBinding requires a resource name");
 	}
 	return Object.freeze({

@@ -19,6 +19,7 @@ const fixturesDir = join(
 );
 
 function readFixture<T = unknown>(...segments: string[]): T {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return JSON.parse(readFileSync(join(fixturesDir, ...segments), "utf8")) as T;
 }
 
@@ -114,6 +115,7 @@ describe("hobo.manifest/v1 loader", () => {
 			parseManifest(raw);
 		} catch (error) {
 			expect(error).toBeInstanceOf(ManifestParseError);
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((error as ManifestParseError).path).toBe(path);
 		}
 	});

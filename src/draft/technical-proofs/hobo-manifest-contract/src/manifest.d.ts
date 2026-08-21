@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export const MANIFEST_SCHEMA: "hobo.manifest/v1";
 export const CURRENT_MANIFEST_SCHEMA: "hobo.manifest/v1.1";
 
@@ -40,7 +41,7 @@ export interface ComponentResource extends BaseResource {
   links?: ManifestLink[];
   endpoints?: Record<string, ManifestEndpoint>;
   env?: Record<string, string>;
-  annotations?: Record<string, unknown>;
+  annotations?: JsonObject;
 }
 
 export interface WebsiteResource extends BaseResource {
@@ -98,8 +99,8 @@ export class ManifestUpcastError extends Error {
 export interface ManifestUpcaster {
   from: string;
   to: string;
-  upcast(manifest: Record<string, unknown>): Record<string, unknown> | {
-    manifest: Record<string, unknown>;
+  upcast(manifest: JsonObject): JsonObject | {
+    manifest: JsonObject;
     losses?: ManifestUpcastLoss[];
   };
 }
@@ -116,7 +117,7 @@ export interface UpcastManifestOptions {
 }
 
 export interface ManifestUpcastResult {
-  manifest: HoboManifestV1 | HoboManifestV1_1 | Record<string, unknown>;
+  manifest: HoboManifestV1 | HoboManifestV1_1 | JsonObject;
   hash: string;
   fromSchema: string;
   toSchema: string;
@@ -124,13 +125,13 @@ export interface ManifestUpcastResult {
   losses: ManifestUpcastLoss[];
 }
 
-export function validateManifest(input: unknown): ManifestValidationResult;
+export function validateManifest(input: JsonValue): ManifestValidationResult;
 export function upcastManifest(
-  input: unknown,
+  input: JsonValue,
   options?: UpcastManifestOptions,
 ): ManifestUpcastResult;
 export function parseManifestReference(value: string): ManifestReference;
 export function parseOutputPlaceholder(
   value: string,
 ): ResourceOutputPlaceholder | ContextPlaceholder;
-export function canonicalManifestHash(manifest: unknown): string;
+export function canonicalManifestHash(manifest: JsonValue): string;

@@ -1,4 +1,6 @@
 import { randomBytes } from "node:crypto";
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
+
 
 const TRACEPARENT_PATTERN = /^00-([0-9a-f]{32})-([0-9a-f]{16})-([0-9a-f]{2})$/i;
 const ZERO_TRACE_ID = "00000000000000000000000000000000";
@@ -40,7 +42,7 @@ export function createOtelTracePipeline(options = {}) {
   }
 
   function startSpan(parent, name, attributes = {}) {
-    if (!parent || typeof parent !== "object") {
+    if (!parent || !isJsonObject(parent)) {
       throw new Error("parent span is required");
     }
 
@@ -98,7 +100,7 @@ export function createOtelTracePipeline(options = {}) {
   }
 
   function endSpan(span, attributes = {}) {
-    if (!span || typeof span !== "object") {
+    if (!span || !isJsonObject(span)) {
       throw new Error("span is required");
     }
     if (span.endedAtMs !== undefined) {
@@ -158,7 +160,7 @@ export function createOtelTracePipeline(options = {}) {
       deferredSpans,
       droppedSampledSpans: stats.droppedSampledSpans,
       droppedBufferSpans: stats.droppedBufferSpans,
-      ...(retryAt === undefined ? {} : { nextRetryAtMs: retryAt })
+      ...(retryAt === undefined ? undefined : { nextRetryAtMs: retryAt })
     };
   }
 
@@ -166,7 +168,7 @@ export function createOtelTracePipeline(options = {}) {
     const spanId = nextSpanId();
     const attributes = {
       ...redactAttributes(config.attributes),
-      ...(config.depth > maxDepth ? { "hobo.depth_exceeded": true } : {})
+      ...(config.depth > maxDepth ? { "hobo.depth_exceeded": true } : undefined)
     };
 
     return {
@@ -296,7 +298,7 @@ function toOtlpTrace(spans) {
 }
 
 function parseTraceparent(traceparent) {
-  if (typeof traceparent !== "string") {
+  if (!isJsonString(traceparent)) {
     throw new Error("traceparent is required");
   }
   const match = TRACEPARENT_PATTERN.exec(traceparent);
@@ -320,7 +322,7 @@ function formatTraceparent(traceId, spanId, flags = "01") {
 }
 
 function normalizeSampleRate(rate) {
-  if (typeof rate !== "number" || rate < 0 || rate > 1) {
+  if (!isJsonNumber(rate) || rate < 0 || rate > 1) {
     throw new Error("sampleRate must be between 0 and 1");
   }
   return rate;
@@ -337,7 +339,7 @@ function redactValue(value, key) {
   if (Array.isArray(value)) {
     return value.map((item) => redactValue(item, ""));
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([childKey, childValue]) => [
         childKey,
@@ -353,7 +355,7 @@ function isSensitiveKey(key) {
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${label} is required`);
   }
   return value;
@@ -363,7 +365,7 @@ function cloneValue(value) {
   if (Array.isArray(value)) {
     return value.map(cloneValue);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([key, childValue]) => [key, cloneValue(childValue)])
     );

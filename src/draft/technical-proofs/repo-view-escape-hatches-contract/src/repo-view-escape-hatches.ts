@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export function createProjectionStore({
   name,
   sink = { type: "native", reactive: true },
@@ -41,8 +42,8 @@ export function range(field, { gte, lte } = {}) {
   return Object.freeze({
     op: "range",
     field: assertString(field, "predicate field"),
-    ...(gte === undefined ? {} : { gte }),
-    ...(lte === undefined ? {} : { lte }),
+    ...(gte === undefined ? undefined : { gte }),
+    ...(lte === undefined ? undefined : { lte }),
   });
 }
 
@@ -182,7 +183,7 @@ class ProjectionStore {
   }
 
   #tenantId(context) {
-    if (!context || typeof context.tenantId !== "string" || context.tenantId.length === 0) {
+    if (!context || !isJsonString(context.tenantId) || context.tenantId.length === 0) {
       throw new Error("tenant scope required");
     }
     return context.tenantId;
@@ -198,7 +199,7 @@ class ProjectionStore {
 }
 
 function normalizeSink(sink) {
-  if (!sink || typeof sink !== "object") {
+  if (!sink || !isJsonObject(sink)) {
     throw new TypeError("sink must be an object");
   }
   return Object.freeze({
@@ -208,7 +209,7 @@ function normalizeSink(sink) {
 }
 
 function normalizeRow(row) {
-  if (!row || typeof row !== "object") {
+  if (!row || !isJsonObject(row)) {
     throw new TypeError("row must be an object");
   }
   return Object.freeze({
@@ -220,7 +221,7 @@ function normalizeRow(row) {
 }
 
 function flattenPredicate(predicate) {
-  if (!predicate || typeof predicate !== "object") {
+  if (!predicate || !isJsonObject(predicate)) {
     throw new TypeError("predicate is required");
   }
   if (Array.isArray(predicate.all)) {
@@ -293,7 +294,7 @@ function assertStore(store) {
 }
 
 function assertString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;
@@ -318,7 +319,7 @@ function stableValue(value) {
   if (Array.isArray(value)) {
     return value.map(stableValue);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return stableObject(Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, stableValue(entry)])));
   }
   return value;
@@ -328,5 +329,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

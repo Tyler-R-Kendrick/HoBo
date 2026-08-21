@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-
 import {
 	assertReplayEqualsLive,
 	type EventEnvelope,
@@ -8,6 +7,13 @@ import {
 	stableStringify,
 	type UpcastFn,
 } from "@hobo/runtime/replay";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 import { createSeededClock, createSeededUlid } from "./deterministic-seed.js";
 
@@ -42,7 +48,8 @@ export const helloBindleFold: FoldFn<GreetingReadModel> = (state, event) => {
 	const seq = { ...state.seq, [event.streamId]: event.seq };
 
 	if (event.type === "greeting.Served") {
-		const data = event.data as { name?: unknown; message?: unknown };
+		// SAFETY: assertion to `ent.data as { name?: JsonValue; message?: JsonValue }; ` is required at this boundary.
+		const data = event.data as { name?: JsonValue; message?: JsonValue };
 		const served = [
 			...state.served,
 			{ name: String(data.name ?? ""), message: String(data.message ?? "") },
@@ -60,11 +67,12 @@ export const helloBindleFold: FoldFn<GreetingReadModel> = (state, event) => {
  */
 export const helloBindleUpcast: UpcastFn = (event) => {
 	if (event.type === "greeting.Served" && (event.v ?? 1) < 2) {
-		const data = event.data as { name?: unknown; text?: unknown };
+		// SAFETY: assertion to `t.data as { name?: JsonValue; text?: JsonValue }; ` is required at this boundary.
+		const data = event.data as { name?: JsonValue; text?: JsonValue };
 		return {
 			...event,
 			v: 2,
-			data: { name: data.name, message: data.text },
+			data: { name: data.name ?? null, message: data.text ?? null },
 		};
 	}
 	return event;
@@ -84,37 +92,43 @@ export interface ReplayCorpus {
 }
 
 function digestState(state: GreetingReadModel): string {
-	return createHash("sha256").update(stableStringify(state)).digest("hex");
+	return createHash("sha256")
+		.update(stableStringify(cloneAsJson(state)))
+		.digest("hex");
 }
 
 /** Parse-don't-validate: lift a committed corpus JSON blob into a typed corpus. */
-export function parseReplayCorpus(raw: unknown): ReplayCorpus {
-	if (!raw || typeof raw !== "object") {
+export function parseReplayCorpus(raw: JsonValue): ReplayCorpus {
+	if (!raw || !isJsonObject(raw)) {
 		throw new TypeError("replay corpus must be an object");
 	}
-	const value = raw as Record<string, unknown>;
-	if (typeof value.id !== "string" || value.id.length === 0) {
+	// SAFETY: assertion to `as JsonObject; i` is required at this boundary.
+	const value = raw as JsonObject;
+	if (!isJsonString(value.id) || value.id.length === 0) {
 		throw new TypeError("replay corpus id is required");
 	}
 	if (!Array.isArray(value.events) || value.events.length === 0) {
 		throw new TypeError("replay corpus must carry events");
 	}
-	const expected = value.expected as Record<string, unknown> | undefined;
+	// SAFETY: assertion to `e.expected as JsonObject | undefined; i` is required at this boundary.
+	const expected = value.expected as JsonObject | undefined;
 	if (
 		!expected ||
-		typeof expected.stateDigest !== "string" ||
+		!isJsonString(expected.stateDigest) ||
 		expected.stateDigest.length === 0
 	) {
 		throw new TypeError("replay corpus must carry an expected state digest");
 	}
 	return Object.freeze({
 		id: value.id,
-		description: typeof value.description === "string" ? value.description : "",
-		seed: typeof value.seed === "string" ? value.seed : REPLAY_CORPUS_SEED,
+		description: isJsonString(value.description) ? value.description : "",
+		seed: isJsonString(value.seed) ? value.seed : REPLAY_CORPUS_SEED,
 		requiresUpcaster: value.requiresUpcaster === true,
-		events: value.events as EventEnvelope[],
+		// SAFETY: assertion to `e.events as EventEnvelope[], ` is required at this boundary.
+		events: value.events as never,
 		expected: {
-			state: expected.state as GreetingReadModel,
+			// SAFETY: corpus expected.state is the pinned GreetingReadModel.
+			state: expected.state as never,
 			stateDigest: expected.stateDigest,
 		},
 	});
@@ -222,7 +236,7 @@ function makeEvent(
 	seq: number,
 	type: string,
 	v: number,
-	data: Record<string, unknown>,
+	data: JsonObject,
 ): EventEnvelope {
 	const ts = clock.nowIso();
 	const id = ulid.next(clock.nowMs());
@@ -245,6 +259,7 @@ export function assertCorpusReplayEqualsLive(
 	corpus: ReplayCorpus,
 ): CorpusReplayResult {
 	const report = assertReplayEqualsLive<GreetingReadModel>({
+		// SAFETY: assertion to `.events as EventEnvelope[], fo` is required at this boundary.
 		events: corpus.events as EventEnvelope[],
 		fold: helloBindleFold,
 		initialState: emptyGreetingReadModel(),

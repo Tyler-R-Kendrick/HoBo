@@ -5,6 +5,8 @@
 // generated (training.infer / hobo stub), so the lint reports them as
 // inferred `info` findings instead of errors.
 
+import { isJsonString } from "../json.js";
+
 const REQUIRED_GROUNDINGS = ["intent", "contract", "rubric"] as const;
 
 export interface UseTrainingLintFinding {
@@ -22,7 +24,7 @@ export interface UseTrainingLintResult {
 }
 
 export function lintUseTrainingSource(source: string): UseTrainingLintResult {
-	if (typeof source !== "string" || source.length === 0) {
+	if (!isJsonString(source) || source.length === 0) {
 		throw new TypeError("source must be a non-empty string");
 	}
 

@@ -1,16 +1,26 @@
+import { cloneAsJson, isJsonObject, type JsonValue } from "./json.js";
 import type { ValueDiff } from "./types.js";
 
-export function firstDiff(
-	expected: unknown,
-	actual: unknown,
+export function firstDiff<T, U>(
+	expected: T,
+	actual: U,
 	path = "$",
+): ValueDiff | null {
+	return firstDiffJson(cloneAsJson(expected), cloneAsJson(actual), path);
+}
+
+function firstDiffJson(
+	expected: JsonValue,
+	actual: JsonValue,
+	path: string,
 ): ValueDiff | null {
 	if (Object.is(expected, actual)) {
 		return null;
 	}
 
 	if (
-		typeof expected !== typeof actual ||
+		Object.prototype.toString.call(expected) !==
+			Object.prototype.toString.call(actual) ||
 		expected === null ||
 		actual === null
 	) {
@@ -27,14 +37,14 @@ export function firstDiff(
 			if (index >= expected.length || index >= actual.length) {
 				return {
 					path: `${path}[${index}]`,
-					expected: expected[index],
-					actual: actual[index],
+					expected: expected[index] ?? null,
+					actual: actual[index] ?? null,
 				};
 			}
 
-			const diff = firstDiff(
-				expected[index],
-				actual[index],
+			const diff = firstDiffJson(
+				expected[index] ?? null,
+				actual[index] ?? null,
 				`${path}[${index}]`,
 			);
 			if (diff) {
@@ -45,15 +55,12 @@ export function firstDiff(
 		return null;
 	}
 
-	if (typeof expected === "object") {
-		const keys = unique([
-			...Object.keys(expected as object),
-			...Object.keys(actual as object),
-		]);
+	if (isJsonObject(expected) && isJsonObject(actual)) {
+		const keys = unique([...Object.keys(expected), ...Object.keys(actual)]);
 		for (const key of keys) {
-			const diff = firstDiff(
-				(expected as Record<string, unknown>)[key],
-				(actual as Record<string, unknown>)[key],
+			const diff = firstDiffJson(
+				expected[key] ?? null,
+				actual[key] ?? null,
 				joinPath(path, key),
 			);
 			if (diff) {

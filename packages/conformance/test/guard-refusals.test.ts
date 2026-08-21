@@ -20,7 +20,9 @@
  *   - **Every refusal names the variable to set.** A guard nobody can act on
  *     gets bypassed, so "remediation" is part of the contract, not a nicety.
  */
+
 import { describe, expect, it } from "vitest";
+import { isJsonString } from "../src/json.js";
 
 import {
 	CI_ENV_KEYS,
@@ -268,7 +270,7 @@ describe("the credential must be a reference", () => {
 	it("stores only the redacted form for printing", () => {
 		const grant = grantFor();
 		expect(grant.redactedCredentialRef).toBeTruthy();
-		expect(typeof grant.redactedCredentialRef).toBe("string");
+		expect(isJsonString(grant.redactedCredentialRef)).toBe(true);
 	});
 
 	it("trims the reference before parsing", () => {

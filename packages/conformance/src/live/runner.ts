@@ -160,7 +160,7 @@ export async function runLiveAnonymousConformance(
 		},
 		...(options.freshnessWindowMs !== undefined
 			? { freshnessWindowMs: options.freshnessWindowMs }
-			: {}),
+			: undefined),
 	});
 
 	return Object.freeze({

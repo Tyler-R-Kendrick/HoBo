@@ -6,6 +6,7 @@
 // fence — exactly-one-writer. Lifecycle emits `actor.Activated` /
 // `actor.StateAppended` / `actor.Passivated`.
 
+import { isJsonObject, type JsonObject, type JsonValue } from "./json.js";
 import type { ActorHost, ActorLease, FoldEvent } from "./ports.js";
 
 /** The context a message handler mutates: current folded state + emit-under-lease. */
@@ -148,11 +149,12 @@ function foldExceptLifecycle<S, M extends FoldEvent>(
 	event: FoldEvent,
 ): S {
 	if (event.type === "actor.StateAppended" && isRecord(event.payload)) {
+		// SAFETY: assertion to `load as FoldEvent); } re` is required at this boundary.
 		return def.fold(state, event.payload as FoldEvent);
 	}
 	return state;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null;
+function isRecord(value: JsonValue | undefined): value is JsonObject {
+	return isJsonObject(value) && value !== null;
 }

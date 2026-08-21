@@ -5,9 +5,11 @@ import { at, first } from "@hobo/core/total-access";
 import { describe, expect, it } from "vitest";
 import { agent } from "../../src/agent.js";
 import { CapabilityDeniedError } from "../../src/errors.js";
+import type { JsonObject, JsonValue } from "../../src/json.js";
 import { createWorkflowEngine, defineWorkflow } from "../../src/workflow.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
+// SAFETY: assertion to `JSON.parse( readFileSync( join(packageRoot, "../pacts/authoring_surface.pact.json"), "utf8", ), ) as { interactions: { d` is required at this boundary.
 const pact = JSON.parse(
 	readFileSync(
 		join(packageRoot, "../pacts/authoring_surface.pact.json"),
@@ -16,7 +18,7 @@ const pact = JSON.parse(
 ) as {
 	interactions: {
 		description: string;
-		response: { status: number; body: Record<string, unknown> };
+		response: { status: number; body: JsonObject };
 	}[];
 };
 
@@ -94,7 +96,7 @@ describe("authoring-surface journal consumer boundary", () => {
 	it("denies an undeclared agent tool with a typed capability denial", async () => {
 		const interaction = at(pact.interactions, 2);
 		const engine = createWorkflowEngine();
-		const support = agent<string, unknown>({
+		const support = agent<string, JsonValue>({
 			name: "support",
 			tools: [{ name: "search", run: (q) => `results:${String(q)}` }],
 			async run(ctx, input) {
@@ -107,6 +109,7 @@ describe("authoring-surface journal consumer boundary", () => {
 		try {
 			await engine.start(support, "ping");
 		} catch (error) {
+			// SAFETY: assertion to `ror as CapabilityDeniedError; ` is required at this boundary.
 			denial = error as CapabilityDeniedError;
 		}
 

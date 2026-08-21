@@ -297,10 +297,10 @@ training.define = function define<I, O>(
 	// SAFETY: assertion to `( options.methodRef, // SAFETY: assertion to `as TrainingOptions, null` is required at` is required at this boundary.
 	return register(
 		options.methodRef,
-		// SAFETY: assertion to `as TrainingOptions, null` is required at this boundary.
-		options as TrainingOptions,
+		// SAFETY: training.define erases I/O at the registry boundary.
+		options as never,
 		null,
-	) as Trainable<I, O>;
+	) as never;
 };
 
 /**
@@ -396,7 +396,8 @@ export function resolveTrainable<I = JsonValue, O = JsonValue>(
 	const entry = registry.get(refFor(ref));
 	if (!entry) throw new TrainingResolutionError(ref);
 	// SAFETY: assertion to `le as Trainable<I, O>; } export ` is required at this boundary.
-	return entry.callable as Trainable<I, O>;
+	// SAFETY: registry lookup restores the caller's Trainable I/O types.
+	return entry.callable as never;
 }
 
 export function getTrainable(

@@ -51,7 +51,9 @@ async function artifactFor(
 ): Promise<AnonymousTrustEvidenceArtifact> {
 	const reports = await runAnonymousConformance(REFERENCE_ANONYMOUS_PORTS, {
 		subjectId: "reference.claimable-postgres",
-		...(options.caseIds !== undefined ? { caseIds: options.caseIds } : {}),
+		...(options.caseIds !== undefined
+			? { caseIds: options.caseIds }
+			: undefined),
 	});
 	return emitAnonymousTrustEvidence({
 		providerId: "reference-cloud",

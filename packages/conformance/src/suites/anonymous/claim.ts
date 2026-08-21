@@ -8,11 +8,13 @@
  * it, the mandatory rotation and bootstrap-authority revocation have finished,
  * and the credential that existed before the claim has stopped working.
  */
+
 import type {
 	ClaimItemStatus,
 	CreatorAuthorityAfterClaim,
 	PostClaimAction,
 } from "@hobo/claims";
+import type { JsonValue } from "../../json.js";
 
 import {
 	type AnonymousSuiteDefinition,
@@ -183,7 +185,7 @@ export const CLAIM_CASES: readonly ClaimCase[] = Object.freeze([
 ]);
 
 export function parseClaimStepOutcome(
-	raw: unknown,
+	raw: JsonValue,
 	caseId: string,
 ): ClaimStepOutcome {
 	const record = requireRecord(raw, caseId, "claim outcome");
@@ -247,9 +249,9 @@ export function parseClaimStepOutcome(
 		outstandingPostClaimActions: outstanding,
 		...(preClaimCredentialAccepted !== undefined
 			? { preClaimCredentialAccepted }
-			: {}),
-		...(verificationRef !== undefined ? { verificationRef } : {}),
-		...(evidenceRef !== undefined ? { evidenceRef } : {}),
+			: undefined),
+		...(verificationRef !== undefined ? { verificationRef } : undefined),
+		...(evidenceRef !== undefined ? { evidenceRef } : undefined),
 	};
 }
 

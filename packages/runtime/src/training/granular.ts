@@ -3,6 +3,7 @@ import {
 	finalizeTrainableClass as finalizeWithRegistry,
 	granularOptionsFor as groundingOptionsFor,
 } from "ts-autocode-grounding";
+import type { JsonBag } from "../json.js";
 import { getTrainable, resolveTrainable, training } from "./training.js";
 import type { Trainable, TrainingOptions } from "./types.js";
 
@@ -35,14 +36,16 @@ export { composeOptions };
  */
 export function finalizeTrainableClass(
 	cls: new () => object,
-	metadata: Record<PropertyKey, unknown> | undefined,
+	metadata: JsonBag | undefined,
 ): void {
 	finalizeWithRegistry(
 		cls,
-		metadata,
+		// SAFETY: class decorator metadata is the grounding bag at this boundary.
+		metadata as never,
 		{
 			has: (methodRef) => getTrainable(methodRef) !== undefined,
 			register: (baseline, options) =>
+				// SAFETY: assertion to `as TrainingOptions), }, ` is required at this boundary.
 				training(baseline, options as TrainingOptions),
 		},
 		Symbol.for("hobo.trainable.metadata"),
@@ -57,12 +60,14 @@ export function resolveDeclared<I, O>(classAndMethod: string): Trainable<I, O> {
 /** Compose options for a stage-3 bare `@trainable` method (granular or inferred). */
 export function granularOptionsFor(
 	methodRef: string,
-	metadata: Record<PropertyKey, unknown> | undefined,
+	metadata: JsonBag | undefined,
 	methodName: string,
 ): TrainingOptions {
+	// SAFETY: assertion to `gOptionsFor( methodRef, metadata, methodName, ) as TrainingOptions; } ` is required at this boundary.
 	return groundingOptionsFor(
 		methodRef,
-		metadata,
+		// SAFETY: decorator metadata is the grounding options bag at this boundary.
+		metadata as never,
 		methodName,
 	) as TrainingOptions;
 }

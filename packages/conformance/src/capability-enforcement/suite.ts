@@ -7,6 +7,7 @@ import {
 	inferCapabilityUsage,
 } from "@hobo/core";
 import { expect, test } from "vitest";
+import type { JsonValue } from "../json.js";
 
 import type { CapabilityHandle, CapabilityLinkTable } from "./host-types.js";
 
@@ -49,7 +50,8 @@ function registerKvProvider(table: CapabilityLinkTable): void {
 		id: "local-kv",
 		exports: {
 			"wasi:keyvalue": {
-				get: (...args: unknown[]) => {
+				get: (...args: JsonValue[]) => {
+					// SAFETY: assertion to `args[0] as { key: string }` is required at this boundary.
 					const payload = args[0] as { key: string };
 					return { value: `stored:${payload.key}` };
 				},

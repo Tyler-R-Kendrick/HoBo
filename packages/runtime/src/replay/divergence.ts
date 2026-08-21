@@ -1,4 +1,5 @@
 import crypto from "node:crypto";
+import { cloneAsJson } from "../json.js";
 import { stableStringify } from "./equivalence.js";
 import type { ReplayDivergenceRecord } from "./types.js";
 
@@ -38,10 +39,10 @@ export class ReplayDivergenceError extends Error {
 	}
 }
 
-export function digest(value: unknown): string {
+export function digest<T>(value: T): string {
 	return crypto
 		.createHash("sha256")
-		.update(stableStringify(value))
+		.update(stableStringify(cloneAsJson(value)))
 		.digest("hex");
 }
 

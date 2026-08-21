@@ -1,4 +1,10 @@
 import { must } from "@hobo/core/total-access";
+import {
+	cloneAsJson,
+	isJsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "../json.js";
 import { createDeterministicContext } from "./context.js";
 import { digest, ReplayDivergenceError } from "./divergence.js";
 import { stableStringify } from "./equivalence.js";
@@ -10,7 +16,11 @@ export interface WorkflowHandlers<S, A> {
 	name: string;
 	initialState(args: A): S;
 	onStart?: (ctx: RuntimeContext, state: S, args: A) => S | Promise<S>;
-	onHook?: (ctx: RuntimeContext, state: S, payload: unknown) => S | Promise<S>;
+	onHook?: (
+		ctx: RuntimeContext,
+		state: S,
+		payload: JsonValue,
+	) => S | Promise<S>;
 	onTimer?: (ctx: RuntimeContext, state: S, timer: TimerRef) => S | Promise<S>;
 }
 
@@ -21,7 +31,7 @@ export interface RuntimeContext {
 	random(label?: string): number;
 	step<T>(name: string, fn: () => Promise<T> | T): Promise<T>;
 	sleep(delayMs: number, options?: { id?: string; label?: string }): TimerRef;
-	emit(type: string, data?: unknown): { type: string; data: unknown };
+	emit(type: string, data?: JsonValue): { type: string; data: JsonValue };
 	waitForHook(name?: string): HookRef;
 }
 
@@ -42,7 +52,7 @@ export interface RunRef {
 
 export interface TestRuntime {
 	start<S, A>(workflow: WorkflowHandlers<S, A>, args: A): Promise<RunRef>;
-	resumeHook(run: RunRef, payload: unknown): Promise<RunRef>;
+	resumeHook(run: RunRef, payload: JsonValue): Promise<RunRef>;
 	state<S>(run: RunRef): Promise<S>;
 	replay<S>(run: RunRef): Promise<S>;
 	clock: { advance(ms: number): Promise<void>; now(): string };
@@ -84,7 +94,7 @@ type TraceEntry =
 			atMs: number;
 			fireAtMs: number;
 	  }
-	| { type: "hook.resumed"; payload: unknown; atMs: number };
+	| { type: "hook.resumed"; payload: JsonValue; atMs: number };
 
 export function defineWorkflow<S, A>(
 	name: string,
@@ -100,12 +110,12 @@ export function testRuntime(
 	const seed = options.seed ?? "runtime-local-test-seed";
 	let nowMs = Date.parse(options.startInstant ?? "2026-06-26T00:00:00.000Z");
 	let timerSeq = 1;
-	const runs = new Map<string, RunRecord<unknown, unknown>>();
+	const runs = new Map<string, RunRecord<JsonValue, JsonValue>>();
 
 	async function appendRunEvent<S, A>(
 		run: RunRecord<S, A>,
 		type: string,
-		data: unknown,
+		data: JsonValue,
 	) {
 		run.nextSeq += 1;
 		await recordEffect(
@@ -147,11 +157,11 @@ export function testRuntime(
 				if (record) {
 					await appendRunEvent(run, "run.StepScheduled", { name, index });
 					const result = await fn();
-					await appendRunEvent(run, "run.StepCompleted", {
-						name,
-						index,
-						result,
-					});
+					await appendRunEvent(
+						run,
+						"run.StepCompleted",
+						cloneAsJson({ name, index, result }),
+					);
 					run.stepIndex += 1;
 					return result;
 				}
@@ -160,8 +170,10 @@ export function testRuntime(
 					(event) =>
 						event.type === "run.StepCompleted" &&
 						event.data &&
-						typeof event.data === "object" &&
+						isJsonObject(event.data) &&
+						// SAFETY: assertion to `event.data as { name?: string; index?: number }` is required at this boundary.
 						(event.data as { name?: string; index?: number }).name === name &&
+						// SAFETY: assertion to `event.data as { name?: string; index?: number }` is required at this boundary.
 						(event.data as { name?: string; index?: number }).index === index,
 				);
 				if (!completed) {
@@ -174,6 +186,7 @@ export function testRuntime(
 					});
 				}
 				run.stepIndex += 1;
+				// SAFETY: assertion to `completed.data as { result: T }` is required at this boundary.
 				return (completed.data as { result: T }).result;
 			},
 			sleep(delayMs: number, options: { id?: string; label?: string } = {}) {
@@ -203,7 +216,7 @@ export function testRuntime(
 				run.trace.push(scheduled);
 				return toTimerRef(timer);
 			},
-			emit(type: string, data: unknown = {}) {
+			emit(type: string, data: JsonValue = {}) {
 				return { type, data };
 			},
 			waitForHook(name = "default") {
@@ -257,7 +270,9 @@ export function testRuntime(
 							delayMs: 0,
 							fireAtMs: entry.fireAtMs,
 							fired: true,
-							...(entry.label !== undefined ? { label: entry.label } : {}),
+							...(entry.label !== undefined
+								? { label: entry.label }
+								: undefined),
 						}),
 						false,
 					);
@@ -284,7 +299,9 @@ export function testRuntime(
 								timerId: timer.timerId,
 								atMs: nowMs,
 								fireAtMs: timer.fireAtMs,
-								...(timer.label !== undefined ? { label: timer.label } : {}),
+								...(timer.label !== undefined
+									? { label: timer.label }
+									: undefined),
 							});
 							pending.push(
 								applyHandler(
@@ -317,8 +334,10 @@ export function testRuntime(
 				timers: [],
 				trace: [],
 			};
-			runs.set(runId, run as RunRecord<unknown, unknown>);
-			await appendRunEvent(run, "run.Started", { seed, args });
+			// SAFETY: assertion to `run as RunRecord<JsonValue, JsonValue>` is required at this boundary.
+			// SAFETY: run records are stored erased across workflow generics.
+			runs.set(runId, run as never);
+			await appendRunEvent(run, "run.Started", cloneAsJson({ seed, args }));
 			await applyHandler(run, workflow.onStart, clone(args), true);
 			return { runId };
 		},
@@ -336,6 +355,7 @@ export function testRuntime(
 		},
 
 		async state<S>(runRef: RunRef): Promise<S> {
+			// SAFETY: assertion to `clone(getRun(runs, runRef).state) as S` is required at this boundary.
 			return clone(getRun(runs, runRef).state) as S;
 		},
 
@@ -365,6 +385,7 @@ export function testRuntime(
 				});
 			}
 
+			// SAFETY: assertion to `clone(replayed.state) as S` is required at this boundary.
 			return clone(replayed.state) as S;
 		},
 	};
@@ -408,7 +429,7 @@ function replaySleep(
 		delayMs: recorded.delayMs,
 		fireAtMs: recorded.fireAtMs,
 		fired: true,
-		...(recorded.label !== undefined ? { label: recorded.label } : {}),
+		...(recorded.label !== undefined ? { label: recorded.label } : undefined),
 	});
 }
 
@@ -424,7 +445,7 @@ function toTimerRef(timer: TimerRecord): TimerRef {
 }
 
 function getRun(
-	runs: Map<string, RunRecord<unknown, unknown>>,
+	runs: Map<string, RunRecord<JsonValue, JsonValue>>,
 	runRef: RunRef,
 ) {
 	const run = runs.get(runRef.runId);
@@ -439,9 +460,12 @@ function formatInstant(ms: number): string {
 }
 
 function clone<T>(value: T): T {
-	return typeof structuredClone === "function"
-		? structuredClone(value)
-		: (JSON.parse(JSON.stringify(value)) as T);
+	if (structuredClone instanceof Function) {
+		return structuredClone(value);
+	}
+	const cloned = parseJsonValue(JSON.stringify(value));
+	// SAFETY: JSON round-trip preserves T at this clone fallback.
+	return cloned as T;
 }
 
 function withReplayAmbientPoisoning<T>(

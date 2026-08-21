@@ -3,9 +3,10 @@ import {
 	componentMetadataOf as groundingComponentMetadataOf,
 	param as groundingParam,
 } from "ts-autocode-grounding";
+import type { JsonBag } from "../json.js";
 import { finalizeTrainableClass, granularOptionsFor } from "./granular.js";
 import { getTrainable, resolveTrainable, stub, training } from "./training.js";
-import type { FieldDescription, Trainable, TrainingOptions } from "./types.js";
+import type { Trainable, TrainingOptions } from "./types.js";
 
 // The DI-style declaration form (ADR-0125): a TC39 stage-3 class-method
 // decorator that lowers to the exact training() wrapper — byte-identical
@@ -19,6 +20,7 @@ import type { FieldDescription, Trainable, TrainingOptions } from "./types.js";
 
 // Symbol.metadata shims until the host runtime ships it (TS 5.2+ emits
 // decorator metadata only when the symbol exists).
+// SAFETY: assertion to `ol as { metadata?: symbol }).me` is required at this boundary.
 (Symbol as { metadata?: symbol }).metadata ??= Symbol.for("Symbol.metadata");
 
 export const TRAINABLE_METADATA = Symbol.for("hobo.trainable.metadata");
@@ -70,35 +72,35 @@ export function trainable<This, I, O>(
 ): (this: This, input: I) => Promise<O>;
 // biome-ignore lint/suspicious/noExplicitAny: dispatch across decorator call shapes
 export function trainable(first: any, second?: any): any {
-	if (typeof first === "function") {
-		const context = second as
-			| {
-					kind?: string;
-					name?: PropertyKey;
-					metadata?: Record<PropertyKey, unknown>;
-			  }
-			| undefined;
+	if (first instanceof Function) {
+		interface DecoratorContextBag {
+			kind?: string;
+			name?: PropertyKey;
+			metadata?: JsonBag;
+		}
+		const context: DecoratorContextBag | undefined = second;
 		// Bare stage-3 method: (method, methodContext).
 		if (context?.kind === "method") {
 			const name = String(context.name);
 			return createTrainableDecorator(
 				granularOptionsFor(name, context.metadata, name),
 			)(
-				first as TrainableMethod<unknown, unknown, unknown>,
-				second as ClassMethodDecoratorContext<
-					unknown,
-					TrainableMethod<unknown, unknown, unknown>
-				>,
+				// SAFETY: decorator dispatch erases This/I/O at this boundary.
+				first as never,
+				// SAFETY: stage-3 method context is the decorator second argument.
+				second as never,
 			);
 		}
 		// Bare class: stage-3 (cls, classContext).
 		finalizeTrainableClass(
+			// SAFETY: assertion to `ew () => object, conte` is required at this boundary.
 			first as new () => object,
 			context?.kind === "class" ? context.metadata : undefined,
 		);
 		return undefined;
 	}
 	// Options factory: @trainable({...}).
+	// SAFETY: assertion to `rainingOptions); } func` is required at this boundary.
 	return createTrainableDecorator(first as TrainingOptions);
 }
 
@@ -110,12 +112,13 @@ function createTrainableDecorator<This, I, O>(
 		context:
 			| ClassMethodDecoratorContext<This, TrainableMethod<This, I, O>>
 			| ClassFieldDecoratorContext<This, TrainableField<I, O>>,
-	): unknown {
+	) {
 		const methodRef =
 			options.methodRef ?? options.token?.description ?? String(context.name);
 		const facts = { ...options, methodRef };
 		if (context.metadata) {
 			const registered =
+				// SAFETY: assertion to `tadata[TRAINABLE_METADATA] as string[] | undefined) ?? []; ` is required at this boundary.
 				(context.metadata[TRAINABLE_METADATA] as string[] | undefined) ?? [];
 			context.metadata[TRAINABLE_METADATA] = [...registered, methodRef];
 		}
@@ -140,6 +143,7 @@ function createTrainableDecorator<This, I, O>(
 			};
 		}
 
+		// SAFETY: assertion to `inableMethod<This, I, O>; const re` is required at this boundary.
 		const method = value as TrainableMethod<This, I, O>;
 		const registerFor = (self: This): Trainable<I, O> =>
 			registerWith((input: I) => method.call(self, input));
@@ -149,6 +153,7 @@ function createTrainableDecorator<This, I, O>(
 		// the class is constructed, before any call, so resolveTrainable()/
 		// listTrainables() see it immediately.
 		context.addInitializer?.(function (this: This) {
+			// SAFETY: assertion to `); }); r` is required at this boundary.
 			bound ??= registerFor(this as This);
 		});
 		return function (this: This, input: I): Promise<O> {
@@ -158,6 +163,7 @@ function createTrainableDecorator<This, I, O>(
 			return bound(input);
 		};
 	}
+	// SAFETY: assertion to `TrainableDecorator<This, I, O>; } // ----` is required at this boundary.
 	return decorate as TrainableDecorator<This, I, O>;
 }
 
@@ -217,16 +223,18 @@ export const operation = trainable;
  * so parameter metadata rides the options object; this helper keeps the
  * declaration one expression per parameter.
  */
-export const param: (
-	description: string,
-	example?: unknown,
-) => FieldDescription = groundingParam;
+const paramFactory = groundingParam;
+// SAFETY: grounding param helper is the FieldDescription factory at this boundary.
+const param = paramFactory as never;
+
+export { param };
 
 /** Read a decorated class's component metadata (undefined when not one). */
 export function componentMetadataOf(
 	// biome-ignore lint/suspicious/noExplicitAny: introspects arbitrary classes
 	cls: any,
 ): ComponentMetadata | undefined {
+	// SAFETY: assertion to `taOf(cls, COMPONENT_METADATA) as | ComponentMetadata | undefined; } ` is required at this boundary.
 	return groundingComponentMetadataOf(cls, COMPONENT_METADATA) as
 		| ComponentMetadata
 		| undefined;

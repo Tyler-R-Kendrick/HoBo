@@ -1,3 +1,5 @@
+import type { JsonObject, JsonValue } from "../json.js";
+
 export type ReplayMode = "live" | "replay";
 
 export interface EventEnvelope {
@@ -6,9 +8,9 @@ export interface EventEnvelope {
 	seq: number;
 	type: string;
 	v?: number;
-	data: unknown;
+	data: JsonValue;
 	ts?: string;
-	meta?: Record<string, unknown>;
+	meta?: JsonObject;
 }
 
 export type SeqVector = Record<string, number>;

@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "vitest";
-
 import {
 	applyTrainingArtifact,
 	COMPONENT_METADATA,
@@ -22,10 +21,20 @@ import {
 	trainable,
 	training,
 } from "../src/index.js";
+import type { JsonValue } from "../src/json.js";
 
 afterEach(() => {
 	resetTrainables();
 });
+
+interface DecoratorBag {
+	readonly kind: string;
+}
+
+function decoratorContext<T>(bag: DecoratorBag): T {
+	// SAFETY: TC39 decorator context bag at this test boundary.
+	return bag as never;
+}
 
 interface Ticket {
 	readonly subject: string;
@@ -206,7 +215,8 @@ test("@trainable decorator lowers to identical manifest facts (ADR-0125 equivale
 			return { category: t.subject };
 		}
 	}
-	const metadata: Record<PropertyKey, unknown> = {};
+	const metadata: Record<PropertyKey, JsonValue> = {};
+	// SAFETY: assertion to `{ kind: "method", name: "classify", static: false, private: false, metadata, access: { get: (instance: Support) => insta` is required at this boundary.
 	const context = {
 		kind: "method",
 		name: "classify",
@@ -218,7 +228,7 @@ test("@trainable decorator lowers to identical manifest facts (ADR-0125 equivale
 			has: () => true,
 		},
 		addInitializer: () => {},
-	} as unknown as ClassMethodDecoratorContext<
+	} as ClassMethodDecoratorContext<
 		Support,
 		(this: Support, input: Ticket) => Promise<Classification>
 	>;
@@ -283,7 +293,12 @@ test("DI form: @trainable registers eagerly at construction and resolves by toke
 		}
 	}
 	const initializers: Array<(this: Desk) => void> = [];
-	const context = {
+	const context = decoratorContext<
+		ClassMethodDecoratorContext<
+			Desk,
+			(this: Desk, input: Ticket) => Promise<Classification>
+		>
+	>({
 		kind: "method",
 		name: "classify",
 		static: false,
@@ -291,10 +306,7 @@ test("DI form: @trainable registers eagerly at construction and resolves by toke
 		metadata: {},
 		access: { get: (instance: Desk) => instance.classify, has: () => true },
 		addInitializer: (fn: (this: Desk) => void) => initializers.push(fn),
-	} as unknown as ClassMethodDecoratorContext<
-		Desk,
-		(this: Desk, input: Ticket) => Promise<Classification>
-	>;
+	});
 	Desk.prototype.classify = trainable<Desk, Ticket, Classification>({
 		...OPTIONS,
 		token: ClassifyToken,
@@ -332,7 +344,12 @@ test("DI form: second construction resolves the registered singleton", async () 
 		}
 	}
 	const initializers: Array<(this: Desk) => void> = [];
-	const context = {
+	const context = decoratorContext<
+		ClassMethodDecoratorContext<
+			Desk,
+			(this: Desk, input: Ticket) => Promise<Classification>
+		>
+	>({
 		kind: "method",
 		name: "singleton",
 		static: false,
@@ -340,10 +357,7 @@ test("DI form: second construction resolves the registered singleton", async () 
 		metadata: {},
 		access: { get: (instance: Desk) => instance.classify, has: () => true },
 		addInitializer: (fn: (this: Desk) => void) => initializers.push(fn),
-	} as unknown as ClassMethodDecoratorContext<
-		Desk,
-		(this: Desk, input: Ticket) => Promise<Classification>
-	>;
+	});
 	Desk.prototype.classify = trainable<Desk, Ticket, Classification>({
 		...OPTIONS,
 		methodRef: "singleton",
@@ -472,15 +486,17 @@ test("@component + @operation declare a component; param() annotates", async () 
 	}
 	// Applied as decorators in app code; invoked programmatically here, in
 	// TC39 evaluation order: method decorators first, then the class.
-	const context = {
+	const context = decoratorContext<
+		ClassMethodDecoratorContext<
+			Storefront,
+			(this: Storefront, input: Ticket) => Promise<Classification>
+		>
+	>({
 		kind: "method",
 		name: "classify",
-		metadata: {} as Record<symbol, unknown>,
+		metadata: {},
 		addInitializer: undefined,
-	} as unknown as ClassMethodDecoratorContext<
-		Storefront,
-		(this: Storefront, input: Ticket) => Promise<Classification>
-	>;
+	});
 	Storefront.prototype.classify = operation<Storefront, Ticket, Classification>(
 		{
 			methodRef: "storefront.operation.classify",
@@ -494,14 +510,18 @@ test("@component + @operation declare a component; param() annotates", async () 
 			// no rubric — optional on the declarative surface
 		},
 	)(Storefront.prototype.classify, context);
-	component({ intent: "Support desk operations." })(Storefront, {
-		kind: "class",
-		name: "Storefront",
-		metadata: context.metadata,
-	} as unknown as ClassDecoratorContext<typeof Storefront>);
+	component({ intent: "Support desk operations." })(
+		Storefront,
+		decoratorContext<ClassDecoratorContext<typeof Storefront>>({
+			kind: "class",
+			name: "Storefront",
+			metadata: context.metadata,
+		}),
+	);
 
 	// Class-level metadata aggregates the operations declared by methods.
-	const componentMeta = (context.metadata as Record<symbol, unknown>)[
+	// SAFETY: assertion to `t.metadata as Record<symbol, JsonValue>)[ C` is required at this boundary.
+	const componentMeta = (context.metadata as Record<symbol, JsonValue>)[
 		COMPONENT_METADATA
 	] as {
 		intent: string;
@@ -527,7 +547,7 @@ test("@operation field form: a stub() initializer declares code to generate", as
 	class Storefront {
 		rankFeed!: (input: Ticket) => Promise<Classification>;
 	}
-	const metadata: Record<PropertyKey, unknown> = {};
+	const metadata: Record<PropertyKey, JsonValue> = {};
 	const transform = operation<Storefront, Ticket, Classification>({
 		methodRef: "storefront.field.rankFeed",
 		intent: "Rank the feed.",
@@ -538,26 +558,33 @@ test("@operation field form: a stub() initializer declares code to generate", as
 				{ input: { subject: "seed" }, output: { category: "ranked" } },
 			],
 		},
-	})(undefined, {
-		kind: "field",
-		name: "rankFeed",
-		metadata,
-		static: false,
-		private: false,
-	} as unknown as ClassFieldDecoratorContext<
-		Storefront,
-		(input: Ticket) => Promise<Classification>
-	>);
+	})(
+		undefined,
+		decoratorContext<
+			ClassFieldDecoratorContext<
+				Storefront,
+				(input: Ticket) => Promise<Classification>
+			>
+		>({
+			kind: "field",
+			name: "rankFeed",
+			metadata,
+			static: false,
+			private: false,
+		}),
+	);
 
 	// TC39 field semantics: the transformer maps the initializer (here a
 	// stub marker) to the field's actual value — the registered trainable.
 	const desk = new Storefront();
-	desk.rankFeed = (
-		transform as (
-			this: Storefront,
-			initial: ((input: Ticket) => Promise<Classification>) | undefined,
-		) => (input: Ticket) => Promise<Classification>
-	).call(desk, stub<Ticket, Classification>());
+	desk.rankFeed =
+		// SAFETY: assertion to `m as ( this: Storefront, initial: ((input: Ticket) => Promise<Classification>) | undefined, ) => (input: Ticket) => Prom` is required at this boundary.
+		(
+			transform as (
+				this: Storefront,
+				initial: ((input: Ticket) => Promise<Classification>) | undefined,
+			) => (input: Ticket) => Promise<Classification>
+		).call(desk, stub<Ticket, Classification>());
 
 	const record = getTrainable("storefront.field.rankFeed");
 	assert.equal(record?.fact.baseline, "stub");

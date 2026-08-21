@@ -1,3 +1,4 @@
+import type { JsonObject } from "../src/json.js";
 import { createConformanceSuite } from "../src/suite.ts";
 
 export const addInput = { left: 2, right: 3 };
@@ -28,7 +29,7 @@ export function addTrace(input = addInput, output = addOutput) {
 	];
 }
 
-export function toySuite(overrides: Record<string, unknown> = {}) {
+export function toySuite(overrides: JsonObject = {}) {
 	return createConformanceSuite({
 		id: "toy-math-port",
 		port: {

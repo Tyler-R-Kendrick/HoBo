@@ -268,7 +268,7 @@ export default defineConfig({
 				"packages/stage-gate/**": { statements: 88, branches: 91, functions: 91, lines: 88 },
 				"packages/stations/**": { statements: 95, branches: 91, functions: 98, lines: 95 },
 				"packages/status-page/**": { statements: 92, branches: 82, functions: 91, lines: 93 },
-				"packages/storage-sqlite/**": { statements: 71, branches: 60, functions: 81, lines: 72 },
+				"packages/storage-sqlite/**": { statements: 88, branches: 81, functions: 94, lines: 89 },
 				"packages/testing/**": { statements: 89, branches: 81, functions: 94, lines: 91 },
 				"packages/trails/**": { statements: 86, branches: 76, functions: 92, lines: 87 },
 				"packages/training/**": { statements: 93, branches: 80, functions: 98, lines: 96 },

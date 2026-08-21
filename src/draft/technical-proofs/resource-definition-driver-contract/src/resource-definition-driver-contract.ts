@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const RESOURCE_DEFINITION_VERSION = "hobo.resource-definition/v1";
 export const CATALOG_SNAPSHOT_VERSION = "hobo.resource-definition-catalog/v1";
@@ -132,13 +134,13 @@ export function createDriver(driver) {
   if (!DRIVER_ID_SET.has(driver?.id)) {
     throw new Error(`unknown driver id ${driver?.id ?? "<missing>"}`);
   }
-  if (typeof driver.provision !== "function") {
+  if (!(driver.provision instanceof Function)) {
     throw new Error(`driver ${driver.id} must implement provision`);
   }
-  if (typeof driver.destroy !== "function") {
+  if (!(driver.destroy instanceof Function)) {
     throw new Error(`driver ${driver.id} must implement destroy`);
   }
-  if (driver.refresh !== undefined && typeof driver.refresh !== "function") {
+  if (driver.refresh !== undefined && !(driver.refresh instanceof Function)) {
     throw new Error(`driver ${driver.id} refresh must be a function when present`);
   }
   return Object.freeze({ ...driver });
@@ -208,12 +210,12 @@ function sortedDefinitions(definitions) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function normalizeProviderRef(provider) {
   if (isNonEmptyString(provider)) return provider;
-  if (provider && typeof provider === "object" && isNonEmptyString(provider.id)) return provider.id;
+  if (provider && isJsonObject(provider) && isNonEmptyString(provider.id)) return provider.id;
   return undefined;
 }
 
@@ -221,7 +223,7 @@ function isValidMapping(mapping) {
   if (isNonEmptyString(mapping)) return true;
   return Boolean(
     mapping &&
-      typeof mapping === "object" &&
+      isJsonObject(mapping) &&
       !Array.isArray(mapping) &&
       Object.keys(mapping).length > 0
   );
@@ -231,7 +233,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const POLICY_ALLOW_EFFECTS = new Set(["allow", "warn"]);
 const POLICY_DENY_EFFECTS = new Set(["deny", "require-approval"]);
 
@@ -110,7 +111,7 @@ export function createKnowledgeAdapter({ id, provider, baseUrl }) {
 }
 
 export function createOperatorIntegrationRuntime(registry, config) {
-  if (!registry || typeof registry.getIssueTracker !== "function" || typeof registry.getKnowledge !== "function") {
+  if (!registry || !(registry.getIssueTracker instanceof Function) || !(registry.getKnowledge instanceof Function)) {
     throw new Error("registry must be created with createOperatorPortRegistry()");
   }
 
@@ -273,7 +274,7 @@ function normalizeKnowledgeOperation(input, { registry, knowledgeAdapterId }) {
 }
 
 function normalizeIncident(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new Error("incident must be an object");
   }
 
@@ -286,7 +287,7 @@ function normalizeIncident(input) {
 }
 
 function normalizeDocument(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new Error("document must be an object");
   }
 
@@ -305,7 +306,7 @@ function normalizeDocument(input) {
 }
 
 function normalizeKnowledgeTarget(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new Error("target must be an object");
   }
 
@@ -316,7 +317,7 @@ function normalizeKnowledgeTarget(input) {
 }
 
 function normalizePolicyDecision(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new Error("policyDecision must be an object");
   }
   if (input.type !== "policy.Decided") {
@@ -333,13 +334,13 @@ function normalizePolicyDecision(input) {
     ts: validateIso(input.ts, "policyDecision.ts"),
     data: {
       effect,
-      ...(input.data?.reason ? { reason: validateNonEmptyString(input.data.reason, "policyDecision.data.reason") } : {}),
+      ...(input.data?.reason ? { reason: validateNonEmptyString(input.data.reason, "policyDecision.data.reason") } : undefined),
     },
   });
 }
 
 function normalizeAction(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new Error("action must be an object");
   }
 
@@ -355,7 +356,7 @@ function normalizeAction(input) {
 }
 
 function normalizePrincipal(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new Error("principal must be an object");
   }
   const svid = validateNonEmptyString(input.svid, "principal.svid");
@@ -407,21 +408,21 @@ function crewActionEvent(type, operation, { result, reason } = {}) {
       port: operation.port,
       adapterId: operation.adapter.id,
       idempotencyKey: operation.idempotencyKey,
-      ...(result ? { result } : {}),
-      ...(reason ? { reason } : {}),
+      ...(result ? { result } : undefined),
+      ...(reason ? { reason } : undefined),
     },
   });
 }
 
 function validateAdapter(adapter, kind, method) {
-  if (!adapter || typeof adapter !== "object" || Array.isArray(adapter)) {
+  if (!adapter || !isJsonObject(adapter) || Array.isArray(adapter)) {
     throw new Error(`${kind} adapter must be an object`);
   }
   validateNonEmptyString(adapter.id, `${kind} adapter id`);
   if (adapter.kind !== kind) {
     throw new Error(`adapter ${adapter.id} must have kind ${kind}`);
   }
-  if (typeof adapter[method] !== "function") {
+  if (!(adapter[method] instanceof Function)) {
     throw new Error(`adapter ${adapter.id} must implement ${method}()`);
   }
 }
@@ -433,7 +434,7 @@ function assertUnique(adapters, id, kind) {
 }
 
 function validateNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -477,7 +478,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

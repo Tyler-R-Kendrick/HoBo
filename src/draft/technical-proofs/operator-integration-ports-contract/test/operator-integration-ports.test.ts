@@ -238,7 +238,7 @@ function policyDecision({ id, effect, reason }) {
     ts: "2026-06-27T21:05:00.000Z",
     data: {
       effect,
-      ...(reason ? { reason } : {}),
+      ...(reason ? { reason } : undefined),
     },
   });
 }

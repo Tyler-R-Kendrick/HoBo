@@ -249,7 +249,7 @@ export default defineConfig({
 				"packages/providers/provider-neon/**": { statements: 84, branches: 73, functions: 93, lines: 86 },
 				"packages/providers/provider-netlify/**": { statements: 84, branches: 80, functions: 82, lines: 84 },
 				"packages/providers/provider-prisma-postgres/**": { statements: 86, branches: 77, functions: 96, lines: 87 },
-				"packages/providers/provider-railway/**": { statements: 82, branches: 68, functions: 82, lines: 83 },
+				"packages/providers/provider-railway/**": { statements: 98, branches: 97, functions: 100, lines: 98 },
 				"packages/providers/provider-ttl-sh/**": { statements: 91, branches: 87, functions: 91, lines: 91 },
 				"packages/providers/provider-upstash/**": { statements: 84, branches: 76, functions: 87, lines: 85 },
 				"packages/providers/provider-vercel/**": { statements: 81, branches: 73, functions: 78, lines: 82 },

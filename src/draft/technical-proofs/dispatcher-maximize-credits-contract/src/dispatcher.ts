@@ -4,6 +4,8 @@ import {
   createDispatchDecidedEvent,
   createMatchDecidedEvent,
 } from "../../control-plane-event-schema-contract/src/control-plane-events.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const DISPATCHER_MAXIMIZE_CREDITS_VERSION = "hobo.dispatcher-maximize-credits/v1";
 
@@ -298,8 +300,8 @@ export function decideAndReserveDispatch(request) {
   const reservationLedger = request.reservationLedger;
   if (
     !reservationLedger ||
-    typeof reservationLedger.snapshot !== "function" ||
-    typeof reservationLedger.reserve !== "function"
+    !(reservationLedger.snapshot instanceof Function) ||
+    !(reservationLedger.reserve instanceof Function)
   ) {
     throw new TypeError("request.reservationLedger must be a reservation ledger");
   }
@@ -674,7 +676,7 @@ function nextCreditExpiry(account) {
   const expiries = (account?.credits ?? [])
     .filter((credit) => optionalNonNegativeNumber(credit?.freeHeadroom) && credit.freeHeadroom > 0)
     .map((credit) => credit.expiresAt ?? credit.windowEnd)
-    .filter((value) => typeof value === "string" && !Number.isNaN(Date.parse(value)))
+    .filter((value) => isJsonString(value) && !Number.isNaN(Date.parse(value)))
     .sort((left, right) => Date.parse(left) - Date.parse(right) || left.localeCompare(right));
   return expiries[0] ?? null;
 }
@@ -694,7 +696,7 @@ function compareRankedCandidates(left, right) {
   for (let index = 0; index < Math.max(left.rankVector.length, right.rankVector.length); index += 1) {
     const leftValue = left.rankVector[index];
     const rightValue = right.rankVector[index];
-    if (typeof leftValue === "string" || typeof rightValue === "string") {
+    if (isJsonString(leftValue) || isJsonString(rightValue)) {
       const comparison = String(leftValue ?? "").localeCompare(String(rightValue ?? ""));
       if (comparison !== 0) return comparison;
       continue;
@@ -801,7 +803,7 @@ function normalizePlacementCandidate(candidate) {
     listUnitCost: nonNegativeNumber(candidate.listUnitCost, "candidate.listUnitCost", 0),
     specificity: Number.isFinite(candidate.specificity) ? candidate.specificity : 0,
     priority: Number.isInteger(candidate.priority) ? candidate.priority : 0,
-    region: typeof candidate.region === "string" && candidate.region.length > 0 ? candidate.region : undefined,
+    region: isJsonString(candidate.region) && candidate.region.length > 0 ? candidate.region : undefined,
     switchingCost: nonNegativeNumber(candidate.switchingCost ?? 0, "candidate.switchingCost", 0),
     source: clone(candidate),
   };
@@ -818,7 +820,7 @@ function normalizeRegistry(registry) {
 }
 
 function normalizeLedgerView(ledgerView) {
-  if (!ledgerView || typeof ledgerView !== "object" || Array.isArray(ledgerView)) {
+  if (!ledgerView || !isJsonObject(ledgerView) || Array.isArray(ledgerView)) {
     throw new TypeError("request.ledgerView must be a CreditLedgerView snapshot");
   }
   if (ledgerView.view !== "CreditLedgerView") {
@@ -894,7 +896,7 @@ function consumeReservedFreeHeadroom(account, units) {
 }
 
 function restoreReservedFreeHeadroom(account, consumption) {
-  if (!consumption || typeof consumption !== "object") return;
+  if (!consumption || !isJsonObject(consumption)) return;
   if (optionalNonNegativeNumber(account.freeHeadroom)) {
     account.freeHeadroom = roundQuantity(account.freeHeadroom + (consumption.freeHeadroom ?? 0));
   }
@@ -923,8 +925,8 @@ function ledgerBalanceHash(ledgerView) {
 }
 
 function normalizeHashRef(value) {
-  if (typeof value === "string" && SHA256_REF.test(value)) return value;
-  if (typeof value === "string" && /^[a-f0-9]{64}$/.test(value)) return `sha256:${value}`;
+  if (isJsonString(value) && SHA256_REF.test(value)) return value;
+  if (isJsonString(value) && /^[a-f0-9]{64}$/.test(value)) return `sha256:${value}`;
   return stableHash(value);
 }
 
@@ -938,7 +940,7 @@ function canonicalJson(value) {
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
 }
 
@@ -957,7 +959,7 @@ function requireObjective(objective) {
 }
 
 function requireString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -1011,7 +1013,7 @@ function optionalNonNegativeNumber(value) {
 }
 
 function assertObject(value, fieldName) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
 }

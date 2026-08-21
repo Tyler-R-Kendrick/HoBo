@@ -6,6 +6,8 @@ import {
   evaluateMtlsHandshake,
   parseWorkloadSpiffeId
 } from "../../mtls-data-path-contract/src/mtls-data-path.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const TIER_FOUR_OVERLAY_MESH_SCHEMA_VERSION = "hobo.tier-four-overlay-mesh/v1";
 
@@ -14,7 +16,7 @@ const WIREGUARD_EBPF_MESH_KIND = "wireguard-ebpf";
 const VALID_LIFECYCLE_STATES = new Set(["missing", "active", "draining", "partitioned", "retired"]);
 
 export function realizeTierFourOverlayMesh(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     return invalid("tier4.input.invalid", "input must be an object");
   }
 
@@ -125,7 +127,7 @@ export function realizeTierFourOverlayMesh(input) {
 }
 
 export function resolveTierFourBinding(link, providerOutputs) {
-  if (!link || typeof link !== "object" || Array.isArray(link)) {
+  if (!link || !isJsonObject(link) || Array.isArray(link)) {
     return invalid("tier4.link.invalid", "link must be an object");
   }
 
@@ -142,10 +144,10 @@ export function resolveTierFourBinding(link, providerOutputs) {
 }
 
 export function canReachTierFourPeer(link, attempt) {
-  if (!link || typeof link !== "object" || Array.isArray(link)) {
+  if (!link || !isJsonObject(link) || Array.isArray(link)) {
     return invalid("tier4.link.invalid", "link must be an object");
   }
-  if (!attempt || typeof attempt !== "object" || Array.isArray(attempt)) {
+  if (!attempt || !isJsonObject(attempt) || Array.isArray(attempt)) {
     return invalid("tier4.reachability.invalid", "attempt must be an object");
   }
 
@@ -171,10 +173,10 @@ export function canReachTierFourPeer(link, attempt) {
 }
 
 export function evaluateOverlayNodeState(link, observedState) {
-  if (!link || typeof link !== "object" || Array.isArray(link)) {
+  if (!link || !isJsonObject(link) || Array.isArray(link)) {
     return invalid("tier4.link.invalid", "link must be an object");
   }
-  if (!observedState || typeof observedState !== "object" || Array.isArray(observedState)) {
+  if (!observedState || !isJsonObject(observedState) || Array.isArray(observedState)) {
     return invalid("tier4.observed-state.invalid", "observedState must be an object");
   }
   if (observedState.publicFallbackActive === true) {
@@ -210,7 +212,7 @@ export function evaluateOverlayNodeState(link, observedState) {
         failClosed: true
       };
     }
-    if (typeof observedNode.segmentId === "string" && observedNode.segmentId.length > 0) {
+    if (isJsonString(observedNode.segmentId) && observedNode.segmentId.length > 0) {
       segments.add(observedNode.segmentId);
     }
   }
@@ -228,11 +230,11 @@ export function evaluateOverlayNodeState(link, observedState) {
 }
 
 export function planOverlayNodeLifecycle(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     return invalid("tier4.lifecycle.invalid", "input must be an object");
   }
   const nodeId = input.nodeId;
-  if (typeof nodeId !== "string" || nodeId.length === 0) {
+  if (!isJsonString(nodeId) || nodeId.length === 0) {
     return invalid("tier4.lifecycle.invalid", "nodeId must be a non-empty string");
   }
   const current = input.current;
@@ -306,7 +308,7 @@ function validateTierFourPlan(plan) {
     ["parameters.meshKind", plan.parameters.meshKind],
     ["parameters.meshPolicyRef", plan.parameters.meshPolicyRef]
   ]) {
-    if (typeof value !== "string" || value.length === 0) {
+    if (!isJsonString(value) || value.length === 0) {
       return invalid("tier4.plan.overlay-parameter-missing", `${field} must be a non-empty string`);
     }
   }
@@ -323,7 +325,7 @@ function validateTierFourPlan(plan) {
   if (plan.parameters.fallbackFromTier !== ConnectivityTier.CROSS_PROVIDER_PRIVATE_INTERCONNECT) {
     return invalid("tier4.plan.invalid-fallback", "tier 4 overlay fallback must come from tier 3");
   }
-  if (typeof plan.parameters.fallbackReason !== "string" || plan.parameters.fallbackReason.length === 0) {
+  if (!isJsonString(plan.parameters.fallbackReason) || plan.parameters.fallbackReason.length === 0) {
     return invalid("tier4.plan.invalid-fallback", "parameters.fallbackReason must explain the tier 3 fall-through");
   }
 
@@ -377,7 +379,7 @@ function resolveOverlayNodes(overlayNodeCatalog, plan) {
 
   for (const node of [sourceNode, targetNode]) {
     for (const field of ["nodeId", "provider", "region", "yardId", "meshKind"]) {
-      if (typeof node[field] !== "string" || node[field].length === 0) {
+      if (!isJsonString(node[field]) || node[field].length === 0) {
         return invalid("tier4.overlay-catalog.invalid", `overlay node ${field} must be a non-empty string`);
       }
     }
@@ -427,17 +429,17 @@ function resolveBindingForResource({
   targetProvider,
   providerOutputs
 }) {
-  if (!providerOutputs || typeof providerOutputs !== "object" || Array.isArray(providerOutputs)) {
+  if (!providerOutputs || !isJsonObject(providerOutputs) || Array.isArray(providerOutputs)) {
     return invalid("tier4.provider-outputs.invalid", "providerOutputs must be an object keyed by resource id");
   }
 
   const outputs = providerOutputs[targetResourceId];
-  if (!outputs || typeof outputs !== "object" || Array.isArray(outputs)) {
+  if (!outputs || !isJsonObject(outputs) || Array.isArray(outputs)) {
     return invalid("tier4.endpoint.missing", `provider outputs missing for ${targetResourceId}`);
   }
 
   const endpoint = outputs[DEFAULT_PROVIDER_OUTPUT_KEY];
-  if (typeof endpoint !== "string" || endpoint.length === 0) {
+  if (!isJsonString(endpoint) || endpoint.length === 0) {
     return invalid("tier4.endpoint.missing", `${targetResourceId}.${DEFAULT_PROVIDER_OUTPUT_KEY} must be a non-empty string`);
   }
 
@@ -462,7 +464,7 @@ function normalizeVerbs(verbs = ["connect"]) {
   const seen = new Set();
   const normalized = [];
   for (const verb of verbs) {
-    if (typeof verb !== "string" || verb.length === 0) {
+    if (!isJsonString(verb) || verb.length === 0) {
       return invalid("tier4.verbs.invalid", "verbs entries must be non-empty strings");
     }
     if (!seen.has(verb)) {
@@ -487,7 +489,7 @@ function lifecycle(action, events) {
 }
 
 function isStringArray(value) {
-  return Array.isArray(value) && value.every((entry) => typeof entry === "string" && entry.length > 0);
+  return Array.isArray(value) && value.every((entry) => isJsonString(entry) && entry.length > 0);
 }
 
 function invalid(code, reason) {

@@ -1,4 +1,6 @@
 import type { FidelityLabel } from "./types.js";
+import { isJsonString } from "./json.js";
+
 
 const REAL_KINDS = new Set(["api", "service", "web", "websocket", "ui"]);
 const SIMULATED_KINDS = new Set([
@@ -27,7 +29,7 @@ export function fidelityLabels(
     labels[resource.name] = fidelityClassFor(resource.kind);
   }
   for (const capability of campOnlyCapabilities) {
-    if (typeof capability !== "string" || capability.length === 0) {
+    if (!isJsonString(capability) || capability.length === 0) {
       throw new TypeError("campOnlyCapabilities[] must be non-empty strings");
     }
     labels[capability] = "camp-only";

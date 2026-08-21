@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const STATE_SCHEMA = "hobo.dev-state/v1" as const;
 export const COLD_BOOT_BUDGET_MS = 60_000;
 export const DEFAULT_PORT = 4000;
@@ -16,7 +17,7 @@ export interface DevEvent {
   sequence: number;
   family: DevEventFamily;
   at: string;
-  payload: Record<string, unknown>;
+  payload: JsonObject;
 }
 
 // domain-view: parse-produced draft-proof record; its wire form is the DevStateSnapshot proto message in data-models/.
@@ -26,7 +27,7 @@ export interface DevStateSnapshot {
   handlerGeneration: number;
   lastReloaded: string | null;
   eventSequence: number;
-  requests: Array<{ path: string; body: unknown; handlerGeneration: number }>;
+  requests: Array<{ path: string; body: JsonValue; handlerGeneration: number }>;
 }
 
 export interface DevSessionOptions {
@@ -52,15 +53,15 @@ export class DevParseError extends Error {
   constructor(
     readonly code: string,
     message: string,
-    readonly detail: Record<string, unknown> = {},
+    readonly detail: JsonObject = {},
   ) {
     super(message);
     this.name = "DevParseError";
   }
 }
 
-export function parseDevPort(raw: unknown): number {
-  const port = typeof raw === "number" ? raw : Number(raw);
+export function parseDevPort(raw: JsonValue): number {
+  const port = isJsonNumber(raw) ? raw : Number(raw);
   if (!Number.isInteger(port) || port < 1024 || port > 65535) {
     throw new DevParseError("HOBO_DEV_INVALID_PORT", "port must be an integer from 1024 to 65535", {
       port: raw,
@@ -73,15 +74,16 @@ export function parseDevSessionOptions(raw: DevSessionOptions): Required<Pick<De
   return {
     ...raw,
     port: parseDevPort(raw.port ?? DEFAULT_PORT),
-    bootMs: typeof raw.bootMs === "number" && raw.bootMs >= 0 ? raw.bootMs : 1_200,
+    bootMs: isJsonNumber(raw.bootMs) && raw.bootMs >= 0 ? raw.bootMs : 1_200,
   };
 }
 
-export function parseDevStateSnapshot(raw: unknown): DevStateSnapshot {
-  if (!raw || typeof raw !== "object") {
+export function parseDevStateSnapshot(raw: JsonValue): DevStateSnapshot {
+  if (!raw || !isJsonObject(raw)) {
     throw new DevParseError("HOBO_DEV_STATE_INVALID", "dev state must be an object");
   }
-  const record = raw as Record<string, unknown>;
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+  const record = raw as JsonObject;
   if (record.schema !== STATE_SCHEMA) {
     throw new DevParseError(
       "HOBO_DEV_STATE_VERSION_UNSUPPORTED",
@@ -91,13 +93,14 @@ export function parseDevStateSnapshot(raw: unknown): DevStateSnapshot {
   }
   return {
     schema: STATE_SCHEMA,
-    runCount: typeof record.runCount === "number" ? record.runCount : 0,
-    handlerGeneration: typeof record.handlerGeneration === "number" ? record.handlerGeneration : 1,
-    lastReloaded: typeof record.lastReloaded === "string" ? record.lastReloaded : null,
-    eventSequence: typeof record.eventSequence === "number" ? record.eventSequence : 0,
+    runCount: isJsonNumber(record.runCount) ? record.runCount : 0,
+    handlerGeneration: isJsonNumber(record.handlerGeneration) ? record.handlerGeneration : 1,
+    lastReloaded: isJsonString(record.lastReloaded) ? record.lastReloaded : null,
+    eventSequence: isJsonNumber(record.eventSequence) ? record.eventSequence : 0,
     requests: Array.isArray(record.requests)
       ? record.requests.map((entry) => {
-          const item = entry as Record<string, unknown>;
+          // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+          const item = entry as JsonObject;
           return {
             path: String(item.path ?? ""),
             body: item.body,

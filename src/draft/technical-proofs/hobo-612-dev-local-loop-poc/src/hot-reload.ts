@@ -1,4 +1,6 @@
 import type { DevStateStore } from "./dev-state-store.js";
+import { isJsonString, type JsonValue } from "./json.js";
+
 
 export interface ReloadHandlerInput {
   path: string;
@@ -52,8 +54,8 @@ export async function reloadHandler(
   };
 }
 
-function requireNonEmptyString(value: unknown, fieldName: string): string {
-  if (typeof value !== "string" || value.length === 0) {
+function requireNonEmptyString(value: JsonValue, fieldName: string): string {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;

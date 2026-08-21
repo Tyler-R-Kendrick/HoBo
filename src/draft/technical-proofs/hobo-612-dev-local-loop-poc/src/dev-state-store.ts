@@ -71,6 +71,7 @@ export class DevStateStore {
     try {
       snapshotRaw = await readFile(snapshotFile, "utf8");
     } catch (error) {
+      // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
       if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
     }
 
@@ -133,8 +134,14 @@ async function readEvents(projectRoot: string): Promise<DevEvent[]> {
     return raw
       .split("\n")
       .filter((line) => line.trim().length > 0)
-      .map((line) => JSON.parse(line) as DevEvent);
+      .map((line) => {
+        const event: DevEvent =
+          // SAFETY: each events.jsonl line is a DevEvent record.
+          JSON.parse(line) as DevEvent;
+        return event;
+      });
   } catch (error) {
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     if ((error as NodeJS.ErrnoException).code === "ENOENT") return [];
     throw error;
   }

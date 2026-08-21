@@ -119,6 +119,7 @@ and `tsc --noEmit` clean (#1266).
 Layer 42: `@hobo/runtime-local` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1274).
 Layer 43: `@hobo/runtime` + `@hobo/conformance` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1276).
 Layer 44: `@hobo/identity` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1278).
-Layer 45: remaining `@hobo/adapter-*` (drizzle, better-auth, openbao, hono) oxlint `--deny-warnings` and `tsc --noEmit` clean.
-Next: remaining dirty packages (provider-kubernetes), then `src/draft/`.
+Layer 45: remaining `@hobo/adapter-*` (drizzle, better-auth, openbao, hono) oxlint `--deny-warnings` and `tsc --noEmit` clean (#1280).
+Layer 46: `@hobo/provider-kubernetes` oxlint `--deny-warnings` and `tsc --noEmit` clean.
+Next: `src/draft/`.
 Full-repo `lint:slop --deny-warnings` is still red until those land.

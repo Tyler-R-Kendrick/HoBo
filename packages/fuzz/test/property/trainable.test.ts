@@ -1,13 +1,16 @@
 import { describe, expect, it } from "vitest";
 
-import { fuzzTrainable, silverEvidenceFromCorpus } from "../../src/index.js";
+import { fuzzTrainable, silverEvidenceFromCorpus, type FuzzValue } from "../../src/index.js";
 
 describe("trainable silver fuzz", () => {
 	it("holds gold seeds and fail-closed oracles on a pure labeler", () => {
-		const fn = (input: unknown) => {
+		const fn = (input: FuzzValue) => {
 			const text =
-				input && typeof input === "object" && "text" in input
-					? String((input as { text?: unknown }).text ?? "")
+				input && Object(input) === input && "text" in input
+					? String(
+						// SAFETY: the object branch establishes a property-bearing input.
+						(input as { text?: unknown }).text ?? "",
+					)
 					: "";
 			return { label: text.includes("invoice") ? "billing" : "other" };
 		};

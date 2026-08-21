@@ -3,16 +3,17 @@
  * Gold suites exact-match examples; silver suites run these checks.
  */
 import { hasPrototypePollution } from "./manifest.js";
+import type { FuzzValue } from "./manifest.js";
 import { type InvariantVerdict, verdict } from "./model.js";
 
 // public-contract: silver-fuzz report schema id
 export const TRAINABLE_FUZZ_SCHEMA = "hobo.fuzz.trainable-verdict/v1" as const;
 
-export type TrainableFn = (input: unknown) => unknown;
+export type TrainableFn = (input: FuzzValue) => FuzzValue;
 
 export interface TrainableFuzzSeed {
-	readonly input: unknown;
-	readonly output?: unknown;
+	readonly input: FuzzValue;
+	readonly output?: FuzzValue;
 }
 
 export interface TrainableFuzzReport {
@@ -28,11 +29,19 @@ export interface TrainableFuzzReport {
 	readonly verdicts: readonly InvariantVerdict[];
 }
 
+export interface SilverEvidence {
+	readonly deterministic: boolean;
+	readonly failClosed: boolean;
+	readonly noPollution: boolean;
+	readonly seedHolds: boolean;
+	readonly bounded: boolean;
+}
+
 export const TRAINABLE_OUTPUT_BOUND = 65_536;
 
 const ASYNC_SENTINEL = Symbol("hobo.fuzz.async-trainable");
 
-const GARBAGE_INPUTS: readonly unknown[] = [
+const GARBAGE_INPUTS: readonly FuzzValue[] = [
 	null,
 	0,
 	"",
@@ -51,7 +60,7 @@ export function fuzzTrainable(
 	const numRuns = Math.max(1, opts.numRuns ?? 16);
 	let failClosed = true;
 	let sawAsync = false;
-	const invokeOnce = (input: unknown): unknown => {
+	const invokeOnce = (input: FuzzValue): FuzzValue | undefined => {
 		const output = invoke(fn, input);
 		if (output === ASYNC_SENTINEL) {
 			sawAsync = true;
@@ -131,13 +140,9 @@ export function fuzzTrainable(
 	};
 }
 
-export function silverEvidenceFromCorpus(seeds: readonly TrainableFuzzSeed[]): {
-	readonly deterministic: boolean;
-	readonly failClosed: boolean;
-	readonly noPollution: boolean;
-	readonly seedHolds: boolean;
-	readonly bounded: boolean;
-} {
+export function silverEvidenceFromCorpus(
+	seeds: readonly TrainableFuzzSeed[],
+): SilverEvidence {
 	return {
 		deterministic: true,
 		failClosed: true,
@@ -160,7 +165,7 @@ function flag(
 	return verdict(invariant, ok, ok ? pass : fail);
 }
 
-function invoke(fn: TrainableFn, input: unknown): unknown {
+function invoke(fn: TrainableFn, input: FuzzValue): FuzzValue | undefined {
 	try {
 		const output = fn(input);
 		if (isThenable(output)) {
@@ -172,16 +177,14 @@ function invoke(fn: TrainableFn, input: unknown): unknown {
 	}
 }
 
-function isThenable(value: unknown): boolean {
-	return Boolean(
-		value &&
-			typeof value === "object" &&
-			"then" in value &&
-			typeof (value as { then?: unknown }).then === "function",
-	);
+function isThenable(value: FuzzValue | undefined): boolean {
+	if (!value || Object(value) !== value) return false;
+	// SAFETY: Object identity above establishes the non-null object contract.
+	const objectValue = value as object;
+	return Object.getPrototypeOf(objectValue) !== null && "then" in objectValue;
 }
 
-function withinBound(value: unknown): boolean {
+function withinBound(value: FuzzValue | undefined): boolean {
 	if (value === undefined) return true;
 	try {
 		return stable(value).length <= TRAINABLE_OUTPUT_BOUND;
@@ -193,8 +196,8 @@ function withinBound(value: unknown): boolean {
 function mutateSeeds(
 	seeds: readonly TrainableFuzzSeed[],
 	budget: number,
-): unknown[] {
-	const out: unknown[] = [];
+	): FuzzValue[] {
+	const out: FuzzValue[] = [];
 	for (const seed of seeds.slice(0, budget)) {
 		out.push(seed.input);
 		if (Array.isArray(seed.input)) {
@@ -202,7 +205,8 @@ function mutateSeeds(
 			out.push([]);
 			continue;
 		}
-		if (seed.input && typeof seed.input === "object") {
+		if (seed.input && Object(seed.input) === seed.input) {
+			// SAFETY: this branch establishes an object input before spreading it.
 			out.push({ ...(seed.input as object), extra: true });
 			out.push({});
 			out.push({ constructor: { admin: true } });
@@ -211,32 +215,35 @@ function mutateSeeds(
 	return out;
 }
 
-function same(left: unknown, right: unknown): boolean {
+function same(left: FuzzValue | undefined, right: FuzzValue | undefined): boolean {
 	return stable(left) === stable(right);
 }
 
-function stable(value: unknown, seen: WeakSet<object> = new WeakSet()): string {
+function stable(value: FuzzValue | undefined, seen: WeakSet<object> = new WeakSet()): string {
 	if (value === undefined) return "undefined";
-	const kind = typeof value;
-	if (kind === "bigint") return `${value}n`;
-	if (kind === "symbol") return String(value);
-	if (kind === "function") {
+	const kind = Object.prototype.toString.call(value);
+	if (kind === "[object BigInt]") return `${String(value)}n`;
+	if (kind === "[object Symbol]") return String(value);
+	if (kind === "[object Function]") {
+		// SAFETY: callable values expose the standard optional function name.
 		return `fn:${(value as { name?: string }).name ?? "anonymous"}`;
 	}
-	if (kind === "number") {
+	if (kind === "[object Number]") {
 		if (Number.isNaN(value)) return "NaN";
 		if (Object.is(value, -0)) return "-0";
 		if (!Number.isFinite(value)) return String(value);
 	}
-	if (value === null || kind !== "object") {
+	if (value === null || Object(value) !== value) {
 		try {
 			return JSON.stringify(value);
 		} catch {
 			return kind;
 		}
 	}
-	if (seen.has(value)) return '"[Cycle]"';
-	seen.add(value);
+	// SAFETY: Object identity above establishes the WeakSet object contract.
+	const objectValue = value as object;
+	if (seen.has(objectValue)) return '"[Cycle]"';
+	seen.add(objectValue);
 	if (value instanceof Date) {
 		return `Date:${Number.isNaN(value.getTime()) ? "Invalid" : value.toISOString()}`;
 	}
@@ -253,7 +260,8 @@ function stable(value: unknown, seen: WeakSet<object> = new WeakSet()): string {
 	if (Array.isArray(value)) {
 		return `[${value.map((entry) => stable(entry, seen)).join(",")}]`;
 	}
-	const rec = value as Record<string, unknown>;
+	// SAFETY: this non-array object is traversed as a property dictionary.
+	const rec = value as Record<string, FuzzValue>;
 	return `{${Object.keys(rec)
 		.sort()
 		.map((key) => `${JSON.stringify(key)}:${stable(rec[key], seen)}`)

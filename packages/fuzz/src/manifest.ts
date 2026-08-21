@@ -4,10 +4,32 @@ import {
 	parseManifest,
 } from "@hobo/bindles";
 
+type FuzzObject = { readonly [key: string]: FuzzValue };
+type FuzzArray = readonly FuzzValue[];
+export type FuzzValue = FuzzObject | FuzzArray | Date | RegExp | Map<FuzzValue, FuzzValue> | Set<FuzzValue> | string | number | boolean | bigint | symbol | null | undefined;
+
+type ManifestResource = {
+	readonly type: string;
+	readonly port?: string;
+	readonly paradigm?: string;
+	readonly allow?: readonly string[];
+	readonly bind?: readonly string[];
+	readonly image?: string;
+	readonly runtime?: string;
+	readonly exports?: readonly string[];
+	readonly links?: readonly { readonly import: string; readonly to: string }[];
+};
+
+type SampleManifestRecord = {
+	readonly schema: "hobo.manifest/v1";
+	readonly componentHost: { readonly kind: string; readonly version: string };
+	readonly resources: Record<string, ManifestResource>;
+};
+
 export function sampleManifestRecord(
 	resourceOrder: readonly string[] = ["db", "api"],
-): Record<string, unknown> {
-	const resources: Record<string, unknown> = {};
+): SampleManifestRecord {
+	const resources: Record<string, ManifestResource> = {};
 	for (const id of resourceOrder) {
 		if (id === "db") {
 			resources.db = {
@@ -38,11 +60,11 @@ export function sampleManifestRecord(
 	};
 }
 
-export function hashManifest(input: unknown): string {
+export function hashManifest(input: FuzzValue): string {
 	return canonicalManifestHash(parseManifest(input));
 }
 
-export function parseOrReject(input: unknown): ManifestV1 | "rejected" {
+export function parseOrReject(input: FuzzValue): ManifestV1 | "rejected" {
 	try {
 		return parseManifest(input);
 	} catch {
@@ -51,19 +73,22 @@ export function parseOrReject(input: unknown): ManifestV1 | "rejected" {
 }
 
 export function hasPrototypePollution(
-	value: unknown,
+	value: FuzzValue,
 	seen: WeakSet<object> = new WeakSet(),
 ): boolean {
-	if (!value || typeof value !== "object") return false;
-	if (seen.has(value)) return false;
-	seen.add(value);
+	if (!value || Object(value) !== value) return false;
+	// SAFETY: Object identity above establishes the WeakSet object contract.
+	const objectValue = value as object;
+	if (seen.has(objectValue)) return false;
+	seen.add(objectValue);
 	if (
-		Object.hasOwn(value, "__proto__") ||
-		Object.hasOwn(value, "constructor")
+		Object.hasOwn(objectValue, "__proto__") ||
+		Object.hasOwn(objectValue, "constructor")
 	) {
 		return true;
 	}
-	return Object.values(value as Record<string, unknown>).some((entry) =>
+	// SAFETY: Object identity above proves this is a non-null object; Object.values reads its properties.
+	return Object.values(value).some((entry) =>
 		hasPrototypePollution(entry, seen),
 	);
 }

@@ -4,19 +4,27 @@
  */
 
 import { hasPrototypePollution } from "./manifest.js";
+import type { FuzzValue } from "./manifest.js";
 import type { ControlModel } from "./model.js";
 
 export interface FuzzRequest {
 	readonly method: string;
 	readonly path: string;
 	readonly tenantId?: string;
-	readonly body?: unknown;
+	readonly body?: FuzzValue;
 }
 
 export interface FuzzResponse {
 	readonly status: number;
-	readonly body: Record<string, unknown>;
+	readonly body: Record<string, FuzzValue | ResourceResponse[]>;
 }
+
+type ResourceResponse = {
+	readonly id: string;
+	readonly bindleId: string;
+	readonly idempotencyKey: string;
+	readonly status: string;
+};
 
 export function handleControlRequest(
 	world: ControlModel,
@@ -82,7 +90,7 @@ export function handleControlRequest(
 	return fail(404, "not-found");
 }
 
-function ok(body: Record<string, unknown>): FuzzResponse {
+function ok(body: Record<string, FuzzValue | ResourceResponse[]>): FuzzResponse {
 	return { status: 200, body: { ok: true, ...body } };
 }
 
@@ -90,15 +98,18 @@ function fail(status: number, code: string): FuzzResponse {
 	return { status, body: { ok: false, code } };
 }
 
-function asRecord(value: unknown): Record<string, unknown> {
-	if (!value || typeof value !== "object" || Array.isArray(value)) return {};
-	return value as Record<string, unknown>;
+function asRecord(value: FuzzValue | undefined): Record<string, FuzzValue> {
+	if (!value || Object(value) !== value || Array.isArray(value)) return {};
+	// SAFETY: Object identity and the array exclusion establish a record input.
+	return value as Record<string, FuzzValue>;
 }
 
 function stringField(
-	record: Record<string, unknown>,
+	record: Record<string, FuzzValue>,
 	key: string,
 ): string | undefined {
 	const value = record[key];
-	return typeof value === "string" && value.length > 0 ? value : undefined;
+	if (value?.constructor !== String || value.length === 0) return undefined;
+	// SAFETY: String constructor identity establishes the primitive string contract.
+	return value as string;
 }

@@ -6,8 +6,8 @@ import {
   BUILT_IN_ENGINE_ID,
   CONTRACT_ENGINE_PORT,
   createContractEngine,
-  exportPactBrokerShape,
-  importPactBrokerShape,
+  exportPactBrokerContract,
+  importPactBrokerContract,
   registerContractEngineProvider,
 } from "../src/contract-engine.js";
 
@@ -79,7 +79,7 @@ describe("contract-engine WIT port contract", () => {
   });
 
   it("round-trips an exported Pact broker shape through the HoBo Contract IR", () => {
-    const pact = exportPactBrokerShape({
+    const pact = exportPactBrokerContract({
       contractIr: fixtureGraph.contracts,
       producer: "api@1.8.0",
       consumer: "worker@1.4.2",
@@ -88,7 +88,7 @@ describe("contract-engine WIT port contract", () => {
     assert.equal(pact.metadata.source, "hobo-contract-ir");
     assert.equal(pact.interactions[0].description, "worker@1.4.2 consumes order-events/order.created");
 
-    const imported = importPactBrokerShape(pact);
+    const imported = importPactBrokerContract(pact);
 
     assert.equal(imported.authority, "interop-import");
     assert.deepEqual(imported.contracts[0].requiredFields, ["orderId", "tenantId"]);
@@ -107,14 +107,14 @@ describe("contract-engine WIT port contract", () => {
   });
 
   it("keeps provider-pact as an interop target, never the source of truth", () => {
-    const pact = exportPactBrokerShape({
+    const pact = exportPactBrokerContract({
       contractIr: fixtureGraph.contracts,
       producer: "api@1.8.0",
       consumer: "worker@1.4.2",
     });
 
     assert.throws(
-      () => importPactBrokerShape({ ...pact, metadata: { ...pact.metadata, sourceOfTruth: true } }),
+      () => importPactBrokerContract({ ...pact, metadata: { ...pact.metadata, sourceOfTruth: true } }),
       /Pact imports cannot become the Contract IR source of truth/,
     );
   });

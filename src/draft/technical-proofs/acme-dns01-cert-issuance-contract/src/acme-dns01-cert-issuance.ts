@@ -9,6 +9,8 @@ import {
   routingPolicy,
 } from "../../hobo-dns-port-contract/src/dns-port.js";
 import { makeObligationEvent } from "../../obligation-engine-contract/src/obligation-engine.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEFAULT_NOW = () => new Date("2026-06-27T16:00:00.000Z");
 const DEFAULT_TTL_SECONDS = 60;
@@ -233,7 +235,7 @@ export function createFixtureIdentityCertificateAuthority(options = {}) {
 }
 
 export function createFixtureAcmeDns01Endpoint({ dnsAdapter }) {
-  if (!dnsAdapter || typeof dnsAdapter.inspectShadowZone !== "function") {
+  if (!dnsAdapter || !(dnsAdapter.inspectShadowZone instanceof Function)) {
     throw new Error("ACME DNS-01 endpoint requires a DNS adapter with inspectShadowZone(domain)");
   }
 
@@ -345,7 +347,7 @@ export function assertNoStaticCertificateSecret(surfaces, secretValues) {
   const secrets = [...new Set((secretValues ?? []).map(String).filter(Boolean))];
 
   for (const [surfaceName, surface] of Object.entries(surfaces ?? {})) {
-    const serialized = typeof surface === "string" ? surface : JSON.stringify(surface);
+    const serialized = isJsonString(surface) ? surface : JSON.stringify(surface);
     for (const secret of secrets) {
       if (serialized.includes(secret)) {
         leaks.push(`${surfaceName} contains static certificate secret`);
@@ -361,7 +363,7 @@ export function assertNoStaticCertificateSecret(surfaces, secretValues) {
 }
 
 function createAcmeValidationChecks({ acme, order }) {
-  if (!acme || typeof acme.verifyChallenge !== "function") {
+  if (!acme || !(acme.verifyChallenge instanceof Function)) {
     throw new Error("ACME DNS-01 flow requires acme.verifyChallenge(order)");
   }
   return Object.freeze({
@@ -390,7 +392,7 @@ function normalizeCertificateRequest(input) {
 }
 
 function normalizeOrder(order) {
-  if (!order || typeof order !== "object") {
+  if (!order || !isJsonObject(order)) {
     throw new Error("certificate order is required");
   }
   const camps = normalizeCamps(order);
@@ -447,7 +449,7 @@ function renewalEscalation({
 }
 
 function normalizeCertificate(certificate, domain) {
-  if (!certificate || typeof certificate !== "object") {
+  if (!certificate || !isJsonObject(certificate)) {
     throw new Error("existingCertificate is required");
   }
   return {
@@ -506,9 +508,9 @@ function createCertificateRenewalObligation({
 function requireDnsAdapter(adapter) {
   if (
     !adapter ||
-    typeof adapter.upsertShadowRecord !== "function" ||
-    typeof adapter.inspectLiveZone !== "function" ||
-    typeof adapter.inspectShadowZone !== "function"
+    !(adapter.upsertShadowRecord instanceof Function) ||
+    !(adapter.inspectLiveZone instanceof Function) ||
+    !(adapter.inspectShadowZone instanceof Function)
   ) {
     throw new Error("DNS-01 issuance requires a hobo:dns shadow adapter");
   }
@@ -518,8 +520,8 @@ function requireDnsAdapter(adapter) {
 function requireIdentity(identity) {
   if (
     !identity ||
-    typeof identity.prepareDns01Order !== "function" ||
-    typeof identity.finalizeDns01Order !== "function"
+    !(identity.prepareDns01Order instanceof Function) ||
+    !(identity.finalizeDns01Order instanceof Function)
   ) {
     throw new Error("certificate issuance requires Identity prepare/finalize methods");
   }
@@ -527,14 +529,14 @@ function requireIdentity(identity) {
 }
 
 function requireProviderManagedAdapter(adapter) {
-  if (!adapter || typeof adapter.issueCertificate !== "function") {
+  if (!adapter || !(adapter.issueCertificate instanceof Function)) {
     throw new Error("provider-managed certificate request requires adapter.issueCertificate(input)");
   }
   return adapter;
 }
 
 function normalizeManagedCertificate(certificate, { domain, subjectNames }) {
-  if (!certificate || typeof certificate !== "object") {
+  if (!certificate || !isJsonObject(certificate)) {
     throw new Error("provider-managed adapter did not return a certificate");
   }
   return {
@@ -621,7 +623,7 @@ function fail(reason) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value.trim();
@@ -647,7 +649,7 @@ function sortJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortJson);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -658,7 +660,7 @@ function sortJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

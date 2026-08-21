@@ -11,6 +11,8 @@ import {
   createIdentityEvent,
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const SUPPORTED_ALGORITHMS = new Set(["RS256"]);
 
@@ -23,7 +25,7 @@ export function createFixtureIdentityProvider({ issuer, keyId }) {
 
 export function createHoboAuthVerifier({ authPort, now, eventSink = () => {} }) {
   const config = normalizeAuthPort(authPort);
-  const currentTime = typeof now === "function" ? now : () => Math.floor(Date.now() / 1000);
+  const currentTime = now instanceof Function ? now : () => Math.floor(Date.now() / 1000);
 
   return Object.freeze({
     async verifyRequest(request) {
@@ -167,7 +169,7 @@ function validateClaims(claims, config, now) {
 function buildContext(claims, header, provider, config) {
   const subject = requireClaim(claims, config.subjectClaim, "subject-claim-missing");
   const tenant = claims[config.tenantClaim];
-  if (typeof tenant !== "string" || tenant.length === 0) {
+  if (!isJsonString(tenant) || tenant.length === 0) {
     throw codedError("tenant-claim-missing", "verified JWT does not resolve ctx.tenant");
   }
 
@@ -270,7 +272,7 @@ function requireConfiguredProvider(provider, config) {
 
 function requireClaim(claims, claimName, code) {
   const value = claims[claimName];
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw codedError(code, `required claim ${claimName} is missing`);
   }
   return value;
@@ -280,7 +282,7 @@ function normalizeClaimStrings(value) {
   if (value === undefined) {
     return [];
   }
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     return [value];
   }
   if (!Array.isArray(value)) {
@@ -334,7 +336,7 @@ function fromBase64Url(value) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -343,7 +345,7 @@ function requireString(value, field) {
 function assertPlainObject(value, field) {
   if (
     value === null ||
-    typeof value !== "object" ||
+    !isJsonObject(value) ||
     Array.isArray(value) ||
     (Object.getPrototypeOf(value) !== Object.prototype && Object.getPrototypeOf(value) !== null)
   ) {
@@ -355,7 +357,7 @@ function sortForJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortForJson);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.keys(value)
         .sort()

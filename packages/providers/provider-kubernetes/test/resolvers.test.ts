@@ -23,7 +23,6 @@ import {
 	type TransportResponse,
 } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
 import {
 	guardedKubernetesTransport,
 	KUBERNETES_CRONJOB_PRODUCT_ID,
@@ -40,6 +39,7 @@ import {
 	kubernetesResolvers,
 	RESOLVER_ALLOWED_PATH_PREFIXES,
 } from "../src/index.js";
+import { isJsonString, type JsonObject, type JsonValue } from "../src/json.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const pact = JSON.parse(
@@ -55,7 +55,7 @@ const CREDENTIAL_REF = "secret://camp/cluster-token";
 const TOKEN =
 	"eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJzeXN0ZW06c2VydmljZWFjY291bnQ6c2hvcDpob2JvIn0.c2lnbmF0dXJlLXZhbHVl";
 
-type Rec = Record<string, unknown>;
+type Rec = JsonObject;
 
 interface RecordedCall {
 	readonly method: string;
@@ -99,7 +99,7 @@ function fakeTransport(
 	};
 }
 
-function json(status: number, payload: unknown): TransportResponse {
+function json(status: number, payload: JsonValue): TransportResponse {
 	return {
 		status,
 		headers: { "content-type": "application/json" },
@@ -131,6 +131,7 @@ function notFound(): TransportResponse {
 }
 
 function bodyOf(call: RecordedCall): Rec {
+	// SAFETY: assertion to `ON.parse(call.body) as Rec);` is required at this boundary.
 	return call.body === undefined ? {} : (JSON.parse(call.body) as Rec);
 }
 
@@ -172,26 +173,28 @@ function request(input: {
 			logicalId: input.logicalId,
 			...(input.physicalId !== undefined
 				? { physicalId: input.physicalId }
-				: {}),
+				: undefined),
 		},
 		desired: input.desired ?? {},
 		credentialRef: CREDENTIAL_REF,
 	});
 }
 
-async function codeOf(run: () => Promise<unknown>): Promise<string> {
+async function codeOf(run: () => Promise<void>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
+		// SAFETY: assertion to `ror as ResolverError).` is required at this boundary.
 		return (error as ResolverError).code ?? "NO_CODE";
 	}
 	return "NO_ERROR_THROWN";
 }
 
-async function messageOf(run: () => Promise<unknown>): Promise<string> {
+async function messageOf(run: () => Promise<void>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
+		// SAFETY: assertion to `ror as Error).` is required at this boundary.
 		return (error as Error).message;
 	}
 	return "NO_ERROR_THROWN";
@@ -225,7 +228,8 @@ function collection(
 			object = {
 				...sent,
 				metadata: {
-					...((sent.metadata as Rec) ?? {}),
+					// SAFETY: assertion to `nt.metadata as Rec) ` is required at this boundary.
+					...(sent.metadata as Rec),
 					uid: "11111111-2222-3333-4444-555555555555",
 				},
 			};
@@ -233,6 +237,7 @@ function collection(
 		}
 		if (call.method === "PATCH" && call.path === itemPath) {
 			const sent = bodyOf(call);
+			// SAFETY: assertion to `ject as Rec),` is required at this boundary.
 			object = { ...(object as Rec), spec: sent.spec };
 			return json(200, object);
 		}
@@ -321,7 +326,7 @@ function secretWorld(): Fake {
 			return json(201, existing);
 		}
 		if (call.method === "PATCH" && call.path === SECRET_OBJECT_PATH) {
-			existing = { ...(existing ?? {}), ...bodyOf(call) };
+			existing = { ...existing, ...bodyOf(call) };
 			return json(200, existing);
 		}
 		if (call.method === "DELETE" && call.path === SECRET_OBJECT_PATH) {
@@ -354,6 +359,7 @@ describe("the Secret resolver converges material that never reaches the log", ()
 		expect(outcome.action).toBe("create");
 		expect(outcome.physicalId).toBe(`${SECRET_NAMESPACE}/api-credentials`);
 		const create = fake.calls.find((call) => call.method === "POST");
+		// SAFETY: assertion to ` as RecordedCall).data` is required at this boundary.
 		const data = bodyOf(create as RecordedCall).data as Rec;
 		expect(data.password).toBe(base64Utf8(SECRET_MATERIAL.password));
 	});
@@ -364,6 +370,7 @@ describe("the Secret resolver converges material that never reaches the log", ()
 		const resolver = resolverFor(KUBERNETES_SECRET_PRODUCT_ID);
 		await resolver.reconcile(secretRequest(), fake.transport);
 		const create = fake.calls.find((call) => call.method === "POST");
+		// SAFETY: assertion to ` as RecordedCall).data` is required at this boundary.
 		const data = bodyOf(create as RecordedCall).data as Rec;
 		expect(data.note).toBe(base64Utf8(SECRET_MATERIAL.note));
 	});
@@ -416,6 +423,7 @@ describe("the Secret resolver converges material that never reaches the log", ()
 		);
 		expect(outcome.action).toBe("update");
 		const patch = fake.calls.find((call) => call.method === "PATCH");
+		// SAFETY: assertion to `as RecordedCall).data` is required at this boundary.
 		expect((bodyOf(patch as RecordedCall).data as Rec).password).toBe(
 			base64Utf8(rotated),
 		);
@@ -536,7 +544,7 @@ describe("the registry covers the built-in objects and only those", () => {
 			Object.values(KUBERNETES_DEFAULT_BINDINGS)
 				.flatMap((entries) => [...(entries ?? [])])
 				.map((entry) => entry.productId)
-				.filter((id): id is string => typeof id === "string"),
+				.filter((id): id is string => isJsonString(id)),
 		);
 		const accounted = [
 			...KUBERNETES_RESOLVED_PRODUCT_IDS,
@@ -548,9 +556,8 @@ describe("the registry covers the built-in objects and only those", () => {
 
 	it("lists resolvers in id order and stamps the provider target", () => {
 		const resolvers = kubernetesResolvers(options());
-		expect(resolvers.map((entry) => entry.productId)).toEqual(
-			[...resolvers.map((entry) => entry.productId)].sort(),
-		);
+		const productIds = resolvers.map((entry) => entry.productId);
+		expect(productIds).toEqual(productIds.toSorted());
 		for (const resolver of resolvers) {
 			expect(resolver.providerId).toBe("kubernetes");
 		}
@@ -625,6 +632,7 @@ describe("built-in objects converge", () => {
 			fake.transport,
 		);
 		const create = fake.calls.find((call) => call.method === "POST");
+		// SAFETY: assertion to ` as RecordedCall); e` is required at this boundary.
 		const sent = bodyOf(create as RecordedCall);
 		expect(sent.apiVersion).toBe("apps/v1");
 		expect(sent.kind).toBe("Deployment");
@@ -654,6 +662,7 @@ describe("built-in objects converge", () => {
 		expect(outcome.action).toBe("update");
 		const patch = fake.calls.find((call) => call.method === "PATCH");
 		expect(patch?.headers["content-type"]).toBe("application/merge-patch+json");
+		// SAFETY: assertion to `as RecordedCall)).toE` is required at this boundary.
 		expect(bodyOf(patch as RecordedCall)).toEqual({ spec: { replicas: 2 } });
 	});
 

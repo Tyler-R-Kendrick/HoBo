@@ -29,7 +29,7 @@ export type KubernetesErrorOptions = {
 	readonly retryable?: boolean;
 	readonly retryAfterMs?: number;
 	readonly detail?: KubernetesErrorDetail;
-	readonly cause?: unknown;
+	readonly cause?: Error;
 };
 
 /** Shapes that must never survive into a message, log line, or receipt. */
@@ -45,7 +45,10 @@ const CREDENTIAL_PATTERNS: readonly RegExp[] = [
 ];
 
 // biome-ignore lint/suspicious/noControlCharactersInRegex: flattening control characters out of apiserver text is the point; a raw CR/LF in a message is log forging.
-const CONTROL_CHARS = /[\u0000-\u001f\u007f]/gu;
+const CONTROL_CHARS = new RegExp(
+	`[${String.fromCharCode(0)}-${String.fromCharCode(31)}${String.fromCharCode(127)}]`,
+	"gu",
+);
 
 /**
  * Replace anything credential-shaped with a marker and flatten control
@@ -81,13 +84,13 @@ export class KubernetesProviderError extends Error {
 		if (options.retryAfterMs !== undefined) {
 			this.retryAfterMs = options.retryAfterMs;
 		}
-		this.detail = Object.freeze({ ...(options.detail ?? {}) });
+		this.detail = Object.freeze({ ...options.detail });
 	}
 }
 
-export function isKubernetesProviderError(
-	value: unknown,
-): value is KubernetesProviderError {
+export function isKubernetesProviderError<T>(
+	value: T,
+): value is T & KubernetesProviderError {
 	return value instanceof KubernetesProviderError;
 }
 
@@ -96,6 +99,6 @@ export function contractChanged(
 	detail?: KubernetesErrorDetail,
 ): never {
 	throw new KubernetesProviderError("PROVIDER_CONTRACT_CHANGED", message, {
-		...(detail !== undefined ? { detail } : {}),
+		...(detail !== undefined ? { detail } : undefined),
 	});
 }

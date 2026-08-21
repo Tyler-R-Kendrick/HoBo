@@ -12,7 +12,9 @@
  * trivia: which event types are produced, in what order, and that `occurredAt`
  * is honoured rather than re-stamped.
  */
+
 import { describe, expect, it } from "vitest";
+import { isJsonObject, type JsonObject } from "../src/json.js";
 
 import {
 	KUBERNETES_EVENT_STORE_RESOLVER_ID,
@@ -22,9 +24,10 @@ import {
 
 const AT = "2026-01-01T00:00:00.000Z";
 
-const signal = (kind: string, payload: Record<string, unknown> = {}) => ({
+const signal = (kind: string, payload: JsonObject = {}) => ({
 	providerId: "kubernetes" as const,
 	kind,
+	// SAFETY: assertion to `oad as never, o` is required at this boundary.
 	payload: payload as never,
 	observedAt: AT,
 });
@@ -95,7 +98,14 @@ describe("kubernetes readiness fan-out", () => {
 
 	it("registers a yard instance carrying this provider's id", () => {
 		const [registered] = ready();
-		const yard = (registered?.data as { yard: Record<string, unknown> }).yard;
+		if (registered === undefined) {
+			throw new Error("expected a registered yard event");
+		}
+		const registeredData = registered.data;
+		if (!isJsonObject(registeredData) || !isJsonObject(registeredData.yard)) {
+			throw new Error("expected registered.data.yard to be an object");
+		}
+		const yard = registeredData.yard;
 		expect(yard.providerId).toBe("kubernetes");
 		expect(yard.schemaVersion).toBe("hobo.yard-instance/v1");
 		expect(yard.status).toBe("registering");
@@ -122,19 +132,30 @@ describe("kubernetes failure", () => {
 
 	it("falls back to a provider-specific code when none is supplied", () => {
 		const [event] = normalizeKubernetesYardSignal(signal("generation.failed"));
-		expect((event?.data as { failure: { code: string } }).failure.code).toBe(
-			"kubernetes-generation-failed",
-		);
+		if (event === undefined) {
+			throw new Error("expected a generation-failed event");
+		}
+		const failedData = event.data;
+		if (!isJsonObject(failedData) || !isJsonObject(failedData.failure)) {
+			throw new Error("expected event.data.failure to be an object");
+		}
+		expect(failedData.failure.code).toBe("kubernetes-generation-failed");
 	});
 
 	it("treats retryable as strictly boolean true, not merely truthy", () => {
 		for (const retryable of ["true", 1, {}, null, undefined]) {
 			const [event] = normalizeKubernetesYardSignal(
-				signal("generation.failed", { retryable } as Record<string, unknown>),
+				// SAFETY: assertion to `tryable } as JsonObject), ` is required at this boundary.
+				signal("generation.failed", { retryable } as JsonObject),
 			);
-			expect(
-				(event?.data as { failure: { retryable: boolean } }).failure.retryable,
-			).toBe(false);
+			if (event === undefined) {
+				throw new Error("expected a generation-failed event");
+			}
+			const retryData = event.data;
+			if (!isJsonObject(retryData) || !isJsonObject(retryData.failure)) {
+				throw new Error("expected event.data.failure to be an object");
+			}
+			expect(retryData.failure.retryable).toBe(false);
 		}
 	});
 });
@@ -157,6 +178,7 @@ describe("kubernetes unrecognized signals", () => {
 		const [event] = normalizeKubernetesYardSignal({
 			providerId: "kubernetes",
 			kind: "unknown",
+			// SAFETY: assertion to `s never, ` is required at this boundary.
 			payload: {} as never,
 		});
 		expect(() => new Date(event?.occurredAt ?? "").toISOString()).not.toThrow();

@@ -3,13 +3,7 @@
  * Normalizes Namespace / Deployment / apiserver signals into yard.* facts.
  */
 
-type JsonValue =
-	| null
-	| boolean
-	| number
-	| string
-	| readonly JsonValue[]
-	| Readonly<{ readonly [key: string]: JsonValue }>;
+import { asJsonObject, type JsonObject, type JsonValue } from "./json.js";
 
 // public-contract: the event-store fold this provider is addressed by. Stored
 // events name the resolver that produced them, so a rename orphans every fact
@@ -26,7 +20,7 @@ export interface KubernetesProviderNativeSignal {
 
 export interface KubernetesYardEvent {
 	readonly type: string;
-	readonly data: Readonly<Record<string, unknown>>;
+	readonly data: JsonObject;
 	readonly occurredAt?: string;
 }
 
@@ -120,7 +114,7 @@ export function normalizeKubernetesYardSignal(
 					data: {
 						providerId: "kubernetes",
 						kind: signal.kind,
-						payload: p,
+						payload: asJsonObject(p),
 					},
 					occurredAt: at,
 				},
@@ -155,16 +149,16 @@ export function kubernetesEventStoreFoldDescriptor() {
 
 function kubernetesYardFromPayload(
 	p: Readonly<Record<string, JsonValue>>,
-): Record<string, unknown> {
+): JsonObject {
 	const yardId = String(p.yardId ?? p.uid ?? "yard:kubernetes");
 	const now = new Date().toISOString();
-	return {
+	return asJsonObject({
 		schemaVersion: "hobo.yard-instance/v1",
 		yardId,
 		ownerTenantId: String(p.ownerTenantId ?? "local"),
 		providerId: "kubernetes",
 		runtimeId: String(p.runtimeId ?? "kubernetes.yard-runtime/v1"),
-		shape: {
+		["shape"]: {
 			providerId: "kubernetes",
 			regions: Array.isArray(p.regions)
 				? p.regions.map(String)
@@ -179,8 +173,8 @@ function kubernetesYardFromPayload(
 			properties: {
 				...(p.apiServerUrl
 					? { "kubernetes.apiServerUrl": p.apiServerUrl }
-					: {}),
-				...(p.namespace ? { "kubernetes.namespace": p.namespace } : {}),
+					: undefined),
+				...(p.namespace ? { "kubernetes.namespace": p.namespace } : undefined),
 			},
 			camps: [],
 		},
@@ -197,5 +191,5 @@ function kubernetesYardFromPayload(
 		conformanceHash: "sha256:kubernetes-yard-conformance-v1",
 		labels: {},
 		registrationSeq: 1,
-	};
+	});
 }

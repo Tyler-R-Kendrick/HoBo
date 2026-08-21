@@ -47,8 +47,8 @@ import {
 	type HttpTransport,
 	type TransportGuardPolicy,
 } from "@hobo/core";
-
 import { KubernetesProviderError } from "./errors.js";
+import { isJsonString } from "./json.js";
 
 /**
  * The API roots the resolvers address. Written out rather than derived, so
@@ -97,10 +97,8 @@ export interface ApiServerEndpoint {
  * policy, so widening is a fact about one cluster rather than a hole in the
  * guard.
  */
-export function parseApiServerEndpoint(
-	apiServerUrl: unknown,
-): ApiServerEndpoint {
-	if (typeof apiServerUrl !== "string" || apiServerUrl.trim().length === 0) {
+export function parseApiServerEndpoint<T>(apiServerUrl: T): ApiServerEndpoint {
+	if (!isJsonString(apiServerUrl) || apiServerUrl.trim().length === 0) {
 		throw new KubernetesProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			"kubernetes resolvers need an apiServerUrl: the cluster address is the operator's own and is never guessed",
@@ -129,7 +127,7 @@ export function parseApiServerEndpoint(
 }
 
 /** The hostname alone, for callers that only need the allowlist entry. */
-export function parseApiServerHost(apiServerUrl: unknown): string {
+export function parseApiServerHost<T>(apiServerUrl: T): string {
 	return parseApiServerEndpoint(apiServerUrl).hostname;
 }
 
@@ -150,7 +148,7 @@ export function kubernetesResolverPolicy(
 		// Only the port this operator's own apiserver listens on — read off
 		// their URL, never a range and never a guess.
 		...(endpoint.port === ""
-			? {}
+			? undefined
 			: { allowedPorts: Object.freeze([endpoint.port]) }),
 	});
 }

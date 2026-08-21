@@ -5,6 +5,7 @@
  * body. The only place in this package that knows what an apiserver JSON
  * document looks like is that parser and this file's request rendering.
  */
+
 import {
 	type DeploymentRecord,
 	type NamespaceRecord,
@@ -15,6 +16,7 @@ import {
 	type ServiceRecord,
 } from "./api.js";
 import { KubernetesProviderError, redactClusterText } from "./errors.js";
+import type { JsonObject } from "./json.js";
 import {
 	renderDeploymentManifest,
 	renderNamespaceManifest,
@@ -84,8 +86,8 @@ export function errorForApiResponse(
 		status: response.status,
 		method: context.method,
 		what: context.what,
-		...(reason !== "" ? { reason } : {}),
-		...(message !== "" ? { message } : {}),
+		...(reason !== "" ? { reason } : undefined),
+		...(message !== "" ? { message } : undefined),
 	};
 
 	if (response.status === 401 || response.status === 403) {
@@ -111,7 +113,7 @@ export function errorForApiResponse(
 				retryable: true,
 				...(Number.isFinite(retryAfter)
 					? { retryAfterMs: retryAfter * 1000 }
-					: {}),
+					: undefined),
 				detail,
 			},
 		);
@@ -150,16 +152,18 @@ export function createKubernetesApiClient(
 	async function call(
 		method: TransportMethod,
 		path: string,
-		body?: Record<string, unknown>,
+		body?: JsonObject,
 	): Promise<TransportResponse> {
 		return transport.request({
 			method,
 			url: `${base}${path}`,
 			headers: {
 				Accept: "application/json",
-				...(body !== undefined ? { "Content-Type": "application/json" } : {}),
+				...(body !== undefined
+					? { "Content-Type": "application/json" }
+					: undefined),
 			},
-			...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+			...(body !== undefined ? { body: JSON.stringify(body) } : undefined),
 			timeoutMs,
 			maxResponseBytes: policy.maxResponseBytes,
 		});

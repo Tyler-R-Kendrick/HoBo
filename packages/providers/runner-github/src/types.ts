@@ -16,17 +16,17 @@ export type ExecutionHostCategory =
 	| typeof BUILD_MACHINE_CATEGORY;
 
 // Category -> agnostic port (control-plane.md execution-host categories).
-export const CATEGORY_PORTS: Record<ExecutionHostCategory, string> = {
+export const CATEGORY_PORTS = {
 	runner: "hobo:runner",
 	"build-machine": "hobo:build-machine",
-};
+} satisfies Record<ExecutionHostCategory, string>;
 
 // Category -> the metered SKU each cost fact declares (Plan 5 CreditLedgerView
 // ranks by effective marginal cost per SKU).
-export const CATEGORY_SKUS: Record<ExecutionHostCategory, string> = {
+export const CATEGORY_SKUS = {
 	runner: "runner.minutes",
 	"build-machine": "build.minutes",
-};
+} satisfies Record<ExecutionHostCategory, string>;
 
 // A CI/action job handed to a RunnerProvider by the Dispatcher.
 export interface RunnerJob {

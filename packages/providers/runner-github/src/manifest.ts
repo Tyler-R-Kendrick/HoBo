@@ -1,6 +1,15 @@
 import { canonicalJson, sortKeys, stableDigest } from "@hobo/core";
 
 import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "./json.js";
+
+import {
 	BUILD_MACHINE_CATEGORY,
 	CATEGORY_PORTS,
 	CATEGORY_SKUS,
@@ -72,10 +81,7 @@ export const PROVIDER_TERMS: ProviderTerms = {
 	reviewedOn: "2026-07-27",
 };
 
-export const COST_FACTS: Record<
-	ExecutionHostCategory,
-	{ sku: string; unit: string; marginalPrice: string; included: number }
-> = {
+export const COST_FACTS = {
 	[RUNNER_CATEGORY]: {
 		sku: CATEGORY_SKUS[RUNNER_CATEGORY],
 		unit: "minute",
@@ -88,7 +94,10 @@ export const COST_FACTS: Record<
 		marginalPrice: "0.0060",
 		included: 2000,
 	},
-};
+} satisfies Record<
+	ExecutionHostCategory,
+	{ sku: string; unit: string; marginalPrice: string; included: number }
+>;
 
 // The per-category execution-host manifest the Dispatcher validates and ranks
 // with (draft-proof schema promoted verbatim: exactly ONE execution-host port
@@ -100,6 +109,7 @@ export function executionHostManifest(
 	const providerId = options.providerId ?? GITHUB_RUNNER_PROVIDER_ID;
 	const port = CATEGORY_PORTS[category];
 	const fact = COST_FACTS[category];
+	// SAFETY: sortKeys preserves the ExecutionHostManifest field set; schema is the host contract.
 	return sortKeys({
 		schema: EXECUTION_HOST_MANIFEST_SCHEMA,
 		provider: {
@@ -164,38 +174,54 @@ export interface ExecutionHostManifestParseResult {
  * the Dispatcher never re-checks raw fields downstream.
  */
 export function parseExecutionHostManifest(
-	raw: unknown,
+	raw: JsonValue | ExecutionHostManifest,
 	options: { category?: ExecutionHostCategory } = {},
 ): ExecutionHostManifestParseResult {
 	const errors: string[] = [];
-	if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+	if (Object.prototype.toString.call(raw) !== "[object Object]") {
 		return {
 			ok: false,
 			errors: ["manifest must be an object"],
 			manifest: undefined,
 		};
 	}
-	const manifest = raw as ExecutionHostManifest;
-	if (manifest.schema !== EXECUTION_HOST_MANIFEST_SCHEMA) {
+	// SAFETY: object-shaped input is a JSON view at this parse boundary.
+	const view = raw as JsonObject;
+	if (view === undefined) {
+		return {
+			ok: false,
+			errors: ["manifest must be an object"],
+			manifest: undefined,
+		};
+	}
+	if (view.schema !== EXECUTION_HOST_MANIFEST_SCHEMA) {
 		errors.push(`schema must be ${EXECUTION_HOST_MANIFEST_SCHEMA}`);
 	}
-	const category = manifest.provider?.category;
+	const provider = isJsonObject(view.provider) ? view.provider : undefined;
+	const category = isJsonString(provider?.category)
+		? provider.category
+		: undefined;
 	if (category !== RUNNER_CATEGORY && category !== BUILD_MACHINE_CATEGORY) {
 		errors.push("provider.category must be runner or build-machine");
 	} else {
 		if (options.category && category !== options.category) {
 			errors.push(`provider.category must be ${options.category}`);
 		}
-		if (
-			!Array.isArray(manifest.capabilities) ||
-			manifest.capabilities.length !== 1
-		) {
+		const capabilities = isJsonArray(view.capabilities)
+			? view.capabilities
+			: undefined;
+		if (capabilities === undefined || capabilities.length !== 1) {
 			errors.push("capabilities must contain exactly one execution-host port");
-		} else if (manifest.capabilities[0]?.port !== CATEGORY_PORTS[category]) {
-			errors.push(`capabilities.0.port must be ${CATEGORY_PORTS[category]}`);
+		} else {
+			const first = isJsonObject(capabilities[0]) ? capabilities[0] : undefined;
+			if (first?.port !== CATEGORY_PORTS[category]) {
+				errors.push(`capabilities.0.port must be ${CATEGORY_PORTS[category]}`);
+			}
 		}
-		const fact = manifest.cost?.facts?.[0];
-		if (manifest.cost?.schema !== COST_SCHEMA) {
+		const cost = isJsonObject(view.cost) ? view.cost : undefined;
+		const facts = isJsonArray(cost?.facts) ? cost.facts : undefined;
+		const fact = isJsonObject(facts?.[0]) ? facts[0] : undefined;
+		if (cost?.schema !== COST_SCHEMA) {
 			errors.push(`cost.schema must be ${COST_SCHEMA}`);
 		}
 		if (!fact) {
@@ -204,23 +230,27 @@ export function parseExecutionHostManifest(
 			if (fact.sku !== CATEGORY_SKUS[category]) {
 				errors.push(`cost.facts.0.sku must be ${CATEGORY_SKUS[category]}`);
 			}
-			if (fact.source?.type !== "declared-provider") {
+			const source = isJsonObject(fact.source) ? fact.source : undefined;
+			if (source?.type !== "declared-provider") {
 				errors.push("cost.facts.0.source.type must be declared-provider");
 			}
-			if (
-				typeof fact.source?.digest !== "string" ||
-				fact.source.digest.length === 0
-			) {
+			if (!isJsonString(source?.digest) || source.digest.length === 0) {
 				errors.push("cost.facts.0.source.digest must be a non-empty string");
 			}
 		}
 	}
-	if (typeof manifest.provider?.id !== "string" || !manifest.provider.id) {
+	if (!isJsonString(provider?.id) || provider.id.length === 0) {
 		errors.push("provider.id must be a non-empty string");
 	}
-	return errors.length === 0
-		? { ok: true, errors, manifest: Object.freeze(manifest) }
-		: { ok: false, errors, manifest: undefined };
+	if (errors.length !== 0) {
+		return { ok: false, errors, manifest: undefined };
+	}
+	// SAFETY: parse checks above establish the ExecutionHostManifest field set.
+	return {
+		ok: true,
+		errors,
+		manifest: Object.freeze(raw as ExecutionHostManifest),
+	};
 }
 
 export interface PublishedManifestDocuments {
@@ -343,10 +373,10 @@ export function publishCapabilityManifest(
 export interface PublishedManifestParseResult {
 	ok: boolean;
 	errors: string[];
-	index: Record<string, unknown>;
-	capabilities: Record<string, unknown>;
-	auth: Record<string, unknown>;
-	cost: Record<string, unknown>;
+	index: JsonObject;
+	capabilities: JsonObject;
+	auth: JsonObject;
+	cost: JsonObject;
 }
 
 /**
@@ -357,16 +387,16 @@ export interface PublishedManifestParseResult {
 export function parsePublishedManifest(
 	documents: PublishedManifestDocuments,
 ): PublishedManifestParseResult {
-	const index = JSON.parse(
+	const index = parseJsonObject(
 		documents["/.well-known/capability-manifest/index.json"],
 	);
-	const capabilities = JSON.parse(
+	const capabilities = parseJsonObject(
 		documents["/.well-known/capability-manifest/capabilities.json"],
 	);
-	const auth = JSON.parse(
+	const auth = parseJsonObject(
 		documents["/.well-known/capability-manifest/auth.json"],
 	);
-	const cost = JSON.parse(
+	const cost = parseJsonObject(
 		documents["/.well-known/capability-manifest/cost.json"],
 	);
 	const errors: string[] = [];

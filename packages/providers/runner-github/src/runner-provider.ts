@@ -92,7 +92,7 @@ export function createGithubRunnerProvider(
 			return executionHostManifest(RUNNER_CATEGORY, { providerId: id });
 		},
 		async run(job: RunnerJob): Promise<RunnerResult> {
-			if (typeof job?.jobId !== "string" || job.jobId.length === 0) {
+			if (job.jobId.length === 0) {
 				throw new Error("runner-github: job.jobId must be a non-empty string");
 			}
 			await options.client.dispatchWorkflow({
@@ -101,7 +101,7 @@ export function createGithubRunnerProvider(
 				inputs: {
 					...job.inputs,
 					job_id: job.jobId,
-					...(job.command === undefined ? {} : { command: job.command }),
+					...(job.command === undefined ? undefined : { command: job.command }),
 				},
 			});
 			const run = await trackDispatchedRun(

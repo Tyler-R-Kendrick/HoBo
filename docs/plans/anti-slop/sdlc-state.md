@@ -56,7 +56,8 @@ main
                                              └── sdlc/anti-slop-45-adapters  #1280 adapters
                                               └── sdlc/anti-slop-46-provider-kubernetes  #1284 kubernetes
                                                └── sdlc/anti-slop-47-draft-epic  #1286 epic-proofs
-                                                └── sdlc/anti-slop-48-draft-technical-tiny  tiny technical proofs
+                                                └── sdlc/anti-slop-48-draft-technical-tiny  #1289 tiny technical proofs
+                                                 └── sdlc/anti-slop-49-draft-technical-mid  pact+replay+policy-ir
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -124,6 +125,7 @@ Layer 44: `@hobo/identity` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1
 Layer 45: remaining `@hobo/adapter-*` (drizzle, better-auth, openbao, hono) oxlint `--deny-warnings` and `tsc --noEmit` clean (#1280).
 Layer 46: `@hobo/provider-kubernetes` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1284).
 Layer 47: `src/draft/epic-proofs` oxlint `--deny-warnings` clean (#1286).
-Layer 48: 122 tiny `src/draft/technical-proofs` packages (1–3 findings) oxlint `--deny-warnings` clean.
+Layer 48: 122 tiny `src/draft/technical-proofs` packages (1–3 findings) oxlint `--deny-warnings` clean (#1289).
+Layer 49: `pact-contract-harness` + `deterministic-replay-engine` + `hobo-policy-ir-contract` oxlint `--deny-warnings` clean.
 Next: remaining `src/draft/` (larger technical-proofs, exp-proofs, projects).
 Full-repo `lint:slop --deny-warnings` is still red until those land.

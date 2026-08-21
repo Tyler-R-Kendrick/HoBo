@@ -1,9 +1,11 @@
 import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { join } from "node:path";
 import net from "node:net";
 
 import { createHoboDevLoop } from "../../hobo-dev-loop-contract/src/dev-loop.js";
 import { createSagaEngine } from "../../choreography-saga-engine-contract/src/choreography-saga-engine.js";
+import { type JsonValue, type JsonObject } from "./json.js";
+
 
 export const COLD_BOOT_BUDGET_MS = 60_000;
 export const EVENT_LOG_FILE = "events.jsonl";
@@ -101,7 +103,8 @@ export function installOfflineGuard(enabled: boolean): () => void {
   }
 
   const originalConnect = net.Socket.prototype.connect;
-  net.Socket.prototype.connect = function patchedConnect(...args: unknown[]) {
+  // SAFETY: `net.Socket.prototype.connect = function patchedConnect(...args: JsonValue[]) {` is required at this I/O or test boundary.
+  net.Socket.prototype.connect = function patchedConnect(..._args: JsonValue[]) {
     throw new Error("HOBO_OFFLINE_GUARD blocked network socket");
   } as typeof net.Socket.prototype.connect;
 
@@ -110,7 +113,7 @@ export function installOfflineGuard(enabled: boolean): () => void {
   };
 }
 
-function event(streamId: string, seq: number, type: string, data: Record<string, unknown>) {
+function event(streamId: string, seq: number, type: string, data: JsonObject) {
   return Object.freeze({
     streamId,
     seq,

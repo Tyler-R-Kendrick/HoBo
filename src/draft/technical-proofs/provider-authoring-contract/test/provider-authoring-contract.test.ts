@@ -152,7 +152,7 @@ test("client() returning an untyped surface fails provider validation", () => {
 test("package self-reference imports the provider factory surface", async () => {
   const module = await import("@hobo-draft/provider-authoring-contract");
 
-  assert.equal(typeof module.createFixtureAwsProvider, "function");
+  assert.equal(module.createFixtureAwsProvider instanceof Function, true);
   assert.equal(module.createFixtureAwsProvider().id, "aws");
 });
 

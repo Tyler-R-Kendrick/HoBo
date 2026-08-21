@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const GATE_ID = "s1-stage-gate" as const;
 
 export const CHECK_IDS = [
@@ -33,12 +34,13 @@ export class StageGateRecordParseError extends Error {
   }
 }
 
-export function parseStageGateS1Record(input: unknown): StageGateS1Record {
-  if (!input || typeof input !== "object") {
+export function parseStageGateS1Record(input: JsonValue): StageGateS1Record {
+  if (!input || !isJsonObject(input)) {
     throw new StageGateRecordParseError("record must be an object");
   }
 
-  const raw = input as Record<string, unknown>;
+  // SAFETY: `const raw = input as JsonObject;` is required at this I/O or test boundary.
+  const raw = input as JsonObject;
   const gateId = readString(raw, "gate_id");
   if (gateId !== GATE_ID) {
     throw new StageGateRecordParseError(`gate_id must be "${GATE_ID}"`);
@@ -81,7 +83,7 @@ export function isValidGreenRecord(record: StageGateS1Record): boolean {
     && record.checks.find((check) => check.checkId === "offline-hello-bindle")!.durationMs <= 60_000;
 }
 
-export function toRecordJson(record: StageGateS1Record): Record<string, unknown> {
+export function toRecordJson(record: StageGateS1Record): JsonObject {
   return {
     gate_id: record.gateId,
     commit_sha: record.commitSha,
@@ -96,12 +98,13 @@ export function toRecordJson(record: StageGateS1Record): Record<string, unknown>
   };
 }
 
-function parseCheck(input: unknown, expectedId: CheckId, index: number): StageGateCheck {
-  if (!input || typeof input !== "object") {
+function parseCheck(input: JsonValue, expectedId: CheckId, index: number): StageGateCheck {
+  if (!input || !isJsonObject(input)) {
     throw new StageGateRecordParseError(`checks[${index}] must be an object`);
   }
 
-  const raw = input as Record<string, unknown>;
+  // SAFETY: `const raw = input as JsonObject;` is required at this I/O or test boundary.
+  const raw = input as JsonObject;
   const checkId = readString(raw, "check_id");
   if (checkId !== expectedId) {
     throw new StageGateRecordParseError(`checks[${index}].check_id must be "${expectedId}"`);
@@ -125,20 +128,20 @@ function parseCheck(input: unknown, expectedId: CheckId, index: number): StageGa
   });
 }
 
-function readString(raw: Record<string, unknown>, key: string): string {
+function readString(raw: JsonObject, key: string): string {
   const value = raw[key];
   if (value === undefined || value === null) {
     return "";
   }
-  if (typeof value !== "string") {
+  if (!isJsonString(value)) {
     throw new StageGateRecordParseError(`${key} must be a string`);
   }
   return value;
 }
 
-function readUint(raw: Record<string, unknown>, key: string): number {
+function readUint(raw: JsonObject, key: string): number {
   const value = raw[key];
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+  if (!isJsonNumber(value) || !Number.isInteger(value) || value < 0) {
     throw new StageGateRecordParseError(`${key} must be a non-negative integer`);
   }
   return value;

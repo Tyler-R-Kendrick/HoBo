@@ -217,7 +217,7 @@ export default defineConfig({
 				"packages/events/**": { statements: 91, branches: 82, functions: 87, lines: 93 },
 				"packages/fuzz/**": { statements: 88, branches: 78, functions: 92, lines: 91 },
 				"packages/hobo/**": { statements: 83, branches: 70, functions: 86, lines: 84 },
-				"packages/iac/**": { statements: 70, branches: 59, functions: 77, lines: 70 },
+				"packages/iac/**": { statements: 73, branches: 65, functions: 77, lines: 73 },
 				"packages/identity/**": { statements: 90, branches: 80, functions: 92, lines: 90 },
 				"packages/junctions/**": { statements: 95, branches: 90, functions: 98, lines: 95 },
 				"packages/kv-redis-compatible/**": { statements: 91, branches: 82, functions: 92, lines: 95 },

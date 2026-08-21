@@ -1,6 +1,8 @@
 import { classifyFailure } from "./failure-taxonomy.js";
 import { MembraneOverloadedError } from "./errors.js";
 import type { MembraneDeadlineBackpressure } from "./membrane.js";
+import { isJsonString, type JsonValue } from "./json.js";
+
 
 export interface ReconcileCall {
   effectKind: "eventstore-append" | "provider-rpc";
@@ -8,34 +10,34 @@ export interface ReconcileCall {
   expectedSeq?: number;
   event?: {
     type: string;
-    data: unknown;
+    data: JsonValue;
     meta: { idempotencyKey: string };
   };
   tenant?: string;
   providerId?: string;
   operation?: string;
   importInterface?: string;
-  payload?: unknown;
+  payload?: JsonValue;
   idempotencyKey?: string;
 }
 
 export interface EventStorePort {
   append(
     streamId: string,
-    events: Array<{ type: string; data: unknown; meta: { idempotencyKey: string } }>,
+    events: Array<{ type: string; data: JsonValue; meta: { idempotencyKey: string } }>,
     options: {
       expectedSeq: number;
       actor: { kind: string; id: string };
       tenant: string;
     },
-  ): Promise<{ deduped: unknown[]; appended?: unknown[] }>;
+  ): Promise<{ deduped: JsonValue[]; appended?: JsonValue[] }>;
 }
 
-export async function reconcileAmbiguousFailure(args: {
+export async function reconcileAmbiguousFailure<TError>(args: {
   call: ReconcileCall;
   eventStore?: EventStorePort;
   membrane?: MembraneDeadlineBackpressure;
-  error: unknown;
+  error: TError;
 }) {
   const failure = classifyFailure(args.error);
   if (failure.class !== "partial-failure" || failure.requiresIdempotencyDecision !== true) {
@@ -121,8 +123,8 @@ function normalizeNonNegativeInteger(value: number, fieldName: string) {
   return value;
 }
 
-function requireNonEmptyString(value: unknown, fieldName: string) {
-  if (typeof value !== "string" || value.length === 0) {
+function requireNonEmptyString(value: JsonValue, fieldName: string) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;

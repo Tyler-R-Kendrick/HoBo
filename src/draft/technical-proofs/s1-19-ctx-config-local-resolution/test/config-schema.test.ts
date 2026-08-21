@@ -14,6 +14,8 @@ import {
   secretRef,
   serializeConfigManifest,
 } from "../src/index.js";
+import { type JsonObject } from "../src/json.js";
+
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const repoRoot = path.resolve(packageRoot, "..", "..", "..", "..");
@@ -54,6 +56,7 @@ test("config declarations emit refs-only varlock-style schema entries", () => {
 
 test("non-SCREAMING_SNAKE_CASE key throws", () => {
   assert.throws(
+    // SAFETY: assertion to `() => config({ greeting: env("hello") } as never),` is required at this boundary.
     () => config({ greeting: env("hello") } as never),
     /SCREAMING_SNAKE_CASE/,
   );
@@ -67,7 +70,7 @@ test("ctx.config accessors are generated only for declared keys", async () => {
     },
   });
 
-  assert.equal(typeof ctx.config.STRIPE, "function");
+  assert.equal(ctx.config.STRIPE instanceof Function, true);
   assert.equal("MISSING" in ctx.config, false);
   assert.equal(await ctx.config.STRIPE(), "resolved");
 });
@@ -94,7 +97,8 @@ test("plaintext values are detected before schema can be serialized into a manif
 
   assert.deepEqual(scanSerializedManifestForValues(manifest, ["sk_live_123", "info"]), []);
 
-  const leaked = structuredClone(manifest) as { entries: Record<string, Record<string, unknown>> };
+  // SAFETY: assertion to `const leaked = structuredClone(manifest) as { entries: Record<string, JsonObject` is required at this boundary.
+  const leaked = structuredClone(manifest) as { entries: Record<string, JsonObject> };
   leaked.entries.STRIPE.value = "sk_live_123";
   assert.deepEqual(scanSerializedManifestForValues(leaked, ["sk_live_123"]), ["sk_live_123"]);
 });

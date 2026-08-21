@@ -1,5 +1,7 @@
 import type { ConfigContract, ConfigEntry, ConfigManifest, ConfigManifestEntry } from "./types.js";
 import { CONFIG_SCHEMA_VERSION } from "./types.js";
+import { isJsonObject, type JsonValue, type JsonObject } from "../json.js";
+
 
 export function emitConfigManifest(contract: ConfigContract): ConfigManifest {
   if (contract.schema !== CONFIG_SCHEMA_VERSION) {
@@ -21,12 +23,13 @@ export function serializeConfigManifest(manifest: ConfigManifest): string {
   return canonicalJson(manifest);
 }
 
-export function scanSerializedManifestForValues(manifest: unknown, values: string[]): string[] {
+export function scanSerializedManifestForValues(manifest: JsonValue, values: string[]): string[] {
+  // SAFETY: assertion to `const serialized = serializeConfigManifest(manifest as ConfigManifest);` is required at this boundary.
   const serialized = serializeConfigManifest(manifest as ConfigManifest);
   return values.filter((value) => value && serialized.includes(String(value)));
 }
 
-export function canonicalJson(value: unknown): string {
+export function canonicalJson(value: JsonValue): string {
   return JSON.stringify(sortObject(value));
 }
 
@@ -42,20 +45,21 @@ function manifestEntry(key: string, entry: ConfigEntry): ConfigManifestEntry {
     required: entry.required === true,
     sensitivity: entry.sensitivity,
     source,
-    ...(entry.kind === "env" ? { defaultType: entry.defaultType } : {}),
-    ...(source.devOnly ? { productionDeployable: false as const } : {}),
+    ...(entry.kind === "env" ? { defaultType: entry.defaultType } : undefined),
+    ...(source.devOnly ? { productionDeployable: false as const } : undefined),
   };
 }
 
-function sortObject(value: unknown): unknown {
+function sortObject(value: JsonValue): JsonValue {
   if (Array.isArray(value)) {
     return value.map(sortObject);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
+    // SAFETY: assertion to `Object.entries(value as JsonObject)` is required at this boundary.
+    Object.entries(value as JsonObject)
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, nested]) => [key, sortObject(nested)]),
   );

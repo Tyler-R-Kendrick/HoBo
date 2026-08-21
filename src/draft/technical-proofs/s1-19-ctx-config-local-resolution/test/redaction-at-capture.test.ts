@@ -63,7 +63,9 @@ test("redaction-at-capture: canary secret absent from all persisted surfaces", a
     source: "dev-secret",
     camp: "local",
   });
-  assert.equal("value" in (resolvedEvents[0]?.data as object), false);
+  const resolvedData = resolvedEvents[0]?.data;
+  assert.ok(resolvedData);
+  assert.equal("value" in resolvedData, false);
 });
 
 test("unresolvable secretRef throws SecretUnavailableError and emits secret.Unavailable", async () => {

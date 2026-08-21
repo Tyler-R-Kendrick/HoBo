@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const VALID_RECORD_TYPES = new Set(["A", "AAAA", "CNAME", "TXT", "CAA"]);
 const COST_ROUTABLE_REPLICA_CLASSES = new Set(["active-active-eventual", "pinned"]);
@@ -220,7 +222,7 @@ function normalizeRecord(domain, record) {
       camp: target.camp,
       priority: index + 1,
     }))),
-    ...(record.campOverrides ? { campOverrides: normalizeCampOverrides(record.campOverrides) } : {}),
+    ...(record.campOverrides ? { campOverrides: normalizeCampOverrides(record.campOverrides) } : undefined),
   };
 }
 
@@ -283,7 +285,7 @@ function assertLiveZoneUnchanged(adapter, domain, beforeLive) {
 }
 
 function snapshotLive(adapter, domain) {
-  if (typeof adapter.inspectLiveZone !== "function") {
+  if (!(adapter.inspectLiveZone instanceof Function)) {
     throw new Error("DNS adapter must expose inspectLiveZone for conformance");
   }
   return canonicalJson(adapter.inspectLiveZone(domain));
@@ -311,7 +313,7 @@ function sortJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortJson);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -322,7 +324,7 @@ function sortJson(value) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value.trim();

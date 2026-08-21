@@ -3,6 +3,8 @@ import {
   validateGenerationEvent,
   validateGenRequest
 } from "../../generation-pipeline-io-contract/src/contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
 const defaultActor = {
@@ -203,7 +205,7 @@ function validateFailingAssertions(assertions) {
   if (
     !Array.isArray(assertions) ||
     assertions.length === 0 ||
-    !assertions.every((assertion) => typeof assertion === "string" && assertion.length > 0)
+    !assertions.every((assertion) => isJsonString(assertion) && assertion.length > 0)
   ) {
     throw new RepairLoopContractError("repair.failing_assertions", "$.failingAssertions");
   }
@@ -212,7 +214,7 @@ function validateFailingAssertions(assertions) {
 }
 
 function assertFunction(value, code, path) {
-  if (typeof value !== "function") {
+  if (!(value instanceof Function)) {
     throw new RepairLoopContractError(code, path);
   }
 
@@ -220,13 +222,13 @@ function assertFunction(value, code, path) {
 }
 
 function assertObject(value, code, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new RepairLoopContractError(code, path);
   }
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new RepairLoopContractError(code, path);
   }
 }

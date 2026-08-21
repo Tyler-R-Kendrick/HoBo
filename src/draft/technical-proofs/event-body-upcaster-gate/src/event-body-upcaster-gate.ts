@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const EVENT_BODY_UPCASTER_GATE_SCHEMA = "hobo.event-body-upcaster-gate/v1";
 
@@ -291,7 +293,7 @@ function validateBody(schema, body) {
   const errors = [];
   const declared = new Set(schema.fields.map((field) => field.name));
 
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
+  if (!body || !isJsonObject(body) || Array.isArray(body)) {
     return { ok: false, errors: ["event body must be an object"] };
   }
 
@@ -299,7 +301,7 @@ function validateBody(schema, body) {
     const value = body[field.name];
     if (value === undefined && field.required === false) continue;
 
-    if (field.type === "string" && typeof value !== "string") {
+    if (field.type === "string" && !isJsonString(value)) {
       errors.push(`${field.name} must be a string`);
       continue;
     }
@@ -425,7 +427,7 @@ function deepClone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   Object.freeze(value);
   for (const child of Object.values(value)) {
     deepFreeze(child);
@@ -437,7 +439,7 @@ function canonicalJson(value) {
   if (Array.isArray(value)) {
     return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${canonicalJson(value[key])}`).join(",")}}`;
   }
   return JSON.stringify(value);

@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const HUMAN_APPROVAL_GATE_SCHEMA = "hobo.gen.human-approval-gate/v1";
 
@@ -332,7 +334,7 @@ function parseApprovalDecision(input, state) {
   if (actor.id === state.request.subject.id) {
     throw new HumanApprovalGateError("approval.self_approval_denied", "$.approval.actor.id");
   }
-  if (approval.autoResolved === true || typeof approval.humanSignal !== "string" || approval.humanSignal.trim() === "") {
+  if (approval.autoResolved === true || !isJsonString(approval.humanSignal) || approval.humanSignal.trim() === "") {
     throw new HumanApprovalGateError("approval.meaningful_signal_required", "$.approval.humanSignal");
   }
   const reportRefsShown = stringArray(approval.reportRefsShown, "$.approval.reportRefsShown");
@@ -425,14 +427,14 @@ function stringArray(input, path) {
 }
 
 function object(input, path) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new HumanApprovalGateError("expected_object", path);
   }
   return input;
 }
 
 function nonEmptyString(input, path) {
-  if (typeof input !== "string" || input.trim() === "") {
+  if (!isJsonString(input) || input.trim() === "") {
     throw new HumanApprovalGateError("expected_string", path);
   }
   return input;
@@ -451,7 +453,7 @@ function hashJson(value) {
 }
 
 function stableJson(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {

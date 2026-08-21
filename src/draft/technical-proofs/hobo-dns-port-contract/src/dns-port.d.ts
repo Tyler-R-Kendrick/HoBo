@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export type RecordType = "A" | "AAAA" | "CNAME" | "TXT" | "CAA";
 
 export type RoutingPolicy =
@@ -50,7 +51,7 @@ export interface DnsAdapter {
   inspectLiveZone(domain: string): DnsRecord[];
 }
 
-export function routingPolicy(kind: RoutingPolicy["kind"], entries: unknown[]): RoutingPolicy;
+export function routingPolicy(kind: RoutingPolicy["kind"], entries: JsonValue[]): RoutingPolicy;
 export function createPreValidationDnsPort(input: { domain: string; camp: string; adapter: DnsAdapter }): DnsPort;
 export function createInMemoryDnsAdapter(input: { id: string; shadowWritesAlsoTouchLive?: boolean }): DnsAdapter & {
   inspectShadowZone(domain: string): DnsRecord[];

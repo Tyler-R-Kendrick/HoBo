@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const ID_JAG_DRAFT_VERSION = "draft-ietf-oauth-identity-assertion-authz-grant-04";
 export const ID_JAG_SCHEMA_ID =
   "https://hobo.dev/schemas/identity/id-jag-token-exchange.v1.json";
@@ -110,7 +111,7 @@ export function createFixtureIdJag(input) {
     subject: normalizeDelegatedSubject(input.subject),
     grant_profile: ID_JAG_GRANT_PROFILE,
     idJagDraftVersion: ID_JAG_DRAFT_VERSION,
-    ...(input.extraClaims ?? {}),
+    ...(input.extraClaims),
   };
 
   if (claims.exp <= claims.iat) {
@@ -242,7 +243,7 @@ function normalizeDelegatedSubject(subject) {
 }
 
 function normalizeClaimScopes(scope) {
-  if (typeof scope === "string") {
+  if (isJsonString(scope)) {
     return parseScopeString(scope, "scope");
   }
   return normalizeScopes(scope);
@@ -353,13 +354,13 @@ function assertAllowedProperties(value, field, allowedProperties) {
 }
 
 function assertObject(value, field) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  if (value === null || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${field} must be an object`);
   }
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;

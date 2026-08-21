@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export const LISTING_LIFECYCLE_YANK_CONTRACT: "hobo.listing-lifecycle-yank/v1";
 
 export type YankSeverity = "low" | "medium" | "high" | "critical";
@@ -20,13 +21,13 @@ export interface CertifiedListing {
   kind: string;
   name: string;
   version: string;
-  artifact: Record<string, unknown>;
+  artifact: JsonObject;
   publisher: {
     trustDomain?: string;
-    [key: string]: unknown;
+    [key: string]: JsonValue;
   };
-  certification?: Record<string, unknown>;
-  [key: string]: unknown;
+  certification?: JsonObject;
+  [key: string]: JsonValue;
 }
 
 export interface LifecycleListing extends CertifiedListing {
@@ -42,7 +43,7 @@ export interface YankCommand {
   occurredAt?: string;
   policyOverride?: {
     autoPage?: boolean;
-    [key: string]: unknown;
+    [key: string]: JsonValue;
   };
 }
 
@@ -73,7 +74,7 @@ export interface YankPolicyDecision {
   severity: YankSeverity;
   autoPage: boolean;
   requiresRemediationObligation: boolean;
-  override: Record<string, unknown>;
+  override: JsonObject;
 }
 
 export interface RunningSet {
@@ -81,9 +82,9 @@ export interface RunningSet {
   status: string;
   pinnedListings: Array<{
     listingId: string;
-    [key: string]: unknown;
+    [key: string]: JsonValue;
   }>;
-  [key: string]: unknown;
+  [key: string]: JsonValue;
 }
 
 export interface DoctorResult {

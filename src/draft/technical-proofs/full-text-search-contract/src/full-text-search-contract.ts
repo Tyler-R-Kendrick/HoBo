@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
 export function defineTextIndex(input) {
   assertObject(input, "text index");
   const fields = normalizeStringList(input.fields, "index.fields");
@@ -36,7 +37,7 @@ export function range(field, bounds) {
   assertObject(bounds, "range.bounds");
   const allowed = new Set(["gte", "lte", "gt", "lt"]);
   const entries = Object.entries(bounds);
-  if (entries.length === 0 || entries.some(([key, value]) => !allowed.has(key) || typeof value !== "number")) {
+  if (entries.length === 0 || entries.some(([key, value]) => !allowed.has(key) || !isJsonNumber(value))) {
     throw new Error("range.bounds must contain numeric gt/gte/lt/lte bounds");
   }
   return Object.freeze({
@@ -114,7 +115,7 @@ class SearchProjection {
 
   subscribe(input) {
     const subscriptionId = assertNonEmptyString(input?.subscriptionId, "subscriptionId");
-    if (typeof input.onPush !== "function") {
+    if (!(input.onPush instanceof Function)) {
       throw new Error("subscribe.onPush must be a function");
     }
 
@@ -167,7 +168,7 @@ class SearchProjection {
 
   #normalizeQuery(input = {}) {
     assertObject(input, "query");
-    if (typeof input.tenantId !== "string" || input.tenantId.trim() === "") {
+    if (!isJsonString(input.tenantId) || input.tenantId.trim() === "") {
       throw new Error("tenant-scoped search requires a resolved tenant");
     }
     if (input.prefix && !this.#index.prefix) {
@@ -226,7 +227,7 @@ function evaluatePredicate(predicate, record) {
       return predicate.values.includes(fieldValue(predicate.field));
     case "range": {
       const value = fieldValue(predicate.field);
-      if (typeof value !== "number") {
+      if (!isJsonNumber(value)) {
         return false;
       }
       return Object.entries(predicate.bounds).every(([operator, bound]) => {
@@ -315,13 +316,13 @@ function normalizeStringList(values, field) {
 }
 
 function assertObject(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${field} must be an object`);
   }
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -339,5 +340,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

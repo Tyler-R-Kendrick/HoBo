@@ -49,7 +49,7 @@ export async function readRuntimeWit(path = WIT_PATH) {
 
 export function assertRuntimeWitContract(source) {
   assertPackageVersion(source);
-  assertNoNondeterministicWitShape(source);
+  assertNoNondeterministicWitContract(source);
 
   const parsed = parseRuntimeWit(source);
   for (const [interfaceName, expected] of Object.entries(EXPECTED_RUNTIME_INTERFACES)) {
@@ -75,7 +75,7 @@ export function assertRuntimeWitContract(source) {
 
 export function assertMatchesSdkPrimitiveTable(source, table = SDK_PRIMITIVE_TABLE) {
   assertPackageVersion(source);
-  assertNoNondeterministicWitShape(source);
+  assertNoNondeterministicWitContract(source);
   const parsed = parseRuntimeWit(source);
 
   for (const entry of table) {
@@ -94,7 +94,7 @@ export function assertMatchesSdkPrimitiveTable(source, table = SDK_PRIMITIVE_TAB
   };
 }
 
-export function assertNoNondeterministicWitShape(source) {
+export function assertNoNondeterministicWitContract(source) {
   const normalized = source.toLowerCase();
   const found = NONDETERMINISTIC_WIT_TERMS.find((term) => normalized.includes(term));
   if (found) {

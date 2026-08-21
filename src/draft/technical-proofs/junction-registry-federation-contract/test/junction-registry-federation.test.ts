@@ -13,6 +13,8 @@ import {
   createFederatedYard,
   createJunctionRegistryFederation,
 } from "../src/junction-registry-federation.js";
+import { isJsonObject } from "../src/json.js";
+
 
 const builderKey = createFixtureSigningKey({
   keyId: "junction-builder-key",
@@ -196,7 +198,7 @@ function digest(value) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {

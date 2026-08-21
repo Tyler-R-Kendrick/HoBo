@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const IAC_PROGRAM_API_VERSION = "hobo.iac-program/v1";
 export const PINNED_OPENTOFU_VERSION = "1.8.3";
 
@@ -261,7 +262,7 @@ export function createInMemoryOpenTofuBinary(options = {}) {
 async function checkedPlan(binary, compiled) {
   const plan = await binary.plan(compiled);
   const expectedPlan =
-    typeof binary.expectedPlan === "function"
+    binary.expectedPlan instanceof Function
       ? await binary.expectedPlan(compiled)
       : {
           changes: plan.changes.filter((change) =>
@@ -348,7 +349,7 @@ export async function runIacBackendConformance({ adapter, program }) {
 }
 
 export function validateIacProgram(program) {
-  if (!program || typeof program !== "object") {
+  if (!program || !isJsonObject(program)) {
     throw new OpenTofuProgramError("invalid-program", "IacProgram must be an object");
   }
   if (program.apiVersion !== IAC_PROGRAM_API_VERSION) {
@@ -398,7 +399,7 @@ function assertConformance(condition, assertion) {
 }
 
 function validateOutputReference(value, resources) {
-  if (typeof value !== "string" || !value.startsWith("${resources.")) {
+  if (!isJsonString(value) || !value.startsWith("${resources.")) {
     return;
   }
 
@@ -487,7 +488,7 @@ function resolveStackOutputs(stackOutputs, resources) {
 }
 
 function resolveValue(value, resources) {
-  const match = typeof value === "string" ? OUTPUT_REF.exec(value) : undefined;
+  const match = isJsonString(value) ? OUTPUT_REF.exec(value) : undefined;
   if (!match) {
     return structuredClone(value);
   }
@@ -501,7 +502,7 @@ function resourceId(name) {
 }
 
 function collectValues(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return [value];
   }
 
@@ -528,7 +529,7 @@ function stableJson(value) {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableJson(item)).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return `{${Object.keys(value)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
@@ -539,7 +540,7 @@ function stableJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 

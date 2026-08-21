@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export const JUNCTION_REGISTRY_FEDERATION_CONTRACT: "hobo.junction-registry-federation/v1";
 export const JUNCTION_ARTIFACT_SHARED_EVENT: "junction.ArtifactShared";
 
@@ -8,21 +9,21 @@ export interface Coordinate {
 
 export interface FederatedYard {
   readonly yardId: string;
-  certifyListing(input: { descriptor: unknown; candidate: unknown }): ContractResult;
+  certifyListing(input: { descriptor: JsonValue; candidate: unknown }): ContractResult;
   yankListing(coordinate: Coordinate, input: { reason: string }): ContractResult;
   exportBundle(input: { coordinate: Coordinate; targetYardId: string }): ContractResult & {
-    bundle?: unknown;
+    bundle?: JsonValue;
     payloads?: Map<string, unknown>;
     sourceRegistryLogSeq?: number;
   };
-  importBundle(input: { bundle: unknown; payloads: Map<string, unknown> }): ContractResult & {
+  importBundle(input: { bundle: JsonValue; payloads: Map<string, unknown> }): ContractResult & {
     targetRegistryLogSeq?: number;
   };
-  discover(coordinate: Coordinate): unknown | null;
-  install(coordinate: Coordinate): unknown;
+  discover(coordinate: Coordinate): JsonValue | null;
+  install(coordinate: Coordinate): JsonValue;
   applyPeerYank(input: { coordinate: Coordinate; sourceYardId: string; reason: string }): ContractResult;
-  getListingState(coordinate: Coordinate): unknown;
-  registryLog(): unknown[];
+  getListingState(coordinate: Coordinate): JsonValue;
+  registryLog(): JsonValue[];
 }
 
 export interface JunctionRegistryFederation {
@@ -32,7 +33,7 @@ export interface JunctionRegistryFederation {
     coordinate: Coordinate;
   }): ContractResult & {
     event?: JunctionArtifactSharedEvent | null;
-    importResult?: unknown;
+    importResult?: JsonValue;
   };
   applyPeerYank(input: {
     sourceYardId: string;
@@ -58,12 +59,12 @@ export interface JunctionArtifactSharedEvent {
 export interface ContractResult {
   ok: boolean;
   reasons: readonly string[];
-  event?: unknown;
+  event?: JsonValue;
 }
 
 export function createFederatedYard(input: {
   yardId: string;
-  trustBoundary: unknown;
+  trustBoundary: JsonValue;
   now?: () => string;
 }): FederatedYard;
 

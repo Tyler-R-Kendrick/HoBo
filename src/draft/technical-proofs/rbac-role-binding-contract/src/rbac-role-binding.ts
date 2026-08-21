@@ -4,6 +4,8 @@ import {
   expandManage,
 } from "../../control-plane-action-taxonomy-contract/src/control-plane-action-taxonomy.js";
 import { BUILT_IN_ROLES } from "../../hobo-principal-ref-contract/src/principal-ref.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const PRINCIPAL_KINDS = new Set(["user", "agent", "service"]);
 const BUILT_IN_ROLE_IDS = new Set(Object.values(BUILT_IN_ROLES));
@@ -94,7 +96,7 @@ export function defineCustomRole(input) {
 
   return deepFreeze({
     id,
-    name: input.name && typeof input.name === "string" ? input.name : id,
+    name: input.name && isJsonString(input.name) ? input.name : id,
     kind: "custom",
     grants: normalizeGrantIds(input.grants ?? []),
   });
@@ -130,7 +132,7 @@ export function resolveRbacSubject(input) {
 
   const auth = input.auth ?? {};
   const scimGroups = new Set(normalizeStrings(auth.scimGroups ?? []));
-  const adapter = auth.adapter && typeof auth.adapter === "string" ? auth.adapter : undefined;
+  const adapter = auth.adapter && isJsonString(auth.adapter) ? auth.adapter : undefined;
   const roleMap = new Map();
   for (const binding of input.bindings ?? []) {
     assertObject(binding, "role binding");
@@ -247,7 +249,7 @@ function createRoleCatalog(customRoles) {
       role.id,
       deepFreeze({
         id: requireString(role.id, "role id"),
-        name: role.name && typeof role.name === "string" ? role.name : role.id,
+        name: role.name && isJsonString(role.name) ? role.name : role.id,
         kind: "custom",
         grants: normalizeGrantIds(role.grants ?? []),
       }),
@@ -297,24 +299,24 @@ function normalizeStrings(values) {
   if (!Array.isArray(values)) {
     throw new Error("expected an array");
   }
-  return [...new Set(values)].filter((value) => typeof value === "string" && value.length > 0).sort();
+  return [...new Set(values)].filter((value) => isJsonString(value) && value.length > 0).sort();
 }
 
 function requireString(value, name) {
-  if (!value || typeof value !== "string") {
+  if (!value || !isJsonString(value)) {
     throw new Error(`${name} is required`);
   }
   return value;
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${name} must be an object`);
   }
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const nested of Object.values(value)) {

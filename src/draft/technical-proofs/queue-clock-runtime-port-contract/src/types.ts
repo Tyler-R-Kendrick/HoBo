@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export type IsoInstant = string;
 
 export type LeaseState = "pending" | "leased" | "completed" | "released";
@@ -22,7 +23,7 @@ export interface LeasedMessage {
   messageId: string;
   queueName: string;
   idempotencyKey: string;
-  body: unknown;
+  body: JsonValue;
   leaseId: string;
   leaseExpiresAt: IsoInstant;
   deliveryAttempt: number;
@@ -151,9 +152,9 @@ export interface QueueClockSnapshot {
   nextLeaseSeq: number;
   nextTimerSeq: number;
   nextFireSeq: number;
-  queues: Record<string, { name: string; messages: unknown[] }>;
-  timers: unknown[];
-  cronSchedules: unknown[];
+  queues: Record<string, { name: string; messages: JsonValue[] }>;
+  timers: JsonValue[];
+  cronSchedules: JsonValue[];
   trace: ClockTraceEntry[];
 }
 
@@ -170,7 +171,7 @@ export type CreateRuntimeLocalQueueClock = (options?: {
 }) => RuntimeLocalQueueClock;
 
 export interface QueuePort {
-  enqueue(queueName: string, body: unknown, options: EnqueueOptions): Promise<EnqueueResult>;
+  enqueue(queueName: string, body: JsonValue, options: EnqueueOptions): Promise<EnqueueResult>;
   dequeue(queueName: string, options?: DequeueOptions): LeasedMessage[];
   handle(
     queueName: string,
@@ -182,7 +183,7 @@ export interface QueuePort {
   simulateRedelivery(messageId: string): { messageId: string };
   signal(
     actorKey: string,
-    msg: unknown,
+    msg: JsonValue,
     options: EnqueueOptions,
   ): Promise<EnqueueResult & { queueName: string }>;
 }

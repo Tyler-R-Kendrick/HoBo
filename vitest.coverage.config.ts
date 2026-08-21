@@ -212,7 +212,7 @@ export default defineConfig({
 				"packages/core/**": { statements: 91, branches: 83, functions: 94, lines: 92 },
 				"packages/data/**": { statements: 89, branches: 84, functions: 85, lines: 91 },
 				"packages/data-postgres/**": { statements: 97, branches: 94, functions: 97, lines: 96 },
-				"packages/dispatcher/**": { statements: 87, branches: 73, functions: 93, lines: 89 },
+				"packages/dispatcher/**": { statements: 97, branches: 89, functions: 100, lines: 98 },
 				"packages/evals/**": { statements: 90, branches: 89, functions: 94, lines: 91 },
 				"packages/events/**": { statements: 91, branches: 82, functions: 87, lines: 93 },
 				"packages/fuzz/**": { statements: 90, branches: 80, functions: 94, lines: 92 },

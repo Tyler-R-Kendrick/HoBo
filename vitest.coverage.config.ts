@@ -247,7 +247,7 @@ export default defineConfig({
 				"packages/providers/provider-kubernetes/**": { statements: 81, branches: 70, functions: 90, lines: 81 },
 				"packages/providers/provider-lakebed/**": { statements: 82, branches: 71, functions: 80, lines: 82 },
 				"packages/providers/provider-neon/**": { statements: 84, branches: 73, functions: 93, lines: 86 },
-				"packages/providers/provider-netlify/**": { statements: 60, branches: 52, functions: 57, lines: 61 },
+				"packages/providers/provider-netlify/**": { statements: 84, branches: 80, functions: 82, lines: 84 },
 				"packages/providers/provider-prisma-postgres/**": { statements: 86, branches: 77, functions: 96, lines: 87 },
 				"packages/providers/provider-railway/**": { statements: 82, branches: 68, functions: 82, lines: 83 },
 				"packages/providers/provider-ttl-sh/**": { statements: 91, branches: 87, functions: 91, lines: 91 },

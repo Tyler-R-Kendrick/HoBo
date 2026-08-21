@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject } from "./json.js";
 export const EVAL_PROMOTION_GATE_SCHEMA = "hobo.eval-promotion-gate/v1";
 export const EVAL_EVENT_SCHEMA = "hobo.eval.event/v1";
 export const TELEMETRY_ENVELOPE_SCHEMA = "hobo.telemetry-envelope/v1";
@@ -28,7 +29,7 @@ export function createClassifyTicketPromotionGate(overrides = {}) {
 export function validatePromotionGate(candidate) {
   const errors = [];
 
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     return { ok: false, errors: ["promotionGate must be an object"], gate: null };
   }
 
@@ -77,7 +78,7 @@ export function evaluatePromotionCandidate(gate, candidate) {
 
   for (const [name, threshold] of Object.entries(parsedGate.gate.evalThresholds)) {
     const score = candidate?.scores?.[name];
-    if (typeof score !== "number" || score < threshold) {
+    if (!isJsonNumber(score) || score < threshold) {
       failures.push(`${name} below ${threshold}`);
     }
   }
@@ -130,7 +131,7 @@ export function makeEvalEvent({ id, type, semanticFunction, candidateId, seq, da
 export function validateEvalEvent(event) {
   const errors = [];
 
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
+  if (!event || !isJsonObject(event) || Array.isArray(event)) {
     return { ok: false, errors: ["event must be an object"], event: null };
   }
 
@@ -158,7 +159,7 @@ export function validateEvalEvent(event) {
   if (!isIsoDateTime(event.time)) {
     errors.push("time must be an ISO timestamp");
   }
-  if (!event.meta || typeof event.meta !== "object" || !isTraceparent(event.meta.traceparent)) {
+  if (!event.meta || !isJsonObject(event.meta) || !isTraceparent(event.meta.traceparent)) {
     errors.push("meta.traceparent must be a W3C traceparent");
   }
 
@@ -189,7 +190,7 @@ export function deserializeEvalEvent(serialized) {
 }
 
 function validateEvalEventData(type, data, errors) {
-  if (!data || typeof data !== "object" || Array.isArray(data)) {
+  if (!data || !isJsonObject(data) || Array.isArray(data)) {
     errors.push("data must be an object");
     return;
   }
@@ -219,14 +220,14 @@ function validateDecisionData(type, data, errors) {
   if (!["promote", "stay-shadow"].includes(data.outcome)) {
     errors.push("data.outcome must be promote or stay-shadow");
   }
-  if (!data.passFlags || typeof data.passFlags !== "object") {
+  if (!data.passFlags || !isJsonObject(data.passFlags)) {
     errors.push("data.passFlags must be an object");
     return;
   }
 
   const flags = ["conformance", "eval", "policy"];
   for (const flag of flags) {
-    if (typeof data.passFlags[flag] !== "boolean") {
+    if (!isJsonBoolean(data.passFlags[flag])) {
       errors.push(`data.passFlags.${flag} must be boolean`);
     }
   }
@@ -257,7 +258,7 @@ function validateDecisionData(type, data, errors) {
 }
 
 function validateScores(scores, path, errors) {
-  if (!scores || typeof scores !== "object" || Array.isArray(scores)) {
+  if (!scores || !isJsonObject(scores) || Array.isArray(scores)) {
     errors.push(`${path} must be an object`);
     return;
   }
@@ -266,14 +267,14 @@ function validateScores(scores, path, errors) {
     if (!isNonEmptyString(name)) {
       errors.push(`${path} keys must be non-empty strings`);
     }
-    if (typeof score !== "number" || score < 0 || score > 1) {
+    if (!isJsonNumber(score) || score < 0 || score > 1) {
       errors.push(`${path}.${name} must be between 0 and 1`);
     }
   }
 }
 
 function validateThresholds(thresholds, errors) {
-  if (!thresholds || typeof thresholds !== "object" || Array.isArray(thresholds)) {
+  if (!thresholds || !isJsonObject(thresholds) || Array.isArray(thresholds)) {
     errors.push("evalThresholds must be an object");
     return;
   }
@@ -282,7 +283,7 @@ function validateThresholds(thresholds, errors) {
     if (!isNonEmptyString(name)) {
       errors.push("evalThresholds keys must be non-empty strings");
     }
-    if (typeof threshold !== "number" || threshold < 0 || threshold > 1) {
+    if (!isJsonNumber(threshold) || threshold < 0 || threshold > 1) {
       errors.push(`evalThresholds.${name} must be between 0 and 1`);
     }
   }
@@ -297,19 +298,19 @@ function validateThresholds(thresholds, errors) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function isPercent(value) {
-  return typeof value === "string" && /^(0|[1-9][0-9]?|100)%$/.test(value);
+  return isJsonString(value) && /^(0|[1-9][0-9]?|100)%$/.test(value);
 }
 
 function isTraceparent(value) {
-  return typeof value === "string" && /^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(value);
+  return isJsonString(value) && /^[0-9a-f]{2}-[0-9a-f]{32}-[0-9a-f]{16}-[0-9a-f]{2}$/.test(value);
 }
 
 function isIsoDateTime(value) {
-  return typeof value === "string" && !Number.isNaN(Date.parse(value));
+  return isJsonString(value) && !Number.isNaN(Date.parse(value));
 }
 
 function canonicalJson(value) {
@@ -320,7 +321,7 @@ function deepMerge(base, overrides) {
   if (Array.isArray(base) || Array.isArray(overrides)) {
     return overrides === undefined ? structuredClone(base) : structuredClone(overrides);
   }
-  if (!base || typeof base !== "object") {
+  if (!base || !isJsonObject(base)) {
     return overrides === undefined ? base : overrides;
   }
 
@@ -335,7 +336,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

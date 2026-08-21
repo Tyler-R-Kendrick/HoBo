@@ -3,13 +3,15 @@ import type {
   DriverId,
   MatchContext
 } from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.d.js";
+import { type JsonValue, type JsonObject } from "./json.js";
+
 
 export const DRIVER_DISPATCH_ROUTING_VERSION: "hobo.driver-dispatch-routing/v1";
 
 export class DriverDispatchError extends Error {
   code: string;
-  details: Record<string, unknown>;
-  constructor(code: string, message: string, details?: Record<string, unknown>);
+  details: JsonObject;
+  constructor(code: string, message: string, details?: JsonObject);
 }
 
 export type DispatchDefinition = {
@@ -39,9 +41,9 @@ export type DriverDispatchInput = {
   definition: DispatchDefinition;
   resource: DispatchResource;
   context?: MatchContext & { correlationId?: string };
-  inputs?: Record<string, unknown>;
-  oldState?: unknown;
-  state?: unknown;
+  inputs?: JsonObject;
+  oldState?: JsonValue;
+  state?: JsonValue;
   dependents?: DependentPlaceholders[];
 };
 
@@ -51,27 +53,27 @@ export type DriverDispatchEvent = {
   schema: typeof DRIVER_DISPATCH_ROUTING_VERSION;
   seq: number;
   time: string;
-  data: Record<string, unknown>;
+  data: JsonObject;
 };
 
 export type DriverDispatchRouter = {
   registry: Map<DriverId, Driver>;
-  provision(input: DriverDispatchInput): Promise<Record<string, unknown>>;
-  destroy(input: DriverDispatchInput): Promise<Record<string, unknown>>;
-  refresh(input: DriverDispatchInput): Promise<Record<string, unknown>>;
+  provision(input: DriverDispatchInput): Promise<JsonObject>;
+  destroy(input: DriverDispatchInput): Promise<JsonObject>;
+  refresh(input: DriverDispatchInput): Promise<JsonObject>;
 };
 
 export declare function createDriverDispatchRouter(input?: {
   drivers?: Driver[];
-  executor?: unknown;
-  tokenBroker?: unknown;
+  executor?: JsonValue;
+  tokenBroker?: JsonValue;
 }): DriverDispatchRouter;
 
-export declare function createFixtureDriver(id: DriverId, options?: Record<string, unknown>): Driver & {
+export declare function createFixtureDriver(id: DriverId, options?: JsonObject): Driver & {
   calls: {
-    provision: unknown[];
-    destroy: unknown[];
-    refresh: unknown[];
+    provision: JsonValue[];
+    destroy: JsonValue[];
+    refresh: JsonValue[];
   };
 };
 

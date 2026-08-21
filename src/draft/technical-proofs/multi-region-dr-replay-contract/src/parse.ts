@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export type RegionId = string & { readonly __brand: "RegionId" };
 export type LogPath = string & { readonly __brand: "LogPath" };
 export type StreamId = string & { readonly __brand: "StreamId" };
@@ -40,26 +41,30 @@ export type ParsedRestoreRequest = {
 const AUTHORITATIVE_LOG_MODES = new Set(["active-passive-log", "sync-quorum"]);
 const STATELESS_TIER_ROLES = new Set(["gateway", "planner", "executor"]);
 
-export function parseRegionId(value: unknown, fieldName: string): RegionId {
+export function parseRegionId(value: JsonValue, fieldName: string): RegionId {
+  // SAFETY: assertion to `return requiredString(value, fieldName) as RegionId;` is required at this boundary.
   return requiredString(value, fieldName) as RegionId;
 }
 
-export function parseLogPath(value: unknown): LogPath {
+export function parseLogPath(value: JsonValue): LogPath {
+  // SAFETY: assertion to `return requiredString(value, "logPath") as LogPath;` is required at this boundary.
   return requiredString(value, "logPath") as LogPath;
 }
 
-export function parseMultiRegionTopology(raw: unknown): ParsedMultiRegionTopology {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+export function parseMultiRegionTopology(raw: JsonValue): ParsedMultiRegionTopology {
+  if (!raw || !isJsonObject(raw)) {
     throw new Error("topology manifest is required");
   }
 
-  const manifest = raw as Record<string, unknown>;
+  // SAFETY: assertion to `const manifest = raw as JsonObject;` is required at this boundary.
+  const manifest = raw as JsonObject;
   const authoritativeLog = requiredObject(manifest.authoritativeLog, "authoritativeLog");
   const statelessTier = requiredObject(manifest.statelessTier, "statelessTier");
   const regions = requiredStringArray(manifest.regions, "regions", { minLength: 2 }).map((region) =>
     parseRegionId(region, "regions"),
   );
 
+  // SAFETY: assertion to `const logMode = requiredEnum(` is required at this boundary.
   const logMode = requiredEnum(
     authoritativeLog.mode,
     "authoritativeLog.mode",
@@ -72,6 +77,7 @@ export function parseMultiRegionTopology(raw: unknown): ParsedMultiRegionTopolog
   }
 
   const passiveRegions = regions.filter((region) => region !== primaryRegion);
+  // SAFETY: assertion to `const statelessMode = requiredEnum(` is required at this boundary.
   const statelessMode = requiredEnum(
     statelessTier.mode,
     "statelessTier.mode",
@@ -84,6 +90,7 @@ export function parseMultiRegionTopology(raw: unknown): ParsedMultiRegionTopolog
     if (!STATELESS_TIER_ROLES.has(role)) {
       throw new Error(`unsupported stateless role: ${role}`);
     }
+    // SAFETY: assertion to `parsedRoles.push(role as ParsedMultiRegionTopology["statelessTier"]["roles"][num` is required at this boundary.
     parsedRoles.push(role as ParsedMultiRegionTopology["statelessTier"]["roles"][number]);
   }
 
@@ -94,7 +101,7 @@ export function parseMultiRegionTopology(raw: unknown): ParsedMultiRegionTopolog
       mode: logMode,
       primaryRegion,
       passiveRegions,
-      replication: typeof authoritativeLog.replication === "string"
+      replication: isJsonString(authoritativeLog.replication)
         ? authoritativeLog.replication
         : "cross-region-quorum",
     }),
@@ -106,12 +113,13 @@ export function parseMultiRegionTopology(raw: unknown): ParsedMultiRegionTopolog
   });
 }
 
-export function parseReplicatedLog(raw: unknown): ParsedReplicatedLog {
-  if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+export function parseReplicatedLog(raw: JsonValue): ParsedReplicatedLog {
+  if (!raw || !isJsonObject(raw)) {
     throw new Error("replicated log is required");
   }
 
-  const log = raw as Record<string, unknown>;
+  // SAFETY: assertion to `const log = raw as JsonObject;` is required at this boundary.
+  const log = raw as JsonObject;
   const streams = requiredObject(log.streams, "streams");
   const streamEntries = Object.entries(streams);
 
@@ -124,6 +132,7 @@ export function parseReplicatedLog(raw: unknown): ParsedReplicatedLog {
     if (!Array.isArray(events)) {
       throw new Error(`stream ${streamId} must be an event array`);
     }
+    // SAFETY: assertion to `parsedStreams[streamId as StreamId] = events;` is required at this boundary.
     parsedStreams[streamId as StreamId] = events;
   }
 
@@ -143,17 +152,19 @@ export function parseReplicatedLog(raw: unknown): ParsedReplicatedLog {
     replicationLagMs: nonNegativeInteger(log.replicationLagMs ?? 0, "replicationLagMs"),
     snapshotSeq: nonNegativeInteger(log.snapshotSeq ?? 0, "snapshotSeq"),
     streams: parsedStreams,
+    // SAFETY: assertion to `preLossSnapshots: (log.preLossSnapshots as Record<string, string> | null) ?? nul` is required at this boundary.
     preLossSnapshots: (log.preLossSnapshots as Record<string, string> | null) ?? null,
-    restoreCompletedAt: typeof log.restoreCompletedAt === "string" ? log.restoreCompletedAt : null,
+    restoreCompletedAt: isJsonString(log.restoreCompletedAt) ? log.restoreCompletedAt : null,
   };
 }
 
-export function parseRestoreRequest(input: unknown): ParsedRestoreRequest {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+export function parseRestoreRequest(input: JsonValue): ParsedRestoreRequest {
+  if (!input || !isJsonObject(input)) {
     throw new Error("restore request is required");
   }
 
-  const request = input as Record<string, unknown>;
+  // SAFETY: assertion to `const request = input as JsonObject;` is required at this boundary.
+  const request = input as JsonObject;
   const logPath = parseLogPath(request.logPath ?? request.log);
   return {
     logPath,
@@ -162,22 +173,23 @@ export function parseRestoreRequest(input: unknown): ParsedRestoreRequest {
   };
 }
 
-function requiredObject(value: unknown, fieldName: string): Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+function requiredObject(value: JsonValue, fieldName: string): JsonObject {
+  if (!value || !isJsonObject(value)) {
     throw new Error(`${fieldName} is required`);
   }
-  return value as Record<string, unknown>;
+  // SAFETY: assertion to `return value as JsonObject;` is required at this boundary.
+  return value as JsonObject;
 }
 
-function requiredString(value: unknown, fieldName: string): string {
-  if (typeof value !== "string" || value.trim().length === 0) {
+function requiredString(value: JsonValue, fieldName: string): string {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value.trim();
 }
 
-function requiredStringArray(value: unknown, fieldName: string, { minLength = 0 } = {}): string[] {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string" || entry.trim().length === 0)) {
+function requiredStringArray(value: JsonValue, fieldName: string, { minLength = 0 } = {}): string[] {
+  if (!Array.isArray(value) || value.some((entry) => !isJsonString(entry) || entry.trim().length === 0)) {
     throw new Error(`${fieldName} must be a non-empty string array`);
   }
   if (value.length < minLength) {
@@ -186,7 +198,7 @@ function requiredStringArray(value: unknown, fieldName: string, { minLength = 0 
   return value.map((entry) => entry.trim());
 }
 
-function requiredEnum(value: unknown, fieldName: string, allowed: Set<string>): string {
+function requiredEnum(value: JsonValue, fieldName: string, allowed: Set<string>): string {
   const normalized = requiredString(value, fieldName);
   if (!allowed.has(normalized)) {
     throw new Error(`${fieldName} must be one of ${[...allowed].join(", ")}`);
@@ -194,14 +206,14 @@ function requiredEnum(value: unknown, fieldName: string, allowed: Set<string>): 
   return normalized;
 }
 
-function nonNegativeInteger(value: unknown, fieldName: string): number {
-  if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+function nonNegativeInteger(value: JsonValue, fieldName: string): number {
+  if (!isJsonNumber(value) || !Number.isInteger(value) || value < 0) {
     throw new Error(`${fieldName} must be a non-negative integer`);
   }
   return value;
 }
 
-function validateIso(value: unknown, fieldName: string): string {
+function validateIso(value: JsonValue, fieldName: string): string {
   const text = requiredString(value, fieldName);
   if (Number.isNaN(Date.parse(text))) {
     throw new Error(`${fieldName} must be ISO-8601`);

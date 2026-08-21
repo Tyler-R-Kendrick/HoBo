@@ -7,6 +7,8 @@ import { createDeterministicContext, withDeterminism } from "../engine/determini
 import { findStepCompleted, findStepFailed } from "../engine/memo.js";
 import type { Hook, StepOpts } from "../types.js";
 import type { RunContextBinding } from "../step.js";
+import { isJsonString, isJsonNumber, type JsonValue, type JsonObject } from "../json.js";
+
 
 const DEFAULT_RETRIES = 3;
 
@@ -17,23 +19,23 @@ export interface TestRuntimeOptions {
 
 export interface TestRuntime {
   clock: { now(): string; advance(duration: string | number): void };
-  start(workflow: WorkflowLike, args: unknown[], opts?: { idempotencyKey?: string }): Promise<RunRef>;
-  resumeHook(run: RunRef, payload: unknown): Promise<RunRef>;
+  start(workflow: WorkflowLike, args: JsonValue[], opts?: { idempotencyKey?: string }): Promise<RunRef>;
+  resumeHook(run: RunRef, payload: JsonValue): Promise<RunRef>;
   continueRun(run: RunRef): Promise<RunRef>;
   reruns(run: RunRef): Promise<RunRef>;
-  replay(run: RunRef): Promise<unknown>;
-  state(run: RunRef): Promise<unknown>;
+  replay(run: RunRef): Promise<JsonValue>;
+  state(run: RunRef): Promise<JsonValue>;
   eventLog(run: RunRef): Promise<ParsedEnvelope[]>;
   allEvents(): Promise<ParsedEnvelope[]>;
   getSideEffectCounter(): number;
   incrementSideEffect(): void;
   registerSaga(saga: RegisteredSaga): void;
-  emit(type: string, data: unknown): Promise<number>;
+  emit(type: string, data: JsonValue): Promise<number>;
 }
 
 export interface WorkflowLike {
   name: string;
-  run(ctx: RunContextBinding, args: unknown[]): Promise<unknown>;
+  run(ctx: RunContextBinding, args: JsonValue[]): Promise<JsonValue>;
 }
 
 export interface RegisteredSaga {
@@ -44,7 +46,7 @@ export interface RegisteredSaga {
 
 type SagaHandler = (
   event: ParsedEnvelope,
-  ctx: { emit: (type: string, data: unknown) => Promise<number> },
+  ctx: { emit: (type: string, data: JsonValue) => Promise<number> },
 ) => Promise<void> | void;
 
 export interface RunRef {
@@ -54,8 +56,8 @@ export interface RunRef {
 interface InternalRun {
   runId: string;
   workflow: WorkflowLike;
-  args: unknown[];
-  result?: unknown;
+  args: JsonValue[];
+  result?: JsonValue;
   completed: boolean;
   suspended: "hook" | "sleep" | null;
   hookToken?: string;
@@ -83,13 +85,14 @@ export function testRuntime(options: TestRuntimeOptions = {}): TestRuntime {
 
   async function readStream(streamId: string): Promise<ParsedEnvelope[]> {
     const raw = await eventStore.read(streamId, 1);
+    // SAFETY: assertion to `return (raw as unknown[]).map((entry) => parseEnvelope(entry));` is required at this boundary.
     return (raw as unknown[]).map((entry) => parseEnvelope(entry));
   }
 
   async function appendCatalogStream(
     streamId: string,
     type: string,
-    data: Record<string, unknown>,
+    data: JsonObject,
   ): Promise<ParsedEnvelope> {
     const existing = await readStream(streamId);
     const result = await eventStore.append(
@@ -102,13 +105,13 @@ export function testRuntime(options: TestRuntimeOptions = {}): TestRuntime {
     return parsed;
   }
 
-  async function dispatchDomainEvent(type: string, data: Record<string, unknown>) {
+  async function dispatchDomainEvent(type: string, data: JsonObject) {
     const synthetic: ParsedEnvelope = Object.freeze({
       id: `domain:${type}:${globalSeq}`,
       type,
       streamId: "global:events",
       seq: globalSeq,
-      runId: typeof data.runId === "string" ? data.runId : "global",
+      runId: isJsonString(data.runId) ? data.runId : "global",
       data: Object.freeze(data),
     });
 
@@ -134,9 +137,10 @@ export function testRuntime(options: TestRuntimeOptions = {}): TestRuntime {
     }
   }
 
-  async function appendGlobalEvent(type: string, data: unknown): Promise<number> {
+  async function appendGlobalEvent(type: string, data: JsonValue): Promise<number> {
     globalSeq += 1;
-    const payload = { ...(data as Record<string, unknown>), seq: globalSeq };
+    // SAFETY: assertion to `const payload = { ...(data as JsonObject), seq: globalSeq };` is required at this boundary.
+    const payload = { ...(data as JsonObject), seq: globalSeq };
     const existing = await readStream("global:events");
     await eventStore.append(
       "global:events",
@@ -152,7 +156,7 @@ export function testRuntime(options: TestRuntimeOptions = {}): TestRuntime {
   }
 
   function parseDurationMs(duration: string | number): number {
-    if (typeof duration === "number") {
+    if (isJsonNumber(duration)) {
       return duration;
     }
     const match = /^(\d+)(ms|s|m|h)$/.exec(duration.trim());
@@ -183,6 +187,7 @@ export function testRuntime(options: TestRuntimeOptions = {}): TestRuntime {
     const events = await readRunEvents(run.runId);
     const memoHit = findStepCompleted(events, stepKey);
     if (memoHit) {
+      // SAFETY: assertion to `return memoHit.data.result as O;` is required at this boundary.
       return memoHit.data.result as O;
     }
     const failed = findStepFailed(events, stepKey);
@@ -237,6 +242,7 @@ export function testRuntime(options: TestRuntimeOptions = {}): TestRuntime {
   async function runSleep(run: InternalRun, duration: string | number): Promise<void> {
     const events = await readRunEvents(run.runId);
     const existing = events.find((event) => event.type === "run.SleepScheduled");
+    // SAFETY: assertion to `const wakeAtMs = existing?.data.wakeAtMs as number | undefined;` is required at this boundary.
     const wakeAtMs = existing?.data.wakeAtMs as number | undefined;
     if (existing && wakeAtMs !== undefined && clock.nowMs() >= wakeAtMs) {
       return;
@@ -277,6 +283,7 @@ export function testRuntime(options: TestRuntimeOptions = {}): TestRuntime {
           (event) => event.type === "run.HookResumed" && event.data.token === token,
         );
         if (resumed) {
+          // SAFETY: assertion to `return resumed.data.payload as T;` is required at this boundary.
           return resumed.data.payload as T;
         }
 

@@ -1,6 +1,8 @@
 import type { StepOpts } from "./types.js";
 import type { Hook } from "./types.js";
 import { stableIdempotencyKey } from "./engine/events.js";
+import { type JsonValue } from "./json.js";
+
 
 let activeRunContext: RunContextBinding | undefined;
 
@@ -8,7 +10,7 @@ export interface RunContextBinding {
   step<O>(stepKey: string, fn: () => Promise<O>, opts?: StepOpts): Promise<O>;
   sleep(duration: string | number): Promise<void>;
   createHook<T>(name?: string): Hook<T>;
-  emit(type: string, data: unknown): Promise<number>;
+  emit(type: string, data: JsonValue): Promise<number>;
 }
 
 export function bindRunContext<T>(ctx: RunContextBinding, callback: () => Promise<T>): Promise<T> {
@@ -58,6 +60,6 @@ export function runCreateHook<T>(name?: string): Hook<T> {
   return requireContext().createHook<T>(name);
 }
 
-export function runEmit(type: string, data: unknown): Promise<number> {
+export function runEmit(type: string, data: JsonValue): Promise<number> {
   return requireContext().emit(type, data);
 }

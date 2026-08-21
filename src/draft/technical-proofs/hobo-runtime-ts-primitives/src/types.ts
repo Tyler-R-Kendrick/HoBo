@@ -1,22 +1,23 @@
-import type { Step } from "./step.js";
 import type { Workflow } from "./workflow.js";
+import { type JsonValue } from "./json.js";
+
 
 export type ArgsOf<W> = W extends Workflow<infer A, unknown> ? A : never;
 
 export interface RunHandle {
   runId: string;
-  readable: ReadableStream<unknown>;
+  readable: ReadableStream<JsonValue>;
 }
 
 export interface Message {
   type: string;
-  payload: unknown;
+  payload: JsonValue;
   idempotencyKey?: string;
 }
 
 export type MessageMap<S> = Record<
   string,
-  (state: S, message: Message, ctx: { emit: (type: string, data: unknown) => Promise<number> }) => S | Promise<S>
+  (state: S, message: Message, ctx: { emit: (type: string, data: JsonValue) => Promise<number> }) => S | Promise<S>
 >;
 
 export interface ActorKey {
@@ -36,7 +37,7 @@ export interface Hook<T = unknown> {
 }
 
 export interface Webhook {
-  hook: Hook<unknown>;
+  hook: Hook<JsonValue>;
   route: string;
 }
 
@@ -49,6 +50,6 @@ export type StepFn<A extends unknown[], O> = (...args: A) => Promise<O>;
 export interface StepRecord {
   stepKey: string;
   idempotencyKey: string;
-  result?: unknown;
+  result?: JsonValue;
   failed?: { message: string; attempts: number };
 }

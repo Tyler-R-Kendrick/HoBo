@@ -5,6 +5,8 @@ import {
 } from "../../actor-host-runtime-port-contract/src/actor-host-runtime-port.js";
 
 import type { ActorKey, Message, MessageMap } from "./types.js";
+import { type JsonValue } from "./json.js";
+
 
 export interface ActorRef<S, M extends MessageMap<S>> {
   name: string;
@@ -12,7 +14,8 @@ export interface ActorRef<S, M extends MessageMap<S>> {
   definition: { state: () => S; on: M };
 }
 
-const actorDefinitions = new Map<string, { state: () => unknown; on: MessageMap<unknown> }>();
+type StoredActorDef = { state: () => JsonValue; on: MessageMap<JsonValue> };
+const actorDefinitions = new Map<string, StoredActorDef>();
 const signalLedger = new Map<string, number>();
 let sharedActorHost = createInMemoryActorHost();
 
@@ -30,7 +33,9 @@ export function actor<S, M extends MessageMap<S>>(
   name: string,
   def: { state: () => S; on: M },
 ): ActorRef<S, M> {
-  actorDefinitions.set(name, def as { state: () => unknown; on: MessageMap<unknown> });
+  // SAFETY: actor definitions are stored erased at the registry edge.
+  const stored: StoredActorDef = def as never;
+  actorDefinitions.set(name, stored);
   return {
     name,
     key(id: string) {

@@ -192,7 +192,7 @@ export default defineConfig({
 				"packages/bindings/**": { statements: 94, branches: 89, functions: 95, lines: 94 },
 				"packages/bindles/**": { statements: 80, branches: 71, functions: 84, lines: 81 },
 				"packages/broker/**": { statements: 87, branches: 80, functions: 92, lines: 87 },
-				"packages/camps/**": { statements: 80, branches: 73, functions: 82, lines: 81 },
+				"packages/camps/**": { statements: 99, branches: 98, functions: 100, lines: 100 },
 				"packages/capability-matrix/**": { statements: 86, branches: 62, functions: 93, lines: 89 },
 				"packages/capability-profiles/**": { statements: 86, branches: 74, functions: 98, lines: 89 },
 				"packages/ci-guard/**": { statements: 93, branches: 91, functions: 95, lines: 93 },

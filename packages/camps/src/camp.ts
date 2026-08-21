@@ -409,22 +409,30 @@ function canonicalizeProperties(
 	const keys = Object.keys(input).sort();
 	const out: Record<string, JsonValue> = {};
 	for (const key of keys) {
+		// `resolverId` is a first-class field on a mapping rule, not a property,
+		// so it is dropped rather than refused — a caller that spelled it as a
+		// property gets the field it meant, from `rule.resolverId`.
+		if (key === "resolverId") continue;
+		// Every other key this pattern names is a provider account identifier:
+		// `subscriptionId` and `resourceGroup` are Azure, `projectId` is GCP,
+		// `accountId` is AWS/Cloudflare. Allowing one into a Camp's properties
+		// is exactly the leak this module exists to prevent — a Camp that names
+		// an account is no longer placeable on any other provider.
+		//
+		// The previous shape tested this pattern and then acted only on
+		// `provider`/`providerId`, so the four account identifiers were listed
+		// as forbidden and silently accepted. `@hobo/bindles` refuses the same
+		// key set with the same pattern (`assertAnnotationAllowed`), so the
+		// Bindle authoring surface was provider-neutral and the Camp one was not.
 		if (
-			/^(provider|providerId|resolverId|subscriptionId|accountId|projectId|resourceGroup)$/i.test(
+			/^(provider|providerId|subscriptionId|accountId|projectId|resourceGroup)$/i.test(
 				key,
 			)
 		) {
-			// properties on camp mappings may still hold class options; provider* keys are forbidden.
-			if (/^provider(Id)?$/i.test(key) || key === "resolverId") {
-				// resolverId is a first-class field, not a property key
-				if (key === "resolverId") continue;
-			}
-			if (/^provider(Id)?$/i.test(key)) {
-				throw Object.assign(
-					new Error(`provider-specific property key forbidden: ${key}`),
-					{ code: CAMP_MIGRATION_CODE },
-				);
-			}
+			throw Object.assign(
+				new Error(`provider-specific property key forbidden: ${key}`),
+				{ code: CAMP_MIGRATION_CODE },
+			);
 		}
 		out[key] = toJsonValue(input[key]);
 	}

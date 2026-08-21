@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const CREW_EVENT_TYPES = Object.freeze([
   "crew.AgentDispatched",
   "crew.ActionProposed",
@@ -86,7 +87,7 @@ export function roundTripCrewEvent(event) {
 }
 
 export function validateCrewEvent(event) {
-  if (!event || typeof event !== "object") {
+  if (!event || !isJsonObject(event)) {
     throw new Error("event is required");
   }
 
@@ -204,7 +205,7 @@ function crewEnvelope(type, input, data) {
     ts: validateIso(input?.ts, "ts"),
     principal: createOperatorPrincipal(input?.principal),
     correlationId: requiredString(input?.correlationId, "correlationId"),
-    ...(input?.causationId ? { causationId: requiredString(input.causationId, "causationId") } : {}),
+    ...(input?.causationId ? { causationId: requiredString(input.causationId, "causationId") } : undefined),
     data,
   });
 }
@@ -214,18 +215,18 @@ function field(input, name) {
 }
 
 function validateAction(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     throw new Error("action is required");
   }
 
   return deepFreeze({
     kind: requiredString(value.kind, "action.kind"),
-    ...(value.target !== undefined ? { target: requiredString(value.target, "action.target") } : {}),
+    ...(value.target !== undefined ? { target: requiredString(value.target, "action.target") } : undefined),
   });
 }
 
 function validateBlastRadius(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     throw new Error("blastRadius is required");
   }
 
@@ -237,7 +238,7 @@ function validateBlastRadius(value) {
 }
 
 function validateTarget(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     throw new Error("target is required");
   }
 
@@ -248,7 +249,7 @@ function validateTarget(value) {
 }
 
 function validateRef(value, fieldName) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     throw new Error(`${fieldName} is required`);
   }
 
@@ -317,7 +318,7 @@ function validateMember(value, allowed, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${fieldName} is required`);
   }
 
@@ -325,7 +326,7 @@ function requiredString(value, fieldName) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 

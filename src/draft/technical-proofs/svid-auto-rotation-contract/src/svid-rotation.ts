@@ -2,6 +2,8 @@ import {
   createIdentityEvent,
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEFAULT_TTL_SECONDS = 5 * 60;
 const DEFAULT_ROTATE_BEFORE_SECONDS = 2 * 60;
@@ -397,7 +399,7 @@ function failure(request, reason) {
 }
 
 function normalizeAudience(value) {
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     return requireString(value, "audience");
   }
   if (!Array.isArray(value) || value.length === 0) {
@@ -420,8 +422,8 @@ function normalizePrincipal(value, field) {
 function requireIssuer(issuer) {
   if (
     !issuer ||
-    typeof issuer.signJwtSvid !== "function" ||
-    typeof issuer.discovery !== "function"
+    !(issuer.signJwtSvid instanceof Function) ||
+    !(issuer.discovery instanceof Function)
   ) {
     throw new Error("createSvidRotationService requires issuer.signJwtSvid() and discovery()");
   }
@@ -437,7 +439,7 @@ function requireSegment(value, field) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -481,7 +483,7 @@ function defaultIdFactory(prefix) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -495,7 +497,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

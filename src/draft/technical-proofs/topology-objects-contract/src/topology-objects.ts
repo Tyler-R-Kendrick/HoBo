@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const TOPOLOGY_CONTRACT_VERSION = "hobo.topology-objects/v1";
 
 export function providerSelection(providerId, selector = "default", options = {}) {
@@ -17,7 +18,7 @@ export function providerSelection(providerId, selector = "default", options = {}
 
 export function bindle(name, builder) {
   requireName("bindle name", name);
-  if (typeof builder !== "function") {
+  if (!(builder instanceof Function)) {
     throw new TypeError("bindle builder must be a function");
   }
 
@@ -159,7 +160,7 @@ export function resolutionPrecedenceFor(campObject, resourceKey) {
 }
 
 function normalizeResourceDescriptor(resource) {
-  const descriptor = typeof resource?.toDescriptor === "function" ? resource.toDescriptor() : resource;
+  const descriptor = resource?.toDescriptor instanceof Function ? resource.toDescriptor() : resource;
   if (!isPlainObject(descriptor)) {
     throw new TypeError("Bindle resources must be descriptor objects");
   }
@@ -182,7 +183,7 @@ function normalizeResourceDescriptor(resource) {
 }
 
 function assertNoProviderSpecificFields(value) {
-  if (!value || typeof value !== "object") return;
+  if (!value || !isJsonObject(value)) return;
   const annotations = value.annotations?.with;
   const providerOptions = value.options?.providerOptions;
   if (
@@ -295,13 +296,13 @@ function requireArray(value, fieldName) {
 }
 
 function requireName(label, value) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
 }
 
 function isPlainObject(value) {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+  return Boolean(value && isJsonObject(value) && !Array.isArray(value));
 }
 
 function sortKeys(value) {
@@ -315,7 +316,7 @@ function sortKeys(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

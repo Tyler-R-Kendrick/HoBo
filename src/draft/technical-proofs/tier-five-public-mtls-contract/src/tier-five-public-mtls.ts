@@ -7,11 +7,13 @@ import {
   parseWorkloadSpiffeId
 } from "../../mtls-data-path-contract/src/mtls-data-path.js";
 import { enforceConnectivityCanDeploy } from "../../connectivity-policy-enforcement-contract/src/connectivity-policy-enforcement.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const TIER_FIVE_PUBLIC_MTLS_SCHEMA_VERSION = "hobo.tier-five-public-mtls/v1";
 
 export function realizeTierFivePublicMtls(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     return invalid("tier5.input.invalid", "input must be an object");
   }
 
@@ -109,10 +111,10 @@ export function realizeTierFivePublicMtls(input) {
 }
 
 export function canReachTierFiveEndpoint(link, attempt) {
-  if (!link || typeof link !== "object" || Array.isArray(link)) {
+  if (!link || !isJsonObject(link) || Array.isArray(link)) {
     return invalid("tier5.link.invalid", "link must be an object");
   }
-  if (!attempt || typeof attempt !== "object" || Array.isArray(attempt)) {
+  if (!attempt || !isJsonObject(attempt) || Array.isArray(attempt)) {
     return invalid("tier5.reachability.invalid", "attempt must be an object");
   }
 
@@ -161,7 +163,7 @@ function validateTierFivePlan(plan) {
     ["parameters.publicEndpointRef", plan.parameters.publicEndpointRef],
     ["parameters.publicHost", plan.parameters.publicHost]
   ]) {
-    if (typeof value !== "string" || value.length === 0) {
+    if (!isJsonString(value) || value.length === 0) {
       return invalid("tier5.plan.public-endpoint-missing", `${field} must be a non-empty string`);
     }
   }
@@ -178,7 +180,7 @@ function validateTierFivePlan(plan) {
   if (plan.parameters.fallbackFromTier !== ConnectivityTier.OVERLAY_MESH) {
     return invalid("tier5.plan.invalid-fallback", "tier 5 public mTLS fallback must come from tier 4");
   }
-  if (typeof plan.parameters.fallbackReason !== "string" || plan.parameters.fallbackReason.length === 0) {
+  if (!isJsonString(plan.parameters.fallbackReason) || plan.parameters.fallbackReason.length === 0) {
     return invalid("tier5.plan.invalid-fallback", "parameters.fallbackReason must explain the tier 4 fall-through");
   }
 
@@ -223,7 +225,7 @@ function normalizeVerbs(verbs = ["connect"]) {
   const seen = new Set();
   const normalized = [];
   for (const verb of verbs) {
-    if (typeof verb !== "string" || verb.length === 0) {
+    if (!isJsonString(verb) || verb.length === 0) {
       return invalid("tier5.verbs.invalid", "verbs entries must be non-empty strings");
     }
     if (!seen.has(verb)) {

@@ -1,12 +1,10 @@
-import {
-  selectPreferredAuthFlow,
-  verifySignedAuthManifestEnvelope,
-} from "../../hobo-auth-json-contract/src/auth-json.js";
+import { selectPreferredAuthFlow, verifySignedAuthManifestEnvelope } from "../../hobo-auth-json-contract/src/auth-json.js";
 import {
   createIdentityEvent,
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
 import { recommendedBrokerCacheBounds } from "../../token-broker-ha-cache-contract/src/token-broker-ha-cache.js";
+import { isJsonString, isJsonObject } from "./json.js";
 
 export const BROKER_EXCHANGE_ERROR = Object.freeze({
   SVID_EXPIRED: "svid-expired",
@@ -47,7 +45,7 @@ export function createTokenBrokerExchange(options = {}) {
   const registry = requireRegistry(options.registry);
   const now = options.now ?? (() => new Date());
   const idFactory = options.idFactory ?? defaultIdFactory();
-  const flowHandlers = { ...defaultFlowHandlers(now), ...(options.flowHandlers ?? {}) };
+  const flowHandlers = { ...defaultFlowHandlers(now), ...(options.flowHandlers) };
   const eventSink = options.eventSink ?? (() => {});
   const bounds = recommendedBrokerCacheBounds({
     ttlMs: options.tokenTtlMs ?? DEFAULT_TOKEN_TTL_MS,
@@ -389,7 +387,7 @@ function normalizePrincipal(value, field) {
 }
 
 function normalizeAudience(value) {
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     return [value];
   }
   if (!Array.isArray(value) || value.length === 0) {
@@ -478,7 +476,7 @@ function defaultFlowHandlers(now) {
 }
 
 function requireRegistry(registry) {
-  if (!registry || typeof registry.resolveAuthManifest !== "function") {
+  if (!registry || !(registry.resolveAuthManifest instanceof Function)) {
     throw new Error("token broker exchange requires registry.resolveAuthManifest(provider)");
   }
   return registry;
@@ -490,7 +488,7 @@ function defaultIdFactory() {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -507,7 +505,7 @@ function requireIsoDate(value, field) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -518,7 +516,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

@@ -1,4 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const SCHEMA_VERSION = "hobo.workload-attestation/v1";
 const DIGEST_PATTERN = /^sha256:[a-f0-9]{64}$/;
@@ -122,7 +124,7 @@ function verifyHostSignature(measurement, signature, hostPublicKeys) {
       entry.hostId === measurement.hostId &&
       entry.hostId === signature.hostId &&
       entry.keyId === signature.keyId &&
-      typeof entry.verificationKey === "string",
+      isJsonString(entry.verificationKey),
   );
   if (!key) {
     return false;
@@ -140,7 +142,7 @@ function signLaunchMeasurement(measurement, verificationKey) {
 
 function validateLaunchMeasurement(measurement) {
   for (const field of ["runId", "tenant", "componentImageDigest", "hostId", "nonce", "isolationTier"]) {
-    if (typeof measurement[field] !== "string" || measurement[field].length === 0) {
+    if (!isJsonString(measurement[field]) || measurement[field].length === 0) {
       return "launch-measurement-invalid";
     }
   }
@@ -219,7 +221,7 @@ function sortForCanonicalJson(value) {
 }
 
 function safeEqualBase64url(left, right) {
-  if (typeof right !== "string") {
+  if (!isJsonString(right)) {
     return false;
   }
   try {
@@ -235,7 +237,7 @@ function isPrincipal(value) {
   return (
     isPlainObject(value) &&
     PRINCIPAL_KINDS.has(value.kind) &&
-    typeof value.id === "string" &&
+    isJsonString(value.id) &&
     value.id.length > 0
   );
 }
@@ -243,7 +245,7 @@ function isPrincipal(value) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -254,7 +256,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

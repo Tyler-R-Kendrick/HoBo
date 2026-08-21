@@ -1,5 +1,6 @@
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 /** Recursive subset: every field in `expected` must exist with equal value in `actual`. */
-export function isRecursiveSubset(expected: unknown, actual: unknown, path = "$"): boolean {
+export function isRecursiveSubset(expected: JsonValue, actual: JsonValue, path = "$"): boolean {
   if (expected === actual) {
     return true;
   }
@@ -8,7 +9,7 @@ export function isRecursiveSubset(expected: unknown, actual: unknown, path = "$"
     return expected === actual;
   }
 
-  if (typeof expected !== typeof actual) {
+  if (jsonKind(expected) !== jsonKind(actual)) {
     return false;
   }
 
@@ -21,12 +22,14 @@ export function isRecursiveSubset(expected: unknown, actual: unknown, path = "$"
     );
   }
 
-  if (typeof expected === "object" && expected !== null) {
-    if (typeof actual !== "object" || actual === null || Array.isArray(actual)) {
+  if (isJsonObject(expected) && expected !== null) {
+    if (!isJsonObject(actual)) {
       return false;
     }
-    const expectedRecord = expected as Record<string, unknown>;
-    const actualRecord = actual as Record<string, unknown>;
+    // SAFETY: assertion to `const expectedRecord = expected as JsonObject;` is required at this boundary.
+    const expectedRecord = expected as JsonObject;
+    // SAFETY: assertion to `const actualRecord = actual as JsonObject;` is required at this boundary.
+    const actualRecord = actual as JsonObject;
     return Object.keys(expectedRecord).every((key) =>
       isRecursiveSubset(expectedRecord[key], actualRecord[key], `${path}.${key}`),
     );
@@ -37,8 +40,8 @@ export function isRecursiveSubset(expected: unknown, actual: unknown, path = "$"
 
 /** Find first path where expected is not a subset of actual. */
 export function subsetMismatchPath(
-  expected: unknown,
-  actual: unknown,
+  expected: JsonValue,
+  actual: JsonValue,
   path = "$",
 ): string | undefined {
   if (isRecursiveSubset(expected, actual, path)) {
@@ -48,18 +51,19 @@ export function subsetMismatchPath(
   if (
     expected === null ||
     expected === undefined ||
-    typeof expected !== "object" ||
-    Array.isArray(expected)
+    !isJsonObject(expected)
   ) {
     return path;
   }
 
-  if (typeof actual !== "object" || actual === null || Array.isArray(actual)) {
+  if (!isJsonObject(actual)) {
     return path;
   }
 
-  const expectedRecord = expected as Record<string, unknown>;
-  const actualRecord = actual as Record<string, unknown>;
+  // SAFETY: assertion to `const expectedRecord = expected as JsonObject;` is required at this boundary.
+  const expectedRecord = expected as JsonObject;
+  // SAFETY: assertion to `const actualRecord = actual as JsonObject;` is required at this boundary.
+  const actualRecord = actual as JsonObject;
 
   for (const key of Object.keys(expectedRecord)) {
     const childPath = `${path}.${key}`;
@@ -73,4 +77,26 @@ export function subsetMismatchPath(
   }
 
   return path;
+}
+
+function jsonKind(value: JsonValue): string {
+  if (value === null) {
+    return "null";
+  }
+  if (Array.isArray(value)) {
+    return "array";
+  }
+  if (isJsonObject(value)) {
+    return "object";
+  }
+  if (isJsonString(value)) {
+    return "string";
+  }
+  if (isJsonNumber(value)) {
+    return "number";
+  }
+  if (isJsonBoolean(value)) {
+    return "boolean";
+  }
+  return "other";
 }

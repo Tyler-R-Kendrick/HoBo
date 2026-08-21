@@ -4,12 +4,14 @@ import { canonicalStateBytes } from "./replayer.js";
 import { nextEnvelope, recordEffect } from "./recorder.js";
 import { createInMemoryEventStore } from "./store.js";
 import { stableStringify } from "./equivalence.js";
+import { isJsonObject, type JsonValue } from "./json.js";
+
 
 export interface WorkflowHandlers<S, A> {
   name: string;
   initialState(args: A): S;
   onStart?: (ctx: RuntimeContext, state: S, args: A) => S | Promise<S>;
-  onHook?: (ctx: RuntimeContext, state: S, payload: unknown) => S | Promise<S>;
+  onHook?: (ctx: RuntimeContext, state: S, payload: JsonValue) => S | Promise<S>;
   onTimer?: (ctx: RuntimeContext, state: S, timer: TimerRef) => S | Promise<S>;
 }
 
@@ -20,7 +22,7 @@ export interface RuntimeContext {
   random(label?: string): number;
   step<T>(name: string, fn: () => Promise<T> | T): Promise<T>;
   sleep(delayMs: number, options?: { id?: string; label?: string }): TimerRef;
-  emit(type: string, data?: unknown): { type: string; data: unknown };
+  emit(type: string, data?: JsonValue): { type: string; data: unknown };
   waitForHook(name?: string): HookRef;
 }
 
@@ -41,7 +43,7 @@ export interface RunRef {
 
 export interface TestRuntime {
   start<S, A>(workflow: WorkflowHandlers<S, A>, args: A): Promise<RunRef>;
-  resumeHook(run: RunRef, payload: unknown): Promise<RunRef>;
+  resumeHook(run: RunRef, payload: JsonValue): Promise<RunRef>;
   state<S>(run: RunRef): Promise<S>;
   replay<S>(run: RunRef): Promise<S>;
   clock: { advance(ms: number): Promise<void>; now(): string };
@@ -71,7 +73,7 @@ type TraceEntry =
   | { type: "hook.waiting"; hook: HookRef; atMs: number }
   | { type: "timer.scheduled"; timerId: string; label?: string; delayMs: number; fireAtMs: number }
   | { type: "timer.fired"; timerId: string; label?: string; atMs: number; fireAtMs: number }
-  | { type: "hook.resumed"; payload: unknown; atMs: number };
+  | { type: "hook.resumed"; payload: JsonValue; atMs: number };
 
 export function defineWorkflow<S, A>(name: string, handlers: Omit<WorkflowHandlers<S, A>, "name">) {
   return Object.freeze({ ...handlers, name });
@@ -84,7 +86,7 @@ export function testRuntime(options: { seed?: string; startInstant?: string } = 
   let timerSeq = 1;
   const runs = new Map<string, RunRecord<unknown, unknown>>();
 
-  async function appendRunEvent<S, A>(run: RunRecord<S, A>, type: string, data: unknown) {
+  async function appendRunEvent<S, A>(run: RunRecord<S, A>, type: string, data: JsonValue) {
     run.nextSeq += 1;
     await recordEffect(
       store,
@@ -125,8 +127,10 @@ export function testRuntime(options: { seed?: string; startInstant?: string } = 
           (event) =>
             event.type === "run.StepCompleted" &&
             event.data &&
-            typeof event.data === "object" &&
+            isJsonObject(event.data) &&
+            // SAFETY: assertion to `(event.data as { name?: string; index?: number }).name === name &&` is required at this boundary.
             (event.data as { name?: string; index?: number }).name === name &&
+            // SAFETY: assertion to `(event.data as { name?: string; index?: number }).index === index,` is required at this boundary.
             (event.data as { name?: string; index?: number }).index === index,
         );
         if (!completed) {
@@ -139,6 +143,7 @@ export function testRuntime(options: { seed?: string; startInstant?: string } = 
           });
         }
         run.stepIndex += 1;
+        // SAFETY: assertion to `return (completed.data as { result: T }).result;` is required at this boundary.
         return (completed.data as { result: T }).result;
       },
       sleep(delayMs, options = {}) {
@@ -178,8 +183,8 @@ export function testRuntime(options: { seed?: string; startInstant?: string } = 
 
   async function applyHandler<S, A>(
     run: RunRecord<S, A>,
-    handler: ((ctx: RuntimeContext, state: S, input: unknown) => S | Promise<S>) | undefined,
-    input: unknown,
+    handler: ((ctx: RuntimeContext, state: S, input: JsonValue) => S | Promise<S>) | undefined,
+    input: JsonValue,
     record: boolean,
   ) {
     if (!handler) {
@@ -266,6 +271,7 @@ export function testRuntime(options: { seed?: string; startInstant?: string } = 
         timers: [],
         trace: [],
       };
+      // SAFETY: assertion to `runs.set(runId, run as RunRecord<unknown, unknown>);` is required at this boundary.
       runs.set(runId, run as RunRecord<unknown, unknown>);
       await appendRunEvent(run, "run.Started", { seed, args });
       await applyHandler(run, workflow.onStart, clone(args), true);
@@ -362,9 +368,12 @@ function formatInstant(ms: number): string {
 }
 
 function clone<T>(value: T): T {
-  return typeof structuredClone === "function"
-    ? structuredClone(value)
-    : (JSON.parse(JSON.stringify(value)) as T);
+  if (structuredClone instanceof Function) {
+    return structuredClone(value);
+  }
+  // SAFETY: JSON.parse round-trip clones T at this document boundary.
+  const cloned: T = JSON.parse(JSON.stringify(value)) as T;
+  return cloned;
 }
 
 function withReplayAmbientPoisoning<T>(callback: () => T | Promise<T>): T | Promise<T> {

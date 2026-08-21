@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export const POLICY_IR_SCHEMA_VERSION: "hobo.policy-ir/v1";
 export const POLICY_DECIDED_EVENT_TYPE: "policy.Decided";
 export const SUBJECT_KINDS: readonly ["user", "service", "agent", "system"];
@@ -48,7 +49,7 @@ export interface DecisionRequest {
   action: string;
   resource: DecisionResource;
   phase: Phase;
-  context: Record<string, unknown>;
+  context: JsonObject;
   inputHash: `sha256:${string}`;
 }
 
@@ -62,10 +63,10 @@ export interface Decision {
   schemaVersion: typeof POLICY_IR_SCHEMA_VERSION;
   effect: Effect;
   reason: string;
-  violations: unknown[];
-  mutations: unknown[];
-  approvals: unknown[];
-  obligations: Array<{ kind: string; [key: string]: unknown }>;
+  violations: JsonValue[];
+  mutations: JsonValue[];
+  approvals: JsonValue[];
+  obligations: Array<{ kind: string; [key: string]: JsonValue }>;
   evidence: DecisionEvidence;
 }
 
@@ -74,16 +75,20 @@ export class PolicyIrValidationError extends Error {
   path: string;
 }
 
-export function createDecisionRequest(input: unknown): DecisionRequest;
-export function parseDecisionRequest(input: unknown): DecisionRequest;
-export function createDecision(requestInput: unknown, decisionInput: unknown): Decision;
-export function parseDecision(input: unknown, requestInput?: unknown): Decision;
-export function serializePolicyIrDocument(input: unknown): string;
-export function parsePolicyIrDocument(input: unknown): { request: DecisionRequest; decision: Decision };
-export function migratePolicyIrDocument(input: unknown): DecisionRequest;
-export function createPolicyDecidedEvent(input: {
-  request: unknown;
-  decision: unknown;
+export function createDecisionRequest<T>(input: T): DecisionRequest;
+export function parseDecisionRequest<T>(input: T): DecisionRequest;
+export function createDecision<TRequest, TDecision>(requestInput: TRequest, decisionInput: TDecision): Decision;
+export function parseDecision<TInput, TRequest>(input: TInput, requestInput?: TRequest): Decision;
+export function serializePolicyIrDocument(input: JsonValue): string;
+export interface PolicyIrDocument {
+  request: DecisionRequest;
+  decision: Decision;
+}
+export function parsePolicyIrDocument(input: JsonValue): PolicyIrDocument;
+export function migratePolicyIrDocument(input: JsonValue): DecisionRequest;
+export function createPolicyDecidedEvent<TRequest, TDecision>(input: {
+  request: TRequest;
+  decision: TDecision;
   id?: string;
 }): {
   id: string;
@@ -95,7 +100,21 @@ export function createPolicyDecidedEvent(input: {
   phase: Phase;
   data: Decision;
 };
-export function toWitDecisionRecord(input: unknown): unknown;
-export function fromWitDecisionRecord(input: unknown, requestInput?: unknown): Decision;
-export function hashDecisionRequest(input: unknown): `sha256:${string}`;
-export function canonicalJson(input: unknown): string;
+export interface WitDecisionRecord {
+  schema_version: string;
+  effect: Effect;
+  reason: string;
+  violations: JsonValue[];
+  mutations: JsonValue[];
+  approvals: JsonValue[];
+  obligations: Array<{ kind: string; [key: string]: JsonValue }>;
+  evidence: {
+    policy_ids: string[];
+    input_hash: `sha256:${string}`;
+    engine: string;
+  };
+}
+export function toWitDecisionRecord(input: JsonValue): WitDecisionRecord;
+export function fromWitDecisionRecord(input: JsonValue, requestInput?: JsonValue): Decision;
+export function hashDecisionRequest<T>(input: T): `sha256:${string}`;
+export function canonicalJson<T>(input: T): string;

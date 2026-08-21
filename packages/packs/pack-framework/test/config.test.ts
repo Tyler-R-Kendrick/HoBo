@@ -12,7 +12,7 @@ const manifest = parsePackManifest(fixtureManifest());
 
 const SECRET_REF = "hobo-secret://tenant-demo/packs/example/auth";
 
-function expectPackError(fn: () => unknown, code: string): void {
+function expectPackError(fn: () => void, code: string): void {
 	try {
 		fn();
 	} catch (error) {
@@ -156,7 +156,7 @@ describe("parsePackConfiguration", () => {
 					values: {
 						dataVolume: "data",
 						authPasswordRef: SECRET_REF,
-						maxMemoryBytes: "lots" as unknown as number,
+						maxMemoryBytes: "lots",
 					},
 					volumeBindings: [
 						{

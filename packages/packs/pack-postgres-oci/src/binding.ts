@@ -96,7 +96,7 @@ export function buildPostgresBinding(
 			credentialRef: input.credentialRef,
 			...(input.certificateRef !== undefined
 				? { certificateRef: input.certificateRef }
-				: {}),
+				: undefined),
 			metadataRefs: {
 				database: parsePostgresIdentifier(input.database, "binding database"),
 				role: parsePostgresIdentifier(input.role, "binding role"),

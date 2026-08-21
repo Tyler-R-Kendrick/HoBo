@@ -18,7 +18,7 @@ import {
 const manifest = verifiedValkeyPack();
 
 function configWith(
-	overrides: Record<string, string | number | boolean> = {},
+	overrides: Partial<typeof REQUIRED_VALUES> = {},
 	bindings: readonly (typeof VOLUME_BINDING)[] = [VOLUME_BINDING],
 ) {
 	return parsePackConfiguration(manifest, {
@@ -27,7 +27,7 @@ function configWith(
 	});
 }
 
-function expectPackError(fn: () => unknown, code: string): void {
+function expectPackError(fn: () => void, code: string): void {
 	try {
 		fn();
 	} catch (error) {
@@ -176,15 +176,16 @@ describe("buildValkeyContainerSpec", () => {
 	});
 
 	it("refuses a configuration that omits a required retention setting", () => {
-		for (const key of ["durabilityMode", "evictionPolicy", "maxmemoryBytes"]) {
-			const values: Record<string, string | number | boolean> = {
-				...REQUIRED_VALUES,
-			};
-			delete values[key];
+		for (const key of [
+			"durabilityMode",
+			"evictionPolicy",
+			"maxmemoryBytes",
+		] as const) {
+			const { [key]: _dropped, ...rest } = REQUIRED_VALUES;
 			expectPackError(
 				() =>
 					parsePackConfiguration(manifest, {
-						values,
+						values: rest,
 						volumeBindings: [VOLUME_BINDING],
 					}),
 				"PACK_CONFIGURATION_INVALID",

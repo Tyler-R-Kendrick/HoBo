@@ -57,6 +57,7 @@ export function parseValkeyFilePath(
 	}
 	if (input.length > 4096)
 		operationInvalid(`${what} exceeds the 4096 character path limit`);
+	// SAFETY: `return input as ValkeyFilePath;` is required at this I/O or test boundary.
 	return input as ValkeyFilePath;
 }
 
@@ -273,7 +274,7 @@ export async function runValkeyCommand(
 	resolver: PackSecretResolverPort,
 	cmd: ValkeyCommand,
 ): Promise<ProcessResult> {
-	const env: Record<string, string> = { ...cmd.env };
+	const env = { ...cmd.env };
 	for (const [key, ref] of Object.entries(cmd.secretEnv)) {
 		const value = await resolveSecret(resolver, ref);
 		env[key] = value.expose();

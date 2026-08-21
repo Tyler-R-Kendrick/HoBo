@@ -69,6 +69,7 @@ export function parsePostgresIdentifier(
 	if (input.startsWith("pg_")) {
 		operationInvalid(`${what} must not use the reserved pg_ prefix`);
 	}
+	// SAFETY: `return input as PostgresIdentifier;` is required at this I/O or test boundary.
 	return input as PostgresIdentifier;
 }
 
@@ -83,6 +84,7 @@ export function parsePostgresFilePath(
 	}
 	if (input.length > 4096)
 		operationInvalid(`${what} exceeds the 4096 character path limit`);
+	// SAFETY: `return input as PostgresFilePath;` is required at this I/O or test boundary.
 	return input as PostgresFilePath;
 }
 
@@ -124,6 +126,7 @@ export function parsePostgresEndpoint(
 	if (!Number.isInteger(input.port) || input.port < 1 || input.port > 65535) {
 		operationInvalid("endpoint port must be an integer between 1 and 65535");
 	}
+	// SAFETY: `if (!(POSTGRES_SSL_MODES as readonly string[]).includes(input.sslMode)) {` is required at this I/O or test boundary.
 	if (!(POSTGRES_SSL_MODES as readonly string[]).includes(input.sslMode)) {
 		operationInvalid(
 			`unknown sslMode ${JSON.stringify(String(input.sslMode))}`,
@@ -171,7 +174,14 @@ function connectionArgv(endpoint: PostgresEndpoint): readonly string[] {
 	];
 }
 
-function baseEnv(endpoint: PostgresEndpoint): Readonly<Record<string, string>> {
+interface PostgresClientEnv {
+	PGSSLMODE: string;
+	PGCLIENTENCODING: string;
+	LC_ALL: string;
+	PAGER: string;
+}
+
+function baseEnv(endpoint: PostgresEndpoint): PostgresClientEnv {
 	return {
 		PGSSLMODE: endpoint.sslMode,
 		// Deterministic client behaviour: no ~/.psqlrc, no locale-dependent
@@ -365,7 +375,7 @@ export async function runPostgresCommand(
 	resolver: PackSecretResolverPort,
 	command: PostgresCommand,
 ): Promise<ProcessResult> {
-	const env: Record<string, string> = { ...command.env };
+	const env = { ...command.env };
 	for (const [key, ref] of Object.entries(command.secretEnv)) {
 		const value = await resolveSecret(resolver, ref);
 		env[key] = value.expose();

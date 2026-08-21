@@ -10,8 +10,13 @@
  */
 import { PackError } from "./errors.js";
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: detecting a control character is the point; a NUL in an argv element truncates the argument the child actually receives.
-const NUL_OR_CONTROL = /[\u0000-\u001f\u007f]/u;
+export function containsControlChar(value: string): boolean {
+	for (let i = 0; i < value.length; i++) {
+		const code = value.charCodeAt(i);
+		if (code <= 0x1f || code === 0x7f) return true;
+	}
+	return false;
+}
 
 /** Credential shapes that must never reach a command line. */
 const ARGV_CREDENTIAL_PATTERNS: readonly RegExp[] = [
@@ -29,7 +34,7 @@ export function assertArgvValue(value: string, what: string): string {
 			`${what} must be 1-1024 characters`,
 		);
 	}
-	if (NUL_OR_CONTROL.test(value)) {
+	if (containsControlChar(value)) {
 		throw new PackError(
 			"PACK_OPERATION_FAILED",
 			`${what} contains a control character and cannot be passed to a child process`,

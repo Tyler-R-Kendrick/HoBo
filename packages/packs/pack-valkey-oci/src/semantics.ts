@@ -47,9 +47,14 @@ export type ValkeyDurabilitySemantics = {
  * into the volume's latency, which is usually the wrong trade for the workloads
  * that reach for a Redis-compatible store in the first place.
  */
-export const VALKEY_DURABILITY: Readonly<
-	Record<ValkeyDurabilityMode, ValkeyDurabilitySemantics>
-> = {
+interface ValkeyDurabilityMap {
+	none: ValkeyDurabilitySemantics;
+	"rdb-snapshots": ValkeyDurabilitySemantics;
+	"aof-everysec": ValkeyDurabilitySemantics;
+	"aof-always": ValkeyDurabilitySemantics;
+}
+
+export const VALKEY_DURABILITY: ValkeyDurabilityMap = {
 	none: {
 		mode: "none",
 		appendFsync: "not-applicable",
@@ -115,9 +120,18 @@ export type ValkeyEvictionSemantics = {
 	readonly note: string;
 };
 
-export const VALKEY_EVICTION: Readonly<
-	Record<ValkeyEvictionPolicy, ValkeyEvictionSemantics>
-> = {
+interface ValkeyEvictionMap {
+	noeviction: ValkeyEvictionSemantics;
+	"allkeys-lru": ValkeyEvictionSemantics;
+	"allkeys-lfu": ValkeyEvictionSemantics;
+	"allkeys-random": ValkeyEvictionSemantics;
+	"volatile-lru": ValkeyEvictionSemantics;
+	"volatile-lfu": ValkeyEvictionSemantics;
+	"volatile-random": ValkeyEvictionSemantics;
+	"volatile-ttl": ValkeyEvictionSemantics;
+}
+
+export const VALKEY_EVICTION: ValkeyEvictionMap = {
 	noeviction: {
 		policy: "noeviction",
 		evictsKeysWithoutTtl: false,
@@ -171,12 +185,14 @@ export const VALKEY_EVICTION: Readonly<
 export function isValkeyDurabilityMode(
 	value: string,
 ): value is ValkeyDurabilityMode {
+	// SAFETY: `return (VALKEY_DURABILITY_MODES as readonly string[]).includes(value);` is required at this I/O or test boundary.
 	return (VALKEY_DURABILITY_MODES as readonly string[]).includes(value);
 }
 
 export function isValkeyEvictionPolicy(
 	value: string,
 ): value is ValkeyEvictionPolicy {
+	// SAFETY: `return (VALKEY_EVICTION_POLICIES as readonly string[]).includes(value);` is required at this I/O or test boundary.
 	return (VALKEY_EVICTION_POLICIES as readonly string[]).includes(value);
 }
 

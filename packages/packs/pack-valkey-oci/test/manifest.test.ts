@@ -21,7 +21,7 @@ import { FIXTURE_ANCHORS, FIXTURE_SIGNATURE, stubVerifier } from "./harness.js";
 
 const manifest = createValkeyPackManifest(FIXTURE_SIGNATURE);
 
-function expectPackError(fn: () => unknown, code: string): void {
+function expectPackError(fn: () => void, code: string): void {
 	try {
 		fn();
 	} catch (error) {

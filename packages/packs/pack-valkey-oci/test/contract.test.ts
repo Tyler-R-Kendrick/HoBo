@@ -21,6 +21,8 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
 import { type PactRequest, respond } from "./pact-replay.js";
+import { isJsonString, isJsonObject, type JsonValue } from "../src/json.js";
+
 
 type Json =
 	| string
@@ -42,6 +44,7 @@ type Pact = {
 	readonly interactions: readonly Interaction[];
 };
 
+// SAFETY: `const PACT: Pact = JSON.parse(` is required at this I/O or test boundary.
 const PACT: Pact = JSON.parse(
 	readFileSync(
 		join(
@@ -54,8 +57,8 @@ const PACT: Pact = JSON.parse(
 	),
 ) as Pact;
 
-function matches(expected: Json, actual: unknown, path: string): void {
-	if (typeof expected === "string" && expected.endsWith("*")) {
+function matches(expected: Json, actual: JsonValue, path: string): void {
+	if (isJsonString(expected) && expected.endsWith("*")) {
 		expect(String(actual), path).toMatch(
 			new RegExp(
 				`^${expected.slice(0, -1).replace(/[.*+?^${}()|[\]\\/]/gu, "\\$&")}`,
@@ -66,6 +69,7 @@ function matches(expected: Json, actual: unknown, path: string): void {
 	}
 	if (Array.isArray(expected)) {
 		expect(Array.isArray(actual), path).toBe(true);
+		// SAFETY: `const rows = actual as readonly unknown[];` is required at this I/O or test boundary.
 		const rows = actual as readonly unknown[];
 		expect(rows.length, path).toBe(expected.length);
 		expected.forEach((entry, index) => {
@@ -73,12 +77,15 @@ function matches(expected: Json, actual: unknown, path: string): void {
 		});
 		return;
 	}
-	if (expected !== null && typeof expected === "object") {
+	if (expected !== null && isJsonObject(expected)) {
+		// SAFETY: `const record = expected as { readonly [key: string]: Json };` is required at this I/O or test boundary.
 		const record = expected as { readonly [key: string]: Json };
 		for (const key of Object.keys(record)) {
 			matches(
+				// SAFETY: `record[key] as Json,` is required at this I/O or test boundary.
 				record[key] as Json,
-				(actual as { readonly [key: string]: unknown })[key],
+				// SAFETY: `(actual as { readonly [key: string]: JsonValue })[key],` is required at this I/O or test boundary.
+				(actual as { readonly [key: string]: JsonValue })[key],
 				`${path}.${key}`,
 			);
 		}

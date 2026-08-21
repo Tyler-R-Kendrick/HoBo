@@ -20,14 +20,11 @@ import {
 } from "../src/index.js";
 import { fixtureManifest } from "./harness.js";
 
-type Patch = Partial<Record<keyof PackManifestInput, unknown>>;
+type Patch = Partial<Omit<PackManifestInput, "signature">>;
 
 const manifest = (patch: Patch = {}) =>
 	parsePackManifest(
-		fixtureManifest(
-			(draft) =>
-				({ ...draft, ...patch }) as Omit<PackManifestInput, "signature">,
-		),
+		fixtureManifest((draft) => ({ ...draft, ...patch })),
 	);
 
 describeConcern("pack manifest", {

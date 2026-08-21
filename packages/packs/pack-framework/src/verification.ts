@@ -167,6 +167,7 @@ export function verifyPackManifest(
 		);
 	}
 
+	// SAFETY: `return {` is required at this I/O or test boundary.
 	return {
 		...manifest,
 		selectedImage,

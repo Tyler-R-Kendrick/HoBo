@@ -28,6 +28,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+	type PackManifestInput,
 	parsePackId,
 	parsePackManifest,
 	parsePackVersion,
@@ -38,9 +39,10 @@ import {
 	fixtureManifest,
 } from "./harness.js";
 
-const parse = (
-	mutate: (draft: Record<string, unknown>) => Record<string, unknown>,
-) => parsePackManifest(fixtureManifest(mutate as never));
+type ManifestDraft = Omit<PackManifestInput, "signature">;
+
+const parse = (mutate: (draft: ManifestDraft) => ManifestDraft) =>
+	parsePackManifest(fixtureManifest(mutate));
 
 const image = (
 	architecture: string,
@@ -180,7 +182,7 @@ describe("images", () => {
 });
 
 describe("ports", () => {
-	const port = (overrides: Record<string, unknown> = {}) => ({
+	const port = (overrides: JsonObject = {}) => ({
 		name: "main",
 		containerPort: 6379,
 		protocol: "tcp",
@@ -237,7 +239,7 @@ describe("ports", () => {
 });
 
 describe("probes", () => {
-	const exec = (overrides: Record<string, unknown> = {}) => ({
+	const exec = (overrides: JsonObject = {}) => ({
 		kind: "exec",
 		argv: ["/bin/check"],
 		initialDelayMs: 500,
@@ -248,7 +250,7 @@ describe("probes", () => {
 	});
 
 	const withProbe =
-		(probe: Record<string, unknown>) => (d: Record<string, unknown>) => ({
+		(probe: JsonObject) => (d: JsonObject) => ({
 			...d,
 			probes: { readiness: probe },
 		});
@@ -384,7 +386,7 @@ describe("probes", () => {
 });
 
 describe("persistence", () => {
-	const volume = (overrides: Record<string, unknown> = {}) => ({
+	const volume = (overrides: JsonObject = {}) => ({
 		name: "data",
 		mountPath: "/var/lib/example",
 		minimumBytes: 1024,
@@ -393,7 +395,7 @@ describe("persistence", () => {
 	});
 
 	const withPersistence =
-		(persistence: Record<string, unknown>) => (d: Record<string, unknown>) => ({
+		(persistence: JsonObject) => (d: JsonObject) => ({
 			...d,
 			persistence,
 		});

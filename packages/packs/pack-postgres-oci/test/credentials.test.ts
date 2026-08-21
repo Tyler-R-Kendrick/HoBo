@@ -18,16 +18,20 @@ import {
 	provisionPostgresApplicationCredential,
 	provisionPostgresSuperuserCredential,
 } from "../src/index.js";
+import { type JsonValue } from "../src/json.js";
+
 
 type Recorded = {
 	readonly scope: PackSecretScope;
 	readonly policy: PackSecretPolicy;
 };
 
-function recordingCustody(locator: string): {
+interface RecordingCustody {
 	readonly custody: PackSecretCustodyPort;
 	readonly calls: Recorded[];
-} {
+}
+
+function recordingCustody(locator: string): RecordingCustody {
 	const calls: Recorded[] = [];
 	return {
 		calls,
@@ -92,7 +96,7 @@ describe("postgres credential provisioning", () => {
 		await expect(
 			provisionPostgresSuperuserCredential(custody, "resource:yard-1/pg-main"),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: JsonValue) =>
 				isPackError(error) && error.code === "SECRET_CUSTODY_UNAVAILABLE",
 		);
 	});
@@ -104,7 +108,7 @@ describe("postgres credential provisioning", () => {
 		await expect(
 			provisionPostgresSuperuserCredential(custody, "resource:yard-1/pg-main"),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: JsonValue) =>
 				isPackError(error) && error.code === "SECRET_CUSTODY_UNAVAILABLE",
 		);
 	});
@@ -117,7 +121,7 @@ describe("postgres credential provisioning", () => {
 		await expect(
 			provisionPostgresSuperuserCredential(custody, "resource:yard-1/pg-main"),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: JsonValue) =>
 				isPackError(error) && error.code === "SECRET_CUSTODY_UNAVAILABLE",
 		);
 	});

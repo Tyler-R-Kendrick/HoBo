@@ -1,7 +1,7 @@
 /**
  * Pack configuration: one parse boundary, typed accessors afterwards.
  *
- * A raw `Record<string, unknown>` handed around a pack implementation is how a
+ * A raw `JsonObject` handed around a pack implementation is how a
  * port ends up as the string `"5432"` in one place and the number `5432` in
  * another. Here the manifest's `configSchema` is the parser: unknown keys are
  * rejected, required keys must be present, a `secret-ref` key must be an actual
@@ -13,6 +13,8 @@ import { parseSecretRef, type SecretRef } from "@hobo/bindings";
 
 import { PackError } from "./errors.js";
 import type { PackConfigField, ParsedPackManifest } from "./manifest.js";
+import { isJsonString, isJsonNumber, isJsonBoolean } from "./json.js";
+
 
 export type PackConfigurationInputValue = string | number | boolean;
 
@@ -75,7 +77,7 @@ function parseField(
 	switch (field.kind) {
 		case "string":
 		case "volume-name": {
-			if (typeof raw !== "string" || raw.length === 0) {
+			if (!isJsonString(raw) || raw.length === 0) {
 				configurationInvalid(
 					`configuration ${field.key} must be a non-empty string`,
 				);
@@ -85,7 +87,7 @@ function parseField(
 				: { kind: "volume-name", value: raw };
 		}
 		case "enum": {
-			if (typeof raw !== "string" || !(field.enumValues ?? []).includes(raw)) {
+			if (!isJsonString(raw) || !(field.enumValues ?? []).includes(raw)) {
 				configurationInvalid(
 					`configuration ${field.key} must be one of ${(field.enumValues ?? []).join(", ")}`,
 				);
@@ -93,14 +95,14 @@ function parseField(
 			return { kind: "enum", value: raw };
 		}
 		case "boolean": {
-			if (typeof raw !== "boolean") {
+			if (!isJsonBoolean(raw)) {
 				configurationInvalid(`configuration ${field.key} must be a boolean`);
 			}
 			return { kind: "boolean", value: raw };
 		}
 		case "integer":
 		case "duration-ms": {
-			if (typeof raw !== "number" || !Number.isInteger(raw)) {
+			if (!isJsonNumber(raw) || !Number.isInteger(raw)) {
 				configurationInvalid(`configuration ${field.key} must be an integer`);
 			}
 			if (field.minimum !== undefined && raw < field.minimum) {
@@ -123,7 +125,7 @@ function parseField(
 				: { kind: "duration-ms", value: raw };
 		}
 		case "secret-ref": {
-			if (typeof raw !== "string") {
+			if (!isJsonString(raw)) {
 				configurationInvalid(
 					`configuration ${field.key} must be a secret locator string`,
 				);
@@ -259,6 +261,7 @@ export function parsePackConfiguration(
 				`configuration ${key} is a ${value.kind}, not a ${kind}`,
 			);
 		}
+		// SAFETY: `return value as Extract<PackConfigurationValue, { kind: K }>;` is required at this I/O or test boundary.
 		return value as Extract<PackConfigurationValue, { kind: K }>;
 	};
 

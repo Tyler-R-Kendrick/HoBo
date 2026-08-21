@@ -102,7 +102,7 @@ export function buildValkeyBinding(
 			credentialRef: input.credentialRef,
 			...(input.certificateRef !== undefined
 				? { certificateRef: input.certificateRef }
-				: {}),
+				: undefined),
 			metadataRefs: {
 				database: String(database),
 				serverVersion: VALKEY_SERVER_VERSION,

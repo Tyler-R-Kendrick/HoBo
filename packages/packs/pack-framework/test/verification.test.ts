@@ -8,7 +8,7 @@ import {
 } from "../src/index.js";
 import { FIXTURE_ANCHORS, fixtureManifest, stubVerifier } from "./harness.js";
 
-function expectPackError(fn: () => unknown, code: string): void {
+function expectPackError(fn: () => void, code: string): void {
 	try {
 		fn();
 	} catch (error) {

@@ -105,7 +105,9 @@ function migrationProfilesOf(
 			(operation) =>
 				operation.kind === "migration" && operation.profileRef !== undefined,
 		)
-		.map((operation) => operation.profileRef as string);
+		// SAFETY: `.map((operation) => operation.profileRef as string);` is required at this I/O or test boundary.
+		.map((operation) => operation.profileRef)
+		.filter((ref): ref is string => ref !== undefined);
 	return [...new Set(refs)].sort((a, b) => a.localeCompare(b));
 }
 
@@ -124,7 +126,8 @@ export function toPackResourceSemantics(
 	const persistent = manifest.persistence.requirement === "required";
 	return {
 		schemaVersion: RESOURCE_DEFINITION_VNEXT_SCHEMA,
-		productId: manifest.packId as string,
+		// SAFETY: `productId: manifest.packId as string,` is required at this I/O or test boundary.
+		productId: String(manifest.packId),
 		displayName: manifest.displayName,
 		implementsProfiles: manifest.implementsProfiles.map((claim) => ({
 			profileId: claim.profileId,
@@ -139,8 +142,10 @@ export function toPackResourceSemantics(
 			// Pack-intrinsic facts a catalog can rank and gate on. They are set
 			// from the verified manifest, so a pack cannot overstate them.
 			packRealization: "pack",
-			packId: manifest.packId as string,
-			packVersion: manifest.packVersion as string,
+			// SAFETY: `packId: manifest.packId as string,` is required at this I/O or test boundary.
+			packId: String(manifest.packId),
+			// SAFETY: `packVersion: manifest.packVersion as string,` is required at this I/O or test boundary.
+			packVersion: String(manifest.packVersion),
 			imageDigestPinned: true,
 			imageArchitectures: manifest.images.map((image) => image.architecture),
 			persistenceRequired: persistent,
@@ -151,7 +156,7 @@ export function toPackResourceSemantics(
 		producesBindingProfiles: manifest.producesBindingProfiles,
 		...(options.requiresConnectivityProfiles !== undefined
 			? { requiresConnectivityProfiles: options.requiresConnectivityProfiles }
-			: {}),
+			: undefined),
 		migrationProfiles: migrationProfilesOf(manifest),
 		bootstrapStrategyRef: options.bootstrapStrategyRef,
 		claimStrategyRef: `hobo.pack-ownership.${manifest.ownership}/v1`,

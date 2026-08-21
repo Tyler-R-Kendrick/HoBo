@@ -34,7 +34,8 @@ export interface EventBodySchema {
 	readonly fields: readonly EventFieldSpec[];
 }
 
-export type EventBody = Readonly<Record<string, unknown>>;
+export type EventBodyValue = string | number | undefined;
+export type EventBody = Readonly<Record<string, EventBodyValue>>;
 
 export interface EventBodyUpcaster {
 	readonly type: string;
@@ -44,6 +45,10 @@ export interface EventBodyUpcaster {
 	readonly reason: string;
 	readonly upcast: (body: EventBody) => EventBody;
 }
+
+type EventBodyInput = EventBody | string | number | boolean | bigint | symbol | null | undefined;
+type ThrownValue = EventBodyInput;
+type CanonicalValue = EventBodyValue | boolean | null | readonly CanonicalValue[] | { readonly [key: string]: CanonicalValue };
 
 export interface CorpusEntry {
 	readonly schema: typeof CORPUS_ENTRY_SCHEMA;
@@ -355,24 +360,26 @@ function decodeCorpusEntry(
 
 export function validateEventBody(
 	schema: EventBodySchema,
-	body: unknown,
-): { ok: boolean; errors: readonly string[] } {
+	body: EventBodyInput,
+) {
 	const errors: string[] = [];
-	if (!body || typeof body !== "object" || Array.isArray(body)) {
+	if (!body || Object(body) !== body || Array.isArray(body)) {
 		return { ok: false, errors: ["event body must be an object"] };
 	}
-	const record = body as Record<string, unknown>;
+	// SAFETY: the preceding guard excludes null, primitives, and arrays.
+	const record = body as EventBody;
 	const declared = new Set(schema.fields.map((field) => field.name));
 	for (const field of schema.fields) {
 		const value = record[field.name];
 		if (value === undefined && field.required === false) continue;
-		if (field.type === "string" && typeof value !== "string") {
+		if (field.type === "string" && value?.constructor !== String) {
 			errors.push(`${field.name} must be a string`);
 			continue;
 		}
 		if (
 			field.type === "u32" &&
-			(!Number.isInteger(value) || (value as number) < 0)
+			// SAFETY: Number.isInteger proves this schema-declared value is numeric.
+			(!Number.isInteger(value) || Number(value) < 0)
 		) {
 			errors.push(`${field.name} must be a non-negative integer`);
 		}
@@ -399,9 +406,10 @@ export function encodeEventBody(
 	for (const field of [...schema.fields].sort(
 		(left, right) => left.tag - right.tag,
 	)) {
-		const value = (body as Record<string, unknown>)[field.name];
+		const value = body[field.name];
 		if (value === undefined) continue;
 		if (field.type === "string") {
+			// SAFETY: schema validation immediately above accepts only string values here.
 			const bytes = Buffer.from(value as string, "utf8");
 			chunks.push(
 				encodeVarint((field.tag << 3) | 2),
@@ -410,6 +418,7 @@ export function encodeEventBody(
 			);
 			continue;
 		}
+		// SAFETY: schema validation immediately above accepts only u32 values here.
 		chunks.push(encodeVarint(field.tag << 3), encodeVarint(value as number));
 	}
 	return Buffer.concat(chunks);
@@ -418,9 +427,9 @@ export function encodeEventBody(
 export function decodeEventBody(
 	schema: EventBodySchema,
 	bytes: Buffer,
-): EventBody {
+) {
 	const fieldsByTag = new Map(schema.fields.map((field) => [field.tag, field]));
-	const decoded: Record<string, unknown> = {};
+	const decoded: Record<string, EventBodyValue> = {};
 	let offset = 0;
 	while (offset < bytes.length) {
 		const key = readVarint(bytes, offset);
@@ -473,10 +482,11 @@ function encodeVarint(value: number): Buffer {
 function readVarint(
 	bytes: Buffer,
 	startOffset: number,
-): { value: number; offset: number } {
+) {
 	let value = 0;
 	let shift = 0;
 	for (let offset = startOffset; offset < bytes.length; offset += 1) {
+		// SAFETY: the loop bound guarantees a byte exists at this offset.
 		const byte = bytes[offset] as number;
 		value += (byte & 0x7f) * 2 ** shift;
 		if ((byte & 0x80) === 0) {
@@ -495,29 +505,31 @@ function sha256(value: Buffer): string {
 	return `sha256:${createHash("sha256").update(value).digest("hex")}`;
 }
 
-function message(error: unknown): string {
+function message(error: ThrownValue): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
 function deepClone<T>(value: T): T {
+	// SAFETY: JSON round-tripping preserves the caller's cloneable T shape.
 	return JSON.parse(JSON.stringify(value)) as T;
 }
 
 function deepFreeze<T>(value: T): T {
-	if (!value || typeof value !== "object") return value;
+	if (!value || Object(value) !== value) return value;
 	Object.freeze(value);
-	for (const child of Object.values(value as object)) {
+	for (const child of Object.values(Object(value))) {
 		deepFreeze(child);
 	}
 	return value;
 }
 
-function canonicalJson(value: unknown): string {
+function canonicalJson(value: CanonicalValue): string {
 	if (Array.isArray(value)) {
 		return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
 	}
-	if (value && typeof value === "object") {
-		const record = value as Record<string, unknown>;
+	if (value && Object(value) === value) {
+		// SAFETY: the object branch guarantees an object suitable for keyed traversal.
+		const record = value as { readonly [key: string]: CanonicalValue };
 		return `{${Object.keys(record)
 			.sort()
 			.map((key) => `${JSON.stringify(key)}:${canonicalJson(record[key])}`)

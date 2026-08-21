@@ -12,6 +12,7 @@ import {
 	createCorpusBaseline,
 	createCorpusEntry,
 	type EventEvolutionContract,
+	type EventBody,
 	eventSchema,
 	stringField,
 	u32Field,
@@ -20,7 +21,7 @@ import {
 function v1Contract(
 	type: string,
 	fields: Parameters<typeof eventSchema>[2],
-	sampleBody: Readonly<Record<string, unknown>>,
+	sampleBody: EventBody,
 ): EventEvolutionContract {
 	const schema = eventSchema(type, 1, fields);
 	return Object.freeze({

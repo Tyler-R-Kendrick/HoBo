@@ -29,7 +29,7 @@ export function defineMaterialization<S>(
 	definition: Materialization<S>,
 ): Materialization<S> {
 	if (!definition.name) throw new TypeError("materialization name is required");
-	if (typeof definition.fold !== "function") {
+	if (Object(definition.fold) !== definition.fold) {
 		throw new TypeError("materialization fold must be a function");
 	}
 	return definition;

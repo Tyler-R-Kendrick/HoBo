@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { basename, dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const PACKAGE_ROOT = dirname(dirname(fileURLToPath(import.meta.url)));
 
@@ -84,10 +86,10 @@ export async function verifyPinnedInterfaces(options = {}) {
   const interfaces = [];
 
   for (const entry of PINNED_WASI_INTERFACES) {
-    const expected = { ...entry, ...(overrides[entry.interfaceRef] ?? {}) };
+    const expected = { ...entry, ...overrides[entry.interfaceRef] };
     const filePath = join(vendorRoot, basename(expected.path));
     const source = await readFile(filePath, "utf8");
-    assertVendoredWitShape(expected, source);
+    assertVendoredWitContract(expected, source);
 
     const digest = digestSource(source);
     if (digest !== expected.digest) {
@@ -125,7 +127,7 @@ export async function roundTripFixture(interfaceRef, options = {}) {
   }
 
   const input = clone(ROUND_TRIP_FIXTURES.get(interfaceRef));
-  assertRoundTripFixtureShape(interfaceRef, input);
+  assertRoundTripFixtureContract(interfaceRef, input);
   const encoded = canonicalJson(input);
   const link = bindLink(interfaceRef);
   const decoded = JSON.parse(link.invoke(encoded));
@@ -156,7 +158,7 @@ function pin(interfaceRef, pkg, iface, resource, path, digest) {
   });
 }
 
-function assertVendoredWitShape(entry, source) {
+function assertVendoredWitContract(entry, source) {
   const packageDecl = `package wasi:${entry.package}@${entry.version};`;
   const interfaceDecl = `interface ${entry.interface}`;
 
@@ -214,7 +216,7 @@ const ROUND_TRIP_WIT_SNIPPETS = new Map([
   ["wasi:logging/logging@0.2.0", ["fields: list<field>"]],
 ]);
 
-function assertRoundTripFixtureShape(interfaceRef, value) {
+function assertRoundTripFixtureContract(interfaceRef, value) {
   const validators = {
     "wasi:keyvalue/store@0.2.0": () => {
       assertString(value.key, "keyvalue.key");
@@ -254,7 +256,7 @@ function assertRoundTripFixtureShape(interfaceRef, value) {
 }
 
 function assertString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`wasi_roundtrip.invalid_shape: ${field}`);
   }
 }
@@ -278,8 +280,8 @@ function assertTupleList(value, field) {
       (item) =>
         !Array.isArray(item) ||
         item.length !== 2 ||
-        typeof item[0] !== "string" ||
-        typeof item[1] !== "string",
+        !isJsonString(item[0]) ||
+        !isJsonString(item[1]),
     )
   ) {
     throw new Error(`wasi_roundtrip.invalid_shape: ${field}`);
@@ -295,7 +297,7 @@ function canonicalize(value) {
     return value.map(canonicalize);
   }
 
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))

@@ -7,6 +7,8 @@ import {
   validateCrewEvent,
 } from "../../crew-event-contract/src/crew-event-contract.js";
 import { validateRemediationAction } from "../../hobo-remediation-action-contract/src/remediation-action-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const REMEDIATION_SAFETY_GATE_VERSION = "hobo.remediation-safety-gate/v1";
 
@@ -294,14 +296,14 @@ function foldSafetyHistory(eventsInput = {}) {
 }
 
 function validateSafetyEvent(event) {
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
+  if (!event || !isJsonObject(event) || Array.isArray(event)) {
     throw new TypeError("remediation safety event must be an object");
   }
   if (event.type !== "remediationSafety.Decided") {
     throw new TypeError(`unsupported remediation safety event: ${event.type}`);
   }
   const data = event.data;
-  if (!data || typeof data !== "object" || Array.isArray(data)) {
+  if (!data || !isJsonObject(data) || Array.isArray(data)) {
     throw new TypeError("remediation safety event data must be an object");
   }
 
@@ -319,7 +321,7 @@ function validateSafetyEvent(event) {
 }
 
 function normalizeSpend({ ledger, action, operator, costEstimateUsd, history }) {
-  const source = ledger && typeof ledger === "object" && !Array.isArray(ledger) ? ledger : {};
+  const source = ledger && isJsonObject(ledger) && !Array.isArray(ledger) ? ledger : {};
   const currentUsd = validateNonNegativeNumber(source.currentUsd ?? 0, "spendLedger.currentUsd");
   const actionCostUsd = validateNonNegativeNumber(costEstimateUsd, "costEstimateUsd");
   const operatorCapUsd = validateNonNegativeNumber(operator.perAgentPolicy.spendCapUsd, "operator.spendCapUsd");
@@ -345,7 +347,7 @@ function normalizeSpend({ ledger, action, operator, costEstimateUsd, history }) 
 }
 
 function normalizeRbac(input, operator) {
-  const source = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  const source = input && isJsonObject(input) && !Array.isArray(input) ? input : {};
   const subjectId = source.subjectId ? requiredString(source.subjectId, "rbac.subjectId") : operator.svid;
   const roleBindings = source.roleBindings?.[subjectId] ?? [];
   return deepFreeze({
@@ -365,7 +367,7 @@ function rbacAllows(rbac, capability) {
 }
 
 function selfAuthorizedWidening({ attemptedAllow, operator, requiredCapability }) {
-  if (!attemptedAllow || typeof attemptedAllow !== "object" || Array.isArray(attemptedAllow)) {
+  if (!attemptedAllow || !isJsonObject(attemptedAllow) || Array.isArray(attemptedAllow)) {
     return false;
   }
 
@@ -408,10 +410,10 @@ function validateSignals(values, fieldName) {
 }
 
 function validateSignal(candidate, fieldName) {
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
-  const provenance = candidate.provenance && typeof candidate.provenance === "object"
+  const provenance = candidate.provenance && isJsonObject(candidate.provenance)
     ? candidate.provenance
     : {};
 
@@ -512,7 +514,7 @@ function validateNonNegativeNumber(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new TypeError(`${fieldName} is required`);
   }
   return value.trim();
@@ -530,7 +532,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   if (value instanceof Map || value instanceof Set) {

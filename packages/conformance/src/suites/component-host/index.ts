@@ -1,4 +1,12 @@
 import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "../../json.js";
+import {
 	CapabilityIsolationError,
 	ComponentHostPlanningError,
 } from "./errors.js";
@@ -59,7 +67,10 @@ type CrossHostAssertions = {
 type ConformanceFailure = {
 	readonly checkId: string;
 	readonly message: string;
-	readonly [key: string]: unknown;
+	readonly expected?: JsonValue;
+	readonly observations?: JsonValue;
+	readonly hosts?: JsonValue;
+	readonly missingHosts?: JsonValue;
 };
 
 export {
@@ -399,8 +410,8 @@ async function assertSameAcrossHosts<T>({
 		message: hostsAgree
 			? `${id} did not match expected reference semantics`
 			: `${id} diverged across component hosts`,
-		expected: expectedValue,
-		observations,
+		expected: cloneAsJson(expectedValue ?? null),
+		observations: cloneAsJson(observations),
 	});
 	return "fail" as const;
 }
@@ -412,7 +423,7 @@ async function assertCapabilityIsolation({
 	hosts: readonly FixtureComponentHost[];
 	failures: ConformanceFailure[];
 }) {
-	const observations: Array<Record<string, unknown>> = [];
+	const observations: Array<JsonObject> = [];
 	for (const host of hosts) {
 		try {
 			const value = await host.callUnlinkedCapability(
@@ -438,7 +449,7 @@ async function assertCapabilityIsolation({
 	failures.push({
 		checkId: "capability-handle-isolation",
 		message: "unlinked capability call must fail closed on every host",
-		observations,
+		observations: cloneAsJson(observations),
 	});
 	return "fail" as const;
 }
@@ -471,8 +482,8 @@ function assertManifestHostCoverage({
 		checkId: "manifest-host-coverage",
 		message:
 			"all manifest-certified component hosts must run in the conformance report",
-		missingHosts,
-		hosts: presentHosts,
+		missingHosts: cloneAsJson(missingHosts),
+		hosts: cloneAsJson(presentHosts),
 	});
 	return "fail" as const;
 }
@@ -517,7 +528,7 @@ function normalizeHostPins(manifest: ComponentHostManifest) {
 		throw new ComponentHostPlanningError(
 			"component_host.manifest-host-pins-required",
 			{
-				suite: manifest?.componentHost?.suite,
+				suite: manifest?.componentHost?.suite ?? null,
 			},
 		);
 	}
@@ -539,16 +550,18 @@ function failure(
 	return {
 		checkId,
 		message,
-		hosts: hosts.map(hostDescriptor),
+		hosts: cloneAsJson(hosts.map(hostDescriptor)),
 	};
 }
 
-function sameValue(left: unknown, right: unknown) {
-	return JSON.stringify(left) === JSON.stringify(right);
+function sameValue<T, U>(left: T, right: U) {
+	return (
+		JSON.stringify(cloneAsJson(left)) === JSON.stringify(cloneAsJson(right))
+	);
 }
 
-function requireNonEmptyString(value: unknown, fieldName: string): string {
-	if (typeof value !== "string" || value.length === 0) {
+function requireNonEmptyString<T>(value: T, fieldName: string): string {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new TypeError(`${fieldName} must be a non-empty string`);
 	}
 	return value;
@@ -558,13 +571,16 @@ function clone<T>(value: T): T {
 	if (value === undefined) {
 		return value;
 	}
-	return typeof structuredClone === "function"
-		? structuredClone(value)
-		: (JSON.parse(JSON.stringify(value)) as T);
+	if (structuredClone instanceof Function) {
+		return structuredClone(value);
+	}
+	const cloned = parseJsonValue(JSON.stringify(value));
+	// SAFETY: JSON round-trip preserves T at this clone fallback.
+	return cloned as T;
 }
 
 function deepFreeze<T>(value: T): T {
-	if (!value || typeof value !== "object") {
+	if (!value || !isJsonObject(value)) {
 		return value;
 	}
 	for (const child of Object.values(value)) {

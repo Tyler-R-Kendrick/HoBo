@@ -1,3 +1,5 @@
+import type { JsonBag } from "../../json.js";
+
 export class ComponentHostPlanningError extends Error {
 	code: string;
 	hostKind?: string;
@@ -5,7 +7,7 @@ export class ComponentHostPlanningError extends Error {
 	expectedVersions?: string[];
 	suite?: string;
 
-	constructor(code: string, details: Record<string, unknown> = {}) {
+	constructor(code: string, details: JsonBag = {}) {
 		super(
 			`${code}: ${String(details.hostKind ?? "unknown")}@${String(details.hostVersion ?? "unknown")}`,
 		);
@@ -20,7 +22,7 @@ export class CapabilityIsolationError extends Error {
 	componentId?: string;
 	importInterface?: string;
 
-	constructor(code: string, details: Record<string, unknown> = {}) {
+	constructor(code: string, details: JsonBag = {}) {
 		super(
 			`${code}: ${String(details.componentId ?? "unknown")}:${String(details.importInterface ?? "unknown")}`,
 		);

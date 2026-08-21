@@ -57,6 +57,7 @@ describe("workspace-skeleton-boundary pact", () => {
 		dirname(fileURLToPath(import.meta.url)),
 		"../contracts/pacts/workspace-skeleton-boundary.pact.json",
 	);
+	// SAFETY: assertion to `JSON.parse(readFileSync(pactPath, "utf8")) as { consumer: { name: string }; provider: { name: string }; interactions: Ar` is required at this boundary.
 	const pact = JSON.parse(readFileSync(pactPath, "utf8")) as {
 		consumer: { name: string };
 		provider: { name: string };
@@ -115,7 +116,7 @@ describe("every workspace package is classifiable", () => {
 		const yaml = readFileSync(join(root, "pnpm-workspace.yaml"), "utf8");
 		const globs = yaml
 			.split("\n")
-			.slice(yaml.split("\n").findIndex((l) => /^packages:/u.test(l)) + 1)
+			.slice(yaml.split("\n").findIndex((l) => l.startsWith("packages:")) + 1)
 			.reduce<string[]>((acc, line) => {
 				if (/^\S/u.test(line)) return acc;
 				const m = /^\s+-\s+"?([^"\s]+)"?\s*$/u.exec(line);

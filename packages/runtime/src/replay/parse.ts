@@ -1,3 +1,10 @@
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 import type {
 	ReplayDivergenceRecord,
 	ReplayMode,
@@ -14,7 +21,7 @@ export class ReplayParseError extends Error {
 	}
 }
 
-export function parseReplayReport(raw: unknown): ReplayReport {
+export function parseReplayReport(raw: JsonValue): ReplayReport {
 	const source = expectObject(raw, "ReplayReport");
 	const mode = parseMode(source.mode);
 	const seqVector = parseSeqVector(source.seq_vector ?? source.seqVector);
@@ -39,7 +46,7 @@ export function parseReplayReport(raw: unknown): ReplayReport {
 	});
 }
 
-export function parseReplayDivergence(raw: unknown): ReplayDivergenceRecord {
+export function parseReplayDivergence(raw: JsonValue): ReplayDivergenceRecord {
 	const source = expectObject(raw, "ReplayDivergence");
 	const runId = nonEmptyString(source.run_id ?? source.runId, "run_id");
 	const liveStateDigest = parseDigest(
@@ -72,7 +79,7 @@ export function parseReplayDivergence(raw: unknown): ReplayDivergenceRecord {
 	});
 }
 
-function parseSeqVector(value: unknown) {
+function parseSeqVector(value: JsonValue | undefined) {
 	if (!Array.isArray(value)) {
 		throw new ReplayParseError("seq_vector must be an array");
 	}
@@ -93,14 +100,16 @@ function parseSeqVector(value: unknown) {
 	return Object.freeze(entries);
 }
 
-function parseMode(value: unknown): ReplayMode {
-	if (typeof value !== "string" || !MODES.has(value as ReplayMode)) {
+function parseMode(value: JsonValue | undefined): ReplayMode {
+	// SAFETY: assertion to `value as ReplayMode` is required at this boundary.
+	if (!isJsonString(value) || !MODES.has(value as ReplayMode)) {
 		throw new ReplayParseError('mode must be "live" or "replay"');
 	}
+	// SAFETY: assertion to `value as ReplayMode` is required at this boundary.
 	return value as ReplayMode;
 }
 
-function parseDigest(value: unknown, field: string): string {
+function parseDigest(value: JsonValue | undefined, field: string): string {
 	const digest = nonEmptyString(value, field);
 	if (!HEX64.test(digest)) {
 		throw new ReplayParseError(
@@ -110,33 +119,32 @@ function parseDigest(value: unknown, field: string): string {
 	return digest;
 }
 
-function parseUInt(value: unknown, field: string): number {
-	if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+function parseUInt(value: JsonValue | undefined, field: string): number {
+	if (!isJsonNumber(value) || !Number.isInteger(value) || value < 0) {
 		throw new ReplayParseError(`${field} must be a non-negative integer`);
 	}
 	return value;
 }
 
-function stringArray(value: unknown, field: string): string[] {
-	if (
-		!Array.isArray(value) ||
-		value.some((entry) => typeof entry !== "string")
-	) {
+function stringArray(value: JsonValue | undefined, field: string): string[] {
+	if (!Array.isArray(value) || value.some((entry) => !isJsonString(entry))) {
 		throw new ReplayParseError(`${field} must be a string array`);
 	}
+	// SAFETY: assertion to `Object.freeze([...value]) as string[]` is required at this boundary.
 	return Object.freeze([...value]) as string[];
 }
 
-function nonEmptyString(value: unknown, field: string): string {
-	if (typeof value !== "string" || value.length === 0) {
+function nonEmptyString(value: JsonValue | undefined, field: string): string {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new ReplayParseError(`${field} must be a non-empty string`);
 	}
 	return value;
 }
 
-function expectObject(value: unknown, label: string): Record<string, unknown> {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
+function expectObject(value: JsonValue | undefined, label: string): JsonObject {
+	if (!value || !isJsonObject(value) || Array.isArray(value)) {
 		throw new ReplayParseError(`${label} must be an object`);
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: assertion to `value as JsonObject` is required at this boundary.
+	return value as JsonObject;
 }

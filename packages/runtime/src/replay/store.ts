@@ -3,6 +3,7 @@ import type {
 	EventStore,
 } from "@hobo/core";
 
+import { cloneAsJson } from "../json.js";
 import type { EventEnvelope } from "./types.js";
 
 export interface EventStoreReader {
@@ -37,7 +38,7 @@ function toReplayEnvelope(event: CoreEventEnvelope): EventEnvelope {
 		seq: event.seq,
 		type: event.type,
 		v: event.v,
-		data: event.data,
+		data: cloneAsJson(event.data),
 		ts: event.ts,
 	};
 	if (event.meta !== undefined) {

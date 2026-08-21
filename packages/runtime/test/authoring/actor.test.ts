@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-
 // Reuse @hobo/runtime-local's durable ActorHost (lease + fencing). It is a
 // test-only adapter injected into the authoring surface — never a src-level dep.
 // Imported relatively from the sibling package's built dist (pretest builds it):
@@ -9,8 +8,8 @@ import {
 	createInMemoryActorHost,
 	createManualActorClock,
 } from "../../../runtimes/runtime-local/dist/actor-host/in-memory.js";
-
 import { activateActor, defineActor } from "../../src/actor.js";
+import { isJsonString } from "../../src/json.js";
 import type { FoldEvent } from "../../src/ports.js";
 
 interface CartState {
@@ -21,7 +20,7 @@ const Cart = defineActor<CartState>({
 	name: "Cart",
 	initialState: () => ({ items: [] }),
 	fold: (state, event) => {
-		if (event.type === "addItem" && typeof event.item === "string") {
+		if (event.type === "addItem" && isJsonString(event.item)) {
 			return { items: [...state.items, event.item] };
 		}
 		return state;

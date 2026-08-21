@@ -1,6 +1,7 @@
 import { must, mustGet } from "@hobo/core/total-access";
 import { createInMemoryActorHost } from "../../../runtimes/runtime-local/src/actor-host/in-memory.js";
 import { createRuntimeLocalDurabilityBackend } from "../../../runtimes/runtime-local/test/conformance/helpers.js";
+import { isJsonString, type JsonValue } from "../../src/json.js";
 import type { RuntimeDurabilityBackend } from "../../src/suites/runtime-port/types.js";
 
 export function createBrokenFenceRuntimeBackend(): RuntimeDurabilityBackend {
@@ -40,14 +41,14 @@ function createBrokenFenceActorHost() {
 			key: string,
 			request: {
 				fold?: (
-					state: unknown,
+					state: JsonValue,
 					event: { type: string; amount?: number },
-				) => unknown;
-				initialState?: unknown;
+				) => JsonValue;
+				initialState?: JsonValue;
 			} = {},
 		) {
 			const actorKey = requireNonEmptyString(key, "key");
-			if (typeof request.fold !== "function") {
+			if (!(request.fold instanceof Function)) {
 				throw new TypeError("request.fold must be a function");
 			}
 			// Bind it here: the narrowing above does not survive into the nested
@@ -75,8 +76,10 @@ function createBrokenFenceActorHost() {
 					});
 				},
 				read() {
+					// SAFETY: assertion to `structuredClone(initialState) as { value: number }` is required at this boundary.
 					let state = structuredClone(initialState) as { value: number };
 					for (const event of stream.events) {
+						// SAFETY: assertion to `fold(state, structuredClone(event)) as { value: number; }` is required at this boundary.
 						state = fold(state, structuredClone(event)) as {
 							value: number;
 						};
@@ -102,8 +105,8 @@ function getBrokenStream(
 	return mustGet(streams, key);
 }
 
-function requireNonEmptyString(value: unknown, fieldName: string): string {
-	if (typeof value !== "string" || value.length === 0) {
+function requireNonEmptyString(value: JsonValue, fieldName: string): string {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new TypeError(`${fieldName} must be a non-empty string`);
 	}
 	return value;

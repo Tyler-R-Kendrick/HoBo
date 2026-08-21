@@ -8,7 +8,9 @@
  * timer we invented, and that asking for a resource kind nobody allowlisted is
  * refused rather than quietly provisioned.
  */
+
 import type { BootstrapClass } from "@hobo/claims";
+import { isJsonNumber, type JsonValue } from "../../json.js";
 
 import {
 	type AnonymousSuiteDefinition,
@@ -208,7 +210,7 @@ export const BOOTSTRAP_CASES: readonly BootstrapCase[] = Object.freeze([
 ]);
 
 export function parseBootstrapAttemptOutcome(
-	raw: unknown,
+	raw: JsonValue,
 	caseId: string,
 ): BootstrapAttemptOutcome {
 	const record = requireRecord(raw, caseId, "bootstrap outcome");
@@ -256,24 +258,26 @@ export function parseBootstrapAttemptOutcome(
 			caseId,
 			"effectAttempted",
 		),
-		...(consentRecordedAtMs !== undefined ? { consentRecordedAtMs } : {}),
-		...(effectStartedAtMs !== undefined ? { effectStartedAtMs } : {}),
-		...(observedClass !== undefined ? { observedClass } : {}),
-		...(proofOfWork !== undefined ? { proofOfWork } : {}),
-		...(leaseExpiry !== undefined ? { leaseExpiry } : {}),
-		...(refusal !== undefined ? { refusal } : {}),
+		...(consentRecordedAtMs !== undefined
+			? { consentRecordedAtMs }
+			: undefined),
+		...(effectStartedAtMs !== undefined ? { effectStartedAtMs } : undefined),
+		...(observedClass !== undefined ? { observedClass } : undefined),
+		...(proofOfWork !== undefined ? { proofOfWork } : undefined),
+		...(leaseExpiry !== undefined ? { leaseExpiry } : undefined),
+		...(refusal !== undefined ? { refusal } : undefined),
 	};
 }
 
 function parseProofOfWork(
-	raw: unknown,
+	raw: JsonValue,
 	caseId: string,
 ): NonNullable<BootstrapAttemptOutcome["proofOfWork"]> {
 	const record = requireRecord(raw, caseId, "proofOfWork");
 	const iterations = record.iterations;
 	const ceiling = record.ceiling;
 	if (
-		typeof iterations !== "number" ||
+		!isJsonNumber(iterations) ||
 		!Number.isInteger(iterations) ||
 		iterations < 0
 	) {
@@ -282,11 +286,7 @@ function parseProofOfWork(
 			"proofOfWork.iterations must be a non-negative integer",
 		);
 	}
-	if (
-		typeof ceiling !== "number" ||
-		!Number.isInteger(ceiling) ||
-		ceiling < 0
-	) {
+	if (!isJsonNumber(ceiling) || !Number.isInteger(ceiling) || ceiling < 0) {
 		throw new AnonymousConformanceError(
 			caseId,
 			"proofOfWork.ceiling must be a non-negative integer",
@@ -304,7 +304,7 @@ function parseProofOfWork(
 }
 
 function parseLeaseExpiry(
-	raw: unknown,
+	raw: JsonValue,
 	caseId: string,
 ): NonNullable<BootstrapAttemptOutcome["leaseExpiry"]> {
 	const record = requireRecord(raw, caseId, "leaseExpiry");
@@ -320,12 +320,12 @@ function parseLeaseExpiry(
 			"leaseExpiry.source",
 			BOOTSTRAP_EXPIRY_SOURCES,
 		),
-		...(expiresAtMs !== undefined ? { expiresAtMs } : {}),
+		...(expiresAtMs !== undefined ? { expiresAtMs } : undefined),
 	};
 }
 
 function parseRefusal(
-	raw: unknown,
+	raw: JsonValue,
 	caseId: string,
 ): NonNullable<BootstrapAttemptOutcome["refusal"]> {
 	const record = requireRecord(raw, caseId, "refusal");

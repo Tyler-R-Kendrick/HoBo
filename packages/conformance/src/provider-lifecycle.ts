@@ -35,6 +35,15 @@
  * runs of the same suite are byte-identical.
  */
 
+import {
+	cloneAsJson,
+	isJsonBoolean,
+	isJsonObject,
+	isJsonString,
+	type JsonBag,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import type { ConformanceSuiteDescriptor } from "./types.js";
 
 // public-contract: stable suite identifier used in reports and registries.
@@ -87,8 +96,8 @@ export interface ScratchResource {
 	readonly logicalId: string;
 	/** False for a pre-seeded foreign resource until the provider adopts it. */
 	readonly owned: boolean;
-	readonly outputs: Readonly<Record<string, unknown>>;
-	readonly stables: Readonly<Record<string, unknown>>;
+	readonly outputs: JsonObject;
+	readonly stables: JsonObject;
 }
 
 /**
@@ -112,8 +121,8 @@ export interface ScratchProviderContext {
 	readonly world: ScratchWorld;
 	readonly type: string;
 	readonly logicalId: string;
-	readonly properties: Readonly<Record<string, unknown>>;
-	readonly stables: Readonly<Record<string, unknown>>;
+	readonly properties: JsonObject;
+	readonly stables: JsonObject;
 	/**
 	 * The instance the stack believes exists. Deliberately absent on the
 	 * resume path: the crash being simulated is the loss of that pointer.
@@ -127,7 +136,7 @@ export interface ScratchOwnedContext extends ScratchProviderContext {
 
 export interface ScratchProviderResult {
 	readonly instanceId: string;
-	readonly outputs: Readonly<Record<string, unknown>>;
+	readonly outputs: JsonObject;
 }
 
 /**
@@ -153,9 +162,9 @@ export interface ScratchProvider {
 export interface ScratchDesired {
 	readonly type: string;
 	readonly logicalId: string;
-	readonly properties: Readonly<Record<string, unknown>>;
+	readonly properties: JsonObject;
 	/** Fields that cannot change in place: a change here forces replacement. */
-	readonly stables: Readonly<Record<string, unknown>>;
+	readonly stables: JsonObject;
 }
 
 export interface ScratchStackState {
@@ -165,8 +174,8 @@ export interface ScratchStackState {
 }
 
 export interface ScratchStack {
-	deploy(desired: unknown): Promise<{
-		readonly outputs: Record<string, unknown>;
+	deploy(desired: ScratchDesired): Promise<{
+		readonly outputs: JsonObject;
 		readonly instanceId: string;
 	}>;
 	destroy(): Promise<void>;
@@ -179,8 +188,8 @@ export interface ScratchSeedResourceInput {
 	readonly logicalId: string;
 	/** Defaults to false — a seeded resource is foreign until adopted. */
 	readonly owned?: boolean;
-	readonly outputs?: Readonly<Record<string, unknown>>;
-	readonly stables?: Readonly<Record<string, unknown>>;
+	readonly outputs?: JsonObject;
+	readonly stables?: JsonObject;
 }
 
 export interface ScratchSeedInput {
@@ -189,9 +198,9 @@ export interface ScratchSeedInput {
 
 export interface CreateScratchStackOptions {
 	/** Pre-existing resources, e.g. the foreign resource the adopt case takes over. */
-	readonly seed?: unknown;
+	readonly seed?: ScratchSeedInput;
 	/** Defaults to the reference provider, so a bare stack is usable on its own. */
-	readonly provider?: unknown;
+	readonly provider?: ScratchProvider;
 }
 
 export interface ProviderLifecycleCase {
@@ -242,47 +251,48 @@ function compareText(left: string, right: string): number {
 	return left > right ? 1 : 0;
 }
 
-function canonicalize(value: unknown): unknown {
+function canonicalize(value: JsonValue | undefined): JsonValue {
 	if (Array.isArray(value)) {
 		return value.map(canonicalize);
 	}
-	if (value !== null && typeof value === "object") {
-		const source = value as Record<string, unknown>;
-		const canonical: Record<string, unknown> = {};
+	if (value !== null && isJsonObject(value)) {
+		const source = value;
+		const canonical: JsonBag = {};
 		for (const key of Object.keys(source).sort(compareText)) {
 			canonical[key] = canonicalize(source[key]);
 		}
 		return canonical;
 	}
-	return value;
+	return value ?? null;
 }
 
 /** Key-order-independent comparison, so "the outputs changed" means content. */
-function canonicalJson(value: unknown): string {
-	return JSON.stringify(canonicalize(value));
+function canonicalJson<T>(value: T): string {
+	return JSON.stringify(canonicalize(cloneAsJson(value)));
 }
 
-function messageOf(error: unknown): string {
+function messageOf<T>(error: T): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
-function requireRecord(
-	value: unknown,
+function requireRecord<T>(
+	value: T,
 	code: ProviderLifecycleErrorCode,
 	field: string,
-): Record<string, unknown> {
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
+): JsonObject {
+	if (value === null || !isJsonObject(value) || Array.isArray(value)) {
 		throw new ProviderLifecycleError(code, `${field} must be an object`);
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: assertion to `sonObject; } funct` is required at this boundary.
+	return value as JsonObject;
 }
 
-function requireText(
-	value: unknown,
+function requireText<T>(
+	value: T,
 	code: ProviderLifecycleErrorCode,
 	field: string,
 ): string {
-	if (typeof value !== "string" || value.trim().length === 0) {
+	if (!isJsonString(value) || value.trim().length === 0) {
 		throw new ProviderLifecycleError(
 			code,
 			`${field} must be a non-empty string`,
@@ -291,11 +301,11 @@ function requireText(
 	return value;
 }
 
-function optionalRecord(
-	value: unknown,
+function optionalRecord<T>(
+	value: T,
 	code: ProviderLifecycleErrorCode,
 	field: string,
-): Readonly<Record<string, unknown>> {
+): JsonObject {
 	if (value === undefined) {
 		return Object.freeze({});
 	}
@@ -303,7 +313,7 @@ function optionalRecord(
 }
 
 /** Parse boundary for authored desired state. Returns a frozen derived record. */
-export function parseScratchDesired(value: unknown): ScratchDesired {
+export function parseScratchDesired<T>(value: T): ScratchDesired {
 	const record = requireRecord(value, "SCRATCH_DESIRED_INVALID", "desired");
 	return Object.freeze({
 		type: requireText(record.type, "SCRATCH_DESIRED_INVALID", "desired.type"),
@@ -326,7 +336,7 @@ export function parseScratchDesired(value: unknown): ScratchDesired {
 }
 
 /** Parse boundary for a seeded scratch world. */
-export function parseScratchSeed(value: unknown): readonly ScratchResource[] {
+export function parseScratchSeed<T>(value: T): readonly ScratchResource[] {
 	if (value === undefined) {
 		return Object.freeze([]);
 	}
@@ -343,7 +353,7 @@ export function parseScratchSeed(value: unknown): readonly ScratchResource[] {
 	const resources = record.resources.map((entry, index) => {
 		const field = `seed.resources[${index}]`;
 		const seeded = requireRecord(entry, "SCRATCH_SEED_INVALID", field);
-		if (seeded.owned !== undefined && typeof seeded.owned !== "boolean") {
+		if (seeded.owned !== undefined && !isJsonBoolean(seeded.owned)) {
 			throw new ProviderLifecycleError(
 				"SCRATCH_SEED_INVALID",
 				`${field}.owned must be a boolean`,
@@ -378,27 +388,29 @@ export function parseScratchSeed(value: unknown): readonly ScratchResource[] {
  * a lifecycle verb is refused here rather than reported as a passing suite with
  * skipped cases.
  */
-export function parseScratchProvider(value: unknown): ScratchProvider {
+export function parseScratchProvider<T>(value: T): ScratchProvider {
+	// SAFETY: assertion to `ord( value, "SCRATCH_PROVIDER_INVALID", "provider", ) as JsonObject; for (co` is required at this boundary.
 	const record = requireRecord(
 		value,
 		"SCRATCH_PROVIDER_INVALID",
 		"provider",
-	) as Record<string, unknown>;
+	) as JsonObject;
 	for (const verb of ["create", "update", "delete"] as const) {
-		if (typeof record[verb] !== "function") {
+		if (!(record[verb] instanceof Function)) {
 			throw new ProviderLifecycleError(
 				"SCRATCH_PROVIDER_INVALID",
 				`provider.${verb} must be a function`,
 			);
 		}
 	}
-	if (record.adopt !== undefined && typeof record.adopt !== "function") {
+	if (record.adopt !== undefined && !(record.adopt instanceof Function)) {
 		throw new ProviderLifecycleError(
 			"SCRATCH_PROVIDER_INVALID",
 			"provider.adopt must be a function when present",
 		);
 	}
-	return record as unknown as ScratchProvider;
+	// SAFETY: parsed provider verbs are the ScratchProvider surface at this boundary.
+	return value as never;
 }
 
 function createScratchWorld(seeded: readonly ScratchResource[]): ScratchWorld {
@@ -448,8 +460,8 @@ function createScratchWorld(seeded: readonly ScratchResource[]): ScratchWorld {
 interface JournalEntry {
 	readonly instanceId: string;
 	readonly type: string;
-	readonly properties: Readonly<Record<string, unknown>>;
-	readonly stables: Readonly<Record<string, unknown>>;
+	readonly properties: JsonObject;
+	readonly stables: JsonObject;
 	readonly live: boolean;
 }
 
@@ -478,13 +490,15 @@ export function createScratchStack(
 			logicalId: desired.logicalId,
 			properties: desired.properties,
 			stables: desired.stables,
-			...(current !== undefined ? { current } : {}),
+			...(current !== undefined ? { current } : undefined),
 		};
 	}
 
 	// Returns whatever the provider handed back: it is untrusted until `deploy`
 	// parses it.
-	async function reconcile(desired: ScratchDesired): Promise<unknown> {
+	async function reconcile(
+		desired: ScratchDesired,
+	): Promise<ScratchProviderResult> {
 		const entry = journal.get(desired.logicalId);
 		const believed =
 			entry?.live === true ? world.get(entry.instanceId) : undefined;
@@ -530,7 +544,7 @@ export function createScratchStack(
 	}
 
 	return {
-		async deploy(desiredInput: unknown) {
+		async deploy(desiredInput: ScratchDesired) {
 			const desired = parseScratchDesired(desiredInput);
 			const result = requireRecord(
 				await reconcile(desired),
@@ -603,9 +617,7 @@ export function createScratchStack(
  * worked example and as the harness's own self-test subject.
  */
 export function createReferenceScratchProvider(): ScratchProvider {
-	function outputsFor(
-		context: ScratchProviderContext,
-	): Readonly<Record<string, unknown>> {
+	function outputsFor(context: ScratchProviderContext): JsonObject {
 		return Object.freeze({
 			...context.properties,
 			endpoint: `scratch://${context.logicalId}`,
@@ -668,18 +680,14 @@ function assertLifecycle(
 	}
 }
 
-function withProperties(
-	properties: Readonly<Record<string, unknown>>,
-): ScratchDesired {
+function withProperties(properties: JsonObject): ScratchDesired {
 	return Object.freeze({
 		...BASE_DESIRED,
 		properties: Object.freeze(properties),
 	});
 }
 
-function withStables(
-	stables: Readonly<Record<string, unknown>>,
-): ScratchDesired {
+function withStables(stables: JsonObject): ScratchDesired {
 	return Object.freeze({ ...BASE_DESIRED, stables: Object.freeze(stables) });
 }
 
@@ -822,7 +830,7 @@ export const PROVIDER_LIFECYCLE_SUITE_DESCRIPTOR: ConformanceSuiteDescriptor =
 		suiteId: PROVIDER_LIFECYCLE_SUITE_ID,
 		dimension: "provider-lifecycle",
 		checks: Object.freeze(
-			[...Object.values(PROVIDER_LIFECYCLE_CASE_NAMES)].sort(compareText),
+			Object.values(PROVIDER_LIFECYCLE_CASE_NAMES).sort(compareText),
 		),
 		caseIds: Object.freeze(
 			PROVIDER_LIFECYCLE_SUITE.map((suiteCase) => suiteCase.name),
@@ -833,8 +841,8 @@ export const PROVIDER_LIFECYCLE_SUITE_DESCRIPTOR: ConformanceSuiteDescriptor =
  * Runs the lifecycle suite against a provider, one fresh in-memory stack per
  * case so no case can be carried by another's leftovers.
  */
-export async function runProviderLifecycleConformance(
-	provider: unknown,
+export async function runProviderLifecycleConformance<T>(
+	provider: T,
 	options: { readonly cases?: readonly ProviderLifecycleCase[] } = {},
 ): Promise<ProviderLifecycleResult> {
 	const parsed = parseScratchProvider(provider);
@@ -845,7 +853,7 @@ export async function runProviderLifecycleConformance(
 	for (const suiteCase of cases) {
 		const stack = createScratchStack({
 			provider: parsed,
-			...(suiteCase.seed !== undefined ? { seed: suiteCase.seed } : {}),
+			...(suiteCase.seed !== undefined ? { seed: suiteCase.seed } : undefined),
 		});
 		try {
 			await suiteCase.run(stack);

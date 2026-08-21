@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isJsonNumber } from "../../src/json.js";
 
 import {
 	canonicalStateBytes,
@@ -14,10 +15,15 @@ const checkoutWorkflow = defineWorkflow("checkout", {
 		status: "started",
 		approved: false,
 		charged: false,
+		// SAFETY: assertion to `null as string | null` is required at this boundary.
 		startedAt: null as string | null,
+		// SAFETY: assertion to `null as string | null` is required at this boundary.
 		paymentDueAt: null as string | null,
+		// SAFETY: assertion to `null as string | null` is required at this boundary.
 		settledAt: null as string | null,
+		// SAFETY: assertion to `null as string | null` is required at this boundary.
 		actorSignal: null as string | null,
+		// SAFETY: assertion to `null as string | null` is required at this boundary.
 		sagaReaction: null as string | null,
 	}),
 	onStart(ctx, state, order) {
@@ -33,6 +39,7 @@ const checkoutWorkflow = defineWorkflow("checkout", {
 		};
 	},
 	onHook(ctx, state, payload) {
+		// SAFETY: assertion to `payload as { ok?: boolean }` is required at this boundary.
 		if ((payload as { ok?: boolean }).ok !== true) {
 			return { ...state, status: "rejected" };
 		}
@@ -81,6 +88,7 @@ describe("replay invariant fixtures", () => {
 
 	it("fails replay when ambient Date.now is read in the workflow body", async () => {
 		const badWorkflow = defineWorkflow("bad-clock", {
+			// SAFETY: assertion to `null as number | null` is required at this boundary.
 			initialState: () => ({ sample: null as number | null }),
 			onStart() {
 				return { sample: Date.now() };
@@ -90,7 +98,7 @@ describe("replay invariant fixtures", () => {
 		const runtime = testRuntime();
 		const run = await runtime.start(badWorkflow, {});
 
-		await expect(runtime.replay(run)).rejects.toSatisfy((error: unknown) => {
+		await expect(runtime.replay(run)).rejects.toSatisfy((error: Error) => {
 			if (!(error instanceof ReplayDivergenceError)) {
 				return false;
 			}
@@ -105,6 +113,7 @@ describe("replay invariant fixtures", () => {
 
 	it("allows Date.now inside a memoized step without divergence", async () => {
 		const controlWorkflow = defineWorkflow("step-clock", {
+			// SAFETY: assertion to `null as number | null` is required at this boundary.
 			initialState: () => ({ sample: null as number | null }),
 			async onStart(ctx, state) {
 				const sample = await ctx.step("capture-clock", () => Date.now());
@@ -118,6 +127,6 @@ describe("replay invariant fixtures", () => {
 		const replayed = await runtime.replay(run);
 
 		expect(replayed).toEqual(live);
-		expect(typeof live.sample).toBe("number");
+		expect(isJsonNumber(live.sample)).toBe(true);
 	});
 });

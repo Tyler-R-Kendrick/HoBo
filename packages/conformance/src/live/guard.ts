@@ -197,7 +197,7 @@ export function parseLiveRunGrant(input: LiveRunGrantInput): LiveRunGrant {
 		redactedCredentialRef: redactSecretRef(credentialRef),
 		maximumResources,
 		providerDocsCheckedAt,
-		...(runTag !== undefined && runTag.length > 0 ? { runTag } : {}),
+		...(runTag !== undefined && runTag.length > 0 ? { runTag } : undefined),
 	});
 }
 

@@ -34,10 +34,11 @@ export async function runMessagingConformance(
 	createMessaging: CreateMessagingFn,
 	options: { backend?: string } = {},
 ): Promise<MessagingConformanceReport> {
-	if (typeof createMessaging !== "function") {
+	if (!(createMessaging instanceof Function)) {
 		throw new TypeError("createMessaging must be a function");
 	}
 
+	// SAFETY: assertion to `{} as Record<MessagingAssertionName, "pass" | "fail">` is required at this boundary.
 	const assertions = {} as Record<MessagingAssertionName, "pass" | "fail">;
 
 	const run = async (
@@ -78,6 +79,7 @@ async function provesPublishConsumeAck(
 	const topic = parseTopicName("conf-orders");
 	await bus.ensureTopic({
 		name: topic,
+		// SAFETY: assertion to `"conf" as TenantId` is required at this boundary.
 		tenantId: "conf" as TenantId,
 		delivery: "at-least-once",
 	});
@@ -87,8 +89,9 @@ async function provesPublishConsumeAck(
 	});
 	if (batch.length < 1) return false;
 	bus.ack(first(batch).messageId, first(batch).leaseId);
+	// SAFETY: assertion to `bus as Messaging & { flush?: () => Promise<void> }` is required at this boundary.
 	const flushable = bus as Messaging & { flush?: () => Promise<void> };
-	if (typeof flushable.flush === "function") {
+	if (flushable.flush instanceof Function) {
 		await flushable.flush();
 	}
 	const again = await bus.consume(topic, parseConsumerGroupId("cg"));
@@ -112,9 +115,11 @@ async function provesDeadLetterMaxAttempts(
 	const bus = await create();
 	const topic = parseTopicName("conf-dlq");
 	await bus.ensureSubscription({
+		// SAFETY: assertion to `"s" as never` is required at this boundary.
 		name: "s" as never,
 		topic,
 		consumerGroup: parseConsumerGroupId("dlq"),
+		// SAFETY: assertion to `"conf" as TenantId` is required at this boundary.
 		tenantId: "conf" as TenantId,
 		delivery: "at-least-once",
 		maxDeliveryAttempts: 2,

@@ -8,6 +8,7 @@
 // where an un-linked interface simply has no route.
 
 import { CapabilityDeniedError } from "./errors.js";
+import type { JsonValue } from "./json.js";
 import type { WitTokenHandle, WitTokenRequest } from "./wit.js";
 
 /**
@@ -36,8 +37,8 @@ export interface StepOptions {
 /** A stub over another actor, reached through `ctx.actor(...)` (capability `actor`). */
 export interface ActorStub {
 	readonly key: string;
-	signal(message: { type: string; [key: string]: unknown }): Promise<number>;
-	state<S = unknown>(): Promise<S>;
+	signal(message: { type: string; [key: string]: JsonValue }): Promise<number>;
+	state<S = JsonValue>(): Promise<S>;
 }
 
 /** Broker token seam (`ctx.token`, capability `token:<provider>`). */
@@ -51,12 +52,12 @@ export interface CtxEffects {
 		opts?: StepOptions,
 	): Promise<T>;
 	sleep(durationMs: number, options?: { label?: string }): Promise<void>;
-	emit(type: string, data?: unknown): Promise<number>;
+	emit(type: string, data?: JsonValue): Promise<number>;
 	now(): string;
 	random(label?: string): number;
 	actor?(ref: { typeName: string; key: string }): ActorStub;
 	token?: TokenBroker;
-	tool?(name: string, input: unknown): Promise<unknown>;
+	tool?(name: string, input: JsonValue): Promise<JsonValue>;
 }
 
 /**
@@ -73,12 +74,12 @@ export interface RuntimeContext {
 		opts?: StepOptions,
 	): Promise<T>;
 	sleep(durationMs: number, options?: { label?: string }): Promise<void>;
-	emit(type: string, data?: unknown): Promise<number>;
+	emit(type: string, data?: JsonValue): Promise<number>;
 	now(): string;
 	random(label?: string): number;
 	actor(ref: { typeName: string; key: string }): ActorStub;
 	token(request: WitTokenRequest): WitTokenHandle;
-	tool(name: string, input: unknown): Promise<unknown>;
+	tool(name: string, input: JsonValue): Promise<JsonValue>;
 }
 
 /**
@@ -100,6 +101,7 @@ export function createRuntimeContext(input: {
 	};
 
 	return Object.freeze({
+		// SAFETY: assertion to `ReadonlySet<Capability>, requireCapab` is required at this boundary.
 		capabilities: capabilities as ReadonlySet<Capability>,
 		requireCapability,
 		step: effects.step,
@@ -123,7 +125,7 @@ export function createRuntimeContext(input: {
 			}
 			return effects.token(request);
 		},
-		async tool(name: string, toolInput: unknown): Promise<unknown> {
+		async tool(name: string, toolInput: JsonValue): Promise<JsonValue> {
 			requireCapability(toolCapability(name));
 			if (!effects.tool) {
 				throw new CapabilityDeniedError(toolCapability(name), [

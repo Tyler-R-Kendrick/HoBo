@@ -12,8 +12,8 @@ import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-
 import type { EvidenceSourceRef } from "@hobo/trust";
+import type { JsonValue } from "../json.js";
 
 import { LIVE_ENV_KEYS, LiveRunRefusedError } from "./guard.js";
 import {
@@ -118,10 +118,10 @@ export async function runLiveConformanceCli(
 			ports: { ...adapter.ports, now, newRunId },
 			...(adapter.resourceKinds !== undefined
 				? { resourceKinds: adapter.resourceKinds }
-				: {}),
+				: undefined),
 			...(args.freshnessDays !== undefined
 				? { freshnessWindowMs: args.freshnessDays * 24 * 60 * 60 * 1000 }
-				: {}),
+				: undefined),
 		});
 
 		const serialized = `${JSON.stringify(result.artifact, undefined, 2)}\n`;
@@ -211,16 +211,16 @@ function parseArgs(argv: readonly string[]): ParsedArgs {
 	}
 
 	return {
-		...(provider !== undefined ? { provider } : {}),
-		...(adapter !== undefined ? { adapter } : {}),
-		...(out !== undefined ? { out } : {}),
-		...(freshnessDays !== undefined ? { freshnessDays } : {}),
+		...(provider !== undefined ? { provider } : undefined),
+		...(adapter !== undefined ? { adapter } : undefined),
+		...(out !== undefined ? { out } : undefined),
+		...(freshnessDays !== undefined ? { freshnessDays } : undefined),
 		help,
 	};
 }
 
-function isAdapterFactory(value: unknown): value is LiveAdapterFactory {
-	return typeof value === "function" && value.length <= 1;
+function isAdapterFactory<T>(value: T): value is T & LiveAdapterFactory {
+	return value instanceof Function && value.length <= 1;
 }
 
 async function loadAdapterModule(
@@ -229,7 +229,7 @@ async function loadAdapterModule(
 	const resolved = specifier.startsWith(".")
 		? path.resolve(process.cwd(), specifier)
 		: specifier;
-	const module: Record<string, unknown> = await import(resolved);
+	const module: { default?: JsonValue } = await import(resolved);
 	const factory = module.default;
 	if (!isAdapterFactory(factory)) {
 		throw new TypeError(

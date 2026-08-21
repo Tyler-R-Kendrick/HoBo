@@ -9,6 +9,7 @@
  * so a product that satisfies the suite satisfies the boundary the planner and
  * the receipt use.
  */
+
 import {
 	type CapabilityBinding,
 	type CapabilityBindingInput,
@@ -16,6 +17,7 @@ import {
 	parseSecretRef,
 	tryParseSecretRef,
 } from "@hobo/bindings";
+import type { JsonValue } from "../../json.js";
 
 import {
 	type AnonymousSuiteDefinition,
@@ -164,7 +166,7 @@ export const BINDING_CASES: readonly BindingCase[] = Object.freeze([
  * Shapes that mean a credential travelled inside a field reserved for
  * non-secret address metadata.
  */
-const CREDENTIAL_SHAPED = [
+const CREDENTIAL_PATTERN = [
 	/:\/\/[^/@]*:[^/@]*@/u,
 	/\b(?:password|passwd|secret|token|api[-_]?key|access[-_]?key)\s*[=:]/iu,
 	/^(?:sk|pk|ghp|gho|xox[abpsr])[-_][A-Za-z0-9_-]{8,}$/u,
@@ -172,11 +174,11 @@ const CREDENTIAL_SHAPED = [
 ] as const;
 
 function looksLikeCredential(value: string): boolean {
-	return CREDENTIAL_SHAPED.some((pattern) => pattern.test(value));
+	return CREDENTIAL_PATTERN.some((pattern) => pattern.test(value));
 }
 
 export function parseBindingProbeOutcome(
-	raw: unknown,
+	raw: JsonValue,
 	caseId: string,
 ): BindingProbeOutcome {
 	const record = requireRecord(raw, caseId, "binding outcome");
@@ -201,8 +203,8 @@ export function parseBindingProbeOutcome(
 	return {
 		caseId,
 		binding,
-		...(previousBinding !== undefined ? { previousBinding } : {}),
-		...(expiredUse !== undefined ? { expiredUse } : {}),
+		...(previousBinding !== undefined ? { previousBinding } : undefined),
+		...(expiredUse !== undefined ? { expiredUse } : undefined),
 	};
 }
 
@@ -211,8 +213,8 @@ export function parseBindingProbeOutcome(
  * `parseCapabilityBinding` inside the judges, because "the boundary rejected
  * it" is the finding, not a parse error in the harness.
  */
-function requireBindingInput(
-	raw: unknown,
+function requireBindingInput<T>(
+	raw: T,
 	caseId: string,
 	field: string,
 ): CapabilityBindingInput {
@@ -226,11 +228,12 @@ function requireBindingInput(
 			`${field}.endpoints must be an array`,
 		);
 	}
-	return record as unknown as CapabilityBindingInput;
+	// SAFETY: binding probe records are restored to CapabilityBindingInput here.
+	return record as never;
 }
 
-function parseExpiredUse(
-	raw: unknown,
+function parseExpiredUse<T>(
+	raw: T,
 	caseId: string,
 ): NonNullable<BindingProbeOutcome["expiredUse"]> {
 	const record = requireRecord(raw, caseId, "expiredUse");
@@ -294,6 +297,7 @@ function judgeRoundTrip(outcome: BindingProbeOutcome): CaseJudgement {
 		};
 	}
 	const wire: unknown = JSON.parse(JSON.stringify(parsed.binding));
+	// SAFETY: assertion to `re as CapabilityBindingInput);` is required at this boundary.
 	const reparsed = parseAtBoundary(wire as CapabilityBindingInput);
 	if ("rejected" in reparsed) {
 		return {

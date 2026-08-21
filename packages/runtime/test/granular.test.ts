@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { afterEach, test } from "vitest";
-
 import {
 	description,
 	generateDeclaredRegistrations,
@@ -13,10 +12,20 @@ import {
 	trainable,
 	training,
 } from "../src/index.js";
+import type { JsonValue } from "../src/json.js";
 
 afterEach(() => {
 	resetTrainables();
 });
+
+interface DecoratorBag {
+	readonly kind: string;
+}
+
+function decoratorContext<T>(bag: DecoratorBag): T {
+	// SAFETY: TC39 decorator context bag at this test boundary.
+	return bag as never;
+}
 
 // ---------------------------------------------------------------------------
 // Granular decorators, stage-3 call shape — all decorators optional.
@@ -28,15 +37,17 @@ test("stage-3: @intent/@returns + bare @trainable class compose and register", a
 			return name ? `Hello, ${name}!` : "Hello World!";
 		}
 	}
-	const metadata: Record<PropertyKey, unknown> = {};
-	const methodContext = {
+	const metadata: Record<PropertyKey, JsonValue> = {};
+	const methodContext = decoratorContext<
+		ClassMethodDecoratorContext<
+			Program,
+			(this: Program, input?: string) => string
+		>
+	>({
 		kind: "method",
 		name: "trainableMethod",
 		metadata,
-	} as unknown as ClassMethodDecoratorContext<
-		Program,
-		(this: Program, input?: string) => string
-	>;
+	});
 	// Applied as decorators in app code; invoked programmatically here in
 	// TC39 evaluation order (method decorators, then the class decorator).
 	returns("Hello World! or Hello, <name>! when supplied")(
@@ -47,11 +58,14 @@ test("stage-3: @intent/@returns + bare @trainable class compose and register", a
 		Program.prototype.trainableMethod,
 		methodContext,
 	);
-	trainable(Program, {
-		kind: "class",
-		name: "Program",
-		metadata,
-	} as unknown as ClassDecoratorContext);
+	trainable(
+		Program,
+		decoratorContext<ClassDecoratorContext>({
+			kind: "class",
+			name: "Program",
+			metadata,
+		}),
+	);
 
 	const record = getTrainable("Program.trainableMethod");
 	assert.ok(record);
@@ -74,11 +88,14 @@ test("stage-3: bare @trainable class with NO other decorators infers everything"
 			return name ? `Hi ${name}` : "Hi";
 		}
 	}
-	trainable(Greeter, {
-		kind: "class",
-		name: "Greeter",
-		metadata: {},
-	} as unknown as ClassDecoratorContext);
+	trainable(
+		Greeter,
+		decoratorContext<ClassDecoratorContext>({
+			kind: "class",
+			name: "Greeter",
+			metadata: {},
+		}),
+	);
 
 	const record = getTrainable("Greeter.greet");
 	assert.ok(record);

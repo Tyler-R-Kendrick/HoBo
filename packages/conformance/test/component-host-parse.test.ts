@@ -13,11 +13,13 @@
  * an empty `certifiedHosts` array is refused rather than treated as "no hosts
  * to check", because a suite with nothing to run reports success.
  */
+
 import { describe, expect, it } from "vitest";
+import type { JsonValue } from "../src/json.js";
 
 import { parseComponentHostManifest } from "../src/suites/component-host/index.js";
 
-const manifest = (overrides: Record<string, unknown> = {}) => ({
+const manifest = (overrides: JsonObject = {}) => ({
 	componentHost: {
 		certifiedHosts: [{ kind: "wasmtime", version: "26.0.0" }],
 		...overrides,
@@ -32,6 +34,7 @@ describe("parseComponentHostManifest", () => {
 	});
 
 	it("accepts several certified hosts", () => {
+		// SAFETY: assertion to `rseComponentHostManifest( manifest({ certifiedHosts: [ { kind: "wasmtime", version: "26.0.0" }, { kind: "jco", version: ` is required at this boundary.
 		const parsed = parseComponentHostManifest(
 			manifest({
 				certifiedHosts: [
@@ -39,17 +42,18 @@ describe("parseComponentHostManifest", () => {
 					{ kind: "jco", version: "1.4.0" },
 				],
 			}),
-		) as { componentHost: { certifiedHosts: unknown[] } };
+		) as { componentHost: { certifiedHosts: JsonValue[] } };
 		expect(parsed.componentHost.certifiedHosts).toHaveLength(2);
 	});
 
 	it("keeps fields it does not itself inspect", () => {
 		// The parser checks a floor, not a schema; dropping unknown keys would
 		// silently discard whatever the suite actually reads.
+		// SAFETY: assertion to `rseComponentHostManifest({ ...manifest(), extra: { note: "kept" }, }) as JsonObject; ` is required at this boundary.
 		const parsed = parseComponentHostManifest({
 			...manifest(),
 			extra: { note: "kept" },
-		}) as Record<string, unknown>;
+		}) as JsonObject;
 		expect(parsed.extra).toEqual({ note: "kept" });
 	});
 
@@ -64,7 +68,7 @@ describe("parseComponentHostManifest", () => {
 	});
 
 	it("refuses an array, which is an object but not a manifest", () => {
-		// `typeof [] === "object"`, so the array case has to be excluded by hand
+		// `isJsonObject([])`, so the array case has to be excluded by hand
 		// or a list of hosts would parse as a manifest with no host section.
 		expect(() => parseComponentHostManifest([])).toThrow(
 			/manifest must be an object/u,
@@ -186,6 +190,7 @@ describe("parseComponentHostManifest", () => {
 
 	it("is unaffected by a later mutation of the caller's manifest", () => {
 		const raw = manifest();
+		// SAFETY: assertion to `rseComponentHostManifest(raw) as { componentHost: { certifiedHosts: { kind: string }[] }; }; ` is required at this boundary.
 		const parsed = parseComponentHostManifest(raw) as {
 			componentHost: { certifiedHosts: { kind: string }[] };
 		};

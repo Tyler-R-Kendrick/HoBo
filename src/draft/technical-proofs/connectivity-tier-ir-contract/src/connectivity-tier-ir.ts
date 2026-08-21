@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const CONNECTIVITY_PLAN_SCHEMA_VERSION = "hobo.connectivity-plan/v1";
 
 export const ConnectivityTier = Object.freeze({
@@ -14,7 +15,7 @@ const OVERLAY_CAPABILITY = "overlay-mesh";
 const PUBLIC_MTLS_CAPABILITY = "public-mtls";
 
 export function validateConnectivityPlan(plan) {
-  if (!plan || typeof plan !== "object" || Array.isArray(plan)) {
+  if (!plan || !isJsonObject(plan) || Array.isArray(plan)) {
     return invalid("connectivity.plan.invalid", "plan must be an object");
   }
   if (plan.schemaVersion !== CONNECTIVITY_PLAN_SCHEMA_VERSION) {
@@ -43,7 +44,7 @@ export function validateConnectivityPlan(plan) {
     }
   }
 
-  if (!plan.parameters || typeof plan.parameters !== "object" || Array.isArray(plan.parameters)) {
+  if (!plan.parameters || !isJsonObject(plan.parameters) || Array.isArray(plan.parameters)) {
     return invalid("connectivity.parameters.invalid", "parameters must be an object");
   }
 
@@ -174,7 +175,7 @@ function defaultParametersForTier(tier, edge) {
 }
 
 function validateBindEdge(edge) {
-  if (!edge || typeof edge !== "object" || Array.isArray(edge)) {
+  if (!edge || !isJsonObject(edge) || Array.isArray(edge)) {
     return invalid("connectivity.edge.invalid", "edge must be an object");
   }
   for (const [field, value] of [
@@ -215,12 +216,12 @@ function invalid(code, reason) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.length > 0;
+  return isJsonString(value) && value.length > 0;
 }
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   return Object.fromEntries(Object.keys(value).sort().map((key) => {
     const child = value[key];
     return child === undefined ? [] : [key, sortKeys(child)];

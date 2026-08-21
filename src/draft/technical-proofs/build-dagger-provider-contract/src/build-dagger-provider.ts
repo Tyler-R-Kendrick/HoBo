@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonObject } from "./json.js";
+
 
 export const BUILD_DAGGER_PROVIDER_ID = "@hobo/build-dagger";
 export const BUILD_SPEC_VERSION = "hobo.buildSpec/v1";
@@ -161,7 +163,7 @@ export async function runBuildDaggerConformance(provider, { wireImageRef } = {})
   const failures = [];
   const spec = createFixtureContainerBuildSpec({ id: "api-image" });
 
-  if (provider?.id !== BUILD_DAGGER_PROVIDER_ID || typeof provider?.build !== "function") {
+  if (provider?.id !== BUILD_DAGGER_PROVIDER_ID || !(provider?.build instanceof Function)) {
     throw new BuildDaggerError(
       "conformance-failed",
       "provider does not expose the @hobo/build-dagger shape",
@@ -179,7 +181,7 @@ export async function runBuildDaggerConformance(provider, { wireImageRef } = {})
   if (first.kind !== "ImageRef" || first.provider !== BUILD_DAGGER_PROVIDER_ID || first.mediaType !== OCI_IMAGE_MANIFEST) {
     failures.push("build did not return a container OCI ImageRef");
   }
-  if (typeof wireImageRef !== "function") {
+  if (!(wireImageRef instanceof Function)) {
     failures.push("conformance did not receive an IacProgram wire-back hook");
   } else {
     const wireBack = await wireImageRef(first, spec);
@@ -260,7 +262,7 @@ export function deployFixtureIacProgram(iacProgram) {
 }
 
 function validateBasicBuildSpec(spec) {
-  if (!spec || typeof spec !== "object") {
+  if (!spec || !isJsonObject(spec)) {
     throw new BuildDaggerError("invalid-build-spec", "BuildSpec must be an object");
   }
   if (spec.apiVersion !== BUILD_SPEC_VERSION) {
@@ -278,7 +280,7 @@ function validateBasicBuildSpec(spec) {
   if (!spec.registry) {
     throw new BuildDaggerError("invalid-build-spec", "registry is required");
   }
-  if (!spec.source?.path || !spec.source?.files || typeof spec.source.files !== "object") {
+  if (!spec.source?.path || !spec.source?.files || !isJsonObject(spec.source.files)) {
     throw new BuildDaggerError("invalid-build-spec", "source.path and source.files are required");
   }
   if (!Array.isArray(spec.pipeline) || spec.pipeline.length === 0) {
@@ -401,32 +403,32 @@ function mergeSpec(base, overrides) {
     ...overrides,
     source: {
       ...base.source,
-      ...(overrides.source ?? {}),
+      ...overrides.source,
       files: {
         ...base.source.files,
-        ...(overrides.source?.files ?? {}),
+        ...overrides.source?.files,
       },
     },
     platform: {
       ...base.platform,
-      ...(overrides.platform ?? {}),
+      ...overrides.platform,
     },
     platforms: overrides.platforms ?? base.platforms,
     budget: {
       ...base.budget,
-      ...(overrides.budget ?? {}),
+      ...overrides.budget,
     },
     estimate: {
       ...base.estimate,
-      ...(overrides.estimate ?? {}),
+      ...overrides.estimate,
     },
     buildMachine: {
       ...base.buildMachine,
-      ...(overrides.buildMachine ?? {}),
+      ...overrides.buildMachine,
     },
     iacProgramRef: {
       ...base.iacProgramRef,
-      ...(overrides.iacProgramRef ?? {}),
+      ...overrides.iacProgramRef,
     },
   };
 }
@@ -443,14 +445,14 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 

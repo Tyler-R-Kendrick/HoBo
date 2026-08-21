@@ -9,6 +9,8 @@ import {
   createInProcessExecutor,
   createStubTokenBroker
 } from "../../executor-skeleton-contract/src/executor-skeleton.js";
+import { isJsonObject } from "./json.js";
+
 
 export const DRIVER_DISPATCH_ROUTING_VERSION = "hobo.driver-dispatch-routing/v1";
 
@@ -161,7 +163,7 @@ export function createDriverDispatchRouter({ drivers = [], executor, tokenBroker
           correlationId: context.correlationId ?? `corr-${resource.id}-driver-destroy`
         }
       );
-      const events = [...execResult.events.map(clone)];
+      const events = execResult.events.map(clone);
       if (execResult.status !== "succeeded") {
         return failedProvision({
           events,
@@ -215,9 +217,9 @@ export function createFixtureDriver(id, options = {}) {
         throw options.fail;
       }
       return {
-        ...(hasOutputs ? { outputs: clone(options.outputs) } : {}),
-        ...(Object.hasOwn(options, "manifests") ? { manifests: clone(options.manifests) } : {}),
-        ...(Object.hasOwn(options, "state") ? { state: clone(options.state) } : {})
+        ...(hasOutputs ? { outputs: clone(options.outputs) } : undefined),
+        ...(Object.hasOwn(options, "manifests") ? { manifests: clone(options.manifests) } : undefined),
+        ...(Object.hasOwn(options, "state") ? { state: clone(options.state) } : undefined)
       };
     },
     async destroy(input) {
@@ -416,7 +418,7 @@ function emit(events, type, data) {
 }
 
 function isPlainObject(value) {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+  return Boolean(value && isJsonObject(value) && !Array.isArray(value));
 }
 
 function pickConnectionLike(value) {

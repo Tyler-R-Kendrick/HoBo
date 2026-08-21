@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const OCI_DIGEST_URI_RE = /^oci:\/\/[^@\s]+@sha256:[a-f0-9]{64}$/;
 const SHA256_DIGEST_RE = /^sha256:[a-f0-9]{64}$/;
@@ -37,7 +39,7 @@ export function createArtifactRepoRegistry() {
 
   return {
     registerAdapter(adapter) {
-      validateAdapterShape(adapter);
+      validateAdapterContract(adapter);
       if (adapters.has(adapter.id)) {
         throw new Error(`adapter ${adapter.id} is already registered`);
       }
@@ -87,7 +89,7 @@ export function createInMemoryArtifactRepoAdapter({ id, kind, artifacts = {} }) 
 }
 
 export function defineMirrorSet(registry, { name, adapters }) {
-  if (!registry || typeof registry.getAdapter !== "function" || typeof registry.hasAdapter !== "function") {
+  if (!registry || !(registry.getAdapter instanceof Function) || !(registry.hasAdapter instanceof Function)) {
     throw new Error("registry must be created with createArtifactRepoRegistry()");
   }
   if (!isNonEmptyString(name)) {
@@ -98,7 +100,7 @@ export function defineMirrorSet(registry, { name, adapters }) {
   }
 
   const resolved = adapters.map((entry) => {
-    if (typeof entry === "string") {
+    if (isJsonString(entry)) {
       const adapter = registry.getAdapter(entry);
       if (!adapter) {
         throw new Error(`unregistered adapter ${entry}`);
@@ -106,7 +108,7 @@ export function defineMirrorSet(registry, { name, adapters }) {
       return adapter;
     }
 
-    validateAdapterShape(entry);
+    validateAdapterContract(entry);
     if (!registry.hasAdapter(entry)) {
       throw new Error(`unregistered adapter ${entry.id}`);
     }
@@ -147,7 +149,7 @@ export async function pullArtifact(mirrorSet, coordinate) {
 }
 
 export async function publishArtifact(adapter, { artifact, provenance } = {}) {
-  validateAdapterShape(adapter);
+  validateAdapterContract(adapter);
   assertDigestPinnedArtifactRef(artifact, "publish artifact");
   assertProvenanceRef(provenance, "publish provenance");
 
@@ -191,18 +193,18 @@ export async function runArtifactRepoConformance(adapter, { coordinate }) {
   };
 }
 
-function validateAdapterShape(adapter) {
+function validateAdapterContract(adapter) {
   validateAdapterIdentity(adapter);
-  if (typeof adapter.pull !== "function") {
+  if (!(adapter.pull instanceof Function)) {
     throw new Error(`adapter ${adapter.id} must implement pull()`);
   }
-  if (typeof adapter.publish !== "function") {
+  if (!(adapter.publish instanceof Function)) {
     throw new Error(`adapter ${adapter.id} must implement publish()`);
   }
 }
 
 function validateAdapterIdentity(adapter) {
-  if (!adapter || typeof adapter !== "object" || Array.isArray(adapter)) {
+  if (!adapter || !isJsonObject(adapter) || Array.isArray(adapter)) {
     throw new Error("adapter must be an object");
   }
   if (!isNonEmptyString(adapter.id)) {
@@ -215,7 +217,7 @@ function validateAdapterIdentity(adapter) {
 
 function assertDigestPinnedArtifactRef(ref, path) {
   const errors = [];
-  if (!ref || typeof ref !== "object" || Array.isArray(ref)) {
+  if (!ref || !isJsonObject(ref) || Array.isArray(ref)) {
     throw new Error(`${path} must be a digest-pinned artifact reference object`);
   }
   if (!isNonEmptyString(ref.mediaType)) {
@@ -250,7 +252,7 @@ function assertProvenanceRef(ref, path) {
 }
 
 function normalizeCoordinate(coordinate) {
-  if (!coordinate || typeof coordinate !== "object" || Array.isArray(coordinate)) {
+  if (!coordinate || !isJsonObject(coordinate) || Array.isArray(coordinate)) {
     throw new Error("artifact coordinate must be an object");
   }
   const normalized = {
@@ -276,9 +278,9 @@ function coordinateKey(coordinate) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function isSha256Digest(value) {
-  return typeof value === "string" && SHA256_DIGEST_RE.test(value);
+  return isJsonString(value) && SHA256_DIGEST_RE.test(value);
 }

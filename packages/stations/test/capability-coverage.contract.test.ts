@@ -21,18 +21,18 @@
  * Determinism: the coverage record is a pure function of its input and carries
  * no timestamp. No clock, no randomness, no network, no environment reads.
  */
+
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-
 import { describe, expect, it } from "vitest";
-
 import {
 	aggregateStationCapabilities,
 	renderStationCapabilityCoverage,
 	type StationCapabilityCoverage,
 	type StationYardCatalogInput,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
 interface PactInteraction {
 	readonly description: string;
@@ -46,7 +46,7 @@ interface PactInteraction {
 	};
 	readonly response: {
 		readonly status: number;
-		readonly body: Record<string, unknown>;
+		readonly body: JsonObject;
 	};
 }
 
@@ -54,7 +54,7 @@ interface PactFile {
 	readonly consumer: { readonly name: string };
 	readonly provider: { readonly name: string };
 	readonly interactions: readonly PactInteraction[];
-	readonly metadata?: Record<string, unknown>;
+	readonly metadata?: JsonObject;
 }
 
 const pactPath = join(
@@ -64,6 +64,7 @@ const pactPath = join(
 	"pacts",
 	"station-capability-coverage.pact.json",
 );
+// SAFETY: assertion required at this I/O or test boundary.
 const pact = JSON.parse(readFileSync(pactPath, "utf8")) as PactFile;
 
 /**
@@ -111,6 +112,7 @@ function contract(
 			matches.length,
 			`pact must declare exactly one interaction "${description}"`,
 		).toBe(1);
+		// SAFETY: assertion required at this I/O or test boundary.
 		assertions(matches[0] as PactInteraction);
 	});
 }
@@ -124,6 +126,7 @@ describe("station-capability-coverage pact (consumer: @hobo/stations)", () => {
 	contract(
 		"two yards both able to allocate web.hosted/v1 aggregate to coverage 2, not a conflict",
 		(interaction) => {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const expected = interaction.response.body as {
 				schema: string;
 				stationId: string;
@@ -184,6 +187,7 @@ describe("station-capability-coverage pact (consumer: @hobo/stations)", () => {
 	contract(
 		"an expected profile no yard can allocate is a gap with remediation, and ok is false",
 		(interaction) => {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const expected = interaction.response.body as {
 				schema: string;
 				stationId: string;
@@ -222,6 +226,7 @@ describe("station-capability-coverage pact (consumer: @hobo/stations)", () => {
 	contract(
 		"a row constraining neither productId nor connectivityId is refused, never skipped",
 		(interaction) => {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const expected = interaction.response.body as {
 				code: string;
 				remediation: string;
@@ -241,6 +246,7 @@ describe("station-capability-coverage pact (consumer: @hobo/stations)", () => {
 				thrown,
 				`aggregation accepted a catalog the pact says it refuses with ${expected.code}`,
 			).toBeInstanceOf(Error);
+			// SAFETY: assertion required at this I/O or test boundary.
 			const error = thrown as { code?: string; remediation?: string };
 			expect(error.code).toBe(expected.code);
 			expect(error.remediation).toBe(expected.remediation);

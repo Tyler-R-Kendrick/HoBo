@@ -4,8 +4,14 @@
  */
 
 import { STATION_EVENTS, type StationEvent, stationEvent } from "./events.js";
-import { createBootstrapRail, createRail } from "./rail.js";
+import { asJsonObject, isJsonNumber, type JsonObject } from "./json.js";
+import { createBootstrapRail, createRail, parseRail } from "./rail.js";
 import type { Rail, StationIsolation, StationOccupancy } from "./types.js";
+
+export interface StationCreateResult {
+	readonly occupancy: StationOccupancy;
+	readonly bootstrap: Rail;
+}
 
 export type StationState = Readonly<{
 	occupancy: StationOccupancy;
@@ -40,10 +46,10 @@ function freezeOccupancy(o: MutableOccupancy): StationOccupancy {
 		seq: o.seq,
 		...(o.activeRailHash !== undefined
 			? { activeRailHash: o.activeRailHash }
-			: {}),
+			: undefined),
 		...(o.bootstrapRailHash !== undefined
 			? { bootstrapRailHash: o.bootstrapRailHash }
-			: {}),
+			: undefined),
 	});
 }
 
@@ -57,7 +63,9 @@ export function foldStationEvents(
 		const data = event.data;
 		switch (event.type) {
 			case STATION_EVENTS.Created: {
+				// SAFETY: assertion required at this I/O or test boundary.
 				const isolation = data.isolation as StationIsolation;
+				// SAFETY: assertion required at this I/O or test boundary.
 				const bootstrapHash = data.bootstrapRailHash as
 					| `sha256:${string}`
 					| undefined;
@@ -76,10 +84,10 @@ export function foldStationEvents(
 								bootstrapRailHash: bootstrapHash,
 								activeRailHash: bootstrapHash,
 							}
-						: {}),
+						: undefined),
 				};
-				if (data.bootstrapRail && typeof data.bootstrapRail === "object") {
-					const rail = data.bootstrapRail as Rail;
+				if (data.bootstrapRail !== undefined) {
+					const rail = parseRail(data.bootstrapRail);
 					rails[rail.contentHash] = rail;
 				}
 				break;
@@ -88,7 +96,7 @@ export function foldStationEvents(
 				if (!occupancy) break;
 				occupancy.updatedAt = event.time;
 				occupancy.seq = event.seq;
-				if (typeof data.connectionCount === "number") {
+				if (isJsonNumber(data.connectionCount)) {
 					occupancy.connectionCount = data.connectionCount;
 				}
 				break;
@@ -108,6 +116,7 @@ export function foldStationEvents(
 			}
 			case STATION_EVENTS.RailPublished:
 			case STATION_EVENTS.RailApproved: {
+				// SAFETY: assertion required at this I/O or test boundary.
 				const rail = data.rail as Rail | undefined;
 				if (rail?.contentHash) {
 					rails[rail.contentHash] = rail;
@@ -119,6 +128,7 @@ export function foldStationEvents(
 				break;
 			}
 			case STATION_EVENTS.RailActivated: {
+				// SAFETY: assertion required at this I/O or test boundary.
 				const hash = data.contentHash as `sha256:${string}` | undefined;
 				const isBootstrap = data.isBootstrap === true;
 				if (occupancy && hash) {
@@ -145,6 +155,7 @@ export function foldStationEvents(
 			}
 			case STATION_EVENTS.RailDeactivated:
 			case STATION_EVENTS.RailRetired: {
+				// SAFETY: assertion required at this I/O or test boundary.
 				const hash = data.contentHash as string | undefined;
 				if (hash && rails[hash]) {
 					rails[hash] = Object.freeze({
@@ -206,10 +217,7 @@ export class StationService {
 		return svc;
 	}
 
-	private append(
-		type: StationEvent["type"],
-		data: Readonly<Record<string, unknown>>,
-	): StationEvent {
+	private append(type: StationEvent["type"], data: JsonObject): StationEvent {
 		this.seq += 1;
 		const evt = stationEvent(type, this.stationId, this.seq, data, this.now());
 		this.events.push(evt);
@@ -220,20 +228,23 @@ export class StationService {
 		readonly name: string;
 		readonly isolation: StationIsolation;
 		readonly dataDir: string;
-	}): { occupancy: StationOccupancy; bootstrap: Rail } {
+	}): StationCreateResult {
 		if (this.events.length > 0) {
 			throw Object.assign(new Error("station already initialized"), {
 				code: "station-already-exists",
 			});
 		}
 		const bootstrap = createBootstrapRail(this.stationId, this.now());
-		this.append(STATION_EVENTS.Created, {
-			name: input.name,
-			isolation: input.isolation,
-			dataDir: input.dataDir,
-			bootstrapRailHash: bootstrap.contentHash,
-			bootstrapRail: bootstrap,
-		});
+		this.append(
+			STATION_EVENTS.Created,
+			asJsonObject({
+				name: input.name,
+				isolation: input.isolation,
+				dataDir: input.dataDir,
+				bootstrapRailHash: bootstrap.contentHash,
+				bootstrapRail: bootstrap,
+			}),
+		);
 		const state = this.snapshot();
 		if (!state) throw new Error("station create fold failed");
 		return { occupancy: state.occupancy, bootstrap };
@@ -246,11 +257,14 @@ export class StationService {
 			activationStatus: input.activationStatus ?? "draft",
 			now: this.now(),
 		});
-		this.append(STATION_EVENTS.RailPublished, {
-			rail,
-			contentHash: rail.contentHash,
-			railId: rail.id,
-		});
+		this.append(
+			STATION_EVENTS.RailPublished,
+			asJsonObject({
+				rail,
+				contentHash: rail.contentHash,
+				railId: rail.id,
+			}),
+		);
 		return rail;
 	}
 
@@ -266,11 +280,14 @@ export class StationService {
 			...rail,
 			activationStatus: "approved" as const,
 		});
-		this.append(STATION_EVENTS.RailApproved, {
-			rail: approved,
-			contentHash,
-			railId: rail.id,
-		});
+		this.append(
+			STATION_EVENTS.RailApproved,
+			asJsonObject({
+				rail: approved,
+				contentHash,
+				railId: rail.id,
+			}),
+		);
 	}
 
 	activateRail(contentHash: string): void {

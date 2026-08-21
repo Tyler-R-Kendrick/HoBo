@@ -20,8 +20,8 @@ test("interfaces publish the ResourceDefinition and Driver contract shapes", () 
   assert.match(declarations, /export type CatalogSnapshot/);
   assert.match(declarations, /export type CatalogAmbiguity/);
   assert.match(declarations, /provision\(input: DriverProvisionInput\)/);
-  assert.match(declarations, /destroy\(input: \{ context: MatchContext; state: unknown \}\)/);
-  assert.match(declarations, /refresh\?\(input: \{ context: MatchContext; state: unknown \}\)/);
+  assert.match(declarations, /destroy\(input: \{ context: MatchContext; state: JsonValue \}\)/);
+  assert.match(declarations, /refresh\?\(input: \{ context: MatchContext; state: JsonValue \}\)/);
 });
 
 test("stub in-memory definition registers and is retrievable by resource type", () => {

@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export type DriverId = "terraform" | "template" | "echo" | "container" | "custom-webhook";
 
 export type DriverContract = {
@@ -26,11 +27,11 @@ export type ResourceDefinition = {
   paradigm?: string;
   provider: string;
   driver: DriverId;
-  with: Record<string, unknown>;
+  with: JsonObject;
   match: MatchContext;
   priority: number;
-  mapping?: string | Record<string, unknown>;
-  coProvisioned: Array<Record<string, unknown>>;
+  mapping?: string | JsonObject;
+  coProvisioned: Array<JsonObject>;
 };
 
 export type ResourceDefinitionInput = {
@@ -42,11 +43,11 @@ export type ResourceDefinitionInput = {
   paradigm?: string;
   provider: ProviderRef;
   driver: DriverId;
-  with?: Record<string, unknown>;
+  with?: JsonObject;
   match?: MatchContext;
   priority?: number;
-  mapping?: string | Record<string, unknown>;
-  coProvisioned?: Array<Record<string, unknown>>;
+  mapping?: string | JsonObject;
+  coProvisioned?: Array<JsonObject>;
 };
 
 export type ProviderDefaults = {
@@ -70,21 +71,21 @@ export type CatalogSnapshot = {
 
 export type DriverProvisionInput = {
   context: MatchContext;
-  inputs: unknown;
-  oldState?: unknown;
+  inputs: JsonValue;
+  oldState?: JsonValue;
 };
 
 export type DriverProvisionResult = {
-  outputs: Record<string, unknown>;
-  manifests?: unknown[];
-  state?: unknown;
+  outputs: JsonObject;
+  manifests?: JsonValue[];
+  state?: JsonValue;
 };
 
 export interface Driver {
   id: DriverId;
   provision(input: DriverProvisionInput): Promise<DriverProvisionResult> | DriverProvisionResult;
-  destroy(input: { context: MatchContext; state: unknown }): Promise<void> | void;
-  refresh?(input: { context: MatchContext; state: unknown }): Promise<unknown> | unknown;
+  destroy(input: { context: MatchContext; state: JsonValue }): Promise<void> | void;
+  refresh?(input: { context: MatchContext; state: JsonValue }): Promise<JsonValue> | JsonValue;
 }
 
 export declare function defineResource(input: ResourceDefinitionInput): ResourceDefinition;
@@ -97,4 +98,4 @@ export declare function createResourceCatalog(input?: { id?: string }): {
 };
 export declare function createDriver(driver: Driver): Driver;
 export declare function driverContractFor(driverId: DriverId): DriverContract;
-export declare function stableDigest(value: unknown): string;
+export declare function stableDigest(value: JsonValue): string;

@@ -10,6 +10,8 @@ import {
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
 import { parseJwtBearerGrantRequest } from "../../id-jag-token-exchange-contract/src/id-jag-token-exchange.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const JWT_BEARER_GRANT_TYPE = "urn:ietf:params:oauth:grant-type:jwt-bearer";
 const ID_JAG_JWT_TYPE = "oauth-id-jag+jwt";
@@ -62,7 +64,7 @@ export function createFixtureIdJagIssuer({ issuer, keyId = "kid-id-jag-1" } = {}
         subject: clone(input.subject),
         grant_profile: "urn:ietf:params:oauth:grant-profile:id-jag",
         idJagDraftVersion: "draft-ietf-oauth-identity-assertion-authz-grant-04",
-        ...(input.extraClaims ?? {}),
+        ...input.extraClaims,
       };
       return signJwt({ header, claims, privateKey: pair.privateKey });
     },
@@ -241,10 +243,10 @@ export function createInboundXaaResourceServer(options = {}) {
 }
 
 export function createInboundXaaMcpBridge({ resourceServer, makeMcpServer }) {
-  if (!resourceServer || typeof resourceServer.acceptIdJag !== "function") {
+  if (!resourceServer || !(resourceServer.acceptIdJag instanceof Function)) {
     throw new Error("resourceServer.acceptIdJag is required");
   }
-  if (typeof makeMcpServer !== "function") {
+  if (!(makeMcpServer instanceof Function)) {
     throw new Error("makeMcpServer is required");
   }
 
@@ -359,7 +361,7 @@ function contextFromClaims({ app, claims, assertionIssuer }) {
 }
 
 function normalizeApp(app) {
-  if (!app || typeof app !== "object" || Array.isArray(app)) {
+  if (!app || !isJsonObject(app) || Array.isArray(app)) {
     throw new Error("app is required");
   }
   return {
@@ -425,7 +427,7 @@ function decodeJwtPart(part, label) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -439,7 +441,7 @@ function requireUnixTime(value, field) {
 }
 
 function subjectForAudit(subject) {
-  if (!subject || typeof subject !== "object" || Array.isArray(subject)) {
+  if (!subject || !isJsonObject(subject) || Array.isArray(subject)) {
     return { kind: "service", id: "yard/inbound-xaa" };
   }
   const kind = subject.kind === "workload" ? "service" : subject.kind;
@@ -449,7 +451,7 @@ function subjectForAudit(subject) {
       : {};
   return {
     kind: ["user", "agent", "service"].includes(kind) ? kind : "service",
-    id: typeof subject.id === "string" && subject.id.length > 0 ? subject.id : "yard/inbound-xaa",
+    id: isJsonString(subject.id) && subject.id.length > 0 ? subject.id : "yard/inbound-xaa",
     ...delegatedBy,
   };
 }

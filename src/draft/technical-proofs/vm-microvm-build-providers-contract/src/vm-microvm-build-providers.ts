@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonObject } from "./json.js";
+
 
 export const PACKER_PROVIDER_ID = "@hobo/build-packer";
 export const FIRECRACKER_PROVIDER_ID = "@hobo/build-firecracker";
@@ -277,9 +279,9 @@ export async function runVmMicroVmBuildConformance(providers, { wireImageRef } =
     "adversarial.fail-closed",
   ];
   const failures = [];
-  assertProviderShape(providers?.packer, PACKER_PROVIDER_ID);
-  assertProviderShape(providers?.firecracker, FIRECRACKER_PROVIDER_ID);
-  assertProviderShape(providers?.vagrant, VAGRANT_PROVIDER_ID);
+  assertProviderContract(providers?.packer, PACKER_PROVIDER_ID);
+  assertProviderContract(providers?.firecracker, FIRECRACKER_PROVIDER_ID);
+  assertProviderContract(providers?.vagrant, VAGRANT_PROVIDER_ID);
 
   const vmSpec = createFixtureVmBuildSpec();
   const vmImage = await assertReproducible(providers.packer, vmSpec, "vm-image");
@@ -295,7 +297,7 @@ export async function runVmMicroVmBuildConformance(providers, { wireImageRef } =
     failures.push("Vagrant ImageRef did not keep an honest production VM parity link");
   }
 
-  if (typeof wireImageRef !== "function") {
+  if (!(wireImageRef instanceof Function)) {
     failures.push("conformance did not receive an IacProgram wire-back hook");
   } else {
     for (const [imageRef, spec] of [
@@ -400,7 +402,7 @@ function validateVagrantSpec(spec) {
 }
 
 function validateCommonBuildSpec(spec, expectedTarget, requiredToolchainPins) {
-  if (!spec || typeof spec !== "object") {
+  if (!spec || !isJsonObject(spec)) {
     throw new VmMicroVmBuildProviderError("invalid-build-spec", "BuildSpec must be an object");
   }
   if (spec.apiVersion !== BUILD_SPEC_VERSION) {
@@ -595,8 +597,8 @@ async function assertReproducible(provider, spec, expectedImageKind) {
   return first;
 }
 
-function assertProviderShape(provider, expectedId) {
-  if (provider?.id !== expectedId || typeof provider?.build !== "function") {
+function assertProviderContract(provider, expectedId) {
+  if (provider?.id !== expectedId || !(provider?.build instanceof Function)) {
     throw new VmMicroVmBuildProviderError("conformance-failed", `provider does not expose ${expectedId}`);
   }
 }
@@ -786,23 +788,23 @@ function mergeBuildSpec(base, overrides) {
     ...overrides,
     source: {
       ...base.source,
-      ...(overrides.source ?? {}),
+      ...overrides.source,
     },
     toolchain: {
       ...base.toolchain,
-      ...(overrides.toolchain ?? {}),
+      ...overrides.toolchain,
       digests: {
         ...base.toolchain.digests,
-        ...(overrides.toolchain?.digests ?? {}),
+        ...overrides.toolchain?.digests,
       },
     },
     iacProgramRef: {
       ...base.iacProgramRef,
-      ...(overrides.iacProgramRef ?? {}),
+      ...overrides.iacProgramRef,
     },
     parityProfile: {
       ...base.parityProfile,
-      ...(overrides.parityProfile ?? {}),
+      ...overrides.parityProfile,
     },
   };
 }
@@ -827,14 +829,14 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 

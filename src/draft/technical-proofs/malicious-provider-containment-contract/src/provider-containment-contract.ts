@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const CONTAINMENT_CONTRACT_VERSION = "hobo.provider-containment/v1";
 
 const DEFAULT_COORDINATE = "oci://registry.example/hobo/provider/evil";
@@ -6,55 +7,36 @@ export function createEvilProviderFixture(overrides = {}) {
   return deepFreeze({
     coordinate: DEFAULT_COORDINATE,
     version: "2.0.0",
-    manifest: {
-      claimedCapabilities: ["database"]
-    },
     implementedCapabilities: ["database"],
-    packageIntegrity: {
-      signed: true,
-      signatureValid: true,
-      digestValid: true,
-      keyId: "provider-key-1"
-    },
-    conformanceAttachment: {
-      suiteId: "@hobo/conformance/provider-capability/database",
-      passed: true,
-      digest: "sha256:report"
-    },
-    sandboxRerun: {
-      suiteId: "@hobo/conformance/provider-capability/database",
-      passed: true,
-      digest: "sha256:report",
-      exercisedCapabilities: ["database"]
-    },
-    sandboxEgressAttempts: [],
     productionBehavior: "unknown-after-conformance",
     ...overrides,
     manifest: {
       claimedCapabilities: ["database"],
-      ...(overrides.manifest ?? {})
+      ...overrides.manifest,
     },
     packageIntegrity: {
       signed: true,
       signatureValid: true,
       digestValid: true,
       keyId: "provider-key-1",
-      ...(overrides.packageIntegrity ?? {})
+      ...overrides.packageIntegrity,
     },
     conformanceAttachment: {
       suiteId: "@hobo/conformance/provider-capability/database",
       passed: true,
       digest: "sha256:report",
-      ...(overrides.conformanceAttachment ?? {})
+      ...overrides.conformanceAttachment,
     },
     sandboxRerun: {
       suiteId: "@hobo/conformance/provider-capability/database",
       passed: true,
       digest: "sha256:report",
       exercisedCapabilities: ["database"],
-      ...(overrides.sandboxRerun ?? {})
+      ...overrides.sandboxRerun,
     },
-    sandboxEgressAttempts: [...(overrides.sandboxEgressAttempts ?? [])]
+    sandboxEgressAttempts: Array.isArray(overrides.sandboxEgressAttempts)
+      ? [...overrides.sandboxEgressAttempts]
+      : [],
   });
 }
 
@@ -293,7 +275,7 @@ function evaluateSandboxEgress({
 
   for (const attempt of provider.sandboxEgressAttempts ?? []) {
     const target = String(attempt.target ?? "");
-    const channel = typeof attempt.channel === "string" ? attempt.channel : "normal";
+    const channel = isJsonString(attempt.channel) ? attempt.channel : "normal";
     const inScope = policy.allowedEgressTargets.includes(target);
     if (!inScope) {
       denied = true;
@@ -376,9 +358,9 @@ function normalizePolicy(policy) {
   return {
     supportedCapabilities: stringList(parsed.supportedCapabilities, "policy.supportedCapabilities"),
     allowedEgressTargets: stringList(parsed.allowedEgressTargets, "policy.allowedEgressTargets"),
-    revokedKeyIds: [...(parsed.revokedKeyIds ?? [])],
-    yankedVersions: [...(parsed.yankedVersions ?? [])],
-    minimumVersions: { ...(parsed.minimumVersions ?? {}) }
+    revokedKeyIds: Array.isArray(parsed.revokedKeyIds) ? [...parsed.revokedKeyIds] : [],
+    yankedVersions: Array.isArray(parsed.yankedVersions) ? [...parsed.yankedVersions] : [],
+    minimumVersions: { ...parsed.minimumVersions },
   };
 }
 
@@ -419,7 +401,7 @@ function stringList(values, name) {
     throw new TypeError(`${name} must be an array`);
   }
   return values.map((value) => {
-    if (typeof value !== "string" || value.length === 0) {
+    if (!isJsonString(value) || value.length === 0) {
       throw new TypeError(`${name} must contain non-empty strings`);
     }
     return value;
@@ -427,14 +409,14 @@ function stringList(values, name) {
 }
 
 function requireObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
   return value;
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   Object.freeze(value);

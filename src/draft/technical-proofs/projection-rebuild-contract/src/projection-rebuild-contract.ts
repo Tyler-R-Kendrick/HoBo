@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const MIGRATION_PHASE_APPLIED_EVENT_TYPE = "migration.PhaseApplied";
 export const MIGRATION_CUTOVER_EVENT_TYPE = "migration.CutOver";
 export const PROJECTION_SINK_REBOUND_EVENT_TYPE = "projection.SinkRebound";
@@ -91,7 +92,7 @@ export function rebuildProjectionSink({
 }
 
 export function cutOverProjectionSink({ oldSinkId, rebuiltSink, livePosition }) {
-  if (!rebuiltSink || typeof rebuiltSink !== "object") {
+  if (!rebuiltSink || !isJsonObject(rebuiltSink)) {
     throw new TypeError("rebuiltSink is required");
   }
 
@@ -243,7 +244,7 @@ function rebuildDeterministicProjection({
 }
 
 function rebuildFromRecordedOutputs({ projection, recordedOutputs, targetSinkId, livePosition }) {
-  if (typeof projection.fromRecordedOutput !== "function") {
+  if (!(projection.fromRecordedOutput instanceof Function)) {
     throw new TypeError("nondeterministic projections require fromRecordedOutput(output)");
   }
 
@@ -370,7 +371,7 @@ function phaseAppliedEvent({ backfillKind, projection, targetSinkId, strategy })
       phase: "backfill",
       projection: projection.name,
       targetSinkId,
-      shapeVersion: projection.shapeVersion,
+      schemaVersion: projection.schemaVersion,
       strategy,
     },
   };
@@ -446,7 +447,7 @@ function assertProjection(projection) {
     throw new TypeError("projection.name is required");
   }
 
-  if (projection.determinism !== "nondeterministic" && typeof projection.key !== "function") {
+  if (projection.determinism !== "nondeterministic" && !(projection.key instanceof Function)) {
     throw new TypeError("deterministic projections require key(event)");
   }
 }

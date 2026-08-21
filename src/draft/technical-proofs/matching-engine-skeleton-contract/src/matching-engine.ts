@@ -1,5 +1,7 @@
 import { createMatchDecidedEvent } from "../../control-plane-event-schema-contract/src/control-plane-events.js";
 import { specificity } from "../../matching-specificity-vectors/src/matching.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const MATCHING_ENGINE_VERSION = "hobo.matching-engine/v1";
 
@@ -121,11 +123,11 @@ function failedDecision({ context, objective, catalogContentHash, reason, reject
 }
 
 function catalogSnapshot(catalog) {
-  const snapshot = typeof catalog?.snapshot === "function" ? catalog.snapshot() : catalog;
-  if (!snapshot || typeof snapshot !== "object" || !Array.isArray(snapshot.definitions)) {
+  const snapshot = catalog?.snapshot instanceof Function ? catalog.snapshot() : catalog;
+  if (!snapshot || !isJsonObject(snapshot) || !Array.isArray(snapshot.definitions)) {
     throw new Error("catalog snapshot with definitions is required");
   }
-  if (typeof snapshot.contentHash !== "string" || snapshot.contentHash.length === 0) {
+  if (!isJsonString(snapshot.contentHash) || snapshot.contentHash.length === 0) {
     throw new Error("catalog snapshot contentHash is required");
   }
   return snapshot;
@@ -182,10 +184,10 @@ function matchMismatch(match, context) {
 }
 
 function assertContext(context) {
-  if (!context || typeof context !== "object" || Array.isArray(context)) {
+  if (!context || !isJsonObject(context) || Array.isArray(context)) {
     throw new Error("context must be an object");
   }
-  if (typeof context.resourceType !== "string" || context.resourceType.length === 0) {
+  if (!isJsonString(context.resourceType) || context.resourceType.length === 0) {
     throw new Error("context.resourceType must be a non-empty string");
   }
 }

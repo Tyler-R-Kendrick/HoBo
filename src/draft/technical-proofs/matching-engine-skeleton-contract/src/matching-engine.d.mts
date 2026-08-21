@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export type MatchObjective = "cost" | "latency" | "single-provider" | "carbon" | "maximize-credits";
 
 export type DriverId = "terraform" | "template" | "echo" | "container" | "custom-webhook";
@@ -23,11 +24,11 @@ export type ResourceDefinition = {
   paradigm?: string;
   provider: string;
   driver: DriverId;
-  with?: Record<string, unknown>;
+  with?: JsonObject;
   match: ResourceDefinitionMatch;
   priority?: number;
-  mapping?: string | Record<string, unknown>;
-  coProvisioned?: Array<Record<string, unknown>>;
+  mapping?: string | JsonObject;
+  coProvisioned?: Array<JsonObject>;
 };
 
 export type RankedDefinition = {
@@ -81,7 +82,7 @@ export declare function decideResourceDefinition(input: {
 
 export declare function matchingDecisionToEvent(
   decision: SuccessfulMatchingDecision,
-  overrides?: Record<string, unknown>
-): Record<string, unknown>;
+  overrides?: JsonObject
+): JsonObject;
 
 export declare function rankingSummary(decision: MatchingDecision): string[];

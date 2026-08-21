@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export type ExecutionHostCategory = "runner" | "build-machine";
 export type ExecutionHostObjective =
   | "cost"
@@ -124,7 +125,7 @@ export interface ExecutionHostDecision {
   }>;
   dispatchDecided: {
     type: "dispatch.Decided";
-    data: unknown;
+    data: JsonValue;
   };
 }
 
@@ -157,6 +158,6 @@ export declare function selectExecutionHost(
 ): ExecutionHostDecision;
 
 export declare function validateExecutionHostManifest(
-  manifest: unknown,
+  manifest: JsonValue,
   options?: { category?: ExecutionHostCategory }
 ): { ok: boolean; errors: string[] };

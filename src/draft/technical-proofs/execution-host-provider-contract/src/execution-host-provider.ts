@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const MANIFEST_SCHEMA = "hobo.execution-host-capability-manifest/v1";
 const COST_SCHEMA = "hobo.cost/v1";
@@ -107,7 +109,7 @@ export function createExecutionHostRegistry(providers = []) {
   const byId = new Map();
 
   for (const provider of providers) {
-    validateProviderShape(provider);
+    validateProviderContract(provider);
     const manifest = provider.capabilityManifest();
     const validation = validateExecutionHostManifest(manifest, { category: provider.category });
     if (!validation.ok) {
@@ -183,13 +185,13 @@ export function selectExecutionHost(request, registry) {
 
 export function validateExecutionHostManifest(manifest, { category } = {}) {
   const errors = [];
-  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+  if (!manifest || !isJsonObject(manifest) || Array.isArray(manifest)) {
     return { ok: false, errors: ["manifest must be an object"] };
   }
   if (manifest.schema !== MANIFEST_SCHEMA) {
     errors.push(`schema must be ${MANIFEST_SCHEMA}`);
   }
-  if (!manifest.provider || typeof manifest.provider !== "object") {
+  if (!manifest.provider || !isJsonObject(manifest.provider)) {
     errors.push("provider must be an object");
   } else {
     requireField(manifest.provider, "id", errors, "provider.id");
@@ -211,7 +213,7 @@ export function validateExecutionHostManifest(manifest, { category } = {}) {
     requireField(capability, "interface", errors, "capabilities.0.interface");
     requireField(capability, "version", errors, "capabilities.0.version");
   }
-  if (!manifest.cost || typeof manifest.cost !== "object") {
+  if (!manifest.cost || !isJsonObject(manifest.cost)) {
     errors.push("cost must be an object");
   } else {
     if (manifest.cost.schema !== COST_SCHEMA) {
@@ -331,13 +333,13 @@ function createDecision({
   };
 }
 
-function validateProviderShape(provider) {
-  if (!provider || typeof provider !== "object") {
+function validateProviderContract(provider) {
+  if (!provider || !isJsonObject(provider)) {
     throw new Error("provider must be an object");
   }
   requireString(provider.id, "provider.id");
   requireCategory(provider.category);
-  if (typeof provider.capabilityManifest !== "function") {
+  if (!(provider.capabilityManifest instanceof Function)) {
     throw new Error(`provider ${provider.id} must expose capabilityManifest()`);
   }
 }
@@ -350,14 +352,14 @@ function requireCategory(category) {
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${label} must be a non-empty string`);
   }
   return value;
 }
 
 function requireField(value, field, errors, label = field) {
-  if (typeof value?.[field] !== "string" || value[field].length === 0) {
+  if (!isJsonString(value?.[field]) || value[field].length === 0) {
     errors.push(`${label} must be a non-empty string`);
   }
 }
@@ -374,7 +376,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

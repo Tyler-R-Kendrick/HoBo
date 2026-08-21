@@ -1,10 +1,19 @@
-export function canonicalJson(value: unknown): string {
-  return JSON.stringify(sortJson(value));
+import { cloneAsJson, isJsonObject, type JsonValue, type JsonBag } from "../json.js";
+export function canonicalJson<T>(value: T): string {
+  return JSON.stringify(sortJson(cloneAsJson(value)));
 }
 
-export function diffJsonPaths(
-  expected: unknown,
-  actual: unknown,
+export function diffJsonPaths<T, U>(
+  expected: T,
+  actual: U,
+  prefix = "",
+): string[] {
+  return diffJsonValuePaths(cloneAsJson(expected), cloneAsJson(actual), prefix);
+}
+
+function diffJsonValuePaths(
+  expected: JsonValue,
+  actual: JsonValue,
   prefix = "",
 ): string[] {
   if (canonicalJson(expected) === canonicalJson(actual)) {
@@ -14,8 +23,8 @@ export function diffJsonPaths(
   if (
     expected === null ||
     actual === null ||
-    typeof expected !== "object" ||
-    typeof actual !== "object"
+    !isJsonObject(expected) ||
+    !isJsonObject(actual)
   ) {
     return [prefix || "$"];
   }
@@ -33,39 +42,37 @@ export function diffJsonPaths(
         paths.push(childPrefix);
         continue;
       }
-      paths.push(...diffJsonPaths(expected[index], actual[index], childPrefix));
+      paths.push(...diffJsonValuePaths(expected[index] ?? null, actual[index] ?? null, childPrefix));
     }
     return paths.length > 0 ? paths : [prefix || "$"];
   }
 
-  const expectedRecord = expected as Record<string, unknown>;
-  const actualRecord = actual as Record<string, unknown>;
-  const keys = new Set([...Object.keys(expectedRecord), ...Object.keys(actualRecord)]);
+  const keys = new Set([...Object.keys(expected), ...Object.keys(actual)]);
   const paths: string[] = [];
 
   for (const key of [...keys].sort()) {
     const childPrefix = prefix ? `${prefix}.${key}` : key;
-    if (!(key in expectedRecord) || !(key in actualRecord)) {
+    if (!(key in expected) || !(key in actual)) {
       paths.push(childPrefix);
       continue;
     }
-    paths.push(...diffJsonPaths(expectedRecord[key], actualRecord[key], childPrefix));
+    paths.push(...diffJsonValuePaths(expected[key] ?? null, actual[key] ?? null, childPrefix));
   }
 
   return paths.length > 0 ? paths : [prefix || "$"];
 }
 
-function sortJson(value: unknown): unknown {
+function sortJson(value: JsonValue): JsonValue {
   if (Array.isArray(value)) {
     return value.map(sortJson);
   }
-  if (!value || typeof value !== "object") {
+  if (!isJsonObject(value)) {
     return value;
   }
 
-  return Object.fromEntries(
-    Object.entries(value as Record<string, unknown>)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, nested]) => [key, sortJson(nested)]),
-  );
+  const sorted: JsonBag = {};
+  for (const key of Object.keys(value).sort()) {
+    sorted[key] = sortJson(value[key] ?? null);
+  }
+  return sorted;
 }

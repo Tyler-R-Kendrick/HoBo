@@ -31,6 +31,7 @@ export function createDriftAdapter(options: DriftAdapterOptions = {}): SdkIdiomA
 
     mapResult<T>(result: WitResult<T>): T {
       if (Object.hasOwn(result, "ok")) {
+        // SAFETY: `return result.ok as T;` is required at this I/O or test boundary.
         return result.ok as T;
       }
 
@@ -39,9 +40,11 @@ export function createDriftAdapter(options: DriftAdapterOptions = {}): SdkIdiomA
       }
 
       if (swallowResultErrors) {
+        // SAFETY: `return undefined as T;` is required at this I/O or test boundary.
         return undefined as T;
       }
 
+      // SAFETY: `throw new HoboWitError(result.err as { tag: string; message?: string });` is required at this I/O or test boundary.
       throw new HoboWitError(result.err as { tag: string; message?: string });
     },
 
@@ -183,7 +186,7 @@ function lowerProgram(program: LowerProgram) {
       schema: "hobo.manifest/v1" as const,
       bindle: program.bindle,
       resources: manifestResources,
-      ...(handlers.length > 0 ? { handlers } : {}),
+      ...(handlers.length > 0 ? { handlers } : undefined),
     },
   };
 }

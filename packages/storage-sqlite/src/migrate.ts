@@ -1,5 +1,4 @@
 import { EventStoreError, UnsupportedSchemaVersionError } from "@hobo/core";
-
 import {
 	DEFAULT_METADATA_CODEC,
 	DEFAULT_PAYLOAD_CODEC,
@@ -8,6 +7,7 @@ import {
 	encodeLegacyJsonText,
 } from "./codec.js";
 import { asNumber, asText, type SqliteDriver } from "./driver.js";
+import type { JsonValue } from "./json.js";
 import {
 	LEGACY_SCHEMA_VERSION,
 	SCHEMA_V2_SQL,
@@ -387,7 +387,7 @@ export function installLegacyV1Fixture(
 			causation_id?: string | null;
 			correlation_id?: string | null;
 			lane?: string | null;
-			data: unknown;
+			data: JsonValue;
 			meta?: unknown;
 			idempotency_key?: string | null;
 		}>;

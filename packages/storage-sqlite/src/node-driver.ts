@@ -6,13 +6,14 @@
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-
 import type {
 	SqliteDriver,
+	SqliteRow,
 	SqliteRunResult,
 	SqliteStatement,
 	SqliteValue,
 } from "./driver.js";
+import { isJsonBigInt, isJsonNumber, isJsonString } from "./json.js";
 
 export interface NodeSqliteDriverOptions {
 	readonly path: string;
@@ -20,45 +21,47 @@ export interface NodeSqliteDriverOptions {
 	readonly disableExtensions?: boolean;
 }
 
+interface DatabaseSyncOpenOptions {
+	readonly readBigInts?: boolean;
+}
+
+interface LoadExtensionHost {
+	enableLoadExtension?: (enabled: boolean) => void;
+}
+
+interface SqliteNativeRunResult {
+	changes: number | bigint;
+	lastInsertRowid: number | bigint;
+}
+
+type NativeBindValue = Exclude<SqliteValue, boolean>;
+
 export function createNodeSqliteDriver(
 	options: NodeSqliteDriverOptions,
 ): SqliteDriver {
 	mkdirSync(dirname(options.path), { recursive: true });
-	// readBigInts: preserve full 64-bit fence/position values past Number.MAX_SAFE_INTEGER
-	const db = new DatabaseSync(options.path, { readBigInts: true } as {
-		readBigInts?: boolean;
-	});
-
-	// Best-effort: newer node:sqlite may expose enableLoadExtension
-	const maybe = db as unknown as {
-		enableLoadExtension?: (enabled: boolean) => void;
-	};
-	if (
-		options.disableExtensions !== false &&
-		typeof maybe.enableLoadExtension === "function"
-	) {
-		maybe.enableLoadExtension(false);
-	}
-
+	const openOptions: DatabaseSyncOpenOptions = { readBigInts: true };
+	const db = new DatabaseSync(options.path, openOptions);
+	disableExtensions(db, options.disableExtensions);
 	return wrapDatabaseSync(db, "node");
 }
 
 export function createMemoryNodeSqliteDriver(
 	options: { readonly disableExtensions?: boolean } = {},
 ): SqliteDriver {
-	const db = new DatabaseSync(":memory:", { readBigInts: true } as {
-		readBigInts?: boolean;
-	});
-	const maybe = db as unknown as {
-		enableLoadExtension?: (enabled: boolean) => void;
-	};
-	if (
-		options.disableExtensions !== false &&
-		typeof maybe.enableLoadExtension === "function"
-	) {
-		maybe.enableLoadExtension(false);
-	}
+	const openOptions: DatabaseSyncOpenOptions = { readBigInts: true };
+	const db = new DatabaseSync(":memory:", openOptions);
+	disableExtensions(db, options.disableExtensions);
 	return wrapDatabaseSync(db, "memory");
+}
+
+function disableExtensions(db: DatabaseSync, disable?: boolean): void {
+	if (disable === false) return;
+	if (!("enableLoadExtension" in db)) return;
+	const host: LoadExtensionHost = db;
+	if (host.enableLoadExtension instanceof Function) {
+		host.enableLoadExtension(false);
+	}
 }
 
 function wrapDatabaseSync(
@@ -74,27 +77,32 @@ function wrapDatabaseSync(
 			const stmt = db.prepare(sql);
 			return {
 				run(...params: SqliteValue[]): SqliteRunResult {
-					const normalized = normalizeParams(params) as never[];
-					const result = stmt.run(...normalized) as {
-						changes: number | bigint;
-						lastInsertRowid: number | bigint;
-					};
-					const changes =
-						typeof result.changes === "bigint"
-							? Number(result.changes)
-							: result.changes;
+					const normalized = normalizeParams(params);
+					const raw = stmt.run(...normalized);
+					// SAFETY: node:sqlite run() returns changes + lastInsertRowid.
+					const result: SqliteNativeRunResult = raw;
+					const changes = isJsonBigInt(result.changes)
+						? Number(result.changes)
+						: result.changes;
 					return {
 						changes,
 						lastInsertRowid: result.lastInsertRowid,
 					};
 				},
 				get(...params: SqliteValue[]) {
-					const normalized = normalizeParams(params) as never[];
-					return stmt.get(...normalized) as Record<string, unknown> | undefined;
+					const normalized = normalizeParams(params);
+					const row = stmt.get(...normalized);
+					if (row === undefined) return undefined;
+					// SAFETY: sqlite row objects are column maps of SqliteValue.
+					const mapped: SqliteRow = row;
+					return mapped;
 				},
 				all(...params: SqliteValue[]) {
-					const normalized = normalizeParams(params) as never[];
-					return stmt.all(...normalized) as Record<string, unknown>[];
+					const normalized = normalizeParams(params);
+					const rows = stmt.all(...normalized);
+					// SAFETY: sqlite row objects are column maps of SqliteValue.
+					const mapped: SqliteRow[] = rows;
+					return mapped;
 				},
 			};
 		},
@@ -109,12 +117,11 @@ function wrapDatabaseSync(
 		},
 		pragma(name: string, value?: string | number) {
 			if (value === undefined) {
-				const row = db.prepare(`PRAGMA ${name}`).get() as
-					| Record<string, unknown>
-					| undefined;
+				// SAFETY: assertion required at this I/O or test boundary.
+				const row = db.prepare(`PRAGMA ${name}`).get();
 				if (!row) return null;
 				const v = Object.values(row)[0];
-				if (typeof v === "string" || typeof v === "number") return v;
+				if (isJsonString(v) || isJsonNumber(v)) return v;
 				return v === null || v === undefined ? null : String(v);
 			}
 			db.exec(`PRAGMA ${name} = ${value}`);
@@ -126,11 +133,10 @@ function wrapDatabaseSync(
 	};
 }
 
-function normalizeParams(params: SqliteValue[]): unknown[] {
-	return params.map((p) => {
-		if (p instanceof Uint8Array) {
-			return Buffer.from(p);
-		}
-		return p;
+function normalizeParams(params: SqliteValue[]): NativeBindValue[] {
+	return params.map((value) => {
+		if (value === true) return 1;
+		if (value === false) return 0;
+		return value;
 	});
 }

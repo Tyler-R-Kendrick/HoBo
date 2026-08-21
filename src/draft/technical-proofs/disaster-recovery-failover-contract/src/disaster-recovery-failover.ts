@@ -13,6 +13,8 @@ import {
   foldRunbookEvents,
   makeRunbookEvent,
 } from "../../runbook-contract/src/runbook-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const DISASTER_RECOVERY_CONTRACT_VERSION = "hobo.disaster-recovery-failover/v1";
 export const DISASTER_RECOVERY_RUNBOOK_NAME = "disaster-recovery-failover";
@@ -428,7 +430,7 @@ function normalizeEvents(input = {}) {
 }
 
 function validateSourceLog(sourceLog) {
-  if (!sourceLog || typeof sourceLog !== "object" || Array.isArray(sourceLog)) {
+  if (!sourceLog || !isJsonObject(sourceLog) || Array.isArray(sourceLog)) {
     throw new Error("sourceLog is required");
   }
 
@@ -443,7 +445,7 @@ function validateSourceLog(sourceLog) {
 }
 
 function validateStreams(streams) {
-  if (!streams || typeof streams !== "object" || Array.isArray(streams)) {
+  if (!streams || !isJsonObject(streams) || Array.isArray(streams)) {
     throw new Error("sourceLog.streams is required");
   }
 
@@ -451,7 +453,7 @@ function validateStreams(streams) {
 }
 
 function validateLease(lease) {
-  if (!lease || typeof lease !== "object" || Array.isArray(lease)) {
+  if (!lease || !isJsonObject(lease) || Array.isArray(lease)) {
     throw new Error("lease is required");
   }
 
@@ -465,7 +467,7 @@ function validateLease(lease) {
 }
 
 function validateTargetYard(targetYard) {
-  if (!targetYard || typeof targetYard !== "object" || Array.isArray(targetYard)) {
+  if (!targetYard || !isJsonObject(targetYard) || Array.isArray(targetYard)) {
     throw new Error("targetYard is required");
   }
 
@@ -492,7 +494,7 @@ function requiredArray(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value.trim();
@@ -521,7 +523,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 

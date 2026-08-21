@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const DELTA_SET_APPLY_RECONCILE_VERSION = "hobo.delta-set-apply-reconcile/v1";
 
@@ -281,14 +283,14 @@ function diffResourceMaps(currentResources, targetResources) {
 }
 
 function normalizeDeploymentSet(set, label) {
-  if (!set || typeof set !== "object") {
+  if (!set || !isJsonObject(set)) {
     throw new Error(`${label} is required`);
   }
   return createDeploymentSet(set);
 }
 
 function normalizeResourceMap(resources) {
-  if (!resources || typeof resources !== "object" || Array.isArray(resources)) {
+  if (!resources || !isJsonObject(resources) || Array.isArray(resources)) {
     throw new Error("DeploymentSet resources must be an object map");
   }
   const normalized = {};
@@ -299,7 +301,7 @@ function normalizeResourceMap(resources) {
 }
 
 function normalizeResource(resourceId, resource) {
-  if (!resource || typeof resource !== "object") {
+  if (!resource || !isJsonObject(resource)) {
     throw new Error(`resource ${resourceId} must be an object`);
   }
   if (resource.id !== resourceId) {
@@ -333,7 +335,7 @@ function normalizeChanges(changes) {
     throw new Error("Delta changes must be an array");
   }
   return changes.map((change) => {
-    if (!change || typeof change !== "object") {
+    if (!change || !isJsonObject(change)) {
       throw new Error("Delta change must be an object");
     }
     if (!["add", "update", "remove"].includes(change.op)) {
@@ -412,7 +414,7 @@ function optionalString(value) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function canonicalJson(value) {
@@ -423,7 +425,7 @@ function canonicalize(value) {
   if (Array.isArray(value)) {
     return value.map(canonicalize);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(

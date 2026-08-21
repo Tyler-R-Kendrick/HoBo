@@ -211,7 +211,7 @@ function declareTicketsContract(options = {}) {
   return declareCrossCampBoundedStalenessProjection({
     projection: projection("tickets", {
       readModel: "support:tickets/ticket-view@1.0.0",
-      rowShape: {
+      rowSchema: {
         witRecord: "support:tickets/ticket-view@1.0.0",
         fields: [
           { name: "comments", type: "u32" },

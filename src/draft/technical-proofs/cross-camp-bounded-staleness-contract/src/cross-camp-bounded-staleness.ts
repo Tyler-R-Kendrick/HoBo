@@ -1,4 +1,6 @@
 import { createNativeProjectionLog } from "../../native-log-projection-contract/src/native-log-projection.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const PROJECTION_LAGGED_EVENT_TYPE = "projection.Lagged";
 
@@ -299,21 +301,21 @@ function eventKey(event) {
 }
 
 function normalizeClient(client) {
-  if (!client || typeof client.push !== "function") {
+  if (!client || !(client.push instanceof Function)) {
     throw new TypeError("client must expose push(event)");
   }
   return client;
 }
 
 function assertObject(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${field} must be an object`);
   }
   return value;
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new TypeError(`${field} must be a non-empty string`);
   }
   return value;
@@ -330,7 +332,7 @@ function deepFreeze(value) {
   if (Array.isArray(value)) {
     return Object.freeze(value.map(deepFreeze));
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.freeze(Object.fromEntries(Object.entries(value).map(([key, child]) => [key, deepFreeze(child)])));
   }
   return value;
@@ -340,5 +342,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

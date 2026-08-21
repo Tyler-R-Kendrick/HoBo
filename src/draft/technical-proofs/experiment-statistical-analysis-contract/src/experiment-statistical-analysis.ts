@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
 const maxBasisPoints = 10_000;
 const supportedOutcomes = new Set(["winner", "no-difference", "inconclusive", "do-not-ship"]);
 
@@ -612,7 +613,7 @@ function normalizeBounds(bounds) {
 }
 
 function normalizeConfidence(value) {
-  if (typeof value !== "number" || value <= 0 || value >= 1) {
+  if (!isJsonNumber(value) || value <= 0 || value >= 1) {
     throw new TypeError("primaryConfidence must be between 0 and 1");
   }
   return value;
@@ -630,20 +631,20 @@ function normalizePositiveInteger(value, label, allowZero = false) {
 }
 
 function normalizeNumber(value, label) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
+  if (!isJsonNumber(value) || !Number.isFinite(value)) {
     throw new TypeError(`${label} must be finite`);
   }
   return value;
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} is required`);
   }
   return value;
@@ -657,7 +658,7 @@ function pruneUndefined(value) {
   if (Array.isArray(value)) {
     return value.map(pruneUndefined);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(

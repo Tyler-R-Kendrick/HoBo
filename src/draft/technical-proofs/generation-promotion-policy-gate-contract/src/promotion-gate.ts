@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const PROMOTION_POLICY_REQUEST_SCHEMA = "hobo.policy-ir/v1";
 export const PROMOTION_GATE_SCHEMA = "hobo.gen.promotion-gate/v1";
@@ -7,7 +9,6 @@ const digestPattern = /^sha256:[a-f0-9]{64}$/;
 const policyAllowEffects = new Set(["allow", "allow-degraded", "warn", "mutate"]);
 const knownRiskClasses = new Set(["low", "medium", "high"]);
 const productionEnvironments = new Set(["prod", "production"]);
-const tagOf = Object.prototype.toString;
 
 export class PromotionGateContractError extends Error {
   constructor(code, path = "$", message = code) {
@@ -49,7 +50,7 @@ export function buildPromotionPolicyRequest(candidateInput) {
 }
 
 export function createGenerationPromotionGate({ policyEngine, ruleset } = {}) {
-  if (!policyEngine || !isFunction(policyEngine.evaluate)) {
+  if (!policyEngine || !(policyEngine.evaluate instanceof Function)) {
     throw new PromotionGateContractError(
       "promotion.policy_engine_required",
       "$.policyEngine",
@@ -311,7 +312,7 @@ function event(candidate, seq, type, data) {
 }
 
 function normalizePolicyDecision(decision, fallbackEngineId, request) {
-  if (!decision || !isObject(decision) || Array.isArray(decision)) {
+  if (!decision || !isJsonObject(decision) || Array.isArray(decision)) {
     return {
       schema: "hobo.policy-ir.decision/v1",
       effect: "deny",
@@ -499,14 +500,14 @@ function parseStringArray(input, path) {
 }
 
 function expectObject(input, path) {
-  if (!input || !isObject(input) || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new PromotionGateContractError("promotion.expected_object", path);
   }
   return input;
 }
 
 function assertNonEmptyString(input, path) {
-  if (!isString(input) || input.trim() === "") {
+  if (!isJsonString(input) || input.trim() === "") {
     throw new PromotionGateContractError("promotion.expected_string", path);
   }
   return input;
@@ -517,7 +518,7 @@ function hashJson(value) {
 }
 
 function stableJson(value) {
-  if (value === null || !isObject(value)) {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
@@ -527,16 +528,4 @@ function stableJson(value) {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
     .join(",")}}`;
-}
-
-function isFunction(value) {
-  return tagOf.call(value) === "[object Function]";
-}
-
-function isObject(value) {
-  return tagOf.call(value) === "[object Object]";
-}
-
-function isString(value) {
-  return tagOf.call(value) === "[object String]";
 }

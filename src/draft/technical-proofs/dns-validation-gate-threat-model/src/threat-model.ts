@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const DNS_VALIDATION_THREAT_MODEL_SCHEMA = "hobo.dns-validation-threat-model/v1";
 
 export const REQUIRED_ATTACKS = Object.freeze([
@@ -139,7 +140,7 @@ export function createDnsValidationThreatModel(overrides = {}) {
 
 export function validateDnsValidationThreatModel(model) {
   const errors = [];
-  if (!isRecord(model)) {
+  if (!model || !isJsonObject(model) || Array.isArray(model)) {
     return { ok: false, errors: ["model must be an object"], model: null };
   }
 
@@ -191,7 +192,7 @@ export function evaluateDnsAttack(model, attackSlug, evidence = {}) {
 }
 
 function validateControls(controls, errors) {
-  if (!isRecord(controls)) {
+  if (!controls || !isJsonObject(controls) || Array.isArray(controls)) {
     errors.push("controls must be an object");
     return;
   }
@@ -247,7 +248,7 @@ function validateAttacks(model, errors) {
         errors.push(`${slug} references unknown control ${control}`);
       }
     }
-    if (!isRecord(attack.minimumParameters)) {
+    if (!attack.minimumParameters || !isJsonObject(attack.minimumParameters)) {
       errors.push(`${slug} must name minimumParameters`);
     }
   }
@@ -352,7 +353,7 @@ function deepMerge(base, overrides) {
   if (Array.isArray(base) || Array.isArray(overrides)) {
     return overrides === undefined ? structuredClone(base) : structuredClone(overrides);
   }
-  if (!isRecord(base)) {
+  if (!base || !isJsonObject(base)) {
     return overrides === undefined ? base : overrides;
   }
 
@@ -367,12 +368,8 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!isRecord(value)) {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
-}
-
-function isRecord(value) {
-  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
 }

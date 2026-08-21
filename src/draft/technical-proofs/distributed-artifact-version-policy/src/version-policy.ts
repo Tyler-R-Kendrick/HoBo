@@ -1,4 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks reject untrusted version and range inputs before parsing. */
+import { isJsonString } from "./json.js";
 export const STABILITY_TIERS = Object.freeze([
   "stable",
   "preview",
@@ -12,12 +12,11 @@ const SEMVER_RE = new RegExp(`^${SEMVER_PATTERN_SOURCE}$`);
 export function normalizeVersion(version) {
   const parsed = parseVersion(version);
 
-  const normalized = {
+  return {
     canonical: formatVersion(parsed, { includeBuild: false }),
     original: version,
+    ...(parsed.build ? { build: parsed.build } : undefined)
   };
-  if (parsed.build) normalized.build = parsed.build;
-  return normalized;
 }
 
 export function validateAcceptedRange(range) {
@@ -157,7 +156,7 @@ function parseRange(range) {
 }
 
 function parseRangeUnsafe(range) {
-  if (typeof range !== "string") {
+  if (!isJsonString(range)) {
     return { ok: false, reason: "range must be a string" };
   }
 
@@ -263,7 +262,7 @@ function crossesMajorBoundary(range) {
 }
 
 function parseVersion(version) {
-  if (typeof version !== "string") {
+  if (!isJsonString(version)) {
     throw new Error(`version must be a string: ${String(version)}`);
   }
 
@@ -272,14 +271,13 @@ function parseVersion(version) {
     throw new Error(`version must be semver: ${version}`);
   }
 
-  const parsedVersion = {
+  return {
     major: Number(match[1]),
     minor: Number(match[2]),
     patch: Number(match[3]),
+    ...(match[4] ? { prerelease: match[4] } : undefined),
+    ...(match[5] ? { build: match[5] } : undefined)
   };
-  if (match[4]) parsedVersion.prerelease = match[4];
-  if (match[5]) parsedVersion.build = match[5];
-  return parsedVersion;
 }
 
 function compareVersions(left, right) {

@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export const MANIFEST_SCHEMA: "hobo.manifest/v1";
 export const CONTRACT_VERSION: "hobo.provider-options/v1";
 
@@ -6,7 +7,7 @@ export type ResourceKind = "data" | "component";
 export type ProviderOption<
   Provider extends string,
   Kinds extends ResourceKind,
-  Payload extends Record<string, unknown>
+  Payload extends JsonObject
 > = {
   readonly __kind: "hobo.provider-option";
   readonly provider: Provider;
@@ -29,7 +30,7 @@ export type ManifestResource = {
   readonly className: string;
   readonly requirement?: ResourceRequirement;
   readonly annotations?: {
-    readonly with: Record<string, Record<string, unknown>>;
+    readonly with: Record<string, JsonObject>;
   };
   readonly portability?: {
     readonly lockInMarkers: readonly LockInMarker[];
@@ -65,7 +66,7 @@ export type ServiceOptions = {
 export type ResourceHandle<Kind extends ResourceKind> = {
   readonly id: string;
   readonly kind: Kind;
-  with(...options: ProviderOption<string, Kind, Record<string, unknown>>[]): ResourceHandle<Kind>;
+  with(...options: ProviderOption<string, Kind, JsonObject>[]): ResourceHandle<Kind>;
   toManifestResource(): ManifestResource;
 };
 
@@ -110,7 +111,7 @@ export function createManifest(resources: readonly ResourceHandle<ResourceKind>[
 export function resolvedProviderOptions(
   resource: ManifestResource,
   providerKey: string
-): Record<string, Record<string, unknown>>;
+): Record<string, JsonObject>;
 export function projectAgnosticResource(resource: ManifestResource): Omit<
   ManifestResource,
   "annotations" | "portability"

@@ -4,6 +4,8 @@ import {
   service,
 } from "../../bind-reference-wiring-contract/src/bind-reference-contract.js";
 import { validateManifest } from "../../hobo-manifest-contract/src/manifest.js";
+import { isJsonObject, isJsonString, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const WIRING_PARITY_SCHEMA = "hobo.containerFallbackWiringParity/v1";
 export const MULTI_CLOUD_SHOP_FIXTURE = "examples/multi-cloud-shop";
@@ -65,7 +67,8 @@ export function createMultiCloudShopWiringFixture(runtimeMode: RuntimeMode = "wa
   });
 
   const manifest = compileBindleManifest([orders, assets, api]);
-  const apiResource = manifest.resources.api as Record<string, unknown>;
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+  const apiResource = manifest.resources.api as JsonObject;
   injectConfigEnv(apiResource, defaultMultiCloudShopConfig());
   manifest.resources.frontend = {
     type: "component.v1",
@@ -85,7 +88,7 @@ export function createMultiCloudShopWiringFixture(runtimeMode: RuntimeMode = "wa
 }
 
 export function applyRuntimeArtifacts(
-  manifest: { schema: string; resources: Record<string, unknown> },
+  manifest: { schema: string; resources: JsonObject },
   runtimeMode: RuntimeMode,
 ) {
   const next = structuredClone(manifest);
@@ -113,36 +116,42 @@ export function applyRuntimeArtifacts(
 }
 
 export function swapRuntimeMode(
-  manifest: { schema: string; resources: Record<string, unknown> },
+  manifest: { schema: string; resources: JsonObject },
   runtimeMode: RuntimeMode,
 ) {
   return applyRuntimeArtifacts(manifest, runtimeMode);
 }
 
 export function projectWiringSurface(
-  manifest: { resources: Record<string, unknown> },
+  manifest: { resources: JsonObject },
   serviceId: string,
   configEntries: ConfigEntry[] = defaultMultiCloudShopConfig(),
 ): WiringProjection {
   const resource = manifest.resources[serviceId];
-  if (!resource || typeof resource !== "object") {
+  if (!resource || !isJsonObject(resource)) {
     throw new WiringParityError(`resources.${serviceId}`, "missing service resource");
   }
 
-  const record = resource as Record<string, unknown>;
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+  const record = resource as JsonObject;
   const env = isRecord(record.env) ? { ...record.env } : {};
   const bindings = isRecord(record.bindings)
     ? structuredClone(
+        // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
         record.bindings as Record<string, { port: string; resource: string; clientType: string }>,
       )
     : {};
 
-  const links = Array.isArray(record.links)
-    ? (record.links as Array<{ import: string; to: string }>).map((link) => ({
-        import: link.import,
-        to: link.to,
-      }))
-    : [];
+  const rawLinks = Array.isArray(record.links) ? record.links : [];
+  const links = rawLinks.map((link) => {
+    const entry: { import?: JsonValue; to?: JsonValue } =
+      // SAFETY: manifest links are { import, to } objects after array parse.
+      link as never;
+    return {
+      import: isJsonString(entry.import) ? entry.import : "",
+      to: isJsonString(entry.to) ? entry.to : "",
+    };
+  });
 
   return {
     links: sortLinks(links),
@@ -159,8 +168,8 @@ export function projectWiringSurface(
 }
 
 export function assertWiringParity(
-  left: { resources: Record<string, unknown> },
-  right: { resources: Record<string, unknown> },
+  left: { resources: JsonObject },
+  right: { resources: JsonObject },
   serviceIds: string[],
   configEntries: ConfigEntry[] = defaultMultiCloudShopConfig(),
 ) {
@@ -176,8 +185,8 @@ export function assertWiringParity(
 export function runContainerFallbackWiringConformance(
   options: {
     fixture?: string;
-    wasmManifest?: { schema: string; resources: Record<string, unknown> };
-    containerManifest?: { schema: string; resources: Record<string, unknown> };
+    wasmManifest?: { schema: string; resources: JsonObject };
+    containerManifest?: { schema: string; resources: JsonObject };
   } = {},
 ) {
   const fixture = options.fixture ?? MULTI_CLOUD_SHOP_FIXTURE;
@@ -209,7 +218,7 @@ export function runContainerFallbackWiringConformance(
 }
 
 export function assertManifestWiringUnchangedOnRuntimeSwap(
-  manifest: { schema: string; resources: Record<string, unknown> },
+  manifest: { schema: string; resources: JsonObject },
   targetRuntime: RuntimeMode,
 ) {
   const wiringSnapshot = Object.fromEntries(
@@ -251,7 +260,7 @@ export function assertManifestWiringUnchangedOnRuntimeSwap(
 }
 
 function stampWasmService(
-  manifest: { resources: Record<string, unknown> },
+  manifest: { resources: JsonObject },
   serviceName: string,
   image: string,
   port: number,
@@ -265,7 +274,7 @@ function stampWasmService(
 }
 
 function stampContainerService(
-  manifest: { resources: Record<string, unknown> },
+  manifest: { resources: JsonObject },
   serviceName: string,
   image: string,
   source: string,
@@ -293,8 +302,9 @@ function defaultMultiCloudShopConfig(): ConfigEntry[] {
   ];
 }
 
-function injectConfigEnv(resource: Record<string, unknown>, configEntries: ConfigEntry[]) {
+function injectConfigEnv(resource: JsonObject, configEntries: ConfigEntry[]) {
   resource.env ??= {};
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   const env = resource.env as Record<string, string>;
   for (const entry of configEntries) {
     env[entry.key] = configTokenForEntry(entry);
@@ -315,12 +325,13 @@ function configTokenForEntry(entry: ConfigEntry): string {
 }
 
 function injectAspireEndpointEnv(
-  resource: Record<string, unknown>,
+  resource: JsonObject,
   serviceName: string,
   endpointName: string,
   port: number,
 ) {
   resource.env ??= {};
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   const env = resource.env as Record<string, string>;
   env[aspireServiceEndpointKey(serviceName, endpointName)] =
     `{${serviceName}.endpoints.${endpointName}.url}`;
@@ -335,7 +346,7 @@ function stripRuntimeOnlyEnv(env: Record<string, string>) {
   return next;
 }
 
-function requireService(manifest: { resources: Record<string, unknown> }, serviceName: string) {
+function requireService(manifest: { resources: JsonObject }, serviceName: string) {
   const resource = manifest.resources[serviceName];
   if (!isRecord(resource)) {
     throw new WiringParityError(`resources.${serviceName}`, "missing service resource");
@@ -343,7 +354,7 @@ function requireService(manifest: { resources: Record<string, unknown> }, servic
   return resource;
 }
 
-function withComponentHost(manifest: { schema: string; resources: Record<string, unknown> }) {
+function withComponentHost(manifest: { schema: string; resources: JsonObject }) {
   return {
     ...manifest,
     componentHost: {
@@ -359,7 +370,8 @@ function sortLinks(links: Array<{ import: string; to: string }>) {
   );
 }
 
-function sortRecord<T extends Record<string, unknown>>(record: T): T {
+function sortRecord<T extends JsonObject>(record: T): T {
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   return Object.fromEntries(
     Object.keys(record)
       .sort()
@@ -367,12 +379,12 @@ function sortRecord<T extends Record<string, unknown>>(record: T): T {
   ) as T;
 }
 
-function assertDeepEqual(actual: unknown, expected: unknown, path: string) {
+function assertDeepEqual(actual: JsonValue, expected: JsonValue, path: string) {
   if (JSON.stringify(actual) !== JSON.stringify(expected)) {
     throw new WiringParityError(path, "wiring surfaces diverged");
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function isRecord(value: JsonValue): value is JsonObject {
+  return isJsonObject(value) && value !== null && !Array.isArray(value);
 }

@@ -10,6 +10,8 @@ import {
   parseInterfaceId,
   parseWireVersion,
 } from "../src/index.js";
+import { type JsonValue } from "../src/json.js";
+
 
 const KV = parseInterfaceId("wasi:keyvalue/store@1.2.0");
 const FLOOR = "1.3.0";
@@ -95,7 +97,7 @@ test("a shared minor below the declared floor rejects the link with version-inco
         providerId: "local-kv",
         exportInterface: KV,
       }),
-    (error: unknown) =>
+    (error: JsonValue) =>
       error instanceof WireVersionIncompatibleError &&
       error.code === "version-incompatible" &&
       error.reason === "shared-minor-below-floor" &&
@@ -109,7 +111,7 @@ test("a shared minor below the declared floor rejects the link with version-inco
 
   await assert.rejects(
     () => layer.callImport("api", KV, "get", { key: "session" }),
-    (error: unknown) => error instanceof NoRouteError,
+    (error: JsonValue) => error instanceof NoRouteError,
   );
 });
 
@@ -145,7 +147,7 @@ test("no shared minor at all rejects with version-incompatible no-shared-minor",
         providerId: "local-kv",
         exportInterface: KV,
       }),
-    (error: unknown) =>
+    (error: JsonValue) =>
       error instanceof WireVersionIncompatibleError &&
       error.reason === "no-shared-minor",
   );

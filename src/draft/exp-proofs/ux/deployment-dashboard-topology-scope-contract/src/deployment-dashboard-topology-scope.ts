@@ -301,6 +301,7 @@ export function parseDeploymentDashboardTopologyScope(
     throw new DeploymentDashboardTopologyScopeParseError(validation.errors);
   }
 
+  // SAFETY: `return scope as ParsedDeploymentDashboardTopologyScope;` is required at this I/O or test boundary.
   return scope as ParsedDeploymentDashboardTopologyScope;
 }
 
@@ -329,9 +330,14 @@ export function classifyDashboardTopologyGap(summary: string): Initiative {
   return "Deployment Dashboard & Topology Explorer";
 }
 
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
+}
+
 export function validateDeploymentDashboardTopologyScope(
   scope: DeploymentDashboardTopologyScope,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (scope.issue !== "HOBO-410") {

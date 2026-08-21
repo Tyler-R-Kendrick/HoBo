@@ -268,8 +268,8 @@ function journeyResult({
       eventCount: rollout.events.length,
       events: rollout.events,
     },
-    ...(promotionGate ? { promotionGate } : {}),
-    ...(rollback ? { rollback } : {}),
+    ...(promotionGate ? { promotionGate } : undefined),
+    ...(rollback ? { rollback } : undefined),
     scopeOut: {
       flagExperimentHarnessImplemented: false,
       sloMetricPipelineImplemented: false,

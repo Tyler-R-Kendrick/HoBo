@@ -5,6 +5,8 @@ import {
   createFakeProvider,
   runHoboYardUp,
 } from "../../../../technical-proofs/self-host-bootstrap-saga-contract/src/self-host-bootstrap-saga.js";
+import { isJsonObject } from "./json.js";
+
 
 export const DEVOPS_SELF_HOST_YARD_JOURNEY_VERSION = "hobo.devops-self-host-yard-journey/v1";
 
@@ -289,7 +291,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
@@ -314,7 +316,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

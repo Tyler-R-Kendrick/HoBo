@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const REQUIRED_DOGFOOD_ALPHA_EVIDENCE = [
   "pilot-cohort-snapshot",
   "workflow-evidence-matrix",
@@ -202,7 +203,7 @@ export const betaPilotDogfoodAlphaEvidence: BetaPilotDogfoodAlphaEvidence = {
 export function validateDogfoodAlphaEvidence(record: BetaPilotDogfoodAlphaEvidence) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["dogfood/alpha evidence record is required"] };
   }
   if (record.issue !== "HOBO-456") {
@@ -263,6 +264,7 @@ export function validateDogfoodAlphaEvidence(record: BetaPilotDogfoodAlphaEviden
   }
   const allowedReasons = new Set(record.followUpPolicy?.allowedReasons ?? []);
   for (const followUp of record.followUpPolicy?.proposedFollowUps ?? []) {
+    // SAFETY: `if (!allowedReasons.has(followUp.reason as FollowUpReason)) {` is required at this I/O or test boundary.
     if (!allowedReasons.has(followUp.reason as FollowUpReason)) {
       errors.push(`unsupported follow-up reason: ${followUp.reason}`);
     }

@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 const VALID_CLAIM_STATES = new Set(["implemented", "simulated-reference", "beta-only", "future-roadmap"]);
 const VALID_RISK_RATINGS = new Set(["low", "medium", "high"]);
 const VALID_PROOF_MODES = new Set(["design-record", "contract-test", "reference-fixture", "live-recording", "manual-review"]);
@@ -131,7 +132,7 @@ export const launchMessagingClaimRegister = {
 export function validateLaunchMessagingClaimRegister(record) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["launch messaging claim register is required"] };
   }
 

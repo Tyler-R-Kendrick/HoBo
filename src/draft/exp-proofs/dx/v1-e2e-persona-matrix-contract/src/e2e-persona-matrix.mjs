@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const REQUIRED_LAUNCH_PERSONAS = [
   "app developer",
   "platform engineer",
@@ -140,7 +141,7 @@ export const launchE2ePersonaMatrix = {
 export function validateLaunchE2ePersonaMatrix(record) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["launch e2e persona matrix record is required"] };
   }
   if (record.issue !== "HOBO-500") {

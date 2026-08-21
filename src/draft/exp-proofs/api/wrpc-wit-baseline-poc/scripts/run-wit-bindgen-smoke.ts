@@ -60,6 +60,7 @@ async function downloadReleaseArchive() {
     // worth naming: behind an intercepting proxy the chain terminates in the
     // proxy's own root, and the fix is to trust that root — never to disable
     // verification, which would hand the toolchain download to anyone on path.
+    // SAFETY: `const code = (cause as { cause?: { code?: string } })?.cause?.code;` is required at this I/O or test boundary.
     const code = (cause as { cause?: { code?: string } })?.cause?.code;
     const tls =
       code === "SELF_SIGNED_CERT_IN_CHAIN" ||

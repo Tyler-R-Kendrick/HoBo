@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export const REQUIRED_ASSURANCE_SECTIONS = Object.freeze([
   "security-posture",
   "tenant-data-lifecycle",
@@ -35,7 +36,6 @@ export const REQUIRED_BOUNDARIES = Object.freeze([
   "release",
 ] as const);
 
-type Phase = "M0" | "M1" | "M2" | "M3" | "M4";
 type AssuranceSectionId = (typeof REQUIRED_ASSURANCE_SECTIONS)[number];
 type M1EvidenceId = (typeof REQUIRED_M1_EVIDENCE)[number];
 type PersonaId = (typeof REQUIRED_PERSONAS)[number];
@@ -428,7 +428,7 @@ export function canCreateComplianceEvidenceFollowUp({
   };
 }
 
-export function classifyComplianceEvidenceRequest(request: unknown): RequestClassification {
+export function classifyComplianceEvidenceRequest(request: JsonValue): RequestClassification {
   const text = String(request ?? "").toLowerCase();
 
   if (/\b(dpa|subprocessor|privacy terms|legal terms|legal)\b/.test(text)) {

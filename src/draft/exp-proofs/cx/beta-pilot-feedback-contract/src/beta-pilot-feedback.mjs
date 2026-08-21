@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 const REQUIRED_INTAKE_FIELDS = ["persona", "environment", "workflow", "severity", "evidence", "customerImpact"];
 const REQUIRED_TRIAGE_DESTINATIONS = ["cutline", "support", "product-ux", "docs", "capability-project"];
 const REQUIRED_RC_PERSONAS = ["app developer", "platform engineer", "support/operator"];
@@ -129,7 +130,7 @@ export const BETA_PILOT_FEEDBACK_CONTRACT = {
 export function validateBetaPilotFeedbackContract(contract) {
   const errors = [];
 
-  if (!contract || typeof contract !== "object") {
+  if (!contract || !isJsonObject(contract)) {
     return { ok: false, errors: ["contract is required"] };
   }
   if (contract.issue !== "HOBO-404") {

@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 const REQUIRED_M1_EVIDENCE = Object.freeze([
   "drift-report-schema",
   "source-of-truth-fixture",
@@ -346,7 +347,7 @@ export function canCreateDriftReconciliationFollowUp({
   };
 }
 
-export function classifyDriftReconciliationDecision(decision: unknown) {
+export function classifyDriftReconciliationDecision(decision: JsonValue) {
   const text = String(decision ?? "").toLowerCase();
 
   if (/\b(provider refresh|provider adapter|live azure|live aws|live gcp|live api)\b/.test(text)) {

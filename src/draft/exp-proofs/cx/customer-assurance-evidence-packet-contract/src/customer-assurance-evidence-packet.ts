@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 type CustomerAssuranceSectionId =
   | "dpa-needs"
   | "subprocessors-providers"
@@ -384,7 +385,7 @@ export function canCreateCustomerAssuranceFollowUp({ phase, m0Accepted }: Follow
   };
 }
 
-export function classifyCustomerAssuranceWork(decision: unknown): WorkClassification {
+export function classifyCustomerAssuranceWork(decision: JsonValue): WorkClassification {
   const text = String(decision ?? "").toLowerCase();
 
   if (/\b(dpa|legal terms|privacy notice|privacy policy|subprocessor|legal)\b/.test(text)) {
@@ -403,9 +404,14 @@ export function classifyCustomerAssuranceWork(decision: unknown): WorkClassifica
   return { owner: "Compliance Evidence Pack", inScope: true };
 }
 
+export interface PacketValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: string[];
+}
+
 export function validateCustomerAssuranceEvidencePacket(
   packet: PacketValidationTarget,
-): Readonly<{ ok: boolean; errors: string[] }> {
+): PacketValidationOutcome {
   const errors = [];
 
   if (packet?.issue !== "HOBO-493") {

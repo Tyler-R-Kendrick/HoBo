@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const MINIMAL_OUTCOME_FIELDS = [
   "intendedBusinessOutcome",
   "successSignal",
@@ -232,7 +233,7 @@ export const PRE_LAUNCH_OUTCOME_CONTRACT = {
 export function validateOutcomeContractDefinition(contract) {
   const errors = [];
 
-  if (!contract || typeof contract !== "object") {
+  if (!contract || !isJsonObject(contract)) {
     return { ok: false, errors: ["contract is required"] };
   }
 
@@ -339,7 +340,7 @@ function hasValue(value) {
   if (Array.isArray(value)) {
     return value.length > 0;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.keys(value).length > 0;
   }
   return value !== undefined && value !== null && value !== "";

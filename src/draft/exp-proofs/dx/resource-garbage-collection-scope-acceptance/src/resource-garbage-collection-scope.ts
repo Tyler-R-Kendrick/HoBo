@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 const REQUIRED_M1_EVIDENCE = Object.freeze([
   "garbage-inventory-schema",
   "cleanup-eligibility-state-machine",
@@ -321,7 +322,7 @@ export function canCreateResourceGarbageCollectionFollowUp({
   };
 }
 
-export function classifyResourceGarbageCollectionDecision(decision: unknown) {
+export function classifyResourceGarbageCollectionDecision(decision: JsonValue) {
   const text = String(decision ?? "").toLowerCase();
 
   if (/\b(provider adapter|provider sweeper|real azure|real aws|real gcp|live cloud)\b/.test(text)) {

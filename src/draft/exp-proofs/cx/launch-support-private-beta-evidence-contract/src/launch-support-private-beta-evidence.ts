@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const REQUIRED_PRIVATE_BETA_SUPPORT_EVIDENCE_IDS = [
   "support-escalation-baseline",
   "support-workflow-intake",
@@ -168,7 +169,7 @@ export const launchSupportPrivateBetaEvidence = {
 export function validateLaunchSupportPrivateBetaEvidence(record) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["private beta support evidence record is required"] };
   }
 

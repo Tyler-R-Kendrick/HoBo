@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export type ThreatReviewPhase = "M0" | "M1" | "M2" | "M3" | "M4";
 export type ThreatReviewSeverity = "critical" | "high" | "medium" | "low";
 export type ThreatReviewExploitability = "public" | "bounded" | "theoretical";
@@ -226,7 +227,7 @@ export const THREAT_MODEL_SECURITY_REVIEW_SCOPE = {
 export function validateThreatModelSecurityReviewScope(record: typeof THREAT_MODEL_SECURITY_REVIEW_SCOPE) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["threat model security review scope record is required"] };
   }
   if (record.issue !== "HOBO-451") errors.push("issue must be HOBO-451");

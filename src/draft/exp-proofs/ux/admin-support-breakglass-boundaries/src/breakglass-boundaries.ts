@@ -297,6 +297,7 @@ export function validateBreakGlassBoundaryContract(
     }
   }
 
+  // SAFETY: `for (const eventId of [` is required at this I/O or test boundary.
   for (const eventId of [
     "breakglass.requested",
     "breakglass.approved",

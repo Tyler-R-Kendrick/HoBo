@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 type TenantDataClassId =
   | "customer-product-data"
   | "telemetry"
@@ -366,7 +367,7 @@ export function canCreateTenantDataFollowUp({ phase, m0Accepted }: FollowUpGateR
   };
 }
 
-export function classifyTenantDataLifecycleDecision(decision: unknown): WorkClassification {
+export function classifyTenantDataLifecycleDecision(decision: JsonValue): WorkClassification {
   const text = String(decision ?? "").toLowerCase();
 
   if (/\b(dpa|legal terms|privacy policy|subprocessor|legal)\b/.test(text)) {

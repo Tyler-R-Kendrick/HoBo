@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const INLINE_BUDGET_SCHEMA = "hobo.inline-budget/v1";
 
 const BUDGET_PERIODS = new Set(["monthly", "weekly", "daily"]);
@@ -7,7 +8,7 @@ function roundUsd(value) {
 }
 
 function requireObject(value, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${path} must be an object`);
   }
   return value;
@@ -25,7 +26,7 @@ function optionalNumber(value, path) {
 }
 
 function requireString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${path} must be a non-empty string`);
   }
   return value;

@@ -209,7 +209,7 @@ export default defineConfig({
 				"packages/control-api/**": { statements: 96, branches: 90, functions: 100, lines: 96 },
 				"packages/control-yard/**": { statements: 93, branches: 87, functions: 91, lines: 93 },
 				"packages/convex/**": { statements: 99, branches: 94, functions: 99, lines: 99 },
-				"packages/core/**": { statements: 88, branches: 78, functions: 91, lines: 89 },
+				"packages/core/**": { statements: 91, branches: 83, functions: 94, lines: 92 },
 				"packages/data/**": { statements: 89, branches: 84, functions: 85, lines: 91 },
 				"packages/data-postgres/**": { statements: 97, branches: 94, functions: 97, lines: 96 },
 				"packages/dispatcher/**": { statements: 87, branches: 73, functions: 93, lines: 89 },

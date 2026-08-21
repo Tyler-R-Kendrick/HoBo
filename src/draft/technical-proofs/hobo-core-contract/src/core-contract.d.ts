@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export type PrincipalKind = "user" | "agent" | "service" | "system";
 export type PortKind = "runtime" | "provider" | "port";
 export type InterfaceStability = "stable" | "preview" | "experimental";
@@ -37,7 +38,7 @@ export interface EventEnvelope<T = unknown> {
   correlationId?: string;
   data: T;
   lane?: string;
-  meta?: Record<string, unknown>;
+  meta?: JsonObject;
 }
 
 export interface CapabilityManifestBundle {
@@ -59,13 +60,13 @@ export interface CapabilityManifestBundle {
   };
   auth: {
     issuer: string;
-    flows: Array<Record<string, unknown>>;
+    flows: Array<JsonObject>;
     scopeModel: string;
     resourceIndicators: string[];
     tokenLifetimeSec: number;
     audit: { events: string[] };
   };
-  cost: Record<string, unknown>;
+  cost: JsonObject;
 }
 
 export interface Container {

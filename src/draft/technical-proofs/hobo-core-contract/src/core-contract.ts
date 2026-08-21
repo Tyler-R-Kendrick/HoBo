@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const CORE_SCHEMA_VERSION = "hobo.core/v1";
 export const CAPABILITY_MANIFEST_SCHEMA_ID =
@@ -193,7 +195,7 @@ export function toOcsfAuditEvent(envelopeInput) {
 
 export function toOtlpSpan(envelopeInput) {
   const envelope = parseEventEnvelope(envelopeInput);
-  const traceparent = typeof envelope.meta?.traceparent === "string" ? envelope.meta.traceparent : "";
+  const traceparent = isJsonString(envelope.meta?.traceparent) ? envelope.meta.traceparent : "";
   const match = TRACEPARENT.exec(traceparent);
   return deepFreeze({
     traceId: match?.[1] ?? hashHex(`${envelope.tenant}:${envelope.correlationId ?? envelope.id}`).slice(0, 32),
@@ -384,9 +386,9 @@ function parseFlow(input, index, options) {
   return {
     type,
     authorizationServer: httpsUrl(source.authorizationServer, `auth.flows[${index}].authorizationServer`),
-    ...(source.audience === undefined ? {} : { audience: nonEmptyString(source.audience, `auth.flows[${index}].audience`) }),
+    ...(source.audience === undefined ? undefined : { audience: nonEmptyString(source.audience, `auth.flows[${index}].audience`) }),
     scopes: uniqueStringArray(source.scopes, `auth.flows[${index}].scopes`, { minLength: 1 }),
-    ...(source.idJag === undefined ? {} : { idJag: source.idJag === true }),
+    ...(source.idJag === undefined ? undefined : { idJag: source.idJag === true }),
   };
 }
 
@@ -450,7 +452,7 @@ function redactForAudit(input) {
   if (Array.isArray(input)) {
     return input.map((item) => redactForAudit(item));
   }
-  if (!input || typeof input !== "object") {
+  if (!input || !isJsonObject(input)) {
     return input;
   }
   const redacted = {};
@@ -476,7 +478,7 @@ function parseInterfaceRef(value, field) {
 }
 
 function expectObject(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${field} must be an object`);
   }
   return value;
@@ -519,7 +521,7 @@ function enumValue(value, allowed, field) {
 }
 
 function nonEmptyString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -599,7 +601,7 @@ function hashHex(value) {
 }
 
 function deepFreeze(value) {
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     Object.freeze(value);
     for (const nested of Object.values(value)) {
       deepFreeze(nested);

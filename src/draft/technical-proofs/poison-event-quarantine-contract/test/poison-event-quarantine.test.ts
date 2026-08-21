@@ -9,6 +9,8 @@ import {
   doctorQuarantineReport,
   replayWithQuarantine,
 } from "../src/poison-event-quarantine.js";
+import { isJsonString } from "../src/json.js";
+
 
 test("projection poison event emits a quarantine fact, keeps the original log, and continues folding", () => {
   const projection = createProjectionFold({
@@ -283,7 +285,7 @@ function event(streamId, seq, type, data) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string") {
+  if (!isJsonString(value)) {
     throw new Error(`${field} must be a string`);
   }
 }

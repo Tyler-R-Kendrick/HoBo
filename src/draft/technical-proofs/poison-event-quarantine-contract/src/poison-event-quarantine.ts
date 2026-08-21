@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export class FoldExecutionError extends Error {
   constructor({ fold, event, cause }) {
@@ -148,7 +150,7 @@ function createFold(input) {
 }
 
 function normalizeFold(fold) {
-  if (!fold || typeof fold !== "object") {
+  if (!fold || !isJsonObject(fold)) {
     throw new TypeError("fold is required");
   }
   assertNonEmptyString(fold.name, "fold.name");
@@ -175,7 +177,7 @@ function normalizeEvents(events) {
 }
 
 function normalizeEvent(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError("event must be an object");
   }
   const streamId = assertNonEmptyString(input.streamId, "event.streamId");
@@ -214,7 +216,7 @@ function validateQuarantineFact(event) {
     throw new QuarantineFactError("quarantine fact event is required");
   }
   const data = event.data;
-  if (!data || typeof data !== "object" || Array.isArray(data)) {
+  if (!data || !isJsonObject(data) || Array.isArray(data)) {
     throw new QuarantineFactError("quarantine fact data must be an object");
   }
 
@@ -273,7 +275,7 @@ function compareEventOrder(left, right) {
 }
 
 function assertFunction(value, field) {
-  if (typeof value !== "function") {
+  if (!(value instanceof Function)) {
     throw new TypeError(`${field} must be a function`);
   }
 }
@@ -293,14 +295,14 @@ function assertSeqForQuarantine(value, field) {
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${field} must be a non-empty string`);
   }
   return value;
 }
 
 function assertNonEmptyForQuarantine(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new QuarantineFactError(`${field} must be a non-empty string`);
   }
   return value;
@@ -318,7 +320,7 @@ function sortJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortJson);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -333,7 +335,7 @@ function freezeClone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   Object.freeze(value);
@@ -347,5 +349,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

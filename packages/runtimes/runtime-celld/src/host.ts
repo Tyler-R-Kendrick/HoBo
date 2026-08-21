@@ -1,3 +1,4 @@
+import type { JsonValue } from "./json.js";
 import {
 	CELLD_ON_FLUX,
 	type CelldCasProbe,
@@ -28,7 +29,7 @@ export interface CelldRuntimeBundle {
 }
 
 export function createCelldRuntimeHost(
-	input: unknown,
+	input: JsonValue,
 	cas?: CelldCasProbe,
 ): CelldRuntimeBundle {
 	const config = parseCelldRuntimeConfig(input);

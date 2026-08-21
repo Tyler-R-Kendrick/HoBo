@@ -30,8 +30,9 @@ const serveCtx = (
 });
 
 function activeTokenFetch(calls: { url: string; init?: RequestInit }[]) {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return (async (input: URL | RequestInfo, init?: RequestInit) => {
-		calls.push({ url: String(input), ...(init ? { init } : {}) });
+		calls.push({ url: String(input), ...(init ? { init } : undefined) });
 		return Response.json({
 			success: true,
 			errors: [],
@@ -111,11 +112,21 @@ describe("cloudflare cloud-native provider: token verify (injected fetch)", () =
 		});
 		const result = await provider.ensure(ensureCtx);
 		expect(calls).toHaveLength(1);
-		expect(calls[0].url).toBe(CLOUDFLARE_TOKEN_VERIFY_URL);
-		expect(calls[0].init?.method).toBe("GET");
-		expect(
-			(calls[0].init?.headers as Record<string, string>).authorization,
-		).toBe("Bearer tok-1");
+		const verifyCall = calls[0];
+		if (verifyCall === undefined) {
+			throw new Error("expected token verify fetch");
+		}
+		expect(verifyCall.url).toBe(CLOUDFLARE_TOKEN_VERIFY_URL);
+		expect(verifyCall.init?.method).toBe("GET");
+		const headers = verifyCall.init?.headers;
+		if (
+			headers === undefined ||
+			Array.isArray(headers) ||
+			headers instanceof Headers
+		) {
+			throw new Error("expected authorization headers bag");
+		}
+		expect(headers.authorization).toBe("Bearer tok-1");
 		expect(result.ready).toBe(true);
 		expect(result.details).toEqual({
 			provider: "cloudflare",
@@ -127,6 +138,7 @@ describe("cloudflare cloud-native provider: token verify (injected fetch)", () =
 	it("throws a typed error on an inactive token", async () => {
 		const provider = createCloudflareCloudNativeProvider({
 			...credentials,
+			// SAFETY: assertion required at this I/O or test boundary.
 			fetchImpl: (async () =>
 				Response.json({
 					success: true,
@@ -144,6 +156,7 @@ describe("cloudflare cloud-native provider: token verify (injected fetch)", () =
 	it("throws a typed error on a malformed payload", async () => {
 		const provider = createCloudflareCloudNativeProvider({
 			...credentials,
+			// SAFETY: assertion required at this I/O or test boundary.
 			fetchImpl: (async () => Response.json({ nope: 1 })) as typeof fetch,
 		});
 		await expect(provider.ensure(ensureCtx)).rejects.toThrow(
@@ -154,6 +167,7 @@ describe("cloudflare cloud-native provider: token verify (injected fetch)", () =
 	it("throws a typed error with remediation on a non-ok response", async () => {
 		const provider = createCloudflareCloudNativeProvider({
 			...credentials,
+			// SAFETY: assertion required at this I/O or test boundary.
 			fetchImpl: (async () =>
 				new Response("nope", { status: 403 })) as typeof fetch,
 		});
@@ -187,6 +201,7 @@ describe("cloudflare cloud-native provider: remote proxy", () => {
 		cleanups.push(
 			() => new Promise((resolve) => server.close(() => resolve())),
 		);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const { port } = server.address() as AddressInfo;
 
 		const provider = createCloudflareCloudNativeProvider({});

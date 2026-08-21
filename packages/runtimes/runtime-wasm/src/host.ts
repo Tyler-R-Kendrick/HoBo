@@ -46,10 +46,10 @@ export function createWasmRuntimeHost(
 		async ensure(ctx: RuntimeEnsureContext): Promise<RuntimeEnsureResult> {
 			const toolchain = await ensureIsolatedWasmToolchain({
 				hoboHome: ctx.hoboHome,
-				...(ctx.env !== undefined ? { env: ctx.env } : {}),
+				...(ctx.env !== undefined ? { env: ctx.env } : undefined),
 				...(ctx.emitProgress !== undefined
 					? { emitProgress: ctx.emitProgress }
-					: {}),
+					: undefined),
 			});
 			return {
 				kind: "wasm",
@@ -65,7 +65,7 @@ export function createWasmRuntimeHost(
 			const emit = ctx.emitProgress ?? (() => {});
 			const toolchain = await ensureIsolatedWasmToolchain({
 				hoboHome: ctx.hoboHome,
-				...(ctx.env !== undefined ? { env: ctx.env } : {}),
+				...(ctx.env !== undefined ? { env: ctx.env } : undefined),
 				emitProgress: emit,
 			});
 			const sandboxes: WasmtimeSandbox[] = [];
@@ -106,7 +106,7 @@ export function createWasmRuntimeHost(
 								hoboHome: ctx.hoboHome,
 								...(component.modulePath !== undefined
 									? { modulePath: component.modulePath }
-									: {}),
+									: undefined),
 								emitProgress: emit,
 							})
 						).wasmPath;

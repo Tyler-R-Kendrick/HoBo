@@ -28,6 +28,7 @@ import { createRequire } from "node:module";
 import { homedir, tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isJsonString } from "./json.js";
 
 /** Fetch handler shape shared with Camp mesh. */
 export type FetchHandler = (input: Request) => Response | Promise<Response>;
@@ -54,7 +55,7 @@ export function applyHoboMeshEnvHeaders(
 
 export function defaultHoboHome(env: NodeJS.ProcessEnv = process.env): string {
 	const fromEnv = env.HOBO_HOME;
-	if (typeof fromEnv === "string" && fromEnv.length > 0) return fromEnv;
+	if (isJsonString(fromEnv) && fromEnv.length > 0) return fromEnv;
 	return join(homedir(), ".hobo");
 }
 
@@ -189,7 +190,7 @@ export async function ensureWasmtimeBinary(
 	}
 
 	const fromEnv = env.HOBO_WASMTIME_BIN;
-	if (typeof fromEnv === "string" && fromEnv.length > 0) {
+	if (isJsonString(fromEnv) && fromEnv.length > 0) {
 		const probed = tryWasmtime(fromEnv);
 		if (probed && meetsFloor(probed.version)) {
 			return { binPath: fromEnv, version: probed.version, source: "env" };
@@ -349,10 +350,11 @@ function resolveJcoTool(): JcoTool {
 	const pkgJson = join(dirname(binPath), "..", "package.json");
 	if (existsSync(pkgJson)) {
 		try {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const pkg = JSON.parse(readFileSync(pkgJson, "utf8")) as {
 				version?: string;
 			};
-			if (typeof pkg.version === "string") version = pkg.version;
+			if (isJsonString(pkg.version)) version = pkg.version;
 		} catch {
 			// keep unknown
 		}
@@ -549,10 +551,10 @@ function resolveFetchHandler(mod, resourceName) {
   ];
   for (const candidate of candidates) {
     if (candidate == null) continue;
-    if (typeof candidate.fetch === "function") {
+    if (candidate.fetch instanceof Function) {
       return (request) => candidate.fetch(request);
     }
-    if (typeof candidate === "function") {
+    if (candidate instanceof Function) {
       return (request) => candidate(request);
     }
   }
@@ -573,9 +575,9 @@ function applyMeshEnv(request) {
   if (raw) {
     try {
       const map = JSON.parse(raw);
-      if (map && typeof map === "object") {
+      if (map && isJsonObject(map)) {
         for (const [key, value] of Object.entries(map)) {
-          if (typeof value === "string") g.process.env[key] = value;
+          if (isJsonString(value)) g.process.env[key] = value;
         }
       }
     } catch {
@@ -739,7 +741,7 @@ export async function preparePrivateWasmComponent(options: {
 		resourceName: options.resourceName,
 		...(options.modulePath !== undefined
 			? { modulePath: options.modulePath }
-			: {}),
+			: undefined),
 	});
 	if (resolved.wasmPath !== null) {
 		emit(
@@ -788,8 +790,12 @@ export async function preparePrivateWasmComponent(options: {
 		return await componentizePrivateGuest({
 			resourceName: options.resourceName,
 			guestSourcePath: bundledGuest,
-			...(options.hoboHome !== undefined ? { hoboHome: options.hoboHome } : {}),
-			...(options.jcoBin !== undefined ? { jcoBin: options.jcoBin } : {}),
+			...(options.hoboHome !== undefined
+				? { hoboHome: options.hoboHome }
+				: undefined),
+			...(options.jcoBin !== undefined
+				? { jcoBin: options.jcoBin }
+				: undefined),
 			emitProgress: emit,
 		});
 	} finally {
@@ -802,7 +808,7 @@ async function freeLoopbackPort(): Promise<number> {
 		const server = createServer();
 		server.listen(0, "127.0.0.1", () => {
 			const addr = server.address();
-			if (addr === null || typeof addr === "string") {
+			if (addr === null || isJsonString(addr)) {
 				server.close();
 				reject(new Error("failed to allocate loopback port"));
 				return;

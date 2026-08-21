@@ -1,5 +1,11 @@
 import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { createServer } from "node:http";
+import {
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 /**
  * HTTP-shaped request/response for the kubectl integration boundary.
@@ -35,6 +41,12 @@ export interface ProcessKubectlTransportOptions {
 	readonly env?: NodeJS.ProcessEnv;
 }
 
+interface KubectlRunResult {
+	readonly status: number;
+	readonly stdout: string;
+	readonly stderr: string;
+}
+
 export class KubectlUnavailableError extends Error {
 	readonly code = "HOBO_KUBECTL_UNAVAILABLE";
 	constructor(message: string) {
@@ -48,7 +60,7 @@ function freeLoopbackPort(): Promise<number> {
 		const server = createServer();
 		server.listen(0, "127.0.0.1", () => {
 			const addr = server.address();
-			if (addr === null || typeof addr === "string") {
+			if (addr === null || isJsonString(addr)) {
 				server.close();
 				reject(new Error("failed to allocate loopback port"));
 				return;
@@ -77,10 +89,7 @@ export function createProcessKubectlTransport(
 		return options.context ? ["--context", options.context] : [];
 	}
 
-	function run(
-		args: readonly string[],
-		input?: string,
-	): { status: number; stdout: string; stderr: string } {
+	function run(args: readonly string[], input?: string): KubectlRunResult {
 		const result = spawnSync(bin, [...baseArgs(), ...args], {
 			env: { ...env },
 			encoding: "utf8",
@@ -115,7 +124,8 @@ export function createProcessKubectlTransport(
 		name: "KubernetesClusterApi",
 		async handle(request: KubectlRequest): Promise<KubectlResponse> {
 			const path = request.path;
-			const body = (request.body ?? {}) as Record<string, unknown>;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const body = (request.body ?? {}) as JsonObject;
 
 			if (path === "/kubectl/version") {
 				const result = run(["version", "--client=true", "-o", "json"]);
@@ -130,6 +140,7 @@ export function createProcessKubectlTransport(
 				}
 				let clientVersion: string | null = null;
 				try {
+					// SAFETY: assertion required at this I/O or test boundary.
 					const parsed = JSON.parse(result.stdout) as {
 						clientVersion?: { gitVersion?: string };
 					};
@@ -173,12 +184,15 @@ export function createProcessKubectlTransport(
 
 			if (path === "/kubectl/apply") {
 				const namespace = String(body.namespace ?? "default");
+				// SAFETY: assertion required at this I/O or test boundary.
 				const manifests = (body.manifests as unknown[]) ?? [];
 				for (const manifest of manifests) {
 					const doc = {
+						// SAFETY: assertion required at this I/O or test boundary.
 						...(manifest as object),
 						metadata: {
-							...((manifest as { metadata?: object }).metadata ?? {}),
+							// SAFETY: assertion required at this I/O or test boundary.
+							...(manifest as { metadata?: object }).metadata,
 							namespace,
 						},
 					};
@@ -308,21 +322,21 @@ export function createProcessKubectlTransport(
 				}
 				const target = `${forward.loopbackUrl}${reqPath.startsWith("/") ? reqPath : `/${reqPath}`}`;
 				const headers =
+					// SAFETY: assertion required at this I/O or test boundary.
 					(body.headers as Record<string, string> | undefined) ?? {};
 				const init: RequestInit = { method, headers };
 				if (body.body !== undefined && method !== "GET" && method !== "HEAD") {
-					init.body =
-						typeof body.body === "string"
-							? body.body
-							: JSON.stringify(body.body);
+					init.body = isJsonString(body.body)
+						? body.body
+						: JSON.stringify(body.body);
 				}
 				const response = await fetch(target, init);
 				const contentType = response.headers.get("content-type") ?? "";
 				const text = await response.text();
-				let json: unknown;
+				let json: JsonValue | undefined;
 				if (contentType.includes("application/json")) {
 					try {
-						json = JSON.parse(text);
+						json = parseJsonValue(text);
 					} catch {
 						json = undefined;
 					}

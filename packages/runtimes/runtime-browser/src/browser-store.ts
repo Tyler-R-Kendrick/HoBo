@@ -25,8 +25,8 @@ import {
 	createMemoryNodeSqliteDriver,
 	SqliteJournal,
 } from "@hobo/storage-sqlite";
-
-import { detectBrowserPersistence } from "./detect.js";
+import { detectBrowserPersistence, hasOpfs } from "./detect.js";
+import type { JsonValue } from "./json.js";
 import type {
 	BrowserPersistenceMode,
 	BrowserStorageOpenOptions,
@@ -42,14 +42,14 @@ export interface BrowserEventStore extends DurableEventStore {
 export async function createBrowserEventStore(
 	options: BrowserStorageOpenOptions,
 ): Promise<BrowserEventStore> {
-	const detectOpts: { allowTransient?: boolean; multiTab?: boolean } = {};
-	if (options.allowTransient !== undefined) {
-		detectOpts.allowTransient = options.allowTransient;
-	}
-	if (options.multiTab !== undefined) {
-		detectOpts.multiTab = options.multiTab;
-	}
-	const detection = detectBrowserPersistence(detectOpts);
+	const detection = detectBrowserPersistence({
+		...(options.allowTransient !== undefined
+			? { allowTransient: options.allowTransient }
+			: undefined),
+		...(options.multiTab !== undefined
+			? { multiTab: options.multiTab }
+			: undefined),
+	});
 
 	if (detection.mode === "unavailable") {
 		throw new PersistenceUnavailableError(
@@ -113,7 +113,7 @@ function wrapJournal(
 		},
 		snapshot(
 			streamId: string,
-			state: unknown,
+			state: JsonValue,
 			seq: number,
 		): Promise<SnapshotRecord> {
 			return journal.snapshot(streamId, state, seq);
@@ -150,12 +150,7 @@ async function tryOpenSqliteWasm(
 		return null;
 	}
 	// Package present does not imply OPFS VFS is configured. Require real OPFS.
-	const hasOpfs =
-		typeof navigator !== "undefined" &&
-		navigator.storage &&
-		typeof (navigator.storage as { getDirectory?: unknown }).getDirectory ===
-			"function";
-	if (!hasOpfs) {
+	if (!hasOpfs()) {
 		return null;
 	}
 	// Real Worker+OPFS open is not yet complete in this Node-hosted agent run;

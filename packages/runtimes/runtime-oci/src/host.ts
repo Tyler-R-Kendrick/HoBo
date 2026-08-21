@@ -87,7 +87,7 @@ export function createOciRuntimeHost(
 					const { ensureKubectlBinary } = await import("./kubectl-ensure.js");
 					const bin = await ensureKubectlBinary({
 						hoboHome: ctx.hoboHome,
-						...(ctx.env !== undefined ? { env: ctx.env } : {}),
+						...(ctx.env !== undefined ? { env: ctx.env } : undefined),
 						download: true,
 						emitProgress: emit,
 					});
@@ -103,7 +103,7 @@ export function createOciRuntimeHost(
 					...(ctx.env ?? process.env),
 					...(equippedBin !== undefined
 						? { HOBO_KUBECTL_BIN: equippedBin }
-						: {}),
+						: undefined),
 				},
 			});
 			const probe = await k8s.probe();
@@ -167,17 +167,17 @@ export function createOciRuntimeHost(
 						resourceName: dep.resourceName,
 						imageRef: dep.image,
 						namespace,
-						...(dep.env !== undefined ? { bindleEnv: dep.env } : {}),
+						...(dep.env !== undefined ? { bindleEnv: dep.env } : undefined),
 						...(ctx.bindleEnv !== undefined
 							? {
 									bindleEnv: {
-										...(dep.env ?? {}),
+										...dep.env,
 										...ctx.bindleEnv,
 									},
 								}
 							: dep.env !== undefined
 								? { bindleEnv: dep.env }
-								: {}),
+								: undefined),
 						containerPort: port,
 						labels: { "hobo.dev/dependency": "container" },
 					});
@@ -235,7 +235,7 @@ export function createOciRuntimeHost(
 						namespace,
 						...(ctx.bindleEnv !== undefined
 							? { bindleEnv: ctx.bindleEnv }
-							: {}),
+							: undefined),
 						labels: {
 							"hobo.dev/bindle": "true",
 							"hobo.dev/wasm-digest": packed.digest
@@ -255,13 +255,14 @@ export function createOciRuntimeHost(
 							].join("\n"),
 						],
 					});
+					// SAFETY: assertion required at this I/O or test boundary.
 					const deployment = manifests[0] as {
 						metadata?: { annotations?: Record<string, string> };
 					};
 					deployment.metadata = {
 						...deployment.metadata,
 						annotations: {
-							...(deployment.metadata?.annotations ?? {}),
+							...deployment.metadata?.annotations,
 							"hobo.dev/wasm-image-ref": packed.imageRef,
 							"hobo.dev/wasm-digest": packed.digest,
 							"hobo.dev/wasm-layout": packed.layoutDir,

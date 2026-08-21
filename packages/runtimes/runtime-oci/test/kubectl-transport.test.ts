@@ -51,7 +51,7 @@ function transport(bin: string, context?: string) {
 	return createProcessKubectlTransport({
 		kubectlBin: bin,
 		env: {},
-		...(context !== undefined ? { context } : {}),
+		...(context !== undefined ? { context } : undefined),
 	});
 }
 

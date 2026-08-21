@@ -23,6 +23,15 @@ import {
 	UPSTASH_START_REDIS_URL,
 } from "../src/client.js";
 import { isProviderError } from "../src/errors.js";
+import {
+	isJsonArray,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../src/json.js";
 import type { TransportRequest, UpstashTransport } from "../src/transport.js";
 
 type PactHeaders = Readonly<Record<string, string>>;
@@ -50,47 +59,108 @@ type PactFile = {
 	readonly interactions: readonly PactInteraction[];
 };
 
+function jsonStringMap(value: JsonValue | undefined) {
+	if (!isJsonObject(value)) return {};
+	const mapped: { [key: string]: string } = {};
+	for (const [key, entry] of Object.entries(value)) {
+		if (isJsonString(entry)) mapped[key] = entry;
+	}
+	return mapped;
+}
+
+function parseInteraction(entry: JsonObject): PactInteraction | undefined {
+	const request = isJsonObject(entry.request) ? entry.request : undefined;
+	const response = isJsonObject(entry.response) ? entry.response : undefined;
+	if (
+		!isJsonString(entry.description) ||
+		request === undefined ||
+		response === undefined ||
+		!isJsonString(request.method) ||
+		!isJsonString(request.path)
+	) {
+		return undefined;
+	}
+	return {
+		description: entry.description,
+		request: {
+			method: request.method,
+			path: request.path,
+			headers: jsonStringMap(request.headers),
+		},
+		response: {
+			status: isJsonNumber(response.status) ? response.status : 0,
+			headers: jsonStringMap(response.headers),
+			body: isJsonString(response.body) ? response.body : undefined,
+		},
+	};
+}
+
 /**
  * Parse the pact rather than trusting its shape.
  *
  * The file is checked-in JSON, so this is not a security boundary — it is a
  * legibility one. A test that reads `pact.interactions[0].request.method` off
- * an `unknown` and fails with "cannot read property of undefined" three
+ * an unparsed value and fails with "cannot read property of undefined" three
  * assertions later is worse than one that says the pact is malformed.
  */
 function loadPact(): PactFile {
-	const raw = readFileSync(
-		fileURLToPath(
-			new URL(
-				"../contracts/provider-upstash-start-redis.pact.json",
-				import.meta.url,
+	const decoded = parseJsonObject(
+		readFileSync(
+			fileURLToPath(
+				new URL(
+					"../contracts/provider-upstash-start-redis.pact.json",
+					import.meta.url,
+				),
 			),
+			"utf8",
 		),
-		"utf8",
 	);
-	const decoded: unknown = JSON.parse(raw);
-	if (typeof decoded !== "object" || decoded === null) {
-		throw new Error("the pact file is not a JSON object");
-	}
-	const candidate = decoded as Partial<PactFile>;
+	const consumer = isJsonObject(decoded.consumer)
+		? decoded.consumer
+		: undefined;
+	const provider = isJsonObject(decoded.provider)
+		? decoded.provider
+		: undefined;
+	const metadata = isJsonObject(decoded.metadata)
+		? decoded.metadata
+		: undefined;
+	const source = isJsonObject(metadata?.source) ? metadata.source : undefined;
+	const interactionsRaw = decoded.interactions;
 	if (
-		!Array.isArray(candidate.interactions) ||
-		candidate.interactions.length === 0
+		!isJsonString(consumer?.name) ||
+		!isJsonString(provider?.name) ||
+		!isJsonString(source?.checkedAt) ||
+		!isJsonString(source?.url) ||
+		!isJsonArray(interactionsRaw) ||
+		interactionsRaw.length === 0
 	) {
-		throw new Error("the pact file declares no interactions");
+		throw new Error("the pact file is malformed");
 	}
-	if (
-		candidate.consumer?.name === undefined ||
-		candidate.provider?.name === undefined
-	) {
-		throw new Error("the pact file is missing its consumer or provider name");
+	const interactions: PactInteraction[] = [];
+	for (const entry of interactionsRaw) {
+		if (!isJsonObject(entry)) {
+			throw new Error("the pact file has a malformed interaction");
+		}
+		const parsed = parseInteraction(entry);
+		if (parsed === undefined) {
+			throw new Error("the pact file has a malformed interaction");
+		}
+		interactions.push(parsed);
 	}
-	if (candidate.metadata?.source?.checkedAt === undefined) {
-		throw new Error(
-			"the pact file does not record when its source was checked",
-		);
+	return {
+		consumer: { name: consumer.name },
+		provider: { name: provider.name },
+		metadata: { source: { url: source.url, checkedAt: source.checkedAt } },
+		interactions,
+	};
+}
+
+function requiredHeader(headers: PactHeaders | undefined, name: string) {
+	const value = headers?.[name];
+	if (value === undefined) {
+		throw new Error(`the pact request is missing ${name}`);
 	}
-	return candidate as PactFile;
+	return value;
 }
 
 const pact = loadPact();
@@ -166,7 +236,7 @@ describe("the pact file itself", () => {
 
 describe("create, verified against the pact", () => {
 	const create = interaction("create a temporary Redis database");
-	const key = create.request.headers?.["Idempotency-Key"] as string;
+	const key = requiredHeader(create.request.headers, "Idempotency-Key");
 
 	it("sends the method and path the pact declares", async () => {
 		const transport = transportFor(create.response);
@@ -183,9 +253,11 @@ describe("create, verified against the pact", () => {
 
 		await clientOver(transport).createDatabase({ idempotencyKey: key });
 
-		expect(
-			headerOf(transport.requests[0] as TransportRequest, "Idempotency-Key"),
-		).toBe(key);
+		const request = transport.requests[0];
+		if (request === undefined) {
+			throw new Error("the client sent no request");
+		}
+		expect(headerOf(request, "Idempotency-Key")).toBe(key);
 	});
 
 	it("asks for the markdown the pact returns", async () => {
@@ -193,9 +265,11 @@ describe("create, verified against the pact", () => {
 
 		await clientOver(transport).createDatabase({ idempotencyKey: key });
 
-		expect(
-			headerOf(transport.requests[0] as TransportRequest, "Accept"),
-		).toContain("text/markdown");
+		const request = transport.requests[0];
+		if (request === undefined) {
+			throw new Error("the client sent no request");
+		}
+		expect(headerOf(request, "Accept")).toContain("text/markdown");
 	});
 
 	it("parses the pact's recorded response into the documented fields", async () => {
@@ -215,7 +289,7 @@ describe("create, verified against the pact", () => {
 describe("adoption, verified against the pact", () => {
 	const create = interaction("create a temporary Redis database");
 	const adopt = interaction("re-POSTing the same idempotency key");
-	const key = create.request.headers?.["Idempotency-Key"] as string;
+	const key = requiredHeader(create.request.headers, "Idempotency-Key");
 
 	it("re-POSTs the original key rather than creating a second database", async () => {
 		// The pact's adoption interaction is the same request as the create.
@@ -252,7 +326,7 @@ describe("rate limiting, verified against the pact", () => {
 				idempotencyKey: "fa1cefa1-ce00-4000-8000-000000000002",
 			}),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) &&
 				error.code === "PROVIDER_RATE_LIMITED" &&
 				error.retryable &&

@@ -32,6 +32,7 @@ import {
 	UPSTASH_STRUCTURED_CAPABILITIES,
 } from "../src/definition.js";
 import { isProviderError } from "../src/errors.js";
+import { isJsonArray, isJsonString, parseJsonValue } from "../src/json.js";
 import {
 	createUpstashRestExecutor,
 	parseRestReply,
@@ -49,19 +50,18 @@ import { FAKE_REST_TOKEN, FAKE_REST_URL } from "./fixtures/index.js";
  * a way the real one is not.
  */
 function parseCommandBody(body: string | undefined): RedisCommand {
-	const decoded: unknown = JSON.parse(body ?? "null");
-	assert.ok(Array.isArray(decoded), "the REST body must be a JSON array");
+	const decoded = parseJsonValue(body ?? "null");
+	assert.ok(isJsonArray(decoded), "the REST body must be a JSON array");
 	assert.ok(decoded.length > 0, "a command must have a verb");
 	const parts: string[] = [];
 	for (const element of decoded) {
-		assert.equal(
-			typeof element,
-			"string",
-			"every command element must be a string",
-		);
-		parts.push(element as string);
+		assert.ok(isJsonString(element), "every command element must be a string");
+		parts.push(element);
 	}
-	const [verb, ...args] = parts as [string, ...string[]];
+	const [verb, ...args] = parts;
+	if (verb === undefined) {
+		throw new Error("a command must have a verb");
+	}
 	return [verb, ...args];
 }
 
@@ -71,13 +71,15 @@ function parseCommandBody(body: string | undefined): RedisCommand {
  * Everything on the wire is real: the JSON command array, the bearer header,
  * the `{"result": …}` / `{"error": …}` envelope. Only the server is local.
  */
-function createReferenceRestTransport(
-	options: { readonly maxValueBytes?: number } = {},
-): {
+type ReferenceRestHarness = {
 	readonly transport: UpstashTransport;
 	readonly store: ReferenceStore;
 	readonly authorizations: readonly string[];
-} {
+};
+
+function createReferenceRestTransport(
+	options: { readonly maxValueBytes?: number } = {},
+): ReferenceRestHarness {
 	const store = createReferenceRedisStore(
 		options.maxValueBytes !== undefined
 			? { maxValueBytes: options.maxValueBytes }
@@ -127,10 +129,12 @@ const REFERENCE_MAX_VALUE_BYTES = 64 * 1024;
  * reference store's clock in here lets the expiry cases run against a server
  * whose clock we own, which is the whole point of a reference implementation.
  */
-function offlineHarness(): {
+type OfflineHarness = {
 	readonly executor: KvRedisExecutor;
 	readonly authorizations: readonly string[];
-} {
+};
+
+function offlineHarness(): OfflineHarness {
 	const { transport, store, authorizations } = createReferenceRestTransport({
 		maxValueBytes: REFERENCE_MAX_VALUE_BYTES,
 	});
@@ -197,7 +201,7 @@ describe("createUpstashRestExecutor", () => {
 
 		await assert.rejects(
 			executor.execute(["PING"]),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "PROVIDER_AUTH_FAILED",
 		);
 	});
@@ -211,7 +215,7 @@ describe("createUpstashRestExecutor", () => {
 
 		await assert.rejects(
 			executor.execute(["PING"]),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "LEASE_EXPIRED",
 		);
 	});
@@ -238,7 +242,7 @@ describe("parseRestReply", () => {
 	it("refuses an envelope with neither result nor error", () => {
 		assert.throws(
 			() => parseRestReply(JSON.stringify({ status: "ok" })),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "PROVIDER_CONTRACT_CHANGED",
 		);
 	});
@@ -246,7 +250,7 @@ describe("parseRestReply", () => {
 	it("refuses a reply value outside the RESP value space", () => {
 		assert.throws(
 			() => parseRestReply(JSON.stringify({ result: { nested: "object" } })),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) && error.code === "PROVIDER_CONTRACT_CHANGED",
 		);
 	});

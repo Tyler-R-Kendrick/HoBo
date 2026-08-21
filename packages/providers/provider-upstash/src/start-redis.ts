@@ -36,6 +36,12 @@
  */
 import type { StartRedisDatabase as StartRedisDatabaseWire } from "./_generated/temporary_redis_pb.js";
 import { redactProviderText, UpstashProviderError } from "./errors.js";
+import {
+	isJsonNumber,
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import type { DomainView } from "./wire.js";
 
 /**
@@ -119,22 +125,39 @@ const ENDPOINT =
 const TOKEN = /^[A-Za-z0-9_=-]{20,1024}$/u;
 const EXPIRES = /^(\d{4}-\d{2}-\d{2}) \((\d{1,3}) days? from creation\)\.?$/u;
 const METRICS_PREFIX = "https://upstash.com/start-redis/metrics/";
-// Detecting control characters in an untrusted document is the point. Tab, CR,
-// and LF are excluded because the markdown legitimately contains them.
-// biome-ignore lint/suspicious/noControlCharactersInRegex: matching them is the purpose
-const CONTROL_CHARS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/u;
+function hasDisallowedControl(text: string): boolean {
+	for (const ch of text) {
+		const code = ch.charCodeAt(0);
+		if (code === 9 || code === 10 || code === 13) continue;
+		if (code <= 31 || code === 127) return true;
+	}
+	return false;
+}
 
 function contractError(
 	message: string,
-	detail?: Record<string, string | number>,
+	detail?: { preview?: string; length?: number; databaseId?: string },
 ): never {
 	throw new UpstashProviderError("PROVIDER_CONTRACT_CHANGED", message, {
-		...(detail !== undefined ? { detail } : {}),
+		...(detail !== undefined ? { detail } : undefined),
 	});
 }
 
+function isExpectedFieldLabel(value: string): value is ExpectedFieldLabel {
+	switch (value) {
+		case "Database ID":
+		case "Endpoint":
+		case "Token":
+		case "Metrics":
+		case "Expires":
+			return true;
+		default:
+			return false;
+	}
+}
+
 function boundedLines(body: string): readonly string[] {
-	if (typeof body !== "string" || body.length === 0) {
+	if (body.length === 0) {
 		contractError("start-redis response body was empty");
 	}
 	const bytes = Buffer.byteLength(body, "utf8");
@@ -143,7 +166,7 @@ function boundedLines(body: string): readonly string[] {
 			`start-redis response is ${bytes} bytes, above the ${MAX_PAYLOAD_BYTES} byte ceiling`,
 		);
 	}
-	if (CONTROL_CHARS.test(body)) {
+	if (hasDisallowedControl(body)) {
 		contractError("start-redis response contains control characters");
 	}
 	const lines = body.split(/\r?\n/u);
@@ -167,9 +190,10 @@ function readFields(lines: readonly string[]): ReadonlyMap<string, string> {
 	for (const line of lines) {
 		const match = FIELD_LINE.exec(line.trim());
 		if (match === null) continue;
-		const label = match[1] as string;
-		const value = match[2] as string;
-		if (!(EXPECTED_FIELD_LABELS as readonly string[]).includes(label)) {
+		const label = match[1];
+		const value = match[2];
+		if (label === undefined || value === undefined) continue;
+		if (!isExpectedFieldLabel(label)) {
 			// The likeliest new field is another credential. Ignoring it would
 			// mean one this driver never deposits and never redacts.
 			contractError(
@@ -227,7 +251,10 @@ export function parseStartRedisResponse(body: string): StartRedisDatabase {
 		// A database endpoint on someone else's domain is the whole attack.
 		contractError("start-redis Endpoint is not an https host under upstash.io");
 	}
-	const restEndpointHost = endpointMatch[1] as string;
+	const restEndpointHost = endpointMatch[1];
+	if (restEndpointHost === undefined) {
+		contractError("start-redis Endpoint is not an https host under upstash.io");
+	}
 
 	const token = requireField(fields, "Token", body);
 	if (!TOKEN.test(token)) {
@@ -264,7 +291,12 @@ export function parseStartRedisResponse(body: string): StartRedisDatabase {
 			"start-redis Expires field does not match `<YYYY-MM-DD> (N days from creation)`",
 		);
 	}
-	const expiresOn = expiresMatch[1] as string;
+	const expiresOn = expiresMatch[1];
+	if (expiresOn === undefined) {
+		contractError(
+			"start-redis Expires field does not match `<YYYY-MM-DD> (N days from creation)`",
+		);
+	}
 	const expiresAtMs = Date.parse(`${expiresOn}T00:00:00.000Z`);
 	if (!Number.isFinite(expiresAtMs)) {
 		contractError("start-redis Expires date is not a real date");
@@ -275,7 +307,9 @@ export function parseStartRedisResponse(body: string): StartRedisDatabase {
 	for (const line of lines) {
 		const match = CONSOLE_LINE.exec(line.trim());
 		if (match === null) continue;
-		consoleIds.add(match[1] as string);
+		const consoleId = match[1];
+		if (consoleId === undefined) continue;
+		consoleIds.add(consoleId);
 		consoleUrl = line.trim();
 	}
 	if (consoleUrl === undefined) {
@@ -344,13 +378,10 @@ export type StartRedisMetrics = {
 	readonly bytesOut?: number;
 };
 
-function optionalCount(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): number | undefined {
+function optionalCount(record: JsonObject, key: string): number | undefined {
 	const value = record[key];
 	if (value === undefined || value === null) return undefined;
-	if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+	if (!isJsonNumber(value) || !Number.isFinite(value) || value < 0) {
 		contractError(
 			`start-redis metrics field ${key} is not a non-negative number`,
 		);
@@ -362,22 +393,19 @@ export function parseStartRedisMetrics(
 	body: string,
 	databaseId: string,
 ): StartRedisMetrics {
-	let decoded: unknown;
+	let decoded: JsonValue;
 	try {
-		decoded = JSON.parse(body) as unknown;
+		// SAFETY: JSON.parse yields a JSON value at this document boundary.
+		decoded = JSON.parse(body) as JsonValue;
 	} catch {
 		return contractError("start-redis metrics response was not JSON", {
 			preview: redactProviderText(body, 80),
 		});
 	}
-	if (
-		typeof decoded !== "object" ||
-		decoded === null ||
-		Array.isArray(decoded)
-	) {
+	if (!isJsonObject(decoded)) {
 		contractError("start-redis metrics response was not a JSON object");
 	}
-	const record = decoded as Readonly<Record<string, unknown>>;
+	const record = decoded;
 	const uptimeSeconds = optionalCount(record, "uptime_seconds");
 	const commandsTotal = optionalCount(record, "commands_total");
 	const keys = optionalCount(record, "keys");
@@ -386,11 +414,11 @@ export function parseStartRedisMetrics(
 	const bytesOut = optionalCount(record, "bytes_out");
 	return {
 		databaseId,
-		...(uptimeSeconds !== undefined ? { uptimeSeconds } : {}),
-		...(commandsTotal !== undefined ? { commandsTotal } : {}),
-		...(keys !== undefined ? { keys } : {}),
-		...(memoryBytes !== undefined ? { memoryBytes } : {}),
-		...(bytesIn !== undefined ? { bytesIn } : {}),
-		...(bytesOut !== undefined ? { bytesOut } : {}),
+		...(uptimeSeconds !== undefined ? { uptimeSeconds } : undefined),
+		...(commandsTotal !== undefined ? { commandsTotal } : undefined),
+		...(keys !== undefined ? { keys } : undefined),
+		...(memoryBytes !== undefined ? { memoryBytes } : undefined),
+		...(bytesIn !== undefined ? { bytesIn } : undefined),
+		...(bytesOut !== undefined ? { bytesOut } : undefined),
 	};
 }

@@ -154,9 +154,7 @@ export function createUpstashClient(
 	const retryBaseDelayMs = options.retryBaseDelayMs ?? 250;
 	const userAgent = options.userAgent ?? "hobo-provider-upstash/0.0.1";
 
-	function postHeaders(
-		idempotencyKey: string,
-	): Readonly<Record<string, string>> {
+	function postHeaders(idempotencyKey: string) {
 		return {
 			accept: "text/markdown, text/plain;q=0.9, */*;q=0.1",
 			"idempotency-key": idempotencyKey,
@@ -179,7 +177,10 @@ export function createUpstashClient(
 			throw new UpstashProviderError(
 				"PROVIDER_OPERATION_AMBIGUOUS",
 				"the create request did not complete; re-POST the same idempotency key to find out whether the database exists",
-				{ cause, detail: { idempotencyKey } },
+				{
+					cause: cause instanceof Error ? cause : new Error(String(cause)),
+					detail: { idempotencyKey },
+				},
 			);
 		}
 
@@ -199,17 +200,11 @@ export function createUpstashClient(
 			return parsed;
 		}
 
+		const retryAfter = retryAfterMs(response.headers, options.clock());
 		throw providerErrorForStatus(response.status, {
 			method: "POST",
 			body: response.body,
-			...(retryAfterMs(response.headers, options.clock()) !== undefined
-				? {
-						retryAfterMs: retryAfterMs(
-							response.headers,
-							options.clock(),
-						) as number,
-					}
-				: {}),
+			...(retryAfter !== undefined ? { retryAfterMs: retryAfter } : undefined),
 		});
 	}
 
@@ -321,17 +316,11 @@ export function createUpstashClient(
 				{ detail: { databaseId, status: 404 } },
 			);
 		}
+		const retryAfter = retryAfterMs(response.headers, options.clock());
 		throw providerErrorForStatus(response.status, {
 			method: "GET",
 			body: redactProviderText(response.body, 120),
-			...(retryAfterMs(response.headers, options.clock()) !== undefined
-				? {
-						retryAfterMs: retryAfterMs(
-							response.headers,
-							options.clock(),
-						) as number,
-					}
-				: {}),
+			...(retryAfter !== undefined ? { retryAfterMs: retryAfter } : undefined),
 		});
 	}
 

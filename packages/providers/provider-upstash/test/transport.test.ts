@@ -90,7 +90,7 @@ describe("assertAllowedEndpoint", () => {
 		it(`refuses ${reason}`, () => {
 			assert.throws(
 				() => assertAllowedEndpoint(url, UPSTASH_CONTROL_PLANE_POLICY),
-				(error: unknown) =>
+				(error: Error) =>
 					isProviderError(error) && error.code === "PROVIDER_CONTRACT_CHANGED",
 			);
 		});
@@ -109,7 +109,7 @@ describe("assertAllowedEndpoint", () => {
 					...UPSTASH_DATA_PLANE_POLICY,
 					allowedHostSuffixes: ["upstash.io"],
 				}),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) &&
 				error.code === "PROVIDER_CONTRACT_CHANGED" &&
 				/must start with "\." and carry at least one further dot/u.test(
@@ -130,7 +130,7 @@ describe("assertAllowedEndpoint", () => {
 					"https://evilupstash.io/get/key",
 					UPSTASH_DATA_PLANE_POLICY,
 				),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) &&
 				error.code === "PROVIDER_CONTRACT_CHANGED" &&
 				/host evilupstash\.io is not exactly one of the allowlisted/u.test(
@@ -143,7 +143,7 @@ describe("assertAllowedEndpoint", () => {
 		assert.throws(
 			() =>
 				assertAllowedEndpoint("https://upstash.io", UPSTASH_DATA_PLANE_POLICY),
-			(error: unknown) => isProviderError(error),
+			(error: Error) => isProviderError(error),
 		);
 	});
 });
@@ -175,7 +175,7 @@ describe("createGuardedTransport", () => {
 
 		await assert.rejects(
 			guarded.request(CONTROL_REQUEST),
-			(error: unknown) =>
+			(error: Error) =>
 				isProviderError(error) &&
 				error.code === "PROVIDER_CONTRACT_CHANGED" &&
 				/never follows/u.test(error.message),
@@ -193,7 +193,7 @@ describe("createGuardedTransport", () => {
 		});
 		const guarded = createGuardedTransport(stub, UPSTASH_CONTROL_PLANE_POLICY);
 
-		await assert.rejects(guarded.request(CONTROL_REQUEST), (error: unknown) =>
+		await assert.rejects(guarded.request(CONTROL_REQUEST), (error: Error) =>
 			isProviderError(error),
 		);
 	});

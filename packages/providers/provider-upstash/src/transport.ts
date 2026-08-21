@@ -108,7 +108,7 @@ function corePolicy(policy: TransportPolicy): TransportGuardPolicy {
  * type — and the `PROVIDER_CONTRACT_CHANGED` code every call site already
  * matches on — exactly as it was before the URL check moved into core.
  */
-function asProviderError(cause: unknown): unknown {
+function asProviderError(cause: Error): Error {
 	if (!(cause instanceof TransportGuardError)) return cause;
 	return new UpstashProviderError("PROVIDER_CONTRACT_CHANGED", cause.message, {
 		detail: { guard: cause.code },
@@ -132,7 +132,9 @@ export function assertAllowedEndpoint(
 	try {
 		return assertAllowedEndpointCore(url, corePolicy(policy));
 	} catch (cause) {
-		throw asProviderError(cause);
+		throw asProviderError(
+			cause instanceof Error ? cause : new Error(String(cause)),
+		);
 	}
 }
 
@@ -247,7 +249,7 @@ export function createFetchTransport(options: {
 				const response = await fetchImpl(request.url, {
 					method: request.method,
 					headers: { ...request.headers },
-					...(request.body !== undefined ? { body: request.body } : {}),
+					...(request.body !== undefined ? { body: request.body } : undefined),
 					redirect: "manual",
 					signal: controller.signal,
 				});
@@ -270,7 +272,10 @@ export function createFetchTransport(options: {
 				throw new UpstashProviderError(
 					"PROVIDER_OPERATION_AMBIGUOUS",
 					`${request.method} to the provider did not complete`,
-					{ cause, detail: { method: request.method } },
+					{
+						cause: cause instanceof Error ? cause : new Error(String(cause)),
+						detail: { method: request.method },
+					},
 				);
 			} finally {
 				clearTimeout(timer);

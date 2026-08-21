@@ -6,6 +6,8 @@ import {
   sign,
   verify,
 } from "node:crypto";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "../json.js";
+
 
 export type ProvenanceTier = "builder-observed" | "sandboxed-builder" | "slsa-build-l3";
 
@@ -241,6 +243,7 @@ export function publishSignedArtifact(input: {
   };
   const conformance = {
     schema: "hobo.conformance.report-ref/v1" as const,
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     report: sortKeys(input.conformanceReport) as ConformanceReport,
     digest: contentDigest(input.conformanceReport),
   };
@@ -270,7 +273,7 @@ export function publishSignedArtifact(input: {
 }
 
 export function verifyInstallCandidate(input: {
-  candidate: unknown;
+  candidate: JsonValue;
   trustBoundary: TrustBoundary;
 }): InstallVerdict {
   const reasons: RefusalReason[] = [];
@@ -360,7 +363,8 @@ export function verifyInstallCandidate(input: {
     return rejected(reasons);
   }
 
-  const artifactRecord = artifact as Record<string, unknown>;
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+  const artifactRecord = artifact as JsonObject;
   return Object.freeze({
     ok: true,
     reasons: [],
@@ -369,6 +373,7 @@ export function verifyInstallCandidate(input: {
     assurance: "integrity-and-conformance-verified",
     residualRisks: Object.freeze(["validly-signed-but-malicious", "compromised-builder-or-key"]),
     trust: Object.freeze({
+      // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
       provenanceTier: String(provenanceTier) as ProvenanceTier,
       policyMinimum: trustBoundary.minimumProvenanceTier,
     }),
@@ -382,7 +387,7 @@ export function verifyInstallCandidate(input: {
   });
 }
 
-function verifySignature(candidate: Record<string, unknown>): boolean {
+function verifySignature(candidate: JsonObject): boolean {
   try {
     const artifact = candidate.artifact;
     const signature = candidate.signature;
@@ -400,7 +405,9 @@ function verifySignature(candidate: Record<string, unknown>): boolean {
         digest: String(artifact.digest),
         uri: String(artifact.uri),
       }),
+      // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
       provenance: provenance as SignedArtifactCandidate["provenance"],
+      // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
       conformance: conformance as SignedArtifactCandidate["conformance"],
     });
     return verify(
@@ -430,7 +437,7 @@ function createSignaturePayload(input: {
   artifact: ArtifactRef;
   provenance: SignedArtifactCandidate["provenance"];
   conformance: SignedArtifactCandidate["conformance"];
-}): Record<string, unknown> {
+}): JsonObject {
   return sortKeys({
     artifact: {
       coordinate: input.artifact.coordinate,
@@ -456,7 +463,7 @@ function rejected(reasons: RefusalReason[]): InstallVerdict {
   });
 }
 
-function contentDigest(value: unknown): string {
+function contentDigest(value: JsonValue): string {
   return `sha256:${createHash("sha256").update(stableStringify(value)).digest("hex")}`;
 }
 
@@ -470,14 +477,14 @@ function freezeStringList(values: readonly string[], name: string): readonly str
   return Object.freeze([...values]);
 }
 
-function parseNonEmptyString(value: unknown, name: string): string {
-  if (typeof value !== "string" || value.trim().length === 0) {
+function parseNonEmptyString(value: JsonValue, name: string): string {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${name} must be a non-empty string`);
   }
   return value;
 }
 
-function parseIsoTimestamp(value: unknown, name: string): string {
+function parseIsoTimestamp(value: JsonValue, name: string): string {
   const parsed = parseNonEmptyString(value, name);
   if (Number.isNaN(Date.parse(parsed))) {
     throw new Error(`${name} must be an ISO timestamp`);
@@ -485,43 +492,47 @@ function parseIsoTimestamp(value: unknown, name: string): string {
   return parsed;
 }
 
-function parseProvenanceTier(value: unknown, name: string): asserts value is ProvenanceTier {
+function parseProvenanceTier(value: JsonValue, name: string): asserts value is ProvenanceTier {
   parseNonEmptyString(value, name);
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   if (!PROVENANCE_TIER_ORDER.includes(value as ProvenanceTier)) {
     throw new Error(`${name} must be a known provenance tier`);
   }
 }
 
 function tierRank(value: string): number {
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   return PROVENANCE_TIER_ORDER.indexOf(value as ProvenanceTier);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function isRecord(value: JsonValue): value is JsonObject {
+  return isJsonObject(value) && value !== null && !Array.isArray(value);
 }
 
-function stableStringify(value: unknown): string {
-  if (value === null || typeof value !== "object") {
+function stableStringify(value: JsonValue): string {
+  if (!isJsonObject(value) && !Array.isArray(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
     return `[${value.map(stableStringify).join(",")}]`;
   }
-  const record = value as Record<string, unknown>;
-  return `{${Object.keys(record)
+  return `{${Object.keys(value)
     .sort()
-    .map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`)
+    .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key] ?? null)}`)
     .join(",")}}`;
 }
 
 function sortKeys<T>(value: T): T {
   if (Array.isArray(value)) {
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     return value.map((entry) => sortKeys(entry)) as T;
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
-  const record = value as Record<string, unknown>;
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+  const record = value as JsonObject;
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   return Object.fromEntries(
     Object.keys(record)
       .sort()

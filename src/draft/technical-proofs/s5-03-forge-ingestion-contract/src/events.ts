@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
 
@@ -20,8 +22,8 @@ export class ForgeIngestionError extends Error {
   }
 }
 
-export function sha256Digest(value: unknown): string {
-  const serialized = typeof value === "string" ? value : JSON.stringify(value);
+export function sha256Digest(value: JsonValue): string {
+  const serialized = isJsonString(value) ? value : JSON.stringify(value);
   return `sha256:${createHash("sha256").update(serialized).digest("hex")}`;
 }
 
@@ -29,7 +31,7 @@ export function buildForgeEvent(input: {
   requestId: string;
   type: string;
   seq: number;
-  data: Record<string, unknown>;
+  data: JsonObject;
   ts?: string;
   tenant?: string;
 }): ForgeEvent {
@@ -109,17 +111,17 @@ export type ForgeEvent = {
   actor: { kind: string; id: string };
   tenant: string;
   correlationId: string;
-  data: Record<string, unknown> & { requestId: string };
+  data: JsonObject & { requestId: string };
 };
 
-function assertObject(value: unknown, code: string, path: string): asserts value is Record<string, unknown> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+function assertObject(value: JsonValue, code: string, path: string): asserts value is JsonObject {
+  if (!value || !isJsonObject(value)) {
     throw new ForgeIngestionError(code, path);
   }
 }
 
-function assertNonEmptyString(value: unknown, code: string, path: string): asserts value is string {
-  if (typeof value !== "string" || value.length === 0) {
+function assertNonEmptyString(value: JsonValue, code: string, path: string): asserts value is string {
+  if (!isJsonString(value) || value.length === 0) {
     throw new ForgeIngestionError(code, path);
   }
 }

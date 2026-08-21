@@ -39,6 +39,7 @@ What this proves:
 - App author declares a sample Bindle through IfC and receives a deterministic manifest and generated type surface.
 - Narrowing, collection coverage, XAA scope widening, and raw portability debt fail or surface before deploy.
 - Hobo Code DSL and non-TypeScript parity are treated as front-end lowering concerns, not new runtime semantics.
+- The XAA scope-inference API proof's boundary-type hardening is included in this rollup; its simulation contract is unchanged.
 
 Mocked boundaries:
 

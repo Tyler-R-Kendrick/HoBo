@@ -5,7 +5,9 @@
   "references": {
     "technicalProofs": [],
     "epicProofs": [],
-    "expProofs": [],
+    "expProofs": [
+      "src/draft/exp-proofs/api/wrpc-wit-baseline-poc"
+    ],
     "designDocs": []
   },
   "artifacts": {

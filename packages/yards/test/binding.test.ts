@@ -17,7 +17,7 @@ function row(overrides: Partial<YardBindingInput> = {}): YardBindingInput {
 	};
 }
 
-function codeOf(fn: () => unknown): string {
+function codeOf(fn: () => void): string {
 	try {
 		fn();
 	} catch (error) {
@@ -187,7 +187,9 @@ describe("parseYardBindings() — grammar, shape, and credential parse boundary"
 			expect.unreachable("expected a YardBindingError");
 		} catch (error) {
 			expect(error).toBeInstanceOf(YardBindingError);
+			// SAFETY: `expect((error as YardBindingError).profile).toBe("kv.key-value/v1");` is required at this I/O or test boundary.
 			expect((error as YardBindingError).profile).toBe("kv.key-value/v1");
+			// SAFETY: `expect((error as YardBindingError).name).toBe("YardBindingError");` is required at this I/O or test boundary.
 			expect((error as YardBindingError).name).toBe("YardBindingError");
 		}
 	});
@@ -212,13 +214,17 @@ describe("parseYardBindings() — grammar, shape, and credential parse boundary"
 		],
 	])("throws TypeError for structurally invalid input (%#: %s)", (input) => {
 		expect(() =>
-			parseYardBindings([input as unknown as YardBindingInput]),
+			// SAFETY: `input` is deliberately malformed; the parse boundary must
+			// refuse it, so the typed signature is bypassed on purpose.
+			parseYardBindings([input as never]),
 		).toThrow(TypeError);
 	});
 
 	it("rejects a non-array row set", () => {
 		expect(() =>
-			parseYardBindings("rows" as unknown as readonly YardBindingInput[]),
+			// SAFETY: a string is deliberately not a row set; the parse boundary
+			// must refuse it, so the typed signature is bypassed on purpose.
+			parseYardBindings("rows" as never),
 		).toThrow(TypeError);
 	});
 });

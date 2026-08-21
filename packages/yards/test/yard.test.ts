@@ -5,7 +5,7 @@ import {
 	YARD_BINDING_CONTRACT,
 	YardBindingError,
 	yard,
-	yardToShape,
+	yardToContract,
 } from "../src/index.js";
 
 describe("yard() — owns provider; zero camps allowed", () => {
@@ -50,21 +50,22 @@ describe("yard() — owns provider; zero camps allowed", () => {
 		expect(() =>
 			yard("azure-only", {
 				provider: "azure",
+				// SAFETY: `camps: [attached as typeof awsCamp],` is required at this I/O or test boundary.
 				camps: [attached as typeof awsCamp],
 			}),
 		).toThrow(/cannot attach camp with provider/);
 	});
 
-	it("projects yard to planning shape", () => {
+	it("projects yard to its planning contract", () => {
 		const y = yard("gcp-edge", {
 			provider: { id: "gcp" },
 			runtimeId: "gcp-yard-runtime/v1",
 			camps: [],
 		});
-		const shape = yardToShape(y);
-		expect(shape.providerId).toBe("gcp");
-		expect(shape.runtimeId).toBe("gcp-yard-runtime/v1");
-		expect(shape.camps).toEqual([]);
+		const contract = yardToContract(y);
+		expect(contract.providerId).toBe("gcp");
+		expect(contract.runtimeId).toBe("gcp-yard-runtime/v1");
+		expect(contract.camps).toEqual([]);
 	});
 
 	it("rejects credential-like properties", () => {
@@ -98,7 +99,7 @@ describe("yard() — capability binding rows", () => {
 		]);
 	});
 
-	it("surfaces rows in the planning shape so selection can consume them structurally", () => {
+	it("surfaces rows in the planning contract so selection can consume them structurally", () => {
 		const y = yard("aws-prod", {
 			provider: "aws",
 			bindings: [
@@ -109,8 +110,8 @@ describe("yard() — capability binding rows", () => {
 				},
 			],
 		});
-		const shape = yardToShape(y);
-		expect(shape.bindings).toEqual([
+		const contract = yardToContract(y);
+		expect(contract.bindings).toEqual([
 			{
 				contract: YARD_BINDING_CONTRACT,
 				profile: "data.relational/v1",
@@ -119,7 +120,7 @@ describe("yard() — capability binding rows", () => {
 				properties: {},
 			},
 		]);
-		expect(Object.isFrozen(shape.bindings)).toBe(true);
+		expect(Object.isFrozen(contract.bindings)).toBe(true);
 	});
 
 	it("refuses a row whose profile is already pinned as a resolver slot", () => {

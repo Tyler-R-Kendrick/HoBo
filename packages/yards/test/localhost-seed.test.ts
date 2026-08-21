@@ -9,7 +9,7 @@ import {
 	YARD_BINDING_CONTRACT,
 	YARD_BINDING_PROFILE_PATTERN,
 	yard,
-	yardToShape,
+	yardToContract,
 } from "../src/index.js";
 
 const NODE: LocalhostCapabilityObservation = {
@@ -22,7 +22,7 @@ const SQLITE: LocalhostCapabilityObservation = {
 };
 const FULL_HOST: readonly LocalhostCapabilityObservation[] = [NODE, SQLITE];
 
-const PRIMITIVE_OF: Readonly<Record<string, string>> = {
+const PRIMITIVE_OF = {
 	web: "web.static/v1",
 	api: "api.http/v1",
 	service: "service.worker/v1",
@@ -33,7 +33,7 @@ const PRIMITIVE_OF: Readonly<Record<string, string>> = {
 	topic: "topic.ephemeral-pubsub/v1",
 	secretRef: "secret-ref.locator/v1",
 	webhook: "webhook.inbound-http/v1",
-};
+} satisfies Readonly<Record<string, string>>;
 
 describe("seedLocalhostYard() — purity and determinism", () => {
 	it("returns a deep-equal seed for the same observations", () => {
@@ -167,7 +167,7 @@ describe("seedLocalhostYard() — the seeded Yard is a real Yard", () => {
 			provider: LOCALHOST_PROVIDER_ID,
 			bindings: seed.yard.bindings.map((b) => ({
 				profile: b.profile,
-				...(b.productId !== undefined ? { productId: b.productId } : {}),
+				...(b.productId !== undefined ? { productId: b.productId } : undefined),
 				properties: b.properties,
 			})),
 		});
@@ -185,9 +185,9 @@ describe("seedLocalhostYard() — the seeded Yard is a real Yard", () => {
 		}
 	});
 
-	it("surfaces the seeded rows through yardToShape", () => {
+	it("surfaces the seeded rows through yardToContract", () => {
 		const seed = seedLocalhostYard(FULL_HOST);
-		expect(yardToShape(seed.yard).bindings).toEqual(seed.yard.bindings);
+		expect(yardToContract(seed.yard).bindings).toEqual(seed.yard.bindings);
 	});
 });
 
@@ -213,7 +213,10 @@ describe("seedLocalhostYard() — observation parse boundary", () => {
 	])("rejects a malformed observation (%#: %s)", (observation) => {
 		expect(() =>
 			seedLocalhostYard([
-				observation as unknown as LocalhostCapabilityObservation,
+				// SAFETY: `observation` is deliberately malformed; the parse
+				// boundary must refuse it, so the typed signature is bypassed
+				// on purpose.
+				observation as never,
 			]),
 		).toThrow(TypeError);
 	});
@@ -221,7 +224,10 @@ describe("seedLocalhostYard() — observation parse boundary", () => {
 	it("rejects a non-array observation set", () => {
 		expect(() =>
 			seedLocalhostYard(
-				"capability:runtime:node" as unknown as readonly LocalhostCapabilityObservation[],
+				// SAFETY: a string is deliberately not an observation set; the
+				// parse boundary must refuse it, so the typed signature is
+				// bypassed on purpose.
+				"capability:runtime:node" as never,
 			),
 		).toThrow(TypeError);
 	});

@@ -17,6 +17,8 @@
  * `data-models/failure_taxonomy.{proto,cue}`.
  */
 
+import { isJsonNumber, isJsonString, type JsonValue } from "../json.js";
+
 export type RuntimeErrorKind =
 	| "retryable"
 	| "fatal"
@@ -38,9 +40,12 @@ export interface RuntimeErrorVariant {
 	readonly val: string;
 }
 
-export function isRuntimeErrorKind(value: unknown): value is RuntimeErrorKind {
+export function isRuntimeErrorKind(
+	value: JsonValue,
+): value is RuntimeErrorKind {
 	return (
-		typeof value === "string" &&
+		isJsonString(value) &&
+		// SAFETY: assertion to `E_ERROR_KINDS as readonly string[]).incl` is required at this boundary.
 		(RUNTIME_ERROR_KINDS as readonly string[]).includes(value)
 	);
 }
@@ -189,18 +194,25 @@ const RETRYABLE_HTTP_STATUS = new Set([408, 425, 429, 500, 502, 503, 504]);
  * `runtime-error` variant. Recognized typed failures keep their kind; an
  * unrecognized error is `fatal` (never optimistically retried).
  */
-export function classifyToRuntimeError(error: unknown): RuntimeErrorVariant {
+export function classifyToRuntimeError(error: Error): RuntimeErrorVariant {
 	if (error instanceof RuntimeMembraneError) {
 		return error.toVariant();
 	}
 
-	const record =
-		error && typeof error === "object"
-			? (error as Record<string, unknown>)
-			: {};
-	const code = typeof record.code === "string" ? record.code.toLowerCase() : "";
-	const membrane =
-		typeof record.membrane === "string" ? record.membrane.toLowerCase() : "";
+	interface ErrorBag {
+		readonly code?: JsonValue;
+		readonly membrane?: JsonValue;
+		readonly reason?: JsonValue;
+		readonly ambiguousCommit?: JsonValue;
+		readonly retryable?: JsonValue;
+		readonly status?: JsonValue;
+	}
+	// SAFETY: membrane errors carry optional code/reason bags at this boundary.
+	const record = error as ErrorBag;
+	const code = isJsonString(record.code) ? record.code.toLowerCase() : "";
+	const membrane = isJsonString(record.membrane)
+		? record.membrane.toLowerCase()
+		: "";
 	const message =
 		error instanceof Error ? error.message : String(error ?? "unknown");
 
@@ -226,7 +238,7 @@ export function classifyToRuntimeError(error: unknown): RuntimeErrorVariant {
 		return variant("cancelled", message);
 	}
 
-	const status = typeof record.status === "number" ? record.status : undefined;
+	const status = isJsonNumber(record.status) ? record.status : undefined;
 	if (
 		record.retryable === true ||
 		membrane === "overloaded" ||

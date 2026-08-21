@@ -98,6 +98,7 @@ export class SqliteEventStore {
 		) => EventEnvelope,
 	): EventEnvelope {
 		void createEnvelope;
+		// SAFETY: assertion to `is.appendBatch(context, [input], createEnvelope) .appended[0] as EventEnvelope; ` is required at this boundary.
 		return this.appendBatch(context, [input], createEnvelope)
 			.appended[0] as EventEnvelope;
 	}

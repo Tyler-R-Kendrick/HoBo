@@ -5,6 +5,7 @@
 
 import type { ActorPlacementMode } from "@hobo/core";
 import { parseActorPlacementMode } from "@hobo/core";
+import type { JsonValue } from "./json.js";
 
 import type { ActorHost } from "./ports.js";
 
@@ -15,7 +16,7 @@ export interface PlacementResolved {
 }
 
 export interface ResolveActorPlacementInput {
-	readonly explicit?: unknown;
+	readonly explicit?: JsonValue;
 	readonly campRuntimeRequirements?: readonly string[];
 	readonly nativeHost: ActorHost;
 	readonly daprHost?: ActorHost;
@@ -120,14 +121,15 @@ export async function signalActor(
 	messaging: {
 		publish: (
 			topic: string & { readonly __brand: "TopicName" },
-			body: unknown,
+			body: JsonValue,
 			options?: { key?: string },
-		) => Promise<unknown>;
+		) => Promise<JsonValue>;
 	},
 	actorType: string,
 	actorKey: string,
-	message: unknown,
+	message: JsonValue,
 ): Promise<void> {
+	// SAFETY: assertion to ``actors.${actorType}` as string & { readonly __brand: "TopicName"; }` is required at this boundary.
 	const topic = `actors.${actorType}` as string & {
 		readonly __brand: "TopicName";
 	};

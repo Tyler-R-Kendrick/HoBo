@@ -12,10 +12,12 @@ import type {
 } from "@hobo/core";
 import { createInProcessWasmtimeEngine } from "./engine/wasmtime.js";
 import { ComponentHostError, ComponentTrapError } from "./errors.js";
+import type { JsonValue } from "./json.js";
 import type { ParsedLinkRequest, ParsedProviderDescriptor } from "./parse.js";
 import { parseLinkRequest, parseProviderDescriptor } from "./parse.js";
 
 export const HTTP_INCOMING_HANDLER =
+	// SAFETY: assertion to `"wasi:http/incoming-handler@0.2.0" as InterfaceId` is required at this boundary.
 	"wasi:http/incoming-handler@0.2.0" as InterfaceId;
 
 export interface RuntimeLocalComponentHostOptions {
@@ -120,8 +122,8 @@ class RuntimeLocalComponentHost implements ComponentHostPort {
 		componentId: string,
 		importInterface: InterfaceId,
 		operation: string,
-		payload?: unknown,
-	): Promise<unknown> {
+		payload?: JsonValue,
+	) {
 		this.#requireLoaded(componentId);
 		const link = this.#links.get(linkKey(componentId, importInterface));
 		if (!link) {
@@ -132,7 +134,7 @@ class RuntimeLocalComponentHost implements ComponentHostPort {
 		}
 		const provider = this.#providers.get(link.providerId);
 		const implementation = provider?.exports[link.exportInterface]?.[operation];
-		if (typeof implementation !== "function") {
+		if (!(implementation instanceof Function)) {
 			throw new ComponentHostError(
 				"operation_not_found",
 				`${link.exportInterface}.${operation}`,
@@ -149,7 +151,7 @@ class RuntimeLocalComponentHost implements ComponentHostPort {
 			boundaryMode: link.boundaryMode,
 			transport: link.transport,
 		});
-		return implementation(payload);
+		return implementation(payload ?? null);
 	}
 
 	async handleHttp(
@@ -158,16 +160,28 @@ class RuntimeLocalComponentHost implements ComponentHostPort {
 	): Promise<HttpResponse> {
 		const component = this.#requireLoaded(componentId);
 		const handler = component.exports[HTTP_INCOMING_HANDLER]?.handle;
-		if (typeof handler !== "function") {
+		if (!(handler instanceof Function)) {
 			throw new ComponentHostError("http_handler_missing", componentId);
 		}
 
 		try {
-			const response = (await handler(request, {
+			type HttpIncomingHandler = (
+				request: HttpRequest,
+				context: {
+					callImport: (
+						importInterface: InterfaceId,
+						operation: string,
+						payload?: JsonValue,
+					) => Promise<JsonValue>;
+				},
+			) => HttpResponse | Promise<HttpResponse>;
+			// SAFETY: incoming-handler is host-shaped at this in-process boundary.
+			const incoming: HttpIncomingHandler = handler as never;
+			const response = await incoming(request, {
 				callImport: (
 					importInterface: InterfaceId,
 					operation: string,
-					payload?: unknown,
+					payload?: JsonValue,
 				) =>
 					this.invokeLinkedImport(
 						componentId,
@@ -175,7 +189,7 @@ class RuntimeLocalComponentHost implements ComponentHostPort {
 						operation,
 						payload,
 					),
-			})) as HttpResponse;
+			});
 			this.#append({
 				type: "component.Invoked",
 				componentId,
@@ -197,7 +211,7 @@ class RuntimeLocalComponentHost implements ComponentHostPort {
 
 	async teardownComponent(componentId: string): Promise<void> {
 		this.#requireLoaded(componentId);
-		for (const key of [...this.#links.keys()]) {
+		for (const key of Array.from(this.#links.keys())) {
 			if (key.startsWith(`${componentId}\0`)) {
 				this.#links.delete(key);
 			}

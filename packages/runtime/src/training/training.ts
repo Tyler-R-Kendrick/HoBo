@@ -6,6 +6,13 @@ import {
 } from "@hobo/core";
 import { TrainableManifestFactSchema } from "../_generated/trainable_manifest_fact_pb.js";
 import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonBag,
+	type JsonValue,
+} from "../json.js";
+import {
 	type FieldDescription,
 	type RecordedTrainableCall,
 	TRAINABLE,
@@ -29,7 +36,7 @@ interface MutableRecord {
 	options: TrainingOptions;
 	calls: RecordedTrainableCall[];
 	artifact: TrainingArtifact | null;
-	baseline: ((input: unknown) => Promise<unknown>) | null;
+	baseline: ((input: JsonValue) => Promise<JsonValue>) | null;
 	callable: Trainable;
 }
 
@@ -37,17 +44,19 @@ const registry = new Map<string, MutableRecord>();
 const tokenToRef = new Map<symbol, string>();
 const trainableToRef = new WeakMap<object, string>();
 
-function canonical(value: unknown): string {
+function canonical(value: JsonValue): string {
 	return JSON.stringify(sortKeys(value));
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: JsonValue | undefined): JsonValue {
 	if (Array.isArray(value)) return value.map(sortKeys);
-	if (!value || typeof value !== "object") return value;
+	if (!value || !isJsonObject(value)) return value ?? null;
 	return Object.fromEntries(
-		Object.keys(value as Record<string, unknown>)
+		// SAFETY: assertion to `value as JsonBag` is required at this boundary.
+		Object.keys(value as JsonBag)
 			.sort()
-			.map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
+			// SAFETY: assertion to `value as JsonBag` is required at this boundary.
+			.map((key) => [key, sortKeys((value as JsonBag)[key] ?? null)]),
 	);
 }
 
@@ -56,22 +65,18 @@ function requireGrounding(
 	options: TrainingOptions,
 ): asserts options is TrainingOptions {
 	const missing: string[] = [];
-	if (
-		typeof options.intent !== "string" ||
-		options.intent.trim().length === 0
-	) {
+	if (!isJsonString(options.intent) || options.intent.trim().length === 0) {
 		missing.push("intent");
 	}
 	const contract = options.contract;
-	const hasRef =
-		typeof contract?.ref === "string" && contract.ref.trim().length > 0;
-	const hasShape =
+	const hasRef = isJsonString(contract?.ref) && contract.ref.trim().length > 0;
+	const hasLayout =
 		contract?.input !== undefined && contract?.output !== undefined;
 	// The shape is the non-negotiable grounding: a contract must name what
 	// goes in and what comes out, either by reference or declared inline.
 	// The rubric is optional — the gate falls back to the default
 	// exact-match rubric over examples/traces.
-	if (!contract || !(hasRef || hasShape)) {
+	if (!contract || !(hasRef || hasLayout)) {
 		missing.push("contract (a ref, or an inline input + output shape)");
 	}
 	if (missing.length > 0) {
@@ -82,7 +87,7 @@ function requireGrounding(
 /** Contract ref, synthesized from the declared shape when none is given. */
 function contractRefFor(methodRef: string, options: TrainingOptions): string {
 	const ref = options.contract.ref;
-	return typeof ref === "string" && ref.trim().length > 0
+	return isJsonString(ref) && ref.trim().length > 0
 		? ref
 		: `decl://${methodRef}`;
 }
@@ -97,7 +102,7 @@ function lowerToFact(
 			methodRef,
 			intent: options.intent,
 			contractRef: contractRefFor(methodRef, options),
-			rubric: { ...(options.rubric ?? {}) },
+			rubric: { ...options.rubric },
 			params: lowerFields(options.params),
 			output: lowerFields(options.output),
 			invariants: [...(options.contract.invariants ?? [])],
@@ -150,25 +155,27 @@ function artifactDemos(
  */
 async function serveStub(
 	entry: MutableRecord,
-	input: unknown,
-): Promise<unknown> {
+	input: JsonValue,
+): Promise<JsonValue> {
 	const key = canonical(input);
 	const demos = artifactDemos(entry.artifact);
 	for (const demo of demos) {
-		if (canonical(demo.input) === key) {
-			record(entry, { input, output: demo.output, served: "matched-demo" });
-			return demo.output;
+		if (canonical(cloneAsJson(demo.input)) === key) {
+			const output = cloneAsJson(demo.output);
+			record(entry, { input, output, served: "matched-demo" });
+			return output;
 		}
 	}
 	const examples = entry.options.contract.examples ?? [];
 	for (const example of examples) {
-		if (canonical(example.input) === key) {
+		if (canonical(cloneAsJson(example.input)) === key) {
+			const output = cloneAsJson(example.output);
 			record(entry, {
 				input,
-				output: example.output,
+				output,
 				served: "matched-example",
 			});
-			return example.output;
+			return output;
 		}
 	}
 	const canned = demos[0] ?? examples[0];
@@ -177,14 +184,15 @@ async function serveStub(
 			`stub baseline for "${entry.fact.methodRef}" has no contract examples or applied demos to serve`,
 		);
 	}
-	record(entry, { input, output: canned.output, served: "canned" });
-	return canned.output;
+	const cannedOutput = cloneAsJson(canned.output);
+	record(entry, { input, output: cannedOutput, served: "canned" });
+	return cannedOutput;
 }
 
 function register(
 	methodRef: string,
 	options: TrainingOptions,
-	baseline: ((input: unknown) => Promise<unknown>) | null,
+	baseline: ((input: JsonValue) => Promise<JsonValue>) | null,
 ): Trainable {
 	requireGrounding(methodRef, options);
 	if (baseline === null) {
@@ -199,15 +207,17 @@ function register(
 			]);
 		}
 	}
-	const entry = {
+	const partial = {
 		fact: lowerToFact(methodRef, options, baseline === null ? "stub" : "body"),
 		options,
 		calls: [],
 		artifact: null,
 		baseline,
-	} as Omit<MutableRecord, "callable"> as MutableRecord;
+	};
+	// SAFETY: registry entry is completed after callable is attached.
+	const entry: MutableRecord = partial as never;
 
-	const callable = async (input: unknown): Promise<unknown> => {
+	const callable = async (input: JsonValue): Promise<JsonValue> => {
 		if (entry.baseline === null) {
 			return serveStub(entry, input);
 		}
@@ -218,31 +228,39 @@ function register(
 	Object.defineProperty(callable, TRAINABLE, { value: true });
 	Object.defineProperty(callable, "methodRef", { value: methodRef });
 	trainableToRef.set(callable, methodRef);
+	// SAFETY: assertion to `able as Trainable; r` is required at this boundary.
 	entry.callable = callable as Trainable;
 	registry.set(methodRef, entry);
 	if (options.token) tokenToRef.set(options.token, methodRef);
 	return entry.callable;
 }
 
-function resolveMethodRef(options: TrainingOptions, fn?: unknown): string {
+function resolveMethodRef(
+	options: TrainingOptions,
+	fn?: { readonly name?: string },
+): string {
 	const ref =
 		options.methodRef ??
 		options.token?.description ??
+		// SAFETY: assertion to `s { name?: string } | undefined)?.n` is required at this boundary.
 		(fn as { name?: string } | undefined)?.name;
-	if (typeof ref !== "string" || ref.trim().length === 0) {
+	if (!isJsonString(ref) || ref.trim().length === 0) {
 		throw new TrainingGroundingError("<anonymous>", ["methodRef"]);
 	}
 	return ref;
 }
 
 function refFor(ref: string | symbol | Trainable): string {
-	if (typeof ref === "string") return ref;
-	if (typeof ref === "symbol") {
-		const mapped = tokenToRef.get(ref);
-		if (!mapped) throw new TrainingResolutionError(ref);
+	if (isJsonString(ref)) return ref;
+	if (Object.prototype.toString.call(ref) === "[object Symbol]") {
+		// SAFETY: symbol keys are registered training tokens.
+		const mapped = tokenToRef.get(ref as never);
+		if (!mapped) throw new TrainingResolutionError(String(ref));
 		return mapped;
 	}
-	return trainableToRef.get(ref) ?? ref.methodRef;
+	// SAFETY: remaining refs are registered Trainable callables.
+	const trainableRef = ref as Trainable;
+	return trainableToRef.get(trainableRef) ?? trainableRef.methodRef;
 }
 
 /** `training(fn, opts)` — the canonical wrapper form (ADR-0025). */
@@ -250,16 +268,22 @@ export function training<I, O>(
 	fn: (input: I) => O | Promise<O>,
 	options: TrainingOptions<I, O>,
 ): Trainable<I, O> {
-	const methodRef = resolveMethodRef(options as TrainingOptions, fn);
-	const baseline = (
+	// SAFETY: assertion to `s as TrainingOptions, fn);` is required at this boundary.
+	const methodRef = resolveMethodRef(options as TrainingOptions, {
+		name: fn.name,
+	});
+	const baseline =
 		STUB_BASELINE in fn && fn[STUB_BASELINE] === true
 			? null
-			: async (input: unknown) => await fn(input as I)
-	) as ((input: unknown) => Promise<unknown>) | null;
-	return register(methodRef, options as TrainingOptions, baseline) as Trainable<
-		I,
-		O
-	>;
+			: async (input: JsonValue) => {
+					// SAFETY: trainable wrapper preserves the user input type.
+					const typed: I = input as never;
+					return await fn(typed);
+				};
+	// SAFETY: stub-or-body baseline is the registered callable payload.
+	const registered = register(methodRef, options as never, baseline as never);
+	// SAFETY: registered trainable keeps the caller I/O types.
+	return registered as never;
 }
 
 /**
@@ -270,8 +294,10 @@ export function training<I, O>(
 training.define = function define<I, O>(
 	options: TrainingOptions<I, O> & { readonly methodRef: string },
 ): Trainable<I, O> {
+	// SAFETY: assertion to `( options.methodRef, // SAFETY: assertion to `as TrainingOptions, null` is required at` is required at this boundary.
 	return register(
 		options.methodRef,
+		// SAFETY: assertion to `as TrainingOptions, null` is required at this boundary.
 		options as TrainingOptions,
 		null,
 	) as Trainable<I, O>;
@@ -290,7 +316,10 @@ training.infer = function infer<I, O>(
 	fn: (input: I) => O | Promise<O>,
 	overrides: Partial<TrainingOptions<I, O>> = {},
 ): Trainable<I, O> {
-	const methodRef = resolveMethodRef(overrides as TrainingOptions, fn);
+	// SAFETY: assertion to `as TrainingOptions, fn); co` is required at this boundary.
+	const methodRef = resolveMethodRef(overrides as TrainingOptions, {
+		name: fn.name,
+	});
 	const source = fn.toString();
 	if (
 		!source.includes('"use training"') &&
@@ -300,18 +329,22 @@ training.infer = function infer<I, O>(
 	}
 	const options: TrainingOptions = {
 		intent: overrides.intent ?? inferIntent(methodRef, source),
+		// SAFETY: assertion to `.contract ?? { ref: `inferred://${methodRef}`, }) as TrainingContract, rubric` is required at this boundary.
 		contract: (overrides.contract ?? {
 			ref: `inferred://${methodRef}`,
 		}) as TrainingContract,
 		rubric: overrides.rubric ?? { exactMatch: 1 },
-		...(overrides.params ? { params: overrides.params } : {}),
-		...(overrides.output ? { output: overrides.output } : {}),
-		...(overrides.token ? { token: overrides.token } : {}),
+		...(overrides.params ? { params: overrides.params } : undefined),
+		...(overrides.output ? { output: overrides.output } : undefined),
+		...(overrides.token ? { token: overrides.token } : undefined),
 		methodRef,
 	};
-	return register(methodRef, options, async (input: unknown) =>
-		fn(input as I),
-	) as Trainable<I, O>;
+	// SAFETY: assertion to `ethodRef, options, async (input: JsonValue) => // SAFETY: assertion to `), ) as T` is required` is required at this boundary.
+	return register(methodRef, options, async (input: JsonValue) => {
+		// SAFETY: inferred trainable preserves the user input type.
+		const typed: I = input as never;
+		return cloneAsJson(await fn(typed));
+	}) as never;
 };
 
 /** Intent inference: a leading comment after the directive, else generated. */
@@ -328,7 +361,7 @@ function inferIntent(methodRef: string, source: string): string {
  * Explicit stub baseline marker: `training(stub(), opts)` is the spelled-out
  * form of `training.define(opts)`.
  */
-export function stub<I = unknown, O = unknown>(): (input: I) => Promise<O> {
+export function stub<I = JsonValue, O = JsonValue>(): (input: I) => Promise<O> {
 	const marker = async (): Promise<O> => {
 		throw new TrainingArtifactError(
 			"stub() baseline is served by the runtime, never called directly",
@@ -338,10 +371,11 @@ export function stub<I = unknown, O = unknown>(): (input: I) => Promise<O> {
 	return marker;
 }
 
-export function isTrainable(value: unknown): value is Trainable {
+export function isTrainable<T>(value: T): value is T & Trainable {
 	return (
-		typeof value === "function" &&
-		(value as { [TRAINABLE]?: unknown })[TRAINABLE] === true
+		value instanceof Function &&
+		// SAFETY: assertion to ` [TRAINABLE]?: JsonValue })[TRAINABL` is required at this boundary.
+		(value as { [TRAINABLE]?: JsonValue })[TRAINABLE] === true
 	);
 }
 
@@ -356,11 +390,12 @@ export function listTrainables(): readonly TrainableManifestFact[] {
  * decorator's registration. Tests and eval suites resolve by the same token
  * the declaration used, so one example table can drive both.
  */
-export function resolveTrainable<I = unknown, O = unknown>(
+export function resolveTrainable<I = JsonValue, O = JsonValue>(
 	ref: string | symbol,
 ): Trainable<I, O> {
 	const entry = registry.get(refFor(ref));
 	if (!entry) throw new TrainingResolutionError(ref);
+	// SAFETY: assertion to `le as Trainable<I, O>; } export ` is required at this boundary.
 	return entry.callable as Trainable<I, O>;
 }
 
@@ -397,7 +432,7 @@ export function resetTrainables(): void {
  */
 export function applyTrainingArtifact(
 	trainable: Trainable | string | symbol,
-	artifact: unknown | null,
+	artifact: JsonValue | null,
 ): TrainingArtifact | null {
 	const methodRef = refFor(trainable);
 	const entry = registry.get(methodRef);

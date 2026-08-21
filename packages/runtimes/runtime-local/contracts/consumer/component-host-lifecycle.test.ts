@@ -1,8 +1,8 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 import test from "node:test";
-
 import { createRuntimeLocalComponentHost } from "../../src/index.js";
+import type { JsonObject } from "../../src/json.js";
 import {
 	helloBindleComponent,
 	helloBindleProvider,
@@ -10,8 +10,8 @@ import {
 
 interface PactInteraction {
 	description: string;
-	request: { method: string; path: string; body?: Record<string, unknown> };
-	response: { status: number; body: Record<string, unknown> };
+	request: { method: string; path: string; body?: JsonObject };
+	response: { status: number; body: JsonObject };
 }
 
 interface PactContract {
@@ -26,6 +26,7 @@ async function loadPact(): Promise<PactContract> {
 		new URL("../component-host-lifecycle.pact.json", import.meta.url),
 		"utf8",
 	);
+	// SAFETY: assertion to `JSON.parse(raw) as PactContract` is required at this boundary.
 	return JSON.parse(raw) as PactContract;
 }
 

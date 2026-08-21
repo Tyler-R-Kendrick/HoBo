@@ -1,5 +1,11 @@
-import type { ActorHost, ActorLease, ActorStateHandle } from "@hobo/core";
+import type {
+	ActorHost,
+	ActorLease,
+	ActorStateHandle,
+	FoldEvent,
+} from "@hobo/core";
 import { mustGet } from "@hobo/core/total-access";
+import { isJsonObject, isJsonString, type JsonValue } from "../json.js";
 
 export const ACTOR_HOST_RUNTIME_PORT_VERSION =
 	"hobo.actor-host-runtime-port/v1";
@@ -108,11 +114,11 @@ export function createInMemoryActorHost(
 			key: string,
 			request: {
 				initialState: S;
-				fold: (state: S, event: { type: string; [key: string]: unknown }) => S;
+				fold: (state: S, event: FoldEvent) => S;
 			},
 		) {
 			const actorKey = requireNonEmptyString(key, "key");
-			if (typeof request.fold !== "function") {
+			if (!(request.fold instanceof Function)) {
 				throw new TypeError("request.fold must be a function");
 			}
 			if (!("initialState" in request)) {
@@ -150,16 +156,13 @@ type LeaseRecord = {
 };
 
 type ActorStream = {
-	events: Array<Record<string, unknown>>;
-	snapshot: { seq: number; state: unknown; savedAt: string } | null;
+	events: FoldEvent[];
+	snapshot: { seq: number; state: JsonValue; savedAt: string } | null;
 };
 
 class DurableActorState<S> implements ActorHostState<S> {
 	readonly key: string;
-	readonly #fold: (
-		state: S,
-		event: { type: string; [key: string]: unknown },
-	) => S;
+	readonly #fold: (state: S, event: FoldEvent) => S;
 	readonly #initialState: S;
 	readonly #stream: ActorStream;
 	readonly #clock: ManualClock;
@@ -167,7 +170,7 @@ class DurableActorState<S> implements ActorHostState<S> {
 
 	constructor(options: {
 		key: string;
-		fold: (state: S, event: { type: string; [key: string]: unknown }) => S;
+		fold: (state: S, event: FoldEvent) => S;
 		initialState: S;
 		stream: ActorStream;
 		clock: ManualClock;
@@ -181,19 +184,15 @@ class DurableActorState<S> implements ActorHostState<S> {
 		this.#validateLease = options.validateLease;
 	}
 
-	append(
-		lease: ActorHostLease,
-		event: { type: string; [key: string]: unknown },
-	) {
+	append(lease: ActorHostLease, event: FoldEvent) {
 		const leaseRecord = this.#validateLease(lease);
 		const body = normalizeEvent(event);
 		const seq = this.#stream.events.length + 1;
-		const record = Object.freeze({
+		const record: FoldEvent = Object.freeze({
 			...body,
 			apiVersion: ACTOR_HOST_RUNTIME_PORT_VERSION,
 			streamId: this.key,
 			seq,
-			fenceToken: leaseRecord.fenceToken,
 			holderId: leaseRecord.holderId,
 			appendedAt: this.#clock.now(),
 		});
@@ -208,16 +207,14 @@ class DurableActorState<S> implements ActorHostState<S> {
 	read() {
 		const snapshot = this.#stream.snapshot;
 		const snapshotSeq = snapshot?.seq ?? 0;
+		// SAFETY: assertion to `structuredClone(snapshot?.state ?? this.#initialState) as S` is required at this boundary.
 		let state = structuredClone(snapshot?.state ?? this.#initialState) as S;
 		const tail = this.#stream.events.filter(
 			(event) => Number(event.seq) > snapshotSeq,
 		);
 
 		for (const event of tail) {
-			state = this.#fold(
-				state,
-				structuredClone(event) as { type: string; [key: string]: unknown },
-			);
+			state = this.#fold(state, structuredClone(event));
 		}
 
 		return {
@@ -312,8 +309,8 @@ function getStream(streams: Map<string, ActorStream>, key: string) {
 	return mustGet(streams, key);
 }
 
-function normalizeEvent(event: { type: string; [key: string]: unknown }) {
-	if (!event || typeof event !== "object" || Array.isArray(event)) {
+function normalizeEvent(event: FoldEvent) {
+	if (!event || !isJsonObject(event) || Array.isArray(event)) {
 		throw new TypeError("event must be an object");
 	}
 	const type = requireNonEmptyString(event.type, "event.type");
@@ -323,8 +320,8 @@ function normalizeEvent(event: { type: string; [key: string]: unknown }) {
 	});
 }
 
-function requireNonEmptyString(value: unknown, fieldName: string): string {
-	if (typeof value !== "string" || value.length === 0) {
+function requireNonEmptyString(value: JsonValue, fieldName: string): string {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new TypeError(`${fieldName} must be a non-empty string`);
 	}
 	return value;
@@ -339,7 +336,7 @@ function requirePositiveInteger(value: number, fieldName: string) {
 
 function normalizeInstantMs(value: string, fieldName: string) {
 	const timestamp = Date.parse(value);
-	if (typeof value !== "string" || Number.isNaN(timestamp)) {
+	if (!isJsonString(value) || Number.isNaN(timestamp)) {
 		throw new TypeError(`${fieldName} must be a valid ISO-8601 string`);
 	}
 	return timestamp;

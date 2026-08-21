@@ -96,7 +96,7 @@ describe("wrpc in-process link layer", () => {
 		await expect(
 			layer.callImport("worker", KV, "get", { key: "session" }),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				error instanceof NoRouteError && error.code === "no-route",
 		);
 		expect(layer.events.some((event) => event.type === "link.Called")).toBe(
@@ -130,7 +130,7 @@ describe("wrpc in-process link layer", () => {
 		await expect(
 			layer.callImport("api", BLOB, "read", { key: "secret" }),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				error instanceof NoRouteError && error.routeKey === `api\0${BLOB}`,
 		);
 	});

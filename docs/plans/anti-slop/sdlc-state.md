@@ -54,7 +54,8 @@ main
                                            └── sdlc/anti-slop-43-runtime-conformance  #1276 runtime+conformance
                                             └── sdlc/anti-slop-44-identity  #1278 identity
                                              └── sdlc/anti-slop-45-adapters  #1280 adapters
-                                              └── sdlc/anti-slop-46-provider-kubernetes  kubernetes
+                                              └── sdlc/anti-slop-46-provider-kubernetes  #1284 kubernetes
+                                               └── sdlc/anti-slop-47-draft-epic  epic-proofs
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -120,6 +121,7 @@ Layer 42: `@hobo/runtime-local` oxlint `--deny-warnings` and `tsc --noEmit` clea
 Layer 43: `@hobo/runtime` + `@hobo/conformance` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1276).
 Layer 44: `@hobo/identity` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1278).
 Layer 45: remaining `@hobo/adapter-*` (drizzle, better-auth, openbao, hono) oxlint `--deny-warnings` and `tsc --noEmit` clean (#1280).
-Layer 46: `@hobo/provider-kubernetes` oxlint `--deny-warnings` and `tsc --noEmit` clean.
-Next: `src/draft/`.
+Layer 46: `@hobo/provider-kubernetes` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1284).
+Layer 47: `src/draft/epic-proofs` oxlint `--deny-warnings` clean.
+Next: remaining `src/draft/` (technical-proofs, exp-proofs, projects).
 Full-repo `lint:slop --deny-warnings` is still red until those land.

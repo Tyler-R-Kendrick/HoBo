@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export type StabilityTier = "stable" | "preview" | "experimental" | "deprecated";
 
 export interface CapabilityDeclaration {
@@ -80,7 +81,7 @@ export interface CertifiedListingDescriptor {
     name: string;
     version: string;
   };
-  capabilitySpec: Record<string, string | number | boolean | null>;
+  capabilitySpec: JsonValue;
   matching: {
     regions: string[];
     classifications: string[];
@@ -105,16 +106,8 @@ export interface ListingYankedEvent {
   occurredAt?: string;
 }
 
-export type CapabilityEventValue =
-  | string
-  | number
-  | boolean
-  | null
-  | CapabilityEventValue[]
-  | { [key: string]: CapabilityEventValue };
-
 export interface CapabilityDiscoveryIndex {
-  apply(event: ListingCertifiedEvent | ListingYankedEvent | { type: string; [key: string]: CapabilityEventValue }): {
+  apply(event: ListingCertifiedEvent | ListingYankedEvent | { type: string; [key: string]: JsonValue }): {
     applied: boolean;
     listingId?: string;
     reason?: string;

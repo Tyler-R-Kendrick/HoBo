@@ -1,5 +1,7 @@
 import type * as ProviderAzureContract from "../src/provider-azure.d.mts";
 import type { AzureProvider } from "../src/provider-azure.d.mts";
+import { type JsonObject } from "../src/json.js";
+
 
 declare const AZURE_PROVIDER_ID: typeof ProviderAzureContract.AZURE_PROVIDER_ID;
 declare const azure: typeof ProviderAzureContract.azure;
@@ -25,13 +27,11 @@ const emission = realizeAzurePlan(provider, plan);
 
 AZURE_PROVIDER_ID satisfies "@hobo/provider-azure";
 manifest.claimedCapabilities satisfies Array<"database" | "objectStore" | "compute" | "queue" | "cache">;
-evaluation satisfies Record<string, unknown>;
-emission satisfies Record<string, unknown>;
+evaluation satisfies JsonObject;
+emission satisfies JsonObject;
 
 // @ts-expect-error Azure option blocks do not accept raw ARM/Bicep escape hatches in this contract.
 azure.with.containerApp({ rawArmTemplate: { type: "Microsoft.App/containerApps" } });
 
-if (false) {
-  // @ts-expect-error client is typed to declared Azure seed ports only.
-  provider.client("dns", {});
-}
+// @ts-expect-error client is typed to declared Azure seed ports only.
+provider.client("dns", {});

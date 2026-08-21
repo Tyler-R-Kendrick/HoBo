@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export declare const GCP_PROVIDER_ID = "@hobo/provider-gcp";
 export declare const GCP_PROVIDER_VERSION = "hobo.provider-gcp/v1";
 export declare const GCP_PROVIDER_TARGET = "gcp";
@@ -82,7 +83,7 @@ export interface GcpProvider {
   manifest: { claimedCapabilities: GcpCapability[] };
   with: GcpWithBuilders;
   registerDefaultDefinitions<T extends unknown[]>(registry: T): T;
-  realize(plan: Record<string, unknown>): Record<string, unknown>;
+  realize(plan: JsonObject): JsonObject;
   capabilityManifest(): {
     provider: typeof GCP_PROVIDER_ID;
     claimedCapabilities: GcpCapability[];
@@ -91,11 +92,11 @@ export interface GcpProvider {
     capabilities: GcpCapabilityManifestEntry[];
     cost: { facts: Array<{ sku: string }> };
   };
-  client(port: "database", outputs: Record<string, unknown>): GcpDatabaseClient;
-  client(port: "objectStore", outputs: Record<string, unknown>): GcpObjectStoreClient;
-  client(port: "compute", outputs: Record<string, unknown>): GcpComputeClient;
-  client(port: "queue", outputs: Record<string, unknown>): GcpQueueClient;
-  client(port: "cache", outputs: Record<string, unknown>): GcpCacheClient;
+  client(port: "database", outputs: JsonObject): GcpDatabaseClient;
+  client(port: "objectStore", outputs: JsonObject): GcpObjectStoreClient;
+  client(port: "compute", outputs: JsonObject): GcpComputeClient;
+  client(port: "queue", outputs: JsonObject): GcpQueueClient;
+  client(port: "cache", outputs: JsonObject): GcpCacheClient;
 }
 
 export interface GcpDatabaseClient {
@@ -103,39 +104,39 @@ export interface GcpDatabaseClient {
   providerId: typeof GCP_PROVIDER_ID;
   connectionString: string;
   ping(): "database:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface GcpObjectStoreClient {
   port: "objectStore";
   providerId: typeof GCP_PROVIDER_ID;
-  bucketName: unknown;
+  bucketName: JsonValue;
   ping(): "objectStore:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface GcpComputeClient {
   port: "compute";
   providerId: typeof GCP_PROVIDER_ID;
-  url: unknown;
+  url: JsonValue;
   ping(): "compute:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface GcpQueueClient {
   port: "queue";
   providerId: typeof GCP_PROVIDER_ID;
-  topicName: unknown;
+  topicName: JsonValue;
   ping(): "queue:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface GcpCacheClient {
   port: "cache";
   providerId: typeof GCP_PROVIDER_ID;
-  endpoint: unknown;
+  endpoint: JsonValue;
   ping(): "cache:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export declare function createGcpProvider(options?: {
@@ -144,8 +145,8 @@ export declare function createGcpProvider(options?: {
   campEvidence?: "pass" | "fail" | Record<string, Partial<Record<"realProviderDrift" | "iam" | "mtls" | "quota", boolean>>>;
 }): GcpProvider;
 
-export declare function createGcpMultiCloudShopPlan(options?: Record<string, unknown>): Record<string, unknown>;
-export declare function mergeGcpResolvedOptions(provider: GcpProvider, optionBlocks: readonly unknown[]): Record<string, unknown>;
-export declare function evaluateGcpPlan(provider: GcpProvider, plan: Record<string, unknown>): Record<string, unknown>;
-export declare function realizeGcpPlan(provider: GcpProvider, plan: Record<string, unknown>): Record<string, unknown>;
-export declare function simulateGcpApply(provider: GcpProvider, plan: Record<string, unknown>, options?: Record<string, unknown>): Record<string, unknown>;
+export declare function createGcpMultiCloudShopPlan(options?: JsonObject): JsonObject;
+export declare function mergeGcpResolvedOptions(provider: GcpProvider, optionBlocks: readonly unknown[]): JsonObject;
+export declare function evaluateGcpPlan(provider: GcpProvider, plan: JsonObject): JsonObject;
+export declare function realizeGcpPlan(provider: GcpProvider, plan: JsonObject): JsonObject;
+export declare function simulateGcpApply(provider: GcpProvider, plan: JsonObject, options?: JsonObject): JsonObject;

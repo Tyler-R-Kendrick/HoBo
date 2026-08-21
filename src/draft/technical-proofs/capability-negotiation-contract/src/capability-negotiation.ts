@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 
 import { createMatchDecidedEvent } from "../../control-plane-event-schema-contract/src/control-plane-events.js";
 import { specificity } from "../../matching-specificity-vectors/src/matching.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const CAPABILITY_NEGOTIATION_VERSION = "hobo.capability-negotiation/v1";
 
@@ -333,11 +335,11 @@ function failedDecision({ context, objective, catalogContentHash, reason, reject
 }
 
 function catalogSnapshot(catalog) {
-  const snapshot = typeof catalog?.snapshot === "function" ? catalog.snapshot() : catalog;
-  if (!snapshot || typeof snapshot !== "object" || !Array.isArray(snapshot.definitions)) {
+  const snapshot = catalog?.snapshot instanceof Function ? catalog.snapshot() : catalog;
+  if (!snapshot || !isJsonObject(snapshot) || !Array.isArray(snapshot.definitions)) {
     throw new Error("catalog snapshot with definitions is required");
   }
-  if (typeof snapshot.contentHash !== "string" || snapshot.contentHash.length === 0) {
+  if (!isJsonString(snapshot.contentHash) || snapshot.contentHash.length === 0) {
     throw new Error("catalog snapshot contentHash is required");
   }
   return snapshot;
@@ -420,10 +422,10 @@ function capabilityLevel(providerCapabilities, requests) {
 }
 
 function assertContext(context) {
-  if (!context || typeof context !== "object" || Array.isArray(context)) {
+  if (!context || !isJsonObject(context) || Array.isArray(context)) {
     throw new Error("context must be an object");
   }
-  if (typeof context.resourceType !== "string" || context.resourceType.length === 0) {
+  if (!isJsonString(context.resourceType) || context.resourceType.length === 0) {
     throw new Error("context.resourceType must be a non-empty string");
   }
 }
@@ -441,7 +443,7 @@ function assertStrictness(strictness) {
 }
 
 function assertString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
 }
@@ -456,7 +458,7 @@ function stableDigest(value) {
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
 }
 
@@ -465,7 +467,7 @@ function descending(left, right) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) return value;
   Object.freeze(value);
   for (const child of Object.values(value)) {
     deepFreeze(child);

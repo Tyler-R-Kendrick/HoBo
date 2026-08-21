@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const REQUIRED_CHECK_KINDS = Object.freeze([
   "multi-vantage-resolve",
   "ttl-aware-propagation",
@@ -127,7 +128,7 @@ export function domainValidationChecks(fixtures) {
     },
     "acme-challenge": () => {
       const challengeName = values["acme-challenge"]?.challengeName;
-      if (typeof challengeName !== "string" || !challengeName.startsWith("_acme-challenge.")) {
+      if (!isJsonString(challengeName) || !challengeName.startsWith("_acme-challenge.")) {
         return fail("ACME challenge must be bound to the domain DNS-01 challenge name");
       }
       return pass({ challengeName });
@@ -178,7 +179,7 @@ export function assertValidationEventSequence(events) {
   }
 
   if (terminal.type === "domain.ValidationFailed") {
-    if (typeof terminal.data?.failedCheck !== "string" || terminal.data.failedCheck.length === 0) {
+    if (!isJsonString(terminal.data?.failedCheck) || terminal.data.failedCheck.length === 0) {
       throw new Error("domain.ValidationFailed must name failedCheck");
     }
     return true;
@@ -250,13 +251,13 @@ function failedResult(
 }
 
 function normalizeChecks(checks) {
-  if (!checks || typeof checks !== "object") {
+  if (!checks || !isJsonObject(checks)) {
     throw new Error("domain validation gate requires checks");
   }
 
   const normalized = {};
   for (const kind of REQUIRED_CHECK_KINDS) {
-    if (typeof checks[kind] !== "function") {
+    if (!(checks[kind] instanceof Function)) {
       throw new Error(`missing validation check: ${kind}`);
     }
     normalized[kind] = checks[kind];
@@ -265,13 +266,13 @@ function normalizeChecks(checks) {
 }
 
 function normalizeRequest(request) {
-  if (!request || typeof request !== "object") {
+  if (!request || !isJsonObject(request)) {
     throw new Error("validation request is required");
   }
   const domain = requireString(request.domain, "domain");
   const changeId = requireString(request.changeId, "changeId");
   const camp = requireString(request.camp, "camp");
-  if (typeof request.stage !== "function") {
+  if (!(request.stage instanceof Function)) {
     throw new Error("validation request requires a shadow stage function");
   }
   return {
@@ -307,7 +308,7 @@ function fail(reason) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} is required`);
   }
   return value;

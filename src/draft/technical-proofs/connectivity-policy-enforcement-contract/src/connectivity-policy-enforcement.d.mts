@@ -1,9 +1,10 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export declare const CONNECTIVITY_POLICY_ENFORCEMENT_SCHEMA_VERSION = "hobo.connectivity-policy-enforcement/v1";
 
-export declare function normalizeConnectivityTier(value: unknown): number | undefined;
+export declare function normalizeConnectivityTier(value: JsonValue): number | undefined;
 
 export declare function enforceConnectivityCanDeploy(input: {
-  plan: Record<string, unknown>;
+  plan: JsonObject;
   environment: string;
   policyDecision: PolicyDecision;
 }): EnforcementResult;
@@ -41,14 +42,14 @@ export type EnforcementResult =
   | {
       ok: true;
       mode?: "allowed" | "region-pinned";
-      request: Record<string, unknown>;
-      route?: Record<string, unknown>;
-      enforcementEvent: Record<string, unknown>;
+      request: JsonObject;
+      route?: JsonObject;
+      enforcementEvent: JsonObject;
     }
   | {
       ok: false;
       code: string;
       reason?: string;
-      request?: Record<string, unknown>;
-      enforcementEvent?: Record<string, unknown>;
+      request?: JsonObject;
+      enforcementEvent?: JsonObject;
     };

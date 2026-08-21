@@ -158,7 +158,8 @@ const project = (state: ClaimCoordinatorState, events: readonly unknown[]) => ({
 		// Projected to null so a case can assert "cleared"; JSON has no undefined.
 		failureCode: item.failureCode ?? null,
 	})),
-	events: events.map((event) => (event as { kind: string }).kind),
+		// SAFETY: reducer events all expose the asserted discriminant used by this projection.
+		events: events.map((event) => (event as { kind: string }).kind),
 });
 
 function after(ask: Ask) {

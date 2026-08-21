@@ -6,6 +6,7 @@ import {
 	parseTenantId,
 } from "@hobo/core";
 import { test } from "vitest";
+import type { JsonValue } from "../src/json.js";
 
 import { synthesizeRoutingPlan } from "../src/traffic-routing/synthesize.js";
 
@@ -33,10 +34,11 @@ type Interaction = Readonly<{
 			now?: string;
 		}>;
 	}>;
-	response: Readonly<{ status: number; body: unknown }>;
+	response: Readonly<{ status: number; body: JsonValue }>;
 }>;
 
 test("executes the TrafficRouting synthesis Pact fixture", () => {
+	// SAFETY: assertion required at this I/O or test boundary.
 	const pact = JSON.parse(
 		readFileSync(
 			new URL(
@@ -61,14 +63,14 @@ test("executes the TrafficRouting synthesis Pact fixture", () => {
 		const result = synthesizeRoutingPlan({
 			topology: { ...body.topology, tenantId },
 			...(body.availability === undefined
-				? {}
+				? undefined
 				: { availability: parseMinAvailabilitySpec(body.availability) }),
 			policyDecision: {
 				...body.policyDecision,
 				audit: { ...body.policyDecision.audit, tenantId },
 			},
-			...(body.planId === undefined ? {} : { planId: body.planId }),
-			...(body.now === undefined ? {} : { now: body.now }),
+			...(body.planId === undefined ? undefined : { planId: body.planId }),
+			...(body.now === undefined ? undefined : { now: body.now }),
 		});
 		assert.deepEqual(
 			{ status: result.kind === "plan" ? 200 : 403, body: result },

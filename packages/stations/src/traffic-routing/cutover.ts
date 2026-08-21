@@ -149,7 +149,7 @@ export async function executeRoutingCutover(
 			finalPercent: input.finalPercent,
 			...(input.finalApplyResult !== undefined
 				? { finalApplyResult: input.finalApplyResult }
-				: {}),
+				: undefined),
 		});
 
 	/**
@@ -287,10 +287,10 @@ export async function executeRoutingCutover(
 			rampSteps: [...rampSteps],
 			...(precondition?.validation.changeId !== undefined
 				? { validationChangeId: precondition.validation.changeId }
-				: {}),
+				: undefined),
 			...(precondition !== undefined
 				? { effectiveRtoSeconds: precondition.ttl.previousTtlSeconds }
-				: {}),
+				: undefined),
 			startedAt: clock(),
 		},
 	});
@@ -342,7 +342,7 @@ export async function executeRoutingCutover(
 				reasons,
 				...(precondition !== undefined
 					? { effectiveRtoSeconds: precondition.ttl.previousTtlSeconds }
-					: {}),
+					: undefined),
 				rolledBackAt: clock(),
 			},
 		});
@@ -365,6 +365,7 @@ export async function executeRoutingCutover(
 	let consecutiveFailures = 0;
 	let stepIndex = 0;
 	while (stepIndex < rampSteps.length) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const percent = rampSteps[stepIndex] as number;
 		const synthesis = synthesizeAt(percent);
 		if (synthesis.kind === "denied") {
@@ -433,6 +434,6 @@ export async function executeRoutingCutover(
 		cutover: true,
 		rolledBack: false,
 		finalPercent: 100,
-		...(lastApply !== undefined ? { finalApplyResult: lastApply } : {}),
+		...(lastApply !== undefined ? { finalApplyResult: lastApply } : undefined),
 	});
 }

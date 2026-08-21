@@ -39,7 +39,9 @@ export function createStationBindleRuntimeContext(input: {
 				target: definition.id,
 				origin: definition.origin,
 				authDiscovery: definition.auth.discovery,
-				...(definition.audience ? { audience: definition.audience } : {}),
+				...(definition.audience
+					? { audience: definition.audience }
+					: undefined),
 				capabilities: Object.freeze([...binding.declaredAllow]),
 			});
 		},

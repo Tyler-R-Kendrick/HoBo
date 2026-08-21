@@ -1,7 +1,16 @@
 /**
  * Rails: Station-owned, content-addressed policy profiles (ADR Station occupancy).
  */
+
 import { createHash } from "node:crypto";
+import {
+	cloneAsJson,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 import {
 	RAIL_SCHEMA_VERSION,
@@ -9,16 +18,89 @@ import {
 	type RailActivationStatus,
 } from "./types.js";
 
-function canonicalize(value: unknown): string {
-	if (value === null || typeof value !== "object") {
+function canonicalize<T>(value: T): string {
+	return canonicalizeJson(cloneAsJson(value));
+}
+
+function canonicalizeJson(value: JsonValue): string {
+	if (Array.isArray(value)) {
+		return `[${value.map(canonicalizeJson).join(",")}]`;
+	}
+	if (value === null || !isJsonObject(value)) {
 		return JSON.stringify(value);
 	}
-	if (Array.isArray(value)) {
-		return `[${value.map(canonicalize).join(",")}]`;
+	const keys = Object.keys(value).sort();
+	return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalizeJson(value[k] ?? null)}`).join(",")}}`;
+}
+
+function stringList(value: JsonValue | undefined): string[] | undefined {
+	if (value === undefined || !Array.isArray(value)) return undefined;
+	const out: string[] = [];
+	for (const item of value) {
+		if (isJsonString(item)) out.push(item);
 	}
-	const obj = value as Record<string, unknown>;
-	const keys = Object.keys(obj).sort();
-	return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalize(obj[k])}`).join(",")}}`;
+	return out;
+}
+
+function stringBag(
+	value: JsonValue | undefined,
+): Record<string, string> | undefined {
+	if (!isJsonObject(value)) return undefined;
+	const out: Record<string, string> = {};
+	for (const [key, item] of Object.entries(value)) {
+		if (isJsonString(item)) out[key] = item;
+	}
+	return out;
+}
+
+export function parseRail<T>(value: T): Rail {
+	const json = cloneAsJson(value);
+	if (!isJsonObject(json)) {
+		throw new TypeError("rail must be an object");
+	}
+	const status = json.activationStatus;
+	const policyPacks = stringList(json.policyPacks);
+	const requiredConnectorKinds = stringList(json.requiredConnectorKinds);
+	const approvedProviders = stringList(json.approvedProviders);
+	const obligationDefaults = stringList(json.obligationDefaults);
+	const guardrailEnvelope = stringBag(json.guardrailEnvelope);
+	const metadata = stringBag(json.metadata);
+	const catalogSnapshotPin = isJsonString(json.catalogSnapshotPin)
+		? json.catalogSnapshotPin
+		: undefined;
+	const activationStatus =
+		status === "draft" ||
+		status === "approved" ||
+		status === "active" ||
+		status === "retired"
+			? status
+			: undefined;
+	const now = isJsonString(json.publishedAt) ? json.publishedAt : undefined;
+	const rail = createRail({
+		id: isJsonString(json.id) ? json.id : "",
+		name: isJsonString(json.name) ? json.name : "",
+		version: isJsonString(json.version) ? json.version : "",
+		stationId: isJsonString(json.stationId) ? json.stationId : "",
+		isBootstrap: json.isBootstrap === true,
+		...(policyPacks !== undefined ? { policyPacks } : undefined),
+		...(requiredConnectorKinds !== undefined
+			? { requiredConnectorKinds }
+			: undefined),
+		...(approvedProviders !== undefined ? { approvedProviders } : undefined),
+		...(obligationDefaults !== undefined ? { obligationDefaults } : undefined),
+		...(guardrailEnvelope !== undefined ? { guardrailEnvelope } : undefined),
+		...(metadata !== undefined ? { metadata } : undefined),
+		...(catalogSnapshotPin !== undefined ? { catalogSnapshotPin } : undefined),
+		...(activationStatus !== undefined ? { activationStatus } : undefined),
+		...(now !== undefined ? { now } : undefined),
+	});
+	const hash = json.contentHash;
+	if (isJsonString(hash) && hash.startsWith("sha256:")) {
+		// SAFETY: persisted rails carry a content-addressed sha256 hash.
+		const contentHash = hash as `sha256:${string}`;
+		return Object.freeze({ ...rail, contentHash });
+	}
+	return rail;
 }
 
 export function railContentHash(
@@ -64,6 +146,7 @@ export function createRail(input: {
 			input.placementDefaults ?? {
 				objective: "min-cost" as const,
 				allowedProviders: Object.freeze(["local"]),
+				// SAFETY: assertion required at this I/O or test boundary.
 				deniedProviders: Object.freeze([] as string[]),
 				allowedRegions: Object.freeze(["local"]),
 			},
@@ -91,11 +174,11 @@ export function createRail(input: {
 			...(input.approvedProviders ?? ["local"]),
 		]),
 		obligationDefaults: Object.freeze([...(input.obligationDefaults ?? [])]),
-		guardrailEnvelope: Object.freeze({ ...(input.guardrailEnvelope ?? {}) }),
-		metadata: Object.freeze({ ...(input.metadata ?? {}) }),
+		guardrailEnvelope: Object.freeze({ ...input.guardrailEnvelope }),
+		metadata: Object.freeze({ ...input.metadata }),
 		...(input.catalogSnapshotPin !== undefined
 			? { catalogSnapshotPin: input.catalogSnapshotPin }
-			: {}),
+			: undefined),
 	};
 	const contentHash = railContentHash(body);
 	return Object.freeze({
@@ -127,36 +210,39 @@ export function createBootstrapRail(stationId: string, now?: string): Rail {
 		placementDefaults: {
 			objective: "pinned",
 			allowedProviders: Object.freeze(["local"]),
+			// SAFETY: assertion required at this I/O or test boundary.
 			deniedProviders: Object.freeze([] as string[]),
 			allowedRegions: Object.freeze(["local"]),
 		},
 		approvedProviders: Object.freeze(["local"]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		requiredConnectorKinds: Object.freeze([] as string[]),
 		catalogSnapshotPin: "local-host",
 		metadata: Object.freeze({
 			role: "bootstrap",
 			description: "Sealed least-privilege local bootstrap Rail",
 		}),
-		...(now !== undefined ? { now } : {}),
+		...(now !== undefined ? { now } : undefined),
 	});
 }
 
 /** Import former hobo.broker.json policy document as a Rail body under a Station. */
 export function railFromBrokerConfig(
 	stationId: string,
-	brokerConfig: Readonly<Record<string, unknown>>,
+	brokerConfig: JsonObject,
 	options?: {
 		readonly id?: string;
 		readonly name?: string;
 		readonly now?: string;
 	},
 ): Rail {
-	const brokerId =
-		typeof brokerConfig.brokerId === "string"
-			? brokerConfig.brokerId
-			: "imported";
-	const billing = (brokerConfig.billing ?? {}) as Record<string, unknown>;
-	const delivery = (brokerConfig.delivery ?? {}) as Record<string, unknown>;
+	const brokerId = isJsonString(brokerConfig.brokerId)
+		? brokerConfig.brokerId
+		: "imported";
+	// SAFETY: assertion required at this I/O or test boundary.
+	const billing = (brokerConfig.billing ?? {}) as JsonObject;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const delivery = (brokerConfig.delivery ?? {}) as JsonObject;
 	return createRail({
 		id: options?.id ?? `rail-from-broker-${brokerId}`,
 		name: options?.name ?? `imported-${brokerId}`,
@@ -167,18 +253,18 @@ export function railFromBrokerConfig(
 		placementDefaults: {
 			objective: "min-cost",
 			allowedProviders: Object.freeze(["local"]),
+			// SAFETY: assertion required at this I/O or test boundary.
 			deniedProviders: Object.freeze([] as string[]),
 			allowedRegions: Object.freeze(["local"]),
 		},
 		billingPolicy: {
-			quota:
-				typeof billing.quota === "string" ? billing.quota : "deployments/day",
-			quotaUsed: typeof billing.quotaUsed === "number" ? billing.quotaUsed : 0,
-			quotaLimit:
-				typeof billing.quotaLimit === "number" ? billing.quotaLimit : 10_000,
-			budgetUsd: typeof billing.budgetUsd === "number" ? billing.budgetUsd : 0,
-			spendCapUsd:
-				typeof billing.spendCapUsd === "number" ? billing.spendCapUsd : 0,
+			quota: isJsonString(billing.quota) ? billing.quota : "deployments/day",
+			quotaUsed: isJsonNumber(billing.quotaUsed) ? billing.quotaUsed : 0,
+			quotaLimit: isJsonNumber(billing.quotaLimit)
+				? billing.quotaLimit
+				: 10_000,
+			budgetUsd: isJsonNumber(billing.budgetUsd) ? billing.budgetUsd : 0,
+			spendCapUsd: isJsonNumber(billing.spendCapUsd) ? billing.spendCapUsd : 0,
 		},
 		deliveryPolicy: {
 			engine: delivery.engine === "argo" ? "argo" : "in-proc",
@@ -187,6 +273,6 @@ export function railFromBrokerConfig(
 		},
 		metadata: Object.freeze({ importedFrom: "hobo.broker.json" }),
 		activationStatus: "approved",
-		...(options?.now !== undefined ? { now: options.now } : {}),
+		...(options?.now !== undefined ? { now: options.now } : undefined),
 	});
 }

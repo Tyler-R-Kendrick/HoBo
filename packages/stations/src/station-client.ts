@@ -2,6 +2,7 @@
  * Local Station store + client used by Broker (Conductor) and CLI.
  * Durable state lives under HOBO_HOME/stations/<id>/; Conductor holds no long-lived secrets.
  */
+
 import {
 	existsSync,
 	mkdirSync,
@@ -10,7 +11,8 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-import type { StationEvent } from "./events.js";
+import { parseStationEvent, type StationEvent } from "./events.js";
+import { isJsonString, type JsonObject } from "./json.js";
 import { railFromBrokerConfig } from "./rail.js";
 import {
 	foldStationEvents,
@@ -53,7 +55,7 @@ export function loadStationEvents(
 	return readFileSync(path, "utf8")
 		.split("\n")
 		.filter(Boolean)
-		.map((line) => JSON.parse(line) as StationEvent);
+		.map((line) => parseStationEvent(line));
 }
 
 export function persistStationEvents(
@@ -182,7 +184,7 @@ export function initStation(input: {
 			...(state.occupancy.activeRailHash !== undefined &&
 			state.occupancy.activeRailHash !== bootstrap.contentHash
 				? { activatedRailHash: state.occupancy.activeRailHash }
-				: {}),
+				: undefined),
 		};
 	}
 
@@ -203,10 +205,8 @@ export function initStation(input: {
 	let activatedRailHash: `sha256:${string}` | undefined;
 	const railDocPath = input.importRailDocPath;
 	if (railDocPath && existsSync(railDocPath)) {
-		const raw = JSON.parse(readFileSync(railDocPath, "utf8")) as Record<
-			string,
-			unknown
-		>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const raw = JSON.parse(readFileSync(railDocPath, "utf8")) as JsonObject;
 		const imported = railFromBrokerConfig(stationId, raw);
 		const published = svc.publishRail({
 			id: imported.id,
@@ -241,7 +241,7 @@ export function initStation(input: {
 		occupancy: snap.occupancy,
 		bootstrap,
 		created: true,
-		...(activatedRailHash !== undefined ? { activatedRailHash } : {}),
+		...(activatedRailHash !== undefined ? { activatedRailHash } : undefined),
 	};
 }
 
@@ -261,20 +261,22 @@ export function listStationIds(hoboHome: string): readonly string[] {
  * Resolve Station context: flags → env → profile → single local Station → fail.
  * Never auto-creates durable Station state.
  */
+export interface ResolvedStationContext {
+	readonly stationId: string;
+	readonly client: StationClient;
+}
+
 export function resolveStationContext(input: {
 	readonly hoboHome: string;
 	readonly stationFlag?: string;
 	readonly stationEnv?: string;
 	readonly profileStationId?: string;
-}): {
-	stationId: string;
-	client: StationClient;
-} {
+}): ResolvedStationContext {
 	const candidates = [
 		input.stationFlag,
 		input.stationEnv,
 		input.profileStationId,
-	].filter((v): v is string => typeof v === "string" && v.length > 0);
+	].filter((v): v is string => isJsonString(v) && v.length > 0);
 
 	for (const id of candidates) {
 		const events = loadStationEvents(input.hoboHome, id);
@@ -309,7 +311,7 @@ export function resolveStationContext(input: {
 			const recordedId =
 				firstLine === undefined
 					? undefined
-					: (JSON.parse(firstLine) as StationEvent).stationId;
+					: parseStationEvent(firstLine).stationId;
 			const events = loadStationEvents(input.hoboHome, recordedId ?? dirName);
 			const first = events[0];
 			if (first !== undefined) {

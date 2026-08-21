@@ -38,10 +38,12 @@ export function applyRoutingObservations(
 		if (!observed) return backend;
 		return Object.freeze({
 			...backend,
-			...(observed.healthy !== undefined ? { healthy: observed.healthy } : {}),
+			...(observed.healthy !== undefined
+				? { healthy: observed.healthy }
+				: undefined),
 			...(observed.locationHints !== undefined
 				? { locationHints: Object.freeze([...observed.locationHints]) }
-				: {}),
+				: undefined),
 		});
 	});
 	return Object.freeze({

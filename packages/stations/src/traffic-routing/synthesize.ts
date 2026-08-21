@@ -6,6 +6,7 @@ import {
 	type RoutingWeightStrategy,
 	type TenantId,
 } from "@hobo/core";
+import { cloneAsJson } from "../json.js";
 
 export type RoutingTopology = Readonly<{
 	service: string;
@@ -105,31 +106,33 @@ export function synthesizeRoutingPlan(
 	const notes = availability.notes;
 	return Object.freeze({
 		kind: "plan",
-		plan: parseRoutingPlan({
-			planId:
-				input.planId ??
-				`plan:${input.topology.service}:${input.topology.stationId}`,
-			intent: {
-				service: input.topology.service,
-				tenantId: input.topology.tenantId,
-				rules: [
-					{
-						backends,
-						weightStrategy: input.weightStrategy ?? "prefer-healthy",
-					},
-				],
-				...(input.availability !== undefined
-					? { availability: input.availability }
-					: {}),
-			},
-			backends,
-			stationId: input.topology.stationId,
-			...(input.topology.railHash !== undefined
-				? { railHash: input.topology.railHash }
-				: {}),
-			createdAt: input.now ?? input.policyDecision.audit.decidedAt,
-			...(notes.length > 0 ? { degraded: true, notes } : {}),
-		}),
+		plan: parseRoutingPlan(
+			cloneAsJson({
+				planId:
+					input.planId ??
+					`plan:${input.topology.service}:${input.topology.stationId}`,
+				intent: {
+					service: input.topology.service,
+					tenantId: input.topology.tenantId,
+					rules: [
+						{
+							backends,
+							weightStrategy: input.weightStrategy ?? "prefer-healthy",
+						},
+					],
+					...(input.availability !== undefined
+						? { availability: input.availability }
+						: undefined),
+				},
+				backends,
+				stationId: input.topology.stationId,
+				...(input.topology.railHash !== undefined
+					? { railHash: input.topology.railHash }
+					: undefined),
+				createdAt: input.now ?? input.policyDecision.audit.decidedAt,
+				...(notes.length > 0 ? { degraded: true, notes } : undefined),
+			}),
+		),
 	});
 }
 
@@ -149,9 +152,11 @@ function toBackendRef(backend: RoutingTopology["backends"][number]) {
 		service: backend.service,
 		...(backend.locationHints !== undefined
 			? { locationHints: backend.locationHints }
-			: {}),
-		...(backend.endpoint !== undefined ? { endpoint: backend.endpoint } : {}),
-		...(backend.weight !== undefined ? { weight: backend.weight } : {}),
+			: undefined),
+		...(backend.endpoint !== undefined
+			? { endpoint: backend.endpoint }
+			: undefined),
+		...(backend.weight !== undefined ? { weight: backend.weight } : undefined),
 	};
 }
 
@@ -159,10 +164,7 @@ function evaluateAvailability(
 	topology: RoutingTopology,
 	candidates: readonly RoutingTopology["backends"][number][],
 	availability: MinAvailabilitySpec | undefined,
-): Readonly<{
-	notes: string[];
-	denials: RoutingSynthesisDenial[];
-}> {
+) {
 	const notes: string[] = [];
 	const denials: RoutingSynthesisDenial[] = [];
 	const excluded = topology.backends.length - candidates.length;

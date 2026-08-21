@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export declare const CLOUDFLARE_PROVIDER_ID = "@hobo/provider-cloudflare";
 export declare const CLOUDFLARE_PROVIDER_VERSION = "hobo.provider-cloudflare/v1";
 export declare const CLOUDFLARE_PROVIDER_TARGET = "cloudflare";
@@ -71,85 +72,100 @@ export interface CloudflareProvider {
   id: typeof CLOUDFLARE_PROVIDER_ID;
   apiVersion: typeof CLOUDFLARE_PROVIDER_VERSION;
   target: typeof CLOUDFLARE_PROVIDER_TARGET;
-  capabilities: readonly unknown[];
+  capabilities: readonly JsonObject[];
   manifest: { claimedCapabilities: CloudflareCapability[] };
   with: CloudflareWithBuilders;
-  registerDefaultDefinitions<T extends unknown[]>(registry: T): T;
-  realize(plan: Record<string, unknown>): Record<string, unknown>;
+  registerDefaultDefinitions<T>(registry: T): T;
+  realize(plan: JsonObject): JsonObject;
   capabilityManifest(): {
     provider: typeof CLOUDFLARE_PROVIDER_ID;
     claimedCapabilities: CloudflareCapability[];
     auth: { mode: "svid-federation" };
     hostRuntime: { providerNativeWasm: "opt-in" };
     colos: string[];
-    capabilities: readonly unknown[];
+    capabilities: readonly JsonObject[];
     cost: { facts: Array<{ sku: string }> };
   };
-  client(port: "compute", outputs: Record<string, unknown>): CloudflareComputeClient;
-  client(port: "objectStore", outputs: Record<string, unknown>): CloudflareObjectStoreClient;
-  client(port: "database", outputs: Record<string, unknown>): CloudflareDatabaseClient;
-  client(port: "kv", outputs: Record<string, unknown>): CloudflareKvClient;
-  client(port: "queue", outputs: Record<string, unknown>): CloudflareQueueClient;
-  client(port: "dns", outputs: Record<string, unknown>): CloudflareDnsClient;
-  verifyKvEvidence(options?: { tags?: Array<"local" | "camp"> }): Record<string, unknown>;
+  client(port: "compute", outputs: JsonObject): CloudflareComputeClient;
+  client(port: "objectStore", outputs: JsonObject): CloudflareObjectStoreClient;
+  client(port: "database", outputs: JsonObject): CloudflareDatabaseClient;
+  client(port: "kv", outputs: JsonObject): CloudflareKvClient;
+  client(port: "queue", outputs: JsonObject): CloudflareQueueClient;
+  client(port: "dns", outputs: JsonObject): CloudflareDnsClient;
+  verifyKvEvidence(options?: { tags?: Array<"local" | "camp"> }): JsonObject;
 }
 
 export interface CloudflareComputeClient {
   port: "compute";
   providerId: typeof CLOUDFLARE_PROVIDER_ID;
-  url: unknown;
+  url: JsonValue;
   ping(): "compute:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface CloudflareObjectStoreClient {
   port: "objectStore";
   providerId: typeof CLOUDFLARE_PROVIDER_ID;
-  bucketName: unknown;
+  bucketName: JsonValue;
   ping(): "objectStore:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface CloudflareDatabaseClient {
   port: "database";
   providerId: typeof CLOUDFLARE_PROVIDER_ID;
-  connectionString: unknown;
+  connectionString: JsonValue;
   ping(): "database:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface CloudflareKvClient {
   port: "kv";
   providerId: typeof CLOUDFLARE_PROVIDER_ID;
-  namespaceId: unknown;
+  namespaceId: JsonValue;
   ping(): "kv:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface CloudflareQueueClient {
   port: "queue";
   providerId: typeof CLOUDFLARE_PROVIDER_ID;
-  queueName: unknown;
+  queueName: JsonValue;
   ping(): "queue:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface CloudflareDnsClient {
   port: "dns";
   providerId: typeof CLOUDFLARE_PROVIDER_ID;
-  zoneId: unknown;
+  zoneId: JsonValue;
   ping(): "dns:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
+}
+
+export interface CloudflareServiceMatrix {
+  readonly [colo: string]: readonly string[];
+}
+
+export interface CampEvidenceFlags {
+  realProviderDrift?: boolean;
+  iam?: boolean;
+  mtls?: boolean;
+  quota?: boolean;
+}
+
+export interface CampEvidenceByCapability {
+  readonly [capability: string]: CampEvidenceFlags;
 }
 
 export declare function createCloudflareProvider(options?: {
   colos?: string[];
-  serviceMatrix?: Record<string, string[]>;
-  campEvidence?: "pass" | "fail" | Record<string, Partial<Record<"realProviderDrift" | "iam" | "mtls" | "quota", boolean>>>;
+  serviceMatrix?: CloudflareServiceMatrix;
+  campEvidence?: "pass" | "fail" | CampEvidenceByCapability;
 }): CloudflareProvider;
 
-export declare function createCloudflareEdgeShopPlan(options?: Record<string, unknown>): Record<string, unknown>;
-export declare function mergeCloudflareResolvedOptions(provider: CloudflareProvider, optionBlocks: readonly unknown[]): Record<string, unknown>;
-export declare function evaluateCloudflarePlan(provider: CloudflareProvider, plan: Record<string, unknown>): Record<string, unknown>;
-export declare function realizeCloudflarePlan(provider: CloudflareProvider, plan: Record<string, unknown>): Record<string, unknown>;
-export declare function simulateCloudflareApply(provider: CloudflareProvider, plan: Record<string, unknown>, options?: Record<string, unknown>): Record<string, unknown>;
+export declare function createCloudflareEdgeShopPlan(options?: JsonObject): JsonObject;
+export declare function mergeCloudflareResolvedOptions(provider: CloudflareProvider, optionBlocks: readonly JsonObject[]): JsonObject;
+export declare function evaluateCloudflarePlan(provider: CloudflareProvider, plan: JsonObject): JsonObject;
+export declare function realizeCloudflarePlan(provider: CloudflareProvider, plan: JsonObject): JsonObject;
+export declare function simulateCloudflareApply(provider: CloudflareProvider, plan: JsonObject, options?: JsonObject): JsonObject;

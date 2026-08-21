@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export declare const KUBERNETES_PROVIDER_ID = "@hobo/provider-kubernetes";
 export declare const KUBERNETES_PROVIDER_VERSION = "hobo.provider-kubernetes/v1";
 export declare const KUBERNETES_PROVIDER_TARGET = "kubernetes";
@@ -88,7 +89,7 @@ export interface KubernetesProvider {
   manifest: { claimedCapabilities: KubernetesSeedCapability[] };
   with: KubernetesWithBuilders;
   registerDefaultDefinitions<T extends unknown[]>(registry: T): T;
-  realize(plan: Record<string, unknown>): Record<string, unknown>;
+  realize(plan: JsonObject): JsonObject;
   capabilityManifest(): {
     provider: typeof KUBERNETES_PROVIDER_ID;
     claimedCapabilities: KubernetesSeedCapability[];
@@ -97,18 +98,18 @@ export interface KubernetesProvider {
     networking: { serviceDiscovery: "kubernetes-service-dns" };
     capabilities: KubernetesCapabilityManifestEntry[];
   };
-  client(port: "compute", outputs: Record<string, unknown>): KubernetesComputeClient;
-  client(port: "database", outputs: Record<string, unknown>): KubernetesDatabaseClient;
-  client(port: "cache", outputs: Record<string, unknown>): KubernetesCacheClient;
+  client(port: "compute", outputs: JsonObject): KubernetesComputeClient;
+  client(port: "database", outputs: JsonObject): KubernetesDatabaseClient;
+  client(port: "cache", outputs: JsonObject): KubernetesCacheClient;
 }
 
 export interface KubernetesComputeClient {
   port: "compute";
   providerId: typeof KUBERNETES_PROVIDER_ID;
   url: string;
-  serviceName: unknown;
+  serviceName: JsonValue;
   ping(): "compute:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface KubernetesDatabaseClient {
@@ -116,15 +117,15 @@ export interface KubernetesDatabaseClient {
   providerId: typeof KUBERNETES_PROVIDER_ID;
   connectionString: string;
   ping(): "database:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface KubernetesCacheClient {
   port: "cache";
   providerId: typeof KUBERNETES_PROVIDER_ID;
-  endpoint: unknown;
+  endpoint: JsonValue;
   ping(): "cache:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export declare function createKubernetesProvider(options?: {
@@ -136,8 +137,8 @@ export declare function createKubernetesProvider(options?: {
   campEvidence?: "pass" | "fail" | Record<string, Partial<Record<"realProviderDrift" | "iam" | "mtls" | "quota", boolean>>>;
 }): KubernetesProvider;
 
-export declare function createKubernetesClusterFixturePlan(options?: Record<string, unknown>): Record<string, unknown>;
-export declare function mergeKubernetesResolvedOptions(provider: KubernetesProvider, optionBlocks: readonly unknown[]): Record<string, unknown>;
-export declare function evaluateKubernetesPlan(provider: KubernetesProvider, plan: Record<string, unknown>): Record<string, unknown>;
-export declare function realizeKubernetesPlan(provider: KubernetesProvider, plan: Record<string, unknown>): Record<string, unknown>;
-export declare function simulateKubernetesApply(provider: KubernetesProvider, plan: Record<string, unknown>, options?: Record<string, unknown>): Record<string, unknown>;
+export declare function createKubernetesClusterFixturePlan(options?: JsonObject): JsonObject;
+export declare function mergeKubernetesResolvedOptions(provider: KubernetesProvider, optionBlocks: readonly unknown[]): JsonObject;
+export declare function evaluateKubernetesPlan(provider: KubernetesProvider, plan: JsonObject): JsonObject;
+export declare function realizeKubernetesPlan(provider: KubernetesProvider, plan: JsonObject): JsonObject;
+export declare function simulateKubernetesApply(provider: KubernetesProvider, plan: JsonObject, options?: JsonObject): JsonObject;

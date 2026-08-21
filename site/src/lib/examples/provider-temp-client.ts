@@ -1,3 +1,12 @@
+import {
+	asPageUrl,
+	currentLocationHref,
+	isJsonObject,
+	isJsonString,
+	parseJsonTree,
+	type JsonValue,
+} from "../json-inspect.js";
+
 /**
  * Generic temporary/agent Environment Station client for Examples providers
  * that expose provisionTemporaryEnvironmentStation (local or anonymous).
@@ -35,7 +44,10 @@ export const PROVIDER_TEMP_API_MISSING =
 	"Temporary station API returned HTML/non-JSON. Stale or static site has no /api/provider-temp. Restart: HOBO_NETLIFY_TEMP_MOCK=1 HOBO_LAKEBED_TEMP_MOCK=1 HOBO_VERCEL_DROP_MOCK=1 pnpm --filter hobo-site run dev (kill old :4321). GitHub Pages cannot provision remote yards.";
 
 export function isProviderTempId(id: string): id is ProviderTempId {
-	return (PROVIDER_TEMP_IDS as readonly string[]).includes(id);
+	for (const candidate of PROVIDER_TEMP_IDS) {
+		if (candidate === id) return true;
+	}
+	return false;
 }
 
 export function sameOriginProviderTempApiBase(
@@ -43,16 +55,16 @@ export function sameOriginProviderTempApiBase(
 	providerId: string,
 	basePath = "/HoBo/",
 ): string {
-	const page = typeof pageUrl === "string" ? new URL(pageUrl) : pageUrl;
+	const page = asPageUrl(pageUrl);
 	const base = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath;
 	const prefix = base.length === 0 || base === "/" ? "" : base;
 	return `${page.origin}${prefix}/api/provider-temp/${providerId}`;
 }
 
-async function readBrokerJson<T>(
+async function readBrokerJson(
 	response: Response,
 	context: string,
-): Promise<T> {
+): Promise<JsonValue> {
 	const text = await response.text();
 	const trimmed = text.trimStart();
 	const contentType = response.headers.get("content-type") ?? "";
@@ -66,7 +78,7 @@ async function readBrokerJson<T>(
 		);
 	}
 	try {
-		return JSON.parse(text) as T;
+		return parseJsonTree(text);
 	} catch {
 		throw new Error(
 			`${context}: ${PROVIDER_TEMP_API_MISSING} (HTTP ${response.status}, invalid JSON)`,
@@ -82,9 +94,8 @@ export async function assertProviderTempApiReady(input: {
 }): Promise<void> {
 	const pageUrl =
 		input.pageUrl ??
-		(typeof globalThis.location?.href === "string"
-			? globalThis.location.href
-			: "http://localhost:4321/HoBo/examples/");
+		currentLocationHref() ??
+		"http://localhost:4321/HoBo/examples/";
 	const base = sameOriginProviderTempApiBase(
 		pageUrl,
 		input.providerId,
@@ -95,12 +106,11 @@ export async function assertProviderTempApiReady(input: {
 		method: "GET",
 		signal: AbortSignal.timeout(15_000),
 	});
-	const body = await readBrokerJson<{
-		ok?: boolean;
-		apiVersion?: string;
-		provider?: string;
-	}>(response, `${input.providerId} temp health`);
-	if (!response.ok || !body.ok) {
+	const body = await readBrokerJson(
+		response,
+		`${input.providerId} temp health`,
+	);
+	if (!response.ok || !isJsonObject(body) || body.ok !== true) {
 		throw new Error(
 			`${input.providerId} temp API not ready (HTTP ${response.status}). ${PROVIDER_TEMP_API_MISSING}`,
 		);
@@ -121,9 +131,8 @@ export async function provisionProviderTempStation(input: {
 }): Promise<ProviderTempProvision> {
 	const pageUrl =
 		input.pageUrl ??
-		(typeof globalThis.location?.href === "string"
-			? globalThis.location.href
-			: "http://localhost:4321/HoBo/examples/");
+		currentLocationHref() ??
+		"http://localhost:4321/HoBo/examples/";
 	const base = sameOriginProviderTempApiBase(
 		pageUrl,
 		input.providerId,
@@ -131,16 +140,12 @@ export async function provisionProviderTempStation(input: {
 	).replace(/\/$/u, "");
 	const fetchImpl = input.fetchImpl ?? fetch;
 
-	try {
-		await assertProviderTempApiReady({
-			providerId: input.providerId,
-			pageUrl,
-			basePath: input.basePath,
-			fetchImpl,
-		});
-	} catch (error) {
-		throw error;
-	}
+	await assertProviderTempApiReady({
+		providerId: input.providerId,
+		pageUrl,
+		basePath: input.basePath,
+		fetchImpl,
+	});
 
 	const response = await fetchImpl(`${base}/station`, {
 		method: "POST",
@@ -148,20 +153,38 @@ export async function provisionProviderTempStation(input: {
 		body: JSON.stringify({ stationId: input.stationId }),
 		signal: AbortSignal.timeout(180_000),
 	});
-	const body = await readBrokerJson<ProviderTempProvision | ProviderTempError>(
+	const body = await readBrokerJson(
 		response,
 		`${input.providerId} temp station`,
 	);
-	if (!response.ok || !body.ok) {
-		const fail = body as ProviderTempError;
+	if (!response.ok || !isJsonObject(body) || body.ok !== true) {
+		const fail = isJsonObject(body) ? body : {};
 		throw new Error(
-			fail.remediation ??
-				fail.error ??
+			(isJsonString(fail.remediation) ? fail.remediation : undefined) ??
+				(isJsonString(fail.error) ? fail.error : undefined) ??
 				`Temporary provision failed for ${input.providerId}`,
 		);
 	}
-	if (!body.claimUrl || !body.stationUrl) {
+	if (
+		!isJsonString(body.claimUrl) ||
+		!isJsonString(body.stationUrl) ||
+		!isJsonString(body.stationId) ||
+		!isJsonString(body.expiresAt)
+	) {
 		throw new Error(`${input.providerId} temp broker missing stationUrl/claimUrl`);
 	}
-	return body;
+	const provisioned: ProviderTempProvision = {
+		ok: true,
+		stationId: body.stationId,
+		stationUrl: body.stationUrl,
+		claimUrl: body.claimUrl,
+		expiresAt: body.expiresAt,
+		anonymous: true,
+		temporary: true,
+		providerId: input.providerId,
+	};
+	if (isJsonString(body.apiVersion)) {
+		return { ...provisioned, apiVersion: body.apiVersion };
+	}
+	return provisioned;
 }

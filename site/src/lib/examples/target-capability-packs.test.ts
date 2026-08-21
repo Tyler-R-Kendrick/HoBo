@@ -31,7 +31,7 @@ describe("Matching-honest target capability packs", () => {
 			TARGET_CAPABILITY_PACKS.vercel.supportsAnonymousTemporaryDeploy,
 		).toBe(true);
 		expect(TARGET_CAPABILITY_PACKS.vercel.environment).toMatch(/Drop/);
-		expect(TARGET_CAPABILITY_PACKS.railway).toBeUndefined();
+		expect("railway" in TARGET_CAPABILITY_PACKS).toBe(false);
 	});
 
 	it("preferDegradesFromNative mirrors Matching prefer lowers", () => {

@@ -5,6 +5,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
 
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	parseJsonTree,
+} from "../../src/lib/json-inspect.ts";
 import type { AnonContainerHostId } from "./types.mts";
 
 export const ANON_HOST_COOLDOWN_MS = 6 * 60 * 60 * 1000;
@@ -35,14 +41,14 @@ export async function readHostCooldown(
 ): Promise<HostCooldown | null> {
 	try {
 		const raw = await readFile(hostCooldownPath(host), "utf8");
-		const parsed = JSON.parse(raw) as Partial<HostCooldown>;
-		if (typeof parsed.until !== "number" || parsed.until <= Date.now()) {
+		const parsed = parseJsonTree(raw);
+		if (!isJsonObject(parsed) || !isJsonNumber(parsed.until) || parsed.until <= Date.now()) {
 			return null;
 		}
 		return {
 			until: parsed.until,
-			reason: typeof parsed.reason === "string" ? parsed.reason : "cooldown",
-			at: typeof parsed.at === "string" ? parsed.at : new Date().toISOString(),
+			reason: isJsonString(parsed.reason) ? parsed.reason : "cooldown",
+			at: isJsonString(parsed.at) ? parsed.at : new Date().toISOString(),
 		};
 	} catch {
 		return null;

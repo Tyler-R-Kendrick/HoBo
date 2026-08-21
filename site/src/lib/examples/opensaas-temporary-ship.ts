@@ -1,3 +1,11 @@
+import {
+	asPageUrl,
+	currentLocationHref,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "../json-inspect.js";
+
 /** Same-origin OpenSaaS Temporary Accounts ship for Examples console. */
 
 export type OpenSaasTemporaryShipResult = {
@@ -20,13 +28,12 @@ export type OpenSaasTemporaryShipResult = {
 };
 
 function sameOriginCfTempBase(pageUrl?: string | URL, basePath = "/HoBo/"): string {
-	const page =
-		typeof pageUrl === "string"
-			? new URL(pageUrl)
-			: (pageUrl ??
-				(typeof globalThis.location?.href === "string"
-					? new URL(globalThis.location.href)
-					: null));
+	const href = currentLocationHref();
+	const page = pageUrl
+		? asPageUrl(pageUrl)
+		: href
+			? new URL(href)
+			: null;
 	if (!page) {
 		throw new Error(
 			"OpenSaaS Cloudflare Temporary Accounts ship needs a page URL (astro dev).",
@@ -70,37 +77,28 @@ export async function shipOpenSaasViaTemporaryAccounts(input: {
 			`OpenSaaS Temporary Accounts ship unreachable at ${base}/opensaas (${error instanceof Error ? error.message : String(error)}). Run pnpm --filter hobo-site run dev.`,
 		);
 	}
-	const body = (await response.json()) as {
-		ok?: boolean;
-		error?: string;
-		remediation?: string;
-		exampleId?: string;
-		clientUrl?: string;
-		serverUrl?: string;
-		claimUrl?: string;
-		expiresAt?: string;
-		databaseMode?: string;
-		databaseClaimUrl?: string;
-		databaseMocked?: boolean;
-		serverMode?: string;
-		serverMocked?: boolean;
-	};
-	if (!response.ok || !body.ok) {
+	const body: JsonValue = await response.json();
+	if (!response.ok || !isJsonObject(body) || body.ok !== true) {
+		const fail = isJsonObject(body) ? body : {};
 		throw new Error(
-			body.remediation ??
-				body.error ??
+			(isJsonString(fail.remediation) ? fail.remediation : undefined) ??
+				(isJsonString(fail.error) ? fail.error : undefined) ??
 				`OpenSaaS Temporary Accounts HTTP ${response.status}`,
 		);
 	}
-	if (!body.clientUrl?.includes(".workers.dev")) {
+	if (!isJsonString(body.clientUrl) || !body.clientUrl.includes(".workers.dev")) {
 		throw new Error(
-			`OpenSaaS ship returned non-workers.dev clientUrl (${body.clientUrl ?? ""})`,
+			`OpenSaaS ship returned non-workers.dev clientUrl (${isJsonString(body.clientUrl) ? body.clientUrl : ""})`,
 		);
 	}
-	if (!body.claimUrl || !body.serverUrl || !body.expiresAt) {
+	if (
+		!isJsonString(body.claimUrl) ||
+		!isJsonString(body.serverUrl) ||
+		!isJsonString(body.expiresAt)
+	) {
 		throw new Error("OpenSaaS Temporary Accounts response missing claimUrl/serverUrl");
 	}
-	if (body.databaseMode !== "neon-claimable" || !body.databaseClaimUrl) {
+	if (body.databaseMode !== "neon-claimable" || !isJsonString(body.databaseClaimUrl)) {
 		throw new Error(
 			"OpenSaaS Temporary Accounts response missing Neon claimable db fields",
 		);
@@ -115,7 +113,6 @@ export async function shipOpenSaasViaTemporaryAccounts(input: {
 		);
 	}
 	if (
-		!body.serverUrl ||
 		/127\.0\.0\.1|localhost/iu.test(body.serverUrl) ||
 		body.serverUrl === body.clientUrl
 	) {
@@ -124,7 +121,7 @@ export async function shipOpenSaasViaTemporaryAccounts(input: {
 		);
 	}
 	return {
-		exampleId: body.exampleId ?? "opensaas",
+		exampleId: isJsonString(body.exampleId) ? body.exampleId : "opensaas",
 		stationId: input.stationId,
 		clientUrl: body.clientUrl,
 		serverUrl: body.serverUrl,
@@ -134,8 +131,8 @@ export async function shipOpenSaasViaTemporaryAccounts(input: {
 		temporary: true,
 		databaseMode: "neon-claimable",
 		databaseClaimUrl: body.databaseClaimUrl,
-		databaseMocked: Boolean(body.databaseMocked),
+		databaseMocked: body.databaseMocked === true,
 		serverMode: body.serverMode,
-		serverMocked: Boolean(body.serverMocked),
+		serverMocked: body.serverMocked === true,
 	};
 }

@@ -3,6 +3,7 @@
  *
  * Pool → Deploy stations POSTs same-origin `/api/cf-temp/station` (Astro Vite
  * middleware → Temporary Accounts REST). Receives a navigable `*.workers.dev`
+ // SAFETY: assertion required at this I/O boundary.
  * URL + claim URL. Never stamps `blob:` as Cloudflare. Never mocks success.
  *
  * Run: pnpm --filter hobo-site run examples:regression
@@ -74,10 +75,9 @@ async function assertSameOriginApiAlive(page: Page) {
 			`Same-origin Temporary Accounts API not reachable at ${apiBase} (HTTP ${response.status()}). Start site with \`pnpm --filter hobo-site run dev\` (temporaryStationApiPlugin).`,
 		);
 	}
-	const body = (await response.json()) as {
-		ok?: boolean;
-		temporaryAccounts?: boolean;
-	};
+	type CfTempHealth = { ok?: boolean; temporaryAccounts?: boolean };
+	// SAFETY: cf-temp health JSON is decoded at this test boundary.
+	const body = (await response.json()) as CfTempHealth;
 	if (!body.ok || !body.temporaryAccounts) {
 		throw new Error(`Unexpected cf-temp health: ${JSON.stringify(body)}`);
 	}
@@ -90,10 +90,8 @@ async function openConsole(page: Page) {
 	await page.evaluate(() => localStorage.clear());
 	await page.goto(examplesUrl(), { waitUntil: "networkidle", timeout: 60_000 });
 	await page.waitForFunction(() => {
-		const select = document.querySelector(
-			"[data-yard-select]",
-		) as HTMLSelectElement | null;
-		return (select?.options.length ?? 0) > 0;
+		const select = document.querySelector("[data-yard-select]");
+		return select instanceof HTMLSelectElement && select.options.length > 0;
 	}, null, { timeout: 30_000 });
 }
 
@@ -151,21 +149,23 @@ async function runScenario(page: Page, browser: Browser) {
 	const snap = await page.evaluate(() => {
 		const state = document.querySelector("[data-deploy-state]")?.textContent ?? "";
 		const terminal = document.querySelector("[data-terminal]")?.textContent ?? "";
+		const stationEl = document.querySelector("[data-station-select]");
 		const stationValue =
-			(document.querySelector("[data-station-select]") as HTMLSelectElement | null)
-				?.value ?? "";
+			stationEl instanceof HTMLSelectElement ? stationEl.value : "";
 		const shipLocked =
 			document.querySelector('[data-board="ship"]')?.getAttribute("data-locked") ??
 			"";
 		const raw = localStorage.getItem("hobo-examples-stations");
-		const registry = raw
-			? (JSON.parse(raw) as {
-					stations?: Array<{
-						targetId?: string;
-						endpointUrl?: string;
-						claimUrl?: string;
-					}>;
-				})
+		type StationSnap = {
+			stations?: Array<{
+				targetId?: string;
+				endpointUrl?: string;
+				claimUrl?: string;
+			}>;
+		};
+		// SAFETY: localStorage registry JSON is decoded at this test boundary.
+		const registry: StationSnap = raw
+			? (JSON.parse(raw) as StationSnap)
 			: { stations: [] };
 		const cf = registry.stations?.find((entry) => entry.targetId === "cloudflare");
 		return {
@@ -250,9 +250,11 @@ async function runScenario(page: Page, browser: Browser) {
 		waitUntil: "domcontentloaded",
 		timeout: 30_000,
 	});
+	type StationHealth = { provider?: string; ok?: boolean };
+	// SAFETY: station health JSON is decoded at this test boundary.
 	const healthJson = (await stationPage.evaluate(() =>
 		JSON.parse(document.body.innerText),
-	)) as { provider?: string; ok?: boolean };
+	)) as StationHealth;
 	if (!healthJson?.ok || healthJson.provider !== "cloudflare") {
 		throw new Error(`station health JSON unexpected: ${JSON.stringify(healthJson)}`);
 	}
@@ -283,7 +285,7 @@ async function main(): Promise<void> {
 	}
 }
 
-await main().catch((error: unknown) => {
+await main().catch((error) => {
 	console.error(error);
 	process.exitCode = 1;
 });

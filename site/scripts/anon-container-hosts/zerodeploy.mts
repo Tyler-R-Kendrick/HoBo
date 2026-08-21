@@ -4,6 +4,7 @@
  * NOT a Docker/OCI runner — reject for Convex/Wasp server kinds.
  * Sources: zerodeploy.dev/agents (checked 2026-08).
  */
+import { type JsonObject } from "../../src/lib/json-inspect.js";
 import { spawn } from "node:child_process";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
@@ -66,12 +67,12 @@ export async function provisionZerodeployDrop(
 	try {
 		response = await fetchImpl(ZERODEPLOY_DROP_URL, {
 			method: "POST",
-			headers: {
-				"Content-Type": "application/gzip",
-				...(input.projectHint
-					? { "X-ZeroDeploy-Name": input.projectHint.slice(0, 64) }
-					: {}),
-			},
+			headers: input.projectHint
+				? {
+						"Content-Type": "application/gzip",
+						"X-ZeroDeploy-Name": input.projectHint.slice(0, 64),
+					}
+				: { "Content-Type": "application/gzip" },
 			body: archive,
 			signal: input.signal ?? controller.signal,
 		});
@@ -86,9 +87,10 @@ export async function provisionZerodeployDrop(
 	}
 
 	const text = await response.text();
-	let parsed: Record<string, unknown> = {};
+	let parsed: JsonObject = {};
 	try {
-		parsed = JSON.parse(text) as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O boundary.
+		parsed = JSON.parse(text) as JsonObject;
 	} catch {
 		/* raw */
 	}
@@ -100,11 +102,12 @@ export async function provisionZerodeployDrop(
 		);
 	}
 	// Live shape (2026-08): { data: { url, claim_token, expires_at }, next_steps? }
+	// SAFETY: nested `data` object is a JSON bag from the Drop response.
 	const data =
-		parsed.data && typeof parsed.data === "object"
-			? (parsed.data as Record<string, unknown>)
+		parsed.data && Object.prototype.toString.call(parsed.data) === "[object Object]"
+			? (parsed.data as JsonObject)
 			: parsed;
-	const url = typeof data.url === "string" ? data.url : "";
+	const url = Object.prototype.toString.call(data.url) === "[object String]" ? data.url : "";
 	if (!url) {
 		throw new AnonContainerHostError(
 			"zerodeploy",
@@ -112,7 +115,8 @@ export async function provisionZerodeployDrop(
 		);
 	}
 	const claimToken =
-		typeof data.claim_token === "string" ? data.claim_token : "";
+		Object.prototype.toString.call(data.claim_token) === "[object String]" ? data.claim_token : "";
+	// SAFETY: assertion required at this I/O boundary.
 	const next = (parsed.next_steps ?? data.next_steps) as
 		| { claim?: { url?: string } }
 		| undefined;
@@ -121,12 +125,12 @@ export async function provisionZerodeployDrop(
 		host: "zerodeploy",
 		url,
 		claimUrl:
-			(typeof next?.claim?.url === "string" && next.claim.url) ||
+			(Object.prototype.toString.call(next?.claim?.url) === "[object String]" && next.claim.url) ||
 			(claimToken
 				? `https://dashboard.zerodeploy.dev/drop-claim?token=${claimToken}`
 				: undefined),
 		expiresAt:
-			typeof data.expires_at === "string" ? data.expires_at : undefined,
+			Object.prototype.toString.call(data.expires_at) === "[object String]" ? data.expires_at : undefined,
 		kind: "node-source",
 		anonymous: true,
 		temporary: true,

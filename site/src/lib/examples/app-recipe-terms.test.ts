@@ -17,7 +17,7 @@ function exampleWith(
 	resources: Readonly<Record<string, "kv" | "queue">>,
 	routeCount: number,
 ) {
-	return {
+	const example = {
 		id: "app",
 		title: "App",
 		runtime: {
@@ -34,7 +34,9 @@ function exampleWith(
 				action: "health",
 			})),
 		},
-	} as never;
+	};
+	// SAFETY: test fixture is a partial catalog entry consumed by terms ranking helpers.
+	return example as never;
 }
 
 function termWith(overrides: Partial<RecipeTerm>): RecipeTerm {

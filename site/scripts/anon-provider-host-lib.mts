@@ -135,10 +135,11 @@ export async function serveAnonHostFile(
 	const safe = relPath.replace(/\.\./gu, "").replace(/^\/+/u, "") || "index.html";
 	const hostDirectory = path.join(HOST_ROOT, hostId);
 	try {
+		// SAFETY: assertion required at this I/O boundary.
 		const metadata = JSON.parse(await readFile(metadataFile(hostDirectory), "utf8")) as {
 			expiresAt?: unknown;
 		};
-		if (typeof metadata.expiresAt !== "string" || Date.parse(metadata.expiresAt) <= Date.now()) return null;
+		if (Object.prototype.toString.call(metadata.expiresAt) !== "[object String]" || Date.parse(metadata.expiresAt) <= Date.now()) return null;
 		const filePath = path.join(hostDirectory, safe);
 		const body = await readFile(filePath);
 		const contentType = safe.endsWith(".html")

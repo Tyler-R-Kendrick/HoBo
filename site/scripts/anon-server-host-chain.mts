@@ -8,6 +8,7 @@
  * Never loops/retries free anon hosts (avoids DDoS).
  * Instanode blacklisted (dead 404 API) — never probed here.
  */
+import { type JsonObject } from "../src/lib/json-inspect.js";
 import { mkdir, readFile, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import path from "node:path";
@@ -75,14 +76,15 @@ export async function readOpenpouchCooldown(
 ): Promise<OpenpouchCooldown | null> {
 	try {
 		const raw = await readFile(filePath, "utf8");
+		// SAFETY: assertion required at this I/O boundary.
 		const parsed = JSON.parse(raw) as Partial<OpenpouchCooldown>;
-		if (typeof parsed.until !== "number" || parsed.until <= Date.now()) {
+		if (Object.prototype.toString.call(parsed.until) !== "[object Number]" || parsed.until <= Date.now()) {
 			return null;
 		}
 		return {
 			until: parsed.until,
-			reason: typeof parsed.reason === "string" ? parsed.reason : "cooldown",
-			at: typeof parsed.at === "string" ? parsed.at : new Date().toISOString(),
+			reason: Object.prototype.toString.call(parsed.reason) === "[object String]" ? parsed.reason : "cooldown",
+			at: Object.prototype.toString.call(parsed.at) === "[object String]" ? parsed.at : new Date().toISOString(),
 		};
 	} catch {
 		return null;
@@ -110,7 +112,7 @@ function debugLog(
 	hypothesisId: string,
 	location: string,
 	message: string,
-	data: Record<string, unknown>,
+	data: JsonObject,
 ): void {
 	// #region agent log
 	fetch("http://127.0.0.1:7655/ingest/eac23247-0462-43c4-8e6e-14b2a6cecba6", {
@@ -140,6 +142,21 @@ export type ProvisionAnonOpenSaasServerInput = {
 	/** auto (default) | openpouch | clawdship | cloudflare */
 	readonly prefer?: "auto" | "openpouch" | "clawdship" | "cloudflare";
 };
+
+function parseServerHostPrefer(
+	raw: string | undefined,
+): "auto" | "openpouch" | "clawdship" | "cloudflare" {
+	const trimmed = raw?.trim();
+	if (
+		trimmed === "auto" ||
+		trimmed === "openpouch" ||
+		trimmed === "clawdship" ||
+		trimmed === "cloudflare"
+	) {
+		return trimmed;
+	}
+	return "auto";
+}
 
 async function provisionClawdshipAnonServer(input: {
 	readonly waspAbsRoot: string;
@@ -194,15 +211,7 @@ async function provisionClawdshipAnonServer(input: {
 export async function provisionAnonOpenSaasServer(
 	input: ProvisionAnonOpenSaasServerInput,
 ): Promise<AnonServerHostResult> {
-	const prefer =
-		input.prefer ??
-		(process.env.HOBO_OPENSAAS_SERVER_HOST?.trim() as
-			| "auto"
-			| "openpouch"
-			| "clawdship"
-			| "cloudflare"
-			| undefined) ??
-		"auto";
+	const prefer = input.prefer ?? parseServerHostPrefer(process.env.HOBO_OPENSAAS_SERVER_HOST);
 
 	if (input.mock) {
 		const server = await provisionOpenpouchAnonServer({

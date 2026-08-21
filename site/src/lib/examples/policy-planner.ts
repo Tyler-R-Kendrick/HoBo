@@ -20,6 +20,17 @@ export interface BudgetPolicy {
 
 export type SparseBudgetPolicy = Partial<BudgetPolicy>;
 
+/** Writable sparse policy used while parsing untrusted JSON field-by-field. */
+export type MutableSparseBudgetPolicy = {
+	preferLocal?: boolean;
+	routing?: RoutingPolicy;
+	redundancy?: Redundancy;
+	maxReplicas?: number;
+	maxConcurrent?: number;
+	monthlySpendCapUsd?: number;
+	resourcePool?: ResourceClass[];
+};
+
 export interface StationTarget {
 	/** Deployable target id shown in the Home Station. */
 	readonly id: string;

@@ -13,7 +13,8 @@ main
   └── sdlc/anti-slop-02-precommit  #1180 relevant-check-policy + tests
    └── sdlc/anti-slop-03-scripts-warnings  #1185 ignore agent-skill dirs; scripts/lib/inspectable
     └── sdlc/anti-slop-04-test     #1187 root competitor/council tests
-     └── sdlc/anti-slop-05-examples  remaining mixed example files → 0 findings
+     └── sdlc/anti-slop-05-examples  #1192 examples/ oxlint-clean
+      └── sdlc/anti-slop-06-site     site/ oxlint-clean (json-inspect helper)
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -36,7 +37,8 @@ findings**, then stop. Do not edit a file that still has other anti-slop
 errors.
 
 Cleared: entire `scripts/` tree (layer 3). Layer 4: root competitor/council tests.
-Layer 5: example files taken to zero findings (named JsonValue parse
-boundaries, UsageReader returns, Firecrawl client injection instead of
-`vi.mock`). Next: `site/` then `packages/` / `src/draft/` file-complete
-slices. Full-repo `lint:slop --deny-warnings` is still red until those land.
+Layer 5: `examples/` oxlint-clean (named JsonValue parse boundaries,
+UsageReader returns, Firecrawl client injection instead of `vi.mock`).
+Layer 6: `site/` oxlint-clean (`site/src/lib/json-inspect.ts`). Next:
+`packages/` / `src/draft/` file-complete slices. Full-repo
+`lint:slop --deny-warnings` is still red until those land.

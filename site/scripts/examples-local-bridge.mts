@@ -5,6 +5,7 @@
  *   POST /station  — operator anonymous Environment Station (no Bindle/app)
  *   POST /deploy   — ship OpenSaaS onto an existing station (Compose / wasp / wrangler)
  */
+import { type JsonObject, type JsonValue } from "../src/lib/json-inspect.js";
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { spawn } from "node:child_process";
 import path from "node:path";
@@ -33,9 +34,7 @@ async function loadOpenSaasBindle(): Promise<{
 		ReturnType<(typeof import("@hobo/wasp"))["discoverWaspEnv"]>
 	>;
 }> {
-	const mod = (await import(
-		path.join(REPO_ROOT, "examples/try-site/apps/opensaas/app.ts")
-	)) as {
+	type OpenSaasBindleModule = {
 		readonly default: {
 			readonly resources: Record<
 				string,
@@ -44,12 +43,16 @@ async function loadOpenSaasBindle(): Promise<{
 					readonly annotations: readonly {
 						readonly provider: string;
 						readonly option: string;
-						readonly config: Record<string, unknown>;
+						readonly config: JsonObject;
 					}[];
 				}
 			>;
 		};
 	};
+	// SAFETY: OpenSaaS Bindle module is loaded from the examples tree at this boundary.
+	const mod = (await import(
+		path.join(REPO_ROOT, "examples/try-site/apps/opensaas/app.ts")
+	)) as OpenSaasBindleModule;
 	const { bindleContainerImages } = await import(
 		path.join(REPO_ROOT, "examples/try-site/apps/opensaas/bindle-containers.ts")
 	);
@@ -222,7 +225,7 @@ function stationPage(state: StationState): string {
 </html>`;
 }
 
-function sendJson(res: ServerResponse, status: number, body: unknown) {
+function sendJson(res: ServerResponse, status: number, body: JsonValue) {
 	const payload = JSON.stringify(body);
 	res.writeHead(status, {
 		"content-type": "application/json; charset=utf-8",
@@ -530,10 +533,11 @@ const server = createServer(async (req, res) => {
 	}
 
 	if (method === "GET" && url.pathname === "/status") {
-		sendJson(res, 200, {
-			deployed: deployState !== null,
-			...(deployState ?? {}),
-		});
+		if (deployState) {
+			sendJson(res, 200, { deployed: true, ...deployState });
+		} else {
+			sendJson(res, 200, { deployed: false });
+		}
 		return;
 	}
 
@@ -574,6 +578,7 @@ const server = createServer(async (req, res) => {
 			homeStationId?: string;
 		};
 		try {
+			// SAFETY: assertion required at this I/O boundary.
 			body = JSON.parse(raw) as typeof body;
 		} catch {
 			sendJson(res, 400, { error: "invalid JSON body" });
@@ -616,6 +621,7 @@ const server = createServer(async (req, res) => {
 			bindleWebApp?: BindleWebAppRef;
 		};
 		try {
+			// SAFETY: assertion required at this I/O boundary.
 			body = JSON.parse(raw) as typeof body;
 		} catch {
 			sendJson(res, 400, { error: "invalid JSON body" });

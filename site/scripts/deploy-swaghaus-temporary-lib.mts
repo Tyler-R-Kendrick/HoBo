@@ -112,11 +112,7 @@ export async function deploySwaghausTemporary(input: {
 	const convexAbsRoot = resolveConvexRoot(REPO_ROOT, input.root);
 
 	if (!mock) {
-		try {
-			requireWorkOsAuthKit(env);
-		} catch (error) {
-			throw error;
-		}
+		requireWorkOsAuthKit(env);
 	}
 
 	let selfHostedUrl = env.CONVEX_SELF_HOSTED_URL?.trim();
@@ -229,10 +225,10 @@ export async function deploySwaghausTemporary(input: {
 	const deployed = await applyDriverProgram({
 		program: realized.driver,
 		root: convexAbsRoot,
-		...(deployKey ? { deployKey } : {}),
-		...(selfHostedUrl ? { selfHostedUrl } : {}),
-		...(selfHostedAdminKey ? { selfHostedAdminKey } : {}),
 		mock,
+		deployKey,
+		selfHostedUrl,
+		selfHostedAdminKey,
 		spawn: async ({ command, args, cwd, env: childEnv }) => {
 			const result = await run(command, args, cwd, {
 				...env,

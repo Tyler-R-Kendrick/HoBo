@@ -1,3 +1,11 @@
+import {
+	asPageUrl,
+	currentLocationHref,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "../json-inspect.js";
+
 /**
  * Same-origin agent anonymous host client for providers without Temporary Accounts.
  * Never uses blob: URLs.
@@ -45,7 +53,7 @@ function sameOriginAnonApiBase(
 	pageUrl: string | URL,
 	basePath = "/HoBo/",
 ): string {
-	const page = typeof pageUrl === "string" ? new URL(pageUrl) : pageUrl;
+	const page = asPageUrl(pageUrl);
 	const base = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath;
 	const prefix = base.length === 0 || base === "/" ? "" : base;
 	return `${page.origin}${prefix}/api/anon`;
@@ -78,11 +86,7 @@ export async function provisionAnonStationViaSameOrigin(input: {
 	readonly basePath?: string;
 	readonly fetchImpl?: typeof fetch;
 }): Promise<AnonStationProvision> {
-	const pageUrl =
-		input.pageUrl ??
-		(typeof globalThis.location?.href === "string"
-			? globalThis.location.href
-			: undefined);
+	const pageUrl = input.pageUrl ?? currentLocationHref();
 	if (!pageUrl) {
 		throw new Error(
 			"Anon same-origin station needs a page URL (astro dev).",
@@ -103,16 +107,18 @@ export async function provisionAnonStationViaSameOrigin(input: {
 			`${REMEDIATION} (${error instanceof Error ? error.message : String(error)})`,
 		);
 	}
-	const body = (await response.json()) as AnonStationProvision | AnonHostError;
-	if (!response.ok || !body.ok) {
-		const fail = body as AnonHostError;
+	const body: JsonValue = await response.json();
+	if (!response.ok || !isJsonObject(body) || body.ok !== true) {
+		const fail = isJsonObject(body) ? body : {};
 		throw new Error(
-			fail.remediation ??
-				fail.error ??
+			(isJsonString(fail.remediation) ? fail.remediation : undefined) ??
+				(isJsonString(fail.error) ? fail.error : undefined) ??
 				`Anon host HTTP ${response.status} at ${base}/${input.providerId}/station`,
 		);
 	}
-	const url = body.stationUrl || body.endpointUrl;
+	const url =
+		(isJsonString(body.stationUrl) ? body.stationUrl : "") ||
+		(isJsonString(body.endpointUrl) ? body.endpointUrl : "");
 	if (isBlobUrl(url)) {
 		throw new Error(
 			`Anon host returned blob: URL for ${input.providerId} — refusing`,
@@ -123,10 +129,21 @@ export async function provisionAnonStationViaSameOrigin(input: {
 			`Anon host returned non-HTTP stationUrl (${url}) for ${input.providerId}`,
 		);
 	}
-	if (!body.claimUrl) {
+	if (!isJsonString(body.claimUrl) || !isJsonString(body.stationId) || !isJsonString(body.expiresAt)) {
 		throw new Error("Anon host response missing claimUrl");
 	}
-	return { ...body, stationUrl: url, endpointUrl: url };
+	return {
+		ok: true,
+		stationId: body.stationId,
+		stationUrl: url,
+		endpointUrl: url,
+		claimUrl: body.claimUrl,
+		expiresAt: body.expiresAt,
+		anonymous: true,
+		temporary: true,
+		hostKind: "same-origin-agent",
+		providerId: input.providerId,
+	};
 }
 
 export async function shipOpenSaasViaSameOriginAnon(input: {
@@ -136,11 +153,7 @@ export async function shipOpenSaasViaSameOriginAnon(input: {
 	readonly basePath?: string;
 	readonly fetchImpl?: typeof fetch;
 }): Promise<AnonOpenSaasShip> {
-	const pageUrl =
-		input.pageUrl ??
-		(typeof globalThis.location?.href === "string"
-			? globalThis.location.href
-			: undefined);
+	const pageUrl = input.pageUrl ?? currentLocationHref();
 	if (!pageUrl) {
 		throw new Error("OpenSaaS same-origin ship needs a page URL (astro dev).");
 	}
@@ -159,16 +172,16 @@ export async function shipOpenSaasViaSameOriginAnon(input: {
 			`OpenSaaS same-origin ship unreachable at ${base}/${input.providerId}/opensaas (${error instanceof Error ? error.message : String(error)}).`,
 		);
 	}
-	const body = (await response.json()) as AnonOpenSaasShip | AnonHostError;
-	if (!response.ok || !body.ok) {
-		const fail = body as AnonHostError;
+	const body: JsonValue = await response.json();
+	if (!response.ok || !isJsonObject(body) || body.ok !== true) {
+		const fail = isJsonObject(body) ? body : {};
 		throw new Error(
-			fail.remediation ??
-				fail.error ??
+			(isJsonString(fail.remediation) ? fail.remediation : undefined) ??
+				(isJsonString(fail.error) ? fail.error : undefined) ??
 				`OpenSaaS same-origin HTTP ${response.status}`,
 		);
 	}
-	if (isBlobUrl(body.clientUrl)) {
+	if (!isJsonString(body.clientUrl) || isBlobUrl(body.clientUrl)) {
 		throw new Error(
 			`OpenSaaS same-origin returned blob: clientUrl for ${input.providerId}`,
 		);
@@ -178,8 +191,24 @@ export async function shipOpenSaasViaSameOriginAnon(input: {
 			`OpenSaaS same-origin returned non-HTTP clientUrl (${body.clientUrl})`,
 		);
 	}
-	if (!body.claimUrl || !body.serverUrl || !body.expiresAt) {
+	if (
+		!isJsonString(body.claimUrl) ||
+		!isJsonString(body.serverUrl) ||
+		!isJsonString(body.expiresAt) ||
+		!isJsonString(body.exampleId)
+	) {
 		throw new Error("OpenSaaS same-origin response missing claimUrl/serverUrl");
 	}
-	return body;
+	return {
+		ok: true,
+		exampleId: body.exampleId,
+		clientUrl: body.clientUrl,
+		serverUrl: body.serverUrl,
+		claimUrl: body.claimUrl,
+		expiresAt: body.expiresAt,
+		anonymous: true,
+		temporary: true,
+		hostKind: "same-origin-agent",
+		providerId: input.providerId,
+	};
 }

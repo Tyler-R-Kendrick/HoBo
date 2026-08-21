@@ -1,11 +1,13 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const GATEWAY_REALIZATION_CONTRACT_VERSION = "hobo.gateway-realization/v1";
 const DEFAULT_CORS_METHODS = ["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"];
 
 export function realizeGateway(gateway, options = {}) {
   assertObject(gateway, "gateway");
-  if (typeof gateway.id !== "string" || gateway.id.length === 0) {
+  if (!isJsonString(gateway.id) || gateway.id.length === 0) {
     throw new Error("gateway requires a non-empty id");
   }
 
@@ -76,10 +78,10 @@ export function planGatewayRequest(deployment, request) {
 
 function realizeRoute(route, index, health) {
   assertObject(route, "route");
-  if (typeof route.host !== "string" || route.host.length === 0) {
+  if (!isJsonString(route.host) || route.host.length === 0) {
     throw new Error("route requires a host");
   }
-  if (typeof route.path !== "string" || !route.path.startsWith("/")) {
+  if (!isJsonString(route.path) || !route.path.startsWith("/")) {
     throw new Error(`route for ${route.host} requires an absolute path`);
   }
 
@@ -110,7 +112,7 @@ function normalizeSplit(split) {
 
   let total = 0;
   const steps = split.steps.map((step) => {
-    if (typeof step.target !== "string" || step.target.length === 0) {
+    if (!isJsonString(step.target) || step.target.length === 0) {
       throw new Error("traffic split step requires a target");
     }
     if (!Number.isFinite(step.weight) || step.weight <= 0) {
@@ -179,10 +181,10 @@ function backend(id, target, health) {
 }
 
 function targetKey(target) {
-  if (typeof target === "string") {
+  if (isJsonString(target)) {
     return target;
   }
-  if (target && typeof target.id === "string" && target.id.length > 0) {
+  if (target && isJsonString(target.id) && target.id.length > 0) {
     return target.id;
   }
   throw new Error("route target requires an id");
@@ -253,7 +255,7 @@ function failure(status, reason, extra = {}) {
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${name} must be an object`);
   }
 }
@@ -266,7 +268,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   Object.freeze(value);

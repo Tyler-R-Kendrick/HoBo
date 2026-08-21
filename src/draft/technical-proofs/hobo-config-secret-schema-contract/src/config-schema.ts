@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject } from "./json.js";
 export const CONFIG_SCHEMA_VERSION = "hobo.config/v1";
 
 const VALID_KEY = /^[A-Z][A-Z0-9_]*$/;
@@ -57,7 +58,7 @@ export function secret(name) {
 }
 
 export function config(entries) {
-  if (!entries || typeof entries !== "object" || Array.isArray(entries)) {
+  if (!entries || !isJsonObject(entries) || Array.isArray(entries)) {
     throw new TypeError("config() expects an object of config declarations");
   }
 
@@ -117,7 +118,7 @@ export function canonicalJson(value) {
 }
 
 function normalizeEntry(key, entry) {
-  if (!entry || typeof entry !== "object") {
+  if (!entry || !isJsonObject(entry)) {
     throw new TypeError(`config entry ${key} must be created by a config builder`);
   }
   if (!entry.source?.kind || (entry.kind !== "env" && !entry.source?.ref)) {
@@ -151,13 +152,14 @@ function manifestEntry(key, entry) {
 }
 
 function primitiveTypeOf(value) {
-  const type = typeof value;
-  if (type === "string" || type === "number" || type === "boolean") return type;
+  if (isJsonString(value)) return "string";
+  if (isJsonNumber(value)) return "number";
+  if (isJsonBoolean(value)) return "boolean";
   throw new TypeError("env(default) supports string, number, or boolean defaults");
 }
 
 function requireNonEmptyString(value, label) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new TypeError(`${label} must be a non-empty string`);
   }
 }
@@ -170,7 +172,7 @@ function sortObject(value) {
   if (Array.isArray(value)) {
     return value.map(sortObject);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(

@@ -125,8 +125,8 @@ test("OpenAPI and Pact import into the IR and export without losing required-sha
 
   assert.equal(parseContract(openApiContract).ok, true);
   assert.equal(parseContract(pactContract).ok, true);
-  assert.deepEqual(openApiContract.requiredShape.requiredFields, ["id", "tenantId"]);
-  assert.deepEqual(pactContract.requiredShape.requiredFields, ["id", "tenantId"]);
+  assert.deepEqual(openApiContract.requiredRecord.requiredFields, ["id", "tenantId"]);
+  assert.deepEqual(pactContract.requiredRecord.requiredFields, ["id", "tenantId"]);
 
   assert.deepEqual(exportOpenApiContract(openApiContract).requiredFields, ["id", "tenantId"]);
   assert.deepEqual(exportPactContract(pactContract).requiredFields, ["id", "tenantId"]);
@@ -187,14 +187,14 @@ test("external imports cannot inject source-of-truth mode or unauditable fields"
   const contract = createContractFixture();
   contract.externalSourceOfTruth = { hidden: "pact" };
   contract.edge.kind = "made-up-edge";
-  contract.requiredShape = { type: "object" };
+  contract.requiredRecord = { type: "object" };
 
   const parsed = parseContract(contract);
 
   assert.equal(parsed.ok, false);
   assert.match(parsed.errors.join("\n"), /externalSourceOfTruth is not allowed/);
   assert.match(parsed.errors.join("\n"), /unknown edge.kind made-up-edge/);
-  assert.match(parsed.errors.join("\n"), /requiredShape.requiredFields must be an array/);
+  assert.match(parsed.errors.join("\n"), /requiredRecord.requiredFields must be an array/);
 });
 
 test("conflicting consumer requirements remain representable for can-deploy to resolve later", () => {
@@ -279,8 +279,8 @@ test("AsyncAPI and Protobuf import into the IR and export without losing require
   assert.equal(parseContract(protobufContract).ok, true);
   assert.equal(asyncApiContract.edge.kind, "event");
   assert.equal(protobufContract.edge.kind, "message");
-  assert.deepEqual(asyncApiContract.requiredShape.requiredFields, ["id", "tenantId"]);
-  assert.deepEqual(protobufContract.requiredShape.requiredFields, ["id", "tenantId"]);
+  assert.deepEqual(asyncApiContract.requiredRecord.requiredFields, ["id", "tenantId"]);
+  assert.deepEqual(protobufContract.requiredRecord.requiredFields, ["id", "tenantId"]);
 
   assert.deepEqual(exportAsyncApiContract(asyncApiContract).requiredFields, ["id", "tenantId"]);
   assert.deepEqual(exportProtobufContract(protobufContract).requiredFields, ["id", "tenantId"]);

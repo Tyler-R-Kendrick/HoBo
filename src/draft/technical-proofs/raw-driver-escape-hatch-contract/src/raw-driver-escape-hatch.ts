@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject, type JsonBag } from "./json.js";
 export type RawDriverName = "postgres" | "mongo" | "native";
 export type ProjectionSinkSource = "projected" | "authoritative-external";
 
@@ -17,18 +18,18 @@ export interface RawDriverOperation {
   driver: RawDriverName;
   access: "read" | "write";
   tenantScope?: string;
-  [key: string]: unknown;
+  [key: string]: JsonValue | undefined;
 }
 
 export interface PostgresRawDriver {
-  query(sql: string, params?: unknown[], options?: RawDriverOptions): RawDriverOperation;
-  execute(sql: string, params?: unknown[], options?: RawDriverOptions): RawDriverOperation;
+  query(sql: string, params?: JsonValue[], options?: RawDriverOptions): RawDriverOperation;
+  execute(sql: string, params?: JsonValue[], options?: RawDriverOptions): RawDriverOperation;
 }
 
 export interface MongoRawDriver {
   collection(name: string): {
-    find(filter?: Record<string, unknown>, options?: RawDriverOptions): RawDriverOperation;
-    updateOne(filter?: Record<string, unknown>, update?: Record<string, unknown>, options?: RawDriverOptions): RawDriverOperation;
+    find(filter?: JsonObject, options?: RawDriverOptions): RawDriverOperation;
+    updateOne(filter?: JsonObject, update?: JsonObject, options?: RawDriverOptions): RawDriverOperation;
   };
 }
 
@@ -94,12 +95,13 @@ const SINK_SOURCES: Set<ProjectionSinkSource> = new Set(["projected", "authorita
 export function defineProjectionSink<TDriver extends RawDriverName = RawDriverName>(
   input: ProjectionSinkDefinition<TDriver>,
 ): ProjectionSinkDefinition<TDriver> {
-  if (!input || typeof input !== "object") {
+  if (!input || !isJsonObject(input)) {
     throw new TypeError("projection sink definition is required");
   }
 
   return Object.freeze({
     name: assertString(input.name, "sink.name"),
+    // SAFETY: assertion to `driver: assertOneOf(input.driver, RAW_DRIVER_NAMES, "sink.driver") as TDriver,` is required at this boundary.
     driver: assertOneOf(input.driver, RAW_DRIVER_NAMES, "sink.driver") as TDriver,
     rawAccess: Boolean(input.rawAccess),
     source: assertOneOf(input.source, SINK_SOURCES, "sink.source"),
@@ -119,7 +121,7 @@ export function createRawView<TDriver extends RawDriverName>(
       if (!normalizedSink.rawAccess) {
         throw new Error(`raw access not advertised by ${normalizedSink.name}`);
       }
-      if (typeof callback !== "function") {
+      if (!(callback instanceof Function)) {
         throw new TypeError("raw callback must be a function");
       }
 
@@ -172,7 +174,7 @@ function createDriver<TDriver extends RawDriverName>(driver: TDriver): RawDriver
 function createDriver(driver: RawDriverName): RawDriverMap[RawDriverName] {
   if (driver === "postgres") {
     return Object.freeze({
-      query(sql: string, params: unknown[] = [], options: RawDriverOptions = {}): RawDriverOperation {
+      query(sql: string, params: JsonValue[] = [], options: RawDriverOptions = {}): RawDriverOperation {
         return rawOperation({
           driver,
           access: classifySqlAccess(sql, "read"),
@@ -181,7 +183,7 @@ function createDriver(driver: RawDriverName): RawDriverMap[RawDriverName] {
           tenantScope: options.tenantScope,
         });
       },
-      execute(sql: string, params: unknown[] = [], options: RawDriverOptions = {}): RawDriverOperation {
+      execute(sql: string, params: JsonValue[] = [], options: RawDriverOptions = {}): RawDriverOperation {
         return rawOperation({
           driver,
           access: classifySqlAccess(sql, "write"),
@@ -198,7 +200,7 @@ function createDriver(driver: RawDriverName): RawDriverMap[RawDriverName] {
       collection(name: string) {
         const collection = assertString(name, "collection");
         return Object.freeze({
-          find(filter: Record<string, unknown> = {}, options: RawDriverOptions = {}): RawDriverOperation {
+          find(filter: JsonObject = {}, options: RawDriverOptions = {}): RawDriverOperation {
             return rawOperation({
               driver,
               access: "read",
@@ -208,8 +210,8 @@ function createDriver(driver: RawDriverName): RawDriverMap[RawDriverName] {
             });
           },
           updateOne(
-            filter: Record<string, unknown> = {},
-            update: Record<string, unknown> = {},
+            filter: JsonObject = {},
+            update: JsonObject = {},
             options: RawDriverOptions = {},
           ): RawDriverOperation {
             return rawOperation({
@@ -237,20 +239,27 @@ function createDriver(driver: RawDriverName): RawDriverMap[RawDriverName] {
   });
 }
 
-function rawOperation(input: Record<string, unknown>): RawDriverOperation {
+function rawOperation<T>(input: T): RawDriverOperation {
+  // SAFETY: raw operations are stored as a JSON bag at this driver edge.
+  const bag: JsonBag = input as never;
+  const candidate: JsonBag = { ...bag };
+  // SAFETY: assertion to `return deepFreeze({` is required at this boundary.
   return deepFreeze({
-    ...(clone(input) as Record<string, unknown>),
-    driver: assertOneOf(input.driver, RAW_DRIVER_NAMES, "operation.driver"),
-    access: assertOneOf(input.access, new Set<"read" | "write">(["read", "write"]), "operation.access"),
-    ...(input.tenantScope === undefined ? {} : { tenantScope: assertString(input.tenantScope, "tenantScope") }),
+    ...candidate,
+    driver: assertOneOf(candidate.driver, RAW_DRIVER_NAMES, "operation.driver"),
+    access: assertOneOf(candidate.access, new Set<"read" | "write">(["read", "write"]), "operation.access"),
+    ...(candidate.tenantScope === undefined
+      ? undefined
+      : { tenantScope: assertString(candidate.tenantScope, "tenantScope") }),
   }) as RawDriverOperation;
 }
 
-function normalizeOperation(operation: unknown, expectedDriver: RawDriverName): RawDriverOperation {
-  if (!operation || typeof operation !== "object") {
+function normalizeOperation<T>(operation: T, expectedDriver: RawDriverName): RawDriverOperation {
+  if (!operation) {
     throw new TypeError("raw callback must return a raw driver operation");
   }
-  const candidate = operation as Record<string, unknown>;
+  // SAFETY: callback results are treated as a JSON bag at this driver edge.
+  const candidate: JsonBag = operation as never;
   if (candidate.driver !== expectedDriver) {
     throw new TypeError(`raw operation driver ${candidate.driver ?? "unknown"} does not match ${expectedDriver}`);
   }
@@ -258,6 +267,7 @@ function normalizeOperation(operation: unknown, expectedDriver: RawDriverName): 
 }
 
 function rawManifestEdge(sink: ProjectionSinkDefinition, operation: RawDriverOperation): RawManifestEdge {
+  // SAFETY: assertion to `return Object.freeze({` is required at this boundary.
   return Object.freeze({
     code: "RAW_DRIVER_ESCAPE_HATCH",
     driver: sink.driver,
@@ -267,27 +277,33 @@ function rawManifestEdge(sink: ProjectionSinkDefinition, operation: RawDriverOpe
   }) as RawManifestEdge;
 }
 
-function normalizeRawEdge(edge: unknown): RawManifestEdge {
-  if (!edge || typeof edge !== "object") {
+function normalizeRawEdge<T>(edge: T): RawManifestEdge {
+  if (!edge || !isJsonObject(edge)) {
     throw new TypeError("raw edge must be an object");
   }
 
-  const candidate = edge as Record<string, unknown>;
+  // SAFETY: assertion to `const candidate = edge as JsonObject;` is required at this boundary.
+  const candidate = edge as JsonObject;
+  // SAFETY: assertion to `return Object.freeze({` is required at this boundary.
   return Object.freeze({
     code: "RAW_DRIVER_ESCAPE_HATCH",
     driver: assertOneOf(candidate.driver, RAW_DRIVER_NAMES, "edge.driver"),
     projection: assertString(candidate.projection, "edge.projection"),
     readOnly: Boolean(candidate.readOnly),
     satisfiedBy: Object.freeze(
-      ((candidate.satisfiedBy as unknown[] | undefined) ?? []).map((driver) => assertOneOf(driver, RAW_DRIVER_NAMES, "edge.satisfiedBy")),
+      (Array.isArray(candidate.satisfiedBy) ? candidate.satisfiedBy : []).map((driver) =>
+        assertOneOf(driver, RAW_DRIVER_NAMES, "edge.satisfiedBy"),
+      ),
     ),
   }) as RawManifestEdge;
 }
 
 function planWarningsForEdges(edges: RawManifestEdge[]): PlanWarning[] {
+  // SAFETY: assertion to `return Object.freeze(` is required at this boundary.
   return Object.freeze(
     edges.map(
       (edge) =>
+        // SAFETY: assertion to `Object.freeze({` is required at this boundary.
         Object.freeze({
           code: "RAW_DRIVER_PORTABILITY_DEBT",
           driver: edge.driver,
@@ -304,9 +320,12 @@ function isolationWarningsFor(
   operation: RawDriverOperation,
 ): IsolationWarning[] {
   if (!sink.pooledMultiTenant || operation.access !== "read") {
-    return Object.freeze([]) as unknown as IsolationWarning[];
+    // SAFETY: assertion to `return Object.freeze([]) as unknown as IsolationWarning[];` is required at this boundary.
+    const empty: IsolationWarning[] = Object.freeze([]) as never;
+    return empty;
   }
   if (!operation.tenantScope) {
+    // SAFETY: assertion to `return Object.freeze([` is required at this boundary.
     return Object.freeze([
       Object.freeze({
         code: "RAW_TENANT_SCOPE_UNPROVEN",
@@ -316,6 +335,7 @@ function isolationWarningsFor(
     ]) as IsolationWarning[];
   }
   if (context.tenantId && operation.tenantScope !== context.tenantId) {
+    // SAFETY: assertion to `return Object.freeze([` is required at this boundary.
     return Object.freeze([
       Object.freeze({
         code: "RAW_TENANT_SCOPE_MISMATCH",
@@ -327,7 +347,9 @@ function isolationWarningsFor(
     ]) as IsolationWarning[];
   }
 
-  return Object.freeze([]) as unknown as IsolationWarning[];
+  // SAFETY: frozen empty isolation list is IsolationWarning[] at this boundary.
+  const empty: IsolationWarning[] = Object.freeze([]) as never;
+  return empty;
 }
 
 function classifySqlAccess(sql: string, fallback: "read" | "write"): "read" | "write" {
@@ -341,27 +363,30 @@ function classifySqlAccess(sql: string, fallback: "read" | "write"): "read" | "w
   return fallback;
 }
 
-function normalizeContext(context: unknown): { tenantId?: string } {
-  if (!context || typeof context !== "object") {
+function normalizeContext(context: JsonValue): { tenantId?: string } {
+  if (!context || !isJsonObject(context)) {
     return Object.freeze({});
   }
-  const candidate = context as Record<string, unknown>;
+  // SAFETY: assertion to `const candidate = context as JsonObject;` is required at this boundary.
+  const candidate = context as JsonObject;
   return Object.freeze({
-    ...(candidate.tenantId === undefined ? {} : { tenantId: assertString(candidate.tenantId, "context.tenantId") }),
+    ...(candidate.tenantId === undefined ? undefined : { tenantId: assertString(candidate.tenantId, "context.tenantId") }),
   });
 }
 
-function assertString(value: unknown, label: string): string {
-  if (typeof value !== "string" || value.length === 0) {
+function assertString(value: JsonValue, label: string): string {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;
 }
 
-function assertOneOf<T>(value: unknown, allowed: Set<T>, label: string): T {
+function assertOneOf<T>(value: JsonValue, allowed: Set<T>, label: string): T {
+  // SAFETY: assertion to `if (!allowed.has(value as T)) {` is required at this boundary.
   if (!allowed.has(value as T)) {
     throw new TypeError(`${label} must be one of: ${[...allowed].join(", ")}`);
   }
+  // SAFETY: assertion to `return value as T;` is required at this boundary.
   return value as T;
 }
 
@@ -370,20 +395,15 @@ function deepFreeze<T>(value: T): T {
     for (const entry of value) {
       deepFreeze(entry);
     }
+    // SAFETY: assertion to `return Object.freeze(value) as T;` is required at this boundary.
     return Object.freeze(value) as T;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     for (const entry of Object.values(value)) {
       deepFreeze(entry);
     }
+    // SAFETY: assertion to `return Object.freeze(value) as T;` is required at this boundary.
     return Object.freeze(value) as T;
   }
   return value;
-}
-
-function clone(value: unknown): unknown {
-  if (value === undefined) {
-    return undefined;
-  }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

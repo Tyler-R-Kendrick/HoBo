@@ -1,4 +1,4 @@
-import type { Pool, PoolClient } from "pg";
+import type { Pool } from "pg";
 import type { IMemoryDb } from "pg-mem";
 
 import {
@@ -6,7 +6,7 @@ import {
   StreamerClosedError,
 } from "../../../streamer-runtime-port-contract/src/streamer-runtime-port.js";
 import { clone, requireNonEmptyString } from "../postgres/json.js";
-import { execMemQuery } from "../postgres/mem-query.js";
+import { type JsonValue } from "../json.js";
 
 export const POSTGRES_STREAMER_CONTRACT_VERSION = "hobo.streamer-runtime-port/v1";
 
@@ -34,7 +34,7 @@ export function createPostgresStreamer(pool: Pool, options: { bufferLimit?: numb
       );
       return toRunHandle(record);
     },
-    start(workflow: (ctx: { runId: string; getWritable: (name?: string) => WritableStream<unknown> }) => Promise<void> | void, runOptions = {}) {
+    start(workflow: (ctx: { runId: string; getWritable: (name?: string) => WritableStream<JsonValue> }) => Promise<void> | void, runOptions = {}) {
       const run = this.createRun(runOptions);
       queueMicrotask(async () => {
         try {
@@ -52,7 +52,7 @@ export function createPostgresStreamer(pool: Pool, options: { bufferLimit?: numb
     teardownRun(runId: string, reason = "teardown") {
       return closeRun(recordFor(runs, runId), { status: "closed", reason });
     },
-    async listen(channel: string, handler: (payload: unknown) => void) {
+    async listen(channel: string, handler: (payload: JsonValue) => void) {
       const client = await pool.connect();
       await client.query(`LISTEN ${sanitizeChannel(channel)}`);
       client.on("notification", (message) => {
@@ -125,12 +125,9 @@ function toRunHandle(record: RunRecord) {
   });
 }
 
-function createWritableStream(record: RunRecord, streamName: string): WritableStream<unknown> {
+function createWritableStream(record: RunRecord, streamName: string): WritableStream<JsonValue> {
   const name = requireNonEmptyString(streamName, "streamName");
   let chunkSeq = 0;
-  const exec = record.memDb
-    ? (sql: string, params: Record<string, unknown>) => execMemQuery(record.memDb!, sql, params)
-    : (sql: string, params: Record<string, unknown>) => record.pool.query(sql, Object.values(params));
 
   return new WritableStream({
     write(chunk) {
@@ -171,7 +168,7 @@ function createWritableStream(record: RunRecord, streamName: string): WritableSt
   });
 }
 
-function createReadableStream(record: RunRecord, streamName: string): ReadableStream<unknown> {
+function createReadableStream(record: RunRecord, streamName: string): ReadableStream<JsonValue> {
   const name = requireNonEmptyString(streamName, "streamName");
   let index = 0;
   const chunks = () => record.chunks.get(name) ?? [];
@@ -204,7 +201,7 @@ function closeRun(record: RunRecord, close: { status: "completed" | "closed"; re
   return Object.freeze({ runId: record.runId, status: record.status, reason: record.reason });
 }
 
-function failRun(record: RunRecord, error: unknown) {
+function failRun(record: RunRecord, error: JsonValue) {
   record.status = "failed";
   record.reason = error instanceof Error ? error.message : String(error);
   record.done.reject(error instanceof Error ? error : new Error(String(error)));

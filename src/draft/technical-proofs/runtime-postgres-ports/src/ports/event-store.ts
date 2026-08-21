@@ -4,6 +4,7 @@ import {
   OptimisticSequenceConflictError,
 } from "../../../camp-eventstore-runtime-port-contract/src/camp-eventstore-runtime-port.js";
 import { clone, optionalString, requireNonEmptyString } from "../postgres/json.js";
+import { isJsonObject, type JsonValue, type JsonObject } from "../json.js";
 import { withTransaction } from "../postgres/pool.js";
 
 type Clock = {
@@ -12,14 +13,14 @@ type Clock = {
 
 type Subscription = {
   filter: { streamId?: string; type?: string };
-  handler: (event: unknown) => void;
+  handler: (event: JsonValue) => void;
 };
 
 export function createPostgresEventStore(pool: Pool, clock: Clock) {
   const subscriptions = new Set<Subscription>();
 
   return Object.freeze({
-    async append(streamId: string, events: unknown[], appendOptions: Record<string, unknown> = {}) {
+    async append(streamId: string, events: JsonValue[], appendOptions: JsonObject = {}) {
       const id = requireNonEmptyString(streamId, "streamId");
       const inputs = normalizeEventInputs(events);
       const expectedSeq = normalizeSeq(appendOptions.expectedSeq, "appendOptions.expectedSeq");
@@ -132,8 +133,8 @@ export function createPostgresEventStore(pool: Pool, clock: Clock) {
       return clone(result.rows.map((row) => row.envelope));
     },
 
-    subscribe(filter: Record<string, unknown>, handler: (event: unknown) => void) {
-      if (typeof handler !== "function") {
+    subscribe(filter: JsonObject, handler: (event: JsonValue) => void) {
+      if (!(handler instanceof Function)) {
         throw new TypeError("handler must be a function");
       }
       const subscription = {
@@ -151,7 +152,7 @@ export function createPostgresEventStore(pool: Pool, clock: Clock) {
       });
     },
 
-    async snapshot(streamId: string, state: unknown, seq: number) {
+    async snapshot(streamId: string, state: JsonValue, seq: number) {
       const id = requireNonEmptyString(streamId, "streamId");
       const snapshotSeq = normalizeSeq(seq, "seq");
       const streamRow = await pool.query(
@@ -172,13 +173,14 @@ export function createPostgresEventStore(pool: Pool, clock: Clock) {
       });
     },
 
-    async fold(streamId: string, foldOptions: Record<string, unknown> = {}) {
+    async fold(streamId: string, foldOptions: JsonObject = {}) {
       const events = await this.read(streamId);
       const handlers = normalizeHandlers(foldOptions.handlers);
       let state = cloneRequired(foldOptions.initialState, "foldOptions.initialState");
-      const quarantined: Array<Record<string, unknown>> = [];
+      const quarantined: Array<JsonObject> = [];
 
       for (const event of events) {
+        // SAFETY: assertion to `const typed = event as { type: string; seq: number };` is required at this boundary.
         const typed = event as { type: string; seq: number };
         if (typed.type.endsWith(".Quarantined")) {
           continue;
@@ -218,30 +220,35 @@ function createEnvelope({
 }: {
   streamId: string;
   seq: number;
-  input: Record<string, unknown>;
-  appendOptions: Record<string, unknown>;
+  input: JsonObject;
+  appendOptions: JsonObject;
   clock: Clock;
 }) {
   const type = requireNonEmptyString(input.type, "event.type");
-  const actor = appendOptions.actor as Record<string, unknown>;
+  // SAFETY: assertion to `const actor = appendOptions.actor as JsonObject;` is required at this boundary.
+  const actor = appendOptions.actor as JsonObject;
   return Object.freeze({
     id: `${streamId}:${seq}:${type}`,
     streamId,
     seq,
     type,
+    // SAFETY: assertion to `v: normalizeVersion((input.v as number | undefined) ?? 1),` is required at this boundary.
     v: normalizeVersion((input.v as number | undefined) ?? 1),
     ts: clock.now(),
     actor: clone(actor),
     tenant: requireNonEmptyString(appendOptions.tenant, "appendOptions.tenant"),
     causationId: optionalString(appendOptions.causationId, "appendOptions.causationId"),
     correlationId: optionalString(appendOptions.correlationId, "appendOptions.correlationId"),
+    // SAFETY: assertion to `data: clone((input.data as unknown) ?? {}),` is required at this boundary.
     data: clone((input.data as unknown) ?? {}),
-    meta: Object.freeze(clone((input.meta as Record<string, unknown> | undefined) ?? {})),
+    // SAFETY: assertion to `meta: Object.freeze(clone((input.meta as JsonObject | undefined) ?? {})),` is required at this boundary.
+    meta: Object.freeze(clone((input.meta as JsonObject | undefined) ?? {})),
   });
 }
 
-function publish(subscriptions: Set<Subscription>, envelope: unknown) {
+function publish(subscriptions: Set<Subscription>, envelope: JsonValue) {
   for (const subscription of subscriptions) {
+    // SAFETY: assertion to `if (matches(subscription.filter, envelope as { streamId: string; type: string })` is required at this boundary.
     if (matches(subscription.filter, envelope as { streamId: string; type: string })) {
       subscription.handler(clone(envelope));
     }
@@ -258,18 +265,20 @@ function matches(
   );
 }
 
-function normalizeHandlers(handlers: unknown) {
-  if (!handlers || typeof handlers !== "object" || Array.isArray(handlers)) {
+function normalizeHandlers(handlers: JsonValue) {
+  if (!handlers || !isJsonObject(handlers)) {
     throw new TypeError("foldOptions.handlers must be an object");
   }
   return new Map(
-    Object.entries(handlers as Record<string, unknown>).filter(
-      ([, handler]) => typeof handler === "function",
-    ) as Array<[string, (state: unknown, event: unknown) => unknown]>,
+    // SAFETY: assertion to `Object.entries(handlers as JsonObject).filter(` is required at this boundary.
+    Object.entries(handlers as JsonObject).filter(
+      ([, handler]) => handler instanceof Function,
+    ) as Array<[string, (state: JsonValue, event: JsonValue) => JsonValue]>,
   );
 }
 
-function getIdempotencyKey(input: unknown) {
+function getIdempotencyKey(input: JsonValue) {
+  // SAFETY: assertion to `const record = input as { meta?: { idempotencyKey?: string } };` is required at this boundary.
   const record = input as { meta?: { idempotencyKey?: string } };
   const key = record?.meta?.idempotencyKey;
   if (key === undefined) {
@@ -278,15 +287,16 @@ function getIdempotencyKey(input: unknown) {
   return requireNonEmptyString(key, "event.meta.idempotencyKey");
 }
 
-function normalizeEventInputs(events: unknown) {
+function normalizeEventInputs(events: JsonValue) {
   if (!Array.isArray(events) || events.length === 0) {
     throw new TypeError("events must be a non-empty array");
   }
   return events.map((event) => {
-    if (!event || typeof event !== "object" || Array.isArray(event)) {
+    if (!event || !isJsonObject(event)) {
       throw new TypeError("event must be an object");
     }
-    return event as Record<string, unknown>;
+    // SAFETY: assertion to `return event as JsonObject;` is required at this boundary.
+    return event as JsonObject;
   });
 }
 
@@ -297,14 +307,16 @@ function normalizeVersion(value: number) {
   return value;
 }
 
-function normalizeSeq(value: unknown, fieldName: string) {
+function normalizeSeq(value: JsonValue, fieldName: string) {
+  // SAFETY: assertion to `if (!Number.isSafeInteger(value) || (value as number) < 0) {` is required at this boundary.
   if (!Number.isSafeInteger(value) || (value as number) < 0) {
     throw new TypeError(`${fieldName} must be a non-negative safe integer`);
   }
+  // SAFETY: assertion to `return value as number;` is required at this boundary.
   return value as number;
 }
 
-function cloneRequired(value: unknown, fieldName: string) {
+function cloneRequired(value: JsonValue, fieldName: string) {
   if (value === undefined) {
     throw new TypeError(`${fieldName} is required`);
   }

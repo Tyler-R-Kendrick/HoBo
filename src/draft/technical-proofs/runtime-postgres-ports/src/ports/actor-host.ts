@@ -1,6 +1,8 @@
 import type { Pool } from "pg";
 
 import { createInMemoryActorHost } from "../../../actor-host-runtime-port-contract/src/actor-host-runtime-port.js";
+import { type JsonValue, type JsonObject } from "../json.js";
+
 
 export function createPostgresActorHost(
   pool: Pool,
@@ -35,10 +37,10 @@ export function createPostgresActorHost(
       return lease;
     },
 
-    state(key: string, request: { initialState: unknown; fold: (state: unknown, event: unknown) => unknown }) {
+    state(key: string, request: { initialState: JsonValue; fold: (state: JsonValue, event: JsonValue) => JsonValue }) {
       const innerState = inner.state(key, request);
       return Object.freeze({
-        append(lease: { fenceToken?: bigint }, event: Record<string, unknown>) {
+        append(lease: { fenceToken?: bigint }, event: JsonObject) {
           const result = innerState.append(lease, event);
           void pool.query(
             `INSERT INTO hobo_actor_events (actor_key, seq, fence_token, event)

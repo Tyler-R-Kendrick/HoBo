@@ -99,7 +99,8 @@ main
                                                                                         └── sdlc/anti-slop-88-draft-lifecycle-evals-metering-openfeature  #1347 lifecycle-phase+live-evals+metering-view+openfeature
                                                                                          └── sdlc/anti-slop-89-draft-otel-remediation-escape-wasi  #1348 otel-traces+remediation-safety+repo-view-escape+wasi-pins
                                                                                           └── sdlc/anti-slop-90-draft-x509-yard-domain  #1349 x509-svid-mtls+yard-domain-validation
-                                                                                           └── sdlc/anti-slop-91-draft-capability-conformance-authz-cutover  capability-negotiation+conformance-port+authz-cache+domain-cutover
+                                                                                           └── sdlc/anti-slop-91-draft-capability-conformance-authz-cutover  #1350 capability-negotiation+conformance-port+authz-cache+domain-cutover
+                                                                                            └── sdlc/anti-slop-92-draft-drift-gateway-chaos-secret  drift-detection+gateway-realization+golden-chaos+config-secret
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -210,6 +211,7 @@ Layer 87: `delivery-orchestrator-skeleton-contract` + `deployment-strategy-saga-
 Layer 88: `lifecycle-phase-policy-contract` + `live-evals-runtime-contract` + `metering-view-projection-contract` + `openfeature-provider-adapters-contract` oxlint `--deny-warnings` clean (#1347).
 Layer 89: `otel-traces-pipeline-contract` + `remediation-safety-gate-contract` + `repo-view-escape-hatches-contract` + `wasi-interface-pins` oxlint `--deny-warnings` clean (#1348).
 Layer 90: `x509-svid-mtls-contract` + `yard-domain-validation-contract` oxlint `--deny-warnings` clean (#1349).
-Layer 91: `capability-negotiation-contract` + `conformance-port-suite-contract` + `control-plane-authz-cache-contract` + `domain-cutover-saga-contract` oxlint `--deny-warnings` clean.
+Layer 91: `capability-negotiation-contract` + `conformance-port-suite-contract` + `control-plane-authz-cache-contract` + `domain-cutover-saga-contract` oxlint `--deny-warnings` clean (#1350).
+Layer 92: `drift-detection-loop-contract` + `gateway-realization-contract` + `golden-suite-chaos-verification-contract` + `hobo-config-secret-schema-contract` oxlint `--deny-warnings` clean.
 Next: remaining `src/draft/` (9-count technical-proofs, then lower, then exp-proofs, projects).
 Full-repo `lint:slop --deny-warnings` is still red until those land.

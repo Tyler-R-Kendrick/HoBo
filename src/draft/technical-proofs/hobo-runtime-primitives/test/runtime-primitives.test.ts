@@ -7,7 +7,7 @@ import {
   EXPECTED_RUNTIME_INTERFACES,
   SDK_PRIMITIVE_TABLE,
   assertMatchesSdkPrimitiveTable,
-  assertNoNondeterministicWitShape,
+  assertNoNondeterministicWitContract,
   assertRuntimeWitContract,
   buildManifestFragment,
   readRuntimeWit,
@@ -65,7 +65,7 @@ test("SDK primitive table cannot drift from the WIT signatures", async () => {
 test("replay-safety checklist rejects wall-clock or random primitives", async () => {
   const source = await readRuntimeWit();
 
-  assertNoNondeterministicWitShape(source);
+  assertNoNondeterministicWitContract(source);
   assert.equal(validateReplaySafety(SDK_PRIMITIVE_TABLE).checked, SDK_PRIMITIVE_TABLE.length);
 
   assert.throws(
@@ -83,7 +83,7 @@ test("replay-safety checklist rejects wall-clock or random primitives", async ()
     /runtime_primitives.nondeterministic_primitive: wallClock/,
   );
   assert.throws(
-    () => assertNoNondeterministicWitShape(`${source}\n// wall-clock current-time random`),
+    () => assertNoNondeterministicWitContract(`${source}\n// wall-clock current-time random`),
     /runtime_primitives.nondeterministic_wit_shape/,
   );
 });

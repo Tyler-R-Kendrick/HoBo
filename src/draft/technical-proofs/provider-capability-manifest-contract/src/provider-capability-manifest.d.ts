@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export const CAPABILITY_MANIFEST_SCHEMA: "hobo.capability-manifest/v1";
 
 export interface CapabilityManifest {
@@ -68,7 +69,7 @@ export interface EvidenceRef {
 export interface ProviderWithManifest {
   id: string;
   servedRegions: string[];
-  conformanceReport: unknown;
+  conformanceReport: JsonValue;
   capabilityManifest(): CapabilityManifest;
 }
 
@@ -80,7 +81,7 @@ export function createFixtureProvider(options?: {
 
 export function validateCapabilityManifest(
   manifest: CapabilityManifest,
-  options?: { conformance?: unknown; servedRegions?: string[] }
+  options?: { conformance?: JsonValue; servedRegions?: string[] }
 ): { ok: boolean; errors: string[]; manifest: CapabilityManifest | null };
 
 export function serializeWellKnownManifest(manifest: CapabilityManifest): Record<string, string>;
@@ -89,7 +90,7 @@ export function negotiateCapability(options: {
   manifest: CapabilityManifest;
   request: { require: { port: string; features: string[] } };
   registry?: CapabilityManifest[];
-}): unknown;
+}): JsonValue;
 
-export function canonicalJson(value: unknown): string;
-export function stableDigest(value: unknown): string;
+export function canonicalJson(value: JsonValue): string;
+export function stableDigest(value: JsonValue): string;

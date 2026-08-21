@@ -48,7 +48,7 @@ test("mines an observed contract with sample coverage and excludes lane-origin t
   assert.equal(mined.contract.mode, "observed");
   assert.equal(mined.contract.provenance.source, "trace-mined");
   assert.equal(mined.contract.provenance.verifiedByConstruction, false);
-  assert.deepEqual(mined.contract.requiredShape.requiredFields, ["orderId", "tenantId"]);
+  assert.deepEqual(mined.contract.requiredRecord.requiredFields, ["orderId", "tenantId"]);
   assert.deepEqual(mined.contract.provenance.sampleCoverage, {
     samples: 3,
     coveragePct: 100,
@@ -121,7 +121,7 @@ test("unobserved producer variants during the migration window emit compat failu
     fields: ["orderId", "tenantId", "couponCode"],
     observedAt: "2026-06-27T00:00:00.000Z",
   });
-  const observedShape = evaluatePromotedContractGate(promoted.gate, {
+  const observedGate = evaluatePromotedContractGate(promoted.gate, {
     producer: "orders-api@1.9.0",
     fields: ["tenantId", "orderId"],
     observedAt: "2026-06-27T00:00:00.000Z",
@@ -134,8 +134,8 @@ test("unobserved producer variants during the migration window emit compat failu
   assert.match(validButUnobserved.summary, /unobserved producer variant/);
   assert.ok(validButUnobserved.suggestedFixes.includes("dual-publish through the migration window"));
 
-  assert.equal(observedShape.ok, true);
-  assert.equal(observedShape.events[0].type, "compat.GatePassed");
+  assert.equal(observedGate.ok, true);
+  assert.equal(observedGate.events[0].type, "compat.GatePassed");
 });
 
 test("thin sample promotion carries weak confidence instead of over-claiming proven status", () => {

@@ -221,7 +221,7 @@ export default defineConfig({
 				"packages/identity/**": { statements: 90, branches: 80, functions: 92, lines: 90 },
 				"packages/junctions/**": { statements: 95, branches: 90, functions: 98, lines: 95 },
 				"packages/kv-redis-compatible/**": { statements: 91, branches: 82, functions: 92, lines: 95 },
-				"packages/management/**": { statements: 80, branches: 62, functions: 84, lines: 80 },
+				"packages/management/**": { statements: 99, branches: 87, functions: 96, lines: 98 },
 				"packages/manifest-capability/**": { statements: 93, branches: 89, functions: 95, lines: 93 },
 				"packages/manifest-declaration/**": { statements: 96, branches: 94, functions: 98, lines: 96 },
 				"packages/manifest-plan/**": { statements: 94, branches: 88, functions: 98, lines: 95 },

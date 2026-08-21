@@ -9,7 +9,6 @@
  */
 import { STATUS_PAGE_TOKENS } from "./tokens.js";
 import type {
-	ComponentStatus,
 	ComponentStatusRecord,
 	IncidentRecord,
 	MaintenanceRecord,
@@ -44,7 +43,7 @@ export function escapeHtml(value: string): string {
 		.replaceAll("'", "&#39;");
 }
 
-const STATUS_LABELS: Readonly<Record<ComponentStatus, string>> = {
+const STATUS_LABELS = {
 	operational: "Operational",
 	maintenance: "Maintenance",
 	unknown: "Delayed / unknown",

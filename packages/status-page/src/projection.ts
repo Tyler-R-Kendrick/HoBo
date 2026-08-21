@@ -19,17 +19,8 @@ import type { EventEnvelope } from "@hobo/core";
 import { defineProjection, type Projection } from "@hobo/data";
 
 import {
-	type IncidentOpenedData,
-	type IncidentResolvedData,
-	type IncidentUpdatedData,
-	type MaintenanceScheduledData,
-	type MaintenanceUpdatedData,
-	type SloMeasuredData,
 	STATUS_PAGE_EVENTS,
 	STATUS_SIGNAL_EVENTS,
-	type StatusPageIncidentPostedData,
-	type StatusPagePublishedData,
-	type StatusPageUnpublishedData,
 } from "./events.js";
 import {
 	advanceIncidentState,
@@ -38,6 +29,11 @@ import {
 	type IncidentRecord,
 	type IncidentState,
 	type MaintenanceRecord,
+	isRecordValue,
+	isStringValue,
+	type JsonObject,
+	type JsonValue,
+	type Mutable,
 	worstComponentStatus,
 } from "./types.js";
 
@@ -55,13 +51,14 @@ export interface ComponentRow {
 	readonly attainment?: number;
 	readonly target?: number;
 	/** UTC date → worst observed status + sample count, bounded to 90 days. */
-	readonly history: Readonly<
-		Record<
-			string,
-			{ readonly worst: ComponentStatus; readonly samples: number }
-		>
-	>;
+	readonly history: ComponentHistory;
 }
+
+type HistoryEntry = {
+	readonly worst: ComponentStatus;
+	readonly samples: number;
+};
+type ComponentHistory = Readonly<Record<string, HistoryEntry>>;
 
 export interface StatusPageRow {
 	readonly scopeKey: string;
@@ -90,12 +87,37 @@ export interface StatusPageProjectionOptions {
 	readonly scopeKey?: (event: EventEnvelope) => string;
 }
 
+function isFiniteNumber(value: JsonValue | undefined): value is number {
+	return (
+		Object.prototype.toString.call(value) === "[object Number]" &&
+		Object(value) !== value &&
+		Number.isFinite(value)
+	);
+}
+
+function eventData(event: EventEnvelope): JsonObject | undefined {
+	// SAFETY: EventEnvelope data is JSON at the event-store boundary.
+	return isRecordValue(event.data as JsonValue) ? event.data as JsonObject : undefined;
+}
+
+function isContentHash(value: JsonValue | undefined): value is `sha256:${string}` {
+	return isStringValue(value) && value.startsWith("sha256:");
+}
+
+interface ValidSloData {
+	readonly componentId: string;
+	readonly componentLabel?: string;
+	readonly attainment: number;
+	readonly target: number;
+	readonly measuredAt: string;
+}
+
 export function defaultScopeKey(event: EventEnvelope): string {
-	const data = event.data as { scopeKey?: unknown } | null | undefined;
-	if (data && typeof data.scopeKey === "string" && data.scopeKey.length > 0) {
+	const data = eventData(event);
+	if (data && isStringValue(data.scopeKey) && data.scopeKey.length > 0) {
 		return data.scopeKey;
 	}
-	if (typeof event.project === "string" && event.project.length > 0) {
+	if (isStringValue(event.project) && event.project.length > 0) {
 		return `project:${event.project}`;
 	}
 	return `tenant:${event.tenant}`;
@@ -151,22 +173,12 @@ export function statusFromAttainment(
 }
 
 function boundedHistory(
-	history: Readonly<
-		Record<
-			string,
-			{ readonly worst: ComponentStatus; readonly samples: number }
-		>
-	>,
+	history: ComponentHistory,
 	date: string,
 	status: ComponentStatus,
-): Readonly<
-	Record<string, { readonly worst: ComponentStatus; readonly samples: number }>
-> {
+) {
 	const existing = history[date];
-	const next: Record<
-		string,
-		{ readonly worst: ComponentStatus; readonly samples: number }
-	> = {
+	const next = {
 		...history,
 		[date]: {
 			worst: existing ? worstComponentStatus([existing.worst, status]) : status,
@@ -183,19 +195,21 @@ function boundedHistory(
 }
 
 function isValidSlo(
-	data: Partial<SloMeasuredData> | null | undefined,
-): data is SloMeasuredData {
+	data: JsonObject | undefined,
+): data is JsonObject & ValidSloData {
+	const componentId = data?.componentId;
+	const attainment = data?.attainment;
+	const target = data?.target;
+	const measuredAt = data?.measuredAt;
 	return (
-		typeof data?.componentId === "string" &&
-		data.componentId.length > 0 &&
-		typeof data.attainment === "number" &&
-		Number.isFinite(data.attainment) &&
-		typeof data.target === "number" &&
-		Number.isFinite(data.target) &&
-		data.target > 0 &&
-		data.target <= 1 &&
-		typeof data.measuredAt === "string" &&
-		!Number.isNaN(Date.parse(data.measuredAt))
+		isStringValue(componentId) &&
+		componentId.length > 0 &&
+		isFiniteNumber(attainment) &&
+		isFiniteNumber(target) &&
+		target > 0 &&
+		target <= 1 &&
+		isStringValue(measuredAt) &&
+		!Number.isNaN(Date.parse(measuredAt))
 	);
 }
 
@@ -204,7 +218,7 @@ function applySloMeasured(
 	event: EventEnvelope,
 ): StatusPageRow {
 	const base = row ?? emptyRow(defaultScopeKey(event), event);
-	const data = event.data as Partial<SloMeasuredData> | null | undefined;
+	const data = eventData(event);
 	if (!isValidSlo(data)) return touch(base, event, {});
 	// Clamp attainment into [0,1] so a buggy emitter cannot render >100%.
 	const attainment = Math.min(1, Math.max(0, data.attainment));
@@ -219,7 +233,7 @@ function applySloMeasured(
 		id: data.componentId,
 		label: data.componentLabel ?? existing?.label ?? data.componentId,
 		status: isLate ? (existing?.status ?? status) : status,
-		lastSignalAt: isLate ? (existing?.lastSignalAt as string) : data.measuredAt,
+		lastSignalAt: isLate ? existing?.lastSignalAt ?? data.measuredAt : data.measuredAt,
 		attainment: isLate ? (existing?.attainment ?? attainment) : attainment,
 		target: isLate ? (existing?.target ?? data.target) : data.target,
 		history:
@@ -237,8 +251,8 @@ function applyIncidentOpened(
 	event: EventEnvelope,
 ): StatusPageRow {
 	const base = row ?? emptyRow(defaultScopeKey(event), event);
-	const data = event.data as Partial<IncidentOpenedData> | null | undefined;
-	if (typeof data?.incidentId !== "string" || data.incidentId.length === 0) {
+	const data = eventData(event);
+	if (!isStringValue(data?.incidentId) || data.incidentId.length === 0) {
 		return touch(base, event, {});
 	}
 	const existing = base.incidents[data.incidentId];
@@ -256,15 +270,15 @@ function applyIncidentOpened(
 			: "investigating";
 	const affected = Array.isArray(data.affectedComponents)
 		? data.affectedComponents.filter(
-				(c): c is string => typeof c === "string" && c.length > 0,
+				(c): c is string => isStringValue(c) && c.length > 0,
 			)
 		: [];
 	if (existing) {
 		// Idempotent duplicate / late open: backfill fields, never reopen.
-		const incident: IncidentRecord = {
+		const incident: Mutable<IncidentRecord> = {
 			...existing,
 			title:
-				existing.title === existing.id && typeof data.title === "string"
+				existing.title === existing.id && isStringValue(data.title)
 					? data.title
 					: existing.title,
 			affectedComponents:
@@ -280,10 +294,10 @@ function applyIncidentOpened(
 			incidents: { ...base.incidents, [incident.id]: incident },
 		});
 	}
-	const incident: IncidentRecord = {
+		const incident: Mutable<IncidentRecord> = {
 		id: data.incidentId,
 		title:
-			typeof data.title === "string" && data.title.length > 0
+			isStringValue(data.title) && data.title.length > 0
 				? data.title
 				: data.incidentId,
 		state,
@@ -291,9 +305,9 @@ function applyIncidentOpened(
 		affectedComponents: Object.freeze(affected),
 		openedAt: event.ts,
 		updatedAt: event.ts,
-		...(state === "resolved" ? { resolvedAt: event.ts } : {}),
 		updates: Object.freeze([]),
 	};
+	if (state === "resolved") incident.resolvedAt = event.ts;
 	return touch(base, event, {
 		incidents: { ...base.incidents, [incident.id]: incident },
 	});
@@ -305,11 +319,8 @@ function applyIncidentProgress(
 	options: { readonly public: boolean },
 ): StatusPageRow {
 	const base = row ?? emptyRow(defaultScopeKey(event), event);
-	const data = event.data as
-		| Partial<IncidentUpdatedData & StatusPageIncidentPostedData>
-		| null
-		| undefined;
-	if (typeof data?.incidentId !== "string" || data.incidentId.length === 0) {
+	const data = eventData(event);
+	if (!isStringValue(data?.incidentId) || data.incidentId.length === 0) {
 		return touch(base, event, {});
 	}
 	const nextState: IncidentState =
@@ -319,30 +330,27 @@ function applyIncidentProgress(
 		data.currentStatus === "resolved"
 			? data.currentStatus
 			: "investigating";
-	const existing = base.incidents[data.incidentId] ?? {
+	const existing: IncidentRecord = base.incidents[data.incidentId] ?? {
 		// Update arrived before the open: create a placeholder that a late
 		// `incident.Opened` will backfill.
 		id: data.incidentId,
 		title: data.incidentId,
 		state: nextState,
 		impact: "minor" as const,
-		affectedComponents: Object.freeze([] as string[]),
+		affectedComponents: Object.freeze(new Array<string>()),
 		openedAt: event.ts,
 		updatedAt: event.ts,
 		updates: Object.freeze([]),
 	};
 	const state = advanceIncidentState(existing.state, nextState);
-	const body = typeof data.body === "string" ? data.body : "";
-	const incident: IncidentRecord = {
+	const body = isStringValue(data.body) ? data.body : "";
+	const incident: Mutable<IncidentRecord> = {
 		...existing,
 		state,
 		updatedAt:
 			Date.parse(event.ts) > Date.parse(existing.updatedAt)
 				? event.ts
 				: existing.updatedAt,
-		...(state === "resolved" && existing.resolvedAt === undefined
-			? { resolvedAt: event.ts }
-			: {}),
 		updates: Object.freeze([
 			...existing.updates,
 			...(body.length > 0
@@ -357,6 +365,9 @@ function applyIncidentProgress(
 				: []),
 		]),
 	};
+	if (state === "resolved" && existing.resolvedAt === undefined) {
+		incident.resolvedAt = event.ts;
+	}
 	return touch(base, event, {
 		incidents: { ...base.incidents, [incident.id]: incident },
 	});
@@ -367,28 +378,28 @@ function applyIncidentResolved(
 	event: EventEnvelope,
 ): StatusPageRow {
 	const base = row ?? emptyRow(defaultScopeKey(event), event);
-	const data = event.data as Partial<IncidentResolvedData> | null | undefined;
-	if (typeof data?.incidentId !== "string" || data.incidentId.length === 0) {
+	const data = eventData(event);
+	if (!isStringValue(data?.incidentId) || data.incidentId.length === 0) {
 		return touch(base, event, {});
 	}
-	const existing = base.incidents[data.incidentId] ?? {
+	const existing: IncidentRecord = base.incidents[data.incidentId] ?? {
 		// Resolved before opened: keep a resolved tombstone so the late open
 		// cannot resurrect the incident.
 		id: data.incidentId,
 		title: data.incidentId,
 		state: "resolved" as const,
 		impact: "minor" as const,
-		affectedComponents: Object.freeze([] as string[]),
+		affectedComponents: Object.freeze(new Array<string>()),
 		openedAt: event.ts,
 		updatedAt: event.ts,
 		updates: Object.freeze([]),
 	};
 	const summary =
-		typeof data.resolutionSummary === "string" &&
+		isStringValue(data.resolutionSummary) &&
 		data.resolutionSummary.length > 0
 			? data.resolutionSummary
 			: undefined;
-	const incident: IncidentRecord = {
+	const incident: Mutable<IncidentRecord> = {
 		...existing,
 		state: "resolved",
 		resolvedAt: existing.resolvedAt ?? event.ts,
@@ -420,16 +431,13 @@ function applyMaintenanceScheduled(
 	event: EventEnvelope,
 ): StatusPageRow {
 	const base = row ?? emptyRow(defaultScopeKey(event), event);
-	const data = event.data as
-		| Partial<MaintenanceScheduledData>
-		| null
-		| undefined;
+	const data = eventData(event);
 	if (
-		typeof data?.maintenanceId !== "string" ||
+		!isStringValue(data?.maintenanceId) ||
 		data.maintenanceId.length === 0 ||
-		typeof data.windowStart !== "string" ||
+		!isStringValue(data.windowStart) ||
 		Number.isNaN(Date.parse(data.windowStart)) ||
-		typeof data.windowEnd !== "string" ||
+		!isStringValue(data.windowEnd) ||
 		Number.isNaN(Date.parse(data.windowEnd)) ||
 		Date.parse(data.windowEnd) < Date.parse(data.windowStart)
 	) {
@@ -439,7 +447,7 @@ function applyMaintenanceScheduled(
 	const maintenance: MaintenanceRecord = {
 		id: data.maintenanceId,
 		title:
-			typeof data.title === "string" && data.title.length > 0
+			isStringValue(data.title) && data.title.length > 0
 				? data.title
 				: data.maintenanceId,
 		state: existing?.state ?? "scheduled",
@@ -448,12 +456,12 @@ function applyMaintenanceScheduled(
 		affectedComponents: Object.freeze(
 			Array.isArray(data.affectedComponents)
 				? data.affectedComponents.filter(
-						(c): c is string => typeof c === "string" && c.length > 0,
+						(c): c is string => isStringValue(c) && c.length > 0,
 					)
 				: [],
 		),
 		expectedImpact:
-			typeof data.expectedImpact === "string" ? data.expectedImpact : "",
+			isStringValue(data.expectedImpact) ? data.expectedImpact : "",
 	};
 	return touch(base, event, {
 		maintenances: { ...base.maintenances, [maintenance.id]: maintenance },
@@ -465,9 +473,9 @@ function applyMaintenanceUpdated(
 	event: EventEnvelope,
 ): StatusPageRow {
 	const base = row ?? emptyRow(defaultScopeKey(event), event);
-	const data = event.data as Partial<MaintenanceUpdatedData> | null | undefined;
+	const data = eventData(event);
 	if (
-		typeof data?.maintenanceId !== "string" ||
+		!isStringValue(data?.maintenanceId) ||
 		data.maintenanceId.length === 0
 	) {
 		return touch(base, event, {});
@@ -495,24 +503,20 @@ function applyPublished(
 	event: EventEnvelope,
 ): StatusPageRow {
 	const base = row ?? emptyRow(defaultScopeKey(event), event);
-	const data = event.data as
-		| Partial<StatusPagePublishedData>
-		| null
-		| undefined;
+	const data = eventData(event);
 	if (
-		typeof data?.contentHash !== "string" ||
-		!data.contentHash.startsWith("sha256:")
+		!isContentHash(data?.contentHash)
 	) {
 		return touch(base, event, {});
 	}
 	return touch(base, event, {
 		published: {
 			at: event.ts,
-			contentHash: data.contentHash as `sha256:${string}`,
+			contentHash: data.contentHash,
 			components: Object.freeze(
 				Array.isArray(data.components)
 					? data.components.filter(
-							(c): c is string => typeof c === "string" && c.length > 0,
+							(c): c is string => isStringValue(c) && c.length > 0,
 						)
 					: [],
 			),
@@ -525,15 +529,12 @@ function applyUnpublished(
 	event: EventEnvelope,
 ): StatusPageRow {
 	const base = row ?? emptyRow(defaultScopeKey(event), event);
-	const data = event.data as
-		| Partial<StatusPageUnpublishedData>
-		| null
-		| undefined;
+	const data = eventData(event);
 	const { published: _dropped, ...rest } = base;
-	return touch(rest as StatusPageRow, event, {
+	return touch(rest, event, {
 		lastUnpublished: {
 			at: event.ts,
-			reason: typeof data?.reason === "string" ? data.reason : "unpublished",
+			reason: isStringValue(data?.reason) ? data.reason : "unpublished",
 		},
 	});
 }

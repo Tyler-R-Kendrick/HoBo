@@ -26,7 +26,7 @@ export const COMPONENT_STATUSES = [
 export type ComponentStatus = (typeof COMPONENT_STATUSES)[number];
 
 /** Severity rank for worst-of rollups. `unknown` outranks `operational`. */
-const COMPONENT_STATUS_RANK: Readonly<Record<ComponentStatus, number>> = {
+const COMPONENT_STATUS_RANK = {
 	operational: 0,
 	maintenance: 1,
 	unknown: 2,
@@ -57,7 +57,7 @@ export const INCIDENT_STATES = [
 export type IncidentState = (typeof INCIDENT_STATES)[number];
 
 /** Forward-only lifecycle rank; late/out-of-order events must never regress. */
-export const INCIDENT_STATE_RANK: Readonly<Record<IncidentState, number>> = {
+export const INCIDENT_STATE_RANK = {
 	investigating: 0,
 	identified: 1,
 	monitoring: 2,
@@ -77,7 +77,7 @@ export const MAINTENANCE_STATES = [
 ] as const;
 export type MaintenanceState = (typeof MAINTENANCE_STATES)[number];
 
-const MAINTENANCE_STATE_RANK: Readonly<Record<MaintenanceState, number>> = {
+const MAINTENANCE_STATE_RANK = {
 	scheduled: 0,
 	"in-progress": 1,
 	completed: 2,
@@ -173,6 +173,27 @@ export interface MaintenanceRecord {
 	readonly expectedImpact: string;
 }
 
+export type JsonObject = { readonly [key: string]: JsonValue };
+export type JsonValue = string | number | boolean | null | JsonValue[] | JsonObject;
+export type Mutable<T> = { -readonly [K in keyof T]: T[K] };
+type ParsedComponent = {
+	id: string;
+	label: string;
+	kind: ComponentKind;
+	description?: string;
+};
+type ParsedIncident = {
+	id: string;
+	title: string;
+	state: IncidentState;
+	impact: IncidentImpact;
+	affectedComponents: readonly string[];
+	openedAt: string;
+	updatedAt: string;
+	resolvedAt?: string;
+	updates: readonly IncidentUpdateRecord[];
+};
+
 /** One UTC day of observed history for a component (uptime bar cell). */
 // domain-view: parse-don't-validate parsed/derived type (frozen, enum-narrowed, regex-constrained fields); its wire form is data-models/status_page.proto (technical-standards.md, IMPL-011).
 export interface DailyStatusRecord {
@@ -212,21 +233,35 @@ export interface StatusPageModel {
 	readonly contentHash?: `sha256:${string}`;
 }
 
-function expectRecord(input: unknown, path: string): Record<string, unknown> {
-	if (typeof input !== "object" || input === null || Array.isArray(input)) {
-		throw new StatusPageParseError(path, "expected an object");
-	}
-	return input as Record<string, unknown>;
+export function isRecordValue(input: JsonValue): input is JsonObject {
+	return (
+		Object.prototype.toString.call(input) === "[object Object]" &&
+		input !== null
+	);
 }
 
-function expectString(input: unknown, path: string): string {
-	if (typeof input !== "string" || input.length === 0) {
+export function isStringValue(input: JsonValue | undefined): input is string {
+	return (
+		Object.prototype.toString.call(input) === "[object String]" &&
+		Object(input) !== input
+	);
+}
+
+function expectRecord(input: JsonValue, path: string): JsonObject {
+	if (!isRecordValue(input)) {
+		throw new StatusPageParseError(path, "expected an object");
+	}
+	return input;
+}
+
+function expectString(input: JsonValue | undefined, path: string): string {
+	if (!isStringValue(input) || input.length === 0) {
 		throw new StatusPageParseError(path, "expected a non-empty string");
 	}
 	return input;
 }
 
-function expectIso(input: unknown, path: string): string {
+function expectIso(input: JsonValue | undefined, path: string): string {
 	const value = expectString(input, path);
 	if (Number.isNaN(Date.parse(value))) {
 		throw new StatusPageParseError(path, "expected an ISO-8601 timestamp");
@@ -235,21 +270,21 @@ function expectIso(input: unknown, path: string): string {
 }
 
 function expectEnum<T extends string>(
-	input: unknown,
+	input: JsonValue | undefined,
 	values: readonly T[],
 	path: string,
 ): T {
 	const value = expectString(input, path);
-	if (!(values as readonly string[]).includes(value)) {
+	if (!values.some((candidate) => candidate === value)) {
 		throw new StatusPageParseError(
 			path,
 			`expected one of ${values.join(", ")} (got "${value}")`,
 		);
 	}
-	return value as T;
+	return values.find((candidate) => candidate === value) ?? values[0]!;
 }
 
-function expectStringArray(input: unknown, path: string): readonly string[] {
+function expectStringArray(input: JsonValue | undefined, path: string): readonly string[] {
 	if (!Array.isArray(input)) {
 		throw new StatusPageParseError(path, "expected an array of strings");
 	}
@@ -258,7 +293,7 @@ function expectStringArray(input: unknown, path: string): readonly string[] {
 	);
 }
 
-export function parseStatusScope(input: unknown): StatusScope {
+export function parseStatusScope(input: JsonValue): StatusScope {
 	const raw = expectRecord(input, "scope");
 	const kind = expectEnum(raw.kind, STATUS_SCOPE_KINDS, "scope.kind");
 	const id = expectString(raw.id, "scope.id");
@@ -275,7 +310,7 @@ export function parseStatusScope(input: unknown): StatusScope {
 	});
 }
 
-export function parseComponentSpec(input: unknown): ComponentSpec {
+export function parseComponentSpec(input: JsonValue): ComponentSpec {
 	const raw = expectRecord(input, "component");
 	const id = expectString(raw.id, "component.id");
 	if (!ID_PATTERN.test(id)) {
@@ -284,17 +319,19 @@ export function parseComponentSpec(input: unknown): ComponentSpec {
 			`must match ${ID_PATTERN} (got "${id}")`,
 		);
 	}
-	return Object.freeze({
+	// SAFETY: every field is parsed immediately above, and the optional description is added only after parsing.
+	const result: ParsedComponent = {
 		id,
 		label: expectString(raw.label, "component.label"),
 		kind: expectEnum(raw.kind, COMPONENT_KINDS, "component.kind"),
-		...(raw.description !== undefined
-			? { description: expectString(raw.description, "component.description") }
-			: {}),
-	});
+	};
+	if (raw.description !== undefined) {
+		result.description = expectString(raw.description, "component.description");
+	}
+	return Object.freeze(result);
 }
 
-export function parseIncidentRecord(input: unknown): IncidentRecord {
+export function parseIncidentRecord(input: JsonValue): IncidentRecord {
 	const raw = expectRecord(input, "incident");
 	const id = expectString(raw.id, "incident.id");
 	if (!INCIDENT_ID_PATTERN.test(id)) {
@@ -330,7 +367,8 @@ export function parseIncidentRecord(input: unknown): IncidentRecord {
 			"resolved incidents must carry resolvedAt",
 		);
 	}
-	return Object.freeze({
+	// SAFETY: every field is parsed immediately above, and resolvedAt is added only after the state invariant.
+	const result: ParsedIncident = {
 		id,
 		title: expectString(raw.title, "incident.title"),
 		state,
@@ -341,12 +379,13 @@ export function parseIncidentRecord(input: unknown): IncidentRecord {
 		),
 		openedAt: expectIso(raw.openedAt, "incident.openedAt"),
 		updatedAt: expectIso(raw.updatedAt, "incident.updatedAt"),
-		...(resolvedAt !== undefined ? { resolvedAt } : {}),
 		updates,
-	});
+	};
+	if (resolvedAt !== undefined) result.resolvedAt = resolvedAt;
+	return Object.freeze(result);
 }
 
-export function parseMaintenanceRecord(input: unknown): MaintenanceRecord {
+export function parseMaintenanceRecord(input: JsonValue): MaintenanceRecord {
 	const raw = expectRecord(input, "maintenance");
 	const id = expectString(raw.id, "maintenance.id");
 	if (!INCIDENT_ID_PATTERN.test(id)) {

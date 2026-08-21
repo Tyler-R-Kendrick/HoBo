@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
 export const SHOWBACK_SCHEMA_VERSION = "hobo.showback/v1";
 
 const LEVELS = {
@@ -281,13 +282,13 @@ function attachPresentationCosts(rows, parentTotal) {
 
 function eventCost(event, costCatalog) {
   const price = costCatalog.unitPrices[requireString(event.dimension, "event.dimension")];
-  if (typeof price === "number") {
+  if (isJsonNumber(price)) {
     if (price < 0) {
       throw new RangeError(`unit price for ${event.dimension} must be non-negative`);
     }
     return roundCost(requirePositiveNumber(event.quantity, "event.quantity") * price);
   }
-  if (price && typeof price === "object") {
+  if (price && isJsonObject(price)) {
     const key = requireString(event.priceKey, "event.priceKey");
     const keyed = price[key];
     if (!Number.isFinite(keyed) || keyed < 0) {
@@ -374,7 +375,7 @@ function normalizeSharedBindles(input) {
 }
 
 function normalizeDisplayNames(input = {}) {
-  const source = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  const source = input && isJsonObject(input) && !Array.isArray(input) ? input : {};
   return {
     tenants: objectOrEmpty(source.tenants),
     camps: objectOrEmpty(source.camps),
@@ -448,14 +449,14 @@ function sortObject(input) {
 }
 
 function expectObject(input, fieldName) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
   return input;
 }
 
 function requireString(input, fieldName) {
-  if (typeof input !== "string" || input.length === 0) {
+  if (!isJsonString(input) || input.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return input;
@@ -465,7 +466,7 @@ function optionalString(input) {
   if (input === undefined || input === null) {
     return null;
   }
-  return typeof input === "string" && input.length > 0 ? input : null;
+  return isJsonString(input) && input.length > 0 ? input : null;
 }
 
 function requirePositiveNumber(input, fieldName) {

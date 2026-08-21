@@ -4,6 +4,8 @@ import {
   INCIDENT_EVENT_TYPES,
   makeIncidentEvent,
 } from "../../incident-aggregate-contract/src/incident-aggregate.js";
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
+
 
 export const SRE_PROCESS_SLO_SCHEMA_VERSION = "hobo.sre-process-slo/v1";
 
@@ -242,7 +244,7 @@ function stripInternalMeasurement(measurement) {
           consumedMinutes: measurement.consumedMinutes,
           remainingBudgetMinutes: measurement.remainingBudgetMinutes,
         }
-      : {}),
+      : undefined),
   };
 }
 
@@ -345,7 +347,7 @@ function timelineEntry(event) {
     id: event.id,
     type: event.type,
     occurredAt: eventTime(event),
-    ...(event.causationId ? { causationId: event.causationId } : {}),
+    ...(event.causationId ? { causationId: event.causationId } : undefined),
   };
 }
 
@@ -371,7 +373,7 @@ function requiredEvent(events, type) {
 
 function eventTime(event) {
   const value = event.occurredAt ?? event.ts ?? event.time;
-  if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
+  if (!isJsonString(value) || Number.isNaN(Date.parse(value))) {
     throw new Error(`${event.id ?? "event"} requires an ISO timestamp`);
   }
   return value;
@@ -397,14 +399,14 @@ function array(value, fieldName) {
 }
 
 function positiveNumber(value, fieldName) {
-  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+  if (!isJsonNumber(value) || !Number.isFinite(value) || value <= 0) {
     throw new Error(`${fieldName} must be a positive number`);
   }
   return value;
 }
 
 function nonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -418,7 +420,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

@@ -11,6 +11,8 @@ import {
   replayGatedRemediation,
 } from "../../gated-autonomous-remediation-contract/src/gated-autonomous-remediation.js";
 import { diagnoseIncident } from "../../sre-diagnose-projection-contract/src/sre-diagnose-projection.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const RUNBOOK_EXECUTION_ENGINE_PORT = "hobo:runbook-engine/pipelines@0.1.0";
 
@@ -290,7 +292,7 @@ function appendRunbookEvent(events, type, { runbookId, correlationId, payload })
 }
 
 function prioritizedClassGroups(classification) {
-  if (!classification || typeof classification !== "object" || Array.isArray(classification)) {
+  if (!classification || !isJsonObject(classification) || Array.isArray(classification)) {
     throw new TypeError("classification must be an object");
   }
   const groups = [];
@@ -318,7 +320,7 @@ function evaluateBlastRadiusBudget(action, budget) {
   if (!budget) {
     return deepFreeze({ allowed: true, reasons: [] });
   }
-  if (!budget || typeof budget !== "object" || Array.isArray(budget)) {
+  if (!budget || !isJsonObject(budget) || Array.isArray(budget)) {
     throw new TypeError("blastRadiusBudget must be an object");
   }
   const reasons = [];
@@ -356,10 +358,10 @@ async function loadIncidentEvents(eventStore, incidentId) {
   if (!eventStore) {
     throw new Error("eventStore is required");
   }
-  if (typeof eventStore.loadIncident === "function") {
+  if (eventStore.loadIncident instanceof Function) {
     return requiredArray(await eventStore.loadIncident(incidentId), "eventStore.loadIncident result");
   }
-  if (typeof eventStore.get === "function") {
+  if (eventStore.get instanceof Function) {
     return requiredArray(eventStore.get(incidentId), "eventStore.get result");
   }
   if (eventStore[incidentId]) {
@@ -409,7 +411,7 @@ function requiredArray(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${fieldName} must be a non-empty string`);
   }
   return value.trim();
@@ -423,7 +425,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

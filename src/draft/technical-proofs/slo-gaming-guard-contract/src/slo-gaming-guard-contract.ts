@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const SLO_GAMING_GUARD_CONTRACT_VERSION = "hobo.slo-gaming-guard/v1";
 export const SLO_DEFINITION_CHANGE_ASSESSED_EVENT = "slo.DefinitionChangeAssessed";
 
@@ -317,7 +318,7 @@ function isSuspiciousFailureExclusion(exclusion) {
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${name} must be an object`);
   }
 }
@@ -330,7 +331,7 @@ function requiredString(value, name) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function assertRatio(value, name) {
@@ -385,7 +386,7 @@ function stableValue(value) {
   if (Array.isArray(value)) {
     return value.map(stableValue);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value ?? null;
   }
   return Object.fromEntries(

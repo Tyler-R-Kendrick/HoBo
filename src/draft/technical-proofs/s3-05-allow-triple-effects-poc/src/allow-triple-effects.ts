@@ -2,10 +2,20 @@ import {
   createIdentityEvent,
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
+import { type JsonValue, type JsonObject } from "./json.js";
+
 
 export const ALLOW_TRIPLE_EFFECTS_VERSION = "hobo.allow-triple-effects/v1";
 
-const IAM_VERB_MAP: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
+interface VerbActions {
+  readonly [verb: string]: readonly string[];
+}
+
+interface PortVerbMap {
+  readonly [port: string]: VerbActions;
+}
+
+const IAM_VERB_MAP: PortVerbMap = {
   "wasi:keyvalue": {
     get: ["dynamodb:GetItem", "dynamodb:BatchGetItem"],
     set: ["dynamodb:PutItem", "dynamodb:UpdateItem"],
@@ -74,7 +84,7 @@ export class AllowTripleEffectsError extends Error {
   constructor(
     readonly code: string,
     message: string,
-    readonly details: Record<string, unknown> = {},
+    readonly details: JsonObject = {},
   ) {
     super(message);
     this.name = "AllowTripleEffectsError";
@@ -328,8 +338,8 @@ function sortedUnique(values: readonly string[]): readonly string[] {
 }
 
 function assertDeepEqual(
-  actual: unknown,
-  expected: unknown,
+  actual: JsonValue,
+  expected: JsonValue,
   label: string,
 ): void {
   const actualJson = JSON.stringify(actual);

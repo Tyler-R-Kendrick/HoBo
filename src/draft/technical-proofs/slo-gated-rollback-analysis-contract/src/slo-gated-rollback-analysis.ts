@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
 import { evaluatePromotionGate } from "../../slo-promotion-gate-contract/src/slo-promotion-gate-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const SLO_GATED_ROLLBACK_ANALYSIS_VERSION = "hobo.slo-gated-rollback-analysis/v1";
 
@@ -27,7 +29,7 @@ export function evaluateRolloutMetricGate(input = {}) {
     rollout,
     policy,
     sloSnapshot: snapshot,
-    ...(sloPromotionGate === undefined ? {} : {
+    ...(sloPromotionGate === undefined ? undefined : {
       sloPromotionGate: cloneJson(sloPromotionGate),
       upstreamGate: cloneJson(upstreamGate),
     }),
@@ -402,7 +404,7 @@ function normalizeGoldenSuite(suite = {}) {
 }
 
 function normalizeNow(now) {
-  if (typeof now === "function") {
+  if (now instanceof Function) {
     return now;
   }
   if (now === undefined) {
@@ -457,7 +459,7 @@ function sequence(start = 0) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value.trim();
@@ -502,7 +504,7 @@ function finiteRatio(value, fieldName) {
 }
 
 function assertObject(value, fieldName) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${fieldName} must be an object`);
   }
 }
@@ -511,7 +513,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
@@ -525,7 +527,7 @@ function cloneJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

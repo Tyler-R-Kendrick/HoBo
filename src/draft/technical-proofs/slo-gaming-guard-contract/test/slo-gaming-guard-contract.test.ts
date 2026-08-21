@@ -309,9 +309,9 @@ function makeSlo({
           target,
         },
       ],
-      ...(objectives ? { objectives } : {}),
-      ...(indicator ? { indicator } : {}),
-      ...(exclusionRules ? { exclusionRules } : {}),
+      ...(objectives ? { objectives } : undefined),
+      ...(indicator ? { indicator } : undefined),
+      ...(exclusionRules ? { exclusionRules } : undefined),
     },
   });
 }

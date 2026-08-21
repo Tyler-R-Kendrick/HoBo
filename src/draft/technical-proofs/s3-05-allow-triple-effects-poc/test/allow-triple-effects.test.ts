@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
-import { fileURLToPath } from "node:url";
 import { test } from "vitest";
 
 import {
@@ -10,9 +9,9 @@ import {
   createAllowScopedTokenBroker,
   assertGoldenTriple,
 } from "../src/allow-triple-effects.js";
+import { parseJsonObject } from "../src/json.js";
 
-const packageRoot = fileURLToPath(new URL("..", import.meta.url));
-const goldenFixture = JSON.parse(
+const goldenFixture = parseJsonObject(
   readFileSync(new URL("../fixtures/hello-bindle-golden.json", import.meta.url), "utf8"),
 );
 
@@ -204,7 +203,7 @@ test("adversarial: widening .allow() beyond declared verbs fails at compile time
         verbs: ["get", "admin"],
         bindle: "hello-bindle",
       }),
-    (error: unknown) => {
+    (error: JsonValue) => {
       assert.ok(error instanceof AllowTripleEffectsError);
       assert.equal(error.code, "allow.verb-unknown");
       return true;

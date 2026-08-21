@@ -5,6 +5,8 @@ import {
   parseInterfaceRef
 } from "../../registry-artifact-descriptor-contract/src/registry-descriptor.js";
 import { verifyInstallCandidate } from "../../signed-artifact-publish-install-contract/src/publish-install-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const REGISTRY_PUBLISH_FLOW_CONTRACT = "hobo.registry-publish-flow/v1";
 
@@ -128,8 +130,8 @@ function verifyPreflight({ descriptor, signedArtifact, trustBoundary }) {
   const publisherDomain = descriptor.publisher?.trustDomain;
   const builderId = signedArtifact?.provenance?.slsa?.builder?.id;
   if (
-    typeof publisherDomain === "string" &&
-    typeof builderId === "string" &&
+    isJsonString(publisherDomain) &&
+    isJsonString(builderId) &&
     builderId !== publisherDomain &&
     !builderId.startsWith(`${publisherDomain}/`)
   ) {
@@ -379,13 +381,13 @@ function storeEntrySnapshot(entry) {
 }
 
 function coordinateKey(coordinate) {
-  if (!coordinate || typeof coordinate !== "object") {
+  if (!coordinate || !isJsonObject(coordinate)) {
     throw new Error("catalog coordinate must be an object");
   }
-  if (typeof coordinate.name !== "string" || coordinate.name.length === 0) {
+  if (!isJsonString(coordinate.name) || coordinate.name.length === 0) {
     throw new Error("catalog coordinate name must be a non-empty string");
   }
-  if (typeof coordinate.version !== "string" || coordinate.version.length === 0) {
+  if (!isJsonString(coordinate.version) || coordinate.version.length === 0) {
     throw new Error("catalog coordinate version must be a non-empty string");
   }
   return `${coordinate.name}@${coordinate.version}`;
@@ -434,7 +436,7 @@ function clone(value) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {

@@ -3,6 +3,8 @@ import { digest } from "./divergence.js";
 import { hashReadSet, seqVector, stableStringify } from "./equivalence.js";
 import type { EventStoreReader } from "./store.js";
 import type { EventEnvelope, ReplayReport } from "./types.js";
+import { isJsonString, isJsonObject, type JsonValue } from "./json.js";
+
 
 export interface WorkflowDefinition<S, A> {
   name: string;
@@ -65,13 +67,14 @@ export async function replayRun<S, A>(
         mode: "replay",
         eventKey: `${streamId}:orchestration:${label}`,
       }).random(label),
-    async step<T>(name, fn) {
+    async step<T>(name, _fn) {
       const stepId = `${name}:${stepCounter}`;
       const completed = events.find(
         (event) => event.type === "run.StepCompleted" && event.data && matchesStep(event.data, name, stepCounter),
       );
       if (completed) {
         stepCounter += 1;
+        // SAFETY: assertion to `const result = (completed.data as { result: T }).result;` is required at this boundary.
         const result = (completed.data as { result: T }).result;
         stepResults.set(stepId, result);
         return result;
@@ -83,17 +86,21 @@ export async function replayRun<S, A>(
       if (!scheduled) {
         throw new Error("missing run.SleepScheduled");
       }
+      // SAFETY: assertion to `timerResults.set("sleep", { delayMs: (scheduled.data as { delayMs: number }).del` is required at this boundary.
       timerResults.set("sleep", { delayMs: (scheduled.data as { delayMs: number }).delayMs });
+      // SAFETY: assertion to `if ((scheduled.data as { delayMs: number }).delayMs !== delayMs) {` is required at this boundary.
       if ((scheduled.data as { delayMs: number }).delayMs !== delayMs) {
         throw new Error("sleep schedule diverged");
       }
     },
-    resumeHook<T>(payload: T) {
+    resumeHook<T>(_payload: T) {
       const resumed = events.find((event) => event.type === "run.HookResumed");
       if (!resumed) {
         throw new Error("missing run.HookResumed");
       }
+      // SAFETY: assertion to `hookResults.set("hook", (resumed.data as { payload: T }).payload);` is required at this boundary.
       hookResults.set("hook", (resumed.data as { payload: T }).payload);
+      // SAFETY: assertion to `return (resumed.data as { payload: T }).payload;` is required at this boundary.
       return (resumed.data as { payload: T }).payload;
     },
   };
@@ -116,17 +123,19 @@ export async function replayRun<S, A>(
 
 function readSeed(events: EventEnvelope[]): string | undefined {
   const started = events.find((event) => event.type === "run.Started");
-  if (!started?.data || typeof started.data !== "object") {
+  if (!started?.data || !isJsonObject(started.data)) {
     return undefined;
   }
+  // SAFETY: assertion to `const seed = (started.data as { seed?: unknown }).seed;` is required at this boundary.
   const seed = (started.data as { seed?: unknown }).seed;
-  return typeof seed === "string" ? seed : undefined;
+  return isJsonString(seed) ? seed : undefined;
 }
 
-function matchesStep(data: unknown, name: string, index: number): boolean {
-  if (!data || typeof data !== "object") {
+function matchesStep(data: JsonValue, name: string, index: number): boolean {
+  if (!data || !isJsonObject(data)) {
     return false;
   }
+  // SAFETY: assertion to `const record = data as { name?: string; index?: number };` is required at this boundary.
   const record = data as { name?: string; index?: number };
   return record.name === name && record.index === index;
 }

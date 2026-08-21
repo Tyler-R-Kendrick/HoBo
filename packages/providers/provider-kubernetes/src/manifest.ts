@@ -9,6 +9,7 @@ import {
 } from "@hobo/core";
 import type { InitialCapabilityPort } from "./equivalence.js";
 import { EQUIVALENCE_CLASSES } from "./equivalence.js";
+import { cloneAsJson } from "./json.js";
 
 // The schema ids are platform contract, so they live in @hobo/core and are
 // re-exported here to keep this package's public surface unchanged.
@@ -48,10 +49,19 @@ export type PublishedManifestDocuments = {
 // provider underneath, which HoBo already prices through that provider's own
 // facts. A nonzero figure here would double-count it, and `included: 0` keeps
 // the fact from reading as a free tier.
-export const COST_FACTS: Record<
-	InitialCapabilityPort,
-	{ sku: string; unit: string; marginalPrice: string; included: number }
-> = {
+// parallel-type-allowed: provider-owned pricing transcription (ADR-0129), not a protobuf message
+interface CostFact {
+	sku: string;
+	unit: string;
+	marginalPrice: string;
+	included: number;
+}
+
+type CostFacts = {
+	readonly [K in InitialCapabilityPort]: CostFact;
+};
+
+export const COST_FACTS: CostFacts = {
 	"web/service": {
 		sku: "kubernetes.deployment.pod-hour",
 		unit: "pod-hour",
@@ -71,17 +81,17 @@ export function publishCapabilityManifest(
 ): PublishedManifestDocuments {
 	const providerId = input.providerId ?? KUBERNETES_PROVIDER_ID;
 	const regions = input.regions ?? DEFAULT_REGIONS;
-	const ports =
-		input.ports ??
-		(Object.keys(EQUIVALENCE_CLASSES) as InitialCapabilityPort[]);
+	const ports = input.ports ?? Object.keys(EQUIVALENCE_CLASSES);
+	// SAFETY: equivalence-class keys are the InitialCapabilityPort set.
+	const declaredPorts = ports as InitialCapabilityPort[];
 	const capabilitiesDocument = {
 		schema: CAPABILITIES_SCHEMA,
 		providerId,
-		equivalenceClasses: ports.map((port) => ({
+		equivalenceClasses: declaredPorts.map((port) => ({
 			class: port,
 			...EQUIVALENCE_CLASSES[port],
 		})),
-		capabilities: ports.map((port) => {
+		capabilities: declaredPorts.map((port) => {
 			const mapping = EQUIVALENCE_CLASSES[port];
 			return {
 				port: mapping.port,
@@ -119,7 +129,7 @@ export function publishCapabilityManifest(
 		schema: COST_SCHEMA,
 		providerId,
 		currency: "USD",
-		facts: ports.map((port) => {
+		facts: declaredPorts.map((port) => {
 			const mapping = EQUIVALENCE_CLASSES[port];
 			const fact = COST_FACTS[port];
 			return {
@@ -146,17 +156,17 @@ export function publishCapabilityManifest(
 		{
 			path: "/.well-known/capability-manifest/capabilities.json",
 			schema: CAPABILITIES_SCHEMA,
-			digest: stableDigest(capabilitiesDocument),
+			digest: stableDigest(cloneAsJson(capabilitiesDocument)),
 		},
 		{
 			path: "/.well-known/capability-manifest/auth.json",
 			schema: AUTH_SCHEMA,
-			digest: stableDigest(authDocument),
+			digest: stableDigest(cloneAsJson(authDocument)),
 		},
 		{
 			path: "/.well-known/capability-manifest/cost.json",
 			schema: COST_SCHEMA,
-			digest: stableDigest(costDocument),
+			digest: stableDigest(cloneAsJson(costDocument)),
 		},
 	];
 	const indexDocument = {
@@ -167,11 +177,18 @@ export function publishCapabilityManifest(
 	};
 
 	return {
-		"/.well-known/capability-manifest/index.json": canonicalJson(indexDocument),
-		"/.well-known/capability-manifest/capabilities.json":
-			canonicalJson(capabilitiesDocument),
-		"/.well-known/capability-manifest/auth.json": canonicalJson(authDocument),
-		"/.well-known/capability-manifest/cost.json": canonicalJson(costDocument),
+		"/.well-known/capability-manifest/index.json": canonicalJson(
+			cloneAsJson(indexDocument),
+		),
+		"/.well-known/capability-manifest/capabilities.json": canonicalJson(
+			cloneAsJson(capabilitiesDocument),
+		),
+		"/.well-known/capability-manifest/auth.json": canonicalJson(
+			cloneAsJson(authDocument),
+		),
+		"/.well-known/capability-manifest/cost.json": canonicalJson(
+			cloneAsJson(costDocument),
+		),
 	};
 }
 

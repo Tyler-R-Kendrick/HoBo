@@ -59,7 +59,11 @@ function makeCapability(classKey: InitialCapabilityPort): Capability {
 	};
 }
 
-const PORT_TO_CLASS: Record<string, InitialCapabilityPort> = {
+interface PortClassMap {
+	readonly [port: string]: InitialCapabilityPort;
+}
+
+const PORT_TO_CLASS: PortClassMap = {
 	compute: "web/service",
 };
 
@@ -138,11 +142,15 @@ export function createKubernetesProvider(
  * deleted because it names the *apply* path this package actually implements:
  * `provisionWorkload` in `./driver.ts`, talking to a real apiserver.
  */
-export function kubernetesDriverProgram(plan: ResourcePlan): {
+export interface KubernetesDriverProgram {
 	apiVersion: "hobo.driver-program/v1";
 	driver: string;
 	resources: Array<{ name: string; type: string; provider: string }>;
-} {
+}
+
+export function kubernetesDriverProgram(
+	plan: ResourcePlan,
+): KubernetesDriverProgram {
 	const classKey = PORT_TO_CLASS[plan.port];
 	if (!classKey) {
 		throw new Error(`${PROVIDER_TARGET} cannot realize port ${plan.port}`);

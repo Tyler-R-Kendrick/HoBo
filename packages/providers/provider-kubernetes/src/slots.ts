@@ -27,7 +27,9 @@
  * package cannot see, let alone install, so the `data`, `kv`, `queue` and
  * `topic` slots stay empty.
  */
+
 import { capability, type SlotBinding, slotBinding } from "@hobo/core";
+import { isJsonObject, type JsonBag, type JsonObject } from "./json.js";
 
 /**
  * Forwards the caller's option bag to the parse boundary, dropping only keys
@@ -39,14 +41,14 @@ import { capability, type SlotBinding, slotBinding } from "@hobo/core";
  * is screened there. Cherry-picking the known keys instead would silently
  * swallow it, which is exactly the kind of quiet drop this repo refuses.
  */
-function present<T extends object>(options: T): Record<string, unknown> {
-	const out: Record<string, unknown> = {};
+function present<T extends object>(options: T): JsonObject {
+	const out: JsonBag = {};
 	for (const [key, value] of Object.entries(options)) {
 		if (value === undefined) {
 			continue;
 		}
 		out[key] =
-			typeof value === "object" && value !== null && !Array.isArray(value)
+			isJsonObject(value) && value !== null && !Array.isArray(value)
 				? present(value)
 				: value;
 	}

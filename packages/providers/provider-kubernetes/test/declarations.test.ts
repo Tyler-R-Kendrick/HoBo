@@ -116,6 +116,7 @@ describe("kubernetes option blocks", () => {
 	});
 
 	it("refuses a placement that is not an object at all", () => {
+		// SAFETY: assertion to `d as never)).toThr` is required at this boundary.
 		expect(() => kubernetes.with.workload(undefined as never)).toThrow(
 			/placement must be an object/u,
 		);
@@ -199,9 +200,9 @@ describe("the kubernetes Yard runtime registration", () => {
 	it("declares a non-empty supported shape", () => {
 		// An empty shape matches nothing, so the runtime would register and then
 		// never be selected.
-		const shape = kubernetesYardRuntimeRegistration().supportedShape;
-		expect(shape.regions.length).toBeGreaterThan(0);
-		expect(shape.capabilities.length).toBeGreaterThan(0);
+		const supported = kubernetesYardRuntimeRegistration().supportedKind;
+		expect(supported.regions.length).toBeGreaterThan(0);
+		expect(supported.capabilities.length).toBeGreaterThan(0);
 	});
 
 	it("states the permissions generation needs", () => {
@@ -280,6 +281,7 @@ describe("the kubernetes equivalence table", () => {
 	});
 
 	it.each(rows)("looks the %s row up by port", (port, row) => {
+		// SAFETY: assertion to `never)).toBe(` is required at this boundary.
 		expect(equivalenceForPort(port as never)).toBe(row);
 	});
 

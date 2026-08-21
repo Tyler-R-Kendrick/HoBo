@@ -2,7 +2,7 @@
  * Parse-don't-validate boundary for an authored placement.
  *
  * `kubernetes.with.deployment({...})` hands this package a
- * `Record<string, unknown>` — an option bag written by a human, possibly
+ * `JsonObject` — an option bag written by a human, possibly
  * assembled from environment variables or a config file. It crosses this
  * parser once and comes out as {@link WorkloadPlacement}, whose every field is
  * already in the one unit the rest of the package compares in. No later code
@@ -13,7 +13,15 @@
  * `data-models/provider_kubernetes.cue`; that file is the design-time view and
  * this is the executable one.
  */
+
 import { KubernetesProviderError } from "./errors.js";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type StringBag,
+} from "./json.js";
 
 /** RFC 1123 label: namespaces, service names, deployment names. */
 const DNS_1123_LABEL = /^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$/u;
@@ -85,19 +93,33 @@ const DEFAULT_LIMITS: ResourceQuantity = {
 	memoryBytes: 256 * 1024 * 1024,
 };
 
+function jsonKind<T>(value: T): string {
+	if (value === null) return "null";
+	if (value === undefined) return "undefined";
+	if (Array.isArray(value)) return "array";
+	if (isJsonNumber(value)) return "number";
+	if (isJsonString(value)) return "string";
+	if (value === true || value === false) return "boolean";
+	return "object";
+}
+
 function rejected(message: string, detail?: Record<string, string | number>) {
 	return new KubernetesProviderError("PLACEMENT_REJECTED", message, {
-		...(detail !== undefined ? { detail } : {}),
+		...(detail !== undefined ? { detail } : undefined),
 	});
 }
 
-const BINARY_SUFFIXES: Readonly<Record<string, number>> = {
+interface QuantitySuffixes {
+	readonly [suffix: string]: number;
+}
+
+const BINARY_SUFFIXES: QuantitySuffixes = {
 	Ki: 1024,
 	Mi: 1024 ** 2,
 	Gi: 1024 ** 3,
 	Ti: 1024 ** 4,
 };
-const DECIMAL_SUFFIXES: Readonly<Record<string, number>> = {
+const DECIMAL_SUFFIXES: QuantitySuffixes = {
 	k: 1000,
 	K: 1000,
 	M: 1000 ** 2,
@@ -112,14 +134,14 @@ const DECIMAL_SUFFIXES: Readonly<Record<string, number>> = {
  * is how a limit ends up below its request, so nothing downstream ever sees
  * the original spelling.
  */
-export function parseCpuMillicores(value: unknown, field: string): number {
+export function parseCpuMillicores<T>(value: T, field: string): number {
 	let millicores: number;
-	if (typeof value === "number") {
+	if (isJsonNumber(value)) {
 		if (!Number.isFinite(value) || value <= 0) {
 			throw rejected(`${field} must be a positive number of cores`);
 		}
 		millicores = Math.round(value * 1000);
-	} else if (typeof value === "string") {
+	} else if (isJsonString(value)) {
 		const match = /^([0-9]+(?:\.[0-9]+)?)(m?)$/u.exec(value.trim());
 		if (match === null) {
 			throw rejected(`${field} is not a Kubernetes CPU quantity`, {
@@ -148,20 +170,20 @@ export function parseCpuMillicores(value: unknown, field: string): number {
  * `1Mi` is 1,048,576. A parser that treated them alike would silently
  * under-provision by 4.8% at gibibyte scale.
  */
-export function parseMemoryBytes(value: unknown, field: string): number {
+export function parseMemoryBytes<T>(value: T, field: string): number {
 	let bytes: number;
-	if (typeof value === "number") {
+	if (isJsonNumber(value)) {
 		if (!Number.isInteger(value) || value <= 0) {
 			throw rejected(`${field} must be a positive whole number of bytes`);
 		}
 		bytes = value;
-	} else if (typeof value === "string") {
+	} else if (isJsonString(value)) {
 		const match = /^([0-9]+(?:\.[0-9]+)?)(Ki|Mi|Gi|Ti|k|K|M|G|T)?$/u.exec(
 			value.trim(),
 		);
 		if (match === null) {
 			throw rejected(`${field} is not a Kubernetes memory quantity`, {
-				value: value.slice(0, 32),
+				value: `${value}`.slice(0, 32),
 			});
 		}
 		const scalar = Number(match[1]);
@@ -183,25 +205,26 @@ export function parseMemoryBytes(value: unknown, field: string): number {
 	return bytes;
 }
 
-function requireLabel(value: unknown, field: string): string {
-	if (typeof value !== "string" || !DNS_1123_LABEL.test(value)) {
+function requireLabel<T>(value: T, field: string): string {
+	if (!isJsonString(value) || !DNS_1123_LABEL.test(value)) {
 		throw rejected(`${field} is not an RFC 1123 label`, {
-			value: typeof value === "string" ? value.slice(0, 64) : typeof value,
+			value: isJsonString(value) ? value.slice(0, 64) : jsonKind(value),
 		});
 	}
-	return value;
+	return `${value}`;
 }
 
-function parseQuantityBlock(
-	raw: unknown,
+function parseQuantityBlock<T>(
+	raw: T,
 	field: string,
 	fallback: ResourceQuantity,
 ): ResourceQuantity {
 	if (raw === undefined) return fallback;
-	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+	if (!isJsonObject(raw) || raw === null || Array.isArray(raw)) {
 		throw rejected(`${field} must be an object with cpu and memory`);
 	}
-	const record = raw as Record<string, unknown>;
+	// SAFETY: assertion to `as JsonObject; r` is required at this boundary.
+	const record = raw as JsonObject;
 	return {
 		cpuMillicores:
 			record.cpu === undefined
@@ -214,19 +237,20 @@ function parseQuantityBlock(
 	};
 }
 
-function parseLabels(raw: unknown): Readonly<Record<string, string>> {
+function parseLabels<T>(raw: T): StringBag {
 	if (raw === undefined) return {};
-	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
+	if (!isJsonObject(raw) || raw === null || Array.isArray(raw)) {
 		throw rejected("labels must be a string map");
 	}
-	const labels: Record<string, string> = {};
-	for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+	const labels: StringBag = {};
+	// SAFETY: assertion to `as JsonObject)) {` is required at this boundary.
+	for (const [key, value] of Object.entries(raw as JsonObject)) {
 		if (!LABEL_KEY.test(key)) {
 			throw rejected(
 				`label key ${key.slice(0, 64)} is not a Kubernetes label key`,
 			);
 		}
-		if (typeof value !== "string" || !LABEL_VALUE.test(value)) {
+		if (!isJsonString(value) || !LABEL_VALUE.test(value)) {
 			throw rejected(`label ${key.slice(0, 64)} has a non-label value`);
 		}
 		// The two labels the renderer owns are how cleanup tells an object it
@@ -243,31 +267,31 @@ function parseLabels(raw: unknown): Readonly<Record<string, string>> {
 }
 
 /** Turn an untrusted option bag into a placement that cannot hold a bad case. */
-export function parseWorkloadPlacement(input: unknown): WorkloadPlacement {
-	if (typeof input !== "object" || input === null || Array.isArray(input)) {
+export function parseWorkloadPlacement<T>(input: T): WorkloadPlacement {
+	if (!isJsonObject(input) || input === null || Array.isArray(input)) {
 		throw rejected("a placement must be an object");
 	}
-	const record = input as Record<string, unknown>;
+	// SAFETY: assertion to `t as JsonObject; ` is required at this boundary.
+	const record = input as JsonObject;
 
 	const workloadName = requireLabel(record.name, "name");
 	const namespace = requireLabel(record.namespace, "namespace");
 
 	const imageRef = record.image;
-	if (typeof imageRef !== "string" || !IMAGE_REF.test(imageRef)) {
+	if (!isJsonString(imageRef) || !IMAGE_REF.test(imageRef)) {
 		throw rejected(
 			"image must be a registry-qualified reference with a tag or digest",
 			{
-				value:
-					typeof imageRef === "string"
-						? imageRef.slice(0, 128)
-						: typeof imageRef,
+				value: isJsonString(imageRef)
+					? `${imageRef}`.slice(0, 128)
+					: jsonKind(imageRef),
 			},
 		);
 	}
 
 	const replicas = record.replicas === undefined ? 1 : record.replicas;
 	if (
-		typeof replicas !== "number" ||
+		!isJsonNumber(replicas) ||
 		!Number.isInteger(replicas) ||
 		replicas < 1 ||
 		replicas > MAX_REPLICAS
@@ -277,7 +301,7 @@ export function parseWorkloadPlacement(input: unknown): WorkloadPlacement {
 
 	const containerPort = record.port === undefined ? 8080 : record.port;
 	if (
-		typeof containerPort !== "number" ||
+		!isJsonNumber(containerPort) ||
 		!Number.isInteger(containerPort) ||
 		containerPort < 1 ||
 		containerPort > 65535
@@ -335,7 +359,7 @@ export function clusterEndpointUrl(placement: WorkloadPlacement): string {
 	return `http://${clusterDnsName(placement)}:${SERVICE_PORT}`;
 }
 
-function ownedLabels(placement: WorkloadPlacement): Record<string, string> {
+function ownedLabels(placement: WorkloadPlacement): StringBag {
 	return {
 		...placement.labels,
 		[NAME_LABEL]: placement.workloadName,
@@ -359,7 +383,7 @@ export function formatMemoryQuantity(bytes: number): string {
 
 export function renderNamespaceManifest(
 	placement: WorkloadPlacement,
-): Record<string, unknown> {
+): JsonObject {
 	return {
 		apiVersion: "v1",
 		kind: "Namespace",
@@ -374,7 +398,7 @@ export function renderNamespaceManifest(
 
 export function renderDeploymentManifest(
 	placement: WorkloadPlacement,
-): Record<string, unknown> {
+): JsonObject {
 	return {
 		apiVersion: "apps/v1",
 		kind: "Deployment",
@@ -434,7 +458,7 @@ export function renderDeploymentManifest(
 
 export function renderServiceManifest(
 	placement: WorkloadPlacement,
-): Record<string, unknown> {
+): JsonObject {
 	return {
 		apiVersion: "v1",
 		kind: "Service",

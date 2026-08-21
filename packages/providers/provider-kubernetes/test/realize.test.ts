@@ -17,9 +17,11 @@ import {
 	realizeResourcePlan,
 	realizeResourcePlans,
 } from "../src/index.js";
+import { isJsonObject, parseJsonObject } from "../src/json.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
-const pact = JSON.parse(
+
+const pact = parseJsonObject(
 	readFileSync(
 		join(packageRoot, "../contracts/provider-kubernetes-boundary.pact.json"),
 		"utf8",
@@ -87,8 +89,20 @@ describe("realize: ResourcePlan -> pulumi IacProgram", () => {
 		assertLocalIacProgram(iac);
 		assert.equal(iac.resources.length, 2);
 		const api = iac.resources.find((r) => r.name === "api");
+		if (api === undefined) {
+			throw new Error("expected an api resource");
+		}
+		const bindings = api.inputs.bindings;
+		if (!Array.isArray(bindings)) {
+			throw new Error("expected api.inputs.bindings to be an array");
+		}
 		assert.deepEqual(
-			(api?.inputs.bindings as Array<{ ref: string }>).map((b) => b.ref),
+			bindings.map((binding) => {
+				if (!isJsonObject(binding)) {
+					throw new Error("expected a binding object");
+				}
+				return binding.ref;
+			}),
 			["${resources.worker.outputs.binding}"],
 		);
 	});

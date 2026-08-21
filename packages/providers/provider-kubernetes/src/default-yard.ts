@@ -40,7 +40,9 @@
  * cluster. Eight of the nine catalogued products have resolvers; the ninth is
  * the Secret, for the reason `./slots.ts` gives.
  */
+
 import type { CapabilitySlot, SlotBinding } from "@hobo/core";
+import type { JsonObject } from "./json.js";
 
 import { DEFAULT_REGIONS } from "./manifest.js";
 import {
@@ -67,7 +69,7 @@ export interface KubernetesYardBindingRow {
 	readonly profile: string;
 	readonly productId?: string;
 	readonly connectivityId?: string;
-	readonly properties: Readonly<Record<string, unknown>>;
+	readonly properties: JsonObject;
 }
 
 /** Raw Yard shape: provider, topology labels, and the allocatable row set. */
@@ -144,10 +146,10 @@ function toRows(
 					profile: binding.profile,
 					...(binding.productId !== undefined
 						? { productId: binding.productId }
-						: {}),
+						: undefined),
 					...(binding.connectivityId !== undefined
 						? { connectivityId: binding.connectivityId }
-						: {}),
+						: undefined),
 					properties: binding.properties,
 				}),
 			);

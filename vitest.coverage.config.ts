@@ -260,7 +260,7 @@ export default defineConfig({
 				"packages/recipes/**": { statements: 89, branches: 82, functions: 95, lines: 90 },
 				"packages/registry/**": { statements: 93, branches: 86, functions: 98, lines: 94 },
 				"packages/replay/**": { statements: 87, branches: 81, functions: 82, lines: 89 },
-				"packages/rift/**": { statements: 71, branches: 58, functions: 83, lines: 72 },
+				"packages/rift/**": { statements: 91, branches: 86, functions: 91, lines: 93 },
 				"packages/runtime/**": { statements: 89, branches: 83, functions: 88, lines: 89 },
 				"packages/runtimes/**": { statements: 70, branches: 57, functions: 74, lines: 70 },
 				"packages/schema-tools/**": { statements: 79, branches: 69, functions: 89, lines: 81 },

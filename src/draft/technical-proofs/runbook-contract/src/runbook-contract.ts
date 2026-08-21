@@ -2,6 +2,8 @@ import {
   classifyRemediationEffect,
   validateRemediationAction,
 } from "../../hobo-remediation-action-contract/src/remediation-action-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const RUNBOOK_EVENT_TYPES = Object.freeze({
   defined: "runbook.Defined",
@@ -37,7 +39,7 @@ export function defineRunbook(name, spec) {
 }
 
 export function validateRunbook(candidate) {
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     throw new TypeError("runbook must be an object");
   }
 
@@ -101,7 +103,7 @@ export function makeRunbookEvent(
     streamId: `runbook:${normalizedRunbookId}`,
     runbookId: normalizedRunbookId,
     correlationId: requireNonEmptyString(correlationId, "correlationId"),
-    ...(causationId ? { causationId: requireNonEmptyString(causationId, "causationId") } : {}),
+    ...(causationId ? { causationId: requireNonEmptyString(causationId, "causationId") } : undefined),
     payload: eventPayload,
   });
 }
@@ -154,7 +156,7 @@ function validateFixes(fixes, runbookName) {
 }
 
 function validateFix(fix, index, runbookName) {
-  if (!fix || typeof fix !== "object" || Array.isArray(fix)) {
+  if (!fix || !isJsonObject(fix) || Array.isArray(fix)) {
     throw new TypeError(`fix[${index}] must be an object`);
   }
 
@@ -171,13 +173,13 @@ function validateFix(fix, index, runbookName) {
     when,
     gate,
     action,
-    ...(fix.description ? { description: requireNonEmptyString(fix.description, "description") } : {}),
-    ...(runbookName ? { runbook: runbookName } : {}),
+    ...(fix.description ? { description: requireNonEmptyString(fix.description, "description") } : undefined),
+    ...(runbookName ? { runbook: runbookName } : undefined),
   });
 }
 
 function validateTrigger(trigger) {
-  if (!trigger || typeof trigger !== "object" || Array.isArray(trigger)) {
+  if (!trigger || !isJsonObject(trigger) || Array.isArray(trigger)) {
     throw new TypeError("on is required");
   }
 
@@ -207,7 +209,7 @@ function validateDiagnosis(steps) {
 }
 
 function validateSignature(signature) {
-  if (!signature || typeof signature !== "object" || Array.isArray(signature)) {
+  if (!signature || !isJsonObject(signature) || Array.isArray(signature)) {
     throw new TypeError("signature is required");
   }
 
@@ -242,7 +244,7 @@ function normalizeGate(gate, name) {
 }
 
 function validateRunbookEvent(event) {
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
+  if (!event || !isJsonObject(event) || Array.isArray(event)) {
     throw new Error("runbook event must be an object");
   }
   validateRunbookEventType(event.type);
@@ -280,7 +282,7 @@ function isTerminal(status) {
 }
 
 function requireNonEmptyString(value, name) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
   return value.trim();
@@ -294,7 +296,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 

@@ -198,7 +198,7 @@ export default defineConfig({
 				"packages/ci-guard/**": { statements: 84, branches: 77, functions: 93, lines: 83 },
 				"packages/claims/**": { statements: 87, branches: 81, functions: 96, lines: 90 },
 				"packages/cli/**": { statements: 80, branches: 62, functions: 92, lines: 81 },
-				"packages/cloud/**": { statements: 86, branches: 72, functions: 88, lines: 88 },
+				"packages/cloud/**": { statements: 91, branches: 80, functions: 92, lines: 91 },
 				"packages/code/**": { statements: 75, branches: 63, functions: 81, lines: 77 },
 				"packages/componentize/**": { statements: 88, branches: 73, functions: 93, lines: 88 },
 				"packages/conformance/**": { statements: 78, branches: 66, functions: 84, lines: 78 },

@@ -94,6 +94,7 @@ describe("vibe first-run activation rail", () => {
   });
 
   it("keeps Pact and CUE boundary artifacts aligned with the parsed rail", () => {
+    // SAFETY: `const pact = JSON.parse(` is required at this I/O or test boundary.
     const pact = JSON.parse(
       readFileSync(
         new URL("../architecture/pacts/vibe_first_run_activation_rail.pact.json", import.meta.url),

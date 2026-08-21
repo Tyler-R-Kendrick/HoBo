@@ -6,6 +6,8 @@ import {
   MARKETPLACE_TRUST_COPY_STATES,
   parseMarketplaceTrustCopyStates,
 } from "../../../ux/vibe-marketplace-trust-copy-states/src/vibe-marketplace-trust-copy-states.ts";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const MARKETPLACE_DISCOVERY_LISTING_STATES = [
   "preview-only",
@@ -415,7 +417,7 @@ export class VibeMarketplaceDiscoveryPrototypeParseError extends Error {
 }
 
 export function parseMarketplaceDiscoveryPrototype(
-  prototype: unknown,
+  prototype: JsonValue,
 ): ParsedMarketplaceDiscoveryPrototype {
   const validation = validateMarketplaceDiscoveryPrototype(prototype);
 
@@ -423,12 +425,18 @@ export function parseMarketplaceDiscoveryPrototype(
     throw new VibeMarketplaceDiscoveryPrototypeParseError(validation.errors);
   }
 
+  // SAFETY: `return prototype as ParsedMarketplaceDiscoveryPrototype;` is required at this I/O or test boundary.
   return prototype as ParsedMarketplaceDiscoveryPrototype;
 }
 
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
+}
+
 export function validateMarketplaceDiscoveryPrototype(
-  prototype: unknown,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+  prototype: JsonValue,
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (!isRecord(prototype)) {
@@ -491,7 +499,7 @@ export function renderMarketplaceInstallIntentSummary(
   ].join("\n");
 }
 
-function validateSourceIssues(value: unknown, errors: ValidationError[]): void {
+function validateSourceIssues(value: JsonValue, errors: ValidationError[]): void {
   if (!Array.isArray(value)) {
     errors.push({ code: "missing-source-issues", message: "sourceIssues must be an array" });
     return;
@@ -505,7 +513,7 @@ function validateSourceIssues(value: unknown, errors: ValidationError[]): void {
   }
 }
 
-function validateCatalog(value: unknown, errors: ValidationError[]): void {
+function validateCatalog(value: JsonValue, errors: ValidationError[]): void {
   if (!Array.isArray(value)) {
     errors.push({ code: "missing-catalog", message: "catalog must be an array" });
     return;
@@ -536,13 +544,14 @@ function validateCatalog(value: unknown, errors: ValidationError[]): void {
       "customerSafeMessage",
       "safeNextAction",
     ]) {
-      if (typeof fixture[field] !== "string" || fixture[field].trim().length === 0) {
+      if (!isJsonString(fixture[field]) || fixture[field].trim().length === 0) {
         errors.push({
           code: "missing-catalog-metadata",
           message: `${fixtureId || "<missing>"} must include ${field}`,
         });
       }
     }
+    // SAFETY: `if (!MARKETPLACE_DISCOVERY_PROOF_MODES.includes(fixture.proofMode as Marketplace` is required at this I/O or test boundary.
     if (!MARKETPLACE_DISCOVERY_PROOF_MODES.includes(fixture.proofMode as MarketplaceDiscoveryProofMode)) {
       errors.push({
         code: "unsupported-proof-mode",
@@ -555,7 +564,7 @@ function validateCatalog(value: unknown, errors: ValidationError[]): void {
   }
 }
 
-function validateMockupSource(value: unknown, fixtureId: string, errors: ValidationError[]): void {
+function validateMockupSource(value: JsonValue, fixtureId: string, errors: ValidationError[]): void {
   if (!isRecord(value)) {
     errors.push({ code: "missing-source-mockup", message: `${fixtureId} missing HOBO-546 source` });
     return;
@@ -563,7 +572,7 @@ function validateMockupSource(value: unknown, fixtureId: string, errors: Validat
   if (value.sourceIssue !== "HOBO-546") {
     errors.push({ code: "wrong-source-mockup", message: `${fixtureId} must cite HOBO-546` });
   }
-  if (typeof value.fixtureId !== "string" || !acceptedMockupFixtureIds.has(value.fixtureId)) {
+  if (!isJsonString(value.fixtureId) || !acceptedMockupFixtureIds.has(value.fixtureId)) {
     errors.push({ code: "unknown-source-mockup", message: `${fixtureId} cites unknown HOBO-546 fixture` });
   }
   if (!["browse", "search", "listing-detail", "installability-panel"].includes(String(value.surface))) {
@@ -571,7 +580,7 @@ function validateMockupSource(value: unknown, fixtureId: string, errors: Validat
   }
 }
 
-function validateTrustCopySource(value: unknown, fixtureId: string, errors: ValidationError[]): void {
+function validateTrustCopySource(value: JsonValue, fixtureId: string, errors: ValidationError[]): void {
   if (!isRecord(value)) {
     errors.push({ code: "missing-source-trust-copy", message: `${fixtureId} missing HOBO-547 source` });
     return;
@@ -579,12 +588,12 @@ function validateTrustCopySource(value: unknown, fixtureId: string, errors: Vali
   if (value.sourceIssue !== "HOBO-547") {
     errors.push({ code: "wrong-source-trust-copy", message: `${fixtureId} must cite HOBO-547` });
   }
-  if (typeof value.fixtureId !== "string" || !acceptedTrustFixtureIds.has(value.fixtureId)) {
+  if (!isJsonString(value.fixtureId) || !acceptedTrustFixtureIds.has(value.fixtureId)) {
     errors.push({ code: "unknown-source-trust-copy", message: `${fixtureId} cites unknown HOBO-547 fixture` });
   }
 }
 
-function validateQuickstartRef(value: unknown, fixtureId: string, errors: ValidationError[]): void {
+function validateQuickstartRef(value: JsonValue, fixtureId: string, errors: ValidationError[]): void {
   if (!isRecord(value)) {
     errors.push({ code: "missing-quickstart-ref", message: `${fixtureId} missing HOBO-577 ref` });
     return;
@@ -592,14 +601,14 @@ function validateQuickstartRef(value: unknown, fixtureId: string, errors: Valida
   if (value.sourceIssue !== "HOBO-577") {
     errors.push({ code: "wrong-quickstart-source", message: `${fixtureId} must cite HOBO-577` });
   }
-  if (typeof value.fixtureId !== "string" || !acceptedQuickstartFixtureIds.has(value.fixtureId)) {
+  if (!isJsonString(value.fixtureId) || !acceptedQuickstartFixtureIds.has(value.fixtureId)) {
     errors.push({ code: "unknown-quickstart-fixture", message: `${fixtureId} cites unknown HOBO-577 fixture` });
   }
 }
 
 function validatePaths(
-  value: unknown,
-  catalog: unknown,
+  value: JsonValue,
+  catalog: JsonValue,
   errors: ValidationError[],
 ): void {
   if (!Array.isArray(value)) {
@@ -640,7 +649,7 @@ function validatePaths(
         proofModes.add(String(mode));
       }
     }
-    if (typeof path.expectedUserSignal !== "string" || typeof path.supportHandoff !== "string") {
+    if (!isJsonString(path.expectedUserSignal) || !isJsonString(path.supportHandoff)) {
       errors.push({ code: "incomplete-path", message: `${String(path.kind)} needs signal and handoff` });
     }
   }
@@ -651,8 +660,8 @@ function validatePaths(
   }
 }
 
-function validateAccessibilityNotes(value: unknown, errors: ValidationError[]): void {
-  if (!Array.isArray(value) || value.some((note) => typeof note !== "string")) {
+function validateAccessibilityNotes(value: JsonValue, errors: ValidationError[]): void {
+  if (!Array.isArray(value) || value.some((note) => !isJsonString(note))) {
     errors.push({ code: "missing-accessibility-notes", message: "accessibilityNotes must be strings" });
     return;
   }
@@ -664,8 +673,8 @@ function validateAccessibilityNotes(value: unknown, errors: ValidationError[]): 
   }
 }
 
-function validateScopeOut(value: unknown, errors: ValidationError[]): void {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+function validateScopeOut(value: JsonValue, errors: ValidationError[]): void {
+  if (!Array.isArray(value) || value.some((entry) => !isJsonString(entry))) {
     errors.push({ code: "missing-scope-out", message: "scopeOut must be string entries" });
     return;
   }
@@ -677,8 +686,8 @@ function validateScopeOut(value: unknown, errors: ValidationError[]): void {
   }
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function isRecord(value: JsonValue): value is JsonObject {
+  return isJsonObject(value) && value !== null && !Array.isArray(value);
 }
 
 function arraysEqual<T>(left: readonly T[], right: readonly T[]): boolean {

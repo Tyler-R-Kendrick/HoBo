@@ -12,6 +12,8 @@ import {
   renderRoleJourneyTranscript,
   renderStepMcpResult,
 } from "../src/role-journey-cli-mcp-transcripts.js";
+import { isJsonObject, parseJsonObject, type JsonValue } from "../src/json.js";
+
 
 describe("role journey CLI and MCP transcripts", () => {
   it("covers the six required role journeys with accepted quickstart fixture ids", () => {
@@ -147,19 +149,17 @@ describe("role journey CLI and MCP transcripts", () => {
   });
 });
 
-function readPactBody(): unknown {
-  const pact = JSON.parse(
+function readPactBody(): JsonValue {
+  const pact = parseJsonObject(
     readFileSync(
       new URL("../architecture/pacts/role_journey_cli_mcp_transcripts.pact.json", import.meta.url),
       "utf8",
     ),
-  ) as {
-    interactions: Array<{
-      response: {
-        body: unknown;
-      };
-    }>;
-  };
-
-  return pact.interactions[0]?.response.body;
+  );
+  const interactions = pact.interactions;
+  if (!Array.isArray(interactions) || !isJsonObject(interactions[0])) {
+    return null;
+  }
+  const response = isJsonObject(interactions[0].response) ? interactions[0].response : {};
+  return "body" in response ? response.body : null;
 }

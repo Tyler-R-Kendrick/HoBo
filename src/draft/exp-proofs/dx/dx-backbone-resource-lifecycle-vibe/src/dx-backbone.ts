@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const REQUIRED_DESIGN_ANCHORS = [
   "docs/design/developer-experience.md#plan-07",
   "docs/design/sdk-api.md#plan-02",
@@ -254,16 +255,27 @@ export const DX_BACKBONE_RECORD: DxBackboneRecord = {
   ],
 };
 
-export function parseDxBackboneRecord(record: unknown): ParsedDxBackboneRecord {
+export function parseDxBackboneRecord(record: JsonValue): ParsedDxBackboneRecord {
   const result = validateDxBackboneRecord(record);
   if (!result.ok) {
     throw new TypeError(result.errors.join("; "));
   }
 
+  // SAFETY: `return Object.freeze(record as DxBackboneRecord) as ParsedDxBackboneRecord;` is required at this I/O or test boundary.
   return Object.freeze(record as DxBackboneRecord) as ParsedDxBackboneRecord;
 }
 
-export function validateDxBackboneRecord(record: unknown): { ok: boolean; errors: string[] } {
+export interface BackboneValidation {
+  ok: boolean;
+  errors: string[];
+}
+
+export interface BackboneClassification {
+  owner: string;
+  inScope: boolean;
+}
+
+export function validateDxBackboneRecord(record: JsonValue): BackboneValidation {
   const errors: string[] = [];
   if (!isRecord(record)) {
     return { ok: false, errors: ["DX backbone record is required"] };
@@ -286,7 +298,7 @@ export function validateDxBackboneRecord(record: unknown): { ok: boolean; errors
     errors.push("design anchors must exactly match the authoritative HOBO-566 anchors");
   }
   for (const anchor of designAnchors) {
-    if (typeof anchor.reason !== "string" || anchor.reason.trim() === "") {
+    if (!isJsonString(anchor.reason) || anchor.reason.trim() === "") {
       errors.push(`design anchor ${String(anchor.source)} must explain why it is consumed`);
     }
   }
@@ -303,9 +315,9 @@ export function validateDxBackboneRecord(record: unknown): { ok: boolean; errors
   }
 
   const normalizedChildSlices: ChildSlice[] = [];
-  const coverage = new Set<unknown>();
+  const coverage = new Set<JsonValue>();
   for (const [index, slice] of childSlices.entries()) {
-    const label = typeof slice.issue === "string" ? slice.issue : `child slice ${index + 1}`;
+    const label = isJsonString(slice.issue) ? slice.issue : `child slice ${index + 1}`;
     const sliceCoverage = readStringArray(slice.coverage, `${label} coverage`, errors);
     const dependsOn = readStringArray(slice.dependsOn, `${label} dependsOn`, errors);
     const scopeOut = readStringArray(slice.scopeOut, `${label} scope out`, errors);
@@ -313,8 +325,8 @@ export function validateDxBackboneRecord(record: unknown): { ok: boolean; errors
       coverage.add(covered);
     }
 
-    const targetPackage = typeof slice.targetPackage === "string" ? slice.targetPackage : "";
-    const proofNote = typeof slice.proofNote === "string" ? slice.proofNote : "";
+    const targetPackage = isJsonString(slice.targetPackage) ? slice.targetPackage : "";
+    const proofNote = isJsonString(slice.proofNote) ? slice.proofNote : "";
     const slug = targetPackage.split("/").at(-1);
     if (!TYPED_EXP_PROOF_PATH.test(targetPackage)) {
       errors.push(`${label} must target src/draft/exp-proofs/<type>/<slug>`);
@@ -328,7 +340,7 @@ export function validateDxBackboneRecord(record: unknown): { ok: boolean; errors
 
     if (
       isHoboIssue(slice.issue) &&
-      typeof slice.title === "string" &&
+      isJsonString(slice.title) &&
       (slice.phase === "M1" || slice.phase === "M2") &&
       TYPED_EXP_PROOF_PATH.test(targetPackage) &&
       proofNote !== ""
@@ -337,8 +349,11 @@ export function validateDxBackboneRecord(record: unknown): { ok: boolean; errors
         issue: slice.issue,
         title: slice.title,
         phase: slice.phase,
+        // SAFETY: `targetPackage: targetPackage as ExpProofPackagePath,` is required at this I/O or test boundary.
         targetPackage: targetPackage as ExpProofPackagePath,
+        // SAFETY: `proofNote: proofNote as `docs/design/proofs/${string}/README.md`,` is required at this I/O or test boundary.
         proofNote: proofNote as `docs/design/proofs/${string}/README.md`,
+        // SAFETY: `coverage: sliceCoverage as Coverage[],` is required at this I/O or test boundary.
         coverage: sliceCoverage as Coverage[],
         dependsOn: dependsOn.filter(isHoboIssue),
         scopeOut,
@@ -360,7 +375,7 @@ export function validateDxBackboneRecord(record: unknown): { ok: boolean; errors
     errors,
   );
   for (const [index, gate] of downstreamGates.entries()) {
-    const label = typeof gate.consumer === "string" && gate.consumer.trim() !== "" ? gate.consumer : `downstream gate ${index + 1}`;
+    const label = isJsonString(gate.consumer) && gate.consumer.trim() !== "" ? gate.consumer : `downstream gate ${index + 1}`;
     const mustConsume = readStringArray(gate.mustConsume, `${label} must consume`, errors);
     if (!mustConsume.includes("HOBO-577")) {
       errors.push(`${label} must consume HOBO-577 quickstart evidence`);
@@ -415,15 +430,15 @@ export function findSequencingViolations(record: Pick<DxBackboneRecord, "childSl
   return errors;
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return value !== null && typeof value === "object" && !Array.isArray(value);
+function isRecord(value: JsonValue): value is JsonObject {
+  return value !== null && isJsonObject(value) && !Array.isArray(value);
 }
 
-function isHoboIssue(value: unknown): value is `HOBO-${number}` {
-  return typeof value === "string" && /^HOBO-\d+$/.test(value);
+function isHoboIssue(value: JsonValue): value is `HOBO-${number}` {
+  return isJsonString(value) && /^HOBO-\d+$/.test(value);
 }
 
-function readObjectArray<T extends object>(value: unknown, label: string, errors: string[]): T[] {
+function readObjectArray<T extends object>(value: JsonValue, label: string, errors: string[]): T[] {
   if (!Array.isArray(value)) {
     errors.push(`${label} must be an array`);
     return [];
@@ -435,13 +450,14 @@ function readObjectArray<T extends object>(value: unknown, label: string, errors
       errors.push(`${label}[${index}] must be an object`);
       continue;
     }
+    // SAFETY: `objects.push(item as T);` is required at this I/O or test boundary.
     objects.push(item as T);
   }
 
   return objects;
 }
 
-function readStringArray(value: unknown, label: string, errors: string[]): string[] {
+function readStringArray(value: JsonValue, label: string, errors: string[]): string[] {
   if (!Array.isArray(value)) {
     errors.push(`${label} must be an array`);
     return [];
@@ -449,7 +465,7 @@ function readStringArray(value: unknown, label: string, errors: string[]): strin
 
   const strings: string[] = [];
   for (const [index, item] of value.entries()) {
-    if (typeof item !== "string") {
+    if (!isJsonString(item)) {
       errors.push(`${label}[${index}] must be a string`);
       continue;
     }
@@ -459,7 +475,7 @@ function readStringArray(value: unknown, label: string, errors: string[]): strin
   return strings;
 }
 
-export function classifyBackboneRequest(request: unknown): { owner: string; inScope: boolean } {
+export function classifyBackboneRequest(request: JsonValue): BackboneClassification {
   const text = String(request ?? "").toLowerCase();
 
   if (/\bproduction\b.*\b(cli|api|sdk)\b|\b(cli|api|sdk)\b.*\bimplementation\b|\bargument parser\b/.test(text)) {

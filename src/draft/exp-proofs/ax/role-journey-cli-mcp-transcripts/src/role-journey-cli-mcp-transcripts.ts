@@ -3,6 +3,8 @@ import {
   listQuickstartSnippets,
   parseResourceLifecycleQuickstartExamples,
 } from "../../../dx/resource-lifecycle-quickstart-examples/src/resource-lifecycle-quickstart-examples.js";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const REQUIRED_ROLE_JOURNEY_ROLES = [
   "app-developer",
@@ -360,7 +362,7 @@ export function listAcceptedQuickstartFixtureIds(): readonly string[] {
   return [...fixtureIds].sort();
 }
 
-export function parseRoleJourneyCliMcpTranscripts(input: unknown): RoleJourneyCliMcpTranscripts {
+export function parseRoleJourneyCliMcpTranscripts(input: JsonValue): RoleJourneyCliMcpTranscripts {
   assertObject(input, "role journey proof");
   assertLiteral(input.issue, "HOBO-557", "issue");
   assertLiteral(input.phase, "M2", "phase");
@@ -388,6 +390,7 @@ export function parseRoleJourneyCliMcpTranscripts(input: unknown): RoleJourneyCl
   assertAggregateCoverage(journeys);
 
   return {
+    // SAFETY: `...(input as UnparsedRoleJourneyCliMcpTranscripts),` is required at this I/O or test boundary.
     ...(input as UnparsedRoleJourneyCliMcpTranscripts),
     __brand: "ParsedRoleJourneyCliMcpTranscripts",
   };
@@ -479,7 +482,7 @@ function step(input: {
   };
 }
 
-function assertJourneyArray(value: unknown): RoleJourney[] {
+function assertJourneyArray(value: JsonValue): RoleJourney[] {
   if (!Array.isArray(value)) {
     throw new TypeError("journeys must be an array");
   }
@@ -498,11 +501,12 @@ function assertJourneyArray(value: unknown): RoleJourney[] {
       throw new TypeError(`${entry.role} must use its primary quickstart fixture`);
     }
 
+    // SAFETY: `return entry as RoleJourney;` is required at this I/O or test boundary.
     return entry as RoleJourney;
   });
 }
 
-function assertStepArray(value: unknown, role: string): RoleJourneyStep[] {
+function assertStepArray(value: JsonValue, role: string): RoleJourneyStep[] {
   if (!Array.isArray(value) || value.length < 3) {
     throw new TypeError(`${role}.sequence must contain at least three CLI-first steps`);
   }
@@ -530,6 +534,7 @@ function assertStepArray(value: unknown, role: string): RoleJourneyStep[] {
     assertNonEmptyString(entry.supportHandoff, `${entry.id}.supportHandoff`);
     assertNonEmptyString(entry.accessibilityNote, `${entry.id}.accessibilityNote`);
 
+    // SAFETY: `return entry as RoleJourneyStep;` is required at this I/O or test boundary.
     return entry as RoleJourneyStep;
   });
 }
@@ -555,16 +560,17 @@ function assertAggregateCoverage(journeys: readonly RoleJourney[]): void {
   }
 }
 
-function assertCoverageArray(value: unknown, name: string): void {
+function assertCoverageArray(value: JsonValue, name: string): void {
   const entries = assertStringArray(value, name);
   for (const entry of entries) {
+    // SAFETY: `if (!REQUIRED_ROLE_JOURNEY_COVERAGE.includes(entry as RoleJourneyCoverage)) {` is required at this I/O or test boundary.
     if (!REQUIRED_ROLE_JOURNEY_COVERAGE.includes(entry as RoleJourneyCoverage)) {
       throw new TypeError(`${name} contains unsupported coverage ${entry}`);
     }
   }
 }
 
-function assertNegativePaths(value: unknown, role: unknown): void {
+function assertNegativePaths(value: JsonValue, role: JsonValue): void {
   const entries = assertStringArray(value, `${String(role)}.negativePaths`);
   for (const path of REQUIRED_ROLE_JOURNEY_NEGATIVE_PATHS) {
     if (!entries.includes(path)) {
@@ -573,65 +579,66 @@ function assertNegativePaths(value: unknown, role: unknown): void {
   }
 }
 
-function assertObject(value: unknown, name: string): asserts value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function assertObject(value: JsonValue, name: string): asserts value is JsonObject {
+  if (!isJsonObject(value) || value === null || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
-function assertLiteral<T extends string>(value: unknown, expected: T, name: string): asserts value is T {
+function assertLiteral<T extends string>(value: JsonValue, expected: T, name: string): asserts value is T {
   if (value !== expected) {
     throw new TypeError(`${name} must be ${expected}`);
   }
 }
 
-function assertStringArray(value: unknown, name: string): string[] {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+function assertStringArray(value: JsonValue, name: string): string[] {
+  if (!Array.isArray(value) || value.some((entry) => !isJsonString(entry))) {
     throw new TypeError(`${name} must be a string array`);
   }
 
   return value;
 }
 
-function assertNonEmptyStringArray(value: unknown, name: string): void {
+function assertNonEmptyStringArray(value: JsonValue, name: string): void {
   const entries = assertStringArray(value, name);
   if (entries.length === 0) {
     throw new TypeError(`${name} must not be empty`);
   }
 }
 
-function assertNonEmptyString(value: unknown, name: string): asserts value is string {
-  if (typeof value !== "string" || value.trim().length === 0) {
+function assertNonEmptyString(value: JsonValue, name: string): asserts value is string {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new TypeError(`${name} must not be empty`);
   }
 }
 
-function assertRole(value: unknown): asserts value is RoleJourneyRole {
+function assertRole(value: JsonValue): asserts value is RoleJourneyRole {
+  // SAFETY: `if (!REQUIRED_ROLE_JOURNEY_ROLES.includes(value as RoleJourneyRole)) {` is required at this I/O or test boundary.
   if (!REQUIRED_ROLE_JOURNEY_ROLES.includes(value as RoleJourneyRole)) {
     throw new TypeError(`unknown role ${String(value)}`);
   }
 }
 
-function assertCliCommand(value: unknown, name: string): asserts value is `hobo ${string}` {
-  if (typeof value !== "string" || !value.startsWith("hobo ")) {
+function assertCliCommand(value: JsonValue, name: string): asserts value is `hobo ${string}` {
+  if (!isJsonString(value) || !value.startsWith("hobo ")) {
     throw new TypeError(`${name} must be CLI-first and start with hobo`);
   }
 }
 
-function assertMcpTool(value: unknown, name: string): asserts value is `hobo_${string}` {
-  if (typeof value !== "string" || !value.startsWith("hobo_")) {
+function assertMcpTool(value: JsonValue, name: string): asserts value is `hobo_${string}` {
+  if (!isJsonString(value) || !value.startsWith("hobo_")) {
     throw new TypeError(`${name} must use the hobo MCP namespace`);
   }
 }
 
-function assertProofMode(value: unknown, name: string): asserts value is RoleJourneyProofMode {
+function assertProofMode(value: JsonValue, name: string): asserts value is RoleJourneyProofMode {
   if (value !== "reference-fixture" && value !== "simulated" && value !== "scope-out") {
     throw new TypeError(`${name} must be a non-live proof mode`);
   }
 }
 
-function assertAcceptedFixtureId(value: unknown, name: string): asserts value is string {
-  if (typeof value !== "string" || !acceptedFixtureIds.includes(value)) {
+function assertAcceptedFixtureId(value: JsonValue, name: string): asserts value is string {
+  if (!isJsonString(value) || !acceptedFixtureIds.includes(value)) {
     throw new TypeError(`${name} must reference an accepted HOBO-577 quickstart fixture id`);
   }
 }

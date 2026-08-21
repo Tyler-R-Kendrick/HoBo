@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
+
 
 export const METERING_VIEW = "MeteringView";
 
@@ -165,7 +167,7 @@ function addPrincipalHierarchy(hierarchy, owner) {
 }
 
 function normalizeOwner(owner) {
-  if (!owner || typeof owner !== "object" || Array.isArray(owner)) {
+  if (!owner || !isJsonObject(owner) || Array.isArray(owner)) {
     throw new TypeError("event.owner must be an object");
   }
   return {
@@ -179,7 +181,7 @@ function normalizeOwner(owner) {
 }
 
 function normalizeOwnerOrNull(owner) {
-  if (!owner || typeof owner !== "object" || Array.isArray(owner)) {
+  if (!owner || !isJsonObject(owner) || Array.isArray(owner)) {
     return null;
   }
   try {
@@ -198,11 +200,11 @@ function compareDeduplicatedEvents(left, right) {
 }
 
 function normalizeCostCatalog(costCatalog) {
-  if (!costCatalog || typeof costCatalog !== "object" || Array.isArray(costCatalog)) {
+  if (!costCatalog || !isJsonObject(costCatalog) || Array.isArray(costCatalog)) {
     throw new TypeError("options.costCatalog must be an object");
   }
   const currency = requireString(costCatalog.currency, "costCatalog.currency");
-  if (!costCatalog.unitPrices || typeof costCatalog.unitPrices !== "object") {
+  if (!costCatalog.unitPrices || !isJsonObject(costCatalog.unitPrices)) {
     throw new TypeError("costCatalog.unitPrices must be an object");
   }
   return { currency, unitPrices: costCatalog.unitPrices };
@@ -210,13 +212,13 @@ function normalizeCostCatalog(costCatalog) {
 
 function resolveUnitPrice(costCatalog, dimension, priceKey) {
   const price = costCatalog.unitPrices[dimension];
-  if (typeof price === "number") {
+  if (isJsonNumber(price)) {
     if (price < 0) {
       throw new RangeError(`unit price for ${dimension} must be non-negative`);
     }
     return price;
   }
-  if (price && typeof price === "object") {
+  if (price && isJsonObject(price)) {
     const key = requireString(priceKey, "event.priceKey");
     const keyed = price[key];
     if (!Number.isFinite(keyed) || keyed < 0) {
@@ -244,7 +246,7 @@ function requireDimension(value) {
 }
 
 function normalizeInstant(value, fieldName) {
-  if (typeof value !== "string") {
+  if (!isJsonString(value)) {
     throw new TypeError(`${fieldName} must be an ISO-8601 string`);
   }
   const timestamp = Date.parse(value);
@@ -255,7 +257,7 @@ function normalizeInstant(value, fieldName) {
 }
 
 function requireString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -310,7 +312,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))

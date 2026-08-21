@@ -47,6 +47,8 @@ import {
 } from "./binding.js";
 import { deepFreeze, isPlainObject, requireName } from "./canonical.js";
 import { type Yard, yard } from "./yard.js";
+import { isJsonString } from "./json.js";
+
 
 export const STATION_MANIFEST_CONTRACT = "hobo.station-manifest/v1"; // public-contract: contract id on every station manifest
 
@@ -187,11 +189,11 @@ export function defineYard(name: string, config: DefineYardConfig): Yard {
 	return yard(name, {
 		provider: config.provider,
 		regions: resolveRegions(config.region, config.regions),
-		...(config.residency !== undefined ? { residency: config.residency } : {}),
+		...(config.residency !== undefined ? { residency: config.residency } : undefined),
 		...(config.componentHosts !== undefined
 			? { componentHosts: config.componentHosts }
-			: {}),
-		...(config.labels !== undefined ? { labels: config.labels } : {}),
+			: undefined),
+		...(config.labels !== undefined ? { labels: config.labels } : undefined),
 		bindings,
 		camps: config.camps ?? [],
 	});
@@ -210,7 +212,7 @@ export function slotOf(
 	if (!isYard(yardObject)) {
 		throw new TypeError("slotOf requires a parsed Yard");
 	}
-	if (typeof profile !== "string") {
+	if (!isJsonString(profile)) {
 		throw new TypeError("slotOf profile must be a string");
 	}
 	const row = yardObject.bindings.find((entry) => entry.profile === profile);
@@ -297,7 +299,7 @@ function compileSlotBinding(
 		);
 	}
 	const profile = binding.profile;
-	if (typeof profile !== "string") {
+	if (!isJsonString(profile)) {
 		throw new TypeError(`slot binding for ${slot} must carry a profile string`);
 	}
 	// A malformed profile is left to `yard()` so the existing
@@ -318,10 +320,10 @@ function compileSlotBinding(
 		profile,
 		...(binding.productId !== undefined
 			? { productId: binding.productId }
-			: {}),
+			: undefined),
 		...(binding.connectivityId !== undefined
 			? { connectivityId: binding.connectivityId }
-			: {}),
+			: undefined),
 		properties: binding.properties ?? {},
 	};
 }
@@ -332,7 +334,7 @@ function profileFamily(profile: string): string {
 	return cut === -1 ? profile : profile.slice(0, cut);
 }
 
-function isYard(value: unknown): value is Yard {
+function isYard<T>(value: T): value is T & Yard {
 	return isPlainObject(value) && value.kind === "yard";
 }
 
@@ -355,7 +357,7 @@ function resolveRegions(
 		throw new TypeError("defineYard regions must be an array");
 	}
 	if (region === undefined) return regions ?? [];
-	if (typeof region !== "string" || region.length === 0) {
+	if (!isJsonString(region) || region.length === 0) {
 		throw new TypeError(
 			"defineYard region must be a non-empty string when present",
 		);

@@ -28,6 +28,8 @@ import { capability } from "@hobo/core";
 import type { YardBindingInput } from "./binding.js";
 import { deepFreeze, isPlainObject } from "./canonical.js";
 import { type Yard, yard } from "./yard.js";
+import { isJsonString, isJsonBoolean } from "./json.js";
+
 
 // public-contract: the name the auto-discovered localhost Yard registers under; a Station's yard refs and every local placement decision resolve through it, so changing it orphans existing local topologies.
 export const LOCALHOST_YARD_NAME = "yard:local";
@@ -272,14 +274,14 @@ function presentCapabilities(
 		}
 		const capabilityId = observation.capabilityId;
 		if (
-			typeof capabilityId !== "string" ||
+			!isJsonString(capabilityId) ||
 			!CAPABILITY_ID_PATTERN.test(capabilityId)
 		) {
 			throw new TypeError(
 				`localhost capability observation id must match capability:<kind>:<slug> (got ${JSON.stringify(capabilityId)})`,
 			);
 		}
-		if (typeof observation.present !== "boolean") {
+		if (!isJsonBoolean(observation.present)) {
 			throw new TypeError(
 				`localhost capability observation present must be a boolean (${capabilityId})`,
 			);

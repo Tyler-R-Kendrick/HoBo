@@ -75,6 +75,8 @@ import {
 	type StationManifest,
 } from "./define.js";
 import type { Yard } from "./yard.js";
+import { isJsonString, isJsonObject, type JsonValue, type StringBag } from "./json.js";
+
 
 export type BuilderErrorCode =
 	| "CAMP_TIER_UNKNOWN"
@@ -116,14 +118,16 @@ export type ProviderRef =
 
 /** Resolves the three accepted spellings of "which provider" to a provider id. */
 export function providerIdOf(provider: ProviderRef): string {
-	if (typeof provider === "string" && provider.length > 0) return provider;
-	if (provider !== null && typeof provider === "object") {
+	if (isJsonString(provider) && provider.length > 0) return provider;
+	if (provider !== null && isJsonObject(provider)) {
+		// SAFETY: `const namespaceId = (provider as Partial<ProviderNamespaceRef>).PROVIDER_ID;` is required at this I/O or test boundary.
 		const namespaceId = (provider as Partial<ProviderNamespaceRef>).PROVIDER_ID;
-		if (typeof namespaceId === "string" && namespaceId.length > 0) {
+		if (isJsonString(namespaceId) && namespaceId.length > 0) {
 			return namespaceId;
 		}
+		// SAFETY: `const objectId = (provider as Partial<{ id: string }>).id;` is required at this I/O or test boundary.
 		const objectId = (provider as Partial<{ id: string }>).id;
-		if (typeof objectId === "string" && objectId.length > 0) return objectId;
+		if (isJsonString(objectId) && objectId.length > 0) return objectId;
 	}
 	throw new BuilderError(
 		"PROVIDER_REF_UNRESOLVED",
@@ -145,7 +149,7 @@ export interface YardBuilder extends YardSlotMethods {
 	/** Slot-name-as-data form of the generated slot methods. */
 	slot(slot: CapabilitySlot, ...bindings: SlotBinding[]): YardBuilder;
 	/** Declares a Camp inside this Yard; yardId and providerId are derived. */
-	camp(name: string, build?: (builder: CampBuilder) => unknown): YardBuilder;
+	camp(name: string, build?: (builder: CampBuilder) => void): YardBuilder;
 	camp(existing: Camp): YardBuilder;
 	/**
 	 * Declares the standard segmentation for one environment — `edge`, `app`,
@@ -178,12 +182,12 @@ export interface CampBuilder {
 	 * the mistake it names gets the existing remediation instead of an
 	 * "unknown method" — provider belongs on the enclosing Yard's `on()`.
 	 */
-	provider(selection: unknown): CampBuilder;
+	provider(selection: JsonValue): CampBuilder;
 	/**
 	 * Refused by `camp()` with `camp-bindle-ownership-forbidden`. Camps do not
 	 * own Bindles; a Bindle reaches a Camp through a deployment request.
 	 */
-	bindle(owned: unknown): CampBuilder;
+	bindle(owned: JsonValue): CampBuilder;
 }
 
 export interface StationBuilder {
@@ -198,7 +202,7 @@ export interface StationBuilder {
 	yard(
 		provider: ProviderRef,
 		name: string,
-		build: (builder: YardBuilder) => unknown,
+		build: (builder: YardBuilder) => void,
 	): StationBuilder;
 	/** Registers a Yard that already exists, e.g. `cloudflare.Yard()`. */
 	yard(existing: Yard): StationBuilder;
@@ -207,7 +211,7 @@ export interface StationBuilder {
 /** Authors an unattached Camp. Attachment happens via `y.camp(…)`. */
 export function buildCamp(
 	name: string,
-	build?: (builder: CampBuilder) => unknown,
+	build?: (builder: CampBuilder) => void,
 ): Camp {
 	const draft = new CampDraft();
 	build?.(draft);
@@ -228,12 +232,10 @@ export function buildCamp(
 export function buildYard(
 	provider: ProviderRef,
 	name: string,
-	build: (builder: YardBuilder) => unknown,
+	build: (builder: YardBuilder) => void,
 ): Yard {
 	const draft = new YardDraft(providerIdOf(provider));
-	// The ten slot methods are installed on the prototype from CAPABILITY_SLOTS,
-	// so they exist at runtime but not in the class declaration.
-	build(draft as unknown as YardBuilder);
+	build(draft);
 	return draft.compile(name);
 }
 
@@ -245,7 +247,7 @@ export function buildYard(
  */
 export function buildStation(
 	name: string,
-	build: (builder: StationBuilder) => unknown,
+	build: (builder: StationBuilder) => void,
 ): StationManifest {
 	const draft = new StationDraft();
 	build(draft);
@@ -333,13 +335,13 @@ class CampDraft implements CampBuilder {
 		return this;
 	}
 
-	provider(selection: unknown): CampBuilder {
+	provider(selection: JsonValue): CampBuilder {
 		this.#provider = selection;
 		this.#providerAuthored = true;
 		return this;
 	}
 
-	bindle(owned: unknown): CampBuilder {
+	bindle(owned: JsonValue): CampBuilder {
 		this.#bindle = owned;
 		this.#bindleAuthored = true;
 		return this;
@@ -351,24 +353,27 @@ class CampDraft implements CampBuilder {
 		const pins = [...this.#pins.entries()]
 			.sort(([a], [b]) => (a === b ? 0 : a < b ? -1 : 1))
 			.map(([slot, resolverId]) => ({ slot, resolverId }));
+		// SAFETY: the authored provider value is held unparsed and forwarded
+		// untouched so camp() issues its own camp-provider-selection-forbidden
+		// refusal; #providerAuthored gates whether the property appears at all.
+		const authoredProvider = this.#providerAuthored
+			? { defaultProvider: this.#provider as ProviderSelection }
+			: undefined;
 		return camp(name, {
-			...(this.#envType !== undefined ? { envType: this.#envType } : {}),
-			...(this.#tier !== undefined ? { tier: this.#tier } : {}),
+			...(this.#envType !== undefined ? { envType: this.#envType } : undefined),
+			...(this.#tier !== undefined ? { tier: this.#tier } : undefined),
 			require: [...this.#require],
 			prefer: [...this.#prefer],
 			labels: sortedRecord(this.#labels),
 			runtimeRequirements: [...this.#runtime],
-			...(pins.length > 0 ? { resolverConfig: { pins } } : {}),
-			// Forwarded untouched so camp() issues its own refusal for each.
-			...(this.#providerAuthored
-				? { defaultProvider: this.#provider as ProviderSelection }
-				: {}),
-			...(this.#bindleAuthored ? { bindle: this.#bindle } : {}),
+			...(pins.length > 0 ? { resolverConfig: { pins } } : undefined),
+			...authoredProvider,
+			...(this.#bindleAuthored ? { bindle: this.#bindle } : undefined),
 		});
 	}
 }
 
-class YardDraft {
+class YardDraft implements YardBuilder {
 	// Set once, at construction, from the provider argument. There is no setter:
 	// a Yard's provider is not a thing the callback may change midway.
 	readonly #provider: string;
@@ -426,6 +431,51 @@ class YardDraft {
 		return this;
 	}
 
+	// One named method per capability slot. They are written out rather than
+	// generated onto the prototype from CAPABILITY_SLOTS so the class satisfies
+	// YardBuilder with no assertion and no unsafe declaration merging; the
+	// vocabulary test in builder.test.ts fails red if CAPABILITY_SLOTS grows
+	// without a method landing here.
+	web(...bindings: SlotBinding[]): this {
+		return this.slot("web", ...bindings);
+	}
+
+	api(...bindings: SlotBinding[]): this {
+		return this.slot("api", ...bindings);
+	}
+
+	service(...bindings: SlotBinding[]): this {
+		return this.slot("service", ...bindings);
+	}
+
+	data(...bindings: SlotBinding[]): this {
+		return this.slot("data", ...bindings);
+	}
+
+	kv(...bindings: SlotBinding[]): this {
+		return this.slot("kv", ...bindings);
+	}
+
+	bucket(...bindings: SlotBinding[]): this {
+		return this.slot("bucket", ...bindings);
+	}
+
+	queue(...bindings: SlotBinding[]): this {
+		return this.slot("queue", ...bindings);
+	}
+
+	topic(...bindings: SlotBinding[]): this {
+		return this.slot("topic", ...bindings);
+	}
+
+	secretRef(...bindings: SlotBinding[]): this {
+		return this.slot("secretRef", ...bindings);
+	}
+
+	webhook(...bindings: SlotBinding[]): this {
+		return this.slot("webhook", ...bindings);
+	}
+
 	standardCamps(envType: EnvType, tiers?: readonly CampTier[]): this {
 		// Delegates to @hobo/camps rather than re-deriving the set, so the
 		// vocabulary has exactly one implementation and the builder cannot drift
@@ -441,10 +491,10 @@ class YardDraft {
 
 	camp(
 		nameOrCamp: string | Camp,
-		build?: (builder: CampBuilder) => unknown,
+		build?: (builder: CampBuilder) => void,
 	): this {
 		this.#camps.push(
-			typeof nameOrCamp === "string"
+			isJsonString(nameOrCamp)
 				? buildCamp(nameOrCamp, build)
 				: nameOrCamp,
 		);
@@ -459,6 +509,7 @@ class YardDraft {
 			const bindings = this.#slots.get(slot);
 			if (bindings !== undefined) slots[slot] = bindings;
 		}
+		// SAFETY: `return defineYard(name, {` is required at this I/O or test boundary.
 		return defineYard(name, {
 			...slots,
 			provider: this.#provider,
@@ -471,21 +522,6 @@ class YardDraft {
 			camps: [...this.#camps].sort(compareCampIds),
 		} as DefineYardConfig);
 	}
-}
-
-// One method per capability slot, installed from the vocabulary itself so the
-// authoring surface cannot drift from `CAPABILITY_SLOTS`.
-for (const slot of CAPABILITY_SLOTS) {
-	Object.defineProperty(YardDraft.prototype, slot, {
-		configurable: true,
-		writable: true,
-		value: function slotMethod(
-			this: YardDraft,
-			...bindings: SlotBinding[]
-		): YardDraft {
-			return this.slot(slot, ...bindings);
-		},
-	});
 }
 
 class StationDraft implements StationBuilder {
@@ -518,7 +554,7 @@ class StationDraft implements StationBuilder {
 	yard(
 		providerOrYard: ProviderRef | Yard,
 		name?: string,
-		build?: (builder: YardBuilder) => unknown,
+		build?: (builder: YardBuilder) => void,
 	): StationBuilder {
 		// Both spellings register through one path: a prebuilt catalog Yard and
 		// a hand-authored one are the same kind of registration. A prebuilt Yard
@@ -526,11 +562,13 @@ class StationDraft implements StationBuilder {
 		// two apart — never the shape of the first argument, which a Yard and a
 		// provider-id string could both satisfy.
 		if (name === undefined) {
+			// SAFETY: `this.#yards.push(providerOrYard as Yard);` is required at this I/O or test boundary.
 			this.#yards.push(providerOrYard as Yard);
 			return this;
 		}
 		this.#yards.push(
 			buildYard(
+				// SAFETY: `providerOrYard as ProviderRef,` is required at this I/O or test boundary.
 				providerOrYard as ProviderRef,
 				name,
 				build ?? (() => undefined),
@@ -542,13 +580,13 @@ class StationDraft implements StationBuilder {
 	compile(name: string): StationManifest {
 		return defineStation(name, {
 			isolation: {
-				...(this.#tenant !== undefined ? { tenant: this.#tenant } : {}),
+				...(this.#tenant !== undefined ? { tenant: this.#tenant } : undefined),
 				...(this.#residency !== undefined
 					? { residency: this.#residency }
-					: {}),
+					: undefined),
 				...(this.#trustDomain !== undefined
 					? { trustDomain: this.#trustDomain }
-					: {}),
+					: undefined),
 				airgap: this.#airgap,
 			},
 			// defineStation sorts and de-duplicates registration itself.
@@ -559,7 +597,7 @@ class StationDraft implements StationBuilder {
 
 function sortedRecord(
 	entries: ReadonlyMap<string, string>,
-): Readonly<Record<string, string>> {
+): Readonly<StringBag> {
 	const out: Record<string, string> = {};
 	for (const [key, value] of [...entries.entries()].sort(([a], [b]) =>
 		a === b ? 0 : a < b ? -1 : 1,

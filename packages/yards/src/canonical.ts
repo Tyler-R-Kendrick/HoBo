@@ -13,7 +13,8 @@
  * Nothing here is exported from the package barrel: these are internal parse
  * mechanics, not part of the authoring surface.
  */
-import type { JsonValue } from "@hobo/camps";
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject, isJsonArray, type JsonValue, type JsonObject } from "./json.js";
+
 
 /** Property keys that read as a secret value rather than a locator. */
 export const CREDENTIAL_KEY_PATTERN =
@@ -21,7 +22,7 @@ export const CREDENTIAL_KEY_PATTERN =
 
 /** Returns the first credential-shaped property key, or undefined. */
 export function findCredentialKey(
-	record: Readonly<Record<string, unknown>>,
+	record: Readonly<JsonObject>,
 ): string | undefined {
 	for (const key of Object.keys(record)) {
 		if (CREDENTIAL_KEY_PATTERN.test(key)) return key;
@@ -45,7 +46,7 @@ export function canonicalizeStringList(
 ): readonly string[] {
 	return Object.freeze(
 		[
-			...new Set(values.filter((v) => typeof v === "string" && v.length > 0)),
+			...new Set(values.filter((v) => isJsonString(v) && v.length > 0)),
 		].sort(),
 	);
 }
@@ -57,7 +58,7 @@ export function canonicalizeLabels(
 	const out: Record<string, string> = {};
 	for (const key of keys) {
 		const value = labels[key];
-		if (typeof value !== "string") {
+		if (!isJsonString(value)) {
 			throw new TypeError(`label ${key} must be a string`);
 		}
 		out[key] = value;
@@ -66,7 +67,7 @@ export function canonicalizeLabels(
 }
 
 export function canonicalizeProperties(
-	input: Readonly<Record<string, unknown>>,
+	input: Readonly<JsonObject>,
 	subject = "yard properties",
 ): Readonly<Record<string, JsonValue>> {
 	const keys = Object.keys(input).sort();
@@ -77,41 +78,44 @@ export function canonicalizeProperties(
 	return Object.freeze(out);
 }
 
-function toJsonValue(value: unknown, subject: string): JsonValue {
+function toJsonValue(value: JsonValue | undefined, subject: string): JsonValue {
 	if (
 		value === null ||
-		typeof value === "boolean" ||
-		typeof value === "number" ||
-		typeof value === "string"
+		isJsonBoolean(value) ||
+		isJsonNumber(value) ||
+		isJsonString(value)
 	) {
 		return value;
 	}
 	if (Array.isArray(value)) {
 		return Object.freeze(value.map((entry) => toJsonValue(entry, subject)));
 	}
-	if (value && typeof value === "object") {
-		return canonicalizeProperties(value as Record<string, unknown>, subject);
+	if (value && isJsonObject(value)) {
+		return canonicalizeProperties(value, subject);
 	}
 	throw new TypeError(`${subject} must be JSON-safe`);
 }
 
 export function requireName(label: string, value: string): void {
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new TypeError(`${label} must be a non-empty string`);
 	}
 }
 
-export function isPlainObject(
-	value: unknown,
-): value is Record<string, unknown> {
-	return Boolean(value && typeof value === "object" && !Array.isArray(value));
+export function isPlainObject<T>(
+	value: T,
+): value is T & JsonObject {
+	return Boolean(value && isJsonObject(value) && !Array.isArray(value));
 }
 
 export function deepFreeze<T>(value: T): T {
-	if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+	if (!value || Object.isFrozen(value)) {
 		return value;
 	}
-	for (const child of Object.values(value as object)) {
+	if (!isJsonObject(value) && !isJsonArray(value)) {
+		return value;
+	}
+	for (const child of Object.values(value)) {
 		deepFreeze(child);
 	}
 	return Object.freeze(value);

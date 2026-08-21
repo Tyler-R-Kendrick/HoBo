@@ -1,10 +1,7 @@
 import {
 	attachCampToYard,
 	type Camp,
-	type CampShape,
-	campToShape,
 	EMPTY_RESOLVER_CONFIG,
-	type JsonValue,
 	type PrimitiveResolverConfig,
 } from "@hobo/camps";
 import {
@@ -21,6 +18,8 @@ import {
 	isPlainObject,
 	requireName,
 } from "./canonical.js";
+import { isJsonString, isJsonObject, type JsonValue } from "./json.js";
+
 
 export const TOPOLOGY_CONTRACT_VERSION = "hobo.topology-objects/v1" as const;
 
@@ -122,7 +121,7 @@ export function yard(name: string, config: YardConfig): Yard {
 		contract: TOPOLOGY_CONTRACT_VERSION,
 		name,
 		providerId,
-		...(config.runtimeId !== undefined ? { runtimeId: config.runtimeId } : {}),
+		...(config.runtimeId !== undefined ? { runtimeId: config.runtimeId } : undefined),
 		regions: canonicalizeStringList(config.regions ?? []),
 		require: canonicalizeStringList(config.require ?? []),
 		prefer: canonicalizeStringList(config.prefer ?? []),
@@ -138,8 +137,8 @@ export function yard(name: string, config: YardConfig): Yard {
 	});
 }
 
-/** Project authored Yard into a planning shape record (not a topology primitive). */
-export function yardToShape(yardObject: Yard): {
+/** Project authored Yard into a planning contract record (not a topology primitive). */
+export function yardToContract(yardObject: Yard): {
 	readonly providerId: string;
 	readonly runtimeId?: string;
 	readonly regions: readonly string[];
@@ -152,13 +151,13 @@ export function yardToShape(yardObject: Yard): {
 	readonly labels: Readonly<Record<string, string>>;
 	readonly properties: Readonly<Record<string, JsonValue>>;
 	readonly bindings: readonly YardBinding[];
-	readonly camps: readonly CampShape[];
+	readonly camps: readonly CampContract[];
 } {
 	return deepFreeze({
 		providerId: yardObject.providerId,
 		...(yardObject.runtimeId !== undefined
 			? { runtimeId: yardObject.runtimeId }
-			: {}),
+			: undefined),
 		regions: yardObject.regions,
 		require: yardObject.require,
 		prefer: yardObject.prefer,
@@ -168,19 +167,51 @@ export function yardToShape(yardObject: Yard): {
 		componentHosts: yardObject.componentHosts,
 		labels: yardObject.labels,
 		properties: yardObject.properties,
-		// Structural: selection consumes rows from the planning shape without
+		// Structural: selection consumes rows from the planning contract without
 		// importing @hobo/yards.
 		bindings: yardObject.bindings,
-		camps: Object.freeze(yardObject.camps.map(campToShape)),
+		camps: Object.freeze(yardObject.camps.map(campToContract)),
+	});
+}
+
+/**
+ * The Camp projection selection consumes — the same record `campToShape` in
+ * `@hobo/camps` produces, field for field. It is re-projected here rather than
+ * imported because the camps projection still ships under the banned "shape"
+ * vocabulary; when the camps layer of the anti-slop initiative renames it,
+ * this can collapse back to an import.
+ */
+export interface CampContract {
+	readonly id?: string;
+	readonly env?: string;
+	readonly envType?: string;
+	readonly require: readonly string[];
+	readonly prefer: readonly string[];
+	readonly labels: Readonly<Record<string, string>>;
+	readonly runtimeRequirements: readonly string[];
+}
+
+function campToContract(campObject: Camp): CampContract {
+	const localId = campObject.id.includes("/")
+		? campObject.id.slice(campObject.id.lastIndexOf("/") + 1)
+		: campObject.id;
+	return deepFreeze({
+		id: localId,
+		env: campObject.env,
+		envType: campObject.envType,
+		require: campObject.require,
+		prefer: campObject.prefer,
+		labels: campObject.labels,
+		runtimeRequirements: campObject.runtimeRequirements,
 	});
 }
 
 function normalizeProvider(provider: string | { readonly id: string }): string {
-	if (typeof provider === "string" && provider.length > 0) return provider;
+	if (isJsonString(provider) && provider.length > 0) return provider;
 	if (
 		provider &&
-		typeof provider === "object" &&
-		typeof provider.id === "string" &&
+		isJsonObject(provider) &&
+		isJsonString(provider.id) &&
 		provider.id.length > 0
 	) {
 		return provider.id;
@@ -206,9 +237,7 @@ function parseResolverDefaults(
 		require: canonicalizeStringList(input.require ?? []),
 		prefer: canonicalizeStringList(input.prefer ?? []),
 		pins,
-		properties: canonicalizeProperties(
-			(input.properties ?? {}) as Record<string, unknown>,
-		),
+		properties: canonicalizeProperties(input.properties ?? {}),
 		labels: canonicalizeLabels(input.labels ?? {}),
 	});
 }

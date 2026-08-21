@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const REGISTRY_BUNDLE_SCHEMA = "registry.bundle/v1";
 export const REGISTRY_BUNDLE_IMPORTED_EVENT = "registry.BundleImported";
@@ -68,7 +70,7 @@ export function createFixtureBundle() {
 export function parseBundleManifest(candidate) {
   const errors = [];
 
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     return { ok: false, errors: ["bundle manifest must be an object"], manifest: null, resolvedListings: [] };
   }
 
@@ -137,7 +139,7 @@ export function deserializeBundleManifest(text) {
 export function parseBundleImportEvent(candidate) {
   const errors = [];
 
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     return { ok: false, errors: ["bundle import event must be an object"], event: null };
   }
   if (candidate.type !== REGISTRY_BUNDLE_IMPORTED_EVENT) {
@@ -219,7 +221,7 @@ function transparencyProof(logId, rootSeed, proofSeed) {
 }
 
 function validateTrustMaterial(trust, errors) {
-  if (!trust || typeof trust !== "object" || Array.isArray(trust)) {
+  if (!trust || !isJsonObject(trust) || Array.isArray(trust)) {
     errors.push("trust must be an object");
     return;
   }
@@ -246,7 +248,7 @@ function validateTrustMaterial(trust, errors) {
 }
 
 function validateCurator(curator, errors) {
-  if (!curator || typeof curator !== "object" || Array.isArray(curator)) {
+  if (!curator || !isJsonObject(curator) || Array.isArray(curator)) {
     errors.push("curator must be an object");
     return;
   }
@@ -266,7 +268,7 @@ function validateListingEntry(entry, index, errors, pinnedLogRoot, pinnedLogId) 
 }
 
 function validateArtifactEntry(entry, path, errors, pinnedLogRoot, pinnedLogId) {
-  if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+  if (!entry || !isJsonObject(entry) || Array.isArray(entry)) {
     errors.push(`${path} must be an object`);
     return;
   }
@@ -285,7 +287,7 @@ function validateArtifactEntry(entry, path, errors, pinnedLogRoot, pinnedLogId) 
 }
 
 function validateTransparency(transparency, path, errors, pinnedLogRoot, pinnedLogId) {
-  if (!transparency || typeof transparency !== "object" || Array.isArray(transparency)) {
+  if (!transparency || !isJsonObject(transparency) || Array.isArray(transparency)) {
     errors.push(`${path} must be an object`);
     return;
   }
@@ -301,7 +303,7 @@ function validateTransparency(transparency, path, errors, pinnedLogRoot, pinnedL
 }
 
 function validateArtifactRef(ref, path, errors) {
-  if (!ref || typeof ref !== "object" || Array.isArray(ref)) {
+  if (!ref || !isJsonObject(ref) || Array.isArray(ref)) {
     errors.push(`${path} must be an artifact reference object`);
     return;
   }
@@ -344,22 +346,22 @@ function digest(value) {
 }
 
 function isSha256Digest(value) {
-  return typeof value === "string" && DIGEST_RE.test(value);
+  return isJsonString(value) && DIGEST_RE.test(value);
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function isIsoDate(value) {
-  return typeof value === "string" && ISO_DATE_RE.test(value) && !Number.isNaN(Date.parse(value));
+  return isJsonString(value) && ISO_DATE_RE.test(value) && !Number.isNaN(Date.parse(value));
 }
 
 function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

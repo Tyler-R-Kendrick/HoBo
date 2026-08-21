@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export interface HoboAuthPortConfig {
   readonly issuer: string;
   readonly audience: string;
@@ -21,7 +22,7 @@ export interface HoboAuthUser {
   readonly tenant: {
     readonly app: string;
   };
-  readonly claims: Readonly<Record<string, unknown>>;
+  readonly claims: Readonly<JsonObject>;
 }
 
 export interface ResolvedTenantContext {
@@ -53,8 +54,8 @@ export type AuthVerifyResult =
   | {
       readonly ok: true;
       readonly ctx: HoboAuthContext;
-      readonly header: Readonly<Record<string, unknown>>;
-      readonly claims: Readonly<Record<string, unknown>>;
+      readonly header: Readonly<JsonObject>;
+      readonly claims: Readonly<JsonObject>;
       readonly events: readonly unknown[];
     }
   | {
@@ -71,11 +72,11 @@ export interface HoboAuthVerifier {
 
 export interface FixtureIdentityProvider {
   readonly issuer: string;
-  signJwt(claims: Readonly<Record<string, unknown>>): Promise<string>;
+  signJwt(claims: Readonly<JsonObject>): Promise<string>;
   jwks(): { readonly keys: readonly JsonWebKey[] };
   rotate(nextKeyId: string): FixtureIdentityProvider;
-  makeUnsignedJwt(claims: Readonly<Record<string, unknown>>): string;
-  signHmacJwt(claims: Readonly<Record<string, unknown>>, secret: string): string;
+  makeUnsignedJwt(claims: Readonly<JsonObject>): string;
+  signHmacJwt(claims: Readonly<JsonObject>, secret: string): string;
 }
 
 export function createFixtureIdentityProvider(input: {
@@ -86,7 +87,7 @@ export function createFixtureIdentityProvider(input: {
 export function createHoboAuthVerifier(input: {
   readonly authPort: HoboAuthPortConfig;
   readonly now?: () => number;
-  readonly eventSink?: (event: unknown) => void;
+  readonly eventSink?: (event: JsonValue) => void;
 }): HoboAuthVerifier;
 
 export function requireTenantAccess(ctx: HoboAuthContext, tenant: string): true;

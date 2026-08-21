@@ -40,7 +40,7 @@ export type TemporaryAccountErrorOptions = {
 	readonly reason?: string;
 	/** Seconds the provider asked us to wait, when it said so. */
 	readonly retryAfterSeconds?: number;
-	readonly cause?: unknown;
+	readonly cause?: Error;
 };
 
 export class TemporaryAccountError extends Error {
@@ -68,23 +68,18 @@ export class TemporaryAccountError extends Error {
 	}
 
 	/** The only shape safe to place in a log line, event, or receipt. */
-	toJSON(): {
-		readonly name: string;
-		readonly code: TemporaryAccountErrorCode;
-		readonly reason?: string;
-		readonly retryable: boolean;
-	} {
+	toJSON() {
 		return {
 			name: this.name,
 			code: this.code,
-			...(this.reason !== undefined ? { reason: this.reason } : {}),
+			...(this.reason !== undefined ? { reason: this.reason } : undefined),
 			retryable: this.retryable,
 		};
 	}
 }
 
 export function isTemporaryAccountError(
-	value: unknown,
+	value: Error,
 ): value is TemporaryAccountError {
 	return value instanceof TemporaryAccountError;
 }
@@ -105,7 +100,7 @@ export function temporaryAccountErrorForStatus(
 	const retryAfter =
 		options.retryAfterSeconds !== undefined
 			? { retryAfterSeconds: options.retryAfterSeconds }
-			: {};
+			: undefined;
 	if (status === 429) {
 		return new TemporaryAccountError(
 			"PROVIDER_RATE_LIMITED",

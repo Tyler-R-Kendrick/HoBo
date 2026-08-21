@@ -12,6 +12,7 @@ import { createHash, randomBytes } from "node:crypto";
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
 
+import { isJsonObject, isJsonString, parseJsonValue } from "./json.js";
 import {
 	CF_API_BASE,
 	createCloudflareTemporaryAccountTransport,
@@ -312,6 +313,8 @@ async function resolveWorkersDevUrl(input: {
 			headers: { authorization: `Bearer ${input.apiToken}` },
 		},
 	);
+	// SAFETY: this fetch boundary is the Workers subdomain envelope; only
+	// `result.subdomain` is read after the parse.
 	const body = (await account.json()) as {
 		success?: boolean;
 		result?: { subdomain?: string };
@@ -344,13 +347,14 @@ async function fetchAdminKey(input: {
 			`Failed to mint Convex admin key via Worker RPC bridge: HTTP ${response.status}`,
 		);
 	}
-	const body = (await response.json()) as { adminKey?: unknown };
-	if (typeof body.adminKey !== "string" || body.adminKey.length === 0) {
+	const parsed = parseJsonValue(await response.text());
+	const adminKey = isJsonObject(parsed) ? parsed.adminKey : undefined;
+	if (!isJsonString(adminKey) || adminKey.length === 0) {
 		throw new ConvexCloudflareContainersError(
 			"Worker /.hobo/admin-key returned no adminKey",
 		);
 	}
-	return body.adminKey;
+	return adminKey;
 }
 
 async function waitForVersion(input: {
@@ -459,7 +463,7 @@ export async function provisionConvexBackendOnCloudflare(
 
 	// Use Temporary creds WITHOUT `--temporary` — wrangler --temporary races
 	// Containers apply (requireAuth after temp login). No local Docker.
-	const childEnv: Record<string, string> = {
+	const childEnv = {
 		CLOUDFLARE_API_TOKEN: account.apiToken,
 		CLOUDFLARE_ACCOUNT_ID: account.accountId,
 	};

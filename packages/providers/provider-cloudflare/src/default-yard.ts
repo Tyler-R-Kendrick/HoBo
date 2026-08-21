@@ -35,6 +35,7 @@
 import { type CapabilitySlot, type SlotBinding, slotBinding } from "@hobo/core";
 
 import { CLOUDFLARE_PROVIDER_TARGET } from "./hello-bindle.js";
+import { type JsonObject, parseJsonObject } from "./json.js";
 import { d1, kv, pages, queues, r2, workers } from "./slots.js";
 
 /**
@@ -45,7 +46,7 @@ import { d1, kv, pages, queues, r2, workers } from "./slots.js";
 export interface CloudflareYardBindingRow {
 	readonly profile: string;
 	readonly productId: string;
-	readonly properties: Readonly<Record<string, unknown>>;
+	readonly properties: JsonObject;
 }
 
 /** Slot → the offerings that can serve it. */
@@ -103,10 +104,10 @@ function alsoServes(
 		profile: slotExemplar.profile,
 		...(offering.productId !== undefined
 			? { productId: offering.productId }
-			: {}),
+			: undefined),
 		...(offering.connectivityId !== undefined
 			? { connectivityId: offering.connectivityId }
-			: {}),
+			: undefined),
 		properties: offering.properties,
 	});
 }
@@ -159,7 +160,7 @@ function toRow(binding: SlotBinding): CloudflareYardBindingRow {
 	return Object.freeze({
 		profile: binding.profile,
 		productId: binding.productId,
-		properties: binding.properties,
+		properties: parseJsonObject(JSON.stringify(binding.properties)),
 	});
 }
 
@@ -194,7 +195,7 @@ function resolveRegions(
 		throw new TypeError("cloudflare yard regions must be an array of strings");
 	}
 	for (const region of regions) {
-		if (typeof region !== "string" || region.trim().length === 0) {
+		if (region.trim().length === 0) {
 			throw new TypeError(
 				"cloudflare yard regions must be non-empty strings; a blank region would silently widen residency",
 			);
@@ -205,7 +206,7 @@ function resolveRegions(
 
 function resolveName(name: string | undefined): string {
 	if (name === undefined) return CLOUDFLARE_DEFAULT_YARD_NAME;
-	if (typeof name !== "string" || name.trim().length === 0) {
+	if (name.trim().length === 0) {
 		throw new TypeError("cloudflare yard name must be a non-empty string");
 	}
 	return name;

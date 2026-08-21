@@ -183,7 +183,7 @@ export async function completeTemporaryAccountClaim(
 		revokedClaimActionRef: receipt.claimActionRef,
 		creatorAuthorityAfterClaim: "reauthorization-required",
 		managementAuthorized: grant !== undefined,
-		...(grant !== undefined ? { reauthorizationGrant: grant } : {}),
+		...(grant !== undefined ? { reauthorizationGrant: grant } : undefined),
 	};
 }
 

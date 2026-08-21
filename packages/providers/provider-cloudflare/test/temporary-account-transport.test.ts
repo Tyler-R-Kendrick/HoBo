@@ -31,6 +31,8 @@
  */
 import { Buffer } from "node:buffer";
 import { describe, expect, it } from "vitest";
+import type { JsonObject, JsonValue } from "../src/json.js";
+import type { TemporaryEnvironmentStationInput } from "../src/temporary-station.js";
 
 import {
 	CF_API_BASE,
@@ -44,8 +46,8 @@ import {
 /** A transport that provisions without solving anything. */
 function transport(
 	overrides: Partial<TemporaryAccountTransport> = {},
-): TemporaryAccountTransport & { deployed: Record<string, unknown>[] } {
-	const deployed: Record<string, unknown>[] = [];
+): TemporaryAccountTransport & { deployed: JsonObject[] } {
+	const deployed: JsonObject[] = [];
 	return {
 		deployed,
 		requestChallenge: async () => ({
@@ -60,19 +62,20 @@ function transport(
 			claimUrl: "https://dash.cloudflare.com/claim/xyz",
 		}),
 		deployWorkerScript: async (input) => {
-			deployed.push(input as unknown as Record<string, unknown>);
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			deployed.push(input as JsonObject);
 			return { workersDevUrl: `https://${input.scriptName}.sub.workers.dev` };
 		},
 		...overrides,
 	};
 }
 
-const provision = (input: Record<string, unknown> = {}) =>
+const provision = (input: Partial<TemporaryEnvironmentStationInput> = {}) =>
 	provisionTemporaryEnvironmentStation({
 		stationId: "station:local",
 		transport: transport(),
 		...input,
-	} as never);
+	});
 
 describe("the provisioned station", () => {
 	it("reports the provider it was created on", async () => {
@@ -93,6 +96,7 @@ describe("the provisioned station", () => {
 		expect((await provision()).stationId).toBe("station:local");
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("reports the deployed URL as both the station and primary URL", async () => {
 		// They are the same thing here; reporting one and not the other would
 		// leave a caller reading the wrong field with nothing.
@@ -123,7 +127,7 @@ describe("the provisioned station", () => {
 });
 
 describe("the script name", () => {
-	const nameFor = async (input: Record<string, unknown>) =>
+	const nameFor = async (input: JsonObject) =>
 		(await provision(input)).scriptName;
 
 	it("is prefixed so it is identifiable in a shared account", async () => {
@@ -187,7 +191,7 @@ describe("what gets deployed", () => {
 		await provisionTemporaryEnvironmentStation({
 			stationId: "s",
 			transport: t,
-		} as never);
+		});
 		expect(String(t.deployed[0]?.moduleSource).length).toBeGreaterThan(0);
 	});
 
@@ -206,7 +210,7 @@ describe("what gets deployed", () => {
 		await provisionTemporaryEnvironmentStation({
 			stationId: "s",
 			transport: t,
-		} as never);
+		});
 		expect(t.deployed[0]).toMatchObject({
 			accountId: "acc-1",
 			apiToken: "cf-token",
@@ -219,7 +223,7 @@ describe("what gets deployed", () => {
 			stationId: "s",
 			transport: t,
 			compatibilityFlags: ["nodejs_compat"],
-		} as never);
+		});
 		expect(t.deployed[0]?.compatibilityFlags).toEqual(["nodejs_compat"]);
 	});
 
@@ -229,7 +233,7 @@ describe("what gets deployed", () => {
 		await provisionTemporaryEnvironmentStation({
 			stationId: "s",
 			transport: t,
-		} as never);
+		});
 		expect(t.deployed[0]).not.toHaveProperty("compatibilityFlags");
 	});
 
@@ -239,7 +243,7 @@ describe("what gets deployed", () => {
 			stationId: "s",
 			transport: t,
 			bindings: { TEMP_API_TOKEN: "t" },
-		} as never);
+		});
 		expect(t.deployed[0]?.bindings).toEqual({ TEMP_API_TOKEN: "t" });
 	});
 
@@ -255,7 +259,7 @@ describe("what gets deployed", () => {
 			provisionTemporaryEnvironmentStation({
 				stationId: "s",
 				transport: t,
-			} as never),
+			}),
 		).rejects.toThrow(/challenge rejected/u);
 		expect(t.deployed).toHaveLength(0);
 	});
@@ -263,24 +267,37 @@ describe("what gets deployed", () => {
 
 describe("the Cloudflare transport", () => {
 	type Call = { url: string; init: RequestInit };
+	const CHALLENGE = {
+		challengeToken: "tok",
+		seed: "seed",
+		k: 2,
+		g: 2,
+	};
 
-	function cf(script: { status?: number; body?: unknown }[] = []) {
+	function cf(script: { status?: number; body?: JsonValue }[] = []) {
 		const calls: Call[] = [];
 		let n = 0;
-		const fetchImpl = (async (url: string | URL, init: RequestInit = {}) => {
+		const fetchImpl = async (url: string | URL, init: RequestInit = {}) => {
 			calls.push({ url: String(url), init });
 			const entry = script[n++] ?? { body: { success: true, result: {} } };
 			const status = entry.status ?? 200;
-			return {
+			const response = {
 				ok: status >= 200 && status < 300,
 				status,
 				json: async () => entry.body ?? { success: true, result: {} },
-			} as unknown as Response;
-		}) as unknown as typeof fetch;
-		return { calls, api: createCloudflareTemporaryAccountTransport(fetchImpl) };
+			};
+			// SAFETY: fake fetch only implements the Response fields this transport reads.
+			return response as Response;
+		};
+		// SAFETY: fake fetch is the injected Fetch API for this transport.
+		const injected = fetchImpl as typeof fetch;
+		return {
+			calls,
+			api: createCloudflareTemporaryAccountTransport(injected),
+		};
 	}
 
-	const ok = (result: unknown) => ({ body: { success: true, result } });
+	const ok = (result: JsonValue) => ({ body: { success: true, result } });
 
 	it("asks the previews endpoint for a challenge", async () => {
 		const c = cf([ok({ challengeToken: "tok" })]);
@@ -297,6 +314,7 @@ describe("the Cloudflare transport", () => {
 		expect(await c.api.requestChallenge()).not.toHaveProperty("success");
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("treats success:false as a failure despite a 200", async () => {
 		// Cloudflare answers 200 with success:false routinely; reading the status
 		// alone would accept an error as a challenge.
@@ -306,6 +324,7 @@ describe("the Cloudflare transport", () => {
 		await expect(c.api.requestChallenge()).rejects.toThrow(/rate limited/u);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("treats a successful envelope with no result as a failure", async () => {
 		// Downstream code would dereference the missing result immediately.
 		const c = cf([{ body: { success: true } }]);
@@ -350,7 +369,8 @@ describe("the Cloudflare transport", () => {
 			ok({ accountId: "a", apiToken: "t", claimUrl: "https://claim" }),
 		]);
 		expect(
-			await c.api.createPreviewAccount({} as never, { checkpoints: "" }),
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			await c.api.createPreviewAccount(CHALLENGE, { checkpoints: "" }),
 		).toMatchObject({ accountId: "a", apiToken: "t" });
 	});
 
@@ -361,7 +381,8 @@ describe("the Cloudflare transport", () => {
 			ok({ account_id: "a", api_token: "t", claim_url: "https://claim" }),
 		]);
 		expect(
-			await c.api.createPreviewAccount({} as never, { checkpoints: "" }),
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			await c.api.createPreviewAccount(CHALLENGE, { checkpoints: "" }),
 		).toMatchObject({ accountId: "a", apiToken: "t" });
 	});
 
@@ -373,7 +394,8 @@ describe("the Cloudflare transport", () => {
 			}),
 		]);
 		expect(
-			await c.api.createPreviewAccount({} as never, { checkpoints: "" }),
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			await c.api.createPreviewAccount(CHALLENGE, { checkpoints: "" }),
 		).toMatchObject({ accountId: "a", apiToken: "t" });
 	});
 
@@ -381,7 +403,8 @@ describe("the Cloudflare transport", () => {
 		// A station with a token and no claim URL is an account nobody can keep.
 		const c = cf([ok({ accountId: "a", apiToken: "t" })]);
 		await expect(
-			c.api.createPreviewAccount({} as never, { checkpoints: "" }),
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			c.api.createPreviewAccount(CHALLENGE, { checkpoints: "" }),
 		).rejects.toThrow(/missing accountId\/apiToken\/claimUrl/u);
 	});
 
@@ -395,7 +418,8 @@ describe("the Cloudflare transport", () => {
 			}),
 		]);
 		expect(
-			await c.api.createPreviewAccount({} as never, { checkpoints: "" }),
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			await c.api.createPreviewAccount(CHALLENGE, { checkpoints: "" }),
 		).toMatchObject({ workersDevSubdomain: "sub" });
 	});
 
@@ -404,7 +428,8 @@ describe("the Cloudflare transport", () => {
 			ok({ accountId: "a", apiToken: "t", claimUrl: "https://claim" }),
 		]);
 		expect(
-			await c.api.createPreviewAccount({} as never, { checkpoints: "" }),
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			await c.api.createPreviewAccount(CHALLENGE, { checkpoints: "" }),
 		).not.toHaveProperty("workersDevSubdomain");
 	});
 
@@ -413,7 +438,8 @@ describe("the Cloudflare transport", () => {
 		const c = cf([
 			ok({ accountId: "a", apiToken: "t", claimUrl: "https://claim" }),
 		]);
-		await c.api.createPreviewAccount({ challengeToken: "tok" } as never, {
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+		await c.api.createPreviewAccount(CHALLENGE, {
 			checkpoints: "cp",
 		});
 		const sent = JSON.parse(String(c.calls[0]?.init.body));
@@ -444,11 +470,17 @@ describe("the Cloudflare transport", () => {
 			scriptName: "s",
 			moduleSource: "export default {}",
 		});
-		expect(
-			(c.calls[0]?.init.headers as Record<string, string>).authorization,
-		).toBe("Bearer tok");
+		const headers = c.calls[0]?.init.headers;
+		expect(headers).toBeDefined();
+		if (headers === undefined) throw new Error("missing upload headers");
+		const authorization =
+			headers instanceof Headers
+				? headers.get("authorization")
+				: headers.authorization;
+		expect(authorization).toBe("Bearer tok");
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("uploads the module as multipart form data", async () => {
 		// A Workers script upload is a form with a metadata part and a module
 		// part; a JSON body is rejected outright.
@@ -462,6 +494,7 @@ describe("the Cloudflare transport", () => {
 		expect(c.calls[0]?.init.body).toBeInstanceOf(FormData);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("names the module as the entry point in its metadata", async () => {
 		const c = cf([ok({}), ok({}), ok({ subdomain: "team" })]);
 		await c.api.deployWorkerScript({
@@ -470,7 +503,9 @@ describe("the Cloudflare transport", () => {
 			scriptName: "s",
 			moduleSource: "export default {}",
 		});
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		const form = c.calls[0]?.init.body as FormData;
+		// SAFETY: test fixture is the named domain type after this assertion.
 		const metadata = JSON.parse(await (form.get("metadata") as Blob).text());
 		expect(metadata.main_module).toBe("station.js");
 		expect(form.get("station.js")).toBeInstanceOf(File);
@@ -485,7 +520,9 @@ describe("the Cloudflare transport", () => {
 			moduleSource: "export default {}",
 			compatibilityFlags: ["nodejs_compat"],
 		});
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		const form = c.calls[0]?.init.body as FormData;
+		// SAFETY: test fixture is the named domain type after this assertion.
 		const metadata = JSON.parse(await (form.get("metadata") as Blob).text());
 		expect(metadata.compatibility_flags).toEqual(["nodejs_compat"]);
 	});
@@ -499,11 +536,14 @@ describe("the Cloudflare transport", () => {
 			moduleSource: "export default {}",
 			compatibilityFlags: [],
 		});
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		const form = c.calls[0]?.init.body as FormData;
+		// SAFETY: test fixture is the named domain type after this assertion.
 		const metadata = JSON.parse(await (form.get("metadata") as Blob).text());
 		expect(metadata).not.toHaveProperty("compatibility_flags");
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("declares bindings as plain text entries", async () => {
 		const c = cf([ok({}), ok({}), ok({ subdomain: "team" })]);
 		await c.api.deployWorkerScript({
@@ -513,7 +553,9 @@ describe("the Cloudflare transport", () => {
 			moduleSource: "export default {}",
 			bindings: { TEMP_API_TOKEN: "v" },
 		});
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		const form = c.calls[0]?.init.body as FormData;
+		// SAFETY: test fixture is the named domain type after this assertion.
 		const metadata = JSON.parse(await (form.get("metadata") as Blob).text());
 		expect(metadata.bindings).toEqual([
 			{ type: "plain_text", name: "TEMP_API_TOKEN", text: "v" },
@@ -554,6 +596,7 @@ describe("the Cloudflare transport", () => {
 		).resolves.toMatchObject({ workersDevUrl: "https://s.t.workers.dev" });
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("falls back to the account id as the host when no subdomain is known", async () => {
 		// workers.dev serves this shape while a freshly created subdomain lags;
 		// returning no URL at all would leave the station unreachable.

@@ -21,13 +21,7 @@ export type WranglerTemporaryDeployInput = {
 const URL_RE = /https:\/\/[a-z0-9.-]+\.workers\.dev\/?/giu;
 const CLAIM_RE = /https:\/\/[^\s]*claim[^\s]*/giu;
 
-export function parseWranglerTemporaryOutput(
-	stdout: string,
-	stderr: string,
-): {
-	stationUrl: string;
-	claimUrl: string;
-} {
+export function parseWranglerTemporaryOutput(stdout: string, stderr: string) {
 	const text = `${stdout}\n${stderr}`;
 	const workers = [...text.matchAll(URL_RE)].map((match) =>
 		match[0].replace(/\/$/u, ""),

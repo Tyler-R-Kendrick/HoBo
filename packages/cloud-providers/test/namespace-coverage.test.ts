@@ -29,33 +29,42 @@ import {
 	vercel,
 } from "../src/index.js";
 
+type SlotBinding = { readonly contract?: string; readonly productId?: string };
+type SlotFactory = () => object;
+type NamespaceValue = string | SlotFactory | NamespaceObject;
+type NamespaceObject = Readonly<Record<string, NamespaceValue>>;
+
+function isSlotFactory(value: NamespaceValue): value is SlotFactory {
+	return value instanceof Function;
+}
+
 /** A slot factory: zero-arg-callable, returns a parsed slot binding. */
-function productIdsFrom(namespace: Record<string, unknown>): Set<string> {
+function productIdsFrom(namespace: NamespaceObject): Set<string> {
 	const found = new Set<string>();
-	const consider = (value: unknown): void => {
-		if (typeof value !== "function") return;
-		let produced: unknown;
+	const consider = (value: NamespaceValue): void => {
+		if (!isSlotFactory(value)) return;
+		let produced: object;
 		try {
-			produced = (value as () => unknown)();
+			produced = value();
 		} catch {
 			// Not a zero-arg slot factory (Yard() needs no args but returns a
 			// Yard; others may refuse). Anything that throws is not a factory
 			// we can enumerate, and is covered by its own package's tests.
 			return;
 		}
-		if (typeof produced !== "object" || produced === null) return;
-		const record = produced as { contract?: unknown; productId?: unknown };
+		// SAFETY: slot factories return parsed binding objects by contract.
+		const record = produced as SlotBinding;
 		if (record.contract !== "hobo.slot-binding/v1") return;
-		if (typeof record.productId === "string") found.add(record.productId);
+		if (record.productId !== undefined) found.add(record.productId);
 	};
 
 	for (const value of Object.values(namespace)) {
-		consider(value);
+		if (value instanceof Object) consider(value);
 		// Factories grouped under a namespace object — `eks.deployment`,
 		// `rds.postgres`, `ecs.service` — are reachable only one level in.
-		if (typeof value === "object" && value !== null) {
-			for (const nested of Object.values(value as Record<string, unknown>)) {
-				consider(nested);
+		if (value instanceof Object) {
+			for (const nested of Object.values(value)) {
+				if (nested instanceof Object) consider(nested);
 			}
 		}
 	}
@@ -78,12 +87,14 @@ describe("namespace reaches everything its catalog declares", () => {
 	for (const { name, ns } of NAMESPACES) {
 		it(`${name}: every catalog productId has a reachable factory`, () => {
 			const catalogProducts = new Set(
+				// SAFETY: every namespace in NAMESPACES exposes the shared Yard contract.
 				(ns as { Yard: () => { bindings: readonly { productId?: string }[] } })
 					.Yard()
 					.bindings.map((row) => row.productId)
-					.filter((id): id is string => typeof id === "string"),
+				.filter((id): id is string => id !== undefined),
 			);
-			const reachable = productIdsFrom(ns as Record<string, unknown>);
+			// SAFETY: provider namespaces are closed string-keyed export objects.
+			const reachable = productIdsFrom(ns as NamespaceObject);
 			const unreachable = [...catalogProducts]
 				.filter((id) => !reachable.has(id))
 				.sort();
@@ -112,12 +123,14 @@ describe("namespace reaches everything its catalog declares", () => {
 			"dynamodbDocument",
 		]) {
 			expect(
-				typeof (aws as unknown as Record<string, unknown>)[factory],
+				// SAFETY: these names are the closed regression vocabulary above.
+				(aws as Record<string, SlotFactory>)[factory],
 				`aws.${factory} must be reachable from @hobo/cloud-providers`,
 			).toBe("function");
 		}
 		expect(
-			typeof (aws as unknown as { ecs?: { service?: unknown } }).ecs?.service,
-		).toBe("function");
+			// SAFETY: `ecs.service` is the nested factory exported by the namespace.
+			(aws as { ecs?: { service?: SlotFactory } }).ecs?.service,
+		).toBeTypeOf("function");
 	});
 });

@@ -30,7 +30,7 @@ describe("PROVIDER_ID", () => {
 	it.each(
 		NAMESPACES,
 	)("$name states the same provider id its catalog Yard carries", ({ ns }) => {
-		expect(typeof ns.PROVIDER_ID).toBe("string");
+		expect(ns.PROVIDER_ID).toBeTypeOf("string");
 		expect(ns.PROVIDER_ID).toBe(ns.Yard().providerId);
 	});
 });

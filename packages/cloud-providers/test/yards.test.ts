@@ -128,7 +128,7 @@ describe("slot factories are re-exported for override authoring", () => {
 			azure.containerApps,
 			azure.aks,
 		]) {
-			expect(typeof factory).toBe("function");
+			expect(factory).toBeTypeOf("function");
 			expect(factory().profile).toMatch(/^web\./u);
 		}
 	});

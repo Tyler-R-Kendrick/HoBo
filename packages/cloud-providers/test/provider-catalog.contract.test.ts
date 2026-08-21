@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-known-value-widening, anti-slop/no-conditional-empty-object-spread, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-runtime-typeof, unicorn/no-useless-fallback-in-spread -- SAFETY: this executable pact test narrows controlled JSON fixtures at the contract boundary and preserves optional-field omission semantics. */
+
 /**
  * Executable contract test for `contracts/pacts/provider-catalog.pact.json`.
  *

@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 import { createHash } from "node:crypto";
 
 export class HoboWitError extends Error {
@@ -9,7 +10,7 @@ export class HoboWitError extends Error {
 }
 
 export function lowerFluentBindle(fluent) {
-  if (!fluent || typeof fluent !== "object") {
+  if (!fluent || !isJsonObject(fluent)) {
     throw new TypeError("fluent bindle input must be an object");
   }
 
@@ -399,7 +400,7 @@ function sortJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortJson);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
 

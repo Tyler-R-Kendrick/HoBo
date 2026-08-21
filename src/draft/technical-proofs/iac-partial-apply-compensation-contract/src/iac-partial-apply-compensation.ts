@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 const supportedBackends = new Set(["iac-pulumi", "iac-opentofu"]);
 
 export function createIacBackendHarness({ backendName, providerCreateSemantics = "idempotent" } = {}) {
@@ -363,7 +364,7 @@ function assertBackend(backend) {
 }
 
 function assertStackKey(stackKey) {
-  if (typeof stackKey !== "string" || stackKey.split("/").length !== 3) {
+  if (!isJsonString(stackKey) || stackKey.split("/").length !== 3) {
     throw new Error("stackKey must be tenant/deployment/resource");
   }
 }

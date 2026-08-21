@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 import { createHash } from "node:crypto";
 
 export const MULTI_CLOUD_SHOP_GATE_SCHEMA = "hobo.multiCloudShopProviderE2e/v1";
@@ -234,7 +235,7 @@ export function runMultiCloudShopE2eFixture({ phase = "deploy-and-assert", runId
 
 export function digestSourceSet(sources) {
   const hash = createHash("sha256");
-  for (const path of Object.keys(sources ?? {}).sort()) {
+  for (const path of Object.keys(sources ).sort()) {
     hash.update(path);
     hash.update("\0");
     hash.update(String(sources[path]));
@@ -316,8 +317,8 @@ function validateSameBindle(bindle = {}, targets = [], failures) {
     return;
   }
 
-  const calculatedDigest = digestSourceSet(bindle.sources ?? {});
-  if (Object.keys(bindle.sources ?? {}).length > 0 && calculatedDigest !== expectedDigest) {
+  const calculatedDigest = digestSourceSet(bindle.sources );
+  if (Object.keys(bindle.sources ).length > 0 && calculatedDigest !== expectedDigest) {
     failures.push({
       code: "bindle.digest-mismatch",
       message: "bindle digest does not match the recorded source bytes",
@@ -465,7 +466,7 @@ function validateUnsatisfiedRequire(scenario, targetProviders, failures) {
     return;
   }
 
-  const event = scenario.result?.event ?? {};
+  const event = scenario.result?.event ;
   const checkedProviders = scenario.checkedProviders ?? targetProviders;
   const precise =
     scenario.result?.ok === false &&
@@ -493,7 +494,7 @@ function validateSingleProviderFeature(scenario, targetProviders, failures) {
     return;
   }
 
-  const event = scenario.result?.event ?? {};
+  const event = scenario.result?.event ;
   const unsupportedProviders = event.unsupportedProviders ?? [];
   const precise =
     scenario.result?.ok === false &&
@@ -578,11 +579,11 @@ function clone(value) {
 }
 
 function isPlainObject(value) {
-  return value !== null && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype;
+  return value !== null && isJsonObject(value) && Object.getPrototypeOf(value) === Object.prototype;
 }
 
 function deepFreeze(value) {
-  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+  if (value && isJsonObject(value) && !Object.isFrozen(value)) {
     for (const child of Object.values(value)) {
       deepFreeze(child);
     }

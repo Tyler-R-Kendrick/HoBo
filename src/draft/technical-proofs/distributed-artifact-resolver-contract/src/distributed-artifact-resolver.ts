@@ -1,6 +1,7 @@
+import { isJsonObject } from "./json.js";
 import { createHash } from "node:crypto";
-
 import {
+
   STABILITY_TIERS,
   evaluateDeprecationWindow,
   satisfies as satisfiesPolicy,
@@ -33,7 +34,7 @@ export function resolveDistributedArtifacts(input = {}) {
     const constraints = collectConstraints(rootRequests, selected);
     let changed = false;
 
-    for (const selectedName of [...selected.keys()]) {
+    for (const selectedName of Array.from(selected.keys())) {
       if (!constraints.has(selectedName)) {
         selected.delete(selectedName);
         changed = true;
@@ -368,7 +369,7 @@ function stableStringify(value) {
   if (Array.isArray(value)) {
     return `[${value.map(stableStringify).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return `{${Object.keys(value)
       .filter((key) => value[key] !== undefined)
       .sort()

@@ -9,7 +9,7 @@ export class HostPlanningError extends Error {
     this.phase = phase;
     this.expected = expected;
     this.actual = actual;
-    this.details = details ?? {};
+    this.details = details ;
   }
 }
 
@@ -186,7 +186,7 @@ export function doctorHostCompatibility({
   registeredHosts = []
 }) {
   const current = pinHost(manifest.componentHost);
-  const lockIn = Object.keys(manifest.hostOptions ?? {}).map((option) => ({
+  const lockIn = Object.keys(manifest.hostOptions ).map((option) => ({
     code: "component_host.host-lock-in",
     option,
     reason: "manifest uses host-specific option"
@@ -288,7 +288,7 @@ function findVerifiedUpcaster(upcasters, current, target) {
     return sameHostVersion(from, current) &&
       sameHostVersion(to, target) &&
       upcaster.verified === true &&
-      typeof upcaster.apply === "function";
+      upcaster.apply instanceof Function;
   });
 }
 

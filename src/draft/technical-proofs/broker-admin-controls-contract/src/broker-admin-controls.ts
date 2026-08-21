@@ -394,6 +394,7 @@ export function validateBrokerAdminControlsContract(
 
   const owners = new Set(contract.operatingBoundaries?.map((boundary) => boundary.owner) ?? []);
   for (const owner of ["Admin Console", "Meta-cloud Broker", "Contracts, Policy & Governance", "Support Workflow"]) {
+    // SAFETY: assertion to `if (!owners.has(owner as OperatingBoundary["owner"])) {` is required at this boundary.
     if (!owners.has(owner as OperatingBoundary["owner"])) {
       errors.push(`missing operating boundary owner: ${owner}`);
     }

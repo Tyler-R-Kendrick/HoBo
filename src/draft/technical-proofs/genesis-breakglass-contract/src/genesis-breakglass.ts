@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 import {
   createHash,
   sign,
@@ -486,7 +487,7 @@ function canonicalize(value) {
     return `[${value.map((item) => canonicalize(item)).join(",")}]`;
   }
 
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return `{${Object.keys(value)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${canonicalize(value[key])}`)

@@ -1,6 +1,7 @@
+import { isJsonString, isJsonObject } from "./json.js";
 import { createHash } from "node:crypto";
-
 import {
+
   authoritativeContractFromRequest,
   validateGenRequest,
   validateGenerationEvent
@@ -293,7 +294,7 @@ function sha256Digest(bytes) {
 }
 
 function assertObject(value, code, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new ScaffoldContractError(code, path);
   }
 }
@@ -305,7 +306,7 @@ function assertEqual(actual, expected, code, path) {
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new ScaffoldContractError(code, path);
   }
 }

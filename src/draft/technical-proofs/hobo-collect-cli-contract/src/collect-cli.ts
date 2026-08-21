@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, resolve } from "node:path";
 
@@ -63,7 +64,7 @@ export async function executeCollect({ project, engine, request }) {
               fileName: context.fileName,
             }),
         }
-      : {}),
+      : undefined),
   });
   const status = collection.coverage.ok ? "complete" : "coverage-incomplete";
   const envelope = {
@@ -283,7 +284,7 @@ function toStableValue(value) {
   if (Array.isArray(value)) {
     return value.map(toStableValue);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(

@@ -1,6 +1,7 @@
+import { isJsonString, isJsonObject } from "./json.js";
 import { createHash } from "node:crypto";
-
 import {
+
   createIdentityEvent,
   foldCredentialAudit,
   validateIdentityEvent,
@@ -24,7 +25,7 @@ const IDENTITY_AUDIT_EVENT_PREFIXES = Object.freeze(["identity.", "token."]);
 
 export function isCredentialAuditSourceEvent(event) {
   return (
-    typeof event?.type === "string" &&
+    isJsonString(event?.type) &&
     IDENTITY_AUDIT_EVENT_PREFIXES.some((prefix) => event.type.startsWith(prefix))
   );
 }
@@ -215,7 +216,7 @@ export function assertRetentionFloorPreservesAuditEvents(streamId, events, optio
     log.append({
       streamId,
       type: event.type,
-      data: event.data ?? {},
+      data: event.data ,
       seq: event.seq,
       timestamp,
     });
@@ -396,7 +397,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.keys(value)
         .sort()

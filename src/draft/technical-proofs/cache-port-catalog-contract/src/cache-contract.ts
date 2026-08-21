@@ -60,12 +60,17 @@ export class SimDurableKv<V> {
  * Cache-aside read: serve from cache; on miss, recompute from the durable source and
  * populate. Correctness never depends on a hit — a cold or evicted cache just recomputes.
  */
+export interface CacheAsideResult<V> {
+	readonly value: V | undefined;
+	readonly hit: boolean;
+}
+
 export function cacheAside<V>(
 	cache: SimCache<V>,
 	key: string,
 	loadFromSource: () => V | undefined,
 	ttlTicks: number,
-): { value: V | undefined; hit: boolean } {
+): CacheAsideResult<V> {
 	const cached = cache.get(key);
 	if (cached !== MISS) return { value: cached, hit: true };
 	const fresh = loadFromSource();

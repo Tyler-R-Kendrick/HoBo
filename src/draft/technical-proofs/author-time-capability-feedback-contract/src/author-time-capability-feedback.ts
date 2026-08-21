@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const AUTHOR_TIME_CAPABILITY_FEEDBACK_SCHEMA = "hobo.author-time-capability-feedback/v1";
 
 const STRICTNESS = new Set(["require", "prefer"]);
@@ -205,7 +206,7 @@ function normalizeProviders(providers) {
 }
 
 function assertResource(resource) {
-  if (!resource || typeof resource !== "object" || Array.isArray(resource)) {
+  if (!resource || !isJsonObject(resource) || Array.isArray(resource)) {
     throw new Error("resource must be an object");
   }
   assertString(resource.id, "resource.id");
@@ -214,7 +215,7 @@ function assertResource(resource) {
 }
 
 function assertString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
 }

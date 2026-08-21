@@ -86,7 +86,23 @@ const MAX_CARS = 8;
 /** Keep the consist clear of the track ends. */
 const EDGE_MARGIN = 12;
 
-const CAR_VISUAL: Record<ResourceLifecycleWire, CarVisual> = {
+interface CarVisualByLifecycle {
+	provisioning: CarVisual;
+	provisioned: CarVisual;
+	failed: CarVisual;
+	destroying: CarVisual;
+	destroyed: CarVisual;
+}
+
+interface PhaseProgress {
+	assembling: number;
+	running: number;
+	arrived: number;
+	derailed: number;
+	backing: number;
+}
+
+const CAR_VISUAL: CarVisualByLifecycle = {
 	provisioning: "outline",
 	provisioned: "solid",
 	failed: "failed",
@@ -94,7 +110,7 @@ const CAR_VISUAL: Record<ResourceLifecycleWire, CarVisual> = {
 	destroyed: "ghost",
 };
 
-const PHASE_PROGRESS: Record<TrainPhase, number> = {
+const PHASE_PROGRESS: PhaseProgress = {
 	assembling: 0.06,
 	running: 0.5,
 	arrived: 0.94,

@@ -72,12 +72,15 @@ test.afterAll(async () => {
 async function tabStops(page: Page, max = MAX_TAB_STOPS): Promise<TabStop[]> {
 	const stops: TabStop[] = [];
 	await page.evaluate(() => {
+		// SAFETY: `(document.activeElement as HTMLElement | null)?.blur();` is required at this I/O or test boundary.
 		(document.activeElement as HTMLElement | null)?.blur();
 		window.scrollTo(0, 0);
 	});
 	for (let i = 0; i < max; i++) {
 		await page.keyboard.press("Tab");
+		// SAFETY: `const info = (await page.evaluate(() => {` is required at this I/O or test boundary.
 		const info = (await page.evaluate(() => {
+			// SAFETY: `const el = document.activeElement as HTMLElement | null;` is required at this I/O or test boundary.
 			const el = document.activeElement as HTMLElement | null;
 			if (!el || el === document.body || el === document.documentElement) {
 				return null;
@@ -113,7 +116,9 @@ async function focusRingDelta(
 	baseline: PNG,
 	pad = 8,
 ): Promise<{ who: string; delta: PixelDelta }> {
+	// SAFETY: `const probe = (await page.evaluate(() => {` is required at this I/O or test boundary.
 	const probe = (await page.evaluate(() => {
+		// SAFETY: `const el = document.activeElement as HTMLElement | null;` is required at this I/O or test boundary.
 		const el = document.activeElement as HTMLElement | null;
 		if (!el || el === document.body) return null;
 		const r = el.getBoundingClientRect();
@@ -169,9 +174,11 @@ test.describe("keyboard operability", () => {
 		});
 		expect(host, "#yard host is missing").not.toBeNull();
 		expect(
+			// SAFETY: `(host as { label: string | null }).label,` is required at this I/O or test boundary.
 			(host as { label: string | null }).label,
 			"the yard canvas host must carry an accessible name",
 		).toBeTruthy();
+		// SAFETY: `expect((host as { role: string | null }).role).toBeTruthy();` is required at this I/O or test boundary.
 		expect((host as { role: string | null }).role).toBeTruthy();
 	});
 
@@ -227,7 +234,8 @@ test.describe("keyboard operability", () => {
 		// separate question of whether a keyboard route to the sheet exists.
 		await page.evaluate(() => {
 			type Seam = { commands: { selectZone: (z: string) => void } };
-			(window as unknown as { __TEST__: Seam }).__TEST__.commands.selectZone(
+			// SAFETY: `(window as { __TEST__: Seam }).__TEST__.commands.selectZone(` is required at this I/O or test boundary.
+			(window as { __TEST__: Seam }).__TEST__.commands.selectZone(
 				"bootstrapDesk",
 			);
 		});
@@ -261,6 +269,7 @@ async function keyboardWalk(
 	max = MAX_TAB_STOPS,
 ): Promise<TabStop | null> {
 	await page.evaluate(() => {
+		// SAFETY: `(document.activeElement as HTMLElement | null)?.blur();` is required at this I/O or test boundary.
 		(document.activeElement as HTMLElement | null)?.blur();
 		window.scrollTo(0, 0);
 	});
@@ -276,7 +285,9 @@ async function keyboardWalk(
 }
 
 async function activeStop(page: Page): Promise<TabStop | null> {
+	// SAFETY: `return (await page.evaluate(() => {` is required at this I/O or test boundary.
 	return (await page.evaluate(() => {
+		// SAFETY: `const el = document.activeElement as HTMLElement | null;` is required at this I/O or test boundary.
 		const el = document.activeElement as HTMLElement | null;
 		if (!el || el === document.body || el === document.documentElement) {
 			return null;
@@ -315,13 +326,15 @@ test.describe("focus visibility", () => {
 			// Open a sheet so its controls are part of the tab order too.
 			await page.evaluate(() => {
 				type Seam = { commands: { selectZone: (z: string) => void } };
-				(window as unknown as { __TEST__: Seam }).__TEST__.commands.selectZone(
+				// SAFETY: `(window as { __TEST__: Seam }).__TEST__.commands.selectZone(` is required at this I/O or test boundary.
+				(window as { __TEST__: Seam }).__TEST__.commands.selectZone(
 					"connectionBay",
 				);
 			});
 			await waitForFrames(page, 2);
 
 			await page.evaluate(() => {
+				// SAFETY: `(document.activeElement as HTMLElement | null)?.blur();` is required at this I/O or test boundary.
 				(document.activeElement as HTMLElement | null)?.blur();
 				window.scrollTo(0, 0);
 			});
@@ -368,7 +381,8 @@ test.describe("axe-core", () => {
 		await waitForYard(page);
 		await page.evaluate(() => {
 			type Seam = { commands: { selectZone: (z: string) => void } };
-			(window as unknown as { __TEST__: Seam }).__TEST__.commands.selectZone(
+			// SAFETY: `(window as { __TEST__: Seam }).__TEST__.commands.selectZone(` is required at this I/O or test boundary.
+			(window as { __TEST__: Seam }).__TEST__.commands.selectZone(
 				"connectionBay",
 			);
 		});

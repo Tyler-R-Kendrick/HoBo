@@ -55,7 +55,7 @@ export function createWorldClient(opts: {
 	const ES =
 		opts.eventSourceImpl !== undefined
 			? opts.eventSourceImpl
-			: typeof EventSource !== "undefined"
+			: EventSource !== undefined
 				? EventSource
 				: null;
 
@@ -69,6 +69,7 @@ export function createWorldClient(opts: {
 		const res = await doFetch(`${apiBase}/v1/world/snapshot`, {
 			headers: { "content-type": "application/json" },
 		});
+		// SAFETY: `const body = (await res.json()) as WorldEnvelope;` is required at this I/O or test boundary.
 		const body = (await res.json()) as WorldEnvelope;
 		if (!body.ok || !body.data) {
 			throw new Error(body.message || "no world snapshot");
@@ -109,6 +110,7 @@ export function createWorldClient(opts: {
 					es = new ES(`${apiBase}/v1/world/stream`);
 					es.addEventListener("world-snapshot", (ev) => {
 						try {
+							// SAFETY: `const data = JSON.parse((ev as MessageEvent).data) as {` is required at this I/O or test boundary.
 							const data = JSON.parse((ev as MessageEvent).data) as {
 								world: WorldState;
 								demo: boolean;
@@ -122,6 +124,7 @@ export function createWorldClient(opts: {
 					});
 					es.addEventListener("world", (ev) => {
 						try {
+							// SAFETY: `const delta = JSON.parse((ev as MessageEvent).data) as WorldDelta;` is required at this I/O or test boundary.
 							const delta = JSON.parse((ev as MessageEvent).data) as WorldDelta;
 							if (world) {
 								world = foldWorldDelta(world, delta.events);

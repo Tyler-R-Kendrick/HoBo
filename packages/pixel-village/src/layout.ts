@@ -76,7 +76,47 @@ export type Layout = Readonly<{
 	trafficEmitter: Readonly<{ x: number; y: number; width: number }>;
 }>;
 
-const ZONE_LABEL: Record<ZoneId, string> = {
+export interface PixelPoint {
+	readonly x: number;
+	readonly y: number;
+}
+
+export interface PixelSize {
+	readonly width: number;
+	readonly height: number;
+}
+
+interface ZoneCopy {
+	platformRest: string;
+	bootstrapDesk: string;
+	activeRailTrack: string;
+	connectionBay: string;
+	policyBoard: string;
+	costBooth: string;
+	errorBunker: string;
+}
+
+interface ZoneDepth {
+	platformRest: number;
+	bootstrapDesk: number;
+	activeRailTrack: number;
+	connectionBay: number;
+	policyBoard: number;
+	costBooth: number;
+	errorBunker: number;
+}
+
+interface ZoneMap {
+	platformRest: ZoneLayout;
+	bootstrapDesk: ZoneLayout;
+	activeRailTrack: ZoneLayout;
+	connectionBay: ZoneLayout;
+	policyBoard: ZoneLayout;
+	costBooth: ZoneLayout;
+	errorBunker: ZoneLayout;
+}
+
+const ZONE_LABEL: ZoneCopy = {
 	platformRest: "Platform Rest",
 	bootstrapDesk: "Bootstrap Desk",
 	activeRailTrack: "Active Rail Track",
@@ -87,7 +127,7 @@ const ZONE_LABEL: Record<ZoneId, string> = {
 };
 
 /** Draw order hint only; hit-testing resolves overlaps by area, not by depth. */
-const ZONE_DEPTH: Record<ZoneId, number> = {
+const ZONE_DEPTH: ZoneDepth = {
 	platformRest: 10,
 	bootstrapDesk: 11,
 	activeRailTrack: 5,
@@ -122,7 +162,7 @@ function zoneFromTiles(id: ZoneId): ZoneLayout {
 	});
 }
 
-const ZONES: Record<ZoneId, ZoneLayout> = {
+const ZONES: ZoneMap = {
 	platformRest: zoneFromTiles("platformRest"),
 	bootstrapDesk: zoneFromTiles("bootstrapDesk"),
 	activeRailTrack: zoneFromTiles("activeRailTrack"),
@@ -209,7 +249,7 @@ export function zoneAt(x: number, y: number): ZoneId | null {
 	return hit?.id ?? null;
 }
 
-export function zoneAnchor(id: ZoneId): { x: number; y: number } {
+export function zoneAnchor(id: ZoneId): PixelPoint {
 	const z = YARD_LAYOUT.zones[id];
 	return { x: z.anchorX, y: z.anchorY };
 }

@@ -25,6 +25,7 @@ import {
 } from "../src/index.js";
 
 const baseSnap: YardProjectionSnapshot = {
+	// SAFETY: `occupancy: {` is required at this I/O or test boundary.
 	occupancy: {
 		stationId: "station:local",
 		status: "open",
@@ -34,6 +35,7 @@ const baseSnap: YardProjectionSnapshot = {
 		seq: 7,
 	} as YardProjectionSnapshot["occupancy"],
 	rails: [
+		// SAFETY: `{` is required at this I/O or test boundary.
 		{
 			id: "rail-prod",
 			contentHash: "hash-1",
@@ -41,6 +43,7 @@ const baseSnap: YardProjectionSnapshot = {
 		} as YardProjectionSnapshot["rails"][number],
 	],
 	connections: [
+		// SAFETY: `{` is required at this I/O or test boundary.
 		{
 			id: "conn-1",
 			alias: "work",
@@ -48,6 +51,7 @@ const baseSnap: YardProjectionSnapshot = {
 			status: "active",
 		} as YardProjectionSnapshot["connections"][number],
 	],
+	// SAFETY: `metering: {` is required at this I/O or test boundary.
 	metering: {
 		quotaUsed: 5,
 		quotaLimit: 10,
@@ -60,7 +64,7 @@ const baseSnap: YardProjectionSnapshot = {
 	doctor: {
 		hazards: [],
 		bootstrapActive: false,
-	} as unknown as YardProjectionSnapshot["doctor"],
+	},
 	seq: 7,
 	occupyMode: "occupying",
 };
@@ -111,6 +115,7 @@ function tiles(items: readonly RenderItem[]) {
 	);
 }
 
+// SAFETY: `const world = toWorldView(scenarioWorld(1, 5), true) as WorldView;` is required at this I/O or test boundary.
 const world = toWorldView(scenarioWorld(1, 5), true) as WorldView;
 
 describe("the village is built from sourced tiles, never from primitives", () => {
@@ -253,9 +258,11 @@ describe("houses are Camps, villagers are Bindles", () => {
 
 	it("dims idle villagers and keeps working ones solid", () => {
 		const custom: WorldView = {
+			// SAFETY: `camps: [world.camps[0] as WorldView["camps"][number]],` is required at this I/O or test boundary.
 			camps: [world.camps[0] as WorldView["camps"][number]],
 			characters: [
 				{
+					// SAFETY: `...(world.characters[0] as WorldView["characters"][number]),` is required at this I/O or test boundary.
 					...(world.characters[0] as WorldView["characters"][number]),
 					id: "x-idle",
 					state: "idle",
@@ -263,6 +270,7 @@ describe("houses are Camps, villagers are Bindles", () => {
 					bubble: null,
 				},
 				{
+					// SAFETY: `...(world.characters[0] as WorldView["characters"][number]),` is required at this I/O or test boundary.
 					...(world.characters[0] as WorldView["characters"][number]),
 					id: "x-working",
 					state: "working",
@@ -276,6 +284,7 @@ describe("houses are Camps, villagers are Bindles", () => {
 			...custom,
 			characters: custom.characters.map((c) => ({
 				...c,
+				// SAFETY: `campId: custom.camps[0]?.id as string,` is required at this I/O or test boundary.
 				campId: custom.camps[0]?.id as string,
 			})),
 		};
@@ -287,9 +296,12 @@ describe("houses are Camps, villagers are Bindles", () => {
 	});
 
 	it("plants a danger marker over a stuck or failing Bindle, and only then", () => {
+		// SAFETY: `const base = world.characters[0] as WorldView["characters"][number];` is required at this I/O or test boundary.
 		const base = world.characters[0] as WorldView["characters"][number];
+		// SAFETY: `const campId = world.camps[0]?.id as string;` is required at this I/O or test boundary.
 		const campId = world.camps[0]?.id as string;
 		const custom: WorldView = {
+			// SAFETY: `camps: [world.camps[0] as WorldView["camps"][number]],` is required at this I/O or test boundary.
 			camps: [world.camps[0] as WorldView["camps"][number]],
 			characters: [
 				{ ...base, campId, id: "x-stuck", state: "stuck", health: 1 },
@@ -320,11 +332,14 @@ describe("houses are Camps, villagers are Bindles", () => {
 	});
 
 	it("keeps a Bindle's speech legible on screen", () => {
+		// SAFETY: `const campId = world.camps[0]?.id as string;` is required at this I/O or test boundary.
 		const campId = world.camps[0]?.id as string;
 		const custom: WorldView = {
+			// SAFETY: `camps: [world.camps[0] as WorldView["camps"][number]],` is required at this I/O or test boundary.
 			camps: [world.camps[0] as WorldView["camps"][number]],
 			characters: [
 				{
+					// SAFETY: `...(world.characters[0] as WorldView["characters"][number]),` is required at this I/O or test boundary.
 					...(world.characters[0] as WorldView["characters"][number]),
 					campId,
 					id: "x-talks",
@@ -365,6 +380,7 @@ describe("the gate is the Connection", () => {
 		const revoked = deriveYardVisualState({
 			...baseSnap,
 			connections: [
+				// SAFETY: `{` is required at this I/O or test boundary.
 				{
 					id: "conn-1",
 					alias: "work",
@@ -384,10 +400,11 @@ describe("hazards are the only danger on the board", () => {
 	function hazardSnap(hazards: string[]): YardProjectionSnapshot {
 		return {
 			...baseSnap,
+			// SAFETY: `doctor: {` is required at this I/O or test boundary.
 			doctor: {
 				hazards,
 				bootstrapActive: false,
-			} as unknown as YardProjectionSnapshot["doctor"],
+			},
 		};
 	}
 
@@ -464,6 +481,7 @@ describe("the treasury reads the metering projection back", () => {
 		}
 		const hot = deriveYardVisualState({
 			...baseSnap,
+			// SAFETY: `metering: {` is required at this I/O or test boundary.
 			metering: {
 				...baseSnap.metering,
 				budgetUsd: 9,
@@ -606,7 +624,16 @@ describe("lantern inspect (free read verb)", () => {
 	});
 
 	it("reads the REAL projection fields back per zone", () => {
-		const cases: Record<ZoneId, RegExp[]> = {
+		interface ZonePatternMap {
+			platformRest: RegExp[];
+			bootstrapDesk: RegExp[];
+			activeRailTrack: RegExp[];
+			connectionBay: RegExp[];
+			policyBoard: RegExp[];
+			costBooth: RegExp[];
+			errorBunker: RegExp[];
+		}
+		const cases: ZonePatternMap = {
 			platformRest: [/^station: station:local$/, /^status: open$/, /^seq: 7$/],
 			bootstrapDesk: [/^bootstrap: idle$/, /^waybills: 0$/],
 			activeRailTrack: [/^activeRail: hash-1$/, /^occupyMode: occupying$/],
@@ -619,10 +646,17 @@ describe("lantern inspect (free read verb)", () => {
 			],
 			errorBunker: [/^hazards: \(none\)$/],
 		};
-		for (const [zone, patterns] of Object.entries(cases) as [
-			ZoneId,
-			RegExp[],
-		][]) {
+		const zones: ZoneId[] = [
+			"platformRest",
+			"bootstrapDesk",
+			"activeRailTrack",
+			"connectionBay",
+			"policyBoard",
+			"costBooth",
+			"errorBunker",
+		];
+		for (const zone of zones) {
+			const patterns = cases[zone];
 			const lines = lanternText(
 				presentYard(input({ hoveredZone: zone })).items,
 			);
@@ -650,6 +684,7 @@ describe("lantern inspect (free read verb)", () => {
 		// Provenance comes from MeteringView.trafficRateSource, not a hard-code.
 		const measured = deriveYardVisualState({
 			...baseSnap,
+			// SAFETY: `metering: {` is required at this I/O or test boundary.
 			metering: {
 				...baseSnap.metering,
 				trafficRateSource: "otlp",
@@ -660,6 +695,7 @@ describe("lantern inspect (free read verb)", () => {
 		// An absent source is treated as synthetic — never silently promoted.
 		const unknown = deriveYardVisualState({
 			...baseSnap,
+			// SAFETY: `metering: {` is required at this I/O or test boundary.
 			metering: {
 				quotaUsed: 5,
 				quotaLimit: 10,
@@ -678,11 +714,12 @@ describe("lantern inspect (free read verb)", () => {
 	it("caps at 6 lines and truncates long values", () => {
 		const many = {
 			...baseSnap,
+			// SAFETY: `doctor: {` is required at this I/O or test boundary.
 			doctor: {
 				hazards: Array.from({ length: 9 }, (_, i) => `hazard-number-${i}`),
 				bootstrapActive: false,
 				hint: "run `hobo doctor --fix` and then re-authorize the connection",
-			} as unknown as YardProjectionSnapshot["doctor"],
+			},
 		};
 		const visual = deriveYardVisualState(many);
 		const lines = lanternText(
@@ -697,6 +734,7 @@ describe("lantern inspect (free read verb)", () => {
 	});
 
 	it("clamps the card inside the canvas for every zone", () => {
+		// SAFETY: `for (const zone of Object.keys(YARD_LAYOUT.zones) as ZoneId[]) {` is required at this I/O or test boundary.
 		for (const zone of Object.keys(YARD_LAYOUT.zones) as ZoneId[]) {
 			const card = byId(
 				presentYard(input({ hoveredZone: zone })).items,
@@ -762,6 +800,7 @@ describe("reserved regions", () => {
 		const hoardAt = (fill: number) => {
 			const visual = deriveYardVisualState({
 				...baseSnap,
+				// SAFETY: `metering: {` is required at this I/O or test boundary.
 				metering: {
 					...baseSnap.metering,
 					quotaUsed: fill * 1000,

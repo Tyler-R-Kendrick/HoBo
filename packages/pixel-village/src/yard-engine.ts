@@ -63,8 +63,8 @@ export function createYardEngine(): YardEngine {
 		particles,
 		applySnapshot(snap, opts) {
 			const visual = deriveYardVisualState(snap, {
-				...(engine.selectedZone ? { selectedZone: engine.selectedZone } : {}),
-				...(opts?.recentSuccess ? { recentSuccess: true } : {}),
+				...(engine.selectedZone ? { selectedZone: engine.selectedZone } : undefined),
+				...(opts?.recentSuccess ? { recentSuccess: true } : undefined),
 			});
 			engine.visual = visual;
 			return visual;

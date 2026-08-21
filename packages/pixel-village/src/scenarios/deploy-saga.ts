@@ -33,7 +33,7 @@ export const deploySaga: YardScenario = Object.freeze({
 		const bootstrapActive = phase === 0;
 		return baseSnapshot({
 			occupancy: {
-				...(phase === 2 ? { activeRailHash: RAIL_HASH } : {}),
+				...(phase === 2 ? { activeRailHash: RAIL_HASH } : undefined),
 				bootstrapRailHash: BOOTSTRAP_HASH,
 				bootstrapActive,
 				connectionCount: 1,

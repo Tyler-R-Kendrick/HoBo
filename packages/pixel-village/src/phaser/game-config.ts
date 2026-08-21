@@ -3,6 +3,8 @@
  * Physics: none for control-yard (projection-driven, not a platformer).
  */
 import { YARD_HEIGHT, YARD_WIDTH } from "../layout.js";
+import { type JsonObject } from "../json.js";
+
 
 export type YardGameConfigOptions = Readonly<{
 	parent?: string | HTMLElement;
@@ -13,7 +15,7 @@ export type YardGameConfigOptions = Readonly<{
 
 export function yardPhaserConfig(
 	opts: YardGameConfigOptions = {},
-): Record<string, unknown> {
+): JsonObject {
 	return {
 		type: 0, // Phaser.AUTO at runtime
 		width: YARD_WIDTH,

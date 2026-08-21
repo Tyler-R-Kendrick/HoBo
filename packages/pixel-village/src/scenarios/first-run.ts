@@ -30,7 +30,7 @@ export const firstRun: YardScenario = Object.freeze({
 		return baseSnapshot({
 			occupancy: {
 				status: open ? "open" : "closed",
-				...(bootstrap ? { bootstrapRailHash: BOOTSTRAP_HASH } : {}),
+				...(bootstrap ? { bootstrapRailHash: BOOTSTRAP_HASH } : undefined),
 				bootstrapActive: bootstrap,
 				seq,
 			},

@@ -8,6 +8,8 @@ import type {
 	ManagementResult,
 	YardProjectionSnapshot,
 } from "@hobo/management";
+import { type JsonObject } from "../json.js";
+
 
 export type SheetKind =
 	| "connection.create"
@@ -225,17 +227,19 @@ export function sheetForDoctor(snap?: YardProjectionSnapshot): GenerativeSheet {
 	});
 }
 
+export interface ConnectionCreateInput {
+	provider: string;
+	alias?: string;
+	scopes?: string[];
+	stationId?: string;
+}
+
 export type SheetConfirmHandlers = Readonly<{
-	connectionCreate: (input: {
-		provider: string;
-		alias?: string;
-		scopes?: string[];
-		stationId?: string;
-	}) => ManagementResult;
+	connectionCreate: (input: ConnectionCreateInput) => ManagementResult;
 	connectionAuthorize: (input: { idOrAlias: string }) => ManagementResult;
 	stationRailsActivate: (input: { hashOrId: string }) => ManagementResult;
 	stationRailsApprove: (input: { hashOrId: string }) => ManagementResult;
-	stationRailsPublish: (input: Record<string, unknown>) => ManagementResult;
+	stationRailsPublish: (input: JsonObject) => ManagementResult;
 	doctorSnapshot: () => ManagementResult;
 }>;
 
@@ -247,12 +251,7 @@ export function confirmSheet(
 ): ManagementResult {
 	switch (sheet.confirmOp) {
 		case "connectionCreate": {
-			const input: {
-				provider: string;
-				alias?: string;
-				scopes?: string[];
-				stationId?: string;
-			} = {
+			const input: ConnectionCreateInput = {
 				provider: String(values.provider ?? ""),
 			};
 			if (values.alias !== undefined && String(values.alias).length > 0) {

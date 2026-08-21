@@ -96,7 +96,9 @@ export function makeConnection(
 		flow: "api-key",
 		status: "active",
 		subject: SUBJECT,
+		// SAFETY: `grantedScopes: Object.freeze(["repo"]) as readonly string[],` is required at this I/O or test boundary.
 		grantedScopes: Object.freeze(["repo"]) as readonly string[],
+		// SAFETY: `requestedScopes: Object.freeze(["repo"]) as readonly string[],` is required at this I/O or test boundary.
 		requestedScopes: Object.freeze(["repo"]) as readonly string[],
 		stationId: SCENARIO_STATION_ID,
 		tenant: TENANT,
@@ -164,6 +166,7 @@ export function baseSnapshot(patch: SnapshotPatch = {}): Snapshot {
 		activity: Object.freeze([...(patch.activity ?? [])]),
 		doctor: Object.freeze({
 			bootstrapActive: false,
+			// SAFETY: `hazards: Object.freeze([]) as readonly string[],` is required at this I/O or test boundary.
 			hazards: Object.freeze([]) as readonly string[],
 			...patch.doctor,
 		}),

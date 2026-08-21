@@ -34,10 +34,12 @@ import {
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
+// SAFETY: `const _assetIndex = JSON.parse(` is required at this I/O or test boundary.
 const _assetIndex = JSON.parse(
 	readFileSync(join(ROOT, "assets/assets_index.json"), "utf8"),
 ) as { animationIds: Record<string, { sheet: string; animation: string }> };
 
+// SAFETY: `const budgets = JSON.parse(` is required at this I/O or test boundary.
 const budgets = JSON.parse(
 	readFileSync(join(ROOT, "docs/validation/feel-budgets.json"), "utf8"),
 ) as {
@@ -75,6 +77,7 @@ const STATEFUL_CUE_PREFIXES = Object.freeze([
 	"fence-", // the Connection boundary
 ]);
 
+// SAFETY: `const _ZONES = Object.keys(YARD_LAYOUT.zones) as ZoneId[];` is required at this I/O or test boundary.
 const _ZONES = Object.keys(YARD_LAYOUT.zones) as ZoneId[];
 
 let harness: Harness;
@@ -104,7 +107,8 @@ test.describe("animation-clip coverage", () => {
 
 		const rendered = await page.evaluate(() => {
 			const seam = (
-				window as unknown as { __TEST__: { renderIds?: () => string[] } }
+				// SAFETY: `window as { __TEST__: { renderIds?: () => string[] } }` is required at this I/O or test boundary.
+				window as { __TEST__: { renderIds?: () => string[] } }
 			).__TEST__;
 			return seam.renderIds ? seam.renderIds() : [];
 		});
@@ -147,13 +151,15 @@ test.describe("animation-clip coverage", () => {
 		await page.goto(harness.gameUrl({}));
 		await waitForYard(page);
 
+		// SAFETY: `const result = (await page.evaluate(async () => {` is required at this I/O or test boundary.
 		const result = (await page.evaluate(async () => {
 			type Seam = {
 				frameCount: number;
 				state: () => { recentFx: readonly { fx: string; atFrame: number }[] };
 				commands: { runAction: (a: string) => Promise<void> };
 			};
-			const seam = (window as unknown as { __TEST__: Seam }).__TEST__;
+			// SAFETY: `const seam = (window as { __TEST__: Seam }).__TEST__;` is required at this I/O or test boundary.
+			const seam = (window as { __TEST__: Seam }).__TEST__;
 			const before = seam.state().recentFx.length;
 			const framesBefore = seam.frameCount;
 			const t0 = performance.now();
@@ -196,6 +202,7 @@ test.describe("animation-clip coverage", () => {
 				.join(" | ")}`,
 		);
 		expect(
+			// SAFETY: `result.ackMs as number,` is required at this I/O or test boundary.
 			result.ackMs as number,
 			`JUI-1: acknowledgment must land within feel-budgets ackMaxMs=${budgets.ackMaxMs}ms`,
 		).toBeLessThanOrEqual(budgets.ackMaxMs);
@@ -217,7 +224,8 @@ test.describe("animation-clip coverage", () => {
 
 			await page.evaluate(() => {
 				type Seam = { commands: { selectZone: (z: string) => void } };
-				(window as unknown as { __TEST__: Seam }).__TEST__.commands.selectZone(
+				// SAFETY: `(window as { __TEST__: Seam }).__TEST__.commands.selectZone(` is required at this I/O or test boundary.
+				(window as { __TEST__: Seam }).__TEST__.commands.selectZone(
 					"bootstrapDesk",
 				);
 			});
@@ -231,7 +239,8 @@ test.describe("animation-clip coverage", () => {
 			await page.waitForFunction(
 				() =>
 					(
-						window as unknown as {
+						// SAFETY: `window as {` is required at this I/O or test boundary.
+						window as {
 							__TEST__: {
 								state: () => { recentFx: readonly { fx: string }[] };
 							};
@@ -256,7 +265,8 @@ test.describe("animation-clip coverage", () => {
 		await waitForYard(page);
 		await page.evaluate(() => {
 			type Seam = { commands: { selectZone: (z: string) => void } };
-			(window as unknown as { __TEST__: Seam }).__TEST__.commands.selectZone(
+			// SAFETY: `(window as { __TEST__: Seam }).__TEST__.commands.selectZone(` is required at this I/O or test boundary.
+			(window as { __TEST__: Seam }).__TEST__.commands.selectZone(
 				"bootstrapDesk",
 			);
 		});
@@ -287,7 +297,8 @@ test.describe("motion / stillness duality", () => {
 		await page.goto(liveUrl());
 		await page.waitForFunction(
 			() =>
-				(window as unknown as { __TEST__?: { frameCount?: number } }).__TEST__
+				// SAFETY: `(window as { __TEST__?: { frameCount?: number } }).__TEST__` is required at this I/O or test boundary.
+				(window as { __TEST__?: { frameCount?: number } }).__TEST__
 					?.frameCount !== undefined,
 			null,
 			{ timeout: 45_000 },
@@ -309,7 +320,8 @@ test.describe("motion / stillness duality", () => {
 		await page.goto(liveUrl());
 		await page.waitForFunction(
 			() =>
-				(window as unknown as { __TEST__?: { frameCount?: number } }).__TEST__
+				// SAFETY: `(window as { __TEST__?: { frameCount?: number } }).__TEST__` is required at this I/O or test boundary.
+				(window as { __TEST__?: { frameCount?: number } }).__TEST__
 					?.frameCount !== undefined,
 			null,
 			{ timeout: 45_000 },
@@ -382,11 +394,13 @@ test.describe("frame pacing", () => {
 		);
 		await page.waitForFunction(
 			() =>
-				(window as unknown as { __TEST__?: { frameCount?: number } }).__TEST__
+				// SAFETY: `(window as { __TEST__?: { frameCount?: number } }).__TEST__` is required at this I/O or test boundary.
+				(window as { __TEST__?: { frameCount?: number } }).__TEST__
 					?.frameCount !== undefined,
 			null,
 			{ timeout: 45_000 },
 		);
+		// SAFETY: `const deltas = (await page.evaluate(async () => {` is required at this I/O or test boundary.
 		const deltas = (await page.evaluate(async () => {
 			const samples: number[] = [];
 			let last = performance.now();

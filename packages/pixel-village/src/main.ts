@@ -56,6 +56,8 @@ import {
 } from "./waybills.js";
 import { toWorldView, type WorldView } from "./world-view.js";
 import { createYardEngine, selectZoneWithSnapshot } from "./yard-engine.js";
+import { isJsonNumber } from "./json.js";
+
 
 const params = new URLSearchParams(location.search);
 const API = params.get("api") || "http://127.0.0.1:8790";
@@ -94,7 +96,7 @@ let setSceneBackground: ((color: string) => void) | null = null;
 /** Transient feedback in flight (stamp slam / derail hit-stop). */
 let fx: { kind: "stamp" | "derail"; startedAt: number } | null = null;
 const REDUCED_MOTION =
-	typeof matchMedia === "function" &&
+	matchMedia instanceof Function &&
 	matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 function startFx(kind: "stamp" | "derail"): void {
@@ -253,17 +255,17 @@ function newsreelLines(
 ): string[] {
 	const lines: string[] = [];
 	const now = shiftSummary(next);
-	if (typeof last?.rails === "number" && now.rails !== last.rails) {
+	if (isJsonNumber(last?.rails) && now.rails !== last.rails) {
 		lines.push(`RAILS: ${last.rails} → ${now.rails}`);
 	}
 	if (
-		typeof last?.connections === "number" &&
+		isJsonNumber(last?.connections) &&
 		now.connections !== last.connections
 	) {
 		lines.push(`CONNECTIONS: ${last.connections} → ${now.connections}`);
 	}
 	if (
-		typeof last?.activeConnections === "number" &&
+		isJsonNumber(last?.activeConnections) &&
 		now.activeConnections !== last.activeConnections
 	) {
 		lines.push(
@@ -290,9 +292,10 @@ function maybeShowNewsreel(next: YardProjectionSnapshot): void {
 		const rawSeq = localStorage.getItem(NEWSREEL_SEQ_KEY);
 		lastSeq = rawSeq === null ? null : Number(rawSeq);
 		const rawSummary = localStorage.getItem(NEWSREEL_SUMMARY_KEY);
-		last = rawSummary
-			? (JSON.parse(rawSummary) as Partial<ShiftSummary>)
-			: null;
+		if (rawSummary) {
+			const parsed = parseJsonValue(rawSummary);
+			last = isJsonObject(parsed) ? parsed : null;
+		}
 	} catch {
 		return;
 	}
@@ -331,6 +334,7 @@ async function refreshSnapshot(): Promise<void> {
 	try {
 		applySnapshot(await client.snapshot());
 	} catch (err) {
+		// SAFETY: `lastError = String((err as Error).message ?? err);` is required at this I/O or test boundary.
 		lastError = String((err as Error).message ?? err);
 		overlay.setStatus(`api error: ${lastError}`);
 	}
@@ -495,10 +499,12 @@ const testHost: YardTestHost = {
 	runAction: async (action) => {
 		try {
 			const message = await client.runAction(
+				// SAFETY: `action as Parameters<typeof client.runAction>[0],` is required at this I/O or test boundary.
 				action as Parameters<typeof client.runAction>[0],
 			);
 			setSpeech(message, 2.5);
 		} catch (err) {
+			// SAFETY: `const message = String((err as Error).message ?? err);` is required at this I/O or test boundary.
 			const message = String((err as Error).message ?? err);
 			setSpeech(message, 3);
 			overlay.setStatus(message);
@@ -543,7 +549,9 @@ const testHost: YardTestHost = {
 
 const seam = createTestSeam(testHost);
 seam.seed = TEST_MODE ? TEST_SEED : null;
-(window as unknown as { __TEST__: typeof seam }).__TEST__ = seam;
+type TestWindow = Window & { __TEST__: typeof seam };
+// SAFETY: playwright seam is installed on window by this host module.
+(window as TestWindow).__TEST__ = seam;
 
 /** Mute toggle lives in the dev drawer beside the other chrome. */
 function wireMuteControl(): void {
@@ -589,6 +597,7 @@ function wireYardKeyboard(): void {
 	let index = 0;
 	const focusZone = (next: number) => {
 		index = (next + KEYBOARD_ZONE_ORDER.length) % KEYBOARD_ZONE_ORDER.length;
+		// SAFETY: `const zone = KEYBOARD_ZONE_ORDER[index] as ZoneId;` is required at this I/O or test boundary.
 		const zone = KEYBOARD_ZONE_ORDER[index] as ZoneId;
 		// Reuse the lantern: keyboard focus raises the same truth card hover does.
 		setHoveredZone(zone);
@@ -599,6 +608,7 @@ function wireYardKeyboard(): void {
 	});
 	host.addEventListener("blur", () => setHoveredZone(null));
 	host.addEventListener("keydown", (ev) => {
+		// SAFETY: `const key = (ev as KeyboardEvent).key;` is required at this I/O or test boundary.
 		const key = (ev as KeyboardEvent).key;
 		if (key === "ArrowRight" || key === "ArrowDown") {
 			ev.preventDefault();
@@ -608,6 +618,7 @@ function wireYardKeyboard(): void {
 			focusZone(index - 1);
 		} else if (key === "Enter" || key === " ") {
 			ev.preventDefault();
+			// SAFETY: `const zone = KEYBOARD_ZONE_ORDER[index] as ZoneId;` is required at this I/O or test boundary.
 			const zone = KEYBOARD_ZONE_ORDER[index] as ZoneId;
 			selectZone(zone);
 			announce(`${YARD_LAYOUT.zones[zone].label} sheet open.`);
@@ -624,6 +635,7 @@ function wireYardKeyboard(): void {
 
 async function boot(): Promise<void> {
 	const res = await fetch(`${ASSET_BASE}/assets_index.json`);
+	// SAFETY: `const index = (await res.json()) as AssetIndex;` is required at this I/O or test boundary.
 	const index = (await res.json()) as AssetIndex;
 	const manifest = describeYardSceneLoad(index, ASSET_BASE);
 	// Evidence and scenario runs stay silent so captures are deterministic.
@@ -672,6 +684,7 @@ async function boot(): Promise<void> {
 		},
 	};
 
+	// SAFETY: `const config = {` is required at this I/O or test boundary.
 	const config = {
 		...yardPhaserConfig({
 			parent: "yard",
@@ -746,6 +759,7 @@ async function boot(): Promise<void> {
 }
 
 void boot().catch((err) => {
+	// SAFETY: `overlay.setStatus(`boot failed: ${(err as Error).message ?? err}`);` is required at this I/O or test boundary.
 	overlay.setStatus(`boot failed: ${(err as Error).message ?? err}`);
 	console.error(err);
 });

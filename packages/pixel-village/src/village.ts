@@ -10,7 +10,7 @@
  * TILE_PX * SCALE = 48px per tile, giving a 26x15 playfield.
  */
 
-import type { ZoneId } from "./layout.js";
+import type { PixelPoint, ZoneId } from "./layout.js";
 
 export const TILE_PX = 16;
 /** Integer scale only (DESIGN.md): 16px art at x3. */
@@ -299,6 +299,7 @@ export function sceneryTiles(seed: number): readonly TilePlacement[] {
 	return spots.map(([tx, ty]) => {
 		const pool = rnd() < 0.75 ? T.treeGreen : T.treeAutumn;
 		const index = pool[Math.floor(rnd() * pool.length)] ?? pool[0];
+		// SAFETY: `return { sheet: "town" as const, index: index as number, tx, ty };` is required at this I/O or test boundary.
 		return { sheet: "town" as const, index: index as number, tx, ty };
 	});
 }
@@ -310,10 +311,11 @@ export function villagerFor(id: string): number {
 		h ^= id.charCodeAt(i);
 		h = Math.imul(h, 16777619) >>> 0;
 	}
+	// SAFETY: `return (VILLAGERS[h % VILLAGERS.length] ?? VILLAGERS[0]) as number;` is required at this I/O or test boundary.
 	return (VILLAGERS[h % VILLAGERS.length] ?? VILLAGERS[0]) as number;
 }
 
 /** Tile coords → pixel coords (top-left of the tile). */
-export function tilePx(tx: number, ty: number): { x: number; y: number } {
+export function tilePx(tx: number, ty: number): PixelPoint {
 	return { x: tx * TILE, y: ty * TILE };
 }

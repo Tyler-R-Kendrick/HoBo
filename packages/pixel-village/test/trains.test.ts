@@ -86,6 +86,7 @@ describe("train traffic", () => {
 	it("keeps a long consist inside the rail track bounds in every phase", () => {
 		const track = YARD_LAYOUT.zones.activeRailTrack;
 		// A wide deployment must not trail cars off the west end of the rail.
+		// SAFETY: `const resources = Object.fromEntries(` is required at this I/O or test boundary.
 		const resources = Object.fromEntries(
 			Array.from({ length: 8 }, (_, i) => [`svc/r${i}`, "provisioned"]),
 		) as Record<string, "provisioned">;

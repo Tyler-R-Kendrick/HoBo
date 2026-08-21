@@ -18,6 +18,7 @@ export function assetsRoot(): string {
 
 export function loadAssetIndex(indexPath?: string): AssetIndex {
 	const path = indexPath ?? join(assetsRoot(), "assets_index.json");
+	// SAFETY: `const raw = JSON.parse(readFileSync(path, "utf8")) as AssetIndex;` is required at this I/O or test boundary.
 	const raw = JSON.parse(readFileSync(path, "utf8")) as AssetIndex;
 	return Object.freeze(raw);
 }

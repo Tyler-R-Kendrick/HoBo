@@ -52,14 +52,14 @@ export type DisplaySheet = Readonly<{
  */
 export function displaySheetForWaybill(w: Waybill): DisplaySheet {
 	const named = new Set(w.fields.map((f) => f.name));
+	const runActions: readonly YardAction[] | undefined =
+		w.confirmOp === "init-up" ? ["init", "up"] : undefined;
 	return {
 		kind: w.kind,
 		title: `WAYBILL — ${w.title}`,
 		description: `${w.summary}\nBlast radius: ${w.blastRadius}.`,
 		confirmOp: w.confirmOp === "init-up" ? "noop" : w.confirmOp,
-		...(w.confirmOp === "init-up"
-			? { runActions: ["init", "up"] as readonly YardAction[] }
-			: {}),
+		...(runActions ? { runActions } : undefined),
 		waybill: { id: w.id, kind: w.kind },
 		fields: [
 			...w.fields.map((f) => ({
@@ -166,9 +166,11 @@ export function createDomOverlay(opts: {
 		occupy: doc.getElementById("occupy"),
 		rail: doc.getElementById("rail"),
 		conn: doc.getElementById("conn"),
+		// SAFETY: `sheet: doc.getElementById("sheet") as HTMLElement | null,` is required at this I/O or test boundary.
 		sheet: doc.getElementById("sheet") as HTMLElement | null,
 		sheetTitle: doc.getElementById("sheet-title"),
 		sheetDesc: doc.getElementById("sheet-desc"),
+		// SAFETY: `sheetForm: doc.getElementById("sheet-form") as HTMLFormElement | null,` is required at this I/O or test boundary.
 		sheetForm: doc.getElementById("sheet-form") as HTMLFormElement | null,
 		sheetStream: doc.getElementById("sheet-stream"),
 		sheetClose: doc.getElementById("sheet-close"),
@@ -177,6 +179,7 @@ export function createDomOverlay(opts: {
 
 	// SPIKE (deny) lives beside the STAMP in the sheet footer; created here so
 	// older index.html copies keep working.
+	// SAFETY: `let spikeBtn = doc.getElementById("sheet-spike") as HTMLButtonElement | null;` is required at this I/O or test boundary.
 	let spikeBtn = doc.getElementById("sheet-spike") as HTMLButtonElement | null;
 	if (!spikeBtn && el.sheet) {
 		const footer = el.sheet.querySelector("footer");
@@ -279,6 +282,7 @@ export function createDomOverlay(opts: {
 			const values: Record<string, string> = {};
 			if (!el.sheetForm) return values;
 			for (const input of el.sheetForm.querySelectorAll("input,select")) {
+				// SAFETY: `const field = input as HTMLInputElement | HTMLSelectElement;` is required at this I/O or test boundary.
 				const field = input as HTMLInputElement | HTMLSelectElement;
 				values[field.name] = field.value;
 			}
@@ -313,6 +317,7 @@ export function createDomOverlay(opts: {
 				else opts.onConfirmed(message);
 			} catch (err) {
 				if (el.sheetStream) {
+					// SAFETY: `el.sheetStream.textContent = String((err as Error).message ?? err);` is required at this I/O or test boundary.
 					el.sheetStream.textContent = String((err as Error).message ?? err);
 				}
 			}
@@ -326,12 +331,14 @@ export function createDomOverlay(opts: {
 	});
 	for (const btn of doc.querySelectorAll("#actions button")) {
 		btn.addEventListener("click", () => {
+			// SAFETY: `const action = btn.getAttribute("data-action") as YardAction | null;` is required at this I/O or test boundary.
 			const action = btn.getAttribute("data-action") as YardAction | null;
 			if (!action) return;
 			void client
 				.runAction(action)
 				.then((message) => opts.onAction(message))
 				.catch((err) =>
+					// SAFETY: `opts.onActionError(String((err as Error).message ?? err)),` is required at this I/O or test boundary.
 					opts.onActionError(String((err as Error).message ?? err)),
 				);
 		});

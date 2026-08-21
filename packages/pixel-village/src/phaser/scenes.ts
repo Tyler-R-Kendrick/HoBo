@@ -5,13 +5,13 @@
  * Only main.ts instantiates Phaser.Game.
  */
 import Phaser from "phaser";
-import { YARD_LAYOUT, type ZoneId, zoneAt } from "../layout.js";
+import { YARD_LAYOUT, type ZoneId, zoneAt , type PixelSize } from "../layout.js";
 import {
 	applyLoadManifest,
 	registerAnimations,
 	type YardLoadManifest,
 } from "../scenes/yard-scene.js";
-import type { RenderItem, RenderModel, TextStyleId } from "./yard-presenter.js";
+import type { RenderItem, RenderModel } from "./yard-presenter.js";
 
 export type YardHost = {
 	manifest: YardLoadManifest;
@@ -25,10 +25,15 @@ export type YardHost = {
 	onFrame: () => void;
 };
 
-const TEXT_STYLES: Record<
-	TextStyleId,
-	Phaser.Types.GameObjects.Text.TextStyle
-> = {
+interface TextStyleMap {
+	label: Phaser.Types.GameObjects.Text.TextStyle;
+	caption: Phaser.Types.GameObjects.Text.TextStyle;
+	mono9: Phaser.Types.GameObjects.Text.TextStyle;
+	mono11: Phaser.Types.GameObjects.Text.TextStyle;
+	mono12: Phaser.Types.GameObjects.Text.TextStyle;
+}
+
+const TEXT_STYLES: TextStyleMap = {
 	label: {
 		fontFamily: "system-ui, sans-serif",
 		fontSize: "11px",
@@ -130,12 +135,14 @@ export class YardScene extends Phaser.Scene {
 			this.objects.set(item.id, this.build(item));
 			this.signatures.set(item.id, sig);
 		}
-		for (const [id, obj] of [...this.objects]) {
-			if (!seen.has(id)) {
-				obj.destroy();
-				this.objects.delete(id);
-				this.signatures.delete(id);
-			}
+		const stale: string[] = [];
+		for (const id of this.objects.keys()) {
+			if (!seen.has(id)) stale.push(id);
+		}
+		for (const id of stale) {
+			this.objects.get(id)?.destroy();
+			this.objects.delete(id);
+			this.signatures.delete(id);
 		}
 	}
 
@@ -206,6 +213,6 @@ function signature(item: RenderItem): string {
 	return JSON.stringify(item);
 }
 
-export function yardParentAspect(): { width: number; height: number } {
+export function yardParentAspect(): PixelSize {
 	return { width: YARD_LAYOUT.width, height: YARD_LAYOUT.height };
 }

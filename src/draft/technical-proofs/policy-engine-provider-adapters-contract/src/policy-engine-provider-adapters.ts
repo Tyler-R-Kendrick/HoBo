@@ -19,6 +19,8 @@ import {
   createDecision,
   createDecisionRequest,
 } from "../../hobo-policy-ir-contract/src/policy-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const OPA_REGO_POLICY_ENGINE_ID = "hobo.policy-engine/provider-opa-rego@0.1.0";
 export const CEDAR_POLICY_ENGINE_ID = "hobo.policy-engine/provider-cedar@0.1.0";
@@ -56,7 +58,7 @@ export function mapDecisionRequestToCedarRequest(requestInput) {
       id: request.subject.id,
       roles: structuredClone(request.subject.roles ?? []),
       scopes: structuredClone(request.subject.scopes ?? []),
-      ...(request.subject.delegatedBy === undefined ? {} : { delegatedBy: request.subject.delegatedBy }),
+      ...(request.subject.delegatedBy === undefined ? undefined : { delegatedBy: request.subject.delegatedBy }),
     },
     action: {
       id: request.action,
@@ -463,7 +465,7 @@ function evaluateAdapterPolicy({
         continue;
       }
       const partial = policy.decide(context);
-      if (!partial || typeof partial !== "object" || Array.isArray(partial)) {
+      if (!partial || !isJsonObject(partial) || Array.isArray(partial)) {
         return policyFailureDecision({ engineId, request, policy, dialectLabel, violation: "decision must be an object" });
       }
       if (!EFFECT_RANK.has(partial.effect)) {
@@ -510,7 +512,7 @@ function evaluateAdapterPolicy({
 
 function compileAdapterRuleset(ruleset, { policyField, dialect }) {
   const errors = [];
-  if (!ruleset || typeof ruleset !== "object" || Array.isArray(ruleset)) {
+  if (!ruleset || !isJsonObject(ruleset) || Array.isArray(ruleset)) {
     return { ok: false, errors: ["ruleset must be an object"], policies: [], policyPacks: [] };
   }
   if (ruleset.schemaVersion !== POLICY_RULESET_SCHEMA_VERSION) {
@@ -546,7 +548,7 @@ function compileAdapterRuleset(ruleset, { policyField, dialect }) {
 function validatePolicies(policies, dialect, errors) {
   const ids = new Set();
   for (const policy of policies) {
-    if (!policy || typeof policy !== "object" || Array.isArray(policy)) {
+    if (!policy || !isJsonObject(policy) || Array.isArray(policy)) {
       errors.push(`${dialect} policy must be an object`);
       continue;
     }
@@ -560,13 +562,13 @@ function validatePolicies(policies, dialect, errors) {
     } else {
       ids.add(policy.id);
     }
-    if (dialect === "opa-rego" && typeof policy.match !== "function") {
+    if (dialect === "opa-rego" && !(policy.match instanceof Function)) {
       errors.push(`${policy.id ?? "opa-rego"}: match must be a function`);
     }
-    if (dialect === "cedar" && typeof policy.when !== "function") {
+    if (dialect === "cedar" && !(policy.when instanceof Function)) {
       errors.push(`${policy.id ?? "cedar"}: when must be a function`);
     }
-    if (typeof policy.decide !== "function") {
+    if (!(policy.decide instanceof Function)) {
       errors.push(`${policy.id ?? dialect}: decide must be a function`);
     }
   }
@@ -671,5 +673,5 @@ function safeJson(value) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }

@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const IAC_STATE_MODEL_VERSION = "hobo.iac-state-model/v1";
 
 const DEFAULT_TENANT_ID = "tenant-acme";
@@ -317,7 +318,7 @@ function ensureLease(lease, stackKey) {
 }
 
 function safeSegment(value) {
-  if (typeof value !== "string" || !/^[A-Za-z0-9._-]+$/.test(value)) {
+  if (!isJsonString(value) || !/^[A-Za-z0-9._-]+$/.test(value)) {
     throw new IacStateModelError("invalid-stack-key-segment", `invalid stack key segment ${value}`);
   }
 
@@ -328,7 +329,7 @@ function stableJson(value) {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableJson(item)).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return `{${Object.keys(value)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
@@ -339,7 +340,7 @@ function stableJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 

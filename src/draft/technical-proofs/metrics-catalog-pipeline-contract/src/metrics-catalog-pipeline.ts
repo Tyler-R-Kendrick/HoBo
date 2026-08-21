@@ -198,7 +198,7 @@ export function createMetricPipeline({ catalog = METRICS_CATALOG, collector } = 
   function recordServiceRequest({
     service,
     routeTemplate,
-    route,
+    route: _route,
     method,
     statusCode,
     durationMs,
@@ -383,7 +383,7 @@ function seriesKey(name, labels) {
 function emptyHistogram(buckets) {
   return {
     buckets: [...buckets],
-    counts: new Array(buckets.length).fill(0),
+    counts: Array.from({ length: buckets.length }, () => 0),
     count: 0,
     sum: 0,
   };

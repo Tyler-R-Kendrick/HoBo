@@ -1,5 +1,7 @@
 import { parseDescriptor } from "../../registry-artifact-descriptor-contract/src/registry-descriptor.js";
 import { verifyInstallCandidate } from "../../signed-artifact-publish-install-contract/src/publish-install-contract.js";
+import { isJsonObject } from "./json.js";
+
 
 export const HOBO_ADD_INSTALL_CONTRACT = "hobo.add.install-verification/v1";
 
@@ -95,7 +97,7 @@ export function hoboAdd({
 function preflightReasons({ descriptor, candidate }) {
   const reasons = [];
 
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     return ["candidate.required"];
   }
 
@@ -121,10 +123,10 @@ function preflightReasons({ descriptor, candidate }) {
 }
 
 function ensureInstallDoesNotSelect({ considerCost, considerMirrors }) {
-  if (considerCost !== undefined && typeof considerCost !== "function") {
+  if (considerCost !== undefined && !(considerCost instanceof Function)) {
     throw new TypeError("considerCost must be a function when provided");
   }
-  if (considerMirrors !== undefined && typeof considerMirrors !== "function") {
+  if (considerMirrors !== undefined && !(considerMirrors instanceof Function)) {
     throw new TypeError("considerMirrors must be a function when provided");
   }
 }

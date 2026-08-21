@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const genRequestSchema = "hobo.gen.request/v1";
 const genResultSchema = "hobo.gen.result/v1";
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
@@ -384,7 +385,7 @@ function assertFailingAssertions(assertions) {
   if (
     !Array.isArray(assertions) ||
     assertions.length === 0 ||
-    !assertions.every((assertion) => typeof assertion === "string" && assertion.length > 0)
+    !assertions.every((assertion) => isJsonString(assertion) && assertion.length > 0)
   ) {
     throw new GenerationContractError("gen.event.failing_assertions", "$.data.failingAssertions");
   }
@@ -395,7 +396,7 @@ function unionStrings(left, right) {
 }
 
 function assertObject(value, code, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new GenerationContractError(code, path);
   }
 }
@@ -407,7 +408,7 @@ function assertEqual(actual, expected, code, path) {
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new GenerationContractError(code, path);
   }
 }

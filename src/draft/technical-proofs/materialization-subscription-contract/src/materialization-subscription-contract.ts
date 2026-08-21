@@ -1,4 +1,6 @@
 import crypto from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const subscriptionEventTypes = new Set([
   "subscription.Opened",
@@ -200,7 +202,7 @@ export function normalizeReadSet(readSet) {
   const members = new Map();
 
   for (const member of readSet) {
-    if (!member || typeof member !== "object") {
+    if (!member || !isJsonObject(member)) {
       throw new Error("readSet member must be an object");
     }
     assertNonEmpty(member.kind, "readSet.kind");
@@ -218,7 +220,7 @@ export function hashReadSet(readSet) {
 }
 
 function normalizeSeqVector(seq) {
-  if (!seq || typeof seq !== "object" || Array.isArray(seq)) {
+  if (!seq || !isJsonObject(seq) || Array.isArray(seq)) {
     throw new Error("seq vector must be an object");
   }
 
@@ -234,7 +236,7 @@ function normalizeSeqVector(seq) {
 }
 
 function assertNonEmpty(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
 }

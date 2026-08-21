@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const HOBO_LOGS_CLI_CONTRACT_VERSION = "hobo.logs-cli/v1";
 
 export class LogsCliError extends Error {
@@ -9,7 +10,7 @@ export class LogsCliError extends Error {
 }
 
 export function createHoboLogsCli({ streamer }) {
-  if (!streamer || typeof streamer.openLogStream !== "function") {
+  if (!streamer || !(streamer.openLogStream instanceof Function)) {
     throw new TypeError("logs CLI requires a Streamer-backed log source");
   }
 
@@ -368,7 +369,7 @@ function normalizeLevel(level) {
 }
 
 function normalizeString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new LogsCliError(`${label} must be a non-empty string.`, 2);
   }
   return value;
@@ -378,7 +379,7 @@ function clone(value) {
   if (Array.isArray(value)) {
     return value.map(clone);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, clone(child)]));
   }
   return value;

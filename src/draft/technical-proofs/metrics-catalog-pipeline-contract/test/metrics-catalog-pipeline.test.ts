@@ -6,6 +6,7 @@ import {
   createMetricPipeline,
   createMockOtlpCollector,
 } from "../src/metrics-catalog-pipeline.js";
+import { isJsonString } from "../src/json.js";
 
 const names = (records) => records.map((record) => record.name).sort();
 
@@ -28,7 +29,7 @@ describe("metrics catalog pipeline contract", () => {
     );
 
     for (const [metricName, definition] of Object.entries(METRICS_CATALOG)) {
-      assert.equal(typeof definition.unit, "string", `${metricName} unit`);
+      assert.equal(isJsonString(definition.unit), true, `${metricName} unit`);
       assert.match(definition.type, /^(counter|gauge|histogram)$/);
       assert.ok(Array.isArray(definition.labels), `${metricName} labels`);
       for (const label of definition.labels) {

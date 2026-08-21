@@ -3,13 +3,7 @@
  * Normalizes Cloud Run / VPC signals into yard.* facts.
  */
 
-type JsonValue =
-	| null
-	| boolean
-	| number
-	| string
-	| readonly JsonValue[]
-	| Readonly<{ readonly [key: string]: JsonValue }>;
+import { isJsonArray, type JsonObject } from "./json.js";
 
 // public-contract: the event-store fold this provider is addressed by. Stored
 // events name the resolver that produced them, so a rename orphans every fact
@@ -19,13 +13,13 @@ export const GCP_EVENT_STORE_RESOLVER_ID = "gcp.yard.event-store/v1" as const;
 export interface GcpProviderNativeSignal {
 	readonly providerId: "gcp";
 	readonly kind: string;
-	readonly payload: Readonly<Record<string, JsonValue>>;
+	readonly payload: JsonObject;
 	readonly observedAt?: string;
 }
 
 export interface GcpYardEvent {
 	readonly type: string;
-	readonly data: Readonly<Record<string, unknown>>;
+	readonly data: JsonObject;
 	readonly occurredAt?: string;
 }
 
@@ -154,9 +148,7 @@ export function gcpEventStoreFoldDescriptor() {
 	});
 }
 
-function gcpYardFromPayload(
-	p: Readonly<Record<string, JsonValue>>,
-): Record<string, unknown> {
+function gcpYardFromPayload(p: JsonObject) {
 	const yardId = String(p.yardId ?? p.serviceName ?? "yard:gcp");
 	const now = new Date().toISOString();
 	return {
@@ -165,11 +157,9 @@ function gcpYardFromPayload(
 		ownerTenantId: String(p.ownerTenantId ?? "local"),
 		providerId: "gcp",
 		runtimeId: String(p.runtimeId ?? "gcp.yard-runtime/v1"),
-		shape: {
+		layout: {
 			providerId: "gcp",
-			regions: Array.isArray(p.regions)
-				? p.regions.map(String)
-				: ["us-central1"],
+			regions: isJsonArray(p.regions) ? p.regions.map(String) : ["us-central1"],
 			require: ["managed-container-substrate", "private-network"],
 			prefer: [],
 			residency: [],
@@ -178,7 +168,7 @@ function gcpYardFromPayload(
 			componentHosts: [],
 			labels: {},
 			properties: {
-				...(p.projectRef ? { "gcp.projectRef": p.projectRef } : {}),
+				...(p.projectRef ? { "gcp.projectRef": p.projectRef } : undefined),
 			},
 			camps: [],
 		},

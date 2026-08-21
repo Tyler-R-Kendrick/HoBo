@@ -8,6 +8,12 @@ import {
 	GCP_TRAFFIC_ROUTING_PROFILE,
 	parsePublishedManifest,
 } from "../src/index.js";
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	parseJsonValue,
+} from "../src/json.js";
 
 function capabilityFor(port: string) {
 	const provider = createGcpProvider();
@@ -99,19 +105,27 @@ describe("capabilityManifest: published well-known bundle", () => {
 	it("advertises all six equivalence-class capabilities with regions", () => {
 		const provider = createGcpProvider({ regions: ["asia-northeast1"] });
 		const manifest = provider.capabilityManifest();
-		const capabilities = (
-			manifest.capabilities as { capabilities: Array<Record<string, unknown>> }
-		).capabilities;
+		const decoded = parseJsonValue(JSON.stringify(manifest.capabilities));
+		if (!isJsonObject(decoded) || !isJsonArray(decoded.capabilities)) {
+			throw new Error("expected a capabilities list");
+		}
+		const capabilities = decoded.capabilities;
 		assert.equal(capabilities.length, 6);
-		assert.deepEqual(capabilities.map((c) => c.port).sort(), [
-			"cache",
-			"compute",
-			"database",
-			"kv",
-			"objectStore",
-			"queue",
-		]);
+		assert.deepEqual(
+			capabilities
+				.map((entry) => {
+					if (!isJsonObject(entry) || !isJsonString(entry.port)) {
+						throw new Error("expected a capability port");
+					}
+					return entry.port;
+				})
+				.sort(),
+			["cache", "compute", "database", "kv", "objectStore", "queue"],
+		);
 		for (const capability of capabilities) {
+			if (!isJsonObject(capability)) {
+				throw new Error("expected a capability");
+			}
 			assert.deepEqual(capability.regions, ["asia-northeast1"]);
 		}
 	});

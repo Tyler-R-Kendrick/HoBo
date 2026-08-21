@@ -3,6 +3,8 @@ import type {
   ResourceDefinition,
   ResourceDefinitionInput
 } from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.d.mjs";
+import { type JsonObject } from "./json.js";
+
 
 export type CampMappingSugarVersion = "hobo.camp-mapping-sugar/v1";
 
@@ -26,16 +28,20 @@ export type ProviderTarget =
       className?: string;
       class?: string;
       paradigm?: string;
-      with?: Record<string, unknown>;
-      options?: Record<string, unknown>;
+      with?: JsonObject;
+      options?: JsonObject;
       priority?: number;
-      coProvisioned?: Array<Record<string, unknown>>;
+      coProvisioned?: Array<JsonObject>;
     };
+
+export interface NamedProviderTargets {
+  readonly [name: string]: ProviderTarget;
+}
 
 export type CampMapping = {
   defaultProvider?: ProviderTarget;
-  tiers?: Record<string, ProviderTarget>;
-  bindings?: Record<string, ProviderTarget>;
+  tiers?: NamedProviderTargets;
+  bindings?: NamedProviderTargets;
 };
 
 export type CompiledDefinitionSource = {

@@ -1,4 +1,12 @@
 import { createHash } from "node:crypto";
+import {
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonBag,
+	type JsonValue,
+} from "./json.js";
 
 export const POLICY_IR_SCHEMA_VERSION = "hobo.policy-ir/v1";
 export const POLICY_DECIDED_EVENT_TYPE = "policy.Decided";
@@ -41,6 +49,14 @@ export const DATA_CLASSIFICATIONS = Object.freeze([
 	"pci",
 	"secret",
 ]);
+
+interface PolicySubjectView {
+	kind: string;
+	id: string;
+	roles?: string[];
+	scopes?: string[];
+	delegatedBy?: string | { kind: string; id: string };
+}
 
 const SUBJECT_KIND_SET = new Set(SUBJECT_KINDS);
 const PHASE_SET = new Set(PHASES);
@@ -146,10 +162,9 @@ export function serializePolicyIrDocument(documentInput) {
 }
 
 export function parsePolicyIrDocument(documentInput) {
-	const source =
-		typeof documentInput === "string"
-			? expectObject(JSON.parse(documentInput), "$")
-			: expectObject(documentInput, "$");
+	const source = isJsonString(documentInput)
+		? expectObject(JSON.parse(documentInput), "$")
+		: expectObject(documentInput, "$");
 	const request = parseDecisionRequest(source.request);
 	const decision = parseDecision(source.decision, request);
 	return { request, decision };
@@ -184,13 +199,13 @@ export function migratePolicyIrDocument(documentInput) {
 	});
 }
 
-export function createPolicyDecidedEvent({
+export function createPolicyDecidedEvent<T, D>({
 	request: requestInput,
 	decision: decisionInput,
 	id,
 }: {
-	request: unknown;
-	decision: unknown;
+	request: T;
+	decision: D;
 	id?: string;
 }) {
 	const request = parseDecisionRequest(requestInput);
@@ -209,10 +224,7 @@ export function createPolicyDecidedEvent({
 	};
 }
 
-export function toWitDecisionRecord(
-	decisionInput: unknown,
-	requestInput?: unknown,
-) {
+export function toWitDecisionRecord<T, R>(decisionInput: T, requestInput?: R) {
 	const decision = parseDecision(decisionInput, requestInput);
 	return {
 		schema_version: decision.schemaVersion,
@@ -291,13 +303,7 @@ function parseSubject(input, path) {
 			`${path}.kind`,
 		);
 	}
-	const parsed: {
-		kind: string;
-		id: string;
-		roles?: string[];
-		scopes?: string[];
-		delegatedBy?: string | { kind: string; id: string };
-	} = {
+	const parsed: PolicySubjectView = {
 		kind,
 		id: expectNonEmptyString(subject.id, `${path}.id`),
 	};
@@ -317,7 +323,7 @@ function parseSubject(input, path) {
 }
 
 function parseDelegatedBy(input, path) {
-	if (typeof input === "string") {
+	if (isJsonString(input)) {
 		return expectNonEmptyString(input, path);
 	}
 	const delegatedBy = expectObject(input, path);
@@ -365,7 +371,7 @@ function parseEffect(input, path) {
 function assertDataClassifications(context, path) {
 	if (
 		context === null ||
-		typeof context !== "object" ||
+		!isJsonObject(context) ||
 		!Object.hasOwn(context, "dataClassifications")
 	) {
 		return;
@@ -449,7 +455,7 @@ function parseStringArray(input, path) {
 }
 
 function expectNonEmptyString(input, path) {
-	if (typeof input !== "string" || input.trim() === "") {
+	if (!isJsonString(input) || input.trim() === "") {
 		throw new PolicyIrValidationError(
 			"expected-string",
 			"expected a non-empty string",
@@ -473,21 +479,26 @@ function expectObject(input, path) {
 function isPlainObject(input) {
 	return (
 		input !== null &&
-		typeof input === "object" &&
+		isJsonObject(input) &&
 		!Array.isArray(input) &&
 		(Object.getPrototypeOf(input) === Object.prototype ||
 			Object.getPrototypeOf(input) === null)
 	);
 }
 
-function canonicalJsonValue(input, path = "$") {
+function canonicalJsonValue<T>(input: T, path = "$"): JsonValue {
+	if (Array.isArray(input)) {
+		return input.map((item, index) =>
+			canonicalJsonValue(item, `${path}[${index}]`),
+		);
+	}
 	if (input === null) {
 		return null;
 	}
-	if (typeof input === "string" || typeof input === "boolean") {
+	if (isJsonString(input) || isJsonBoolean(input)) {
 		return input;
 	}
-	if (typeof input === "number") {
+	if (isJsonNumber(input)) {
 		if (!Number.isFinite(input)) {
 			throw new PolicyIrValidationError(
 				"invalid-json-number",
@@ -497,13 +508,8 @@ function canonicalJsonValue(input, path = "$") {
 		}
 		return input;
 	}
-	if (Array.isArray(input)) {
-		return input.map((item, index) =>
-			canonicalJsonValue(item, `${path}[${index}]`),
-		);
-	}
 	if (isPlainObject(input)) {
-		const output = {};
+		const output: JsonBag = {};
 		for (const key of Object.keys(input).sort()) {
 			if (input[key] === undefined) {
 				throw new PolicyIrValidationError(

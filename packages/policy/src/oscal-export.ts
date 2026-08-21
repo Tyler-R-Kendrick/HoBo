@@ -8,11 +8,11 @@
  */
 
 import { createHash } from "node:crypto";
-
 import type {
 	ControlCoverageReport,
 	ControlEvidencePack,
 } from "./control-evidence-pack.js";
+import { isJsonObject } from "./json.js";
 
 // public-contract: OSCAL model version the boundary emitter vocabulary targets.
 export const OSCAL_VERSION = "1.1.2";
@@ -112,13 +112,22 @@ function deterministicUuid(seed: string): string {
 }
 
 function deepFreeze<T>(value: T): T {
-	if (typeof value === "object" && value !== null && !Object.isFrozen(value)) {
-		Object.freeze(value);
-		for (const key of Object.getOwnPropertyNames(value)) {
-			deepFreeze((value as Record<string, unknown>)[key]);
-		}
+	if (value === null || value === undefined || Object.isFrozen(value)) {
+		return value;
 	}
-	return value;
+	if (Array.isArray(value)) {
+		for (const child of value) {
+			deepFreeze(child);
+		}
+		return Object.freeze(value);
+	}
+	if (!isJsonObject(value)) {
+		return value;
+	}
+	for (const child of Object.values(value)) {
+		deepFreeze(child);
+	}
+	return Object.freeze(value);
 }
 
 function uuidSeedBase(pack: ControlEvidencePack, title: string): string {
@@ -219,7 +228,7 @@ export function emitOscalAssessmentEvidence(
 					state: missingRefs === undefined ? "satisfied" : "not-satisfied",
 				},
 				...(missingRefs === undefined
-					? {}
+					? undefined
 					: { remarks: `missing evidence: ${missingRefs.join(", ")}` }),
 			},
 		};

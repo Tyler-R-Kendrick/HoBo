@@ -226,6 +226,22 @@ export function verifyJwtSvid(input: {
 	}
 
 	if (header.alg === "HS256") {
+		// Algorithm confusion guard. The token's own header must not be able to
+		// choose the verification algorithm: a caller that configured an ES256
+		// public key is verifying against an asymmetric issuer, and an HS256
+		// token can only have been signed with a *shared* secret.
+		//
+		// Without this, an attacker takes any ES256-issued token, rewrites the
+		// header to HS256, and re-signs with DEFAULT_SVID_HMAC_SECRET — which is
+		// an exported constant in this repository. The HS256 branch below falls
+		// back to exactly that secret when no `hmacSecret` is supplied, and an
+		// ES256-configured caller has no reason to supply one. The forged token
+		// then verifies, for any `sub` and any `aud` the attacker chooses.
+		if (input.publicKey !== undefined && input.hmacSecret === undefined) {
+			throw new Error(
+				"jwt-svid: algorithm mismatch — token is HS256 but verification was configured for ES256",
+			);
+		}
 		const secret = resolveSvidHmacSecret({
 			...(input.hmacSecret !== undefined
 				? { hmacSecret: input.hmacSecret }

@@ -72,7 +72,7 @@ test("ctx.config accessors are generated only for declared keys", async () => {
   });
   const ctx = createConfigContext(cfg, async (key) => `${key}:resolved`);
 
-  assert.equal(typeof ctx.config.STRIPE, "function");
+  assert.equal(ctx.config.STRIPE instanceof Function, true);
   assert.equal("MISSING" in ctx.config, false);
   assert.equal(await ctx.config.STRIPE(), "STRIPE:resolved");
 });

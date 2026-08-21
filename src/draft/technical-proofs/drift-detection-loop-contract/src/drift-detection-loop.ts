@@ -1,4 +1,6 @@
 import { stableDigest } from "../../control-plane-event-schema-contract/src/control-plane-events.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const DRIFT_DETECTION_LOOP_VERSION = "hobo.drift-detection-loop/v1";
 
@@ -17,20 +19,20 @@ export function createDriftFixtureResource(overrides = {}) {
       interface: "hobo:resource/database",
       type: "database",
       className: "standard",
-      ...(overrides.port ?? {})
+      ...overrides.port
     },
     provider: {
       id: "aws",
       definitionId: "aws-rds-standard",
       driver: "pulumi",
-      ...(overrides.provider ?? {})
+      ...overrides.provider
     },
     context: {
       tenant: "tenant-hobo",
       app: "gallery",
       env: "prod",
       resourceId: id,
-      ...(overrides.context ?? {})
+      ...overrides.context
     }
   };
 }
@@ -176,7 +178,7 @@ export async function runDriftResync({ resourcePlan, observedState = createDrift
     };
   }
 
-  if (typeof reconciler !== "function") {
+  if (!(reconciler instanceof Function)) {
     throw new Error("reconciler is required for drifted managed resources");
   }
 
@@ -230,7 +232,7 @@ export async function runDriftResync({ resourcePlan, observedState = createDrift
 }
 
 function normalizeRefreshReport(report) {
-  if (!report || typeof report !== "object") {
+  if (!report || !isJsonObject(report)) {
     throw new Error("refresh must return a DriftReport");
   }
   return {
@@ -277,16 +279,16 @@ function isReadOnlyResource(resourcePlan) {
 
 function assertResourcePlan(resourcePlan) {
   for (const field of ["id", "deploymentId", "desiredStateHash", "kind"]) {
-    if (typeof resourcePlan?.[field] !== "string" || resourcePlan[field].length === 0) {
+    if (!isJsonString(resourcePlan?.[field]) || resourcePlan[field].length === 0) {
       throw new Error(`resourcePlan.${field} is required`);
     }
   }
   for (const field of ["id", "driver"]) {
-    if (typeof resourcePlan.provider?.[field] !== "string" || resourcePlan.provider[field].length === 0) {
+    if (!isJsonString(resourcePlan.provider?.[field]) || resourcePlan.provider[field].length === 0) {
       throw new Error(`resourcePlan.provider.${field} is required`);
     }
   }
-  if (typeof resourcePlan.context?.tenant !== "string" || resourcePlan.context.tenant.length === 0) {
+  if (!isJsonString(resourcePlan.context?.tenant) || resourcePlan.context.tenant.length === 0) {
     throw new Error("resourcePlan.context.tenant is required");
   }
 }

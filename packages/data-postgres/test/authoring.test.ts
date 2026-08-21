@@ -34,6 +34,7 @@ type Feature = {
 };
 
 function featuresOf(requirement: ReturnType<typeof database>): Feature[] {
+	// SAFETY: database() returns canonical feature records with this test shape.
 	return [...(requirement.features as readonly Feature[])];
 }
 
@@ -45,7 +46,7 @@ function feature(
 }
 
 /** Assert the call was refused by the authoring parser, not by something else. */
-function expectRejection(run: () => unknown, match: RegExp): PostgresDataError {
+function expectRejection(run: () => void, match: RegExp): PostgresDataError {
 	try {
 		run();
 	} catch (error) {
@@ -53,6 +54,7 @@ function expectRejection(run: () => unknown, match: RegExp): PostgresDataError {
 		// A bare TypeError from an unguarded property read would satisfy
 		// `toThrow()` while telling the author nothing about what to fix.
 		expect(error).toBeInstanceOf(PostgresDataError);
+		// SAFETY: the preceding Vitest assertion establishes the error instance.
 		const typed = error as PostgresDataError;
 		expect(typed.code).toBe("INVALID_POSTGRES_REQUIREMENT");
 		expect(typed.message).toMatch(match);
@@ -183,7 +185,8 @@ describe("database() — option screening", () => {
 		// A typo like `extension:` (singular) would otherwise be silently ignored
 		// and the Bindle would deploy onto a product with no pgvector at all.
 		expectRejection(
-			() => database({ extension: ["vector"] } as never),
+				// SAFETY: intentionally malformed input exercises the parser boundary.
+				() => database({ extension: ["vector"] } as never),
 			/unknown postgres\.database option "extension"/u,
 		);
 	});
@@ -206,7 +209,8 @@ describe("database() — option screening", () => {
 			// portable. The screen is case-insensitive and substring-based so a
 			// camelCase spelling cannot slip past.
 			expectRejection(
-				() => database({ [key]: "x" } as never),
+					// SAFETY: intentionally malformed input exercises the parser boundary.
+					() => database({ [key]: "x" } as never),
 				/unknown postgres\.database option|provider-neutral/u,
 			);
 		}
@@ -218,7 +222,7 @@ describe("database() — option screening", () => {
 		// independent — the neutrality check is not dead code hidden behind the
 		// known-keys check for keys that are added later.
 		expect(
-			[...["version", "extensions", "migration", "runtime", "trustRef"]].every(
+			["version", "extensions", "migration", "runtime", "trustRef"].every(
 				(key) => !/(provider|vendor|product|account|tenant|region)/iu.test(key),
 			),
 		).toBe(true);
@@ -321,8 +325,9 @@ describe("database() — extensions", () => {
 
 describe("database() — enumerated lists", () => {
 	it("accepts every declared isolation level and sorts them", () => {
-		const requirement = database({
-			isolation: [...POSTGRES_ISOLATION_LEVELS] as never,
+			const requirement = database({
+				// SAFETY: the exported closed list is valid; this cast preserves the test's spread expression.
+				isolation: [...POSTGRES_ISOLATION_LEVELS] as never,
 		});
 		const sorted = [...POSTGRES_ISOLATION_LEVELS].sort((a, b) =>
 			a.localeCompare(b),
@@ -335,7 +340,8 @@ describe("database() — enumerated lists", () => {
 		// therefore the receipt digest; collapsing it keeps the requirement
 		// canonical.
 		const requirement = database({
-			isolation: ["serializable", "serializable"] as never,
+				// SAFETY: intentionally duplicate input exercises canonicalization.
+				isolation: ["serializable", "serializable"] as never,
 		});
 		expect(feature(requirement, "isolationLevels")?.value).toEqual([
 			"serializable",
@@ -344,20 +350,23 @@ describe("database() — enumerated lists", () => {
 
 	it("rejects an unrecognized member and an empty list", () => {
 		expectRejection(
-			() => database({ isolation: ["snapshot"] as never }),
+				// SAFETY: intentionally invalid input exercises the parser boundary.
+				() => database({ isolation: ["snapshot"] as never }),
 			/isolation level "snapshot" is not a recognized value/u,
 		);
 		// Empty is refused for the same reason as extensions: it is ambiguous
 		// between "none needed" and "I forgot to fill this in".
 		expectRejection(
-			() => database({ isolation: [] as never }),
+				// SAFETY: intentionally invalid input exercises the parser boundary.
+				() => database({ isolation: [] as never }),
 			/isolation level list must not be empty/u,
 		);
 	});
 
 	it("accepts every declared connectivity transport", () => {
 		const requirement = database({
-			connectivity: [...POSTGRES_CONNECTIVITY_TRANSPORTS] as never,
+				// SAFETY: the exported closed list is valid test input.
+				connectivity: [...POSTGRES_CONNECTIVITY_TRANSPORTS] as never,
 		});
 		// Transports are what the *consuming workload* can open; a product that
 		// only offers one the workload cannot reach is a deployment that fails at
@@ -365,32 +374,35 @@ describe("database() — enumerated lists", () => {
 		expect(feature(requirement, "connectivityTransports")?.operator).toBe(
 			"includes-all",
 		);
-		expect(
-			(feature(requirement, "connectivityTransports")?.value as string[])
-				.length,
-		).toBe(POSTGRES_CONNECTIVITY_TRANSPORTS.length);
+		expect(feature(requirement, "connectivityTransports")?.value).toHaveLength(
+			POSTGRES_CONNECTIVITY_TRANSPORTS.length,
+		);
 	});
 
 	it("rejects an unrecognized transport and an empty transport list", () => {
 		expectRejection(
-			() => database({ connectivity: ["carrier-pigeon"] as never }),
+				// SAFETY: intentionally invalid input exercises the parser boundary.
+				() => database({ connectivity: ["carrier-pigeon"] as never }),
 			/connectivity transport "carrier-pigeon" is not a recognized value/u,
 		);
 		expectRejection(
-			() => database({ connectivity: [] as never }),
+				// SAFETY: intentionally invalid input exercises the parser boundary.
+				() => database({ connectivity: [] as never }),
 			/connectivity transport list must not be empty/u,
 		);
 	});
 
 	it("accepts every declared migration tool and rejects an unknown one", () => {
 		const requirement = database({
-			migration: { tools: [...POSTGRES_MIGRATION_TOOLS] as never },
+				// SAFETY: the exported closed list is valid test input.
+				migration: { tools: [...POSTGRES_MIGRATION_TOOLS] as never },
 		});
 		expect(feature(requirement, "migrationToolCompatibility")?.operator).toBe(
 			"includes-all",
 		);
 		expectRejection(
-			() => database({ migration: { tools: ["sqitch"] as never } }),
+				// SAFETY: intentionally invalid input exercises the parser boundary.
+				() => database({ migration: { tools: ["sqitch"] as never } }),
 			/migration tool "sqitch" is not a recognized value/u,
 		);
 	});
@@ -510,7 +522,8 @@ describe("database() — migration requirements", () => {
 	it("rejects an unknown migration profile", () => {
 		expectRejection(
 			() =>
-				database({ migration: { profiles: ["migration.mysql/v1"] as never } }),
+					// SAFETY: intentionally invalid input exercises the parser boundary.
+					database({ migration: { profiles: ["migration.mysql/v1"] as never } }),
 			/unknown postgres migration profile/u,
 		);
 	});
@@ -545,15 +558,17 @@ describe("database() — migration requirements", () => {
 describe("database() — guarantees and pass-through", () => {
 	it("asserts every declared guarantee as equals-true", () => {
 		const requirement = database({});
-		const keys = (requirement.guarantees as readonly { key: string }[]).map(
+			// SAFETY: database() emits guarantee records with string keys.
+			const keys = (requirement.guarantees as readonly { key: string }[]).map(
 			(guarantee) => guarantee.key,
 		);
 		// All seven, every time. A product that merely speaks the wire protocol
 		// over a read-only shim is a real thing and must not satisfy this call.
 		expect([...keys].sort()).toEqual(
-			[...POSTGRES_GUARANTEES.map((g) => g.key)].sort(),
+				POSTGRES_GUARANTEES.map((g) => g.key).sort(),
 		);
-		for (const guarantee of requirement.guarantees as readonly {
+			// SAFETY: database() emits these canonical guarantee records.
+			for (const guarantee of requirement.guarantees as readonly {
 			operator: string;
 			value: unknown;
 		}[]) {

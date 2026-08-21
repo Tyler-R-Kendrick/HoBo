@@ -113,15 +113,12 @@ describe("provider neutrality", () => {
 		const manifestPath = fileURLToPath(
 			new URL("../package.json", import.meta.url),
 		);
-		const manifest: unknown = JSON.parse(readFileSync(manifestPath, "utf8"));
-		expect(typeof manifest).toBe("object");
-		if (typeof manifest !== "object" || manifest === null)
-			throw new Error("unreachable");
-		const dependencies = Reflect.get(manifest, "dependencies") as unknown;
-		const names =
-			typeof dependencies === "object" && dependencies !== null
-				? Object.keys(dependencies)
-				: [];
+		type PackageManifest = { readonly dependencies?: Record<string, string> };
+		// SAFETY: package.json is the local repository manifest and has the declared shape.
+		const manifest = JSON.parse(
+			readFileSync(manifestPath, "utf8"),
+		) as PackageManifest;
+		const names = Object.keys(manifest.dependencies ?? {});
 		expect(names).toEqual(["@hobo/capability-profiles"]);
 	});
 

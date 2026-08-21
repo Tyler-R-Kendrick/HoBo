@@ -6,6 +6,8 @@ import { describe, it } from "vitest";
 
 import { DevParseError, parseDevPort, parseDevStateSnapshot } from "../src/types.js";
 import { DevStateStore, projectDevState } from "../src/dev-state-store.js";
+import { type JsonValue } from "../src/json.js";
+
 
 describe("dev state store", () => {
   it("projects request events into runCount and requests", () => {
@@ -31,7 +33,7 @@ describe("dev state store", () => {
   it("fail-closed on foreign schema version at parse boundary", () => {
     assert.throws(
       () => parseDevStateSnapshot({ schema: "hobo.dev-state/v0", runCount: 1 }),
-      (error: unknown) => {
+      (error: JsonValue) => {
         assert.ok(error instanceof DevParseError);
         assert.equal(error.code, "HOBO_DEV_STATE_VERSION_UNSUPPORTED");
         return true;

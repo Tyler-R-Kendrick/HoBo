@@ -2,6 +2,8 @@ import { resolve } from "node:path";
 
 import { startDevSession, type DevSession } from "../dev-session.js";
 import { COLD_BOOT_BUDGET_MS } from "../types.js";
+import { isJsonObject, type JsonValue } from "../json.js";
+
 
 export interface DevCommandOptions {
   port?: number;
@@ -95,10 +97,11 @@ function renderDevSuccess(options: Required<DevCommandOptions>, session: DevSess
   return { exitCode: 0, stdout, stderr: "" };
 }
 
-function renderDevFailure(options: Required<DevCommandOptions>, error: unknown): DevCommandResult {
+function renderDevFailure(options: Required<DevCommandOptions>, error: JsonValue): DevCommandResult {
   const message = error instanceof Error ? error.message : "hobo dev failed";
   const code =
-    error && typeof error === "object" && "code" in error ? String((error as { code: string }).code) : "HOBO_DEV_FAILED";
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+    error && isJsonObject(error) && "code" in error ? String((error as { code: string }).code) : "HOBO_DEV_FAILED";
   const envelope = {
     ok: false,
     verb: "dev",

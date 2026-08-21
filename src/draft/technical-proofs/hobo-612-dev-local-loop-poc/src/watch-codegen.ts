@@ -3,6 +3,8 @@ import {
   writeGeneratedTree,
 } from "../../hobo-codegen-cli-contract/src/codegen-cli-contract.js";
 import type { DevStateStore } from "./dev-state-store.js";
+import { isJsonString } from "./json.js";
+
 
 export interface CodegenEngine {
   generate(options: { projectRoot: string }): Promise<Array<{ path: string }>>;
@@ -32,7 +34,7 @@ export function createWatchCodegen(
 
   return {
     queueSourceChange(path: string) {
-      if (typeof path !== "string" || path.length === 0) {
+      if (!isJsonString(path) || path.length === 0) {
         throw new TypeError("path must be a non-empty string");
       }
       pending.add(path);

@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
 export const STUB_TRACE_SCHEMA = "hobo.stub.recorded-trace/v1";
 export const STUB_REPLAY_HARNESS_SCHEMA = "hobo.stub.replay-harness/v1";
 export const PAYMENTS_PORT = "hobo:payments/payments@0.1.0";
@@ -121,7 +122,7 @@ export function createReplayHarness({ membrane, adapter }) {
       const functionName = entry.function;
       const handler = adapter?.[functionName];
 
-      if (typeof handler !== "function") {
+      if (!(handler instanceof Function)) {
         failures.push({
           code: "replay.missing-handler",
           index,
@@ -177,7 +178,7 @@ function buildStubExports(portSchema, overrides, membrane) {
       spec.input(input);
 
       const override = overrides[operation];
-      const output = typeof override === "function" ? override(structuredClone(input)) : spec.defaultResponse(input);
+      const output = override instanceof Function ? override(structuredClone(input)) : spec.defaultResponse(input);
       spec.output(output);
 
       const traceEntry = {
@@ -263,7 +264,7 @@ class StubMembrane {
 
     const provider = this.#requireProvider(link.providerId);
     const implementation = provider.exports?.[link.exportInterface]?.[operation];
-    if (typeof implementation !== "function") {
+    if (!(implementation instanceof Function)) {
       throw new Error(`stub.operation_not_found: ${link.exportInterface}.${operation}`);
     }
 
@@ -344,7 +345,7 @@ export function createJsonWitCodec() {
 
 function validateChargeInput(input) {
   assertObject(input, "charge.input");
-  if (typeof input.amountCents !== "number" || input.amountCents <= 0) {
+  if (!isJsonNumber(input.amountCents) || input.amountCents <= 0) {
     throw new StubSchemaError({
       operation: "charge",
       path: "amountCents",
@@ -352,7 +353,7 @@ function validateChargeInput(input) {
       actual: input.amountCents,
     });
   }
-  if (typeof input.currency !== "string" || input.currency.length === 0) {
+  if (!isJsonString(input.currency) || input.currency.length === 0) {
     throw new StubSchemaError({
       operation: "charge",
       path: "currency",
@@ -372,7 +373,7 @@ function validateChargeOutput(output) {
       actual: output.status,
     });
   }
-  if (typeof output.transactionId !== "string" || output.transactionId.length === 0) {
+  if (!isJsonString(output.transactionId) || output.transactionId.length === 0) {
     throw new StubSchemaError({
       operation: "charge",
       path: "transactionId",
@@ -383,7 +384,7 @@ function validateChargeOutput(output) {
 }
 
 function assertObject(value, label) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new StubSchemaError({
       operation: label,
       path: "$",
@@ -398,7 +399,7 @@ function linkKey(componentId, importInterface) {
 }
 
 function assertId(id, kind) {
-  if (typeof id !== "string" || id.length === 0) {
+  if (!isJsonString(id) || id.length === 0) {
     throw new Error(`stub.${kind}_id_required`);
   }
 }

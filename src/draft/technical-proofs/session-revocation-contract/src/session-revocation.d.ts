@@ -1,8 +1,10 @@
 import type { IdentityEvent, PrincipalRef } from "../../identity-event-contract/src/identity-event-contract.d.js";
+import { type JsonObject } from "./json.js";
+
 
 export interface SessionAuthority {
   readonly events: IdentityEvent[];
-  readonly liveQueries: Record<string, Record<string, unknown>>;
+  readonly liveQueries: Record<string, JsonObject>;
   startSession(input: {
     sessionId: string;
     principal: PrincipalRef;
@@ -32,7 +34,7 @@ export interface SessionAuthority {
     sessionId: string;
     principal: PrincipalRef;
     openedAt: string;
-  }): Record<string, unknown>;
+  }): JsonObject;
 }
 
 export interface ReactiveDecision {
@@ -49,14 +51,14 @@ export function createEventSourcedSessionAuthority(options?: {
 }): SessionAuthority;
 
 export function verifyRequestWithSessionState(input: {
-  verification: Record<string, unknown>;
+  verification: JsonObject;
   sessionId: string;
   sessionEvents: IdentityEvent[];
   requestId: string;
   now?: Date;
-}): Record<string, unknown>;
+}): JsonObject;
 
 export function replaySessionState(events: IdentityEvent[]): {
-  sessions: Record<string, Record<string, unknown>>;
+  sessions: Record<string, JsonObject>;
   principalSessions: Record<string, string[]>;
 };

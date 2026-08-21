@@ -7,6 +7,8 @@ import {
   createRuntimeLocalEventStore,
   runEventStoreConformance,
 } from "../src/camp-eventstore-runtime-port.js";
+import { isJsonString } from "../src/json.js";
+
 
 test("runtime-local EventStore appends, reads, subscribes, and snapshots one stream", async () => {
   const clock = createManualClock("2026-06-26T00:00:00.000Z");
@@ -137,7 +139,7 @@ test("poison event quarantine lets deterministic folds skip malformed bodies and
     initialState: { comments: 0, title: "" },
     handlers: {
       "ticket.Opened": (state, event) => {
-        if (typeof event.data.title !== "string") {
+        if (!isJsonString(event.data.title)) {
           throw new Error("ticket.Opened requires title");
         }
         return { ...state, title: event.data.title };

@@ -5,6 +5,8 @@ import {
   rotateAcmeDns01Certificate,
 } from "../../acme-dns01-cert-issuance-contract/src/acme-dns01-cert-issuance.js";
 import { routingPolicy } from "../../hobo-dns-port-contract/src/dns-port.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEFAULT_NOW = () => new Date("2026-06-28T06:00:00.000Z");
 const DEFAULT_TTL_SECONDS = 60;
@@ -139,7 +141,7 @@ export function createPrivateAcmeEndpoint({ boundary, dnsAdapter, network, caNam
   const normalizedCaName = requireString(caName, "caName");
   const adapter = requireDnsAdapter(dnsAdapter);
 
-  if (!network || typeof network.recordInternal !== "function") {
+  if (!network || !(network.recordInternal instanceof Function)) {
     throw new Error("private ACME endpoint requires an air-gap network guard");
   }
 
@@ -306,7 +308,7 @@ function refusedCertificateResult({ domain, camp, reason, eventSink }) {
 }
 
 function normalizeProfile(profile) {
-  if (!profile || typeof profile !== "object") {
+  if (!profile || !isJsonObject(profile)) {
     throw new Error("air-gapped Yard profile is required");
   }
   const egress = requireString(profile.egress, "profile.egress");
@@ -325,8 +327,8 @@ function requireAuthority(authority, boundary) {
   if (
     !authority ||
     authority.kind !== "internal-ca-private-acme" ||
-    typeof authority.prepareDns01Order !== "function" ||
-    typeof authority.finalizeDns01Order !== "function"
+    !(authority.prepareDns01Order instanceof Function) ||
+    !(authority.finalizeDns01Order instanceof Function)
   ) {
     throw new Error("internal CA/private ACME issuance requires an internal authority adapter");
   }
@@ -348,9 +350,9 @@ function requireInBoundaryCaKeyRef(caKeyRef, boundary) {
 function requireDnsAdapter(adapter) {
   if (
     !adapter ||
-    typeof adapter.upsertShadowRecord !== "function" ||
-    typeof adapter.inspectLiveZone !== "function" ||
-    typeof adapter.inspectShadowZone !== "function"
+    !(adapter.upsertShadowRecord instanceof Function) ||
+    !(adapter.inspectLiveZone instanceof Function) ||
+    !(adapter.inspectShadowZone instanceof Function)
   ) {
     throw new Error("private ACME issuance requires a hobo:dns shadow adapter");
   }
@@ -358,7 +360,7 @@ function requireDnsAdapter(adapter) {
 }
 
 function normalizeOrder(order) {
-  if (!order || typeof order !== "object") {
+  if (!order || !isJsonObject(order)) {
     throw new Error("private ACME order is required");
   }
   const camps = normalizeCamps(order);
@@ -438,7 +440,7 @@ function fail(reason) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value.trim();
@@ -460,7 +462,7 @@ function sortJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortJson);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -471,7 +473,7 @@ function sortJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

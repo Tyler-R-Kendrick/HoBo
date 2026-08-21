@@ -2,11 +2,13 @@ import {
   createIdentityEvent,
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEFAULT_PROPAGATION_BUDGET_MS = 250;
 
 export function createEventSourcedSessionAuthority(options = {}) {
-  const now = typeof options.now === "function" ? options.now : () => new Date();
+  const now = options.now instanceof Function ? options.now : () => new Date();
   const propagationBudgetMs = options.propagationBudgetMs ?? DEFAULT_PROPAGATION_BUDGET_MS;
   const events = [];
   const liveQueries = {};
@@ -81,7 +83,7 @@ export function createEventSourcedSessionAuthority(options = {}) {
         sessionId,
         reason,
         revokedAt,
-        ...(principal ? { principal } : {}),
+        ...(principal ? { principal } : undefined),
       },
       requestId,
     );
@@ -300,10 +302,10 @@ function deny(code, requestId, extra) {
 function normalizePrincipal(principal) {
   if (
     !principal ||
-    typeof principal !== "object" ||
-    typeof principal.kind !== "string" ||
+    !isJsonObject(principal) ||
+    !isJsonString(principal.kind) ||
     principal.kind.length === 0 ||
-    typeof principal.id !== "string" ||
+    !isJsonString(principal.id) ||
     principal.id.length === 0
   ) {
     throw new Error("principal is required");
@@ -319,7 +321,7 @@ function principalKey(principal) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

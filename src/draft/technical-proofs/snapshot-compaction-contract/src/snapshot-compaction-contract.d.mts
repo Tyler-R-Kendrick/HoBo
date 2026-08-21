@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export interface SnapshotCompactionEvent<TData = unknown> {
   readonly data: TData;
   readonly seq?: number;
@@ -87,15 +88,15 @@ export interface SnapshotCompactionLog {
 }
 
 export class SnapshotIntegrityError extends Error {
-  readonly details: Record<string, unknown>;
+  readonly details: JsonObject;
 }
 
 export class CompactionRejectedError extends Error {
-  readonly details: Record<string, unknown>;
+  readonly details: JsonObject;
 }
 
 export class RetentionFloorError extends Error {
-  readonly details: Record<string, unknown>;
+  readonly details: JsonObject;
 }
 
 export function createSnapshotCompactionLog(): SnapshotCompactionLog;

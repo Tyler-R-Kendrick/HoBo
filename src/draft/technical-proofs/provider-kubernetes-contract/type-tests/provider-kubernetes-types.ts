@@ -1,4 +1,6 @@
 import { createKubernetesClusterFixturePlan, createKubernetesProvider, kubernetes, type KubernetesProvider } from "@hobo-draft/provider-kubernetes-contract";
+import { type JsonObject } from "../src/json.js";
+
 
 const provider: KubernetesProvider = createKubernetesProvider();
 const deployment = kubernetes.with.deployment({ replicas: 2, runtimeClassName: "wasmtime" });
@@ -16,13 +18,11 @@ deployment.options.runtimeClassName satisfies "wasmtime" | "runc";
 service.options.type satisfies "ClusterIP" | "LoadBalancer";
 host.options.nats satisfies "helm-bundled" | "external";
 client.url satisfies string;
-emission satisfies Record<string, unknown>;
+emission satisfies JsonObject;
 manifest.runtimeHosts[0].kind satisfies "wasmcloud-operator";
 
 // @ts-expect-error Deployment options reject untyped raw manifest escape hatches.
 kubernetes.with.deployment({ rawKubernetesManifest: { kind: "Deployment" } });
 
-if (false) {
-  // @ts-expect-error client is typed to declared Kubernetes seed ports only.
-  provider.client("queue", {});
-}
+// @ts-expect-error client is typed to declared Kubernetes seed ports only.
+provider.client("queue", {});

@@ -55,7 +55,7 @@ export async function depositSecret(
 			"SECRET_CUSTODY_UNAVAILABLE",
 			`secret custody refused a ${scope.purpose} deposit for ${scope.resourceRef}`,
 			{
-				cause,
+				cause: cause instanceof Error ? cause : new Error(String(cause)),
 				detail: { purpose: scope.purpose, resourceRef: scope.resourceRef },
 			},
 		);
@@ -67,7 +67,7 @@ export async function depositSecret(
 			"SECRET_CUSTODY_UNAVAILABLE",
 			`secret custody returned something that is not a secret locator for ${scope.resourceRef}`,
 			{
-				cause,
+				cause: cause instanceof Error ? cause : new Error(String(cause)),
 				detail: { purpose: scope.purpose, resourceRef: scope.resourceRef },
 			},
 		);
@@ -84,7 +84,7 @@ export async function resolveSecret(
 		throw new NeonProviderError(
 			"SECRET_CUSTODY_UNAVAILABLE",
 			"secret custody could not resolve a deposited credential",
-			{ cause },
+			{ cause: cause instanceof Error ? cause : new Error(String(cause)) },
 		);
 	}
 }

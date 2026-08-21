@@ -69,7 +69,9 @@ export function assertAllowedEndpoint(
 	try {
 		return assertAllowedEndpointCore(url, corePolicy(policy));
 	} catch (cause) {
-		throw asProviderError(cause);
+		throw asProviderError(
+			cause instanceof Error ? cause : new Error(String(cause)),
+		);
 	}
 }
 
@@ -91,7 +93,20 @@ function corePolicy(policy: TransportPolicy) {
  * `NeonProviderError`. Translating keeps the thrown type and the code every
  * call site matches on.
  */
-function asProviderError(cause: unknown): unknown {
+function parseTransportMethod(method: string): TransportMethod {
+	switch (method) {
+		case "GET":
+		case "POST":
+			return method;
+		default:
+			throw new NeonProviderError(
+				"PROVIDER_CONTRACT_CHANGED",
+				`unsupported method ${method}`,
+			);
+	}
+}
+
+function asProviderError(cause: Error): Error {
 	if (!(cause instanceof TransportGuardError)) return cause;
 	return new NeonProviderError("PROVIDER_CONTRACT_CHANGED", cause.message, {
 		detail: { guard: cause.code },
@@ -112,10 +127,10 @@ export function createGuardedTransport(
 	const guarded = guardTransport(
 		async (request) =>
 			await inner.request({
-				method: request.method as TransportMethod,
+				method: parseTransportMethod(request.method),
 				url: request.url,
 				headers: request.headers,
-				...(request.body === undefined ? {} : { body: request.body }),
+				...(request.body === undefined ? undefined : { body: request.body }),
 				timeoutMs: request.timeoutMs,
 				maxResponseBytes: request.maxResponseBytes,
 			}),
@@ -129,12 +144,14 @@ export function createGuardedTransport(
 					method: request.method,
 					url: request.url,
 					headers: request.headers,
-					...(request.body === undefined ? {} : { body: request.body }),
+					...(request.body === undefined ? undefined : { body: request.body }),
 					timeoutMs: request.timeoutMs,
 					maxResponseBytes: request.maxResponseBytes,
 				});
 			} catch (cause) {
-				throw asProviderError(cause);
+				throw asProviderError(
+					cause instanceof Error ? cause : new Error(String(cause)),
+				);
 			}
 		},
 	};
@@ -159,7 +176,7 @@ export function createFetchTransport(options: {
 				const response = await fetchImpl(request.url, {
 					method: request.method,
 					headers: { ...request.headers },
-					...(request.body !== undefined ? { body: request.body } : {}),
+					...(request.body !== undefined ? { body: request.body } : undefined),
 					redirect: "manual",
 					signal: controller.signal,
 				});
@@ -182,7 +199,10 @@ export function createFetchTransport(options: {
 				throw new NeonProviderError(
 					"PROVIDER_OPERATION_AMBIGUOUS",
 					`${request.method} to the provider did not complete`,
-					{ cause, detail: { method: request.method } },
+					{
+						cause: cause instanceof Error ? cause : new Error(String(cause)),
+						detail: { method: request.method },
+					},
 				);
 			} finally {
 				clearTimeout(timer);

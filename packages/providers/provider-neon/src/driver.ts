@@ -316,7 +316,9 @@ export function createNeonClaimableDatabaseDriver(
 			resourceRef,
 			endpoints,
 			pooledCredentialRef: pooledRef,
-			...(directRef !== undefined ? { directCredentialRef: directRef } : {}),
+			...(directRef !== undefined
+				? { directCredentialRef: directRef }
+				: undefined),
 			expiresAtMs: response.expiresAtMs,
 			producerEvidenceRef,
 			databaseName: parts.database,
@@ -328,7 +330,7 @@ export function createNeonClaimableDatabaseDriver(
 			credentialRef: pooledRef.ref,
 			...(directRef !== undefined
 				? { directCredentialRef: directRef.ref }
-				: {}),
+				: undefined),
 			binding,
 		};
 	}
@@ -351,13 +353,13 @@ export function createNeonClaimableDatabaseDriver(
 						databaseName: input.previous.databaseName,
 						...(input.previous.credentialRef !== undefined
 							? { credentialRef: input.previous.credentialRef }
-							: {}),
+							: undefined),
 						...(input.previous.directCredentialRef !== undefined
 							? { directCredentialRef: input.previous.directCredentialRef }
-							: {}),
+							: undefined),
 						...(input.previous.binding !== undefined
 							? { binding: input.previous.binding }
-							: {}),
+							: undefined),
 					}
 				: await captureCredentials(response, input.resourceRef);
 
@@ -373,11 +375,13 @@ export function createNeonClaimableDatabaseDriver(
 			endpoints: captured.endpoints,
 			...(captured.credentialRef !== undefined
 				? { credentialRef: captured.credentialRef }
-				: {}),
+				: undefined),
 			...(captured.directCredentialRef !== undefined
 				? { directCredentialRef: captured.directCredentialRef }
-				: {}),
-			...(captured.binding !== undefined ? { binding: captured.binding } : {}),
+				: undefined),
+			...(captured.binding !== undefined
+				? { binding: captured.binding }
+				: undefined),
 			expiresAtMs: response.expiresAtMs,
 			expiresAtIso: response.expiresAtIso,
 			expirySource: "provider-reported",
@@ -418,7 +422,7 @@ export function createNeonClaimableDatabaseDriver(
 				idempotencyKey: input.idempotencyKey,
 				...(input.enableLogicalReplication !== undefined
 					? { enableLogicalReplication: input.enableLogicalReplication }
-					: {}),
+					: undefined),
 			});
 			return toRecord(outcome.response, {
 				resourceRef: input.resourceRef,
@@ -450,8 +454,12 @@ export function createNeonClaimableDatabaseDriver(
 				adopted: true,
 				logicalReplicationEnabled:
 					input.previous?.logicalReplicationEnabled ?? false,
-				...(input.rotation !== undefined ? { rotation: input.rotation } : {}),
-				...(input.previous !== undefined ? { previous: input.previous } : {}),
+				...(input.rotation !== undefined
+					? { rotation: input.rotation }
+					: undefined),
+				...(input.previous !== undefined
+					? { previous: input.previous }
+					: undefined),
 			});
 		},
 

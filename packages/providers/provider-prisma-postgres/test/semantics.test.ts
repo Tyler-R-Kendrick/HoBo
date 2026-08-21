@@ -9,7 +9,12 @@
  * here instead, where the message is about this package.
  */
 import { describe, expect, it } from "vitest";
-
+import {
+	isJsonArray,
+	isJsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "../src/json.js";
 import {
 	createPrismaClaimablePostgresSemantics,
 	createPrismaResourceDefinition,
@@ -185,14 +190,19 @@ describe("semantics block", () => {
 
 	it("is data: serializable, with no function anywhere in the block", () => {
 		expect(() => JSON.stringify(semantics)).not.toThrow();
-		const walk = (value: unknown): void => {
-			expect(typeof value).not.toBe("function");
-			if (Array.isArray(value)) for (const item of value) walk(item);
-			else if (typeof value === "object" && value !== null) {
+		const tagOf = Object.prototype.toString;
+		const walk = (value: JsonValue): void => {
+			expect(tagOf.call(value)).not.toBe("[object Function]");
+			expect(tagOf.call(value)).not.toBe("[object AsyncFunction]");
+			if (isJsonArray(value)) {
+				for (const item of value) walk(item);
+				return;
+			}
+			if (isJsonObject(value)) {
 				for (const item of Object.values(value)) walk(item);
 			}
 		};
-		walk(semantics);
+		walk(parseJsonValue(JSON.stringify(semantics)));
 	});
 
 	it("carries no credential-shaped material", () => {

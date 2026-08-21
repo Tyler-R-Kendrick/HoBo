@@ -58,14 +58,14 @@ export function endpointsFor(
 export function buildNeonCapabilityBinding(
 	input: BuildBindingInput,
 ): CapabilityBinding {
-	const metadataRefs: Record<string, string> = {
+	const metadataRefs = {
 		databaseName: input.databaseName,
 		pooledHost: input.endpoints.pooled.host,
 		directHost: input.endpoints.direct.host,
+		...(input.directCredentialRef !== undefined
+			? { directCredentialRef: input.directCredentialRef.ref }
+			: undefined),
 	};
-	if (input.directCredentialRef !== undefined) {
-		metadataRefs.directCredentialRef = input.directCredentialRef.ref;
-	}
 
 	const binding: CapabilityBindingInput = {
 		schemaVersion: "hobo.capability-binding/v1",
@@ -91,7 +91,7 @@ export function buildNeonCapabilityBinding(
 		metadataRefs,
 		...(input.expiresAtMs !== undefined
 			? { expiresAtMs: input.expiresAtMs }
-			: {}),
+			: undefined),
 		renewable: false,
 		rotationSupported: true,
 		revocationSupported: true,
@@ -104,7 +104,7 @@ export function buildNeonCapabilityBinding(
 		throw new NeonProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			"the claimable database did not produce a valid portable binding",
-			{ cause },
+			{ cause: cause instanceof Error ? cause : new Error(String(cause)) },
 		);
 	}
 }

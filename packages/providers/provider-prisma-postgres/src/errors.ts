@@ -33,7 +33,7 @@ export type ProviderErrorOptions = {
 	readonly retryable?: boolean;
 	readonly retryAfterMs?: number;
 	readonly detail?: ProviderErrorDetail;
-	readonly cause?: unknown;
+	readonly cause?: Error;
 };
 
 const CREDENTIAL_PATTERNS: readonly RegExp[] = [
@@ -45,14 +45,28 @@ const CREDENTIAL_PATTERNS: readonly RegExp[] = [
 	/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/giu,
 ];
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters out of CLI output is the point; a raw CR/LF in a message is log forging.
-const CONTROL_CHARS = /[\u0000-\u001f\u007f]/gu;
+function flattenControlChars(text: string): string {
+	let out = "";
+	for (const ch of text) {
+		const code = ch.charCodeAt(0);
+		out += code <= 31 || code === 127 ? " " : ch;
+	}
+	return out;
+}
+
+export function containsControlChar(text: string): boolean {
+	for (const ch of text) {
+		const code = ch.charCodeAt(0);
+		if (code <= 31 || code === 127) return true;
+	}
+	return false;
+}
 
 export function redactProviderText(text: string, maxLength = 256): string {
 	let out = text;
 	for (const pattern of CREDENTIAL_PATTERNS)
 		out = out.replace(pattern, "[redacted]");
-	out = out.replace(CONTROL_CHARS, " ").trim();
+	out = flattenControlChars(out).trim();
 	return out.length > maxLength ? `${out.slice(0, maxLength)}…` : out;
 }
 
@@ -69,24 +83,17 @@ export class PrismaProviderError extends Error {
 	) {
 		super(
 			redactProviderText(message),
-			options.cause !== undefined ? { cause: options.cause } : {},
+			options.cause !== undefined ? { cause: options.cause } : undefined,
 		);
 		this.name = "PrismaProviderError";
 		this.code = code;
 		this.retryable = options.retryable ?? false;
 		if (options.retryAfterMs !== undefined)
 			this.retryAfterMs = options.retryAfterMs;
-		this.detail = Object.freeze({ ...(options.detail ?? {}) });
+		this.detail = Object.freeze({ ...options.detail });
 	}
 
-	toJSON(): {
-		readonly name: string;
-		readonly code: ProviderErrorCode;
-		readonly message: string;
-		readonly retryable: boolean;
-		readonly retryAfterMs?: number;
-		readonly detail: ProviderErrorDetail;
-	} {
+	toJSON() {
 		return {
 			name: this.name,
 			code: this.code,
@@ -94,12 +101,12 @@ export class PrismaProviderError extends Error {
 			retryable: this.retryable,
 			...(this.retryAfterMs !== undefined
 				? { retryAfterMs: this.retryAfterMs }
-				: {}),
+				: undefined),
 			detail: this.detail,
 		};
 	}
 }
 
-export function isProviderError(value: unknown): value is PrismaProviderError {
+export function isProviderError(value: Error): value is PrismaProviderError {
 	return value instanceof PrismaProviderError;
 }

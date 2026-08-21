@@ -16,7 +16,11 @@ import type { SecretRef } from "@hobo/bindings";
 import type { ProcessRunner } from "./cli.js";
 import { parsePostgresConnectionUri } from "./connection-string.js";
 import { resolveSecret, type SecretResolverPort } from "./custody.js";
-import { PrismaProviderError, redactProviderText } from "./errors.js";
+import {
+	containsControlChar,
+	PrismaProviderError,
+	redactProviderText,
+} from "./errors.js";
 
 export const PG_DUMP_FORMATS = ["custom", "directory", "tar", "plain"] as const;
 
@@ -48,9 +52,6 @@ export type PgRestoreSpec = {
 	readonly binary?: string;
 };
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: detecting a control character is the point; a NUL in an argv element truncates the argument the child actually receives.
-const NUL_OR_CONTROL = /[\u0000-\u001f\u007f]/u;
-
 function assertArgvValue(value: string, what: string): string {
 	if (value.length === 0 || value.length > 1024) {
 		throw new PrismaProviderError(
@@ -58,7 +59,7 @@ function assertArgvValue(value: string, what: string): string {
 			`${what} must be 1-1024 characters`,
 		);
 	}
-	if (NUL_OR_CONTROL.test(value)) {
+	if (containsControlChar(value)) {
 		throw new PrismaProviderError(
 			"MIGRATION_FAILED",
 			`${what} contains a control character and cannot be passed to a child process`,
@@ -252,8 +253,10 @@ export function createPostgresMigrationDriver(
 					format: input.format ?? "custom",
 					...(input.schemaOnly !== undefined
 						? { schemaOnly: input.schemaOnly }
-						: {}),
-					...(input.noOwner !== undefined ? { noOwner: input.noOwner } : {}),
+						: undefined),
+					...(input.noOwner !== undefined
+						? { noOwner: input.noOwner }
+						: undefined),
 				}),
 				libpqEnv(target, password),
 				input.timeoutMs ?? defaultTimeoutMs,
@@ -269,10 +272,12 @@ export function createPostgresMigrationDriver(
 				buildPgRestoreArgv({
 					target,
 					filePath: input.filePath,
-					...(input.noOwner !== undefined ? { noOwner: input.noOwner } : {}),
+					...(input.noOwner !== undefined
+						? { noOwner: input.noOwner }
+						: undefined),
 					...(input.cleanFirst !== undefined
 						? { cleanFirst: input.cleanFirst }
-						: {}),
+						: undefined),
 				}),
 				libpqEnv(target, password),
 				input.timeoutMs ?? defaultTimeoutMs,

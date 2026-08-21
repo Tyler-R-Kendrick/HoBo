@@ -3,7 +3,7 @@
  * that is a credential. Failures never quote the input, because the input is
  * the credential.
  */
-import { PrismaProviderError } from "./errors.js";
+import { containsControlChar, PrismaProviderError } from "./errors.js";
 
 export type PostgresConnectionParts = {
 	readonly host: string;
@@ -48,8 +48,7 @@ export function parsePostgresConnectionUri(
 	if (
 		database === "" ||
 		database.length > 128 ||
-		// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point — a database name carrying one must never reach an argv element or a log line.
-		/[\u0000-\u001f]/u.test(database)
+		containsControlChar(database)
 	) {
 		throw new PrismaProviderError(
 			"PROVIDER_CONTRACT_CHANGED",

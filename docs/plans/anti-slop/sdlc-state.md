@@ -23,7 +23,8 @@ main
             └── sdlc/anti-slop-12-providers-runners  #1204 depot + flux
              └── sdlc/anti-slop-13-providers-github-lakebed  #1205 github + lakebed
               └── sdlc/anti-slop-14-providers-railway-convex  #1207 railway + convex
-               └── sdlc/anti-slop-15-providers-kafka-webernetes-ttl  webernetes + kafka + ttl-sh
+               └── sdlc/anti-slop-15-providers-kafka-webernetes-ttl  #1209 webernetes + kafka + ttl-sh
+                └── sdlc/anti-slop-16-providers-neon-prisma  neon + prisma-postgres
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and

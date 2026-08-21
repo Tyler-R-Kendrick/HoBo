@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 // domain-view: parse-produced draft-proof record; its wire form is the TriggerFiredEvent proto message in data-models/.
 export interface TriggerFiredEvent {
   readonly type: "trigger.Fired";
@@ -28,13 +29,13 @@ export function createLocalEventStore(): LocalEventStore {
 export interface HttpRequest {
   readonly method: string;
   readonly path: string;
-  readonly body?: unknown;
+  readonly body?: JsonValue;
   readonly params?: Record<string, string>;
 }
 
 export interface HttpResponse {
   readonly status: number;
-  readonly body?: unknown;
+  readonly body?: JsonValue;
 }
 
 export interface LocalHttpPort {
@@ -84,12 +85,12 @@ export function createLocalSchedulerPort(): LocalSchedulerPort {
 }
 
 export interface LocalMessagingPort {
-  subscribe(resource: string, eventType: string, handler: (payload: unknown) => Promise<void> | void): void;
-  publish(resource: string, eventType: string, payload: unknown): Promise<void>;
+  subscribe(resource: string, eventType: string, handler: (payload: JsonValue) => Promise<void> | void): void;
+  publish(resource: string, eventType: string, payload: JsonValue): Promise<void>;
 }
 
 export function createLocalMessagingPort(): LocalMessagingPort {
-  const subscribers = new Map<string, (payload: unknown) => Promise<void> | void>();
+  const subscribers = new Map<string, (payload: JsonValue) => Promise<void> | void>();
   return Object.freeze({
     subscribe(resource, eventType, handler) {
       subscribers.set(`${resource}:${eventType}`, handler);
@@ -105,7 +106,7 @@ export function createLocalMessagingPort(): LocalMessagingPort {
 
 export interface LocalBlobStorePort {
   on(resource: string, event: string, handler: (key: string) => Promise<void> | void): void;
-  write(resource: string, key: string, value: unknown): Promise<void>;
+  write(resource: string, key: string, value: JsonValue): Promise<void>;
 }
 
 export function createLocalBlobStorePort(): LocalBlobStorePort {
@@ -127,12 +128,12 @@ export function createLocalBlobStorePort(): LocalBlobStorePort {
 
 export interface QueueMessage {
   readonly messageId: string;
-  readonly body: unknown;
+  readonly body: JsonValue;
 }
 
 export interface LocalQueuePort {
   worker(resource: string, handler: (message: QueueMessage) => Promise<void> | void): void;
-  enqueue(resource: string, body: unknown): Promise<void>;
+  enqueue(resource: string, body: JsonValue): Promise<void>;
   readonly completed: readonly string[];
 }
 

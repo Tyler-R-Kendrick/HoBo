@@ -89,7 +89,11 @@ function defaultKeychainReader(): KeychainReader {
   return () => undefined;
 }
 
-export function parseEnvLocal(content: string): Record<string, string> {
+export interface EnvLocalBag {
+  [key: string]: string;
+}
+
+export function parseEnvLocal(content: string): EnvLocalBag {
   const entries: Record<string, string> = {};
   for (const line of content.split(/\r?\n/)) {
     const trimmed = line.trim();

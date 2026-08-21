@@ -1,6 +1,8 @@
 import type { RuntimeCtx } from "../runtime/ctx.js";
 import type { cfg } from "./config.js";
 import { SecretValue } from "../core/secret-value.js";
+import { isJsonObject } from "../json.js";
+
 
 export async function helloHandler(ctx: RuntimeCtx<typeof cfg>): Promise<{
   greeting: string;
@@ -16,7 +18,7 @@ export async function helloHandler(ctx: RuntimeCtx<typeof cfg>): Promise<{
   ctx.stream({ greeting, logLevel, apiKey: apiKeyValue });
 
   const apiKey =
-    apiKeyValue && typeof apiKeyValue === "object" && apiKeyValue instanceof SecretValue
+    apiKeyValue && isJsonObject(apiKeyValue) && apiKeyValue instanceof SecretValue
       ? apiKeyValue.reveal()
       : String(apiKeyValue);
   return { greeting: String(greeting), logLevel: String(logLevel), apiKey };

@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export interface ManualClock {
   nowMs(): number;
   sleep(durationMs: number, options?: { signal?: AbortSignal }): Promise<void>;
@@ -9,7 +10,7 @@ export function createManualClock(startMs = 0): ManualClock {
   const sleepers: Array<{
     dueAtMs: number;
     resolve: () => void;
-    reject: (error: unknown) => void;
+    reject: (error: JsonValue) => void;
     cleanup: () => void;
   }> = [];
 

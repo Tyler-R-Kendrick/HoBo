@@ -7,12 +7,18 @@ import { type ErrorSignal, isJsonString } from "./json.js";
 
 export type { ErrorSignal } from "./json.js";
 
-function errorName(error: Error | ErrorSignal): string | undefined {
+function errorName(
+	error: Error | ErrorSignal | null | undefined,
+): string | undefined {
+	if (error == null) return undefined;
 	if (error instanceof Error) return error.name;
 	return isJsonString(error.name) ? error.name : undefined;
 }
 
-function errorCode(error: Error | ErrorSignal): string | undefined {
+function errorCode(
+	error: Error | ErrorSignal | null | undefined,
+): string | undefined {
+	if (error == null) return undefined;
 	if (!("code" in error)) return undefined;
 	// SAFETY: `in` established `code`; tag check parses the string conflict signal.
 	const code = (error as ErrorSignal).code;
@@ -59,7 +65,9 @@ export class ProjectionWriteError extends Error {
 
 // Recognizes the runtime EventStore's optimistic-conflict signal without taking a
 // hard dependency on the runtime package (inward-only: @hobo/data → @hobo/core).
-export function isOptimisticConflict(error: Error | ErrorSignal): boolean {
+export function isOptimisticConflict(
+	error: Error | ErrorSignal | null | undefined,
+): boolean {
 	if (error instanceof AggregateConflictError) return true;
 	const name = errorName(error);
 	const code = errorCode(error);
@@ -70,7 +78,9 @@ export function isOptimisticConflict(error: Error | ErrorSignal): boolean {
 	);
 }
 
-export function isStaleFenceError(error: Error | ErrorSignal): boolean {
+export function isStaleFenceError(
+	error: Error | ErrorSignal | null | undefined,
+): boolean {
 	return (
 		errorName(error) === "StaleFenceError" || errorCode(error) === "STALE_FENCE"
 	);

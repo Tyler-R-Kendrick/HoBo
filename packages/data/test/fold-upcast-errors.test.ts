@@ -30,16 +30,18 @@ import {
 	ProjectionWriteError,
 } from "../src/errors.js";
 import { foldEvents } from "../src/fold.js";
+import { isJsonNumber, type JsonObject } from "../src/json.js";
 import { createUpcasterRegistry } from "../src/upcaster.js";
 
 let nextSeq = 0;
 
 function envelope(
 	type: string,
-	data: Record<string, unknown> = {},
+	data: JsonObject = {},
 	overrides: Partial<EventEnvelope> = {},
 ): EventEnvelope {
 	nextSeq += 1;
+	// SAFETY: this test helper supplies every required envelope field and JSON data.
 	return {
 		id: `evt-${nextSeq}`,
 		type,
@@ -54,12 +56,16 @@ function envelope(
 	} as EventEnvelope;
 }
 
+function dataOf(event: EventEnvelope): JsonObject {
+	// SAFETY: every envelope in this test is created with JSON object data.
+	return event.data as JsonObject;
+}
+
 /** A counting fold: each `item.Added` bumps the total by its amount. */
 const counting = {
 	initialState: { total: 0 },
 	evolve: (state: { total: number }, event: EventEnvelope) => ({
-		total:
-			state.total + Number((event.data as { amount?: unknown }).amount ?? 0),
+		total: state.total + Number(dataOf(event).amount ?? 0),
 	}),
 };
 
@@ -130,7 +136,7 @@ describe("foldEvents", () => {
 					state.total = 999;
 					return {
 						total:
-							Number((event.data as { amount?: number }).amount ?? 0) +
+							Number(dataOf(event).amount ?? 0) +
 							(state.total === 999 ? 0 : state.total),
 					};
 				},
@@ -152,8 +158,8 @@ describe("quarantine determinism", () => {
 			{
 				initialState: { total: 0 },
 				evolve: (state: { total: number }, event) => {
-					const amount = (event.data as { amount?: unknown }).amount;
-					if (typeof amount !== "number") throw new Error("bad amount");
+					const amount = dataOf(event).amount;
+					if (!isJsonNumber(amount)) throw new Error("bad amount");
 					return { total: state.total + amount };
 				},
 			},
@@ -230,8 +236,8 @@ describe("quarantine determinism", () => {
 		const spec = {
 			initialState: { total: 0 },
 			evolve: (state: { total: number }, event: EventEnvelope) => {
-				const amount = (event.data as { amount?: unknown }).amount;
-				if (typeof amount !== "number") throw new Error("bad amount");
+				const amount = dataOf(event).amount;
+				if (!isJsonNumber(amount)) throw new Error("bad amount");
 				return { total: state.total + amount };
 			},
 		};
@@ -245,9 +251,7 @@ describe("quarantine determinism", () => {
 		const replay = foldEvents([good, poison, fact], {
 			initialState: { total: 0 },
 			evolve: (state: { total: number }, event) => ({
-				total:
-					state.total +
-					Number((event.data as { amount?: unknown }).amount ?? 0),
+				total: state.total + Number(dataOf(event).amount ?? 0),
 			}),
 		});
 		expect(replay.state).toEqual(live.state);
@@ -286,8 +290,8 @@ describe("quarantine determinism", () => {
 			{
 				initialState: { total: 0 },
 				evolve: (state: { total: number }, event) => {
-					const amount = (event.data as { amount?: unknown }).amount;
-					if (typeof amount !== "number") throw new Error("bad");
+					const amount = dataOf(event).amount;
+					if (!isJsonNumber(amount)) throw new Error("bad");
 					return { total: state.total + amount };
 				},
 			},
@@ -321,12 +325,13 @@ describe("upcasting on read", () => {
 
 	test("a single upcaster advances the event one version", () => {
 		const r = registry().register("item.Added", 1, (data) => ({
-			...(data as object),
+			// SAFETY: the registry receives JSON event bodies at this boundary.
+			...(data as JsonObject),
 			amount: 10,
 		}));
 		const upcast = r.upcast(envelope("item.Added", { amount: 1 }));
 		expect(upcast.v).toBe(2);
-		expect((upcast.data as { amount: number }).amount).toBe(10);
+		expect(dataOf(upcast).amount).toBe(10);
 	});
 
 	test("a chain is applied end to end", () => {
@@ -335,20 +340,23 @@ describe("upcasting on read", () => {
 		// half-migrated body.
 		const r = registry()
 			.register("item.Added", 1, (data) => ({
-				...(data as object),
+				// SAFETY: the registry receives JSON event bodies at this boundary.
+				...(data as JsonObject),
 				step: "v2",
 			}))
 			.register("item.Added", 2, (data) => ({
-				...(data as object),
+				// SAFETY: the registry receives JSON event bodies at this boundary.
+				...(data as JsonObject),
 				step: "v3",
 			}))
 			.register("item.Added", 3, (data) => ({
-				...(data as object),
+				// SAFETY: the registry receives JSON event bodies at this boundary.
+				...(data as JsonObject),
 				step: "v4",
 			}));
 		const upcast = r.upcast(envelope("item.Added", { step: "v1" }));
 		expect(upcast.v).toBe(4);
-		expect((upcast.data as { step: string }).step).toBe("v4");
+		expect(dataOf(upcast).step).toBe("v4");
 	});
 
 	test("a chain with a gap stops at the gap", () => {
@@ -356,11 +364,19 @@ describe("upcasting on read", () => {
 		// the event at v2, silently: the registry has no way to know a step is
 		// missing rather than simply being the end of the chain.
 		const r = registry()
-			.register("item.Added", 1, (data) => ({ ...(data as object), at: 2 }))
-			.register("item.Added", 3, (data) => ({ ...(data as object), at: 4 }));
+			.register("item.Added", 1, (data) => ({
+				// SAFETY: the registry receives JSON event bodies at this boundary.
+				...(data as JsonObject),
+				at: 2,
+			}))
+			.register("item.Added", 3, (data) => ({
+				// SAFETY: the registry receives JSON event bodies at this boundary.
+				...(data as JsonObject),
+				at: 4,
+			}));
 		const upcast = r.upcast(envelope("item.Added", { at: 1 }));
 		expect(upcast.v).toBe(2);
-		expect((upcast.data as { at: number }).at).toBe(2);
+		expect(dataOf(upcast).at).toBe(2);
 	});
 
 	test("an event already at the latest version is returned unchanged", () => {
@@ -427,6 +443,7 @@ describe("upcasting on read", () => {
 
 	test("a non-function upcaster is refused", () => {
 		expect(() =>
+			// SAFETY: this negative test deliberately bypasses the typed API.
 			registry().register("item.Added", 1, "not-a-function" as never),
 		).toThrow(TypeError);
 	});
@@ -445,7 +462,8 @@ describe("upcasting on read", () => {
 		// The end-to-end path: a stored v1 body is migrated on read and the fold
 		// sees the current shape without the log having been rewritten.
 		const upcasters = registry().register("item.Added", 1, (data) => ({
-			amount: Number((data as { legacyAmount?: unknown }).legacyAmount ?? 0),
+			// SAFETY: the registry receives JSON event bodies at this boundary.
+			amount: Number((data as JsonObject).legacyAmount ?? 0),
 		}));
 		const outcome = foldEvents([envelope("item.Added", { legacyAmount: 7 })], {
 			...counting,
@@ -566,7 +584,7 @@ describe("the typed errors", () => {
 			new ProjectionWriteError("x"),
 		]) {
 			expect(error).toBeInstanceOf(Error);
-			expect(typeof error.stack).toBe("string");
+			expect(error.stack).toBeTypeOf("string");
 		}
 	});
 });

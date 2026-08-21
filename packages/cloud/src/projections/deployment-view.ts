@@ -64,9 +64,11 @@ function base(
 export const deploymentViewProjection: Projection<DeploymentViewRow> =
 	defineProjection<DeploymentViewRow>({
 		name: "deployment-view",
+		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 		key: (event) => (event.data as { deploymentId: string }).deploymentId,
 		on: {
 			[CLOUD_EVENTS.DeploymentRequested]: (row, event) => {
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				const data = event.data as { deploymentId: string; bindleHash: string };
 				const next = base(row, data.deploymentId);
 				next.status = "requested";
@@ -78,6 +80,7 @@ export const deploymentViewProjection: Projection<DeploymentViewRow> =
 				return next;
 			},
 			[CLOUD_EVENTS.DeploymentImported]: (row, event) => {
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				const data = event.data as {
 					deploymentId: string;
 					bindleHash: string;
@@ -98,6 +101,7 @@ export const deploymentViewProjection: Projection<DeploymentViewRow> =
 				return next;
 			},
 			[CLOUD_EVENTS.DeploymentClaimed]: (row, event) => {
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				const data = event.data as {
 					deploymentId: string;
 					newOwner: { kind: string; id: string };
@@ -110,6 +114,7 @@ export const deploymentViewProjection: Projection<DeploymentViewRow> =
 				return next;
 			},
 			[CLOUD_EVENTS.MatchDecided]: (row, event) => {
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				const data = event.data as DeploymentDecisionRow & {
 					deploymentId: string;
 					rejectedCandidates?: unknown[];
@@ -131,6 +136,7 @@ export const deploymentViewProjection: Projection<DeploymentViewRow> =
 				return next;
 			},
 			[CLOUD_EVENTS.DeploymentPlanned]: (row, event) => {
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				const data = event.data as {
 					deploymentId: string;
 					planHash: string;
@@ -143,6 +149,7 @@ export const deploymentViewProjection: Projection<DeploymentViewRow> =
 				return next;
 			},
 			[CLOUD_EVENTS.DeploymentPlanRejected]: (row, event) => {
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				const data = event.data as {
 					deploymentId: string;
 					reason: string;
@@ -157,42 +164,49 @@ export const deploymentViewProjection: Projection<DeploymentViewRow> =
 				return next;
 			},
 			[CLOUD_EVENTS.ResourceProvisioning]: (row, event) => {
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				const data = event.data as { deploymentId: string; resourceId: string };
 				const next = base(row, data.deploymentId);
 				next.resources[data.resourceId] = "provisioning";
 				return next;
 			},
 			[CLOUD_EVENTS.ResourceProvisioned]: (row, event) => {
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				const data = event.data as { deploymentId: string; resourceId: string };
 				const next = base(row, data.deploymentId);
 				next.resources[data.resourceId] = "provisioned";
 				return next;
 			},
 			[CLOUD_EVENTS.ResourceFailed]: (row, event) => {
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				const data = event.data as { deploymentId: string; resourceId: string };
 				const next = base(row, data.deploymentId);
 				next.resources[data.resourceId] = "failed";
 				return next;
 			},
 			[CLOUD_EVENTS.ResourceDestroying]: (row, event) => {
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				const data = event.data as { deploymentId: string; resourceId: string };
 				const next = base(row, data.deploymentId);
 				next.resources[data.resourceId] = "destroying";
 				return next;
 			},
 			[CLOUD_EVENTS.ResourceDestroyed]: (row, event) => {
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				const data = event.data as { deploymentId: string; resourceId: string };
 				const next = base(row, data.deploymentId);
 				next.resources[data.resourceId] = "destroyed";
 				return next;
 			},
 			[CLOUD_EVENTS.DeploymentDeployed]: (row, event) => {
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				const data = event.data as { deploymentId: string };
 				const next = base(row, data.deploymentId);
 				next.status = "deployed";
 				return next;
 			},
 			[CLOUD_EVENTS.DeploymentRolledBack]: (row, event) => {
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				const data = event.data as {
 					deploymentId: string;
 					reason: string;

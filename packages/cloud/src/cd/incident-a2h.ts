@@ -22,7 +22,7 @@ export type IncidentEvent = Readonly<{
 	schemaVersion: typeof INCIDENT_CD_SCHEMA;
 	seq: number;
 	time: string;
-	data: Readonly<Record<string, unknown>>;
+	data: Readonly<Record<string, JsonValue>>;
 }>;
 
 export type FailureSignal =
@@ -55,7 +55,7 @@ export type A2HHandoffPackage = Readonly<{
 	deploymentId: string;
 	setId: string;
 	/** Secret-free context for humans (refs only). */
-	context: Readonly<Record<string, unknown>>;
+	context: Readonly<Record<string, JsonValue>>;
 	goldenDiffRef?: string;
 	blastRadius: SafetyEnvelope["blastRadius"];
 	decisionRequired: string;
@@ -121,7 +121,7 @@ export type FailureDecisionInput = Readonly<{
 	deploymentId: string;
 	setId: string;
 	/** Secret-free context only. */
-	context: Readonly<Record<string, unknown>>;
+	context: Readonly<Record<string, JsonValue>>;
 	goldenDiffRef?: string;
 	envelope: SafetyEnvelope;
 	selfHealAgent?: SelfHealAgentRegistration;
@@ -149,7 +149,7 @@ export function decideFailurePath(
 	let seq = 0;
 	const emit = (
 		type: IncidentEvent["type"],
-		data: Readonly<Record<string, unknown>>,
+		data: Readonly<Record<string, JsonValue>>,
 	) => {
 		seq += 1;
 		events.push(
@@ -186,9 +186,9 @@ export function decideFailurePath(
 			deploymentId: input.deploymentId,
 			setId: input.setId,
 			context: Object.freeze({ ...input.context }),
-			...(input.goldenDiffRef !== undefined
-				? { goldenDiffRef: input.goldenDiffRef }
-				: {}),
+			...(input.goldenDiffRef !== undefined && {
+				goldenDiffRef: input.goldenDiffRef,
+			}),
 			blastRadius: input.envelope.blastRadius,
 			decisionRequired: "human-remediation-or-approve-delta",
 			deadline,
@@ -310,3 +310,4 @@ export function createDefaultSafetyEnvelope(
 		requiresLane: true as const,
 	});
 }
+import type { JsonValue } from "../plan-types.js";

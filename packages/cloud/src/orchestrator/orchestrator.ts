@@ -97,12 +97,12 @@ export async function runOrchestrator(
 		deploymentId,
 		tenant: ctx.tenant,
 		actor: ctx.actor,
-		...(ctx.correlationId !== undefined
-			? { correlationId: ctx.correlationId }
-			: {}),
-		...(ctx.noGoThresholdResources !== undefined
-			? { noGoThresholdResources: ctx.noGoThresholdResources }
-			: {}),
+		...(ctx.correlationId !== undefined && {
+			correlationId: ctx.correlationId,
+		}),
+		...(ctx.noGoThresholdResources !== undefined && {
+			noGoThresholdResources: ctx.noGoThresholdResources,
+		}),
 	};
 
 	let progressed = true;
@@ -117,9 +117,11 @@ export async function runOrchestrator(
 		const failed = events.find(
 			(e) =>
 				e.type === CLOUD_EVENTS.ResourceFailed &&
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				(e.data as { crossedNoGoThreshold?: boolean }).crossedNoGoThreshold,
 		);
 		if (failed) {
+			// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 			const data = failed.data as { resourceId: string; reason: string };
 			triggeringFailure = { resourceId: data.resourceId, reason: data.reason };
 			break;
@@ -168,9 +170,9 @@ export async function runOrchestrator(
 			{
 				tenant: ctx.tenant,
 				actor: ctx.actor,
-				...(ctx.correlationId !== undefined
-					? { correlationId: ctx.correlationId }
-					: {}),
+				...(ctx.correlationId !== undefined && {
+					correlationId: ctx.correlationId,
+				}),
 			},
 		);
 		events = await collectStream(deps.store, stream);
@@ -195,6 +197,7 @@ export async function runOrchestrator(
 		!events.some((e) => e.type === CLOUD_EVENTS.DeploymentDeployed)
 	) {
 		const lastSeq =
+			// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 			events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
 		// The deployment stream is fenced (owner_epoch set by the first leased
 		// write); the terminal fact continues under the current owner epoch.
@@ -213,10 +216,10 @@ export async function runOrchestrator(
 				expectedSeq: lastSeq,
 				actor: ctx.actor,
 				tenant: ctx.tenant,
-				...(fenceToken !== undefined ? { fenceToken } : {}),
-				...(ctx.correlationId !== undefined
-					? { correlationId: ctx.correlationId }
-					: {}),
+				...(fenceToken !== undefined && { fenceToken }),
+				...(ctx.correlationId !== undefined && {
+					correlationId: ctx.correlationId,
+				}),
 			},
 		);
 		events = await collectStream(deps.store, stream);

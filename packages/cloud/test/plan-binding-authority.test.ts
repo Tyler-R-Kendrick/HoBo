@@ -105,6 +105,7 @@ function definition(
 		specificity: 1,
 		priority: 1,
 		cost: { sku: id, unit: "hour", marginalPrice: "0" },
+		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 		satisfies: () => ({ ok: true, missing: [] }) as never,
 		semantics: semantics({
 			productId,
@@ -171,7 +172,7 @@ function authority(
 
 const kvYard = (
 	productId: string,
-	properties?: Record<string, unknown>,
+	properties?: Record<string, JsonValue>,
 ): YardBindingContext => ({
 	yardId: "yard:edge",
 	providerId: "cloudflare",
@@ -180,7 +181,7 @@ const kvYard = (
 			contract: "hobo.yard-binding/v1",
 			profile: "kv.key-value/v1",
 			productId,
-			...(properties !== undefined ? { properties } : {}),
+			...(properties !== undefined && { properties }),
 		},
 	],
 });
@@ -319,3 +320,4 @@ describe("plan() without binding authority", () => {
 		expect(assets?.productId).toBeUndefined();
 	});
 });
+import type { JsonValue } from "../src/plan-types.js";

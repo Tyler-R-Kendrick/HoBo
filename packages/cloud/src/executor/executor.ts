@@ -1,5 +1,13 @@
 import { createHash } from "node:crypto";
 
+type JsonValue =
+	| null
+	| boolean
+	| number
+	| string
+	| JsonValue[]
+	| { readonly [key: string]: JsonValue };
+
 // The Executor (control-plane.md "Executor sandbox model"): the sandboxed apply
 // step. IaC apply runs untrusted-ish provider code, so it is isolated — no
 // ambient cloud creds, a short-lived capability-scoped token injected per exec,
@@ -68,7 +76,7 @@ export interface ExecEvent {
 	type: ExecEventType;
 	execId: string;
 	seq: number;
-	data: Record<string, unknown>;
+	data: Record<string, JsonValue>;
 }
 
 export interface ExecSandboxContext {
@@ -142,7 +150,9 @@ export interface InProcessExecutorOptions {
 	now?: () => string;
 }
 
-function hashRef(value: unknown): string {
+type HashableValue = JsonValue | IacProgram;
+
+function hashRef(value: HashableValue): string {
 	return `sha256:${createHash("sha256").update(JSON.stringify(value)).digest("hex")}`;
 }
 
@@ -163,7 +173,7 @@ export function createInProcessExecutor(
 			let seq = 0;
 			const push = (
 				type: ExecEventType,
-				data: Record<string, unknown>,
+				data: Record<string, JsonValue>,
 			): void => {
 				seq += 1;
 				events.push({ type, execId, seq, data });
@@ -197,7 +207,7 @@ export function createInProcessExecutor(
 			const ambientEnv = runOptions.ambientEnv ?? {};
 			const leaked = AMBIENT_CREDENTIAL_KEYS.filter(
 				(key) =>
-					typeof ambientEnv[key] === "string" && ambientEnv[key].length > 0,
+					ambientEnv[key] !== undefined && ambientEnv[key].length > 0,
 			);
 			if (leaked.length > 0) {
 				return fail(
@@ -274,7 +284,7 @@ export function createInProcessExecutor(
 
 function fail(
 	events: ExecEvent[],
-	push: (type: ExecEventType, data: Record<string, unknown>) => void,
+	push: (type: ExecEventType, data: Record<string, JsonValue>) => void,
 	sandbox: ExecSandboxContext,
 	classification: "retryable" | "fatal",
 	reason: string,

@@ -60,7 +60,8 @@ main
                                                  └── sdlc/anti-slop-49-draft-technical-mid  #1291 pact+replay+policy-ir
                                                   └── sdlc/anti-slop-50-draft-technical-ifc  #1294 ifc+ctx-config+membrane
                                                    └── sdlc/anti-slop-51-draft-s1-15  #1296 bind-wiring-topology
-                                                    └── sdlc/anti-slop-52-draft-runtime-primitives  runtime-ts+multi-region-dr
+                                                    └── sdlc/anti-slop-52-draft-runtime-primitives  #1297 runtime-ts+multi-region-dr
+                                                     └── sdlc/anti-slop-53-draft-escape-ir-postgres  raw-driver+contract-ir+postgres
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -132,6 +133,7 @@ Layer 48: 122 tiny `src/draft/technical-proofs` packages (1–3 findings) oxlint
 Layer 49: `pact-contract-harness` + `deterministic-replay-engine` + `hobo-policy-ir-contract` oxlint `--deny-warnings` clean (#1291).
 Layer 50: `ifc-handler-trigger-hobo-608` + `s1-19-ctx-config-local-resolution` + `membrane-deadline-backpressure-contract` oxlint `--deny-warnings` clean (#1294).
 Layer 51: `s1-15-bind-wiring-topology-contract` oxlint `--deny-warnings` clean (#1296).
-Layer 52: `hobo-runtime-ts-primitives` + `multi-region-dr-replay-contract` oxlint `--deny-warnings` clean.
+Layer 52: `hobo-runtime-ts-primitives` + `multi-region-dr-replay-contract` oxlint `--deny-warnings` clean (#1297).
+Layer 53: `raw-driver-escape-hatch-contract` + `hobo-contract-ir` + `runtime-postgres-ports` oxlint `--deny-warnings` clean.
 Next: remaining `src/draft/` (larger technical-proofs, exp-proofs, projects).
 Full-repo `lint:slop --deny-warnings` is still red until those land.

@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const SCOPE_ORDER = ["junction", "yard", "camp", "bindle"];
 export const POLICY_PACK_SCHEMA = "hobo.policy-pack/v1";
 export const COMPOSITION_SCHEMA = "hobo.policy-deny-ceiling-composition/v1";
@@ -144,7 +145,7 @@ function validatePacks(packs) {
     return ["packs must be an array"];
   }
   for (const pack of packs) {
-    if (!pack || typeof pack !== "object" || Array.isArray(pack)) {
+    if (!pack || !isJsonObject(pack) || Array.isArray(pack)) {
       errors.push("pack must be an object");
       continue;
     }
@@ -169,7 +170,7 @@ function validatePacks(packs) {
 }
 
 function validateRule(pack, rule, errors) {
-  if (!rule || typeof rule !== "object" || Array.isArray(rule)) {
+  if (!rule || !isJsonObject(rule) || Array.isArray(rule)) {
     errors.push(`${pack.id}: rule must be an object`);
     return;
   }
@@ -227,14 +228,14 @@ function compareDenyEntries(left, right) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

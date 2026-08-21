@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const DOMAIN_RECORD_SCHEMA = "hobo.domain-record/v1";
 
@@ -196,13 +198,13 @@ export function decodeDomainBodyFromProtobuf(contract, bytes) {
 export function validateDomainBody(contract, body) {
   const errors = [];
 
-  if (!body || typeof body !== "object" || Array.isArray(body)) {
+  if (!body || !isJsonObject(body) || Array.isArray(body)) {
     return { ok: false, errors: ["domain body must be an object"] };
   }
 
   for (const field of contract.record.fields) {
     const value = body[field.name];
-    if (field.type === "string" && typeof value !== "string") {
+    if (field.type === "string" && !isJsonString(value)) {
       errors.push(`${field.name} must be a string`);
       continue;
     }
@@ -265,7 +267,7 @@ export function generatedArtifacts() {
 }
 
 function normalizeAuthoring(authoring) {
-  if (!authoring || typeof authoring !== "object" || Array.isArray(authoring)) {
+  if (!authoring || !isJsonObject(authoring) || Array.isArray(authoring)) {
     throw new Error("domain record authoring must be an object");
   }
   if (authoring.schema !== DOMAIN_RECORD_SCHEMA) {
@@ -284,7 +286,7 @@ function normalizeAuthoring(authoring) {
       ...field,
       witName: field.witName ?? kebab(field.name),
       protoName: field.protoName ?? snake(field.name),
-      constraints: { ...(field.constraints ?? {}) }
+      constraints: { ...(field.constraints) }
     }))
   };
 }

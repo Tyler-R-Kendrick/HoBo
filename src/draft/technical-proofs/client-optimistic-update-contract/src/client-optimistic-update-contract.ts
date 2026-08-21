@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export class OptimisticSeqRegressionError extends Error {
   constructor({ subscriptionId, streamId, previousSeq, seq }) {
     super(`optimistic subscription ${subscriptionId} regressed ${streamId}: previous=${previousSeq}, next=${seq}`);
@@ -175,20 +176,20 @@ function normalizeSeqVector(seq) {
 }
 
 function assertObject(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${field} must be an object`);
   }
   return value;
 }
 
 function assertFunction(value, field) {
-  if (typeof value !== "function") {
+  if (!(value instanceof Function)) {
     throw new TypeError(`${field} must be a function`);
   }
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new TypeError(`${field} must be a non-empty string`);
   }
   return value;
@@ -211,5 +212,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

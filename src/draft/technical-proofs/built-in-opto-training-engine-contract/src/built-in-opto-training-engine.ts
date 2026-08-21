@@ -9,6 +9,8 @@ import {
   optimizeTrainingCandidate,
   validateCandidatePatch
 } from "../../training-engine-port-contract/src/training-engine-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const BUILT_IN_OPTO_TRAINING_ENGINE_CONTRACT = "hobo.built-in-opto-training-engine/v1";
 
@@ -261,7 +263,7 @@ function candidateReplacement(candidate) {
   if (!Array.isArray(candidate?.edits)) {
     return "";
   }
-  return candidate.edits.map((edit) => (typeof edit?.replacement === "string" ? edit.replacement : "")).join("\n");
+  return candidate.edits.map((edit) => (isJsonString(edit?.replacement) ? edit.replacement : "")).join("\n");
 }
 
 function parseRewriteProgram(source) {
@@ -272,7 +274,7 @@ function parseRewriteProgram(source) {
   for (const match of source.matchAll(rulePattern)) {
     try {
       const keywords = JSON.parse(match[1]);
-      if (!Array.isArray(keywords) || keywords.some((keyword) => typeof keyword !== "string" || keyword.length === 0)) {
+      if (!Array.isArray(keywords) || keywords.some((keyword) => !isJsonString(keyword) || keyword.length === 0)) {
         parseErrors.push("contract.keyword-list-invalid");
         continue;
       }
@@ -357,10 +359,10 @@ function extractBaselineRoute(trajectory) {
 
 function payloadValue(trajectory, key) {
   const payload = trajectory.payloads?.[key];
-  if (!payload || typeof payload !== "object") {
+  if (!payload || !isJsonObject(payload)) {
     return undefined;
   }
-  return typeof payload.value === "string" ? payload.value : undefined;
+  return isJsonString(payload.value) ? payload.value : undefined;
 }
 
 function ticketTokens(ticket) {

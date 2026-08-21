@@ -13,6 +13,8 @@ import {
   parseInterfaceId,
   parseWireVersion,
 } from "../../src/index.js";
+import { type JsonValue } from "../../src/json.js";
+
 
 const pactPath = join(
   dirname(fileURLToPath(import.meta.url)),
@@ -114,7 +116,7 @@ test("provider verifies all wrpc-membrane pact interactions", async () => {
             providerId: body.providerId,
             exportInterface: iface,
           }),
-        (error: unknown) => {
+        (error: JsonValue) => {
           if (!(error instanceof WireVersionIncompatibleError)) return false;
           assert.deepEqual(
             {
@@ -156,7 +158,7 @@ test("provider verifies all wrpc-membrane pact interactions", async () => {
             body.operation,
             body.payload,
           ),
-        (error: unknown) => {
+        (error: JsonValue) => {
           if (!(error instanceof NoRouteError)) return false;
           assert.deepEqual({ code: error.code }, interaction.response.body);
           return true;

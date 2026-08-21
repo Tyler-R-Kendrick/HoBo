@@ -83,7 +83,7 @@ export type PostgresDatabaseOptions = {
 export const POSTGRES_REQUIRED_GUARANTEE_KEYS: readonly string[] =
 	POSTGRES_GUARANTEES.map((guarantee) => guarantee.key);
 
-const PROVIDER_SHAPED_OPTION =
+const PROVIDER_NEUTRALITY_KEY =
 	/(provider|vendor|product|account|tenant|region)/iu;
 const KNOWN_OPTION_KEYS: ReadonlySet<string> = new Set([
 	"version",
@@ -105,14 +105,19 @@ function invalid(
 	message: string,
 	detail?: Record<string, string | number>,
 ): never {
-	throw new PostgresDataError("INVALID_POSTGRES_REQUIREMENT", message, {
-		...(detail !== undefined ? { detail } : {}),
-	});
+	throw new PostgresDataError(
+		"INVALID_POSTGRES_REQUIREMENT",
+		message,
+		detail === undefined ? {} : { detail },
+	);
 }
 
 type ParsedVersion = {
 	readonly operator: "at-least" | "equals" | "at-most";
 	readonly major: number;
+};
+type MutableCapabilityRequirementInput = {
+	-readonly [Key in keyof CapabilityRequirementInput]: CapabilityRequirementInput[Key];
 };
 
 /**
@@ -158,9 +163,12 @@ function assertMember<T extends string>(
 ): readonly T[] {
 	const unique: T[] = [];
 	for (const value of values) {
+		// SAFETY: domain is the closed string projection used for runtime membership.
 		if (!(domain as readonly string[]).includes(value)) {
 			invalid(`${what} ${JSON.stringify(value)} is not a recognized value`);
 		}
+		// SAFETY: membership in the closed `domain` above proves this value is T.
+		// SAFETY: membership in the closed `domain` above proves this value is T.
 		const typed = value as T;
 		if (!unique.includes(typed)) unique.push(typed);
 	}
@@ -189,7 +197,7 @@ export function database(
 		if (!KNOWN_OPTION_KEYS.has(key)) {
 			invalid(`unknown postgres.database option ${JSON.stringify(key)}`);
 		}
-		if (PROVIDER_SHAPED_OPTION.test(key)) {
+		if (PROVIDER_NEUTRALITY_KEY.test(key)) {
 			invalid(
 				`postgres.database must stay provider-neutral; ${JSON.stringify(key)} names placement, not capability`,
 			);
@@ -329,14 +337,14 @@ export function database(
 
 	const requiredMigrationProfiles = migration?.profiles ?? [];
 	for (const profile of requiredMigrationProfiles) {
+		// SAFETY: the closed profile list is the runtime validator for this input.
 		if (!(POSTGRES_MIGRATION_PROFILES as readonly string[]).includes(profile)) {
 			invalid(`unknown postgres migration profile ${JSON.stringify(profile)}`);
 		}
 	}
 
-	return parseCapabilityRequirement({
+	const requirementInput: MutableCapabilityRequirementInput = {
 		requiredProfiles: [{ profileId: POSTGRES_PROFILE_ID, versionRange: ">=1" }],
-		...(options.runtime !== undefined ? { runtime: options.runtime } : {}),
 		features,
 		guarantees: POSTGRES_REQUIRED_GUARANTEE_KEYS.map((key) => ({
 			key,
@@ -348,8 +356,10 @@ export function database(
 			requireExportProfile: migration?.requireExport ?? false,
 			requiredMigrationProfiles,
 		},
-		...(options.trustRef !== undefined ? { trustRef: options.trustRef } : {}),
-	});
+	};
+	if (options.runtime !== undefined) requirementInput.runtime = options.runtime;
+	if (options.trustRef !== undefined) requirementInput.trustRef = options.trustRef;
+	return parseCapabilityRequirement(requirementInput);
 }
 
 /**

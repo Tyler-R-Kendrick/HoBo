@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export type EvidenceStatus = "accepted" | "accepted-risk" | "missing";
 export type ProofMode = "design-record" | "issue-state" | "manual-review" | "release-cutline";
 export type BlockerState = "cleared" | "accepted-risk";
@@ -273,13 +274,14 @@ export const releaseNotesGaHandoffEvidence: ReleaseNotesGaHandoffEvidenceRecord 
   publicClaimGuards: [],
 };
 
-export function validateReleaseNotesGaHandoffEvidence(record: unknown) {
+export function validateReleaseNotesGaHandoffEvidence(record: JsonValue) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["release notes GA handoff evidence record is required"] };
   }
 
+  // SAFETY: `const value = record as Partial<ReleaseNotesGaHandoffEvidenceRecord>;` is required at this I/O or test boundary.
   const value = record as Partial<ReleaseNotesGaHandoffEvidenceRecord>;
   const evidence = Array.isArray(value.evidence) ? value.evidence : [];
   const blockers = Array.isArray(value.blockers) ? value.blockers : [];

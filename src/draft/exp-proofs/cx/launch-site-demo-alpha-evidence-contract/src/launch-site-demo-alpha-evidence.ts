@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export type EvidenceStatus = "accepted" | "accepted-risk" | "missing";
 export type ProofMode = "design-record" | "reference-fixture" | "live-recording" | "manual-review";
 export type LaunchRiskEffect = "unchanged" | "increased" | "reduced";
@@ -184,13 +185,14 @@ export const launchSiteDemoAlphaEvidence: LaunchSiteDemoAlphaEvidenceRecord = {
   ],
 };
 
-export function validateLaunchSiteDemoAlphaEvidence(record: unknown) {
+export function validateLaunchSiteDemoAlphaEvidence(record: JsonValue) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["launch-site demo alpha evidence record is required"] };
   }
 
+  // SAFETY: `const value = record as Partial<LaunchSiteDemoAlphaEvidenceRecord>;` is required at this I/O or test boundary.
   const value = record as Partial<LaunchSiteDemoAlphaEvidenceRecord>;
 
   if (value.issue !== "HOBO-458") {

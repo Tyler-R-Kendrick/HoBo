@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { asJsonObject, type JsonBag } from "../src/json.js";
+
 
 async function loadContract() {
   const module = await import("../src/launch-support-release-candidate-evidence.ts").catch((error) => ({
@@ -154,7 +156,7 @@ test("malformed evidence collections return parser errors instead of throwing", 
     launchSupportReleaseCandidateEvidence,
     validateLaunchSupportReleaseCandidateEvidence,
   } = await loadContract();
-  const invalid = structuredClone(launchSupportReleaseCandidateEvidence) as unknown as Record<string, unknown>;
+  const invalid: JsonBag = { ...asJsonObject(structuredClone(launchSupportReleaseCandidateEvidence)) };
 
   invalid.evidence = {};
   invalid.blockers = "not-blockers";

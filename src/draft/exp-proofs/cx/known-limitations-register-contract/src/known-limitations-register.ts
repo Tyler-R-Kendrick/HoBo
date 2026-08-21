@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 const REQUIRED_LIMITATION_FIELDS = [
   "id",
   "summary",
@@ -262,8 +263,8 @@ export const KNOWN_LIMITATIONS_REGISTER: KnownLimitationsRegister = {
   },
 };
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null;
+function isRecord(value: JsonValue): value is JsonObject {
+  return isJsonObject(value) && value !== null;
 }
 
 export function validateKnownLimitationsRegister(record: KnownLimitationsRegister) {
@@ -279,7 +280,7 @@ export function validateKnownLimitationsRegister(record: KnownLimitationsRegiste
   for (const limitation of record.limitations ?? []) {
     for (const field of REQUIRED_LIMITATION_FIELDS) {
       const value = limitation[field];
-      if (typeof value !== "string" || value.length === 0) {
+      if (!isJsonString(value) || value.length === 0) {
         errors.push(`${limitation.id ?? "<missing>"} is missing ${field}`);
       }
     }
@@ -329,7 +330,7 @@ export function validateKnownLimitationsRegister(record: KnownLimitationsRegiste
   return { ok: errors.length === 0, errors, record };
 }
 
-export function parseKnownLimitationsRegister(input: unknown): ParsedKnownLimitationsRegister {
+export function parseKnownLimitationsRegister(input: JsonValue): ParsedKnownLimitationsRegister {
   if (!isRecord(input)) {
     throw new Error("known limitations register must be an object");
   }
@@ -340,11 +341,13 @@ export function parseKnownLimitationsRegister(input: unknown): ParsedKnownLimita
     }
   }
 
+  // SAFETY: `const result = validateKnownLimitationsRegister(input as KnownLimitationsRegiste` is required at this I/O or test boundary.
   const result = validateKnownLimitationsRegister(input as KnownLimitationsRegister);
   if (!result.ok) {
     throw new Error(`known limitations register invalid:\n${result.errors.join("\n")}`);
   }
 
+  // SAFETY: `return result.record as ParsedKnownLimitationsRegister;` is required at this I/O or test boundary.
   return result.record as ParsedKnownLimitationsRegister;
 }
 

@@ -5,6 +5,8 @@ import {
   outputPlaceholder,
   validateEmission
 } from "../../hobo-realize-emission-contract/src/realize-emission-contract.js";
+import { isJsonObject } from "./json.js";
+
 
 export const KUBERNETES_PROVIDER_ID = "@hobo/provider-kubernetes";
 export const KUBERNETES_PROVIDER_VERSION = "hobo.provider-kubernetes/v1";
@@ -339,7 +341,7 @@ export function mergeKubernetesResolvedOptions(_provider, optionBlocks = []) {
       optionName: block.optionName ?? prior.optionName,
       options: {
         ...prior.options,
-        ...(block.options ?? {})
+        ...block.options
       }
     });
   }
@@ -625,7 +627,7 @@ function createIacNode(resource, plan) {
   const resolved = mergeKubernetesResolvedOptions(null, resource.options).merged[resource.type];
   const options = {
     namespace: resource.namespace,
-    ...(resolved?.options ?? {})
+    ...resolved?.options
   };
   if (resource.id === "wasmcloud-host" && !("lattice" in options)) {
     options.lattice = plan.context?.namespace ?? resource.namespace;
@@ -721,19 +723,19 @@ function normalizeCampEvidence(evidence = "pass", capability) {
     iam: true,
     mtls: true,
     quota: true,
-    ...(evidence[capability] ?? evidence.default ?? {})
+    ...(evidence[capability] ?? evidence.default)
   };
 }
 
 function normalizeHintValues(value) {
   if (Array.isArray(value)) return new Set(value);
-  if (!value || typeof value !== "object") return new Set();
+  if (!value || !isJsonObject(value)) return new Set();
   return new Set(Object.values(value).concat(Object.keys(value)));
 }
 
 function normalizePreferHints(value, definition) {
   if (Array.isArray(value)) return value.filter((feature) => definition.features.includes(feature));
-  if (!value || typeof value !== "object") return [];
+  if (!value || !isJsonObject(value)) return [];
   return Object.keys(value);
 }
 

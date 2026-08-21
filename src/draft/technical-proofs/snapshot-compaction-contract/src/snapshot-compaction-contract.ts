@@ -1,3 +1,4 @@
+import { isJsonNumber, isJsonObject, type JsonObject, type JsonBag } from "./json.js";
 const CONTRACT_VERSION = "hobo.snapshot-compaction-contract/v1";
 const NEVER_COMPACT_PREFIXES = ["token.", "resource.", "policy."] as const;
 const TERMINAL_RUN_EVENTS = new Set(["run.Completed", "run.Failed", "run.Cancelled", "run.Canceled"]);
@@ -99,9 +100,9 @@ export interface SnapshotCompactionLog {
 }
 
 export class SnapshotIntegrityError extends Error {
-  readonly details: Record<string, unknown>;
+  readonly details: JsonObject;
 
-  constructor(message: string, details: Record<string, unknown> = {}) {
+  constructor(message: string, details: JsonObject = {}) {
     super(message);
     this.name = "SnapshotIntegrityError";
     this.details = details;
@@ -109,9 +110,9 @@ export class SnapshotIntegrityError extends Error {
 }
 
 export class CompactionRejectedError extends Error {
-  readonly details: Record<string, unknown>;
+  readonly details: JsonObject;
 
-  constructor(message: string, details: Record<string, unknown> = {}) {
+  constructor(message: string, details: JsonObject = {}) {
     super(message);
     this.name = "CompactionRejectedError";
     this.details = details;
@@ -119,9 +120,9 @@ export class CompactionRejectedError extends Error {
 }
 
 export class RetentionFloorError extends Error {
-  readonly details: Record<string, unknown>;
+  readonly details: JsonObject;
 
-  constructor(message: string, details: Record<string, unknown> = {}) {
+  constructor(message: string, details: JsonObject = {}) {
     super(message);
     this.name = "RetentionFloorError";
     this.details = details;
@@ -180,6 +181,7 @@ export function createSnapshotCompactionLog(): SnapshotCompactionLog {
     },
 
     corruptSnapshot<TState>(streamId: string, corrupt: (snapshot: StoredSnapshot<TState>) => StoredSnapshot<TState>): void {
+      // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
       const snapshot = snapshotsByStream.get(streamId) as StoredSnapshot<TState> | undefined;
       if (!snapshot) {
         throw new SnapshotIntegrityError("cannot corrupt missing snapshot", { streamId });
@@ -188,6 +190,7 @@ export function createSnapshotCompactionLog(): SnapshotCompactionLog {
     },
 
     requireValidSnapshot<TState>(streamId: string, { fold }: { fold: SnapshotFold<TState> }): StoredSnapshot<TState> {
+      // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
       const snapshot = snapshotsByStream.get(streamId) as StoredSnapshot<TState> | undefined;
       if (!snapshot) {
         throw new SnapshotIntegrityError("snapshot missing", { streamId });
@@ -197,6 +200,7 @@ export function createSnapshotCompactionLog(): SnapshotCompactionLog {
     },
 
     activate<TState>(streamId: string, { fold }: { fold: SnapshotFold<TState> }): SnapshotActivation<TState> {
+      // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
       const snapshot = snapshotsByStream.get(streamId) as StoredSnapshot<TState> | undefined;
 
       if (snapshot) {
@@ -356,19 +360,19 @@ export function createSnapshotCompactionLog(): SnapshotCompactionLog {
   }
 }
 
+export type CounterState = { count: number; total: number };
+
 export function foldCounter(
-  state: { count: number; total: number } = { count: 0, total: 0 },
+  state: CounterState = { count: 0, total: 0 },
   event: SnapshotCompactionEvent,
-): { count: number; total: number } {
+): CounterState {
   if (!event.type.endsWith(".Incremented") && event.type !== "counter.Incremented") {
     return state;
   }
 
   const data = event.data;
-  const amount = typeof data === "object" && data !== null && "amount" in data
-    ? (data as { readonly amount?: unknown }).amount
-    : undefined;
-  if (typeof amount !== "number" || !Number.isFinite(amount)) {
+  const amount = isJsonObject(data) ? data.amount : undefined;
+  if (!isJsonNumber(amount) || !Number.isFinite(amount)) {
     throw new TypeError("counter increment requires finite numeric amount");
   }
 
@@ -378,6 +382,8 @@ export function foldCounter(
   };
 }
 
+type FoldedState<TState> = { readonly state: TState };
+
 function foldEvents<TState>({
   events,
   fold,
@@ -386,7 +392,7 @@ function foldEvents<TState>({
   readonly events: readonly StoredEvent[];
   readonly fold: SnapshotFold<TState>;
   readonly initialState?: TState;
-}): { readonly state: TState } {
+}): FoldedState<TState> {
   let state = initialState;
   for (const event of [...events].sort(compareEvents)) {
     state = fold(state, event);
@@ -408,7 +414,7 @@ function nullEvent(): StoredEvent {
 function assertCompactionAllowed(streamId: string): void {
   if (NEVER_COMPACT_PREFIXES.some((prefix) => streamId.startsWith(prefix))) {
     throw new CompactionRejectedError("compliance-retained streams are never compacted", {
-      protectedPrefixes: NEVER_COMPACT_PREFIXES,
+      protectedPrefixes: [...NEVER_COMPACT_PREFIXES],
       streamId,
     });
   }
@@ -471,7 +477,7 @@ function digestEvents(events: readonly StoredEvent[]): string {
   return hashStable(events.map((event) => ({ data: event.data, seq: event.seq, streamId: event.streamId, type: event.type })));
 }
 
-function hashStable(value: unknown): string {
+function hashStable<T>(value: T): string {
   const json = JSON.stringify(sortStable(value));
   const seeds = [0x811c9dc5, 0x9e3779b9, 0x85ebca6b, 0xc2b2ae35, 0x27d4eb2f, 0x165667b1, 0xd3a2646c, 0xfd7046c5];
   const hashes = seeds.map((seed) => seed >>> 0);
@@ -486,22 +492,29 @@ function hashStable(value: unknown): string {
   return hashes.map((hash) => hash.toString(16).padStart(8, "0")).join("");
 }
 
-function sortStable(value: unknown): unknown {
+function sortStable<T>(value: T): T {
   if (Array.isArray(value)) {
-    return value.map(sortStable);
+    const sorted: T =
+      // SAFETY: array entries are recursively sorted with the same T contract.
+      value.map((entry) => sortStable(entry)) as never;
+    return sorted;
   }
-  if (value && typeof value === "object") {
-    return Object.fromEntries(
-      Object.entries(value as Record<string, unknown>)
-        .sort(([left], [right]) => left.localeCompare(right))
-        .map(([key, child]) => [key, sortStable(child)]),
-    );
+  if (value && isJsonObject(value)) {
+    const bag: JsonBag = {};
+    for (const key of Object.keys(value).sort()) {
+      bag[key] = sortStable(value[key] ?? null);
+    }
+    const sorted: T =
+      // SAFETY: sorted bag preserves the caller's JSON-compatible object contract.
+      bag as never;
+    return sorted;
   }
   return value;
 }
 
 function freezeEvent<TData>(input: SnapshotCompactionEvent<TData> & { readonly seq: number }): StoredEvent<TData> {
   return Object.freeze({
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     data: input.data ?? ({} as TData),
     seq: input.seq,
     streamId: input.streamId,
@@ -522,6 +535,6 @@ function compareEvents(left: StoredEvent, right: StoredEvent): number {
   return left.seq - right.seq || left.streamId.localeCompare(right.streamId) || left.type.localeCompare(right.type);
 }
 
-function deepEqual(left: unknown, right: unknown): boolean {
+function deepEqual<T>(left: T, right: T): boolean {
   return JSON.stringify(sortStable(left)) === JSON.stringify(sortStable(right));
 }

@@ -8,6 +8,8 @@ import {
   policyDecided,
 } from "../../crew-event-contract/src/crew-event-contract.js";
 import { foldIncidentStream } from "../../incident-aggregate-contract/src/incident-aggregate.js";
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
+
 
 export const HUMAN_OPERATOR_CONSOLE_SCHEMA_VERSION = "hobo.human-operator-console/v1";
 export const APPROVAL_OBLIGATION_KIND = "remediation.require-approval";
@@ -393,7 +395,7 @@ function assertCanApprove(actor) {
 }
 
 function validateActor(actor) {
-  if (!actor || typeof actor !== "object" || Array.isArray(actor)) {
+  if (!actor || !isJsonObject(actor) || Array.isArray(actor)) {
     throw codedError("OPERATOR_ACTOR_REQUIRED", "actor is required");
   }
 
@@ -418,7 +420,7 @@ function defaultOperatorPrincipal(actor) {
 }
 
 function validateActionSnapshot(action) {
-  if (!action || typeof action !== "object" || Array.isArray(action)) {
+  if (!action || !isJsonObject(action) || Array.isArray(action)) {
     throw new Error("action is required");
   }
 
@@ -430,7 +432,7 @@ function validateActionSnapshot(action) {
 }
 
 function validateBlastRadiusSnapshot(blastRadiusSnapshot) {
-  if (!blastRadiusSnapshot || typeof blastRadiusSnapshot !== "object" || Array.isArray(blastRadiusSnapshot)) {
+  if (!blastRadiusSnapshot || !isJsonObject(blastRadiusSnapshot) || Array.isArray(blastRadiusSnapshot)) {
     throw new Error("blastRadiusSnapshot is required");
   }
 
@@ -444,13 +446,13 @@ function validateBlastRadiusSnapshot(blastRadiusSnapshot) {
 
 function nextCrewSeq(events) {
   return events
-    .filter((event) => typeof event.seq === "number" && event.type?.startsWith("crew."))
+    .filter((event) => isJsonNumber(event.seq) && event.type?.startsWith("crew."))
     .reduce((max, event) => Math.max(max, event.seq), 0) + 1;
 }
 
 function nextPolicySeq(events) {
   return events
-    .filter((event) => typeof event.seq === "number" && event.type === "policy.Decided")
+    .filter((event) => isJsonNumber(event.seq) && event.type === "policy.Decided")
     .reduce((max, event) => Math.max(max, event.seq), 0) + 1;
 }
 
@@ -509,7 +511,7 @@ function requiredArray(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value;
@@ -519,7 +521,7 @@ function stableStringify(value) {
   if (Array.isArray(value)) {
     return `[${value.map(stableStringify).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return `{${Object.keys(value)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
@@ -536,7 +538,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 

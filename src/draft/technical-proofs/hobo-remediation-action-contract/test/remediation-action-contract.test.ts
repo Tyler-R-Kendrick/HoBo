@@ -9,6 +9,7 @@ import {
   remediationActionKinds,
   validateRemediationAction,
 } from "../src/remediation-action-contract.js";
+import { isJsonBoolean, isJsonString } from "../src/json.js";
 
 const goldenActions = JSON.parse(
   readFileSync(new URL("../fixtures/golden-actions.json", import.meta.url), "utf8"),
@@ -253,11 +254,11 @@ function assertMatchesRemediationActionJsonSchema(action, schema, name) {
     ["blastRadius", "conformanceState", "idempotencyKey", "kind", "target"].sort(),
     name,
   );
-  assert.equal(typeof action.kind, "string", name);
+  assert.equal(isJsonString(action.kind), true, name);
   assert.ok(action.kind.length > 0, name);
   assert.ok(schema.properties.target.properties.kind.enum.includes(action.target.kind), name);
   assert.ok(schema.properties.blastRadius.properties.scope.enum.includes(action.blastRadius.scope), name);
-  assert.equal(typeof action.blastRadius.reversible, "boolean", name);
+  assert.equal(isJsonBoolean(action.blastRadius.reversible), true, name);
   assert.ok(
     schema.properties.blastRadius.properties.estimatedImpact.enum.includes(
       action.blastRadius.estimatedImpact,
@@ -266,7 +267,7 @@ function assertMatchesRemediationActionJsonSchema(action, schema, name) {
   );
 
   if (action.blastRadius.reversible) {
-    assert.equal(typeof action.blastRadius.compensationPath, "string", name);
+    assert.equal(isJsonString(action.blastRadius.compensationPath), true, name);
     assert.ok(action.blastRadius.compensationPath.length > 0, name);
   }
 

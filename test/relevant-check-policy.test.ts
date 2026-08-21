@@ -79,6 +79,14 @@ function lintCodeCheck(check: Check) {
 	return check.command === "pnpm" && check.args.join(" ") === "run lint:code";
 }
 
+function slopLintCheck(check: Check) {
+	return (
+		check.command === "pnpm" &&
+		check.args[0] === "run" &&
+		check.args[1] === "lint:slop:changed"
+	);
+}
+
 function konsistentCheck(check: Check) {
 	return check.command === "pnpm" && check.args.join(" ") === "run konsistent";
 }
@@ -169,6 +177,48 @@ test("docs-only changes do not select the Biome formatting lane", () => {
 	const { checks } = plan(["docs/agent-tooling.md"]);
 
 	assert.equal(checks.some(lintCodeCheck), false);
+});
+
+test("source changes select the anti-slop changed-file lane", () => {
+	const { checks } = plan(["packages/core/src/index.ts"]);
+	const check = checks.find(slopLintCheck);
+
+	assert.ok(check);
+	assert.equal(check.args.includes("--base=origin/main"), true);
+	assert.equal(check.args.includes("--staged"), false);
+});
+
+test("automation changes select the anti-slop changed-file lane", () => {
+	const { checks } = plan(["scripts/run-relevant-checks.ts"]);
+
+	assert.equal(checks.some(slopLintCheck), true);
+});
+
+test("oxlint config changes select the anti-slop changed-file lane", () => {
+	const { checks } = plan(["oxlint.config.ts"]);
+
+	assert.equal(checks.some(slopLintCheck), true);
+});
+
+test("vendored anti-slop plugin changes select the anti-slop changed-file lane", () => {
+	const { checks } = plan(["tools/oxlint/anti-slop/index.ts"]);
+
+	assert.equal(checks.some(slopLintCheck), true);
+});
+
+test("staged source changes pass --staged to the anti-slop changed-file lane", () => {
+	const { checks } = plan(["packages/core/src/index.ts"], { staged: true });
+	const check = checks.find(slopLintCheck);
+
+	assert.ok(check);
+	assert.equal(check.args.includes("--staged"), true);
+	assert.equal(check.args.includes("--base=origin/main"), false);
+});
+
+test("docs-only changes do not select the anti-slop changed-file lane", () => {
+	const { checks } = plan(["docs/agent-tooling.md"]);
+
+	assert.equal(checks.some(slopLintCheck), false);
 });
 
 test("source changes select the konsistent structural lane", () => {
@@ -364,6 +414,7 @@ test("draft package tests are delegated to Turbo with a path filter", () => {
 });
 
 test("fast test script is root-only and full quiet unit lane remains explicit", () => {
+	// SAFETY: package.json is a committed repo file; scripts values are strings.
 	const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
 		scripts: Record<string, string>;
 	};
@@ -375,6 +426,11 @@ test("fast test script is root-only and full quiet unit lane remains explicit", 
 	assert.equal(
 		packageJson.scripts["test:unit:quiet"],
 		"node --import tsx scripts/run-tests.ts --category=unit --quiet --no-artifacts",
+	);
+	assert.equal(packageJson.scripts["lint:slop"], "oxlint");
+	assert.equal(
+		packageJson.scripts["lint:slop:changed"],
+		"node --import tsx scripts/lint-slop-changed.mts",
 	);
 });
 
@@ -645,6 +701,18 @@ test("OptimizeXP skill edits select the byte-identical mirror gate", () => {
 			file,
 		);
 	}
+});
+
+test("any skill-tree edit selects the byte-identical mirror gate", () => {
+	const { checks } = plan([".agents/skills/install-anti-slop/SKILL.md"]);
+
+	assert.ok(
+		checks.some(
+			(check) =>
+				check.command === "pnpm" &&
+				check.args.join(" ") === "run skills:mirror-check",
+		),
+	);
 });
 
 test("gate script changes select the optimizexp drift lane", () => {

@@ -46,9 +46,8 @@ import {
 	type YardBindingInput,
 } from "./binding.js";
 import { deepFreeze, isPlainObject, requireName } from "./canonical.js";
-import { type Yard, yard } from "./yard.js";
 import { isJsonString } from "./json.js";
-
+import { type Yard, yard } from "./yard.js";
 
 export const STATION_MANIFEST_CONTRACT = "hobo.station-manifest/v1"; // public-contract: contract id on every station manifest
 
@@ -189,7 +188,9 @@ export function defineYard(name: string, config: DefineYardConfig): Yard {
 	return yard(name, {
 		provider: config.provider,
 		regions: resolveRegions(config.region, config.regions),
-		...(config.residency !== undefined ? { residency: config.residency } : undefined),
+		...(config.residency !== undefined
+			? { residency: config.residency }
+			: undefined),
 		...(config.componentHosts !== undefined
 			? { componentHosts: config.componentHosts }
 			: undefined),

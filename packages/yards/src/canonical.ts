@@ -13,8 +13,15 @@
  * Nothing here is exported from the package barrel: these are internal parse
  * mechanics, not part of the authoring surface.
  */
-import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject, isJsonArray, type JsonValue, type JsonObject } from "./json.js";
-
+import {
+	isJsonArray,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 /** Property keys that read as a secret value rather than a locator. */
 export const CREDENTIAL_KEY_PATTERN =
@@ -45,9 +52,7 @@ export function canonicalizeStringList(
 	values: readonly string[],
 ): readonly string[] {
 	return Object.freeze(
-		[
-			...new Set(values.filter((v) => isJsonString(v) && v.length > 0)),
-		].sort(),
+		[...new Set(values.filter((v) => isJsonString(v) && v.length > 0))].sort(),
 	);
 }
 
@@ -102,9 +107,7 @@ export function requireName(label: string, value: string): void {
 	}
 }
 
-export function isPlainObject<T>(
-	value: T,
-): value is T & JsonObject {
+export function isPlainObject<T>(value: T): value is T & JsonObject {
 	return Boolean(value && isJsonObject(value) && !Array.isArray(value));
 }
 

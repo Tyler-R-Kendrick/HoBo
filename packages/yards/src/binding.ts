@@ -27,8 +27,7 @@ import {
 	findCredentialKey,
 	isPlainObject,
 } from "./canonical.js";
-import { isJsonString, type JsonValue, type JsonObject } from "./json.js";
-
+import { isJsonString, type JsonObject, type JsonValue } from "./json.js";
 
 export const YARD_BINDING_CONTRACT = "hobo.yard-binding/v1"; // public-contract: contract id on every yard binding record
 
@@ -112,10 +111,7 @@ function parseRow(
 		throw new TypeError("yard binding row must be an object");
 	}
 	const profile = row.profile;
-	if (
-		!isJsonString(profile) ||
-		!YARD_BINDING_PROFILE_PATTERN.test(profile)
-	) {
+	if (!isJsonString(profile) || !YARD_BINDING_PROFILE_PATTERN.test(profile)) {
 		throw new YardBindingError(
 			"YARD_BINDING_PROFILE_INVALID",
 			`yard binding profile must match <primitive-family>.<path>/v<major> (got ${JSON.stringify(profile)})`,

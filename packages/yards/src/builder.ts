@@ -74,9 +74,13 @@ import {
 	defineYard,
 	type StationManifest,
 } from "./define.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+	type StringBag,
+} from "./json.js";
 import type { Yard } from "./yard.js";
-import { isJsonString, isJsonObject, type JsonValue, type StringBag } from "./json.js";
-
 
 export type BuilderErrorCode =
 	| "CAMP_TIER_UNKNOWN"
@@ -494,9 +498,7 @@ class YardDraft implements YardBuilder {
 		build?: (builder: CampBuilder) => void,
 	): this {
 		this.#camps.push(
-			isJsonString(nameOrCamp)
-				? buildCamp(nameOrCamp, build)
-				: nameOrCamp,
+			isJsonString(nameOrCamp) ? buildCamp(nameOrCamp, build) : nameOrCamp,
 		);
 		return this;
 	}

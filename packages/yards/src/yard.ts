@@ -18,8 +18,7 @@ import {
 	isPlainObject,
 	requireName,
 } from "./canonical.js";
-import { isJsonString, isJsonObject, type JsonValue } from "./json.js";
-
+import { isJsonObject, isJsonString, type JsonValue } from "./json.js";
 
 export const TOPOLOGY_CONTRACT_VERSION = "hobo.topology-objects/v1" as const;
 
@@ -121,7 +120,9 @@ export function yard(name: string, config: YardConfig): Yard {
 		contract: TOPOLOGY_CONTRACT_VERSION,
 		name,
 		providerId,
-		...(config.runtimeId !== undefined ? { runtimeId: config.runtimeId } : undefined),
+		...(config.runtimeId !== undefined
+			? { runtimeId: config.runtimeId }
+			: undefined),
 		regions: canonicalizeStringList(config.regions ?? []),
 		require: canonicalizeStringList(config.require ?? []),
 		prefer: canonicalizeStringList(config.prefer ?? []),

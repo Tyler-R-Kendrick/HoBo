@@ -26,8 +26,7 @@ import {
 	YardBindingError,
 	YardDefineError,
 } from "../src/index.js";
-import { type JsonValue } from "../src/json.js";
-
+import type { JsonValue } from "../src/json.js";
 
 const containerApps = slotBinding({
 	slot: "web",

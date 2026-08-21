@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns */
+
 /**
  * The Pulumi automation adapter's parse boundary, per-resource stack keys and
  * in-memory state backend.

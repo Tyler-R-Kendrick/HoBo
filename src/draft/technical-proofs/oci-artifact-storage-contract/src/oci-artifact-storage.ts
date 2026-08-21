@@ -4,6 +4,8 @@ import {
   parseDescriptor,
   serializeDescriptor
 } from "../../registry-artifact-descriptor-contract/src/registry-descriptor.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const OCI_ARTIFACT_STORAGE_CONTRACT = "hobo.oci-artifact-storage/v1";
 
@@ -265,7 +267,7 @@ function coordinateOf(descriptor) {
 }
 
 function normalizeCoordinate(coordinate) {
-  if (!coordinate || typeof coordinate !== "object" || Array.isArray(coordinate)) {
+  if (!coordinate || !isJsonObject(coordinate) || Array.isArray(coordinate)) {
     throw new Error("artifact listing coordinate must be an object");
   }
   if (!isNonEmptyString(coordinate.name)) {
@@ -291,7 +293,7 @@ function coordinateKey({ name, version }) {
 }
 
 function digestFrom(refOrDigest, path) {
-  const digest = typeof refOrDigest === "string" ? refOrDigest : refOrDigest?.digest;
+  const digest = isJsonString(refOrDigest) ? refOrDigest : refOrDigest?.digest;
   if (!SHA256_DIGEST_RE.test(digest)) {
     throw new Error(`${path} must be sha256:<64 hex chars>`);
   }
@@ -321,7 +323,7 @@ function toBuffer(value, path) {
   if (value instanceof Uint8Array) {
     return Buffer.from(value);
   }
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     return Buffer.from(value);
   }
   throw new Error(`${path} must be bytes`);
@@ -332,5 +334,5 @@ function deepClone(value) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }

@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export const OCI_ARTIFACT_STORAGE_CONTRACT: "hobo.oci-artifact-storage/v1";
 
 export interface ArtifactRef {
@@ -12,11 +13,11 @@ export interface RegistryDescriptor {
   name: string;
   version: string;
   artifact: ArtifactRef;
-  publisher: Record<string, unknown>;
-  evidence: Record<string, unknown>;
+  publisher: JsonObject;
+  evidence: JsonObject;
   interfaces: {
-    exports: Array<{ ref: string } & Record<string, unknown>>;
-    imports: Array<{ ref: string } & Record<string, unknown>>;
+    exports: Array<{ ref: string } & JsonObject>;
+    imports: Array<{ ref: string } & JsonObject>;
   };
 }
 

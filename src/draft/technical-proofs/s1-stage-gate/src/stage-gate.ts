@@ -36,7 +36,6 @@ export async function runS1StageGateRecord(options: {
     reportRef: "hobo.runtime-port-conformance/v1",
   });
 
-  const offlineStarted = Date.now();
   const offline = await runOfflineHelloBindleGate({ projectRoot });
   checks.push({
     checkId: "offline-hello-bindle",

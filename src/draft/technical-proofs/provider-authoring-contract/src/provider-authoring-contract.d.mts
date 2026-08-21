@@ -1,10 +1,11 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export type PortKind = "database" | "compute" | "objectStore" | "queue" | "cache" | "dns";
 
 export type Negotiation = "prefer" | "require";
 
 export type Stability = "stable" | "preview" | "experimental" | "deprecated";
 
-export type Outputs = Record<string, unknown>;
+export type Outputs = JsonObject;
 
 export interface CapabilitySpec<P extends PortKind = PortKind> {
   readonly port: P;
@@ -144,7 +145,7 @@ export function mergeResolvedProviderOptions<const Provider extends { readonly i
   optionBlocks: readonly ProviderOptionBlock<Provider["id"], PortKind, object>[]
 ): ReturnType<typeof resolveProviderOptions>;
 
-export function auditProviderCatalog(providers: readonly { readonly id: string; readonly with: Record<string, unknown> }[]): {
+export function auditProviderCatalog(providers: readonly { readonly id: string; readonly with: JsonObject }[]): {
   readonly ok: boolean;
   readonly conflicts: readonly {
     readonly optionName: string;
@@ -153,7 +154,7 @@ export function auditProviderCatalog(providers: readonly { readonly id: string; 
   }[];
 };
 
-export function validateProviderPackage(provider: unknown): {
+export function validateProviderPackage(provider: JsonValue): {
   readonly ok: boolean;
   readonly errors: readonly string[];
 };

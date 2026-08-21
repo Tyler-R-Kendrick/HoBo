@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export declare const REGISTRY_PUBLISH_FLOW_CONTRACT: "hobo.registry-publish-flow/v1";
 
 export interface RegistryPublishFlow {
@@ -16,9 +17,9 @@ export interface RegistryPublishCatalog {
 }
 
 export interface PublishInput {
-  descriptor: unknown;
-  signedArtifact: unknown;
-  trustBoundary: unknown;
+  descriptor: JsonValue;
+  signedArtifact: JsonValue;
+  trustBoundary: JsonValue;
   conformanceReports: ConformanceReport[];
   occurredAt: string;
 }
@@ -44,8 +45,8 @@ export interface RegistryListing {
   name: string;
   version: string;
   artifact: ArtifactRef;
-  descriptor: unknown;
-  publisher: unknown;
+  descriptor: JsonValue;
+  publisher: JsonValue;
   storageRef: ArtifactRef;
   signature: ListingSignature;
   provenanceRef: ArtifactRef;
@@ -63,8 +64,8 @@ export interface RegistryPublishOciStore {
 }
 
 export interface StorePushInput {
-  descriptor: unknown;
-  signedArtifact: unknown;
+  descriptor: JsonValue;
+  signedArtifact: JsonValue;
 }
 
 export interface StorePushResult {

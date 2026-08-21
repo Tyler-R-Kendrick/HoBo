@@ -7,6 +7,8 @@ import {
 } from "../../domain-validation-gate-contract/src/domain-validation-gate.js";
 import { createPreValidationDnsPort, routingPolicy } from "../../hobo-dns-port-contract/src/dns-port.js";
 import { routeCrossCampTraffic } from "../../cross-camp-routing-policy-contract/src/cross-camp-routing-policy.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const JUNCTION_DOMAIN_SCHEMA_VERSION = "hobo.junction-federated-domain/v1";
 
@@ -108,7 +110,7 @@ export async function federateJunctionDomain(input = {}) {
 }
 
 export function validateJunctionDomainPlan(plan) {
-  if (!plan || typeof plan !== "object" || Array.isArray(plan)) {
+  if (!plan || !isJsonObject(plan) || Array.isArray(plan)) {
     return invalid("junction.domain.invalid", "plan must be an object");
   }
   if (plan.schemaVersion !== JUNCTION_DOMAIN_SCHEMA_VERSION) {
@@ -117,7 +119,7 @@ export function validateJunctionDomainPlan(plan) {
   if (!Array.isArray(plan.livePromotions) || plan.livePromotions.length !== 0) {
     return invalid("junction.domain.live-promotion", "live promotions must be empty before validation clears every Yard");
   }
-  if (!plan.deliveriesByYard || typeof plan.deliveriesByYard !== "object" || Array.isArray(plan.deliveriesByYard)) {
+  if (!plan.deliveriesByYard || !isJsonObject(plan.deliveriesByYard) || Array.isArray(plan.deliveriesByYard)) {
     return invalid("junction.domain.delivery", "deliveriesByYard must be an object keyed by Yard id");
   }
 
@@ -208,8 +210,8 @@ function deliveryForYard(request, yard) {
 function summarizeValidation(validation) {
   return deepFreeze({
     status: validation.status,
-    ...(validation.failedCheck ? { failedCheck: validation.failedCheck } : {}),
-    ...(validation.reason ? { reason: validation.reason } : {}),
+    ...(validation.failedCheck ? { failedCheck: validation.failedCheck } : undefined),
+    ...(validation.reason ? { reason: validation.reason } : undefined),
     checks: validation.checks ?? [],
     events: validation.events
   });
@@ -280,9 +282,9 @@ function normalizeResidency(residency = {}) {
 function requireDnsAdapter(adapter) {
   if (
     !adapter ||
-    typeof adapter.upsertShadowRecord !== "function" ||
-    typeof adapter.inspectLiveZone !== "function" ||
-    typeof adapter.inspectShadowZone !== "function"
+    !(adapter.upsertShadowRecord instanceof Function) ||
+    !(adapter.inspectLiveZone instanceof Function) ||
+    !(adapter.inspectShadowZone instanceof Function)
   ) {
     throw new Error("Junction domain federation requires a hobo:dns shadow adapter per Yard");
   }
@@ -314,7 +316,7 @@ function positiveInteger(value, field) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value.trim();
@@ -326,7 +328,7 @@ function stableDigest(value) {
 
 function sortJson(value) {
   if (Array.isArray(value)) return value.map(sortJson);
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(Object.entries(value)
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, item]) => [key, sortJson(item)]));
@@ -339,7 +341,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) return value;
   for (const child of Object.values(value)) {
     deepFreeze(child);
   }

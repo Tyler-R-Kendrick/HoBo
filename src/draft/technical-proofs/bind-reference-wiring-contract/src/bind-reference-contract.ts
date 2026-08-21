@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const MANIFEST_SCHEMA = "hobo.manifest/v1";
 const RESOURCE_ID = /^[A-Za-z][A-Za-z0-9_-]*$/;
 const MANIFEST_REFERENCE = /^\{([A-Za-z][A-Za-z0-9_-]*)\.([A-Za-z][A-Za-z0-9_.-]*)\}$/;
@@ -199,7 +200,7 @@ function componentHandle(kind, name, options) {
     kind,
     name,
     bindings,
-    env: { ...(options.env ?? {}) },
+    env: { ...options.env },
     endpoints: {},
     annotations: {},
     typescript: {
@@ -255,7 +256,7 @@ function componentHandle(kind, name, options) {
 
 function recordWait(handle, ownerName, key, dependency, until) {
   const target = resolveDependencyName(dependency);
-  if (typeof target !== "string" || !RESOURCE_ID.test(target)) {
+  if (!isJsonString(target) || !RESOURCE_ID.test(target)) {
     throw new BindReferenceError(
       `resources.${ownerName}.${key}`,
       "must reference a declared resource handle or id",
@@ -266,10 +267,10 @@ function recordWait(handle, ownerName, key, dependency, until) {
 }
 
 function resolveDependencyName(dependency) {
-  if (typeof dependency === "string") {
+  if (isJsonString(dependency)) {
     return dependency;
   }
-  if (isRecord(dependency) && typeof dependency.name === "string") {
+  if (isRecord(dependency) && isJsonString(dependency.name)) {
     return dependency.name;
   }
   return null;
@@ -337,7 +338,7 @@ function validateLazyReferences(resourceId, resource, resources) {
 }
 
 function visitStrings(value, path, visitor) {
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     visitor(value, path);
     return;
   }
@@ -356,8 +357,8 @@ function assertHandle(handle) {
   if (
     !handle ||
     !["resource", "service", "container"].includes(handle.kind) ||
-    typeof handle.name !== "string" ||
-    typeof handle.manifest !== "function"
+    !isJsonString(handle.name) ||
+    !(handle.manifest instanceof Function)
   ) {
     throw new BindReferenceError("handles", "must contain HoBo resource handles");
   }
@@ -370,11 +371,11 @@ function assertComponent(handle, path) {
 }
 
 function assertResourceName(name, path) {
-  if (typeof name !== "string" || !RESOURCE_ID.test(name)) {
+  if (!isJsonString(name) || !RESOURCE_ID.test(name)) {
     throw new BindReferenceError(path, "invalid resource id");
   }
 }
 
 function isRecord(value) {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+  return isJsonObject(value) && value !== null && !Array.isArray(value);
 }

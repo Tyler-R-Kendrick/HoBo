@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export interface GeneratedRegionRef {
   regionId: string;
   artifactRef: string;
@@ -24,11 +25,11 @@ export interface OpenInferenceSpan {
   name: string;
   startTime: string;
   endTime: string;
-  attributes: Record<string, unknown> & {
+  attributes: JsonObject & {
     "openinference.span.kind": "LLM" | "CHAIN" | "TOOL" | "RETRIEVER" | "RERANKER" | "EMBEDDING" | "AGENT" | "GUARDRAIL" | "EVALUATOR" | "PROMPT";
   };
-  inputs?: Record<string, unknown>;
-  outputs?: Record<string, unknown>;
+  inputs?: JsonObject;
+  outputs?: JsonObject;
 }
 
 export interface TrainingTrajectory<Region extends GeneratedRegionRef = GeneratedRegionRef> {
@@ -53,7 +54,7 @@ export interface TrainingTrajectory<Region extends GeneratedRegionRef = Generate
   payloads: Record<string, {
     classification: "public" | "pii" | "secret" | "confidential" | "regulated";
     redaction: "none" | "raw" | "tokenized" | "encrypted";
-    value?: unknown;
+    value?: JsonValue;
     tokenRef?: string;
     encryptedRef?: `run://${string}`;
   }>;

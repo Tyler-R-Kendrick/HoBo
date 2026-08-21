@@ -2,6 +2,8 @@ import {
   createIdentityEvent,
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const EVENT_ACTOR = { kind: "service", id: "yard/config" };
 
@@ -384,7 +386,7 @@ function normalizeScope(input, field) {
 function normalizeSecretsAdapters(adapters) {
   const normalized = new Map();
   for (const [provider, adapter] of Object.entries(requirePlainObject(adapters, "secrets"))) {
-    if (!adapter || typeof adapter.readSecret !== "function") {
+    if (!adapter || !(adapter.readSecret instanceof Function)) {
       throw new Error(`secrets adapter ${provider} must implement readSecret(input)`);
     }
     normalized.set(provider, adapter);
@@ -421,7 +423,7 @@ function labels(label) {
 }
 
 function requireTokenBroker(tokenBroker) {
-  if (!tokenBroker || typeof tokenBroker.requestToken !== "function") {
+  if (!tokenBroker || !(tokenBroker.requestToken instanceof Function)) {
     throw new Error("secretless config resolver requires tokenBroker.requestToken(input)");
   }
   return tokenBroker;
@@ -435,7 +437,7 @@ function requirePlainObject(value, label) {
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${label} must be a non-empty string`);
   }
   return value;
@@ -457,7 +459,7 @@ function serializeSurface(surface) {
   if (surface === undefined || surface === null) {
     return "";
   }
-  if (typeof surface === "string") {
+  if (isJsonString(surface)) {
     return surface;
   }
   return JSON.stringify(surface);
@@ -471,7 +473,7 @@ function defaultIdFactory() {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -485,7 +487,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

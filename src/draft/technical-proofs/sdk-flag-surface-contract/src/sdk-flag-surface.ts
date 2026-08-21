@@ -3,6 +3,8 @@ import {
   validateFlagEvent,
 } from "../../flag-event-contract/src/flag-event-contract.js";
 import { createBuiltInFlagStore } from "../../built-in-flag-store-contract/src/built-in-flag-store.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const emptyContext = Object.freeze({ attributes: [] });
 
@@ -43,7 +45,7 @@ export function createFlagSurfaceEventLog(entries = []) {
     },
     entries: entriesSnapshot,
     subscribe(listener) {
-      if (typeof listener !== "function") {
+      if (!(listener instanceof Function)) {
         throw new Error("flag surface event-log subscriber must be a function");
       }
       listeners.add(listener);
@@ -54,7 +56,7 @@ export function createFlagSurfaceEventLog(entries = []) {
 
 export function createSdkFlagSurface(options = {}) {
   const eventLog = options.eventLog ?? createFlagSurfaceEventLog();
-  const requestContext = typeof options.requestContext === "function" ? options.requestContext : () => emptyContext;
+  const requestContext = options.requestContext instanceof Function ? options.requestContext : () => emptyContext;
   const clientContext = normalizeContext(options.clientContext);
 
   async function details(flag, context) {
@@ -151,10 +153,10 @@ function detailsMethod(valueType) {
 }
 
 function validateSdkFlag(flag) {
-  if (!flag || typeof flag !== "object") {
+  if (!flag || !isJsonObject(flag)) {
     throw new Error("flag reference must be an object");
   }
-  if (typeof flag.key !== "string" || flag.key.length === 0) {
+  if (!isJsonString(flag.key) || flag.key.length === 0) {
     throw new Error("flag reference requires key");
   }
   if (!["boolean", "string", "number", "object"].includes(flag.type)) {
@@ -181,7 +183,7 @@ function normalizeEntries(entries) {
 }
 
 function normalizeContext(context) {
-  if (!context || typeof context !== "object") {
+  if (!context || !isJsonObject(context)) {
     return clone(emptyContext);
   }
 
@@ -199,7 +201,7 @@ function stableValue(value) {
   if (Array.isArray(value)) {
     return value.map(stableValue);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -213,5 +215,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

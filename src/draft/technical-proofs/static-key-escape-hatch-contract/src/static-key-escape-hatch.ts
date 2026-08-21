@@ -2,6 +2,8 @@ import {
   createIdentityEvent,
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEFAULT_MAX_TTL_DAYS = 7;
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -40,7 +42,7 @@ export function createStaticKeyEscapeHatch({
   idFactory = defaultIdFactory(),
   maxTtlDays = DEFAULT_MAX_TTL_DAYS,
 } = {}) {
-  if (!envelopeStore || typeof envelopeStore.decrypt !== "function") {
+  if (!envelopeStore || !(envelopeStore.decrypt instanceof Function)) {
     throw new Error("envelopeStore.decrypt is required");
   }
   if (!Number.isFinite(maxTtlDays) || maxTtlDays <= 0 || maxTtlDays > DEFAULT_MAX_TTL_DAYS) {
@@ -166,7 +168,7 @@ export function assertStaticKeyNoPlaintextConformance(surfaces, secrets) {
   for (const [name, value] of Object.entries(surfaces ?? {})) {
     const serialized = JSON.stringify(value ?? null);
     for (const secret of secrets) {
-      if (typeof secret === "string" && secret.length > 0 && serialized.includes(secret)) {
+      if (isJsonString(secret) && secret.length > 0 && serialized.includes(secret)) {
         throw new Error(`${name} contains plaintext static key`);
       }
     }
@@ -177,7 +179,7 @@ class SecretValue {
   #plaintext;
 
   constructor(plaintext) {
-    if (typeof plaintext !== "string" || plaintext.length === 0) {
+    if (!isJsonString(plaintext) || plaintext.length === 0) {
       throw new Error("decrypted static key material must be a non-empty string");
     }
     this.#plaintext = plaintext;
@@ -261,7 +263,7 @@ function assertExplicitOptIn(keyRef, optIn, currentTime) {
   if (!isPlainObject(optIn.approvedBy) || !optIn.approvedBy.kind || !optIn.approvedBy.id) {
     throw new StaticKeyOptInRequiredError(keyRef);
   }
-  if (typeof optIn.reason !== "string" || optIn.reason.trim().length === 0) {
+  if (!isJsonString(optIn.reason) || optIn.reason.trim().length === 0) {
     throw new StaticKeyOptInRequiredError(keyRef);
   }
   if (optIn.expiresAt && parseIso(optIn.expiresAt, "optIn.expiresAt") <= currentTime) {
@@ -292,7 +294,7 @@ function parseIso(value, path) {
 }
 
 function requireString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${path} is required`);
   }
 }
@@ -310,7 +312,7 @@ function defaultIdFactory() {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -325,7 +327,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

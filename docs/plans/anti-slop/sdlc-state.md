@@ -62,7 +62,8 @@ main
                                                    └── sdlc/anti-slop-51-draft-s1-15  #1296 bind-wiring-topology
                                                     └── sdlc/anti-slop-52-draft-runtime-primitives  #1297 runtime-ts+multi-region-dr
                                                      └── sdlc/anti-slop-53-draft-escape-ir-postgres  #1299 raw-driver+contract-ir+postgres
-                                                      └── sdlc/anti-slop-54-draft-cloudflare-camp  cloudflare-contract+camp-mapping
+                                                      └── sdlc/anti-slop-54-draft-cloudflare-camp  #1301 cloudflare-contract+camp-mapping
+                                                       └── sdlc/anti-slop-55-draft-collection-azure  collection-engine+azure-full
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -136,6 +137,7 @@ Layer 50: `ifc-handler-trigger-hobo-608` + `s1-19-ctx-config-local-resolution` +
 Layer 51: `s1-15-bind-wiring-topology-contract` oxlint `--deny-warnings` clean (#1296).
 Layer 52: `hobo-runtime-ts-primitives` + `multi-region-dr-replay-contract` oxlint `--deny-warnings` clean (#1297).
 Layer 53: `raw-driver-escape-hatch-contract` + `hobo-contract-ir` + `runtime-postgres-ports` oxlint `--deny-warnings` clean (#1299).
-Layer 54: `provider-cloudflare-contract` + `camp-mapping-sugar-compiler` oxlint `--deny-warnings` clean.
+Layer 54: `provider-cloudflare-contract` + `camp-mapping-sugar-compiler` oxlint `--deny-warnings` clean (#1301).
+Layer 55: `resource-collection-engine-contract` + `s4-03-provider-azure-full-capability-manifest` oxlint `--deny-warnings` clean.
 Next: remaining `src/draft/` (larger technical-proofs, exp-proofs, projects).
 Full-repo `lint:slop --deny-warnings` is still red until those land.

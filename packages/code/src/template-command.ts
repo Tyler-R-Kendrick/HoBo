@@ -10,22 +10,23 @@ import {
 	searchPatterns,
 	validateRenderedPattern,
 } from "@hobo/patterns";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "./json.js";
 
 export function runTemplateCommand(input: {
 	readonly args: readonly string[];
-	readonly flags: Readonly<Record<string, string | boolean>>;
-}): {
-	readonly ok: boolean;
-	readonly code: string;
-	readonly message: string;
-	readonly data: unknown;
-} {
+	readonly flags: { readonly [name: string]: string | boolean };
+}) {
 	const catalog = loadPatternCatalog();
 	const vocabulary = buildHoboVocabulary();
 	const sub = input.args[0];
 	const rest = input.args.slice(sub && TEMPLATE_SUB.has(sub) ? 1 : 0);
 	const query =
-		(typeof input.flags.id === "string" && input.flags.id) || rest.join(" ");
+		(isJsonString(input.flags.id) && input.flags.id) || rest.join(" ");
 	const action = resolveAction(sub, input.flags);
 	if (action === "list" || (action === "search" && !query)) {
 		const rows = catalog.patterns.flatMap((item) => {
@@ -68,7 +69,7 @@ export function runTemplateCommand(input: {
 		vocabulary,
 		query: {
 			query,
-			id: typeof input.flags.id === "string" ? input.flags.id : "",
+			id: isJsonString(input.flags.id) ? input.flags.id : "",
 			autoSelect: true,
 			topK: input.flags["top-k"],
 			kind: input.flags.kind,
@@ -108,9 +109,11 @@ export function runTemplateCommand(input: {
 	}
 	if (action === "apply") {
 		const id = search.selectedId || search.candidates[0]?.patternId;
-		const isolationRoot =
-			(typeof input.flags.out === "string" && input.flags.out) ||
-			(typeof input.flags.isolation === "string" && input.flags.isolation);
+		const isolationRoot = isJsonString(input.flags.out)
+			? input.flags.out
+			: isJsonString(input.flags.isolation)
+				? input.flags.isolation
+				: "";
 		if (!id || !isolationRoot) {
 			return {
 				ok: false,
@@ -126,14 +129,13 @@ export function runTemplateCommand(input: {
 			patternId: id,
 			isolationRoot,
 			targetPath:
-				(typeof input.flags.target === "string" && input.flags.target) ||
-				(typeof input.flags.path === "string" && input.flags.path) ||
+				(isJsonString(input.flags.target) && input.flags.target) ||
+				(isJsonString(input.flags.path) && input.flags.path) ||
 				pattern?.renderings[0]?.outputFiles[0] ||
 				"src/bindle.ts",
 			isolationRunId:
-				(typeof input.flags.run === "string" && input.flags.run) ||
-				"template-apply",
-			...(Object.keys(params).length > 0 ? { params } : {}),
+				(isJsonString(input.flags.run) && input.flags.run) || "template-apply",
+			...(Object.keys(params).length > 0 ? { params } : undefined),
 		});
 		return {
 			ok: applied.status === 1,
@@ -156,10 +158,10 @@ export function runTemplateCommand(input: {
 		const rendered = renderPattern({
 			catalog,
 			pattern,
-			...(typeof input.flags.format === "string"
+			...(isJsonString(input.flags.format)
 				? { renderingId: input.flags.format }
-				: {}),
-			...(Object.keys(params).length > 0 ? { params } : {}),
+				: undefined),
+			...(Object.keys(params).length > 0 ? { params } : undefined),
 		});
 		const validation = validateRenderedPattern({ pattern, rendered });
 		const maturity =
@@ -187,7 +189,7 @@ export function runTemplateCommand(input: {
 			? renderPattern({
 					catalog,
 					pattern: selected,
-					...(Object.keys(params).length > 0 ? { params } : {}),
+					...(Object.keys(params).length > 0 ? { params } : undefined),
 				})
 			: undefined;
 	const validation =
@@ -229,7 +231,7 @@ const TEMPLATE_SUB = new Set([
 
 function resolveAction(
 	sub: string | undefined,
-	flags: Readonly<Record<string, string | boolean>>,
+	flags: { readonly [name: string]: string | boolean },
 ): string {
 	if (sub && TEMPLATE_SUB.has(sub)) return sub;
 	if (flags.apply === true) return "apply";
@@ -237,24 +239,23 @@ function resolveAction(
 	return "search";
 }
 
-function templateParams(
-	flags: Readonly<Record<string, string | boolean>>,
-): Record<string, string> {
-	const out: Record<string, string> = {};
-	if (typeof flags.name === "string" && flags.name) {
-		out.name = flags.name;
-		out.resourceName = flags.name;
+function templateParams(flags: { readonly [name: string]: string | boolean }) {
+	const out = {};
+	if (isJsonString(flags.name) && flags.name) {
+		Object.assign(out, { name: flags.name, resourceName: flags.name });
 	}
-	if (typeof flags.params === "string" && flags.params) {
-		const parsed = JSON.parse(flags.params) as unknown;
-		if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+	if (isJsonString(flags.params) && flags.params) {
+		// SAFETY: --params is JSON text at the CLI boundary.
+		const parsed = JSON.parse(flags.params) as JsonValue;
+		if (parsed && isJsonObject(parsed) && !Array.isArray(parsed)) {
 			for (const [key, value] of Object.entries(parsed)) {
 				if (
-					typeof value === "string" ||
-					typeof value === "number" ||
-					typeof value === "boolean"
+					isJsonString(value) ||
+					isJsonNumber(value) ||
+					value === true ||
+					value === false
 				) {
-					out[key] = String(value);
+					Object.assign(out, { [key]: String(value) });
 				}
 			}
 		}

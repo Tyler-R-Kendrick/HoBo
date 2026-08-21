@@ -1,5 +1,10 @@
 import { strict as assert } from "node:assert";
 import { createServer } from "node:http";
+import {
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+} from "../../src/json.js";
 
 import { parseGuestEvidenceSubmission } from "../../src/parse.js";
 
@@ -12,7 +17,7 @@ interface PactInteraction {
 	};
 	readonly response: {
 		readonly status: number;
-		readonly body: unknown;
+		readonly body: JsonValue;
 	};
 }
 
@@ -36,19 +41,24 @@ interface ResidentSnapshot {
 	readonly focusedPaneId: string;
 }
 
-function object(input: unknown): Record<string, unknown> {
-	assert(input && typeof input === "object" && !Array.isArray(input));
-	return input as Record<string, unknown>;
+function object(input: JsonValue): JsonObject {
+	assert(input && isJsonObject(input) && !Array.isArray(input));
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	return input as JsonObject;
 }
 
-function stringField(input: unknown, field: string): string {
+function stringField(input: JsonValue, field: string): string {
 	const value = object(input)[field];
-	assert.equal(typeof value, "string", `${field} must be a string`);
+	assert.equal(
+		Object.prototype.toString.call(value),
+		"[object String]",
+		`${field} must be a string`,
+	);
 	assert.notEqual(value, "", `${field} must not be empty`);
 	return value;
 }
 
-function contains(actual: unknown, expected: unknown): void {
+function contains(actual: JsonValue, expected: JsonValue): void {
 	if (Array.isArray(expected)) {
 		assert(Array.isArray(actual));
 		assert.equal(actual.length, expected.length);
@@ -57,7 +67,7 @@ function contains(actual: unknown, expected: unknown): void {
 		}
 		return;
 	}
-	if (expected && typeof expected === "object") {
+	if (expected && isJsonObject(expected)) {
 		const actualObject = object(actual);
 		for (const [key, value] of Object.entries(expected)) {
 			contains(actualObject[key], value);
@@ -67,12 +77,13 @@ function contains(actual: unknown, expected: unknown): void {
 	assert.deepEqual(actual, expected);
 }
 
-export async function verifySessionControlPlanePact(input: unknown): Promise<{
+export async function verifySessionControlPlanePact(input: JsonValue): Promise<{
 	readonly consumer: string;
 	readonly provider: string;
 	readonly verifiedDescriptions: readonly string[];
 	readonly snapshot: ResidentSnapshot;
 }> {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const pact = input as PactDocument;
 	assert.equal(pact.consumer.name, "@hobo/code");
 	assert.equal(pact.provider.name, "SessionControlPlane");
@@ -85,7 +96,7 @@ export async function verifySessionControlPlanePact(input: unknown): Promise<{
 		const body = bodyChunks.length
 			? JSON.parse(Buffer.concat(bodyChunks).toString("utf8"))
 			: {};
-		let result: unknown;
+		let result: JsonValue = null;
 
 		switch (`${request.method} ${request.url}`) {
 			case "POST /code/isolation":
@@ -210,7 +221,7 @@ export async function verifySessionControlPlanePact(input: unknown): Promise<{
 	});
 	try {
 		const address = server.address();
-		assert(address && typeof address === "object");
+		assert(address && isJsonObject(address));
 		for (const interaction of pact.interactions) {
 			const response = await fetch(
 				`http://127.0.0.1:${address.port}${interaction.request.path}`,

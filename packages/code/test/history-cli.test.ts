@@ -30,9 +30,9 @@ describe("hobo-code history and alias", () => {
 			cwd,
 		});
 		expect(search.ok).toBe(true);
-		const events = (
-			search.data as { events: { command: string; trust: string }[] }
-		).events;
+		const events =
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			(search.data as { events: { command: string; trust: string }[] }).events;
 		expect(events.some((row) => row.command === "hobo-code status")).toBe(true);
 		expect(events[0]?.trust).toBe("hobo-executed");
 		const set = await runHoboCodeCli(["alias", "set", "gs", "git", "status"], {

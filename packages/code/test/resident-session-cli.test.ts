@@ -359,11 +359,13 @@ describe("resident session remote browser", () => {
 			);
 			expect(JSON.stringify(result.data)).not.toContain("tokenref://");
 			expect(closed).toBe(false);
-			const closeAuthorization = (
-				result.data as {
-					terminalAction: { closeAuthorization: () => Promise<void> };
-				}
-			).terminalAction.closeAuthorization;
+			const closeAuthorization =
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				(
+					result.data as {
+						terminalAction: { closeAuthorization: () => Promise<void> };
+					}
+				).terminalAction.closeAuthorization;
 			await closeAuthorization();
 			expect(closed).toBe(true);
 		} finally {

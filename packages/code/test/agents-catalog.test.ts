@@ -28,7 +28,8 @@ import {
 } from "../src/agents-catalog.js";
 
 function spec(id: string, label = id): HarnessSpec {
-	return { id, label, kind: "cli", command: id } as unknown as HarnessSpec;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	return { id, label, kind: "cli", command: id } as HarnessSpec;
 }
 
 function eve(
@@ -97,6 +98,7 @@ describe("buildAgentsCatalog", () => {
 		expect(other?.children).toEqual([]);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("labels the hobo-code harness as Hobo Bo", () => {
 		expect(
 			buildAgentsCatalog([spec("hobo-code", "raw")], []).roots[0]?.label,

@@ -1,10 +1,10 @@
 import { createHash, randomUUID } from "node:crypto";
-
 import {
 	type PendingReview,
 	type ReviewSnapshot,
 	ReviewSubmissionState,
 } from "../_generated/code_review_pb.js";
+import { isJsonBigInt, type JsonObject } from "../json.js";
 import type { SessionProcessRunner } from "../session-orchestrator.js";
 import { REVIEW_ERROR, ReviewError } from "./review-errors.js";
 
@@ -38,13 +38,11 @@ export type ReviewProvider = {
 	}>;
 };
 
-export function reviewEffectDigest(
-	input: Readonly<Record<string, unknown>>,
-): string {
+export function reviewEffectDigest(input: JsonObject): string {
 	return createHash("sha256")
 		.update(
 			JSON.stringify(input, (_, value) =>
-				typeof value === "bigint" ? value.toString() : value,
+				isJsonBigInt(value) ? value.toString() : value,
 			),
 		)
 		.digest("hex");

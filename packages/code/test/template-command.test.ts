@@ -12,6 +12,7 @@ describe("hobo-code template", () => {
 			flags: {},
 		});
 		expect(result.code).toBe("HOBO_CODE_TEMPLATE");
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = result.data as { llmCalls?: number };
 		expect(data.llmCalls).toBe(0);
 	});
@@ -54,6 +55,7 @@ describe("hobo-code template", () => {
 		});
 		expect(result.ok).toBe(true);
 		expect(result.message).toContain("greeter");
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = result.data as { llmCalls?: number; patternId?: string };
 		expect(data.llmCalls).toBe(0);
 		expect(data.patternId).toBe("bindle.web-only");
@@ -66,6 +68,7 @@ describe("hobo-code template", () => {
 			flags: { out, path: "src/bindle.ts" },
 		});
 		expect(result.ok).toBe(true);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = result.data as { llmCalls?: number };
 		expect(data.llmCalls).toBe(0);
 		expect(result.message).toContain("0 LLM calls · 0 LLM tokens");

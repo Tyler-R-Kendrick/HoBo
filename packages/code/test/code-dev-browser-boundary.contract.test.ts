@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 const pact = JSON.parse(
 	readFileSync(
 		join(
@@ -14,6 +15,7 @@ const pact = JSON.parse(
 		),
 		"utf8",
 	),
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 ) as {
 	consumer: { name: string };
 	provider: { name: string };

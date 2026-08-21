@@ -412,13 +412,7 @@ export function lockVisualArtifact(
 }
 
 /** Agent browser validation (Playwright primary; CDP for deeper needs). */
-export function validateLockedVisual(artifact: LockedVisualArtifact): {
-	readonly ok: boolean;
-	readonly hasPrimary: boolean;
-	readonly immutable: true;
-	readonly htmlLength: number;
-	readonly hasBadge?: boolean;
-} {
+export function validateLockedVisual(artifact: LockedVisualArtifact) {
 	if (!existsSync(artifact.htmlPath)) {
 		return {
 			ok: false,

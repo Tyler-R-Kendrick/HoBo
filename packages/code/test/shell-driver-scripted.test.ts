@@ -32,8 +32,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
-
 import { runInteractiveShell } from "../src/interactive-shell.js";
+import type { JsonObject } from "../src/json.js";
 
 const homes: string[] = [];
 
@@ -63,13 +63,11 @@ function capture() {
 
 const CTRL_C = "";
 
-async function drive(
-	scriptedKeys: string,
-	overrides: Record<string, unknown> = {},
-) {
+async function drive(scriptedKeys: string, overrides: JsonObject = {}) {
 	const out = capture();
 	const verbs: string[][] = [];
 	const prompts: string[] = [];
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const code = await runInteractiveShell({
 		stdin: new PassThrough(),
 		stdout: out.stream,
@@ -88,6 +86,7 @@ async function drive(
 			},
 		},
 		...overrides,
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	} as never);
 	return { code, output: out.text(), verbs, prompts };
 }
@@ -294,6 +293,7 @@ describe("the render surface", () => {
 		// wrong place.
 		const out = capture();
 		const stream = Object.assign(out.stream, { columns: 100, rows: 30 });
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const code = await runInteractiveShell({
 			stdin: new PassThrough(),
 			stdout: stream,
@@ -302,6 +302,7 @@ describe("the render surface", () => {
 			reducedMotion: true,
 			scriptedKeys: CTRL_C,
 			host: { runVerb: async () => "", complete: async () => "" },
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		} as never);
 		expect(code).toBe(0);
 	});

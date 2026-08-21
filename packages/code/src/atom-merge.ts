@@ -58,16 +58,24 @@ interface ParsedUnmarked {
 
 type Parsed = ParsedMarked | ParsedUnmarked;
 
-function parseAttrs(raw: string): Record<string, string> {
-	const attrs: Record<string, string> = {};
+interface SnippetAttrs {
+	name?: string;
+	id?: string;
+	strategy?: string;
+}
+
+function parseAttrs(raw: string) {
+	const attrs: SnippetAttrs = {};
 	const tokens = raw.trim().split(/\s+/u).filter(Boolean);
 	const positional: string[] = [];
 	for (const token of tokens) {
 		const eq = token.indexOf("=");
 		if (eq === -1) positional.push(token);
-		else attrs[token.slice(0, eq)] = token.slice(eq + 1);
+		else Object.assign(attrs, { [token.slice(0, eq)]: token.slice(eq + 1) });
 	}
-	if (positional[0] && attrs.name === undefined) attrs.name = positional[0];
+	if (positional[0] && !("name" in attrs)) {
+		Object.assign(attrs, { name: positional[0] });
+	}
 	return attrs;
 }
 

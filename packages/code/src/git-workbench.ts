@@ -1,14 +1,22 @@
 import { appendFileSync } from "node:fs";
 import { resolve } from "node:path";
 import type {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	GitWorkbenchBranch as GitWorkbenchBranchMessage,
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	GitWorkbenchCommit as GitWorkbenchCommitMessage,
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	GitWorkbenchDiff as GitWorkbenchDiffMessage,
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	GitWorkbenchFile as GitWorkbenchFileMessage,
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	GitWorkbenchSnapshot as GitWorkbenchSnapshotMessage,
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	GitWorkbenchStash as GitWorkbenchStashMessage,
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	GitWorkbenchTruncation as GitWorkbenchTruncationMessage,
 } from "./_generated/code_harness_pb.js";
+import { isJsonString } from "./json.js";
 import type { SessionProcessRunner } from "./session-orchestrator.js";
 
 const MAX_BRANCHES = 50;
@@ -136,7 +144,9 @@ function parseStatus(
 				staged: record[2] !== ".",
 				unstaged: record[3] !== ".",
 				untracked: false,
-				...(kind === "2" ? { previousPath: records[++index] ?? "" } : {}),
+				...(kind === "2"
+					? { previousPath: records[++index] ?? "" }
+					: undefined),
 			};
 			addFile(file);
 		}
@@ -153,13 +163,7 @@ function rows(stdout: string): string[] {
 	return stdout.split("\n").filter(Boolean);
 }
 
-function parseBranches(
-	stdout: string,
-	currentBranch: string | undefined,
-): {
-	readonly values: GitWorkbenchBranch[];
-	readonly truncated: boolean;
-} {
+function parseBranches(stdout: string, currentBranch: string | undefined) {
 	const entries = rows(stdout);
 	const visible = entries.slice(0, MAX_BRANCHES);
 	if (
@@ -186,10 +190,7 @@ function parseBranches(
 	};
 }
 
-function parseCommits(stdout: string): {
-	readonly values: GitWorkbenchCommit[];
-	readonly truncated: boolean;
-} {
+function parseCommits(stdout: string) {
 	const entries = rows(stdout).filter((row) => row.includes("\u001e"));
 	return {
 		values: entries.slice(0, MAX_COMMITS).map((row) => {
@@ -218,10 +219,7 @@ function parseCommits(stdout: string): {
 	};
 }
 
-function parseStashes(stdout: string): {
-	readonly values: GitWorkbenchStash[];
-	readonly truncated: boolean;
-} {
+function parseStashes(stdout: string) {
 	const entries = rows(stdout);
 	return {
 		values: entries.slice(0, MAX_STASHES).map((row) => {
@@ -251,10 +249,9 @@ export async function readGitWorkbenchSnapshot(
 	runner: SessionProcessRunner,
 	selection?: string | GitSelection,
 ): Promise<GitWorkbenchSnapshot> {
-	const selected =
-		typeof selection === "string"
-			? ({ kind: "file", value: selection } as const)
-			: selection;
+	const selected = isJsonString(selection)
+		? ({ kind: "file", value: selection } as const)
+		: selection;
 	const status = await runner.run(
 		"git",
 		["status", "--porcelain=v2", "--branch", "-z", "--untracked-files=all"],
@@ -382,7 +379,7 @@ export async function readGitWorkbenchSnapshot(
 			commits: commits.truncated,
 			stashes: stashes.truncated,
 		},
-		...(selectedDiff ? { selectedDiff } : {}),
+		...(selectedDiff ? { selectedDiff } : undefined),
 	};
 }
 

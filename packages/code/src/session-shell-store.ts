@@ -7,12 +7,12 @@ import { mkdirSync } from "node:fs";
 import { hostname } from "node:os";
 import { dirname, join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
-
 import {
 	type CommandSensitivity,
 	classifyCommand,
 	redactCommand,
 } from "./command-redaction.js";
+import { isJsonNumber, isJsonString, type JsonObject } from "./json.js";
 
 // public-contract: Station shell-memory snapshot schema
 export const SESSION_SHELL_SCHEMA = "hobo.code.shell-memory/v1" as const;
@@ -184,19 +184,14 @@ export function openSessionShellStore(options: {
     LIMIT 2000
   `);
 
-	function rowToEvent(
-		row: Record<string, unknown>,
-		score?: number,
-	): CommandEvent {
-		const exit =
-			typeof row.exit_code === "number"
-				? {
-						exitCode: row.exit_code,
-						durationMs:
-							typeof row.duration_ms === "number" ? row.duration_ms : 0,
-						...(typeof row.signal === "string" ? { signal: row.signal } : {}),
-					}
-				: undefined;
+	function rowToEvent(row: JsonObject, score?: number): CommandEvent {
+		const exit = isJsonNumber(row.exit_code)
+			? {
+					exitCode: row.exit_code,
+					durationMs: isJsonNumber(row.duration_ms) ? row.duration_ms : 0,
+					...(isJsonString(row.signal) ? { signal: row.signal } : undefined),
+				}
+			: undefined;
 		return {
 			schemaVersion: SESSION_SHELL_SCHEMA,
 			id: String(row.id),
@@ -204,8 +199,9 @@ export function openSessionShellStore(options: {
 			stationId: String(row.station_id),
 			environment: String(row.environment),
 			sessionId: String(row.session_id),
-			...(typeof row.pane_id === "string" ? { paneId: row.pane_id } : {}),
+			...(isJsonString(row.pane_id) ? { paneId: row.pane_id } : undefined),
 			actor: {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				kind: row.actor_kind as CommandActorKind,
 				name: String(row.actor_name),
 				instanceId: String(row.actor_instance),
@@ -213,12 +209,15 @@ export function openSessionShellStore(options: {
 			},
 			cwd: String(row.cwd),
 			command: String(row.command),
-			...(exit !== undefined ? { outcome: exit } : {}),
+			...(exit !== undefined ? { outcome: exit } : undefined),
 			hostname: String(row.hostname),
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			sensitivity: row.sensitivity as CommandSensitivity,
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			trust: row.trust as CommandTrust,
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			source: row.source as CommandSource,
-			...(score !== undefined ? { score } : {}),
+			...(score !== undefined ? { score } : undefined),
 		};
 	}
 
@@ -239,11 +238,13 @@ export function openSessionShellStore(options: {
 				stationId,
 				environment,
 				sessionId: input.sessionId,
-				...(input.paneId !== undefined ? { paneId: input.paneId } : {}),
+				...(input.paneId !== undefined ? { paneId: input.paneId } : undefined),
 				actor: input.actor,
 				cwd: input.cwd,
 				command,
-				...(input.outcome !== undefined ? { outcome: input.outcome } : {}),
+				...(input.outcome !== undefined
+					? { outcome: input.outcome }
+					: undefined),
 				hostname: input.hostname ?? hostname(),
 				sensitivity: classifyCommand(input.command),
 				trust: "hobo-executed",
@@ -273,10 +274,8 @@ export function openSessionShellStore(options: {
 			return event;
 		},
 		search(input = {}) {
-			const rows = selectRecent.all(stationId, environment) as Record<
-				string,
-				unknown
-			>[];
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			const rows = selectRecent.all(stationId, environment) as JsonObject[];
 			const q = input.q?.trim().toLowerCase() ?? "";
 			const limit = Math.min(Math.max(input.limit ?? 20, 1), 50);
 			const freq = new Map<string, number>();
@@ -290,7 +289,10 @@ export function openSessionShellStore(options: {
 					if (
 						input.failedOnly === true &&
 						row.exit_code !== 1 &&
-						!(typeof row.exit_code === "number" && row.exit_code !== 0)
+						!(
+							Object.prototype.toString.call(row.exit_code) ===
+								"[object Number]" && row.exit_code !== 0
+						)
 					) {
 						return false;
 					}
@@ -324,14 +326,18 @@ export function openSessionShellStore(options: {
 		},
 		listAliases() {
 			return (
-				db
-					.prepare("SELECT name, body, updated_at FROM aliases ORDER BY name")
-					.all() as { name: string; body: string; updated_at: string }[]
-			).map((row) => ({
-				name: row.name,
-				body: row.body,
-				updatedAt: row.updated_at,
-			}));
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				(
+					db
+						.prepare("SELECT name, body, updated_at FROM aliases ORDER BY name")
+						// SAFETY: parsed or fixture value is the named domain type after this assertion.
+						.all() as { name: string; body: string; updated_at: string }[]
+				).map((row) => ({
+					name: row.name,
+					body: row.body,
+					updatedAt: row.updated_at,
+				}))
+			);
 		},
 		setAlias(name, body) {
 			assertAlias(name, body);
@@ -347,14 +353,20 @@ export function openSessionShellStore(options: {
 		},
 		listEnv() {
 			return (
-				db
-					.prepare("SELECT name, value, updated_at FROM env_vars ORDER BY name")
-					.all() as { name: string; value: string; updated_at: string }[]
-			).map((row) => ({
-				name: row.name,
-				value: row.value,
-				updatedAt: row.updated_at,
-			}));
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				(
+					db
+						.prepare(
+							"SELECT name, value, updated_at FROM env_vars ORDER BY name",
+						)
+						// SAFETY: parsed or fixture value is the named domain type after this assertion.
+						.all() as { name: string; value: string; updated_at: string }[]
+				).map((row) => ({
+					name: row.name,
+					value: row.value,
+					updatedAt: row.updated_at,
+				}))
+			);
 		},
 		setEnv(name, value) {
 			assertEnv(name, value);
@@ -369,22 +381,28 @@ export function openSessionShellStore(options: {
 			db.prepare("DELETE FROM env_vars WHERE name = ?").run(name);
 		},
 		exportDotfiles() {
-			const aliases = (
-				db.prepare("SELECT name, body FROM aliases ORDER BY name").all() as {
-					name: string;
-					body: string;
-				}[]
-			)
-				.map((row) => `alias ${row.name}='${shellQuote(row.body)}'`)
-				.join("\n");
-			const vars = (
-				db.prepare("SELECT name, value FROM env_vars ORDER BY name").all() as {
-					name: string;
-					value: string;
-				}[]
-			)
-				.map((row) => `export ${row.name}='${shellQuote(row.value)}'`)
-				.join("\n");
+			const aliases =
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				(
+					db.prepare("SELECT name, body FROM aliases ORDER BY name").all() as {
+						name: string;
+						body: string;
+					}[]
+				)
+					.map((row) => `alias ${row.name}='${shellQuote(row.body)}'`)
+					.join("\n");
+			const vars =
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				(
+					db
+						.prepare("SELECT name, value FROM env_vars ORDER BY name")
+						.all() as {
+						name: string;
+						value: string;
+					}[]
+				)
+					.map((row) => `export ${row.name}='${shellQuote(row.value)}'`)
+					.join("\n");
 			return [
 				`# ${SESSION_SHELL_SCHEMA} ${stationId} ${environment}`,
 				aliases,

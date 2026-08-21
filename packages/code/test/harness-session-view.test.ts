@@ -166,10 +166,12 @@ describe("harness-session-view", () => {
 		const { readFileSync, existsSync } = await import("node:fs");
 		const path = "/tmp/herdr-snap.json";
 		if (!existsSync(path)) return;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const json = JSON.parse(readFileSync(path, "utf8")) as {
 			result?: { snapshot?: unknown };
 			snapshot?: unknown;
 		};
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const snap = (json.result?.snapshot ?? json.snapshot ?? json) as Parameters<
 			typeof import("../src/harness-session-view.js").harnessViewFromHerdrApiSnapshot
 		>[0];

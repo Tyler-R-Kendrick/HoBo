@@ -30,6 +30,7 @@ import {
 	type ShellMessage,
 } from "../interactive-shell.js";
 import { cleanupIsolation, createIsolationContext } from "../isolation.js";
+import { isJsonObject } from "../json.js";
 import { preferNamedEndpoint } from "../occupancy-endpoints.js";
 import {
 	authorizationLeaseDelay,
@@ -113,13 +114,17 @@ async function launchProductShell(options: {
 		reducedMotion:
 			process.env.HOBO_CODE_REDUCED_MOTION === "1" ||
 			process.env.HOBO_CODE_REDUCED_MOTION === "true",
-		...(Number.isFinite(maxMs) && maxMs > 0 ? { maxMs } : {}),
-		...(scriptedKeys !== undefined ? { scriptedKeys } : {}),
+		...(Number.isFinite(maxMs) && maxMs > 0 ? { maxMs } : undefined),
+		...(scriptedKeys !== undefined ? { scriptedKeys } : undefined),
 		...(options.sessionId !== undefined
 			? { sessionId: options.sessionId }
-			: {}),
-		...(options.messages !== undefined ? { messages: options.messages } : {}),
-		...(options.journal !== undefined ? { journal: options.journal } : {}),
+			: undefined),
+		...(options.messages !== undefined
+			? { messages: options.messages }
+			: undefined),
+		...(options.journal !== undefined
+			? { journal: options.journal }
+			: undefined),
 	});
 	await host.dispose?.();
 	if (engine) {
@@ -176,8 +181,9 @@ if (argv[0] === "_station-agent") {
 	const result = await runHoboCodeCli(argv, { json, dense });
 	process.stdout.write(formatHoboCodeResult(result, { json, dense }));
 	const action =
-		result.data && typeof result.data === "object"
-			? (
+		result.data && isJsonObject(result.data)
+			? // SAFETY: parsed or fixture value is the named domain type after this assertion.
+				(
 					result.data as {
 						readonly terminalAction?: {
 							readonly kind?: string;
@@ -210,9 +216,13 @@ if (argv[0] === "_station-agent") {
 		process.exitCode = await launchProductShell({
 			dense,
 			sessionId: action.sessionId,
-			...(action.messages !== undefined ? { messages: action.messages } : {}),
-			...(action.journal !== undefined ? { journal: action.journal } : {}),
-			...(action.cwd !== undefined ? { cwd: action.cwd } : {}),
+			...(action.messages !== undefined
+				? { messages: action.messages }
+				: undefined),
+			...(action.journal !== undefined
+				? { journal: action.journal }
+				: undefined),
+			...(action.cwd !== undefined ? { cwd: action.cwd } : undefined),
 		});
 	} else if (
 		result.ok &&

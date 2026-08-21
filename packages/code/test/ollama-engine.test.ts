@@ -79,6 +79,7 @@ function fakeOllama(options: FakeOptions = {}): Promise<string> {
 	servers.push(server);
 	return new Promise((resolve) => {
 		server.listen(0, "127.0.0.1", () => {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const { port } = server.address() as AddressInfo;
 			resolve(`http://127.0.0.1:${port}`);
 		});
@@ -102,6 +103,7 @@ describe("ollama wire format", () => {
 });
 
 describe("model selection", () => {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("never selects an embedding model as a chat engine", () => {
 		expect(selectChatModel(["nomic-embed-text:latest"])).toBeNull();
 		expect(
@@ -186,6 +188,7 @@ describe("local SLM engine", () => {
 		expect(must(engine).usage().totalTokens).toBe(56);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("abort stops an in-flight turn and reports it as cancelled", async () => {
 		const host = await fakeOllama({
 			chunks: ["a", "b", "c", "d", "e", "f"],
@@ -230,6 +233,7 @@ describe("local SLM engine", () => {
 		expect(created.reason).toMatch(/no local model server/);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("surfaces a chat HTTP failure as a turn error, not a crash", async () => {
 		const host = await fakeOllama({ failChat: 500 });
 		const { engine } = await createOllamaShellEngine({

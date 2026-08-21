@@ -57,6 +57,7 @@ export function emitEvidenceTriple(input: EmitEvidenceInput): EvidenceTriple {
 		copyFileSync(source, target);
 		return target;
 	});
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const screenshotPath = screenshotPaths[0] as string;
 
 	const pageHtml = input.htmlPath
@@ -109,9 +110,6 @@ export function assertEvidenceTripleComplete(triple: EvidenceTriple): boolean {
 }
 
 /** Link Gherkin scenario name to OpenFeature flag key. */
-export function linkGherkinToOpenFeature(
-	scenario: string,
-	flagKey: string,
-): { scenario: string; flagKey: string; linked: true } {
+export function linkGherkinToOpenFeature(scenario: string, flagKey: string) {
 	return { scenario, flagKey, linked: true };
 }

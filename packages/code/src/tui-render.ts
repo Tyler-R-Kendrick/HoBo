@@ -1,4 +1,6 @@
+import { isJsonNumber } from "./json.js";
 import { fitCells, inkCard, statusStripe } from "./rubberhose.js";
+
 import { BROADCAST_INNER_INSET, broadcastFrame } from "./tui-broadcast.js";
 import {
 	blitBlock,
@@ -37,7 +39,7 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 		return [centerLine(chips.join("  "), width)];
 	}
 	const scrollOf = (target: TuiNode): number =>
-		typeof target.props.scroll === "number" ? target.props.scroll : 0;
+		isJsonNumber(target.props.scroll) ? target.props.scroll : 0;
 	const originOf = (target: TuiNode): "end" | "start" =>
 		target.props.scrollOrigin === "start" ? "start" : "end";
 	if (
@@ -91,11 +93,15 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 		const railLines = rail.flatMap((child) => renderNode(child, innerWidth));
 		const chrome = {
 			width,
-			...(node.style.title !== undefined ? { title: node.style.title } : {}),
-			...(node.style.accent !== undefined ? { accent: node.style.accent } : {}),
+			...(node.style.title !== undefined
+				? { title: node.style.title }
+				: undefined),
+			...(node.style.accent !== undefined
+				? { accent: node.style.accent }
+				: undefined),
 		};
 		if (node.classList.includes("broadcast-frame")) {
-			const phase = typeof node.props.phase === "number" ? node.props.phase : 0;
+			const phase = isJsonNumber(node.props.phase) ? node.props.phase : 0;
 			return broadcastFrame([...padded, ...railLines], { ...chrome, phase });
 		}
 		return inkCard([...padded, ...railLines], chrome);
@@ -112,10 +118,9 @@ function renderNode(node: TuiNode, width: number, height?: number): string[] {
 	}
 	if (node.classList.includes("slash-palette")) {
 		const items = node.children.flatMap((child) => renderNode(child, width));
-		const selected =
-			typeof node.props.selectedIndex === "number"
-				? node.props.selectedIndex
-				: 0;
+		const selected = isJsonNumber(node.props.selectedIndex)
+			? node.props.selectedIndex
+			: 0;
 		if (height === undefined) return items;
 		return [...windowAround(items, height, selected).lines];
 	}

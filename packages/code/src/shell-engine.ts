@@ -15,6 +15,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 import { at } from "@hobo/core/total-access";
 import { AGUI_EVENT, type AguiEvent } from "./agui.js";
+import { isJsonString } from "./json.js";
 import { BYOK_ENV_NAMES } from "./models.js";
 
 // ── Turn protocol ────────────────────────────────────────────────────────
@@ -203,7 +204,7 @@ export function mapPiEventToTurnEvent(
 	if (
 		event.type === "message_update" &&
 		event.assistantMessageEvent?.type === "text_delta" &&
-		typeof event.assistantMessageEvent.delta === "string"
+		isJsonString(event.assistantMessageEvent.delta)
 	) {
 		return {
 			type: AGUI_EVENT.textMessageContent,
@@ -265,8 +266,8 @@ export async function createPiShellEngine(
 		const modelRuntime = await sdk.ModelRuntime.create();
 		const [provider, ...rest] = options.modelSpec.split("/");
 		const resolved = sdk.resolveCliModel({
-			...(provider ? { cliProvider: provider } : {}),
-			...(rest.length > 0 ? { cliModel: rest.join("/") } : {}),
+			...(provider ? { cliProvider: provider } : undefined),
+			...(rest.length > 0 ? { cliModel: rest.join("/") } : undefined),
 			modelRuntime,
 		});
 		if (!resolved.model) {
@@ -334,6 +335,7 @@ export async function createPiShellEngine(
 				let aborted = false;
 				const before = readUsage();
 				const unsubscribe = session.subscribe((event) => {
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					const mapped = mapPiEventToTurnEvent(event as PiAgentEventLike);
 					if (!mapped) return;
 					if (mapped.type === AGUI_EVENT.textMessageContent) {

@@ -41,7 +41,9 @@ describe("optimizexp feature hobo-code-edit-nvim bindings", () => {
 		if (DISCOVERY_PRIMARY.command) {
 			expect(world.lastCommand).toBe(DISCOVERY_PRIMARY.command);
 			expect(
-				world.lastExitCode === null || typeof world.lastExitCode === "number",
+				world.lastExitCode === null ||
+					Object.prototype.toString.call(world.lastExitCode) ===
+						"[object Number]",
 			).toBe(true);
 		} else {
 			expect(IMPLEMENTATION_STATUS.exerciseSurface).toBe("stub");

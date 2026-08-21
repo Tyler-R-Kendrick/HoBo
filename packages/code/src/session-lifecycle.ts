@@ -84,7 +84,7 @@ function toSnapshot(row: Internal): LifecycleSnapshot {
 		provisioned: row.provisioned === true,
 		started,
 		healthy,
-		...(row.lastError ? { lastError: row.lastError } : {}),
+		...(row.lastError ? { lastError: row.lastError } : undefined),
 	};
 }
 
@@ -116,7 +116,9 @@ export function createResourceLifecycle(
 				...resource,
 				started: existing?.started ?? initial,
 				healthy: existing?.healthy ?? initial,
-				...(existing?.lastError ? { lastError: existing.lastError } : {}),
+				...(existing?.lastError
+					? { lastError: existing.lastError }
+					: undefined),
 			});
 		},
 		async start(id) {

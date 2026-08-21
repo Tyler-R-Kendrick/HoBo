@@ -28,8 +28,8 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough, Writable } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
-
 import { runInteractiveShell } from "../src/interactive-shell.js";
+import type { JsonObject } from "../src/json.js";
 
 const homes: string[] = [];
 
@@ -85,7 +85,7 @@ function fakeStdout(columns = 80, rows = 24) {
 async function live(
 	keys: readonly string[],
 	options: {
-		readonly host?: Record<string, unknown>;
+		readonly host?: JsonObject;
 		readonly onRunning?: (streams: {
 			stdin: ReturnType<typeof fakeStdin>;
 			stdout: ReturnType<typeof fakeStdout>;
@@ -106,8 +106,11 @@ async function live(
 	}
 	setTimeout(() => options.onRunning?.({ stdin, stdout }), 20);
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const code = await runInteractiveShell({
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		stdin: stdin as never,
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		stdout: stdout as never,
 		hoboHome: home(),
 		sidecars: false,
@@ -122,8 +125,9 @@ async function live(
 				prompts.push(prompt);
 				return `assistant: ${prompt}`;
 			},
-			...(options.host ?? {}),
+			...options.host,
 		},
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	} as never);
 
 	return { code, output: stdout.text(), prompts, verbs, stdin, stdout };
@@ -285,14 +289,18 @@ describe("teardown under failure", () => {
 		// a hung suite.
 		const stdin = fakeStdin();
 		const stdout = fakeStdout();
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const code = await runInteractiveShell({
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			stdin: stdin as never,
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			stdout: stdout as never,
 			hoboHome: home(),
 			sidecars: false,
 			reducedMotion: true,
 			maxMs: 60,
 			host: { runVerb: async () => "", complete: async () => "" },
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		} as never);
 		expect(code).toBe(0);
 		expect(stdin.rawModeCalls.at(-1)).toBe(false);

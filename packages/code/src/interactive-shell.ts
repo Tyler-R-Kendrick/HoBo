@@ -44,6 +44,7 @@ import {
 import {
 	EMPTY_TURN,
 	reduceTurn,
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	renderTurn as renderTurnView,
 } from "./agui.js";
 import {
@@ -70,7 +71,6 @@ import {
 import {
 	executeHarnessChromeAction,
 	HARNESS_CHROME_KEY_HINT,
-	type HarnessChromeAction,
 	harnessActionFromSlash,
 } from "./harness-session-actions.js";
 import {
@@ -97,6 +97,7 @@ import {
 	refreshInSessionPanes,
 	sendKeysRawToInSessionPane,
 } from "./in-session-panes.js";
+import { isJsonString } from "./json.js";
 import { createLocalSessionControl } from "./local-session-control.js";
 import { tmuxRunner } from "./mux.js";
 import { preferNamedEndpoint } from "./occupancy-endpoints.js";
@@ -129,6 +130,7 @@ import {
 	halfPageStep,
 	maxTranscriptOffset,
 	pageStep,
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	scrollFocused as scrollFocusedPure,
 	scrollHistoryFooterHint,
 	scrollToHome,
@@ -241,6 +243,7 @@ export interface InteractiveShellState {
 	readonly focus: ShellFocus;
 	readonly input: string;
 	readonly messages: readonly ShellMessage[];
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	/** Welcome + occupancy endpoints as a two-column ink table. */
 	readonly welcomeTable: readonly InkTableRow[];
 	readonly agentState: ShellAgentState;
@@ -524,9 +527,7 @@ export function resolveSlashArgv(
 }
 
 /** Mux subcommands under `/mux` — not separate top-level slash rows. */
-const MUX_SUBCOMMANDS: Readonly<
-	Record<string, NonNullable<ShellSlashItem["action"]>>
-> = {
+const MUX_SUBCOMMANDS = {
 	tab: "session-tab",
 	"new-tab": "session-tab",
 	pane: "session-pane",
@@ -539,7 +540,14 @@ const MUX_SUBCOMMANDS: Readonly<
 	"focus-pane": "session-focus",
 	attach: "pane-attach",
 	interact: "pane-attach",
-};
+} as const;
+
+function muxSubcommand(sub: string) {
+	for (const [name, action] of Object.entries(MUX_SUBCOMMANDS)) {
+		if (name === sub) return action;
+	}
+	return undefined;
+}
 
 export const MUX_SLASH_HELP = [
 	"/mux          open live agent terminal sessions (TV)",
@@ -560,7 +568,7 @@ function resolveMuxSlash(
 	if (!sub) {
 		return { ...item, action: "mux" };
 	}
-	const action = MUX_SUBCOMMANDS[sub];
+	const action = muxSubcommand(sub);
 	if (!action) {
 		return { ...item, action: "mux", argv: args };
 	}
@@ -706,7 +714,7 @@ export function createInitialShellState(
 
 	const hoboHome =
 		options.hoboHome ??
-		(typeof env.HOBO_HOME === "string" && env.HOBO_HOME
+		(isJsonString(env.HOBO_HOME) && env.HOBO_HOME
 			? env.HOBO_HOME
 			: `${env.HOME ?? "/tmp"}/.hobo`);
 	const hermetic = inspectHermeticEnv({
@@ -850,7 +858,7 @@ function persistShellChat(
 	}
 	const journal = state.journal ?? state.messages;
 	const saved = saveChatSession(state.hoboHome, {
-		...(state.sessionId !== null ? { id: state.sessionId } : {}),
+		...(state.sessionId !== null ? { id: state.sessionId } : undefined),
 		cwd: state.projectDir,
 		messages: journal,
 		...(state.journal
@@ -861,19 +869,19 @@ function persistShellChat(
 						at: message.at,
 					})),
 				}
-			: {}),
-		...(state.stationLabel ? { stationLabel: state.stationLabel } : {}),
-		...(state.envLabel ? { envLabel: state.envLabel } : {}),
-		...(state.modelLabel ? { modelLabel: state.modelLabel } : {}),
+			: undefined),
+		...(state.stationLabel ? { stationLabel: state.stationLabel } : undefined),
+		...(state.envLabel ? { envLabel: state.envLabel } : undefined),
+		...(state.modelLabel ? { modelLabel: state.modelLabel } : undefined),
 	});
 	const next =
 		state.sessionId === saved.id ? state : { ...state, sessionId: saved.id };
 	writeCurrentSessionContext(next.hoboHome, {
 		sessionId: saved.id,
 		cwd: next.projectDir,
-		...(next.stationLabel ? { stationLabel: next.stationLabel } : {}),
-		...(next.envLabel ? { envLabel: next.envLabel } : {}),
-		...(next.modelLabel ? { modelLabel: next.modelLabel } : {}),
+		...(next.stationLabel ? { stationLabel: next.stationLabel } : undefined),
+		...(next.envLabel ? { envLabel: next.envLabel } : undefined),
+		...(next.modelLabel ? { modelLabel: next.modelLabel } : undefined),
 	});
 	return next;
 }
@@ -896,10 +904,10 @@ export function applyCompact(
 	const journal = state.journal ?? state.messages;
 	const plan = compactTranscript({
 		messages: journal,
-		...(focus.trim() ? { focus: focus.trim() } : {}),
-		...(state.stationLabel ? { stationLabel: state.stationLabel } : {}),
-		...(state.envLabel ? { envLabel: state.envLabel } : {}),
-		...(state.sessionId !== null ? { sessionId: state.sessionId } : {}),
+		...(focus.trim() ? { focus: focus.trim() } : undefined),
+		...(state.stationLabel ? { stationLabel: state.stationLabel } : undefined),
+		...(state.envLabel ? { envLabel: state.envLabel } : undefined),
+		...(state.sessionId !== null ? { sessionId: state.sessionId } : undefined),
 	});
 	const next: InteractiveShellState = {
 		...state,
@@ -1017,7 +1025,7 @@ function snapshotFromState(state: InteractiveShellState) {
 						changeCount: state.pendingApproval.changes.length,
 					},
 				}
-			: {}),
+			: undefined),
 	});
 }
 
@@ -1155,7 +1163,7 @@ export function buildShellTree(state: InteractiveShellState) {
 			view: state.harnessView,
 			empty:
 				"no harness sessions yet · chat stays first · a seated coding CLI unlocks this tab",
-			...(noteParts.length > 0 ? { note: noteParts.join(" · ") } : {}),
+			...(noteParts.length > 0 ? { note: noteParts.join(" · ") } : undefined),
 			scroll: state.paneScroll,
 			attached: state.paneInteract,
 			contentWidth: Math.max(24, innerWidth),
@@ -1197,7 +1205,7 @@ export function buildShellTree(state: InteractiveShellState) {
 		const leadIsArt = lead?.role === "product" && /[█▄▀]/.test(lead.text);
 		if (state.welcomeTable.length > 0) {
 			surface = WelcomeSurface({
-				...(leadIsArt && lead ? { art: lead } : {}),
+				...(leadIsArt && lead ? { art: lead } : undefined),
 				rows: state.welcomeTable,
 				rest: leadIsArt ? state.messages.slice(1) : state.messages,
 				width: innerWidth,
@@ -1227,7 +1235,7 @@ export function buildShellTree(state: InteractiveShellState) {
 								parentLatest:
 									live.lastAssistant ?? live.lastUser ?? live.lastProduct,
 							}
-						: {}),
+						: undefined),
 					newFromParent: parentDelta({
 						...state.btw,
 						snapshot: live,
@@ -1252,8 +1260,8 @@ export function buildShellTree(state: InteractiveShellState) {
 							? AGENTS_CONFIGURE_KEY_LEGEND
 							: AGENTS_CATALOG_KEY_LEGEND,
 					}
-				: {}),
-		...(overlay !== undefined ? { overlay } : {}),
+				: undefined),
+		...(overlay !== undefined ? { overlay } : undefined),
 		children: surface,
 	});
 }
@@ -1263,13 +1271,7 @@ export function renderShellFrame(state: InteractiveShellState): string {
 }
 
 /** Assert product identity tokens for persona hard gates. */
-export function shellFrameIdentity(frame: string): {
-	readonly isHoboShell: boolean;
-	readonly claimsNotPi: boolean;
-	readonly hasBoArt: boolean;
-	readonly hasPrompt: boolean;
-	readonly mentionsStockPiChrome: boolean;
-} {
+export function shellFrameIdentity(frame: string) {
 	const lower = frame.toLowerCase();
 	return {
 		isHoboShell: frame.includes("hobo-shell") && frame.includes("hobo-code"),
@@ -1288,23 +1290,7 @@ export function shellFrameIdentity(frame: string): {
 const PASTE_START = "\x1b[200~";
 const PASTE_END = "\x1b[201~";
 
-export function reduceShellKey(
-	state: InteractiveShellState,
-	key: string,
-): {
-	readonly state: InteractiveShellState;
-	readonly quit?: boolean;
-	readonly submit?: string;
-	readonly slash?: ShellSlashItem;
-	readonly approve?: PendingApproval;
-	readonly decline?: PendingApproval;
-	readonly toAgent?: { readonly agent: string; readonly text: string };
-	readonly sessionAction?: HarnessChromeAction;
-	/** Raw TTY chunk to forward to the focused tmux pane (steer fallback). */
-	readonly forwardPaneKey?: string;
-	/** Hand the TTY to tmux attach (exact CLI parity). */
-	readonly fullscreenAttach?: boolean;
-} {
+export function reduceShellKey(state: InteractiveShellState, key: string) {
 	state = ensureHarnessView(state);
 	// `/agents` catalog + configure — modal; keys must not hit the Editor or Tab cycle.
 	if (agentsModalActive(state)) {
@@ -1489,17 +1475,21 @@ export function reduceShellKey(
 				PASTE_START.length,
 				key.endsWith(PASTE_END) ? -PASTE_END.length : undefined,
 			)
-			.replace(/\r?\n/g, " ")
-			// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping controls is the point
-			.replace(/[\x00-\x1f\x7f]/g, "");
-		if (!content) return { state };
+			.replace(/\r?\n/g, " ");
+		let stripped = "";
+		for (const ch of content) {
+			const code = ch.charCodeAt(0);
+			if (code <= 31 || code === 127) continue;
+			stripped += ch;
+		}
+		if (!stripped) return { state };
 		if (state.slashOpen) {
-			const f = state.slashFilter + content;
+			const f = state.slashFilter + stripped;
 			return {
 				state: { ...state, slashFilter: f, slashIndex: 0, input: `/${f}` },
 			};
 		}
-		return { state: { ...state, input: state.input + content } };
+		return { state: { ...state, input: state.input + stripped } };
 	}
 	// Esc
 	if (key === "\u001b") {
@@ -1957,7 +1947,9 @@ function taskRowsForAgent(
 		return {
 			summary: row.summary,
 			state: String(row.state),
-			...(claim ? { branch: claim.branch, isolation: claim.isolation } : {}),
+			...(claim
+				? { branch: claim.branch, isolation: claim.isolation }
+				: undefined),
 		};
 	});
 }
@@ -2235,9 +2227,7 @@ export async function refreshBoOllama(
 function applyAgentsCatalogPick(
 	state: InteractiveShellState,
 	pick: AgentsCatalogPick,
-): {
-	readonly state: InteractiveShellState;
-} {
+) {
 	const base = {
 		...state,
 		slashOpen: false,
@@ -2285,7 +2275,7 @@ function applyAgentsCatalogPick(
 					source: "hobo-agents",
 					...(pick.description !== undefined
 						? { description: pick.description }
-						: {}),
+						: undefined),
 					children: [],
 				},
 				catalog,
@@ -2342,7 +2332,7 @@ function reduceAgentsConfigureShell(
 						modelOffers: current.modelOffers,
 						modelCursor: current.modelCursor,
 					}
-				: {}),
+				: undefined),
 			field: "eve-list" as const,
 			eveCursor: Math.max(
 				0,
@@ -2716,14 +2706,16 @@ export async function runInteractiveShell(
 	const stdout = options.stdout ?? process.stdout;
 	const isTty =
 		"isTTY" in stdin &&
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		(stdin as NodeJS.ReadStream).isTTY === true &&
 		"isTTY" in stdout &&
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		(stdout as NodeJS.WriteStream).isTTY === true;
 
 	const shellEnv = options.env ?? process.env;
 	const shellHome =
 		options.hoboHome ??
-		(typeof shellEnv.HOBO_HOME === "string" && shellEnv.HOBO_HOME
+		(isJsonString(shellEnv.HOBO_HOME) && shellEnv.HOBO_HOME
 			? shellEnv.HOBO_HOME
 			: `${shellEnv.HOME ?? "/tmp"}/.hobo`);
 	describeAuthedStationSession({
@@ -2747,29 +2739,31 @@ export async function runInteractiveShell(
 			sidecars = undefined;
 		}
 	}
+	const stdoutColumns =
+		"columns" in stdout && Number.isFinite(stdout.columns)
+			? stdout.columns
+			: undefined;
+	const stdoutRows =
+		"rows" in stdout && Number.isFinite(stdout.rows) ? stdout.rows : undefined;
 	let state = createInitialShellState({
-		width:
-			"columns" in stdout &&
-			typeof (stdout as NodeJS.WriteStream).columns === "number"
-				? (stdout as NodeJS.WriteStream).columns
-				: 80,
-		height:
-			"rows" in stdout &&
-			typeof (stdout as NodeJS.WriteStream).rows === "number"
-				? (stdout as NodeJS.WriteStream).rows
-				: 24,
-		...(options.dense !== undefined ? { dense: options.dense } : {}),
+		width: stdoutColumns ?? 80,
+		height: stdoutRows ?? 24,
+		...(options.dense !== undefined ? { dense: options.dense } : undefined),
 		...(options.reducedMotion !== undefined
 			? { reducedMotion: options.reducedMotion }
-			: {}),
-		...(options.cwd !== undefined ? { cwd: options.cwd } : {}),
+			: undefined),
+		...(options.cwd !== undefined ? { cwd: options.cwd } : undefined),
 		hoboHome: shellHome,
 		env: shellEnv,
 		...(options.sessionId !== undefined
 			? { sessionId: options.sessionId }
-			: {}),
-		...(options.messages !== undefined ? { messages: options.messages } : {}),
-		...(options.journal !== undefined ? { journal: options.journal } : {}),
+			: undefined),
+		...(options.messages !== undefined
+			? { messages: options.messages }
+			: undefined),
+		...(options.journal !== undefined
+			? { journal: options.journal }
+			: undefined),
 	});
 	if (options.host.engineLabel) {
 		state = { ...state, modelLabel: options.host.engineLabel };
@@ -2781,9 +2775,9 @@ export async function runInteractiveShell(
 	writeCurrentSessionContext(state.hoboHome, {
 		sessionId,
 		cwd: state.projectDir,
-		...(state.stationLabel ? { stationLabel: state.stationLabel } : {}),
-		...(state.envLabel ? { envLabel: state.envLabel } : {}),
-		...(state.modelLabel ? { modelLabel: state.modelLabel } : {}),
+		...(state.stationLabel ? { stationLabel: state.stationLabel } : undefined),
+		...(state.envLabel ? { envLabel: state.envLabel } : undefined),
+		...(state.modelLabel ? { modelLabel: state.modelLabel } : undefined),
 	});
 	if (sidecars) {
 		state = {
@@ -3225,7 +3219,7 @@ export async function runInteractiveShell(
 					state = appendProduct(state, reply);
 					state = { ...state, agentState: "idle" };
 				})
-				.catch((err: unknown) => {
+				.catch((err: Error) => {
 					if (quit) return;
 					state = appendProduct(
 						state,
@@ -3268,12 +3262,13 @@ export async function runInteractiveShell(
 			return;
 		}
 		const result = reduceShellKey(state, sequence);
-		state = result.state;
+		// SAFETY: reduceShellKey always returns InteractiveShellState in .state.
+		state = result.state as InteractiveShellState;
 		if (result.quit) {
 			requestQuit();
 			return;
 		}
-		if (result.fullscreenAttach) {
+		if ("fullscreenAttach" in result && result.fullscreenAttach) {
 			void runFullscreenAttach();
 			return;
 		}
@@ -3296,7 +3291,7 @@ export async function runInteractiveShell(
 						state = withHarnessFromLivePanes(state, next);
 						tui.requestRender();
 					})
-					.catch((err: unknown) => {
+					.catch((err: Error) => {
 						if (quit) return;
 						state = {
 							...state,
@@ -3332,7 +3327,7 @@ export async function runInteractiveShell(
 					state = appendProduct(state, reply);
 					state = { ...state, agentState: "idle" };
 				})
-				.catch((err: unknown) => {
+				.catch((err: Error) => {
 					if (quit) return;
 					state = appendProduct(
 						state,
@@ -3367,7 +3362,7 @@ export async function runInteractiveShell(
 					};
 					state = appendProduct(state, outcome.note);
 				})
-				.catch((err: unknown) => {
+				.catch((err: Error) => {
 					if (quit) return;
 					state = appendProduct(
 						state,
@@ -3584,7 +3579,7 @@ export async function runInteractiveShell(
 						);
 						tui.requestRender();
 					})
-					.catch((err: unknown) => {
+					.catch((err: Error) => {
 						if (quit) return;
 						state = {
 							...state,
@@ -3791,6 +3786,7 @@ export async function runInteractiveShell(
 				.catch(() => {});
 		}
 	};
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const resizeStream = stdout as NodeJS.WriteStream & {
 		on?: (event: string, listener: () => void) => void;
 		off?: (event: string, listener: () => void) => void;

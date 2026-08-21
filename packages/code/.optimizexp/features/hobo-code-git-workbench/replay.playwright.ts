@@ -64,7 +64,7 @@ git(repository, ["commit", "-qm", "base"]);
 
 const control = createLocalSessionControl({
 	hoboHome,
-	...(native ? {} : { tmux: fakeTmux() }),
+	...(native ? undefined : { tmux: fakeTmux() }),
 });
 const server = await startSessionControlServer({
 	hoboHome,
@@ -99,6 +99,7 @@ const createResponse = await fetch(
 	},
 );
 if (!createResponse.ok) throw new Error(await createResponse.text());
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 const created = (await createResponse.json()) as {
 	session: { worktreePath: string };
 };

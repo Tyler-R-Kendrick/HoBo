@@ -110,13 +110,15 @@ export function extractCompactFacts(
 		}
 	}
 	return {
-		...(goal !== undefined ? { goal } : {}),
+		...(goal !== undefined ? { goal } : undefined),
 		files: [...files].slice(0, 16),
 		errors: errors.slice(-6),
 		done: done.slice(-6),
-		...(options.focus?.trim() ? { focus: options.focus.trim() } : {}),
-		...(options.stationLabel ? { stationLabel: options.stationLabel } : {}),
-		...(options.envLabel ? { envLabel: options.envLabel } : {}),
+		...(options.focus?.trim() ? { focus: options.focus.trim() } : undefined),
+		...(options.stationLabel
+			? { stationLabel: options.stationLabel }
+			: undefined),
+		...(options.envLabel ? { envLabel: options.envLabel } : undefined),
 	};
 }
 
@@ -166,7 +168,7 @@ export function compactTranscript(input: CompactInput): CompactPlan {
 				tokensAfter: tokensBefore,
 				...(input.sessionId !== undefined
 					? { sessionId: input.sessionId }
-					: {}),
+					: undefined),
 			}),
 			working: journal,
 			journal,
@@ -184,7 +186,9 @@ export function compactTranscript(input: CompactInput): CompactPlan {
 		keptCount: kept.length,
 		tokensBefore,
 		tokensAfter: estimateTranscriptTokens(kept),
-		...(input.sessionId !== undefined ? { sessionId: input.sessionId } : {}),
+		...(input.sessionId !== undefined
+			? { sessionId: input.sessionId }
+			: undefined),
 	};
 	let briefing = formatCompactBriefing(facts, meta);
 	const headerAt = (journal.at(-1)?.at ?? 0) + 1;

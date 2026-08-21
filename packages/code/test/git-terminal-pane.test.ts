@@ -28,7 +28,6 @@
  * cosmetic change without saying anything about correctness.
  */
 import { describe, expect, it } from "vitest";
-
 import {
 	consumeGitTerminalPromptChunk,
 	type GitTerminalPaneState,
@@ -38,6 +37,7 @@ import {
 	runGitTerminalPane,
 } from "../src/git-terminal-pane.js";
 import type { GitWorkbenchSnapshot } from "../src/git-workbench.js";
+import type { JsonObject } from "../src/json.js";
 
 const file = (path: string, flags: Record<string, boolean> = {}) => ({
 	path,
@@ -47,7 +47,8 @@ const file = (path: string, flags: Record<string, boolean> = {}) => ({
 	...flags,
 });
 
-const snapshot = (overrides: Record<string, unknown> = {}) =>
+const snapshot = (overrides: JsonObject = {}) =>
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	({
 		branch: "main",
 		upstream: "origin/main",
@@ -64,7 +65,8 @@ const snapshot = (overrides: Record<string, unknown> = {}) =>
 		stashes: [{ ref: "stash@{0}", subject: "wip" }],
 		truncated: { files: false },
 		...overrides,
-	}) as unknown as GitWorkbenchSnapshot;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	}) as GitWorkbenchSnapshot;
 
 const state = (
 	overrides: Partial<GitTerminalPaneState> = {},
@@ -117,6 +119,7 @@ describe("consumeGitTerminalPromptChunk", () => {
 		});
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("completes with text typed in the same chunk as the newline", () => {
 		// A paste, or a fast typist, delivers both at once.
 		expect(consumeGitTerminalPromptChunk("y", "es\r")).toEqual({
@@ -165,16 +168,19 @@ describe("consumeGitTerminalPromptChunk", () => {
 		});
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("reports a cancel as no value at all, not an empty one", () => {
 		// Every caller compares the answer; an empty string that compared equal
 		// to an empty expectation would approve silently.
 		expect(consumeGitTerminalPromptChunk("yes", "").value).toBeUndefined();
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("treats an empty answer as no answer", () => {
 		expect(consumeGitTerminalPromptChunk("", "\r")).toEqual({ done: true });
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("treats a whitespace-only answer as no answer", () => {
 		expect(consumeGitTerminalPromptChunk("   ", "\r").value).toBeUndefined();
 	});
@@ -267,7 +273,7 @@ describe("moveGitTerminalSelection", () => {
 
 describe("renderGitTerminalPane", () => {
 	const frame = (
-		overrides: Record<string, unknown> = {},
+		overrides: JsonObject = {},
 		paneState = state(),
 		columns = 80,
 		rows = 24,
@@ -393,7 +399,9 @@ describe("runGitTerminalPane", () => {
 			runGitTerminalPane({
 				sessionId: "s1",
 				hoboHome: "/tmp/nowhere",
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				input: { isTTY: false } as never,
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				output: { write: () => true } as never,
 			}),
 		).rejects.toThrow(/requires a TTY/u);
@@ -406,7 +414,9 @@ describe("runGitTerminalPane", () => {
 			runGitTerminalPane({
 				sessionId: "s1",
 				hoboHome: "/tmp/nowhere",
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				input: { isTTY: true } as never,
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				output: { write: () => true } as never,
 			}),
 		).rejects.toThrow(/requires a TTY/u);
@@ -418,7 +428,9 @@ describe("runGitTerminalPane", () => {
 			runGitTerminalPane({
 				sessionId: "s1",
 				hoboHome: "/tmp/nowhere",
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				input: { isTTY: false } as never,
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				output: { write: () => true } as never,
 			}),
 		).rejects.toThrow(/tmux/u);

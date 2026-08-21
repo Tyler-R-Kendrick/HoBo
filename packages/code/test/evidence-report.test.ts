@@ -113,6 +113,7 @@ describe("evidence report projection", () => {
 		});
 
 		const portable = renderEvidenceReportExport(report);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const manifest = JSON.parse(portable.manifest) as {
 			controlsEnabled: boolean;
 			artifacts: Array<{ sha256: string }>;

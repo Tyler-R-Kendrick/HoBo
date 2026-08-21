@@ -14,7 +14,6 @@ import {
 	isCliStarterAlias,
 	openUiStarterRoot,
 } from "@hobo/patterns";
-
 import { composeAtoms } from "./atom-compose.js";
 import {
 	type EmissionDecision,
@@ -24,6 +23,7 @@ import {
 	retrieveAtoms,
 } from "./atom-index.js";
 import { parseAtomParams } from "./atom-template.js";
+import type { JsonObject } from "./json.js";
 import type { ScaffoldResult } from "./types.js";
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
@@ -85,11 +85,9 @@ export function scaffoldHighValueTemplate(
 	// Specialize placeholders for HoBo package layout.
 	const packageJsonPath = join(options.outputDir, "package.json");
 	if (existsSync(packageJsonPath)) {
-		const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8")) as Record<
-			string,
-			unknown
-		>;
-		pkg.name = `@hobo/app-${options.appName}`;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8")) as JsonObject;
+		Object.assign(pkg, { name: `@hobo/app-${options.appName}` });
 		writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, "\t")}\n`);
 	}
 
@@ -245,14 +243,16 @@ export function scaffoldFromIntent(
 		params: { name: options.appName, ...options.params },
 		...(options.allowEscalate !== undefined
 			? { allowEscalate: options.allowEscalate }
-			: {}),
+			: undefined),
 	});
 	if (!emitted.ok) {
 		return {
 			ok: false,
 			source: "none",
 			decision: emitted.decision,
-			...(emitted.fallback !== undefined ? { fallback: emitted.fallback } : {}),
+			...(emitted.fallback !== undefined
+				? { fallback: emitted.fallback }
+				: undefined),
 		};
 	}
 	ensureKonsistentDirs(options.outputDir);
@@ -354,13 +354,7 @@ export function scaffoldFromAtoms(
 }
 
 /** ts-autocode specialization hooks for HoBo conventions. */
-export function tsAutocodeConventions(): {
-	readonly packageLayout: readonly string[];
-	readonly generatedDir: string;
-	readonly proofPromotion: boolean;
-	readonly konsistent: boolean;
-	readonly bindleTopology: boolean;
-} {
+export function tsAutocodeConventions() {
 	return {
 		packageLayout: [
 			"package.json",

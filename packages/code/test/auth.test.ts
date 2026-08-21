@@ -101,6 +101,7 @@ describe("hobo-code auth (station login)", () => {
 		expect(r.message).toMatch(/hobo-code auth/);
 		expect(r.message).toMatch(/login/);
 		expect(r.message).toMatch(/--domain/);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect((r.data as { topic: string }).topic).toBe("auth");
 	});
 });

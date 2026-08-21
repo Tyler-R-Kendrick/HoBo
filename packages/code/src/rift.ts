@@ -200,10 +200,12 @@ export async function probeRift(
 		const advertised = await runner.run(["capability", "--json"], workspace);
 		if (advertised.code === 0) {
 			try {
-				contract = (
-					JSON.parse(advertised.stdout) as { contract?: RiftContract }
-				).contract;
+				contract =
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
+					(JSON.parse(advertised.stdout) as { contract?: RiftContract })
+						.contract;
 			} catch {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				/* an older build prints something else; treated as no contract */
 			}
 		}
@@ -242,6 +244,7 @@ export async function findRiftWorkspace(
 	const listed = await runner.run(["list", "--json"], workspace);
 	if (listed.code !== 0) return null;
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const registry = JSON.parse(listed.stdout) as {
 			workspaces?: { name?: string; path?: string }[];
 		};

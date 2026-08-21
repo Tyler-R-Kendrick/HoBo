@@ -13,7 +13,6 @@ import {
 import { basename, dirname, join } from "node:path";
 import { create, type JsonValue } from "@bufbuild/protobuf";
 import { createRuntimeLocalEventStore } from "@hobo/runtime-local";
-
 import {
 	AgentLifecycleState,
 	AgentRunSchema,
@@ -25,6 +24,13 @@ import {
 	SessionSnapshotSchema,
 	TabSchema,
 } from "./_generated/code_harness_pb.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	parseJsonObject,
+} from "./json.js";
 import {
 	keepPaneOpen,
 	type MuxRunner,
@@ -180,11 +186,12 @@ function decodePaneMetadata(command: string): TmuxPaneMetadata | undefined {
 	const encoded = /HOBO_PANE_META=([A-Za-z0-9_-]+)/u.exec(command)?.[1];
 	if (!encoded) return undefined;
 	try {
-		const value: unknown = JSON.parse(
+		const value: JsonValue = JSON.parse(
 			Buffer.from(encoded, "base64url").toString("utf8"),
 		);
-		if (!value || typeof value !== "object") return undefined;
-		const record = value as Record<string, unknown>;
+		if (!value || !isJsonObject(value)) return undefined;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		const record = value as JsonObject;
 		for (const field of [
 			"paneId",
 			"tabId",
@@ -192,13 +199,14 @@ function decodePaneMetadata(command: string): TmuxPaneMetadata | undefined {
 			"tabTitle",
 			"workingDirectory",
 		]) {
-			if (typeof record[field] !== "string" || record[field] === "") {
+			if (!isJsonString(record[field]) || record[field] === "") {
 				return undefined;
 			}
 		}
-		if (record.role !== undefined && typeof record.role !== "string") {
+		if (record.role !== undefined && !isJsonString(record.role)) {
 			return undefined;
 		}
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		return record as TmuxPaneMetadata;
 	} catch {
 		return undefined;
@@ -230,6 +238,7 @@ export function createResidentSessionRuntime(
 			process.kill(pid, 0);
 			return true;
 		} catch (error) {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			return (error as NodeJS.ErrnoException).code === "EPERM";
 		}
 	}
@@ -239,6 +248,7 @@ export function createResidentSessionRuntime(
 		try {
 			marker = readFileSync(path, "utf8");
 		} catch (error) {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			if ((error as NodeJS.ErrnoException).code === "ENOENT") return;
 			throw error;
 		}
@@ -261,6 +271,7 @@ export function createResidentSessionRuntime(
 			try {
 				writeFileSync(ownerPath, marker, { flag: "wx", mode: 0o600 });
 			} catch (error) {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
 			}
 		}
@@ -277,6 +288,7 @@ export function createResidentSessionRuntime(
 		try {
 			renameSync(claimSource, claimPath);
 		} catch (error) {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			if ((error as NodeJS.ErrnoException).code === "ENOENT") {
 				throw new Error(`session ${sessionId} is busy`);
 			}
@@ -308,6 +320,7 @@ export function createResidentSessionRuntime(
 			try {
 				if (readFileSync(path, "utf8") === marker) unlinkSync(path);
 			} catch (error) {
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				if ((error as NodeJS.ErrnoException).code !== "ENOENT") throw error;
 			}
 		};
@@ -319,6 +332,7 @@ export function createResidentSessionRuntime(
 					acquired = true;
 					break;
 				} catch (error) {
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
 					clearStaleLock(path, sessionId);
 				}
@@ -357,8 +371,12 @@ export function createResidentSessionRuntime(
 			streamId(sessionId),
 			(record?.seq ?? 0) + 1,
 		)) {
-			const data = event.data as { snapshot?: unknown };
-			if (data.snapshot) snapshot = parseSessionSnapshot(data.snapshot);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			const data = isJsonObject(event.data)
+				? event.data
+				: parseJsonObject("{}");
+			if (data.snapshot !== undefined)
+				snapshot = parseSessionSnapshot(cloneAsJson(data.snapshot));
 		}
 		return snapshot;
 	}
@@ -373,6 +391,7 @@ export function createResidentSessionRuntime(
 				"session revision exceeds the SQLite sequence range",
 			);
 		}
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const json = sessionSnapshotJson(snapshot) as JsonValue;
 		await store.append(
 			streamId(snapshot.session?.id ?? ""),
@@ -381,7 +400,9 @@ export function createResidentSessionRuntime(
 				expectedSeq: revision - 1,
 				actor: { kind: "system", id: "hobo-code" },
 				tenant: "local",
-				...(snapshot.session?.id ? { correlationId: snapshot.session.id } : {}),
+				...(snapshot.session?.id
+					? { correlationId: snapshot.session.id }
+					: undefined),
 			},
 		);
 		await store.snapshot(streamId(snapshot.session?.id ?? ""), json, revision);
@@ -927,7 +948,10 @@ export function createResidentSessionRuntime(
 			for await (const positioned of store.readAll({
 				filter: { type: "code.SessionCreated" },
 			})) {
-				const data = positioned.event.data as { snapshot?: unknown };
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				const data = isJsonObject(positioned.event.data)
+					? positioned.event.data
+					: parseJsonObject("{}");
 				if (!data.snapshot) continue;
 				const snapshot = parseSessionSnapshot(data.snapshot);
 				if (snapshot.session)
@@ -977,7 +1001,7 @@ export function createResidentSessionRuntime(
 					paneTitle: tabTitle,
 					tabTitle,
 					workingDirectory,
-					...(role ? { role: required(role, "role") } : {}),
+					...(role ? { role: required(role, "role") } : undefined),
 				});
 				const stdout = await runTmux([
 					"new-window",

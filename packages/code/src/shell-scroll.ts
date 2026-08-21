@@ -7,6 +7,7 @@
  * - always clamp offsets to content
  * - page = half viewport (Claude fullscreen); half-page = ceil(viewport/2)
  */
+import { isJsonNumber } from "./json.js";
 import {
 	BROADCAST_CHROME_ROWS,
 	BROADCAST_INNER_INSET,
@@ -85,6 +86,7 @@ export function maxChatScroll(state: ScrollShellState): number {
 
 function documentLineCount(state: ScrollShellState): number {
 	if (state.pendingApproval) {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const pending = state.pendingApproval as {
 			readonly changes?: readonly string[];
 		};
@@ -98,7 +100,7 @@ function documentLineCount(state: ScrollShellState): number {
 	}
 	if (state.focus === "agents") {
 		const counted = state.agentsBodyLines;
-		if (typeof counted === "number" && counted > 0) {
+		if (isJsonNumber(counted) && counted > 0) {
 			return counted;
 		}
 		return Math.max(12, shellViewportRows(state) * 3);
@@ -160,7 +162,9 @@ export function clampScrollState<T extends ScrollShellState>(state: T): T {
 		...state,
 		chatScroll,
 		paneScroll,
-		...(state.transcriptMode !== undefined ? { transcriptMode: nextMode } : {}),
+		...(state.transcriptMode !== undefined
+			? { transcriptMode: nextMode }
+			: undefined),
 	};
 }
 

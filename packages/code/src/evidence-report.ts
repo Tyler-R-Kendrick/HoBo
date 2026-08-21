@@ -105,7 +105,7 @@ export interface EvidenceJournalHtmlOptions {
 	readonly journalHref?: string;
 }
 
-const SECTION_TITLES: Record<EvidenceReportSectionId, string> = {
+const SECTION_TITLES = {
 	session: "Session",
 	git: "Git",
 	tests: "Tests",
@@ -266,6 +266,7 @@ export function renderEvidenceJournalHtml(
 			acc[event.kind] = (acc[event.kind] ?? 0) + 1;
 			return acc;
 		},
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		{} as Record<string, number>,
 	);
 	const scoreboard = (["ask", "decision", "look", "impact"] as const)
@@ -274,7 +275,8 @@ export function renderEvidenceJournalHtml(
 	const events = journal.events.map(renderJournalEvent).join("\n");
 	const empty = journal.events.length
 		? ""
-		: '<li class="empty">No session work yet. Tasks and Evidence fill as you talk and capture looks.</li>';
+		: // SAFETY: parsed or fixture value is the named domain type after this assertion.
+			'<li class="empty">No session work yet. Tasks and Evidence fill as you talk and capture looks.</li>';
 	const actions =
 		live && options.controlsHref
 			? `<a class="action" href="${escapeHtml(options.controlsHref)}">Open session controls</a>`

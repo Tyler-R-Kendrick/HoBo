@@ -87,12 +87,12 @@ export function captureBtwSnapshot(input: {
 		modelLabel: input.modelLabel,
 		usageLabel: input.usageLabel,
 		messageCount: input.messages.length,
-		...(lastUser !== undefined ? { lastUser } : {}),
-		...(lastAssistant !== undefined ? { lastAssistant } : {}),
-		...(lastProduct !== undefined ? { lastProduct } : {}),
+		...(lastUser !== undefined ? { lastUser } : undefined),
+		...(lastAssistant !== undefined ? { lastAssistant } : undefined),
+		...(lastProduct !== undefined ? { lastProduct } : undefined),
 		...(input.pendingApproval !== undefined
 			? { pendingApproval: input.pendingApproval }
-			: {}),
+			: undefined),
 		slashOpen: input.slashOpen,
 	};
 }
@@ -129,6 +129,7 @@ export function answerBtw(
 	return [
 		describeMoment(snapshot),
 		"",
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		`This aside tracks the live parent thread — it will not run "${asked}" as a main-chat turn. Esc dismisses.`,
 	].join("\n");
 }

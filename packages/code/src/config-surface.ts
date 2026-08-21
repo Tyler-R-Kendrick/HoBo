@@ -136,6 +136,7 @@ const KNOB_DEFS: readonly KnobDef[] = [
 		name: "HOBO_CODE_DENSE",
 		kind: "env",
 		stacks: ["chrome-dense", "core"],
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		purpose: "Force dense glyph chrome (same as --dense)",
 		example: "1",
 		secret: false,
@@ -413,13 +414,14 @@ export function inspectConfigSurface(
 			kind: d.kind,
 			stacks: d.stacks,
 			purpose: d.purpose,
-			...(d.example !== undefined ? { example: d.example } : {}),
+			...(d.example !== undefined ? { example: d.example } : undefined),
 			secret: d.secret,
 			present: det.present,
 			valueHint: det.valueHint,
 		};
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const byStack = {} as Record<ConfigStackId, ConfigKnob[]>;
 	for (const s of STACK_ORDER) byStack[s] = [];
 	for (const k of knobs) {
@@ -478,6 +480,7 @@ export function inspectConfigSurface(
 	return {
 		schema: CODE_CONFIG_SCHEMA,
 		knobs,
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		byStack: byStack as ConfigSurfaceStatus["byStack"],
 		setupChecklist,
 		missingCritical,
@@ -539,5 +542,6 @@ function shortName(name: string): string {
 export const CONFIG_STACK_IDS: readonly ConfigStackId[] = STACK_ORDER;
 
 export function isConfigStackId(s: string): s is ConfigStackId {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return (STACK_ORDER as readonly string[]).includes(s);
 }

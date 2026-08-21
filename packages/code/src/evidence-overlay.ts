@@ -1,9 +1,15 @@
 import { readFileSync } from "node:fs";
-
 import {
 	EVIDENCE_OVERLAY_CSS,
 	evidenceDocumentCss,
 } from "./evidence-chrome.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 export type EvidenceOverlayMessage =
 	| {
@@ -31,7 +37,7 @@ export type EvidenceOverlayMessage =
 
 export interface EvidenceOverlayMessageEvent {
 	readonly origin: string;
-	readonly data: unknown;
+	readonly data: JsonValue;
 }
 
 export interface EvidenceOverlayBridgeOptions {
@@ -95,12 +101,12 @@ ${EVIDENCE_OVERLAY_CSS}
 `;
 
 const BROWSER_MESSAGE_PARSER = `
-const isRecord = (value) => typeof value === "object" && value !== null && !Array.isArray(value);
+const isRecord = (value) => isJsonObject(value) && value !== null && !Array.isArray(value);
 const exact = (value, required, optional = []) => {
   const keys = Object.keys(value);
   return required.every((key) => keys.includes(key)) && keys.every((key) => required.includes(key) || optional.includes(key));
 };
-const text = (value, maximum) => typeof value === "string" && value.trim().length > 0 && value.length <= maximum;
+const text = (value, maximum) => isJsonString(value) && value.trim().length > 0 && value.length <= maximum;
 const parse = (value) => {
   if (!isRecord(value)) return null;
   if (value.type === "annotate" && exact(value, ["type", "selector", "note"]) && text(value.selector, 2048) && text(value.note, 8192)) return value;
@@ -188,7 +194,7 @@ function absoluteHttpUrl(value: string, label: string): URL {
 	return url;
 }
 
-function scriptJson(value: unknown): string {
+function scriptJson(value: JsonValue | undefined): string {
 	return JSON.stringify(value)
 		.replaceAll("<", "\\u003c")
 		.replaceAll("\u2028", "\\u2028")
@@ -262,7 +268,7 @@ window.addEventListener("message", (event) => {
   }
   window.dispatchEvent(new CustomEvent("hobo:evidence-overlay", { detail: message }));
   fetch(new URL("/__hobo/evidence/api/actions/" + controlsUrl.pathname.split("/").pop(), controlsUrl), { method: "POST", headers: { "content-type": "text/plain" }, body: JSON.stringify(message), credentials: "omit" })
-    .then(async (response) => { const result = await response.json(); resultToControls(message,response.ok,result); window.dispatchEvent(new CustomEvent("hobo:evidence-result", { detail: { command: message, ok: response.ok, result } })); if (response.ok && typeof result.url === "string") window.open(result.url, "_blank", "noopener,noreferrer"); status.textContent = response.ok ? "HoBo evidence action completed" : "HoBo evidence action failed"; })
+    .then(async (response) => { const result = await response.json(); resultToControls(message,response.ok,result); window.dispatchEvent(new CustomEvent("hobo:evidence-result", { detail: { command: message, ok: response.ok, result } })); if (response.ok && isJsonString(result.url)) window.open(result.url, "_blank", "noopener,noreferrer"); status.textContent = response.ok ? "HoBo evidence action completed" : "HoBo evidence action failed"; })
     .catch(() => { status.textContent = "HoBo evidence runtime is unavailable"; });
 });
 document.documentElement.append(host);
@@ -286,11 +292,15 @@ export function renderEvidenceOverlayControls(
 		options.sessionId === undefined
 			? undefined
 			: boundedString(options.sessionId, "sessionId", 256);
-	const config = scriptJson({
-		parentOrigin,
-		sessionId,
-		capabilityAuthorization: options.capabilityAuthorization,
-	});
+	const config = scriptJson(
+		cloneAsJson({
+			parentOrigin,
+			...(sessionId !== undefined ? { sessionId } : undefined),
+			...(options.capabilityAuthorization !== undefined
+				? { capabilityAuthorization: options.capabilityAuthorization }
+				: undefined),
+		}),
+	);
 	return `<!doctype html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <meta name="referrer" content="no-referrer"><meta http-equiv="Content-Security-Policy" content="default-src 'none'; connect-src 'self'; style-src 'unsafe-inline'; script-src 'unsafe-inline'; font-src data:; form-action 'none'; base-uri 'none'">
@@ -299,6 +309,7 @@ export function renderEvidenceOverlayControls(
 <main><section class="action-group" aria-labelledby="inspect-title"><h2 id="inspect-title">Inspect</h2><div class="actions">
 ${reportAction}<button type="button" data-command="replay">Replay session</button></div></section>
 <section class="action-group" aria-labelledby="capture-title"><h2 id="capture-title">Capture</h2><div class="actions">
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 <button type="button" data-command="screenshot">Screenshot</button><button type="button" data-command="record">Record</button><button type="button" data-command="stop" hidden>Stop</button><button type="button" data-command="capability" hidden>Save as capability…</button></div></section>
 <form id="annotate"><h2>Annotate</h2><label for="annotation-selector">Element selector</label><input id="annotation-selector" name="selector" required maxlength="2048" autocomplete="off"><label for="annotation-note">Note</label><textarea id="annotation-note" name="note" required maxlength="8192"></textarea><button type="submit">Pin annotation</button></form>
 <form id="edit"><h2>Request an edit</h2><label for="edit-selector">Element selector</label><input id="edit-selector" name="selector" required maxlength="2048" autocomplete="off"><label for="edit-prompt">Requested change</label><textarea id="edit-prompt" name="prompt" required maxlength="8192"></textarea><button type="submit">Review edit request</button></form>
@@ -306,6 +317,7 @@ ${reportAction}<button type="button" data-command="replay">Replay session</butto
 <script>const cfg=${config};const parentOrigin=cfg.parentOrigin;const status=document.querySelector(".status");const record=document.querySelector('[data-command="record"]');const stop=document.querySelector('[data-command="stop"]');const capability=document.querySelector('[data-command="capability"]');let recordingId;const labels={report:"Opening evidence report…",replay:"Opening session replay…",screenshot:"Capturing screenshot…",record:"Recording actions, navigation, and state changes.",stop:"Saving recording…",capability:"Compiling reusable capability…",annotate:"Pinning annotation…",edit:"Sending edit for review…"};const post=(message,label)=>{window.parent.postMessage(message,parentOrigin);status.textContent=labels[label]};const saveCapability=async(name)=>{status.textContent=labels.capability;const response=await fetch(location.pathname.replace("/controls/","/api/actions/"),{method:"POST",headers:{"content-type":"text/plain",authorization:cfg.capabilityAuthorization},body:JSON.stringify({type:"save-capability",recordingId,name})});const result=await response.json();status.textContent=response.ok?"Capability saved: "+result.capabilityId:(result.error||"Capability save failed")};document.querySelector("[data-close]").addEventListener("click",()=>window.parent.postMessage({type:"overlay-close"},parentOrigin));document.querySelectorAll("[data-command]").forEach((button)=>button.addEventListener("click",()=>{const command=button.dataset.command;if(command==="report")post({type:"report"},command);else if(command==="replay")post(cfg.sessionId?{type:"replay",sessionId:cfg.sessionId}:{type:"replay"},command);else if(command==="screenshot")post({type:"capture",kind:"screenshot"},command);else if(command==="record"){post({type:"record",action:"start"},command);record.hidden=true;stop.hidden=false}else if(command==="stop"){post({type:"record",action:"stop"},command);stop.disabled=true}else if(command==="capability"&&recordingId&&cfg.capabilityAuthorization){const name=prompt("Capability name");if(name)saveCapability(name).catch(error=>{status.textContent=String(error)})}}));window.addEventListener("message",(event)=>{if(event.origin!==parentOrigin||event.source!==window.parent||!event.data||event.data.type!=="evidence-result")return;const detail=event.data.detail;if(detail?.command?.type==="record"&&detail.command.action==="stop"&&detail.ok){recordingId=detail.result?.recordingId;stop.hidden=true;stop.disabled=false;capability.hidden=!recordingId||!cfg.capabilityAuthorization;status.textContent="Recording saved to Evidence."}});document.querySelector("#annotate").addEventListener("submit",(event)=>{event.preventDefault();const data=new FormData(event.currentTarget);post({type:"annotate",selector:String(data.get("selector")||""),note:String(data.get("note")||"")},"annotate")});document.querySelector("#edit").addEventListener("submit",(event)=>{event.preventDefault();const data=new FormData(event.currentTarget);post({type:"edit-request",selector:String(data.get("selector")||""),prompt:String(data.get("prompt")||"")},"edit")});window.addEventListener("keydown",(event)=>{if(event.key==="Escape")window.parent.postMessage({type:"overlay-close"},parentOrigin)});</script></body></html>`;
 }
 
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 /** Render the no-injection fallback with the app and controls as sibling frames. */
 export function renderEvidenceOverlayWrapper(
 	options: EvidenceOverlayWrapperOptions,
@@ -337,15 +349,16 @@ function trustedOrigin(value: string, label = "origin"): string {
 	return url.origin;
 }
 
-function record(value: unknown): Record<string, unknown> {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function record(value: JsonValue | undefined): JsonObject {
+	if (!isJsonObject(value) || value === null || Array.isArray(value)) {
 		throw new Error("evidence overlay message must be an object");
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	return value as JsonObject;
 }
 
 function exactFields(
-	value: Record<string, unknown>,
+	value: JsonObject,
 	required: readonly string[],
 	optional: readonly string[] = [],
 ): void {
@@ -358,9 +371,13 @@ function exactFields(
 	}
 }
 
-function boundedString(value: unknown, field: string, maximum: number): string {
+function boundedString(
+	value: JsonValue | undefined,
+	field: string,
+	maximum: number,
+): string {
 	if (
-		typeof value !== "string" ||
+		!isJsonString(value) ||
 		value.trim().length === 0 ||
 		value.length > maximum
 	) {

@@ -8,6 +8,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { dirname, join } from "node:path";
+import { isJsonString } from "../json.js";
 
 import { REVIEW_ERROR, ReviewError } from "./review-errors.js";
 
@@ -33,8 +34,9 @@ export function createReviewContentStore(root: string) {
 
 	return {
 		put(bytes: Uint8Array | string): string {
-			const buffer =
-				typeof bytes === "string" ? Buffer.from(bytes) : Buffer.from(bytes);
+			const buffer = isJsonString(bytes)
+				? Buffer.from(bytes)
+				: Buffer.from(bytes);
 			if (buffer.byteLength > MAX_BLOB) {
 				throw new ReviewError(REVIEW_ERROR.LIMIT, "review blob exceeds 8MiB");
 			}

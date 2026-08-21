@@ -89,10 +89,7 @@ export function findRepoRoot(start: string): string {
 	return start;
 }
 
-function resolveSkillRoots(cwd: string): {
-	readonly roots: HarnessSkillRoot[];
-	readonly repoRoot: string;
-} {
+function resolveSkillRoots(cwd: string) {
 	const repoRoot = findRepoRoot(cwd);
 	const seen = new Set<string>();
 	const roots: HarnessSkillRoot[] = [];
@@ -123,7 +120,7 @@ function resolveSkillRoots(cwd: string): {
 						? `${role} (repo root)`
 						: role,
 			present,
-			...(present ? { resolvedPath: abs } : {}),
+			...(present ? { resolvedPath: abs } : undefined),
 		});
 	};
 
@@ -196,6 +193,7 @@ export function inspectHarnessSurface(
 				"skills/dogfood feedback for next run",
 			],
 			narrative:
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				"Self-improve is instrumented as isolate→evidence→promote→durable learning — not vibes. Pair with optimizexp / skillopt offline for skill evolution.",
 		},
 		worlds: describeCodeWorlds(hoboHome),

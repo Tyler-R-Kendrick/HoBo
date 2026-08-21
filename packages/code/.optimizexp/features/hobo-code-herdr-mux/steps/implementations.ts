@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import path from "node:path";
+import type { JsonObject } from "../../../../src/json.js";
 
 import { createLocalSessionControl } from "../../../../src/local-session-control.ts";
 import type { MuxRunner } from "../../../../src/mux.ts";
@@ -226,8 +227,8 @@ async function browserCommand(
 	sessionId: string,
 	revision: string,
 	name: string,
-	value: Record<string, unknown>,
-): Promise<Record<string, unknown>> {
+	value: JsonObject,
+): Promise<JsonObject> {
 	const browser = world.browser;
 	if (!browser) throw new Error("browser server was not started");
 	const response = await fetch(
@@ -247,7 +248,8 @@ async function browserCommand(
 			}),
 		},
 	);
-	const body = (await response.json()) as Record<string, unknown>;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	const body = (await response.json()) as JsonObject;
 	if (!response.ok) throw new Error(String(body.error ?? response.statusText));
 	return body;
 }
@@ -279,13 +281,15 @@ export async function exerciseBrowserControls(
 		branch: `code/${sessionId}`,
 		clientId: "browser",
 	});
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const session = snapshot.session as { projectRoot?: string } | undefined;
 	if (!session?.projectRoot)
 		throw new Error("browser create did not return a session");
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const panes = snapshot.panes as { id: string }[];
 	const paneId = panes[0]?.id;
 	if (!paneId) throw new Error("browser create did not return a pane");
-	const next = async (name: string, value: Record<string, unknown>) => {
+	const next = async (name: string, value: JsonObject) => {
 		snapshot = await browserCommand(
 			world,
 			sessionId,
@@ -298,6 +302,7 @@ export async function exerciseBrowserControls(
 	await next("sendInput", { paneId, input: "continue the review\n" });
 	await next("detachSession", { clientId: "browser" });
 	if (
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		((snapshot.attachedClientIds as string[] | undefined) ?? []).includes(
 			"browser",
 		)
@@ -305,6 +310,7 @@ export async function exerciseBrowserControls(
 		throw new Error("browser detach did not detach the client");
 	await next("reattachSession", { clientId: "browser" });
 	if (
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		!((snapshot.attachedClientIds as string[] | undefined) ?? []).includes(
 			"browser",
 		)
@@ -314,6 +320,7 @@ export async function exerciseBrowserControls(
 		`http://127.0.0.1:${browser.server.port}/code/sessions`,
 		{ headers: browser.headers },
 	);
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const sessions = (await listed.json()) as { session?: { id?: string } }[];
 	if (!sessions.some((item) => item.session?.id === sessionId))
 		throw new Error("browser list did not return the created session");

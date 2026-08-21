@@ -1,6 +1,12 @@
 import { randomUUID } from "node:crypto";
 import { homedir } from "node:os";
 import { join } from "node:path";
+import {
+	cloneAsJson,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 import { REVIEW_COMMAND_SCHEMA } from "./review-contract.js";
 import { createReviewRuntime } from "./review-runtime.js";
@@ -13,13 +19,13 @@ function reviewHome(): string {
 
 export async function runReviewCommand(input: {
 	readonly args: readonly string[];
-	readonly flags: Readonly<Record<string, string | boolean>>;
+	readonly flags: { readonly [name: string]: string | boolean };
 	readonly cwd?: string;
 }): Promise<{
 	readonly ok: boolean;
 	readonly code: string;
 	readonly message: string;
-	readonly data: unknown;
+	readonly data: JsonValue;
 }> {
 	const runtime = createReviewRuntime({
 		dataDir: reviewHome(),
@@ -29,7 +35,7 @@ export async function runReviewCommand(input: {
 		const action = input.args[0] ?? "list";
 		const cwd = input.cwd ?? process.cwd();
 		const reviewId =
-			(typeof input.flags.id === "string" && input.flags.id) ||
+			(isJsonString(input.flags.id) && input.flags.id) ||
 			input.args[1] ||
 			randomUUID();
 		if (action === "list") {
@@ -37,7 +43,7 @@ export async function runReviewCommand(input: {
 				ok: true,
 				code: "HOBO_CODE_REVIEW",
 				message: "start a review to populate the inbox",
-				data: { llmCalls: 0, reviews: [] },
+				data: cloneAsJson({ llmCalls: 0, reviews: [] }),
 			};
 		}
 		if (action === "show") {
@@ -46,13 +52,12 @@ export async function runReviewCommand(input: {
 				ok: Boolean(snapshot),
 				code: snapshot ? "HOBO_CODE_REVIEW" : "HOBO_CODE_REVIEW_NOT_FOUND",
 				message: reviewId,
-				data: snapshot,
+				data: cloneAsJson(snapshot ?? null),
 			};
 		}
-		const kindName =
-			typeof input.flags.target === "string"
-				? input.flags.target
-				: "working-tree";
+		const kindName = isJsonString(input.flags.target)
+			? input.flags.target
+			: "working-tree";
 		const kind =
 			kindName === "index"
 				? "REVIEW_TARGET_KIND_INDEX"
@@ -63,48 +68,57 @@ export async function runReviewCommand(input: {
 						: kindName === "pull-request"
 							? "REVIEW_TARGET_KIND_PULL_REQUEST"
 							: "REVIEW_TARGET_KIND_WORKING_TREE";
-		const envelope: Record<string, unknown> = {
+		const envelope: JsonObject = {
 			schemaVersion: REVIEW_COMMAND_SCHEMA,
 			commandId: randomUUID(),
 			actorId: "cli",
 			reviewId,
 		};
 		if (action === "start") {
-			envelope.startReview = {
-				sessionId:
-					typeof input.flags.session === "string" ? input.flags.session : "",
-				target: {
-					kind,
-					repositoryId: cwd,
-					repositoryRoot: cwd,
-					baseCommitOid:
-						typeof input.flags.base === "string" ? input.flags.base : "",
-					headCommitOid:
-						typeof input.flags.head === "string" ? input.flags.head : "",
+			Object.assign(envelope, {
+				startReview: {
+					sessionId: isJsonString(input.flags.session)
+						? input.flags.session
+						: "",
+					target: {
+						kind,
+						repositoryId: cwd,
+						repositoryRoot: cwd,
+						baseCommitOid: isJsonString(input.flags.base)
+							? input.flags.base
+							: "",
+						headCommitOid: isJsonString(input.flags.head)
+							? input.flags.head
+							: "",
+					},
 				},
-			};
+			});
 		} else if (action === "mark") {
-			envelope.markReviewCoverage = {
-				state: "REVIEW_COVERAGE_STATE_REVIEWED",
-				unit: {
-					kind: "file",
-					fileId: input.args[2] ?? "",
-					contentIdentity: "",
+			Object.assign(envelope, {
+				markReviewCoverage: {
+					state: "REVIEW_COVERAGE_STATE_REVIEWED",
+					unit: {
+						kind: "file",
+						fileId: input.args[2] ?? "",
+						contentIdentity: "",
+					},
 				},
-			};
+			});
 		} else if (action === "thread") {
-			envelope.createReviewThread = {
-				body: input.args.slice(2).join(" ") || "note",
-			};
+			Object.assign(envelope, {
+				createReviewThread: {
+					body: input.args.slice(2).join(" ") || "note",
+				},
+			});
 		} else {
-			envelope.refreshReview = {};
+			Object.assign(envelope, { refreshReview: {} });
 		}
 		const result = await runtime.execute(envelope);
 		return {
 			ok: result.accepted,
 			code: result.code,
 			message: result.message,
-			data: result,
+			data: cloneAsJson(result),
 		};
 	} finally {
 		runtime.close();

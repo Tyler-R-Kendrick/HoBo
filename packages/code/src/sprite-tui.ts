@@ -385,11 +385,7 @@ export function spriteStripToTuiFrames(
 }
 
 /** Geometry of a painted TUI sprite (all lines equal width). */
-export function measureTuiSprite(text: string): {
-	readonly lines: number;
-	readonly width: number;
-	readonly fixed: boolean;
-} {
+export function measureTuiSprite(text: string) {
 	const rows = text.length === 0 ? [] : text.split("\n");
 	const widths = rows.map((r) => r.length);
 	const width = widths.length > 0 ? Math.max(...widths) : 0;

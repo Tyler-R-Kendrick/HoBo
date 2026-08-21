@@ -35,7 +35,7 @@ afterAll(() => {
 });
 
 /** A workspace with a file inside, and a secret deliberately left outside it. */
-function workspace(): { root: string; outside: string } {
+function workspace() {
 	const parent = mkdtempSync(join(tmpdir(), "vshell-"));
 	dirs.push(parent);
 	const root = join(parent, "ws");
@@ -186,6 +186,7 @@ describe("what the agent writes", () => {
 		expect(readFileSync(outside, "utf8")).not.toContain("pwned");
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("reports a symlink as a missing file, not as a refusal", async () => {
 		// Every dependency in a pnpm workspace is a symlink, so this is the case
 		// an agent hits constantly. `ls` still lists the entry — asserting on

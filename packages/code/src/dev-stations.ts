@@ -95,7 +95,7 @@ export const DEFAULT_LOCALHOST_CAPABILITIES: readonly StationCapability[] = [
 	}),
 ];
 
-const SCENARIO_STATION_NAME: Readonly<Record<CodeDevScenario, string>> = {
+const SCENARIO_STATION_NAME = {
 	// "local" keeps the historical station:local id every existing path binds.
 	"local-dev": "local",
 	ephemeral: "code-ephemeral",
@@ -103,6 +103,7 @@ const SCENARIO_STATION_NAME: Readonly<Record<CodeDevScenario, string>> = {
 };
 
 export function isCodeDevScenario(value: string): value is CodeDevScenario {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return (CODE_DEV_SCENARIOS as readonly string[]).includes(value);
 }
 
@@ -135,14 +136,7 @@ export function codeDevStation(
 }
 
 /** initStation() arguments derived from a declaration — the only bridge. */
-export function stationInitArgsFromDeclaration(declaration: Station): {
-	readonly id: string;
-	readonly name: string;
-	readonly tenant: string;
-	readonly residency: string;
-	readonly airgap: boolean;
-	readonly trustDomain: string;
-} {
+export function stationInitArgsFromDeclaration(declaration: Station) {
 	return {
 		id: declaration.id,
 		name: declaration.name,

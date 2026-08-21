@@ -77,6 +77,7 @@ describe("declared dev machines", () => {
 		expect(loaded.declared).toBe(true);
 		expect(loaded.machines.map((m) => m.id)).toEqual(["build-box", "gpu"]);
 		expect(loaded.rejected).toEqual([]);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect(sshDestination(loaded.machines[1] as never)).toBe(
 			"agent@gpu.tail1234.ts.net",
 		);
@@ -188,9 +189,11 @@ describe("placement and brokering", () => {
 		]);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("registers as a PAM target carrying the declared isolation class", () => {
 		// The gateway's policy keys off this, so a machine and its brokered
 		// session must not be two different notions of "which host".
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect(pamTarget(machines[1] as never)).toEqual({
 			id: "ssh:gpu",
 			kind: "ssh",

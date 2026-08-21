@@ -4,7 +4,6 @@
  */
 import { createServer, type IncomingMessage, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-
 import {
 	DELIVERY_PORT,
 	type DeliveryHealthSignal,
@@ -14,6 +13,12 @@ import {
 	type RolloutState,
 	type RolloutTargetOutcome,
 } from "@hobo/identity";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 import { occupancyNamedOrigin } from "./occupancy-endpoints.js";
 
@@ -41,7 +46,7 @@ export function createStationRolloutEngine(options?: {
 }): OpenDeliveryEngine {
 	return new OpenDeliveryEngine({
 		store: options?.store ?? new FeatureFlagStore(),
-		...(options?.now !== undefined ? { now: options.now } : {}),
+		...(options?.now !== undefined ? { now: options.now } : undefined),
 	});
 }
 
@@ -84,8 +89,8 @@ export async function startRolloutSidecar(
 	options: StartRolloutSidecarOptions = {},
 ): Promise<RolloutSidecarServer> {
 	const engine = createStationRolloutEngine({
-		...(options.store !== undefined ? { store: options.store } : {}),
-		...(options.now !== undefined ? { now: options.now } : {}),
+		...(options.store !== undefined ? { store: options.store } : undefined),
+		...(options.now !== undefined ? { now: options.now } : undefined),
 	});
 	const server = createServer((request, response) => {
 		void handle(request, response, engine);
@@ -158,6 +163,7 @@ async function handle(
 			return;
 		}
 		if (method === "POST" && action === "step") {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const body = (await readJson(request)) as DeliveryHealthSignal;
 			writeJson(response, 200, engine.step(id, body));
 			return;
@@ -167,6 +173,7 @@ async function handle(
 			return;
 		}
 		if (method === "POST" && action === "rollback") {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const body = (await readJson(request)) as Record<
 				string,
 				boolean | string
@@ -182,9 +189,10 @@ async function handle(
 			return;
 		}
 		if (method === "POST" && action === "approve") {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const body = (await readJson(request)) as { approver?: unknown };
 			const approver =
-				typeof body.approver === "string" && body.approver.length > 0
+				isJsonString(body.approver) && body.approver.length > 0
 					? body.approver
 					: "station";
 			writeJson(response, 200, engine.grantApproval(id, approver));
@@ -195,6 +203,7 @@ async function handle(
 			return;
 		}
 		if (method === "POST" && action === "outcomes") {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const body = (await readJson(request)) as {
 				outcomes?: readonly RolloutTargetOutcome[];
 			};
@@ -203,24 +212,26 @@ async function handle(
 		}
 		writeJson(response, 404, { ok: false, error: "not found" });
 	} catch (error) {
+		if (!(error instanceof Error)) throw error;
 		const mapped = mapEngineError(error);
 		writeJson(response, mapped.status, mapped.body);
 	}
 }
 
-function asPolicy(body: unknown): RolloutPolicy {
-	if (!body || typeof body !== "object") {
+function asPolicy(body: JsonValue | undefined): RolloutPolicy {
+	if (!body || !isJsonObject(body)) {
 		throw Object.assign(new TypeError("rollout policy required"), {
 			code: "rollout-policy-invalid",
 		});
 	}
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const value = body as Partial<RolloutPolicy>;
-	if (typeof value.name !== "string" || value.name.length === 0) {
+	if (!isJsonString(value.name) || value.name.length === 0) {
 		throw Object.assign(new TypeError("rollout requires name"), {
 			code: "rollout-policy-invalid",
 		});
 	}
-	if (typeof value.flag !== "string" || value.flag.length === 0) {
+	if (!isJsonString(value.flag) || value.flag.length === 0) {
 		throw Object.assign(new TypeError("rollout requires flag"), {
 			code: "rollout-policy-invalid",
 		});
@@ -243,21 +254,17 @@ function asPolicy(body: unknown): RolloutPolicy {
 		autoRollback: value.autoRollback === true,
 		...(value.gatewayWeightPercent !== undefined
 			? { gatewayWeightPercent: value.gatewayWeightPercent }
-			: {}),
+			: undefined),
 	};
 }
 
-function mapEngineError(error: unknown): {
-	readonly status: number;
-	readonly body: {
-		readonly ok: false;
-		readonly error: string;
-		readonly code?: string;
-	};
-} {
+function mapEngineError(error: Error) {
 	const code =
-		error && typeof error === "object" && "code" in error
-			? String((error as { code?: unknown }).code ?? "")
+		"code" in error
+			? String(
+					// SAFETY: `code` in Error after the in-guard.
+					(error as Error & { code?: string }).code ?? "",
+				)
 			: "";
 	const message = error instanceof Error ? error.message : "rollout failed";
 	if (code === "rollout-missing") {
@@ -266,7 +273,7 @@ function mapEngineError(error: unknown): {
 	if (error instanceof TypeError || code === "rollout-policy-invalid") {
 		return {
 			status: 400,
-			body: { ok: false, error: message, ...(code ? { code } : {}) },
+			body: { ok: false, error: message, ...(code ? { code } : undefined) },
 		};
 	}
 	if (code.startsWith("rollout-")) {
@@ -275,7 +282,7 @@ function mapEngineError(error: unknown): {
 	return { status: 500, body: { ok: false, error: message } };
 }
 
-async function readJson(request: IncomingMessage): Promise<unknown> {
+async function readJson(request: IncomingMessage): Promise<JsonValue> {
 	const chunks: Buffer[] = [];
 	for await (const chunk of request) {
 		chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
@@ -283,13 +290,14 @@ async function readJson(request: IncomingMessage): Promise<unknown> {
 	if (chunks.length === 0) return {};
 	const raw = Buffer.concat(chunks).toString("utf8").trim();
 	if (raw.length === 0) return {};
-	return JSON.parse(raw) as unknown;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	return parseJsonValue(raw);
 }
 
-function writeJson(
+function writeJson<T>(
 	response: import("node:http").ServerResponse,
 	status: number,
-	body: unknown,
+	body: T,
 ): void {
 	const payload = `${JSON.stringify(body)}\n`;
 	response.writeHead(status, {
@@ -303,6 +311,7 @@ function listen(server: Server, port: number): Promise<number> {
 	return new Promise((resolve, reject) => {
 		server.once("error", reject);
 		server.listen(port, "127.0.0.1", () => {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			resolve((server.address() as AddressInfo).port);
 		});
 	});

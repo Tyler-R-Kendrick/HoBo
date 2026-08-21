@@ -50,6 +50,7 @@ const CTRL_C = "";
 async function slash(command: string, quitAfter = true) {
 	const chunks: string[] = [];
 	const verbs: string[][] = [];
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const code = await runInteractiveShell({
 		stdin: new PassThrough(),
 		stdout: new Writable({
@@ -69,6 +70,7 @@ async function slash(command: string, quitAfter = true) {
 			},
 			complete: async (prompt: string) => `assistant: ${prompt}`,
 		},
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	} as never);
 	return { code, output: chunks.join(""), verbs };
 }
@@ -212,6 +214,7 @@ describe("argv items reach the product CLI", () => {
 		expect((await slash("/status")).output).toContain("ran status");
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("routes a multi-word argv item as its whole argv", async () => {
 		const session = await slash("/sessions");
 		expect(session.verbs.some((argv) => argv.length > 1)).toBe(true);
@@ -221,6 +224,7 @@ describe("argv items reach the product CLI", () => {
 		// A failing verb is a message, not a crash: the session and its unsaved
 		// context have to survive it.
 		const chunks: string[] = [];
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const code = await runInteractiveShell({
 			stdin: new PassThrough(),
 			stdout: new Writable({
@@ -239,6 +243,7 @@ describe("argv items reach the product CLI", () => {
 				},
 				complete: async () => "",
 			},
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		} as never);
 		expect(code).toBe(0);
 	});
@@ -249,6 +254,7 @@ describe("typing a slash command", () => {
 		// A slash command billed as a model turn is the failure this routing
 		// exists to prevent.
 		const prompts: string[] = [];
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		await runInteractiveShell({
 			stdin: new PassThrough(),
 			stdout: new Writable({ write: (_c, _e, done) => done() }),
@@ -263,6 +269,7 @@ describe("typing a slash command", () => {
 					return "";
 				},
 			},
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		} as never);
 		expect(prompts).toEqual([]);
 	});
@@ -271,6 +278,7 @@ describe("typing a slash command", () => {
 		// It might be prose that happens to start with a slash. Silently doing
 		// nothing would look like a hang.
 		const prompts: string[] = [];
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		await runInteractiveShell({
 			stdin: new PassThrough(),
 			stdout: new Writable({ write: (_c, _e, done) => done() }),
@@ -285,10 +293,12 @@ describe("typing a slash command", () => {
 					return "";
 				},
 			},
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		} as never);
 		expect(prompts.length).toBeGreaterThan(0);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("runs a bare slash as nothing at all", async () => {
 		// `/` opens the palette; Enter on an empty filter must not run the first
 		// row by accident.

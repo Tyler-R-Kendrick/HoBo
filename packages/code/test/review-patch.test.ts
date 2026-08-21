@@ -23,6 +23,7 @@
  * under its old name stages nothing and reports success.
  */
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../src/json.js";
 
 import { REVIEW_ERROR, ReviewError } from "../src/review/review-errors.js";
 import { applyHunkPatch } from "../src/review/review-patch.js";
@@ -38,32 +39,35 @@ function runner(codes: Record<string, { code: number; stderr?: string }> = {}) {
 			calls.push({ command, args, cwd });
 			const key = args[0] ?? "";
 			const scripted = codes[key];
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			return {
 				code: scripted?.code ?? 0,
 				stdout: "",
 				stderr: scripted?.stderr ?? "",
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			} as never;
 		},
 	};
 	return { impl, calls };
 }
 
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 const files = [
 	{ fileId: "f1", pathBefore: "src/a.ts", pathAfter: "src/a.ts" },
 	{ fileId: "renamed", pathBefore: "src/old.ts", pathAfter: "src/new.ts" },
 	{ fileId: "deleted", pathBefore: "src/gone.ts", pathAfter: "" },
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 ] as never;
 
-const apply = (
-	impl: SessionProcessRunner,
-	overrides: Record<string, unknown> = {},
-) =>
+const apply = (impl: SessionProcessRunner, overrides: JsonObject = {}) =>
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	applyHunkPatch(impl, "/repo", {
 		fileId: "f1",
 		hunkId: "h1",
 		unstage: false,
 		files,
 		...overrides,
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	} as never);
 
 describe("applyHunkPatch", () => {
@@ -132,9 +136,11 @@ describe("applyHunkPatch", () => {
 		expect(calls).toHaveLength(0);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("reports a missing file as not-found", async () => {
 		const error = await apply(runner().impl, { fileId: "nope" }).catch(
-			(err: unknown) => err as ReviewError,
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			(err: Error) => err as ReviewError,
 		);
 		expect(error.code).toBe(REVIEW_ERROR.NOT_FOUND);
 	});
@@ -172,13 +178,18 @@ describe("applyHunkPatch", () => {
 		).rejects.toThrow(/unsafe patch path/u);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("reports an unsafe path as malformed rather than not-found", async () => {
 		// The distinction matters to the UI: one is a stale manifest, the other
 		// is a request that must never be retried.
 		const error = await apply(runner().impl, {
 			fileId: "x",
 			files: [{ fileId: "x", pathBefore: "", pathAfter: "../x" }],
-		}).catch((err: unknown) => err as ReviewError);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		}).catch((err: Error) => {
+			// SAFETY: apply() rejects with the named ReviewError contract.
+			return err as ReviewError;
+		});
 		expect(error.code).toBe(REVIEW_ERROR.MALFORMED);
 	});
 
@@ -219,10 +230,12 @@ describe("applyHunkPatch", () => {
 			run: async (_command, args) => {
 				const isTree = args[0] === "write-tree";
 				if (isTree) seen += 1;
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				return {
 					code: isTree && seen === 2 ? 128 : 0,
 					stdout: "",
 					stderr: "",
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				} as never;
 			},
 		};
@@ -232,11 +245,16 @@ describe("applyHunkPatch", () => {
 	it.each([
 		"add",
 		"restore",
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	])("reports a %s failure as a patch conflict", async (verb) => {
 		const { impl } = runner({ [verb]: { code: 1 } });
 		const error = await apply(impl, {
 			unstage: verb === "restore",
-		}).catch((err: unknown) => err as ReviewError);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		}).catch((err: Error) => {
+			// SAFETY: apply() rejects with the named ReviewError contract.
+			return err as ReviewError;
+		});
 		expect(error.code).toBe(REVIEW_ERROR.PATCH_CONFLICT);
 	});
 

@@ -93,7 +93,8 @@ main
                                                                                   └── sdlc/anti-slop-82-draft-runbook-pack-flag-identity  #1341 runbook+resource-pack+auth-flag-readset+identity-event
                                                                                    └── sdlc/anti-slop-83-draft-bind-junction-trace-flag  #1342 bind-reference+junction-federated+trace-context+feature-flag-port
                                                                                     └── sdlc/anti-slop-84-draft-rbac-broker-read-plan  #1343 rbac-resolution+broker-env+read-surface+deployment-plan-ir
-                                                                                     └── sdlc/anti-slop-85-draft-core-poison-options-registry  core+poison-event+provider-options+registry-artifact
+                                                                                     └── sdlc/anti-slop-85-draft-core-poison-options-registry  #1344 core+poison-event+provider-options+registry-artifact
+                                                                                      └── sdlc/anti-slop-86-draft-alert-wasm-connector-crew  alertmanager+build-wasm+connector-authoring+crew-event
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -198,6 +199,7 @@ Layer 81: `s5-02-wit-interface-conformance-coverage` + `budget-quota-policy-cont
 Layer 82: `runbook-contract` + `resource-pack-distribution-contract` + `auth-flag-readset-contract` + `identity-event-contract` oxlint `--deny-warnings` clean (#1341).
 Layer 83: `bind-reference-wiring-contract` + `junction-federated-domain-contract` + `trace-context-propagation-contract` + `hobo-feature-flag-port` oxlint `--deny-warnings` clean (#1342).
 Layer 84: `auth-port-rbac-resolution-contract` + `broker-environment-publication-contract` + `default-read-surface-contract` + `deployment-plan-ir-contract` oxlint `--deny-warnings` clean (#1343).
-Layer 85: `hobo-core-contract` + `poison-event-quarantine-contract` + `provider-options-pattern-contract` + `registry-artifact-descriptor-contract` oxlint `--deny-warnings` clean.
+Layer 85: `hobo-core-contract` + `poison-event-quarantine-contract` + `provider-options-pattern-contract` + `registry-artifact-descriptor-contract` oxlint `--deny-warnings` clean (#1344).
+Layer 86: `alertmanager-routing-contract` + `build-wasm-provider-contract` + `connector-authoring-contract` + `crew-event-contract` oxlint `--deny-warnings` clean.
 Next: remaining `src/draft/` (10-count technical-proofs, then lower, then exp-proofs, projects).
 Full-repo `lint:slop --deny-warnings` is still red until those land.

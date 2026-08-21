@@ -85,3 +85,8 @@ reports/mutation/
 
 # sdlc subagent handback reports — session scratch, not product.
 .sdlc/
+
+# TypeScript incremental build state. `tsc -b` writes one of these per project;
+# they are machine- and path-specific, so committing them makes every build
+# machine fight over the same file for no benefit.
+*.tsbuildinfo

@@ -202,7 +202,7 @@ export default defineConfig({
 				"packages/code/**": { statements: 75, branches: 63, functions: 81, lines: 77 },
 				"packages/componentize/**": { statements: 88, branches: 73, functions: 93, lines: 88 },
 				"packages/conformance/**": { statements: 78, branches: 66, functions: 84, lines: 78 },
-				"packages/connectivity/**": { statements: 71, branches: 60, functions: 76, lines: 74 },
+				"packages/connectivity/**": { statements: 87, branches: 80, functions: 89, lines: 88 },
 				"packages/connectors/**": { statements: 86, branches: 78, functions: 84, lines: 86 },
 				"packages/contract-harness/**": { statements: 86, branches: 85, functions: 98, lines: 85 },
 				"packages/contracts/**": { statements: 83, branches: 70, functions: 86, lines: 83 },

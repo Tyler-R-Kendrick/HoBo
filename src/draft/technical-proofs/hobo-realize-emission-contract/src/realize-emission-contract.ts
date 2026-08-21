@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const REALIZE_EMISSION_VERSION = "hobo.realize-emission/v1";
 export const IAC_PROGRAM_VERSION = "hobo.iacProgram/v1";
@@ -31,8 +33,8 @@ export interface IacNode {
   type?: string;
   className?: string;
   coProvisionedFor?: string;
-  driverIntent?: Record<string, unknown>;
-  inputs?: Record<string, unknown>;
+  driverIntent?: JsonObject;
+  inputs?: JsonObject;
   outputs?: string[];
 }
 
@@ -73,7 +75,7 @@ export interface BuildOutputEntry {
 export interface IacProgram {
   apiVersion?: string;
   intent?: string;
-  context?: unknown;
+  context?: JsonValue;
   nodes?: IacNode[];
   edges?: IacEdge[];
   outputPlaceholders?: OutputPlaceholderEntry[];
@@ -143,7 +145,7 @@ export interface FixtureResource {
   id: string;
   type: string;
   className: string;
-  request?: Record<string, unknown>;
+  request?: JsonObject;
   build?: FixtureResourceBuild;
   binds?: FixtureResourceBind[];
 }
@@ -372,7 +374,7 @@ export function validateEmission(emission: RealizeEmission | undefined): Validat
 
   const buildRefs: BuildRefEntry[] = [];
   visit(emission?.iac, (value, path, key) => {
-    if (typeof key === "string" && DRIVER_DIALECT_FIELDS.has(key)) {
+    if (isJsonString(key) && DRIVER_DIALECT_FIELDS.has(key)) {
       portabilityReport.lockInMarkers.push({
         path: path.join("."),
         field: key,
@@ -380,7 +382,7 @@ export function validateEmission(emission: RealizeEmission | undefined): Validat
       });
     }
 
-    if (typeof value === "string") {
+    if (isJsonString(value)) {
       const placeholder = parseOutputPlaceholder(value);
       if (!placeholder) return;
 
@@ -425,6 +427,7 @@ export function validateEmission(emission: RealizeEmission | undefined): Validat
 
 export function wireBuildOutputs(emission: RealizeEmission, imageRefs: Record<string, string>): RealizeEmission {
   const imageRefByArtifact = new Map(Object.entries(imageRefs));
+  // SAFETY: `const iac = replaceBuildRefs(emission.iac, imageRefByArtifact) as IacProgram | u` is required at this I/O or test boundary.
   const iac = replaceBuildRefs(emission.iac, imageRefByArtifact) as IacProgram | undefined;
 
   return {
@@ -468,11 +471,11 @@ export function createReferenceIacBackend(): ReferenceIacBackend {
   };
 }
 
-export function canonicalJson(value: unknown): string {
+export function canonicalJson(value: JsonValue): string {
   return `${JSON.stringify(sortKeys(value), null, 2)}\n`;
 }
 
-export function stableDigest(value: unknown): string {
+export function stableDigest(value: JsonValue): string {
   return createHash("sha256").update(canonicalJson(value)).digest("hex");
 }
 
@@ -506,13 +509,8 @@ interface BuildReference {
   $build: string;
 }
 
-function isBuildReference(value: unknown): value is BuildReference {
-  return Boolean(
-    value &&
-      typeof value === "object" &&
-      !Array.isArray(value) &&
-      typeof (value as { $build?: unknown }).$build === "string"
-  );
+function isBuildReference(value: JsonValue): value is BuildReference {
+  return isJsonObject(value) && isJsonString(value.$build);
 }
 
 function findBuildCycles(artifacts: BuildArtifact[]): string[][] {
@@ -547,23 +545,23 @@ function findBuildCycles(artifacts: BuildArtifact[]): string[][] {
 
 type VisitPath = string[];
 type VisitKey = string | number | undefined;
-type VisitCallback = (value: unknown, path: VisitPath, key: VisitKey) => void;
+type VisitCallback = (value: JsonValue, path: VisitPath, key: VisitKey) => void;
 
-function visit(value: unknown, callback: VisitCallback, path: VisitPath = [], key: VisitKey = undefined): void {
+function visit(value: JsonValue, callback: VisitCallback, path: VisitPath = [], key: VisitKey = undefined): void {
   callback(value, path, key);
 
-  if (!value || typeof value !== "object") return;
   if (Array.isArray(value)) {
     value.forEach((item, index) => visit(item, callback, [...path, String(index)], index));
     return;
   }
+  if (!isJsonObject(value)) return;
 
   for (const [childKey, child] of Object.entries(value)) {
     visit(child, callback, [...path, childKey], childKey);
   }
 }
 
-function replaceBuildRefs(value: unknown, imageRefByArtifact: Map<string, string>): unknown {
+function replaceBuildRefs(value: JsonValue, imageRefByArtifact: Map<string, string>): JsonValue {
   if (isBuildReference(value)) {
     const imageRef = imageRefByArtifact.get(value.$build);
     if (!imageRef) return value;
@@ -577,7 +575,7 @@ function replaceBuildRefs(value: unknown, imageRefByArtifact: Map<string, string
     return value.map((item) => replaceBuildRefs(item, imageRefByArtifact));
   }
 
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([key, child]) => [key, replaceBuildRefs(child, imageRefByArtifact)])
     );
@@ -586,13 +584,12 @@ function replaceBuildRefs(value: unknown, imageRefByArtifact: Map<string, string
   return value;
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: JsonValue): JsonValue {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
-  const record = value as Record<string, unknown>;
-  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(record[key])]));
+  return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
 }

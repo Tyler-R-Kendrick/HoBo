@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
 const VECTOR_PACKAGE = "@hobo/vector";
 const GRAPH_PACKAGE = "@hobo/graph";
 const PORTABILITY_FLOOR = "pgvector + local-model";
@@ -289,7 +290,7 @@ function normalizeVectorRecords(records, dimensions) {
 }
 
 function normalizeVector(vector, dimensions, label) {
-  if (!Array.isArray(vector) || vector.length !== dimensions || vector.some((value) => typeof value !== "number")) {
+  if (!Array.isArray(vector) || vector.length !== dimensions || vector.some((value) => !isJsonNumber(value))) {
     throw new SearchExtensionContractError(
       "vector-dimension-invalid",
       `${label} must contain ${dimensions} numeric dimensions`,
@@ -368,14 +369,14 @@ function normalizeStringList(values, field) {
 }
 
 function assertObject(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new SearchExtensionContractError("object-required", `${field} must be an object`);
   }
   return value;
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new SearchExtensionContractError("string-required", `${field} must be a non-empty string`);
   }
   return value;
@@ -408,7 +409,7 @@ function deepFreeze(value) {
   if (Array.isArray(value)) {
     return Object.freeze(value.map(deepFreeze));
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.freeze(Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, deepFreeze(nested)])));
   }
   return value;
@@ -418,5 +419,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

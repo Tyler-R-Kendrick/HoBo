@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject, type JsonValue } from "./json.js";
+
 
 const DEFAULT_PROTOCOL_VERSION = "yard-receipt-consumption/v1";
 const DEFAULT_ISSUER = "meta-cloud-broker";
@@ -53,7 +55,7 @@ type ConsumeReceiptInput = Readonly<{
   receipt?: ResolutionReceipt;
   now: Date;
   yardProtocolVersion: string;
-  brokerResolver?: () => unknown;
+  brokerResolver?: () => ResolutionReceipt;
 }>;
 
 type ReceiptOverrides = Partial<
@@ -126,7 +128,7 @@ export function consumeResolutionReceipt(input: ConsumeReceiptInput): YardPlanni
 export function rejectAdminReceiptMutation(_input: {
   actor: "admin-console" | string;
   receipt: ResolutionReceipt;
-  patch: unknown;
+  patch: JsonValue;
 }) {
   return {
     allowed: false,
@@ -217,11 +219,11 @@ function withoutProof(receipt: ResolutionReceipt): Omit<ResolutionReceipt, "dige
   return payload;
 }
 
-function canonicalJson(value: unknown): string {
+function canonicalJson(value: JsonValue): string {
   if (Array.isArray(value)) {
     return `[${value.map(canonicalJson).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return `{${Object.entries(value)
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`)
@@ -230,6 +232,6 @@ function canonicalJson(value: unknown): string {
   return JSON.stringify(value);
 }
 
-function isNonEmptyString(value: unknown): value is string {
-  return typeof value === "string" && value.trim().length > 0;
+function isNonEmptyString(value: JsonValue): value is string {
+  return isJsonString(value) && value.trim().length > 0;
 }

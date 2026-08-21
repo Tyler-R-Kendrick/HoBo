@@ -15,6 +15,8 @@ import {
   createInBoundaryRegistryMirror,
   createRegistryImporter,
 } from "../src/registry-import.js";
+import { isJsonObject } from "../src/json.js";
+
 
 const builderKey = createFixtureSigningKey({
   keyId: "airgap-builder-key",
@@ -340,7 +342,7 @@ function bundleDigest(value) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {

@@ -184,7 +184,7 @@ test("typed declarations publish the provider-default contract surface", async (
   );
 
   assert.match(typeDeclarations, /export interface ProviderDefaultDefinition/);
-  assert.match(typeDeclarations, /with: Record<string, unknown>/);
+  assert.match(typeDeclarations, /with: JsonObject/);
   assert.match(typeDeclarations, /equivalence: \{/);
   assert.match(typeDeclarations, /realization: \{/);
   assert.match(typeDeclarations, /export function createDefinitionCatalog/);

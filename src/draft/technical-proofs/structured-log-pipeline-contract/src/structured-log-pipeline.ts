@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const LEVELS = Object.freeze({
   debug: 10,
   info: 20,
@@ -232,7 +233,7 @@ function normalizeContext(context) {
 }
 
 function parseTraceparent(traceparent) {
-  if (typeof traceparent !== "string") {
+  if (!isJsonString(traceparent)) {
     throw new Error("ctx.log requires a valid W3C traceparent");
   }
 
@@ -317,7 +318,7 @@ function normalizeRateLimit(rateLimit) {
 }
 
 function normalizeSink(sink) {
-  if (!sink || typeof sink.write !== "function") {
+  if (!sink || !(sink.write instanceof Function)) {
     throw new Error("historical log sink requires a write(entry) function");
   }
 
@@ -346,7 +347,7 @@ function redactValue(value, key) {
     return value.map((item) => redactValue(item, ""));
   }
 
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([childKey, childValue]) => [
         childKey,
@@ -380,7 +381,7 @@ function cloneValue(value) {
   if (Array.isArray(value)) {
     return value.map(cloneValue);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([key, childValue]) => [key, cloneValue(childValue)])
     );
@@ -390,7 +391,7 @@ function cloneValue(value) {
 }
 
 function assertNonEmptyString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${label} is required`);
   }
 }

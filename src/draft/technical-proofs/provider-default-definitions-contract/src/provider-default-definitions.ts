@@ -28,7 +28,7 @@ const DEFAULT_CAPABILITIES = [
 export function buildFixtureProvider(overrides = {}) {
   const equivalence = {
     ...DEFAULT_EQUIVALENCE,
-    ...(overrides.equivalence ?? {})
+    ...(overrides.equivalence)
   };
   const provider = {
     id: overrides.id ?? "aws",

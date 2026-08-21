@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const CONTRACT_VERSION = "hobo.reliability-sla-rollup/v1";
 
 const BUILT_IN_TARGETS = [
@@ -162,7 +163,7 @@ export function foldReliabilityRollup(events = []) {
     switch (event.type) {
       case "sla.TargetRatified":
         env.targets[event.data.targetId] = {
-          ...(env.targets[event.data.targetId] ?? {}),
+          ...(env.targets[event.data.targetId]),
           targetId: event.data.targetId,
           objective: event.data.objective,
           ratification: "ratified",
@@ -171,7 +172,7 @@ export function foldReliabilityRollup(events = []) {
         break;
       case "availability.Estimated":
         env.targets[event.data.targetId] = {
-          ...(env.targets[event.data.targetId] ?? {}),
+          ...(env.targets[event.data.targetId]),
           targetId: event.data.targetId,
           estimatedAvailability: event.data.estimatedAvailability,
           estimatedAnnualDowntimeMinutes: event.data.estimatedAnnualDowntimeMinutes,
@@ -181,7 +182,7 @@ export function foldReliabilityRollup(events = []) {
         break;
       case "slo.Measured":
         env.targets[event.data.targetId] = {
-          ...(env.targets[event.data.targetId] ?? {}),
+          ...(env.targets[event.data.targetId]),
           targetId: event.data.targetId,
           observedAvailability: event.data.observedAvailability,
           window: event.data.window,
@@ -307,7 +308,7 @@ function deriveEnvironmentStatus(environment) {
 }
 
 function assertEvent(event) {
-  if (!event || typeof event !== "object") {
+  if (!event || !isJsonObject(event)) {
     throw new Error("event must be an object");
   }
   if (!event.id) {
@@ -319,7 +320,7 @@ function assertEvent(event) {
   if (!event.type) {
     throw new Error(`event ${event.id} requires type`);
   }
-  if (!event.data || typeof event.data !== "object") {
+  if (!event.data || !isJsonObject(event.data)) {
     throw new Error(`event ${event.id} requires data`);
   }
 }

@@ -10,7 +10,6 @@ import { test } from "vitest";
 import { runForgeCli } from "../src/forge-cli.js";
 import {
   runForgeIngestion,
-  scaffoldOnlyReasoningEngine,
   type ReasoningEngine
 } from "../src/forge-ingestion.js";
 import { buildCandidatePackageFiles, compileCandidatePackage } from "../src/emit-package.js";

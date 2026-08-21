@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
 import { validateCandidatePatch } from "../../training-engine-port-contract/src/training-engine-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const CHAMPION_CHALLENGER_PROMOTION_SCHEMA = "hobo.champion-challenger-promotion/v1";
 
@@ -76,7 +78,7 @@ export function checkGeneratedRegionDrift({ source, expectedSource, regionId }) 
 export function createChampionChallengerPromotion({ now = () => "2026-06-28T19:10:00.000Z" } = {}) {
   return Object.freeze({
     shadowTraffic({ champion, challenger, requests }) {
-      if (typeof champion !== "function" || typeof challenger !== "function") {
+      if (!(champion instanceof Function) || !(challenger instanceof Function)) {
         throw new ChampionChallengerPromotionError("promotion.callable_required", "$.shadow");
       }
       if (!Array.isArray(requests)) {
@@ -203,7 +205,7 @@ function isCandidateAlreadyApplied(source, candidate) {
     });
     const currentRegionSource = source.slice(currentRegion.startOffset, currentRegion.endOffset);
     const replacement = candidate?.edits?.[0]?.replacement;
-    if (typeof replacement !== "string") {
+    if (!isJsonString(replacement)) {
       return false;
     }
     const normalizedReplacement =
@@ -256,7 +258,7 @@ function assertCertifiedGate(gate) {
 }
 
 function validateSignedProvenance(provenance) {
-  if (!provenance || typeof provenance !== "object" || Array.isArray(provenance)) {
+  if (!provenance || !isJsonObject(provenance) || Array.isArray(provenance)) {
     throw new ChampionChallengerPromotionError("promotion.provenance_required", "$.provenance");
   }
   if (provenance.kind !== "generation-provenance") {
@@ -321,7 +323,7 @@ function promotionEvent(type, candidate, region, ts, effect, data = {}) {
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new ChampionChallengerPromotionError(code, path);
   }
 }
@@ -338,7 +340,7 @@ function digest(value) {
 }
 
 function stableJson(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {

@@ -20,6 +20,8 @@ import {
 	planReconcile,
 	resolveBindings,
 } from "../src/adopt-in-place-contract.ts";
+import { type JsonValue } from "../src/json.js";
+
 
 const source = { kind: "pulumi", ref: "s3://legacy-estate/prod/pulumi-state.json" };
 
@@ -133,7 +135,8 @@ assert.throws(
 			state: createFixtureIacState(),
 			source,
 		}),
-	(error: unknown) =>
+	(error: JsonValue) =>
+		// SAFETY: `error instanceof AdoptInPlaceError && (error as { code?: string }).code === "imp` is required at this I/O or test boundary.
 		error instanceof AdoptInPlaceError && (error as { code?: string }).code === "import-id-collision",
 );
 console.log("id collision: AdoptInPlaceError code=import-id-collision");

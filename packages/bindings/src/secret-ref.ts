@@ -34,6 +34,14 @@ export type ParsedSecretRef = {
 	readonly field?: string;
 };
 
+type MutableParsedSecretRef = {
+	ref: SecretRef;
+	scheme: SecretRefScheme;
+	authority: string;
+	path: readonly string[];
+	field?: string;
+};
+
 export class SecretRefError extends Error {
 	readonly code:
 		| "SECRET_REFERENCE_INVALID"
@@ -100,7 +108,7 @@ function assertNoPlaintext(input: string): void {
  * whose specification does not define one.
  */
 export function parseSecretRef(input: string): ParsedSecretRef {
-	if (typeof input !== "string" || input.length === 0) {
+	if (input.length === 0) {
 		throw new SecretRefError(
 			"SECRET_REFERENCE_INVALID",
 			"secret reference must be a non-empty string",
@@ -134,14 +142,13 @@ export function parseSecretRef(input: string): ParsedSecretRef {
 			"secret reference scheme must be lowercase",
 		);
 	}
-	if (!(SECRET_REF_SCHEMES as readonly string[]).includes(scheme)) {
+	const typedScheme = SECRET_REF_SCHEMES.find((candidate) => candidate === scheme);
+	if (typedScheme === undefined) {
 		throw new SecretRefError(
 			"SECRET_REFERENCE_FORBIDDEN_SCHEME",
 			`secret reference scheme ${JSON.stringify(scheme)} is not registered`,
 		);
 	}
-	const typedScheme = scheme as SecretRefScheme;
-
 	let remainder = input.slice(separator + 3);
 	let field: string | undefined;
 	const hash = remainder.indexOf("#");
@@ -196,19 +203,28 @@ export function parseSecretRef(input: string): ParsedSecretRef {
 		}
 	}
 
-	const authority = segments[0] as string;
+	const authority = segments[0];
+	if (authority === undefined) {
+		throw new SecretRefError(
+			"SECRET_REFERENCE_INVALID",
+			"secret reference needs an authority and at least one path segment",
+		);
+	}
 	const path = segments.slice(1);
+	// SAFETY: every segment was validated as an unreserved URI component above.
 	const canonical = `${scheme}://${authority}/${path.join("/")}${
 		field !== undefined ? `#${field}` : ""
 	}` as SecretRef;
 
-	return {
+	// SAFETY: scheme, authority, path, and ref were all established by the checks above.
+	const parsed = {
 		ref: canonical,
 		scheme: typedScheme,
 		authority,
 		path,
-		...(field !== undefined ? { field } : {}),
-	};
+	} as MutableParsedSecretRef;
+	if (field !== undefined) parsed.field = field;
+	return parsed;
 }
 
 export function tryParseSecretRef(input: string): ParsedSecretRef | undefined {
@@ -228,13 +244,19 @@ export function tryParseSecretRef(input: string): ParsedSecretRef | undefined {
 export function redactSecretRef(
 	ref: ParsedSecretRef | SecretRef | string,
 ): string {
-	const parsed = typeof ref === "string" ? tryParseSecretRef(ref) : ref;
+	const parsed = isParsedSecretRef(ref) ? ref : tryParseSecretRef(ref);
 	if (parsed === undefined) return "<redacted-secret-ref>";
 	const head = parsed.path[0] ?? "";
 	const tail = parsed.path.length > 1 ? "/…" : "";
 	return `${parsed.scheme}://${parsed.authority}/${head}${tail}${
 		parsed.field !== undefined ? "#…" : ""
 	}`;
+}
+
+function isParsedSecretRef(
+	ref: ParsedSecretRef | SecretRef | string,
+): ref is ParsedSecretRef {
+	return "scheme" in Object(ref);
 }
 
 /**

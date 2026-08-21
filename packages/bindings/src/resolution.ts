@@ -126,8 +126,18 @@ function assertNoSecretValue(field: string, value: string): void {
  * free of control characters (which forge log lines), and free of anything
  * shaped like a credential.
  */
-export function assertNonSecretField(field: string, value: unknown): string {
-	if (typeof value !== "string" || value.trim().length === 0) {
+type ParsedScalar = string | number | null | undefined;
+
+function isString(value: ParsedScalar): value is string {
+	return value === String(value);
+}
+
+function isNumber(value: ParsedScalar): value is number {
+	return Number.isInteger(value) && value === Number(value);
+}
+
+export function assertNonSecretField(field: string, value: ParsedScalar): string {
+	if (!isString(value) || value.trim().length === 0) {
 		throw new BindingRecordError(
 			"BINDING_RECORD_INVALID",
 			`${field} must be a non-empty string`,
@@ -145,31 +155,25 @@ export function assertNonSecretField(field: string, value: unknown): string {
 
 export function assertMember<T extends string>(
 	field: string,
-	value: unknown,
+	value: ParsedScalar,
 	allowed: readonly T[],
 ): T {
-	if (
-		typeof value !== "string" ||
-		!(allowed as readonly string[]).includes(value)
-	) {
+	if (!isString(value) || !allowed.some((candidate) => candidate === value)) {
 		throw new BindingRecordError(
 			"BINDING_RECORD_INVALID",
 			`${field} must be one of ${allowed.join(", ")}`,
 		);
 	}
+	// SAFETY: the membership check above proves value belongs to allowed.
 	return value as T;
 }
 
 export function assertCount(
 	field: string,
-	value: unknown,
+	value: ParsedScalar,
 	minimum: number,
 ): number {
-	if (
-		typeof value !== "number" ||
-		!Number.isInteger(value) ||
-		value < minimum
-	) {
+	if (!isNumber(value) || value < minimum) {
 		throw new BindingRecordError(
 			"BINDING_RECORD_INVALID",
 			`${field} must be an integer >= ${minimum}`,
@@ -198,8 +202,8 @@ export function yardBindingRowKey(row: {
 	);
 }
 
-export function parseYardBindingRowKey(value: unknown): string {
-	if (typeof value !== "string") {
+export function parseYardBindingRowKey(value: string | number): string {
+	if (!isString(value)) {
 		throw new BindingRecordError(
 			"BINDING_RECORD_INVALID",
 			"applied row key must be a string",
@@ -255,7 +259,7 @@ export function parseYardBindingRowKey(value: unknown): string {
  * other because `"|"` outranks most product-id characters by codepoint.
  */
 export function canonicalizeAppliedRows(
-	values: readonly unknown[],
+	values: readonly (string | number)[],
 ): readonly string[] {
 	const keys = new Set<string>();
 	for (const value of values) keys.add(parseYardBindingRowKey(value));
@@ -276,8 +280,25 @@ export function canonicalizeAppliedRows(
  * Parse boundary for a resolution decision. Returns a frozen derived record;
  * an invalid input throws rather than yielding a partially-valid object.
  */
-export function parseBindingResolution(value: unknown): BindingResolution {
-	if (typeof value !== "object" || value === null) {
+type ResolutionInput = {
+	contract?: ParsedScalar;
+	yardId?: ParsedScalar;
+	profile?: ParsedScalar;
+	productId?: ParsedScalar;
+	connectivityId?: ParsedScalar;
+	realization?: ParsedScalar;
+	appliedRows?: readonly string[] | string;
+	consideredCount?: ParsedScalar;
+};
+
+type ResolutionBoundary = ResolutionInput | null | string | number | undefined;
+
+function isResolutionObject(value: ResolutionBoundary): value is ResolutionInput {
+	return value !== null && !Array.isArray(value) && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+export function parseBindingResolution(value: ResolutionBoundary): BindingResolution {
+	if (!isResolutionObject(value)) {
 		throw new BindingRecordError(
 			"BINDING_RECORD_INVALID",
 			"binding resolution must be an object",
@@ -292,7 +313,8 @@ export function parseBindingResolution(value: unknown): BindingResolution {
 		realization,
 		appliedRows,
 		consideredCount,
-	} = value as Partial<Record<keyof BindingResolution, unknown>>;
+	// SAFETY: isResolutionObject establishes the object boundary; its fields are parsed below.
+	} = value;
 
 	if (contract !== BINDING_RESOLUTION_CONTRACT) {
 		throw new BindingRecordError(

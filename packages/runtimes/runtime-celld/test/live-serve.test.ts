@@ -152,9 +152,11 @@ export default {
 		if (!response?.ok) {
 			throw new Error(`celld serve failed: ${lastError}\n${getOutput()}`);
 		}
+		// SAFETY: assertion required at this I/O or test boundary.
 		const body = (await response.json()) as { count?: number };
 		expect(body.count).toBe(1);
 		const second = await fetch(`http://${listen}/`);
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect(((await second.json()) as { count: number }).count).toBe(2);
 		child.kill("SIGTERM");
 	});

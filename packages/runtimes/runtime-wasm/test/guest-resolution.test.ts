@@ -47,7 +47,7 @@ const resolve = (projectDir: string, modulePath?: string) =>
 	resolvePrivateWasmGuest({
 		projectDir,
 		resourceName: "api",
-		...(modulePath !== undefined ? { modulePath } : {}),
+		...(modulePath !== undefined ? { modulePath } : undefined),
 	});
 
 describe("an explicit module path", () => {

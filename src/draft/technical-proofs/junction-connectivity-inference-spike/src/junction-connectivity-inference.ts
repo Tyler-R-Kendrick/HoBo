@@ -2,6 +2,8 @@ import { createHash } from "node:crypto";
 
 import { ConnectivityTier } from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.js";
 import { validateYardManifest } from "../../yard-topology-manifest-contract/src/yard-topology-manifest.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const JUNCTION_INFERENCE_SCHEMA_VERSION = "hobo.junction-connectivity-inference/v0-spike";
 
@@ -82,7 +84,7 @@ export function assertInferenceProperties(inference) {
 }
 
 export function validateInference(inference) {
-  if (!inference || typeof inference !== "object" || Array.isArray(inference)) {
+  if (!inference || !isJsonObject(inference) || Array.isArray(inference)) {
     return invalid("junction.inference.invalid", "inference must be an object");
   }
   if (inference.schemaVersion !== JUNCTION_INFERENCE_SCHEMA_VERSION) {
@@ -133,7 +135,7 @@ export function validateInference(inference) {
 }
 
 function validateInput(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     return invalid("junction.input.invalid", "input must be an object");
   }
   if (!isNonEmptyString(input.junctionId)) {
@@ -421,7 +423,7 @@ function invalid(code, reason) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function stableDigest(value) {
@@ -434,12 +436,12 @@ function canonicalJson(value) {
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   Object.freeze(value);
   for (const nested of Object.values(value)) {
     deepFreeze(nested);

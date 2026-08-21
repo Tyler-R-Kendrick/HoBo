@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const INCIDENT_EVENT_TYPES = Object.freeze({
   opened: "incident.Opened",
   triaged: "incident.Triaged",
@@ -55,7 +56,7 @@ export function makeIncidentEvent(
     id,
     type,
     correlationId,
-    ...(causationId ? { causationId } : {}),
+    ...(causationId ? { causationId } : undefined),
     occurredAt: occurredAt ?? new Date(0).toISOString(),
     payload: {
       incidentId,
@@ -240,7 +241,7 @@ function recordSlaBreach(state, event) {
 }
 
 function validateIncidentEvent(event) {
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
+  if (!event || !isJsonObject(event) || Array.isArray(event)) {
     throw new Error("incident event must be an object");
   }
   assertIncidentEventType(event.type);
@@ -258,7 +259,7 @@ function validateOpenedPayload(payload) {
 }
 
 function validateSourceSignal(signal) {
-  if (!signal || typeof signal !== "object" || Array.isArray(signal)) {
+  if (!signal || !isJsonObject(signal) || Array.isArray(signal)) {
     throw new Error("signal must be an object");
   }
   assertNonEmptyString(signal.id, "signal id");
@@ -287,7 +288,7 @@ function timelineEntry(event) {
     id: event.id,
     type: event.type,
     occurredAt: event.occurredAt,
-    ...(event.causationId ? { causationId: event.causationId } : {}),
+    ...(event.causationId ? { causationId: event.causationId } : undefined),
   };
 }
 
@@ -308,7 +309,7 @@ function freezeIncident(state) {
 }
 
 function assertNonEmptyString(value, label) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${label} must be a non-empty string`);
   }
 }

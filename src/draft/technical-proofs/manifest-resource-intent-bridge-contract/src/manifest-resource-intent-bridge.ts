@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonObject } from "./json.js";
 export const MANIFEST_SCHEMA = "hobo.manifest/v1";
 
 const FORBIDDEN_INTENT_KEYS = new Set([
@@ -18,7 +19,7 @@ export type ManifestResource = {
   allow?: string[];
   bind?: string[];
   links?: Array<{ import?: string; to?: string }>;
-  annotations?: Record<string, unknown>;
+  annotations?: JsonObject;
 };
 
 export type HoboManifest = {
@@ -130,7 +131,7 @@ function collectRequirements(resource: ManifestResource): string[] {
     requirements.add(`verb:${verb}`);
   }
   const scaling = resource.annotations?.scaling;
-  if (scaling && typeof scaling === "object") {
+  if (scaling && isJsonObject(scaling)) {
     requirements.add("scaling:bounded");
   }
   return [...requirements];

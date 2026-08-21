@@ -229,7 +229,7 @@ export default defineConfig({
 				"packages/manifest-round-trip/**": { statements: 94, branches: 91, functions: 98, lines: 98 },
 				"packages/mcp/**": { statements: 95, branches: 85, functions: 96, lines: 97 },
 				"packages/packs/**": { statements: 88, branches: 83, functions: 93, lines: 87 },
-				"packages/patterns/**": { statements: 82, branches: 74, functions: 85, lines: 83 },
+				"packages/patterns/**": { statements: 85, branches: 76, functions: 91, lines: 86 },
 				"packages/pixel-village/**": { statements: 47, branches: 43, functions: 50, lines: 47 },
 				"packages/policy/**": { statements: 97, branches: 95, functions: 100, lines: 97 },
 				"packages/providers/provider-aws/**": { statements: 87, branches: 69, functions: 92, lines: 88 },

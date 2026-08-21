@@ -2,7 +2,6 @@ import type {
   createInMemoryActorHost,
 } from "../fixtures/actor-host-port.js";
 import type {
-  createManualClock as createEventStoreClock,
   createRuntimeLocalEventStore,
 } from "../fixtures/eventstore-port.js";
 import type { createRuntimeLocalQueueClock } from "../fixtures/queue-clock-port.js";

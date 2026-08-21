@@ -111,14 +111,14 @@ test("runStageGateDrill passes all five gate arms", () => {
 test("adversarial: deploy without Gatekeeper is rejected", () => {
   assert.throws(
     () => simulateGovernedDeploy({ skipGatekeeper: true }),
-    (error: unknown) => error instanceof S2StageGateError && error.code === "gatekeeper.bypassed",
+    (error: Error) => error instanceof S2StageGateError && error.code === "gatekeeper.bypassed",
   );
 });
 
 test("adversarial: resume exceeding NFR-009 budget fails closed", () => {
   assert.throws(
     () => simulateYardRestartResume({ resumeDelayMs: NFR_009_RESUME_BUDGET_MS + 1 }),
-    (error: unknown) => error instanceof S2StageGateError && error.code === "resume.budget-exceeded",
+    (error: Error) => error instanceof S2StageGateError && error.code === "resume.budget-exceeded",
   );
 });
 
@@ -128,7 +128,7 @@ test("adversarial: wrong compensation order fails closed", () => {
       simulateCompensationRollback({
         compensationOrder: ["objectStore.hello-bucket", "kv.hello-cache"],
       }),
-    (error: unknown) => error instanceof S2StageGateError && error.code === "compensation.order-wrong",
+    (error: Error) => error instanceof S2StageGateError && error.code === "compensation.order-wrong",
   );
 });
 
@@ -140,10 +140,10 @@ test("adversarial: timeline with temporal gap fails closed", () => {
 
   assert.throws(
     () => assertTimelineMonotonic(gappedLog),
-    (error: unknown) => error instanceof S2StageGateError && error.code === "timeline.gap",
+    (error: Error) => error instanceof S2StageGateError && error.code === "timeline.gap",
   );
   assert.throws(
     () => reconstructDeploymentTimeline(gappedLog),
-    (error: unknown) => error instanceof S2StageGateError && error.code === "timeline.gap",
+    (error: Error) => error instanceof S2StageGateError && error.code === "timeline.gap",
   );
 });

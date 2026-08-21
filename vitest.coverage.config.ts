@@ -270,7 +270,7 @@ export default defineConfig({
 				"packages/status-page/**": { statements: 92, branches: 82, functions: 91, lines: 93 },
 				"packages/storage-sqlite/**": { statements: 88, branches: 81, functions: 94, lines: 89 },
 				"packages/testing/**": { statements: 89, branches: 81, functions: 94, lines: 91 },
-				"packages/trails/**": { statements: 86, branches: 76, functions: 92, lines: 87 },
+				"packages/trails/**": { statements: 88, branches: 80, functions: 92, lines: 89 },
 				"packages/training/**": { statements: 93, branches: 80, functions: 98, lines: 96 },
 				"packages/training-pipeline/**": { statements: 92, branches: 85, functions: 94, lines: 93 },
 				"packages/trust/**": { statements: 89, branches: 87, functions: 87, lines: 89 },

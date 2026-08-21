@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export const CDKTF_IMPORT_ONLY_ERROR: "cdktf-import-only";
 export const CDKTF_IMPORT_REPORT_VERSION: "hobo.iac-cdktf.import/v1";
 
@@ -16,7 +17,7 @@ export interface TerraformStateResource {
   name: string;
   provider?: string;
   instances: Array<{
-    attributes: Record<string, unknown> & { id: string | number };
+    attributes: JsonObject & { id: string | number };
   }>;
 }
 
@@ -28,7 +29,7 @@ export interface CdktfImportedResource {
   address: string;
   id: string;
   provider: string;
-  attributes: Record<string, unknown>;
+  attributes: JsonObject;
   provenance: {
     source: "cdktf";
     stateLineage?: string;
@@ -66,13 +67,20 @@ export interface CdktfDriftReport {
 export interface CdktfImportOnlyProvider {
   id: "cdktf";
   mode: "import-only";
-  preview(program: unknown): Promise<never>;
-  apply(program: unknown): Promise<never>;
-  destroy(program: unknown): Promise<never>;
+  preview(program: JsonValue): Promise<never>;
+  apply(program: JsonValue): Promise<never>;
+  destroy(program: JsonValue): Promise<never>;
   refresh(program: { state?: TerraformState; stateFile?: URL | string; mappings?: ResourceMappings }): Promise<CdktfDriftReport>;
 }
 
-export type ResourceMappings = Record<string, { hoboType: string; capability?: string }>;
+export interface ResourceMapping {
+  hoboType: string;
+  capability?: string;
+}
+
+export interface ResourceMappings {
+  [terraformType: string]: ResourceMapping;
+}
 
 export class CdktfImportOnlyError extends Error {
   name: "CdktfImportOnlyError";

@@ -7,6 +7,8 @@ import {
   declareNativeProjection,
   projection,
 } from "../src/native-log-projection.js";
+import { isJsonString } from "../src/json.js";
+
 
 test("native projection folds fixture event stream into read model at seq", () => {
   const tickets = defineTicketProjection();
@@ -21,7 +23,7 @@ test("native projection folds fixture event stream into read model at seq", () =
   assert.deepEqual(snapshot, {
     projection: "tickets",
     readModel: "support:tickets/ticket-view@1.0.0",
-    rowShape: ticketRowShape(),
+    rowSchema: ticketRowSchema(),
     readSet: ["ticket.Commented", "ticket.Opened"],
     reactivity: {
       class: "reactive",
@@ -65,7 +67,7 @@ test("projection declaration emits read-set and native reactive class", () => {
     data: {
       name: "tickets",
       readModel: "support:tickets/ticket-view@1.0.0",
-      rowShape: ticketRowShape(),
+      rowSchema: ticketRowSchema(),
       readSet: ["ticket.Commented", "ticket.Opened"],
       reactivityClass: "reactive",
       sink: { type: "projection-sink", paradigm: "native", reactive: true },
@@ -122,12 +124,12 @@ test("malformed event bodies surface as fold errors instead of silent drops", ()
 function defineTicketProjection(overrides = {}) {
   return projection("tickets", {
     readModel: "support:tickets/ticket-view@1.0.0",
-    rowShape: ticketRowShape(),
+    rowSchema: ticketRowSchema(),
     key: (event) => event.streamId,
     initialState: { comments: 0, status: "unknown", title: "" },
     on: {
       "ticket.Opened": (state, event) => {
-        if (typeof event.data.title !== "string") {
+        if (!isJsonString(event.data.title)) {
           throw new Error("ticket.Opened requires title");
         }
         return { ...state, status: event.data.status, title: event.data.title };
@@ -140,7 +142,7 @@ function defineTicketProjection(overrides = {}) {
   });
 }
 
-function ticketRowShape() {
+function ticketRowSchema() {
   return {
     witRecord: "support:tickets/ticket-view@1.0.0",
     fields: [

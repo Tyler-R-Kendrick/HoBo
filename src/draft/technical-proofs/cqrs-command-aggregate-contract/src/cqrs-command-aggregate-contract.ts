@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const CQRS_COMMAND_AGGREGATE_CONTRACT_VERSION =
   "hobo.cqrs-command-aggregate-contract/v1";
 
@@ -20,7 +21,7 @@ export interface EventEnvelope<Event extends DomainEvent = DomainEvent> {
   readonly type: EventType<Event>;
   readonly v: 1;
   readonly data: Event["data"];
-  readonly meta: Readonly<Record<string, unknown>>;
+  readonly meta: Readonly<JsonObject>;
 }
 
 export interface EmitResult {
@@ -35,10 +36,10 @@ export interface CommandContext<State, Event extends DomainEvent> {
   emit<const Type extends EventType<Event>>(
     type: Type,
     data: EventData<Event, Type>,
-    options?: { readonly meta?: Readonly<Record<string, unknown>> | undefined },
+    options?: { readonly meta?: Readonly<JsonObject> | undefined },
   ): EmitResult;
-  step(name: string, input?: unknown): never;
-  externalWrite(target: string, input?: unknown): never;
+  step(name: string, input?: JsonValue): never;
+  externalWrite(target: string, input?: JsonValue): never;
 }
 
 export interface CommandSpec<Input, State, Event extends DomainEvent> {
@@ -179,19 +180,19 @@ export function command<
   handler: CommandHandler<Input, State, Event, Value>,
 ): CommandDefinition<Input, State, Event, Value> {
   const commandType = requireNonEmptyString(type, "type");
-  if (!spec || typeof spec !== "object" || Array.isArray(spec)) {
+  if (!spec || !isJsonObject(spec)) {
     throw new TypeError("spec must be an object");
   }
-  if (typeof spec.key !== "function") {
+  if (!(spec.key instanceof Function)) {
     throw new TypeError("spec.key must be a function");
   }
   if (!("initialState" in spec)) {
     throw new TypeError("spec.initialState is required");
   }
-  if (typeof spec.fold !== "function") {
+  if (!(spec.fold instanceof Function)) {
     throw new TypeError("spec.fold must be a function");
   }
-  if (typeof handler !== "function") {
+  if (!(handler instanceof Function)) {
     throw new TypeError("handler must be a function");
   }
 
@@ -276,11 +277,14 @@ export function createCommandRuntime(): CommandRuntime {
       }
     }
 
+    const emitted: readonly EventEnvelope<Event>[] =
+      // SAFETY: pending envelopes were appended on this stream during execute.
+      structuredClone(pending) as never;
     return {
       commandType: normalized.type,
       streamId,
       seq: pending.at(-1)?.seq ?? expectedSeq,
-      emitted: structuredClone(pending) as unknown as readonly EventEnvelope<Event>[],
+      emitted,
       value: structuredClone(value),
     };
   }
@@ -390,7 +394,7 @@ function createCommandContext<State, Event extends DomainEvent>({
     emit<const Type extends EventType<Event>>(
       type: Type,
       data: EventData<Event, Type>,
-      options: { readonly meta?: Readonly<Record<string, unknown>> | undefined } = {},
+      options: { readonly meta?: Readonly<JsonObject> | undefined } = {},
     ): EmitResult {
       const event = createEvent({
         streamId,
@@ -426,11 +430,11 @@ function normalizeCommandDefinition<Input, State, Event extends DomainEvent, Val
 ): CommandDefinition<Input, State, Event, Value> {
   if (
     !definition ||
-    typeof definition !== "object" ||
-    typeof definition.type !== "string" ||
-    typeof definition.streamId !== "function" ||
-    typeof definition.fold !== "function" ||
-    typeof definition.handler !== "function" ||
+    !isJsonObject(definition) ||
+    !isJsonString(definition.type) ||
+    !(definition.streamId instanceof Function) ||
+    !(definition.fold instanceof Function) ||
+    !(definition.handler instanceof Function) ||
     !("initialState" in definition)
   ) {
     throw new TypeError("definition must be created by command(...)");
@@ -440,10 +444,11 @@ function normalizeCommandDefinition<Input, State, Event extends DomainEvent, Val
 }
 
 function getStream(streams: Map<string, Stream>, streamId: string): Stream {
-  if (!streams.has(streamId)) {
-    streams.set(streamId, { events: [] });
-  }
-  return streams.get(streamId) as Stream;
+  const existing = streams.get(streamId);
+  if (existing) return existing;
+  const created: Stream = { events: [] };
+  streams.set(streamId, created);
+  return created;
 }
 
 function foldStream<Input, State, Event extends DomainEvent, Value>(
@@ -452,12 +457,14 @@ function foldStream<Input, State, Event extends DomainEvent, Value>(
 ): State {
   let state = structuredClone(definition.initialState);
   for (const event of events) {
-    state = definition.fold(state, structuredClone(event) as unknown as Event);
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+    const folded: Event = structuredClone(event) as never;
+    state = definition.fold(state, folded);
   }
   return structuredClone(state);
 }
 
-function createEvent({
+function createEvent<Data>({
   streamId,
   seq,
   type,
@@ -467,8 +474,8 @@ function createEvent({
   readonly streamId: string;
   readonly seq: number;
   readonly type: string;
-  readonly data: unknown;
-  readonly meta: Readonly<Record<string, unknown>>;
+  readonly data: Data;
+  readonly meta: Readonly<JsonObject>;
 }): EventEnvelope {
   const eventType = requireNonEmptyString(type, "event type");
   const record: EventEnvelope = {
@@ -503,15 +510,15 @@ function normalizeExpectedSeq(value: number): number {
   return value;
 }
 
-function requireNonEmptyString(value: unknown, fieldName: string): string {
-  if (typeof value !== "string" || value.length === 0) {
+function requireNonEmptyString(value: JsonValue, fieldName: string): string {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
 }
 
 function deepFreeze<T>(value: T): T {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
 

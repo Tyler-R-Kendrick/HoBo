@@ -11,7 +11,6 @@ import {
 	goldenIdentityHandsOff,
 	identityContinuousTrail,
 } from "@hobo/trails";
-
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import { buildBindingDeliveryDoctorSection } from "./binding-delivery-doctor.js";
 import { describeCodeHarnessHealth } from "./code-health.js";
@@ -20,7 +19,19 @@ import {
 	describeDeployTarget,
 } from "./deploy-preflight.js";
 import { loadHoboProfile } from "./hobo-profile.js";
+import { isJsonString } from "./json.js";
 import { buildMessagingDoctorSection } from "./messaging-doctor.js";
+
+interface StationDoctorReport {
+	present: boolean;
+	stationId?: string;
+	bootstrapActive?: boolean;
+	activeRailHash?: string;
+	connectionCount?: number;
+	doctorFlag?: string;
+	stationIds?: readonly string[];
+	remediation?: string;
+}
 
 export interface DoctorCommandDeps {
 	// The environment consulted for deploy credentials. Defaults to `process.env`.
@@ -57,14 +68,14 @@ export function createDoctorCommand(
 			emitProgress(target.summary);
 
 			const hoboHome =
-				typeof env.HOBO_HOME === "string" && env.HOBO_HOME.length > 0
+				isJsonString(env.HOBO_HOME) && env.HOBO_HOME.length > 0
 					? env.HOBO_HOME
 					: defaultHoboHome();
 			const profile = loadHoboProfile(hoboHome);
 			const stationId =
-				(typeof env.HOBO_STATION === "string" && env.HOBO_STATION) ||
+				(isJsonString(env.HOBO_STATION) && env.HOBO_STATION) ||
 				profile?.defaultStation?.id;
-			let stationReport: Record<string, unknown> = {
+			let stationReport: StationDoctorReport = {
 				present: false,
 				remediation: "hobo station init",
 			};
@@ -77,11 +88,13 @@ export function createDoctorCommand(
 							present: true,
 							stationId,
 							bootstrapActive: occ.bootstrapActive,
-							activeRailHash: occ.activeRailHash,
+							...(occ.activeRailHash !== undefined
+								? { activeRailHash: occ.activeRailHash }
+								: undefined),
 							connectionCount: occ.connectionCount,
-							doctorFlag: occ.bootstrapActive
-								? "bootstrap-rail-active"
-								: undefined,
+							...(occ.bootstrapActive
+								? { doctorFlag: "bootstrap-rail-active" }
+								: undefined),
 						};
 					}
 				} catch {
@@ -117,7 +130,7 @@ export function createDoctorCommand(
 			// offline dual-consistency oracle; fidelity remains simulated without real IdPs.
 			const dual = createContractAssertedDualFixtures({
 				tenant:
-					(typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT) ||
+					(isJsonString(env.HOBO_TENANT) && env.HOBO_TENANT) ||
 					profile?.session?.tenant ||
 					"local",
 			});
@@ -156,7 +169,7 @@ export function createDoctorCommand(
 
 			// Trails (continuous migration plane) — identity hands-off + local dual fixtures.
 			const trailTenant =
-				(typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT) ||
+				(isJsonString(env.HOBO_TENANT) && env.HOBO_TENANT) ||
 				profile?.session?.tenant ||
 				"local";
 			const trailFx = createContractAssertedTrailFixtures({
@@ -229,7 +242,7 @@ export function createDoctorCommand(
 				status: target.live ? "live" : "in-memory",
 				code: target.live ? "HOBO_DEPLOY_LIVE" : "HOBO_DEPLOY_MOCKED",
 				message: target.summary,
-				...(remediation.length > 0 ? { remediation } : {}),
+				...(remediation.length > 0 ? { remediation } : undefined),
 				data: {
 					command: "doctor",
 					backend: target.backend,

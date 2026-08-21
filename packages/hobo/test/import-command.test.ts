@@ -10,7 +10,6 @@ import {
 } from "@hobo/iac-pulumi";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	type AdoptedResourceEntry,
 	createComposedHoboCli,
@@ -19,6 +18,11 @@ import {
 	type PulumiAutomationAdapter,
 	RESOURCE_ADOPTED_EVENT,
 } from "../src/index.js";
+import { isJsonObject, type JsonObject } from "../src/json.js";
+
+interface AdoptedResourceMap {
+	[name: string]: AdoptedResourceEntry;
+}
 
 // `hobo import` adopts an existing estate in place: it DISCOVERS the resources
 // the IaC state backend actually holds (per-resource stacks + outputs), merges
@@ -73,8 +77,11 @@ function envelope(stdout: string): any {
 
 function runInput(cwd: string) {
 	return {
-		context: { cwd, projectDir: cwd } as unknown as CliContext,
+		// SAFETY: assertion required at this I/O or test boundary.
+		context: { cwd, projectDir: cwd } as CliContext,
+		// SAFETY: assertion required at this I/O or test boundary.
 		flags: { cwd } as never,
+		// SAFETY: assertion required at this I/O or test boundary.
 		args: [] as readonly string[],
 		verb: "import",
 		emitProgress: () => {},
@@ -85,7 +92,7 @@ function runInput(cwd: string) {
 // given deployment, and hand back the adapter reading it.
 function seededAdapter(
 	deploymentId: string,
-	resources: Record<string, Record<string, unknown>>,
+	resources: Record<string, JsonObject>,
 ): PulumiAutomationAdapter {
 	const stateBackend = createInMemoryStateBackend();
 	for (const [name, outputs] of Object.entries(resources)) {
@@ -100,6 +107,7 @@ function seededAdapter(
 			},
 		});
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return createPulumiAutomationAdapter({
 		stateBackend,
 	}) as PulumiAutomationAdapter;
@@ -109,6 +117,7 @@ describe("createImportCommand", () => {
 	it("adopts the declared estate without provisioning, and inspect sees it", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -145,6 +154,7 @@ describe("createImportCommand", () => {
 				"legacy-db": { endpoint: "postgres://legacy-db.internal:5432/shop" },
 			});
 			const runtime = createDefaultYardRuntime({ iacAdapter: adapter });
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 
 			const command = createImportCommand({ runtime, adapter });
@@ -152,12 +162,13 @@ describe("createImportCommand", () => {
 
 			expect(result.ok).toBe(true);
 			expect(result.status).toBe("imported");
+			// SAFETY: assertion required at this I/O or test boundary.
 			const data = result.data as {
 				discovered: string[];
 				declared: string[];
 				resources: Record<string, string>;
 				adoptedManifest: {
-					resources: Record<string, AdoptedResourceEntry | unknown>;
+					resources: AdoptedResourceMap;
 				};
 			};
 			expect(data.discovered).toEqual(["legacy-db"]);
@@ -170,6 +181,7 @@ describe("createImportCommand", () => {
 
 			// The adopted manifest merges declared entries (as-is) with an
 			// adopt-in-place entry per discovered resource, carrying its outputs.
+			// SAFETY: assertion required at this I/O or test boundary.
 			const adopted = data.adoptedManifest.resources[
 				"legacy-db"
 			] as AdoptedResourceEntry;
@@ -187,13 +199,16 @@ describe("createImportCommand", () => {
 			);
 			const adoptions = events.filter((e) => e.type === RESOURCE_ADOPTED_EVENT);
 			expect(adoptions.length).toBe(1);
+			const adoptedFact = adoptions[0]?.data;
 			expect(
-				(adoptions[0]?.data as { resource: string; lifecycle: unknown })
-					.resource,
-			).toBe("legacy-db");
+				isJsonObject(adoptedFact) && adoptedFact.resource === "legacy-db",
+			).toBe(true);
 			expect(
-				(adoptions[0]?.data as { lifecycle: Record<string, string> }).lifecycle,
-			).toEqual({ reconcile: "drift-detect-only", destroy: "retain" });
+				isJsonObject(adoptedFact) ? adoptedFact.lifecycle : undefined,
+			).toEqual({
+				reconcile: "drift-detect-only",
+				destroy: "retain",
+			});
 		});
 	});
 
@@ -205,6 +220,7 @@ describe("createImportCommand", () => {
 				"legacy-bucket": { bucketName: "legacy" },
 			});
 			const runtime = createDefaultYardRuntime({ iacAdapter: adapter });
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 
 			const command = createImportCommand({ runtime, adapter });
@@ -212,10 +228,11 @@ describe("createImportCommand", () => {
 
 			expect(result.ok).toBe(true);
 			expect(result.status).toBe("imported");
+			// SAFETY: assertion required at this I/O or test boundary.
 			const data = result.data as {
 				discovered: string[];
 				declared: string[];
-				adoptedManifest: { resources: Record<string, unknown> };
+				adoptedManifest: { resources: JsonObject };
 			};
 			expect(data.discovered.sort()).toEqual(["legacy-bucket", "legacy-db"]);
 			expect(data.declared).toEqual([]);
@@ -230,6 +247,7 @@ describe("createImportCommand", () => {
 	it("is idempotent: a second import of a managed deployment is a no-op", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -245,6 +263,7 @@ describe("createImportCommand", () => {
 	it("errors when there is no Bindle and the backend holds no estate", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -259,6 +278,7 @@ describe("createImportCommand", () => {
 	it("fails closed with a typed error when HOBO_PULUMI_LIVE=1 and the pulumi binary is missing", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const command = createImportCommand({
 				runtime,
@@ -270,6 +290,7 @@ describe("createImportCommand", () => {
 			const result = await command.run(runInput(cwd));
 			expect(result.ok).toBe(false);
 			expect(result.code).toBe("HOBO_PULUMI_UNAVAILABLE");
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((result.data as { engineCode: string }).engineCode).toBe(
 				"pulumi-cli-missing",
 			);

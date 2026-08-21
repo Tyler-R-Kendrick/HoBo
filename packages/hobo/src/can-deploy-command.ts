@@ -79,7 +79,7 @@ export function createCanDeployCommand(
 				message: result.ok
 					? `hobo can-deploy: compatible (${result.matrix.length} channel(s) checked)`
 					: `hobo can-deploy: ${result.reasons.length} breaking change(s) — ${result.summary}`,
-				...(result.ok ? {} : { remediation: result.suggestedFixes }),
+				...(result.ok ? undefined : { remediation: result.suggestedFixes }),
 				data: {
 					command: "can-deploy",
 					target,

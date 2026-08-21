@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { createRequire } from "node:module";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
-
 import type { RegistrableProvider } from "@hobo/cloud";
 import {
 	CLOUD_PROVIDER_EXTENSION_POINT,
@@ -12,8 +11,13 @@ import {
 	type PluginPackageManifest,
 	parsePluginPackageJson,
 } from "@hobo/core";
-
 import { registerInstallable } from "./add-command.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 // The effectful half of the hobo.plugin/v1 story (ADR-0156 §4,
 // extension-points.md §Packaging). `@hobo/core` owns the PURE manifest
@@ -57,29 +61,34 @@ export interface PluginHostHooks {
 	) => void;
 }
 
+function asProviderFactory(value: Function): () => RegistrableProvider {
+	// SAFETY: the export was checked with instanceof Function at the plugin boundary.
+	return value as () => RegistrableProvider;
+}
+
 function providerFactoryFrom(
 	packageName: string,
 	declaration: PluginExtensionDeclaration,
-	moduleExports: Record<string, unknown>,
-): { id: string; factory: () => RegistrableProvider } {
+	moduleExports: JsonObject,
+) {
 	const candidate = moduleExports[declaration.export];
-	if (typeof candidate !== "function") {
+	if (!(candidate instanceof Function)) {
 		throw new PluginLoadError(
 			"HOBO_PLUGIN_EXPORT_MISSING",
 			`${packageName}: declared export "${declaration.export}" for ${declaration.point} is not a function export of the plugin entry`,
 		);
 	}
-	const factory = candidate as () => RegistrableProvider;
+	const factory = asProviderFactory(candidate);
 	// Probe once, fail closed on shape: a provider factory must yield an
 	// id-bearing, capability-bearing, manifest-bearing provider.
 	const probe = factory();
 	if (
 		!probe ||
-		typeof probe !== "object" ||
-		typeof probe.id !== "string" ||
+		!isJsonObject(probe) ||
+		!isJsonString(probe.id) ||
 		probe.id.length === 0 ||
 		!Array.isArray(probe.capabilities) ||
-		typeof probe.capabilityManifest !== "function"
+		!(probe.capabilityManifest instanceof Function)
 	) {
 		throw new PluginLoadError(
 			"HOBO_PLUGIN_PROVIDER_SHAPE",
@@ -97,7 +106,7 @@ function providerFactoryFrom(
  */
 export function registerPluginExtensions(
 	manifest: PluginPackageManifest,
-	moduleExports: Record<string, unknown>,
+	moduleExports: JsonObject,
 	hooks: PluginHostHooks = {},
 ): LoadedPluginReport {
 	const register = hooks.registerInstallable ?? registerInstallable;
@@ -120,7 +129,7 @@ export function registerPluginExtensions(
 			return {
 				point: declaration.point,
 				export: declaration.export,
-				...(declaration.id !== undefined ? { id: declaration.id } : {}),
+				...(declaration.id !== undefined ? { id: declaration.id } : undefined),
 				status: "skipped",
 				reason: `extension point ${declaration.point} has no host registration seam in this composition root`,
 			};
@@ -129,15 +138,18 @@ export function registerPluginExtensions(
 	return { packageName: manifest.packageName, extensions };
 }
 
-export interface LoadPluginOptions extends PluginHostHooks {
-	/** Injection seam for tests: import a module URL/specifier. */
-	importModule?: (specifier: string) => Promise<unknown>;
+export interface PluginModuleNamespace {
+	readonly [exportName: string]:
+		| JsonValue
+		| ((...args: never[]) => RegistrableProvider);
 }
 
-function resolvePluginPackage(specifier: string): {
-	packageDir: string;
-	packageJson: unknown;
-} {
+export interface LoadPluginOptions extends PluginHostHooks {
+	/** Injection seam for tests: import a module URL/specifier. */
+	importModule?: (specifier: string) => Promise<PluginModuleNamespace>;
+}
+
+function resolvePluginPackage(specifier: string) {
 	const require = createRequire(path.join(process.cwd(), "noop.js"));
 	let packageJsonPath: string;
 	if (
@@ -160,6 +172,7 @@ function resolvePluginPackage(specifier: string): {
 			for (;;) {
 				const candidate = path.join(dir, "package.json");
 				try {
+					// SAFETY: assertion required at this I/O or test boundary.
 					const parsed = JSON.parse(readFileSync(candidate, "utf8")) as {
 						name?: string;
 					};
@@ -208,27 +221,38 @@ export async function loadHoboPlugin(
 	const { packageDir, packageJson } = resolvePluginPackage(specifier);
 	const manifest = parsePluginPackageJson(packageJson);
 	const entryPath = path.join(packageDir, manifest.plugin.entry);
-	const importModule = options.importModule ?? ((url: string) => import(url));
-	let moduleExports: unknown;
+	const importModule =
+		options.importModule ??
+		(async (url: string): Promise<PluginModuleNamespace> => {
+			const imported = await import(url);
+			if (imported === null || imported === undefined) {
+				throw new PluginLoadError(
+					"HOBO_PLUGIN_ENTRY_SHAPE",
+					`${manifest.packageName}: plugin entry did not evaluate to a module object`,
+				);
+			}
+			// SAFETY: dynamic import yields a module namespace of plugin exports.
+			return imported as PluginModuleNamespace;
+		});
+	let moduleExports: PluginModuleNamespace;
 	try {
 		moduleExports = await importModule(pathToFileURL(entryPath).href);
 	} catch (error) {
+		if (error instanceof PluginLoadError) throw error;
 		throw new PluginLoadError(
 			"HOBO_PLUGIN_ENTRY_IMPORT",
 			`${manifest.packageName}: cannot import plugin entry ${manifest.plugin.entry}: ${String(error)}`,
 		);
 	}
-	if (!moduleExports || typeof moduleExports !== "object") {
+	if (moduleExports === null || moduleExports === undefined) {
 		throw new PluginLoadError(
 			"HOBO_PLUGIN_ENTRY_SHAPE",
 			`${manifest.packageName}: plugin entry did not evaluate to a module object`,
 		);
 	}
-	return registerPluginExtensions(
-		manifest,
-		moduleExports as Record<string, unknown>,
-		options,
-	);
+	const exported: JsonObject = {};
+	Object.assign(exported, moduleExports);
+	return registerPluginExtensions(manifest, exported, options);
 }
 
 export type { HoboPluginManifest, PluginPackageManifest };

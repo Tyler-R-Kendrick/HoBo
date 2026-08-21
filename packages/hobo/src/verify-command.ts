@@ -15,6 +15,7 @@ import {
 	type ResidencyConstraint,
 } from "@hobo/core";
 import { evaluateResidencyPolicy } from "@hobo/policy";
+import { isJsonString } from "./json.js";
 
 export interface VerifyResidencyDeps {
 	// The tenant's residency constraint (Tenant.residency, ADR-0146) — supplied
@@ -76,12 +77,12 @@ export function residencyFromEnv(
 	const constraint = parseResidencyConstraint({
 		classifications: splitList(env[HOBO_RESIDENCY_CLASSIFICATIONS_ENV]),
 		allowedJurisdictions: allowed,
-		...(denied.length > 0 ? { deniedJurisdictions: denied } : {}),
+		...(denied.length > 0 ? { deniedJurisdictions: denied } : undefined),
 	});
 	const region = env[HOBO_REGION_ENV];
 	return Object.freeze({
 		constraint,
-		...(region !== undefined && region.length > 0 ? { region } : {}),
+		...(region !== undefined && region.length > 0 ? { region } : undefined),
 	});
 }
 
@@ -154,6 +155,7 @@ export function createVerifyCommand(
 					ok: false,
 					status: "config-error",
 					code: "HOBO_RESIDENCY_CONFIG",
+					// SAFETY: assertion required at this I/O or test boundary.
 					message: `hobo verify: invalid residency configuration — ${(error as Error).message}`,
 					remediation: [
 						`Fix ${HOBO_RESIDENCY_ALLOW_ENV}/${HOBO_RESIDENCY_DENY_ENV}/${HOBO_RESIDENCY_CLASSIFICATIONS_ENV}: comma-separated jurisdiction ids (eu, eea, us, ...) and classifications (pii, phi, ...).`,
@@ -161,8 +163,7 @@ export function createVerifyCommand(
 					data: { command: "verify" },
 				};
 			}
-			const regionFlag =
-				typeof flags.region === "string" ? flags.region : undefined;
+			const regionFlag = isJsonString(flags.region) ? flags.region : undefined;
 			const planRegion = regionFlag ?? residencyDeps?.region;
 			let residency: ResidencyGateVerdict | undefined;
 			const residencyWarnings: string[] = [];
@@ -187,7 +188,7 @@ export function createVerifyCommand(
 							code: evaluation.ok ? policy.ruleId : evaluation.code,
 							message: policy.reasons.join("; "),
 							...(evaluation.ok
-								? {}
+								? undefined
 								: {
 										region: evaluation.region,
 										jurisdictions: evaluation.regionJurisdictions,
@@ -211,7 +212,7 @@ export function createVerifyCommand(
 					phase: "plan",
 					context: {
 						target,
-						...(planRegion !== undefined ? { region: planRegion } : {}),
+						...(planRegion !== undefined ? { region: planRegion } : undefined),
 						...(residencyDeps !== undefined &&
 						residencyDeps.constraint.classifications.length > 0
 							? {
@@ -219,7 +220,7 @@ export function createVerifyCommand(
 										...residencyDeps.constraint.classifications,
 									],
 								}
-							: {}),
+							: undefined),
 					},
 				},
 				deployedState: { contracts: [] },
@@ -228,7 +229,7 @@ export function createVerifyCommand(
 					contracts: [],
 				},
 				policyPack: deps.policyPack ?? createPermissiveDefaultPack(),
-				...(residency !== undefined ? { residency } : {}),
+				...(residency !== undefined ? { residency } : undefined),
 				costQuota,
 			});
 
@@ -246,7 +247,7 @@ export function createVerifyCommand(
 				message: deployable
 					? `hobo verify: deploy allowed (${decision.decision})`
 					: `hobo verify: deploy blocked (${decision.decision})`,
-				...(remediation.length > 0 ? { remediation } : {}),
+				...(remediation.length > 0 ? { remediation } : undefined),
 				data: {
 					command: "verify",
 					target,

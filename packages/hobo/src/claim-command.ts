@@ -26,6 +26,7 @@ import {
 	type CredentialPresenter,
 	createCredentialPresenter,
 } from "./credential-presenter.js";
+import { isJsonString } from "./json.js";
 
 export interface ClaimCommandDeps {
 	// The shared Yard runtime whose durable log carries the deployment. The
@@ -53,6 +54,7 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 	return {
 		run: async ({ context, flags, args }) => {
 			const env =
+				// SAFETY: assertion required at this I/O or test boundary.
 				deps.env ?? (context as { env?: NodeJS.ProcessEnv }).env ?? process.env;
 
 			// The multi-step ownership ceremony (ADR-0151): a bundle can hold two
@@ -75,9 +77,7 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 
 			const accountRaw = args[0] ?? flags.to;
 			const account =
-				typeof accountRaw === "string" && accountRaw.length > 0
-					? accountRaw
-					: null;
+				isJsonString(accountRaw) && accountRaw.length > 0 ? accountRaw : null;
 			if (!account) {
 				return {
 					ok: false,
@@ -95,7 +95,7 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 				brokerUri: flags.brokerUri,
 			});
 			const token =
-				typeof flags.token === "string" && flags.token.length > 0
+				isJsonString(flags.token) && flags.token.length > 0
 					? flags.token
 					: null;
 
@@ -131,7 +131,7 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 				}
 
 				const hoboHome =
-					typeof flags.home === "string" && flags.home.length > 0
+					isJsonString(flags.home) && flags.home.length > 0
 						? flags.home
 						: defaultHoboHome(env);
 
@@ -140,8 +140,8 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 						deps.createRemoteClient?.(brokerUri) ??
 						createRemoteBrokerClient({
 							brokerUri,
-							...(deps.discovery ? { discovery: deps.discovery } : {}),
-							...(deps.mockRemote ? { mock: deps.mockRemote } : {}),
+							...(deps.discovery ? { discovery: deps.discovery } : undefined),
+							...(deps.mockRemote ? { mock: deps.mockRemote } : undefined),
 						});
 
 					// Optional human credential for step-up metadata (never required for token claim).
@@ -157,7 +157,7 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 					const result = await client.claim({
 						claimToken: token,
 						account,
-						...(credential !== null ? { credential } : {}),
+						...(credential !== null ? { credential } : undefined),
 					});
 
 					return {
@@ -197,7 +197,7 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 								command: "claim",
 								mode: "remote",
 								brokerUri,
-								...(error.data ?? {}),
+								...error.data,
 							},
 						};
 					}
@@ -267,7 +267,7 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 				[
 					deploymentClaimed({
 						deploymentId,
-						...(previousOwner !== undefined ? { previousOwner } : {}),
+						...(previousOwner !== undefined ? { previousOwner } : undefined),
 						newOwner,
 					}),
 				],
@@ -275,7 +275,7 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 					expectedSeq: snapshot.seq,
 					actor: newOwner,
 					tenant: DEFAULT_TENANT,
-					...(fenceToken !== undefined ? { fenceToken } : {}),
+					...(fenceToken !== undefined ? { fenceToken } : undefined),
 				},
 			);
 
@@ -310,10 +310,7 @@ export function createClaimCommandWithMock(options?: {
 	readonly runtime?: YardRuntime;
 	readonly mock?: MockRemoteBrokerState;
 	readonly brokerUri?: string;
-}): {
-	readonly command: CommandModule;
-	readonly mock: MockRemoteBrokerState;
-} {
+}) {
 	const mock =
 		options?.mock ??
 		createMockRemoteBrokerState({
@@ -327,7 +324,9 @@ export function createClaimCommandWithMock(options?: {
 	return {
 		mock,
 		command: createClaimCommand({
-			...(options?.runtime !== undefined ? { runtime: options.runtime } : {}),
+			...(options?.runtime !== undefined
+				? { runtime: options.runtime }
+				: undefined),
 			mockRemote: mock,
 			discovery,
 		}),

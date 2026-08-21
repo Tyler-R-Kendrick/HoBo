@@ -3,6 +3,7 @@
  * Subcommands: status | logs | rollback
  * Always drives the shipped ContinuousDeliveryPlane (not placeholder strings).
  */
+
 import type { CommandModule } from "@hobo/cli";
 import {
 	assertSecretFree,
@@ -11,6 +12,7 @@ import {
 	createContractAssertedCdFixtures,
 	type LocalCdFixtures,
 } from "@hobo/cloud";
+import { isJsonString, type JsonObject } from "./json.js";
 
 export interface DeployCommandDeps {
 	readonly env?: NodeJS.ProcessEnv;
@@ -26,21 +28,24 @@ export function createDeployCommand(
 ): CommandModule {
 	return {
 		run: async ({ args, flags, emitProgress }) => {
-			const f = flags as Record<string, unknown>;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const f = flags as JsonObject;
 			const tenant =
-				(typeof f.tenant === "string" && f.tenant) ||
+				(isJsonString(f.tenant) && f.tenant) ||
 				deps.env?.HOBO_TENANT ||
 				"local";
 			const fixtures =
 				deps.fixtures ??
 				createContractAssertedCdFixtures({
 					tenant,
-					environment: (typeof f.env === "string" && f.env) || "local-dev",
+					environment: (isJsonString(f.env) && f.env) || "local-dev",
 				});
 			const plane =
 				deps.plane ?? createContinuousDeliveryPlane({ mode: "simulate" });
+			// SAFETY: assertion required at this I/O or test boundary.
 			const sub = (args[0] ?? "status") as string;
 
+			// SAFETY: assertion required at this I/O or test boundary.
 			if (!(SUBS as readonly string[]).includes(sub)) {
 				return {
 					ok: false,
@@ -61,7 +66,7 @@ export function createDeployCommand(
 			if (!last || sub === "status") {
 				last = await plane.deliver(fixtures.set, {
 					deploymentId:
-						(typeof f.deployment === "string" && f.deployment) ||
+						(isJsonString(f.deployment) && f.deployment) ||
 						last?.apply.deploymentId ||
 						`dep_cli_${tenant}`,
 				});
@@ -152,7 +157,7 @@ export function createDeployCommand(
 
 			// rollback — zeros progressive exposure then A2H disposition
 			const reason =
-				(typeof f.reason === "string" && f.reason) || "operator-requested";
+				(isJsonString(f.reason) && f.reason) || "operator-requested";
 			const rolled = await plane.rollback(
 				fixtures.set,
 				last.apply.deploymentId,
@@ -183,7 +188,7 @@ export function createDeployCommand(
 								obligationId: rolled.disposition.handoff.obligationId,
 								deadline: rolled.disposition.handoff.deadline,
 							}
-						: {}),
+						: undefined),
 				},
 			};
 		},

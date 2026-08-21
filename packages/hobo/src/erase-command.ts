@@ -85,7 +85,7 @@ export function createEraseCommand(deps: EraseCommandDeps = {}): CommandModule {
 					expectedSeq: lastSeq,
 					actor: ERASE_ACTOR,
 					tenant: DEFAULT_TENANT,
-					...(fenceToken !== undefined ? { fenceToken } : {}),
+					...(fenceToken !== undefined ? { fenceToken } : undefined),
 				},
 			);
 			emitProgress(`erasure requested: ${subject}`);

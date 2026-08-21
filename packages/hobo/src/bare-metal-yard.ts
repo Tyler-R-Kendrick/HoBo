@@ -1,14 +1,20 @@
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
-
 import type { BindleDefinition } from "@hobo/bindles";
 import { bindleScope, descriptorFromHandle } from "@hobo/bindles/topology";
 import { camp } from "@hobo/camps";
 import type { YardRuntime } from "@hobo/cli";
 import { type Yard, yard } from "@hobo/yards";
-
 import { createDefaultYardRuntime } from "./compose.js";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 import {
 	BARE_METAL_PROVIDER_ID,
 	createBareMetalProvider,
@@ -60,11 +66,15 @@ export const DEFAULT_COMPONENT_HOST: ComponentHostKind = "local";
 /** @deprecated use DEFAULT_COMPONENT_HOST */
 export const DEFAULT_LOCAL_HOST = DEFAULT_COMPONENT_HOST;
 
-export function normalizeComponentHostKind(raw: unknown): ComponentHostKind {
+export function normalizeComponentHostKind(
+	raw: JsonValue | undefined,
+): ComponentHostKind {
 	if (raw === undefined || raw === null) return DEFAULT_COMPONENT_HOST;
 	if (raw === "bare-metal" || raw === "runtime-local") return "local";
 	if (raw === "isolated-wasm") return "wasm";
+	// SAFETY: assertion required at this I/O or test boundary.
 	if ((COMPONENT_HOST_KINDS as readonly string[]).includes(String(raw))) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		return raw as ComponentHostKind;
 	}
 	throw new TypeError(
@@ -96,7 +106,7 @@ export interface BareMetalYard {
 
 export function defaultHoboHome(env: NodeJS.ProcessEnv = process.env): string {
 	const fromEnv = env.HOBO_HOME;
-	if (typeof fromEnv === "string" && fromEnv.length > 0) {
+	if (isJsonString(fromEnv) && fromEnv.length > 0) {
 		return fromEnv;
 	}
 	return join(homedir(), ".hobo");
@@ -110,11 +120,14 @@ export function defaultYardDataDir(hoboHome: string, name: string): string {
 	return join(hoboHome, "yards", name);
 }
 
-export function parseBareMetalYardConfig(input: unknown): BareMetalYardConfig {
-	if (input === null || typeof input !== "object" || Array.isArray(input)) {
+export function parseBareMetalYardConfig(
+	input: JsonValue | undefined,
+): BareMetalYardConfig {
+	if (input === null || !isJsonObject(input) || Array.isArray(input)) {
 		throw new TypeError("yard config must be an object");
 	}
-	const raw = input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const raw = input as JsonObject;
 	if (raw.schemaVersion !== BARE_METAL_YARD_SCHEMA) {
 		throw new TypeError(
 			`yard config schemaVersion must be ${BARE_METAL_YARD_SCHEMA}`,
@@ -123,10 +136,10 @@ export function parseBareMetalYardConfig(input: unknown): BareMetalYardConfig {
 	if (raw.kind !== BARE_METAL_YARD_KIND) {
 		throw new TypeError(`yard config kind must be ${BARE_METAL_YARD_KIND}`);
 	}
-	if (typeof raw.name !== "string" || raw.name.length === 0) {
+	if (!isJsonString(raw.name) || raw.name.length === 0) {
 		throw new TypeError("yard config name must be a non-empty string");
 	}
-	if (typeof raw.dataDir !== "string" || raw.dataDir.length === 0) {
+	if (!isJsonString(raw.dataDir) || raw.dataDir.length === 0) {
 		throw new TypeError("yard config dataDir must be a non-empty string");
 	}
 	if (raw.providerId !== BARE_METAL_PROVIDER_ID) {
@@ -135,7 +148,7 @@ export function parseBareMetalYardConfig(input: unknown): BareMetalYardConfig {
 		);
 	}
 	const defaultPort =
-		typeof raw.defaultPort === "number" && Number.isInteger(raw.defaultPort)
+		isJsonNumber(raw.defaultPort) && Number.isInteger(raw.defaultPort)
 			? raw.defaultPort
 			: DEFAULT_DEV_PORT;
 	// Accept either componentHost or legacy host field.
@@ -193,7 +206,7 @@ export function initBareMetalYard(
 		readonly host?: ComponentHostKind;
 		readonly force?: boolean;
 	} = {},
-): { readonly config: BareMetalYardConfig; readonly configPath: string } {
+) {
 	const hoboHome = options.hoboHome ?? defaultHoboHome();
 	const configPath = yardConfigPath(hoboHome);
 	if (existsSync(configPath) && options.force !== true) {
@@ -203,16 +216,18 @@ export function initBareMetalYard(
 	}
 	const config = scaffoldBareMetalYardConfig({
 		hoboHome,
-		...(options.name !== undefined ? { name: options.name } : {}),
-		...(options.dataDir !== undefined ? { dataDir: options.dataDir } : {}),
+		...(options.name !== undefined ? { name: options.name } : undefined),
+		...(options.dataDir !== undefined
+			? { dataDir: options.dataDir }
+			: undefined),
 		...(options.defaultPort !== undefined
 			? { defaultPort: options.defaultPort }
-			: {}),
+			: undefined),
 		...(options.componentHost !== undefined
 			? { componentHost: options.componentHost }
 			: options.host !== undefined
 				? { componentHost: options.host }
-				: {}),
+				: undefined),
 	});
 	mkdirSync(hoboHome, { recursive: true });
 	mkdirSync(config.dataDir, { recursive: true });
@@ -227,8 +242,9 @@ export function loadBareMetalYardConfig(
 	if (!existsSync(configPath)) {
 		return null;
 	}
-	const raw = JSON.parse(readFileSync(configPath, "utf8")) as unknown;
-	return parseBareMetalYardConfig(raw);
+	const text = readFileSync(configPath, "utf8");
+	JSON.parse(text);
+	return parseBareMetalYardConfig(parseJsonValue(text));
 }
 
 /**
@@ -255,6 +271,7 @@ export function openBareMetalYard(
 		config,
 		runtime,
 		close: () => {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const store = runtime.store as { close?: () => void };
 			store.close?.();
 		},

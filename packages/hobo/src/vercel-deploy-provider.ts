@@ -93,8 +93,8 @@ export function createVercelDeployProvider(
 	const templateDir = options.templateDir ?? defaultTemplateDir();
 	const client = createVercelClient({
 		token: options.token,
-		...(options.fetch !== undefined ? { fetch: options.fetch } : {}),
-		...(options.teamId !== undefined ? { teamId: options.teamId } : {}),
+		...(options.fetch !== undefined ? { fetch: options.fetch } : undefined),
+		...(options.teamId !== undefined ? { teamId: options.teamId } : undefined),
 	});
 
 	// One Vercel deployment realizes the whole bindle. The Executor drives the port

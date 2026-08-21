@@ -64,7 +64,7 @@ export function createCloudflareDeployProvider(
 	const client = createCloudflareClient({
 		token: options.token,
 		accountId: options.accountId,
-		...(options.fetch !== undefined ? { fetch: options.fetch } : {}),
+		...(options.fetch !== undefined ? { fetch: options.fetch } : undefined),
 	});
 
 	// One Cloudflare Worker realizes the whole bindle. The Executor drives the port

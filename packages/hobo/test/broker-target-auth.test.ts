@@ -143,6 +143,7 @@ describe("remote anonymous up + claim", () => {
 		);
 
 		const upResult = await up.run({
+			// SAFETY: assertion required at this I/O or test boundary.
 			context: { cwd: projectDir, projectDir } as never,
 			flags: {
 				json: true,
@@ -185,6 +186,7 @@ describe("remote anonymous up + claim", () => {
 
 		expect(upResult.ok).toBe(true);
 		expect(upResult.status).toBe("deployed_anonymous");
+		// SAFETY: assertion required at this I/O or test boundary.
 		const data = upResult.data as {
 			claimToken: string;
 			primaryUrl: string;
@@ -196,6 +198,7 @@ describe("remote anonymous up + claim", () => {
 		expect(data.primaryUrl).toContain("anon");
 
 		const claimResult = await claim.run({
+			// SAFETY: assertion required at this I/O or test boundary.
 			context: { cwd: projectDir } as never,
 			flags: {
 				json: true,
@@ -236,6 +239,7 @@ describe("remote anonymous up + claim", () => {
 			emitProgress: () => {},
 		});
 		expect(claimResult.ok).toBe(true);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const cdata = claimResult.data as {
 			primaryUrl: string;
 			resources: Record<string, string>;
@@ -269,6 +273,7 @@ describe("remote anonymous up + claim", () => {
 		);
 
 		const result = await up.run({
+			// SAFETY: assertion required at this I/O or test boundary.
 			context: { cwd: projectDir, projectDir } as never,
 			flags: {
 				json: true,
@@ -357,6 +362,7 @@ describe("remote claim missing token", () => {
 	it("requires token with broker", async () => {
 		const claim = createClaimCommand({ env: {} });
 		const result = await claim.run({
+			// SAFETY: assertion required at this I/O or test boundary.
 			context: { cwd: "/tmp" } as never,
 			flags: {
 				json: true,

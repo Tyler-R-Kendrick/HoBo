@@ -24,6 +24,13 @@ import {
 	type TransportRequest,
 	type TransportResponse,
 } from "@hobo/core";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 // ---------------------------------------------------------------------------
 // The direct-HTTP resolver plane, behind the kernel's `IacProvider` port.
@@ -187,6 +194,7 @@ function planFromStream(
 	let plan: DeploymentPlan | undefined;
 	for (const event of events) {
 		if (event.type === CLOUD_EVENTS.DeploymentPlanned) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			plan = (event.data as { plan: DeploymentPlan }).plan;
 		}
 	}
@@ -207,8 +215,8 @@ function compareStrings(left: string, right: string): number {
  * produces the same bytes. A string passes through verbatim, so `eu-west` never
  * becomes `"eu-west"` with quotes baked in.
  */
-function stringifyOutput(value: unknown): string {
-	if (typeof value === "string") return value;
+function stringifyOutput(value: JsonValue | undefined): string {
+	if (isJsonString(value)) return value;
 	const encoded = JSON.stringify(value);
 	return encoded === undefined ? "null" : encoded;
 }
@@ -224,7 +232,7 @@ function toIacOutputs(outcome: ResolveOutcome, resourceId: string): IacOutputs {
 				`Rename the provider output: publishing it would either shadow the driver's metadata or be shadowed by it, and a silently overwritten output is a lie about what the provider reported`,
 			);
 		}
-		outputs[key] = stringifyOutput(outcome.outputs[key]);
+		outputs[key] = stringifyOutput(cloneAsJson(outcome.outputs[key]));
 	}
 	outputs[`${RESERVED_OUTPUT_PREFIX}contract`] = outcome.contract;
 	outputs[`${RESERVED_OUTPUT_PREFIX}action`] = outcome.action;
@@ -260,8 +268,8 @@ interface DesiredComparison {
  * parameter makes the total undetermined.
  */
 function compareDesired(
-	desired: Readonly<Record<string, unknown>>,
-	observed: Readonly<Record<string, unknown>>,
+	desired: JsonObject,
+	observed: JsonObject,
 ): DesiredComparison {
 	const differing: string[] = [];
 	const unobservable: string[] = [];
@@ -404,9 +412,11 @@ export function createResolverBackedIacProvider(
 				};
 			}
 			const observed = parseResolveOutcome(raw);
+			const desiredJson = cloneAsJson(bound.request.desired);
+			const observedJson = cloneAsJson(observed.outputs);
 			const { differing, unobservable } = compareDesired(
-				bound.request.desired,
-				observed.outputs,
+				isJsonObject(desiredJson) ? desiredJson : {},
+				isJsonObject(observedJson) ? observedJson : {},
 			);
 			const diagnostics = diagnosticSuffix(observed.diagnostics);
 			if (differing.length > 0) {
@@ -492,9 +502,11 @@ export function createResolverBackedIacProvider(
 			}
 			const observed = parseResolveOutcome(raw);
 			const outputs = toIacOutputs(observed, program.resourceId);
+			const desiredJson = cloneAsJson(bound.request.desired);
+			const observedJson = cloneAsJson(observed.outputs);
 			const { differing, unobservable } = compareDesired(
-				bound.request.desired,
-				observed.outputs,
+				isJsonObject(desiredJson) ? desiredJson : {},
+				isJsonObject(observedJson) ? observedJson : {},
 			);
 			if (differing.length > 0) {
 				return {
@@ -555,7 +567,7 @@ export function createFetchHttpTransport(
 			const response = await fetchImpl(request.url, {
 				method: request.method,
 				headers: { ...request.headers },
-				...(request.body !== undefined ? { body: request.body } : {}),
+				...(request.body !== undefined ? { body: request.body } : undefined),
 				redirect: "manual",
 				signal: controller.signal,
 			});

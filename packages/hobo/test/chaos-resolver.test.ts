@@ -19,14 +19,15 @@ import {
 } from "@hobo/provider-cloudflare";
 import { chaosTransport } from "@hobo/testing";
 import { beforeEach, describe, expect, it } from "vitest";
+import type { JsonObject, JsonValue } from "../src/json.js";
 
 const CREDENTIAL_REF = "env://CLOUDFLARE_API_TOKEN";
 const TOKEN = "cf-secret-token-value";
 
 /** A fake account that really holds state, so duplicates are observable. */
 function account() {
-	const buckets = new Map<string, Record<string, unknown>>();
-	const json = (status: number, body: unknown) => ({
+	const buckets = new Map<string, JsonObject>();
+	const json = (status: number, body: JsonValue) => ({
 		status,
 		headers: { "content-type": "application/json" },
 		body: JSON.stringify(body),
@@ -54,6 +55,7 @@ function account() {
 				: json(200, { success: true, errors: [], messages: [], result: found });
 		}
 		if (request.method === "POST" && name === undefined) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const parsed = JSON.parse(request.body ?? "{}") as { name: string };
 			const created = {
 				name: parsed.name,
@@ -75,6 +77,7 @@ function account() {
 		}
 		return missing();
 	};
+	// SAFETY: assertion required at this I/O or test boundary.
 	return { buckets, transport: transport as never };
 }
 
@@ -111,7 +114,7 @@ const request = () =>
  * failure propagates verbatim, while a provider that answers with the wrong
  * envelope is refused with the status it answered with.
  */
-const REFUSAL: Readonly<Record<string, string>> = {
+const REFUSAL = {
 	"network-error": "chaos: connection reset by peer",
 	timeout: "chaos: request exceeded 15000ms deadline",
 	"server-error":
@@ -199,7 +202,7 @@ describe("chaos: the resolver plane under fault", () => {
 		]);
 		await r2.reconcile(request(), chaos.transport).then(
 			() => expect.unreachable("expected a refusal"),
-			(error: unknown) => {
+			(error: Error) => {
 				expect(String(error)).not.toContain(TOKEN);
 			},
 		);

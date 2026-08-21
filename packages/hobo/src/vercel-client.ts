@@ -20,6 +20,19 @@
 // A single file in the deployment payload. `data` is the file content; when
 // `encoding` is "base64" the content is base64-encoded (Vercel's inline-files
 // contract). `file` is the POSIX path within the deployment.
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+
+interface VercelFetchInit {
+	readonly method?: string;
+	readonly headers?: { readonly [header: string]: string };
+	readonly body?: string;
+}
+
 export interface VercelDeploymentFile {
 	readonly file: string;
 	readonly data: string;
@@ -38,7 +51,7 @@ export interface CreateDeploymentInput {
 	// Optional project build settings (Vercel `projectSettings`). Defaults to a
 	// zero-config static + Node-functions deploy (framework: null), matching the
 	// committed hello-bindle artifact which needs no build step.
-	readonly projectSettings?: Record<string, unknown>;
+	readonly projectSettings?: JsonObject;
 }
 
 export interface VercelDeploymentResult {
@@ -50,7 +63,7 @@ export interface VercelDeploymentResult {
 	// The deployment readiness state when present (Vercel `readyState`).
 	readonly readyState?: string;
 	// The full parsed response body, for callers that need more than url/id.
-	readonly raw: unknown;
+	readonly raw: JsonValue;
 }
 
 // The minimal fetch surface this client depends on — a subset of the WHATWG
@@ -60,7 +73,7 @@ export interface VercelFetchResponse {
 	readonly ok: boolean;
 	readonly status: number;
 	text(): Promise<string>;
-	json(): Promise<unknown>;
+	json(): Promise<JsonValue>;
 }
 
 export type VercelFetch = (
@@ -96,12 +109,17 @@ const DEFAULT_BASE_URL = "https://api.vercel.com";
 // 18+ and modern runtimes expose a global `fetch`; we adapt it without importing
 // DOM lib types.
 const globalFetch: VercelFetch = (url, init) => {
-	const fetchImpl = (
-		globalThis as unknown as {
-			fetch?: (input: string, init: unknown) => Promise<VercelFetchResponse>;
-		}
-	).fetch;
-	if (typeof fetchImpl !== "function") {
+	const fetchImpl =
+		// SAFETY: assertion required at this I/O or test boundary.
+		(
+			globalThis as {
+				fetch?: (
+					input: string,
+					init: VercelFetchInit,
+				) => Promise<VercelFetchResponse>;
+			}
+		).fetch;
+	if (!(fetchImpl instanceof Function)) {
 		throw new Error(
 			"vercel-client: no global fetch available; inject one via createVercelClient({ fetch })",
 		);
@@ -109,8 +127,8 @@ const globalFetch: VercelFetch = (url, init) => {
 	return fetchImpl(url, init);
 };
 
-function normalizeUrl(raw: unknown): string {
-	if (typeof raw !== "string" || raw.length === 0) {
+function normalizeUrl(raw: JsonValue | undefined): string {
+	if (!isJsonString(raw) || raw.length === 0) {
 		return "";
 	}
 	return raw.startsWith("http://") || raw.startsWith("https://")
@@ -146,7 +164,7 @@ export function createVercelClient(options: VercelClientOptions): VercelClient {
 					data: f.data,
 					encoding: f.encoding ?? "base64",
 				})),
-				...(input.target !== undefined ? { target: input.target } : {}),
+				...(input.target !== undefined ? { target: input.target } : undefined),
 				projectSettings: input.projectSettings ?? { framework: null },
 			};
 
@@ -166,19 +184,16 @@ export function createVercelClient(options: VercelClientOptions): VercelClient {
 				);
 			}
 
-			const parsed = (await response.json()) as {
-				url?: unknown;
-				id?: unknown;
-				readyState?: unknown;
-			};
-			const id = typeof parsed.id === "string" ? parsed.id : "";
+			const parsed = await response.json();
+			const payload = isJsonObject(parsed) ? parsed : {};
+			const id = isJsonString(payload.id) ? payload.id : "";
 			return {
-				url: normalizeUrl(parsed.url),
+				url: normalizeUrl(payload.url),
 				id,
-				...(typeof parsed.readyState === "string"
-					? { readyState: parsed.readyState }
-					: {}),
-				raw: parsed,
+				...(isJsonString(payload.readyState)
+					? { readyState: payload.readyState }
+					: undefined),
+				raw: payload,
 			};
 		},
 	};

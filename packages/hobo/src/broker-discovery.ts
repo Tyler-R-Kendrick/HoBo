@@ -3,6 +3,16 @@
  * Parse-don't-validate: invalid payloads fail closed.
  */
 
+import {
+	cloneAsJson,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+
 export type BrokerAuthMethod =
 	| "svid"
 	| "oidc"
@@ -32,15 +42,16 @@ export interface BrokerDiscoveryClient {
 }
 
 export function parseBrokerDiscoveryDocument(
-	raw: unknown,
+	raw: JsonValue | undefined,
 ): BrokerDiscoveryDocument {
-	if (raw === null || typeof raw !== "object") {
+	if (raw === null || !isJsonObject(raw)) {
 		throw new BrokerDiscoveryError(
 			"discovery document must be a JSON object",
 			"HOBO_DISCOVERY_INVALID",
 		);
 	}
-	const obj = raw as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const obj = raw as JsonObject;
 	if (obj.schemaVersion !== BROKER_DISCOVERY_SCHEMA) {
 		throw new BrokerDiscoveryError(
 			`discovery schemaVersion must be ${BROKER_DISCOVERY_SCHEMA}`,
@@ -74,18 +85,18 @@ export function parseBrokerDiscoveryDocument(
 				"HOBO_DISCOVERY_INVALID",
 			);
 		}
+		// SAFETY: assertion required at this I/O or test boundary.
 		return m as BrokerAuthMethod;
 	});
 	const supportsAnonymous =
 		obj.supportsAnonymous === true || authMethods.includes("anonymous");
-	if (typeof obj.supportsAnonymous !== "boolean") {
+	if (!isJsonBoolean(obj.supportsAnonymous)) {
 		// If omitted, derive from authMethods only when anonymous is listed.
 		// Explicit false must be respected when present.
 	}
-	const explicitAnon =
-		typeof obj.supportsAnonymous === "boolean"
-			? obj.supportsAnonymous
-			: supportsAnonymous;
+	const explicitAnon = isJsonBoolean(obj.supportsAnonymous)
+		? obj.supportsAnonymous
+		: supportsAnonymous;
 
 	return {
 		schemaVersion: BROKER_DISCOVERY_SCHEMA,
@@ -96,20 +107,19 @@ export function parseBrokerDiscoveryDocument(
 		claimEndpoint,
 		placeEndpoint,
 		anonymousSessionEndpoint,
-		...(typeof obj.ttlHintSeconds === "number" &&
-		Number.isFinite(obj.ttlHintSeconds)
+		...(isJsonNumber(obj.ttlHintSeconds) && Number.isFinite(obj.ttlHintSeconds)
 			? { ttlHintSeconds: obj.ttlHintSeconds }
-			: {}),
+			: undefined),
 		...(Array.isArray(obj.restrictions)
 			? {
-					restrictions: obj.restrictions.filter(
-						(r): r is string => typeof r === "string",
+					restrictions: obj.restrictions.filter((r): r is string =>
+						isJsonString(r),
 					),
 				}
-			: {}),
-		...(typeof obj.resourceMetadataUrl === "string"
+			: undefined),
+		...(isJsonString(obj.resourceMetadataUrl)
 			? { resourceMetadataUrl: obj.resourceMetadataUrl }
-			: {}),
+			: undefined),
 	};
 }
 
@@ -122,8 +132,8 @@ export class BrokerDiscoveryError extends Error {
 	}
 }
 
-function requireString(value: unknown, field: string): string {
-	if (typeof value !== "string" || value.trim().length === 0) {
+function requireString(value: JsonValue | undefined, field: string): string {
+	if (!isJsonString(value) || value.trim().length === 0) {
 		throw new BrokerDiscoveryError(
 			`discovery.${field} must be a non-empty string`,
 			"HOBO_DISCOVERY_INVALID",
@@ -147,7 +157,9 @@ export function createBrokerDiscoveryClient(options?: {
 		async discover(brokerUri: string) {
 			const base = brokerUri.replace(/\/+$/, "");
 			if (options?.fixed?.has(base)) {
-				return parseBrokerDiscoveryDocument(options.fixed.get(base));
+				return parseBrokerDiscoveryDocument(
+					cloneAsJson(options.fixed.get(base)),
+				);
 			}
 			const candidates = [
 				`${base}/.well-known/hobo-broker`,
@@ -166,12 +178,14 @@ export function createBrokerDiscoveryClient(options?: {
 					}
 					const body = await res.json();
 					// Protected-resource metadata may wrap our document.
+					const parsedBody = isJsonObject(body) ? body : {};
+					const nested = parsedBody.hobo_broker;
 					const candidate =
-						body &&
-						typeof body === "object" &&
-						"schemaVersion" in (body as object)
-							? body
-							: ((body as { hobo_broker?: unknown }).hobo_broker ?? body);
+						"schemaVersion" in parsedBody
+							? parsedBody
+							: isJsonObject(nested)
+								? nested
+								: parsedBody;
 					return parseBrokerDiscoveryDocument(candidate);
 				} catch (error) {
 					errors.push(

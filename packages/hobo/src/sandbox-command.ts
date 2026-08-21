@@ -1,7 +1,7 @@
 import type { CommandModule, DevRuntime } from "@hobo/cli";
 import { bootLocalCamp, DEV_COLD_BUDGET_MS, deploymentIdFor } from "@hobo/cli";
-
 import { createDefaultDevRuntime } from "./compose.js";
+import { isJsonString } from "./json.js";
 
 export interface SandboxCommandDeps {
 	// Factory for a FRESH runtime-local Camp per invocation — the isolation the
@@ -34,7 +34,7 @@ export function createSandboxCommand(
 			const deploymentId = deploymentIdFor(projectDir);
 
 			const boot = await bootLocalCamp(runtime, { deploymentId, emitProgress });
-			const body = typeof boot.served.body === "string" ? boot.served.body : "";
+			const body = isJsonString(boot.served.body) ? boot.served.body : "";
 
 			const checks: ContractCheck[] = [
 				{
@@ -64,7 +64,7 @@ export function createSandboxCommand(
 					? `hobo sandbox: ${checks.length}/${checks.length} contract checks passed (isolated, offline, ${boot.bootMs}ms)`
 					: `hobo sandbox: ${failed.length} contract check(s) failed: ${failed.map((c) => c.name).join(", ")}`,
 				...(passed
-					? {}
+					? undefined
 					: { remediation: failed.map((c) => `${c.name}: ${c.detail}`) }),
 				data: {
 					command: "sandbox",

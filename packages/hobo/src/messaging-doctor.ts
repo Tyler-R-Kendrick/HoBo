@@ -16,10 +16,7 @@ export interface MessagingDoctorSection {
 
 export function buildMessagingDoctorSection(
 	env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env,
-): {
-	readonly report: MessagingDoctorSection;
-	readonly remediation: readonly string[];
-} {
+) {
 	const kafka = diagnoseKafkaReadiness({ env });
 	const dapr = diagnoseDaprReadiness({ env });
 	const remediation: string[] = [];

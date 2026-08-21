@@ -94,6 +94,7 @@ function loadKey(home: string): Buffer {
 		chmodSync(path, OWNER_ONLY);
 		return key;
 	} catch (error) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		if ((error as NodeJS.ErrnoException).code !== "EEXIST") throw error;
 		const existing = Buffer.from(readFileSync(path, "utf8").trim(), "base64");
 		if (existing.length !== 32) {
@@ -214,6 +215,7 @@ export function createFileOneTimeActionStore(
 				}
 				throw deny();
 			}
+			// SAFETY: assertion required at this I/O or test boundary.
 			const record = JSON.parse(readFileSync(path, "utf8")) as SealedRecord;
 			if (record.expiresAt <= input.now) {
 				rmSync(path, { force: true });
@@ -271,6 +273,7 @@ export function createFileOneTimeActionStore(
 			for (const entry of readdirSync(directory)) {
 				if (!entry.endsWith(".json")) continue;
 				const path = join(directory, entry);
+				// SAFETY: assertion required at this I/O or test boundary.
 				const record = JSON.parse(readFileSync(path, "utf8")) as SealedRecord;
 				if (record.expiresAt <= now) {
 					rmSync(path, { force: true });

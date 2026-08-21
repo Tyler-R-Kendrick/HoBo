@@ -8,12 +8,17 @@ import {
 } from "@hobo/cli";
 import { deploymentImported, deploymentViewProjection } from "@hobo/cloud";
 import type { EventInput, PrincipalRef } from "@hobo/core";
-
 import {
 	type EstateResourceState,
 	readPulumiEstate,
 	selectPulumiEstateAdapter,
 } from "./compose.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import type { PulumiAutomationAdapter } from "./pulumi-iac-provider.js";
 
 export interface ImportCommandDeps {
@@ -39,28 +44,28 @@ export interface AdoptedResourceEntry {
 	readonly type: string;
 	readonly externalId: string;
 	readonly adopted: true;
-	readonly outputs: Readonly<Record<string, unknown>>;
+	readonly outputs: JsonObject;
 }
 
-function stableJson(value: unknown): string {
+function stableJson(value: JsonValue | undefined): string {
 	if (Array.isArray(value)) {
 		return `[${value.map((item) => stableJson(item)).join(",")}]`;
 	}
-	if (value && typeof value === "object") {
-		return `{${Object.keys(value as Record<string, unknown>)
+	if (value && isJsonObject(value)) {
+		// SAFETY: assertion required at this I/O or test boundary.
+		return `{${Object.keys(value as JsonObject)
 			.sort()
 			.map(
 				(key) =>
-					`${JSON.stringify(key)}:${stableJson((value as Record<string, unknown>)[key])}`,
+					// SAFETY: assertion required at this I/O or test boundary.
+					`${JSON.stringify(key)}:${stableJson((value as JsonObject)[key])}`,
 			)
 			.join(",")}}`;
 	}
 	return JSON.stringify(value);
 }
 
-function isEngineUnavailable(
-	error: unknown,
-): error is Error & { code: string } {
+function isEngineUnavailable(error: Error): error is Error & { code: string } {
 	return (
 		error instanceof Error && error.name === "PulumiEngineUnavailableError"
 	);
@@ -128,14 +133,14 @@ export function createImportCommand(
 			const adapter = selectPulumiEstateAdapter({
 				store: runtime.store,
 				env,
-				...(deps.adapter !== undefined ? { adapter: deps.adapter } : {}),
+				...(deps.adapter !== undefined ? { adapter: deps.adapter } : undefined),
 			});
 			let discovered: readonly EstateResourceState[] = [];
 			if (adapter !== undefined) {
 				try {
 					discovered = readPulumiEstate(adapter, deploymentId);
 				} catch (error) {
-					if (isEngineUnavailable(error)) {
+					if (error instanceof Error && isEngineUnavailable(error)) {
 						return {
 							ok: false,
 							status: "backend_unavailable",
@@ -193,7 +198,9 @@ export function createImportCommand(
 			const resources = Object.keys(adoptedManifest.resources).sort();
 			const bindleHash = manifest
 				? String(canonicalManifestHash(manifest))
-				: `sha256:${createHash("sha256").update(stableJson(adoptedManifest)).digest("hex")}`;
+				: `sha256:${createHash("sha256")
+						.update(stableJson(cloneAsJson(adoptedManifest)))
+						.digest("hex")}`;
 
 			const events: EventInput[] = [
 				deploymentImported({ deploymentId, bindleHash, resources }),

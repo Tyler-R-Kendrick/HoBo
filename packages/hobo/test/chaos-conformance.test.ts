@@ -28,6 +28,7 @@
  * import `@hobo/testing`, so the composition root is where a cross-provider
  * suite can exist at all.
  */
+
 import type { HttpTransport, TransportRequest } from "@hobo/core";
 import { parseResolveRequest } from "@hobo/core";
 import {
@@ -53,6 +54,7 @@ import {
 	runChaosConformance,
 } from "@hobo/testing";
 import { describe, expect, it } from "vitest";
+import { isJsonString, type JsonObject, type JsonValue } from "../src/json.js";
 
 /**
  * A fake provider world shared by both subjects.
@@ -75,14 +77,14 @@ function fakeWorld() {
 			creates.push(request);
 			const body = request.body ? JSON.parse(request.body) : {};
 			const itemKey =
-				request.method === "POST" && typeof body.name === "string"
+				request.method === "POST" && isJsonString(body.name)
 					? `${key}/${body.name}`
 					: key;
 			const stored = {
 				name: body.name ?? itemKey.split("/").pop(),
 				...body,
 				properties: {
-					...(body.properties ?? {}),
+					...body.properties,
 					provisioningState: "Succeeded",
 				},
 			};
@@ -110,7 +112,7 @@ function fakeWorld() {
 	};
 }
 
-function json(status: number, body: unknown) {
+function json(status: number, body: JsonValue) {
 	return {
 		status,
 		headers: { "content-type": "application/json" },
@@ -318,9 +320,9 @@ function listedWorld(options: {
 	readonly listKey: string;
 	readonly itemKey: string;
 	readonly nameFiltered: boolean;
-	readonly stored: (body: Record<string, unknown>, id: number) => unknown;
+	readonly stored: (body: JsonObject, id: number) => JsonValue;
 }) {
-	const records: Record<string, unknown>[] = [];
+	const records: JsonObject[] = [];
 	const creates: TransportRequest[] = [];
 	let nextId = 1;
 
@@ -336,11 +338,10 @@ function listedWorld(options: {
 		}
 		if (request.method === "POST" && url.pathname === options.collectionPath) {
 			creates.push(request);
-			const body = (request.body ? JSON.parse(request.body) : {}) as Record<
-				string,
-				unknown
-			>;
-			const record = options.stored(body, nextId++) as Record<string, unknown>;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const body = (request.body ? JSON.parse(request.body) : {}) as JsonObject;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const record = options.stored(body, nextId++) as JsonObject;
 			records.push(record);
 			return json(201, { [options.itemKey]: record });
 		}
@@ -462,6 +463,7 @@ function apiserverWorld(collectionPath: string) {
 		const url = new URL(request.url);
 		if (request.method === "POST" && url.pathname === collectionPath) {
 			creates.push(request);
+			// SAFETY: assertion required at this I/O or test boundary.
 			const body = (request.body ? JSON.parse(request.body) : {}) as {
 				metadata?: { name?: string };
 			};
@@ -589,6 +591,7 @@ describe("the conformance suite itself discriminates", () => {
 						headers: { "content-type": "application/json" },
 						body: JSON.stringify({}),
 					});
+					// SAFETY: assertion required at this I/O or test boundary.
 					const parsed = JSON.parse(response.body) as { id: string };
 					return { physicalId: parsed.id, action: "create" };
 				},

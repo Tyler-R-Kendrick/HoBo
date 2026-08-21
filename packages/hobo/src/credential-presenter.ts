@@ -9,6 +9,7 @@
  * and short-lived. SPIRE Workload API can replace mint with a fetch later
  * without changing presentAuthenticated call sites.
  */
+
 import {
 	chmodSync,
 	existsSync,
@@ -29,9 +30,9 @@ import {
 	verifyJwtSvid,
 } from "@hobo/connectivity";
 import type { PrincipalRef } from "@hobo/core";
-
 import type { HoboProfile } from "./hobo-profile.js";
 import { loadHoboProfile } from "./hobo-profile.js";
+import type { JsonObject } from "./json.js";
 
 export type CredentialScheme =
 	| "local-fixture-svid"
@@ -106,7 +107,7 @@ export function createCredentialPresenter(options?: {
 					env,
 					...(options?.svidHmacSecret !== undefined
 						? { hmacSecret: options.svidHmacSecret }
-						: {}),
+						: undefined),
 				});
 				// Validate self-mint (ensures verify path is exercised).
 				verifyJwtSvid({
@@ -139,7 +140,7 @@ export function createCredentialPresenter(options?: {
 				return {
 					scheme: "dpop-bound",
 					principal: { kind: "agent", id: agent.id },
-					...(human !== null ? { humanPrincipal: human } : {}),
+					...(human !== null ? { humanPrincipal: human } : undefined),
 					tenant: env.HOBO_TENANT ?? profile?.session?.tenant ?? "hobo-dev",
 					accessToken: svid.token,
 					audience: input.audience,
@@ -212,7 +213,7 @@ export function createCredentialPresenter(options?: {
 				allowDefaultSecret: true,
 				...(options?.svidHmacSecret !== undefined
 					? { hmacSecret: options.svidHmacSecret }
-					: {}),
+					: undefined),
 			});
 			const keyPair =
 				options?.dpopKeyPair ??
@@ -279,10 +280,8 @@ export function loadOrCreateDpopKeyPair(
 ): DpopKeyPair {
 	const path = dpopKeyPath(hoboHome, principalId);
 	if (existsSync(path)) {
-		const raw = JSON.parse(readFileSync(path, "utf8")) as Record<
-			string,
-			unknown
-		>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const raw = JSON.parse(readFileSync(path, "utf8")) as JsonObject;
 		return importDpopKeyPair({ privateJwk: raw });
 	}
 	const pair = generateDpopKeyPair();
@@ -306,10 +305,12 @@ export function loadOrCreateDpopKeyPair(
 	return pair;
 }
 
-export function authorizationHeaders(
-	credential: PresentedCredential,
-): Record<string, string> {
-	const headers: Record<string, string> = {
+interface HttpHeaders {
+	[header: string]: string;
+}
+
+export function authorizationHeaders(credential: PresentedCredential) {
+	const headers: HttpHeaders = {
 		authorization: `Bearer ${credential.accessToken}`,
 		"x-hobo-principal-kind": credential.principal.kind,
 		"x-hobo-principal-id": credential.principal.id,

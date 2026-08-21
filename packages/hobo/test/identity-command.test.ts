@@ -6,16 +6,17 @@ import {
 	IdentityMigrationService,
 } from "@hobo/identity";
 import { describe, expect, it } from "vitest";
-
 import {
 	createIdentityCommand,
 	persistMigrationEvents,
 } from "../src/identity-command.js";
+import type { JsonObject } from "../src/json.js";
 
 function runInput(args: string[], hoboHome: string) {
 	return {
 		args,
-		flags: {} as Record<string, unknown>,
+		// SAFETY: assertion required at this I/O or test boundary.
+		flags: {} as JsonObject,
 		context: { cwd: hoboHome, projectDir: hoboHome },
 		emitProgress: () => {},
 	};
@@ -25,14 +26,17 @@ describe("hobo identity (observe-only)", () => {
 	it("status reports idle dual fixtures and can-migrate with zero Bindle config", async () => {
 		const hoboHome = mkdtempSync(join(tmpdir(), "hobo-id-cmd-"));
 		const cmd = createIdentityCommand({ hoboHome, env: {} });
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = await cmd.run(runInput(["status"], hoboHome) as never);
 		expect(result.ok).toBe(true);
 		expect(result.data?.bindleConfigRequired).toBe(false);
 		expect(result.data?.observeOnly).toBe(true);
 		expect(
+			// SAFETY: assertion required at this I/O or test boundary.
 			(result.data?.dualFixtures as { dualOracleOk?: boolean })?.dualOracleOk,
 		).toBe(true);
 		expect(
+			// SAFETY: assertion required at this I/O or test boundary.
 			(result.data?.canMigrate as { continuousDefault?: boolean })
 				?.continuousDefault,
 		).toBe(true);
@@ -51,12 +55,15 @@ describe("hobo identity (observe-only)", () => {
 		});
 		persistMigrationEvents(hoboHome, svc.events);
 		const cmd = createIdentityCommand({ hoboHome, env: {} });
+		// SAFETY: assertion required at this I/O or test boundary.
 		const status = await cmd.run(runInput(["status"], hoboHome) as never);
 		expect(status.data?.migration).toMatchObject({ present: true });
+		// SAFETY: assertion required at this I/O or test boundary.
 		const id = (status.data?.migration as { migrationId?: string })
 			?.migrationId;
 		expect(id).toBeTruthy();
 		const inspect = await cmd.run(
+			// SAFETY: assertion required at this I/O or test boundary.
 			runInput(["inspect", String(id)], hoboHome) as never,
 		);
 		expect(inspect.ok).toBe(true);

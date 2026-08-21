@@ -1,9 +1,15 @@
 import { createHash, createPublicKey, createVerify } from "node:crypto";
-
 import type { CredentialAuditRow, CredentialGrantAudit } from "@hobo/cloud";
 import type { EventEnvelope } from "@hobo/core";
 import { must } from "@hobo/core/total-access";
 import { JWT_ALGORITHM, type JwtSvidIssuer } from "@hobo/identity";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 // OCSF evidence export for HoBo's audit facts (FR/attest, NFR-018, ADR-0046 §2).
 // It maps the replayable `CredentialAuditRow` (grant -> use -> revoke, folded
@@ -105,7 +111,7 @@ export interface OcsfAuditEventRecord {
 			readonly tenant: string;
 			readonly actor: unknown;
 		};
-		readonly data: unknown;
+		readonly data: JsonValue;
 	};
 }
 
@@ -147,22 +153,26 @@ function redactSubject(subject: string): string {
 // Deep-redact every erased-subject string in an exported payload — the export
 // is a one-way boundary the erasure tombstone cannot reach (ADR-0046 §2), so
 // no raw erased identifier may cross it, wherever it sits in the event data.
-function redactDeep(value: unknown, erased: ReadonlySet<string>): unknown {
-	if (typeof value === "string") {
+function redactDeep(
+	value: JsonValue | undefined,
+	erased: ReadonlySet<string>,
+): JsonValue {
+	if (isJsonString(value)) {
 		return erased.has(value) ? redactSubject(value) : value;
 	}
 	if (Array.isArray(value)) {
 		return value.map((item) => redactDeep(item, erased));
 	}
-	if (value && typeof value === "object") {
+	if (value && isJsonObject(value)) {
 		return Object.fromEntries(
-			Object.entries(value as Record<string, unknown>).map(([key, item]) => [
+			// SAFETY: assertion required at this I/O or test boundary.
+			Object.entries(value as JsonObject).map(([key, item]) => [
 				key,
 				redactDeep(item, erased),
 			]),
 		);
 	}
-	return value;
+	return value ?? null;
 }
 
 function chainFor(
@@ -175,12 +185,18 @@ function chainFor(
 			: grant.svidSubject;
 	return {
 		grantId: grant.grantId,
-		...(svidSubject !== undefined ? { svidSubject } : {}),
-		...(grant.tokenRef !== undefined ? { tokenRef: grant.tokenRef } : {}),
-		...(grant.scope !== undefined ? { scope: grant.scope } : {}),
-		...(grant.grantedAt !== undefined ? { grantedAt: grant.grantedAt } : {}),
-		...(grant.usedAt !== undefined ? { usedAt: grant.usedAt } : {}),
-		...(grant.revokedAt !== undefined ? { revokedAt: grant.revokedAt } : {}),
+		...(svidSubject !== undefined ? { svidSubject } : undefined),
+		...(grant.tokenRef !== undefined
+			? { tokenRef: grant.tokenRef }
+			: undefined),
+		...(grant.scope !== undefined ? { scope: grant.scope } : undefined),
+		...(grant.grantedAt !== undefined
+			? { grantedAt: grant.grantedAt }
+			: undefined),
+		...(grant.usedAt !== undefined ? { usedAt: grant.usedAt } : undefined),
+		...(grant.revokedAt !== undefined
+			? { revokedAt: grant.revokedAt }
+			: undefined),
 		useCount: grant.useCount,
 	};
 }
@@ -259,7 +275,11 @@ function configChangeMapping(
 	};
 }
 
-const AUDIT_EVENT_MAPPING: Readonly<Record<string, AuditClassMapping>> = {
+interface AuditEventMap {
+	readonly [eventType: string]: AuditClassMapping | undefined;
+}
+
+const AUDIT_EVENT_MAPPING: AuditEventMap = {
 	"policy.Decided": authenticationMapping(1, "Policy Decided"),
 	"flag.Changed": configChangeMapping(1, "Flag Changed"),
 	"registry.BundleImported": configChangeMapping(2, "Bundle Imported"),
@@ -283,6 +303,7 @@ function auditMappingFor(eventType: string): AuditClassMapping | undefined {
 // failed outcome — everything else (allow, obligations, approvals) succeeded.
 function auditStatusFor(event: EventEnvelope): string {
 	if (event.type === "policy.Decided") {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const effect = (event.data as { effect?: unknown } | undefined)?.effect;
 		return effect === "deny" ? "Failure" : "Success";
 	}
@@ -323,9 +344,9 @@ function auditRecordFor(
 				stream_id: event.streamId,
 				ts: event.ts,
 				tenant: event.tenant,
-				actor: redactDeep(event.actor, erased),
+				actor: redactDeep(cloneAsJson(event.actor), erased),
 			},
-			data: redactDeep(event.data, erased),
+			data: redactDeep(cloneAsJson(event.data), erased),
 		},
 	};
 }
@@ -337,16 +358,20 @@ function sealFor(records: readonly OcsfExportRecord[]): string {
 	return `sha256:${createHash("sha256").update(canonical).digest("hex")}`;
 }
 
-function sortedReplacer(): (key: string, value: unknown) => unknown {
+function sortedReplacer(): (
+	key: string,
+	value: JsonValue | undefined,
+) => JsonValue {
 	return (_key, value) => {
-		if (value && typeof value === "object" && !Array.isArray(value)) {
+		if (value && isJsonObject(value) && !Array.isArray(value)) {
 			return Object.fromEntries(
-				Object.entries(value as Record<string, unknown>).sort(([a], [b]) =>
+				// SAFETY: assertion required at this I/O or test boundary.
+				Object.entries(value as JsonObject).sort(([a], [b]) =>
 					a.localeCompare(b),
 				),
 			);
 		}
-		return value;
+		return value ?? null;
 	};
 }
 
@@ -383,7 +408,7 @@ function signSeal(
 	};
 }
 
-function toBase64UrlJson(value: unknown): string {
+function toBase64UrlJson(value: JsonValue | undefined): string {
 	return Buffer.from(JSON.stringify(value)).toString("base64url");
 }
 
@@ -397,7 +422,7 @@ export interface OcsfSealVerification {
 // that digest, and the RS256 signature must verify under the declared kid.
 export function verifyOcsfBatchSignature(
 	batch: OcsfBatch,
-	jwks: Readonly<{ keys: Record<string, unknown>[] }>,
+	jwks: Readonly<{ keys: JsonObject[] }>,
 ): OcsfSealVerification {
 	const seal = batch.sealSignature;
 	if (!seal) return { valid: false, reason: "unsigned" };
@@ -409,8 +434,8 @@ export function verifyOcsfBatchSignature(
 	if (!encodedHeader || !encodedPayload || !encodedSignature) {
 		return { valid: false, reason: "malformed-jws" };
 	}
-	let header: Record<string, unknown>;
-	let payload: Record<string, unknown>;
+	let header: JsonObject;
+	let payload: JsonObject;
 	try {
 		header = JSON.parse(
 			Buffer.from(encodedHeader, "base64url").toString("utf8"),
@@ -454,7 +479,7 @@ function assembleBatch(
 		sealDigest,
 		...(options.signer !== undefined
 			? { sealSignature: signSeal(options.signer, sealDigest) }
-			: {}),
+			: undefined),
 	};
 }
 

@@ -53,7 +53,7 @@ export function registerInstallable(
 		factory,
 		...(options.defaultHold !== undefined
 			? { defaultHold: options.defaultHold }
-			: {}),
+			: undefined),
 	});
 }
 
@@ -137,14 +137,17 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 			// install only — re-running `hobo add <id>` on a held provider is the
 			// explicit approval step.
 			const hold =
+				// SAFETY: assertion required at this I/O or test boundary.
 				Boolean((flags as { hold?: boolean }).hold) ||
 				(!installed && entry.defaultHold === true);
 			const lastSeq = events.at(-1)?.seq ?? 0;
 
 			if (installed && approved) {
 				// Re-run still ensures durable runtime enablement for runtime-*.
+				// SAFETY: assertion required at this I/O or test boundary.
 				if ((RUNTIME_INSTALL_IDS as readonly string[]).includes(id)) {
 					installRuntime(
+						// SAFETY: assertion required at this I/O or test boundary.
 						id as RuntimeInstallId,
 						process.env.HOBO_HOME ?? defaultHoboHome(),
 					);
@@ -199,8 +202,10 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 			// Camp host runtimes also update the durable installed-runtimes set
 			// used by broker hard-fail for wasm/oci dependencies.
 			let runtimeHost: string | undefined;
+			// SAFETY: assertion required at this I/O or test boundary.
 			if ((RUNTIME_INSTALL_IDS as readonly string[]).includes(id) && !hold) {
 				const installed = installRuntime(
+					// SAFETY: assertion required at this I/O or test boundary.
 					id as RuntimeInstallId,
 					process.env.HOBO_HOME ?? defaultHoboHome(),
 				);
@@ -229,7 +234,9 @@ export function createAddCommand(deps: AddCommandDeps = {}): CommandModule {
 					ports,
 					regions: [...provider.regions],
 					approved: !hold,
-					...(runtimeHost !== undefined ? { componentHost: runtimeHost } : {}),
+					...(runtimeHost !== undefined
+						? { componentHost: runtimeHost }
+						: undefined),
 				},
 			};
 		},

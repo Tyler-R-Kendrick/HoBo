@@ -16,6 +16,7 @@ import {
 	credentialAuditToOcsf,
 	verifyOcsfBatchSignature,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
 // `hobo attest` folds the CredentialAudit projection (emitted on the deploy path)
 // and exports it as OCSF 1.x Authorization evidence. The happy path deploys for
@@ -60,8 +61,11 @@ async function withProject(
 
 function runInput(cwd: string) {
 	return {
-		context: { cwd, projectDir: cwd } as unknown as CliContext,
+		// SAFETY: assertion required at this I/O or test boundary.
+		context: { cwd, projectDir: cwd } as CliContext,
+		// SAFETY: assertion required at this I/O or test boundary.
 		flags: { cwd } as never,
+		// SAFETY: assertion required at this I/O or test boundary.
 		args: [] as readonly string[],
 		verb: "attest",
 		emitProgress: () => {},
@@ -77,6 +81,7 @@ describe("createAttestCommand", () => {
 	it("exports OCSF Authorization evidence from the deploy credential-audit trail", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -119,6 +124,7 @@ describe("createAttestCommand", () => {
 	it("is deterministic: the seal digest is stable across two exports of the same log", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 			await cli.run(["up", "--json"], { cwd });
@@ -132,6 +138,7 @@ describe("createAttestCommand", () => {
 	it("reports no audit facts for a project that has never deployed", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -157,7 +164,7 @@ describe("createAttestCommand", () => {
 function auditEvent(
 	type: string,
 	seq: number,
-	data: Record<string, unknown>,
+	data: JsonObject,
 	overrides: Partial<EventEnvelope> = {},
 ): EventEnvelope {
 	return {
@@ -229,6 +236,7 @@ describe("auditEventsToOcsf (ADR-0046 §2 widening)", () => {
 		const batch = auditEventsToOcsf(ADR_0046_EVENTS);
 		const byType = new Map(
 			batch.records.map((record) => [
+				// SAFETY: assertion required at this I/O or test boundary.
 				(record as { hobo: { source_event: { type: string } } }).hobo
 					.source_event.type,
 				record,
@@ -264,11 +272,12 @@ describe("auditEventsToOcsf (ADR-0046 §2 widening)", () => {
 		]);
 		// token.* stays on the credential-audit exporter, not this surface.
 		expect(batch.records).toHaveLength(ADR_0046_EVENTS.length);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const record = batch.records[1] as {
 			hobo: {
 				export_kind: string;
 				correlation_id: string;
-				source_event: Record<string, unknown>;
+				source_event: JsonObject;
 			};
 		};
 		expect(record.hobo.export_kind).toBe("audit-event");

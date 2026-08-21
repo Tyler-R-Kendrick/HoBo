@@ -2,10 +2,17 @@
  * Persisted HOBO_HOME profile: default Station occupancy + broker association + login.
  * Local `hobo up` never requires this file; remote authenticated paths prefer it.
  */
+
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-
 import type { PrincipalKind, PrincipalRef } from "@hobo/core";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 // public-contract: profile document schema under HOBO_HOME.
 export const HOBO_PROFILE_SCHEMA = "hobo.profile/v1" as const;
@@ -47,8 +54,9 @@ export function loadHoboProfile(hoboHome: string): HoboProfile | null {
 	const path = profilePath(hoboHome);
 	if (!existsSync(path)) return null;
 	try {
-		const raw = JSON.parse(readFileSync(path, "utf8")) as unknown;
-		return parseHoboProfile(raw);
+		const text = readFileSync(path, "utf8");
+		JSON.parse(text);
+		return parseHoboProfile(parseJsonValue(text));
 	} catch {
 		return null;
 	}
@@ -79,12 +87,14 @@ export function upsertLoginProfile(input: {
 		tenant: input.tenant,
 		token: input.token,
 		issuedAt: new Date().toISOString(),
-		...(input.proofKeyId !== undefined ? { proofKeyId: input.proofKeyId } : {}),
+		...(input.proofKeyId !== undefined
+			? { proofKeyId: input.proofKeyId }
+			: undefined),
 		...(input.brokerUri !== undefined
 			? { brokerUri: input.brokerUri }
 			: existing?.session?.brokerUri !== undefined
 				? { brokerUri: existing.session.brokerUri }
-				: {}),
+				: undefined),
 	};
 	const profile: HoboProfile = {
 		schemaVersion: HOBO_PROFILE_SCHEMA,
@@ -96,15 +106,15 @@ export function upsertLoginProfile(input: {
 				? { defaultBrokerUri: existing.defaultBrokerUri }
 				: session.brokerUri !== undefined
 					? { defaultBrokerUri: session.brokerUri }
-					: {}),
+					: undefined),
 		...(input.stationId !== undefined
 			? { defaultStation: { id: input.stationId } }
 			: existing?.defaultStation !== undefined
 				? { defaultStation: existing.defaultStation }
-				: {}),
+				: undefined),
 		...(existing?.activeRail !== undefined
 			? { activeRail: existing.activeRail }
-			: {}),
+			: undefined),
 	};
 	saveHoboProfile(input.hoboHome, profile);
 	return profile;
@@ -124,62 +134,66 @@ export function setDefaultStation(
 			? { activeRail }
 			: existing?.activeRail !== undefined
 				? { activeRail: existing.activeRail }
-				: {}),
+				: undefined),
 		...(existing?.defaultBrokerUri !== undefined
 			? { defaultBrokerUri: existing.defaultBrokerUri }
-			: {}),
-		...(existing?.session !== undefined ? { session: existing.session } : {}),
+			: undefined),
+		...(existing?.session !== undefined
+			? { session: existing.session }
+			: undefined),
 	};
 	saveHoboProfile(hoboHome, profile);
 	return profile;
 }
 
-export function parseHoboProfile(raw: unknown): HoboProfile {
-	if (raw === null || typeof raw !== "object") {
+export function parseHoboProfile(raw: JsonValue | undefined): HoboProfile {
+	if (raw === null || !isJsonObject(raw)) {
 		throw new TypeError("hobo profile must be an object");
 	}
-	const obj = raw as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const obj = raw as JsonObject;
 	if (obj.schemaVersion !== HOBO_PROFILE_SCHEMA) {
 		throw new TypeError(
 			`hobo profile schemaVersion must be ${HOBO_PROFILE_SCHEMA}`,
 		);
 	}
-	if (typeof obj.updatedAt !== "string" || obj.updatedAt.length === 0) {
+	if (!isJsonString(obj.updatedAt) || obj.updatedAt.length === 0) {
 		throw new TypeError("hobo profile.updatedAt must be a non-empty string");
 	}
 	const profile: HoboProfile = {
 		schemaVersion: HOBO_PROFILE_SCHEMA,
 		updatedAt: obj.updatedAt,
-		...(typeof obj.defaultBrokerUri === "string" &&
-		obj.defaultBrokerUri.length > 0
+		...(isJsonString(obj.defaultBrokerUri) && obj.defaultBrokerUri.length > 0
 			? { defaultBrokerUri: obj.defaultBrokerUri }
-			: {}),
-		...(typeof obj.activeRail === "string" && obj.activeRail.length > 0
+			: undefined),
+		...(isJsonString(obj.activeRail) && obj.activeRail.length > 0
 			? { activeRail: obj.activeRail }
-			: {}),
+			: undefined),
 	};
 	if (obj.defaultStation !== undefined && obj.defaultStation !== null) {
-		const ds = obj.defaultStation as Record<string, unknown>;
-		if (typeof ds.id !== "string" || ds.id.length === 0) {
+		// SAFETY: assertion required at this I/O or test boundary.
+		const ds = obj.defaultStation as JsonObject;
+		if (!isJsonString(ds.id) || ds.id.length === 0) {
 			throw new TypeError("hobo profile.defaultStation.id required");
 		}
 		Object.assign(profile, {
 			defaultStation: Object.freeze({
 				id: ds.id,
-				...(typeof ds.dataDir === "string" ? { dataDir: ds.dataDir } : {}),
+				...(isJsonString(ds.dataDir) ? { dataDir: ds.dataDir } : undefined),
 			}),
 		});
 	}
 	if (obj.session !== undefined && obj.session !== null) {
-		const s = obj.session as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const s = obj.session as JsonObject;
 		const principal = parsePrincipal(s.principal);
-		if (typeof s.tenant !== "string" || s.tenant.length === 0) {
+		if (!isJsonString(s.tenant) || s.tenant.length === 0) {
 			throw new TypeError("hobo profile.session.tenant required");
 		}
-		if (typeof s.token !== "string" || s.token.length === 0) {
+		if (!isJsonString(s.token) || s.token.length === 0) {
 			throw new TypeError("hobo profile.session.token required");
 		}
-		if (typeof s.issuedAt !== "string" || s.issuedAt.length === 0) {
+		if (!isJsonString(s.issuedAt) || s.issuedAt.length === 0) {
 			throw new TypeError("hobo profile.session.issuedAt required");
 		}
 		return {
@@ -189,33 +203,36 @@ export function parseHoboProfile(raw: unknown): HoboProfile {
 				tenant: s.tenant,
 				token: s.token,
 				issuedAt: s.issuedAt,
-				...(typeof s.proofKeyId === "string"
+				...(isJsonString(s.proofKeyId)
 					? { proofKeyId: s.proofKeyId }
-					: {}),
-				...(typeof s.brokerUri === "string" ? { brokerUri: s.brokerUri } : {}),
+					: undefined),
+				...(isJsonString(s.brokerUri) ? { brokerUri: s.brokerUri } : undefined),
 			},
 		};
 	}
 	return profile;
 }
 
-function parsePrincipal(raw: unknown): PrincipalRef {
-	if (raw === null || typeof raw !== "object") {
+function parsePrincipal(raw: JsonValue | undefined): PrincipalRef {
+	if (raw === null || !isJsonObject(raw)) {
 		throw new TypeError("principal must be an object");
 	}
-	const obj = raw as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const obj = raw as JsonObject;
 	const kinds: PrincipalKind[] = ["user", "agent", "service", "system"];
-	if (typeof obj.kind !== "string" || !(kinds as string[]).includes(obj.kind)) {
+	// SAFETY: assertion required at this I/O or test boundary.
+	if (!isJsonString(obj.kind) || !(kinds as string[]).includes(obj.kind)) {
 		throw new TypeError("principal.kind invalid");
 	}
-	if (typeof obj.id !== "string" || obj.id.length === 0) {
+	if (!isJsonString(obj.id) || obj.id.length === 0) {
 		throw new TypeError("principal.id required");
 	}
 	return {
+		// SAFETY: assertion required at this I/O or test boundary.
 		kind: obj.kind as PrincipalKind,
 		id: obj.id,
 		...(obj.delegatedBy !== undefined
 			? { delegatedBy: parsePrincipal(obj.delegatedBy) }
-			: {}),
+			: undefined),
 	};
 }

@@ -45,6 +45,7 @@ import { createIdentityCommand } from "./identity-command.js";
 import { createImportCommand } from "./import-command.js";
 import { createIncidentCommand } from "./incident-command.js";
 import { createInspectCommand } from "./inspect-command.js";
+import { isJsonString } from "./json.js";
 import { createLocalProvider } from "./local-provider.js";
 import { createBrokerAwareLoginCommand } from "./login-command.js";
 import { createLogsCommand } from "./logs-command.js";
@@ -161,10 +162,10 @@ export function createComposedHoboCli(
 								const hostEnv = process.env.HOBO_YARD_HOST;
 								const serve = await serveProjectOnLocalYard({
 									projectDir,
-									...(port !== undefined ? { port } : {}),
-									...(typeof hoboHome === "string" && hoboHome.length > 0
+									...(port !== undefined ? { port } : undefined),
+									...(isJsonString(hoboHome) && hoboHome.length > 0
 										? { hoboHome }
-										: {}),
+										: undefined),
 									...(hostEnv === "local" ||
 									hostEnv === "wasm" ||
 									hostEnv === "oci" ||
@@ -173,7 +174,7 @@ export function createComposedHoboCli(
 									hostEnv === "bare-metal" ||
 									hostEnv === "runtime-local"
 										? { componentHost: hostEnv }
-										: {}),
+										: undefined),
 									emitProgress,
 								});
 								return {
@@ -188,10 +189,10 @@ export function createComposedHoboCli(
 									bindleEnv: serve.bindleEnv,
 									...(serve.namedEndpoints !== undefined
 										? { namedEndpoints: serve.namedEndpoints }
-										: {}),
+										: undefined),
 									...(serve.primaryNamedUrl !== undefined
 										? { primaryNamedUrl: serve.primaryNamedUrl }
-										: {}),
+										: undefined),
 									probe: serve.probe,
 									close: serve.close,
 									waitUntilStopped: serve.waitUntilStopped,

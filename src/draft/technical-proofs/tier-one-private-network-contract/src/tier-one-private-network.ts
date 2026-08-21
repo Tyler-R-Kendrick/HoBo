@@ -6,12 +6,14 @@ import {
   evaluateMtlsHandshake,
   parseWorkloadSpiffeId
 } from "../../mtls-data-path-contract/src/mtls-data-path.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const TIER_ONE_PRIVATE_NETWORK_SCHEMA_VERSION = "hobo.tier-one-private-network/v1";
 const DEFAULT_PROVIDER_OUTPUT_KEY = "privateEndpoint";
 
 export function realizeTierOnePrivateLink(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     return invalid("tier1.input.invalid", "input must be an object");
   }
 
@@ -115,7 +117,7 @@ export function realizeTierOnePrivateLink(input) {
 }
 
 export function resolveTierOneBinding(link, providerOutputs) {
-  if (!link || typeof link !== "object" || Array.isArray(link)) {
+  if (!link || !isJsonObject(link) || Array.isArray(link)) {
     return invalid("tier1.link.invalid", "link must be an object");
   }
   const result = resolveBindingForResource({
@@ -129,10 +131,10 @@ export function resolveTierOneBinding(link, providerOutputs) {
 }
 
 export function canReachTierOnePeer(link, attempt) {
-  if (!link || typeof link !== "object" || Array.isArray(link)) {
+  if (!link || !isJsonObject(link) || Array.isArray(link)) {
     return invalid("tier1.link.invalid", "link must be an object");
   }
-  if (!attempt || typeof attempt !== "object" || Array.isArray(attempt)) {
+  if (!attempt || !isJsonObject(attempt) || Array.isArray(attempt)) {
     return invalid("tier1.reachability.invalid", "attempt must be an object");
   }
 
@@ -163,17 +165,17 @@ function resolveBindingFromOutputs(plan, providerOutputs) {
 }
 
 function resolveBindingForResource({ targetResourceId, sourceResourceId, binding, providerOutputs }) {
-  if (!providerOutputs || typeof providerOutputs !== "object" || Array.isArray(providerOutputs)) {
+  if (!providerOutputs || !isJsonObject(providerOutputs) || Array.isArray(providerOutputs)) {
     return invalid("tier1.provider-outputs.invalid", "providerOutputs must be an object keyed by resource id");
   }
 
   const outputs = providerOutputs[targetResourceId];
-  if (!outputs || typeof outputs !== "object" || Array.isArray(outputs)) {
+  if (!outputs || !isJsonObject(outputs) || Array.isArray(outputs)) {
     return invalid("tier1.endpoint.missing", `provider outputs missing for ${targetResourceId}`);
   }
 
   const endpoint = outputs[DEFAULT_PROVIDER_OUTPUT_KEY];
-  if (typeof endpoint !== "string" || endpoint.length === 0) {
+  if (!isJsonString(endpoint) || endpoint.length === 0) {
     return invalid("tier1.endpoint.missing", `${targetResourceId}.${DEFAULT_PROVIDER_OUTPUT_KEY} must be a non-empty string`);
   }
 
@@ -196,7 +198,7 @@ function normalizeVerbs(verbs = ["connect"]) {
   const seen = new Set();
   const normalized = [];
   for (const verb of verbs) {
-    if (typeof verb !== "string" || verb.length === 0) {
+    if (!isJsonString(verb) || verb.length === 0) {
       return invalid("tier1.verbs.invalid", "verbs entries must be non-empty strings");
     }
     if (!seen.has(verb)) {

@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const FIDELITY_RANK = Object.freeze({
   "camp-only": 0,
   mocked: 1,
@@ -183,7 +184,7 @@ function requireFidelity(value, fieldName) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (!isString(value) || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -195,18 +196,20 @@ function sameValue(left, right) {
 
 function clone(value) {
   if (value === undefined) return undefined;
-  return structuredClone(value);
+  return structuredClone instanceof Function
+    ? structuredClone(value)
+    : JSON.parse(JSON.stringify(value));
 }
 
 function cloneRecord(value) {
-  if (!isRecord(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError("baseline must be an object");
   }
   return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, clone(entry)]));
 }
 
 function deepFreeze(value) {
-  if (!isObjectLike(value)) return value;
+  if (!value || !isJsonObject(value)) return value;
   Object.freeze(value);
   for (const entry of Object.values(value)) {
     deepFreeze(entry);
@@ -216,7 +219,7 @@ function deepFreeze(value) {
 
 function toStableValue(value) {
   if (Array.isArray(value)) return value.map(toStableValue);
-  if (isObjectLike(value)) {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .map(([key, entry]) => [key, toStableValue(entry)])
@@ -224,17 +227,4 @@ function toStableValue(value) {
     );
   }
   return value;
-}
-
-function isRecord(value) {
-  return Object.prototype.toString.call(value) === "[object Object]";
-}
-
-function isObjectLike(value) {
-  const tag = Object.prototype.toString.call(value);
-  return tag === "[object Object]" || tag === "[object Array]";
-}
-
-function isString(value) {
-  return Object.prototype.toString.call(value) === "[object String]";
 }

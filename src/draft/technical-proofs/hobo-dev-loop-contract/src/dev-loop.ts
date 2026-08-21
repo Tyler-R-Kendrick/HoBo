@@ -9,6 +9,8 @@ import {
   generateCodegenArtifacts,
   writeGeneratedTree,
 } from "../../hobo-codegen-cli-contract/src/codegen-cli-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const STATE_SCHEMA = "hobo.dev-state/v1";
 const DEFAULT_PORT = 4000;
@@ -265,36 +267,28 @@ function assertValidModuleSource(source) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (!isPrimitiveString(value) || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
 }
 
-function isPrimitiveString(value) {
-  try {
-    return String.prototype.valueOf.call(value) === value;
-  } catch {
-    return false;
-  }
-}
-
 function clone(value) {
   if (value === undefined) return undefined;
-  return Object.prototype.toString.call(globalThis.structuredClone) === "[object Function]"
-    ? globalThis.structuredClone(value)
+  return structuredClone instanceof Function
+    ? structuredClone(value)
     : JSON.parse(JSON.stringify(value));
 }
 
 function cloneRecord(value) {
-  if (!isObjectValue(value) || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError("shared must be an object");
   }
   return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, clone(entry)]));
 }
 
 function deepFreeze(value) {
-  if (!isObjectValue(value)) return value;
+  if (!value || !isJsonObject(value)) return value;
   Object.freeze(value);
   for (const entry of Object.values(value)) {
     deepFreeze(entry);
@@ -304,7 +298,7 @@ function deepFreeze(value) {
 
 function toStableValue(value) {
   if (Array.isArray(value)) return value.map(toStableValue);
-  if (isObjectValue(value)) {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .map(([key, entry]) => [key, toStableValue(entry)])
@@ -312,8 +306,4 @@ function toStableValue(value) {
     );
   }
   return value;
-}
-
-function isObjectValue(value) {
-  return value !== null && Object(value) === value && Object.prototype.toString.call(value) !== "[object Function]";
 }

@@ -1,6 +1,8 @@
 /* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased governance fixtures and recursive merge values at the contract boundary. */
 
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const GOVERNANCE_DIMENSIONS = Object.freeze([
   "contracts",
@@ -252,7 +254,7 @@ function missingGateResult(dimension) {
 }
 
 function normalizeFixture(fixture) {
-  if (!fixture || typeof fixture !== "object" || Array.isArray(fixture)) {
+  if (!fixture || !isJsonObject(fixture) || Array.isArray(fixture)) {
     throw new TypeError("fixture must be an object");
   }
   if (!isNonEmptyString(fixture.id)) {
@@ -267,7 +269,7 @@ function normalizeFixture(fixture) {
 function normalizeGateResults(gateResults) {
   const seen = new Set();
   return gateResults.map((gate) => {
-    if (!gate || typeof gate !== "object" || Array.isArray(gate)) {
+    if (!gate || !isJsonObject(gate) || Array.isArray(gate)) {
       throw new TypeError("gate result must be an object");
     }
     if (!GOVERNANCE_DIMENSIONS.includes(gate.dimension)) {
@@ -347,7 +349,7 @@ function deepMerge(base, overrides) {
   if (Array.isArray(base) || Array.isArray(overrides)) {
     return overrides === undefined ? structuredClone(base) : structuredClone(overrides);
   }
-  if (!base || typeof base !== "object") {
+  if (!base || !isJsonObject(base)) {
     return overrides === undefined ? base : overrides;
   }
 
@@ -366,7 +368,7 @@ function sortObject(value) {
   if (Array.isArray(value)) {
     return value.map(sortObject);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(
@@ -381,6 +383,6 @@ function unique(values) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 /* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased governance fixtures and recursive merge values at the contract boundary. */

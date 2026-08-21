@@ -30,7 +30,7 @@ export {
 	effectiveEffects,
 	isCompatible,
 	parseBoundaryContract,
-	type RequiredShape,
+	type RequiredLayout,
 	serializeBoundaryContract,
 } from "./contract-ir.js";
 export {

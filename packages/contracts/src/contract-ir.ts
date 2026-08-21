@@ -1,10 +1,16 @@
 import { createHash } from "node:crypto";
-
 import {
 	type EffectSpec,
 	isEffectWideningBreaking,
 	parseEffectSpec,
 } from "./effects.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import {
 	parseResilienceProfile,
 	type ResilienceProfile,
@@ -72,8 +78,8 @@ export interface ContractEdge {
 	operation: string;
 }
 
-// domain-view: parsed boundary shape; wire form is RequiredShape in data-models/contracts.proto.
-export interface RequiredShape {
+// domain-view: parsed boundary layout; wire form is RequiredShape in data-models/contracts.proto.
+export interface RequiredLayout {
 	format: string;
 	requiredFields: string[];
 	providedFields: string[];
@@ -86,7 +92,7 @@ export interface BoundaryContract {
 	version: string;
 	mode: ContractMode;
 	edge: ContractEdge;
-	requiredShape: RequiredShape;
+	requiredLayout: RequiredLayout;
 	contractHash: `sha256:${string}`;
 	/**
 	 * Optional Verse-inspired effect exposure (ADR-0136). When omitted, treated
@@ -121,20 +127,20 @@ export interface BoundaryContractInput {
 	version: unknown;
 	mode?: unknown;
 	edge: unknown;
-	requiredShape: unknown;
+	requiredLayout: unknown;
 	effects?: unknown;
 	resilience?: unknown;
 }
 
-export function parseBoundaryContract(input: unknown): BoundaryContract {
-	const source = expectObject(input, "$");
+export function parseBoundaryContract<T>(input: T): BoundaryContract {
+	const source = expectObject(cloneAsJson(input), "$");
 	const id = nonEmptyString(source.id, "$.id");
 	const version = semver(source.version, "$.version");
 	const mode = enumValue(source.mode ?? "declared", MODE_SET, "$.mode");
 	const edge = parseEdge(source.edge, "$.edge");
-	const requiredShape = parseRequiredShape(
-		source.requiredShape,
-		"$.requiredShape",
+	const requiredLayout = parseRequiredLayout(
+		source.requiredLayout ?? source["requiredShape"],
+		"$.requiredLayout",
 	);
 
 	const effects =
@@ -149,14 +155,16 @@ export function parseBoundaryContract(input: unknown): BoundaryContract {
 
 	const core: Omit<BoundaryContract, "contractHash"> = {
 		schemaVersion:
+			// SAFETY: assertion required at this I/O or test boundary.
 			CONTRACT_IR_SCHEMA_VERSION as typeof CONTRACT_IR_SCHEMA_VERSION,
 		id,
 		version,
+		// SAFETY: assertion required at this I/O or test boundary.
 		mode: mode as ContractMode,
 		edge,
-		requiredShape,
-		...(effects !== undefined ? { effects } : {}),
-		...(resilience !== undefined ? { resilience } : {}),
+		requiredLayout,
+		...(effects !== undefined ? { effects } : undefined),
+		...(resilience !== undefined ? { resilience } : undefined),
 	};
 	const contractHash = hashContract(core);
 	return Object.freeze({ ...core, contractHash });
@@ -165,30 +173,32 @@ export function parseBoundaryContract(input: unknown): BoundaryContract {
 export function createBoundaryContract(
 	input: Partial<BoundaryContractInput> = {},
 ): BoundaryContract {
-	const base: Record<string, unknown> = {
+	const defaultLayout = {
+		format: "json-schema",
+		requiredFields: ["id", "tenantId"],
+		providedFields: ["id", "tenantId"],
+	};
+	const clonedInput = cloneAsJson(input);
+	const wireLayout = isJsonObject(clonedInput)
+		? clonedInput["requiredShape"]
+		: undefined;
+	return parseBoundaryContract({
 		id: input.id ?? "contract-orders-http",
 		version: input.version ?? "1.0.0",
 		mode: input.mode ?? "declared",
-		edge:
-			input.edge ??
-			({
-				kind: "event",
-				producer: "orders-api@1.0.0",
-				consumer: "worker@1.0.0",
-				channel: "orders.http",
-				operation: "order.created",
-			} as unknown),
-		requiredShape:
-			input.requiredShape ??
-			({
-				format: "json-schema",
-				requiredFields: ["id", "tenantId"],
-				providedFields: ["id", "tenantId"],
-			} as unknown),
-	};
-	if (input.effects !== undefined) base.effects = input.effects;
-	if (input.resilience !== undefined) base.resilience = input.resilience;
-	return parseBoundaryContract(base);
+		edge: input.edge ?? {
+			kind: "event",
+			producer: "orders-api@1.0.0",
+			consumer: "worker@1.0.0",
+			channel: "orders.http",
+			operation: "order.created",
+		},
+		requiredLayout: input.requiredLayout ?? wireLayout ?? defaultLayout,
+		...(input.effects !== undefined ? { effects: input.effects } : undefined),
+		...(input.resilience !== undefined
+			? { resilience: input.resilience }
+			: undefined),
+	});
 }
 
 /** Effective effects: declared or conservative default for external reasoning. */
@@ -221,10 +231,10 @@ export function checkCompatibility(
 	// A field the prior revision guaranteed (provided or required) that the next
 	// revision no longer provides breaks any consumer that reads it.
 	const guaranteed = new Set([
-		...prev.requiredShape.providedFields,
-		...prev.requiredShape.requiredFields,
+		...prev.requiredLayout.providedFields,
+		...prev.requiredLayout.requiredFields,
 	]);
-	const nextProvides = new Set(next.requiredShape.providedFields);
+	const nextProvides = new Set(next.requiredLayout.providedFields);
 	const removed = [...guaranteed]
 		.filter((field) => !nextProvides.has(field))
 		.sort();
@@ -313,9 +323,10 @@ function reason(
 	};
 }
 
-function parseEdge(input: unknown, path: string): ContractEdge {
+function parseEdge(input: JsonValue, path: string): ContractEdge {
 	const edge = expectObject(input, path);
 	return {
+		// SAFETY: assertion required at this I/O or test boundary.
 		kind: enumValue(
 			edge.kind,
 			EDGE_KIND_SET,
@@ -328,13 +339,19 @@ function parseEdge(input: unknown, path: string): ContractEdge {
 	};
 }
 
-function parseRequiredShape(input: unknown, path: string): RequiredShape {
-	const shape = expectObject(input, path);
+function parseRequiredLayout(
+	input: JsonValue | undefined,
+	path: string,
+): RequiredLayout {
+	const layout = expectObject(input, path);
 	return {
-		format: nonEmptyString(shape.format, `${path}.format`),
-		requiredFields: stringArray(shape.requiredFields, `${path}.requiredFields`),
+		format: nonEmptyString(layout.format, `${path}.format`),
+		requiredFields: stringArray(
+			layout.requiredFields,
+			`${path}.requiredFields`,
+		),
 		providedFields: stringArray(
-			shape.providedFields ?? shape.requiredFields,
+			layout.providedFields ?? layout.requiredFields,
 			`${path}.providedFields`,
 		),
 	};
@@ -347,17 +364,17 @@ function hashContract(
 	return `sha256:${digest}`;
 }
 
-export function canonicalJson(value: unknown): string {
-	return JSON.stringify(sortKeys(value));
+export function canonicalJson<T>(value: T): string {
+	return JSON.stringify(sortKeys(cloneAsJson(value)));
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: JsonValue): JsonValue {
 	if (Array.isArray(value)) return value.map(sortKeys);
-	if (value && typeof value === "object") {
+	if (value && isJsonObject(value)) {
 		return Object.fromEntries(
-			Object.keys(value as Record<string, unknown>)
+			Object.keys(value)
 				.sort()
-				.map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
+				.map((key) => [key, sortKeys(value[key] ?? null)]),
 		);
 	}
 	return value;
@@ -367,19 +384,20 @@ function semverMajor(version: string): number {
 	return Number(version.split(".")[0]);
 }
 
-function expectObject(input: unknown, path: string): Record<string, unknown> {
-	if (input === null || typeof input !== "object" || Array.isArray(input)) {
+function expectObject(input: JsonValue | undefined, path: string): JsonObject {
+	if (input === null || !isJsonObject(input) || Array.isArray(input)) {
 		throw new ContractIrValidationError(
 			"expected-object",
 			"expected a JSON object",
 			path,
 		);
 	}
-	return input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	return input as JsonObject;
 }
 
-function nonEmptyString(input: unknown, path: string): string {
-	if (typeof input !== "string" || input.trim() === "") {
+function nonEmptyString(input: JsonValue, path: string): string {
+	if (!isJsonString(input) || input.trim() === "") {
 		throw new ContractIrValidationError(
 			"expected-string",
 			"expected a non-empty string",
@@ -389,7 +407,7 @@ function nonEmptyString(input: unknown, path: string): string {
 	return input;
 }
 
-function semver(input: unknown, path: string): string {
+function semver(input: JsonValue, path: string): string {
 	const value = nonEmptyString(input, path);
 	if (!SEMVER_RE.test(value)) {
 		throw new ContractIrValidationError("invalid-semver", value, path);
@@ -397,7 +415,11 @@ function semver(input: unknown, path: string): string {
 	return value;
 }
 
-function enumValue(input: unknown, allowed: Set<string>, path: string): string {
+function enumValue(
+	input: JsonValue,
+	allowed: Set<string>,
+	path: string,
+): string {
 	const value = nonEmptyString(input, path);
 	if (!allowed.has(value)) {
 		throw new ContractIrValidationError("unknown-value", value, path);
@@ -405,7 +427,7 @@ function enumValue(input: unknown, allowed: Set<string>, path: string): string {
 	return value;
 }
 
-function stringArray(input: unknown, path: string): string[] {
+function stringArray(input: JsonValue, path: string): string[] {
 	if (!Array.isArray(input)) {
 		throw new ContractIrValidationError(
 			"expected-array",

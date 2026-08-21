@@ -4,6 +4,7 @@ import {
 	checkCompatibility,
 	parseBoundaryContract,
 } from "./contract-ir.js";
+import { isJsonString, type JsonValue } from "./json.js";
 
 // The `can-deploy` gate (contracts-policy-flags.md §can-deploy): given the
 // contract state currently deployed to a target and a candidate deployment plan,
@@ -57,7 +58,17 @@ export interface CanDeployResult {
 	reasons: CompatibilityReason[];
 	summary: string;
 	suggestedFixes: string[];
-	events: Array<Record<string, unknown>>;
+	events: CompatGateEvent[];
+}
+
+export interface CompatGateEvent {
+	type: string;
+	schemaVersion: string;
+	target: string;
+	matrix: CompatibilityMatrixRow[];
+	reasons: CompatibilityReason[];
+	summary: string;
+	suggestedFixes: string[];
 }
 
 export interface CanDeployInput {
@@ -107,12 +118,13 @@ export function evaluateCanDeploy(input: CanDeployInput): CanDeployResult {
 	}
 
 	const ok = reasons.length === 0;
-	const summary = ok
-		? "compatible"
-		: buildSummary(target, reasons[0] as CompatibilityReason);
-	const suggestedFixes = ok
-		? []
-		: buildSuggestedFixes(reasons[0] as CompatibilityReason);
+	const firstReason = reasons[0];
+	const summary =
+		ok || firstReason === undefined
+			? "compatible"
+			: buildSummary(target, firstReason);
+	const suggestedFixes =
+		ok || firstReason === undefined ? [] : buildSuggestedFixes(firstReason);
 
 	const event = {
 		type: ok ? COMPAT_GATE_PASSED : COMPAT_GATE_FAILED,
@@ -137,7 +149,7 @@ export function evaluateCanDeploy(input: CanDeployInput): CanDeployResult {
 }
 
 export function replayCanDeployDecision(
-	events: Array<Record<string, unknown>> = [],
+	events: CompatGateEvent[] = [],
 ): CanDeployResult {
 	const event = events.at(-1);
 	if (
@@ -149,11 +161,11 @@ export function replayCanDeployDecision(
 	return {
 		schemaVersion: CAN_DEPLOY_SCHEMA_VERSION,
 		ok: event.type === COMPAT_GATE_PASSED,
-		target: event.target as string,
-		matrix: (event.matrix as CompatibilityMatrixRow[]) ?? [],
-		reasons: (event.reasons as CompatibilityReason[]) ?? [],
-		summary: event.summary as string,
-		suggestedFixes: (event.suggestedFixes as string[]) ?? [],
+		target: event.target,
+		matrix: event.matrix,
+		reasons: event.reasons,
+		summary: event.summary,
+		suggestedFixes: event.suggestedFixes,
 		events,
 	};
 }
@@ -179,8 +191,8 @@ function buildSuggestedFixes(reason: CompatibilityReason): string[] {
 	return ["reconcile the contract change with running consumers"];
 }
 
-function requireString(value: unknown, field: string): string {
-	if (typeof value !== "string" || value.trim() === "") {
+function requireString(value: JsonValue, field: string): string {
+	if (!isJsonString(value) || value.trim() === "") {
 		throw new Error(`${field} is required`);
 	}
 	return value;

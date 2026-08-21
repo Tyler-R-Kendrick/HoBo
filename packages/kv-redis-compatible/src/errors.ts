@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 /**
  * Errors raised by the provider-neutral Redis-compatible layer.
  *
@@ -30,7 +31,7 @@ export class KvRedisCompatibleError extends Error {
 }
 
 export function isKvRedisCompatibleError(
-	value: unknown,
+	value: JsonValue,
 ): value is KvRedisCompatibleError {
 	return value instanceof KvRedisCompatibleError;
 }

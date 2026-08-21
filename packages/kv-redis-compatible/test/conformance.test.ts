@@ -22,7 +22,7 @@ async function runAgainstReferenceStore(
 			maxValueBytes: MAX_VALUE_BYTES,
 			...(options.breakVerb !== undefined
 				? { breakVerb: options.breakVerb }
-				: {}),
+				: undefined),
 		}),
 		transport: "in-process",
 		limits: { maxValueBytes: MAX_VALUE_BYTES },

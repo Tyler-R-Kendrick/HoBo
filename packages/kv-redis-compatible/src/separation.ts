@@ -33,7 +33,14 @@ export const KV_REDIS_NON_IMPLIED_PROFILES = [
 
 export type NonImpliedProfile = (typeof KV_REDIS_NON_IMPLIED_PROFILES)[number];
 
-const RATIONALE: Readonly<Record<NonImpliedProfile, string>> = {
+interface NonImplicationRationale {
+	"queue.at-least-once/v1": string;
+	"queue.fifo/v1": string;
+	"topic.pubsub/v1": string;
+	"topic.durable-log/v1": string;
+}
+
+const RATIONALE: NonImplicationRationale = {
 	"queue.at-least-once/v1":
 		"A Redis list pops a message and forgets it. At-least-once needs an acknowledgement and a redelivery path, so it needs its own conformance evidence.",
 	"queue.fifo/v1":
@@ -45,14 +52,25 @@ const RATIONALE: Readonly<Record<NonImpliedProfile, string>> = {
 };
 
 export function explainNonImplication(profileId: string): string | undefined {
-	return (RATIONALE as Readonly<Record<string, string>>)[profileId];
+	switch (profileId) {
+		case "queue.at-least-once/v1":
+		case "queue.fifo/v1":
+		case "topic.pubsub/v1":
+		case "topic.durable-log/v1":
+			return RATIONALE[profileId];
+		default:
+			return undefined;
+	}
 }
 
 export function isNonImpliedProfile(
 	profileId: string,
 ): profileId is NonImpliedProfile {
-	return (KV_REDIS_NON_IMPLIED_PROFILES as readonly string[]).includes(
-		profileId,
+	return (
+		profileId === "queue.at-least-once/v1" ||
+		profileId === "queue.fifo/v1" ||
+		profileId === "topic.pubsub/v1" ||
+		profileId === "topic.durable-log/v1"
 	);
 }
 

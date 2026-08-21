@@ -71,12 +71,17 @@ const REDIS_FEATURE_KEYS = [
 	"restTransport",
 ] as const;
 
-type RedisFeatureKey = (typeof REDIS_FEATURE_KEYS)[number];
-
 function booleanFeatures(
 	input: RedisStoreInput,
 ): readonly StructuredFeatureRequirementInput[] {
-	const requested: Partial<Record<RedisFeatureKey, boolean | undefined>> = {
+	interface RedisFeatureFlags {
+		ttl?: boolean;
+		atomicIncrement?: boolean;
+		atomicCompareAndSet?: boolean;
+		sortedSets?: boolean;
+		restTransport?: boolean;
+	}
+	const requested: RedisFeatureFlags = {
 		ttl: input.ttl,
 		atomicIncrement: input.atomicIncrement,
 		atomicCompareAndSet: input.atomicCompareAndSet,
@@ -136,14 +141,14 @@ function buildStoreRequirement(
 			...valueSizeFeature(input.minValueBytes),
 		],
 		guarantees: REDIS_GUARANTEES,
-		...(input.runtime !== undefined ? { runtime: input.runtime } : {}),
+		...(input.runtime !== undefined ? { runtime: input.runtime } : undefined),
 		...(input.realization !== undefined
 			? { realization: input.realization }
-			: {}),
+			: undefined),
 		...(input.portability !== undefined
 			? { portability: input.portability }
-			: {}),
-		...(input.trustRef !== undefined ? { trustRef: input.trustRef } : {}),
+			: undefined),
+		...(input.trustRef !== undefined ? { trustRef: input.trustRef } : undefined),
 	};
 	return parseCapabilityRequirement(requirement);
 }

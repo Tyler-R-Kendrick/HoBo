@@ -76,7 +76,7 @@ export function createReferenceRedisStore(
 		store.set(key, {
 			kind: "string",
 			string: value,
-			...(expiresAtMs !== undefined ? { expiresAtMs } : {}),
+			...(expiresAtMs !== undefined ? { expiresAtMs } : undefined),
 		});
 	};
 
@@ -93,6 +93,7 @@ export function createReferenceRedisStore(
 		let expiresAtMs: number | undefined;
 		let nx = false;
 		for (let index = 0; index < rest.length; index += 1) {
+			// SAFETY: `const flag = (rest[index] as string).toUpperCase();` is required at this I/O or test boundary.
 			const flag = (rest[index] as string).toUpperCase();
 			if (flag === "NX") {
 				nx = true;

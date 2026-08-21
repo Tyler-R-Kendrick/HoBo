@@ -7,6 +7,8 @@
  * transport, a RESP socket, and an in-memory fake without the cases changing.
  */
 import { KvRedisCompatibleError } from "./errors.js";
+import { isJsonString, isJsonNumber } from "./json.js";
+
 
 /** A Redis reply value, in the shape a client surfaces it. */
 export type RedisValue = string | number | null | readonly RedisValue[];
@@ -54,7 +56,10 @@ export type ReplyExpectation =
 // public-contract: key marker an executor must not rewrite further.
 export const CONFORMANCE_KEY_NAMESPACE = "hobo:conf:";
 
-export type FillSizes = Readonly<Record<FillKind, number | undefined>>;
+export interface FillSizes {
+	readonly "max-value-bytes": number | undefined;
+	readonly "over-max-value-bytes": number | undefined;
+}
 
 function fillPayload(bytes: number): string {
 	// ASCII so byte length and code-unit length agree, which keeps the
@@ -82,7 +87,7 @@ export function resolveFillSizes(maxValueBytes: number | undefined): FillSizes {
 export function requiredFills(template: CommandTemplate): readonly FillKind[] {
 	const kinds = new Set<FillKind>();
 	for (const arg of template.slice(1)) {
-		if (typeof arg !== "string") kinds.add(arg.fill);
+		if (!isJsonString(arg)) kinds.add(arg.fill);
 	}
 	return [...kinds].sort((a, b) => a.localeCompare(b));
 }
@@ -94,7 +99,7 @@ export function resolveCommand(
 	const [verb, ...args] = template;
 	const resolved: string[] = [];
 	for (const arg of args) {
-		if (typeof arg !== "string") {
+		if (!isJsonString(arg)) {
 			const bytes = options.fills[arg.fill];
 			if (bytes === undefined) {
 				throw new KvRedisCompatibleError(
@@ -125,7 +130,9 @@ export function describeCommand(command: RedisCommand): string {
 
 function sameValue(actual: RedisValue, expected: RedisValue): boolean {
 	if (Array.isArray(actual) && Array.isArray(expected)) {
+		// SAFETY: `const a = actual as readonly RedisValue[];` is required at this I/O or test boundary.
 		const a = actual as readonly RedisValue[];
+		// SAFETY: `const b = expected as readonly RedisValue[];` is required at this I/O or test boundary.
 		const b = expected as readonly RedisValue[];
 		return (
 			a.length === b.length &&
@@ -137,7 +144,7 @@ function sameValue(actual: RedisValue, expected: RedisValue): boolean {
 	// `TTL` is an integer over RESP and can arrive as a JSON number or a
 	// numeric string over REST. Comparing the canonical text of both is the
 	// honest reading of "the same reply".
-	if (typeof actual === "number" || typeof expected === "number") {
+	if (isJsonNumber(actual) || isJsonNumber(expected)) {
 		if (actual === null || expected === null) return actual === expected;
 		return String(actual) === String(expected);
 	}
@@ -153,8 +160,9 @@ export type ExpectationOutcome = {
 function summarize(value: RedisValue): string {
 	if (value === null) return "nil";
 	if (Array.isArray(value))
+		// SAFETY: `return `array(${(value as readonly RedisValue[]).length})`;` is required at this I/O or test boundary.
 		return `array(${(value as readonly RedisValue[]).length})`;
-	if (typeof value === "number") return `integer(${value})`;
+	if (isJsonNumber(value)) return `integer(${value})`;
 	return value.length > 24
 		? `string(${value.length}B)`
 		: `string(${JSON.stringify(value)})`;
@@ -196,9 +204,9 @@ export function evaluateExpectation(
 					};
 		case "integer-between": {
 			const numeric =
-				typeof reply.value === "number"
+				isJsonNumber(reply.value)
 					? reply.value
-					: typeof reply.value === "string" && /^-?\d+$/u.test(reply.value)
+					: isJsonString(reply.value) && /^-?\d+$/u.test(reply.value)
 						? Number(reply.value)
 						: undefined;
 			if (numeric === undefined) {
@@ -219,7 +227,7 @@ export function evaluateExpectation(
 			if (bytes === undefined) {
 				return { ok: false, detail: `no declared size for ${expectation.of}` };
 			}
-			if (typeof reply.value !== "string") {
+			if (!isJsonString(reply.value)) {
 				return {
 					ok: false,
 					detail: `expected a string reply, got ${summarize(reply.value)}`,

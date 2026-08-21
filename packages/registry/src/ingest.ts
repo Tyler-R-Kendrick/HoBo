@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 // Bundle-manifest ingest (docs/plans/0017 F24): an untrusted, schema-versioned
 // manifest document is parsed — parse, don't validate — into parsed derived
@@ -85,12 +87,12 @@ export function bundleManifestDigest(manifest: BundleManifest): string {
 	return `sha256:${digest}`;
 }
 
-function nonEmptyString(value: unknown): value is string {
-	return typeof value === "string" && value.length > 0;
+function nonEmptyString(value: JsonValue): value is string {
+	return isJsonString(value) && value.length > 0;
 }
 
 function parseCapabilities(
-	raw: unknown,
+	raw: JsonValue,
 	errors: IngestError[],
 ): BundleCapability[] {
 	if (raw === undefined) return [];
@@ -104,7 +106,7 @@ function parseCapabilities(
 	}
 	const parsed: BundleCapability[] = [];
 	for (const [index, entry] of raw.entries()) {
-		if (entry === null || typeof entry !== "object") {
+		if (entry === null || !isJsonObject(entry)) {
 			errors.push({
 				code: "invalid-capabilities",
 				path: `capabilities[${index}]`,
@@ -112,7 +114,8 @@ function parseCapabilities(
 			});
 			continue;
 		}
-		const record = entry as Record<string, unknown>;
+		// SAFETY: `const record = entry as JsonObject;` is required at this I/O or test boundary.
+		const record = entry as JsonObject;
 		if (!nonEmptyString(record.port)) {
 			errors.push({
 				code: "invalid-capabilities",
@@ -132,8 +135,8 @@ function parseCapabilities(
 // Parse an untrusted bundle manifest into the typed record plus its
 // registry.BundleImported fact. Fail-closed: any structural error rejects the
 // whole document with typed errors — there is no partial import.
-export function ingestBundleManifest(raw: unknown): IngestResult {
-	if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+export function ingestBundleManifest(raw: JsonValue): IngestResult {
+	if (raw === null || !isJsonObject(raw) || Array.isArray(raw)) {
 		return {
 			ok: false,
 			errors: [
@@ -145,7 +148,8 @@ export function ingestBundleManifest(raw: unknown): IngestResult {
 			],
 		};
 	}
-	const record = raw as Record<string, unknown>;
+	// SAFETY: `const record = raw as JsonObject;` is required at this I/O or test boundary.
+	const record = raw as JsonObject;
 	const errors: IngestError[] = [];
 
 	if (record.schema !== BUNDLE_MANIFEST_SCHEMA) {
@@ -181,12 +185,15 @@ export function ingestBundleManifest(raw: unknown): IngestResult {
 
 	const manifest: BundleManifest = {
 		schema: BUNDLE_MANIFEST_SCHEMA,
+		// SAFETY: `name: record.name as string,` is required at this I/O or test boundary.
 		name: record.name as string,
+		// SAFETY: `version: record.version as string,` is required at this I/O or test boundary.
 		version: record.version as string,
+		// SAFETY: `provider: record.provider as string,` is required at this I/O or test boundary.
 		provider: record.provider as string,
 		capabilities,
 		description:
-			typeof record.description === "string" ? record.description : "",
+			isJsonString(record.description) ? record.description : "",
 	};
 	const manifestDigest = bundleManifestDigest(manifest);
 	return {

@@ -6,7 +6,9 @@
  * Residual secrets default to **memory** (no optional OpenBao dependency).
  * Install `@hobo/adapter-openbao` when residual OpenBao is required.
  */
+
 import type { ConfigSchema, SecretSourceRank } from "./config-types.js";
+import { cloneAsJson, type JsonBag, type JsonObject } from "./json.js";
 import {
 	createContractAssertedDualFixtures,
 	type DualIdentityFixtures,
@@ -20,7 +22,7 @@ import {
 export type DevConfigFixture = Readonly<{
 	/** Schema hash the fixture is asserted against. */
 	schemaHash: string;
-	campValues: Readonly<Record<string, unknown>>;
+	campValues: JsonObject;
 	/**
 	 * Residual secrets port for provider-federation paths.
 	 * Default: memory (built-in). OpenBao is optional via @hobo/adapter-openbao.
@@ -48,7 +50,7 @@ export async function createContractAssertedConfigFixtures(
 	schema: ConfigSchema,
 	options?: {
 		/** Override non-secret camp values. */
-		campValues?: Readonly<Record<string, unknown>>;
+		campValues?: JsonObject;
 		/** Pre-seed residual secret names (values stay broker-local). */
 		seedSecrets?: Readonly<Record<string, string>>;
 		/** Allow static-escape for local hatch testing (default false). */
@@ -84,8 +86,8 @@ export async function createContractAssertedConfigFixtures(
 		await secretsPort.put(name, value);
 	}
 
-	const campValues: Record<string, unknown> = {
-		...(options?.campValues ?? {}),
+	const campValues: JsonBag = {
+		...options?.campValues,
 	};
 	const boundTokens: Record<string, () => Promise<string>> = {};
 	const staticMaterials: Record<string, string> = {};
@@ -93,7 +95,7 @@ export async function createContractAssertedConfigFixtures(
 	for (const [name, field] of Object.entries(schema.fields)) {
 		if (!field.sensitive && campValues[name] === undefined) {
 			if (field.defaultValue !== undefined) {
-				campValues[name] = field.defaultValue;
+				campValues[name] = cloneAsJson(field.defaultValue);
 			}
 		}
 		if (field.source === "bound-resource" && field.sensitive) {

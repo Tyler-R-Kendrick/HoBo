@@ -54,7 +54,7 @@ export function migrationStatusView(
 		mappingSpecHash: record.mappingSpecHash,
 		...(record.outcomeReason !== undefined
 			? { outcomeReason: record.outcomeReason }
-			: {}),
+			: undefined),
 		continuousDefault: true as const,
 		bindleConfigRequired: false as const,
 	});

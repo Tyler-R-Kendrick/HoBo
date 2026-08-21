@@ -2,6 +2,7 @@
  * IdentityMigration aggregate: continuous dual-path principal migration.
  * Hands-off by construction — Matching/policy start; no Bindle config required.
  */
+
 import { randomUUID } from "node:crypto";
 import { must } from "@hobo/core/total-access";
 import {
@@ -11,6 +12,7 @@ import {
 	dualVerifyClaims,
 	mintDualAudienceGrant,
 } from "./dual-adapter.js";
+import { isJsonNumber, isJsonString } from "./json.js";
 import type { MappingSpec } from "./mapping-spec.js";
 import {
 	createDualConsistencyCheckedEvent,
@@ -28,6 +30,12 @@ import {
 
 // public-contract: migration aggregate schema version.
 export const IDENTITY_MIGRATION_SCHEMA = "hobo.identity-migration/v1" as const;
+
+export interface LinkedPrincipalResult {
+	verify: DualVerifyResult;
+	grant?: DualAudienceGrant;
+	record: IdentityMigrationRecord;
+}
 
 export type MigrationState =
 	| "idle"
@@ -172,7 +180,7 @@ export class IdentityMigrationService {
 			mode,
 			...(input.matchDecisionId !== undefined
 				? { matchDecisionId: input.matchDecisionId }
-				: {}),
+				: undefined),
 			seq: this.nextSeq(),
 			time: t,
 		});
@@ -191,11 +199,7 @@ export class IdentityMigrationService {
 			resource: string;
 			action: string;
 		}>;
-	}): {
-		verify: DualVerifyResult;
-		grant?: DualAudienceGrant;
-		record: IdentityMigrationRecord;
-	} {
+	}): LinkedPrincipalResult {
 		const rec = this.requireActive();
 		const mapping = this.requireMapping();
 		const verify = dualVerifyClaims({
@@ -312,7 +316,7 @@ export class IdentityMigrationService {
 			linkedPrincipals: rec.linkedPrincipals,
 			...(input.cohortFlagId !== undefined
 				? { cohortFlagId: input.cohortFlagId }
-				: {}),
+				: undefined),
 			seq: this.nextSeq(),
 			time: this.now(),
 		});
@@ -454,14 +458,16 @@ export class IdentityMigrationService {
 						d.mode === "shadow"
 							? ("shadow" as const)
 							: ("dual-active" as const),
+					// SAFETY: assertion to `on as MigrationReason, ` is required at this boundary.
 					reason: d.reason as MigrationReason,
+					// SAFETY: assertion to ` as MigrationMode, ` is required at this boundary.
 					mode: d.mode as MigrationMode,
 					sourceAdapter: String(d.sourceAdapter),
 					targetAdapter: String(d.targetAdapter),
 					mappingSpecHash: String(d.mappingSpecHash),
-					...(typeof d.matchDecisionId === "string"
+					...(isJsonString(d.matchDecisionId)
 						? { matchDecisionId: d.matchDecisionId }
-						: {}),
+						: undefined),
 					cohortFlagId: `flag:identity-migration:${migrationId}`,
 					rampPercent: 0,
 					linkedPrincipals: 0,
@@ -508,7 +514,7 @@ export class IdentityMigrationService {
 					seq: event.seq,
 					...(d.ok === false
 						? { failedChecks: this.record.failedChecks + 1 }
-						: {}),
+						: undefined),
 				});
 				break;
 			}
@@ -516,8 +522,9 @@ export class IdentityMigrationService {
 				if (!this.record) break;
 				this.record = Object.freeze({
 					...this.record,
-					failedChecks:
-						typeof d.failed === "number" ? d.failed : this.record.failedChecks,
+					failedChecks: isJsonNumber(d.failed)
+						? d.failed
+						: this.record.failedChecks,
 					updatedAt: event.time,
 					seq: event.seq,
 				});
@@ -525,10 +532,9 @@ export class IdentityMigrationService {
 			}
 			case "identity.MigrationProgressed": {
 				if (!this.record) break;
-				const ramp =
-					typeof d.rampPercent === "number"
-						? d.rampPercent
-						: this.record.rampPercent;
+				const ramp = isJsonNumber(d.rampPercent)
+					? d.rampPercent
+					: this.record.rampPercent;
 				this.record = Object.freeze({
 					...this.record,
 					rampPercent: ramp,
@@ -538,10 +544,9 @@ export class IdentityMigrationService {
 							: ramp > 0
 								? ("ramping" as const)
 								: this.record.state,
-					cohortFlagId:
-						typeof d.cohortFlagId === "string"
-							? d.cohortFlagId
-							: this.record.cohortFlagId,
+					cohortFlagId: isJsonString(d.cohortFlagId)
+						? d.cohortFlagId
+						: this.record.cohortFlagId,
 					updatedAt: event.time,
 					seq: event.seq,
 				});

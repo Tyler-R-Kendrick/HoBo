@@ -30,11 +30,13 @@ describe("ProviderSTS token-exchange boundary (consumer contract)", () => {
 
 	it("exchanges an SVID-bound OIDC assertion for the narrowed provider token the pact records", () => {
 		const interaction = pact.interactions[0];
+		// SAFETY: assertion to `nteraction.request.body as { audience: string; subject: string; scope: TokenScope; };` is required at this boundary.
 		const request = interaction.request.body as {
 			audience: string;
 			subject: string;
 			scope: TokenScope;
 		};
+		// SAFETY: assertion to `nteraction.response.body as { tokenRef: string; expiresInSeconds: number; narrowed: boolean; };` is required at this boundary.
 		const expected = interaction.response.body as {
 			tokenRef: string;
 			expiresInSeconds: number;

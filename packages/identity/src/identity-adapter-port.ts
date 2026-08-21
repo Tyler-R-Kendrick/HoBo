@@ -125,12 +125,12 @@ export function verifyDualAdapters(input: {
 	const s = input.source.verify({
 		...(input.subjectHint !== undefined
 			? { subjectHint: input.subjectHint }
-			: {}),
+			: undefined),
 	});
 	const t = input.target.verify({
 		...(input.subjectHint !== undefined
 			? { subjectHint: input.subjectHint }
-			: {}),
+			: undefined),
 	});
 	if (s.ok === false) {
 		return {

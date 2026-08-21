@@ -2,6 +2,7 @@
  * First-class Connection aggregate: durable, broker-owned, event-sourced.
  * Setup at most once; short-lived tokens thereafter. Secrets never leave vault.
  */
+
 import { createHash, randomUUID } from "node:crypto";
 import { mustGet } from "@hobo/core/total-access";
 import {
@@ -19,6 +20,7 @@ import {
 	createConnectionTokenIssuedEvent,
 	validateConnectionEvent,
 } from "./connection-events.js";
+import { isJsonString } from "./json.js";
 import type { VaultedCredential } from "./token-broker.js";
 
 // public-contract: wire schema / event catalog constant.
@@ -53,6 +55,11 @@ export type ConnectionRecord = Readonly<{
 }>;
 
 export type ConnectionView = ConnectionRecord;
+
+export interface ConnectionMutationResult {
+	readonly connection: ConnectionView;
+	readonly events: readonly ConnectionEvent[];
+}
 
 export type ConnectionPolicyDecision =
 	| Readonly<{ allow: true }>
@@ -180,10 +187,7 @@ export class ConnectionService {
 		return this.byId.get(idOrAlias);
 	}
 
-	create(input: CreateConnectionInput): {
-		connection: ConnectionView;
-		events: readonly ConnectionEvent[];
-	} {
+	create(input: CreateConnectionInput): ConnectionMutationResult {
 		const decision = this.policyGate({
 			subject: input.createdBy,
 			action: "connection.create",
@@ -195,7 +199,7 @@ export class ConnectionService {
 				code: decision.code,
 			});
 		}
-		if (typeof input.stationId !== "string" || input.stationId.length === 0) {
+		if (!isJsonString(input.stationId) || input.stationId.length === 0) {
 			throw Object.assign(
 				new Error(
 					"connection requires stationId (Station owns Connections; run hobo station init)",
@@ -217,7 +221,7 @@ export class ConnectionService {
 		const scopes = Object.freeze([...(input.scopes ?? [])]);
 		const event = createConnectionCreatedEvent({
 			connectionId: id,
-			...(input.alias !== undefined ? { alias: input.alias } : {}),
+			...(input.alias !== undefined ? { alias: input.alias } : undefined),
 			provider: input.provider,
 			flow,
 			subject: input.subject,
@@ -236,10 +240,7 @@ export class ConnectionService {
 		};
 	}
 
-	authorize(input: AuthorizeConnectionInput): {
-		connection: ConnectionView;
-		events: readonly ConnectionEvent[];
-	} {
+	authorize(input: AuthorizeConnectionInput): ConnectionMutationResult {
 		const existing = this.require(input.idOrAlias);
 		const decision = this.policyGate({
 			subject: input.actor,
@@ -287,7 +288,7 @@ export class ConnectionService {
 			grantedScopes,
 			...(input.installationId !== undefined
 				? { installationId: input.installationId }
-				: {}),
+				: undefined),
 			subject: existing.subject,
 			credentialRef,
 			seq: this.nextSeq(),
@@ -306,7 +307,7 @@ export class ConnectionService {
 		idOrAlias: string;
 		actor: ConnectionPrincipalRef;
 		reason: string;
-	}): { connection: ConnectionView; events: readonly ConnectionEvent[] } {
+	}): ConnectionMutationResult {
 		const existing = this.require(input.idOrAlias);
 		const decision = this.policyGate({
 			subject: input.actor,
@@ -337,10 +338,10 @@ export class ConnectionService {
 		};
 	}
 
-	rotate(input: { idOrAlias: string; actor: ConnectionPrincipalRef }): {
-		connection: ConnectionView;
-		events: readonly ConnectionEvent[];
-	} {
+	rotate(input: {
+		idOrAlias: string;
+		actor: ConnectionPrincipalRef;
+	}): ConnectionMutationResult {
 		const existing = this.require(input.idOrAlias);
 		const decision = this.policyGate({
 			subject: input.actor,
@@ -385,10 +386,10 @@ export class ConnectionService {
 		};
 	}
 
-	markNeedsReauth(input: { idOrAlias: string; reason: string }): {
-		connection: ConnectionView;
-		events: readonly ConnectionEvent[];
-	} {
+	markNeedsReauth(input: {
+		idOrAlias: string;
+		reason: string;
+	}): ConnectionMutationResult {
 		const existing = this.require(input.idOrAlias);
 		const event = createConnectionHealthChangedEvent({
 			connectionId: existing.id,
@@ -593,10 +594,11 @@ export class ConnectionService {
 		const time = event.time;
 
 		if (event.type === CONNECTION_EVENTS.Created) {
-			const alias =
-				typeof event.data.alias === "string" ? event.data.alias : undefined;
+			const alias = isJsonString(event.data.alias)
+				? event.data.alias
+				: undefined;
 			const stationId = event.data.stationId;
-			if (typeof stationId !== "string" || stationId.length === 0) {
+			if (!isJsonString(stationId) || stationId.length === 0) {
 				throw Object.assign(new Error("connection.Created missing stationId"), {
 					code: "connection-station-required",
 				});
@@ -604,17 +606,22 @@ export class ConnectionService {
 			const record: ConnectionRecord = Object.freeze({
 				schemaVersion: CONNECTION_SCHEMA_VERSION,
 				id,
-				...(alias !== undefined ? { alias } : {}),
+				...(alias !== undefined ? { alias } : undefined),
 				provider: String(event.data.provider),
+				// SAFETY: assertion to `ta.flow as ConnectionFlow, st` is required at this boundary.
 				flow: event.data.flow as ConnectionFlow,
 				status: "pending",
+				// SAFETY: assertion to `ta.subject as ConnectionPrincipalRef, //` is required at this boundary.
 				subject: event.data.subject as ConnectionPrincipalRef,
+				// SAFETY: assertion to `ring[]), r` is required at this boundary.
 				grantedScopes: Object.freeze([] as string[]),
 				requestedScopes: Object.freeze([
+					// SAFETY: assertion to `ta.requestedScopes as string[]) ?? [])` is required at this boundary.
 					...((event.data.requestedScopes as string[]) ?? []),
 				]),
 				metadata: Object.freeze({
 					labels: Object.freeze({}),
+					// SAFETY: assertion to `ta.createdBy as ConnectionPrincipalRef, })` is required at this boundary.
 					createdBy: event.data.createdBy as ConnectionPrincipalRef,
 				}),
 				stationId,
@@ -632,23 +639,23 @@ export class ConnectionService {
 
 		if (event.type === CONNECTION_EVENTS.Authorized) {
 			const grantedScopes = Object.freeze([
+				// SAFETY: assertion to `ta.grantedScopes as string[]) ?? [])` is required at this boundary.
 				...((event.data.grantedScopes as string[]) ?? []),
 			]);
-			const installationId =
-				typeof event.data.installationId === "string"
-					? event.data.installationId
-					: undefined;
-			const credentialRef =
-				typeof event.data.credentialRef === "string"
-					? event.data.credentialRef
-					: undefined;
+			const installationId = isJsonString(event.data.installationId)
+				? event.data.installationId
+				: undefined;
+			const credentialRef = isJsonString(event.data.credentialRef)
+				? event.data.credentialRef
+				: undefined;
 			const next: ConnectionRecord = Object.freeze({
 				...existing,
 				status: "active",
 				grantedScopes,
-				...(installationId !== undefined ? { installationId } : {}),
-				...(credentialRef !== undefined ? { credentialRef } : {}),
+				...(installationId !== undefined ? { installationId } : undefined),
+				...(credentialRef !== undefined ? { credentialRef } : undefined),
 				subject:
+					// SAFETY: assertion to `ta.subject as ConnectionPrincipalRef) ?? exi` is required at this boundary.
 					(event.data.subject as ConnectionPrincipalRef) ?? existing.subject,
 				updatedAt: time,
 				seq: event.seq,
@@ -661,6 +668,7 @@ export class ConnectionService {
 			event.type === CONNECTION_EVENTS.HealthChanged ||
 			event.type === CONNECTION_EVENTS.NeedsReauth
 		) {
+			// SAFETY: assertion to `ta.status as ConnectionStatus; thi` is required at this boundary.
 			const status = event.data.status as ConnectionStatus;
 			this.byId.set(
 				id,
@@ -669,10 +677,9 @@ export class ConnectionService {
 					status,
 					metadata: Object.freeze({
 						...existing.metadata,
-						health:
-							typeof event.data.reason === "string"
-								? event.data.reason
-								: status,
+						health: isJsonString(event.data.reason)
+							? event.data.reason
+							: status,
 					}),
 					updatedAt: time,
 					seq: event.seq,

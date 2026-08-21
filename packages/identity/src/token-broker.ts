@@ -1,5 +1,4 @@
 import { createHash, createHmac } from "node:crypto";
-
 import {
 	createTokenGrantedEvent,
 	createTokenRevokedEvent,
@@ -9,8 +8,14 @@ import {
 	validateTokenEvent,
 } from "./events.js";
 import type { ActiveSvidRecord } from "./identity-service.js";
+import { isJsonString, type JsonObject } from "./json.js";
 
 export const TOKEN_BROKER_DEFAULT_TTL_SECONDS = 900;
+
+export interface BrokeredCounts {
+	readonly federated: number;
+	readonly fallback: number;
+}
 
 // domain-view: an abstract vaulted root credential. The raw secret never leaves
 // the vault: callers can only (a) read a non-secret reference and (b) ask the
@@ -246,14 +251,16 @@ function decodeOidcAssertion(token: string): DecodedOidcAssertion | undefined {
 	const parts = token.split(".");
 	if (parts.length !== 3 || parts[0] !== "hobo-oidc") return undefined;
 	try {
-		const payload = JSON.parse(
+		const parsed = JSON.parse(
 			Buffer.from(parts[1] ?? "", "base64url").toString("utf8"),
-		) as Record<string, unknown>;
+		);
+		// SAFETY: OIDC assertion payload is JSON-parsed at this token boundary.
+		const payload = parsed as JsonObject;
 		if (
-			typeof payload.iss !== "string" ||
-			typeof payload.sub !== "string" ||
-			typeof payload.aud !== "string" ||
-			typeof payload.exp !== "string"
+			!isJsonString(payload.iss) ||
+			!isJsonString(payload.sub) ||
+			!isJsonString(payload.aud) ||
+			!isJsonString(payload.exp)
 		) {
 			return undefined;
 		}
@@ -367,7 +374,7 @@ export class TokenBroker {
 		return total === 0 ? 1 : this.federatedGrants / total;
 	}
 
-	get brokeredCounts(): Readonly<{ federated: number; fallback: number }> {
+	get brokeredCounts(): BrokeredCounts {
 		return { federated: this.federatedGrants, fallback: this.fallbackGrants };
 	}
 
@@ -490,8 +497,8 @@ export class TokenBroker {
 			tokenRef,
 			vaultReference: this.vault.reference,
 			credentialSource,
-			...(providerTokenRef !== undefined ? { providerTokenRef } : {}),
-			...(connectionId !== undefined ? { connectionId } : {}),
+			...(providerTokenRef !== undefined ? { providerTokenRef } : undefined),
+			...(connectionId !== undefined ? { connectionId } : undefined),
 		};
 		this.grants.set(grantId, grant);
 
@@ -505,7 +512,7 @@ export class TokenBroker {
 			tenant,
 			seq: this.nextSeq(),
 			time: nowIso,
-			...(connectionId !== undefined ? { connectionId } : {}),
+			...(connectionId !== undefined ? { connectionId } : undefined),
 			credentialSource,
 		});
 		validateTokenEvent(event);

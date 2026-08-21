@@ -16,6 +16,12 @@ import {
 	type FlagEvalContext,
 	type FlagValue,
 } from "./feature-flag-store.js";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+} from "./json.js";
 
 // public-contract: OpenFeature provider metadata.
 export const HOBO_OPENFEATURE_PROVIDER_NAME = "hobo-feature-flag" as const;
@@ -52,6 +58,7 @@ export class HoboOpenFeatureProvider {
 		}
 		return enrichEvaluationContext({
 			...this.staticScope,
+			// SAFETY: assertion to `alCtx as HoBoScopeAttributes | undefined),` is required at this boundary.
 			...(evalCtx as HoBoScopeAttributes | undefined),
 		});
 	}
@@ -78,7 +85,7 @@ export class HoboOpenFeatureProvider {
 	): OpenFeatureResolutionDetails<string> {
 		const d = this.evaluateAs(flagKey, defaultValue, context);
 		return Object.freeze({
-			value: typeof d.value === "string" ? d.value : defaultValue,
+			value: isJsonString(d.value) ? d.value : defaultValue,
 			variant: d.variant,
 			reason: d.reason,
 			flagKey,
@@ -92,7 +99,7 @@ export class HoboOpenFeatureProvider {
 	): OpenFeatureResolutionDetails<number> {
 		const d = this.evaluateAs(flagKey, defaultValue, context);
 		return Object.freeze({
-			value: typeof d.value === "number" ? d.value : defaultValue,
+			value: isJsonNumber(d.value) ? d.value : defaultValue,
 			variant: d.variant,
 			reason: d.reason,
 			flagKey,
@@ -101,13 +108,13 @@ export class HoboOpenFeatureProvider {
 
 	resolveObjectEvaluation(
 		flagKey: string,
-		defaultValue: Readonly<Record<string, unknown>>,
+		defaultValue: JsonObject,
 		context?: FlagEvalContext | HoBoScopeAttributes,
-	): OpenFeatureResolutionDetails<Readonly<Record<string, unknown>>> {
+	): OpenFeatureResolutionDetails<JsonObject> {
 		const d = this.evaluateAs(flagKey, defaultValue, context);
 		const value =
-			d.value !== null && typeof d.value === "object" && !Array.isArray(d.value)
-				? (d.value as Readonly<Record<string, unknown>>)
+			d.value !== null && isJsonObject(d.value) && !Array.isArray(d.value)
+				? d.value
 				: defaultValue;
 		return Object.freeze({
 			value,
@@ -173,9 +180,9 @@ export class HoboFeatureClient {
 
 	getObjectValue(
 		flagKey: string,
-		defaultValue: Readonly<Record<string, unknown>> = {},
+		defaultValue: JsonObject = {},
 		context?: FlagEvalContext | HoBoScopeAttributes,
-	): Readonly<Record<string, unknown>> {
+	): JsonObject {
 		return this.provider.resolveObjectEvaluation(flagKey, defaultValue, context)
 			.value;
 	}

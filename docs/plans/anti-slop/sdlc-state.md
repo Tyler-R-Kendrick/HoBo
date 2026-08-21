@@ -51,7 +51,8 @@ main
                                         └── sdlc/anti-slop-40-runtimes-browser-oci  #1263 browser+oci
                                          └── sdlc/anti-slop-41-runtimes-dapr-rivet  #1266 dapr+rivet
                                           └── sdlc/anti-slop-42-runtimes-local  #1274 runtime-local
-                                           └── sdlc/anti-slop-43-runtime-conformance  runtime+conformance
+                                           └── sdlc/anti-slop-43-runtime-conformance  #1276 runtime+conformance
+                                            └── sdlc/anti-slop-44-identity  identity
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -114,6 +115,7 @@ and `tsc --noEmit` clean (#1263).
 Layer 41: `@hobo/runtime-dapr` + `@hobo/runtime-rivet` oxlint `--deny-warnings`
 and `tsc --noEmit` clean (#1266).
 Layer 42: `@hobo/runtime-local` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1274).
-Layer 43: `@hobo/runtime` + `@hobo/conformance` oxlint `--deny-warnings` and `tsc --noEmit` clean.
-Next: remaining dirty packages (identity, adapters), then `src/draft/`.
+Layer 43: `@hobo/runtime` + `@hobo/conformance` oxlint `--deny-warnings` and `tsc --noEmit` clean (#1276).
+Layer 44: `@hobo/identity` oxlint `--deny-warnings` and `tsc --noEmit` clean.
+Next: remaining dirty packages (adapters, provider-kubernetes), then `src/draft/`.
 Full-repo `lint:slop --deny-warnings` is still red until those land.

@@ -2,7 +2,9 @@
  * Continuous identity migration event family (never-compact credential audit).
  * ADR continuous identity migration plane.
  */
+
 import { CREDENTIAL_AUDIT_RETENTION } from "./events.js";
+import { asJsonObject, type JsonObject } from "./json.js";
 
 // public-contract: identity migration event schema version.
 export const IDENTITY_MIGRATION_EVENT_SCHEMA =
@@ -34,10 +36,10 @@ export type IdentityMigrationEvent = Readonly<{
 	correlationId: string;
 	causationId: string;
 	retention: typeof CREDENTIAL_AUDIT_RETENTION;
-	data: Readonly<Record<string, unknown>>;
+	data: JsonObject;
 }>;
 
-function baseEvent(
+function baseEvent<T>(
 	type: IdentityMigrationEventType,
 	input: {
 		tenant: string;
@@ -45,7 +47,7 @@ function baseEvent(
 		seq?: number;
 		time?: string;
 		causationId?: string;
-		data: Readonly<Record<string, unknown>>;
+		data: T;
 	},
 ): IdentityMigrationEvent {
 	const seq = input.seq ?? 0;
@@ -60,7 +62,10 @@ function baseEvent(
 		correlationId: `corr-migration-${input.migrationId}`,
 		causationId: input.causationId ?? `cmd-migration-${input.migrationId}`,
 		retention: CREDENTIAL_AUDIT_RETENTION,
-		data: Object.freeze({ migrationId: input.migrationId, ...input.data }),
+		data: asJsonObject({
+			migrationId: input.migrationId,
+			...input.data,
+		}),
 	});
 }
 
@@ -95,7 +100,7 @@ export function createMigrationStartedEvent(input: {
 			mode: input.mode,
 			...(input.matchDecisionId !== undefined
 				? { matchDecisionId: input.matchDecisionId }
-				: {}),
+				: undefined),
 		},
 	});
 }
@@ -137,13 +142,13 @@ export function createShadowVerifiedEvent(input: {
 		migrationId: input.migrationId,
 		seq: input.seq,
 		time: input.time,
-		data: {
+		data: asJsonObject({
 			principalRef: input.principalRef,
 			ok: input.ok,
 			...(input.divergedClaims !== undefined
-				? { divergedClaims: Object.freeze([...input.divergedClaims]) }
-				: {}),
-		},
+				? { divergedClaims: [...input.divergedClaims] }
+				: undefined),
+		}),
 	});
 }
 
@@ -188,7 +193,7 @@ export function createMigrationProgressedEvent(input: {
 			linkedPrincipals: input.linkedPrincipals,
 			...(input.cohortFlagId !== undefined
 				? { cohortFlagId: input.cohortFlagId }
-				: {}),
+				: undefined),
 		},
 	});
 }
@@ -283,5 +288,6 @@ export function validateIdentityMigrationEvent(
 }
 
 export function isIdentityMigrationEventType(type: string): boolean {
+	// SAFETY: assertion to `ject.values(IDENTITY_MIGRATION_EVENTS) as string[]).` is required at this boundary.
 	return (Object.values(IDENTITY_MIGRATION_EVENTS) as string[]).includes(type);
 }

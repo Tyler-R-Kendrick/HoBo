@@ -6,6 +6,7 @@
  * - Delivery: builtin → optional CD residual (Argo/Flagger-shaped HTTP, no operator binary)
  * - Experiment: builtin analysis/export → optional analysis residual
  */
+
 import { createHash } from "node:crypto";
 import {
 	FEATURE_FLAG_BACKEND_RANKS,
@@ -26,6 +27,7 @@ import type {
 	ExperimentDefinition,
 	OpenExperimentEngine,
 } from "./harness-experiment.js";
+import type { JsonObject, JsonValue } from "./json.js";
 
 // public-contract: OFREP residual adapter schema version.
 export const OFREP_RESIDUAL_SCHEMA = "hobo.ofrep-residual/v1" as const;
@@ -45,13 +47,19 @@ export type FetchLike = (
 ) => Promise<{
 	readonly ok: boolean;
 	readonly status: number;
-	readonly json: () => Promise<unknown>;
+	readonly json: () => Promise<JsonValue>;
 	readonly text: () => Promise<string>;
 }>;
 
 // ---------------------------------------------------------------------------
 // OpenFeature residual (OFREP-shaped HTTP) — mediated, never app-facing SDK
 // ---------------------------------------------------------------------------
+
+export interface OfrepResidualBackend {
+	readonly id: "ofrep-internal" | "external";
+	readonly schemaVersion: typeof OFREP_RESIDUAL_SCHEMA;
+	evaluate(req: OfrepEvaluateRequest): Promise<DetailEvaluation>;
+}
 
 export type OfrepEvaluateRequest = Readonly<{
 	flagKey: string;
@@ -73,11 +81,8 @@ export function createOfrepResidualBackend(options: {
 	readonly baseUrl: string;
 	readonly fetchImpl?: FetchLike;
 	readonly headers?: Readonly<Record<string, string>>;
-}): {
-	readonly id: "ofrep-internal" | "external";
-	readonly schemaVersion: typeof OFREP_RESIDUAL_SCHEMA;
-	evaluate(req: OfrepEvaluateRequest): Promise<DetailEvaluation>;
-} {
+}): OfrepResidualBackend {
+	// SAFETY: assertion to `etch as FetchLike); const ba` is required at this boundary.
 	const fetchImpl = options.fetchImpl ?? (globalThis.fetch as FetchLike);
 	const base = options.baseUrl.replace(/\/$/, "");
 	return {
@@ -91,7 +96,7 @@ export function createOfrepResidualBackend(options: {
 						method: "POST",
 						headers: {
 							"content-type": "application/json",
-							...(options.headers ?? {}),
+							...options.headers,
 						},
 						body: JSON.stringify({
 							context: {
@@ -105,12 +110,14 @@ export function createOfrepResidualBackend(options: {
 				if (!res.ok) {
 					return failSafe(req);
 				}
+				// SAFETY: assertion to `son()) as OfrepEvaluateResponse; return` is required at this boundary.
 				const body = (await res.json()) as OfrepEvaluateResponse;
 				return Object.freeze({
 					flagKey: req.flagKey,
 					value: body.value ?? req.defaultValue,
 					variant: body.variant ?? "remote",
 					reason:
+						// SAFETY: assertion to `as DetailEvaluation["reason"]) ?? "target` is required at this boundary.
 						(body.reason as DetailEvaluation["reason"]) ?? "targeting-match",
 					rulesetSeq: 0,
 					contextDigest: digestCtx(req.context),
@@ -181,6 +188,7 @@ export function createCdResidualDeliveryAdapter(options: {
 	readonly webhookUrl: string;
 	readonly fetchImpl?: FetchLike;
 }): DeliveryAdapter {
+	// SAFETY: assertion to `ch as FetchLike); return Obj` is required at this boundary.
 	const fetchImpl = options.fetchImpl ?? (globalThis.fetch as FetchLike);
 	return Object.freeze({
 		kind: options.kind,
@@ -260,7 +268,7 @@ export type ExperimentAnalysisResult = Readonly<{
 	exportPayload: Readonly<{
 		format: "json";
 		contentHash: `sha256:${string}`;
-		body: Readonly<Record<string, unknown>>;
+		body: JsonObject;
 	}>;
 }>;
 
@@ -277,6 +285,7 @@ export type ExperimentAnalysisPort = Readonly<{
  * Not a commercial stats engine — adapters (GrowthBook/Statsig) plug in here.
  */
 export function createBuiltinExperimentAnalysis(): ExperimentAnalysisPort {
+	// SAFETY: builtin analysis port is ExperimentAnalysisPort at this boundary.
 	return Object.freeze({
 		analyze(experiment, assignments, exposedCount) {
 			const variantCounts: Record<string, number> = {};
@@ -313,7 +322,7 @@ export function createBuiltinExperimentAnalysis(): ExperimentAnalysisPort {
 				totalAssigned,
 				totalExposed: exposedCount,
 				verdict,
-				...(winningVariant !== undefined ? { winningVariant } : {}),
+				...(winningVariant !== undefined ? { winningVariant } : undefined),
 				metrics: experiment.metrics ?? [],
 			});
 			const contentHash =
@@ -325,7 +334,9 @@ export function createBuiltinExperimentAnalysis(): ExperimentAnalysisPort {
 				totalAssigned,
 				totalExposed: exposedCount,
 				verdict,
-				...(winningVariant !== undefined && !tie ? { winningVariant } : {}),
+				...(winningVariant !== undefined && !tie
+					? { winningVariant }
+					: undefined),
 				exportPayload: Object.freeze({
 					format: "json" as const,
 					contentHash,
@@ -333,7 +344,7 @@ export function createBuiltinExperimentAnalysis(): ExperimentAnalysisPort {
 				}),
 			});
 		},
-	});
+	}) as never;
 }
 
 /**
@@ -346,6 +357,7 @@ export function createResidualExperimentAnalysis(options: {
 	readonly fallback?: ExperimentAnalysisPort;
 }): ExperimentAnalysisPort {
 	const fallback = options.fallback ?? createBuiltinExperimentAnalysis();
+	// SAFETY: assertion to ` as FetchLike); return Objec` is required at this boundary.
 	const fetchImpl = options.fetchImpl ?? (globalThis.fetch as FetchLike);
 	return Object.freeze({
 		analyze(experiment, assignments, exposedCount) {

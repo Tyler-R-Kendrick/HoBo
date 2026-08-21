@@ -299,9 +299,11 @@ describe("secretless resolution ladder", () => {
 			sensitiveRefusal = cause;
 		}
 		expect(sensitiveRefusal).toBeInstanceOf(Error);
+		// SAFETY: assertion to `itiveRefusal as { code?: unknown }).co` is required at this boundary.
 		expect((sensitiveRefusal as { code?: unknown }).code).toBe(
 			"override-looks-sensitive",
 		);
+		// SAFETY: assertion to `itiveRefusal as Error).me` is required at this boundary.
 		expect((sensitiveRefusal as Error).message).toBe(
 			"local override API_KEY looks sensitive; only non-secret config allowed",
 		);

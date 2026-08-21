@@ -1,7 +1,8 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const FLOW_PREFERENCE = ["oauth2-xaa", "oauth2-obo", "mcp-oauth2.1"];
 
 export function createConnectorBinding(name, authJson, options = {}) {
-  if (!name || typeof name !== "string") {
+  if (!name || !isJsonString(name)) {
     throw new TypeError("connector name must be a non-empty string");
   }
 
@@ -96,7 +97,7 @@ export function selectExternalAppFlow(authJson) {
 
 function normalizeFlow(flow) {
   const scopes = validateScopeList(flow.scopes ?? [], "scopes");
-  const audience = typeof flow.audience === "string" && flow.audience.length > 0
+  const audience = isJsonString(flow.audience) && flow.audience.length > 0
     ? flow.audience
     : undefined;
 
@@ -113,7 +114,7 @@ function normalizeFlow(flow) {
     idJag: Boolean(flow.idJag),
     audience,
     scopes: Object.freeze(scopes),
-    operations: Object.freeze({ ...(flow.operations ?? {}) }),
+    operations: Object.freeze({ ...flow.operations }),
   });
 }
 
@@ -182,7 +183,7 @@ function validateScopeList(scopes, context) {
   }
 
   for (const scope of scopes) {
-    if (typeof scope !== "string" || !/^[a-z][a-z0-9.-]*:[a-z][a-z0-9.-]*$/.test(scope)) {
+    if (!isJsonString(scope) || !/^[a-z][a-z0-9.-]*:[a-z][a-z0-9.-]*$/.test(scope)) {
       throw new Error(`Invalid scope in ${context}: ${scope}`);
     }
   }
@@ -205,7 +206,7 @@ function validateScopes(scopes, advertisedScopes, context) {
 
 function deepFreeze(value) {
   for (const child of Object.values(value)) {
-    if (child && typeof child === "object") {
+    if (child && isJsonObject(child)) {
       deepFreeze(child);
     }
   }

@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const ALERT_ROUTING_CONTRACT_VERSION = "hobo.alert-routing/v1";
 
@@ -449,12 +451,12 @@ function groupKeyFor(signal, groupBy) {
 }
 
 function sendDelivery(receiver, delivery) {
-  if (!receiver || typeof receiver.send !== "function") {
+  if (!receiver || !(receiver.send instanceof Function)) {
     return { ok: false, error: "receiver-missing", retryAfter: "30s" };
   }
   try {
     const result = receiver.send(delivery);
-    return result && typeof result === "object" ? result : { ok: false, error: "receiver-returned-non-object" };
+    return result && isJsonObject(result) ? result : { ok: false, error: "receiver-returned-non-object" };
   } catch (error) {
     return { ok: false, error: error.message, retryAfter: "30s" };
   }
@@ -512,7 +514,7 @@ function normalizeJsonObject(input, path) {
 }
 
 function expectObject(input, fieldName) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
   return input;
@@ -543,14 +545,14 @@ function requireNonNegativeInteger(value, fieldName) {
 }
 
 function requireString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
 }
 
 function normalizeInstant(value, fieldName) {
-  if (typeof value !== "string") {
+  if (!isJsonString(value)) {
     throw new TypeError(`${fieldName} must be an ISO-8601 string`);
   }
   const timestamp = Date.parse(value);
@@ -594,7 +596,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))

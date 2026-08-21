@@ -8,7 +8,6 @@ import {
 } from "../../hobo-realize-emission-contract/src/realize-emission-contract.js";
 import {
   BUILD_WASM_PROVIDER_ID,
-  BuildWasmError,
   createBuildWasmProvider,
   createFixtureWasmBuildSpec,
   runBuildWasmConformance,

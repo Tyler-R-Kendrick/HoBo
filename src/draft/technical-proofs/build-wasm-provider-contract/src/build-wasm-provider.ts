@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonObject } from "./json.js";
+
 
 export const BUILD_WASM_PROVIDER_ID = "@hobo/build-wasm";
 export const BUILD_SPEC_VERSION = "hobo.buildSpec/v1";
@@ -75,14 +77,14 @@ export function createFixtureWasmBuildSpec(overrides = {}) {
     ...overrides,
     source: {
       ...base.source,
-      ...(overrides.source ?? {}),
+      ...overrides.source,
     },
     toolchain: {
       ...base.toolchain,
-      ...(overrides.toolchain ?? {}),
+      ...overrides.toolchain,
       digests: {
         ...base.toolchain.digests,
-        ...(overrides.toolchain?.digests ?? {}),
+        ...overrides.toolchain?.digests,
       },
     },
   });
@@ -196,7 +198,7 @@ export async function runBuildWasmConformance(provider, { wireImageRef } = {}) {
   const failures = [];
   const spec = createFixtureWasmBuildSpec();
 
-  if (provider?.id !== BUILD_WASM_PROVIDER_ID || typeof provider?.build !== "function") {
+  if (provider?.id !== BUILD_WASM_PROVIDER_ID || !(provider?.build instanceof Function)) {
     throw new BuildWasmError("conformance-failed", "provider does not expose the @hobo/build-wasm shape");
   }
 
@@ -211,7 +213,7 @@ export async function runBuildWasmConformance(provider, { wireImageRef } = {}) {
   if (first.kind !== "ImageRef" || first.artifactId !== spec.id || first.component.mediaType !== COMPONENT_MEDIA_TYPE) {
     failures.push("build did not return a wasm-component ImageRef for the requested artifact");
   }
-  if (typeof wireImageRef !== "function") {
+  if (!(wireImageRef instanceof Function)) {
     failures.push("conformance did not receive an IacProgram wire-back hook");
   } else {
     const wireBack = await wireImageRef(first, spec);
@@ -241,7 +243,7 @@ export async function runBuildWasmConformance(provider, { wireImageRef } = {}) {
 }
 
 function validateBuildSpec(spec) {
-  if (!spec || typeof spec !== "object") {
+  if (!spec || !isJsonObject(spec)) {
     throw new BuildWasmError("invalid-build-spec", "BuildSpec must be an object");
   }
   if (spec.apiVersion !== BUILD_SPEC_VERSION) {
@@ -423,14 +425,14 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object" || Buffer.isBuffer(value)) {
+  if (!value || !isJsonObject(value) || Buffer.isBuffer(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value) || ArrayBuffer.isView(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value) || ArrayBuffer.isView(value)) {
     return value;
   }
 

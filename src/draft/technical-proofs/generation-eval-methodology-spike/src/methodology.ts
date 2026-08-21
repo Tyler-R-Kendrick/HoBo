@@ -1,3 +1,4 @@
+import { isJsonNumber, isJsonObject } from "./json.js";
 export const GENERATION_EVAL_METHODOLOGY_SCHEMA = "hobo.generation-eval-methodology/v1";
 
 const REQUIRED_SPLITS = ["training", "heldOut", "adversarial"];
@@ -45,7 +46,7 @@ export function createGenerationEvalMethodology(overrides = {}) {
 export function validateGenerationEvalMethodology(candidate) {
   const errors = [];
 
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     return { ok: false, errors: ["methodology must be an object"], methodology: null };
   }
 
@@ -84,7 +85,7 @@ export function evaluatePromotionReadiness(methodology, evalRun) {
   if (!Number.isInteger(evalRun.samples) || evalRun.samples < evidence.minSamples) {
     failures.push(`samples below minimum ${evidence.minSamples}`);
   }
-  if (typeof evalRun.shadowTrafficPercent !== "number" || evalRun.shadowTrafficPercent < evidence.shadowTrafficPercent) {
+  if (!isJsonNumber(evalRun.shadowTrafficPercent) || evalRun.shadowTrafficPercent < evidence.shadowTrafficPercent) {
     failures.push(`shadow traffic below ${evidence.shadowTrafficPercent}%`);
   }
   if (evalRun.heldOutPassed !== true) {
@@ -116,13 +117,13 @@ export function evaluatePromotionReadiness(methodology, evalRun) {
 }
 
 function validateSplits(splits, errors) {
-  if (!splits || typeof splits !== "object" || Array.isArray(splits)) {
+  if (!splits || !isJsonObject(splits) || Array.isArray(splits)) {
     errors.push("splits must be an object");
     return;
   }
 
   for (const split of REQUIRED_SPLITS) {
-    if (!splits[split] || typeof splits[split] !== "object") {
+    if (!splits[split] || !isJsonObject(splits[split])) {
       errors.push(`splits.${split} is required`);
     }
   }
@@ -141,7 +142,7 @@ function validateSplits(splits, errors) {
 }
 
 function validateMinimumEvidence(evidence, errors) {
-  if (!evidence || typeof evidence !== "object" || Array.isArray(evidence)) {
+  if (!evidence || !isJsonObject(evidence) || Array.isArray(evidence)) {
     errors.push("minimumEvidence must be an object");
     return;
   }
@@ -157,7 +158,7 @@ function validateMinimumEvidence(evidence, errors) {
 }
 
 function validateTrajectoryGolden(golden, errors) {
-  if (!golden || typeof golden !== "object" || Array.isArray(golden)) {
+  if (!golden || !isJsonObject(golden) || Array.isArray(golden)) {
     errors.push("trajectoryGolden must be an object");
     return;
   }
@@ -176,7 +177,7 @@ function validateTrajectoryGolden(golden, errors) {
 }
 
 function validateIndependentCalibration(calibration, errors) {
-  if (!calibration || typeof calibration !== "object" || Array.isArray(calibration)) {
+  if (!calibration || !isJsonObject(calibration) || Array.isArray(calibration)) {
     errors.push("independentCalibration must be an object");
     return;
   }
@@ -209,14 +210,14 @@ function isPositiveInteger(value) {
 }
 
 function isPercentNumber(value) {
-  return typeof value === "number" && value > 0 && value <= 100;
+  return isJsonNumber(value) && value > 0 && value <= 100;
 }
 
 function deepMerge(base, overrides) {
   if (Array.isArray(base) || Array.isArray(overrides)) {
     return overrides === undefined ? structuredClone(base) : structuredClone(overrides);
   }
-  if (!base || typeof base !== "object") {
+  if (!base || !isJsonObject(base)) {
     return overrides === undefined ? base : overrides;
   }
 
@@ -231,7 +232,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

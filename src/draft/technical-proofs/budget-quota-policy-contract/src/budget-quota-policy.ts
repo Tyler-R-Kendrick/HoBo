@@ -6,6 +6,8 @@ import {
   createDecisionRequest,
   createPolicyDecidedEvent,
 } from "../../hobo-policy-ir-contract/src/policy-ir.js";
+import { isJsonString, isJsonBoolean, isJsonObject } from "./json.js";
+
 
 export const BUDGET_QUOTA_POLICY_ENGINE_ID = "hobo.budget-quota-policy/contract@0.1.0";
 export const BUDGET_QUOTA_POLICY_SCHEMA_VERSION = "hobo.budget-quota-policy/v1";
@@ -467,7 +469,7 @@ function evaluateCostAvailabilityProfile(state, policy, { currentSpendUsd, proje
 
 function maybeAddCompensationObligation(state) {
   const partial = state.request.context.partialProvisioning;
-  if (!partial || typeof partial !== "object" || Array.isArray(partial)) {
+  if (!partial || !isJsonObject(partial) || Array.isArray(partial)) {
     return;
   }
   const sagaId = optionalString(partial.sagaId);
@@ -600,7 +602,7 @@ function createQuotaContextMissingEvent({ request, meteringView, estimateUsd, po
           scopeKind: policy.scope.kind,
           scopeId: policy.scope.id,
         }
-      : {}),
+      : undefined),
   };
   return {
     id: `${payload.type}:${shortHash(payload)}`,
@@ -792,7 +794,7 @@ function readCounterValue(input) {
   if (Number.isFinite(input) && input >= 0) {
     return roundUsd(input);
   }
-  if (typeof input === "object" && !Array.isArray(input)) {
+  if (isJsonObject(input) && !Array.isArray(input)) {
     for (const key of ["cost", "costUsd", "spendUsd", "value"]) {
       if (Number.isFinite(input[key]) && input[key] >= 0) {
         return roundUsd(input[key]);
@@ -828,27 +830,27 @@ function readOptionalCost(context, key) {
 }
 
 function readActorId(request) {
-  if (typeof request.context.actorId === "string" && request.context.actorId.length > 0) {
+  if (isJsonString(request.context.actorId) && request.context.actorId.length > 0) {
     return request.context.actorId;
   }
-  if (typeof request.subject.delegatedBy === "string") {
+  if (isJsonString(request.subject.delegatedBy)) {
     return request.subject.delegatedBy;
   }
-  if (request.subject.delegatedBy && typeof request.subject.delegatedBy === "object") {
+  if (request.subject.delegatedBy && isJsonObject(request.subject.delegatedBy)) {
     return `${request.subject.delegatedBy.kind}:${request.subject.delegatedBy.id}`;
   }
   return request.subject.id;
 }
 
 function expectObject(input, fieldName) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
   return input;
 }
 
 function requireString(input, fieldName) {
-  if (typeof input !== "string" || input.length === 0) {
+  if (!isJsonString(input) || input.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return input;
@@ -858,7 +860,7 @@ function optionalString(input) {
   if (input === undefined || input === null) {
     return null;
   }
-  if (typeof input !== "string" || input.length === 0) {
+  if (!isJsonString(input) || input.length === 0) {
     return null;
   }
   return input;
@@ -875,11 +877,11 @@ function parseOptionalStringArray(input) {
   if (!Array.isArray(input)) {
     return [];
   }
-  return input.filter((value) => typeof value === "string" && value.length > 0);
+  return input.filter((value) => isJsonString(value) && value.length > 0);
 }
 
 function requireBoolean(input, fieldName) {
-  if (typeof input !== "boolean") {
+  if (!isJsonBoolean(input)) {
     throw new TypeError(`${fieldName} must be a boolean`);
   }
   return input;

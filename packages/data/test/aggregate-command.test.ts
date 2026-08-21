@@ -50,9 +50,10 @@ function counter(
 	return defineAggregate<Counter, Add>({
 		name: "counter",
 		initialState: { total: 0 },
-		evolve: (state, event) => {
-			if (event.type !== "counter.Added") return state;
-			const data = event.data as { amount?: number };
+			evolve: (state, event) => {
+				if (event.type !== "counter.Added") return state;
+				// SAFETY: counter.Added is emitted below with this exact payload shape.
+				const data = event.data as { amount?: number };
 			return { total: state.total + (data.amount ?? 0) };
 		},
 		decide: (state, command, emit) => {
@@ -191,7 +192,7 @@ describe("executing a command", () => {
 		const d = deps();
 		try {
 			const result = await counter().execute(d, "c1", { amount: 1 }, context);
-			expect(typeof result.fenceToken).toBe("bigint");
+			expect(result.fenceToken).toBeTypeOf("bigint");
 		} finally {
 			d.store.close();
 		}
@@ -250,13 +251,14 @@ describe("a command that emits nothing", () => {
 });
 
 describe("the emit contract", () => {
-	function emitting(type: unknown) {
+	function emitting(type: string | number) {
 		return defineAggregate<Counter, Add>({
 			name: "counter",
 			initialState: { total: 0 },
 			evolve: (s) => s,
 			decide: (_state, _command, emit) => {
-				(emit.emit as (t: unknown) => void)(type);
+				// SAFETY: the negative tests intentionally call the string-only emitter with a number.
+				(emit.emit as (t: string | number) => void)(type);
 			},
 		});
 	}
@@ -349,8 +351,9 @@ describe("the emit contract", () => {
 		const twice = defineAggregate<Counter, Add>({
 			name: "counter",
 			initialState: { total: 0 },
-			evolve: (state, event) => {
-				const data = event.data as { amount?: number };
+				evolve: (state, event) => {
+					// SAFETY: counter.Added is emitted below with this exact payload shape.
+					const data = event.data as { amount?: number };
 				return { total: state.total + (data.amount ?? 0) };
 			},
 			decide: (_s, _c, emit) => {
@@ -403,9 +406,7 @@ describe("the lifecycle trail", () => {
 		const d = deps();
 		try {
 			const result = await counter().execute(d, "c1", { amount: 1 }, context);
-			const activated = result.lifecycle[0] as {
-				data?: Record<string, unknown>;
-			};
+			const activated = result.lifecycle[0];
 			expect(activated.data?.fenceToken).toBeDefined();
 		} finally {
 			d.store.close();
@@ -419,9 +420,7 @@ describe("the lifecycle trail", () => {
 		const d = deps();
 		try {
 			const result = await counter().execute(d, "c1", { amount: 1 }, context);
-			const passivated = result.lifecycle.at(-1) as {
-				data?: Record<string, unknown>;
-			};
+			const passivated = result.lifecycle.at(-1);
 			expect(passivated.data?.seq).toBe(1);
 		} finally {
 			d.store.close();
@@ -518,7 +517,7 @@ describe("translating store failures", () => {
 			read: store.read.bind(store),
 			append: fail,
 			commit: fail,
-		} as unknown as typeof store;
+		};
 		return { store: delegate, close: () => store.close() };
 	}
 
@@ -642,17 +641,15 @@ describe("translating store failures", () => {
 			}
 			return run();
 		};
-		const durable = store as typeof store & {
-			commit: (req: unknown) => Promise<unknown>;
-		};
+		const durable = store;
 		const flaky = {
 			...store,
 			read: store.read.bind(store),
 			append: (...args: Parameters<typeof store.append>) =>
 				conflictOnce(() => store.append(...args)),
-			commit: (req: unknown) =>
-				conflictOnce(() => durable.commit.call(store, req)),
-		} as unknown as typeof store;
+			commit: (...args: Parameters<typeof store.commit>) =>
+				conflictOnce(() => durable.commit(...args)),
+		} satisfies typeof store;
 		try {
 			await expect(
 				counter().execute(
@@ -745,9 +742,7 @@ describe("the command context", () => {
 					holderId: "worker-3",
 				},
 			);
-			const activated = result.lifecycle[0] as {
-				data?: Record<string, unknown>;
-			};
+			const activated = result.lifecycle[0];
 			expect(activated.data?.holderId).toBe("worker-3");
 		} finally {
 			d.store.close();

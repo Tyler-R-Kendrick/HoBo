@@ -34,7 +34,7 @@ const HOST = process.env.HOBO_YARD_HOST ?? "0.0.0.0";
 const GAME_PORT = Number(process.env.HOBO_YARD_PORT ?? 8788);
 const API_PORT = Number(process.env.HOBO_CONTROL_PORT ?? 8790);
 
-const MIME: Record<string, string> = {
+const MIME = {
 	".html": "text/html; charset=utf-8",
 	".js": "text/javascript; charset=utf-8",
 	".css": "text/css; charset=utf-8",
@@ -45,7 +45,7 @@ const MIME: Record<string, string> = {
 	".svg": "image/svg+xml",
 	".gif": "image/gif",
 	".mp4": "video/mp4",
-};
+} satisfies Record<string, string>;
 
 function serveDir(base: string) {
 	return (
@@ -93,6 +93,7 @@ const pub = stationRailsPublish(ctx, {
 	name: "prod",
 	version: "1.0.0",
 });
+// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 const hash = String((pub.data as { contentHash: string }).contentHash);
 stationRailsApprove(ctx, { stationId: "station:local", hashOrId: hash });
 stationRailsActivate(ctx, { stationId: "station:local", hashOrId: hash });

@@ -109,7 +109,8 @@ main
                                                                                                   └── sdlc/anti-slop-98-draft-forge-search-guardrail-runtime  #1357 forge-certification+full-text-search+guardrail-gate+runtime-primitives
                                                                                                    └── sdlc/anti-slop-99-draft-opentofu-junction-queue-rbac  #1358 opentofu+junction-federation+queue-clock+rbac-binding
                                                                                                     └── sdlc/anti-slop-100-draft-registry-reconcile-rollback-runaway  #1359 registry-guard+resourceactor-reconcile+rollback-compensation+runaway-remediation
-                                                                                                     └── sdlc/anti-slop-101-draft-spend-flag-secretless-escape  runaway-spend+sdk-flag+secretless-config+static-key-escape
+                                                                                                     └── sdlc/anti-slop-101-draft-spend-flag-secretless-escape  #1360 runaway-spend+sdk-flag+secretless-config+static-key-escape
+                                                                                                      └── sdlc/anti-slop-102-draft-token-adopt-champion-host  token-broker+adopt-in-place+champion-challenger+component-host
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -230,6 +231,8 @@ Layer 97: `built-in-flag-store-contract` + `chaos-experiment-orchestration-contr
 Layer 98: `forge-certification-loop-contract` + `full-text-search-contract` + `guardrail-policy-gate-contract` + `hobo-runtime-primitives` oxlint `--deny-warnings` clean (#1357).
 Layer 99: `iac-opentofu-backend-contract` + `junction-registry-federation-contract` + `queue-clock-runtime-port-contract` + `rbac-role-binding-contract` oxlint `--deny-warnings` clean (#1358).
 Layer 100: `registry-dependency-confusion-guard-contract` + `resourceactor-reconcile-loop-contract` + `rollback-failure-compensation-contract` + `runaway-remediation-guard-contract` oxlint `--deny-warnings` clean (#1359).
-Layer 101: `runaway-spend-circuit-breaker-contract` + `sdk-flag-surface-contract` + `secretless-config-resolution-contract` + `static-key-escape-hatch-contract` oxlint `--deny-warnings` clean.
-Next: remaining `src/draft/` (token-broker + 7-count technical-proofs, then lower, then exp-proofs, projects).
+Layer 101: `runaway-spend-circuit-breaker-contract` + `sdk-flag-surface-contract` + `secretless-config-resolution-contract` + `static-key-escape-hatch-contract` oxlint `--deny-warnings` clean (#1360).
+Layer 102: `token-broker-skeleton-contract` + `adopt-in-place-contract` + `champion-challenger-promotion-contract` + `component-host-adapter-certification-spike` oxlint `--deny-warnings` clean.
+Next: remaining 7-count `src/draft/technical-proofs`, then lower counts, then exp-proofs, projects.
 Full-repo `lint:slop --deny-warnings` is still red until those land.
+GitHub stack metadata is at the 100-entry cap; later layers still open PRs via `gh stack submit --auto`.

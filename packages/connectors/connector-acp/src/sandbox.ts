@@ -1,3 +1,10 @@
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "./json.js";
+
 // The Executor sandbox posture every spawned agent subprocess must run
 // under (s3-07 guardrails): NO ambient credentials, workspace-scoped
 // filesystem, allowlisted network. Vendor adapters pass this record to the
@@ -24,11 +31,14 @@ export interface AgentSandboxPosture {
  * document becomes a frozen derived posture or throws. `ambientCredentials`
  * must be exactly `false`; open network scopes are rejected.
  */
-export function parseSandboxPosture(input: unknown): AgentSandboxPosture {
-	if (!input || typeof input !== "object" || Array.isArray(input)) {
+export type ProcessEnvBag = { [name: string]: string | undefined };
+export type ScrubbedEnv = { [name: string]: string };
+
+export function parseSandboxPosture(input: JsonValue): AgentSandboxPosture {
+	if (!isJsonObject(input)) {
 		throw new Error("sandbox posture must be an object");
 	}
-	const source = input as Record<string, unknown>;
+	const source = input;
 	if (source.schema !== SANDBOX_POSTURE_SCHEMA) {
 		throw new Error(`sandbox posture schema must be ${SANDBOX_POSTURE_SCHEMA}`);
 	}
@@ -37,30 +47,29 @@ export function parseSandboxPosture(input: unknown): AgentSandboxPosture {
 			"sandbox posture must set ambientCredentials: false — agents never inherit ambient credentials",
 		);
 	}
-	const filesystem = source.filesystem as
-		| { scope?: unknown; root?: unknown }
-		| undefined;
+	const filesystem = source.filesystem;
 	if (
-		filesystem?.scope !== "workspace" ||
-		typeof filesystem.root !== "string" ||
+		!isJsonObject(filesystem) ||
+		filesystem.scope !== "workspace" ||
+		!isJsonString(filesystem.root) ||
 		filesystem.root.length === 0
 	) {
 		throw new Error(
 			"sandbox posture filesystem must be workspace-scoped with a root",
 		);
 	}
-	const network = source.network as
-		| { scope?: unknown; allowlist?: unknown }
-		| undefined;
-	if (network?.scope !== "allowlist" || !Array.isArray(network.allowlist)) {
+	const network = source.network;
+	if (
+		!isJsonObject(network) ||
+		network.scope !== "allowlist" ||
+		!isJsonArray(network.allowlist)
+	) {
 		throw new Error(
 			"sandbox posture network must be allowlist-scoped (no open egress)",
 		);
 	}
-	const envAllowlist = Array.isArray(source.envAllowlist)
-		? source.envAllowlist.filter(
-				(value): value is string => typeof value === "string",
-			)
+	const envAllowlist = isJsonArray(source.envAllowlist)
+		? source.envAllowlist.filter(isJsonString)
 		: [];
 
 	return Object.freeze({
@@ -72,11 +81,7 @@ export function parseSandboxPosture(input: unknown): AgentSandboxPosture {
 		}),
 		network: Object.freeze({
 			scope: "allowlist",
-			allowlist: Object.freeze(
-				network.allowlist.filter(
-					(value): value is string => typeof value === "string",
-				),
-			),
+			allowlist: Object.freeze(network.allowlist.filter(isJsonString)),
 		}),
 		envAllowlist: Object.freeze(envAllowlist),
 	});
@@ -87,14 +92,14 @@ export function parseSandboxPosture(input: unknown): AgentSandboxPosture {
 // into the agent subprocess.
 export function scrubEnvironment(
 	posture: AgentSandboxPosture,
-	env: Record<string, string | undefined> = process.env,
-): Record<string, string> {
-	const scrubbed: Record<string, string> = {};
+	env: ProcessEnvBag = process.env,
+) {
+	const pairs: Array<readonly [string, string]> = [];
 	for (const key of posture.envAllowlist) {
 		const value = env[key];
 		if (value !== undefined) {
-			scrubbed[key] = value;
+			pairs.push([key, value]);
 		}
 	}
-	return scrubbed;
+	return Object.fromEntries(pairs) satisfies ScrubbedEnv;
 }

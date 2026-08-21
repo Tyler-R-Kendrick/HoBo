@@ -15,6 +15,10 @@ const plan = parseDeploymentPlan(JSON.parse(body));   // or throws, naming the f
 const hash = hashDeploymentPlan(plan);                // sha256 over the canonical form
 ```
 
+Untrusted input is `PlanParseInput` (JSON plus the non-JSON values this boundary
+refuses), not `unknown`. Parsed `realizationParameters` are `JsonObject`
+(`JsonValue` fields), not `Record<string, unknown>`.
+
 `parseDeploymentPlan` and `parseResourcePlan` are the only way to obtain a
 `DeploymentPlan` or a `ResourcePlan`: both types are branded, so a raw record
 cannot be cast into one and no consumer downstream has to re-validate.
@@ -84,9 +88,10 @@ in a `NonPortableRows` message, whose message-typed field does carry presence.
 
 ### 2. `realizationParameters` cannot be `map<string, string>`
 
-The domain type is `Readonly<Record<string, unknown>>` and real values carry
-non-strings: `packages/cloud/test/plan-binding-authority.test.ts` asserts the
-planner emits `{ ttlSeconds: 3600, tier: "standard" }`. `cloud.proto` declares
+The inherited domain type was `Readonly<Record<string, unknown>>`; this package
+narrows it to `JsonObject` (`PlanParameterValue` / `JsonValue` fields). Real
+values carry non-strings: `packages/cloud/test/plan-binding-authority.test.ts`
+asserts the planner emits `{ ttlSeconds: 3600, tier: "standard" }`. `cloud.proto` declares
 `map<string, string>` and its comment names the intended encoding — "non-string
 JSON values are carried as canonical JSON text". That encoding is not
 injective:

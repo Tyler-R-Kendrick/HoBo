@@ -48,7 +48,7 @@ export function validateCiFabricContract(
 		});
 	}
 
-	validateContractShape(contract, violations);
+	validateDeclaredContract(contract, violations);
 	if (workflows !== null) {
 		validateWorkflowFiles(contract, workflows, violations);
 	}
@@ -77,7 +77,7 @@ export function assertCiFabricContract(
 	return report;
 }
 
-function validateContractShape(
+function validateDeclaredContract(
 	contract: CiFabricContract,
 	violations: ContractViolation[],
 ): void {
@@ -474,6 +474,42 @@ export function shouldRunHelloBindleE2e(
 	});
 }
 
+export interface SimulationEvent {
+	readonly type: string;
+	readonly audience?: string;
+	readonly subject?: string;
+	readonly role?: string;
+	readonly scopes?: readonly string[];
+	readonly fixture?: string;
+	readonly runId?: string;
+	readonly liveUrl?: string;
+	readonly ok?: boolean;
+	readonly selector?: string;
+	readonly maxAgeMinutes?: number;
+}
+
+export interface HelloBindleSimulation {
+	readonly status: "passed" | "failed";
+	readonly failure?: { readonly code: string; readonly message: string };
+	readonly token: {
+		readonly issuer: string;
+		readonly audience: string;
+		readonly subject: string;
+		readonly scopes: readonly string[];
+		readonly expiresInSeconds: number;
+	};
+	readonly deployment: {
+		readonly fixture: string;
+		readonly runId: string;
+		readonly liveUrl: string;
+	};
+	readonly cleanup: {
+		readonly teardownAttempted: boolean;
+		readonly orphanSweeperRan: boolean;
+	};
+	readonly events: readonly SimulationEvent[];
+}
+
 export function simulateHelloBindleE2e(
 	contract: CiFabricContract,
 	{
@@ -481,20 +517,7 @@ export function simulateHelloBindleE2e(
 		liveUrl,
 		failAt,
 	}: { githubRunId?: string; liveUrl?: string; failAt?: string } = {},
-): {
-	status: "passed" | "failed";
-	failure?: { code: string; message: string };
-	token: {
-		issuer: string;
-		audience: string;
-		subject: string;
-		scopes: readonly string[];
-		expiresInSeconds: number;
-	};
-	deployment: { fixture: string; runId: string; liveUrl: string };
-	cleanup: { teardownAttempted: boolean; orphanSweeperRan: boolean };
-	events: readonly { type: string; [key: string]: unknown }[];
-} {
+): HelloBindleSimulation {
 	const report = validateCiFabricContract(contract, null);
 	if (!report.passed) {
 		throw new CiFabricContractError(
@@ -506,7 +529,7 @@ export function simulateHelloBindleE2e(
 
 	const runId = githubRunId ?? "local-run";
 	const e2e = contract.e2e;
-	const events: { type: string; [key: string]: unknown }[] = [];
+	const events: SimulationEvent[] = [];
 	const token = {
 		issuer: e2e.auth.tokenBroker,
 		audience: e2e.auth.audience,
@@ -552,12 +575,22 @@ export function simulateHelloBindleE2e(
 		maxAgeMinutes: e2e.teardown.orphanSweeper.maxAgeMinutes,
 	});
 
+	const cleanup = { teardownAttempted: true, orphanSweeperRan: true };
+	if (failure !== undefined) {
+		return {
+			status: "failed",
+			failure,
+			token,
+			deployment,
+			cleanup,
+			events,
+		};
+	}
 	return {
-		status: failure ? "failed" : "passed",
-		...(failure ? { failure } : {}),
+		status: "passed",
 		token,
 		deployment,
-		cleanup: { teardownAttempted: true, orphanSweeperRan: true },
+		cleanup,
 		events,
 	};
 }

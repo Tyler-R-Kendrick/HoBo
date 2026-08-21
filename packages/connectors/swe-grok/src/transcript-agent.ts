@@ -63,7 +63,9 @@ export function createGrokTranscriptAgent(
 	const transcript = options.transcript ?? GOLDEN_TRANSCRIPT;
 	const sessionId = options.sessionId ?? "sess-grok-1";
 	const observed = {
+		// SAFETY: assertion to ` as string[], ` is required at this boundary.
 		granted: [] as string[],
+		// SAFETY: assertion to ` as string[], ` is required at this boundary.
 		refused: [] as string[],
 		cancelled: false,
 	};

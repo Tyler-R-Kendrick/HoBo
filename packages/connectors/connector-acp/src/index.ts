@@ -20,6 +20,7 @@ export {
 export {
 	ACTION_CLASSES,
 	type ActionClass,
+	type ActionClassMap,
 	type ActionClassEffect,
 	AGENT_GUARDRAILS_SCHEMA,
 	type AgentGuardrailPolicy,

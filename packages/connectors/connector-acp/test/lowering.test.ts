@@ -69,6 +69,9 @@ describe("ACP connector lowering (HOBO-88 seam, HOBO-32 vectors)", () => {
 		assert.equal(exportNames.includes("createAgent"), false);
 		assert.equal(exportNames.includes("agents"), false);
 		// The connector declaration is the only protocol entry point.
-		assert.equal(typeof connectorAcp.acpConnector, "function");
+		assert.equal(
+			Object.prototype.toString.call(connectorAcp.acpConnector),
+			"[object Function]",
+		);
 	});
 });

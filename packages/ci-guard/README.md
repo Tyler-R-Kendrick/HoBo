@@ -6,7 +6,7 @@ historical draft proof at `src/draft/technical-proofs/ci-fabric-oidc-e2e-contrac
 
 ## Surface
 
-- `createHoboCiFabricContract()` / `parseCiFabricContract()` / `validateCiFabricContract(contract, workflows)`
+- `createHoboCiFabricContract()` / `parseCiFabricContract(JsonValue)` / `validateCiFabricContract(contract, workflows)`
 - `loadWorkflowFiles()` reads committed `.github/workflows/*.yml`
 - `runExampleFixture()` parameterized over `examples/*` with append-only `e2e.*` JSONL events
 - CLIs: `bin/assert-ci-contract.ts`, `bin/run-example-fixture.ts`

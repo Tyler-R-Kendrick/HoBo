@@ -2,9 +2,12 @@ import { describe, expect, it } from "vitest";
 
 import {
 	DEPLOYMENT_PLAN_SCHEMA,
+	type DeploymentPlan,
 	DeploymentPlanError,
+	type PlanParseInput,
 	parseDeploymentPlan,
 	parseResourcePlan,
+	type ResourcePlan,
 	ResourcePlanError,
 } from "../src/index.js";
 
@@ -18,7 +21,11 @@ import {
  * the code, and the exact field path.
  */
 
-const node = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
+interface PlanFixture {
+	[key: string]: PlanParseInput | undefined;
+}
+
+const node = (over: PlanFixture = {}): PlanFixture => ({
 	name: "sessions",
 	port: "kv",
 	provider: "@hobo/provider-cloudflare",
@@ -26,7 +33,7 @@ const node = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
 	...over,
 });
 
-const plan = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
+const plan = (over: PlanFixture = {}): PlanFixture => ({
 	schema: DEPLOYMENT_PLAN_SCHEMA,
 	resources: [node()],
 	dependencyOrder: ["sessions"],
@@ -34,7 +41,9 @@ const plan = (over: Record<string, unknown> = {}): Record<string, unknown> => ({
 	...over,
 });
 
-function refusal(fn: () => unknown): ResourcePlanError | DeploymentPlanError {
+function refusal(
+	fn: () => ResourcePlan | DeploymentPlan,
+): ResourcePlanError | DeploymentPlanError {
 	try {
 		fn();
 	} catch (error) {
@@ -239,7 +248,7 @@ describe("parseResourcePlan: realization parameters", () => {
 	});
 
 	it("admits a null-prototype object, which is still a plain JSON record", () => {
-		const bare = Object.create(null) as Record<string, unknown>;
+		const bare: PlanFixture = Object.create(null);
 		bare.tier = "standard";
 		const parsed = parseResourcePlan(
 			node({ realizationParameters: { limits: bare } }),

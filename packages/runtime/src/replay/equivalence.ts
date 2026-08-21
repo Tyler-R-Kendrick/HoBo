@@ -1,6 +1,12 @@
 import assert from "node:assert/strict";
 import crypto from "node:crypto";
 import { must, mustGet } from "@hobo/core/total-access";
+import {
+	cloneAsJson,
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 import { createDeterministicContext } from "./context.js";
 import { ReplayDivergenceError } from "./divergence.js";
 import type {
@@ -19,7 +25,7 @@ export interface AssertReplayEqualsLiveInput<S> {
 	upcast?: UpcastFn;
 	targetSeq?: SeqVector;
 	seed?: string;
-	normalize?: (value: unknown) => unknown;
+	normalize?: (value: JsonValue) => JsonValue;
 	runId?: string;
 }
 
@@ -58,8 +64,8 @@ export function assertReplayEqualsLive<S>({
 		ambientRandom: 0.999999999,
 	});
 
-	const normalizedLive = normalize(liveState);
-	const normalizedReplay = normalize(replayState);
+	const normalizedLive = normalize(cloneAsJson(liveState));
+	const normalizedReplay = normalize(cloneAsJson(replayState));
 
 	try {
 		assert.deepEqual(normalizedLive, normalizedReplay);
@@ -189,12 +195,14 @@ export function compareCanonicalEventOrder(
 	);
 }
 
-export function stableValue(value: unknown): unknown {
+export function stableValue(value: JsonValue): JsonValue {
 	if (value instanceof Map) {
 		return [...value.entries()]
 			.map(([key, entry]) => [stableValue(key), stableValue(entry)])
 			.sort(([left], [right]) =>
-				stableStringify(left).localeCompare(stableStringify(right)),
+				stableStringify(left ?? null).localeCompare(
+					stableStringify(right ?? null),
+				),
 			);
 	}
 
@@ -202,7 +210,9 @@ export function stableValue(value: unknown): unknown {
 		return [...value]
 			.map(stableValue)
 			.sort((left, right) =>
-				stableStringify(left).localeCompare(stableStringify(right)),
+				stableStringify(left ?? null).localeCompare(
+					stableStringify(right ?? null),
+				),
 			);
 	}
 
@@ -210,10 +220,13 @@ export function stableValue(value: unknown): unknown {
 		return value.map(stableValue);
 	}
 
-	if (value && typeof value === "object") {
+	if (value && isJsonObject(value)) {
 		return stableObject(
 			Object.fromEntries(
-				Object.entries(value).map(([key, entry]) => [key, stableValue(entry)]),
+				Object.entries(value).map(([key, entry]) => [
+					key,
+					stableValue(entry ?? null),
+				]),
 			),
 		);
 	}
@@ -221,7 +234,7 @@ export function stableValue(value: unknown): unknown {
 	return value;
 }
 
-export function stableStringify(value: unknown): string {
+export function stableStringify(value: JsonValue): string {
 	return JSON.stringify(stableValue(value));
 }
 
@@ -242,16 +255,18 @@ function seededUnit(input: string): number {
 	return Number.parseInt(hex, 16) / 0xffffffffffff;
 }
 
-function stableObject<T extends Record<string, unknown>>(value: T): T {
+function stableObject<T extends JsonObject>(value: T): T {
+	// SAFETY: assertion to `Object.fromEntries( Object.entries(value).sort(([left], [right]) => left.localeCompare(right)), ) as T` is required at this boundary.
 	return Object.fromEntries(
 		Object.entries(value).sort(([left], [right]) => left.localeCompare(right)),
 	) as T;
 }
 
 function clone<T>(value: T): T {
-	if (typeof structuredClone === "function") {
+	if (structuredClone instanceof Function) {
 		return structuredClone(value);
 	}
+	// SAFETY: assertion to `JSON.parse(JSON.stringify(value)) as T` is required at this boundary.
 	return JSON.parse(JSON.stringify(value)) as T;
 }
 

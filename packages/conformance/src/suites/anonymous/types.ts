@@ -13,7 +13,9 @@
  * mandatory lane replays offline and deterministically and the live lane is the
  * same data driven by a real adapter.
  */
+
 import type { EvidenceCheckOutcome } from "@hobo/trust";
+import type { JsonValue } from "../../json.js";
 
 import type { ConformanceSuiteDescriptor } from "../../types.js";
 
@@ -84,7 +86,7 @@ export interface AnonymousCase<TRequest, TExpectation> {
 /** The single effectful seam. Offline lanes pass a table; live lanes a driver. */
 export type AnonymousExecutor<TRequest> = (
 	request: TRequest,
-) => unknown | Promise<unknown>;
+) => JsonValue | Promise<JsonValue>;
 
 /**
  * Thrown by an executor that cannot exercise a case at all.

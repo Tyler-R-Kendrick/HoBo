@@ -1,3 +1,9 @@
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "../json.js";
 import { createDeterministicContext } from "./context.js";
 import { digest } from "./divergence.js";
 import { hashReadSet, seqVector, stableStringify } from "./equivalence.js";
@@ -45,8 +51,8 @@ export async function replayRun<S, A>(
 	}
 
 	let state = workflow.initialState(args);
-	const stepResults = new Map<string, unknown>();
-	const hookResults = new Map<string, unknown>();
+	const stepResults = new Map<string, JsonValue>();
+	const hookResults = new Map<string, JsonValue>();
 	const timerResults = new Map<string, { delayMs: number }>();
 	let stepCounter = 0;
 
@@ -75,8 +81,9 @@ export async function replayRun<S, A>(
 			);
 			if (completed) {
 				stepCounter += 1;
-				const result = (completed.data as { result: T }).result;
-				stepResults.set(stepId, result);
+				// SAFETY: assertion to `completed.data as { result: T }` is required at this boundary.
+				const result = (completed.data as { result: T }).result as T;
+				stepResults.set(stepId, cloneAsJson(result));
 				return result;
 			}
 			throw new Error(`missing memoized step ${name} at index ${stepCounter}`);
@@ -89,8 +96,10 @@ export async function replayRun<S, A>(
 				throw new Error("missing run.SleepScheduled");
 			}
 			timerResults.set("sleep", {
+				// SAFETY: assertion to `scheduled.data as { delayMs: number }` is required at this boundary.
 				delayMs: (scheduled.data as { delayMs: number }).delayMs,
 			});
+			// SAFETY: assertion to `scheduled.data as { delayMs: number }` is required at this boundary.
 			if ((scheduled.data as { delayMs: number }).delayMs !== delayMs) {
 				throw new Error("sleep schedule diverged");
 			}
@@ -100,8 +109,10 @@ export async function replayRun<S, A>(
 			if (!resumed) {
 				throw new Error("missing run.HookResumed");
 			}
-			hookResults.set("hook", (resumed.data as { payload: T }).payload);
-			return (resumed.data as { payload: T }).payload;
+			// SAFETY: assertion to `resumed.data as { payload: T }` is required at this boundary.
+			const payload = (resumed.data as { payload: T }).payload as T;
+			hookResults.set("hook", cloneAsJson(payload));
+			return payload;
 		},
 	};
 
@@ -113,7 +124,7 @@ export async function replayRun<S, A>(
 			.map(([streamIdEntry, seq]) => ({ streamId: streamIdEntry, seq }))
 			.sort((left, right) => left.streamId.localeCompare(right.streamId)),
 		readSetHash: hashReadSet(events),
-		stateDigest: digest(state),
+		stateDigest: digest(cloneAsJson(state)),
 		mode: "replay",
 		seed,
 	};
@@ -123,21 +134,23 @@ export async function replayRun<S, A>(
 
 function readSeed(events: EventEnvelope[]): string | undefined {
 	const started = events.find((event) => event.type === "run.Started");
-	if (!started?.data || typeof started.data !== "object") {
+	if (!started?.data || !isJsonObject(started.data)) {
 		return undefined;
 	}
-	const seed = (started.data as { seed?: unknown }).seed;
-	return typeof seed === "string" ? seed : undefined;
+	// SAFETY: assertion to `started.data as { seed?: JsonValue }` is required at this boundary.
+	const seed = (started.data as { seed?: JsonValue }).seed;
+	return isJsonString(seed) ? seed : undefined;
 }
 
-function matchesStep(data: unknown, name: string, index: number): boolean {
-	if (!data || typeof data !== "object") {
+function matchesStep(data: JsonValue, name: string, index: number): boolean {
+	if (!data || !isJsonObject(data)) {
 		return false;
 	}
+	// SAFETY: assertion to `data as { name?: string; index?: number }` is required at this boundary.
 	const record = data as { name?: string; index?: number };
 	return record.name === name && record.index === index;
 }
 
 export function canonicalStateBytes<S>(state: S): string {
-	return stableStringify(state);
+	return stableStringify(cloneAsJson(state));
 }

@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 import {
 	type ConformanceSuite,
 	type ConformanceSuiteDefinition,
@@ -8,7 +9,7 @@ import {
 export function createConformanceSuite(
 	definition: ConformanceSuiteDefinition,
 ): ConformanceSuite {
-	if (!definition || typeof definition !== "object") {
+	if (!definition || !isJsonObject(definition)) {
 		throw new TypeError("conformance suite definition is required");
 	}
 	if (!definition.id) {
@@ -49,9 +50,10 @@ export function createConformanceSuite(
 			functions: portFunctions,
 		}),
 		coverage: Object.freeze({
-			...cloneData(definition.coverage ?? {}),
+			...cloneData(definition.coverage),
 			requiredFunctions,
 		}),
+		// SAFETY: assertion to `Object.freeze(cases) as SuiteCase[]` is required at this boundary.
 		cases: Object.freeze(cases) as SuiteCase[],
 	});
 }

@@ -5,8 +5,8 @@
 // caught. A suite that only ever sees a passing adapter proves nothing.
 
 import { readFileSync } from "node:fs";
-
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../src/json.js";
 
 import {
 	ANONYMOUS_CONFORMANCE_SCHEMA,
@@ -251,7 +251,8 @@ describe("binding conformance catches a leaky or fake-portable binding", () => {
 					: {
 							...outcome,
 							binding: {
-								...(outcome.binding as Record<string, unknown>),
+								// SAFETY: assertion to `tcome.binding as JsonObject),` is required at this boundary.
+								...(outcome.binding as JsonObject),
 								id: "",
 							},
 						},
@@ -265,7 +266,8 @@ describe("binding conformance catches a leaky or fake-portable binding", () => {
 		const report = await runAnonymousSuite(
 			BINDING_CONFORMANCE_SUITE,
 			mutate(referenceBindingExecutor, (outcome) => {
-				const binding = outcome.binding as Record<string, unknown>;
+				// SAFETY: assertion to `tcome.binding as JsonObject; ` is required at this boundary.
+				const binding = outcome.binding as JsonObject;
 				return {
 					...outcome,
 					binding: {
@@ -292,7 +294,8 @@ describe("binding conformance catches a leaky or fake-portable binding", () => {
 		const report = await runAnonymousSuite(
 			BINDING_CONFORMANCE_SUITE,
 			mutate(referenceBindingExecutor, (outcome) => {
-				const binding = outcome.binding as Record<string, unknown>;
+				// SAFETY: assertion to `tcome.binding as JsonObject; ` is required at this boundary.
+				const binding = outcome.binding as JsonObject;
 				return {
 					...outcome,
 					binding: {
@@ -311,7 +314,8 @@ describe("binding conformance catches a leaky or fake-portable binding", () => {
 			BINDING_CONFORMANCE_SUITE,
 			mutate(referenceBindingExecutor, (outcome, request) => {
 				if (request.step !== "rotate") return outcome;
-				const binding = outcome.binding as Record<string, unknown>;
+				// SAFETY: assertion to `tcome.binding as JsonObject; ` is required at this boundary.
+				const binding = outcome.binding as JsonObject;
 				return {
 					...outcome,
 					binding: {

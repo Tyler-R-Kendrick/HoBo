@@ -4,6 +4,7 @@
 
 import { fromIacOutputs, fromRecipeOutputs } from "@hobo/core";
 import { describe, expect, it } from "vitest";
+import type { JsonValue } from "../src/json.js";
 
 import {
 	REALIZATION_RESULT_CONFORMANCE_CONTRACT,
@@ -32,7 +33,7 @@ const IAC_TRIPLE = {
 	},
 };
 
-function iacProducer(scenario: RealizationResultScenario): unknown {
+function iacProducer(scenario: RealizationResultScenario): JsonValue {
 	if (scenario === "raw-secret") {
 		return fromIacOutputs({
 			...IAC_TRIPLE,
@@ -56,7 +57,7 @@ function iacProducer(scenario: RealizationResultScenario): unknown {
 	return fromIacOutputs(IAC_TRIPLE);
 }
 
-function recipeProducer(scenario: RealizationResultScenario): unknown {
+function recipeProducer(scenario: RealizationResultScenario): JsonValue {
 	if (scenario === "raw-secret") {
 		return fromRecipeOutputs({
 			secrets: { deployKey: "raw-key-value" },

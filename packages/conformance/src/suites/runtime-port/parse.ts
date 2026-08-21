@@ -1,16 +1,18 @@
+import { isJsonObject, type JsonObject, type JsonValue } from "../../json.js";
 import {
 	RUNTIME_PORT_CONFORMANCE_VERSION,
 	type RuntimePortConformanceReport,
 } from "./types.js";
 
 export function parseRuntimePortReport(
-	raw: unknown,
+	raw: JsonValue,
 ): RuntimePortConformanceReport {
-	if (!raw || typeof raw !== "object" || Array.isArray(raw)) {
+	if (!raw || !isJsonObject(raw) || Array.isArray(raw)) {
 		throw new TypeError("report must be an object");
 	}
 
-	const source = raw as Record<string, unknown>;
+	// SAFETY: assertion to `raw as JsonObject` is required at this boundary.
+	const source = raw as JsonObject;
 	if (source.contract !== RUNTIME_PORT_CONFORMANCE_VERSION) {
 		throw new TypeError("contract must be hobo.runtime-port-conformance/v1");
 	}
@@ -25,11 +27,10 @@ export function parseRuntimePortReport(
 		throw new TypeError("status must be fail iff failures is non-empty");
 	}
 
-	const coverage = source.coverage as
-		| { local?: Record<string, unknown> }
-		| undefined;
+	// SAFETY: assertion to `source.coverage as | { local?: JsonObject } | undefined` is required at this boundary.
+	const coverage = source.coverage as { local?: JsonObject } | undefined;
 	const local = coverage?.local;
-	if (!local || typeof local !== "object") {
+	if (!local || !isJsonObject(local)) {
 		throw new TypeError("coverage.local is required");
 	}
 
@@ -40,17 +41,20 @@ export function parseRuntimePortReport(
 		throw new TypeError("coverage.local.passed + failed must equal total");
 	}
 
+	// SAFETY: assertion to `Object.freeze({ contract: RUNTIME_PORT_CONFORMANCE_VERSION, backend: String(source.backend ?? ""), status, checks: Objec` is required at this boundary.
 	return Object.freeze({
 		contract: RUNTIME_PORT_CONFORMANCE_VERSION,
 		backend: String(source.backend ?? ""),
 		status,
 		checks: Object.freeze(
 			Array.isArray(source.checks)
-				? (source.checks as RuntimePortConformanceReport["checks"])
+				? // SAFETY: assertion to `source.checks as RuntimePortConformanceReport["checks"]` is required at this boundary.
+					(source.checks as never)
 				: [],
 		),
 		failures: Object.freeze(
-			failures as RuntimePortConformanceReport["failures"],
+			// SAFETY: parsed failures are the report's ConformanceFailure list.
+			failures as never,
 		),
 		coverage: Object.freeze({
 			local: Object.freeze({

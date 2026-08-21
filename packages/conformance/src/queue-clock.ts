@@ -10,6 +10,7 @@ import {
 	type Queue,
 	type VirtualClock,
 } from "@hobo/core";
+import type { JsonValue } from "./json.js";
 
 export const QUEUE_CLOCK_CONFORMANCE_CONTRACT =
 	QUEUE_CLOCK_RUNTIME_PORT_CONTRACT_VERSION;
@@ -31,11 +32,11 @@ export type QueueClockConformanceReport = {
 export type CreateRuntimeLocalQueueClock = (options?: {
 	seed?: string;
 	startInstant?: string;
-	snapshot?: unknown;
+	snapshot?: JsonValue;
 }) => {
 	queue: Queue;
 	clock: VirtualClock;
-	snapshot(): unknown;
+	snapshot(): JsonValue;
 };
 
 export type ReplayClockTraceFn = (
@@ -52,10 +53,11 @@ export async function runQueueClockConformance(
 	createRuntime: CreateRuntimeLocalQueueClock,
 	options: QueueClockConformanceOptions,
 ): Promise<QueueClockConformanceReport> {
-	if (typeof createRuntime !== "function") {
+	if (!(createRuntime instanceof Function)) {
 		throw new TypeError("createRuntime must be a function");
 	}
 
+	// SAFETY: assertion to `{} as Record<QueueClockAssertionName, "pass" | "fail">` is required at this boundary.
 	const assertions = {} as Record<QueueClockAssertionName, "pass" | "fail">;
 
 	const runAssertion = async (

@@ -1,3 +1,4 @@
+import type { JsonObject, JsonValue } from "../json.js";
 import type { EventStoreWriter } from "./store.js";
 import type { EventEnvelope } from "./types.js";
 
@@ -14,8 +15,8 @@ export function nextEnvelope(
 	streamId: string,
 	seq: number,
 	type: string,
-	data: unknown,
-	options: { id?: string; meta?: Record<string, unknown>; ts?: string } = {},
+	data: JsonValue,
+	options: { id?: string; meta?: JsonObject; ts?: string } = {},
 ): EventEnvelope {
 	const envelope: EventEnvelope = {
 		id: options.id ?? `${streamId}-${seq}`,

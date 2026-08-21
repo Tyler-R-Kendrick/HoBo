@@ -415,6 +415,7 @@ describe("parse boundaries fail closed", () => {
 		try {
 			parseScratchDesired(input);
 		} catch (error) {
+			// SAFETY: assertion to `r as ProviderLifecycleError).co` is required at this boundary.
 			expect((error as ProviderLifecycleError).code).toBe(
 				"SCRATCH_DESIRED_INVALID",
 			);
@@ -433,6 +434,7 @@ describe("parse boundaries fail closed", () => {
 			parseScratchSeed(input);
 			expect.unreachable("seed should not parse");
 		} catch (error) {
+			// SAFETY: assertion to `r as ProviderLifecycleError).co` is required at this boundary.
 			expect((error as ProviderLifecycleError).code).toBe(
 				"SCRATCH_SEED_INVALID",
 			);
@@ -463,6 +465,7 @@ describe("parse boundaries fail closed", () => {
 			parseScratchProvider(input);
 			expect.unreachable("provider should not parse");
 		} catch (error) {
+			// SAFETY: assertion to `r as ProviderLifecycleError).co` is required at this boundary.
 			expect((error as ProviderLifecycleError).code).toBe(
 				"SCRATCH_PROVIDER_INVALID",
 			);
@@ -479,7 +482,8 @@ describe("parse boundaries fail closed", () => {
 		const stack = createScratchStack({
 			provider: brokenProvider({
 				create: (): ScratchProviderResult =>
-					({}) as unknown as ScratchProviderResult,
+					// SAFETY: assertion to ` as ScratchProviderResult, ` is required at this boundary.
+					({}) as ScratchProviderResult,
 			}),
 		});
 		await expect(stack.deploy(DESIRED)).rejects.toThrow(

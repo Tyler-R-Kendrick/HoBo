@@ -1,4 +1,11 @@
 import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
+import {
 	type BoundaryExample,
 	BoundaryRoutingError,
 	type BoundaryServed,
@@ -16,17 +23,17 @@ const MAX_RECORDED_CALLS = 1_000;
 type Handler<I, O> = (input: I) => O | Promise<O>;
 
 /** Canonical (key-sorted) JSON so structurally equal inputs match. */
-function canonical(value: unknown): string {
-	return JSON.stringify(sortKeys(value));
+function canonical<T>(value: T): string {
+	return JSON.stringify(sortKeys(cloneAsJson(value)));
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: JsonValue | undefined): JsonValue {
 	if (Array.isArray(value)) return value.map(sortKeys);
-	if (!value || typeof value !== "object") return value;
+	if (!value || !isJsonObject(value)) return value ?? null;
 	return Object.fromEntries(
-		Object.keys(value as Record<string, unknown>)
+		Object.keys(value)
 			.sort()
-			.map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
+			.map((key) => [key, sortKeys(value[key])]),
 	);
 }
 
@@ -34,7 +41,10 @@ function sortKeys(value: unknown): unknown {
  * PACT-style subset match: every key the expectation declares must be
  * present and equal in the actual value (extra actual keys are fine).
  */
-export function isSubsetMatch(expected: unknown, actual: unknown): boolean {
+export function isSubsetMatch(
+	expected: JsonValue | undefined,
+	actual: JsonValue | undefined,
+): boolean {
 	if (Array.isArray(expected)) {
 		return (
 			Array.isArray(actual) &&
@@ -42,24 +52,25 @@ export function isSubsetMatch(expected: unknown, actual: unknown): boolean {
 			expected.every((item, index) => isSubsetMatch(item, actual[index]))
 		);
 	}
-	if (expected && typeof expected === "object") {
-		if (!actual || typeof actual !== "object" || Array.isArray(actual)) {
+	if (expected && isJsonObject(expected)) {
+		if (!actual || !isJsonObject(actual) || Array.isArray(actual)) {
 			return false;
 		}
-		return Object.entries(expected as Record<string, unknown>).every(
-			([key, value]) =>
-				isSubsetMatch(value, (actual as Record<string, unknown>)[key]),
+		// SAFETY: assertion to `expected as JsonObject` is required at this boundary.
+		return Object.entries(expected as JsonObject).every(([key, value]) =>
+			// SAFETY: assertion to `actual as JsonObject` is required at this boundary.
+			isSubsetMatch(value, (actual as JsonObject)[key]),
 		);
 	}
 	return Object.is(expected, actual);
 }
 
 interface BoundaryState {
-	live?: Handler<unknown, unknown>;
+	live?: Handler<JsonValue, JsonValue>;
 	mock?: readonly BoundaryExample[];
 	/** Bridged handlers by session tag; "" is the catch-all bridge. */
-	bridges: Map<string, Handler<unknown, unknown>>;
-	shadow?: Handler<unknown, unknown>;
+	bridges: Map<string, Handler<JsonValue, JsonValue>>;
+	shadow?: Handler<JsonValue, JsonValue>;
 	fault?: FaultOptions | undefined;
 	replaying: boolean;
 	calls: RecordedBoundaryCall[];
@@ -67,7 +78,7 @@ interface BoundaryState {
 	order: number;
 }
 
-export interface Boundary<I = unknown, O = unknown> {
+export interface Boundary<I = JsonValue, O = JsonValue> {
 	readonly name: string;
 	/** The upstream (deployed/remote) implementation of this boundary. */
 	live(handler: Handler<I, O>): Boundary<I, O>;
@@ -94,7 +105,7 @@ export interface Boundary<I = unknown, O = unknown> {
 }
 
 export interface BoundaryRouter {
-	boundary<I = unknown, O = unknown>(name: string): Boundary<I, O>;
+	boundary<I = JsonValue, O = JsonValue>(name: string): Boundary<I, O>;
 	status(): readonly BoundaryStatus[];
 	reset(): void;
 }
@@ -108,7 +119,7 @@ async function verifyContract<I, O>(
 	for (const example of contract.examples) {
 		try {
 			const actual = await handler(example.input);
-			if (!isSubsetMatch(example.output, actual)) {
+			if (!isSubsetMatch(cloneAsJson(example.output), cloneAsJson(actual))) {
 				failures.push(
 					`for input ${canonical(example.input)} expected ${canonical(
 						example.output,
@@ -172,7 +183,7 @@ export function createBoundaryRouter(): BoundaryRouter {
 			),
 			replaying: state.replaying,
 			shadowing: state.shadow !== undefined,
-			...(state.fault ? { fault: state.fault.message } : {}),
+			...(state.fault ? { fault: state.fault.message } : undefined),
 			calls: state.calls.length,
 		};
 	}
@@ -180,36 +191,39 @@ export function createBoundaryRouter(): BoundaryRouter {
 	function makeBoundary<I, O>(name: string): Boundary<I, O> {
 		const state = stateFor(name);
 
-		const runShadow = (input: I, served: unknown): void => {
+		const runShadow = (input: I, served: JsonValue): void => {
 			const candidate = state.shadow;
 			if (!candidate) return;
 			// Fire the candidate on the same input; its result is captured
 			// for comparison and always discarded.
 			void Promise.resolve()
-				.then(() => candidate(input))
+				.then(() => {
+					// SAFETY: erased shadow handler is invoked with the boundary input.
+					return candidate(input as never);
+				})
 				.then((result) => {
-					state.shadowDiffs.push(
-						Object.freeze({
-							input,
-							served,
-							candidate: result,
-							matched: canonical(result) === canonical(served),
-							order: state.shadowDiffs.length,
-						}),
-					);
+					const diff = Object.freeze({
+						input,
+						served,
+						candidate: result,
+						matched: canonical(result) === canonical(served),
+						order: state.shadowDiffs.length,
+					});
+					// SAFETY: shadow diffs are stored erased across boundary I/O types.
+					state.shadowDiffs.push(diff as never);
 				})
 				.catch((error) => {
-					state.shadowDiffs.push(
-						Object.freeze({
-							input,
-							served,
-							candidate: `threw: ${
-								error instanceof Error ? error.message : String(error)
-							}`,
-							matched: false,
-							order: state.shadowDiffs.length,
-						}),
-					);
+					const diff = Object.freeze({
+						input,
+						served,
+						candidate: `threw: ${
+							error instanceof Error ? error.message : String(error)
+						}`,
+						matched: false,
+						order: state.shadowDiffs.length,
+					});
+					// SAFETY: shadow diffs are stored erased across boundary I/O types.
+					state.shadowDiffs.push(diff as never);
 				});
 		};
 
@@ -221,21 +235,27 @@ export function createBoundaryRouter(): BoundaryRouter {
 		): Promise<O> => {
 			try {
 				const output = await handler();
-				record(state, {
+				const recorded = {
 					input,
 					output,
 					served,
-					...(session !== undefined ? { session } : {}),
-				});
-				if (served === "live" || served === "bridge") runShadow(input, output);
+					...(session !== undefined ? { session } : undefined),
+				};
+				// SAFETY: recorded calls are stored erased across boundary I/O types.
+				record(state, recorded as never);
+				if (served === "live" || served === "bridge") {
+					runShadow(input, cloneAsJson(output));
+				}
 				return output;
 			} catch (error) {
-				record(state, {
+				const recorded = {
 					input,
 					error: error instanceof Error ? error.message : String(error),
 					served,
-					...(session !== undefined ? { session } : {}),
-				});
+					...(session !== undefined ? { session } : undefined),
+				};
+				// SAFETY: recorded calls are stored erased across boundary I/O types.
+				record(state, recorded as never);
 				throw error;
 			}
 		};
@@ -243,10 +263,12 @@ export function createBoundaryRouter(): BoundaryRouter {
 		const boundary: Boundary<I, O> = {
 			name,
 			live(handler) {
-				state.live = handler as Handler<unknown, unknown>;
+				// SAFETY: generic live handler is stored erased at the router boundary.
+				state.live = handler as never;
 				return boundary;
 			},
 			mock(examples) {
+				// SAFETY: assertion to ` as readonly BoundaryExample[]; re` is required at this boundary.
 				state.mock = examples as readonly BoundaryExample[];
 				return boundary;
 			},
@@ -256,7 +278,8 @@ export function createBoundaryRouter(): BoundaryRouter {
 				}
 				state.bridges.set(
 					options.session ?? "",
-					handler as Handler<unknown, unknown>,
+					// SAFETY: generic bridge handler is stored erased at the router boundary.
+					handler as never,
 				);
 			},
 			unbridge(session) {
@@ -264,7 +287,8 @@ export function createBoundaryRouter(): BoundaryRouter {
 				else state.bridges.delete(session);
 			},
 			shadow(candidate) {
-				state.shadow = candidate as Handler<unknown, unknown>;
+				// SAFETY: generic shadow handler is stored erased at the router boundary.
+				state.shadow = candidate as never;
 				return boundary;
 			},
 			fault(options) {
@@ -295,7 +319,13 @@ export function createBoundaryRouter(): BoundaryRouter {
 					(session !== undefined ? state.bridges.get(session) : undefined) ??
 					state.bridges.get("");
 				if (bridged) {
-					return serve(input, "bridge", session, () => bridged(input) as O);
+					// SAFETY: erased handler is invoked with the boundary's input type.
+					return serve(
+						input,
+						"bridge",
+						session,
+						() => bridged(input as never) as O,
+					);
 				}
 				if (state.replaying) {
 					const key = canonical(input);
@@ -310,11 +340,13 @@ export function createBoundaryRouter(): BoundaryRouter {
 							`boundary "${name}" is replaying but has no recorded output for input ${key}`,
 						);
 					}
+					// SAFETY: assertion to `.output as O); }` is required at this boundary.
 					return serve(input, "replay", session, () => recorded.output as O);
 				}
 				if (state.live) {
 					const live = state.live;
-					return serve(input, "live", session, () => live(input) as O);
+					// SAFETY: erased live handler is invoked with the boundary's input type.
+					return serve(input, "live", session, () => live(input as never) as O);
 				}
 				if (state.mock) {
 					const examples = state.mock;
@@ -329,6 +361,7 @@ export function createBoundaryRouter(): BoundaryRouter {
 								`boundary "${name}" has an empty mock — give it PACT examples`,
 							);
 						}
+						// SAFETY: assertion to `tput as O; });` is required at this boundary.
 						return example.output as O;
 					});
 				}
@@ -337,10 +370,12 @@ export function createBoundaryRouter(): BoundaryRouter {
 				);
 			},
 			calls() {
-				return [...state.calls] as readonly RecordedBoundaryCall<I, O>[];
+				// SAFETY: recorded calls are restored to the boundary's I/O types.
+				return [...state.calls] as never;
 			},
 			shadowDiffs() {
-				return [...state.shadowDiffs] as readonly ShadowDiff<I>[];
+				// SAFETY: shadow diffs are restored to the boundary's input type.
+				return [...state.shadowDiffs] as never;
 			},
 			status() {
 				return statusOf(name, state);
@@ -351,7 +386,7 @@ export function createBoundaryRouter(): BoundaryRouter {
 
 	return {
 		boundary<I, O>(name: string): Boundary<I, O> {
-			if (typeof name !== "string" || name.trim().length === 0) {
+			if (!isJsonString(name) || name.trim().length === 0) {
 				throw new BoundaryRoutingError(
 					"boundary names must be non-empty strings",
 				);

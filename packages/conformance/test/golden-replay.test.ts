@@ -3,6 +3,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { createConformanceSuite, runConformanceSuite } from "../src/index.ts";
+import type { JsonValue } from "../src/json.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const foundationsFixture = JSON.parse(
@@ -12,7 +13,7 @@ const witRuntimeFixture = JSON.parse(
 	readFileSync(join(packageRoot, "fixtures/wit-runtime-fixture.json"), "utf8"),
 );
 
-function fixtureSuite(fixtureName: string, fixture: unknown) {
+function fixtureSuite(fixtureName: string, fixture: JsonValue) {
 	return createConformanceSuite({
 		id: `${fixtureName}-capture`,
 		port: {
@@ -38,7 +39,7 @@ function fixtureSuite(fixtureName: string, fixture: unknown) {
 	});
 }
 
-function fixtureAdapter(id: string, fixture: unknown) {
+function fixtureAdapter(id: string, fixture: JsonValue) {
 	return {
 		id,
 		async capture() {
@@ -79,6 +80,7 @@ describe("golden fixture replay", () => {
 			id: "foundations-mutated",
 			async capture() {
 				const mutated = structuredClone(foundationsFixture);
+				// SAFETY: assertion to `mutated as { workspace: string }` is required at this boundary.
 				(mutated as { workspace: string }).workspace = "mutated workspace";
 
 				return {

@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export type CheckKind =
   | "multi-vantage-resolve"
   | "ttl-aware-propagation"
@@ -12,25 +13,25 @@ export type DomainValidationEventType =
 export interface ValidationCheckResult {
   ok: boolean;
   reason?: string;
-  evidence?: Record<string, unknown>;
+  evidence?: JsonObject;
 }
 
 export interface ValidationCheckEvidence {
   kind: CheckKind;
   status: "passed";
-  evidence: Record<string, unknown>;
+  evidence: JsonObject;
 }
 
 export interface DomainValidationEvent {
   type: DomainValidationEventType;
-  data: Record<string, unknown>;
+  data: JsonObject;
 }
 
 export interface DomainValidationRequest {
   domain: string;
   changeId: string;
   camp: string;
-  stage(): Promise<unknown> | unknown;
+  stage(): Promise<JsonValue>;
   liveZone?: {
     assertUnchanged(label: string): void;
   };
@@ -57,10 +58,10 @@ export declare function createDomainValidationGate(options: {
   clock?: () => string;
 }): DomainValidationGate;
 
-export declare function domainValidationChecks(fixtures: Record<string, unknown>): Record<CheckKind, () => ValidationCheckResult>;
+export declare function domainValidationChecks(fixtures: JsonObject): Record<CheckKind, () => ValidationCheckResult>;
 
 export declare function createLiveZoneSnapshot(adapter: {
-  inspectLiveZone(domain: string): unknown[];
+  inspectLiveZone(domain: string): JsonValue[];
 }, domain: string): {
   assertUnchanged(label: string): void;
 };

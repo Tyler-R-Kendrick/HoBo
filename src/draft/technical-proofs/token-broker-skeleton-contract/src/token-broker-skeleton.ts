@@ -14,7 +14,7 @@ export function createTokenBroker(options = {}) {
   const registry = requireRegistry(options.registry);
   const now = options.now ?? (() => new Date());
   const idFactory = options.idFactory ?? defaultIdFactory();
-  const flowHandlers = { ...defaultFlowHandlers(now), ...(options.flowHandlers ?? {}) };
+  const flowHandlers = { ...defaultFlowHandlers(now), ...options.flowHandlers };
   const eventSink = options.eventSink ?? (() => {});
 
   return Object.freeze({
@@ -129,7 +129,7 @@ export function createTokenBroker(options = {}) {
 }
 
 export function createRequestTokenTool(broker) {
-  if (!broker || typeof broker.requestToken !== "function") {
+  if (!broker || !isCallable(broker.requestToken)) {
     throw new Error("request_token tool requires a broker with requestToken(input)");
   }
 
@@ -142,7 +142,7 @@ export function createRequestTokenTool(broker) {
 }
 
 export function createTokenContext(broker, options = {}) {
-  if (!broker || typeof broker.requestToken !== "function") {
+  if (!broker || !isCallable(broker.requestToken)) {
     throw new Error("ctx.token requires a broker with requestToken(input)");
   }
 
@@ -320,7 +320,7 @@ function defaultFlowHandlers(now) {
 }
 
 function requireRegistry(registry) {
-  if (!registry || typeof registry.resolveAuthManifest !== "function") {
+  if (!registry || !isCallable(registry.resolveAuthManifest)) {
     throw new Error("token broker requires registry.resolveAuthManifest(provider)");
   }
   return registry;
@@ -332,7 +332,7 @@ function defaultIdFactory() {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -340,11 +340,19 @@ function requireString(value, field) {
 
 function isPlainObject(value) {
   return (
-    value !== null &&
-    typeof value === "object" &&
-    !Array.isArray(value) &&
+    Object.prototype.toString.call(value) === "[object Object]" &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
+}
+
+function isCallable(value) {
+  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
+    Object.prototype.toString.call(value),
+  );
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }
 
 function clone(value) {

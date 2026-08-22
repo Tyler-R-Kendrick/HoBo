@@ -22,18 +22,19 @@ export function evaluateRolloutMetricGate(input = {}) {
   const seq = sequence(input.startSeq ?? 0);
   const decision = decide({ policy, snapshot, goldenSuite, windowSamples });
   const upstreamGate = sloPromotionGate === undefined ? undefined : evaluatePromotionGate(sloPromotionGate);
-  const evidence = deepFreeze({
+  let evidence = {
     schemaVersion: SLO_GATED_ROLLBACK_ANALYSIS_VERSION,
     rollout,
     policy,
     sloSnapshot: snapshot,
-    ...(sloPromotionGate === undefined ? {} : {
-      sloPromotionGate: cloneJson(sloPromotionGate),
-      upstreamGate: cloneJson(upstreamGate),
-    }),
     goldenSuite,
     windowSamples,
-  });
+  };
+  if (sloPromotionGate !== undefined) {
+    evidence.sloPromotionGate = cloneJson(sloPromotionGate);
+    evidence.upstreamGate = cloneJson(upstreamGate);
+  }
+  evidence = deepFreeze(evidence);
   const decided = event(SLO_GATE_EVENT_TYPES.metricAnalysisDecided, {
     id: `delivery.MetricAnalysisDecided:${rollout.rolloutId}:${snapshot.seq}`,
     streamId: `rollout:${rollout.rolloutId}`,
@@ -402,7 +403,7 @@ function normalizeGoldenSuite(suite = {}) {
 }
 
 function normalizeNow(now) {
-  if (typeof now === "function") {
+  if (isCallable(now)) {
     return now;
   }
   if (now === undefined) {
@@ -457,7 +458,7 @@ function sequence(start = 0) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isString(value) || value.trim().length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value.trim();
@@ -502,7 +503,7 @@ function finiteRatio(value, fieldName) {
 }
 
 function assertObject(value, fieldName) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!isObjectRecord(value)) {
     throw new Error(`${fieldName} must be an object`);
   }
 }
@@ -511,7 +512,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!isObjectRecord(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
@@ -525,11 +526,25 @@ function cloneJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isObjectRecord(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {
     deepFreeze(child);
   }
   return Object.freeze(value);
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isCallable(value) {
+  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
+    Object.prototype.toString.call(value),
+  );
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

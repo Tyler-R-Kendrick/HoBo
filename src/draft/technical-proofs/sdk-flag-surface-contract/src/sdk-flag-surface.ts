@@ -43,7 +43,7 @@ export function createFlagSurfaceEventLog(entries = []) {
     },
     entries: entriesSnapshot,
     subscribe(listener) {
-      if (typeof listener !== "function") {
+      if (!isCallable(listener)) {
         throw new Error("flag surface event-log subscriber must be a function");
       }
       listeners.add(listener);
@@ -54,7 +54,7 @@ export function createFlagSurfaceEventLog(entries = []) {
 
 export function createSdkFlagSurface(options = {}) {
   const eventLog = options.eventLog ?? createFlagSurfaceEventLog();
-  const requestContext = typeof options.requestContext === "function" ? options.requestContext : () => emptyContext;
+  const requestContext = isCallable(options.requestContext) ? options.requestContext : () => emptyContext;
   const clientContext = normalizeContext(options.clientContext);
 
   async function details(flag, context) {
@@ -151,10 +151,10 @@ function detailsMethod(valueType) {
 }
 
 function validateSdkFlag(flag) {
-  if (!flag || typeof flag !== "object") {
+  if (!isObjectRecord(flag)) {
     throw new Error("flag reference must be an object");
   }
-  if (typeof flag.key !== "string" || flag.key.length === 0) {
+  if (!isString(flag.key) || flag.key.length === 0) {
     throw new Error("flag reference requires key");
   }
   if (!["boolean", "string", "number", "object"].includes(flag.type)) {
@@ -181,7 +181,7 @@ function normalizeEntries(entries) {
 }
 
 function normalizeContext(context) {
-  if (!context || typeof context !== "object") {
+  if (!isObjectRecord(context)) {
     return clone(emptyContext);
   }
 
@@ -199,7 +199,7 @@ function stableValue(value) {
   if (Array.isArray(value)) {
     return value.map(stableValue);
   }
-  if (value && typeof value === "object") {
+  if (isObjectRecord(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -213,5 +213,19 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return isCallable(structuredClone) ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isCallable(value) {
+  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
+    Object.prototype.toString.call(value),
+  );
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased SDK source and JSON-like values at shared input boundaries. */
 import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
@@ -54,22 +55,6 @@ export function fixtureSdkSources(overrides = {}) {
     {
       name: "CloseTicketResult",
       fields: [{ name: "closed", type: "boolean" }],
-    },
-  ];
-  const resources = [
-    {
-      name: "db",
-      kind: "data",
-      clientType: "DataClient",
-      port: "hobo:data",
-      allow: allowScopes.db ?? [],
-    },
-    {
-      name: "uploads",
-      kind: "bucket",
-      clientType: "BlobClient",
-      port: "wasi:blobstore",
-      allow: allowScopes.uploads ?? [],
     },
   ];
   const api = [

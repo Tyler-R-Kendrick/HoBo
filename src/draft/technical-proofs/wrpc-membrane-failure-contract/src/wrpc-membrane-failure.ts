@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish the erased provider-operation and string input contracts at the membrane boundary. */
+
 import { createRuntimeLocalEventStore } from "../../camp-eventstore-runtime-port-contract/src/camp-eventstore-runtime-port.js";
 import { classifyFailure } from "../../system-failure-classifier-contract/src/classifier.js";
 
@@ -451,3 +453,4 @@ function requireNonEmptyString(value, fieldName) {
   }
   return value;
 }
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish the erased provider-operation and string input contracts at the membrane boundary. */

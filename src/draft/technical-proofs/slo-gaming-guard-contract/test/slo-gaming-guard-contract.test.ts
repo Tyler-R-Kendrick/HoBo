@@ -291,6 +291,22 @@ function makeSlo({
   indicator,
   exclusionRules,
 }) {
+  const spec = {
+    timeWindow: {
+      duration,
+      isRolling: true,
+    },
+    objectives: [
+      {
+        displayName: "availability",
+        target,
+      },
+    ],
+  };
+  if (objectives) spec.objectives = objectives;
+  if (indicator) spec.indicator = indicator;
+  if (exclusionRules) spec.exclusionRules = exclusionRules;
+
   return createGoldenSlo({
     metadata: {
       name: "checkout-availability",
@@ -298,21 +314,7 @@ function makeSlo({
         "hobo.dev/effectiveAt": effectiveAt,
       },
     },
-    spec: {
-      timeWindow: {
-        duration,
-        isRolling: true,
-      },
-      objectives: [
-        {
-          displayName: "availability",
-          target,
-        },
-      ],
-      ...(objectives ? { objectives } : {}),
-      ...(indicator ? { indicator } : {}),
-      ...(exclusionRules ? { exclusionRules } : {}),
-    },
+    spec,
   });
 }
 

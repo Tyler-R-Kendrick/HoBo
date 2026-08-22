@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased codec, operation, and identifier contracts at the in-process membrane boundary. */
+
 export class NoRouteError extends Error {
   constructor({ componentId, importInterface }) {
     const routeKey = linkKey(componentId, importInterface);

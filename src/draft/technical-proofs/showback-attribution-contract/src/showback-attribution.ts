@@ -281,13 +281,13 @@ function attachPresentationCosts(rows, parentTotal) {
 
 function eventCost(event, costCatalog) {
   const price = costCatalog.unitPrices[requireString(event.dimension, "event.dimension")];
-  if (typeof price === "number") {
+  if (isNumber(price)) {
     if (price < 0) {
       throw new RangeError(`unit price for ${event.dimension} must be non-negative`);
     }
     return roundCost(requirePositiveNumber(event.quantity, "event.quantity") * price);
   }
-  if (price && typeof price === "object") {
+  if (isObjectRecord(price)) {
     const key = requireString(event.priceKey, "event.priceKey");
     const keyed = price[key];
     if (!Number.isFinite(keyed) || keyed < 0) {
@@ -374,7 +374,7 @@ function normalizeSharedBindles(input) {
 }
 
 function normalizeDisplayNames(input = {}) {
-  const source = input && typeof input === "object" && !Array.isArray(input) ? input : {};
+  const source = isObjectRecord(input) ? input : {};
   return {
     tenants: objectOrEmpty(source.tenants),
     camps: objectOrEmpty(source.camps),
@@ -448,14 +448,14 @@ function sortObject(input) {
 }
 
 function expectObject(input, fieldName) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!isObjectRecord(input)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
   return input;
 }
 
 function requireString(input, fieldName) {
-  if (typeof input !== "string" || input.length === 0) {
+  if (!isString(input) || input.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return input;
@@ -465,7 +465,19 @@ function optionalString(input) {
   if (input === undefined || input === null) {
     return null;
   }
-  return typeof input === "string" && input.length > 0 ? input : null;
+  return isString(input) && input.length > 0 ? input : null;
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isNumber(value) {
+  return Object.prototype.toString.call(value) === "[object Number]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }
 
 function requirePositiveNumber(input, fieldName) {

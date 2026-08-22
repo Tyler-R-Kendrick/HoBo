@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased lease and clone contracts at the shared parser boundary before domain evaluation. */
+
 const DEFAULT_TTL_MS = 15 * 60 * 1000;
 const DEFAULT_ROTATION_FRACTION = 2 / 3;
 const DEFAULT_MAX_GRACE_MS = 5 * 60 * 1000;

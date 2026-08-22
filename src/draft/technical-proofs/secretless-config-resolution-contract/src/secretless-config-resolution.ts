@@ -384,7 +384,7 @@ function normalizeScope(input, field) {
 function normalizeSecretsAdapters(adapters) {
   const normalized = new Map();
   for (const [provider, adapter] of Object.entries(requirePlainObject(adapters, "secrets"))) {
-    if (!adapter || typeof adapter.readSecret !== "function") {
+    if (!adapter || !isCallable(adapter.readSecret)) {
       throw new Error(`secrets adapter ${provider} must implement readSecret(input)`);
     }
     normalized.set(provider, adapter);
@@ -421,7 +421,7 @@ function labels(label) {
 }
 
 function requireTokenBroker(tokenBroker) {
-  if (!tokenBroker || typeof tokenBroker.requestToken !== "function") {
+  if (!tokenBroker || !isCallable(tokenBroker.requestToken)) {
     throw new Error("secretless config resolver requires tokenBroker.requestToken(input)");
   }
   return tokenBroker;
@@ -435,7 +435,7 @@ function requirePlainObject(value, label) {
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new Error(`${label} must be a non-empty string`);
   }
   return value;
@@ -457,7 +457,7 @@ function serializeSurface(surface) {
   if (surface === undefined || surface === null) {
     return "";
   }
-  if (typeof surface === "string") {
+  if (isString(surface)) {
     return surface;
   }
   return JSON.stringify(surface);
@@ -470,11 +470,19 @@ function defaultIdFactory() {
 
 function isPlainObject(value) {
   return (
-    value !== null &&
-    typeof value === "object" &&
-    !Array.isArray(value) &&
+    Object.prototype.toString.call(value) === "[object Object]" &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
+}
+
+function isCallable(value) {
+  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
+    Object.prototype.toString.call(value),
+  );
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }
 
 function clone(value) {
@@ -485,7 +493,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isPlainObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

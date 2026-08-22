@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased signal values at the shared input boundary and guard recursive freezing/string validation. */
+
 import {
   agentDispatched,
   createOperatorPrincipal,

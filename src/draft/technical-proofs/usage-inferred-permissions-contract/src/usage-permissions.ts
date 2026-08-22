@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased manifest and resource values at the shared permission contract boundary. */
+
 export class PermissionContractError extends Error {
   constructor(code, message, details = {}) {
     super(message);

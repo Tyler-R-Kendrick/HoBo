@@ -228,7 +228,7 @@ function measure({ objective, startEvent, startAt, endEvent, endAt, slo, inciden
 }
 
 function stripInternalMeasurement(measurement) {
-  return {
+  const result = {
     objective: measurement.objective,
     startEventId: measurement.startEventId,
     endEventId: measurement.endEventId,
@@ -237,13 +237,12 @@ function stripInternalMeasurement(measurement) {
     actualMinutes: measurement.actualMinutes,
     targetMinutes: measurement.targetMinutes,
     status: measurement.status,
-    ...(measurement.status === "breached"
-      ? {
-          consumedMinutes: measurement.consumedMinutes,
-          remainingBudgetMinutes: measurement.remainingBudgetMinutes,
-        }
-      : {}),
   };
+  if (measurement.status === "breached") {
+    result.consumedMinutes = measurement.consumedMinutes;
+    result.remainingBudgetMinutes = measurement.remainingBudgetMinutes;
+  }
+  return result;
 }
 
 function freezeRiskyDeploys({ mttrBurn, mttrBreach, measurement }) {
@@ -345,7 +344,6 @@ function timelineEntry(event) {
     id: event.id,
     type: event.type,
     occurredAt: eventTime(event),
-    ...(event.causationId ? { causationId: event.causationId } : {}),
   };
 }
 
@@ -371,7 +369,7 @@ function requiredEvent(events, type) {
 
 function eventTime(event) {
   const value = event.occurredAt ?? event.ts ?? event.time;
-  if (typeof value !== "string" || Number.isNaN(Date.parse(value))) {
+  if (!isString(value) || Number.isNaN(Date.parse(value))) {
     throw new Error(`${event.id ?? "event"} requires an ISO timestamp`);
   }
   return value;
@@ -397,14 +395,14 @@ function array(value, fieldName) {
 }
 
 function positiveNumber(value, fieldName) {
-  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+  if (!isNumber(value) || !Number.isFinite(value) || value <= 0) {
     throw new Error(`${fieldName} must be a positive number`);
   }
   return value;
 }
 
 function nonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isString(value) || value.trim().length === 0) {
     throw new Error(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -418,11 +416,23 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isObjectRecord(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {
     deepFreeze(child);
   }
   return Object.freeze(value);
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isNumber(value) {
+  return Object.prototype.toString.call(value) === "[object Number]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

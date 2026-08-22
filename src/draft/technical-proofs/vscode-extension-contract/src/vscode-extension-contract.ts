@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased extension command values and recursively inspect JSON-like credential data. */
+
 import { CANONICAL_VERBS } from "../../hobo-cli-shell-contract/src/cli-shell.js";
 import {
   createInspectCli,
@@ -441,3 +443,4 @@ function event(seq, type, data, options = {}) {
     data,
   };
 }
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased extension command values and recursively inspect JSON-like credential data. */

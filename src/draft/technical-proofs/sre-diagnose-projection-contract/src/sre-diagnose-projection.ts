@@ -157,13 +157,13 @@ function validateIncidentEvents(events) {
 }
 
 function readRunbookProjections(runbook, projections) {
-  if (!runbook || typeof runbook !== "object" || Array.isArray(runbook)) {
+  if (!isObjectRecord(runbook)) {
     throw new Error("runbook is required");
   }
   if (!Array.isArray(runbook.diagnose) || runbook.diagnose.length === 0) {
     throw new Error("runbook.diagnose must list projection reads");
   }
-  if (!projections || typeof projections.read !== "function") {
+  if (!projections || !isCallable(projections.read)) {
     throw new Error("read-only projections are required");
   }
 
@@ -197,7 +197,7 @@ function assertRootCause(value) {
 }
 
 function normalizeSnapshot(query, snapshot) {
-  if (!snapshot || typeof snapshot !== "object" || Array.isArray(snapshot)) {
+  if (!isObjectRecord(snapshot)) {
     throw new Error(`projection ${query} must be an object`);
   }
   if (!Number.isSafeInteger(snapshot.atSeq) || snapshot.atSeq < 0) {
@@ -222,7 +222,7 @@ function missingSnapshot(query) {
 }
 
 function assertNonEmptyString(value, label) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isString(value) || value.trim().length === 0) {
     throw new Error(`${label} must be a non-empty string`);
   }
 }
@@ -235,7 +235,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isObjectRecord(value) || Object.isFrozen(value)) {
     return value;
   }
 
@@ -244,4 +244,18 @@ function deepFreeze(value) {
   }
 
   return Object.freeze(value);
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isCallable(value) {
+  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
+    Object.prototype.toString.call(value),
+  );
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

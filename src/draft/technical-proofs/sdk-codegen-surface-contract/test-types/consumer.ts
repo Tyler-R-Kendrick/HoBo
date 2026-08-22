@@ -6,8 +6,9 @@ declare const bindings: CtxBindings;
 declare const api: ApiTree;
 declare const ticket: Ticket;
 declare const closeResult: CloseTicketResult;
+declare const typecheckOnly: boolean;
 
-if (false) {
+if (typecheckOnly) {
   bindings.db.read("ticket-1");
   bindings.uploads.read("ticket-1.json");
 

@@ -479,3 +479,169 @@ describe("close", () => {
 		await expect(result.close()).resolves.toBeUndefined();
 	});
 });
+
+describe("Kubernetes name sanitizing", () => {
+	const scheduledNameFor = async (resourceName: string) => {
+		const fake = fakeK8s();
+		await createOciRuntimeHost({
+			kubernetes: fake.client,
+			containerDependencies: [{ resourceName, image: "busybox:1.36" }],
+		}).servePrivate({
+			hoboHome: "/tmp/h",
+			privateComponents: [],
+			env: {},
+			// SAFETY: the host reads exactly the fields a serve context names.
+		} as never);
+		return fake.waited[0];
+	};
+
+	it("lowercases and replaces characters a DNS label cannot carry", async () => {
+		// `My Service!` is a valid Bindle name and an invalid Kubernetes one;
+		// passing it through would be rejected by the apiserver with a message
+		// about DNS labels, long after the operator chose the name.
+		expect(await scheduledNameFor("My Service!")).toBe("my-service");
+	});
+
+	it("trims leading and trailing dashes left by the replacement", async () => {
+		// A DNS label may not begin or end with a dash, and the replacement is
+		// exactly what produces them.
+		expect(await scheduledNameFor("__api__")).toBe("api");
+	});
+
+	it("truncates to the 63-character DNS label limit", async () => {
+		const name = await scheduledNameFor(`db-${"x".repeat(80)}`);
+		expect(name).toHaveLength(63);
+	});
+
+	it("falls back to a placeholder when nothing survives", async () => {
+		// A name of only invalid characters sanitizes to the empty string, and
+		// an empty metadata.name is rejected by the apiserver. `component` is a
+		// legible stand-in; the Bindle name is still what the handler is
+		// registered under, so nothing is lost to the caller.
+		expect(await scheduledNameFor("!!!")).toBe("component");
+	});
+
+	it("leaves a name that is already a valid label alone", async () => {
+		expect(await scheduledNameFor("db-primary")).toBe("db-primary");
+	});
+});
+
+describe("the runtime image a component runs in", () => {
+	const detailsFor = async (
+		options: Record<string, unknown>,
+		env: NodeJS.ProcessEnv = {},
+	) => {
+		const fake = fakeK8s();
+		await createOciRuntimeHost({
+			kubernetes: fake.client,
+			containerDependencies: [{ resourceName: "db", image: "postgres:16" }],
+			...options,
+		}).servePrivate({
+			hoboHome: "/tmp/h",
+			privateComponents: [],
+			env,
+			// SAFETY: the host reads exactly the fields a serve context names.
+		} as never);
+		return fake;
+	};
+
+	it("schedules dependencies on their own image, not the runtime one", async () => {
+		// The runtime image hosts *components*. A dependency declares its own
+		// image and running it on the runtime image would start the wrong
+		// program under the right name.
+		const fake = await detailsFor({ runtimeImage: "ghcr.io/acme/rt:1" });
+		const manifests = fake.applied[0] as Array<{
+			spec?: {
+				template?: { spec?: { containers?: Array<{ image: string }> } };
+			};
+		}>;
+		expect(manifests[0]?.spec?.template?.spec?.containers?.[0]?.image).toBe(
+			"postgres:16",
+		);
+	});
+
+	it("accepts a runtime image from the environment", async () => {
+		// The escape hatch for an air-gapped registry. Asserted through a
+		// successful serve rather than a thrown error, because the value is
+		// only read on the private-component path.
+		await expect(
+			detailsFor({}, { HOBO_OCI_RUNTIME_IMAGE: "registry.internal/rt:1" }),
+		).resolves.toBeDefined();
+	});
+});
+
+describe("a dependency's environment", () => {
+	const appliedEnvFor = async (
+		dep: { resourceName: string; image: string; env?: Record<string, string> },
+		bindleEnv?: Record<string, string>,
+	) => {
+		const fake = fakeK8s();
+		await createOciRuntimeHost({
+			kubernetes: fake.client,
+			containerDependencies: [dep],
+		}).servePrivate({
+			hoboHome: "/tmp/h",
+			privateComponents: [],
+			env: {},
+			...(bindleEnv !== undefined ? { bindleEnv } : {}),
+			// SAFETY: the host reads exactly the fields a serve context names.
+		} as never);
+		const manifests = fake.applied[0] as Array<{
+			spec?: {
+				template?: {
+					spec?: {
+						containers?: Array<{
+							env?: Array<{ name: string; value: string }>;
+						}>;
+					};
+				};
+			};
+		}>;
+		return Object.fromEntries(
+			(manifests[0]?.spec?.template?.spec?.containers?.[0]?.env ?? []).map(
+				(entry) => [entry.name, entry.value],
+			),
+		);
+	};
+
+	it("carries the dependency's own environment", async () => {
+		expect(
+			await appliedEnvFor({
+				resourceName: "db",
+				image: "postgres:16",
+				env: { POSTGRES_DB: "app" },
+			}),
+		).toMatchObject({ POSTGRES_DB: "app" });
+	});
+
+	it("merges the bindle environment over the dependency's", async () => {
+		// The bindle is the deployment-time authority; a dependency's own value
+		// is a default it ships with. Reversing this would make a bindle unable
+		// to point a dependency at anything.
+		expect(
+			await appliedEnvFor(
+				{
+					resourceName: "db",
+					image: "postgres:16",
+					env: { POSTGRES_DB: "default", POSTGRES_USER: "app" },
+				},
+				{ POSTGRES_DB: "override" },
+			),
+		).toMatchObject({ POSTGRES_DB: "override", POSTGRES_USER: "app" });
+	});
+
+	it("carries the bindle environment even when the dependency declares none", async () => {
+		expect(
+			await appliedEnvFor(
+				{ resourceName: "db", image: "postgres:16" },
+				{ LOG_LEVEL: "debug" },
+			),
+		).toMatchObject({ LOG_LEVEL: "debug" });
+	});
+
+	it("schedules a dependency that declares no environment at all", async () => {
+		await expect(
+			appliedEnvFor({ resourceName: "db", image: "postgres:16" }),
+		).resolves.toBeDefined();
+	});
+});

@@ -17,7 +17,7 @@ feedback. It only proves the evidence gate those downstream owners consume.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\v1-beta-pilot-private-beta-evidence test
+npm.cmd --prefix src\draft\exp-proofs\cx\v1-beta-pilot-private-beta-evidence test
 ```
 
 ## Architecture Evidence

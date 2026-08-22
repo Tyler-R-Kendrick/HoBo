@@ -207,7 +207,7 @@ export default defineConfig({
 				// ratchet — the honest number is the one every run can clear.
 				// Suspected cause: `vshell` reads real stdin, so which of its paths
 				// executes depends on how the run is scheduled.
-				"packages/code/**": { statements: 86.3, branches: 77.7, functions: 88.8, lines: 88.2 },
+				"packages/code/**": { statements: 86.5, branches: 78, functions: 88.8, lines: 88.3 },
 				"packages/componentize/**": { statements: 93, branches: 83, functions: 94, lines: 93 },
 				"packages/conformance/**": { statements: 91, branches: 80, functions: 94, lines: 91 },
 				"packages/connectivity/**": { statements: 87, branches: 80, functions: 89, lines: 88 },

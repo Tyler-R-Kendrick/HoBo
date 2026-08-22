@@ -31,7 +31,7 @@ Excluded:
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\billing-launch-policy-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\billing-launch-policy-contract test
 ```
 
 

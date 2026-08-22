@@ -9,7 +9,7 @@ export class LogsCliError extends Error {
 }
 
 export function createHoboLogsCli({ streamer }) {
-  if (!streamer || typeof streamer.openLogStream !== "function") {
+  if (!streamer || !Object.prototype.toString.call(streamer.openLogStream).endsWith("Function]")) {
     throw new TypeError("logs CLI requires a Streamer-backed log source");
   }
 
@@ -368,7 +368,7 @@ function normalizeLevel(level) {
 }
 
 function normalizeString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (Object.prototype.toString.call(value) !== "[object String]" || value.length === 0) {
     throw new LogsCliError(`${label} must be a non-empty string.`, 2);
   }
   return value;
@@ -378,7 +378,8 @@ function clone(value) {
   if (Array.isArray(value)) {
     return value.map(clone);
   }
-  if (value && typeof value === "object") {
+  const tag = Object.prototype.toString.call(value);
+  if (tag === "[object Object]" || tag === "[object Array]") {
     return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, clone(child)]));
   }
   return value;

@@ -280,7 +280,7 @@ async function readCurrentIdentity({ credentialStore, now, required }) {
   };
 }
 
-function createIssuedEvent({ subject, tenant, credential, claims, now }) {
+function createIssuedEvent({ subject: _subject, tenant, credential, claims, now }) {
   const event = createIdentityEvent(
     "identity.Issued",
     {
@@ -352,14 +352,14 @@ function defaultAuthorize() {
 }
 
 function requireIssuer(issuer) {
-  if (!issuer || typeof issuer.signJwtSvid !== "function") {
+  if (!issuer || !isFunction(issuer.signJwtSvid)) {
     throw new Error("login contract requires a Yard Identity issuer");
   }
   return issuer;
 }
 
 function requireCredentialStore(store) {
-  if (!store || typeof store.write !== "function" || typeof store.read !== "function") {
+  if (!store || !isFunction(store.write) || !isFunction(store.read)) {
     throw new Error("login contract requires a credential store");
   }
   return store;
@@ -418,7 +418,7 @@ function sortJson(value) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    Object.prototype.toString.call(value) === "[object Object]" &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -429,11 +429,21 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isObjectLike(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {
     deepFreeze(child);
   }
   return Object.freeze(value);
+}
+
+function isFunction(value) {
+  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
+    Object.prototype.toString.call(value),
+  );
+}
+
+function isObjectLike(value) {
+  return value !== null && (Array.isArray(value) || Object.prototype.toString.call(value) === "[object Object]");
 }

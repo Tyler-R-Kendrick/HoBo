@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased provider results at the convergence boundary. */
 import { createHash, randomUUID } from "node:crypto";
 
 export const HOBO_UP_CONVERGENCE_VERSION = "hobo.up-convergence/v1";

@@ -126,12 +126,31 @@ describe("what Esc means", () => {
 		// checked four ways (bare Esc, Esc after a cursor move, a doubled Esc,
 		// and Esc with the slash palette open), all identical.
 		//
-		// Two readings, and this test deliberately does not pick one: either
-		// scripted keys reach the editor by a path that bypasses the listener,
-		// in which case only the real-TTY behaviour matters and
-		// `shell-live-tty.test.ts` is where it belongs; or Esc genuinely does
-		// not clear, which is a defect. Pinning the current behaviour means a
-		// change in either direction shows up here rather than silently.
+		// RESOLVED (was: "two readings, this test does not pick one"). It is
+		// the first reading, and the mechanism is exact: the scripted driver
+		// calls `handleKey(sequence)` directly --
+		//
+		//     if (options.scriptedKeys !== undefined) {
+		//       for (const sequence of splitKeySequences(options.scriptedKeys)) {
+		//         handleKey(sequence);
+		//
+		// -- while the Esc-clears-the-line branch lives in the callback passed
+		// to `tui.addInputListener`, which only a real TTY read ever invokes.
+		// Esc is not failing to clear the line; the code that would clear it is
+		// never reached on this path.
+		//
+		// So this test pins the *driver's* behaviour, not the shell's, and the
+		// real-TTY behaviour belongs in `shell-live-tty.test.ts`.
+		//
+		// The wider consequence is worth stating where someone will find it:
+		// every test written against `scriptedKeys` exercises `handleKey` and
+		// not the listener, so the listener's own routing -- attached-pane key
+		// forwarding, Ctrl+C, the approval and `/agents` modal gates -- is
+		// untested by construction, and reads as uncovered in the coverage
+		// report because it is. Closing that gap means giving the scripted
+		// driver a seam that feeds the listener, which changes what every
+		// existing scripted test is asserting against and is a deliberate
+		// design change rather than a fix to make in passing.
 		const { prompts } = await drive(`abandon this${ESC}kept\r${CTRL_C}`);
 		expect(prompts).toStrictEqual(["abandon thiskept"]);
 	});

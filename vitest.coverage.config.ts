@@ -263,7 +263,13 @@ export default defineConfig({
 				// `parseOptimizeRequest` already refuses upstream (an orphan root
 				// span, an absent reward, a missing rubric or contract), so those
 				// `??` arms are unreachable through the port — verified one by one.
-				"packages/providers/provider-ax/**": { statements: 95, branches: 72, functions: 100, lines: 100 },
+				// branches is 73.8 and will not reach 80. The remaining seventeen arms in
+				// engine.ts are defensive `?? ""` / `?? 0` fallbacks on fields the port's
+				// own parser makes mandatory -- rubric, rubric.objective, contract, and
+				// trajectory.reward were each probed directly and each refused at
+				// `parseOptimizeRequest` before the fallback could run. They are dead
+				// code guarded by a stricter parser, not untested behaviour.
+				"packages/providers/provider-ax/**": { statements: 95, branches: 73.8, functions: 100, lines: 100 },
 				"packages/providers/provider-azure/**": { statements: 94, branches: 80, functions: 98, lines: 94 },
 				"packages/providers/provider-browser-wasm/**": { statements: 87, branches: 83, functions: 92, lines: 87 },
 				"packages/providers/provider-cloudflare/**": { statements: 90, branches: 80, functions: 93, lines: 91 },

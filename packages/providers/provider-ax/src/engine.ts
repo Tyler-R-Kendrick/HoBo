@@ -77,6 +77,16 @@ function rootSpanIo(trajectory: Trajectory): TrajectoryIo | null {
 	const input = parseJsonRecord(root.inputsJson);
 	const output = parseJsonRecord(root.outputsJson);
 	if (!input || !output) return null;
+	// An empty object parses fine and is still unusable. The signature is
+	// derived from the *first* usable trajectory's field names, so `{}` on
+	// either side produces `"objective"  -> ` or `... -> ` with nothing after
+	// the arrow — which ax rejects with `AxSignatureValidationError`, thrown
+	// out of `optimize` as a third-party error rather than as this engine's
+	// own "no usable trajectory" refusal. Treating empty as unusable here is
+	// what keeps that a HoBo-shaped error the caller can act on.
+	if (Object.keys(input).length === 0 || Object.keys(output).length === 0) {
+		return null;
+	}
 	return { input, output, reward: trajectory.reward?.score ?? 0 };
 }
 

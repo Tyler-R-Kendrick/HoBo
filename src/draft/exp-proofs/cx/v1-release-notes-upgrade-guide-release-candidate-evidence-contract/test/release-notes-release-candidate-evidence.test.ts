@@ -154,15 +154,17 @@ test("malformed evidence collections return parser errors instead of throwing", 
     releaseNotesReleaseCandidateEvidence,
     validateReleaseNotesReleaseCandidateEvidence,
   } = await loadContract();
-  const invalid = structuredClone(releaseNotesReleaseCandidateEvidence) as unknown as Record<string, unknown>;
-
-  invalid.evidence = {};
-  invalid.blockers = "not-blockers";
-  invalid.acceptedRisks = null;
-  invalid.releaseCutlineDependencies = false;
-  invalid.followUps = {};
-  invalid.scopeOut = {};
-  invalid.publicClaimGuards = {};
+  // SAFETY: This fixture deliberately replaces validated fields with malformed values to exercise parser errors.
+  const invalid = {
+    ...structuredClone(releaseNotesReleaseCandidateEvidence),
+    evidence: {},
+    blockers: "not-blockers",
+    acceptedRisks: null,
+    releaseCutlineDependencies: false,
+    followUps: {},
+    scopeOut: {},
+    publicClaimGuards: {},
+  } as typeof releaseNotesReleaseCandidateEvidence;
 
   const result = validateReleaseNotesReleaseCandidateEvidence(invalid);
 

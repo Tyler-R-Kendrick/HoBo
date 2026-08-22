@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this proof owns the erased scope boundary; the parser establishes an object candidate and the validator checks every required field before accepting it. */
+
 export const REQUIRED_BOUNDARIES = ["service", "ux", "security", "support"] as const;
 
 const REQUIRED_DEPENDENCIES = [

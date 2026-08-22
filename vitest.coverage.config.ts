@@ -230,7 +230,24 @@ export default defineConfig({
 				"packages/mcp/**": { statements: 95, branches: 85, functions: 96, lines: 97 },
 				"packages/packs/**": { statements: 88, branches: 83, functions: 93, lines: 87 },
 				"packages/patterns/**": { statements: 90, branches: 82, functions: 95, lines: 91 },
-				"packages/pixel-village/**": { statements: 58, branches: 57, functions: 60, lines: 59 },
+				// Ceiling, measured 2026-08-22: 66.23% branches even with every
+				// reachable branch covered. Of 448 uncovered branches, 389 need a
+				// real browser and cannot run in this lane at all:
+				//   214  src/main.ts            browser entry; the only module that
+				//                               instantiates Phaser.Game (ADR-0147)
+				//    85  src/dom-overlay.ts     createDomOverlay needs a live Document
+				//    37  src/phaser/scenes.ts   Phaser Scene subclasses
+				//    27  src/phaser/yard-presenter.ts
+				//    14  src/scenes/yard-scene.ts
+				//    12  src/phaser/{game-config,boot-scene}.ts
+				// All of it *is* exercised — by the 18 Playwright specs under
+				// test/e2e, whose coverage never reaches this gate. So 80% here is
+				// not a testing gap to close by writing more vitest; it needs a
+				// decision: merge the Playwright coverage in, add a DOM environment
+				// (the repo has neither jsdom nor happy-dom today), or exclude the
+				// browser-only modules from this denominator. Raising the floor past
+				// ~66 without one of those would be a gate nobody can pass.
+				"packages/pixel-village/**": { statements: 61, branches: 61, functions: 65, lines: 62 },
 				"packages/policy/**": { statements: 97, branches: 95, functions: 100, lines: 97 },
 				"packages/providers/provider-aws/**": { statements: 93, branches: 80, functions: 98, lines: 93 },
 				// Branches sit below the 80 target by construction, not by neglect.

@@ -75,3 +75,8 @@ because nothing could — the file did not parse.
 | Simulation risk | The simulation demonstrates architecture shape and negative behavior; it does not claim production EventStore, sink, gateway, GraphQL, search, or governance services exist. |
 | Active epic conflict | The reference implementation is isolated under the Data Plane epic slug and does not modify other epic reference paths or child PR branches. |
 | Follow-up split | Provider-side Pact verification, real sink adapters, live replication, and production poison-event provider integration remain follow-up work outside this reference PR. |
+
+| `src/draft/technical-proofs/projection-consistency-reactivity-contract` | latest validated leaf hardening | Projection consistency and replay evidence unchanged. |
+| `src/draft/technical-proofs/projection-sink-change-feed-conformance-contract` | latest validated leaf hardening | Change-feed and materialization evidence unchanged. |
+| `src/draft/technical-proofs/reactor-skeleton-contract` | latest validated leaf hardening | Reactor and event-reactivity evidence unchanged. |
+| `src/draft/technical-proofs/reads-your-writes-contract` | latest validated leaf hardening | Read-your-writes consistency evidence unchanged. |

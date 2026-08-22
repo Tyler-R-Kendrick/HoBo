@@ -7,7 +7,8 @@
     "technicalProofs": [
       "src/draft/technical-proofs/hobo-auth-json-contract",
       "src/draft/technical-proofs/hobo-jwt-svid-contract",
-      "src/draft/technical-proofs/hobo-principal-ref-contract"
+      "src/draft/technical-proofs/hobo-principal-ref-contract",
+      "src/draft/technical-proofs/outbound-xaa-token-exchange-contract"
     ],
     "epicProofs": [],
     "expProofs": [],

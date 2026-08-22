@@ -17,7 +17,9 @@
       "src/draft/technical-proofs/registry-publish-flow-contract",
       "src/draft/technical-proofs/signed-artifact-publish-install-contract",
       "src/draft/technical-proofs/signed-offline-bundle-contract",
-      "src/draft/technical-proofs/trust-tier-policy-contract"
+      "src/draft/technical-proofs/trust-tier-policy-contract",
+      "src/draft/technical-proofs/portability-swap-equivalent-contract",
+      "src/draft/technical-proofs/registry-import-contract"
     ],
     "epicProofs": [],
     "expProofs": [],

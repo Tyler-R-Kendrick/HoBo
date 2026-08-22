@@ -67,3 +67,9 @@ record stays 0, `slug: 7` stays 1, `layer: "ux"` stays 1.
 No disposition, evidence path, Linear link, or acceptance claim in the table
 above moves. No proof in this epic identifies itself with an empty slug, so
 nothing that validated before stops validating.
+
+## Cascade absorptions (batch five)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/operations-manifests-contract` | latest validated leaf hardening | Operations-manifest and bounded CLI/MCP evidence unchanged. |

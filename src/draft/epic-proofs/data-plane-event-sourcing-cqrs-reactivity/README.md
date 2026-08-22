@@ -79,6 +79,8 @@ Feature: Fail-closed data-plane adversarial behavior
 No live external service, network call, credential, customer data, or production token is required.
 
 
+Projection-consistency, change-feed, reactor, and reads-your-writes changes are absorbed without changing replay, materialization, or read-consistency behavior.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by

@@ -40,3 +40,10 @@ The telemetry leaf replaced fragile `typeof` checks with tag-based object and
 string checks. CloudEvent decoding, trace metadata normalization, envelope
 validation, and deterministic export remain covered by the existing telemetry
 simulation and Pact boundary inventory.
+
+## Cascade absorptions (batch five)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/openinference-trajectory-capture-contract` | latest validated leaf hardening | Trajectory capture and telemetry evidence unchanged. |
+| `src/draft/technical-proofs/reliability-sla-rollup-contract` | latest validated leaf hardening | Reliability status and SLO evidence unchanged. |

@@ -16,7 +16,10 @@
       "src/draft/technical-proofs/raw-driver-escape-hatch-contract",
       "src/draft/technical-proofs/reactor-skeleton-contract",
       "src/draft/technical-proofs/replay-live-equivalence-poc",
-      "src/draft/technical-proofs/search-extension-packages-contract"
+      "src/draft/technical-proofs/search-extension-packages-contract",
+      "src/draft/technical-proofs/projection-consistency-reactivity-contract",
+      "src/draft/technical-proofs/projection-sink-change-feed-conformance-contract",
+      "src/draft/technical-proofs/reads-your-writes-contract"
     ],
     "epicProofs": [],
     "expProofs": [],

@@ -38,3 +38,11 @@
 - Offline import cannot depend on live CRL, OCSP, transparency, or registry reachability; all trust material must be carried in-boundary.
 - Installing a listing must not automatically select it; Matching selection is a later planner decision.
 - Yanked listings block new selection but do not rewrite already-running Sets; running Sets are flagged with obligations.
+
+## Cascade absorptions (batch five)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/portability-swap-equivalent-contract` | latest validated leaf hardening | Portability equivalence and registry selection evidence unchanged. |
+| `src/draft/technical-proofs/registry-import-contract` | latest validated leaf hardening | Offline import and registry trust evidence unchanged. |
+| `src/draft/technical-proofs/registry-publish-flow-contract` | latest validated leaf hardening | Registry publish and artifact trust evidence unchanged. |

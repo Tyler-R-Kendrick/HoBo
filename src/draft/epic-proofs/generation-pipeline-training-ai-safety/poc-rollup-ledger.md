@@ -79,3 +79,5 @@ nothing that validated before stops validating.
 | Simulation risk | The simulation does not claim production readiness; it demonstrates architecture shape and fail-closed behavior with deterministic fixtures. |
 | Active epic conflict | The reference implementation is isolated under the Generation epic slug and does not touch other epic reference paths. |
 | Follow-up split | Provider-side Pact verification and live service adapters remain follow-up work outside this reference PR. |
+
+| `src/draft/technical-proofs/openinference-trajectory-capture-contract` | latest validated leaf hardening | Trajectory capture and generation safety evidence unchanged. |

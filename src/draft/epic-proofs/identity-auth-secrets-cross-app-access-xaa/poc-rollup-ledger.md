@@ -82,3 +82,5 @@ nothing that validated before stops validating.
 | Simulation risk | The harness must report mocked providers and empty live network calls so it cannot be mistaken for a deployed identity service. |
 | Contract brittleness risk | Pact fixtures focus on boundary request/response compatibility and avoid asserting entire business workflows. |
 | Active epic conflict | The reference path is unique to Identity/XAA and does not modify other epic reference directories. |
+
+| `src/draft/technical-proofs/outbound-xaa-token-exchange-contract` | latest validated leaf hardening | Outbound XAA exchange and trust evidence unchanged. |

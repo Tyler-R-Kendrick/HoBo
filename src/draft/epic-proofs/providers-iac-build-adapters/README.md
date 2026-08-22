@@ -122,6 +122,8 @@ Deferred:
 - Real cloud APIs, real Pulumi/OpenTofu/Crossplane/CDKTF runs, real Dagger/Packer/Firecracker/Vagrant builds, production provider package publication, provider-side Pact verification, hosted registry transport, live model calls, and real executor dispatch.
 
 
+Fly and Vercel provider changes are absorbed without changing preview, apply, refresh, or controller-driven behavior.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by

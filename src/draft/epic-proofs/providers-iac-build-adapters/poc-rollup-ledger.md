@@ -44,3 +44,6 @@
 | `src/draft/technical-proofs/generation-provider-loop-contract` | latest validated leaf hardening | generateProvider simulation and Pact evidence unchanged. |
 | `src/draft/technical-proofs/iac-crossplane-backend-contract` | latest validated leaf hardening | Crossplane controller simulation unchanged. |
 | `src/draft/technical-proofs/iac-pulumi-backend-contract` | latest validated leaf hardening | Pulumi preview/apply/refresh simulation unchanged. |
+
+| `src/draft/technical-proofs/provider-fly-contract` | latest validated leaf hardening | Fly provider preview/apply evidence unchanged. |
+| `src/draft/technical-proofs/provider-vercel-contract` | latest validated leaf hardening | Vercel provider preview/apply evidence unchanged. |

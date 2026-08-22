@@ -80,6 +80,7 @@ npm.cmd --prefix src/draft/epic-proofs/reliability-observability-cost-finops tes
 - POC modules are imported and executed from `src/draft/<kind>/<slug>`.
 - Pact-style fixtures cover every declared reference boundary.
 - The validated SLO gaming guard proof is included in this rollup; its deterministic simulation contract is unchanged.
+- The validated cost-degradation saga and connectivity cost feedback proofs are included in this rollup; their deterministic simulation contracts are unchanged.
 - The simulation runs four epic-level slices with deterministic fixtures.
 
 ## What Is Mocked
@@ -97,6 +98,8 @@ npm.cmd --prefix src/draft/epic-proofs/reliability-observability-cost-finops tes
   [`s6-05-observability-drift-loop-contract`](../../technical-proofs/s6-05-observability-drift-loop-contract/README.md)
   exercises OTLP export, SLO burn alerts, and drift heal/propose/ignore in an E2E lane.
 
+
+OpenInference trajectory-capture and reliability-SLA changes are absorbed without changing telemetry, status, or rollback behavior.
 
 ## Architecture Evidence
 

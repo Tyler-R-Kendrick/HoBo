@@ -78,6 +78,8 @@ Feature: Recover and observe identity control planes
 - The tests assert positive paths and fail-closed adversarial cases: forged workload, wrong issuer, revoked session, confused-deputy delegation, replay, expired static key, and plaintext leakage.
 - Auth JSON, JWT-SVID, and PrincipalRef changes are absorbed without changing credential ordering, trust, or audit behavior.
 
+Outbound XAA token-exchange changes are absorbed without changing credential ordering, trust, or audit behavior.
+
 ## What Is Mocked
 
 - Host attestation verifier, provider manifest registry, provider STS, JWKS issuer, session projection, secret provider, policy gate, external app authorization server, SVID CA, Relay authorizer, broker HA cache, and OCSF collector.

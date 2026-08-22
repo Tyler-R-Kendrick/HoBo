@@ -82,6 +82,8 @@ Contracts:
 This is a reference architecture package, not product implementation. It does not call live clouds, live IaC tools, real Identity, real Gatekeeper, real Registry, real EventStore, or real provider APIs.
 
 
+Region-objective ranking changes are absorbed without changing deterministic placement or budget-selection behavior.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by

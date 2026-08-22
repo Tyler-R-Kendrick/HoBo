@@ -80,6 +80,8 @@ The dev-loop, login, logs, doctor, and up-convergence proof changes are
 absorbed without changing the bounded CLI/MCP journeys or fail-closed gates.
 
 
+Operations-manifest changes are absorbed without changing the bounded CLI/MCP journeys or fail-closed gates.
+
 ## Architecture Evidence
 
 > **Promotion (S1-20 / HOBO-610):** production CLI shell + `hobo new` live in [`packages/cli`](../../../../packages/cli/). This epic proof still pins CLI↔MCP parity via `contracts/pacts/cli-command-path.pact.json`.

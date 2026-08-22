@@ -67,6 +67,8 @@ Feature: Gate live fixes and generated-stack propagation
 - Bounded repair, LLM fill, material sanitization, and generation-pipeline IO changes are absorbed without weakening the safety gates.
 - Generation safety-gate, validation-stage, and human-approval changes are absorbed without changing the deterministic safety simulation.
 
+OpenInference trajectory-capture changes are absorbed without changing the deterministic generation safety simulation.
+
 ## What Is Mocked
 
 - Sandbox validation provider.

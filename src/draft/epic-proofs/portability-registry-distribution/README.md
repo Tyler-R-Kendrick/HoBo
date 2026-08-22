@@ -95,6 +95,8 @@ In scope: epic-level reference slice under the common reference implementation r
 Out of scope: production registry transport, real OCI/Sigstore/Rekor services, real cloud/provider APIs, full Junction federation rollout, production Matching scoring, and deleting or moving existing POCs.
 
 
+Portability-swap, registry-import, and registry-publish changes are absorbed without changing registry trust, offline import, or selection behavior.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by

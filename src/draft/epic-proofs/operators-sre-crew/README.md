@@ -84,6 +84,8 @@ The simulation uses mocked boundaries only. It records zero live network calls a
 Provider verification is documented as unavailable because no real providers exist in this design repo. The Pact files are consumer fixtures for the reference implementation and should be promoted into provider verification once the corresponding runtime, policy, live-fix, notify, issue-tracker, knowledge, event-log, and chaos providers exist.
 
 
+Policy-gated flag changes are absorbed without changing operator safety, rollback, or fail-closed behavior.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by

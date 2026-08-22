@@ -5,7 +5,9 @@
   "references": {
     "technicalProofs": [
       "src/draft/technical-proofs/experiment-statistical-analysis-contract",
-      "src/draft/technical-proofs/hobo-experiment-port"
+      "src/draft/technical-proofs/hobo-experiment-port",
+      "src/draft/technical-proofs/openexperiment-runtime-data-contract",
+      "src/draft/technical-proofs/policy-gated-flag-flips-contract"
     ],
     "epicProofs": [],
     "expProofs": [],

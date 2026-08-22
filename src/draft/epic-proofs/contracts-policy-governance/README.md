@@ -86,6 +86,8 @@ Contracts:
 - See `contracts/pact-inventory.md`.
 
 
+Policy fail-closed changes are absorbed without changing deterministic replay or mandatory governance behavior.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by

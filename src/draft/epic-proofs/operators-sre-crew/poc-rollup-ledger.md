@@ -68,3 +68,5 @@ nothing that validated before stops validating.
 | `src/draft/technical-proofs/disaster-recovery-failover-contract` | latest validated leaf hardening | DR failover replay and approval evidence unchanged. |
 | `src/draft/technical-proofs/dr-failover-integrity-contract` | latest validated leaf hardening | Failover-integrity evidence and refusal paths unchanged. |
 | `src/draft/technical-proofs/gated-autonomous-remediation-contract` | latest validated leaf hardening | Remediation gate and canary evidence unchanged. |
+
+| `src/draft/technical-proofs/policy-gated-flag-flips-contract` | latest validated leaf hardening | Operator policy-gating and rollback evidence unchanged. |

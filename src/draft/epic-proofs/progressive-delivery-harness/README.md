@@ -69,6 +69,8 @@ See:
 - [simulation/README.md](./simulation/README.md)
 
 
+The openexperiment runtime-data and policy-gated flag changes are absorbed without changing assignment, exposure, rollout, or fail-closed gating semantics.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by

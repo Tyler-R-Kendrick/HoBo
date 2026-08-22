@@ -41,3 +41,5 @@ Allowed reference implementation statuses: `not_started`, `in_progress`, `implem
 | `src/draft/technical-proofs/gatekeeper-verify-contract` | latest validated leaf hardening | Gatekeeper verification simulation and Pact evidence unchanged. |
 
 | `src/draft/technical-proofs/governance-conformance-suite-contract` | latest validated leaf hardening | Governance replay and conformance evidence unchanged. |
+
+| `src/draft/technical-proofs/policy-fail-closed-contract` | latest validated leaf hardening | Fail-closed policy and governance evidence unchanged. |

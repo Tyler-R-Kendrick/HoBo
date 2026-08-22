@@ -43,10 +43,32 @@ import {
 	withHarnessFromLivePanes,
 } from "../src/interactive-shell.js";
 
+/**
+ * A shell with nothing seated and no claimed work.
+ *
+ * `createInitialShellState` reads `HOBO_HOME` from the ambient environment and
+ * builds the agent board from that station's real tasks. Left to the process
+ * environment, whichever other suite happened to log a station in decides
+ * whether this shell has claimed work -- and `/mux` opens instead of refusing.
+ * The env and home are pinned to a path that does not exist, and the board is
+ * overridden outright, so these tests describe the shell rather than the run.
+ */
 const base = (overrides: Partial<InteractiveShellState> = {}) =>
 	// SAFETY: the fixture is the state shape the reducer is declared over.
 	({
-		...createInitialShellState({ width: 80, height: 24, welcome: false }),
+		...createInitialShellState({
+			width: 80,
+			height: 24,
+			welcome: false,
+			env: {},
+			hoboHome: "/nonexistent/hobo-home-for-key-reducer-tests",
+			cwd: "/nonexistent/project-for-key-reducer-tests",
+		}),
+		agentBoard: {
+			schema: "hobo.code.agent-work/v1",
+			groups: [],
+			unclaimed: [],
+		},
 		...overrides,
 		// SAFETY: the fixture is the state shape the reducer is declared over.
 	}) as InteractiveShellState;

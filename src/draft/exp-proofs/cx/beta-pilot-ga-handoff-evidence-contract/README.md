@@ -21,7 +21,7 @@ state required before beta feedback can support GA launch readiness.
 ## Verification
 
 ```powershell
-pnpm.cmd --dir src\draft\exp-proofs\beta-pilot-ga-handoff-evidence-contract test
+pnpm.cmd --dir src\draft\exp-proofs\cx\beta-pilot-ga-handoff-evidence-contract test
 ```
 
 This draft workspace is also registered in `pnpm-lock.yaml` so frozen installs include the package

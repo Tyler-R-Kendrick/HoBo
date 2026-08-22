@@ -4,7 +4,7 @@
 |---|---|
 | `hobo-mcp-server-contract` | SVID-bound MCP server, tool parity |
 | `token-broker-skeleton-contract` | Brokered `request_token`, token events |
-| `mcp-server-hardening-contract` | Approval gates, scope enforcement |
+| `mcp-server-hardening-contract` | Approval gates, scope enforcement; refreshed for the validated leaf hardening, with simulation and Pact evidence unchanged |
 | `cli-credential-hardening-contract` | Static secret rejection |
 | `hobo-auth-json-contract` | Signed auth.json fixture for S2 cloud |
 

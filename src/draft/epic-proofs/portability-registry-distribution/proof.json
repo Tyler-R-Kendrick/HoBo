@@ -13,6 +13,7 @@
       "src/draft/technical-proofs/offline-import-integrity-contract",
       "src/draft/technical-proofs/registry-artifact-descriptor-contract",
       "src/draft/technical-proofs/registry-dependency-confusion-guard-contract",
+      "src/draft/technical-proofs/registry-publish-flow-contract",
       "src/draft/technical-proofs/signed-artifact-publish-install-contract",
       "src/draft/technical-proofs/signed-offline-bundle-contract",
       "src/draft/technical-proofs/trust-tier-policy-contract"

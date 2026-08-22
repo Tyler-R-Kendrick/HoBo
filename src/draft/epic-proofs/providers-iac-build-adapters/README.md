@@ -90,6 +90,7 @@ What this proves:
 - Provider packages register default Resource Definitions with conformance evidence.
 - `realize()` emits mocked `IacProgram` and `BuildSpec` objects consumed by mocked IaC/build/driver adapters.
 - Drift, partial apply, and malicious-provider paths fail closed.
+- The validated Crossplane backend proof is included in this rollup; its simulation contract is unchanged.
 - The same multi-cloud shop Bindle remains unchanged across AWS and Azure fixtures.
 
 Mocked boundaries:

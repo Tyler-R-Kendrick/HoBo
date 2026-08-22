@@ -50,6 +50,7 @@ What this proves:
 - CLI command registry and MCP tools stay parity-checked.
 - App-dev, GitOps, SecOps, SRE, and DevOps role journeys run against deterministic mocked boundaries.
 - Credential hardening, SVID-bound MCP calls, local-dev fidelity labels, and operations manifests fail closed when scoped too broadly.
+- The validated MCP server hardening proof is included in this rollup; its deterministic simulation contract is unchanged.
 - Pact fixture inventory matches the boundaries the simulation exercises.
 
 Mocked boundaries:

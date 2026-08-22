@@ -46,6 +46,7 @@ What this proves:
 - cross-host wRPC links negotiate and fail closed before calls;
 - SDK parity and websocket fan-out remain deny-by-default;
 - host upgrades require conformance and upcaster evidence.
+- The validated capability-enforcement proof is included in this rollup; its simulation contract is unchanged.
 - The wRPC + WIT API proof's boundary-type hardening is included in this rollup; its simulation contract is unchanged.
 
 Mocked boundaries and contracts are listed in [contracts/pact-inventory.md](contracts/pact-inventory.md).

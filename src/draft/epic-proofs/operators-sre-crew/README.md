@@ -62,6 +62,7 @@ The simulation uses mocked boundaries only. It records zero live network calls a
 ## What is real
 
 - The SRE decision flow is executable and covered by Node tests.
+- The validated autonomous-drift-remediation proof is included in this rollup; its deterministic simulation contract is unchanged.
 - Every selected service boundary has a Pact-format consumer fixture under [contracts/pacts](contracts/pacts).
 - The simulation drives incident, crew, policy, live-fix, A2H, integration-port, runaway guard, and DR replay events.
 - The POC rollup ledger records accepted, implemented, deferred, and out-of-scope POCs.

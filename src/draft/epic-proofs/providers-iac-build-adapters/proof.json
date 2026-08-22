@@ -4,7 +4,9 @@
   "title": "Providers, IaC & Build Adapters Reference Implementation",
   "linear": "HOBO-87",
   "references": {
-    "technicalProofs": [],
+    "technicalProofs": [
+      "src/draft/technical-proofs/iac-crossplane-backend-contract"
+    ],
     "epicProofs": [],
     "expProofs": [],
     "designDocs": []

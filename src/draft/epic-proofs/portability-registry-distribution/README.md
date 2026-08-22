@@ -67,6 +67,7 @@ What this proves:
 - Catalog and trust policy gates fail closed.
 - Yanked listings block new selection and flag running Sets.
 - Offline import uses in-boundary mocks and no live network.
+- The validated registry-publish-flow proof is included in this rollup; its deterministic simulation contract is unchanged.
 - Mirror cost tie-break runs only after digest identity verification.
 
 Mocked boundaries:

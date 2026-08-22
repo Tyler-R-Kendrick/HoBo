@@ -2,7 +2,7 @@
 
 | POC | Path | Issue | Persona | Scenario | Boundary | Dependencies | Status | Notes |
 |---|---|---|---|---|---|---|---|---|
-| Live-fix gated candidate | `src/draft/technical-proofs/live-fix-gated-candidate-contract` | HOBO-368 | SRE | Failing trace → gated candidate | Live-fix applier | Sandbox, policy | verified | Composed directly |
+| Live-fix gated candidate | `src/draft/technical-proofs/live-fix-gated-candidate-contract` | HOBO-368 | SRE | Failing trace → gated candidate | Live-fix applier | Sandbox, policy | verified | Composed directly; latest technical-proof change reconciled without changing the simulation. |
 | SLO-gated rollback analysis | `src/draft/technical-proofs/slo-gated-rollback-analysis-contract` | HOBO-315 | SRE | Canary SLO burn → rollback | Delivery metric gate | SLO promotion gate | verified | Drives canary outcome |
 | Generation pipeline live-fix | `src/draft/epic-proofs/generation-pipeline-training-ai-safety` | HOBO-307+ | Platform eng | Prod candidate approval | Generation reference | Human approval gate | verified | Scenario promoted |
 | Progressive delivery harness | `src/draft/epic-proofs/progressive-delivery-harness` | HOBO-141+ | Platform operator | Canary promote/rollback | Harness boundaries | Mocked providers | verified | Canary pattern promoted |

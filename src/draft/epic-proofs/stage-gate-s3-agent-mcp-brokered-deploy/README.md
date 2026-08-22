@@ -57,3 +57,7 @@ pnpm --prefix src/draft/epic-proofs/stage-gate-s3-agent-mcp-brokered-deploy run 
 - `architecture/` — protobuf + CUE for drill records.
 - `architecture.md` — parse-don't-validate and event-architecture notes.
 - `contracts/pact-inventory.md` — boundary inventory.
+
+## Cascade reconciliation (83d9b5c92)
+
+The `token-broker-skeleton-contract` technical proof refresh is absorbed without changing staged brokered-deploy evidence.

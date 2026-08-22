@@ -68,3 +68,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Sdk Authoring Ifc Bindles.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The SDK-codegen, topology-object, and usage-permission technical proof refreshes are absorbed without changing SDK authoring or bindle evidence.

@@ -53,3 +53,7 @@ Independent POC promoting resolution fixtures from `control-plane-planner-matchi
 | `camp-mapping-sugar-compiler` | mapping style → Resource Definitions |
 | `capability-negotiation-contract` | prefer/require + PlanRejected |
 | `provider-options-pattern-contract` | inert `.with(...)` |
+
+## Cascade reconciliation (83d9b5c92)
+
+The `topology-objects-contract` technical proof refresh is absorbed without changing mapping-style resolution evidence.

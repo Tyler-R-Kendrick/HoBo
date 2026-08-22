@@ -80,3 +80,10 @@ because nothing could — the file did not parse.
 | `src/draft/technical-proofs/projection-sink-change-feed-conformance-contract` | latest validated leaf hardening | Change-feed and materialization evidence unchanged. |
 | `src/draft/technical-proofs/reactor-skeleton-contract` | latest validated leaf hardening | Reactor and event-reactivity evidence unchanged. |
 | `src/draft/technical-proofs/reads-your-writes-contract` | latest validated leaf hardening | Read-your-writes consistency evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/search-extension-packages-contract` | final validated leaf hardening | Extension-search evidence unchanged. |
+| `src/draft/technical-proofs/snapshot-replay-divergence-contract` | final validated leaf hardening | Event replay and divergence evidence unchanged. |

@@ -92,3 +92,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Control Plane Planner Matching Orchestrator.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The `self-host-bootstrap-saga-contract` technical proof refresh is absorbed without changing deterministic planner or orchestration evidence.

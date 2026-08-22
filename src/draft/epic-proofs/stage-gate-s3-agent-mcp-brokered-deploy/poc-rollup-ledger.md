@@ -25,3 +25,9 @@
 | Referenced proof | Change | Effect on this rollup |
 |---|---|---|
 | `src/draft/technical-proofs/hobo-auth-json-contract` | latest validated leaf hardening | Signed auth fixture and brokered-token evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/token-broker-skeleton-contract` | final validated leaf hardening | Brokered-deploy evidence unchanged. |

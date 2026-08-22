@@ -84,3 +84,16 @@ nothing that validated before stops validating.
 | Active epic conflict | The reference path is unique to Identity/XAA and does not modify other epic reference directories. |
 
 | `src/draft/technical-proofs/outbound-xaa-token-exchange-contract` | latest validated leaf hardening | Outbound XAA exchange and trust evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/secretless-config-resolution-contract` | final validated leaf hardening | Secretless resolution evidence unchanged. |
+| `src/draft/technical-proofs/static-key-escape-hatch-contract` | final validated leaf hardening | Static escape-hatch boundary evidence unchanged. |
+| `src/draft/technical-proofs/svid-auto-rotation-contract` | final validated leaf hardening | SVID rotation evidence unchanged. |
+| `src/draft/technical-proofs/svid-partition-grace-spike` | final validated leaf hardening | Partition-grace evidence unchanged. |
+| `src/draft/technical-proofs/token-broker-ha-cache-contract` | final validated leaf hardening | Broker cache evidence unchanged. |
+| `src/draft/technical-proofs/token-broker-skeleton-contract` | final validated leaf hardening | Broker skeleton evidence unchanged. |
+| `src/draft/technical-proofs/token-replay-resistance-contract` | final validated leaf hardening | Replay-resistance evidence unchanged. |
+| `src/draft/technical-proofs/workload-attestation-intake-contract` | final validated leaf hardening | Workload-attestation evidence unchanged. |

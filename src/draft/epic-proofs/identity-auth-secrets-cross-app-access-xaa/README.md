@@ -96,3 +96,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Identity Auth Secrets Cross App Access Xaa.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The secretless-config, static-key, SVID, token-broker, token-replay, and workload-attestation technical proof refreshes are absorbed without changing identity or secretless resolution behavior.

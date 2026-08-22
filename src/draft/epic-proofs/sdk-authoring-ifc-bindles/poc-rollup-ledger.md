@@ -32,3 +32,11 @@
 | Referenced proof | Change | Effect on this rollup |
 |---|---|---|
 | `src/draft/technical-proofs/hobo-bindles-resource-catalog` | latest validated leaf hardening | Resource catalog and secret-reference simulation unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/sdk-codegen-surface-contract` | final validated leaf hardening | SDK codegen evidence unchanged. |
+| `src/draft/technical-proofs/topology-objects-contract` | final validated leaf hardening | Topology-object evidence unchanged. |
+| `src/draft/technical-proofs/usage-inferred-permissions-contract` | final validated leaf hardening | Usage-permission evidence unchanged. |

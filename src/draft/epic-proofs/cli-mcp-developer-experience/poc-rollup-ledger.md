@@ -73,3 +73,9 @@ nothing that validated before stops validating.
 | Referenced proof | Change | Effect on this rollup |
 |---|---|---|
 | `src/draft/technical-proofs/operations-manifests-contract` | latest validated leaf hardening | Operations-manifest and bounded CLI/MCP evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/vscode-extension-contract` | final validated leaf hardening | CLI/MCP experience evidence unchanged. |

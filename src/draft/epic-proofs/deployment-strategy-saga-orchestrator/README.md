@@ -45,3 +45,7 @@ pnpm --prefix src/draft/epic-proofs/deployment-strategy-saga-orchestrator run si
 - `architecture/deployment_strategy_saga_orchestrator.proto` — protobuf shapes
 - `architecture/deployment_strategy_saga_orchestrator.cue` — CUE constraints
 - `architecture/pacts/deployment_strategy_saga_orchestrator.pact.json` — boundary PACT
+
+## Cascade reconciliation (83d9b5c92)
+
+The `slo-gated-rollback-analysis-contract` technical proof refresh is absorbed without changing strategy selection or rollback evidence.

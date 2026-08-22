@@ -70,3 +70,12 @@ nothing that validated before stops validating.
 | `src/draft/technical-proofs/gated-autonomous-remediation-contract` | latest validated leaf hardening | Remediation gate and canary evidence unchanged. |
 
 | `src/draft/technical-proofs/policy-gated-flag-flips-contract` | latest validated leaf hardening | Operator policy-gating and rollback evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/runbook-execution-engine-contract` | final validated leaf hardening | Runbook execution evidence unchanged. |
+| `src/draft/technical-proofs/sre-diagnose-projection-contract` | final validated leaf hardening | SRE diagnosis evidence unchanged. |
+| `src/draft/technical-proofs/sre-mttd-mttr-postmortem-contract` | final validated leaf hardening | Incident postmortem evidence unchanged. |
+| `src/draft/technical-proofs/sre-operator-skeleton-contract` | final validated leaf hardening | Operator workflow evidence unchanged. |

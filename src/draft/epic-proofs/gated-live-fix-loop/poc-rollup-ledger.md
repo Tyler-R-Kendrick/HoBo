@@ -16,3 +16,9 @@ The POC jointly proves FR-042 / Plan 23 live-fix gating:
 3. Failing traces persist as permanent regression tests.
 4. Production-classified fixes block until human approval.
 5. Generation, validation, policy, and deployment steps land as replayable events.
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/slo-gated-rollback-analysis-contract` | final validated leaf hardening | Live-fix gating and rollback evidence unchanged. |

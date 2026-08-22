@@ -46,3 +46,9 @@
 | `src/draft/technical-proofs/portability-swap-equivalent-contract` | latest validated leaf hardening | Portability equivalence and registry selection evidence unchanged. |
 | `src/draft/technical-proofs/registry-import-contract` | latest validated leaf hardening | Offline import and registry trust evidence unchanged. |
 | `src/draft/technical-proofs/registry-publish-flow-contract` | latest validated leaf hardening | Registry publish and artifact trust evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/trust-tier-policy-contract` | final validated leaf hardening | Trust-tier and registry evidence unchanged. |

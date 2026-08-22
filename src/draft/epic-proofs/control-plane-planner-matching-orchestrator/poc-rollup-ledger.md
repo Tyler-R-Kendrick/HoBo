@@ -39,3 +39,9 @@
 | `src/draft/technical-proofs/deployment-view-saga-graph-contract` | latest validated leaf hardening | DeploymentView saga projection simulation and Pact evidence unchanged. |
 
 | `src/draft/technical-proofs/region-objective-ranking-contract` | latest validated leaf hardening | Region-objective ranking and deterministic placement evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/self-host-bootstrap-saga-contract` | final validated leaf hardening | Planner and orchestration evidence unchanged. |

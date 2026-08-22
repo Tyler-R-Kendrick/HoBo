@@ -66,3 +66,12 @@ nothing that validated before stops validating.
 |---|---|---|
 | `src/draft/technical-proofs/openexperiment-runtime-data-contract` | latest validated leaf hardening | Runtime-data and experiment evidence unchanged. |
 | `src/draft/technical-proofs/policy-gated-flag-flips-contract` | latest validated leaf hardening | Flag-gating and rollout evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/sdk-flag-surface-contract` | final validated leaf hardening | SDK flag evidence unchanged. |
+| `src/draft/technical-proofs/slo-gated-rollback-analysis-contract` | final validated leaf hardening | Rollback gate evidence unchanged. |
+| `src/draft/technical-proofs/slo-promotion-gate-contract` | final validated leaf hardening | Promotion gate evidence unchanged. |
+| `src/draft/technical-proofs/stuck-rollout-convergence-contract` | final validated leaf hardening | Rollout convergence evidence unchanged. |

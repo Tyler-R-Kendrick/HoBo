@@ -92,3 +92,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Cli Mcp Developer Experience.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The `vscode-extension-contract` technical proof refresh is absorbed without changing the CLI/MCP experience evidence.

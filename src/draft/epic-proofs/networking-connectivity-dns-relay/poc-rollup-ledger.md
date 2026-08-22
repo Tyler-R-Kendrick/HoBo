@@ -40,3 +40,11 @@
 |---|---|---|
 | `src/draft/technical-proofs/dns-validation-gate-threat-model` | latest validated leaf hardening | DNS validation simulation and Pact evidence unchanged. |
 | `src/draft/technical-proofs/domain-event-body-contract` | latest validated leaf hardening | Domain validation event sequence and evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/split-horizon-partition-connectivity-contract` | final validated leaf hardening | Split-horizon connectivity evidence unchanged. |
+| `src/draft/technical-proofs/tier-five-public-mtls-contract` | final validated leaf hardening | Public-mTLS evidence unchanged. |
+| `src/draft/technical-proofs/topology-override-conflict-contract` | final validated leaf hardening | Topology override evidence unchanged. |

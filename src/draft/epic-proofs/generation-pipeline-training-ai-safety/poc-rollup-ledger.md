@@ -81,3 +81,9 @@ nothing that validated before stops validating.
 | Follow-up split | Provider-side Pact verification and live service adapters remain follow-up work outside this reference PR. |
 
 | `src/draft/technical-proofs/openinference-trajectory-capture-contract` | latest validated leaf hardening | Trajectory capture and generation safety evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/slsa-provenance-certification-contract` | final validated leaf hardening | Generation, training, and safety evidence unchanged. |

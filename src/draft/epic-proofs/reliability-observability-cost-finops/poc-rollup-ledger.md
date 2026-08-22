@@ -47,3 +47,16 @@ simulation and Pact boundary inventory.
 |---|---|---|
 | `src/draft/technical-proofs/openinference-trajectory-capture-contract` | latest validated leaf hardening | Trajectory capture and telemetry evidence unchanged. |
 | `src/draft/technical-proofs/reliability-sla-rollup-contract` | latest validated leaf hardening | Reliability status and SLO evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/run-inspector-projection-contract` | final validated leaf hardening | Run inspection evidence unchanged. |
+| `src/draft/technical-proofs/runaway-spend-circuit-breaker-contract` | final validated leaf hardening | Spend circuit-breaker evidence unchanged. |
+| `src/draft/technical-proofs/shared-cost-attribution-contract` | final validated leaf hardening | Shared-cost evidence unchanged. |
+| `src/draft/technical-proofs/showback-attribution-contract` | final validated leaf hardening | Showback evidence unchanged. |
+| `src/draft/technical-proofs/slo-gaming-guard-contract` | final validated leaf hardening | SLO gaming-guard evidence unchanged. |
+| `src/draft/technical-proofs/slo-gated-rollback-analysis-contract` | final validated leaf hardening | SLO rollback evidence unchanged. |
+| `src/draft/technical-proofs/slo-promotion-gate-contract` | final validated leaf hardening | SLO promotion evidence unchanged. |
+| `src/draft/technical-proofs/structured-log-pipeline-contract` | final validated leaf hardening | Structured-log evidence unchanged. |

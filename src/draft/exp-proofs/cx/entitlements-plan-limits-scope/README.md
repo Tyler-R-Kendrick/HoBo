@@ -23,7 +23,7 @@ administration UI.
 Run the focused proof:
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\entitlements-plan-limits-scope test
+npm.cmd --prefix src\draft\exp-proofs\cx\entitlements-plan-limits-scope test
 ```
 
 The proof is also referenced by the design record:

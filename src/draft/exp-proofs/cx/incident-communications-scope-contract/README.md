@@ -35,7 +35,7 @@ redaction is not approved, customer data is present, or contractual SLA language
 ## Verification
 
 ```powershell
-pnpm --prefix src\draft\exp-proofs\incident-communications-scope-contract test
+pnpm --prefix src\draft\exp-proofs\cx\incident-communications-scope-contract test
 ```
 
 ## Architecture Evidence

@@ -5,6 +5,7 @@
   "linear": "HOBO-87",
   "references": {
     "technicalProofs": [
+      "src/draft/technical-proofs/generation-provider-loop-contract",
       "src/draft/technical-proofs/iac-crossplane-backend-contract"
     ],
     "epicProofs": [],

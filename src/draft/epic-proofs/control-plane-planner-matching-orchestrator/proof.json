@@ -3,7 +3,10 @@
   "slug": "control-plane-planner-matching-orchestrator",
   "title": "Control Plane Reference Architecture",
   "references": {
-    "technicalProofs": [],
+    "technicalProofs": [
+      "src/draft/technical-proofs/delta-set-apply-reconcile-contract",
+      "src/draft/technical-proofs/deployment-view-saga-graph-contract"
+    ],
     "epicProofs": [],
     "expProofs": [],
     "designDocs": []

@@ -66,6 +66,8 @@ What this proves:
 - Gatekeeper can evaluate contract, policy, obligation, cost, provenance, and conformance decisions from deterministic mocks.
 - Mandatory governance gates remain enforced across the deny ceiling.
 - Policy and provider uncertainty fail closed.
+- The validated control-plane action taxonomy proof is included in this rollup; its deterministic simulation contract is unchanged.
+- The validated deny-ceiling algebra and Gatekeeper verification proofs retain their fail-closed simulation contracts.
 
 Mocked boundaries:
 

@@ -65,6 +65,8 @@ What this proves:
 - Planner, Matching, capability feedback, and region/objective decisions are replayable.
 - Delta/Set, ResourceActor, executor, and driver dispatch boundaries are mocked and deterministic.
 - Drift, partial-realize rollback, orphan sweep, and dispatcher reservation conflicts fail closed.
+- DeploymentView reconstructs the saga graph from linked events with validated envelope fields.
+- Delta/Set reconciliation and DeploymentView saga projection retain their validated boundaries after the latest leaf hardening.
 - Self-host bootstrap uses single-use operator credential evidence and explicit Identity handover.
 
 Mocked boundaries:

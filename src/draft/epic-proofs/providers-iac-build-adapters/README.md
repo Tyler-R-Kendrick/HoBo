@@ -91,6 +91,8 @@ What this proves:
 - `realize()` emits mocked `IacProgram` and `BuildSpec` objects consumed by mocked IaC/build/driver adapters.
 - Drift, partial apply, and malicious-provider paths fail closed.
 - The validated Crossplane backend proof is included in this rollup; its simulation contract is unchanged.
+- The validated generateProvider loop proof is included in this rollup; its simulation and Pact evidence are unchanged.
+- The latest generateProvider loop validation is absorbed; its simulation and Pact evidence remain unchanged.
 - The same multi-cloud shop Bindle remains unchanged across AWS and Azure fixtures.
 
 Mocked boundaries:

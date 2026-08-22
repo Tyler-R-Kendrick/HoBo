@@ -35,6 +35,9 @@
 | Poison event quarantine | PR #351 / HOBO-291 evidence | HOBO-291 | Security reviewer | Bad event emits quarantine fact and deterministic skip | Adversarial data integrity | EventStore append, projection sink | eventstore-append-boundary, projection-sink-boundary | simulated | integrated | Behavior implemented from issue/PR evidence without taking over child PR. |
 | Crypto-shred erasure | `src/draft/technical-proofs/crypto-shred-erasure-contract` | HOBO-295 | Security reviewer | Forgettable fields tombstone without log rewrite | Adversarial data integrity | Governance/erasure | governance-erasure-boundary | verified | implemented_in_reference_impl | Crypto-shred log/keyring POC is executed. |
 
+| Domain event body | `src/draft/technical-proofs/domain-event-body-contract` | HOBO-42 | App developer | Order fact carries canonical typed payload | CQRS write to reactive read | EventStore append | eventstore-append-boundary | verified | implemented_in_reference_impl | Latest leaf validation is absorbed; replay evidence unchanged. |
+| Event body upcaster | `src/draft/technical-proofs/event-body-upcaster-gate` | HOBO-57 | Platform data engineer | Old event bodies stay replayable | CQRS write to reactive read | EventStore append | eventstore-append-boundary | simulated | integrated | Latest leaf validation is absorbed; replay evidence unchanged. |
+
 ## Cascade absorptions
 
 Changes to referenced technical proofs that this rollup has taken in, and what

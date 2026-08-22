@@ -30,6 +30,8 @@ Selected epic: Progressive Delivery - The Harness (`122f5e0a-30d6-4949-9285-9441
 | Cross-Camp flag consistency | `src/draft/technical-proofs/cross-camp-flag-state-consistency-contract` | HOBO-384 | Multi-Camp operator | Follower reads carry bounded-staleness labels | Cross-Camp replication | Harness to replication stream | none | not_started | split_follow_up | Requires cross-Camp topology/replication reference, beyond this epic-local Harness slice; latest technical-proof change reconciled without changing this epic's out-of-scope disposition. |
 | Delivery/experiment adapter conformance | `src/draft/technical-proofs/delivery-experiment-adapter-conformance-suite` | HOBO-387 | Platform operator | Delivery and experiment adapters satisfy the same suite | Adapter conformance | Harness to delivery and experiment adapters | `pact-harness-traffic-split.json`, `pact-harness-experiment-analytics.json` | verified | implemented_in_reference_impl | Kept conformance expectation through mocked provider verification. |
 
+| Experiment statistical analysis | `src/draft/technical-proofs/experiment-statistical-analysis-contract` | HOBO-353 | Growth engineer | Guarded analysis ships only powered, scheduled wins | Experiment analysis | Harness to experiment analytics provider | `pact-harness-experiment-analytics.json` | verified | implemented_in_reference_impl | Latest leaf validation is absorbed; guardrail simulation unchanged. |
+
 ## Cascade absorptions
 
 Changes to referenced experience proofs that this rollup has taken in.

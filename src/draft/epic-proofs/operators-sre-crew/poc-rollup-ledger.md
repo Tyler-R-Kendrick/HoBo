@@ -60,3 +60,11 @@ record stays 0, `slug: 7` stays 1, `layer: "ux"` stays 1.
 No disposition, evidence path, Linear link, or acceptance claim in the table
 above moves. No proof in this epic identifies itself with an empty slug, so
 nothing that validated before stops validating.
+
+## Cascade absorptions
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/disaster-recovery-failover-contract` | latest validated leaf hardening | DR failover replay and approval evidence unchanged. |
+| `src/draft/technical-proofs/dr-failover-integrity-contract` | latest validated leaf hardening | Failover-integrity evidence and refusal paths unchanged. |
+| `src/draft/technical-proofs/gated-autonomous-remediation-contract` | latest validated leaf hardening | Remediation gate and canary evidence unchanged. |

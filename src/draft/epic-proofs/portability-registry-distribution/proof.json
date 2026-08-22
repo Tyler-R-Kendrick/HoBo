@@ -7,6 +7,7 @@
       "src/draft/technical-proofs/capability-indexed-discovery-contract",
       "src/draft/technical-proofs/curated-catalog-policy-contract",
       "src/draft/technical-proofs/distributed-artifact-resolver-contract",
+      "src/draft/technical-proofs/distributed-artifact-version-policy",
       "src/draft/technical-proofs/hobo-add-install-verification-contract",
       "src/draft/technical-proofs/listing-lifecycle-yank-contract",
       "src/draft/technical-proofs/mirror-digest-selection-contract",

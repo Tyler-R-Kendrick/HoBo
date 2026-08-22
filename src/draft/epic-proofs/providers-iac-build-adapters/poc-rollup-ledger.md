@@ -36,3 +36,9 @@
 | Adopt-in-place importers | `src/draft/technical-proofs/adopt-in-place-contract` | HOBO-225 | Provider author | Realize a Bindle resource without live providers | Realize, IaC, build, and driver adapters | DriftImportRefreshBoundary | `drift-import-refresh-boundary.pact.json` | implemented | implemented_in_reference_impl | Adopted resources are drift-detect-only; latest technical-proof change reconciled without changing the simulation. |
 | Signed Resource Packs | `src/draft/technical-proofs/resource-pack-distribution-contract` | HOBO-228 | Platform engineer | Certify generated provider and signed pack | Generated and distributed provider trust | ResourcePackDistribution | `resource-pack-distribution.pact.json` | implemented | implemented_in_reference_impl | Provider-side packaging retained; registry transport remains Portability-owned. |
 | Multi-cloud shop provider E2E | `src/draft/technical-proofs/multi-cloud-shop-provider-e2e-contract` | HOBO-231 | DevOps engineer | Run same shop Bindle on AWS and Azure | Concrete provider matrix and portability gate | ConcreteCloudProviderMatrix, PortabilityReportGate | `concrete-cloud-provider-matrix.pact.json`, `portability-report-gate.pact.json` | implemented | implemented_in_reference_impl | Same Bindle digest and option-isolation gate retained. |
+
+## Cascade absorptions
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/generation-provider-loop-contract` | latest validated leaf hardening | generateProvider simulation and Pact evidence unchanged. |

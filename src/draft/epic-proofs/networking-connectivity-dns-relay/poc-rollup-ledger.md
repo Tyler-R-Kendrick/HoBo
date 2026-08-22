@@ -33,3 +33,10 @@
 | Topology override conflict | `src/draft/technical-proofs/topology-override-conflict-contract` | HOBO-204 | Platform engineer | Override cannot reopen closed path or widen policy | Secure cross-cloud connectivity fabric | Policy gate, Junction planner | ConnectivityPolicyGate, JunctionConnectivityPlanner | verified | implemented_in_reference_impl | Kept override denial in negative scenario. |
 | Internal service discovery | `src/draft/technical-proofs/internal-service-discovery-contract` | HOBO-206 | Platform engineer | Bound peers resolve through identity-backed internal endpoint | Secure cross-cloud connectivity fabric | mTLS data path, Yard topology manifest | IdentityMtlsDataPath, YardTopologyManifest | verified | implemented_in_reference_impl | Kept no-public-DNS fallback behavior. |
 | Connectivity policy enforcement seam | `src/draft/technical-proofs/connectivity-policy-enforcement-contract` | HOBO-210 | Platform engineer | Tier ceilings and residency gates apply before deployment and runtime reads | Secure cross-cloud connectivity fabric | Connectivity policy gate | ConnectivityPolicyGate | verified | implemented_in_reference_impl | Kept can-deploy and public-tier denial behavior. |
+
+## Cascade absorptions
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/dns-validation-gate-threat-model` | latest validated leaf hardening | DNS validation simulation and Pact evidence unchanged. |
+| `src/draft/technical-proofs/domain-event-body-contract` | latest validated leaf hardening | Domain validation event sequence and evidence unchanged. |

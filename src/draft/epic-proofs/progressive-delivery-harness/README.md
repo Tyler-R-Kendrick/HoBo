@@ -4,6 +4,11 @@ Epic: Progressive Delivery - The Harness (`122f5e0a-30d6-4949-9285-9441d18c36d9`
 
 This reference implementation rolls up the Harness POCs into one runnable, epic-scoped architecture slice. It is not production code. It demonstrates how HoBo's progressive delivery core composes feature flags, delivery orchestration, SLO gates, experiment analysis, policy obligations, and rollback hardening through mocked service boundaries.
 
+## Included Lower-Layer Proofs
+
+- [`hobo-experiment-port`](../../technical-proofs/hobo-experiment-port) — typed experiment assignment, exposure, and conclusion events used by the experiment leg.
+- The validated experiment-statistical-analysis proof remains included; its guardrail simulation is unchanged.
+
 ## Vertical Slice
 
 ```gherkin

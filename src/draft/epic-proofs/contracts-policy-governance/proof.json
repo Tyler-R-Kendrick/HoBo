@@ -6,6 +6,7 @@
     "technicalProofs": [
       "src/draft/technical-proofs/built-in-policy-engine-contract",
       "src/draft/technical-proofs/can-deploy-compatibility-gate-contract",
+      "src/draft/technical-proofs/control-plane-action-taxonomy-contract",
       "src/draft/technical-proofs/deny-ceiling-algebra-poc",
       "src/draft/technical-proofs/gatekeeper-verify-contract",
       "src/draft/technical-proofs/governance-conformance-suite-contract",

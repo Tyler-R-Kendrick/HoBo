@@ -30,3 +30,10 @@
 | Partial-realize rollback | `src/draft/technical-proofs/partial-realize-rollback-contract` | HOBO-376 | SRE operator | Created-but-not-in-state is recorded | Safety/recovery | Driver adapter, EventStore | DriverAdapterBoundary, EventStoreActorHost | verified | implemented_in_reference_impl | Orphan recorded before completion. |
 | Dispatcher reservation hardening | `src/draft/technical-proofs/dispatcher-reservation-hardening-contract` | HOBO-379 | SRE operator | Concurrent spend rejects on CAS | Safety/recovery | Objective ledger | ObjectiveLedger | verified | implemented_in_reference_impl | Determinism plus reservation safety. |
 | DeploymentView saga graph | `src/draft/technical-proofs/deployment-view-saga-graph-contract` | HOBO-382 | SRE operator | Projection reconstructs choreography | Safety/recovery | DeploymentView projection | DeploymentViewProjection | verified | implemented_in_reference_impl | Read-model only, no dashboard; refreshed for validated envelope and input-boundary hardening. |
+
+## Cascade absorptions
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/delta-set-apply-reconcile-contract` | latest validated leaf hardening | Delta/Set reconciliation simulation and Pact evidence unchanged. |
+| `src/draft/technical-proofs/deployment-view-saga-graph-contract` | latest validated leaf hardening | DeploymentView saga projection simulation and Pact evidence unchanged. |

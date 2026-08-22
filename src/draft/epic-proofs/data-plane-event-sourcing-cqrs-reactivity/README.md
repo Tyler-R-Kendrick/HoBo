@@ -64,6 +64,7 @@ Feature: Fail-closed data-plane adversarial behavior
 - Existing POC contract modules are imported and executed for CQRS, replay/live, GraphQL, search, raw access, auth/flag read-sets, and crypto-shred behavior.
 - Focused package tests exercise the reference service, negative/adversarial cases, and Pact inventory.
 - Pact files declare every service boundary used by the simulation.
+- Domain-event-body and event-body-upcaster changes are absorbed without changing replay/live or projection behavior.
 
 ## What Is Mocked
 

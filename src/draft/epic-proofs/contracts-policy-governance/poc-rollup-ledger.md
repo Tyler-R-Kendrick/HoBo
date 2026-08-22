@@ -32,3 +32,10 @@ Allowed reference implementation statuses: `not_started`, `in_progress`, `implem
 | `policy-engine-provider-adapters-contract` | `src/draft/technical-proofs/policy-engine-provider-adapters-contract` | HOBO-223 | Security/governance lead | Policy uncertainty fails closed | Fail-closed uncertainty | External Policy Provider Adapter | None in this PR | not_started | split_follow_up | Live provider adapters are deferred; this reference uses built-in policy engine and mocks. |
 | `end-user-authorization-policy-contract` | `src/draft/technical-proofs/end-user-authorization-policy-contract` | unlinked scan evidence | App team owner | Mandatory governance cannot be bypassed | Mandatory governance enforcement | RBAC Directory, Policy Engine | Policy Engine to RBAC Directory | not_started | deferred | End-user authorization informs principal context only; product authz UX is out of scope. |
 | `observed-contract-promotion-contract` | `src/draft/technical-proofs/observed-contract-promotion-contract` | unlinked scan evidence | Platform SRE | Compatible deploy produces auditable approval obligations | Governed deploy promotion | Contract Engine, Evidence Store | Contract Engine to Deployed State Projection | not_started | deferred | Promotion observation remains evidence input; do not build promotion workflow. |
+
+## Cascade absorptions
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/deny-ceiling-algebra-poc` | latest validated leaf hardening | Deny-ceiling simulation and Pact evidence unchanged. |
+| `src/draft/technical-proofs/gatekeeper-verify-contract` | latest validated leaf hardening | Gatekeeper verification simulation and Pact evidence unchanged. |

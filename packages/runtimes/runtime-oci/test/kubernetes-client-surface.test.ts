@@ -501,3 +501,61 @@ describe("delete", () => {
 		await expect(c.delete("web")).rejects.toThrow(/forbidden/);
 	});
 });
+
+describe("building its own transport", () => {
+	/**
+	 * Every test above injects a transport. These cover the other
+	 * construction: no transport given, so the client builds a process
+	 * kubectl one from whatever binary and context it was configured with.
+	 *
+	 * That path is what a Camp actually runs — an injected transport is the
+	 * PACT test double — so leaving it unexercised would mean the production
+	 * wiring is the only wiring nothing checks.
+	 */
+	it("builds a process transport when none is injected", () => {
+		// The transport names the boundary it implements, so an operator
+		// reading a probe's notes can tell which side answered.
+		expect(createKubectlKubernetesClient().transport.name).toBe(
+			"KubernetesClusterApi",
+		);
+	});
+
+	it("passes an explicit binary through to it", () => {
+		expect(() =>
+			createKubectlKubernetesClient({ kubectlBin: "/opt/bin/kubectl" }),
+		).not.toThrow();
+	});
+
+	it("passes an explicit context through to it", () => {
+		// The context selects which cluster every later call reaches; dropping
+		// it would silently target whatever kubeconfig names as current.
+		expect(() =>
+			createKubectlKubernetesClient({ context: "staging" }),
+		).not.toThrow();
+	});
+
+	it("passes an explicit environment through to it", () => {
+		expect(() =>
+			createKubectlKubernetesClient({ env: { PATH: "/usr/bin" } }),
+		).not.toThrow();
+	});
+
+	it("builds one with no options at all", () => {
+		// The zero-config path: a Camp with kubectl on PATH and a single
+		// context should not have to configure anything.
+		expect(createKubectlKubernetesClient().namespace).toBe("hobo-dev");
+	});
+
+	it("still honours an injected transport over building one", () => {
+		// Injection is how the PACT mock provider substitutes for a cluster; a
+		// client that built its own anyway would shell out during a contract
+		// test.
+		const injected: KubectlTransport = {
+			name: "InjectedApi",
+			handle: async () => ({ status: 200, body: {} }),
+		};
+		expect(
+			createKubectlKubernetesClient({ transport: injected }).transport.name,
+		).toBe("InjectedApi");
+	});
+});

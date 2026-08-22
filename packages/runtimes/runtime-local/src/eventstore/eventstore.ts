@@ -288,15 +288,23 @@ async function appendQuarantine({
 	quarantinedSeqs: Set<string>;
 }): Promise<EventEnvelope> {
 	const quarantineKey = `${streamId}:${event.seq}`;
-	if (quarantinedSeqs.has(quarantineKey)) {
-		for await (const candidate of storage.read(streamId)) {
-			if (
-				isQuarantineEvent(candidate) &&
-				// SAFETY: assertion to `candidate.data as { offendingSeq?: number }` is required at this boundary.
-				(candidate.data as { offendingSeq?: number }).offendingSeq === event.seq
-			) {
-				return candidate;
-			}
+	// The stream, not `quarantinedSeqs`, decides whether this event has already
+	// been quarantined. The set lives in one store instance, so it is empty
+	// after a restart — and a fold is not read-only, so re-folding a stream
+	// that contains a poison event is the ordinary case (a projection rebuild,
+	// a replica catching up). Gating this scan on the set meant the second
+	// fold *after a restart* appended a second marker for the same event:
+	// unbounded stream growth on a real clock, and a hard
+	// `UNIQUE constraint failed: events.id` on a manual one. The set is still
+	// the fast path inside a single instance; this is the durable one.
+	for await (const candidate of storage.read(streamId)) {
+		if (
+			isQuarantineEvent(candidate) &&
+			// SAFETY: assertion to `candidate.data as { offendingSeq?: number }` is required at this boundary.
+			(candidate.data as { offendingSeq?: number }).offendingSeq === event.seq
+		) {
+			quarantinedSeqs.add(quarantineKey);
+			return candidate;
 		}
 	}
 

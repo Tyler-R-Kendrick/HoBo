@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this validator receives erased records at the proof boundary and uses typeof only to reject non-object records and require string sections before domain checks. */
+
 export const REQUIRED_SCOPE_SECTIONS = [
   "goal",
   "primaryPersonas",

@@ -32,6 +32,7 @@ Excluded:
 
 ```powershell
 pnpm --dir src/draft/exp-proofs/cx/compatibility-matrix-scope-contract test
+pnpm exec oxlint src/draft/exp-proofs/cx/compatibility-matrix-scope-contract --deny-warnings
 ```
 
 ## Architecture Evidence

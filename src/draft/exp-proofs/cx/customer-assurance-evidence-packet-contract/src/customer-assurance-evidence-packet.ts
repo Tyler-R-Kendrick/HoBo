@@ -102,6 +102,11 @@ type WorkClassification = Readonly<{
   inScope: boolean;
 }>;
 
+type PacketValidationResult = Readonly<{
+  ok: boolean;
+  errors: string[];
+}>;
+
 const REQUIRED_SECTION_IDS = Object.freeze([
   "dpa-needs",
   "subprocessors-providers",
@@ -384,8 +389,8 @@ export function canCreateCustomerAssuranceFollowUp({ phase, m0Accepted }: Follow
   };
 }
 
-export function classifyCustomerAssuranceWork(decision: unknown): WorkClassification {
-  const text = String(decision ?? "").toLowerCase();
+export function classifyCustomerAssuranceWork(decision: string): WorkClassification {
+  const text = decision.toLowerCase();
 
   if (/\b(dpa|legal terms|privacy notice|privacy policy|subprocessor|legal)\b/.test(text)) {
     return { owner: "Legal, Privacy & Terms Readiness", inScope: false };
@@ -405,7 +410,7 @@ export function classifyCustomerAssuranceWork(decision: unknown): WorkClassifica
 
 export function validateCustomerAssuranceEvidencePacket(
   packet: PacketValidationTarget,
-): Readonly<{ ok: boolean; errors: string[] }> {
+): PacketValidationResult {
   const errors = [];
 
   if (packet?.issue !== "HOBO-493") {

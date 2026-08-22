@@ -24,7 +24,7 @@ support tooling.
 ## Verification
 
 ```powershell
-pnpm.cmd --prefix src\draft\exp-proofs\legal-privacy-private-beta-evidence-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\cx\legal-privacy-private-beta-evidence-contract test
 ```
 
 ## Architecture Evidence

@@ -267,7 +267,7 @@ export default defineConfig({
 				"packages/replay/**": { statements: 87, branches: 81, functions: 82, lines: 89 },
 				"packages/rift/**": { statements: 91, branches: 86, functions: 91, lines: 93 },
 				"packages/runtime/**": { statements: 89, branches: 83, functions: 88, lines: 89 },
-				"packages/runtimes/**": { statements: 80.4, branches: 77.5, functions: 81.2, lines: 80.6 },
+				"packages/runtimes/**": { statements: 80.5, branches: 77.7, functions: 81.2, lines: 80.6 },
 				"packages/schema-tools/**": { statements: 90, branches: 84, functions: 94, lines: 91 },
 				"packages/sdk/**": { statements: 96, branches: 89, functions: 98, lines: 96 },
 				"packages/stage-gate/**": { statements: 88, branches: 91, functions: 91, lines: 88 },

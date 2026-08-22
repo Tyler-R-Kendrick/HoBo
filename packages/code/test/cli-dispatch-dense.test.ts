@@ -16,7 +16,10 @@
  *   id;
  * - `local · station` is the happy path, so the node row is dropped when a
  *   finished task ran there;
- * - `default` is the default pool, so the pool row only appears otherwise.
+ * - `default` is the default pool, so the pool row only appears otherwise —
+ *   though in practice the single-row collapse below gets there first, and a
+ *   named pool is dropped too. That is recorded as a finding rather than
+ *   changed.
  *
  * The result is that anything still printed is a departure from normal. A
  * dense panel that printed every field would be the same information in less

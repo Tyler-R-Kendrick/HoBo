@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this validator receives erased runtime input at the proof boundary and rejects non-object records before contract checks. */
+
 export type CustomerOnboardingPhase = "M0" | "M1" | "M2" | "M3" | "M4";
 
 type ClaimAudience = "internal" | "customer-facing" | "release-notes" | "support-handoff";

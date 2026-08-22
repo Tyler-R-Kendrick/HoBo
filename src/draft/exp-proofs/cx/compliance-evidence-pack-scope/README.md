@@ -6,7 +6,7 @@ later design or implementation work fans out.
 ## Focused Gate
 
 ```powershell
-pnpm --prefix src\draft\compliance-evidence-pack-scope test
+pnpm --prefix src\draft\exp-proofs\cx\compliance-evidence-pack-scope test
 ```
 
 ## Proof Surface

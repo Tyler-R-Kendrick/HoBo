@@ -34,7 +34,7 @@ Excluded:
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\launch-support-escalation-matrix test
+npm.cmd --prefix src\draft\exp-proofs\cx\launch-support-escalation-matrix test
 ```
 
 

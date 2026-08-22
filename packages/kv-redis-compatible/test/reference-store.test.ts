@@ -29,16 +29,17 @@
  * whole list. Getting that wrong truncates every full-list read by one.
  */
 import { describe, expect, it } from "vitest";
-
+import type { ReferenceStoreOptions } from "../src/reference-store.js";
 import {
 	createReferenceRedisStore,
 	createTimelessReferenceStore,
 } from "../src/reference-store.js";
 
-const store = (options: Record<string, unknown> = {}) =>
-	createReferenceRedisStore(options as never);
+const store = (options: ReferenceStoreOptions = {}) =>
+	createReferenceRedisStore(options);
 
 const run = (s: ReturnType<typeof store>, ...command: string[]) =>
+	// SAFETY: each test command is authored as a RedisCommand tuple.
 	s.execute(command as never);
 
 describe("connection commands", () => {
@@ -290,6 +291,7 @@ describe("DEL and TYPE", () => {
 		[["ZADD", "k", "1", "m"], "zset"],
 	])("reports the type after %s", async (setup, type) => {
 		const s = store();
+		// SAFETY: each table row is a RedisCommand tuple by construction.
 		await run(s, ...(setup as string[]));
 		expect(await run(s, "TYPE", "k")).toMatchObject({ value: type });
 	});
@@ -409,6 +411,7 @@ describe("WRONGTYPE", () => {
 		// Returning nil here would let a type confusion pass silently.
 		const s = store();
 		await run(s, "HSET", "k", "f", "v");
+		// SAFETY: each table row is a RedisCommand tuple by construction.
 		expect(await run(s, ...(command as string[]))).toMatchObject({
 			kind: "error",
 		});
@@ -542,6 +545,7 @@ describe("the deliberate-break option", () => {
 describe("the timeless store", () => {
 	it("executes commands", async () => {
 		const s = createTimelessReferenceStore();
+		// SAFETY: the literal is a valid RedisCommand tuple.
 		expect(await s.execute(["PING"] as never)).toMatchObject({
 			value: "PONG",
 		});

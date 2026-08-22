@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-shape-in-symbol-names -- SAFETY: CampShape and campToShape are established public compatibility names. */
 export {
 	attachCampToYard,
 	CAMP_BINDLE_OWNERSHIP_FORBIDDEN,

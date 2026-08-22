@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- JSON fixture construction is test-boundary data. */
 /**
  * Every case here is a line in `manifest.cases.jsonl`.
  *
@@ -51,3 +52,4 @@ describeConcern("pack manifest", {
 			manifest(patch).configSchema.map((field) => field.key),
 	}),
 });
+/* eslint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- JSON fixture construction is test-boundary data. */

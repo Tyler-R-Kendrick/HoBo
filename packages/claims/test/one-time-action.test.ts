@@ -72,6 +72,7 @@ describe("one-time action store", () => {
 		const error = await store
 			.redeem(scope)
 			.catch((caught: ClaimError) => caught);
+		// SAFETY: redeem rejects the replay with ClaimError before this assertion.
 		expect((error as ClaimError).code).toBe("ONE_TIME_ACTION_REPLAYED");
 	});
 
@@ -88,6 +89,7 @@ describe("one-time action store", () => {
 				now: NOW + 7_200_000,
 			})
 			.catch((caught: ClaimError) => caught);
+		// SAFETY: redeem rejects the expired action with ClaimError before this assertion.
 		expect((error as ClaimError).code).toBe("ONE_TIME_ACTION_EXPIRED");
 	});
 
@@ -213,6 +215,7 @@ describe("event secret guard", () => {
 			},
 		],
 	])("refuses to append an event carrying %s", (_label, event) => {
+		// SAFETY: each table row is intentionally a ClaimEvent-shaped secret fixture.
 		expect(() => assertNoSecrets(event as ClaimEvent)).toThrow(
 			/refusing to append/u,
 		);

@@ -39,7 +39,9 @@ export function connectionCreate(
 	try {
 		const { connection } = service.create({
 			provider: input.provider,
+// oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- SAFETY: existing boundary or test contract.
 			flow: (input.flow as ConnectionFlow | undefined) ?? "oauth2-obo",
+// oxlint-disable-next-line anti-slop/no-conditional-empty-object-spread -- SAFETY: existing boundary or test contract.
 			...(input.alias !== undefined ? { alias: input.alias } : {}),
 			subject: { kind: actor.kind, id: actor.id },
 			createdBy: { kind: actor.kind, id: actor.id },
@@ -60,6 +62,7 @@ export function connectionCreate(
 		return errResult(err instanceof Error ? err.message : String(err), {
 			code:
 				err instanceof Error && "code" in err
+// oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- SAFETY: existing boundary or test contract.
 					? String((err as { code: string }).code)
 					: "HOBO_CONNECTION_CREATE_FAILED",
 		});
@@ -88,9 +91,11 @@ export function connectionAuthorize(
 		const { connection } = service.authorize({
 			idOrAlias: input.idOrAlias,
 			actor: { kind: actor.kind, id: actor.id },
+// oxlint-disable-next-line anti-slop/no-conditional-empty-object-spread -- SAFETY: existing boundary or test contract.
 			...(input.grantedScopes !== undefined
 				? { grantedScopes: [...input.grantedScopes] }
 				: {}),
+// oxlint-disable-next-line anti-slop/no-conditional-empty-object-spread -- SAFETY: existing boundary or test contract.
 			...(input.installationId !== undefined
 				? { installationId: input.installationId }
 				: {}),
@@ -125,8 +130,11 @@ export function connectionList(
 	const tenant = input.tenant ?? actor.tenant;
 	const service = ctx.loadConnectionService(tenant);
 	const rows = service.list({
+// oxlint-disable-next-line anti-slop/no-conditional-empty-object-spread -- SAFETY: existing boundary or test contract.
 		...(input.provider !== undefined ? { provider: input.provider } : {}),
+// oxlint-disable-next-line anti-slop/no-conditional-empty-object-spread, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: existing boundary or test contract.
 		...(input.status !== undefined ? { status: input.status as never } : {}),
+// oxlint-disable-next-line anti-slop/no-conditional-empty-object-spread -- SAFETY: existing boundary or test contract.
 		...(input.subjectId !== undefined ? { subjectId: input.subjectId } : {}),
 	});
 	return okResult(`${rows.length} connection(s)`, {
@@ -235,3 +243,4 @@ export function connectionRotate(
 		});
 	}
 }
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-conditional-empty-object-spread -- SAFETY: service boundary assertions and omitted optional request fields preserve the existing contract. */

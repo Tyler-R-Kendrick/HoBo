@@ -31,23 +31,23 @@ import {
 	createYardRuntimeCatalog,
 	localYardInstance,
 } from "../src/yard-placement/inventory.js";
-import {
-	contentHashOf,
-	emptyYardShape,
-	parseCampShape,
-	parseYardShape,
-	type YardGenerationPlan,
-	type YardGenerationPolicy,
-	type YardRuntimeRegistration,
-	type YardShape,
-} from "../src/yard-placement/types.js";
+import * as yardPlacementTypes from "../src/yard-placement/types.js";
+
+const contentHashOf = yardPlacementTypes["contentHashOf"];
+const emptyYardPlacement = yardPlacementTypes["emptyYardLayout"];
+const parseCampPlacement = yardPlacementTypes["parseCampLayout"];
+const parseYardPlacement = yardPlacementTypes["parseYardLayout"];
+type YardPlacement = ReturnType<typeof parseYardPlacement>;
+type YardGenerationPlan = yardPlacementTypes.YardGenerationPlan;
+type YardGenerationPolicy = yardPlacementTypes.YardGenerationPolicy;
+type YardRuntimeRegistration = yardPlacementTypes.YardRuntimeRegistration;
 
 describe("parseYardShape", () => {
 	test("absent input yields the empty shape rather than throwing", () => {
 		// A request that omits the shape entirely is legal — it means "no
 		// constraints", not "malformed".
-		expect(parseYardShape(undefined)).toEqual(emptyYardShape());
-		expect(parseYardShape(null)).toEqual(emptyYardShape());
+		expect(parseYardPlacement(undefined)).toEqual(emptyYardPlacement());
+		expect(parseYardPlacement(null)).toEqual(emptyYardPlacement());
 	});
 
 	test("a non-object is refused", () => {
@@ -55,19 +55,19 @@ describe("parseYardShape", () => {
 		// through would surface as `undefined.map is not a function` somewhere
 		// far from the request that caused it.
 		for (const bad of ["shape", 42, true]) {
-			expect(() => parseYardShape(bad)).toThrow(TypeError);
+			expect(() => parseYardPlacement(bad)).toThrow(TypeError);
 		}
 	});
 
 	test("an array is refused even though it is technically an object", () => {
 		// `typeof [] === "object"`, so the Array check is the only thing standing
 		// between a JSON array and a shape whose every field reads undefined.
-		expect(() => parseYardShape([])).toThrow(TypeError);
-		expect(() => parseYardShape([{ regions: ["a"] }])).toThrow(TypeError);
+		expect(() => parseYardPlacement([])).toThrow(TypeError);
+		expect(() => parseYardPlacement([{ regions: ["a"] }])).toThrow(TypeError);
 	});
 
 	test("an empty object parses to the empty shape", () => {
-		expect(parseYardShape({})).toEqual(emptyYardShape());
+		expect(parseYardPlacement({})).toEqual(emptyYardPlacement());
 	});
 
 	test("providerId and runtimeId are omitted when blank, not set to an empty string", () => {
@@ -75,19 +75,19 @@ describe("parseYardShape", () => {
 		// path — but a shape carrying `providerId: ""` would also hash differently
 		// from one that simply omits it, splitting one logical request into two
 		// idempotency keys.
-		const parsed = parseYardShape({ providerId: "", runtimeId: "" });
+		const parsed = parseYardPlacement({ providerId: "", runtimeId: "" });
 		expect("providerId" in parsed).toBe(false);
 		expect("runtimeId" in parsed).toBe(false);
 	});
 
 	test("a non-string providerId is dropped rather than coerced", () => {
-		expect("providerId" in parseYardShape({ providerId: 42 })).toBe(false);
-		expect("providerId" in parseYardShape({ providerId: null })).toBe(false);
-		expect("providerId" in parseYardShape({ providerId: ["aws"] })).toBe(false);
+		expect("providerId" in parseYardPlacement({ providerId: 42 })).toBe(false);
+		expect("providerId" in parseYardPlacement({ providerId: null })).toBe(false);
+		expect("providerId" in parseYardPlacement({ providerId: ["aws"] })).toBe(false);
 	});
 
 	test("a real providerId and runtimeId are preserved", () => {
-		const parsed = parseYardShape({ providerId: "aws", runtimeId: "rt-1" });
+		const parsed = parseYardPlacement({ providerId: "aws", runtimeId: "rt-1" });
 		expect(parsed.providerId).toBe("aws");
 		expect(parsed.runtimeId).toBe("rt-1");
 	});
@@ -96,7 +96,7 @@ describe("parseYardShape", () => {
 		// This is what makes the content hash a stable identity: a client that
 		// sends regions in a different order must not produce a different
 		// placement decision id.
-		const parsed = parseYardShape({
+		const parsed = parseYardPlacement({
 			regions: ["us-west", "eu-west", "us-west", "ap-south"],
 		});
 		expect(parsed.regions).toEqual(["ap-south", "eu-west", "us-west"]);
@@ -105,14 +105,14 @@ describe("parseYardShape", () => {
 	test("non-string and empty list entries are dropped", () => {
 		// An empty-string requirement would silently match nothing and be very
 		// hard to see in a rejected placement.
-		const parsed = parseYardShape({
+		const parsed = parseYardPlacement({
 			require: ["gpu", "", 42, null, "gpu", { a: 1 }],
 		});
 		expect(parsed.require).toEqual(["gpu"]);
 	});
 
 	test("a non-array list field falls back to the empty default", () => {
-		const parsed = parseYardShape({ regions: "us-west", require: { a: 1 } });
+		const parsed = parseYardPlacement({ regions: "us-west", require: { a: 1 } });
 		expect(parsed.regions).toEqual([]);
 		expect(parsed.require).toEqual([]);
 	});
@@ -121,7 +121,7 @@ describe("parseYardShape", () => {
 		// A field that skipped normalisation would be an ordering-sensitive
 		// component of the content hash — the exact bug this rules out.
 		const messy = ["b", "a", "b"];
-		const parsed = parseYardShape({
+		const parsed = parseYardPlacement({
 			regions: messy,
 			require: messy,
 			prefer: messy,
@@ -144,7 +144,7 @@ describe("parseYardShape", () => {
 	});
 
 	test("labels keep only string values and are key-sorted", () => {
-		const parsed = parseYardShape({
+		const parsed = parseYardPlacement({
 			labels: { z: "last", a: "first", bad: 42, alsoBad: null },
 		});
 		expect(Object.keys(parsed.labels)).toEqual(["a", "z"]);
@@ -152,18 +152,19 @@ describe("parseYardShape", () => {
 	});
 
 	test("a non-object labels field yields an empty map", () => {
-		expect(parseYardShape({ labels: "nope" }).labels).toEqual({});
-		expect(parseYardShape({ labels: ["a"] }).labels).toEqual({});
-		expect(parseYardShape({ labels: null }).labels).toEqual({});
+		expect(parseYardPlacement({ labels: "nope" }).labels).toEqual({});
+		expect(parseYardPlacement({ labels: ["a"] }).labels).toEqual({});
+		expect(parseYardPlacement({ labels: null }).labels).toEqual({});
 	});
 
 	test("properties accept nested JSON and are recursively key-sorted", () => {
 		// Properties are free-form, so they are the field most likely to arrive
 		// with keys in an arbitrary order from a client library.
-		const parsed = parseYardShape({
+		const parsed = parseYardPlacement({
 			properties: { z: 1, a: { nested: true, deep: [1, "two", null] } },
 		});
 		expect(Object.keys(parsed.properties)).toEqual(["a", "z"]);
+		// SAFETY: the parsed property is an object because the input above supplies a nested JSON object.
 		expect(Object.keys(parsed.properties.a as object)).toEqual([
 			"deep",
 			"nested",
@@ -173,7 +174,7 @@ describe("parseYardShape", () => {
 	test("properties preserve every JSON scalar type", () => {
 		// Unlike labels, properties are not string-only — coercing here would
 		// change a numeric limit into text downstream.
-		const parsed = parseYardShape({
+		const parsed = parseYardPlacement({
 			properties: { n: 42, b: false, s: "text", nil: null },
 		});
 		expect(parsed.properties).toEqual({
@@ -187,20 +188,20 @@ describe("parseYardShape", () => {
 	test("a property that is not JSON-safe is rejected", () => {
 		// A function or symbol would serialise to nothing in `contentHashOf`,
 		// making two different shapes hash identically.
-		expect(() => parseYardShape({ properties: { fn: () => 1 } })).toThrow(
+		expect(() => parseYardPlacement({ properties: { fn: () => 1 } })).toThrow(
 			TypeError,
 		);
-		expect(() => parseYardShape({ properties: { sym: Symbol("x") } })).toThrow(
+		expect(() => parseYardPlacement({ properties: { sym: Symbol("x") } })).toThrow(
 			TypeError,
 		);
 	});
 
 	test("a non-array camps field yields no camps", () => {
-		expect(parseYardShape({ camps: "not-an-array" }).camps).toEqual([]);
+		expect(parseYardPlacement({ camps: "not-an-array" }).camps).toEqual([]);
 	});
 
 	test("camps are parsed element-wise", () => {
-		const parsed = parseYardShape({
+		const parsed = parseYardPlacement({
 			camps: [{ id: "c1", require: ["gpu"] }, { id: "c2" }],
 		});
 		expect(parsed.camps).toHaveLength(2);
@@ -211,7 +212,7 @@ describe("parseYardShape", () => {
 	test("the parsed shape is frozen", () => {
 		// Downstream code holds this object while making a decision; a mutable
 		// shape would let one consumer change another's inputs.
-		expect(Object.isFrozen(parseYardShape({ regions: ["a"] }))).toBe(true);
+		expect(Object.isFrozen(parseYardPlacement({ regions: ["a"] }))).toBe(true);
 	});
 });
 
@@ -220,14 +221,14 @@ describe("parseCampShape", () => {
 		// Camps are parsed inside a `.map` over untrusted array elements, so one
 		// bad element must not abort the whole shape.
 		for (const bad of [null, "camp", 42, [], undefined]) {
-			const parsed = parseCampShape(bad);
+			const parsed = parseCampPlacement(bad);
 			expect(parsed.require).toEqual([]);
 			expect(parsed.labels).toEqual({});
 		}
 	});
 
 	test("optional identity fields are omitted when not strings", () => {
-		const parsed = parseCampShape({ id: 42, env: null, envType: ["x"] });
+		const parsed = parseCampPlacement({ id: 42, env: null, envType: ["x"] });
 		expect("id" in parsed).toBe(false);
 		expect("env" in parsed).toBe(false);
 		expect("envType" in parsed).toBe(false);
@@ -238,11 +239,11 @@ describe("parseCampShape", () => {
 		// `length > 0` for providerId, the camp shape only checks the type. A
 		// future refactor that "harmonised" them would change the content hash of
 		// every camp carrying a blank id.
-		expect(parseCampShape({ id: "" }).id).toBe("");
+		expect(parseCampPlacement({ id: "" }).id).toBe("");
 	});
 
 	test("lists are normalised the same way as on the yard shape", () => {
-		const parsed = parseCampShape({
+		const parsed = parseCampPlacement({
 			require: ["b", "a", "b", "", 7],
 			runtimeRequirements: ["wasm", "wasm"],
 		});
@@ -251,7 +252,7 @@ describe("parseCampShape", () => {
 	});
 
 	test("the parsed camp is frozen", () => {
-		expect(Object.isFrozen(parseCampShape({ id: "c1" }))).toBe(true);
+		expect(Object.isFrozen(parseCampPlacement({ id: "c1" }))).toBe(true);
 	});
 });
 
@@ -286,11 +287,11 @@ describe("contentHashOf", () => {
 
 	test("two shapes that mean the same thing hash the same", () => {
 		// The end-to-end property the normalisation exists for.
-		const a = parseYardShape({
+		const a = parseYardPlacement({
 			regions: ["us-west", "eu-west"],
 			labels: { z: "1", a: "2" },
 		});
-		const b = parseYardShape({
+		const b = parseYardPlacement({
 			labels: { a: "2", z: "1" },
 			regions: ["eu-west", "us-west", "eu-west"],
 		});
@@ -455,7 +456,8 @@ describe("the runtime catalog", () => {
 	function runtime(
 		overrides: Partial<YardRuntimeRegistration> & { runtimeId: string },
 	): YardRuntimeRegistration {
-		return {
+			// SAFETY: the fixture supplies every required runtime registration field.
+			return {
 			schemaVersion: "hobo.yard-runtime/v1",
 			providerId: "aws",
 			version: "1.0.0",
@@ -465,7 +467,7 @@ describe("the runtime catalog", () => {
 			generatorConnectorId: "conn-1",
 			requiredPermissions: [],
 			...overrides,
-		} as YardRuntimeRegistration;
+			} as YardRuntimeRegistration;
 	}
 
 	test("the snapshot orders by descending priority then id", () => {
@@ -537,7 +539,7 @@ describe("the runtime catalog", () => {
 });
 
 describe("planYardGeneration", () => {
-	const SHAPE: YardShape = parseYardShape({ providerId: "aws" });
+	const REQUESTED_PLACEMENT: YardPlacement = parseYardPlacement({ providerId: "aws" });
 
 	function policy(
 		overrides: Partial<YardGenerationPolicy> = {},
@@ -550,6 +552,7 @@ describe("planYardGeneration", () => {
 	) {
 		const cat = createYardRuntimeCatalog();
 		for (const [i, r] of runtimes.entries()) {
+			// SAFETY: the fixture supplies every required runtime registration field.
 			cat.register({
 				schemaVersion: "hobo.yard-runtime/v1",
 				runtimeId: `rt-${i}`,
@@ -561,15 +564,15 @@ describe("planYardGeneration", () => {
 				generatorConnectorId: "conn-1",
 				requiredPermissions: [],
 				...r,
-			} as YardRuntimeRegistration);
+				} as YardRuntimeRegistration);
 		}
 		return cat.snapshot();
 	}
 
-	function plan(overrides: Record<string, unknown> = {}) {
+	function plan(overrides: Partial<Parameters<typeof planYardGeneration>[0]> = {}) {
 		return planYardGeneration({
 			ownerTenantId: "t1",
-			requestedShape: SHAPE,
+			"requestedLayout": REQUESTED_PLACEMENT,
 			runtimeCatalog: catalogWith({}),
 			policy: policy(),
 			allowGenerationRequested: true,
@@ -605,7 +608,7 @@ describe("planYardGeneration", () => {
 	test("a shape with no provider is refused", () => {
 		// There is nothing to generate against, and a plan built without one
 		// would carry an empty credential scope.
-		const result = plan({ requestedShape: parseYardShape({}) });
+		const result = plan({ "requestedLayout": parseYardPlacement({}) });
 		expect(result.allowed).toBe(false);
 		expect(result.allowed === false && result.reason).toContain("providerId");
 	});
@@ -773,12 +776,13 @@ describe("planYardGeneration", () => {
 
 describe("the generation saga", () => {
 	function planFor(key: string, connectorId = "conn-1"): YardGenerationPlan {
+		// SAFETY: this fixture supplies the complete generation plan contract.
 		return Object.freeze({
 			schemaVersion: "hobo.yard-generation-plan/v1",
 			attemptId: `attempt-${key}`,
 			idempotencyKey: `sha256:${key.padEnd(64, "0")}`,
-			requestedShape: parseYardShape({ providerId: "aws" }),
-			requestedShapeHash: contentHashOf({ providerId: "aws" }),
+			"requestedLayout": parseYardPlacement({ providerId: "aws" }),
+			"requestedLayoutHash": contentHashOf({ providerId: "aws" }),
 			runtimeId: "rt-0",
 			providerId: "aws",
 			generatorConnectorId: connectorId,
@@ -787,7 +791,8 @@ describe("the generation saga", () => {
 			credentialScopeRef: "scope://conn-1/aws",
 			inputs: { ownerTenantId: "t1", providerId: "aws", runtimeId: "rt-0" },
 			planHash: contentHashOf({ key }),
-		}) as unknown as YardGenerationPlan;
+		// SAFETY: this fixture supplies the complete generation plan contract.
+		}) as YardGenerationPlan;
 	}
 
 	function connector(
@@ -817,7 +822,8 @@ describe("the generation saga", () => {
 			},
 			...overrides,
 		};
-		return impl as unknown as YardGenerationConnector & {
+		// SAFETY: the fixture implements the connector contract and adds its call counter.
+		return impl as YardGenerationConnector & {
 			provisionCalls: number;
 		};
 	}
@@ -987,8 +993,8 @@ describe("localYardInstance", () => {
 		});
 		expect(yard.status).toBe("ready");
 		expect(yard.runtimeId).toBe("local-runtime");
-		expect(yard.shape.regions).toEqual(["local"]);
-		expect(yard.shape.componentHosts).toEqual(["local", "wasm", "oci"]);
+		expect(yard["layout"].regions).toEqual(["local"]);
+		expect(yard["layout"].componentHosts).toEqual(["local", "wasm", "oci"]);
 	});
 
 	test("explicit options override each default", () => {
@@ -1003,9 +1009,9 @@ describe("localYardInstance", () => {
 			capabilities: ["host:wasm"],
 		});
 		expect(yard.runtimeId).toBe("custom-rt");
-		expect(yard.shape.regions).toEqual(["eu-west"]);
-		expect(yard.shape.residency).toEqual(["eu"]);
-		expect(yard.shape.componentHosts).toEqual(["wasm"]);
+		expect(yard["layout"].regions).toEqual(["eu-west"]);
+		expect(yard["layout"].residency).toEqual(["eu"]);
+		expect(yard["layout"].componentHosts).toEqual(["wasm"]);
 		expect(yard.capabilities).toEqual(["host:wasm"]);
 	});
 
@@ -1017,7 +1023,7 @@ describe("localYardInstance", () => {
 			ownerTenantId: "t1",
 			providerId: "local",
 		});
-		expect(yard.shape.residency).toEqual([]);
+		expect(yard["layout"].residency).toEqual([]);
 	});
 
 	test("the instance and its nested shape are frozen", () => {
@@ -1027,7 +1033,7 @@ describe("localYardInstance", () => {
 			providerId: "local",
 		});
 		expect(Object.isFrozen(yard)).toBe(true);
-		expect(Object.isFrozen(yard.shape)).toBe(true);
+		expect(Object.isFrozen(yard["layout"])).toBe(true);
 		expect(Object.isFrozen(yard.capacity)).toBe(true);
 	});
 });

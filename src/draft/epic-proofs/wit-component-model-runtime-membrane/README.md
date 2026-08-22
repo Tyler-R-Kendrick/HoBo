@@ -46,6 +46,8 @@ What this proves:
 - cross-host wRPC links negotiate and fail closed before calls;
 - SDK parity and websocket fan-out remain deny-by-default;
 - host upgrades require conformance and upcaster evidence.
+- The validated capability-enforcement proof is included in this rollup; its simulation contract is unchanged.
+- The wRPC + WIT API proof's boundary-type hardening is included in this rollup; its simulation contract is unchanged.
 
 Mocked boundaries and contracts are listed in [contracts/pact-inventory.md](contracts/pact-inventory.md).
 
@@ -58,3 +60,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Wit Component Model Runtime Membrane.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The runtime-port, component-host, streamer, websocket, wire-version, and WRPC transport/membrane technical proof refreshes are absorbed without changing the component-model boundary evidence.

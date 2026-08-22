@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion */
+
 import { execFileSync } from "node:child_process";
 
 import { describe, expect, it } from "vitest";

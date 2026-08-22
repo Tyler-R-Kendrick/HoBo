@@ -8,10 +8,10 @@ import path from "node:path";
 import assert from "node:assert/strict";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+// SAFETY: proof.json is the gate-controlled manifest for this folder; its fields are checked immediately below.
 const proof = JSON.parse(
   readFileSync(path.join(root, "..", "proof.json"), "utf8"),
 ) as { slug: string; layer: string };
-
 assert.equal(proof.slug, "s2-03-cloud-yard-shell-hobo-618");
 assert.equal(proof.layer, "technical");
 console.log(`slug: ${proof.slug}`);

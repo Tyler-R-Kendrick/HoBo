@@ -30,7 +30,16 @@ export class KvRedisCompatibleError extends Error {
 }
 
 export function isKvRedisCompatibleError(
-	value: unknown,
+	value:
+		| KvRedisCompatibleError
+		| Error
+		| null
+		| undefined
+		| string
+		| number
+		| boolean
+		| bigint
+		| symbol,
 ): value is KvRedisCompatibleError {
 	return value instanceof KvRedisCompatibleError;
 }

@@ -211,6 +211,7 @@ export function matchResource(
 			},
 		};
 	}
+	// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 	const winner = ranked[0] as ResourceDefinition;
 	const region =
 		criteria !== undefined

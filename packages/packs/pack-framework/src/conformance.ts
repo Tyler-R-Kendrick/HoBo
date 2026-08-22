@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-known-value-widening, anti-slop/no-conditional-empty-object-spread, no-control-regex -- report projection preserves optional field omission and runner output is sanitized. */
 /**
  * The shared conformance harness: declarative cases plus an injected executor.
  *
@@ -262,14 +263,17 @@ export async function runPackConformance(input: {
 				break;
 			}
 		}
-		results.push({
-			caseId: testCase.id,
-			profileRef: testCase.profileRef,
-			outcome: failure === undefined ? "pass" : "fail",
-			...(failure !== undefined
-				? { failedStepIndex: failure.index, detail: failure.detail }
-				: {}),
-		});
+			const outcome: PackConformanceCaseResult["outcome"] =
+				failure === undefined ? "pass" : "fail";
+			const result = {
+				caseId: testCase.id,
+				profileRef: testCase.profileRef,
+				outcome,
+			};
+			if (failure !== undefined) {
+				Object.assign(result, { failedStepIndex: failure.index, detail: failure.detail });
+			}
+			results.push(result);
 	}
 
 	return {

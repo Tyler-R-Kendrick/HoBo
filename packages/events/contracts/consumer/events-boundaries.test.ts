@@ -26,13 +26,14 @@ function freshStore() {
 	});
 }
 
+// SAFETY: the order.Placed read-set contract supplies orderId.
 const ordersMaterialization = defineMaterialization<{ orderId: string }[]>({
 	name: "ordersByTenant",
 	readSet: ["order.Placed"],
 	initialState: [],
 	fold: (state, event) =>
 		event.type === "order.Placed"
-			? [...state, { orderId: (event.data as { orderId: string }).orderId }]
+				? [...state, { orderId: (event.data as { orderId: string }).orderId }]
 			: state,
 });
 

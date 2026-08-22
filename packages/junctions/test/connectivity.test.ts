@@ -15,10 +15,7 @@ function twoYardJunction(
 ) {
 	const left = makeYard("left", providers[0]);
 	const right = makeYard("right", providers[1]);
-	return junction("my-app", {
-		yards: [left, right],
-		...(manifests ? { manifests } : {}),
-	});
+	return junction("my-app", { yards: [left, right], manifests });
 }
 
 describe("tier selection matrix", () => {
@@ -161,6 +158,7 @@ describe("planForYard()", () => {
 			expect.unreachable("accepted a non-member yard");
 		} catch (error) {
 			expect(error).toBeInstanceOf(JunctionParseError);
+			// SAFETY: the preceding assertion establishes the caught error shape.
 			expect((error as JunctionParseError).code).toBe(
 				"junction.plan.unknown-yard",
 			);

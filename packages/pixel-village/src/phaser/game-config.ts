@@ -11,9 +11,21 @@ export type YardGameConfigOptions = Readonly<{
 	backgroundColor?: string;
 }>;
 
+type YardGameConfig = {
+	type: number;
+	width: number;
+	height: number;
+	parent: string | HTMLElement;
+	backgroundColor: string;
+	scale: { mode: number; autoCenter: number };
+	physics: { default: string | false };
+	fps: { target: number; forceSetTimeOut?: boolean; smoothStep: boolean };
+	render: { pixelArt: boolean; antialias: boolean; roundPixels: boolean };
+};
+
 export function yardPhaserConfig(
 	opts: YardGameConfigOptions = {},
-): Record<string, unknown> {
+): YardGameConfig {
 	return {
 		type: 0, // Phaser.AUTO at runtime
 		width: YARD_WIDTH,

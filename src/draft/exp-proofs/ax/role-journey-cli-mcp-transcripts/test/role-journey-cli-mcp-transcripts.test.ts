@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-unknown-returns, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: the Pact fixture reader intentionally returns an erased response body which the proof parser validates at its boundary. */
+
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { describe, it } from "vitest";

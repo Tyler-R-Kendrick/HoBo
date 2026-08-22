@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-known-value-widening, anti-slop/require-safety-comment-for-type-assertion -- semantic tables are closed pack-owned contracts. */
 /**
  * Persistence, eviction, and durability — stated, not implied.
  *
@@ -171,12 +172,14 @@ export const VALKEY_EVICTION: Readonly<
 export function isValkeyDurabilityMode(
 	value: string,
 ): value is ValkeyDurabilityMode {
+	// SAFETY: membership in the closed literal list establishes the mode union.
 	return (VALKEY_DURABILITY_MODES as readonly string[]).includes(value);
 }
 
 export function isValkeyEvictionPolicy(
 	value: string,
 ): value is ValkeyEvictionPolicy {
+	// SAFETY: membership in the closed literal list establishes the policy union.
 	return (VALKEY_EVICTION_POLICIES as readonly string[]).includes(value);
 }
 

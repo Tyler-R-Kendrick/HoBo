@@ -8,7 +8,9 @@
  * to run it rather than on whoever broke it. `assertIdentityContinuousHandsOff`
  * exists to fail loudly instead, and every branch of it is checked here.
  */
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion -- malformed fixtures require boundary casts. */
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../src/json.js";
 
 import {
 	activateIdentityContinuousFromMatching,
@@ -18,16 +20,18 @@ import {
 	IDENTITY_TRAIL_SCHEMA,
 } from "../src/index.js";
 
-function handle(overrides: Record<string, unknown> = {}) {
+function handle(overrides: JsonObject = {}) {
 	return createHandsOffIdentityTrail({
 		tenant: "acme",
 		now: () => "2026-08-08T00:00:00.000Z",
 		...overrides,
-	} as never);
+	// SAFETY: override fixtures intentionally bypass the production parser.
+	} /* SAFETY: override fixture intentionally bypasses the parser type. */ as never);
 }
 
-function codeOf(error: unknown): string | undefined {
-	return (error as { code?: string }).code;
+type CodedError = Error & { readonly code?: string };
+function codeOf(error: CodedError): string | undefined {
+	return error.code;
 }
 
 describe("createHandsOffIdentityTrail", () => {
@@ -45,7 +49,7 @@ describe("createHandsOffIdentityTrail", () => {
 		expect(trail.fixtures.tenant).toBe("acme");
 		// The dual oracle is what says the source and target agree on claims;
 		// activating without it would migrate identities that do not match.
-		expect(typeof trail.fixtures.dualOracleOk).toBe("boolean");
+		expect([true, false]).toContain(trail.fixtures.dualOracleOk);
 		// The fidelity label is honest about what the fixtures are: simulated,
 		// not a live directory. A view that omitted it would let a reader take a
 		// contract-asserted result for a production one.
@@ -124,7 +128,7 @@ describe("activateIdentityContinuousFromMatching", () => {
 		// control plane could advance a ramp without the dual check.
 		expect(Object.hasOwn(progress, "plane")).toBe(false);
 		expect(Object.hasOwn(progress, "migration")).toBe(false);
-		expect(typeof progress.dualOk).toBe("boolean");
+		expect([true, false]).toContain(progress.dualOk);
 	});
 
 	it("refuses a handle it did not create", () => {
@@ -133,7 +137,8 @@ describe("activateIdentityContinuousFromMatching", () => {
 		// nothing.
 		expect(() =>
 			activateIdentityContinuousFromMatching({
-				handle: { ...handle() } as never,
+				// SAFETY: forged handle fixture tests the private WeakMap boundary.
+				handle: { ...handle() } /* SAFETY: forged handle fixture. */ as never,
 			}),
 		).toThrow();
 	});
@@ -175,7 +180,8 @@ describe("advanceIdentityTrailRamp", () => {
 
 	it("refuses a handle it did not create", () => {
 		expect(() =>
-			advanceIdentityTrailRamp({ ...handle() } as never, 10),
+			// SAFETY: forged handle fixture tests the private WeakMap boundary.
+			advanceIdentityTrailRamp({ ...handle() } /* SAFETY: forged handle fixture. */ as never, 10),
 		).toThrow();
 	});
 });
@@ -190,7 +196,8 @@ describe("assertIdentityContinuousHandsOff", () => {
 			assertIdentityContinuousHandsOff({
 				...handle(),
 				bindleConfigRequired: true,
-			} as never);
+			// SAFETY: malformed handle fixture tests fail-closed validation.
+			} /* SAFETY: malformed handle fixture. */ as never);
 			expect.unreachable("a Bindle-requiring handle must be refused");
 		} catch (error) {
 			// This is the architectural guarantee, stated as an assertion so a
@@ -206,7 +213,8 @@ describe("assertIdentityContinuousHandsOff", () => {
 			assertIdentityContinuousHandsOff({
 				...base,
 				trail: { ...base.trail, recipeList: ["something.else"] },
-			} as never);
+			// SAFETY: malformed handle fixture tests fail-closed validation.
+			} /* SAFETY: malformed handle fixture. */ as never);
 			expect.unreachable("a wrong recipe must be refused");
 		} catch (error) {
 			expect(codeOf(error)).toBe("identity-trail-recipe");
@@ -217,7 +225,8 @@ describe("assertIdentityContinuousHandsOff", () => {
 			assertIdentityContinuousHandsOff({
 				...base,
 				trail: { ...base.trail, recipeList: undefined },
-			} as never),
+				// SAFETY: malformed handle fixture tests fail-closed validation.
+			} /* SAFETY: malformed handle fixture. */ as never),
 		).toThrow();
 	});
 
@@ -230,7 +239,8 @@ describe("assertIdentityContinuousHandsOff", () => {
 					...base.canMigrate,
 					evidence: { ...base.canMigrate.evidence, continuousDefault: false },
 				},
-			} as never);
+			// SAFETY: malformed handle fixture tests fail-closed validation.
+			} /* SAFETY: malformed handle fixture. */ as never);
 			expect.unreachable("evidence without continuousDefault must be refused");
 		} catch (error) {
 			// The handle and the evidence are two separate claims; the assertion
@@ -252,7 +262,8 @@ describe("assertIdentityContinuousHandsOff", () => {
 						bindleConfigRequired: true,
 					},
 				},
-			} as never);
+			// SAFETY: malformed handle fixture tests fail-closed validation.
+			} /* SAFETY: malformed handle fixture. */ as never);
 			expect.unreachable("evidence requiring Bindle config must be refused");
 		} catch (error) {
 			expect(codeOf(error)).toBe("identity-trail-bindle");
@@ -272,7 +283,8 @@ describe("assertIdentityContinuousHandsOff", () => {
 						bindleConfigRequired: true,
 					},
 				},
-			} as never);
+			// SAFETY: malformed handle fixture tests fail-closed validation.
+			} /* SAFETY: malformed handle fixture. */ as never);
 			expect.unreachable("expected a refusal");
 		} catch (error) {
 			// Both are wrong; the handle's own flag is reported, because that is

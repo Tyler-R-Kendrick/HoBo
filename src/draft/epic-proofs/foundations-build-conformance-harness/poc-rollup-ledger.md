@@ -14,6 +14,12 @@
 | Glossary/namespace hardening | `docs/design/package-namespaces.md`; `docs/design/traceability.md` | HOBO-10 | Design maintainer | Keep package and terminology references aligned | hardening-traceability | HardeningTraceabilityBoundary | hardening-traceability-boundary | verified | implemented_in_reference_impl | Reads docs instead of integrating SDK namespace POC |
 | ADR traceability audit | `docs/design/traceability.md` | HOBO-11 | Design maintainer | Prove PLAN-10 and ADR coverage remains anchored | hardening-traceability | HardeningTraceabilityBoundary | hardening-traceability-boundary | verified | implemented_in_reference_impl | Aggregate docs updated with this reference implementation |
 | SDK aggregate WIT | `src/draft/technical-proofs/hobo-sdk-aggregate-wit-contract` | HOBO-16 | Provider author | Validate aggregate idiom parity | contract-surface | None | None | not_started | out_of_scope_for_this_epic | Belongs to WIT Runtime/SDK rollup |
-| Component-host conformance | `src/draft/technical-proofs/component-host-conformance-suite` | HOBO-29 | Maintainer | Certify host adapters | ci-conformance | None | None | not_started | out_of_scope_for_this_epic | Belongs to WIT Runtime rollup |
+| Component-host conformance | `src/draft/technical-proofs/component-host-conformance-suite` | HOBO-29 | Maintainer | Certify host adapters | ci-conformance | None | None | not_started | out_of_scope_for_this_epic | Belongs to WIT Runtime rollup; latest technical-proof change reconciled without changing this epic's out-of-scope disposition. |
 | SLSA provenance certification | `src/draft/technical-proofs/slsa-provenance-certification-contract` | HOBO-312 | SecOps reviewer | Certify generated artifacts | trust-gate | None | None | not_started | out_of_scope_for_this_epic | Belongs to Generation rollup; HOBO-7 is the Foundations trust input |
 | Package namespace map POC | `src/draft/technical-proofs/hobo-package-namespace-map` | HOBO-58 | Design maintainer | Keep import ownership aligned | hardening-traceability | None | None | not_started | out_of_scope_for_this_epic | Not integrated to avoid SDK epic scope bleed |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/slsa-provenance-certification-contract` | final validated leaf hardening | Build provenance and conformance evidence unchanged. |

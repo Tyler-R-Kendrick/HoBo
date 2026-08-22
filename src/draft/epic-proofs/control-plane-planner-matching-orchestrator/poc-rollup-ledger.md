@@ -7,7 +7,7 @@
 | Resource Definition + Driver ports | `src/draft/technical-proofs/resource-definition-driver-contract` | HOBO-45 | Platform engineer | Resolve definitions by context | Planning/matching | Catalog, driver adapter | ResourceDefinitionCatalog, DriverAdapterBoundary | verified | implemented_in_reference_impl | Ambiguous definitions require match decision. |
 | CloudProvider / Capability / IacProvider ports | `src/draft/technical-proofs/provider-port-contract` | HOBO-47 | Platform engineer | Negotiate provider capability | Planning/matching | Capability registry, driver adapter | CapabilityRegistry, DriverAdapterBoundary | verified | implemented_in_reference_impl | Provider implementation remains mocked. |
 | Deployment Set + Delta projection | `src/draft/technical-proofs/delta-set-apply-reconcile-contract` | HOBO-50 | Release manager | Apply Delta to immutable Set | Reconciliation | Deployment Set store | DeploymentSetStore | verified | implemented_in_reference_impl | Delta/Set refs are fixture-backed. |
-| Matching specificity vectors | `src/draft/technical-proofs/matching-specificity-vectors` | HOBO-55 | Platform engineer | Explain why a definition won | Planning/matching | Resource Definition catalog | ResourceDefinitionCatalog | verified | implemented_in_reference_impl | Catalog hash and stable tiebreak kept. |
+| Matching specificity vectors | `src/draft/technical-proofs/matching-specificity-vectors` | HOBO-55 | Platform engineer | Explain why a definition won | Planning/matching | Resource Definition catalog | ResourceDefinitionCatalog | verified | implemented_in_reference_impl | Catalog hash and stable tiebreak kept; latest technical-proof change reconciled without changing the simulation. |
 | Self-host bootstrap ordering spike | `src/draft/technical-proofs/self-host-bootstrap-ordering-spike` | HOBO-59 | DevOps platform owner | Seed handover order is safe | Self-host bootstrap | Bootstrap handover, Identity broker | BootstrapHandoverBoundary, IdentityTokenBroker | verified | implemented_in_reference_impl | Spike informs hard ordering. |
 | Planner DAG skeleton | `src/draft/technical-proofs/planner-dag-skeleton-contract` | HOBO-61 | Platform engineer | Manifest becomes dependency DAG | Planning/matching | Manifest collector | ManifestIrCollector | verified | implemented_in_reference_impl | Pure planning function kept. |
 | Matching engine skeleton | `src/draft/technical-proofs/matching-engine-skeleton-contract` | HOBO-64 | Platform engineer | Gather/filter/score/pick | Planning/matching | Resource Definition catalog | ResourceDefinitionCatalog | verified | implemented_in_reference_impl | Winner and rejected candidates recorded. |
@@ -25,8 +25,23 @@
 | Self-host bootstrap saga | `src/draft/technical-proofs/self-host-bootstrap-saga-contract` | HOBO-359 | DevOps platform owner | Seed Yard hands over Identity | Self-host bootstrap | Bootstrap handover, Identity broker | BootstrapHandoverBoundary, IdentityTokenBroker | verified | implemented_in_reference_impl | Duplicate bootstrap blocked. |
 | Dispatcher placement and dispatch | `src/draft/technical-proofs/dispatcher-maximize-credits-contract` | HOBO-363 | SRE operator | Dispatch uses pinned credit view | Safety/recovery | Objective ledger | ObjectiveLedger | verified | implemented_in_reference_impl | Shares ledger boundary with ranking. |
 | Drift detection loop | `src/draft/technical-proofs/drift-detection-loop-contract` | HOBO-366 | SRE operator | Refresh emits drift evidence | Safety/recovery | Drift refresh provider | DriftRefreshProvider | verified | implemented_in_reference_impl | No live provider refresh. |
-| Adopt-in-place resources | `src/draft/technical-proofs/adopt-in-place-contract` | HOBO-369 | SRE operator | Adopted resources are detect-only | Safety/recovery | Drift refresh provider, Set store | DriftRefreshProvider, DeploymentSetStore | verified | implemented_in_reference_impl | `drift-detect-only` lifecycle kept. |
+| Adopt-in-place resources | `src/draft/technical-proofs/adopt-in-place-contract` | HOBO-369 | SRE operator | Adopted resources are detect-only | Safety/recovery | Drift refresh provider, Set store | DriftRefreshProvider, DeploymentSetStore | verified | implemented_in_reference_impl | `drift-detect-only` lifecycle kept; latest technical-proof change reconciled without changing the simulation. |
 | Drift orphan sweep | `src/draft/technical-proofs/drift-orphan-sweep-contract` | HOBO-373 | SRE operator | Orphans are swept by tag evidence | Safety/recovery | Drift refresh provider, Driver adapter | DriftRefreshProvider, DriverAdapterBoundary | verified | implemented_in_reference_impl | Prevents silent orphan leak. |
 | Partial-realize rollback | `src/draft/technical-proofs/partial-realize-rollback-contract` | HOBO-376 | SRE operator | Created-but-not-in-state is recorded | Safety/recovery | Driver adapter, EventStore | DriverAdapterBoundary, EventStoreActorHost | verified | implemented_in_reference_impl | Orphan recorded before completion. |
 | Dispatcher reservation hardening | `src/draft/technical-proofs/dispatcher-reservation-hardening-contract` | HOBO-379 | SRE operator | Concurrent spend rejects on CAS | Safety/recovery | Objective ledger | ObjectiveLedger | verified | implemented_in_reference_impl | Determinism plus reservation safety. |
-| DeploymentView saga graph | `src/draft/technical-proofs/deployment-view-saga-graph-contract` | HOBO-382 | SRE operator | Projection reconstructs choreography | Safety/recovery | DeploymentView projection | DeploymentViewProjection | verified | implemented_in_reference_impl | Read-model only, no dashboard. |
+| DeploymentView saga graph | `src/draft/technical-proofs/deployment-view-saga-graph-contract` | HOBO-382 | SRE operator | Projection reconstructs choreography | Safety/recovery | DeploymentView projection | DeploymentViewProjection | verified | implemented_in_reference_impl | Read-model only, no dashboard; refreshed for validated envelope and input-boundary hardening. |
+
+## Cascade absorptions
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/delta-set-apply-reconcile-contract` | latest validated leaf hardening | Delta/Set reconciliation simulation and Pact evidence unchanged. |
+| `src/draft/technical-proofs/deployment-view-saga-graph-contract` | latest validated leaf hardening | DeploymentView saga projection simulation and Pact evidence unchanged. |
+
+| `src/draft/technical-proofs/region-objective-ranking-contract` | latest validated leaf hardening | Region-objective ranking and deterministic placement evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/self-host-bootstrap-saga-contract` | final validated leaf hardening | Planner and orchestration evidence unchanged. |

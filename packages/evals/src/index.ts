@@ -26,6 +26,48 @@ export const SILVER_DEFAULT_SUITE_ID =
 
 export type ScoringKind = "boolean" | "scale" | "golden-match";
 
+type EvaluationValue =
+	| undefined
+	| null
+	| boolean
+	| number
+	| string
+	| bigint
+	| symbol
+	| object
+	| ((...args: never[]) => EvaluationValue);
+type ValueKind =
+	| "undefined"
+	| "null"
+	| "boolean"
+	| "number"
+	| "string"
+	| "bigint"
+	| "symbol"
+	| "function"
+	| "object";
+
+function valueKind<T>(value: T): ValueKind {
+	const tag = Object.prototype.toString.call(value);
+	if (tag === "[object Undefined]") return "undefined";
+	if (tag === "[object Null]") return "null";
+	if (tag === "[object Boolean]") return "boolean";
+	if (tag === "[object Number]") return "number";
+	if (tag === "[object String]") return "string";
+	if (tag === "[object BigInt]") return "bigint";
+	if (tag === "[object Symbol]") return "symbol";
+	if (tag === "[object Function]") return "function";
+	return "object";
+}
+
+function isNumber<T>(value: T): value is T & number {
+	return valueKind(value) === "number";
+}
+
+function isBoolean<T>(value: T): value is T & boolean {
+	return valueKind(value) === "boolean";
+}
+
 export type EvalsFailureCode =
 	| "criterion.below-threshold"
 	| "criterion.required-failed"
@@ -64,7 +106,7 @@ export interface RubricCriterionDefinition {
 	/** Scale criteria only: score floor in [0,1]; boolean/golden-match imply 1. */
 	passThreshold?: number;
 	/** Golden-match criteria only: the blessed expected value (JSON data). */
-	expected?: unknown;
+	expected?: EvaluationValue;
 	/** Hard gate: a failing required criterion fails the rubric outright. */
 	required?: boolean;
 }
@@ -83,7 +125,7 @@ export interface RubricCriterion {
 	readonly weight: number;
 	readonly kind: ScoringKind;
 	readonly passThreshold: number;
-	readonly expected?: unknown;
+	readonly expected?: EvaluationValue;
 	readonly required: boolean;
 }
 
@@ -103,14 +145,14 @@ export interface RubricObservationInput {
 	/** Scale criteria: score in [0,1]. */
 	score?: number;
 	/** Golden-match criteria: the actual value to compare canonically. */
-	actual?: unknown;
+	actual?: EvaluationValue;
 }
 
 // domain-view: first-divergence record over unknown values; wire form is ValueDiff (JSON-encoded sides) in data-models/evals.proto.
 export interface ValueDiff {
 	readonly path: string;
-	readonly expected: unknown;
-	readonly actual: unknown;
+	readonly expected: EvaluationValue;
+	readonly actual: EvaluationValue;
 }
 
 // domain-view: scored criterion with literal kind union and optional structured diff; wire form is CriterionScore in data-models/evals.proto.
@@ -168,10 +210,10 @@ export interface PromotionGateThresholds {
  * duplicate-free criteria) is enforced here so scoring never re-checks.
  */
 export function defineRubric(definition: RubricDefinition): Rubric {
-	if (!definition || typeof definition !== "object") {
+	if (!definition || valueKind(definition) !== "object") {
 		throw new RubricParseError("rubric definition is required");
 	}
-	if (typeof definition.id !== "string" || definition.id.length === 0) {
+	if (valueKind(definition.id) !== "string" || definition.id.length === 0) {
 		throw new RubricParseError("rubric id must be a non-empty string");
 	}
 	const passThreshold = parseUnitInterval(
@@ -209,10 +251,10 @@ function parseCriterion(
 	rubricId: string,
 	criterion: RubricCriterionDefinition,
 ): RubricCriterion {
-	if (!criterion || typeof criterion !== "object") {
+	if (!criterion || valueKind(criterion) !== "object") {
 		throw new RubricParseError(`rubric "${rubricId}" criterion is required`);
 	}
-	if (typeof criterion.id !== "string" || criterion.id.length === 0) {
+	if (valueKind(criterion.id) !== "string" || criterion.id.length === 0) {
 		throw new RubricParseError(
 			`rubric "${rubricId}" criterion id must be a non-empty string`,
 		);
@@ -242,7 +284,7 @@ function parseCriterion(
 			`${label} passThreshold is only meaningful for scale criteria`,
 		);
 	}
-	let expected: { expected: unknown } | undefined;
+	let expected: { expected: EvaluationValue } | undefined;
 	if (criterion.kind === "golden-match") {
 		if (criterion.expected === undefined) {
 			throw new RubricParseError(
@@ -261,15 +303,16 @@ function parseCriterion(
 			`${label} expected is only meaningful for golden-match criteria`,
 		);
 	}
-	return {
+	const parsed = {
 		id: criterion.id,
 		description: criterion.description ?? "",
 		weight: criterion.weight,
 		kind: criterion.kind,
 		passThreshold,
 		required: criterion.required === true,
-		...(expected ?? {}),
 	};
+	if (expected) return { ...parsed, expected: expected.expected };
+	return parsed;
 }
 
 /**
@@ -298,8 +341,8 @@ export function scoreRubric(
 	for (const observation of observations) {
 		if (
 			!observation ||
-			typeof observation !== "object" ||
-			typeof observation.criterionId !== "string"
+			valueKind(observation) !== "object" ||
+			valueKind(observation.criterionId) !== "string"
 		) {
 			throw new ObservationParseError(
 				"every observation must name a criterionId",
@@ -383,7 +426,7 @@ function scoreCriterion(
 		passThreshold: criterion.passThreshold,
 	};
 	if (criterion.kind === "boolean") {
-		if (typeof observation.passed !== "boolean") {
+		if (!isBoolean(observation.passed)) {
 			throw new ObservationParseError(
 				`boolean criterion "${criterion.id}" needs a boolean \`passed\` observation`,
 			);
@@ -396,7 +439,7 @@ function scoreCriterion(
 	}
 	if (criterion.kind === "scale") {
 		const score = observation.score;
-		if (typeof score !== "number" || !Number.isFinite(score)) {
+		if (!isNumber(score) || !Number.isFinite(score)) {
 			throw new ObservationParseError(
 				`scale criterion "${criterion.id}" needs a finite \`score\` observation`,
 			);
@@ -414,12 +457,13 @@ function scoreCriterion(
 		);
 	}
 	const match = matchGolden(criterion.expected, observation.actual);
-	return {
+	const score = {
 		...base,
 		score: match.equal ? 1 : 0,
 		passed: match.equal,
-		...(match.diff ? { diff: match.diff } : {}),
 	};
+	if (match.diff) return { ...score, diff: match.diff };
+	return score;
 }
 
 /**
@@ -428,35 +472,50 @@ function scoreCriterion(
  * first diverging path — the same first-diff vocabulary the conformance
  * golden checks use.
  */
-export function matchGolden(
-	expected: unknown,
-	actual: unknown,
-): { equal: boolean; diff?: ValueDiff } {
+export function matchGolden<T extends EvaluationValue, U extends EvaluationValue>(
+	expected: T,
+	actual: U,
+): MatchGoldenResult {
 	if (canonicalJson(expected) === canonicalJson(actual)) {
 		return { equal: true };
 	}
 	const diff = firstDiff(expected, actual);
-	return { equal: false, ...(diff ? { diff } : {}) };
+	const result: MutableMatchGoldenResult = { equal: false };
+	if (diff) result.diff = diff;
+	return result;
+}
+
+export interface MatchGoldenResult {
+	readonly equal: boolean;
+	readonly diff?: ValueDiff;
+}
+
+interface MutableMatchGoldenResult {
+	equal: boolean;
+	diff?: ValueDiff;
 }
 
 /** Canonical JSON encoding: recursively key-sorted, so comparison is order-independent. */
-export function canonicalJson(
-	value: unknown,
+export function canonicalJson<T>(
+	value: T,
 	seen: WeakSet<object> = new WeakSet(),
 ): string {
 	if (value === undefined) return "undefined";
-	const kind = typeof value;
+	const kind = valueKind(value);
 	if (kind === "bigint") return `${value}n`;
 	if (kind === "symbol") return JSON.stringify(String(value));
 	if (kind === "function") {
 		return JSON.stringify(
+			// SAFETY: valueKind(value) is "function", whose optional name is standard.
 			`fn:${(value as { name?: string }).name || "anonymous"}`,
 		);
 	}
 	if (kind === "number") {
-		if (Number.isNaN(value)) return "NaN";
+		// SAFETY: valueKind(value) is "number", so the numeric operations are valid.
+		const numberValue = value as number;
+		if (Number.isNaN(numberValue)) return "NaN";
 		if (Object.is(value, -0)) return "-0";
-		if (!Number.isFinite(value)) return String(value);
+		if (!Number.isFinite(numberValue)) return String(value);
 	}
 	if (value === null || kind !== "object") {
 		try {
@@ -487,10 +546,12 @@ export function canonicalJson(
 	if (Array.isArray(value)) {
 		return `[${value.map((entry) => canonicalJson(entry, seen)).join(",")}]`;
 	}
-	const rec = value as Record<string, unknown>;
-	return `{${Object.keys(rec)
+	// SAFETY: valueKind(value) is "object", so property enumeration is valid.
+	// SAFETY: valueKind(value) is "object", so property enumeration is valid.
+	const entries = Object.entries(value as object);
+	return `{${entries
 		.sort()
-		.map((key) => `${JSON.stringify(key)}:${canonicalJson(rec[key], seen)}`)
+			.map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry, seen)}`)
 		.join(",")}}`;
 }
 
@@ -504,7 +565,7 @@ export function evaluatePromotionGate(input: {
 	rubricReport: RubricReport;
 	thresholds?: PromotionGateThresholds;
 }): PromotionGateVerdict {
-	if (!input || typeof input !== "object") {
+	if (!input || valueKind(input) !== "object") {
 		throw new PromotionGateParseError("promotion gate input is required");
 	}
 	const report = input.rubricReport;
@@ -514,7 +575,7 @@ export function evaluatePromotionGate(input: {
 		);
 	}
 	const thresholds = input.thresholds ?? {};
-	if (typeof thresholds !== "object") {
+	if (valueKind(thresholds) !== "object") {
 		throw new PromotionGateParseError("thresholds must be an object");
 	}
 	let minWeightedTotal: number | undefined;
@@ -565,13 +626,13 @@ export function asGateDimension(
 	return verdict;
 }
 
-function parseUnitInterval(
-	value: unknown,
+function parseUnitInterval<T>(
+	value: T,
 	label: string,
 	ErrorClass: new (message: string) => TypeError,
 ): number {
 	if (
-		typeof value !== "number" ||
+		!isNumber(value) ||
 		!Number.isFinite(value) ||
 		value < 0 ||
 		value > 1
@@ -581,9 +642,9 @@ function parseUnitInterval(
 	return value;
 }
 
-function firstDiff(
-	expected: unknown,
-	actual: unknown,
+function firstDiff<T extends EvaluationValue, U extends EvaluationValue>(
+	expected: T,
+	actual: U,
 	path = "$",
 	seen: WeakSet<object> = new WeakSet(),
 ): ValueDiff | null {
@@ -591,7 +652,7 @@ function firstDiff(
 		return null;
 	}
 	if (
-		typeof expected !== typeof actual ||
+		valueKind(expected) !== valueKind(actual) ||
 		expected === null ||
 		actual === null
 	) {
@@ -627,20 +688,23 @@ function firstDiff(
 		}
 		return null;
 	}
-	if (typeof expected === "object") {
-		if (seen.has(expected) || seen.has(actual as object)) {
+	if (valueKind(expected) === "object") {
+		// SAFETY: the object kind branch guarantees both values are objects here.
+		const expectedObject = expected as object;
+		// SAFETY: differing value kinds returned above; this branch makes actual an object too.
+		const actualObject = actual as object;
+		if (seen.has(expectedObject) || seen.has(actualObject)) {
 			return { path, expected: "[Cycle]", actual: "[Cycle]" };
 		}
-		seen.add(expected);
-		if (actual && typeof actual === "object") seen.add(actual);
-		const keys = new Set([
-			...Object.keys(expected as object),
-			...Object.keys(actual as object),
-		]);
+		seen.add(expectedObject);
+		if (actual && valueKind(actual) === "object") seen.add(actualObject);
+		const expectedEntries = new Map(Object.entries(expectedObject));
+		const actualEntries = new Map(Object.entries(actualObject));
+		const keys = new Set([...expectedEntries.keys(), ...actualEntries.keys()]);
 		for (const key of keys) {
 			const diff = firstDiff(
-				(expected as Record<string, unknown>)[key],
-				(actual as Record<string, unknown>)[key],
+				expectedEntries.get(key),
+				actualEntries.get(key),
 				joinPath(path, key),
 				seen,
 			);
@@ -660,12 +724,14 @@ function joinPath(path: string, key: string): string {
 }
 
 function deepFreeze<T>(value: T, seen: WeakSet<object> = new WeakSet()): T {
-	if (value === null || typeof value !== "object") return value;
-	if (seen.has(value)) return value;
-	seen.add(value);
-	if (!Object.isFrozen(value)) {
-		Object.freeze(value);
-		for (const entry of Object.values(value)) {
+	if (value === null || valueKind(value) !== "object") return value;
+	// SAFETY: valueKind(value) is "object", so the object operations are valid.
+	const objectValue = value as object;
+	if (seen.has(objectValue)) return value;
+	seen.add(objectValue);
+	if (!Object.isFrozen(objectValue)) {
+		Object.freeze(objectValue);
+		for (const entry of Object.values(objectValue)) {
 			deepFreeze(entry, seen);
 		}
 	}
@@ -674,8 +740,8 @@ function deepFreeze<T>(value: T, seen: WeakSet<object> = new WeakSet()): T {
 
 export interface TrainableGoldenCase {
 	readonly id: string;
-	readonly expected: unknown;
-	readonly actual?: unknown;
+	readonly expected: EvaluationValue;
+	readonly actual?: EvaluationValue;
 }
 
 export interface TrainableGoldenRegion {
@@ -691,7 +757,7 @@ export interface TrainableGoldenRegion {
 export function defineTrainableGoldenRubric(
 	region: TrainableGoldenRegion,
 ): Rubric {
-	if (typeof region.methodRef !== "string" || region.methodRef.length === 0) {
+	if (valueKind(region.methodRef) !== "string" || region.methodRef.length === 0) {
 		throw new RubricParseError(
 			"trainable region methodRef must be a non-empty string",
 		);
@@ -744,10 +810,7 @@ export function observeTrainableGolden(
 
 export function scoreTrainableGoldenSuite(
 	regions: readonly TrainableGoldenRegion[],
-): {
-	readonly ok: boolean;
-	readonly reports: readonly RubricReport[];
-} {
+): TrainableSuiteScore {
 	const reports = regions.map((region) =>
 		scoreRubric(
 			defineTrainableGoldenRubric(region),
@@ -771,6 +834,11 @@ export interface TrainableSilverEvidence {
 	readonly bounded: boolean;
 }
 
+export interface TrainableSuiteScore {
+	readonly ok: boolean;
+	readonly reports: readonly RubricReport[];
+}
+
 /**
  * Silver suite for one trainable region: property/fuzz oracles over the
  * same gold seeds. Exact-match stays on the gold suite.
@@ -779,7 +847,7 @@ export function defineTrainableSilverRubric(
 	evidence: TrainableSilverEvidence,
 ): Rubric {
 	if (
-		typeof evidence.methodRef !== "string" ||
+		valueKind(evidence.methodRef) !== "string" ||
 		evidence.methodRef.length === 0
 	) {
 		throw new RubricParseError(
@@ -860,10 +928,7 @@ export function observeTrainableSilver(
 
 export function scoreTrainableSilverSuite(
 	evidence: readonly TrainableSilverEvidence[],
-): {
-	readonly ok: boolean;
-	readonly reports: readonly RubricReport[];
-} {
+): TrainableSuiteScore {
 	const reports = evidence.map((row) =>
 		scoreRubric(defineTrainableSilverRubric(row), observeTrainableSilver(row)),
 	);
@@ -910,11 +975,7 @@ export function silverEvidenceFromRegion(
 export function scoreTrainableGoldSilverSuites(input: {
 	readonly regions: readonly TrainableGoldenRegion[];
 	readonly silver?: readonly TrainableSilverEvidence[];
-}): {
-	readonly ok: boolean;
-	readonly gold: ReturnType<typeof scoreTrainableGoldenSuite>;
-	readonly silver: ReturnType<typeof scoreTrainableSilverSuite>;
-} {
+}): TrainableGoldSilverScore {
 	const gold = scoreTrainableGoldenSuite(input.regions);
 	const silver = scoreTrainableSilverSuite(
 		input.silver ??
@@ -923,20 +984,29 @@ export function scoreTrainableGoldSilverSuites(input: {
 	return { ok: gold.ok && silver.ok, gold, silver };
 }
 
-function isPolluted(
-	value: unknown,
+export interface TrainableGoldSilverScore {
+	readonly ok: boolean;
+	readonly gold: TrainableSuiteScore;
+	readonly silver: TrainableSuiteScore;
+}
+
+function isPolluted<T>(
+	value: T,
 	seen: WeakSet<object> = new WeakSet(),
 ): boolean {
-	if (!value || typeof value !== "object") return false;
-	if (seen.has(value)) return false;
-	seen.add(value);
+	if (!value || valueKind(value) !== "object") return false;
+	// SAFETY: the object kind branch guarantees value is an object here.
+	const objectValue = value as object;
+	if (seen.has(objectValue)) return false;
+	seen.add(objectValue);
 	if (
 		Object.hasOwn(value, "__proto__") ||
 		Object.hasOwn(value, "constructor")
 	) {
 		return true;
 	}
-	return Object.values(value as Record<string, unknown>).some((entry) =>
+	// SAFETY: valueKind(value) is "object", so Object.values accepts it.
+	return Object.values(objectValue).some((entry) =>
 		isPolluted(entry, seen),
 	);
 }

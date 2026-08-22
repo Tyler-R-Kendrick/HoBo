@@ -31,7 +31,7 @@ export function createDeploymentViewProjection(seedEvents = []) {
 }
 
 export function createInspectRunQuery({ eventStore, providerClient: _providerClient } = {}) {
-  if (!eventStore || typeof eventStore.readByCorrelationId !== "function") {
+  if (!eventStore || !(eventStore.readByCorrelationId instanceof Function)) {
     throw new TypeError("eventStore.readByCorrelationId must be a function");
   }
 
@@ -318,10 +318,10 @@ function normalizeEvents(seedEvents) {
 
 function assertEnvelopeLinkage(events) {
   for (const event of events) {
-    if (typeof event.correlationId !== "string" || event.correlationId.length === 0) {
+    if (!isNonEmptyString(event.correlationId)) {
       throw new DeploymentViewError(`Event ${event.id} is missing correlationId.`);
     }
-    if (typeof event.causationId !== "string" || event.causationId.length === 0) {
+    if (!isNonEmptyString(event.causationId)) {
       throw new DeploymentViewError(`Event ${event.id} is missing causationId.`);
     }
   }
@@ -353,10 +353,19 @@ function normalizeStringArray(value) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isNonEmptyString(value)) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
+}
+
+function isNonEmptyString(value) {
+  try {
+    const string = String.prototype.valueOf.call(value);
+    return string === value && string.length > 0;
+  } catch {
+    return false;
+  }
 }
 
 function compareResources(left, right) {
@@ -371,7 +380,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || Object(value) !== value) {
     return value;
   }
   for (const child of Object.values(value)) {

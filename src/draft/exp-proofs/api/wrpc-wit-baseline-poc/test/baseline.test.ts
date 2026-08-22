@@ -23,7 +23,7 @@ test("lock records exact pins and preview upcaster discipline", async () => {
 
   assert.equal(lock.manifestFloor.componentModel, "wasmtime@46.0.1");
   assert.equal(lock.manifestFloor.defaultTransport, "wrpc@0.17.0+nats");
-  assert.equal(lock.manifestFloor.interfacePinShape, "namespace:package/interface@semver@stability");
+  assert.equal(lock.manifestFloor["interfacePinShape"], "namespace:package/interface@semver@stability");
   assert.ok(lock.ciGuards.includes("vendored-interface-sha256-matches-lock"));
   assert.ok(lock.ciGuards.includes("wit-bindgen-cli-resolves-baseline-world"));
   assert.ok(lock.ciGuards.includes("preview-bump-declares-upcaster"));

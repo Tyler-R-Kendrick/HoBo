@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-conditional-empty-object-spread -- pact JSON adapter is the intentional untrusted-input boundary. */
 /**
  * The provider side of `contracts/pack-valkey-oci-yard-executor.pact.json`.
  *

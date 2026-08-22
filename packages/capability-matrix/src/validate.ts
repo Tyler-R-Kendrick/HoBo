@@ -72,9 +72,7 @@ export type CapabilityMatrixValidationOptions = {
 
 const DEFAULT_EXPIRY_HORIZON_MS = 7 * 24 * 60 * 60 * 1000;
 
-const SEVERITY_BY_CODE: Readonly<
-	Record<MatrixFindingCode, MatrixFindingSeverity>
-> = {
+const SEVERITY_BY_CODE = {
 	"uncovered-cell": "warning",
 	// A lapse is worse than a gap: this cell used to work.
 	"evidence-lapsed-cell": "error",
@@ -84,21 +82,12 @@ const SEVERITY_BY_CODE: Readonly<
 	"expiring-evidence-cell": "warning",
 	// A claim nobody can check is not coverage.
 	"missing-conformance-ref": "error",
-};
+	} as const;
 
 /** Verdicts that are, on their own, worth reporting — and why. */
-const VERDICT_FINDINGS: Readonly<
-	Partial<
-		Record<
-			CoverageVerdict,
-			{ readonly code: MatrixFindingCode; readonly detail: string }
-		>
-	>
-> = {
-	uncovered: {
-		code: "uncovered-cell",
-		detail: "no definition is registered for this primitive on this runtime",
-	},
+const VERDICT_FINDINGS = {
+	covered: undefined,
+	"pack-only": undefined,
 	"evidence-lapsed": {
 		code: "evidence-lapsed-cell",
 		detail:
@@ -119,7 +108,11 @@ const VERDICT_FINDINGS: Readonly<
 		detail:
 			"the only selectable coverage runs on infrastructure HoBo operates, not on a public provider",
 	},
-};
+	uncovered: {
+		code: "uncovered-cell",
+		detail: "no definition is registered for this primitive on this runtime",
+	},
+} as const;
 
 function sortedIds(values: readonly string[]): readonly string[] {
 	return [...new Set(values)].sort((a, b) => (a < b ? -1 : a > b ? 1 : 0));

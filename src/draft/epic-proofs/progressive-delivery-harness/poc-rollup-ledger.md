@@ -7,7 +7,7 @@ Selected epic: Progressive Delivery - The Harness (`122f5e0a-30d6-4949-9285-9441
 | DevOps canary rollout journey | `src/draft/exp-proofs/dx/devops-canary-rollout-journey-contract` | HOBO-224 | DevOps operator | `hobo up --strategy canary` reaches 10/50/100 or auto-rolls back | End-to-end progressive release simulation | CLI journey, delivery, SLO, traffic split, event stream | `pact-harness-traffic-split.json`, `pact-harness-slo-telemetry.json`, `pact-harness-event-stream.json` | verified | implemented_in_reference_impl | Kept journey shape and inspect/log audit stream; no CLI product code copied. |
 | Feature-flag port | `src/draft/technical-proofs/hobo-feature-flag-port` | HOBO-299 | App operator | Feature flag evaluates deterministic treatment/default value | Feature flag leg | Harness to feature-flag provider | `pact-harness-flag-provider.json` | verified | implemented_in_reference_impl | Kept OpenFeature-shaped detailed evaluation and fail-safe defaulting. |
 | Delivery port | `src/draft/technical-proofs/hobo-delivery-port` | HOBO-301 | Platform operator | Delivery provider emits rollout lifecycle events | Delivery leg | Harness to delivery provider and event stream | `pact-harness-traffic-split.json`, `pact-harness-event-stream.json` | verified | implemented_in_reference_impl | Kept lifecycle event vocabulary; no production provider adapter. |
-| Experiment port | `src/draft/technical-proofs/hobo-experiment-port` | HOBO-304 | Growth engineer | Assignment, exposure, and conclusion events stay typed | Experiment leg | Harness to experiment analytics provider | `pact-harness-experiment-analytics.json` | verified | implemented_in_reference_impl | Kept event and definition vocabulary; no vendor adapter. |
+| Experiment port | `src/draft/technical-proofs/hobo-experiment-port` | HOBO-304 | Growth engineer | Assignment, exposure, and conclusion events stay typed | Experiment leg | Harness to experiment analytics provider | `pact-harness-experiment-analytics.json` | verified | implemented_in_reference_impl | Absorbed the validated contract-hardening update; kept event and definition vocabulary with no vendor adapter. |
 | Flag event contract | `src/draft/technical-proofs/flag-event-contract` | HOBO-310 | App operator | Flag change records replayable actor-scoped event | Flag event stream | Harness to event stream | `pact-harness-event-stream.json` | verified | implemented_in_reference_impl | Kept `flag.Changed`/`flag.Evaluated` audit stream. |
 | SLO promotion gate | `src/draft/technical-proofs/slo-promotion-gate-contract` | HOBO-314 | Platform operator | Healthy pinned SLO promotes; stale/unavailable SLO holds | Promotion gate | Harness to Reliability SLO snapshot provider | `pact-harness-slo-telemetry.json` | verified | implemented_in_reference_impl | Kept pure gate over pinned `snapshot@seq`; SLO computation stays out of scope. |
 | Built-in flag store | `src/draft/technical-proofs/built-in-flag-store-contract` | HOBO-319 | App operator | Offline store evaluates `(ruleset@seq, context)` reproducibly | Flag store default | Harness to flag store | `pact-harness-flag-provider.json` | verified | implemented_in_reference_impl | Kept deterministic in-process behavior with no network fetch. |
@@ -27,8 +27,10 @@ Selected epic: Progressive Delivery - The Harness (`122f5e0a-30d6-4949-9285-9441
 | Experiment p-hacking guardrails | `src/draft/technical-proofs/experiment-statistical-analysis-contract` | HOBO-375 | Growth engineer | Early or underpowered favorable look does not conclude | Experiment analysis | Harness to experiment analytics provider | `pact-harness-experiment-analytics.json` | verified | implemented_in_reference_impl | Integrated through underpowered scenario. |
 | Rollback failure compensation | `src/draft/technical-proofs/rollback-failure-compensation-contract` | HOBO-378 | Platform operator | Failed compensation escalates with unsatisfied obligation | Rollback hardening | Harness to rollback compensator and event stream | `pact-harness-rollback-compensation.json`, `pact-harness-event-stream.json` | verified | implemented_in_reference_impl | Kept bounded retry and human handoff semantics. |
 | Flag debt cleanup | `src/draft/technical-proofs/flag-debt-auto-cleanup-contract` | HOBO-381 | App operator | Stale flags are proposed for non-destructive archival | Flag lifecycle | Harness to flag store and code references | none | not_started | deferred | Lifecycle cleanup is not part of safe-release vertical slice. |
-| Cross-Camp flag consistency | `src/draft/technical-proofs/cross-camp-flag-state-consistency-contract` | HOBO-384 | Multi-Camp operator | Follower reads carry bounded-staleness labels | Cross-Camp replication | Harness to replication stream | none | not_started | split_follow_up | Requires cross-Camp topology/replication reference, beyond this epic-local Harness slice. |
+| Cross-Camp flag consistency | `src/draft/technical-proofs/cross-camp-flag-state-consistency-contract` | HOBO-384 | Multi-Camp operator | Follower reads carry bounded-staleness labels | Cross-Camp replication | Harness to replication stream | none | not_started | split_follow_up | Requires cross-Camp topology/replication reference, beyond this epic-local Harness slice; latest technical-proof change reconciled without changing this epic's out-of-scope disposition. |
 | Delivery/experiment adapter conformance | `src/draft/technical-proofs/delivery-experiment-adapter-conformance-suite` | HOBO-387 | Platform operator | Delivery and experiment adapters satisfy the same suite | Adapter conformance | Harness to delivery and experiment adapters | `pact-harness-traffic-split.json`, `pact-harness-experiment-analytics.json` | verified | implemented_in_reference_impl | Kept conformance expectation through mocked provider verification. |
+
+| Experiment statistical analysis | `src/draft/technical-proofs/experiment-statistical-analysis-contract` | HOBO-353 | Growth engineer | Guarded analysis ships only powered, scheduled wins | Experiment analysis | Harness to experiment analytics provider | `pact-harness-experiment-analytics.json` | verified | implemented_in_reference_impl | Latest leaf validation is absorbed; guardrail simulation unchanged. |
 
 ## Cascade absorptions
 
@@ -37,6 +39,7 @@ Changes to referenced experience proofs that this rollup has taken in.
 | Referenced proof | Change | Effect on this rollup |
 |---|---|---|
 | `src/draft/exp-proofs/dx/devops-canary-rollout-journey-contract` | `data-models/proof.cue` | none |
+| `src/draft/technical-proofs/hobo-experiment-port` | latest validated leaf hardening | Assignment, exposure, and conclusion evidence unchanged. |
 
 All of these are the same edit, applied across 58 draft proofs at once. Each
 ships a `data-models/proof.proto` declaring `message ProofIdentity { string
@@ -56,3 +59,19 @@ record stays 0, `slug: 7` stays 1, `layer: "ux"` stays 1.
 No disposition, evidence path, Linear link, or acceptance claim in the table
 above moves. No proof in this epic identifies itself with an empty slug, so
 nothing that validated before stops validating.
+
+## Cascade absorptions (batch five)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/openexperiment-runtime-data-contract` | latest validated leaf hardening | Runtime-data and experiment evidence unchanged. |
+| `src/draft/technical-proofs/policy-gated-flag-flips-contract` | latest validated leaf hardening | Flag-gating and rollout evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/sdk-flag-surface-contract` | final validated leaf hardening | SDK flag evidence unchanged. |
+| `src/draft/technical-proofs/slo-gated-rollback-analysis-contract` | final validated leaf hardening | Rollback gate evidence unchanged. |
+| `src/draft/technical-proofs/slo-promotion-gate-contract` | final validated leaf hardening | Promotion gate evidence unchanged. |
+| `src/draft/technical-proofs/stuck-rollout-convergence-contract` | final validated leaf hardening | Rollout convergence evidence unchanged. |

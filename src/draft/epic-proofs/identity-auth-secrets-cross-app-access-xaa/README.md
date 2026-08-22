@@ -76,6 +76,9 @@ Feature: Recover and observe identity control planes
 - The reference service executes deterministic versions of the accepted Identity/XAA scenarios.
 - Every modeled boundary has a Pact decision and mocked provider fixture.
 - The tests assert positive paths and fail-closed adversarial cases: forged workload, wrong issuer, revoked session, confused-deputy delegation, replay, expired static key, and plaintext leakage.
+- Auth JSON, JWT-SVID, and PrincipalRef changes are absorbed without changing credential ordering, trust, or audit behavior.
+
+Outbound XAA token-exchange changes are absorbed without changing credential ordering, trust, or audit behavior.
 
 ## What Is Mocked
 
@@ -93,3 +96,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Identity Auth Secrets Cross App Access Xaa.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The secretless-config, static-key, SVID, token-broker, token-replay, and workload-attestation technical proof refreshes are absorbed without changing identity or secretless resolution behavior.

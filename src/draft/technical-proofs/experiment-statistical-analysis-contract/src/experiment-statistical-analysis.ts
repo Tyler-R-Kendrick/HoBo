@@ -612,7 +612,7 @@ function normalizeBounds(bounds) {
 }
 
 function normalizeConfidence(value) {
-  if (typeof value !== "number" || value <= 0 || value >= 1) {
+  if (!Number.isFinite(value) || value <= 0 || value >= 1) {
     throw new TypeError("primaryConfidence must be between 0 and 1");
   }
   return value;
@@ -630,20 +630,20 @@ function normalizePositiveInteger(value, label, allowZero = false) {
 }
 
 function normalizeNumber(value, label) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
+  if (!Number.isFinite(value)) {
     throw new TypeError(`${label} must be finite`);
   }
   return value;
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!isPlainObject(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isNonEmptyString(value)) {
     throw new TypeError(`${label} is required`);
   }
   return value;
@@ -657,7 +657,7 @@ function pruneUndefined(value) {
   if (Array.isArray(value)) {
     return value.map(pruneUndefined);
   }
-  if (!value || typeof value !== "object") {
+  if (!isPlainObject(value)) {
     return value;
   }
   return Object.fromEntries(
@@ -665,4 +665,12 @@ function pruneUndefined(value) {
       .filter(([, child]) => child !== undefined)
       .map(([key, child]) => [key, pruneUndefined(child)])
   );
+}
+
+function isPlainObject(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isNonEmptyString(value) {
+  return Object.prototype.toString.call(value) === "[object String]" && value.length > 0;
 }

@@ -26,6 +26,8 @@ export type PostgresDataErrorOptions = {
 	readonly cause?: unknown;
 };
 
+type PostgresErrorInput = PostgresDataError | Error | null;
+
 export class PostgresDataError extends Error {
 	readonly code: PostgresDataErrorCode;
 	readonly detail: PostgresDataErrorDetail;
@@ -35,15 +37,15 @@ export class PostgresDataError extends Error {
 		message: string,
 		options: PostgresDataErrorOptions = {},
 	) {
-		super(message, options.cause !== undefined ? { cause: options.cause } : {});
+		super(message, options.cause === undefined ? {} : { cause: options.cause });
 		this.name = "PostgresDataError";
 		this.code = code;
-		this.detail = Object.freeze({ ...(options.detail ?? {}) });
+		this.detail = Object.freeze(options.detail ?? {});
 	}
 }
 
 export function isPostgresDataError(
-	value: unknown,
+	value: PostgresErrorInput,
 ): value is PostgresDataError {
 	return value instanceof PostgresDataError;
 }

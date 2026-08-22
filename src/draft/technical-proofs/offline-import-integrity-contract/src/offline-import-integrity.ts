@@ -324,7 +324,7 @@ function payloadFor(payloads, digest) {
   if (payloads instanceof Map) {
     return payloads.get(digest) ?? null;
   }
-  if (payloads && typeof payloads === "object" && !Array.isArray(payloads)) {
+  if (isRecord(payloads)) {
     return payloads[digest] ?? null;
   }
   return null;
@@ -334,7 +334,7 @@ function proofFor(proofs, digest) {
   if (proofs instanceof Map) {
     return proofs.get(digest) ?? null;
   }
-  if (proofs && typeof proofs === "object" && !Array.isArray(proofs)) {
+  if (isRecord(proofs)) {
     return proofs[digest] ?? null;
   }
   return null;
@@ -352,7 +352,15 @@ function rejected({ reasons, mirror }) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isString(value) && value.trim().length > 0;
+}
+
+function isRecord(value) {
+  return Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }
 
 function compareVersions(left, right) {

@@ -317,7 +317,7 @@ function isSuspiciousFailureExclusion(exclusion) {
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!isRecord(value)) {
     throw new Error(`${name} must be an object`);
   }
 }
@@ -330,7 +330,7 @@ function requiredString(value, name) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isString(value) && value.trim().length > 0;
 }
 
 function assertRatio(value, name) {
@@ -385,7 +385,7 @@ function stableValue(value) {
   if (Array.isArray(value)) {
     return value.map(stableValue);
   }
-  if (!value || typeof value !== "object") {
+  if (!isRecord(value) && !Array.isArray(value)) {
     return value ?? null;
   }
   return Object.fromEntries(
@@ -393,4 +393,12 @@ function stableValue(value) {
       .sort()
       .map((key) => [key, stableValue(value[key])]),
   );
+}
+
+function isRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

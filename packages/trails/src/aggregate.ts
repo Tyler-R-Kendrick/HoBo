@@ -6,6 +6,7 @@ import { randomUUID } from "node:crypto";
 
 import type { TrailDefinition } from "./definition.js";
 import { createTrailEvent, TRAIL_EVENTS, type TrailEvent } from "./events.js";
+import type { JsonObject } from "./json.js";
 
 // public-contract: trail run state machine.
 export const TRAIL_RUN_STATES = Object.freeze([
@@ -77,6 +78,7 @@ export class TrailRunService {
 			target: input.target,
 			state: "planned",
 			percent: 0,
+			// SAFETY: the aggregate owns and mutates this private string list.
 			completedSteps: Object.freeze([] as string[]),
 			identityLinked: input.identityLinked === true,
 			junctionOk: true,
@@ -112,7 +114,7 @@ export class TrailRunService {
 		const p = Math.max(0, Math.min(100, Math.floor(percent)));
 		return this.transition("ramping", {
 			percent: p,
-			...(stepId !== undefined ? { currentStepId: stepId } : {}),
+			...(stepId !== undefined ? { currentStepId: stepId } : undefined),
 		});
 	}
 
@@ -250,7 +252,7 @@ export class TrailRunService {
 
 	private emit(
 		type: TrailEvent["type"],
-		data: Readonly<Record<string, unknown>>,
+	data: JsonObject,
 	): void {
 		const rec = this.require();
 		this.seq += 1;

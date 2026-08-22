@@ -28,7 +28,7 @@ describe("metrics catalog pipeline contract", () => {
     );
 
     for (const [metricName, definition] of Object.entries(METRICS_CATALOG)) {
-      assert.equal(typeof definition.unit, "string", `${metricName} unit`);
+      assert.ok(["1", "ms"].includes(definition.unit), `${metricName} unit`);
       assert.match(definition.type, /^(counter|gauge|histogram)$/);
       assert.ok(Array.isArray(definition.labels), `${metricName} labels`);
       for (const label of definition.labels) {

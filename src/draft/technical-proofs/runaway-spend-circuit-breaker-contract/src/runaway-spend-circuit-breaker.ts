@@ -105,7 +105,7 @@ export function replaySpendCircuitEvents(events) {
   const seenEventIds = new Set();
 
   for (const event of events) {
-    if (!event || typeof event !== "object" || Array.isArray(event)) {
+    if (!isObjectRecord(event)) {
       ignoredEvents.push({ event, reason: "malformed-event" });
       continue;
     }
@@ -518,14 +518,14 @@ function readGeneration(event, fallback) {
 }
 
 function expectObject(input, fieldName) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!isObjectRecord(input)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
   return input;
 }
 
 function requireString(input, fieldName) {
-  if (typeof input !== "string" || input.length === 0) {
+  if (!isString(input) || input.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return input;
@@ -535,7 +535,7 @@ function optionalString(input) {
   if (input === undefined || input === null) {
     return null;
   }
-  if (typeof input !== "string" || input.length === 0) {
+  if (!isString(input) || input.length === 0) {
     return null;
   }
   return input;
@@ -552,7 +552,7 @@ function optionalBoolean(input, fieldName) {
   if (input === undefined || input === null) {
     return null;
   }
-  if (typeof input !== "boolean") {
+  if (!isBoolean(input)) {
     throw new TypeError(`${fieldName} must be a boolean`);
   }
   return input;
@@ -597,7 +597,7 @@ function optionalNonNegativeInteger(input, fieldName = "value") {
 }
 
 function normalizeInstant(input, fieldName) {
-  if (typeof input !== "string") {
+  if (!isString(input)) {
     throw new TypeError(`${fieldName} must be an ISO-8601 string`);
   }
   const timestamp = Date.parse(input);
@@ -619,11 +619,23 @@ function stableStringify(value) {
   if (Array.isArray(value)) {
     return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (isObjectRecord(value)) {
     return `{${Object.keys(value)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
       .join(",")}}`;
   }
   return JSON.stringify(value);
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
+}
+
+function isBoolean(value) {
+  return Object.prototype.toString.call(value) === "[object Boolean]";
 }

@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this proof validates erased evidence records at its parser boundary before accepting the closed contract. */
+
 export type EvidenceStatus = "accepted" | "accepted-risk" | "missing";
 export type ProofMode = "design-record" | "reference-fixture" | "live-recording" | "manual-review";
 export type LaunchRiskEffect = "unchanged" | "increased" | "reduced";

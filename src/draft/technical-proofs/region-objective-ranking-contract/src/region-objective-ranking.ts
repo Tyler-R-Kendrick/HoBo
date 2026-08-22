@@ -113,7 +113,7 @@ export function decideRegionObjectivePlacement({ catalog, context, objective = "
 }
 
 function rejectDefinition(definition, context) {
-  if (!definition || typeof definition !== "object" || Array.isArray(definition)) {
+  if (!isObjectRecord(definition)) {
     return { definitionId: "<unknown>", reason: "definition must be an object" };
   }
   if (!isNonEmptyString(definition.id)) {
@@ -384,8 +384,8 @@ function matchMismatch(match, context) {
 }
 
 function catalogSnapshot(catalog) {
-  const snapshot = typeof catalog?.snapshot === "function" ? catalog.snapshot() : catalog;
-  if (!snapshot || typeof snapshot !== "object" || !Array.isArray(snapshot.definitions)) {
+  const snapshot = isCallable(catalog?.snapshot) ? catalog.snapshot() : catalog;
+  if (!isObjectRecord(snapshot) || !Array.isArray(snapshot.definitions)) {
     throw new Error("catalog snapshot with definitions is required");
   }
   return {
@@ -395,7 +395,7 @@ function catalogSnapshot(catalog) {
 }
 
 function assertContext(context) {
-  if (!context || typeof context !== "object" || Array.isArray(context)) {
+  if (!isObjectRecord(context)) {
     throw new Error("context must be an object");
   }
   for (const field of ["deploymentId", "resourceId", "resourceType", "resourceClass"]) {
@@ -421,7 +421,7 @@ function stableHash(value) {
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (!value || typeof value !== "object") return value;
+  if (!isObjectRecord(value)) return value;
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
 }
 
@@ -430,5 +430,19 @@ function descending(left, right) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.length > 0;
+  return isString(value) && value.length > 0;
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isCallable(value) {
+  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
+    Object.prototype.toString.call(value),
+  );
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

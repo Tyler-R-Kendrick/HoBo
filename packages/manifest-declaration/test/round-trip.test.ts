@@ -129,10 +129,10 @@ describe("presence, the thing a proto3 default silently eats", () => {
 	// `packages/cloud/data-models/cloud.proto` declares for `region`
 	// (`string region = 7;`, no `optional`), and it is why this package declares
 	// `optional string region = 7;` instead.
-	function encodeUnderImplicitPresence(
-		intent: Record<string, unknown>,
-	): Record<string, unknown> {
-		const out: Record<string, unknown> = {};
+	type JsonValue = string | number | boolean | null | JsonValue[] | JsonRecord;
+	type JsonRecord = { readonly [key: string]: JsonValue };
+	function encodeUnderImplicitPresence(intent: JsonRecord) {
+		const out: JsonRecord = {};
 		for (const [key, value] of Object.entries(intent)) {
 			if (value === "" || value === 0 || value === false) continue;
 			if (Array.isArray(value) && value.length === 0) continue;

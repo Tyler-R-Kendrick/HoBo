@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- pact matcher parses erased JSON fixtures. */
 /**
  * Provider verification for the Yard-container-executor ↔ Valkey-pack boundary.
  *
@@ -125,3 +126,4 @@ describe(`${PACT.consumer.name} → ${PACT.provider.name}`, () => {
 		}
 	});
 });
+/* eslint-disable anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- pact matcher parses erased JSON fixtures. */

@@ -37,7 +37,7 @@ assert.equal(withinCostTolerance(result.planEstimate.projectedMonthlyUsd, scenar
 
 // 3) Estimation fails closed when the plan targets a region cost.json does not cover.
 const uncoveredResources = scenario.plan.resources.map(
-	({ region: _region, ...resource }: Record<string, unknown> & { region?: string }) => resource,
+  ({ region: _region, ...resource }) => resource,
 );
 assert.throws(
 	() =>

@@ -62,6 +62,8 @@ The simulation uses mocked boundaries only. It records zero live network calls a
 ## What is real
 
 - The SRE decision flow is executable and covered by Node tests.
+- The validated autonomous-drift-remediation proof is included in this rollup; its deterministic simulation contract is unchanged.
+- Disaster-recovery failover, failover-integrity, and gated autonomous-remediation proofs retain their validated replay and approval boundaries.
 - Every selected service boundary has a Pact-format consumer fixture under [contracts/pacts](contracts/pacts).
 - The simulation drives incident, crew, policy, live-fix, A2H, integration-port, runaway guard, and DR replay events.
 - The POC rollup ledger records accepted, implemented, deferred, and out-of-scope POCs.
@@ -82,6 +84,8 @@ The simulation uses mocked boundaries only. It records zero live network calls a
 Provider verification is documented as unavailable because no real providers exist in this design repo. The Pact files are consumer fixtures for the reference implementation and should be promoted into provider verification once the corresponding runtime, policy, live-fix, notify, issue-tracker, knowledge, event-log, and chaos providers exist.
 
 
+Policy-gated flag changes are absorbed without changing operator safety, rollback, or fail-closed behavior.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by
@@ -90,3 +94,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Operators Sre Crew.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The runbook-execution, SRE-diagnose, SRE-postmortem, and SRE-operator technical proof refreshes are absorbed without changing operator or incident-response evidence.

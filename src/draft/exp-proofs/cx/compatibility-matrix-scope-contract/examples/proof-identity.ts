@@ -8,6 +8,7 @@ import path from "node:path";
 import assert from "node:assert/strict";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+// SAFETY: proof.json is the package manifest at the resolved proof root; the assertions below check its identity against this folder.
 const proof = JSON.parse(
   readFileSync(path.join(root, "..", "proof.json"), "utf8"),
 ) as { slug: string; layer: string };

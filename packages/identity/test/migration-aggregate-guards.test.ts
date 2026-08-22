@@ -74,12 +74,13 @@ function linkDiverged(svc: IdentityMigrationService) {
 	});
 }
 
-function codeOf(fn: () => unknown): string {
+function codeOf(fn: () => void): string {
 	try {
 		fn();
 	} catch (error) {
+		// SAFETY: service errors expose a string `code`; non-error throws use the fallback.
 		const code = (error as { code?: unknown }).code;
-		return typeof code === "string" ? code : `<no code: ${String(error)}>`;
+		return String(code) === code ? String(code) : `<no code: ${String(error)}>`;
 	}
 	return "<did not throw>";
 }

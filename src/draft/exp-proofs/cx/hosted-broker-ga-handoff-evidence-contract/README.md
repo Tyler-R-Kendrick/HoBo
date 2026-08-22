@@ -7,7 +7,7 @@ live hosted broker operations.
 ## Focused Gate
 
 ```powershell
-pnpm.cmd --prefix src\draft\exp-proofs\hosted-broker-ga-handoff-evidence-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\cx\hosted-broker-ga-handoff-evidence-contract test
 ```
 
 ## Proof Surface

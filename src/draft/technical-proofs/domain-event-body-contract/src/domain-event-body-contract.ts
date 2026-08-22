@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased authoring and domain-body values at the shared contract boundary before downstream compilation or validation. */
 import { createHash } from "node:crypto";
 
 export const DOMAIN_RECORD_SCHEMA = "hobo.domain-record/v1";
@@ -284,7 +285,7 @@ function normalizeAuthoring(authoring) {
       ...field,
       witName: field.witName ?? kebab(field.name),
       protoName: field.protoName ?? snake(field.name),
-      constraints: { ...(field.constraints ?? {}) }
+      constraints: { ...field.constraints }
     }))
   };
 }

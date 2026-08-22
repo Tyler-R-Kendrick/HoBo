@@ -6,7 +6,7 @@ evidence without building support tooling or publishing customer-facing SLA prom
 ## Focused Gate
 
 ```powershell
-pnpm.cmd --prefix src\draft\exp-proofs\launch-support-dogfood-alpha-evidence test
+pnpm.cmd --prefix src\draft\exp-proofs\cx\launch-support-dogfood-alpha-evidence test
 ```
 
 ## Proof Surface

@@ -24,8 +24,8 @@
 | Full-text search | `src/draft/technical-proofs/full-text-search-contract` | HOBO-245 | App developer | Text query reacts over data materialization | Projection sinks and search | Search/embed | search-embed-boundary | verified | implemented_in_reference_impl | `createSearchProjection` is executed. |
 | SQL/document idiom packages | `src/draft/technical-proofs/paradigm-idiom-packages-contract` | HOBO-248 | Platform data engineer | Opt-in paradigms map to projection port | Projection sinks and search | Projection sink | projection-sink-boundary | contracted | integrated | Kept as authoring surface over same sink boundary. |
 | Vector/graph search extensions | `src/draft/technical-proofs/search-extension-packages-contract` | HOBO-252 | App developer | Vector search is an off-reactive-path step | Projection sinks and search | Search/embed | search-embed-boundary | verified | implemented_in_reference_impl | `runVectorSearchStep` and local embed are executed. |
-| Optimistic updates | `src/draft/technical-proofs/client-optimistic-update-contract` | HOBO-256 | App developer | Local patch reconciles at authoritative seq | Adversarial data integrity | Subscription gateway | subscription-gateway-boundary | simulated | integrated | Modeled as client-facing behavior of the same seq contract. |
-| Cross-Camp bounded staleness | `src/draft/technical-proofs/cross-camp-bounded-staleness-contract` | HOBO-261 | Platform data engineer | Remote Camp labels staleness honestly | Adversarial data integrity | Projection sink, subscription gateway | projection-sink-boundary, subscription-gateway-boundary | simulated | integrated | Bound appears in lag/staleness docs, no live replication. |
+| Optimistic updates | `src/draft/technical-proofs/client-optimistic-update-contract` | HOBO-256 | App developer | Local patch reconciles at authoritative seq | Adversarial data integrity | Subscription gateway | subscription-gateway-boundary | simulated | integrated | Modeled as client-facing behavior of the same seq contract; latest technical-proof change reconciled without changing the simulation. |
+| Cross-Camp bounded staleness | `src/draft/technical-proofs/cross-camp-bounded-staleness-contract` | HOBO-261 | Platform data engineer | Remote Camp labels staleness honestly | Adversarial data integrity | Projection sink, subscription gateway | projection-sink-boundary, subscription-gateway-boundary | simulated | integrated | Bound appears in lag/staleness docs, no live replication; latest technical-proof change reconciled without changing the simulation. |
 | Raw driver escape hatch | `src/draft/technical-proofs/raw-driver-escape-hatch-contract` | HOBO-265 | Platform data engineer | Raw reads are portability debt; raw writes blocked | Projection sinks and search | Projection sink | projection-sink-boundary | verified | implemented_in_reference_impl | `createRawView` is executed. |
 | Auth/flag read-set | `src/draft/technical-proofs/auth-flag-readset-contract` | HOBO-269 | Security reviewer | Session revoke and flag change repush reads | Adversarial data integrity | Governance/erasure, subscription gateway | governance-erasure-boundary, subscription-gateway-boundary | verified | implemented_in_reference_impl | `createAuthFlagReadsetReactor` is executed. |
 | Projection rebuild-from-zero | `src/draft/technical-proofs/projection-rebuild-contract` | HOBO-273 | Platform data engineer | Rebuild catches up before cutover | Adversarial data integrity | EventStore append, projection sink | eventstore-append-boundary, projection-sink-boundary | simulated | integrated | Rebuild is documented as follow-on provider work. |
@@ -35,6 +35,9 @@
 | Poison event quarantine | PR #351 / HOBO-291 evidence | HOBO-291 | Security reviewer | Bad event emits quarantine fact and deterministic skip | Adversarial data integrity | EventStore append, projection sink | eventstore-append-boundary, projection-sink-boundary | simulated | integrated | Behavior implemented from issue/PR evidence without taking over child PR. |
 | Crypto-shred erasure | `src/draft/technical-proofs/crypto-shred-erasure-contract` | HOBO-295 | Security reviewer | Forgettable fields tombstone without log rewrite | Adversarial data integrity | Governance/erasure | governance-erasure-boundary | verified | implemented_in_reference_impl | Crypto-shred log/keyring POC is executed. |
 
+| Domain event body | `src/draft/technical-proofs/domain-event-body-contract` | HOBO-42 | App developer | Order fact carries canonical typed payload | CQRS write to reactive read | EventStore append | eventstore-append-boundary | verified | implemented_in_reference_impl | Latest leaf validation is absorbed; replay evidence unchanged. |
+| Event body upcaster | `src/draft/technical-proofs/event-body-upcaster-gate` | HOBO-57 | Platform data engineer | Old event bodies stay replayable | CQRS write to reactive read | EventStore append | eventstore-append-boundary | simulated | integrated | Latest leaf validation is absorbed; replay evidence unchanged. |
+
 ## Cascade absorptions
 
 Changes to referenced technical proofs that this rollup has taken in, and what
@@ -43,6 +46,7 @@ each one did or did not move.
 | Referenced proof | Change | Effect on this rollup |
 |---|---|---|
 | `src/draft/technical-proofs/deterministic-replay-engine` | `architecture/replay_report.cue` was unparseable — every line of every definition body carried a leading `#`, which is a definition sigil in CUE and not a comment, so the file had never been read by any tool that claims to check it. Repaired, and the divergence guard was then replaced. | No disposition, evidence path, or Linear link moves. The `Replay/live equivalence spike` row's `promoting_via_hobo_601` disposition and its `assertReplayEqualsLive` promotion target are unchanged. |
+| `src/draft/technical-proofs/graphql-facade-runtime-contract` | latest validated leaf hardening | GraphQL materialization and read-consistency simulation unchanged. |
 
 The guard change is the part that is not merely cosmetic. `#ReplayDivergence`
 carried `if live_state_digest == replay_state_digest { _conflict: "divergence
@@ -71,3 +75,15 @@ because nothing could — the file did not parse.
 | Simulation risk | The simulation demonstrates architecture shape and negative behavior; it does not claim production EventStore, sink, gateway, GraphQL, search, or governance services exist. |
 | Active epic conflict | The reference implementation is isolated under the Data Plane epic slug and does not modify other epic reference paths or child PR branches. |
 | Follow-up split | Provider-side Pact verification, real sink adapters, live replication, and production poison-event provider integration remain follow-up work outside this reference PR. |
+
+| `src/draft/technical-proofs/projection-consistency-reactivity-contract` | latest validated leaf hardening | Projection consistency and replay evidence unchanged. |
+| `src/draft/technical-proofs/projection-sink-change-feed-conformance-contract` | latest validated leaf hardening | Change-feed and materialization evidence unchanged. |
+| `src/draft/technical-proofs/reactor-skeleton-contract` | latest validated leaf hardening | Reactor and event-reactivity evidence unchanged. |
+| `src/draft/technical-proofs/reads-your-writes-contract` | latest validated leaf hardening | Read-your-writes consistency evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/search-extension-packages-contract` | final validated leaf hardening | Extension-search evidence unchanged. |
+| `src/draft/technical-proofs/snapshot-replay-divergence-contract` | final validated leaf hardening | Event replay and divergence evidence unchanged. |

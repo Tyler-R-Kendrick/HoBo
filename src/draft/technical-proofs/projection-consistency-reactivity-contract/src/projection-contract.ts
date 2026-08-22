@@ -10,6 +10,7 @@ export const CONSISTENCY_LEVELS = Object.freeze([
 
 const VALID_CONSISTENCY_LEVELS = new Set(CONSISTENCY_LEVELS);
 const VALID_CAMP_SCOPES = new Set(["single-camp", "cross-camp"]);
+const tagOf = Object.prototype.toString;
 
 export function nativeSink() {
   return freezeSink({
@@ -20,15 +21,15 @@ export function nativeSink() {
 }
 
 export function projectionSink(sink) {
-  if (!sink || typeof sink !== "object") {
+  if (!sink || !isObjectTag(sink)) {
     throw new TypeError("projection sink must be an object");
   }
 
-  if (!sink.kind || typeof sink.kind !== "string") {
+  if (!sink.kind || !isString(sink.kind)) {
     throw new TypeError("projection sink kind is required");
   }
 
-  if (!sink.paradigm || typeof sink.paradigm !== "string") {
+  if (!sink.paradigm || !isString(sink.paradigm)) {
     throw new TypeError("projection sink paradigm is required");
   }
 
@@ -39,7 +40,7 @@ export function projectionSink(sink) {
 }
 
 export function declareProjection(spec) {
-  if (!spec || typeof spec !== "object") {
+  if (!spec || !isObjectTag(spec)) {
     throw new TypeError("projection spec is required");
   }
 
@@ -164,7 +165,7 @@ function classifyReactivity(sink) {
 }
 
 function requiredString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new TypeError(`${label} is required`);
   }
 
@@ -177,12 +178,20 @@ function requireNonEmptyStrings(value, label) {
   }
 
   for (const entry of value) {
-    if (typeof entry !== "string" || entry.length === 0) {
+    if (!isString(entry) || entry.length === 0) {
       throw new TypeError(`${label} must contain only non-empty strings`);
     }
   }
 
   return Object.freeze([...value]);
+}
+
+function isString(value) {
+  return tagOf.call(value) === "[object String]";
+}
+
+function isObjectTag(value) {
+  return tagOf.call(value) === "[object Object]";
 }
 
 function freezeSink(sink) {

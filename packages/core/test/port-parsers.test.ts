@@ -124,7 +124,9 @@ describe("clock id and number parsers", () => {
 			parseTimerId("");
 			expect.unreachable("empty timer id must be refused");
 		} catch (error) {
+			// SAFETY: parseTimerId("") above establishes the caught error type.
 			expect((error as ClockParseError).code).toBe("HOBO_CORE_CLOCK_PARSE");
+			// SAFETY: parseTimerId("") above establishes the caught error type.
 			expect((error as ClockParseError).name).toBe("ClockParseError");
 		}
 	});
@@ -348,6 +350,7 @@ describe("queue id parsers", () => {
 				parse("");
 				expect.unreachable("empty must be refused");
 			} catch (error) {
+				// SAFETY: parse("") above establishes the caught error type.
 				expect((error as QueueParseError).code).toBe("HOBO_CORE_QUEUE_PARSE");
 			}
 		}
@@ -529,7 +532,9 @@ describe("streamer parsers", () => {
 		// The `typeof` guard is redundant against the declared signature and
 		// live anyway, because run ids reach this from JSON. Both branches are
 		// checked so neither can be deleted as dead.
+		// SAFETY: this test deliberately bypasses the typed API to exercise its runtime boundary.
 		expect(() => parseRunId(7 as never)).toThrow(StreamerParseError);
+		// SAFETY: this test deliberately bypasses the typed API to exercise its runtime boundary.
 		expect(() => parseRunId(null as never)).toThrow(StreamerParseError);
 	});
 
@@ -573,6 +578,7 @@ describe("createStreamerFrame", () => {
 
 	it("defaults the stream when the record omits it", () => {
 		const frame = createStreamerFrame(
+			// SAFETY: the omitted stream field is the runtime input under test.
 			{ run_id: "run-1", seq: 1 } as never,
 			"c",
 		);
@@ -613,14 +619,17 @@ describe("createStreamerRunResult", () => {
 		try {
 			createStreamerRunResult({
 				run_id: "run-1",
+				// SAFETY: this test deliberately supplies an undeclared runtime status.
 				status: "complete" as never,
 				reason: "done",
 			});
 			expect.unreachable("an unknown status must be refused");
 		} catch (error) {
+			// SAFETY: createStreamerRunResult above establishes the caught error type.
 			expect((error as StreamerParseError).expected).toBe(
 				"completed | closed | failed",
 			);
+			// SAFETY: createStreamerRunResult above establishes the caught error type.
 			expect((error as StreamerParseError).path).toBe("status");
 		}
 	});
@@ -653,6 +662,7 @@ describe("streamer errors", () => {
 	it("backpressure names the run and the limit", () => {
 		// The limit belongs in the message because the fix is almost always to
 		// raise it or to consume faster, and neither is choosable without it.
+		// SAFETY: the constructor boundary is deliberately exercised with its wire value.
 		const error = new StreamerBackpressureError("run-1" as never, 1024);
 		expect(error.code).toBe("STREAMER_BACKPRESSURE");
 		expect(error.runId).toBe("run-1");
@@ -662,6 +672,7 @@ describe("streamer errors", () => {
 	});
 
 	it("closed names the run", () => {
+		// SAFETY: the constructor boundary is deliberately exercised with its wire value.
 		const error = new StreamerClosedError("run-1" as never);
 		expect(error.code).toBe("STREAMER_CLOSED");
 		expect(error.runId).toBe("run-1");
@@ -776,7 +787,8 @@ describe("tenantContextFromEnv", () => {
 });
 
 describe("createUsageEvent", () => {
-	const TENANT = "acme" as TenantId;
+		// SAFETY: this literal is the valid parsed tenant id used by the fixture.
+		const TENANT = "acme" as TenantId;
 
 	it("defaults quantity, unit and timestamp", () => {
 		vi.useFakeTimers();
@@ -867,8 +879,9 @@ describe("createMeteringBus", () => {
 		return { sink, seen };
 	}
 
-	const EVENT = createUsageEvent({
-		tenantId: "acme" as TenantId,
+		const EVENT = createUsageEvent({
+			// SAFETY: this literal is the valid parsed tenant id used by the fixture.
+			tenantId: "acme" as TenantId,
 		eventType: "overlay.join",
 		resource: "node-1",
 		timestamp: INSTANT,
@@ -956,6 +969,7 @@ describe("createMeteringBus", () => {
 		// A copy, so a caller cannot splice the live registry and silently stop
 		// metering.
 		const bus = createMeteringBus([recordingSink("a").sink]);
+		// SAFETY: listSinks returns the package's typed sink collection.
 		const listed = bus.listSinks() as MeteringSink[];
 		listed.length = 0;
 		expect(bus.listSinks()).toHaveLength(1);
@@ -966,11 +980,17 @@ describe("policy decisions", () => {
 	const REQUEST: PolicyRequest = {
 		subject: {
 			identity: "svc:checkout",
-			tenantId: "acme" as TenantId,
+				// SAFETY: this literal is the valid parsed tenant id used by the fixture.
+				tenantId: "acme" as TenantId,
 			tags: ["role:junction"],
 		},
 		action: "connect",
-		resource: { kind: "junction", id: "j-1", tenantId: "acme" as TenantId },
+			resource: {
+				kind: "junction",
+				id: "j-1",
+				// SAFETY: this literal is the valid parsed tenant id used by the fixture.
+				tenantId: "acme" as TenantId,
+			},
 	};
 
 	it("builds a deny decision with the caller's reasons", () => {
@@ -1000,7 +1020,11 @@ describe("policy decisions", () => {
 			"acl-v1",
 			{
 				...REQUEST,
-				resource: { ...REQUEST.resource, tenantId: "other" as TenantId },
+				resource: {
+					...REQUEST.resource,
+					// SAFETY: this literal is the valid parsed tenant id used by the fixture.
+					tenantId: "other" as TenantId,
+				},
 			},
 			["cross-tenant"],
 		);

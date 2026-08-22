@@ -30,6 +30,7 @@ import {
 	decidePlacement,
 	stableHash,
 } from "../src/dispatcher.js";
+import type { JsonValue } from "../src/json.js";
 
 const DIGEST =
 	"sha256:1111111111111111111111111111111111111111111111111111111111111111";
@@ -44,7 +45,7 @@ function ledgerView(accounts: unknown[] = []) {
 	};
 }
 
-function account(providerId: string, overrides: Record<string, unknown> = {}) {
+function account(providerId: string, overrides: Record<string, JsonValue> = {}) {
 	return {
 		providerId,
 		dimension: "object-store.gib-month",
@@ -59,7 +60,7 @@ function account(providerId: string, overrides: Record<string, unknown> = {}) {
 
 function candidate(
 	definitionId: string,
-	overrides: Record<string, unknown> = {},
+	overrides: Record<string, JsonValue> = {},
 ) {
 	return {
 		definitionId,
@@ -76,7 +77,7 @@ function candidate(
 	};
 }
 
-function placement(overrides: Record<string, unknown> = {}) {
+function placement(overrides: Record<string, JsonValue> = {}) {
 	return decidePlacement({
 		objective: "maximize-credits",
 		resourceId: "bucket-1",
@@ -90,7 +91,7 @@ function placement(overrides: Record<string, unknown> = {}) {
 
 function runnerAccount(
 	providerId: string,
-	overrides: Record<string, unknown> = {},
+	overrides: Record<string, JsonValue> = {},
 ) {
 	return account(providerId, { dimension: "runner.minutes", ...overrides });
 }
@@ -103,7 +104,7 @@ function runnerAccount(
  * the surface that actually exposes `creditFacts`, `freeUnits`,
  * `budgetExceeded` and `nextCreditExpiresAt`.
  */
-function dispatch(overrides: Record<string, unknown> = {}) {
+function dispatch(overrides: Record<string, JsonValue> = {}) {
 	return decideDispatch({
 		registry: createDispatcherRegistry([
 			{

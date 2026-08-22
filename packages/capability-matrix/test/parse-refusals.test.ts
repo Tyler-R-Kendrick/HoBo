@@ -17,25 +17,33 @@ import {
 } from "../src/index.js";
 import { matrixInput } from "./fixtures.js";
 
+type JsonValue = string | number | boolean | null | undefined | JsonValue[] | JsonObject;
+type JsonObject = Record<string, JsonValue>;
+
+// SAFETY: JSON.stringify/parse round-trips the generated matrix as JSON.
 const VALID = JSON.parse(
 	JSON.stringify(generateCapabilityMatrix(matrixInput())),
-) as Record<string, unknown>;
+	) as JsonObject;
 
 /** A deep clone of the valid matrix, so each test mutates in isolation. */
-function clone(): Record<string, unknown> {
-	return JSON.parse(JSON.stringify(VALID)) as Record<string, unknown>;
+function clone(): JsonObject {
+	// SAFETY: VALID is a generated JSON matrix and clone preserves that shape.
+	return JSON.parse(JSON.stringify(VALID)) as JsonObject;
 }
 
-function firstPopulatedCellIndex(matrix: Record<string, unknown>): number {
-	const cells = matrix.cells as Array<{ candidates: unknown[] }>;
+function firstPopulatedCellIndex(matrix: JsonObject): number {
+	// SAFETY: matrix is a generated matrix with a cells array.
+	const cells = matrix.cells as Array<{ candidates: JsonValue[] }>;
 	return cells.findIndex((cell) => cell.candidates.length > 0);
 }
 
-function expectRefusal(run: () => unknown, match: RegExp): Error {
+function expectRefusal(run: () => void, match: RegExp): Error {
 	try {
 		run();
 	} catch (error) {
+		// SAFETY: every refusal path throws an Error.
 		expect((error as Error).message).toMatch(match);
+		// SAFETY: the caught refusal is the Error just asserted above.
 		return error as Error;
 	}
 	expect.unreachable(`expected a refusal matching ${match}`);
@@ -104,8 +112,9 @@ describe("shape refusals", () => {
 
 	it("refuses an empty string inside a list where an identifier is required", () => {
 		const bad = clone();
+		// SAFETY: clone() returns the generated matrix shape under test.
 		const cells = bad.cells as Array<{
-			candidates: Array<Record<string, unknown>>;
+			candidates: Array<JsonObject>;
 		}>;
 		const index = firstPopulatedCellIndex(bad);
 		const found = cells[index]?.candidates[0];
@@ -135,8 +144,9 @@ describe("shape refusals", () => {
 	it("refuses a non-boolean availability flag", () => {
 		const bad = clone();
 		const index = firstPopulatedCellIndex(bad);
+		// SAFETY: clone() returns the generated matrix shape under test.
 		const cells = bad.cells as Array<{
-			candidates: Array<Record<string, unknown>>;
+			candidates: Array<JsonObject>;
 		}>;
 		const found = cells[index]?.candidates[0];
 		if (found === undefined) return;
@@ -149,8 +159,9 @@ describe("shape refusals", () => {
 	it("refuses an unknown vocabulary member", () => {
 		const bad = clone();
 		const index = firstPopulatedCellIndex(bad);
+		// SAFETY: clone() returns the generated matrix shape under test.
 		const cells = bad.cells as Array<{
-			candidates: Array<Record<string, unknown>>;
+			candidates: Array<JsonObject>;
 		}>;
 		const found = cells[index]?.candidates[0];
 		if (found === undefined) return;
@@ -163,9 +174,10 @@ describe("shape refusals", () => {
 });
 
 describe("ordering and uniqueness refusals", () => {
-	function withBucketIds(ids: string[]): Record<string, unknown> {
+	function withBucketIds(ids: string[]): JsonObject {
 		const bad = clone();
 		const index = firstPopulatedCellIndex(bad);
+		// SAFETY: clone() returns the generated matrix shape under test.
 		const cells = bad.cells as Array<{
 			buckets: Record<string, { available: string[]; unavailable: string[] }>;
 		}>;
@@ -210,6 +222,7 @@ describe("ordering and uniqueness refusals", () => {
 
 	it("refuses a definition listed as both available and unavailable", () => {
 		const bad = clone();
+		// SAFETY: clone() returns the generated matrix shape under test.
 		const cells = bad.cells as Array<{
 			buckets: Record<string, { available: string[]; unavailable: string[] }>;
 		}>;
@@ -235,9 +248,10 @@ describe("cross-field consistency refusals", () => {
 	it("refuses a candidate filed under the wrong cell", () => {
 		const bad = clone();
 		const index = firstPopulatedCellIndex(bad);
+		// SAFETY: clone() returns the generated matrix shape under test.
 		const cells = bad.cells as Array<{
 			key: string;
-			candidates: Array<Record<string, unknown>>;
+			candidates: Array<JsonObject>;
 		}>;
 		const found = cells[index]?.candidates[0];
 		if (found === undefined) return;
@@ -254,8 +268,9 @@ describe("cross-field consistency refusals", () => {
 	it("refuses a primitive or runtime outside the Bindle vocabulary", () => {
 		const bad = clone();
 		const index = firstPopulatedCellIndex(bad);
+		// SAFETY: clone() returns the generated matrix shape under test.
 		const cells = bad.cells as Array<{
-			candidates: Array<Record<string, unknown>>;
+			candidates: Array<JsonObject>;
 		}>;
 		const found = cells[index]?.candidates[0];
 		if (found === undefined) return;
@@ -268,8 +283,9 @@ describe("cross-field consistency refusals", () => {
 
 	it("refuses bucket ids that no candidate in the cell accounts for", () => {
 		const bad = clone();
+		// SAFETY: clone() returns the generated matrix shape under test.
 		const cells = bad.cells as Array<{
-			candidates: unknown[];
+			candidates: JsonValue[];
 			buckets: Record<string, { available: string[]; unavailable: string[] }>;
 		}>;
 		const empty = cells.find((cell) => cell.candidates.length === 0);
@@ -294,9 +310,10 @@ describe("cross-field consistency refusals", () => {
 
 	it("refuses a verdict that does not follow from the buckets", () => {
 		const bad = clone();
+		// SAFETY: clone() returns the generated matrix shape under test.
 		const cells = bad.cells as Array<{
 			verdict: string;
-			candidates: unknown[];
+			candidates: JsonValue[];
 		}>;
 		const covered = cells.find((cell) => cell.verdict !== "uncovered");
 		if (covered === undefined) return;
@@ -330,15 +347,18 @@ describe("error shape", () => {
 		);
 		// The path is what tells an operator which field of a large document to
 		// fix; a bare "invalid matrix" would be unactionable on a 50-cell grid.
+		// SAFETY: expectRefusal returns the parser's structured error.
 		expect((error as { code?: string }).code).toBe("INVALID_CAPABILITY_MATRIX");
+		// SAFETY: expectRefusal returns the parser's structured error.
 		expect((error as { path?: string }).path).toContain("evaluatedAtMs");
 	});
 
 	it("uses a distinct code for an unknown vocabulary member", () => {
 		const bad = clone();
 		const index = firstPopulatedCellIndex(bad);
+		// SAFETY: clone() returns the generated matrix shape under test.
 		const cells = bad.cells as Array<{
-			candidates: Array<Record<string, unknown>>;
+			candidates: Array<JsonObject>;
 		}>;
 		const found = cells[index]?.candidates[0];
 		if (found === undefined) return;
@@ -350,6 +370,7 @@ describe("error shape", () => {
 		// A vocabulary the reader does not know may simply mean the reader is
 		// older than the matrix — a different situation from a malformed
 		// document, and one a caller may want to handle by upgrading.
+		// SAFETY: expectRefusal returns the parser's structured error.
 		expect((error as { code?: string }).code).toBe("UNKNOWN_VOCABULARY");
 	});
 });

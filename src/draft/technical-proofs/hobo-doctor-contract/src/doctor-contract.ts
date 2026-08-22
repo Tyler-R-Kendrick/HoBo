@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased probe and JSON-like values at the doctor contract boundary before normalization and redaction. */
+
 import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
 

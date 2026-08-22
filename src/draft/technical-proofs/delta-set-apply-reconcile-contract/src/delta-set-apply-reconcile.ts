@@ -281,14 +281,14 @@ function diffResourceMaps(currentResources, targetResources) {
 }
 
 function normalizeDeploymentSet(set, label) {
-  if (!set || typeof set !== "object") {
+  if (!isObjectLike(set)) {
     throw new Error(`${label} is required`);
   }
   return createDeploymentSet(set);
 }
 
 function normalizeResourceMap(resources) {
-  if (!resources || typeof resources !== "object" || Array.isArray(resources)) {
+  if (!isPlainObject(resources)) {
     throw new Error("DeploymentSet resources must be an object map");
   }
   const normalized = {};
@@ -299,7 +299,7 @@ function normalizeResourceMap(resources) {
 }
 
 function normalizeResource(resourceId, resource) {
-  if (!resource || typeof resource !== "object") {
+  if (!isObjectLike(resource)) {
     throw new Error(`resource ${resourceId} must be an object`);
   }
   if (resource.id !== resourceId) {
@@ -333,7 +333,7 @@ function normalizeChanges(changes) {
     throw new Error("Delta changes must be an array");
   }
   return changes.map((change) => {
-    if (!change || typeof change !== "object") {
+    if (!isObjectLike(change)) {
       throw new Error("Delta change must be an object");
     }
     if (!["add", "update", "remove"].includes(change.op)) {
@@ -412,7 +412,7 @@ function optionalString(value) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return Object.prototype.toString.call(value) === "[object String]" && value.trim().length > 0;
 }
 
 function canonicalJson(value) {
@@ -423,7 +423,7 @@ function canonicalize(value) {
   if (Array.isArray(value)) {
     return value.map(canonicalize);
   }
-  if (!value || typeof value !== "object") {
+  if (!isObjectLike(value)) {
     return value;
   }
   return Object.fromEntries(
@@ -436,4 +436,12 @@ function canonicalize(value) {
 
 function clone(value) {
   return JSON.parse(JSON.stringify(value));
+}
+
+function isPlainObject(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isObjectLike(value) {
+  return value !== null && (Array.isArray(value) || isPlainObject(value));
 }

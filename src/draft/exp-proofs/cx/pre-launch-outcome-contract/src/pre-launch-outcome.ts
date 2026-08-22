@@ -232,7 +232,7 @@ export const PRE_LAUNCH_OUTCOME_CONTRACT = {
 export function validateOutcomeContractDefinition(contract) {
   const errors = [];
 
-  if (!contract || typeof contract !== "object") {
+  if (!contract || Object.prototype.toString.call(contract) !== "[object Object]") {
     return { ok: false, errors: ["contract is required"] };
   }
 
@@ -339,7 +339,7 @@ function hasValue(value) {
   if (Array.isArray(value)) {
     return value.length > 0;
   }
-  if (value && typeof value === "object") {
+  if (value && Object(value) === value) {
     return Object.keys(value).length > 0;
   }
   return value !== undefined && value !== null && value !== "";

@@ -15,21 +15,7 @@ export type BootSceneDeps = {
 };
 
 /** Pure preload plan — unit-testable without Phaser. */
-export function buildBootLoadPlan(
-	index: AssetIndex,
-	assetBaseUrl: string,
-): {
-	spritesheets: ReturnType<typeof phaserSpritesheetConfigs>;
-	images: { key: string; url: string }[];
-	backgrounds: { key: string; url: string }[];
-	animations: {
-		key: string;
-		sheetKey: string;
-		frames: number[];
-		frameRate: number;
-		repeat: number;
-	}[];
-} {
+export function buildBootLoadPlan(index: AssetIndex, assetBaseUrl: string) {
 	const base = assetBaseUrl.replace(/\/$/, "");
 	const url = (p: string) => (base ? `${base}/${p}` : p);
 

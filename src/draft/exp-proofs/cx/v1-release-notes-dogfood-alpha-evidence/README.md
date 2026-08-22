@@ -22,7 +22,7 @@ This POC records a machine-checkable M1 gate in
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\v1-release-notes-dogfood-alpha-evidence test
+npm.cmd --prefix src\draft\exp-proofs\cx\v1-release-notes-dogfood-alpha-evidence test
 ```
 
 ## Architecture Evidence

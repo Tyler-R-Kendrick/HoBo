@@ -57,6 +57,10 @@ export type ResolvedDeploymentSet = Readonly<{
 	contentHash: `sha256:${string}`;
 }>;
 
+type ResolvedDeploymentSetBody = Omit<ResolvedDeploymentSet, "contentHash"> & {
+	progressive?: NonNullable<ResolvedDeploymentSet["progressive"]>;
+};
+
 export function createResolvedDeploymentSet(input: {
 	readonly tenant: string;
 	readonly environment: string;
@@ -85,7 +89,7 @@ export function createResolvedDeploymentSet(input: {
 	const setId =
 		input.setId ??
 		`set_${createHash("sha256").update(planHash).digest("hex").slice(0, 12)}`;
-	const body = {
+	const body: ResolvedDeploymentSetBody = {
 		schemaVersion: RESOLVED_SET_SCHEMA,
 		setId,
 		tenant: input.tenant,
@@ -96,10 +100,8 @@ export function createResolvedDeploymentSet(input: {
 		matches: input.matches,
 		gatekeeper: input.gatekeeper,
 		secretRefs: Object.freeze([...(input.secretRefs ?? [])]),
-		...(input.progressive !== undefined
-			? { progressive: input.progressive }
-			: {}),
 	};
+	if (input.progressive !== undefined) body.progressive = input.progressive;
 	const contentHash =
 		`sha256:${createHash("sha256").update(stableStringify(body)).digest("hex")}` as const;
 	return Object.freeze({
@@ -127,14 +129,18 @@ export function listResources(
 	return set.plan.resources;
 }
 
-function stableStringify(value: unknown): string {
-	if (value === null || typeof value !== "object") {
+type HashableValue = JsonValue | ResolvedDeploymentSetBody;
+
+function stableStringify(value: HashableValue): string {
+	if (value === null || value !== Object(value)) {
 		return JSON.stringify(value);
 	}
 	if (Array.isArray(value)) {
 		return `[${value.map(stableStringify).join(",")}]`;
 	}
-	const obj = value as Record<string, unknown>;
+	// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+	const obj = value as Record<string, JsonValue>;
 	const keys = Object.keys(obj).sort();
 	return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(",")}}`;
 }
+import type { JsonValue } from "../plan-types.js";

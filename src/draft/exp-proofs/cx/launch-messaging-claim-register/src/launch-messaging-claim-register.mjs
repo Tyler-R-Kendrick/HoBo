@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this validator receives erased caller input at the proof boundary and rejects non-object records before domain checks. */
+
 const VALID_CLAIM_STATES = new Set(["implemented", "simulated-reference", "beta-only", "future-roadmap"]);
 const VALID_RISK_RATINGS = new Set(["low", "medium", "high"]);
 const VALID_PROOF_MODES = new Set(["design-record", "contract-test", "reference-fixture", "live-recording", "manual-review"]);

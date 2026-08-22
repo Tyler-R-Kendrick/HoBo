@@ -58,6 +58,9 @@ npm.cmd --prefix src\draft\epic-proofs\networking-connectivity-dns-relay run sim
 ## What Is Real
 
 - Existing POC modules are executed for connectivity tier selection, policy enforcement, mTLS, Yard manifests, Junction planning, DNS shadow writes, validation gates, ACME, private ACME, gateway routing, cost routing, Relay, and tenant routing.
+- The tenant-routing rollup also covers the leaf proof's boundary-type hardening; the deterministic simulation contract is unchanged.
+- The validated Cross-Camp routing policy and connectivity cost feedback proofs are included in this rollup; their deterministic simulation contracts are unchanged.
+- DNS validation threat-model and domain-event-body changes are absorbed without changing the deterministic connectivity simulation.
 - Pact fixtures in `contracts/pacts/` pin each mocked boundary used by the simulation.
 - The simulation fixture is deterministic and contains no secrets or customer data.
 
@@ -80,3 +83,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Networking Connectivity Dns Relay.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The split-horizon, public-mTLS, and topology-override technical proof refreshes are absorbed without changing connectivity or DNS evidence.

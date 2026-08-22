@@ -7,6 +7,7 @@ import {
 	KV_REDIS_CONFORMANCE_CASES,
 	KV_REDIS_CONSISTENCY_CLAIMS,
 	KvRedisCompatibleError,
+	type ReferenceStoreOptions,
 	runKvRedisConformance,
 	toProfileImplementations,
 	toStructuredCapabilities,
@@ -17,13 +18,13 @@ const MAX_VALUE_BYTES = 4096;
 async function runAgainstReferenceStore(
 	options: { readonly breakVerb?: string } = {},
 ) {
+	const storeOptions: ReferenceStoreOptions = {
+		maxValueBytes: MAX_VALUE_BYTES,
+	};
+	if (options.breakVerb !== undefined)
+		storeOptions.breakVerb = options.breakVerb;
 	return runKvRedisConformance({
-		executor: createReferenceRedisStore({
-			maxValueBytes: MAX_VALUE_BYTES,
-			...(options.breakVerb !== undefined
-				? { breakVerb: options.breakVerb }
-				: {}),
-		}),
+		executor: createReferenceRedisStore(storeOptions),
 		transport: "in-process",
 		limits: { maxValueBytes: MAX_VALUE_BYTES },
 	});

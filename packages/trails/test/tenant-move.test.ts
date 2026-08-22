@@ -23,7 +23,7 @@ afterEach(() => {
 	for (const cleanup of cleanups.splice(0)) cleanup();
 });
 
-function tempStores(): { sourcePath: string; targetPath: string } {
+function tempStores() {
 	const dir = mkdtempSync(path.join(tmpdir(), "hobo-move-"));
 	cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
 	return {
@@ -87,6 +87,7 @@ test("milestone: spectrum cutover over real ports is zero-loss (quiescent seq ==
 		(fact) => fact.type === MIGRATION_EVENTS.Imported,
 	);
 	assert.ok(exported && imported);
+	// SAFETY: the preceding fact-type checks establish these event payloads.
 	assert.equal(
 		(exported.data as { headSeq: number }).headSeq,
 		(imported.data as { importedHeadSeq: number }).importedHeadSeq,

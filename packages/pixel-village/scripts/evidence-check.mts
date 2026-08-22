@@ -47,12 +47,13 @@ if (!existsSync(MANIFEST)) {
 	process.exit(1);
 }
 
+// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 const manifest = JSON.parse(readFileSync(MANIFEST, "utf8")) as {
 	generatedAt?: string;
 	files?: Record<string, { bytes: number; sha256: string }>;
 };
 
-if (!manifest.files || typeof manifest.files !== "object") {
+if (!manifest.files || Array.isArray(manifest.files)) {
 	fail("evidence-manifest.json missing files map");
 }
 

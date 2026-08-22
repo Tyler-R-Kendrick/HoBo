@@ -95,7 +95,7 @@ export function hoboAdd({
 function preflightReasons({ descriptor, candidate }) {
   const reasons = [];
 
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || Object.prototype.toString.call(candidate) !== "[object Object]" || Array.isArray(candidate)) {
     return ["candidate.required"];
   }
 
@@ -121,10 +121,10 @@ function preflightReasons({ descriptor, candidate }) {
 }
 
 function ensureInstallDoesNotSelect({ considerCost, considerMirrors }) {
-  if (considerCost !== undefined && typeof considerCost !== "function") {
+  if (considerCost !== undefined && !isFunction(considerCost)) {
     throw new TypeError("considerCost must be a function when provided");
   }
-  if (considerMirrors !== undefined && typeof considerMirrors !== "function") {
+  if (considerMirrors !== undefined && !isFunction(considerMirrors)) {
     throw new TypeError("considerMirrors must be a function when provided");
   }
 }
@@ -141,6 +141,10 @@ function rejected(reasons) {
 
 function uniqueReasons(reasons) {
   return Object.freeze([...new Set(reasons)]);
+}
+
+function isFunction(value) {
+  return Object.prototype.toString.call(value) === "[object Function]";
 }
 
 function entryKey(entry) {

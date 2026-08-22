@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-chained-type-assertions, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this test deliberately erases the valid fixture to exercise malformed parser-boundary inputs. */
+
 import assert from "node:assert/strict";
 import { test } from "vitest";
 

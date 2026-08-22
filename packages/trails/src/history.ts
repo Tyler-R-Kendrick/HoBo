@@ -2,6 +2,7 @@
  * Durable applied Trail history per target environment (schema_migrations analog).
  */
 import { createHash } from "node:crypto";
+import type { TrailStep } from "./definition.js";
 
 // public-contract: trail history schema.
 export const TRAIL_HISTORY_SCHEMA = "hobo.trail-history/v1" as const;
@@ -113,6 +114,6 @@ export class TrailHistoryStore {
 	}
 }
 
-export function stepChecksum(step: unknown): `sha256:${string}` {
+export function stepChecksum(step: TrailStep): `sha256:${string}` {
 	return `sha256:${createHash("sha256").update(JSON.stringify(step)).digest("hex")}`;
 }

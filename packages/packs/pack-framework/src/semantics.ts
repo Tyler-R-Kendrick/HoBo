@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-conditional-empty-object-spread -- catalog projection preserves branded IDs and omitted optional fields. */
 /**
  * Projecting a verified pack into the product catalog.
  *
@@ -122,6 +123,7 @@ export function toPackResourceSemantics(
 	options: PackSemanticsOptions,
 ) {
 	const persistent = manifest.persistence.requirement === "required";
+	// SAFETY: manifest identifiers are branded parsed values; catalog IDs serialize them.
 	return {
 		schemaVersion: RESOURCE_DEFINITION_VNEXT_SCHEMA,
 		productId: manifest.packId as string,

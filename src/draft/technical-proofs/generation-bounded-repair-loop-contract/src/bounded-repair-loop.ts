@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased repair-loop inputs and callback values at the shared contract boundary before domain evaluation. */
+
 import {
   rebuildGenerationRun,
   validateGenerationEvent,

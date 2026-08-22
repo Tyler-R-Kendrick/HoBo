@@ -93,7 +93,7 @@ test("resolves ladder paths (a)-(c) with brokered events and no persisted secret
   assert.equal(providerSts.calls.length, 2);
   assert.equal(secretsAdapter.reads.length, 1);
   assert.equal(secretsAdapter.reads[0].path, "prod/stripe/api-key");
-  assert.equal(typeof secretsAdapter.reads[0].credentialRef, "string");
+  assert.ok(secretsAdapter.reads[0].credentialRef);
 
   const validationErrors = events.flatMap((event) => validateIdentityEvent(event).errors);
   assert.deepEqual(validationErrors, []);

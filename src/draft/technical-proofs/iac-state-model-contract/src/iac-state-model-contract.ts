@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish the erased resource-key, canonical JSON, and recursive clone contracts at shared normalization boundaries. */
+
 export const IAC_STATE_MODEL_VERSION = "hobo.iac-state-model/v1";
 
 const DEFAULT_TENANT_ID = "tenant-acme";

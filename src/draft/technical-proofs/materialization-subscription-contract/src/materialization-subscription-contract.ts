@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased event payloads and sequence vectors at the contract boundary. */
+
 import crypto from "node:crypto";
 
 const subscriptionEventTypes = new Set([

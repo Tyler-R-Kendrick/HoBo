@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
@@ -155,3 +156,4 @@ describe("pack secret custody", () => {
 		assert.ok(!String(ref.ref).includes("imported-material"));
 	});
 });
+/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */

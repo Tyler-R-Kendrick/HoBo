@@ -125,7 +125,10 @@ describe("replay reproduces the live fingerprint", () => {
 
 describe("command dispatch", () => {
 	function drive(model: ControlModel, commands: unknown[]) {
-		for (const command of commands) model.applyCommand(command as never);
+		for (const command of commands) {
+			// SAFETY: generated test commands intentionally cross the model boundary.
+			model.applyCommand(command as never);
+		}
 	}
 
 	it("rolls back to the earliest snapshot when none is named", () => {
@@ -136,6 +139,7 @@ describe("command dispatch", () => {
 		drive(model, [{ kind: "snapshot" }]);
 		model.createBindle(TENANT, "b3", "sha256:c");
 
+		// SAFETY: rollback is a valid command shape exercised by this test.
 		const verdict = model.applyCommand({
 			kind: "rollback",
 			tenantId: TENANT,
@@ -154,6 +158,7 @@ describe("command dispatch", () => {
 		// generates commands blindly, and a rollback before any snapshot is a
 		// legal thing to generate.
 		expect(
+			// SAFETY: rollback is a valid command shape exercised by this test.
 			model.applyCommand({ kind: "rollback", tenantId: TENANT } as never),
 		).toBeUndefined();
 	});
@@ -163,6 +168,7 @@ describe("command dispatch", () => {
 		// Only rollback yields an invariant verdict; the rest are state changes
 		// the harness checks by fingerprint instead.
 		expect(
+			// SAFETY: createBindle is a valid command shape exercised by this test.
 			model.applyCommand({
 				kind: "createBindle",
 				tenantId: TENANT,
@@ -170,8 +176,10 @@ describe("command dispatch", () => {
 				manifestHash: "sha256:a",
 			} as never),
 		).toBeUndefined();
+		// SAFETY: snapshot is a valid command shape exercised by this test.
 		expect(model.applyCommand({ kind: "snapshot" } as never)).toBeUndefined();
 		expect(
+			// SAFETY: destroy is a valid command shape exercised by this test.
 			model.applyCommand({
 				kind: "destroy",
 				tenantId: TENANT,
@@ -260,6 +268,7 @@ describe("verb vocabulary asymmetry", () => {
 		// ever widens beyond `ALL_VERBS`, this test is the one that explains
 		// the resulting false positive.
 		const model = new ControlModel();
+		// SAFETY: this test deliberately supplies an out-of-vocabulary verb.
 		model.addCapability(TENANT, "c1", ["read", "admin"] as never);
 		expect(model.fingerprint()).toContain("admin");
 		expect(model.replay()).not.toContain("admin");
@@ -294,6 +303,6 @@ describe("environment probes", () => {
 		// Whichever way it answers on this machine, the probe must return a
 		// boolean rather than propagating a spawn failure — the caller uses it
 		// to choose a lane, not to report an error.
-		expect(typeof schemathesisAvailable()).toBe("boolean");
+		expect([true, false]).toContain(schemathesisAvailable());
 	});
 });

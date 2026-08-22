@@ -39,10 +39,10 @@ const registryIds = STANDARD_CAPABILITY_PROFILES.map((profile) => profile.id)
 	.sort();
 
 /** `secretRef` is spelled `secret-ref` on the wire; `webhook` also holds `realtime.*`. */
-const FAMILIES_BY_SLOT: Readonly<Record<string, readonly string[]>> = {
+const FAMILIES_BY_SLOT = {
 	secretRef: ["secret-ref"],
 	webhook: ["webhook", "realtime"],
-};
+} satisfies Readonly<Record<string, readonly string[]>>;
 
 function familyOf(profileId: string): string {
 	const [family = ""] = profileId.split(".");
@@ -52,6 +52,7 @@ function familyOf(profileId: string): string {
 describe("core's typed catalog matches the standard profile registry", () => {
 	it("names every profile the registry defines", () => {
 		const missing = registryIds.filter(
+			// SAFETY: the generated catalog IDs are compared as plain wire strings.
 			(id) => !(CAPABILITY_PROFILE_IDS as readonly string[]).includes(id),
 		);
 		expect(
@@ -61,6 +62,7 @@ describe("core's typed catalog matches the standard profile registry", () => {
 	});
 
 	it("names no profile the registry does not define", () => {
+		// SAFETY: the generated catalog IDs are compared as plain wire strings.
 		const unknown = (CAPABILITY_PROFILE_IDS as readonly string[]).filter(
 			(id) => !registryIds.includes(id),
 		);
@@ -73,6 +75,7 @@ describe("core's typed catalog matches the standard profile registry", () => {
 	it("groups every profile under a slot its family grammar allows", () => {
 		const misfiled: string[] = [];
 		for (const slot of CAPABILITY_SLOTS) {
+			// SAFETY: each catalog slot is a record of named profile IDs.
 			const group = capability[slot] as Readonly<Record<string, string>>;
 			const allowed = FAMILIES_BY_SLOT[slot] ?? [slot];
 			for (const profileId of Object.values(group)) {
@@ -89,6 +92,7 @@ describe("core's typed catalog matches the standard profile registry", () => {
 
 	it("resolves each profile back to the slot that lists it", () => {
 		for (const slot of CAPABILITY_SLOTS) {
+			// SAFETY: each catalog slot is a record of named profile IDs.
 			const group = capability[slot] as Readonly<Record<string, string>>;
 			for (const profileId of Object.values(group)) {
 				expect(slotForProfile(profileId), `slotForProfile(${profileId})`).toBe(
@@ -103,6 +107,7 @@ describe("core's typed catalog matches the standard profile registry", () => {
 		const duplicates: string[] = [];
 		for (const slot of CAPABILITY_SLOTS) {
 			for (const profileId of Object.values(
+				// SAFETY: each catalog slot is a record of named profile IDs.
 				capability[slot] as Readonly<Record<string, string>>,
 			)) {
 				const previous = seen.get(profileId);

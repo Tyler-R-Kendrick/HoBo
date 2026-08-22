@@ -313,7 +313,7 @@ function hasForbiddenAuditKey(value, forbiddenKey) {
   if (Array.isArray(value)) {
     return value.some((entry) => hasForbiddenAuditKey(entry, forbiddenKey));
   }
-  if (!value || typeof value !== "object") {
+  if (value === null || Object.prototype.toString.call(value) !== "[object Object]") {
     return false;
   }
   return Object.entries(value).some(([key, nested]) =>

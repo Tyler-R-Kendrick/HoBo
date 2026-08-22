@@ -169,9 +169,9 @@ export function toSelectionCandidate(
 		producesBindingProfiles: semantics.producesBindingProfiles,
 		migrationProfiles: semantics.migrationProfiles,
 		providerClass: semantics.providerClass,
-		...(semantics.evidenceExpiresAtMs !== undefined
-			? { evidenceExpiresAtMs: semantics.evidenceExpiresAtMs }
-			: {}),
+		...(semantics.evidenceExpiresAtMs !== undefined && {
+			evidenceExpiresAtMs: semantics.evidenceExpiresAtMs,
+		}),
 		evidenceSignatureValid: semantics.evidenceSignatureValid,
 		creatorAuthorityAfterClaim: semantics.creatorAuthorityAfterClaim,
 		claimAtomicity: semantics.claimAtomicity,
@@ -194,7 +194,7 @@ export function toSelectionCandidate(
  */
 export function semanticsDigestInput(
 	definition: ResourceDefinitionVNext,
-): Record<string, unknown> | undefined {
+): Record<string, JsonValue> | undefined {
 	const semantics = definition.semantics;
 	if (semantics === undefined) return undefined;
 	return {
@@ -233,3 +233,4 @@ export function semanticsDigestInput(
 		),
 	};
 }
+import type { JsonValue } from "../plan-types.js";

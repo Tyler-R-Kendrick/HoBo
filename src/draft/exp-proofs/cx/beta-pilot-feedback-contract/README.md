@@ -14,6 +14,7 @@ Run:
 
 ```sh
 npm --prefix src/draft/exp-proofs/cx/beta-pilot-feedback-contract test
+pnpm exec oxlint src/draft/exp-proofs/cx/beta-pilot-feedback-contract --deny-warnings
 ```
 
 

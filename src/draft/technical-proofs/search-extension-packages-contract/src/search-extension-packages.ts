@@ -289,7 +289,7 @@ function normalizeVectorRecords(records, dimensions) {
 }
 
 function normalizeVector(vector, dimensions, label) {
-  if (!Array.isArray(vector) || vector.length !== dimensions || vector.some((value) => typeof value !== "number")) {
+  if (!Array.isArray(vector) || vector.length !== dimensions || vector.some((value) => !isNumber(value))) {
     throw new SearchExtensionContractError(
       "vector-dimension-invalid",
       `${label} must contain ${dimensions} numeric dimensions`,
@@ -368,14 +368,14 @@ function normalizeStringList(values, field) {
 }
 
 function assertObject(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!isRecord(value)) {
     throw new SearchExtensionContractError("object-required", `${field} must be an object`);
   }
   return value;
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isString(value) || value.trim() === "") {
     throw new SearchExtensionContractError("string-required", `${field} must be a non-empty string`);
   }
   return value;
@@ -408,7 +408,7 @@ function deepFreeze(value) {
   if (Array.isArray(value)) {
     return Object.freeze(value.map(deepFreeze));
   }
-  if (value && typeof value === "object") {
+  if (isObjectLike(value)) {
     return Object.freeze(Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, deepFreeze(nested)])));
   }
   return value;
@@ -418,5 +418,22 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone(value);
+}
+
+function isRecord(value) {
+  return Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isObjectLike(value) {
+  const tag = Object.prototype.toString.call(value);
+  return tag === "[object Object]" || tag === "[object Array]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
+}
+
+function isNumber(value) {
+  return Object.prototype.toString.call(value) === "[object Number]";
 }

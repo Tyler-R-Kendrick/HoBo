@@ -102,45 +102,45 @@ export type SelectionResult = {
 	readonly rejections: readonly SelectionRejection[];
 };
 
-const PROVIDER_CLASS_RANK: Readonly<Record<ProviderClass, number>> = {
+const PROVIDER_CLASS_RANK = {
 	established: 0,
 	"verified-emerging": 1,
 	experimental: 2,
-};
+} satisfies Readonly<Record<ProviderClass, number>>;
 
-const AUTHORITY_RANK: Readonly<Record<CreatorAuthorityAfterClaim, number>> = {
+const AUTHORITY_RANK = {
 	absent: 0,
 	rotatable: 1,
 	"reauthorization-required": 2,
 	retained: 3,
 	unknown: 4,
-};
+} satisfies Readonly<Record<CreatorAuthorityAfterClaim, number>>;
 
-const ATOMICITY_RANK: Readonly<Record<ClaimAtomicity, number>> = {
+const ATOMICITY_RANK = {
 	"single-resource": 0,
 	"provider-bundled": 1,
 	"best-effort-saga": 2,
-};
+} satisfies Readonly<Record<ClaimAtomicity, number>>;
 
-const CONTINUITY_RANK: Readonly<Record<ContinuityGrade, number>> = {
+const CONTINUITY_RANK = {
 	preserved: 0,
 	rebound: 1,
 	migrated: 2,
 	"not-applicable": 3,
 	changed: 4,
 	discarded: 5,
-};
+} satisfies Readonly<Record<ContinuityGrade, number>>;
 
-const CREDENTIAL_RANK: Readonly<
-	Record<SelectionCandidate["continuity"]["credentials"], number>
-> = {
+const CREDENTIAL_RANK = {
 	revoked: 0,
 	rotated: 1,
 	reauthorized: 2,
 	"not-applicable": 3,
 	retained: 4,
 	unknown: 5,
-};
+} satisfies Readonly<
+	Record<SelectionCandidate["continuity"]["credentials"], number>
+>;
 
 function majorOf(profileId: string): number {
 	const match = /\/v(\d+)$/u.exec(profileId);
@@ -202,19 +202,19 @@ function featureSatisfied(
 		case "equals":
 			return actual === expected;
 		case "at-least":
-			return typeof actual === "number" && typeof expected === "number"
+			return Number.isFinite(actual) && Number.isFinite(expected)
 				? actual >= expected
 				: false;
 		case "at-most":
-			return typeof actual === "number" && typeof expected === "number"
+			return Number.isFinite(actual) && Number.isFinite(expected)
 				? actual <= expected
 				: false;
 		case "one-of":
-			return Array.isArray(expected) && expected.includes(actual as string);
+			return Array.isArray(expected) && expected.includes(actual);
 		case "includes-all": {
 			if (!Array.isArray(actual) || !Array.isArray(expected)) return false;
-			const have = new Set(actual as readonly string[]);
-			return (expected as readonly string[]).every((item) => have.has(item));
+			const have = new Set(actual);
+			return expected.every((item) => have.has(item));
 		}
 		default:
 			return false;
@@ -548,15 +548,14 @@ export function selectCapabilityImplementation(
 
 	const ranked = [...survivors].sort((a, b) => compareCandidates(a, b, nowMs));
 	const winner = ranked[0];
-	return {
-		ranked,
-		...(winner !== undefined ? { winner } : {}),
-		rejections: [...rejections].sort(
-			(a, b) =>
-				a.definitionId.localeCompare(b.definitionId) ||
-				a.code.localeCompare(b.code),
-		),
-	};
+	const rejectionsByCandidate = [...rejections].sort(
+		(a, b) =>
+			a.definitionId.localeCompare(b.definitionId) ||
+			a.code.localeCompare(b.code),
+	);
+	return winner === undefined
+		? { ranked, rejections: rejectionsByCandidate }
+		: { ranked, winner, rejections: rejectionsByCandidate };
 }
 
 function compareCandidates(

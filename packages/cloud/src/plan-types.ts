@@ -1,5 +1,13 @@
 import { createHash } from "node:crypto";
 
+export type JsonValue =
+	| null
+	| boolean
+	| number
+	| string
+	| readonly JsonValue[]
+	| { readonly [key: string]: JsonValue };
+
 // Parse, don't validate: the types below are the parsed derived domain types the
 // Planner works with. Their protobuf wire forms live in data-models/cloud.proto
 // and their CUE constraints in data-models/cloud.cue; these narrow those wire
@@ -74,7 +82,7 @@ export type CapabilityVerdict =
 //      to `Record<string, PlanParameterValue>` (JSON values only, because a
 //      `Date`, a function or an `undefined` canonicalizes to something other
 //      than itself and would move the plan digest), while this package types
-//      it `Record<string, unknown>` all the way back through
+//      it `Record<string, JsonValue>` all the way back through
 //      `planner/profile-matching.ts` to `@hobo/yards`' `BindingRow.properties`.
 //      `@hobo/yards`' own authoring surface (`yard.ts`) already says
 //      `Record<string, JsonValue>`; `binding.ts` is the outlier.
@@ -120,7 +128,7 @@ export interface ResourcePlan {
 	 * Never carries credential material — the parse boundary refuses
 	 * credential-shaped keys before a row ever reaches a plan.
 	 */
-	realizationParameters?: Readonly<Record<string, unknown>>;
+	realizationParameters?: Readonly<Record<string, JsonValue>>;
 	/** Canonical keys of the applied rows that contributed realization parameters. */
 	nonPortableRows?: readonly string[];
 }
@@ -182,7 +190,7 @@ export interface MatchDecided {
 	/** Canonical keys of the Yard binding rows that constrained this decision. */
 	appliedRows?: readonly string[];
 	/** Provider-native realization parameters merged from the applied rows. */
-	realizationParameters?: Readonly<Record<string, unknown>>;
+	realizationParameters?: Readonly<Record<string, JsonValue>>;
 	/** Applied rows that contributed realization parameters (portability attribution). */
 	nonPortableRows?: readonly string[];
 }
@@ -200,13 +208,21 @@ export interface PlanRemediation {
 
 export type PlanHash = `sha256:${string}`;
 
-function sortKeys(value: unknown): unknown {
+type SortableValue =
+	| JsonValue
+	| DeploymentPlan
+	| readonly SortableValue[]
+	| { readonly [key: string]: SortableValue };
+
+function sortKeys(value: SortableValue): SortableValue {
 	if (Array.isArray(value)) return value.map(sortKeys);
-	if (value && typeof value === "object") {
+	if (value !== null && value === Object(value)) {
 		return Object.fromEntries(
-			Object.keys(value as Record<string, unknown>)
+			// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+			Object.keys(value as Record<string, JsonValue>)
 				.sort()
-				.map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				.map((key) => [key, sortKeys((value as Record<string, JsonValue>)[key])]),
 		);
 	}
 	return value;

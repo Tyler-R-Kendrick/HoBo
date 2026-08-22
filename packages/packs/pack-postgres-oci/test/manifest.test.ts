@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */
 import assert from "node:assert/strict";
 import {
 	PackError,
@@ -239,3 +240,4 @@ describe("verification of the postgres pack", () => {
 		);
 	});
 });
+/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */

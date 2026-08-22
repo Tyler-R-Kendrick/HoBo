@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this proof owns the erased transcript boundary; validators establish the closed role-journey contract before branding it. */
+
 import {
   RESOURCE_LIFECYCLE_QUICKSTART_EXAMPLES,
   listQuickstartSnippets,

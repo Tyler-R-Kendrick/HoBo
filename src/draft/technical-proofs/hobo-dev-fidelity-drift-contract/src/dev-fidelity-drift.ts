@@ -183,7 +183,7 @@ function requireFidelity(value, fieldName) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -195,20 +195,18 @@ function sameValue(left, right) {
 
 function clone(value) {
   if (value === undefined) return undefined;
-  return typeof structuredClone === "function"
-    ? structuredClone(value)
-    : JSON.parse(JSON.stringify(value));
+  return structuredClone(value);
 }
 
 function cloneRecord(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!isRecord(value)) {
     throw new TypeError("baseline must be an object");
   }
   return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, clone(entry)]));
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") return value;
+  if (!isObjectLike(value)) return value;
   Object.freeze(value);
   for (const entry of Object.values(value)) {
     deepFreeze(entry);
@@ -218,7 +216,7 @@ function deepFreeze(value) {
 
 function toStableValue(value) {
   if (Array.isArray(value)) return value.map(toStableValue);
-  if (value && typeof value === "object") {
+  if (isObjectLike(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .map(([key, entry]) => [key, toStableValue(entry)])
@@ -226,4 +224,17 @@ function toStableValue(value) {
     );
   }
   return value;
+}
+
+function isRecord(value) {
+  return Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isObjectLike(value) {
+  const tag = Object.prototype.toString.call(value);
+  return tag === "[object Object]" || tag === "[object Array]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

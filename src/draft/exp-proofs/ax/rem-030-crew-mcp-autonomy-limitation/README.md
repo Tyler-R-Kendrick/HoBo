@@ -14,5 +14,6 @@ unsupervised.
 
 ```bash
 pnpm --prefix src/draft/exp-proofs/ax/rem-030-crew-mcp-autonomy-limitation test
+pnpm exec oxlint src/draft/exp-proofs/ax/rem-030-crew-mcp-autonomy-limitation --deny-warnings
 pnpm --prefix src/draft/exp-proofs/cx/known-limitations-register-contract test
 ```

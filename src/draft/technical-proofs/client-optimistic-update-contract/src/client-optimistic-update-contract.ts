@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased subscription and patch values at the shared contract boundary before optimistic state evaluation. */
+
 export class OptimisticSeqRegressionError extends Error {
   constructor({ subscriptionId, streamId, previousSeq, seq }) {
     super(`optimistic subscription ${subscriptionId} regressed ${streamId}: previous=${previousSeq}, next=${seq}`);

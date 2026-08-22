@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased OTLP backend and batch inputs at the shared export boundary before domain validation. */
 export const TENANT_OTLP_EXPORT_SCHEMA = "hobo.otlp.tenant-export/v1";
 
 export function createTenantOtlpBackend({ tenantId, endpoint }) {

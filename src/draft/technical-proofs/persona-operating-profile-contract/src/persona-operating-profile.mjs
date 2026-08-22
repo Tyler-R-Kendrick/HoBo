@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased contract input and value boundaries before validation. */
+
 export const REQUIRED_PROFILE_FIELDS = [
   "industry",
   "team-type",

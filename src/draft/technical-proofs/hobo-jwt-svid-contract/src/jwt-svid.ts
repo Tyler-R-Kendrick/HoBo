@@ -65,7 +65,7 @@ export function parseJwtSvidCompact(token, options = {}) {
   }
 
   const header = decodeJwtJson(encodedHeader, "header");
-  if (!header.alg || typeof header.alg !== "string") {
+  if (!header.alg || !isString(header.alg)) {
     throw new Error("JWT-SVID header must include alg");
   }
   if (header.alg.toLowerCase() === "none") {
@@ -185,7 +185,7 @@ function assertCodeVersion(codeVersion) {
 }
 
 function assertAudience(audience) {
-  if (typeof audience === "string") {
+  if (isString(audience)) {
     if (!audience) {
       throw new Error("aud must not be empty");
     }
@@ -198,7 +198,7 @@ function assertAudience(audience) {
 
   const seen = new Set();
   for (const entry of audience) {
-    if (typeof entry !== "string" || !entry) {
+    if (!isNonEmptyString(entry)) {
       throw new Error("aud entries must be non-empty strings");
     }
     if (seen.has(entry)) {
@@ -209,7 +209,7 @@ function assertAudience(audience) {
 }
 
 function assertUri(value, field) {
-  if (typeof value !== "string") {
+  if (!isString(value)) {
     throw new Error(`${field} must be a URI string`);
   }
   try {
@@ -226,7 +226,7 @@ function assertUnixTime(value, field) {
 }
 
 function assertObject(value, field) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  if (!isPlainObject(value)) {
     throw new Error(`${field} must be an object`);
   }
 }
@@ -238,7 +238,7 @@ function assertSegments(segments) {
 }
 
 function assertSegment(value, field, maxLength = 128, pattern = SEGMENT_PATTERN) {
-  if (typeof value !== "string") {
+  if (!isString(value)) {
     throw new Error(`${field} must be a string`);
   }
   if (value.length === 0) {
@@ -250,4 +250,16 @@ function assertSegment(value, field, maxLength = 128, pattern = SEGMENT_PATTERN)
   if (!pattern.test(value)) {
     throw new Error(`${field} contains invalid characters`);
   }
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
+}
+
+function isNonEmptyString(value) {
+  return isString(value) && value.length > 0;
+}
+
+function isPlainObject(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
 }

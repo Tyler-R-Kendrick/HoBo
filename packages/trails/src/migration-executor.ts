@@ -12,6 +12,7 @@ import type {
 	SchemaPhaseResult,
 	SchemaSnapshotRef,
 } from "./schema-apply-port.js";
+import type { JsonObject } from "./json.js";
 
 // public-contract: migration executor schema id.
 export const MIGRATION_EXECUTOR_SCHEMA = "hobo.migration-executor/v1";
@@ -30,7 +31,7 @@ export const MIGRATION_EVENTS = Object.freeze({
 
 export interface MigrationFact {
 	readonly type: string;
-	readonly data: Readonly<Record<string, unknown>>;
+	readonly data: JsonObject;
 }
 
 /**
@@ -40,7 +41,7 @@ export interface MigrationFact {
  */
 export interface CompatGateEvidence {
 	readonly gateId: string;
-	readonly consumersOnOldShape: readonly string[];
+	readonly consumersOnLegacySchema: readonly string[];
 	readonly verifiedAt: string;
 }
 
@@ -75,7 +76,7 @@ export interface DataMigrationResult {
 	readonly snapshot?: SchemaSnapshotRef;
 	readonly phases: readonly SchemaPhaseResult[];
 	readonly blockedReasons: readonly string[];
-	readonly violations: readonly Readonly<Record<string, unknown>>[];
+	readonly violations: readonly JsonObject[];
 	readonly facts: readonly MigrationFact[];
 }
 
@@ -94,7 +95,7 @@ export async function executeDataMigration(
 	const { plan, port } = options;
 	const facts: MigrationFact[] = [];
 	const phases: SchemaPhaseResult[] = [];
-	const emit = (type: string, data: Readonly<Record<string, unknown>>) => {
+	const emit = (type: string, data: JsonObject) => {
 		const fact = Object.freeze({ type, data: Object.freeze({ ...data }) });
 		facts.push(fact);
 		options.onFact?.(fact);
@@ -104,14 +105,14 @@ export async function executeDataMigration(
 		dualWindowOpen: boolean;
 		snapshot?: SchemaSnapshotRef;
 		blockedReasons?: readonly string[];
-		violations?: readonly Readonly<Record<string, unknown>>[];
+		violations?: readonly JsonObject[];
 	}): DataMigrationResult =>
 		Object.freeze({
 			schemaVersion: MIGRATION_EXECUTOR_SCHEMA,
 			migrationId: plan.migrationId,
 			status: input.status,
 			dualWindowOpen: input.dualWindowOpen,
-			...(input.snapshot !== undefined ? { snapshot: input.snapshot } : {}),
+			...(input.snapshot !== undefined ? { snapshot: input.snapshot } : undefined),
 			phases: Object.freeze([...phases]),
 			blockedReasons: Object.freeze([...(input.blockedReasons ?? [])]),
 			violations: Object.freeze([...(input.violations ?? [])]),
@@ -135,7 +136,7 @@ export async function executeDataMigration(
 
 	const rollback = (
 		reason: string,
-		violations: readonly Readonly<Record<string, unknown>>[] = [],
+		violations: readonly JsonObject[] = [],
 	): DataMigrationResult => {
 		try {
 			port.restore(snapshot);
@@ -207,13 +208,13 @@ export async function executeDataMigration(
 	// shape BLOCK the drop. Blocked is not failure — the dual window stays
 	// open (expand + backfill retained) until consumers move.
 	const gate = await options.compatGate();
-	if (gate.consumersOnOldShape.length > 0) {
+	if (gate.consumersOnLegacySchema.length > 0) {
 		return finish({
 			status: "contract-blocked",
 			dualWindowOpen: true,
 			snapshot,
 			blockedReasons: [
-				`compat gate ${gate.gateId}: ${gate.consumersOnOldShape.join(", ")} still read the old shape`,
+				`compat gate ${gate.gateId}: ${gate.consumersOnLegacySchema.join(", ")} still read the old shape`,
 			],
 		});
 	}

@@ -33,19 +33,20 @@ export function createGraphqlFacadeRuntime({ materializations, events = [], now 
         now,
       });
 
-      return {
+      const result = {
         source: "materialization-snapshot",
         materialization: materialization.name,
         fieldName: operation.fieldName,
         seq: snapshot.seq,
         value: clone(snapshot.value),
         cacheHit,
-        ...(refreshedBecause ? { refreshedBecause } : {}),
       };
+      if (refreshedBecause) result.refreshedBecause = refreshedBecause;
+      return result;
     },
 
     subscribe({ document, context = {}, onPush }) {
-      if (typeof onPush !== "function") {
+      if (!isFunction(onPush)) {
         throw new TypeError("onPush callback is required");
       }
 
@@ -158,7 +159,7 @@ function validateMaterialization(materialization) {
   if (materialization.subscriptionField !== undefined) {
     requiredString(materialization.subscriptionField, "materialization.subscriptionField");
   }
-  if (typeof materialization.fold !== "function") {
+  if (!isFunction(materialization.fold)) {
     throw new TypeError(`${materialization.name} fold is required`);
   }
 }
@@ -173,7 +174,7 @@ function validateEvent(event) {
 }
 
 function parseGraphqlOperation(document, expectedKind) {
-  if (typeof document !== "string") {
+  if (!isString(document)) {
     throw new TypeError("GraphQL document must be a string");
   }
 
@@ -207,7 +208,7 @@ function requireField(map, fieldName, kind) {
 }
 
 function requireResolvedTenant(context) {
-  if (typeof context?.tenant !== "string" || context.tenant.length === 0) {
+  if (!isNonEmptyString(context?.tenant)) {
     throw new Error("resolved tenant is required for GraphQL materialization reads");
   }
 }
@@ -288,7 +289,7 @@ function seqAtLeast(candidate, floor) {
 }
 
 function requiredString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isNonEmptyString(value)) {
     throw new TypeError(`${label} is required`);
   }
 }
@@ -301,4 +302,16 @@ function stableObject(value) {
   return Object.freeze(
     Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right))),
   );
+}
+
+function isFunction(value) {
+  return Object.prototype.toString.call(value) === "[object Function]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
+}
+
+function isNonEmptyString(value) {
+  return isString(value) && value.length > 0;
 }

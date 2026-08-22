@@ -27,7 +27,7 @@ compliance claims, or build support tooling.
 ## Verification
 
 ```powershell
-pnpm.cmd --prefix src\draft\exp-proofs\legal-privacy-release-candidate-evidence-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\cx\legal-privacy-release-candidate-evidence-contract test
 ```
 
 ## Architecture Evidence

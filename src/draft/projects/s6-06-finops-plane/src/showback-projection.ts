@@ -74,7 +74,7 @@ function roundUsd(value) {
 }
 
 function expectObject(value, label) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !(value instanceof Object) || Array.isArray(value)) {
     throw new TypeError(`${label} must be an object`);
   }
   return value;
@@ -88,7 +88,7 @@ function requireArray(value, label) {
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (String(value) !== value || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;

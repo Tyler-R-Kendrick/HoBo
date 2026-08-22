@@ -26,6 +26,7 @@ import {
 } from "../../generation-validation-stage-contract/src/validation-stage.js";
 
 const providerArtifactMediaType = "application/vnd.hobo.provider.layer.v1+json";
+const objectTag = Object.prototype.toString;
 const defaultModel = Object.freeze({
   provider: "fixture",
   id: "deterministic-provider-loop-poc",
@@ -191,7 +192,7 @@ export async function generateProvider(input) {
     validationReport: certificationInput.validationReport,
     conformanceReport: certificationInput.conformanceReport,
     certification,
-    registryEvents: typeof registry.events === "function" ? registry.events() : [],
+    registryEvents: registry.events instanceof Function ? registry.events() : [],
     events: allEvents,
     replay: rebuildGenerationRun(allEvents)
   });
@@ -244,7 +245,7 @@ function sanitizeMaterials(materialRefs) {
     );
     const codes = promptInjectionFindings(rawRef);
     const requiresSanitizedRef =
-      typeof parsed.content === "string" ||
+      objectTag.call(parsed.content) === "[object String]" ||
       codes.length > 0 ||
       parsed.sanitized !== true ||
       parsed.trusted !== false;
@@ -549,21 +550,21 @@ function expectSigningKey(signingKey) {
 }
 
 function assertFunction(value, code, path) {
-  if (typeof value !== "function") {
+  if (!(value instanceof Function)) {
     throw new ProviderGenerationLoopError(code, path);
   }
   return value;
 }
 
 function assertObject(value, code, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || objectTag.call(value) !== "[object Object]" || Array.isArray(value)) {
     throw new ProviderGenerationLoopError(code, path);
   }
   return value;
 }
 
 function nonEmptyString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (objectTag.call(value) !== "[object String]" || value.length === 0) {
     throw new ProviderGenerationLoopError("provider_loop.expected_string", path);
   }
   return value;

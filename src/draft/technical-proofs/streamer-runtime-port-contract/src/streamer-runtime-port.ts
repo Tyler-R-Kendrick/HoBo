@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased workflow, run-id, and stream input contracts at the shared streamer parser boundary. */
 import assert from "node:assert/strict";
 
 export const STREAMER_RUNTIME_PORT_CONTRACT_VERSION = "hobo.streamer-runtime-port/v1";

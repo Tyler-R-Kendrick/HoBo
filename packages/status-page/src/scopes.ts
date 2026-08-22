@@ -18,7 +18,11 @@ import {
 } from "@hobo/bindles";
 import { BINDLE_PRIMITIVES } from "@hobo/capability-profiles";
 import type { ComponentSpec, StatusScope } from "./types.js";
-import { parseComponentSpec, parseStatusScope } from "./types.js";
+import {
+	isStringValue,
+	parseComponentSpec,
+	parseStatusScope,
+} from "./types.js";
 
 /** Default project grouping when a Bindle declares none (ADR-0077 §1). */
 export const DEFAULT_PROJECT = "default" as const;
@@ -100,10 +104,10 @@ export interface BindleStatusPlan {
 
 function dependencyLabel(record: BindleResourceRecord): string {
 	const config = readDependencyConfig(record.annotations);
-	if (config && typeof config.image === "string") {
+	if (config && isStringValue(config.image)) {
 		return `${record.name} (${config.image})`;
 	}
-	if (config && typeof config.source === "string") {
+	if (config && isStringValue(config.source)) {
 		return `${record.name} (${config.source})`;
 	}
 	return record.name;

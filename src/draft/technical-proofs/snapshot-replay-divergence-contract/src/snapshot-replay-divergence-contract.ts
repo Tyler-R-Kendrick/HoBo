@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased snapshot values at the shared canonicalization boundary. */
 import { createHash } from "node:crypto";
 
 export class SnapshotRejectedError extends Error {
@@ -321,7 +322,8 @@ function signSnapshot(snapshot) {
 }
 
 function stripDigest(snapshot) {
-  const { digest, ...withoutDigest } = snapshot;
+  const withoutDigest = { ...snapshot };
+  delete withoutDigest.digest;
   return withoutDigest;
 }
 

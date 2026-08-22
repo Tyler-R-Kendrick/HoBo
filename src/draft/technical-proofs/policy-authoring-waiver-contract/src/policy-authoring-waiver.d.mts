@@ -102,6 +102,19 @@ export interface DeniedResult {
   reason: string;
 }
 
+export interface PolicyWaiverEventData {
+  waiverId: string;
+  status: "requested" | "approved";
+  target: NormalizedPolicyTarget;
+  requester: NormalizedPolicyPrincipal;
+  approverRole: string;
+  reason: string;
+  requestedAt: string;
+  approvedAt?: string;
+  expiresAt: string;
+  sourcePolicyIds: string[];
+}
+
 export interface PolicyWaiverEvent {
   type: typeof POLICY_WAIVER_REQUESTED | typeof POLICY_WAIVER_APPROVED;
   schemaVersion: typeof POLICY_WAIVER_SCHEMA_VERSION;
@@ -111,7 +124,7 @@ export interface PolicyWaiverEvent {
     id: string;
     roles: string[];
   };
-  data: Record<string, unknown>;
+  data: PolicyWaiverEventData;
 }
 
 export interface RequestedPolicyWaiver {
@@ -146,7 +159,14 @@ export interface PolicyWaiverDecision {
   effect: PolicyDecisionEffect;
   reason: string;
   target: NormalizedPolicyTarget;
-  evidence: Record<string, unknown>;
+  evidence:
+    | { code: string; waiverId?: string; expiresAt?: string }
+    | {
+        waiverId: string;
+        sourcePolicyIds: string[];
+        expiresAt: string;
+        auditEventTypes: (typeof POLICY_WAIVER_REQUESTED | typeof POLICY_WAIVER_APPROVED)[];
+      };
 }
 
 export function definePolicyRule(input: {

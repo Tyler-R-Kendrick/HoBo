@@ -35,10 +35,11 @@ const projected = {
 	alias: "db",
 	bindingProfileRef: "binding.postgresql/v1",
 	connectivityId: "cloudflare.postgres.hyperdrive/v1",
+	// SAFETY: this fixture uses a member of the closed projection vocabulary.
 	projection: "provider-binding" as BindingProjectionKind,
 };
 
-function codeOf(run: () => unknown): string {
+function codeOf(run: () => void): string {
 	try {
 		run();
 	} catch (error) {
@@ -148,7 +149,8 @@ describe("bindingProjected", () => {
 		[{ bindingProfileRef: "  " }, "a whitespace-only binding profile ref"],
 	])("rejects %j — %s", (overrides) => {
 		expect(() =>
-			bindingProjected({ ...projected, ...overrides } as typeof projected),
+				// SAFETY: each table row deliberately overrides one known fixture field.
+				bindingProjected({ ...projected, ...overrides } as typeof projected),
 		).toThrow(BindingRecordError);
 	});
 
@@ -197,6 +199,7 @@ describe("bindingUnavailable", () => {
 					yardId: "yard:prod-eu",
 					profile: "data.postgres/v1",
 					code: "NO_COMPATIBLE_BINDING",
+					// SAFETY: the test deliberately passes invalid table values to the runtime parser.
 					remediation: remediation as string,
 					consideredCount: 0,
 				}),
@@ -210,6 +213,7 @@ describe("bindingUnavailable", () => {
 				bindingUnavailable({
 					yardId: "yard:prod-eu",
 					profile: "data.postgres/v1",
+					// SAFETY: the test deliberately passes an out-of-vocabulary code.
 					code: "YARD_BINDING_UNSUPPORTED" as BindingUnavailableCode,
 					remediation: "pick a supported code",
 					consideredCount: 1,

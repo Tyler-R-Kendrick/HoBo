@@ -496,7 +496,7 @@ function bundleDigest(value) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isObjectLike(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
@@ -506,4 +506,9 @@ function stableStringify(value) {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
     .join(",")}}`;
+}
+
+function isObjectLike(value) {
+  const tag = Object.prototype.toString.call(value);
+  return tag === "[object Object]" || tag === "[object Array]";
 }

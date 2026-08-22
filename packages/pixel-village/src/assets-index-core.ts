@@ -70,10 +70,7 @@ export type AssetIndex = Readonly<{
 }>;
 
 /** Resolve stable animation id → sheet + clip metadata. Never hard-code clip names. */
-export function resolveAnimation(
-	index: AssetIndex,
-	animationId: string,
-): { sheet: SpritesheetDef; animation: AnimationDef } {
+export function resolveAnimation(index: AssetIndex, animationId: string) {
 	const ref = index.animationIds[animationId];
 	if (!ref) throw new Error(`unknown animation id: ${animationId}`);
 	const sheet = index.spritesheets[ref.sheet];
@@ -87,10 +84,7 @@ export function resolveAnimation(
 	return { sheet, animation };
 }
 
-export function expectedSheetPixelSize(sheet: SpritesheetDef): {
-	width: number;
-	height: number;
-} {
+export function expectedSheetPixelSize(sheet: SpritesheetDef) {
 	const width =
 		sheet.columns * sheet.frameWidth +
 		sheet.margin * 2 +

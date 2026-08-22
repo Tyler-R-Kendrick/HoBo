@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased corpus, field, and JSON-like value contracts at the shared parser and canonicalization boundaries. */
 import { evaluateRolloutMetricGate, stableDigest } from "../../slo-gated-rollback-analysis-contract/src/slo-gated-rollback-analysis.js";
 
 export const SPIKE_SCHEMA = "hobo.slo-rollback-decision-correctness/v1";

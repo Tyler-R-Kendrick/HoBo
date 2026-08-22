@@ -18,7 +18,7 @@ afterEach(() => {
 	for (const cleanup of cleanups.splice(0)) cleanup();
 });
 
-function tempStores(): { sourcePath: string; targetPath: string } {
+function tempStores() {
 	const dir = mkdtempSync(path.join(tmpdir(), "hobo-dual-"));
 	cleanups.push(() => rmSync(dir, { recursive: true, force: true }));
 	return {

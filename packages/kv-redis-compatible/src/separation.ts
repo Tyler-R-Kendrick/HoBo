@@ -33,7 +33,7 @@ export const KV_REDIS_NON_IMPLIED_PROFILES = [
 
 export type NonImpliedProfile = (typeof KV_REDIS_NON_IMPLIED_PROFILES)[number];
 
-const RATIONALE: Readonly<Record<NonImpliedProfile, string>> = {
+const RATIONALE = {
 	"queue.at-least-once/v1":
 		"A Redis list pops a message and forgets it. At-least-once needs an acknowledgement and a redelivery path, so it needs its own conformance evidence.",
 	"queue.fifo/v1":
@@ -42,17 +42,18 @@ const RATIONALE: Readonly<Record<NonImpliedProfile, string>> = {
 		"Redis pub/sub reaches whoever is connected at publish time. Subscriber fan-out with a defined delivery contract is a separate profile.",
 	"topic.durable-log/v1":
 		"Nothing in the key/value surface retains published messages or addresses them by offset.",
-};
+} satisfies Readonly<Record<NonImpliedProfile, string>>;
 
 export function explainNonImplication(profileId: string): string | undefined {
-	return (RATIONALE as Readonly<Record<string, string>>)[profileId];
+	if (!isNonImpliedProfile(profileId)) return undefined;
+	return RATIONALE[profileId];
 }
 
 export function isNonImpliedProfile(
 	profileId: string,
 ): profileId is NonImpliedProfile {
-	return (KV_REDIS_NON_IMPLIED_PROFILES as readonly string[]).includes(
-		profileId,
+	return KV_REDIS_NON_IMPLIED_PROFILES.some(
+		(candidate) => candidate === profileId,
 	);
 }
 

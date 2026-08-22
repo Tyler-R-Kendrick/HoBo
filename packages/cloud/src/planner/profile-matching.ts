@@ -106,7 +106,7 @@ export function capabilityRequirementFromBindleRequirements(
 	return parseCapabilityRequirement({
 		requiredProfiles: required.map((profileId) => ({ profileId })),
 		preferredProfiles: preferred.map((profileId) => ({ profileId, weight: 1 })),
-		...(runtimes.length > 0 ? { runtime: { allowed: runtimes } } : {}),
+		...(runtimes.length > 0 && { runtime: { allowed: runtimes } }),
 	});
 }
 
@@ -123,7 +123,7 @@ export type YardBindingRow = {
 	readonly productId?: string;
 	readonly connectivityId?: string;
 	readonly require?: readonly string[];
-	readonly properties?: Readonly<Record<string, unknown>>;
+	readonly properties?: Readonly<Record<string, JsonValue>>;
 };
 
 /** The binding authority for this match: which Yard, and the rows it declares. */
@@ -193,7 +193,7 @@ export type ProfileMatchAccepted = {
 	 * parameters are reported to the PortabilityReport (ADR-0024/ADR-0144) rather
 	 * than passed through silently. Absent when no applied row carried any.
 	 */
-	readonly realizationParameters?: Readonly<Record<string, unknown>>;
+	readonly realizationParameters?: Readonly<Record<string, JsonValue>>;
 	/**
 	 * Canonical keys of the applied rows that contributed realization parameters.
 	 * The portability scorer needs to name *which* row made a Yard non-portable,
@@ -225,7 +225,7 @@ export function profileCatalogHash(
 ): string {
 	const entries = definitions
 		.map(semanticsDigestInput)
-		.filter((entry): entry is Record<string, unknown> => entry !== undefined)
+		.filter((entry): entry is Record<string, JsonValue> => entry !== undefined)
 		.sort((a, b) => String(a.id).localeCompare(String(b.id)));
 	const payload = JSON.stringify({
 		profiles: profiles.digest,
@@ -321,7 +321,7 @@ function resolveYardBindingGate(
 	const fatal = rejections.length > 0;
 	return {
 		applicableRows,
-		...(pinsProduct ? { admitted } : {}),
+		...(pinsProduct && { admitted }),
 		rejections,
 		fatal,
 	};
@@ -340,11 +340,11 @@ function resolveYardBindingGate(
  */
 function mergeRealizationParameters(rows: readonly YardBindingRow[]):
 	| {
-			readonly parameters: Readonly<Record<string, unknown>>;
+			readonly parameters: Readonly<Record<string, JsonValue>>;
 			readonly rows: readonly string[];
 	  }
 	| undefined {
-	const merged = new Map<string, { value: unknown; row: string }>();
+	const merged = new Map<string, { value: JsonValue; row: string }>();
 	const contributing = new Set<string>();
 	for (const row of rows) {
 		const properties = row.properties;
@@ -371,7 +371,7 @@ function mergeRealizationParameters(rows: readonly YardBindingRow[]):
 	if (merged.size === 0) {
 		return undefined;
 	}
-	const parameters: Record<string, unknown> = {};
+	const parameters: Record<string, JsonValue> = {};
 	for (const name of [...merged.keys()].sort()) {
 		const entry = merged.get(name);
 		if (entry !== undefined) {
@@ -555,9 +555,9 @@ export function matchCapabilityRequirement(
 		candidates: gated,
 		policy: input.policy,
 		nowMs: input.nowMs,
-		...(input.consumableBindingProfiles !== undefined
-			? { consumableBindingProfiles: input.consumableBindingProfiles }
-			: {}),
+		...(input.consumableBindingProfiles !== undefined && {
+			consumableBindingProfiles: input.consumableBindingProfiles,
+		}),
 	});
 
 	if (result.winner === undefined) {
@@ -611,19 +611,18 @@ export function matchCapabilityRequirement(
 				missing: rejections.map((rejection) => rejection.code),
 				remediation,
 			},
-			...(yard !== undefined
-				? {
-						bindingUnavailable: unavailableFact(
-							yard,
-							exclusions,
-							fallbackProfile,
-							consideredCount,
-						),
-					}
-				: {}),
+			...(yard !== undefined && {
+				bindingUnavailable: unavailableFact(
+					yard,
+					exclusions,
+					fallbackProfile,
+					consideredCount,
+				),
+			}),
 		};
 	}
 
+	// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 	const winner = byId.get(
 		result.winner.definitionId,
 	) as ResourceDefinitionVNext;
@@ -641,7 +640,7 @@ export function matchCapabilityRequirement(
 			result.winner.sponsorExposureMinorUnits;
 
 	let appliedRows: readonly string[] | undefined;
-	let realizationParameters: Readonly<Record<string, unknown>> | undefined;
+	let realizationParameters: Readonly<Record<string, JsonValue>> | undefined;
 	let nonPortableRows: readonly string[] | undefined;
 	let resolved: BindingResolvedEvent | undefined;
 	if (gate !== undefined && yard !== undefined) {
@@ -682,9 +681,10 @@ export function matchCapabilityRequirement(
 		rejections: result.rejections,
 		catalogHash,
 		tie,
-		...(appliedRows !== undefined ? { appliedRows } : {}),
-		...(realizationParameters !== undefined ? { realizationParameters } : {}),
-		...(nonPortableRows !== undefined ? { nonPortableRows } : {}),
-		...(resolved !== undefined ? { bindingResolved: resolved } : {}),
+		...(appliedRows !== undefined && { appliedRows }),
+		...(realizationParameters !== undefined && { realizationParameters }),
+		...(nonPortableRows !== undefined && { nonPortableRows }),
+		...(resolved !== undefined && { bindingResolved: resolved }),
 	};
 }
+import type { JsonValue } from "../plan-types.js";

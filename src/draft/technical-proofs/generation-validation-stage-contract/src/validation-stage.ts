@@ -13,6 +13,7 @@ import {
 
 const validationReportSchema = "hobo.gen.validation-report/v1";
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
+const tagOf = Object.prototype.toString;
 
 export class ValidationStageContractError extends Error {
   constructor(code, path = "$") {
@@ -332,20 +333,20 @@ function validateDigestRef(ref, code, path) {
 }
 
 function assertFunction(value, code, path) {
-  if (typeof value !== "function") {
+  if (!(value instanceof Function)) {
     throw new ValidationStageContractError(code, path);
   }
   return value;
 }
 
 function assertObject(value, code, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || value instanceof Function || Object(value) !== value || Array.isArray(value)) {
     throw new ValidationStageContractError(code, path);
   }
 }
 
 function assertBoolean(value, code, path) {
-  if (typeof value !== "boolean") {
+  if (tagOf.call(value) !== "[object Boolean]") {
     throw new ValidationStageContractError(code, path);
   }
 }
@@ -357,13 +358,13 @@ function assertEqual(actual, expected, code, path) {
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (tagOf.call(value) !== "[object String]" || value.length === 0) {
     throw new ValidationStageContractError(code, path);
   }
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || value instanceof Function || Object(value) !== value) {
     return JSON.stringify(value);
   }
 

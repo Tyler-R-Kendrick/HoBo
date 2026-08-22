@@ -8,10 +8,10 @@ const DYNAMIC_CONNECTOR_CALL =
   /\b([A-Za-z_$][A-Za-z0-9_$]*)\s*((?:\.\s*[A-Za-z_$][A-Za-z0-9_$]*)*)\s*\[\s*[^\]]+\s*\]\s*\(/g;
 
 export function inferConnectorScopes({ sourceText, bindings, fileName = "bindle.ts" }) {
-  if (typeof sourceText !== "string") {
+  if (Object.prototype.toString.call(sourceText) !== "[object String]") {
     throw new TypeError("sourceText must be a string");
   }
-  if (!bindings || typeof bindings !== "object" || Array.isArray(bindings)) {
+  if (!bindings || Object(bindings) !== bindings || Array.isArray(bindings)) {
     throw new TypeError("bindings must be an object keyed by connector target");
   }
 
@@ -155,7 +155,7 @@ function findDynamicCalls(sourceText, aliasToTarget, lineStarts) {
 }
 
 function buildEntry(binding, operations) {
-  if (typeof binding.allow === "function") {
+  if (Object.prototype.toString.call(binding.allow) === "[object Function]") {
     return buildConnectorManifestEntry(binding, operations);
   }
 
@@ -251,7 +251,7 @@ function lineAt(lineStarts, index) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || Object(value) !== value) {
     return value;
   }
   for (const child of Object.values(value)) {

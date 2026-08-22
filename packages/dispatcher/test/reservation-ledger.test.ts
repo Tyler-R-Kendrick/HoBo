@@ -24,6 +24,8 @@ import {
 	DISPATCH_EVENTS,
 	parseCreditLedgerView,
 } from "../src/dispatcher.js";
+import { isJsonObject } from "../src/json.js";
+import type { JsonValue } from "../src/json.js";
 
 const DIGEST =
 	"sha256:1111111111111111111111111111111111111111111111111111111111111111";
@@ -38,7 +40,7 @@ function ledgerView(accounts: unknown[] = [], seq = 91) {
 	};
 }
 
-function account(overrides: Record<string, unknown> = {}) {
+function account(overrides: Record<string, JsonValue> = {}) {
 	return {
 		providerId: "p1",
 		dimension: "runner.minutes",
@@ -53,7 +55,7 @@ function account(overrides: Record<string, unknown> = {}) {
 
 function reserveOn(
 	ledger: ReturnType<typeof createReservationLedger>,
-	overrides: Record<string, unknown> = {},
+	overrides: Record<string, JsonValue> = {},
 ) {
 	return ledger.reserve({
 		providerId: "p1",
@@ -79,7 +81,7 @@ describe("parseCreditLedgerView", () => {
 
 	it("refuses anything that is not a CreditLedgerView object", () => {
 		for (const bad of [null, undefined, 7, "view", [], ledgerView()]) {
-			if (bad === undefined || typeof bad !== "object" || Array.isArray(bad)) {
+			if (!isJsonObject(bad)) {
 				expect(() => parseCreditLedgerView(bad)).toThrow(TypeError);
 			}
 		}
@@ -164,6 +166,7 @@ describe("reserve", () => {
 	it("consumes free headroom from the account", () => {
 		const ledger = createReservationLedger(ledgerView([account()]));
 		reserveOn(ledger, { units: 30 });
+		// SAFETY: the parsed account is the ledger's CreditAccount shape.
 		const after = ledger.snapshot().accounts[0] as { freeHeadroom: number };
 		expect(after.freeHeadroom).toBe(70);
 	});
@@ -177,9 +180,10 @@ describe("reserve", () => {
 		reserveOn(ledger, {
 			reservationId: "r-2",
 			units: 5,
-			expectedSeq: ledger.snapshot().seq,
-		});
-		expect(
+				expectedSeq: ledger.snapshot().seq,
+			});
+		// SAFETY: the parsed account exposes the reservation accounting field.
+			expect(
 			(ledger.snapshot().accounts[0] as { reservedUnits: number })
 				.reservedUnits,
 		).toBe(15);
@@ -205,6 +209,7 @@ describe("reserve", () => {
 		expect(result.reservation?.consumption?.credits).toEqual([
 			{ creditId: "c1", units: 7 },
 		]);
+		// SAFETY: the parsed account's credits are CreditGrant records.
 		const after = ledger.snapshot().accounts[0] as {
 			freeHeadroom: number;
 			credits: Array<{ freeHeadroom: number }>;
@@ -365,6 +370,7 @@ describe("confirm", () => {
 		const ledger = createReservationLedger(ledgerView([account()]));
 		reserveOn(ledger, { units: 30 });
 		ledger.confirm({ reservationId: "r-1" });
+		// SAFETY: the parsed account is the ledger's CreditAccount shape.
 		expect(
 			(ledger.snapshot().accounts[0] as { freeHeadroom: number }).freeHeadroom,
 		).toBe(70);
@@ -441,10 +447,12 @@ describe("release", () => {
 			ledgerView([account({ freeHeadroom: 5 })]),
 		);
 		reserveOn(ledger, { units: 20 });
+		// SAFETY: the parsed account is the ledger's CreditAccount shape.
 		expect(
 			(ledger.snapshot().accounts[0] as { freeHeadroom: number }).freeHeadroom,
 		).toBe(0);
 		ledger.release({ reservationId: "r-1" });
+		// SAFETY: the parsed account is the ledger's CreditAccount shape.
 		expect(
 			(ledger.snapshot().accounts[0] as { freeHeadroom: number }).freeHeadroom,
 		).toBe(5);
@@ -464,6 +472,7 @@ describe("release", () => {
 		);
 		reserveOn(ledger, { units: 15 });
 		ledger.release({ reservationId: "r-1" });
+		// SAFETY: the parsed account's credits are CreditGrant records.
 		const credits = (
 			ledger.snapshot().accounts[0] as {
 				credits: Array<{ freeHeadroom: number }>;
@@ -479,6 +488,7 @@ describe("release", () => {
 		const ledger = createReservationLedger(ledgerView([account()]));
 		reserveOn(ledger, { units: 10 });
 		ledger.release({ reservationId: "r-1" });
+		// SAFETY: the parsed account is the ledger's CreditAccount shape.
 		expect(
 			(ledger.snapshot().accounts[0] as { reservedUnits: number })
 				.reservedUnits,
@@ -497,6 +507,7 @@ describe("release", () => {
 		const second = ledger.release({ reservationId: "r-1" });
 		expect(second.ok).toBe(false);
 		expect(second.status).toBe("not-releasable");
+		// SAFETY: the parsed account is the ledger's CreditAccount shape.
 		expect(
 			(ledger.snapshot().accounts[0] as { freeHeadroom: number }).freeHeadroom,
 		).toBe(100);
@@ -570,6 +581,7 @@ describe("expire", () => {
 		});
 		const result = ledger.expire({ now: "2026-06-27T00:00:00.000Z" });
 		expect(result.released).toBe(1);
+		// SAFETY: snapshot() returns reservations with the tested lifecycle fields.
 		const reservations = ledger.snapshot().reservations as Array<{
 			reservationId: string;
 			status: string;
@@ -611,6 +623,7 @@ describe("expire", () => {
 		);
 		reserveOn(ledger, { units: 25, expiresAt: "2026-06-01T00:00:00.000Z" });
 		ledger.expire({ now: "2026-06-27T00:00:00.000Z" });
+		// SAFETY: the parsed account is the ledger's CreditAccount shape.
 		expect(
 			(ledger.snapshot().accounts[0] as { freeHeadroom: number }).freeHeadroom,
 		).toBe(100);
@@ -669,6 +682,7 @@ describe("snapshot and events", () => {
 		// that does not exist.
 		const ledger = createReservationLedger(ledgerView([account()]));
 		reserveOn(ledger);
+		// SAFETY: snapshot() returns the parsed CreditLedgerView shape.
 		const snapshot = ledger.snapshot() as { seq: number };
 		snapshot.seq = 0;
 		expect(ledger.snapshot().seq).toBe(92);

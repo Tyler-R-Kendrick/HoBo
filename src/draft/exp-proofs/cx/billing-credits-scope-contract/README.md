@@ -18,7 +18,7 @@ rendering, or pricing pages.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\billing-credits-scope-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\billing-credits-scope-contract test
 ```
 
 The root gate also covers the package:

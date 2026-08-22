@@ -30,7 +30,7 @@ customer-visible installability claims without proof source and owner route.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\capability-review-approval-scope test
+npm.cmd --prefix src\draft\exp-proofs\cx\capability-review-approval-scope test
 ```
 
 

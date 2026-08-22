@@ -21,14 +21,14 @@ import {
 const VALID = {
 	name: "cache",
 	port: "kv",
-	require: [] as string[],
-	prefer: [] as string[],
-	negotiation: "require" as const,
-	deps: [] as string[],
+	require: [],
+	prefer: [],
+	negotiation: "require",
+	deps: [],
 	objective: "min-cost",
 };
 
-function refusal(input: unknown): ResourceIntentError {
+function refusal<T>(input: T): ResourceIntentError {
 	try {
 		parseResourceIntent(input);
 	} catch (error) {
@@ -188,7 +188,7 @@ describe("list refusals", () => {
 });
 
 describe("placement selector refusals", () => {
-	function withSelector(selector: unknown): unknown {
+	function withSelector<T>(selector: T) {
 		return { ...VALID, placement: { selectors: [selector], affinities: [] } };
 	}
 
@@ -246,7 +246,7 @@ describe("placement selector refusals", () => {
 });
 
 describe("placement affinity refusals", () => {
-	function withAffinity(rule: unknown): unknown {
+	function withAffinity<T>(rule: T) {
 		return { ...VALID, placement: { selectors: [], affinities: [rule] } };
 	}
 
@@ -280,7 +280,7 @@ describe("placement affinity refusals", () => {
 });
 
 describe("placement cardinality refusals", () => {
-	function withPickN(pickN: unknown): unknown {
+	function withPickN<T>(pickN: T) {
 		return { ...VALID, placement: { selectors: [], affinities: [], pickN } };
 	}
 

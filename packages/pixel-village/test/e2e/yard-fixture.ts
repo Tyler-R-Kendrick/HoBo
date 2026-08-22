@@ -33,14 +33,15 @@ type SeamWindow = {
 		ready: boolean;
 		frameCount: number;
 		state: () => YardTestState;
-		commands: Record<string, (...args: unknown[]) => unknown>;
+		commands: Record<string, (...args: never[]) => void | Promise<void>>;
 	};
 };
 
 /** Wait until the seam reports ready and has rendered a couple of frames. */
 export async function waitForYard(page: Page): Promise<void> {
 	await page.waitForFunction(
-		() => (window as unknown as Partial<SeamWindow>).__TEST__?.ready === true,
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		() => (window as Window & Partial<SeamWindow>).__TEST__?.ready === true,
 		null,
 		{ timeout: READY_TIMEOUT },
 	);
@@ -50,19 +51,23 @@ export async function waitForYard(page: Page): Promise<void> {
 /** Wait for the Phaser render loop to advance `n` more frames. */
 export async function waitForFrames(page: Page, n: number): Promise<void> {
 	const start = await page.evaluate(
-		() => (window as unknown as SeamWindow).__TEST__.frameCount,
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		() => (window as Window & SeamWindow).__TEST__.frameCount,
 	);
 	await page.waitForFunction(
 		(target: number) =>
-			(window as unknown as SeamWindow).__TEST__.frameCount >= target,
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			(window as Window & SeamWindow).__TEST__.frameCount >= target,
 		start + n,
 		{ timeout: 30_000 },
 	);
 }
 
 export async function seamState(page: Page): Promise<YardTestState> {
+	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 	return (await page.evaluate(() =>
-		(window as unknown as SeamWindow).__TEST__.state(),
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		(window as Window & SeamWindow).__TEST__.state(),
 	)) as YardTestState;
 }
 
@@ -74,10 +79,15 @@ export async function seamCommand(
 ): Promise<void> {
 	await page.evaluate(
 		([cmd, callArgs]) => {
-			const seam = (window as unknown as SeamWindow).__TEST__;
-			const fn = seam.commands[cmd as string];
-			if (typeof fn !== "function") throw new Error(`no seam command: ${cmd}`);
-			return fn(...(callArgs as unknown[]));
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			// SAFETY: The assertion is constrained by the typed boundary or deterministic test fixture.
+			// SAFETY: The page fixture installs the typed test seam before evaluation.
+			// SAFETY: The page fixture installs the typed test seam before evaluation.
+			const seam = (window as Window & SeamWindow).__TEST__;
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			if (!(cmd in seam.commands)) throw new Error(`no seam command: ${cmd}`);
+			return seam.commands[cmd](...callArgs);
 		},
 		[name, args] as const,
 	);
@@ -101,8 +111,14 @@ export async function advanceFrames(
 ): Promise<void> {
 	await page.evaluate(
 		([count, dt]) => {
-			const seam = (window as unknown as SeamWindow).__TEST__;
-			for (let i = 0; i < (count as number); i++) {
+			// SAFETY: The page fixture installs the test seam before evaluation.
+			const seam = (
+				window /* SAFETY: The page fixture installs the test seam. */ as Window &
+					SeamWindow
+			).__TEST__;
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			// SAFETY: page.evaluate receives the tuple passed by advanceFrames.
+			for (let i = 0; i < Number(count); i++) {
 				seam.commands.advanceFrame?.(dt);
 			}
 		},

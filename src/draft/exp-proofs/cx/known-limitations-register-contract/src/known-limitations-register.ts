@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this module owns the erased register parser; structural checks establish the closed contract before the parsed brand is returned. */
+
 const REQUIRED_LIMITATION_FIELDS = [
   "id",
   "summary",

@@ -53,7 +53,7 @@ export type SecretFreeStatus = Readonly<{
  * plaintext secrets are always redacted.
  */
 export function toSecretFreeOutputs(
-	outputs: Readonly<Record<string, unknown>>,
+	outputs: Readonly<Record<string, JsonValue>>,
 ): {
 	readonly outputs: Readonly<Record<string, string | SecretRef>>;
 	readonly secretRefs: readonly string[];
@@ -64,8 +64,8 @@ export function toSecretFreeOutputs(
 		const asString =
 			raw === null || raw === undefined
 				? ""
-				: typeof raw === "string"
-					? raw
+				: raw === String(raw)
+					? String(raw)
 					: JSON.stringify(raw);
 		if (
 			SECRET_KEY_PATTERN.test(key) ||
@@ -74,7 +74,7 @@ export function toSecretFreeOutputs(
 			const ref = makeSecretRef(key, asString);
 			out[key] = Object.freeze({ ref, kind: "secretRef" as const });
 			refs.push(ref);
-		} else if (typeof raw === "object" && raw !== null) {
+		} else if (raw !== null && raw === Object(raw)) {
 			// Nested objects: only surface a content hash, never nested secrets.
 			const hash = contentHash(asString);
 			out[key] = Object.freeze({
@@ -97,8 +97,8 @@ export function createSecretFreeDiff(input: {
 	readonly changes: readonly {
 		readonly path: string;
 		readonly action: SecretFreeDiffChange["action"];
-		readonly before?: unknown;
-		readonly after?: unknown;
+		readonly before?: JsonValue;
+		readonly after?: JsonValue;
 	}[];
 }): SecretFreeDiff {
 	const secretBearingPaths: string[] = [];
@@ -108,10 +108,10 @@ export function createSecretFreeDiff(input: {
 		return Object.freeze({
 			path: c.path,
 			action: c.action,
-			...(c.before !== undefined
-				? { before: scrubValue(c.path, c.before) }
-				: {}),
-			...(c.after !== undefined ? { after: scrubValue(c.path, c.after) } : {}),
+			...(c.before !== undefined && {
+				before: scrubValue(c.path, c.before),
+			}),
+			...(c.after !== undefined && { after: scrubValue(c.path, c.after) }),
 		});
 	});
 	const body = {
@@ -134,7 +134,7 @@ export function createSecretFreeDiff(input: {
 export function createSecretFreeStatus(input: {
 	readonly resourceId: string;
 	readonly state: string;
-	readonly outputs: Readonly<Record<string, unknown>>;
+	readonly outputs: Readonly<Record<string, JsonValue>>;
 }): SecretFreeStatus {
 	const scrubbed = toSecretFreeOutputs(input.outputs);
 	return Object.freeze({
@@ -151,8 +151,8 @@ export function createSecretFreeStatus(input: {
  * Assert a projection/event payload contains no plaintext secrets.
  * Throws if a known secret pattern is found in string leaves.
  */
-export function assertSecretFree(value: unknown, path = "$"): void {
-	if (typeof value === "string") {
+export function assertSecretFree(value: JsonValue, path = "$"): void {
+	if (value === String(value)) {
 		if (PLAINTEXT_SECRET_PATTERN.test(value)) {
 			throw Object.assign(
 				new Error(`secret-free violation at ${path}: plaintext secret pattern`),
@@ -167,19 +167,20 @@ export function assertSecretFree(value: unknown, path = "$"): void {
 		});
 		return;
 	}
-	if (value && typeof value === "object") {
-		for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+	if (value !== null && value === Object(value)) {
+		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+		for (const [k, v] of Object.entries(value as Record<string, JsonValue>)) {
 			// Opaque identifiers (credentialId, grantId, …) are references, not secrets.
 			const opaqueId = /(?:Id|Ref|Hash|Digest)$/.test(k);
 			if (
 				!opaqueId &&
 				SECRET_KEY_PATTERN.test(k) &&
-				typeof v === "string" &&
-				!v.startsWith("secretRef:") &&
-				!v.startsWith("valueRef:") &&
-				!v.startsWith("sha256:") &&
-				!v.startsWith("scoped-") &&
-				v.length > 0
+				v === String(v) &&
+				!String(v).startsWith("secretRef:") &&
+				!String(v).startsWith("valueRef:") &&
+				!String(v).startsWith("sha256:") &&
+				!String(v).startsWith("scoped-") &&
+				String(v).length > 0
 			) {
 				throw Object.assign(
 					new Error(
@@ -193,9 +194,9 @@ export function assertSecretFree(value: unknown, path = "$"): void {
 	}
 }
 
-function scrubValue(path: string, value: unknown): string | SecretRef {
+function scrubValue(path: string, value: JsonValue): string | SecretRef {
 	const asString =
-		typeof value === "string" ? value : JSON.stringify(value ?? null);
+		value === String(value) ? String(value) : JSON.stringify(value ?? null);
 	if (
 		SECRET_KEY_PATTERN.test(path) ||
 		PLAINTEXT_SECRET_PATTERN.test(asString)
@@ -205,7 +206,7 @@ function scrubValue(path: string, value: unknown): string | SecretRef {
 			kind: "secretRef" as const,
 		});
 	}
-	if (typeof value === "string") return value;
+	if (value === String(value)) return String(value);
 	return Object.freeze({
 		ref: `valueRef:${path}:${contentHash(asString)}`,
 		kind: "valueRef" as const,
@@ -219,3 +220,4 @@ function makeSecretRef(key: string, value: string): string {
 function contentHash(value: string): string {
 	return createHash("sha256").update(value).digest("hex");
 }
+import type { JsonValue } from "../plan-types.js";

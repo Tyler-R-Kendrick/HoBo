@@ -52,14 +52,11 @@ export type DisplaySheet = Readonly<{
  */
 export function displaySheetForWaybill(w: Waybill): DisplaySheet {
 	const named = new Set(w.fields.map((f) => f.name));
-	return {
+	const sheet: DisplaySheet = {
 		kind: w.kind,
 		title: `WAYBILL — ${w.title}`,
 		description: `${w.summary}\nBlast radius: ${w.blastRadius}.`,
 		confirmOp: w.confirmOp === "init-up" ? "noop" : w.confirmOp,
-		...(w.confirmOp === "init-up"
-			? { runActions: ["init", "up"] as readonly YardAction[] }
-			: {}),
 		waybill: { id: w.id, kind: w.kind },
 		fields: [
 			...w.fields.map((f) => ({
@@ -79,6 +76,9 @@ export function displaySheetForWaybill(w: Waybill): DisplaySheet {
 		],
 		streamChunks: ["Reading waybill…"],
 	};
+	if (w.confirmOp === "init-up")
+		return { ...sheet, runActions: ["init", "up"] };
+	return sheet;
 }
 
 export function displaySheetForZone(
@@ -166,9 +166,11 @@ export function createDomOverlay(opts: {
 		occupy: doc.getElementById("occupy"),
 		rail: doc.getElementById("rail"),
 		conn: doc.getElementById("conn"),
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		sheet: doc.getElementById("sheet") as HTMLElement | null,
 		sheetTitle: doc.getElementById("sheet-title"),
 		sheetDesc: doc.getElementById("sheet-desc"),
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		sheetForm: doc.getElementById("sheet-form") as HTMLFormElement | null,
 		sheetStream: doc.getElementById("sheet-stream"),
 		sheetClose: doc.getElementById("sheet-close"),
@@ -177,6 +179,7 @@ export function createDomOverlay(opts: {
 
 	// SPIKE (deny) lives beside the STAMP in the sheet footer; created here so
 	// older index.html copies keep working.
+	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 	let spikeBtn = doc.getElementById("sheet-spike") as HTMLButtonElement | null;
 	if (!spikeBtn && el.sheet) {
 		const footer = el.sheet.querySelector("footer");
@@ -279,6 +282,7 @@ export function createDomOverlay(opts: {
 			const values: Record<string, string> = {};
 			if (!el.sheetForm) return values;
 			for (const input of el.sheetForm.querySelectorAll("input,select")) {
+				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 				const field = input as HTMLInputElement | HTMLSelectElement;
 				values[field.name] = field.value;
 			}
@@ -313,6 +317,7 @@ export function createDomOverlay(opts: {
 				else opts.onConfirmed(message);
 			} catch (err) {
 				if (el.sheetStream) {
+					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 					el.sheetStream.textContent = String((err as Error).message ?? err);
 				}
 			}
@@ -326,12 +331,14 @@ export function createDomOverlay(opts: {
 	});
 	for (const btn of doc.querySelectorAll("#actions button")) {
 		btn.addEventListener("click", () => {
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 			const action = btn.getAttribute("data-action") as YardAction | null;
 			if (!action) return;
 			void client
 				.runAction(action)
 				.then((message) => opts.onAction(message))
 				.catch((err) =>
+					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 					opts.onActionError(String((err as Error).message ?? err)),
 				);
 		});

@@ -122,7 +122,7 @@ function verifyHostSignature(measurement, signature, hostPublicKeys) {
       entry.hostId === measurement.hostId &&
       entry.hostId === signature.hostId &&
       entry.keyId === signature.keyId &&
-      typeof entry.verificationKey === "string",
+      isString(entry.verificationKey),
   );
   if (!key) {
     return false;
@@ -140,7 +140,7 @@ function signLaunchMeasurement(measurement, verificationKey) {
 
 function validateLaunchMeasurement(measurement) {
   for (const field of ["runId", "tenant", "componentImageDigest", "hostId", "nonce", "isolationTier"]) {
-    if (typeof measurement[field] !== "string" || measurement[field].length === 0) {
+    if (!isString(measurement[field]) || measurement[field].length === 0) {
       return "launch-measurement-invalid";
     }
   }
@@ -219,7 +219,7 @@ function sortForCanonicalJson(value) {
 }
 
 function safeEqualBase64url(left, right) {
-  if (typeof right !== "string") {
+  if (!isString(right)) {
     return false;
   }
   try {
@@ -235,7 +235,7 @@ function isPrincipal(value) {
   return (
     isPlainObject(value) &&
     PRINCIPAL_KINDS.has(value.kind) &&
-    typeof value.id === "string" &&
+    isString(value.id) &&
     value.id.length > 0
   );
 }
@@ -243,7 +243,7 @@ function isPrincipal(value) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isObjectRecord(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -254,11 +254,19 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isObjectRecord(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {
     deepFreeze(child);
   }
   return Object.freeze(value);
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

@@ -18,6 +18,7 @@ interface OrderState {
 	totalCents: number;
 }
 
+// SAFETY: event.type selects the order.Placed payload shape supplied by the aggregate contract.
 const orders = defineAggregate<
 	OrderState,
 	{ kind: "place" | "cancel"; id: string; totalCents?: number }
@@ -28,6 +29,7 @@ const orders = defineAggregate<
 		if (event.type === "order.Placed")
 			return {
 				status: "placed",
+				// SAFETY: order.Placed carries the declared totalCents payload.
 				totalCents: (event.data as { totalCents: number }).totalCents,
 			};
 		if (event.type === "order.Cancelled")
@@ -72,6 +74,7 @@ const payments = defineAggregate<
 });
 
 // A projection to prove the flow round-trips into a queryable read model.
+// SAFETY: projection event keys select the declared payload shapes.
 const orderView = defineProjection<{ orderId: string; status: string }>({
 	name: "orders",
 	key: (e) => (e.data as { orderId: string }).orderId,
@@ -89,11 +92,14 @@ const orderView = defineProjection<{ orderId: string; status: string }>({
 
 // --- The saga: on order.Placed -> charge payment; compensate by cancelling ----
 
+// SAFETY: the saga trigger contract supplies orderId and totalCents on order.Placed.
 const checkout = defineSaga({
 	name: "checkout",
 	trigger: "order.Placed",
 	step: async (event, ctx) => {
+		// SAFETY: order.Placed carries the declared orderId payload.
 		const orderId = (event.data as { orderId: string }).orderId;
+		// SAFETY: order.Placed carries the declared totalCents payload.
 		const totalCents = (event.data as { totalCents: number }).totalCents;
 		await ctx.dispatch(
 			"charge-payment",
@@ -107,6 +113,7 @@ const checkout = defineSaga({
 		);
 	},
 	compensate: async (event, ctx) => {
+		// SAFETY: order.Placed carries the declared orderId payload.
 		const orderId = (event.data as { orderId: string }).orderId;
 		await ctx.dispatch(
 			"cancel-order",
@@ -147,6 +154,7 @@ async function placeOrder(
 		{ kind: "place", id, totalCents },
 		CTX,
 	);
+	// SAFETY: placing an order appends exactly one EventEnvelope for this test aggregate.
 	return result.appended[0] as EventEnvelope;
 }
 

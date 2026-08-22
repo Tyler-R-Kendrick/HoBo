@@ -11,7 +11,7 @@ import { enforceConnectivityCanDeploy } from "../../connectivity-policy-enforcem
 export const TIER_FIVE_PUBLIC_MTLS_SCHEMA_VERSION = "hobo.tier-five-public-mtls/v1";
 
 export function realizeTierFivePublicMtls(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!isObjectRecord(input)) {
     return invalid("tier5.input.invalid", "input must be an object");
   }
 
@@ -109,10 +109,10 @@ export function realizeTierFivePublicMtls(input) {
 }
 
 export function canReachTierFiveEndpoint(link, attempt) {
-  if (!link || typeof link !== "object" || Array.isArray(link)) {
+  if (!isObjectRecord(link)) {
     return invalid("tier5.link.invalid", "link must be an object");
   }
-  if (!attempt || typeof attempt !== "object" || Array.isArray(attempt)) {
+  if (!isObjectRecord(attempt)) {
     return invalid("tier5.reachability.invalid", "attempt must be an object");
   }
 
@@ -161,7 +161,7 @@ function validateTierFivePlan(plan) {
     ["parameters.publicEndpointRef", plan.parameters.publicEndpointRef],
     ["parameters.publicHost", plan.parameters.publicHost]
   ]) {
-    if (typeof value !== "string" || value.length === 0) {
+    if (!isString(value) || value.length === 0) {
       return invalid("tier5.plan.public-endpoint-missing", `${field} must be a non-empty string`);
     }
   }
@@ -178,7 +178,7 @@ function validateTierFivePlan(plan) {
   if (plan.parameters.fallbackFromTier !== ConnectivityTier.OVERLAY_MESH) {
     return invalid("tier5.plan.invalid-fallback", "tier 5 public mTLS fallback must come from tier 4");
   }
-  if (typeof plan.parameters.fallbackReason !== "string" || plan.parameters.fallbackReason.length === 0) {
+  if (!isString(plan.parameters.fallbackReason) || plan.parameters.fallbackReason.length === 0) {
     return invalid("tier5.plan.invalid-fallback", "parameters.fallbackReason must explain the tier 4 fall-through");
   }
 
@@ -223,7 +223,7 @@ function normalizeVerbs(verbs = ["connect"]) {
   const seen = new Set();
   const normalized = [];
   for (const verb of verbs) {
-    if (typeof verb !== "string" || verb.length === 0) {
+    if (!isString(verb) || verb.length === 0) {
       return invalid("tier5.verbs.invalid", "verbs entries must be non-empty strings");
     }
     if (!seen.has(verb)) {
@@ -232,6 +232,14 @@ function normalizeVerbs(verbs = ["connect"]) {
     }
   }
   return { ok: true, value: normalized };
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }
 
 function invalid(code, reason) {

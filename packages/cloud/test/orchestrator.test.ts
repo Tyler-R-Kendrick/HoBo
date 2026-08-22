@@ -49,6 +49,7 @@ afterEach(() => {
 });
 
 function loadPlan(): DeploymentPlan {
+	// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 	return JSON.parse(
 		readFileSync(
 			fileURLToPath(
@@ -239,8 +240,10 @@ describe("Orchestrator: choreographs a DeploymentPlan DAG to deployment.Deployed
 		]);
 
 		const events = await drain(deps.store, "deployment:shop-1");
+		// SAFETY: resource.Provisioned event data contains resourceId by contract.
 		const provisioned = events
 			.filter((e) => e.type === "resource.Provisioned")
+			// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 			.map((e) => (e.data as { resourceId: string }).resourceId);
 		// Dependency order: network before database/cache before api before web.
 		expect(provisioned.indexOf("network")).toBeLessThan(
@@ -290,12 +293,14 @@ describe("Orchestrator crash-resume: replay the durable log to Deployed", () => 
 
 		// The log holds database at Provisioning with no terminal fact.
 		const midEvents = await drain(store, "deployment:shop-crash");
+		// SAFETY: provisioning event data contains resourceId by contract.
 		const midStates = midEvents
 			.filter(
 				(e) =>
 					e.type === "resource.Provisioning" ||
 					e.type === "resource.Provisioned",
 			)
+			// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 			.map((e) => `${e.type}:${(e.data as { resourceId: string }).resourceId}`);
 		expect(midStates).toContain("resource.Provisioned:network");
 		expect(midStates).toContain("resource.Provisioning:database");
@@ -336,6 +341,7 @@ describe("Orchestrator crash-resume: replay the durable log to Deployed", () => 
 		const dbProvisioning = finalEvents.filter(
 			(e) =>
 				e.type === "resource.Provisioning" &&
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				(e.data as { resourceId: string }).resourceId === "database",
 		);
 		expect(dbProvisioning.length).toBe(1);
@@ -373,8 +379,10 @@ describe("Orchestrator compensation: choreographed reverse-dependency rollback",
 		const firstDestroyIdx = types.indexOf("resource.Destroying");
 		expect(rolledBackIdx).toBeLessThan(firstDestroyIdx);
 
+		// SAFETY: resource.Destroyed event data contains resourceId by contract.
 		const destroyed = events
 			.filter((e) => e.type === "resource.Destroyed")
+			// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 			.map((e) => (e.data as { resourceId: string }).resourceId);
 		expect(destroyed).toEqual(["api", "cache", "database", "network"]);
 

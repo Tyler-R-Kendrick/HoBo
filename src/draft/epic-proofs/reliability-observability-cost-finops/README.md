@@ -79,6 +79,8 @@ npm.cmd --prefix src/draft/epic-proofs/reliability-observability-cost-finops tes
 
 - POC modules are imported and executed from `src/draft/<kind>/<slug>`.
 - Pact-style fixtures cover every declared reference boundary.
+- The validated SLO gaming guard proof is included in this rollup; its deterministic simulation contract is unchanged.
+- The validated cost-degradation saga and connectivity cost feedback proofs are included in this rollup; their deterministic simulation contracts are unchanged.
 - The simulation runs four epic-level slices with deterministic fixtures.
 
 ## What Is Mocked
@@ -97,6 +99,8 @@ npm.cmd --prefix src/draft/epic-proofs/reliability-observability-cost-finops tes
   exercises OTLP export, SLO burn alerts, and drift heal/propose/ignore in an E2E lane.
 
 
+OpenInference trajectory-capture and reliability-SLA changes are absorbed without changing telemetry, status, or rollback behavior.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by
@@ -105,3 +109,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Reliability Observability Cost Finops.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The run-inspector, spend-circuit-breaker, shared-cost, showback, SLO, and structured-log technical proof refreshes are absorbed without changing reliability, observability, or FinOps evidence.

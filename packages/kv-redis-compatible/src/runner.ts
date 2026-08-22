@@ -147,6 +147,7 @@ async function runCase(
 	for (const step of testCase.steps) {
 		if (step.waitMs !== undefined) {
 			// `canRun` already established the control exists.
+			// SAFETY: canRun checked that advanceTime is present before this case runs.
 			await (input.executor.advanceTime as (ms: number) => Promise<void>)(
 				step.waitMs,
 			);

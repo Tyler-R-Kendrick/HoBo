@@ -65,6 +65,8 @@ What this proves:
 - Planner, Matching, capability feedback, and region/objective decisions are replayable.
 - Delta/Set, ResourceActor, executor, and driver dispatch boundaries are mocked and deterministic.
 - Drift, partial-realize rollback, orphan sweep, and dispatcher reservation conflicts fail closed.
+- DeploymentView reconstructs the saga graph from linked events with validated envelope fields.
+- Delta/Set reconciliation and DeploymentView saga projection retain their validated boundaries after the latest leaf hardening.
 - Self-host bootstrap uses single-use operator credential evidence and explicit Identity handover.
 
 Mocked boundaries:
@@ -80,6 +82,8 @@ Contracts:
 This is a reference architecture package, not product implementation. It does not call live clouds, live IaC tools, real Identity, real Gatekeeper, real Registry, real EventStore, or real provider APIs.
 
 
+Region-objective ranking changes are absorbed without changing deterministic placement or budget-selection behavior.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by
@@ -88,3 +92,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Control Plane Planner Matching Orchestrator.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The `self-host-bootstrap-saga-contract` technical proof refresh is absorbed without changing deterministic planner or orchestration evidence.

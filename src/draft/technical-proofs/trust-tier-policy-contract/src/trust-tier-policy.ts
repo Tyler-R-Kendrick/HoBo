@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse untrusted listing and policy values at the boundary before trust-tier evaluation. */
+
 export const TRUST_TIER_CONTRACT_VERSION = "hobo.trust-tier-policy/v1";
 
 const TIER_RANK = Object.freeze({

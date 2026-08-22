@@ -120,7 +120,7 @@ export function createHoboMcpGatewayServer(options = {}) {
       const principal = lastPrincipal;
       const tenantId = principal?.tenantId ?? principal?.tenant ?? "tenant:unknown";
       const principalId = principal?.id ?? "anonymous";
-      const now = typeof callOptions.now === "number" ? callOptions.now : Date.now();
+      const now = Number.isFinite(callOptions.now) ? callOptions.now : Date.now();
 
       const principalCheck = rateLimiter.check(`principal:${principalId}`, now);
       if (!principalCheck.ok) {

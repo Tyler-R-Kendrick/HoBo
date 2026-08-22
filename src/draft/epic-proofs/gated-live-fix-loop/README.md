@@ -57,3 +57,7 @@ pnpm --prefix src/draft/epic-proofs/gated-live-fix-loop run simulate
 - `architecture/` — protobuf + CUE constraints.
 - `architecture/pacts/` — PACT boundary fixture.
 - `ADR.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The `slo-gated-rollback-analysis-contract` technical proof refresh is absorbed without changing live-fix gating or rollback evidence.

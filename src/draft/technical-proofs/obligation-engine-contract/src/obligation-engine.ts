@@ -205,7 +205,7 @@ export function replayObligationEvents(events = []) {
   const ignoredEvents = [];
 
   for (const event of events) {
-    if (!event || typeof event !== "object") {
+    if (!event || Object.prototype.toString.call(event) !== "[object Object]") {
       ignoredEvents.push({ event, reason: "malformed-event" });
       continue;
     }
@@ -317,15 +317,16 @@ export function makeObligationEvent({
   time = new Date().toISOString(),
   data = {},
 }) {
-  return {
+  const result = {
     id: requireString(id, "id"),
     type: requireString(type, "type"),
     schemaVersion: OBLIGATION_EVENT_SCHEMA_VERSION,
     time: requireIsoTimestamp(time, "time"),
     obligationId: requireString(obligationId, "obligationId"),
-    ...(effectId === undefined ? {} : { effectId: requireString(effectId, "effectId") }),
     data: cloneJson(data),
   };
+  if (effectId !== undefined) result.effectId = requireString(effectId, "effectId");
+  return result;
 }
 
 function normalizeCreatedObligation(event) {
@@ -423,21 +424,21 @@ function requireIsoTimestamp(input, fieldName) {
 }
 
 function requireString(input, fieldName) {
-  if (typeof input !== "string" || input.length === 0) {
+  if (!isString(input) || input.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return input;
 }
 
 function optionalString(input) {
-  if (typeof input !== "string" || input.length === 0) {
+  if (!isString(input) || input.length === 0) {
     return null;
   }
   return input;
 }
 
 function expectObject(input, fieldName) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || Object.prototype.toString.call(input) !== "[object Object]" || Array.isArray(input)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
   return input;
@@ -448,4 +449,8 @@ function cloneJson(value) {
     return undefined;
   }
   return JSON.parse(JSON.stringify(value));
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

@@ -228,13 +228,13 @@ function assertEqual(actual, expected, code, path) {
 }
 
 function assertObject(value, code, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!isRecord(value)) {
     throw new ProvenanceContractError(code, path);
   }
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new ProvenanceContractError(code, path);
   }
 }
@@ -254,7 +254,7 @@ function assertIsoTimestamp(value, code, path) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || (!isRecord(value) && !Array.isArray(value))) {
     return JSON.stringify(value);
   }
 
@@ -266,4 +266,12 @@ function stableStringify(value) {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
     .join(",")}}`;
+}
+
+function isRecord(value) {
+  return Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

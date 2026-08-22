@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased input contracts at the shared parser boundary before domain evaluation. */
+
 import { routeCrossCampTraffic } from "../../cross-camp-routing-policy-contract/src/cross-camp-routing-policy.js";
 
 export function evaluateSplitHorizonResolution(check) {

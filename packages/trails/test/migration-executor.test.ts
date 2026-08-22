@@ -54,7 +54,7 @@ const PLAN = {
 function gate(consumers: readonly string[]): () => CompatGateEvidence {
 	return () => ({
 		gateId: "compat:checkout-readers",
-		consumersOnOldShape: consumers,
+		consumersOnLegacySchema: consumers,
 		verifiedAt: "2026-08-03T00:00:00.000Z",
 	});
 }
@@ -89,6 +89,7 @@ test("milestone: full expand→backfill→contract completes with the migration.
 	// The store REALLY changed: old column gone, new shape backfilled.
 	const db = new DatabaseSync(storePath);
 	cleanups.push(() => db.close());
+	// SAFETY: the SELECT fixes the returned row columns.
 	const rows = (
 		db.prepare("SELECT id, requester_ref FROM checkout ORDER BY id").all() as {
 			id: string;
@@ -128,6 +129,7 @@ test("milestone: a consumer still on the old shape BLOCKS contract; the dual win
 	// Expand + backfill retained; old column STILL present.
 	const db = new DatabaseSync(storePath);
 	cleanups.push(() => db.close());
+	// SAFETY: the SELECT fixes the returned row columns.
 	const rows = db
 		.prepare("SELECT id, email, requester_ref FROM checkout ORDER BY id")
 		.all() as { id: string; email: string; requester_ref: string }[];

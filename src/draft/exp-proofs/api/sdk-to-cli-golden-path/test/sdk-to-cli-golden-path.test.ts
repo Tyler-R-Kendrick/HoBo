@@ -15,7 +15,7 @@ test("golden path links SDK consumer, manifest IR, CLI transcript, API, MCP, and
   assert.match(proof.sdkConsumer.source, /bindle\("shop-api"/);
   assert.equal(proof.manifestIr.fixtureId, proof.fixtureId);
   assert.equal(proof.cliTranscript.fixtureId, proof.fixtureId);
-  assert.equal(proof.apiShape.fixtureId, proof.fixtureId);
+  assert.equal(proof.apiContract.fixtureId, proof.fixtureId);
   assert.equal(proof.mcpResult.fixtureId, proof.fixtureId);
   assert.equal(proof.proofNote, "docs/design/proofs/sdk-to-cli-golden-path/README.md");
   assert.deepEqual(validateSdkToCliGoldenPathProof(proof), { ok: true, errors: [] });
@@ -55,7 +55,7 @@ test("transcript proves happy, blocked, stale or unknown evidence, and support h
 test("same fixture id links SDK, CLI, API shape, MCP result, and proof README", () => {
   const proof = createSdkToCliGoldenPathProof();
 
-  assert.deepEqual(proof.apiShape.operations.map((operation) => operation.fixtureId), [
+  assert.deepEqual(proof.apiContract.operations.map((operation) => operation.fixtureId), [
     proof.fixtureId,
     proof.fixtureId,
     proof.fixtureId,

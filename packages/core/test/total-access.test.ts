@@ -51,6 +51,7 @@ describe("must", () => {
 			must(undefined);
 			expect.unreachable("must(undefined) has to throw");
 		} catch (error) {
+			// SAFETY: must(undefined) above establishes the caught error as Error.
 			expect((error as Error).message).toBe("missing required value");
 		}
 	});
@@ -62,6 +63,7 @@ describe("must", () => {
 			must(undefined, "");
 			expect.unreachable("must(undefined) has to throw");
 		} catch (error) {
+			// SAFETY: must(undefined, "") above establishes the caught error as Error.
 			expect((error as Error).message).toBe("missing required value");
 		}
 	});
@@ -110,7 +112,9 @@ describe("at", () => {
 		// and that is the documented cost of the total accessor. Pinned so the
 		// limitation is a decision rather than a surprise.
 		// biome-ignore lint/suspicious/noSparseArray: the sparse hole is the case under test.
-		expect(() => at([1, , 3] as (number | undefined)[], 1)).toThrow();
+		const withHole = [1, undefined, 3];
+		delete withHole[1];
+		expect(() => at(withHole, 1)).toThrow();
 		expect(() => at([undefined], 0)).toThrow();
 	});
 });

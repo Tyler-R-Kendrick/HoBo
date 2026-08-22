@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased manifest and canonicalization values at their shared document boundary. */
+
 import { createHash } from "node:crypto";
 
 import { createResourceCatalog } from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.js";

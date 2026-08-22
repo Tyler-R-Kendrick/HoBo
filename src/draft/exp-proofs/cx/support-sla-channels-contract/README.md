@@ -7,7 +7,7 @@ or publication work fans out.
 ## Focused Gate
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\support-sla-channels-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\support-sla-channels-contract test
 ```
 
 ## Proof Surface

@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks reject untrusted version and range inputs before parsing. */
 export const STABILITY_TIERS = Object.freeze([
   "stable",
   "preview",
@@ -11,11 +12,12 @@ const SEMVER_RE = new RegExp(`^${SEMVER_PATTERN_SOURCE}$`);
 export function normalizeVersion(version) {
   const parsed = parseVersion(version);
 
-  return {
+  const normalized = {
     canonical: formatVersion(parsed, { includeBuild: false }),
     original: version,
-    ...(parsed.build ? { build: parsed.build } : {})
   };
+  if (parsed.build) normalized.build = parsed.build;
+  return normalized;
 }
 
 export function validateAcceptedRange(range) {
@@ -270,13 +272,14 @@ function parseVersion(version) {
     throw new Error(`version must be semver: ${version}`);
   }
 
-  return {
+  const parsedVersion = {
     major: Number(match[1]),
     minor: Number(match[2]),
     patch: Number(match[3]),
-    ...(match[4] ? { prerelease: match[4] } : {}),
-    ...(match[5] ? { build: match[5] } : {})
   };
+  if (match[4]) parsedVersion.prerelease = match[4];
+  if (match[5]) parsedVersion.build = match[5];
+  return parsedVersion;
 }
 
 function compareVersions(left, right) {

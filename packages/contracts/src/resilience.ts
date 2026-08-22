@@ -348,19 +348,27 @@ interface FailureFields {
 	readonly name?: string;
 }
 
-function failureFields(err: Error): FailureFields {
+type ThrownFailure = Error | JsonValue;
+
+function failureFields(err: ThrownFailure): FailureFields {
+	const object = isJsonObject(err) ? err : undefined;
+	const error = err instanceof Error ? err : undefined;
 	return {
 		failureClass:
-			"failureClass" in err && isJsonString(err.failureClass)
-				? err.failureClass
+			object && isJsonString(object.failureClass)
+				? object.failureClass
 				: undefined,
-		code: "code" in err && isJsonString(err.code) ? err.code : undefined,
-		message: err.message,
-		name: err.name,
+		code: object && isJsonString(object.code) ? object.code : undefined,
+		message:
+			error?.message ??
+			(object && isJsonString(object.message) ? object.message : undefined),
+		name:
+			error?.name ??
+			(object && isJsonString(object.name) ? object.name : undefined),
 	};
 }
 
-function classifyError(err: Error): ClassifiedFailure {
+function classifyError(err: ThrownFailure): ClassifiedFailure {
 	const e = failureFields(err);
 	if (
 		e.failureClass === "policy.Decided" ||

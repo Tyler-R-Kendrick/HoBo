@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-unknown-returns, anti-slop/no-unknown-parameters */
+
 /**
  * The Terraform adapter's parse boundary, in-memory state backend and
  * binding projection.

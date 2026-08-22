@@ -7,9 +7,10 @@ import {
 	hasPrototypePollution,
 	MAX_HARNESS_BYTES,
 	sampleManifestRecord,
+	type FuzzValue,
 } from "../../src/index.js";
 
-function bytes(value: unknown): Uint8Array {
+function bytes(value: FuzzValue): Uint8Array {
 	return Buffer.from(JSON.stringify(value));
 }
 

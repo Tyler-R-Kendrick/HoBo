@@ -51,9 +51,7 @@ test("personas and owner boundaries cover product, DX, support, release, securit
 });
 
 test("validation rejects scope creep and proofless follow-up work", () => {
-  const invalid = structuredClone(COMPATIBILITY_MATRIX_SCOPE) as typeof COMPATIBILITY_MATRIX_SCOPE & {
-    scopeIn: Array<{ id: string; summary: string; workKind?: string }>;
-  };
+  const invalid = structuredClone(COMPATIBILITY_MATRIX_SCOPE);
 
   invalid.scopeIn.push({
     id: "scope.browser-grid-runtime",

@@ -38,6 +38,9 @@ export type PostgresCapabilityDescriptor = {
 	/** True when `data.postgres/v1` or its parent already declares this key. */
 	readonly declaredByProfile: boolean;
 };
+type MutablePostgresCapabilityDescriptor = {
+	-readonly [Key in keyof PostgresCapabilityDescriptor]: PostgresCapabilityDescriptor[Key];
+};
 
 export const POSTGRES_CAPABILITY_AXES = [
 	"wire-protocol",
@@ -116,14 +119,17 @@ const descriptor = (
 		readonly domain?: readonly string[];
 		readonly declaredByProfile?: boolean;
 	} = {},
-): PostgresCapabilityDescriptor => ({
+): PostgresCapabilityDescriptor => {
+	const result: MutablePostgresCapabilityDescriptor = {
 	key,
 	axis,
 	valueKind,
 	description,
-	...(options.domain !== undefined ? { domain: options.domain } : {}),
 	declaredByProfile: options.declaredByProfile ?? false,
-});
+	};
+	if (options.domain !== undefined) result.domain = options.domain;
+	return result;
+};
 
 /**
  * Guarantees: monotonic, boolean, and load-bearing. A product that cannot

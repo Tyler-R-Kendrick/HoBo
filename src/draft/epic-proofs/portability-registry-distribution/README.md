@@ -67,6 +67,10 @@ What this proves:
 - Catalog and trust policy gates fail closed.
 - Yanked listings block new selection and flag running Sets.
 - Offline import uses in-boundary mocks and no live network.
+- The validated registry-publish-flow proof is included in this rollup; its deterministic simulation contract is unchanged.
+- The validated capability-indexed discovery proof is included in this rollup; its deterministic simulation contract is unchanged.
+- Install-verification changes are absorbed without changing registry trust, offline import, or selection behavior.
+- The validated curated-catalog-policy and distributed-artifact-version-policy proofs are included in this rollup; their deterministic simulation contracts are unchanged.
 - Mirror cost tie-break runs only after digest identity verification.
 
 Mocked boundaries:
@@ -91,6 +95,8 @@ In scope: epic-level reference slice under the common reference implementation r
 Out of scope: production registry transport, real OCI/Sigstore/Rekor services, real cloud/provider APIs, full Junction federation rollout, production Matching scoring, and deleting or moving existing POCs.
 
 
+Portability-swap, registry-import, and registry-publish changes are absorbed without changing registry trust, offline import, or selection behavior.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by
@@ -99,3 +105,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Portability Registry Distribution.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The `trust-tier-policy-contract` technical proof refresh is absorbed without changing portability or registry evidence.

@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this validator receives erased records at its parser boundary and uses typeof only to reject non-object records before domain checks. */
 const REQUIRED_EVIDENCE_IDS = [
   "release-summary-dogfood-cutline",
   "supported-install-alpha-smoke",

@@ -19,6 +19,7 @@
  *   belong to owning initiatives.
  */
 import { createHash } from "node:crypto";
+import { isJsonObject, isJsonString, type JsonObject, type JsonValue } from "./json.js";
 
 // public-contract: dry-run report schema id consumers pin.
 export const UPGRADE_DRY_RUN_SCHEMA = "hobo.upgrade-rollback-dry-run/v1";
@@ -92,12 +93,17 @@ export interface SupportHandoffRecord {
 	readonly escalation?: string;
 }
 
+export type UpgradeDryRunDecision = Readonly<{
+	owner: string;
+	inScope: boolean;
+}>;
+
 export class UpgradePreflightParseError extends Error {
 	readonly path: string;
 	readonly expected: string;
-	readonly received: unknown;
+	readonly received: JsonValue;
 
-	constructor(path: string, expected: string, received: unknown) {
+	constructor(path: string, expected: string, received: JsonValue) {
 		super(`${path}: expected ${expected}`);
 		this.name = "UpgradePreflightParseError";
 		this.path = path;
@@ -137,38 +143,42 @@ const ROLLBACK_STATES = new Set<RollbackState>([
 	"recoverable",
 ]);
 
-function record(value: unknown, path: string): Record<string, unknown> {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function record(value: JsonValue, path: string): JsonObject {
+	if (!isJsonObject(value)) {
 		throw new UpgradePreflightParseError(path, "object", value);
 	}
-	return value as Record<string, unknown>;
+	return value;
 }
 
-function str(value: unknown, path: string): string {
-	if (typeof value !== "string" || value.trim().length === 0) {
+function str(value: JsonValue | undefined, path: string): string {
+	if (!isJsonString(value) || value.trim().length === 0) {
 		throw new UpgradePreflightParseError(path, "non-empty string", value);
 	}
 	return value.trim();
 }
 
-function nullableStr(value: unknown, path: string): string | null {
+function nullableStr(value: JsonValue | undefined, path: string): string | null {
 	if (value === null || value === undefined) return null;
 	return str(value, path);
 }
 
 function member<T extends string>(
-	value: unknown,
+	value: JsonValue,
 	allowed: ReadonlySet<T>,
 	path: string,
 ): T {
-	if (typeof value !== "string" || !allowed.has(value as T)) {
+	if (!isJsonString(value)) {
 		throw new UpgradePreflightParseError(path, [...allowed].join(" | "), value);
 	}
-	return value as T;
+	const member = [...allowed].find((candidate) => candidate === value);
+	if (member === undefined) {
+		throw new UpgradePreflightParseError(path, [...allowed].join(" | "), value);
+	}
+	return member;
 }
 
 export function parseCompatibilityInputs(
-	value: unknown,
+	value: JsonValue,
 	path = "compatibilityInputs",
 ): CompatibilityInputs {
 	const input = record(value, path);
@@ -213,7 +223,7 @@ export function parseCompatibilityInputs(
 }
 
 export function parseRollbackEvidence(
-	value: unknown,
+	value: JsonValue,
 	path = "rollbackEvidence",
 ): RollbackEvidence {
 	const input = record(value, path);
@@ -233,7 +243,7 @@ export function parseRollbackEvidence(
 						`${path}.restorePrerequisite`,
 					),
 				}
-			: {}),
+			: undefined),
 		...(input.blockedRestoreReason !== undefined &&
 		input.blockedRestoreReason !== null
 			? {
@@ -242,7 +252,7 @@ export function parseRollbackEvidence(
 						`${path}.blockedRestoreReason`,
 					),
 				}
-			: {}),
+			: undefined),
 		escalationOwner: str(input.escalationOwner, `${path}.escalationOwner`),
 	};
 	// A path may only be called recoverable/available with concrete evidence.
@@ -385,10 +395,7 @@ const OUT_OF_SCOPE_PATTERN =
 	/\b(live migration|execute|runner|rollback executor|backup restore|provider state rewrite|support automation|support ticket|publish release notes)\b/i;
 
 /** Promoted scope guard: classify a decision as in/out of dry-run scope. */
-export function classifyUpgradeDryRunDecision(decision: string): {
-	owner: string;
-	inScope: boolean;
-} {
+export function classifyUpgradeDryRunDecision(decision: string): UpgradeDryRunDecision {
 	if (OUT_OF_SCOPE_PATTERN.test(decision)) {
 		return { owner: "Out of scope", inScope: false };
 	}
@@ -497,22 +504,24 @@ export function evaluateUpgradeDryRun(
 		releaseNotes: request.releaseNotes,
 		supportHandoff: request.support,
 		unsupportedPath: request.unsupportedPath ?? null,
+		// SAFETY: dry-run reports intentionally expose no executable mutations.
 		mutationCommands: Object.freeze([]) as readonly never[],
-		digest: stableDigest(request),
+		// SAFETY: JSON round-trip gives the digest the parsed boundary shape.
+		digest: stableDigest(JSON.parse(JSON.stringify(request)) as JsonObject),
 	});
 }
 
 /** Deterministic sha256 over a stable (key-sorted) JSON encoding. */
-export function stableDigest(value: unknown): string {
+export function stableDigest(value: JsonObject): string {
 	return createHash("sha256").update(stableStringify(value)).digest("hex");
 }
 
-function stableStringify(value: unknown): string {
+function stableStringify(value: JsonValue): string {
 	if (Array.isArray(value)) {
 		return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
 	}
-	if (typeof value === "object" && value !== null) {
-		const input = value as Record<string, unknown>;
+	if (isJsonObject(value)) {
+		const input = value;
 		return `{${Object.keys(input)
 			.sort()
 			.map((key) => `${JSON.stringify(key)}:${stableStringify(input[key])}`)

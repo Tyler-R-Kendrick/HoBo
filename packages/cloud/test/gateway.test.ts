@@ -41,7 +41,7 @@ afterEach(() => {
 	stores = [];
 });
 
-function fixture(name: string): unknown {
+function fixture(name: string): object {
 	return JSON.parse(
 		readFileSync(
 			fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)),

@@ -253,7 +253,7 @@ export async function runIacBackendConformanceSuite({ adapter, program }) {
 }
 
 export function validateIacProgram(program) {
-  if (!program || typeof program !== "object") {
+  if (!isRecord(program)) {
     throw new CrossplaneProgramError("invalid-program", "IacProgram must be an object");
   }
   if (program.apiVersion !== IAC_PROGRAM_API_VERSION) {
@@ -415,7 +415,7 @@ function resolveStackOutputs(stackOutputs, resources) {
 }
 
 function resolveValue(value, resources) {
-  const match = typeof value === "string" ? OUTPUT_REF.exec(value) : undefined;
+  const match = isString(value) ? OUTPUT_REF.exec(value) : undefined;
   if (!match) return structuredClone(value);
 
   const [, resourceName, outputName] = match;
@@ -423,7 +423,7 @@ function resolveValue(value, resources) {
 }
 
 function validateOutputReference(value, resources) {
-  if (typeof value !== "string" || !value.startsWith("${resources.")) {
+  if (!isString(value) || !value.startsWith("${resources.")) {
     return;
   }
 
@@ -450,7 +450,7 @@ function stableJson(value) {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableJson(item)).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (isRecord(value)) {
     return `{${Object.keys(value)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
@@ -473,11 +473,11 @@ function deepMerge(left, right) {
 }
 
 function isPlainObject(value) {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+  return isRecord(value);
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isRecord(value) || Object.isFrozen(value)) {
     return value;
   }
 
@@ -486,4 +486,12 @@ function deepFreeze(value) {
     deepFreeze(child);
   }
   return value;
+}
+
+function isRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

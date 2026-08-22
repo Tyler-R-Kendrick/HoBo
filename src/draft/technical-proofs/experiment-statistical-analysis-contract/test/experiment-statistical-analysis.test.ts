@@ -40,7 +40,6 @@ function plannedExperimentDefinition(seq, overrides = {}) {
     analysisPlan: {
       multipleComparisons: "bonferroni",
       peekingProtection: "locked-schedule",
-      lookSchedule: [{ seq }],
       ...requestedPlan,
       lookSchedule: requestedPlan.lookSchedule ?? [{ seq }]
     }

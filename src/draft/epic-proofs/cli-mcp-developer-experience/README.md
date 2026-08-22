@@ -50,6 +50,7 @@ What this proves:
 - CLI command registry and MCP tools stay parity-checked.
 - App-dev, GitOps, SecOps, SRE, and DevOps role journeys run against deterministic mocked boundaries.
 - Credential hardening, SVID-bound MCP calls, local-dev fidelity labels, and operations manifests fail closed when scoped too broadly.
+- The validated MCP server hardening proof is included in this rollup; its deterministic simulation contract is unchanged.
 - Pact fixture inventory matches the boundaries the simulation exercises.
 
 Mocked boundaries:
@@ -68,6 +69,18 @@ Contracts:
 - `contracts/pacts/identity-policy-boundary.pact.json`
 - `contracts/pacts/operations-manifest-boundary.pact.json`
 
+## Cascade absorption
+
+The anonymous preview proof replaced broad runtime type checks with exact
+object and string tags. The CLI/MCP rollup's bounded preview path, policy
+denials, and runtime projection contracts remain unchanged and continue to be
+covered by the existing deterministic simulation.
+
+The dev-loop, login, logs, doctor, and up-convergence proof changes are
+absorbed without changing the bounded CLI/MCP journeys or fail-closed gates.
+
+
+Operations-manifest changes are absorbed without changing the bounded CLI/MCP journeys or fail-closed gates.
 
 ## Architecture Evidence
 
@@ -79,3 +92,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Cli Mcp Developer Experience.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The `vscode-extension-contract` technical proof refresh is absorbed without changing the CLI/MCP experience evidence.

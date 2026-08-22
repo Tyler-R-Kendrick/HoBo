@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unknown-returns -- assertion helper intentionally accepts throwing callbacks. */
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
@@ -196,3 +197,4 @@ describe("verifyPackManifest", () => {
 		assert.ok(!manifest.signingPayload.includes('"signature"'));
 	});
 });
+/* eslint-disable anti-slop/no-unknown-returns -- assertion helper intentionally accepts throwing callbacks. */

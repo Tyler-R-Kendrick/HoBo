@@ -30,7 +30,7 @@ export function validateDocsJson(docs) {
   const errors = [];
   const warnings = [];
 
-  if (!docs || typeof docs !== "object" || Array.isArray(docs)) {
+  if (!isObjectRecord(docs)) {
     return { ok: false, errors: ["docs.json must be an object"], warnings };
   }
   if (docs.schema !== OPERATIONS_DOCS_SCHEMA) {
@@ -52,7 +52,7 @@ export function validateDocsJson(docs) {
     ["routes", docs.routes ?? []],
   ]) {
     for (const entry of collection) {
-      if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      if (!isObjectRecord(entry)) {
         errors.push(`${collectionName} entries must be objects`);
         continue;
       }
@@ -239,7 +239,7 @@ function safeDescription(description) {
 }
 
 function hasDescription(description) {
-  return typeof description === "string" && description.trim().length > 0;
+  return isString(description) && description.trim().length > 0;
 }
 
 function metadataWarningsFor(tool) {
@@ -252,7 +252,7 @@ function metadataWarningsFor(tool) {
 
 function requireStringFields(errors, collectionName, entry, fields) {
   for (const field of fields) {
-    if (typeof entry[field] !== "string" || !entry[field].trim()) {
+    if (!isString(entry[field]) || !entry[field].trim()) {
       errors.push(`${collectionName} entry missing ${field}`);
     }
   }
@@ -260,7 +260,7 @@ function requireStringFields(errors, collectionName, entry, fields) {
 
 function requireObjectFields(errors, collectionName, entry, fields) {
   for (const field of fields) {
-    if (!entry[field] || typeof entry[field] !== "object" || Array.isArray(entry[field])) {
+    if (!isObjectRecord(entry[field])) {
       errors.push(`${collectionName} entry missing ${field}`);
     }
   }
@@ -282,8 +282,16 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (value && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype) {
+  if (isObjectRecord(value) && Object.getPrototypeOf(value) === Object.prototype) {
     return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
   }
   return value;
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

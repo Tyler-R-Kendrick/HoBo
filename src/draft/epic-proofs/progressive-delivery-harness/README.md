@@ -4,6 +4,12 @@ Epic: Progressive Delivery - The Harness (`122f5e0a-30d6-4949-9285-9441d18c36d9`
 
 This reference implementation rolls up the Harness POCs into one runnable, epic-scoped architecture slice. It is not production code. It demonstrates how HoBo's progressive delivery core composes feature flags, delivery orchestration, SLO gates, experiment analysis, policy obligations, and rollback hardening through mocked service boundaries.
 
+## Included Lower-Layer Proofs
+
+- [`hobo-experiment-port`](../../technical-proofs/hobo-experiment-port) — typed experiment assignment, exposure, and conclusion events used by the experiment leg.
+- The validated experiment-statistical-analysis proof remains included; its guardrail simulation is unchanged.
+- Experiment-port changes are absorbed without changing assignment, exposure, or conclusion semantics.
+
 ## Vertical Slice
 
 ```gherkin
@@ -63,6 +69,8 @@ See:
 - [simulation/README.md](./simulation/README.md)
 
 
+The openexperiment runtime-data and policy-gated flag changes are absorbed without changing assignment, exposure, rollout, or fail-closed gating semantics.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by
@@ -71,3 +79,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Progressive Delivery Harness.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The SDK-flag, SLO-gated rollback, SLO-promotion, and stuck-rollout technical proof refreshes are absorbed without changing progressive-delivery evidence.

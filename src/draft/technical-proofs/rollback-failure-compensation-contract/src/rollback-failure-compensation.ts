@@ -1,4 +1,6 @@
 import { randomUUID } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const TERMINAL_STATUSES = new Set(["rolled-back", "needs-human"]);
 
@@ -192,8 +194,8 @@ export function replayRollbackCompensation(events, plan = []) {
       attemptsByStep,
       latestResultsByStep,
       autoRevertObligation,
-      ...(needsHuman ? { needsHuman } : {}),
-      ...(rolledBack ? { rolledBack } : {}),
+      ...(needsHuman ? { needsHuman } : undefined),
+      ...(rolledBack ? { rolledBack } : undefined),
     },
   });
 }
@@ -258,7 +260,7 @@ function rollbackEvent({ rollback, type, data, seq, now, idFactory }) {
 }
 
 function parseRollback(rollback) {
-  if (!rollback || typeof rollback !== "object" || Array.isArray(rollback)) {
+  if (!rollback || !isJsonObject(rollback) || Array.isArray(rollback)) {
     throw new Error("rollback must be an object");
   }
 
@@ -280,7 +282,7 @@ function parsePlan(plan) {
 
   const seen = new Set();
   return deepFreeze(plan.map((step, index) => {
-    if (!step || typeof step !== "object" || Array.isArray(step)) {
+    if (!step || !isJsonObject(step) || Array.isArray(step)) {
       throw new Error(`rollback plan step ${index} must be an object`);
     }
     const id = assertNonEmptyString(step.id, `rollback plan step ${index}.id`);
@@ -323,13 +325,13 @@ function nextSeq(events) {
 }
 
 function assertExecutor(executor) {
-  if (!executor || typeof executor.apply !== "function") {
+  if (!executor || !(executor.apply instanceof Function)) {
     throw new Error("executor.apply(command) is required");
   }
 }
 
 function assertNonEmptyString(value, path) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${path} must be a non-empty string`);
   }
 
@@ -344,7 +346,7 @@ function cloneJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
 

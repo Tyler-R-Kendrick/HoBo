@@ -64,6 +64,8 @@ Feature: Fail-closed data-plane adversarial behavior
 - Existing POC contract modules are imported and executed for CQRS, replay/live, GraphQL, search, raw access, auth/flag read-sets, and crypto-shred behavior.
 - Focused package tests exercise the reference service, negative/adversarial cases, and Pact inventory.
 - Pact files declare every service boundary used by the simulation.
+- Domain-event-body and event-body-upcaster changes are absorbed without changing replay/live or projection behavior.
+- GraphQL facade runtime changes are absorbed without changing materialization or read consistency behavior.
 
 ## What Is Mocked
 
@@ -77,6 +79,8 @@ Feature: Fail-closed data-plane adversarial behavior
 No live external service, network call, credential, customer data, or production token is required.
 
 
+Projection-consistency, change-feed, reactor, and reads-your-writes changes are absorbed without changing replay, materialization, or read-consistency behavior.
+
 ## Architecture Evidence
 
 This package ships the architecture-guard evidence required by
@@ -85,3 +89,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Data Plane Event Sourcing Cqrs Reactivity.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The `search-extension-packages-contract` and `snapshot-replay-divergence-contract` refreshes are absorbed without changing event-sourcing or replay evidence.

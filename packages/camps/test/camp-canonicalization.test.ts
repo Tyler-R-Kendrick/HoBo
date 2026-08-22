@@ -11,6 +11,7 @@
  */
 
 import { CAMP_TIERS } from "@hobo/core";
+/* oxlint-disable anti-slop/no-shape-in-symbol-names, anti-slop/no-unknown-parameters, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-unknown-returns, anti-slop/no-unsafe-dictionary-type -- SAFETY: test helpers intentionally inspect controlled canonicalization fixtures. */
 import { describe, expect, it } from "vitest";
 
 import {

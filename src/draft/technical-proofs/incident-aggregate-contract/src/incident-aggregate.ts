@@ -51,17 +51,18 @@ export function makeIncidentEvent(
   assertNonEmptyString(incidentId, "incidentId");
   assertNonEmptyString(correlationId, "correlationId");
 
-  return {
+  const event = {
     id,
     type,
     correlationId,
-    ...(causationId ? { causationId } : {}),
     occurredAt: occurredAt ?? new Date(0).toISOString(),
     payload: {
       incidentId,
       ...payload,
     },
   };
+  if (causationId) event.causationId = causationId;
+  return event;
 }
 
 export function deriveIncidentOpenEvents(signals, existingIncidents = []) {
@@ -240,7 +241,7 @@ function recordSlaBreach(state, event) {
 }
 
 function validateIncidentEvent(event) {
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
+  if (!event || Object.prototype.toString.call(event) !== "[object Object]" || Array.isArray(event)) {
     throw new Error("incident event must be an object");
   }
   assertIncidentEventType(event.type);
@@ -258,7 +259,7 @@ function validateOpenedPayload(payload) {
 }
 
 function validateSourceSignal(signal) {
-  if (!signal || typeof signal !== "object" || Array.isArray(signal)) {
+  if (!signal || Object.prototype.toString.call(signal) !== "[object Object]" || Array.isArray(signal)) {
     throw new Error("signal must be an object");
   }
   assertNonEmptyString(signal.id, "signal id");
@@ -283,12 +284,13 @@ function signalRef(signal) {
 }
 
 function timelineEntry(event) {
-  return {
+  const entry = {
     id: event.id,
     type: event.type,
     occurredAt: event.occurredAt,
-    ...(event.causationId ? { causationId: event.causationId } : {}),
   };
+  if (event.causationId) entry.causationId = event.causationId;
+  return entry;
 }
 
 function earliestOccurredAt(events) {
@@ -308,7 +310,7 @@ function freezeIncident(state) {
 }
 
 function assertNonEmptyString(value, label) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (Object.prototype.toString.call(value) !== "[object String]" || value.trim().length === 0) {
     throw new Error(`${label} must be a non-empty string`);
   }
 }

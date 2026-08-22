@@ -32,8 +32,8 @@ function median(values: readonly number[]): number {
 	const sorted = [...values].sort((a, b) => a - b);
 	const mid = Math.floor(sorted.length / 2);
 	return sorted.length % 2 === 1
-		? (sorted[mid] as number)
-		: ((sorted[mid - 1] as number) + (sorted[mid] as number)) / 2;
+		? (sorted[mid] ?? Number.NaN)
+		: ((sorted[mid - 1] ?? Number.NaN) + (sorted[mid] ?? Number.NaN)) / 2;
 }
 
 function readRows(): Row[] {
@@ -43,6 +43,7 @@ function readRows(): Row[] {
 		.filter((line) => line.trim().length > 0)
 		.flatMap((line) => {
 			try {
+				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 				return [JSON.parse(line) as Row];
 			} catch {
 				return [];
@@ -62,7 +63,8 @@ if (rows.length < 2) {
 	process.exit(0);
 }
 
-const latest = rows[rows.length - 1] as Row;
+const latest = rows.at(-1);
+if (!latest) process.exit(0);
 const prior = rows.slice(
 	Math.max(0, rows.length - 1 - TRAILING),
 	rows.length - 1,
@@ -74,7 +76,7 @@ const summary: string[] = [];
 for (const [id, current] of Object.entries(latest.medians ?? {})) {
 	const history = prior
 		.map((r) => r.medians?.[id])
-		.filter((n): n is number => typeof n === "number" && Number.isFinite(n));
+		.filter((n): n is number => n !== undefined && Number.isFinite(n));
 	if (history.length === 0 || !Number.isFinite(current)) continue;
 	const baseline = median(history);
 	const delta = current - baseline;

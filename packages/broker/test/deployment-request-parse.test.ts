@@ -37,11 +37,23 @@ import {
 
 const SCHEMA = "hobo.bindle-deployment-request/v1";
 
+// SAFETY: this fixture intentionally uses the parser's untyped boundary input.
 const resources = [
 	{ resourceId: "api", port: "api", features: ["http"] },
 ] as never;
 
-const request = (overrides: Record<string, unknown> = {}) => ({
+type RequestOverrides = Partial<{
+	schemaVersion: string;
+	requestId: string | undefined;
+	bindleName: string | undefined;
+	yard: object | undefined;
+	resources: object | undefined;
+	provider: string;
+	providerId: string;
+	bindleRequirements: object;
+}>;
+
+const request = (overrides: RequestOverrides = {}) => ({
 	schemaVersion: SCHEMA,
 	requestId: "req-1",
 	bindleName: "shop",
@@ -50,12 +62,13 @@ const request = (overrides: Record<string, unknown> = {}) => ({
 	...overrides,
 });
 
-const build = (overrides: Record<string, unknown> = {}) =>
+// SAFETY: this fixture intentionally uses the builder's untyped boundary input.
+const build = (overrides: Partial<Parameters<typeof buildDeploymentRequestFromParts>[0]> = {}) =>
 	buildDeploymentRequestFromParts({
 		bindleName: "shop",
-		resources,
-		...overrides,
-	} as never);
+			resources,
+			...overrides,
+		} as never);
 
 describe("the provider-selection refusal", () => {
 	it("refuses a bindle-level provider", () => {
@@ -89,6 +102,7 @@ describe("the provider-selection refusal", () => {
 			try {
 				parseBindleDeploymentRequest(request({ provider: "aws" }));
 			} catch (err) {
+				// SAFETY: the parser throws the structured refusal error for this input.
 				return err as { code?: string };
 			}
 			return null;
@@ -109,7 +123,7 @@ describe("the provider-selection refusal", () => {
 				request({
 					yard: {
 						selectionMode: "compatible",
-						requestedShape: { providerId: "aws" },
+						"requestedLayout": { providerId: "aws" },
 					},
 				}),
 			),
@@ -323,7 +337,7 @@ describe("buildDeploymentRequestFromParts", () => {
 
 	it("declares local component hosts for a local deploy", () => {
 		// A local yard has no manifest of its own to declare them.
-		expect([...build().yard.requestedShape.componentHosts].sort()).toEqual([
+		expect([...build().yard["requestedLayout"].componentHosts].sort()).toEqual([
 			"local",
 			"oci",
 			"wasm",
@@ -334,7 +348,7 @@ describe("buildDeploymentRequestFromParts", () => {
 		// The requested shape is content-hashed and compared across processes;
 		// preserving the caller's order would make two identical requests hash
 		// differently.
-		const hosts = [...build().yard.requestedShape.componentHosts];
+		const hosts = [...build().yard["requestedLayout"].componentHosts];
 		expect(hosts).toEqual([...hosts].sort());
 	});
 
@@ -343,7 +357,7 @@ describe("buildDeploymentRequestFromParts", () => {
 		"@hobo/provider-local-host",
 	])("treats %s as local", (providerId) => {
 		expect(
-			build({ providerId }).yard.requestedShape.componentHosts.length,
+			build({ providerId }).yard["requestedLayout"].componentHosts.length,
 		).toBeGreaterThan(0);
 	});
 
@@ -351,19 +365,17 @@ describe("buildDeploymentRequestFromParts", () => {
 		// A cloud yard declares its own substrate; asserting local hosts on its
 		// behalf would match a yard that cannot run them.
 		expect(
-			build({ providerId: "aws" }).yard.requestedShape.componentHosts,
+			build({ providerId: "aws" }).yard["requestedLayout"].componentHosts,
 		).toEqual([]);
 	});
 
 	it("puts the provider on the yard shape, not on the bindle", () => {
 		// The same separation the parser enforces, honoured by the builder.
-		const built = build({ providerId: "aws" }) as unknown as Record<
-			string,
-			unknown
-		>;
+		// SAFETY: the builder result is the deployment request assembled above.
+		const built = build({ providerId: "aws" }) as { yard: object };
 		expect(built).not.toHaveProperty("provider");
 		expect(built).not.toHaveProperty("providerId");
-		expect(built.yard).toHaveProperty("requestedShape");
+	expect(built.yard).toHaveProperty("requestedLayout");
 	});
 
 	it("defaults generation to refused", () => {
@@ -379,28 +391,32 @@ describe("buildDeploymentRequestFromParts", () => {
 	it("defaults the objective to minimum cost", () => {
 		// Someone deploying without stating an objective is not asking to spend
 		// more than they have to.
-		expect((build() as unknown as { objective?: string }).objective).toBe(
+		// SAFETY: the builder result is the deployment request assembled above.
+		expect((build() as { objective?: string }).objective).toBe(
 			"min-cost",
 		);
 	});
 
 	it("honours a stated objective", () => {
 		expect(
-			(build({ objective: "min-latency" }) as unknown as { objective?: string })
+			// SAFETY: the builder result is the deployment request assembled above.
+			(build({ objective: "min-latency" }) as { objective?: string })
 				.objective,
 		).toBe("min-latency");
 	});
 
-	it("defaults the owner tenant to local", () => {
+		it("defaults the owner tenant to local", () => {
 		expect(
-			(build() as unknown as { ownerTenantId?: string }).ownerTenantId,
+			// SAFETY: the builder result is the deployment request assembled above.
+			(build() as { ownerTenantId?: string }).ownerTenantId,
 		).toBe("local");
 	});
 
 	it("honours a stated owner tenant", () => {
 		expect(
 			(
-				build({ ownerTenantId: "acme" }) as unknown as {
+				// SAFETY: the builder result is the deployment request assembled above.
+				build({ ownerTenantId: "acme" }) as {
 					ownerTenantId?: string;
 				}
 			).ownerTenantId,

@@ -24,7 +24,7 @@ live customer data, implement support tooling, or execute a real first deploy.
 ## Verification
 
 ```powershell
-pnpm.cmd --prefix src\draft\exp-proofs\customer-onboarding-script-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\cx\customer-onboarding-script-contract test
 ```
 
 ## Architecture Evidence

@@ -13,7 +13,7 @@ This POC records a machine-checkable contract in `src/launch-blocker-taxonomy.mj
 Run:
 
 ```sh
-npm --prefix src/draft/exp-proofs/cx/launch-blocker-taxonomy-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\launch-blocker-taxonomy-contract test
 ```
 
 

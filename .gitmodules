@@ -2,3 +2,4 @@
 	path = external/ts-autocode
 	url = https://github.com/Tyler-R-Kendrick/ts-autocode.git
 	branch = main
+	ignore = untracked

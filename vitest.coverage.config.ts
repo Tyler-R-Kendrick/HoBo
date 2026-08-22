@@ -186,6 +186,20 @@ export default defineConfig({
 				 *
 				 * Packages under 50 statements are not gated: the percentages swing
 				 * too far on a single line to mean anything.
+				 *
+				 * Picking what to cover next: rank files by *uncovered branches in
+				 * a full-package run*, reading `.coverage/coverage-summary.json`
+				 * after `vitest run --config vitest.coverage.config.ts <package>`.
+				 *
+				 * Do not rank by running one module's own test file and measuring
+				 * that. It answers a different question -- "what does this file's
+				 * dedicated test reach" -- and files with wide incidental coverage
+				 * from elsewhere look far emptier than they are. Measured cost of
+				 * getting this wrong: `harness-session-view.ts` read 86/255 under
+				 * its own test alone and 160 new tests took it to 239/255, but the
+				 * package moved 78.00 -> 78.06. Nearly all of those arms were
+				 * already reached by other suites. The same tranche's per-file
+				 * figures overstated package yield by roughly twenty to one.
 				 */
 				"packages/adapters/**": { statements: 91, branches: 84, functions: 97, lines: 93 },
 				"packages/auth-md/**": { statements: 87, branches: 80, functions: 83, lines: 88 },

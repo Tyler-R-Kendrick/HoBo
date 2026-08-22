@@ -8,6 +8,10 @@ production code. It proves the public router contract with mocked service
 boundaries, Protobuf/CUE architecture evidence, Pact-style fixtures, and a
 deterministic simulation harness.
 
+## Cascade reconciliation
+
+The referenced `cost-degradation-saga-contract` technical proof was refreshed in the latest technical-proof commit; this rollup retains the existing budget-routing simulation and scope.
+
 ## Vertical Slices
 
 ```gherkin
@@ -86,6 +90,7 @@ npm.cmd --prefix src/draft/epic-proofs/finops-budget-routing-control-plane test
 - Stability decisions are deterministic against pinned routing history.
 - Pact-style fixtures name every mocked boundary.
 - DX, OpsX, and FinX views share one DecisionGraph id.
+- The validated cost-degradation saga proof is included in this rollup; its deterministic simulation contract is unchanged.
 
 ## What Is Mocked
 

@@ -28,3 +28,6 @@ pnpm --prefix src/draft/epic-proofs/s1-10-conformance-trust-boundary test
 
 Protobuf + CUE under `architecture/`; PACT contracts under `pacts/`.
 Parse boundaries: `src/runtime-port/parse.ts`, `src/component-host/parse.ts`.
+# Cascade reconciliation
+
+The referenced `component-host-conformance-suite` technical proof was refreshed in the latest technical-proof commit; this rollup retains the existing conformance-trust-boundary scope and evidence.

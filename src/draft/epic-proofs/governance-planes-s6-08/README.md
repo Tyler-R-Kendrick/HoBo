@@ -7,6 +7,10 @@ one runnable reference architecture. Promotes scenarios from
 `src/draft/epic-proofs/generation-pipeline-training-ai-safety/` without
 importing unmerged production packages.
 
+## Cascade reconciliation
+
+The referenced `capability-indexed-discovery-contract` technical proof was refreshed in the latest technical-proof commit; this rollup retains its certified-listing governance scope and simulation.
+
 ## Stage-6 evidence (acceptance)
 
 | Evidence item | Proven behavior |
@@ -55,6 +59,7 @@ pnpm --prefix src/draft/epic-proofs/governance-planes-s6-08 test
 - Policy plane (`evaluateDataGovernancePolicy`, `decideGuardrailStep`)
 - Crypto-shred keyring + append-only log
 - Capability discovery index (Registry + Matching projection)
+- The validated capability-indexed discovery proof is included in this rollup; its deterministic simulation contract is unchanged.
 - Consent registry (in-memory fixture)
 
 ## Architecture evidence

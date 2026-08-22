@@ -263,7 +263,7 @@ export default defineConfig({
 				"packages/rift/**": { statements: 91, branches: 86, functions: 91, lines: 93 },
 				"packages/runtime/**": { statements: 89, branches: 83, functions: 88, lines: 89 },
 				"packages/runtimes/**": { statements: 74, branches: 68, functions: 76, lines: 74 },
-				"packages/schema-tools/**": { statements: 87, branches: 76, functions: 94, lines: 89 },
+				"packages/schema-tools/**": { statements: 87, branches: 78, functions: 94, lines: 90 },
 				"packages/sdk/**": { statements: 96, branches: 89, functions: 98, lines: 96 },
 				"packages/stage-gate/**": { statements: 88, branches: 91, functions: 91, lines: 88 },
 				"packages/stations/**": { statements: 95, branches: 91, functions: 98, lines: 95 },

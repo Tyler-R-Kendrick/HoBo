@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased event and policy boundary values before remediation decisions. */
 import {
   actionApplied,
   actionProposed,
@@ -394,3 +395,4 @@ function deepFreeze(value) {
   }
   return Object.freeze(value);
 }
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased event and policy boundary values before remediation decisions. */

@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased contract values at the validation boundary. */
+
 import { createHash } from "node:crypto";
 
 import {

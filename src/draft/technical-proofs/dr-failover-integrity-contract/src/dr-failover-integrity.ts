@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased failover candidates and checkpoints at their shared input boundary. */
+
 import {
   buildDisasterRecoveryPostmortem,
   orchestrateDisasterRecovery,

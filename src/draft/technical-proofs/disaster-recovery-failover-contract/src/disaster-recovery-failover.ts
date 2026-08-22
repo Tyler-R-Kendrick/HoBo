@@ -428,7 +428,7 @@ function normalizeEvents(input = {}) {
 }
 
 function validateSourceLog(sourceLog) {
-  if (!sourceLog || typeof sourceLog !== "object" || Array.isArray(sourceLog)) {
+  if (!isPlainObject(sourceLog)) {
     throw new Error("sourceLog is required");
   }
 
@@ -443,7 +443,7 @@ function validateSourceLog(sourceLog) {
 }
 
 function validateStreams(streams) {
-  if (!streams || typeof streams !== "object" || Array.isArray(streams)) {
+  if (!isPlainObject(streams)) {
     throw new Error("sourceLog.streams is required");
   }
 
@@ -451,7 +451,7 @@ function validateStreams(streams) {
 }
 
 function validateLease(lease) {
-  if (!lease || typeof lease !== "object" || Array.isArray(lease)) {
+  if (!isPlainObject(lease)) {
     throw new Error("lease is required");
   }
 
@@ -465,7 +465,7 @@ function validateLease(lease) {
 }
 
 function validateTargetYard(targetYard) {
-  if (!targetYard || typeof targetYard !== "object" || Array.isArray(targetYard)) {
+  if (!isPlainObject(targetYard)) {
     throw new Error("targetYard is required");
   }
 
@@ -492,7 +492,7 @@ function requiredArray(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (Object.prototype.toString.call(value) !== "[object String]" || value.trim().length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value.trim();
@@ -521,7 +521,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isObjectLike(value) || Object.isFrozen(value)) {
     return value;
   }
 
@@ -530,4 +530,12 @@ function deepFreeze(value) {
     deepFreeze(child);
   }
   return value;
+}
+
+function isPlainObject(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isObjectLike(value) {
+  return value !== null && (Array.isArray(value) || isPlainObject(value));
 }

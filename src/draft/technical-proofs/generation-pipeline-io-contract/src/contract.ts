@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased generation-contract values at the shared runtime boundary. */
+
 const genRequestSchema = "hobo.gen.request/v1";
 const genResultSchema = "hobo.gen.result/v1";
 const digestPattern = /^sha256:[a-f0-9]{64}$/;

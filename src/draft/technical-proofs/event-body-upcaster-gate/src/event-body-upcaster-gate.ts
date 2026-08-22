@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased event-body values at the schema validation and canonicalization boundaries. */
 import { createHash } from "node:crypto";
 
 export const EVENT_BODY_UPCASTER_GATE_SCHEMA = "hobo.event-body-upcaster-gate/v1";

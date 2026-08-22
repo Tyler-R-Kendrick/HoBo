@@ -299,21 +299,21 @@ function eventKey(event) {
 }
 
 function normalizeClient(client) {
-  if (!client || typeof client.push !== "function") {
+  if (!client || Object.prototype.toString.call(client.push) !== "[object Function]") {
     throw new TypeError("client must expose push(event)");
   }
   return client;
 }
 
 function assertObject(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!isPlainObject(value)) {
     throw new TypeError(`${field} must be an object`);
   }
   return value;
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (Object.prototype.toString.call(value) !== "[object String]" || value.trim() === "") {
     throw new TypeError(`${field} must be a non-empty string`);
   }
   return value;
@@ -330,7 +330,7 @@ function deepFreeze(value) {
   if (Array.isArray(value)) {
     return Object.freeze(value.map(deepFreeze));
   }
-  if (value && typeof value === "object") {
+  if (isObjectLike(value)) {
     return Object.freeze(Object.fromEntries(Object.entries(value).map(([key, child]) => [key, deepFreeze(child)])));
   }
   return value;
@@ -340,5 +340,13 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+}
+
+function isPlainObject(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isObjectLike(value) {
+  return value !== null && (Array.isArray(value) || isPlainObject(value));
 }

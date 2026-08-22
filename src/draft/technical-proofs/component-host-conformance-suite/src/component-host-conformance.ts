@@ -444,7 +444,7 @@ function sameValue(left, right) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (Object.prototype.toString.call(value) !== "[object String]" || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -454,11 +454,15 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  const cloneValue = globalThis.structuredClone;
+  return Object.prototype.toString.call(cloneValue).endsWith("Function]")
+    ? cloneValue(value)
+    : JSON.parse(JSON.stringify(value));
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  const tag = Object.prototype.toString.call(value);
+  if (tag !== "[object Object]" && tag !== "[object Array]") {
     return value;
   }
   for (const child of Object.values(value)) {

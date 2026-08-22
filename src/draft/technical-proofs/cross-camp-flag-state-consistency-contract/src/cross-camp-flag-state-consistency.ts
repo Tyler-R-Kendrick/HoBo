@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased input and clone contracts at the shared parser/serialization boundaries. */
 import {
   replayFlagEvents,
   validateFlagEvent

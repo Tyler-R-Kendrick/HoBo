@@ -331,24 +331,24 @@ function createProfile(base, overrides) {
     ...overrides,
     host: {
       ...base.host,
-      ...(overrides.host ?? {}),
+      ...overrides.host,
     },
     wasiInterfaces: [...(overrides.wasiInterfaces ?? base.wasiInterfaces)],
     determinism: {
       ...base.determinism,
-      ...(overrides.determinism ?? {}),
+      ...overrides.determinism,
     },
     supportedHostOptions: [...(overrides.supportedHostOptions ?? base.supportedHostOptions)],
     hostBehaviorOverrides: {
       ...base.hostBehaviorOverrides,
-      ...(overrides.hostBehaviorOverrides ?? {}),
+      ...overrides.hostBehaviorOverrides,
     },
     nonCoveredDivergences: [...(overrides.nonCoveredDivergences ?? base.nonCoveredDivergences)],
   });
 }
 
 function normalizeProfile(profile, fieldName) {
-  if (!profile || typeof profile !== "object") {
+  if (!isPlainObject(profile)) {
     throw new TypeError(`${fieldName} is required`);
   }
   requireNonEmptyString(profile.id, `${fieldName}.id`);
@@ -412,13 +412,13 @@ function camelToKebab(value) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isNonEmptyString(value)) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isObjectLike(value) || Object.isFrozen(value)) {
     return value;
   }
   Object.freeze(value);
@@ -426,4 +426,16 @@ function deepFreeze(value) {
     deepFreeze(child);
   }
   return value;
+}
+
+function isPlainObject(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isObjectLike(value) {
+  return value !== null && (Array.isArray(value) || isPlainObject(value));
+}
+
+function isNonEmptyString(value) {
+  return Object.prototype.toString.call(value) === "[object String]" && value.length > 0;
 }

@@ -150,6 +150,7 @@ test("Gatekeeper apply-time policy remains outside broker receipt integrity", ()
     verifyResolutionReceipt({
       context,
       receipt: buildSignedResolutionReceiptFixture(context, {
+        // SAFETY: this deliberately invalid fixture reaches the runtime refusal path.
         gatekeeperBoundary: "policy-before-receipt" as never,
       }),
       now: fixedNow(),

@@ -83,12 +83,11 @@ export function buildControlPlanePolicyRequest({
       id: operation.resourceId ?? operation.actionId,
     },
     phase: operation.phase,
-    context: {
-      ...(operation.context ?? {}),
+    context: Object.assign({}, operation.context, {
       actionId: operation.actionId,
       command: operation.command,
       surface: operation.surface,
-    },
+    }),
   });
 }
 
@@ -100,7 +99,7 @@ export async function guardControlPlaneSideEffect({
   auditSink,
   sideEffect,
 } = {}) {
-  if (typeof sideEffect !== "function") {
+  if (!isFunction(sideEffect)) {
     throw new TypeError("sideEffect must be a function");
   }
 
@@ -174,5 +173,9 @@ function missing(route, reason) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return Object.prototype.toString.call(value) === "[object String]" && value.trim().length > 0;
+}
+
+function isFunction(value) {
+  return Object.prototype.toString.call(value) === "[object Function]";
 }

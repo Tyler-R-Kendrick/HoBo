@@ -80,7 +80,7 @@ export interface CertifiedListingDescriptor {
     name: string;
     version: string;
   };
-  capabilitySpec: unknown;
+  capabilitySpec: Record<string, string | number | boolean | null>;
   matching: {
     regions: string[];
     classifications: string[];
@@ -105,8 +105,16 @@ export interface ListingYankedEvent {
   occurredAt?: string;
 }
 
+export type CapabilityEventValue =
+  | string
+  | number
+  | boolean
+  | null
+  | CapabilityEventValue[]
+  | { [key: string]: CapabilityEventValue };
+
 export interface CapabilityDiscoveryIndex {
-  apply(event: ListingCertifiedEvent | ListingYankedEvent | { type: string; [key: string]: unknown }): {
+  apply(event: ListingCertifiedEvent | ListingYankedEvent | { type: string; [key: string]: CapabilityEventValue }): {
     applied: boolean;
     listingId?: string;
     reason?: string;

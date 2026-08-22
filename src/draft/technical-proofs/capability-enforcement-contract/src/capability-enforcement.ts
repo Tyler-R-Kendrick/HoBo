@@ -32,7 +32,7 @@ export class CapabilityDeniedError extends Error {
 }
 
 export function inferCapabilityUsage({ sourceText, fileName = "bindle.ts" }) {
-  if (typeof sourceText !== "string") {
+  if (!isString(sourceText)) {
     throw new TypeError("sourceText must be a string");
   }
 
@@ -109,7 +109,7 @@ export function inferCapabilityUsage({ sourceText, fileName = "bindle.ts" }) {
 }
 
 export function evaluateCapabilityGrants({ sourceText, manifest, fileName = "bindle.ts" }) {
-  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+  if (!isRecord(manifest)) {
     throw new TypeError("manifest must be an object");
   }
 
@@ -301,7 +301,7 @@ class CapabilityRuntime {
 
     const provider = this.#requireProvider(link.providerId);
     const implementation = provider.exports?.[link.exportInterface]?.[operation];
-    if (typeof implementation !== "function") {
+    if (!isFunction(implementation)) {
       throw new CapabilityDeniedError("capability.operation-not-found", {
         componentId,
         importInterface,
@@ -395,7 +395,7 @@ function grantKey(componentId, importInterface) {
 }
 
 function assertId(id, kind) {
-  if (typeof id !== "string" || id.length === 0) {
+  if (!isString(id) || id.length === 0) {
     throw new Error(`capability.${kind}-id-required`);
   }
 }
@@ -425,11 +425,27 @@ function lineAt(lineStarts, index) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!isObjectLike(value)) {
     return value;
   }
   for (const child of Object.values(value)) {
     deepFreeze(child);
   }
   return Object.freeze(value);
+}
+
+function isRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isObjectLike(value) {
+  return Array.isArray(value) || isRecord(value);
+}
+
+function isFunction(value) {
+  return Object.prototype.toString.call(value) === "[object Function]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

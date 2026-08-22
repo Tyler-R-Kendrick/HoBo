@@ -25,6 +25,12 @@
 | Offline import integrity | `src/draft/technical-proofs/offline-import-integrity-contract` | HOBO-397 | Sovereign Yard operator | Import a signed offline bundle | Air-gap import | Offline import | registry-offline-import | verified | implemented_in_reference_impl | Keeps revocation, anti-rollback, transparency, and zero-egress checks. |
 | Resource Pack distribution | `src/draft/technical-proofs/resource-pack-distribution-contract` | HOBO-228 | Platform engineer | Install a certified provider listing | Certified install | Artifact repository, trust and policy gate | registry-artifact-repository, registry-trust-policy | verified | implemented_in_reference_impl | Related provider POC accepted because Resource Packs are explicitly in this epic scope. |
 
+## Cascade absorptions
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/hobo-add-install-verification-contract` | latest validated leaf hardening | Install verification and registry trust evidence unchanged. |
+
 ## Adversarial findings
 
 - Digest mismatch across mirrors must abort before cost ranking; otherwise a cheaper mirror becomes a substitution attack.

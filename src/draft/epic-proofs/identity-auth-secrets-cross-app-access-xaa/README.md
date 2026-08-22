@@ -76,6 +76,7 @@ Feature: Recover and observe identity control planes
 - The reference service executes deterministic versions of the accepted Identity/XAA scenarios.
 - Every modeled boundary has a Pact decision and mocked provider fixture.
 - The tests assert positive paths and fail-closed adversarial cases: forged workload, wrong issuer, revoked session, confused-deputy delegation, replay, expired static key, and plaintext leakage.
+- Auth JSON, JWT-SVID, and PrincipalRef changes are absorbed without changing credential ordering, trust, or audit behavior.
 
 ## What Is Mocked
 

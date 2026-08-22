@@ -69,6 +69,7 @@ What this proves:
 - Offline import uses in-boundary mocks and no live network.
 - The validated registry-publish-flow proof is included in this rollup; its deterministic simulation contract is unchanged.
 - The validated capability-indexed discovery proof is included in this rollup; its deterministic simulation contract is unchanged.
+- Install-verification changes are absorbed without changing registry trust, offline import, or selection behavior.
 - The validated curated-catalog-policy and distributed-artifact-version-policy proofs are included in this rollup; their deterministic simulation contracts are unchanged.
 - Mirror cost tie-break runs only after digest identity verification.
 

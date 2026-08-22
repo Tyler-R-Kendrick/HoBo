@@ -39,3 +39,5 @@ Allowed reference implementation statuses: `not_started`, `in_progress`, `implem
 |---|---|---|
 | `src/draft/technical-proofs/deny-ceiling-algebra-poc` | latest validated leaf hardening | Deny-ceiling simulation and Pact evidence unchanged. |
 | `src/draft/technical-proofs/gatekeeper-verify-contract` | latest validated leaf hardening | Gatekeeper verification simulation and Pact evidence unchanged. |
+
+| `src/draft/technical-proofs/governance-conformance-suite-contract` | latest validated leaf hardening | Governance replay and conformance evidence unchanged. |

@@ -306,7 +306,7 @@ function validateProviderTrustConfig(flow) {
   if (!isPlainObject(flow.trust)) {
     return "oidc-federation flow requires trust.oidcDiscovery";
   }
-  if (typeof flow.trust.oidcDiscovery !== "string" || flow.trust.oidcDiscovery.length === 0) {
+  if (!isString(flow.trust.oidcDiscovery) || flow.trust.oidcDiscovery.length === 0) {
     return "oidc-federation flow requires trust.oidcDiscovery";
   }
 
@@ -324,7 +324,7 @@ function validateProviderTrustConfig(flow) {
 }
 
 function requireTrustField(flow, field, providerName) {
-  if (typeof flow[field] !== "string" || flow[field].length === 0) {
+  if (!isString(flow[field]) || flow[field].length === 0) {
     return `${providerName} flow requires ${field}`;
   }
   return null;
@@ -531,7 +531,7 @@ function emitEvents(eventSink, events) {
 }
 
 function requireProviderSts(providerSts) {
-  if (!providerSts || typeof providerSts.exchange !== "function") {
+  if (!providerSts || !isCallable(providerSts.exchange)) {
     throw new Error("OIDC federation broker requires providerSts.exchange(input)");
   }
   return providerSts;
@@ -545,7 +545,7 @@ function normalizePositiveInteger(input, field) {
 }
 
 function requireString(input, field) {
-  if (typeof input !== "string" || input.length === 0) {
+  if (!isString(input) || input.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return input;
@@ -571,7 +571,7 @@ function base64UrlJson(input) {
 
 function digest(input) {
   return createHash("sha256")
-    .update(typeof input === "string" ? input : JSON.stringify(input))
+    .update(isString(input) ? input : JSON.stringify(input))
     .digest("hex");
 }
 
@@ -583,10 +583,24 @@ function defaultIdFactory() {
 function isPlainObject(input) {
   return (
     input !== null &&
-    typeof input === "object" &&
+    isObjectRecord(input) &&
     !Array.isArray(input) &&
     (Object.getPrototypeOf(input) === Object.prototype || Object.getPrototypeOf(input) === null)
   );
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isCallable(value) {
+  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
+    Object.prototype.toString.call(value),
+  );
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }
 
 function clone(input) {

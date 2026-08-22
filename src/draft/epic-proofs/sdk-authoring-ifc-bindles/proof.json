@@ -5,7 +5,8 @@
   "linear": "HOBO-600",
   "references": {
     "technicalProofs": [
-      "src/draft/technical-proofs/hobo-runtime-ts-primitives"
+      "src/draft/technical-proofs/hobo-runtime-ts-primitives",
+      "src/draft/technical-proofs/hobo-code-dsl-contract"
     ],
     "epicProofs": [],
     "expProofs": [

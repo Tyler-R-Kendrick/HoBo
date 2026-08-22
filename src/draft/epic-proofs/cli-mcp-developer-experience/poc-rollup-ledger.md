@@ -43,6 +43,11 @@ Changes to referenced experience proofs that this rollup has taken in.
 | `src/draft/exp-proofs/dx/secops-policy-audit-journey-contract` | `data-models/proof.cue` | none |
 | `src/draft/exp-proofs/dx/sre-drift-remediation-journey-contract` | `data-models/proof.cue` | none |
 | `src/draft/technical-proofs/anonymous-preview-path-contract` | anti-slop object/string boundary cleanup | Anonymous preview normalization and canonicalization retain the same bounded hosted-preview behavior and remain covered by the existing identity/policy and runtime projection evidence. |
+| `src/draft/technical-proofs/hobo-dev-loop-contract` | latest validated leaf hardening | Dev-loop replay and projection evidence unchanged. |
+| `src/draft/technical-proofs/hobo-doctor-contract` | latest validated leaf hardening | Doctor health-check behavior unchanged. |
+| `src/draft/technical-proofs/hobo-login-claim-contract` | latest validated leaf hardening | Login/claim credential-reference behavior unchanged. |
+| `src/draft/technical-proofs/hobo-logs-cli-contract` | latest validated leaf hardening | Logs projection behavior unchanged. |
+| `src/draft/technical-proofs/hobo-up-convergence-contract` | latest validated leaf hardening | Up-convergence and fail-closed gate behavior unchanged. |
 
 All of these are the same edit, applied across 58 draft proofs at once. Each
 ships a `data-models/proof.proto` declaring `message ProofIdentity { string

@@ -93,6 +93,7 @@ What this proves:
 - The validated Crossplane backend proof is included in this rollup; its simulation contract is unchanged.
 - The validated generateProvider loop proof is included in this rollup; its simulation and Pact evidence are unchanged.
 - The latest generateProvider loop validation is absorbed; its simulation and Pact evidence remain unchanged.
+- Crossplane and Pulumi backend changes are absorbed without changing preview, apply, refresh, or controller-driven behavior.
 - The same multi-cloud shop Bindle remains unchanged across AWS and Azure fixtures.
 
 Mocked boundaries:

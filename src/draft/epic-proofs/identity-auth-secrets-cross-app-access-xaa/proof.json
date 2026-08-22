@@ -4,7 +4,11 @@
   "title": "Identity, Auth, Secrets & Cross-App Access (XAA)",
   "linear": "HOBO-44",
   "references": {
-    "technicalProofs": [],
+    "technicalProofs": [
+      "src/draft/technical-proofs/hobo-auth-json-contract",
+      "src/draft/technical-proofs/hobo-jwt-svid-contract",
+      "src/draft/technical-proofs/hobo-principal-ref-contract"
+    ],
     "epicProofs": [],
     "expProofs": [],
     "designDocs": []

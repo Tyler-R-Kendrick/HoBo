@@ -41,6 +41,9 @@ Changes to referenced experience proofs that this rollup has taken in.
 | Referenced proof | Change | Effect on this rollup |
 |---|---|---|
 | `src/draft/exp-proofs/dx/svid-cross-tenant-guard-contract` | `data-models/proof.cue` | none |
+| `src/draft/technical-proofs/hobo-auth-json-contract` | latest validated leaf hardening | Signed manifest and broker fixture behavior unchanged. |
+| `src/draft/technical-proofs/hobo-jwt-svid-contract` | latest validated leaf hardening | Workload SVID trust and claim behavior unchanged. |
+| `src/draft/technical-proofs/hobo-principal-ref-contract` | latest validated leaf hardening | Principal serialization and policy subject behavior unchanged. |
 
 All of these are the same edit, applied across 58 draft proofs at once. Each
 ships a `data-models/proof.proto` declaring `message ProofIdentity { string

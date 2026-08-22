@@ -76,6 +76,9 @@ object and string tags. The CLI/MCP rollup's bounded preview path, policy
 denials, and runtime projection contracts remain unchanged and continue to be
 covered by the existing deterministic simulation.
 
+The dev-loop, login, logs, doctor, and up-convergence proof changes are
+absorbed without changing the bounded CLI/MCP journeys or fail-closed gates.
+
 
 ## Architecture Evidence
 

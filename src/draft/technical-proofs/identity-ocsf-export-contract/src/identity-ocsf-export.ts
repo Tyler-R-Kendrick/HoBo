@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these guards establish the runtime shapes at the export and serialization boundaries before the domain projection or recursive freeze. */
+
 import { createHash } from "node:crypto";
 
 import {

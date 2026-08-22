@@ -65,6 +65,7 @@ Feature: Gate live fixes and generated-stack propagation
 - The focused package test exercises the reference service, negative cases, and Pact inventory.
 - Pact files declare every service boundary used by the simulation.
 - Bounded repair, LLM fill, material sanitization, and generation-pipeline IO changes are absorbed without weakening the safety gates.
+- Generation safety-gate, validation-stage, and human-approval changes are absorbed without changing the deterministic safety simulation.
 
 ## What Is Mocked
 

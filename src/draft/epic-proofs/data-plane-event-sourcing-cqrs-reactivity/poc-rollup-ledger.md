@@ -46,6 +46,7 @@ each one did or did not move.
 | Referenced proof | Change | Effect on this rollup |
 |---|---|---|
 | `src/draft/technical-proofs/deterministic-replay-engine` | `architecture/replay_report.cue` was unparseable — every line of every definition body carried a leading `#`, which is a definition sigil in CUE and not a comment, so the file had never been read by any tool that claims to check it. Repaired, and the divergence guard was then replaced. | No disposition, evidence path, or Linear link moves. The `Replay/live equivalence spike` row's `promoting_via_hobo_601` disposition and its `assertReplayEqualsLive` promotion target are unchanged. |
+| `src/draft/technical-proofs/graphql-facade-runtime-contract` | latest validated leaf hardening | GraphQL materialization and read-consistency simulation unchanged. |
 
 The guard change is the part that is not merely cosmetic. `#ReplayDivergence`
 carried `if live_state_digest == replay_state_digest { _conflict: "divergence

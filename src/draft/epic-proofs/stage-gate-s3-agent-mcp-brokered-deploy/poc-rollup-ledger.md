@@ -19,3 +19,9 @@
 | NFR-017 self-correction | `selfCorrection.followedSteps` |
 | High-risk approval gate | `prodDeployBlocked.decision.effect` |
 | request_token bounded by .allow() | `overBroadToken.ok === false`, `overBroadToken.error.code === "MCP_SCOPE_DENIED"` |
+
+## Cascade absorptions
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/hobo-auth-json-contract` | latest validated leaf hardening | Signed auth fixture and brokered-token evidence unchanged. |

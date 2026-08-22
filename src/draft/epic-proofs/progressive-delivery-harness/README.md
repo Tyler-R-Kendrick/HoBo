@@ -8,6 +8,7 @@ This reference implementation rolls up the Harness POCs into one runnable, epic-
 
 - [`hobo-experiment-port`](../../technical-proofs/hobo-experiment-port) — typed experiment assignment, exposure, and conclusion events used by the experiment leg.
 - The validated experiment-statistical-analysis proof remains included; its guardrail simulation is unchanged.
+- Experiment-port changes are absorbed without changing assignment, exposure, or conclusion semantics.
 
 ## Vertical Slice
 

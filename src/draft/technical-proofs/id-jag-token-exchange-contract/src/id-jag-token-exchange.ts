@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased request, JSON claim, and nested subject values at the trust boundary before domain normalization. */
+
 export const ID_JAG_DRAFT_VERSION = "draft-ietf-oauth-identity-assertion-authz-grant-04";
 export const ID_JAG_SCHEMA_ID =
   "https://hobo.dev/schemas/identity/id-jag-token-exchange.v1.json";
@@ -110,7 +112,7 @@ export function createFixtureIdJag(input) {
     subject: normalizeDelegatedSubject(input.subject),
     grant_profile: ID_JAG_GRANT_PROFILE,
     idJagDraftVersion: ID_JAG_DRAFT_VERSION,
-    ...(input.extraClaims ?? {}),
+    ...input.extraClaims,
   };
 
   if (claims.exp <= claims.iat) {

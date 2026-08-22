@@ -61,6 +61,14 @@ No disposition, evidence path, Linear link, or acceptance claim in the table
 above moves. No proof in this epic identifies itself with an empty slug, so
 nothing that validated before stops validating.
 
+## Cascade absorptions
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/generation-safety-gate-contract` | latest validated leaf hardening | Safety-gate simulation and Pact evidence unchanged. |
+| `src/draft/technical-proofs/generation-validation-stage-contract` | latest validated leaf hardening | Validation-stage simulation and replay evidence unchanged. |
+| `src/draft/technical-proofs/human-approval-generation-gate-contract` | latest validated leaf hardening | Approval-required behavior and safety evidence unchanged. |
+
 ## Adversarial Scope Review
 
 | Review area | Decision |

@@ -79,6 +79,7 @@ Mocked boundaries:
 - RBAC Directory: fixture-backed role grants.
 - Audit Log/Event Projection: in-memory append-only evidence list.
 - Governance Conformance Suite: local replay of recorded Gatekeeper evidence.
+- Governance-conformance changes are absorbed without changing the deterministic replay or fail-closed policy behavior.
 
 Contracts:
 

@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish the erased mTLS contract at its parser boundary before handshake evaluation. */
+
 export const MTLS_DATA_PATH_SCHEMA_VERSION = "hobo.mtls-data-path/v1";
 
 const SPIFFE_SEGMENT_PATTERN = /^[A-Za-z0-9._-]+$/;

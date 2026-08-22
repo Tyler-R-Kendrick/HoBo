@@ -39,6 +39,7 @@ Changes to referenced experience proofs that this rollup has taken in.
 | Referenced proof | Change | Effect on this rollup |
 |---|---|---|
 | `src/draft/exp-proofs/dx/devops-canary-rollout-journey-contract` | `data-models/proof.cue` | none |
+| `src/draft/technical-proofs/hobo-experiment-port` | latest validated leaf hardening | Assignment, exposure, and conclusion evidence unchanged. |
 
 All of these are the same edit, applied across 58 draft proofs at once. Each
 ships a `data-models/proof.proto` declaring `message ProofIdentity { string

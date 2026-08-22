@@ -65,6 +65,7 @@ Feature: Fail-closed data-plane adversarial behavior
 - Focused package tests exercise the reference service, negative/adversarial cases, and Pact inventory.
 - Pact files declare every service boundary used by the simulation.
 - Domain-event-body and event-body-upcaster changes are absorbed without changing replay/live or projection behavior.
+- GraphQL facade runtime changes are absorbed without changing materialization or read consistency behavior.
 
 ## What Is Mocked
 

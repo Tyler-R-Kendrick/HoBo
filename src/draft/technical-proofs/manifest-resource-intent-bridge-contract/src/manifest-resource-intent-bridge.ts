@@ -1,4 +1,8 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this check parses untrusted manifest annotation values before lowering. */
 export const MANIFEST_SCHEMA = "hobo.manifest/v1";
+
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+type JsonObject = { [key: string]: JsonValue };
 
 const FORBIDDEN_INTENT_KEYS = new Set([
   "provider",
@@ -18,7 +22,7 @@ export type ManifestResource = {
   allow?: string[];
   bind?: string[];
   links?: Array<{ import?: string; to?: string }>;
-  annotations?: Record<string, unknown>;
+  annotations?: JsonObject;
 };
 
 export type HoboManifest = {

@@ -13,7 +13,7 @@ The authoritative design record is
 Run the focused proof with:
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\upgrade-migration-scope-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\upgrade-migration-scope-contract test
 ```
 
 The tests prove:

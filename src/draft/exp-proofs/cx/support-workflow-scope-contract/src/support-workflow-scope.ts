@@ -307,7 +307,7 @@ export function canCreateSupportWorkflowFollowUp({
   };
 }
 
-export function classifySupportWorkflowDecision(decision: unknown) {
+export function classifySupportWorkflowDecision(decision: string) {
   const text = String(decision ?? "").toLowerCase();
 
   if (/\b(helpdesk|ticket automation|support portal|queue automation|zendesk|intercom)\b/.test(text)) {

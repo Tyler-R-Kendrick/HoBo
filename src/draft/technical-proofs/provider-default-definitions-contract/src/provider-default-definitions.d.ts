@@ -1,3 +1,5 @@
+type ProviderValue = string | number | boolean | null | ProviderValue[] | { [key: string]: ProviderValue };
+
 export type ProviderCapability = {
   type: string;
   satisfies: string[];
@@ -7,14 +9,14 @@ export type ProviderEquivalence = {
   resourceClass: string;
   driver: string;
   satisfies: string[];
-  options?: Record<string, unknown>;
+  options?: Record<string, ProviderValue>;
 };
 
 export interface RealizationOutput {
   type: string;
   resourceClass: string;
   driver: string;
-  with: Record<string, unknown>;
+  with: Record<string, ProviderValue>;
 }
 
 export type Provider = {
@@ -34,14 +36,14 @@ export interface ProviderDefaultDefinition {
   satisfies: string[];
   match: Record<string, string>;
   priority?: number;
-  with: Record<string, unknown>;
+  with: Record<string, ProviderValue>;
   equivalence: {
     providerResourceClass: string;
   };
   realization: {
     resourceClass: string;
     driver: string;
-    with: Record<string, unknown>;
+    with: Record<string, ProviderValue>;
   };
 }
 

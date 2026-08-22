@@ -13,6 +13,13 @@
  * up front rather than after the auth check and the occupancy check have
  * already run.
  *
+ * Note on how the *accepting* side is probed: `dev` with a valid port is not
+ * a test you can run to completion. It clears the check, binds, and starts
+ * serving — the call never returns. So a good port is paired with a bad
+ * *debug* port instead: the usage refusal still fires, which can only happen
+ * if the good one cleared the check first. That also proves the ordering
+ * without needing a separate "gets past the gate" case.
+ *
  * **An unknown flag is a refusal, not a shrug.** A dropped flag runs a
  * command the user did not type, and on a CLI whose verbs include ones that
  * write, that is not a cosmetic failure. `--port -1` is the sharp case: the
@@ -118,23 +125,40 @@ describe("validating a port before starting anything", () => {
 
 	it("accepts port zero, which means ask the OS", async () => {
 		// Zero is a legitimate request for an ephemeral port, and rejecting it
-		// would break the one way to run two dev servers at once. It gets past
-		// the range check and fails later for an unrelated reason.
-		expect((await run(["dev", "--port", "0"])).code).not.toBe(
-			"HOBO_CODE_DEV_USAGE",
-		);
+		// would break the one way to run two dev servers at once.
+		//
+		// Probed by pairing it with a debug port that IS out of range: the
+		// usage refusal still fires, which can only happen if `0` itself
+		// cleared the check. Running `dev --port 0` on its own is not a usable
+		// probe -- it clears the check, binds an ephemeral port and starts
+		// serving, so the call never returns.
+		expect(
+			(await run(["dev", "--port", "0", "--debug-port", "99999"])).code,
+		).toBe("HOBO_CODE_DEV_USAGE");
+	});
+
+	it("names the port range rather than the specific bad value", async () => {
+		// Both ports go through one check, so the message describes the rule.
+		// A message naming only the debug port would leave someone who mistyped
+		// the other one reading a refusal that looks unrelated.
+		expect(
+			(await run(["dev", "--port", "0", "--debug-port", "99999"])).message,
+		).toMatch(/0 through 65535/);
 	});
 
 	it("accepts the top of the range", async () => {
-		expect((await run(["dev", "--port", "65535"])).code).not.toBe(
-			"HOBO_CODE_DEV_USAGE",
-		);
+		// Same probe as port zero, and for the same reason: a valid port
+		// clears the check and goes on to start a server, so it has to be
+		// paired with an invalid debug port to be observable at all.
+		expect(
+			(await run(["dev", "--port", "65535", "--debug-port", "99999"])).code,
+		).toBe("HOBO_CODE_DEV_USAGE");
 	});
 
-	it("gets past the port check to a real failure with valid ports", async () => {
-		// Proves the check is a gate and not the only thing the verb does: with
-		// good ports it goes on and fails on the station instead.
-		expect((await run(["dev"])).code).toBe("HOBO_CODE_DEV_FAILED");
+	it("accepts the top of the debug-port range too", async () => {
+		expect(
+			(await run(["dev", "--port", "99999", "--debug-port", "65535"])).code,
+		).toBe("HOBO_CODE_DEV_USAGE");
 	});
 });
 

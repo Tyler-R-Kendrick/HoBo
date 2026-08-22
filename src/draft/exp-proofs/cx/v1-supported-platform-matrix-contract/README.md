@@ -29,5 +29,5 @@ These are M0 schema/contract evidence only; no device lab, browser grid, or live
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\v1-supported-platform-matrix-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\v1-supported-platform-matrix-contract test
 ```

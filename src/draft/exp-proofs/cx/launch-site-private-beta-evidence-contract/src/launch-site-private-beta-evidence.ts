@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this validator rejects non-object values at the erased proof boundary before reading contract fields. */
+
 const REQUIRED_DEMO_ASSETS = new Set([
   "claim-index",
   "demo-script",

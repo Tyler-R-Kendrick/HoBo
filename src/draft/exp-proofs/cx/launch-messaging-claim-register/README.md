@@ -26,7 +26,7 @@ scope creep.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\launch-messaging-claim-register test
+npm.cmd --prefix src\draft\exp-proofs\cx\launch-messaging-claim-register test
 ```
 
 ## Scope Boundary

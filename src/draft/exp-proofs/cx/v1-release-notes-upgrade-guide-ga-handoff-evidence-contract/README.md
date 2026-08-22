@@ -8,7 +8,7 @@ support SLAs.
 ## Focused Gate
 
 ```powershell
-pnpm.cmd --prefix src\draft\v1-release-notes-upgrade-guide-ga-handoff-evidence-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\cx\v1-release-notes-upgrade-guide-ga-handoff-evidence-contract test
 ```
 
 ## Proof Surface

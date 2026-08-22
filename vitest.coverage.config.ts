@@ -233,7 +233,12 @@ export default defineConfig({
 				"packages/pixel-village/**": { statements: 58, branches: 57, functions: 60, lines: 59 },
 				"packages/policy/**": { statements: 97, branches: 95, functions: 100, lines: 97 },
 				"packages/providers/provider-aws/**": { statements: 93, branches: 80, functions: 98, lines: 93 },
-				"packages/providers/provider-ax/**": { statements: 95, branches: 70, functions: 100, lines: 100 },
+				// Branches sit below the 80 target by construction, not by neglect.
+				// `engine.ts` defends against trajectory shapes that
+				// `parseOptimizeRequest` already refuses upstream (an orphan root
+				// span, an absent reward, a missing rubric or contract), so those
+				// `??` arms are unreachable through the port — verified one by one.
+				"packages/providers/provider-ax/**": { statements: 95, branches: 72, functions: 100, lines: 100 },
 				"packages/providers/provider-azure/**": { statements: 94, branches: 80, functions: 98, lines: 94 },
 				"packages/providers/provider-browser-wasm/**": { statements: 87, branches: 83, functions: 92, lines: 87 },
 				"packages/providers/provider-cloudflare/**": { statements: 90, branches: 80, functions: 93, lines: 91 },

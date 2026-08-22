@@ -2676,31 +2676,6 @@ export interface RunInteractiveShellOptions {
 	readonly maxMs?: number;
 	/** Inject keys for tests (skips raw mode). */
 	readonly scriptedKeys?: string;
-	/**
-	 * Route `scriptedKeys` through the global input listener first, the way a
-	 * live TTY read does, instead of straight to `handleKey`.
-	 *
-	 * The default path calls `handleKey(sequence)` directly, which means the
-	 * listener's own routing — attached-pane forwarding, Ctrl+C, the modal
-	 * gates — is skipped entirely and cannot be tested. Every branch in that
-	 * listener returns `{consume:true}`, so replaying a key through it and
-	 * falling back to `handleKey` only when it declines reproduces the live
-	 * dispatch order.
-	 *
-	 * **It does not reproduce live editor state.** A real TTY types into the
-	 * pi-tui Editor, so `input.text()` holds the composed line; the scripted
-	 * path composes into `state.input` instead and leaves the Editor empty.
-	 * Listener branches guarded on `input.text().length` — Esc-clears-the-line,
-	 * the Enter-attaches-a-pane guard, the bracket and brace navigation guards
-	 * — therefore still take the empty-editor arm whichever flag is set. Those
-	 * belong in a live-TTY test; this seam covers the branches that read shell
-	 * state rather than editor state.
-	 *
-	 * Opt-in rather than the default because the existing scripted tests are
-	 * written against `handleKey` semantics, and flipping them all at once
-	 * would change what they assert rather than extend it.
-	 */
-	readonly scriptedKeysThroughListener?: boolean;
 	/** Test hook: receives the terminal for repaint-economy assertions. */
 	readonly onTerminal?: (terminal: StreamTerminal) => void;
 	/**
@@ -3533,9 +3508,7 @@ export async function runInteractiveShell(
 	// The Editor owns editing keys (backspace, word kill, undo, cursor,
 	// history). The shell claims only true globals, and only when the editor
 	// would not otherwise need them.
-	// Named rather than inline so the scripted driver can replay a key through
-	// the same routing a live TTY read takes. See `scriptedKeysThroughListener`.
-	const globalInputListener = (data: string): { consume: true } | undefined => {
+	tui.addInputListener((data) => {
 		if (quit) return undefined;
 		// Attach: keys → focused leaf inside TV; Ctrl+]/Ctrl+\ leave; [ ] cycle panes.
 		// PgUp/PgDn/Home/End scroll the TV capture (do not forward — otherwise
@@ -3785,8 +3758,7 @@ export async function runInteractiveShell(
 			return { consume: true };
 		}
 		return undefined;
-	};
-	tui.addInputListener(globalInputListener);
+	});
 	tui.setFocus(input.editor);
 	tui.start();
 
@@ -3861,16 +3833,7 @@ export async function runInteractiveShell(
 	if (options.scriptedKeys !== undefined) {
 		for (const sequence of splitKeySequences(options.scriptedKeys)) {
 			if (quit) break;
-			// A live TTY read offers the key to the global listener first and
-			// only reaches the shell's own reduce when the listener declines.
-			// Opt-in so the existing scripted tests keep their semantics.
-			if (options.scriptedKeysThroughListener === true) {
-				if (globalInputListener(sequence)?.consume !== true) {
-					handleKey(sequence);
-				}
-			} else {
-				handleKey(sequence);
-			}
+			handleKey(sequence);
 			// Let submit/slash promises and render scheduling settle per key.
 			await new Promise((resolve) => setTimeout(resolve, 0));
 		}

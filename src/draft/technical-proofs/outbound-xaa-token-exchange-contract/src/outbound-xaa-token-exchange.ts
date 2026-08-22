@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased authorization-server, string, and object contracts at the shared parser boundaries before domain evaluation. */
+
 import {
   buildJwtBearerGrantRequest,
   createFixtureIdJag,

@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased event data at the contract boundary. */
 export const CONTRACT_VERSION = "hobo.reliability-sla-rollup/v1";
 
 const BUILT_IN_TARGETS = [
@@ -162,7 +163,7 @@ export function foldReliabilityRollup(events = []) {
     switch (event.type) {
       case "sla.TargetRatified":
         env.targets[event.data.targetId] = {
-          ...(env.targets[event.data.targetId] ?? {}),
+          ...env.targets[event.data.targetId],
           targetId: event.data.targetId,
           objective: event.data.objective,
           ratification: "ratified",
@@ -171,7 +172,7 @@ export function foldReliabilityRollup(events = []) {
         break;
       case "availability.Estimated":
         env.targets[event.data.targetId] = {
-          ...(env.targets[event.data.targetId] ?? {}),
+          ...env.targets[event.data.targetId],
           targetId: event.data.targetId,
           estimatedAvailability: event.data.estimatedAvailability,
           estimatedAnnualDowntimeMinutes: event.data.estimatedAnnualDowntimeMinutes,
@@ -181,7 +182,7 @@ export function foldReliabilityRollup(events = []) {
         break;
       case "slo.Measured":
         env.targets[event.data.targetId] = {
-          ...(env.targets[event.data.targetId] ?? {}),
+          ...env.targets[event.data.targetId],
           targetId: event.data.targetId,
           observedAvailability: event.data.observedAvailability,
           window: event.data.window,

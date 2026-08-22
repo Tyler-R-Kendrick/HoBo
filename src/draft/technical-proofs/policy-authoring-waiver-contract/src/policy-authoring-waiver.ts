@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased input contracts at the shared parser boundary. */
+
 import {
   buildControlPlaneActionId,
 } from "../../control-plane-action-taxonomy-contract/src/control-plane-action-taxonomy.js";

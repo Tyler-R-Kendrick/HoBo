@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this test builds and inspects erased registry fixtures at the contract boundary. */
 import assert from "node:assert/strict";
 import { createHash } from "node:crypto";
 import { test } from "vitest";

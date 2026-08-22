@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse untrusted registry payloads at the import boundary. */
 import { createHash } from "node:crypto";
 
 import {

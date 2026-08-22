@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased evaluator results, callback inputs, and thrown errors at the fail-closed boundary before branching on their domain shape. */
 import {
   createBuiltInPolicyEngine,
   createGoldenDecisionRequest,

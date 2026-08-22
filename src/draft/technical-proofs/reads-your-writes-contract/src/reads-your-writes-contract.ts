@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased sequence inputs at the shared boundary and select the supported cloning capability. */
+
 import { createCommandRuntime } from "../../cqrs-command-aggregate-contract/src/cqrs-command-aggregate-contract.js";
 import {
   createInMemoryReactor,

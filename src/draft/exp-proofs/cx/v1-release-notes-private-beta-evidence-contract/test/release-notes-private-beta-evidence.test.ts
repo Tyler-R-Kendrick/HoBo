@@ -88,7 +88,8 @@ test("M2 private beta gate completes only when all required evidence is accepted
 
 test("malformed evidence payloads fail closed without throwing", () => {
   const record = assertReleaseNotesPrivateBetaEvidence(RELEASE_NOTES_PRIVATE_BETA_EVIDENCE);
-  const invalid = structuredClone(record) as unknown as {
+  // SAFETY: this test deliberately replaces validated fields with malformed payloads to exercise fail-closed parsing.
+  const invalid = structuredClone(record) as {
     requiredEvidence: unknown[];
     releaseCutline: { dependencies: unknown };
     followUps: unknown;

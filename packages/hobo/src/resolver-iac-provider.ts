@@ -379,11 +379,16 @@ export function createResolverBackedIacProvider(
 		// resolver's own deterministic-name lookup. The visible consequence is
 		// that a re-apply reports `adopt` rather than `noop`, which is the honest
 		// reading — this run did not create the resource and did not know its id.
-		const request = parseResolveRequest({
-			ref: { slot, productId, logicalId: resource.name },
-			desired: resource.realizationParameters ?? {},
-			credentialRef,
-		});
+		// `cloneAsJson` is the way into a parse boundary that takes untrusted
+		// JSON while this caller has already assembled the domain shape: same
+		// value, viewed as the JSON the parser is written against.
+		const request = parseResolveRequest(
+			cloneAsJson({
+				ref: { slot, productId, logicalId: resource.name },
+				desired: resource.realizationParameters ?? {},
+				credentialRef,
+			}),
+		);
 		return { plan: resource, productId, resolver, request };
 	}
 
@@ -411,7 +416,10 @@ export function createResolverBackedIacProvider(
 					changes: 1,
 				};
 			}
-			const observed = parseResolveOutcome(raw);
+			// `cloneAsJson` is the way back through a parse boundary that takes
+			// untrusted JSON while the port hands us the domain type: same value,
+			// viewed as the JSON the parser is written against.
+			const observed = parseResolveOutcome(cloneAsJson(raw));
 			const desiredJson = cloneAsJson(bound.request.desired);
 			const observedJson = cloneAsJson(observed.outputs);
 			const { differing, unobservable } = compareDesired(
@@ -446,8 +454,11 @@ export function createResolverBackedIacProvider(
 			// `parseResolveOutcome` is the parse boundary on the way back: a
 			// provider driver is the least trusted code on the deploy path because
 			// its shape follows a remote API's response.
+			// `cloneAsJson` is the way back through a parse boundary that takes
+			// untrusted JSON while the port hands us the domain type: same value,
+			// viewed as the JSON the parser is written against.
 			const outcome = parseResolveOutcome(
-				await bound.resolver.reconcile(bound.request, transport),
+				cloneAsJson(await bound.resolver.reconcile(bound.request, transport)),
 			);
 			return toIacOutputs(outcome, program.resourceId);
 		},
@@ -500,7 +511,10 @@ export function createResolverBackedIacProvider(
 					),
 				};
 			}
-			const observed = parseResolveOutcome(raw);
+			// `cloneAsJson` is the way back through a parse boundary that takes
+			// untrusted JSON while the port hands us the domain type: same value,
+			// viewed as the JSON the parser is written against.
+			const observed = parseResolveOutcome(cloneAsJson(raw));
 			const outputs = toIacOutputs(observed, program.resourceId);
 			const desiredJson = cloneAsJson(bound.request.desired);
 			const observedJson = cloneAsJson(observed.outputs);

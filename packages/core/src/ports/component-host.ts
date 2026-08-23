@@ -13,16 +13,31 @@ export function parseInterfaceId(raw: string): InterfaceId {
 	return raw as InterfaceId;
 }
 
+/**
+ * A function in a component's or provider's export table.
+ *
+ * The promise arm is not an accommodation — it is what these already are. An
+ * export that calls back into the host (`callImport`) cannot answer
+ * synchronously, and the local runtime awaits every export it invokes. Naming
+ * only the synchronous arm forced each of those exports to be cast on its way
+ * into the table, which is how an `async` function ends up asserted to a
+ * synchronous type: a cast the compiler rightly calls a probable mistake, and
+ * which would have silently hidden a genuinely wrong signature.
+ */
+export type ComponentExport = (
+	...args: JsonValue[]
+) => JsonValue | Promise<JsonValue>;
+
 export interface ComponentDescriptor {
 	id: string;
 	imports: InterfaceId[];
-	exports: Record<string, Record<string, (...args: JsonValue[]) => JsonValue>>;
+	exports: Record<string, Record<string, ComponentExport>>;
 	leases?: string[];
 }
 
 export interface ProviderDescriptor {
 	id: string;
-	exports: Record<string, Record<string, (...args: JsonValue[]) => JsonValue>>;
+	exports: Record<string, Record<string, ComponentExport>>;
 }
 
 export type BoundaryMode = "live";
@@ -82,7 +97,7 @@ export type ComponentHostEvent =
 export interface ComponentInstance {
 	id: string;
 	imports: InterfaceId[];
-	exports: Record<string, Record<string, (...args: JsonValue[]) => JsonValue>>;
+	exports: Record<string, Record<string, ComponentExport>>;
 }
 
 export interface ParsedComponentDescriptor extends ComponentDescriptor {

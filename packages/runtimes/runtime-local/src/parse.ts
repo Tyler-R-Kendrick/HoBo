@@ -1,4 +1,5 @@
 import {
+	type ComponentExport,
 	type InterfaceId,
 	type LinkRequest,
 	type ParsedComponentDescriptor,
@@ -6,7 +7,7 @@ import {
 	parseInterfaceId,
 } from "@hobo/core";
 import { ComponentHostError } from "./errors.js";
-import { isJsonString, type JsonValue } from "./json.js";
+import { isJsonString } from "./json.js";
 
 export type ParsedProviderDescriptor = ProviderDescriptor & {
 	readonly parsed: true;
@@ -26,7 +27,7 @@ function assertNonEmptyId<T>(
 export function parseComponentDescriptor(raw: {
 	id: string;
 	imports?: string[];
-	exports?: Record<string, Record<string, (...args: JsonValue[]) => JsonValue>>;
+	exports?: Record<string, Record<string, ComponentExport>>;
 	leases?: string[];
 }): ParsedComponentDescriptor {
 	const id = assertNonEmptyId(raw.id, "component_id_required");
@@ -42,7 +43,7 @@ export function parseComponentDescriptor(raw: {
 
 export function parseProviderDescriptor(raw: {
 	id: string;
-	exports?: Record<string, Record<string, (...args: JsonValue[]) => JsonValue>>;
+	exports?: Record<string, Record<string, ComponentExport>>;
 }): ParsedProviderDescriptor {
 	const id = assertNonEmptyId(raw.id, "provider_id_required");
 	return Object.freeze({

@@ -256,6 +256,7 @@ export {
 export type {
 	BoundaryMode,
 	ComponentDescriptor,
+	ComponentExport,
 	ComponentHostEvent,
 	ComponentHostPort,
 	ComponentInstance,

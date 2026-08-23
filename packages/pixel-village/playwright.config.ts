@@ -5,11 +5,26 @@
  * retries, ONE worker — every spec boots its own control-api + static server
  * from `scripts/demo-harness.mts` and those bind real ports.
  *
- * Playwright is installed globally in this environment, not in the workspace,
- * so the config and specs import it by absolute path (see PLAYWRIGHT_MODULE).
+ * Playwright is resolved as a workspace module. It used to be imported by an
+ * absolute path into one developer's home directory, which meant the suite
+ * could only run on that one machine -- everywhere else the config failed to
+ * load and `pnpm e2e` reported no tests rather than a missing dependency.
  */
-// @ts-expect-error - global playwright install, resolved by absolute path
-import { defineConfig } from "/home/codex/.local/lib/node_modules/playwright/test.mjs";
+import { defineConfig } from "playwright/test";
+
+/**
+ * Browser binary override.
+ *
+ * Playwright refuses to launch unless the installed browser build matches the
+ * one its own version pins, and an image that ships a browser rarely matches
+ * the version a lockfile resolves to. Rather than hardcode a path -- the
+ * mistake this config used to make with the Playwright module itself -- the
+ * location is taken from the environment when it is set, and left to
+ * Playwright's own resolution when it is not.
+ *
+ *   HOBO_PLAYWRIGHT_CHROMIUM=/opt/pw-browsers/chromium pnpm e2e
+ */
+const chromiumExecutable = process.env.HOBO_PLAYWRIGHT_CHROMIUM;
 
 export default defineConfig({
 	testDir: "./test/e2e",
@@ -38,5 +53,15 @@ export default defineConfig({
 		video: "off",
 		screenshot: "off",
 	},
-	projects: [{ name: "chromium", use: { browserName: "chromium" } }],
+	projects: [
+		{
+			name: "chromium",
+			use: {
+				browserName: "chromium",
+				...(chromiumExecutable
+					? { launchOptions: { executablePath: chromiumExecutable } }
+					: undefined),
+			},
+		},
+	],
 });

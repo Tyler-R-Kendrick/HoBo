@@ -39,9 +39,7 @@ import {
 	stationUp,
 } from "@hobo/management";
 
-const playwright = await import(
-	"/home/codex/.local/lib/node_modules/playwright/index.mjs"
-);
+const playwright = await import("playwright");
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PUBLIC = join(ROOT, "public");

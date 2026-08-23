@@ -18,9 +18,8 @@
  */
 
 import AxeBuilder from "@axe-core/playwright";
+import type { Page } from "playwright";
 import type { PNG } from "pngjs";
-// @ts-expect-error - global playwright install, resolved by absolute path
-import type { Page } from "/home/codex/.local/lib/node_modules/playwright/index.mjs";
 import { type Harness, startHarness } from "../../scripts/demo-harness.mjs";
 import { deriveYardVisualState } from "../../src/entity-state.js";
 import { presentYard } from "../../src/phaser/yard-presenter.js";
@@ -413,8 +412,19 @@ test.describe("axe-core", () => {
 						.join(", "),
 			);
 		}
+		// Name the offending nodes, not just the rule. A contrast failure
+		// reported as "elements must meet minimum contrast" is a finding
+		// nobody can act on without re-running the scan by hand; the selector
+		// and axe's own summary are what turn it into a fix.
 		expect(
-			blocking.map((v) => `${v.id} (${v.impact}): ${v.help}`),
+			blocking.flatMap((v) =>
+				v.nodes.map(
+					(node) =>
+						`${v.id} (${v.impact}) at ${node.target.join(" ")} :: ${
+							node.failureSummary?.replace(/\s+/gu, " ").trim() ?? v.help
+						}`,
+				),
+			),
 			"serious/critical axe violations on the yard's DOM chrome",
 		).toEqual([]);
 	});

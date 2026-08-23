@@ -22,9 +22,17 @@
 	--soot: #262b44;
 	--paper: #c0cbdc;
 	--cream: #d9e0ea;
-	--mute: #52607c;
-	--faint: #52607c;
+	/* Day-theme secondary text. Slate (#52607c) on paper (#c0cbdc) measures
+	   3.85:1 -- below the 4.5:1 WCAG AA floor for normal text -- which axe
+	   flags on .tag, #sheet-desc, #help and every sheet label. slate-deep is
+	   slate darkened toward soot (#262b44); both endpoints are vendored
+	   palette colours, so the family is unchanged and it still reads lighter
+	   than --ink, keeping the hierarchy the muted tokens exist for. */
+	--slate-deep: #3f4a63;
+	--mute: var(--slate-deep);
+	--faint: var(--slate-deep);
 	--border: #8b9bb4;
+	/* Borders are non-text: the 3:1 rule applies and slate passes it. */
 	--border-strong: #52607c;
 	--spark: #c34b35;
 	--go: #84c669;

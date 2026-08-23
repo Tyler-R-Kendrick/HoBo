@@ -1,6 +1,6 @@
 import { randomBytes } from "node:crypto";
 import type { JsonValue } from "@bufbuild/protobuf";
-import { CoreParseError } from "@hobo/core";
+import { CoreParseError, diagnosticJson } from "@hobo/core";
 
 // W3C trace-context (traceparent) parse/format for trajectory capture
 // (IMPL-003 trajectory-capture slice; trace-context-propagation-contract
@@ -40,7 +40,11 @@ export interface TraceContext {
 }
 
 function fail(path: string, expected: string, received: unknown): never {
-	throw new TrajectoryCaptureParseError(path, expected, received);
+	throw new TrajectoryCaptureParseError(
+		path,
+		expected,
+		diagnosticJson(received),
+	);
 }
 
 /** Parses a W3C traceparent header value into its trace context parts. */

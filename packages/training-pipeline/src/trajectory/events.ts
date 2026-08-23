@@ -1,5 +1,5 @@
 import type { EventEnvelope, PrincipalRef } from "@hobo/core";
-import { createEventEnvelope } from "@hobo/core";
+import { createEventEnvelope, diagnosticJson } from "@hobo/core";
 import type { CapturedTrajectory } from "./capture.js";
 import { TrajectoryCaptureParseError } from "./trace-context.js";
 
@@ -40,7 +40,7 @@ export function trajectoryCapturedEvent(
 		throw new TrajectoryCaptureParseError(
 			"trajectory.run",
 			"present",
-			captured.trajectory,
+			diagnosticJson(captured.trajectory),
 		);
 	}
 	const envelope: Parameters<typeof createEventEnvelope>[0] = {

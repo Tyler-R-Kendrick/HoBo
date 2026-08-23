@@ -1,5 +1,6 @@
 import {
 	type HoboPluginManifest,
+	type JsonValue,
 	PLUGIN_MANIFEST_SCHEMA,
 	parsePluginManifest,
 } from "@hobo/core";
@@ -46,11 +47,16 @@ export function definePlugin(spec: DefinePluginSpec): SdkPluginDeclaration {
 	// never drift from what the loader accepts.
 	let manifest: HoboPluginManifest;
 	try {
+		// SAFETY: unchecked spec fields handed to the parser that checks them.
+		// `parsePluginManifest` is the authority on what a manifest may contain,
+		// and the catch below turns its refusal into this declaration's own typed
+		// error. Narrowing here first would restate the loader's rules in the SDK,
+		// which is the drift this call exists to prevent.
 		manifest = parsePluginManifest({
 			schema: PLUGIN_MANIFEST_SCHEMA,
 			entry: record.entry,
 			extensions: record.extensions,
-		});
+		} as JsonValue);
 	} catch (error) {
 		throw new SdkDeclarationError(
 			"definePlugin",

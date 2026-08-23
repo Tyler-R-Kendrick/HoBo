@@ -174,7 +174,16 @@ export function createAxTrainingEngine(
 		engineId,
 		async optimize(request: OptimizeRequest): Promise<TrainingCandidate> {
 			// Parse, don't validate: the boundary re-parses even trusted callers.
-			const parsed = parseOptimizeRequest(request);
+			//
+			// The round-trip is what lets an already-typed `OptimizeRequest` back
+			// through that boundary — `parseOptimizeRequest` takes untrusted JSON,
+			// while the port hands this method the domain type. Serializing is the
+			// honest way across: it is the same value, viewed as the JSON the
+			// parser is written against, with no cast claiming a shape nobody
+			// checked.
+			const parsed = parseOptimizeRequest(
+				JSON.parse(JSON.stringify(request)) as JsonValue,
+			);
 			const ios = parsed.trajectories
 				.map((trajectory) => rootSpanIo(trajectory))
 				.filter((io): io is TrajectoryIo => io !== null);

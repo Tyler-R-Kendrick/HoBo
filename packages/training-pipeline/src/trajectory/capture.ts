@@ -1,5 +1,5 @@
 import type { Trajectory, TrajectoryHash } from "@hobo/core";
-import { hashTrajectory, parseTrajectory } from "@hobo/core";
+import { diagnosticJson, hashTrajectory, parseTrajectory } from "@hobo/core";
 import {
 	formatTraceparent,
 	generateSpanId,
@@ -161,7 +161,11 @@ export interface TrajectoryCapture {
 }
 
 function fail(path: string, expected: string, received: unknown): never {
-	throw new TrajectoryCaptureParseError(path, expected, received);
+	throw new TrajectoryCaptureParseError(
+		path,
+		expected,
+		diagnosticJson(received),
+	);
 }
 
 function nonEmpty(value: unknown, path: string): string {

@@ -218,6 +218,7 @@ export {
 } from "./identity-service.js";
 export {
 	createInMemoryKms,
+	type JsonWebKeySet,
 	JWT_ALGORITHM,
 	type JwtSvidClaims,
 	JwtSvidIssuer,

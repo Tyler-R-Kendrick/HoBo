@@ -202,7 +202,7 @@ export const betaPilotDogfoodAlphaEvidence: BetaPilotDogfoodAlphaEvidence = {
 export function validateDogfoodAlphaEvidence(record: BetaPilotDogfoodAlphaEvidence) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (record == null || Object(record) !== record || Object.prototype.toString.call(record) === "[object Function]") {
     return { ok: false, errors: ["dogfood/alpha evidence record is required"] };
   }
   if (record.issue !== "HOBO-456") {
@@ -261,9 +261,9 @@ export function validateDogfoodAlphaEvidence(record: BetaPilotDogfoodAlphaEviden
   if (record.followUpPolicy?.blanketFollowUpsAllowed) {
     errors.push("blanket follow-up creation is not allowed");
   }
-  const allowedReasons = new Set(record.followUpPolicy?.allowedReasons ?? []);
+  const allowedReasons = new Set<string>(record.followUpPolicy?.allowedReasons ?? []);
   for (const followUp of record.followUpPolicy?.proposedFollowUps ?? []) {
-    if (!allowedReasons.has(followUp.reason as FollowUpReason)) {
+    if (!allowedReasons.has(followUp.reason)) {
       errors.push(`unsupported follow-up reason: ${followUp.reason}`);
     }
     if (!followUp.ownerProject || !followUp.summary) {

@@ -25,15 +25,22 @@ import {
 // control-plane state lands in the per-test dataDir.
 const projectDir = fileURLToPath(new URL("..", import.meta.url));
 
+interface EnvelopeData {
+	deploymentId?: string;
+	planHash?: string;
+	provisioned?: readonly string[];
+	destroyed?: readonly string[];
+}
+
 interface Envelope {
 	ok: boolean;
 	status: string;
 	code?: string;
-	// biome-ignore lint/suspicious/noExplicitAny: test-only envelope reader.
-	data: Record<string, any>;
+	data: EnvelopeData;
 }
 
 function envelope(stdout: string): Envelope {
+	// SAFETY: assertion to `JSON.parse(stdout) as Envelope` is required at this boundary.
 	return JSON.parse(stdout) as Envelope;
 }
 
@@ -164,6 +171,7 @@ describe("self-host-yard", () => {
 	});
 
 	it("realizes and tears down exactly what the operator pact pins", async () => {
+		// SAFETY: assertion to `.parse( await readFile( new URL( "../contracts/pacts/operator-to-yard.pact.json", import.meta.url, ), "utf8", ), ) as { ` is required at this boundary.
 		const pact = JSON.parse(
 			await readFile(
 				new URL(

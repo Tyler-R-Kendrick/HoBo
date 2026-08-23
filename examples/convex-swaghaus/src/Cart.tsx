@@ -1,6 +1,6 @@
 import { api } from "../convex/_generated/api";
 import { useQuery } from "convex/react";
-import { CartItem as CartItem } from "./CartItem";
+import { CartItem } from "./CartItem";
 import { useAuth } from "@workos-inc/authkit-react";
 
 export function Cart() {

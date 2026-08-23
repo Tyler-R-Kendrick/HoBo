@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks validate erased policy-pack values at the shared parser boundary. */
+
 export const SCOPE_ORDER = ["junction", "yard", "camp", "bindle"];
 export const POLICY_PACK_SCHEMA = "hobo.policy-pack/v1";
 export const COMPOSITION_SCHEMA = "hobo.policy-deny-ceiling-composition/v1";

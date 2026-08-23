@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const CONTRACT_ENGINE_PORT = "hobo:contract-engine/contract-engine@0.1.0";
 export const BUILT_IN_ENGINE_ID = "hobo.contract-engine.builtin-pact-style/v1";
 
@@ -23,7 +24,7 @@ export function verifyContractPair({ graph, eventLog = [], producer, consumer, p
   const expectations = deriveConsumerExpectations({ graph, eventLog, producer, consumer });
   const failures = [];
 
-  if (!providedContract || typeof providedContract !== "object") {
+  if (!providedContract || !isJsonObject(providedContract)) {
     failures.push("providedContract must be an object");
   }
 
@@ -75,7 +76,7 @@ export function deriveConsumerExpectations({ graph, eventLog = [], producer, con
     });
 }
 
-export function exportPactBrokerShape({ contractIr, producer, consumer }) {
+export function exportPactBrokerContract({ contractIr, producer, consumer }) {
   const contracts = contractIr.filter(
     (contract) => contract.producer === producer && contract.consumer === consumer,
   );
@@ -114,7 +115,7 @@ export function exportPactBrokerShape({ contractIr, producer, consumer }) {
   };
 }
 
-export function importPactBrokerShape(pact) {
+export function importPactBrokerContract(pact) {
   if (pact?.metadata?.sourceOfTruth === true) {
     throw new Error("Pact imports cannot become the Contract IR source of truth");
   }
@@ -162,11 +163,11 @@ function rejectBehaviorToggle(options) {
 }
 
 function validateContractIr(contract) {
-  if (!contract || typeof contract !== "object") {
+  if (!contract || !isJsonObject(contract)) {
     throw new Error("contract must be an object");
   }
   for (const field of ["id", "kind", "producer", "consumer", "channel", "mode"]) {
-    if (typeof contract[field] !== "string" || contract[field].length === 0) {
+    if (!isJsonString(contract[field]) || contract[field].length === 0) {
       throw new Error(`contract.${field} must be a non-empty string`);
     }
   }
@@ -181,7 +182,7 @@ function validateContractIr(contract) {
 function observedSampleCounts(eventLog) {
   const observed = new Map();
   for (const event of eventLog) {
-    if (event?.type !== "contract.Observed" || typeof event.contractId !== "string") {
+    if (event?.type !== "contract.Observed" || !isJsonString(event.contractId)) {
       continue;
     }
     observed.set(event.contractId, (observed.get(event.contractId) ?? 0) + (event.sampleCount ?? 0));

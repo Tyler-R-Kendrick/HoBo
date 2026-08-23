@@ -50,3 +50,7 @@ pnpm --prefix src/draft/projects/s6-06-finops-plane test
 - `contracts/pacts/finops_plane_boundary.pact.json`
 - `features/finops-plane.feature`
 - `ADR.md`
+
+## Cascade reconciliation (83d9b5c92)
+
+The `showback-attribution-contract` technical proof refresh is absorbed without changing FinOps budget, spend, or showback behavior.

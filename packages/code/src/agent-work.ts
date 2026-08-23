@@ -3,6 +3,7 @@
  * Each claim gets its own rift/worktree branch and a stacked, squash-only
  * delivery policy (incremental checkins → gh stack → squash-merge).
  */
+
 import {
 	existsSync,
 	mkdirSync,
@@ -11,8 +12,8 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-
 import { createIsolationContext } from "./isolation.js";
+import { isJsonString } from "./json.js";
 import type { IsolationKind } from "./types.js";
 
 export interface ClaimableTask {
@@ -67,12 +68,7 @@ export interface ClaimTaskInput {
 	readonly now?: () => string;
 }
 
-export function claimedWorkDeliveryPlan(): {
-	readonly checkins: "incremental";
-	readonly pullRequests: "stacked";
-	readonly merge: "squash";
-	readonly commands: readonly string[];
-} {
+export function claimedWorkDeliveryPlan() {
 	return {
 		...CLAIMED_WORK_DELIVERY,
 		commands: [
@@ -94,8 +90,10 @@ export function listWorkClaims(hoboHome: string): readonly WorkClaim[] {
 	for (const name of readdirSync(dir).sort()) {
 		if (!name.endsWith(".json")) continue;
 		try {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const raw = JSON.parse(
 				readFileSync(join(dir, name), "utf8"),
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			) as Partial<WorkClaim>;
 			const claim = parseWorkClaim(raw);
 			if (claim) claims.push(claim);
@@ -128,11 +126,13 @@ export async function claimTaskForAgent(
 		branch,
 		...(input.forceWorktree !== undefined
 			? { forceWorktree: input.forceWorktree }
-			: {}),
-		...(input.preferRift !== undefined ? { preferRift: input.preferRift } : {}),
+			: undefined),
+		...(input.preferRift !== undefined
+			? { preferRift: input.preferRift }
+			: undefined),
 		...(input.riftAvailable !== undefined
 			? { riftAvailable: input.riftAvailable }
-			: {}),
+			: undefined),
 	});
 	const claim: WorkClaim = {
 		schema: WORK_CLAIM_SCHEMA,
@@ -181,15 +181,14 @@ export function groupTasksUnderAgents<T extends ClaimableTask>(input: {
 
 function parseWorkClaim(raw: Partial<WorkClaim>): WorkClaim | undefined {
 	if (raw.schema !== WORK_CLAIM_SCHEMA) return undefined;
-	if (typeof raw.taskId !== "string" || raw.taskId.length === 0)
-		return undefined;
-	if (typeof raw.agentId !== "string" || raw.agentId.length === 0) {
-		return undefined;
-	}
-	if (typeof raw.runId !== "string" || typeof raw.branch !== "string") {
+	if (!isJsonString(raw.taskId) || raw.taskId.length === 0) return undefined;
+	if (!isJsonString(raw.agentId) || raw.agentId.length === 0) {
 		return undefined;
 	}
-	if (typeof raw.rootPath !== "string") return undefined;
+	if (!isJsonString(raw.runId) || !isJsonString(raw.branch)) {
+		return undefined;
+	}
+	if (!isJsonString(raw.rootPath)) return undefined;
 	if (raw.isolation !== "rift" && raw.isolation !== "worktree")
 		return undefined;
 	if (
@@ -199,7 +198,7 @@ function parseWorkClaim(raw: Partial<WorkClaim>): WorkClaim | undefined {
 	) {
 		return undefined;
 	}
-	if (typeof raw.claimedAt !== "string") return undefined;
+	if (!isJsonString(raw.claimedAt)) return undefined;
 	return {
 		schema: WORK_CLAIM_SCHEMA,
 		taskId: raw.taskId,

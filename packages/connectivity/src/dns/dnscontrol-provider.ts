@@ -71,7 +71,7 @@ export function createDnsControlProvider(options?: {
 					name,
 					type,
 					content,
-					...(ttl !== undefined ? { ttl } : {}),
+					...(ttl !== undefined ? { ttl } : undefined),
 					gatewayTarget,
 				}));
 		},

@@ -1,6 +1,5 @@
 import { mkdirSync } from "node:fs";
 import { join } from "node:path";
-
 import type {
 	AppendOptions,
 	AppendResult,
@@ -27,6 +26,12 @@ import {
 	SnapshotAheadError,
 } from "@hobo/core";
 import { createNodeSqliteDriver, SqliteJournal } from "@hobo/storage-sqlite";
+import {
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "../json.js";
 
 import {
 	type ParsedAppendContext,
@@ -138,7 +143,7 @@ export function createRuntimeLocalEventStore(
 			return storage.subscribe(filter, handler);
 		},
 
-		async snapshot(streamId: string, state: unknown, seq: number) {
+		async snapshot(streamId: string, state: JsonValue, seq: number) {
 			const parsedStreamId = parseStreamId(streamId);
 			const snapshotSeq = parseExpectedSeq(seq, "seq");
 			try {
@@ -223,7 +228,9 @@ export function createRuntimeLocalEventStore(
 
 				try {
 					state = cloneJson(handler(cloneJson(state), cloneJson(event)));
-				} catch (cause) {
+				} catch (caught) {
+					const cause =
+						caught instanceof Error ? caught : new Error(String(caught));
 					const quarantine = await appendQuarantine({
 						storage,
 						streamId: parsedStreamId,
@@ -238,6 +245,7 @@ export function createRuntimeLocalEventStore(
 						quarantineSeq: quarantine.seq,
 						type: quarantine.type,
 						reason: String(
+							// SAFETY: assertion to `quarantine.data as { reason?: string }` is required at this boundary.
 							(quarantine.data as { reason?: string }).reason ?? "",
 						),
 					});
@@ -274,20 +282,29 @@ async function appendQuarantine({
 	storage: SqliteJournal;
 	streamId: string;
 	event: EventEnvelope;
-	cause: unknown;
+	cause: Error;
 	clock: Clock;
 	nextUlid: () => string;
 	quarantinedSeqs: Set<string>;
 }): Promise<EventEnvelope> {
 	const quarantineKey = `${streamId}:${event.seq}`;
-	if (quarantinedSeqs.has(quarantineKey)) {
-		for await (const candidate of storage.read(streamId)) {
-			if (
-				isQuarantineEvent(candidate) &&
-				(candidate.data as { offendingSeq?: number }).offendingSeq === event.seq
-			) {
-				return candidate;
-			}
+	// The stream, not `quarantinedSeqs`, decides whether this event has already
+	// been quarantined. The set lives in one store instance, so it is empty
+	// after a restart — and a fold is not read-only, so re-folding a stream
+	// that contains a poison event is the ordinary case (a projection rebuild,
+	// a replica catching up). Gating this scan on the set meant the second
+	// fold *after a restart* appended a second marker for the same event:
+	// unbounded stream growth on a real clock, and a hard
+	// `UNIQUE constraint failed: events.id` on a manual one. The set is still
+	// the fast path inside a single instance; this is the durable one.
+	for await (const candidate of storage.read(streamId)) {
+		if (
+			isQuarantineEvent(candidate) &&
+			// SAFETY: assertion to `candidate.data as { offendingSeq?: number }` is required at this boundary.
+			(candidate.data as { offendingSeq?: number }).offendingSeq === event.seq
+		) {
+			quarantinedSeqs.add(quarantineKey);
+			return candidate;
 		}
 	}
 
@@ -328,27 +345,29 @@ async function appendQuarantine({
 				type: input.type,
 				v: input.v,
 				data: input.data,
-				meta: input.meta as Record<string, unknown>,
+				// SAFETY: assertion to `input.meta as JsonObject` is required at this boundary.
+				meta: input.meta as JsonObject,
 			},
 		],
 		appendOpts,
 	);
+	// SAFETY: assertion to `result.appended[0] as EventEnvelope` is required at this boundary.
 	return result.appended[0] as EventEnvelope;
 }
 
 function normalizeHandlers<S>(
 	handlers: FoldHandlers<S>,
 ): Map<string, FoldHandlers<S>[string]> {
-	if (!handlers || typeof handlers !== "object" || Array.isArray(handlers)) {
+	if (!handlers || !isJsonObject(handlers) || Array.isArray(handlers)) {
 		throw new TypeError("foldOptions.handlers must be an object");
 	}
-	return new Map(
-		Object.entries(handlers).filter(
-			(entry): entry is [string, FoldHandlers<S>[string]] => {
-				return typeof entry[1] === "function";
-			},
-		),
-	);
+	const entries: Array<[string, FoldHandlers<S>[string]]> = [];
+	for (const [type, handler] of Object.entries(handlers)) {
+		if (handler instanceof Function) {
+			entries.push([type, handler]);
+		}
+	}
+	return new Map(entries);
 }
 
 function isQuarantineEvent(event: EventEnvelope): boolean {
@@ -359,9 +378,12 @@ function cloneJson<T>(value: T): T {
 	if (value === undefined) {
 		return value;
 	}
-	return typeof structuredClone === "function"
-		? structuredClone(value)
-		: (JSON.parse(JSON.stringify(value)) as T);
+	if (structuredClone instanceof Function) {
+		return structuredClone(value);
+	}
+	const cloned = parseJsonValue(JSON.stringify(value));
+	// SAFETY: JSON round-trip preserves the caller-owned event snapshot type.
+	return cloned as T;
 }
 
 function cloneRequired<T>(value: T, fieldName: string): T {

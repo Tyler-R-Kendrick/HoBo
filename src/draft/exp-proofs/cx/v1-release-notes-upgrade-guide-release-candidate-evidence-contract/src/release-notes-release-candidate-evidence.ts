@@ -246,14 +246,14 @@ export const releaseNotesReleaseCandidateEvidence: ReleaseNotesReleaseCandidateE
   publicClaimGuards: [],
 };
 
-export function validateReleaseNotesReleaseCandidateEvidence(record: unknown) {
+export function validateReleaseNotesReleaseCandidateEvidence(record: ReleaseNotesReleaseCandidateEvidenceRecord) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || Object(record) !== record || Object.prototype.toString.call(record) === "[object Function]") {
     return { ok: false, errors: ["release notes release-candidate evidence record is required"] };
   }
 
-  const value = record as Partial<ReleaseNotesReleaseCandidateEvidenceRecord>;
+  const value = record;
   const evidence = Array.isArray(value.evidence) ? value.evidence : [];
   const blockers = Array.isArray(value.blockers) ? value.blockers : [];
   const acceptedRisks = Array.isArray(value.acceptedRisks) ? value.acceptedRisks : [];

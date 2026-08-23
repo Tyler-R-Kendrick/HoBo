@@ -2,6 +2,7 @@
  * Golden Suite oracles for Trails (dual consistency, zero-loss, fail-closed).
  */
 import type { TrailRunResult } from "./runner.js";
+import type { JsonObject } from "./json.js";
 
 // public-contract: trail golden oracle schema.
 export const TRAIL_GOLDEN_SCHEMA = "hobo.trail-golden/v1" as const;
@@ -21,7 +22,7 @@ export type TrailGoldenVerdict = Readonly<{
 	oracle: TrailGoldenOracleId;
 	ok: boolean;
 	summary: string;
-	evidence: Readonly<Record<string, unknown>>;
+	evidence: JsonObject;
 }>;
 
 export function goldenDualConsistency(

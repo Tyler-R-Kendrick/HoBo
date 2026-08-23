@@ -21,7 +21,7 @@ export function hostingerYardRuntimeRegistration(options?: {
 	readonly runtimeId: typeof HOSTINGER_YARD_RUNTIME_ID;
 	readonly providerId: "hostinger";
 	readonly version: string;
-	readonly supportedShape: {
+	readonly supportedCatalog: {
 		readonly regions: readonly string[];
 		readonly capabilities: readonly string[];
 		readonly requireProperties: readonly string[];
@@ -41,7 +41,7 @@ export function hostingerYardRuntimeRegistration(options?: {
 		runtimeId: HOSTINGER_YARD_RUNTIME_ID,
 		providerId: "hostinger",
 		version: "1.0.0",
-		supportedShape: Object.freeze({
+		supportedCatalog: Object.freeze({
 			regions: Object.freeze(["phx", "bos", "ams", "sgp"]),
 			capabilities: Object.freeze([
 				"managed-container-substrate",

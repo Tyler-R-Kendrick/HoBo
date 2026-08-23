@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased websocket, principal, and streamer contract inputs at their shared boundary. */
 import assert from "node:assert/strict";
 
 export const WEBSOCKET_STREAMER_FANOUT_CONTRACT_VERSION = "hobo.websocket-streamer-fanout/v1";

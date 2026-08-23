@@ -2,12 +2,12 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-
 import {
 	CORE_SCHEMA_VERSION,
 	ManifestParseError,
 	parseCapabilityManifestBundle,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
 const fixturesDir = join(dirname(fileURLToPath(import.meta.url)), "fixtures");
 
@@ -46,13 +46,15 @@ describe("CapabilityManifestBundle", () => {
 		try {
 			parseCapabilityManifestBundle(raw);
 		} catch (error) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((error as ManifestParseError).path).toBe("auth.issuer");
 		}
 	});
 
 	it("rejects unknown properties in closed shapes", () => {
 		const bundle = validManifestBundle();
-		(bundle.index as Record<string, unknown>).extra = true;
+		// SAFETY: assertion required at this I/O or test boundary.
+		(bundle.index as JsonObject).extra = true;
 
 		expect(() => parseCapabilityManifestBundle(bundle)).toThrow(
 			ManifestParseError,

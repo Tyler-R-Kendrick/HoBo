@@ -1,4 +1,6 @@
 import { api, kv, queue, type Handler } from "../src/triggers.js";
+import { type JsonValue } from "../src/json.js";
+
 
 const todos = kv("todos");
 const orders = queue("orders");
@@ -9,11 +11,11 @@ async function assertHandlerContextTypes() {
 
   const handler: Handler<Bindings> = async (ctx) => {
     const id: string = ctx.params.id;
-    const item: unknown = await ctx.bindings.todos.get(id);
+    const item: JsonValue = await ctx.bindings.todos.get(id);
     await ctx.bindings.orders.enqueue({ id, item });
 
     // @ts-expect-error only declared bindings are exposed.
-    ctx.bindings.missing;
+    void ctx.bindings.missing;
 
     // @ts-expect-error kv clients do not expose queue operations.
     await ctx.bindings.todos.enqueue({ id });

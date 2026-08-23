@@ -3,6 +3,7 @@
  * Subcommands: status | open
  * Drives shipped ContinuousDeliveryPlane failure path.
  */
+
 import type { CommandModule } from "@hobo/cli";
 import {
 	type ContinuousDeliveryPlane,
@@ -12,6 +13,7 @@ import {
 	type LocalCdFixtures,
 } from "@hobo/cloud";
 import { must } from "@hobo/core/total-access";
+import { isJsonString, type JsonObject } from "./json.js";
 
 export interface IncidentCommandDeps {
 	readonly env?: NodeJS.ProcessEnv;
@@ -26,17 +28,20 @@ export function createIncidentCommand(
 ): CommandModule {
 	return {
 		run: async ({ args, flags, emitProgress }) => {
-			const f = flags as Record<string, unknown>;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const f = flags as JsonObject;
 			const tenant =
-				(typeof f.tenant === "string" && f.tenant) ||
+				(isJsonString(f.tenant) && f.tenant) ||
 				deps.env?.HOBO_TENANT ||
 				"local";
 			const fixtures =
 				deps.fixtures ?? createContractAssertedCdFixtures({ tenant });
 			const plane =
 				deps.plane ?? createContinuousDeliveryPlane({ mode: "simulate" });
+			// SAFETY: assertion required at this I/O or test boundary.
 			const sub = (args[0] ?? "status") as string;
 
+			// SAFETY: assertion required at this I/O or test boundary.
 			if (!(SUBS as readonly string[]).includes(sub)) {
 				return {
 					ok: false,
@@ -71,7 +76,7 @@ export function createIncidentCommand(
 									kind: must(must(last, "last").failure).kind,
 									incidentId: must(must(last, "last").failure).incidentId,
 								}
-							: {}),
+							: undefined),
 						defaultPath: "a2h",
 						selfHealRequires: [
 							"registered-agent",
@@ -83,7 +88,7 @@ export function createIncidentCommand(
 				};
 			}
 
-			const signal = (typeof f.signal === "string" && f.signal) || "slo-burn";
+			const signal = (isJsonString(f.signal) && f.signal) || "slo-burn";
 			const withSelfHeal =
 				f["self-heal"] === true ||
 				f.selfHeal === true ||
@@ -128,7 +133,7 @@ export function createIncidentCommand(
 								return { ok: true, summary: "lane fix proposed" };
 							},
 						}
-					: {}),
+					: undefined),
 			});
 
 			return {
@@ -153,7 +158,7 @@ export function createIncidentCommand(
 									decisionRequired: result.failure.handoff.decisionRequired,
 								},
 							}
-						: {}),
+						: undefined),
 					...(result.failure?.kind === "self-heal-lane"
 						? {
 								laneId: result.failure.lane.laneId,
@@ -162,7 +167,7 @@ export function createIncidentCommand(
 								promotionPath:
 									result.failure.attempt.proposedDelta?.promotionPath,
 							}
-						: {}),
+						: undefined),
 				},
 			};
 		},

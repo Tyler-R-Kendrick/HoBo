@@ -8,7 +8,7 @@
  */
 
 import { describeConcern } from "@hobo/contract-harness";
-import type { EventEnvelope } from "@hobo/core";
+import type { EventEnvelope, JsonObject } from "@hobo/core";
 import {
 	createStatusPageProjection,
 	defaultScopeKey,
@@ -26,9 +26,9 @@ interface EventSpec {
 	readonly ts: string;
 	readonly project?: string;
 	/** The payload, verbatim — including deliberately malformed ones. */
-	readonly data?: Record<string, unknown>;
+	readonly data?: JsonObject;
 	/** An `slo.Measured` with the standard payload, overridden field by field. */
-	readonly slo?: Record<string, unknown>;
+	readonly slo?: JsonObject;
 }
 
 function toEnvelope(spec: EventSpec): EventEnvelope {
@@ -42,12 +42,13 @@ function toEnvelope(spec: EventSpec): EventEnvelope {
 				...spec.slo,
 			}
 		: (spec.data ?? {});
-	return statusEnvelope(spec.type ?? "slo.Measured", data, {
+	const options = {
 		streamId: STREAM,
 		seq: spec.seq,
 		ts: spec.ts,
-		...(spec.project === undefined ? {} : { project: spec.project }),
-	});
+	};
+	if (spec.project !== undefined) options.project = spec.project;
+	return statusEnvelope(spec.type ?? "slo.Measured", data, options);
 }
 
 const fold = (specs: readonly EventSpec[]) =>

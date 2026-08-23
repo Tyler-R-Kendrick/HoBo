@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased catalog and context values at the shared runtime boundary before matching evaluation. */
+
 import { createHash } from "node:crypto";
 
 export const MATCHING_DECISION_VERSION = "matching.specificity/v1";

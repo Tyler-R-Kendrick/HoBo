@@ -30,6 +30,7 @@ export type StreamerConformanceReport = {
 export async function runStreamerConformance(
 	createStreamer: () => Streamer,
 ): Promise<StreamerConformanceReport> {
+	// SAFETY: assertion to `{} as Record<StreamerAssertionName, "pass" | "fail">` is required at this boundary.
 	const assertions = {} as Record<StreamerAssertionName, "pass" | "fail">;
 
 	const runAssertion = async (
@@ -310,8 +311,8 @@ function assertStrictSeqOrder<TChunk>(frames: StreamerFrame<TChunk>[]): void {
 	}
 }
 
-async function expectRejected(
-	promise: Promise<unknown>,
+async function expectRejected<T>(
+	promise: Promise<T>,
 	ErrorClass: new (...args: never[]) => Error,
 ): Promise<void> {
 	try {
@@ -338,7 +339,7 @@ async function collectFromIterator<T>(
 	return values;
 }
 
-async function drainIterator(iterator: AsyncIterator<unknown>): Promise<void> {
+async function drainIterator<T>(iterator: AsyncIterator<T>): Promise<void> {
 	while (true) {
 		const next = await iterator.next();
 		if (next.done) {

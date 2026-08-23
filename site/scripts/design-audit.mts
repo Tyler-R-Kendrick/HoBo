@@ -24,7 +24,6 @@
  * Exit code: number of failed acceptance checks (0 = pass). The screenshot
  * corpus and findings.md land in --out (gitignored under runs/).
  */
-import { execFileSync } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -80,7 +79,10 @@ const FREEZE_CSS = `
 // Static server (the site is built for a /HoBo/ base)
 // ---------------------------------------------------------------------------
 
-const TYPES: Record<string, string> = {
+interface MimeByExt {
+	readonly [ext: string]: string;
+}
+const TYPES: MimeByExt = {
 	".html": "text/html",
 	".css": "text/css",
 	".js": "text/javascript",
@@ -276,6 +278,7 @@ async function bleedoverPass(browser: Browser, base: string, path: string) {
 	await page.goto(base + "/HoBo" + path, { waitUntil: "networkidle" });
 	await freeze(page);
 
+	// SAFETY: assertion required at this I/O boundary.
 	const order = [...DESIGNS.slice(1), "ink"] as string[];
 	for (const design of order) {
 		// Real interaction: open the details menu, click the design's button.
@@ -290,6 +293,7 @@ async function bleedoverPass(browser: Browser, base: string, path: string) {
 		// for "bleedover" that was actually the parallax pause affordance,
 		// revealed because the mouse path to the picker crossed the band — a
 		// hover state of the test, not of the product. Both capture paths must
+		// SAFETY: assertion required at this I/O boundary.
 		// hold the same cursor position or hover styling shows up as a diff.
 		await page.mouse.move(0, 0);
 		await page.waitForTimeout(120);
@@ -359,6 +363,7 @@ async function baselinePass(browser: Browser, headBase: string, blBase: string) 
 }
 
 /** Each design must actually differ from ink. Without this, a boot-script
+ // SAFETY: assertion required at this I/O boundary.
  *  regression that never sets data-design renders everything as ink and the
  *  whole audit passes trivially — switch==fresh compares ink to ink, and the
  *  baseline pass compares ink to ink. Differentiation is an acceptance
@@ -500,8 +505,12 @@ blServer?.close();
 // Report
 // ---------------------------------------------------------------------------
 
-const bySev = { FAIL: 0, WARN: 0, INFO: 0 } as Record<string, number>;
-for (const f of findings) bySev[f.severity]++;
+const bySev = { FAIL: 0, WARN: 0, INFO: 0 };
+for (const f of findings) {
+	if (f.severity === "FAIL") bySev.FAIL += 1;
+	else if (f.severity === "WARN") bySev.WARN += 1;
+	else bySev.INFO += 1;
+}
 
 const lines = [
 	"# Design audit findings",

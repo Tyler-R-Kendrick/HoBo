@@ -7,10 +7,8 @@ database("db", { engine: "postgres", require: "managed" }).with(
 
 service("api").with(aws.fargate({ cpu: 512 }));
 
-if (false) {
-  // @ts-expect-error fargate is a component/service option, not a database option.
-  database("db").with(aws.fargate({ cpu: 512 }));
+// @ts-expect-error fargate is a component/service option, not a database option.
+database("db").with(aws.fargate({ cpu: 512 }));
 
-  // @ts-expect-error RDS multiAz is boolean.
-  database("db").with(aws.rds({ multiAz: "yes" }));
-}
+// @ts-expect-error RDS multiAz is boolean.
+database("db").with(aws.rds({ multiAz: "yes" }));

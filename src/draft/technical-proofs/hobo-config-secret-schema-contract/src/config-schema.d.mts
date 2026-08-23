@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export declare const CONFIG_SCHEMA_VERSION: "hobo.config/v1";
 
 export type ConfigValueType = "string" | "number" | "boolean";
@@ -68,5 +69,5 @@ export declare function createConfigContext<const TContract extends ConfigContra
   ) => Promise<ConfigValue<TContract["entries"][keyof TContract["entries"]]>> | ConfigValue<TContract["entries"][keyof TContract["entries"]]>
 ): ConfigContext<TContract>;
 export declare function serializeConfigManifest(manifest: ConfigManifest): string;
-export declare function scanSerializedManifestForValues(manifest: unknown, values: string[]): string[];
-export declare function canonicalJson(value: unknown): string;
+export declare function scanSerializedManifestForValues(manifest: JsonValue, values: string[]): string[];
+export declare function canonicalJson(value: JsonValue): string;

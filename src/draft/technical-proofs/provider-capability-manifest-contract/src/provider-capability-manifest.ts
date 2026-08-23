@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
+
 
 export const CAPABILITY_MANIFEST_SCHEMA = "hobo.capability-manifest/v1";
 export const CAPABILITIES_SCHEMA = "hobo.capabilities/v1";
@@ -88,7 +90,7 @@ export function validateCapabilityManifest(manifest, {
 } = {}) {
   const errors = [];
 
-  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+  if (!manifest || !isJsonObject(manifest) || Array.isArray(manifest)) {
     return { ok: false, errors: ["manifest must be an object"], manifest: null };
   }
   if (manifest.schema !== CAPABILITY_MANIFEST_SCHEMA) {
@@ -233,7 +235,7 @@ function defaultCapabilities() {
 }
 
 function validateProvider(provider, errors) {
-  if (!provider || typeof provider !== "object" || Array.isArray(provider)) {
+  if (!provider || !isJsonObject(provider) || Array.isArray(provider)) {
     errors.push("provider must be an object");
     return;
   }
@@ -246,7 +248,7 @@ function validateProvider(provider, errors) {
 
 function validateCapability(capability, index, errors, served, providerId) {
   const path = `capabilities.${index}`;
-  if (!capability || typeof capability !== "object" || Array.isArray(capability)) {
+  if (!capability || !isJsonObject(capability) || Array.isArray(capability)) {
     errors.push(`${path} must be an object`);
     return;
   }
@@ -269,7 +271,7 @@ function validateCapability(capability, index, errors, served, providerId) {
 }
 
 function validateAuth(auth, errors) {
-  if (!auth || typeof auth !== "object" || Array.isArray(auth)) {
+  if (!auth || !isJsonObject(auth) || Array.isArray(auth)) {
     errors.push("auth must be an object");
     return;
   }
@@ -288,7 +290,7 @@ function validateAuth(auth, errors) {
 }
 
 function validateCost(cost, errors) {
-  if (!cost || typeof cost !== "object" || Array.isArray(cost)) {
+  if (!cost || !isJsonObject(cost) || Array.isArray(cost)) {
     errors.push("cost must be an object");
     return;
   }
@@ -310,7 +312,7 @@ function validateCost(cost, errors) {
         errors.push(`${path}.${field} must be a non-empty string`);
       }
     }
-    if (typeof fact?.freeTier?.included !== "number") {
+    if (!isJsonNumber(fact?.freeTier?.included)) {
       errors.push(`${path}.freeTier.included must be a number`);
     }
     if (fact?.source?.type !== "declared-provider") {
@@ -390,14 +392,14 @@ function digestRef(seed) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

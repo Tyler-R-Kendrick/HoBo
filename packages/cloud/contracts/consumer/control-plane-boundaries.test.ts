@@ -58,6 +58,7 @@ function registry() {
 	return createRegistryFromProviders([createCloudflareProvider()]);
 }
 function loadPlan(): DeploymentPlan {
+	// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 	return JSON.parse(
 		readFileSync(join(fixturesDir, "multi-cloud-shop-plan.json"), "utf8"),
 	) as DeploymentPlan;

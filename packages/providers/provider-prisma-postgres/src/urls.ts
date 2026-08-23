@@ -79,6 +79,7 @@ export function assertAllowedProviderUrl(
 
 export function assertAllowedDatabaseHost(host: string): string {
 	const lowered = host.toLowerCase();
+	// SAFETY: value was established by the surrounding parse or typed constructor.
 	if (!(PRISMA_DATABASE_HOSTS as readonly string[]).includes(lowered)) {
 		throw new PrismaProviderError(
 			"PROVIDER_CONTRACT_CHANGED",

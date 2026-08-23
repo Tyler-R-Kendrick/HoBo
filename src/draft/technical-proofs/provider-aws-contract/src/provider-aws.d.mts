@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export declare const AWS_PROVIDER_ID = "@hobo/provider-aws";
 export declare const AWS_PROVIDER_VERSION = "hobo.provider-aws/v1";
 export declare const AWS_PROVIDER_TARGET = "aws";
@@ -52,7 +53,7 @@ export interface AwsElasticacheOptions {
   replicas?: number;
 }
 
-type NoExtra<TInput, TShape> = TInput & Record<Exclude<keyof TInput, keyof TShape>, never>;
+type NoExtra<TInput, TKnown> = TInput & Record<Exclude<keyof TInput, keyof TKnown>, never>;
 
 export interface AwsWithBuilders {
   appRunner<T extends AwsAppRunnerOptions = {}>(options?: NoExtra<T, AwsAppRunnerOptions>): AwsOptionBlock<"compute", Required<Pick<AwsAppRunnerOptions, "cpu" | "memoryMb">> & T>;
@@ -87,7 +88,7 @@ export interface AwsProvider {
   manifest: { claimedCapabilities: AwsCapability[] };
   with: AwsWithBuilders;
   registerDefaultDefinitions<T extends unknown[]>(registry: T): T;
-  realize(plan: Record<string, unknown>): Record<string, unknown>;
+  realize(plan: JsonObject): JsonObject;
   capabilityManifest(): {
     provider: typeof AWS_PROVIDER_ID;
     claimedCapabilities: AwsCapability[];
@@ -96,11 +97,11 @@ export interface AwsProvider {
     capabilities: AwsCapabilityManifestEntry[];
     cost: { facts: Array<{ sku: string }> };
   };
-  client(port: "database", outputs: Record<string, unknown>): AwsDatabaseClient;
-  client(port: "objectStore", outputs: Record<string, unknown>): AwsObjectStoreClient;
-  client(port: "compute", outputs: Record<string, unknown>): AwsComputeClient;
-  client(port: "queue", outputs: Record<string, unknown>): AwsQueueClient;
-  client(port: "cache", outputs: Record<string, unknown>): AwsCacheClient;
+  client(port: "database", outputs: JsonObject): AwsDatabaseClient;
+  client(port: "objectStore", outputs: JsonObject): AwsObjectStoreClient;
+  client(port: "compute", outputs: JsonObject): AwsComputeClient;
+  client(port: "queue", outputs: JsonObject): AwsQueueClient;
+  client(port: "cache", outputs: JsonObject): AwsCacheClient;
 }
 
 export interface AwsDatabaseClient {
@@ -108,39 +109,39 @@ export interface AwsDatabaseClient {
   providerId: typeof AWS_PROVIDER_ID;
   connectionString: string;
   ping(): "database:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface AwsObjectStoreClient {
   port: "objectStore";
   providerId: typeof AWS_PROVIDER_ID;
-  bucketName: unknown;
+  bucketName: JsonValue;
   ping(): "objectStore:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface AwsComputeClient {
   port: "compute";
   providerId: typeof AWS_PROVIDER_ID;
-  url: unknown;
+  url: JsonValue;
   ping(): "compute:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface AwsQueueClient {
   port: "queue";
   providerId: typeof AWS_PROVIDER_ID;
-  queueUrl: unknown;
+  queueUrl: JsonValue;
   ping(): "queue:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface AwsCacheClient {
   port: "cache";
   providerId: typeof AWS_PROVIDER_ID;
-  endpoint: unknown;
+  endpoint: JsonValue;
   ping(): "cache:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export declare function createAwsProvider(options?: {
@@ -149,8 +150,8 @@ export declare function createAwsProvider(options?: {
   campEvidence?: "pass" | "fail" | Record<string, Partial<Record<"realProviderDrift" | "iam" | "mtls" | "quota", boolean>>>;
 }): AwsProvider;
 
-export declare function createAwsMultiCloudShopPlan(options?: Record<string, unknown>): Record<string, unknown>;
-export declare function mergeAwsResolvedOptions(provider: AwsProvider, optionBlocks: readonly unknown[]): Record<string, unknown>;
-export declare function evaluateAwsPlan(provider: AwsProvider, plan: Record<string, unknown>): Record<string, unknown>;
-export declare function realizeAwsPlan(provider: AwsProvider, plan: Record<string, unknown>): Record<string, unknown>;
-export declare function simulateAwsApply(provider: AwsProvider, plan: Record<string, unknown>, options?: Record<string, unknown>): Record<string, unknown>;
+export declare function createAwsMultiCloudShopPlan(options?: JsonObject): JsonObject;
+export declare function mergeAwsResolvedOptions(provider: AwsProvider, optionBlocks: readonly unknown[]): JsonObject;
+export declare function evaluateAwsPlan(provider: AwsProvider, plan: JsonObject): JsonObject;
+export declare function realizeAwsPlan(provider: AwsProvider, plan: JsonObject): JsonObject;
+export declare function simulateAwsApply(provider: AwsProvider, plan: JsonObject, options?: JsonObject): JsonObject;

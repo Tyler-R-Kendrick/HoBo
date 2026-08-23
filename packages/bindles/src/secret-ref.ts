@@ -1,7 +1,8 @@
+import { isJsonString } from "./json.js";
 import type { SecretRef } from "./types.js";
 
 export function secretRef(ref: string): SecretRef {
-	if (typeof ref !== "string" || ref.length === 0) {
+	if (!isJsonString(ref) || ref.length === 0) {
 		throw new TypeError("secretRef value reference must be a non-empty string");
 	}
 

@@ -31,7 +31,7 @@ export type ProviderErrorOptions = {
 	readonly retryable?: boolean;
 	readonly retryAfterMs?: number;
 	readonly detail?: ProviderErrorDetail;
-	readonly cause?: unknown;
+	readonly cause?: Error;
 };
 
 /** Shapes that must never survive into an error message, log line, or receipt. */
@@ -44,8 +44,22 @@ const CREDENTIAL_PATTERNS: readonly RegExp[] = [
 	/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/giu,
 ];
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping control characters out of provider text is the point; a raw CR/LF in a message is log forging.
-const CONTROL_CHARS = /[\u0000-\u001f\u007f]/gu;
+function flattenControlChars(text: string): string {
+	let out = "";
+	for (const ch of text) {
+		const code = ch.charCodeAt(0);
+		out += code <= 31 || code === 127 ? " " : ch;
+	}
+	return out;
+}
+
+export function containsControlChar(text: string): boolean {
+	for (const ch of text) {
+		const code = ch.charCodeAt(0);
+		if (code <= 31 || code === 127) return true;
+	}
+	return false;
+}
 
 /**
  * Replace anything credential-shaped with a marker and flatten control
@@ -55,7 +69,7 @@ export function redactProviderText(text: string, maxLength = 256): string {
 	let out = text;
 	for (const pattern of CREDENTIAL_PATTERNS)
 		out = out.replace(pattern, "[redacted]");
-	out = out.replace(CONTROL_CHARS, " ").trim();
+	out = flattenControlChars(out).trim();
 	return out.length > maxLength ? `${out.slice(0, maxLength)}…` : out;
 }
 
@@ -72,25 +86,18 @@ export class NeonProviderError extends Error {
 	) {
 		super(
 			redactProviderText(message),
-			options.cause !== undefined ? { cause: options.cause } : {},
+			options.cause !== undefined ? { cause: options.cause } : undefined,
 		);
 		this.name = "NeonProviderError";
 		this.code = code;
 		this.retryable = options.retryable ?? false;
 		if (options.retryAfterMs !== undefined)
 			this.retryAfterMs = options.retryAfterMs;
-		this.detail = Object.freeze({ ...(options.detail ?? {}) });
+		this.detail = Object.freeze({ ...options.detail });
 	}
 
 	/** Receipt-safe projection. Already redacted by construction. */
-	toJSON(): {
-		readonly name: string;
-		readonly code: ProviderErrorCode;
-		readonly message: string;
-		readonly retryable: boolean;
-		readonly retryAfterMs?: number;
-		readonly detail: ProviderErrorDetail;
-	} {
+	toJSON() {
 		return {
 			name: this.name,
 			code: this.code,
@@ -98,13 +105,13 @@ export class NeonProviderError extends Error {
 			retryable: this.retryable,
 			...(this.retryAfterMs !== undefined
 				? { retryAfterMs: this.retryAfterMs }
-				: {}),
+				: undefined),
 			detail: this.detail,
 		};
 	}
 }
 
-export function isProviderError(value: unknown): value is NeonProviderError {
+export function isProviderError(value: Error): value is NeonProviderError {
 	return value instanceof NeonProviderError;
 }
 
@@ -119,10 +126,10 @@ export function providerErrorForStatus(
 ): NeonProviderError {
 	const body =
 		options.body === undefined ? "" : redactProviderText(options.body, 180);
-	const detail: ProviderErrorDetail = {
+	const detail = {
 		status,
 		method: options.method,
-		...(body ? { body } : {}),
+		...(body ? { body } : undefined),
 	};
 	if (status === 429) {
 		return new NeonProviderError(
@@ -132,7 +139,7 @@ export function providerErrorForStatus(
 				retryable: true,
 				...(options.retryAfterMs !== undefined
 					? { retryAfterMs: options.retryAfterMs }
-					: {}),
+					: undefined),
 				detail,
 			},
 		);

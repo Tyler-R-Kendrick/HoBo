@@ -1,4 +1,4 @@
-import type { SlotBindingError } from "@hobo/core";
+import { SlotBindingError } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,13 +12,20 @@ import {
 } from "../src/index.js";
 
 /** The code core refused a call with, or undefined if it did not refuse. */
-function refusalCode(call: () => unknown): string | undefined {
+function refusalCode(call: () => void): string | undefined {
 	try {
 		call();
 		return undefined;
 	} catch (error) {
-		return (error as SlotBindingError).code;
+		if (!(error instanceof SlotBindingError)) throw error;
+		return error.code;
 	}
+}
+
+function extraOptions(json: string): CloudServerOptions {
+	// SAFETY: fixture JSON is the factory option bag, including undeclared keys
+	// that must still reach slotBinding's parse boundary.
+	return JSON.parse(json) as CloudServerOptions;
 }
 
 /** Every factory, called with no options, plus the triple it must emit. */
@@ -147,19 +154,19 @@ describe("options land in properties and omitted options stay absent", () => {
 
 describe("the core parse boundary still applies", () => {
 	it("refuses a credential-shaped option key that bypassed the types", () => {
-		const smuggled = { apiKey: "x" } as unknown as CloudServerOptions;
+		const smuggled = extraOptions('{"apiKey":"x"}');
 		expect(refusalCode(() => cloudServer(smuggled))).toBe(
 			"SLOT_BINDING_CREDENTIAL_PROPERTY",
 		);
 	});
 
 	it("forwards an undeclared key instead of silently dropping it", () => {
-		const smuggled = { unknownKnob: 1 } as unknown as CloudServerOptions;
+		const smuggled = extraOptions('{"unknownKnob":1}');
 		expect(cloudServer(smuggled).properties).toEqual({ unknownKnob: 1 });
 	});
 
 	it("refuses a credential-shaped key on the worker factory too", () => {
-		const smuggled = { password: "x" } as unknown as CloudServerOptions;
+		const smuggled = extraOptions('{"password":"x"}');
 		expect(refusalCode(() => cloudServerWorker(smuggled))).toBe(
 			"SLOT_BINDING_CREDENTIAL_PROPERTY",
 		);

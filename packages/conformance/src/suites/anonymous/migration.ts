@@ -11,6 +11,7 @@
 
 import type { MigrationState } from "@hobo/claims";
 import { DIGEST_PATTERN } from "@hobo/trust";
+import type { JsonValue } from "../../json.js";
 
 import {
 	type AnonymousSuiteDefinition,
@@ -159,7 +160,7 @@ export const MIGRATION_CASES: readonly MigrationCase[] = Object.freeze([
 ]);
 
 export function parseMigrationStepOutcome(
-	raw: unknown,
+	raw: JsonValue,
 	caseId: string,
 ): MigrationStepOutcome {
 	const record = requireRecord(raw, caseId, "migration outcome");
@@ -202,13 +203,13 @@ export function parseMigrationStepOutcome(
 	return {
 		caseId,
 		sourceRef: requireText(record.sourceRef, caseId, "sourceRef"),
-		...(exportDigest !== undefined ? { exportDigest } : {}),
-		...(importedDigest !== undefined ? { importedDigest } : {}),
-		...(destinationRef !== undefined ? { destinationRef } : {}),
-		...(verified !== undefined ? { verified } : {}),
-		...(cutoverCommitted !== undefined ? { cutoverCommitted } : {}),
-		...(sourceIntact !== undefined ? { sourceIntact } : {}),
-		...(state !== undefined ? { state } : {}),
+		...(exportDigest !== undefined ? { exportDigest } : undefined),
+		...(importedDigest !== undefined ? { importedDigest } : undefined),
+		...(destinationRef !== undefined ? { destinationRef } : undefined),
+		...(verified !== undefined ? { verified } : undefined),
+		...(cutoverCommitted !== undefined ? { cutoverCommitted } : undefined),
+		...(sourceIntact !== undefined ? { sourceIntact } : undefined),
+		...(state !== undefined ? { state } : undefined),
 	};
 }
 

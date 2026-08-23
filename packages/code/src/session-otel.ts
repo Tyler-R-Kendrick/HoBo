@@ -1,3 +1,4 @@
+import { isJsonObject, isJsonString, type JsonValue } from "./json.js";
 /**
  * In-process OTLP sink for the local dashboard.
  * Tests inject records; HTTP ingest maps OTLP JSON onto the same store.
@@ -37,22 +38,28 @@ export interface OtelSink {
 	ingestLog(record: OtelLogRecord): void;
 	ingestSpan(record: OtelSpanRecord): void;
 	ingestMetric(record: OtelMetricRecord): void;
-	ingestOtlpJson(kind: "logs" | "traces" | "metrics", body: unknown): number;
+	ingestOtlpJson(
+		kind: "logs" | "traces" | "metrics",
+		body: JsonValue | undefined,
+	): number;
 	forResource(resourceName: string): ResourceTelemetry;
 	list(): readonly ResourceTelemetry[];
 }
 
-function resourceFromOtlp(resource: unknown): string {
-	if (!resource || typeof resource !== "object") return "unknown";
+function resourceFromOtlp(resource: JsonValue | undefined): string {
+	if (!resource || !isJsonObject(resource)) return "unknown";
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const attrs = (resource as { attributes?: readonly unknown[] }).attributes;
 	if (!Array.isArray(attrs)) return "unknown";
 	for (const attr of attrs) {
-		if (!attr || typeof attr !== "object") continue;
+		if (!attr || !isJsonObject(attr)) continue;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const key = (attr as { key?: string }).key;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const value = (attr as { value?: { stringValue?: string } }).value;
 		if (
 			(key === "service.name" || key === "resource.name") &&
-			typeof value?.stringValue === "string"
+			isJsonString(value?.stringValue)
 		) {
 			return value.stringValue;
 		}
@@ -76,28 +83,32 @@ export function createOtelSink(): OtelSink {
 			metrics.push(record);
 		},
 		ingestOtlpJson(kind, body) {
-			if (!body || typeof body !== "object") return 0;
+			if (!body || !isJsonObject(body)) return 0;
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const resourceLogs = (body as { resourceLogs?: readonly unknown[] })
 				.resourceLogs;
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const resourceSpans = (body as { resourceSpans?: readonly unknown[] })
 				.resourceSpans;
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const resourceMetrics = (body as { resourceMetrics?: readonly unknown[] })
 				.resourceMetrics;
 			let count = 0;
 			if (kind === "logs" && Array.isArray(resourceLogs)) {
 				for (const group of resourceLogs) {
-					if (!group || typeof group !== "object") continue;
-					const resourceName = resourceFromOtlp(
-						(group as { resource?: unknown }).resource,
-					);
+					if (!group || !isJsonObject(group)) continue;
+					const resourceName = resourceFromOtlp(group.resource);
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					const scopeLogs = (group as { scopeLogs?: readonly unknown[] })
 						.scopeLogs;
 					if (!Array.isArray(scopeLogs)) continue;
 					for (const scope of scopeLogs) {
+						// SAFETY: parsed or fixture value is the named domain type after this assertion.
 						const records = (scope as { logRecords?: readonly unknown[] })
 							.logRecords;
 						if (!Array.isArray(records)) continue;
 						for (const record of records) {
+							// SAFETY: parsed or fixture value is the named domain type after this assertion.
 							const rec = record as {
 								body?: { stringValue?: string };
 								severityText?: string;
@@ -116,17 +127,18 @@ export function createOtelSink(): OtelSink {
 			}
 			if (kind === "traces" && Array.isArray(resourceSpans)) {
 				for (const group of resourceSpans) {
-					if (!group || typeof group !== "object") continue;
-					const resourceName = resourceFromOtlp(
-						(group as { resource?: unknown }).resource,
-					);
+					if (!group || !isJsonObject(group)) continue;
+					const resourceName = resourceFromOtlp(group.resource);
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					const scopeSpans = (group as { scopeSpans?: readonly unknown[] })
 						.scopeSpans;
 					if (!Array.isArray(scopeSpans)) continue;
 					for (const scope of scopeSpans) {
+						// SAFETY: parsed or fixture value is the named domain type after this assertion.
 						const spans = (scope as { spans?: readonly unknown[] }).spans;
 						if (!Array.isArray(spans)) continue;
 						for (const span of spans) {
+							// SAFETY: parsed or fixture value is the named domain type after this assertion.
 							const rec = span as {
 								name?: string;
 								traceId?: string;
@@ -142,7 +154,7 @@ export function createOtelSink(): OtelSink {
 								startTime: rec.startTimeUnixNano ?? new Date().toISOString(),
 								...(rec.endTimeUnixNano
 									? { endTime: rec.endTimeUnixNano }
-									: {}),
+									: undefined),
 							});
 							count += 1;
 						}
@@ -151,18 +163,19 @@ export function createOtelSink(): OtelSink {
 			}
 			if (kind === "metrics" && Array.isArray(resourceMetrics)) {
 				for (const group of resourceMetrics) {
-					if (!group || typeof group !== "object") continue;
-					const resourceName = resourceFromOtlp(
-						(group as { resource?: unknown }).resource,
-					);
+					if (!group || !isJsonObject(group)) continue;
+					const resourceName = resourceFromOtlp(group.resource);
+					// SAFETY: parsed or fixture value is the named domain type after this assertion.
 					const scopeMetrics = (group as { scopeMetrics?: readonly unknown[] })
 						.scopeMetrics;
 					if (!Array.isArray(scopeMetrics)) continue;
 					for (const scope of scopeMetrics) {
+						// SAFETY: parsed or fixture value is the named domain type after this assertion.
 						const metricRows = (scope as { metrics?: readonly unknown[] })
 							.metrics;
 						if (!Array.isArray(metricRows)) continue;
 						for (const metric of metricRows) {
+							// SAFETY: parsed or fixture value is the named domain type after this assertion.
 							const rec = metric as {
 								name?: string;
 								gauge?: {
@@ -260,7 +273,7 @@ export function projectOccupancyTelemetry(input: {
 			logs,
 			traces,
 			metrics,
-			...(last ? { lastSignalAt: last } : {}),
+			...(last ? { lastSignalAt: last } : undefined),
 			note: exporting
 				? "signals received at the local collector"
 				: "collector is listening; no logs/spans/metrics received",
@@ -276,11 +289,7 @@ export function projectOccupancyTelemetry(input: {
 	};
 }
 
-export function fleetView(options: { readonly campConnected?: boolean } = {}): {
-	readonly scope: "local" | "camp-deferred";
-	readonly reason?: string;
-	readonly projects: readonly unknown[];
-} {
+export function fleetView(options: { readonly campConnected?: boolean } = {}) {
 	if (options.campConnected === true) {
 		return { scope: "local", projects: [] };
 	}

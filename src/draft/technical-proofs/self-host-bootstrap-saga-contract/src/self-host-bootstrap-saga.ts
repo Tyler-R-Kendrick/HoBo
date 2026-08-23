@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased event and value inputs at the saga's shared parser boundaries. */
+
 import { createHash } from "node:crypto";
 
 const completedType = "bootstrap.Completed";

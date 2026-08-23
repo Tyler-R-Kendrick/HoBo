@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const CAPABILITY_SPEC_SCHEMA = "hobo.capability-spec/v1";
 
@@ -69,7 +71,7 @@ export function createFixtureCapabilitySpec({
 export function parseCapabilitySpec(candidate) {
   const errors = [];
 
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     return { ok: false, errors: ["capability spec must be an object"], spec: null };
   }
 
@@ -77,7 +79,7 @@ export function parseCapabilitySpec(candidate) {
     errors.push(`schema must be ${CAPABILITY_SPEC_SCHEMA}`);
   }
 
-  if (!candidate.provider || typeof candidate.provider !== "object" || Array.isArray(candidate.provider)) {
+  if (!candidate.provider || !isJsonObject(candidate.provider) || Array.isArray(candidate.provider)) {
     errors.push("provider must be an object");
   } else {
     if (!isNonEmptyString(candidate.provider.id)) {
@@ -274,7 +276,7 @@ function summarize(results) {
 }
 
 function validateCapabilityDeclaration(capability, path, errors) {
-  if (!capability || typeof capability !== "object" || Array.isArray(capability)) {
+  if (!capability || !isJsonObject(capability) || Array.isArray(capability)) {
     errors.push(`${path} must be a capability declaration object`);
     return;
   }
@@ -311,7 +313,7 @@ function validateCapabilityDeclaration(capability, path, errors) {
 }
 
 function validateConformanceReportRef(report, path, errors) {
-  if (!report || typeof report !== "object" || Array.isArray(report)) {
+  if (!report || !isJsonObject(report) || Array.isArray(report)) {
     errors.push(`${path} must be a conformance report reference object`);
     return;
   }
@@ -331,7 +333,7 @@ function validateConformanceReportRef(report, path, errors) {
 }
 
 function validateArtifactRef(ref, path, errors) {
-  if (!ref || typeof ref !== "object" || Array.isArray(ref)) {
+  if (!ref || !isJsonObject(ref) || Array.isArray(ref)) {
     errors.push(`${path} must be an artifact reference object`);
     return;
   }
@@ -385,22 +387,22 @@ function sanitizeSeed(seed) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function isSemver(value) {
-  return typeof value === "string" && SEMVER_RE.test(value);
+  return isJsonString(value) && SEMVER_RE.test(value);
 }
 
 function isSha256Digest(value) {
-  return typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
+  return isJsonString(value) && /^sha256:[a-f0-9]{64}$/.test(value);
 }
 
 function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

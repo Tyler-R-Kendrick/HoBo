@@ -3,6 +3,7 @@
  * Parse-don't-validate: constructors are the only way to build definitions.
  */
 import { createHash } from "node:crypto";
+import { isJsonObject, type JsonValue } from "./json.js";
 
 // public-contract: trail definition schema version.
 export const TRAIL_DEFINITION_SCHEMA = "hobo.trail-definition/v1" as const;
@@ -126,9 +127,9 @@ export function defineTrail(input: TrailDefinitionInput): TrailDefinition {
 		targets: Object.freeze([...(input.targets ?? ["*"])]),
 		...(input.dependsOnTrails !== undefined
 			? { dependsOnTrails: Object.freeze([...input.dependsOnTrails]) }
-			: {}),
+			: undefined),
 		steps,
-		...(recipeList.length > 0 ? { recipeList } : {}),
+		...(recipeList.length > 0 ? { recipeList } : undefined),
 	};
 	const contentHash =
 		`sha256:${createHash("sha256").update(stableStringify(body)).digest("hex")}` as const;
@@ -159,16 +160,16 @@ function parseStep(s: TrailStep): TrailStep {
 	return Object.freeze({
 		id: s.id,
 		kind: s.kind,
-		...(s.description !== undefined ? { description: s.description } : {}),
+		...(s.description !== undefined ? { description: s.description } : undefined),
 		...(s.dependsOn !== undefined
 			? { dependsOn: Object.freeze([...s.dependsOn]) }
-			: {}),
-		...(s.recipeId !== undefined ? { recipeId: s.recipeId } : {}),
-		...(s.trailRef !== undefined ? { trailRef: s.trailRef } : {}),
+			: undefined),
+		...(s.recipeId !== undefined ? { recipeId: s.recipeId } : undefined),
+		...(s.trailRef !== undefined ? { trailRef: s.trailRef } : undefined),
 		...(s.schema !== undefined
 			? { schema: Object.freeze({ ...s.schema }) }
-			: {}),
-		...(s.data !== undefined ? { data: Object.freeze({ ...s.data }) } : {}),
+			: undefined),
+		...(s.data !== undefined ? { data: Object.freeze({ ...s.data }) } : undefined),
 		...(s.identity !== undefined
 			? {
 					identity: Object.freeze({
@@ -176,29 +177,29 @@ function parseStep(s: TrailStep): TrailStep {
 						bindleConfigRequired: false as const,
 						...(s.identity.sourceAdapter !== undefined
 							? { sourceAdapter: s.identity.sourceAdapter }
-							: {}),
+							: undefined),
 						...(s.identity.targetAdapter !== undefined
 							? { targetAdapter: s.identity.targetAdapter }
-							: {}),
+							: undefined),
 					}),
 				}
-			: {}),
+			: undefined),
 		...(s.junction !== undefined
 			? { junction: Object.freeze({ ...s.junction }) }
-			: {}),
-		...(s.oracleId !== undefined ? { oracleId: s.oracleId } : {}),
-		...(s.progressive !== undefined ? { progressive: s.progressive } : {}),
+			: undefined),
+		...(s.oracleId !== undefined ? { oracleId: s.oracleId } : undefined),
+		...(s.progressive !== undefined ? { progressive: s.progressive } : undefined),
 	});
 }
 
-function stableStringify(value: unknown): string {
-	if (value === null || typeof value !== "object") {
+function stableStringify(value: JsonValue): string {
+	if (value === null || !isJsonObject(value) && !Array.isArray(value)) {
 		return JSON.stringify(value);
 	}
 	if (Array.isArray(value)) {
 		return `[${value.map(stableStringify).join(",")}]`;
 	}
-	const obj = value as Record<string, unknown>;
+	const obj = value;
 	const keys = Object.keys(obj).sort();
 	return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(",")}}`;
 }

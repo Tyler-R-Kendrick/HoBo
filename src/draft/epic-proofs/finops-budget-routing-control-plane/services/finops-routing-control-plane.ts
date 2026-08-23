@@ -1,3 +1,5 @@
+import { isJsonString, isJsonObject } from "../src/json.js";
+
 const EPIC = Object.freeze({
   id: "post-core-finops-control-plane",
   title: "Standards-first FinOps Budget Routing Control Plane",
@@ -616,13 +618,13 @@ function inspectProviderLeakage(value, path, errors) {
     value.forEach((item, index) => inspectProviderLeakage(item, `${path}[${index}]`, errors));
     return;
   }
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     if (FORBIDDEN_CORE_VALUE.test(value)) {
       errors.push(`${path} contains provider, concrete region, or backend API value ${value}`);
     }
     return;
   }
-  if (typeof value !== "object") return;
+  if (!isJsonObject(value)) return;
 
   for (const [key, nested] of Object.entries(value)) {
     if (FORBIDDEN_CORE_KEYS.has(key)) {

@@ -1,4 +1,4 @@
-import type { SlotBindingError } from "@hobo/core";
+import { SlotBindingError } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -16,17 +16,31 @@ import {
 	firestore,
 	memorystoreRedis,
 	pubsub,
+	type SecretManagerOptions,
 	secretManager,
 } from "../src/index.js";
 
 /** The code core refused a call with, or undefined if it did not refuse. */
-function refusalCode(call: () => unknown): string | undefined {
+function refusalCode(call: () => void): string | undefined {
 	try {
 		call();
 		return undefined;
 	} catch (error) {
-		return (error as SlotBindingError).code;
+		if (!(error instanceof SlotBindingError)) throw error;
+		return error.code;
 	}
+}
+
+function extraStorage(json: string): CloudStorageOptions {
+	// SAFETY: fixture JSON is the factory option bag, including undeclared keys
+	// that must still reach slotBinding's parse boundary.
+	return JSON.parse(json) as CloudStorageOptions;
+}
+
+function extraSecret(json: string): SecretManagerOptions {
+	// SAFETY: fixture JSON is the factory option bag, including undeclared keys
+	// that must still reach slotBinding's parse boundary.
+	return JSON.parse(json) as SecretManagerOptions;
 }
 
 /**
@@ -239,23 +253,21 @@ describe("options land in properties and omitted options stay absent", () => {
 
 describe("the core parse boundary still applies", () => {
 	it("refuses a credential-shaped option key that bypassed the types", () => {
-		const smuggled = { apiKey: "x" } as unknown as CloudStorageOptions;
+		const smuggled = extraStorage('{"apiKey":"x"}');
 		expect(refusalCode(() => cloudStorage(smuggled))).toBe(
 			"SLOT_BINDING_CREDENTIAL_PROPERTY",
 		);
 	});
 
 	it("refuses a credential-shaped key on the secretRef factory too", () => {
-		const smuggled = { secretId: "x" } as unknown as Parameters<
-			typeof secretManager
-		>[0];
+		const smuggled = extraSecret('{"secretId":"x"}');
 		expect(refusalCode(() => secretManager(smuggled))).toBe(
 			"SLOT_BINDING_CREDENTIAL_PROPERTY",
 		);
 	});
 
 	it("forwards an undeclared key instead of silently dropping it", () => {
-		const smuggled = { unknownKnob: 1 } as unknown as CloudStorageOptions;
+		const smuggled = extraStorage('{"unknownKnob":1}');
 		expect(cloudStorage(smuggled).properties).toEqual({ unknownKnob: 1 });
 	});
 });

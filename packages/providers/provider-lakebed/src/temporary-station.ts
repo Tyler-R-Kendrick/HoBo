@@ -18,6 +18,7 @@ import {
 	temporaryStationTtlSeconds,
 } from "@hobo/core";
 
+import { isJsonString, type JsonValue, parseJsonObject } from "./json.js";
 import { LAKEBED_PROVIDER_TARGET } from "./options.js";
 
 export const LAKEBED_TEMPORARY_PROVIDER_ID = LAKEBED_PROVIDER_TARGET;
@@ -36,6 +37,13 @@ function requireLakebedUrl(value: string, kind: "station" | "claim"): string {
 		throw new Error("lakebed claim URL has an unexpected host");
 	}
 	return value;
+}
+
+function firstJsonString(...values: Array<JsonValue | undefined>): string {
+	for (const value of values) {
+		if (isJsonString(value) && value.length > 0) return value;
+	}
+	return "";
 }
 
 export type LakebedAnonymousDeployResult = {
@@ -89,18 +97,15 @@ export function parseLakebedDeployOutput(
 		const candidate = line.trim();
 		if (!candidate.startsWith("{")) continue;
 		try {
-			const parsed = JSON.parse(candidate) as Record<string, unknown>;
-			const stationUrl =
-				(typeof parsed.url === "string" && parsed.url) ||
-				(typeof parsed.deployUrl === "string" && parsed.deployUrl) ||
-				(typeof parsed.primaryUrl === "string" && parsed.primaryUrl) ||
-				"";
-			const deployId =
-				(typeof parsed.deployId === "string" && parsed.deployId) ||
-				(typeof parsed.id === "string" && parsed.id) ||
-				"";
+			const parsed = parseJsonObject(candidate);
+			const stationUrl = firstJsonString(
+				parsed.url,
+				parsed.deployUrl,
+				parsed.primaryUrl,
+			);
+			const deployId = firstJsonString(parsed.deployId, parsed.id);
 			const claimUrl =
-				(typeof parsed.claimUrl === "string" && parsed.claimUrl) ||
+				firstJsonString(parsed.claimUrl) ||
 				(deployId ? `https://lakebed.dev/claim/${deployId}` : "");
 			if (stationUrl && claimUrl) {
 				requireLakebedUrl(stationUrl, "station");
@@ -232,7 +237,7 @@ export async function provisionTemporaryEnvironmentStation(
 			stationId: input.stationId,
 			...(input.capsuleServerSource
 				? { serverSource: input.capsuleServerSource }
-				: {}),
+				: undefined),
 		}));
 	const transport = input.transport ?? createLakebedAnonymousCliTransport();
 	const deployed = await transport.deployAnonymous({

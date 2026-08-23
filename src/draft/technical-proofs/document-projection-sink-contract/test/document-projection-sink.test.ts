@@ -279,7 +279,7 @@ function defineTicketDocumentProjection() {
 function defineTicketFlatDocumentProjection() {
   return defineDocumentProjection({
     ...ticketDocumentProjectionInput(),
-    rowShape: {
+    rowContract: {
       fields: [
         { name: "id", type: "string", primaryKey: true },
         { name: "title", type: "string" },
@@ -298,7 +298,7 @@ function defineTicketRelationalProjection() {
     table: "support_ticket_view",
     key: (event) => event.streamId,
     initialState: { comments: 0, id: "", status: "open", title: "" },
-    rowShape: {
+    rowContract: {
       fields: [
         { name: "id", type: "string", primaryKey: true },
         { name: "title", type: "string" },
@@ -324,7 +324,7 @@ function ticketDocumentProjectionInput() {
       status: "open",
       title: "",
     },
-    rowShape: {
+    rowContract: {
       fields: [
         { name: "id", type: "string", primaryKey: true },
         { name: "title", type: "string" },
@@ -363,7 +363,7 @@ function defineNestedDocumentProjection() {
     readModel: "billing:invoices/invoice-view@1.0.0",
     collection: "invoice_docs",
     key: (event) => event.streamId,
-    rowShape: {
+    rowContract: {
       fields: [
         { name: "id", type: "string", primaryKey: true },
         { name: "total", type: "u32" },

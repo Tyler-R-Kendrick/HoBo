@@ -1,18 +1,20 @@
 import type { RegisteredSaga } from "./testing/test-runtime.js";
 import type { SagaCtx } from "./ctx.js";
+import { type JsonValue } from "./json.js";
+
 
 export interface SagaBuilder {
-  on(eventType: string, handler: (event: unknown, ctx: SagaCtx) => Promise<void> | void): SagaBuilder;
+  on(eventType: string, handler: (event: JsonValue, ctx: SagaCtx) => Promise<void> | void): SagaBuilder;
   compensate(
     eventType: string,
-    handler: (event: unknown, ctx: SagaCtx) => Promise<void> | void,
+    handler: (event: JsonValue, ctx: SagaCtx) => Promise<void> | void,
   ): SagaBuilder;
   build(): RegisteredSaga;
 }
 
 export function saga(name: string): SagaBuilder {
-  const handlers = new Map<string, (event: unknown, ctx: SagaCtx) => Promise<void> | void>();
-  const compensations = new Map<string, (event: unknown, ctx: SagaCtx) => Promise<void> | void>();
+  const handlers = new Map<string, (event: JsonValue, ctx: SagaCtx) => Promise<void> | void>();
+  const compensations = new Map<string, (event: JsonValue, ctx: SagaCtx) => Promise<void> | void>();
 
   const builder: SagaBuilder = {
     on(eventType, handler) {
@@ -59,6 +61,6 @@ export function saga(name: string): SagaBuilder {
   return builder;
 }
 
-export async function emit(type: string, data: unknown): Promise<number> {
+export async function emit(_type: string, _data: JsonValue): Promise<number> {
   throw new Error("emit() requires an active runtime; use testRuntime().emit in tests or start() in production");
 }

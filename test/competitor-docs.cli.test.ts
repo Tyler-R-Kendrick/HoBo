@@ -20,18 +20,27 @@ import {
 
 const NOW = Date.parse("2026-06-01T00:00:00Z");
 
-function capture(overrides: Record<string, string | undefined> = {}) {
-	const fields: Record<string, string | undefined> = {
-		slug: "acme",
-		name: '"Acme"',
-		primary_category: "infrastructure-from-code",
-		categories: "[infrastructure-from-code]",
-		directness: "direct",
-		role: '"authoring analog"',
-		posture: "[borrow]",
-		hobo_surface: "[authoring]",
-		evidence: "design-only",
-		status: "active",
+const cliCaptureDefaults = {
+	slug: "acme",
+	name: '"Acme"',
+	primary_category: "infrastructure-from-code",
+	categories: "[infrastructure-from-code]",
+	directness: "direct",
+	role: '"authoring analog"',
+	posture: "[borrow]",
+	hobo_surface: "[authoring]",
+	evidence: "design-only",
+	status: "active",
+	research_date: "2026-01-01",
+};
+
+type CliCaptureOverrides = Partial<typeof cliCaptureDefaults> & {
+	contract?: string | undefined;
+};
+
+function capture(overrides: CliCaptureOverrides = {}) {
+	const fields = {
+		...cliCaptureDefaults,
 		research_date: "2026-05-01",
 		contract: "v1",
 		...overrides,
@@ -86,7 +95,7 @@ async function corpus(files: Record<string, string> = {}) {
 	await mkdir(path.join(root, "docs", "competitors", "categories"), {
 		recursive: true,
 	});
-	const all: Record<string, string> = {
+	const all = {
 		"docs/competitors/index.md": generated("competitor-index", "Index"),
 		"docs/competitors/matrix.md": generated("competitor-matrix", "Matrix"),
 		"docs/competitors/categories/index.md": generated(
@@ -368,6 +377,7 @@ test("staleness never turns into a build failure", async () => {
 test("a pre-v1 capture is exempt from section checks but marked in the ledger", async () => {
 	const root = await corpus({
 		"docs/competitors/acme.md": [
+			// SAFETY: assertion to ` contract: undefined }).split("\n## ")[0] as string, "", ` is required at this boundary.
 			capture({ contract: undefined }).split("\n## ")[0] as string,
 			"",
 		].join("\n"),

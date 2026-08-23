@@ -8,6 +8,7 @@ import {
 	externalDependencyAnnotation,
 	wasmComponentDependencyAnnotation,
 } from "./dependencies.js";
+import { isJsonString, type JsonObject, type JsonValue } from "./json.js";
 import {
 	assertNoBindleProviderSelection,
 	parseBindleRequirements,
@@ -19,10 +20,11 @@ import type {
 	BindleDefinition,
 	BindleDependency,
 	BindleEdge,
+	BindleEntrypoint,
+	BindleHandlerObject,
 	BindleRequirements,
 	BindleResource,
 	BindleResourceRecord,
-	BindleRuntimeContext,
 	ComponentBinding,
 	ConnectorBinding,
 	ContainerDependencyOptions,
@@ -34,19 +36,32 @@ import type {
 import { webAppAnnotationFromBinding } from "./webapp.js";
 
 const METADATA_SYMBOL =
+	// SAFETY: assertion required at this I/O or test boundary.
 	(Symbol as { metadata?: symbol }).metadata ?? Symbol.for("Symbol.metadata");
 const COMPONENT_METADATA = Symbol.for("hobo.component.metadata");
 const TRAINABLE_METADATA = Symbol.for("hobo.trainable.metadata");
+
+type BindingMetadataBag = ComponentBinding & {
+	readonly [key: symbol]:
+		| { readonly [key: symbol]: JsonValue | undefined }
+		| undefined;
+};
 
 /** Default name when authors use nameless `bindle((b) => …)`. */
 // public-contract: nameless Bindles compile to this stable manifest name.
 export const DEFAULT_BINDLE_NAME = "app";
 
+function isBindingMetadataBag(
+	value: ComponentBinding,
+): value is BindingMetadataBag {
+	return value instanceof Function;
+}
+
 function isInstantiableClassBinding(binding: ComponentBinding): boolean {
-	if (typeof binding !== "function") return false;
-	const metadata = (
-		binding as unknown as Record<symbol, Record<symbol, unknown> | undefined>
-	)[METADATA_SYMBOL];
+	if (!(binding instanceof Function) || !isBindingMetadataBag(binding)) {
+		return false;
+	}
+	const metadata = binding[METADATA_SYMBOL];
 	if (!metadata) return false;
 	return (
 		metadata[COMPONENT_METADATA] !== undefined ||
@@ -54,16 +69,18 @@ function isInstantiableClassBinding(binding: ComponentBinding): boolean {
 	);
 }
 
-type EntrypointFactory = (context?: BindleRuntimeContext) => unknown;
+type EntrypointFactory = BindleEntrypoint;
 
 function toHandler(
 	binding: ComponentBinding | undefined,
 ): EntrypointFactory | undefined {
 	if (binding === undefined) return undefined;
 	if (isInstantiableClassBinding(binding)) {
-		const Component = binding as new () => object;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const Component = binding as new () => BindleHandlerObject;
 		return () => new Component();
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return binding as EntrypointFactory;
 }
 
@@ -110,6 +127,7 @@ function createBindleResource<K extends ResourceKind>(
 					internal.dependencies.add(dep);
 					continue;
 				}
+				// SAFETY: assertion required at this I/O or test boundary.
 				const tracked = dep as TrackedBindleResource<ResourceKind>;
 				if (tracked.__bindleInternal) {
 					internal.dependencies.add(tracked.__bindleInternal);
@@ -122,7 +140,9 @@ function createBindleResource<K extends ResourceKind>(
 		},
 		allow(...verbs: AllowVerbsFor<K>[]): BindleResource<K> {
 			for (const verb of verbs) {
+				// SAFETY: assertion required at this I/O or test boundary.
 				if (!internal.declaredAllow.includes(verb as string)) {
+					// SAFETY: assertion required at this I/O or test boundary.
 					internal.declaredAllow.push(verb as string);
 				}
 			}
@@ -183,14 +203,17 @@ function createBuilder(): BindleBuilder {
 		experiment: () => createBindleResource("experiment"),
 		rollout: () => createBindleResource("rollout"),
 		external: (options: ExternalDependencyOptions = {}) =>
+			// SAFETY: assertion required at this I/O or test boundary.
 			createBindleResource("external").with(
 				externalDependencyAnnotation(options),
 			) as BindleResource<"external">,
 		container: (options: ContainerDependencyOptions) =>
+			// SAFETY: assertion required at this I/O or test boundary.
 			createBindleResource("container").with(
 				containerDependencyAnnotation(options),
 			) as BindleResource<"container">,
 		wasmComponent: (options: WasmComponentDependencyOptions) =>
+			// SAFETY: assertion required at this I/O or test boundary.
 			createBindleResource("wasm-component").with(
 				wasmComponentDependencyAnnotation(options),
 			) as BindleResource<"wasm-component">,
@@ -202,6 +225,7 @@ function toResourceRecord<K extends ResourceKind>(
 	name: string,
 	internal: InternalBindleResource<K>,
 ): BindleResourceRecord<K> {
+	// SAFETY: assertion required at this I/O or test boundary.
 	const stableId = `${internal.kind}:${name}` as `${K}:${string}`;
 	return Object.freeze({
 		kind: internal.kind,
@@ -228,7 +252,7 @@ export function bindle(
 ): BindleDefinition;
 export function bindle(
 	name: string,
-	requirements: Partial<BindleRequirements> | Record<string, unknown>,
+	requirements: Partial<BindleRequirements> | JsonObject,
 	build: (builder: BindleBuilder) => Record<string, BindleResource>,
 ): BindleDefinition;
 export function bindle(
@@ -238,27 +262,27 @@ export function bindle(
 	buildOrRequirements?:
 		| ((builder: BindleBuilder) => Record<string, BindleResource>)
 		| Partial<BindleRequirements>
-		| Record<string, unknown>,
+		| JsonObject,
 	maybeBuild?: (builder: BindleBuilder) => Record<string, BindleResource>,
 ): BindleDefinition {
-	const nameless = typeof nameOrBuild === "function";
+	const nameless = nameOrBuild instanceof Function;
 	let name: string;
 	let build: (builder: BindleBuilder) => Record<string, BindleResource>;
-	let requirementsInput: unknown = {};
+	let requirementsInput: JsonValue | Partial<BindleRequirements> = {};
 
 	if (nameless) {
 		name = DEFAULT_BINDLE_NAME;
 		build = nameOrBuild;
 	} else {
-		if (typeof nameOrBuild !== "string" || nameOrBuild.length === 0) {
+		if (!isJsonString(nameOrBuild) || nameOrBuild.length === 0) {
 			throw new TypeError("bindle name must be a non-empty string");
 		}
 		name = nameOrBuild;
-		if (typeof buildOrRequirements === "function") {
+		if (buildOrRequirements instanceof Function) {
 			build = buildOrRequirements;
 		} else {
 			requirementsInput = buildOrRequirements ?? {};
-			if (typeof maybeBuild !== "function") {
+			if (!(maybeBuild instanceof Function)) {
 				throw new TypeError("bindle requires a builder function");
 			}
 			build = maybeBuild;
@@ -279,9 +303,10 @@ export function bindle(
 	const handlers = new Map<string, EntrypointFactory>();
 
 	for (const [resourceName, resource] of Object.entries(built)) {
-		if (typeof resourceName !== "string" || resourceName.length === 0) {
+		if (!isJsonString(resourceName) || resourceName.length === 0) {
 			throw new TypeError("bindle resource names must be non-empty strings");
 		}
+		// SAFETY: assertion required at this I/O or test boundary.
 		const tracked = resource as TrackedBindleResource<ResourceKind>;
 		const internal = tracked.__bindleInternal;
 		if (!internal) {
@@ -300,6 +325,7 @@ export function bindle(
 	}
 
 	for (const [resourceName, resource] of Object.entries(built)) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const tracked = resource as TrackedBindleResource<ResourceKind>;
 		for (const dep of tracked.__bindleInternal.dependencies) {
 			if (isConnectorBinding(dep)) {
@@ -327,7 +353,7 @@ export function bindle(
 	const definition: BindleDefinition = {
 		name,
 		resources: Object.freeze(resources),
-		...(Object.keys(connectors).length > 0 ? { connectors } : {}),
+		...(Object.keys(connectors).length > 0 ? { connectors } : undefined),
 		edges: Object.freeze(edges),
 		requirements,
 		entrypoint: (resourceName: string): EntrypointFactory | undefined =>

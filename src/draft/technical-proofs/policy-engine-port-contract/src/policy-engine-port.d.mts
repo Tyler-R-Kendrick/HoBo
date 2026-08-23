@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export type SubjectKind = "user" | "service" | "agent" | "system";
 export type PolicyPhase = "author" | "local" | "test" | "plan" | "apply" | "runtime" | "observe" | "train" | "promote" | "repair";
 export type DecisionEffect = "allow" | "allow-degraded" | "deny" | "warn" | "mutate" | "require-approval";
@@ -17,7 +18,7 @@ export interface DecisionRequest {
     id: string;
   };
   phase: PolicyPhase;
-  context?: Record<string, unknown>;
+  context?: JsonObject;
 }
 
 export interface Decision {

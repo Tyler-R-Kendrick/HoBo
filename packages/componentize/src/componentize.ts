@@ -58,6 +58,14 @@ export interface ComponentizeResult {
 	ciMatrix: typeof DEFAULT_CI_MATRIX;
 }
 
+type CanonicalValue =
+	| string
+	| number
+	| boolean
+	| null
+	| CanonicalValue[]
+	| { readonly [key: string]: CanonicalValue };
+
 export async function componentizeHelloBindle({
 	sourceRoot,
 	sourceDateEpoch,
@@ -177,9 +185,11 @@ export async function runWasmtimeSmoke(
 
 function assertPinnedToolchain(toolchain: typeof PINNED_TOOLCHAIN) {
 	for (const [name, expected] of Object.entries(PINNED_TOOLCHAIN)) {
-		if (toolchain[name as keyof typeof PINNED_TOOLCHAIN] !== expected) {
+		// SAFETY: the loop key comes from the frozen pinned toolchain object.
+		const actual = toolchain[name as keyof typeof PINNED_TOOLCHAIN];
+		if (actual !== expected) {
 			throw new Error(
-				`componentize.toolchain_skew: ${name} expected ${expected} got ${toolchain[name as keyof typeof PINNED_TOOLCHAIN]}`,
+				`componentize.toolchain_skew: ${name} expected ${expected} got ${actual}`,
 			);
 		}
 	}
@@ -320,6 +330,7 @@ function readContractMetadata(bytes: Uint8Array) {
 				.toString("utf8");
 			offset += nameLength.value;
 			if (name === CUSTOM_SECTION_NAME) {
+				// SAFETY: the bytes were emitted by buildWasmContractBytes with this contract shape.
 				return JSON.parse(
 					buffer.subarray(offset, sectionEnd).toString("utf8"),
 				) as {
@@ -365,7 +376,7 @@ function readU32(buffer: Buffer, offset: number) {
 	}
 }
 
-function canonicalize(value: unknown) {
+function canonicalize(value: CanonicalValue): string {
 	return JSON.stringify(value);
 }
 
@@ -381,10 +392,7 @@ function normalizePath(pathOrUrl: string | URL) {
 	if (pathOrUrl instanceof URL) {
 		return fileURLToPath(pathOrUrl);
 	}
-	if (typeof pathOrUrl === "string") {
-		return pathOrUrl;
-	}
-	throw new Error("componentize.source_root_required");
+	return pathOrUrl;
 }
 
 function normalizeRelativePath(filePath: string) {

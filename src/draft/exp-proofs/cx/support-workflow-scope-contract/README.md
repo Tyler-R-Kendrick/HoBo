@@ -6,7 +6,7 @@ support tooling, helpdesk, or live support operations work fans out.
 ## Focused Gate
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\support-workflow-scope-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\support-workflow-scope-contract test
 ```
 
 ## Proof Surface

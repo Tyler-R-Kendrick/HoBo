@@ -4,6 +4,8 @@ import { hoboAdd } from "../../hobo-add-install-verification-contract/src/hobo-a
 import { canonicalJson as descriptorCanonicalJson, parseDescriptor } from "../../registry-artifact-descriptor-contract/src/registry-descriptor.js";
 import { createInBoundaryRegistryMirror, createRegistryImporter } from "../../registry-import-contract/src/registry-import.js";
 import { canonicalJson } from "../../signed-offline-bundle-contract/src/bundle-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const JUNCTION_REGISTRY_FEDERATION_CONTRACT = "hobo.junction-registry-federation/v1";
 export const JUNCTION_ARTIFACT_SHARED_EVENT = "junction.ArtifactShared";
@@ -348,7 +350,7 @@ function requiredYard(yardById, yardId, name) {
 }
 
 function coordinateKey(coordinate) {
-  if (!coordinate || typeof coordinate !== "object" || Array.isArray(coordinate)) {
+  if (!coordinate || !isJsonObject(coordinate) || Array.isArray(coordinate)) {
     throw new Error("coordinate must be an object");
   }
   assertNonEmptyString(coordinate.name, "coordinate.name");
@@ -373,7 +375,7 @@ function digestText(value) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
@@ -398,7 +400,7 @@ function rejected(reasons) {
 }
 
 function assertNonEmptyString(value, name) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${name} must be a non-empty string`);
   }
 }

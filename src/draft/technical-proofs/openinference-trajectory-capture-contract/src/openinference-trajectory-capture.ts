@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish the erased event, payload, and generated-region contracts at their parser boundaries. */
+
 import { createHash } from "node:crypto";
 
 export const OPENINFERENCE_TRAJECTORY_CAPTURE_CONTRACT = "hobo.openinference-trajectory-capture/v1";

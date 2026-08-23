@@ -17,6 +17,7 @@
 import { DatabaseSync } from "node:sqlite";
 
 import type { DataDualView } from "./data-steps.js";
+import type { JsonObject } from "./json.js";
 
 export interface DataDualPort {
 	readonly fidelity: "live";
@@ -26,7 +27,7 @@ export interface DataDualPort {
 
 export interface SqliteDataDualWrite {
 	readonly id: string;
-	readonly doc: Readonly<Record<string, unknown>>;
+	readonly doc: JsonObject;
 	/** Pooled-store tenant; defaults to the port's tenant (or "default"). */
 	readonly tenant?: string;
 	readonly deleted?: boolean;
@@ -151,10 +152,12 @@ export function createSqliteDataDualPort(
 	);
 
 	function watermark(): number {
+		// SAFETY: the query selects one optional numeric watermark column.
 		const row = target
 			.prepare(
 				`SELECT watermark FROM ${table}_cdc_applied WHERE table_name = ?`,
 			)
+			// SAFETY: the query selects one optional numeric watermark column.
 			.get(table) as { watermark?: number | bigint } | undefined;
 		return Number(row?.watermark ?? 0);
 	}
@@ -180,18 +183,18 @@ export function createSqliteDataDualPort(
 						 WHERE seq > ? ORDER BY seq`,
 					)
 					.all(after);
-		return rows as unknown as readonly {
-			seq: number;
-			tenant_id: string;
-			id: string;
-			op: string;
-			doc: string | null;
-		}[];
+		return rows.map((row) => ({
+			seq: Number(row.seq),
+			tenant_id: String(row.tenant_id),
+			id: String(row.id),
+			op: String(row.op),
+			doc: row.doc === null ? null : String(row.doc),
+		}));
 	}
 
 	function readRows(
 		db: DatabaseSync,
-	): readonly Readonly<Record<string, unknown>>[] {
+	): readonly JsonObject[] {
 		const rows = tenant
 			? db
 					.prepare(
@@ -204,25 +207,30 @@ export function createSqliteDataDualPort(
 					)
 					.all();
 		return Object.freeze(
+			// SAFETY: the SELECT statements below provide these row columns.
 			(rows as { tenant_id?: string; id: string; doc: string }[]).map((row) =>
 				Object.freeze({
-					...(row.tenant_id !== undefined ? { tenant: row.tenant_id } : {}),
+					...(row.tenant_id !== undefined ? { tenant: row.tenant_id } : undefined),
 					id: row.id,
-					...(JSON.parse(row.doc) as Record<string, unknown>),
+					// SAFETY: writeSource serializes JsonObject documents.
+					...(JSON.parse(row.doc) as JsonObject),
 				}),
 			),
 		);
 	}
 
 	function fenceRow(forTenant: string): { fence_token: string } | undefined {
+		// SAFETY: the query selects the optional fence token column.
 		return source
 			.prepare(
 				`SELECT fence_token FROM ${table}_tenant_fence WHERE tenant_id = ?`,
 			)
+			// SAFETY: the query selects the optional fence token column.
 			.get(forTenant) as { fence_token: string } | undefined;
 	}
 
 	function maxSeq(): number {
+		// SAFETY: the query selects one nullable numeric head column.
 		const row = (
 			tenant
 				? source
@@ -231,6 +239,7 @@ export function createSqliteDataDualPort(
 						)
 						.get(tenant)
 				: source.prepare(`SELECT MAX(seq) AS head FROM ${table}_cdc_log`).get()
+			// SAFETY: the query selects one nullable numeric head column.
 		) as { head: number | bigint | null } | undefined;
 		return Number(row?.head ?? 0);
 	}
@@ -307,11 +316,12 @@ export function createSqliteDataDualPort(
 						.prepare(
 							`SELECT tenant_id, id, doc FROM ${table} ORDER BY tenant_id, id`,
 						)
-						.all()) as unknown as readonly {
-				tenant_id: string;
-				id: string;
-				doc: string;
-			}[];
+					// SAFETY: the SELECT above fixes the backfill row shape.
+					.all()).map((row) => ({
+					tenant_id: String(row.tenant_id),
+					id: String(row.id),
+					doc: String(row.doc),
+				}));
 			const head = maxSeq();
 			target.exec("BEGIN IMMEDIATE");
 			try {

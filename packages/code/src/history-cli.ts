@@ -2,6 +2,7 @@
  * hobo-code history + alias/dotfiles verbs. Station SQLite, not Atuin.
  */
 
+import { cloneAsJson, isJsonString, type JsonValue } from "./json.js";
 import {
 	type CommandActorKind,
 	openSessionShellStore,
@@ -16,7 +17,7 @@ export interface HistoryCliResult {
 	readonly ok: boolean;
 	readonly code: string;
 	readonly message: string;
-	readonly data: unknown;
+	readonly data: JsonValue;
 }
 
 function scope(hoboHome: string, env: NodeJS.ProcessEnv): AuthedStationView {
@@ -37,7 +38,7 @@ function open(
 			ok: false,
 			code: "HOBO_AUTH_REQUIRED",
 			message: view.message || "Not logged in — run: hobo-code auth login",
-			data: { events: [], aliases: [], env: [] },
+			data: cloneAsJson({ events: [], aliases: [], env: [] }),
 		};
 	}
 	return {
@@ -54,7 +55,7 @@ export function runHistoryCli(input: {
 	readonly hoboHome: string;
 	readonly env: NodeJS.ProcessEnv;
 	readonly args: readonly string[];
-	readonly flags: Record<string, string | boolean>;
+	readonly flags: { [name: string]: string | boolean };
 	readonly cwd: string;
 }): HistoryCliResult {
 	const opened = open(input.hoboHome, input.env);
@@ -69,7 +70,7 @@ export function runHistoryCli(input: {
 					ok: false,
 					code: "HOBO_CODE_HISTORY_EMPTY",
 					message: "usage: hobo-code history record <command>",
-					data: {},
+					data: cloneAsJson({}),
 				};
 			}
 			const recorded = store.recordCommand({
@@ -82,32 +83,37 @@ export function runHistoryCli(input: {
 					instanceId: "cli",
 					generation: 1,
 				},
-				...(typeof input.flags.exit === "string"
+				...(Object.prototype.toString.call(input.flags.exit) ===
+				"[object String]"
 					? {
 							outcome: {
 								exitCode: Number(input.flags.exit),
 								durationMs: 0,
 							},
 						}
-					: {}),
+					: undefined),
 			});
 			return {
 				ok: true,
 				code: "HOBO_CODE_HISTORY",
 				message: recorded.command,
-				data: { recorded },
+				data: cloneAsJson({ recorded }),
 			};
 		}
 		const q = (sub === "search" ? rest.join(" ") : input.args.join(" ")).trim();
-		const author =
-			typeof input.flags.author === "string" ? input.flags.author : "";
+		const author = isJsonString(input.flags.author) ? input.flags.author : "";
 		const events = store.search({
-			...(q.length > 0 ? { q } : {}),
+			...(q.length > 0 ? { q } : undefined),
 			cwd: input.cwd,
 			failedOnly: input.flags.failed === true,
 			...(author === "human" || author === "agent" || author === "automation"
-				? { authorKind: author as CommandActorKind }
-				: {}),
+				? // SAFETY: parsed or fixture value is the named domain type after this assertion.
+					{
+						authorKind:
+							// SAFETY: author is one of the closed CommandActorKind literals.
+							author as CommandActorKind,
+					}
+				: undefined),
 		});
 		const lines =
 			events.length === 0
@@ -121,7 +127,7 @@ export function runHistoryCli(input: {
 			ok: true,
 			code: "HOBO_CODE_HISTORY",
 			message: ["▣ history", ...lines].join("\n"),
-			data: { events },
+			data: cloneAsJson({ events }),
 		};
 	} finally {
 		store.close();
@@ -144,7 +150,7 @@ export function runAliasCli(input: {
 				ok: true,
 				code: "HOBO_CODE_ALIAS",
 				message: `alias ${alias.name}='${alias.body}'`,
-				data: { alias },
+				data: cloneAsJson({ alias }),
 			};
 		}
 		if ((sub === "rm" || sub === "remove") && name) {
@@ -153,7 +159,7 @@ export function runAliasCli(input: {
 				ok: true,
 				code: "HOBO_CODE_ALIAS",
 				message: `removed ${name}`,
-				data: { removed: name },
+				data: cloneAsJson({ removed: name }),
 			};
 		}
 		if (sub === "env" && name === "set" && rest[0]) {
@@ -162,7 +168,7 @@ export function runAliasCli(input: {
 				ok: true,
 				code: "HOBO_CODE_ALIAS",
 				message: `export ${envVar.name}='${envVar.value}'`,
-				data: { env: envVar },
+				data: cloneAsJson({ env: envVar }),
 			};
 		}
 		if (sub === "env" && (name === "rm" || name === "remove") && rest[0]) {
@@ -171,7 +177,7 @@ export function runAliasCli(input: {
 				ok: true,
 				code: "HOBO_CODE_ALIAS",
 				message: `removed ${rest[0]}`,
-				data: { removed: rest[0] },
+				data: cloneAsJson({ removed: rest[0] }),
 			};
 		}
 		if (sub === "env") {
@@ -186,7 +192,7 @@ export function runAliasCli(input: {
 								"▣ env",
 								...envVars.map((row) => ` ${row.name}=${row.value}`),
 							].join("\n"),
-				data: { env: envVars },
+				data: cloneAsJson({ env: envVars }),
 			};
 		}
 		if (sub === "export") {
@@ -195,11 +201,11 @@ export function runAliasCli(input: {
 				ok: true,
 				code: "HOBO_CODE_ALIAS",
 				message: script,
-				data: {
+				data: cloneAsJson({
 					script,
 					aliases: store.listAliases(),
 					env: store.listEnv(),
-				},
+				}),
 			};
 		}
 		const aliases = store.listAliases();
@@ -213,14 +219,14 @@ export function runAliasCli(input: {
 							"▣ alias",
 							...aliases.map((row) => ` ${row.name}='${row.body}'`),
 						].join("\n"),
-			data: { aliases, env: store.listEnv() },
+			data: cloneAsJson({ aliases, env: store.listEnv() }),
 		};
 	} catch (error) {
 		return {
 			ok: false,
 			code: "HOBO_CODE_ALIAS",
 			message: error instanceof Error ? error.message : String(error),
-			data: {},
+			data: cloneAsJson({}),
 		};
 	} finally {
 		store.close();

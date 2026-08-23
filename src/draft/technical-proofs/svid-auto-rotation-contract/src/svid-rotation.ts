@@ -397,7 +397,7 @@ function failure(request, reason) {
 }
 
 function normalizeAudience(value) {
-  if (typeof value === "string") {
+  if (isString(value)) {
     return requireString(value, "audience");
   }
   if (!Array.isArray(value) || value.length === 0) {
@@ -420,8 +420,8 @@ function normalizePrincipal(value, field) {
 function requireIssuer(issuer) {
   if (
     !issuer ||
-    typeof issuer.signJwtSvid !== "function" ||
-    typeof issuer.discovery !== "function"
+    !isCallable(issuer.signJwtSvid) ||
+    !isCallable(issuer.discovery)
   ) {
     throw new Error("createSvidRotationService requires issuer.signJwtSvid() and discovery()");
   }
@@ -437,7 +437,7 @@ function requireSegment(value, field) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -481,7 +481,7 @@ function defaultIdFactory(prefix) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isObjectRecord(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -495,11 +495,25 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isObjectRecord(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {
     deepFreeze(child);
   }
   return Object.freeze(value);
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isCallable(value) {
+  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
+    Object.prototype.toString.call(value),
+  );
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

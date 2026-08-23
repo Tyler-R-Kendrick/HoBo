@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-returns, anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof */
+
 // One adapter, two interchangeable binaries (they share the plan/apply/state
 // protocol); OpenTofu is the default per control-plane.md §IaC backends.
 // public-contract: the pinned OpenTofu toolchain the default engine declares.

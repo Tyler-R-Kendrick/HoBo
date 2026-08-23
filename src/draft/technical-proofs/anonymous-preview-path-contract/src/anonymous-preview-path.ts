@@ -3,6 +3,7 @@ import { createHash, randomBytes } from "node:crypto";
 const DEFAULT_TTL_HOURS = 24;
 const DEFAULT_PREVIEW_DOMAIN = "preview.hobo.dev";
 const MIN_NONCE_BITS = 128;
+const tagOf = Object.prototype.toString;
 
 export function createAnonymousPreviewPlan(request, options = {}) {
   const normalized = normalizeRequest(request);
@@ -263,7 +264,7 @@ function blockedPlan({ code, reason, now, events, retryAfterSeconds = null }) {
 }
 
 function normalizeRequest(request) {
-  if (!request || typeof request !== "object") {
+  if (!request || !isObject(request)) {
     throw new Error("request is required");
   }
   const project = request.project ?? {};
@@ -293,7 +294,7 @@ function normalizeRequest(request) {
 }
 
 function normalizeRecord(record) {
-  if (!record || typeof record !== "object") {
+  if (!record || !isObject(record)) {
     throw new Error("anonymous preview record is required");
   }
   return {
@@ -361,7 +362,7 @@ function slug(value) {
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isString(value) || value.trim().length === 0) {
     throw new Error(`${label} is required`);
   }
   return value;
@@ -375,7 +376,7 @@ function canonicalize(value) {
   if (Array.isArray(value)) {
     return value.map(canonicalize);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isObject(value)) {
     return value;
   }
   return Object.fromEntries(
@@ -384,4 +385,12 @@ function canonicalize(value) {
       .sort()
       .map((key) => [key, canonicalize(value[key])]),
   );
+}
+
+function isObject(value) {
+  return tagOf.call(value) === "[object Object]";
+}
+
+function isString(value) {
+  return tagOf.call(value) === "[object String]";
 }

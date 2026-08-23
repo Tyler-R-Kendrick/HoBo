@@ -22,6 +22,7 @@ import {
 	type BindleSessionReplayPlan,
 	type DualFixtureStore,
 } from "@hobo/replay";
+import { isJsonBoolean, type JsonObject, type JsonValue } from "./json.js";
 
 export type FetchHandler = (input: Request) => Response | Promise<Response>;
 
@@ -71,23 +72,26 @@ export function isExternalComponent(
 	kind: string,
 	annotations: readonly {
 		readonly option: string;
-		readonly config: Record<string, unknown>;
+		readonly config: JsonObject;
 	}[],
 ): boolean {
 	for (const annotation of annotations) {
 		if (annotation.option !== "endpoint") continue;
-		if (typeof annotation.config.external === "boolean") {
+		if (isJsonBoolean(annotation.config.external)) {
 			return annotation.config.external;
 		}
 	}
 	return kind === "web";
 }
 
-function asFetchHandler(value: unknown): FetchHandler | null {
-	if (typeof value === "function") {
-		return value as FetchHandler;
+function asFetchHandler(
+	value: JsonValue | undefined | Function,
+): FetchHandler | null {
+	if (!(value instanceof Function)) {
+		return null;
 	}
-	return null;
+	// SAFETY: Bindle entrypoint returned a function at the serve boundary.
+	return value as FetchHandler;
 }
 
 /**
@@ -108,14 +112,23 @@ export function listServableEntrypointsWithReplay(
 	for (const [name, record] of Object.entries(definition.resources)) {
 		if (!isHttpAppKit(record.kind)) continue;
 		const thunk = definition.entrypoint(name);
-		if (typeof thunk !== "function") continue;
-		const resolved = asFetchHandler(thunk());
+		if (!(thunk instanceof Function)) continue;
+		const inner = thunk();
+		if (!(inner instanceof Function)) continue;
+		const resolved = asFetchHandler(inner);
 		if (resolved === null) continue;
 		entries.push({
 			name,
 			kind: record.kind,
 			handler: resolved,
-			external: isExternalComponent(record.kind, record.annotations),
+			external: isExternalComponent(
+				record.kind,
+				// SAFETY: bindle annotations are JSON config objects at the serve boundary.
+				record.annotations as readonly {
+					readonly option: string;
+					readonly config: JsonObject;
+				}[],
+			),
 		});
 	}
 	const rank = (entry: ServableEntrypoint) => {
@@ -128,7 +141,7 @@ export function listServableEntrypointsWithReplay(
 		env: options.env ?? process.env,
 		...(options.stationId !== undefined
 			? { stationId: options.stationId }
-			: {}),
+			: undefined),
 	});
 	const env = options.env ?? process.env;
 	const controlsUrl =

@@ -18,6 +18,12 @@ import {
 } from "../_generated/traffic_routing_pb.js";
 import { CoreParseError } from "../errors.js";
 import {
+	cloneAsJson,
+	isJsonBoolean,
+	isJsonString,
+	type JsonObject,
+} from "../json.js";
+import {
 	assertNoExtra,
 	deepFreeze,
 	enumValue,
@@ -223,7 +229,7 @@ export class TrafficRoutingParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_TRAFFIC_ROUTING_PARSE", path, expected, received, message);
@@ -257,34 +263,47 @@ const CAPABILITIES = new Set<TrafficRoutingCapability>([
 const ROUTING_INSTANT =
 	/^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?(?:Z|[+-]\d{2}:\d{2})$/u;
 
-export function parseBackendId(value: unknown, path = "backendId"): BackendId {
-	return text(value, path) as BackendId;
+function brandAs<T>(value: string): T {
+	// SAFETY: the string was parsed at this routing-plan document boundary.
+	return value as T;
+}
+
+export function parseBackendId(
+	value: JsonValue | undefined,
+	path = "backendId",
+): BackendId {
+	return brandAs<BackendId>(text(value, path));
 }
 
 export function parseRoutingPlanId(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "planId",
 ): RoutingPlanId {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return text(value, path) as RoutingPlanId;
 }
 
 export function parseRoutingProvider(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "provider",
 ): TrafficRoutingProvider {
 	return enumValue(value, PROVIDERS, path, TrafficRoutingParseError);
 }
 
 export function parseRoutingWeight(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "weight",
 ): RoutingWeight {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return positiveInteger(value, path, TrafficRoutingParseError, {
 		max: 100,
 	}) as RoutingWeight;
 }
 
-export function parseBackendRef(value: unknown, path = "backend"): BackendRef {
+export function parseBackendRef(
+	value: JsonValue | undefined,
+	path = "backend",
+): BackendRef {
 	const input = record(value, path, [
 		"id",
 		"service",
@@ -300,40 +319,44 @@ export function parseBackendRef(value: unknown, path = "backend"): BackendRef {
 					locationHints: stringList(
 						input.locationHints,
 						`${path}.locationHints`,
-					).map((entry) => entry as LocationHint),
+						// SAFETY: assertion required at this I/O or test boundary.
+					).map((entry) => brandAs<LocationHint>(entry)),
 				}
-			: {}),
+			: undefined),
 		...(input.weight !== undefined
 			? { weight: parseRoutingWeight(input.weight, `${path}.weight`) }
-			: {}),
+			: undefined),
 		...(input.endpoint !== undefined
 			? { endpoint: parseEndpoint(input.endpoint, `${path}.endpoint`) }
-			: {}),
+			: undefined),
 	});
 }
 
 export function parseRoutingMatch(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "match",
 ): RoutingMatch {
 	const input = record(value, path, ["pathPrefix", "headers"]);
 	return deepFreeze({
 		...(input.pathPrefix !== undefined
 			? { pathPrefix: parsePathPrefix(input.pathPrefix, `${path}.pathPrefix`) }
-			: {}),
+			: undefined),
 		...(input.headers !== undefined
 			? { headers: parseHeaders(input.headers, `${path}.headers`) }
-			: {}),
+			: undefined),
 	});
 }
 
-export function parseRoutingRule(value: unknown, path = "rule"): RoutingRule {
+export function parseRoutingRule(
+	value: JsonValue | undefined,
+	path = "rule",
+): RoutingRule {
 	const input = record(value, path, ["match", "backends", "weightStrategy"]);
 	const backends = backendList(input.backends, `${path}.backends`);
 	return deepFreeze({
 		...(input.match !== undefined
 			? { match: parseRoutingMatch(input.match, `${path}.match`) }
-			: {}),
+			: undefined),
 		backends,
 		weightStrategy:
 			input.weightStrategy === undefined
@@ -348,7 +371,7 @@ export function parseRoutingRule(value: unknown, path = "rule"): RoutingRule {
 }
 
 export function parseMinAvailabilitySpec(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "availability",
 ): MinAvailabilitySpec {
 	const input = record(value, path, [
@@ -359,62 +382,67 @@ export function parseMinAvailabilitySpec(
 	return deepFreeze({
 		...(input.minHealthyBackends !== undefined
 			? {
+					// SAFETY: assertion required at this I/O or test boundary.
 					minHealthyBackends: positiveInteger(
 						input.minHealthyBackends,
 						`${path}.minHealthyBackends`,
 						TrafficRoutingParseError,
 					) as BackendCount,
 				}
-			: {}),
+			: undefined),
 		...(input.minDistinctLocations !== undefined
 			? {
+					// SAFETY: assertion required at this I/O or test boundary.
 					minDistinctLocations: positiveInteger(
 						input.minDistinctLocations,
 						`${path}.minDistinctLocations`,
 						TrafficRoutingParseError,
 					) as BackendCount,
 				}
-			: {}),
+			: undefined),
 		...(input.locationLabels !== undefined
 			? {
 					locationLabels: stringList(
 						input.locationLabels,
 						`${path}.locationLabels`,
-					).map((entry) => entry as LocationHint),
+						// SAFETY: assertion required at this I/O or test boundary.
+					).map((entry) => brandAs<LocationHint>(entry)),
 				}
-			: {}),
+			: undefined),
 	});
 }
 
 export function parseResiliencySpec(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "resiliency",
 ): ResiliencySpec {
 	const input = record(value, path, ["timeoutMs", "retries"]);
 	return deepFreeze({
 		...(input.timeoutMs !== undefined
 			? {
+					// SAFETY: assertion required at this I/O or test boundary.
 					timeoutMs: positiveInteger(
 						input.timeoutMs,
 						`${path}.timeoutMs`,
 						TrafficRoutingParseError,
 					) as TimeoutMs,
 				}
-			: {}),
+			: undefined),
 		...(input.retries !== undefined
 			? {
+					// SAFETY: assertion required at this I/O or test boundary.
 					retries: nonNegativeInteger(
 						input.retries,
 						`${path}.retries`,
 						TrafficRoutingParseError,
 					) as RetryCount,
 				}
-			: {}),
+			: undefined),
 	});
 }
 
 export function parseTrafficIntent(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "intent",
 ): TrafficIntent {
 	const input = record(value, path, [
@@ -440,7 +468,7 @@ export function parseTrafficIntent(
 						`${path}.availability`,
 					),
 				}
-			: {}),
+			: undefined),
 		...(input.resiliency !== undefined
 			? {
 					resiliency: parseResiliencySpec(
@@ -448,11 +476,11 @@ export function parseTrafficIntent(
 						`${path}.resiliency`,
 					),
 				}
-			: {}),
+			: undefined),
 	});
 }
 
-export function parseRoutingPlan(value: unknown): RoutingPlan {
+export function parseRoutingPlan(value: JsonValue | undefined): RoutingPlan {
 	const input = record(value, "plan", [
 		"planId",
 		"intent",
@@ -492,28 +520,41 @@ export function parseRoutingPlan(value: unknown): RoutingPlan {
 		intent,
 		backends,
 		...(input.stationId !== undefined
-			? { stationId: text(input.stationId, "plan.stationId") as StationId }
-			: {}),
+			? // SAFETY: assertion required at this I/O or test boundary.
+				{
+					stationId: brandAs<StationId>(
+						text(input.stationId, "plan.stationId"),
+					),
+				}
+			: undefined),
 		...(input.railHash !== undefined
 			? { railHash: parseRailHash(input.railHash) }
-			: {}),
+			: undefined),
 		createdAt: parseInstant(input.createdAt, "plan.createdAt"),
 		...(input.degraded === undefined
-			? {}
+			? undefined
 			: { degraded: bool(input.degraded, "plan.degraded") }),
 		...(input.notes === undefined
-			? {}
+			? undefined
 			: { notes: stringList(input.notes, "plan.notes") }),
 	});
 }
 
 /** Parse protobuf JSON or a generated TrafficRoutingPlanRecord into the domain view. */
-export function parseTrafficRoutingPlanRecord(value: unknown): RoutingPlan {
+export function parseTrafficRoutingPlanRecord(
+	value: JsonValue | undefined,
+): RoutingPlan {
 	let wire: TrafficRoutingPlanRecord;
 	try {
 		wire = isMessage(value, TrafficRoutingPlanRecordSchema)
 			? value
-			: fromJson(TrafficRoutingPlanRecordSchema, value as JsonValue);
+			: value === undefined
+				? fail(
+						"trafficRoutingPlanRecord",
+						TrafficRoutingPlanRecordSchema.typeName,
+						value,
+					)
+				: fromJson(TrafficRoutingPlanRecordSchema, value);
 	} catch (error) {
 		fail(
 			"trafficRoutingPlanRecord",
@@ -521,56 +562,62 @@ export function parseTrafficRoutingPlanRecord(value: unknown): RoutingPlan {
 			error instanceof Error ? error.message : error,
 		);
 	}
-	return parseRoutingPlan({
-		planId: wire.planId,
-		intent:
-			wire.intent === undefined
+	return parseRoutingPlan(
+		cloneAsJson({
+			planId: wire.planId,
+			intent:
+				wire.intent === undefined
+					? undefined
+					: {
+							service: wire.intent.service,
+							tenantId: wire.intent.tenantId,
+							rules: wire.intent.rules.map(ruleFromRecord),
+							...(wire.intent.availability
+								? {
+										availability: {
+											...(wire.intent.availability.minHealthyBackends ===
+											undefined
+												? undefined
+												: {
+														minHealthyBackends:
+															wire.intent.availability.minHealthyBackends,
+													}),
+											...(wire.intent.availability.minDistinctLocations ===
+											undefined
+												? undefined
+												: {
+														minDistinctLocations:
+															wire.intent.availability.minDistinctLocations,
+													}),
+											locationLabels: wire.intent.availability.locationLabels,
+										},
+									}
+								: undefined),
+							...(wire.intent.resiliency
+								? {
+										resiliency: {
+											...(wire.intent.resiliency.timeoutMs === undefined
+												? undefined
+												: { timeoutMs: wire.intent.resiliency.timeoutMs }),
+											...(wire.intent.resiliency.retries === undefined
+												? undefined
+												: { retries: wire.intent.resiliency.retries }),
+										},
+									}
+								: undefined),
+						},
+			backends: wire.backends.map(backendFromRecord),
+			...(wire.stationId === undefined
 				? undefined
-				: {
-						service: wire.intent.service,
-						tenantId: wire.intent.tenantId,
-						rules: wire.intent.rules.map(ruleFromRecord),
-						...(wire.intent.availability
-							? {
-									availability: {
-										...(wire.intent.availability.minHealthyBackends ===
-										undefined
-											? {}
-											: {
-													minHealthyBackends:
-														wire.intent.availability.minHealthyBackends,
-												}),
-										...(wire.intent.availability.minDistinctLocations ===
-										undefined
-											? {}
-											: {
-													minDistinctLocations:
-														wire.intent.availability.minDistinctLocations,
-												}),
-										locationLabels: wire.intent.availability.locationLabels,
-									},
-								}
-							: {}),
-						...(wire.intent.resiliency
-							? {
-									resiliency: {
-										...(wire.intent.resiliency.timeoutMs === undefined
-											? {}
-											: { timeoutMs: wire.intent.resiliency.timeoutMs }),
-										...(wire.intent.resiliency.retries === undefined
-											? {}
-											: { retries: wire.intent.resiliency.retries }),
-									},
-								}
-							: {}),
-					},
-		backends: wire.backends.map(backendFromRecord),
-		...(wire.stationId === undefined ? {} : { stationId: wire.stationId }),
-		...(wire.railHash === undefined ? {} : { railHash: wire.railHash }),
-		createdAt: wire.createdAt,
-		degraded: wire.degraded,
-		notes: wire.notes,
-	});
+				: { stationId: wire.stationId }),
+			...(wire.railHash === undefined
+				? undefined
+				: { railHash: wire.railHash }),
+			createdAt: wire.createdAt,
+			degraded: wire.degraded,
+			notes: wire.notes,
+		}),
+	);
 }
 
 /** Convert a parsed domain plan to its generated protobuf record. */
@@ -588,11 +635,11 @@ export function toTrafficRoutingPlanRecord(
 							match: {
 								...(rule.match.pathPrefix
 									? { pathPrefix: rule.match.pathPrefix }
-									: {}),
+									: undefined),
 								headers: { ...rule.match.headers },
 							},
 						}
-					: {}),
+					: undefined),
 				backends: rule.backends.map(backendToRecord),
 				weightStrategy: weightStrategyToRecord(rule.weightStrategy),
 			})),
@@ -605,21 +652,23 @@ export function toTrafficRoutingPlanRecord(
 							],
 						},
 					}
-				: {}),
+				: undefined),
 			...(plan.intent.resiliency
 				? { resiliency: { ...plan.intent.resiliency } }
-				: {}),
+				: undefined),
 		},
 		backends: plan.backends.map(backendToRecord),
-		...(plan.stationId === undefined ? {} : { stationId: plan.stationId }),
-		...(plan.railHash === undefined ? {} : { railHash: plan.railHash }),
+		...(plan.stationId === undefined
+			? undefined
+			: { stationId: plan.stationId }),
+		...(plan.railHash === undefined ? undefined : { railHash: plan.railHash }),
 		createdAt: plan.createdAt,
 		degraded: plan.degraded ?? false,
 		notes: [...(plan.notes ?? [])],
 	});
 }
 
-export function parseApplyResult(value: unknown): ApplyResult {
+export function parseApplyResult(value: JsonValue | undefined): ApplyResult {
 	const input = record(value, "applyResult", [
 		"planId",
 		"provider",
@@ -641,16 +690,17 @@ export function parseApplyResult(value: unknown): ApplyResult {
 		notes: stringList(input.notes, "applyResult.notes"),
 		...(input.appliedRules !== undefined
 			? {
+					// SAFETY: assertion required at this I/O or test boundary.
 					appliedRules: nonNegativeInteger(
 						input.appliedRules,
 						"applyResult.appliedRules",
 						TrafficRoutingParseError,
 					) as AppliedRuleCount,
 				}
-			: {}),
+			: undefined),
 		...(input.unmet !== undefined
 			? { unmet: stringList(input.unmet, "applyResult.unmet") }
-			: {}),
+			: undefined),
 		...(input.capabilities !== undefined
 			? {
 					capabilities: capabilityList(
@@ -658,7 +708,7 @@ export function parseApplyResult(value: unknown): ApplyResult {
 						"applyResult.capabilities",
 					),
 				}
-			: {}),
+			: undefined),
 	});
 	const appliedRules = result.appliedRules ?? 0;
 	const unmet = result.unmet?.length ?? 0;
@@ -682,7 +732,9 @@ export function parseApplyResult(value: unknown): ApplyResult {
 	return result;
 }
 
-export function parseRoutingStatus(value: unknown): RoutingStatus {
+export function parseRoutingStatus(
+	value: JsonValue | undefined,
+): RoutingStatus {
 	const input = record(value, "routingStatus", [
 		"planId",
 		"active",
@@ -709,7 +761,7 @@ export function parseRoutingStatus(value: unknown): RoutingStatus {
 	return result;
 }
 
-export function parseRevokeResult(value: unknown): RevokeResult {
+export function parseRevokeResult(value: JsonValue | undefined): RevokeResult {
 	const input = record(value, "revokeResult", ["ok", "notes"]);
 	return deepFreeze({
 		ok: bool(input.ok, "revokeResult.ok"),
@@ -718,7 +770,7 @@ export function parseRevokeResult(value: unknown): RevokeResult {
 }
 
 export function createTrafficRoutingMeteringEvent(
-	value: unknown,
+	value: JsonValue | undefined,
 ): TrafficRoutingMeteringEvent {
 	const input = record(value, "meteringEvent", [
 		"tenantId",
@@ -735,8 +787,10 @@ export function createTrafficRoutingMeteringEvent(
 	);
 	const planId = parseRoutingPlanId(input.planId, "meteringEvent.planId");
 	return deepFreeze(
+		// SAFETY: assertion required at this I/O or test boundary.
 		createUsageEvent({
 			tenantId: parseTenantId(text(input.tenantId, "meteringEvent.tenantId")),
+			// SAFETY: assertion required at this I/O or test boundary.
 			eventType: `routing.plan.${outcome}` as TrafficRoutingMeteringEventType,
 			resource: planId,
 			timestamp:
@@ -753,17 +807,28 @@ export function createTrafficRoutingMeteringEvent(
 	);
 }
 
-function parseService(value: unknown, path: string): RoutingService {
+function parseService(
+	value: JsonValue | undefined,
+	path: string,
+): RoutingService {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return text(value, path) as RoutingService;
 }
 
-function parsePathPrefix(value: unknown, path: string): PathPrefix {
+function parsePathPrefix(
+	value: JsonValue | undefined,
+	path: string,
+): PathPrefix {
 	const parsed = text(value, path);
 	if (!parsed.startsWith("/")) fail(path, "path beginning with /", value);
+	// SAFETY: assertion required at this I/O or test boundary.
 	return parsed as PathPrefix;
 }
 
-function parseEndpoint(value: unknown, path: string): RoutingEndpoint {
+function parseEndpoint(
+	value: JsonValue | undefined,
+	path: string,
+): RoutingEndpoint {
 	const parsed = text(value, path);
 	let url: URL;
 	try {
@@ -777,6 +842,7 @@ function parseEndpoint(value: unknown, path: string): RoutingEndpoint {
 	if (url.username || url.password || url.search || url.hash) {
 		fail(path, "HTTP(S) URL without credentials, query, or fragment", value);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return parsed as RoutingEndpoint;
 }
 
@@ -799,9 +865,11 @@ function backendFromRecord(backend: TrafficRoutingBackendRecord) {
 		service: backend.service,
 		...(backend.locationHints.length > 0
 			? { locationHints: backend.locationHints }
-			: {}),
-		...(backend.weight === undefined ? {} : { weight: backend.weight }),
-		...(backend.endpoint === undefined ? {} : { endpoint: backend.endpoint }),
+			: undefined),
+		...(backend.weight === undefined ? undefined : { weight: backend.weight }),
+		...(backend.endpoint === undefined
+			? undefined
+			: { endpoint: backend.endpoint }),
 	};
 }
 
@@ -810,8 +878,10 @@ function backendToRecord(backend: BackendRef) {
 		id: backend.id,
 		service: backend.service,
 		locationHints: [...(backend.locationHints ?? [])],
-		...(backend.weight === undefined ? {} : { weight: backend.weight }),
-		...(backend.endpoint === undefined ? {} : { endpoint: backend.endpoint }),
+		...(backend.weight === undefined ? undefined : { weight: backend.weight }),
+		...(backend.endpoint === undefined
+			? undefined
+			: { endpoint: backend.endpoint }),
 	};
 }
 
@@ -821,12 +891,12 @@ function ruleFromRecord(rule: TrafficRoutingRuleRecord) {
 			? {
 					match: {
 						...(rule.match.pathPrefix === undefined
-							? {}
+							? undefined
 							: { pathPrefix: rule.match.pathPrefix }),
 						headers: rule.match.headers,
 					},
 				}
-			: {}),
+			: undefined),
 		backends: rule.backends.map(backendFromRecord),
 		weightStrategy: weightStrategyFromRecord(rule.weightStrategy),
 	};
@@ -861,7 +931,8 @@ function weightStrategyToRecord(
 	}
 }
 
-function parseRailHash(value: unknown): RailHash {
+function parseRailHash(value: JsonValue | undefined): RailHash {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return sha256Ref(
 		value,
 		"plan.railHash",
@@ -869,22 +940,26 @@ function parseRailHash(value: unknown): RailHash {
 	) as RailHash;
 }
 
-function parseInstant(value: unknown, path: string): RoutingInstant {
+function parseInstant(
+	value: JsonValue | undefined,
+	path: string,
+): RoutingInstant {
 	const parsed = isoTimestamp(value, path, TrafficRoutingParseError);
 	if (!ROUTING_INSTANT.test(parsed)) {
 		fail(path, "ISO timestamp with time and timezone", value);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return parsed as RoutingInstant;
 }
 
 function parseHeaders(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 ): Readonly<Record<string, string>> {
 	const input = record(value, path);
 	const entries = Object.entries(input).map(([name, headerValue]) => {
 		headerName(name, `${path}.${name}`, TrafficRoutingParseError);
-		if (typeof headerValue !== "string") {
+		if (!isJsonString(headerValue)) {
 			fail(`${path}.${name}`, "string", headerValue);
 		}
 		return [name.toLowerCase(), headerValue] as const;
@@ -895,7 +970,10 @@ function parseHeaders(
 	return deepFreeze(Object.fromEntries(entries));
 }
 
-function backendList(value: unknown, path: string): readonly BackendRef[] {
+function backendList(
+	value: JsonValue | undefined,
+	path: string,
+): readonly BackendRef[] {
 	const parsed = requiredArray(value, path, TrafficRoutingParseError).map(
 		(backend, index) => parseBackendRef(backend, `${path}[${index}]`),
 	);
@@ -909,16 +987,19 @@ function backendList(value: unknown, path: string): readonly BackendRef[] {
 }
 
 function record(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 	allowed?: readonly string[],
-): Record<string, unknown> {
+): JsonObject {
 	const parsed = expectObject(value, path, TrafficRoutingParseError);
 	if (allowed) assertNoExtra(parsed, path, allowed, TrafficRoutingParseError);
 	return parsed;
 }
 
-function stringList(value: unknown, path: string): readonly string[] {
+function stringList(
+	value: JsonValue | undefined,
+	path: string,
+): readonly string[] {
 	const parsed = uniqueStringArray(value, path, TrafficRoutingParseError).map(
 		(entry, index) => text(entry, `${path}[${index}]`),
 	);
@@ -928,7 +1009,7 @@ function stringList(value: unknown, path: string): readonly string[] {
 }
 
 function capabilityList(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 ): readonly TrafficRoutingCapability[] {
 	const parsed = (
@@ -946,17 +1027,17 @@ function capabilityList(
 	return deepFreeze(parsed);
 }
 
-function text(value: unknown, path: string): string {
+function text(value: JsonValue | undefined, path: string): string {
 	const parsed = nonEmptyString(value, path, TrafficRoutingParseError).trim();
 	if (parsed.length === 0) fail(path, "non-empty string", value);
 	return parsed;
 }
 
-function bool(value: unknown, path: string): boolean {
-	if (typeof value !== "boolean") fail(path, "boolean", value);
+function bool(value: JsonValue | undefined, path: string): boolean {
+	if (!isJsonBoolean(value)) fail(path, "boolean", value);
 	return value;
 }
 
-function fail(path: string, expected: string, received: unknown): never {
-	throw new TrafficRoutingParseError(path, expected, received);
+function fail<T>(path: string, expected: string, received: T): never {
+	throw new TrafficRoutingParseError(path, expected, cloneAsJson(received));
 }

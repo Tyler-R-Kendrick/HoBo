@@ -352,7 +352,7 @@ function evaluateBlastRadiusBudget(action, budget) {
 }
 
 function validateDriftSignal(candidate) {
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!isRecord(candidate)) {
     throw new TypeError("drift signal must be an object");
   }
   if (candidate.type !== "resource.DriftDetected") {
@@ -415,7 +415,7 @@ function crewBlastRadius(action) {
 
 function nextCrewSeq(events = []) {
   return events
-    .filter((event) => typeof event.seq === "number" && event.type?.startsWith("crew."))
+    .filter((event) => isNumber(event.seq) && event.type?.startsWith("crew."))
     .reduce((max, event) => Math.max(max, event.seq), 0) + 1;
 }
 
@@ -449,7 +449,7 @@ function validateIso(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isString(value) || value.trim().length === 0) {
     throw new TypeError(`${fieldName} is required`);
   }
   return value.trim();
@@ -463,11 +463,27 @@ function slug(value) {
 }
 
 function freeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isObjectLike(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {
     freeze(child);
   }
   return Object.freeze(value);
+}
+
+function isRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isObjectLike(value) {
+  return Array.isArray(value) || isRecord(value);
+}
+
+function isNumber(value) {
+  return Object.prototype.toString.call(value) === "[object Number]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

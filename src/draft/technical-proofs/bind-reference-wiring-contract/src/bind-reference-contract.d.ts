@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export interface DataClient {
   query(statement: string, parameters?: readonly unknown[]): Promise<readonly unknown[]>;
 }
@@ -75,5 +76,5 @@ export function bindingTypesFor(
 
 export function compileBindleManifest(handles: readonly unknown[]): {
   readonly schema: "hobo.manifest/v1";
-  readonly resources: Record<string, unknown>;
+  readonly resources: JsonObject;
 };

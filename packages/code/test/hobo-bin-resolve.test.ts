@@ -165,6 +165,7 @@ describe("hobo CLI resolution (the shipped /dev and run-it spawn)", () => {
 		).toThrow(/does not require `hobo` on PATH/u);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("spawns a non-.js override as the command itself", () => {
 		const spawned = resolveHoboSpawn({
 			hoboBin: "/usr/local/bin/hobo",
@@ -205,7 +206,7 @@ describe("hobo CLI resolution (the shipped /dev and run-it spawn)", () => {
 				env: { PATH: "/no/such/bin" },
 				startupTimeoutMs: 3_000,
 			}),
-		).rejects.toSatisfy((error: unknown) => {
+		).rejects.toSatisfy((error: Error) => {
 			const message = error instanceof Error ? error.message : String(error);
 			return (
 				/hobo override binary not found|not found/u.test(message) &&
@@ -271,6 +272,7 @@ describe("hobo CLI resolution (the shipped /dev and run-it spawn)", () => {
 		}
 	}, 25_000);
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("keeps debug it on the same live-dev path as run it", async () => {
 		const root = temp("hobo-bin-debug-");
 		const projectDir = projectWithBindle(root);

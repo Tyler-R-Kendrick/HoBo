@@ -80,7 +80,7 @@ export function createBlacksmithBuildMachineProvider(
 			return executionHostManifest(BUILD_MACHINE_CATEGORY, { providerId: id });
 		},
 		async execute(build: ExecutionHostBuild): Promise<ImageRef> {
-			if (typeof build?.buildId !== "string" || build.buildId.length === 0) {
+			if (build.buildId.length === 0) {
 				throw new Error(
 					"runner-blacksmith: build.buildId must be a non-empty string",
 				);

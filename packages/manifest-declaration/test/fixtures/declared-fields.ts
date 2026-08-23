@@ -65,6 +65,7 @@ export function declaredFields(
 		if (text === "") return;
 		const match = /^(?:readonly\s+)?([A-Za-z_$][\w$]*)(\??)\s*:/u.exec(text);
 		if (match === null) return;
+		// SAFETY: the capture group is present because the regex matched this line.
 		fields.push({ name: match[1] as string, optional: match[2] === "?" });
 	};
 

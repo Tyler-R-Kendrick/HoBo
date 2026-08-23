@@ -1,6 +1,8 @@
 import type {
   CapabilityManifest,
 } from "../../provider-capability-manifest-contract/src/provider-capability-manifest.d.ts";
+import { type JsonValue, type JsonObject } from "./json.js";
+
 
 export const REGISTRY_INGEST_CONTRACT: "hobo.registry-capability-manifest-ingest/v1";
 export const WELL_KNOWN_PREFIX: "/.well-known/capability-manifest/";
@@ -21,8 +23,8 @@ export interface RegistryProviderRecord {
   manifest: CapabilityManifest;
   auth: CapabilityManifest["auth"];
   cost: CapabilityManifest["cost"];
-  provenance: Record<string, unknown>;
-  conformance: Record<string, unknown> | null;
+  provenance: JsonObject;
+  conformance: JsonObject | null;
   ingestedAt: string;
 }
 
@@ -32,8 +34,8 @@ export interface RegistryEvent {
   seq: number;
   providerId: string;
   manifestSchema: string;
-  provenance: Record<string, unknown>;
-  conformanceReport: Record<string, unknown> | null;
+  provenance: JsonObject;
+  conformanceReport: JsonObject | null;
   name?: string;
   version?: string;
   regions?: string[];
@@ -59,9 +61,9 @@ export interface CapabilitySearchResult {
 export interface CapabilityRegistry {
   ingestWellKnown(input: {
     documents: Record<string, string>;
-    conformance?: Record<string, unknown> | null;
+    conformance?: JsonObject | null;
     servedRegions?: string[];
-    provenance?: Record<string, unknown> | null;
+    provenance?: JsonObject | null;
     trust?: RegistryIngestTrust;
   }): {
     ok: boolean;
@@ -71,18 +73,18 @@ export interface CapabilityRegistry {
     errors: string[];
   };
   getProvider(providerId: string): RegistryProviderRecord | null;
-  searchCapabilities(query?: Record<string, unknown>): {
+  searchCapabilities(query?: JsonObject): {
     ok: boolean;
     contract?: typeof REGISTRY_INGEST_CONTRACT;
-    query?: Record<string, unknown>;
+    query?: JsonObject;
     results: CapabilitySearchResult[];
-    remediation?: Record<string, unknown>;
+    remediation?: JsonObject;
     reason?: string;
   };
   createPlannerCapabilitySource(): {
     contract: typeof REGISTRY_INGEST_CONTRACT;
     listCapabilities(port: string): CapabilitySearchResult[];
-    search(query: Record<string, unknown>): ReturnType<CapabilityRegistry["searchCapabilities"]>;
+    search(query: JsonObject): ReturnType<CapabilityRegistry["searchCapabilities"]>;
     providers(): string[];
   };
   events(): RegistryEvent[];
@@ -105,11 +107,11 @@ export function buildFixtureWellKnownBundle(
 ): Record<string, string>;
 
 export function buildCloudflareWellKnownBundle(input?: {
-  provider?: { capabilityManifest(): unknown; id?: string; conformanceReport?(): unknown };
+  provider?: { capabilityManifest(): JsonValue; id?: string; conformanceReport?(): JsonValue };
   signingKey?: FixtureSigningKey;
 }): {
   documents: Record<string, string>;
-  conformance: Record<string, unknown>;
+  conformance: JsonObject;
   servedRegions: string[];
-  provenance: Record<string, unknown>;
+  provenance: JsonObject;
 };

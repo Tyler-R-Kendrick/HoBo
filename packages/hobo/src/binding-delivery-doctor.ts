@@ -23,10 +23,7 @@ export type BindingDeliveryDoctorSection = Readonly<{
  */
 export function buildBindingDeliveryDoctorSection(
 	env: NodeJS.ProcessEnv | Record<string, string | undefined> = process.env,
-): {
-	readonly report: BindingDeliveryDoctorSection;
-	readonly remediation: readonly string[];
-} {
+) {
 	const forbidden: string[] = [];
 	for (const key of Object.keys(env)) {
 		if (isForbiddenSecretEnvKey(key) && env[key]) {

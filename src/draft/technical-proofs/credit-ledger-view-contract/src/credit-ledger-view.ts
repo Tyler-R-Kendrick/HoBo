@@ -235,7 +235,7 @@ function usageFallsInsideCreditWindow(usage, credit) {
 }
 
 function normalizeInstant(value, fieldName) {
-  if (typeof value !== "string") {
+  if (Object.prototype.toString.call(value) !== "[object String]") {
     throw new TypeError(`${fieldName} must be an ISO-8601 string`);
   }
   const timestamp = Date.parse(value);
@@ -246,7 +246,7 @@ function normalizeInstant(value, fieldName) {
 }
 
 function requireString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (Object.prototype.toString.call(value) !== "[object String]" || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -286,7 +286,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (value && typeof value === "object") {
+  if (Object.prototype.toString.call(value) === "[object Object]") {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))

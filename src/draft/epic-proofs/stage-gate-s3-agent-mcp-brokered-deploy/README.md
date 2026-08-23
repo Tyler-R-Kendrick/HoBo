@@ -33,6 +33,8 @@ pnpm --prefix src/draft/epic-proofs/stage-gate-s3-agent-mcp-brokered-deploy run 
 - `token.*` audit trail with replay digest over the event store.
 - NFR-017 `explainFailure` remediation drives verify → redeploy self-correction.
 - Agent guardrails: prod deploy requires approval; static cloud keys rejected.
+- The validated MCP server hardening proof is included in this drill; its deterministic simulation contract is unchanged.
+- The validated auth.json proof is absorbed without changing broker-only token issuance or approval-gate behavior.
 - Zero static secrets in the successful drill trace.
 
 ## Mocked boundaries
@@ -55,3 +57,7 @@ pnpm --prefix src/draft/epic-proofs/stage-gate-s3-agent-mcp-brokered-deploy run 
 - `architecture/` — protobuf + CUE for drill records.
 - `architecture.md` — parse-don't-validate and event-architecture notes.
 - `contracts/pact-inventory.md` — boundary inventory.
+
+## Cascade reconciliation (83d9b5c92)
+
+The `token-broker-skeleton-contract` technical proof refresh is absorbed without changing staged brokered-deploy evidence.

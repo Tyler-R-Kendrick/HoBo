@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const GOLDEN_CHAOS_EVENT_TYPES = Object.freeze({
   suiteRan: "golden.SuiteRan",
   suitePassed: "golden.Passed",
@@ -28,7 +29,7 @@ export function evaluateGoldenSuiteChaosTier(input = {}) {
   const goldenRuns = normalizeGoldenRuns(input.goldenRuns);
   const sloStatus = input.sloStatus ?? null;
   const experiment = normalizeExperiment(input.chaosExperiment);
-  const now = typeof input.now === "function" ? input.now : () => new Date(0).toISOString();
+  const now = input.now instanceof Function ? input.now : () => new Date(0).toISOString();
   const seq = sequence();
   const events = [];
   const coverage = computeCoverage(suite, goldenRuns);
@@ -373,7 +374,7 @@ function abortedEvent({ experiment, seq, ts, reason, observedBlastRadius }) {
       experimentId: experiment.id,
       reason,
       blastRadius: experiment.blastRadius,
-      ...(observedBlastRadius ? { observedBlastRadius } : {}),
+      ...(observedBlastRadius ? { observedBlastRadius } : undefined),
     },
   });
 }
@@ -428,7 +429,7 @@ function exceedsBlastRadius(observed, declared) {
 }
 
 function normalizeSuite(suite) {
-  if (!suite || typeof suite !== "object" || Array.isArray(suite)) {
+  if (!suite || !isJsonObject(suite) || Array.isArray(suite)) {
     throw new Error("suite is required");
   }
   const requiredTargets = requiredArray(suite.requiredTargets, "suite.requiredTargets");
@@ -454,7 +455,7 @@ function normalizeGoldenRuns(runs) {
 }
 
 function normalizeExperiment(experiment) {
-  if (!experiment || typeof experiment !== "object" || Array.isArray(experiment)) {
+  if (!experiment || !isJsonObject(experiment) || Array.isArray(experiment)) {
     throw new Error("chaosExperiment is required");
   }
   const blastRadius = normalizeBlastRadius(experiment.blastRadius, "chaosExperiment.blastRadius");
@@ -494,13 +495,13 @@ function normalizeExperiment(experiment) {
       : null,
     cleanup: {
       status: requiredString(experiment.cleanup?.status ?? "removed", "chaosExperiment.cleanup.status"),
-      ...(experiment.cleanup?.reason ? { reason: String(experiment.cleanup.reason) } : {}),
+      ...(experiment.cleanup?.reason ? { reason: String(experiment.cleanup.reason) } : undefined),
     },
   });
 }
 
 function normalizeBlastRadius(value, fieldName) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${fieldName} is required`);
   }
 
@@ -553,7 +554,7 @@ function requiredArray(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value.trim();
@@ -581,7 +582,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

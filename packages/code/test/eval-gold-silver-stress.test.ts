@@ -1,12 +1,16 @@
 import { describe, expect, it } from "vitest";
-
 import { campEvalSidecar } from "../src/eval-sidecar.js";
 import { runEvalSidecarSuite } from "../src/eval-sidecar-server.js";
+import { isJsonObject, type JsonObject, type JsonValue } from "../src/json.js";
 
-function classify(input: unknown) {
+function classify(input: JsonValue) {
 	const text =
-		input && typeof input === "object" && "text" in input
-			? String((input as { text?: unknown }).text ?? "")
+		input && isJsonObject(input) && "text" in input
+			? // SAFETY: parsed or fixture value is the named domain type after this assertion.
+				String(
+					// SAFETY: object+text-in guard above proved input.text exists.
+					(input as { text?: unknown }).text ?? "",
+				)
 			: "";
 	return { label: text.includes("invoice") ? "billing" : "other" };
 }
@@ -116,7 +120,7 @@ describe("gold/silver sidecar stress", () => {
 	});
 
 	it("does not crash when posted actuals are circular", () => {
-		const circ: Record<string, unknown> = { label: "billing" };
+		const circ: JsonObject = { label: "billing" };
 		circ.self = circ;
 		expect(() =>
 			runEvalSidecarSuite({

@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks are the parser boundary for erased exchange input and internal capability values. */
 import {
   selectPreferredAuthFlow,
   verifySignedAuthManifestEnvelope,
@@ -47,7 +48,7 @@ export function createTokenBrokerExchange(options = {}) {
   const registry = requireRegistry(options.registry);
   const now = options.now ?? (() => new Date());
   const idFactory = options.idFactory ?? defaultIdFactory();
-  const flowHandlers = { ...defaultFlowHandlers(now), ...(options.flowHandlers ?? {}) };
+  const flowHandlers = { ...defaultFlowHandlers(now), ...options.flowHandlers };
   const eventSink = options.eventSink ?? (() => {});
   const bounds = recommendedBrokerCacheBounds({
     ttlMs: options.tokenTtlMs ?? DEFAULT_TOKEN_TTL_MS,

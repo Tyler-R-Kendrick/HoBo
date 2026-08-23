@@ -10,12 +10,12 @@
  * and api-versions verified against the running service.
  */
 
-import type {
-	CapabilitySlot,
-	HttpTransport,
+import {
+	type CapabilitySlot,
+	type HttpTransport,
 	ResolverError,
-	TransportRequest,
-	TransportResponse,
+	type TransportRequest,
+	type TransportResponse,
 } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
@@ -45,6 +45,13 @@ import {
 	guardedAzureTransport,
 	redactAzureText,
 } from "../src/index.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../src/json.js";
 
 const SUBSCRIPTION_ID = "3fa85f64-5717-4562-b3fc-2c963f66afa6";
 const RESOURCE_GROUP = "hobo-rg";
@@ -88,7 +95,7 @@ type WriteMode =
 
 interface ArmOptions {
 	/** Resources that already exist, keyed by ARM resource id (the URL path). */
-	readonly seed?: Readonly<Record<string, Record<string, unknown>>>;
+	readonly seed?: Readonly<Record<string, JsonObject>>;
 	readonly writeMode?: WriteMode;
 	/** How many operation polls answer `InProgress` before `Succeeded`. */
 	readonly inProgressPolls?: number;
@@ -105,7 +112,7 @@ interface Arm {
 	has(path: string): boolean;
 }
 
-function json(status: number, payload: unknown): TransportResponse {
+function json(status: number, payload: JsonValue): TransportResponse {
 	return {
 		status,
 		headers: { "content-type": "application/json" },
@@ -130,38 +137,32 @@ function lastSegment(path: string): string {
  * reconcile GETs the same id and finds it.
  */
 function createArm(options: ArmOptions = {}): Arm {
-	const store = new Map<string, Record<string, unknown>>(
-		Object.entries(options.seed ?? {}),
-	);
+	const store = new Map<string, JsonObject>(Object.entries(options.seed ?? {}));
 	const calls: RecordedCall[] = [];
 	const writeMode: WriteMode = options.writeMode ?? "sync";
 	let inProgressPolls = options.inProgressPolls ?? 0;
 
-	function applyWrite(
-		call: RecordedCall,
-		merge: boolean,
-	): Record<string, unknown> {
+	function applyWrite(call: RecordedCall, merge: boolean): JsonObject {
 		const payload =
-			call.body === undefined
-				? {}
-				: (JSON.parse(call.body) as Record<string, unknown>);
-		const previous = store.get(call.path) ?? {};
+			call.body === undefined ? undefined : parseJsonObject(call.body);
+		const previous = store.get(call.path);
 		const previousProperties =
-			merge && typeof previous.properties === "object" && previous.properties
-				? (previous.properties as Record<string, unknown>)
+			merge && previous !== undefined && isJsonObject(previous.properties)
+				? previous.properties
 				: {};
 		const payloadProperties =
-			typeof payload.properties === "object" && payload.properties
-				? (payload.properties as Record<string, unknown>)
+			payload !== undefined && isJsonObject(payload.properties)
+				? payload.properties
 				: {};
-		const body: Record<string, unknown> = {
+		const location = isJsonString(payload?.location)
+			? payload.location
+			: isJsonString(previous?.location)
+				? previous.location
+				: undefined;
+		const body: JsonObject = {
 			id: call.path,
 			name: lastSegment(call.path),
-			...(typeof payload.location === "string"
-				? { location: payload.location }
-				: typeof previous.location === "string"
-					? { location: previous.location }
-					: {}),
+			...(location === undefined ? undefined : { location }),
 			properties: {
 				...previousProperties,
 				...payloadProperties,
@@ -172,7 +173,7 @@ function createArm(options: ArmOptions = {}): Arm {
 		return body;
 	}
 
-	function writeResponse(body: Record<string, unknown>): TransportResponse {
+	function writeResponse(body: JsonObject): TransportResponse {
 		switch (writeMode) {
 			case "async-operation":
 				return {
@@ -189,7 +190,7 @@ function createArm(options: ArmOptions = {}): Arm {
 					body: "",
 				};
 			case "provisioning": {
-				const properties = body.properties as Record<string, unknown>;
+				const properties = isJsonObject(body.properties) ? body.properties : {};
 				return json(200, {
 					...body,
 					properties: { ...properties, provisioningState: "Creating" },
@@ -295,10 +296,10 @@ function registry(overrides?: {
 			((): Promise<string> => Promise.resolve(TOKEN)),
 		...(overrides?.pollBudget !== undefined
 			? { pollBudget: overrides.pollBudget }
-			: {}),
+			: undefined),
 		...(overrides?.waitBetweenPolls !== undefined
 			? { waitBetweenPolls: overrides.waitBetweenPolls }
-			: {}),
+			: undefined),
 	});
 }
 
@@ -318,31 +319,29 @@ interface ProductCase {
 	readonly productId: string;
 	readonly slot: CapabilitySlot;
 	readonly logicalId: string;
-	readonly desired: Readonly<Record<string, unknown>>;
+	readonly desired: Readonly<JsonObject>;
 	readonly resourcePath: string;
 	readonly apiVersion: string;
-	readonly seed: Readonly<Record<string, Record<string, unknown>>>;
+	readonly seed: Readonly<Record<string, JsonObject>>;
 }
 
-const STORAGE_SEED: Readonly<Record<string, Record<string, unknown>>> =
-	Object.freeze({
-		[STORAGE_ACCOUNT_PATH]: {
-			id: STORAGE_ACCOUNT_PATH,
-			name: STORAGE_ACCOUNT,
-			location: "eastus",
-			properties: { provisioningState: "Succeeded" },
-		},
-	});
+const STORAGE_SEED: Readonly<Record<string, JsonObject>> = Object.freeze({
+	[STORAGE_ACCOUNT_PATH]: {
+		id: STORAGE_ACCOUNT_PATH,
+		name: STORAGE_ACCOUNT,
+		location: "eastus",
+		properties: { provisioningState: "Succeeded" },
+	},
+});
 
-const SERVICE_BUS_SEED: Readonly<Record<string, Record<string, unknown>>> =
-	Object.freeze({
-		[SERVICE_BUS_NAMESPACE_PATH]: {
-			id: SERVICE_BUS_NAMESPACE_PATH,
-			name: SERVICE_BUS_NAMESPACE,
-			location: "eastus",
-			properties: { provisioningState: "Succeeded" },
-		},
-	});
+const SERVICE_BUS_SEED: Readonly<Record<string, JsonObject>> = Object.freeze({
+	[SERVICE_BUS_NAMESPACE_PATH]: {
+		id: SERVICE_BUS_NAMESPACE_PATH,
+		name: SERVICE_BUS_NAMESPACE,
+		location: "eastus",
+		properties: { provisioningState: "Succeeded" },
+	},
+});
 
 /** A Table API account: the capability is fixed at account creation, and the
  *  table resolver refuses an account that does not carry it. */
@@ -351,7 +350,7 @@ const TABLE_ACCOUNT_PATH = `${GROUP_PREFIX}/providers/Microsoft.DocumentDB/datab
 
 function cosmosAccountSeed(
 	capabilities: readonly string[],
-): Readonly<Record<string, Record<string, unknown>>> {
+): Readonly<Record<string, JsonObject>> {
 	return Object.freeze({
 		[TABLE_ACCOUNT_PATH]: {
 			id: TABLE_ACCOUNT_PATH,
@@ -476,12 +475,37 @@ const CASES: readonly ProductCase[] = Object.freeze([
 	},
 ]);
 
+function productFor(productId: string): ProductCase {
+	const product = CASES.find((entry) => entry.productId === productId);
+	if (product === undefined) {
+		throw new Error(`expected product ${productId}`);
+	}
+	return product;
+}
+
+function omitKey(record: JsonObject, key: string): JsonObject {
+	const out = {};
+	for (const [name, value] of Object.entries(record)) {
+		if (name !== key) Object.assign(out, { [name]: value });
+	}
+	return out;
+}
+
+function jsonBody(call: RecordedCall | undefined): JsonObject {
+	return call?.body === undefined ? {} : parseJsonObject(call.body);
+}
+
+function jsonProperties(call: RecordedCall | undefined): JsonObject {
+	const properties = jsonBody(call).properties;
+	return isJsonObject(properties) ? properties : {};
+}
+
 function requestFor(
 	product: ProductCase,
 	overrides?: {
 		readonly credentialRef?: string;
 		readonly physicalId?: string;
-		readonly desired?: Readonly<Record<string, unknown>>;
+		readonly desired?: Readonly<JsonObject>;
 	},
 ) {
 	return {
@@ -491,27 +515,29 @@ function requestFor(
 			logicalId: product.logicalId,
 			...(overrides?.physicalId !== undefined
 				? { physicalId: overrides.physicalId }
-				: {}),
+				: undefined),
 		},
 		desired: overrides?.desired ?? product.desired,
 		credentialRef: overrides?.credentialRef ?? CREDENTIAL_REF,
 	};
 }
 
-async function codeOf(call: () => Promise<unknown>): Promise<string> {
+async function codeOf(run: () => Promise<void>): Promise<string> {
 	try {
-		await call();
+		await run();
 	} catch (error) {
-		return (error as ResolverError).code;
+		if (error instanceof ResolverError) return error.code;
+		throw error;
 	}
 	throw new Error("expected the call to be refused, but it resolved");
 }
 
-async function messageOf(call: () => Promise<unknown>): Promise<string> {
+async function messageOf(run: () => Promise<void>): Promise<string> {
 	try {
-		await call();
+		await run();
 	} catch (error) {
-		return (error as Error).message;
+		if (error instanceof Error) return error.message;
+		throw error;
 	}
 	throw new Error("expected the call to be refused, but it resolved");
 }
@@ -541,9 +567,9 @@ describe("azure resolver registry", () => {
 	it("leaves exactly the declared unresolved set uncovered", () => {
 		const index = registry();
 		const catalogued = new Set(
-			azureYardSpec()
-				.bindings.map((row) => row.productId)
-				.filter((id): id is string => typeof id === "string"),
+			azureYardSpec().bindings.flatMap((row) =>
+				row.productId === undefined ? [] : [row.productId],
+			),
 		);
 		const uncovered = [...catalogued]
 			.filter((productId) => index.get(productId) === undefined)
@@ -757,9 +783,7 @@ describe.each(CASES)("$label", (product) => {
 // Long-running operations
 // ---------------------------------------------------------------------------
 
-const COSMOS = CASES.find(
-	(entry) => entry.productId === AZURE_COSMOS_DB_PRODUCT_ID,
-) as ProductCase;
+const COSMOS = productFor(AZURE_COSMOS_DB_PRODUCT_ID);
 
 describe("long-running operations", () => {
 	it("follows an Azure-AsyncOperation to terminal success before reporting a create", async () => {
@@ -928,11 +952,7 @@ describe("deltas and drift", () => {
 		const outcome = await resolverFor(
 			AZURE_SERVICE_BUS_QUEUE_PRODUCT_ID,
 		).reconcile(
-			requestFor(
-				CASES.find(
-					(entry) => entry.productId === AZURE_SERVICE_BUS_QUEUE_PRODUCT_ID,
-				) as ProductCase,
-			),
+			requestFor(productFor(AZURE_SERVICE_BUS_QUEUE_PRODUCT_ID)),
 			arm.transport,
 		);
 
@@ -941,15 +961,13 @@ describe("deltas and drift", () => {
 		const write = arm.calls.find(
 			(call) => call.method === "PUT" && call.path === queuePath,
 		);
-		const body = JSON.parse(write?.body ?? "{}") as {
-			properties: Record<string, unknown>;
-		};
+		const properties = jsonProperties(write);
 		// Read-only fields are stripped; everything else the provider reported is
 		// carried forward so the delta does not reset it.
-		expect(body.properties.createdAt).toBeUndefined();
-		expect(body.properties.messageCount).toBeUndefined();
-		expect(body.properties.requiresSession).toBe(false);
-		expect(body.properties.lockDuration).toBe("PT60S");
+		expect(properties.createdAt).toBeUndefined();
+		expect(properties.messageCount).toBeUndefined();
+		expect(properties.requiresSession).toBe(false);
+		expect(properties.lockDuration).toBe("PT60S");
 	});
 
 	it("treats an equivalent ISO-8601 duration as settled rather than permanent drift", async () => {
@@ -968,11 +986,7 @@ describe("deltas and drift", () => {
 		const outcome = await resolverFor(
 			AZURE_SERVICE_BUS_QUEUE_PRODUCT_ID,
 		).reconcile(
-			requestFor(
-				CASES.find(
-					(entry) => entry.productId === AZURE_SERVICE_BUS_QUEUE_PRODUCT_ID,
-				) as ProductCase,
-			),
+			requestFor(productFor(AZURE_SERVICE_BUS_QUEUE_PRODUCT_ID)),
 			arm.transport,
 		);
 		expect(outcome.action).toBe("adopt");
@@ -995,9 +1009,7 @@ describe("deltas and drift", () => {
 				},
 			},
 		});
-		const base = CASES.find(
-			(entry) => entry.productId === AZURE_SERVICE_BUS_QUEUE_PRODUCT_ID,
-		) as ProductCase;
+		const base = productFor(AZURE_SERVICE_BUS_QUEUE_PRODUCT_ID);
 		const outcome = await resolverFor(
 			AZURE_SERVICE_BUS_QUEUE_PRODUCT_ID,
 		).reconcile(
@@ -1013,9 +1025,7 @@ describe("deltas and drift", () => {
 
 	it("reports account-level blob options it cannot apply to a container", async () => {
 		const arm = createArm({ seed: STORAGE_SEED });
-		const base = CASES.find(
-			(entry) => entry.productId === AZURE_BLOB_STORAGE_PRODUCT_ID,
-		) as ProductCase;
+		const base = productFor(AZURE_BLOB_STORAGE_PRODUCT_ID);
 		const outcome = await resolverFor(AZURE_BLOB_STORAGE_PRODUCT_ID).reconcile(
 			requestFor(base, {
 				desired: {
@@ -1035,9 +1045,7 @@ describe("deltas and drift", () => {
 
 	it("refuses a blob container when the named storage account is absent", async () => {
 		const arm = createArm();
-		const base = CASES.find(
-			(entry) => entry.productId === AZURE_BLOB_STORAGE_PRODUCT_ID,
-		) as ProductCase;
+		const base = productFor(AZURE_BLOB_STORAGE_PRODUCT_ID);
 		const message = await messageOf(() =>
 			resolverFor(AZURE_BLOB_STORAGE_PRODUCT_ID).reconcile(
 				requestFor(base),
@@ -1051,9 +1059,7 @@ describe("deltas and drift", () => {
 
 	it("refuses a blob container when no storage account is named at all", async () => {
 		const arm = createArm();
-		const base = CASES.find(
-			(entry) => entry.productId === AZURE_BLOB_STORAGE_PRODUCT_ID,
-		) as ProductCase;
+		const base = productFor(AZURE_BLOB_STORAGE_PRODUCT_ID);
 		const message = await messageOf(() =>
 			resolverFor(AZURE_BLOB_STORAGE_PRODUCT_ID).reconcile(
 				requestFor(base, { desired: {} }),
@@ -1065,13 +1071,8 @@ describe("deltas and drift", () => {
 
 	it("refuses container-app ingress without a target port", async () => {
 		const arm = createArm();
-		const base = CASES.find(
-			(entry) => entry.productId === AZURE_CONTAINER_APPS_PRODUCT_ID,
-		) as ProductCase;
-		const { targetPort: _dropped, ...withoutPort } = base.desired as Record<
-			string,
-			unknown
-		>;
+		const base = productFor(AZURE_CONTAINER_APPS_PRODUCT_ID);
+		const withoutPort = omitKey(base.desired, "targetPort");
 		const message = await messageOf(() =>
 			resolverFor(AZURE_CONTAINER_APPS_PRODUCT_ID).reconcile(
 				requestFor(base, { desired: withoutPort }),
@@ -1083,9 +1084,7 @@ describe("deltas and drift", () => {
 
 	it("refuses cosmos bounded staleness without its bounds", async () => {
 		const arm = createArm();
-		const base = CASES.find(
-			(entry) => entry.productId === AZURE_COSMOS_DB_PRODUCT_ID,
-		) as ProductCase;
+		const base = productFor(AZURE_COSMOS_DB_PRODUCT_ID);
 		const message = await messageOf(() =>
 			resolverFor(AZURE_COSMOS_DB_PRODUCT_ID).reconcile(
 				requestFor(base, {
@@ -1099,9 +1098,7 @@ describe("deltas and drift", () => {
 
 	it("says out loud when it had to choose the Key Vault base tier", async () => {
 		const arm = createArm();
-		const base = CASES.find(
-			(entry) => entry.productId === AZURE_KEY_VAULT_PRODUCT_ID,
-		) as ProductCase;
+		const base = productFor(AZURE_KEY_VAULT_PRODUCT_ID);
 		const outcome = await resolverFor(AZURE_KEY_VAULT_PRODUCT_ID).reconcile(
 			requestFor(base),
 			arm.transport,
@@ -1126,9 +1123,7 @@ describe("deltas and drift", () => {
 				},
 			},
 		});
-		const base = CASES.find(
-			(entry) => entry.productId === AZURE_KEY_VAULT_PRODUCT_ID,
-		) as ProductCase;
+		const base = productFor(AZURE_KEY_VAULT_PRODUCT_ID);
 		const outcome = await resolverFor(AZURE_KEY_VAULT_PRODUCT_ID).reconcile(
 			requestFor(base, {
 				desired: { ...base.desired, purgeProtection: false },
@@ -1149,15 +1144,7 @@ describe("deltas and drift", () => {
 // Azure Cache for Redis
 // ---------------------------------------------------------------------------
 
-const REDIS = CASES.find(
-	(entry) => entry.productId === AZURE_REDIS_CACHE_PRODUCT_ID,
-) as ProductCase;
-
-function jsonBody(call: RecordedCall): Record<string, unknown> {
-	return call.body === undefined
-		? {}
-		: (JSON.parse(call.body) as Record<string, unknown>);
-}
+const REDIS = productFor(AZURE_REDIS_CACHE_PRODUCT_ID);
 
 describe("azure cache for redis", () => {
 	it("sends the sku family that goes with the tier, not the tier's first letter", async () => {
@@ -1177,11 +1164,11 @@ describe("azure cache for redis", () => {
 				arm.transport,
 			);
 			const put = arm.calls.find((call) => call.method === "PUT");
-			const properties = jsonBody(put as RecordedCall).properties as Record<
-				string,
-				unknown
-			>;
-			expect(properties.sku).toEqual({ capacity: 1, family, name: skuName });
+			expect(jsonProperties(put).sku).toEqual({
+				capacity: 1,
+				family,
+				name: skuName,
+			});
 		}
 	});
 
@@ -1210,9 +1197,11 @@ describe("azure cache for redis", () => {
 		);
 		expect(outcome.diagnostics.join(" ")).toMatch(/capacity was not declared/u);
 		const put = arm.calls.find((call) => call.method === "PUT");
-		expect(
-			(jsonBody(put as RecordedCall).properties as Record<string, unknown>).sku,
-		).toEqual({ capacity: 0, family: "C", name: "Standard" });
+		expect(jsonProperties(put).sku).toEqual({
+			capacity: 0,
+			family: "C",
+			name: "Standard",
+		});
 	});
 
 	it("refuses an unknown tier rather than passing it through", async () => {
@@ -1263,10 +1252,11 @@ describe("azure cache for redis", () => {
 		const patch = arm.calls.find((call) => call.method === "PATCH");
 		// Scaled within Standard — the declared Premium is *not* applied, because
 		// a tier change is a migration with a service interruption.
-		expect(
-			(jsonBody(patch as RecordedCall).properties as Record<string, unknown>)
-				.sku,
-		).toEqual({ capacity: 3, family: "C", name: "Standard" });
+		expect(jsonProperties(patch).sku).toEqual({
+			capacity: 3,
+			family: "C",
+			name: "Standard",
+		});
 		expect(scaled.diagnostics.join(" ")).toMatch(
 			/on the Standard tier but skuName asks for Premium/u,
 		);
@@ -1326,9 +1316,7 @@ describe("azure cache for redis", () => {
 // Cosmos DB Table API
 // ---------------------------------------------------------------------------
 
-const TABLE = CASES.find(
-	(entry) => entry.productId === AZURE_COSMOS_TABLE_PRODUCT_ID,
-) as ProductCase;
+const TABLE = productFor(AZURE_COSMOS_TABLE_PRODUCT_ID);
 
 const TABLE_THROUGHPUT_PATH = `${TABLE_ACCOUNT_PATH}/tables/sessions/throughputSettings/default`;
 
@@ -1376,7 +1364,7 @@ describe("azure cosmos table", () => {
 		const put = arm.calls.find(
 			(call) => call.method === "PUT" && call.path === TABLE.resourcePath,
 		);
-		expect(jsonBody(put as RecordedCall)).toEqual({
+		expect(jsonBody(put)).toEqual({
 			properties: {
 				options: { throughput: 400 },
 				resource: { id: "sessions" },
@@ -1397,7 +1385,7 @@ describe("azure cosmos table", () => {
 		const put = arm.calls.find(
 			(call) => call.method === "PUT" && call.path === TABLE.resourcePath,
 		);
-		expect(jsonBody(put as RecordedCall)).toEqual({
+		expect(jsonBody(put)).toEqual({
 			properties: { resource: { id: "sessions" } },
 		});
 	});

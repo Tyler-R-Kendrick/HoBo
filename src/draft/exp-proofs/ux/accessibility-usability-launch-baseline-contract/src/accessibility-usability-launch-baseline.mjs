@@ -217,7 +217,7 @@ export const ACCESSIBILITY_USABILITY_BASELINE = {
 export function validateAccessibilityUsabilityBaseline(baseline) {
   const errors = [];
 
-  if (!baseline || typeof baseline !== "object") {
+  if (!baseline || Object(baseline) !== baseline) {
     return { ok: false, errors: ["baseline record is required"] };
   }
   if (baseline.issue !== "HOBO-505") {

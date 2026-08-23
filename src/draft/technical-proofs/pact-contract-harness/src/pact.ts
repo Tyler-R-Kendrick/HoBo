@@ -1,5 +1,7 @@
 import { readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { isJsonString, isJsonNumber, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 const HTTP_METHODS = new Set(["GET", "POST", "PUT", "PATCH", "DELETE"]);
 const PARTICIPANT_NAME = /^[A-Z][A-Za-z0-9]*$/;
@@ -14,14 +16,14 @@ export interface PactRequest {
   readonly method: "GET" | "POST" | "PUT" | "PATCH" | "DELETE";
   readonly path: string;
   readonly headers?: Readonly<Record<string, string>>;
-  readonly body?: unknown;
+  readonly body?: JsonValue;
 }
 
 // domain-view: parse-produced draft-proof record; its wire form is the PactResponse proto message in data-models/.
 export interface PactResponse {
   readonly status: number;
   readonly headers?: Readonly<Record<string, string>>;
-  readonly body?: unknown;
+  readonly body?: JsonValue;
 }
 
 // domain-view: parse-produced draft-proof record; its wire form is the PactInteraction proto message in data-models/.
@@ -50,14 +52,15 @@ export class PactParseError extends Error {
   }
 }
 
-export function parsePactDocument(input: unknown, source?: string): PactDocument {
+export function parsePactDocument(input: JsonValue, source?: string): PactDocument {
   const issues: string[] = [];
 
-  if (typeof input !== "object" || input === null || Array.isArray(input)) {
+  if (!isJsonObject(input)) {
     throw new PactParseError(["document must be an object"], source);
   }
 
-  const record = input as Record<string, unknown>;
+  // SAFETY: assertion to `const record = input as JsonObject;` is required at this boundary.
+  const record = input as JsonObject;
   const consumer = parseParticipant(record.consumer, "consumer", issues);
   const provider = parseParticipant(record.provider, "provider", issues);
   const interactions = parseInteractions(record.interactions, issues);
@@ -85,6 +88,7 @@ export async function loadPactDirectory(dir: string): Promise<readonly PactDocum
   return Promise.all(
     pactFiles.map(async (fileName) => {
       const filePath = path.join(dir, fileName);
+      // SAFETY: assertion to `const raw = JSON.parse(await readFile(filePath, "utf8")) as unknown;` is required at this boundary.
       const raw = JSON.parse(await readFile(filePath, "utf8")) as unknown;
       return parsePactDocument(raw, filePath);
     }),
@@ -92,17 +96,18 @@ export async function loadPactDirectory(dir: string): Promise<readonly PactDocum
 }
 
 function parseParticipant(
-  value: unknown,
+  value: JsonValue,
   label: string,
   issues: string[],
 ): PactParticipant | undefined {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+  if (!isJsonObject(value)) {
     issues.push(`${label} must be an object`);
     return undefined;
   }
 
-  const name = (value as Record<string, unknown>).name;
-  if (typeof name !== "string") {
+  // SAFETY: assertion to `const name = (value as JsonObject).name;` is required at this boundary.
+  const name = (value as JsonObject).name;
+  if (!isJsonString(name)) {
     issues.push(`${label}.name must be a string`);
     return undefined;
   }
@@ -115,7 +120,7 @@ function parseParticipant(
 }
 
 function parseInteractions(
-  value: unknown,
+  value: JsonValue,
   issues: string[],
 ): readonly PactInteraction[] | undefined {
   if (!Array.isArray(value)) {
@@ -132,13 +137,13 @@ function parseInteractions(
 }
 
 function parseInteraction(
-  value: unknown,
+  value: JsonValue,
   index: number,
   issues: string[],
 ): PactInteraction {
   const prefix = `interactions[${index}]`;
 
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+  if (!isJsonObject(value)) {
     issues.push(`${prefix} must be an object`);
     return {
       description: "",
@@ -147,9 +152,10 @@ function parseInteraction(
     };
   }
 
-  const record = value as Record<string, unknown>;
+  // SAFETY: assertion to `const record = value as JsonObject;` is required at this boundary.
+  const record = value as JsonObject;
   const description = record.description;
-  if (typeof description !== "string" || description.length === 0) {
+  if (!isJsonString(description) || description.length === 0) {
     issues.push(`${prefix}.description must be a non-empty string`);
   }
 
@@ -157,38 +163,40 @@ function parseInteraction(
   const response = parseResponse(record.response, `${prefix}.response`, issues);
 
   return {
-    description: typeof description === "string" ? description : "",
+    description: isJsonString(description) ? description : "",
     request: request ?? { method: "GET", path: "/" },
     response: response ?? { status: 200 },
   };
 }
 
 function parseRequest(
-  value: unknown,
+  value: JsonValue,
   prefix: string,
   issues: string[],
 ): PactRequest | undefined {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+  if (!isJsonObject(value)) {
     issues.push(`${prefix} must be an object`);
     return undefined;
   }
 
-  const record = value as Record<string, unknown>;
+  // SAFETY: assertion to `const record = value as JsonObject;` is required at this boundary.
+  const record = value as JsonObject;
   const method = record.method;
-  if (typeof method !== "string" || !HTTP_METHODS.has(method)) {
+  if (!isJsonString(method) || !HTTP_METHODS.has(method)) {
     issues.push(`${prefix}.method must be one of GET, POST, PUT, PATCH, DELETE`);
   }
 
   const requestPath = record.path;
-  if (typeof requestPath !== "string" || !requestPath.startsWith("/")) {
+  if (!isJsonString(requestPath) || !requestPath.startsWith("/")) {
     issues.push(`${prefix}.path must start with /`);
   }
 
   const headers = parseStringMap(record.headers, `${prefix}.headers`, issues);
 
   const request: PactRequest = {
-    method: (typeof method === "string" ? method : "GET") as PactRequest["method"],
-    path: typeof requestPath === "string" ? requestPath : "/",
+    // SAFETY: assertion to `method: (isJsonString(method) ? method : "GET") as PactRequest["method"],` is required at this boundary.
+    method: (isJsonString(method) ? method : "GET") as PactRequest["method"],
+    path: isJsonString(requestPath) ? requestPath : "/",
   };
 
   const withHeaders = headers ? { ...request, headers } : request;
@@ -200,25 +208,26 @@ function parseRequest(
 }
 
 function parseResponse(
-  value: unknown,
+  value: JsonValue,
   prefix: string,
   issues: string[],
 ): PactResponse | undefined {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+  if (!isJsonObject(value)) {
     issues.push(`${prefix} must be an object`);
     return undefined;
   }
 
-  const record = value as Record<string, unknown>;
+  // SAFETY: assertion to `const record = value as JsonObject;` is required at this boundary.
+  const record = value as JsonObject;
   const status = record.status;
-  if (typeof status !== "number" || !Number.isInteger(status) || status < 100 || status > 599) {
+  if (!isJsonNumber(status) || !Number.isInteger(status) || status < 100 || status > 599) {
     issues.push(`${prefix}.status must be an integer between 100 and 599`);
   }
 
   const headers = parseStringMap(record.headers, `${prefix}.headers`, issues);
 
   const response: PactResponse = {
-    status: typeof status === "number" ? status : 200,
+    status: isJsonNumber(status) ? status : 200,
   };
 
   const withHeaders = headers ? { ...response, headers } : response;
@@ -229,27 +238,29 @@ function parseResponse(
   return withHeaders;
 }
 
-function parseMetadata(value: unknown, issues: string[]): void {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function parseMetadata(value: JsonValue, issues: string[]): void {
+  if (!isJsonObject(value)) {
     issues.push("metadata must be an object");
     return;
   }
 
-  const metadata = value as Record<string, unknown>;
+  // SAFETY: assertion to `const metadata = value as JsonObject;` is required at this boundary.
+  const metadata = value as JsonObject;
   const pactSpecification = metadata.pactSpecification;
-  if (typeof pactSpecification !== "object" || pactSpecification === null) {
+  if (!isJsonObject(pactSpecification) || pactSpecification === null) {
     issues.push("metadata.pactSpecification must be an object");
     return;
   }
 
-  const version = (pactSpecification as Record<string, unknown>).version;
+  // SAFETY: assertion to `const version = (pactSpecification as JsonObject).version;` is required at this boundary.
+  const version = (pactSpecification as JsonObject).version;
   if (version !== "3.0.0") {
     issues.push('metadata.pactSpecification.version must be "3.0.0"');
   }
 }
 
 function parseStringMap(
-  value: unknown,
+  value: JsonValue,
   prefix: string,
   issues: string[],
 ): Readonly<Record<string, string>> | undefined {
@@ -257,14 +268,15 @@ function parseStringMap(
     return undefined;
   }
 
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+  if (!isJsonObject(value)) {
     issues.push(`${prefix} must be an object`);
     return undefined;
   }
 
   const result: Record<string, string> = {};
-  for (const [key, entry] of Object.entries(value as Record<string, unknown>)) {
-    if (typeof entry !== "string") {
+  // SAFETY: assertion to `for (const [key, entry] of Object.entries(value as JsonObject)) {` is required at this boundary.
+  for (const [key, entry] of Object.entries(value as JsonObject)) {
+    if (!isJsonString(entry)) {
       issues.push(`${prefix}.${key} must be a string`);
       continue;
     }

@@ -1,6 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import { delimiter } from "node:path";
+import { isJsonString } from "../json.js";
 
 export type PortlessMode = "auto" | "on" | "off";
 
@@ -46,7 +47,7 @@ export function probePortless(options?: {
 		options?.binPath,
 		env.HOBO_PORTLESS_BIN,
 		"portless",
-	].filter((v): v is string => typeof v === "string" && v.length > 0);
+	].filter((v): v is string => isJsonString(v) && v.length > 0);
 
 	let binPath: string | null = null;
 	let version: string | null = null;

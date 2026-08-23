@@ -11,6 +11,8 @@ import {
   defineDevResource,
   startDevSession,
 } from "../src/dev-session.js";
+import { type JsonValue } from "../src/json.js";
+
 
 async function withProject(callback: (projectRoot: string) => Promise<void>) {
   const root = await mkdtemp(path.join(tmpdir(), "hobo-612-dev-"));
@@ -126,7 +128,7 @@ describe("hobo-612 dev session", () => {
             projectRoot,
             resources: [defineDevResource("api", "main")],
           }),
-        (error: unknown) => {
+        (error: JsonValue) => {
           assert.ok(error instanceof HoboDevError);
           assert.equal(error.code, "HOBO_DEV_STATE_VERSION_UNSUPPORTED");
           return true;

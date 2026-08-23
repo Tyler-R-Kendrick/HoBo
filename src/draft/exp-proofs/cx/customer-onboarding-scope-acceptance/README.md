@@ -37,7 +37,7 @@ import, production tenant mutation, or provider-backed customer launch.
 Run the focused proof:
 
 ```powershell
-pnpm.cmd --prefix src\draft\customer-onboarding-scope-acceptance test
+pnpm.cmd --prefix src\draft\exp-proofs\cx\customer-onboarding-scope-acceptance test
 ```
 
 Run the base-aware architecture guard used by CI:

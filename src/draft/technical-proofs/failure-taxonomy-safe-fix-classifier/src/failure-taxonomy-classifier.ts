@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 import { createHash } from "node:crypto";
 
 import { validateRemediationAction } from "../../hobo-remediation-action-contract/src/remediation-action-contract.js";
@@ -283,7 +284,7 @@ function blastRadiusFor(entry) {
 }
 
 function normalizeSignal(signal) {
-  if (!signal || typeof signal !== "object" || Array.isArray(signal)) {
+  if (!signal || !isJsonObject(signal) || Array.isArray(signal)) {
     throw new TypeError("failure signal must be an object");
   }
 
@@ -295,7 +296,7 @@ function hashSignal(signal) {
 }
 
 function stableJson(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
 

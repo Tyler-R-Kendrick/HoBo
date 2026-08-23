@@ -85,6 +85,8 @@ const FORBIDDEN_SCOPE_PATTERNS = [
   /live provider/i,
 ];
 
+type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
+
 export function createSdkToCliGoldenPathProof() {
   return deepFreeze({
     issue: "HOBO-576",
@@ -134,7 +136,7 @@ export function createSdkToCliGoldenPathProof() {
         exitCode: step.resultKind === "success" ? 0 : 1,
       })),
     },
-    apiShape: {
+    apiContract: {
       fixtureId: FIXTURE_ID,
       operations: [
         {
@@ -198,7 +200,7 @@ export function createSdkToCliGoldenPathProof() {
   });
 }
 
-export function validateSdkToCliGoldenPathProof(value: unknown) {
+export function validateSdkToCliGoldenPathProof(value: JsonValue) {
   const errors: string[] = [];
   const proof = asRecord(value);
 
@@ -218,7 +220,7 @@ export function validateSdkToCliGoldenPathProof(value: unknown) {
   for (const [name, artifact] of Object.entries({
     manifestIr: proof.manifestIr,
     cliTranscript: proof.cliTranscript,
-    apiShape: proof.apiShape,
+    apiContract: proof.apiContract,
     mcpResult: proof.mcpResult,
   })) {
     const artifactRecord = asRecord(artifact);
@@ -250,14 +252,15 @@ export function validateSdkToCliGoldenPathProof(value: unknown) {
   return deepFreeze({ ok: errors.length === 0, errors });
 }
 
-function asRecord(value: unknown): Record<string, unknown> | undefined {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+function asRecord(value: JsonValue): Record<string, JsonValue> | undefined {
+  if (!value || Object(value) !== value || Array.isArray(value)) {
     return undefined;
   }
-  return value as Record<string, unknown>;
+  // SAFETY: the object and non-array checks establish a string-keyed JSON record.
+  return value as Record<string, JsonValue>;
 }
 
-function readArrayRecords(value: unknown): Array<Record<string, unknown>> {
+function readArrayRecords(value: JsonValue): Array<Record<string, JsonValue>> {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -267,18 +270,24 @@ function readArrayRecords(value: unknown): Array<Record<string, unknown>> {
   });
 }
 
-function readStringArray(value: unknown): string[] {
+function readStringArray(value: JsonValue): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
-  return value.flatMap((item) => (typeof item === "string" ? [item] : []));
+  return value.flatMap((item) => {
+    if (Object.prototype.toString.call(item) !== "[object String]") return [];
+    // SAFETY: the tag check establishes a string JSON value.
+    const stringItem = item as string;
+    return [stringItem];
+  });
 }
 
 function deepFreeze<T>(value: T): T {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || Object(value) !== value || Object.isFrozen(value)) {
     return value;
   }
-  for (const child of Object.values(value as Record<string, unknown>)) {
+  // SAFETY: deepFreeze is called only with JSON-like object values in this proof.
+  for (const child of Object.values(value as Record<string, JsonValue>)) {
     deepFreeze(child);
   }
   return Object.freeze(value);

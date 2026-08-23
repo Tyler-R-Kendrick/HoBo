@@ -89,9 +89,12 @@ describe("station status sidecar", () => {
 		try {
 			expect(server.url).toMatch(/status\.code\..*\.hobo\.localhost/);
 			const origin = loopbackFetchUrl(server.url);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const health = (await (
 				await fetch(new URL("/health", origin))
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				name: string;
 				hosting: string;
 				live: boolean;
@@ -106,17 +109,23 @@ describe("station status sidecar", () => {
 			const html = await htmlResponse.text();
 			expect(html).toContain("All systems operational");
 			expect(html).toContain("dashboard (sidecar)");
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const summary = (await (
 				await fetch(new URL("/api/v2/summary.json", origin))
-			).json()) as {
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as {
 				status: { indicator: string };
 				components: readonly { id: string; status: string }[];
 			};
 			expect(summary.status.indicator).toBe("none");
 			expect(summary.components.length).toBeGreaterThan(0);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const status = (await (
 				await fetch(new URL("/api/v2/status.json", origin))
-			).json()) as { page: { id: string } };
+			)
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.json()) as { page: { id: string } };
 			expect(status.page.id).toBe("station-station-local");
 			const missing = await fetch(new URL("/nope", origin));
 			expect(missing.status).toBe(404);

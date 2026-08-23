@@ -11,6 +11,7 @@
  */
 import type { SqliteDataDualPort } from "./data-dual-port.js";
 import { MIGRATION_EVENTS, type MigrationFact } from "./migration-executor.js";
+import type { JsonObject } from "./json.js";
 
 // public-contract: tenant move protocol schema id.
 export const TENANT_MOVE_SCHEMA = "hobo.tenant-move/v1";
@@ -68,7 +69,7 @@ export function createSqliteTenantMovePorts(
 	const { dual, tenant } = options;
 	const clock = options.clock ?? (() => new Date().toISOString());
 	const facts: MigrationFact[] = [];
-	const emit = (type: string, data: Readonly<Record<string, unknown>>) => {
+	const emit = (type: string, data: JsonObject) => {
 		const fact = Object.freeze({ type, data: Object.freeze({ ...data }) });
 		facts.push(fact);
 		options.onFact?.(fact);

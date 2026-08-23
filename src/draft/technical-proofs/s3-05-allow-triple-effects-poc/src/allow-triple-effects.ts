@@ -5,7 +5,10 @@ import {
 
 export const ALLOW_TRIPLE_EFFECTS_VERSION = "hobo.allow-triple-effects/v1";
 
-const IAM_VERB_MAP: Readonly<Record<string, Readonly<Record<string, readonly string[]>>>> = {
+type IamVerbMap = Readonly<Record<string, Readonly<Record<string, readonly string[]>>>>;
+type JsonValue = null | boolean | number | string | readonly JsonValue[] | Readonly<Record<string, JsonValue>>;
+
+const IAM_VERB_MAP = {
   "wasi:keyvalue": {
     get: ["dynamodb:GetItem", "dynamodb:BatchGetItem"],
     set: ["dynamodb:PutItem", "dynamodb:UpdateItem"],
@@ -20,7 +23,7 @@ const IAM_VERB_MAP: Readonly<Record<string, Readonly<Record<string, readonly str
     publish: ["sns:Publish"],
     subscribe: ["sns:Subscribe", "sqs:ReceiveMessage"],
   },
-};
+} satisfies IamVerbMap;
 
 export type AllowDeclaration = Readonly<{
   resourceId: string;
@@ -74,7 +77,7 @@ export class AllowTripleEffectsError extends Error {
   constructor(
     readonly code: string,
     message: string,
-    readonly details: Record<string, unknown> = {},
+    readonly details: Readonly<Record<string, JsonValue>> = {},
   ) {
     super(message);
     this.name = "AllowTripleEffectsError";
@@ -328,8 +331,8 @@ function sortedUnique(values: readonly string[]): readonly string[] {
 }
 
 function assertDeepEqual(
-  actual: unknown,
-  expected: unknown,
+  actual: Readonly<Record<string, JsonValue>>,
+  expected: Readonly<Record<string, JsonValue>>,
   label: string,
 ): void {
   const actualJson = JSON.stringify(actual);

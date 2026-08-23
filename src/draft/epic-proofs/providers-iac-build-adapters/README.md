@@ -90,6 +90,10 @@ What this proves:
 - Provider packages register default Resource Definitions with conformance evidence.
 - `realize()` emits mocked `IacProgram` and `BuildSpec` objects consumed by mocked IaC/build/driver adapters.
 - Drift, partial apply, and malicious-provider paths fail closed.
+- The validated Crossplane backend proof is included in this rollup; its simulation contract is unchanged.
+- The validated generateProvider loop proof is included in this rollup; its simulation and Pact evidence are unchanged.
+- The latest generateProvider loop validation is absorbed; its simulation and Pact evidence remain unchanged.
+- Crossplane and Pulumi backend changes are absorbed without changing preview, apply, refresh, or controller-driven behavior.
 - The same multi-cloud shop Bindle remains unchanged across AWS and Azure fixtures.
 
 Mocked boundaries:
@@ -117,6 +121,8 @@ Deferred:
 
 - Real cloud APIs, real Pulumi/OpenTofu/Crossplane/CDKTF runs, real Dagger/Packer/Firecracker/Vagrant builds, production provider package publication, provider-side Pact verification, hosted registry transport, live model calls, and real executor dispatch.
 
+
+Fly and Vercel provider changes are absorbed without changing preview, apply, refresh, or controller-driven behavior.
 
 ## Architecture Evidence
 

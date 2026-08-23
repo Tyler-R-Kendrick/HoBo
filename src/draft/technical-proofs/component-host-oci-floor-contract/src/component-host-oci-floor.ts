@@ -1,6 +1,7 @@
+import { isJsonString, isJsonObject } from "./json.js";
 import { createHash } from "node:crypto";
-
 import {
+
   createRuntimeLocalComponentHost,
   createWasmtimeEngineStub,
 } from "../../runtime-local-component-host/src/component-host.js";
@@ -292,7 +293,7 @@ function assertManifestCarriesRuntimeInputs(manifest) {
   if (!Array.isArray(manifest.links) || manifest.links.length === 0) {
     throw new Error("component_host_oci.manifest_links_required");
   }
-  if (!manifest.config || typeof manifest.config !== "object") {
+  if (!manifest.config || !isJsonObject(manifest.config)) {
     throw new Error("component_host_oci.manifest_config_required");
   }
   if (!Array.isArray(manifest.components) || manifest.components.length === 0) {
@@ -313,7 +314,7 @@ function responsesConform(localResponse, containerResponse) {
 }
 
 function assertNonEmptyString(value, code) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`component_host_oci.${code}`);
   }
 }

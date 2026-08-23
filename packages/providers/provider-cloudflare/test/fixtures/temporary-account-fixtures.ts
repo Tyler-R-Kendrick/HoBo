@@ -7,12 +7,12 @@
  * without a Cloudflare account.
  */
 import { Buffer } from "node:buffer";
-
 import type {
 	TemporaryAccountHttpRequest,
 	TemporaryAccountHttpResponse,
 	TemporaryAccountTransportPort,
 } from "../../src/temporary-account.js";
+import type { JsonObject } from "../src/json.js";
 
 export const FAKE_ACCOUNT_ID = "fake0000-0000-4000-8000-cloudflareacct";
 export const FAKE_API_TOKEN =
@@ -66,10 +66,11 @@ export function accountBody(options: {
 export function accountResult(options: {
 	readonly accountExpiresAtMs: number;
 	readonly claimExpiresAtMs: number;
-}): Record<string, unknown> {
+}): JsonObject {
 	return (
-		JSON.parse(accountBody(options)) as { result: Record<string, unknown> }
-	).result;
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+		(JSON.parse(accountBody(options)) as { result: JsonObject }).result
+	);
 }
 
 export type StubResponse = Partial<TemporaryAccountHttpResponse> & {
@@ -107,7 +108,9 @@ export function createStubTransport(
 				status: stub.status,
 				headers: stub.headers ?? {},
 				body: stub.body ?? "",
-				...(stub.truncated !== undefined ? { truncated: stub.truncated } : {}),
+				...(stub.truncated !== undefined
+					? { truncated: stub.truncated }
+					: undefined),
 			} satisfies TemporaryAccountHttpResponse;
 		},
 	};
@@ -122,6 +125,6 @@ export function createHappyTransport(options: {
 	return createStubTransport({
 		challenge: { status: 200, body: challengeBody() },
 		create: { status: 200, body: accountBody(options) },
-		...(options.onSend !== undefined ? { onSend: options.onSend } : {}),
+		...(options.onSend !== undefined ? { onSend: options.onSend } : undefined),
 	});
 }

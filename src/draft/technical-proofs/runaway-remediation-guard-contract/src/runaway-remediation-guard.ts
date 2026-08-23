@@ -8,6 +8,8 @@ import {
   validateCrewEvent,
 } from "../../crew-event-contract/src/crew-event-contract.js";
 import { validateRemediationAction } from "../../hobo-remediation-action-contract/src/remediation-action-contract.js";
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
+
 
 export const RUNAWAY_REMEDIATION_GUARD_VERSION = "hobo.runaway-remediation-guard/v1";
 
@@ -584,7 +586,7 @@ function findActionRateLimit({
 }
 
 function validateSignal(candidate) {
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     throw new TypeError("signal must be an object");
   }
 
@@ -605,7 +607,7 @@ function validateSignal(candidate) {
 
 function validateObservedEffect(candidate) {
   if (candidate === undefined) return null;
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     throw new TypeError("signal.observedEffect must be an object");
   }
 
@@ -683,7 +685,7 @@ function idempotencyKeyFromProposal(proposal) {
 
 function nextCrewSeq(events = []) {
   return events
-    .filter((event) => typeof event.seq === "number")
+    .filter((event) => isJsonNumber(event.seq))
     .reduce((max, event) => Math.max(max, event.seq), 0) + 1;
 }
 
@@ -723,7 +725,7 @@ function validateNonNegativeInteger(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new TypeError(`${fieldName} is required`);
   }
   return value.trim();
@@ -737,7 +739,7 @@ function slug(value) {
 }
 
 function freeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   if (value instanceof Map || value instanceof Set) {

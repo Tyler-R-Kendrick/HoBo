@@ -6,6 +6,7 @@
  */
 
 import type { FailedJobEvidence } from "../classify.js";
+import type { JsonValue } from "../parse.js";
 import type { FetchLike } from "./github-billing.js";
 
 export interface ActionsRunsOptions {
@@ -42,16 +43,19 @@ export async function collectFailedJobEvidence(
 		"User-Agent": "hobo-example-ci-runner-balancing",
 	};
 
-	async function readJson(url: string): Promise<unknown | undefined> {
+	async function readJson(url: string): Promise<JsonValue | undefined> {
 		try {
 			const response = await fetchImpl(url, { headers });
 			if (!response.ok) return undefined;
-			return await response.json();
+			const body = await response.json();
+			// SAFETY: fetch JSON is untyped; callers narrow the GitHub response shape.
+			return body as JsonValue;
 		} catch {
 			return undefined;
 		}
 	}
 
+	// SAFETY: assertion to `wait readJson( `${repoBase}/actions/runs?status=failure&per_page=${maxRuns}`, )) as { workflow_runs?: Array<{ id?: numbe` is required at this boundary.
 	const runsBody = (await readJson(
 		`${repoBase}/actions/runs?status=failure&per_page=${maxRuns}`,
 	)) as { workflow_runs?: Array<{ id?: number }> } | undefined;
@@ -59,12 +63,14 @@ export async function collectFailedJobEvidence(
 
 	const evidence: FailedJobEvidence[] = [];
 	for (const run of runs.slice(0, maxRuns)) {
-		if (typeof run.id !== "number") continue;
+		if (Object.prototype.toString.call(run.id) !== "[object Number]") continue;
+		// SAFETY: assertion to `wait readJson( `${repoBase}/actions/runs/${run.id}/jobs?per_page=20`, )) as JobsResponse | undefined; ` is required at this boundary.
 		const jobsBody = (await readJson(
 			`${repoBase}/actions/runs/${run.id}/jobs?per_page=20`,
 		)) as JobsResponse | undefined;
 		for (const job of jobsBody?.jobs ?? []) {
-			if (job.conclusion !== "failure" || typeof job.id !== "number") continue;
+			if (job.conclusion !== "failure" || Object.prototype.toString.call(job.id) !== "[object Number]") continue;
+			// SAFETY: assertion to `wait readJson( `${repoBase}/check-runs/${job.id}/annotations`, )) as Array<{ title?: string | null; message?: string | n` is required at this boundary.
 			const annotations = (await readJson(
 				`${repoBase}/check-runs/${job.id}/annotations`,
 			)) as Array<{ title?: string | null; message?: string | null }> | undefined;

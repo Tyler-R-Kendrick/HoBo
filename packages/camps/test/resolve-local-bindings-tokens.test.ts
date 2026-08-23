@@ -7,6 +7,7 @@
  * against the wrong resource reaches it as a real value pointing somewhere
  * else. Neither throws.
  */
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type -- SAFETY: token fixtures intentionally use controlled manifest boundary values. */
 import { describe, expect, it } from "vitest";
 import { attachCampToYard, camp } from "../src/camp.js";
 import {

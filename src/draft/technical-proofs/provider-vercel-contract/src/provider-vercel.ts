@@ -285,7 +285,7 @@ export function runVercelProviderContract(provider) {
     }
   }
   for (const builder of ["web", "function", "blob", "neonPostgres", "upstashKv"]) {
-    if (typeof provider.with?.[builder] !== "function") {
+    if (!isFunction(provider.with?.[builder])) {
       errors.push(`missing Vercel .with builder ${builder}`);
     }
   }
@@ -305,11 +305,12 @@ export function runVercelProviderContract(provider) {
     }
   }
 
-  return {
+  const result = {
     ok: errors.length === 0,
     checked: capabilityPorts,
-    ...(errors.length > 0 ? { errors } : {})
   };
+  if (errors.length > 0) result.errors = errors;
+  return result;
 }
 
 function realizeVercelPlan(plan, { projectPrefix }) {
@@ -495,11 +496,19 @@ function negotiateVercel(port, hints = {}) {
     reason = "Vercel Blob does not expose the full S3-compatible API";
   }
 
-  return {
+  const result = {
     requireSatisfied: missing.length === 0,
     preferHonored: Object.keys(prefer),
-    ...(missing.length > 0 ? { missing, reason } : {})
   };
+  if (missing.length > 0) {
+    result.missing = missing;
+    result.reason = reason;
+  }
+  return result;
+}
+
+function isFunction(value) {
+  return Object.prototype.toString.call(value) === "[object Function]";
 }
 
 function resolveProviderOptions(optionBlocks) {

@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export type ControlPlaneEventType =
   | "deployment.Planned"
   | "deployment.PlanRejected"
@@ -46,7 +47,7 @@ export interface EventEnvelope<TType extends ControlPlaneEventType, TData> {
 }
 
 export interface DeploymentPlannedBody {
-  plan: unknown;
+  plan: JsonValue;
   planHash: string;
 }
 
@@ -83,7 +84,7 @@ export interface DispatchDecidedBody {
 }
 
 export interface GenericControlPlaneBody {
-  [field: string]: unknown;
+  [field: string]: JsonValue;
 }
 
 export declare function parseControlPlaneEventWithZod<T extends ControlPlaneEventType>(

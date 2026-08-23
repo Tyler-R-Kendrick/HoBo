@@ -2,7 +2,9 @@
  * Schema-driven config resolution orchestration (ADR-0027).
  * Agents receive schemaOnlyView placeholders only.
  */
+
 import type { ConfigSchema, SecretSourceRank } from "./config-types.js";
+import type { JsonObject } from "./json.js";
 import {
 	assertNoPlaintextInEvent,
 	type ConfigSecretEvent,
@@ -27,7 +29,7 @@ export type ConfigResolverOptions = Readonly<{
 	schema: ConfigSchema;
 	/** Policy deny-ceiling: which ranks may be used. */
 	allowedSources?: readonly SecretSourceRank[];
-	campValues?: Readonly<Record<string, unknown>>;
+	campValues?: JsonObject;
 	secretsPort?: SecretsPort;
 	/** Bound-resource token mint (SVID brokered). */
 	boundTokens?: Readonly<Record<string, () => Promise<string | undefined>>>;

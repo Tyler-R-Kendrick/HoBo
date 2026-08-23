@@ -13,6 +13,12 @@ import type {
 	AnonymousSiteRecord,
 	SiteOwnershipVerification,
 } from "./anonymous-site.js";
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "./json.js";
 import { NetlifyProviderError } from "./provider-errors.js";
 
 export type AnonymousSiteReceipt = {
@@ -83,8 +89,8 @@ export type CredentialScanHit = {
 	readonly path: string;
 };
 
-/** Shapes that must never appear in anything this package serializes. */
-const CREDENTIAL_SHAPES: readonly {
+/** Patterns that must never appear in anything this package serializes. */
+const CREDENTIAL_PATTERNS: readonly {
 	readonly label: string;
 	readonly pattern: RegExp;
 }[] = [
@@ -122,41 +128,30 @@ const CREDENTIAL_SHAPES: readonly {
 ];
 
 /**
- * Walk a value and report credential-shaped strings with the path that carried
- * them, so a failure names the field rather than the haystack.
+ * Walk a JSON value and report credential-shaped strings with the path that
+ * carried them, so a failure names the field rather than the haystack.
  */
 export function scanForCredentialMaterial(
-	value: unknown,
+	value: JsonValue,
 ): readonly CredentialScanHit[] {
 	const hits: CredentialScanHit[] = [];
-	const seen = new WeakSet<object>();
 
-	const walk = (node: unknown, path: string): void => {
-		if (typeof node === "string") {
-			for (const shape of CREDENTIAL_SHAPES) {
-				if (shape.pattern.test(node)) hits.push({ label: shape.label, path });
+	const walk = (node: JsonValue, path: string): void => {
+		if (isJsonString(node)) {
+			for (const pattern of CREDENTIAL_PATTERNS) {
+				if (pattern.pattern.test(node)) {
+					hits.push({ label: pattern.label, path });
+				}
 			}
 			return;
 		}
-		if (typeof node !== "object" || node === null) return;
-		if (seen.has(node)) return;
-		seen.add(node);
-		if (Array.isArray(node)) {
+		if (isJsonArray(node)) {
 			node.forEach((entry, index) => {
 				walk(entry, `${path}[${index}]`);
 			});
 			return;
 		}
-		// A class with a custom projection (SecretValue) must be judged by what
-		// it serializes, not by its private fields.
-		const projected =
-			typeof (node as { toJSON?: unknown }).toJSON === "function"
-				? (node as { toJSON(): unknown }).toJSON()
-				: node;
-		if (projected !== node) {
-			walk(projected, path);
-			return;
-		}
+		if (!isJsonObject(node)) return;
 		for (const [key, entry] of Object.entries(node)) {
 			walk(entry, path === "" ? key : `${path}.${key}`);
 		}
@@ -167,7 +162,7 @@ export function scanForCredentialMaterial(
 }
 
 export function assertNoCredentialMaterial(
-	value: unknown,
+	value: JsonValue,
 	label: string,
 ): void {
 	const hits = scanForCredentialMaterial(value);

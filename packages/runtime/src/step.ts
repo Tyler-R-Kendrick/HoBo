@@ -5,13 +5,14 @@
 
 import type { StepOptions } from "./ctx.js";
 import { FatalError, RetryableError, WorkflowFailure } from "./errors.js";
+import type { JsonValue } from "./json.js";
 
 export type { StepOptions } from "./ctx.js";
 
 export const DEFAULT_STEP_RETRIES = 3;
 
 /** A named, reusable step definition (`step(fn, opts?)`). */
-export interface StepDefinition<A extends unknown[], R> {
+export interface StepDefinition<A extends JsonValue[], R> {
 	readonly name: string;
 	readonly options: StepOptions;
 	handler(...args: A): Promise<R> | R;
@@ -22,7 +23,7 @@ export interface StepDefinition<A extends unknown[], R> {
  * `ctx.step(step.name, () => step.handler(...))`, its result is memoized in the
  * event log; a bare call outside a run just executes the body.
  */
-export function defineStep<A extends unknown[], R>(
+export function defineStep<A extends JsonValue[], R>(
 	name: string,
 	handler: (...args: A) => Promise<R> | R,
 	options: StepOptions = {},
@@ -34,7 +35,7 @@ export function defineStep<A extends unknown[], R>(
 }
 
 /** Alias matching the sdk-api spelling `step(fn, opts)` (name derived if omitted). */
-export function step<A extends unknown[], R>(
+export function step<A extends JsonValue[], R>(
 	handler: (...args: A) => Promise<R> | R,
 	options: StepOptions & { name?: string } = {},
 ): StepDefinition<A, R> {
@@ -76,7 +77,10 @@ export async function runWithRetries<T>(
 			if (attempt > budget) {
 				throw new WorkflowFailure(
 					`step ${name} exhausted retry budget (${budget})`,
-					{ step: name, cause: error },
+					{
+						step: name,
+						cause: error instanceof Error ? error : new Error(String(error)),
+					},
 				);
 			}
 		}

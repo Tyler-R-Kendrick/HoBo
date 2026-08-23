@@ -1,5 +1,7 @@
 /** Derived from packages/core/data-models/capability_enforcement.proto + .cue */
 
+import type { JsonObject } from "../json.js";
+
 export type CapabilityDenialCode =
 	| "capability.import-not-declared"
 	| "capability.export-not-found"
@@ -65,7 +67,7 @@ export interface GrantEvaluation {
 	ok: boolean;
 	canDeployDimension: "capabilityGrants";
 	diagnostics: readonly CapabilityDiagnostic[];
-	manifest: Readonly<Record<string, unknown>>;
+	manifest: JsonObject;
 	grants: readonly CapabilityGrant[];
 }
 

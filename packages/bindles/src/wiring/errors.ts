@@ -19,13 +19,61 @@ export interface ResourceHandle {
 	manifest(): import("./types.js").ManifestResource;
 }
 
+// domain-view: mutable container endpoint bag, not the wire Endpoint message.
+export interface EndpointRecord {
+	scheme: string;
+	port: number;
+	targetPort: number;
+	external: boolean;
+	protocol: string;
+}
+
+export interface VolumeAnnotation {
+	name: string;
+	target: string;
+}
+
+export interface BindMountAnnotation {
+	source: string;
+	target: string;
+	readOnly: boolean;
+}
+
+// domain-view: wait-for annotation stored on ComponentHandle, not the wire WaitAnnotation message.
+export interface WaitForEntry {
+	to: string;
+	until: string;
+}
+
+export interface HealthAnnotation {
+	type: string;
+	path: string;
+}
+
+export type AnnotationValue =
+	| string
+	| EndpointRecord
+	| HealthAnnotation
+	| VolumeAnnotation[]
+	| BindMountAnnotation[]
+	| WaitForEntry[]
+	| string[];
+
+export interface HandleEndpointBag {
+	[key: string]: EndpointRecord;
+}
+
+export interface HandleAnnotationBag {
+	[key: string]: AnnotationValue;
+}
+
 export interface ComponentHandle {
 	readonly kind: "service" | "container";
 	readonly name: string;
 	readonly bindings: Readonly<Record<string, BindingMeta>>;
 	readonly env: Record<string, string>;
-	readonly endpoints: Record<string, unknown>;
-	readonly annotations: Record<string, unknown>;
+	readonly endpoints: HandleEndpointBag;
+	readonly annotations: HandleAnnotationBag;
 	readonly typescript: { readonly ctxBindings: string };
 	binding(alias: string): BindingMeta;
 	manifest(): import("./types.js").ManifestResource;

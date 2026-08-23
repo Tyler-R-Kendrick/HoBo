@@ -20,7 +20,7 @@ analytics vendor integration, customer-success profiling, or a telemetry pipelin
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\workspace-activation-telemetry-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\workspace-activation-telemetry-contract test
 ```
 
 

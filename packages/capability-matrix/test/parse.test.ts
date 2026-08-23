@@ -3,28 +3,35 @@ import { describe, expect, it } from "vitest";
 
 import {
 	CapabilityMatrixError,
+	type CapabilityMatrixDocument,
 	generateCapabilityMatrix,
 	parseCapabilityMatrix,
 	tryParseCapabilityMatrix,
 } from "../src/index.js";
 import { matrixInput, NEON } from "./fixtures.js";
 
+type JsonValue = string | number | boolean | null | undefined | JsonValue[] | JsonObject;
+type JsonObject = Record<string, JsonValue>;
+
 /** A matrix that has been through JSON, as a stored or transmitted one would. */
-function documentOf(): Record<string, unknown> {
+function documentOf(): JsonObject {
+	// SAFETY: JSON.stringify/parse round-trips the generated matrix as JSON.
 	return JSON.parse(
 		JSON.stringify(generateCapabilityMatrix(matrixInput())),
-	) as Record<string, unknown>;
+	) as JsonObject;
 }
 
-function cells(document: Record<string, unknown>): Record<string, unknown>[] {
-	return document.cells as Record<string, unknown>[];
+function cells(document: JsonObject): JsonObject[] {
+	// SAFETY: documentOf() returns a generated matrix with a cells array.
+	return document.cells as JsonObject[];
 }
 
-function expectRejection(document: unknown, code: string): void {
+function expectRejection(document: CapabilityMatrixDocument, code: string): void {
 	expect(() => parseCapabilityMatrix(document)).toThrow(CapabilityMatrixError);
 	try {
 		parseCapabilityMatrix(document);
 	} catch (error) {
+		// SAFETY: parseCapabilityMatrix throws CapabilityMatrixError on refusal.
 		expect((error as CapabilityMatrixError).code).toBe(code);
 	}
 }
@@ -69,8 +76,10 @@ describe("the read boundary", () => {
 
 	it("refuses a bucket whose ids are unsorted or duplicated", () => {
 		const document = documentOf();
-		const first = cells(document)[0] as Record<string, unknown>;
-		(first.buckets as Record<string, unknown>).native = {
+		// SAFETY: cells() returns generated matrix cell objects with buckets.
+		const first = cells(document)[0] as JsonObject;
+		// SAFETY: generated cells carry a buckets object.
+		(first.buckets as JsonObject).native = {
 			available: ["b/v1", "a/v1"],
 			unavailable: [],
 		};
@@ -99,10 +108,12 @@ describe("the read boundary", () => {
 
 	it("refuses a candidate that claims availability while recording a reason", () => {
 		const document = documentOf();
+		// SAFETY: documentOf() returns a matrix with at least one populated cell.
 		const cell = cells(document).find(
-			(entry) => (entry.candidates as unknown[]).length > 0,
-		) as Record<string, unknown>;
-		const candidate = (cell.candidates as Record<string, unknown>[])[0];
+			(entry) => Array.isArray(entry.candidates) && entry.candidates.length > 0,
+		) as JsonObject;
+		// SAFETY: the selected populated cell contains candidate objects.
+		const candidate = (cell.candidates as JsonObject[])[0];
 		if (candidate !== undefined) {
 			candidate.unavailability = [
 				{ code: "evidence-expired", detail: "tampered" },

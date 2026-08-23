@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased rollout and JSON-like values at the shared input and canonicalization boundaries. */
 import {
   replayRollout,
 } from "../../delivery-orchestrator-skeleton-contract/src/delivery-orchestrator.js";

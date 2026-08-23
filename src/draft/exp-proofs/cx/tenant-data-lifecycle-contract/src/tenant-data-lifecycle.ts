@@ -91,6 +91,16 @@ type WorkClassification = Readonly<{
   inScope: boolean;
 }>;
 
+type TenantDataLifecycleDecision =
+  | string
+  | number
+  | boolean
+  | bigint
+  | symbol
+  | null
+  | undefined
+  | { toString(): string };
+
 const REQUIRED_DATA_CLASSES = Object.freeze([
   "customer-product-data",
   "telemetry",
@@ -366,7 +376,9 @@ export function canCreateTenantDataFollowUp({ phase, m0Accepted }: FollowUpGateR
   };
 }
 
-export function classifyTenantDataLifecycleDecision(decision: unknown): WorkClassification {
+export function classifyTenantDataLifecycleDecision(
+  decision: TenantDataLifecycleDecision,
+): WorkClassification {
   const text = String(decision ?? "").toLowerCase();
 
   if (/\b(dpa|legal terms|privacy policy|subprocessor|legal)\b/.test(text)) {

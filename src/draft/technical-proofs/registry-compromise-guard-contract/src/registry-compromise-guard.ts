@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 import { hoboAdd, createHoboAddCatalog } from "../../hobo-add-install-verification-contract/src/hobo-add-install-verification.js";
 import { createListingLifecycle } from "../../listing-lifecycle-yank-contract/src/listing-lifecycle-yank.js";
 import { resolvePinnedRegistryArtifact } from "../../registry-dependency-confusion-guard-contract/src/registry-dependency-confusion-guard.js";
@@ -173,7 +174,7 @@ function asStringArray(values) {
     throw new Error("capability spec exports must be arrays");
   }
   return values.map((value) => {
-    if (typeof value !== "string" || value.trim().length === 0) {
+    if (!isJsonString(value) || value.trim().length === 0) {
       throw new Error("capability spec exports must be non-empty strings");
     }
     return value;

@@ -12,7 +12,16 @@
  * JWKS/token verification) surfaces as a typed {@link DeviceGrantError} with
  * remediation text — never a silent fixture fallback.
  */
+
 import { verifyJwtWithJwks } from "@hobo/identity";
+import {
+	cloneAsJson,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 // public-contract: env var holding the OIDC issuer URL that opts `hobo login` into the real device-code grant.
 export const HOBO_OIDC_ISSUER_ENV = "HOBO_OIDC_ISSUER";
@@ -71,15 +80,15 @@ export function resolveOidcIssuerConfig(
 	env: NodeJS.ProcessEnv,
 ): OidcIssuerConfig | null {
 	const raw = env[HOBO_OIDC_ISSUER_ENV];
-	if (typeof raw !== "string" || raw.trim().length === 0) return null;
+	if (!isJsonString(raw) || raw.trim().length === 0) return null;
 	const issuer = raw.trim().replace(/\/+$/, "");
 	const clientId =
-		typeof env[HOBO_OIDC_CLIENT_ID_ENV] === "string" &&
+		isJsonString(env[HOBO_OIDC_CLIENT_ID_ENV]) &&
 		env[HOBO_OIDC_CLIENT_ID_ENV].trim().length > 0
 			? env[HOBO_OIDC_CLIENT_ID_ENV].trim()
 			: DEFAULT_OIDC_CLIENT_ID;
 	const audience =
-		typeof env[HOBO_OIDC_AUDIENCE_ENV] === "string" &&
+		isJsonString(env[HOBO_OIDC_AUDIENCE_ENV]) &&
 		env[HOBO_OIDC_AUDIENCE_ENV].trim().length > 0
 			? env[HOBO_OIDC_AUDIENCE_ENV].trim()
 			: clientId;
@@ -90,7 +99,7 @@ export interface DeviceGrantResult {
 	/** The verified JWT minted by the issuer. */
 	readonly token: string;
 	/** Verified claims (issuer, audience, exp/nbf already checked). */
-	readonly claims: Record<string, unknown>;
+	readonly claims: JsonObject;
 	readonly verificationUri: string;
 	readonly userCode: string;
 }
@@ -157,7 +166,7 @@ async function discover(
 	fetchImpl: typeof fetch,
 ): Promise<DiscoveryMetadata> {
 	const url = `${config.issuer}/.well-known/openid-configuration`;
-	let body: unknown;
+	let body: JsonValue;
 	try {
 		const response = await fetchImpl(url);
 		if (!response.ok) {
@@ -180,10 +189,11 @@ async function discover(
 			],
 		);
 	}
-	if (typeof body !== "object" || body === null) {
+	if (!isJsonObject(body) || body === null) {
 		throw metadataInvalid("discovery document is not a JSON object");
 	}
-	const doc = body as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const doc = body as JsonObject;
 	if (doc.issuer !== config.issuer) {
 		throw metadataInvalid(
 			`discovery issuer ${JSON.stringify(doc.issuer)} does not match configured issuer ${config.issuer}`,
@@ -192,15 +202,15 @@ async function discover(
 	const deviceAuthorizationEndpoint = doc.device_authorization_endpoint;
 	const tokenEndpoint = doc.token_endpoint;
 	const jwksUri = doc.jwks_uri;
-	if (typeof deviceAuthorizationEndpoint !== "string") {
+	if (!isJsonString(deviceAuthorizationEndpoint)) {
 		throw metadataInvalid(
 			"discovery document has no device_authorization_endpoint (issuer does not support RFC 8628)",
 		);
 	}
-	if (typeof tokenEndpoint !== "string") {
+	if (!isJsonString(tokenEndpoint)) {
 		throw metadataInvalid("discovery document has no token_endpoint");
 	}
-	if (typeof jwksUri !== "string") {
+	if (!isJsonString(jwksUri)) {
 		throw metadataInvalid("discovery document has no jwks_uri");
 	}
 	return {
@@ -234,7 +244,7 @@ async function requestDeviceAuthorization(
 	metadata: DiscoveryMetadata,
 	fetchImpl: typeof fetch,
 ): Promise<DeviceAuthorization> {
-	let body: unknown;
+	let body: JsonValue;
 	try {
 		const response = await postForm(
 			fetchImpl,
@@ -261,17 +271,15 @@ async function requestDeviceAuthorization(
 			],
 		);
 	}
-	const doc = (typeof body === "object" && body !== null ? body : {}) as Record<
-		string,
-		unknown
-	>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const doc = (isJsonObject(body) && body !== null ? body : {}) as JsonObject;
 	const deviceCode = doc.device_code;
 	const userCode = doc.user_code;
 	const verificationUri = doc.verification_uri;
 	if (
-		typeof deviceCode !== "string" ||
-		typeof userCode !== "string" ||
-		typeof verificationUri !== "string"
+		!isJsonString(deviceCode) ||
+		!isJsonString(userCode) ||
+		!isJsonString(verificationUri)
 	) {
 		throw new DeviceGrantError(
 			"HOBO_OIDC_DEVICE_AUTH_FAILED",
@@ -287,9 +295,10 @@ async function requestDeviceAuthorization(
 		deviceCode,
 		userCode,
 		verificationUri,
-		expiresInSeconds: typeof expiresIn === "number" ? expiresIn : 300,
-		intervalSeconds:
-			typeof interval === "number" ? interval : DEFAULT_POLL_INTERVAL_SECONDS,
+		expiresInSeconds: isJsonNumber(expiresIn) ? expiresIn : 300,
+		intervalSeconds: isJsonNumber(interval)
+			? interval
+			: DEFAULT_POLL_INTERVAL_SECONDS,
 	};
 }
 
@@ -310,7 +319,7 @@ async function pollForToken(input: {
 		if (now() >= deadline) throw expiredError();
 
 		let response: Awaited<ReturnType<typeof fetch>>;
-		let body: unknown;
+		let body: JsonValue;
 		try {
 			response = await postForm(fetchImpl, metadata.tokenEndpoint, {
 				grant_type: DEVICE_CODE_GRANT_TYPE,
@@ -325,13 +334,12 @@ async function pollForToken(input: {
 				["Check network reachability of the issuer's token_endpoint."],
 			);
 		}
-		const doc = (
-			typeof body === "object" && body !== null ? body : {}
-		) as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const doc = (isJsonObject(body) && body !== null ? body : {}) as JsonObject;
 
 		if (response.ok) {
 			const accessToken = doc.access_token;
-			if (typeof accessToken !== "string" || accessToken.length === 0) {
+			if (!isJsonString(accessToken) || accessToken.length === 0) {
 				throw new DeviceGrantError(
 					"HOBO_OIDC_TOKEN_FAILED",
 					"Token endpoint returned success without an access_token.",
@@ -386,7 +394,7 @@ async function verifyToken(
 	token: string,
 	fetchImpl: typeof fetch,
 	now: () => number,
-): Promise<Record<string, unknown>> {
+): Promise<JsonObject> {
 	let jwks: unknown;
 	try {
 		const response = await fetchImpl(metadata.jwksUri);
@@ -404,10 +412,8 @@ async function verifyToken(
 		);
 	}
 	const keys =
-		typeof jwks === "object" &&
-		jwks !== null &&
-		Array.isArray((jwks as { keys?: unknown }).keys)
-			? ((jwks as { keys: Record<string, unknown>[] }).keys ?? [])
+		isJsonObject(jwks) && Array.isArray(jwks.keys)
+			? jwks.keys.filter((entry) => isJsonObject(entry))
 			: null;
 	if (keys === null) {
 		throw new DeviceGrantError(
@@ -426,7 +432,8 @@ async function verifyToken(
 				now: Math.floor(now() / 1000),
 			},
 		);
-		return verified.claims;
+		const claims = cloneAsJson(verified.claims);
+		return isJsonObject(claims) ? claims : {};
 	} catch (error) {
 		throw new DeviceGrantError(
 			"HOBO_OIDC_TOKEN_INVALID",

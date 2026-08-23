@@ -5,13 +5,16 @@
 
 export const EVENTS_EVENT_SCHEMA_VERSION = "hobo.reactive-events/v1";
 
-export interface ReactiveFact<T = Record<string, unknown>> {
+type FactValue = string | number | readonly string[];
+type FactData = Record<string, FactValue>;
+
+export interface ReactiveFact<T extends FactData = FactData> {
 	readonly type: string;
 	readonly schemaVersion: typeof EVENTS_EVENT_SCHEMA_VERSION;
 	readonly data: Readonly<T>;
 }
 
-function fact<T extends Record<string, unknown>>(
+function fact<T extends FactData>(
 	type: string,
 	data: T,
 ): ReactiveFact<T> {

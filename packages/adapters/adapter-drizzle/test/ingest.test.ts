@@ -4,6 +4,8 @@ import {
 	type DrizzleImpedanceCode,
 	ingestDrizzleSchema,
 } from "../src/index.js";
+import type { JsonObject, JsonValue } from "../src/json.js";
+import type { ExtraConfigBuilder } from "../src/shape.js";
 import {
 	column,
 	indexBuilder,
@@ -13,13 +15,11 @@ import {
 	view,
 } from "./fixtures.js";
 
-function codes(
-	module: Record<string, unknown>,
-): readonly DrizzleImpedanceCode[] {
+function codes(module: JsonObject): readonly DrizzleImpedanceCode[] {
 	return ingestDrizzleSchema(module).impedance.map((finding) => finding.code);
 }
 
-function thrownCode(run: () => unknown): string {
+function thrownCode(run: () => void): string {
 	try {
 		run();
 	} catch (error) {
@@ -95,9 +95,10 @@ describe("ingestDrizzleSchema", () => {
 
 	it("is independent of export declaration order", () => {
 		const forward = representativeSchemaModule();
+		// SAFETY: assertion to `Object.fromEntries( Object.entries(forward).reverse(), ) as JsonObject` is required at this boundary.
 		const reversed = Object.fromEntries(
 			Object.entries(forward).reverse(),
-		) as Record<string, unknown>;
+		) as JsonObject;
 
 		expect(JSON.stringify(ingestDrizzleSchema(reversed))).toBe(
 			JSON.stringify(ingestDrizzleSchema(forward)),
@@ -133,11 +134,7 @@ describe("ingestDrizzleSchema", () => {
 		]);
 	});
 
-	const impedanceCases: [
-		string,
-		Record<string, unknown>,
-		DrizzleImpedanceCode,
-	][] = [
+	const impedanceCases: [string, JsonObject, DrizzleImpedanceCode][] = [
 		[
 			"a view export",
 			{
@@ -276,15 +273,15 @@ describe("ingestDrizzleSchema", () => {
 		expect(result.schema.tables[0]?.columns[0]?.type).toBe("uuid");
 	});
 
-	const extraConfigCases: [string, () => unknown][] = [
+	const extraConfigCases: [string, ExtraConfigBuilder][] = [
 		[
 			"a throwing extra-config callback",
-			(): never => {
+			(): JsonValue => {
 				throw new Error("needs a real table proxy");
 			},
 		],
-		["a scalar return", (): unknown => "not builders"],
-		["unreadable entries", (): unknown => [{ config: { name: "i" } }]],
+		["a scalar return", () => "not builders"],
+		["unreadable entries", () => [{ config: { name: "i" } }]],
 	];
 
 	it.each(
@@ -338,20 +335,29 @@ describe("ingestDrizzleSchema", () => {
 		expect(ordered[2]?.detail).toContain('"cView"');
 	});
 
-	const refusalCases: [string, () => unknown, string][] = [
+	const refusalCases: [string, () => void, string][] = [
 		[
 			"null in place of a module",
-			(): unknown => ingestDrizzleSchema(null as never),
+			() => {
+				// SAFETY: invalid ingest input is a null module at this refusal case.
+				ingestDrizzleSchema(null as never);
+			},
 			"DRIZZLE_INGEST_INPUT_INVALID",
 		],
 		[
 			"a string in place of a module",
-			(): unknown => ingestDrizzleSchema("schema" as never),
+			() => {
+				// SAFETY: invalid ingest input is a string module at this refusal case.
+				ingestDrizzleSchema("schema" as never);
+			},
 			"DRIZZLE_INGEST_INPUT_INVALID",
 		],
 		[
 			"a non-postgres dialect",
-			(): unknown => ingestDrizzleSchema({}, { dialect: "mysql" as never }),
+			() => {
+				// SAFETY: unsupported dialect is refused at this ingest boundary.
+				ingestDrizzleSchema({}, { dialect: "mysql" as never });
+			},
 			"DRIZZLE_DIALECT_UNSUPPORTED",
 		],
 	];
@@ -362,10 +368,12 @@ describe("ingestDrizzleSchema", () => {
 
 	it("carries remediation text on every refusal", () => {
 		try {
+			// SAFETY: assertion to `undefined as never` is required at this boundary.
 			ingestDrizzleSchema(undefined as never);
 			expect.unreachable("ingestDrizzleSchema should refuse a non-object");
 		} catch (error) {
 			expect(error).toBeInstanceOf(DrizzleAdapterError);
+			// SAFETY: assertion to `error as DrizzleAdapterError` is required at this boundary.
 			expect((error as DrizzleAdapterError).remediation.length).toBeGreaterThan(
 				0,
 			);

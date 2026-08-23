@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-
 import { createBroker } from "../src/broker.js";
 import {
 	approveEnvironmentFact,
@@ -8,6 +7,7 @@ import {
 	publishEnvironmentFact,
 } from "../src/environments.js";
 import { createBrokerHttpHandler, serveBroker } from "../src/http.js";
+import { isJsonString } from "../src/json.js";
 import type { BrokerCatalog } from "../src/types.js";
 
 const catalog: BrokerCatalog = {
@@ -148,7 +148,7 @@ describe("hosted authority surface (HTTP)", () => {
 		const server = serveBroker(broker, { port: 0 });
 		await new Promise<void>((resolve) => server.once("listening", resolve));
 		const address = server.address();
-		if (address === null || typeof address === "string") {
+		if (address === null || isJsonString(address)) {
 			throw new Error("expected a bound port");
 		}
 		const base = `http://127.0.0.1:${address.port}`;
@@ -160,6 +160,7 @@ describe("hosted authority surface (HTTP)", () => {
 				body: JSON.stringify(baseRequest),
 			});
 			expect(resolved.status).toBe(200);
+			// SAFETY: assertion required at this I/O or test boundary.
 			const body = (await resolved.json()) as {
 				outcome: string;
 				receipt: { placements: Array<{ providerId: string }> };

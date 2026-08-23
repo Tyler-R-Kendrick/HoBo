@@ -11,6 +11,7 @@ const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const ASSETS = join(ROOT, "assets");
 const OUT = join(ROOT, "tmp", "frames");
 
+// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 const _index = JSON.parse(
 	readFileSync(join(ASSETS, "assets_index.json"), "utf8"),
 ) as {

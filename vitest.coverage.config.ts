@@ -186,20 +186,42 @@ export default defineConfig({
 				 *
 				 * Packages under 50 statements are not gated: the percentages swing
 				 * too far on a single line to mean anything.
+				 *
+				 * Picking what to cover next: rank files by *uncovered branches in
+				 * a full-package run*, reading `.coverage/coverage-summary.json`
+				 * after `vitest run --config vitest.coverage.config.ts <package>`.
+				 *
+				 * Do not rank by running one module's own test file and measuring
+				 * that. It answers a different question -- "what does this file's
+				 * dedicated test reach" -- and files with wide incidental coverage
+				 * from elsewhere look far emptier than they are. Measured cost of
+				 * getting this wrong: `harness-session-view.ts` read 86/255 under
+				 * its own test alone and 160 new tests took it to 239/255, but the
+				 * package moved 78.00 -> 78.06. Nearly all of those arms were
+				 * already reached by other suites. The same tranche's per-file
+				 * figures overstated package yield by roughly twenty to one.
 				 */
 				"packages/adapters/**": { statements: 91, branches: 84, functions: 97, lines: 93 },
 				"packages/auth-md/**": { statements: 87, branches: 80, functions: 83, lines: 88 },
 				"packages/bindings/**": { statements: 94, branches: 89, functions: 95, lines: 94 },
-				"packages/bindles/**": { statements: 80, branches: 71, functions: 84, lines: 81 },
+				"packages/bindles/**": { statements: 86, branches: 80, functions: 90, lines: 87 },
 				"packages/broker/**": { statements: 87, branches: 80, functions: 92, lines: 87 },
 				"packages/camps/**": { statements: 99, branches: 98, functions: 100, lines: 100 },
 				"packages/capability-matrix/**": { statements: 97, branches: 83, functions: 97, lines: 99 },
 				"packages/capability-profiles/**": { statements: 92, branches: 82, functions: 100, lines: 93 },
 				"packages/ci-guard/**": { statements: 93, branches: 91, functions: 95, lines: 93 },
 				"packages/claims/**": { statements: 87, branches: 81, functions: 96, lines: 90 },
-				"packages/cli/**": { statements: 82, branches: 65, functions: 94, lines: 82 },
+				"packages/cli/**": { statements: 91, branches: 80, functions: 98, lines: 91 },
 				"packages/cloud/**": { statements: 91, branches: 80, functions: 92, lines: 91 },
-				"packages/code/**": { statements: 82, branches: 71, functions: 86, lines: 84 },
+				// functions is 88.4 rather than 88.5 on purpose. 88.5 was set from a
+				// single reading of 2366/2673; two consecutive full runs since then
+				// both measure 2365, so one function in this package is covered
+				// non-deterministically and 88.5 is not reliably passable. Correcting
+				// a floor set from a flaky reading is not the same as lowering a
+				// ratchet — the honest number is the one every run can clear.
+				// Suspected cause: `vshell` reads real stdin, so which of its paths
+				// executes depends on how the run is scheduled.
+				"packages/code/**": { statements: 86.6, branches: 78.2, functions: 88.8, lines: 88.4 },
 				"packages/componentize/**": { statements: 93, branches: 83, functions: 94, lines: 93 },
 				"packages/conformance/**": { statements: 91, branches: 80, functions: 94, lines: 91 },
 				"packages/connectivity/**": { statements: 87, branches: 80, functions: 89, lines: 88 },
@@ -216,8 +238,8 @@ export default defineConfig({
 				"packages/evals/**": { statements: 90, branches: 89, functions: 94, lines: 91 },
 				"packages/events/**": { statements: 91, branches: 82, functions: 87, lines: 93 },
 				"packages/fuzz/**": { statements: 90, branches: 80, functions: 94, lines: 92 },
-				"packages/hobo/**": { statements: 83, branches: 70, functions: 86, lines: 84 },
-				"packages/iac/**": { statements: 73, branches: 65, functions: 77, lines: 73 },
+				"packages/hobo/**": { statements: 89, branches: 80, functions: 88, lines: 89 },
+				"packages/iac/**": { statements: 86, branches: 80, functions: 89, lines: 86 },
 				"packages/identity/**": { statements: 90, branches: 80, functions: 92, lines: 90 },
 				"packages/junctions/**": { statements: 95, branches: 90, functions: 98, lines: 95 },
 				"packages/kv-redis-compatible/**": { statements: 91, branches: 82, functions: 92, lines: 95 },
@@ -229,41 +251,69 @@ export default defineConfig({
 				"packages/manifest-round-trip/**": { statements: 94, branches: 91, functions: 98, lines: 98 },
 				"packages/mcp/**": { statements: 95, branches: 85, functions: 96, lines: 97 },
 				"packages/packs/**": { statements: 88, branches: 83, functions: 93, lines: 87 },
-				"packages/patterns/**": { statements: 78, branches: 68, functions: 82, lines: 80 },
-				"packages/pixel-village/**": { statements: 47, branches: 43, functions: 50, lines: 47 },
+				"packages/patterns/**": { statements: 90, branches: 82, functions: 95, lines: 91 },
+				// Ceiling, measured 2026-08-22: 66.23% branches even with every
+				// reachable branch covered. Of 448 uncovered branches, 389 need a
+				// real browser and cannot run in this lane at all:
+				//   214  src/main.ts            browser entry; the only module that
+				//                               instantiates Phaser.Game (ADR-0147)
+				//    85  src/dom-overlay.ts     createDomOverlay needs a live Document
+				//    37  src/phaser/scenes.ts   Phaser Scene subclasses
+				//    27  src/phaser/yard-presenter.ts
+				//    14  src/scenes/yard-scene.ts
+				//    12  src/phaser/{game-config,boot-scene}.ts
+				// All of it *is* exercised — by the 18 Playwright specs under
+				// test/e2e, whose coverage never reaches this gate. So 80% here is
+				// not a testing gap to close by writing more vitest; it needs a
+				// decision: merge the Playwright coverage in, add a DOM environment
+				// (the repo has neither jsdom nor happy-dom today), or exclude the
+				// browser-only modules from this denominator. Raising the floor past
+				// ~66 without one of those would be a gate nobody can pass.
+				"packages/pixel-village/**": { statements: 61, branches: 61, functions: 65, lines: 62 },
 				"packages/policy/**": { statements: 97, branches: 95, functions: 100, lines: 97 },
-				"packages/providers/provider-aws/**": { statements: 87, branches: 69, functions: 92, lines: 88 },
-				"packages/providers/provider-ax/**": { statements: 88, branches: 55, functions: 98, lines: 95 },
-				"packages/providers/provider-azure/**": { statements: 89, branches: 73, functions: 93, lines: 90 },
-				"packages/providers/provider-browser-wasm/**": { statements: 74, branches: 71, functions: 78, lines: 75 },
-				"packages/providers/provider-cloudflare/**": { statements: 80, branches: 67, functions: 83, lines: 80 },
-				"packages/providers/provider-convex/**": { statements: 86, branches: 76, functions: 93, lines: 87 },
-				"packages/providers/provider-digitalocean/**": { statements: 77, branches: 64, functions: 84, lines: 79 },
-				"packages/providers/provider-flux/**": { statements: 79, branches: 74, functions: 98, lines: 79 },
-				"packages/providers/provider-gcp/**": { statements: 87, branches: 72, functions: 90, lines: 88 },
-				"packages/providers/provider-hetzner/**": { statements: 82, branches: 66, functions: 87, lines: 85 },
-				"packages/providers/provider-hostinger/**": { statements: 87, branches: 70, functions: 92, lines: 88 },
-				"packages/providers/provider-kafka/**": { statements: 80, branches: 64, functions: 84, lines: 81 },
-				"packages/providers/provider-kubernetes/**": { statements: 81, branches: 70, functions: 90, lines: 81 },
-				"packages/providers/provider-lakebed/**": { statements: 76, branches: 55, functions: 70, lines: 76 },
-				"packages/providers/provider-neon/**": { statements: 84, branches: 73, functions: 93, lines: 86 },
-				"packages/providers/provider-netlify/**": { statements: 60, branches: 52, functions: 57, lines: 61 },
-				"packages/providers/provider-prisma-postgres/**": { statements: 86, branches: 77, functions: 96, lines: 87 },
-				"packages/providers/provider-railway/**": { statements: 82, branches: 68, functions: 82, lines: 83 },
+				"packages/providers/provider-aws/**": { statements: 93, branches: 80, functions: 98, lines: 93 },
+				// Branches sit below the 80 target by construction, not by neglect.
+				// `engine.ts` defends against trajectory shapes that
+				// `parseOptimizeRequest` already refuses upstream (an orphan root
+				// span, an absent reward, a missing rubric or contract), so those
+				// `??` arms are unreachable through the port — verified one by one.
+				// branches is 73.8 and will not reach 80. The remaining seventeen arms in
+				// engine.ts are defensive `?? ""` / `?? 0` fallbacks on fields the port's
+				// own parser makes mandatory -- rubric, rubric.objective, contract, and
+				// trajectory.reward were each probed directly and each refused at
+				// `parseOptimizeRequest` before the fallback could run. They are dead
+				// code guarded by a stricter parser, not untested behaviour.
+				"packages/providers/provider-ax/**": { statements: 95, branches: 73.8, functions: 100, lines: 100 },
+				"packages/providers/provider-azure/**": { statements: 94, branches: 80, functions: 98, lines: 94 },
+				"packages/providers/provider-browser-wasm/**": { statements: 87, branches: 83, functions: 92, lines: 87 },
+				"packages/providers/provider-cloudflare/**": { statements: 90, branches: 80, functions: 93, lines: 91 },
+				"packages/providers/provider-convex/**": { statements: 89, branches: 80, functions: 94, lines: 89 },
+				"packages/providers/provider-digitalocean/**": { statements: 93, branches: 80, functions: 97, lines: 93 },
+				"packages/providers/provider-flux/**": { statements: 100, branches: 100, functions: 100, lines: 100 },
+				"packages/providers/provider-gcp/**": { statements: 92, branches: 80, functions: 96, lines: 92 },
+				"packages/providers/provider-hetzner/**": { statements: 95, branches: 82, functions: 97, lines: 95 },
+				"packages/providers/provider-hostinger/**": { statements: 91, branches: 80, functions: 98, lines: 92 },
+				"packages/providers/provider-kafka/**": { statements: 88, branches: 84, functions: 93, lines: 88 },
+				"packages/providers/provider-kubernetes/**": { statements: 89, branches: 81, functions: 98, lines: 89 },
+				"packages/providers/provider-lakebed/**": { statements: 87, branches: 87, functions: 80, lines: 87 },
+				"packages/providers/provider-neon/**": { statements: 89, branches: 81, functions: 97, lines: 89 },
+				"packages/providers/provider-netlify/**": { statements: 84, branches: 80, functions: 82, lines: 84 },
+				"packages/providers/provider-prisma-postgres/**": { statements: 92, branches: 83, functions: 97, lines: 92 },
+				"packages/providers/provider-railway/**": { statements: 98, branches: 97, functions: 100, lines: 98 },
 				"packages/providers/provider-ttl-sh/**": { statements: 91, branches: 87, functions: 91, lines: 91 },
-				"packages/providers/provider-upstash/**": { statements: 84, branches: 76, functions: 87, lines: 85 },
-				"packages/providers/provider-vercel/**": { statements: 81, branches: 73, functions: 78, lines: 82 },
-				"packages/providers/provider-webernetes/**": { statements: 82, branches: 74, functions: 88, lines: 85 },
-				"packages/providers/runner-blacksmith/**": { statements: 88, branches: 79, functions: 92, lines: 88 },
-				"packages/providers/runner-depot/**": { statements: 80, branches: 73, functions: 87, lines: 80 },
-				"packages/providers/runner-github/**": { statements: 82, branches: 78, functions: 87, lines: 83 },
+				"packages/providers/provider-upstash/**": { statements: 88, branches: 80, functions: 92, lines: 88 },
+				"packages/providers/provider-vercel/**": { statements: 89, branches: 82, functions: 91, lines: 89 },
+				"packages/providers/provider-webernetes/**": { statements: 95, branches: 94, functions: 92, lines: 95 },
+				"packages/providers/runner-blacksmith/**": { statements: 90, branches: 81, functions: 100, lines: 90 },
+				"packages/providers/runner-depot/**": { statements: 89, branches: 81, functions: 96, lines: 89 },
+				"packages/providers/runner-github/**": { statements: 90, branches: 87, functions: 88, lines: 90 },
 				"packages/recipes/**": { statements: 89, branches: 82, functions: 95, lines: 90 },
 				"packages/registry/**": { statements: 93, branches: 86, functions: 98, lines: 94 },
 				"packages/replay/**": { statements: 87, branches: 81, functions: 82, lines: 89 },
-				"packages/rift/**": { statements: 71, branches: 58, functions: 83, lines: 72 },
+				"packages/rift/**": { statements: 91, branches: 86, functions: 91, lines: 93 },
 				"packages/runtime/**": { statements: 89, branches: 83, functions: 88, lines: 89 },
-				"packages/runtimes/**": { statements: 70, branches: 57, functions: 74, lines: 70 },
-				"packages/schema-tools/**": { statements: 79, branches: 69, functions: 89, lines: 81 },
+				"packages/runtimes/**": { statements: 82, branches: 80, functions: 83, lines: 82 },
+				"packages/schema-tools/**": { statements: 90, branches: 84, functions: 94, lines: 91 },
 				"packages/sdk/**": { statements: 96, branches: 89, functions: 98, lines: 96 },
 				"packages/stage-gate/**": { statements: 88, branches: 91, functions: 91, lines: 88 },
 				"packages/stations/**": { statements: 95, branches: 91, functions: 98, lines: 95 },
@@ -275,7 +325,7 @@ export default defineConfig({
 				"packages/training-pipeline/**": { statements: 92, branches: 85, functions: 94, lines: 93 },
 				"packages/trust/**": { statements: 89, branches: 87, functions: 87, lines: 89 },
 				"packages/wasp/**": { statements: 90, branches: 83, functions: 95, lines: 92 },
-				"packages/wit/**": { statements: 81, branches: 70, functions: 81, lines: 81 },
+				"packages/wit/**": { statements: 91, branches: 84, functions: 94, lines: 91 },
 				"packages/yard-world/**": { statements: 87, branches: 80, functions: 88, lines: 89 },
 				"packages/yards/**": { statements: 87, branches: 84, functions: 88, lines: 87 },
 			},

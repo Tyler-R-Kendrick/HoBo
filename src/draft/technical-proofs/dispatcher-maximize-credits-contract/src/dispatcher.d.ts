@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export type DispatcherObjective = "maximize-credits";
 
 export type DispatchCategory = "runner" | "build-machine";
@@ -157,8 +158,8 @@ export interface DispatchDecision {
   reason?: string;
   ranking: RankedDispatchCandidate[];
   hysteresis?: HysteresisResult;
-  dispatchEvent?: Record<string, unknown>;
-  replayInput?: Record<string, unknown>;
+  dispatchEvent?: JsonObject;
+  replayInput?: JsonObject;
 }
 
 export interface ReservedDispatchDecision extends DispatchDecision {
@@ -184,7 +185,7 @@ export interface PlacementDecision {
   }>;
   rejectedCandidates: Array<{ definitionId: string; reason: string }>;
   tiedDefinitionIds?: string[];
-  matchEvent?: Record<string, unknown>;
+  matchEvent?: JsonObject;
 }
 
 export declare const DISPATCHER_MAXIMIZE_CREDITS_VERSION: "hobo.dispatcher-maximize-credits/v1";
@@ -192,5 +193,5 @@ export declare function createDispatcherRegistry(providers?: DispatchProviderCan
 export declare function createReservationLedger(initialLedgerView: CreditLedgerView): ReservationLedger;
 export declare function decideDispatch(request: DispatchDecisionRequest): DispatchDecision;
 export declare function decideAndReserveDispatch(request: ReserveDispatchRequest): ReservedDispatchDecision;
-export declare function replayDispatchDecision(replayInput: Record<string, unknown>): DispatchDecision;
+export declare function replayDispatchDecision(replayInput: JsonObject): DispatchDecision;
 export declare function decidePlacement(request: PlacementDecisionRequest): PlacementDecision;

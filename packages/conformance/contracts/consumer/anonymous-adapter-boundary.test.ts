@@ -9,8 +9,8 @@
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
-
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../../src/json.js";
 
 import {
 	type AnonymousCaseOutcome,
@@ -25,8 +25,8 @@ const packageRoot = dirname(fileURLToPath(import.meta.url));
 const pact: {
 	interactions: Array<{
 		description: string;
-		request: { path: string; body: Record<string, unknown> };
-		response: { body: Record<string, unknown> };
+		request: { path: string; body: JsonObject };
+		response: { body: JsonObject };
 	}>;
 } = JSON.parse(
 	readFileSync(
@@ -52,6 +52,7 @@ describe("anonymous conformance adapter boundary", () => {
 
 	it("sends the request each recorded case actually declares", () => {
 		for (const interaction of pact.interactions) {
+			// SAFETY: assertion to `teraction.request.path as keyof typeof SUITES];` is required at this boundary.
 			const suite = SUITES[interaction.request.path as keyof typeof SUITES];
 			const caseId = interaction.request.body.caseId;
 			const declared = suite.cases.find((suiteCase) => suiteCase.id === caseId);
@@ -62,6 +63,7 @@ describe("anonymous conformance adapter boundary", () => {
 
 	it("passes each recorded response through the real judge", async () => {
 		for (const interaction of pact.interactions) {
+			// SAFETY: assertion to `teraction.request.path as keyof typeof SUITES];` is required at this boundary.
 			const suite = SUITES[interaction.request.path as keyof typeof SUITES];
 			const caseId = String(interaction.request.body.caseId);
 

@@ -28,6 +28,7 @@ import {
 	makeModelOffer,
 	offerKey,
 } from "./bo-model-catalog.js";
+import { isJsonString } from "./json.js";
 
 export interface ListHarnessModelOffersOptions {
 	/** Override home for Pi / Bo-catalog merge (tests). */
@@ -57,16 +58,17 @@ function splitCompatUrls(
 		out.push(url);
 	};
 	for (const key of singleKeys) {
-		add(typeof env[key] === "string" ? env[key] : undefined);
+		add(isJsonString(env[key]) ? env[key] : undefined);
 	}
-	const listed = typeof env[listKey] === "string" ? env[listKey] : "";
+	const listed = isJsonString(env[listKey]) ? env[listKey] : "";
 	for (const part of listed.split(/[,;\s]+/u)) add(part);
 	return out;
 }
 
 function modelNameForCompatEndpoint(env: NodeJS.ProcessEnv): string {
-	const active =
-		typeof env.HOBO_CODE_MODEL === "string" ? env.HOBO_CODE_MODEL.trim() : "";
+	const active = isJsonString(env.HOBO_CODE_MODEL)
+		? env.HOBO_CODE_MODEL.trim()
+		: "";
 	if (active && !active.toLowerCase().startsWith("ollama/")) {
 		return active.includes("/")
 			? active.slice(active.indexOf("/") + 1)
@@ -118,8 +120,9 @@ export function listAnthropicCompatibleOffers(
 		["ANTHROPIC_BASE_URL"],
 		"HOBO_CODE_ANTHROPIC_COMPAT_URLS",
 	);
-	const active =
-		typeof env.HOBO_CODE_MODEL === "string" ? env.HOBO_CODE_MODEL.trim() : "";
+	const active = isJsonString(env.HOBO_CODE_MODEL)
+		? env.HOBO_CODE_MODEL.trim()
+		: "";
 	const name =
 		options.modelName ??
 		(active.toLowerCase().startsWith("claude") ||
@@ -287,7 +290,7 @@ const SDK_MODELS: readonly CuratedEntry[] = [
 	{ type: "google", runtimeId: "gemini-2.5-flash" },
 ];
 
-const CURATED: Readonly<Record<string, readonly CuratedEntry[]>> = {
+const CURATED = {
 	codex: CODEX_MODELS,
 	claude: CLAUDE_MODELS,
 	gemini: GEMINI_MODELS,
@@ -298,7 +301,14 @@ const CURATED: Readonly<Record<string, readonly CuratedEntry[]>> = {
 	aider: AIDER_MODELS,
 	goose: GOOSE_MODELS,
 	sdk: SDK_MODELS,
-};
+} as const;
+
+function curatedFor(id: string) {
+	for (const [name, entries] of Object.entries(CURATED)) {
+		if (name === id) return entries;
+	}
+	return undefined;
+}
 
 function offerFor(harnessId: string, entry: CuratedEntry): BoModelOffer {
 	const slash = entry.runtimeId.indexOf("/");
@@ -478,6 +488,7 @@ export function listPiModelOffersFromFile(
 ): readonly BoModelOffer[] {
 	if (!existsSync(modelsJsonPath)) return [];
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const raw = JSON.parse(readFileSync(modelsJsonPath, "utf8")) as {
 			providers?: Record<string, { models?: { id?: string; name?: string }[] }>;
 		};
@@ -485,7 +496,7 @@ export function listPiModelOffersFromFile(
 		const seen = new Set<string>();
 		for (const [provider, body] of Object.entries(raw.providers ?? {})) {
 			for (const model of body.models ?? []) {
-				const id = typeof model.id === "string" ? model.id.trim() : "";
+				const id = isJsonString(model.id) ? model.id.trim() : "";
 				if (!id || seen.has(id)) continue;
 				seen.add(id);
 				const type = /^[a-z][a-z0-9-]*$/iu.test(provider)
@@ -547,7 +558,7 @@ export function listHarnessModelOffers(
 		return listPiModelOffersFromFile(join(home, ".pi", "agent", "models.json"));
 	}
 
-	const curated = CURATED[id];
+	const curated = curatedFor(id);
 	let offers: readonly BoModelOffer[] = curated ? fromCurated(id, curated) : [];
 
 	// Default on interactively; off under Vitest. Explicit runProbe implies live.

@@ -1,3 +1,4 @@
+import { isJsonString, isJsonBoolean, isJsonObject } from "./json.js";
 export const REMEDIATION_ACTION_EVENT_TYPE = "crew.ActionProposed";
 
 export const remediationActionKinds = Object.freeze({
@@ -44,7 +45,7 @@ const knownNonProdNames = new Set([
 ]);
 
 export function validateRemediationAction(candidate) {
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     throw new TypeError("RemediationAction must be an object");
   }
 
@@ -122,7 +123,7 @@ export function makeRemediationActionEvent({ id, incidentId, action, decision: r
 }
 
 function validateTarget(target) {
-  if (!target || typeof target !== "object" || Array.isArray(target)) {
+  if (!target || !isJsonObject(target) || Array.isArray(target)) {
     throw new TypeError("target is required");
   }
 
@@ -133,7 +134,7 @@ function validateTarget(target) {
 }
 
 function validateBlastRadius(blastRadius) {
-  if (!blastRadius || typeof blastRadius !== "object" || Array.isArray(blastRadius)) {
+  if (!blastRadius || !isJsonObject(blastRadius) || Array.isArray(blastRadius)) {
     throw new TypeError("blastRadius is required");
   }
 
@@ -183,7 +184,7 @@ function requireNonEmptyString(value, name) {
 }
 
 function requireBoolean(value, name) {
-  if (typeof value !== "boolean") {
+  if (!isJsonBoolean(value)) {
     throw new TypeError(`${name} must be a boolean`);
   }
 
@@ -191,5 +192,5 @@ function requireBoolean(value, name) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }

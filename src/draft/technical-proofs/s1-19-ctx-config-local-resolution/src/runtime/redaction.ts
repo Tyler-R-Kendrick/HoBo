@@ -1,9 +1,11 @@
 import { REDACTED } from "../core/secret-value.js";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject, type JsonBag } from "../json.js";
+
 
 const secretRegistry = new Set<string>();
 
 export function registerSecretForRedaction(value: string): void {
-  if (typeof value === "string" && value.length > 0) {
+  if (isJsonString(value) && value.length > 0) {
     secretRegistry.add(value);
   }
 }
@@ -17,41 +19,45 @@ export function scrubAtCapture<T>(payload: T): T {
     return payload;
   }
 
-  if (typeof payload === "string") {
+  if (isJsonString(payload)) {
+    // SAFETY: assertion to `return scrubString(payload) as T;` is required at this boundary.
     return scrubString(payload) as T;
   }
 
-  if (payload === null || payload === undefined || typeof payload !== "object") {
+  if (payload === null || payload === undefined || !isJsonObject(payload)) {
     return payload;
   }
 
   if (Array.isArray(payload)) {
+    // SAFETY: assertion to `return payload.map((item) => scrubAtCapture(item)) as T;` is required at this boundary.
     return payload.map((item) => scrubAtCapture(item)) as T;
   }
 
-  const result: Record<string, unknown> = {};
-  for (const [key, value] of Object.entries(payload as Record<string, unknown>)) {
-    if (key === "value" && typeof value === "string" && secretRegistry.has(value)) {
+  const result: JsonBag = {};
+  // SAFETY: assertion to `for (const [key, value] of Object.entries(payload as JsonObject)) {` is required at this boundary.
+  for (const [key, value] of Object.entries(payload as JsonObject)) {
+    if (key === "value" && isJsonString(value) && secretRegistry.has(value)) {
       continue;
     }
     result[key] = scrubAtCapture(value);
   }
+  // SAFETY: assertion to `return result as T;` is required at this boundary.
   return result as T;
 }
 
 export type ConformanceSurfaces = {
-  readonly bindle?: unknown;
-  readonly camp?: unknown;
-  readonly events?: unknown;
-  readonly logs?: unknown;
-  readonly spans?: unknown;
-  readonly streams?: unknown;
+  readonly bindle?: JsonValue;
+  readonly camp?: JsonValue;
+  readonly events?: JsonValue;
+  readonly logs?: JsonValue;
+  readonly spans?: JsonValue;
+  readonly streams?: JsonValue;
 };
 
 export function assertNoPlaintextConformance(
   surfaces: ConformanceSurfaces,
   secretValues: readonly string[],
-): { readonly ok: true } {
+): PlaintextConformanceResult {
   const secrets = [...new Set(secretValues.filter((value) => value.length > 0))];
   const leaks: string[] = [];
 
@@ -69,7 +75,11 @@ export function assertNoPlaintextConformance(
     throw new Error(`no-plaintext conformance failed: ${[...new Set(leaks)].join("; ")}`);
   }
 
-  return { ok: true };
+  return { ok: true } satisfies PlaintextConformanceResult;
+}
+
+export interface PlaintextConformanceResult {
+  readonly ok: true;
 }
 
 function scrubString(input: string): string {
@@ -82,8 +92,8 @@ function scrubString(input: string): string {
   return output;
 }
 
-function serializeSurface(surface: unknown): string {
-  if (typeof surface === "string") {
+function serializeSurface(surface: JsonValue): string {
+  if (isJsonString(surface)) {
     return surface;
   }
   return JSON.stringify(surface);

@@ -94,7 +94,7 @@ function call(
 		headers: extra.headers ?? {},
 		timeoutMs: 5_000,
 		maxResponseBytes: 65_536,
-		...(extra.body !== undefined ? { body: extra.body } : {}),
+		...(extra.body !== undefined ? { body: extra.body } : undefined),
 	});
 }
 
@@ -265,6 +265,7 @@ describe("the contract covers the branch a second deploy takes", () => {
 				i.request.path === "/v4/zones/zone-1/dns_records/rec1",
 		);
 		expect(update).toBeDefined();
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((update?.response.body as { success?: boolean })?.success).toBe(
 			true,
 		);
@@ -278,10 +279,12 @@ describe("the contract covers the branch a second deploy takes", () => {
 		const populated = dnsPact.interactions.find(
 			(i) => i.description === "list all zone records",
 		);
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect((empty?.response.body as { result?: unknown[] })?.result).toEqual(
 			[],
 		);
 		expect(
+			// SAFETY: assertion required at this I/O or test boundary.
 			(populated?.response.body as { result?: { id: string }[] })?.result?.[0]
 				?.id,
 		).toBe("rec1");
@@ -617,6 +620,7 @@ describe("the matrix can go red", () => {
 							url: "https://api.cloudflare.com/v4/zones/zone-1/dns_records?per_page=100",
 							...base,
 						});
+						// SAFETY: assertion required at this I/O or test boundary.
 						const body = JSON.parse(res.body) as {
 							result?: readonly unknown[];
 						};

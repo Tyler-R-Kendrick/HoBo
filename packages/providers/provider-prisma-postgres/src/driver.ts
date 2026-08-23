@@ -445,7 +445,10 @@ export function createPrismaClaimableDatabaseDriver(
 			throw new PrismaProviderError(
 				"SECRET_REFERENCE_INVALID",
 				`the journalled credential locator for project ${snapshot.projectId} is not a secret reference`,
-				{ cause, detail: { projectId: snapshot.projectId } },
+				{
+					cause: cause instanceof Error ? cause : new Error(String(cause)),
+					detail: { projectId: snapshot.projectId },
+				},
 			);
 		}
 	}
@@ -471,7 +474,7 @@ export function createPrismaClaimableDatabaseDriver(
 			databaseName: snapshot.databaseName,
 			region: snapshot.region,
 			endpoint,
-			...(credentialRef !== undefined ? { credentialRef } : {}),
+			...(credentialRef !== undefined ? { credentialRef } : undefined),
 			expiresAtMs: snapshot.deletionDateMs,
 			expiresAtIso: snapshot.deletionDateIso,
 			expirySource: "cli-local-clock",
@@ -500,8 +503,8 @@ export function createPrismaClaimableDatabaseDriver(
 		async provision(input) {
 			const outcome = await options.client.create({
 				idempotencyKey: input.idempotencyKey,
-				...(input.region !== undefined ? { region: input.region } : {}),
-				...(input.ttl !== undefined ? { ttl: input.ttl } : {}),
+				...(input.region !== undefined ? { region: input.region } : undefined),
+				...(input.ttl !== undefined ? { ttl: input.ttl } : undefined),
 			});
 			if (outcome.kind === "adopted") {
 				return fromSnapshot(outcome.snapshot, input.resourceRef);
@@ -536,10 +539,10 @@ export function createPrismaClaimableDatabaseDriver(
 				endpoint: captured.endpoint,
 				...(captured.credentialRef !== undefined
 					? { credentialRef: captured.credentialRef }
-					: {}),
+					: undefined),
 				...(captured.binding !== undefined
 					? { binding: captured.binding }
-					: {}),
+					: undefined),
 				expiresAtMs: result.deletionDateMs,
 				expiresAtIso: result.deletionDateIso,
 				expirySource: "cli-local-clock",
@@ -649,7 +652,10 @@ export function createPrismaClaimableDatabaseDriver(
 					throw new PrismaProviderError(
 						"CLEANUP_FAILED",
 						`custody refused to revoke the credential for project ${record.projectId}`,
-						{ cause, detail: { projectId: record.projectId } },
+						{
+							cause: cause instanceof Error ? cause : new Error(String(cause)),
+							detail: { projectId: record.projectId },
+						},
 					);
 				}
 			}

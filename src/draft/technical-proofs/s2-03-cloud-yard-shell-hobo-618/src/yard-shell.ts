@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased request and authorization contracts at the shared Yard shell parser boundary before domain evaluation. */
+
 import { assertReplayEqualsLive } from "../../replay-live-equivalence-poc/src/equivalence.js";
 
 const DEPLOY_STREAM_PREFIX = "deployment:";

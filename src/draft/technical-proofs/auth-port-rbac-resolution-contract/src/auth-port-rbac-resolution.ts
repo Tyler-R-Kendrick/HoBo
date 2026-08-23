@@ -12,6 +12,8 @@ import {
   CONTROL_PLANE_AUTHZ_NFR,
   createManualClock,
 } from "../../control-plane-authz-cache-contract/src/control-plane-authz-cache.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export {
   BUILT_IN_ROLES,
@@ -40,7 +42,7 @@ export function createAuthPortSnapshot(input) {
     },
     auth: {
       port: auth.port ?? "hobo:auth",
-      adapter: auth.adapter && typeof auth.adapter === "string" ? auth.adapter : undefined,
+      adapter: auth.adapter && isJsonString(auth.adapter) ? auth.adapter : undefined,
       scimGroups: normalizeStrings(auth.scimGroups ?? []),
       assertedRoles: normalizeStrings(auth.assertedRoles ?? []),
       snapshotSeq: auth.snapshotSeq ?? "auth-snapshot:0",
@@ -54,7 +56,7 @@ export function createAuthPortRbacResolver({
   roles = [],
   nfr = AUTH_PORT_RBAC_NFR,
 } = {}) {
-  if (!clock || typeof clock.nowMs !== "function") {
+  if (!clock || !(clock.nowMs instanceof Function)) {
     throw new TypeError("clock must expose nowMs()");
   }
   const bounds = normalizeNfr(nfr);
@@ -274,24 +276,24 @@ function normalizeStrings(values) {
   if (!Array.isArray(values)) {
     throw new Error("expected an array");
   }
-  return [...new Set(values)].filter((value) => typeof value === "string" && value.length > 0).sort();
+  return [...new Set(values)].filter((value) => isJsonString(value) && value.length > 0).sort();
 }
 
 function requireString(value, name) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);
   }
   return value;
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const nested of Object.values(value)) {

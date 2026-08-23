@@ -36,16 +36,12 @@ import {
 	hetznerYardRuntimeRegistration,
 } from "../src/yard-defaults.js";
 
-const factories = Object.entries(hetzner.with) as [
-	string,
-	(options?: Record<string, unknown>) => {
-		providerId: string;
-		port: string;
-		optionName: string;
-		negotiation: string;
-		options: Record<string, unknown>;
-	},
-][];
+const factories = [
+	["cloudServer", hetzner.with.cloudServer],
+	["loadBalancer", hetzner.with.loadBalancer],
+	["objectStorage", hetzner.with.objectStorage],
+	["volume", hetzner.with.volume],
+] as const;
 
 describe("hetzner option blocks", () => {
 	it("ships at least one option factory", () => {
@@ -176,12 +172,12 @@ describe("the hetzner Yard runtime registration", () => {
 		expect(registration.conformanceHash).toMatch(/^sha256:/u);
 	});
 
-	it("declares a non-empty supported shape", () => {
-		// An empty shape matches nothing, so the runtime would register and then
+	it("declares a non-empty supported catalog", () => {
+		// An empty catalog matches nothing, so the runtime would register and then
 		// never be selected.
-		const shape = hetznerYardRuntimeRegistration().supportedShape;
-		expect(shape.regions.length).toBeGreaterThan(0);
-		expect(shape.capabilities.length).toBeGreaterThan(0);
+		const catalog = hetznerYardRuntimeRegistration().supportedCatalog;
+		expect(catalog.regions.length).toBeGreaterThan(0);
+		expect(catalog.capabilities.length).toBeGreaterThan(0);
 	});
 
 	it("states the permissions generation needs", () => {
@@ -259,8 +255,8 @@ describe("the hetzner equivalence table", () => {
 		expect(row.resourceClass).toContain(":");
 	});
 
-	it.each(rows)("looks the %s row up by port", (port, row) => {
-		expect(equivalenceForPort(port as never)).toBe(row);
+	it.each(INITIAL_CAPABILITY_PORTS)("looks the %s row up by port", (port) => {
+		expect(equivalenceForPort(port)).toBe(EQUIVALENCE_CLASSES[port]);
 	});
 
 	it("gives each row a distinct resource class", () => {

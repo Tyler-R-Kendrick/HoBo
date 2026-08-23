@@ -43,6 +43,7 @@ async function openConsole(page: Page) {
 	await page.goto(examplesUrl(), { waitUntil: "networkidle", timeout: 60_000 });
 	await page.waitForFunction(
 		() =>
+			// SAFETY: assertion required at this I/O boundary.
 			((document.querySelector("[data-yard-select]") as HTMLSelectElement | null)
 				?.options.length ?? 0) > 0,
 		null,
@@ -85,9 +86,8 @@ async function runScenario(page: Page, browser: Browser) {
 	const ship = await page.evaluate(() => {
 		const terminal = document.querySelector("[data-terminal]")?.textContent ?? "";
 		const state = document.querySelector("[data-deploy-state]")?.textContent ?? "";
-		const frame = document.querySelector(
-			"[data-host-frame]",
-		) as HTMLIFrameElement | null;
+		const frameEl = document.querySelector("[data-host-frame]");
+		const frame = frameEl instanceof HTMLIFrameElement ? frameEl : null;
 		const workers = terminal.match(/https:\/\/[a-z0-9.-]+\.workers\.dev/giu) ?? [];
 		const opensaasUrl =
 			workers.find((url) => /opensaas/i.test(url)) ??
@@ -156,7 +156,7 @@ async function main(): Promise<void> {
 	}
 }
 
-await main().catch((error: unknown) => {
+await main().catch((error) => {
 	console.error(error);
 	process.exitCode = 1;
 });

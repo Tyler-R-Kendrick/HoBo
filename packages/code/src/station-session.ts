@@ -1,6 +1,7 @@
 import { createStationClient } from "@hobo/stations";
 
 import { authLogin, type CodeAuthMode, readAuthSession } from "./auth.js";
+import { isJsonString } from "./json.js";
 
 export type StationSessionMode = CodeAuthMode | "none";
 
@@ -40,11 +41,11 @@ function occupancyFor(
 			tenant: occupancy.isolation.tenant,
 			...(occupancy.isolation.isolationClass !== undefined
 				? { isolationClass: occupancy.isolation.isolationClass }
-				: {}),
+				: undefined),
 			status: occupancy.status,
 			...(occupancy.activeRailHash !== undefined
 				? { railHash: occupancy.activeRailHash }
-				: {}),
+				: undefined),
 		};
 	} catch {
 		return null;
@@ -72,9 +73,9 @@ export function describeAuthedStationSession(
 	if (!session && options.ensureLocalLogin === true) {
 		const login = authLogin({
 			hoboHome: options.hoboHome,
-			...(typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT.trim() !== ""
+			...(isJsonString(env.HOBO_TENANT) && env.HOBO_TENANT.trim() !== ""
 				? { tenant: env.HOBO_TENANT }
-				: {}),
+				: undefined),
 			autoInitLocal: true,
 		});
 		if (login.ok && login.status === "logged-in") session = login.session;
@@ -91,8 +92,8 @@ export function describeAuthedStationSession(
 			tenant: env.HOBO_TENANT?.trim() || "local",
 			mode: "none",
 			environment: environmentOf(env, undefined, "none"),
-			...(project ? { project } : {}),
-			...(branch ? { branch } : {}),
+			...(project ? { project } : undefined),
+			...(branch ? { branch } : undefined),
 			message: "Not logged in — run: hobo-code auth login",
 		};
 	}
@@ -110,14 +111,14 @@ export function describeAuthedStationSession(
 		tenant: occupancy?.tenant ?? session.tenant,
 		mode: session.mode,
 		environment,
-		...(project ? { project } : {}),
-		...(branch ? { branch } : {}),
+		...(project ? { project } : undefined),
+		...(branch ? { branch } : undefined),
 		...(occupancy?.railHash !== undefined
 			? { railHash: occupancy.railHash }
-			: {}),
+			: undefined),
 		...(occupancy?.status !== undefined
 			? { occupancyStatus: occupancy.status }
-			: {}),
+			: undefined),
 		message:
 			session.mode === "local"
 				? `Logged in · local · ${session.stationId} · env ${environment}`
@@ -153,15 +154,13 @@ export function formatStationStatusBlock(view: AuthedStationView): string {
 }
 
 /** Env passed to `hobo dev` so the Yard binds the authed Station. */
-export function stationDevEnv(
-	view: AuthedStationView,
-): Readonly<Record<string, string>> {
+export function stationDevEnv(view: AuthedStationView) {
 	if (!view.loggedIn || view.stationId.length === 0) return {};
 	return {
 		HOBO_STATION: view.stationId,
 		HOBO_TENANT: view.tenant,
 		HOBO_ENV: view.environment,
-		...(view.project ? { HOBO_PROJECT: view.project } : {}),
-		...(view.branch ? { HOBO_BRANCH: view.branch } : {}),
+		...(view.project ? { HOBO_PROJECT: view.project } : undefined),
+		...(view.branch ? { HOBO_BRANCH: view.branch } : undefined),
 	};
 }

@@ -22,7 +22,7 @@ or hold to publication.
 ## Verification
 
 ```powershell
-pnpm.cmd --dir src\draft\launch-site-ga-handoff-evidence-contract test
+pnpm.cmd --dir src\draft\exp-proofs\cx\launch-site-ga-handoff-evidence-contract test
 ```
 
 ## Architecture Evidence

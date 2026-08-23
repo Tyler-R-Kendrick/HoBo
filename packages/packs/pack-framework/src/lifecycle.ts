@@ -121,6 +121,7 @@ export function comparePackVersions(a: PackVersion, b: PackVersion): number {
 	const left = parts(a);
 	const right = parts(b);
 	for (let index = 0; index < 3; index += 1) {
+		// SAFETY: parts always returns exactly three numeric version components.
 		const difference = (left[index] as number) - (right[index] as number);
 		if (difference !== 0) return difference;
 	}

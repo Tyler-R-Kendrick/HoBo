@@ -15,6 +15,7 @@ export function createInMemoryEventStore(): EventStore & { events: PersistedEven
       return events;
     },
     append(event: PersistedEvent): PersistedEvent {
+      // SAFETY: assertion to `const scrubbed = scrubAtCapture(event) as PersistedEvent;` is required at this boundary.
       const scrubbed = scrubAtCapture(event) as PersistedEvent;
       events.push(scrubbed);
       return scrubbed;

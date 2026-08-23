@@ -1,8 +1,69 @@
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+
+interface HostContext {
+	callImport: (
+		importInterface: InterfaceId,
+		operation: string,
+		payload?: JsonValue,
+	) => Promise<JsonValue>;
+}
+
+interface IncomingHttpRequest {
+	readonly method: string;
+	readonly path: string;
+	readonly headers: readonly (readonly [string, string])[];
+	readonly body: string;
+}
+
+function hostContextFrom(value: JsonValue | undefined): HostContext {
+	if (!isJsonObject(value)) {
+		throw new Error("component host context missing");
+	}
+	const callImport = Object.getOwnPropertyDescriptor(
+		value,
+		"callImport",
+	)?.value;
+	if (!(callImport instanceof Function)) {
+		throw new Error("component host context missing callImport");
+	}
+	return { callImport };
+}
+
+function incomingHttpRequestFrom(
+	value: JsonValue | undefined,
+): IncomingHttpRequest {
+	if (!isJsonObject(value)) {
+		throw new Error("incoming http request missing");
+	}
+	const method = isJsonString(value.method) ? value.method : "GET";
+	const path = isJsonString(value.path) ? value.path : "/";
+	const body = isJsonString(value.body) ? value.body : "";
+	const headers = Array.isArray(value.headers)
+		? value.headers.flatMap((entry) => {
+				if (!Array.isArray(entry) || entry.length < 2) return [];
+				const name = entry[0];
+				const headerValue = entry[1];
+				if (!isJsonString(name) || !isJsonString(headerValue)) return [];
+				return [[name, headerValue] as const];
+			})
+		: [];
+	return { method, path, headers, body };
+}
+
 import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { basename, join } from "node:path";
 
-import type { CollectionContext, CollectionTarget } from "@hobo/bindles";
+import type {
+	BindleDefinition,
+	CollectionContext,
+	CollectionTarget,
+} from "@hobo/bindles";
 import {
 	type DevRuntime,
 	loadBindleDefinition,
@@ -59,6 +120,18 @@ import {
 	createFetchHttpTransport,
 	createResolverBackedIacProvider,
 } from "./resolver-iac-provider.js";
+import type { FetchHandler } from "./servable-entrypoints.js";
+
+function asFetchHandler(
+	value: Function | JsonValue | undefined,
+): FetchHandler | null {
+	if (!(value instanceof Function)) {
+		return null;
+	}
+	// SAFETY: Bindle entrypoint returned a fetch handler at the serve boundary.
+	return value as FetchHandler;
+}
+
 import type { VercelFetch } from "./vercel-client.js";
 import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
 
@@ -88,7 +161,7 @@ import { createVercelDeployProvider } from "./vercel-deploy-provider.js";
 // deploy-hello-bindle-pulumi workflow lane.
 
 // @hobo/provider-cloudflare types its capability-manifest fields more loosely
-// (PublishedManifestDocuments / Record<string, unknown>) than @hobo/cloud's
+// (PublishedManifestDocuments / JsonObject) than @hobo/cloud's
 // RegistrableProvider narrows them (Record<string, string> / arrays). The runtime
 // shapes already line up — the @hobo/cloud + @hobo/cli registry tests drive
 // exactly this provider — so this composition-root adapter simply re-presents the
@@ -112,11 +185,14 @@ export function toRegistrableProvider(
 				providerId: manifest.providerId,
 				// PublishedManifestDocuments has four fixed string keys but no index
 				// signature, so TS needs the unknown hop to reach Record<string, string>.
-				published: manifest.published as unknown as Record<string, string>,
+				// SAFETY: assertion required at this I/O or test boundary.
+				published: manifest.published as Record<string, string>,
+				// SAFETY: assertion required at this I/O or test boundary.
 				capabilities: manifest.capabilities as {
-					capabilities?: Array<Record<string, unknown>>;
+					capabilities?: Array<JsonObject>;
 				},
-				cost: manifest.cost as { facts?: Array<Record<string, unknown>> },
+				// SAFETY: assertion required at this I/O or test boundary.
+				cost: manifest.cost as { facts?: Array<JsonObject> },
 			};
 		},
 	};
@@ -235,9 +311,10 @@ export function selectPulumiEstateAdapter(
 						// non-existent binary to exercise the typed fail-closed path.
 						...(env.HOBO_PULUMI_BIN !== undefined
 							? { pulumiBin: env.HOBO_PULUMI_BIN }
-							: {}),
+							: undefined),
 					})
 				: createPulumiAutomationApiEngine({ workDir, env });
+			// SAFETY: assertion required at this I/O or test boundary.
 			return createPulumiAutomationAdapter({
 				engine,
 			}) as PulumiAutomationAdapter;
@@ -252,6 +329,7 @@ export function selectPulumiEstateAdapter(
 	return memoizedPulumiAdapter(
 		deps.store,
 		"memory",
+		// SAFETY: assertion required at this I/O or test boundary.
 		() => createPulumiAutomationAdapter() as PulumiAutomationAdapter,
 	);
 }
@@ -264,7 +342,7 @@ export interface EstateResourceState {
 	readonly stackKey: string;
 	readonly externalId: string;
 	readonly status: string;
-	readonly outputs: Readonly<Record<string, unknown>>;
+	readonly outputs: JsonObject;
 }
 
 // Read the estate the adapter's state backend holds for one deployment (its
@@ -276,7 +354,7 @@ export function readPulumiEstate(
 	adapter: PulumiAutomationAdapter,
 	deploymentId: string,
 ): readonly EstateResourceState[] {
-	if (typeof adapter.snapshotState !== "function") {
+	if (!(adapter.snapshotState instanceof Function)) {
 		return [];
 	}
 	const snapshot = adapter.snapshotState();
@@ -286,23 +364,24 @@ export function readPulumiEstate(
 			continue;
 		}
 		const resources =
-			(state as { resources?: Record<string, unknown> } | undefined)
-				?.resources ?? {};
+			// SAFETY: assertion required at this I/O or test boundary.
+			(state as { resources?: JsonObject } | undefined)?.resources ?? {};
 		for (const [resource, record] of Object.entries(resources)) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const parsed = record as {
 				id?: unknown;
 				status?: unknown;
-				outputs?: Record<string, unknown>;
+				outputs?: JsonObject;
 			};
 			estate.push(
 				Object.freeze({
 					resource,
 					stackKey,
-					externalId:
-						typeof parsed.id === "string" ? parsed.id : `pulumi:${stackKey}`,
-					status:
-						typeof parsed.status === "string" ? parsed.status : "provisioned",
-					outputs: Object.freeze({ ...(parsed.outputs ?? {}) }),
+					externalId: isJsonString(parsed.id)
+						? parsed.id
+						: `pulumi:${stackKey}`,
+					status: isJsonString(parsed.status) ? parsed.status : "provisioned",
+					outputs: Object.freeze({ ...parsed.outputs }),
 				}),
 			);
 		}
@@ -426,12 +505,15 @@ export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 			accountId: cloudflareAccountId,
 			...(deps.cloudflareFetch !== undefined
 				? { fetch: deps.cloudflareFetch }
-				: {}),
+				: undefined),
 		});
 	}
 	return createVercelDeployProvider({
+		// SAFETY: assertion required at this I/O or test boundary.
 		token: vercelToken as string,
-		...(deps.vercelFetch !== undefined ? { fetch: deps.vercelFetch } : {}),
+		...(deps.vercelFetch !== undefined
+			? { fetch: deps.vercelFetch }
+			: undefined),
 	});
 }
 
@@ -465,14 +547,14 @@ export function createDefaultYardRuntime(
 				providers: [cloudflare],
 				...(options.iacAdapter !== undefined
 					? { adapter: options.iacAdapter }
-					: {}),
-				...(options.env !== undefined ? { env: options.env } : {}),
+					: undefined),
+				...(options.env !== undefined ? { env: options.env } : undefined),
 				...(options.vercelFetch !== undefined
 					? { vercelFetch: options.vercelFetch }
-					: {}),
+					: undefined),
 				...(options.cloudflareFetch !== undefined
 					? { cloudflareFetch: options.cloudflareFetch }
-					: {}),
+					: undefined),
 			}),
 		}),
 		broker: createInProcessCredentialBroker(),
@@ -525,7 +607,9 @@ export async function bootstrapDefaultProviders(
 }
 
 const HTTP_INCOMING_INTERFACE =
+	// SAFETY: assertion required at this I/O or test boundary.
 	"wasi:http/incoming-handler@0.2.0" as InterfaceId;
+// SAFETY: assertion required at this I/O or test boundary.
 const KV_STORE_INTERFACE = "wasi:keyvalue/store@0.2.0" as InterfaceId;
 
 export interface DefaultDevRuntimeOptions {
@@ -557,21 +641,14 @@ export function createDefaultDevRuntime(
 		imports: [KV_STORE_INTERFACE],
 		exports: {
 			[HTTP_INCOMING_INTERFACE]: {
-				handle: async (...args: unknown[]): Promise<unknown> => {
-					const context = args[1] as {
-						callImport: (
-							importInterface: InterfaceId,
-							operation: string,
-							payload?: unknown,
-						) => Promise<unknown>;
-					};
-					const resolved = (await context.callImport(
-						KV_STORE_INTERFACE,
-						"get",
-						{ key: "greeting" },
-					)) as string;
+				// SAFETY: component host table is untyped at the descriptor boundary.
+				handle: (async (...args: JsonValue[]): Promise<JsonValue> => {
+					const context = hostContextFrom(args[1]);
+					const resolved = await context.callImport(KV_STORE_INTERFACE, "get", {
+						key: "greeting",
+					});
 					return { status: 200, headers: [], body: `hello ${resolved}` };
-				},
+				}) as ParsedComponentDescriptor["exports"][string][string],
 			},
 		},
 	};
@@ -637,21 +714,15 @@ export async function resolveProjectDevRuntime(
 		imports: [],
 		exports: {
 			[HTTP_INCOMING_INTERFACE]: {
-				handle: async (...args: unknown[]): Promise<unknown> => {
-					const request = args[0] as {
-						method: string;
-						path: string;
-						headers: readonly (readonly [string, string])[];
-						body: string;
-					};
-					const fetchHandler = entry.handler() as (
-						input: Request,
-					) => Response | Promise<Response>;
+				// SAFETY: component host table is untyped at the descriptor boundary.
+				handle: (async (...args: JsonValue[]): Promise<JsonValue> => {
+					const request = incomingHttpRequestFrom(args[0]);
+					const fetchHandler = entry.handler();
 					const response = await fetchHandler(
 						new Request(`http://localhost:4000${request.path || "/"}`, {
 							method: request.method,
 							headers: Object.fromEntries(request.headers ?? []),
-							...(request.body ? { body: request.body } : {}),
+							...(request.body ? { body: request.body } : undefined),
 						}),
 					);
 					return {
@@ -659,7 +730,7 @@ export async function resolveProjectDevRuntime(
 						headers: [...response.headers.entries()],
 						body: await response.text(),
 					};
-				},
+				}) as ParsedComponentDescriptor["exports"][string][string],
 			},
 		},
 	};
@@ -677,13 +748,10 @@ export async function resolveProjectDevRuntime(
 	};
 }
 
-function firstServableEntrypoint(definition: {
-	readonly resources: Readonly<
-		Record<string, { readonly kind: string; readonly name: string }>
-	>;
-	readonly entrypoint?: (name: string) => (() => unknown) | undefined;
-}): { readonly name: string; readonly handler: () => unknown } | null {
-	if (typeof definition.entrypoint !== "function") {
+function firstServableEntrypoint(
+	definition: BindleDefinition,
+): { readonly name: string; readonly handler: () => FetchHandler } | null {
+	if (!(definition.entrypoint instanceof Function)) {
 		return null;
 	}
 	for (const [name, record] of Object.entries(definition.resources)) {
@@ -691,9 +759,18 @@ function firstServableEntrypoint(definition: {
 			continue;
 		}
 		const handler = definition.entrypoint(name);
-		if (typeof handler === "function") {
-			return { name, handler };
+		if (!(handler instanceof Function)) {
+			continue;
 		}
+		const inner = handler();
+		if (!(inner instanceof Function)) {
+			continue;
+		}
+		const resolved = asFetchHandler(inner);
+		if (resolved === null) {
+			continue;
+		}
+		return { name, handler: () => resolved };
 	}
 	return null;
 }

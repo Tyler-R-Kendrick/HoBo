@@ -1,11 +1,12 @@
 import fc from "fast-check";
 import { describe, expect, it } from "vitest";
 
-import { fuzzTrainable } from "../../src/index.js";
+import { fuzzTrainable, type FuzzValue } from "../../src/index.js";
 
 describe("trainable gold/silver stress", () => {
 	it("survives deep, wide, and polluted garbage without crashing", () => {
-		const deep: Record<string, unknown> = { n: 0 };
+		type DeepNode = { n: number; child?: DeepNode };
+		const deep: DeepNode = { n: 0 };
 		let cursor = deep;
 		for (let i = 1; i < 40; i += 1) {
 			const next = { n: i };
@@ -15,7 +16,8 @@ describe("trainable gold/silver stress", () => {
 		const wide = Object.fromEntries(
 			Array.from({ length: 80 }, (_, i) => [`k${i}`, i]),
 		);
-		const parsed = JSON.parse('{"__proto__":{"admin":true}}') as object;
+		// SAFETY: this fixture intentionally models a JSON object for pollution testing.
+		const parsed = JSON.parse('{"__proto__":{"admin":true}}') as FuzzValue;
 		expect(() =>
 			fuzzTrainable(
 				(input) => input,
@@ -27,7 +29,7 @@ describe("trainable gold/silver stress", () => {
 			),
 		).not.toThrow();
 		const report = fuzzTrainable(
-			(input) => input,
+			(input: FuzzValue) => input,
 			[
 				{ input: { text: "ok" }, output: { text: "ok" } },
 				{ input: parsed, output: parsed },
@@ -38,10 +40,13 @@ describe("trainable gold/silver stress", () => {
 	});
 
 	it("a pure deterministic labeler survives random gold seeds", () => {
-		const fn = (input: unknown) => {
+		const fn = (input: FuzzValue) => {
 			const text =
-				input && typeof input === "object" && "text" in input
-					? String((input as { text?: unknown }).text ?? "")
+				input && Object(input) === input && "text" in input
+					? String(
+						// SAFETY: the object branch establishes a property-bearing input.
+						(input as { text?: unknown }).text ?? "",
+					)
 					: "";
 			return { label: text.includes("invoice") ? "billing" : "other" };
 		};
@@ -138,7 +143,8 @@ describe("trainable gold/silver stress", () => {
 	});
 
 	it("does not crash on circular or bigint outputs", () => {
-		const circ: Record<string, unknown> = {};
+		type Circular = { self?: Circular };
+		const circ: Circular = {};
 		circ.self = circ;
 		const circular = fuzzTrainable(
 			() => circ,

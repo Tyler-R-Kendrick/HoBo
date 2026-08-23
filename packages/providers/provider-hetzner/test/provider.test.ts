@@ -8,6 +8,12 @@ import {
 	HETZNER_TRAFFIC_ROUTING_PROFILE,
 	parsePublishedManifest,
 } from "../src/index.js";
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	parseJsonValue,
+} from "../src/json.js";
 
 function capabilityFor(port: string) {
 	const provider = createHetznerProvider();
@@ -92,15 +98,27 @@ describe("capabilityManifest: published well-known bundle", () => {
 	it("advertises both equivalence-class capabilities with locations", () => {
 		const provider = createHetznerProvider({ regions: ["hel1"] });
 		const manifest = provider.capabilityManifest();
-		const capabilities = (
-			manifest.capabilities as { capabilities: Array<Record<string, unknown>> }
-		).capabilities;
+		const decoded = parseJsonValue(JSON.stringify(manifest.capabilities));
+		if (!isJsonObject(decoded) || !isJsonArray(decoded.capabilities)) {
+			throw new Error("expected a capabilities list");
+		}
+		const capabilities = decoded.capabilities;
 		assert.equal(capabilities.length, 2);
-		assert.deepEqual(capabilities.map((c) => c.port).sort(), [
-			"compute",
-			"objectStore",
-		]);
+		assert.deepEqual(
+			capabilities
+				.map((entry) => {
+					if (!isJsonObject(entry) || !isJsonString(entry.port)) {
+						throw new Error("expected a capability port");
+					}
+					return entry.port;
+				})
+				.sort(),
+			["compute", "objectStore"],
+		);
 		for (const capability of capabilities) {
+			if (!isJsonObject(capability)) {
+				throw new Error("expected a capability");
+			}
 			assert.deepEqual(capability.regions, ["hel1"]);
 		}
 	});

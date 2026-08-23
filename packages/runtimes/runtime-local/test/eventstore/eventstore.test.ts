@@ -2,13 +2,13 @@ import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { describe, expect, it } from "vitest";
-
 import {
 	collectStream,
 	createManualClock,
 	createRuntimeLocalEventStore,
 	OptimisticSequenceConflictError,
 } from "../../src/index.js";
+import { isJsonObject, isJsonString } from "../../src/json.js";
 
 function tempDir(prefix: string): string {
 	return mkdtempSync(join(tmpdir(), prefix));
@@ -60,6 +60,7 @@ describe("runtime-local EventStore", () => {
 				meta: {},
 			},
 		]);
+		// SAFETY: assertion to `event as { seq: number }` is required at this boundary.
 		expect(pushed.map((event) => (event as { seq: number }).seq)).toEqual([1]);
 
 		const snapshot = await store.snapshot(
@@ -185,10 +186,11 @@ describe("runtime-local EventStore", () => {
 			initialState: { comments: 0, title: "" },
 			handlers: {
 				"ticket.Opened": (state, event) => {
-					if (typeof (event.data as { title?: string }).title !== "string") {
+					const data = event.data;
+					if (!isJsonObject(data) || !isJsonString(data.title)) {
 						throw new Error("ticket.Opened requires title");
 					}
-					return { ...state, title: (event.data as { title: string }).title };
+					return { ...state, title: data.title };
 				},
 				"ticket.Commented": (state) => ({
 					...state,
@@ -204,6 +206,7 @@ describe("runtime-local EventStore", () => {
 			(await collectStream(store, "ticket:1")).map((event) => [
 				event.seq,
 				event.type,
+				// SAFETY: assertion to `event.data as { offendingSeq?: number }` is required at this boundary.
 				(event.data as { offendingSeq?: number }).offendingSeq,
 			]),
 		).toEqual([

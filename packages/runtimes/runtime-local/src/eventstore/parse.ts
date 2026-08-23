@@ -1,5 +1,15 @@
-import type { EventInput, PrincipalRef } from "@hobo/core";
+import type { PrincipalRef } from "@hobo/core";
 import { parseEventEnvelope } from "@hobo/core";
+import {
+	cloneAsJson,
+	isJsonBigInt,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "../json.js";
 
 export type ParsedStreamId = string & { readonly __brand: "ParsedStreamId" };
 
@@ -10,8 +20,8 @@ export type ParsedExpectedSeq = number & {
 export interface ParsedEventInput {
 	readonly type: string;
 	readonly v: number;
-	readonly data: unknown;
-	readonly meta: Readonly<Record<string, unknown>>;
+	readonly data: JsonValue;
+	readonly meta: JsonObject;
 	readonly idempotencyKey?: string | undefined;
 }
 
@@ -27,31 +37,33 @@ export interface ParsedAppendContext {
 	readonly fenceToken?: bigint | undefined;
 }
 
-export function parseStreamId(value: unknown): ParsedStreamId {
-	if (typeof value !== "string" || value.length === 0) {
+export function parseStreamId(value: JsonValue): ParsedStreamId {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new TypeError("streamId must be a non-empty string");
 	}
+	// SAFETY: assertion to `value as ParsedStreamId` is required at this boundary.
 	return value as ParsedStreamId;
 }
 
 export function parseExpectedSeq(
-	value: unknown,
+	value: JsonValue | undefined,
 	fieldName = "expectedSeq",
 ): ParsedExpectedSeq {
-	if (!Number.isSafeInteger(value) || (value as number) < 0) {
+	if (!isJsonNumber(value) || !Number.isSafeInteger(value) || value < 0) {
 		throw new TypeError(`${fieldName} must be a non-negative safe integer`);
 	}
+	// SAFETY: non-negative safe integers are branded expected seqs.
 	return value as ParsedExpectedSeq;
 }
 
-export function parseEventInput(value: unknown): ParsedEventInput {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
+export function parseEventInput<T>(value: T): ParsedEventInput {
+	if (!isJsonObject(value)) {
 		throw new TypeError("event must be an object");
 	}
-	const source = value as EventInput;
-	const type = requireNonEmptyString(source.type, "event.type");
-	const v = normalizeVersion(source.v ?? 1);
-	const meta = Object.freeze(cloneJson(source.meta ?? {}));
+	const type = requireNonEmptyString(value.type, "event.type");
+	const v = normalizeVersion(value.v ?? 1);
+	const metaJson = isJsonObject(value.meta) ? value.meta : {};
+	const meta = Object.freeze(cloneJson(metaJson));
 	const idempotencyKey = optionalString(
 		meta.idempotencyKey,
 		"event.meta.idempotencyKey",
@@ -59,33 +71,32 @@ export function parseEventInput(value: unknown): ParsedEventInput {
 	return Object.freeze({
 		type,
 		v,
-		data: cloneJson(source.data ?? {}),
+		// `{}`, not `null`: this default is persisted. Events already on disk
+		// carry `{}` for absent data, and a consumer reading `event.data.x`
+		// throws on `null` where it merely reads `undefined` on `{}`.
+		data: cloneJson(value.data ?? {}),
 		meta,
 		idempotencyKey,
 	});
 }
 
-export function parseEventInputs(value: unknown): ParsedEventInput[] {
+export function parseEventInputs<T>(value: T): ParsedEventInput[] {
 	if (!Array.isArray(value) || value.length === 0) {
 		throw new TypeError("events must be a non-empty array");
 	}
 	return value.map((event) => parseEventInput(event));
 }
 
-export function parseAppendContext(
-	streamId: unknown,
-	appendOptions: unknown,
+export function parseAppendContext<TStream, TOptions>(
+	streamId: TStream,
+	appendOptions: TOptions,
 ): ParsedAppendContext {
-	if (
-		!appendOptions ||
-		typeof appendOptions !== "object" ||
-		Array.isArray(appendOptions)
-	) {
+	if (!isJsonObject(appendOptions)) {
 		throw new TypeError("appendOptions must be an object");
 	}
-	const options = appendOptions as Record<string, unknown>;
+	const options = appendOptions;
 	const actor = options.actor;
-	if (!actor || typeof actor !== "object" || Array.isArray(actor)) {
+	if (!actor || !isJsonObject(actor) || Array.isArray(actor)) {
 		throw new TypeError("appendOptions.actor must be an object");
 	}
 
@@ -95,12 +106,15 @@ export function parseAppendContext(
 	);
 
 	return Object.freeze({
-		streamId: parseStreamId(streamId),
+		streamId: parseStreamId(
+			isJsonString(streamId) ? streamId : cloneAsJson(streamId),
+		),
 		expectedSeq: parseExpectedSeq(
 			options.expectedSeq,
 			"appendOptions.expectedSeq",
 		),
-		actor: actor as PrincipalRef,
+		// SAFETY: assertion to `actor as PrincipalRef` is required at this boundary.
+		actor: parsePrincipalRef(actor),
 		tenant: requireNonEmptyString(options.tenant, "appendOptions.tenant"),
 		project: optionalString(options.project, "appendOptions.project"),
 		causationId: optionalString(
@@ -116,21 +130,28 @@ export function parseAppendContext(
 	});
 }
 
+function parsePrincipalRef(value: JsonObject): PrincipalRef {
+	const kind = requireNonEmptyString(value.kind, "appendOptions.actor.kind");
+	const id = requireNonEmptyString(value.id, "appendOptions.actor.id");
+	// SAFETY: parsed kind/id is a PrincipalRef at this envelope boundary.
+	return { kind, id } as never;
+}
+
 function parseOptionalFenceToken(
-	value: unknown,
+	value: JsonValue | undefined,
 	fieldName: string,
 ): bigint | undefined {
 	if (value === undefined) return undefined;
-	if (typeof value === "bigint") {
+	if (isJsonBigInt(value)) {
 		if (value < 0n) {
 			throw new TypeError(`${fieldName} must be a non-negative bigint`);
 		}
 		return value;
 	}
-	if (typeof value === "number" && Number.isSafeInteger(value) && value >= 0) {
+	if (isJsonNumber(value) && Number.isSafeInteger(value) && value >= 0) {
 		return BigInt(value);
 	}
-	if (typeof value === "string" && /^(0|[1-9]\d*)$/.test(value)) {
+	if (isJsonString(value) && /^(0|[1-9]\d*)$/.test(value)) {
 		return BigInt(value);
 	}
 	throw new TypeError(`${fieldName} must be a non-negative integer/bigint`);
@@ -159,40 +180,49 @@ export function parseStoredEnvelope(row: {
 		streamId: row.stream_id,
 		seq: row.seq,
 		ts: row.ts,
-		actor: JSON.parse(row.actor),
+		actor: parseJsonValue(row.actor),
 		tenant: row.tenant,
 		project: row.project ?? undefined,
 		causationId: row.causation_id ?? undefined,
 		correlationId: row.correlation_id ?? undefined,
 		lane: row.lane ?? undefined,
-		data: JSON.parse(row.data),
-		meta: JSON.parse(row.meta),
+		data: parseJsonValue(row.data),
+		meta: parseJsonValue(row.meta),
 	});
 }
 
-function normalizeVersion(value: number): number {
-	if (!Number.isSafeInteger(value) || value <= 0) {
+function normalizeVersion(value: JsonValue | undefined): number {
+	if (!isJsonNumber(value) || !Number.isSafeInteger(value) || value <= 0) {
 		throw new TypeError("event.v must be a positive safe integer");
 	}
 	return value;
 }
 
-function optionalString(value: unknown, fieldName: string): string | undefined {
+function optionalString(
+	value: JsonValue | undefined,
+	fieldName: string,
+): string | undefined {
 	if (value === undefined) {
 		return undefined;
 	}
 	return requireNonEmptyString(value, fieldName);
 }
 
-function requireNonEmptyString(value: unknown, fieldName: string): string {
-	if (typeof value !== "string" || value.length === 0) {
+function requireNonEmptyString(
+	value: JsonValue | undefined,
+	fieldName: string,
+): string {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new TypeError(`${fieldName} must be a non-empty string`);
 	}
 	return value;
 }
 
 function cloneJson<T>(value: T): T {
-	return typeof structuredClone === "function"
-		? structuredClone(value)
-		: (JSON.parse(JSON.stringify(value)) as T);
+	if (structuredClone instanceof Function) {
+		return structuredClone(value);
+	}
+	const cloned = parseJsonValue(JSON.stringify(value));
+	// SAFETY: JSON round-trip preserves the caller-owned parse snapshot type.
+	return cloned as T;
 }

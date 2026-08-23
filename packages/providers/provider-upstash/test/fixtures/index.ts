@@ -15,6 +15,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import type { SecretCustodyPort } from "../../src/custody.js";
+import {
+	type ProviderErrorCode,
+	UpstashProviderError,
+} from "../../src/errors.js";
 import type {
 	TransportRequest,
 	TransportResponse,
@@ -67,9 +71,39 @@ export type StubTransport = UpstashTransport & {
  * entry repeats once the script runs out, so a test that only cares about the
  * steady state can supply one entry.
  */
+export function expectUpstashCode(
+	run: () => void,
+	code: ProviderErrorCode,
+): UpstashProviderError {
+	try {
+		run();
+	} catch (error) {
+		if (error instanceof UpstashProviderError && error.code === code) {
+			return error;
+		}
+		throw error;
+	}
+	throw new Error(`expected UpstashProviderError ${code}`);
+}
+
+export async function rejectUpstashCode(
+	run: () => Promise<object | undefined>,
+	code: ProviderErrorCode,
+): Promise<UpstashProviderError> {
+	try {
+		await run();
+	} catch (error) {
+		if (error instanceof UpstashProviderError && error.code === code) {
+			return error;
+		}
+		throw error;
+	}
+	throw new Error(`expected UpstashProviderError ${code}`);
+}
+
 export function createStubTransport(options: {
 	readonly script?: readonly StubResponse[];
-	readonly throws?: readonly (unknown | undefined)[];
+	readonly throws?: readonly Error[];
 }): StubTransport {
 	const requests: TransportRequest[] = [];
 	const script = options.script ?? [{ status: 200, body: VALID_PAYLOAD }];
@@ -85,7 +119,10 @@ export function createStubTransport(options: {
 			const thrown = options.throws?.[index];
 			if (thrown !== undefined) throw thrown;
 
-			const stub = script[Math.min(index, script.length - 1)] as StubResponse;
+			const stub = script[Math.min(index, script.length - 1)] ?? {
+				status: 200,
+				body: VALID_PAYLOAD,
+			};
 			return {
 				status: stub.status,
 				headers: stub.headers ?? { "content-type": "text/markdown" },

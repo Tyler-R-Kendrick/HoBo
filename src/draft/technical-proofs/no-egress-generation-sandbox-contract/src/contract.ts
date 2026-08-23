@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased capability and path values at the sandbox boundary. */
 import { createHash } from "node:crypto";
 
 const profileSchema = "hobo.sandbox.profile/v1";

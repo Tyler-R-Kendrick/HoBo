@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-
 import {
 	BETTER_AUTH_ACCEPTED_CLAIM_KEYS,
 	BETTER_AUTH_CLAIMS_CONFORMANCE_CASES,
@@ -10,6 +9,7 @@ import {
 	runClaimsMappingConformance,
 	unexercisedAcceptedClaimKeys,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
 describe("claims-mapping conformance suite", () => {
 	it("passes against this adapter's own mapping", () => {
@@ -38,13 +38,14 @@ describe("claims-mapping conformance suite", () => {
 	});
 
 	it("has teeth: a mapping that coerces an unknown claim fails the suite", () => {
-		const coercing = (claims: unknown): MappedPrincipal => {
+		const coercing = <T>(claims: T): MappedPrincipal => {
 			try {
 				return mapClaimsToPrincipal(claims);
 			} catch {
 				// The failure mode ADR-0073 warns about: silently accepting whatever
 				// the new issuer sends instead of refusing an unmapped claim shape.
-				const raw = (claims ?? {}) as Record<string, unknown>;
+				// SAFETY: assertion to `(claims ?? {}) as JsonObject` is required at this boundary.
+				const raw = (claims ?? {}) as JsonObject;
 				return Object.freeze({
 					subject: String(raw.sub ?? "unknown"),
 					issuer: String(raw.iss ?? "unknown"),
@@ -62,7 +63,7 @@ describe("claims-mapping conformance suite", () => {
 	});
 
 	it("has teeth: a mapping that drops roles fails the suite", () => {
-		const rolesDropped = (claims: unknown): MappedPrincipal => {
+		const rolesDropped = <T>(claims: T): MappedPrincipal => {
 			const principal = mapClaimsToPrincipal(claims);
 			return Object.freeze({ ...principal, roles: Object.freeze([]) });
 		};

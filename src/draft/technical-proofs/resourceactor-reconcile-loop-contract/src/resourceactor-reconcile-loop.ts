@@ -1,5 +1,7 @@
 import { stableDigest } from "../../control-plane-event-schema-contract/src/control-plane-events.js";
 import { parsePlaceholder } from "../../deployment-plan-ir-contract/src/deployment-plan-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const RESOURCEACTOR_RECONCILE_LOOP_VERSION = "hobo.resourceactor-reconcile-loop/v1";
 
@@ -33,7 +35,7 @@ export function createFixtureResourcePlan(overrides = {}) {
       resourceType: port.type,
       resourceClass: port.className,
       resourceId: id,
-      ...(overrides.context ?? {})
+      ...overrides.context
     }
   };
 }
@@ -357,7 +359,7 @@ function createResourceEvent(type, data, { resourcePlan, correlationId, causatio
 }
 
 function resolveValue(value, producer) {
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     if (!value.startsWith("${resources.")) {
       return value;
     }
@@ -384,7 +386,7 @@ function resolveValue(value, producer) {
   if (Array.isArray(value)) {
     return value.map((item) => resolveValue(item, producer));
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(Object.entries(value).map(([key, child]) => [key, resolveValue(child, producer)]));
   }
   return value;
@@ -392,17 +394,17 @@ function resolveValue(value, producer) {
 
 function assertResourcePlan(resourcePlan) {
   for (const field of ["id", "deploymentId"]) {
-    if (typeof resourcePlan?.[field] !== "string" || resourcePlan[field].length === 0) {
+    if (!isJsonString(resourcePlan?.[field]) || resourcePlan[field].length === 0) {
       throw new Error(`resourcePlan.${field} is required`);
     }
   }
   for (const field of ["id", "driver"]) {
-    if (typeof resourcePlan?.provider?.[field] !== "string" || resourcePlan.provider[field].length === 0) {
+    if (!isJsonString(resourcePlan?.provider?.[field]) || resourcePlan.provider[field].length === 0) {
       throw new Error(`resourcePlan.provider.${field} is required`);
     }
   }
   for (const field of ["type", "className"]) {
-    if (typeof resourcePlan?.port?.[field] !== "string" || resourcePlan.port[field].length === 0) {
+    if (!isJsonString(resourcePlan?.port?.[field]) || resourcePlan.port[field].length === 0) {
       throw new Error(`resourcePlan.port.${field} is required`);
     }
   }
@@ -436,7 +438,7 @@ function normalizeSet(value) {
 }
 
 function stripClassification(reason, classification) {
-  if (!classification || typeof reason !== "string") return reason ?? "execution failed";
+  if (!classification || !isJsonString(reason)) return reason ?? "execution failed";
   const prefix = `${classification}: `;
   return reason.startsWith(prefix) ? reason.slice(prefix.length) : reason;
 }

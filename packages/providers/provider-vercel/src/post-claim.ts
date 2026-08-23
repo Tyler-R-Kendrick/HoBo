@@ -26,6 +26,7 @@ import {
 	type SecretValue,
 } from "@hobo/bindings";
 
+import { isJsonObject, isJsonString, parseJsonValue } from "./json.js";
 import {
 	observeOrAdoptProject,
 	type ProjectObservation,
@@ -87,25 +88,18 @@ export function verifyTransferAcceptanceCallback(
 			"transfer acceptance callback signature does not match; refusing to treat the claim as accepted",
 		);
 	}
-	let parsed: unknown;
-	try {
-		parsed = JSON.parse(callback.rawBody);
-	} catch {
+	const parsed = parseJsonValue(callback.rawBody);
+	if (!isJsonObject(parsed)) {
 		throw new VercelProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
-			"transfer acceptance callback body is not JSON",
+			parsed === null
+				? "transfer acceptance callback body is not JSON"
+				: "transfer acceptance callback body is not a JSON object",
 		);
 	}
-	if (parsed === null || typeof parsed !== "object") {
-		throw new VercelProviderError(
-			"PROVIDER_CONTRACT_CHANGED",
-			"transfer acceptance callback body is not a JSON object",
-		);
-	}
-	const body = parsed as Record<string, unknown>;
-	const projectId = body.projectId;
-	const targetAccountId = body.targetAccountId ?? body.accountId;
-	if (typeof projectId !== "string" || typeof targetAccountId !== "string") {
+	const projectId = parsed.projectId;
+	const targetAccountId = parsed.targetAccountId ?? parsed.accountId;
+	if (!isJsonString(projectId) || !isJsonString(targetAccountId)) {
 		throw new VercelProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			"transfer acceptance callback is missing projectId or the target account id",
@@ -324,7 +318,7 @@ export function rotateAssociatedResourceBinding(input: {
 				protocol: "postgresql",
 				addressRef: {
 					host: input.host,
-					...(input.port !== undefined ? { port: input.port } : {}),
+					...(input.port !== undefined ? { port: input.port } : undefined),
 					tls: true,
 				},
 				role: "primary",

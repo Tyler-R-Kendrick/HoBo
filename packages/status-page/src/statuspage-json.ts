@@ -10,10 +10,8 @@
  * description so a delayed component can never read as green downstream.
  */
 import type {
-	ComponentStatus,
 	IncidentRecord,
 	MaintenanceRecord,
-	OverallIndicator,
 	StatusPageModel,
 } from "./types.js";
 
@@ -91,9 +89,7 @@ export interface StatuspageSummary {
 	readonly scheduled_maintenances: readonly StatuspageMaintenance[];
 }
 
-const COMPONENT_STATUS_MAP: Readonly<
-	Record<ComponentStatus, StatuspageComponentStatus>
-> = {
+const COMPONENT_STATUS_MAP = {
 	operational: "operational",
 	maintenance: "under_maintenance",
 	// No `unknown` in statuspage-v2 — degraded is the conservative,
@@ -102,23 +98,23 @@ const COMPONENT_STATUS_MAP: Readonly<
 	degraded: "degraded_performance",
 	partial_outage: "partial_outage",
 	major_outage: "major_outage",
-};
+} as const;
 
-const INDICATOR_MAP: Readonly<Record<OverallIndicator, StatuspageIndicator>> = {
+const INDICATOR_MAP = {
 	none: "none",
 	minor: "minor",
 	major: "major",
 	critical: "critical",
 	maintenance: "maintenance",
 	unknown: "minor",
-};
+} as const;
 
-const MAINTENANCE_STATUS_MAP: Readonly<Record<string, string>> = {
+const MAINTENANCE_STATUS_MAP = {
 	scheduled: "scheduled",
 	"in-progress": "in_progress",
 	completed: "completed",
 	canceled: "completed",
-};
+} as const;
 
 export interface StatuspageSummaryOptions {
 	readonly pageUrl?: string;

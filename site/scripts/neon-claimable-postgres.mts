@@ -7,6 +7,7 @@
  * Realizes OpenSaaS Bindle `db` port on Examples Temporary yards when OCI
  * postgres cannot run under zero-key hosts.
  */
+import { type JsonObject } from "../src/lib/json-inspect.js";
 import { randomBytes } from "node:crypto";
 
 export const NEON_CLAIMABLE_API =
@@ -39,10 +40,6 @@ export type ProvisionNeonClaimablePostgresInput = {
 	readonly fetchImpl?: typeof fetch;
 	readonly apiUrl?: string;
 };
-
-function redactDatabaseUrl(url: string): string {
-	return url.replace(/:([^:@/]+)@/u, ":***@");
-}
 
 export async function provisionNeonClaimablePostgres(
 	input: ProvisionNeonClaimablePostgresInput = {},
@@ -85,9 +82,10 @@ export async function provisionNeonClaimablePostgres(
 	}
 
 	const text = await response.text();
-	let body: Record<string, unknown>;
+	let body: JsonObject;
 	try {
-		body = JSON.parse(text) as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O boundary.
+		body = JSON.parse(text) as JsonObject;
 	} catch {
 		throw new NeonClaimablePostgresError(
 			`Neon claimable returned non-JSON (${response.status}): ${text.slice(0, 200)}`,
@@ -101,19 +99,19 @@ export async function provisionNeonClaimablePostgres(
 	}
 
 	const databaseUrl =
-		typeof body.connection_string === "string"
+		Object.prototype.toString.call(body.connection_string) === "[object String]"
 			? body.connection_string
-			: typeof body.databaseUrl === "string"
+			: Object.prototype.toString.call(body.databaseUrl) === "[object String]"
 				? body.databaseUrl
 				: "";
-	const claimUrl = typeof body.claim_url === "string" ? body.claim_url : "";
+	const claimUrl = Object.prototype.toString.call(body.claim_url) === "[object String]" ? body.claim_url : "";
 	const expiresAt =
-		typeof body.expires_at === "string"
+		Object.prototype.toString.call(body.expires_at) === "[object String]"
 			? body.expires_at
 			: new Date(Date.now() + 72 * 60 * 60 * 1000).toISOString();
 	const neonProjectId =
-		typeof body.neon_project_id === "string" ? body.neon_project_id : "";
-	const status = typeof body.status === "string" ? body.status : "UNKNOWN";
+		Object.prototype.toString.call(body.neon_project_id) === "[object String]" ? body.neon_project_id : "";
+	const status = Object.prototype.toString.call(body.status) === "[object String]" ? body.status : "UNKNOWN";
 
 	if (!databaseUrl.startsWith("postgres")) {
 		throw new NeonClaimablePostgresError(

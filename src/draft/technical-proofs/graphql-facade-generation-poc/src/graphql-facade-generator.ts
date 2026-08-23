@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 export function parseWitRecords(witSource) {
   return {
     records: parseBlocks(witSource, "record", parseRecordBody),
@@ -6,7 +7,7 @@ export function parseWitRecords(witSource) {
 }
 
 export function generateGraphqlFacade({ wit, projections }) {
-  const model = typeof wit === "string" ? parseWitRecords(wit) : wit;
+  const model = isJsonString(wit) ? parseWitRecords(wit) : wit;
   const recordsByName = new Map(model.records.map((record) => [record.name, record]));
   const enumsByName = new Map(model.enums.map((entry) => [entry.name, entry]));
   const usedFields = new Map();
@@ -171,7 +172,7 @@ function renderRootType(name, fields) {
 }
 
 function renderProjectionField(field, projection) {
-  const args = Object.entries(projection.args ?? {})
+  const args = Object.entries(projection.args )
     .map(([name, type]) => `${fieldName(name)}: ${graphqlScalar(type)}!`)
     .join(", ");
   const suffix = projection.list === true ? `[${typeName(projection.readModel)}!]!` : `${typeName(projection.readModel)}!`;
@@ -238,7 +239,7 @@ function materializationKey(name, args) {
 }
 
 function stableObject(value) {
-  return Object.fromEntries(Object.entries(value ?? {}).sort(([left], [right]) => left.localeCompare(right)));
+  return Object.fromEntries(Object.entries(value ).sort(([left], [right]) => left.localeCompare(right)));
 }
 
 function typeName(value) {

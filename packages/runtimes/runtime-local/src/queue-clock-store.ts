@@ -5,12 +5,19 @@ import {
 	QUEUE_CLOCK_RUNTIME_PORT_CONTRACT_VERSION,
 	QueueLeaseLostError,
 } from "@hobo/core";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 
 export interface QueueMessageRecord {
 	messageId: string;
 	queueName: string;
 	idempotencyKey: string;
-	body: unknown;
+	body: JsonValue;
 	state: "pending" | "leased" | "completed";
 	availableAtMs: number;
 	deliveryAttempt: number;
@@ -80,53 +87,59 @@ export function formatInstant(timestampMs: number): string {
 
 export function parseInstantMs(value: string, fieldName: string): number {
 	const ms = Date.parse(value);
-	if (typeof value !== "string" || Number.isNaN(ms)) {
+	if (!isJsonString(value) || Number.isNaN(ms)) {
 		throw new TypeError(`${fieldName} must be a valid ISO-8601 string`);
 	}
 	return ms;
 }
 
 export function requireNonEmptyString(
-	value: unknown,
+	value: JsonValue,
 	fieldName: string,
 ): string {
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new TypeError(`${fieldName} must be a non-empty string`);
 	}
 	return value;
 }
 
 export function normalizePositiveInteger(
-	value: unknown,
+	value: JsonValue,
 	fieldName: string,
 ): number {
-	if (!Number.isSafeInteger(value) || (value as number) <= 0) {
+	if (!isJsonNumber(value) || !Number.isSafeInteger(value) || value <= 0) {
 		throw new TypeError(`${fieldName} must be a positive safe integer`);
 	}
-	return value as number;
+	return value;
 }
 
 export function normalizeNonNegativeInteger(
-	value: unknown,
+	value: JsonValue,
 	fieldName: string,
 ): number {
-	if (!Number.isSafeInteger(value) || (value as number) < 0) {
+	if (!isJsonNumber(value) || !Number.isSafeInteger(value) || value < 0) {
 		throw new TypeError(`${fieldName} must be a non-negative safe integer`);
 	}
-	return value as number;
+	return value;
 }
 
 export function cloneStore<T>(value: T): T {
 	if (value === undefined) {
 		return value;
 	}
-	return typeof structuredClone === "function"
-		? structuredClone(value)
-		: (JSON.parse(JSON.stringify(value)) as T);
+	if (structuredClone instanceof Function) {
+		return structuredClone(value);
+	}
+	const cloned = parseJsonValue(JSON.stringify(value));
+	// SAFETY: JSON round-trip preserves the caller-owned store snapshot type.
+	return cloned as T;
 }
 
 function deepFreeze<T>(value: T): T {
-	if (value && typeof value === "object") {
+	// Arrays as well as plain objects: `store.trace` and every queue's
+	// `messages` are arrays, so a guard that admitted only plain objects would
+	// hand back a "frozen" snapshot whose queues could still be pushed to.
+	if (Array.isArray(value) || isJsonObject(value)) {
 		Object.freeze(value);
 		for (const nested of Object.values(value)) {
 			deepFreeze(nested);
@@ -139,6 +152,7 @@ export function appendTrace(
 	store: QueueClockStore,
 	event: ClockTraceEntry,
 ): void {
+	// SAFETY: assertion to `deepFreeze({ ...event }) as ClockTraceEntry` is required at this boundary.
 	store.trace.push(deepFreeze({ ...event }) as ClockTraceEntry);
 }
 

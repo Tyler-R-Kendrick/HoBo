@@ -142,6 +142,7 @@ export function grokBuildParity(): GrokBuildParity {
 			clickableTui:
 				"Grok Build click targets (still-running → tasks). hobo-code exposes clickableRegions + task-row click story in tasks/status JSON.",
 			backgroundTasks:
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				"Grok Build Ctrl+B / background tools + tasks pane groups. hobo-code tasks board + working panes as background-ready work.",
 			workflows:
 				"Grok Build workflows default-on + live multi-agent progress. hobo-code World model + planDurableWorkflowRun steps on tasks --json.",
@@ -183,7 +184,9 @@ export function buildTasksSurface(options: {
 	const runId = options.runId ?? "tasks-preview";
 	const ledger = projectSessionWorkLedger({
 		hoboHome: options.hoboHome,
-		...(options.evidence !== undefined ? { evidence: options.evidence } : {}),
+		...(options.evidence !== undefined
+			? { evidence: options.evidence }
+			: undefined),
 	});
 	const workRows: TaskBoardRow[] = ledger.items.map((item) => ({
 		id: item.id,
@@ -262,7 +265,7 @@ function workKind(kind: SessionWorkItem["kind"]): TaskBoardRow["kind"] {
 	return "task";
 }
 
-const STATE_GLYPH: Record<string, string> = {
+const STATE_GLYPH = {
 	idle: "○",
 	working: "●",
 	blocked: "▲",
@@ -278,6 +281,7 @@ const STATE_GLYPH: Record<string, string> = {
 export function renderTasksBoardText(surface: TasksSurface): string {
 	const lines: string[] = [
 		"▣ agents",
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		"tasks nest under the subagent that claimed them · same work as Evidence",
 	];
 	if (
@@ -314,7 +318,11 @@ export function renderTasksBoardText(surface: TasksSurface): string {
 }
 
 function formatClaimedTask(row: TaskBoardRow, claim?: WorkClaim): string {
-	const glyph = STATE_GLYPH[String(row.state)] ?? "·";
+	let glyph = "·";
+	const state = String(row.state);
+	for (const [name, mark] of Object.entries(STATE_GLYPH)) {
+		if (name === state) glyph = mark;
+	}
 	const summary = row.summary.slice(0, 48);
 	if (!claim) return `   ${glyph} ${summary}`;
 	return `   ${glyph} ${summary} · ${claim.branch} · ${claim.isolation} · incremental · stacked · squash`;

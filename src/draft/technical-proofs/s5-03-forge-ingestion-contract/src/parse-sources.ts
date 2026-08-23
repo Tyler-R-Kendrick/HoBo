@@ -3,6 +3,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { ForgeIngestionError, sha256Digest } from "./events.js";
+import { type JsonObject } from "./json.js";
+
 
 const fixtureSchema = "hobo.forge.fixture/v1";
 
@@ -29,11 +31,11 @@ export type ParsedIngestion = {
   targetWitPort: string;
   artifactKind: string;
   conformanceSuiteId: string;
-  capabilityManifest: Record<string, unknown>;
-  openapi: Record<string, unknown>;
+  capabilityManifest: JsonObject;
+  openapi: JsonObject;
   terraformComments: string[];
   docsSummary: string;
-  equivalenceClasses: Array<Record<string, unknown>>;
+  equivalenceClasses: Array<JsonObject>;
   materials: Array<{
     kind: string;
     ref: string;
@@ -65,6 +67,7 @@ export async function resolveFixtureDirectory(fixtureUrl: string): Promise<strin
 export async function loadFixtureIndex(fixtureUrl: string): Promise<ForgeFixtureIndex> {
   const directory = await resolveFixtureDirectory(fixtureUrl);
   const indexPath = path.join(directory, "index.json");
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
   const raw = JSON.parse(await readFile(indexPath, "utf8")) as ForgeFixtureIndex;
 
   if (raw.schema !== fixtureSchema) {
@@ -114,12 +117,20 @@ export function parseIngestionSources(
     throw new ForgeIngestionError("forge.source.required", "$.sources");
   }
 
-  const capabilityManifest = JSON.parse(manifestSource.bytes) as Record<string, unknown>;
-  const openapi = JSON.parse(openapiSource.bytes) as Record<string, unknown>;
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+  const capabilityManifest = JSON.parse(manifestSource.bytes) as JsonObject;
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+  const openapi = JSON.parse(openapiSource.bytes) as JsonObject;
   const terraformComments = extractHashComments(terraformSource.bytes);
   const docsSummary = summarizeDocs(docsSource.bytes);
-  const equivalenceClasses = Array.isArray(capabilityManifest.equivalenceClasses)
-    ? (capabilityManifest.equivalenceClasses as Array<Record<string, unknown>>)
+  const rawClasses = capabilityManifest.equivalenceClasses;
+  const equivalenceClasses: JsonObject[] = Array.isArray(rawClasses)
+    ? rawClasses.map((entry) => {
+        const record: JsonObject =
+          // SAFETY: equivalenceClasses entries are JSON objects from the fixture manifest.
+          entry as never;
+        return record;
+      })
     : [];
 
   return {

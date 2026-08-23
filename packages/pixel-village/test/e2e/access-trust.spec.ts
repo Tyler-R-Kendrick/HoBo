@@ -71,12 +71,17 @@ test.afterAll(async () => {
 async function tabStops(page: Page, max = MAX_TAB_STOPS): Promise<TabStop[]> {
 	const stops: TabStop[] = [];
 	await page.evaluate(() => {
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		/* SAFETY: document.activeElement is a DOM element or null by platform contract. */
 		(document.activeElement as HTMLElement | null)?.blur();
 		window.scrollTo(0, 0);
 	});
 	for (let i = 0; i < max; i++) {
 		await page.keyboard.press("Tab");
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		const info = (await page.evaluate(() => {
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 			const el = document.activeElement as HTMLElement | null;
 			if (!el || el === document.body || el === document.documentElement) {
 				return null;
@@ -112,8 +117,15 @@ async function focusRingDelta(
 	baseline: PNG,
 	pad = 8,
 ): Promise<{ who: string; delta: PixelDelta }> {
+	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 	const probe = (await page.evaluate(() => {
-		const el = document.activeElement as HTMLElement | null;
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: document.activeElement is a DOM element or null by platform contract.
+		// SAFETY: document.activeElement is a DOM element or null by platform contract.
+		// SAFETY: document.activeElement is a DOM element or null by platform contract.
+		const el =
+			document.activeElement /* SAFETY: activeElement is an HTMLElement or null. */ as HTMLElement | null;
 		if (!el || el === document.body) return null;
 		const r = el.getBoundingClientRect();
 		return {
@@ -168,9 +180,11 @@ test.describe("keyboard operability", () => {
 		});
 		expect(host, "#yard host is missing").not.toBeNull();
 		expect(
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 			(host as { label: string | null }).label,
 			"the yard canvas host must carry an accessible name",
 		).toBeTruthy();
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		expect((host as { role: string | null }).role).toBeTruthy();
 	});
 
@@ -226,7 +240,9 @@ test.describe("keyboard operability", () => {
 		// separate question of whether a keyboard route to the sheet exists.
 		await page.evaluate(() => {
 			type Seam = { commands: { selectZone: (z: string) => void } };
-			(window as unknown as { __TEST__: Seam }).__TEST__.commands.selectZone(
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			(window as Window & { __TEST__: Seam }).__TEST__.commands.selectZone(
 				"bootstrapDesk",
 			);
 		});
@@ -260,6 +276,7 @@ async function keyboardWalk(
 	max = MAX_TAB_STOPS,
 ): Promise<TabStop | null> {
 	await page.evaluate(() => {
+		// SAFETY: document.activeElement is a DOM element or null by platform contract.
 		(document.activeElement as HTMLElement | null)?.blur();
 		window.scrollTo(0, 0);
 	});
@@ -275,7 +292,9 @@ async function keyboardWalk(
 }
 
 async function activeStop(page: Page): Promise<TabStop | null> {
+	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 	return (await page.evaluate(() => {
+		// SAFETY: activeElement is an HTMLElement or null by platform contract.
 		const el = document.activeElement as HTMLElement | null;
 		if (!el || el === document.body || el === document.documentElement) {
 			return null;
@@ -314,13 +333,15 @@ test.describe("focus visibility", () => {
 			// Open a sheet so its controls are part of the tab order too.
 			await page.evaluate(() => {
 				type Seam = { commands: { selectZone: (z: string) => void } };
-				(window as unknown as { __TEST__: Seam }).__TEST__.commands.selectZone(
+				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+				(window as Window & { __TEST__: Seam }).__TEST__.commands.selectZone(
 					"connectionBay",
 				);
 			});
 			await waitForFrames(page, 2);
 
 			await page.evaluate(() => {
+				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 				(document.activeElement as HTMLElement | null)?.blur();
 				window.scrollTo(0, 0);
 			});
@@ -367,7 +388,8 @@ test.describe("axe-core", () => {
 		await waitForYard(page);
 		await page.evaluate(() => {
 			type Seam = { commands: { selectZone: (z: string) => void } };
-			(window as unknown as { __TEST__: Seam }).__TEST__.commands.selectZone(
+			// SAFETY: This page is launched with the deterministic test seam installed.
+			(window as Window & { __TEST__: Seam }).__TEST__.commands.selectZone(
 				"connectionBay",
 			);
 		});

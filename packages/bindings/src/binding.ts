@@ -100,7 +100,7 @@ export class CapabilityBindingError extends Error {
 }
 
 /** Values that must never appear in an endpoint's non-secret metadata. */
-const SECRET_SHAPED_HOST = /[:@]/u;
+const CREDENTIAL_IN_HOSTNAME = /[:@]/u;
 
 /**
  * Parse-don't-validate boundary. Credential material may only enter through a
@@ -123,7 +123,7 @@ export function parseCapabilityBinding(
 		);
 	}
 	for (const endpoint of input.endpoints) {
-		if (SECRET_SHAPED_HOST.test(endpoint.addressRef.host)) {
+		if (CREDENTIAL_IN_HOSTNAME.test(endpoint.addressRef.host)) {
 			throw new CapabilityBindingError(
 				"INVALID_CAPABILITY_BINDING",
 				`binding ${input.id} endpoint host must be a bare hostname; credentials belong in credentialRef`,
@@ -162,12 +162,17 @@ export function parseCapabilityBinding(
 			a.addressRef.host.localeCompare(b.addressRef.host),
 	);
 
-	return {
+	// SAFETY: rest is the validated input with only secret locator fields removed.
+	const parsed = {
 		...rest,
 		endpoints,
-		...(credentialRef !== undefined ? { credentialRef } : {}),
-		...(certificateRef !== undefined ? { certificateRef } : {}),
+	} as Omit<CapabilityBinding, "credentialRef" | "certificateRef"> & {
+		credentialRef?: SecretRef;
+		certificateRef?: SecretRef;
 	};
+	if (credentialRef !== undefined) parsed.credentialRef = credentialRef;
+	if (certificateRef !== undefined) parsed.certificateRef = certificateRef;
+	return parsed;
 }
 
 /**

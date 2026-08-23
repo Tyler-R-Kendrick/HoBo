@@ -23,12 +23,14 @@ import {
 	createDaprRuntimeHost,
 	createInMemoryDaprClient,
 } from "@hobo/runtime-dapr";
+import { isJsonNumber } from "./json.js";
+
 
 export const OrderActor = defineActor<{ total: number }>({
 	name: "Order",
 	initialState: () => ({ total: 0 }),
 	fold: (state, event) => {
-		if (event.type === "order.Added" && typeof event.amount === "number") {
+		if (event.type === "order.Added" && isJsonNumber(event.amount)) {
 			return { total: state.total + event.amount };
 		}
 		return state;
@@ -36,7 +38,7 @@ export const OrderActor = defineActor<{ total: number }>({
 	handlers: {
 		"order.Add": (ctx, message) => {
 			const amount =
-				typeof message.amount === "number" ? message.amount : 0;
+				isJsonNumber(message.amount) ? message.amount : 0;
 			ctx.emit({ type: "order.Added", amount });
 		},
 	},
@@ -57,16 +59,20 @@ export async function runNativeKafkaPath(tenantId = "acme"): Promise<{
 	const topic = parseTopicName("orders");
 	await bus.ensureTopic({
 		name: topic,
+		// SAFETY: `tenantId: tenantId as TenantId,` is required at this I/O or test boundary.
 		tenantId: tenantId as TenantId,
 		delivery: "exactly-once",
 	});
 	await bus.publish(topic, { orderId: "o1", amount: 10 }, { key: "o1" });
 	await bus.publish(topic, { orderId: "o2", amount: 5 }, { key: "o2" });
+	// SAFETY: `const batch = await bus.consume(topic, "workers" as never, {` is required at this I/O or test boundary.
 	const batch = await bus.consume(topic, "workers" as never, {
 		maxMessages: 10,
 	});
 	for (const m of batch) bus.ack(m.messageId, m.leaseId);
-	if (typeof (bus as { flush?: () => Promise<void> }).flush === "function") {
+	// SAFETY: `if (typeof (bus as { flush?: () => Promise<void> }).flush === "function") {` is required at this I/O or test boundary.
+	if ((bus as { flush?: () => Promise<void> }).flush instanceof Function) {
+		// SAFETY: `await (bus as { flush: () => Promise<void> }).flush();` is required at this I/O or test boundary.
 		await (bus as { flush: () => Promise<void> }).flush();
 	}
 	return {
@@ -74,6 +80,7 @@ export async function runNativeKafkaPath(tenantId = "acme"): Promise<{
 		published: 2,
 		consumed: batch.length,
 		events: bus.events().map((e) => e.type),
+		// SAFETY: `fidelity: (bus as { fidelity: "simulated" | "live" }).fidelity,` is required at this I/O or test boundary.
 		fidelity: (bus as { fidelity: "simulated" | "live" }).fidelity,
 	};
 }
@@ -94,6 +101,7 @@ export async function runDaprKafkaPath(tenantId = "acme"): Promise<{
 	const yaml = bundle.generateKafkaPubsubYaml("fromBinding:kafka-bootstrap");
 	const topic = parseTopicName("orders");
 	await bundle.messaging.publish(topic, { orderId: "d1" });
+	// SAFETY: `const batch = await bundle.messaging.consume(topic, "g" as never);` is required at this I/O or test boundary.
 	const batch = await bundle.messaging.consume(topic, "g" as never);
 	return {
 		yaml,

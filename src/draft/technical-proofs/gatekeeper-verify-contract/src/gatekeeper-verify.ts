@@ -25,7 +25,7 @@ export function evaluateGatekeeper({ target, request = {}, engines = {}, policy 
   }
 
   for (const gate of INCIDENT_REMEDIATION_EXEMPTIBLE_GATES) {
-    if (typeof engines[gate] === "function") {
+    if (isCallable(engines[gate])) {
       results.push(evaluateIncidentExemptibleGate({ target, request, engines, gate }));
     }
   }
@@ -101,7 +101,7 @@ export function runHoboVerifyCommand(args = [], fixtures = {}) {
 
 function evaluateGate({ target, request, engines, gate }) {
   const engine = engines[gate];
-  if (typeof engine !== "function") {
+  if (!isCallable(engine)) {
     return failClosedResult({
       gate,
       reason: "missing gate engine result",
@@ -157,7 +157,7 @@ function mandatoryDisabledGateFailure({ target, request, policy, gate }) {
 }
 
 function normalizeEngineResult({ gate, result }) {
-  if (!result || typeof result !== "object" || Array.isArray(result)) {
+  if (!isObjectRecord(result)) {
     return failClosedResult({
       gate,
       reason: "gate engine returned no structured result",
@@ -175,7 +175,7 @@ function normalizeEngineResult({ gate, result }) {
     });
   }
 
-  if (typeof result.ok !== "boolean") {
+  if (!isBoolean(result.ok)) {
     return failClosedResult({
       gate,
       reason: "gate engine result missing boolean ok",
@@ -231,7 +231,7 @@ function failureView(result) {
 }
 
 function gateEvent({ target, result }) {
-  return {
+  const event = {
     type: result.ok ? "gatekeeper.GatePassed" : "gatekeeper.GateFailed",
     schemaVersion: GATEKEEPER_VERIFY_SCHEMA,
     target,
@@ -240,8 +240,12 @@ function gateEvent({ target, result }) {
     reason: result.reason,
     suggestedFixes: result.suggestedFixes,
     engineId: result.engineId,
-    ...(result.exempted ? { exempted: true, originalReason: result.originalReason } : {}),
   };
+  if (result.exempted) {
+    event.exempted = true;
+    event.originalReason = result.originalReason;
+  }
+  return event;
 }
 
 function decisionEvent({ target, deployable, status, results, failures, suggestedFixes }) {
@@ -285,5 +289,23 @@ function normalizeSuggestedFixes({ gate, ok, reason, suggestedFixes = [] }) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.length > 0;
+  return isString(value) && value.length > 0;
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isCallable(value) {
+  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
+    Object.prototype.toString.call(value),
+  );
+}
+
+function isBoolean(value) {
+  return Object.prototype.toString.call(value) === "[object Boolean]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

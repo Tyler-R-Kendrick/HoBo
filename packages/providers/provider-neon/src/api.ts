@@ -6,6 +6,12 @@
  * downstream code sees {@link NeonDatabaseResponse} and never a bag of unknowns.
  */
 import { NeonProviderError, redactProviderText } from "./errors.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 export const NEON_DATABASE_STATUSES = [
 	"UNCLAIMED",
@@ -41,24 +47,20 @@ const CLAIM_URL_HOSTS = new Set(["neon.new"]);
 
 function contractError(
 	message: string,
-	detail?: Record<string, string | number>,
+	detail?: { preview?: string; message?: string; host?: string },
 ): never {
 	throw new NeonProviderError("PROVIDER_CONTRACT_CHANGED", message, {
-		...(detail !== undefined ? { detail } : {}),
+		...(detail !== undefined ? { detail } : undefined),
 	});
 }
 
 function requireString(
-	record: Record<string, unknown>,
+	record: JsonObject,
 	key: string,
 	maxLength: number,
 ): string {
 	const value = record[key];
-	if (
-		typeof value !== "string" ||
-		value.length === 0 ||
-		value.length > maxLength
-	) {
+	if (!isJsonString(value) || value.length === 0 || value.length > maxLength) {
 		contractError(
 			`claimable-database response field ${key} is not a bounded string`,
 		);
@@ -66,10 +68,7 @@ function requireString(
 	return value;
 }
 
-function requireInstantMs(
-	record: Record<string, unknown>,
-	key: string,
-): number {
+function requireInstantMs(record: JsonObject, key: string): number {
 	const raw = requireString(record, key, 64);
 	const parsed = Date.parse(raw);
 	if (!Number.isFinite(parsed)) {
@@ -80,27 +79,35 @@ function requireInstantMs(
 	return parsed;
 }
 
+function isNeonDatabaseStatus(value: string): value is NeonDatabaseStatus {
+	switch (value) {
+		case "UNCLAIMED":
+		case "CLAIMING":
+		case "CLAIMED":
+			return true;
+		default:
+			return false;
+	}
+}
+
 /** Parse a response body from `POST /api/v1/database` or `GET /api/v1/database/:id`. */
 export function parseNeonDatabaseResponse(body: string): NeonDatabaseResponse {
-	let decoded: unknown;
+	let decoded: JsonValue;
 	try {
-		decoded = JSON.parse(body) as unknown;
+		// SAFETY: JSON.parse yields a JSON value at this document boundary.
+		decoded = JSON.parse(body) as JsonValue;
 	} catch {
 		contractError("claimable-database response was not JSON", {
 			preview: redactProviderText(body, 80),
 		});
 	}
-	if (
-		typeof decoded !== "object" ||
-		decoded === null ||
-		Array.isArray(decoded)
-	) {
+	if (!isJsonObject(decoded)) {
 		contractError("claimable-database response was not a JSON object");
 	}
-	const record = decoded as Record<string, unknown>;
+	const record = decoded;
 
 	// The documented error envelope: `{ message, hint? }` with no `id`.
-	if (record.id === undefined && typeof record.message === "string") {
+	if (record.id === undefined && isJsonString(record.message)) {
 		contractError("claimable-database returned an error envelope", {
 			message: redactProviderText(record.message, 120),
 		});
@@ -112,7 +119,7 @@ export function parseNeonDatabaseResponse(body: string): NeonDatabaseResponse {
 	}
 
 	const status = requireString(record, "status", 32);
-	if (!(NEON_DATABASE_STATUSES as readonly string[]).includes(status)) {
+	if (!isNeonDatabaseStatus(status)) {
 		contractError(
 			`claimable-database returned unknown status ${redactProviderText(status, 32)}`,
 		);
@@ -126,12 +133,12 @@ export function parseNeonDatabaseResponse(body: string): NeonDatabaseResponse {
 	}
 
 	const rawConnection = record.connection_string;
-	if (rawConnection !== null && typeof rawConnection !== "string") {
+	if (rawConnection !== null && !isJsonString(rawConnection)) {
 		contractError(
 			"claimable-database connection_string is neither a string nor null",
 		);
 	}
-	if (typeof rawConnection === "string" && rawConnection.length > 2048) {
+	if (isJsonString(rawConnection) && rawConnection.length > 2048) {
 		contractError(
 			"claimable-database connection_string exceeds the 2048 byte cap",
 		);
@@ -165,9 +172,9 @@ export function parseNeonDatabaseResponse(body: string): NeonDatabaseResponse {
 
 	return {
 		databaseId,
-		status: status as NeonDatabaseStatus,
+		status,
 		neonProjectId,
-		connectionString: typeof rawConnection === "string" ? rawConnection : null,
+		connectionString: isJsonString(rawConnection) ? rawConnection : null,
 		claimUrl: parsedClaimUrl.toString(),
 		expiresAtMs,
 		expiresAtIso: new Date(expiresAtMs).toISOString(),

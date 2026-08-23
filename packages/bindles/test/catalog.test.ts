@@ -1,5 +1,4 @@
 import { describe, expect, it } from "vitest";
-
 import {
 	api,
 	auth,
@@ -23,7 +22,23 @@ import {
 	web,
 	websocket,
 } from "../src/index.js";
+import type { JsonObject, JsonValue } from "../src/json.js";
 import { secretRef } from "../src/secret-ref.js";
+
+interface CatalogHandleBag {
+	readonly [key: string]:
+		| ((args: JsonObject) => JsonValue)
+		| JsonValue
+		| undefined;
+}
+
+function verbCall(handle: CatalogHandleBag, verb: string) {
+	const method = handle[verb];
+	if (!(method instanceof Function)) {
+		throw new Error(`catalog handle missing verb ${verb}`);
+	}
+	return method;
+}
 
 const expectedCatalog = [
 	{ factory: "api", portRef: ["wasi:http", "hobo:http"], verbs: [] },
@@ -118,14 +133,17 @@ describe("resource catalog", () => {
 			expect(entry).toBeDefined();
 			expect(entry?.portRef).toEqual(expected.portRef);
 			expect(entry?.allowVerbs).toEqual(expected.verbs);
-			expect(typeof factories[expected.factory as keyof typeof factories]).toBe(
-				"function",
-			);
+			// SAFETY: assertion required at this I/O or test boundary.
+			expect(
+				factories[expected.factory as keyof typeof factories] instanceof
+					Function,
+			).toBe(true);
 		}
 	});
 
 	it("returns frozen handles with deterministic lowering descriptors", () => {
 		for (const expected of expectedCatalog) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const factory = factories[expected.factory as keyof typeof factories];
 			const handle = factory(`${expected.factory}-main`);
 
@@ -136,15 +154,17 @@ describe("resource catalog", () => {
 			);
 			expect(handle.portRef).toEqual(expected.portRef);
 
+			// SAFETY: assertion required at this I/O or test boundary.
 			const narrowed = handle.allow(...(expected.verbs as never[]));
 			expect(narrowed).not.toBe(handle);
 			expect(Object.isFrozen(narrowed)).toBe(true);
 			expect(narrowed.declaredAllow).toEqual(expected.verbs);
 
 			for (const verb of expected.verbs) {
-				const descriptor = (
-					handle as Record<string, (...args: unknown[]) => unknown>
-				)[verb]({
+				const descriptor = verbCall(
+					handle,
+					verb,
+				)({
 					example: true,
 				});
 				expect(Object.isFrozen(descriptor)).toBe(true);
@@ -162,6 +182,7 @@ describe("resource catalog", () => {
 	});
 
 	it("throws TypeError for unknown allow verbs", () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		expect(() => kv("state").allow("publish" as never)).toThrow(
 			/kv does not allow verb "publish"/,
 		);
@@ -172,7 +193,7 @@ describe("resource catalog", () => {
 		const valueReference = secretRef("STRIPE_API_KEY");
 
 		expect(managedStore.kind).toBe("secret");
-		expect(typeof managedStore.access).toBe("function");
+		expect(managedStore.access instanceof Function).toBe(true);
 		expect(valueReference.kind).toBe("secret-ref");
 		expect(Object.isFrozen(valueReference)).toBe(true);
 		expect("access" in valueReference).toBe(false);

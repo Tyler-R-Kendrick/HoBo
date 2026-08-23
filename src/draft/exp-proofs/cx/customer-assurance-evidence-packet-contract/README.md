@@ -7,6 +7,7 @@ customer-facing assurance claims or follow-up implementation work can fan out.
 
 ```powershell
 pnpm --filter @hobo/customer-assurance-evidence-packet-contract test
+pnpm exec oxlint src/draft/exp-proofs/cx/customer-assurance-evidence-packet-contract --deny-warnings
 ```
 
 ## Proof Surface

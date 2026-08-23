@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 import {
   authoritativeContractFromRequest,
   validateGenRequest
@@ -281,7 +282,7 @@ export function assertPinnedGenerationInputs({
   if (candidateConfig?.temperature !== 0 || candidateConfig?.topP !== 1) {
     throw new Error("generation.sampling_not_deterministic");
   }
-  if (typeof seed !== "string" || seed.length === 0) {
+  if (!isJsonString(seed) || seed.length === 0) {
     throw new Error("generation.seed_not_pinned");
   }
   return true;

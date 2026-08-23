@@ -37,6 +37,7 @@ async function tempDir(prefix: string): Promise<string> {
 }
 
 function context(cwd: string) {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return {
 		cwd,
 		projectDir: cwd,
@@ -45,16 +46,19 @@ function context(cwd: string) {
 	} as never;
 }
 
+// SAFETY: assertion required at this I/O or test boundary.
 const NO_FLAGS = {} as never;
 
 describe("hobo recipes", () => {
 	it("lists every registered recipe with its claim terms", async () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = await createRecipesCommand().run({
 			args: ["list"],
 			flags: NO_FLAGS,
 			context: context(process.cwd()),
 		} as never);
 		expect(result.ok).toBe(true);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const recipes = (result.data as { recipes: readonly unknown[] }).recipes;
 		expect(recipes.length).toBe(listRecipeSummaries().length);
 		expect(recipes.length).toBeGreaterThan(0);
@@ -62,12 +66,14 @@ describe("hobo recipes", () => {
 
 	it("shows a recipe's Yards, placements, and required consents", async () => {
 		const [first] = listRecipeSummaries();
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = await createRecipesCommand().run({
 			args: ["show", must(first, "first").recipeId],
 			flags: NO_FLAGS,
 			context: context(process.cwd()),
 		} as never);
 		expect(result.ok).toBe(true);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const data = result.data as {
 			yards: readonly { providerId: string }[];
 			placements: readonly unknown[];
@@ -79,6 +85,7 @@ describe("hobo recipes", () => {
 	});
 
 	it("refuses an unknown recipe id rather than guessing", async () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = await createRecipesCommand().run({
 			args: ["show", "recipe.nope/v1"],
 			flags: NO_FLAGS,
@@ -115,6 +122,7 @@ describe("recipe summaries", () => {
 
 describe("bindle to deployment request", () => {
 	it("keeps a resource whose primitive nobody constrained satisfiable", () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const bindle = {
 			name: "inbox",
 			resources: {
@@ -131,6 +139,7 @@ describe("bindle to deployment request", () => {
 			requirements: { require: [], prefer: [], runtimes: [], labels: {} },
 			entrypoint: () => undefined,
 		} as never;
+		// SAFETY: assertion required at this I/O or test boundary.
 		const request = deploymentRequestFromBindle(bindle, "inbox", {
 			persistence: "durable",
 			realtime: "none",
@@ -143,6 +152,7 @@ describe("bindle to deployment request", () => {
 	});
 
 	it("routes each declared profile to the resource of its own primitive", () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const bindle = {
 			name: "api-and-db",
 			resources: {
@@ -172,6 +182,7 @@ describe("bindle to deployment request", () => {
 			},
 			entrypoint: () => undefined,
 		} as never;
+		// SAFETY: assertion required at this I/O or test boundary.
 		const request = deploymentRequestFromBindle(bindle, "api-and-db", {
 			persistence: "durable",
 			realtime: "none",
@@ -199,6 +210,7 @@ describe("catalog projection", () => {
 		const registry = createCapabilityProfileRegistry(
 			STANDARD_CAPABILITY_PROFILES,
 		);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const legacy = {
 			id: "legacy.kv/v1",
 			provider: "legacy",
@@ -238,6 +250,7 @@ describe("published trust evidence", () => {
 });
 
 describe("hobo offer", () => {
+	// SAFETY: assertion required at this I/O or test boundary.
 	const runtime = {
 		registry: {
 			definitions: () => [],
@@ -247,6 +260,7 @@ describe("hobo offer", () => {
 	} as never;
 
 	it("asks for a recipe id rather than picking one", async () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = await createOfferCommand({ runtime }).run({
 			args: [],
 			flags: NO_FLAGS,
@@ -257,6 +271,7 @@ describe("hobo offer", () => {
 	});
 
 	it("refuses an unknown recipe", async () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = await createOfferCommand({ runtime }).run({
 			args: ["recipe.nope/v1"],
 			flags: NO_FLAGS,
@@ -268,8 +283,10 @@ describe("hobo offer", () => {
 
 	it("reports a missing Bindle instead of inventing a deployment", async () => {
 		const dir = await tempDir("hobo-offer-empty-");
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = await createOfferCommand({ runtime }).run({
 			args: ["recipe.cloudflare.claimable-webhook-inbox/v1"],
+			// SAFETY: assertion required at this I/O or test boundary.
 			flags: { home: dir } as never,
 			context: context(dir),
 		} as never);
@@ -287,14 +304,17 @@ describe("hobo offer", () => {
 				resources: { sessions: { type: "data.v1", port: "kv" } },
 			}),
 		);
-		const result = await createOfferCommand({
+		const command = createOfferCommand({
 			runtime,
 			now: () => 1_754_700_000_000,
-		}).run({
+		});
+		const input = {
 			args: ["recipe.cloudflare.claimable-webhook-inbox/v1"],
-			flags: { home: dir } as never,
+			flags: { home: dir },
 			context: context(dir),
-		} as never);
+		};
+		// SAFETY: test fixture matches the CLI command runner contract.
+		const result = await command.run(input as never);
 		// Either no Bindle source loads from JSON alone, or the empty catalog
 		// rejects — both are honest refusals, and neither provisions anything.
 		expect(result.ok).toBe(false);

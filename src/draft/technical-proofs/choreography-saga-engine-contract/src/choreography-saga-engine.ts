@@ -1,6 +1,7 @@
+import { isJsonObject } from "./json.js";
 import { createHash, randomUUID } from "node:crypto";
-
 import {
+
   classifyFailure,
   crossesNoGoThreshold,
 } from "../../system-failure-classifier-contract/src/classifier.js";
@@ -137,7 +138,7 @@ export function createSagaEngine({
             return waitingForRetry(replay.state, workingLog, replay.ignoredEvents, completed);
           }
         } catch (error) {
-          const classification = classifyFailure(error, step.failureContext ?? {});
+          const classification = classifyFailure(error, step.failureContext );
           const failed = await append("saga.StepFailed", {
             stepId: step.id,
             message: error instanceof Error ? error.message : "unknown failure",
@@ -150,9 +151,7 @@ export function createSagaEngine({
           }
 
           replay = replaySagaEvents(workingLog);
-          const classifications = [
-            ...replay.state.failures.map((failure) => failure.failureClass),
-          ];
+          const classifications = replay.state.failures.map((failure) => failure.failureClass);
           if (crossesNoGoThreshold(classifications, noGoThreshold)) {
             const compensating = await append("saga.Compensating", {
               failedStepId: step.id,
@@ -367,7 +366,7 @@ function stableStringify(value) {
     return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
   }
 
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return `{${Object.keys(value)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)

@@ -1,3 +1,11 @@
+import {
+	cloneAsJson,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	parseJsonValue,
+} from "./json.js";
 import { STATION_SCHEMA_VERSION } from "./types.js";
 
 // public-contract: wire schema / event catalog constant.
@@ -25,6 +33,42 @@ export const STATION_EVENTS = Object.freeze({
 export type StationEventType =
 	(typeof STATION_EVENTS)[keyof typeof STATION_EVENTS];
 
+const STATION_EVENT_TYPES = new Set<string>(Object.values(STATION_EVENTS));
+
+function isStationEventType(value: string): value is StationEventType {
+	return STATION_EVENT_TYPES.has(value);
+}
+
+export function parseStationEvent<T>(input: T): StationEvent {
+	const value = isJsonString(input)
+		? parseJsonValue(input)
+		: cloneAsJson(input);
+	if (!isJsonObject(value)) {
+		throw new Error("station event must be an object");
+	}
+	if (
+		!isJsonString(value.id) ||
+		!isJsonString(value.type) ||
+		!isStationEventType(value.type) ||
+		!isJsonString(value.stationId) ||
+		!isJsonNumber(value.seq) ||
+		!isJsonString(value.time)
+	) {
+		throw new Error("station event is missing required identity fields");
+	}
+	const data = isJsonObject(value.data) ? value.data : {};
+	return Object.freeze({
+		id: value.id,
+		type: value.type,
+		schemaVersion: STATION_EVENT_SCHEMA,
+		stationId: value.stationId,
+		seq: value.seq,
+		time: value.time,
+		retention: STATION_AUDIT_RETENTION,
+		data,
+	});
+}
+
 export type StationEvent = Readonly<{
 	id: string;
 	type: StationEventType;
@@ -33,14 +77,14 @@ export type StationEvent = Readonly<{
 	seq: number;
 	time: string;
 	retention: typeof STATION_AUDIT_RETENTION;
-	data: Readonly<Record<string, unknown>>;
+	data: JsonObject;
 }>;
 
 export function stationEvent(
 	type: StationEventType,
 	stationId: string,
 	seq: number,
-	data: Readonly<Record<string, unknown>>,
+	data: JsonObject,
 	time?: string,
 ): StationEvent {
 	return Object.freeze({

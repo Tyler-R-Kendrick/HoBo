@@ -97,7 +97,8 @@ describe("trainable silver suite", () => {
 	});
 
 	it("does not crash when a posted actual is circular or bigint", () => {
-		const circ: Record<string, unknown> = { label: "billing" };
+		type CircularRecord = { label: string; self?: CircularRecord };
+		const circ: CircularRecord = { label: "billing" };
 		circ.self = circ;
 		expect(() =>
 			silverEvidenceFromRegion({

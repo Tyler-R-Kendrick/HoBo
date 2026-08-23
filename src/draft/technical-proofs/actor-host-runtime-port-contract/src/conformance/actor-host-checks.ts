@@ -7,6 +7,8 @@ import {
   StaleFenceError,
 } from "../actor-host-runtime-port.js";
 import { ACTOR_STREAM_PREFIX, createLocalActorHost } from "../local-actor-host.js";
+import { isJsonObject, type JsonValue } from "../json.js";
+
 
 export const ACTOR_HOST_CONFORMANCE_VERSION = "hobo.actor-host-runtime-port/v1";
 
@@ -51,7 +53,7 @@ export function createBrokenFenceActorHostBackend() {
 }
 
 export async function runActorHostConformance(
-  createBackend: () => { name: string; clock?: ReturnType<typeof createManualClock>; eventStore?: unknown; actorHost: ActorHostBackend },
+  createBackend: () => { name: string; clock?: ReturnType<typeof createManualClock>; eventStore?: JsonValue; actorHost: ActorHostBackend },
 ): Promise<ActorHostConformanceReport> {
   const probe = createBackend();
   const checks: ActorHostConformanceReport["checks"][number][] = [];
@@ -288,13 +290,18 @@ function counterFold(state: { value: number }, event: { type: string; amount?: n
   return state;
 }
 
+interface BrokenLease {
+  fenceToken?: bigint;
+  release(): void;
+}
+
 function createBrokenFenceActorHost() {
-  const streams = new Map<string, { events: unknown[] }>();
-  const leases = new Map<string, object>();
+  const streams = new Map<string, { events: JsonValue[] }>();
+  const leases = new Map<string, BrokenLease>();
 
   return Object.freeze({
     async acquire(key: string, request: { holderId: string }) {
-      const prior = leases.get(key) as { fenceToken?: bigint } | undefined;
+      const prior = leases.get(key);
       const lease = Object.freeze({
         key,
         holderId: request.holderId,
@@ -309,14 +316,14 @@ function createBrokenFenceActorHost() {
       return lease;
     },
 
-    state(key: string, request: { initialState: unknown; fold: (state: unknown, event: unknown) => unknown }) {
+    state(key: string, request: { initialState: JsonValue; fold: (state: JsonValue, event: JsonValue) => JsonValue }) {
       const stream = getBrokenStream(streams, key);
       const initialState = structuredClone(request.initialState);
 
       return Object.freeze({
-        async append(_lease: object, event: unknown) {
+        async append(_lease: BrokenLease, event: JsonValue) {
           const record = Object.freeze({
-            ...(event as object),
+            ...(isJsonObject(event) ? event : { value: event }),
             streamId: key,
             seq: stream.events.length + 1,
           });
@@ -324,7 +331,7 @@ function createBrokenFenceActorHost() {
           return Object.freeze({
             streamId: key,
             seq: record.seq,
-            fenceToken: (_lease as { fenceToken?: bigint }).fenceToken,
+            fenceToken: _lease.fenceToken,
           });
         },
         async read() {
@@ -348,7 +355,7 @@ function createBrokenFenceActorHost() {
   });
 }
 
-function getBrokenStream(streams: Map<string, { events: unknown[] }>, key: string) {
+function getBrokenStream(streams: Map<string, { events: JsonValue[] }>, key: string) {
   if (!streams.has(key)) {
     streams.set(key, { events: [] });
   }

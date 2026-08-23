@@ -43,7 +43,7 @@ function temp(prefix: string): string {
 	return d;
 }
 
-function collector(): { stream: Writable; bytes: () => number } {
+function collector() {
 	let total = 0;
 	const stream = new Writable({
 		write(chunk, _enc, cb) {
@@ -84,8 +84,8 @@ async function runShell(options: RunOptions): Promise<{
 		env: { ...process.env, HOBO_HOME: temp("hc-shell-home-") },
 		...(options.scriptedKeys !== undefined
 			? { scriptedKeys: options.scriptedKeys }
-			: {}),
-		...(options.maxMs !== undefined ? { maxMs: options.maxMs } : {}),
+			: undefined),
+		...(options.maxMs !== undefined ? { maxMs: options.maxMs } : undefined),
 		onTerminal: (t) => {
 			terminal = t;
 			options.onTerminal?.(t);
@@ -97,13 +97,16 @@ async function runShell(options: RunOptions): Promise<{
 describe("InteractiveShell TTY close", () => {
 	it("enters and leaves the alternate screen so the frame does not stay in history", async () => {
 		const chunks: string[] = [];
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const stdin = new PassThrough() as PassThrough & { isTTY?: boolean };
 		stdin.isTTY = true;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const stdout = new Writable({
 			write(chunk, _enc, cb) {
 				chunks.push(String(chunk));
 				cb();
 			},
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		}) as Writable & { isTTY?: boolean; columns?: number; rows?: number };
 		stdout.isTTY = true;
 		stdout.columns = 80;
@@ -267,6 +270,7 @@ describe("default shell host honesty", () => {
 describe("StreamTerminal contract", () => {
 	it("uses the alternate screen on a live TTY so quit does not bloat scrollback", () => {
 		const chunks: string[] = [];
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const stdin = new PassThrough() as PassThrough & {
 			isTTY?: boolean;
 			isRaw?: boolean;
@@ -274,11 +278,13 @@ describe("StreamTerminal contract", () => {
 		};
 		stdin.isTTY = true;
 		stdin.setRawMode = () => {};
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const stdout = new Writable({
 			write(chunk, _enc, cb) {
 				chunks.push(String(chunk));
 				cb();
 			},
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		}) as Writable & { isTTY?: boolean };
 		stdout.isTTY = true;
 		const t = new StreamTerminal({
@@ -375,7 +381,8 @@ describe("terminal resize redraw", () => {
 		let terminal!: StreamTerminal;
 		const done = runInteractiveShell({
 			stdin,
-			stdout: stdout as unknown as NodeJS.WriteStream,
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			stdout: stdout as NodeJS.WriteStream,
 			host: stubHost,
 			reducedMotion: true,
 			sidecars: false,

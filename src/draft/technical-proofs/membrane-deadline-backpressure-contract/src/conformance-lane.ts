@@ -8,6 +8,8 @@ import {
   MembraneSeveredError,
 } from "./membrane.js";
 import { reconcileAmbiguousFailure } from "./reconcile-ambiguous-failure.js";
+import { type JsonValue } from "./json.js";
+
 
 const KV = "wasi:keyvalue/store@0.2.0";
 const WORKFLOW = "hobo:runtime/workflow@0.1.0";
@@ -100,7 +102,7 @@ async function provesSlowProviderTypedTimeout() {
 async function provesNestedDeadlineShrinks() {
   const clock = createManualClock(100);
   const membrane = createMembraneDeadlineBackpressure({ clock });
-  const innerDeadlines: Array<unknown> = [];
+  const innerDeadlines: Array<JsonValue> = [];
 
   membrane.registerComponent({ id: "api", imports: [WORKFLOW, KV] });
   membrane.registerProvider({
@@ -145,6 +147,7 @@ async function provesNestedDeadlineShrinks() {
 
   return (
     innerDeadlines.length === 1 &&
+    // SAFETY: assertion to `(innerDeadlines[0] as { remainingAtDispatchMs: number }).remainingAtDispatchMs =` is required at this boundary.
     (innerDeadlines[0] as { remainingAtDispatchMs: number }).remainingAtDispatchMs === 50
   );
 }

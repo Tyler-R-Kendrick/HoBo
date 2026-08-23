@@ -17,8 +17,13 @@
  * (doc "Last updated Jul 14, 2026"; re-read 2026-08-08).
  */
 import { randomUUID } from "node:crypto";
-
 import type { SecretRef } from "@hobo/bindings";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 import {
 	type ConsentEvidenceInput,
@@ -122,7 +127,7 @@ function assertAllowedUrl(url: string): void {
 			"request URL is malformed",
 			{
 				reason: "MALFORMED_URL",
-				cause,
+				cause: cause instanceof Error ? cause : new Error(String(cause)),
 			},
 		);
 	}
@@ -151,12 +156,6 @@ function retryAfterSeconds(
 	return Number.isFinite(seconds) && seconds >= 0 ? seconds : undefined;
 }
 
-type CloudflareEnvelope = {
-	readonly success?: unknown;
-	readonly result?: unknown;
-	readonly errors?: unknown;
-};
-
 async function callCloudflare(
 	transport: TemporaryAccountTransportPort,
 	request: Omit<
@@ -166,7 +165,7 @@ async function callCloudflare(
 		readonly timeoutMs?: number;
 	},
 	options: { readonly stage: string; readonly mutating: boolean },
-): Promise<Record<string, unknown>> {
+): Promise<JsonObject> {
 	assertAllowedUrl(request.url);
 	const timeoutMs = Math.min(
 		Math.max(request.timeoutMs ?? DEFAULT_REQUEST_TIMEOUT_MS, 1),
@@ -187,7 +186,10 @@ async function callCloudflare(
 				? "PROVIDER_OPERATION_AMBIGUOUS"
 				: "PROVIDER_UNAVAILABLE",
 			`cloudflare ${options.stage} transport failed`,
-			{ reason: "TRANSPORT_ERROR", cause },
+			{
+				reason: "TRANSPORT_ERROR",
+				cause: cause instanceof Error ? cause : new Error(String(cause)),
+			},
 		);
 	}
 
@@ -202,44 +204,45 @@ async function callCloudflare(
 		);
 	}
 	if (response.status < 200 || response.status >= 300) {
+		const retryAfter = retryAfterSeconds(response.headers);
 		throw temporaryAccountErrorForStatus(response.status, {
 			stage: options.stage,
 			mutating: options.mutating,
-			...(retryAfterSeconds(response.headers) !== undefined
-				? { retryAfterSeconds: retryAfterSeconds(response.headers) as number }
-				: {}),
+			...(retryAfter === undefined
+				? undefined
+				: { retryAfterSeconds: retryAfter }),
 		});
 	}
 
-	let envelope: CloudflareEnvelope;
+	let parsed: JsonValue;
 	try {
-		envelope = JSON.parse(response.body) as CloudflareEnvelope;
+		// SAFETY: JSON.parse yields a JSON value at this Cloudflare document boundary.
+		parsed = JSON.parse(response.body) as JsonValue;
 	} catch (cause) {
 		throw new TemporaryAccountError(
 			"PROVIDER_CONTRACT_CHANGED",
 			`cloudflare ${options.stage} response was not JSON`,
-			{ reason: "NOT_JSON", cause },
+			{
+				reason: "NOT_JSON",
+				cause: cause instanceof Error ? cause : new Error(String(cause)),
+			},
 		);
 	}
-	if (envelope.success !== true) {
+	if (!isJsonObject(parsed) || parsed.success !== true) {
 		throw new TemporaryAccountError(
 			"PROVIDER_CONTRACT_CHANGED",
 			`cloudflare ${options.stage} response did not report success`,
 			{ reason: "SUCCESS_FALSE" },
 		);
 	}
-	if (
-		typeof envelope.result !== "object" ||
-		envelope.result === null ||
-		Array.isArray(envelope.result)
-	) {
+	if (!isJsonObject(parsed.result)) {
 		throw new TemporaryAccountError(
 			"PROVIDER_CONTRACT_CHANGED",
 			`cloudflare ${options.stage} response carried no result object`,
 			{ reason: "MISSING_RESULT" },
 		);
 	}
-	return envelope.result as Record<string, unknown>;
+	return parsed.result;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -247,13 +250,13 @@ async function callCloudflare(
 /* -------------------------------------------------------------------------- */
 
 function requireString(
-	source: Record<string, unknown>,
+	source: JsonObject,
 	key: string,
 	stage: string,
 	bounds: { readonly min: number; readonly max: number },
 ): string {
 	const value = source[key];
-	if (typeof value !== "string") {
+	if (!isJsonString(value)) {
 		throw new TemporaryAccountError(
 			"PROVIDER_CONTRACT_CHANGED",
 			`cloudflare ${stage} response is missing string field ${key}`,
@@ -271,19 +274,19 @@ function requireString(
 }
 
 function requireObject(
-	source: Record<string, unknown>,
+	source: JsonObject,
 	key: string,
 	stage: string,
-): Record<string, unknown> {
+): JsonObject {
 	const value = source[key];
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+	if (!isJsonObject(value)) {
 		throw new TemporaryAccountError(
 			"PROVIDER_CONTRACT_CHANGED",
 			`cloudflare ${stage} response is missing object field ${key}`,
 			{ reason: "MISSING_FIELD" },
 		);
 	}
-	return value as Record<string, unknown>;
+	return value;
 }
 
 function requireInstant(value: string, key: string, stage: string): number {
@@ -300,7 +303,7 @@ function requireInstant(value: string, key: string, stage: string): number {
 
 /** Documented challenge shape: `challengeToken`, `seed`, `k`, `g`. */
 export function parsePreviewChallengeResponse(
-	result: Record<string, unknown>,
+	result: JsonObject,
 ): PreviewChallenge {
 	const challengeToken = requireString(
 		result,
@@ -324,6 +327,7 @@ export function parsePreviewChallengeResponse(
 			{ reason: "MISSING_FIELD" },
 		);
 	}
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	return { challengeToken, seed, k: k as number, g: g as number };
 }
 
@@ -337,7 +341,7 @@ type RawPreviewAccount = {
 };
 
 export function parsePreviewAccountResponse(
-	result: Record<string, unknown>,
+	result: JsonObject,
 ): RawPreviewAccount {
 	const stage = "preview account";
 	const account = requireObject(result, "account", stage);
@@ -514,7 +518,10 @@ async function persistConsentFirst(
 		throw new TemporaryAccountError(
 			"CONSENT_REQUIRED",
 			"consent evidence could not be persisted before the provisioning call",
-			{ reason: "LEDGER_WRITE_FAILED", cause },
+			{
+				reason: "LEDGER_WRITE_FAILED",
+				cause: cause instanceof Error ? cause : new Error(String(cause)),
+			},
 		);
 	}
 }
@@ -675,7 +682,7 @@ export async function provisionTemporaryAccountYard(
 }
 
 export type TemporaryAccountObservation =
-	| { readonly outcome: "found"; readonly result: Record<string, unknown> }
+	| { readonly outcome: "found"; readonly result: JsonObject }
 	| { readonly outcome: "not-created" };
 
 export type ObserveAndAdoptInput = Omit<

@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 import {
   createCipheriv,
   createDecipheriv,
@@ -241,7 +242,7 @@ export function assertNoForgettableWriteInvariants(schema) {
 
 export function findForgettableWriteInvariantViolations(schema) {
   const forgettableFields = new Set(
-    Object.entries(schema.fields ?? {})
+    Object.entries(schema.fields )
       .filter(([, field]) => field.forgettable)
       .map(([fieldName]) => fieldName),
   );
@@ -385,7 +386,7 @@ function stableValue(value) {
     return value.map(stableValue);
   }
 
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))

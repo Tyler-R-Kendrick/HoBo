@@ -25,6 +25,11 @@ export type ScopeEntry = Readonly<{
 	verbs: readonly string[];
 }>;
 
+export interface RotateSvidInput {
+	identityId: string;
+	now?: string;
+}
+
 export type ActiveSvidRecord = Readonly<{
 	identityId: string;
 	subject: string;
@@ -288,7 +293,7 @@ export class IdentityService {
 				events: [],
 			};
 		}
-		const rotateInput: { identityId: string; now?: string } = {
+		const rotateInput: RotateSvidInput = {
 			identityId: input.identityId,
 		};
 		if (input.now !== undefined) {
@@ -314,11 +319,13 @@ export class IdentityService {
 			if (!Array.isArray(scope)) {
 				return { status: "denied", reason: "scope-claim-missing" };
 			}
+			// SAFETY: JWT scope claim is ScopeEntry[] at this auth boundary.
+			const parsedScope: ScopeEntry[] = scope as never;
 			return {
 				status: "authenticated",
 				subject: String(verified.claims.sub),
 				tenant: String(verified.claims.tenant),
-				scope: scope as ScopeEntry[],
+				scope: parsedScope,
 			};
 		} catch (error) {
 			return {

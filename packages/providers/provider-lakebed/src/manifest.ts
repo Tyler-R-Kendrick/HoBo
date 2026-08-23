@@ -7,8 +7,11 @@ import {
 	MANIFEST_SCHEMA,
 	stableDigest,
 } from "@hobo/core";
-import type { InitialCapabilityPort } from "./equivalence.js";
-import { EQUIVALENCE_CLASSES } from "./equivalence.js";
+import {
+	EQUIVALENCE_CLASSES,
+	INITIAL_CAPABILITY_PORTS,
+	type InitialCapabilityPort,
+} from "./equivalence.js";
 
 // The schema ids are platform contract, so they live in @hobo/core and are
 // re-exported here to keep this package's public surface unchanged.
@@ -37,10 +40,7 @@ export type PublishedManifestDocuments = {
 // Declared marginal-cost facts per equivalence class — REAL public list-price
 // magnitudes (representative SKUs, declared-provider source), so min-cost
 // ranking has honest inputs rather than uniform zeros.
-export const COST_FACTS: Record<
-	InitialCapabilityPort,
-	{ sku: string; unit: string; marginalPrice: string; included: number }
-> = {
+export const COST_FACTS = {
 	"web/service": {
 		sku: "lakebed.capsule.request",
 		unit: "request",
@@ -65,7 +65,10 @@ export const COST_FACTS: Record<
 		marginalPrice: "0.0000004",
 		included: 1_000_000,
 	},
-};
+} satisfies Record<
+	InitialCapabilityPort,
+	{ sku: string; unit: string; marginalPrice: string; included: number }
+>;
 
 export interface LakebedManifestInput {
 	providerId?: string;
@@ -78,9 +81,7 @@ export function publishCapabilityManifest(
 ): PublishedManifestDocuments {
 	const providerId = input.providerId ?? LAKEBED_PROVIDER_ID;
 	const regions = input.regions ?? DEFAULT_REGIONS;
-	const ports =
-		input.ports ??
-		(Object.keys(EQUIVALENCE_CLASSES) as InitialCapabilityPort[]);
+	const ports = input.ports ?? [...INITIAL_CAPABILITY_PORTS];
 	const capabilitiesDocument = {
 		schema: CAPABILITIES_SCHEMA,
 		providerId,

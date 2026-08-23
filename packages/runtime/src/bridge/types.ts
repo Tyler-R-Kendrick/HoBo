@@ -9,10 +9,11 @@
 // bridged session doubles as specification-by-example capture.
 
 /** How a boundary served one call. */
+import type { JsonValue } from "../json.js";
 export type BoundaryServed = "live" | "mock" | "bridge" | "replay" | "fault";
 
 /** A PACT-interaction-shaped example: expected output for a given input. */
-export interface BoundaryExample<I = unknown, O = unknown> {
+export interface BoundaryExample<I = JsonValue, O = JsonValue> {
 	readonly input: I;
 	readonly output: O;
 }
@@ -24,11 +25,11 @@ export interface BoundaryExample<I = unknown, O = unknown> {
  * output must be a recursive subset of the actual), the same discipline
  * the PACT harness applies.
  */
-export interface BridgeContract<I = unknown, O = unknown> {
+export interface BridgeContract<I = JsonValue, O = JsonValue> {
 	readonly examples: readonly BoundaryExample<I, O>[];
 }
 
-export interface BridgeOptions<I = unknown, O = unknown> {
+export interface BridgeOptions<I = JsonValue, O = JsonValue> {
 	/**
 	 * Dev-session tag (a branch name, a user id, a preview-env id). Only
 	 * calls made with the same session tag take the bridge; untagged
@@ -40,7 +41,7 @@ export interface BridgeOptions<I = unknown, O = unknown> {
 	readonly contract?: BridgeContract<I, O>;
 }
 
-export interface RecordedBoundaryCall<I = unknown, O = unknown> {
+export interface RecordedBoundaryCall<I = JsonValue, O = JsonValue> {
 	readonly input: I;
 	readonly output?: O;
 	readonly error?: string;
@@ -50,9 +51,9 @@ export interface RecordedBoundaryCall<I = unknown, O = unknown> {
 }
 
 /** One shadow comparison: the candidate's output vs the served output. */
-export interface ShadowDiff<I = unknown> {
+export interface ShadowDiff<I = JsonValue> {
 	readonly input: I;
-	readonly served: unknown;
+	readonly served: JsonValue;
 	readonly candidate: unknown;
 	readonly matched: boolean;
 	readonly order: number;

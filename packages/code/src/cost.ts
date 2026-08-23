@@ -12,6 +12,7 @@ import {
 	DEFAULT_BUDGET_POLICY,
 	routeProvider,
 } from "./finops.js";
+import { isJsonNumber } from "./json.js";
 import { inspectModels, type ModelsStatus } from "./models.js";
 
 // public-contract: cost status payload
@@ -190,7 +191,7 @@ export function inspectCost(
 	};
 	const tracker = createBudgetTracker(policy);
 	const spend =
-		typeof options.spendUsd === "number" && options.spendUsd >= 0
+		isJsonNumber(options.spendUsd) && options.spendUsd >= 0
 			? options.spendUsd
 			: 0;
 	if (spend > 0) {

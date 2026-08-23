@@ -35,13 +35,20 @@ export const DEFAULT_RESIDENCY_POLICY_PACK: ResidencyPolicyPack = Object.freeze(
 	},
 );
 
+export interface ResidencyEvidenceObligation {
+	readonly kind: "residency-evidence";
+	readonly region: string;
+	readonly jurisdictions: readonly string[];
+	readonly classification: string;
+}
+
 export interface ResidencyPolicyEvaluation {
 	readonly allowed: boolean;
 	readonly effect: "allow" | "warn" | "deny";
 	readonly ruleId: string;
 	readonly reasons: readonly string[];
 	/** Evidence carried on allow decisions (jurisdictions relied upon). */
-	readonly obligations: readonly Readonly<Record<string, unknown>>[];
+	readonly obligations: readonly ResidencyEvidenceObligation[];
 }
 
 export function evaluateResidencyPolicy(input: {

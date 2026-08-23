@@ -5,7 +5,7 @@ const flow = buildClosureBuilderAuthorFlow();
 flow.aliases.api.dependsOn(flow.aliases.cache, flow.aliases.orders);
 
 // @ts-expect-error generated aliases expose the returned authoring keys only.
-flow.aliases.db;
+void flow.aliases.db;
 
 // @ts-expect-error aliases are not generated resource IDs.
 const generatedId: "res_api_0001" = flow.aliases.api;

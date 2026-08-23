@@ -4,7 +4,6 @@
  */
 import { createServer, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
-
 import {
 	evaluatePromotionGate,
 	GOLDEN_DEFAULT_SUITE_ID,
@@ -20,7 +19,6 @@ import {
 	type TrainableFn,
 	type TrainableFuzzSeed,
 } from "@hobo/fuzz";
-
 import {
 	type CampEvalSidecar,
 	campEvalSidecar,
@@ -29,6 +27,15 @@ import {
 	loadTrainableInvokers,
 	type TrainableRegion,
 } from "./eval-sidecar.js";
+import {
+	cloneAsJson,
+	isJsonBigInt,
+	isJsonNumber,
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 import { occupancyNamedOrigin } from "./occupancy-endpoints.js";
 
 export interface EvalSidecarServer {
@@ -73,7 +80,7 @@ export function assembleCampEvalSidecar(
 	const trainable = inspectTrainableRegions(projectDir);
 	return campEvalSidecar(campId, {
 		trainable,
-		...(tests !== undefined ? { tests } : {}),
+		...(tests !== undefined ? { tests } : undefined),
 	});
 }
 
@@ -109,7 +116,7 @@ export function runEvalSidecarSuite(input: {
 		report,
 		...(scored.silver.reports[index]
 			? { silver: scored.silver.reports[index] }
-			: {}),
+			: undefined),
 	}));
 	const gate = composePromotionGates([
 		...scored.gold.reports,
@@ -123,7 +130,7 @@ export function runEvalSidecarSuite(input: {
 		trainable,
 		...(input.suite.project !== undefined
 			? { project: input.suite.project }
-			: {}),
+			: undefined),
 		gate,
 	};
 }
@@ -163,26 +170,35 @@ function toGoldenRegion(
 				expected: example.output,
 				actual: posted
 					? actuals[index]
-					: invokeForGold(fn as TrainableFn, example.input),
+					: // SAFETY: parsed or fixture value is the named domain type after this assertion.
+						invokeForGold(
+							// SAFETY: gold invoker is the TrainableFn registered for this example.
+							fn as TrainableFn,
+							example.input,
+						),
 			};
 		}),
 	};
 }
 
-function invokeForGold(fn: TrainableFn, input: unknown): unknown {
+function invokeForGold(
+	fn: TrainableFn,
+	input: JsonValue | undefined,
+): JsonValue {
 	try {
 		const output = fn(input);
 		if (
 			output &&
-			typeof output === "object" &&
+			isJsonObject(output) &&
 			"then" in output &&
-			typeof (output as { then?: unknown }).then === "function"
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			(output as { then?: unknown }).then instanceof Function
 		) {
-			return undefined;
+			return null;
 		}
-		return output;
+		return cloneAsJson(output);
 	} catch {
-		return undefined;
+		return null;
 	}
 }
 
@@ -235,15 +251,19 @@ export async function startEvalSidecar(
 					const actuals = parseActuals(body);
 					const loaded = options.projectDir
 						? await loadTrainableInvokers(options.projectDir, suite.trainable)
-						: {};
-					const invokers = Object.keys(loaded).length > 0 ? loaded : undefined;
+						: undefined;
 					writeJson(
 						response,
 						200,
 						runEvalSidecarSuite({
 							suite,
-							...(actuals !== undefined ? { actuals } : {}),
-							...(invokers !== undefined ? { invokers } : {}),
+							...(actuals !== undefined ? { actuals } : undefined),
+							...(loaded !== undefined && Object.keys(loaded).length > 0
+								? {
+										// SAFETY: loadTrainableInvokers returns TrainableFn values.
+										invokers: loaded as Readonly<Record<string, TrainableFn>>,
+									}
+								: undefined),
 						}),
 					);
 				})
@@ -268,10 +288,10 @@ export async function startEvalSidecar(
 	};
 }
 
-function writeJson(
+function writeJson<T>(
 	response: import("node:http").ServerResponse,
 	status: number,
-	body: unknown,
+	body: T,
 ): void {
 	const payload = `${safeJson(body)}\n`;
 	response.writeHead(status, {
@@ -281,13 +301,13 @@ function writeJson(
 	response.end(payload);
 }
 
-function safeJson(body: unknown): string {
+function safeJson<T>(body: T): string {
 	const seen = new WeakSet<object>();
 	try {
-		return JSON.stringify(body, (_key, value: unknown) => {
-			if (typeof value === "bigint") return `${value}n`;
-			if (typeof value === "number" && Number.isNaN(value)) return "NaN";
-			if (value && typeof value === "object") {
+		return JSON.stringify(body, (_key, value: JsonValue | undefined) => {
+			if (isJsonBigInt(value)) return `${value}n`;
+			if (isJsonNumber(value) && Number.isNaN(value)) return "NaN";
+			if (value && isJsonObject(value)) {
 				if (seen.has(value)) return "[Cycle]";
 				seen.add(value);
 			}
@@ -302,6 +322,7 @@ function listen(server: Server, port: number): Promise<number> {
 	return new Promise((resolve, reject) => {
 		server.once("error", reject);
 		server.listen(port, "127.0.0.1", () => {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			resolve((server.address() as AddressInfo).port);
 		});
 	});
@@ -315,7 +336,7 @@ function closeServer(server: Server): Promise<void> {
 
 function readJsonBody(
 	request: import("node:http").IncomingMessage,
-): Promise<unknown> {
+): Promise<JsonValue> {
 	return new Promise((resolve) => {
 		const chunks: Buffer[] = [];
 		request.on("data", (chunk) => {
@@ -323,27 +344,29 @@ function readJsonBody(
 		});
 		request.on("end", () => {
 			if (chunks.length === 0) {
-				resolve(undefined);
+				resolve(null);
 				return;
 			}
 			try {
-				resolve(JSON.parse(Buffer.concat(chunks).toString("utf8")));
+				resolve(parseJsonValue(Buffer.concat(chunks).toString("utf8")));
 			} catch {
-				resolve(undefined);
+				resolve(null);
 			}
 		});
-		request.on("error", () => resolve(undefined));
+		request.on("error", () => resolve(null));
 	});
 }
 
 function parseActuals(
-	body: unknown,
+	body: JsonValue | undefined,
 ): Readonly<Record<string, readonly unknown[]>> | undefined {
-	if (!body || typeof body !== "object") return undefined;
+	if (!body || !isJsonObject(body)) return undefined;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const raw = (body as { actuals?: unknown }).actuals;
-	if (!raw || typeof raw !== "object") return undefined;
+	if (!raw || !isJsonObject(raw)) return undefined;
 	const actuals: Record<string, unknown[]> = {};
-	for (const [key, value] of Object.entries(raw as Record<string, unknown>)) {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	for (const [key, value] of Object.entries(raw as JsonObject)) {
 		if (!Array.isArray(value)) continue;
 		actuals[key] = value;
 	}

@@ -2,6 +2,7 @@ import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 
 import { commandForPlatform } from "./lib/env.ts";
+import { type JsonValue, runtimeKind } from "./lib/inspectable.ts";
 import { type Check, selectRelevantChecks } from "./relevant-check-policy.js";
 
 const args = new Set(process.argv.slice(2));
@@ -52,20 +53,17 @@ function runAsync(check: Check): Promise<number> {
 function broadSweepScript(check: Check): string | undefined {
 	if (check.command !== "pnpm" || check.args[0] !== "run") return undefined;
 	const script = check.args[1];
-	return (
-		[
-			"check:all",
-			"test:all",
-			"test:contract",
-			"test:contract:consumer",
-			"test:contract:provider",
-			"test:unit",
-			"test:unit:quiet",
-			"validate:final",
-		] as readonly (string | undefined)[]
-	).includes(script)
-		? script
-		: undefined;
+	const broad = new Set([
+		"check:all",
+		"test:all",
+		"test:contract",
+		"test:contract:consumer",
+		"test:contract:provider",
+		"test:unit",
+		"test:unit:quiet",
+		"validate:final",
+	]);
+	return script !== undefined && broad.has(script) ? script : undefined;
 }
 
 function assertNoImplicitBroadSweeps(checks: Check[]) {
@@ -95,7 +93,7 @@ async function runBounded(
 	checks: Check[],
 	concurrency: number,
 ): Promise<number[]> {
-	const statuses = new Array<number>(checks.length);
+	const statuses = Array.from({ length: checks.length }, () => 1);
 	let nextIndex = 0;
 
 	async function worker() {
@@ -169,9 +167,9 @@ function workspaceTestFiles(records: ChangedFileRecord[]) {
 		.map((record) => record.path);
 }
 
-function stableJson(value: unknown): string {
+function stableJson(value: JsonValue): string {
 	if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
-	if (value && typeof value === "object") {
+	if (value !== null && runtimeKind(value) === "object") {
 		const entries = Object.entries(value).sort(([left], [right]) =>
 			left.localeCompare(right),
 		);
@@ -190,11 +188,12 @@ function rootPackageJsonScriptsOnlyChanged() {
 	if (!beforeRaw || !fs.existsSync("package.json")) return false;
 
 	try {
-		const before = JSON.parse(beforeRaw) as Record<string, unknown>;
-		const after = JSON.parse(fs.readFileSync("package.json", "utf8")) as Record<
-			string,
-			unknown
-		>;
+		// SAFETY: package.json is committed repo JSON; scripts key is compared by stableJson.
+		const before = JSON.parse(beforeRaw) as { scripts?: JsonValue };
+		// SAFETY: working-tree package.json is the same manifest family as HEAD.
+		const after = JSON.parse(fs.readFileSync("package.json", "utf8")) as {
+			scripts?: JsonValue;
+		};
 		delete before.scripts;
 		delete after.scripts;
 		return stableJson(before) === stableJson(after);

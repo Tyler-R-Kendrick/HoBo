@@ -2,6 +2,7 @@
  * OpenExperiment port (hobo:experiment) — assignment, exposure, tracking hooks.
  * Heavy statistical analysis remains behind pluggable adapters (not in core).
  */
+
 import { createHash, randomUUID } from "node:crypto";
 import { must } from "@hobo/core/total-access";
 import {
@@ -9,6 +10,7 @@ import {
 	type FeatureFlagStore,
 	type FlagEvalContext,
 } from "./feature-flag-store.js";
+import type { JsonObject } from "./json.js";
 
 // public-contract: OpenExperiment port id.
 export const EXPERIMENT_PORT = "hobo:experiment" as const;
@@ -28,7 +30,7 @@ export type ExperimentEvent = Readonly<{
 	schemaVersion: typeof EXPERIMENT_EVENT_SCHEMA;
 	seq: number;
 	time: string;
-	data: Readonly<Record<string, unknown>>;
+	data: JsonObject;
 }>;
 
 export type ExperimentDefinition = Readonly<{
@@ -86,10 +88,10 @@ export class OpenExperimentEngine {
 			variants: Object.freeze([...def.variants]),
 			...(def.allocation !== undefined
 				? { allocation: Object.freeze({ ...def.allocation }) }
-				: {}),
+				: undefined),
 			...(def.metrics !== undefined
 				? { metrics: Object.freeze([...def.metrics]) }
-				: {}),
+				: undefined),
 		});
 		this.defs.set(def.name, frozen);
 		// Ensure flag exists with variants
@@ -196,7 +198,7 @@ export class OpenExperimentEngine {
 		this.emit(EXPERIMENT_EVENTS.Concluded, {
 			experiment: experimentName,
 			verdict,
-			...(reason !== undefined ? { reason } : {}),
+			...(reason !== undefined ? { reason } : undefined),
 		});
 	}
 
@@ -211,10 +213,7 @@ export class OpenExperimentEngine {
 		return Object.freeze([...this.defs.values()]);
 	}
 
-	private emit(
-		type: ExperimentEvent["type"],
-		data: Readonly<Record<string, unknown>>,
-	): void {
+	private emit(type: ExperimentEvent["type"], data: JsonObject): void {
 		this.seq += 1;
 		this.events.push(
 			Object.freeze({

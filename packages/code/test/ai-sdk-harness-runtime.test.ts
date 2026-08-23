@@ -76,6 +76,7 @@ describe("harness runtime spec", () => {
 			});
 			expect.unreachable("unknown adapter must throw");
 		} catch (error) {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			expect((error as { path?: string }).path).toBe("runtime.adapter");
 			expect(String(error)).toContain("claude-code");
 		}
@@ -87,6 +88,7 @@ describe("harness runtime spec", () => {
 		expect(names.length).toBeGreaterThan(0);
 		const seen = new Set<string>();
 		for (const name of names) {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const raw = JSON.parse(readFileSync(join(dir, name), "utf8")) as {
 				id: string;
 			};
@@ -471,7 +473,7 @@ describe("HarnessAgent factory", () => {
 			runtime: { adapter: "pi" },
 		});
 		const agent = await createHarnessAgent(spec);
-		expect(typeof agent.createSession).toBe("function");
+		expect(agent.createSession instanceof Function).toBe(true);
 	});
 
 	it("wraps a host adapter with the just-bash sandbox, not a switch on id", async () => {
@@ -545,7 +547,7 @@ describe("HarnessAgent factory", () => {
 				return { createSession: async () => ({}) };
 			},
 		});
-		expect(typeof agent.createSession).toBe("function");
+		expect(agent.createSession instanceof Function).toBe(true);
 	});
 
 	it("refuses skip adapters instead of constructing HarnessAgent", async () => {

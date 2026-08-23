@@ -6,8 +6,13 @@ import {
 	canonicalPlanJson,
 	type DeploymentPlan,
 	hashDeploymentPlan,
+	type JsonValue,
+	type PlanParseInput,
+	type PlanParseObject,
 	parseDeploymentPlan,
 } from "../src/index.js";
+
+const objectTag = Object.prototype.toString;
 
 /**
  * Round trip over the fixtures that already exist in the repo.
@@ -17,8 +22,8 @@ import {
  * failing on live data, and if someone moves or edits the originals this suite
  * should notice.
  */
-function fixture(name: string): unknown {
-	return JSON.parse(
+function fixture(name: string): JsonValue {
+	const parsed: JsonValue = JSON.parse(
 		readFileSync(
 			fileURLToPath(
 				new URL(`../../cloud/test/fixtures/${name}.json`, import.meta.url),
@@ -26,22 +31,79 @@ function fixture(name: string): unknown {
 			"utf8",
 		),
 	);
+	return parsed;
+}
+
+function asPlanObject(value: JsonValue, name: string): PlanParseObject {
+	if (
+		value === null ||
+		Array.isArray(value) ||
+		objectTag.call(value) !== "[object Object]"
+	) {
+		throw new Error(`fixture ${name} is not an object`);
+	}
+	return value;
+}
+
+function resourceList(raw: PlanParseObject, name: string): PlanParseInput[] {
+	const resources = raw.resources;
+	if (!Array.isArray(resources)) {
+		throw new Error(`fixture ${name} has no resources array`);
+	}
+	return [...resources];
+}
+
+interface PlanFixture {
+	[key: string]: PlanParseInput | undefined;
+}
+
+function asResourceObject(value: PlanParseInput, name: string): PlanFixture {
+	if (
+		value === null ||
+		Array.isArray(value) ||
+		objectTag.call(value) !== "[object Object]"
+	) {
+		throw new Error(`${name} resource is not an object`);
+	}
+	const out: PlanFixture = {};
+	for (const key of Object.keys(value)) {
+		out[key] = value[key];
+	}
+	return out;
+}
+
+interface MutableJsonObject {
+	[key: string]: JsonValue;
 }
 
 /** The same canonicalization, written independently of the module under test. */
-function independentCanonicalJson(value: unknown): string {
-	const sort = (v: unknown): unknown => {
+function independentCanonicalJson(value: JsonValue): string {
+	const sort = (v: JsonValue): JsonValue => {
 		if (Array.isArray(v)) return v.map(sort);
-		if (v && typeof v === "object") {
-			const source = v as Record<string, unknown>;
-			const out: Record<string, unknown> = {};
-			for (const key of Object.keys(source).sort())
-				out[key] = sort(source[key]);
+		if (v !== null && objectTag.call(v) === "[object Object]") {
+			const out: MutableJsonObject = {};
+			for (const key of Object.keys(v).sort()) {
+				const entry = v[key];
+				if (entry === undefined) continue;
+				out[key] = sort(entry);
+			}
 			return out;
 		}
 		return v;
 	};
 	return JSON.stringify(sort(value));
+}
+
+function overlayResources(
+	raw: PlanParseObject,
+	resources: PlanParseInput[],
+): PlanFixture {
+	const out: PlanFixture = {};
+	for (const key of Object.keys(raw)) {
+		out[key] = raw[key];
+	}
+	out.resources = resources;
+	return out;
 }
 
 // Pinned in packages/cloud/test/planner.test.ts, gateway.test.ts and
@@ -74,18 +136,19 @@ describe("round trip over @hobo/cloud's committed plan fixtures", () => {
 		const parsed = parseDeploymentPlan(fixture("golden-plan"));
 		const assets = parsed.resources.find((r) => r.name === "assets");
 		expect(assets).toBeDefined();
+		if (assets === undefined) {
+			throw new Error("expected assets resource");
+		}
 		// `in`, not `=== undefined`: under exactOptionalPropertyTypes the whole
 		// distinction this schema defends is absent-vs-present-holding-undefined,
 		// and only the key test can tell them apart.
-		expect(Object.hasOwn(assets as object, "deploymentId")).toBe(false);
-		expect(Object.hasOwn(assets as object, "productId")).toBe(false);
-		expect(Object.hasOwn(assets as object, "realizationParameters")).toBe(
-			false,
-		);
-		expect(Object.hasOwn(assets as object, "nonPortableRows")).toBe(false);
+		expect(Object.hasOwn(assets, "deploymentId")).toBe(false);
+		expect(Object.hasOwn(assets, "productId")).toBe(false);
+		expect(Object.hasOwn(assets, "realizationParameters")).toBe(false);
+		expect(Object.hasOwn(assets, "nonPortableRows")).toBe(false);
 		// ...while the ones the fixture does carry are present and exact.
-		expect(assets?.strategy).toBe("rolling-update");
-		expect(assets?.region).toBe("ENAM");
+		expect(assets.strategy).toBe("rolling-update");
+		expect(assets.region).toBe("ENAM");
 	});
 
 	it("materializing one absent optional as an empty string changes the digest", () => {
@@ -93,18 +156,20 @@ describe("round trip over @hobo/cloud's committed plan fixtures", () => {
 		// is a bare proto3 singular, which has no field presence, so a decoder
 		// cannot tell an absent region from "". The measurement is why this
 		// package's .proto spells every optional scalar `optional`.
-		const raw = fixture("multi-cloud-shop-plan") as {
-			resources: Record<string, unknown>[];
-		};
-		const flattened = {
-			...raw,
-			resources: raw.resources.map((r) => ({
-				...r,
-				strategy: "",
-				region: "",
-				deploymentId: "",
-			})),
-		};
+		const raw = asPlanObject(
+			fixture("multi-cloud-shop-plan"),
+			"multi-cloud-shop-plan",
+		);
+		const flattened = overlayResources(
+			raw,
+			resourceList(raw, "multi-cloud-shop-plan").map((r) => {
+				const node = asResourceObject(r, "multi-cloud-shop-plan");
+				node.strategy = "";
+				node.region = "";
+				node.deploymentId = "";
+				return node;
+			}),
+		);
 		const round = hashDeploymentPlan(parseDeploymentPlan(flattened));
 		expect(round).not.toBe(SHOP_PLAN_HASH);
 		expect(round).toBe(
@@ -117,22 +182,22 @@ describe("round trip over @hobo/cloud's committed plan fixtures", () => {
 		// asserts the planner produces: `{ ttlSeconds: 3600, tier: "standard" }`.
 		// `ttlSeconds` is a number, and hobo.cloud.v1's `map<string, string>`
 		// cannot carry it — see the README.
-		const raw = fixture("golden-plan") as {
-			resources: Record<string, unknown>[];
-		};
-		const bound = {
-			...raw,
-			resources: raw.resources.map((r) =>
-				r.name === "sessions"
-					? {
-							...r,
-							productId: "cloudflare.kv/v1",
-							realizationParameters: { ttlSeconds: 3600, tier: "standard" },
-							nonPortableRows: ["kv/cloudflare.kv/v1"],
-						}
-					: r,
-			),
-		};
+		const raw = asPlanObject(fixture("golden-plan"), "golden-plan");
+		const bound = overlayResources(
+			raw,
+			resourceList(raw, "golden-plan").map((r) => {
+				const node = asResourceObject(r, "golden-plan");
+				if (node.name === "sessions") {
+					node.productId = "cloudflare.kv/v1";
+					node.realizationParameters = {
+						ttlSeconds: 3600,
+						tier: "standard",
+					};
+					node.nonPortableRows = ["kv/cloudflare.kv/v1"];
+				}
+				return node;
+			}),
+		);
 		const parsed = parseDeploymentPlan(bound);
 		expect(canonicalPlanJson(parsed)).toBe(independentCanonicalJson(bound));
 
@@ -144,19 +209,25 @@ describe("round trip over @hobo/cloud's committed plan fixtures", () => {
 		// The number stayed a number. Encoding it as canonical JSON text — the
 		// convention hobo.cloud.v1's proto comment names — would make it
 		// indistinguishable from the string "3600".
-		expect(typeof sessions?.realizationParameters?.ttlSeconds).toBe("number");
+		expect(objectTag.call(sessions?.realizationParameters?.ttlSeconds)).toBe(
+			"[object Number]",
+		);
 	});
 
 	it("re-parsing a parsed plan is a fixed point", () => {
 		const once = parseDeploymentPlan(fixture("golden-plan"));
-		const twice = parseDeploymentPlan(JSON.parse(canonicalPlanJson(once)));
+		const twiceJson: JsonValue = JSON.parse(canonicalPlanJson(once));
+		const twice = parseDeploymentPlan(twiceJson);
 		expect(canonicalPlanJson(twice)).toBe(canonicalPlanJson(once));
 		expect(hashDeploymentPlan(twice)).toBe(GOLDEN_PLAN_HASH);
 	});
 
 	it("array order is part of the digest: resources are a list, not a set", () => {
-		const raw = fixture("golden-plan") as { resources: unknown[] };
-		const reversed = { ...raw, resources: [...raw.resources].reverse() };
+		const raw = asPlanObject(fixture("golden-plan"), "golden-plan");
+		const reversed = overlayResources(
+			raw,
+			[...resourceList(raw, "golden-plan")].reverse(),
+		);
 		expect(hashDeploymentPlan(parseDeploymentPlan(reversed))).not.toBe(
 			GOLDEN_PLAN_HASH,
 		);

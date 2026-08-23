@@ -26,7 +26,7 @@ afterAll(() => {
 	for (const d of dirs) rmSync(d, { recursive: true, force: true });
 });
 
-function workspace(): { root: string; outside: string } {
+function workspace() {
 	const parent = mkdtempSync(join(tmpdir(), "vpane-"));
 	dirs.push(parent);
 	const root = join(parent, "ws");

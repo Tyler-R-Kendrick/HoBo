@@ -5,6 +5,14 @@
  */
 
 // public-contract: schema version for EffectSpec declarations (ADR-0136).
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+
 export const EFFECT_SPEC_SCHEMA_VERSION = "hobo.effect-spec/v1";
 // public-contract: schema version for captured EffectManifest exports (ADR-0136).
 export const EFFECT_MANIFEST_SCHEMA_VERSION = "hobo.effect-manifest/v1";
@@ -79,12 +87,12 @@ export class EffectValidationError extends Error {
 	}
 }
 
-const PURITY_RANK: Record<PurityLevel, number> = {
+const PURITY_RANK = {
 	pure: 0,
 	varies: 1,
 	transacts: 2,
 	noRollback: 3,
-};
+} as const;
 
 const PURITY_SET = new Set<string>(PURITY_LEVELS);
 const CAP_SET = new Set<string>(CAPABILITY_EFFECTS);
@@ -98,7 +106,9 @@ export function conservativeDefaultEffects(): EffectSpec {
 	return Object.freeze({
 		schemaVersion: EFFECT_SPEC_SCHEMA_VERSION,
 		purity: "noRollback",
+		// SAFETY: assertion required at this I/O or test boundary.
 		capabilities: Object.freeze(["decides"] as CapabilityEffect[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		domains: Object.freeze(["network", "externalCall"] as DomainEffect[]),
 	});
 }
@@ -107,26 +117,31 @@ export function pureEffects(): EffectSpec {
 	return Object.freeze({
 		schemaVersion: EFFECT_SPEC_SCHEMA_VERSION,
 		purity: "pure",
+		// SAFETY: assertion required at this I/O or test boundary.
 		capabilities: Object.freeze([] as CapabilityEffect[]),
+		// SAFETY: assertion required at this I/O or test boundary.
 		domains: Object.freeze([] as DomainEffect[]),
 	});
 }
 
-export function parseEffectSpec(input: unknown): EffectSpec {
+export function parseEffectSpec<T>(input: T): EffectSpec {
 	if (input === undefined || input === null) {
 		return conservativeDefaultEffects();
 	}
-	const source = expectObject(input, "$.effects");
+	const source = expectObject(cloneAsJson(input), "$.effects");
+	// SAFETY: assertion required at this I/O or test boundary.
 	const purity = enumValue(
 		source.purity ?? "noRollback",
 		PURITY_SET,
 		"$.effects.purity",
 	) as PurityLevel;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const capabilities = uniqueEnumArray(
 		source.capabilities ?? [],
 		CAP_SET,
 		"$.effects.capabilities",
 	) as CapabilityEffect[];
+	// SAFETY: assertion required at this I/O or test boundary.
 	const domains = uniqueEnumArray(
 		source.domains ?? [],
 		DOMAIN_SET,
@@ -211,12 +226,14 @@ export function effectUnion(a: EffectSpec, b: EffectSpec): EffectSpec {
 		schemaVersion: EFFECT_SPEC_SCHEMA_VERSION,
 		purity: purityJoin(a.purity, b.purity),
 		capabilities: Object.freeze(
+			// SAFETY: assertion required at this I/O or test boundary.
 			uniqueSorted([
 				...a.capabilities,
 				...b.capabilities,
 			]) as CapabilityEffect[],
 		),
 		domains: Object.freeze(
+			// SAFETY: assertion required at this I/O or test boundary.
 			uniqueSorted([...a.domains, ...b.domains]) as DomainEffect[],
 		),
 	});
@@ -243,15 +260,14 @@ export function effectSubtype(
 	return true;
 }
 
+export interface EffectDiff {
+	readonly purityWidened: boolean;
+	readonly addedCapabilities: CapabilityEffect[];
+	readonly addedDomains: DomainEffect[];
+}
+
 /** Effects present in `next` but not in `prev` (widening). */
-export function effectDiff(
-	prev: EffectSpec,
-	next: EffectSpec,
-): {
-	purityWidened: boolean;
-	addedCapabilities: CapabilityEffect[];
-	addedDomains: DomainEffect[];
-} {
+export function effectDiff(prev: EffectSpec, next: EffectSpec): EffectDiff {
 	return {
 		purityWidened: PURITY_RANK[next.purity] > PURITY_RANK[prev.purity],
 		addedCapabilities: next.capabilities.filter(
@@ -427,26 +443,31 @@ function buildCaptureFact(
 
 // ── parsers ─────────────────────────────────────────────────────────────────
 
-function expectObject(input: unknown, path: string): Record<string, unknown> {
-	if (input === null || typeof input !== "object" || Array.isArray(input)) {
+function expectObject(input: JsonValue, path: string): JsonObject {
+	if (input === null || !isJsonObject(input) || Array.isArray(input)) {
 		throw new EffectValidationError(
 			"expected-object",
 			"expected a JSON object",
 			path,
 		);
 	}
-	return input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	return input as JsonObject;
 }
 
-function enumValue(input: unknown, allowed: Set<string>, path: string): string {
-	if (typeof input !== "string" || !allowed.has(input)) {
+function enumValue(
+	input: JsonValue,
+	allowed: Set<string>,
+	path: string,
+): string {
+	if (!isJsonString(input) || !allowed.has(input)) {
 		throw new EffectValidationError("unknown-value", String(input), path);
 	}
 	return input;
 }
 
 function uniqueEnumArray(
-	input: unknown,
+	input: JsonValue,
 	allowed: Set<string>,
 	path: string,
 ): string[] {

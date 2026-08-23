@@ -142,7 +142,7 @@ export const WORKSPACE_ACTIVATION_TELEMETRY_CONTRACT = {
 export function validateActivationContract(contract) {
   const errors = [];
 
-  if (!contract || typeof contract !== "object") {
+  if (!contract || Object.prototype.toString.call(contract) !== "[object Object]") {
     return { ok: false, errors: ["contract is required"] };
   }
 
@@ -204,7 +204,7 @@ export function validateActivationContract(contract) {
 export function validateTelemetryClaim(claim, { launchClaim = false } = {}) {
   const errors = [];
 
-  if (!claim || typeof claim !== "object") {
+  if (!claim || Object.prototype.toString.call(claim) !== "[object Object]") {
     return { ok: false, errors: ["telemetry claim is required"] };
   }
 
@@ -231,7 +231,7 @@ function hasValue(value) {
   if (Array.isArray(value)) {
     return value.length > 0;
   }
-  if (value && typeof value === "object") {
+  if (value && Object.prototype.toString.call(value) === "[object Object]") {
     return Object.keys(value).length > 0;
   }
   return value !== undefined && value !== null && value !== "";

@@ -4,7 +4,6 @@ import crypto from "node:crypto";
 import { createDeterministicContext } from "./context.js";
 import { ReplayDivergenceError } from "./divergence.js";
 import type {
-  DeterministicContext,
   EventEnvelope,
   FoldFn,
   ReplayMode,
@@ -12,6 +11,8 @@ import type {
   SeqVector,
   UpcastFn,
 } from "./types.js";
+import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export interface AssertReplayEqualsLiveInput<S> {
   events: EventEnvelope[];
@@ -20,7 +21,7 @@ export interface AssertReplayEqualsLiveInput<S> {
   upcast?: UpcastFn;
   targetSeq?: SeqVector;
   seed?: string;
-  normalize?: (value: unknown) => unknown;
+  normalize?: (value: JsonValue) => JsonValue;
   runId?: string;
 }
 
@@ -169,7 +170,7 @@ export function compareCanonicalEventOrder(left: EventEnvelope, right: EventEnve
   );
 }
 
-export function stableValue(value: unknown): unknown {
+export function stableValue(value: JsonValue): JsonValue {
   if (value instanceof Map) {
     return [...value.entries()]
       .map(([key, entry]) => [stableValue(key), stableValue(entry)])
@@ -186,7 +187,7 @@ export function stableValue(value: unknown): unknown {
     return value.map(stableValue);
   }
 
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return stableObject(
       Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, stableValue(entry)])),
     );
@@ -195,7 +196,7 @@ export function stableValue(value: unknown): unknown {
   return value;
 }
 
-export function stableStringify(value: unknown): string {
+export function stableStringify(value: JsonValue): string {
   return JSON.stringify(stableValue(value));
 }
 
@@ -212,16 +213,18 @@ function seededUnit(input: string): number {
   return Number.parseInt(hex, 16) / 0xffffffffffff;
 }
 
-function stableObject<T extends Record<string, unknown>>(value: T): T {
+function stableObject<T extends JsonObject>(value: T): T {
+  // SAFETY: assertion to `return Object.fromEntries(` is required at this boundary.
   return Object.fromEntries(
     Object.entries(value).sort(([left], [right]) => left.localeCompare(right)),
   ) as T;
 }
 
 function clone<T>(value: T): T {
-  if (typeof structuredClone === "function") {
+  if (structuredClone instanceof Function) {
     return structuredClone(value);
   }
+  // SAFETY: assertion to `return JSON.parse(JSON.stringify(value)) as T;` is required at this boundary.
   return JSON.parse(JSON.stringify(value)) as T;
 }
 

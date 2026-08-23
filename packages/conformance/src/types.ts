@@ -1,4 +1,6 @@
 // public-contract: persisted suite documents use this versioned schema identifier.
+import type { JsonValue } from "./json.js";
+
 export const SUITE_SCHEMA = "hobo.conformance.port-suite/v1" as const;
 // public-contract: persisted reports use this versioned schema identifier.
 export const REPORT_SCHEMA = "hobo.conformance.port-suite-report/v1" as const;
@@ -30,21 +32,21 @@ export type AssertionCode =
 // domain-view: parse-dont-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 export interface ValueDiff {
 	path: string;
-	expected: unknown;
-	actual: unknown;
+	expected: JsonValue;
+	actual: JsonValue;
 }
 
 // domain-view: parse-dont-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 export interface SuiteCall {
 	function: string;
-	input: unknown;
+	input: JsonValue;
 }
 
 // domain-view: parse-dont-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
 export interface SuiteExpect {
-	output?: unknown;
-	goldenIr?: unknown;
-	replayTrace?: unknown;
+	output?: JsonValue;
+	goldenIr?: JsonValue;
+	replayTrace?: JsonValue;
 }
 
 // domain-view: parse-dont-validate parsed/derived type (branded ids, generics, or richer domain fields); its generated *_pb.ts is the wire form (technical-standards.md, IMPL-011).
@@ -98,7 +100,7 @@ export interface AdapterResult {
 }
 
 export type AdapterFunction = (
-	input: unknown,
+	input: JsonValue,
 	ctx: CaseContext,
 ) => Promise<AdapterResult> | AdapterResult;
 
@@ -237,7 +239,7 @@ export interface SdkParityInput {
 	language?: string;
 	goldenIr?: {
 		equivalent?: boolean;
-		ir?: unknown;
+		ir?: JsonValue;
 	};
 	semanticsAnnex?: {
 		vectors?: Array<{

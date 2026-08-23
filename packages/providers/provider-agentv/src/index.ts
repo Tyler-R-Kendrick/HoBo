@@ -4,5 +4,7 @@ export type {
 	AgentVLiveEvalOptions,
 	AgentVMetric,
 	AssertionResult,
+	JsonValue,
+	TrajectoryInput,
 } from "./grader.js";
 export { createAgentVLiveEvalGrader } from "./grader.js";

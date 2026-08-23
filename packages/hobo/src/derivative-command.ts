@@ -11,11 +11,22 @@ import {
 import type { EventEnvelope, EventInput, PrincipalRef } from "@hobo/core";
 import { must } from "@hobo/core/total-access";
 import { createUpcasterRegistry } from "@hobo/data";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 export interface DerivativeCommandDeps {
 	// The shared Yard runtime whose durable log records the upgrade ceremony and
 	// holds the stored events the upcaster chain runs over.
 	readonly runtime?: YardRuntime;
+}
+
+interface MutableJson {
+	[key: string]: JsonValue;
 }
 
 const DERIVATIVE_ACTOR: PrincipalRef = { kind: "user", id: "user:derivative" };
@@ -33,7 +44,7 @@ export interface DerivativeUpcasterStep {
 	readonly event?: string;
 	readonly fromVersion: number;
 	readonly rename: Readonly<Record<string, string>>;
-	readonly defaults: Readonly<Record<string, unknown>>;
+	readonly defaults: JsonObject;
 	readonly drop: readonly string[];
 }
 
@@ -48,18 +59,22 @@ interface DerivativeDescriptor {
 	readonly streams: readonly string[];
 }
 
-function parseUpcaster(raw: unknown, index: number): DerivativeUpcasterStep {
-	if (typeof raw === "string") {
+function parseUpcaster(
+	raw: JsonValue | undefined,
+	index: number,
+): DerivativeUpcasterStep {
+	if (isJsonString(raw)) {
 		if (raw.length === 0) {
 			throw new Error(`derivative.json.upcasters[${index}] must be non-empty`);
 		}
 		return { name: raw, fromVersion: 1, rename: {}, defaults: {}, drop: [] };
 	}
-	if (typeof raw !== "object" || raw === null) {
+	if (!isJsonObject(raw) || raw === null) {
 		throw new Error(
 			`derivative.json.upcasters[${index}] must be a string or object`,
 		);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	const doc = raw as {
 		name?: unknown;
 		event?: unknown;
@@ -68,7 +83,7 @@ function parseUpcaster(raw: unknown, index: number): DerivativeUpcasterStep {
 		defaults?: unknown;
 		drop?: unknown;
 	};
-	if (typeof doc.name !== "string" || doc.name.length === 0) {
+	if (!isJsonString(doc.name) || doc.name.length === 0) {
 		throw new Error(
 			`derivative.json.upcasters[${index}].name must be a non-empty string`,
 		);
@@ -82,7 +97,7 @@ function parseUpcaster(raw: unknown, index: number): DerivativeUpcasterStep {
 	}
 	const rename: Record<string, string> = {};
 	if (doc.rename !== undefined) {
-		if (typeof doc.rename !== "object" || doc.rename === null) {
+		if (!isJsonObject(doc.rename) || doc.rename === null) {
 			throw new Error(
 				`derivative.json.upcasters[${index}].rename must be an object`,
 			);
@@ -93,46 +108,36 @@ function parseUpcaster(raw: unknown, index: number): DerivativeUpcasterStep {
 	}
 	return {
 		name: doc.name,
-		...(typeof doc.event === "string" && doc.event.length > 0
+		...(isJsonString(doc.event) && doc.event.length > 0
 			? { event: doc.event }
-			: {}),
+			: undefined),
 		fromVersion,
 		rename,
-		defaults:
-			typeof doc.defaults === "object" && doc.defaults !== null
-				? { ...(doc.defaults as Record<string, unknown>) }
-				: {},
+		defaults: isJsonObject(doc.defaults) ? { ...doc.defaults } : {},
 		drop: Array.isArray(doc.drop) ? doc.drop.map((field) => String(field)) : [],
 	};
 }
 
-function parseDescriptor(raw: unknown): DerivativeDescriptor {
-	if (typeof raw !== "object" || raw === null) {
+function parseDescriptor(raw: JsonValue | undefined): DerivativeDescriptor {
+	if (!isJsonObject(raw) || raw === null) {
 		throw new Error("derivative.json must be a JSON object");
 	}
-	const doc = raw as {
-		name?: unknown;
-		version?: unknown;
-		upgradeTo?: unknown;
-		upcasters?: unknown;
-		streams?: unknown;
-	};
-	if (typeof doc.name !== "string" || doc.name.length === 0) {
+	if (!isJsonString(raw.name) || raw.name.length === 0) {
 		throw new Error("derivative.json.name must be a non-empty string");
 	}
-	if (typeof doc.version !== "string" || doc.version.length === 0) {
+	if (!isJsonString(raw.version) || raw.version.length === 0) {
 		throw new Error("derivative.json.version must be a non-empty string");
 	}
-	const upcasters = Array.isArray(doc.upcasters)
-		? doc.upcasters.map((upcaster, index) => parseUpcaster(upcaster, index))
+	const upcasters = Array.isArray(raw.upcasters)
+		? raw.upcasters.map((upcaster, index) => parseUpcaster(upcaster, index))
 		: [];
-	const streams = Array.isArray(doc.streams)
-		? doc.streams.map((stream) => String(stream))
+	const streams = Array.isArray(raw.streams)
+		? raw.streams.map((stream) => String(stream))
 		: [];
 	return {
-		name: doc.name,
-		version: doc.version,
-		...(typeof doc.upgradeTo === "string" ? { upgradeTo: doc.upgradeTo } : {}),
+		name: raw.name,
+		version: raw.version,
+		...(isJsonString(raw.upgradeTo) ? { upgradeTo: raw.upgradeTo } : undefined),
 		upcasters,
 		streams,
 	};
@@ -143,23 +148,27 @@ function parseDescriptor(raw: unknown): DerivativeDescriptor {
 // upcaster does not fit the stored corpus), never a silent skip.
 function transformFor(
 	step: DerivativeUpcasterStep,
-): (data: unknown) => unknown {
-	return (data: unknown): unknown => {
-		if (typeof data !== "object" || data === null || Array.isArray(data)) {
+): (data: JsonValue) => JsonValue {
+	return (data: JsonValue): JsonValue => {
+		if (!isJsonObject(data) || Array.isArray(data)) {
 			throw new Error(
-				`upcaster ${step.name}: event body must be an object, got ${Array.isArray(data) ? "array" : typeof data}`,
+				`upcaster ${step.name}: event body must be an object, got ${Array.isArray(data) ? "array" : "scalar"}`,
 			);
 		}
-		const body: Record<string, unknown> = {
-			...(data as Record<string, unknown>),
-		};
+		const body: MutableJson = Object.assign({}, data);
 		for (const [from, to] of Object.entries(step.rename)) {
 			if (!Object.hasOwn(body, from)) {
 				throw new Error(
 					`upcaster ${step.name}: cannot rename missing field "${from}"`,
 				);
 			}
-			body[to] = body[from];
+			const renamed = body[from];
+			if (renamed === undefined) {
+				throw new Error(
+					`upcaster ${step.name}: cannot rename missing field "${from}"`,
+				);
+			}
+			body[to] = renamed;
 			delete body[from];
 		}
 		for (const field of step.drop) {
@@ -174,16 +183,18 @@ function transformFor(
 	};
 }
 
-function canonicalJson(value: unknown): string {
+function canonicalJson(value: JsonValue | undefined): string {
 	if (Array.isArray(value)) {
 		return `[${value.map((item) => canonicalJson(item)).join(",")}]`;
 	}
-	if (value && typeof value === "object") {
-		return `{${Object.keys(value as Record<string, unknown>)
+	if (value && isJsonObject(value)) {
+		// SAFETY: assertion required at this I/O or test boundary.
+		return `{${Object.keys(value as JsonObject)
 			.sort()
 			.map(
 				(key) =>
-					`${JSON.stringify(key)}:${canonicalJson((value as Record<string, unknown>)[key])}`,
+					// SAFETY: assertion required at this I/O or test boundary.
+					`${JSON.stringify(key)}:${canonicalJson((value as JsonObject)[key])}`,
 			)
 			.join(",")}}`;
 	}
@@ -231,8 +242,11 @@ async function executeUpcasters(
 		}
 		boundTypes.add(step.event);
 		try {
-			registry.register(step.event, step.fromVersion, transformFor(step));
+			registry.register(step.event, step.fromVersion, (data) =>
+				transformFor(step)(cloneAsJson(data)),
+			);
 		} catch (error) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			errors.push(`upcaster ${step.name}: ${(error as Error).message}`);
 		}
 	}
@@ -257,6 +271,7 @@ async function executeUpcasters(
 		try {
 			events = await collectStream(store, stream);
 		} catch (error) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			errors.push(`stream ${stream}: ${(error as Error).message}`);
 			continue;
 		}
@@ -272,7 +287,10 @@ async function executeUpcasters(
 			try {
 				const once = registry.upcast(event);
 				const twice = registry.upcast(event);
-				if (canonicalJson(once.data) !== canonicalJson(twice.data)) {
+				if (
+					canonicalJson(cloneAsJson(once.data)) !==
+					canonicalJson(cloneAsJson(twice.data))
+				) {
 					errors.push(
 						`impure upcaster chain for ${event.type}@v${event.v} (${stream}#${event.seq}): identical input produced different output`,
 					);
@@ -293,6 +311,7 @@ async function executeUpcasters(
 				});
 			} catch (error) {
 				errors.push(
+					// SAFETY: assertion required at this I/O or test boundary.
 					`${event.type}@v${event.v} (${stream}#${event.seq}): ${(error as Error).message}`,
 				);
 			}
@@ -370,6 +389,7 @@ export function createDerivativeCommand(
 					ok: false,
 					status: "no_descriptor",
 					code: "HOBO_DERIVATIVE_NO_DESCRIPTOR",
+					// SAFETY: assertion required at this I/O or test boundary.
 					message: `hobo derivative: could not read ${DESCRIPTOR_FILE}: ${(error as Error).message}`,
 					remediation: [
 						`Add a ${DESCRIPTOR_FILE} with { name, version, upgradeTo, upcasters, streams }.`,

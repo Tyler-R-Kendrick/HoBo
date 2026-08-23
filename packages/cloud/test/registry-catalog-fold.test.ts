@@ -38,8 +38,8 @@ function provider(
 		id?: string;
 		regions?: string[];
 		ports?: string[];
-		manifestCapabilities?: Array<Record<string, unknown>>;
-		costFacts?: Array<Record<string, unknown>>;
+		manifestCapabilities?: Array<Record<string, JsonValue>>;
+		costFacts?: Array<Record<string, JsonValue>>;
 		published?: Record<string, string>;
 	} = {},
 ): RegistrableProvider {
@@ -290,7 +290,7 @@ describe("createRegistryFromProviders", () => {
 });
 
 describe("parseRegisteredDefinitions", () => {
-	function fact(definitions: unknown, providerId: unknown = "acme") {
+	function fact(definitions: JsonValue, providerId: JsonValue = "acme") {
 		return { providerId, definitions };
 	}
 
@@ -436,6 +436,7 @@ describe("parseRegisteredDefinitions", () => {
 
 describe("foldRegistryStream", () => {
 	function registered(providerId: string, ports: string[] = ["database"]) {
+		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 		return {
 			type: CLOUD_EVENTS.ProviderRegistered,
 			data: {
@@ -444,7 +445,7 @@ describe("foldRegistryStream", () => {
 			},
 		};
 	}
-	function approved(providerId: unknown) {
+	function approved(providerId: JsonValue) {
 		return { type: CLOUD_EVENTS.ProviderApproved, data: { providerId } };
 	}
 
@@ -526,6 +527,7 @@ describe("foldRegistryStream", () => {
 
 describe("the event-backed registry", () => {
 	function storeOf(events: Array<{ type: string; data?: unknown }>) {
+		// SAFETY: this fixture implements the store read contract used by the event-backed registry.
 		return {
 			async *read() {
 				let seq = 0;
@@ -544,7 +546,7 @@ describe("the event-backed registry", () => {
 					};
 				}
 			},
-		} as unknown as Parameters<typeof createEventBackedRegistry>[0]["store"];
+		} as Parameters<typeof createEventBackedRegistry>[0]["store"];
 	}
 
 	function registryOver(
@@ -554,7 +556,7 @@ describe("the event-backed registry", () => {
 		return createEventBackedRegistry({
 			store: storeOf(events),
 			streamId: "registry",
-			...(base !== undefined ? { base } : {}),
+			...(base !== undefined && { base }),
 		});
 	}
 
@@ -714,6 +716,7 @@ describe("the registration and approval facts", () => {
 		// The digest is how a later reader confirms the recorded definitions came
 		// from the manifest the provider actually published.
 		const fact = registerProviderFact(provider({ ports: ["database"] }));
+		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 		const data = fact.data as {
 			providerId: string;
 			definitions: Array<{ port: string }>;
@@ -729,7 +732,8 @@ describe("the registration and approval facts", () => {
 		// silently on the way out and be undefined on the way back in — which is
 		// exactly why the parse rebuilds the negotiation.
 		const fact = registerProviderFact(provider());
-		const first = (fact.data as { definitions: Array<Record<string, unknown>> })
+		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+		const first = (fact.data as { definitions: Array<Record<string, JsonValue>> })
 			.definitions[0];
 		expect(first && "satisfies" in first).toBe(false);
 	});
@@ -739,6 +743,7 @@ describe("the registration and approval facts", () => {
 		// produce differing digests run to run.
 		const a = registerProviderFact(provider({ published: {} }));
 		const b = registerProviderFact(provider({ published: {} }));
+		// SAFETY: registerProviderFact emits manifestIndexDigest in its event body.
 		expect(
 			(a.data as { manifestIndexDigest: string }).manifestIndexDigest,
 		).toBe((b.data as { manifestIndexDigest: string }).manifestIndexDigest);
@@ -755,6 +760,7 @@ describe("the registration and approval facts", () => {
 				published: { "/.well-known/capability-manifest/index.json": '{"v":2}' },
 			}),
 		);
+		// SAFETY: registerProviderFact emits manifestIndexDigest in its event body.
 		expect(
 			(a.data as { manifestIndexDigest: string }).manifestIndexDigest,
 		).not.toBe((b.data as { manifestIndexDigest: string }).manifestIndexDigest);
@@ -771,6 +777,7 @@ describe("the registration and approval facts", () => {
 
 	test("an approval fact omits the approver rather than storing undefined", () => {
 		const anonymous = approveProviderFact("acme");
+		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 		expect("approvedBy" in (anonymous.data as object)).toBe(false);
 	});
 
@@ -791,3 +798,4 @@ describe("the registration and approval facts", () => {
 		).toEqual({ kind: "full" });
 	});
 });
+import type { JsonValue } from "../src/plan-types.js";

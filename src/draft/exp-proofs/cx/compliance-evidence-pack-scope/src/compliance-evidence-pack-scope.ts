@@ -35,7 +35,6 @@ export const REQUIRED_BOUNDARIES = Object.freeze([
   "release",
 ] as const);
 
-type Phase = "M0" | "M1" | "M2" | "M3" | "M4";
 type AssuranceSectionId = (typeof REQUIRED_ASSURANCE_SECTIONS)[number];
 type M1EvidenceId = (typeof REQUIRED_M1_EVIDENCE)[number];
 type PersonaId = (typeof REQUIRED_PERSONAS)[number];
@@ -141,6 +140,8 @@ type RequestClassification = Readonly<{
   owner: string;
   inScope: boolean;
 }>;
+
+type ComplianceEvidenceRequest = string | null | undefined;
 
 const IMPLEMENTATION_PHASES = new Set(["M1", "M2", "M3", "M4"]);
 
@@ -428,7 +429,7 @@ export function canCreateComplianceEvidenceFollowUp({
   };
 }
 
-export function classifyComplianceEvidenceRequest(request: unknown): RequestClassification {
+export function classifyComplianceEvidenceRequest(request: ComplianceEvidenceRequest): RequestClassification {
   const text = String(request ?? "").toLowerCase();
 
   if (/\b(dpa|subprocessor|privacy terms|legal terms|legal)\b/.test(text)) {

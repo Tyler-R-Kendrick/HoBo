@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export declare const AZURE_PROVIDER_ID = "@hobo/provider-azure";
 export declare const AZURE_PROVIDER_VERSION = "hobo.provider-azure/v1";
 export declare const AZURE_PROVIDER_TARGET = "azure";
@@ -83,7 +84,7 @@ export interface AzureProvider {
   manifest: { claimedCapabilities: AzureCapability[] };
   with: AzureWithBuilders;
   registerDefaultDefinitions<T extends unknown[]>(registry: T): T;
-  realize(plan: Record<string, unknown>): Record<string, unknown>;
+  realize(plan: JsonObject): JsonObject;
   capabilityManifest(): {
     provider: typeof AZURE_PROVIDER_ID;
     claimedCapabilities: AzureCapability[];
@@ -92,11 +93,11 @@ export interface AzureProvider {
     capabilities: AzureCapabilityManifestEntry[];
     cost: { facts: Array<{ sku: string }> };
   };
-  client(port: "database", outputs: Record<string, unknown>): AzureDatabaseClient;
-  client(port: "objectStore", outputs: Record<string, unknown>): AzureObjectStoreClient;
-  client(port: "compute", outputs: Record<string, unknown>): AzureComputeClient;
-  client(port: "queue", outputs: Record<string, unknown>): AzureQueueClient;
-  client(port: "cache", outputs: Record<string, unknown>): AzureCacheClient;
+  client(port: "database", outputs: JsonObject): AzureDatabaseClient;
+  client(port: "objectStore", outputs: JsonObject): AzureObjectStoreClient;
+  client(port: "compute", outputs: JsonObject): AzureComputeClient;
+  client(port: "queue", outputs: JsonObject): AzureQueueClient;
+  client(port: "cache", outputs: JsonObject): AzureCacheClient;
 }
 
 export interface AzureDatabaseClient {
@@ -104,39 +105,39 @@ export interface AzureDatabaseClient {
   providerId: typeof AZURE_PROVIDER_ID;
   connectionString: string;
   ping(): "database:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface AzureObjectStoreClient {
   port: "objectStore";
   providerId: typeof AZURE_PROVIDER_ID;
-  containerName: unknown;
+  containerName: JsonValue;
   ping(): "objectStore:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface AzureComputeClient {
   port: "compute";
   providerId: typeof AZURE_PROVIDER_ID;
-  url: unknown;
+  url: JsonValue;
   ping(): "compute:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface AzureQueueClient {
   port: "queue";
   providerId: typeof AZURE_PROVIDER_ID;
-  queueName: unknown;
+  queueName: JsonValue;
   ping(): "queue:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export interface AzureCacheClient {
   port: "cache";
   providerId: typeof AZURE_PROVIDER_ID;
-  endpoint: unknown;
+  endpoint: JsonValue;
   ping(): "cache:ok";
-  describe(): Record<string, unknown>;
+  describe(): JsonObject;
 }
 
 export declare function createAzureProvider(options?: {
@@ -145,8 +146,14 @@ export declare function createAzureProvider(options?: {
   campEvidence?: "pass" | "fail" | Record<string, Partial<Record<"realProviderDrift" | "iam" | "mtls" | "quota", boolean>>>;
 }): AzureProvider;
 
-export declare function createAzureMultiCloudShopPlan(options?: Record<string, unknown>): Record<string, unknown>;
-export declare function mergeAzureResolvedOptions(provider: AzureProvider, optionBlocks: readonly unknown[]): Record<string, unknown>;
-export declare function evaluateAzurePlan(provider: AzureProvider, plan: Record<string, unknown>): Record<string, unknown>;
-export declare function realizeAzurePlan(provider: AzureProvider, plan: Record<string, unknown>): Record<string, unknown>;
-export declare function simulateAzureApply(provider: AzureProvider, plan: Record<string, unknown>, options?: Record<string, unknown>): Record<string, unknown>;
+export interface AzureShopPlanInput {
+  resourceOptions?: {
+    readonly [resourceId: string]: readonly AzureOptionBlock<AzureCapability, object>[];
+  };
+}
+
+export declare function createAzureMultiCloudShopPlan(options?: AzureShopPlanInput): JsonObject;
+export declare function mergeAzureResolvedOptions(provider: AzureProvider, optionBlocks: readonly unknown[]): JsonObject;
+export declare function evaluateAzurePlan(provider: AzureProvider, plan: JsonObject): JsonObject;
+export declare function realizeAzurePlan(provider: AzureProvider, plan: JsonObject): JsonObject;
+export declare function simulateAzureApply(provider: AzureProvider, plan: JsonObject, options?: JsonObject): JsonObject;

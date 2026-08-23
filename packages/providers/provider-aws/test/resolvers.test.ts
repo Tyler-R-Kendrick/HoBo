@@ -25,7 +25,7 @@ import {
 	parseResolveOutcome,
 	parseResolveRequest,
 	type ResolveOutcome,
-	type ResolverError,
+	ResolverError,
 	type TransportRequest,
 	type TransportResponse,
 } from "@hobo/core";
@@ -46,6 +46,14 @@ import {
 	awsResolverRegistry,
 	guardedAwsTransport,
 } from "../src/index.js";
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../src/json.js";
 
 const REGION = "us-east-1";
 const ACCOUNT = "123456789012";
@@ -128,7 +136,7 @@ function reply(status: number, body: string): TransportResponse {
 	return { status, headers: {}, body };
 }
 
-function json(status: number, value: unknown): TransportResponse {
+function json(status: number, value: JsonValue): TransportResponse {
 	return reply(status, JSON.stringify(value));
 }
 
@@ -151,19 +159,36 @@ function xmlFault(
 	);
 }
 
-function formParameters(body: string | undefined): Record<string, string> {
-	const parsed: Record<string, string> = {};
+function formParameters(body: string | undefined): JsonObject {
+	const parsed = {};
 	for (const pair of (body ?? "").split("&")) {
 		if (pair === "") continue;
 		const separator = pair.indexOf("=");
 		const name = decodeURIComponent(
 			separator < 0 ? pair : pair.slice(0, separator),
 		);
-		parsed[name] = decodeURIComponent(
-			separator < 0 ? "" : pair.slice(separator + 1),
-		);
+		Object.assign(parsed, {
+			[name]: decodeURIComponent(
+				separator < 0 ? "" : pair.slice(separator + 1),
+			),
+		});
 	}
 	return parsed;
+}
+
+function formString(parameters: JsonObject, key: string): string {
+	const value = parameters[key];
+	return isJsonString(value) ? value : "";
+}
+
+function formOptional(parameters: JsonObject, key: string): string | undefined {
+	const value = parameters[key];
+	return isJsonString(value) ? value : undefined;
+}
+
+function jsonText(record: JsonObject, key: string): string {
+	const value = record[key];
+	return isJsonString(value) ? value : "";
 }
 
 function queueUrlOf(name: string): string {
@@ -285,11 +310,11 @@ function dynamoHandler(
 	request: TransportRequest,
 ): TransportResponse {
 	const target = (request.headers["x-amz-target"] ?? "").split(".")[1] ?? "";
-	const payload = JSON.parse(request.body ?? "{}") as Record<string, unknown>;
-	const name = String(payload.TableName ?? "");
+	const payload = parseJsonObject(request.body ?? "{}");
+	const name = jsonText(payload, "TableName");
 	const table = account.tables.get(name);
 
-	function describe(entry: FakeTable): Record<string, unknown> {
+	function describe(entry: FakeTable) {
 		return {
 			TableName: name,
 			TableArn: `arn:aws:dynamodb:${REGION}:${ACCOUNT}:table/${name}`,
@@ -313,14 +338,14 @@ function dynamoHandler(
 			return jsonFault(400, "ResourceInUseException", "Table already exists");
 		}
 		const schema = payload.KeySchema;
-		const first = Array.isArray(schema) ? schema[0] : undefined;
+		const first = isJsonArray(schema) ? schema[0] : undefined;
 		const partitionKey =
-			first !== null && typeof first === "object"
-				? String((first as Record<string, unknown>).AttributeName ?? "")
+			isJsonObject(first) && isJsonString(first.AttributeName)
+				? first.AttributeName
 				: "";
 		const created: FakeTable = {
 			partitionKey,
-			billingMode: String(payload.BillingMode ?? "PROVISIONED"),
+			billingMode: jsonText(payload, "BillingMode") || "PROVISIONED",
 		};
 		account.tables.set(name, created);
 		return json(200, { TableDescription: describe(created) });
@@ -333,7 +358,7 @@ function dynamoHandler(
 				"Requested resource not found",
 			);
 		}
-		table.billingMode = String(payload.BillingMode ?? table.billingMode);
+		table.billingMode = jsonText(payload, "BillingMode") || table.billingMode;
 		return json(200, { TableDescription: describe(table) });
 	}
 	if (target === "DeleteTable") {
@@ -355,10 +380,10 @@ function sqsHandler(
 	request: TransportRequest,
 ): TransportResponse {
 	const parameters = formParameters(request.body);
-	const action = parameters.Action ?? "";
+	const action = formString(parameters, "Action");
 
 	if (action === "GetQueueUrl") {
-		const name = parameters.QueueName ?? "";
+		const name = formString(parameters, "QueueName");
 		return account.queues.has(name)
 			? reply(
 					200,
@@ -371,15 +396,15 @@ function sqsHandler(
 				);
 	}
 	if (action === "CreateQueue") {
-		const name = parameters.QueueName ?? "";
-		const attributes: Record<string, string> = {
+		const name = formString(parameters, "QueueName");
+		const attributes = {
 			QueueArn: `arn:aws:sqs:${REGION}:${ACCOUNT}:${name}`,
 		};
 		for (let index = 1; index <= 10; index += 1) {
-			const key = parameters[`Attribute.${index}.Name`];
-			const value = parameters[`Attribute.${index}.Value`];
+			const key = formOptional(parameters, `Attribute.${index}.Name`);
+			const value = formOptional(parameters, `Attribute.${index}.Value`);
 			if (key === undefined || value === undefined) break;
-			attributes[key] = value;
+			Object.assign(attributes, { [key]: value });
 		}
 		account.queues.set(name, { attributes });
 		return reply(
@@ -387,7 +412,7 @@ function sqsHandler(
 			`<CreateQueueResponse><CreateQueueResult><QueueUrl>${queueUrlOf(name)}</QueueUrl></CreateQueueResult></CreateQueueResponse>`,
 		);
 	}
-	const name = queueNameFromUrl(parameters.QueueUrl ?? "");
+	const name = queueNameFromUrl(formString(parameters, "QueueUrl"));
 	const queue = account.queues.get(name);
 	if (queue === undefined) {
 		return xmlFault(
@@ -409,9 +434,11 @@ function sqsHandler(
 		);
 	}
 	if (action === "SetQueueAttributes") {
-		const key = parameters["Attribute.1.Name"];
-		const value = parameters["Attribute.1.Value"];
-		if (key !== undefined && value !== undefined) queue.attributes[key] = value;
+		const key = formOptional(parameters, "Attribute.1.Name");
+		const value = formOptional(parameters, "Attribute.1.Value");
+		if (key !== undefined && value !== undefined) {
+			Object.assign(queue.attributes, { [key]: value });
+		}
 		return reply(200, "<SetQueueAttributesResponse/>");
 	}
 	if (action === "DeleteQueue") {
@@ -426,7 +453,7 @@ function snsHandler(
 	request: TransportRequest,
 ): TransportResponse {
 	const parameters = formParameters(request.body);
-	const action = parameters.Action ?? "";
+	const action = formString(parameters, "Action");
 
 	if (action === "ListTopics") {
 		const members = [...account.topics.keys()]
@@ -440,13 +467,13 @@ function snsHandler(
 		);
 	}
 	if (action === "CreateTopic") {
-		const name = parameters.Name ?? "";
-		const attributes: Record<string, string> = {};
+		const name = formString(parameters, "Name");
+		const attributes = {};
 		for (let index = 1; index <= 10; index += 1) {
-			const key = parameters[`Attributes.entry.${index}.key`];
-			const value = parameters[`Attributes.entry.${index}.value`];
+			const key = formOptional(parameters, `Attributes.entry.${index}.key`);
+			const value = formOptional(parameters, `Attributes.entry.${index}.value`);
 			if (key === undefined || value === undefined) break;
-			attributes[key] = value;
+			Object.assign(attributes, { [key]: value });
 		}
 		account.topics.set(name, { attributes });
 		return reply(
@@ -454,7 +481,7 @@ function snsHandler(
 			`<CreateTopicResponse><CreateTopicResult><TopicArn>${topicArnOf(name)}</TopicArn></CreateTopicResult></CreateTopicResponse>`,
 		);
 	}
-	const arn = parameters.TopicArn ?? "";
+	const arn = formString(parameters, "TopicArn");
 	const name = arn.slice(arn.lastIndexOf(":") + 1);
 	const topic = account.topics.get(name);
 	if (topic === undefined) {
@@ -473,9 +500,11 @@ function snsHandler(
 		);
 	}
 	if (action === "SetTopicAttributes") {
-		const key = parameters.AttributeName;
-		const value = parameters.AttributeValue;
-		if (key !== undefined && value !== undefined) topic.attributes[key] = value;
+		const key = formOptional(parameters, "AttributeName");
+		const value = formOptional(parameters, "AttributeValue");
+		if (key !== undefined && value !== undefined) {
+			Object.assign(topic.attributes, { [key]: value });
+		}
 		return reply(200, "<SetTopicAttributesResponse/>");
 	}
 	if (action === "DeleteTopic") {
@@ -490,18 +519,20 @@ function secretsHandler(
 	request: TransportRequest,
 ): TransportResponse {
 	const target = (request.headers["x-amz-target"] ?? "").split(".")[1] ?? "";
-	const payload = JSON.parse(request.body ?? "{}") as Record<string, unknown>;
-	const name = String(payload.SecretId ?? payload.Name ?? "");
+	const payload = parseJsonObject(request.body ?? "{}");
+	const name = jsonText(payload, "SecretId") || jsonText(payload, "Name");
 	const secret = account.secrets.get(name);
 
-	function describe(entry: FakeSecret): Record<string, unknown> {
+	function describe(entry: FakeSecret) {
 		return {
 			ARN: `arn:aws:secretsmanager:${REGION}:${ACCOUNT}:secret:${name}-AbCdEf`,
 			Name: name,
 			...(entry.description === undefined
-				? {}
+				? undefined
 				: { Description: entry.description }),
-			...(entry.kmsKeyId === undefined ? {} : { KmsKeyId: entry.kmsKeyId }),
+			...(entry.kmsKeyId === undefined
+				? undefined
+				: { KmsKeyId: entry.kmsKeyId }),
 		};
 	}
 
@@ -523,12 +554,10 @@ function secretsHandler(
 			);
 		}
 		const created: FakeSecret = {
-			description:
-				typeof payload.Description === "string"
-					? payload.Description
-					: undefined,
-			kmsKeyId:
-				typeof payload.KmsKeyId === "string" ? payload.KmsKeyId : undefined,
+			description: isJsonString(payload.Description)
+				? payload.Description
+				: undefined,
+			kmsKeyId: isJsonString(payload.KmsKeyId) ? payload.KmsKeyId : undefined,
 		};
 		account.secrets.set(name, created);
 		return json(200, describe(created));
@@ -541,11 +570,10 @@ function secretsHandler(
 				"Secrets Manager can't find the specified secret",
 			);
 		}
-		if (typeof payload.Description === "string") {
+		if (isJsonString(payload.Description)) {
 			secret.description = payload.Description;
 		}
-		if (typeof payload.KmsKeyId === "string")
-			secret.kmsKeyId = payload.KmsKeyId;
+		if (isJsonString(payload.KmsKeyId)) secret.kmsKeyId = payload.KmsKeyId;
 		return json(200, describe(secret));
 	}
 	if (target === "DeleteSecret") {
@@ -567,8 +595,8 @@ function ssmHandler(
 	request: TransportRequest,
 ): TransportResponse {
 	const target = (request.headers["x-amz-target"] ?? "").split(".")[1] ?? "";
-	const payload = JSON.parse(request.body ?? "{}") as Record<string, unknown>;
-	const name = String(payload.Name ?? "");
+	const payload = parseJsonObject(request.body ?? "{}");
+	const name = jsonText(payload, "Name");
 	const parameter = account.parameters.get(name);
 
 	if (target === "GetParameter") {
@@ -592,8 +620,8 @@ function ssmHandler(
 			);
 		}
 		account.parameters.set(name, {
-			value: String(payload.Value ?? ""),
-			type: String(payload.Type ?? "String"),
+			value: jsonText(payload, "Value"),
+			type: jsonText(payload, "Type") || "String",
 		});
 		return json(200, { Version: 1, Tier: payload.Tier ?? "Standard" });
 	}
@@ -624,7 +652,7 @@ interface ProductCase {
 	readonly productId: string;
 	readonly slot: CapabilitySlot;
 	readonly logicalId: string;
-	readonly desired: Readonly<Record<string, unknown>>;
+	readonly desired: JsonObject;
 	/** How many of this product exist in the fake account. */
 	count(account: FakeAccount): number;
 	/** Does this request create the resource (as opposed to reading it)? */
@@ -687,7 +715,7 @@ function hasTarget(request: TransportRequest, operation: string): boolean {
 }
 
 function hasAction(request: TransportRequest, action: string): boolean {
-	return formParameters(request.body).Action === action;
+	return formString(formParameters(request.body), "Action") === action;
 }
 
 const PRODUCTS: readonly ProductCase[] = [
@@ -861,8 +889,8 @@ describe("credentials never leave the authorization header", () => {
 	it("signs the same request the same way twice, because the clock is injected", async () => {
 		const first = harness();
 		const second = harness();
-		await first.reconcile(PRODUCTS[0] as ProductCase);
-		await second.reconcile(PRODUCTS[0] as ProductCase);
+		await first.reconcile(productAt(0));
+		await second.reconcile(productAt(0));
 
 		expect(second.aws.calls.map((call) => call.headers.authorization)).toEqual(
 			first.aws.calls.map((call) => call.headers.authorization),
@@ -875,19 +903,28 @@ describe("credentials never leave the authorization header", () => {
 // ---------------------------------------------------------------------------
 
 /** Vitest's `rejects` loses the typed code, so the refusal is caught by hand. */
-async function refusal(run: () => Promise<unknown>): Promise<ResolverError> {
+async function refusal(run: () => Promise<void>): Promise<ResolverError> {
 	try {
 		await run();
 	} catch (cause) {
-		return cause as ResolverError;
+		if (cause instanceof ResolverError) return cause;
+		throw cause;
 	}
 	throw new Error("expected a ResolverError, but the call resolved");
 }
 
+function productAt(index: number): ProductCase {
+	const product = PRODUCTS[index];
+	if (product === undefined) {
+		throw new Error(`expected product at ${index}`);
+	}
+	return product;
+}
+
 describe("refusals carry a typed code and no credential material", () => {
-	const bucket = PRODUCTS[0] as ProductCase;
-	const table = PRODUCTS[1] as ProductCase;
-	const queue = PRODUCTS[2] as ProductCase;
+	const bucket = productAt(0);
+	const table = productAt(1);
+	const queue = productAt(2);
 
 	it("turns an AWS error body into a redacted RESOLVER_PROVIDER_REJECTED", async () => {
 		const runner = harness();
@@ -1035,7 +1072,7 @@ describe("refusals carry a typed code and no credential material", () => {
 
 		const error = await refusal(() =>
 			runner.reconcile({
-				...(PRODUCTS[6] as ProductCase),
+				...productAt(6),
 				desired: { value: "hunter2", type: "SecureString" },
 			}),
 		);
@@ -1072,7 +1109,7 @@ describe("refusals carry a typed code and no credential material", () => {
 describe("product-specific behaviour", () => {
 	it("applies the S3 versioning and public-access deltas, then stops", async () => {
 		const runner = harness();
-		const created = await runner.reconcile(PRODUCTS[0] as ProductCase);
+		const created = await runner.reconcile(productAt(0));
 
 		expect(created.action).toBe("create");
 		expect(runner.account.buckets.get("hobo-orders")).toEqual({
@@ -1084,14 +1121,14 @@ describe("product-specific behaviour", () => {
 		// `adopt`, not `noop`: the request carried no physicalId, so the resolver
 		// found a resource the caller did not know it owned. That distinction is
 		// the audit record.
-		const settled = await runner.reconcile(PRODUCTS[0] as ProductCase);
+		const settled = await runner.reconcile(productAt(0));
 		expect(settled.action).toBe("adopt");
 		expect(settled.outputs.versioning).toBe("Enabled");
 	});
 
 	it("reports noop when the request already names the physical id", async () => {
 		const runner = harness();
-		await runner.reconcile(PRODUCTS[0] as ProductCase);
+		await runner.reconcile(productAt(0));
 
 		const registry = awsResolverRegistry({
 			region: REGION,
@@ -1124,7 +1161,7 @@ describe("product-specific behaviour", () => {
 		});
 		const runner = harness(account);
 
-		const outcome = await runner.reconcile(PRODUCTS[0] as ProductCase);
+		const outcome = await runner.reconcile(productAt(0));
 
 		expect(outcome.action).not.toBe("replace");
 		expect(outcome.diagnostics.join(" ")).toMatch(/immutable/u);
@@ -1138,7 +1175,7 @@ describe("product-specific behaviour", () => {
 		});
 		const runner = harness(account);
 
-		const outcome = await runner.reconcile(PRODUCTS[1] as ProductCase);
+		const outcome = await runner.reconcile(productAt(1));
 
 		expect(outcome.action).not.toBe("replace");
 		expect(outcome.diagnostics.join(" ")).toMatch(/immutable/u);
@@ -1152,7 +1189,7 @@ describe("product-specific behaviour", () => {
 		});
 		const runner = harness(account);
 
-		const outcome = await runner.reconcile(PRODUCTS[1] as ProductCase);
+		const outcome = await runner.reconcile(productAt(1));
 
 		expect(outcome.action).toBe("update");
 		expect(account.tables.get("hobo-sessions")?.billingMode).toBe(
@@ -1162,7 +1199,7 @@ describe("product-specific behaviour", () => {
 
 	it("names a FIFO queue with the .fifo suffix AWS requires", async () => {
 		const runner = harness();
-		const outcome = await runner.reconcile(PRODUCTS[3] as ProductCase);
+		const outcome = await runner.reconcile(productAt(3));
 
 		expect([...runner.account.queues.keys()]).toEqual(["hobo-ordered.fifo"]);
 		expect(
@@ -1173,13 +1210,13 @@ describe("product-specific behaviour", () => {
 
 	it("sets an SQS visibility timeout on create and converges without resetting it", async () => {
 		const runner = harness();
-		await runner.reconcile(PRODUCTS[2] as ProductCase);
+		await runner.reconcile(productAt(2));
 
 		expect(
 			runner.account.queues.get("hobo-jobs")?.attributes.VisibilityTimeout,
 		).toBe("45");
 
-		await runner.reconcile(PRODUCTS[2] as ProductCase);
+		await runner.reconcile(productAt(2));
 		expect(
 			runner.aws.calls.filter((call) => hasAction(call, "SetQueueAttributes")),
 		).toHaveLength(0);
@@ -1187,7 +1224,7 @@ describe("product-specific behaviour", () => {
 
 	it("creates a Secrets Manager secret with no version, and says so", async () => {
 		const runner = harness();
-		const outcome = await runner.reconcile(PRODUCTS[5] as ProductCase);
+		const outcome = await runner.reconcile(productAt(5));
 
 		const bodies = runner.aws.calls
 			.filter((call) => hasTarget(call, "CreateSecret"))
@@ -1203,7 +1240,7 @@ describe("product-specific behaviour", () => {
 		account.topics.set("hobo-events", { attributes: {} });
 		const runner = harness(account);
 
-		const outcome = await runner.reconcile(PRODUCTS[4] as ProductCase);
+		const outcome = await runner.reconcile(productAt(4));
 
 		expect(outcome.action).toBe("adopt");
 		expect(account.topics.size).toBe(1);
@@ -1212,7 +1249,7 @@ describe("product-specific behaviour", () => {
 	it("diagnoses an S3 storage class it cannot apply", async () => {
 		const runner = harness();
 		const outcome = await runner.reconcile({
-			...(PRODUCTS[0] as ProductCase),
+			...productAt(0),
 			desired: { storageClass: "intelligent-tiering" },
 		});
 

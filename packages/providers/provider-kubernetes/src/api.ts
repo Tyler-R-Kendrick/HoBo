@@ -13,7 +13,14 @@
  * length of a rollout. Reading `readyReplicas` on its own reports the previous
  * ReplicaSet's success as the new rollout's.
  */
+
 import { contractChanged, redactClusterText } from "./errors.js";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+} from "./json.js";
 
 const DNS_1123_LABEL = /^[a-z0-9]([-a-z0-9]{0,61}[a-z0-9])?$/u;
 const UID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/u;
@@ -85,52 +92,42 @@ export type ApiStatus = {
 	readonly code: number;
 };
 
-function decodeObject(body: string, what: string): Record<string, unknown> {
+function decodeObject(body: string, what: string): JsonObject {
 	let decoded: unknown;
 	try {
+		// SAFETY: assertion to `ON.parse(body) as unknown; ` is required at this boundary.
 		decoded = JSON.parse(body) as unknown;
 	} catch {
 		contractChanged(`${what} response was not JSON`, {
 			preview: redactClusterText(body, 80),
 		});
 	}
-	if (
-		typeof decoded !== "object" ||
-		decoded === null ||
-		Array.isArray(decoded)
-	) {
+	if (!isJsonObject(decoded) || decoded === null || Array.isArray(decoded)) {
 		contractChanged(`${what} response was not a JSON object`);
 	}
-	return decoded as Record<string, unknown>;
+	// SAFETY: assertion to `coded as JsonObject; ` is required at this boundary.
+	return decoded as JsonObject;
 }
 
-function child(
-	record: Record<string, unknown>,
-	key: string,
-	what: string,
-): Record<string, unknown> {
+function child(record: JsonObject, key: string, what: string): JsonObject {
 	const value = record[key];
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+	if (!isJsonObject(value) || value === null || Array.isArray(value)) {
 		contractChanged(`${what} is missing its ${key} object`);
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: assertion to `lue as JsonObject; ` is required at this boundary.
+	return value as JsonObject;
 }
 
-function optionalChild(
-	record: Record<string, unknown>,
-	key: string,
-): Record<string, unknown> {
+function optionalChild(record: JsonObject, key: string): JsonObject {
 	const value = record[key];
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+	if (!isJsonObject(value) || value === null || Array.isArray(value)) {
 		return {};
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: assertion to `lue as JsonObject; ` is required at this boundary.
+	return value as JsonObject;
 }
 
-function requireKind(
-	record: Record<string, unknown>,
-	kind: string,
-): Record<string, unknown> {
+function requireKind(record: JsonObject, kind: string): JsonObject {
 	if (record.kind !== kind) {
 		contractChanged(
 			`apiserver returned kind ${redactClusterText(String(record.kind), 32)} where ${kind} was expected`,
@@ -140,36 +137,36 @@ function requireKind(
 }
 
 function requireCount(
-	record: Record<string, unknown>,
+	record: JsonObject,
 	key: string,
 	what: string,
 	fallback?: number,
 ): number {
 	const value = record[key];
 	if (value === undefined && fallback !== undefined) return fallback;
-	if (typeof value !== "number" || !Number.isInteger(value) || value < 0) {
+	if (!isJsonNumber(value) || !Number.isInteger(value) || value < 0) {
 		contractChanged(`${what} field ${key} is not a whole non-negative number`);
 	}
 	return value;
 }
 
 function parseMeta(
-	record: Record<string, unknown>,
+	record: JsonObject,
 	what: string,
 	options: { readonly namespaced: boolean },
 ): ObjectMeta {
 	const metadata = child(record, "metadata", what);
 	const name = metadata.name;
-	if (typeof name !== "string" || !DNS_1123_LABEL.test(name)) {
+	if (!isJsonString(name) || !DNS_1123_LABEL.test(name)) {
 		contractChanged(`${what} metadata.name is not an RFC 1123 label`);
 	}
 	const uid = metadata.uid;
-	if (typeof uid !== "string" || !UID.test(uid)) {
+	if (!isJsonString(uid) || !UID.test(uid)) {
 		contractChanged(`${what} metadata.uid is not a UID`);
 	}
 	const resourceVersion = metadata.resourceVersion;
 	if (
-		typeof resourceVersion !== "string" ||
+		!isJsonString(resourceVersion) ||
 		!RESOURCE_VERSION.test(resourceVersion)
 	) {
 		contractChanged(`${what} metadata.resourceVersion is not an opaque token`);
@@ -177,14 +174,14 @@ function parseMeta(
 	let namespace: string | undefined;
 	if (options.namespaced) {
 		const raw = metadata.namespace;
-		if (typeof raw !== "string" || !DNS_1123_LABEL.test(raw)) {
+		if (!isJsonString(raw) || !DNS_1123_LABEL.test(raw)) {
 			contractChanged(`${what} metadata.namespace is not an RFC 1123 label`);
 		}
 		namespace = raw;
 	}
 	let createdAtMs: number | undefined;
 	if (metadata.creationTimestamp !== undefined) {
-		if (typeof metadata.creationTimestamp !== "string") {
+		if (!isJsonString(metadata.creationTimestamp)) {
 			contractChanged(`${what} metadata.creationTimestamp is not a string`);
 		}
 		const parsed = Date.parse(metadata.creationTimestamp);
@@ -202,11 +199,11 @@ function parseMeta(
 
 	return {
 		name,
-		...(namespace !== undefined ? { namespace } : {}),
+		...(namespace !== undefined ? { namespace } : undefined),
 		uid,
 		resourceVersion,
-		...(generation !== undefined ? { generation } : {}),
-		...(createdAtMs !== undefined ? { createdAtMs } : {}),
+		...(generation !== undefined ? { generation } : undefined),
+		...(createdAtMs !== undefined ? { createdAtMs } : undefined),
 	};
 }
 
@@ -215,21 +212,20 @@ export function parseApiStatus(body: string): ApiStatus {
 	const record = decodeObject(body, "apiserver Status");
 	requireKind(record, "Status");
 	const reason = record.reason;
-	if (typeof reason !== "string" || !CONDITION_REASON.test(reason)) {
+	if (!isJsonString(reason) || !CONDITION_REASON.test(reason)) {
 		contractChanged("apiserver Status carries no machine-readable reason");
 	}
 	const code = record.code;
-	if (typeof code !== "number" || code < 400 || code >= 600) {
+	if (!isJsonNumber(code) || code < 400 || code >= 600) {
 		contractChanged("apiserver Status carries no HTTP failure code");
 	}
 	return {
 		kind: "Status",
-		status: typeof record.status === "string" ? record.status : "Failure",
+		status: isJsonString(record.status) ? record.status : "Failure",
 		reason,
-		message:
-			typeof record.message === "string"
-				? redactClusterText(record.message, 512)
-				: "",
+		message: isJsonString(record.message)
+			? redactClusterText(record.message, 512)
+			: "",
 		code,
 	};
 }
@@ -245,7 +241,8 @@ export function parseNamespaceRecord(
 	const status = child(record, "status", "Namespace");
 	const phase = status.phase;
 	if (
-		typeof phase !== "string" ||
+		!isJsonString(phase) ||
+		// SAFETY: assertion to `MESPACE_PHASES as readonly string[]).` is required at this boundary.
 		!(NAMESPACE_PHASES as readonly string[]).includes(phase)
 	) {
 		contractChanged(
@@ -259,6 +256,7 @@ export function parseNamespaceRecord(
 		name: meta.name,
 		uid: meta.uid,
 		resourceVersion: meta.resourceVersion,
+		// SAFETY: assertion to `ase as NamespacePhase, ` is required at this boundary.
 		phase: phase as NamespacePhase,
 		createdAtMs: meta.createdAtMs,
 		createdByHobo: options.createdByHobo,
@@ -271,29 +269,25 @@ type Condition = {
 	readonly reason: string;
 };
 
-function parseConditions(
-	status: Record<string, unknown>,
-): readonly Condition[] {
+function parseConditions(status: JsonObject): readonly Condition[] {
 	const raw = status.conditions;
 	if (raw === undefined) return [];
 	if (!Array.isArray(raw)) {
 		contractChanged("Deployment status.conditions is not a list");
 	}
 	return raw.map((entry) => {
-		if (typeof entry !== "object" || entry === null || Array.isArray(entry)) {
+		if (!isJsonObject(entry) || entry === null || Array.isArray(entry)) {
 			contractChanged("Deployment status.conditions holds a non-object");
 		}
-		const condition = entry as Record<string, unknown>;
-		if (
-			typeof condition.type !== "string" ||
-			typeof condition.status !== "string"
-		) {
+		// SAFETY: assertion to `try as JsonObject; ` is required at this boundary.
+		const condition = entry as JsonObject;
+		if (!isJsonString(condition.type) || !isJsonString(condition.status)) {
 			contractChanged("Deployment condition is missing its type or status");
 		}
 		return {
 			type: condition.type,
 			status: condition.status,
-			reason: typeof condition.reason === "string" ? condition.reason : "",
+			reason: isJsonString(condition.reason) ? condition.reason : "",
 		};
 	});
 }
@@ -306,13 +300,18 @@ function parseConditions(
  * `ReplicaFailure` with every old replica still available is exactly the case
  * where "ready" is true and the rollout is dead.
  */
+export interface RolloutPhaseResult {
+	readonly phase: RolloutPhase;
+	readonly failureReason: string;
+}
+
 export function rolloutPhaseFor(input: {
 	readonly generation: number;
 	readonly observedGeneration: number;
 	readonly desiredReplicas: number;
 	readonly availableReplicas: number;
 	readonly conditions: readonly Condition[];
-}): { readonly phase: RolloutPhase; readonly failureReason: string } {
+}): RolloutPhaseResult {
 	const failure = input.conditions.find(
 		(condition) =>
 			(condition.type === "Progressing" &&
@@ -398,6 +397,7 @@ export function parseDeploymentRecord(body: string): DeploymentRecord {
 
 	return {
 		name: meta.name,
+		// SAFETY: assertion to `amespace as string, ui` is required at this boundary.
 		namespace: meta.namespace as string,
 		uid: meta.uid,
 		resourceVersion: meta.resourceVersion,
@@ -425,7 +425,7 @@ export function parseServiceRecord(body: string): ServiceRecord {
 	}
 	const clusterIp = spec.clusterIP;
 	if (
-		typeof clusterIp !== "string" ||
+		!isJsonString(clusterIp) ||
 		clusterIp === "None" ||
 		!(IPV4.test(clusterIp) || IPV6.test(clusterIp))
 	) {
@@ -439,7 +439,8 @@ export function parseServiceRecord(body: string): ServiceRecord {
 			"Service must expose exactly the one port this provider set",
 		);
 	}
-	const port = ports[0] as Record<string, unknown>;
+	// SAFETY: assertion to ` as JsonObject; const` is required at this boundary.
+	const port = ports[0] as JsonObject;
 	const servicePort = requireCount(port, "port", "Service port");
 	const targetPort = requireCount(port, "targetPort", "Service port");
 	if (
@@ -453,6 +454,7 @@ export function parseServiceRecord(body: string): ServiceRecord {
 
 	return {
 		name: meta.name,
+		// SAFETY: assertion to `espace as string, clus` is required at this boundary.
 		namespace: meta.namespace as string,
 		clusterIp,
 		port: servicePort,

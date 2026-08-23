@@ -117,7 +117,7 @@ function refuse(
 	detail?: Record<string, string | number>,
 ): never {
 	throw new PrismaProviderError("PROVIDER_CONTRACT_CHANGED", message, {
-		...(detail !== undefined ? { detail } : {}),
+		...(detail !== undefined ? { detail } : undefined),
 	});
 }
 
@@ -171,10 +171,10 @@ export function compilePrismaProvision(
 	const invocation = buildCreateDbArgv({
 		region: placement.region,
 		json: true,
-		...(placement.ttl !== undefined ? { ttl: placement.ttl } : {}),
+		...(placement.ttl !== undefined ? { ttl: placement.ttl } : undefined),
 		...(placement.userAgent !== undefined
 			? { userAgent: placement.userAgent }
-			: {}),
+			: undefined),
 	});
 
 	return {
@@ -194,7 +194,9 @@ export function compilePrismaProvision(
 		maxOutputBytes: invocation.maxOutputBytes,
 		outputMode: "json",
 		documentedTtlHours: PRISMA_DOCUMENTED_TTL_HOURS,
-		...(placement.ttl !== undefined ? { requestedTtl: placement.ttl } : {}),
+		...(placement.ttl !== undefined
+			? { requestedTtl: placement.ttl }
+			: undefined),
 		producesBindingProfiles: ["binding.postgresql/v1"],
 		expectedSecretPurpose: "connection-string",
 	};

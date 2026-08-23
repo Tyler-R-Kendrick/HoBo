@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
 	buildOpaInput,
 	createOpaGatePlane,
+	type JsonValue,
 	OPA_DECISION_PATH,
 	OPA_ENGINE_ID,
 	type PolicyEngineFetch,
@@ -19,8 +20,8 @@ const costQuota = { quota: "resources", used: 0, limit: 100 };
 
 function fetchReturning(
 	status: number,
-	body: unknown,
-	capture?: { url?: string; body?: string },
+	body: JsonValue,
+	capture?: { url: string | undefined; body: string | undefined },
 ): PolicyEngineFetch {
 	return async (url, init) => {
 		if (capture) {
@@ -33,7 +34,7 @@ function fetchReturning(
 
 describe("createOpaGatePlane", () => {
 	it("queries the Data API decision path and lowers the Rego result", async () => {
-		const capture: { url?: string; body?: string } = {};
+		const capture = { url: undefined, body: undefined };
 		const plane = createOpaGatePlane({
 			endpoint: "http://opa:8181/",
 			fetchFn: fetchReturning(

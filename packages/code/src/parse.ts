@@ -3,6 +3,12 @@
  * frozen derived domain types or throws. Downstream code accepts only parsed types.
  */
 import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+import {
 	CODE_EVIDENCE_SCHEMA,
 	CODE_ISOLATION_SCHEMA,
 	type EvidenceKind,
@@ -14,22 +20,23 @@ import {
 	type PromotionRequest,
 } from "./types.js";
 
-function requireObject(value: unknown, path: string): Record<string, unknown> {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
+function requireObject(value: JsonValue | undefined, path: string): JsonObject {
+	if (!value || !isJsonObject(value) || Array.isArray(value)) {
 		throw new TypeError(`${path} must be an object`);
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
+	return value as JsonObject;
 }
 
-function requireString(value: unknown, path: string): string {
-	if (typeof value !== "string" || value.length === 0) {
+function requireString(value: JsonValue | undefined, path: string): string {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new TypeError(`${path} must be a non-empty string`);
 	}
 	return value;
 }
 
-function requireBoolean(value: unknown, path: string): boolean {
-	if (typeof value !== "boolean") {
+function requireBoolean(value: JsonValue | undefined, path: string): boolean {
+	if (value !== true && value !== false) {
 		throw new TypeError(`${path} must be a boolean`);
 	}
 	return value;
@@ -51,7 +58,7 @@ const ARTIFACT_REF = /^sha256:[0-9a-f]{64}$/;
 
 /** Parse guest evidence without allowing the guest to assign host trust. */
 export function parseGuestEvidenceSubmission(
-	input: unknown,
+	input: JsonValue | undefined,
 ): GuestEvidenceSubmission {
 	const source = requireObject(input, "GuestEvidenceSubmission");
 	for (const hostOwned of [
@@ -66,6 +73,7 @@ export function parseGuestEvidenceSubmission(
 			throw new TypeError(`${hostOwned} is host-owned`);
 		}
 	}
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const kind = requireString(source.kind, "kind") as EvidenceKind;
 	if (!EVIDENCE_KINDS.has(kind)) {
 		throw new TypeError("kind must be a hobo:evidence kind");
@@ -88,23 +96,27 @@ export function parseGuestEvidenceSubmission(
 		subject: requireString(source.subject, "subject"),
 		artifactRefs: Object.freeze(artifactRefs),
 		...(source.sourceRef === undefined
-			? {}
+			? undefined
 			: { sourceRef: requireString(source.sourceRef, "sourceRef") }),
 	});
 }
 
 /** Parse isolation context from untrusted JSON/wire into a derived domain type. */
-export function parseIsolationContext(input: unknown): IsolationContext {
+export function parseIsolationContext(
+	input: JsonValue | undefined,
+): IsolationContext {
 	const source = requireObject(input, "IsolationContext");
 	const schemaVersion = requireString(source.schemaVersion, "schemaVersion");
 	if (schemaVersion !== CODE_ISOLATION_SCHEMA) {
 		throw new TypeError(`schemaVersion must be ${CODE_ISOLATION_SCHEMA}`);
 	}
 	const backendRaw = requireObject(source.backend, "backend");
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const kind = requireString(backendRaw.kind, "backend.kind") as IsolationKind;
 	if (kind !== "rift" && kind !== "worktree") {
 		throw new TypeError("backend.kind must be rift|worktree");
 	}
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const status = requireString(source.status, "status") as IsolationStatus;
 	if (status !== "open" && status !== "cleaned" && status !== "failed") {
 		throw new TypeError("status must be open|cleaned|failed");
@@ -124,9 +136,9 @@ export function parseIsolationContext(input: unknown): IsolationContext {
 			cowCapable: requireBoolean(backendRaw.cowCapable, "backend.cowCapable"),
 			reason: requireString(backendRaw.reason, "backend.reason"),
 		}),
-		...(typeof source.stationId === "string" && source.stationId.length > 0
+		...(isJsonString(source.stationId) && source.stationId.length > 0
 			? { stationId: source.stationId }
-			: {}),
+			: undefined),
 		durableRoot: requireString(source.durableRoot, "durableRoot"),
 		createdAt: requireString(source.createdAt, "createdAt"),
 		status,
@@ -137,13 +149,15 @@ export function parseIsolationContext(input: unknown): IsolationContext {
 }
 
 /** Parse promotion request; squashOnly must be true. */
-export function parsePromotionRequest(input: unknown): PromotionRequest {
+export function parsePromotionRequest(
+	input: JsonValue | undefined,
+): PromotionRequest {
 	const source = requireObject(input, "PromotionRequest");
 	if (source.squashOnly !== true) {
 		throw new TypeError("squashOnly must be true (exclusive squash-merge)");
 	}
 	const gateResults = Array.isArray(source.gateResults)
-		? source.gateResults.filter((g): g is string => typeof g === "string")
+		? source.gateResults.filter((g): g is string => isJsonString(g))
 		: [];
 	return Object.freeze({
 		runId: requireString(source.runId, "runId"),
@@ -155,14 +169,16 @@ export function parsePromotionRequest(input: unknown): PromotionRequest {
 }
 
 /** Parse evidence triple durable artifact. */
-export function parseEvidenceTriple(input: unknown): EvidenceTriple {
+export function parseEvidenceTriple(
+	input: JsonValue | undefined,
+): EvidenceTriple {
 	const source = requireObject(input, "EvidenceTriple");
 	const schemaVersion = requireString(source.schemaVersion, "schemaVersion");
 	if (schemaVersion !== CODE_EVIDENCE_SCHEMA) {
 		throw new TypeError(`schemaVersion must be ${CODE_EVIDENCE_SCHEMA}`);
 	}
 	const screenshots = Array.isArray(source.screenshotPaths)
-		? source.screenshotPaths.filter((p): p is string => typeof p === "string")
+		? source.screenshotPaths.filter((p): p is string => isJsonString(p))
 		: [];
 	if (screenshots.length === 0) {
 		throw new TypeError("screenshotPaths must be non-empty");

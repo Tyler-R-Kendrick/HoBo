@@ -1,5 +1,6 @@
 import type { TrainingArtifact } from "@hobo/core";
 import type { TrainableManifestFact } from "../_generated/trainable_manifest_fact_pb.js";
+import type { JsonValue } from "../json.js";
 
 // The trainable-method authoring surface (ADR-0025 / ADR-0125). All four
 // authoring forms — the "use training" directive, the training() wrapper,
@@ -20,7 +21,7 @@ export const TRAINABLE = Symbol.for("hobo.trainable");
 // example values that never cross a wire — the wire record they lower to is
 // the generated TrainableManifestFact.
 
-export interface TrainingExample<I = unknown, O = unknown> {
+export interface TrainingExample<I = JsonValue, O = JsonValue> {
 	readonly input: I;
 	readonly output: O;
 }
@@ -37,10 +38,10 @@ export interface TrainingExample<I = unknown, O = unknown> {
  * ref at lowering. Declaring the shape is not optional — a contract must
  * carry a `ref` or both `input` and `output`.
  */
-export interface TrainingContract<I = unknown, O = unknown> {
+export interface TrainingContract<I = JsonValue, O = JsonValue> {
 	readonly ref?: string;
-	readonly input?: unknown;
-	readonly output?: unknown;
+	readonly input?: JsonValue;
+	readonly output?: JsonValue;
 	readonly invariants?: readonly string[];
 	readonly forbiddenOutputs?: readonly string[];
 	readonly examples?: readonly TrainingExample<I, O>[];
@@ -49,10 +50,10 @@ export interface TrainingContract<I = unknown, O = unknown> {
 /** Authoring input for per-param/output metadata; lowers to FieldMetadata. */
 export interface FieldDescription {
 	readonly description: string;
-	readonly example?: unknown;
+	readonly example?: JsonValue;
 }
 
-export interface TrainingOptions<I = unknown, O = unknown> {
+export interface TrainingOptions<I = JsonValue, O = JsonValue> {
 	readonly intent: string;
 	readonly contract: TrainingContract<I, O>;
 	/**
@@ -79,7 +80,7 @@ export interface TrainingOptions<I = unknown, O = unknown> {
 	readonly token?: symbol;
 }
 
-export interface RecordedTrainableCall<I = unknown, O = unknown> {
+export interface RecordedTrainableCall<I = JsonValue, O = JsonValue> {
 	readonly input: I;
 	readonly output: O;
 	/** How the stub baseline served the call ("body" for real baselines). */
@@ -87,13 +88,13 @@ export interface RecordedTrainableCall<I = unknown, O = unknown> {
 	readonly order: number;
 }
 
-export interface Trainable<I = unknown, O = unknown> {
+export interface Trainable<I = JsonValue, O = JsonValue> {
 	(input: I): Promise<O>;
 	readonly [TRAINABLE]: true;
 	readonly methodRef: string;
 }
 
-export interface TrainableRecord<I = unknown, O = unknown> {
+export interface TrainableRecord<I = JsonValue, O = JsonValue> {
 	readonly fact: TrainableManifestFact;
 	readonly options: TrainingOptions<I, O>;
 	readonly calls: readonly RecordedTrainableCall<I, O>[];

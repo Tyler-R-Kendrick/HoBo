@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased governance fixtures and recursive merge values at the contract boundary. */
+
 import { createHash } from "node:crypto";
 
 export const GOVERNANCE_DIMENSIONS = Object.freeze([
@@ -381,3 +383,4 @@ function unique(values) {
 function isNonEmptyString(value) {
   return typeof value === "string" && value.trim().length > 0;
 }
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased governance fixtures and recursive merge values at the contract boundary. */

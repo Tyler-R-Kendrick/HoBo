@@ -137,7 +137,7 @@ export function classifyLaunchDispositions(record) {
 export function validateMarketplacePublisherTrustEvidence(record) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || Object(record) !== record) {
     return { ok: false, errors: ["marketplace publisher trust evidence record is required"] };
   }
 

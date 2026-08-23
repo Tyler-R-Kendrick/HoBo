@@ -5,12 +5,28 @@ import {
 	REQUIRED_PR_CHECKS,
 	type RequiredPrCheck,
 } from "./contract.js";
+import { isJsonObject, type JsonObject, type JsonValue } from "./json.js";
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === "object" && !Array.isArray(value);
+export type { JsonObject, JsonValue } from "./json.js";
+export {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	parseJsonTree,
+} from "./json.js";
+
+function requiredPrCheck(value: JsonValue): RequiredPrCheck | undefined {
+	for (const check of REQUIRED_PR_CHECKS) {
+		if (value === check) {
+			return check;
+		}
+	}
+	return undefined;
 }
 
-function parseRequiredChecks(value: unknown): readonly RequiredPrCheck[] {
+function parseRequiredChecks(
+	value: JsonValue | undefined,
+): readonly RequiredPrCheck[] {
 	if (!Array.isArray(value)) {
 		throw new CiFabricContractError(
 			"parse.required-checks",
@@ -19,22 +35,22 @@ function parseRequiredChecks(value: unknown): readonly RequiredPrCheck[] {
 	}
 	const checks: RequiredPrCheck[] = [];
 	for (const item of value) {
-		if (
-			typeof item !== "string" ||
-			!REQUIRED_PR_CHECKS.includes(item as RequiredPrCheck)
-		) {
+		const check = requiredPrCheck(item);
+		if (check === undefined) {
 			throw new CiFabricContractError(
 				"parse.required-checks",
 				`invalid required check: ${String(item)}`,
 			);
 		}
-		checks.push(item as RequiredPrCheck);
+		checks.push(check);
 	}
 	return checks;
 }
 
-export function parseCiFabricContract(input: unknown): CiFabricContract {
-	if (!isRecord(input)) {
+export function parseCiFabricContract(
+	input: JsonValue | undefined,
+): CiFabricContract {
+	if (!isJsonObject(input)) {
 		throw new CiFabricContractError("parse.root", "contract must be an object");
 	}
 
@@ -42,12 +58,12 @@ export function parseCiFabricContract(input: unknown): CiFabricContract {
 		throw new CiFabricContractError(
 			"parse.schema",
 			`expected schema ${CI_FABRIC_SCHEMA}`,
-			{ schema: input.schema },
+			{ schema: input.schema ?? null },
 		);
 	}
 
 	const workflow = input.workflow;
-	if (!isRecord(workflow)) {
+	if (!isJsonObject(workflow)) {
 		throw new CiFabricContractError(
 			"parse.workflow",
 			"workflow must be an object",
@@ -55,7 +71,7 @@ export function parseCiFabricContract(input: unknown): CiFabricContract {
 	}
 
 	const pullRequestGate = workflow.pullRequestGate;
-	if (!isRecord(pullRequestGate)) {
+	if (!isJsonObject(pullRequestGate)) {
 		throw new CiFabricContractError(
 			"parse.pull-request-gate",
 			"workflow.pullRequestGate must be an object",
@@ -73,12 +89,12 @@ export function parseCiFabricContract(input: unknown): CiFabricContract {
 	void _requiredChecks;
 
 	const e2e = input.e2e;
-	if (!isRecord(e2e)) {
+	if (!isJsonObject(e2e)) {
 		throw new CiFabricContractError("parse.e2e", "e2e must be an object");
 	}
 
 	const auth = e2e.auth;
-	if (!isRecord(auth)) {
+	if (!isJsonObject(auth)) {
 		throw new CiFabricContractError(
 			"parse.e2e.auth",
 			"e2e.auth must be an object",
@@ -100,7 +116,7 @@ export function parseCiFabricContract(input: unknown): CiFabricContract {
 	}
 
 	const teardown = e2e.teardown;
-	if (!isRecord(teardown)) {
+	if (!isJsonObject(teardown)) {
 		throw new CiFabricContractError(
 			"parse.e2e.teardown",
 			"e2e.teardown must be an object",
@@ -115,7 +131,7 @@ export function parseCiFabricContract(input: unknown): CiFabricContract {
 	}
 
 	const orphanSweeper = teardown.orphanSweeper;
-	if (!isRecord(orphanSweeper) || orphanSweeper.enabled !== true) {
+	if (!isJsonObject(orphanSweeper) || orphanSweeper.enabled !== true) {
 		throw new CiFabricContractError(
 			"parse.e2e.teardown.orphan-sweeper",
 			"e2e.teardown.orphanSweeper.enabled must be true",
@@ -123,7 +139,7 @@ export function parseCiFabricContract(input: unknown): CiFabricContract {
 	}
 
 	const quarantine = e2e.quarantine;
-	if (!isRecord(quarantine)) {
+	if (!isJsonObject(quarantine)) {
 		throw new CiFabricContractError(
 			"parse.e2e.quarantine",
 			"e2e.quarantine must be an object",
@@ -148,5 +164,12 @@ export function parseCiFabricContract(input: unknown): CiFabricContract {
 		);
 	}
 
-	return input as unknown as CiFabricContract;
+	markParsedContract(input);
+	return input;
+}
+
+function markParsedContract(
+	input: JsonObject,
+): asserts input is CiFabricContract & JsonObject {
+	void input;
 }

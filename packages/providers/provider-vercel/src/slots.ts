@@ -81,12 +81,16 @@ export type VercelEdgeConfigSlotOptions = {
  * would silently swallow a `apiKey` someone passed by mistake, and a silently
  * swallowed credential is worse than a refusal.
  */
-function definedProperties(
-	options: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
-	const out: Record<string, unknown> = {};
+type AnySlotOptions =
+	| VercelProjectSlotOptions
+	| VercelEdgeFunctionSlotOptions
+	| VercelBlobSlotOptions
+	| VercelEdgeConfigSlotOptions;
+
+function definedProperties(options: AnySlotOptions) {
+	const out = {};
 	for (const [key, value] of Object.entries(options)) {
-		if (value !== undefined) out[key] = value;
+		if (value !== undefined) Object.assign(out, { [key]: value });
 	}
 	return out;
 }

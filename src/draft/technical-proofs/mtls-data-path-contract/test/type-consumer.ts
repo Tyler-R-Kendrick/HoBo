@@ -2,7 +2,7 @@ import {
   MTLS_DATA_PATH_SCHEMA_VERSION,
   evaluateMtlsHandshake,
   type MtlsDataPathContract
-} from "../src/mtls-data-path.js";
+} from "@hobo/draft-mtls-data-path-contract";
 
 const contract: MtlsDataPathContract = {
   schemaVersion: MTLS_DATA_PATH_SCHEMA_VERSION,

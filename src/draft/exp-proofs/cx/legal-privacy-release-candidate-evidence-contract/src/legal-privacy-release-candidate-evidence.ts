@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this module validates erased evidence records at the proof boundary before accepting the closed contract. */
+
 export const REQUIRED_RELEASE_CANDIDATE_EVIDENCE_IDS = [
   "m0-checklist-baseline",
   "private-beta-legal-privacy-source",

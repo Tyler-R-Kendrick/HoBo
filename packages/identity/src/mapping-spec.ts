@@ -2,7 +2,14 @@
  * MappingSpec: versioned claim + subject mapping for continuous identity migration.
  * Platform-derived preferred; validated at can-migrate. Apps never write mapping logic.
  */
+
 import { createHash } from "node:crypto";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 // public-contract: MappingSpec schema version.
 export const MAPPING_SPEC_SCHEMA_VERSION =
@@ -43,14 +50,15 @@ export type MappingSpecInput = Readonly<{
 	allowNonCriticalDrift?: boolean;
 }>;
 
-function canonicalize(value: unknown): string {
-	if (value === null || typeof value !== "object") {
-		return JSON.stringify(value);
+function canonicalize<T>(value: T): string {
+	if (value === null || value === undefined || !isJsonObject(value)) {
+		return JSON.stringify(value ?? null);
 	}
 	if (Array.isArray(value)) {
 		return `[${value.map(canonicalize).join(",")}]`;
 	}
-	const obj = value as Record<string, unknown>;
+	// SAFETY: assertion to `value as JsonObject` is required at this boundary.
+	const obj = value as JsonObject;
 	const keys = Object.keys(obj).sort();
 	return `{${keys.map((k) => `${JSON.stringify(k)}:${canonicalize(obj[k])}`).join(",")}}`;
 }
@@ -59,22 +67,16 @@ function canonicalize(value: unknown): string {
  * Parse-don't-validate MappingSpec boundary.
  */
 export function parseMappingSpec(input: MappingSpecInput): MappingSpec {
-	if (typeof input.id !== "string" || input.id.length === 0) {
+	if (!isJsonString(input.id) || input.id.length === 0) {
 		throw new TypeError("MappingSpec.id required");
 	}
-	if (typeof input.version !== "string" || input.version.length === 0) {
+	if (!isJsonString(input.version) || input.version.length === 0) {
 		throw new TypeError("MappingSpec.version required");
 	}
-	if (
-		typeof input.sourceAdapter !== "string" ||
-		input.sourceAdapter.length === 0
-	) {
+	if (!isJsonString(input.sourceAdapter) || input.sourceAdapter.length === 0) {
 		throw new TypeError("MappingSpec.sourceAdapter required");
 	}
-	if (
-		typeof input.targetAdapter !== "string" ||
-		input.targetAdapter.length === 0
-	) {
+	if (!isJsonString(input.targetAdapter) || input.targetAdapter.length === 0) {
 		throw new TypeError("MappingSpec.targetAdapter required");
 	}
 	if (input.sourceAdapter === input.targetAdapter) {
@@ -92,7 +94,7 @@ export function parseMappingSpec(input: MappingSpecInput): MappingSpec {
 				from: m.from,
 				to: m.to,
 				critical: m.critical === true,
-				...(m.transform !== undefined ? { transform: m.transform } : {}),
+				...(m.transform !== undefined ? { transform: m.transform } : undefined),
 			});
 		}),
 	);
@@ -149,7 +151,7 @@ export function defaultContinuousMappingSpec(input: {
 }
 
 export function applyClaimTransform(
-	value: unknown,
+	value: JsonValue,
 	transform: ClaimMapping["transform"] = "identity",
 ): string {
 	const raw = String(value ?? "");

@@ -19,6 +19,7 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { dirname, join, relative, resolve } from "node:path";
+import { isJsonString, type JsonObject } from "./json.js";
 
 // public-contract: tool names the local engine advertises to the model.
 export const LOCAL_TOOL_NAMES = [
@@ -116,9 +117,9 @@ const MAX_LISTED = 200;
 export function runLocalTool(
 	sandboxRoot: string,
 	name: string,
-	args: Record<string, unknown>,
+	args: JsonObject,
 ): ToolOutcome {
-	const rawPath = typeof args.path === "string" ? args.path : "";
+	const rawPath = isJsonString(args.path) ? args.path : "";
 	const target = resolveInSandbox(sandboxRoot, rawPath);
 	if (target === null) {
 		return {
@@ -172,7 +173,7 @@ export function runLocalTool(
 	}
 
 	if (name === "write_file") {
-		const content = typeof args.content === "string" ? args.content : "";
+		const content = isJsonString(args.content) ? args.content : "";
 		if (rawPath.length === 0) {
 			return {
 				ok: false,

@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased request, approval, event, and recursive canonicalization values at the trust boundary before domain normalization. */
+
 import { createHash } from "node:crypto";
 
 export const HUMAN_APPROVAL_GATE_SCHEMA = "hobo.gen.human-approval-gate/v1";

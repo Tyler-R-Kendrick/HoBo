@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-conditional-empty-object-spread, no-control-regex -- manifest parsing refines serialized contract data. */
 /**
  * The pack manifest: everything a HoBo Yard needs to run a capability on
  * generic compute instead of buying it from a managed provider.

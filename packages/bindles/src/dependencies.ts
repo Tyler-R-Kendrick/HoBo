@@ -1,3 +1,14 @@
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonBag,
+	type JsonObject,
+} from "./json.js";
+
+interface DiscoveryEnv {
+	[key: string]: string;
+}
+
 import type {
 	BindleDefinition,
 	ContainerDependencyOptions,
@@ -21,11 +32,11 @@ export function dependencyAnnotation(config: {
 	readonly image?: string;
 	readonly source?: string;
 	readonly witWorld?: string;
-	readonly endpoints?: Readonly<Record<string, unknown>>;
+	readonly endpoints?: JsonObject;
 	readonly connectionString?: string;
 	readonly env?: Readonly<Record<string, string>>;
 }): ProviderAnnotation {
-	const frozen: Record<string, unknown> = {
+	const frozen: JsonBag = {
 		runtime: config.runtime,
 		kind: config.kind,
 	};
@@ -53,17 +64,17 @@ export function externalDependencyAnnotation(
 		kind: "external",
 		...(options.connectionString !== undefined
 			? { connectionString: options.connectionString }
-			: {}),
+			: undefined),
 		...(options.endpoints !== undefined
 			? { endpoints: options.endpoints }
-			: {}),
+			: undefined),
 	});
 }
 
 export function containerDependencyAnnotation(
 	options: ContainerDependencyOptions,
 ): ProviderAnnotation {
-	if (typeof options.image !== "string" || options.image.length === 0) {
+	if (!isJsonString(options.image) || options.image.length === 0) {
 		throw new TypeError("container() requires a non-empty image ref");
 	}
 	return dependencyAnnotation({
@@ -72,25 +83,27 @@ export function containerDependencyAnnotation(
 		image: options.image,
 		...(options.endpoints !== undefined
 			? { endpoints: options.endpoints }
-			: {}),
-		...(options.env !== undefined ? { env: options.env } : {}),
+			: undefined),
+		...(options.env !== undefined ? { env: options.env } : undefined),
 	});
 }
 
 export function wasmComponentDependencyAnnotation(
 	options: WasmComponentDependencyOptions,
 ): ProviderAnnotation {
-	if (typeof options.source !== "string" || options.source.length === 0) {
+	if (!isJsonString(options.source) || options.source.length === 0) {
 		throw new TypeError("wasmComponent() requires a non-empty source");
 	}
 	return dependencyAnnotation({
 		runtime: "wasm",
 		kind: "wasm-component",
 		source: options.source,
-		...(options.witWorld !== undefined ? { witWorld: options.witWorld } : {}),
+		...(options.witWorld !== undefined
+			? { witWorld: options.witWorld }
+			: undefined),
 		...(options.endpoints !== undefined
 			? { endpoints: options.endpoints }
-			: {}),
+			: undefined),
 	});
 }
 
@@ -137,7 +150,7 @@ export function collectRequiredRuntimes(
  */
 export function readDependencyConfig(
 	annotations: readonly ProviderAnnotation[],
-): Readonly<Record<string, unknown>> | null {
+): JsonObject | null {
 	for (const annotation of annotations) {
 		if (isDependencyAnnotation(annotation)) {
 			return annotation.config;
@@ -153,26 +166,26 @@ export function readDependencyConfig(
  */
 export function discoveryEnvForDependency(
 	resourceName: string,
-	config: Readonly<Record<string, unknown>> | null,
+	config: JsonObject | null,
 	resolved: {
 		readonly httpUrl?: string;
 		/** Ignored — connection strings must not enter process env (ADR-0141). */
 		readonly connectionString?: string;
 	},
-): Record<string, string> {
+): DiscoveryEnv {
 	return discoveryEndpointsForDependency(resourceName, config, resolved);
 }
 
 /** Alias: public HTTP/named endpoints only. */
 export function discoveryEndpointsForDependency(
 	resourceName: string,
-	config: Readonly<Record<string, unknown>> | null,
+	config: JsonObject | null,
 	resolved: {
 		readonly httpUrl?: string;
 		readonly connectionString?: string;
 	},
-): Record<string, string> {
-	const env: Record<string, string> = {};
+): DiscoveryEnv {
+	const env: DiscoveryEnv = {};
 	// Intentionally ignore connectionString — dual-path credential env is banned.
 	void resolved.connectionString;
 	void config?.connectionString;
@@ -180,12 +193,13 @@ export function discoveryEndpointsForDependency(
 		env[`services__${resourceName}__http__0`] = resolved.httpUrl;
 	} else if (
 		config?.endpoints &&
-		typeof config.endpoints === "object" &&
+		isJsonObject(config.endpoints) &&
 		config.endpoints !== null
 	) {
-		const endpoints = config.endpoints as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const endpoints = config.endpoints as JsonObject;
 		const http = endpoints.http;
-		if (typeof http === "string" && http.length > 0) {
+		if (isJsonString(http) && http.length > 0) {
 			env[`services__${resourceName}__http__0`] = http;
 		}
 	}

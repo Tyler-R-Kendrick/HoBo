@@ -4,14 +4,15 @@ import type {
 	WitCodec,
 	WrpcTransport,
 } from "@hobo/core";
+import type { JsonValue } from "../json.js";
 
 export function createJsonWitCodec(): WitCodec {
 	return Object.freeze({
 		name: "json-wit",
-		encode(value: unknown) {
+		encode(value: JsonValue) {
 			return structuredClone(value);
 		},
-		decode(value: unknown) {
+		decode(value: JsonValue) {
 			return structuredClone(value);
 		},
 	});
@@ -30,13 +31,13 @@ export function createInProcessTransport(options?: {
 	return Object.freeze({
 		kind: "in-process" as const,
 		codec,
-		async invoke(invocation: TransportInvocation): Promise<unknown> {
+		async invoke(invocation: TransportInvocation) {
 			const handler = store.getHandler(
 				invocation.link.providerId,
 				invocation.link.exportInterface,
 				invocation.operation,
 			);
-			if (typeof handler !== "function") {
+			if (!(handler instanceof Function)) {
 				throw new Error(
 					`wrpc.operation_not_found: ${invocation.link.exportInterface}.${invocation.operation}`,
 				);

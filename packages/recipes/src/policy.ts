@@ -32,7 +32,7 @@ export type RecipePolicyInput = {
 	readonly requireSourceDisclosure?: boolean;
 };
 
-declare const recipePolicyBrand: unique symbol;
+const recipePolicyBrand: unique symbol = Symbol("RecipePolicy");
 
 export type RecipePolicy = {
 	readonly trust: TrustPolicy;
@@ -105,8 +105,8 @@ export function parseRecipePolicy(input: RecipePolicyInput): RecipePolicy {
 			a.localeCompare(b),
 		),
 		requireSourceDisclosure: input.requireSourceDisclosure ?? true,
-		// The brand is a type-level witness that this value passed the parser.
-	} as unknown as RecipePolicy;
+		[recipePolicyBrand]: "RecipePolicy",
+	};
 }
 
 const HOUR_MS = 60 * 60 * 1000;

@@ -21,7 +21,7 @@ model, a customer-success lifecycle, or a live-provider success detector.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\pre-launch-outcome-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\pre-launch-outcome-contract test
 ```
 
 

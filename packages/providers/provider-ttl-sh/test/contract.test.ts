@@ -18,28 +18,41 @@ import { fileURLToPath } from "node:url";
 
 import { describe, it } from "vitest";
 
-import { isTtlShProviderError, ttlShErrorForStatus } from "../src/errors.js";
+import { ttlShErrorForStatus } from "../src/errors.js";
+import {
+	isJsonArray,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../src/json.js";
 import { createTtlShImageReference, manifestPath } from "../src/reference.js";
 import {
 	createGuardedTransport,
 	FORBIDDEN_REQUEST_HEADERS,
 	TTL_SH_REGISTRY_POLICY,
 } from "../src/transport.js";
-import { createStubTransport, FAKE_UUID_NAME } from "./fixtures/index.js";
+import {
+	createStubTransport,
+	FAKE_UUID_NAME,
+	rejectTtlShCode,
+} from "./fixtures/index.js";
 
-type PactHeaders = Readonly<Record<string, string>>;
+type PactHeaders = { readonly [key: string]: string };
 
 type PactInteraction = {
 	readonly description: string;
 	readonly request: {
 		readonly method: string;
 		readonly path: string;
-		readonly headers?: PactHeaders;
+		readonly headers: PactHeaders;
 	};
 	readonly response: {
 		readonly status: number;
-		readonly headers?: PactHeaders;
-		readonly body?: unknown;
+		readonly headers: PactHeaders;
+		readonly body: JsonValue | undefined;
 	};
 };
 
@@ -56,6 +69,59 @@ type PactFile = {
 	readonly interactions: readonly PactInteraction[];
 };
 
+function jsonStringMap(value: JsonValue | undefined) {
+	if (!isJsonObject(value)) return {};
+	const mapped: { [key: string]: string } = {};
+	for (const [key, entry] of Object.entries(value)) {
+		if (isJsonString(entry)) mapped[key] = entry;
+	}
+	return mapped;
+}
+
+function parseSourceRefs(value: JsonValue | undefined) {
+	if (!isJsonArray(value)) return [];
+	const refs: { url: string; checkedAt: string }[] = [];
+	for (const entry of value) {
+		if (
+			!isJsonObject(entry) ||
+			!isJsonString(entry.url) ||
+			!isJsonString(entry.checkedAt)
+		) {
+			continue;
+		}
+		refs.push({ url: entry.url, checkedAt: entry.checkedAt });
+	}
+	return refs;
+}
+
+function parseInteraction(entry: JsonObject): PactInteraction | undefined {
+	const request = isJsonObject(entry.request) ? entry.request : undefined;
+	const response = isJsonObject(entry.response) ? entry.response : undefined;
+	if (
+		!isJsonString(entry.description) ||
+		request === undefined ||
+		response === undefined ||
+		!isJsonString(request.method) ||
+		!isJsonString(request.path) ||
+		!isJsonNumber(response.status)
+	) {
+		return undefined;
+	}
+	return {
+		description: entry.description,
+		request: {
+			method: request.method,
+			path: request.path,
+			headers: jsonStringMap(request.headers),
+		},
+		response: {
+			status: response.status,
+			headers: jsonStringMap(response.headers),
+			body: response.body,
+		},
+	};
+}
+
 /**
  * Parse the pact rather than trusting its shape.
  *
@@ -64,26 +130,60 @@ type PactFile = {
  * three assertions later is worse than one that says the pact is malformed.
  */
 function loadPact(): PactFile {
-	const raw = readFileSync(
-		fileURLToPath(
-			new URL(
-				"../contracts/provider-ttl-sh-registry.pact.json",
-				import.meta.url,
+	const decoded = parseJsonObject(
+		readFileSync(
+			fileURLToPath(
+				new URL(
+					"../contracts/provider-ttl-sh-registry.pact.json",
+					import.meta.url,
+				),
 			),
+			"utf8",
 		),
-		"utf8",
 	);
-	const parsed = JSON.parse(raw) as PactFile;
-	assert.equal(typeof parsed.consumer?.name, "string");
-	assert.equal(typeof parsed.provider?.name, "string");
-	assert.ok(Array.isArray(parsed.interactions));
-	assert.ok(parsed.interactions.length > 0);
-	for (const interaction of parsed.interactions) {
-		assert.equal(typeof interaction.description, "string");
-		assert.ok(interaction.request.path.startsWith("/"));
-		assert.equal(typeof interaction.response.status, "number");
+	const consumer = isJsonObject(decoded.consumer)
+		? decoded.consumer
+		: undefined;
+	const provider = isJsonObject(decoded.provider)
+		? decoded.provider
+		: undefined;
+	const metadata = isJsonObject(decoded.metadata)
+		? decoded.metadata
+		: undefined;
+	const spec = isJsonObject(metadata?.pactSpecification)
+		? metadata.pactSpecification
+		: undefined;
+	const interactionsRaw = decoded.interactions;
+	if (
+		!isJsonString(consumer?.name) ||
+		!isJsonString(provider?.name) ||
+		!isJsonString(spec?.version) ||
+		metadata === undefined ||
+		!isJsonArray(interactionsRaw) ||
+		interactionsRaw.length === 0
+	) {
+		throw new Error("the pact file is malformed");
 	}
-	return parsed;
+	const interactions: PactInteraction[] = [];
+	for (const entry of interactionsRaw) {
+		if (!isJsonObject(entry)) {
+			throw new Error("the pact file has a malformed interaction");
+		}
+		const parsed = parseInteraction(entry);
+		if (parsed === undefined) {
+			throw new Error("the pact file has a malformed interaction");
+		}
+		interactions.push(parsed);
+	}
+	return {
+		consumer: { name: consumer.name },
+		provider: { name: provider.name },
+		metadata: {
+			pactSpecification: { version: spec.version },
+			sourceRefs: parseSourceRefs(metadata.sourceRefs),
+		},
+		interactions,
+	};
 }
 
 const PACT = loadPact();
@@ -99,7 +199,7 @@ function interactionMatching(fragment: string): PactInteraction {
 function bodyOf(interaction: PactInteraction): string {
 	const body = interaction.response.body;
 	if (body === undefined) return "";
-	return typeof body === "string" ? body : JSON.stringify(body);
+	return isJsonString(body) ? body : JSON.stringify(body);
 }
 
 async function replay(interaction: PactInteraction) {
@@ -157,11 +257,14 @@ describe("the pact describes the boundary this package actually has", () => {
 		// The registry is anonymous. A pact that recorded an Authorization
 		// header would be documenting a leak as if it were the contract.
 		for (const interaction of PACT.interactions) {
-			for (const name of Object.keys(interaction.request.headers ?? {})) {
-				assert.ok(
-					!(FORBIDDEN_REQUEST_HEADERS as readonly string[]).includes(
-						name.toLowerCase(),
-					),
+			for (const name of Object.keys(interaction.request.headers)) {
+				let forbidden = false;
+				for (const header of FORBIDDEN_REQUEST_HEADERS) {
+					if (header === name.toLowerCase()) forbidden = true;
+				}
+				assert.equal(
+					forbidden,
+					false,
 					`${interaction.description} sends ${name}`,
 				);
 			}
@@ -209,9 +312,7 @@ describe("replaying each interaction through the guarded transport", () => {
 			response.headers["docker-content-digest"] ?? "",
 			/^sha256:[0-9a-f]{64}$/u,
 		);
-		const manifest = JSON.parse(response.body) as {
-			readonly schemaVersion: number;
-		};
+		const manifest = parseJsonObject(response.body);
 		assert.equal(manifest.schemaVersion, 2);
 	});
 
@@ -242,21 +343,20 @@ describe("replaying each interaction through the guarded transport", () => {
 	});
 
 	it("treats the recorded authentication challenge as a contract change", async () => {
-		await assert.rejects(
-			replay(interactionMatching("authentication challenge")),
-			(error: unknown) =>
-				isTtlShProviderError(error) &&
-				error.code === "PROVIDER_CONTRACT_CHANGED",
+		await rejectTtlShCode(
+			() => replay(interactionMatching("authentication challenge")),
+			"PROVIDER_CONTRACT_CHANGED",
 		);
 	});
 
 	it("refuses the recorded redirect instead of following it off the host", async () => {
-		await assert.rejects(
-			replay(interactionMatching("redirect off the allowlisted host")),
-			(error: unknown) =>
-				isTtlShProviderError(error) &&
-				error.code === "PROVIDER_CONTRACT_CHANGED" &&
-				String(error.detail.location).includes("mirror.example.com"),
+		const error = await rejectTtlShCode(
+			() => replay(interactionMatching("redirect off the allowlisted host")),
+			"PROVIDER_CONTRACT_CHANGED",
+		);
+		assert.equal(
+			String(error.detail.location).includes("mirror.example.com"),
+			true,
 		);
 	});
 });

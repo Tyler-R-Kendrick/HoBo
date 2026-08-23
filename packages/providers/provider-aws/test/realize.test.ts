@@ -11,6 +11,7 @@ import {
 	realizeResourcePlan,
 	realizeResourcePlans,
 } from "../src/index.js";
+import { isJsonArray, isJsonObject, isJsonString } from "../src/json.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 const pact = JSON.parse(
@@ -59,8 +60,20 @@ describe("realize: ResourcePlan -> pulumi IacProgram", () => {
 		assertLocalIacProgram(iac);
 		assert.equal(iac.resources.length, 6);
 		const api = iac.resources.find((r) => r.name === "api");
+		if (api === undefined) {
+			throw new Error("expected an api resource");
+		}
+		const bindings = api.inputs.bindings;
+		if (!isJsonArray(bindings)) {
+			throw new Error("expected bind refs on the api resource");
+		}
 		assert.deepEqual(
-			(api?.inputs.bindings as Array<{ ref: string }>).map((b) => b.ref),
+			bindings.map((binding) => {
+				if (!isJsonObject(binding) || !isJsonString(binding.ref)) {
+					throw new Error("expected a bind ref");
+				}
+				return binding.ref;
+			}),
 			[
 				"${resources.sessions.outputs.binding}",
 				"${resources.assets.outputs.binding}",

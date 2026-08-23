@@ -98,7 +98,7 @@ test("catalog factories cover each design table row exactly once and exclude sea
   assert.equal(new Set(catalogFactoryNames()).size, CATALOG.length);
 
   for (const factory of expectedFactoryNames) {
-    assert.equal(typeof catalogModule[factory], "function", `${factory} must be exported`);
+    assert.equal(Object.prototype.toString.call(catalogModule[factory]), "[object Function]", `${factory} must be exported`);
   }
 
   assert.equal("search" in catalogModule, false, "search must not be a catalog factory");
@@ -131,7 +131,7 @@ test("each catalog factory returns the expected typed WIT port handle and verb s
     assert.deepEqual(allowed.declaredAllow, expected.verbs);
 
     for (const verb of expected.verbs) {
-      assert.equal(typeof handle[verb], "function", `${expected.factory}.${verb} must exist`);
+      assert.equal(Object.prototype.toString.call(handle[verb]), "[object Function]", `${expected.factory}.${verb} must exist`);
       assert.deepEqual(handle[verb]({ example: true }), {
         lowersTo: "hobo:sdk",
         kind: expected.factory,
@@ -164,7 +164,7 @@ test("secret catalog resources and secretRef value reads are distinct symbols", 
   assert.equal(managedStore.kind, "secret");
   assert.equal(managedStore.name, "payment-secrets");
   assert.equal(managedStore.stableId, "secret:payment-secrets");
-  assert.equal(typeof managedStore.access, "function");
+  assert.equal(Object.prototype.toString.call(managedStore.access), "[object Function]");
 
   assert.equal(valueReference.kind, "secret-ref");
   assert.equal(valueReference.ref, "STRIPE_API_KEY");
@@ -178,7 +178,7 @@ test("illegal verbs are blocked by runtime guard and declaration surface", async
 
   assert.equal(state.publish, undefined);
   assert.throws(() => state.allow("publish"), /kv does not allow verb "publish"/);
-  assert.equal(typeof catalogModule.data("records").query, "function");
+  assert.equal(Object.prototype.toString.call(catalogModule.data("records").query), "[object Function]");
 
   const declarations = await readFile(
     join(import.meta.dirname, "..", "src", "catalog.d.ts"),

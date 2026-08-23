@@ -23,7 +23,7 @@ export {
 	ingestDrizzleSchema,
 } from "./ingest.js";
 export {
-	type DataMigrationPlanShape,
+	type DataMigrationPlanRecord,
 	type ToDataMigrationPlanInput,
-	toDataMigrationPlanShape,
+	toDataMigrationPlan,
 } from "./trails-compat.js";

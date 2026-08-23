@@ -4,6 +4,8 @@
  */
 
 // public-contract: access event family schema.
+import type { JsonObject } from "../json.js";
+
 export const ACCESS_EVENT_SCHEMA_VERSION = "hobo.access-events/v1" as const;
 
 export const ACCESS_EVENTS = Object.freeze({
@@ -31,7 +33,7 @@ export type AccessEvent = Readonly<{
 	tenant: string;
 	time: string;
 	actor: string;
-	data: Readonly<Record<string, unknown>>;
+	data: JsonObject;
 }>;
 
 let seq = 0;
@@ -40,7 +42,7 @@ export function createAccessEvent(input: {
 	readonly type: AccessEventType;
 	readonly tenant: string;
 	readonly actor: string;
-	readonly data: Readonly<Record<string, unknown>>;
+	readonly data: JsonObject;
 	readonly time?: string;
 }): AccessEvent {
 	seq += 1;

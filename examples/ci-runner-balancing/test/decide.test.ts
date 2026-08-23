@@ -58,7 +58,7 @@ function input(overrides: {
 	resourceBlocks?: DecideInput["resourceBlocks"];
 	tracks?: DecideInput["tracks"];
 }): DecideInput {
-	return {
+	const result: DecideInput = {
 		tracks: overrides.tracks ?? [TRACK],
 		current: overrides.current ?? { RUNNER: "base-c" },
 		ledger: create(CreditLedgerViewSchema, {
@@ -66,15 +66,16 @@ function input(overrides: {
 			entries: overrides.entries,
 		}),
 		pins: new Set(overrides.pins ?? []),
-		...(overrides.resourceBlocks === undefined
-			? {}
-			: { resourceBlocks: overrides.resourceBlocks }),
 		flipUpPct: overrides.flipUpPct,
 		flipBackPct: overrides.flipBackPct,
-		...(overrides.allowNonFungibleFallback === undefined
-			? {}
-			: { allowNonFungibleFallback: overrides.allowNonFungibleFallback }),
 	};
+	if (overrides.resourceBlocks !== undefined) {
+		result.resourceBlocks = overrides.resourceBlocks;
+	}
+	if (overrides.allowNonFungibleFallback !== undefined) {
+		result.allowNonFungibleFallback = overrides.allowNonFungibleFallback;
+	}
+	return result;
 }
 
 const FREE_HEADROOM = entry({

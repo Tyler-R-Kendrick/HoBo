@@ -10,6 +10,14 @@
  * the ORM too.
  */
 
+import type { JsonObject, JsonValue } from "../src/json.js";
+import type { DrizzleColumnLike, ExtraConfigBuilder } from "../src/shape.js";
+
+export interface FixtureHost {
+	[key: string]: JsonValue | ExtraConfigBuilder | undefined;
+	[key: symbol]: JsonValue | ExtraConfigBuilder | undefined;
+}
+
 export const DRIZZLE_NAME = Symbol.for("drizzle:Name");
 export const DRIZZLE_COLUMNS = Symbol.for("drizzle:Columns");
 export const DRIZZLE_SCHEMA = Symbol.for("drizzle:Schema");
@@ -27,21 +35,21 @@ export const DRIZZLE_PG_INLINE_FOREIGN_KEYS = Symbol.for(
 export interface ColumnOverrides {
 	readonly columnType?: string;
 	readonly dataType?: string;
-	readonly sqlType?: string | (() => unknown);
+	readonly sqlType?: string | (() => JsonValue);
 	readonly notNull?: boolean;
 	readonly primary?: boolean;
 	readonly isUnique?: boolean;
 	readonly hasDefault?: boolean;
-	readonly default?: unknown;
-	readonly defaultFn?: unknown;
+	readonly default?: JsonValue;
+	readonly defaultFn?: JsonValue;
 }
 
 export function column(
 	name: string,
 	overrides: ColumnOverrides = {},
-): Record<string, unknown> {
+): DrizzleColumnLike {
 	const sqlType = overrides.sqlType ?? "text";
-	const built: Record<string, unknown> = {
+	return {
 		name,
 		columnType: overrides.columnType ?? "PgText",
 		dataType: overrides.dataType ?? "string",
@@ -49,12 +57,14 @@ export function column(
 		primary: overrides.primary ?? false,
 		isUnique: overrides.isUnique ?? false,
 		hasDefault: overrides.hasDefault ?? overrides.default !== undefined,
+		getSQLType: sqlType instanceof Function ? sqlType : (): string => sqlType,
+		...(overrides.default !== undefined
+			? { default: overrides.default }
+			: undefined),
+		...(overrides.defaultFn !== undefined
+			? { defaultFn: overrides.defaultFn }
+			: undefined),
 	};
-	built.getSQLType =
-		typeof sqlType === "function" ? sqlType : (): string => sqlType;
-	if (overrides.default !== undefined) built.default = overrides.default;
-	if (overrides.defaultFn !== undefined) built.defaultFn = overrides.defaultFn;
-	return built;
 }
 
 /**
@@ -62,23 +72,23 @@ export function column(
  * with no readable SQL type behind it — the shape a future Drizzle column class
  * this adapter does not understand would present.
  */
-export function typelessColumn(name: string): Record<string, unknown> {
+export function typelessColumn(name: string): DrizzleColumnLike {
 	return { name, getSQLType: (): undefined => undefined };
 }
 
 export interface TableOverrides {
 	readonly schema?: string;
-	readonly inlineForeignKeys?: readonly unknown[];
-	readonly extraConfigBuilder?: (columns: Record<string, unknown>) => unknown;
-	readonly extraConfigColumns?: Record<string, unknown>;
+	readonly inlineForeignKeys?: readonly JsonValue[];
+	readonly extraConfigBuilder?: ExtraConfigBuilder;
+	readonly extraConfigColumns?: JsonObject;
 }
 
 export function table(
 	sqlName: string,
-	columns: Record<string, unknown>,
+	columns: JsonObject,
 	overrides: TableOverrides = {},
-): object {
-	const built: Record<string | symbol, unknown> = {
+): FixtureHost {
+	const built: FixtureHost = {
 		[DRIZZLE_NAME]: sqlName,
 		[DRIZZLE_COLUMNS]: columns,
 	};
@@ -99,7 +109,7 @@ export function table(
 	return built;
 }
 
-export function view(sqlName: string): object {
+export function view(sqlName: string): FixtureHost {
 	return {
 		[DRIZZLE_IS_VIEW]: true,
 		[DRIZZLE_NAME]: sqlName,
@@ -110,14 +120,14 @@ export function view(sqlName: string): object {
 /** Mimics a drizzle-kit index builder: state parked on a `config` property. */
 export function indexBuilder(
 	name: string,
-	columns: readonly (string | Record<string, unknown>)[],
+	columns: readonly (string | JsonObject)[],
 	unique = false,
-): Record<string, unknown> {
+): JsonObject {
 	return { config: { name, columns: [...columns], unique } };
 }
 
 /** The representative schema module the ingestion tests read. */
-export function representativeSchemaModule(): Record<string, unknown> {
+export function representativeSchemaModule(): JsonObject {
 	const usersColumns = {
 		id: column("id", {
 			columnType: "PgSerial",

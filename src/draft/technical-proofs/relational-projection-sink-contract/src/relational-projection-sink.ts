@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject } from "./json.js";
 export class ProjectionSinkMappingError extends Error {
   constructor(message, details = {}) {
     super(message);
@@ -17,7 +18,7 @@ export function defineRelationalProjection(input) {
     table: assertSqlIdentifier(input.table, "projection.table"),
     key: input.key,
     initialState: clone(input.initialState ?? {}),
-    rowShape: normalizeRowShape(input.rowShape),
+    rowContract: normalizeRowContract(input.rowContract),
     indexes: normalizeIndexes(input.indexes ?? []),
     readSet: Object.freeze(Object.keys(handlers).sort()),
     on: handlers,
@@ -36,9 +37,9 @@ export function defineRelationalProjection(input) {
 export function mapRecordToPostgresSchema(projection) {
   assertObject(projection, "projection");
   const table = assertSqlIdentifier(projection.table, "projection.table");
-  const fields = projection.rowShape?.fields;
+  const fields = projection.rowContract?.fields;
   if (!Array.isArray(fields) || fields.length === 0) {
-    throw new ProjectionSinkMappingError("rowShape.fields must contain at least one field");
+    throw new ProjectionSinkMappingError("rowContract.fields must contain at least one field");
   }
 
   const columns = fields
@@ -265,18 +266,18 @@ class RelationalProjectionSink {
         });
       }
 
-      if (column.type === "boolean" && typeof value !== "boolean") {
+      if (column.type === "boolean" && !isJsonBoolean(value)) {
         throw new ProjectionSinkMappingError(`column ${column.name} must be boolean`, { event, value });
       }
 
-      if (column.type === "double precision" && (typeof value !== "number" || !Number.isFinite(value))) {
+      if (column.type === "double precision" && (!isJsonNumber(value) || !Number.isFinite(value))) {
         throw new ProjectionSinkMappingError(`column ${column.name} must be finite double precision`, {
           event,
           value,
         });
       }
 
-      if (column.type === "text" && typeof value !== "string") {
+      if (column.type === "text" && !isJsonString(value)) {
         throw new ProjectionSinkMappingError(`column ${column.name} must be text`, { event, value });
       }
 
@@ -311,19 +312,19 @@ function normalizeHandlers(on) {
   );
 }
 
-function normalizeRowShape(rowShape) {
-  assertObject(rowShape, "rowShape");
-  if (!Array.isArray(rowShape.fields) || rowShape.fields.length === 0) {
-    throw new ProjectionSinkMappingError("rowShape.fields must contain at least one field");
+function normalizeRowContract(rowContract) {
+  assertObject(rowContract, "rowContract");
+  if (!Array.isArray(rowContract.fields) || rowContract.fields.length === 0) {
+    throw new ProjectionSinkMappingError("rowContract.fields must contain at least one field");
   }
 
   return deepFreeze({
-    fields: rowShape.fields.map((field) => {
-      assertObject(field, "rowShape field");
+    fields: rowContract.fields.map((field) => {
+      assertObject(field, "rowContract field");
       return {
         ...field,
-        name: assertSqlIdentifier(field.name, "rowShape field name"),
-        type: assertNonEmptyString(field.type, `rowShape.${field.name}.type`),
+        name: assertSqlIdentifier(field.name, "rowContract field name"),
+        type: assertNonEmptyString(field.type, `rowContract.${field.name}.type`),
       };
     }),
   });
@@ -458,7 +459,7 @@ function compareByOrder(left, right, orderBy) {
 }
 
 function compareValues(left, right) {
-  if (typeof left === "number" && typeof right === "number") {
+  if (isJsonNumber(left) && isJsonNumber(right)) {
     return left - right;
   }
   return String(left).localeCompare(String(right));
@@ -516,20 +517,20 @@ function assertSqlIdentifier(value, field) {
 }
 
 function assertObject(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new ProjectionSinkMappingError(`${field} must be an object`);
   }
   return value;
 }
 
 function assertFunction(value, field) {
-  if (typeof value !== "function") {
+  if (!(value instanceof Function)) {
     throw new ProjectionSinkMappingError(`${field} must be a function`);
   }
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new ProjectionSinkMappingError(`${field} must be a non-empty string`);
   }
   return value;
@@ -547,7 +548,7 @@ function deepFreeze(value) {
     return Object.freeze(value.map(deepFreeze));
   }
 
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.freeze(Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, deepFreeze(entry)])));
   }
 
@@ -562,5 +563,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

@@ -34,7 +34,7 @@ cross-project dependencies, and release-readiness sync.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\launch-site-private-beta-evidence-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\launch-site-private-beta-evidence-contract test
 ```
 
 ## Scope Boundary

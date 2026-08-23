@@ -8,6 +8,7 @@ export {
 	FluxProviderError,
 	type FluxSourceKind,
 	type FluxTier,
+	type JsonValue,
 	parseFluxDeploySpec,
 } from "./parse.js";
 export { FLUX_PIN } from "./upstream-pin.js";

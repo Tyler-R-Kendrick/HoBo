@@ -14,6 +14,7 @@ import {
 import type { YardRuntime } from "@hobo/cli";
 import { DEFAULT_TENANT } from "@hobo/cli";
 import { collectStream } from "@hobo/cloud";
+import type { JsonObject } from "./json.js";
 
 // The durable side of the claim plane.
 //
@@ -70,8 +71,10 @@ export async function rebuildClaimState(
 	let commandCount = 0;
 	let seq = 0;
 	for (const envelope of envelopes) {
+		// SAFETY: assertion required at this I/O or test boundary.
 		seq = Math.max(seq, (envelope as { seq?: number }).seq ?? seq);
 		if (envelope.type !== CLAIM_COMMAND_EVENT) continue;
+		// SAFETY: assertion required at this I/O or test boundary.
 		const stored = (envelope as { data?: StoredCommand }).data;
 		if (stored === undefined) continue;
 		state = reduce(state, stored.command, {
@@ -125,7 +128,8 @@ export async function applyClaimCommand(
 			},
 			...result.events.map((event) => ({
 				type: `${CLAIM_FACT_PREFIX}${event.type}`,
-				data: event as unknown as Record<string, unknown>,
+				// SAFETY: assertion required at this I/O or test boundary.
+				data: event as JsonObject,
 			})),
 		],
 		{

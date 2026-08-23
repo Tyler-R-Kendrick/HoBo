@@ -134,16 +134,17 @@ test("scope guards reject publication, docs portal, customer comms, unsupported 
 
 test("malformed evidence collections return parser errors instead of throwing", async () => {
   const { releaseNotesGaHandoffEvidence, validateReleaseNotesGaHandoffEvidence } = await loadContract();
-  const invalid = structuredClone(releaseNotesGaHandoffEvidence) as unknown as Record<string, unknown>;
-
-  invalid.evidence = {};
-  invalid.blockers = "not-blockers";
-  invalid.acceptedRisks = null;
-  invalid.releaseCutlineDependencies = false;
-  invalid.missingEvidence = {};
-  invalid.followUps = {};
-  invalid.scopeOut = {};
-  invalid.publicClaimGuards = {};
+  const invalid = {
+    ...structuredClone(releaseNotesGaHandoffEvidence),
+    evidence: {},
+    blockers: "not-blockers",
+    acceptedRisks: null,
+    releaseCutlineDependencies: false,
+    missingEvidence: {},
+    followUps: {},
+    scopeOut: {},
+    publicClaimGuards: {},
+  };
 
   const result = validateReleaseNotesGaHandoffEvidence(invalid);
 

@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 
+import type { JsonValue } from "./json.js";
 import { parseExecutionHostManifest } from "./manifest.js";
 import {
 	CATEGORY_SKUS,
@@ -174,7 +175,7 @@ export function selectExecutionHost(
 	if (!OBJECTIVES.includes(objective)) {
 		throw new Error(`unsupported objective ${objective}`);
 	}
-	if (typeof request.dispatchId !== "string" || !request.dispatchId) {
+	if (request.dispatchId.length === 0) {
 		throw new Error("dispatchId must be a non-empty string");
 	}
 	const units = request.units ?? 1;
@@ -212,10 +213,14 @@ export function selectExecutionHost(
 		throw new Error(`no registered providers for ${category}`);
 	}
 
-	const winner = candidates[0] as DispatchCandidate;
-	const selected = registry.byId.get(
-		`${category}:${winner.providerId}`,
-	) as ExecutionHostRecord;
+	const winner = candidates[0];
+	if (winner === undefined) {
+		throw new Error(`no registered providers for ${category}`);
+	}
+	const selected = registry.byId.get(`${category}:${winner.providerId}`);
+	if (selected === undefined) {
+		throw new Error(`no registered providers for ${category}`);
+	}
 	return createDecision({
 		dispatchId: request.dispatchId,
 		category,
@@ -266,7 +271,7 @@ function createDecision(input: {
 	};
 }
 
-function digestRef(value: unknown): string {
+function digestRef(value: JsonValue): string {
 	return `sha256:${createHash("sha256")
 		.update(JSON.stringify(value))
 		.digest("hex")}`;

@@ -111,28 +111,39 @@ export function deriveYardVisualState(
 		Object.freeze({
 			id: r.id,
 			contentHash: r.contentHash,
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 			visual: r.activationStatus as RailVisualState,
 		}),
 	);
 
 	const connections = snap.connections.map((c) =>
-		Object.freeze({
-			id: c.id,
-			...(c.alias !== undefined ? { alias: c.alias } : {}),
-			provider: c.provider,
-			visual: mapConnectionVisual(String(c.status)),
-			status: String(c.status),
-		}),
+		Object.freeze(
+			Object.assign(
+				{
+					id: c.id,
+					provider: c.provider,
+					visual: mapConnectionVisual(String(c.status)),
+					status: String(c.status),
+				},
+				c.alias !== undefined ? { alias: c.alias } : undefined,
+			),
+		),
 	);
 
 	const guests = snap.activity.map((a) =>
-		Object.freeze({
-			connectorKind: a.connectorKind,
-			...(a.connectionId !== undefined ? { connectionId: a.connectionId } : {}),
-			visual: a.status,
-			// Optional in the projection contract; absent means not yet measured.
-			statusSource: a.statusSource ?? "derived-static",
-		}),
+		Object.freeze(
+			Object.assign(
+				{
+					connectorKind: a.connectorKind,
+					visual: a.status,
+					// Optional in the projection contract; absent means not yet measured.
+					statusSource: a.statusSource ?? "derived-static",
+				},
+				a.connectionId !== undefined
+					? { connectionId: a.connectionId }
+					: undefined,
+			),
+		),
 	);
 
 	const quotaLimit = snap.metering.quotaLimit || 1;
@@ -290,7 +301,7 @@ export function stepToward(
 	to: { x: number; y: number },
 	speedPxPerSec: number,
 	dtSec: number,
-): { x: number; y: number; arrived: boolean } {
+) {
 	const dx = to.x - from.x;
 	const dy = to.y - from.y;
 	const dist = Math.hypot(dx, dy);

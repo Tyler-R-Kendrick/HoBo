@@ -76,7 +76,7 @@ export function checkGeneratedRegionDrift({ source, expectedSource, regionId }) 
 export function createChampionChallengerPromotion({ now = () => "2026-06-28T19:10:00.000Z" } = {}) {
   return Object.freeze({
     shadowTraffic({ champion, challenger, requests }) {
-      if (typeof champion !== "function" || typeof challenger !== "function") {
+      if (!isCallable(champion) || !isCallable(challenger)) {
         throw new ChampionChallengerPromotionError("promotion.callable_required", "$.shadow");
       }
       if (!Array.isArray(requests)) {
@@ -203,7 +203,7 @@ function isCandidateAlreadyApplied(source, candidate) {
     });
     const currentRegionSource = source.slice(currentRegion.startOffset, currentRegion.endOffset);
     const replacement = candidate?.edits?.[0]?.replacement;
-    if (typeof replacement !== "string") {
+    if (!isString(replacement)) {
       return false;
     }
     const normalizedReplacement =
@@ -256,7 +256,7 @@ function assertCertifiedGate(gate) {
 }
 
 function validateSignedProvenance(provenance) {
-  if (!provenance || typeof provenance !== "object" || Array.isArray(provenance)) {
+  if (!isObjectRecord(provenance)) {
     throw new ChampionChallengerPromotionError("promotion.provenance_required", "$.provenance");
   }
   if (provenance.kind !== "generation-provenance") {
@@ -321,7 +321,7 @@ function promotionEvent(type, candidate, region, ts, effect, data = {}) {
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new ChampionChallengerPromotionError(code, path);
   }
 }
@@ -338,7 +338,7 @@ function digest(value) {
 }
 
 function stableJson(value) {
-  if (value === null || typeof value !== "object") {
+  if (!isObjectRecord(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
@@ -348,6 +348,20 @@ function stableJson(value) {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
     .join(",")}}`;
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isCallable(value) {
+  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
+    Object.prototype.toString.call(value),
+  );
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }
 
 function escapeRegExp(value) {

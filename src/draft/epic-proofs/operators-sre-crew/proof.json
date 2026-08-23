@@ -3,7 +3,13 @@
   "slug": "operators-sre-crew",
   "title": "Operators & SRE - the Crew Reference Implementation",
   "references": {
-    "technicalProofs": [],
+    "technicalProofs": [
+      "src/draft/technical-proofs/autonomous-drift-remediation-contract",
+      "src/draft/technical-proofs/disaster-recovery-failover-contract",
+      "src/draft/technical-proofs/dr-failover-integrity-contract",
+      "src/draft/technical-proofs/gated-autonomous-remediation-contract",
+      "src/draft/technical-proofs/policy-gated-flag-flips-contract"
+    ],
     "epicProofs": [],
     "expProofs": [],
     "designDocs": []

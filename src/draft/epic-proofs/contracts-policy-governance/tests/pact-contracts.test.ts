@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
+import { isJsonString } from "../src/json.js";
 import { BOUNDARY_CONTRACTS } from "../services/reference-architecture.js";
 import {
   loadPactContracts,
@@ -26,8 +27,8 @@ describe("Pact-style boundary contracts", () => {
     for (const contract of contracts) {
       assert.equal(contract.metadata.epic, "contracts-policy-governance");
       assert.equal(contract.metadata.pactSpecification.version, "3.0.0");
-      assert.equal(typeof contract.consumer.name, "string");
-      assert.equal(typeof contract.provider.name, "string");
+      assert.equal(isJsonString(contract.consumer.name), true);
+      assert.equal(isJsonString(contract.provider.name), true);
       assert.ok(contract.interactions.length > 0);
       assert.ok(contract.interactions.every((interaction) => interaction.description));
       assert.ok(contract.interactions.every((interaction) => interaction.providerStates.length > 0));

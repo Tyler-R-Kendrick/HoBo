@@ -206,7 +206,7 @@ export function createInMemoryAutomationEngine(options = {}) {
 }
 
 export function validateIacProgram(program) {
-  if (!program || typeof program !== "object") {
+  if (!isObjectRecord(program)) {
     throw new PulumiProgramError("invalid-program", "IacProgram must be an object");
   }
   if (program.apiVersion !== IAC_PROGRAM_API_VERSION) {
@@ -251,7 +251,7 @@ export function validateIacProgram(program) {
 }
 
 function validateOutputReference(value, resources) {
-  if (typeof value !== "string" || !value.startsWith("${resources.")) {
+  if (!isString(value) || !value.startsWith("${resources.")) {
     return;
   }
 
@@ -343,7 +343,7 @@ function resolveStackOutputs(stackOutputs, resources) {
 }
 
 function resolveValue(value, resources) {
-  const match = typeof value === "string" ? OUTPUT_REF.exec(value) : undefined;
+  const match = isString(value) ? OUTPUT_REF.exec(value) : undefined;
 
   if (!match) {
     return structuredClone(value);
@@ -358,7 +358,7 @@ function resourceId(name) {
 }
 
 function collectValues(value) {
-  if (!value || typeof value !== "object") {
+  if (!isObjectRecord(value)) {
     return [value];
   }
 
@@ -381,7 +381,7 @@ function stableJson(value) {
   if (Array.isArray(value)) {
     return `[${value.map((item) => stableJson(item)).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (isObjectRecord(value)) {
     return `{${Object.keys(value)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
@@ -392,7 +392,7 @@ function stableJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isObjectRecord(value) || Object.isFrozen(value)) {
     return value;
   }
 
@@ -403,4 +403,12 @@ function deepFreeze(value) {
   }
 
   return value;
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

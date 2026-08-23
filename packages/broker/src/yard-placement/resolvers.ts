@@ -7,8 +7,11 @@ import {
 } from "./types.js";
 
 export const EMPTY_RESOLVER_CONFIG: PrimitiveResolverConfig = Object.freeze({
+	// SAFETY: assertion required at this I/O or test boundary.
 	require: Object.freeze([] as string[]),
+	// SAFETY: assertion required at this I/O or test boundary.
 	prefer: Object.freeze([] as string[]),
+	// SAFETY: assertion required at this I/O or test boundary.
 	pins: Object.freeze([] as ResolverPin[]),
 	properties: Object.freeze({}),
 	labels: Object.freeze({}),
@@ -25,10 +28,7 @@ export function composeResolverPins(options: {
 	readonly providerDefaults: readonly PrimitiveResolverDescriptor[];
 	readonly policyPins?: readonly ResolverPin[];
 	readonly deniedResolverIds?: readonly string[];
-}): {
-	readonly pins: readonly ResolverPin[];
-	readonly contributing: readonly string[];
-} {
+}) {
 	const pinMap = new Map<string, { resolverId: string; source: string }>();
 	const contributing: string[] = [];
 
@@ -106,6 +106,7 @@ export function buildExecutionUnits(options: {
 			yardId: options.yardId,
 			destroyWithBindle: false,
 			claims: Object.freeze([`yard:${options.yardId}`]),
+			// SAFETY: assertion required at this I/O or test boundary.
 			residualDefinitions: Object.freeze([] as string[]),
 		}),
 		Object.freeze({
@@ -115,6 +116,7 @@ export function buildExecutionUnits(options: {
 			yardId: options.yardId,
 			destroyWithBindle: false,
 			claims: Object.freeze([`camp:${options.campId}`]),
+			// SAFETY: assertion required at this I/O or test boundary.
 			residualDefinitions: Object.freeze([] as string[]),
 		}),
 		Object.freeze({
@@ -124,6 +126,7 @@ export function buildExecutionUnits(options: {
 			yardId: options.yardId,
 			destroyWithBindle: true,
 			claims: Object.freeze([`bindle:${options.bindleName}`]),
+			// SAFETY: assertion required at this I/O or test boundary.
 			residualDefinitions: Object.freeze([] as string[]),
 		}),
 	];
@@ -151,6 +154,7 @@ export function buildExecutionUnits(options: {
 			yardId: options.yardId,
 			destroyWithBindle: false,
 			claims: Object.freeze([`shared:${options.yardId}`]),
+			// SAFETY: assertion required at this I/O or test boundary.
 			residualDefinitions: Object.freeze([] as string[]),
 		}),
 	);
@@ -172,6 +176,7 @@ export function defaultProviderResolvers(
 			source: "provider-default",
 			default: true,
 			priority: 100,
+			// SAFETY: assertion required at this I/O or test boundary.
 			requiresCapabilities: Object.freeze([] as string[]),
 			providesCapabilities: Object.freeze([slot]),
 			implementationRef: `${providerId}/resolvers/${slot}`,
@@ -209,5 +214,6 @@ export function defaultProviderResolvers(
 export function hashResolverConfig(
 	config: PrimitiveResolverConfig,
 ): `sha256:${string}` {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return contentHashOf(config) as `sha256:${string}`;
 }

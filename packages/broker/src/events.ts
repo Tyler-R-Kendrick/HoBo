@@ -2,6 +2,8 @@
 // arrive at the broker actor; every decision is recorded as one of these
 // facts so read models rebuild from the event store alone.
 
+import type { JsonObject } from "./json.js";
+
 export const BROKER_EVENTS = {
 	Requested: "broker.Requested",
 	Resolved: "broker.Resolved",
@@ -20,12 +22,12 @@ export type BrokerEventType =
 
 export interface BrokerEvent {
 	type: string;
-	data: Record<string, unknown>;
+	data: JsonObject;
 }
 
 export function brokerEvent(
 	type: BrokerEventType,
-	data: Record<string, unknown>,
+	data: JsonObject,
 ): BrokerEvent {
 	return { type, data };
 }

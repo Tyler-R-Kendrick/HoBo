@@ -5,7 +5,6 @@ import {
 import {
 	CLOUDFLARE_PROVIDER_TARGET,
 	type HelloBindlePlan,
-	type TypedOptionBlock,
 } from "./hello-bindle.js";
 import {
 	CLOUDFLARE_IAC_PROVIDER,
@@ -15,6 +14,7 @@ import {
 	type IacProgram,
 	type IacResource,
 } from "./iac-program.js";
+import type { JsonObject } from "./json.js";
 import type { ResourcePlan } from "./types.js";
 
 // A container/CI image the build machine produces for a realized resource
@@ -37,17 +37,31 @@ export type RealizablePort = keyof typeof PORT_TO_CLASS;
 // Output names each Cloudflare resource class publishes. Every class exposes a
 // `binding` output so cross-resource bind edges resolve as
 // `${resources.<dep>.outputs.binding}` references.
-const OUTPUTS_BY_CLASS: Record<string, string[]> = {
-	"cloudflare:workers-script": ["url", "scriptName", "binding"],
-	"cloudflare:kv-namespace": ["namespaceId", "binding"],
-	"cloudflare:r2-bucket": ["bucketName", "endpoint", "binding"],
-};
+function outputsForClass(resourceClass: string): readonly string[] {
+	switch (resourceClass) {
+		case "cloudflare:workers-script":
+			return ["url", "scriptName", "binding"];
+		case "cloudflare:kv-namespace":
+			return ["namespaceId", "binding"];
+		case "cloudflare:r2-bucket":
+			return ["bucketName", "endpoint", "binding"];
+		default:
+			return ["binding"];
+	}
+}
 
-const PRIMARY_OUTPUT: Record<string, string> = {
-	"cloudflare:workers-script": "url",
-	"cloudflare:kv-namespace": "namespaceId",
-	"cloudflare:r2-bucket": "bucketName",
-};
+function primaryOutput(resourceClass: string): string {
+	switch (resourceClass) {
+		case "cloudflare:workers-script":
+			return "url";
+		case "cloudflare:kv-namespace":
+			return "namespaceId";
+		case "cloudflare:r2-bucket":
+			return "bucketName";
+		default:
+			return "binding";
+	}
+}
 
 export function isRealizablePort(port: string): port is RealizablePort {
 	return port in PORT_TO_CLASS;
@@ -66,9 +80,9 @@ export function mergeCloudflareOptions(
 	// `.with(...)` builder emits the shared TypedOptionBlock shape, and
 	// foreign-provider blocks drop below by providerId.
 	options: ResourcePlan["options"] = [],
-): Record<string, unknown> {
-	const merged: Record<string, unknown> = {};
-	for (const block of options as TypedOptionBlock[]) {
+): JsonObject {
+	const merged = {};
+	for (const block of options) {
 		if (block.providerId !== CLOUDFLARE_PROVIDER_TARGET) {
 			continue;
 		}
@@ -86,13 +100,13 @@ function buildResource(plan: ResourcePlan, withBindRefs: boolean): IacResource {
 			: { providerResourceId: dep },
 	);
 
-	const inputs: Record<string, unknown> = {
+	const inputs = {
 		port: plan.port,
 		providerService: mapping.providerService,
 		features: [...mapping.features],
 		options: mergeCloudflareOptions(plan.options),
 		bindings,
-		...(plan.region === undefined ? {} : { region: plan.region }),
+		...(plan.region === undefined ? undefined : { region: plan.region }),
 	};
 
 	return {
@@ -100,7 +114,7 @@ function buildResource(plan: ResourcePlan, withBindRefs: boolean): IacResource {
 		type: resourceClass,
 		provider: CLOUDFLARE_IAC_PROVIDER,
 		inputs,
-		outputs: OUTPUTS_BY_CLASS[resourceClass] ?? ["binding"],
+		outputs: [...outputsForClass(resourceClass)],
 	};
 }
 
@@ -121,7 +135,7 @@ function buildSpecFor(plan: ResourcePlan): BuildSpec | undefined {
 }
 
 function primaryRef(resource: IacResource): string {
-	const output = PRIMARY_OUTPUT[resource.type] ?? "binding";
+	const output = primaryOutput(resource.type);
 	return `\${resources.${resource.name}.outputs.${output}}`;
 }
 
@@ -162,7 +176,10 @@ export function realizeResourcePlans(
 	}
 	const resources = plans.map((plan) => buildResource(plan, true));
 	const deploymentId = options.deploymentId ?? "hello-bindle-cloudflare";
-	const first = resources[0] as IacResource;
+	const first = resources[0];
+	if (first === undefined) {
+		throw new Error("cannot realize an empty deployment plan");
+	}
 	const iac: IacProgram = {
 		apiVersion: IAC_PROGRAM_API_VERSION,
 		kind: IAC_PROGRAM_KIND,
@@ -191,8 +208,8 @@ export function toResourcePlans(plan: HelloBindlePlan): ResourcePlan[] {
 		deploymentId: plan.id,
 		...(resource.binds
 			? { deps: resource.binds.map((bind) => bind.providerResourceId) }
-			: {}),
-		...(resource.build ? { build: resource.build } : {}),
+			: undefined),
+		...(resource.build ? { build: resource.build } : undefined),
 	}));
 }
 

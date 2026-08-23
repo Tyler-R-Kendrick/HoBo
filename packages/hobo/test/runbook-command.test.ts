@@ -4,12 +4,12 @@ import path from "node:path";
 import type { CliContext } from "@hobo/cli";
 import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	createComposedHoboCli,
 	createDefaultYardRuntime,
 	createRunbookCommand,
 } from "../src/index.js";
+import type { JsonValue } from "../src/json.js";
 
 // `hobo runbook <file>` executes an ordered sequence of HoBo diagnostic steps
 // against the live deployment (the shared runtime), then reports per-step
@@ -37,7 +37,7 @@ afterEach(() => {
 });
 
 async function withProject(
-	runbook: unknown,
+	runbook: JsonValue,
 	callback: (cwd: string) => Promise<void>,
 ): Promise<void> {
 	const dir = await mkdtemp(path.join(tmpdir(), "hobo-runbook-"));
@@ -69,6 +69,7 @@ describe("createRunbookCommand", () => {
 		};
 		await withProject(runbook, async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -101,6 +102,7 @@ describe("createRunbookCommand", () => {
 		};
 		await withProject(runbook, async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 			await cli.run(["up", "--json"], { cwd });
@@ -125,6 +127,7 @@ describe("createRunbookCommand", () => {
 		};
 		await withProject(runbook, async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -146,6 +149,7 @@ describe("createRunbookCommand", () => {
 		};
 		await withProject(runbook, async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -160,6 +164,7 @@ describe("createRunbookCommand", () => {
 	it("errors cleanly on a missing file and no file argument", async () => {
 		await withProject({ name: "x", steps: [] }, async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -177,7 +182,9 @@ describe("createRunbookCommand", () => {
 
 	it("reports unavailable when no runtime is wired", async () => {
 		const result = await createRunbookCommand().run({
-			context: { cwd: "/tmp", projectDir: "/tmp" } as unknown as CliContext,
+			// SAFETY: assertion required at this I/O or test boundary.
+			context: { cwd: "/tmp", projectDir: "/tmp" } as CliContext,
+			// SAFETY: assertion required at this I/O or test boundary.
 			flags: { cwd: "/tmp" } as never,
 			args: ["runbook.json"],
 			verb: "runbook",

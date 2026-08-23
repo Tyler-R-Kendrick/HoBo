@@ -70,6 +70,15 @@ import {
 	type TransportResponse,
 } from "@hobo/core";
 
+import {
+	isJsonArray,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "./json.js";
 import { HOSTINGER_PROVIDER_TARGET } from "./options.js";
 import { dnsZone, mysql, staticSite, vps, webHosting } from "./slots.js";
 import {
@@ -174,7 +183,7 @@ const CREDENTIAL_REF_PATTERN = /^[a-z][a-z0-9+.-]*:\/\/[^\s@]+$/u;
 const RAW_CREDENTIAL_PATTERN = /^[A-Za-z0-9_-]{32,}$/u;
 
 /** Anything long and token-shaped is scrubbed out of provider error text. */
-const TOKEN_SHAPED_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
+const TOKEN_PATTERN = /[A-Za-z0-9_-]{20,}/gu;
 
 /**
  * Property names that carry a secret rather than a reference to one. A request
@@ -194,7 +203,7 @@ const INLINE_SECRET_KEYS = Object.freeze([
  * carried hostnames and token fragments before.
  */
 export function redactHostingerText(text: string, limit = 400): string {
-	const scrubbed = text.replace(TOKEN_SHAPED_PATTERN, "[redacted]");
+	const scrubbed = text.replace(TOKEN_PATTERN, "[redacted]");
 	return scrubbed.length > limit ? `${scrubbed.slice(0, limit)}…` : scrubbed;
 }
 
@@ -206,52 +215,28 @@ function compareStrings(left: string, right: string): number {
 	return left < right ? -1 : left > right ? 1 : 0;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
-		return false;
-	}
-	const prototype: unknown = Object.getPrototypeOf(value);
-	return prototype === Object.prototype || prototype === null;
+function optionalString(record: JsonObject, key: string): string | undefined {
+	const value = record[key];
+	return isJsonString(value) && value.trim().length > 0 ? value : undefined;
 }
 
-function optionalString(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): string | undefined {
+function optionalInteger(record: JsonObject, key: string): number | undefined {
 	const value = record[key];
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return isJsonNumber(value) && Number.isSafeInteger(value) ? value : undefined;
 }
 
-function optionalInteger(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): number | undefined {
+function nestedRecord(record: JsonObject, key: string): JsonObject {
 	const value = record[key];
-	return typeof value === "number" && Number.isSafeInteger(value)
-		? value
-		: undefined;
-}
-
-function nestedRecord(
-	record: Readonly<Record<string, unknown>>,
-	key: string,
-): Readonly<Record<string, unknown>> {
-	const value = record[key];
-	return isPlainObject(value) ? value : {};
+	return isJsonObject(value) ? value : {};
 }
 
 /** Hostinger ids are integers on every resource this module touches. */
-function identityOf(
-	record: Readonly<Record<string, unknown>>,
-	label: string,
-): string {
+function identityOf(record: JsonObject, label: string): string {
 	const value = record.id;
-	if (typeof value === "number" && Number.isSafeInteger(value)) {
+	if (isJsonNumber(value) && Number.isSafeInteger(value)) {
 		return String(value);
 	}
-	if (typeof value === "string" && value.trim().length > 0) return value;
+	if (isJsonString(value) && value.trim().length > 0) return value;
 	throw new ResolverError(
 		"RESOLVER_OUTPUT_UNPARSEABLE",
 		`${label}: Hostinger returned a record without a usable id, so the resource cannot be addressed`,
@@ -259,14 +244,14 @@ function identityOf(
 }
 
 /** Key-sorted JSON, so a record-set compare does not depend on key order. */
-function stableJson(value: unknown): string {
-	if (Array.isArray(value)) {
+function stableJson(value: JsonValue): string {
+	if (isJsonArray(value)) {
 		return `[${value.map((item) => stableJson(item)).join(",")}]`;
 	}
-	if (isPlainObject(value)) {
+	if (isJsonObject(value)) {
 		return `{${Object.keys(value)
 			.sort(compareStrings)
-			.map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
+			.map((key) => `${JSON.stringify(key)}:${stableJson(value[key] ?? null)}`)
 			.join(",")}}`;
 	}
 	return JSON.stringify(value) ?? "null";
@@ -301,9 +286,11 @@ async function send(
 		headers: {
 			accept: "application/json",
 			authorization: `Bearer ${context.token}`,
-			...(body !== undefined ? { "content-type": "application/json" } : {}),
+			...(body !== undefined
+				? { "content-type": "application/json" }
+				: undefined),
 		},
-		...(body !== undefined ? { body } : {}),
+		...(body !== undefined ? { body } : undefined),
 		timeoutMs: HOSTINGER_MAX_TIMEOUT_MS,
 		maxResponseBytes: HOSTINGER_MAX_RESPONSE_BYTES,
 	});
@@ -319,10 +306,11 @@ function isNotFound(response: TransportResponse): boolean {
  * because a body this code cannot read leaves the outcome of the call unknown,
  * and an unknown outcome is refused rather than assumed.
  */
-function parseJson(response: TransportResponse, label: string): unknown {
+function parseJson(response: TransportResponse, label: string): JsonValue {
 	if (response.body.trim().length === 0) return {};
 	try {
-		return JSON.parse(response.body) as unknown;
+		// SAFETY: JSON.parse yields a JSON value at this document boundary.
+		return JSON.parse(response.body) as JsonValue;
 	} catch {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
@@ -344,7 +332,7 @@ function providerRejection(
 	let detail = "no error detail was returned";
 	try {
 		const parsed = parseJson(response, label);
-		const message = isPlainObject(parsed)
+		const message = isJsonObject(parsed)
 			? optionalString(parsed, "message")
 			: undefined;
 		if (message !== undefined) detail = redactHostingerText(message);
@@ -359,13 +347,10 @@ function providerRejection(
 }
 
 /** A successful response as a record; any 4xx/5xx is a typed refusal. */
-function expectRecord(
-	response: TransportResponse,
-	label: string,
-): Record<string, unknown> {
+function expectRecord(response: TransportResponse, label: string): JsonObject {
 	if (response.status >= 400) throw providerRejection(response, label);
 	const parsed = parseJson(response, label);
-	if (!isPlainObject(parsed)) {
+	if (!isJsonObject(parsed)) {
 		throw new ResolverError(
 			"RESOLVER_OUTPUT_UNPARSEABLE",
 			`${label}: Hostinger returned JSON that is not an object, so the resource it describes cannot be identified`,
@@ -382,12 +367,12 @@ function expectRecord(
 function expectList(
 	response: TransportResponse,
 	label: string,
-): readonly Record<string, unknown>[] {
+): readonly JsonObject[] {
 	if (response.status >= 400) throw providerRejection(response, label);
 	const parsed = parseJson(response, label);
-	const items = Array.isArray(parsed)
+	const items = isJsonArray(parsed)
 		? parsed
-		: isPlainObject(parsed) && Array.isArray(parsed.data)
+		: isJsonObject(parsed) && isJsonArray(parsed.data)
 			? parsed.data
 			: undefined;
 	if (items === undefined) {
@@ -396,7 +381,7 @@ function expectList(
 			`${label}: Hostinger returned neither an array nor a {data: [...]} envelope, so the collection cannot be searched and a mutation would risk acting on the wrong resource`,
 		);
 	}
-	return items.filter(isPlainObject);
+	return items.filter(isJsonObject);
 }
 
 // ---------------------------------------------------------------------------
@@ -410,7 +395,7 @@ interface HostingerResolverContext {
 	readonly token: string;
 	/** The deterministic resource name: `desired.name`, else the logical id. */
 	readonly name: string;
-	readonly desired: Readonly<Record<string, unknown>>;
+	readonly desired: JsonObject;
 	/** True when the caller already knows the physical id (adopt vs noop). */
 	readonly knownPhysicalId: string | undefined;
 	/**
@@ -427,7 +412,7 @@ interface HostingerResolverContext {
 function outcome(
 	action: ResolverAction,
 	physicalId: string,
-	outputs: Readonly<Record<string, unknown>>,
+	outputs: JsonObject,
 	diagnostics: readonly string[],
 ): ResolveOutcome {
 	return Object.freeze({
@@ -481,7 +466,7 @@ async function resolveToken(
 	resolve: (ref: string) => Promise<string>,
 ): Promise<string> {
 	const ref = request.credentialRef;
-	if (typeof ref !== "string" || ref.trim().length === 0) {
+	if (ref.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			'hostinger resolver: credentialRef is empty. Supply a locator such as "env://HOSTINGER_API_TOKEN" or "secret://camp/hostinger-token" and register it with the host credential resolver; the resolver never accepts inline credential material',
@@ -512,7 +497,7 @@ async function resolveToken(
 			)}. Register the reference with the credential resolver before deploying`,
 		);
 	}
-	if (typeof material !== "string" || material.trim().length === 0) {
+	if (material.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			`hostinger resolver: credentialRef ${JSON.stringify(trimmed)} resolved to nothing. A missing credential is refused rather than retried unauthenticated, which would look like a permissions error at Hostinger`,
@@ -522,10 +507,13 @@ async function resolveToken(
 }
 
 function resourceName(request: ResolveRequest, productId: string): string {
-	const desiredName = optionalString(request.desired, "name");
+	const desiredName = optionalString(
+		parseJsonObject(JSON.stringify(request.desired)),
+		"name",
+	);
 	if (desiredName !== undefined) return desiredName;
 	const logicalId = request.ref.logicalId;
-	if (typeof logicalId === "string" && logicalId.trim().length > 0) {
+	if (logicalId.trim().length > 0) {
 		return logicalId;
 	}
 	throw new ResolverError(
@@ -537,9 +525,7 @@ function resourceName(request: ResolveRequest, productId: string): string {
 /** The physical id the caller already knows, if it supplied a usable one. */
 function knownPhysicalId(request: ResolveRequest): string | undefined {
 	const value = request.ref.physicalId;
-	return typeof value === "string" && value.trim().length > 0
-		? value
-		: undefined;
+	return value !== undefined && value.trim().length > 0 ? value : undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -551,34 +537,30 @@ const VIRTUAL_MACHINES = "/api/vps/v1/virtual-machines";
 /** A VPS that has been bought but has no OS on it yet. */
 const UNPROVISIONED_STATES = Object.freeze(["initial", "created"] as const);
 
-function vpsOutputs(
-	record: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
-	const addresses = Array.isArray(record.ipv4) ? record.ipv4 : [];
-	const first = addresses.filter(isPlainObject)[0];
+function vpsOutputs(record: JsonObject): JsonObject {
+	const addresses = isJsonArray(record.ipv4) ? record.ipv4 : [];
+	const first = addresses.filter(isJsonObject)[0];
+	const hostname = optionalString(record, "hostname");
+	const state = optionalString(record, "state");
+	const ipv4 =
+		first === undefined ? undefined : optionalString(first, "address");
 	const template = optionalString(nestedRecord(record, "template"), "name");
 	const dataCentre = optionalString(
 		nestedRecord(record, "data_center"),
 		"name",
 	);
 	return {
-		...(optionalString(record, "hostname") !== undefined
-			? { hostname: optionalString(record, "hostname") }
-			: {}),
-		...(optionalString(record, "state") !== undefined
-			? { state: optionalString(record, "state") }
-			: {}),
-		...(first !== undefined && optionalString(first, "address") !== undefined
-			? { ipv4: optionalString(first, "address") }
-			: {}),
-		...(template !== undefined ? { template } : {}),
-		...(dataCentre !== undefined ? { dataCenter: dataCentre } : {}),
+		...(hostname !== undefined ? { hostname } : undefined),
+		...(state !== undefined ? { state } : undefined),
+		...(ipv4 !== undefined ? { ipv4 } : undefined),
+		...(template !== undefined ? { template } : undefined),
+		...(dataCentre !== undefined ? { dataCenter: dataCentre } : undefined),
 	};
 }
 
 function vpsDiagnostics(
 	context: HostingerResolverContext,
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 ): readonly string[] {
 	const diagnostics: string[] = [];
 	const state = optionalString(record, "state");
@@ -607,7 +589,7 @@ function vpsDiagnostics(
 /** Find the machine whose hostname is this resource's name. */
 async function findVpsByHostname(
 	context: HostingerResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const label = `hostinger list virtual machines for ${context.name}`;
 	const machines = expectList(
 		await send(context, { method: "GET", path: VIRTUAL_MACHINES }),
@@ -629,7 +611,7 @@ async function findVpsByHostname(
 async function readVpsById(
 	context: HostingerResolverContext,
 	id: string,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const label = `hostinger read virtual machine ${id}`;
 	const response = await send(context, {
 		method: "GET",
@@ -638,7 +620,7 @@ async function readVpsById(
 	if (isNotFound(response)) return undefined;
 	const record = expectRecord(response, label);
 	// Hostinger wraps some single-resource reads in `{data: {...}}`.
-	return isPlainObject(record.data) ? record.data : record;
+	return isJsonObject(record.data) ? record.data : record;
 }
 
 /**
@@ -691,7 +673,7 @@ const VPS_SPEC: Omit<HostingerResolverSpec, "productId"> = {
 		const state = optionalString(machine, "state");
 		const unprovisioned =
 			state !== undefined &&
-			(UNPROVISIONED_STATES as readonly string[]).includes(state);
+			UNPROVISIONED_STATES.some((entry) => entry === state);
 		if (!unprovisioned) {
 			// The machine is already running something. Setting it up again would
 			// wipe the disk, so this converges the hostname only and reports the
@@ -748,7 +730,7 @@ const VPS_SPEC: Omit<HostingerResolverSpec, "productId"> = {
 async function setHostname(
 	context: HostingerResolverContext,
 	id: string,
-): Promise<Record<string, unknown>> {
+): Promise<JsonObject> {
 	const label = `hostinger set hostname on virtual machine ${id}`;
 	expectRecord(
 		await send(context, {
@@ -789,7 +771,7 @@ function desiredZone(
 	productId: string,
 ): readonly unknown[] {
 	const records = context.desired.records;
-	if (!Array.isArray(records)) {
+	if (!isJsonArray(records)) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			`${productId}: the request carries no desired.records array. A DNS zone is defined by its record set; this resolver forwards the records you authored and owns only the domain they are written to, because inventing records would publish addresses nobody wrote`,
@@ -800,8 +782,8 @@ function desiredZone(
 
 function zoneOutputs(
 	context: HostingerResolverContext,
-	records: readonly Record<string, unknown>[],
-): Readonly<Record<string, unknown>> {
+	records: readonly JsonObject[],
+): JsonObject {
 	return {
 		domain: context.name,
 		recordCount: records.length,
@@ -846,7 +828,10 @@ const DNS_ZONE_SPEC: Omit<HostingerResolverSpec, "productId"> = {
 			);
 		}
 		const observed = expectList(response, label);
-		if (stableJson(observed) === stableJson(wanted)) {
+		if (
+			stableJson(parseJsonObject(JSON.stringify({ items: observed }))) ===
+			stableJson(parseJsonObject(JSON.stringify({ items: wanted })))
+		) {
 			return outcome(
 				settledAction(context),
 				context.name,
@@ -916,7 +901,7 @@ function websiteDomain(context: HostingerResolverContext): string {
  */
 async function findWebsite(
 	context: HostingerResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const domain = websiteDomain(context);
 	const label = `hostinger list websites for ${domain}`;
 	const items = expectList(
@@ -927,7 +912,7 @@ async function findWebsite(
 		label,
 	);
 	const matches = items
-		.filter(isPlainObject)
+		.filter(isJsonObject)
 		.filter((item) => optionalString(item, "domain") === domain);
 	if (matches.length > 1) {
 		throw new ResolverError(
@@ -938,9 +923,7 @@ async function findWebsite(
 	return matches[0];
 }
 
-function websiteOutputs(
-	observed: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function websiteOutputs(observed: JsonObject): JsonObject {
 	const username = optionalString(observed, "username");
 	const vhostType = optionalString(observed, "vhost_type");
 	const websiteType = optionalString(observed, "website_type");
@@ -949,17 +932,15 @@ function websiteOutputs(
 	return {
 		domain: optionalString(observed, "domain") ?? "",
 		url: `https://${optionalString(observed, "domain") ?? ""}`,
-		...(username === undefined ? {} : { hostingAccount: username }),
-		...(vhostType === undefined ? {} : { vhostType }),
-		...(websiteType === undefined ? {} : { websiteType }),
-		...(root === undefined ? {} : { documentRoot: root }),
-		...(orderId === undefined ? {} : { orderId }),
+		...(username === undefined ? undefined : { hostingAccount: username }),
+		...(vhostType === undefined ? undefined : { vhostType }),
+		...(websiteType === undefined ? undefined : { websiteType }),
+		...(root === undefined ? undefined : { documentRoot: root }),
+		...(orderId === undefined ? undefined : { orderId }),
 	};
 }
 
-function websiteDiagnostics(
-	observed: Readonly<Record<string, unknown>>,
-): readonly string[] {
+function websiteDiagnostics(observed: JsonObject): readonly string[] {
 	const diagnostics: string[] = [];
 	if (observed.is_enabled === false) {
 		diagnostics.push(
@@ -1024,7 +1005,7 @@ function websiteSpec(
 						domain,
 						order_id: orderId,
 						...(optionalString(context.desired, "datacenterCode") === undefined
-							? {}
+							? undefined
 							: {
 									datacenter_code: optionalString(
 										context.desired,
@@ -1110,7 +1091,7 @@ function databasesPath(context: HostingerResolverContext): string {
  */
 async function findDatabase(
 	context: HostingerResolverContext,
-): Promise<Record<string, unknown> | undefined> {
+): Promise<JsonObject | undefined> {
 	const label = `hostinger list databases named ${context.name}`;
 	const items = expectList(
 		await send(context, {
@@ -1120,7 +1101,7 @@ async function findDatabase(
 		label,
 	);
 	const matches = items
-		.filter(isPlainObject)
+		.filter(isJsonObject)
 		.filter((item) => optionalString(item, "name") === context.name);
 	if (matches.length > 1) {
 		throw new ResolverError(
@@ -1131,23 +1112,21 @@ async function findDatabase(
 	return matches[0];
 }
 
-function databaseOutputs(
-	observed: Readonly<Record<string, unknown>>,
-): Readonly<Record<string, unknown>> {
+function databaseOutputs(observed: JsonObject): JsonObject {
 	const host = optionalString(observed, "host");
 	const port = optionalInteger(observed, "port");
 	const user = optionalString(observed, "user");
 	const domain = optionalString(observed, "domain");
 	return {
 		databaseName: optionalString(observed, "name") ?? "",
-		...(user === undefined ? {} : { databaseUser: user }),
-		...(host === undefined ? {} : { host }),
-		...(port === undefined ? {} : { port }),
-		...(domain === undefined ? {} : { websiteDomain: domain }),
+		...(user === undefined ? undefined : { databaseUser: user }),
+		...(host === undefined ? undefined : { host }),
+		...(port === undefined ? undefined : { port }),
+		...(domain === undefined ? undefined : { websiteDomain: domain }),
 		// A locator, not a connection string: a DSN would carry the password,
 		// and outputs are recorded alongside `desired`.
 		...(host === undefined
-			? {}
+			? undefined
 			: {
 					endpoint: `mysql://${host}${port === undefined ? "" : `:${port}`}/${optionalString(observed, "name") ?? ""}`,
 				}),
@@ -1175,7 +1154,7 @@ async function databasePassword(
 		);
 	}
 	const material = await resolve(context.request.ref.logicalId);
-	if (typeof material !== "string" || material.length === 0) {
+	if (material.length === 0) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			`${HOSTINGER_MYSQL_PRODUCT_ID}: resolveDatabasePassword produced no material for ${JSON.stringify(context.request.ref.logicalId)}. A create sent with an empty password would either be refused by Hostinger or, worse, accepted`,
@@ -1287,7 +1266,7 @@ function createResolver(
 	spec: HostingerResolverSpec,
 	options: HostingerResolverOptions,
 ): ResourceResolver {
-	if (typeof options.resolveCredential !== "function") {
+	if (options.resolveCredential === undefined) {
 		throw new ResolverError(
 			"RESOLVER_CREDENTIAL_MISSING",
 			"hostinger resolvers need an injected resolveCredential(ref): the resolver never reads an environment variable or a credential file itself",
@@ -1311,7 +1290,7 @@ function createResolver(
 			transport,
 			token,
 			name: resourceName(request, spec.productId),
-			desired: request.desired,
+			desired: parseJsonObject(JSON.stringify(request.desired)),
 			knownPhysicalId: knownPhysicalId(request),
 			resolveDatabasePassword:
 				spec.productId === HOSTINGER_MYSQL_PRODUCT_ID

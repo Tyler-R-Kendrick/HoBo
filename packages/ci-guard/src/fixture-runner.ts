@@ -2,6 +2,7 @@ import { appendFile, mkdir, readFile } from "node:fs/promises";
 import path from "node:path";
 
 import { createHoboCiFabricContract } from "./contract.js";
+import { isJsonObject, isJsonString, parseJsonTree } from "./json.js";
 import { simulateHelloBindleE2e } from "./validate.js";
 
 export type FixturePhase = "deploy-and-assert" | "teardown" | "sweep-orphans";
@@ -11,6 +12,21 @@ export interface RunExampleFixtureOptions {
 	readonly phase: FixturePhase;
 	readonly runId: string;
 	readonly eventsPath?: string;
+}
+
+export interface FixtureLifecycleEvent {
+	readonly type:
+		| "e2e.FixtureDeployed"
+		| "e2e.LiveUrlAsserted"
+		| "e2e.FixtureTornDown"
+		| "e2e.OrphanSwept";
+	readonly fixture: string;
+	readonly runId: string;
+	readonly recordedAtMs: number;
+	readonly liveUrl?: string;
+	readonly ok?: boolean;
+	readonly selector?: string;
+	readonly maxAgeMinutes?: number;
 }
 
 export async function runExampleFixture(
@@ -27,9 +43,9 @@ export async function runExampleFixture(
 
 	try {
 		const raw = await readFile(fixtureJsonPath, "utf8");
-		const parsed = JSON.parse(raw) as { id?: string };
-		if (parsed.id) {
-			fixtureId = parsed.id;
+		const id = fixtureIdFromJson(raw);
+		if (id !== undefined) {
+			fixtureId = id;
 		}
 	} catch {
 		// stub fixtures may omit fixture.json during early bootstrap
@@ -92,9 +108,18 @@ export async function runExampleFixture(
 	throw new Error(`unknown phase: ${opts.phase satisfies never}`);
 }
 
+function fixtureIdFromJson(raw: string): string | undefined {
+	const parsed = parseJsonTree(raw);
+	if (!isJsonObject(parsed)) {
+		return undefined;
+	}
+	const id = parsed.id;
+	return isJsonString(id) ? id : undefined;
+}
+
 async function appendEvent(
 	eventsPath: string,
-	event: Record<string, unknown>,
+	event: FixtureLifecycleEvent,
 ): Promise<void> {
 	await appendFile(eventsPath, `${JSON.stringify(event)}\n`, "utf8");
 }

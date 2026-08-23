@@ -3,27 +3,37 @@ import {
   DEFAULT_COMPONENT_HOST,
   type CollectionInput,
   type ComponentHost,
+  type CoverageEvaluator,
 } from "./types.js";
+import { isJsonString, isJsonObject } from "./json.js";
 
-export function parseCollectionInput(raw: unknown): CollectionInput {
-  if (!raw || typeof raw !== "object") {
+export interface CollectionInputSource {
+  bindleId?: string;
+  fileName?: string;
+  sourceText?: string;
+  componentHost?: { kind?: string; version?: string };
+  define?: CollectionInput["define"];
+  coverageEvaluator?: CoverageEvaluator;
+}
+
+export function parseCollectionInput(raw: CollectionInputSource): CollectionInput {
+  if (!raw || !isJsonObject(raw)) {
     throw new CollectionEngineError("input", "must be an object");
   }
-  const input = raw as Record<string, unknown>;
-  if (typeof input.define !== "function") {
+  if (!(raw.define instanceof Function)) {
     throw new CollectionEngineError("define", "must be a function");
   }
 
   let componentHost: ComponentHost = DEFAULT_COMPONENT_HOST;
-  if (input.componentHost !== undefined) {
-    if (!input.componentHost || typeof input.componentHost !== "object") {
+  if (raw.componentHost !== undefined) {
+    if (!raw.componentHost || !isJsonObject(raw.componentHost)) {
       throw new CollectionEngineError("componentHost", "must be an object");
     }
-    const host = input.componentHost as Record<string, unknown>;
-    if (typeof host.kind !== "string" || host.kind.length === 0) {
+    const host = raw.componentHost;
+    if (!isJsonString(host.kind) || host.kind.length === 0) {
       throw new CollectionEngineError("componentHost.kind", "required");
     }
-    if (typeof host.version !== "string" || host.version.length === 0) {
+    if (!isJsonString(host.version) || host.version.length === 0) {
       throw new CollectionEngineError("componentHost.version", "required");
     }
     componentHost = Object.freeze({
@@ -33,14 +43,12 @@ export function parseCollectionInput(raw: unknown): CollectionInput {
   }
 
   return Object.freeze({
-    bindleId: typeof input.bindleId === "string" ? input.bindleId : "bindle",
-    fileName: typeof input.fileName === "string" ? input.fileName : "bindle.ts",
-    sourceText: typeof input.sourceText === "string" ? input.sourceText : "",
+    bindleId: isJsonString(raw.bindleId) ? raw.bindleId : "bindle",
+    fileName: isJsonString(raw.fileName) ? raw.fileName : "bindle.ts",
+    sourceText: isJsonString(raw.sourceText) ? raw.sourceText : "",
     componentHost,
-    define: input.define as CollectionInput["define"],
+    define: raw.define,
     coverageEvaluator:
-      typeof input.coverageEvaluator === "function"
-        ? (input.coverageEvaluator as CollectionInput["coverageEvaluator"])
-        : undefined,
+      raw.coverageEvaluator instanceof Function ? raw.coverageEvaluator : undefined,
   });
 }

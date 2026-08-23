@@ -12,6 +12,7 @@ import {
 } from "@hobo/core";
 import { test } from "vitest";
 
+import { isJsonObject } from "../src/json.js";
 import {
 	CUTOVER_EVENTS,
 	type CutoverPrecondition,
@@ -140,6 +141,7 @@ test("a stale incumbent plan refuses the cutover (live-zone precondition)", asyn
 	const result = await executeRoutingCutover(
 		cutoverOptions({
 			precondition: validPrecondition({
+				// SAFETY: assertion required at this I/O or test boundary.
 				incumbentPlanId: "plan:checkout:never-applied" as RoutingPlanId,
 			}),
 		}),
@@ -188,15 +190,13 @@ test("a satisfied precondition emits TtlLowered with the effective RTO, then com
 		],
 	);
 	const ttlFact = result.facts[0];
-	assert.equal(
-		(ttlFact?.data as { effectiveRtoSeconds?: number }).effectiveRtoSeconds,
-		VALID_TTL.previousTtlSeconds,
-	);
+	if (ttlFact === undefined) throw new Error("missing ttl fact");
+	if (!isJsonObject(ttlFact.data)) throw new Error("ttl fact data");
+	assert.equal(ttlFact.data.effectiveRtoSeconds, VALID_TTL.previousTtlSeconds);
 	const startFact = result.facts[1];
-	assert.equal(
-		(startFact?.data as { validationChangeId?: string }).validationChangeId,
-		"change-1",
-	);
+	if (startFact === undefined) throw new Error("missing start fact");
+	if (!isJsonObject(startFact.data)) throw new Error("start fact data");
+	assert.equal(startFact.data.validationChangeId, "change-1");
 });
 
 test("hysteresis: one health flap below the threshold holds and re-probes instead of rolling back", async () => {
@@ -231,6 +231,7 @@ test("hysteresis: consecutive failures at the threshold roll back with the strea
 	assert.equal(result.refused, false);
 	assert.equal(result.reasons[0]?.code, "health-gate-failed");
 	assert.match(
+		// SAFETY: assertion required at this I/O or test boundary.
 		(result.reasons[0] as { message: string }).message,
 		/2 consecutive/,
 	);

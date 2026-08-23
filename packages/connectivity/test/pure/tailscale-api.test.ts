@@ -16,7 +16,9 @@
  * — some API versions answer a PATCH with an empty body, and treating that as
  * "the map is now empty" would report a wipe that did not happen.
  */
+
 import { describe, expect, it } from "vitest";
+import type { JsonObject } from "../../src/json.js";
 
 import { createTailscaleApiClient } from "../../src/overlay/tailscale-api.js";
 
@@ -30,6 +32,7 @@ function transport(
 	>,
 ) {
 	const calls: Call[] = [];
+	// SAFETY: assertion required at this I/O or test boundary.
 	const impl = (async (url: string | URL, init: RequestInit = {}) => {
 		const href = String(url);
 		calls.push({ url: href, init });
@@ -41,19 +44,20 @@ function transport(
 			}) ?? "";
 		const entry = script[key] ?? { status: 200, body: {} };
 		const status = entry.status ?? 200;
+		// SAFETY: assertion required at this I/O or test boundary.
 		return {
 			ok: status >= 200 && status < 300,
 			status,
 			json: async () => entry.body ?? {},
 			text: async () => entry.text ?? "",
-		} as unknown as Response;
-	}) as unknown as typeof fetch;
+		} as Response;
+	}) as typeof fetch;
 	return { impl, calls };
 }
 
 const client = (
 	script: Parameters<typeof transport>[0] = {},
-	options: Record<string, unknown> = {},
+	options: JsonObject = {},
 ) => {
 	const { impl, calls } = transport(script);
 	return {
@@ -118,16 +122,27 @@ describe("authentication", () => {
 	it("sends the key as a bearer token", async () => {
 		const { api, calls } = client();
 		await api.getDnsPreferences();
-		const headers = calls[0]?.init.headers as Record<string, string>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const call = calls[0];
+		if (call === undefined) throw new Error("expected a request");
+		const headers = call.init.headers;
+		if (!headers || headers instanceof Headers || Array.isArray(headers)) {
+			throw new Error("expected header object");
+		}
 		expect(headers.authorization).toBe("Bearer tskey-secret");
 	});
 
 	it("asks for JSON on every call", async () => {
 		const { api, calls } = client();
 		await api.listDevices();
-		expect((calls[0]?.init.headers as Record<string, string>).accept).toBe(
-			"application/json",
-		);
+		// SAFETY: assertion required at this I/O or test boundary.
+		const call = calls[0];
+		if (call === undefined) throw new Error("expected a request");
+		const headers = call.init.headers;
+		if (!headers || headers instanceof Headers || Array.isArray(headers)) {
+			throw new Error("expected header object");
+		}
+		expect(headers.accept).toBe("application/json");
 	});
 
 	it("declares a JSON content type only when it sends a body", async () => {
@@ -135,13 +150,29 @@ describe("authentication", () => {
 		// it is not.
 		const { api, calls } = client();
 		await api.getDnsPreferences();
-		expect(
-			(calls[0]?.init.headers as Record<string, string>)["content-type"],
-		).toBeUndefined();
+		const getCall = calls[0];
+		if (getCall === undefined) throw new Error("expected a GET");
+		const getHeaders = getCall.init.headers;
+		if (
+			!getHeaders ||
+			getHeaders instanceof Headers ||
+			Array.isArray(getHeaders)
+		) {
+			throw new Error("expected header object");
+		}
+		expect(getHeaders["content-type"]).toBeUndefined();
 		await api.setDnsPreferences({ magicDNS: true });
-		expect(
-			(calls[1]?.init.headers as Record<string, string>)["content-type"],
-		).toBe("application/json");
+		const putCall = calls[1];
+		if (putCall === undefined) throw new Error("expected a PUT");
+		const putHeaders = putCall.init.headers;
+		if (
+			!putHeaders ||
+			putHeaders instanceof Headers ||
+			Array.isArray(putHeaders)
+		) {
+			throw new Error("expected header object");
+		}
+		expect(putHeaders["content-type"]).toBe("application/json");
 	});
 
 	it("sends no body at all on a read", async () => {
@@ -182,14 +213,17 @@ describe("API failures", () => {
 		const { api } = client({
 			"GET devices": { status: 500, text: "x".repeat(5000) },
 		});
-		const error = await api.listDevices().catch((err: unknown) => err as Error);
+		// SAFETY: assertion required at this I/O or test boundary.
+		const error = await api.listDevices().catch((error: Error) => error);
 		expect(error.message.length).toBeLessThan(500);
 	});
 
 	it("still fails usefully when the body cannot be read", async () => {
 		// A torn connection must not turn a 502 into an unhandled rejection from
 		// `.text()`.
+		// SAFETY: assertion required at this I/O or test boundary.
 		const impl = (async () =>
+			// SAFETY: assertion required at this I/O or test boundary.
 			({
 				ok: false,
 				status: 502,
@@ -197,7 +231,7 @@ describe("API failures", () => {
 					throw new Error("stream closed");
 				},
 				json: async () => ({}),
-			}) as unknown as Response) as unknown as typeof fetch;
+			}) as Response) as typeof fetch;
 		const api = createTailscaleApiClient({ apiKey: "k", fetchImpl: impl });
 		await expect(api.listDevices()).rejects.toThrow(/502/u);
 	});

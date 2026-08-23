@@ -101,15 +101,17 @@ export const DEFAULT_ANONYMOUS_POLICY: AnonymousPolicy = Object.freeze({
 	maxSingleFileBytes: 5 * 1024 * 1024,
 	sponsorBudgetMinorUnits: 50_000,
 	minPollIntervalMs: 2_000,
+	// SAFETY: every literal is a member of BootstrapClass, and the frozen tuple is read-only policy data.
 	allowedBootstrapClasses: Object.freeze([
 		"public-anonymous",
 		"anonymous-claimable",
 		"proof-of-work",
 		"capability-token",
 		"local",
-	] as const) as readonly BootstrapClass[],
-	disabledProviders: Object.freeze([] as string[]),
-	disabledRecipes: Object.freeze([] as string[]),
+	] as const),
+	// SAFETY: these empty frozen arrays are widened only to the declared read-only string-list fields.
+	disabledProviders: Object.freeze([]),
+	disabledRecipes: Object.freeze([]),
 });
 
 /**

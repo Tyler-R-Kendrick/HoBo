@@ -1,3 +1,10 @@
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+
 // @hobo/runner-depot — the REAL Depot BuildService client.
 //
 // This forms the requests for Depot's public Connect-protocol API and parses
@@ -35,7 +42,7 @@ export interface DepotFetchResponse {
 	readonly ok: boolean;
 	readonly status: number;
 	text(): Promise<string>;
-	json(): Promise<unknown>;
+	json(): Promise<JsonValue>;
 }
 
 export type DepotFetch = (
@@ -101,12 +108,9 @@ export interface DepotClient {
 }
 
 const globalFetch: DepotFetch = (url, init) => {
-	const fetchImpl = (
-		globalThis as unknown as {
-			fetch?: (input: string, init: unknown) => Promise<DepotFetchResponse>;
-		}
-	).fetch;
-	if (typeof fetchImpl !== "function") {
+	const fetchImpl = globalThis.fetch;
+	const tag = Object.prototype.toString.call(fetchImpl);
+	if (tag !== "[object Function]" && tag !== "[object AsyncFunction]") {
 		throw new Error(
 			"runner-depot: no global fetch available; inject one via createDepotClient({ fetch })",
 		);
@@ -133,7 +137,7 @@ export function createDepotClient(options: DepotClientOptions): DepotClient {
 	const transport = options.fetch ?? globalFetch;
 	const baseUrl = (options.baseUrl ?? DEFAULT_BASE_URL).replace(/\/$/, "");
 
-	async function rpc(method: string, body: unknown): Promise<unknown> {
+	async function rpc(method: string, body: JsonObject): Promise<JsonValue> {
 		const token = await options.token();
 		const url = `${baseUrl}/depot.build.v1.BuildService/${method}`;
 		const response = await transport(url, {
@@ -156,10 +160,14 @@ export function createDepotClient(options: DepotClientOptions): DepotClient {
 
 	return {
 		async createBuild() {
-			const payload = (await rpc("CreateBuild", {
+			const payload = await rpc("CreateBuild", {
 				project_id: options.projectId,
-			})) as { build_id?: string; build_token?: string };
-			if (!payload.build_id || !payload.build_token) {
+			});
+			if (
+				!isJsonObject(payload) ||
+				!isJsonString(payload.build_id) ||
+				!isJsonString(payload.build_token)
+			) {
 				throw new DepotApiError(
 					"runner-depot: CreateBuild response missing build_id/build_token",
 					200,
@@ -169,13 +177,11 @@ export function createDepotClient(options: DepotClientOptions): DepotClient {
 		},
 
 		async getBuild(buildId) {
-			const payload = (await rpc("GetBuild", { build_id: buildId })) as {
-				build_id?: string;
-				status?: string;
-			};
+			const payload = await rpc("GetBuild", { build_id: buildId });
+			const document = isJsonObject(payload) ? payload : {};
 			return {
-				buildId: payload.build_id ?? buildId,
-				status: payload.status ?? "unknown",
+				buildId: isJsonString(document.build_id) ? document.build_id : buildId,
+				status: isJsonString(document.status) ? document.status : "unknown",
 			};
 		},
 	};

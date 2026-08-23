@@ -1,4 +1,10 @@
 import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonBag,
+} from "./json.js";
+import {
 	createDecision,
 	createDecisionRequest,
 	createPolicyDecidedEvent,
@@ -139,21 +145,23 @@ export function evaluateAgentGuardrail(input) {
 		},
 	});
 
-	const policyEvent = createPolicyDecidedEvent({
-		request,
-		decision,
-	}) as Record<string, unknown> & { type: string; data: typeof decision };
-	policyEvent.seq = 1;
-	policyEvent.audit = {
-		actorId: readActorId(request),
-		approverId: approval?.approverId ?? null,
-		agentId: policy.agentId,
-		actionClass,
-		enforcementPoint,
-		estimatedCostUsd: estimateUsd,
-		currentSpendUsd,
-		projectedSpendUsd,
-		spendCapUsd: policy.spendCapUsd,
+	const policyEvent = {
+		...createPolicyDecidedEvent({
+			request,
+			decision,
+		}),
+		seq: 1,
+		audit: {
+			actorId: readActorId(request),
+			approverId: approval?.approverId ?? null,
+			agentId: policy.agentId,
+			actionClass,
+			enforcementPoint,
+			estimatedCostUsd: estimateUsd,
+			currentSpendUsd,
+			projectedSpendUsd,
+			spendCapUsd: policy.spendCapUsd,
+		},
 	};
 
 	const events = [policyEvent, ...state.supportEvents];
@@ -440,7 +448,12 @@ function normalizeDestroyGrant(value) {
 	};
 }
 
-function normalizeMeteringView(value) {
+interface MeteringView {
+	seq: number;
+	scopeCosts: JsonBag;
+}
+
+function normalizeMeteringView(value): MeteringView {
 	if (value === undefined || value === null) {
 		return { seq: 0, scopeCosts: {} };
 	}
@@ -448,8 +461,8 @@ function normalizeMeteringView(value) {
 	return {
 		seq: Number.isFinite(source.seq) ? source.seq : 0,
 		scopeCosts:
-			source.scopeCosts && typeof source.scopeCosts === "object"
-				? source.scopeCosts
+			source.scopeCosts && isJsonObject(source.scopeCosts)
+				? { ...source.scopeCosts }
 				: {},
 	};
 }
@@ -473,14 +486,18 @@ function normalizeApproval(value) {
 function readAgentSpend(meteringView, agentId) {
 	const key = `agent:${agentId}`;
 	const entry = meteringView.scopeCosts[key];
-	if (!entry) {
+	if (isJsonNumber(entry)) {
+		return roundUsd(entry);
+	}
+	if (!isJsonObject(entry)) {
 		return 0;
 	}
-	return roundUsd(typeof entry === "number" ? entry : (entry.cost ?? 0));
+	const cost = entry["cost"];
+	return isJsonNumber(cost) ? roundUsd(cost) : 0;
 }
 
 function readCost(context) {
-	const source = context && typeof context === "object" ? context : {};
+	const source = context && isJsonObject(context) ? context : {};
 	const estimate = source.costEstimateUsd ?? source.estimatedCostUsd ?? 0;
 	return roundUsd(estimate);
 }
@@ -522,14 +539,14 @@ function sortEvents(eventsInput) {
 }
 
 function expectObject(value, path) {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
+	if (!value || !isJsonObject(value) || Array.isArray(value)) {
 		throw new Error(`${path} must be an object`);
 	}
 	return value;
 }
 
 function expectNonEmptyString(value, path) {
-	if (typeof value !== "string" || value.trim() === "") {
+	if (!isJsonString(value) || value.trim() === "") {
 		throw new Error(`${path} must be a non-empty string`);
 	}
 	return value.trim();
@@ -539,10 +556,7 @@ function arrayOfStrings(value, path) {
 	if (value === undefined) {
 		return [];
 	}
-	if (
-		!Array.isArray(value) ||
-		value.some((entry) => typeof entry !== "string")
-	) {
+	if (!Array.isArray(value) || value.some((entry) => !isJsonString(entry))) {
 		throw new Error(`${path} must be an array of strings`);
 	}
 	return [...value];

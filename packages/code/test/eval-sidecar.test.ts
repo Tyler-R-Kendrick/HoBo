@@ -137,7 +137,7 @@ export function classify(input) {
 		const tsRegion = trainable.find((row) => row.methodRef === "shop.classify");
 		expect(tsRegion?.file).toBe("src/classify.ts");
 		const invokers = await loadTrainableInvokers(root, trainable);
-		expect(typeof invokers["shop.classify"]).toBe("function");
+		expect(invokers["shop.classify"] instanceof Function).toBe(true);
 		expect(invokers["shop.classify"]?.({ text: "invoice overdue" })).toEqual({
 			label: "billing",
 		});
@@ -186,7 +186,7 @@ export async function classify(input) {
 			],
 		};
 		const invokers = await loadTrainableInvokers(root, [jsRegion]);
-		expect(typeof invokers["shop.classify"]).toBe("function");
+		expect(invokers["shop.classify"] instanceof Function).toBe(true);
 		expect(invokers["shop.classify"]?.({ text: "invoice overdue" })).toEqual({
 			label: "billing",
 		});

@@ -217,7 +217,7 @@ export function createPrismaClaimablePostgresSemantics(
 		providerClass: candidate.providerClass,
 		...(candidate.evidenceExpiresAtMs !== undefined
 			? { evidenceExpiresAtMs: candidate.evidenceExpiresAtMs }
-			: {}),
+			: undefined),
 		evidenceSignatureValid: candidate.evidenceSignatureValid,
 		creatorAuthorityAfterClaim: candidate.creatorAuthorityAfterClaim,
 		claimAtomicity: candidate.claimAtomicity,

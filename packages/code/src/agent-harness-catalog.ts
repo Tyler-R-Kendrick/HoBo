@@ -14,7 +14,6 @@ import { fileURLToPath } from "node:url";
 import {
 	type AdapterContext,
 	applyHarnessConfig,
-	type HarnessHunk,
 	type HarnessKind,
 	type HarnessSpec,
 } from "./agent-harness-adapters.js";
@@ -188,6 +187,7 @@ export function packageNamesPresent(
 	const manifest = join(cwd, "package.json");
 	if (!existsSync(manifest)) return [];
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const parsed = JSON.parse(readFileSync(manifest, "utf8")) as {
 			readonly dependencies?: Record<string, string>;
 			readonly devDependencies?: Record<string, string>;
@@ -231,14 +231,7 @@ export function specEvidence(
 	return evidence;
 }
 
-export function planSpecHunks(
-	spec: HarnessSpec,
-	ctx: AdapterContext,
-): {
-	readonly kind: HarnessKind;
-	readonly hunks: readonly HarnessHunk[];
-	readonly notes: readonly string[];
-} {
+export function planSpecHunks(spec: HarnessSpec, ctx: AdapterContext) {
 	const kind = harnessKindOf(spec);
 	if (isHostSpec(spec)) {
 		return {

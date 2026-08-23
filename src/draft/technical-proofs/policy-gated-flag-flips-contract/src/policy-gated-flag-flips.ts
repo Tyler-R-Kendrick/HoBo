@@ -320,11 +320,11 @@ export function handleFlagFlipObligationSignal({
 }
 
 function normalizeFlipInput(input) {
-  if (!input || typeof input !== "object") {
+  if (!input || Object.prototype.toString.call(input) !== "[object Object]") {
     throw new TypeError("flag flip input must be an object");
   }
   const ref = input.ref ?? input.flagRef;
-  if (!ref || typeof ref.key !== "string" || typeof ref.type !== "string") {
+  if (!ref || !isString(ref.key) || !isString(ref.type)) {
     throw new TypeError("flag flip input requires ref { key, type }");
   }
   if (!input.actor) {
@@ -354,7 +354,7 @@ function createPolicyRequest(input, risk, subjectOverride) {
     kind: SUBJECT_KINDS.has(input.actor.kind) ? input.actor.kind : "user",
     id: input.actor.id,
     roles: input.actor.claims
-      ?.filter((claim) => claim.key === "role" && typeof claim.value === "string")
+      ?.filter((claim) => claim.key === "role" && isString(claim.value))
       .map((claim) => claim.value),
   };
   if (subject.roles?.length === 0) {
@@ -457,7 +457,11 @@ function applyPolicyMutations(value, mutations) {
 }
 
 function isApprovalSatisfied(approval) {
-  return approval?.approved === true && typeof approval.approvedBy === "string" && approval.approvedBy.length > 0;
+  return approval?.approved === true && isString(approval.approvedBy) && approval.approvedBy.length > 0;
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }
 
 function statusForEvents(events) {

@@ -38,11 +38,11 @@ export type ChooseRecipeInput = Omit<CompileRecipeInput, "recipe"> & {
 	readonly candidates: readonly SolutionRecipe[];
 };
 
-const ATOMICITY_RANK: Readonly<Record<string, number>> = {
+const ATOMICITY_RANK = {
 	"single-resource": 0,
 	"provider-bundled": 1,
 	"best-effort-saga": 2,
-};
+} as const;
 
 function providerCount(ranked: RankedRecipe): number {
 	return new Set(
@@ -104,9 +104,8 @@ export function chooseRecipe(input: ChooseRecipeInput): RecipeChoice {
 
 	ranked.sort(compare);
 	const winner = ranked[0];
-	return {
-		...(winner !== undefined ? { winner } : {}),
-		ranked,
-		outcomes,
-	};
+	if (winner === undefined) {
+		return { ranked, outcomes };
+	}
+	return { winner, ranked, outcomes };
 }

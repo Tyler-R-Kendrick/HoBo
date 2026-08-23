@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse untrusted catalog fixture values before policy evaluation. */
 import { createHash } from "node:crypto";
 
 export const CURATED_CATALOG_SCHEMA_VERSION = "hobo.curated-catalog/v1";

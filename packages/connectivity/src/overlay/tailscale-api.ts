@@ -5,6 +5,8 @@
  *
  * Docs: https://tailscale.com/api
  */
+import { cloneAsJson, type JsonValue } from "../json.js";
+
 export interface TailscaleApiOptions {
 	readonly apiKey: string;
 	readonly tailnet?: string;
@@ -59,16 +61,18 @@ export function createTailscaleApiClient(
 	async function api(
 		method: string,
 		path: string,
-		body?: unknown,
-	): Promise<unknown> {
+		body?: JsonValue,
+	): Promise<JsonValue> {
 		const res = await fetchImpl(`${base}${path}`, {
 			method,
 			headers: {
 				authorization: `Bearer ${options.apiKey}`,
 				accept: "application/json",
-				...(body !== undefined ? { "content-type": "application/json" } : {}),
+				...(body !== undefined
+					? { "content-type": "application/json" }
+					: undefined),
 			},
-			...(body !== undefined ? { body: JSON.stringify(body) } : {}),
+			...(body !== undefined ? { body: JSON.stringify(body) } : undefined),
 		});
 		if (!res.ok) {
 			const text = await res.text().catch(() => "");
@@ -77,12 +81,13 @@ export function createTailscaleApiClient(
 			);
 		}
 		if (res.status === 204) return {};
-		return res.json();
+		return cloneAsJson(await res.json().catch(() => ({})));
 	}
 
 	return {
 		tailnet,
 		async getSplitDns() {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const data = (await api(
 				"GET",
 				`/tailnet/${encodeURIComponent(tailnet)}/dns/split-dns`,
@@ -91,13 +96,14 @@ export function createTailscaleApiClient(
 		},
 		async putSplitDns(domains, nameservers) {
 			const existing = await this.getSplitDns();
-			const next: Record<string, string[]> = { ...asMutable(existing) };
+			const next = { ...asMutable(existing) };
 			// The domain is used as the map key verbatim: Tailscale keys split DNS
 			// by the suffix as written, so rewriting a leading dot here would
 			// create a second entry beside the one the tailnet already has.
 			for (const domain of domains) {
 				next[domain] = [...nameservers];
 			}
+			// SAFETY: assertion required at this I/O or test boundary.
 			const data = (await api(
 				"PATCH",
 				`/tailnet/${encodeURIComponent(tailnet)}/dns/split-dns`,
@@ -116,6 +122,7 @@ export function createTailscaleApiClient(
 			return this.getSplitDns();
 		},
 		async getDnsPreferences() {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const data = (await api(
 				"GET",
 				`/tailnet/${encodeURIComponent(tailnet)}/dns/preferences`,
@@ -123,10 +130,11 @@ export function createTailscaleApiClient(
 			return data ?? {};
 		},
 		async setDnsPreferences(prefs) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const data = (await api(
 				"POST",
 				`/tailnet/${encodeURIComponent(tailnet)}/dns/preferences`,
-				prefs,
+				cloneAsJson(prefs),
 			)) as TailscaleDnsPreferences;
 			// A 204 (and some API versions' empty body) means "accepted, nothing to
 			// report". Returning that empty object would tell the caller no
@@ -136,6 +144,7 @@ export function createTailscaleApiClient(
 			return data;
 		},
 		async listDevices() {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const data = (await api(
 				"GET",
 				`/tailnet/${encodeURIComponent(tailnet)}/devices`,
@@ -152,7 +161,7 @@ export function createTailscaleApiClient(
 				id: d.id ?? "",
 				name: d.name ?? d.hostname ?? "",
 				addresses: d.addresses ?? [],
-				...(d.tags !== undefined ? { tags: d.tags } : {}),
+				...(d.tags !== undefined ? { tags: d.tags } : undefined),
 			}));
 		},
 	};
@@ -168,8 +177,8 @@ function normalizeSplit(
 	return out;
 }
 
-function asMutable(map: TailscaleSplitDnsMap): Record<string, string[]> {
-	const out: Record<string, string[]> = {};
+function asMutable(map: TailscaleSplitDnsMap) {
+	const out: { [domain: string]: string[] } = {};
 	for (const [k, v] of Object.entries(map)) {
 		out[k] = [...v];
 	}

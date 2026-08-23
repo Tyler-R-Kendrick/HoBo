@@ -50,6 +50,12 @@ function passingObservations() {
 	];
 }
 
+type CircularRecord = { label: string; self?: CircularRecord };
+interface ReportPair {
+	passing: RubricReport;
+	failing: RubricReport;
+}
+
 describe("defineRubric", () => {
 	it("parses a definition into a frozen schema-versioned record", () => {
 		const rubric = sampleRubric();
@@ -71,6 +77,7 @@ describe("defineRubric", () => {
 			criteria: [{ id: "c", weight: 1, kind: "boolean" as const }],
 		};
 		const bad = [
+			// SAFETY: this deliberate invalid input exercises the parser boundary.
 			undefined as never,
 			{ ...base, id: "" },
 			{ ...base, passThreshold: 1.2 },
@@ -83,7 +90,16 @@ describe("defineRubric", () => {
 				...base,
 				criteria: [{ ...base.criteria[0], weight: Number.POSITIVE_INFINITY }],
 			},
-			{ ...base, criteria: [{ ...base.criteria[0], kind: "vibes" as never }] },
+			{
+				...base,
+				criteria: [
+					{
+						...base.criteria[0],
+						// SAFETY: this deliberate invalid input exercises the parser boundary.
+						kind: "vibes" as never,
+					},
+				],
+			},
 			{ ...base, criteria: [base.criteria[0], base.criteria[0]] },
 			// scale must declare its own threshold; boolean must not.
 			{ ...base, criteria: [{ id: "s", weight: 1, kind: "scale" as const }] },
@@ -105,6 +121,7 @@ describe("defineRubric", () => {
 			{ ...base, criteria: [{ ...base.criteria[0], expected: 1 }] },
 		];
 		for (const definition of bad) {
+			// SAFETY: each case is intentionally malformed for parser coverage.
 			expect(() => defineRubric(definition as never)).toThrow(RubricParseError);
 		}
 	});
@@ -235,7 +252,7 @@ describe("scoreRubric", () => {
 
 	it("rejects malformed observations with typed ObservationParseError", () => {
 		const rubric = sampleRubric();
-		const cases: Array<ReadonlyArray<Record<string, unknown>>> = [
+			const cases = [
 			// missing observation for a criterion
 			passingObservations().slice(0, 2),
 			// unknown criterion
@@ -262,6 +279,7 @@ describe("scoreRubric", () => {
 			[...passingObservations().slice(0, 2), { passed: true }],
 		];
 		for (const observations of cases) {
+			// SAFETY: these cases intentionally contain malformed observations.
 			expect(() => scoreRubric(rubric, observations as never)).toThrow(
 				ObservationParseError,
 			);
@@ -270,6 +288,7 @@ describe("scoreRubric", () => {
 
 	it("rejects rubrics that did not come from defineRubric", () => {
 		expect(() =>
+			// SAFETY: this deliberately bypasses the parsed Rubric boundary.
 			scoreRubric({ id: "raw", passThreshold: 1, criteria: [] } as never, []),
 		).toThrow(RubricParseError);
 	});
@@ -290,9 +309,9 @@ describe("matchGolden / canonicalJson", () => {
 	});
 
 	it("does not crash on circular or bigint values", () => {
-		const left: Record<string, unknown> = { label: "billing" };
+			const left: CircularRecord = { label: "billing" };
 		left.self = left;
-		const right: Record<string, unknown> = { label: "billing" };
+			const right: CircularRecord = { label: "billing" };
 		right.self = right;
 		expect(() => canonicalJson(left)).not.toThrow();
 		expect(canonicalJson(left)).toBe(canonicalJson(right));
@@ -309,7 +328,7 @@ describe("matchGolden / canonicalJson", () => {
 });
 
 describe("evaluatePromotionGate", () => {
-	function reports(): { passing: RubricReport; failing: RubricReport } {
+		function reports(): ReportPair {
 		const rubric = sampleRubric();
 		const failingObservations = [
 			{ criterionId: "category-correct", score: 0.2 },
@@ -374,11 +393,13 @@ describe("evaluatePromotionGate", () => {
 
 	it("rejects malformed inputs with typed PromotionGateParseError", () => {
 		const { passing } = reports();
-		expect(() => evaluatePromotionGate(undefined as never)).toThrow(
+			// SAFETY: undefined is deliberate malformed input for parser coverage.
+			expect(() => evaluatePromotionGate(undefined as never)).toThrow(
 			PromotionGateParseError,
 		);
 		expect(() =>
-			evaluatePromotionGate({ rubricReport: { ok: true } as never }),
+				// SAFETY: this deliberately bypasses the parsed report boundary.
+				evaluatePromotionGate({ rubricReport: { ok: true } as never }),
 		).toThrow(PromotionGateParseError);
 		expect(() =>
 			evaluatePromotionGate({

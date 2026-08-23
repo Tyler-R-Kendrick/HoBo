@@ -82,13 +82,13 @@ export type CapabilityMatrixCandidate = {
 	readonly unavailability: readonly CandidateUnavailability[];
 };
 
-const BUCKET_RANK: Readonly<Record<CandidateBucket, number>> = {
+const BUCKET_RANK = {
 	native: 0,
 	pack: 1,
 	bridge: 2,
 	substrate: 3,
 	sponsor: 4,
-};
+} satisfies Readonly<Record<CandidateBucket, number>>;
 
 /**
  * Assign the single bucket a candidate belongs to.

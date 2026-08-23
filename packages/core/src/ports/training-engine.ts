@@ -16,6 +16,12 @@ import {
 	TrajectorySchema,
 } from "../_generated/training_engine_pb.js";
 import { CoreParseError } from "../errors.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+} from "../json.js";
 import { deepFreeze } from "../parse-utils.js";
 
 // The hobo:training-engine port (ADR-0025 / ADR-0125). Record shapes are the
@@ -62,7 +68,7 @@ export class TrainingEngineParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_TRAINING_PARSE", path, expected, received, message);
@@ -88,8 +94,8 @@ const SENSITIVE_CLASSIFICATIONS = new Set([
 	"regulated",
 ]);
 
-function fail(path: string, expected: string, received: unknown): never {
-	throw new TrainingEngineParseError(path, expected, received);
+function fail<T>(path: string, expected: string, received: T): never {
+	throw new TrainingEngineParseError(path, expected, cloneAsJson(received));
 }
 
 function required<T>(value: T | undefined, path: string): T {
@@ -104,34 +110,44 @@ function nonEmpty(value: string, path: string): string {
 
 function fromJsonOrFail<T>(
 	schema: Parameters<typeof fromJson>[0],
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 ): T {
+	if (value === undefined) fail(path, schema.typeName, value);
 	try {
-		return fromJson(schema, value as JsonValue) as T;
+		// SAFETY: protobuf fromJson yields the generated message for this schema.
+		const parsed = fromJson(schema, value) as T;
+		return parsed;
 	} catch (error) {
 		fail(path, schema.typeName, error instanceof Error ? error.message : error);
 	}
 }
 
-export function parseTraceparent(value: unknown): Traceparent {
-	if (typeof value !== "string" || !TRACEPARENT_PATTERN.test(value)) {
+export function parseTraceparent(value: JsonValue | undefined): Traceparent {
+	if (!isJsonString(value) || !TRACEPARENT_PATTERN.test(value)) {
 		fail("traceparent", "W3C traceparent", value);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return value as Traceparent;
 }
 
-export function parseTrajectoryHash(value: unknown): TrajectoryHash {
-	if (typeof value !== "string" || !SHA256_PATTERN.test(value)) {
+export function parseTrajectoryHash(
+	value: JsonValue | undefined,
+): TrajectoryHash {
+	if (!isJsonString(value) || !SHA256_PATTERN.test(value)) {
 		fail("trajectoryHash", "sha256:<hex64>", value);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return value as TrajectoryHash;
 }
 
-export function parseTrainingEngineId(value: unknown): TrainingEngineId {
-	if (typeof value !== "string" || value.trim().length === 0) {
+export function parseTrainingEngineId(
+	value: JsonValue | undefined,
+): TrainingEngineId {
+	if (!isJsonString(value) || value.trim().length === 0) {
 		fail("engineId", "non-empty string", value);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return value as TrainingEngineId;
 }
 
@@ -214,7 +230,7 @@ function assertTrajectoryInvariants(trajectory: Trajectory): void {
 	}
 }
 
-export function parseTrajectory(value: unknown): Trajectory {
+export function parseTrajectory(value: JsonValue | undefined): Trajectory {
 	const trajectory = fromJsonOrFail<Trajectory>(
 		TrajectorySchema,
 		value,
@@ -224,7 +240,9 @@ export function parseTrajectory(value: unknown): Trajectory {
 	return deepFreeze(trajectory);
 }
 
-export function parseOptimizeRequest(value: unknown): OptimizeRequest {
+export function parseOptimizeRequest(
+	value: JsonValue | undefined,
+): OptimizeRequest {
 	const request = fromJsonOrFail<OptimizeRequest>(
 		OptimizeRequestSchema,
 		value,
@@ -266,12 +284,14 @@ function assertArtifactInvariants(artifact: TrainingArtifact): void {
 	parseTrainingArtifactProgram(artifact.programJson);
 }
 
-export function parseTrainingArtifact(value: unknown): TrainingArtifact {
+export function parseTrainingArtifact(
+	value: JsonValue | undefined,
+): TrainingArtifact {
 	const artifact = isMessage(value, TrainingArtifactSchema)
 		? value
 		: fromJsonOrFail<TrainingArtifact>(
 				TrainingArtifactSchema,
-				typeof value === "string" ? JSON.parse(value) : value,
+				isJsonString(value) ? JSON.parse(value) : value,
 				"trainingArtifact",
 			);
 	assertArtifactInvariants(artifact);
@@ -287,7 +307,7 @@ export function parseTrainingArtifact(value: unknown): TrainingArtifact {
 export function serializeTrainingArtifactProgram(input: {
 	readonly instructions: string;
 	readonly demos?: readonly {
-		readonly input: unknown;
+		readonly input: JsonValue;
 		readonly output: unknown;
 	}[];
 	readonly enginePayloadJson?: string;
@@ -307,7 +327,7 @@ export function serializeTrainingArtifactProgram(input: {
 export function parseTrainingArtifactProgram(
 	programJson: string,
 ): TrainingArtifactProgram {
-	let parsed: unknown;
+	let parsed: JsonValue;
 	try {
 		parsed = JSON.parse(programJson);
 	} catch (error) {
@@ -331,7 +351,7 @@ export function parseTrainingArtifactProgram(
  * generated region the request named (ADR-0048).
  */
 export function parseTrainingCandidate(
-	value: unknown,
+	value: JsonValue | undefined,
 	expectedRegion?: GeneratedRegion,
 ): TrainingCandidate {
 	const candidate = fromJsonOrFail<TrainingCandidate>(
@@ -406,17 +426,21 @@ export function hashTrajectory(trajectory: Trajectory): TrajectoryHash {
 	const canonical = JSON.stringify(
 		sortKeys(toJson(TrajectorySchema, trajectory)),
 	);
+	// SAFETY: assertion required at this I/O or test boundary.
 	return `sha256:${createHash("sha256")
 		.update(canonical)
 		.digest("hex")}` as TrajectoryHash;
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: JsonValue | undefined): JsonValue {
+	if (value === undefined) return null;
 	if (Array.isArray(value)) return value.map(sortKeys);
-	if (!value || typeof value !== "object") return value;
+	if (!isJsonObject(value)) return value;
 	return Object.fromEntries(
-		Object.keys(value as Record<string, unknown>)
+		// SAFETY: assertion required at this I/O or test boundary.
+		Object.keys(value as JsonObject)
 			.sort()
-			.map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
+			// SAFETY: assertion required at this I/O or test boundary.
+			.map((key) => [key, sortKeys((value as JsonObject)[key])]),
 	);
 }

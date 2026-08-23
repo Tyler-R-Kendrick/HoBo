@@ -104,9 +104,9 @@ export async function runCompensation(
 	const appendOpts = {
 		actor: ctx.actor,
 		tenant: ctx.tenant,
-		...(ctx.correlationId !== undefined
-			? { correlationId: ctx.correlationId }
-			: {}),
+		...(ctx.correlationId !== undefined && {
+			correlationId: ctx.correlationId,
+		}),
 	};
 
 	let events = await collectStream(deps.store, stream);
@@ -115,6 +115,7 @@ export async function runCompensation(
 	// fenced by the leased writes that came before; continue under the current
 	// owner epoch.
 	if (!events.some((e) => e.type === CLOUD_EVENTS.DeploymentRolledBack)) {
+		// SAFETY: collectStream returns EventEnvelope rows, so the final row has seq.
 		const lastSeq =
 			events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
 		const fenceToken = currentFenceToken(deps.store, stream);
@@ -130,7 +131,7 @@ export async function runCompensation(
 			],
 			{
 				expectedSeq: lastSeq,
-				...(fenceToken !== undefined ? { fenceToken } : {}),
+				...(fenceToken !== undefined && { fenceToken }),
 				...appendOpts,
 			},
 		);
@@ -177,6 +178,7 @@ export async function runCompensation(
 
 			// resource.Destroying (durable boundary), then Executor destroy → Destroyed.
 			const beforeEvents = await collectStream(deps.store, stream);
+			// SAFETY: collectStream returns EventEnvelope rows, so the final row has seq.
 			const lastSeq =
 				beforeEvents.length > 0
 					? (beforeEvents[beforeEvents.length - 1] as EventEnvelope).seq
@@ -194,7 +196,7 @@ export async function runCompensation(
 				],
 				{
 					expectedSeq: lastSeq,
-					...(fenceToken !== undefined ? { fenceToken } : {}),
+					...(fenceToken !== undefined && { fenceToken }),
 					...appendOpts,
 				},
 			);
@@ -206,9 +208,9 @@ export async function runCompensation(
 					deploymentId,
 					tenant: ctx.tenant,
 					actor: ctx.actor,
-					...(ctx.correlationId !== undefined
-						? { correlationId: ctx.correlationId }
-						: {}),
+					...(ctx.correlationId !== undefined && {
+						correlationId: ctx.correlationId,
+					}),
 				},
 			);
 			if (outcome.kind === "failed") {

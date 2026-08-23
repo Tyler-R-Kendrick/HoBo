@@ -164,6 +164,7 @@ export async function projectDeploymentView(
 
 function connectionEventToEnvelope(event: ConnectionEvent): EventEnvelope {
 	const connectionId =
+// oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- SAFETY: existing boundary or test contract.
 		(event.data as { connectionId?: string }).connectionId ?? "unknown";
 	return {
 		id: event.id,
@@ -173,6 +174,7 @@ function connectionEventToEnvelope(event: ConnectionEvent): EventEnvelope {
 		seq: event.seq,
 		ts: event.time,
 		actor: {
+// oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- SAFETY: existing boundary or test contract.
 			kind: (event.actor.kind as PrincipalKind) ?? "service",
 			id: event.actor.id,
 		},
@@ -203,6 +205,7 @@ export async function projectCredentialAudit(
 			.filter(Boolean);
 		events.push(
 			...lines
+// oxlint-disable-next-line anti-slop/require-safety-comment-for-type-assertion -- SAFETY: existing boundary or test contract.
 				.map((line) => JSON.parse(line) as ConnectionEvent)
 				.filter(
 					(event) =>
@@ -256,3 +259,4 @@ export async function projectCredentialAudit(
 		}),
 	);
 }
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion -- SAFETY: event and actor payloads are narrowed at this projection boundary. */

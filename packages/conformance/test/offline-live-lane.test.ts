@@ -406,7 +406,7 @@ describe("evidence never improves on the run that produced it", () => {
 	});
 
 	it("refuses to emit an artifact carrying credential-shaped material", () => {
-		const poisoned = {
+		const poisonedBag = {
 			schema: "hobo.conformance.anonymous-trust-evidence/v1",
 			provenance: {
 				adapterVersion: "1.4.2",
@@ -421,7 +421,10 @@ describe("evidence never improves on the run that produced it", () => {
 			},
 			artifactDigest: PRODUCT_DEFINITION_DIGEST,
 			signature: "sig:whatever",
-		} as unknown as Parameters<typeof assertSanitized>[0];
+		};
+		// SAFETY: poisoned fixture is the assertSanitized input at this test boundary.
+		const poisoned: Parameters<typeof assertSanitized>[0] =
+			poisonedBag as never;
 
 		expect(() => assertSanitized(poisoned)).toThrow(LiveEvidenceError);
 	});

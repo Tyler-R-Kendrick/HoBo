@@ -176,7 +176,11 @@ export function runSupervisionCase(fixture: SupervisionFixture): SupervisionCase
   };
 }
 
-const PROVEN_ACCEPTANCE: Record<string, string[]> = {
+interface ProvenAcceptance {
+  readonly [scenario: string]: readonly string[];
+}
+
+const PROVEN_ACCEPTANCE: ProvenAcceptance = {
   "parent-exit-stops-invoked-child": ["parent-exit-stops-invoked-child"],
   "cleanup-after-parent-exit": ["cleanup-facts-after-parent-exit"],
   "spawned-child-has-teardown-owner": ["spawned-child-has-teardown-owner"],

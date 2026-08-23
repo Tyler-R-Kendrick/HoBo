@@ -11,6 +11,8 @@ import {
   validateSandboxEvent,
   validateSandboxProfile
 } from "../../no-egress-generation-sandbox-contract/src/contract.js";
+import { isJsonString, isJsonBoolean, isJsonObject } from "./json.js";
+
 
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
 const defaultActor = {
@@ -355,7 +357,7 @@ function validateCandidate(candidate, requestId) {
 function validateAttachedReport(report) {
   assertObject(report, "forge.attached_report", "$.attachedConformanceReport");
   assertNonEmptyString(report.suiteId, "forge.attached_suite", "$.attachedConformanceReport.suiteId");
-  if (typeof report.passed !== "boolean") {
+  if (!isJsonBoolean(report.passed)) {
     throw new ForgeCertificationLoopError("forge.attached_passed", "$.attachedConformanceReport.passed");
   }
   if (!digestPattern.test(report.digest ?? "")) {
@@ -366,7 +368,7 @@ function validateAttachedReport(report) {
 function validateSandboxRerun(rerun) {
   assertObject(rerun, "forge.sandbox_rerun", "$.sandboxRerun");
   assertNonEmptyString(rerun.suiteId, "forge.rerun_suite", "$.sandboxRerun.suiteId");
-  if (typeof rerun.passed !== "boolean") {
+  if (!isJsonBoolean(rerun.passed)) {
     throw new ForgeCertificationLoopError("forge.rerun_passed", "$.sandboxRerun.passed");
   }
   if (!digestPattern.test(rerun.digest ?? "")) {
@@ -427,7 +429,7 @@ function validateFailingAssertions(assertions) {
   if (
     !Array.isArray(assertions) ||
     assertions.length === 0 ||
-    !assertions.every((assertion) => typeof assertion === "string" && assertion.length > 0)
+    !assertions.every((assertion) => isJsonString(assertion) && assertion.length > 0)
   ) {
     throw new ForgeCertificationLoopError("forge.failing_assertions", "$.failingAssertions");
   }
@@ -443,7 +445,7 @@ function digestPayload(value) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
@@ -456,20 +458,20 @@ function stableStringify(value) {
 }
 
 function assertFunction(value, code, path) {
-  if (typeof value !== "function") {
+  if (!(value instanceof Function)) {
     throw new ForgeCertificationLoopError(code, path);
   }
   return value;
 }
 
 function assertObject(value, code, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new ForgeCertificationLoopError(code, path);
   }
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new ForgeCertificationLoopError(code, path);
   }
 }

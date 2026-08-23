@@ -5,6 +5,8 @@ import {
   createConformanceSuite,
   runConformanceSuite,
 } from "../../conformance-port-suite-contract/src/conformance-port-suite.js";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const COVERAGE_REPORT_SCHEMA = "hobo.conformance.wit-coverage-report/v1";
 export const PUBLISH_GATE_SCHEMA = "hobo.conformance.registry-publish-gate/v1";
@@ -125,12 +127,13 @@ function createCapabilitySuite(wit: string, port: string) {
   });
 }
 
-export function parseWitCapabilityCatalog(input: unknown): WitCapabilityCatalog {
-  if (typeof input !== "object" || input === null) {
+export function parseWitCapabilityCatalog(input: JsonValue): WitCapabilityCatalog {
+  if (!isJsonObject(input) || input === null) {
     throw new TypeError("wit capability catalog must be an object");
   }
 
-  const record = input as Record<string, unknown>;
+  // SAFETY: `const record = input as JsonObject;` is required at this I/O or test boundary.
+  const record = input as JsonObject;
   const interfaces = record.interfaces;
 
   if (!Array.isArray(interfaces) || interfaces.length === 0) {
@@ -138,20 +141,21 @@ export function parseWitCapabilityCatalog(input: unknown): WitCapabilityCatalog 
   }
 
   const parsed = interfaces.map((entry) => {
-    if (typeof entry !== "object" || entry === null) {
+    if (!isJsonObject(entry) || entry === null) {
       throw new TypeError("wit capability catalog entry must be an object");
     }
 
-    const item = entry as Record<string, unknown>;
+    // SAFETY: `const item = entry as JsonObject;` is required at this I/O or test boundary.
+    const item = entry as JsonObject;
     const wit = item.wit;
     const port = item.port;
     const kind = item.kind;
 
-    if (typeof wit !== "string" || !wit.startsWith("hobo:capability/")) {
+    if (!isJsonString(wit) || !wit.startsWith("hobo:capability/")) {
       throw new TypeError(`invalid capability wit: ${String(wit)}`);
     }
 
-    if (typeof port !== "string" || port.length === 0) {
+    if (!isJsonString(port) || port.length === 0) {
       throw new TypeError(`invalid capability port: ${String(port)}`);
     }
 
@@ -167,8 +171,8 @@ export function parseWitCapabilityCatalog(input: unknown): WitCapabilityCatalog 
   });
 
   return {
-    schema: typeof record.schema === "string" ? record.schema : "hobo.wit.capability-catalog/v1",
-    source: typeof record.source === "string" ? record.source : "unknown",
+    schema: isJsonString(record.schema) ? record.schema : "hobo.wit.capability-catalog/v1",
+    source: isJsonString(record.source) ? record.source : "unknown",
     interfaces: parsed,
   };
 }

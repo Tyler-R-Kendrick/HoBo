@@ -1,3 +1,4 @@
+import { type JsonObject, isJsonBoolean } from "./json.js";
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
@@ -281,7 +282,7 @@ export async function verifyPactContracts(harness: ReturnType<typeof createStage
     );
     assert.equal(pact.metadata.boundaryId, boundary.id);
 
-    let responseBody: Record<string, unknown> = { ok: drill.ok };
+    let responseBody: JsonObject = { ok: drill.ok };
     switch (boundary.id) {
       case "canary-rollback":
         responseBody = { ...harness.evaluateCanaryRollback(), ok: harness.evaluateCanaryRollback().status === "pass" };
@@ -322,7 +323,7 @@ export async function verifyPactContracts(harness: ReturnType<typeof createStage
 
     const expectedStatus = pact.interactions[0].response.status;
     const interactionOk = expectedStatus === 200;
-    boundaries.push({ id: boundary.id, verified: interactionOk && typeof responseBody.ok === "boolean" });
+    boundaries.push({ id: boundary.id, verified: interactionOk && isJsonBoolean(responseBody.ok) });
   }
 
   return {

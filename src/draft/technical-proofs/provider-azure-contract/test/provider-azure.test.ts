@@ -112,7 +112,7 @@ test("multi-cloud-shop fixture preserves topology and bindings against the exist
   const awsEmission = realizeAwsPlan(createAwsProvider(), createAwsMultiCloudShopPlan());
   const azureEmission = realizeAzurePlan(createAzureProvider(), createAzureMultiCloudShopPlan());
 
-  assert.deepEqual(portableShape(azureEmission), portableShape(awsEmission));
+  assert.deepEqual(portableRecord(azureEmission), portableRecord(awsEmission));
 });
 
 test("provider-scoped .with blocks only affect Azure-resolved resources and report Azure-only features", () => {
@@ -244,7 +244,7 @@ test("adversarial service availability, roles mismatch, and quota exhaustion rej
   assert.equal(quota.reason.resourceId, "web");
 });
 
-function portableShape(emission) {
+function portableRecord(emission) {
   return {
     resources: emission.iac.nodes.map((node) => ({
       id: node.id,

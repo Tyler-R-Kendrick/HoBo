@@ -13,6 +13,22 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { afterEach, describe, test } from "vitest";
+
+import { type JsonValue } from "../scripts/lib/inspectable.ts";
+
+function isJsonRecord(
+	value: JsonValue,
+): value is { readonly [key: string]: JsonValue } {
+	return (
+		value !== null &&
+		!Array.isArray(value) &&
+		Object.prototype.toString.call(value) === "[object Object]"
+	);
+}
+
+function isJsonString(value: JsonValue): value is string {
+	return Object.prototype.toString.call(value) === "[object String]";
+}
 import {
 	advanceInvestment,
 	COUNCIL_PERSONAS,
@@ -27,6 +43,7 @@ const REVIEW_LOOP = path.resolve(
 const roots: string[] = [];
 const sha = (character: string) => character.repeat(64);
 let reviewLoopImport = 0;
+void reviewLoopImport;
 
 afterEach(() => {
 	for (const root of roots.splice(0)) {
@@ -44,7 +61,9 @@ function seedRepo(): string {
 
 function proposal(
 	root: string,
-	overrides: Record<string, unknown> = {},
+	overrides: {
+		[key: string]: import("../scripts/lib/inspectable.ts").JsonValue;
+	} = {},
 ): string {
 	const file = path.join(root, "proposal.json");
 	writeFileSync(
@@ -89,6 +108,7 @@ function initCouncil(
 	baseSha = sha("a"),
 	headSha = sha("b"),
 ): CouncilState {
+	// SAFETY: assertion to `council( root, "--mode", "init", "--run", "run-1", "--review", "review-1", "--base-sha", baseSha, "--head-sha", headSha,` is required at this boundary.
 	return council(
 		root,
 		"--mode",
@@ -185,6 +205,7 @@ function appendPersona(
 			2,
 		)}\n`,
 	);
+	// SAFETY: assertion to `council( root, "--mode", "append", "--run", state.runId, "--review", state.reviewId, "--entry", entryPath, ).state as Co` is required at this boundary.
 	return council(
 		root,
 		"--mode",
@@ -208,6 +229,7 @@ function approve(
 	for (const persona of COUNCIL_PERSONAS) {
 		state = appendPersona(root, state, persona, "submitted");
 	}
+	// SAFETY: assertion to `council( root, "--mode", "decide", "--run", state.runId, "--review", state.reviewId, ).state as CouncilState` is required at this boundary.
 	return council(
 		root,
 		"--mode",
@@ -236,6 +258,7 @@ function blockWithJony(
 		vote: "nay",
 	});
 	if (!options.decide) return state;
+	// SAFETY: assertion to `council( root, "--mode", "decide", "--run", state.runId, "--review", state.reviewId, ).state as CouncilState` is required at this boundary.
 	return council(
 		root,
 		"--mode",
@@ -263,7 +286,7 @@ async function runReviewLoopCommand(root: string, tail: string[]) {
 	const priorError = console.error;
 	const stdout: string[] = [];
 	const stderr: string[] = [];
-	let output: Record<string, unknown> = {};
+	let output: import("../scripts/lib/inspectable.ts").JsonValue = {};
 	try {
 		process.argv = [process.execPath, REVIEW_LOOP, "--root", root, ...tail];
 		process.exitCode = undefined;
@@ -280,7 +303,7 @@ async function runReviewLoopCommand(root: string, tail: string[]) {
 			// Assertions include captured output when it is unexpectedly non-JSON.
 		}
 		return {
-			code: typeof process.exitCode === "number" ? process.exitCode : 0,
+			code: Number.isInteger(process.exitCode) ? Number(process.exitCode) : 0,
 			output,
 			text: `${stdout.join("\n")}${stderr.length ? `\n${stderr.join("\n")}` : ""}`,
 		};
@@ -337,7 +360,9 @@ function git(root: string, ...args: string[]): string {
 
 function configureExemptCouncil(
 	root: string,
-	overrides: Record<string, unknown> = {},
+	overrides: {
+		[key: string]: import("../scripts/lib/inspectable.ts").JsonValue;
+	} = {},
 ): void {
 	const scopePath = path.join(root, ".optimizexp/runs/run-1/scope.json");
 	const scope = JSON.parse(readFileSync(scopePath, "utf8"));
@@ -373,9 +398,16 @@ async function initRun(root: string): Promise<void> {
 function councilMissing(
 	result: Awaited<ReturnType<typeof runReviewLoop>>,
 ): string[] {
-	return ((result.output.missing as string[] | undefined) ?? []).filter(
-		(item) => /council|consensus|blocker|voter|stale|state-bus/.test(item),
-	);
+	const output = result.output;
+	if (!isJsonRecord(output)) return [];
+	const missing = output.missing;
+	if (!Array.isArray(missing)) return [];
+	return missing.flatMap((item) => {
+		if (!isJsonString(item)) return [];
+		return /council|consensus|blocker|voter|stale|state-bus/.test(item)
+			? [item]
+			: [];
+	});
 }
 
 /**

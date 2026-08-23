@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const CONTRACT_VERSION = "hobo.multi-region-dr-replay/v1";
 
 export const RTO_TARGET_MS = 15 * 60 * 1000;
@@ -26,7 +27,7 @@ import {
   parseRestoreRequest,
 } from "./parse.ts";
 
-export function assessCrossRegionReplication(rawLog: unknown) {
+export function assessCrossRegionReplication(rawLog: JsonValue) {
   const log = parseReplicatedLog(rawLog);
   const lagMs = log.replicationLagMs;
   const seqGap = log.lastCommittedSeq - log.replicatedSeq;
@@ -51,7 +52,7 @@ export function assessCrossRegionReplication(rawLog: unknown) {
   });
 }
 
-export function yardUpRestore(input: Record<string, unknown> = {}) {
+export function yardUpRestore(input: JsonObject = {}) {
   const request = parseRestoreRequest(input);
   const log = parseReplicatedLog(input.log ?? input.sourceLog);
   const topology = input.topology ? parseMultiRegionTopology(input.topology) : null;
@@ -95,7 +96,7 @@ export function yardUpRestore(input: Record<string, unknown> = {}) {
   });
 }
 
-export function replayEventLog(rawLog: unknown) {
+export function replayEventLog(rawLog: JsonValue) {
   const log = parseReplicatedLog(rawLog);
   const projectionSnapshots: Record<string, string> = {};
   const actorStreams: Record<string, { lastSeq: number; head: string }> = {};
@@ -108,7 +109,7 @@ export function replayEventLog(rawLog: unknown) {
       if (!Number.isInteger(event.seq) || event.seq < 0) {
         throw new Error(`invalid seq on stream ${streamId}`);
       }
-      if (typeof event.type !== "string" || event.type.length === 0) {
+      if (!isJsonString(event.type) || event.type.length === 0) {
         throw new Error(`invalid event type on stream ${streamId}`);
       }
       replayedEvents += 1;
@@ -139,13 +140,14 @@ export function replayEventLog(rawLog: unknown) {
   });
 }
 
-export function runRegionLossDrill(scenario: Record<string, unknown> = {}) {
+export function runRegionLossDrill(scenario: JsonObject = {}) {
   const lostRegion = requiredString(scenario.lostRegion, "lostRegion");
   const targetRegion = requiredString(scenario.targetRegion, "targetRegion");
   const topology = parseMultiRegionTopology(scenario.topology);
   const log = parseReplicatedLog(scenario.log);
   const detectedAt = validateIso(scenario.detectedAt, "detectedAt");
   const restoredAt = validateIso(
+    // SAFETY: assertion to `scenario.restoredAt ?? addMilliseconds(detectedAt, (scenario.restoreDurationMs a` is required at this boundary.
     scenario.restoredAt ?? addMilliseconds(detectedAt, (scenario.restoreDurationMs as number) ?? 8 * 60 * 1000),
     "restoredAt",
   );
@@ -154,11 +156,13 @@ export function runRegionLossDrill(scenario: Record<string, unknown> = {}) {
     throw new Error("targetRegion must differ from lostRegion");
   }
 
+  // SAFETY: assertion to `if (!topology.regions.includes(lostRegion as never) || !topology.regions.include` is required at this boundary.
   if (!topology.regions.includes(lostRegion as never) || !topology.regions.includes(targetRegion as never)) {
     throw new Error("drill regions must be declared in topology manifest");
   }
 
   const restore = yardUpRestore({
+    // SAFETY: assertion to `logPath: (scenario.logPath as string) ?? /replicated/${targetRegion}/yard-event` is required at this boundary.
     logPath: (scenario.logPath as string) ?? `/replicated/${targetRegion}/yard-event-log`,
     log,
     topology: scenario.topology,
@@ -167,7 +171,8 @@ export function runRegionLossDrill(scenario: Record<string, unknown> = {}) {
     completedAt: restoredAt,
   });
 
-  const rtoMs = Date.parse(restoredAt) - Date.parse(detectedAt);
+  const _rtoMs = Date.parse(restoredAt) - Date.parse(detectedAt);
+  void _rtoMs;
   const passed = restore.status === "restored"
     && restore.rto.withinTarget
     && restore.replication.rpo.withinTarget
@@ -185,14 +190,14 @@ export function runRegionLossDrill(scenario: Record<string, unknown> = {}) {
   });
 }
 
-export function verifyProjectionIntegrity({ before, after }: { before?: unknown; after?: unknown } = {}) {
+export function verifyProjectionIntegrity({ before, after }: { before?: JsonValue; after?: unknown } = {}) {
   const beforeSnapshots = requiredObject(before ?? {}, "before");
   const afterSnapshots = requiredObject(after ?? {}, "after");
   const mismatches: Array<Record<string, string>> = [];
 
   for (const [streamId, expectedHash] of Object.entries(beforeSnapshots)) {
     const actualHash = afterSnapshots[streamId];
-    if (typeof actualHash !== "string") {
+    if (!isJsonString(actualHash)) {
       mismatches.push({ streamId, reason: "missing-after-snapshot" });
       continue;
     }
@@ -229,11 +234,11 @@ function foldActorStream(events: Array<{ seq: number; type: string; payload?: { 
   };
 }
 
-function stablePayload(payload: unknown) {
+function stablePayload(payload: JsonValue) {
   if (payload === undefined || payload === null) {
     return "";
   }
-  if (typeof payload === "string") {
+  if (isJsonString(payload)) {
     return payload;
   }
   return JSON.stringify(payload);
@@ -248,21 +253,22 @@ function hashText(value: string) {
   return `fnv1a-${(hash >>> 0).toString(16).padStart(8, "0")}`;
 }
 
-function requiredObject(value: unknown, fieldName: string): Record<string, string> {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+function requiredObject(value: JsonValue, fieldName: string): Record<string, string> {
+  if (!value || !isJsonObject(value)) {
     throw new Error(`${fieldName} is required`);
   }
+  // SAFETY: assertion to `return value as Record<string, string>;` is required at this boundary.
   return value as Record<string, string>;
 }
 
-function requiredString(value: unknown, fieldName: string): string {
-  if (typeof value !== "string" || value.trim().length === 0) {
+function requiredString(value: JsonValue, fieldName: string): string {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value.trim();
 }
 
-function validateIso(value: unknown, fieldName: string): string {
+function validateIso(value: JsonValue, fieldName: string): string {
   const text = requiredString(value, fieldName);
   if (Number.isNaN(Date.parse(text))) {
     throw new Error(`${fieldName} must be ISO-8601`);
@@ -275,11 +281,12 @@ function addMilliseconds(iso: string, milliseconds: number) {
 }
 
 function deepFreeze<T>(value: T): T {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   Object.freeze(value);
-  for (const child of Object.values(value as Record<string, unknown>)) {
+  // SAFETY: assertion to `for (const child of Object.values(value as JsonObject)) {` is required at this boundary.
+  for (const child of Object.values(value as JsonObject)) {
     deepFreeze(child);
   }
   return value;

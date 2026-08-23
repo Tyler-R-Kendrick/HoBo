@@ -62,8 +62,11 @@ function parseCli(): CliOptions {
 	const args = new Map<string, string>();
 	for (const raw of process.argv.slice(2)) {
 		const match = /^--([^=]+)(?:=(.*))?$/u.exec(raw);
-		if (match) args.set(match[1] as string, match[2] ?? "true");
+		const flag = match?.[1];
+		if (match !== null && flag !== undefined)
+			args.set(flag, match[2] ?? "true");
 	}
+	// SAFETY: assertion to `t("provider") ?? process.env.HOBO_STAGING_PROVIDER ?? "simple") as CliOptions["provider"]; if (!` is required at this boundary.
 	const provider = (args.get("provider") ??
 		process.env.HOBO_STAGING_PROVIDER ??
 		"simple") as CliOptions["provider"];
@@ -149,6 +152,7 @@ function startUptimeProbe(url: string, intervalMs: number) {
 function listen(server: Server): Promise<string> {
 	return new Promise((resolve) => {
 		server.listen(0, "127.0.0.1", () => {
+			// SAFETY: assertion to `ddress() as AddressInfo; res` is required at this boundary.
 			const { port } = server.address() as AddressInfo;
 			resolve(`http://127.0.0.1:${port}`);
 		});
@@ -166,7 +170,7 @@ interface ProviderBinding {
 }
 
 /** Loopback rehearsal: self-hosted backends + a routing proxy. */
-async function bindSimple(cli: CliOptions): Promise<ProviderBinding> {
+async function bindSimple(_cli: CliOptions): Promise<ProviderBinding> {
 	const backendA = createServer((_req, res) => res.end("A"));
 	const backendB = createServer((_req, res) => res.end("B"));
 	const backendAUrl = await listen(backendA);
@@ -271,15 +275,24 @@ async function bindVercel(): Promise<ProviderBinding> {
 		);
 	}
 	const teamId = process.env.VERCEL_TEAM_ID?.trim();
-	const port = createVercelTrafficRouting({
-		token,
-		projectIdOrName: project,
-		...(teamId ? { teamId } : {}),
-		deploymentIdsByBackend: {
-			"backend:a": deploymentA,
-			"backend:b": deploymentB,
-		},
-	});
+	const deployments = {
+		"backend:a": deploymentA,
+		"backend:b": deploymentB,
+	};
+	const port = createVercelTrafficRouting(
+		teamId !== undefined && teamId !== ""
+			? {
+					token,
+					projectIdOrName: project,
+					teamId,
+					deploymentIdsByBackend: deployments,
+				}
+			: {
+					token,
+					projectIdOrName: project,
+					deploymentIdsByBackend: deployments,
+				},
+	);
 	const topology: RoutingTopology = {
 		service: "staging-site",
 		tenantId,

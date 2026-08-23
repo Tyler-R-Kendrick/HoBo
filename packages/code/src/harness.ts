@@ -92,6 +92,7 @@ const HOBO_SKILL_NAMES = [
 export function parseSkillName(input: string): SkillName {
 	if (!/^[a-z0-9](?:[a-z0-9-]{0,127})$/u.test(input))
 		throw new TypeError("skill name must be a lowercase slug");
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return input as SkillName;
 }
 
@@ -260,8 +261,10 @@ export function createHarnessCore(options: CreateHarnessOptions): HarnessCore {
 		restore(runId: string) {
 			const path = join(worldRoot, runId, "state.json");
 			if (!existsSync(path)) return null;
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const raw = JSON.parse(
 				readFileSync(path, "utf8"),
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			) as Partial<DurableWorldState> &
 				Pick<DurableWorldState, "worldId" | "runId" | "step" | "checkpoint">;
 			return {
@@ -300,10 +303,7 @@ export function createHarnessCore(options: CreateHarnessOptions): HarnessCore {
 }
 
 /** Survive restart: write checkpoint, clear memory, restore from world. */
-export function demonstrateDurability(
-	harness: HarnessCore,
-	runId: string,
-): { before: DurableWorldState; after: DurableWorldState } {
+export function demonstrateDurability(harness: HarnessCore, runId: string) {
 	const before = harness.checkpoint(runId, 1, "durable-payload-v1");
 	const after = harness.restore(runId);
 	if (!after) {

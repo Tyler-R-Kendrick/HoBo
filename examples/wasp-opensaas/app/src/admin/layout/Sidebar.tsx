@@ -38,7 +38,9 @@ export function Sidebar({ sidebarOpen, setSidebarOpen }: SidebarProps) {
       if (!sidebar.current || !trigger.current) return;
       if (
         !sidebarOpen ||
+        // SAFETY: assertion to `target as Node` is required at this boundary.
         sidebar.current.contains(target as Node) ||
+        // SAFETY: assertion to `target as Node` is required at this boundary.
         trigger.current.contains(target as Node)
       )
         return;

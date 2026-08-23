@@ -19,7 +19,7 @@
 | Session revocation | `src/draft/technical-proofs/session-revocation-contract` | HOBO-229 | App developer | Revoked session denies next request | App-user auth and secretless config | SessionStoreProjection | session-projection-store | verified | implemented_in_reference_impl | Revocation remains append-only event replay. |
 | Outbound XAA token exchange | `src/draft/technical-proofs/outbound-xaa-token-exchange-contract` | HOBO-230 | SecOps reviewer | Broker mints ID-JAG only for verified user delegation | Cross-App Access delegation | EnterprisePolicyGate, ExternalAppAuthorizationServer | xaa-policy-gate, external-app-authorization-server | verified | implemented_in_reference_impl | Pre-mint policy happens before target AS redemption. |
 | Inbound XAA resource server | `src/draft/technical-proofs/inbound-xaa-resource-server-contract` | HOBO-233 | SecOps reviewer | HoBo app verifies inbound ID-JAG and stamps ctx.user | Cross-App Access delegation | JWKSIdentityProvider, EnterprisePolicyGate | auth-jwks-issuer, xaa-policy-gate | verified | implemented_in_reference_impl | Wrong audience/resource/replay paths are negative scenarios. |
-| connector runtime broker backing | `src/draft/technical-proofs/connector-runtime-broker-contract` | HOBO-235 | App developer | connector connection token request is bounded by inferred scope | Cross-App Access delegation | EnterprisePolicyGate, ExternalAppAuthorizationServer | xaa-policy-gate, external-app-authorization-server | verified | implemented_in_reference_impl | SDK authoring remains dependency; runtime backing is modeled. |
+| connector runtime broker backing | `src/draft/technical-proofs/connector-runtime-broker-contract` | HOBO-235 | App developer | connector connection token request is bounded by inferred scope | Cross-App Access delegation | EnterprisePolicyGate, ExternalAppAuthorizationServer | xaa-policy-gate, external-app-authorization-server | verified | implemented_in_reference_impl | SDK authoring remains dependency; runtime backing is modeled; latest technical-proof change reconciled without changing the simulation. |
 | RBAC roles via SSO/SCIM through auth port | `src/draft/technical-proofs/auth-port-rbac-resolution-contract` | HOBO-238 | SecOps reviewer | SCIM roles resolve without agent self-widening | App-user auth and secretless config | JWKSIdentityProvider, EnterprisePolicyGate | auth-jwks-issuer, xaa-policy-gate | verified | implemented_in_reference_impl | SCIM source is mocked; subject role caps are kept. |
 | X.509-SVID mTLS certificate issuance | `src/draft/technical-proofs/x509-svid-mtls-contract` | HOBO-242 | Yard operator | Service-to-service mTLS authenticates by SVID | Identity governance and observation | IdentityCertificateAuthority | identity-ca-mtls | verified | implemented_in_reference_impl | Certificate-shaped records prove the contract, not a TLS stack. |
 | HoBo Relay SVID-auth reverse tunnel | `src/draft/technical-proofs/hobo-relay-contract` | HOBO-244 | Yard operator | Relay attach accepts only SVID-authorized target scope | Identity governance and observation | RelaySvidAuthorizer, IdentityCertificateAuthority | relay-svid-authorizer, identity-ca-mtls | verified | implemented_in_reference_impl | Transport stays mocked; identity attach decision is integrated. |
@@ -41,6 +41,9 @@ Changes to referenced experience proofs that this rollup has taken in.
 | Referenced proof | Change | Effect on this rollup |
 |---|---|---|
 | `src/draft/exp-proofs/dx/svid-cross-tenant-guard-contract` | `data-models/proof.cue` | none |
+| `src/draft/technical-proofs/hobo-auth-json-contract` | latest validated leaf hardening | Signed manifest and broker fixture behavior unchanged. |
+| `src/draft/technical-proofs/hobo-jwt-svid-contract` | latest validated leaf hardening | Workload SVID trust and claim behavior unchanged. |
+| `src/draft/technical-proofs/hobo-principal-ref-contract` | latest validated leaf hardening | Principal serialization and policy subject behavior unchanged. |
 
 All of these are the same edit, applied across 58 draft proofs at once. Each
 ships a `data-models/proof.proto` declaring `message ProofIdentity { string
@@ -79,3 +82,18 @@ nothing that validated before stops validating.
 | Simulation risk | The harness must report mocked providers and empty live network calls so it cannot be mistaken for a deployed identity service. |
 | Contract brittleness risk | Pact fixtures focus on boundary request/response compatibility and avoid asserting entire business workflows. |
 | Active epic conflict | The reference path is unique to Identity/XAA and does not modify other epic reference directories. |
+
+| `src/draft/technical-proofs/outbound-xaa-token-exchange-contract` | latest validated leaf hardening | Outbound XAA exchange and trust evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/secretless-config-resolution-contract` | final validated leaf hardening | Secretless resolution evidence unchanged. |
+| `src/draft/technical-proofs/static-key-escape-hatch-contract` | final validated leaf hardening | Static escape-hatch boundary evidence unchanged. |
+| `src/draft/technical-proofs/svid-auto-rotation-contract` | final validated leaf hardening | SVID rotation evidence unchanged. |
+| `src/draft/technical-proofs/svid-partition-grace-spike` | final validated leaf hardening | Partition-grace evidence unchanged. |
+| `src/draft/technical-proofs/token-broker-ha-cache-contract` | final validated leaf hardening | Broker cache evidence unchanged. |
+| `src/draft/technical-proofs/token-broker-skeleton-contract` | final validated leaf hardening | Broker skeleton evidence unchanged. |
+| `src/draft/technical-proofs/token-replay-resistance-contract` | final validated leaf hardening | Replay-resistance evidence unchanged. |
+| `src/draft/technical-proofs/workload-attestation-intake-contract` | final validated leaf hardening | Workload-attestation evidence unchanged. |

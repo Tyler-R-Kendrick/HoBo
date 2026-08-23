@@ -1,7 +1,7 @@
 import { readFile } from "node:fs/promises";
 import path from "node:path";
-
 import type { CommandModule, HoboCli, YardRuntime } from "@hobo/cli";
+import { isJsonObject, isJsonString, type JsonValue } from "./json.js";
 
 export interface RunbookCommandDeps {
 	// The shared Yard runtime the runbook's steps operate against — the same live
@@ -29,21 +29,23 @@ const NESTING_VERB = "runbook";
 
 // Parse a runbook document (parse-don't-validate): a named, ordered list of
 // steps, each a HoBo verb with optional args. Throws on a malformed shape.
-function parseRunbook(raw: unknown): { name: string; steps: RunbookStep[] } {
-	if (typeof raw !== "object" || raw === null) {
+function parseRunbook(raw: JsonValue | undefined) {
+	if (!isJsonObject(raw) || raw === null) {
 		throw new Error("runbook must be a JSON object");
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	const doc = raw as { name?: unknown; steps?: unknown };
-	const name = typeof doc.name === "string" ? doc.name : "runbook";
+	const name = isJsonString(doc.name) ? doc.name : "runbook";
 	if (!Array.isArray(doc.steps)) {
 		throw new Error("runbook.steps must be an array");
 	}
 	const steps: RunbookStep[] = doc.steps.map((entry, i) => {
-		if (typeof entry !== "object" || entry === null) {
+		if (!isJsonObject(entry) || entry === null) {
 			throw new Error(`runbook.steps[${i}] must be an object`);
 		}
+		// SAFETY: assertion required at this I/O or test boundary.
 		const step = entry as { verb?: unknown; args?: unknown };
-		if (typeof step.verb !== "string" || step.verb.length === 0) {
+		if (!isJsonString(step.verb) || step.verb.length === 0) {
 			throw new Error(`runbook.steps[${i}].verb must be a non-empty string`);
 		}
 		const args = Array.isArray(step.args)
@@ -102,6 +104,7 @@ export function createRunbookCommand(
 					ok: false,
 					status: "invalid",
 					code: "HOBO_RUNBOOK_INVALID",
+					// SAFETY: assertion required at this I/O or test boundary.
 					message: `hobo runbook: could not load "${file}": ${(error as Error).message}`,
 					data: { command: "runbook", file },
 				};
@@ -135,6 +138,7 @@ export function createRunbookCommand(
 				let ok = false;
 				let status = "error";
 				try {
+					// SAFETY: assertion required at this I/O or test boundary.
 					const env = JSON.parse(run.stdout) as {
 						ok?: boolean;
 						status?: string;
@@ -158,7 +162,7 @@ export function createRunbookCommand(
 					? `hobo runbook "${runbook.name}": ${results.length}/${results.length} step(s) ok`
 					: `hobo runbook "${runbook.name}": ${failed.length} of ${results.length} step(s) failed (${failed.map((r) => r.verb).join(", ")})`,
 				...(passed
-					? {}
+					? undefined
 					: {
 							remediation: failed.map((r) => `${r.verb}: ${r.status}`),
 						}),

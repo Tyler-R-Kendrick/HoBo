@@ -42,11 +42,13 @@ export function createNetbirdOverlay(options?: {
 			managementUrl,
 			...(accessToken !== undefined && accessToken.length > 0
 				? { accessToken }
-				: {}),
-			...(setupKey !== undefined && setupKey.length > 0 ? { setupKey } : {}),
+				: undefined),
+			...(setupKey !== undefined && setupKey.length > 0
+				? { setupKey }
+				: undefined),
 			...(options?.fetchImpl !== undefined
 				? { fetchImpl: options.fetchImpl }
-				: {}),
+				: undefined),
 		});
 	}
 
@@ -73,7 +75,7 @@ export function createNetbirdOverlay(options?: {
 			if (api) {
 				const enrolled = await api.enrollPeer({
 					name: join.hostname,
-					...(join.authKey ? { setupKey: join.authKey } : {}),
+					...(join.authKey ? { setupKey: join.authKey } : undefined),
 				});
 				notes.push(...enrolled.notes);
 				if (enrolled.peer) {
@@ -126,7 +128,7 @@ export function createNetbirdOverlay(options?: {
 					metadata: {
 						provider: "netbird",
 						ready,
-						...(managementUrl ? { managementUrl } : {}),
+						...(managementUrl ? { managementUrl } : undefined),
 					},
 				}),
 			);

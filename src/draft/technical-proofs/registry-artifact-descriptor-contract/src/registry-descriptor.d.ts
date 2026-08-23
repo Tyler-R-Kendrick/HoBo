@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export type ListingKind =
   | "provider"
   | "resource-pack"
@@ -75,8 +76,8 @@ export const LISTING_KINDS: readonly ListingKind[];
 export const STABILITY_TIERS: readonly StabilityTier[];
 
 export function createFixtureDescriptor(input?: { kind?: ListingKind }): RegistryDescriptor;
-export function parseDescriptor(candidate: unknown): ParseDescriptorResult;
+export function parseDescriptor(candidate: JsonValue): ParseDescriptorResult;
 export function serializeDescriptor(descriptor: RegistryDescriptor): string;
 export function deserializeDescriptor(text: string): ParseDescriptorResult;
-export function canonicalJson(value: unknown): string;
+export function canonicalJson(value: JsonValue): string;
 export function parseInterfaceRef(ref: string): InterfaceTriple | null;

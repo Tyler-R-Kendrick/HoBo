@@ -64,20 +64,25 @@ export class CapabilityMatrixError extends Error {
 	}
 }
 
-type Unknown = Record<string, unknown>;
+const tagOf = Object.prototype.toString;
 
-function object(value: unknown, path: string): Unknown {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+type JsonObject = { [key: string]: JsonValue };
+type JsonValue = string | number | boolean | null | undefined | JsonValue[] | JsonObject;
+export type CapabilityMatrixDocument = JsonValue;
+
+function object(value: JsonValue, path: string): JsonObject {
+	if (value === null || Array.isArray(value) || tagOf.call(value) !== "[object Object]") {
 		throw new CapabilityMatrixError(
 			"INVALID_CAPABILITY_MATRIX",
 			path,
 			"must be an object",
 		);
 	}
-	return value as Unknown;
+	// SAFETY: the preceding tag and array checks establish a plain object.
+	return value as JsonObject;
 }
 
-function array(value: unknown, path: string): readonly unknown[] {
+function array(value: JsonValue, path: string): readonly JsonValue[] {
 	if (!Array.isArray(value)) {
 		throw new CapabilityMatrixError(
 			"INVALID_CAPABILITY_MATRIX",
@@ -85,21 +90,23 @@ function array(value: unknown, path: string): readonly unknown[] {
 			"must be an array",
 		);
 	}
+	// SAFETY: the preceding tag check establishes a primitive string value.
 	return value;
 }
 
-function text(value: unknown, path: string): string {
-	if (typeof value !== "string") {
+function text(value: JsonValue, path: string): string {
+	if (tagOf.call(value) !== "[object String]") {
 		throw new CapabilityMatrixError(
 			"INVALID_CAPABILITY_MATRIX",
 			path,
 			"must be a string",
 		);
 	}
-	return value;
+	// SAFETY: the preceding tag check establishes a primitive string value.
+	return value as string;
 }
 
-function nonEmptyText(value: unknown, path: string): string {
+function nonEmptyText(value: JsonValue, path: string): string {
 	const parsed = text(value, path);
 	if (parsed.trim().length === 0) {
 		throw new CapabilityMatrixError(
@@ -111,19 +118,20 @@ function nonEmptyText(value: unknown, path: string): string {
 	return parsed;
 }
 
-function instant(value: unknown, path: string): number {
-	if (typeof value !== "number" || !Number.isInteger(value)) {
+function instant(value: JsonValue, path: string): number {
+	if (tagOf.call(value) !== "[object Number]" || !Number.isInteger(value)) {
 		throw new CapabilityMatrixError(
 			"INVALID_CAPABILITY_MATRIX",
 			path,
 			"must be an integer epoch-millisecond instant",
 		);
 	}
-	return value;
+	// SAFETY: the preceding tag and integer checks establish a numeric instant.
+	return value as number;
 }
 
-function boolean(value: unknown, path: string): boolean {
-	if (typeof value !== "boolean") {
+function boolean(value: JsonValue, path: string): boolean {
+	if (value !== true && value !== false) {
 		throw new CapabilityMatrixError(
 			"INVALID_CAPABILITY_MATRIX",
 			path,
@@ -133,7 +141,7 @@ function boolean(value: unknown, path: string): boolean {
 	return value;
 }
 
-function digest(value: unknown, path: string): string {
+function digest(value: JsonValue, path: string): string {
 	const parsed = text(value, path);
 	if (!DIGEST_PATTERN.test(parsed)) {
 		throw new CapabilityMatrixError(
@@ -147,10 +155,11 @@ function digest(value: unknown, path: string): string {
 
 function member<T extends string>(
 	vocabulary: readonly T[],
-	value: unknown,
+	value: JsonValue,
 	path: string,
 ): T {
 	const parsed = text(value, path);
+	// SAFETY: vocabulary is a readonly string literal collection by contract.
 	if (!(vocabulary as readonly string[]).includes(parsed)) {
 		throw new CapabilityMatrixError(
 			"UNKNOWN_VOCABULARY",
@@ -158,17 +167,19 @@ function member<T extends string>(
 			`${JSON.stringify(parsed)} is not one of ${vocabulary.join(", ")}`,
 		);
 	}
+	// SAFETY: includes() established that parsed is a member of vocabulary.
 	return parsed as T;
 }
 
 /** Definition ids must arrive sorted and unique, or the digest is unstable. */
-function definitionIds(value: unknown, path: string): readonly string[] {
+function definitionIds(value: JsonValue, path: string): readonly string[] {
 	const entries = array(value, path).map((entry, index) =>
 		nonEmptyText(entry, `${path}[${index}]`),
 	);
 	for (let index = 1; index < entries.length; index += 1) {
-		const previous = entries[index - 1] as string;
-		const current = entries[index] as string;
+		const previous = entries[index - 1];
+		const current = entries[index];
+		if (previous === undefined || current === undefined) continue;
 		if (previous >= current) {
 			throw new CapabilityMatrixError(
 				"INVALID_CAPABILITY_MATRIX",
@@ -180,7 +191,7 @@ function definitionIds(value: unknown, path: string): readonly string[] {
 	return entries;
 }
 
-function bucket(value: unknown, path: string): CapabilityMatrixBucket {
+function bucket(value: JsonValue, path: string): CapabilityMatrixBucket {
 	const record = object(value, path);
 	const available = definitionIds(record.available, `${path}.available`);
 	const unavailable = definitionIds(record.unavailable, `${path}.unavailable`);
@@ -197,7 +208,7 @@ function bucket(value: unknown, path: string): CapabilityMatrixBucket {
 	return { available, unavailable };
 }
 
-function buckets(value: unknown, path: string): CapabilityMatrixBuckets {
+function buckets(value: JsonValue, path: string): CapabilityMatrixBuckets {
 	const record = object(value, path);
 	return {
 		native: bucket(record.native, `${path}.native`),
@@ -209,7 +220,7 @@ function buckets(value: unknown, path: string): CapabilityMatrixBuckets {
 }
 
 function unavailability(
-	value: unknown,
+	value: JsonValue,
 	path: string,
 ): readonly CandidateUnavailability[] {
 	return array(value, path).map((entry, index) => {
@@ -226,7 +237,7 @@ function unavailability(
 }
 
 function candidate(
-	value: unknown,
+	value: JsonValue,
 	path: string,
 	coordinate: CapabilityMatrixCoordinate,
 ): CapabilityMatrixCandidate {
@@ -263,7 +274,13 @@ function candidate(
 	}
 	const expiresAt = record.evidenceExpiresAtMs;
 	const conformanceRef = record.conformanceRef;
-	return {
+	const parsed: Omit<
+		CapabilityMatrixCandidate,
+		"evidenceExpiresAtMs" | "conformanceRef"
+	> & {
+		evidenceExpiresAtMs?: number;
+		conformanceRef?: string;
+	} = {
 		primitive,
 		runtime,
 		definitionId: nonEmptyText(record.definitionId, `${path}.definitionId`),
@@ -281,33 +298,30 @@ function candidate(
 			record.evidenceState,
 			`${path}.evidenceState`,
 		),
-		...(expiresAt === undefined
-			? {}
-			: {
-					evidenceExpiresAtMs: instant(
-						expiresAt,
-						`${path}.evidenceExpiresAtMs`,
-					),
-				}),
 		conformance: member(
 			["pass", "fail", "unknown"] as const,
 			record.conformance,
 			`${path}.conformance`,
 		),
-		...(conformanceRef === undefined
-			? {}
-			: {
-					conformanceRef: nonEmptyText(
-						conformanceRef,
-						`${path}.conformanceRef`,
-					),
-				}),
 		unavailability: reasons,
 	};
+	if (expiresAt !== undefined) {
+		parsed.evidenceExpiresAtMs = instant(
+			expiresAt,
+			`${path}.evidenceExpiresAtMs`,
+		);
+	}
+	if (conformanceRef !== undefined) {
+		parsed.conformanceRef = nonEmptyText(
+			conformanceRef,
+			`${path}.conformanceRef`,
+		);
+	}
+	return parsed;
 }
 
 function cell(
-	value: unknown,
+	value: JsonValue,
 	path: string,
 	coordinate: CapabilityMatrixCoordinate,
 ): CapabilityMatrixCell {
@@ -363,7 +377,7 @@ function cell(
 	};
 }
 
-function exclusion(value: unknown, path: string): CapabilityMatrixExclusion {
+function exclusion(value: JsonValue, path: string): CapabilityMatrixExclusion {
 	const record = object(value, path);
 	return {
 		definitionId: nonEmptyText(record.definitionId, `${path}.definitionId`),
@@ -379,7 +393,9 @@ function exclusion(value: unknown, path: string): CapabilityMatrixExclusion {
  * Rejects, rather than repairs: a grid missing a cell is not a matrix with a
  * gap, it is not a matrix.
  */
-export function parseCapabilityMatrix(value: unknown): CapabilityMatrix {
+export function parseCapabilityMatrix(
+	value: CapabilityMatrixDocument,
+): CapabilityMatrix {
 	const record = object(value, "matrix");
 	if (record.schemaVersion !== CAPABILITY_MATRIX_SCHEMA_VERSION) {
 		throw new CapabilityMatrixError(
@@ -431,7 +447,7 @@ export function parseCapabilityMatrix(value: unknown): CapabilityMatrix {
 
 /** Non-throwing variant, for callers surveying several stored matrices. */
 export function tryParseCapabilityMatrix(
-	value: unknown,
+	value: CapabilityMatrixDocument,
 ): CapabilityMatrix | undefined {
 	try {
 		return parseCapabilityMatrix(value);

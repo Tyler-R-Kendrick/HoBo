@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export class ParadigmPackageContractError extends Error {
   constructor(code, message, details = {}) {
     super(message);
@@ -377,7 +378,7 @@ function normalizeHandlers(on) {
       entries
         .map(([eventType, handler]) => {
           assertNonEmptyString(eventType, "projection event type");
-          if (typeof handler !== "function") {
+          if (!(handler instanceof Function)) {
             throw new ParadigmPackageContractError(
               "projection-handler-required",
               `handler for ${eventType} must be a function`,
@@ -414,7 +415,7 @@ function normalizeIndexes(indexes) {
 function normalizeNativeSelection(override, defaultNative) {
   const selected = {
     ...cloneData(defaultNative),
-    ...(override ? cloneData(override) : {}),
+    ...(override ? cloneData(override) : undefined),
   };
 
   return deepFreeze({
@@ -512,7 +513,7 @@ function validateRow(schema, candidate) {
       throw new ParadigmPackageContractError("row-integer-invalid", `row.${field.name} must be a safe integer`);
     }
 
-    if (field.type === "string" && typeof value !== "string") {
+    if (field.type === "string" && !isJsonString(value)) {
       throw new ParadigmPackageContractError("row-string-invalid", `row.${field.name} must be a string`);
     }
 
@@ -578,14 +579,14 @@ function assertKnownParadigm(value, field) {
 }
 
 function assertObject(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new ParadigmPackageContractError("object-required", `${field} must be an object`);
   }
   return value;
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new ParadigmPackageContractError("string-required", `${field} must be a non-empty string`);
   }
   return value;
@@ -651,7 +652,7 @@ function sortJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortJson);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
 
@@ -670,7 +671,7 @@ function deepFreeze(value) {
   if (Array.isArray(value)) {
     return Object.freeze(value.map(deepFreeze));
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.freeze(
       Object.fromEntries(Object.entries(value).map(([key, nested]) => [key, deepFreeze(nested)])),
     );
@@ -682,5 +683,5 @@ function cloneData(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

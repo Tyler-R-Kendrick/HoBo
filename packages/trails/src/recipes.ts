@@ -31,7 +31,7 @@ export type PlatformRecipe = Readonly<{
 	handsOffContinuous: boolean;
 }>;
 
-const catalog: Record<string, PlatformRecipe> = {
+const catalog = {
 	[PLATFORM_RECIPES.IdentityContinuous]: {
 		id: PLATFORM_RECIPES.IdentityContinuous,
 		description:
@@ -132,7 +132,7 @@ const catalog: Record<string, PlatformRecipe> = {
 };
 
 export function getPlatformRecipe(id: string): PlatformRecipe | undefined {
-	return catalog[id];
+	return Object.entries(catalog).find(([key]) => key === id)?.[1];
 }
 
 export function listPlatformRecipes(): readonly PlatformRecipe[] {
@@ -195,8 +195,8 @@ export function composeTrailWithRecipes(
 		targets: trail.targets,
 		...(trail.dependsOnTrails !== undefined
 			? { dependsOnTrails: trail.dependsOnTrails }
-			: {}),
+			: undefined),
 		steps: merged,
-		...(trail.recipeList !== undefined ? { recipeList: trail.recipeList } : {}),
+		...(trail.recipeList !== undefined ? { recipeList: trail.recipeList } : undefined),
 	});
 }

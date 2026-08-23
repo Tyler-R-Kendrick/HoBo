@@ -5,6 +5,8 @@ import {
   createDecisionRequest,
   createPolicyDecidedEvent,
 } from "../../hobo-policy-ir-contract/src/policy-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const LIFECYCLE_PHASE_POLICY_SCHEMA_VERSION = "hobo.lifecycle-phase-policy/v1";
 export const LIFECYCLE_PHASE_RULESET_SCHEMA_VERSION = "hobo.lifecycle-phase-ruleset/v1";
@@ -245,7 +247,7 @@ export function evaluateLifecyclePhasePolicy({ request: requestInput, ruleset = 
       continue;
     }
     const partial = rule.decide({ request });
-    if (!partial || typeof partial !== "object" || Array.isArray(partial) || !EFFECT_RANK.has(partial.effect)) {
+    if (!partial || !isJsonObject(partial) || Array.isArray(partial) || !EFFECT_RANK.has(partial.effect)) {
       return resultForDecision({
         request,
         decision: createDecision(request, {
@@ -297,7 +299,7 @@ export function evaluateLifecyclePhasePolicy({ request: requestInput, ruleset = 
 
 function compileRuleset(ruleset) {
   const errors = [];
-  if (!ruleset || typeof ruleset !== "object" || Array.isArray(ruleset)) {
+  if (!ruleset || !isJsonObject(ruleset) || Array.isArray(ruleset)) {
     return { ok: false, errors: ["ruleset must be an object"], rules: [] };
   }
   if (ruleset.schemaVersion !== LIFECYCLE_PHASE_RULESET_SCHEMA_VERSION) {
@@ -328,7 +330,7 @@ function compileRuleset(ruleset) {
 
 function validateRule(rule, index, ids, errors) {
   const path = `rules[${index}]`;
-  if (!rule || typeof rule !== "object" || Array.isArray(rule)) {
+  if (!rule || !isJsonObject(rule) || Array.isArray(rule)) {
     errors.push(`${path} must be an object`);
     return;
   }
@@ -348,10 +350,10 @@ function validateRule(rule, index, ids, errors) {
       }
     }
   }
-  if (typeof rule.when !== "function") {
+  if (!(rule.when instanceof Function)) {
     errors.push(`${rule.id ?? path}.when must be a function`);
   }
-  if (typeof rule.decide !== "function") {
+  if (!(rule.decide instanceof Function)) {
     errors.push(`${rule.id ?? path}.decide must be a function`);
   }
 }
@@ -435,21 +437,21 @@ function deny(reason, violations) {
 }
 
 function requiredToolScope(request) {
-  if (typeof request.context.tool?.scope === "string") {
+  if (isJsonString(request.context.tool?.scope)) {
     return request.context.tool.scope;
   }
-  if (typeof request.context.requiredScope === "string") {
+  if (isJsonString(request.context.requiredScope)) {
     return request.context.requiredScope;
   }
   return null;
 }
 
 function arrayOfStrings(input) {
-  return Array.isArray(input) ? input.filter((value) => typeof value === "string") : [];
+  return Array.isArray(input) ? input.filter((value) => isJsonString(value)) : [];
 }
 
 function isNonEmptyString(input) {
-  return typeof input === "string" && input.trim().length > 0;
+  return isJsonString(input) && input.trim().length > 0;
 }
 
 function safeJson(input) {

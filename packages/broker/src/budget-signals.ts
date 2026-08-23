@@ -13,6 +13,7 @@
 //   signals emits nothing new);
 // - `budgetSignalEventInputs` carries the signalKey as `meta.idempotencyKey`,
 //   so even a blind re-append is deduped by the SQLite journal (ADR-0135).
+import { isJsonNumber, isJsonString, type JsonObject } from "./json.js";
 import { METER_USAGE_RECORDED_EVENT } from "./metering.js";
 
 export const BUDGET_EVENTS = Object.freeze({
@@ -112,8 +113,9 @@ export function foldBudgetSignals(
 			event.type === BUDGET_EVENTS.ThresholdCrossed ||
 			event.type === BUDGET_EVENTS.Recovered
 		) {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const key = (event.data as BudgetSignalData | undefined)?.signalKey;
-			if (typeof key === "string" && key.length > 0) seenKeys.add(key);
+			if (isJsonString(key) && key.length > 0) seenKeys.add(key);
 		}
 	}
 
@@ -125,23 +127,20 @@ export function foldBudgetSignals(
 			continue;
 		}
 
-		const data = (event.data ?? {}) as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const data = (event.data ?? {}) as JsonObject;
 		if (tenantId !== null && data.tenantId !== tenantId) continue;
 
 		if (event.type === METER_USAGE_RECORDED_EVENT) {
 			const cost = data.costUsd;
-			if (typeof cost !== "number" || !Number.isFinite(cost) || cost < 0) {
+			if (!isJsonNumber(cost) || !Number.isFinite(cost) || cost < 0) {
 				continue;
 			}
 			state.spentUsd += cost;
 			state.sampleCount += 1;
 		} else if (event.type === BUDGET_EVENTS.CreditApplied) {
 			const amount = data.amountUsd;
-			if (
-				typeof amount !== "number" ||
-				!Number.isFinite(amount) ||
-				amount < 0
-			) {
+			if (!isJsonNumber(amount) || !Number.isFinite(amount) || amount < 0) {
 				continue;
 			}
 			state.creditUsd += amount;

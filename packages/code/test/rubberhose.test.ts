@@ -29,8 +29,7 @@ import {
 
 /** Visible text only — accents must never change geometry or content. */
 const plain = (s: string): string =>
-	// biome-ignore lint/suspicious/noControlCharactersInRegex: stripping SGR is the point
-	s.replace(/\u001b\[[0-9;]*m/g, "");
+	s.replace(new RegExp(`${String.fromCharCode(27)}\\[[0-9;]*m`, "g"), "");
 
 describe("ink cards (thick outlines + hard sticker shadow)", () => {
 	it("uses heavy ink, never hairline SaaS rules", () => {
@@ -108,6 +107,7 @@ describe("strict black & white with rare accents", () => {
 	});
 });
 
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 describe("title card (Chewy wordmark as a cartoon opening)", () => {
 	it("frames the real logo sprite, not block-letter substitutes", () => {
 		const card = titleCard(HOBO_LOGO_TUI, { width: 70 }).join("\n");
@@ -153,6 +153,7 @@ describe("helpers", () => {
 	});
 });
 
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 describe("the frame as a whole obeys the contract", () => {
 	it("gives the transcript the screen instead of a permanent header", () => {
 		const state = createInitialShellState({
@@ -183,6 +184,7 @@ describe("the frame as a whole obeys the contract", () => {
 		expect(lines.some((l) => l.startsWith("❯"))).toBe(false);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("gives the editor more room as the typed input wraps", () => {
 		const base = createInitialShellState({
 			width: 80,

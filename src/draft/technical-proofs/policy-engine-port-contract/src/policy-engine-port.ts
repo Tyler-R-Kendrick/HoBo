@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const POLICY_ENGINE_SCHEMA = "hobo.policy-engine/v1";
 export const POLICY_RULESET_SCHEMA = "hobo.policy-ruleset/v1";
@@ -114,7 +116,7 @@ export function createPermissiveAdapter({ engineId = "example.permissive-policy-
 }
 
 export function evaluatePolicy(engine, request, ruleset) {
-  if (!engine || typeof engine.evaluate !== "function") {
+  if (!engine || !(engine.evaluate instanceof Function)) {
     throw new Error("engine must implement evaluate(request, ruleset)");
   }
   return normalizeDecision(engine.evaluate(request, ruleset), engine.engineId, request);
@@ -227,7 +229,7 @@ function evaluateBuiltIn(engineId, request, ruleset) {
 function compileRuleset(ruleset) {
   const errors = [];
 
-  if (!ruleset || typeof ruleset !== "object" || Array.isArray(ruleset)) {
+  if (!ruleset || !isJsonObject(ruleset) || Array.isArray(ruleset)) {
     return { ok: false, errors: ["ruleset must be an object"], rules: [] };
   }
   if (ruleset.schema !== POLICY_RULESET_SCHEMA) {
@@ -256,22 +258,22 @@ function compileRuleset(ruleset) {
 }
 
 function validateRule(rule, errors) {
-  if (!rule || typeof rule !== "object" || Array.isArray(rule)) {
+  if (!rule || !isJsonObject(rule) || Array.isArray(rule)) {
     errors.push("rule must be an object");
     return;
   }
   if (!isNonEmptyString(rule.id)) {
     errors.push("rule.id must be a non-empty string");
   }
-  if (typeof rule.when !== "function") {
+  if (!(rule.when instanceof Function)) {
     errors.push(`${rule.id ?? "rule"}: when must be a function`);
   }
-  if (typeof rule.decide !== "function") {
+  if (!(rule.decide instanceof Function)) {
     errors.push(`${rule.id ?? "rule"}: decide must be a function`);
   }
 
   for (const [name, fn] of [["when", rule.when], ["decide", rule.decide]]) {
-    if (typeof fn !== "function") {
+    if (!(fn instanceof Function)) {
       continue;
     }
     const source = Function.prototype.toString.call(fn);
@@ -287,13 +289,13 @@ function validateRule(rule, errors) {
 function validateRequest(request) {
   const errors = [];
 
-  if (!request || typeof request !== "object" || Array.isArray(request)) {
+  if (!request || !isJsonObject(request) || Array.isArray(request)) {
     return ["request must be an object"];
   }
   if (request.schema !== POLICY_REQUEST_SCHEMA) {
     errors.push(`request.schema must be ${POLICY_REQUEST_SCHEMA}`);
   }
-  if (!request.subject || typeof request.subject !== "object") {
+  if (!request.subject || !isJsonObject(request.subject)) {
     errors.push("request.subject must be present");
   } else {
     if (!SUBJECT_KINDS.has(request.subject.kind)) {
@@ -306,7 +308,7 @@ function validateRequest(request) {
   if (!isNonEmptyString(request.action)) {
     errors.push("request.action must be a non-empty string");
   }
-  if (!request.resource || typeof request.resource !== "object") {
+  if (!request.resource || !isJsonObject(request.resource)) {
     errors.push("request.resource must be present");
   } else {
     if (!isNonEmptyString(request.resource.kind)) {
@@ -362,7 +364,7 @@ function makeDecision({
 }
 
 function normalizeDecision(decision, fallbackEngineId, request) {
-  if (!decision || typeof decision !== "object" || Array.isArray(decision)) {
+  if (!decision || !isJsonObject(decision) || Array.isArray(decision)) {
     return denyDecision({
       engineId: fallbackEngineId,
       request,
@@ -391,14 +393,14 @@ function hashInput(request) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
@@ -408,7 +410,7 @@ function deepMerge(base, overrides) {
   if (Array.isArray(base) || Array.isArray(overrides)) {
     return overrides === undefined ? structuredClone(base) : structuredClone(overrides);
   }
-  if (!base || typeof base !== "object") {
+  if (!base || !isJsonObject(base)) {
     return overrides === undefined ? base : overrides;
   }
 

@@ -2,7 +2,8 @@ import assert from "node:assert/strict";
 import { assertNoSecrets, type ClaimEvent } from "@hobo/claims";
 import { describe, it } from "vitest";
 
-import { isTtlShProviderError, TtlShProviderError } from "../src/errors.js";
+import { TtlShProviderError } from "../src/errors.js";
+import { parseJsonValue } from "../src/json.js";
 import {
 	createInMemoryPushLedger,
 	type OciPushExecutor,
@@ -20,6 +21,7 @@ import {
 	parseArtifactDigest,
 } from "../src/reference.js";
 import {
+	expectTtlShCode,
 	FAKE_DIGEST,
 	FAKE_UUID_NAME,
 	LEAKED_TOKEN,
@@ -86,7 +88,9 @@ describe("toProvisionReceipt", () => {
 		// 64 unbroken hex characters is exactly the shape of the structural
 		// opaque-blob rule, and it is the one long string that must survive.
 		assert.deepEqual(
-			scanForCredentialMaterial(toProvisionReceipt(await record())),
+			scanForCredentialMaterial(
+				parseJsonValue(JSON.stringify(toProvisionReceipt(await record()))),
+			),
 			[],
 		);
 	});
@@ -148,14 +152,13 @@ describe("toGuestLease", () => {
 
 describe("no credential material ever leaves this package", () => {
 	it("refuses to emit a value carrying a bearer token", () => {
-		assert.throws(
+		expectTtlShCode(
 			() =>
 				assertNoCredentialMaterial(
 					{ note: `Bearer ${LEAKED_TOKEN}` },
 					"a fixture",
 				),
-			(error: unknown) =>
-				isTtlShProviderError(error) && error.code === "CREDENTIAL_REFUSED",
+			"CREDENTIAL_REFUSED",
 		);
 	});
 
@@ -198,13 +201,20 @@ describe("no credential material ever leaves this package", () => {
 		const receipt = toProvisionReceipt(pushed);
 
 		assert.doesNotThrow(() => {
-			assertNoCredentialMaterial(toProviderFacts(pushed), "facts");
 			assertNoCredentialMaterial(
-				toGuestLease(receipt, {
-					leaseId: "lease:ttl-sh:0001",
-					subjectRef: "bindle:app/image",
-					fencingToken: "fence-1",
-				}),
+				parseJsonValue(JSON.stringify(toProviderFacts(pushed))),
+				"facts",
+			);
+			assertNoCredentialMaterial(
+				parseJsonValue(
+					JSON.stringify(
+						toGuestLease(receipt, {
+							leaseId: "lease:ttl-sh:0001",
+							subjectRef: "bindle:app/image",
+							fencingToken: "fence-1",
+						}),
+					),
+				),
 				"lease",
 			);
 		});

@@ -156,13 +156,9 @@ function planRewrite(
 	};
 }
 
-function collect(
-	node: ts.Node,
-	source: ts.SourceFile,
-	out: ts.NonNullExpression[],
-): void {
+function collect(node: ts.Node, out: ts.NonNullExpression[]): void {
 	if (ts.isNonNullExpression(node)) out.push(node);
-	ts.forEachChild(node, (child) => collect(child, source, out));
+	ts.forEachChild(node, (child) => collect(child, out));
 }
 
 /** Import specifier for `@hobo/core/total-access` from a file inside core itself. */
@@ -183,12 +179,17 @@ function importSpecifier(file: string): string {
 	return "@hobo/core/total-access";
 }
 
-function rewriteFile(file: string): { changed: number; skipped: number } {
+type RewriteCount = {
+	changed: number;
+	skipped: number;
+};
+
+function rewriteFile(file: string): RewriteCount {
 	const text = readFileSync(file, "utf8");
 	if (!text.includes("!")) return { changed: 0, skipped: 0 };
 	const source = ts.createSourceFile(file, text, ts.ScriptTarget.ESNext, true);
 	const nodes: ts.NonNullExpression[] = [];
-	collect(source, source, nodes);
+	collect(source, nodes);
 	if (nodes.length === 0) return { changed: 0, skipped: 0 };
 
 	const rewrites: Rewrite[] = [];

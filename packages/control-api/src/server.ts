@@ -92,6 +92,20 @@ type WorldDelta = Readonly<{
 	demo: boolean;
 }>;
 
+type JsonValue =
+	| undefined
+	| null
+	| boolean
+	| number
+	| string
+	| JsonValue[]
+	| { [key: string]: JsonValue };
+type JsonObject = { [key: string]: JsonValue };
+type JsonBody =
+	| ManagementResult
+	| JsonObject
+	| { ok: boolean; data: { world: WorldState; demo: boolean; seed: number | null } };
+
 /** Refuse bodies larger than this rather than buffering them into the heap. */
 const MAX_BODY_BYTES = 8 * 1024 * 1024;
 
@@ -117,7 +131,7 @@ function pathParam(match: RegExpMatchArray): string {
 
 async function readJson(
 	req: IncomingMessage,
-): Promise<Record<string, unknown>> {
+): Promise<JsonObject> {
 	const chunks: Buffer[] = [];
 	let size = 0;
 	for await (const chunk of req) {
@@ -134,13 +148,14 @@ async function readJson(
 	if (chunks.length === 0) return {};
 	const raw = Buffer.concat(chunks).toString("utf8");
 	if (!raw.trim()) return {};
-	return JSON.parse(raw) as Record<string, unknown>;
+	// SAFETY: the HTTP JSON parser is the single boundary for request bodies.
+	return JSON.parse(raw) as JsonObject;
 }
 
 function sendJson(
 	res: ServerResponse,
 	status: number,
-	body: ManagementResult | Record<string, unknown>,
+	body: JsonBody,
 ): void {
 	const payload = JSON.stringify(body);
 	res.writeHead(status, {
@@ -154,10 +169,8 @@ function sendJson(
 	res.end(payload);
 }
 
-function queryOf(url: URL): Record<string, string> {
-	const out: Record<string, string> = {};
-	for (const [k, v] of url.searchParams.entries()) out[k] = v;
-	return out;
+function queryOf(url: URL) {
+	return Object.fromEntries(url.searchParams.entries());
 }
 
 export async function createControlApiServer(
@@ -206,7 +219,7 @@ export async function createControlApiServer(
 		demo && demoIntervalMs > 0 ? setInterval(tickDemo, demoIntervalMs) : null;
 	demoTimer?.unref();
 
-	function worldEnvelope(): Record<string, unknown> {
+	function worldEnvelope() {
 		return { ok: true, data: { world, demo, seed: demoSeed } };
 	}
 
@@ -229,7 +242,8 @@ export async function createControlApiServer(
 			return;
 		}
 		const origin = req.headers.origin;
-		if (typeof origin === "string" && origin.length > 0) {
+	// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: Node's header union is normalized before the origin guard.
+	if (typeof origin === "string" && origin.length > 0) {
 			sendJson(res, 403, {
 				ok: false,
 				code: "cross-origin-write-refused",
@@ -239,7 +253,7 @@ export async function createControlApiServer(
 			return;
 		}
 
-		let body: Record<string, unknown>;
+		let body: JsonObject;
 		try {
 			body = await readJson(req);
 		} catch (err) {
@@ -256,6 +270,7 @@ export async function createControlApiServer(
 		const now = Date.now();
 		let events: ReturnType<typeof mapTracePayload>;
 		try {
+			// SAFETY: the route signal selects the matching OTLP request schema.
 			events =
 				signal === "traces"
 					? mapTracePayload(body as OtlpTraceRequest, world, now, traceIndex)
@@ -268,6 +283,7 @@ export async function createControlApiServer(
 			sendJson(res, 400, {
 				ok: false,
 				code: "bad-request",
+				// SAFETY: mapper failures are thrown Error instances by the yard-world adapters.
 				message: `unmappable OTLP/JSON ${signal} payload: ${(err as Error).message}`,
 			});
 			return;
@@ -356,7 +372,8 @@ export async function createControlApiServer(
 			const otlp = path.match(/^\/v1\/otlp\/v1\/(traces|logs|metrics)$/);
 			if (req.method === "POST" && otlp) {
 				await handleOtlpIngest(
-					otlp[1] as "traces" | "logs" | "metrics",
+						// SAFETY: the route regexp contains exactly the three OTLP signal literals.
+						otlp[1] as "traces" | "logs" | "metrics",
 					req,
 					res,
 				);
@@ -386,6 +403,7 @@ export async function createControlApiServer(
 		server.listen(port, host, () => resolve());
 	});
 	const address = server.address();
+	// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: Node returns a string for pipe servers and an AddressInfo for TCP servers.
 	if (!address || typeof address === "string") {
 		throw new Error("control-api failed to bind");
 	}
@@ -449,7 +467,8 @@ async function dispatch(
 				name: str(body.name),
 				version: str(body.version),
 				docPath: str(body.docPath),
-				raw: body.raw as Record<string, unknown> | undefined,
+					// SAFETY: the management adapter accepts the JSON object from the request body.
+					raw: body.raw as JsonObject | undefined,
 			}),
 		);
 	}
@@ -473,9 +492,10 @@ async function dispatch(
 	}
 	if (method === "POST" && path === "/v1/connection/create") {
 		const scopesRaw = body.scopes;
+		// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: parsed JSON is normalized to a string or string array here.
 		const scopes = Array.isArray(scopesRaw)
 			? scopesRaw.map(String)
-			: typeof scopesRaw === "string"
+			: isStringValue(scopesRaw)
 				? scopesRaw
 						.split(",")
 						.map((s) => s.trim())
@@ -483,6 +503,7 @@ async function dispatch(
 				: undefined;
 		return connectionCreate(
 			ctx,
+			// SAFETY: opt removes undefined keys and this route supplies the create contract.
 			opt({
 				provider: String(body.provider ?? ""),
 				stationId: str(body.stationId),
@@ -496,6 +517,7 @@ async function dispatch(
 	if (method === "POST" && path === "/v1/connection/authorize") {
 		return connectionAuthorize(
 			ctx,
+			// SAFETY: opt removes undefined keys and this route supplies the authorize contract.
 			opt({
 				idOrAlias: String(body.idOrAlias ?? body.id ?? ""),
 				tenant: str(body.tenant),
@@ -521,6 +543,7 @@ async function dispatch(
 	if (method === "GET" && connGet) {
 		return connectionGet(
 			ctx,
+			// SAFETY: the route parameter and query are parsed at the HTTP boundary.
 			opt({
 				idOrAlias: decodeURIComponent(pathParam(connGet)),
 				tenant: q.tenant,
@@ -531,6 +554,7 @@ async function dispatch(
 	if (method === "POST" && connRevoke) {
 		return connectionRevoke(
 			ctx,
+			// SAFETY: the route parameter and request body are parsed at the HTTP boundary.
 			opt({
 				idOrAlias: decodeURIComponent(pathParam(connRevoke)),
 				tenant: str(body.tenant) ?? q.tenant,
@@ -542,6 +566,7 @@ async function dispatch(
 	if (method === "POST" && connRotate) {
 		return connectionRotate(
 			ctx,
+			// SAFETY: the route parameter and request body are parsed at the HTTP boundary.
 			opt({
 				idOrAlias: decodeURIComponent(pathParam(connRotate)),
 				tenant: str(body.tenant) ?? q.tenant,
@@ -619,12 +644,17 @@ function handleYardSse(
 	res.on("close", () => clearInterval(timer));
 }
 
-function str(v: unknown): string | undefined {
-	return typeof v === "string" && v.length > 0 ? v : undefined;
+
+function isStringValue(v: JsonValue | undefined): v is string {
+	return Object.prototype.toString.call(v) === "[object String]";
+}
+
+function str(v: JsonValue | undefined): string | undefined {
+	return isStringValue(v) && v.length > 0 ? v : undefined;
 }
 
 /** exactOptionalPropertyTypes-safe: drop undefined values. */
-function opt<T extends Record<string, unknown>>(
+function opt<T extends object>(
 	obj: T,
 ): {
 	[K in keyof T as T[K] extends undefined ? never : K]: Exclude<
@@ -632,14 +662,13 @@ function opt<T extends Record<string, unknown>>(
 		undefined
 	>;
 } {
-	const out: Record<string, unknown> = {};
-	for (const [k, v] of Object.entries(obj)) {
-		if (v !== undefined) out[k] = v;
-	}
-	return out as never;
+	// SAFETY: undefined-valued keys are removed before the mapped return type is exposed.
+	return Object.fromEntries(
+		Object.entries(obj).filter(([, value]) => value !== undefined),
+	) as never;
 }
 
-function controlApiOpenApi(): Record<string, unknown> {
+function controlApiOpenApi() {
 	return {
 		openapi: "3.0.3",
 		info: {

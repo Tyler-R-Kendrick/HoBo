@@ -1,6 +1,7 @@
 import type {
 	AppendOptions,
 	DurableEffectInput,
+	DurableEventStore,
 	EventEnvelope,
 	EventInput,
 	EventStore,
@@ -14,6 +15,7 @@ import {
 	AggregateInvariantError,
 	AggregateStaleFenceError,
 	isOptimisticConflict,
+	isStaleFenceError,
 } from "./errors.js";
 import {
 	createActorActivatedEvent,
@@ -22,14 +24,24 @@ import {
 	type DataFact,
 } from "./events.js";
 import { type Evolve, foldEvents } from "./fold.js";
+import {
+	hasFunctionTag,
+	type Inspectable,
+	isJsonString,
+	type JsonObject,
+} from "./json.js";
 import type { UpcasterRegistry } from "./upcaster.js";
 
 // Emit surface handed to a command: it stages past-tense facts to append. It is
 // the typed, domain-write sibling of an actor signal — no reads, no side effects.
 // stageEffect() records durable side effects for the same transaction as append
 // when the store implements DurableEventStore.commit; decide() stays pure (no I/O).
+export interface EventEmitOptions {
+	v?: number;
+}
+
 export interface CommandEmitter {
-	emit(type: string, data?: unknown, options?: { v?: number }): void;
+	emit(type: string, data?: JsonObject, options?: EventEmitOptions): void;
 	stageEffect(effect: DurableEffectInput): void;
 }
 
@@ -91,6 +103,8 @@ export interface Aggregate<S, C> {
 	): Promise<CommandResult<S>>;
 }
 
+const EMPTY_EVENT_DATA: JsonObject = {};
+
 async function readStream(
 	store: EventStore,
 	streamId: string,
@@ -98,6 +112,22 @@ async function readStream(
 	const events: EventEnvelope[] = [];
 	for await (const event of store.read(streamId)) events.push(event);
 	return events;
+}
+
+function parseFactType(type: Inspectable): string {
+	if (!isJsonString(type) || !type.includes(".")) {
+		throw new TypeError(
+			`emitted fact type must be "aggregate.PastTenseFact"; got ${String(type)}`,
+		);
+	}
+	return type;
+}
+
+function isDurableEventStore(store: EventStore): store is DurableEventStore {
+	if (!("commit" in store)) return false;
+	// SAFETY: DurableEventStore is the EventStore subtype that exposes commit(); tag check proves it is callable.
+	const commit = (store as DurableEventStore).commit;
+	return hasFunctionTag(commit);
 }
 
 export function defineAggregate<S, C>(
@@ -145,15 +175,10 @@ export function defineAggregate<S, C>(
 				const stagedEffects: DurableEffectInput[] = [];
 				const emitter: CommandEmitter = {
 					emit(type, data, options) {
-						if (typeof type !== "string" || !type.includes(".")) {
-							throw new TypeError(
-								`emitted fact type must be "aggregate.PastTenseFact"; got ${String(type)}`,
-							);
-						}
 						staged.push({
-							type,
+							type: parseFactType(type),
 							v: options?.v ?? 1,
-							data: (data ?? {}) as EventInput["data"],
+							data: data ?? EMPTY_EVENT_DATA,
 						});
 					},
 					stageEffect(effect) {
@@ -192,16 +217,8 @@ export function defineAggregate<S, C>(
 
 				let appended: EventEnvelope[];
 				try {
-					const durable = deps.store as EventStore & {
-						commit?: (req: {
-							streamId: string;
-							events: readonly EventInput[];
-							append: AppendOptions;
-							effects?: readonly DurableEffectInput[];
-						}) => Promise<{ appended: EventEnvelope[] }>;
-					};
-					if (typeof durable.commit === "function") {
-						const result = await durable.commit({
+					if (isDurableEventStore(deps.store)) {
+						const result = await deps.store.commit({
 							streamId,
 							events: staged,
 							append: appendOptions,
@@ -219,12 +236,10 @@ export function defineAggregate<S, C>(
 						appended = result.appended;
 					}
 				} catch (error) {
-					if (isOptimisticConflict(error)) {
+					if (error instanceof Error && isOptimisticConflict(error)) {
 						throw new AggregateConflictError(streamId, outcome.seq);
 					}
-					const name = (error as { name?: string })?.name;
-					const code = (error as { code?: string })?.code;
-					if (name === "StaleFenceError" || code === "STALE_FENCE") {
+					if (error instanceof Error && isStaleFenceError(error)) {
 						throw new AggregateStaleFenceError(streamId);
 					}
 					throw error;
@@ -238,10 +253,9 @@ export function defineAggregate<S, C>(
 						: event;
 					state = definition.evolve(state, upcast);
 				}
+				const lastAppended = appended.at(-1);
 				const newSeq =
-					appended.length > 0
-						? (appended[appended.length - 1] as EventEnvelope).seq
-						: outcome.seq;
+					lastAppended === undefined ? outcome.seq : lastAppended.seq;
 
 				finalSeq = newSeq;
 				lifecycle.push(

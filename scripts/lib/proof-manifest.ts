@@ -110,10 +110,10 @@ export function workspaceForDraftFile(file: string): string | undefined {
 }
 
 export function layerForWorkspace(workspace: string): ProofLayer | undefined {
-	if (/^src\/draft\/technical-proofs\//u.test(workspace)) return "technical";
-	if (/^src\/draft\/epic-proofs\//u.test(workspace)) return "epic";
-	if (/^src\/draft\/exp-proofs\//u.test(workspace)) return "exp";
-	if (/^src\/draft\/projects\//u.test(workspace)) return "project";
+	if (workspace.startsWith("src/draft/technical-proofs/")) return "technical";
+	if (workspace.startsWith("src/draft/epic-proofs/")) return "epic";
+	if (workspace.startsWith("src/draft/exp-proofs/")) return "exp";
+	if (workspace.startsWith("src/draft/projects/")) return "project";
 	return undefined;
 }
 
@@ -123,5 +123,6 @@ export function experienceTypeForWorkspace(
 	const match = workspace.match(
 		/^src\/draft\/exp-proofs\/(dx|ux|cx|ax|api)\//u,
 	);
+	// SAFETY: assertion to `tch[1] as ExperienceType) ` is required at this boundary.
 	return match ? (match[1] as ExperienceType) : undefined;
 }

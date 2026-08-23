@@ -17,7 +17,7 @@ export function providerSelection(providerId, selector = "default", options = {}
 
 export function bindle(name, builder) {
   requireName("bindle name", name);
-  if (typeof builder !== "function") {
+  if (!isCallable(builder)) {
     throw new TypeError("bindle builder must be a function");
   }
 
@@ -159,7 +159,7 @@ export function resolutionPrecedenceFor(campObject, resourceKey) {
 }
 
 function normalizeResourceDescriptor(resource) {
-  const descriptor = typeof resource?.toDescriptor === "function" ? resource.toDescriptor() : resource;
+  const descriptor = isCallable(resource?.toDescriptor) ? resource.toDescriptor() : resource;
   if (!isPlainObject(descriptor)) {
     throw new TypeError("Bindle resources must be descriptor objects");
   }
@@ -182,7 +182,7 @@ function normalizeResourceDescriptor(resource) {
 }
 
 function assertNoProviderSpecificFields(value) {
-  if (!value || typeof value !== "object") return;
+  if (!isObjectRecord(value)) return;
   const annotations = value.annotations?.with;
   const providerOptions = value.options?.providerOptions;
   if (
@@ -295,13 +295,13 @@ function requireArray(value, fieldName) {
 }
 
 function requireName(label, value) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
 }
 
 function isPlainObject(value) {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+  return isObjectRecord(value);
 }
 
 function sortKeys(value) {
@@ -315,11 +315,25 @@ function sortKeys(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!isObjectRecord(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {
     deepFreeze(child);
   }
   return Object.freeze(value);
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isCallable(value) {
+  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
+    Object.prototype.toString.call(value),
+  );
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

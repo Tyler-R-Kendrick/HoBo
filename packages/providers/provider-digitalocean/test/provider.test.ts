@@ -1,6 +1,5 @@
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
-
 import {
 	createDigitalOceanProvider,
 	DIGITALOCEAN_PROVIDER_ID,
@@ -8,6 +7,7 @@ import {
 	DIGITALOCEAN_TRAFFIC_ROUTING_PROFILE,
 	parsePublishedManifest,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
 function capabilityFor(port: string) {
 	const provider = createDigitalOceanProvider();
@@ -105,9 +105,10 @@ describe("capabilityManifest: published well-known bundle", () => {
 	it("advertises all four equivalence-class capabilities with regions", () => {
 		const provider = createDigitalOceanProvider({ regions: ["ams3"] });
 		const manifest = provider.capabilityManifest();
-		const capabilities = (
-			manifest.capabilities as { capabilities: Array<Record<string, unknown>> }
-		).capabilities;
+		const capabilities =
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			(manifest.capabilities as { capabilities: Array<JsonObject> })
+				.capabilities;
 		assert.equal(capabilities.length, 4);
 		assert.deepEqual(capabilities.map((c) => c.port).sort(), [
 			"cache",

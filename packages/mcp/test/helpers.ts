@@ -1,4 +1,5 @@
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import type { JsonValue } from "../src/json.js";
 import { tmpdir } from "node:os";
 import path from "node:path";
 import {
@@ -107,7 +108,7 @@ export function makeWiredCli(runtime = makeRuntime()): HoboCli {
 }
 
 export async function withProject(
-	manifest: unknown,
+	manifest: JsonValue,
 	callback: (cwd: string) => Promise<void>,
 ): Promise<void> {
 	const dir = await mkdtemp(path.join(tmpdir(), "hobo-mcp-project-"));

@@ -196,6 +196,7 @@ describe("exclusion ordering", () => {
 				{
 					profileId: "unregistered/v1",
 					versionRange: ">=1",
+					// SAFETY: this test deliberately injects an invalid realization.
 					realization: "sorcery" as never,
 					conformanceRef: "s",
 					conformance: "pass",
@@ -297,8 +298,8 @@ describe("validation summary", () => {
 		);
 		// Zero rows are present rather than omitted: a missing row and a zero row
 		// read differently to anything charting the result over time.
-		expect(
-			validation.summary.every((row) => typeof row.cells === "number"),
+			expect(
+				validation.summary.every((row) => Number.isFinite(row.cells)),
 		).toBe(true);
 		expect(validation.summary.length).toBeGreaterThan(1);
 	});
@@ -346,9 +347,10 @@ describe("deriveCoverageVerdict", () => {
 				{ available: string[]; unavailable: string[] }
 			>
 		> = {},
-	) {
-		const empty = { available: [], unavailable: [] };
-		return {
+		) {
+			const empty = { available: [], unavailable: [] };
+			// SAFETY: each returned bucket has the fixture's known bucket shape.
+			return {
 			native: empty,
 			pack: empty,
 			bridge: empty,

@@ -12,7 +12,7 @@ export type ProviderImportSpec = {
 };
 
 /** Pool targets → provider extension package import contract. */
-const PROVIDER_IMPORTS: Readonly<Record<string, ProviderImportSpec>> = {
+const PROVIDER_IMPORTS = {
 	"browser-wasm": {
 		packageName: "@hobo/provider-browser-wasm",
 		exportName: "browserWasm",
@@ -57,11 +57,13 @@ const PROVIDER_IMPORTS: Readonly<Record<string, ProviderImportSpec>> = {
 		packageName: "@hobo/provider-kubernetes",
 		exportName: "kubernetes",
 	},
-};
+} as const satisfies Readonly<Record<string, ProviderImportSpec>>;
 
 export function providerImportForTarget(targetId: string): ProviderImportSpec {
-	const spec = PROVIDER_IMPORTS[targetId];
-	if (spec) return spec;
+	if (Object.hasOwn(PROVIDER_IMPORTS, targetId)) {
+		// SAFETY: hasOwn narrowed targetId to a known PROVIDER_IMPORTS key.
+		return PROVIDER_IMPORTS[targetId as keyof typeof PROVIDER_IMPORTS];
+	}
 	const exportName = targetId.replace(/-([a-z])/gu, (_, c: string) => c.toUpperCase());
 	return {
 		packageName: `@hobo/provider-${targetId}`,
@@ -79,9 +81,14 @@ export function yardDeployByTarget(
  * Pool Code: one Environment Station authoring file for the provision plan.
  * Provider plugins own capabilities — this file only imports and lists them.
  */
+export type PoolDeploySourceText = {
+	readonly pathLabel: string;
+	readonly source: string;
+};
+
 export function composePoolDeploySource(input: {
 	readonly provision: readonly { readonly target: { readonly id: string } }[];
-}): { readonly pathLabel: string; readonly source: string } {
+}): PoolDeploySourceText {
 	if (input.provision.length === 0) {
 		return {
 			pathLabel: "examples/try-site/station.deploy.ts",

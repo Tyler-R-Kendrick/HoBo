@@ -106,6 +106,7 @@ function compareExclusions(
 }
 
 function isRealizationKind(value: string): value is RealizationKind {
+	// SAFETY: REALIZATION_KINDS is the closed runtime vocabulary for this field.
 	return (REALIZATION_KINDS as readonly string[]).includes(value);
 }
 
@@ -245,12 +246,25 @@ export function generateCapabilityMatrix(
 				: { subjectId: definition.id, evidence },
 		);
 	}
-	const bundle = evaluateTrustBundle({
+	const bundleInput = {
 		subjects: subjectInputs,
 		requirement,
 		nowMs: input.nowMs,
-		...(input.verifier !== undefined ? { verifier: input.verifier } : {}),
-	});
+		verifier: input.verifier,
+	};
+	const bundle =
+		input.verifier === undefined
+			? evaluateTrustBundle({
+					subjects: bundleInput.subjects,
+					requirement: bundleInput.requirement,
+					nowMs: bundleInput.nowMs,
+				})
+			: evaluateTrustBundle({
+					subjects: bundleInput.subjects,
+					requirement: bundleInput.requirement,
+					nowMs: bundleInput.nowMs,
+					verifier: input.verifier,
+				});
 	const subjects = new Map<string, TrustBundleSubjectVerdict>(
 		bundle.subjects.map((subject) => [subject.subjectId, subject]),
 	);
@@ -337,7 +351,13 @@ export function generateCapabilityMatrix(
 					continue;
 				}
 				const runtime: BindleRuntime = runtimeModel;
-				const candidate: CapabilityMatrixCandidate = {
+				const candidate: Omit<
+					CapabilityMatrixCandidate,
+					"evidenceExpiresAtMs" | "conformanceRef"
+				> & {
+					evidenceExpiresAtMs?: number;
+					conformanceRef?: string;
+				} = {
 					primitive: profile.primitive,
 					runtime,
 					definitionId: definition.id,
@@ -347,13 +367,11 @@ export function generateCapabilityMatrix(
 					bucket,
 					available: unavailability.length === 0,
 					evidenceState: subject?.freshness.state ?? "absent",
-					...(evidence !== undefined
-						? { evidenceExpiresAtMs: evidence.expiresAt }
-						: {}),
 					conformance: implementation.conformance,
-					...(conformanceRef !== undefined ? { conformanceRef } : {}),
 					unavailability,
 				};
+				if (evidence !== undefined) candidate.evidenceExpiresAtMs = evidence.expiresAt;
+				if (conformanceRef !== undefined) candidate.conformanceRef = conformanceRef;
 				byCell.get(cellKey(profile.primitive, runtime))?.push(candidate);
 			}
 		}

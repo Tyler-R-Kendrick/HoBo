@@ -9,6 +9,8 @@ import {
   hoboVerify,
   runProviderCapabilitySuites
 } from "../../provider-capability-conformance-suites/src/provider-capability-conformance.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const AWS_PROVIDER_ID = "@hobo/provider-aws";
 export const AWS_PROVIDER_VERSION = "hobo.provider-aws/v1";
@@ -122,15 +124,6 @@ const PORT_DEFINITIONS = [
 ];
 
 const PORT_BY_NAME = new Map(PORT_DEFINITIONS.map((definition) => [definition.port, definition]));
-const BUILDER_BY_PORT = new Map([
-  ["web/service", "fargate"],
-  ["kv", "dynamodb"],
-  ["bucket", "s3"],
-  ["queue", "sqs"],
-  ["topic", "sns"],
-  ["sql", "rds"],
-  ["secret", "secretsmanager"]
-]);
 const RESOURCE_CLASS_BY_BUILDER = new Map([
   ["rds", "aws:rds-aurora-postgres"],
   ["s3", "aws:s3-bucket"],
@@ -379,7 +372,7 @@ export function mergeAwsFullResolvedOptions(_provider, optionBlocks = []) {
       optionName: block.optionName ?? prior.optionName,
       options: {
         ...prior.options,
-        ...(block.options ?? {})
+        ...block.options
       }
     });
   }
@@ -643,7 +636,6 @@ export function simulateBrokeredKeylessApply(provider, plan, options = {}) {
 }
 
 export function conformanceAdapter(provider) {
-  const seedPortByCatalog = new Map(PORT_DEFINITIONS.map((definition) => [definition.port, definition.seedPort]));
   const catalogPortBySeed = new Map(PORT_DEFINITIONS.map((definition) => [definition.seedPort, definition.port]));
 
   const resolveCatalogPort = (capability) =>
@@ -1023,26 +1015,26 @@ function normalizeCampEvidence(evidence = "pass", port) {
     iam: true,
     mtls: true,
     quota: true,
-    ...(evidence[port] ?? evidence.default ?? {})
+    ...(evidence[port] ?? evidence.default)
   };
 }
 
 function normalizeHintValues(value) {
   if (Array.isArray(value)) return new Set(value);
-  if (!value || typeof value !== "object") return new Set();
+  if (!value || !isJsonObject(value)) return new Set();
 
   const features = new Set();
   for (const [key, hintValue] of Object.entries(value)) {
     if (key === "region") continue;
     features.add(key);
-    if (typeof hintValue === "string") features.add(hintValue);
+    if (isJsonString(hintValue)) features.add(hintValue);
   }
   return features;
 }
 
 function normalizePreferHints(value, definition) {
   if (Array.isArray(value)) return value.filter((feature) => definition.features.includes(feature));
-  if (!value || typeof value !== "object") return [];
+  if (!value || !isJsonObject(value)) return [];
   return Object.keys(value);
 }
 

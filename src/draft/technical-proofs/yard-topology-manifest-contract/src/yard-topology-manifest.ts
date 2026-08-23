@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
 import { ConnectivityTier } from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const YARD_MANIFEST_SCHEMA_VERSION = "hobo.yard-manifest/v1";
 
@@ -20,7 +22,7 @@ export function projectYardManifest(topology) {
       id: topology.yard.id,
       provider: topology.yard.provider,
       regions: sortedStrings(topology.yard.regions),
-      ...(topology.yard.junctionId ? { junctionId: topology.yard.junctionId } : {})
+      ...(topology.yard.junctionId ? { junctionId: topology.yard.junctionId } : undefined)
     },
     providerZones: sortedById(topology.providerZones ?? []).map((zone) => ({
       id: zone.id,
@@ -54,7 +56,7 @@ export function projectYardManifest(topology) {
 }
 
 export function validateYardManifest(manifest) {
-  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+  if (!manifest || !isJsonObject(manifest) || Array.isArray(manifest)) {
     return invalid("yard.manifest.invalid", "manifest must be an object");
   }
   if (manifest.schemaVersion !== YARD_MANIFEST_SCHEMA_VERSION) {
@@ -73,7 +75,7 @@ export function validateYardManifest(manifest) {
 }
 
 function validateDeclaredTopology(topology) {
-  if (!topology || typeof topology !== "object" || Array.isArray(topology)) {
+  if (!topology || !isJsonObject(topology) || Array.isArray(topology)) {
     return invalid("yard.topology.invalid", "declared topology must be an object");
   }
 
@@ -267,7 +269,7 @@ function invalid(code, reason) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function sortedStrings(values) {
@@ -293,7 +295,7 @@ function stableDigest(value) {
 }
 
 function manifestContentForHash(manifest) {
-  const { contentHash, ...content } = manifest;
+  const { contentHash: _contentHash, ...content } = manifest;
   return content;
 }
 
@@ -303,12 +305,12 @@ function canonicalJson(value) {
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") return value;
+  if (!value || !isJsonObject(value)) return value;
   Object.freeze(value);
   for (const nested of Object.values(value)) {
     deepFreeze(nested);

@@ -93,7 +93,7 @@ test("adversarial parser rejects local-fixture-only GA claims and manually edite
           },
         ],
       }),
-    (error: unknown) => {
+    (error: Error) => {
       assert.equal(error instanceof HostedBrokerGaHandoffEvidenceParseError, true);
       const details = error instanceof HostedBrokerGaHandoffEvidenceParseError ? error.errors.join("\n") : String(error);
       assert.match(details, /local fixtures/i);

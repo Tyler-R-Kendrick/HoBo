@@ -97,16 +97,7 @@ export function vercelWorkflowWorld(): CodeWorldDescriptor {
 /**
  * Catalog of Worlds hobo-code recognizes for portable durable agent runtimes.
  */
-export function describeCodeWorlds(hoboHome = "$HOBO_HOME"): {
-	readonly model: "vercel-workflows-worlds";
-	readonly inspiration: {
-		readonly workflows: "https://vercel.com/blog/introducing-workflow";
-		readonly durableAgents: "https://ai-sdk.dev/docs/agents/workflow-agent";
-	};
-	readonly worlds: readonly CodeWorldDescriptor[];
-	readonly localDefault: CodeWorldDescriptor;
-	readonly productionDefault: CodeWorldDescriptor;
-} {
+export function describeCodeWorlds(hoboHome = "$HOBO_HOME") {
 	const local = localWorld(hoboHome);
 	const vercel = vercelWorkflowWorld();
 	return {

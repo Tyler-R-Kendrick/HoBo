@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export type ClosureBuilderResourceKind = "api" | "cache" | "queue";
 export type ClosureBuilderRelationshipVerb = "dependsOn";
 
@@ -19,7 +20,7 @@ export interface ClosureBuilderWorkloadDescriptor {
 export interface ProviderAnnotation {
   readonly provider: string;
   readonly option: string;
-  readonly value: unknown;
+  readonly value: JsonValue;
 }
 
 // domain-view: parse-produced draft-proof record; its wire form is the ClosureBuilderAlias proto message in data-models/.
@@ -69,7 +70,7 @@ export interface ClosureBuilderManifest {
 export interface WitCall {
   readonly interface: string;
   readonly function: string;
-  readonly args: Readonly<Record<string, unknown>>;
+  readonly args: Readonly<JsonObject>;
 }
 
 export interface ClosureBuilderLoweringResult {
@@ -88,9 +89,9 @@ export interface ClosureBuilderLoweringFixture {
 
 export class ClosureBuilderLoweringError extends Error {
   readonly code: string;
-  readonly details: Readonly<Record<string, unknown>>;
+  readonly details: Readonly<JsonObject>;
 
-  constructor(code: string, message: string, details: Readonly<Record<string, unknown>> = {}) {
+  constructor(code: string, message: string, details: Readonly<JsonObject> = {}) {
     super(`${code}: ${message}`);
     this.name = "ClosureBuilderLoweringError";
     this.code = code;
@@ -340,7 +341,7 @@ export function runClosureBuilderLoweringConformance(
   };
 }
 
-export function canonicalJson(value: unknown): string {
+export function canonicalJson<T>(value: T): string {
   return JSON.stringify(sortJson(value));
 }
 
@@ -448,7 +449,7 @@ function lowerResource(
   resource: ClosureBuilderLoweringResource,
   input: ClosureBuilderLoweringInput,
 ): ManifestResource {
-  const lowered = resourceShape(resource);
+  const lowered = resourceContract(resource);
   const links = input.relationships
     .filter((relationship) => relationship.from === resource.generatedId)
     .sort(compareRelationships)
@@ -467,7 +468,7 @@ function lowerResource(
 }
 
 function resourceWitCalls(resource: ClosureBuilderLoweringResource): WitCall[] {
-  const shape = resourceShape(resource);
+  const contract = resourceContract(resource);
   const calls: WitCall[] = [
     {
       interface: "hobo:sdk/resource-catalog",
@@ -475,8 +476,8 @@ function resourceWitCalls(resource: ClosureBuilderLoweringResource): WitCall[] {
       args: {
         generatedId: resource.generatedId,
         kind: resource.kind,
-        manifestType: shape.type,
-        port: shape.port,
+        manifestType: contract.type,
+        port: contract.port,
       },
     },
   ];
@@ -506,7 +507,7 @@ function resourceWitCalls(resource: ClosureBuilderLoweringResource): WitCall[] {
   return calls;
 }
 
-function resourceShape(resource: ClosureBuilderLoweringResource) {
+function resourceContract(resource: ClosureBuilderLoweringResource) {
   if (resource.kind === "api") {
     return { kind: resource.kind, type: "component.v1", port: "wasi:http" };
   }
@@ -544,25 +545,28 @@ function compareRelationships(
   return left.from.localeCompare(right.from) || left.to.localeCompare(right.to);
 }
 
-function stripUndefined<T extends Record<string, unknown>>(value: T): T {
+function stripUndefined<T extends object>(value: T): T {
+  // SAFETY: `return Object.fromEntries(` is required at this I/O or test boundary.
   return Object.fromEntries(
     Object.entries(value).filter(([, entry]) => entry !== undefined),
   ) as T;
 }
 
-function sortJson(value: unknown): unknown {
+function sortJson<T>(value: T): T {
   if (Array.isArray(value)) {
-    return value.map(sortJson);
+    // SAFETY: mapped array preserves T's array structure at this canonicalization boundary.
+    return value.map(sortJson) as T;
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
 
+  // SAFETY: sorted entries reconstruct T after key-order canonicalization.
   return Object.fromEntries(
     Object.entries(value)
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, nested]) => [key, sortJson(nested)]),
-  );
+  ) as T;
 }
 
 function sha256(value: string): string {

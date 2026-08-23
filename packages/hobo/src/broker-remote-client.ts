@@ -5,6 +5,7 @@
  * in-memory mock implements faithful shapes; HTTP path uses fetch against
  * discovery endpoints. Real hosted brokers plug in without changing CLI control flow.
  */
+
 import type { PrincipalRef } from "@hobo/core";
 import { mustGet } from "@hobo/core/total-access";
 import {
@@ -18,6 +19,13 @@ import {
 	authorizationHeaders,
 	type PresentedCredential,
 } from "./credential-presenter.js";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 export interface AnonymousSessionResult {
 	readonly ephemeralPrincipal: PrincipalRef;
@@ -81,14 +89,18 @@ export interface RemoteBrokerClient {
 	readonly brokerUri: string;
 }
 
+interface HttpHeaders {
+	[header: string]: string;
+}
+
+interface StringBag {
+	[key: string]: string;
+}
+
 export class RemoteBrokerClientError extends Error {
 	readonly code: string;
-	readonly data?: Readonly<Record<string, unknown>>;
-	constructor(
-		message: string,
-		code: string,
-		data?: Readonly<Record<string, unknown>>,
-	) {
+	readonly data?: JsonObject;
+	constructor(message: string, code: string, data?: JsonObject) {
 		super(message);
 		this.name = "RemoteBrokerClientError";
 		this.code = code;
@@ -110,12 +122,12 @@ export function createRemoteBrokerClient(options: {
 	const discovery =
 		options.discovery ??
 		createBrokerDiscoveryClient({
-			...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : {}),
+			...(options.fetchImpl ? { fetchImpl: options.fetchImpl } : undefined),
 			...(options.mock
 				? {
 						fixed: new Map([[brokerUri, options.mock.discovery]]),
 					}
-				: {}),
+				: undefined),
 		});
 	const fetchImpl = options.fetchImpl ?? fetch;
 	let cachedDiscovery: BrokerDiscoveryDocument | null = null;
@@ -190,12 +202,10 @@ export function createRemoteBrokerClient(options: {
 				}),
 			});
 			if (!res.ok) {
-				const body = (await res.json().catch(() => ({}))) as Record<
-					string,
-					unknown
-				>;
+				// SAFETY: assertion required at this I/O or test boundary.
+				const body = (await res.json().catch(() => ({}))) as JsonObject;
 				throw new RemoteBrokerClientError(
-					typeof body.message === "string"
+					isJsonString(body.message)
 						? body.message
 						: `remote place failed (HTTP ${res.status})`,
 					"HOBO_REMOTE_PLACE_FAILED",
@@ -209,7 +219,7 @@ export function createRemoteBrokerClient(options: {
 			if (options.mock) {
 				return options.mock.claim(request);
 			}
-			const headers: Record<string, string> = {
+			const headers: HttpHeaders = {
 				"content-type": "application/json",
 				accept: "application/json",
 			};
@@ -225,18 +235,15 @@ export function createRemoteBrokerClient(options: {
 				}),
 			});
 			if (!res.ok) {
-				const body = (await res.json().catch(() => ({}))) as Record<
-					string,
-					unknown
-				>;
-				const code =
-					typeof body.code === "string"
-						? body.code
-						: res.status === 401 || res.status === 403
-							? "HOBO_CLAIM_TOKEN_INVALID"
-							: "HOBO_REMOTE_CLAIM_FAILED";
+				// SAFETY: assertion required at this I/O or test boundary.
+				const body = (await res.json().catch(() => ({}))) as JsonObject;
+				const code = isJsonString(body.code)
+					? body.code
+					: res.status === 401 || res.status === 403
+						? "HOBO_CLAIM_TOKEN_INVALID"
+						: "HOBO_REMOTE_CLAIM_FAILED";
 				throw new RemoteBrokerClientError(
-					typeof body.message === "string"
+					isJsonString(body.message)
 						? body.message
 						: `remote claim failed (HTTP ${res.status})`,
 					code,
@@ -367,7 +374,7 @@ export function createMockRemoteBrokerState(options?: {
 					principal: request.credential.principal,
 					...(request.credential.humanPrincipal
 						? { humanPrincipal: request.credential.humanPrincipal }
-						: {}),
+						: undefined),
 					credentialScheme: request.credential.scheme,
 				};
 			}
@@ -394,7 +401,7 @@ export function createMockRemoteBrokerState(options?: {
 				principal: request.credential.principal,
 				...(request.credential.humanPrincipal
 					? { humanPrincipal: request.credential.humanPrincipal }
-					: {}),
+					: undefined),
 				credentialScheme: request.credential.scheme,
 			};
 		},
@@ -441,20 +448,17 @@ export function createMockRemoteBrokerState(options?: {
 	};
 }
 
-function parseAnonymousSession(raw: unknown): AnonymousSessionResult {
-	if (raw === null || typeof raw !== "object") {
+function parseAnonymousSession(
+	raw: JsonValue | undefined,
+): AnonymousSessionResult {
+	if (raw === null || !isJsonObject(raw)) {
 		throw new RemoteBrokerClientError(
 			"anonymous session payload invalid",
 			"HOBO_ANON_SESSION_INVALID",
 		);
 	}
-	const obj = raw as Record<string, unknown>;
-	const principal = obj.ephemeralPrincipal as PrincipalRef | undefined;
-	if (
-		!principal ||
-		typeof principal.id !== "string" ||
-		typeof principal.kind !== "string"
-	) {
+	const principal = principalFrom(raw.ephemeralPrincipal);
+	if (principal === null) {
 		throw new RemoteBrokerClientError(
 			"anonymous session missing ephemeralPrincipal",
 			"HOBO_ANON_SESSION_INVALID",
@@ -462,92 +466,105 @@ function parseAnonymousSession(raw: unknown): AnonymousSessionResult {
 	}
 	return {
 		ephemeralPrincipal: principal,
-		accessToken: requireField(obj, "accessToken"),
-		claimToken: requireField(obj, "claimToken"),
-		claimUrl: requireField(obj, "claimUrl"),
-		primaryUrl: requireField(obj, "primaryUrl"),
-		expiresAt: requireField(obj, "expiresAt"),
-		ttlSeconds: Number(obj.ttlSeconds ?? 3600),
-		deploymentId: requireField(obj, "deploymentId"),
-		restrictions: Array.isArray(obj.restrictions)
-			? obj.restrictions.filter((r): r is string => typeof r === "string")
+		accessToken: requireField(raw, "accessToken"),
+		claimToken: requireField(raw, "claimToken"),
+		claimUrl: requireField(raw, "claimUrl"),
+		primaryUrl: requireField(raw, "primaryUrl"),
+		expiresAt: requireField(raw, "expiresAt"),
+		ttlSeconds: Number(raw.ttlSeconds ?? 3600),
+		deploymentId: requireField(raw, "deploymentId"),
+		restrictions: Array.isArray(raw.restrictions)
+			? raw.restrictions.filter((r): r is string => isJsonString(r))
 			: [],
 	};
 }
 
 function parsePlaceResult(
-	raw: unknown,
+	raw: JsonValue | undefined,
 	credential: PresentedCredential,
 ): RemotePlaceResult {
-	if (raw === null || typeof raw !== "object") {
+	if (raw === null || !isJsonObject(raw)) {
 		throw new RemoteBrokerClientError(
 			"place payload invalid",
 			"HOBO_REMOTE_PLACE_INVALID",
 		);
 	}
-	const obj = raw as Record<string, unknown>;
-	const resources =
-		obj.resources && typeof obj.resources === "object"
-			? (obj.resources as Record<string, string>)
-			: {};
+	const resources = stringBagFrom(raw.resources);
 	return {
-		deploymentId: requireField(obj, "deploymentId"),
-		primaryUrl: requireField(obj, "primaryUrl"),
-		status: typeof obj.status === "string" ? obj.status : "deployed",
-		brokerId: requireField(obj, "brokerId"),
+		deploymentId: requireField(raw, "deploymentId"),
+		primaryUrl: requireField(raw, "primaryUrl"),
+		status: isJsonString(raw.status) ? raw.status : "deployed",
+		brokerId: requireField(raw, "brokerId"),
 		resources,
-		...(typeof obj.claimToken === "string"
-			? { claimToken: obj.claimToken }
-			: {}),
-		...(typeof obj.claimUrl === "string" ? { claimUrl: obj.claimUrl } : {}),
-		...(typeof obj.expiresAt === "string" ? { expiresAt: obj.expiresAt } : {}),
-		...(typeof obj.ttlSeconds === "number"
-			? { ttlSeconds: obj.ttlSeconds }
-			: {}),
+		...(isJsonString(raw.claimToken)
+			? { claimToken: raw.claimToken }
+			: undefined),
+		...(isJsonString(raw.claimUrl) ? { claimUrl: raw.claimUrl } : undefined),
+		...(isJsonString(raw.expiresAt) ? { expiresAt: raw.expiresAt } : undefined),
+		...(isJsonNumber(raw.ttlSeconds)
+			? { ttlSeconds: raw.ttlSeconds }
+			: undefined),
 		principal: credential.principal,
 		...(credential.humanPrincipal
 			? { humanPrincipal: credential.humanPrincipal }
-			: {}),
+			: undefined),
 		credentialScheme: credential.scheme,
 	};
 }
 
-function parseClaimResult(raw: unknown): RemoteClaimResult {
-	if (raw === null || typeof raw !== "object") {
+function parseClaimResult(raw: JsonValue | undefined): RemoteClaimResult {
+	if (raw === null || !isJsonObject(raw)) {
 		throw new RemoteBrokerClientError(
 			"claim payload invalid",
 			"HOBO_REMOTE_CLAIM_INVALID",
 		);
 	}
-	const obj = raw as Record<string, unknown>;
-	const owner = obj.owner as PrincipalRef;
-	if (!owner || typeof owner.id !== "string") {
+	const owner = principalFrom(raw.owner);
+	if (owner === null) {
 		throw new RemoteBrokerClientError(
 			"claim payload missing owner",
 			"HOBO_REMOTE_CLAIM_INVALID",
 		);
 	}
-	const resources =
-		obj.resources && typeof obj.resources === "object"
-			? (obj.resources as Record<string, string>)
-			: {};
 	return {
-		deploymentId: requireField(obj, "deploymentId"),
+		deploymentId: requireField(raw, "deploymentId"),
 		owner,
-		previousOwner:
-			obj.previousOwner && typeof obj.previousOwner === "object"
-				? (obj.previousOwner as PrincipalRef)
-				: null,
-		primaryUrl: requireField(obj, "primaryUrl"),
-		status: typeof obj.status === "string" ? obj.status : "claimed",
-		resources,
-		alreadyClaimed: obj.alreadyClaimed === true,
+		previousOwner: principalFrom(raw.previousOwner),
+		primaryUrl: requireField(raw, "primaryUrl"),
+		status: isJsonString(raw.status) ? raw.status : "claimed",
+		resources: stringBagFrom(raw.resources),
+		alreadyClaimed: raw.alreadyClaimed === true,
 	};
 }
 
-function requireField(obj: Record<string, unknown>, field: string): string {
+function stringBagFrom(value: JsonValue | undefined): StringBag {
+	const bag: StringBag = {};
+	if (!isJsonObject(value)) return bag;
+	for (const [key, entry] of Object.entries(value)) {
+		if (isJsonString(entry)) bag[key] = entry;
+	}
+	return bag;
+}
+
+function principalFrom(value: JsonValue | undefined): PrincipalRef | null {
+	if (!isJsonObject(value)) return null;
+	const id = value.id;
+	const kind = value.kind;
+	if (!isJsonString(id)) return null;
+	switch (kind) {
+		case "user":
+		case "agent":
+		case "service":
+		case "system":
+			return { id, kind };
+		default:
+			return null;
+	}
+}
+
+function requireField(obj: JsonObject, field: string): string {
 	const value = obj[field];
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new RemoteBrokerClientError(
 			`missing field ${field}`,
 			"HOBO_REMOTE_PAYLOAD_INVALID",

@@ -265,28 +265,36 @@ function assertValidModuleSource(source) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isPrimitiveString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
 }
 
+function isPrimitiveString(value) {
+  try {
+    return String.prototype.valueOf.call(value) === value;
+  } catch {
+    return false;
+  }
+}
+
 function clone(value) {
   if (value === undefined) return undefined;
-  return typeof structuredClone === "function"
-    ? structuredClone(value)
+  return Object.prototype.toString.call(globalThis.structuredClone) === "[object Function]"
+    ? globalThis.structuredClone(value)
     : JSON.parse(JSON.stringify(value));
 }
 
 function cloneRecord(value) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!isObjectValue(value) || Array.isArray(value)) {
     throw new TypeError("shared must be an object");
   }
   return Object.fromEntries(Object.entries(value).map(([key, entry]) => [key, clone(entry)]));
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") return value;
+  if (!isObjectValue(value)) return value;
   Object.freeze(value);
   for (const entry of Object.values(value)) {
     deepFreeze(entry);
@@ -296,7 +304,7 @@ function deepFreeze(value) {
 
 function toStableValue(value) {
   if (Array.isArray(value)) return value.map(toStableValue);
-  if (value && typeof value === "object") {
+  if (isObjectValue(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .map(([key, entry]) => [key, toStableValue(entry)])
@@ -304,4 +312,8 @@ function toStableValue(value) {
     );
   }
   return value;
+}
+
+function isObjectValue(value) {
+  return value !== null && Object(value) === value && Object.prototype.toString.call(value) !== "[object Function]";
 }

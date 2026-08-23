@@ -1,4 +1,18 @@
-import type { BudgetPolicy } from "./policy-planner.js";
+import {
+	isJsonArray,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	parseJsonTree,
+	type JsonValue,
+} from "../json-inspect.js";
+import type {
+	BudgetPolicy,
+	Redundancy,
+	ResourceClass,
+	RoutingPolicy,
+} from "./policy-planner.js";
 
 export const STATION_REGISTRY_KEY = "hobo-examples-stations";
 
@@ -23,6 +37,19 @@ export interface StationRegistry {
 	readonly stations: readonly DeployedStation[];
 }
 
+type MutableDeployedStation = {
+	id: string;
+	targetId: string;
+	yardId: string;
+	providerId: string;
+	policy: BudgetPolicy;
+	label: string;
+	createdAt: string;
+	endpointUrl?: string;
+	claimUrl?: string;
+	expiresAt?: string;
+};
+
 export function emptyStationRegistry(homeStationId: string): StationRegistry {
 	return { homeStationId, stations: [] };
 }
@@ -35,7 +62,7 @@ export function loadStationRegistry(
 	const raw = storage.getItem(STATION_REGISTRY_KEY);
 	if (!raw) return emptyStationRegistry(homeStationId);
 	try {
-		return parseStationRegistry(JSON.parse(raw) as unknown, homeStationId);
+		return parseStationRegistry(parseJsonTree(raw), homeStationId);
 	} catch {
 		return emptyStationRegistry(homeStationId);
 	}
@@ -50,84 +77,122 @@ export function saveStationRegistry(
 }
 
 export function parseStationRegistry(
-	value: unknown,
+	value: JsonValue,
 	fallbackHomeStationId: string,
 ): StationRegistry {
-	if (!value || typeof value !== "object" || Array.isArray(value)) {
+	if (!isJsonObject(value)) {
 		return emptyStationRegistry(fallbackHomeStationId);
 	}
-	const input = value as Record<string, unknown>;
 	const homeStationId =
-		typeof input.homeStationId === "string" && input.homeStationId.length > 0
-			? input.homeStationId
+		isJsonString(value.homeStationId) && value.homeStationId.length > 0
+			? value.homeStationId
 			: fallbackHomeStationId;
-	if (!Array.isArray(input.stations)) {
+	if (!isJsonArray(value.stations)) {
 		return emptyStationRegistry(homeStationId);
 	}
 	const stations: DeployedStation[] = [];
-	for (const entry of input.stations) {
+	for (const entry of value.stations) {
 		const station = parseStation(entry);
 		if (station) stations.push(station);
 	}
 	return { homeStationId, stations };
 }
 
-function parseStation(value: unknown): DeployedStation | null {
-	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-	const input = value as Record<string, unknown>;
-	const policy = parsePolicy(input.policy);
+function parseStation(value: JsonValue): DeployedStation | null {
+	if (!isJsonObject(value)) return null;
+	const policy = parsePolicy(value.policy);
 	if (!policy) return null;
 	if (
-		typeof input.id !== "string" ||
-		typeof input.targetId !== "string" ||
-		typeof input.yardId !== "string" ||
-		typeof input.providerId !== "string" ||
-		typeof input.label !== "string" ||
-		typeof input.createdAt !== "string"
+		!isJsonString(value.id) ||
+		!isJsonString(value.targetId) ||
+		!isJsonString(value.yardId) ||
+		!isJsonString(value.providerId) ||
+		!isJsonString(value.label) ||
+		!isJsonString(value.createdAt)
+	) {
+		return null;
+	}
+	const station: MutableDeployedStation = {
+		id: value.id,
+		targetId: value.targetId,
+		yardId: value.yardId,
+		providerId: value.providerId,
+		policy,
+		label: value.label,
+		createdAt: value.createdAt,
+	};
+	if (isJsonString(value.endpointUrl) && value.endpointUrl.length > 0) {
+		station.endpointUrl = value.endpointUrl;
+	}
+	if (isJsonString(value.claimUrl) && value.claimUrl.length > 0) {
+		station.claimUrl = value.claimUrl;
+	}
+	if (isJsonString(value.expiresAt) && value.expiresAt.length > 0) {
+		station.expiresAt = value.expiresAt;
+	}
+	return station;
+}
+
+function parsePolicy(value: JsonValue | undefined): BudgetPolicy | null {
+	if (value === undefined || !isJsonObject(value)) return null;
+	const routing = parseRouting(value.routing);
+	const redundancy = parseRedundancy(value.redundancy);
+	const resourcePool = parseResourcePool(value.resourcePool);
+	if (
+		!isJsonBoolean(value.preferLocal) ||
+		routing === null ||
+		redundancy === null ||
+		!isJsonNumber(value.maxReplicas) ||
+		!isJsonNumber(value.maxConcurrent) ||
+		!isJsonNumber(value.monthlySpendCapUsd) ||
+		resourcePool === null
 	) {
 		return null;
 	}
 	return {
-		id: input.id,
-		targetId: input.targetId,
-		yardId: input.yardId,
-		providerId: input.providerId,
-		policy,
-		label: input.label,
-		createdAt: input.createdAt,
-		...(typeof input.endpointUrl === "string" && input.endpointUrl.length > 0
-			? { endpointUrl: input.endpointUrl }
-			: {}),
-		...(typeof input.claimUrl === "string" && input.claimUrl.length > 0
-			? { claimUrl: input.claimUrl }
-			: {}),
-		...(typeof input.expiresAt === "string" && input.expiresAt.length > 0
-			? { expiresAt: input.expiresAt }
-			: {}),
+		preferLocal: value.preferLocal,
+		routing,
+		redundancy,
+		maxReplicas: value.maxReplicas,
+		maxConcurrent: value.maxConcurrent,
+		monthlySpendCapUsd: value.monthlySpendCapUsd,
+		resourcePool,
 	};
 }
 
-function parsePolicy(value: unknown): BudgetPolicy | null {
-	if (!value || typeof value !== "object" || Array.isArray(value)) return null;
-	const input = value as Record<string, unknown>;
-	if (
-		typeof input.preferLocal !== "boolean" ||
-		typeof input.routing !== "string" ||
-		typeof input.redundancy !== "string" ||
-		typeof input.maxReplicas !== "number" ||
-		typeof input.maxConcurrent !== "number" ||
-		typeof input.monthlySpendCapUsd !== "number" ||
-		!Array.isArray(input.resourcePool)
-	) {
-		return null;
+function parseRouting(value: JsonValue | undefined): RoutingPolicy | null {
+	if (!isJsonString(value)) return null;
+	for (const choice of ["local-first", "latency-first", "cost-first"] as const) {
+		if (choice === value) return choice;
 	}
-	return {
-		preferLocal: input.preferLocal,
-		routing: input.routing as BudgetPolicy["routing"],
-		redundancy: input.redundancy as BudgetPolicy["redundancy"],
-		maxReplicas: input.maxReplicas,
-		maxConcurrent: input.maxConcurrent,
-		monthlySpendCapUsd: input.monthlySpendCapUsd,
-		resourcePool: input.resourcePool as BudgetPolicy["resourcePool"],
-	};
+	return null;
+}
+
+function parseRedundancy(value: JsonValue | undefined): Redundancy | null {
+	if (!isJsonString(value)) return null;
+	for (const choice of ["none", "active-passive", "active-active", "mirror"] as const) {
+		if (choice === value) return choice;
+	}
+	return null;
+}
+
+function parseResourcePool(
+	value: JsonValue | undefined,
+): ResourceClass[] | null {
+	if (!isJsonArray(value)) return null;
+	const pool: ResourceClass[] = [];
+	for (const entry of value) {
+		const cls = parseResourceClass(entry);
+		if (cls === null) return null;
+		pool.push(cls);
+	}
+	return pool;
+}
+
+function parseResourceClass(value: JsonValue): ResourceClass | null {
+	if (!isJsonString(value)) return null;
+	for (const choice of ["local", "anonymous-remote", "paid-remote"] as const) {
+		if (choice === value) return choice;
+	}
+	return null;
 }

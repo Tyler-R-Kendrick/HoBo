@@ -16,6 +16,7 @@ import {
 	foldUsageItems,
 	githubActionsUsage,
 } from "../../src/adapters/github-billing.js";
+import type { JsonValue } from "../../src/parse.js";
 
 const PACTS = path.join(path.dirname(fileURLToPath(import.meta.url)), "..", "pacts");
 
@@ -25,9 +26,15 @@ interface PactInteraction {
 		method: string;
 		path: string;
 		query?: string;
-		body?: unknown;
+		body?: JsonValue;
 	};
-	response: { status: number; body?: unknown };
+	response: { status: number; body?: JsonValue };
+}
+
+interface RecordedCall {
+	method: string;
+	url: string;
+	body?: JsonValue;
 }
 
 interface PactFile {
@@ -35,23 +42,28 @@ interface PactFile {
 }
 
 async function loadPact(name: string): Promise<PactFile> {
+	// SAFETY: assertion to `JSON.parse(await readFile(path.join(PACTS, name), "utf8")) as PactFile` is required at this boundary.
 	return JSON.parse(await readFile(path.join(PACTS, name), "utf8")) as PactFile;
 }
 
 function pactFetch(
 	interactions: readonly PactInteraction[],
-	calls: Array<{ method: string; url: string; body?: unknown }>,
+	calls: RecordedCall[],
 ): typeof fetch {
+	// SAFETY: test fetch stand-in matches the Fetch API used by the adapters.
 	return ((input: RequestInfo | URL, init?: RequestInit) => {
 		const url = new URL(String(input));
 		const method = (init?.method ?? "GET").toUpperCase();
-		calls.push({
+		const record: RecordedCall = {
 			method,
 			url: url.pathname + url.search,
-			...(typeof init?.body === "string"
-				? { body: JSON.parse(init.body) }
-				: {}),
-		});
+		};
+		if (Object.prototype.toString.call(init?.body) === "[object String]") {
+			const parsed = JSON.parse(String(init.body));
+			// SAFETY: recorded request bodies are JSON fixtures.
+			record.body = parsed as JsonValue;
+		}
+		calls.push(record);
 		const match = interactions.find(
 			(interaction) =>
 				interaction.request.method.toUpperCase() === method &&
@@ -74,6 +86,7 @@ function pactFetch(
 describe("pact: balancer-to-github-billing", () => {
 	it("folds the enhanced billing usageItems the pact records", async () => {
 		const pact = await loadPact("balancer-to-github-billing.pact.json");
+		// SAFETY: assertion to `pact.interactions[0]?.response.body as { usageItems: Parameters<typeof foldUsageItems>[0]; }` is required at this boundary.
 		const body = pact.interactions[0]?.response.body as {
 			usageItems: Parameters<typeof foldUsageItems>[0];
 		};
@@ -84,6 +97,7 @@ describe("pact: balancer-to-github-billing", () => {
 
 	it("folds the legacy billing body the pact records", async () => {
 		const pact = await loadPact("balancer-to-github-billing.pact.json");
+		// SAFETY: assertion to `pact.interactions[1]?.response.body as { total_minutes_used: number; total_paid_minutes_used: number; }` is required at this boundary.
 		const body = pact.interactions[1]?.response.body as {
 			total_minutes_used: number;
 			total_paid_minutes_used: number;

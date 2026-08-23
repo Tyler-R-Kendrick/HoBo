@@ -128,9 +128,10 @@ export function foldErasedSubjects(
 	const erased = new Set<string>();
 	for (const event of events) {
 		if (event.type === CLOUD_EVENTS.SubjectErasureRequested) {
+			// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 			const subject = (event.data as { subject?: unknown } | undefined)
 				?.subject;
-			if (typeof subject === "string" && subject.length > 0) {
+			if (subject === String(subject) && String(subject).length > 0) {
 				erased.add(subject);
 			}
 		}
@@ -162,7 +163,7 @@ export interface DeploymentRequestedData {
 	deploymentId: string;
 	bindleHash: string;
 	tenant: string;
-	config: Record<string, unknown>;
+	config: Record<string, JsonValue>;
 }
 
 export function deploymentRequested(data: DeploymentRequestedData): EventInput {
@@ -305,3 +306,4 @@ export function deploymentRolledBack(
 ): EventInput {
 	return { type: CLOUD_EVENTS.DeploymentRolledBack, data };
 }
+import type { JsonValue } from "./plan-types.js";

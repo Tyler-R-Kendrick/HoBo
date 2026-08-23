@@ -25,11 +25,14 @@ type TicketEvent =
       readonly data: { readonly title: string };
     };
 
-const open: CommandDefinition<TicketInput, TicketState, TicketEvent, { readonly seq: number }> =
+type OpenTicketResult = { readonly seq: number };
+
+const open: CommandDefinition<TicketInput, TicketState, TicketEvent, OpenTicketResult> =
   command(
     "Ticket.Open",
     {
       key: (input) => `ticket:${input.id}`,
+      // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
       initialState: { opened: false } as TicketState,
       fold(state: TicketState, event: TicketEvent): TicketState {
         if (event.type === "ticket.Opened") {
@@ -41,7 +44,7 @@ const open: CommandDefinition<TicketInput, TicketState, TicketEvent, { readonly 
     (
       input: TicketInput,
       ctx: CommandContext<TicketState, TicketEvent>,
-    ): { readonly seq: number } => {
+    ): OpenTicketResult => {
       const appended = ctx.emit("ticket.Opened", {
         ticketId: input.id,
         title: input.title,
@@ -51,7 +54,7 @@ const open: CommandDefinition<TicketInput, TicketState, TicketEvent, { readonly 
   );
 
 const runtime = createCommandRuntime();
-const result: CommandResult<{ readonly seq: number }, TicketEvent> = runtime.execute(open, {
+const result: CommandResult<OpenTicketResult, TicketEvent> = runtime.execute(open, {
   id: "typed",
   title: "Typed surface",
 });

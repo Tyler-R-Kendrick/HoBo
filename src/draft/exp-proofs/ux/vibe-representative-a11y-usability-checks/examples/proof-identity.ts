@@ -10,7 +10,7 @@ import assert from "node:assert/strict";
 const root = path.dirname(fileURLToPath(import.meta.url));
 const proof = JSON.parse(
   readFileSync(path.join(root, "..", "proof.json"), "utf8"),
-) as { slug: string; layer: string };
+);
 
 assert.equal(proof.slug, "vibe-representative-a11y-usability-checks");
 assert.equal(proof.layer, "exp");

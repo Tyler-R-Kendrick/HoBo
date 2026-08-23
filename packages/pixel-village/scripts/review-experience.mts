@@ -118,7 +118,7 @@ function listPngs(dir: string): string[] {
 		.sort();
 }
 
-function gitInfo(): { sha: string; date: string } {
+function gitInfo() {
 	const run = (args: string[]) => {
 		try {
 			return execFileSync("git", args, { cwd: ROOT, encoding: "utf8" }).trim();
@@ -137,8 +137,8 @@ function median(values: readonly number[]): number {
 	const sorted = [...values].sort((a, b) => a - b);
 	const mid = Math.floor(sorted.length / 2);
 	return sorted.length % 2 === 1
-		? (sorted[mid] as number)
-		: ((sorted[mid - 1] as number) + (sorted[mid] as number)) / 2;
+		? (sorted[mid] ?? Number.NaN)
+		: ((sorted[mid - 1] ?? Number.NaN) + (sorted[mid] ?? Number.NaN)) / 2;
 }
 
 function writeSkipped(reason: string): void {
@@ -184,12 +184,22 @@ async function main(): Promise<void> {
 
 	// Seam-state snapshots, when the tour wrote them, give the judge the ground
 	// truth behind the picture (TRU-4: nothing decorative may read as signal).
-	const seamSnapshots: Record<string, unknown> = {};
+	type Snapshot =
+		| null
+		| boolean
+		| number
+		| string
+		| Snapshot[]
+		| { [key: string]: Snapshot };
+	const seamSnapshots: Record<string, Snapshot> = {};
 	for (const name of ["visual-report.json", "seam-states.json"]) {
 		const path = join(SHOTS, name);
 		if (existsSync(path)) {
 			try {
-				seamSnapshots[name] = JSON.parse(readFileSync(path, "utf8"));
+				// SAFETY: The snapshot is produced by this package's JSON evidence files.
+				seamSnapshots[name] = JSON.parse(
+					readFileSync(path, "utf8"),
+				) as Snapshot;
 			} catch {
 				/* a malformed snapshot is not worth failing an advisory pass */
 			}
@@ -258,7 +268,8 @@ async function main(): Promise<void> {
 					.map((b) => b.text)
 					.join("");
 				const json = text.match(/\{[\s\S]*\}/u)?.[0];
-				const parsed = json
+				// SAFETY: The model response is constrained to the documented JSON score shape.
+				const parsed: { score?: number; why?: string } = json
 					? (JSON.parse(json) as { score?: number; why?: string })
 					: {};
 				samples.push({
@@ -268,7 +279,7 @@ async function main(): Promise<void> {
 			} catch (err) {
 				samples.push({
 					score: Number.NaN,
-					why: `error: ${String((err as Error).message ?? err).slice(0, 120)}`,
+					why: `error: ${String(err instanceof Error ? err.message : err).slice(0, 120)}`,
 				});
 			}
 		}
@@ -319,5 +330,7 @@ async function main(): Promise<void> {
 await main().catch((err) => {
 	// Advisory by contract: report and exit 0.
 	console.error(`experience review failed (advisory): ${String(err)}`);
-	writeSkipped(`error: ${String((err as Error).message ?? err).slice(0, 200)}`);
+	writeSkipped(
+		`error: ${String(err instanceof Error ? err.message : err).slice(0, 200)}`,
+	);
 });

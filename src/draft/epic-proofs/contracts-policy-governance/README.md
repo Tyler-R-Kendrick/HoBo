@@ -66,6 +66,8 @@ What this proves:
 - Gatekeeper can evaluate contract, policy, obligation, cost, provenance, and conformance decisions from deterministic mocks.
 - Mandatory governance gates remain enforced across the deny ceiling.
 - Policy and provider uncertainty fail closed.
+- The validated control-plane action taxonomy proof is included in this rollup; its deterministic simulation contract is unchanged.
+- The validated deny-ceiling algebra and Gatekeeper verification proofs retain their fail-closed simulation contracts.
 
 Mocked boundaries:
 
@@ -77,11 +79,14 @@ Mocked boundaries:
 - RBAC Directory: fixture-backed role grants.
 - Audit Log/Event Projection: in-memory append-only evidence list.
 - Governance Conformance Suite: local replay of recorded Gatekeeper evidence.
+- Governance-conformance changes are absorbed without changing the deterministic replay or fail-closed policy behavior.
 
 Contracts:
 
 - See `contracts/pact-inventory.md`.
 
+
+Policy fail-closed changes are absorbed without changing deterministic replay or mandatory governance behavior.
 
 ## Architecture Evidence
 

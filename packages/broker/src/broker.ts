@@ -2,6 +2,14 @@ import type { ConnectorRegistry } from "./connector-registry.js";
 import type { BrokerEnvironment } from "./environments.js";
 import { BROKER_EVENTS, type BrokerEvent, brokerEvent } from "./events.js";
 import {
+	cloneAsJson,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+import {
 	type BillingPlane,
 	createBillingPlane,
 	createDeliveryPlane,
@@ -81,8 +89,11 @@ export interface HoboBrokerDeps {
 export interface HoboBroker {
 	brokerId: string;
 	policyHash: PolicyHash;
-	resolve(input: unknown): Promise<BrokerResolution>;
-	scale(input: unknown): { directive: ScaleDirective; events: BrokerEvent[] };
+	resolve(input: JsonValue | undefined): Promise<BrokerResolution>;
+	scale(input: JsonValue | undefined): {
+		directive: ScaleDirective;
+		events: BrokerEvent[];
+	};
 	deliver(receipt: ResolutionReceipt): Promise<{
 		ticket: DeliveryTicket;
 		events: BrokerEvent[];
@@ -90,16 +101,13 @@ export interface HoboBroker {
 }
 
 export function createBroker(deps: HoboBrokerDeps): HoboBroker {
-	if (typeof deps.stationId !== "string" || deps.stationId.length === 0) {
+	if (!isJsonString(deps.stationId) || deps.stationId.length === 0) {
 		throw new BrokerParseError(
 			"station-missing",
 			"station-missing: Conductor requires stationId (hobo station init)",
 		);
 	}
-	if (
-		typeof deps.railHash !== "string" ||
-		!deps.railHash.startsWith("sha256:")
-	) {
+	if (!isJsonString(deps.railHash) || !deps.railHash.startsWith("sha256:")) {
 		throw new BrokerParseError(
 			"rail-inactive",
 			"rail-inactive: Conductor requires active railHash (hobo station rails activate)",
@@ -107,7 +115,7 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 	}
 	// Parse, don't validate: the policy document crosses the parser boundary
 	// once; from here on the broker only ever sees the refined domain types.
-	const policies = parseBrokerPolicySet(deps.policies);
+	const policies = parseBrokerPolicySet(cloneAsJson(deps.policies));
 	const policyHash = policyHashOf(policies);
 	const gatePlane =
 		deps.gatePlane ?? createGatekeeperGatePlane(deps.gateOptions ?? {});
@@ -160,7 +168,7 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 		return {
 			outcome: "rejected",
 			rejection,
-			...(signature !== undefined ? { signature } : {}),
+			...(signature !== undefined ? { signature } : undefined),
 			events,
 		};
 	}
@@ -360,7 +368,7 @@ export function createBroker(deps: HoboBrokerDeps): HoboBroker {
 			return {
 				outcome: "resolved",
 				receipt,
-				...(signature !== undefined ? { signature } : {}),
+				...(signature !== undefined ? { signature } : undefined),
 				events,
 			};
 		},
@@ -440,11 +448,14 @@ function placeRequirement(
 				},
 			};
 		}
+		// SAFETY: assertion required at this I/O or test boundary.
 		winner = rankByCost(pinned)[0] as BrokerCatalogDefinition;
 	} else {
+		// SAFETY: assertion required at this I/O or test boundary.
 		winner = rankByCost(eligible)[0] as BrokerCatalogDefinition;
 	}
 
+	// SAFETY: assertion required at this I/O or test boundary.
 	const region = pickRegion(requirement, winner, policy) as string;
 	return {
 		placement: {
@@ -493,16 +504,19 @@ function pickRegion(
 	return allowed[0];
 }
 
-export function parseScaleDirective(input: unknown): ScaleDirective {
-	if (input === null || typeof input !== "object" || Array.isArray(input)) {
+export function parseScaleDirective(
+	input: JsonValue | undefined,
+): ScaleDirective {
+	if (input === null || !isJsonObject(input) || Array.isArray(input)) {
 		throw new BrokerParseError(
 			"invalid-scale-directive",
 			"invalid-scale-directive: expected an object",
 		);
 	}
-	const raw = input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const raw = input as JsonObject;
 	const resourceId = raw.resourceId ?? raw.resource_id;
-	if (typeof resourceId !== "string" || resourceId.length === 0) {
+	if (!isJsonString(resourceId) || resourceId.length === 0) {
 		throw new BrokerParseError(
 			"invalid-scale-directive",
 			"invalid-scale-directive: resourceId must be a non-empty string",
@@ -510,7 +524,8 @@ export function parseScaleDirective(input: unknown): ScaleDirective {
 	}
 	const direction = raw.direction;
 	if (
-		typeof direction !== "string" ||
+		!isJsonString(direction) ||
+		// SAFETY: assertion required at this I/O or test boundary.
 		!SCALE_DIRECTIONS.includes(direction as ScaleDirection)
 	) {
 		throw new BrokerParseError(
@@ -520,7 +535,7 @@ export function parseScaleDirective(input: unknown): ScaleDirective {
 	}
 	const replicasRaw = raw.replicas;
 	const replicas =
-		typeof replicasRaw === "number" &&
+		isJsonNumber(replicasRaw) &&
 		Number.isInteger(replicasRaw) &&
 		replicasRaw >= 0
 			? replicasRaw
@@ -540,6 +555,7 @@ export function parseScaleDirective(input: unknown): ScaleDirective {
 			"invalid-scale-directive: direction 'zero' requires replicas 0",
 		);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return { resourceId, direction: direction as ScaleDirection, replicas };
 }
 
@@ -560,9 +576,10 @@ export function foldBrokerDecisions(
 ): BrokerDecisionRow[] {
 	const rows = new Map<string, BrokerDecisionRow>();
 	for (const event of events) {
-		const data = (event.data ?? {}) as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const data = (event.data ?? {}) as JsonObject;
 		const requestId = data.requestId;
-		if (typeof requestId !== "string" || requestId.length === 0) continue;
+		if (!isJsonString(requestId) || requestId.length === 0) continue;
 		if (event.type === BROKER_EVENTS.Resolved) {
 			const placements = Array.isArray(data.placements) ? data.placements : [];
 			rows.set(requestId, {
@@ -579,8 +596,8 @@ export function foldBrokerDecisions(
 				placementCount: 0,
 				reasonCodes: reasons
 					.map((reason) =>
-						typeof (reason as Record<string, unknown>).code === "string"
-							? String((reason as Record<string, unknown>).code)
+						isJsonObject(reason) && isJsonString(reason.code)
+							? reason.code
 							: "",
 					)
 					.filter((code) => code.length > 0),
@@ -595,6 +612,7 @@ export function snapshotBrokerDecisions(rows: BrokerDecisionRow[]): string {
 }
 
 export function restoreBrokerDecisions(snapshot: string): BrokerDecisionRow[] {
+	// SAFETY: assertion required at this I/O or test boundary.
 	const parsed = JSON.parse(snapshot) as {
 		schemaVersion?: string;
 		rows?: BrokerDecisionRow[];

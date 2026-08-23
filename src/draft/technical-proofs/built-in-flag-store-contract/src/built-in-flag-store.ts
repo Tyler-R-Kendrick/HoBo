@@ -2,8 +2,7 @@ import {
   replayFlagEvents,
   validateFlagEvent
 } from "../../flag-event-contract/src/flag-event-contract.js";
-
-const valueTypes = new Set(["boolean", "string", "number", "object"]);
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject } from "./json.js";
 
 export function createBuiltInFlagStore(entries = []) {
   const log = entries.map(validateEntry).sort((left, right) => left.seq - right.seq);
@@ -162,7 +161,7 @@ function stableBucket(flagKey, subject) {
 }
 
 function normalizeValue(value) {
-  if (value && typeof value === "object" && "tag" in value && "val" in value) {
+  if (value && isJsonObject(value) && "tag" in value && "val" in value) {
     return value.val;
   }
   return value;
@@ -174,10 +173,10 @@ function sameValue(left, right) {
 
 function isValue(valueType, value) {
   return (
-    (valueType === "boolean" && typeof value === "boolean") ||
-    (valueType === "string" && typeof value === "string") ||
-    (valueType === "number" && typeof value === "number" && Number.isFinite(value)) ||
-    (valueType === "object" && value !== null && typeof value === "object")
+    (valueType === "boolean" && isJsonBoolean(value)) ||
+    (valueType === "string" && isJsonString(value)) ||
+    (valueType === "number" && isJsonNumber(value) && Number.isFinite(value)) ||
+    (valueType === "object" && value !== null && isJsonObject(value))
   );
 }
 

@@ -5,6 +5,7 @@ import {
 	canonicalPlanJson,
 	DEPLOYMENT_PLAN_SCHEMA,
 	hashDeploymentPlan,
+	type JsonObject,
 	parseDeploymentPlan,
 } from "../src/index.js";
 
@@ -22,7 +23,7 @@ import {
  * land silently.
  */
 
-const planWith = (parameters: Record<string, unknown>) => ({
+const planWith = (parameters: JsonObject) => ({
 	schema: DEPLOYMENT_PLAN_SCHEMA,
 	resources: [
 		{

@@ -7,6 +7,8 @@ import {
   type ManifestResource,
   parseResourceId,
 } from "./types.js";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export class BindReferenceError extends Error {
   readonly path: string;
@@ -32,8 +34,8 @@ export interface ComponentHandle {
   readonly name: string;
   readonly bindings: Readonly<Record<string, BindingMeta>>;
   readonly env: Record<string, string>;
-  readonly endpoints: Record<string, unknown>;
-  readonly annotations: Record<string, unknown>;
+  readonly endpoints: JsonObject;
+  readonly annotations: JsonObject;
   readonly typescript: { readonly ctxBindings: string };
   binding(alias: string): BindingMeta;
   manifest(): ManifestResource;
@@ -147,6 +149,7 @@ export function addContainer(
   };
 
   handle.withVolume = (volumeName, target) => {
+    // SAFETY: assertion to `const volumes = (handle.annotations.volumes as unknown[] | undefined) ?? [];` is required at this boundary.
     const volumes = (handle.annotations.volumes as unknown[] | undefined) ?? [];
     volumes.push({ name: volumeName, target });
     handle.annotations.volumes = volumes;
@@ -169,12 +172,14 @@ export function addContainer(
     });
 
   handle.withArgs = (...args) => {
+    // SAFETY: assertion to `const flat = (handle.annotations.args as unknown[] | undefined) ?? [];` is required at this boundary.
     const flat = (handle.annotations.args as unknown[] | undefined) ?? [];
     handle.annotations.args = [...flat, ...args.flat()];
     return handle;
   };
 
   handle.withBindMount = (mountSource, target, readOnly = false) => {
+    // SAFETY: assertion to `const mounts = (handle.annotations.bindMounts as unknown[] | undefined) ?? [];` is required at this boundary.
     const mounts = (handle.annotations.bindMounts as unknown[] | undefined) ?? [];
     mounts.push({ source: mountSource, target, readOnly });
     handle.annotations.bindMounts = mounts;
@@ -255,7 +260,7 @@ function componentHandle(
     image?: string;
     bind?: Readonly<Record<string, ResourceHandle>>;
     env?: Readonly<Record<string, string>>;
-    build?: Readonly<Record<string, unknown>>;
+    build?: Readonly<JsonObject>;
   },
 ): ComponentHandle {
   assertResourceName(name, `${kind}.name`);
@@ -276,7 +281,7 @@ function componentHandle(
     kind,
     name,
     bindings,
-    env: { ...(options.env ?? {}) },
+    env: { ...options.env },
     endpoints: {},
     annotations: {},
     typescript: {
@@ -338,22 +343,23 @@ function recordWait(
   until: "ready" | "completed",
 ): void {
   const target = resolveDependencyName(dependency);
-  if (typeof target !== "string" || !RESOURCE_ID_PATTERN.test(target)) {
+  if (!isJsonString(target) || !RESOURCE_ID_PATTERN.test(target)) {
     throw new BindReferenceError(
       `resources.${ownerName}.${key}`,
       "must reference a declared resource handle or id",
     );
   }
+  // SAFETY: assertion to `const waits = (handle.annotations[key] as unknown[] | undefined) ?? [];` is required at this boundary.
   const waits = (handle.annotations[key] as unknown[] | undefined) ?? [];
   waits.push({ to: target, until });
   handle.annotations[key] = waits;
 }
 
 function resolveDependencyName(dependency: DependencyRef): string | null {
-  if (typeof dependency === "string") {
+  if (isJsonString(dependency)) {
     return dependency;
   }
-  if (isRecord(dependency) && typeof dependency.name === "string") {
+  if (isRecord(dependency) && isJsonString(dependency.name)) {
     return dependency.name;
   }
   return null;
@@ -424,11 +430,11 @@ function validateLazyReferences(
 }
 
 function visitStrings(
-  value: unknown,
+  value: JsonValue,
   path: string,
   visitor: (value: string, path: string) => void,
 ): void {
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     visitor(value, path);
     return;
   }
@@ -443,22 +449,24 @@ function visitStrings(
   }
 }
 
-function assertHandle(handle: unknown): asserts handle is Handle {
+function assertHandle(handle: JsonValue): asserts handle is Handle {
   if (
     !handle ||
-    typeof handle !== "object" ||
-    !["resource", "service", "container"].includes((handle as Handle).kind) ||
-    typeof (handle as Handle).name !== "string" ||
-    typeof (handle as { manifest?: unknown }).manifest !== "function"
+    !isJsonObject(handle) ||
+    !isJsonString(handle.kind) ||
+    !["resource", "service", "container"].includes(handle.kind) ||
+    !isJsonString(handle.name) ||
+    !(handle.manifest instanceof Function)
   ) {
     throw new BindReferenceError("handles", "must contain HoBo resource handles");
   }
 }
 
-function assertComponent(handle: unknown, path: string): asserts handle is ComponentHandle {
+function assertComponent(handle: JsonValue, path: string): asserts handle is ComponentHandle {
   if (
     !handle ||
-    typeof handle !== "object" ||
+    !isJsonObject(handle) ||
+    // SAFETY: assertion to `!["service", "container"].includes((handle as ComponentHandle).kind)` is required at this boundary.
     !["service", "container"].includes((handle as ComponentHandle).kind)
   ) {
     throw new BindReferenceError(path, "must be a service or container handle");
@@ -466,12 +474,12 @@ function assertComponent(handle: unknown, path: string): asserts handle is Compo
 }
 
 function assertResourceName(name: string, path: string): void {
-  if (typeof name !== "string" || !RESOURCE_ID_PATTERN.test(name)) {
+  if (!isJsonString(name) || !RESOURCE_ID_PATTERN.test(name)) {
     throw new BindReferenceError(path, "invalid resource id");
   }
   parseResourceId(name);
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function isRecord(value: JsonValue): value is JsonObject {
+  return isJsonObject(value) && value !== null && !Array.isArray(value);
 }

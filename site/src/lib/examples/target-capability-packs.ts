@@ -106,9 +106,7 @@ export function packFromNative(input: {
  * OOB Examples yard packs — native ports synced to provider packages.
  * Temporary/agent only for canHostNow.
  */
-export const TARGET_CAPABILITY_PACKS: Readonly<
-	Record<string, TargetCapabilityPack>
-> = {
+export const TARGET_CAPABILITY_PACKS = {
 	"browser-wasm": packFromNative({
 		label: "Browser WASM",
 		resourceClass: "local",
@@ -157,7 +155,7 @@ export const TARGET_CAPABILITY_PACKS: Readonly<
 			"Lakebed anonymous deploy (zero account) → claim later; no LAKEBED_TOKEN",
 		supportsAnonymousTemporaryDeploy: true,
 	}),
-};
+} as const satisfies Readonly<Record<string, TargetCapabilityPack>>;
 
 /** @deprecated Use preferDegrades — kept for call sites still naming lowers. */
 export function lowersAlias(

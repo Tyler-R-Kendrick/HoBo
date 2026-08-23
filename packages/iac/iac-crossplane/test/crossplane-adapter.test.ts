@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-unknown-parameters */
+
 import { describe, expect, it } from "vitest";
 
 import {

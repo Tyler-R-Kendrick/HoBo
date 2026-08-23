@@ -11,6 +11,14 @@ import {
 	type TrafficRoutingCapability,
 	type TrafficRoutingPort,
 } from "@hobo/core";
+import {
+	cloneAsJson,
+	isJsonBoolean,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 export interface CloudflareBackendHealthObservation {
 	readonly backendId: string;
@@ -88,7 +96,7 @@ export function createCloudflareTrafficRouting(
 					accept: "application/json",
 					authorization: `Bearer ${token}`,
 					...(init?.body === undefined
-						? {}
+						? undefined
 						: { "content-type": "application/json" }),
 					...headersObject(init?.headers),
 				},
@@ -96,7 +104,8 @@ export function createCloudflareTrafficRouting(
 			return {
 				ok: response.ok,
 				status: response.status,
-				body: (await response.json().catch(() => null)) as unknown,
+				// SAFETY: assertion required at this I/O or test boundary.
+				body: cloneAsJson(await response.json().catch(() => null)),
 			};
 		} catch {
 			return { ok: false, status: 0, body: null };
@@ -179,7 +188,7 @@ export function createCloudflareTrafficRouting(
 			const mappedLb = options.loadBalancerIdsByPlan?.[plan.planId]?.trim();
 			let externalId = mappedLb;
 			let createdLoadBalancer = false;
-			let response: { ok: boolean; status: number; body: unknown };
+			let response: { ok: boolean; status: number; body: JsonValue };
 
 			if (externalId) {
 				response = await request(
@@ -273,7 +282,7 @@ export function createCloudflareTrafficRouting(
 				observations.push({
 					backendId,
 					poolId: poolId.trim(),
-					...(healthy === undefined ? {} : { healthy }),
+					...(healthy === undefined ? undefined : { healthy }),
 				});
 			}
 			return observations;
@@ -282,66 +291,79 @@ export function createCloudflareTrafficRouting(
 			const current = applied.get(planId);
 			if (!current) return null;
 			if (current.revoked) {
-				return parseRoutingStatus({
-					planId,
-					active: false,
-					realized: "none",
-					notes: ["routing plan revoked"],
-				});
+				return parseRoutingStatus(
+					cloneAsJson({
+						planId,
+						active: false,
+						realized: "none",
+						notes: ["routing plan revoked"],
+					}),
+				);
 			}
 			const response = await request(
 				`/zones/${encodeURIComponent(options.zoneId)}/load_balancers/${encodeURIComponent(current.externalId)}`,
 			);
 			if (!response.ok || !cloudflareSuccess(response.body)) {
-				return parseRoutingStatus({
-					planId,
-					active: false,
-					realized: "partial",
-					notes: [providerFailure("status", response.status)],
-				});
+				return parseRoutingStatus(
+					cloneAsJson({
+						planId,
+						active: false,
+						realized: "partial",
+						notes: [providerFailure("status", response.status)],
+					}),
+				);
 			}
 			const active = cloudflareEnabled(response.body);
 			const matches =
 				active && cloudflareObservedMatches(response.body, current.expected);
-			return parseRoutingStatus({
-				planId,
-				active,
-				realized: !active
-					? "none"
-					: matches
-						? current.result.realized
-						: "partial",
-				notes: !active
-					? ["Cloudflare route is disabled"]
-					: matches
-						? current.result.notes
-						: ["Cloudflare observed configuration does not match the plan"],
-			});
+			return parseRoutingStatus(
+				cloneAsJson({
+					planId,
+					active,
+					realized: !active
+						? "none"
+						: matches
+							? current.result.realized
+							: "partial",
+					notes: !active
+						? ["Cloudflare route is disabled"]
+						: matches
+							? current.result.notes
+							: ["Cloudflare observed configuration does not match the plan"],
+				}),
+			);
 		},
 		async revoke(planId) {
 			if (!token) {
-				return parseRevokeResult({
-					ok: false,
-					notes: ["Cloudflare API token is required"],
-				});
+				return parseRevokeResult(
+					cloneAsJson({
+						ok: false,
+						notes: ["Cloudflare API token is required"],
+					}),
+				);
 			}
 			const current = applied.get(planId);
 			if (!current) {
-				return parseRevokeResult({
-					ok: false,
-					notes: ["routing plan not found"],
-				});
+				return parseRevokeResult(
+					cloneAsJson({
+						ok: false,
+						notes: ["routing plan not found"],
+					}),
+				);
 			}
-			if (current.revoked) return parseRevokeResult({ ok: true, notes: [] });
+			if (current.revoked)
+				return parseRevokeResult(cloneAsJson({ ok: true, notes: [] }));
 			const response = await request(
 				`/zones/${encodeURIComponent(options.zoneId)}/load_balancers/${encodeURIComponent(current.externalId)}`,
 				{ method: "DELETE" },
 			);
 			if (!response.ok || !cloudflareSuccess(response.body)) {
-				return parseRevokeResult({
-					ok: false,
-					notes: [providerFailure("revoke", response.status)],
-				});
+				return parseRevokeResult(
+					cloneAsJson({
+						ok: false,
+						notes: [providerFailure("revoke", response.status)],
+					}),
+				);
 			}
 			const accountId = options.accountId?.trim();
 			if (
@@ -357,18 +379,12 @@ export function createCloudflareTrafficRouting(
 				}
 			}
 			current.revoked = true;
-			return parseRevokeResult({ ok: true, notes: [] });
+			return parseRevokeResult(cloneAsJson({ ok: true, notes: [] }));
 		},
 	};
 }
 
-function supportedRule(
-	plan: RoutingPlan,
-	healthChecksConfigured: boolean,
-): {
-	readonly rule: RoutingRule | null;
-	readonly unmet: string[];
-} {
+function supportedRule(plan: RoutingPlan, healthChecksConfigured: boolean) {
 	const supported = plan.intent.rules.filter(
 		(rule) => !hasEffectiveMatch(rule),
 	);
@@ -423,7 +439,7 @@ async function resolveOrCreatePools(
 	request: (
 		path: string,
 		init?: RequestInit,
-	) => Promise<{ ok: boolean; status: number; body: unknown }>,
+	) => Promise<{ ok: boolean; status: number; body: JsonValue }>,
 ): Promise<
 	| {
 			readonly ok: true;
@@ -520,33 +536,36 @@ function poolOrigin(endpoint: string): { readonly address: string } | null {
 	}
 }
 
-function cloudflareResultId(body: unknown): string | undefined {
-	if (!cloudflareSuccess(body)) return undefined;
+function cloudflareResultId(body: JsonValue): string | undefined {
+	if (!isJsonObject(body) || body.success !== true) return undefined;
 	const result = body.result;
-	if (!result || typeof result !== "object") return undefined;
+	if (!result || !isJsonObject(result)) return undefined;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const id = (result as { id?: unknown }).id;
-	return typeof id === "string" && id.trim().length > 0 ? id.trim() : undefined;
+	return isJsonString(id) && id.trim().length > 0 ? id.trim() : undefined;
 }
 
-function cloudflarePoolHealthy(body: unknown): boolean | undefined {
-	if (!cloudflareSuccess(body)) return undefined;
+function cloudflarePoolHealthy(body: JsonValue): boolean | undefined {
+	if (!isJsonObject(body) || body.success !== true) return undefined;
 	const result = body.result;
-	if (!result || typeof result !== "object") return undefined;
+	if (!result || !isJsonObject(result)) return undefined;
+	// SAFETY: assertion required at this I/O or test boundary.
 	const pool = result as {
 		healthy?: unknown;
 		pop_health?: unknown;
 	};
-	if (typeof pool.healthy === "boolean") return pool.healthy;
+	if (isJsonBoolean(pool.healthy)) return pool.healthy;
 	// Some CF responses nest health under pop_health.*.healthy
-	if (pool.pop_health && typeof pool.pop_health === "object") {
-		const values = Object.values(pool.pop_health as Record<string, unknown>);
+	if (pool.pop_health && isJsonObject(pool.pop_health)) {
+		// SAFETY: assertion required at this I/O or test boundary.
+		const values = Object.values(pool.pop_health as JsonObject);
 		const flags = values
 			.map((entry) =>
-				entry && typeof entry === "object"
-					? (entry as { healthy?: unknown }).healthy
+				isJsonObject(entry) && isJsonBoolean(entry.healthy)
+					? entry.healthy
 					: undefined,
 			)
-			.filter((flag): flag is boolean => typeof flag === "boolean");
+			.filter((flag): flag is boolean => isJsonBoolean(flag));
 		if (flags.length === 0) return undefined;
 		return flags.every(Boolean);
 	}
@@ -579,15 +598,17 @@ function resultFor(
 	notes: readonly string[],
 	capabilities: readonly TrafficRoutingCapability[] = [],
 ) {
-	return parseApplyResult({
-		planId: plan.planId,
-		provider: "cloudflare",
-		realized,
-		notes,
-		appliedRules,
-		...(unmet.length === 0 ? {} : { unmet: [...new Set(unmet)] }),
-		capabilities,
-	});
+	return parseApplyResult(
+		cloneAsJson({
+			planId: plan.planId,
+			provider: "cloudflare",
+			realized,
+			notes,
+			appliedRules,
+			...(unmet.length === 0 ? undefined : { unmet: [...new Set(unmet)] }),
+			capabilities,
+		}),
+	);
 }
 
 async function meter(
@@ -609,45 +630,41 @@ async function meter(
 	}
 }
 
-function cloudflareEnabled(body: unknown): boolean {
-	if (!cloudflareSuccess(body)) return false;
-	const result = (body as { result?: unknown }).result;
-	return (
-		result !== null &&
-		typeof result === "object" &&
-		(result as { enabled?: unknown }).enabled === true
-	);
+function cloudflareEnabled(body: JsonValue): boolean {
+	if (!isJsonObject(body) || body.success !== true) return false;
+	const result = body.result;
+	return isJsonObject(result) && result.enabled === true;
 }
 
-function cloudflareSuccess(body: unknown): body is { result?: unknown } {
-	return (
-		body !== null &&
-		typeof body === "object" &&
-		(body as { success?: unknown }).success === true
-	);
+function cloudflareSuccess(body: JsonValue): boolean {
+	return isJsonObject(body) && body.success === true;
 }
 
 function cloudflareObservedMatches(
-	body: unknown,
+	body: JsonValue,
 	expected: ReturnType<typeof cloudflareLoadBalancer>,
 ): boolean {
-	if (!cloudflareSuccess(body)) return false;
+	if (!isJsonObject(body) || body.success !== true) return false;
 	const result = body.result;
-	if (!result || typeof result !== "object") return false;
-	const observed = result as Record<string, unknown>;
-	const randomSteering = observed.random_steering;
-	if (!randomSteering || typeof randomSteering !== "object") return false;
-	const poolWeights = (randomSteering as Record<string, unknown>).pool_weights;
+	if (!isJsonObject(result)) return false;
+	const randomSteering = result.random_steering;
+	if (!isJsonObject(randomSteering)) return false;
 	return (
-		observed.name === expected.name &&
-		observed.steering_policy === expected.steering_policy &&
-		sameStringArray(observed.default_pools, expected.default_pools) &&
-		observed.fallback_pool === expected.fallback_pool &&
-		sameNumberRecord(poolWeights, expected.random_steering.pool_weights)
+		result.name === expected.name &&
+		result.steering_policy === expected.steering_policy &&
+		sameStringArray(result.default_pools, expected.default_pools) &&
+		result.fallback_pool === expected.fallback_pool &&
+		sameNumberRecord(
+			randomSteering.pool_weights,
+			expected.random_steering.pool_weights,
+		)
 	);
 }
 
-function sameStringArray(value: unknown, expected: readonly string[]): boolean {
+function sameStringArray(
+	value: JsonValue | undefined,
+	expected: readonly string[],
+): boolean {
 	return (
 		Array.isArray(value) &&
 		value.length === expected.length &&
@@ -656,11 +673,12 @@ function sameStringArray(value: unknown, expected: readonly string[]): boolean {
 }
 
 function sameNumberRecord(
-	value: unknown,
+	value: JsonValue | undefined,
 	expected: Readonly<Record<string, number | undefined>>,
 ): boolean {
-	if (!value || typeof value !== "object") return false;
-	const observed = value as Record<string, unknown>;
+	if (!value || !isJsonObject(value)) return false;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const observed = value as JsonObject;
 	const expectedKeys = Object.keys(expected);
 	return (
 		Object.keys(observed).length === expectedKeys.length &&

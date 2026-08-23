@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject } from "./json.js";
 const valueTypes = new Set(["boolean", "string", "number", "object"]);
 const targetingOps = new Set(["equals", "notEquals", "in", "exists"]);
 
@@ -124,13 +125,13 @@ export function createFlagArchived(ref, input) {
 }
 
 export function validateFlagEvent(event) {
-  if (!event || typeof event !== "object") {
+  if (!event || !isJsonObject(event)) {
     throw new TypeError("flag event must be an object");
   }
   if (event.version !== 1) {
     throw new Error("flag event version must be 1");
   }
-  if (typeof event.streamId !== "string" || !event.streamId.startsWith("flag:")) {
+  if (!isJsonString(event.streamId) || !event.streamId.startsWith("flag:")) {
     throw new Error("flag event streamId must start with flag:");
   }
 
@@ -240,7 +241,7 @@ function validateChanged(event) {
   validateKey(data?.key);
   assertStreamMatchesKey(event);
   validateValueType(data.valueType);
-  if (!data.diff || typeof data.diff !== "object") {
+  if (!data.diff || !isJsonObject(data.diff)) {
     throw new Error("flag.Changed requires a diff");
   }
   if (data.diff.value) {
@@ -281,7 +282,7 @@ function validateRef(ref) {
 }
 
 function validateKey(key) {
-  if (typeof key !== "string" || !/^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)*$/.test(key)) {
+  if (!isJsonString(key) || !/^[a-z][a-z0-9-]*(\.[a-z][a-z0-9-]*)*$/.test(key)) {
     throw new Error(`invalid flag key ${key}`);
   }
 }
@@ -294,10 +295,10 @@ function validateValueType(valueType) {
 
 function assertValue(valueType, value, label) {
   const valid =
-    (valueType === "boolean" && typeof value === "boolean") ||
-    (valueType === "string" && typeof value === "string") ||
-    (valueType === "number" && typeof value === "number" && Number.isFinite(value)) ||
-    (valueType === "object" && value !== null && typeof value === "object" && isJsonSerializable(value));
+    (valueType === "boolean" && isJsonBoolean(value)) ||
+    (valueType === "string" && isJsonString(value)) ||
+    (valueType === "number" && isJsonNumber(value) && Number.isFinite(value)) ||
+    (valueType === "object" && value !== null && isJsonObject(value) && isJsonSerializable(value));
 
   if (!valid) {
     throw new Error(`${label} must be a ${valueType} flag value`);
@@ -310,10 +311,10 @@ function normalizeTargeting(targeting, knownTargetingAttributes) {
   }
 
   return targeting.map((rule) => {
-    if (!rule || typeof rule !== "object") {
+    if (!rule || !isJsonObject(rule)) {
       throw new Error("targeting rule must be an object");
     }
-    if (typeof rule.attribute !== "string" || rule.attribute.length === 0) {
+    if (!isJsonString(rule.attribute) || rule.attribute.length === 0) {
       throw new Error("targeting rule requires an attribute");
     }
     if (
@@ -344,11 +345,11 @@ function normalizeTargeting(targeting, knownTargetingAttributes) {
 }
 
 function validatePrincipal(actor) {
-  if (!actor || typeof actor !== "object") {
+  if (!actor || !isJsonObject(actor)) {
     throw new Error("actor must be a PrincipalRef object");
   }
   for (const field of ["kind", "id", "tenant"]) {
-    if (typeof actor[field] !== "string" || actor[field].length === 0) {
+    if (!isJsonString(actor[field]) || actor[field].length === 0) {
       throw new Error(`actor.${field} is required`);
     }
   }
@@ -373,18 +374,17 @@ function isJsonSerializable(value) {
   if (value === null) {
     return true;
   }
-  switch (typeof value) {
-    case "boolean":
-    case "string":
-      return true;
-    case "number":
-      return Number.isFinite(value);
-    case "object":
-      if (Array.isArray(value)) {
-        return value.every(isJsonSerializable);
-      }
-      return Object.values(value).every(isJsonSerializable);
-    default:
-      return false;
+  if (isJsonBoolean(value) || isJsonString(value)) {
+    return true;
   }
+  if (isJsonNumber(value)) {
+    return Number.isFinite(value);
+  }
+  if (Array.isArray(value)) {
+    return value.every(isJsonSerializable);
+  }
+  if (isJsonObject(value)) {
+    return Object.values(value).every(isJsonSerializable);
+  }
+  return false;
 }

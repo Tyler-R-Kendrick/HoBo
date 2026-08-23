@@ -1,4 +1,6 @@
 import type { ConnectivityTierValue } from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.d.mts";
+import { type JsonValue } from "./json.js";
+
 
 export declare const YARD_MANIFEST_SCHEMA_VERSION: "hobo.yard-manifest/v1";
 
@@ -86,4 +88,4 @@ export type ValidationResult =
   | { ok: false; code: string; reason: string };
 
 export declare function projectYardManifest(topology: DeclaredYardTopology): YardManifest;
-export declare function validateYardManifest(manifest: unknown): ValidationResult;
+export declare function validateYardManifest(manifest: JsonValue): ValidationResult;

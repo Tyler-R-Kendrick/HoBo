@@ -79,10 +79,7 @@ export function createAgentPrincipal(input = {}) {
 }
 
 export function createMcpSecurityGateway(options = {}) {
-  const toolContracts = {
-    ...DEFAULT_MCP_TOOL_CONTRACTS,
-    ...(options.toolContracts ?? {}),
-  };
+  const toolContracts = Object.assign({}, DEFAULT_MCP_TOOL_CONTRACTS, options.toolContracts);
   const auditEvents = [];
   const spendByRunAndSubject = new Map();
   const approvalHooks = new Map();
@@ -141,7 +138,7 @@ export function createMcpSecurityGateway(options = {}) {
       return requestToken({ runId, subject, input: input.input ?? {}, tool });
     }
 
-    if (typeof tool.approvalWhen === "function" && tool.approvalWhen(input.input ?? {})) {
+    if (tool.approvalWhen instanceof Function && tool.approvalWhen(input.input ?? {})) {
       const hook = createApprovalHook({ runId, subject, toolName, tool, input: input.input ?? {} });
       const decision = recordDecision({
         runId,
@@ -565,11 +562,12 @@ function normalizeAgentSubject(input) {
 
 function normalizePrincipalRef(input, path) {
   const source = expectObject(input, path);
-  return {
+  const normalized = {
     kind: requireString(source.kind, `${path}.kind`),
     id: requireString(source.id, `${path}.id`),
-    ...(source.roles ? { roles: normalizeStringArray(source.roles, `${path}.roles`) } : {}),
   };
+  if (source.roles) normalized.roles = normalizeStringArray(source.roles, `${path}.roles`);
+  return normalized;
 }
 
 function normalizeStringArray(input, path) {
@@ -580,7 +578,7 @@ function normalizeStringArray(input, path) {
 }
 
 function requireString(input, path) {
-  if (typeof input !== "string" || input.trim() === "") {
+  if (!isString(input) || input.trim() === "") {
     throw new TypeError(`${path} must be a non-empty string`);
   }
   return input;
@@ -594,7 +592,7 @@ function normalizeNonNegativeNumber(input, path) {
 }
 
 function expectObject(input, path) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!isRecord(input)) {
     throw new TypeError(`${path} must be an object`);
   }
   return input;
@@ -605,7 +603,7 @@ function cloneJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!isRecord(value) && !Array.isArray(value)) {
     return value;
   }
   Object.freeze(value);
@@ -614,6 +612,15 @@ function deepFreeze(value) {
   }
   return value;
 }
+
+function isRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
+}
+
 
 function sha256Digest(value) {
   return `sha256:${createHash("sha256").update(String(value)).digest("hex")}`;

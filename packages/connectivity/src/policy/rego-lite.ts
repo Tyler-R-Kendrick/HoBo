@@ -20,14 +20,20 @@
  *   ]
  * }
  */
+
 import {
 	allowDecision,
 	denyDecision,
 	type PolicyDecision,
 	type PolicyRequest,
 } from "@hobo/core";
-
 import { parseIsolationClass } from "../env-isolation/types.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 // Keep engine id local to avoid circular import with opa-engine.ts.
 const REGO_LITE_ENGINE_ID = "hobo.policy.opa-rego/v1" as const;
@@ -43,6 +49,43 @@ export interface RegoLiteWhen {
 	readonly actions?: readonly string[];
 }
 
+function stringList(
+	value: JsonValue | undefined,
+): readonly string[] | undefined {
+	if (!Array.isArray(value)) return undefined;
+	const items = value.filter((entry): entry is string => isJsonString(entry));
+	return items.length > 0 ? items : undefined;
+}
+
+interface MutableRegoLiteWhen {
+	sameTenant?: boolean;
+	sameEnv?: boolean;
+	subjectTagsAny?: readonly string[];
+	subjectTagsAll?: readonly string[];
+	resourceKinds?: readonly string[];
+	resourceShared?: boolean;
+	actions?: readonly string[];
+}
+
+function parseRegoLiteWhen(value: JsonObject): RegoLiteWhen {
+	const when: MutableRegoLiteWhen = {};
+	if (value.sameTenant === true || value.sameTenant === false)
+		when.sameTenant = value.sameTenant;
+	if (value.sameEnv === true || value.sameEnv === false)
+		when.sameEnv = value.sameEnv;
+	const subjectTagsAny = stringList(value.subjectTagsAny);
+	if (subjectTagsAny) when.subjectTagsAny = subjectTagsAny;
+	const subjectTagsAll = stringList(value.subjectTagsAll);
+	if (subjectTagsAll) when.subjectTagsAll = subjectTagsAll;
+	const resourceKinds = stringList(value.resourceKinds);
+	if (resourceKinds) when.resourceKinds = resourceKinds;
+	if (value.resourceShared === true || value.resourceShared === false)
+		when.resourceShared = value.resourceShared;
+	const actions = stringList(value.actions);
+	if (actions) when.actions = actions;
+	return when;
+}
+
 export interface RegoLiteRule {
 	readonly effect: "allow" | "deny";
 	readonly actions?: readonly string[];
@@ -55,19 +98,21 @@ export interface RegoLiteDocument {
 	readonly rules: readonly RegoLiteRule[];
 }
 
-export function parseRegoLiteDocument(raw: unknown): RegoLiteDocument {
-	if (raw === null || typeof raw !== "object") {
+export function parseRegoLiteDocument(raw: JsonValue): RegoLiteDocument {
+	if (raw === null || !isJsonObject(raw)) {
 		throw new TypeError("rego-lite document must be an object");
 	}
-	const obj = raw as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const obj = raw as JsonObject;
 	if (!Array.isArray(obj.rules)) {
 		throw new TypeError("rego-lite.rules must be an array");
 	}
 	const rules: RegoLiteRule[] = obj.rules.map((r, i) => {
-		if (!r || typeof r !== "object") {
+		if (!r || !isJsonObject(r)) {
 			throw new TypeError(`rego-lite.rules[${i}] must be an object`);
 		}
-		const rule = r as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O or test boundary.
+		const rule = r as JsonObject;
 		if (rule.effect !== "allow" && rule.effect !== "deny") {
 			throw new TypeError(`rego-lite.rules[${i}].effect must be allow|deny`);
 		}
@@ -75,22 +120,20 @@ export function parseRegoLiteDocument(raw: unknown): RegoLiteDocument {
 			effect: rule.effect,
 			...(Array.isArray(rule.actions)
 				? {
-						actions: rule.actions.filter(
-							(a): a is string => typeof a === "string",
-						),
+						actions: rule.actions.filter((a): a is string => isJsonString(a)),
 					}
-				: {}),
-			...(rule.when && typeof rule.when === "object"
-				? { when: rule.when as RegoLiteWhen }
-				: {}),
-			...(typeof rule.reason === "string" ? { reason: rule.reason } : {}),
+				: undefined),
+			...(rule.when && isJsonObject(rule.when)
+				? { when: parseRegoLiteWhen(rule.when) }
+				: undefined),
+			...(isJsonString(rule.reason) ? { reason: rule.reason } : undefined),
 		};
 	});
 	return {
 		rules,
 		...(obj.default === "allow" || obj.default === "deny"
 			? { default: obj.default }
-			: {}),
+			: undefined),
 	};
 }
 

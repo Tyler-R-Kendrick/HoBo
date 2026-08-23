@@ -23,6 +23,7 @@ describe("Neon claimable Postgres (anon Temporary)", () => {
 		const authHeaders: string[] = [];
 		const result = await provisionNeonClaimablePostgres({
 			ref: "hobo-test",
+			// SAFETY: fetch double records Authorization headers and returns Neon JSON.
 			fetchImpl: (async (_url, init) => {
 				const headers = new Headers(init?.headers);
 				if (headers.has("Authorization") || headers.has("authorization")) {
@@ -50,6 +51,7 @@ describe("Neon claimable Postgres (anon Temporary)", () => {
 	it("fail-closed when API errors", async () => {
 		await expect(
 			provisionNeonClaimablePostgres({
+				// SAFETY: fetch double returns a 503 Neon error body.
 				fetchImpl: (async () =>
 					new Response("nope", { status: 503 })) as typeof fetch,
 			}),

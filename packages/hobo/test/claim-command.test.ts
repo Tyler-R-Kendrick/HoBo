@@ -61,6 +61,7 @@ describe("createClaimCommand", () => {
 	it("binds an anonymous deployment to an account, preserving state", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -92,6 +93,7 @@ describe("createClaimCommand", () => {
 	it("is idempotent when the deployment is already owned by the account", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 			await cli.run(["up", "--json"], { cwd });
@@ -108,6 +110,7 @@ describe("createClaimCommand", () => {
 	it("requires an account argument", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 			await cli.run(["up", "--json"], { cwd });
@@ -123,6 +126,7 @@ describe("createClaimCommand", () => {
 	it("reports no deployment when nothing has been deployed", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -136,7 +140,9 @@ describe("createClaimCommand", () => {
 
 	it("reports unavailable when no runtime is wired", async () => {
 		const result = await createClaimCommand().run({
-			context: { cwd: "/tmp", projectDir: "/tmp" } as unknown as CliContext,
+			// SAFETY: assertion required at this I/O or test boundary.
+			context: { cwd: "/tmp", projectDir: "/tmp" } as CliContext,
+			// SAFETY: assertion required at this I/O or test boundary.
 			flags: { cwd: "/tmp", to: null } as never,
 			args: ["acme"],
 			verb: "claim",

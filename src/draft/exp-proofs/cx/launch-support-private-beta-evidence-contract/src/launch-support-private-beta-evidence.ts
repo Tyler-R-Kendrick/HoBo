@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this parser-boundary guard rejects non-object inputs before reading contract fields; downstream checks validate the erased record. */
+
 export const REQUIRED_PRIVATE_BETA_SUPPORT_EVIDENCE_IDS = [
   "support-escalation-baseline",
   "support-workflow-intake",

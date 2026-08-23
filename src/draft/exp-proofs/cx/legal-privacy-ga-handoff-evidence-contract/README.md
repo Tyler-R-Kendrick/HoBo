@@ -7,7 +7,7 @@ software, enabling billing, or publishing unsupported compliance claims.
 ## Focused Gate
 
 ```powershell
-pnpm.cmd --prefix src\draft\exp-proofs\legal-privacy-ga-handoff-evidence-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\cx\legal-privacy-ga-handoff-evidence-contract test
 ```
 
 ## Proof Surface

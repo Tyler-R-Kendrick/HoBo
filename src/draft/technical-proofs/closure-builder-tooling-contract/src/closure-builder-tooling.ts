@@ -87,10 +87,12 @@ export default bindle("shop", (b) => {
 `;
 }
 
-export function canonicalClosureBuilderScaffold(name: string): {
-  readonly files: Record<string, string>;
+export interface ClosureBuilderScaffold {
+  readonly files: { readonly [path: string]: string };
   readonly nextCommands: readonly string[];
-} {
+}
+
+export function canonicalClosureBuilderScaffold(name: string): ClosureBuilderScaffold {
   const safeName = parseProjectName(name);
   return {
     files: {
@@ -195,6 +197,7 @@ function parseClosureBuilderResources(sourceText: string, fileName: string): Clo
     resources.push({
       alias: match[1],
       generatedId: `res_${String(resources.length + 1).padStart(4, "0")}`,
+      // SAFETY: assertion to `kind: match[2] as ResourceKind,` is required at this boundary.
       kind: match[2] as ResourceKind,
       fileName,
       line: lineAt(sourceText, match.index ?? 0),

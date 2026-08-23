@@ -93,7 +93,7 @@ class RuntimeLocalComponentHost {
     }
     const provider = this.#providers.get(link.providerId);
     const implementation = provider?.exports?.[link.exportInterface]?.[operation];
-    if (typeof implementation !== "function") {
+    if (!(implementation instanceof Function)) {
       throw new Error(`component_host.operation_not_found: ${link.exportInterface}.${operation}`);
     }
 
@@ -112,7 +112,7 @@ class RuntimeLocalComponentHost {
   async handleHttp(componentId, request) {
     const component = this.#requireLoaded(componentId);
     const handler = component.exports?.[HTTP_INCOMING]?.handle;
-    if (typeof handler !== "function") {
+    if (!(handler instanceof Function)) {
       throw new Error(`component_host.http_handler_missing: ${componentId}`);
     }
 
@@ -136,7 +136,7 @@ class RuntimeLocalComponentHost {
 
   async teardownComponent(componentId) {
     this.#requireLoaded(componentId);
-    for (const key of [...this.#links.keys()]) {
+    for (const key of this.#links.keys()) {
       if (key.startsWith(`${componentId}\0`)) {
         this.#links.delete(key);
       }
@@ -196,7 +196,7 @@ function linkKey(componentId, importInterface) {
 }
 
 function assertId(id, kind) {
-  if (typeof id !== "string" || id.length === 0) {
+  if (id === null || id === undefined || String(id) !== id || id.length === 0) {
     throw new Error(`component_host.${kind}_id_required`);
   }
 }

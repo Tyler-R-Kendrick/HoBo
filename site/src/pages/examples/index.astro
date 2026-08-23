@@ -241,7 +241,7 @@ import Base from "../../layouts/Base.astro";
 
 	<script>
 		import { bootExamplesConsole } from "../../lib/examples/controller.ts";
-		void bootExamplesConsole().catch((error: unknown) => {
+		void bootExamplesConsole().catch((error) => {
 			const message = error instanceof Error ? error.message : String(error);
 			const terminal = document.querySelector<HTMLElement>("[data-terminal]");
 			const state = document.querySelector<HTMLElement>("[data-deploy-state]");

@@ -8,13 +8,27 @@ import { defineTool, type JsonValue } from "@flue/runtime";
 import * as v from "valibot";
 import { runHoboCodeCli } from "./cli.js";
 
+type HoboCliRunner = typeof runHoboCodeCli;
+let runCli: HoboCliRunner = runHoboCodeCli;
+
+/** Test injection: tools route through this runner instead of the real CLI. */
+export function installHarnessCliRunner(runner: HoboCliRunner): void {
+	runCli = runner;
+}
+
+export function resetHarnessCliRunner(): void {
+	runCli = runHoboCodeCli;
+}
+
 async function runJson(argv: readonly string[]): Promise<JsonValue> {
-	const result = await runHoboCodeCli(argv, { json: true });
+	const result = await runCli(argv, { json: true });
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return {
 		ok: result.ok,
 		code: result.code,
 		message: result.message,
-		...(result.data !== undefined ? { data: result.data } : {}),
+		...(result.data !== undefined ? { data: result.data } : undefined),
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	} as JsonValue;
 }
 

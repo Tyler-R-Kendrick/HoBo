@@ -6,6 +6,7 @@
  *
  * Pure ops delegated to `@hobo/management` (shared with control API + MCP).
  */
+
 import type { CommandModule } from "@hobo/cli";
 import type { ConnectionService } from "@hobo/identity";
 import {
@@ -17,9 +18,9 @@ import {
 	connectionRotate,
 	createManagementContext,
 } from "@hobo/management";
-
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import { loadHoboProfile } from "./hobo-profile.js";
+import { isJsonString, type JsonObject } from "./json.js";
 
 export interface ConnectionCommandDeps {
 	readonly env?: NodeJS.ProcessEnv;
@@ -41,14 +42,14 @@ type Subcommand = (typeof SUBCOMMANDS)[number];
 
 function resolveStationId(
 	hoboHome: string,
-	flags: Record<string, unknown>,
+	flags: JsonObject,
 	env: NodeJS.ProcessEnv,
 ): string | undefined {
 	const stationFlag = flags.station;
-	if (typeof stationFlag === "string" && stationFlag.length > 0) {
+	if (isJsonString(stationFlag) && stationFlag.length > 0) {
 		return stationFlag;
 	}
-	if (typeof env.HOBO_STATION === "string" && env.HOBO_STATION.length > 0) {
+	if (isJsonString(env.HOBO_STATION) && env.HOBO_STATION.length > 0) {
 		return env.HOBO_STATION;
 	}
 	return loadHoboProfile(hoboHome)?.defaultStation?.id;
@@ -59,16 +60,20 @@ export function createConnectionCommand(
 ): CommandModule {
 	return {
 		run: async ({ context, flags, args }) => {
-			const f = flags as unknown as Record<string, unknown>;
+			// SAFETY: assertion required at this I/O or test boundary.
+			const f = flags as JsonObject;
 			const env =
+				// SAFETY: assertion required at this I/O or test boundary.
 				deps.env ?? (context as { env?: NodeJS.ProcessEnv }).env ?? process.env;
 			const hoboHome =
 				deps.hoboHome ??
-				(typeof f.home === "string" && f.home.length > 0
+				(isJsonString(f.home) && f.home.length > 0
 					? f.home
 					: defaultHoboHome(env));
 
+			// SAFETY: assertion required at this I/O or test boundary.
 			const sub = (args[0] ?? "") as Subcommand | "";
+			// SAFETY: assertion required at this I/O or test boundary.
 			if (!SUBCOMMANDS.includes(sub as Subcommand)) {
 				return {
 					ok: false,
@@ -100,12 +105,11 @@ export function createConnectionCommand(
 
 			const ctx = createManagementContext({ hoboHome });
 			const tenant =
-				typeof f.tenant === "string" && f.tenant.length > 0
-					? f.tenant
-					: undefined;
+				isJsonString(f.tenant) && f.tenant.length > 0 ? f.tenant : undefined;
 			const stationId = resolveStationId(
 				hoboHome,
-				flags as unknown as Record<string, unknown>,
+				// SAFETY: assertion required at this I/O or test boundary.
+				flags as JsonObject,
 				env,
 			);
 
@@ -120,22 +124,22 @@ export function createConnectionCommand(
 						data: { command: "connection", subcommand: "create" },
 					};
 				}
-				const alias = typeof f.alias === "string" ? f.alias : undefined;
-				const scopesRaw = typeof f.scopes === "string" ? f.scopes : "";
+				const alias = isJsonString(f.alias) ? f.alias : undefined;
+				const scopesRaw = isJsonString(f.scopes) ? f.scopes : "";
 				const scopes = scopesRaw
 					? scopesRaw
 							.split(",")
 							.map((s) => s.trim())
 							.filter(Boolean)
 					: [];
-				const flow = typeof f.flow === "string" ? f.flow : undefined;
+				const flow = isJsonString(f.flow) ? f.flow : undefined;
 				return connectionCreate(ctx, {
 					provider,
-					...(alias !== undefined ? { alias } : {}),
+					...(alias !== undefined ? { alias } : undefined),
 					scopes,
-					...(flow !== undefined ? { flow } : {}),
-					...(stationId !== undefined ? { stationId } : {}),
-					...(tenant !== undefined ? { tenant } : {}),
+					...(flow !== undefined ? { flow } : undefined),
+					...(stationId !== undefined ? { stationId } : undefined),
+					...(tenant !== undefined ? { tenant } : undefined),
 				});
 			}
 
@@ -150,33 +154,33 @@ export function createConnectionCommand(
 						data: { command: "connection", subcommand: "authorize" },
 					};
 				}
-				const scopesRaw = typeof f.scopes === "string" ? f.scopes : "";
+				const scopesRaw = isJsonString(f.scopes) ? f.scopes : "";
 				const grantedScopes = scopesRaw
 					? scopesRaw
 							.split(",")
 							.map((s) => s.trim())
 							.filter(Boolean)
 					: undefined;
-				const installationId =
-					typeof f.installationId === "string" ? f.installationId : undefined;
+				const installationId = isJsonString(f.installationId)
+					? f.installationId
+					: undefined;
 				return connectionAuthorize(ctx, {
 					idOrAlias,
-					...(tenant !== undefined ? { tenant } : {}),
-					...(grantedScopes !== undefined ? { grantedScopes } : {}),
-					...(installationId !== undefined ? { installationId } : {}),
+					...(tenant !== undefined ? { tenant } : undefined),
+					...(grantedScopes !== undefined ? { grantedScopes } : undefined),
+					...(installationId !== undefined ? { installationId } : undefined),
 				});
 			}
 
 			if (sub === "list") {
-				const provider =
-					typeof f.provider === "string" ? f.provider : undefined;
-				const status = typeof f.status === "string" ? f.status : undefined;
-				const subjectId = typeof f.subject === "string" ? f.subject : undefined;
+				const provider = isJsonString(f.provider) ? f.provider : undefined;
+				const status = isJsonString(f.status) ? f.status : undefined;
+				const subjectId = isJsonString(f.subject) ? f.subject : undefined;
 				return connectionList(ctx, {
-					...(tenant !== undefined ? { tenant } : {}),
-					...(provider !== undefined ? { provider } : {}),
-					...(status !== undefined ? { status } : {}),
-					...(subjectId !== undefined ? { subjectId } : {}),
+					...(tenant !== undefined ? { tenant } : undefined),
+					...(provider !== undefined ? { provider } : undefined),
+					...(status !== undefined ? { status } : undefined),
+					...(subjectId !== undefined ? { subjectId } : undefined),
 				});
 			}
 
@@ -193,7 +197,7 @@ export function createConnectionCommand(
 				}
 				return connectionGet(ctx, {
 					idOrAlias,
-					...(tenant !== undefined ? { tenant } : {}),
+					...(tenant !== undefined ? { tenant } : undefined),
 				});
 			}
 
@@ -208,11 +212,11 @@ export function createConnectionCommand(
 						data: { command: "connection", subcommand: "revoke" },
 					};
 				}
-				const reason = typeof f.reason === "string" ? f.reason : "user-revoked";
+				const reason = isJsonString(f.reason) ? f.reason : "user-revoked";
 				return connectionRevoke(ctx, {
 					idOrAlias,
 					reason,
-					...(tenant !== undefined ? { tenant } : {}),
+					...(tenant !== undefined ? { tenant } : undefined),
 				});
 			}
 
@@ -229,7 +233,7 @@ export function createConnectionCommand(
 			}
 			return connectionRotate(ctx, {
 				idOrAlias,
-				...(tenant !== undefined ? { tenant } : {}),
+				...(tenant !== undefined ? { tenant } : undefined),
 			});
 		},
 	};

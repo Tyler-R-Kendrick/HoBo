@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const REGISTRY_DESCRIPTOR_SCHEMA = "registry.descriptor/v1";
 const SEMVER_PATTERN_SOURCE = String.raw`(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-((?:0|[1-9]\d*|[A-Za-z-][0-9A-Za-z-]*)(?:\.(?:0|[1-9]\d*|[A-Za-z-][0-9A-Za-z-]*))*))?(?:\+([0-9A-Za-z-]+(?:\.[0-9A-Za-z-]+)*))?`;
@@ -73,7 +75,7 @@ export function createFixtureDescriptor({ kind = "provider" } = {}) {
 export function parseDescriptor(candidate) {
   const errors = [];
 
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     return { ok: false, errors: ["descriptor must be an object"], descriptor: null };
   }
 
@@ -132,7 +134,7 @@ export function parseDescriptor(candidate) {
     });
   }
 
-  if (!candidate.publisher || typeof candidate.publisher !== "object") {
+  if (!candidate.publisher || !isJsonObject(candidate.publisher)) {
     errors.push("publisher must be an object");
   } else {
     if (!isNonEmptyString(candidate.publisher.type)) {
@@ -202,7 +204,7 @@ function parseInterfaceDeclarations(declarations, path, errors) {
 }
 
 function validateArtifactRef(ref, path, errors) {
-  if (!ref || typeof ref !== "object" || Array.isArray(ref)) {
+  if (!ref || !isJsonObject(ref) || Array.isArray(ref)) {
     errors.push(`${path} must be an artifact reference object`);
     return;
   }
@@ -256,7 +258,7 @@ function conformanceReportRef(seed, {
 }
 
 function validateConformanceReportRef(report, path, errors) {
-  if (!report || typeof report !== "object" || Array.isArray(report)) {
+  if (!report || !isJsonObject(report) || Array.isArray(report)) {
     errors.push(`${path} must be a conformance report reference object`);
     return;
   }
@@ -277,22 +279,22 @@ function validateConformanceReportRef(report, path, errors) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function isSemver(value) {
-  return typeof value === "string" && SEMVER_RE.test(value);
+  return isJsonString(value) && SEMVER_RE.test(value);
 }
 
 function isSha256Digest(value) {
-  return typeof value === "string" && /^sha256:[a-f0-9]{64}$/.test(value);
+  return isJsonString(value) && /^sha256:[a-f0-9]{64}$/.test(value);
 }
 
 function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

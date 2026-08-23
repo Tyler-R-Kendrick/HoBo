@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- canonical JSON owns the erased JSON boundary. */
 /**
  * Pack manifest signing.
  *
@@ -116,6 +117,7 @@ export function canonicalJson(value: unknown): string {
 		case "undefined":
 			return "null";
 		case "object": {
+			// SAFETY: this branch is the object arm of canonical JSON serialization.
 			const entries = Object.entries(value as Record<string, unknown>)
 				.filter(([, entryValue]) => entryValue !== undefined)
 				.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));

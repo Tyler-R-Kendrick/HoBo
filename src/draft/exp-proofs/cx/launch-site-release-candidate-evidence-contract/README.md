@@ -20,7 +20,7 @@ the later GA handoff issue must consume.
 ## Verification
 
 ```powershell
-pnpm.cmd --dir src\draft\launch-site-release-candidate-evidence-contract test
+pnpm.cmd --dir src\draft\exp-proofs\cx\launch-site-release-candidate-evidence-contract test
 ```
 
 ## Architecture Evidence

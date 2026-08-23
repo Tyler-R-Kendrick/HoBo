@@ -13,6 +13,8 @@ import {
 	RUNNER_CATEGORY,
 } from "@hobo/runner-github";
 
+import { type JsonObject, parseJsonObject } from "./json.js";
+
 // public-contract: capability-manifest bundle schema id (registry parity).
 export const MANIFEST_SCHEMA = "hobo.capability-manifest/v1";
 // public-contract: capabilities document schema id.
@@ -52,10 +54,7 @@ export const PROVIDER_TERMS: ProviderTerms = {
 	reviewedOn: "2026-07-27",
 };
 
-export const COST_FACTS: Record<
-	ExecutionHostCategory,
-	{ sku: string; unit: string; marginalPrice: string; included: number }
-> = {
+export const COST_FACTS = {
 	[RUNNER_CATEGORY]: {
 		sku: CATEGORY_SKUS[RUNNER_CATEGORY],
 		unit: "minute",
@@ -68,7 +67,10 @@ export const COST_FACTS: Record<
 		marginalPrice: "0.0040",
 		included: 3000,
 	},
-};
+} satisfies Record<
+	ExecutionHostCategory,
+	{ sku: string; unit: string; marginalPrice: string; included: number }
+>;
 
 // The per-category execution-host manifest (same schema the Dispatcher parses
 // for every host): Blacksmith substitutes the runs-on substrate of the GitHub
@@ -81,6 +83,7 @@ export function executionHostManifest(
 	const providerId = options.providerId ?? BLACKSMITH_PROVIDER_ID;
 	const port = CATEGORY_PORTS[category];
 	const fact = COST_FACTS[category];
+	// SAFETY: sortKeys preserves the ExecutionHostManifest field set; schema is the host contract.
 	return sortKeys({
 		schema: EXECUTION_HOST_MANIFEST_SCHEMA,
 		provider: {
@@ -259,10 +262,10 @@ export function publishCapabilityManifest(
 export interface PublishedManifestParseResult {
 	ok: boolean;
 	errors: string[];
-	index: Record<string, unknown>;
-	capabilities: Record<string, unknown>;
-	auth: Record<string, unknown>;
-	cost: Record<string, unknown>;
+	index: JsonObject;
+	capabilities: JsonObject;
+	auth: JsonObject;
+	cost: JsonObject;
 }
 
 /**
@@ -273,16 +276,16 @@ export interface PublishedManifestParseResult {
 export function parsePublishedManifest(
 	documents: PublishedManifestDocuments,
 ): PublishedManifestParseResult {
-	const index = JSON.parse(
+	const index = parseJsonObject(
 		documents["/.well-known/capability-manifest/index.json"],
 	);
-	const capabilities = JSON.parse(
+	const capabilities = parseJsonObject(
 		documents["/.well-known/capability-manifest/capabilities.json"],
 	);
-	const auth = JSON.parse(
+	const auth = parseJsonObject(
 		documents["/.well-known/capability-manifest/auth.json"],
 	);
-	const cost = JSON.parse(
+	const cost = parseJsonObject(
 		documents["/.well-known/capability-manifest/cost.json"],
 	);
 	const errors: string[] = [];

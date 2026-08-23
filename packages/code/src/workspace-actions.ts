@@ -1,11 +1,11 @@
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-
 import { matchClosedIntent } from "./atom-intent.js";
 import {
 	type ExampleCatalogEntry,
 	matchExampleRequest,
 } from "./example-catalog.js";
+import { isJsonString } from "./json.js";
 import { preferNamedEndpoint, retargetUrl } from "./occupancy-endpoints.js";
 import { formatInkTable } from "./tui-layout.js";
 
@@ -69,7 +69,7 @@ export function resolveRunnableProject(
 		cwd,
 		join(cwd, "hello-world"),
 		join(cwd, "barebones"),
-	].filter((dir): dir is string => typeof dir === "string" && dir.length > 0);
+	].filter((dir): dir is string => isJsonString(dir) && dir.length > 0);
 	for (const dir of candidates) {
 		if (
 			existsSync(join(dir, "src", "bindle.ts")) ||
@@ -99,7 +99,7 @@ export function liveEndpointRows(
 	const scope = {
 		...(options.environment !== undefined
 			? { environment: options.environment }
-			: {}),
+			: undefined),
 	};
 	const publicApp = options.namedUrl
 		? options.namedUrl

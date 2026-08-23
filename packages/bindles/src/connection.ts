@@ -3,6 +3,8 @@
  * Connections are broker-owned; Bindles only declare requirements / references.
  */
 
+import { isJsonString } from "./json.js";
+
 export type ConnectionRequirement = Readonly<{
 	kind: "connection-requirement";
 	/** Capability Manifest / Registry provider key (e.g. "asana"). */
@@ -25,20 +27,20 @@ export function requireConnection(input: {
 	scopes?: readonly string[];
 	anyHealthy?: boolean;
 }): ConnectionRequirement {
-	if (typeof input.provider !== "string" || input.provider.length === 0) {
+	if (!isJsonString(input.provider) || input.provider.length === 0) {
 		throw new TypeError("requireConnection: provider is required");
 	}
 	return Object.freeze({
 		kind: "connection-requirement",
 		provider: input.provider,
-		...(input.alias !== undefined ? { alias: input.alias } : {}),
+		...(input.alias !== undefined ? { alias: input.alias } : undefined),
 		scopes: Object.freeze([...(input.scopes ?? [])]),
 		anyHealthy: input.anyHealthy !== false,
 	});
 }
 
 /**
- * SDK helper shape for `ctx.connection(aliasOrId).token({ scopes? })`.
+ * SDK helper layout for `ctx.connection(aliasOrId).token({ scopes? })`.
  * Resolution is performed by the Yard token broker / ConnectionService.
  */
 export interface ConnectionClient {
@@ -55,7 +57,7 @@ export interface ConnectionClient {
 }
 
 export function connectionRef(aliasOrId: string): { readonly ref: string } {
-	if (typeof aliasOrId !== "string" || aliasOrId.length === 0) {
+	if (!isJsonString(aliasOrId) || aliasOrId.length === 0) {
 		throw new TypeError("connection ref must be a non-empty string");
 	}
 	return Object.freeze({ ref: aliasOrId });

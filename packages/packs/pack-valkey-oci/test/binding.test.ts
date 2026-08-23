@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */
 import assert from "node:assert/strict";
 import { PackError } from "@hobo/pack-framework";
 import { describe, it } from "vitest";
@@ -134,3 +135,4 @@ describe("buildValkeyBinding", () => {
 		);
 	});
 });
+/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */

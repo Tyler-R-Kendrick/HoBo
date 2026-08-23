@@ -16,6 +16,7 @@ import {
 	type RealizationResult,
 	RealizationResultParseError,
 } from "@hobo/core";
+import type { JsonValue } from "../json.js";
 
 import type { AssertionStatus } from "./eventstore.js";
 
@@ -43,26 +44,31 @@ export type RealizationResultAssertion =
 export interface RealizationResultConformanceReport {
 	readonly contract: typeof REALIZATION_RESULT_CONFORMANCE_CONTRACT;
 	readonly producer: string;
-	readonly assertions: Readonly<
-		Record<RealizationResultAssertion, AssertionStatus>
-	>;
+	readonly assertions: RealizationAssertions;
+}
+
+export interface RealizationAssertions {
+	readonly schemaRoundTrip: AssertionStatus;
+	readonly refOnlySecretsEnforced: AssertionStatus;
+	readonly deterministicResourceOrder: AssertionStatus;
+	readonly deterministicBindingOrder: AssertionStatus;
 }
 
 export type ProduceRealizationResult = (
 	scenario: RealizationResultScenario,
-) => unknown | Promise<unknown>;
+) => JsonValue | Promise<JsonValue>;
 
 export async function runRealizationResultConformance(
 	produce: ProduceRealizationResult,
 	options: { readonly producer?: string } = {},
 ): Promise<RealizationResultConformanceReport> {
-	if (typeof produce !== "function") {
+	if (!(produce instanceof Function)) {
 		throw new TypeError("produce must be a function");
 	}
 
 	const producer = options.producer ?? "unknown-producer";
 	const ordering = await provesDeterministicOrdering(produce);
-	const assertions: Record<RealizationResultAssertion, AssertionStatus> = {
+	const assertions: RealizationAssertions = {
 		schemaRoundTrip: (await provesSchemaRoundTrip(produce)) ? "pass" : "fail",
 		refOnlySecretsEnforced: (await provesRefOnlySecrets(produce))
 			? "pass"
@@ -103,7 +109,7 @@ async function provesSchemaRoundTrip(
 async function provesRefOnlySecrets(
 	produce: ProduceRealizationResult,
 ): Promise<boolean> {
-	let candidate: unknown;
+	let candidate: JsonValue;
 	try {
 		candidate = await produce("raw-secret");
 	} catch (error) {

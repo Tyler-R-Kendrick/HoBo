@@ -91,6 +91,10 @@ type SupportSafeReceiptEvidence = Readonly<{
   supportSafe: true;
 }>;
 
+type CanonicalValue = null | boolean | number | string | readonly CanonicalValue[] | {
+  readonly [key: string]: CanonicalValue;
+};
+
 export function createReceiptVerificationContext(): ReceiptVerificationContext {
   return Object.freeze({
     issuer: "meta-cloud-broker",
@@ -241,15 +245,19 @@ function receiptDigest(payload: ResolutionReceiptPayload): string {
   return `sha256:${createHash("sha256").update(canonicalJson(payload)).digest("hex")}`;
 }
 
-function canonicalJson(value: unknown): string {
+function canonicalJson(value: CanonicalValue): string {
   if (Array.isArray(value)) {
     return `[${value.map(canonicalJson).join(",")}]`;
   }
-  if (value && typeof value === "object") {
+  if (isRecord(value)) {
     return `{${Object.entries(value)
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`)
       .join(",")}}`;
   }
-  return JSON.stringify(value);
+  return JSON.stringify(value) ?? "null";
+}
+
+function isRecord(value: CanonicalValue): value is { readonly [key: string]: CanonicalValue } {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
 }

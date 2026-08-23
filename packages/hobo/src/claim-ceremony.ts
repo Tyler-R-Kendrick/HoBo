@@ -6,7 +6,6 @@ import {
 } from "@hobo/claims";
 import type { CliContext, CommandResult, YardRuntime } from "@hobo/cli";
 import { deploymentIdFor } from "@hobo/cli";
-
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import {
 	applyClaimCommand,
@@ -14,6 +13,7 @@ import {
 	rebuildClaimState,
 	requireItem,
 } from "./claim-plane.js";
+import { isJsonString, type JsonObject } from "./json.js";
 import { createFileOneTimeActionStore } from "./one-time-action-store-file.js";
 
 // The ownership ceremony verbs.
@@ -30,7 +30,7 @@ import { createFileOneTimeActionStore } from "./one-time-action-store-file.js";
 export interface ClaimCeremonyInput {
 	readonly subcommand: "status" | "open" | "finalize";
 	readonly args: readonly string[];
-	readonly flags: Record<string, unknown>;
+	readonly flags: JsonObject;
 	readonly context: CliContext;
 	readonly deps: {
 		readonly runtime?: YardRuntime;
@@ -65,10 +65,10 @@ export async function runClaimCeremony(
 	const nowMs = input.deps.now?.() ?? Date.now();
 	const projectDir =
 		input.context.projectDir ??
-		(typeof input.flags.cwd === "string" ? input.flags.cwd : input.context.cwd);
+		(isJsonString(input.flags.cwd) ? input.flags.cwd : input.context.cwd);
 	const deploymentRef = deploymentIdFor(projectDir);
 	const home =
-		typeof input.flags.home === "string" && input.flags.home.length > 0
+		isJsonString(input.flags.home) && input.flags.home.length > 0
 			? input.flags.home
 			: defaultHoboHome(env);
 

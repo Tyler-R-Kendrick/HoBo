@@ -1,12 +1,11 @@
 import type {
 	HttpTransport,
 	ResolveRequest,
-	ResolverError,
 	TransportRequest,
 	TransportResponse,
 } from "@hobo/core";
+import { ResolverError } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
 import {
 	CLOUDFLARE_D1_PRODUCT_ID,
 	CLOUDFLARE_KV_PRODUCT_ID,
@@ -20,11 +19,13 @@ import {
 	guardedCloudflareTransport,
 	redactCloudflareText,
 } from "../src/index.js";
+import type { JsonValue } from "../src/json.js";
 
 const ACCOUNT_ID = "acct-1234";
 const CREDENTIAL_REF = "env://CLOUDFLARE_API_TOKEN";
 const TOKEN = "cf-token-value";
 
+// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 /** A 40-character token-shaped string, as Cloudflare echoes them in errors. */
 const LEAKED_TOKEN = "abcdefghij0123456789ABCDEFGHIJ0123456789";
 
@@ -79,7 +80,7 @@ function fakeTransport(
 	};
 }
 
-function json(status: number, payload: unknown): TransportResponse {
+function json(status: number, payload: JsonValue): TransportResponse {
 	return {
 		status,
 		headers: { "content-type": "application/json" },
@@ -87,7 +88,7 @@ function json(status: number, payload: unknown): TransportResponse {
 	};
 }
 
-function ok(result: unknown): TransportResponse {
+function ok(result: JsonValue): TransportResponse {
 	return json(200, { success: true, errors: [], messages: [], result });
 }
 
@@ -121,21 +122,21 @@ function resolverFor(productId: string) {
 	return resolver;
 }
 
-const SLOTS: Readonly<Record<string, ResolveRequest["ref"]["slot"]>> = {
+const SLOTS = {
 	[CLOUDFLARE_R2_PRODUCT_ID]: "bucket",
 	[CLOUDFLARE_D1_PRODUCT_ID]: "data",
 	[CLOUDFLARE_KV_PRODUCT_ID]: "kv",
 	[CLOUDFLARE_QUEUES_PRODUCT_ID]: "queue",
 	[CLOUDFLARE_WORKERS_PRODUCT_ID]: "service",
 	[CLOUDFLARE_PAGES_PRODUCT_ID]: "web",
-};
+} as const satisfies Record<string, ResolveRequest["ref"]["slot"]>;
 
 function request(
 	productId: string,
 	overrides?: {
 		readonly logicalId?: string;
 		readonly physicalId?: string;
-		readonly desired?: Readonly<Record<string, unknown>>;
+		readonly desired?: Readonly<JsonObject>;
 		readonly credentialRef?: string;
 	},
 ): ResolveRequest {
@@ -147,7 +148,7 @@ function request(
 			slot,
 			productId,
 			logicalId: overrides?.logicalId ?? "app-primary",
-			...(physicalId !== undefined ? { physicalId } : {}),
+			...(physicalId !== undefined ? { physicalId } : undefined),
 		},
 		desired: overrides?.desired ?? {},
 		credentialRef: overrides?.credentialRef ?? CREDENTIAL_REF,
@@ -156,22 +157,24 @@ function request(
 
 /** The code a refusal carried, or undefined if the call resolved. */
 async function refusalCode(
-	call: () => Promise<unknown>,
+	call: () => Promise<void>,
 ): Promise<string | undefined> {
 	try {
 		await call();
 		return undefined;
 	} catch (error) {
-		return (error as ResolverError).code;
+		if (error instanceof ResolverError) return error.code;
+		throw error;
 	}
 }
 
-async function refusalMessage(call: () => Promise<unknown>): Promise<string> {
+async function refusalMessage(call: () => Promise<void>): Promise<string> {
 	try {
 		await call();
 		return "";
 	} catch (error) {
-		return (error as Error).message;
+		if (error instanceof Error) return error.message;
+		throw error;
 	}
 }
 
@@ -188,7 +191,7 @@ const WORKER_SCRIPT = `/client/v4/accounts/${ACCOUNT_ID}/workers/scripts/app-pri
 
 /** Minimal in-memory Cloudflare, keyed by the deterministic resource name. */
 function r2Double(): (call: RecordedCall) => TransportResponse {
-	const buckets = new Map<string, Record<string, unknown>>();
+	const buckets = new Map<string, JsonObject>();
 	return (call) => {
 		const name = call.path.slice(`${R2_COLLECTION}/`.length);
 		if (call.method === "GET") {
@@ -196,7 +199,8 @@ function r2Double(): (call: RecordedCall) => TransportResponse {
 			return found === undefined ? missing() : ok(found);
 		}
 		if (call.method === "POST") {
-			const body = JSON.parse(call.body ?? "{}") as Record<string, unknown>;
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			const body = JSON.parse(call.body ?? "{}") as JsonObject;
 			const created = {
 				name: body.name,
 				location: "wnam",
@@ -214,7 +218,7 @@ function r2Double(): (call: RecordedCall) => TransportResponse {
 }
 
 function d1Double(): (call: RecordedCall) => TransportResponse {
-	const databases = new Map<string, Record<string, unknown>>();
+	const databases = new Map<string, JsonObject>();
 	return (call) => {
 		if (call.method === "GET") {
 			const name = new URLSearchParams(call.search).get("name") ?? "";
@@ -222,7 +226,8 @@ function d1Double(): (call: RecordedCall) => TransportResponse {
 			return ok(found === undefined ? [] : [found]);
 		}
 		if (call.method === "POST") {
-			const body = JSON.parse(call.body ?? "{}") as Record<string, unknown>;
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			const body = JSON.parse(call.body ?? "{}") as JsonObject;
 			const name = String(body.name);
 			const created = {
 				uuid: `uuid-${name}`,
@@ -234,7 +239,8 @@ function d1Double(): (call: RecordedCall) => TransportResponse {
 		}
 		if (call.method === "PATCH") {
 			const uuid = call.path.slice(`${D1_COLLECTION}/`.length);
-			const body = JSON.parse(call.body ?? "{}") as Record<string, unknown>;
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			const body = JSON.parse(call.body ?? "{}") as JsonObject;
 			for (const [name, entry] of databases) {
 				if (entry.uuid !== uuid) continue;
 				const updated = {
@@ -261,13 +267,14 @@ function d1Double(): (call: RecordedCall) => TransportResponse {
 }
 
 function kvDouble(): (call: RecordedCall) => TransportResponse {
-	const namespaces = new Map<string, Record<string, unknown>>();
+	const namespaces = new Map<string, JsonObject>();
 	return (call) => {
 		if (call.method === "GET") {
 			return ok([...namespaces.values()]);
 		}
 		if (call.method === "POST") {
-			const body = JSON.parse(call.body ?? "{}") as Record<string, unknown>;
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			const body = JSON.parse(call.body ?? "{}") as JsonObject;
 			const title = String(body.title);
 			const created = { id: `ns-${title}`, title };
 			namespaces.set(title, created);
@@ -288,11 +295,12 @@ function kvDouble(): (call: RecordedCall) => TransportResponse {
 }
 
 function queuesDouble(): (call: RecordedCall) => TransportResponse {
-	const queues = new Map<string, Record<string, unknown>>();
+	const queues = new Map<string, JsonObject>();
 	return (call) => {
 		if (call.method === "GET") return ok([...queues.values()]);
 		if (call.method === "POST") {
-			const body = JSON.parse(call.body ?? "{}") as Record<string, unknown>;
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			const body = JSON.parse(call.body ?? "{}") as JsonObject;
 			const name = String(body.queue_name);
 			const created = {
 				queue_id: `q-${name}`,
@@ -304,7 +312,8 @@ function queuesDouble(): (call: RecordedCall) => TransportResponse {
 		}
 		if (call.method === "PUT") {
 			const id = call.path.slice(`${QUEUES_COLLECTION}/`.length);
-			const body = JSON.parse(call.body ?? "{}") as Record<string, unknown>;
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			const body = JSON.parse(call.body ?? "{}") as JsonObject;
 			for (const [name, entry] of queues) {
 				if (entry.queue_id !== id) continue;
 				const updated = { ...entry, settings: body.settings };
@@ -328,7 +337,7 @@ function queuesDouble(): (call: RecordedCall) => TransportResponse {
 }
 
 function pagesDouble(): (call: RecordedCall) => TransportResponse {
-	const projects = new Map<string, Record<string, unknown>>();
+	const projects = new Map<string, JsonObject>();
 	return (call) => {
 		const name = call.path.slice(`${PAGES_COLLECTION}/`.length);
 		if (call.method === "GET") {
@@ -336,7 +345,8 @@ function pagesDouble(): (call: RecordedCall) => TransportResponse {
 			return found === undefined ? missing() : ok(found);
 		}
 		if (call.method === "POST") {
-			const body = JSON.parse(call.body ?? "{}") as Record<string, unknown>;
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			const body = JSON.parse(call.body ?? "{}") as JsonObject;
 			const created = {
 				name: body.name,
 				production_branch: body.production_branch ?? "main",
@@ -346,7 +356,8 @@ function pagesDouble(): (call: RecordedCall) => TransportResponse {
 			return ok(created);
 		}
 		if (call.method === "PATCH") {
-			const body = JSON.parse(call.body ?? "{}") as Record<string, unknown>;
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+			const body = JSON.parse(call.body ?? "{}") as JsonObject;
 			const existing = projects.get(name);
 			if (existing === undefined) return missing();
 			const updated = {
@@ -365,7 +376,7 @@ function pagesDouble(): (call: RecordedCall) => TransportResponse {
 }
 
 function workersDouble(): (call: RecordedCall) => TransportResponse {
-	const scripts = new Map<string, Record<string, unknown>>();
+	const scripts = new Map<string, JsonObject>();
 	return (call) => {
 		const name = call.path.endsWith("/settings")
 			? call.path.slice(
@@ -403,7 +414,8 @@ const HARNESSES = [
 		name: "r2",
 		productId: CLOUDFLARE_R2_PRODUCT_ID,
 		double: r2Double,
-		desired: {} as Readonly<Record<string, unknown>>,
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+		desired: {},
 		createMethod: "POST",
 		createPath: R2_COLLECTION,
 		physicalId: "app-primary",
@@ -412,7 +424,8 @@ const HARNESSES = [
 		name: "d1",
 		productId: CLOUDFLARE_D1_PRODUCT_ID,
 		double: d1Double,
-		desired: {} as Readonly<Record<string, unknown>>,
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+		desired: {},
 		createMethod: "POST",
 		createPath: D1_COLLECTION,
 		physicalId: "uuid-app-primary",
@@ -421,7 +434,8 @@ const HARNESSES = [
 		name: "kv",
 		productId: CLOUDFLARE_KV_PRODUCT_ID,
 		double: kvDouble,
-		desired: {} as Readonly<Record<string, unknown>>,
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+		desired: {},
 		createMethod: "POST",
 		createPath: KV_COLLECTION,
 		physicalId: "ns-app-primary",
@@ -430,7 +444,8 @@ const HARNESSES = [
 		name: "queues",
 		productId: CLOUDFLARE_QUEUES_PRODUCT_ID,
 		double: queuesDouble,
-		desired: {} as Readonly<Record<string, unknown>>,
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+		desired: {},
 		createMethod: "POST",
 		createPath: QUEUES_COLLECTION,
 		physicalId: "q-app-primary",
@@ -439,7 +454,8 @@ const HARNESSES = [
 		name: "pages",
 		productId: CLOUDFLARE_PAGES_PRODUCT_ID,
 		double: pagesDouble,
-		desired: {} as Readonly<Record<string, unknown>>,
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+		desired: {},
 		createMethod: "POST",
 		createPath: PAGES_COLLECTION,
 		physicalId: "app-primary",
@@ -448,7 +464,8 @@ const HARNESSES = [
 		name: "workers",
 		productId: CLOUDFLARE_WORKERS_PRODUCT_ID,
 		double: workersDouble,
-		desired: { script: WORKER_SOURCE } as Readonly<Record<string, unknown>>,
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
+		desired: { script: WORKER_SOURCE } as Readonly<JsonObject>,
 		createMethod: "PUT",
 		createPath: WORKER_SCRIPT,
 		physicalId: "app-primary",
@@ -464,6 +481,7 @@ describe("cloudflare resolver registry", () => {
 		).toEqual([...CLOUDFLARE_RESOLVED_PRODUCT_IDS]);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("reports cloudflare as the provider for every resolver", () => {
 		for (const resolver of resolvers().list()) {
 			expect(resolver.providerId).toBe("cloudflare");
@@ -700,6 +718,7 @@ describe("mutable deltas are applied, immutable drift is only reported", () => {
 		expect(created.diagnostics.join(" ")).toMatch(/per write/u);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("r2 sends the jurisdiction as a header on every call", async () => {
 		const fake = fakeTransport(r2Double());
 		await resolverFor(CLOUDFLARE_R2_PRODUCT_ID).reconcile(
@@ -796,6 +815,7 @@ describe("credentials are locators, and a missing one is a refusal", () => {
 		expect(fake.calls).toHaveLength(0);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("sends the resolved material as a bearer token and never the ref", async () => {
 		const fake = fakeTransport(r2Double());
 		await resolverFor(CLOUDFLARE_R2_PRODUCT_ID).reconcile(

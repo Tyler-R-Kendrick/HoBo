@@ -25,6 +25,7 @@ type FeedTarget = "plan" | "migrate" | "up";
 type MigrationPhase = "expand" | "backfill" | "contract";
 type LifecycleMode = "deploy" | "promote" | "rollback";
 type McpInputType = "string" | "boolean" | "enum";
+type InvocationInput = Record<string, string | boolean | undefined>;
 
 type CliFlag = {
   readonly name: string;
@@ -100,7 +101,7 @@ type Fixture = {
   };
   readonly mcp: {
     readonly tool: string;
-    readonly input: Record<string, unknown>;
+    readonly input: InvocationInput;
     readonly result: ResultEnvelope;
   };
   readonly result: ResultEnvelope;
@@ -108,7 +109,12 @@ type Fixture = {
 
 type CanonicalInvocation = {
   readonly tool: string;
-  readonly input: Record<string, unknown>;
+  readonly input: InvocationInput;
+};
+
+type CliMcpParityResult = {
+  readonly case: FixtureCase;
+  readonly equivalent: boolean;
 };
 
 type CliMcpParityContract = {
@@ -341,6 +347,7 @@ export function parseCliMcpParityContract(contract: CliMcpParityContract): Parse
     throw new CliMcpParityParseError(errors);
   }
 
+  // SAFETY: every invariant above has passed, so this brand is valid only at the parser boundary.
   return contract as ParsedCliMcpParityContract;
 }
 
@@ -351,10 +358,7 @@ export class CliMcpParityParseError extends Error {
   }
 }
 
-export function assertCliMcpParity(fixtureItem: Fixture): {
-  readonly case: FixtureCase;
-  readonly equivalent: boolean;
-} {
+export function assertCliMcpParity(fixtureItem: Fixture): CliMcpParityResult {
   const cliInvocation = canonicalCliInvocation(fixtureItem.cli.command);
   const mcpInvocation = {
     tool: fixtureItem.mcp.tool,
@@ -451,7 +455,7 @@ function fixture(
   fixtureCase: FixtureCase,
   command: string,
   tool: string,
-  input: Record<string, unknown>,
+  input: InvocationInput,
   result: Pick<ResultEnvelope, "status" | "code" | "humanMessage" | "remediation">,
 ): Fixture {
   const fixtureId = `hobo-570-${fixtureCase}`;
@@ -496,7 +500,7 @@ function semanticResult(result: ResultEnvelope): string {
 function canonicalCliInvocation(command: string): CanonicalInvocation {
   const tokens = command.trim().split(/\s+/);
   const [binary, verb] = tokens;
-  const input: Record<string, unknown> = {};
+  const input: InvocationInput = {};
 
   if (binary !== "hobo" || !verb) {
     return { tool: "", input };

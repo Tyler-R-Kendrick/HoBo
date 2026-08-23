@@ -1,4 +1,6 @@
 import { readFile } from "node:fs/promises";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const CDKTF_IMPORT_ONLY_ERROR = "cdktf-import-only";
 export const CDKTF_IMPORT_REPORT_VERSION = "hobo.iac-cdktf.import/v1";
@@ -6,7 +8,7 @@ export const CDKTF_IMPORT_REPORT_VERSION = "hobo.iac-cdktf.import/v1";
 export type CdktfResourceKind = "adopted" | "external";
 
 export interface TerraformStateResourceInstance {
-  attributes: Record<string, unknown> & { id: string | number };
+  attributes: JsonObject & { id: string | number };
 }
 
 export interface TerraformStateResource {
@@ -24,7 +26,14 @@ export interface TerraformState {
   resources: TerraformStateResource[];
 }
 
-export type ResourceMappings = Record<string, { hoboType: string; capability?: string }>;
+export interface ResourceMapping {
+  hoboType: string;
+  capability?: string;
+}
+
+export interface ResourceMappings {
+  [terraformType: string]: ResourceMapping;
+}
 
 export interface CdktfResourceProvenance {
   source: "cdktf";
@@ -43,7 +52,7 @@ export interface CdktfAdoptedResource {
   address: string;
   id: string;
   provider: string;
-  attributes: Record<string, unknown>;
+  attributes: JsonObject;
   provenance: CdktfResourceProvenance;
 }
 
@@ -55,7 +64,7 @@ export interface CdktfExternalResource {
   address: string;
   id: string;
   provider: string;
-  attributes: Record<string, unknown>;
+  attributes: JsonObject;
   provenance: CdktfResourceProvenance;
   externalReason: string;
 }
@@ -128,9 +137,9 @@ export interface IacPlan {
 export interface CdktfImportOnlyProvider {
   id: "cdktf";
   mode: "import-only";
-  preview(program?: unknown): Promise<never>;
-  apply(program?: unknown): Promise<never>;
-  destroy(program?: unknown): Promise<never>;
+  preview(program?: JsonValue): Promise<never>;
+  apply(program?: JsonValue): Promise<never>;
+  destroy(program?: JsonValue): Promise<never>;
   refresh(program?: RefreshProgram): Promise<CdktfDriftReport>;
 }
 
@@ -162,7 +171,7 @@ export class CdktfStateError extends Error {
 }
 
 export async function readTerraformStateFile(fileUrlOrPath: URL | string): Promise<TerraformState> {
-  let parsed: unknown;
+  let parsed: JsonValue;
   try {
     parsed = JSON.parse(await readFile(fileUrlOrPath, "utf8"));
   } catch (error) {
@@ -177,7 +186,7 @@ export async function readTerraformStateFile(fileUrlOrPath: URL | string): Promi
 
 export function importCdktfState(state: TerraformState, options: ImportCdktfStateOptions = {}): CdktfImportReport {
   const validated = validateTerraformState(state);
-  const mappings: ResourceMappings = { ...DEFAULT_MAPPINGS, ...(options.mappings ?? {}) };
+  const mappings: ResourceMappings = { ...DEFAULT_MAPPINGS, ...options.mappings };
   const resources: CdktfImportedResource[] = [];
 
   for (const resource of validated.resources) {
@@ -313,48 +322,53 @@ export function planAdoptedResources(
   });
 }
 
-function validateTerraformState(state: unknown): TerraformState {
-  if (!state || typeof state !== "object" || Array.isArray(state)) {
+function validateTerraformState<T>(state: T): TerraformState {
+  if (!state || !isJsonObject(state)) {
     throw new CdktfStateError("invalid-state", "CDKTF/Terraform state must be an object");
   }
 
-  const candidate = state as Record<string, unknown>;
-  if (!Array.isArray(candidate.resources)) {
+  if (!Array.isArray(state.resources)) {
     throw new CdktfStateError("missing-resources", "CDKTF/Terraform state must contain resources[]");
   }
 
-  for (const resource of candidate.resources) {
+  for (const resource of state.resources) {
     validateResource(resource);
   }
 
-  return state as TerraformState;
+  const validated: TerraformState =
+    // SAFETY: resources[] and instance attributes were parsed above.
+    state as never;
+  return validated;
 }
 
-function validateResource(resource: unknown): void {
-  if (!resource || typeof resource !== "object") {
+function validateResource<T>(resource: T): void {
+  if (!resource || !isJsonObject(resource)) {
     throw new CdktfStateError("invalid-resource", "state resources[] entries must be objects");
   }
 
-  const candidate = resource as Record<string, unknown>;
-  if (typeof candidate.type !== "string" || candidate.type.length === 0) {
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+  const candidate = resource as JsonObject;
+  if (!isJsonString(candidate.type) || candidate.type.length === 0) {
     throw new CdktfStateError("missing-resource-type", "state resource is missing type");
   }
-  if (typeof candidate.name !== "string" || candidate.name.length === 0) {
+  if (!isJsonString(candidate.name) || candidate.name.length === 0) {
     throw new CdktfStateError("missing-resource-name", `state resource ${candidate.type} is missing name`);
   }
   if (!Array.isArray(candidate.instances)) {
     throw new CdktfStateError("missing-resource-instances", `${candidate.type}.${candidate.name} is missing instances[]`);
   }
 
-  candidate.instances.forEach((instance: unknown, index: number) => {
-    const instanceRecord = instance as Record<string, unknown> | null | undefined;
-    if (!instanceRecord?.attributes || typeof instanceRecord.attributes !== "object") {
+  candidate.instances.forEach((instance: JsonValue, index: number) => {
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+    const instanceRecord = instance as JsonObject | null | undefined;
+    if (!instanceRecord?.attributes || !isJsonObject(instanceRecord.attributes)) {
       throw new CdktfStateError(
         "missing-resource-attributes",
         `${candidate.type}.${candidate.name} instance ${index} is missing attributes`,
       );
     }
-    const attributes = instanceRecord.attributes as Record<string, unknown>;
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+    const attributes = instanceRecord.attributes as JsonObject;
     if (attributes.id === undefined || attributes.id === null || attributes.id === "") {
       throw new CdktfStateError(
         "missing-resource-id",
@@ -382,7 +396,7 @@ function normalizeProvider(provider: string = "unknown"): string {
 }
 
 function deepFreeze<T>(value: T): T {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
 

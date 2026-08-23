@@ -49,6 +49,16 @@ import { createHash } from "node:crypto";
 // public-contract: plan schema discriminant, hashed into every plan digest.
 export const DEPLOYMENT_PLAN_SCHEMA = "hobo.deployment-plan/v1" as const;
 
+const objectTag = Object.prototype.toString;
+
+/**
+ * A JSON object. Interface (not a `Record` alias) so consumers stay anti-slop
+ * clean when they mention this type.
+ */
+export interface JsonObject {
+	readonly [key: string]: JsonValue;
+}
+
 /**
  * An arbitrary JSON value, matching `google.protobuf.Value`.
  *
@@ -56,13 +66,55 @@ export const DEPLOYMENT_PLAN_SCHEMA = "hobo.deployment-plan/v1" as const;
  * silently drops object properties holding it, and a silent drop changes the
  * plan digest. `parseResourcePlan` refuses it rather than normalizing it.
  */
-export type PlanParameterValue =
+export type JsonValue =
 	| null
 	| boolean
 	| number
 	| string
-	| readonly PlanParameterValue[]
-	| { readonly [key: string]: PlanParameterValue };
+	| readonly JsonValue[]
+	| JsonObject;
+
+/** Realization-parameter JSON. Same contract as {@link JsonValue}. */
+export type PlanParameterValue = JsonValue;
+
+/**
+ * Untrusted object at the parse boundary: JSON fields plus values this parser
+ * refuses rather than normalizes (`undefined`, `Date`, functions).
+ */
+export interface PlanParseObject {
+	readonly [key: string]: PlanParseInput | undefined;
+}
+
+/**
+ * Untrusted parse-boundary input. Broader than {@link JsonValue} so the
+ * boundary can still name and refuse non-JSON values.
+ */
+export type PlanParseInput =
+	| JsonValue
+	| bigint
+	| symbol
+	| undefined
+	| Date
+	| ((...args: JsonValue[]) => JsonValue | undefined)
+	| PlanParseObject
+	| readonly PlanParseInput[];
+
+interface MutableJsonObject {
+	[key: string]: JsonValue;
+}
+
+type ResourcePlanDraft = {
+	name: string;
+	port: string;
+	provider: string;
+	deps: readonly string[];
+	strategy?: string;
+	region?: string;
+	deploymentId?: string;
+	productId?: string;
+	realizationParameters?: JsonObject;
+	nonPortableRows?: readonly string[];
+};
 
 declare const resourcePlanBrand: unique symbol;
 
@@ -76,7 +128,7 @@ export type ResourcePlan = {
 	readonly region?: string;
 	readonly deploymentId?: string;
 	readonly productId?: string;
-	readonly realizationParameters?: Readonly<Record<string, PlanParameterValue>>;
+	readonly realizationParameters?: JsonObject;
 	readonly nonPortableRows?: readonly string[];
 	readonly [resourcePlanBrand]: "ResourcePlan";
 };
@@ -152,26 +204,98 @@ const DEPLOYMENT_PLAN_KEYS = [
 
 type Fail = (path: string, detail: string) => never;
 
-function record(
-	value: unknown,
-	path: string,
-	fail: Fail,
-): Record<string, unknown> {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
-		fail(path, `expected an object, received ${describe(value)}`);
-	}
-	return value as Record<string, unknown>;
+function isPrimitiveString(value: PlanParseInput): value is string {
+	return (
+		objectTag.call(value) === "[object String]" && !(value instanceof String)
+	);
 }
 
-function describe(value: unknown): string {
+function isPrimitiveNumber(value: PlanParseInput): value is number {
+	return (
+		objectTag.call(value) === "[object Number]" && !(value instanceof Number)
+	);
+}
+
+function isPrimitiveBoolean(value: PlanParseInput): value is boolean {
+	return (
+		objectTag.call(value) === "[object Boolean]" && !(value instanceof Boolean)
+	);
+}
+
+function isFunction(
+	value: PlanParseInput,
+): value is (...args: JsonValue[]) => JsonValue | undefined {
+	const tag = objectTag.call(value);
+	return (
+		tag === "[object Function]" ||
+		tag === "[object AsyncFunction]" ||
+		tag === "[object GeneratorFunction]" ||
+		tag === "[object AsyncGeneratorFunction]"
+	);
+}
+
+function isJsonRecord(value: JsonValue): value is JsonObject {
+	return value !== null && objectTag.call(value) === "[object Object]";
+}
+
+/**
+ * Objects `typeof` would have called `"object"` after excluding null and
+ * arrays: plain records, null-prototype records, Date, Map, class instances.
+ */
+function isPlanParseObject(value: PlanParseInput): value is PlanParseObject {
+	if (value === null || value === undefined) return false;
+	if (Array.isArray(value)) return false;
+	if (
+		isPrimitiveString(value) ||
+		isPrimitiveNumber(value) ||
+		isPrimitiveBoolean(value)
+	) {
+		return false;
+	}
+	if (isFunction(value)) return false;
+	const tag = objectTag.call(value);
+	return tag !== "[object BigInt]" && tag !== "[object Symbol]";
+}
+
+function instanceName(value: PlanParseObject): string {
+	const prototype = Object.getPrototypeOf(value);
+	if (prototype === null || prototype === undefined) return "an exotic object";
+	const ctor = prototype.constructor;
+	if (ctor === null || ctor === undefined) return "an exotic object";
+	const name = ctor.name;
+	if (objectTag.call(name) !== "[object String]" || name.length === 0) {
+		return "an exotic object";
+	}
+	return name;
+}
+
+function record(
+	value: PlanParseInput,
+	path: string,
+	fail: Fail,
+): PlanParseObject {
+	if (!isPlanParseObject(value)) {
+		fail(path, `expected an object, received ${describe(value)}`);
+	}
+	return value;
+}
+
+function describe(value: PlanParseInput): string {
 	if (value === null) return "null";
 	if (Array.isArray(value)) return "an array";
 	if (value === undefined) return "undefined";
-	return `${typeof value} ${JSON.stringify(value)}`;
+	if (isPrimitiveString(value)) return `string ${JSON.stringify(value)}`;
+	if (isPrimitiveNumber(value)) return `number ${JSON.stringify(value)}`;
+	if (isPrimitiveBoolean(value)) return `boolean ${JSON.stringify(value)}`;
+	if (isFunction(value)) return `function ${JSON.stringify(value)}`;
+	const tag = objectTag.call(value);
+	if (tag === "[object BigInt]") return `bigint ${String(value)}`;
+	if (tag === "[object Symbol]") return `symbol ${JSON.stringify(value)}`;
+	return `object ${JSON.stringify(value)}`;
 }
 
 function rejectUnknownKeys(
-	source: Record<string, unknown>,
+	source: PlanParseObject,
 	allowed: readonly string[],
 	path: string,
 	fail: Fail,
@@ -187,14 +311,14 @@ function rejectUnknownKeys(
 }
 
 function requiredString(
-	source: Record<string, unknown>,
+	source: PlanParseObject,
 	key: string,
 	path: string,
 	fail: Fail,
-	{ allowEmpty = false }: { allowEmpty?: boolean } = {},
+	allowEmpty = false,
 ): string {
 	const value = source[key];
-	if (typeof value !== "string") {
+	if (!isPrimitiveString(value)) {
 		fail(`${path}.${key}`, `expected a string, received ${describe(value)}`);
 	}
 	if (!allowEmpty && value.length === 0) {
@@ -215,11 +339,11 @@ function requiredString(
  * caller believe it set a field that never reached the digest.
  */
 function optionalString(
-	source: Record<string, unknown>,
+	source: PlanParseObject,
 	key: string,
 	path: string,
 	fail: Fail,
-	{ allowEmpty = false }: { allowEmpty?: boolean } = {},
+	allowEmpty = false,
 ): string | undefined {
 	if (!Object.hasOwn(source, key)) return undefined;
 	const value = source[key];
@@ -229,21 +353,21 @@ function optionalString(
 			`optional field is present holding ${value === null ? "null" : "undefined"}; an optional field must be absent, not empty-valued`,
 		);
 	}
-	return requiredString(source, key, path, fail, { allowEmpty });
+	return requiredString(source, key, path, fail, allowEmpty);
 }
 
 function stringArray(
-	value: unknown,
+	value: PlanParseInput,
 	path: string,
 	fail: Fail,
-	{ allowEmptyEntries }: { allowEmptyEntries: boolean },
+	allowEmptyEntries: boolean,
 ): readonly string[] {
 	if (!Array.isArray(value)) {
 		fail(path, `expected an array of strings, received ${describe(value)}`);
 	}
 	return Object.freeze(
 		value.map((entry, index) => {
-			if (typeof entry !== "string") {
+			if (!isPrimitiveString(entry)) {
 				fail(
 					`${path}[${index}]`,
 					`expected a string, received ${describe(entry)}`,
@@ -258,28 +382,23 @@ function stringArray(
 }
 
 function parameterValue(
-	value: unknown,
+	value: PlanParseInput,
 	path: string,
 	fail: Fail,
 ): PlanParameterValue {
 	if (value === null) return null;
-	switch (typeof value) {
-		case "boolean":
-		case "string":
-			return value;
-		case "number":
-			// NaN and ±Infinity are not JSON. `JSON.stringify` turns each into
-			// `null`, so admitting one would mean the parsed value and the value
-			// that gets hashed disagree — a silent digest mutation.
-			if (!Number.isFinite(value)) {
-				fail(
-					path,
-					`expected a finite number, received ${value}; it is not representable in JSON and would canonicalize to null`,
-				);
-			}
-			return value;
-		default:
-			break;
+	if (isPrimitiveBoolean(value) || isPrimitiveString(value)) return value;
+	if (isPrimitiveNumber(value)) {
+		// NaN and ±Infinity are not JSON. `JSON.stringify` turns each into
+		// `null`, so admitting one would mean the parsed value and the value
+		// that gets hashed disagree — a silent digest mutation.
+		if (!Number.isFinite(value)) {
+			fail(
+				path,
+				`expected a finite number, received ${value}; it is not representable in JSON and would canonicalize to null`,
+			);
+		}
+		return value;
 	}
 	if (Array.isArray(value)) {
 		return Object.freeze(
@@ -288,25 +407,24 @@ function parameterValue(
 			),
 		);
 	}
-	if (typeof value === "object") {
-		// Plain objects only. A Date, a Map, or any class instance is `typeof
-		// "object"` with no own enumerable keys, so walking it as a record would
-		// quietly produce `{}` — while `JSON.stringify` would produce something
-		// else entirely (a Date serializes to a string through `toJSON`). The
-		// parsed value and the value that gets hashed would then disagree, which
-		// is the one thing this boundary exists to prevent.
-		const prototype = Object.getPrototypeOf(value) as unknown;
+	if (isPlanParseObject(value)) {
+		// Plain objects only. A Date, a Map, or any class instance is object-like
+		// with no own enumerable keys, so walking it as a record would quietly
+		// produce `{}` — while `JSON.stringify` would produce something else
+		// entirely (a Date serializes to a string through `toJSON`). The parsed
+		// value and the value that gets hashed would then disagree, which is the
+		// one thing this boundary exists to prevent.
+		const prototype = Object.getPrototypeOf(value);
 		if (prototype !== Object.prototype && prototype !== null) {
 			fail(
 				path,
-				`expected a plain JSON object, received an instance of ${(value as object).constructor?.name ?? "an exotic object"}; it has no faithful canonical form`,
+				`expected a plain JSON object, received an instance of ${instanceName(value)}; it has no faithful canonical form`,
 			);
 		}
-		const source = value as Record<string, unknown>;
-		const out: Record<string, PlanParameterValue> = {};
-		for (const key of Object.keys(source)) {
-			if (!Object.hasOwn(source, key)) continue;
-			out[key] = parameterValue(source[key], `${path}.${key}`, fail);
+		const out: MutableJsonObject = {};
+		for (const key of Object.keys(value)) {
+			if (!Object.hasOwn(value, key)) continue;
+			out[key] = parameterValue(value[key], `${path}.${key}`, fail);
 		}
 		return Object.freeze(out);
 	}
@@ -317,12 +435,12 @@ function parameterValue(
 }
 
 function realizationParameters(
-	value: unknown,
+	value: PlanParseInput,
 	path: string,
 	fail: Fail,
-): Readonly<Record<string, PlanParameterValue>> {
+): JsonObject {
 	const source = record(value, path, fail);
-	const out: Record<string, PlanParameterValue> = {};
+	const out: MutableJsonObject = {};
 	for (const key of Object.keys(source)) {
 		if (CREDENTIAL_KEY_PATTERN.test(key)) {
 			fail(
@@ -342,6 +460,23 @@ function realizationParameters(
 	return Object.freeze(out);
 }
 
+function freezeResourcePlan(draft: ResourcePlanDraft): ResourcePlan {
+	// SAFETY: ResourcePlan is branded with a unique symbol this parser mints;
+	// every field has already been parsed and optionals are omitted, not undefined.
+	return Object.freeze(draft) as ResourcePlan;
+}
+
+function freezeDeploymentPlan(draft: {
+	schema: typeof DEPLOYMENT_PLAN_SCHEMA;
+	resources: readonly ResourcePlan[];
+	dependencyOrder: readonly string[];
+	objective: string;
+}): DeploymentPlan {
+	// SAFETY: DeploymentPlan is branded with a unique symbol this parser mints;
+	// every field has already been parsed.
+	return Object.freeze(draft) as DeploymentPlan;
+}
+
 /**
  * Parse-don't-validate boundary for one plan node.
  *
@@ -351,7 +486,7 @@ function realizationParameters(
  * @throws {ResourcePlanError} naming the exact offending field.
  */
 export function parseResourcePlan(
-	input: unknown,
+	input: PlanParseInput,
 	path = "resource",
 ): ResourcePlan {
 	const fail: Fail = (at, detail) => {
@@ -369,28 +504,16 @@ export function parseResourcePlan(
 			"required field is absent; a node with no dependencies carries an empty array, because absent and empty hash differently",
 		);
 	}
-	const deps = stringArray(source.deps, `${path}.deps`, fail, {
-		// Matches hobo.cloud.v1's `deps: [...string]`. An empty dep id names
-		// nothing and is almost certainly an authoring defect, but refusing it
-		// here would be this package tightening the plan contract on its own;
-		// see the README.
-		allowEmptyEntries: true,
-	});
+	const deps = stringArray(source.deps, `${path}.deps`, fail, true);
 
 	// `strategy`, `region` and `deploymentId` admit "" to match the CUE
 	// constraint they were decomposed from. `productId` does not.
-	const strategy = optionalString(source, "strategy", path, fail, {
-		allowEmpty: true,
-	});
-	const region = optionalString(source, "region", path, fail, {
-		allowEmpty: true,
-	});
-	const deploymentId = optionalString(source, "deploymentId", path, fail, {
-		allowEmpty: true,
-	});
+	const strategy = optionalString(source, "strategy", path, fail, true);
+	const region = optionalString(source, "region", path, fail, true);
+	const deploymentId = optionalString(source, "deploymentId", path, fail, true);
 	const productId = optionalString(source, "productId", path, fail);
 
-	let parameters: Readonly<Record<string, PlanParameterValue>> | undefined;
+	let parameters: JsonObject | undefined;
 	if (Object.hasOwn(source, "realizationParameters")) {
 		const raw = source.realizationParameters;
 		if (raw === undefined || raw === null) {
@@ -415,27 +538,26 @@ export function parseResourcePlan(
 				`optional field is present holding ${raw === null ? "null" : "undefined"}; an optional field must be absent, not empty-valued`,
 			);
 		}
-		rows = stringArray(raw, `${path}.nonPortableRows`, fail, {
-			allowEmptyEntries: false,
-		});
+		rows = stringArray(raw, `${path}.nonPortableRows`, fail, false);
 	}
 
-	// Spread-if-present, never `key: undefined`: under
+	// Assign-if-present, never `key: undefined`: under
 	// exactOptionalPropertyTypes the two are different values, and the second
 	// one disappears from the canonical JSON without disappearing from
 	// `Object.keys`.
-	return Object.freeze({
+	const parsed: ResourcePlanDraft = {
 		name,
 		port,
 		provider,
 		deps,
-		...(strategy !== undefined ? { strategy } : {}),
-		...(region !== undefined ? { region } : {}),
-		...(deploymentId !== undefined ? { deploymentId } : {}),
-		...(productId !== undefined ? { productId } : {}),
-		...(parameters !== undefined ? { realizationParameters: parameters } : {}),
-		...(rows !== undefined ? { nonPortableRows: rows } : {}),
-	}) as ResourcePlan;
+	};
+	if (strategy !== undefined) parsed.strategy = strategy;
+	if (region !== undefined) parsed.region = region;
+	if (deploymentId !== undefined) parsed.deploymentId = deploymentId;
+	if (productId !== undefined) parsed.productId = productId;
+	if (parameters !== undefined) parsed.realizationParameters = parameters;
+	if (rows !== undefined) parsed.nonPortableRows = rows;
+	return freezeResourcePlan(parsed);
 }
 
 /**
@@ -453,7 +575,7 @@ export function parseResourcePlan(
  * @throws {DeploymentPlanError} for plan-level faults.
  * @throws {ResourcePlanError} for a fault inside one node.
  */
-export function parseDeploymentPlan(input: unknown): DeploymentPlan {
+export function parseDeploymentPlan(input: PlanParseInput): DeploymentPlan {
 	const path = "plan";
 	const fail: Fail = (at, detail) => {
 		throw new DeploymentPlanError(at, detail);
@@ -499,17 +621,47 @@ export function parseDeploymentPlan(input: unknown): DeploymentPlan {
 		source.dependencyOrder,
 		`${path}.dependencyOrder`,
 		fail,
-		{ allowEmptyEntries: false },
+		false,
 	);
 
 	const objective = requiredString(source, "objective", path, fail);
 
-	return Object.freeze({
+	return freezeDeploymentPlan({
 		schema: DEPLOYMENT_PLAN_SCHEMA,
 		resources,
 		dependencyOrder,
 		objective,
-	}) as DeploymentPlan;
+	});
+}
+
+function resourcePlanJson(resource: ResourcePlan): JsonObject {
+	const out: MutableJsonObject = {
+		name: resource.name,
+		port: resource.port,
+		provider: resource.provider,
+		deps: [...resource.deps],
+	};
+	if (resource.strategy !== undefined) out.strategy = resource.strategy;
+	if (resource.region !== undefined) out.region = resource.region;
+	if (resource.deploymentId !== undefined)
+		out.deploymentId = resource.deploymentId;
+	if (resource.productId !== undefined) out.productId = resource.productId;
+	if (resource.realizationParameters !== undefined) {
+		out.realizationParameters = resource.realizationParameters;
+	}
+	if (resource.nonPortableRows !== undefined) {
+		out.nonPortableRows = [...resource.nonPortableRows];
+	}
+	return out;
+}
+
+function deploymentPlanJson(plan: DeploymentPlan): JsonObject {
+	return {
+		schema: plan.schema,
+		resources: plan.resources.map(resourcePlanJson),
+		dependencyOrder: [...plan.dependencyOrder],
+		objective: plan.objective,
+	};
 }
 
 /**
@@ -522,14 +674,16 @@ export function parseDeploymentPlan(input: unknown): DeploymentPlan {
  * author-supplied. Swapping the comparator changes plan digests that are
  * already committed as constants elsewhere in the repo.
  */
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: JsonValue): JsonValue {
 	if (Array.isArray(value)) return value.map(sortKeys);
-	if (value && typeof value === "object") {
-		return Object.fromEntries(
-			Object.keys(value as Record<string, unknown>)
-				.sort()
-				.map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
-		);
+	if (isJsonRecord(value)) {
+		const out: MutableJsonObject = {};
+		for (const key of Object.keys(value).sort()) {
+			const entry = value[key];
+			if (entry === undefined) continue;
+			out[key] = sortKeys(entry);
+		}
+		return out;
 	}
 	return value;
 }
@@ -540,7 +694,7 @@ function sortKeys(value: unknown): unknown {
  * No indentation and no trailing newline — both are part of the digest.
  */
 export function canonicalPlanJson(plan: DeploymentPlan): string {
-	return JSON.stringify(sortKeys(plan));
+	return JSON.stringify(sortKeys(deploymentPlanJson(plan)));
 }
 
 /** SHA-256 over {@link canonicalPlanJson}. */

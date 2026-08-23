@@ -232,7 +232,7 @@ function normalizeContext(context) {
 }
 
 function parseTraceparent(traceparent) {
-  if (typeof traceparent !== "string") {
+  if (!isString(traceparent)) {
     throw new Error("ctx.log requires a valid W3C traceparent");
   }
 
@@ -317,7 +317,7 @@ function normalizeRateLimit(rateLimit) {
 }
 
 function normalizeSink(sink) {
-  if (!sink || typeof sink.write !== "function") {
+  if (!sink || !isCallable(sink.write)) {
     throw new Error("historical log sink requires a write(entry) function");
   }
 
@@ -346,7 +346,7 @@ function redactValue(value, key) {
     return value.map((item) => redactValue(item, ""));
   }
 
-  if (value && typeof value === "object") {
+  if (isObjectRecord(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([childKey, childValue]) => [
         childKey,
@@ -380,7 +380,7 @@ function cloneValue(value) {
   if (Array.isArray(value)) {
     return value.map(cloneValue);
   }
-  if (value && typeof value === "object") {
+  if (isObjectRecord(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([key, childValue]) => [key, cloneValue(childValue)])
     );
@@ -390,7 +390,21 @@ function cloneValue(value) {
 }
 
 function assertNonEmptyString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new Error(`${label} is required`);
   }
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isCallable(value) {
+  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
+    Object.prototype.toString.call(value),
+  );
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

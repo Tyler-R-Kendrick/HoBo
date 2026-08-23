@@ -23,6 +23,8 @@ import {
   upcastEvent,
   validateControlPlaneEvent
 } from "../src/control-plane-events.js";
+import { isJsonString } from "../src/json.js";
+
 
 const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 
@@ -78,7 +80,7 @@ test("golden deploy sequence records planning, matching, set, delta, resource, e
     ]
   );
   assert.equal(new Set(events.map((event) => event.correlationId)).size, 1);
-  assert.ok(events.every((event) => typeof event.causationId === "string" && event.causationId.length > 0));
+  assert.ok(events.every((event) => isJsonString(event.causationId) && event.causationId.length > 0));
 });
 
 test("deployment.Planned content-addresses the deterministic DeploymentPlan payload", () => {

@@ -11,16 +11,18 @@
 import { strict as assert } from "node:assert";
 
 import { createAuthFlagReadsetReactor, defineMaterialization } from "../src/auth-flag-readset.ts";
+import { type JsonValue, type JsonObject } from "../src/json.js";
+
 
 type Pushed = {
 	type: string;
 	subscriptionId: string;
 	decision: string;
 	reason?: string;
-	result: unknown[];
+	result: JsonValue[];
 };
 
-const event = (streamId: string, seq: number, type: string, data: Record<string, unknown>) => ({
+const event = (streamId: string, seq: number, type: string, data: JsonObject) => ({
 	streamId,
 	seq,
 	type,
@@ -91,6 +93,7 @@ const revokeWake = reactor.append(
 	}),
 );
 assert.deepEqual(revokeWake.wokenSubscriptions, ["sub:alice-vip-orders"]);
+// SAFETY: `const revokedPush = pushed.at(-1) as Pushed;` is required at this I/O or test boundary.
 const revokedPush = pushed.at(-1) as Pushed;
 assert.equal(revokedPush.decision, "deny");
 assert.equal(revokedPush.reason, "session-revoked");
@@ -107,7 +110,7 @@ const hidden = defineMaterialization({
 		{ kind: "authState", value: "session" },
 	],
 	initialState: [],
-	fold(state: unknown[], e: any, context: any) {
+	fold(state: JsonValue[], e: any, context: any) {
 		if (e.type !== "order.Visible" || !context.flag("show-vip-orders")) return state;
 		return [...state, { id: e.data.orderId }];
 	},
@@ -186,6 +189,7 @@ failClosedReactor.append(
 		principalId: "user:alice",
 	}),
 );
+// SAFETY: `const failClosedPush = privilegedPushed.at(-1) as Pushed;` is required at this I/O or test boundary.
 const failClosedPush = privilegedPushed.at(-1) as Pushed;
 assert.equal(failClosedPush.decision, "deny");
 assert.equal(failClosedPush.reason, "auth-recompute-failed");

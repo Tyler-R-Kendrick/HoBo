@@ -8,6 +8,7 @@ import path from "node:path";
 import assert from "node:assert/strict";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
+// SAFETY: JSON.parse is read from this proof's local manifest and the asserted fields are checked immediately below.
 const proof = JSON.parse(
   readFileSync(path.join(root, "..", "proof.json"), "utf8"),
 ) as { slug: string; layer: string };

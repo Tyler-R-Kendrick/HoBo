@@ -10,6 +10,7 @@ import {
   createBuiltInFlagProvider,
   createBuiltInFlagStore
 } from "../src/built-in-flag-store.js";
+import { isJsonNumber } from "../src/json.js";
 
 const actor = Object.freeze({
   kind: "user",
@@ -70,7 +71,7 @@ test("evaluates a flag deterministically from the event-sourced built-in store",
   assert.equal(first.value, true);
   assert.equal(first.reason, "targeting-match");
   assert.equal(first.variant, "on");
-  assert.equal(typeof first.bucket, "number");
+  assert.equal(isJsonNumber(first.bucket), true);
   assert.deepEqual(second, first);
   assert.equal(control.value, false);
   assert.equal(control.reason, "default");

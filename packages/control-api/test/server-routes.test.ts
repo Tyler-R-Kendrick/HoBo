@@ -30,10 +30,13 @@ import {
 	type ControlApiServer,
 	createControlApiServer,
 	PayloadTooLargeError,
+	type ControlApiServerOptions,
 } from "../src/index.js";
 
 const temps: string[] = [];
 const servers: ControlApiServer[] = [];
+type JsonValue = null | boolean | number | string | JsonValue[] | JsonObject;
+type JsonObject = { [key: string]: JsonValue };
 
 afterEach(async () => {
 	for (const s of servers.splice(0)) await s.close();
@@ -47,13 +50,13 @@ function tempHome(): string {
 }
 
 async function start(
-	overrides: Record<string, unknown> = {},
+	overrides: Partial<ControlApiServerOptions> = {},
 ): Promise<ControlApiServer> {
 	const server = await createControlApiServer({
 		hoboHome: tempHome(),
 		port: 0,
 		...overrides,
-	} as never);
+	});
 	servers.push(server);
 	return server;
 }
@@ -62,23 +65,24 @@ async function call(
 	base: string,
 	path: string,
 	init?: RequestInit,
-): Promise<{ status: number; body: Record<string, unknown> }> {
+): Promise<{ status: number; body: JsonObject }> {
 	const res = await fetch(`${base}${path}`, {
 		...init,
-		headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
+		headers: { "content-type": "application/json", ...init?.headers },
 	});
 	const text = await res.text();
 	return {
 		status: res.status,
-		body: text ? (JSON.parse(text) as Record<string, unknown>) : {},
+		// SAFETY: JSON.parse is the test HTTP response boundary.
+		body: text ? (JSON.parse(text) as JsonObject) : {},
 	};
 }
 
-const post = (base: string, path: string, body?: unknown) =>
-	call(base, path, {
-		method: "POST",
-		...(body === undefined ? {} : { body: JSON.stringify(body) }),
-	});
+const post = (base: string, path: string, body?: JsonValue) => {
+	const init: RequestInit = { method: "POST" };
+	if (body !== undefined) init.body = JSON.stringify(body);
+	return call(base, path, init);
+};
 
 /** A station, since most routes are meaningless without one. */
 async function withStation(): Promise<ControlApiServer> {
@@ -164,7 +168,8 @@ describe("the always-on routes", () => {
 		// The description is what a client generates against; a route missing
 		// from it is a route nobody can discover.
 		const { body } = await call((await start()).url, "/v1/openapi.json");
-		const paths = Object.keys(body.paths as Record<string, unknown>);
+		// SAFETY: the OpenAPI response contract exposes a string-keyed paths object.
+		const paths = Object.keys(body.paths as JsonObject);
 		for (const expected of [
 			"/v1/station/init",
 			"/v1/connection/create",
@@ -416,7 +421,8 @@ describe("the world read model", () => {
 	it("serves an empty, non-demo snapshot by default", async () => {
 		const server = await start();
 		const { body } = await call(server.url, "/v1/world/snapshot");
-		const data = body.data as Record<string, unknown>;
+		// SAFETY: the world snapshot response contains the documented data object.
+		const data = body.data as JsonObject;
 		expect(data.demo).toBe(false);
 		expect(data.seed).toBeNull();
 	});
@@ -428,7 +434,8 @@ describe("the world read model", () => {
 		expect(server.demo).toBe(true);
 		expect(server.demoSeed).toBe(7);
 		const { body } = await call(server.url, "/v1/world/snapshot");
-		expect((body.data as Record<string, unknown>).demo).toBe(true);
+		// SAFETY: the world snapshot response contains the documented data object.
+		expect((body.data as JsonObject).demo).toBe(true);
 	});
 
 	it("defaults a demo seed rather than running unreproducibly", async () => {
@@ -458,8 +465,15 @@ describe("the world read model", () => {
 		// to until the first change.
 		const server = await start();
 		const res = await fetch(`${server.url}/v1/world/stream`);
+		// SAFETY: fetch provides a byte stream for this SSE response.
 		const reader = (res.body as ReadableStream<Uint8Array>).getReader();
-		const first = new TextDecoder().decode((await reader.read()).value);
+		const decoder = new TextDecoder();
+		let first = "";
+		while (!first.includes("world-snapshot")) {
+			const { value, done } = await reader.read();
+			if (done) break;
+			first += decoder.decode(value, { stream: true });
+		}
 		expect(first).toContain("world-snapshot");
 		await reader.cancel();
 	});
@@ -467,6 +481,7 @@ describe("the world read model", () => {
 	it("heartbeats the world stream so a quiet world is not mistaken for a dead one", async () => {
 		const server = await start({ streamIntervalMs: 20 });
 		const res = await fetch(`${server.url}/v1/world/stream`);
+		// SAFETY: fetch provides a byte stream for this SSE response.
 		const reader = (res.body as ReadableStream<Uint8Array>).getReader();
 		let seen = "";
 		for (let i = 0; i < 8 && !seen.includes("event: heartbeat"); i += 1) {
@@ -479,6 +494,7 @@ describe("the world read model", () => {
 	it("pushes a delta to an open stream when the world changes", async () => {
 		const server = await start({ demo: true, demoIntervalMs: 0 });
 		const res = await fetch(`${server.url}/v1/world/stream`);
+		// SAFETY: fetch provides a byte stream for this SSE response.
 		const reader = (res.body as ReadableStream<Uint8Array>).getReader();
 		await reader.read(); // snapshot
 		server.tickDemo();
@@ -499,7 +515,8 @@ describe("OTLP ingest", () => {
 			traces,
 		);
 		expect(status).toBe(200);
-		expect((body.data as Record<string, unknown>).accepted).toBe(0);
+		// SAFETY: the ingest response data contains the accepted count.
+		expect((body.data as JsonObject).accepted).toBe(0);
 	});
 
 	it.each(["logs", "metrics"])("accepts an OTLP/JSON %s batch", async (sig) => {
@@ -529,7 +546,8 @@ describe("OTLP ingest", () => {
 			body: JSON.stringify(traces),
 		});
 		expect(res.status).toBe(415);
-		expect(((await res.json()) as Record<string, unknown>).code).toBe(
+		// SAFETY: the error response is a JSON object with a code field.
+		expect(((await res.json()) as JsonObject).code).toBe(
 			"unsupported-media-type",
 		);
 	});
@@ -560,7 +578,8 @@ describe("OTLP ingest", () => {
 			body: JSON.stringify(traces),
 		});
 		expect(res.status).toBe(403);
-		expect(((await res.json()) as Record<string, unknown>).code).toBe(
+		// SAFETY: the error response is a JSON object with a code field.
+		expect(((await res.json()) as JsonObject).code).toBe(
 			"cross-origin-write-refused",
 		);
 	});
@@ -593,7 +612,8 @@ describe("OTLP ingest", () => {
 			body: "{not json",
 		});
 		expect(res.status).toBe(400);
-		expect(((await res.json()) as Record<string, unknown>).code).toBe(
+		// SAFETY: the error response is a JSON object with a code field.
+		expect(((await res.json()) as JsonObject).code).toBe(
 			"bad-request",
 		);
 	});
@@ -606,7 +626,8 @@ describe("OTLP ingest", () => {
 			body: "{not json",
 		});
 		expect(
-			String(((await res.json()) as Record<string, unknown>).message),
+			// SAFETY: the error response is a JSON object with a message field.
+			String(((await res.json()) as JsonObject).message),
 		).toContain("logs");
 	});
 
@@ -654,6 +675,7 @@ describe("the yard SSE stream", () => {
 		const res = await fetch(
 			`${server.url}/v1/yard/stream?stationId=station:local`,
 		);
+		// SAFETY: fetch provides a byte stream for this SSE response.
 		const reader = (res.body as ReadableStream<Uint8Array>).getReader();
 		const first = new TextDecoder().decode((await reader.read()).value);
 		expect(first).toContain(": control-api yard stream");
@@ -669,6 +691,7 @@ describe("the yard SSE stream", () => {
 		);
 		expect(res.headers.get("content-type")).toContain("text/event-stream");
 		expect(res.headers.get("cache-control")).toContain("no-transform");
+		// SAFETY: fetch provides a byte stream for this SSE response.
 		await (res.body as ReadableStream<Uint8Array>).cancel();
 	});
 
@@ -677,6 +700,7 @@ describe("the yard SSE stream", () => {
 		const res = await fetch(
 			`${server.url}/v1/yard/stream?stationId=station:local&tenant=local`,
 		);
+		// SAFETY: fetch provides a byte stream for this SSE response.
 		const reader = (res.body as ReadableStream<Uint8Array>).getReader();
 		let seen = "";
 		for (let i = 0; i < 3 && !/event: (yard|error)/u.test(seen); i += 1) {
@@ -698,6 +722,7 @@ describe("the yard SSE stream", () => {
 		const res = await fetch(
 			`${server.url}/v1/yard/stream?stationId=station:local`,
 		);
+		// SAFETY: fetch provides a byte stream for this SSE response.
 		const reader = (res.body as ReadableStream<Uint8Array>).getReader();
 		let seen = "";
 		for (let i = 0; i < 8 && !seen.includes("event: heartbeat"); i += 1) {
@@ -714,6 +739,7 @@ describe("the yard SSE stream", () => {
 		const res = await fetch(
 			`${server.url}/v1/yard/stream?stationId=station:none`,
 		);
+		// SAFETY: fetch provides a byte stream for this SSE response.
 		const reader = (res.body as ReadableStream<Uint8Array>).getReader();
 		let seen = "";
 		for (let i = 0; i < 3 && !/event: (yard|error)/u.test(seen); i += 1) {

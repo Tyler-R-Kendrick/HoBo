@@ -33,30 +33,6 @@
  */
 import { capability, type SlotBinding, slotBinding } from "@hobo/core";
 
-/**
- * Forwards the caller's option bag to the parse boundary, dropping only keys
- * whose value is `undefined` (an omitted option must be absent, not an
- * explicit `undefined`, under `exactOptionalPropertyTypes` and JSON-safety).
- *
- * Every remaining key is passed through — including one the option types do
- * not declare — so a key smuggled past the types reaches `slotBinding()` and
- * is screened there. Cherry-picking the known keys instead would silently
- * swallow it, which is exactly the kind of quiet drop this repo refuses.
- */
-function present<T extends object>(options: T): Record<string, unknown> {
-	const out: Record<string, unknown> = {};
-	for (const [key, value] of Object.entries(options)) {
-		if (value === undefined) {
-			continue;
-		}
-		out[key] =
-			typeof value === "object" && value !== null && !Array.isArray(value)
-				? present(value)
-				: value;
-	}
-	return out;
-}
-
 /** Cloud Server CPU families Hetzner offers, as the API's own vocabulary. */
 export const SERVER_ARCHITECTURES = Object.freeze(["x86", "arm"] as const);
 
@@ -180,6 +156,31 @@ export interface VolumeOptions {
 	readonly sizeGb?: number;
 	readonly format?: "ext4" | "xfs";
 	readonly automount?: boolean;
+}
+
+type AnySlotOptions =
+	| CloudServerOptions
+	| LoadBalancerOptions
+	| ObjectStorageOptions
+	| StorageBoxOptions
+	| VolumeOptions;
+
+/**
+ * Forwards the caller's option bag to the parse boundary, dropping only keys
+ * whose value is `undefined` (an omitted option must be absent, not an
+ * explicit `undefined`, under `exactOptionalPropertyTypes` and JSON-safety).
+ *
+ * Every remaining key is passed through — including one the option types do
+ * not declare — so a key smuggled past the types reaches `slotBinding()` and
+ * is screened there. Cherry-picking the known keys instead would silently
+ * swallow it, which is exactly the kind of quiet drop this repo refuses.
+ */
+function present(options: AnySlotOptions) {
+	const out = {};
+	for (const [key, value] of Object.entries(options)) {
+		if (value !== undefined) Object.assign(out, { [key]: value });
+	}
+	return out;
 }
 
 /**

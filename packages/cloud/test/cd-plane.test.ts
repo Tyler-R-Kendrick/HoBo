@@ -33,10 +33,8 @@ describe("Continuous Delivery plane (production path)", () => {
 		for (const step of result.apply.steps) {
 			const token = step.status.outputs.apiToken;
 			expect(token).toBeDefined();
-			if (typeof token === "object") {
-				expect(token.kind).toBe("secretRef");
-				expect(token.ref.startsWith("secretRef:")).toBe(true);
-			}
+			expect(token).toMatchObject({ kind: "secretRef" });
+			expect(token).toMatchObject({ ref: expect.stringContaining("secretRef:") });
 			assertSecretFree(step.status);
 			assertSecretFree(step.diff);
 		}
@@ -88,10 +86,7 @@ describe("Continuous Delivery plane (production path)", () => {
 			assertSecretFree(step.status);
 			const pwd = step.status.outputs.dbPassword;
 			if (pwd !== undefined) {
-				expect(typeof pwd).toBe("object");
-				if (typeof pwd === "object") {
-					expect(pwd.kind).toBe("secretRef");
-				}
+				expect(pwd).toMatchObject({ kind: "secretRef" });
 			}
 		}
 		// status after apply returns recorded secret-free statuses
@@ -218,7 +213,7 @@ describe("Continuous Delivery plane (production path)", () => {
 			},
 		});
 		expect(status.secretFree).toBe(true);
-		expect(typeof status.outputs.password).toBe("object");
+		expect(status.outputs.password).toMatchObject({ kind: "secretRef" });
 		assertSecretFree(status);
 		const scrubbed = toSecretFreeOutputs({
 			api_key: "xoxb-1234567890-abcdefghij",

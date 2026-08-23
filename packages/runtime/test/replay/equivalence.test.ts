@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import type { JsonValue } from "../../src/json.js";
 
 import { ReplayDivergenceError } from "../../src/replay/divergence.js";
 import {
@@ -50,6 +51,7 @@ describe("equivalence harness", () => {
 				events,
 				initialState: { total: 0 },
 				fold: (state, currentEvent) => ({
+					// SAFETY: assertion to `currentEvent.data as { amount: number }` is required at this boundary.
 					total: state.total + (currentEvent.data as { amount: number }).amount,
 				}),
 			}),
@@ -82,6 +84,7 @@ function deterministicLedgerFold(
 		...state.byStream,
 		[currentEvent.streamId]:
 			(state.byStream[currentEvent.streamId] ?? 0) +
+			// SAFETY: assertion to `currentEvent.data as { cents: number }` is required at this boundary.
 			(currentEvent.data as { cents: number }).cents,
 	};
 	const nextSeq = {
@@ -128,7 +131,7 @@ function event(
 	streamId: string,
 	seq: number,
 	type: string,
-	data: unknown,
+	data: JsonValue,
 	version = 1,
 ): EventEnvelope {
 	return { id: `${streamId}-${seq}`, streamId, seq, type, v: version, data };
@@ -139,6 +142,7 @@ function emptyLedger() {
 }
 
 function sortObject<T extends Record<string, number>>(value: T): T {
+	// SAFETY: assertion to `Object.fromEntries( Object.entries(value).sort(([left], [right]) => left.localeCompare(right)), ) as T` is required at this boundary.
 	return Object.fromEntries(
 		Object.entries(value).sort(([left], [right]) => left.localeCompare(right)),
 	) as T;

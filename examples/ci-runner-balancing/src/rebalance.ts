@@ -25,7 +25,12 @@ import {
 } from "./_generated/runner_balancing_pb.js";
 import { decide } from "./decide.js";
 import { buildCreditLedgerView } from "./ledger.js";
-import { type ParsedRegistry, parseRegistryDocument } from "./parse.js";
+import {
+	type JsonObject,
+	type JsonValue,
+	type ParsedRegistry,
+	parseRegistryDocument,
+} from "./parse.js";
 
 export interface UsageSource {
 	providerId: string;
@@ -43,8 +48,10 @@ export interface VariablesWriter extends VariablesReader {
 /** One event-store append; family names come from docs/design/event-families.md. */
 export interface LedgerEvent {
 	family: string;
-	payload: Record<string, unknown>;
+	payload: JsonObject;
 }
+
+export type VariableState = { [name: string]: string | undefined };
 
 export interface RebalanceDeps {
 	variables: VariablesWriter;
@@ -55,7 +62,7 @@ export interface RebalanceDeps {
 
 export interface RebalanceOptions {
 	/** Untrusted registry document; crosses the parse boundary here. */
-	registryDocument: unknown;
+	registryDocument: JsonValue;
 	mode: "plan" | "apply";
 	requestedBy: string;
 	/** Pinned ledger sequence token recorded on every decision. */
@@ -73,7 +80,7 @@ export interface RebalanceResult {
 	hardBlocks: readonly HardBlockSignal[];
 	applied: ReadonlyArray<{ variable: string; value: string }>;
 	registry: ParsedRegistry;
-	current: Readonly<Record<string, string | undefined>>;
+	current: Readonly<VariableState>;
 }
 
 function variablesToRead(registry: ParsedRegistry): string[] {
@@ -101,7 +108,7 @@ export async function runRebalance(
 	});
 	const events: LedgerEvent[] = [];
 
-	const current: Record<string, string | undefined> = {};
+	const current: VariableState = {};
 	for (const name of variablesToRead(registry)) {
 		current[name] = await deps.variables.get(name);
 	}
@@ -112,7 +119,8 @@ export async function runRebalance(
 	for (const snapshot of snapshots) {
 		events.push({
 			family: "meter.UsageRecorded",
-			payload: toJson(UsageSnapshotSchema, snapshot) as Record<string, unknown>,
+			// SAFETY: protobuf JSON view is a JsonObject event payload.
+			payload: toJson(UsageSnapshotSchema, snapshot) as JsonObject,
 		});
 	}
 
@@ -148,10 +156,8 @@ export async function runRebalance(
 	for (const decision of decisions) {
 		events.push({
 			family: "dispatch.Decided",
-			payload: toJson(DispatchDecisionSchema, decision) as Record<
-				string,
-				unknown
-			>,
+			// SAFETY: protobuf JSON view is a JsonObject event payload.
+			payload: toJson(DispatchDecisionSchema, decision) as JsonObject,
 		});
 	}
 

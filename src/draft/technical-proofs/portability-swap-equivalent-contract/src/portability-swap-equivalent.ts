@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse untrusted listing and interface fixture values before normalization. */
 import { createHash } from "node:crypto";
 
 export const PORTABILITY_SWAP_EQUIVALENT_CONTRACT = "hobo.portability-swap-equivalent/v1";

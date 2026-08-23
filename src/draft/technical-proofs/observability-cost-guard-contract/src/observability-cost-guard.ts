@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
 export const OBSERVABILITY_COST_GUARD_SCHEMA = "hobo.observability-cost-guard/v1";
 
 const DEFAULT_TRACE_POLICY = Object.freeze({
@@ -14,7 +15,7 @@ export function createObservabilityCostGuard(options = {}) {
   const catalog = normalizeCatalog(options.catalog);
   const tracePolicy = {
     ...DEFAULT_TRACE_POLICY,
-    ...(options.tracePolicy ?? {})
+    ...options.tracePolicy
   };
   const budget = normalizeBudget(options.budget);
   const state = {
@@ -134,16 +135,16 @@ export function createObservabilityCostGuard(options = {}) {
 }
 
 function normalizeCatalog(catalog) {
-  if (!catalog || typeof catalog !== "object" || Array.isArray(catalog)) {
+  if (!catalog || !isJsonObject(catalog) || Array.isArray(catalog)) {
     throw new TypeError("catalog must be an object");
   }
-  if (!catalog.metrics || typeof catalog.metrics !== "object" || Array.isArray(catalog.metrics)) {
+  if (!catalog.metrics || !isJsonObject(catalog.metrics) || Array.isArray(catalog.metrics)) {
     throw new TypeError("catalog.metrics must be an object");
   }
-  if (!catalog.cost || typeof catalog.cost !== "object" || Array.isArray(catalog.cost)) {
+  if (!catalog.cost || !isJsonObject(catalog.cost) || Array.isArray(catalog.cost)) {
     throw new TypeError("catalog.cost must be an object");
   }
-  if (!catalog.cost.unitPrices || typeof catalog.cost.unitPrices !== "object") {
+  if (!catalog.cost.unitPrices || !isJsonObject(catalog.cost.unitPrices)) {
     throw new TypeError("catalog.cost.unitPrices must be an object");
   }
 
@@ -231,7 +232,7 @@ function sanitizeExemplar(exemplar) {
   if (!exemplar) {
     return null;
   }
-  if (typeof exemplar !== "object" || Array.isArray(exemplar)) {
+  if (!isJsonObject(exemplar) || Array.isArray(exemplar)) {
     throw new TypeError("metric.exemplar must be an object");
   }
 
@@ -245,7 +246,7 @@ function sanitizeExemplar(exemplar) {
 }
 
 function normalizeTraceSpan(span) {
-  if (!span || typeof span !== "object" || Array.isArray(span)) {
+  if (!span || !isJsonObject(span) || Array.isArray(span)) {
     throw new TypeError("span must be an object");
   }
 
@@ -365,28 +366,28 @@ function nonNegativeInteger(value, fieldName) {
 }
 
 function requireString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
 }
 
 function requireFiniteNumber(value, fieldName) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
+  if (!isJsonNumber(value) || !Number.isFinite(value)) {
     throw new TypeError(`${fieldName} must be a finite number`);
   }
   return value;
 }
 
 function requirePositiveNumber(value, fieldName) {
-  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0) {
+  if (!isJsonNumber(value) || !Number.isFinite(value) || value <= 0) {
     throw new TypeError(`${fieldName} must be a positive number`);
   }
   return value;
 }
 
 function requireFraction(value, fieldName) {
-  if (typeof value !== "number" || !Number.isFinite(value) || value <= 0 || value > 1) {
+  if (!isJsonNumber(value) || !Number.isFinite(value) || value <= 0 || value > 1) {
     throw new TypeError(`${fieldName} must be in the range (0, 1]`);
   }
   return value;

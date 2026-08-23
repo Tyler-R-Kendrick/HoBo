@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion -- SAFETY: assertions inspect known Camp test fixtures. */
 import { describe, expect, it } from "vitest";
 
 import {

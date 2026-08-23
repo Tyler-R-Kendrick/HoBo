@@ -64,6 +64,7 @@ describe("declaring a convex app", () => {
 	});
 
 	it("refuses a non-string root", () => {
+		// SAFETY: The runtime boundary deliberately receives a malformed value.
 		expect(() => convexApp(undefined as never)).toThrow(
 			/requires a non-empty path/u,
 		);
@@ -73,9 +74,9 @@ describe("declaring a convex app", () => {
 		// Bindle detects any `{ framework, root }` webApp through the shared
 		// symbol; the convex-specific one is what this package's own readers use.
 		// Dropping either breaks one side silently.
-		const App = convexApp("apps/web") as unknown as Record<symbol, unknown>;
-		expect(App[CONVEX_WEBAPP_METADATA]).toBeDefined();
-		expect(App[WEBAPP_META]).toBeDefined();
+		const App = convexApp("apps/web");
+		expect(Object.getOwnPropertySymbols(App)).toContain(CONVEX_WEBAPP_METADATA);
+		expect(Object.getOwnPropertySymbols(App)).toContain(WEBAPP_META);
 	});
 
 	it("keeps the metadata non-enumerable", () => {
@@ -187,6 +188,7 @@ describe("the provider annotation", () => {
 	it("does not recognise another framework's webapp annotation", () => {
 		// The option is shared across frameworks, so the framework field is the
 		// only thing separating a Convex app from a Next one.
+		// SAFETY: This fixture intentionally supplies a non-Convex framework.
 		expect(
 			isConvexWebAppAnnotation({
 				provider: "hobo",
@@ -200,6 +202,7 @@ describe("the provider annotation", () => {
 		// Reached through optional chaining rather than a guard, so it is worth
 		// pinning that a config-less annotation is a clean false rather than a
 		// throw during a Bindle walk.
+		// SAFETY: This fixture intentionally omits the ProviderAnnotation config.
 		expect(
 			isConvexWebAppAnnotation({
 				provider: "hobo",
@@ -222,6 +225,7 @@ describe("finding the root among annotations", () => {
 	it("finds it among unrelated annotations", () => {
 		expect(
 			convexRootFromAnnotations([
+				// SAFETY: This fixture intentionally models an unrelated annotation.
 				{ provider: "aws", option: "region", config: {} } as never,
 				annotation,
 			]),
@@ -239,6 +243,7 @@ describe("finding the root among annotations", () => {
 	it("refuses an annotation whose root is empty", () => {
 		// An empty root resolves to the repo root itself, so the whole repository
 		// would be treated as the Convex app directory.
+		// SAFETY: This fixture intentionally supplies an empty Convex root.
 		expect(() =>
 			convexRootFromAnnotations([
 				{

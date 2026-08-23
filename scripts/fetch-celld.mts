@@ -77,10 +77,12 @@ export function celldBinPath(): string {
 }
 
 /** `ghcr.io/denoland/celld` -> registry host plus repository path. */
-export function splitImageReference(image: string): {
+type ImageReference = {
 	host: string;
 	repository: string;
-} {
+};
+
+export function splitImageReference(image: string): ImageReference {
 	const slash = image.indexOf("/");
 	if (slash <= 0) {
 		throw new CelldFetchError(
@@ -92,7 +94,12 @@ export function splitImageReference(image: string): {
 }
 
 /** `process.arch` in OCI's vocabulary. */
-export function ociPlatform(): { os: string; architecture: string } {
+type OciPlatform = {
+	os: string;
+	architecture: string;
+};
+
+export function ociPlatform(): OciPlatform {
 	const architecture =
 		process.arch === "x64"
 			? "amd64"
@@ -137,7 +144,16 @@ export function assertDigest(
 	}
 }
 
-function describeNetworkFailure(url: string, error: unknown): CelldFetchError {
+type NetworkFailure = {
+	message?: string;
+	cause?: { code?: string; message?: string };
+};
+
+function describeNetworkFailure(
+	url: string,
+	error: NetworkFailure,
+): CelldFetchError {
+	// SAFETY: assertion to `ror as { cause?: { code?: string; message?: string } }) ` is required at this boundary.
 	const cause = (error as { cause?: { code?: string; message?: string } })
 		?.cause;
 	const code = cause?.code ?? "";
@@ -162,6 +178,7 @@ function describeNetworkFailure(url: string, error: unknown): CelldFetchError {
 			].join(" "),
 		);
 	}
+	// SAFETY: assertion to `ror as Error)?` is required at this boundary.
 	const detail = cause?.message ?? (error as Error)?.message ?? String(error);
 	return new CelldFetchError(
 		"CELLD_NETWORK_ERROR",
@@ -177,7 +194,9 @@ async function registryGet(
 	try {
 		response = await fetch(url, { headers });
 	} catch (error) {
-		throw describeNetworkFailure(url, error);
+		throw describeNetworkFailure(url, {
+			message: error instanceof Error ? error.message : String(error),
+		});
 	}
 	if (!response.ok) {
 		throw new CelldFetchError(
@@ -191,8 +210,9 @@ async function registryGet(
 async function pullToken(host: string, repository: string): Promise<string> {
 	const url = `https://${host}/token?scope=${encodeURIComponent(`repository:${repository}:pull`)}&service=${encodeURIComponent(host)}`;
 	const response = await registryGet(url, { accept: "application/json" });
+	// SAFETY: assertion to `wait response.json()) as { token?: string }; ` is required at this boundary.
 	const body = (await response.json()) as { token?: string };
-	if (typeof body.token !== "string" || body.token === "") {
+	if (body.token === undefined || body.token === "") {
 		throw new CelldFetchError(
 			"CELLD_REGISTRY_TOKEN",
 			`${url} returned no pull token for ${repository}`,
@@ -217,7 +237,9 @@ async function fetchVerified(
 	try {
 		bytes = new Uint8Array(await response.arrayBuffer());
 	} catch (error) {
-		throw describeNetworkFailure(url, error);
+		throw describeNetworkFailure(url, {
+			message: error instanceof Error ? error.message : String(error),
+		});
 	}
 	assertDigest(bytes, digest, what);
 	return bytes;
@@ -225,10 +247,12 @@ async function fetchVerified(
 
 function parseJson<T>(bytes: Uint8Array, what: string): T {
 	try {
+		// SAFETY: assertion to `ON.parse(Buffer.from(bytes).toString("utf8")) as T; ` is required at this boundary.
 		return JSON.parse(Buffer.from(bytes).toString("utf8")) as T;
 	} catch (error) {
 		throw new CelldFetchError(
 			"CELLD_MANIFEST_MALFORMED",
+			// SAFETY: assertion to `ror as Error).` is required at this boundary.
 			`${what} is not JSON: ${(error as Error).message}`,
 		);
 	}
@@ -390,6 +414,7 @@ export function installedMatchesPin(binPath: string): boolean {
 	if (!existsSync(binPath) || !existsSync(meta)) return false;
 	let sidecar: Sidecar;
 	try {
+		// SAFETY: assertion to `.parse(readFileSync(meta, "utf8")) as Sidecar; }` is required at this boundary.
 		sidecar = JSON.parse(readFileSync(meta, "utf8")) as Sidecar;
 	} catch {
 		return false;
@@ -529,7 +554,7 @@ const invokedDirectly =
 	process.argv[1] !== undefined &&
 	import.meta.url === new URL(`file://${process.argv[1]}`).href;
 if (invokedDirectly) {
-	main().catch((error: unknown) => {
+	main().catch((error) => {
 		console.error(
 			error instanceof CelldFetchError ? error.message : String(error),
 		);

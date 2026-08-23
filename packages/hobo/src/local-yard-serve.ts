@@ -1,5 +1,4 @@
 import { createServer, type Server } from "node:http";
-
 import { loadBindleDefinition } from "@hobo/cli";
 import {
 	attachNamedEndpoints,
@@ -34,6 +33,7 @@ import {
 	DEFAULT_DEV_PORT,
 	openBareMetalYard,
 } from "./bare-metal-yard.js";
+import { isJsonObject, isJsonString } from "./json.js";
 
 // Serve a Bindle on a **local Yard** (glossary):
 //   Yard  = provider-specific control plane (what `hobo yard init` installs)
@@ -58,22 +58,18 @@ export type LocalYardServeResult = BareMetalServeResult & {
 	};
 };
 
-function resolveEngine(): {
-	source: "cli" | "in-process";
-	version: string;
-	engine: ReturnType<typeof createInProcessWasmtimeEngine>;
-} {
+function resolveEngine() {
 	try {
 		const engine = createWasmtimeCliEngine();
 		return {
-			source: "cli",
+			source: "cli" as const,
 			version: engine.version,
 			engine,
 		};
 	} catch {
 		const engine = createInProcessWasmtimeEngine();
 		return {
-			source: "in-process",
+			source: "in-process" as const,
 			version: engine.version,
 			engine,
 		};
@@ -89,6 +85,7 @@ async function webRequestToHttp(request: Request): Promise<HttpRequest> {
 	return {
 		method: request.method,
 		path: `${url.pathname}${url.search}`,
+		// SAFETY: assertion required at this I/O or test boundary.
 		headers: [...request.headers.entries()] as [string, string][],
 		body,
 	};
@@ -111,22 +108,24 @@ function componentDescriptor(
 		imports: [],
 		exports: {
 			[HTTP_INCOMING_HANDLER]: {
-				handle: async (httpReq: unknown): Promise<HttpResponse> => {
-					const req = httpReq as HttpRequest;
+				// SAFETY: component host table is untyped at the descriptor boundary.
+				handle: (async (httpReq: HttpRequest): Promise<HttpResponse> => {
+					const req = httpReq;
 					const webReq = new Request(`http://component.local${req.path}`, {
 						method: req.method,
 						headers: Object.fromEntries(req.headers),
 						...(req.body && req.method !== "GET" && req.method !== "HEAD"
 							? { body: req.body }
-							: {}),
+							: undefined),
 					});
 					const webRes = await handler(webReq);
 					return {
 						status: webRes.status,
+						// SAFETY: assertion required at this I/O or test boundary.
 						headers: [...webRes.headers.entries()] as [string, string][],
 						body: Buffer.from(await webRes.arrayBuffer()).toString("latin1"),
 					};
-				},
+				}) as ParsedComponentDescriptor["exports"][string][string],
 			},
 		},
 	};
@@ -147,9 +146,9 @@ async function listen(
 				try {
 					const bound = server.address();
 					const boundPort =
-						bound !== null && typeof bound === "object" ? bound.port : port;
+						bound !== null && isJsonObject(bound) ? bound.port : port;
 					const authority =
-						typeof req.headers.host === "string" && req.headers.host.length > 0
+						isJsonString(req.headers.host) && req.headers.host.length > 0
 							? req.headers.host
 							: `${host}:${boundPort}`;
 					const url = new URL(req.url ?? "/", `http://${authority}`);
@@ -157,6 +156,7 @@ async function listen(
 					const method = req.method ?? "GET";
 					const init: RequestInit = {
 						method,
+						// SAFETY: assertion required at this I/O or test boundary.
 						headers: req.headers as HeadersInit,
 					};
 					if (!["GET", "HEAD"].includes(method) && body.length > 0) {
@@ -199,7 +199,7 @@ export async function serveBindleOnLocalYard(options: {
 			? openBareMetalYard({
 					...(options.hoboHome !== undefined
 						? { hoboHome: options.hoboHome }
-						: {}),
+						: undefined),
 				})
 			: null;
 	const yardHandle = options.yard ?? must(ownedYard);
@@ -308,7 +308,7 @@ export async function serveBindleOnLocalYard(options: {
 		};
 		const server = await listen(publicHandler, requestedPort);
 		const address = server.address();
-		if (address === null || typeof address === "string") {
+		if (address === null || isJsonString(address)) {
 			await new Promise<void>((resolve) => server.close(() => resolve()));
 			throw new Error(`external ${entry.kind}:${entry.name} has no TCP port`);
 		}
@@ -364,7 +364,7 @@ export async function serveBindleOnLocalYard(options: {
 
 	const exposedEndpoints = endpoints.filter((e) => e.external);
 	const primary = first(exposedEndpoints);
-	let probe: { status: number; body: string };
+	let probe = { status: 0, body: "" };
 	try {
 		const response = await fetch(`${primary.url}/`);
 		probe = { status: response.status, body: await response.text() };

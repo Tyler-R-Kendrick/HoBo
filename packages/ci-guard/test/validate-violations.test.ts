@@ -18,6 +18,7 @@
 import { describe, expect, it } from "vitest";
 
 import { createHoboCiFabricContract } from "../src/contract.js";
+import { isJsonObject, type JsonObject, type JsonValue } from "../src/json.js";
 import { validateCiFabricContract } from "../src/validate.js";
 import type { WorkflowFile } from "../src/workflows.js";
 
@@ -26,7 +27,18 @@ function contract() {
 	return createHoboCiFabricContract();
 }
 
-type Mutable = Record<string, unknown>;
+type Mutable = JsonObject;
+type Contract = ReturnType<typeof createHoboCiFabricContract>;
+
+function object(value: JsonValue | undefined): Mutable {
+	if (!isJsonObject(value)) throw new Error("expected JSON object");
+	return value;
+}
+
+function array(value: JsonValue | undefined): JsonValue[] {
+	if (!Array.isArray(value)) throw new Error("expected JSON array");
+	return value;
+}
 
 /**
  * Apply a deep edit to a frozen contract by cloning it first.
@@ -35,9 +47,10 @@ type Mutable = Record<string, unknown>;
  * directly — and re-deriving one by hand would drift from the real shape.
  */
 function broken(edit: (draft: Mutable) => void) {
-	const draft = JSON.parse(JSON.stringify(contract())) as Mutable;
-	edit(draft);
-	return draft as unknown as ReturnType<typeof createHoboCiFabricContract>;
+	// SAFETY: JSON cloning preserves the factory's contract shape; the edit only changes fields under test.
+	const draft = JSON.parse(JSON.stringify(contract())) as Contract & Mutable;
+	edit(object(draft));
+	return draft;
 }
 
 /** Validate without workflow files — isolates the contract-shape checks. */
@@ -64,8 +77,8 @@ describe("a correct contract", () => {
 		// still look like it covered everything.
 		const report = validateCiFabricContract(
 			broken((d) => {
-				(d.workflow as Mutable).pullRequestGate = {
-					...((d.workflow as Mutable).pullRequestGate as Mutable),
+				object(d.workflow).pullRequestGate = {
+					...object(object(d.workflow).pullRequestGate),
 					blocksPullRequest: false,
 				};
 			}),
@@ -83,9 +96,7 @@ describe("the pull-request gate", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					(
-						(d.workflow as Mutable).pullRequestGate as Mutable
-					).blocksPullRequest = false;
+					object(object(d.workflow).pullRequestGate).blocksPullRequest = false;
 				}),
 			),
 		).toContain("pr-gate.not-blocking");
@@ -98,9 +109,7 @@ describe("the pull-request gate", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					(
-						(d.workflow as Mutable).pullRequestGate as Mutable
-					).blocksPullRequest = "true";
+					object(object(d.workflow).pullRequestGate).blocksPullRequest = "true";
 				}),
 			),
 		).toContain("pr-gate.not-blocking");
@@ -111,7 +120,7 @@ describe("the pull-request gate", () => {
 		// lane stop mattering without anyone noticing.
 		const codes = codesFor(
 			broken((d) => {
-				((d.workflow as Mutable).pullRequestGate as Mutable).requiredChecks =
+				object(object(d.workflow).pullRequestGate).requiredChecks =
 					[];
 			}),
 		);
@@ -123,7 +132,7 @@ describe("the pull-request gate", () => {
 		// diff the contract against the source to find out what to add.
 		const report = validateCiFabricContract(
 			broken((d) => {
-				((d.workflow as Mutable).pullRequestGate as Mutable).requiredChecks =
+				object(object(d.workflow).pullRequestGate).requiredChecks =
 					[];
 			}),
 			null,
@@ -139,9 +148,9 @@ describe("the pull-request gate", () => {
 		// must not be told their gate is wrong.
 		const codes = codesFor(
 			broken((d) => {
-				const gate = (d.workflow as Mutable).pullRequestGate as Mutable;
+				const gate = object(object(d.workflow).pullRequestGate);
 				gate.requiredChecks = [
-					...(gate.requiredChecks as string[]),
+					...array(gate.requiredChecks),
 					"extra-lane",
 				];
 			}),
@@ -155,9 +164,9 @@ describe("the artifact cache", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					const cache = (d.workflow as Mutable).artifactCache as Mutable;
-					cache.entries = (cache.entries as Array<{ kind: string }>).filter(
-						(e) => e.kind !== "wasm",
+					const cache = object(object(d.workflow).artifactCache);
+					cache.entries = array(cache.entries).filter(
+						(e) => object(e).kind !== "wasm",
 					);
 				}),
 			),
@@ -168,9 +177,9 @@ describe("the artifact cache", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					const cache = (d.workflow as Mutable).artifactCache as Mutable;
-					cache.entries = (cache.entries as Array<{ kind: string }>).filter(
-						(e) => e.kind !== "oci",
+					const cache = object(object(d.workflow).artifactCache);
+					cache.entries = array(cache.entries).filter(
+						(e) => object(e).kind !== "oci",
 					);
 				}),
 			),
@@ -182,7 +191,7 @@ describe("the artifact cache", () => {
 		// the work needed to fix it.
 		const codes = codesFor(
 			broken((d) => {
-				((d.workflow as Mutable).artifactCache as Mutable).entries = [];
+				object(object(d.workflow).artifactCache).entries = [];
 			}),
 		);
 		expect(codes).toContain("cache.wasm.missing");
@@ -193,9 +202,9 @@ describe("the artifact cache", () => {
 describe("E2E cost gating", () => {
 	function withoutGate(kind: string) {
 		return broken((d) => {
-			const e2e = d.e2e as Mutable;
-			e2e.gatedBy = (e2e.gatedBy as Array<{ kind: string }>).filter(
-				(g) => g.kind !== kind,
+			const e2e = object(d.e2e);
+			e2e.gatedBy = array(e2e.gatedBy).filter(
+				(g) => object(g).kind !== kind,
 			);
 		});
 	}
@@ -214,9 +223,9 @@ describe("E2E cost gating", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					const e2e = d.e2e as Mutable;
-					e2e.gatedBy = (e2e.gatedBy as Array<Mutable>).map((g) =>
-						g.kind === "pull-request-label" ? { ...g, label: "" } : g,
+					const e2e = object(d.e2e);
+					e2e.gatedBy = array(e2e.gatedBy).map((g) =>
+						object(g).kind === "pull-request-label" ? { ...object(g), label: "" } : g,
 					);
 				}),
 			),
@@ -227,9 +236,9 @@ describe("E2E cost gating", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					const e2e = d.e2e as Mutable;
-					e2e.gatedBy = (e2e.gatedBy as Array<Mutable>).map((g) =>
-						g.kind === "schedule" ? { ...g, cron: "" } : g,
+					const e2e = object(d.e2e);
+					e2e.gatedBy = array(e2e.gatedBy).map((g) =>
+						object(g).kind === "schedule" ? { ...object(g), cron: "" } : g,
 					);
 				}),
 			),
@@ -242,7 +251,7 @@ describe("E2E cost gating", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					((d.workflow as Mutable).triggers as Mutable).schedule = "* * * * *";
+				object(object(d.workflow).triggers).schedule = "* * * * *";
 				}),
 			),
 		).toContain("e2e.cost-gate.missing");
@@ -256,7 +265,7 @@ describe("secretless E2E authentication", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					((d.e2e as Mutable).permissions as Mutable)["id-token"] = "read";
+					object(object(d.e2e).permissions)["id-token"] = "read";
 				}),
 			),
 		).toContain("oidc.missing");
@@ -266,7 +275,7 @@ describe("secretless E2E authentication", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					((d.e2e as Mutable).auth as Mutable).mode = "static-key";
+					object(object(d.e2e).auth).mode = "static-key";
 				}),
 			),
 		).toContain("oidc.missing");
@@ -276,7 +285,7 @@ describe("secretless E2E authentication", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					((d.e2e as Mutable).auth as Mutable).forbidsStoredSecrets = false;
+					object(object(d.e2e).auth).forbidsStoredSecrets = false;
 				}),
 			),
 		).toContain("oidc.secretless-required");
@@ -288,7 +297,7 @@ describe("secretless E2E authentication", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					((d.e2e as Mutable).env as Mutable).MY_SECRET_TOKEN = "x";
+					object(object(d.e2e).env).MY_SECRET_TOKEN = "x";
 				}),
 			),
 		).toContain("oidc.stored-secret");
@@ -300,7 +309,7 @@ describe("secretless E2E authentication", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					((d.e2e as Mutable).env as Mutable).TOKEN = "${{ secrets.FOO }}";
+					object(object(d.e2e).env).TOKEN = "${{ secrets.FOO }}";
 				}),
 			),
 		).toContain("oidc.stored-secret");
@@ -311,7 +320,7 @@ describe("secretless E2E authentication", () => {
 		// makes a CI failure look like it changed when it did not.
 		const report = validateCiFabricContract(
 			broken((d) => {
-				const env = (d.e2e as Mutable).env as Mutable;
+				const env = object(object(d.e2e).env);
 				env.Z_SECRET = "x";
 				env.A_SECRET = "y";
 			}),
@@ -327,7 +336,7 @@ describe("secretless E2E authentication", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					((d.e2e as Mutable).env as Mutable).LOG_LEVEL = "debug";
+					object(object(d.e2e).env).LOG_LEVEL = "debug";
 				}),
 			),
 		).not.toContain("oidc.stored-secret");
@@ -337,8 +346,8 @@ describe("secretless E2E authentication", () => {
 describe("the sandbox cloud role", () => {
 	function withActions(actions: string[]) {
 		return broken((d) => {
-			((d.e2e as Mutable).auth as Mutable).cloudRole = {
-				...(((d.e2e as Mutable).auth as Mutable).cloudRole as Mutable),
+			object(object(d.e2e).auth).cloudRole = {
+				...object(object(object(d.e2e).auth).cloudRole),
 				allowedActions: actions,
 			};
 		});
@@ -388,7 +397,7 @@ describe("the E2E fixture and assertions", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					(d.e2e as Mutable).fixture = "examples/something-else";
+					object(d.e2e).fixture = "examples/something-else";
 				}),
 			),
 		).toContain("e2e.fixture.missing");
@@ -400,7 +409,7 @@ describe("the E2E fixture and assertions", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					((d.e2e as Mutable).deploy as Mutable).command = "hobo up other-app";
+					object(object(d.e2e).deploy).command = "hobo up other-app";
 				}),
 			),
 		).toContain("e2e.fixture.missing");
@@ -410,8 +419,8 @@ describe("the E2E fixture and assertions", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					const deploy = (d.e2e as Mutable).deploy as Mutable;
-					deploy.asserts = (deploy.asserts as string[]).filter(
+					const deploy = object(object(d.e2e).deploy);
+					deploy.asserts = array(deploy.asserts).filter(
 						(a) => a !== "live-url.https",
 					);
 				}),
@@ -425,8 +434,8 @@ describe("the E2E fixture and assertions", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					const deploy = (d.e2e as Mutable).deploy as Mutable;
-					deploy.asserts = (deploy.asserts as string[]).filter(
+					const deploy = object(object(d.e2e).deploy);
+					deploy.asserts = array(deploy.asserts).filter(
 						(a) => a !== "live-url.http-2xx",
 					);
 				}),
@@ -442,7 +451,7 @@ describe("teardown and the orphan sweeper", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					((d.e2e as Mutable).teardown as Mutable).always = false;
+					object(object(d.e2e).teardown).always = false;
 				}),
 			),
 		).toContain("e2e.teardown.not-always");
@@ -454,7 +463,7 @@ describe("teardown and the orphan sweeper", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					((d.e2e as Mutable).teardown as Mutable).orphanSweeper = {
+					object(object(d.e2e).teardown).orphanSweeper = {
 						enabled: false,
 					};
 				}),
@@ -470,7 +479,7 @@ describe("the quarantine lane", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					((d.e2e as Mutable).quarantine as Mutable).continueOnError = false;
+					object(object(d.e2e).quarantine).continueOnError = false;
 				}),
 			),
 		).toContain("e2e.quarantine.blocks");
@@ -480,7 +489,7 @@ describe("the quarantine lane", () => {
 		expect(
 			codesFor(
 				broken((d) => {
-					((d.e2e as Mutable).quarantine as Mutable).blocksPullRequest = true;
+					object(object(d.e2e).quarantine).blocksPullRequest = true;
 				}),
 			),
 		).toContain("e2e.quarantine.blocks");
@@ -505,7 +514,7 @@ describe("the schema version", () => {
 		const codes = codesFor(
 			broken((d) => {
 				d.schema = "hobo.ci-fabric/v999";
-				((d.workflow as Mutable).pullRequestGate as Mutable).blocksPullRequest =
+				object(object(d.workflow).pullRequestGate).blocksPullRequest =
 					false;
 			}),
 		);
@@ -521,11 +530,11 @@ describe("several violations at once", () => {
 		// arbitrarily long sequence of pushes.
 		const codes = codesFor(
 			broken((d) => {
-				((d.workflow as Mutable).pullRequestGate as Mutable).blocksPullRequest =
+				object(object(d.workflow).pullRequestGate).blocksPullRequest =
 					false;
-				((d.workflow as Mutable).artifactCache as Mutable).entries = [];
-				((d.e2e as Mutable).teardown as Mutable).always = false;
-				((d.e2e as Mutable).auth as Mutable).forbidsStoredSecrets = false;
+				object(object(d.workflow).artifactCache).entries = [];
+				object(object(d.e2e).teardown).always = false;
+				object(object(d.e2e).auth).forbidsStoredSecrets = false;
 			}),
 		);
 		expect(codes).toContain("pr-gate.not-blocking");
@@ -539,9 +548,9 @@ describe("several violations at once", () => {
 		// A violation with an empty message is one a developer cannot act on.
 		const report = validateCiFabricContract(
 			broken((d) => {
-				((d.workflow as Mutable).pullRequestGate as Mutable).requiredChecks =
+				object(object(d.workflow).pullRequestGate).requiredChecks =
 					[];
-				((d.e2e as Mutable).quarantine as Mutable).continueOnError = false;
+				object(object(d.e2e).quarantine).continueOnError = false;
 			}),
 			null,
 		);

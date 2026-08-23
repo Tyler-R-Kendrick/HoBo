@@ -50,6 +50,7 @@ export {
 	CAPABILITY_MATRIX_ERROR_CODES,
 	CapabilityMatrixError,
 	type CapabilityMatrixErrorCode,
+	type CapabilityMatrixDocument,
 	parseCapabilityMatrix,
 	tryParseCapabilityMatrix,
 } from "./parse.js";

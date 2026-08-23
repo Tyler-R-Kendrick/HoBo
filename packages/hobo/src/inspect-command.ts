@@ -104,7 +104,7 @@ export function createInspectCommand(
 						},
 						...(graphRow.bindleHash !== undefined
 							? { bindleHash: graphRow.bindleHash }
-							: {}),
+							: undefined),
 					},
 				};
 			}
@@ -166,12 +166,18 @@ export function createInspectCommand(
 					deploymentStatus: row.status,
 					resources: row.resources,
 					decisions: row.decisions,
-					...(row.planHash !== undefined ? { planHash: row.planHash } : {}),
+					...(row.planHash !== undefined
+						? { planHash: row.planHash }
+						: undefined),
 					...(row.bindleHash !== undefined
 						? { bindleHash: row.bindleHash }
-						: {}),
-					...(row.rejection !== undefined ? { rejection: row.rejection } : {}),
-					...(row.rollback !== undefined ? { rollback: row.rollback } : {}),
+						: undefined),
+					...(row.rejection !== undefined
+						? { rejection: row.rejection }
+						: undefined),
+					...(row.rollback !== undefined
+						? { rollback: row.rollback }
+						: undefined),
 					...namedEndpointsPayload,
 				},
 			};

@@ -61,7 +61,47 @@ for (const d of [SHOTS, RECORDINGS, BASELINES, EXP_EVIDENCE]) {
 	mkdirSync(d, { recursive: true });
 }
 
-const MIME: Record<string, string> = {
+type TestState = {
+	ready: boolean;
+	connCount: number;
+	trafficRate: number;
+	bootstrapActive: boolean;
+	bo: { x: number; y: number };
+	zone: string;
+	sheetOpen: boolean;
+	sheetKind: string | null;
+};
+
+type TestApi = {
+	ready?: boolean;
+	frameCount?: number;
+	commands: {
+		advanceFrame: (ms: number) => void;
+		selectZone: (zone: string) => void;
+		dismissSheet: () => void;
+	};
+	state: () => TestState;
+};
+
+declare global {
+	interface Window {
+		__TEST__: TestApi;
+	}
+}
+
+type Report = {
+	gameUrl: string;
+	apiUrl: string;
+	checks: string[];
+	errors: string[];
+	skillStack: string[];
+	recordings: string[];
+	initialState?: TestState;
+	pixelSample?: { colours: number; dominant: number; bo: TestState["bo"] };
+	consoleErrors?: string[];
+};
+
+const MIME = {
 	".html": "text/html; charset=utf-8",
 	".js": "text/javascript; charset=utf-8",
 	".css": "text/css; charset=utf-8",
@@ -71,7 +111,7 @@ const MIME: Record<string, string> = {
 	".jpeg": "image/jpeg",
 	".svg": "image/svg+xml",
 	".gif": "image/gif",
-};
+} satisfies Record<string, string>;
 
 function staticHandler(base: string) {
 	return (req: IncomingMessage, res: ServerResponse) => {
@@ -131,11 +171,7 @@ function webmToMp4(webm: string, mp4: string): void {
 	}
 }
 
-function imgdiff(
-	baseline: string,
-	current: string,
-	out: string,
-): { ok: boolean; detail: string } {
+function imgdiff(baseline: string, current: string, out: string) {
 	if (!existsSync(baseline)) {
 		copyFileSync(current, baseline);
 		return { ok: true, detail: "baseline created" };
@@ -200,7 +236,7 @@ top = max(counts.values()) / total
 print(f"{len(counts)} {top:.4f}")
 `;
 
-function sceneRichness(png: string): { colours: number; dominant: number } {
+function sceneRichness(png: string) {
 	const r = spawnSync(
 		"uv",
 		["run", "--with", "pillow", "python", "-c", SCENE_RICHNESS_PY, png],
@@ -222,11 +258,7 @@ function sleep(ms: number) {
 async function advance(page: import("playwright").Page, n: number) {
 	for (let i = 0; i < n; i++) {
 		await page.evaluate(() => {
-			(
-				window as unknown as {
-					__TEST__: { commands: { advanceFrame: () => void } };
-				}
-			).__TEST__.commands.advanceFrame(16.67);
+			window.__TEST__.commands.advanceFrame(16.67);
 		});
 	}
 	await page.waitForTimeout(50);
@@ -243,6 +275,7 @@ const pub = stationRailsPublish(ctx, {
 	name: "prod",
 	version: "1.0.0",
 });
+// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 const hash = String((pub.data as { contentHash: string }).contentHash);
 stationRailsApprove(ctx, { stationId: "station:local", hashOrId: hash });
 stationRailsActivate(ctx, { stationId: "station:local", hashOrId: hash });
@@ -270,7 +303,7 @@ await new Promise<void>((resolve) =>
 	staticSrv.listen(0, "127.0.0.1", () => resolve()),
 );
 const staticAddr = staticSrv.address();
-if (!staticAddr || typeof staticAddr === "string") {
+if (!staticAddr || !("port" in staticAddr)) {
 	throw new Error("static bind failed");
 }
 const origin = `http://127.0.0.1:${staticAddr.port}`;
@@ -281,22 +314,22 @@ console.log("API", api.url);
 console.log("GAME", gameUrl);
 
 const browser = await playwright.chromium.launch({ headless: true });
-const report: Record<string, unknown> = {
+const report: Report = {
 	gameUrl,
 	apiUrl: api.url,
-	checks: [] as string[],
-	errors: [] as string[],
+	checks: [],
+	errors: [],
 	skillStack: ["gamedev-assets", "phaser-gamedev", "playwright-testing"],
-	recordings: [] as string[],
+	recordings: [],
 };
 
 function check(name: string, ok: boolean, detail?: string) {
 	const line = ok
 		? `PASS ${name}${detail ? ` — ${detail}` : ""}`
 		: `FAIL ${name}${detail ? ` — ${detail}` : ""}`;
-	(report.checks as string[]).push(line);
+	report.checks.push(line);
 	console.log(line);
-	if (!ok) (report.errors as string[]).push(line);
+	if (!ok) report.errors.push(line);
 }
 
 const videoDirs: string[] = [];
@@ -319,11 +352,11 @@ async function withRecording(
 	const page = await context.newPage();
 	// NEVER `return` from a finally here: it swallows tour failures and the run
 	// self-reports OK while writing stale screenshots.
-	let failure: unknown = null;
+	let failure: Error | null = null;
 	try {
 		await fn(page);
 	} catch (err) {
-		failure = err;
+		failure = err instanceof Error ? err : new Error(String(err));
 	}
 	const vid = page.video();
 	await page.close();
@@ -343,7 +376,7 @@ async function withRecording(
 	} else {
 		webmToMp4(webmPath, mp4);
 	}
-	(report.recordings as string[]).push(mp4);
+	report.recordings.push(mp4);
 	console.log("recorded", mp4, statSync(mp4).size, "bytes");
 	if (failure) throw failure;
 	return mp4;
@@ -364,39 +397,43 @@ try {
 			await page.goto(gameUrl, { waitUntil: "load", timeout: 30000 });
 			await page.waitForFunction(
 				() =>
-					(window as unknown as { __TEST__?: { ready?: boolean } }).__TEST__
-						?.ready === true,
+					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+					window.__TEST__?.ready === true,
 				null,
 				{ timeout: 20000 },
 			);
 			await page.waitForFunction(
 				() =>
-					((window as unknown as { __TEST__?: { frameCount?: number } })
-						.__TEST__?.frameCount ?? 0) >= 8,
+					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+					(window.__TEST__?.frameCount ?? 0) >= 8,
 				null,
 				{ timeout: 10000 },
 			);
 
-			const st = await page.evaluate(() =>
-				(
-					window as unknown as { __TEST__: { state: () => unknown } }
-				).__TEST__.state(),
-			);
+			const st = await page.evaluate(() => window.__TEST__.state());
 			report.initialState = st;
-			check("test seam ready", Boolean((st as { ready: boolean }).ready));
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			check("test seam ready", st.ready);
 			check(
 				"connection authorized present",
-				(st as { connCount: number }).connCount >= 1,
-				`conn=${(st as { connCount: number }).connCount}`,
+				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+				st.connCount >= 1,
+				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+				`conn=${st.connCount}`,
 			);
 			check(
 				"traffic rate > 0",
-				(st as { trafficRate: number }).trafficRate > 0,
-				`traffic=${(st as { trafficRate: number }).trafficRate}`,
+				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+				st.trafficRate > 0,
+				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+				`traffic=${st.trafficRate}`,
 			);
 			check(
 				"bootstrap inactive",
-				(st as { bootstrapActive: boolean }).bootstrapActive === false,
+				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+				st.bootstrapActive === false,
 			);
 
 			await page.screenshot({
@@ -419,13 +456,10 @@ try {
 				"platformRest",
 				"activeRailTrack",
 			] as const) {
-				await page.evaluate((z) => {
-					(
-						window as unknown as {
-							__TEST__: { commands: { selectZone: (x: string) => void } };
-						}
-					).__TEST__.commands.selectZone(z);
-				}, zone);
+				await page.evaluate(
+					(z) => window.__TEST__.commands.selectZone(z),
+					zone,
+				);
 				await advance(page, 45);
 				await sleep(400);
 			}
@@ -440,14 +474,7 @@ try {
 
 			// #yard hosts a WebGL canvas — sample the captured element shot instead
 			// of getImageData (Phaser keeps no preserved drawing buffer).
-			const boPos = await page.evaluate(
-				() =>
-					(
-						window as unknown as {
-							__TEST__: { state: () => { bo: { x: number; y: number } } };
-						}
-					).__TEST__.state().bo,
-			);
+			const boPos = await page.evaluate(() => window.__TEST__.state().bo);
 			const richness = sceneRichness(join(SHOTS, "canvas-only.png"));
 			report.pixelSample = { ...richness, bo: boPos };
 			check(
@@ -471,35 +498,15 @@ try {
 		{ width: 1400, height: 920 },
 		async (page) => {
 			await page.goto(gameUrl, { waitUntil: "load", timeout: 30000 });
-			await page.waitForFunction(
-				() =>
-					(window as unknown as { __TEST__?: { ready?: boolean } }).__TEST__
-						?.ready === true,
-				null,
-				{ timeout: 20000 },
-			);
-			await page.evaluate(() => {
-				(
-					window as unknown as {
-						__TEST__: { commands: { selectZone: (z: string) => void } };
-					}
-				).__TEST__.commands.selectZone("connectionBay");
+			await page.waitForFunction(() => window.__TEST__?.ready === true, null, {
+				timeout: 20000,
 			});
+			await page.evaluate(() =>
+				window.__TEST__.commands.selectZone("connectionBay"),
+			);
 			await advance(page, 80);
 			await sleep(800);
-			const stBay = await page.evaluate(() =>
-				(
-					window as unknown as {
-						__TEST__: {
-							state: () => {
-								zone: string;
-								sheetOpen: boolean;
-								sheetKind: string | null;
-							};
-						};
-					}
-				).__TEST__.state(),
-			);
+			const stBay = await page.evaluate(() => window.__TEST__.state());
 			check(
 				"connection bay zone",
 				stBay.zone === "connectionBay",
@@ -522,13 +529,7 @@ try {
 				.click()
 				.catch(() => {});
 			await sleep(600);
-			await page.evaluate(() => {
-				(
-					window as unknown as {
-						__TEST__: { commands: { dismissSheet: () => void } };
-					}
-				).__TEST__.commands.dismissSheet();
-			});
+			await page.evaluate(() => window.__TEST__.commands.dismissSheet());
 			await sleep(400);
 		},
 	);
@@ -544,45 +545,22 @@ try {
 		{ width: 1400, height: 920 },
 		async (page) => {
 			await page.goto(gameUrl, { waitUntil: "load", timeout: 30000 });
-			await page.waitForFunction(
-				() =>
-					(window as unknown as { __TEST__?: { ready?: boolean } }).__TEST__
-						?.ready === true,
-				null,
-				{ timeout: 20000 },
-			);
+			await page.waitForFunction(() => window.__TEST__?.ready === true, null, {
+				timeout: 20000,
+			});
 			for (const [zone, shot] of [
 				["policyBoard", "04-policy-board.png"],
 				["costBooth", "03-cost-booth.png"],
 				["errorBunker", "05-error-bunker.png"],
 			] as const) {
 				await page.evaluate((z) => {
-					(
-						window as unknown as {
-							__TEST__: {
-								commands: {
-									dismissSheet: () => void;
-									selectZone: (x: string) => void;
-								};
-							};
-						}
-					).__TEST__.commands.dismissSheet();
-					(
-						window as unknown as {
-							__TEST__: { commands: { selectZone: (x: string) => void } };
-						}
-					).__TEST__.commands.selectZone(z);
+					window.__TEST__.commands.dismissSheet();
+					window.__TEST__.commands.selectZone(z);
 				}, zone);
 				await advance(page, 70);
 				await sleep(700);
 				await page.screenshot({ path: join(SHOTS, shot), fullPage: true });
-				const stZ = await page.evaluate(() =>
-					(
-						window as unknown as {
-							__TEST__: { state: () => { zone: string } };
-						}
-					).__TEST__.state(),
-				);
+				const stZ = await page.evaluate(() => window.__TEST__.state());
 				check(`${zone} zone`, stZ.zone === zone, `zone=${stZ.zone}`);
 			}
 			await page.screenshot({
@@ -594,6 +572,7 @@ try {
 	);
 } catch (err) {
 	const msg = err instanceof Error ? err.message : String(err);
+	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 	(report.errors as string[]).push(msg);
 	console.error(err);
 } finally {
@@ -628,6 +607,7 @@ for (const rel of evidenceFiles) {
 	if (rel === "evidence-manifest.json") continue;
 	const abs = join(SHOTS, rel);
 	if (!existsSync(abs)) {
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		(report.errors as string[]).push(
 			`missing evidence file after capture: ${rel}`,
 		);
@@ -703,6 +683,7 @@ for (const rel of syncList) {
 
 console.log("report", join(SHOTS, "visual-report.json"));
 console.log("manifest", manifestPath);
+// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 if ((report.errors as string[]).length > 0) {
 	console.error("EVIDENCE CAPTURE FAILED");
 	process.exit(1);

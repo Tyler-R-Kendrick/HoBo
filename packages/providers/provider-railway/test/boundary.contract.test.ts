@@ -15,7 +15,6 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
 import { describe, expect, it } from "vitest";
-
 import {
 	createRailwayProvider,
 	provisionTemporaryEnvironmentStation,
@@ -23,14 +22,21 @@ import {
 	RailwayInputRejectedError,
 	TemporaryProvisionUnavailableError,
 } from "../src/index.js";
+import {
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	parseJsonObject,
+} from "../src/json.js";
 
 type PactMessage = {
 	readonly description: string;
 	readonly request: {
 		readonly type: string;
-		readonly body: Record<string, unknown>;
+		readonly body: JsonObject;
 	};
-	readonly response: { readonly body: Record<string, unknown> };
+	readonly response: { readonly body: JsonObject };
 };
 
 type PactFile = {
@@ -45,7 +51,7 @@ type PactFile = {
  * later with a property error instead of saying the pact is malformed.
  */
 function loadPact(): PactFile {
-	const decoded: unknown = JSON.parse(
+	const decoded = parseJsonObject(
 		readFileSync(
 			fileURLToPath(
 				new URL(
@@ -56,23 +62,48 @@ function loadPact(): PactFile {
 			"utf8",
 		),
 	);
-	if (typeof decoded !== "object" || decoded === null) {
-		throw new Error("the pact file is not a JSON object");
-	}
-	const candidate = decoded as Partial<PactFile>;
-	if (
-		!Array.isArray(candidate.interactions) ||
-		candidate.interactions.length === 0
-	) {
+	const interactionsRaw = decoded.interactions;
+	if (!isJsonArray(interactionsRaw) || interactionsRaw.length === 0) {
 		throw new Error("the pact file declares no interactions");
 	}
-	if (
-		candidate.consumer?.name === undefined ||
-		candidate.provider?.name === undefined
-	) {
+	const consumer = isJsonObject(decoded.consumer)
+		? decoded.consumer
+		: undefined;
+	const provider = isJsonObject(decoded.provider)
+		? decoded.provider
+		: undefined;
+	if (!isJsonString(consumer?.name) || !isJsonString(provider?.name)) {
 		throw new Error("the pact file is missing its consumer or provider name");
 	}
-	return candidate as PactFile;
+	const interactions: PactMessage[] = [];
+	for (const entry of interactionsRaw) {
+		if (!isJsonObject(entry) || !isJsonString(entry.description)) {
+			throw new Error("the pact file has a malformed interaction");
+		}
+		const request = isJsonObject(entry.request) ? entry.request : undefined;
+		const response = isJsonObject(entry.response) ? entry.response : undefined;
+		const requestBody = isJsonObject(request?.body) ? request.body : undefined;
+		const responseBody = isJsonObject(response?.body)
+			? response.body
+			: undefined;
+		if (
+			requestBody === undefined ||
+			responseBody === undefined ||
+			!isJsonString(request?.type)
+		) {
+			throw new Error("the pact file has a malformed interaction");
+		}
+		interactions.push({
+			description: entry.description,
+			request: { type: request.type, body: requestBody },
+			response: { body: responseBody },
+		});
+	}
+	return {
+		consumer: { name: consumer.name },
+		provider: { name: provider.name },
+		interactions,
+	};
 }
 
 const pact = loadPact();
@@ -89,27 +120,39 @@ function interaction(fragment: string): PactMessage {
 	return found;
 }
 
-function requestBody(fragment: string): Record<string, unknown> {
+function requestBody(fragment: string): JsonObject {
 	return interaction(fragment).request.body;
 }
 
-function responseBody(fragment: string): Record<string, unknown> {
+function responseBody(fragment: string): JsonObject {
 	return interaction(fragment).response.body;
 }
 
+function jsonString(value: JsonObject[string] | undefined): string {
+	return isJsonString(value) ? value : "";
+}
+
+function jsonStringMap(value: JsonObject[string] | undefined) {
+	if (!isJsonObject(value)) return {};
+	const mapped: { [key: string]: string } = {};
+	for (const [key, entry] of Object.entries(value)) {
+		if (isJsonString(entry)) mapped[key] = entry;
+	}
+	return mapped;
+}
+
 /** Every recorded rejection carries the same code and names the offending field. */
-function expectRejection(fragment: string, run: () => unknown): void {
-	const expected = responseBody(fragment).error as {
-		code: string;
-		field: string;
-	};
-	expect(expected.code).toBe(RAILWAY_REJECTED_CODE);
+function expectRejection(fragment: string, run: () => void): void {
+	const expected = responseBody(fragment).error;
+	const expectedError = isJsonObject(expected) ? expected : {};
+	expect(expectedError.code).toBe(RAILWAY_REJECTED_CODE);
 	try {
 		run();
 	} catch (error) {
 		expect(error).toBeInstanceOf(RailwayInputRejectedError);
-		expect((error as RailwayInputRejectedError).code).toBe(expected.code);
-		expect((error as RailwayInputRejectedError).field).toBe(expected.field);
+		if (!(error instanceof RailwayInputRejectedError)) return;
+		expect(error.code).toBe(expectedError.code);
+		expect(error.field).toBe(expectedError.field);
 		return;
 	}
 	throw new Error(`${fragment} was expected to be rejected and was not`);
@@ -151,14 +194,17 @@ describe("matching answers, verified against the pact", () => {
 		const request = requestBody(fragment);
 		const provider = createRailwayProvider();
 		const capability = provider.capabilities.find(
-			(entry) => entry.port === request.port,
+			(entry) => entry.port === jsonString(request.port),
 		);
 		// A port Railway does not realize has no capability object at all, and
 		// the plane must still get "none" rather than an absent answer.
+		const features = isJsonArray(request.features)
+			? request.features.filter(isJsonString)
+			: undefined;
 		return (
 			capability?.satisfies({
-				port: request.port as string,
-				features: request.features as string[],
+				port: jsonString(request.port),
+				...(features === undefined ? undefined : { features }),
 			}) ?? { kind: "none" as const }
 		);
 	}
@@ -184,21 +230,26 @@ describe("matching answers, verified against the pact", () => {
 	it("estimates cost as the unpriced signal the pact records", () => {
 		const request = requestBody("estimate cost");
 		const capability = createRailwayProvider().capabilities.find(
-			(entry) => entry.port === request.port,
+			(entry) => entry.port === jsonString(request.port),
 		);
 
-		expect(capability?.estimateCost({ port: request.port as string })).toEqual(
-			responseBody("estimate cost"),
-		);
+		expect(
+			capability?.estimateCost({ port: jsonString(request.port) }),
+		).toEqual(responseBody("estimate cost"));
 	});
 });
 
 describe("realize, verified against the pact", () => {
 	it("emits the one-resource driver program the pact records", () => {
 		const request = requestBody("realize a kv plan");
-		const realized = createRailwayProvider().realize(
-			request.plan as { name: string; port: string },
-		);
+		const realized = createRailwayProvider().realize({
+			name: jsonString(
+				isJsonObject(request.plan) ? request.plan.name : undefined,
+			),
+			port: jsonString(
+				isJsonObject(request.plan) ? request.plan.port : undefined,
+			),
+		});
 
 		expect(JSON.parse(JSON.stringify(realized))).toEqual(
 			responseBody("realize a kv plan"),
@@ -207,20 +258,30 @@ describe("realize, verified against the pact", () => {
 
 	it("rejects an unrealizable port at the parser", () => {
 		const request = requestBody("reject a plan whose port");
-		expectRejection("reject a plan whose port", () =>
-			createRailwayProvider().realize(
-				request.plan as { name: string; port: string },
-			),
-		);
+		expectRejection("reject a plan whose port", () => {
+			createRailwayProvider().realize({
+				name: jsonString(
+					isJsonObject(request.plan) ? request.plan.name : undefined,
+				),
+				port: jsonString(
+					isJsonObject(request.plan) ? request.plan.port : undefined,
+				),
+			});
+		});
 	});
 
 	it("rejects a plan name that could not become a DNS label", () => {
 		const request = requestBody("reject a plan name");
-		expectRejection("reject a plan name", () =>
-			createRailwayProvider().realize(
-				request.plan as { name: string; port: string },
-			),
-		);
+		expectRejection("reject a plan name", () => {
+			createRailwayProvider().realize({
+				name: jsonString(
+					isJsonObject(request.plan) ? request.plan.name : undefined,
+				),
+				port: jsonString(
+					isJsonObject(request.plan) ? request.plan.port : undefined,
+				),
+			});
+		});
 	});
 });
 
@@ -228,8 +289,8 @@ describe("client bindings, verified against the pact", () => {
 	it("returns the resolved class plus the deploy outputs the pact records", () => {
 		const request = requestBody("bind deploy outputs");
 		const client = createRailwayProvider().client(
-			request.port as string,
-			request.outputs as Record<string, string>,
+			jsonString(request.port),
+			jsonStringMap(request.outputs),
 		);
 
 		expect(JSON.parse(JSON.stringify(client))).toEqual(
@@ -239,12 +300,12 @@ describe("client bindings, verified against the pact", () => {
 
 	it("rejects a binding value carrying a second line", () => {
 		const request = requestBody("reject a deploy output");
-		expectRejection("reject a deploy output", () =>
+		expectRejection("reject a deploy output", () => {
 			createRailwayProvider().client(
-				request.port as string,
-				request.outputs as Record<string, string>,
-			),
-		);
+				jsonString(request.port),
+				jsonStringMap(request.outputs),
+			);
+		});
 	});
 });
 
@@ -255,9 +316,9 @@ describe("temporary Environment Station, verified against the pact", () => {
 
 		await expect(
 			provisionTemporaryEnvironmentStation({
-				stationId: request.stationId as string,
+				stationId: jsonString(request.stationId),
 			}),
-		).rejects.toSatisfy((error: unknown) => {
+		).rejects.toSatisfy((error: Error) => {
 			if (!(error instanceof TemporaryProvisionUnavailableError)) return false;
 			const { providerId, code, supportsAnonymousTemporaryDeploy } =
 				error.refusal;

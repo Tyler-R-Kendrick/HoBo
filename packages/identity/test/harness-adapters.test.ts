@@ -33,6 +33,7 @@ import {
 import type { RolloutPolicy, RolloutState } from "../src/harness-delivery.js";
 import type { ExperimentDefinition } from "../src/harness-experiment.js";
 import { OpenExperimentEngine } from "../src/harness-experiment.js";
+import type { JsonValue } from "../src/json.js";
 
 type FetchCall = {
 	url: string;
@@ -43,12 +44,15 @@ type FetchCall = {
 function stubFetch(response: {
 	ok?: boolean;
 	status?: number;
-	json?: () => Promise<unknown>;
+	json?: () => Promise<JsonValue>;
 	text?: () => Promise<string>;
 }): FetchLike & { calls: FetchCall[] } {
 	const calls: FetchCall[] = [];
+	// SAFETY: the stub implementation satisfies the package's FetchLike boundary.
 	const impl = (async (url: string, init?: Parameters<FetchLike>[1]) => {
-		calls.push({ url, ...(init !== undefined ? { init } : {}) });
+		const call: FetchCall = { url };
+		if (init !== undefined) call.init = init;
+		calls.push(call);
 		return {
 			ok: response.ok ?? true,
 			status: response.status ?? 200,
@@ -331,11 +335,17 @@ describe("delivery adapters", () => {
 		autoRollback: true,
 	});
 
+	// SAFETY: this fixture intentionally supplies the minimum state needed by the adapter.
 	const STATE = {
 		id: "roll-1",
+		policy: POLICY,
 		percent: 25,
 		status: "running",
-	} as unknown as RolloutState;
+		stageIndex: 0,
+		gatewayWeightPercent: 25,
+		startedAt: "2026-01-01T00:00:00.000Z",
+		updatedAt: "2026-01-01T00:00:00.000Z",
+	} satisfies RolloutState;
 
 	test("the builtin adapter accepts offline and needs no transport", async () => {
 		// This is the default path, and it has to work with no network at all.
@@ -855,11 +865,13 @@ describe("the mediated flag evaluator", () => {
 		const evaluator = createMediatedFlagEvaluator({ store: store() });
 		const result = evaluator.evaluate("f", CTX);
 		expect(result).not.toBeInstanceOf(Promise);
+		// SAFETY: synchronous evaluation returns a detail object with a value field.
 		expect((result as { value: unknown }).value).toBe(true);
 	});
 
 	test("the caller's default reaches the store for an unknown flag", () => {
 		const evaluator = createMediatedFlagEvaluator({ store: store() });
+		// SAFETY: the evaluator returns a synchronous detail object for this local store.
 		const result = evaluator.evaluate("ghost", CTX, "fallback") as {
 			value: unknown;
 			reason: string;
@@ -870,6 +882,7 @@ describe("the mediated flag evaluator", () => {
 
 	test("the default value defaults to false when omitted", () => {
 		const evaluator = createMediatedFlagEvaluator({ store: store() });
+		// SAFETY: the evaluator returns a synchronous detail object for this local store.
 		const result = evaluator.evaluate("ghost", CTX) as { value: unknown };
 		expect(result.value).toBe(false);
 	});

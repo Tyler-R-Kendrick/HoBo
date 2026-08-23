@@ -1,6 +1,7 @@
+import { isJsonString, isJsonObject } from "./json.js";
 import assert from "node:assert/strict";
-
 import {
+
   createDeliveryAdapter,
   exportToCDEvent,
   importFromCDEvent,
@@ -344,7 +345,7 @@ function check(name) {
 }
 
 function assertNonEmptyString(value, label) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new TypeError(`${label} must be a non-empty string`);
   }
 }
@@ -354,7 +355,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

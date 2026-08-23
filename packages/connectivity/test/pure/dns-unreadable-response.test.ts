@@ -11,6 +11,7 @@ import { describe, expect, it } from "vitest";
 import { createCloudflareDnsProvider } from "../../src/dns/cloudflare-provider.js";
 import { createRoute53DnsProvider } from "../../src/dns/route53-provider.js";
 
+// SAFETY: assertion required at this I/O or test boundary.
 const TENANT = "acme" as never;
 const ZONE = "example.com";
 const RECORD = "web.example.com";
@@ -29,8 +30,8 @@ const ONE_RECORD = LIST_XML(
 
 /** Answers every request the same way, which is all these cases need. */
 function respond(status: number, body: string): typeof fetch {
-	return (async () =>
-		new Response(body, { status })) as unknown as typeof fetch;
+	// SAFETY: assertion required at this I/O or test boundary.
+	return (async () => new Response(body, { status })) as typeof fetch;
 }
 
 function cloudflare(status: number, body: string) {

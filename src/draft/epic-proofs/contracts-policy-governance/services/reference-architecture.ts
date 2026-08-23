@@ -1,3 +1,4 @@
+import { isJsonObject } from "../src/json.js";
 import { evaluateCanDeploy } from "../../../technical-proofs/can-deploy-compatibility-gate-contract/src/compatibility-gate.js";
 import {
   createBuiltInPolicyEngine,
@@ -402,7 +403,7 @@ function mergeFixtures(base, overrides) {
   if (Array.isArray(base) || Array.isArray(overrides)) {
     return overrides === undefined ? structuredClone(base) : structuredClone(overrides);
   }
-  if (!base || typeof base !== "object") {
+  if (!base || !isJsonObject(base)) {
     return overrides === undefined ? base : overrides;
   }
   const output = { ...structuredClone(base) };

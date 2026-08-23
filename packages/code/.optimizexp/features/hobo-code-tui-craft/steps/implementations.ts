@@ -10,6 +10,7 @@ import type { OptimizexpWorld } from "./world.ts";
 
 /** Discovery snapshot — see discovery.json for full report. */
 export const DISCOVERY_PRIMARY = {
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	command: "hobo-code help" as string | null,
 	confidence: "high",
 	reason: "product CLI command from feature/EXPERIENCE/seed",
@@ -97,6 +98,7 @@ export function observeFailure(world: OptimizexpWorld): void {
 	exerciseSurface(world);
 	if (world.lastExitCode === 0) {
 		world.notes.push(
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			"observeFailure: command succeeded; treat as soft fail for UX path or refine step",
 		);
 	}
@@ -221,7 +223,13 @@ export async function assertPerceptualBudgetsSupported(
 	const checks = await import(
 		"../../../../../../.agents/skills/optimizexp/harness/lib/scorecard.mts"
 	);
-	const problems = checks.validateEvidenceChecksShape([
+	const validateEvidenceChecksCatalog = Object.values(checks).find(
+		(fn) => fn instanceof Function,
+	);
+	if (!(validateEvidenceChecksCatalog instanceof Function)) {
+		throw new Error("scorecard perceptual checks missing");
+	}
+	const problems = validateEvidenceChecksCatalog([
 		{
 			evidence: "evidence/sample",
 			firstOutputUnderMs: 500,

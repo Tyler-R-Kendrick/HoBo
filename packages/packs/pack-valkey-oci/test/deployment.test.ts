@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unknown-returns, anti-slop/no-known-value-widening -- deployment fixture helpers are test-boundary data. */
 import assert from "node:assert/strict";
 import { PackError, parsePackConfiguration } from "@hobo/pack-framework";
 import { describe, it } from "vitest";
@@ -229,3 +230,4 @@ describe("buildValkeyContainerSpec", () => {
 		);
 	});
 });
+/* eslint-disable anti-slop/no-unknown-returns, anti-slop/no-known-value-widening -- deployment fixture helpers are test-boundary data. */

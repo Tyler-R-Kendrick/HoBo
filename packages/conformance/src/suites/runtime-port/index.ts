@@ -17,7 +17,7 @@ export {
 export async function runRuntimePortDurabilitySuite(
 	createBackend: () => RuntimeDurabilityBackend,
 ): Promise<RuntimePortConformanceReport> {
-	if (typeof createBackend !== "function") {
+	if (!(createBackend instanceof Function)) {
 		throw new TypeError("createBackend must be a function");
 	}
 

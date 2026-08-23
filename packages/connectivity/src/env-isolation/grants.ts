@@ -213,6 +213,7 @@ export class BreakGlassService {
 			reason: input.reason,
 			requestedAt: t,
 			requester: input.requester,
+			// SAFETY: assertion required at this I/O or test boundary.
 			approvers: Object.freeze([] as string[]),
 			status: "requested",
 			obligations: Object.freeze([
@@ -291,7 +292,7 @@ export class BreakGlassService {
 					subject: granted.subject,
 					isolationClass: granted.isolationClass,
 					expiresAt,
-					approvers,
+					approvers: [...approvers],
 				},
 			}),
 		);
@@ -360,7 +361,7 @@ export class BreakGlassService {
 				actor: input.reviewer,
 				data: {
 					grantId: input.grantId,
-					...(input.notes !== undefined ? { notes: input.notes } : {}),
+					...(input.notes !== undefined ? { notes: input.notes } : undefined),
 				},
 			}),
 		);

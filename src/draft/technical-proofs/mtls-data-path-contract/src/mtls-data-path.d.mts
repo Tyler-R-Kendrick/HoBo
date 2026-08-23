@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-unknown-parameters -- SAFETY: validation intentionally accepts erased boundary input before applying the mTLS domain contract. */
+
 export declare const MTLS_DATA_PATH_SCHEMA_VERSION: "hobo.mtls-data-path/v1";
 
 export interface WorkloadSpiffeIdentity {

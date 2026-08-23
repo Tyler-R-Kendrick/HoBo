@@ -1,3 +1,12 @@
+import {
+	asPageUrl,
+	currentLocationHref,
+	isJsonObject,
+	isJsonString,
+	parseJsonTree,
+	type JsonValue,
+} from "../json-inspect.js";
+
 /**
  * Lakebed anonymous Temporary Environment Station client for Examples.
  * Same-origin /api/lakebed-temp — never LAKEBED_TOKEN, never blob: as Lakebed.
@@ -24,7 +33,7 @@ export function sameOriginLakebedTempApiBase(
 	pageUrl: string | URL,
 	basePath = "/HoBo/",
 ): string {
-	const page = typeof pageUrl === "string" ? new URL(pageUrl) : pageUrl;
+	const page = asPageUrl(pageUrl);
 	const base = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath;
 	const prefix = base.length === 0 || base === "/" ? "" : base;
 	return `${page.origin}${prefix}/api/lakebed-temp`;
@@ -56,9 +65,8 @@ export async function provisionLakebedStationViaBroker(input: {
 }): Promise<LakebedStationProvision> {
 	const pageUrl =
 		input.pageUrl ??
-		(typeof globalThis.location?.href === "string"
-			? globalThis.location.href
-			: "http://localhost:4321/HoBo/examples/");
+		currentLocationHref() ??
+		"http://localhost:4321/HoBo/examples/";
 	const base = (
 		input.baseUrl ??
 		sameOriginLakebedTempApiBase(pageUrl, input.basePath ?? "/HoBo/")
@@ -89,30 +97,47 @@ export async function provisionLakebedStationViaBroker(input: {
 			`${REMEDIATION} (API returned HTML/non-JSON HTTP ${response.status} — restart astro dev with current tree; GitHub Pages has no /api/lakebed-temp)`,
 		);
 	}
-	let body: LakebedStationProvision | LakebedBrokerError;
+	let body: JsonValue;
 	try {
-		body = JSON.parse(text) as LakebedStationProvision | LakebedBrokerError;
+		body = parseJsonTree(text);
 	} catch {
 		throw new Error(
 			`${REMEDIATION} (invalid JSON HTTP ${response.status})`,
 		);
 	}
-	if (!response.ok || !body.ok) {
-		const fail = body as LakebedBrokerError;
-		throw new Error(fail.remediation ?? fail.error ?? REMEDIATION);
+	if (!response.ok || !isJsonObject(body) || body.ok !== true) {
+		const fail = isJsonObject(body) ? body : {};
+		throw new Error(
+			(isJsonString(fail.remediation) ? fail.remediation : undefined) ??
+				(isJsonString(fail.error) ? fail.error : undefined) ??
+				REMEDIATION,
+		);
 	}
 	if ("LAKEBED_TOKEN" in body || "apiToken" in body) {
 		throw new Error(
 			"Lakebed temp broker leaked credentials to the browser — refusing response",
 		);
 	}
-	if (!isLakebedStationUrl(body.stationUrl)) {
+	if (!isJsonString(body.stationUrl) || !isLakebedStationUrl(body.stationUrl)) {
 		throw new Error(
-			`Broker returned non-Lakebed stationUrl (${body.stationUrl}). Refusing same-origin HTML stubs as Lakebed.`,
+			`Broker returned non-Lakebed stationUrl (${String(body.stationUrl)}). Refusing same-origin HTML stubs as Lakebed.`,
 		);
 	}
-	if (!body.claimUrl) {
+	if (
+		!isJsonString(body.claimUrl) ||
+		!isJsonString(body.stationId) ||
+		!isJsonString(body.expiresAt)
+	) {
 		throw new Error("Lakebed broker response missing claimUrl");
 	}
-	return body;
+	return {
+		ok: true,
+		stationId: body.stationId,
+		stationUrl: body.stationUrl,
+		claimUrl: body.claimUrl,
+		expiresAt: body.expiresAt,
+		anonymous: true,
+		temporary: true,
+		providerId: "lakebed",
+	};
 }

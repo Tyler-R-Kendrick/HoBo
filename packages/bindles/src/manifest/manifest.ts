@@ -1,4 +1,11 @@
 import { createHash } from "node:crypto";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 export const MANIFEST_SCHEMA = "hobo.manifest/v1" as const;
 
@@ -55,9 +62,9 @@ type ResourceRecord = {
 	runtime?: string;
 	exports?: string[];
 	links?: LinkRecord[];
-	endpoints?: Record<string, unknown>;
+	endpoints?: JsonObject;
 	env?: Record<string, string>;
-	annotations?: Record<string, unknown>;
+	annotations?: JsonObject;
 	bind?: string[];
 };
 
@@ -84,8 +91,8 @@ export class ManifestParseError extends Error {
 	}
 }
 
-export function parseManifest(input: unknown): ManifestV1 {
-	const record = parseManifestRecord(input);
+export function parseManifest<T>(input: T): ManifestV1 {
+	const record = parseManifestRecord(cloneAsJson(input));
 	return brandManifest(record);
 }
 
@@ -142,10 +149,12 @@ function capture(match: RegExpExecArray, index: number, path: string): string {
 	return value;
 }
 
-export function aspireFallbackEnv(
-	manifest: ManifestV1,
-): Record<string, string[]> {
-	const aspireEnv: Record<string, string[]> = {};
+export interface AspireFallbackEnv {
+	[id: string]: string[];
+}
+
+export function aspireFallbackEnv(manifest: ManifestV1): AspireFallbackEnv {
+	const aspireEnv: AspireFallbackEnv = {};
 
 	for (const [id, resource] of Object.entries(manifest.value.resources)) {
 		if (!isRecord(resource.env)) {
@@ -166,7 +175,7 @@ export function aspireFallbackEnv(
 	return aspireEnv;
 }
 
-function parseManifestRecord(input: unknown): ManifestRecord {
+function parseManifestRecord(input: JsonValue): ManifestRecord {
 	assertRecord(input, "manifest");
 
 	if (input.schema !== MANIFEST_SCHEMA) {
@@ -214,11 +223,14 @@ function parseManifestRecord(input: unknown): ManifestRecord {
 			version: input.componentHost.version,
 		},
 		resources,
-		...(triggerEdges ? { triggerEdges } : {}),
+		...(triggerEdges ? { triggerEdges } : undefined),
 	};
 }
 
-function validateResource(id: string, resource: unknown): ResourceRecord {
+function validateResource(
+	id: string,
+	resource: JsonValue | undefined,
+): ResourceRecord {
 	if (!RESOURCE_ID.test(id)) {
 		throw new ManifestParseError(`resources.${id}`, "invalid resource id");
 	}
@@ -254,11 +266,12 @@ function validateResource(id: string, resource: unknown): ResourceRecord {
 		);
 	}
 
+	// SAFETY: assertion required at this I/O or test boundary.
 	return structuredClone(resource) as ResourceRecord;
 }
 
 function validateTriggerEdge(
-	edge: unknown,
+	edge: JsonValue | undefined,
 	path: string,
 	resources: Record<string, ResourceRecord>,
 ): TriggerEdgeRecord {
@@ -280,7 +293,7 @@ function validateTriggerEdge(
 		kind: edge.kind,
 		resourceId: edge.resourceId,
 		exportInterface: edge.exportInterface,
-		...(typeof edge.event === "string" ? { event: edge.event } : {}),
+		...(isJsonString(edge.event) ? { event: edge.event } : undefined),
 	};
 }
 
@@ -362,12 +375,12 @@ function validateResourceReferences(
 	}
 }
 
-function visitStrings(
-	value: unknown,
+function visitStrings<T>(
+	value: T,
 	path: string,
 	visitor: (value: string, path: string) => void,
 ): void {
-	if (typeof value === "string") {
+	if (isJsonString(value)) {
 		visitor(value, path);
 		return;
 	}
@@ -384,52 +397,52 @@ function visitStrings(
 	}
 }
 
-function sortKeys(value: unknown): unknown {
-	if (Array.isArray(value)) {
-		return value.map(sortKeys);
+function sortKeys<T>(value: T): JsonValue {
+	const json = cloneAsJson(value);
+	if (Array.isArray(json)) {
+		return json.map(sortKeys);
 	}
-	if (!isRecord(value)) {
-		return value;
+	if (!isRecord(json)) {
+		return json;
 	}
 
 	return Object.fromEntries(
-		Object.keys(value)
+		Object.keys(json)
 			.sort()
-			.map((key) => [key, sortKeys(value[key])]),
+			.map((key) => [key, sortKeys(json[key] ?? null)]),
 	);
 }
 
 function brandManifest(record: ManifestRecord): ManifestV1 {
 	return {
 		brand: manifestV1Brand,
+		// SAFETY: assertion required at this I/O or test boundary.
 		value: Object.freeze(structuredClone(record)) as ManifestRecord,
 	};
 }
 
 function assertRecord(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
-): asserts value is Record<string, unknown> {
+): asserts value is JsonObject {
 	if (!isRecord(value)) {
 		throw new ManifestParseError(path, "must be an object");
 	}
 }
 
 function assertRequiredString(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 ): asserts value is string {
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new ManifestParseError(path, "required");
 	}
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
+function isRecord<T>(value: T): value is T & JsonObject {
+	return isJsonObject(value) && !Array.isArray(value);
 }
 
-function isStringArray(value: unknown): value is string[] {
-	return (
-		Array.isArray(value) && value.every((item) => typeof item === "string")
-	);
+function isStringArray<T>(value: T): value is T & string[] {
+	return Array.isArray(value) && value.every((item) => isJsonString(item));
 }

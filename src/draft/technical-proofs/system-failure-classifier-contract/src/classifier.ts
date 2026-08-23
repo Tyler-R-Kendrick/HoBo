@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: normalizeError is the parser boundary for erased runtime failure values; these checks refine untrusted fields before classification. */
+
 export const CLASSIFICATION_EVENT_TYPE = "failure.Classified";
 
 export const failureClasses = Object.freeze({

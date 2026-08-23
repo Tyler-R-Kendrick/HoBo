@@ -1,3 +1,5 @@
+import type { JsonObject } from "./json.js";
+
 // public-contract: the provider target id `.with(...)` option blocks carry.
 export const DIGITALOCEAN_PROVIDER_TARGET = "digitalocean";
 
@@ -9,7 +11,7 @@ export type TypedOptionBlock = {
 	port: string;
 	optionName: string;
 	negotiation: "prefer" | "require";
-	options: Record<string, unknown>;
+	options: JsonObject;
 };
 
 // The provider-specific options pattern (sdk-api.md "the core promise"): typed,
@@ -17,7 +19,7 @@ export type TypedOptionBlock = {
 // targets many clouds unedited.
 export const digitalocean = {
 	with: {
-		appPlatform(options: Record<string, unknown> = {}): TypedOptionBlock {
+		appPlatform(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"compute",
 				"appPlatform",
@@ -25,7 +27,7 @@ export const digitalocean = {
 				options,
 			);
 		},
-		droplet(options: Record<string, unknown> = {}): TypedOptionBlock {
+		droplet(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"compute",
 				"droplet",
@@ -33,7 +35,7 @@ export const digitalocean = {
 				options,
 			);
 		},
-		managedPostgres(options: Record<string, unknown> = {}): TypedOptionBlock {
+		managedPostgres(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"database",
 				"managedPostgres",
@@ -41,7 +43,7 @@ export const digitalocean = {
 				options,
 			);
 		},
-		spaces(options: Record<string, unknown> = {}): TypedOptionBlock {
+		spaces(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"objectStore",
 				"spaces",
@@ -49,7 +51,7 @@ export const digitalocean = {
 				options,
 			);
 		},
-		managedValkey(options: Record<string, unknown> = {}): TypedOptionBlock {
+		managedValkey(options: JsonObject = {}): TypedOptionBlock {
 			return optionBlock(
 				"cache",
 				"managedValkey",
@@ -63,8 +65,8 @@ export const digitalocean = {
 function optionBlock(
 	port: string,
 	optionName: string,
-	defaults: Record<string, unknown>,
-	options: Record<string, unknown>,
+	defaults: JsonObject,
+	options: JsonObject,
 ): TypedOptionBlock {
 	return {
 		providerId: DIGITALOCEAN_PROVIDER_TARGET,

@@ -2,7 +2,6 @@ import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import type { IacProgram } from "@hobo/cloud";
-
 import type { EventStore } from "@hobo/core";
 import { first } from "@hobo/core/total-access";
 import { afterEach, describe, expect, it } from "vitest";
@@ -13,6 +12,7 @@ import {
 	type VercelFetch,
 	type VercelFetchResponse,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
 // Request-formation + provider-selection + fallback tests for the REAL Vercel
 // deploy path. NO network: `fetch` is injected/mocked throughout. The live call
@@ -38,10 +38,7 @@ interface RecordedCall {
 
 // A mocked `VercelFetch` that records the outbound request and returns a canned
 // Create-Deployment success body. No socket is opened.
-function mockFetch(
-	responseBody: Record<string, unknown>,
-	status = 200,
-): { fetch: VercelFetch; calls: RecordedCall[] } {
+function mockFetch(responseBody: JsonObject, status = 200) {
 	const calls: RecordedCall[] = [];
 	const fetch: VercelFetch = async (url, init) => {
 		calls.push({
@@ -110,11 +107,12 @@ describe("createVercelClient.createDeployment (mocked fetch, no network)", () =>
 		expect(call.headers.Authorization).toBe("Bearer tok_secret");
 		expect(call.headers["Content-Type"]).toBe("application/json");
 
+		// SAFETY: assertion required at this I/O or test boundary.
 		const sent = JSON.parse(call.body) as {
 			name: string;
 			project: string;
 			target: string;
-			projectSettings: Record<string, unknown>;
+			projectSettings: JsonObject;
 			files: Array<{ file: string; data: string; encoding: string }>;
 		};
 		expect(sent.name).toBe("hobo-hello-bindle");
@@ -173,6 +171,7 @@ describe("createVercelDeployProvider (mocked fetch, no network)", () => {
 
 		// The deploy payload is the committed artifact tree (the known-good source
 		// of truth): the three core files are present as base64 inline files.
+		// SAFETY: assertion required at this I/O or test boundary.
 		const sent = JSON.parse(first(calls).body) as {
 			files: Array<{ file: string; encoding: string }>;
 		};
@@ -212,7 +211,8 @@ describe("selectIacProvider env-gated selection (fallback intact)", () => {
 	// (it reads them lazily on apply), so a light stand-in suffices for a
 	// selection-only assertion.
 	const pulumiDeps = {
-		store: {} as unknown as EventStore,
+		// SAFETY: assertion required at this I/O or test boundary.
+		store: {} as EventStore,
 		providers: [],
 	};
 	const { fetch } = mockFetch({ id: "d", url: "d.vercel.app" });

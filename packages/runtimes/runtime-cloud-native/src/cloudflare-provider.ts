@@ -23,6 +23,12 @@ import type {
 	ServePrivateContext,
 } from "@hobo/core";
 import type { CloudNativeHostProvider } from "./host.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 // public-contract: env var carrying the Cloudflare API token (presence-only gate).
 export const CLOUDFLARE_API_TOKEN_ENV = "CLOUDFLARE_API_TOKEN";
@@ -73,18 +79,19 @@ export interface CloudflareCloudNativeProviderOptions {
  * becomes the parsed token status or throws — nothing downstream re-checks
  * broad DTOs. Accepts only `{ success: true, result: { status: "active" } }`.
  */
-function parseTokenVerifyPayload(payload: unknown): string {
+function parseTokenVerifyPayload(payload: JsonValue): string {
 	const remediation =
 		`Re-check the token at ${CLOUDFLARE_TOKEN_VERIFY_URL} (dash.cloudflare.com → ` +
 		"My Profile → API Tokens) and supply an active token via " +
 		`${CLOUDFLARE_API_TOKEN_ENV}.`;
-	if (typeof payload !== "object" || payload === null) {
+	if (!isJsonObject(payload) || payload === null) {
 		throw new CloudflareCloudNativeError(
 			"cloudflare token verify returned a malformed payload (not an object)",
 			remediation,
 		);
 	}
-	const record = payload as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const record = payload as JsonObject;
 	if (record.success !== true) {
 		throw new CloudflareCloudNativeError(
 			"cloudflare token verify reported success=false",
@@ -92,14 +99,15 @@ function parseTokenVerifyPayload(payload: unknown): string {
 		);
 	}
 	const result = record.result;
-	if (typeof result !== "object" || result === null) {
+	if (!isJsonObject(result) || result === null) {
 		throw new CloudflareCloudNativeError(
 			"cloudflare token verify payload is missing result",
 			remediation,
 		);
 	}
-	const status = (result as Record<string, unknown>).status;
-	if (typeof status !== "string") {
+	// SAFETY: assertion required at this I/O or test boundary.
+	const status = (result as JsonObject).status;
+	if (!isJsonString(status)) {
 		throw new CloudflareCloudNativeError(
 			"cloudflare token verify payload is missing result.status",
 			remediation,

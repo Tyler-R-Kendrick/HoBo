@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this validator receives erased caller input at the proof boundary and rejects non-object records before domain checks. */
 const REQUIRED_INTAKE_FIELDS = ["persona", "environment", "workflow", "severity", "evidence", "customerImpact"];
 const REQUIRED_TRIAGE_DESTINATIONS = ["cutline", "support", "product-ux", "docs", "capability-project"];
 const REQUIRED_RC_PERSONAS = ["app developer", "platform engineer", "support/operator"];

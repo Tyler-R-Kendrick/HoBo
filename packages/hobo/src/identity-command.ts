@@ -5,9 +5,9 @@
  * Mutations (start/link/cutover) are Matching/policy-gated platform ops —
  * not exposed here. Agents auto-rebind on identity.Migrated with zero config.
  */
+
 import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-
 import type { CommandModule } from "@hobo/cli";
 import {
 	createContractAssertedDualFixtures,
@@ -19,9 +19,9 @@ import {
 	matchingSignalsFromResourceDecision,
 	migrationStatusView,
 } from "@hobo/identity";
-
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import { loadHoboProfile } from "./hobo-profile.js";
+import { isJsonString, type JsonObject } from "./json.js";
 
 export interface IdentityCommandDeps {
 	readonly env?: NodeJS.ProcessEnv;
@@ -41,17 +41,18 @@ function loadMigrationEvents(hoboHome: string): IdentityMigrationEvent[] {
 	const path = migrationStorePath(hoboHome);
 	if (!existsSync(path)) return [];
 	const lines = readFileSync(path, "utf8").split("\n").filter(Boolean);
+	// SAFETY: assertion required at this I/O or test boundary.
 	return lines.map((line) => JSON.parse(line) as IdentityMigrationEvent);
 }
 
 function resolveTenant(
 	hoboHome: string,
-	flags: Record<string, unknown>,
+	flags: JsonObject,
 	env: NodeJS.ProcessEnv,
 ): string {
 	const flag = flags.tenant;
-	if (typeof flag === "string" && flag.length > 0) return flag;
-	if (typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT.length > 0) {
+	if (isJsonString(flag) && flag.length > 0) return flag;
+	if (isJsonString(env.HOBO_TENANT) && env.HOBO_TENANT.length > 0) {
 		return env.HOBO_TENANT;
 	}
 	return loadHoboProfile(hoboHome)?.session?.tenant ?? "local";
@@ -82,10 +83,12 @@ export function createIdentityCommand(
 			const env = deps.env ?? process.env;
 			const hoboHome =
 				deps.hoboHome ??
-				(typeof env.HOBO_HOME === "string" && env.HOBO_HOME.length > 0
+				(isJsonString(env.HOBO_HOME) && env.HOBO_HOME.length > 0
 					? env.HOBO_HOME
 					: defaultHoboHome());
+			// SAFETY: assertion required at this I/O or test boundary.
 			const sub = (args[0] ?? "status") as string;
+			// SAFETY: assertion required at this I/O or test boundary.
 			if (!(SUBCOMMANDS as readonly string[]).includes(sub)) {
 				return {
 					ok: false,
@@ -125,7 +128,7 @@ export function createIdentityCommand(
 
 			if (sub === "inspect") {
 				const id = args[1];
-				if (typeof id !== "string" || id.length === 0) {
+				if (!isJsonString(id) || id.length === 0) {
 					return {
 						ok: false,
 						status: "usage",

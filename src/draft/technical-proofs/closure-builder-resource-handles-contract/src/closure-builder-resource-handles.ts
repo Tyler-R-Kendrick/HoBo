@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export type ResourceKind = "api" | "cache" | "queue";
 export type RelationshipVerb = "dependsOn";
 
@@ -17,7 +18,7 @@ export interface ResourceDescriptor {
 
 export interface WorkloadDescriptor {
   readonly kind: "inert-workload-factory";
-  readonly factory: () => unknown;
+  readonly factory: () => JsonValue | void;
 }
 
 export interface BindleManifest<TAliases extends Record<string, ResourceHandle>> {
@@ -55,24 +56,26 @@ export interface ResourceIdentityDiagnostic {
   readonly physicalNameSeed: string;
 }
 
+export type DependencyRef = ResourceHandle | ResourceDescriptor | JsonObject;
+
 export interface ResourceHandle<TKind extends ResourceKind = ResourceKind> {
   readonly generatedId: string;
   readonly kind: TKind;
-  dependsOn(...dependencies: readonly unknown[]): ResourceHandle<TKind>;
-  with(...annotations: readonly unknown[]): ResourceHandle<TKind>;
+  dependsOn(...dependencies: readonly DependencyRef[]): ResourceHandle<TKind>;
+  with(...annotations: readonly JsonValue[]): ResourceHandle<TKind>;
 }
 
 export interface ClosureBuilder {
-  api(workload: () => unknown): ResourceHandle<"api">;
+  api(workload: () => JsonValue | void): ResourceHandle<"api">;
   cache(): ResourceHandle<"cache">;
-  queue<TMessage = unknown>(): ResourceHandle<"queue">;
+  queue<_TMessage = JsonValue>(): ResourceHandle<"queue">;
 }
 
 export class ClosureBuilderResourceError extends Error {
   readonly code: string;
-  readonly details: Record<string, unknown>;
+  readonly details: JsonObject;
 
-  constructor(code: string, message: string, details: Record<string, unknown> = {}) {
+  constructor(code: string, message: string, details: JsonObject = {}) {
     super(`${code}: ${message}`);
     this.name = "ClosureBuilderResourceError";
     this.code = code;
@@ -80,15 +83,16 @@ export class ClosureBuilderResourceError extends Error {
   }
 }
 
-export function createResourceIdentityLedger(input: unknown): ResourceIdentityLedger {
-  if (typeof input !== "object" || input === null) {
+export function createResourceIdentityLedger(input: JsonValue): ResourceIdentityLedger {
+  if (!isJsonObject(input) || input === null) {
     throw new ClosureBuilderResourceError(
       "CLOSURE_BUILDER_LEDGER_SHAPE",
       "resource identity ledger must be an object",
     );
   }
 
-  const record = input as Record<string, unknown>;
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+  const record = input as JsonObject;
   const bindleName = requireNonEmptyString(record.bindleName, "bindleName");
   if (record.artifactOwner !== "hobo-collector") {
     throw new ClosureBuilderResourceError(
@@ -220,15 +224,15 @@ class BuilderContext {
 
   builder(): ClosureBuilder {
     return {
-      api: (workload: () => unknown, ...extra: readonly unknown[]) => {
+      api: (workload: () => JsonValue | void, ...extra: readonly JsonValue[]) => {
         assertWorkloadFactory("api", workload, extra);
         return this.create("api", { kind: "inert-workload-factory", factory: workload });
       },
-      cache: (...args: readonly unknown[]) => {
+      cache: (...args: readonly JsonValue[]) => {
         assertNoFactoryArgs("cache", args);
         return this.create("cache", null);
       },
-      queue: <TMessage = unknown>(...args: readonly unknown[]) => {
+      queue: <_TMessage = JsonValue>(...args: readonly JsonValue[]) => {
         assertNoFactoryArgs("queue", args);
         return this.create("queue", null);
       },
@@ -287,7 +291,7 @@ function generatedResourceId(kind: ResourceKind, ordinal: number): string {
 }
 
 class ResourceHandleImpl<TKind extends ResourceKind = ResourceKind> implements ResourceHandle<TKind> {
-  private readonly annotations: unknown[] = [];
+  private readonly annotations: JsonValue[] = [];
 
   constructor(
     private readonly context: BuilderContext,
@@ -296,7 +300,7 @@ class ResourceHandleImpl<TKind extends ResourceKind = ResourceKind> implements R
     private readonly workload: WorkloadDescriptor | null,
   ) {}
 
-  dependsOn(...dependencies: readonly unknown[]): ResourceHandle<TKind> {
+  dependsOn(...dependencies: readonly DependencyRef[]): ResourceHandle<TKind> {
     for (const dependency of dependencies) {
       const target = parseDependency(this.context, dependency);
       this.context.relationships.push({
@@ -308,7 +312,7 @@ class ResourceHandleImpl<TKind extends ResourceKind = ResourceKind> implements R
     return this;
   }
 
-  with(...annotations: readonly unknown[]): ResourceHandle<TKind> {
+  with(...annotations: readonly JsonValue[]): ResourceHandle<TKind> {
     this.annotations.push(...annotations);
     return this;
   }
@@ -328,7 +332,7 @@ class ResourceHandleImpl<TKind extends ResourceKind = ResourceKind> implements R
   }
 }
 
-function parseDependency(context: BuilderContext, value: unknown): ResourceHandleImpl {
+function parseDependency(context: BuilderContext, value: DependencyRef): ResourceHandleImpl {
   if (value instanceof ResourceHandleImpl) {
     if (value.ownerBindleId() !== context.ownerBindleId) {
       throw new ClosureBuilderResourceError(
@@ -340,38 +344,41 @@ function parseDependency(context: BuilderContext, value: unknown): ResourceHandl
     return value;
   }
 
-  if (isResourceDescriptor(value) && value.ownerBindleId !== context.ownerBindleId) {
+  // SAFETY: descriptors and foreign bags are inspected for ownerBindleId only.
+  const bag: { ownerBindleId?: JsonValue } = value as never;
+  if (isResourceDescriptor(value) && bag.ownerBindleId !== context.ownerBindleId) {
     throw new ClosureBuilderResourceError(
       "CLOSURE_BUILDER_CROSS_BINDLE_DEPENDENCY",
       "dependsOn() cannot reference resource snapshots from another bindle",
-      { from: context.ownerBindleId, to: value.ownerBindleId },
+      { from: context.ownerBindleId, to: bag.ownerBindleId ?? null },
     );
   }
 
   throw new ClosureBuilderResourceError(
     "CLOSURE_BUILDER_INVALID_DEPENDENCY",
     "dependsOn() expects a resource handle returned by the same closure builder",
-    { dependency: value },
+    { from: context.ownerBindleId },
   );
 }
 
-function assertNoFactoryArgs(kind: ResourceKind, args: readonly unknown[]): void {
+function assertNoFactoryArgs(kind: ResourceKind, args: readonly JsonValue[]): void {
   if (args.length === 0) return;
   throw new ClosureBuilderResourceError(
     "CLOSURE_BUILDER_NAMED_RESOURCE_ARG",
     `b.${kind}() does not accept resource name arguments in the v1 closure builder`,
-    { kind, args },
+    { kind, args: [...args] },
   );
 }
 
-function parseResourceIdentityLedgerEntry(input: unknown): ResourceIdentityLedgerEntry {
-  if (typeof input !== "object" || input === null) {
+function parseResourceIdentityLedgerEntry(input: JsonValue): ResourceIdentityLedgerEntry {
+  if (!isJsonObject(input) || input === null) {
     throw new ClosureBuilderResourceError(
       "CLOSURE_BUILDER_LEDGER_ENTRY_SHAPE",
       "resource identity ledger entry must be an object",
     );
   }
-  const record = input as Record<string, unknown>;
+  // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
+  const record = input as JsonObject;
   if (
     record.identitySource !== "hobo-generated" ||
     "alias" in record ||
@@ -412,7 +419,7 @@ function parseResourceIdentityLedgerEntry(input: unknown): ResourceIdentityLedge
   };
 }
 
-function requireResourceKind(value: unknown): ResourceKind {
+function requireResourceKind(value: JsonValue): ResourceKind {
   if (value === "api" || value === "cache" || value === "queue") {
     return value;
   }
@@ -423,8 +430,8 @@ function requireResourceKind(value: unknown): ResourceKind {
   );
 }
 
-function requirePositiveInteger(value: unknown, field: string): number {
-  if (Number.isSafeInteger(value) && typeof value === "number" && value > 0) {
+function requirePositiveInteger(value: JsonValue, field: string): number {
+  if (Number.isSafeInteger(value) && isJsonNumber(value) && value > 0) {
     return value;
   }
   throw new ClosureBuilderResourceError(
@@ -434,8 +441,8 @@ function requirePositiveInteger(value: unknown, field: string): number {
   );
 }
 
-function requireNonEmptyString(value: unknown, field: string): string {
-  if (typeof value === "string" && value.trim()) {
+function requireNonEmptyString(value: JsonValue, field: string): string {
+  if (isJsonString(value) && value.trim()) {
     return value;
   }
   throw new ClosureBuilderResourceError(
@@ -445,12 +452,12 @@ function requireNonEmptyString(value: unknown, field: string): string {
   );
 }
 
-function assertWorkloadFactory(
+function assertWorkloadFactory<T>(
   kind: ResourceKind,
-  workload: unknown,
-  extra: readonly unknown[],
-): asserts workload is () => unknown {
-  if (typeof workload !== "function") {
+  workload: T,
+  extra: readonly JsonValue[],
+): asserts workload is T & ((...args: never[]) => JsonValue | void) {
+  if (!(workload instanceof Function)) {
     throw new ClosureBuilderResourceError(
       "CLOSURE_BUILDER_WORKLOAD_FACTORY",
       `b.${kind}(...) expects an inert workload factory function`,
@@ -460,9 +467,9 @@ function assertWorkloadFactory(
   assertNoFactoryArgs(kind, extra);
 }
 
-function isResourceDescriptor(value: unknown): value is ResourceDescriptor {
+function isResourceDescriptor<T>(value: T): boolean {
   return (
-    typeof value === "object" &&
+    isJsonObject(value) &&
     value !== null &&
     "generatedId" in value &&
     "ownerBindleId" in value &&
@@ -473,9 +480,10 @@ function isResourceDescriptor(value: unknown): value is ResourceDescriptor {
 function deepFreeze<T>(value: T): T {
   if (Array.isArray(value)) {
     value.forEach(deepFreeze);
+    // SAFETY: assertion at this parse/brand/host boundary after the surrounding checks.
     return Object.freeze(value) as T;
   }
-  if (typeof value === "object" && value !== null) {
+  if (isJsonObject(value) && value !== null) {
     Object.values(value).forEach(deepFreeze);
     return Object.freeze(value);
   }

@@ -178,8 +178,17 @@ export type ObjectStorageLocation = (typeof OBJECT_STORAGE_LOCATIONS)[number];
  * both would let a project API token be sent to an Object Storage endpoint, or
  * an S3 key to the Cloud API.
  */
+function isObjectStorageLocation(
+	location: string,
+): location is ObjectStorageLocation {
+	for (const known of OBJECT_STORAGE_LOCATIONS) {
+		if (known === location) return true;
+	}
+	return false;
+}
+
 export function objectStorageHost(location: string): string {
-	if (!(OBJECT_STORAGE_LOCATIONS as readonly string[]).includes(location)) {
+	if (!isObjectStorageLocation(location)) {
 		throw new HetznerTransportConfigError(
 			`hetzner object storage location ${JSON.stringify(location)} is not one of ${OBJECT_STORAGE_LOCATIONS.join(", ")}; a location that does not parse would be interpolated into a hostname nobody allowlisted`,
 		);

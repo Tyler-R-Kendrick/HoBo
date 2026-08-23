@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks are the shared parser boundary for erased event and projection values before domain normalization. */
 import { createHash } from "node:crypto";
 
 export const RUN_INSPECTOR_PROJECTION_CONTRACT_VERSION =

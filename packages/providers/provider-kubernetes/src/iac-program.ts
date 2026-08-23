@@ -5,6 +5,14 @@
 // @hobo/iac-pulumi.validateIacProgram() is exercised test-only to prove the two
 // packages compose.
 // public-contract: the IacProgram schema version this provider emits.
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+
 export const IAC_PROGRAM_API_VERSION = "hobo.iac-program/v1";
 // public-contract: the IacProgram kind discriminator.
 export const IAC_PROGRAM_KIND = "iac-program";
@@ -19,7 +27,7 @@ export interface IacResource {
 	name: string;
 	type: string;
 	provider: string;
-	inputs: Record<string, unknown>;
+	inputs: JsonObject;
 	outputs: string[];
 }
 
@@ -81,18 +89,20 @@ export function assertLocalIacProgram(program: IacProgram): IacProgram {
 	return program;
 }
 
-function assertOutputReference(
-	value: unknown,
+function assertOutputReference<T>(
+	value: T,
 	resources: Map<string, IacResource>,
 ): void {
-	if (typeof value !== "string" || !value.startsWith("${resources.")) {
+	if (!isJsonString(value) || !value.startsWith("${resources.")) {
 		return;
 	}
 	const match = OUTPUT_REF.exec(value);
 	if (!match) {
 		throw new Error(`invalid output reference ${value}`);
 	}
+	// SAFETY: assertion to `match[1] as string` is required at this boundary.
 	const resourceName = match[1] as string;
+	// SAFETY: assertion to `match[2] as string` is required at this boundary.
 	const outputName = match[2] as string;
 	const resource = resources.get(resourceName);
 	if (!resource?.outputs.includes(outputName)) {
@@ -102,11 +112,12 @@ function assertOutputReference(
 	}
 }
 
-function collectValues(value: unknown): unknown[] {
-	if (!value || typeof value !== "object") {
-		return [value];
+function collectValues<T>(value: T): JsonValue[] {
+	if (!value || !isJsonObject(value)) {
+		return [cloneAsJson(value)];
 	}
-	return Object.values(value as Record<string, unknown>).flatMap((child) =>
+	// SAFETY: assertion to `value as JsonObject` is required at this boundary.
+	return Object.values(value as JsonObject).flatMap((child) =>
 		collectValues(child),
 	);
 }

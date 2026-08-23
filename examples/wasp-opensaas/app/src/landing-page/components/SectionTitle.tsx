@@ -7,7 +7,7 @@ export function SectionTitle({
   titleComponent?: React.ReactNode;
 }) {
   const titleElement =
-    typeof title === "string" ? (
+    Object.prototype.toString.call(title) === "[object String]" ? (
       <h3 className="text-foreground mt-2 text-4xl font-bold tracking-tight sm:text-5xl">
         {title}
       </h3>
@@ -15,7 +15,7 @@ export function SectionTitle({
       title
     );
   const descriptionElement =
-    typeof description === "string" ? (
+    Object.prototype.toString.call(description) === "[object String]" ? (
       <p className="text-muted-foreground mt-4 text-lg leading-8">
         {description}
       </p>

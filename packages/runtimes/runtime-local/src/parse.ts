@@ -5,19 +5,19 @@ import {
 	type ProviderDescriptor,
 	parseInterfaceId,
 } from "@hobo/core";
-
 import { ComponentHostError } from "./errors.js";
+import { isJsonString, type JsonValue } from "./json.js";
 
 export type ParsedProviderDescriptor = ProviderDescriptor & {
 	readonly parsed: true;
 };
 export type ParsedLinkRequest = LinkRequest & { readonly parsed: true };
 
-function assertNonEmptyId(
-	id: unknown,
+function assertNonEmptyId<T>(
+	id: T,
 	code: "component_id_required" | "provider_id_required",
 ): string {
-	if (typeof id !== "string" || id.length === 0) {
+	if (!isJsonString(id) || id.length === 0) {
 		throw new ComponentHostError(code, String(id));
 	}
 	return id;
@@ -26,7 +26,7 @@ function assertNonEmptyId(
 export function parseComponentDescriptor(raw: {
 	id: string;
 	imports?: string[];
-	exports?: Record<string, Record<string, (...args: unknown[]) => unknown>>;
+	exports?: Record<string, Record<string, (...args: JsonValue[]) => JsonValue>>;
 	leases?: string[];
 }): ParsedComponentDescriptor {
 	const id = assertNonEmptyId(raw.id, "component_id_required");
@@ -36,13 +36,13 @@ export function parseComponentDescriptor(raw: {
 		id,
 		imports,
 		exports: raw.exports ?? {},
-		...(raw.leases !== undefined ? { leases: [...raw.leases] } : {}),
+		...(raw.leases !== undefined ? { leases: [...raw.leases] } : undefined),
 	});
 }
 
 export function parseProviderDescriptor(raw: {
 	id: string;
-	exports?: Record<string, Record<string, (...args: unknown[]) => unknown>>;
+	exports?: Record<string, Record<string, (...args: JsonValue[]) => JsonValue>>;
 }): ParsedProviderDescriptor {
 	const id = assertNonEmptyId(raw.id, "provider_id_required");
 	return Object.freeze({

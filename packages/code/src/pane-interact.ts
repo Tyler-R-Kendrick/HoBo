@@ -39,7 +39,7 @@ export function isPaneInteractDetach(data: string): boolean {
 }
 
 /** Named keys → tmux `send-keys` key names (watch-mode / steer fallback). */
-const TMUX_NAMED: Readonly<Record<string, string>> = {
+const TMUX_NAMED = {
 	up: "Up",
 	down: "Down",
 	left: "Left",
@@ -76,7 +76,14 @@ const TMUX_NAMED: Readonly<Record<string, string>> = {
 	"ctrl+y": "C-y",
 	"ctrl+v": "C-v",
 	"ctrl+space": "C-Space",
-};
+} as const;
+
+function tmuxNamedKey(key: string): string | undefined {
+	for (const [name, send] of Object.entries(TMUX_NAMED)) {
+		if (name === key) return send;
+	}
+	return undefined;
+}
 
 /**
  * Map a raw TTY key chunk to tmux `send-keys` argv tails (steer / tests).
@@ -90,7 +97,7 @@ export function tmuxKeyArgvForInput(
 
 	const key = parseKey(data);
 	if (key) {
-		const named = TMUX_NAMED[key];
+		const named = tmuxNamedKey(key);
 		if (named) return [[named]];
 
 		const arrow = /(?:^|\+)(up|down|left|right)$/iu.exec(key);

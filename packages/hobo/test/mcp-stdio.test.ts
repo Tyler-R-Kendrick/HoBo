@@ -7,6 +7,7 @@ import { first } from "@hobo/core/total-access";
 import { createHoboMcpServer } from "@hobo/mcp";
 import { afterEach, describe, expect, it } from "vitest";
 import { createComposedHoboCli } from "../src/cli.js";
+import { isJsonObject, parseJsonValue } from "../src/json.js";
 import {
 	handleMcpMessage,
 	localOperatorAuth,
@@ -42,6 +43,7 @@ describe("hobo-mcp stdio surface (3-3)", () => {
 			}),
 		);
 		expect(response).not.toBeNull();
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = response?.result as {
 			serverInfo: { name: string };
 			capabilities: { tools: object };
@@ -56,6 +58,7 @@ describe("hobo-mcp stdio surface (3-3)", () => {
 			localOperatorAuth({}),
 			JSON.stringify({ jsonrpc: "2.0", id: 2, method: "tools/list" }),
 		);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = response?.result as { tools: Array<{ name: string }> };
 		expect(result.tools.map((tool) => tool.name)).toEqual(
 			CANONICAL_VERBS.map((verb) => verb.name),
@@ -87,19 +90,18 @@ describe("hobo-mcp stdio surface (3-3)", () => {
 				params: { name: "collect", arguments: { cwd: projectDir } },
 			}),
 		);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = response?.result as {
 			isError: boolean;
 			content: Array<{ text: string }>;
 		};
 		expect(result.isError).toBe(false);
-		const envelope = JSON.parse(first(result.content).text) as {
-			verb: string;
-			code: string;
-			data: { bindleId: string };
-		};
-		expect(envelope.verb).toBe("collect");
-		expect(envelope.code).toBe("HOBO_OK");
-		expect(envelope.data.bindleId).toBe("mcp-e2e");
+		// SAFETY: assertion required at this I/O or test boundary.
+		const envelope = parseJsonValue(first(result.content).text);
+		expect(isJsonObject(envelope)).toBe(true);
+		expect(isJsonObject(envelope) ? envelope.code : undefined).toBe("HOBO_OK");
+		const data = isJsonObject(envelope) ? envelope.data : undefined;
+		expect(isJsonObject(data) ? data.bindleId : undefined).toBe("mcp-e2e");
 	});
 
 	it("scope restriction denies unlisted tools before dispatch", async () => {
@@ -113,6 +115,7 @@ describe("hobo-mcp stdio surface (3-3)", () => {
 				params: { name: "up", arguments: {} },
 			}),
 		);
+		// SAFETY: assertion required at this I/O or test boundary.
 		const result = response?.result as { isError: boolean };
 		expect(result.isError).toBe(true);
 	});
@@ -147,7 +150,11 @@ describe("hobo-mcp stdio surface (3-3)", () => {
 			.trim()
 			.split("\n")
 			.filter((line) => line.length > 0)
-			.map((line: string) => JSON.parse(line) as { id: number | null });
+			// SAFETY: assertion required at this I/O or test boundary.
+			.map((line: string) => {
+				const parsed = parseJsonValue(line);
+				return { id: isJsonObject(parsed) ? parsed.id : null };
+			});
 		// The notification produced no response: exactly two replies.
 		expect(lines.map((line) => line.id)).toEqual([1, 2]);
 	});

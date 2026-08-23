@@ -24,6 +24,11 @@ Railway is not an OOB yard. Matching-honest native ports live in
 policy placement intent; they do not claim browser-side failover or state
 mirroring.
 
+Site parsers and scripts share `src/lib/json-inspect.ts` for JSON I/O boundaries
+so anti-slop oxlint (`pnpm exec oxlint --deny-warnings site`) stays green:
+named `JsonValue`/`JsonObject` types, tag checks instead of `typeof`, and
+`SAFETY:` comments on remaining type assertions.
+
 ## Working on the site
 
 The site is a workspace package (`hobo-site`) in the root pnpm workspace — the repo's

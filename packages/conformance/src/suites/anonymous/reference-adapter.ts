@@ -11,6 +11,7 @@
 // honest adapter into the specific dishonest ones each suite must catch.
 
 import { createHash } from "node:crypto";
+import type { JsonObject } from "../../json.js";
 
 import type { BindingProbeRequest } from "./binding.js";
 import type { BootstrapAttemptRequest } from "./bootstrap.js";
@@ -26,7 +27,7 @@ export const PRODUCT_DEFINITION_DIGEST = digestOf("product-definition");
 
 export function referenceBootstrapExecutor(
 	request: BootstrapAttemptRequest,
-): Record<string, unknown> {
+): JsonObject {
 	if (request.consent === "withheld") {
 		return {
 			caseId: request.caseId,
@@ -65,13 +66,11 @@ export function referenceBootstrapExecutor(
 						completed: true,
 					},
 				}
-			: {}),
+			: undefined),
 	};
 }
 
-export function referenceClaimExecutor(
-	request: ClaimStepRequest,
-): Record<string, unknown> {
+export function referenceClaimExecutor(request: ClaimStepRequest): JsonObject {
 	const outstanding = request.requiredPostClaimActions.filter(
 		(action) => !request.completedPostClaimActions.includes(action),
 	);
@@ -126,7 +125,7 @@ function bindingFor(
 	request: BindingProbeRequest,
 	credentialGeneration: number,
 	expiresAtMs: number,
-): Record<string, unknown> {
+): JsonObject {
 	return {
 		schemaVersion: "hobo.capability-binding/v1",
 		id: "binding-claimable-1",
@@ -152,7 +151,7 @@ function bindingFor(
 
 export function referenceBindingExecutor(
 	request: BindingProbeRequest,
-): Record<string, unknown> {
+): JsonObject {
 	switch (request.step) {
 		case "produce":
 			return {
@@ -176,7 +175,7 @@ export function referenceBindingExecutor(
 
 export function referenceMigrationExecutor(
 	request: MigrationStepRequest,
-): Record<string, unknown> {
+): JsonObject {
 	switch (request.step) {
 		case "export":
 			return {
@@ -230,11 +229,8 @@ export const REFERENCE_ANONYMOUS_PORTS = {
 
 /** Rewrite one executor's answer, to build the dishonest adapters under test. */
 export function mutate<TRequest>(
-	executor: (request: TRequest) => Record<string, unknown>,
-	patch: (
-		outcome: Record<string, unknown>,
-		request: TRequest,
-	) => Record<string, unknown>,
-): (request: TRequest) => Record<string, unknown> {
+	executor: (request: TRequest) => JsonObject,
+	patch: (outcome: JsonObject, request: TRequest) => JsonObject,
+): (request: TRequest) => JsonObject {
 	return (request) => patch(executor(request), request);
 }

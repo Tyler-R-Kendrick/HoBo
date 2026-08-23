@@ -1,6 +1,7 @@
+import { isJsonString, isJsonObject } from "./json.js";
 import { createHash } from "node:crypto";
-
 import {
+
   canonicalJson,
   createDecision,
   createDecisionRequest,
@@ -298,7 +299,7 @@ function normalizeMeteringView(value) {
   const source = expectObject(value, "meteringView");
   return {
     seq: requireNonNegativeInteger(source.seq, "meteringView.seq"),
-    scopeTokenCounts: source.scopeTokenCounts ?? {},
+    scopeTokenCounts: source.scopeTokenCounts ,
   };
 }
 
@@ -327,7 +328,7 @@ function normalizePolicies(value) {
 }
 
 function normalizeLimits(value, index) {
-  const source = expectObject(value ?? {}, `policies[${index}].limits`);
+  const source = expectObject(value , `policies[${index}].limits`);
   const limits = {};
   for (const axis of ["inputTokens", "outputTokens", "totalTokens"]) {
     if (source[axis] === undefined) continue;
@@ -354,7 +355,7 @@ function normalizeApproval(value) {
 }
 
 function normalizeEstimatedTokens(value) {
-  const source = expectObject(value ?? {}, "estimatedTokens");
+  const source = expectObject(value , "estimatedTokens");
   return {
     inputTokens: requireNonNegativeInteger(source.inputTokens ?? 0, "estimatedTokens.inputTokens"),
     outputTokens: requireNonNegativeInteger(
@@ -377,7 +378,7 @@ function digest(value) {
 }
 
 function expectObject(value, label) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${label} must be an object`);
   }
   return value;
@@ -391,7 +392,7 @@ function expectArray(value, label) {
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;

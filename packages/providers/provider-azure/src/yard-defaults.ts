@@ -21,7 +21,7 @@ export function azureYardRuntimeRegistration(options?: {
 	readonly runtimeId: typeof AZURE_YARD_RUNTIME_ID;
 	readonly providerId: "azure";
 	readonly version: string;
-	readonly supportedShape: {
+	readonly supportedCatalog: {
 		readonly regions: readonly string[];
 		readonly capabilities: readonly string[];
 		readonly requireProperties: readonly string[];
@@ -41,7 +41,7 @@ export function azureYardRuntimeRegistration(options?: {
 		runtimeId: AZURE_YARD_RUNTIME_ID,
 		providerId: "azure",
 		version: "1.0.0",
-		supportedShape: Object.freeze({
+		supportedCatalog: Object.freeze({
 			regions: Object.freeze(["eastus2", "westus2", "westeurope"]),
 			capabilities: Object.freeze([
 				"managed-container-substrate",

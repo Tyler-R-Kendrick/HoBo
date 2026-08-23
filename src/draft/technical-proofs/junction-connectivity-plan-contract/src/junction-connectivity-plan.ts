@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased Junction plan values at the validation boundary before enforcing the plan contract. */
+
 import { createHash } from "node:crypto";
 
 import { inferJunctionConnectivity } from "../../junction-connectivity-inference-spike/src/junction-connectivity-inference.js";

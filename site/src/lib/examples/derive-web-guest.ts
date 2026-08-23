@@ -1,7 +1,22 @@
 import type { BindleDefinition } from "@hobo/bindles";
 
+import {
+	isInspectableFunction,
+	type Inspectable,
+} from "../json-inspect.js";
 import type { ExampleRuntimeDescriptor, RuntimeAction } from "./catalog-contract.js";
 import { synthesizeTryRuntimeFromDeclared } from "./synthesize-try-runtime.js";
+
+export type WebGuestFromBindle = {
+	readonly runtime: ExampleRuntimeDescriptor;
+	readonly guestHandlersSource: string;
+};
+
+type GuestMethod = (...args: Inspectable[]) => Inspectable;
+
+interface WebGuestInstance {
+	readonly [action: string]: GuestMethod | Inspectable | undefined;
+}
 
 const KV_BACKED_ACTIONS = new Set<RuntimeAction>([
 	"list",
@@ -22,22 +37,26 @@ const KV_BACKED_ACTIONS = new Set<RuntimeAction>([
 export function deriveWebGuestFromBindle(
 	definition: BindleDefinition,
 	appSource: string,
-): {
-	readonly runtime: ExampleRuntimeDescriptor;
-	readonly guestHandlersSource: string;
-} {
+): WebGuestFromBindle {
 	const makeWeb = definition.entrypoint("web");
-	if (typeof makeWeb !== "function") {
+	const makeWebTag = Object.prototype.toString.call(makeWeb);
+	if (
+		makeWeb === undefined ||
+		(makeWebTag !== "[object Function]" &&
+			makeWebTag !== "[object AsyncFunction]")
+	) {
 		throw new TypeError(
 			`Bindle "${definition.name}" has no web entrypoint — bind a trainable with b.web(Hello)`,
 		);
 	}
-	const instance = makeWeb() as Record<string, unknown>;
-	if (!instance || typeof instance !== "object") {
+	// SAFETY: Bindle web constructors return an inspectable instance bag.
+	const constructed = makeWeb() as Inspectable;
+	if (!isInspectableRecord(constructed)) {
 		throw new TypeError(
 			`Bindle "${definition.name}" web entrypoint did not construct an instance`,
 		);
 	}
+	const instance = constructed;
 
 	const kvName = firstKvResourceName(definition);
 	const baseRuntime = synthesizeTryRuntimeFromDeclared(appSource);
@@ -60,12 +79,12 @@ export function deriveWebGuestFromBindle(
 	const handlerEntries: string[] = [];
 	for (const action of customActions) {
 		const method = instance[action];
-		if (typeof method !== "function") {
+		if (!isInspectableFunction(method)) {
 			throw new TypeError(
 				`Web instance for "${definition.name}" is missing method ${action}`,
 			);
 		}
-		const implSource = callableSource(method as (...args: never[]) => unknown);
+		const implSource = callableSource(method);
 		handlerEntries.push(`  ${JSON.stringify(action)}({ body, response }) {
     const impl = ${implSource};
     const raw = body && typeof body.name === "string" ? body.name.trim() : "";
@@ -135,8 +154,12 @@ function synthesizeKvBackedRuntime(
 	};
 }
 
+function isInspectableRecord(value: Inspectable): value is WebGuestInstance {
+	return Object.prototype.toString.call(value) === "[object Object]";
+}
+
 /** Turn a class method / function into a FunctionExpression source string. */
-function callableSource(method: (...args: never[]) => unknown): string {
+function callableSource(method: GuestMethod): string {
 	const src = Function.prototype.toString.call(method).trim();
 	if (
 		src.startsWith("function") ||

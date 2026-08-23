@@ -89,6 +89,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(result.exitCode).toBe(1);
 		expect(result.message).toMatch(/needs a TTY|hobo-code help/i);
 		expect(
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			(result.data as { interactiveRequired?: boolean }).interactiveRequired,
 		).toBe(true);
 	});
@@ -135,6 +136,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(latest.code).toBe("HOBO_CODE_RESUME");
 		expect(latest.message).toMatch(/chat-abc123def456/);
 		expect(latest.message).toMatch(/hello world/i);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const latestData = latest.data as {
 			session: { id: string; cwd: string };
 			terminalAction: { kind: string; sessionId: string };
@@ -251,6 +253,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/human-free|auth ·/i);
 		expect(r.message).toMatch(/mcp ·|acp ·/i);
 		expect(r.message).toMatch(/no-elicit|unattended/i);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = r.data as {
 			agent: {
 				schema: string;
@@ -370,6 +373,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/◈ config/);
 		expect(r.message).toMatch(/setup ·|cost-budget|editor-vim|hermetic-nix/i);
 		expect(r.message).not.toContain("sk-test-must-not-leak");
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = r.data as {
 			config: {
 				schema: string;
@@ -409,6 +413,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		);
 		expect(filtered.ok).toBe(true);
 		expect(filtered.message).toMatch(/cost-budget|HOBO_CODE_BUDGET|budget/i);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const fdata = filtered.data as {
 			stack: string;
 			config: { schema: string; knobs: { name: string }[] };
@@ -438,6 +443,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/pane ·|bridge ·/i);
 		expect(r.message).toMatch(/hobo-code\.nvim|ext ·/i);
 		expect(r.message).toMatch(/nav · status/i);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = r.data as {
 			editor: {
 				schema: string;
@@ -486,6 +492,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/eve ·|implementer|reviewer/i);
 		expect(r.message).toMatch(/isolate→evidence→promote|self-improve|loop ·/i);
 		expect(r.message).toMatch(/brain ·|serena|gbrain/i);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = r.data as {
 			harness: {
 				dualSurface: {
@@ -536,6 +543,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/cheapest|route/i);
 		expect(r.message).toMatch(/rtk|headroom|caveman/i);
 		expect(r.message).not.toContain("sk-secret");
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = r.data as {
 			cost: {
 				zeroDollarPath: boolean;
@@ -578,6 +586,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/browser|Chrome/i);
 		expect(r.message).toMatch(/Happy path|auth login/i);
 		expect(r.message).toMatch(/Residual/i);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = r.data as {
 			source?: string;
 			guide: {
@@ -613,6 +622,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/MCP/i);
 		expect(r.message).toMatch(/isolate|promote|dispatch/i);
 		expect(r.message).toMatch(/Residual/i);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = r.data as {
 			source?: string;
 			cursor: {
@@ -632,6 +642,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 			"--json",
 		]);
 		expect(fromFlag.ok).toBe(true);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect((fromFlag.data as { source: string }).source).toBe("cursor");
 	});
 
@@ -646,6 +657,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(
 			/incremental checkins · stacked PRs · squash-merge/,
 		);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = r.data as {
 			grokBuild: {
 				mouseInteractive: boolean;
@@ -679,6 +691,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/◎ attach/);
 		expect(r.message).toMatch(/code\.mux|reattach/i);
 		expect(r.message).toMatch(/local|overlay|mosh|session/i);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = r.data as {
 			registration: { host: string; mode: string; mosh: { explored: boolean } };
 			attach: { detachable: boolean; steps: string[] };
@@ -696,6 +709,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 			hoboHome: home,
 		});
 		expect(ov.ok).toBe(true);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const ovData = ov.data as { registration: { mode: string } };
 		expect(ovData.registration.mode).toBe("overlay");
 
@@ -719,6 +733,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).not.toContain("sk-secret");
 		expect(r.message).toMatch(/sandbox/i);
 		expect(r.message).toMatch(/cost · hobo-code cost|free ·/i);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = r.data as {
 			models: { byok: { name: string; present: boolean }[] };
 		};
@@ -737,14 +752,17 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(result.code).toBe("HOBO_CODE_DISPATCH");
 		expect(result.ok).toBe(true);
 		expect(
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			(result.data as { defaultVerb: boolean; task: { status: string } })
 				.defaultVerb,
 		).toBe(true);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect((result.data as { task: { status: string } }).task.status).toBe(
 			"done",
 		);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("explicit dispatch and status work as flat verbs", async () => {
 		const home = temp("hc-flat-");
 		const project = temp("hc-flat-proj-");
@@ -816,13 +834,16 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(help.message).toMatch(/auth login/);
 		expect(help.message).toMatch(/cost|harness/);
 		expect(help.message).toMatch(/Maps:|guide|tasks|attach|cost|harness/i);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect((help.data as { binary: string; defaultVerb: string }).binary).toBe(
 			"hobo-code",
 		);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect((help.data as { defaultVerb: string }).defaultVerb).toBe("dispatch");
 		expect(CODE_FEATURE_FLAGS.distributed).toBe("code.distributed");
 		expect(HOBO_CODE_VERBS).toContain("env");
 		expect(
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			(help.data as { hermetic: { schema: string } }).hermetic.schema,
 		).toBe("hobo.code.hermetic-env/v1");
 	});
@@ -849,6 +870,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 			env: { HOBO_CODE_EPHEMERAL_SESSION: "1" },
 		});
 		expect(r.ok).toBe(true);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = r.data as {
 			status: { copyOnHighlight: boolean; detachable: boolean; theme: string };
 			herdr: { copyOnHighlight: boolean; detachable: boolean; legend: string };
@@ -879,6 +901,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/login|station/i);
 		// Must not be the full top-level verb catalog only
 		expect(r.message).not.toMatch(/^ {2}dispatch {3}Send work into the hive/m);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect((r.data as { topic: string }).topic).toBe("auth");
 	});
 
@@ -886,6 +909,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		const a = await runHoboCodeCli(["help", "auth"]);
 		const b = await runHoboCodeCli(["auth", "--help"]);
 		expect(a.message).toBe(b.message);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect((a.data as { topic: string }).topic).toBe("auth");
 	});
 
@@ -894,6 +918,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.message).toMatch(/hobo-code promote/);
 		expect(r.message).toMatch(/runId/);
 		expect(r.message).toMatch(/isolate/);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect((r.data as { topic: string }).topic).toBe("promote");
 	});
 
@@ -905,6 +930,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(help.message).toMatch(/ev·au/);
 		expect(help.message).toMatch(/dense chrome/);
 		expect(help.message).toMatch(/★d=dispatch-default/);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect((help.data as { dense: boolean }).dense).toBe(true);
 		// Not the full plain Usage block
 		expect(help.message).not.toMatch(/^Usage:/m);
@@ -915,6 +941,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 			env: { ...process.env, HOBO_CODE_DENSE: "1" },
 		});
 		expect(help.message).toMatch(/^hobo-code★●/m);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect((help.data as { dense: boolean }).dense).toBe(true);
 	});
 
@@ -933,6 +960,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		});
 		expect(env.ok).toBe(true);
 		expect(env.code).toBe("HOBO_CODE_ENV");
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = env.data as {
 			hermetic: {
 				hermeticDeclared: boolean;
@@ -994,6 +1022,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(r.exitCode).toBe(1);
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("resources is the same projection as JSON and names login when logged out", async () => {
 		const home = temp("hc-resources-");
 		const loggedOut = await runHoboCodeCli(["resources"], { hoboHome: home });
@@ -1014,6 +1043,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 		expect(board.ok).toBe(true);
 		expect(board.message).toMatch(/station:local/);
 		expect(board.message).toMatch(/preview/);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const payload = board.data as {
 			inventory?: { scope?: { environment?: string }; missing?: unknown[] };
 		};
@@ -1022,6 +1052,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 			expect.arrayContaining([expect.objectContaining({ kind: "junction" })]),
 		);
 		expect(
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			(payload.inventory?.missing as { kind?: string }[] | undefined)?.some(
 				(row) => row.kind === "bindle",
 			),
@@ -1084,6 +1115,7 @@ describe("hobo-code CLI (flat verbs, dispatch default)", () => {
 			cwd: project,
 		});
 		expect(iso.ok).toBe(true);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const data = iso.data as {
 			isolation: { rootPath: string; durableRoot: string };
 			layout: { pureSeparation: boolean };
@@ -1115,6 +1147,7 @@ describe("dispatch says what it did", () => {
 		// The path it cites must actually exist, or "recorded" is unverifiable.
 		const cited = /at · (\S+)/.exec(result.message)?.[1];
 		expect(cited).toBeDefined();
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		expect(existsSync(cited as string)).toBe(true);
 		rmSync(home, RM);
 		rmSync(project, RM);

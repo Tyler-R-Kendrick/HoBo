@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased evidence payloads at the shared validator boundary before domain evaluation. */
+
 export const REQUIRED_PRIVATE_BETA_EVIDENCE = [
   "release-notes-private-beta-outline",
   "release-cutline-private-beta-delta",
@@ -10,6 +12,17 @@ export const REQUIRED_PRIVATE_BETA_EVIDENCE = [
 
 export type PrivateBetaEvidenceId = (typeof REQUIRED_PRIVATE_BETA_EVIDENCE)[number];
 export type EvidenceStatus = "accepted" | "accepted-substitute" | "missing";
+
+type EvidenceInput =
+  | boolean
+  | number
+  | string
+  | null
+  | undefined
+  | readonly EvidenceInput[]
+  | { readonly [key: string]: EvidenceInput };
+
+type ValidationResult = { readonly ok: boolean; readonly errors: string[] };
 
 export type RequiredEvidence = {
   readonly id: PrivateBetaEvidenceId;
@@ -197,7 +210,8 @@ export const RELEASE_NOTES_PRIVATE_BETA_EVIDENCE: ReleaseNotesPrivateBetaEvidenc
   }
 };
 
-export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: boolean; errors: string[] } {
+export function validateReleaseNotesPrivateBetaEvidence(input: EvidenceInput): ValidationResult {
+  // SAFETY: isRecord has established that the erased payload is an object; the validator checks each field before use.
   const record = isRecord(input) ? input as Partial<ReleaseNotesPrivateBetaEvidenceRecord> : {};
   const errors: string[] = [];
 
@@ -214,6 +228,7 @@ export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: b
     errors.push("milestone gate must be M2 Private beta proof");
   }
 
+  // SAFETY: objectArray established that each entry is an object; field-level checks below validate the partial domain shape.
   const requiredEvidence = objectArray(record.requiredEvidence, "requiredEvidence", errors) as Partial<RequiredEvidence>[];
   const evidenceById = new Map(requiredEvidence.map((evidence) => [evidence.id, evidence]));
   const seenEvidenceIds = new Set<unknown>();
@@ -244,6 +259,7 @@ export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: b
     }
   }
 
+  // SAFETY: objectArray established that each entry is an object; blocker fields are checked before they affect the result.
   const blockers = objectArray(record.blockers, "blockers", errors) as Partial<RecordedBlocker>[];
   if (blockers.length === 0) {
     errors.push("blockers must be recorded even when none are open");
@@ -254,6 +270,7 @@ export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: b
     }
   }
 
+  // SAFETY: objectArray established that each entry is an object; risk fields are checked before they affect the result.
   const acceptedRisks = objectArray(record.acceptedRisks, "acceptedRisks", errors) as Partial<AcceptedRisk>[];
   if (acceptedRisks.length === 0) {
     errors.push("accepted risks must be recorded");
@@ -268,6 +285,7 @@ export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: b
   if (!releaseCutline) {
     errors.push("release cutline must be recorded");
   }
+  // SAFETY: objectArray established that each dependency entry is an object; dependency fields are only read for project names.
   const releaseCutlineDependencies = objectArray(
     releaseCutline?.dependencies,
     "releaseCutline.dependencies",
@@ -280,6 +298,7 @@ export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: b
     }
   }
 
+  // SAFETY: objectArray established that each entry is an object; follow-up fields are checked before they affect the result.
   const followUps = objectArray(record.followUps, "followUps", errors) as Partial<FollowUpIssue>[];
   for (const followUp of followUps) {
     const evidence = evidenceById.get(followUp.evidenceId);
@@ -295,6 +314,7 @@ export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: b
     }
   }
 
+  // SAFETY: isRecord established that the parent status payload is an object; each required field is checked below.
   const parentInitiativeStatus = isRecord(record.parentInitiativeStatus)
     ? record.parentInitiativeStatus as Partial<ReleaseNotesPrivateBetaEvidenceRecord["parentInitiativeStatus"]>
     : undefined;
@@ -320,20 +340,22 @@ export function validateReleaseNotesPrivateBetaEvidence(input: unknown): { ok: b
   return { ok: errors.length === 0, errors };
 }
 
-export function assertReleaseNotesPrivateBetaEvidence(input: unknown): ReleaseNotesPrivateBetaEvidenceRecord {
+export function assertReleaseNotesPrivateBetaEvidence(input: EvidenceInput): ReleaseNotesPrivateBetaEvidenceRecord {
   const result = validateReleaseNotesPrivateBetaEvidence(input);
   if (!result.ok) {
     throw new Error(result.errors.join("\n"));
   }
+  // SAFETY: validation returned ok, so the complete record contract has been checked before this assertion.
   return input as ReleaseNotesPrivateBetaEvidenceRecord;
 }
 
-export function canCompletePrivateBetaGate(input: unknown): boolean {
+export function canCompletePrivateBetaGate(input: EvidenceInput): boolean {
   const result = validateReleaseNotesPrivateBetaEvidence(input);
   if (!result.ok) {
     return false;
   }
 
+  // SAFETY: validateReleaseNotesPrivateBetaEvidence returned ok, establishing the complete record contract.
   const record = input as ReleaseNotesPrivateBetaEvidenceRecord;
   return (
     record.requiredEvidence.every((evidence) => isAcceptedEvidence(evidence.status)) &&
@@ -346,21 +368,25 @@ function isAcceptedEvidence(status: EvidenceStatus): boolean {
   return status === "accepted" || status === "accepted-substitute";
 }
 
-function isEvidenceStatus(status: unknown): status is EvidenceStatus {
+function isEvidenceStatus(status: EvidenceInput): status is EvidenceStatus {
   return status === "accepted" || status === "accepted-substitute" || status === "missing";
 }
 
-function isRecord(value: unknown): value is Record<string, unknown> {
+function isRecord(value: EvidenceInput): value is { readonly [key: string]: EvidenceInput } {
   return typeof value === "object" && value !== null;
 }
 
-function objectArray(value: unknown, field: string, errors: string[]): Record<string, unknown>[] {
+function objectArray(
+  value: EvidenceInput | undefined,
+  field: string,
+  errors: string[]
+): { readonly [key: string]: EvidenceInput }[] {
   if (!Array.isArray(value)) {
     errors.push(`${field} must be an array`);
     return [];
   }
 
-  const records: Record<string, unknown>[] = [];
+  const records: { readonly [key: string]: EvidenceInput }[] = [];
   for (const [index, entry] of value.entries()) {
     if (isRecord(entry)) {
       records.push(entry);

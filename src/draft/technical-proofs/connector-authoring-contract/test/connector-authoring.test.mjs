@@ -28,8 +28,8 @@ const asanaAuth = {
 test("connector generates a client from auth.json advertised operations", () => {
   const asana = createConnectorBinding("asana", asanaAuth);
 
-  assert.equal(typeof asana.client.tasks.get, "function");
-  assert.equal(typeof asana.client.tasks.create, "function");
+  assert.equal(asana.client.tasks.get instanceof Function, true);
+  assert.equal(asana.client.tasks.create instanceof Function, true);
   assert.equal(asana.client.tasks.delete, undefined);
   assert.throws(() => asana.call("tasks.delete"), /not advertised/);
 

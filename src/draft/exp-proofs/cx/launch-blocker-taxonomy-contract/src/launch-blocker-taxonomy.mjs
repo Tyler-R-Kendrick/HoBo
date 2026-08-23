@@ -164,7 +164,11 @@ export const launchBlockerTaxonomy = {
 export function validateLaunchBlockerTaxonomy(contract) {
   const errors = [];
 
-  if (!contract || typeof contract !== "object") {
+  if (
+    !contract ||
+    Object(contract) !== contract ||
+    Object.prototype.toString.call(contract) === "[object Function]"
+  ) {
     return { ok: false, errors: ["launch blocker taxonomy record is required"] };
   }
 
@@ -181,7 +185,12 @@ export function validateLaunchBlockerTaxonomy(contract) {
   }
 
   for (const entry of contract.severityTaxonomy ?? []) {
-    if (!entry.label || !entry.definition || !entry.goNoGoAction || typeof entry.mayShip !== "boolean") {
+    if (
+      !entry.label ||
+      !entry.definition ||
+      !entry.goNoGoAction ||
+      (entry.mayShip !== true && entry.mayShip !== false)
+    ) {
       errors.push(`${entry.id ?? "<missing>"} must define label, definition, goNoGoAction, and mayShip`);
     }
     if (!Array.isArray(entry.requiredEvidence) || entry.requiredEvidence.length === 0) {
@@ -366,7 +375,11 @@ function hasValue(value) {
   if (Array.isArray(value)) {
     return value.length > 0;
   }
-  if (value && typeof value === "object") {
+  if (
+    value &&
+    Object(value) === value &&
+    Object.prototype.toString.call(value) !== "[object Function]"
+  ) {
     return Object.keys(value).length > 0;
   }
   return value !== undefined && value !== null && value !== "";

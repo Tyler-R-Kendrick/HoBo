@@ -168,7 +168,7 @@ describe("evidence and shape", () => {
 		for (const source of TTL_SH_SOURCE_REFS) {
 			assert.equal(source.checkedAt, TTL_SH_EVIDENCE_CHECKED_AT);
 			assert.match(source.url, /^https:\/\//u);
-			assert.equal(typeof source.verified, "boolean");
+			assert.ok(source.verified === true || source.verified === false);
 		}
 		// The landing page was fetched on the checked date, which is where the
 		// 24-hour ceiling and the zero-credential rule come from.

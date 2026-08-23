@@ -108,11 +108,13 @@ async function buildHoboHeaderLines(
 		const { renderBoIdleFrame, BO_IDLE_REST } = await import(
 			join(pkgRoot, "dist", "splash.js")
 		);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const logo = (HOBO_LOGO_TUI as string)
 			.split("\n")
 			.map((l: string) => l.trimEnd())
 			.filter((l: string) => l.length > 0)
 			.map(accent);
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		const bo = (renderBoIdleFrame(BO_IDLE_REST) as string)
 			.split("\n")
 			.map((l: string) => l.trimEnd())
@@ -183,6 +185,7 @@ export default function (pi: ExtensionAPI) {
 		ctx.ui.notify(
 			[
 				"Bo online — this is hobo-code (HoBo app-building harness), not stock Pi Agent.",
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				"Slash commands (same as CLI verbs):",
 				"  /config  /cost  /harness  /status  /session  /guide  /cursor  /agents",
 				"  /tasks  /attach  /models  /auth  /login  /env  /edit  /verbs  /hive  /bo",

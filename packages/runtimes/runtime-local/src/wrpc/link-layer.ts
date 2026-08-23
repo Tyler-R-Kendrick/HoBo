@@ -13,11 +13,11 @@ import {
 	type WrpcLinkPort,
 	type WrpcTransport,
 } from "@hobo/core";
-
 import {
 	DeadlineExceededError,
 	MembraneBackpressureError,
 } from "../failure/taxonomy.js";
+import { isJsonObject, isJsonString, type JsonValue } from "../json.js";
 import { createInProcessTransport } from "./in-process-transport.js";
 import { negotiateWireVersion } from "./wire-version.js";
 
@@ -53,11 +53,7 @@ function raceDeadline<T>(
 			settled = true;
 			reject(makeError());
 		}, remainingMs);
-		if (
-			typeof timer === "object" &&
-			timer &&
-			typeof timer.unref === "function"
-		) {
+		if (isJsonObject(timer) && timer && timer.unref instanceof Function) {
 			timer.unref();
 		}
 		work.then(
@@ -69,7 +65,7 @@ function raceDeadline<T>(
 				clearTimeout(timer);
 				resolve(value);
 			},
-			(error: unknown) => {
+			(error: Error) => {
 				if (settled) {
 					return;
 				}
@@ -103,7 +99,7 @@ function indexPins(
 }
 
 function assertId(id: string | undefined, kind: string): asserts id is string {
-	if (typeof id !== "string" || id.length === 0) {
+	if (!isJsonString(id) || id.length === 0) {
 		throw new Error(`wrpc.${kind}_id_required`);
 	}
 }
@@ -127,12 +123,11 @@ export function createWrpcLinkLayer(options: {
 	const maxInFlight = options.maxInFlight ?? Number.POSITIVE_INFINITY;
 	const clock = options.clock ?? DEFAULT_LINK_CLOCK;
 	const inFlight = new Map<string, number>();
-	const codecName =
-		"codec" in transport &&
-		typeof transport.codec === "object" &&
-		transport.codec
-			? (transport.codec as { name: string }).name
-			: "unknown";
+	const codec =
+		"codec" in transport && isJsonObject(transport.codec)
+			? transport.codec
+			: undefined;
+	const codecName = isJsonString(codec?.name) ? codec.name : "unknown";
 
 	const components = new Map<string, { id: string; imports: IndexedPins }>();
 	const providers = new Map<string, { id: string; exports: IndexedPins }>();
@@ -233,9 +228,9 @@ export function createWrpcLinkLayer(options: {
 			componentId: string,
 			importInterface: string,
 			operation: string,
-			payload: unknown = {},
+			payload: JsonValue = {},
 			options: { deadline?: string | null } = {},
-		): Promise<unknown> {
+		) {
 			if (!components.has(componentId)) {
 				throw new Error(`wrpc.component_not_registered: ${componentId}`);
 			}
@@ -289,6 +284,7 @@ export function createWrpcLinkLayer(options: {
 										componentId,
 										importInterface: parsedInterface,
 										operation,
+										// SAFETY: assertion to `deadlineIso as string` is required at this boundary.
 										deadline: deadlineIso as string,
 										deadlineMs,
 										observedNowMs: startedAtMs,

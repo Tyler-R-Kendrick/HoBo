@@ -72,9 +72,11 @@ function unsafe(
 	message: string,
 	detail?: Record<string, string | number>,
 ): never {
-	throw new PostgresDataError("UNSAFE_COMMAND_ARGUMENT", message, {
-		...(detail !== undefined ? { detail } : {}),
-	});
+	throw new PostgresDataError(
+		"UNSAFE_COMMAND_ARGUMENT",
+		message,
+		detail === undefined ? {} : { detail },
+	);
 }
 
 /**
@@ -83,7 +85,8 @@ function unsafe(
  * a shell, a `CREATE SUBSCRIPTION` string, or a log line.
  */
 // biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point; a NUL truncates the argument the child actually receives and a CR/LF forges a log line.
-const SHELL_METACHARACTERS = /[;&|`$(){}<>*?!#~\\'"\n\r\t\u0000-\u001f\u007f]/u;
+// eslint-disable-next-line no-control-regex
+const SHELL_METACHARACTERS = /[;&|`$(){}<>*?!#~\\'"\u0009\u000a\u000d\u0000-\u001f\u007f]/u;
 const WHITESPACE = /\s/u;
 
 const HOSTNAME =
@@ -144,11 +147,13 @@ export function parsePostgresIdentifier(value: string, what: string): string {
 export function parsePostgresTarget(
 	input: PostgresTargetInput,
 ): PostgresTarget {
+	// SAFETY: the closed ssl-mode list is the runtime validator for this input.
 	if (!(POSTGRES_SSL_MODES as readonly string[]).includes(input.sslMode)) {
 		unsafe(
 			`sslMode ${JSON.stringify(String(input.sslMode))} is not a libpq ssl mode`,
 		);
 	}
+	// SAFETY: every field is parsed above; the remaining brand records that invariant.
 	return {
 		host: parsePostgresHost(input.host),
 		port: parsePostgresPort(input.port),
@@ -171,7 +176,7 @@ export function parseArtifactPath(
 ): string {
 	if (value.length === 0) unsafe(`${what} must not be empty`);
 	if (value.length > 1024) unsafe(`${what} exceeds 1024 characters`);
-	// biome-ignore lint/suspicious/noControlCharactersInRegex: detecting a control character is the point — a path carrying one must never reach an argv element.
+	// eslint-disable-next-line no-control-regex
 	if (/[\u0000-\u001f\u007f]/u.test(value)) {
 		unsafe(`${what} contains a control character`);
 	}
@@ -188,7 +193,7 @@ export function parseArtifactPath(
 	return value;
 }
 
-const CREDENTIAL_SHAPED: readonly RegExp[] = [
+const CREDENTIAL_PATTERNS: readonly RegExp[] = [
 	/postgres(?:ql)?:\/\//iu,
 	/\/\/[^/\s:@]+:[^/\s:@]+@/u,
 	/(?:^|[=\s])(?:--)?(?:password|pgpassword|pwd)[=\s]/iu,
@@ -208,11 +213,11 @@ export function assertArgvSafe(argv: readonly string[]): readonly string[] {
 	}
 	for (const element of argv) {
 		if (element.length > 1024) unsafe("argv element exceeds 1024 characters");
-		// biome-ignore lint/suspicious/noControlCharactersInRegex: detecting a NUL is the point; it truncates the argument the child actually receives.
+		// eslint-disable-next-line no-control-regex
 		if (/[\u0000\n\r]/u.test(element)) {
 			unsafe("argv element contains a NUL or newline");
 		}
-		for (const pattern of CREDENTIAL_SHAPED) {
+		for (const pattern of CREDENTIAL_PATTERNS) {
 			if (pattern.test(element)) {
 				unsafe(
 					"refusing to place credential-shaped material in argv; pass it through the environment or a passfile",
@@ -254,6 +259,7 @@ export function buildPgDumpArgv(spec: PgDumpSpec): readonly string[] {
 			"pg_dump cannot be both schema-only and data-only",
 		);
 	}
+	// SAFETY: the closed format list is the runtime validator for this input.
 	if (!(PG_DUMP_FORMATS as readonly string[]).includes(spec.format)) {
 		unsafe(
 			`pg_dump format ${JSON.stringify(String(spec.format))} is not supported`,
@@ -342,7 +348,8 @@ export function buildLibpqEnvironment(
 			"connect timeout must be an integer number of seconds between 1 and 600",
 		);
 	}
-	const base: Record<string, string> = {
+	type LibpqEnvironment = Record<string, string>;
+	const base: LibpqEnvironment = {
 		PGHOST: target.host,
 		PGPORT: String(target.port),
 		PGUSER: target.username,

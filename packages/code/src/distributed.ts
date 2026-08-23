@@ -109,13 +109,14 @@ export function computeTaskPath(
 	return join(poolRoot(hoboHome, poolId), "tasks", `${taskId}.json`);
 }
 
-function writeJson(path: string, value: unknown): void {
+function writeJson<T>(path: string, value: T): void {
 	mkdirSync(join(path, ".."), { recursive: true });
 	writeFileSync(path, `${JSON.stringify(value, null, 2)}\n`, "utf8");
 }
 
 function readJson<T>(path: string): T | null {
 	if (!existsSync(path)) return null;
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	return JSON.parse(readFileSync(path, "utf8")) as T;
 }
 
@@ -123,11 +124,7 @@ function nowIso(): string {
 	return new Date().toISOString();
 }
 
-function loadPoolState(root: string): {
-	nodes: ComputeNode[];
-	tasks: ComputeTask[];
-	meta: { poolId: string; stationId: string; createdAt: string };
-} {
+function loadPoolState(root: string) {
 	const meta = readJson<{
 		poolId: string;
 		stationId: string;
@@ -139,9 +136,15 @@ function loadPoolState(root: string): {
 	const list = <T>(dir: string): T[] => {
 		const p = join(root, dir);
 		if (!existsSync(p)) return [];
-		return readdirSync(p)
-			.filter((f) => f.endsWith(".json"))
-			.map((f) => JSON.parse(readFileSync(join(p, f), "utf8")) as T);
+		return (
+			readdirSync(p)
+				.filter((f) => f.endsWith(".json"))
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
+				.map((f) => {
+					// SAFETY: each pool JSON file is the requested record type T.
+					return JSON.parse(readFileSync(join(p, f), "utf8")) as T;
+				})
+		);
 	};
 	return {
 		meta,
@@ -403,11 +406,11 @@ export async function dispatchComputeTask(
 		prompt: input.prompt,
 		status,
 		nodeId: node.nodeId,
-		...(isolationRunId !== undefined ? { isolationRunId } : {}),
-		...(handbackPath !== undefined ? { handbackPath } : {}),
+		...(isolationRunId !== undefined ? { isolationRunId } : undefined),
+		...(handbackPath !== undefined ? { handbackPath } : undefined),
 		createdAt: t0,
 		updatedAt: nowIso(),
-		...(error !== undefined ? { error } : {}),
+		...(error !== undefined ? { error } : undefined),
 	});
 	writeJson(join(root, "tasks", `${taskId}.json`), task);
 
@@ -422,7 +425,7 @@ export async function dispatchComputeTask(
 
 	return {
 		task,
-		...(isolation !== undefined ? { isolation } : {}),
+		...(isolation !== undefined ? { isolation } : undefined),
 		pool: snapshotPool(root),
 	};
 }
@@ -465,12 +468,7 @@ export const COMPUTE_ISOLATION_CLASSES: readonly {
 	},
 ] as const;
 
-export function describeDistributedCompute(): {
-	readonly enabledByDefault: true;
-	readonly model: string;
-	readonly secureSandboxStack: "deepagents+openshell+mxc";
-	readonly isolationClasses: typeof COMPUTE_ISOLATION_CLASSES;
-} {
+export function describeDistributedCompute() {
 	return {
 		enabledByDefault: true,
 		model:

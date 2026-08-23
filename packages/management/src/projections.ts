@@ -10,6 +10,12 @@ import {
 	type YardProjectionSnapshot,
 } from "./types.js";
 
+type DoctorData = {
+	bootstrapActive: boolean;
+	hazards: readonly string[];
+	hint?: string;
+};
+
 /**
  * Fold Station + Connection stores into a single Yard snapshot for the game UI.
  * Never invents occupancy/rail/connection state outside event-sourced services.
@@ -20,6 +26,7 @@ export function projectYardSnapshot(
 ): ManagementResult<YardProjectionSnapshot> {
 	const stationId = resolveDefaultStationId(ctx, input.stationId);
 	if (!stationId) {
+		// SAFETY: this failure result is returned through the typed yard projection API.
 		return errResult("station required for yard projection", {
 			code: "station-missing",
 			remediation: ["hobo station init"],
@@ -27,6 +34,7 @@ export function projectYardSnapshot(
 	}
 	const state = ctx.loadStationState(stationId);
 	if (!state) {
+		// SAFETY: this failure result is returned through the typed yard projection API.
 		return errResult(`station not found: ${stationId}`, {
 			code: "station-missing",
 			remediation: ["hobo station init"],
@@ -86,15 +94,14 @@ export function projectYardSnapshot(
 		if (c.status === "revoked") hazards.push(`connection-revoked:${c.id}`);
 	}
 
-	const doctor: DoctorView = Object.freeze({
+	const doctorData: DoctorData = {
 		bootstrapActive: state.occupancy.bootstrapActive,
 		hazards: Object.freeze([...hazards]),
-		...(state.occupancy.bootstrapActive
-			? {
-					hint: "bootstrap Rail active — activate a non-bootstrap Rail for production posture",
-				}
-			: {}),
-	});
+	};
+	if (state.occupancy.bootstrapActive)
+		doctorData.hint =
+			"bootstrap Rail active — activate a non-bootstrap Rail for production posture";
+	const doctor: DoctorView = Object.freeze(doctorData);
 
 	const snap: YardProjectionSnapshot = Object.freeze({
 		occupancy: state.occupancy,

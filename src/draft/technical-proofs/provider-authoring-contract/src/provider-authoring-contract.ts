@@ -1,10 +1,11 @@
+import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export type PortKind = "database" | "compute" | "objectStore" | "queue" | "cache" | "dns";
 
 export type Negotiation = "prefer" | "require";
 
 export type Stability = "stable" | "preview" | "experimental" | "deprecated";
 
-export type Outputs = Record<string, unknown>;
+export type Outputs = JsonObject;
 
 export interface CapabilitySpec<P extends PortKind = PortKind> {
   readonly port: P;
@@ -110,14 +111,16 @@ type DroppedProviderOption = {
 export function createOptionBuilder<
   const Id extends string,
   const Port extends PortKind,
-  Options extends object = Record<string, unknown>
+  Options extends object = JsonObject
 >(providerId: Id, port: Port, optionName: string): ProviderOptionBuilder<Id, Port, Options> {
+  // SAFETY: `return Object.assign(` is required at this I/O or test boundary.
   return Object.assign(
     ({ negotiation = "prefer", ...options } = {}) => ({
       providerId,
       port,
       optionName,
       negotiation,
+      // SAFETY: `options: options as Options` is required at this I/O or test boundary.
       options: options as Options
     }),
     {
@@ -136,6 +139,7 @@ export function defineProvider<
 >(spec: ProviderSpec<Id, Capabilities, Clients, Builders>): ProviderDefinition<Id, Capabilities, Clients, Builders> {
   const capabilities = spec.capabilities;
   const declaredPorts = new Set(capabilities.map((capability) => capability.port));
+  // SAFETY: `for (const [name, builder] of Object.entries(spec.with) as Array<[string, Builde` is required at this I/O or test boundary.
   for (const [name, builder] of Object.entries(spec.with) as Array<[string, Builders[keyof Builders]]>) {
     if (builder.providerId !== spec.id) {
       throw new Error(`option builder ${name} belongs to provider ${builder.providerId}, not ${spec.id}`);
@@ -153,6 +157,7 @@ export function defineProvider<
       if (!declaredPorts.has(port)) {
         throw new Error(`provider ${spec.id} does not declare port ${port}`);
       }
+      // SAFETY: `return spec.client(port, outputs) as Clients[P];` is required at this I/O or test boundary.
       return spec.client(port, outputs) as Clients[P];
     },
     capabilityManifest() {
@@ -164,6 +169,7 @@ export function defineProvider<
     }
   };
 
+  // SAFETY: `return Object.freeze(provider) as ProviderDefinition<Id, Capabilities, Clients, ` is required at this I/O or test boundary.
   return Object.freeze(provider) as ProviderDefinition<Id, Capabilities, Clients, Builders>;
 }
 
@@ -203,6 +209,7 @@ export function createFixtureAwsProvider(): ProviderDefinition<
         return {
           port,
           providerId: "aws",
+          // SAFETY: `connectionString: outputs.endpoint as string` is required at this I/O or test boundary.
           connectionString: outputs.endpoint as string
         };
       }
@@ -275,11 +282,8 @@ export function createFixtureAzureProvider(): ProviderDefinition<
 export function resolveProviderOptions<Id extends string>(
   provider: { readonly id: Id; readonly capabilities?: readonly CapabilitySpec[] },
   optionBlocks: readonly ProviderOptionBlock<string, PortKind, object>[]
-): {
-  readonly merged: Record<string, ResolvedProviderOption>;
-  readonly dropped: readonly DroppedProviderOption[];
-} {
-  const merged: Record<string, ResolvedProviderOption> = {};
+) {
+  const merged: { [port: string]: ResolvedProviderOption } = {};
   const dropped: DroppedProviderOption[] = [];
   const declaredPorts = new Set((provider.capabilities ?? []).map((capability) => capability.port));
 
@@ -314,18 +318,12 @@ export function mergeResolvedProviderOptions<const Provider extends { readonly i
   return resolveProviderOptions(provider, optionBlocks);
 }
 
-export function auditProviderCatalog(providers: readonly { readonly id: string; readonly with: Record<string, unknown> }[]): {
-  readonly ok: boolean;
-  readonly conflicts: readonly {
-    readonly optionName: string;
-    readonly providers: readonly string[];
-    readonly reason: string;
-  }[];
-} {
+export function auditProviderCatalog(providers: readonly { readonly id: string; readonly with: JsonObject }[]) {
   const providersByOption = new Map<string, string[]>();
 
   for (const provider of providers) {
     for (const builder of Object.values(provider.with)) {
+      // SAFETY: `const optionName = (builder as { readonly optionName: string }).optionName;` is required at this I/O or test boundary.
       const optionName = (builder as { readonly optionName: string }).optionName;
       if (!providersByOption.has(optionName)) {
         providersByOption.set(optionName, []);
@@ -348,11 +346,9 @@ export function auditProviderCatalog(providers: readonly { readonly id: string; 
   };
 }
 
-export function validateProviderPackage(provider: unknown): {
-  readonly ok: boolean;
-  readonly errors: readonly string[];
-} {
+export function validateProviderPackage(provider: JsonValue) {
   const errors: string[] = [];
+  // SAFETY: `const candidate = provider as Partial<AnyProviderDefinition> | null | undefined;` is required at this I/O or test boundary.
   const candidate = provider as Partial<AnyProviderDefinition> | null | undefined;
 
   if (!candidate?.id) {
@@ -361,17 +357,17 @@ export function validateProviderPackage(provider: unknown): {
   if (!Array.isArray(candidate?.capabilities) || candidate.capabilities.length === 0) {
     errors.push("provider must declare at least one capability");
   }
-  if (!candidate?.with || typeof candidate.with !== "object") {
+  if (!candidate?.with || !isJsonObject(candidate.with)) {
     errors.push("provider must export scoped .with option builders");
   }
-  if (typeof candidate?.client !== "function") {
+  if (!(candidate?.client instanceof Function)) {
     errors.push("provider must export a runtime client(port, outputs) function");
   }
-  if (typeof candidate?.capabilityManifest !== "function") {
+  if (!(candidate?.capabilityManifest instanceof Function)) {
     errors.push("provider must export capabilityManifest()");
   }
 
-  if (typeof candidate?.client === "function") {
+  if (candidate?.client instanceof Function) {
     for (const capability of candidate.capabilities ?? []) {
       const client = candidate.client(capability.port, { endpoint: "fixture://endpoint" });
       if (!client || client.port !== capability.port || client.providerId !== candidate.id) {

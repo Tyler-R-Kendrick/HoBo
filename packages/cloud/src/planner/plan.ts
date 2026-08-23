@@ -4,7 +4,7 @@ import type {
 	CapabilityRequirement,
 	TrustPolicy,
 } from "@hobo/capability-profiles";
-import { lowerManifest } from "../intent.js";
+import { lowerManifest, type LowerOptions } from "../intent.js";
 import {
 	DEPLOYMENT_PLAN_SCHEMA,
 	type DeploymentPlan,
@@ -71,7 +71,7 @@ export interface PlanBindingAuthority {
 type BoundOffering = {
 	readonly productId?: string;
 	readonly appliedRows?: readonly string[];
-	readonly realizationParameters?: Readonly<Record<string, unknown>>;
+	readonly realizationParameters?: Readonly<Record<string, JsonValue>>;
 	readonly nonPortableRows?: readonly string[];
 };
 
@@ -129,6 +129,7 @@ function dependencyOrder(intents: ResourceIntent[]): string[] {
 		.sort();
 	const order: string[] = [];
 	while (ready.length > 0) {
+		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 		const next = ready.shift() as string;
 		order.push(next);
 		for (const child of (dependents.get(next) ?? []).sort()) {
@@ -153,7 +154,7 @@ export function plan(
 	registry: PlannerRegistry,
 ): PlanResult {
 	const objective = config.objective ?? "min-cost";
-	const lowerOptions: { objective: string; region?: string } = { objective };
+	const lowerOptions: LowerOptions = { objective };
 	if (config.region !== undefined) lowerOptions.region = config.region;
 	const intents = lowerManifest(bindle, lowerOptions);
 	// E19: attach per-resource placement criteria to the lowered intents.
@@ -196,29 +197,27 @@ export function plan(
 				policy: authority.policy,
 				nowMs: authority.nowMs,
 				yard: authority.yard,
-				...(authority.consumableBindingProfiles !== undefined
-					? {
-							consumableBindingProfiles: authority.consumableBindingProfiles,
-						}
-					: {}),
+				...(authority.consumableBindingProfiles !== undefined && {
+					consumableBindingProfiles: authority.consumableBindingProfiles,
+				}),
 			});
 			if (!profileOutcome.ok) {
 				remediations.push(profileOutcome.remediation);
 				continue;
 			}
 			bound = {
-				...(profileOutcome.definition.semantics?.productId !== undefined
-					? { productId: profileOutcome.definition.semantics.productId }
-					: {}),
-				...(profileOutcome.appliedRows !== undefined
-					? { appliedRows: profileOutcome.appliedRows }
-					: {}),
-				...(profileOutcome.realizationParameters !== undefined
-					? { realizationParameters: profileOutcome.realizationParameters }
-					: {}),
-				...(profileOutcome.nonPortableRows !== undefined
-					? { nonPortableRows: profileOutcome.nonPortableRows }
-					: {}),
+				...(profileOutcome.definition.semantics?.productId !== undefined && {
+					productId: profileOutcome.definition.semantics.productId,
+				}),
+				...(profileOutcome.appliedRows !== undefined && {
+					appliedRows: profileOutcome.appliedRows,
+				}),
+				...(profileOutcome.realizationParameters !== undefined && {
+					realizationParameters: profileOutcome.realizationParameters,
+				}),
+				...(profileOutcome.nonPortableRows !== undefined && {
+					nonPortableRows: profileOutcome.nonPortableRows,
+				}),
 			};
 		}
 
@@ -243,13 +242,13 @@ export function plan(
 			// `appliedRows` stays on the decision (the audit trail) and off the
 			// plan node: the plan is content-addressed, and which rows were
 			// consulted does not change what gets built.
-			...(bound?.productId !== undefined ? { productId: bound.productId } : {}),
-			...(bound?.realizationParameters !== undefined
-				? { realizationParameters: bound.realizationParameters }
-				: {}),
-			...(bound?.nonPortableRows !== undefined
-				? { nonPortableRows: bound.nonPortableRows }
-				: {}),
+			...(bound?.productId !== undefined && { productId: bound.productId }),
+			...(bound?.realizationParameters !== undefined && {
+				realizationParameters: bound.realizationParameters,
+			}),
+			...(bound?.nonPortableRows !== undefined && {
+				nonPortableRows: bound.nonPortableRows,
+			}),
 		};
 		if (outcome.region) node.region = outcome.region;
 		resources.push(node);
@@ -279,3 +278,4 @@ export function plan(
 		planHash: hashDeploymentPlan(deploymentPlan),
 	};
 }
+import type { JsonValue } from "../plan-types.js";

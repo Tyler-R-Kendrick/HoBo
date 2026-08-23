@@ -1,3 +1,4 @@
+/* eslint-disable no-control-regex, anti-slop/no-unknown-parameters -- error redaction owns the erased error boundary. */
 /**
  * Stable error codes for pack mechanics.
  *
@@ -74,16 +75,11 @@ export class PackError extends Error {
 		);
 		this.name = "PackError";
 		this.code = code;
-		this.detail = Object.freeze({ ...(options.detail ?? {}) });
+		this.detail = Object.freeze({ ...options.detail });
 	}
 
 	/** Receipt-safe projection; already redacted by construction. */
-	toJSON(): {
-		readonly name: string;
-		readonly code: PackErrorCode;
-		readonly message: string;
-		readonly detail: PackErrorDetail;
-	} {
+	toJSON() {
 		return {
 			name: this.name,
 			code: this.code,

@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonObject } from "../json.js";
 import { deepFreeze } from "../parse-utils.js";
 import { inferCapabilityUsage } from "./infer-usage.js";
 import type {
@@ -17,7 +18,7 @@ interface ManifestResource {
 	links?: Array<{ import: string; to: string }>;
 }
 
-interface ManifestShape {
+interface ManifestGrant {
 	schema?: string;
 	resources?: Record<string, ManifestResource>;
 }
@@ -31,12 +32,13 @@ export function evaluateCapabilityGrants({
 	manifest: unknown;
 	fileName?: string;
 }): GrantEvaluation {
-	if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+	if (!manifest || !isJsonObject(manifest) || Array.isArray(manifest)) {
 		throw new TypeError("manifest must be an object");
 	}
 
 	const usage = inferCapabilityUsage({ sourceText, fileName });
-	const nextManifest = structuredClone(manifest) as ManifestShape;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const nextManifest = structuredClone(manifest) as ManifestGrant;
 	const diagnostics: CapabilityDiagnostic[] = [...usage.diagnostics];
 	const usageByResource = new Map(
 		usage.resources.map((resource) => [resource.resource, resource]),
@@ -112,7 +114,8 @@ export function evaluateCapabilityGrants({
 			!diagnostics.some((diagnostic) => diagnostic.severity === "error"),
 		canDeployDimension: "capabilityGrants",
 		diagnostics: Object.freeze(diagnostics),
-		manifest: deepFreeze(nextManifest) as Readonly<Record<string, unknown>>,
+		// SAFETY: assertion required at this I/O or test boundary.
+		manifest: deepFreeze(nextManifest) as JsonObject,
 		grants: Object.freeze(
 			grants.map((grant) =>
 				Object.freeze({

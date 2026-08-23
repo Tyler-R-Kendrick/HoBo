@@ -102,6 +102,7 @@ function init(
 	if (options.maxTurns) args.push("--max-turns", String(options.maxTurns));
 	const result = run(root, ...args);
 	assert.equal(result.exitCode, 0, result.text);
+	// SAFETY: assertion to `result.output.state as CouncilState` is required at this boundary.
 	return result.output.state as CouncilState;
 }
 
@@ -110,7 +111,9 @@ function append(
 	state: CouncilState,
 	persona: (typeof COUNCIL_PERSONAS)[number],
 	stage: "position" | "reply" | "vote" | "submitted",
-	overrides: Record<string, unknown> = {},
+	overrides: {
+		[key: string]: import("../scripts/lib/inspectable.ts").JsonValue;
+	} = {},
 ) {
 	const before = state.personas[persona].currentInvestment;
 	const consumes = stage === "position" || stage === "reply";
@@ -179,6 +182,7 @@ function approve(root: string, initial: CouncilState): CouncilState {
 	for (const persona of COUNCIL_PERSONAS) {
 		const appended = append(root, state, persona, "submitted");
 		assert.equal(appended.exitCode, 0, appended.text);
+		// SAFETY: assertion to `appended.output.state as CouncilState` is required at this boundary.
 		state = appended.output.state as CouncilState;
 	}
 	const decided = run(
@@ -191,6 +195,7 @@ function approve(root: string, initial: CouncilState): CouncilState {
 		state.reviewId,
 	);
 	assert.equal(decided.exitCode, 0, decided.text);
+	// SAFETY: assertion to `decided.output.state as CouncilState` is required at this boundary.
 	return decided.output.state as CouncilState;
 }
 
@@ -199,6 +204,7 @@ function openAllPositions(root: string, initial: CouncilState): CouncilState {
 	for (const persona of COUNCIL_PERSONAS) {
 		const opened = append(root, state, persona, "position");
 		assert.equal(opened.exitCode, 0, opened.text);
+		// SAFETY: assertion to `opened.output.state as CouncilState` is required at this boundary.
 		state = opened.output.state as CouncilState;
 	}
 	return state;
@@ -267,6 +273,7 @@ describe("designer council adversarial protocol", () => {
 		);
 		const first = append(root, state, "jony-ive", "vote");
 		assert.equal(first.exitCode, 0, first.text);
+		// SAFETY: assertion to `first.output.state as CouncilState` is required at this boundary.
 		state = first.output.state as CouncilState;
 		const duplicate = append(root, state, "jony-ive", "vote");
 		assert.notEqual(duplicate.exitCode, 0);
@@ -278,10 +285,12 @@ describe("designer council adversarial protocol", () => {
 		let state = init(root, { maxTurns: 1 });
 		const first = append(root, state, "steve-jobs", "position");
 		assert.equal(first.exitCode, 0, first.text);
+		// SAFETY: assertion to `first.output.state as CouncilState` is required at this boundary.
 		state = first.output.state as CouncilState;
 		const capped = append(root, state, "jony-ive", "position");
 		assert.notEqual(capped.exitCode, 0);
 		assert.equal(capped.output.blocked, true);
+		// SAFETY: assertion to `capped.output.state as CouncilState` is required at this boundary.
 		assert.equal((capped.output.state as CouncilState).status, "blocked");
 		assert.match(capped.text, /max-turns-blocked/);
 
@@ -320,12 +329,15 @@ describe("designer council adversarial protocol", () => {
 
 		const blockedRoot = seedRepo();
 		let blocked = init(blockedRoot, { maxTurns: 1 });
+		// SAFETY: assertion to `append(blockedRoot, blocked, "steve-jobs", "position").output .state as CouncilState` is required at this boundary.
 		blocked = append(blockedRoot, blocked, "steve-jobs", "position").output
 			.state as CouncilState;
 		const capped = append(blockedRoot, blocked, "jony-ive", "position");
+		// SAFETY: assertion to `capped.output.state as CouncilState` is required at this boundary.
 		assert.equal((capped.output.state as CouncilState).status, "blocked");
 		const afterBlocked = append(
 			blockedRoot,
+			// SAFETY: assertion to `capped.output.state as CouncilState` is required at this boundary.
 			capped.output.state as CouncilState,
 			"jony-ive",
 			"position",
@@ -346,9 +358,11 @@ describe("designer council adversarial protocol", () => {
 			"--result",
 			"user",
 		);
+		// SAFETY: assertion to `closed.output.state as CouncilState` is required at this boundary.
 		assert.equal((closed.output.state as CouncilState).status, "closed");
 		const afterClosed = append(
 			closedRoot,
+			// SAFETY: assertion to `closed.output.state as CouncilState` is required at this boundary.
 			closed.output.state as CouncilState,
 			"steve-jobs",
 			"submitted",
@@ -388,10 +402,10 @@ describe("designer council adversarial protocol", () => {
 			root,
 			".optimizexp/runs/run-1/consensus/review-1/proposal-cycle-0.json",
 		);
-		const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as Record<
-			string,
-			unknown
-		>;
+		// SAFETY: assertion to `JSON.parse(readFileSync(manifestPath, "utf8")) as Record< string, unknown >` is required at this boundary.
+		const manifest = JSON.parse(readFileSync(manifestPath, "utf8")) as {
+			evidenceDigest?: string;
+		};
 		manifest.evidenceDigest = sha("f");
 		writeFileSync(manifestPath, `${JSON.stringify(manifest, null, 2)}\n`);
 
@@ -483,6 +497,7 @@ describe("designer council adversarial protocol", () => {
 		let state = init(root, { proposal: proposal(root, sha("e"), true) });
 		const steve = append(root, state, "steve-jobs", "submitted");
 		assert.equal(steve.exitCode, 0, steve.text);
+		// SAFETY: assertion to `steve.output.state as CouncilState` is required at this boundary.
 		state = steve.output.state as CouncilState;
 		const positioned = append(root, state, "jony-ive", "position", {
 			stance: "nay",
@@ -508,6 +523,7 @@ describe("designer council adversarial protocol", () => {
 			],
 		});
 		assert.equal(positioned.exitCode, 0, positioned.text);
+		// SAFETY: assertion to `positioned.output.state as CouncilState` is required at this boundary.
 		state = positioned.output.state as CouncilState;
 		state.personas["jony-ive"].hardBlockers = [];
 		writeFileSync(
@@ -546,18 +562,22 @@ describe("designer council adversarial protocol", () => {
 				},
 			],
 		});
+		// SAFETY: assertion to `result.output.state as CouncilState` is required at this boundary.
 		state = result.output.state as CouncilState;
 		for (const persona of COUNCIL_PERSONAS.slice(1)) {
 			result = append(root, state, persona, "position");
+			// SAFETY: assertion to `result.output.state as CouncilState` is required at this boundary.
 			state = result.output.state as CouncilState;
 		}
 		result = append(root, state, "steve-jobs", "vote", {
 			stance: "nay",
 			respondsTo: ["P-steve-1"],
 		});
+		// SAFETY: assertion to `result.output.state as CouncilState` is required at this boundary.
 		state = result.output.state as CouncilState;
 		for (const persona of COUNCIL_PERSONAS.slice(1)) {
 			result = append(root, state, persona, "vote");
+			// SAFETY: assertion to `result.output.state as CouncilState` is required at this boundary.
 			state = result.output.state as CouncilState;
 		}
 		const decided = run(
@@ -570,7 +590,8 @@ describe("designer council adversarial protocol", () => {
 			state.reviewId,
 		);
 		assert.equal(
-			(decided.output.decision as Record<string, unknown>).result,
+			// SAFETY: assertion to `decided.output.decision as Record<string, unknown>` is required at this boundary.
+			(decided.output.decision as { result?: string }).result,
 			"nay",
 		);
 

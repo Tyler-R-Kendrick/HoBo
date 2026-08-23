@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export type PrincipalRef = {
   kind: "user" | "agent" | "service" | "workload";
   id: string;
@@ -67,7 +68,7 @@ export function createFixtureIdJagIssuer(input: {
   keyId?: string;
 }): {
   issuer: string;
-  rotate(nextKeyId: string): unknown;
+  rotate(nextKeyId: string): JsonValue;
   jwks(): { keys: object[] };
   signIdJag(input: {
     issuer?: string;
@@ -80,16 +81,16 @@ export function createFixtureIdJagIssuer(input: {
     nonce: string;
     issuedAt: number;
     expiresAt: number;
-    extraClaims?: Record<string, unknown>;
+    extraClaims?: JsonObject;
   }): string;
 };
 
 export function createInboundXaaResourceServer(input: {
   app: InboundXaaApp;
-  trustedIssuers: Record<string, { keys: object[] }>;
+  trustedIssuers: Record<string, { keys: JsonObject[] }>;
   now?: () => number;
   idFactory?: (prefix: "grant" | "use") => string;
-  eventSink?: (event: object) => void;
+  eventSink?: (event: JsonObject) => void;
   policyGate?: (request: {
     requestId: string;
     app: InboundXaaApp;
@@ -107,7 +108,7 @@ export function createInboundXaaMcpBridge(input: {
     ctx: InboundXaaContext;
     credential: InboundXaaCredential;
     identity: PrincipalRef;
-  }): { callTool(name: string, input?: object, options?: object): Promise<object> };
+  }): { callTool(name: string, input?: JsonObject, options?: JsonObject): Promise<JsonValue> };
 }): {
-  callTool(name: string, input?: object, authOptions?: object): Promise<object>;
+  callTool(name: string, input?: JsonObject, authOptions?: JsonObject): Promise<JsonValue>;
 };

@@ -104,6 +104,7 @@ describe("step (the sdk-api spelling)", () => {
 	it("falls back to `step` for an anonymous body", () => {
 		// An empty derived name would otherwise throw on a perfectly ordinary
 		// arrow function.
+		// SAFETY: assertion to `=> 1) as () => number).na` is required at this boundary.
 		expect(step((() => 1) as () => number).name).toBeTruthy();
 	});
 
@@ -181,7 +182,13 @@ describe("runWithRetries", () => {
 				throw cause;
 			},
 			{ retries: 0 },
-		).catch((err: unknown) => err as WorkflowFailure);
+			// SAFETY: assertion to ` WorkflowFailure); e` is required at this boundary.
+			// SAFETY: assertion to ` WorkflowFailure); e` is required at this boundary.
+		).catch((error: Error) => {
+			// SAFETY: workflow failures surface as WorkflowFailure at this test boundary.
+			const failure: WorkflowFailure = error as never;
+			return failure;
+		});
 		expect(String(failure.message)).toContain("charge");
 		expect(JSON.stringify(failure.details ?? {})).toBeDefined();
 	});

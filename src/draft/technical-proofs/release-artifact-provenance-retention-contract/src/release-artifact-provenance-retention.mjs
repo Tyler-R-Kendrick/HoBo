@@ -174,7 +174,7 @@ export function classifyGapDisposition(record) {
 export function evaluateArtifactHandoffReadiness(artifact) {
   const errors = [];
 
-  if (!artifact || typeof artifact !== "object") {
+  if (!isPlainObject(artifact)) {
     return { ok: false, errors: ["artifact handoff record is required"] };
   }
 
@@ -190,7 +190,7 @@ export function evaluateArtifactHandoffReadiness(artifact) {
 export function validateReleaseArtifactProvenanceRetention(record) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!isPlainObject(record)) {
     return { ok: false, errors: ["release artifact provenance retention record is required"] };
   }
   if (record.issue !== "HOBO-504") {
@@ -270,4 +270,8 @@ function ownerLink(lane, ownerProject, handoffResponsibility, sourceOfTruth) {
     handoffResponsibility,
     sourceOfTruth,
   };
+}
+
+function isPlainObject(value) {
+  return value != null && Object.prototype.toString.call(value) === "[object Object]";
 }

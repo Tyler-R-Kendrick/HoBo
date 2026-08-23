@@ -1,6 +1,7 @@
 export const LIVE_FIX_GATED_CANDIDATE_SCHEMA_VERSION = "hobo.live-fix-gated-candidate/v1";
 
 const PROD_ENVIRONMENTS = new Set(["prod", "production"]);
+const tagOf = Object.prototype.toString;
 
 export class LiveFixGatedCandidateError extends Error {
   constructor(code, path = "$", message = code) {
@@ -310,9 +311,9 @@ function parseGate(value, path) {
 }
 
 function parsePolicy(value = {}) {
-  const policy = value && typeof value === "object" ? value : {};
+  const policy = value && isObjectTag(value) ? value : {};
   const maxBlastRadius =
-    policy.maxBlastRadius && typeof policy.maxBlastRadius === "object"
+    policy.maxBlastRadius && isObjectTag(policy.maxBlastRadius)
       ? policy.maxBlastRadius
       : { maxResources: 1 };
 
@@ -324,7 +325,7 @@ function parsePolicy(value = {}) {
 }
 
 function parseRollout(value = {}) {
-  const rollout = value && typeof value === "object" ? value : {};
+  const rollout = value && isObjectTag(value) ? value : {};
   const canaryOutcome = rollout.canaryOutcome ?? "healthy";
   if (!["healthy", "regression"].includes(canaryOutcome)) {
     throw new LiveFixGatedCandidateError("livefix.rollout_outcome", "$.rollout.canaryOutcome");
@@ -339,7 +340,7 @@ function parseRollout(value = {}) {
 }
 
 function object(value, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isObjectTag(value) || Array.isArray(value)) {
     throw new LiveFixGatedCandidateError("livefix.object_required", path);
   }
   return value;
@@ -353,7 +354,7 @@ function array(value, path) {
 }
 
 function nonEmptyString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new LiveFixGatedCandidateError("livefix.string_required", path);
   }
   return value;
@@ -375,11 +376,19 @@ function parseIso(value, path) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || (!isObjectTag(value) && !Array.isArray(value)) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {
     deepFreeze(child);
   }
   return Object.freeze(value);
+}
+
+function isString(value) {
+  return tagOf.call(value) === "[object String]";
+}
+
+function isObjectTag(value) {
+  return tagOf.call(value) === "[object Object]";
 }

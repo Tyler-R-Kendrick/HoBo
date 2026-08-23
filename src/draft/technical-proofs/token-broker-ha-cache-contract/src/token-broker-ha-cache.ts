@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these shared helpers establish erased request/config boundaries and recursively inspect JSON-like values before domain use. */
+
 const DEFAULT_TTL_MS = 15 * 60 * 1000;
 const DEFAULT_ROTATE_AT_FRACTION = 2 / 3;
 const DEFAULT_MAX_RENEWAL_GRACE_MS = 5 * 60 * 1000;

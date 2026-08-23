@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 import {
   createIdentityEvent,
   validateIdentityEvent,
@@ -20,7 +21,7 @@ export function createXaaConfusedDeputyGuard(options = {}) {
   const now = options.now ?? (() => new Date());
   const idFactory = options.idFactory ?? defaultIdFactory();
   const grants = normalizeGrants(options.grants ?? []);
-  const targetAuthorizationServers = options.targetAuthorizationServers ?? {};
+  const targetAuthorizationServers = options.targetAuthorizationServers ;
   const eventSink = options.eventSink ?? (() => {});
 
   return Object.freeze({
@@ -396,7 +397,7 @@ function assertObject(value, field) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -405,7 +406,7 @@ function requireString(value, field) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );

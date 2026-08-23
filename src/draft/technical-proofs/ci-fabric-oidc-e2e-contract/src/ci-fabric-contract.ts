@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const CI_FABRIC_SCHEMA = "hobo.ciFabric/v1";
 
 const REQUIRED_PR_CHECKS = Object.freeze(["build", "typecheck", "lint", "unit", "conformance"]);
@@ -119,9 +120,9 @@ export function createHoboCiFabricContract(overrides = {}) {
 
 export function validateCiFabricContract(contract) {
   const violations = [];
-  const workflow = contract?.workflow ?? {};
-  const pullRequestGate = workflow.pullRequestGate ?? {};
-  const e2e = contract?.e2e ?? {};
+  const workflow = contract?.workflow ;
+  const pullRequestGate = workflow.pullRequestGate ;
+  const e2e = contract?.e2e ;
 
   if (contract?.schema !== CI_FABRIC_SCHEMA) {
     violations.push({
@@ -323,7 +324,7 @@ function validateOidc(e2e, violations) {
     });
   }
 
-  const secretEnvKeys = Object.entries(e2e.env ?? {})
+  const secretEnvKeys = Object.entries(e2e.env )
     .filter(([key, value]) => key.includes("SECRET") || SECRET_REFERENCE_PATTERN.test(String(value)))
     .map(([key]) => key)
     .sort();
@@ -415,11 +416,11 @@ function clone(value) {
 }
 
 function isPlainObject(value) {
-  return value !== null && typeof value === "object" && Object.getPrototypeOf(value) === Object.prototype;
+  return value !== null && isJsonObject(value) && Object.getPrototypeOf(value) === Object.prototype;
 }
 
 function deepFreeze(value) {
-  if (value && typeof value === "object" && !Object.isFrozen(value)) {
+  if (value && isJsonObject(value) && !Object.isFrozen(value)) {
     for (const child of Object.values(value)) {
       deepFreeze(child);
     }

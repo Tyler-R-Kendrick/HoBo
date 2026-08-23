@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks are the shared parser and canonical-serialization boundary for erased safety-gate inputs before domain evaluation. */
 import { createHash } from "node:crypto";
 
 import { validateGenerationEvent } from "../../generation-pipeline-io-contract/src/contract.js";

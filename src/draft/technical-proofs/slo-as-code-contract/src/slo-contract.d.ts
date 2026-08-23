@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export interface SloDefinition {
   schema: "hobo.slo/v1";
   apiVersion: "openslo/v1";
@@ -50,7 +51,7 @@ export interface SloEventEnvelope {
   meta: {
     traceparent: string;
   };
-  data: Record<string, unknown> & { schema: "hobo.slo.event/v1"; sloName: string };
+  data: JsonObject & { schema: "hobo.slo.event/v1"; sloName: string };
 }
 
 export interface BudgetView {
@@ -65,7 +66,7 @@ export interface BudgetView {
 }
 
 export function createGoldenSlo(overrides?: Partial<SloDefinition>): SloDefinition;
-export function parseSloDefinition(candidate: unknown): {
+export function parseSloDefinition(candidate: JsonValue): {
   ok: boolean;
   errors: string[];
   warnings: string[];
@@ -73,7 +74,7 @@ export function parseSloDefinition(candidate: unknown): {
 };
 export function serializeSloDefinition(slo: SloDefinition): string;
 export function deserializeSloDefinition(text: string): ReturnType<typeof parseSloDefinition>;
-export function validateSloEvent(event: unknown): { ok: boolean; errors: string[]; event: SloEventEnvelope | null };
+export function validateSloEvent(event: JsonValue): { ok: boolean; errors: string[]; event: SloEventEnvelope | null };
 export function serializeSloEvent(event: SloEventEnvelope): string;
 export function deserializeSloEvent(text: string): ReturnType<typeof validateSloEvent>;
 export function applyBudgetEvent(view: BudgetView, definition: SloDefinition, event: SloEventEnvelope): BudgetView;

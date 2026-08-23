@@ -1,3 +1,5 @@
+import type { JsonObject, JsonValue } from "../json.js";
+
 export type InterfaceId = string & { readonly __brand: "InterfaceId" };
 
 const INTERFACE_ID_PATTERN =
@@ -7,19 +9,20 @@ export function parseInterfaceId(raw: string): InterfaceId {
 	if (!INTERFACE_ID_PATTERN.test(raw)) {
 		throw new Error(`component_host.invalid_interface_id: ${raw}`);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return raw as InterfaceId;
 }
 
 export interface ComponentDescriptor {
 	id: string;
 	imports: InterfaceId[];
-	exports: Record<string, Record<string, (...args: unknown[]) => unknown>>;
+	exports: Record<string, Record<string, (...args: JsonValue[]) => JsonValue>>;
 	leases?: string[];
 }
 
 export interface ProviderDescriptor {
 	id: string;
-	exports: Record<string, Record<string, (...args: unknown[]) => unknown>>;
+	exports: Record<string, Record<string, (...args: JsonValue[]) => JsonValue>>;
 }
 
 export type BoundaryMode = "live";
@@ -79,7 +82,7 @@ export type ComponentHostEvent =
 export interface ComponentInstance {
 	id: string;
 	imports: InterfaceId[];
-	exports: Record<string, Record<string, (...args: unknown[]) => unknown>>;
+	exports: Record<string, Record<string, (...args: JsonValue[]) => JsonValue>>;
 }
 
 export interface ParsedComponentDescriptor extends ComponentDescriptor {
@@ -118,12 +121,12 @@ export interface ComponentHostPort {
 		componentId: string,
 		importInterface: InterfaceId,
 		operation: string,
-		payload?: unknown,
-	): Promise<unknown>;
+		payload?: JsonValue,
+	): Promise<JsonValue>;
 	handleHttp(componentId: string, request: HttpRequest): Promise<HttpResponse>;
 	teardownComponent(componentId: string): Promise<void>;
 	lifecycle(componentId: string): ComponentLifecycle;
 	linkTable(): LinkRecord[];
 	activeLeases(): string[];
-	report(): Record<string, unknown>;
+	report(): JsonObject;
 }

@@ -1,8 +1,9 @@
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject } from "./json.js";
 const valueTypes = Object.freeze({
-  boolean: (value) => typeof value === "boolean",
-  string: (value) => typeof value === "string",
-  number: (value) => typeof value === "number" && Number.isFinite(value),
-  object: (value) => value !== null && typeof value === "object" && isJsonSerializable(value)
+  boolean: (value) => isJsonBoolean(value),
+  string: (value) => isJsonString(value),
+  number: (value) => isJsonNumber(value) && Number.isFinite(value),
+  object: (value) => value !== null && isJsonObject(value) && isJsonSerializable(value)
 });
 
 const providerKinds = new Set(["flagd", "launchdarkly", "unleash"]);
@@ -15,13 +16,13 @@ export function createOpenFeatureAdapter({
   vendorFlagKeys
 } = {}) {
   assertProviderKind(providerKind);
-  if (!client || typeof client.resolve !== "function") {
+  if (!client || !(client.resolve instanceof Function)) {
     throw new TypeError(`${providerKind} adapter requires a client.resolve function`);
   }
   detectFlagKeyCollisions({
     providerKind,
     hoboDefinedFlagKeys,
-    vendorFlagKeys: vendorFlagKeys ?? (typeof client.listFlagKeys === "function" ? client.listFlagKeys() : [])
+    vendorFlagKeys: vendorFlagKeys ?? (client.listFlagKeys instanceof Function ? client.listFlagKeys() : [])
   });
 
   return {
@@ -71,7 +72,7 @@ export function createCampFeatureFlagEvaluator({
     matching?.camps?.[camp]?.featureFlagProvider ??
     matching?.defaultFeatureFlagProvider ??
     defaultProvider;
-  const provider = typeof registry?.get === "function" ? registry.get(providerId) : registry?.[providerId];
+  const provider = registry?.get instanceof Function ? registry.get(providerId) : registry?.[providerId];
 
   if (!provider) {
     throw new Error(`Matching selected missing feature-flag provider ${providerId} for Camp ${camp}`);
@@ -321,7 +322,7 @@ function claimsToAttributes(claims = []) {
 }
 
 function normalizeClaimValue(value) {
-  if (value && typeof value === "object" && "tag" in value && "val" in value) {
+  if (value && isJsonObject(value) && "tag" in value && "val" in value) {
     return value.val;
   }
   return value;
@@ -346,21 +347,19 @@ function isJsonSerializable(value) {
   if (value === null) {
     return true;
   }
-
-  switch (typeof value) {
-    case "boolean":
-    case "string":
-      return true;
-    case "number":
-      return Number.isFinite(value);
-    case "object":
-      if (Array.isArray(value)) {
-        return value.every(isJsonSerializable);
-      }
-      return Object.values(value).every(isJsonSerializable);
-    default:
-      return false;
+  if (isJsonBoolean(value) || isJsonString(value)) {
+    return true;
   }
+  if (isJsonNumber(value)) {
+    return Number.isFinite(value);
+  }
+  if (Array.isArray(value)) {
+    return value.every(isJsonSerializable);
+  }
+  if (isJsonObject(value)) {
+    return Object.values(value).every(isJsonSerializable);
+  }
+  return false;
 }
 
 function assertProviderKind(providerKind) {

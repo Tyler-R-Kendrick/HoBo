@@ -48,7 +48,7 @@ export function runCrossLayerPropagation(input = {}) {
   const layers = GENERATED_STACK_LAYERS.map((name) => {
     const contract = {
       ...LAYER_CONTRACTS[name],
-      ...(layerOverrides[name] ?? {}),
+      ...layerOverrides[name],
     };
     const generatedContent = renderGeneratedContent(name, domainRecord);
     const generatedRegion = buildGeneratedRegion({
@@ -328,7 +328,7 @@ function extractGeneratedRegionBounds(source, layerName) {
 }
 
 function parseDomainRecordChange(value) {
-  if (!value || typeof value !== "object") {
+  if (!isObjectRecord(value)) {
     throw new TypeError("domainRecordChange is required");
   }
   const record = requiredString(value.record, "domainRecordChange.record");
@@ -353,7 +353,7 @@ function parseDomainRecordChange(value) {
 }
 
 function requiredString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (Object.prototype.toString.call(value) !== "[object String]" || value.length === 0) {
     throw new TypeError(`${path} must be a non-empty string`);
   }
   return value;
@@ -369,7 +369,7 @@ function stableStringify(value) {
 
 function toStableValue(value) {
   if (Array.isArray(value)) return value.map(toStableValue);
-  if (value && typeof value === "object") {
+  if (isObjectRecord(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .map(([key, entry]) => [key, toStableValue(entry)])
@@ -392,7 +392,11 @@ function pascalCase(value) {
 }
 
 function freeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) return value;
+  if (!isObjectRecord(value) || Object.isFrozen(value)) return value;
   for (const child of Object.values(value)) freeze(child);
   return Object.freeze(value);
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
 }

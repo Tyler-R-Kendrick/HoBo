@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const MIRROR_DIGEST_SELECTION_CONTRACT = "hobo.mirror-digest-selection/v1";
 
@@ -17,7 +19,7 @@ export async function selectDigestPinnedMirror({
   if (!Array.isArray(mirrors) || mirrors.length === 0) {
     throw new Error("mirrors must be a non-empty array");
   }
-  if (typeof dispatchCostTiebreak !== "function") {
+  if (!(dispatchCostTiebreak instanceof Function)) {
     throw new Error("dispatchCostTiebreak must be a function");
   }
 
@@ -184,16 +186,16 @@ export function sha256Digest(bytes) {
 }
 
 async function verifyMirror({ mirror, coordinate, resolvedDigest }) {
-  if (!mirror || typeof mirror !== "object" || Array.isArray(mirror)) {
+  if (!mirror || !isJsonObject(mirror) || Array.isArray(mirror)) {
     throw new Error("mirror must be an object");
   }
   if (!isNonEmptyString(mirror.mirrorId)) {
     throw new Error("mirror.mirrorId must be a non-empty string");
   }
-  if (typeof mirror.verify !== "function") {
+  if (!(mirror.verify instanceof Function)) {
     throw new Error(`${mirror.mirrorId}.verify must be a function`);
   }
-  if (typeof mirror.fetch !== "function") {
+  if (!(mirror.fetch instanceof Function)) {
     throw new Error(`${mirror.mirrorId}.fetch must be a function`);
   }
 
@@ -290,7 +292,7 @@ function stripMirror(verification) {
 }
 
 function normalizeCoordinate(coordinate) {
-  if (!coordinate || typeof coordinate !== "object" || Array.isArray(coordinate)) {
+  if (!coordinate || !isJsonObject(coordinate) || Array.isArray(coordinate)) {
     throw new Error("coordinate must be an object");
   }
   if (!isNonEmptyString(coordinate.name)) {
@@ -317,14 +319,14 @@ function toBuffer(value, path) {
   if (value instanceof Uint8Array) {
     return Buffer.from(value);
   }
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     return Buffer.from(value);
   }
   throw new Error(`${path} must be bytes`);
 }
 
 function arrayOfStrings(value) {
-  return Array.isArray(value) ? value.filter((entry) => typeof entry === "string") : [];
+  return Array.isArray(value) ? value.filter((entry) => isJsonString(entry)) : [];
 }
 
 function numberOrDefault(value, fallback) {
@@ -332,7 +334,7 @@ function numberOrDefault(value, fallback) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function pushTimeline(timeline, entry) {

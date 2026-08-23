@@ -3,6 +3,13 @@ import {
 	type LogicalActorIdentity,
 	parseLogicalActorIdentity,
 } from "@hobo/core";
+import {
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 export type CelldOverlay = "tailscale" | "netbird" | "wireguard";
 
@@ -39,19 +46,20 @@ export interface CelldRuntimeConfig {
 
 const OVERLAYS = new Set<CelldOverlay>(["tailscale", "netbird", "wireguard"]);
 
-function requiredString(record: Record<string, unknown>, key: string): string {
+function requiredString(record: JsonObject, key: string): string {
 	const value = record[key];
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new CelldConfigError("PARSE", `${key} is required`);
 	}
 	return value;
 }
 
-export function parseCelldRuntimeConfig(input: unknown): CelldRuntimeConfig {
-	if (typeof input !== "object" || input === null) {
+export function parseCelldRuntimeConfig(input: JsonValue): CelldRuntimeConfig {
+	if (!isJsonObject(input) || input === null) {
 		throw new CelldConfigError("PARSE", "celld config must be an object");
 	}
-	const record = input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const record = input as JsonObject;
 	if (record.operatorPortPublic === true) {
 		throw new CelldConfigError(
 			"OPERATOR_PORT_PUBLIC",
@@ -72,7 +80,8 @@ export function parseCelldRuntimeConfig(input: unknown): CelldRuntimeConfig {
 	}
 	const overlayRaw = record.overlay;
 	if (
-		typeof overlayRaw !== "string" ||
+		!isJsonString(overlayRaw) ||
+		// SAFETY: assertion required at this I/O or test boundary.
 		!OVERLAYS.has(overlayRaw as CelldOverlay)
 	) {
 		throw new CelldConfigError(
@@ -111,6 +120,7 @@ export function parseCelldRuntimeConfig(input: unknown): CelldRuntimeConfig {
 		bucketSecretRef,
 		advertise: requiredString(record, "advertise"),
 		internalListen: requiredString(record, "internalListen"),
+		// SAFETY: assertion required at this I/O or test boundary.
 		overlay: overlayRaw as CelldOverlay,
 		operatorPortPublic: false,
 		isolation: "trusted",
@@ -118,8 +128,10 @@ export function parseCelldRuntimeConfig(input: unknown): CelldRuntimeConfig {
 	});
 }
 
-export function celldCellName(identity: unknown): string {
-	const parsed: LogicalActorIdentity = parseLogicalActorIdentity(identity);
+export function celldCellName<T>(identity: T): string {
+	const parsed: LogicalActorIdentity = parseLogicalActorIdentity(
+		cloneAsJson(identity),
+	);
 	return actorCompoundKey(parsed).join("/");
 }
 

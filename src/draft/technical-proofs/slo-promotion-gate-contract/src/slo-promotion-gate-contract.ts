@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased policy/snapshot values at the shared contract boundary and recursively inspect JSON-like values for deterministic canonicalization. */
 import { createHash } from "node:crypto";
 
 export const SLO_PROMOTION_GATE_CONTRACT_VERSION = "hobo.slo-promotion-gate/v1";

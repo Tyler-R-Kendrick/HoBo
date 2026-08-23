@@ -562,6 +562,7 @@ export function evaluateVibeGapClosure(backlog: VibeGapClosureBacklog = VIBE_GAP
           "VibeScopeGuardBoundary",
           "VibeUnblockLedgerBoundary",
         ],
+        // SAFETY: assertion to `[] as string[]` is required at this boundary.
         missing: [] as string[],
       },
       dxBackbone: dxResult.summary,

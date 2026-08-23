@@ -43,26 +43,52 @@ export interface ResolvedAuthPortSubject {
   roleRevocations: ScimGroupRevocation[];
 }
 
+export interface AuthPortSnapshotInput {
+  principal?: {
+    kind?: string;
+    id?: string;
+  };
+  auth?: {
+    port?: string;
+    adapter?: string;
+    scimGroups?: readonly string[];
+    assertedRoles?: readonly string[];
+    snapshotSeq?: string;
+  };
+}
+
+export interface AuthPortClock {
+  nowMs(): number;
+  set(nextMs: number): number;
+  advance(deltaMs: number): number;
+}
+
+export interface AuthPortRbacResolverInput {
+  clock?: AuthPortClock;
+  bindings?: readonly object[];
+  roles?: readonly object[];
+  nfr?: {
+    subjectCacheTtlMs: number;
+    revocationPropagationBoundMs: number;
+  };
+}
+
 export interface AuthPortRbacResolver {
   contractVersion: string;
   nfr: {
     subjectCacheTtlMs: number;
     revocationPropagationBoundMs: number;
   };
-  clock: {
-    nowMs(): number;
-    set(nextMs: number): number;
-    advance(deltaMs: number): number;
-  };
-  resolveSubject(snapshot: AuthPortSnapshot | object): ResolvedAuthPortSubject;
-  authorize(snapshot: AuthPortSnapshot | object, actionId: string): ResolvedAuthPortSubject & {
+  clock: AuthPortClock;
+  resolveSubject(snapshot: AuthPortSnapshotInput): ResolvedAuthPortSubject;
+  authorize(snapshot: AuthPortSnapshotInput, actionId: string): ResolvedAuthPortSubject & {
     decision: {
       effect: "allow" | "deny";
       reason?: string;
       matchedRoles?: string[];
     };
   };
-  canBind(snapshot: AuthPortSnapshot | object, input: { targetPrincipalId: string; roleId: string }): ResolvedAuthPortSubject & {
+  canBind(snapshot: AuthPortSnapshotInput, input: { targetPrincipalId: string; roleId: string }): ResolvedAuthPortSubject & {
     decision: {
       effect: "allow" | "deny";
       reason: string;
@@ -87,8 +113,8 @@ export const AUTH_PORT_RBAC_NFR: {
 };
 export const BUILT_IN_ROLES: Record<string, string>;
 
-export function createAuthPortSnapshot(input: object): AuthPortSnapshot;
-export function createAuthPortRbacResolver(input?: object): AuthPortRbacResolver;
+export function createAuthPortSnapshot(input: AuthPortSnapshotInput): AuthPortSnapshot;
+export function createAuthPortRbacResolver(input?: AuthPortRbacResolverInput): AuthPortRbacResolver;
 export function bindPrincipalToRole(input: { principalId: string; roleId: string }): object;
 export function bindScimGroupToRole(input: { groupId: string; roleId: string }): object;
 export function defineCustomRole(input: { id: string; name?: string; grants: string[] }): object;

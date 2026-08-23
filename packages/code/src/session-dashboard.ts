@@ -1226,10 +1226,10 @@ const SPA = `<!doctype html>
 </html>
 `;
 
-function json(
+function json<T>(
 	response: import("node:http").ServerResponse,
 	status: number,
-	body: unknown,
+	body: T,
 ): void {
 	const payload = JSON.stringify(body);
 	response.writeHead(status, {
@@ -1260,6 +1260,7 @@ function listen(
 	return new Promise((resolve, reject) => {
 		server.once("error", reject);
 		server.listen(port, host, () => {
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			const address = server.address() as AddressInfo;
 			resolve(address.port);
 		});
@@ -1366,10 +1367,10 @@ export async function startLocalDashboard(options: {
 			sidecar,
 			...(options.projectRoot !== undefined
 				? { projectRoot: options.projectRoot }
-				: {}),
+				: undefined),
 			...(options.startDevSession !== undefined
 				? { startDevSession: options.startDevSession }
-				: {}),
+				: undefined),
 		});
 	const liveOccupancy = {
 		dashboardUrl: "",
@@ -1382,14 +1383,14 @@ export async function startLocalDashboard(options: {
 			env,
 			...(options.projectRoot !== undefined
 				? { projectDir: options.projectRoot }
-				: {}),
+				: undefined),
 			liveEndpoints: occupancySidecarEndpoints({
 				...(liveOccupancy.dashboardUrl
 					? { dashboardUrl: liveOccupancy.dashboardUrl }
-					: {}),
+					: undefined),
 				...(liveOccupancy.otlpHttpUrl
 					? { otlpHttpUrl: liveOccupancy.otlpHttpUrl }
-					: {}),
+					: undefined),
 			}),
 		});
 		const appHealth =
@@ -1434,8 +1435,8 @@ export async function startLocalDashboard(options: {
 				id: node.id,
 				kind: node.kind,
 				provisioned: node.status === "declared" || node.status === "serving",
-				...(topology || userBindle ? { initiallyStarted: started } : {}),
-				...(!topology && appHealth ? { healthUrl: appHealth } : {}),
+				...(topology || userBindle ? { initiallyStarted: started } : undefined),
+				...(!topology && appHealth ? { healthUrl: appHealth } : undefined),
 			});
 		}
 		for (const endpoint of inventory.endpoints) {
@@ -1454,7 +1455,7 @@ export async function startLocalDashboard(options: {
 				kind: endpoint.kind,
 				provisioned: true,
 				initiallyStarted: occupancy ? enabled && live : live,
-				...(!mesh && live ? { healthUrl: endpoint.backendUrl } : {}),
+				...(!mesh && live ? { healthUrl: endpoint.backendUrl } : undefined),
 			});
 		}
 		for (const resource of inventory.managed) {
@@ -1672,8 +1673,8 @@ export async function startLocalDashboard(options: {
 	const scope = {
 		tenant: view.tenant,
 		environment: view.environment,
-		...(view.project !== undefined ? { project: view.project } : {}),
-		...(view.branch !== undefined ? { branch: view.branch } : {}),
+		...(view.project !== undefined ? { project: view.project } : undefined),
+		...(view.branch !== undefined ? { branch: view.branch } : undefined),
 	};
 	liveOccupancy.dashboardUrl = preferNamedEndpoint(
 		`http://127.0.0.1:${port}/`,

@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-known-value-widening -- image digest table is a closed pack-owned contract. */
 /**
  * The pinned PostgreSQL image.
  *

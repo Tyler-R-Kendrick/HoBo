@@ -138,10 +138,7 @@ export function eveAgentRootPath(
  * Canonical hobo-code coordinator + worker subagent set (Eve shape).
  * Coordinator owns dispatch; workers run inside secure sandbox classes.
  */
-export function defaultHoboCodeEveAgents(): {
-	readonly coordinator: EveAgentDefinition;
-	readonly subagents: readonly EveAgentDefinition[];
-} {
+export function defaultHoboCodeEveAgents() {
 	const coordinator = defineEveAgent({
 		id: "hobo-code",
 		description:
@@ -184,13 +181,7 @@ export function defaultHoboCodeEveAgents(): {
 	return { coordinator, subagents };
 }
 
-export function describeEveSubagentSurface(): {
-	readonly framework: "vercel-eve";
-	readonly role: "subagent-definition";
-	readonly filesystemFirst: true;
-	readonly inspiration: "https://vercel.com/eve";
-	readonly defaultAgents: ReturnType<typeof defaultHoboCodeEveAgents>;
-} {
+export function describeEveSubagentSurface() {
 	return {
 		framework: "vercel-eve",
 		role: "subagent-definition",

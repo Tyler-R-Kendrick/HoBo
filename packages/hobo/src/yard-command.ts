@@ -1,5 +1,4 @@
 import type { CommandModule } from "@hobo/cli";
-
 import {
 	COMPONENT_HOST_KINDS,
 	type ComponentHostKind,
@@ -11,6 +10,7 @@ import {
 } from "./bare-metal-yard.js";
 import { ensureEmbeddedBroker } from "./broker-runtime.js";
 import { ensureAllRuntimeHosts, getRuntimeHost } from "./host-registry.js";
+import { isJsonNumber, isJsonString, type JsonValue } from "./json.js";
 import { probeWasmHostInstall } from "./wasm-host.js";
 
 // `hobo yard` — install/inspect a **Yard** (glossary: provider-specific control
@@ -20,7 +20,9 @@ import { probeWasmHostInstall } from "./wasm-host.js";
 //   hobo yard ensure  — ensure all registered host runtimes
 //   hobo yard status | doctor
 
-function parseComponentHostFlag(raw: unknown): ComponentHostKind | undefined {
+function parseComponentHostFlag(
+	raw: JsonValue | undefined,
+): ComponentHostKind | undefined {
 	if (raw === undefined || raw === null) return undefined;
 	try {
 		return normalizeComponentHostKind(String(raw));
@@ -34,14 +36,16 @@ export function createYardCommand(): CommandModule {
 		implemented: true,
 		run: async ({ args, flags, context, emitProgress }) => {
 			const subcommand = args[0] ?? "status";
+			// SAFETY: assertion required at this I/O or test boundary.
 			const env = (context as { env?: NodeJS.ProcessEnv }).env ?? process.env;
-			const hoboHome =
-				typeof flags.home === "string" ? flags.home : defaultHoboHome(env);
+			const hoboHome = isJsonString(flags.home)
+				? flags.home
+				: defaultHoboHome(env);
 
 			if (subcommand === "init") {
 				const portRaw = flags.port;
 				const defaultPort =
-					typeof portRaw === "string" || typeof portRaw === "number"
+					isJsonString(portRaw) || isJsonNumber(portRaw)
 						? Number(portRaw)
 						: undefined;
 				if (
@@ -90,7 +94,7 @@ export function createYardCommand(): CommandModule {
 					const { config, configPath } = initBareMetalYard({
 						hoboHome,
 						force: flags.force === true,
-						...(defaultPort !== undefined ? { defaultPort } : {}),
+						...(defaultPort !== undefined ? { defaultPort } : undefined),
 						componentHost: preferredHost,
 					});
 					const hostEnsure = await getRuntimeHost(config.componentHost).ensure({
@@ -237,7 +241,7 @@ export function createYardCommand(): CommandModule {
 							? `hobo yard doctor: no Yard config — run hobo yard init`
 							: `hobo yard doctor: host ${componentHost} not ready — ${hostError ?? "run hobo yard ensure"}`,
 					...(ok
-						? {}
+						? undefined
 						: {
 								remediation: [
 									config === null
@@ -250,8 +254,8 @@ export function createYardCommand(): CommandModule {
 						hoboHome,
 						config,
 						wasm,
-						...(hostEnsure !== null ? { hostEnsure } : {}),
-						...(hostError !== null ? { hostError } : {}),
+						...(hostEnsure !== null ? { hostEnsure } : undefined),
+						...(hostError !== null ? { hostError } : undefined),
 						scopes: {
 							yard: "provider-specific control plane (this config)",
 							camp: "placement target created when serving a Bindle (e.g. dev-local)",

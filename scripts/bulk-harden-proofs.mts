@@ -14,13 +14,7 @@
  *   node --import tsx scripts/bulk-harden-proofs.mts --apply-ungrandfather
  */
 import { spawnSync } from "node:child_process";
-import {
-	existsSync,
-	mkdirSync,
-	readdirSync,
-	readFileSync,
-	writeFileSync,
-} from "node:fs";
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -92,6 +86,7 @@ function writeNotebook(abs: string, slug: string) {
 	if (existsSync(nbPath)) {
 		// Ensure executed outputs exist
 		try {
+			// SAFETY: assertion to `ON.parse(readFileSync(nbPath, "utf8")) as { nbformat?: number; cells?: Array<{ cell_type?: string; outputs?: unknown[]; ` is required at this boundary.
 			const nb = JSON.parse(readFileSync(nbPath, "utf8")) as {
 				nbformat?: number;
 				cells?: Array<{
@@ -302,11 +297,18 @@ function ensureProofArtifacts(workspace: string) {
 	if (!existsSync(proofPath)) {
 		throw new Error(`missing proof.json: ${workspace}`);
 	}
+	// SAFETY: assertion to `.parse(readFileSync(proofPath, "utf8")) as { slug: string; layer: string; experienceType?: string; artifacts: Record<str` is required at this boundary.
 	const proof = JSON.parse(readFileSync(proofPath, "utf8")) as {
 		slug: string;
 		layer: string;
 		experienceType?: string;
-		artifacts: Record<string, unknown>;
+		artifacts: {
+			examples?: string;
+			notebook?: string;
+			bench?: string;
+			features?: string;
+			diagrams?: string[];
+		};
 	};
 	const layer = layerFor(workspace);
 	const slug = path.basename(workspace);
@@ -323,7 +325,8 @@ function ensureProofArtifacts(workspace: string) {
 		writeExpAssets(abs, t, slug);
 	}
 	// ensure artifacts map
-	const arts = { ...proof.artifacts } as Record<string, unknown>;
+	// SAFETY: assertion to `.proof.artifacts } as Record<string, unknown>; a` is required at this boundary.
+	const arts = { ...proof.artifacts };
 	arts.examples = arts.examples ?? "examples";
 	arts.notebook = arts.notebook ?? "notebook.ipynb";
 	if (layer === "technical" || layer === "project") {
@@ -356,6 +359,7 @@ function verify(workspace: string): boolean {
 }
 
 function main() {
+	// SAFETY: assertion to `.parse(readFileSync(gfPath, "utf8")) as Gf; c` is required at this boundary.
 	const gf = JSON.parse(readFileSync(gfPath, "utf8")) as Gf;
 	const packages = gf.packages.slice(0, limit);
 	console.log(

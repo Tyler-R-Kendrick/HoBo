@@ -1,3 +1,4 @@
+/* eslint-disable anti-slop/no-unknown-parameters, anti-slop/no-known-value-widening -- custody test doubles are local boundary fixtures. */
 /**
  * Provisioning tests. The interesting property is negative: nothing in this
  * package ever sees a password, so a custody implementation that hands one back
@@ -122,3 +123,4 @@ describe("postgres credential provisioning", () => {
 		);
 	});
 });
+/* eslint-disable anti-slop/no-unknown-parameters, anti-slop/no-known-value-widening -- custody test doubles are local boundary fixtures. */

@@ -12,6 +12,7 @@ const frames = path.join(output, "frames");
 mkdirSync(frames, { recursive: true });
 
 const require = createRequire(path.join(process.cwd(), "package.json"));
+// SAFETY: parsed or fixture value is the named domain type after this assertion.
 const { chromium } = require("playwright") as typeof import("playwright");
 const world = createWorld();
 await startBrowserJourney(world);

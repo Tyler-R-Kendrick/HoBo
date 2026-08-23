@@ -68,6 +68,9 @@ test("covers every declared service boundary with a contract decision", async ()
   const result = await runIdentityReferenceSimulation();
 
   assert.equal(CONTRACT_BOUNDARIES.length, 12);
-  assert.deepEqual([...result.contracts.covered].sort(), [...CONTRACT_BOUNDARIES.map((boundary) => boundary.provider)].sort());
+  assert.deepEqual(
+    [...result.contracts.covered].sort(),
+    CONTRACT_BOUNDARIES.map((boundary) => boundary.provider).sort(),
+  );
   assert.deepEqual(result.contracts.missing, []);
 });

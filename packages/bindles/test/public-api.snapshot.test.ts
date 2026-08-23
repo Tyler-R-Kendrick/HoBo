@@ -4,6 +4,12 @@ import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 import { CATALOG } from "../src/catalog.js";
 import * as bindles from "../src/index.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../src/json.js";
 
 const SNAPSHOT_VERSION = "hobo.bindles.public-api/v1";
 const FORBIDDEN_PUBLIC_SYMBOL =
@@ -26,7 +32,7 @@ function allowUnion(verbs: readonly string[]): string {
 
 export function createBindlesPublicApiSnapshot(
 	module: typeof bindles = bindles,
-): Record<string, unknown> {
+): JsonObject {
 	const factoryNames = CATALOG.map((entry) => entry.factory);
 	const knownExports = new Set([
 		"CATALOG",
@@ -206,7 +212,7 @@ export function createBindlesPublicApiSnapshot(
 			{
 				name: "parseManifest",
 				kind: "manifest-parser",
-				signature: "parseManifest(input: unknown): ManifestV1",
+				signature: "parseManifest(input: JsonValue): ManifestV1",
 			},
 			{
 				name: "serializeManifest",
@@ -417,7 +423,7 @@ export function createBindlesPublicApiSnapshot(
 				name: "readDependencyConfig",
 				kind: "dependency-helper",
 				signature:
-					"readDependencyConfig(annotations: readonly ProviderAnnotation[]): Readonly<Record<string, unknown>> | null",
+					"readDependencyConfig(annotations: readonly ProviderAnnotation[]): JsonObject | null",
 			},
 			{
 				name: "discoveryEnvForDependency",
@@ -563,10 +569,10 @@ export function createBindlesPublicApiSnapshot(
 	};
 }
 
-function assertNoInternalCloudSymbols(snapshot: Record<string, unknown>): void {
+function assertNoInternalCloudSymbols(snapshot: JsonObject): void {
 	const leaks: Array<{ path: string; value: string }> = [];
-	const visit = (value: unknown, path: string) => {
-		if (typeof value === "string") {
+	const visit = (value: JsonValue, path: string) => {
+		if (isJsonString(value)) {
 			if (FORBIDDEN_PUBLIC_SYMBOL.test(value)) leaks.push({ path, value });
 			return;
 		}
@@ -576,7 +582,7 @@ function assertNoInternalCloudSymbols(snapshot: Record<string, unknown>): void {
 			});
 			return;
 		}
-		if (value && typeof value === "object") {
+		if (value && isJsonObject(value)) {
 			for (const [key, child] of Object.entries(value)) {
 				visit(child, `${path}.${key}`);
 			}
@@ -614,6 +620,7 @@ describe("public API snapshot", () => {
 	});
 
 	it("fails when an internal provider symbol leaks into exports", () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const polluted = createBindlesPublicApiSnapshot({
 			...bindles,
 			AwsRdsInternalOptions: Object.freeze({}),

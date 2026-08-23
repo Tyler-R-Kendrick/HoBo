@@ -166,8 +166,8 @@ test(".allow() lowers to the same user-claim policy rule instead of a second aut
   const loweredRule = lowerAllowToUserClaimRule(shorthand);
 
   assert.equal(shorthand.authoring, "allow-shorthand");
-  assert.equal(typeof shorthand.when, "undefined");
-  assert.equal(typeof shorthand.decide, "undefined");
+  assert.equal(shorthand.when, undefined);
+  assert.equal(shorthand.decide, undefined);
   assert.equal(loweredRule.authoring, explicitRule.authoring);
 
   const requestInput = {

@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const DEPLOYMENT_PLAN_IR_VERSION = "hobo.deployment-plan/v1";
 
@@ -226,7 +228,7 @@ export function validateDeploymentPlan(plan) {
   }
 
   visit(plan.resources, (value) => {
-    if (typeof value !== "string" || !value.startsWith("${")) return;
+    if (!isJsonString(value) || !value.startsWith("${")) return;
 
     let placeholder;
     try {
@@ -272,22 +274,22 @@ function matchContext(base, resourceType, resourceClass, resourceId) {
 
 function validateResource(resource, errors) {
   for (const field of ["id", "name", "strategy", "replication", "workloadProfile"]) {
-    if (typeof resource?.[field] !== "string" || resource[field].length === 0) {
+    if (!isJsonString(resource?.[field]) || resource[field].length === 0) {
       errors.push(`resource ${resource?.id ?? "<unknown>"} ${field} is required`);
     }
   }
   for (const field of ["interface", "type", "className"]) {
-    if (typeof resource?.port?.[field] !== "string" || resource.port[field].length === 0) {
+    if (!isJsonString(resource?.port?.[field]) || resource.port[field].length === 0) {
       errors.push(`resource ${resource?.id ?? "<unknown>"} port.${field} is required`);
     }
   }
   for (const field of ["id", "definitionId", "driver"]) {
-    if (typeof resource?.provider?.[field] !== "string" || resource.provider[field].length === 0) {
+    if (!isJsonString(resource?.provider?.[field]) || resource.provider[field].length === 0) {
       errors.push(`resource ${resource?.id ?? "<unknown>"} provider.${field} is required`);
     }
   }
   for (const field of ["envType", "app", "env", "tenant", "resourceType", "resourceClass", "resourceId"]) {
-    if (typeof resource?.context?.[field] !== "string" || resource.context[field].length === 0) {
+    if (!isJsonString(resource?.context?.[field]) || resource.context[field].length === 0) {
       errors.push(`resource ${resource?.id ?? "<unknown>"} context.${field} is required`);
     }
   }
@@ -332,11 +334,11 @@ function findDependencyCycles(resources) {
 
 function visit(value, callback) {
   callback(value);
-  if (!value || typeof value !== "object") return;
   if (Array.isArray(value)) {
     for (const item of value) visit(item, callback);
     return;
   }
+  if (!value || !isJsonObject(value)) return;
   for (const child of Object.values(value)) {
     visit(child, callback);
   }
@@ -353,7 +355,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

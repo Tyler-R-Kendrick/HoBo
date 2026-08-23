@@ -23,7 +23,7 @@ M1-M4 work.
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\legal-privacy-terms-readiness-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\legal-privacy-terms-readiness-contract test
 ```
 
 

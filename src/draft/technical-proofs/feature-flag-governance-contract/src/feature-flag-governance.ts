@@ -36,10 +36,10 @@ export async function evaluateFeatureFlagChangeGovernance({
 }
 
 export function fireAutoRevertObligations({ decision, signal } = {}) {
-  if (!decision || typeof decision !== "object") {
+  if (!isObjectRecord(decision)) {
     throw new TypeError("decision is required");
   }
-  if (!signal || typeof signal !== "object") {
+  if (!isObjectRecord(signal)) {
     throw new TypeError("signal is required");
   }
 
@@ -204,10 +204,10 @@ function createAutoRevertObligation(change) {
 }
 
 function normalizeFlagChange(change) {
-  if (!change || typeof change !== "object" || Array.isArray(change)) {
+  if (!isObjectRecord(change)) {
     throw new TypeError("change must be an object");
   }
-  if (!change.actor || typeof change.actor !== "object") {
+  if (!isObjectRecord(change.actor)) {
     throw new TypeError("change.actor is required");
   }
 
@@ -254,10 +254,18 @@ function normalizeFlagChange(change) {
 }
 
 function requiredString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new TypeError(`${path} must be a non-empty string`);
   }
   return value;
+}
+
+function isObjectRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }
 
 function requiredFiniteNumber(value, path) {

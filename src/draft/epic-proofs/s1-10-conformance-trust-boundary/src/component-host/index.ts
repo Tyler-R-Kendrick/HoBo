@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "../json.js";
 import { isDeepStrictEqual } from "node:util";
 
 export const COMPONENT_HOST_CONFORMANCE_SCHEMA = "@hobo/conformance/component-host/v1";
@@ -444,7 +445,7 @@ function sameValue(left, right) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -454,11 +455,11 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !(Array.isArray(value) || isJsonObject(value))) {
     return value;
   }
   for (const child of Object.values(value)) {

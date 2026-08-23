@@ -1,6 +1,7 @@
 import {
 	type CanDeployResult,
 	type CandidateDeployment,
+	type CompatGateEvent,
 	type DeployedContractState,
 	evaluateCanDeploy,
 } from "./can-deploy.js";
@@ -11,6 +12,7 @@ import {
 	requiresNetwork,
 	toEffectManifest,
 } from "./effects.js";
+import { asJsonObject, type JsonObject } from "./json.js";
 import {
 	createPermissiveDefaultPack,
 	EFFECT_RANK,
@@ -57,7 +59,7 @@ export interface MachineReadableReason {
 		| "residency";
 	code: string;
 	message: string;
-	details?: Record<string, unknown>;
+	details?: JsonObject;
 }
 
 // domain-view: allowed-but-must-do effect; wire form is ObligationRecord in data-models/contracts.proto.
@@ -91,12 +93,27 @@ export interface GatekeeperDecision {
 	decision: GatekeeperEffect;
 	reasons: MachineReadableReason[];
 	obligations: ObligationRecord[];
-	policyDecided: Record<string, unknown>;
+	policyDecided: JsonObject;
 	canDeploy: CanDeployResult;
 	costQuota: CostQuotaRecord;
-	events: Array<Record<string, unknown>>;
+	events: Array<JsonObject>;
 	/** Visible effects/resiliency summaries for CLI/MCP/external consumers (ADR-0136). */
-	effectSummaries: Array<Record<string, unknown>>;
+	effectSummaries: EffectSummary[];
+}
+
+export interface EffectSummary {
+	readonly contractId: string;
+	readonly channel: string;
+	readonly purity: string;
+	readonly isPure: boolean;
+	readonly mayFail?: boolean;
+	readonly requiresNetwork?: boolean;
+	readonly domains?: readonly string[];
+	readonly capabilities?: readonly string[];
+	readonly manifest?: ReturnType<typeof toEffectManifest>;
+	readonly resilienceId?: string;
+	readonly strategies?: readonly string[];
+	readonly neverRetry?: readonly string[];
 }
 
 /** Precomputed ADR-0027 secretless-config can-deploy dimension (from @hobo/bindles). */
@@ -121,7 +138,7 @@ export interface CanMigrateGateVerdict {
 		code: string;
 		message: string;
 	}>;
-	evidence?: Readonly<Record<string, unknown>>;
+	evidence?: JsonObject;
 }
 
 export interface GatekeeperInput {
@@ -210,6 +227,7 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 		request: input.request,
 		pack: input.policyPack ?? createPermissiveDefaultPack(),
 	});
+	// SAFETY: assertion required at this I/O or test boundary.
 	const policyEffect = policy.decision.effect as PolicyEffect;
 	if (policyEffect === "deny") {
 		reasons.push({
@@ -266,7 +284,7 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 					message: reason.message,
 					...(reason.field !== undefined
 						? { details: { field: reason.field } }
-						: {}),
+						: undefined),
 				});
 			}
 		}
@@ -284,7 +302,7 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 					message: reason.message,
 					...(reason.path !== undefined
 						? { details: { path: reason.path } }
-						: {}),
+						: undefined),
 				});
 			}
 		}
@@ -306,7 +324,7 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 					message: reason.message,
 					details: {
 						dimension: "can-migrate",
-						...(input.canMigrate.evidence ?? {}),
+						...input.canMigrate.evidence,
 					},
 				});
 			}
@@ -326,10 +344,12 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 					code: reason.code,
 					message: reason.message,
 					details: {
-						...(reason.region !== undefined ? { region: reason.region } : {}),
+						...(reason.region !== undefined
+							? { region: reason.region }
+							: undefined),
 						...(reason.jurisdictions !== undefined
 							? { jurisdictions: [...reason.jurisdictions] }
-							: {}),
+							: undefined),
 					},
 				});
 			}
@@ -356,7 +376,7 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 				gate: "effects",
 				code: "effects-pure",
 				message: `contract ${String(summary.contractId)} is pure (isolatable)`,
-				details: summary,
+				details: asJsonObject(summary),
 			});
 		}
 		if (summary.resilienceId) {
@@ -364,12 +384,12 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 				gate: "resilience",
 				code: "resilience-profile",
 				message: `contract ${String(summary.contractId)} resilience profile ${String(summary.resilienceId)} strategies=[${String(summary.strategies)}] neverRetry=[${String(summary.neverRetry)}]`,
-				details: summary,
+				details: asJsonObject(summary),
 			});
 		}
 	}
 
-	const policyDecided = policy.event as unknown as Record<string, unknown>;
+	const policyDecided = asJsonObject(policy.event);
 	const gatekeeperEvent = {
 		type: GATEKEEPER_DECIDED_EVENT,
 		schemaVersion: GATEKEEPER_SCHEMA_VERSION,
@@ -379,7 +399,7 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 		effectSummaries,
 		...(canMigrateSummary !== undefined
 			? { canMigrate: { ok: canMigrateOk, summary: canMigrateSummary } }
-			: {}),
+			: undefined),
 	};
 
 	return {
@@ -391,14 +411,18 @@ export function evaluateGatekeeper(input: GatekeeperInput): GatekeeperDecision {
 		policyDecided,
 		canDeploy,
 		costQuota,
-		events: [...canDeploy.events, policyDecided, gatekeeperEvent],
+		events: [
+			...canDeploy.events.map((event: CompatGateEvent) => asJsonObject(event)),
+			policyDecided,
+			asJsonObject(gatekeeperEvent),
+		],
 		effectSummaries,
 	};
 }
 
 function summarizeCandidateEffects(
 	candidate: CandidateDeployment,
-): Array<Record<string, unknown>> {
+): EffectSummary[] {
 	const contracts = candidate.contracts ?? [];
 	return contracts.map((raw) => {
 		try {
@@ -426,9 +450,10 @@ function summarizeCandidateEffects(
 							strategies: contract.resilience.strategies.map((s) => s.kind),
 							neverRetry: contract.resilience.neverRetry,
 						}
-					: {}),
+					: undefined),
 			};
 		} catch {
+			// SAFETY: assertion required at this I/O or test boundary.
 			const c = raw as { id?: string; edge?: { channel?: string } };
 			return {
 				contractId: c.id ?? "unknown",
@@ -461,13 +486,13 @@ function composeEffect(input: {
 
 function collectObligations(
 	provided: ObligationRecord[] | undefined,
-	policyObligations: Array<Record<string, unknown>>,
+	policyObligations: Array<JsonObject>,
 ): ObligationRecord[] {
 	const fromProvided = (provided ?? []).map((obligation) => ({
 		id: obligation.id,
 		kind: obligation.kind,
 		satisfied: obligation.satisfied === true,
-		...(obligation.deadline ? { deadline: obligation.deadline } : {}),
+		...(obligation.deadline ? { deadline: obligation.deadline } : undefined),
 	}));
 	const providedIds = new Set(fromProvided.map((obligation) => obligation.id));
 	const fromPolicy = policyObligations
@@ -475,7 +500,9 @@ function collectObligations(
 			id: String(obligation.id ?? `policy-obligation-${index}`),
 			kind: String(obligation.kind ?? "unknown"),
 			satisfied: obligation.satisfied === true,
-			...(obligation.deadline ? { deadline: String(obligation.deadline) } : {}),
+			...(obligation.deadline
+				? { deadline: String(obligation.deadline) }
+				: undefined),
 		}))
 		.filter((obligation) => !providedIds.has(obligation.id));
 	return [...fromProvided, ...fromPolicy];

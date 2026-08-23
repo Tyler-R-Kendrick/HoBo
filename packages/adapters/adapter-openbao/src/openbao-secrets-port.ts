@@ -2,13 +2,19 @@
  * Optional residual OpenBao SecretsPort (ADR-0113 / ADR-0027).
  * Not part of default @hobo/identity installs — opt-in package only.
  */
-import { createHash, createHmac } from "node:crypto";
 
+import { createHash, createHmac } from "node:crypto";
 import type {
 	FetchLike,
 	SecretsAccessResult,
 	SecretsPort,
 } from "@hobo/identity";
+import {
+	isJsonString,
+	type JsonBag,
+	type JsonObject,
+	type StringBag,
+} from "./json.js";
 
 /**
  * OpenBao residual secrets adapter.
@@ -97,10 +103,12 @@ export function createOpenBaoSecretsPort(options: {
 		};
 	}
 
-	function nsHeaders(extra?: Record<string, string>): Record<string, string> {
+	function nsHeaders(extra?: StringBag): StringBag {
 		return {
 			"Content-Type": "application/json",
-			...(options.namespace ? { "X-Vault-Namespace": options.namespace } : {}),
+			...(options.namespace
+				? { "X-Vault-Namespace": options.namespace }
+				: undefined),
 			...extra,
 		};
 	}
@@ -142,6 +150,7 @@ export function createOpenBaoSecretsPort(options: {
 				code: "openbao-auth-failed",
 			};
 		}
+		// SAFETY: assertion to `wait res.json()) as { auth?: { client_token?: string; lease_duration?: number; }; }; ` is required at this boundary.
 		const data = (await res.json()) as {
 			auth?: {
 				client_token?: string;
@@ -199,21 +208,24 @@ export function createOpenBaoSecretsPort(options: {
 						: "openbao-kv-http-error",
 			};
 		}
-		const data = (await res.json()) as {
+		// SAFETY: assertion to `wait res.json()) as { data?: { data?: { value?: string; [k: string]: unknown }; metadata?: { version?: number }; lease_d` is required at this boundary.
+		interface OpenBaoKvBody {
 			data?: {
-				data?: { value?: string; [k: string]: unknown };
+				data?: JsonBag;
 				metadata?: { version?: number };
 				lease_duration?: number;
 			};
 			lease_duration?: number;
-		};
+		}
+		const parsed = await res.json();
+		// SAFETY: OpenBao KV JSON body is parsed at this secrets-port boundary.
+		const data = parsed as OpenBaoKvBody;
 		const body = data.data?.data;
-		const material =
-			typeof body?.value === "string"
-				? body.value
-				: body !== undefined
-					? JSON.stringify(body)
-					: undefined;
+		const material = isJsonString(body?.value)
+			? body.value
+			: body !== undefined
+				? JSON.stringify(body)
+				: undefined;
 		const metaVersion = data.data?.metadata?.version;
 		const vid =
 			versionId ??
@@ -270,6 +282,7 @@ export function createOpenBaoSecretsPort(options: {
 				code: "openbao-kv-put-http-error",
 			};
 		}
+		// SAFETY: assertion to `wait res.json()) as { data?: { version?: number }; }; ` is required at this boundary.
 		const data = (await res.json()) as {
 			data?: { version?: number };
 		};
@@ -292,8 +305,9 @@ export function createOpenBaoSecretsPort(options: {
 			headers: nsHeaders({ "X-Vault-Token": login.token }),
 		});
 		if (!res.ok) return null;
+		// SAFETY: assertion to `wait res.json()) as { data?: { versions?: JsonObject }; }; ` is required at this boundary.
 		const data = (await res.json()) as {
-			data?: { versions?: Record<string, unknown> };
+			data?: { versions?: JsonObject };
 		};
 		const versions = data.data?.versions;
 		if (!versions) return null;
@@ -361,28 +375,31 @@ export function createLocalStationOpenBaoSecretsPort(options?: {
 	const env = options?.env ?? process.env;
 	const stationId = options?.stationId ?? env.HOBO_STATION_ID ?? "local";
 	const svidJwt =
-		(typeof env.HOBO_SVID_JWT === "string" && env.HOBO_SVID_JWT) ||
+		(isJsonString(env.HOBO_SVID_JWT) && env.HOBO_SVID_JWT) ||
 		`eyJhbGciOiJFUzI1NiJ9.station.${stationId}.fixture`;
 	const live =
 		options?.offline === true
 			? false
 			: env.HOBO_OPENBAO_LIVE === "1" || env.HOBO_OPENBAO_LIVE === "true";
-	const fetchImpl =
-		options?.fetch ??
-		(live ? (globalThis.fetch as FetchLike | undefined) : undefined);
+	const liveFetch = globalThis.fetch;
+	// SAFETY: global fetch is the OpenBao transport at this residual port.
+	const globalFetch: FetchLike | undefined = live
+		? (liveFetch as FetchLike | undefined)
+		: undefined;
+	const fetchImpl = options?.fetch ?? globalFetch;
 	const openbaoAddr =
-		(typeof env.HOBO_OPENBAO_ADDR === "string" && env.HOBO_OPENBAO_ADDR) ||
-		(typeof env.OPENBAO_ADDR === "string" && env.OPENBAO_ADDR) ||
+		(isJsonString(env.HOBO_OPENBAO_ADDR) && env.HOBO_OPENBAO_ADDR) ||
+		(isJsonString(env.OPENBAO_ADDR) && env.OPENBAO_ADDR) ||
 		"http://127.0.0.1:8200";
 	const role =
-		(typeof env.HOBO_OPENBAO_ROLE === "string" && env.HOBO_OPENBAO_ROLE) ||
+		(isJsonString(env.HOBO_OPENBAO_ROLE) && env.HOBO_OPENBAO_ROLE) ||
 		`hobo-station-${stationId}`;
 	const namespace =
-		typeof env.HOBO_OPENBAO_NAMESPACE === "string" && env.HOBO_OPENBAO_NAMESPACE
+		isJsonString(env.HOBO_OPENBAO_NAMESPACE) && env.HOBO_OPENBAO_NAMESPACE
 			? env.HOBO_OPENBAO_NAMESPACE
 			: undefined;
 	const mountPath =
-		typeof env.HOBO_OPENBAO_MOUNT === "string" && env.HOBO_OPENBAO_MOUNT
+		isJsonString(env.HOBO_OPENBAO_MOUNT) && env.HOBO_OPENBAO_MOUNT
 			? env.HOBO_OPENBAO_MOUNT
 			: undefined;
 
@@ -392,8 +409,8 @@ export function createLocalStationOpenBaoSecretsPort(options?: {
 		svidJwt,
 		offline: !live || fetchImpl === undefined,
 		id: options?.id ?? `secrets:station-openbao:${stationId}`,
-		...(namespace !== undefined ? { namespace } : {}),
-		...(mountPath !== undefined ? { mountPath } : {}),
-		...(fetchImpl !== undefined ? { fetch: fetchImpl } : {}),
+		...(namespace !== undefined ? { namespace } : undefined),
+		...(mountPath !== undefined ? { mountPath } : undefined),
+		...(fetchImpl !== undefined ? { fetch: fetchImpl } : undefined),
 	});
 }

@@ -4,7 +4,6 @@ import {
 	createRuntimeLocalEventStore,
 	OptimisticSequenceConflictError,
 } from "@hobo/runtime-local";
-
 import {
 	type AddReviewMessageCommand,
 	type DeleteDraftReviewMessageCommand,
@@ -37,6 +36,12 @@ import {
 	type RouteReviewThreadToAgentCommand,
 	type StageReviewSelectionCommand,
 } from "../_generated/code_review_pb.js";
+import {
+	cloneAsJson,
+	isJsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../json.js";
 import type { SessionProcessRunner } from "../session-orchestrator.js";
 import { sessionProcessRunner } from "../session-orchestrator.js";
 import {
@@ -75,7 +80,7 @@ export interface ReviewRuntimeOptions {
 }
 
 export interface ReviewRuntime {
-	execute(input: unknown): Promise<ReviewCommandResult>;
+	execute(input: JsonValue | undefined): Promise<ReviewCommandResult>;
 	load(reviewId: string): Promise<ReviewSnapshot | undefined>;
 	inbox(): Promise<ReviewSnapshot[]>;
 	close(): void;
@@ -120,13 +125,19 @@ export function createReviewRuntime(
 		reviewId: string,
 	): Promise<ReviewSnapshot | undefined> {
 		const record = await store.loadSnapshot<unknown>(streamId(reviewId));
-		let snapshot = record ? parseReviewSnapshot(record.state) : undefined;
+		let snapshot = record
+			? parseReviewSnapshot(cloneAsJson(record.state))
+			: undefined;
 		for await (const event of store.read(
 			streamId(reviewId),
 			(record?.seq ?? 0) + 1,
 		)) {
-			const data = event.data as { snapshot?: unknown };
-			if (data.snapshot) snapshot = parseReviewSnapshot(data.snapshot);
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			const data = isJsonObject(event.data)
+				? event.data
+				: parseJsonObject("{}");
+			if (data.snapshot !== undefined)
+				snapshot = parseReviewSnapshot(cloneAsJson(data.snapshot));
 		}
 		return snapshot;
 	}
@@ -165,6 +176,7 @@ export function createReviewRuntime(
 			) {
 				throw new ReviewError(REVIEW_ERROR.MALFORMED, `expected ${name}`);
 			}
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 			return command.command.value as T;
 		}
 		const prior = seen.get(command.commandId);
@@ -638,7 +650,7 @@ export function createReviewRuntime(
 					: "unstageReviewSelection",
 			);
 			const digest = reviewEffectDigest({
-				operation: caseName,
+				operation: caseName ?? "stageReviewSelection",
 				reviewId: snapshot.reviewId,
 				fileId: value.fileId,
 				hunkId: value.hunkId,
@@ -710,7 +722,7 @@ export function createReviewRuntime(
 	}
 
 	return {
-		async execute(input: unknown) {
+		async execute(input: JsonValue | undefined) {
 			const command = parseReviewCommand(input);
 			const cached = seen.get(command.commandId);
 			if (cached) return cached;
@@ -760,7 +772,7 @@ function hashOptions(kind: number): string {
 }
 
 function eventType(caseName: string | undefined): string {
-	const map: Record<string, string> = {
+	const map = {
 		startReview: "code.ReviewStarted",
 		refreshReview: "code.ReviewRefreshed",
 		markReviewCoverage: "code.ReviewCoverageMarked",
@@ -779,7 +791,11 @@ function eventType(caseName: string | undefined): string {
 		setReviewInboxDisposition: "code.ReviewInboxDispositionChanged",
 		closeReview: "code.ReviewClosed",
 	};
-	return map[caseName ?? ""] ?? "code.ReviewChanged";
+	const key = caseName ?? "";
+	for (const [name, event] of Object.entries(map)) {
+		if (name === key) return event;
+	}
+	return "code.ReviewChanged";
 }
 
 export function inboxDerivedState(

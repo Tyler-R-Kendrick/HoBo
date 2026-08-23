@@ -190,9 +190,12 @@ export function createRoutingControlLoop(
 					switchingCost: model?.switchingCost ?? 0,
 				};
 			});
-		const ledgerView =
-			options.ledgerView?.() ??
-			({ view: "CreditLedgerView", seq: 0, accounts: [] } as CreditLedgerView);
+		const fallbackLedger: CreditLedgerView = {
+			view: "CreditLedgerView",
+			seq: 0,
+			accounts: [],
+		};
+		const ledgerView = options.ledgerView?.() ?? fallbackLedger;
 		const decision = decideDispatch({
 			registry: createDispatcherRegistry(candidates),
 			category: "traffic-backend",
@@ -209,7 +212,7 @@ export function createRoutingControlLoop(
 							observedAt: now,
 						},
 					}
-				: {}),
+				: undefined),
 		});
 		if (!decision.ok) {
 			const denial = {
@@ -250,7 +253,7 @@ export function createRoutingControlLoop(
 			topology: targetTopology,
 			...(options.availability !== undefined
 				? { availability: options.availability }
-				: {}),
+				: undefined),
 			policyDecision: options.policyDecision,
 			now,
 			planId: `plan:${topology.service}:${topology.stationId}:r${revision + 1}`,
@@ -339,19 +342,19 @@ export function createRoutingControlLoop(
 				toBackendId: selectedBackendId,
 				...(options.cutover.rampSteps !== undefined
 					? { rampSteps: options.cutover.rampSteps }
-					: {}),
+					: undefined),
 				...(options.cutover.healthGate !== undefined
 					? { healthGate: options.cutover.healthGate }
-					: {}),
+					: undefined),
 				...(options.cutover.consecutiveFailuresToRollback !== undefined
 					? {
 							consecutiveFailuresToRollback:
 								options.cutover.consecutiveFailuresToRollback,
 						}
-					: {}),
+					: undefined),
 				...(options.cutover.precondition !== undefined
 					? { precondition: options.cutover.precondition }
-					: {}),
+					: undefined),
 				clock,
 				planIdPrefix: `plan:${topology.service}:${topology.stationId}:r${revision}`,
 				onFact: (fact) => emit(facts, fact),

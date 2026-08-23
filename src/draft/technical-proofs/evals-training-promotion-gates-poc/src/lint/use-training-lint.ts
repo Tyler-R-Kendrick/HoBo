@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this check parses erased source input at the lint boundary before semantic grounding analysis. */
 export const USE_TRAINING_LINT_SCHEMA = "hobo.lint.use-training/v1";
 
 const REQUIRED_GROUNDINGS = ["intent", "contract", "rubric"] as const;

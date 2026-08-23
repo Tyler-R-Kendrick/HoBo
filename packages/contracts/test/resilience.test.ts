@@ -20,6 +20,7 @@
 import { describe, expect, it } from "vitest";
 
 import type { EffectSpec } from "../src/effects.js";
+import type { JsonObject } from "../src/json.js";
 import {
 	applyResilienceProfile,
 	computeDelay,
@@ -45,13 +46,15 @@ const RETRY = {
 
 const NOW = () => "2026-08-08T00:00:00.000Z";
 
-function codeOf(thunk: () => unknown): string {
+function codeOf(thunk: () => void): string {
 	try {
 		thunk();
 	} catch (error) {
 		expect(error).toBeInstanceOf(ResilienceValidationError);
+		// SAFETY: the preceding assertion establishes the thrown domain error type.
 		return (error as ResilienceValidationError).code;
 	}
+	// SAFETY: Vitest's unreachable assertion always throws and returns never.
 	return expect.unreachable("expected a ResilienceValidationError") as never;
 }
 
@@ -139,6 +142,7 @@ describe("parseResilienceProfile", () => {
 			id: "p",
 			strategies: [{ ...RETRY, retryOn: "all" }],
 		});
+		// SAFETY: the parser guarantees the first strategy retains retry's refined shape.
 		expect((profile.strategies[0] as DeterministicRetryStrategy).retryOn).toBe(
 			"transient-only",
 		);
@@ -217,7 +221,7 @@ describe("parseResilienceProfile", () => {
 	});
 
 	it("refuses each per-kind required field", () => {
-		const bad: Array<[Record<string, unknown>, string]> = [
+		const bad: Array<[JsonObject, string]> = [
 			[
 				{ kind: "circuitBreaker", resetTimeoutMs: 0, halfOpenMaxCalls: 1 },
 				"expected-positive-int",
@@ -356,17 +360,17 @@ describe("createResilienceProfile", () => {
 
 describe("validateResilienceAgainstEffects", () => {
 	const pure: EffectSpec = {
+		schemaVersion: "hobo.effect-spec/v1",
 		purity: "pure",
 		capabilities: [],
 		domains: [],
-		failureModes: [],
-	} as unknown as EffectSpec;
+	};
 	const networked: EffectSpec = {
-		purity: "effectful",
+		schemaVersion: "hobo.effect-spec/v1",
+		purity: "varies",
 		capabilities: [],
 		domains: ["network"],
-		failureModes: [],
-	} as unknown as EffectSpec;
+	};
 
 	it("allows retry and timeout on a pure contract", () => {
 		// Deliberate: a pure local work unit can still time out or be retried, so
@@ -427,8 +431,9 @@ describe("validateResilienceAgainstEffects", () => {
 });
 
 describe("computeDelay", () => {
-	const retry = parseResilienceProfile({ id: "p", strategies: [RETRY] })
-		.strategies[0] as DeterministicRetryStrategy;
+	const parsedRetry = parseResilienceProfile({ id: "p", strategies: [RETRY] });
+	// SAFETY: RETRY is the only strategy in this parsed profile.
+	const retry = parsedRetry.strategies[0] as DeterministicRetryStrategy;
 
 	it("is a pure function of seed and attempt", () => {
 		// The whole determinism claim in one assertion. If this ever varies, a
@@ -438,10 +443,12 @@ describe("computeDelay", () => {
 	});
 
 	it("changes with the seed", () => {
-		const other = parseResilienceProfile({
+		const parsedOther = parseResilienceProfile({
 			id: "p",
 			strategies: [{ ...RETRY, seed: "seed-2" }],
-		}).strategies[0] as DeterministicRetryStrategy;
+		});
+		// SAFETY: the profile contains exactly one retry strategy.
+		const other = parsedOther.strategies[0] as DeterministicRetryStrategy;
 		// Different seeds must not collapse to the same schedule, or the seed
 		// would be decorative and two contracts would thunder together.
 		expect(computeDelay(retry, 1)).not.toBe(computeDelay(other, 1));
@@ -467,10 +474,12 @@ describe("computeDelay", () => {
 		// `Math.max(1, baseDelayMs)` guards the modulus: `h % 0` is NaN, and a
 		// NaN delay would propagate into a fact and compare unequal to itself on
 		// replay.
-		const zeroBase = parseResilienceProfile({
+		const parsedZeroBase = parseResilienceProfile({
 			id: "p",
 			strategies: [{ ...RETRY, baseDelayMs: 0 }],
-		}).strategies[0] as DeterministicRetryStrategy;
+		});
+		// SAFETY: the profile contains exactly one retry strategy.
+		const zeroBase = parsedZeroBase.strategies[0] as DeterministicRetryStrategy;
 		const delay = computeDelay(zeroBase, 3);
 		expect(Number.isNaN(delay)).toBe(false);
 		expect(delay).toBe(0);
@@ -560,7 +569,11 @@ describe("applyResilienceProfile", () => {
 		// an operator what actually went wrong where "budget exhausted" would
 		// only restate the attempt count they can already see. Recorded so that
 		// whoever removes the dead branch knows this is the behaviour to keep.
-		expect((result.facts.at(-1) as { reason: string }).reason).toBe("flaky");
+		const terminal = result.facts.at(-1);
+		expect(terminal?.type).toBe("resilience.Terminal");
+		if (terminal?.type === "resilience.Terminal") {
+			expect(terminal.reason).toBe("flaky");
+		}
 	});
 
 	it("records the deterministic delay only on facts that were actually retried", async () => {
@@ -575,8 +588,8 @@ describe("applyResilienceProfile", () => {
 			(f): f is Extract<ResilienceFact, { type: "resilience.Attempt" }> =>
 				f.type === "resilience.Attempt",
 		);
-		expect(attempts[0]?.delayMs).toBe(computeDelay(RETRY as never, 1));
-		expect(attempts[1]?.delayMs).toBe(computeDelay(RETRY as never, 2));
+		expect(attempts[0]?.delayMs).toBe(computeDelay(RETRY, 1));
+		expect(attempts[1]?.delayMs).toBe(computeDelay(RETRY, 2));
 		// The last attempt was not retried, so it records no delay — a non-zero
 		// value there would tell a reader the system waited before giving up.
 		expect(attempts[2]?.delayMs).toBe(0);

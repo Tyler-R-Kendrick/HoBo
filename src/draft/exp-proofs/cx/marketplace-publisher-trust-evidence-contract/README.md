@@ -34,7 +34,7 @@ Excluded:
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\marketplace-publisher-trust-evidence-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\marketplace-publisher-trust-evidence-contract test
 ```
 
 

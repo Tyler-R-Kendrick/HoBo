@@ -20,7 +20,7 @@ gate that future launch-site and demo-asset work must consume.
 ## Verification
 
 ```powershell
-pnpm --dir src\draft\exp-proofs\launch-site-demo-alpha-evidence-contract test
+pnpm --dir src\draft\exp-proofs\cx\launch-site-demo-alpha-evidence-contract test
 ```
 
 ## Architecture Evidence

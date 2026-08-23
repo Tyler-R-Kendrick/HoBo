@@ -15,16 +15,23 @@
  */
 
 import {
-	EQUIVALENCE_CLASSES,
-	INITIAL_CAPABILITY_PORTS,
-} from "./equivalence.js";
+	isJsonArray,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
-/** Every port the equivalence table actually claims — derived, not restated. */
-export const RAILWAY_PORTS = Object.freeze(
-	INITIAL_CAPABILITY_PORTS.map((key) => EQUIVALENCE_CLASSES[key].port),
-) as readonly ("compute" | "kv" | "queue")[];
+export type { JsonObject, JsonValue } from "./json.js";
 
-export type RailwayPortKind = (typeof RAILWAY_PORTS)[number];
+export type RailwayPortKind = "compute" | "kv" | "queue";
+
+/** Every port the equivalence table actually claims. */
+export const RAILWAY_PORTS = [
+	"compute",
+	"kv",
+	"queue",
+] satisfies readonly RailwayPortKind[];
 
 /** A feature name as Matching spells them: lowercase, hyphenated, no spaces. */
 export type RailwayFeature = string & {
@@ -71,14 +78,22 @@ function isPrintableLine(value: string): boolean {
 }
 const BINDING_KEY = /^[A-Za-z_][A-Za-z0-9_]{0,127}$/u;
 
-function record(
-	value: unknown,
-	field: string,
-): Readonly<Record<string, unknown>> {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function record(value: JsonValue, field: string): JsonObject {
+	if (!isJsonObject(value)) {
 		throw new RailwayInputRejectedError(field, "expected an object");
 	}
-	return value as Readonly<Record<string, unknown>>;
+	return value;
+}
+
+function isRailwayPort(value: string): value is RailwayPortKind {
+	switch (value) {
+		case "compute":
+		case "kv":
+		case "queue":
+			return true;
+		default:
+			return false;
+	}
 }
 
 /**
@@ -87,17 +102,14 @@ function record(
  * normal answer and lives in the return type rather than in an exception.
  */
 export function railwayPortOrUndefined(
-	value: unknown,
+	value: JsonValue | undefined,
 ): RailwayPortKind | undefined {
-	return typeof value === "string" &&
-		(RAILWAY_PORTS as readonly string[]).includes(value)
-		? (value as RailwayPortKind)
-		: undefined;
+	return isJsonString(value) && isRailwayPort(value) ? value : undefined;
 }
 
 /** The same question, asked where "not mine" is a contract violation. */
 export function parseRailwayPort(
-	value: unknown,
+	value: JsonValue | undefined,
 	field = "port",
 ): RailwayPortKind {
 	const port = railwayPortOrUndefined(value);
@@ -111,44 +123,48 @@ export function parseRailwayPort(
 }
 
 export function parseRailwayResourceName(
-	value: unknown,
+	value: JsonValue | undefined,
 	field = "name",
 ): RailwayResourceName {
-	if (typeof value !== "string" || !DNS_LABEL.test(value)) {
+	if (!isJsonString(value) || !DNS_LABEL.test(value)) {
 		throw new RailwayInputRejectedError(
 			field,
 			"expected a DNS label (lowercase alphanumeric and hyphens, 1-63 chars)",
 		);
 	}
+	// SAFETY: DNS_LABEL is the RailwayResourceName contract at this parse boundary.
 	return value as RailwayResourceName;
 }
 
 function parseFeatures(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
 ): readonly RailwayFeature[] {
 	if (value === undefined) return Object.freeze([]);
-	if (!Array.isArray(value)) {
+	if (!isJsonArray(value)) {
 		throw new RailwayInputRejectedError(field, "expected an array of features");
 	}
-	return Object.freeze(
-		value.map((entry) => {
-			if (typeof entry !== "string" || !FEATURE.test(entry)) {
-				throw new RailwayInputRejectedError(
-					field,
-					`feature names are lowercase and hyphenated; got ${JSON.stringify(entry)}`,
-				);
-			}
-			return entry as RailwayFeature;
-		}),
-	);
+	const features: RailwayFeature[] = [];
+	for (const entry of value) {
+		if (!isJsonString(entry) || !FEATURE.test(entry)) {
+			throw new RailwayInputRejectedError(
+				field,
+				`feature names are lowercase and hyphenated; got ${JSON.stringify(entry)}`,
+			);
+		}
+		// SAFETY: FEATURE is the RailwayFeature contract at this parse boundary.
+		features.push(entry as RailwayFeature);
+	}
+	return Object.freeze(features);
 }
 
 /**
  * The deploy plane's plan becomes a plan this provider can realize, or the
  * call fails here rather than three frames later inside a driver program.
  */
-export function parseRailwayResourcePlan(value: unknown): RailwayResourcePlan {
+export function parseRailwayResourcePlan(
+	value: JsonValue,
+): RailwayResourcePlan {
 	const raw = record(value, "plan");
 	return Object.freeze({
 		name: parseRailwayResourceName(raw.name),
@@ -163,9 +179,9 @@ export function parseRailwayResourcePlan(value: unknown): RailwayResourcePlan {
  * character or a multi-kilobyte blob in this map means something upstream
  * handed us a document, not a binding, and possibly a credential with it.
  */
-export function parseRailwayBindings(value: unknown): RailwayBindings {
+export function parseRailwayBindings(value: JsonValue): RailwayBindings {
 	const raw = record(value, "bindings");
-	const parsed: Record<string, string> = {};
+	const parsed: { [key: string]: string } = {};
 	for (const [key, entry] of Object.entries(raw)) {
 		if (!BINDING_KEY.test(key)) {
 			throw new RailwayInputRejectedError(
@@ -173,7 +189,7 @@ export function parseRailwayBindings(value: unknown): RailwayBindings {
 				`binding key ${JSON.stringify(key)} is not an identifier`,
 			);
 		}
-		if (typeof entry !== "string" || !isPrintableLine(entry)) {
+		if (!isJsonString(entry) || !isPrintableLine(entry)) {
 			throw new RailwayInputRejectedError(
 				`bindings.${key}`,
 				"expected a printable single-line string of at most 2048 characters",

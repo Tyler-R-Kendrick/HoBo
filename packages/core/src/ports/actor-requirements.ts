@@ -2,7 +2,15 @@
  * Semantic actor requirements. Product names are not allowed here.
  * Matching treats these as hard filters against resolver descriptors.
  */
+
 import { CoreParseError } from "../errors.js";
+import {
+	isJsonBoolean,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 export type ActorConcurrency = "serial" | "parallel" | "provider-native";
 export type ActorCommit = "before-ack" | "batched" | "explicit";
@@ -28,7 +36,7 @@ export interface ActorRequirements {
 }
 
 export class ActorRequirementsParseError extends CoreParseError {
-	constructor(path: string, expected: string, received: unknown) {
+	constructor(path: string, expected: string, received: JsonValue | undefined) {
 		super("HOBO_CORE_ACTOR_REQUIREMENTS_PARSE", path, expected, received);
 		this.name = "ActorRequirementsParseError";
 	}
@@ -57,36 +65,45 @@ const WS = new Set<ActorWebsocketHibernation>([
 ]);
 
 function oneOf<T extends string>(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 	allowed: Set<T>,
 ): T {
-	if (typeof value === "string" && allowed.has(value as T)) return value as T;
+	// SAFETY: assertion required at this I/O or test boundary.
+	if (isJsonString(value)) {
+		for (const allowedValue of allowed) {
+			if (value === allowedValue) return allowedValue;
+		}
+	}
 	throw new ActorRequirementsParseError(path, [...allowed].join("|"), value);
 }
 
-export function parseActorRequirements(input: unknown): ActorRequirements {
-	if (typeof input !== "object" || input === null || Array.isArray(input)) {
+export function parseActorRequirements(
+	input: JsonValue | undefined,
+): ActorRequirements {
+	if (!isJsonObject(input) || input === null || Array.isArray(input)) {
 		throw new ActorRequirementsParseError("requirements", "object", input);
 	}
-	const record = input as Record<string, unknown>;
+	// SAFETY: assertion required at this I/O or test boundary.
+	const record = input as JsonObject;
 	const placementRaw = record.placement;
 	if (
-		typeof placementRaw !== "object" ||
+		!isJsonObject(placementRaw) ||
 		placementRaw === null ||
 		Array.isArray(placementRaw)
 	) {
 		throw new ActorRequirementsParseError("placement", "object", placementRaw);
 	}
-	const placement = placementRaw as Record<string, unknown>;
-	if (typeof placement.movableWithinFleet !== "boolean") {
+	// SAFETY: assertion required at this I/O or test boundary.
+	const placement = placementRaw as JsonObject;
+	if (!isJsonBoolean(placement.movableWithinFleet)) {
 		throw new ActorRequirementsParseError(
 			"placement.movableWithinFleet",
 			"boolean",
 			placement.movableWithinFleet,
 		);
 	}
-	if (typeof placement.regionPinned !== "boolean") {
+	if (!isJsonBoolean(placement.regionPinned)) {
 		throw new ActorRequirementsParseError(
 			"placement.regionPinned",
 			"boolean",

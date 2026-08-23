@@ -1,12 +1,61 @@
 import { DatabaseSync } from "node:sqlite";
+import { isJsonBigInt, isJsonNumber, isJsonString } from "./json.js";
 
 import type {
 	AcceptCommandInput,
 	AcceptCommandResult,
 	InboxCommand,
 	JournalFact,
+	RivetInboxStatus,
 } from "./types.js";
 import { RivetJournalError } from "./types.js";
+
+export type SqliteValue =
+	| null
+	| number
+	| bigint
+	| string
+	| Uint8Array
+	| boolean;
+
+export interface SqliteRow {
+	readonly [key: string]: SqliteValue | undefined;
+}
+
+function asBytes(value: SqliteValue | undefined): Uint8Array {
+	if (value instanceof Uint8Array) return value;
+	throw new RivetJournalError("PARSE", "event payload must be a blob");
+}
+
+function asNumber(value: SqliteValue | undefined): number {
+	if (isJsonNumber(value) && Number.isFinite(value)) return value;
+	if (isJsonBigInt(value)) return Number(value);
+	if (isJsonString(value) && value !== "" && Number.isFinite(Number(value))) {
+		return Number(value);
+	}
+	return 0;
+}
+
+function asBigInt(value: SqliteValue | undefined): bigint {
+	if (isJsonBigInt(value)) return value;
+	if (isJsonNumber(value) && Number.isSafeInteger(value)) return BigInt(value);
+	if (isJsonString(value) && /^-?\d+$/.test(value)) return BigInt(value);
+	return 0n;
+}
+
+function parseInboxStatus(value: SqliteValue | undefined): RivetInboxStatus {
+	if (
+		value === "persisted" ||
+		value === "processing" ||
+		value === "committed" ||
+		value === "completed" ||
+		value === "failed-retryable" ||
+		value === "failed-terminal"
+	) {
+		return value;
+	}
+	throw new RivetJournalError("PARSE", `invalid inbox status ${String(value)}`);
+}
 
 const SCHEMA = `
 CREATE TABLE IF NOT EXISTS hobo_schema_meta (
@@ -177,15 +226,17 @@ export function createActorLocalJournal(path = ":memory:"): ActorLocalJournal {
      WHERE stream_id = ? AND status = 'pending'`,
 	);
 
-	const mapInbox = (row: Record<string, unknown>): InboxCommand => ({
+	const mapInbox = (row: SqliteRow): InboxCommand => ({
 		commandId: String(row.command_id),
 		digest: String(row.digest),
 		commandType: String(row.command_type),
 		payloadJson: String(row.payload_json),
-		expectedRevision: Number(row.expected_revision),
-		status: row.status as InboxCommand["status"],
-		attempt: Number(row.attempt),
-		...(row.result_json != null ? { resultJson: String(row.result_json) } : {}),
+		expectedRevision: asNumber(row.expected_revision),
+		status: parseInboxStatus(row.status),
+		attempt: asNumber(row.attempt),
+		...(row.result_json != null
+			? { resultJson: String(row.result_json) }
+			: undefined),
 	});
 
 	return {
@@ -206,21 +257,19 @@ export function createActorLocalJournal(path = ":memory:"): ActorLocalJournal {
 		},
 		head(streamId) {
 			insertHead.run(streamId);
-			const row = getHead.get(streamId) as
-				| { revision: number; owner_epoch: number | bigint }
-				| undefined;
+			// SAFETY: node:sqlite returns a row bag at this driver boundary.
+			const row = getHead.get(streamId) as SqliteRow | undefined;
 			return {
-				revision: Number(row?.revision ?? 0),
-				ownerEpoch: BigInt(row?.owner_epoch ?? 0),
+				revision: asNumber(row?.revision),
+				ownerEpoch: asBigInt(row?.owner_epoch),
 			};
 		},
 		append(streamId, expectedRevision, facts) {
 			return this.transaction(() => {
 				insertHead.run(streamId);
-				const current = Number(
-					(getHead.get(streamId) as { revision: number } | undefined)
-						?.revision ?? 0,
-				);
+				// SAFETY: node:sqlite returns a row bag at this driver boundary.
+				const headRow = getHead.get(streamId) as SqliteRow | undefined;
+				const current = asNumber(headRow?.revision);
 				if (current !== expectedRevision) {
 					throw new RivetJournalError(
 						"STALE_REVISION",
@@ -255,31 +304,30 @@ export function createActorLocalJournal(path = ":memory:"): ActorLocalJournal {
 			});
 		},
 		readFacts(streamId, fromSeq = 1) {
-			const rows = readEvents.all(streamId, fromSeq) as Record<
-				string,
-				unknown
-			>[];
+			// SAFETY: node:sqlite returns row bags at this driver boundary.
+			const rows = readEvents.all(streamId, fromSeq) as SqliteRow[];
 			return rows.map((row) => ({
-				seq: Number(row.seq),
+				seq: asNumber(row.seq),
 				eventId: String(row.event_id),
 				type: String(row.type),
-				payload: row.payload as Uint8Array,
+				payload: asBytes(row.payload),
 				metadataJson: String(row.metadata_json),
 				...(row.causation_id != null
 					? { causationId: String(row.causation_id) }
-					: {}),
+					: undefined),
 				...(row.correlation_id != null
 					? { correlationId: String(row.correlation_id) }
-					: {}),
+					: undefined),
 				tenant: String(row.tenant),
-				...(row.project != null ? { project: String(row.project) } : {}),
-				...(row.lane != null ? { lane: String(row.lane) } : {}),
+				...(row.project != null ? { project: String(row.project) } : undefined),
+				...(row.lane != null ? { lane: String(row.lane) } : undefined),
 			}));
 		},
 		acceptCommand(input) {
 			return this.transaction(() => {
+				// SAFETY: node:sqlite returns a row bag at this driver boundary.
 				const existing = getInbox.get(input.streamId, input.commandId) as
-					| Record<string, unknown>
+					| SqliteRow
 					| undefined;
 				if (existing) {
 					if (String(existing.digest) !== input.digest) {
@@ -289,11 +337,11 @@ export function createActorLocalJournal(path = ":memory:"): ActorLocalJournal {
 						);
 					}
 					return {
-						status: existing.status as AcceptCommandResult["status"],
+						status: parseInboxStatus(existing.status),
 						duplicate: true,
 						...(existing.result_json != null
 							? { resultJson: String(existing.result_json) }
-							: {}),
+							: undefined),
 					};
 				}
 				insertInbox.run(
@@ -309,16 +357,13 @@ export function createActorLocalJournal(path = ":memory:"): ActorLocalJournal {
 		},
 		claimNext(streamId) {
 			return this.transaction(() => {
-				const row = nextInbox.get(streamId) as
-					| Record<string, unknown>
-					| undefined;
+				// SAFETY: node:sqlite returns a row bag at this driver boundary.
+				const row = nextInbox.get(streamId) as SqliteRow | undefined;
 				if (!row) return undefined;
 				const commandId = String(row.command_id);
 				claimInbox.run(streamId, commandId);
-				const claimed = getInbox.get(streamId, commandId) as Record<
-					string,
-					unknown
-				>;
+				// SAFETY: node:sqlite returns a row bag at this driver boundary.
+				const claimed = getInbox.get(streamId, commandId) as SqliteRow;
 				return mapInbox(claimed);
 			});
 		},
@@ -330,10 +375,9 @@ export function createActorLocalJournal(path = ":memory:"): ActorLocalJournal {
 		commitCommand(input) {
 			return this.transaction(() => {
 				insertHead.run(input.streamId);
-				const current = Number(
-					(getHead.get(input.streamId) as { revision: number } | undefined)
-						?.revision ?? 0,
-				);
+				// SAFETY: node:sqlite returns a row bag at this driver boundary.
+				const commitHead = getHead.get(input.streamId) as SqliteRow | undefined;
+				const current = asNumber(commitHead?.revision);
 				if (current !== input.expectedRevision) {
 					throw new RivetJournalError(
 						"STALE_REVISION",
@@ -382,9 +426,8 @@ export function createActorLocalJournal(path = ":memory:"): ActorLocalJournal {
 			});
 		},
 		loadCommand(streamId, commandId) {
-			const row = getInbox.get(streamId, commandId) as
-				| Record<string, unknown>
-				| undefined;
+			// SAFETY: node:sqlite returns a row bag at this driver boundary.
+			const row = getInbox.get(streamId, commandId) as SqliteRow | undefined;
 			return row ? mapInbox(row) : undefined;
 		},
 		stageOutbox(streamId, effectId, digest, payloadJson) {
@@ -393,7 +436,8 @@ export function createActorLocalJournal(path = ":memory:"): ActorLocalJournal {
 			});
 		},
 		pendingOutbox(streamId) {
-			const rows = listOutbox.all(streamId) as Record<string, unknown>[];
+			// SAFETY: node:sqlite returns row bags at this driver boundary.
+			const rows = listOutbox.all(streamId) as SqliteRow[];
 			return rows.map((row) => ({
 				effectId: String(row.effect_id),
 				digest: String(row.digest),

@@ -22,7 +22,7 @@
 | VS Code extension contract | `src/draft/technical-proofs/vscode-extension-contract` | HOBO-180 | App developer | Editor can project CLI/MCP state | Editor DX | Runtime projection, operations manifest | `runtime-projection-boundary.pact.json` | not_started | deferred | Projection contracts are covered; editor UI is follow-up outside reference simulation. |
 | CLI credential hardening contract | `src/draft/technical-proofs/cli-credential-hardening-contract` | HOBO-184 | App developer, SecOps | Static keys are refused and crash output is redacted | Credential hardening | Identity/policy boundary | `identity-policy-boundary.pact.json` | in_progress | integrated | Kept fail-closed static-key and redaction assertions. |
 | Dev fidelity drift contract | `src/draft/technical-proofs/hobo-dev-fidelity-drift-contract` | HOBO-190 | App developer, SRE | Local mocked evidence cannot claim prod-ready | Fidelity honesty | Runtime projection boundary | `runtime-projection-boundary.pact.json` | in_progress | integrated | Kept mocked-vs-simulated labels and replay determinism. |
-| MCP server hardening contract | `src/draft/technical-proofs/mcp-server-hardening-contract` | HOBO-194 | AI agent operator, SecOps | MCP tool scope, approval, revocation, and token scope are enforced | MCP security | MCP control surface, identity/policy | `mcp-control-surface.pact.json`, `identity-policy-boundary.pact.json` | in_progress | integrated | Kept delegated scope, destructive approval, token denial, and untrusted result rules. |
+| MCP server hardening contract | `src/draft/technical-proofs/mcp-server-hardening-contract` | HOBO-194 | AI agent operator, SecOps | MCP tool scope, approval, revocation, and token scope are enforced | MCP security | MCP control surface, identity/policy | `mcp-control-surface.pact.json`, `identity-policy-boundary.pact.json` | in_progress | integrated | Kept delegated scope, destructive approval, token denial, and untrusted result rules; refreshed for the validated leaf hardening, with simulation and Pact evidence unchanged. |
 | App developer journey contract | `src/draft/exp-proofs/dx/app-dev-journey-contract` | HOBO-198 | App developer | New/dev/inspect/up prove app path | App developer loop | CLI command path, runtime projection | `cli-command-path.pact.json`, `runtime-projection-boundary.pact.json` | in_progress | integrated | Primary happy-path simulation. |
 | Platform engineer journey | no complete POC located in this epic pass | HOBO-203 | Platform engineer | Map Yard topology without crossing provider internals | Platform topology | Control plane, provider matching | deferred | not_started | split_follow_up | Requires platform-engineering/provider rollup to avoid crossing epic boundary. |
 | GitOps CI journey contract | `src/draft/exp-proofs/dx/gitops-ci-journey-contract` | HOBO-208 | GitOps operator | CI plan is read-only and promotion uses keyless identity | CI control path | CLI command path, identity/policy, runtime projection | `cli-command-path.pact.json`, `identity-policy-boundary.pact.json`, `runtime-projection-boundary.pact.json` | in_progress | integrated | Kept OIDC, preview lifecycle, can-deploy skew, and rollback paths. |
@@ -42,6 +42,12 @@ Changes to referenced experience proofs that this rollup has taken in.
 | `src/draft/exp-proofs/dx/gitops-ci-journey-contract` | `data-models/proof.cue` | none |
 | `src/draft/exp-proofs/dx/secops-policy-audit-journey-contract` | `data-models/proof.cue` | none |
 | `src/draft/exp-proofs/dx/sre-drift-remediation-journey-contract` | `data-models/proof.cue` | none |
+| `src/draft/technical-proofs/anonymous-preview-path-contract` | anti-slop object/string boundary cleanup | Anonymous preview normalization and canonicalization retain the same bounded hosted-preview behavior and remain covered by the existing identity/policy and runtime projection evidence. |
+| `src/draft/technical-proofs/hobo-dev-loop-contract` | latest validated leaf hardening | Dev-loop replay and projection evidence unchanged. |
+| `src/draft/technical-proofs/hobo-doctor-contract` | latest validated leaf hardening | Doctor health-check behavior unchanged. |
+| `src/draft/technical-proofs/hobo-login-claim-contract` | latest validated leaf hardening | Login/claim credential-reference behavior unchanged. |
+| `src/draft/technical-proofs/hobo-logs-cli-contract` | latest validated leaf hardening | Logs projection behavior unchanged. |
+| `src/draft/technical-proofs/hobo-up-convergence-contract` | latest validated leaf hardening | Up-convergence and fail-closed gate behavior unchanged. |
 
 All of these are the same edit, applied across 58 draft proofs at once. Each
 ships a `data-models/proof.proto` declaring `message ProofIdentity { string
@@ -61,3 +67,15 @@ record stays 0, `slug: 7` stays 1, `layer: "ux"` stays 1.
 No disposition, evidence path, Linear link, or acceptance claim in the table
 above moves. No proof in this epic identifies itself with an empty slug, so
 nothing that validated before stops validating.
+
+## Cascade absorptions (batch five)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/operations-manifests-contract` | latest validated leaf hardening | Operations-manifest and bounded CLI/MCP evidence unchanged. |
+
+## Cascade absorptions (83d9b5c92)
+
+| Referenced proof | Change | Effect on this rollup |
+|---|---|---|
+| `src/draft/technical-proofs/vscode-extension-contract` | final validated leaf hardening | CLI/MCP experience evidence unchanged. |

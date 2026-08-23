@@ -1,3 +1,4 @@
+import { type JsonObject, parseJsonObject } from "./json.js";
 import {
 	COST_FACTS,
 	DEFAULT_REGIONS,
@@ -17,10 +18,10 @@ import {
 // @hobo/cloud's RegistrableProvider so the composition root registers it
 // without this package depending on the kernel.
 
-const FEATURES: Record<ExecutionHostCategory, string[]> = {
+const FEATURES = {
 	[RUNNER_CATEGORY]: ["ci-job", "workflow-dispatch"],
 	[BUILD_MACHINE_CATEGORY]: ["container-build", "ghcr-publish"],
-};
+} satisfies Record<ExecutionHostCategory, string[]>;
 
 export interface GithubRunnerCatalogEntry {
 	id: string;
@@ -40,8 +41,8 @@ export interface GithubRunnerCatalogEntry {
 	capabilityManifest(): {
 		providerId: string;
 		published: Record<string, string>;
-		capabilities: { capabilities?: Array<Record<string, unknown>> };
-		cost: { facts?: Array<Record<string, unknown>> };
+		capabilities: JsonObject;
+		cost: JsonObject;
 	};
 }
 
@@ -85,10 +86,10 @@ export function createGithubRunnerCatalogEntry(): GithubRunnerCatalogEntry {
 			return {
 				providerId: GITHUB_RUNNER_PROVIDER_ID,
 				published: { ...published },
-				capabilities: JSON.parse(
+				capabilities: parseJsonObject(
 					published["/.well-known/capability-manifest/capabilities.json"],
 				),
-				cost: JSON.parse(
+				cost: parseJsonObject(
 					published["/.well-known/capability-manifest/cost.json"],
 				),
 			};

@@ -29,6 +29,15 @@
  * clock, no randomness, no ambient environment reads.
  */
 
+import {
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonBag,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 import { deepFreeze } from "../parse-utils.js";
 
 // public-contract: the closed slot vocabulary provider packages bind against.
@@ -63,7 +72,7 @@ export interface SlotBindingInput {
 	readonly profile: string;
 	readonly productId?: string;
 	readonly connectivityId?: string;
-	readonly properties?: Readonly<Record<string, unknown>>;
+	readonly properties?: JsonObject;
 }
 
 /** The parsed, frozen, canonical record `@hobo/yards` compiles into a row. */
@@ -73,7 +82,7 @@ export interface SlotBinding {
 	readonly profile: string;
 	readonly productId?: string;
 	readonly connectivityId?: string;
-	readonly properties: Readonly<Record<string, unknown>>;
+	readonly properties: JsonObject;
 }
 
 export type SlotBindingErrorCode =
@@ -88,11 +97,11 @@ export class SlotBindingError extends Error {
 	readonly code: SlotBindingErrorCode;
 	readonly slot?: string;
 
-	constructor(code: SlotBindingErrorCode, message: string, slot?: unknown) {
+	constructor(code: SlotBindingErrorCode, message: string, slot?: JsonValue) {
 		super(message);
 		this.name = "SlotBindingError";
 		this.code = code;
-		if (typeof slot === "string") {
+		if (isJsonString(slot)) {
 			this.slot = slot;
 		}
 	}
@@ -103,7 +112,7 @@ export class SlotBindingError extends Error {
  * sorted, so two authorings of the same configuration are deep-equal.
  */
 export function slotBinding(input: SlotBindingInput): SlotBinding {
-	if (input === null || typeof input !== "object" || Array.isArray(input)) {
+	if (input === null || !isJsonObject(input) || Array.isArray(input)) {
 		throw new SlotBindingError(
 			"SLOT_BINDING_SLOT_INVALID",
 			`slot binding must be an object with a slot from ${CAPABILITY_SLOTS.join(" | ")}`,
@@ -132,15 +141,16 @@ export function slotBinding(input: SlotBindingInput): SlotBinding {
 		contract: SLOT_BINDING_CONTRACT,
 		slot,
 		profile,
-		...(productId !== undefined ? { productId } : {}),
-		...(connectivityId !== undefined ? { connectivityId } : {}),
+		...(productId !== undefined ? { productId } : undefined),
+		...(connectivityId !== undefined ? { connectivityId } : undefined),
 		properties,
 	});
 }
 
-function parseSlot(value: unknown): CapabilitySlot {
+function parseSlot(value: JsonValue | undefined): CapabilitySlot {
 	if (
-		typeof value !== "string" ||
+		!isJsonString(value) ||
+		// SAFETY: assertion required at this I/O or test boundary.
 		!(CAPABILITY_SLOTS as readonly string[]).includes(value)
 	) {
 		throw new SlotBindingError(
@@ -149,11 +159,15 @@ function parseSlot(value: unknown): CapabilitySlot {
 			value,
 		);
 	}
+	// SAFETY: assertion required at this I/O or test boundary.
 	return value as CapabilitySlot;
 }
 
-function parseProfile(value: unknown, slot: CapabilitySlot): string {
-	if (typeof value !== "string" || !PROFILE_PATTERN.test(value)) {
+function parseProfile(
+	value: JsonValue | undefined,
+	slot: CapabilitySlot,
+): string {
+	if (!isJsonString(value) || !PROFILE_PATTERN.test(value)) {
 		throw new SlotBindingError(
 			"SLOT_BINDING_PROFILE_INVALID",
 			`profile: expected the ADR-0151 grammar <family>.<path>/v<major> (lowercase, dot-separated, "/v" plus a major starting at 1), received ${JSON.stringify(value)}`,
@@ -169,12 +183,12 @@ function parseProfile(value: unknown, slot: CapabilitySlot): string {
  * `SLOT_BINDING_EMPTY_CONSTRAINT` refusal instead of quietly binding `""`.
  */
 function parseConstraint(
-	value: unknown,
+	value: JsonValue | undefined,
 	field: string,
 	slot: CapabilitySlot,
 ): string | undefined {
 	if (value === undefined) return undefined;
-	if (typeof value !== "string") {
+	if (!isJsonString(value)) {
 		throw new SlotBindingError(
 			"SLOT_BINDING_EMPTY_CONSTRAINT",
 			`${field}: expected a non-empty string, received ${JSON.stringify(value)}`,
@@ -186,11 +200,11 @@ function parseConstraint(
 }
 
 function canonicalizeProperties(
-	value: unknown,
+	value: JsonValue | undefined,
 	slot: CapabilitySlot,
-): Readonly<Record<string, unknown>> {
+): JsonObject {
 	if (value === undefined) return {};
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
+	if (value === null || !isJsonObject(value) || Array.isArray(value)) {
 		throw new SlotBindingError(
 			"SLOT_BINDING_PROPERTY_NOT_JSON",
 			`properties: expected a JSON object, received ${describe(value)}`,
@@ -198,21 +212,22 @@ function canonicalizeProperties(
 		);
 	}
 	return canonicalizeRecord(
-		value as Record<string, unknown>,
+		// SAFETY: assertion required at this I/O or test boundary.
+		value as JsonObject,
 		"properties",
 		slot,
-		new Set<object>(),
+		new Set<JsonObject | JsonValue[]>(),
 	);
 }
 
 function canonicalizeRecord(
-	record: Readonly<Record<string, unknown>>,
+	record: JsonObject,
 	path: string,
 	slot: CapabilitySlot,
-	seen: Set<object>,
-): Readonly<Record<string, unknown>> {
+	seen: Set<JsonObject | JsonValue[]>,
+): JsonObject {
 	enterCycleGuard(record, path, slot, seen);
-	const out: Record<string, unknown> = {};
+	const out: JsonBag = {};
 	// Code-unit sort: locale-independent so two authorings agree byte for byte.
 	for (const key of Object.keys(record).sort(compare)) {
 		if (CREDENTIAL_KEY_PATTERN.test(key)) {
@@ -229,19 +244,15 @@ function canonicalizeRecord(
 }
 
 function canonicalizeValue(
-	value: unknown,
+	value: JsonValue | undefined,
 	path: string,
 	slot: CapabilitySlot,
-	seen: Set<object>,
-): unknown {
-	if (
-		value === null ||
-		typeof value === "boolean" ||
-		typeof value === "string"
-	) {
+	seen: Set<JsonObject | JsonValue[]>,
+): JsonValue {
+	if (value === null || isJsonBoolean(value) || isJsonString(value)) {
 		return value;
 	}
-	if (typeof value === "number") {
+	if (isJsonNumber(value)) {
 		if (!Number.isFinite(value)) {
 			throw new SlotBindingError(
 				"SLOT_BINDING_PROPERTY_NOT_JSON",
@@ -270,10 +281,10 @@ function canonicalizeValue(
 }
 
 function enterCycleGuard(
-	value: object,
+	value: JsonObject | JsonValue[],
 	path: string,
 	slot: CapabilitySlot,
-	seen: Set<object>,
+	seen: Set<JsonObject | JsonValue[]>,
 ): void {
 	if (seen.has(value)) {
 		throw new SlotBindingError(
@@ -286,22 +297,20 @@ function enterCycleGuard(
 }
 
 /** Plain data only: a class instance carries behavior a row cannot serialize. */
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	if (value === null || typeof value !== "object") return false;
+function isPlainObject(value: JsonValue | undefined): value is JsonObject {
+	if (value === null || !isJsonObject(value)) return false;
 	const prototype: unknown = Object.getPrototypeOf(value);
 	return prototype === Object.prototype || prototype === null;
 }
 
-function describe(value: unknown): string {
+function describe(value: JsonValue | undefined): string {
 	if (value === null) return "null";
 	if (Array.isArray(value)) return "an array";
-	if (typeof value === "object") {
+	if (isJsonObject(value)) {
 		const name: unknown = value.constructor?.name;
-		return typeof name === "string"
-			? `a ${name} instance`
-			: "a non-plain object";
+		return isJsonString(name) ? `a ${name} instance` : "a non-plain object";
 	}
-	return `a ${typeof value}`;
+	return `a ${Object.prototype.toString.call(value)}`;
 }
 
 /** Code-unit comparison: locale-independent so ordering is reproducible. */

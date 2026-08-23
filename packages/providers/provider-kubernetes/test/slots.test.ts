@@ -1,6 +1,5 @@
 import type { SlotBindingError } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
 import {
 	cronJob,
 	type DeploymentOptions,
@@ -15,13 +14,15 @@ import {
 	statefulSet,
 	statefulSetWorker,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
 /** The code core refused a call with, or undefined if it did not refuse. */
-function refusalCode(call: () => unknown): string | undefined {
+function refusalCode(call: () => void): string | undefined {
 	try {
 		call();
 		return undefined;
 	} catch (error) {
+		// SAFETY: assertion to `error as SlotBindingError` is required at this boundary.
 		return (error as SlotBindingError).code;
 	}
 }
@@ -124,7 +125,8 @@ describe("options land in properties and omitted options stay absent", () => {
 		const binding = deployment({ limits: { cpu: "500m" } });
 		expect(binding.properties).toEqual({ limits: { cpu: "500m" } });
 		expect("requests" in binding.properties).toBe(false);
-		const limits = binding.properties.limits as Record<string, unknown>;
+		// SAFETY: assertion to `binding.properties.limits as JsonObject` is required at this boundary.
+		const limits = binding.properties.limits as JsonObject;
 		expect("memory" in limits).toBe(false);
 	});
 
@@ -150,7 +152,8 @@ describe("options land in properties and omitted options stay absent", () => {
 
 describe("the core parse boundary still applies", () => {
 	it("refuses a credential-shaped option key that bypassed the types", () => {
-		const smuggled = { apiKey: "x" } as unknown as DeploymentOptions;
+		// SAFETY: assertion to `{ apiKey: "x" } as DeploymentOptions` is required at this boundary.
+		const smuggled = { apiKey: "x" } as DeploymentOptions;
 		expect(refusalCode(() => deployment(smuggled))).toBe(
 			"SLOT_BINDING_CREDENTIAL_PROPERTY",
 		);
@@ -162,16 +165,16 @@ describe("the core parse boundary still applies", () => {
 	 * `secret-ref.locator/v1` a locator rather than a container.
 	 */
 	it("refuses material on the Secret locator row itself", () => {
-		const smuggled = { token: "abc" } as unknown as Parameters<
-			typeof secret
-		>[0];
+		// SAFETY: assertion to `{ token: "abc" } as Parameters< typeof secret >[0]` is required at this boundary.
+		const smuggled = { token: "abc" } as Parameters<typeof secret>[0];
 		expect(refusalCode(() => secret(smuggled))).toBe(
 			"SLOT_BINDING_CREDENTIAL_PROPERTY",
 		);
 	});
 
 	it("forwards an undeclared key instead of silently dropping it", () => {
-		const smuggled = { unknownKnob: 1 } as unknown as DeploymentOptions;
+		// SAFETY: assertion to `{ unknownKnob: 1 } as DeploymentOptions` is required at this boundary.
+		const smuggled = { unknownKnob: 1 } as DeploymentOptions;
 		expect(deployment(smuggled).properties).toEqual({ unknownKnob: 1 });
 	});
 });

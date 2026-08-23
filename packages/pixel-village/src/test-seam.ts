@@ -189,11 +189,13 @@ export function seededRandom(seed: number): () => number {
 	};
 }
 
-export function isTestMode(search = ""): {
+type TestMode = {
 	testMode: boolean;
 	seed: number;
 	scenario: string | null;
-} {
+};
+
+export function isTestMode(search = ""): TestMode {
 	const params = new URLSearchParams(
 		search.startsWith("?") ? search.slice(1) : search,
 	);

@@ -76,7 +76,7 @@ export type Layout = Readonly<{
 	trafficEmitter: Readonly<{ x: number; y: number; width: number }>;
 }>;
 
-const ZONE_LABEL: Record<ZoneId, string> = {
+const ZONE_LABEL = {
 	platformRest: "Platform Rest",
 	bootstrapDesk: "Bootstrap Desk",
 	activeRailTrack: "Active Rail Track",
@@ -84,10 +84,10 @@ const ZONE_LABEL: Record<ZoneId, string> = {
 	policyBoard: "Policy Board",
 	costBooth: "Cost Booth",
 	errorBunker: "Error Bunker",
-};
+} satisfies Record<ZoneId, string>;
 
 /** Draw order hint only; hit-testing resolves overlaps by area, not by depth. */
-const ZONE_DEPTH: Record<ZoneId, number> = {
+const ZONE_DEPTH = {
 	platformRest: 10,
 	bootstrapDesk: 11,
 	activeRailTrack: 5,
@@ -95,7 +95,7 @@ const ZONE_DEPTH: Record<ZoneId, number> = {
 	policyBoard: 8,
 	costBooth: 9,
 	errorBunker: 9,
-};
+} satisfies Record<ZoneId, number>;
 
 /**
  * Zone rects are the village grid, not free-floating boxes: a rect is exactly
@@ -122,7 +122,7 @@ function zoneFromTiles(id: ZoneId): ZoneLayout {
 	});
 }
 
-const ZONES: Record<ZoneId, ZoneLayout> = {
+const ZONES = {
 	platformRest: zoneFromTiles("platformRest"),
 	bootstrapDesk: zoneFromTiles("bootstrapDesk"),
 	activeRailTrack: zoneFromTiles("activeRailTrack"),
@@ -130,7 +130,7 @@ const ZONES: Record<ZoneId, ZoneLayout> = {
 	policyBoard: zoneFromTiles("policyBoard"),
 	costBooth: zoneFromTiles("costBooth"),
 	errorBunker: zoneFromTiles("errorBunker"),
-};
+} satisfies Record<ZoneId, ZoneLayout>;
 
 /**
  * DESIGN.md reserved region: the band the Camp houses and their Bindles own.
@@ -209,7 +209,7 @@ export function zoneAt(x: number, y: number): ZoneId | null {
 	return hit?.id ?? null;
 }
 
-export function zoneAnchor(id: ZoneId): { x: number; y: number } {
+export function zoneAnchor(id: ZoneId) {
 	const z = YARD_LAYOUT.zones[id];
 	return { x: z.anchorX, y: z.anchorY };
 }

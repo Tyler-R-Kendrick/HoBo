@@ -11,6 +11,14 @@
  *    and no "mostly passed".
  */
 import {
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../../json.js";
+import {
 	ANONYMOUS_CONFORMANCE_SCHEMA,
 	type AnonymousCase,
 	type AnonymousCaseOutcome,
@@ -37,7 +45,7 @@ export interface AnonymousSuiteDefinition<TRequest, TExpectation, TOutcome> {
 	readonly dimension: AnonymousDimension;
 	readonly checks: readonly string[];
 	readonly cases: readonly AnonymousCase<TRequest, TExpectation>[];
-	readonly parse: (raw: unknown, caseId: string) => TOutcome;
+	readonly parse: (raw: JsonValue, caseId: string) => TOutcome;
 	readonly judge: (
 		suiteCase: AnonymousCase<TRequest, TExpectation>,
 		outcome: TOutcome,
@@ -50,7 +58,17 @@ export interface RunAnonymousSuiteOptions {
 	readonly caseIds?: readonly string[];
 }
 
-const OUTCOME_SEVERITY: Readonly<Record<AnonymousCaseOutcome, number>> = {
+interface CaseOutcomeBag {
+	[check: string]: AnonymousCaseOutcome;
+}
+
+interface OutcomeSeverity {
+	readonly pass: number;
+	readonly unknown: number;
+	readonly fail: number;
+}
+
+const OUTCOME_SEVERITY: OutcomeSeverity = {
 	pass: 0,
 	unknown: 1,
 	fail: 2,
@@ -72,7 +90,7 @@ export async function runAnonymousSuite<TRequest, TExpectation, TOutcome>(
 	execute: AnonymousExecutor<TRequest>,
 	options: RunAnonymousSuiteOptions = {},
 ): Promise<AnonymousConformanceReport> {
-	if (typeof execute !== "function") {
+	if (!(execute instanceof Function)) {
 		throw new TypeError("an anonymous conformance executor is required");
 	}
 
@@ -112,7 +130,7 @@ async function evaluateCase<TRequest, TExpectation, TOutcome>(
 	suiteCase: AnonymousCase<TRequest, TExpectation>,
 	execute: AnonymousExecutor<TRequest>,
 ): Promise<AnonymousCaseResult> {
-	let raw: unknown;
+	let raw: JsonValue;
 	try {
 		raw = await execute(suiteCase.request);
 	} catch (error) {
@@ -158,7 +176,7 @@ async function evaluateCase<TRequest, TExpectation, TOutcome>(
 		detail: judgement.detail,
 		...(judgement.outcome === "fail"
 			? { failureCode: "expectation.unmet" as const }
-			: {}),
+			: undefined),
 	};
 }
 
@@ -171,7 +189,7 @@ async function evaluateCase<TRequest, TExpectation, TOutcome>(
 export function aggregateChecks(
 	declaredChecks: readonly string[],
 	results: readonly AnonymousCaseResult[],
-): Record<string, AnonymousCaseOutcome> {
+): CaseOutcomeBag {
 	const folded = new Map<string, AnonymousCaseOutcome>();
 	for (const result of results) {
 		const current = folded.get(result.check);
@@ -183,7 +201,7 @@ export function aggregateChecks(
 
 	// Declared checks come first and in sorted order, so the map a caller
 	// digests does not depend on which cases happened to run.
-	const checks: Record<string, AnonymousCaseOutcome> = {};
+	const checks: CaseOutcomeBag = {};
 	for (const check of [...declaredChecks].sort()) {
 		checks[check] = folded.get(check) ?? "unknown";
 	}
@@ -204,47 +222,48 @@ export function worst(
 	return OUTCOME_SEVERITY[left] >= OUTCOME_SEVERITY[right] ? left : right;
 }
 
-function messageOf(error: unknown): string {
+function messageOf<T>(error: T): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
 /** Shared parse helpers. Kept here so every suite rejects the same way. */
-export function requireRecord(
-	value: unknown,
+export function requireRecord<T>(
+	value: T,
 	caseId: string,
 	field: string,
-): Record<string, unknown> {
-	if (value === null || typeof value !== "object" || Array.isArray(value)) {
+): JsonObject {
+	if (value === null || !isJsonObject(value) || Array.isArray(value)) {
 		throw new AnonymousConformanceError(caseId, `${field} must be an object`);
 	}
-	return value as Record<string, unknown>;
+	// SAFETY: assertion to `value as JsonObject` is required at this boundary.
+	return value as JsonObject;
 }
 
-export function requireBoolean(
-	value: unknown,
+export function requireBoolean<T>(
+	value: T,
 	caseId: string,
 	field: string,
 ): boolean {
-	if (typeof value !== "boolean") {
+	if (!isJsonBoolean(value)) {
 		throw new AnonymousConformanceError(caseId, `${field} must be a boolean`);
 	}
 	return value;
 }
 
-export function optionalBoolean(
-	value: unknown,
+export function optionalBoolean<T>(
+	value: T,
 	caseId: string,
 	field: string,
 ): boolean | undefined {
 	return value === undefined ? undefined : requireBoolean(value, caseId, field);
 }
 
-export function requireText(
-	value: unknown,
+export function requireText<T>(
+	value: T,
 	caseId: string,
 	field: string,
 ): string {
-	if (typeof value !== "string" || value.trim().length === 0) {
+	if (!isJsonString(value) || value.trim().length === 0) {
 		throw new AnonymousConformanceError(
 			caseId,
 			`${field} must be a non-empty string`,
@@ -253,20 +272,20 @@ export function requireText(
 	return value;
 }
 
-export function optionalText(
-	value: unknown,
+export function optionalText<T>(
+	value: T,
 	caseId: string,
 	field: string,
 ): string | undefined {
 	return value === undefined ? undefined : requireText(value, caseId, field);
 }
 
-export function requireInstant(
-	value: unknown,
+export function requireInstant<T>(
+	value: T,
 	caseId: string,
 	field: string,
 ): number {
-	if (typeof value !== "number" || !Number.isInteger(value)) {
+	if (!isJsonNumber(value) || !Number.isInteger(value)) {
 		throw new AnonymousConformanceError(
 			caseId,
 			`${field} must be an integer epoch-millisecond instant`,
@@ -275,22 +294,23 @@ export function requireInstant(
 	return value;
 }
 
-export function optionalInstant(
-	value: unknown,
+export function optionalInstant<T>(
+	value: T,
 	caseId: string,
 	field: string,
 ): number | undefined {
 	return value === undefined ? undefined : requireInstant(value, caseId, field);
 }
 
-export function requireMember<T extends string>(
-	value: unknown,
+export function requireMember<TValue, T extends string>(
+	value: TValue,
 	caseId: string,
 	field: string,
 	allowed: readonly T[],
 ): T {
 	if (
-		typeof value !== "string" ||
+		!isJsonString(value) ||
+		// SAFETY: assertion to `allowed as readonly string[]` is required at this boundary.
 		!(allowed as readonly string[]).includes(value)
 	) {
 		throw new AnonymousConformanceError(
@@ -298,11 +318,12 @@ export function requireMember<T extends string>(
 			`${field} must be one of ${allowed.join(", ")}`,
 		);
 	}
-	return value as T;
+	// SAFETY: allowed-member parse restores the closed string union.
+	return value as never;
 }
 
-export function optionalMember<T extends string>(
-	value: unknown,
+export function optionalMember<TValue, T extends string>(
+	value: TValue,
 	caseId: string,
 	field: string,
 	allowed: readonly T[],
@@ -312,8 +333,8 @@ export function optionalMember<T extends string>(
 		: requireMember(value, caseId, field, allowed);
 }
 
-export function requireTextArray(
-	value: unknown,
+export function requireTextArray<T>(
+	value: T,
 	caseId: string,
 	field: string,
 ): readonly string[] {

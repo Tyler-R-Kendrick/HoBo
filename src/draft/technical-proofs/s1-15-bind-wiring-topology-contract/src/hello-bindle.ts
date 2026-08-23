@@ -19,12 +19,7 @@ export function buildHelloBindleManifest(): HoboManifest {
   return compileBindleManifest([db, api, worker]);
 }
 
-export function buildHelloBindleTopology(): {
-  readonly manifest: HoboManifest;
-  readonly bindle: ReturnType<typeof bindle>;
-  readonly devCamp: Camp;
-  readonly localYard: Yard;
-} {
+export function buildHelloBindleTopology(): HelloBindleTopology {
   const db = data("db", { paradigm: "relational" });
   const api = service("api", {
     image: "oci://registry.example.com/hello-api@sha256:demo",
@@ -55,7 +50,14 @@ export function buildHelloBindleTopology(): {
 
   const localYard = yard("local", { camps: [devCamp] });
 
-  return { manifest, bindle: appBindle, devCamp, localYard };
+  return { manifest, bindle: appBindle, devCamp, localYard } satisfies HelloBindleTopology;
+}
+
+export interface HelloBindleTopology {
+  readonly manifest: HoboManifest;
+  readonly bindle: ReturnType<typeof bindle>;
+  readonly devCamp: Camp;
+  readonly localYard: Yard;
 }
 
 export function localEndpointForDb(): string {

@@ -7,7 +7,7 @@ upgrade guarantees, promising support responses, or promoting GA claims.
 ## Focused Gate
 
 ```powershell
-pnpm.cmd --prefix src\draft\exp-proofs\v1-release-notes-upgrade-guide-release-candidate-evidence-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\cx\v1-release-notes-upgrade-guide-release-candidate-evidence-contract test
 ```
 
 ## Proof Surface

@@ -1,3 +1,4 @@
+import type { JsonObject } from "../json.js";
 import { MANIFEST_SCHEMA } from "../manifest/index.js";
 
 export { MANIFEST_SCHEMA };
@@ -29,9 +30,9 @@ export interface ManifestResource {
 	readonly env?: Readonly<Record<string, string>>;
 	readonly bindings?: Readonly<Record<string, BindingMeta>>;
 	readonly image?: string;
-	readonly build?: Readonly<Record<string, unknown>>;
-	readonly endpoints?: Readonly<Record<string, unknown>>;
-	readonly annotations?: Readonly<Record<string, unknown>>;
+	readonly build?: JsonObject;
+	readonly endpoints?: JsonObject;
+	readonly annotations?: JsonObject;
 }
 
 export interface WiringManifest {

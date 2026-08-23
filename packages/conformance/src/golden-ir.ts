@@ -1,3 +1,5 @@
+import { isJsonObject, type JsonObject } from "./json.js";
+
 const languageSpecificGoldenIrKeys = new Set([
 	"exceptionClass",
 	"jsSyntax",
@@ -8,14 +10,14 @@ const languageSpecificGoldenIrKeys = new Set([
 	"typescriptNodeKind",
 ]);
 
-export function findLanguageSpecificGoldenIrField(
-	value: unknown,
+export function findLanguageSpecificGoldenIrField<T>(
+	value: T,
 	path = "$",
 ): { path: string } | null {
 	if (Array.isArray(value)) {
 		for (let index = 0; index < value.length; index += 1) {
 			const leak = findLanguageSpecificGoldenIrField(
-				value[index],
+				value[index] ?? null,
 				`${path}[${index}]`,
 			);
 			if (leak) {
@@ -36,7 +38,7 @@ export function findLanguageSpecificGoldenIrField(
 			return { path: keyPath };
 		}
 
-		const leak = findLanguageSpecificGoldenIrField(value[key], keyPath);
+		const leak = findLanguageSpecificGoldenIrField(value[key] ?? null, keyPath);
 		if (leak) {
 			return leak;
 		}
@@ -51,6 +53,6 @@ function joinPath(path: string, key: string): string {
 		: `${path}[${JSON.stringify(key)}]`;
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === "object" && !Array.isArray(value);
+function isPlainObject<T>(value: T): value is T & JsonObject {
+	return value !== null && isJsonObject(value) && !Array.isArray(value);
 }

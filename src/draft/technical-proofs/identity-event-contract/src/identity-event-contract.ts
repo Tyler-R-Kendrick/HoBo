@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export const IDENTITY_EVENT_SCHEMA_VERSION = "hobo.identity-events/v1";
 
 export const IDENTITY_EVENT_TYPES = Object.freeze([
@@ -435,14 +436,14 @@ function validateStringArray(value, path, errors) {
 }
 
 function requireString(value, path, errors) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     errors.push(`${path} is required`);
   }
 }
 
 function requireIso(value, path, errors) {
   requireString(value, path, errors);
-  if (typeof value === "string" && Number.isNaN(Date.parse(value))) {
+  if (isJsonString(value) && Number.isNaN(Date.parse(value))) {
     errors.push(`${path} must be ISO-8601`);
   }
 }
@@ -464,7 +465,7 @@ function normalizeStrings(values) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -475,7 +476,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

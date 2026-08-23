@@ -521,6 +521,7 @@ function advertises(
 		case "includes":
 			return (
 				Array.isArray(value) &&
+				// SAFETY: the array branch establishes the advertised string-set representation.
 				(value as readonly string[]).includes(precondition.value)
 			);
 		default:

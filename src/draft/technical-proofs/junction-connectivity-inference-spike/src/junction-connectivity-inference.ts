@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased JSON-like inference, input, and recursive canonicalization values at the proof boundary. */
+
 import { createHash } from "node:crypto";
 
 import { ConnectivityTier } from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.js";
@@ -446,3 +448,4 @@ function deepFreeze(value) {
   }
   return value;
 }
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased JSON-like inference, input, and recursive canonicalization values at the proof boundary. */

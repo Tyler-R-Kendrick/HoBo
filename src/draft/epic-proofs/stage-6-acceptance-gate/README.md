@@ -50,3 +50,11 @@ pnpm --prefix src/draft/epic-proofs/stage-6-acceptance-gate run simulate
 - `architecture/` — protobuf + CUE for drill result records
 - `architecture/pacts/` — package boundary PACT
 - `architecture.md` — parse-don't-validate and event-architecture notes
+
+## Cascade absorption
+
+The referenced dashboard projection proof's identity example was made
+anti-slop clean by removing an unneeded local type assertion. The Stage-6
+dashboard boundary and its acceptance fixture remain unchanged; this rollup
+continues to prove the WCAG 2.1 AA and pseudo-localization checks through the
+existing Pact fixture and executable feature.

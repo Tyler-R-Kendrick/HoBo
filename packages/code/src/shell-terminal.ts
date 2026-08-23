@@ -10,6 +10,7 @@
 
 import type { Readable, Writable } from "node:stream";
 import { StdinBuffer, type Terminal } from "@earendil-works/pi-tui";
+import { isJsonNumber } from "./json.js";
 
 export interface StreamTerminalOptions {
 	readonly stdin: Readable;
@@ -55,7 +56,9 @@ export class StreamTerminal implements Terminal {
 	writeCount = 0;
 
 	constructor(options: StreamTerminalOptions) {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		this.stdin = options.stdin as MaybeTtyReadable;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		this.stdout = options.stdout as MaybeSizedWritable;
 		this.fallbackColumns = options.columns ?? 80;
 		this.fallbackRows = options.rows ?? 24;
@@ -68,22 +71,22 @@ export class StreamTerminal implements Terminal {
 	}
 
 	get columns(): number {
-		return typeof this.stdout.columns === "number" && this.stdout.columns > 0
-			? this.stdout.columns
+		const columns = this.stdout.columns;
+		return isJsonNumber(columns) && columns > 0
+			? columns
 			: this.fallbackColumns;
 	}
 
 	get rows(): number {
-		return typeof this.stdout.rows === "number" && this.stdout.rows > 0
-			? this.stdout.rows
-			: this.fallbackRows;
+		const rows = this.stdout.rows;
+		return isJsonNumber(rows) && rows > 0 ? rows : this.fallbackRows;
 	}
 
 	start(onInput: (data: string) => void, onResize: () => void): void {
 		if (this.alternateScreen) {
 			this.write("\x1b[?1049h");
 		}
-		if (this.rawMode && typeof this.stdin.setRawMode === "function") {
+		if (this.rawMode && this.stdin.setRawMode instanceof Function) {
 			this.wasRaw = this.stdin.isRaw === true;
 			this.stdin.setRawMode(true);
 			// Bracketed paste: terminal wraps pastes in \x1b[200~ … \x1b[201~
@@ -96,7 +99,7 @@ export class StreamTerminal implements Terminal {
 		);
 		this.dataHandler = (chunk) => this.stdinBuffer?.process(chunk);
 		this.stdin.on("data", this.dataHandler);
-		if (typeof this.stdin.resume === "function") this.stdin.resume();
+		if (this.stdin.resume instanceof Function) this.stdin.resume();
 		this.resizeHandler = onResize;
 		this.stdout.on("resize", onResize);
 	}
@@ -107,7 +110,7 @@ export class StreamTerminal implements Terminal {
 			this.stdout.removeListener("resize", this.resizeHandler);
 		this.stdinBuffer?.destroy();
 		delete this.stdinBuffer;
-		if (this.rawMode && typeof this.stdin.setRawMode === "function") {
+		if (this.rawMode && this.stdin.setRawMode instanceof Function) {
 			this.write("\x1b[?2004l");
 			this.stdin.setRawMode(this.wasRaw);
 		}
@@ -115,7 +118,7 @@ export class StreamTerminal implements Terminal {
 			this.write("\x1b[?25h");
 			this.write("\x1b[?1049l");
 		}
-		if (typeof this.stdin.pause === "function") this.stdin.pause();
+		if (this.stdin.pause instanceof Function) this.stdin.pause();
 	}
 
 	async drainInput(maxMs = 1000, idleMs = 50): Promise<void> {

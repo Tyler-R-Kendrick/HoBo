@@ -117,13 +117,13 @@ export const CONTROL_PLANE_ACTIONS = deepFreeze({
 export function validateControlPlaneTaxonomy(taxonomy = CONTROL_PLANE_ACTIONS) {
   const errors = [];
 
-  if (!taxonomy || typeof taxonomy !== "object" || Array.isArray(taxonomy)) {
+  if (!isRecord(taxonomy)) {
     return { ok: false, errors: ["taxonomy must be an object"] };
   }
   if (taxonomy.schema !== ACTION_TAXONOMY_SCHEMA) {
     errors.push(`schema must be ${ACTION_TAXONOMY_SCHEMA}`);
   }
-  if (!taxonomy.resources || typeof taxonomy.resources !== "object" || Array.isArray(taxonomy.resources)) {
+  if (!isRecord(taxonomy.resources)) {
     errors.push("resources must be an object");
     return { ok: false, errors };
   }
@@ -131,7 +131,7 @@ export function validateControlPlaneTaxonomy(taxonomy = CONTROL_PLANE_ACTIONS) {
   const actionIds = new Set();
   for (const [resourceName, row] of Object.entries(taxonomy.resources)) {
     validateResourceName(resourceName, errors);
-    if (!row || typeof row !== "object" || Array.isArray(row)) {
+    if (!isRecord(row)) {
       errors.push(`${resourceName} row must be an object`);
       continue;
     }
@@ -266,13 +266,13 @@ function validateResourceName(resourceName, errors) {
 }
 
 function validateVerb(resourceName, verb, errors) {
-  if (typeof verb !== "string" || !/^[a-z][a-z0-9-]*$/.test(verb)) {
+  if (!isString(verb) || !/^[a-z][a-z0-9-]*$/.test(verb)) {
     errors.push(`${resourceName} has invalid verb ${String(verb)}`);
   }
 }
 
 function deepFreeze(value) {
-  if (value && typeof value === "object") {
+  if (isObjectLike(value)) {
     Object.freeze(value);
     for (const child of Object.values(value)) {
       deepFreeze(child);
@@ -280,3 +280,4 @@ function deepFreeze(value) {
   }
   return value;
 }
+import { isObjectLike, isRecord, isString } from "./json.js";

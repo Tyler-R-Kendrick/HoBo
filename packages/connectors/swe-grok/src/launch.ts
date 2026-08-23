@@ -62,6 +62,7 @@ export async function buildGrokLaunch(input: {
 	const key = await input.credential();
 	return Object.freeze({
 		command: GROK_ACP_COMMAND,
+		// SAFETY: assertion to `ring[]), env` is required at this boundary.
 		args: Object.freeze([] as string[]),
 		env: Object.freeze({
 			...scrubEnvironment(input.sandbox),

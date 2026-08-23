@@ -21,10 +21,12 @@ import {
 	generateCodegenArtifacts,
 } from "../../../technical-proofs/hobo-codegen-cli-contract/src/codegen-cli-contract.ts";
 import { BuildError, createBuildCli, runBuild, writeBuildFixtureProject } from "../src/index.ts";
+import type { JsonValue } from "../src/errors.ts";
 
+// SAFETY: the committed fixture has the four fields used by the example below.
 const GOLDEN = JSON.parse(
 	readFileSync(new URL("../test/fixtures/hello-bindle.digest.json", import.meta.url), "utf8"),
-) as { service: string; digest: string; sourceDateEpoch: string; witWorld: string };
+ ) as { service: string; digest: string; sourceDateEpoch: string; witWorld: string };
 
 const HELLO_BINDLE_SOURCE = fileURLToPath(
 	new URL(
@@ -90,6 +92,7 @@ try {
 		env: { ...process.env, SOURCE_DATE_EPOCH: GOLDEN.sourceDateEpoch },
 	});
 	assert.equal(cli.exitCode, 0);
+	// SAFETY: the CLI JSON contract guarantees these envelope fields on exitCode 0.
 	const envelope = JSON.parse(cli.stdout) as {
 		ok: boolean;
 		command: string;
@@ -111,8 +114,8 @@ try {
 		() => {
 			throw new Error("expected drift failure");
 		},
-		(error: unknown) => {
-			assert.ok(error instanceof BuildError);
+		(error: JsonValue | Error) => {
+			if (!(error instanceof BuildError)) throw new TypeError("expected BuildError");
 			return error;
 		},
 	);

@@ -26,14 +26,7 @@ import {
 
 const bestDealPaymentPlanId: PaymentPlanId = PaymentPlanId.Pro;
 
-interface PaymentPlanCard {
-  name: string;
-  price: string;
-  description: string;
-  features: string[];
-}
-
-export const paymentPlanCards: Record<PaymentPlanId, PaymentPlanCard> = {
+export const paymentPlanCards = {
   [PaymentPlanId.Hobby]: {
     name: prettyPaymentPlanName(PaymentPlanId.Hobby),
     price: "$9.99",

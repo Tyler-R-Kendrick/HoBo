@@ -1,3 +1,10 @@
+import {
+	isJsonBoolean,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "./json.js";
+
 export type WorkspaceEdge = {
 	readonly from: string;
 	readonly to: string;
@@ -322,20 +329,21 @@ function isWorkspacePath(path: string): boolean {
 	return path.startsWith("packages/") || path.startsWith("examples/");
 }
 
-export function parseWorkspaceEdge(input: unknown): WorkspaceEdge {
-	if (typeof input !== "object" || input === null) {
+export function parseWorkspaceEdge(input: JsonValue): WorkspaceEdge {
+	if (!isJsonObject(input) || input === null) {
 		throw new Error("workspace edge must be an object");
 	}
 
-	const record = input as Record<string, unknown>;
+	const record = input;
+	// SAFETY: assertion to `d.from; const to =` is required at this boundary.
 	const from = record.from;
 	const to = record.to;
 
-	if (typeof from !== "string" || from.length === 0) {
+	if (!isJsonString(from) || from.length === 0) {
 		throw new Error("workspace edge from must be a non-empty string");
 	}
 
-	if (typeof to !== "string" || to.length === 0) {
+	if (!isJsonString(to) || to.length === 0) {
 		throw new Error("workspace edge to must be a non-empty string");
 	}
 
@@ -351,7 +359,7 @@ export function parseWorkspaceEdge(input: unknown): WorkspaceEdge {
 	}
 
 	const dev = record.dev;
-	if (dev !== undefined && typeof dev !== "boolean") {
+	if (dev !== undefined && !isJsonBoolean(dev)) {
 		throw new Error("workspace edge dev must be a boolean when present");
 	}
 
@@ -453,7 +461,7 @@ export function classifyPackage(path: string): PackageClassification {
 export function validateBoundaryImports(
 	edges: readonly WorkspaceEdge[],
 	extra: readonly WorkspaceEdge[] = [],
-): { errors: string[] } {
+): WorkspaceIssues {
 	const errors: string[] = [];
 	const imports = [...edges, ...extra];
 
@@ -521,9 +529,13 @@ export function validateBoundaryImports(
 	return { errors };
 }
 
-export function detectWorkspaceCycles(edges: readonly WorkspaceEdge[]): {
+export interface WorkspaceIssues {
 	errors: string[];
-} {
+}
+
+export function detectWorkspaceCycles(
+	edges: readonly WorkspaceEdge[],
+): WorkspaceIssues {
 	const graph = new Map<string, string[]>();
 	const errors: string[] = [];
 

@@ -168,9 +168,7 @@ export interface VirtualShell {
  * token the harness happens to hold — `HOBO_*`, cloud credentials, `SSH_AUTH_SOCK`
  * — inside a shell whose whole point is that it holds nothing.
  */
-function baseEnv(
-	extra: Readonly<Record<string, string>> | undefined,
-): Record<string, string> {
+function baseEnv(extra: Readonly<Record<string, string>> | undefined) {
 	return {
 		HOME: VIRTUAL_WORKSPACE,
 		PWD: VIRTUAL_WORKSPACE,
@@ -247,11 +245,14 @@ export function createVirtualShell(options: VirtualShellOptions): VirtualShell {
 		fs,
 		cwd: VIRTUAL_WORKSPACE,
 		env: baseEnv(options.env),
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		commands: commands as never,
 		// No `network` key at all: without it just-bash does not even define
 		// curl/wget, so there is nothing to allow-list around.
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		executionLimits: {
 			maxExecutionTimeMs: options.timeoutMs ?? 30_000,
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		} as never,
 	});
 

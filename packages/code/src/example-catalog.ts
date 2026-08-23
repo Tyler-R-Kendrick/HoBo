@@ -9,10 +9,9 @@ import {
 } from "node:fs";
 import { dirname, join, relative } from "node:path";
 import { fileURLToPath } from "node:url";
-
 import { openUiStarterRoot } from "@hobo/patterns";
-
 import { emitFromAtoms } from "./atom-index.js";
+import { isJsonString, type JsonObject } from "./json.js";
 
 const PACKAGE_ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 export const EXAMPLES_ROOT = join(PACKAGE_ROOT, "examples");
@@ -76,15 +75,16 @@ function words(value: string): string[] {
 
 function readJson(path: string): ParsedManifest | null {
 	try {
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
 		return JSON.parse(readFileSync(path, "utf8")) as ParsedManifest;
 	} catch {
 		return null;
 	}
 }
 
-function asStringList(value: unknown): string[] {
+function asStringList<T>(value: T): string[] {
 	if (!Array.isArray(value)) return [];
-	return value.filter((item): item is string => typeof item === "string");
+	return value.filter((item): item is string => isJsonString(item));
 }
 
 function fromManifest(
@@ -92,11 +92,11 @@ function fromManifest(
 	sourceDir: string,
 	source: ExampleCatalogEntry["source"],
 ): ExampleCatalogEntry | null {
-	if (typeof manifest.id !== "string" || manifest.id.length === 0) return null;
+	if (!isJsonString(manifest.id) || manifest.id.length === 0) return null;
 	return {
 		id: manifest.id,
-		title: typeof manifest.title === "string" ? manifest.title : manifest.id,
-		blurb: typeof manifest.blurb === "string" ? manifest.blurb : "",
+		title: isJsonString(manifest.title) ? manifest.title : manifest.id,
+		blurb: isJsonString(manifest.blurb) ? manifest.blurb : "",
 		aliases: asStringList(manifest.aliases),
 		tags: asStringList(manifest.tags),
 		fallback: manifest.fallback === true,
@@ -210,7 +210,7 @@ function loadRepoExamples(seen: Set<string>): ExampleCatalogEntry[] {
 					? fromManifest(
 							{
 								...meta,
-								id: typeof meta.id === "string" ? meta.id : appName,
+								id: isJsonString(meta.id) ? meta.id : appName,
 								aliases: [
 									...asStringList(meta.aliases),
 									appName.replace(/-/gu, " "),
@@ -332,11 +332,11 @@ export function materializeExample(
 		});
 		const packageJsonPath = join(options.outputDir, "package.json");
 		if (existsSync(packageJsonPath)) {
-			const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8")) as Record<
-				string,
-				unknown
-			>;
-			pkg.name = `@hobo/app-${options.appName}`;
+			// SAFETY: parsed or fixture value is the named domain type after this assertion.
+			const pkg = JSON.parse(
+				readFileSync(packageJsonPath, "utf8"),
+			) as JsonObject;
+			Object.assign(pkg, { name: `@hobo/app-${options.appName}` });
 			writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, "\t")}\n`);
 		} else {
 			// try-site app dirs lean on their parent package for deps; a scaffold
@@ -411,11 +411,9 @@ export function materializeExample(
 	});
 	const packageJsonPath = join(options.outputDir, "package.json");
 	if (existsSync(packageJsonPath)) {
-		const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8")) as Record<
-			string,
-			unknown
-		>;
-		pkg.name = `@hobo/app-${options.appName}`;
+		// SAFETY: parsed or fixture value is the named domain type after this assertion.
+		const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8")) as JsonObject;
+		Object.assign(pkg, { name: `@hobo/app-${options.appName}` });
 		writeFileSync(packageJsonPath, `${JSON.stringify(pkg, null, "\t")}\n`);
 	}
 	writeFileSync(

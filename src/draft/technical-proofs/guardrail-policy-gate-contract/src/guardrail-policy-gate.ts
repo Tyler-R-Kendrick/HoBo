@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
+
 
 export const GUARDRAIL_CONTRACT_SCHEMA = "hobo.guardrail-policy-gate/v1";
 export const POLICY_DECISION_SCHEMA = "hobo.policy-ir.decision/v1";
@@ -363,9 +365,9 @@ function evaluatePolicyLens(lens) {
 function evaluateTraceLens(lens) {
   const ref = lens?.openInferenceTrajectory;
   return {
-    passed: typeof ref === "string" && ref.trim() !== "",
+    passed: isJsonString(ref) && ref.trim() !== "",
     openInferenceTrajectory: ref,
-    violations: typeof ref === "string" && ref.trim() !== "" ? [] : ["trace lens lacks OpenInference trajectory"],
+    violations: isJsonString(ref) && ref.trim() !== "" ? [] : ["trace lens lacks OpenInference trajectory"],
   };
 }
 
@@ -407,7 +409,7 @@ function parseChecks(input) {
     return {
       rail: expectString(parsed.rail, `$.checks[${index}].rail`),
       status,
-      ...(parsed.finding ? { finding: expectString(parsed.finding, `$.checks[${index}].finding`) } : {}),
+      ...(parsed.finding ? { finding: expectString(parsed.finding, `$.checks[${index}].finding`) } : undefined),
     };
   });
 }
@@ -467,7 +469,7 @@ function hashJson(value) {
 }
 
 function stableJson(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
@@ -484,21 +486,21 @@ function uniqueSorted(values) {
 }
 
 function assertNumber(value, path) {
-  if (typeof value !== "number" || !Number.isFinite(value)) {
+  if (!isJsonNumber(value) || !Number.isFinite(value)) {
     throw new Error(`${path} must be a finite number`);
   }
   return value;
 }
 
 function expectObject(value, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${path} must be an object`);
   }
   return value;
 }
 
 function expectString(value, path) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${path} must be a non-empty string`);
   }
   return value;

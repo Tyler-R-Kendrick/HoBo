@@ -117,7 +117,7 @@ test("provider verifies all wrpc-membrane pact interactions", async () => {
 						providerId: body.providerId,
 						exportInterface: iface,
 					}),
-				(error: unknown) => {
+				(error: Error) => {
 					if (!(error instanceof WireVersionIncompatibleError)) return false;
 					assert.deepEqual(
 						{
@@ -159,7 +159,7 @@ test("provider verifies all wrpc-membrane pact interactions", async () => {
 						body.operation,
 						body.payload,
 					),
-				(error: unknown) => {
+				(error: Error) => {
 					if (!(error instanceof NoRouteError)) return false;
 					assert.deepEqual({ code: error.code }, interaction.response.body);
 					return true;

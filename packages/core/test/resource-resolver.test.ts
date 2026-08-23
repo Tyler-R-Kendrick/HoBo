@@ -4,8 +4,8 @@
 // both directions of the contract, then the registry's two determinism
 // promises: id-sorted listing and a refused duplicate rather than a silently
 // shadowed resolver.
-import { describe, expect, it } from "vitest";
 
+import { describe, expect, it } from "vitest";
 import {
 	createResolverRegistry,
 	type HttpTransport,
@@ -19,6 +19,7 @@ import {
 	ResolverError,
 	type ResourceResolver,
 } from "../src/index.js";
+import type { JsonObject } from "../src/json.js";
 
 const transport: HttpTransport = async () => ({
 	status: 200,
@@ -26,9 +27,7 @@ const transport: HttpTransport = async () => ({
 	body: "{}",
 });
 
-function requestInput(
-	overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+function requestInput(overrides: JsonObject = {}): JsonObject {
 	return {
 		ref: {
 			slot: "data",
@@ -41,9 +40,7 @@ function requestInput(
 	};
 }
 
-function outcomeInput(
-	overrides: Record<string, unknown> = {},
-): Record<string, unknown> {
+function outcomeInput(overrides: JsonObject = {}): JsonObject {
 	return {
 		contract: RESOLVER_CONTRACT,
 		action: "create",
@@ -65,7 +62,7 @@ function resolver(overrides: Partial<ResourceResolver> = {}): ResourceResolver {
 	};
 }
 
-function codeOf(run: () => unknown): string {
+function codeOf(run: () => JsonValue): string {
 	try {
 		run();
 	} catch (error) {
@@ -214,6 +211,7 @@ describe("parseResolveRequest", () => {
 			throw new Error("expected a refusal");
 		} catch (error) {
 			expect(error).toBeInstanceOf(ResolverError);
+			// SAFETY: assertion required at this I/O or test boundary.
 			expect((error as ResolverError).message).not.toMatch(/sk_live/u);
 		}
 	});
@@ -295,7 +293,7 @@ describe("parseResolveRequest", () => {
 	});
 
 	it("refuses a cyclic desired bag, which has no JSON representation", () => {
-		const desired: Record<string, unknown> = { name: "orders" };
+		const desired: JsonObject = { name: "orders" };
 		desired.self = desired;
 
 		expect(codeOf(() => parseResolveRequest(requestInput({ desired })))).toBe(
@@ -430,11 +428,12 @@ describe("createResolverRegistry", () => {
 	});
 
 	it("refuses a registration missing a required method", () => {
+		// SAFETY: assertion required at this I/O or test boundary.
 		const incomplete = {
 			providerId: "vercel",
 			productId: "vercel.postgres",
 			delete: async (): Promise<void> => undefined,
-		} as unknown as ResourceResolver;
+		} as ResourceResolver;
 
 		expect(codeOf(() => createResolverRegistry([incomplete]))).toBe(
 			"RESOLVER_PRODUCT_UNSUPPORTED",

@@ -64,6 +64,10 @@ Feature: Gate live fixes and generated-stack propagation
 - Existing POC contract modules are imported and executed directly.
 - The focused package test exercises the reference service, negative cases, and Pact inventory.
 - Pact files declare every service boundary used by the simulation.
+- Bounded repair, LLM fill, material sanitization, and generation-pipeline IO changes are absorbed without weakening the safety gates.
+- Generation safety-gate, validation-stage, and human-approval changes are absorbed without changing the deterministic safety simulation.
+
+OpenInference trajectory-capture changes are absorbed without changing the deterministic generation safety simulation.
 
 ## What Is Mocked
 
@@ -84,3 +88,7 @@ This package ships the architecture-guard evidence required by
 - `architecture/` — protobuf data shapes and CUE constraints for Generation Pipeline Training Ai Safety.
 - `architecture/pacts/` — PACT contract for the package boundary.
 - `architecture.md` — parse-don't-validate and event-architecture evidence.
+
+## Cascade reconciliation (83d9b5c92)
+
+The `slsa-provenance-certification-contract` technical proof refresh is absorbed without changing generation, training, or safety evidence.

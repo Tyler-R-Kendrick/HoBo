@@ -2,6 +2,7 @@ import type { Pool } from "pg";
 
 import { createRuntimeLocalQueueClock } from "../../../queue-clock-runtime-port-contract/src/queue-clock-runtime-port.js";
 import { clone, requireNonEmptyString } from "../postgres/json.js";
+import { type JsonValue } from "../json.js";
 
 type LocalQueueClock = ReturnType<typeof createRuntimeLocalQueueClock>;
 
@@ -31,7 +32,7 @@ export function createPostgresQueueClock(
 
 function createPostgresQueuePort(pool: Pool, local: LocalQueueClock) {
   return Object.freeze({
-    async enqueue(queueName: string, body: unknown, options: { idempotencyKey: string }) {
+    async enqueue(queueName: string, body: JsonValue, options: { idempotencyKey: string }) {
       const name = requireNonEmptyString(queueName, "queueName");
       const idempotencyKey = requireNonEmptyString(options.idempotencyKey, "options.idempotencyKey");
       const existing = await pool.query(
@@ -67,7 +68,7 @@ function createPostgresQueuePort(pool: Pool, local: LocalQueueClock) {
       return localResult;
     },
 
-    async handle(queueName: string, handler: (message: unknown) => Promise<void> | void, options = {}) {
+    async handle(queueName: string, handler: (message: JsonValue) => Promise<void> | void, options = {}) {
       return local.queue.handle(queueName, handler, options);
     },
 
@@ -99,7 +100,7 @@ function createPostgresQueuePort(pool: Pool, local: LocalQueueClock) {
       return local.queue.simulateRedelivery(messageId);
     },
 
-    async signal(actorKey: string, msg: unknown, options: { idempotencyKey: string }) {
+    async signal(actorKey: string, msg: JsonValue, options: { idempotencyKey: string }) {
       return local.queue.signal(actorKey, msg, options);
     },
   });

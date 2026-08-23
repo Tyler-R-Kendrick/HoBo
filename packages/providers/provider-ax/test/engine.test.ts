@@ -22,6 +22,7 @@ test("optimize returns a provenance-pinned artifact candidate", async () => {
 	});
 
 	const candidate = await engine.optimize(
+		// SAFETY: test fixture is a wire-shaped OptimizeRequest; the engine re-parses.
 		optimizeRequest(TRAJECTORIES) as never,
 	);
 
@@ -49,8 +50,14 @@ test("optimize is deterministic for the same request (stable provenance)", async
 		ai: mockModel("access"),
 		maxMetricCalls: 8,
 	});
-	const first = await engine.optimize(optimizeRequest(TRAJECTORIES) as never);
-	const second = await engine.optimize(optimizeRequest(TRAJECTORIES) as never);
+	const first = await engine.optimize(
+		// SAFETY: test fixture is a wire-shaped OptimizeRequest; the engine re-parses.
+		optimizeRequest(TRAJECTORIES) as never,
+	);
+	const second = await engine.optimize(
+		// SAFETY: test fixture is a wire-shaped OptimizeRequest; the engine re-parses.
+		optimizeRequest(TRAJECTORIES) as never,
+	);
 	assert.deepEqual(
 		JSON.parse(JSON.stringify(first.provenance)),
 		JSON.parse(JSON.stringify(second.provenance)),
@@ -61,22 +68,27 @@ test("optimize is deterministic for the same request (stable provenance)", async
 test("optimize parses its boundary and rejects malformed requests", async () => {
 	const engine = createAxTrainingEngine({ ai: mockModel("access") });
 	await assert.rejects(
+		// SAFETY: empty requestId is the malformed-input case; the engine re-parses.
 		engine.optimize({ requestId: "" } as never),
 		TrainingEngineParseError,
 	);
 });
 
 test("the engine version constant matches the installed ax package", () => {
-	const installed = JSON.parse(
+	const installedJson: { version?: string } = JSON.parse(
 		readFileSync(
 			new URL("../node_modules/@ax-llm/ax/package.json", import.meta.url),
 			"utf8",
 		),
-	) as { version: string };
+	);
+	const installed = { version: String(installedJson.version ?? "") };
 	// AX_ENGINE_VERSION is engine-internal; it surfaces on every artifact.
 	// Re-derive it from an emitted candidate to avoid exporting the constant.
 	return createAxTrainingEngine({ ai: mockModel("access"), maxMetricCalls: 4 })
-		.optimize(optimizeRequest(TRAJECTORIES) as never)
+		.optimize(
+			// SAFETY: test fixture is a wire-shaped OptimizeRequest; the engine re-parses.
+			optimizeRequest(TRAJECTORIES) as never,
+		)
 		.then((candidate) => {
 			assert.equal(candidate.body.case, "artifact");
 			if (candidate.body.case === "artifact") {

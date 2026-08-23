@@ -17,6 +17,7 @@ import {
 	type QueueName,
 } from "@hobo/core";
 
+import { cloneAsJson } from "./json.js";
 import {
 	appendTrace,
 	cloneStore,
@@ -56,7 +57,7 @@ export function createLocalQueue(store: QueueClockStore): Queue {
 				messageId: `msg-${store.nextMessageSeq++}`,
 				queueName: queue.name,
 				idempotencyKey,
-				body: cloneStore(body),
+				body: cloneAsJson(body),
 				state: "pending",
 				availableAtMs: normalizeNonNegativeInteger(
 					options.availableAtMs ?? store.nowMs,
@@ -107,7 +108,7 @@ export function createLocalQueue(store: QueueClockStore): Queue {
 			handler: (message: LeasedMessage) => Promise<void>,
 			options: DequeueOptions = {},
 		): Promise<HandleReport> {
-			if (typeof handler !== "function") {
+			if (!(handler instanceof Function)) {
 				throw new TypeError("handler must be a function");
 			}
 			const leased = this.dequeue(queueName, options);
@@ -245,6 +246,7 @@ function validateLease(message: QueueMessageRecord, leaseId: LeaseId): void {
 function releaseForRetry(
 	message: QueueMessageRecord,
 	store: QueueClockStore,
+	// SAFETY: assertion to `message.leaseId as LeaseId | null` is required at this boundary.
 	leaseId: LeaseId | null = message.leaseId as LeaseId | null,
 ): boolean {
 	if (message.leaseId !== leaseId) {

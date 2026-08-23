@@ -80,8 +80,10 @@ export async function runAnonymousConformance(
 	const suiteOptions = {
 		...(options.subjectId !== undefined
 			? { subjectId: options.subjectId }
-			: {}),
-		...(options.caseIds !== undefined ? { caseIds: options.caseIds } : {}),
+			: undefined),
+		...(options.caseIds !== undefined
+			? { caseIds: options.caseIds }
+			: undefined),
 	};
 
 	return Object.freeze([

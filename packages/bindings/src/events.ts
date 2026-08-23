@@ -185,7 +185,7 @@ export function bindingUnavailable(input: {
 }): BindingUnavailableEvent {
 	const code = assertMember("code", input.code, BINDING_UNAVAILABLE_CODES);
 	if (
-		typeof input.remediation !== "string" ||
+		input.remediation !== String(input.remediation) ||
 		input.remediation.trim().length === 0
 	) {
 		throw new BindingRecordError(

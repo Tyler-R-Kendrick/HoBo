@@ -31,19 +31,41 @@ const catalog = create(ProductListSchema, {
  * either holds a parsed `OrderRequest` or the boundary refused with a
  * `TypeError`.
  */
-export function parseOrderRequest(raw: unknown): OrderRequest {
-	if (typeof raw !== "object" || raw === null) {
+type JsonObject = { readonly [key: string]: JsonValue };
+type JsonValue =
+	| string
+	| number
+	| boolean
+	| null
+	| JsonValue[]
+	| JsonObject;
+
+function isJsonObject(value: JsonValue): value is JsonObject {
+	return (
+		value !== null &&
+		!Array.isArray(value) &&
+		Object.prototype.toString.call(value) === "[object Object]"
+	);
+}
+
+function isJsonString(value: JsonValue | undefined): value is string {
+	return Object.prototype.toString.call(value) === "[object String]";
+}
+
+function isJsonNumber(value: JsonValue | undefined): value is number {
+	return Object.prototype.toString.call(value) === "[object Number]";
+}
+
+export function parseOrderRequest(raw: JsonValue): OrderRequest {
+	if (!isJsonObject(raw)) {
 		throw new TypeError("order body must be a JSON object");
 	}
-	const { sku, quantity } = raw as { sku?: unknown; quantity?: unknown };
-	if (typeof sku !== "string" || sku.trim().length === 0) {
+	const sku = raw.sku;
+	const quantity = raw.quantity;
+	if (!isJsonString(sku) || sku.trim().length === 0) {
 		throw new TypeError("order sku must be a non-empty string");
 	}
-	if (
-		typeof quantity !== "number" ||
-		!Number.isInteger(quantity) ||
-		quantity < 1
-	) {
+	if (!isJsonNumber(quantity) || !Number.isInteger(quantity) || quantity < 1) {
 		throw new TypeError("order quantity must be a positive integer");
 	}
 	return create(OrderRequestSchema, { sku: sku.trim(), quantity });
@@ -65,7 +87,9 @@ export async function shopApi(request: Request): Promise<Response> {
 	if (request.method === "POST" && url.pathname === "/orders") {
 		let order: OrderRequest;
 		try {
-			order = parseOrderRequest(await request.json());
+			const body = await request.json();
+			// SAFETY: request JSON is untyped; parseOrderRequest is the boundary.
+			order = parseOrderRequest(body as JsonValue);
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			return Response.json({ error: message }, { status: 400 });

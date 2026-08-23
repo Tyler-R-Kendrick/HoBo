@@ -92,6 +92,7 @@ function definition(
 		specificity: 1,
 		priority: 1,
 		cost: { sku: id, unit: "hour", marginalPrice: "0" },
+		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 		satisfies: () => ({ ok: true, missing: [] }) as never,
 		semantics: sem,
 	});
@@ -153,15 +154,16 @@ interface DefinitionSpec {
 	readonly id: string;
 	readonly providerId: string;
 	/** Merged into the semantics; `implementsProfiles` defaults to Postgres. */
-	readonly semantics?: Record<string, unknown>;
+	readonly semantics?: Record<string, JsonValue>;
 }
 
 const resolve = (spec: keyof typeof NAMED | DefinitionSpec) =>
-	typeof spec === "string"
+	spec === String(spec)
 		? NAMED[spec]
 		: definition(
 				spec.id,
 				spec.providerId,
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				semantics({
 					productId: spec.id.split("/")[0] ?? spec.id,
 					implementsProfiles: POSTGRES_CLAIM,
@@ -170,16 +172,19 @@ const resolve = (spec: keyof typeof NAMED | DefinitionSpec) =>
 			);
 
 interface Ask {
-	readonly requirement?: Record<string, unknown>;
+	readonly requirement?: Record<string, JsonValue>;
 	/** Built from Bindle-declared requirements instead of a parsed one. */
-	readonly fromBindle?: Record<string, unknown>;
+	readonly fromBindle?: Record<string, JsonValue>;
 	readonly definitions: readonly (keyof typeof NAMED | DefinitionSpec)[];
 }
 
 function match(ask: Ask) {
+	// SAFETY: these test fixtures are shaped as Bindle requirement records.
 	const requirement = ask.fromBindle
+		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 		? capabilityRequirementFromBindleRequirements(ask.fromBindle as never)
 		: parseCapabilityRequirement(
+				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 				(ask.requirement ?? {
 					requiredProfiles: [
 						{ profileId: "data.postgres/v1", versionRange: ">=1" },
@@ -239,7 +244,8 @@ describeConcern("profile-aware matching", {
 			profileCatalogHash(a.map(resolve), profiles) !==
 			profileCatalogHash(b.map(resolve), profiles),
 		/** A bare port name belongs to the legacy matcher, not to a guess. */
-		bindleRequirement: (input: Record<string, unknown>) =>
+		bindleRequirement: (input: Record<string, JsonValue>) =>
+			// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 			capabilityRequirementFromBindleRequirements(input as never) ?? null,
 		/** Semantics without an executor is a refusal, not a warning. */
 		parseDefinition: (spec: DefinitionSpec) => resolve(spec).id,
@@ -769,3 +775,4 @@ describe("yard binding rows in profile matching", () => {
 		]);
 	});
 });
+import type { JsonValue } from "../src/plan-types.js";

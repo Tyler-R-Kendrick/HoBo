@@ -67,6 +67,7 @@ describe("junction()", () => {
 				expect.unreachable(`accepted invalid name ${bad}`);
 			} catch (error) {
 				expect(error).toBeInstanceOf(JunctionParseError);
+				// SAFETY: the preceding assertion establishes the caught error shape.
 				expect((error as JunctionParseError).code).toBe(
 					"junction.name.invalid",
 				);
@@ -80,6 +81,7 @@ describe("junction()", () => {
 			expect.unreachable("accepted empty membership");
 		} catch (error) {
 			expect(error).toBeInstanceOf(JunctionParseError);
+			// SAFETY: the preceding assertion establishes the caught error shape.
 			expect((error as JunctionParseError).code).toBe("junction.members.empty");
 		}
 	});
@@ -89,6 +91,7 @@ describe("junction()", () => {
 			junction("my-app", { yards: [makeYard("aws", "aws")] });
 			expect.unreachable("accepted single member");
 		} catch (error) {
+			// SAFETY: junction() throws JunctionParseError for invalid membership.
 			expect((error as JunctionParseError).code).toBe(
 				"junction.members.insufficient",
 			);
@@ -103,6 +106,7 @@ describe("junction()", () => {
 			junction("my-app", { yards: [one, two] });
 			expect.unreachable("accepted duplicate yard names");
 		} catch (error) {
+			// SAFETY: junction() throws JunctionParseError for duplicate members.
 			expect((error as JunctionParseError).code).toBe(
 				"junction.member.duplicate",
 			);
@@ -114,10 +118,12 @@ describe("junction()", () => {
 
 		try {
 			junction("my-app", {
+				// SAFETY: this test deliberately injects a non-Yard fixture.
 				yards: [aws, { kind: "camp" } as never],
 			});
 			expect.unreachable("accepted a non-yard member");
 		} catch (error) {
+			// SAFETY: junction() throws JunctionParseError for invalid members.
 			expect((error as JunctionParseError).code).toBe(
 				"junction.member.invalid",
 			);
@@ -135,6 +141,7 @@ describe("junction()", () => {
 			});
 			expect.unreachable("accepted a manifest for a non-member");
 		} catch (error) {
+			// SAFETY: junction() throws JunctionParseError for unknown manifest yards.
 			expect((error as JunctionParseError).code).toBe(
 				"junction.manifest.unknown-yard",
 			);
@@ -148,10 +155,12 @@ describe("junction()", () => {
 		try {
 			junction("my-app", {
 				yards: [aws, azure],
+				// SAFETY: this test deliberately injects a capability outside the closed tier vocabulary.
 				manifests: { aws: { capabilities: ["quantum-tunnel" as never] } },
 			});
 			expect.unreachable("accepted an unknown capability");
 		} catch (error) {
+			// SAFETY: junction() throws JunctionParseError for invalid capabilities.
 			expect((error as JunctionParseError).code).toBe(
 				"junction.manifest.invalid",
 			);

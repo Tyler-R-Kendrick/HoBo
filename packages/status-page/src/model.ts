@@ -12,7 +12,6 @@ import {
 	type ComponentStatus,
 	type ComponentStatusRecord,
 	type DailyStatusRecord,
-	type IncidentImpact,
 	type IncidentRecord,
 	type MaintenanceRecord,
 	type OverallIndicator,
@@ -21,6 +20,7 @@ import {
 	type StatusScope,
 	worstComponentStatus,
 } from "./types.js";
+import type { Mutable } from "./types.js";
 
 /** Default freshness budget: 15 minutes without a signal → delayed/unknown. */
 export const DEFAULT_FRESHNESS_BUDGET_MS = 15 * 60 * 1000;
@@ -38,22 +38,20 @@ export interface EvaluateOptions {
 	readonly recentIncidentWindowMs?: number;
 }
 
-const IMPACT_TO_STATUS: Readonly<Record<IncidentImpact, ComponentStatus>> = {
+const IMPACT_TO_STATUS = {
 	minor: "degraded",
 	major: "partial_outage",
 	critical: "major_outage",
-};
+} as const;
 
-export const INDICATOR_DESCRIPTIONS: Readonly<
-	Record<OverallIndicator, string>
-> = {
+export const INDICATOR_DESCRIPTIONS = {
 	none: "All systems operational",
 	minor: "Degraded performance",
 	major: "Partial system outage",
 	critical: "Major system outage",
 	maintenance: "Scheduled maintenance in progress",
 	unknown: "Status delayed / unknown",
-};
+} as const;
 
 function activeIncidentsFor(row: StatusPageRow): readonly IncidentRecord[] {
 	return Object.values(row.incidents)
@@ -94,11 +92,12 @@ function specFor(
 ): ComponentSpec {
 	const spec = declared.get(id);
 	if (spec) return spec;
-	return Object.freeze({
+	const result = {
 		id,
 		label: observed?.label ?? id,
 		kind: "capability" as const,
-	});
+	};
+	return Object.freeze(result);
 }
 
 export function describeIndicator(indicator: OverallIndicator): string {
@@ -206,21 +205,22 @@ export function toStatusPageModel(
 		if (maintenanceOverlay.has(id) && status === "operational") {
 			status = "maintenance";
 		}
-		return Object.freeze({
+		const result: Mutable<ComponentStatusRecord> = {
 			spec: specFor(id, declared, component),
 			status,
-			...(component?.lastSignalAt !== undefined
-				? { lastSignalAt: component.lastSignalAt }
-				: {}),
-			...(fresh && component?.attainment !== undefined
-				? { attainment: component.attainment }
-				: {}),
-			...(fresh && component?.target !== undefined
-				? { target: component.target }
-				: {}),
 			history: historyOf(component),
 			delayed,
-		});
+		};
+		if (component?.lastSignalAt !== undefined) {
+			result.lastSignalAt = component.lastSignalAt;
+		}
+		if (fresh && component?.attainment !== undefined) {
+			result.attainment = component.attainment;
+		}
+		if (fresh && component?.target !== undefined) {
+			result.target = component.target;
+		}
+		return Object.freeze(result);
 	});
 
 	const recentIncidents = Object.values(row?.incidents ?? {})

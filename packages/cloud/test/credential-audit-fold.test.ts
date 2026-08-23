@@ -41,10 +41,11 @@ let nextSeq = 0;
 /** Build one envelope. `seq` auto-increments unless pinned. */
 function envelope(
 	type: string,
-	data: Record<string, unknown>,
+	data: Record<string, JsonValue>,
 	overrides: Partial<EventEnvelope> = {},
 ): EventEnvelope {
 	nextSeq += 1;
+	// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 	return {
 		id: `evt-${nextSeq}`,
 		type,
@@ -750,3 +751,4 @@ describe("compaction against the retention floor", () => {
 		expect(events).toHaveLength(2);
 	});
 });
+import type { JsonValue } from "../src/plan-types.js";

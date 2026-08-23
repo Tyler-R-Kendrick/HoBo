@@ -14,6 +14,14 @@ import {
 	SESSION_RESOURCES_SCHEMA,
 } from "../src/session-resources.js";
 
+/**
+ * Ports for the "nothing is listening here" fixture, chosen below Linux's
+ * default ephemeral range (32768-60999) so that no port-0 bind in this file --
+ * or in any test running beside it -- can ever be assigned one of them.
+ */
+const DEAD_APP_PORT = 19999;
+const DEAD_CONTROLS_PORT = 19998;
+
 const homes: string[] = [];
 const servers: Server[] = [];
 afterEach(async () => {
@@ -44,6 +52,7 @@ async function openListen(): Promise<string> {
 	await new Promise<void>((resolve) => {
 		server.listen(0, "127.0.0.1", () => resolve());
 	});
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const addr = server.address() as AddressInfo;
 	return `http://127.0.0.1:${addr.port}/`;
 }
@@ -289,10 +298,17 @@ describe("session resource inventory", () => {
 				environment: "local-dev",
 			},
 			bindleName: "stale-app",
-			appUrl: "http://127.0.0.1:45999/",
-			debugUrl: "http://127.0.0.1:45999/?__hobo_debug=1",
-			controlsUrl: "http://127.0.0.1:45998/?token=opaque",
-			reportUrl: "http://127.0.0.1:45998/__hobo/evidence?token=opaque",
+			// Below the ephemeral range on purpose. The status here is decided by
+			// a real TCP probe, so the test needs a port nothing is listening on
+			// -- and `openListen()` elsewhere in this file binds port 0, which
+			// Linux fills from 32768-60999. A fixture port inside that range gets
+			// handed to one of those servers under a parallel run and this test
+			// reads "live" instead of "last-seen". These sit below it, where no
+			// port-0 bind can land.
+			appUrl: `http://127.0.0.1:${DEAD_APP_PORT}/`,
+			debugUrl: `http://127.0.0.1:${DEAD_APP_PORT}/?__hobo_debug=1`,
+			controlsUrl: `http://127.0.0.1:${DEAD_CONTROLS_PORT}/?token=opaque`,
+			reportUrl: `http://127.0.0.1:${DEAD_CONTROLS_PORT}/__hobo/evidence?token=opaque`,
 		});
 		const inventory = assembleSessionResources({
 			hoboHome,
@@ -309,6 +325,7 @@ describe("session resource inventory", () => {
 		).toBe("declared");
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("projects Station, Yard, and Camp managed resources as individually owned children", async () => {
 		const hoboHome = await loginHome();
 		const project = join(hoboHome, "hello-world");
@@ -408,6 +425,7 @@ describe("session resource inventory", () => {
 		});
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("hosts project eval tests as a same-camp sidecar, not a capability", async () => {
 		const hoboHome = await loginHome();
 		const project = join(hoboHome, "hello-world");

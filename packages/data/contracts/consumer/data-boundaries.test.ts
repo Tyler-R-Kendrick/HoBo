@@ -13,6 +13,7 @@ import {
 	defineAggregate,
 	defineProjection,
 } from "../../src/index.js";
+import { parseOrderId, parseOrderPlacedData } from "../../test/helpers.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
 
@@ -40,7 +41,7 @@ const orders = defineAggregate<OrderState, { id: string; totalCents: number }>({
 		event.type === "order.Placed"
 			? {
 					placed: true,
-					totalCents: (event.data as { totalCents: number }).totalCents,
+					totalCents: parseOrderPlacedData(event.data).totalCents,
 				}
 			: state,
 	decide: (state, command, emitter) => {
@@ -54,12 +55,9 @@ const orders = defineAggregate<OrderState, { id: string; totalCents: number }>({
 
 const orderView = defineProjection<{ orderId: string; totalCents: number }>({
 	name: "orders",
-	key: (event) => (event.data as { orderId: string }).orderId,
+	key: (event) => parseOrderId(event.data),
 	on: {
-		"order.Placed": (_row, event) => ({
-			orderId: (event.data as { orderId: string }).orderId,
-			totalCents: (event.data as { totalCents: number }).totalCents,
-		}),
+		"order.Placed": (_row, event) => parseOrderPlacedData(event.data),
 	},
 });
 

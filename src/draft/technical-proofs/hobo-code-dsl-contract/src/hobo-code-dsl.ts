@@ -39,7 +39,7 @@ export class HoboCodeDslError extends Error {
 }
 
 export function parseHoboCode(source) {
-  if (typeof source !== "string") {
+  if (!isString(source)) {
     throw new TypeError("Hobo Code source must be a string");
   }
 
@@ -504,7 +504,7 @@ function formatBehavior(kind, behavior) {
 }
 
 function astFrom(input) {
-  if (typeof input === "string") return parseHoboCode(input);
+  if (isString(input)) return parseHoboCode(input);
   return normalizeAst(input);
 }
 
@@ -519,7 +519,7 @@ function stripComment(line) {
 }
 
 function required(value, name) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new HoboCodeDslError("HOBO_CODE_REQUIRED", 0, `${name} is required`);
   }
   return value;
@@ -542,7 +542,7 @@ function sortResources(values) {
 
 function compact(value) {
   if (Array.isArray(value)) return value.length > 0 ? value : undefined;
-  if (!value || typeof value !== "object") return value;
+  if (!isObject(value)) return value;
   return Object.fromEntries(
     Object.entries(value)
       .filter(([, nested]) => nested !== undefined && (!Array.isArray(nested) || nested.length > 0))
@@ -552,7 +552,7 @@ function compact(value) {
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (!value || typeof value !== "object") return value;
+  if (!isObject(value)) return value;
   return Object.fromEntries(
     Object.keys(value)
       .sort()
@@ -562,6 +562,18 @@ function sortKeys(value) {
 
 function json(value) {
   return `${JSON.stringify(sortKeys(value), null, 2)}\n`;
+}
+
+function isString(value) {
+  try {
+    return String.prototype.valueOf.call(value) === value;
+  } catch {
+    return false;
+  }
+}
+
+function isObject(value) {
+  return value !== null && Object(value) === value && Object.prototype.toString.call(value) !== "[object Function]";
 }
 
 function result(exitCode, stdout, stderr) {

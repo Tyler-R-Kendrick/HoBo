@@ -7,7 +7,7 @@ handoffs before downstream lifecycle implementation work fans out.
 ## Focused Gate
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\tenant-data-lifecycle-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\tenant-data-lifecycle-contract test
 ```
 
 ## Proof Surface

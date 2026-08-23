@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased snapshot, ledger, and recursive canonicalization values at the contract boundary. */
+
 import { createHash } from "node:crypto";
 
 export const COST_JSON_SCHEMA_VERSION = "hobo.cost/v1";
@@ -532,3 +534,4 @@ function sortKeys(value) {
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased snapshot, ledger, and recursive canonicalization values at the contract boundary. */

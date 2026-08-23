@@ -1,4 +1,9 @@
-import { createMeteringBus, type TenantId } from "@hobo/core";
+import {
+	createMeteringBus,
+	parseConsumerGroupId,
+	parseTenantId,
+	parseTopicName,
+} from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -59,7 +64,7 @@ describe("@hobo/provider-kafka", () => {
 	});
 
 	it("publish/consume via kafka messaging + metering", async () => {
-		const events: unknown[] = [];
+		const events: Array<{ eventType?: string; tenantId?: string }> = [];
 		const metering = createMeteringBus([
 			{
 				sinkId: "test",
@@ -74,19 +79,14 @@ describe("@hobo/provider-kafka", () => {
 		});
 		expect(bus.backend).toBe("native-kafka");
 		expect(bus.capabilities.transactionalProduce).toBe(true);
-		await bus.publish("orders" as never, { id: 1 }, { key: "k1" });
-		const batch = await bus.consume("orders" as never, "cg" as never);
+		await bus.publish(parseTopicName("orders"), { id: 1 }, { key: "k1" });
+		const batch = await bus.consume(
+			parseTopicName("orders"),
+			parseConsumerGroupId("cg"),
+		);
 		expect(batch).toHaveLength(1);
-		expect(
-			events.some(
-				(e) => (e as { eventType: string }).eventType === "messaging.publish",
-			),
-		).toBe(true);
-		expect(
-			events.some(
-				(e) => (e as { tenantId: TenantId }).tenantId === ("t1" as TenantId),
-			),
-		).toBe(true);
+		expect(events.some((e) => e.eventType === "messaging.publish")).toBe(true);
+		expect(events.some((e) => e.tenantId === parseTenantId("t1"))).toBe(true);
 	});
 
 	it("provider capability manifest is secretless", () => {
@@ -122,6 +122,6 @@ describe("@hobo/provider-kafka", () => {
 			},
 		});
 		expect(rd.kind).toBe("KafkaCluster");
-		expect((rd.spec as { kind: string }).kind).toBe("confluent");
+		expect("kind" in rd.spec ? rd.spec.kind : undefined).toBe("confluent");
 	});
 });

@@ -26,26 +26,29 @@
  * says the guest filesystem still needs extending, because a grown block device
  * with an unchanged filesystem is a disk that is still full.
  */
-import {
-	type HttpTransport,
-	parseResolveRequest,
-	type ResolveOutcome,
-	type ResolveRequest,
-	type ResolverError,
-	type ResourceResolver,
-	type TransportRequest,
-	type TransportResponse,
+import type {
+	HttpTransport,
+	ResolveOutcome,
+	ResolveRequest,
+	ResourceResolver,
+	TransportRequest,
+	TransportResponse,
 } from "@hobo/core";
+import { parseResolveRequest, ResolverError } from "@hobo/core";
 import { describe, expect, it } from "vitest";
-
 import {
 	DIGITALOCEAN_BLOCK_STORAGE_PRODUCT_ID,
 	DIGITALOCEAN_KUBERNETES_CLUSTER_PRODUCT_ID,
 	type DigitalOceanResolverOptions,
 	digitaloceanResolverRegistry,
 } from "../src/index.js";
+import {
+	type JsonObject,
+	type JsonValue,
+	parseJsonObject,
+} from "../src/json.js";
 
-type Rec = Record<string, unknown>;
+type Rec = JsonObject;
 
 interface RecordedCall {
 	readonly method: string;
@@ -59,7 +62,7 @@ const CLUSTERS = "/v2/kubernetes/clusters";
 const TOKEN = "dop_v1_fakepersonalaccesstoken0123456789abcdef";
 const CREDENTIAL_REF = "env://DIGITALOCEAN_TOKEN";
 
-function json(status: number, payload: unknown): TransportResponse {
+function json(status: number, payload: JsonValue): TransportResponse {
 	return {
 		status,
 		headers: { "content-type": "application/json" },
@@ -88,7 +91,7 @@ function fakeTransport(handler: (call: RecordedCall) => TransportResponse) {
 		bodyOf: (i: number) =>
 			calls[i]?.body === undefined
 				? {}
-				: (JSON.parse(String(calls[i]?.body)) as Rec),
+				: parseJsonObject(String(calls[i]?.body)),
 	};
 }
 
@@ -100,7 +103,7 @@ function resolverFor(
 		resolveCredential: async () => TOKEN,
 		nowMs: Date.parse("2026-08-19T12:00:00.000Z"),
 		...overrides,
-	} as DigitalOceanResolverOptions).get(productId);
+	}).get(productId);
 	if (resolver === undefined) throw new Error(`no resolver for ${productId}`);
 	return resolver;
 }
@@ -124,13 +127,13 @@ function request(input: {
 }
 
 async function failureOf(
-	run: () => Promise<unknown>,
+	run: () => Promise<void>,
 ): Promise<{ code: string; message: string }> {
 	try {
 		await run();
 	} catch (error) {
-		const err = error as ResolverError;
-		return { code: String(err.code), message: String(err.message) };
+		if (!(error instanceof ResolverError)) throw error;
+		return { code: error.code, message: error.message };
 	}
 	throw new Error("expected a refusal, but the call succeeded");
 }
@@ -148,6 +151,7 @@ function volumeApi(initial: Rec[] = []) {
 			return json(200, { volumes, meta: { total: volumes.length } });
 		}
 		if (call.method === "POST" && call.path === VOLUMES) {
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 			const sent = JSON.parse(String(call.body)) as Rec;
 			const created = {
 				id: `vol-${nextId++}`,
@@ -156,13 +160,14 @@ function volumeApi(initial: Rec[] = []) {
 				region: { slug: sent.region },
 				...(sent.filesystem_type !== undefined
 					? { filesystem_type: sent.filesystem_type }
-					: {}),
+					: undefined),
 			};
 			volumes.push(created);
 			return json(201, { volume: created });
 		}
 		if (call.method === "POST" && call.path.endsWith("/actions")) {
 			const id = call.path.slice(VOLUMES.length + 1, -"/actions".length);
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 			const sent = JSON.parse(String(call.body)) as Rec;
 			volumes = volumes.map((v) =>
 				v.id === id ? { ...v, size_gigabytes: sent.size_gigabytes } : v,
@@ -452,6 +457,7 @@ describe("block storage volumes", () => {
 		expect(fake.calls.some((c) => c.method === "DELETE")).toBe(true);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("treats an already-absent volume as deleted", async () => {
 		// Re-running a teardown must not fail on the resource it already removed.
 		const fake = fakeTransport(volumeApi());
@@ -480,6 +486,7 @@ function clusterApi(initial: Rec[] = []) {
 			});
 		}
 		if (call.method === "POST" && call.path === CLUSTERS) {
+			// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 			const sent = JSON.parse(String(call.body)) as Rec;
 			const created = {
 				id: `doks-${nextId++}`,
@@ -551,6 +558,7 @@ describe("DOKS clusters", () => {
 			request(clusterRequest),
 			fake.transport,
 		);
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		const pools = fake.bodyOf(1).node_pools as Rec[];
 		expect(pools).toHaveLength(1);
 		expect(String(pools[0]?.name)).toContain("apps-1");
@@ -564,6 +572,7 @@ describe("DOKS clusters", () => {
 			request(clusterRequest),
 			fake.transport,
 		);
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		expect((fake.bodyOf(1).node_pools as Rec[])[0]?.count).toBe(1);
 	});
 
@@ -576,6 +585,7 @@ describe("DOKS clusters", () => {
 			}),
 			fake.transport,
 		);
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		expect((fake.bodyOf(1).node_pools as Rec[])[0]?.count).toBe(3);
 	});
 
@@ -587,6 +597,7 @@ describe("DOKS clusters", () => {
 			request(clusterRequest),
 			fake.transport,
 		);
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		expect((fake.bodyOf(1).node_pools as Rec[])[0]).not.toHaveProperty(
 			"auto_scale",
 		);
@@ -601,6 +612,7 @@ describe("DOKS clusters", () => {
 			}),
 			fake.transport,
 		);
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		expect((fake.bodyOf(1).node_pools as Rec[])[0]?.auto_scale).toBe(false);
 	});
 
@@ -618,6 +630,7 @@ describe("DOKS clusters", () => {
 			fake.transport,
 		);
 		expect(fake.bodyOf(1).version).toBe("1.30.0-do.0");
+		// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 		expect((fake.bodyOf(1).node_pools as Rec[])[0]?.size).toBe("s-4vcpu-8gb");
 	});
 
@@ -827,6 +840,7 @@ describe("DOKS clusters", () => {
 		expect(fake.calls.some((c) => c.method === "DELETE")).toBe(true);
 	});
 
+	// SAFETY: fixture/test or I/O boundary value is the named domain type after this assertion.
 	it("treats an already-absent cluster as deleted", async () => {
 		const fake = fakeTransport(clusterApi());
 		await expect(

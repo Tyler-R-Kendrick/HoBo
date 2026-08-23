@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-conditional-empty-object-spread -- optional certificate fields must remain omitted when absent. */
 /**
  * The `binding.postgresql/v1` this pack produces.
  *

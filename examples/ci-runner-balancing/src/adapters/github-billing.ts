@@ -13,7 +13,7 @@ import {
 	type UsageSnapshot,
 	UsageSnapshotSchema,
 } from "../_generated/runner_balancing_pb.js";
-import { unknownUsage } from "../parse.js";
+import { isJsonObject, type JsonValue, unknownUsage } from "../parse.js";
 
 export type FetchLike = typeof fetch;
 
@@ -31,11 +31,26 @@ export interface GithubBillingOptions {
 }
 
 interface UsageItem {
-	product?: unknown;
-	unitType?: unknown;
-	quantity?: unknown;
-	netAmount?: unknown;
-	discountAmount?: unknown;
+	product?: JsonValue;
+	unitType?: JsonValue;
+	quantity?: JsonValue;
+	netAmount?: JsonValue;
+	discountAmount?: JsonValue;
+}
+
+export interface FoldedUsage {
+	spendUsd: number;
+	unitsUsed: number;
+}
+
+export interface UsageReader {
+	providerId: string;
+	read(): Promise<UsageSnapshot>;
+}
+
+interface LegacyActionsBilling {
+	total_minutes_used?: JsonValue;
+	total_paid_minutes_used?: JsonValue;
 }
 
 function envNumber(
@@ -51,7 +66,7 @@ function envNumber(
 /** Sum actions/minutes usage items from the enhanced billing platform. */
 export function foldUsageItems(
 	items: readonly UsageItem[],
-): { spendUsd: number; unitsUsed: number } {
+): FoldedUsage {
 	let spendUsd = 0;
 	let unitsUsed = 0;
 	for (const item of items) {
@@ -66,12 +81,9 @@ export function foldUsageItems(
 
 /** Fold the legacy billing/actions response into snapshot numbers. */
 export function foldLegacyActionsBilling(
-	body: {
-		total_minutes_used?: unknown;
-		total_paid_minutes_used?: unknown;
-	},
+	body: LegacyActionsBilling,
 	estimatedPricePerUnitUsd: number,
-): { spendUsd: number; unitsUsed: number } {
+): FoldedUsage {
 	const unitsUsed = Number(body.total_minutes_used ?? 0);
 	const paidMinutes = Number(body.total_paid_minutes_used ?? 0);
 	return {
@@ -83,10 +95,7 @@ export function foldLegacyActionsBilling(
 	};
 }
 
-export function githubActionsUsage(options: GithubBillingOptions): {
-	providerId: string;
-	read(): Promise<UsageSnapshot>;
-} {
+export function githubActionsUsage(options: GithubBillingOptions): UsageReader {
 	const providerId = options.providerId ?? "github_hosted";
 	const apiBase = options.apiBase ?? "https://api.github.com";
 	const env = options.env ?? process.env;
@@ -101,7 +110,7 @@ export function githubActionsUsage(options: GithubBillingOptions): {
 			? `organizations/${options.owner}`
 			: `users/${options.owner}`;
 
-	async function readJson(url: string): Promise<unknown | undefined> {
+	async function readJson(url: string): Promise<JsonValue | undefined> {
 		if (options.token === undefined || options.token === "") return undefined;
 		try {
 			const response = await fetchImpl(url, {
@@ -113,7 +122,9 @@ export function githubActionsUsage(options: GithubBillingOptions): {
 				},
 			});
 			if (!response.ok) return undefined;
-			return await response.json();
+			const body = await response.json();
+			// SAFETY: fetch JSON is untyped; the caller parses fields it needs.
+			return body as JsonValue;
 		} catch {
 			return undefined;
 		}
@@ -137,6 +148,7 @@ export function githubActionsUsage(options: GithubBillingOptions): {
 			const enhanced = await readJson(
 				`${apiBase}/${usagePath}/settings/billing/usage?year=${now.getUTCFullYear()}&month=${now.getUTCMonth() + 1}`,
 			);
+			// SAFETY: assertion to `hanced as { usageItems?: UsageItem[] } | undefined) ` is required at this boundary.
 			const items = (enhanced as { usageItems?: UsageItem[] } | undefined)
 				?.usageItems;
 			if (Array.isArray(items)) {
@@ -152,12 +164,7 @@ export function githubActionsUsage(options: GithubBillingOptions): {
 			const legacy = await readJson(
 				`${apiBase}/${accountPath}/settings/billing/actions`,
 			);
-			if (
-				legacy !== undefined &&
-				legacy !== null &&
-				typeof legacy === "object" &&
-				"total_minutes_used" in legacy
-			) {
+			if (legacy !== undefined && isJsonObject(legacy) && "total_minutes_used" in legacy) {
 				const folded = foldLegacyActionsBilling(legacy, price);
 				return create(UsageSnapshotSchema, {
 					providerId,

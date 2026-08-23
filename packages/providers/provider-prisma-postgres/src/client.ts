@@ -183,8 +183,8 @@ export function createPrismaClient(options: PrismaClientOptions): PrismaClient {
 
 			const invocation = buildCreateDbArgv({
 				...options.invocation,
-				...(input.region !== undefined ? { region: input.region } : {}),
-				...(input.ttl !== undefined ? { ttl: input.ttl } : {}),
+				...(input.region !== undefined ? { region: input.region } : undefined),
+				...(input.ttl !== undefined ? { ttl: input.ttl } : undefined),
 				json: outputMode === "json",
 			});
 
@@ -205,7 +205,10 @@ export function createPrismaClient(options: PrismaClientOptions): PrismaClient {
 				throw new PrismaProviderError(
 					"PROVIDER_OPERATION_AMBIGUOUS",
 					"the create-db run did not complete; a project may or may not exist",
-					{ cause, detail: { idempotencyKey: input.idempotencyKey } },
+					{
+						cause: cause instanceof Error ? cause : new Error(String(cause)),
+						detail: { idempotencyKey: input.idempotencyKey },
+					},
 				);
 			}
 

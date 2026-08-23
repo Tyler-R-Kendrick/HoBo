@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish contracts at the erased runtime-port and clone boundaries. */
 import {
   createManualClock as createEventStoreClock,
   createRuntimeLocalEventStore,

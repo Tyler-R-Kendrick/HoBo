@@ -25,10 +25,7 @@ export type YardHost = {
 	onFrame: () => void;
 };
 
-const TEXT_STYLES: Record<
-	TextStyleId,
-	Phaser.Types.GameObjects.Text.TextStyle
-> = {
+const TEXT_STYLES = {
 	label: {
 		fontFamily: "system-ui, sans-serif",
 		fontSize: "11px",
@@ -38,7 +35,7 @@ const TEXT_STYLES: Record<
 	mono9: { fontFamily: "ui-monospace, monospace", fontSize: "9px" },
 	mono11: { fontFamily: "ui-monospace, monospace", fontSize: "11px" },
 	mono12: { fontFamily: "ui-monospace, monospace", fontSize: "12px" },
-};
+} satisfies Record<TextStyleId, Phaser.Types.GameObjects.Text.TextStyle>;
 
 function hex(color: string): number {
 	return Phaser.Display.Color.HexStringToColor(color).color;
@@ -130,7 +127,7 @@ export class YardScene extends Phaser.Scene {
 			this.objects.set(item.id, this.build(item));
 			this.signatures.set(item.id, sig);
 		}
-		for (const [id, obj] of [...this.objects]) {
+		for (const [id, obj] of this.objects) {
 			if (!seen.has(id)) {
 				obj.destroy();
 				this.objects.delete(id);
@@ -206,6 +203,6 @@ function signature(item: RenderItem): string {
 	return JSON.stringify(item);
 }
 
-export function yardParentAspect(): { width: number; height: number } {
+export function yardParentAspect() {
 	return { width: YARD_LAYOUT.width, height: YARD_LAYOUT.height };
 }

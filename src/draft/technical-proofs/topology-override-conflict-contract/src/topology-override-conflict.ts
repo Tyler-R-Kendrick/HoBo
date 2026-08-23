@@ -204,7 +204,7 @@ function validateOverrides(overrides) {
 }
 
 function validatePolicyDecision(policyDecision) {
-  if (!policyDecision || typeof policyDecision !== "object" || Array.isArray(policyDecision)) {
+  if (!isRecord(policyDecision)) {
     return invalid("topology.policy-decision.invalid", "policyDecision must be an object");
   }
   if (policyDecision.phase !== "can-deploy") {
@@ -329,21 +329,22 @@ function overrideIntent(override) {
 }
 
 function failure({ code, reason, type, overrides, inferenceHash, topologySeq, conflict }) {
-  return {
+  const result = {
     ok: false,
     phase: "can-deploy",
     code,
     reason,
-    ...(conflict ? { conflict } : {}),
-    decisionEvent: decisionEvent(type, {
+  };
+  if (conflict) result.conflict = conflict;
+  result.decisionEvent = decisionEvent(type, {
       overrides,
       inferenceHash,
       topologySeq,
       code,
       reason,
       conflict
-    })
-  };
+    });
+  return result;
 }
 
 function decisionEvent(type, { overrides = [], inferenceHash, topologySeq, policyDecision, code, reason, conflict }) {
@@ -395,7 +396,7 @@ function invalid(code, reason) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.length > 0;
+  return isString(value) && value.length > 0;
 }
 
 function stableDigest(value) {
@@ -408,6 +409,19 @@ function canonicalJson(value) {
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (!value || typeof value !== "object") return value;
+  if (!isObjectLike(value)) return value;
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
+}
+
+function isRecord(value) {
+  return Object.prototype.toString.call(value) === "[object Object]";
+}
+
+function isObjectLike(value) {
+  const tag = Object.prototype.toString.call(value);
+  return tag === "[object Object]" || tag === "[object Array]";
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

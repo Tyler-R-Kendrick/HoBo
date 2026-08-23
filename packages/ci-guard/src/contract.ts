@@ -1,3 +1,5 @@
+import type { JsonValue } from "./json.js";
+
 export const CI_FABRIC_SCHEMA = "hobo.ciFabric/v1" as const;
 
 const REQUIRED_PR_CHECKS = [
@@ -79,6 +81,10 @@ export interface E2eQuarantine {
 	readonly blocksPullRequest: boolean;
 }
 
+export interface EnvVars {
+	readonly [key: string]: string;
+}
+
 export interface E2eContract {
 	readonly name: string;
 	readonly fixture: string;
@@ -86,7 +92,7 @@ export interface E2eContract {
 		readonly contents: "read";
 		readonly "id-token": "write";
 	};
-	readonly env: Readonly<Record<string, string>>;
+	readonly env: EnvVars;
 	readonly gatedBy: readonly E2eCostGate[];
 	readonly auth: E2eAuth;
 	readonly deploy: {
@@ -104,14 +110,22 @@ export interface CiFabricContract {
 	readonly e2e: E2eContract;
 }
 
+export interface CiFabricErrorDetails {
+	readonly schema?: JsonValue;
+	readonly violations?: readonly {
+		readonly code: string;
+		readonly message: string;
+	}[];
+}
+
 export class CiFabricContractError extends Error {
 	readonly code: string;
-	readonly details: Record<string, unknown>;
+	readonly details: CiFabricErrorDetails;
 
 	constructor(
 		code: string,
 		message: string,
-		details: Record<string, unknown> = {},
+		details: CiFabricErrorDetails = {},
 	) {
 		super(message);
 		this.name = "CiFabricContractError";
@@ -220,66 +234,203 @@ export function createHoboCiFabricContract(
 		},
 	};
 
-	return deepFreeze(deepMerge(base, overrides)) as CiFabricContract;
+	return freezeContract(mergeContract(base, overrides));
 }
 
-type DeepPartial<T> = T extends object
-	? { readonly [K in keyof T]?: DeepPartial<T[K]> }
-	: T;
+type DeepPartial<T> = {
+	readonly [K in keyof T]?: T[K] extends readonly (infer U)[]
+		? readonly U[]
+		: T[K] extends object
+			? DeepPartial<T[K]>
+			: T[K];
+};
 
-function deepMerge<T extends object>(base: T, overrides: DeepPartial<T>): T {
-	if (Array.isArray(base) || Array.isArray(overrides)) {
-		return (overrides === undefined ? clone(base) : clone(overrides)) as T;
-	}
-	if (!isPlainObject(base) || !isPlainObject(overrides)) {
-		return (overrides === undefined ? clone(base) : clone(overrides)) as T;
-	}
-
-	const merged = { ...base } as Record<string, unknown>;
-	for (const key of new Set([
-		...Object.keys(base),
-		...Object.keys(overrides),
-	])) {
-		const baseValue = (base as Record<string, unknown>)[key];
-		const overrideValue = (overrides as Record<string, unknown>)[key];
-		merged[key] =
-			isPlainObject(baseValue) && isPlainObject(overrideValue)
-				? deepMerge(baseValue, overrideValue)
-				: overrideValue === undefined
-					? clone(baseValue)
-					: clone(overrideValue);
-	}
-	return merged as T;
+function mergeContract(
+	base: CiFabricContract,
+	overrides: DeepPartial<CiFabricContract>,
+): CiFabricContract {
+	return {
+		schema: overrides.schema ?? base.schema,
+		workflow: mergeWorkflow(base.workflow, overrides.workflow),
+		e2e: mergeE2e(base.e2e, overrides.e2e),
+	};
 }
 
-function clone<T>(value: T): T {
-	if (Array.isArray(value)) {
-		return value.map((item) => clone(item)) as T;
-	}
-	if (isPlainObject(value)) {
-		return Object.fromEntries(
-			Object.entries(value).map(([key, child]) => [key, clone(child)]),
-		) as T;
-	}
-	return value;
+function mergeWorkflow(
+	base: WorkflowContract,
+	overrides: DeepPartial<WorkflowContract> | undefined,
+): WorkflowContract {
+	const triggers = overrides?.triggers;
+	const gate = overrides?.pullRequestGate;
+	const cache = overrides?.artifactCache;
+	const mergeGroup = triggers?.mergeGroup ?? base.triggers.mergeGroup;
+	return {
+		name: overrides?.name ?? base.name,
+		path: overrides?.path ?? base.path,
+		triggers:
+			mergeGroup === undefined
+				? {
+						pullRequest: triggers?.pullRequest ?? base.triggers.pullRequest,
+						schedule: triggers?.schedule ?? base.triggers.schedule,
+						workflowDispatch:
+							triggers?.workflowDispatch ?? base.triggers.workflowDispatch,
+					}
+				: {
+						pullRequest: triggers?.pullRequest ?? base.triggers.pullRequest,
+						schedule: triggers?.schedule ?? base.triggers.schedule,
+						workflowDispatch:
+							triggers?.workflowDispatch ?? base.triggers.workflowDispatch,
+						mergeGroup,
+					},
+		pullRequestGate: {
+			blocksPullRequest:
+				gate?.blocksPullRequest ?? base.pullRequestGate.blocksPullRequest,
+			requiredChecks: [
+				...(gate?.requiredChecks ?? base.pullRequestGate.requiredChecks),
+			],
+		},
+		artifactCache: {
+			entries: (cache?.entries ?? base.artifactCache.entries).map(
+				cloneArtifactEntry,
+			),
+		},
+	};
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return (
-		value !== null &&
-		typeof value === "object" &&
-		Object.getPrototypeOf(value) === Object.prototype
-	);
+function cloneArtifactEntry(entry: ArtifactCacheEntry): ArtifactCacheEntry {
+	if (entry.keyFrom === undefined) {
+		return { kind: entry.kind, path: entry.path };
+	}
+	return { kind: entry.kind, path: entry.path, keyFrom: [...entry.keyFrom] };
 }
 
-function deepFreeze<T>(value: T): T {
-	if (value && typeof value === "object" && !Object.isFrozen(value)) {
-		for (const child of Object.values(value)) {
-			deepFreeze(child);
+function mergeE2e(
+	base: E2eContract,
+	overrides: DeepPartial<E2eContract> | undefined,
+): E2eContract {
+	const permissions = overrides?.permissions;
+	const deploy = overrides?.deploy;
+	return {
+		name: overrides?.name ?? base.name,
+		fixture: overrides?.fixture ?? base.fixture,
+		permissions: {
+			contents: permissions?.contents ?? base.permissions.contents,
+			"id-token": permissions?.["id-token"] ?? base.permissions["id-token"],
+		},
+		env: mergeEnv(base.env, overrides?.env),
+		gatedBy: [...(overrides?.gatedBy ?? base.gatedBy)],
+		auth: mergeAuth(base.auth, overrides?.auth),
+		deploy: {
+			command: deploy?.command ?? base.deploy.command,
+			asserts: [...(deploy?.asserts ?? base.deploy.asserts)],
+		},
+		teardown: mergeTeardown(base.teardown, overrides?.teardown),
+		quarantine: mergeQuarantine(base.quarantine, overrides?.quarantine),
+	};
+}
+
+function mergeEnv(
+	base: EnvVars,
+	overrides: DeepPartial<EnvVars> | undefined,
+): EnvVars {
+	const env: { [key: string]: string } = {};
+	for (const [key, value] of Object.entries(base)) {
+		env[key] = value;
+	}
+	if (overrides === undefined) {
+		return env;
+	}
+	for (const [key, value] of Object.entries(overrides)) {
+		if (value !== undefined) {
+			env[key] = value;
 		}
-		Object.freeze(value);
 	}
-	return value;
+	return env;
+}
+
+function mergeAuth(
+	base: E2eAuth,
+	overrides: DeepPartial<E2eAuth> | undefined,
+): E2eAuth {
+	const role = overrides?.cloudRole;
+	const selector = role?.resourceSelector;
+	return {
+		mode: overrides?.mode ?? base.mode,
+		audience: overrides?.audience ?? base.audience,
+		tokenBroker: overrides?.tokenBroker ?? base.tokenBroker,
+		forbidsStoredSecrets:
+			overrides?.forbidsStoredSecrets ?? base.forbidsStoredSecrets,
+		allowedTrustDomain:
+			overrides?.allowedTrustDomain ?? base.allowedTrustDomain,
+		cloudRole: {
+			name: role?.name ?? base.cloudRole.name,
+			allowedActions: [
+				...(role?.allowedActions ?? base.cloudRole.allowedActions),
+			],
+			resourceSelector: {
+				fixture: selector?.fixture ?? base.cloudRole.resourceSelector.fixture,
+				runLabel:
+					selector?.runLabel ?? base.cloudRole.resourceSelector.runLabel,
+			},
+		},
+	};
+}
+
+function mergeTeardown(
+	base: E2eTeardown,
+	overrides: DeepPartial<E2eTeardown> | undefined,
+): E2eTeardown {
+	const sweeper = overrides?.orphanSweeper;
+	return {
+		command: overrides?.command ?? base.command,
+		always: overrides?.always ?? base.always,
+		orphanSweeper: {
+			enabled: sweeper?.enabled ?? base.orphanSweeper.enabled,
+			maxAgeMinutes: sweeper?.maxAgeMinutes ?? base.orphanSweeper.maxAgeMinutes,
+			selector: sweeper?.selector ?? base.orphanSweeper.selector,
+		},
+	};
+}
+
+function mergeQuarantine(
+	base: E2eQuarantine,
+	overrides: DeepPartial<E2eQuarantine> | undefined,
+): E2eQuarantine {
+	return {
+		label: overrides?.label ?? base.label,
+		lane: overrides?.lane ?? base.lane,
+		continueOnError: overrides?.continueOnError ?? base.continueOnError,
+		blocksPullRequest: overrides?.blocksPullRequest ?? base.blocksPullRequest,
+	};
+}
+
+function freezeContract(contract: CiFabricContract): CiFabricContract {
+	Object.freeze(contract.workflow.triggers);
+	Object.freeze(contract.workflow.pullRequestGate.requiredChecks);
+	Object.freeze(contract.workflow.pullRequestGate);
+	for (const entry of contract.workflow.artifactCache.entries) {
+		if (entry.keyFrom !== undefined) {
+			Object.freeze(entry.keyFrom);
+		}
+		Object.freeze(entry);
+	}
+	Object.freeze(contract.workflow.artifactCache.entries);
+	Object.freeze(contract.workflow.artifactCache);
+	Object.freeze(contract.workflow);
+	Object.freeze(contract.e2e.permissions);
+	Object.freeze(contract.e2e.env);
+	Object.freeze(contract.e2e.gatedBy);
+	Object.freeze(contract.e2e.auth.cloudRole.allowedActions);
+	Object.freeze(contract.e2e.auth.cloudRole.resourceSelector);
+	Object.freeze(contract.e2e.auth.cloudRole);
+	Object.freeze(contract.e2e.auth);
+	Object.freeze(contract.e2e.deploy.asserts);
+	Object.freeze(contract.e2e.deploy);
+	Object.freeze(contract.e2e.teardown.orphanSweeper);
+	Object.freeze(contract.e2e.teardown);
+	Object.freeze(contract.e2e.quarantine);
+	Object.freeze(contract.e2e);
+	return Object.freeze(contract);
 }
 
 export { REQUIRED_PR_CHECKS };

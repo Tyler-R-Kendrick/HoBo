@@ -5,6 +5,7 @@ import { validateGenRequest } from "../../generation-pipeline-io-contract/src/co
 const scrubReportSchema = "hobo.gen.material-scrub-report/v1";
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
 const materialEventTypes = new Set(["gen.MaterialSanitized", "gen.MaterialRefused"]);
+const tagOf = Object.prototype.toString;
 
 const injectionRules = [
   {
@@ -424,21 +425,21 @@ function stringArray(value, path) {
   if (
     !Array.isArray(value) ||
     value.length === 0 ||
-    !value.every((item) => typeof item === "string" && item.length > 0)
+    !value.every((item) => isString(item) && item.length > 0)
   ) {
     throw new MaterialSanitizationContractError("material.string_array", path);
   }
 }
 
 function expectObject(value, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isObjectLike(value) || Array.isArray(value)) {
     throw new MaterialSanitizationContractError("material.object", path);
   }
   return value;
 }
 
 function nonEmptyString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new MaterialSanitizationContractError("material.string", path);
   }
   return value;
@@ -451,12 +452,12 @@ function equal(actual, expected, code, path) {
 }
 
 function sha256Digest(value) {
-  const bytes = typeof value === "string" ? value : stableStringify(value);
+  const bytes = isString(value) ? value : stableStringify(value);
   return `sha256:${createHash("sha256").update(bytes).digest("hex")}`;
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isObjectLike(value)) {
     return JSON.stringify(value);
   }
 
@@ -468,4 +469,13 @@ function stableStringify(value) {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
     .join(",")}}`;
+}
+
+function isString(value) {
+  return tagOf.call(value) === "[object String]";
+}
+
+function isObjectLike(value) {
+  const tag = tagOf.call(value);
+  return tag === "[object Object]" || tag === "[object Array]";
 }

@@ -10,6 +10,7 @@ import {
 	createDefaultYardRuntime,
 	createEraseCommand,
 } from "../src/index.js";
+import { isJsonString } from "../src/json.js";
 
 // `hobo erase <subject>` appends a crypto-shred erasure request (HOBO-295) —
 // history is never rewritten — and projections redact the subject on rebuild.
@@ -64,7 +65,7 @@ function subjectsIn(attest: any): string[] {
 	for (const batch of attest.data.batches) {
 		for (const record of batch.records) {
 			const s = record.hobo.credential_chain.svidSubject;
-			if (typeof s === "string") subjects.push(s);
+			if (isJsonString(s)) subjects.push(s);
 		}
 	}
 	return subjects;
@@ -74,6 +75,7 @@ describe("createEraseCommand", () => {
 	it("redacts an erased subject from the attest evidence, history intact", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 
@@ -114,6 +116,7 @@ describe("createEraseCommand", () => {
 	it("is idempotent when the subject is already erased", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 			await cli.run(["up", "--json"], { cwd });
@@ -130,6 +133,7 @@ describe("createEraseCommand", () => {
 	it("requires a subject argument", async () => {
 		await withProject(async (cwd) => {
 			const runtime = createDefaultYardRuntime();
+			// SAFETY: assertion required at this I/O or test boundary.
 			openStores.push(runtime.store as RuntimeLocalEventStore);
 			const cli = createComposedHoboCli({ yardRuntime: runtime });
 			await cli.run(["up", "--json"], { cwd });
@@ -144,7 +148,9 @@ describe("createEraseCommand", () => {
 
 	it("reports unavailable when no runtime is wired", async () => {
 		const result = await createEraseCommand().run({
-			context: { cwd: "/tmp", projectDir: "/tmp" } as unknown as CliContext,
+			// SAFETY: assertion required at this I/O or test boundary.
+			context: { cwd: "/tmp", projectDir: "/tmp" } as CliContext,
+			// SAFETY: assertion required at this I/O or test boundary.
 			flags: { cwd: "/tmp", target: null } as never,
 			args: ["subject-x"],
 			verb: "erase",

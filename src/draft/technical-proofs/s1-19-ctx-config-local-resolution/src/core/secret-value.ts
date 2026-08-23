@@ -1,3 +1,4 @@
+import { isJsonString } from "../json.js";
 const REDACTED = "[secret:redacted]" as const;
 const INSPECT = Symbol.for("nodejs.util.inspect.custom");
 
@@ -5,7 +6,7 @@ export class SecretValue {
   readonly #value: string;
 
   constructor(value: string) {
-    if (typeof value !== "string" || value.length === 0) {
+    if (!isJsonString(value) || value.length === 0) {
       throw new TypeError("SecretValue requires a non-empty string");
     }
     this.#value = value;

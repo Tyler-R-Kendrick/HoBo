@@ -79,7 +79,9 @@ describe("@hobo/runtime-dapr", () => {
 		const bundle = createDaprRuntimeHost({ tenantId: "t1", campId: "c1" });
 		const bus = bundle.messaging;
 		expect(bus.backend).toBe("dapr-pubsub");
+		// SAFETY: assertion required at this I/O or test boundary.
 		await bus.publish("events" as never, { ok: true });
+		// SAFETY: assertion required at this I/O or test boundary.
 		const batch = await bus.consume("events" as never, "g" as never);
 		expect(batch).toHaveLength(1);
 	});

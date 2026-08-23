@@ -42,7 +42,7 @@ Excluded:
 ## Verification
 
 ```powershell
-npm.cmd --prefix src\draft\exp-proofs\ai-generation-launch-posture-contract test
+npm.cmd --prefix src\draft\exp-proofs\cx\ai-generation-launch-posture-contract test
 ```
 
 

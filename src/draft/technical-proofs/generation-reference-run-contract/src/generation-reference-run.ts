@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 import { runBoundedRepairLoop } from "../../generation-bounded-repair-loop-contract/src/bounded-repair-loop.js";
 import {
   createGenerationCertifyStage,
@@ -275,7 +276,7 @@ export function runColdStartDocsOnlyReference(options = {}) {
           sanitized: true
         }
       ],
-      ...(options.requestOverrides ?? {})
+      ...(options.requestOverrides )
     }
   });
 }
@@ -579,7 +580,7 @@ function assertPinnedInputs({ seed }) {
   if (generationConfig.temperature !== 0 || generationConfig.topP !== 1) {
     throw new Error("generation.sampling_not_deterministic");
   }
-  if (typeof seed !== "string" || seed.length === 0) {
+  if (!isJsonString(seed) || seed.length === 0) {
     throw new Error("generation.seed_not_pinned");
   }
 }

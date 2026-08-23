@@ -1,4 +1,5 @@
 import { CoreParseError } from "../errors.js";
+import { cloneAsJson, isJsonString, type JsonValue } from "../json.js";
 import { deepFreeze, enumValue, expectObject } from "../parse-utils.js";
 import {
 	matchResourceOfferings,
@@ -61,7 +62,7 @@ export class DataStoreOfferingParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super(
@@ -125,27 +126,27 @@ export const DEFAULT_DATA_STORE_FALLBACKS: readonly DataStoreOfferingId[] = [
 export const DATA_STORE_RESOURCE_CLASS = "data-store";
 
 export function parseDataStoreOfferingId(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "offeringId",
 ): DataStoreOfferingId {
 	return enumValue(value, OFFERINGS, path, DataStoreOfferingParseError);
 }
 
 export function parseDataStoreProvider(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "provider",
 ): DataStoreProvider {
 	return enumValue(value, PROVIDERS, path, DataStoreOfferingParseError);
 }
 
 export function parseDataStoreOffering(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "offering",
 ): DataStoreOffering {
 	const input = expectObject(value, path, DataStoreOfferingParseError);
 	const features = Array.isArray(input.features)
 		? input.features.map((feature, index) => {
-				if (typeof feature !== "string" || feature.trim().length === 0) {
+				if (!isJsonString(feature) || feature.trim().length === 0) {
 					throw new DataStoreOfferingParseError(
 						`${path}.features[${index}]`,
 						"non-empty string",
@@ -174,7 +175,7 @@ export function parseDataStoreOffering(
 }
 
 export function parseDataStoreProviderProfile(
-	value: unknown,
+	value: JsonValue | undefined,
 	path = "profile",
 ): DataStoreProviderProfile {
 	const input = expectObject(value, path, DataStoreOfferingParseError);
@@ -238,6 +239,6 @@ export function dataStoreOffering(
 	});
 }
 
-function fail(path: string, expected: string, received: unknown): never {
-	throw new DataStoreOfferingParseError(path, expected, received);
+function fail<T>(path: string, expected: string, received: T): never {
+	throw new DataStoreOfferingParseError(path, expected, cloneAsJson(received));
 }

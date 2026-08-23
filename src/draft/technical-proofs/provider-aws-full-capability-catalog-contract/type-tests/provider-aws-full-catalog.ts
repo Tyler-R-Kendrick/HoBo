@@ -1,4 +1,6 @@
 import type * as ProviderAwsFullCatalog from "../src/provider-aws-full-catalog.d.mts";
+import { type JsonObject } from "../src/json.js";
+
 
 declare const AWS_FULL_CATALOG_PORTS: typeof ProviderAwsFullCatalog.AWS_FULL_CATALOG_PORTS;
 declare const awsFull: typeof ProviderAwsFullCatalog.awsFull;
@@ -20,4 +22,4 @@ const builder = awsFull.with.s3({ versioning: true });
 
 ports satisfies readonly string[];
 manifest.claimedCapabilities satisfies string[];
-builder satisfies Record<string, unknown>;
+builder satisfies JsonObject;

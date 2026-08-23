@@ -242,7 +242,7 @@ function normalizeMetricRefs(metricRefs) {
 
 function normalizeEvaluationContext(context) {
   assertObject(context, "evaluation context");
-  if (typeof context.targetingKey === "string" && context.targetingKey.length > 0) {
+  if (isString(context.targetingKey) && context.targetingKey.length > 0) {
     return context;
   }
   subjectFromContext(context);
@@ -257,7 +257,7 @@ function subjectFromContext(context) {
 }
 
 function subjectKeyFromContext(context) {
-  if (typeof context.targetingKey === "string" && context.targetingKey.length > 0) {
+  if (isString(context.targetingKey) && context.targetingKey.length > 0) {
     return context.targetingKey;
   }
 
@@ -346,13 +346,13 @@ function normalizeInteger(value, label) {
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || Object.prototype.toString.call(value) !== "[object Object]" || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
 function requireString(value, label) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new TypeError(`${label} is required`);
   }
   return value;
@@ -362,10 +362,14 @@ function cloneValue(value) {
   if (Array.isArray(value)) {
     return value.map(cloneValue);
   }
-  if (value && typeof value === "object") {
+  if (value && Object.prototype.toString.call(value) === "[object Object]") {
     return Object.fromEntries(
       Object.entries(value).map(([key, childValue]) => [key, cloneValue(childValue)])
     );
   }
   return value;
+}
+
+function isString(value) {
+  return Object.prototype.toString.call(value) === "[object String]";
 }

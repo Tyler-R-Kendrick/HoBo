@@ -1,14 +1,16 @@
+import type { JsonValue } from "./json.js";
+
 export class CoreParseError extends Error {
 	readonly path: string;
 	readonly expected: string;
-	readonly received: unknown;
+	readonly received: JsonValue | undefined;
 	readonly code: string;
 
 	constructor(
 		code: string,
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super(message ?? `${path}: expected ${expected}`);
@@ -24,7 +26,7 @@ export class EnvelopeParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_ENVELOPE_PARSE", path, expected, received, message);
@@ -36,7 +38,7 @@ export class ManifestParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_MANIFEST_PARSE", path, expected, received, message);
@@ -48,7 +50,7 @@ export class PortDescriptorParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_PORT_DESCRIPTOR_PARSE", path, expected, received, message);

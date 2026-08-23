@@ -30,7 +30,7 @@ export interface CatalogRow {
 	readonly profile: string;
 	readonly productId?: string;
 	readonly connectivityId?: string;
-	readonly properties?: Readonly<Record<string, unknown>>;
+	readonly properties?: NonNullable<YardConfig["properties"]>;
 }
 
 /** What a provider package publishes: a provider id, regions, and the catalog. */

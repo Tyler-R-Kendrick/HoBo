@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish the erased input contracts at this parser boundary. */
 import { createHash } from "node:crypto";
 
 export const SHARED_COST_SCHEMA_VERSION = "hobo.shared-cost-attribution/v1";

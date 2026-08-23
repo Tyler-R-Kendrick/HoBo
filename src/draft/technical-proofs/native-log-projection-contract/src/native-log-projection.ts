@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const writeCapabilities = new Set(["step", "emit", "append", "write", "command"]);
 
 export class ProjectionFoldError extends Error {
@@ -37,7 +38,7 @@ export function defineNativeProjection(input) {
   return Object.freeze({
     name: assertNonEmpty(input.name, "name"),
     readModel: assertNonEmpty(input.readModel, "readModel"),
-    rowShape: normalizeRowShape(input.rowShape, input.readModel),
+    rowSchema: normalizeRowSchema(input.rowSchema, input.readModel),
     readSet,
     key: input.key,
     fold: input.fold,
@@ -64,7 +65,7 @@ export function declareNativeProjection(projection, envelope) {
     data: Object.freeze({
       name: projection.name,
       readModel: projection.readModel,
-      rowShape: projection.rowShape,
+      rowSchema: projection.rowSchema,
       readSet: projection.readSet,
       reactivityClass: projection.reactivity.class,
       sink: projection.sink,
@@ -117,7 +118,7 @@ class NativeProjectionLog {
     return Object.freeze({
       projection: projection.name,
       readModel: projection.readModel,
-      rowShape: projection.rowShape,
+      rowSchema: projection.rowSchema,
       readSet: projection.readSet,
       reactivity: projection.reactivity,
       seq: stableObject(seq),
@@ -127,7 +128,7 @@ class NativeProjectionLog {
 }
 
 function normalizeHandlers(on) {
-  if (!on || typeof on !== "object" || Array.isArray(on)) {
+  if (!on || !isJsonObject(on)) {
     throw new Error("on must be an event handler map");
   }
 
@@ -154,7 +155,7 @@ function foldContext(event) {
 }
 
 function normalizeEvent(event) {
-  if (!event || typeof event !== "object") {
+  if (!event || !isJsonObject(event)) {
     throw new Error("event must be an object");
   }
 
@@ -183,26 +184,26 @@ function normalizeReadSet(readSet) {
   return Object.freeze([...new Set(readSet.map((eventType) => assertNonEmpty(eventType, "readSet event type")))].sort());
 }
 
-function normalizeRowShape(rowShape, readModel) {
-  if (!rowShape || typeof rowShape !== "object" || Array.isArray(rowShape)) {
-    throw new Error("rowShape must describe the read-model WIT record");
+function normalizeRowSchema(rowSchema, readModel) {
+  if (!rowSchema || !isJsonObject(rowSchema)) {
+    throw new Error("rowSchema must describe the read-model WIT record");
   }
 
-  const rawFields = Array.isArray(rowShape.fields)
-    ? rowShape.fields.map((field) => [field.name, field.type])
-    : Object.entries(rowShape.fields ?? {});
+  const rawFields = Array.isArray(rowSchema.fields)
+    ? rowSchema.fields.map((field) => [field.name, field.type])
+    : Object.entries(rowSchema.fields ?? {});
   if (rawFields.length === 0) {
-    throw new Error("rowShape.fields must contain at least one field");
+    throw new Error("rowSchema.fields must contain at least one field");
   }
 
   return Object.freeze({
-    witRecord: assertNonEmpty(rowShape.witRecord ?? readModel, "rowShape.witRecord"),
+    witRecord: assertNonEmpty(rowSchema.witRecord ?? readModel, "rowSchema.witRecord"),
     fields: Object.freeze(
       rawFields
         .map(([name, type]) =>
           Object.freeze({
-            name: assertNonEmpty(name, "rowShape field name"),
-            type: assertNonEmpty(type, `rowShape field type for ${name}`),
+            name: assertNonEmpty(name, "rowSchema field name"),
+            type: assertNonEmpty(type, `rowSchema field type for ${name}`),
           }),
         )
         .sort((left, right) => left.name.localeCompare(right.name)),
@@ -215,13 +216,13 @@ function normalizeStringList(values) {
 }
 
 function assertFunction(value, field) {
-  if (typeof value !== "function") {
+  if (!(value instanceof Function)) {
     throw new Error(`${field} must be a function`);
   }
 }
 
 function assertNonEmpty(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
 
@@ -244,5 +245,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

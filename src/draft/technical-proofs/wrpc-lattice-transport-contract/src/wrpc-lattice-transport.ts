@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased provider-export, operation, and string input contracts at this transport boundary. */
 import {
   MembraneOverloadedError,
   MembraneSeveredError,

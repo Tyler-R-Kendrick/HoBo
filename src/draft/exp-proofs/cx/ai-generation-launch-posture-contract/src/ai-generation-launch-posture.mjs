@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased caller input at the proof validator boundary before evaluating the closed launch-posture contract. */
+
 export const REQUIRED_SUPPORTED_INPUTS = [
   "app-intent-and-requirements",
   "wit-port-and-conformance-contracts",

@@ -59,6 +59,7 @@ export function hashCharacterId(id: string): number {
 
 export function bindlebugVariant(id: string): BindlebugVariant {
 	const variants: readonly BindlebugVariant[] = ["a", "b", "c"];
+	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 	return variants[hashCharacterId(id) % 3] as BindlebugVariant;
 }
 
@@ -110,6 +111,7 @@ export function toWorldView(
 		.sort((a, b) => a.id.localeCompare(b.id))
 		.slice(0, MAX_CAMP_ROOMS)
 		.map((camp, i) => {
+			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 			const slot = slots[i] as (typeof slots)[number];
 			return Object.freeze({
 				id: camp.id,

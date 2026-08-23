@@ -175,6 +175,7 @@ export class ControlModel {
 	}
 
 	restore(raw: string): void {
+		// SAFETY: snapshots are written by serialize() using the SnapshotBlob shape.
 		const blob = JSON.parse(raw) as SnapshotBlob;
 		this.clock = blob.clock;
 		this.bindles.clear();
@@ -412,6 +413,7 @@ export class ControlModel {
 				"no snapshot at target; rollback is a no-op",
 			);
 		}
+		// SAFETY: snapshot values are produced by serialize() in this model.
 		const blob = JSON.parse(shot) as SnapshotBlob;
 		const expected = tenantFingerprint(blob, tenantId);
 		this.restoreTenant(tenantId, blob);
@@ -429,13 +431,13 @@ export class ControlModel {
 	}
 
 	restoreTenant(tenantId: string, blob: SnapshotBlob): void {
-		for (const [id, row] of [...this.bindles.entries()]) {
+		for (const [id, row] of this.bindles.entries()) {
 			if (row.tenantId === tenantId) this.bindles.delete(id);
 		}
-		for (const [id, row] of [...this.capabilities.entries()]) {
+		for (const [id, row] of this.capabilities.entries()) {
 			if (row.tenantId === tenantId) this.capabilities.delete(id);
 		}
-		for (const [id, row] of [...this.resources.entries()]) {
+		for (const [id, row] of this.resources.entries()) {
 			if (row.tenantId === tenantId) this.resources.delete(id);
 		}
 		for (const [id, row] of blob.bindles) {
@@ -598,6 +600,7 @@ function parseVerbs(raw: string | undefined): Verb[] {
 	return (raw ?? "")
 		.split(",")
 		.filter((verb): verb is Verb =>
+			// SAFETY: ALL_VERBS is the runtime source for the Verb union.
 			(ALL_VERBS as readonly string[]).includes(verb),
 		);
 }

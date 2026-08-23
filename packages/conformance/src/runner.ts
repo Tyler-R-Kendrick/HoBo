@@ -1,6 +1,7 @@
 import { must } from "@hobo/core/total-access";
 import { firstDiff } from "./diff.js";
 import { findLanguageSpecificGoldenIrField } from "./golden-ir.js";
+import { isJsonObject, isJsonString, type JsonObject } from "./json.js";
 import { projectPortSuiteReport } from "./report.js";
 import { createCaseContext } from "./seed.js";
 import { createConformanceSuite } from "./suite.js";
@@ -26,6 +27,7 @@ export async function runConformanceSuite(
 	const suite =
 		"schema" in definition ? definition : createConformanceSuite(definition);
 	const seed = options.seed ?? DEFAULT_SEED;
+	// SAFETY: assertion to `["local"] as ConformanceTier[]` is required at this boundary.
 	const tiers = options.tiers ?? (["local"] as ConformanceTier[]);
 	const adapter = resolveAdapter(adapterOrId, options);
 	const adapterId = adapter.id ?? options.adapterId ?? "anonymous-adapter";
@@ -161,7 +163,7 @@ function resolveAdapter(
 	adapterOrId: ConformanceAdapter | string,
 	options: RunConformanceSuiteOptions,
 ): ConformanceAdapter {
-	if (typeof adapterOrId !== "string") {
+	if (!isJsonString(adapterOrId)) {
 		return adapterOrId;
 	}
 
@@ -183,7 +185,7 @@ async function evaluateCase(
 	const assertions: CaseAssertion[] = [];
 	const functionName = suiteCase.call.function;
 
-	if (typeof adapter[functionName] !== "function") {
+	if (!(adapter[functionName] instanceof Function)) {
 		failures.push({
 			code: "adapter.missing-function",
 			caseId: suiteCase.id,
@@ -239,7 +241,7 @@ async function runAdapterCase(
 
 	try {
 		const adapterFn = adapter[functionName];
-		if (typeof adapterFn !== "function") {
+		if (!(adapterFn instanceof Function)) {
 			throw new TypeError(`missing adapter function: ${functionName}`);
 		}
 
@@ -339,8 +341,8 @@ function compareExpected({
 	}
 }
 
-function normalizeAdapterResult(result: unknown): AdapterResult {
-	if (isPlainObject(result) && hasHarnessResultShape(result)) {
+function normalizeAdapterResult<T>(result: T): AdapterResult {
+	if (isPlainObject(result) && hasHarnessResultLayout(result)) {
 		return {
 			output: cloneData(result.output),
 			goldenIr: cloneData(result.goldenIr ?? []),
@@ -355,7 +357,7 @@ function normalizeAdapterResult(result: unknown): AdapterResult {
 	};
 }
 
-function hasHarnessResultShape(result: Record<string, unknown>): boolean {
+function hasHarnessResultLayout(result: JsonObject): boolean {
 	return (
 		Object.hasOwn(result, "output") ||
 		Object.hasOwn(result, "goldenIr") ||
@@ -368,8 +370,8 @@ function cloneData<T>(value: T): T {
 	return value === undefined ? value : structuredClone(value);
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-	return value !== null && typeof value === "object" && !Array.isArray(value);
+function isPlainObject<T>(value: T): value is T & JsonObject {
+	return value !== null && isJsonObject(value) && !Array.isArray(value);
 }
 
 function unique<T>(values: T[]): T[] {

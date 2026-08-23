@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { isJsonNumber, isJsonObject } from "../../src/json.js";
 
 import { replayRun } from "../../src/replay/replayer.js";
 import { createWorkflowEngine, defineWorkflow } from "../../src/workflow.js";
@@ -107,7 +108,14 @@ describe("durable workflow: journal, restart, replay", () => {
 		const sleepEvent = journal.find(
 			(event) => event.type === "run.SleepScheduled",
 		);
-		expect((sleepEvent?.data as { delayMs: number }).delayMs).toBe(10_000);
+		if (!sleepEvent) {
+			throw new Error("expected run.SleepScheduled");
+		}
+		const data = sleepEvent.data;
+		if (!isJsonObject(data) || !isJsonNumber(data.delayMs)) {
+			throw new Error("expected delayMs number");
+		}
+		expect(data.delayMs).toBe(10_000);
 
 		// Two independent replays reproduce identical state + digest.
 		const first = await replayRun(

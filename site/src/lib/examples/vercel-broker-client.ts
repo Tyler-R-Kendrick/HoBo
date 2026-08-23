@@ -1,3 +1,12 @@
+import {
+	asPageUrl,
+	currentLocationHref,
+	isJsonObject,
+	isJsonString,
+	parseJsonTree,
+	type JsonValue,
+} from "../json-inspect.js";
+
 /**
  * Vercel Drop Temporary Environment Station client for Examples.
  * Same-origin /api/vercel-temp — never VERCEL_TOKEN; never blob: as Vercel.
@@ -25,7 +34,7 @@ export function sameOriginVercelTempApiBase(
 	pageUrl: string | URL,
 	basePath = "/HoBo/",
 ): string {
-	const page = typeof pageUrl === "string" ? new URL(pageUrl) : pageUrl;
+	const page = asPageUrl(pageUrl);
 	const base = basePath.endsWith("/") ? basePath.slice(0, -1) : basePath;
 	const prefix = base.length === 0 || base === "/" ? "" : base;
 	return `${page.origin}${prefix}/api/vercel-temp`;
@@ -52,9 +61,8 @@ export async function provisionVercelStationViaBroker(input: {
 }): Promise<VercelStationProvision> {
 	const pageUrl =
 		input.pageUrl ??
-		(typeof globalThis.location?.href === "string"
-			? globalThis.location.href
-			: "http://localhost:4321/HoBo/examples/");
+		currentLocationHref() ??
+		"http://localhost:4321/HoBo/examples/";
 	const base = (
 		input.baseUrl ??
 		sameOriginVercelTempApiBase(pageUrl, input.basePath ?? "/HoBo/")
@@ -85,30 +93,47 @@ export async function provisionVercelStationViaBroker(input: {
 			`${REMEDIATION} (API returned HTML/non-JSON HTTP ${response.status} — restart astro dev with current tree; GitHub Pages has no /api/vercel-temp)`,
 		);
 	}
-	let body: VercelStationProvision | VercelBrokerError;
+	let body: JsonValue;
 	try {
-		body = JSON.parse(text) as VercelStationProvision | VercelBrokerError;
+		body = parseJsonTree(text);
 	} catch {
 		throw new Error(
 			`${REMEDIATION} (invalid JSON HTTP ${response.status})`,
 		);
 	}
-	if (!response.ok || !body.ok) {
-		const fail = body as VercelBrokerError;
-		throw new Error(fail.remediation ?? fail.error ?? REMEDIATION);
+	if (!response.ok || !isJsonObject(body) || body.ok !== true) {
+		const fail = isJsonObject(body) ? body : {};
+		throw new Error(
+			(isJsonString(fail.remediation) ? fail.remediation : undefined) ??
+				(isJsonString(fail.error) ? fail.error : undefined) ??
+				REMEDIATION,
+		);
 	}
 	if ("VERCEL_TOKEN" in body || "apiToken" in body) {
 		throw new Error(
 			"Vercel Drop broker leaked credentials to the browser — refusing response",
 		);
 	}
-	if (!isVercelStationUrl(body.stationUrl)) {
+	if (!isJsonString(body.stationUrl) || !isVercelStationUrl(body.stationUrl)) {
 		throw new Error(
-			`Broker returned non-vercel.app stationUrl (${body.stationUrl}). Refusing stand-ins as Vercel Drop.`,
+			`Broker returned non-vercel.app stationUrl (${String(body.stationUrl)}). Refusing stand-ins as Vercel Drop.`,
 		);
 	}
-	if (!body.claimUrl) {
+	if (
+		!isJsonString(body.claimUrl) ||
+		!isJsonString(body.stationId) ||
+		!isJsonString(body.expiresAt)
+	) {
 		throw new Error("Vercel Drop broker response missing claimUrl");
 	}
-	return body;
+	return {
+		ok: true,
+		stationId: body.stationId,
+		stationUrl: body.stationUrl,
+		claimUrl: body.claimUrl,
+		expiresAt: body.expiresAt,
+		anonymous: true,
+		temporary: true,
+		providerId: "vercel",
+	};
 }

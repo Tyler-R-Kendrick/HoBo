@@ -65,9 +65,7 @@ export function createYardClient(opts: {
 	const ES =
 		opts.eventSourceImpl !== undefined
 			? opts.eventSourceImpl
-			: typeof EventSource !== "undefined"
-				? EventSource
-				: null;
+			: (globalThis.EventSource ?? null);
 
 	async function api<T>(
 		path: string,
@@ -77,9 +75,10 @@ export function createYardClient(opts: {
 			...init,
 			headers: {
 				"content-type": "application/json",
-				...(init?.headers || {}),
+				...init?.headers,
 			},
 		});
+		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 		const body = (await res.json()) as ApiEnvelope<T>;
 		if (!body.ok && res.status >= 400) {
 			throw new Error(body.message || `API ${res.status}`);
@@ -127,6 +126,7 @@ export function createYardClient(opts: {
 					es.addEventListener("yard", (ev) => {
 						try {
 							onSnapshot(
+								// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 								JSON.parse((ev as MessageEvent).data) as YardProjectionSnapshot,
 							);
 						} catch (err) {

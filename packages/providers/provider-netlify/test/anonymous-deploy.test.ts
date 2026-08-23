@@ -47,11 +47,13 @@ function successResult(): DeployCommandResult {
 	};
 }
 
-/** Records every argv it is handed, so tests can inspect the invocation. */
-function stubRunner(result: DeployCommandResult): {
+type StubRunner = {
 	readonly runner: ProcessRunner;
 	readonly calls: string[][];
-} {
+};
+
+/** Records every argv it is handed, so tests can inspect the invocation. */
+function stubRunner(result: DeployCommandResult): StubRunner {
 	const calls: string[][] = [];
 	return {
 		calls,
@@ -64,11 +66,13 @@ function stubRunner(result: DeployCommandResult): {
 	};
 }
 
-/** Custody that hands back a locator and keeps the plaintext to itself. */
-function stubCustody(): {
+type StubCustody = {
 	readonly custody: SecretCustodyPort;
 	readonly deposited: string[];
-} {
+};
+
+/** Custody that hands back a locator and keeps the plaintext to itself. */
+function stubCustody(): StubCustody {
 	const deposited: string[] = [];
 	return {
 		deposited,
@@ -89,10 +93,12 @@ function stubCustody(): {
  * expiry, and audit rules the claim URL depends on, and its audit log is what
  * proves the bearer value is never recorded.
  */
-function oneTimeActions(): {
+type OneTimeActionsHarness = {
 	readonly store: OneTimeActionStore;
 	readonly puts: { id: string; value: string; expiresAt: number }[];
-} {
+};
+
+function oneTimeActions(): OneTimeActionsHarness {
 	const puts: { id: string; value: string; expiresAt: number }[] = [];
 	const inner = createOneTimeActionStore({
 		seal: (plaintext) =>
@@ -200,6 +206,7 @@ describe("the deployment facts come from the machine-readable output", () => {
 			parseAnonymousDeployOutput({ result, observedAtMs: NOW });
 			expect.unreachable("an unclaimable deploy must not parse");
 		} catch (error) {
+			if (!(error instanceof Error)) throw error;
 			expect(isNetlifyProviderError(error)).toBe(true);
 			if (isNetlifyProviderError(error))
 				expect(error.code).toBe("CLAIM_NOT_VERIFIED");
@@ -216,6 +223,7 @@ describe("the deployment facts come from the machine-readable output", () => {
 			parseAnonymousDeployOutput({ result, observedAtMs: NOW });
 			expect.unreachable("unparseable output must not be guessed at");
 		} catch (error) {
+			if (!(error instanceof Error)) throw error;
 			expect(isNetlifyProviderError(error)).toBe(true);
 			if (isNetlifyProviderError(error)) {
 				expect(error.code).toBe("PROVIDER_CONTRACT_CHANGED");
@@ -237,6 +245,7 @@ describe("an ambiguous exit is observed, never retried blindly", () => {
 			parseAnonymousDeployOutput({ result, observedAtMs: NOW });
 			expect.unreachable("a failed deploy must not look successful");
 		} catch (error) {
+			if (!(error instanceof Error)) throw error;
 			expect(isNetlifyProviderError(error)).toBe(true);
 			if (isNetlifyProviderError(error)) {
 				expect(error.code).toBe("PROVIDER_OPERATION_AMBIGUOUS");
@@ -251,6 +260,7 @@ describe("an ambiguous exit is observed, never retried blindly", () => {
 			parseAnonymousDeployOutput({ result, observedAtMs: NOW });
 			expect.unreachable("a killed deploy must not look successful");
 		} catch (error) {
+			if (!(error instanceof Error)) throw error;
 			if (isNetlifyProviderError(error)) {
 				expect(error.code).toBe("PROVIDER_OPERATION_AMBIGUOUS");
 			}
@@ -287,6 +297,7 @@ describe("an ambiguous exit is observed, never retried blindly", () => {
 			await driver.deploy(input);
 			expect.unreachable("a replayed attempt must not deploy again");
 		} catch (error) {
+			if (!(error instanceof Error)) throw error;
 			expect(isNetlifyProviderError(error)).toBe(true);
 			if (isNetlifyProviderError(error)) {
 				expect(error.detail?.adoptable).toBe(true);
@@ -306,9 +317,7 @@ describe("the claim URL goes straight into custody", () => {
 		const serialized = JSON.stringify(record);
 		expect(serialized).not.toContain("FAKECLAIMTOKEN");
 		expect(serialized).not.toContain("app.netlify.com/claim");
-		expect(() =>
-			parseSecretRef(record.claimUrlRef as unknown as string),
-		).not.toThrow();
+		expect(() => parseSecretRef(record.claimUrlRef)).not.toThrow();
 	});
 
 	it("is deposited once, in full, into the custody port", async () => {
@@ -385,6 +394,7 @@ describe("ownership cannot be confirmed from CLI output alone", () => {
 			driver.assertClaimLive(expired);
 			expect.unreachable("an expired claim window must be refused");
 		} catch (error) {
+			if (!(error instanceof Error)) throw error;
 			expect(isNetlifyProviderError(error)).toBe(true);
 			if (isNetlifyProviderError(error))
 				expect(error.code).toBe("CLAIM_EXPIRED");

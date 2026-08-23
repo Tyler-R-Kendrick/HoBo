@@ -1,25 +1,10 @@
 import { createStationBindleRuntimeContext } from "@hobo/stations";
 import { describe, expect, it, vi } from "vitest";
 
-const firecrawlMock = vi.hoisted(() => ({
-	apiKeys: [] as string[],
-	search: vi.fn(async (query: string, options: { limit: number }) => ({
-		success: true,
-		data: {
-			web: [{ title: "HoBo", url: "https://example.com/hobo", query, options }],
-		},
-	})),
-}));
-
-vi.mock("firecrawl", () => ({
-	Firecrawl: class {
-		constructor(options: { apiKey: string }) {
-			firecrawlMock.apiKeys.push(options.apiKey);
-		}
-		search = firecrawlMock.search;
-	},
-}));
-
+import {
+	createFirecrawlResearchBindle,
+	type FirecrawlClient,
+} from "../src/bindle.js";
 import definition from "../src/bindle.js";
 
 describe("firecrawl-research", () => {
@@ -44,8 +29,18 @@ describe("firecrawl-research", () => {
 	});
 
 	it("asks the Station for a Connection token before using the vendor SDK", async () => {
-		firecrawlMock.apiKeys.length = 0;
-		firecrawlMock.search.mockClear();
+		const apiKeys: string[] = [];
+		const search = vi.fn(async () => ({
+			success: true,
+			data: {
+				web: [{ title: "HoBo", url: "https://example.com/hobo" }],
+			},
+		}));
+		const createClient = (options: { apiKey: string }): FirecrawlClient => {
+			apiKeys.push(options.apiKey);
+			return { search };
+		};
+		const injected = createFirecrawlResearchBindle(createClient);
 
 		const issueToken = vi.fn(async () => ({
 			token: "station-issued-firecrawl-token",
@@ -63,8 +58,9 @@ describe("firecrawl-research", () => {
 			connections: { resolve },
 		});
 
-		const factory = definition.entrypoint("api");
+		const factory = injected.entrypoint("api");
 		expect(factory).toBeTypeOf("function");
+		// SAFETY: assertion to `factory?.(runtime) as ( request: Request, ) => Promise<Response>` is required at this boundary.
 		const handler = factory?.(runtime) as (
 			request: Request,
 		) => Promise<Response>;
@@ -81,8 +77,8 @@ describe("firecrawl-research", () => {
 			capabilities: ["search"],
 		});
 		expect(issueToken).toHaveBeenCalledWith({ action: "search" });
-		expect(firecrawlMock.apiKeys).toEqual(["station-issued-firecrawl-token"]);
-		expect(firecrawlMock.search).toHaveBeenCalledWith("HoBo", { limit: 5 });
+		expect(apiKeys).toEqual(["station-issued-firecrawl-token"]);
+		expect(search).toHaveBeenCalledWith("HoBo", { limit: 5 });
 	});
 
 	it("rejects an empty research query before resolving a Connection", async () => {
@@ -91,6 +87,7 @@ describe("firecrawl-research", () => {
 			stationId: "station:developer",
 			connections: { resolve },
 		});
+		// SAFETY: assertion to `definition.entrypoint("api")?.(runtime) as ( request: Request, ) => Promise<Response>` is required at this boundary.
 		const handler = definition.entrypoint("api")?.(runtime) as (
 			request: Request,
 		) => Promise<Response>;

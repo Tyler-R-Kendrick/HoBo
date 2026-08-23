@@ -135,7 +135,7 @@ export function conclude(definition, input = {}) {
   }
 
   const confidence = input.confidence ?? 0;
-  if (typeof confidence !== "number" || confidence < 0 || confidence > 1) {
+  if (!isNumber(confidence) || confidence < 0 || confidence > 1) {
     throw new TypeError("analysis confidence must be between 0 and 1");
   }
 
@@ -169,7 +169,7 @@ function validateEventData(type, data) {
   if (type === "experiment.Assigned" || type === "experiment.Exposed") {
     assertPrincipalRef(data.subject);
     assertNonEmptyString(data.variantKey, "event variant key");
-    if (typeof data.sampled !== "boolean") {
+    if (!isBoolean(data.sampled)) {
       throw new TypeError(`${type} requires sampled marker`);
     }
   }
@@ -186,7 +186,7 @@ function validateEventData(type, data) {
     if (!validVerdicts.has(data.verdict)) {
       throw new TypeError(`unknown analysis verdict: ${data.verdict}`);
     }
-    if (typeof data.confidence !== "number" || data.confidence < 0 || data.confidence > 1) {
+    if (!isNumber(data.confidence) || data.confidence < 0 || data.confidence > 1) {
       throw new TypeError("analysis confidence must be between 0 and 1");
     }
   }
@@ -219,14 +219,42 @@ function stableHash(value) {
 }
 
 function assertObject(value, name) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!isObject(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
 function assertNonEmptyString(value, name) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isString(value) || value.length === 0) {
     throw new TypeError(`${name} must be a non-empty string`);
+  }
+}
+
+function isObject(value) {
+  return value !== null && Object(value) === value && !Array.isArray(value) && !isCallable(value);
+}
+
+function isString(value) {
+  return value !== null && Object(value) !== value && Object.prototype.toString.call(value) === "[object String]";
+}
+
+function isNumber(value) {
+  return (
+    (value !== null && Object(value) !== value && Object.prototype.toString.call(value) === "[object Number]") ||
+    value !== value
+  );
+}
+
+function isBoolean(value) {
+  return value === true || value === false;
+}
+
+function isCallable(value) {
+  try {
+    Function.prototype.toString.call(value);
+    return true;
+  } catch {
+    return false;
   }
 }
 

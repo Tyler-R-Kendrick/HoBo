@@ -3,27 +3,35 @@ import type { RuntimeLocalEventStore } from "@hobo/runtime-local";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { defineProjection } from "../src/index.js";
-import { freshStore } from "./helpers.js";
-
-interface OrderRow {
-	orderId: string;
-	status: string;
-	totalCents: number;
-}
+import { type Inspectable, isJsonObject } from "../src/json.js";
+import {
+	freshStore,
+	type OrderRow,
+	parseOrderId,
+	parseOrderPlacedData,
+} from "./helpers.js";
 
 const orderView = defineProjection<OrderRow>({
 	name: "orders",
-	key: (event) => (event.data as { orderId: string }).orderId,
+	key: (event) => parseOrderId(event.data),
 	on: {
-		"order.Placed": (_row, event) => ({
-			orderId: (event.data as { orderId: string }).orderId,
-			status: "placed",
-			totalCents: (event.data as { totalCents: number }).totalCents,
-		}),
-		"order.Confirmed": (row, _event) => ({
-			...(row as OrderRow),
-			status: "confirmed",
-		}),
+		"order.Placed": (_row, event) => {
+			const placed = parseOrderPlacedData(event.data);
+			return {
+				orderId: placed.orderId,
+				status: "placed",
+				totalCents: placed.totalCents,
+			};
+		},
+		"order.Confirmed": (row, _event) => {
+			if (row === undefined) {
+				throw new TypeError("order.Confirmed requires an existing row");
+			}
+			return {
+				...row,
+				status: "confirmed",
+			};
+		},
 	},
 });
 
@@ -89,18 +97,24 @@ describe("defineProjection read-model fold", () => {
 		let sawFrozenEvent = false;
 		const spyView = defineProjection<OrderRow>({
 			name: "orders-spy",
-			key: (event) => (event.data as { orderId: string }).orderId,
+			key: (event) => parseOrderId(event.data),
 			on: {
 				"order.Placed": (_row, event) => {
 					sawFrozenEvent = Object.isFrozen(event);
+					// SAFETY: EventEnvelope.data is JSON at the store boundary.
+					const data = event.data as Inspectable;
+					if (!isJsonObject(data)) {
+						throw new TypeError("order event data must be an object");
+					}
 					// A write attempt against the event body must throw (frozen input).
 					expect(() => {
-						(event.data as { totalCents: number }).totalCents = -1;
+						Object.assign(data, { totalCents: -1 });
 					}).toThrow();
+					const placed = parseOrderPlacedData(event.data);
 					return {
-						orderId: (event.data as { orderId: string }).orderId,
+						orderId: placed.orderId,
 						status: "placed",
-						totalCents: (event.data as { totalCents: number }).totalCents,
+						totalCents: placed.totalCents,
 					};
 				},
 			},

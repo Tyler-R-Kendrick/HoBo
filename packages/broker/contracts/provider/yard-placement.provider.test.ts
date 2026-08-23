@@ -3,11 +3,11 @@
  * Offline: real resolveBindleDeployment + fold path, no live cloud keys.
  * (Mirrors broker-resolution.provider.test.ts style — no contract-harness dep.)
  */
+
 import { readFileSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
-
 import {
 	buildDeploymentRequestFromParts,
 	contentHashOf,
@@ -23,8 +23,10 @@ import {
 	YARD_EVENTS,
 	yardEvent,
 } from "../../src/index.js";
+import type { JsonObject } from "../../src/json.js";
 
 const packageRoot = dirname(fileURLToPath(import.meta.url));
+// SAFETY: assertion required at this I/O or test boundary.
 const pact = JSON.parse(
 	readFileSync(
 		join(packageRoot, "../pacts/broker_yard_placement.pact.json"),
@@ -34,8 +36,8 @@ const pact = JSON.parse(
 	provider: { name: string };
 	interactions: Array<{
 		description: string;
-		request: { path: string; body?: Record<string, unknown> };
-		response: { status: number; body?: Record<string, unknown> };
+		request: { path: string; body?: JsonObject };
+		response: { status: number; body?: JsonObject };
 	}>;
 };
 
@@ -97,7 +99,7 @@ describe("BrokerYardPlacement provider verification", () => {
 				yard: {
 					requestId: "y1",
 					selectionMode: "compatible",
-					requestedShape: {},
+					requestedLayout: {},
 					bindleManifestHash: "sha256:abc",
 					bindleRequirementsHash: "sha256:def",
 					allowGenerationRequested: false,
@@ -117,7 +119,7 @@ describe("BrokerYardPlacement provider verification", () => {
 			runtimeId: "azure-yard/v1",
 			providerId: "azure",
 			version: "1",
-			supportedShape: {
+			supportedLayout: {
 				regions: [],
 				capabilities: [],
 				requireProperties: [],
@@ -133,7 +135,7 @@ describe("BrokerYardPlacement provider verification", () => {
 		});
 		const decision = planYardGeneration({
 			ownerTenantId: "t",
-			requestedShape: {
+			requestedLayout: {
 				providerId: "azure",
 				regions: [],
 				require: [],

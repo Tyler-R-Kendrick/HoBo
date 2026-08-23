@@ -6,7 +6,7 @@ import { cp, mkdir, mkdtemp, readdir, readFile, rm, writeFile } from "node:fs/pr
 import { homedir } from "node:os";
 import { delimiter, dirname, join, relative } from "node:path";
 import { discoverDataModelPackages, hydrateCueSchemas } from "./discover.js";
-import { ensureCueBinary, vetCueConstraints, withTempDirectory } from "./cue.js";
+import { ensureCueBinary, vetCueConstraints } from "./cue.js";
 import {
   createCodegenReport,
   type CodegenInvocation,
@@ -15,6 +15,8 @@ import {
   type DataModelPackage,
   type DriftEntry,
 } from "./types.js";
+import { isJsonNumber, isJsonString, type JsonObject } from "../../../src/json.js";
+
 
 async function runCommand(
   command: string,
@@ -33,18 +35,18 @@ async function runCommand(
         env,
       },
       (error, stdout, stderr) => {
-        if (error && (error as NodeJS.ErrnoException).code === "ENOENT") {
+        if (error && isJsonString(error.code) && error.code === "ENOENT") {
           reject(new Error(`command not found: ${command}`));
           return;
         }
-        const code = typeof error?.code === "number" ? error.code : error ? 1 : 0;
+        const code = isJsonNumber(error?.code) ? error.code : error ? 1 : 0;
         resolvePromise({ stdout: String(stdout), stderr: String(stderr), code });
       },
     );
   });
 }
 
-function resolveBufCommand(repoRoot: string): { command: string; args: string[] } {
+function resolveBufCommand(repoRoot: string) {
   if (process.platform === "win32") {
     const entrypoints = [
       join(repoRoot, "node_modules", "@bufbuild", "buf", "bin", "buf"),
@@ -141,7 +143,7 @@ async function generatePackageProtos(
   }
 }
 
-async function copyGeneratedTree(sourceDir: string, targetDir: string): Promise<void> {
+async function _copyGeneratedTree(sourceDir: string, targetDir: string): Promise<void> {
   await rm(targetDir, { recursive: true, force: true });
   await mkdir(targetDir, { recursive: true });
   if (!existsSync(sourceDir)) return;
@@ -265,7 +267,7 @@ export async function sha256Directory(root: string): Promise<string> {
   return hash.digest("hex");
 }
 
-export async function writeManifest(path: string, content: Record<string, unknown>): Promise<void> {
+export async function writeManifest(path: string, content: JsonObject): Promise<void> {
   await mkdir(dirname(path), { recursive: true });
   await writeFile(path, `${JSON.stringify(content, null, 2)}\n`);
 }

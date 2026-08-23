@@ -7,7 +7,7 @@ data.
 ## Focused Gate
 
 ```powershell
-pnpm.cmd --prefix src\draft\exp-proofs\launch-support-release-candidate-evidence-contract test
+pnpm.cmd --prefix src\draft\exp-proofs\cx\launch-support-release-candidate-evidence-contract test
 ```
 
 ## Proof Surface

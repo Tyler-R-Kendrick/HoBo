@@ -1,4 +1,4 @@
-import type { SlotBindingError } from "@hobo/core";
+import { SlotBindingError } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,6 +12,7 @@ import {
 	cosmosDb,
 	cosmosTable,
 	functions,
+	type KeyVaultOptions,
 	keyVault,
 	postgresFlexible,
 	redisCache,
@@ -21,15 +22,29 @@ import {
 	staticWebApps,
 	storageQueue,
 } from "../src/index.js";
+import { isJsonObject } from "../src/json.js";
 
 /** The code core refused a call with, or undefined if it did not refuse. */
-function refusalCode(call: () => unknown): string | undefined {
+function refusalCode(call: () => void): string | undefined {
 	try {
 		call();
 		return undefined;
 	} catch (error) {
-		return (error as SlotBindingError).code;
+		if (!(error instanceof SlotBindingError)) throw error;
+		return error.code;
 	}
+}
+
+function extraBlob(json: string): BlobStorageOptions {
+	// SAFETY: fixture JSON is the factory option bag, including undeclared keys
+	// that must still reach slotBinding's parse boundary.
+	return JSON.parse(json) as BlobStorageOptions;
+}
+
+function extraVault(json: string): KeyVaultOptions {
+	// SAFETY: fixture JSON is the factory option bag, including undeclared keys
+	// that must still reach slotBinding's parse boundary.
+	return JSON.parse(json) as KeyVaultOptions;
 }
 
 /**
@@ -252,7 +267,8 @@ describe("options land in properties and omitted options stay absent", () => {
 			replicas: 2,
 		});
 		expect("requests" in binding.properties).toBe(false);
-		expect("memory" in (binding.properties.limits as object)).toBe(false);
+		const limits = binding.properties.limits;
+		expect(isJsonObject(limits) && !("memory" in limits)).toBe(true);
 	});
 
 	it("postgresFlexible invents no storage size", () => {
@@ -272,23 +288,21 @@ describe("options land in properties and omitted options stay absent", () => {
 
 describe("the core parse boundary still applies", () => {
 	it("refuses a credential-shaped option key that bypassed the types", () => {
-		const smuggled = { apiKey: "x" } as unknown as BlobStorageOptions;
+		const smuggled = extraBlob('{"apiKey":"x"}');
 		expect(refusalCode(() => blobStorage(smuggled))).toBe(
 			"SLOT_BINDING_CREDENTIAL_PROPERTY",
 		);
 	});
 
 	it("refuses a credential-shaped key on the secretRef factory too", () => {
-		const smuggled = { vaultPassword: "x" } as unknown as Parameters<
-			typeof keyVault
-		>[0];
+		const smuggled = extraVault('{"vaultPassword":"x"}');
 		expect(refusalCode(() => keyVault(smuggled))).toBe(
 			"SLOT_BINDING_CREDENTIAL_PROPERTY",
 		);
 	});
 
 	it("forwards an undeclared key instead of silently dropping it", () => {
-		const smuggled = { unknownKnob: 1 } as unknown as BlobStorageOptions;
+		const smuggled = extraBlob('{"unknownKnob":1}');
 		expect(blobStorage(smuggled).properties).toEqual({ unknownKnob: 1 });
 	});
 });

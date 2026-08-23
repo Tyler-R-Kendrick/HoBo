@@ -4,6 +4,8 @@ import {
   DEPLOYMENT_PLAN_IR_VERSION,
   outputPlaceholder
 } from "../../deployment-plan-ir-contract/src/deployment-plan-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const PLANNER_DAG_SKELETON_VERSION = "hobo.planner-dag-skeleton/v1";
 
@@ -110,7 +112,7 @@ export function plan(manifest, config = {}, registry = {}) {
 }
 
 function normalizeResources(manifest) {
-  if (!manifest || typeof manifest !== "object" || Array.isArray(manifest)) {
+  if (!manifest || !isJsonObject(manifest) || Array.isArray(manifest)) {
     throw new PlannerValidationError("manifest must be an object");
   }
   if (manifest.schema !== "hobo.manifest/v1") {
@@ -132,10 +134,10 @@ function normalizeResources(manifest) {
     if (resources.has(id)) {
       throw new PlannerValidationError(`duplicate resource id ${id}`);
     }
-    if (!resource || typeof resource !== "object" || Array.isArray(resource)) {
+    if (!resource || !isJsonObject(resource) || Array.isArray(resource)) {
       throw new PlannerValidationError(`resource ${id} must be an object`);
     }
-    if (typeof resource.type !== "string" || resource.type.length === 0) {
+    if (!isJsonString(resource.type) || resource.type.length === 0) {
       throw new PlannerValidationError(`resource ${id} type is required`);
     }
     resources.set(id, resource);
@@ -148,7 +150,7 @@ function normalizeTupleEntry(entry) {
   if (Array.isArray(entry) && entry.length === 2) {
     return [entry[0], entry[1]];
   }
-  if (entry && typeof entry === "object" && typeof entry.id === "string") {
+  if (entry && isJsonObject(entry) && isJsonString(entry.id)) {
     const { id, ...resource } = entry;
     return [id, resource];
   }
@@ -163,7 +165,7 @@ function normalizeContext(context = {}) {
     tenant: context.tenant ?? "tenant-hobo"
   };
   for (const [field, value] of Object.entries(normalized)) {
-    if (typeof value !== "string" || value.length === 0) {
+    if (!isJsonString(value) || value.length === 0) {
       throw new PlannerValidationError(`context.${field} must be a non-empty string`);
     }
   }
@@ -172,9 +174,9 @@ function normalizeContext(context = {}) {
 
 function normalizeCatalogHash(config, registry) {
   const value = config.catalogContentHash ??
-    (typeof registry.contentHash === "function" ? registry.contentHash() : registry.contentHash) ??
+    (registry.contentHash instanceof Function ? registry.contentHash() : registry.contentHash) ??
     EMPTY_CATALOG_HASH;
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new PlannerValidationError("catalogContentHash must be a non-empty string");
   }
   return value.startsWith("sha256:") ? value : `sha256:${value}`;
@@ -191,10 +193,10 @@ function collectDependencies(id, resource, resources) {
   }
 
   for (const [index, link] of (resource.links ?? []).entries()) {
-    if (!link || typeof link !== "object" || Array.isArray(link)) {
+    if (!link || !isJsonObject(link) || Array.isArray(link)) {
       throw new PlannerValidationError(`resource ${id} links[${index}] must be an object`);
     }
-    if (typeof link.import !== "string" || link.import.length === 0) {
+    if (!isJsonString(link.import) || link.import.length === 0) {
       throw new PlannerValidationError(`resource ${id} links[${index}].import is required`);
     }
     assertDependency(id, link.to, resources, "links");
@@ -206,7 +208,7 @@ function collectDependencies(id, resource, resources) {
 }
 
 function assertDependency(id, targetId, resources, verb) {
-  if (typeof targetId !== "string" || targetId.length === 0) {
+  if (!isJsonString(targetId) || targetId.length === 0) {
     throw new PlannerValidationError(`resource ${id} ${verb} must reference a resource id`);
   }
   if (targetId === id) {
@@ -283,7 +285,7 @@ function expandCoProvisionedResources({ coProvisioning, deploymentPlan, resource
 
 function portForResource(id, resource) {
   if (resource.type === "data.v1") {
-    if (typeof resource.port !== "string" || resource.port.length === 0) {
+    if (!isJsonString(resource.port) || resource.port.length === 0) {
       throw new PlannerValidationError(`resource ${id} port is required`);
     }
     return {
@@ -313,11 +315,11 @@ function portForResource(id, resource) {
 }
 
 function normalizePort(id, port) {
-  if (!port || typeof port !== "object" || Array.isArray(port)) {
+  if (!port || !isJsonObject(port) || Array.isArray(port)) {
     throw new PlannerValidationError(`co-provisioned resource ${id} port is required`);
   }
   for (const field of ["interface", "type", "className"]) {
-    if (typeof port[field] !== "string" || port[field].length === 0) {
+    if (!isJsonString(port[field]) || port[field].length === 0) {
       throw new PlannerValidationError(`co-provisioned resource ${id} port.${field} is required`);
     }
   }
@@ -389,7 +391,7 @@ function findDependencyCycle(resources) {
 }
 
 function assertResourceId(id) {
-  if (typeof id !== "string" || !RESOURCE_ID.test(id)) {
+  if (!isJsonString(id) || !RESOURCE_ID.test(id)) {
     throw new PlannerValidationError(`invalid resource id ${String(id)}`);
   }
 }

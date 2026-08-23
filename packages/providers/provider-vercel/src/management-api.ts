@@ -15,6 +15,12 @@
 import { parseSecretRef, SecretValue } from "@hobo/bindings";
 
 import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	parseJsonValue,
+} from "./json.js";
+import {
 	providerErrorForStatus,
 	redactProviderText,
 	VercelProviderError,
@@ -67,9 +73,9 @@ function authorizedRequest(
 			accept: "application/json",
 			...(init.body !== undefined
 				? { "content-type": "application/json" }
-				: {}),
+				: undefined),
 		},
-		...(init.body !== undefined ? { body: init.body } : {}),
+		...(init.body !== undefined ? { body: init.body } : undefined),
 		timeoutMs: options.timeoutMs ?? DEFAULT_CALL.timeoutMs,
 		maxResponseBytes: options.maxResponseBytes ?? DEFAULT_CALL.maxResponseBytes,
 	};
@@ -84,36 +90,25 @@ function retryAfterMs(
 	return Number.isFinite(seconds) && seconds >= 0 ? seconds * 1000 : undefined;
 }
 
-function parseJsonBody(
-	body: string,
-	operation: string,
-): Record<string, unknown> {
-	try {
-		const parsed: unknown = JSON.parse(body);
-		if (
-			parsed === null ||
-			typeof parsed !== "object" ||
-			Array.isArray(parsed)
-		) {
-			throw new Error("not an object");
-		}
-		return parsed as Record<string, unknown>;
-	} catch {
+function parseJsonBody(body: string, operation: string): JsonObject {
+	const parsed = parseJsonValue(body);
+	if (!isJsonObject(parsed)) {
 		throw new VercelProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			`${operation} returned a body that is not a JSON object`,
 			{ detail: { operation, preview: redactProviderText(body, 80) } },
 		);
 	}
+	return parsed;
 }
 
 function requireString(
-	body: Record<string, unknown>,
+	body: JsonObject,
 	key: string,
 	operation: string,
 ): string {
 	const value = body[key];
-	if (typeof value !== "string" || value.length === 0) {
+	if (!isJsonString(value) || value.length === 0) {
 		throw new VercelProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			`${operation} response is missing the documented ${key} field`,
@@ -176,10 +171,10 @@ export async function createProjectTransferRequest(
 	const body = JSON.stringify({
 		...(input.callbackUrl !== undefined
 			? { callbackUrl: input.callbackUrl }
-			: {}),
+			: undefined),
 		...(input.callbackSecret !== undefined
 			? { callbackSecret: input.callbackSecret.expose() }
-			: {}),
+			: undefined),
 	});
 	const response = await transport.request(
 		authorizedRequest(
@@ -193,13 +188,12 @@ export async function createProjectTransferRequest(
 		),
 	);
 	if (response.status !== 200) {
+		const retryAfter = retryAfterMs(response.headers);
 		throw providerErrorForStatus(response.status, {
 			method: "POST",
 			operation,
 			body: response.body,
-			...(retryAfterMs(response.headers) !== undefined
-				? { retryAfterMs: retryAfterMs(response.headers) as number }
-				: {}),
+			...(retryAfter !== undefined ? { retryAfterMs: retryAfter } : undefined),
 		});
 	}
 	const parsed = parseJsonBody(response.body, operation);
@@ -240,13 +234,12 @@ export async function getProject(
 		),
 	);
 	if (response.status !== 200) {
+		const retryAfter = retryAfterMs(response.headers);
 		throw providerErrorForStatus(response.status, {
 			method: "GET",
 			operation,
 			body: response.body,
-			...(retryAfterMs(response.headers) !== undefined
-				? { retryAfterMs: retryAfterMs(response.headers) as number }
-				: {}),
+			...(retryAfter !== undefined ? { retryAfterMs: retryAfter } : undefined),
 		});
 	}
 	const parsed = parseJsonBody(response.body, operation);

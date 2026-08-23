@@ -142,6 +142,7 @@ describe("connector-token broker seam (ai-native-agent-auth.md)", () => {
 		assert.throws(() =>
 			buildConnectorTokenRequest({
 				requestId: "xaa-swe-agent",
+				// SAFETY: assertion to `undefined as never` is required at this boundary.
 				principal: { ...principal, delegatedBy: undefined as never },
 				target: { id: "swe-agent", audience: "acp://swe-agent" },
 				manifestAllow: ["logs:tail"],

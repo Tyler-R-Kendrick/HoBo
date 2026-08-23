@@ -139,7 +139,7 @@ export function createDnsValidationThreatModel(overrides = {}) {
 
 export function validateDnsValidationThreatModel(model) {
   const errors = [];
-  if (!model || typeof model !== "object" || Array.isArray(model)) {
+  if (!isRecord(model)) {
     return { ok: false, errors: ["model must be an object"], model: null };
   }
 
@@ -191,7 +191,7 @@ export function evaluateDnsAttack(model, attackSlug, evidence = {}) {
 }
 
 function validateControls(controls, errors) {
-  if (!controls || typeof controls !== "object" || Array.isArray(controls)) {
+  if (!isRecord(controls)) {
     errors.push("controls must be an object");
     return;
   }
@@ -247,7 +247,7 @@ function validateAttacks(model, errors) {
         errors.push(`${slug} references unknown control ${control}`);
       }
     }
-    if (!attack.minimumParameters || typeof attack.minimumParameters !== "object") {
+    if (!isRecord(attack.minimumParameters)) {
       errors.push(`${slug} must name minimumParameters`);
     }
   }
@@ -352,7 +352,7 @@ function deepMerge(base, overrides) {
   if (Array.isArray(base) || Array.isArray(overrides)) {
     return overrides === undefined ? structuredClone(base) : structuredClone(overrides);
   }
-  if (!base || typeof base !== "object") {
+  if (!isRecord(base)) {
     return overrides === undefined ? base : overrides;
   }
 
@@ -367,8 +367,12 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!isRecord(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
+}
+
+function isRecord(value) {
+  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
 }

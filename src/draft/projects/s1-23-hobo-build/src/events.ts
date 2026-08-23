@@ -2,6 +2,7 @@ import { createHash } from "node:crypto";
 
 import type { BuildArtifact, BuildManifest, TargetRuntime } from "./parse.js";
 import { BUILD_MANIFEST_SCHEMA } from "./parse.js";
+import type { JsonValue } from "./errors.js";
 
 export type BuildStartedEvent = {
   readonly type: "build.Started";
@@ -54,14 +55,14 @@ export function projectBuildManifest(
   };
 }
 
-export function stableStringify(value: unknown): string {
+export function stableStringify(value: JsonValue): string {
   return `${JSON.stringify(value, replacer)}\n`;
 
-  function replacer(this: Record<string, unknown>, key: string, inner: unknown): unknown {
-    if (inner && typeof inner === "object" && !Array.isArray(inner)) {
-      const sorted: Record<string, unknown> = {};
-      for (const childKey of Object.keys(inner as Record<string, unknown>).sort()) {
-        sorted[childKey] = (inner as Record<string, unknown>)[childKey];
+  function replacer(this: { readonly [key: string]: JsonValue }, key: string, inner: JsonValue): JsonValue {
+    if (inner instanceof Object && !Array.isArray(inner)) {
+      const sorted: { [key: string]: JsonValue } = {};
+      for (const childKey of Object.keys(inner).sort()) {
+        sorted[childKey] = inner[childKey];
       }
       return sorted;
     }

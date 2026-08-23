@@ -6,6 +6,7 @@
  * progressive Harness ramps — not exposed as unconstrained CLI mutations.
  * Pure continuous identity requires zero Trail authoring (hands-off).
  */
+
 import type { CommandModule } from "@hobo/cli";
 import {
 	createContractAssertedTrailFixtures,
@@ -14,9 +15,9 @@ import {
 	identityContinuousTrail,
 	type LocalTrailFixtures,
 } from "@hobo/trails";
-
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import { loadHoboProfile } from "./hobo-profile.js";
+import { isJsonString, type JsonObject } from "./json.js";
 
 export interface TrailsCommandDeps {
 	readonly env?: NodeJS.ProcessEnv;
@@ -30,27 +31,21 @@ type Subcommand = (typeof SUBCOMMANDS)[number];
 
 function resolveTenant(
 	hoboHome: string,
-	flags: Record<string, unknown>,
+	flags: JsonObject,
 	env: NodeJS.ProcessEnv,
 ): string {
 	const flag = flags.tenant;
-	if (typeof flag === "string" && flag.length > 0) return flag;
-	if (typeof env.HOBO_TENANT === "string" && env.HOBO_TENANT.length > 0) {
+	if (isJsonString(flag) && flag.length > 0) return flag;
+	if (isJsonString(env.HOBO_TENANT) && env.HOBO_TENANT.length > 0) {
 		return env.HOBO_TENANT;
 	}
 	return loadHoboProfile(hoboHome)?.session?.tenant ?? "local";
 }
 
-function resolveTarget(
-	flags: Record<string, unknown>,
-	env: NodeJS.ProcessEnv,
-): string {
+function resolveTarget(flags: JsonObject, env: NodeJS.ProcessEnv): string {
 	const flag = flags.target;
-	if (typeof flag === "string" && flag.length > 0) return flag;
-	if (
-		typeof env.HOBO_TRAIL_TARGET === "string" &&
-		env.HOBO_TRAIL_TARGET.length > 0
-	) {
+	if (isJsonString(flag) && flag.length > 0) return flag;
+	if (isJsonString(env.HOBO_TRAIL_TARGET) && env.HOBO_TRAIL_TARGET.length > 0) {
 		return env.HOBO_TRAIL_TARGET;
 	}
 	return "local-dev";
@@ -64,10 +59,12 @@ export function createTrailsCommand(
 			const env = deps.env ?? process.env;
 			const hoboHome =
 				deps.hoboHome ??
-				(typeof env.HOBO_HOME === "string" && env.HOBO_HOME.length > 0
+				(isJsonString(env.HOBO_HOME) && env.HOBO_HOME.length > 0
 					? env.HOBO_HOME
 					: defaultHoboHome());
+			// SAFETY: assertion required at this I/O or test boundary.
 			const sub = (args[0] ?? "status") as string;
+			// SAFETY: assertion required at this I/O or test boundary.
 			if (!(SUBCOMMANDS as readonly string[]).includes(sub)) {
 				return {
 					ok: false,
@@ -84,10 +81,12 @@ export function createTrailsCommand(
 
 			const tenant = resolveTenant(
 				hoboHome,
-				flags as Record<string, unknown>,
+				// SAFETY: assertion required at this I/O or test boundary.
+				flags as JsonObject,
 				env,
 			);
-			const target = resolveTarget(flags as Record<string, unknown>, env);
+			// SAFETY: assertion required at this I/O or test boundary.
+			const target = resolveTarget(flags as JsonObject, env);
 			const fixtures =
 				deps.fixtures ??
 				createContractAssertedTrailFixtures({ tenant, target });

@@ -59,7 +59,7 @@ export function parseResourceIndicators(indicators) {
 
   const seen = new Set();
   return indicators.map((raw, index) => {
-    if (typeof raw !== "string" || raw.length === 0) {
+    if (!isPrimitiveString(raw) || raw.length === 0) {
       throw new Error(`resourceIndicators[${index}] must be a non-empty string`);
     }
     if (seen.has(raw)) {
@@ -359,7 +359,7 @@ function sortForJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortForJson);
   }
-  if (value && typeof value === "object") {
+  if (isObjectValue(value)) {
     return Object.fromEntries(
       Object.keys(value)
         .sort()
@@ -386,7 +386,7 @@ function normalizeHttpsUrl(value, field) {
 }
 
 function parseUrl(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isPrimitiveString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty URL string`);
   }
 
@@ -409,7 +409,7 @@ function parseUrl(value, field) {
 }
 
 function assertObject(value, field) {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+  if (!isObjectValue(value) || Array.isArray(value)) {
     throw new Error(`${field} must be an object`);
   }
 }
@@ -432,10 +432,22 @@ function assertEnum(value, field, allowedValues) {
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isPrimitiveString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
+}
+
+function isPrimitiveString(value) {
+  return Object(value) !== value && value?.constructor === String;
+}
+
+function isObjectValue(value) {
+  return (
+    value !== null &&
+    Object(value) === value &&
+    Object.prototype.toString.call(value) !== "[object Function]"
+  );
 }
 
 function assertHeader(value, field) {

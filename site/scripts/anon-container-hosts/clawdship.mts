@@ -5,6 +5,7 @@
  * First deploy auto-creates account + returns cship_ API key (7-day trial).
  * Do not loop/retry on timeout — one-shot only.
  */
+import { type JsonObject } from "../../src/lib/json-inspect.js";
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
 import { mkdtemp, readFile, rm } from "node:fs/promises";
@@ -126,9 +127,10 @@ export async function provisionClawdship(
 	}
 
 	const text = await response.text();
-	let parsed: Record<string, unknown> = {};
+	let parsed: JsonObject = {};
 	try {
-		parsed = JSON.parse(text) as Record<string, unknown>;
+		// SAFETY: assertion required at this I/O boundary.
+		parsed = JSON.parse(text) as JsonObject;
 	} catch {
 		/* raw */
 	}
@@ -140,8 +142,8 @@ export async function provisionClawdship(
 		);
 	}
 	const url =
-		(typeof parsed.url === "string" && parsed.url) ||
-		(typeof parsed.siteUrl === "string" && parsed.siteUrl) ||
+		(Object.prototype.toString.call(parsed.url) === "[object String]" && parsed.url) ||
+		(Object.prototype.toString.call(parsed.siteUrl) === "[object String]" && parsed.siteUrl) ||
 		"";
 	if (!url) {
 		throw new AnonContainerHostError(
@@ -151,8 +153,8 @@ export async function provisionClawdship(
 	}
 	// Never log apiKey from response — only surface claim/billing URL if present.
 	const claimUrl =
-		(typeof parsed.billingUrl === "string" && parsed.billingUrl) ||
-		(typeof parsed.claimUrl === "string" && parsed.claimUrl) ||
+		(Object.prototype.toString.call(parsed.billingUrl) === "[object String]" && parsed.billingUrl) ||
+		(Object.prototype.toString.call(parsed.claimUrl) === "[object String]" && parsed.claimUrl) ||
 		undefined;
 	return {
 		ok: true,
@@ -160,7 +162,7 @@ export async function provisionClawdship(
 		url,
 		claimUrl,
 		expiresAt:
-			typeof parsed.trialEnds === "string" ? parsed.trialEnds : undefined,
+			Object.prototype.toString.call(parsed.trialEnds) === "[object String]" ? parsed.trialEnds : undefined,
 		kind: type === "docker" ? "dockerfile" : "node-source",
 		anonymous: true,
 		temporary: true,

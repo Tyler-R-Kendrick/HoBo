@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased connector, broker, object, and string contracts at the shared runtime parser boundary. */
+
 const DEFAULT_SUBJECT_TOKEN_TYPE = "urn:ietf:params:oauth:token-type:id_token";
 
 export function createConnectorRuntime({

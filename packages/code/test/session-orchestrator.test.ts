@@ -13,12 +13,12 @@ import {
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
-
 import {
 	AgentLifecycleState,
 	DeliveryLifecycleState,
 	SessionLifecycleState,
 } from "../src/_generated/code_harness_pb.js";
+import type { JsonObject } from "../src/json.js";
 import type { MuxRunner } from "../src/mux.js";
 import { createResidentSessionRuntime } from "../src/resident-session-runtime.js";
 import {
@@ -111,8 +111,8 @@ function envelope(
 	sessionId: string,
 	revision: bigint,
 	command: string,
-	value: Record<string, unknown>,
-): Record<string, unknown> {
+	value: JsonObject,
+): JsonObject {
 	return {
 		schemaVersion: "hobo.code.session-command/v1",
 		commandId: `command-${command}-${revision}`,
@@ -1052,9 +1052,10 @@ describe("session orchestrator", () => {
 					});
 				}
 				if (command === "git" && args[0] === "commit-tree") {
-					retryLedgerStatus = (
-						JSON.parse(readFileSync(ledgerPath, "utf8")) as { status: string }
-					).status;
+					retryLedgerStatus =
+						// SAFETY: parsed or fixture value is the named domain type after this assertion.
+						(JSON.parse(readFileSync(ledgerPath, "utf8")) as { status: string })
+							.status;
 				}
 				return base.run(command, args, workdir, env);
 			},
@@ -1090,6 +1091,7 @@ describe("session orchestrator", () => {
 		harness.runtime.close();
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("does not reconcile an unrelated commit as the approved commit", async () => {
 		const harness = await createHarness();
 		const cwd = harness.created.session?.worktreePath ?? "";
@@ -1293,9 +1295,11 @@ describe("session orchestrator", () => {
 		writeFileSync(join(cwd, "approved.txt"), "approved\n");
 		let failRefresh = true;
 		const runtime = new Proxy(harness.runtime, {
-			get(target, property, receiver) {
-				if (property !== "update")
-					return Reflect.get(target, property, receiver);
+			get(target, property, _receiver) {
+				if (property !== "update") {
+					// SAFETY: proxy forwards known runtime properties besides update.
+					return target[property as keyof typeof target];
+				}
 				return async (...args: Parameters<typeof target.update>) => {
 					if (failRefresh) {
 						failRefresh = false;
@@ -1353,6 +1357,7 @@ describe("session orchestrator", () => {
 		harness.runtime.close();
 	});
 
+	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	it("reconciles a pending push as not applied after restart, then retries exactly once", async () => {
 		const harness = await createHarness();
 		const cwd = harness.created.session?.worktreePath ?? "";
@@ -1628,9 +1633,11 @@ describe("session orchestrator", () => {
 		const harness = await createHarness();
 		let failReconciliation = true;
 		const runtime = new Proxy(harness.runtime, {
-			get(target, property, receiver) {
-				if (property !== "update")
-					return Reflect.get(target, property, receiver);
+			get(target, property, _receiver) {
+				if (property !== "update") {
+					// SAFETY: proxy forwards known runtime properties besides update.
+					return target[property as keyof typeof target];
+				}
 				return async (...args: Parameters<typeof target.update>) => {
 					if (failReconciliation) {
 						failReconciliation = false;

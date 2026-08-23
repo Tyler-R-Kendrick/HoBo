@@ -6,6 +6,8 @@ import {
   publishSignedArtifact,
   verifyInstallCandidate,
 } from "../../signed-artifact-publish-install-contract/src/publish-install-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const RESOURCE_PACK_DISTRIBUTION_CONTRACT = "hobo.resource-pack-distribution/v1";
 export const RESOURCE_PACK_SCHEMA = "hobo.resource-pack/v1";
@@ -25,7 +27,7 @@ export function createResourcePackTrustBoundary({
   trustedOfflineBundleKeys = [],
 } = {}) {
   const trustedKeyIds = asArray(trustedSigningKeys, "trustedSigningKeys").map((key) =>
-    typeof key === "string" ? key : key.keyId
+    isJsonString(key) ? key : key.keyId
   );
   const signedArtifactTrustBoundary = createTrustBoundary({
     trustedKeyIds,
@@ -48,10 +50,10 @@ export function createResourcePackTrustBoundary({
 }
 
 export function createOfflineBundleSigningKey({ keyId, secret } = {}) {
-  if (!keyId || typeof keyId !== "string") {
+  if (!keyId || !isJsonString(keyId)) {
     throw new Error("offline bundle signing keyId is required");
   }
-  if (!secret || typeof secret !== "string") {
+  if (!secret || !isJsonString(secret)) {
     throw new Error("offline bundle signing secret is required");
   }
   return Object.freeze({ keyId, secret });
@@ -209,13 +211,13 @@ export function hoboAddResourcePack({
 
 export function verifyResourcePack({ pack, trustBoundary } = {}) {
   const reasons = [];
-  if (!pack || typeof pack !== "object" || Array.isArray(pack)) {
+  if (!pack || !isJsonObject(pack) || Array.isArray(pack)) {
     return rejectedVerification(["resourcePack.required"]);
   }
   if (pack.schema !== RESOURCE_PACK_SCHEMA) {
     reasons.push("resourcePack.schema");
   }
-  if (!pack.content || typeof pack.content !== "object" || Array.isArray(pack.content)) {
+  if (!pack.content || !isJsonObject(pack.content) || Array.isArray(pack.content)) {
     reasons.push("resourcePack.content.required");
   }
   if (!trustBoundary?.signedArtifactTrustBoundary) {
@@ -385,7 +387,7 @@ export function catalogHash(catalog) {
 
 function verifyOfflineBundle({ bundle, yard, trustBoundary }) {
   const reasons = [];
-  if (!bundle || typeof bundle !== "object" || Array.isArray(bundle)) {
+  if (!bundle || !isJsonObject(bundle) || Array.isArray(bundle)) {
     return ["offlineBundle.required"];
   }
   if (bundle.schema !== OFFLINE_RESOURCE_PACK_BUNDLE_SCHEMA) {
@@ -439,7 +441,7 @@ function verifyOfflineBundle({ bundle, yard, trustBoundary }) {
 function conformanceReasons({ pack, contentDigest, trustBoundary }) {
   const reasons = [];
   const report = pack.signedArtifact?.conformance?.report;
-  if (!report || typeof report !== "object" || Array.isArray(report)) {
+  if (!report || !isJsonObject(report) || Array.isArray(report)) {
     return ["conformance.required"];
   }
   if (stableStringify(pack.conformanceReport ?? null) !== stableStringify(report)) {
@@ -579,7 +581,7 @@ function signOfflineBundle({ bundleDigest, secret }) {
 }
 
 function normalizeYard(yard) {
-  if (!yard || typeof yard !== "object" || Array.isArray(yard)) {
+  if (!yard || !isJsonObject(yard) || Array.isArray(yard)) {
     throw new Error("yard must be an object");
   }
   return freezeClone({
@@ -657,7 +659,7 @@ function digestValue(value) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
@@ -673,7 +675,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));

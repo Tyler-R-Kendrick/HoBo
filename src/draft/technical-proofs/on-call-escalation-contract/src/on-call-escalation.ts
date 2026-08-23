@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased ladder, string, and recursive value contracts at the shared parser and serialization boundaries before domain evaluation. */
+
 import { handoffRequested } from "../../crew-event-contract/src/crew-event-contract.js";
 import {
   INCIDENT_EVENT_TYPES,

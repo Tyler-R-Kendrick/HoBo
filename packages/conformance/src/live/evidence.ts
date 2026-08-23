@@ -38,6 +38,15 @@ import { worst } from "../suites/anonymous/harness.js";
 import { MIGRATION_CHECKS } from "../suites/anonymous/migration.js";
 import type { AnonymousConformanceReport } from "../suites/anonymous/types.js";
 
+export interface EvidenceCheckBag {
+	[check: string]: EvidenceCheckOutcome;
+}
+
+export interface SelectionEvidenceFacts {
+	readonly evidenceExpiresAtMs: number;
+	readonly evidenceSignatureValid: boolean;
+}
+
 // public-contract: versions portable anonymous-provider trust evidence.
 export const ANONYMOUS_EVIDENCE_ARTIFACT_SCHEMA =
 	"hobo.conformance.anonymous-trust-evidence/v1" as const;
@@ -128,8 +137,8 @@ export type LiveEvidenceInput = {
  */
 export function checksFromReports(
 	reports: readonly AnonymousConformanceReport[],
-): Record<string, EvidenceCheckOutcome> {
-	const checks: Record<string, EvidenceCheckOutcome> = {};
+): EvidenceCheckBag {
+	const checks: EvidenceCheckBag = {};
 	for (const report of reports) {
 		for (const [check, outcome] of Object.entries(report.checks)) {
 			const current = checks[check];
@@ -148,7 +157,7 @@ export function checksFromReports(
  */
 export function standardTrustChecksFrom(
 	reports: readonly AnonymousConformanceReport[],
-): Record<string, EvidenceCheckOutcome> {
+): EvidenceCheckBag {
 	const detailed = checksFromReports(reports);
 	const look = (check: string): EvidenceCheckOutcome =>
 		detailed[check] ?? "unknown";
@@ -224,10 +233,10 @@ export function emitAnonymousTrustEvidence(
 		);
 	}
 
-	const checks: Record<string, EvidenceCheckOutcome> = {
+	const checks: EvidenceCheckBag = {
 		...checksFromReports(input.reports),
 		...standardTrustChecksFrom(input.reports),
-		...(input.additionalChecks ?? {}),
+		...input.additionalChecks,
 	};
 	assertNoUpgradedUnknowns(input.reports, checks);
 
@@ -262,7 +271,7 @@ export function emitAnonymousTrustEvidence(
 		providerDocsCheckedAt: input.providerDocsCheckedAt,
 		runTag: input.runTag,
 		signerId: input.signer.id,
-		suiteIds: [...input.reports.map((report) => report.suiteId)].sort(),
+		suiteIds: input.reports.map((report) => report.suiteId).sort(),
 	};
 	const artifactDigest = sha256Of({
 		schema: ANONYMOUS_EVIDENCE_ARTIFACT_SCHEMA,
@@ -328,7 +337,7 @@ export function assertNoUpgradedUnknowns(
 }
 
 /** Values that must never appear anywhere in an artifact. */
-const SECRET_SHAPED: readonly RegExp[] = [
+const SECRET_PATTERN: readonly RegExp[] = [
 	/postgres(?:ql)?:\/\/[^\s"]*:[^\s"]*@/iu,
 	/rediss?:\/\/[^\s"]*:[^\s"]*@/iu,
 	/mysql:\/\/[^\s"]*:[^\s"]*@/iu,
@@ -350,7 +359,7 @@ export function assertSanitized(
 	artifact: AnonymousTrustEvidenceArtifact,
 ): void {
 	const serialized = JSON.stringify(artifact);
-	for (const pattern of SECRET_SHAPED) {
+	for (const pattern of SECRET_PATTERN) {
 		if (pattern.test(serialized)) {
 			throw new LiveEvidenceError(
 				"EVIDENCE_CONTAINS_SECRET",
@@ -393,10 +402,7 @@ export function conformanceOutcomeFromArtifact(
 export function selectionEvidenceFacts(
 	artifact: AnonymousTrustEvidenceArtifact,
 	verifier: EvidenceVerifier,
-): {
-	readonly evidenceExpiresAtMs: number;
-	readonly evidenceSignatureValid: boolean;
-} {
+): SelectionEvidenceFacts {
 	const outcome = verifier.verify({
 		providerId: artifact.evidence.providerId,
 		productDefinitionId: artifact.evidence.productDefinitionId,

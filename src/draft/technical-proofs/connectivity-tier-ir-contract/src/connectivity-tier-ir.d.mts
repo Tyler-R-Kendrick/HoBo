@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "./json.js";
 export declare const CONNECTIVITY_PLAN_SCHEMA_VERSION: "hobo.connectivity-plan/v1";
 
 export declare const ConnectivityTier: Readonly<{
@@ -36,7 +37,7 @@ export interface ConnectivityPlan {
     source: string;
     target: string;
   };
-  parameters: Record<string, unknown>;
+  parameters: JsonObject;
   residency?: {
     tag: string;
   };
@@ -66,7 +67,7 @@ export type ConnectivityTierDecision =
   | { ok: true; plan: ConnectivityPlan }
   | { ok: false; code: string; reason: string };
 
-export declare function validateConnectivityPlan(plan: unknown): ValidationResult;
+export declare function validateConnectivityPlan(plan: JsonValue): ValidationResult;
 export declare function roundTripConnectivityPlan(plan: ConnectivityPlan): ConnectivityPlan;
 export declare function decideConnectivityTier(edge: BindEdge): ConnectivityTierDecision;
 export declare function rejectPolicyWideningOverride(plan: Pick<ConnectivityPlan, "tier" | "policy" | "override">): ValidationResult;

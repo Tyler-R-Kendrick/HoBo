@@ -6,6 +6,8 @@ import {
   GENERATED_CONTROL_PLANE_EVENT_TYPES,
   GENERATED_REQUIRED_EVENT_BODY_FIELDS
 } from "./generated/control-plane-event-types.js";
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject } from "./json.js";
+
 
 export const CURRENT_SCHEMA_VERSION = 1;
 
@@ -522,7 +524,7 @@ export function upcastEvent(event) {
 export function validateControlPlaneEvent(event) {
   const errors = [];
 
-  if (!event || typeof event !== "object" || Array.isArray(event)) {
+  if (!event || !isJsonObject(event) || Array.isArray(event)) {
     return { ok: false, errors: ["event must be an object"] };
   }
 
@@ -541,17 +543,17 @@ export function validateControlPlaneEvent(event) {
   requireString(event, "time", errors);
   requireString(event, "correlationId", errors);
   requireString(event, "causationId", errors);
-  if (!event.actor || typeof event.actor !== "object") {
+  if (!event.actor || !isJsonObject(event.actor)) {
     errors.push("actor is required");
   } else {
     requireString(event.actor, "kind", errors, "actor.kind");
     requireString(event.actor, "id", errors, "actor.id");
   }
-  if (!event.data || typeof event.data !== "object" || Array.isArray(event.data)) {
+  if (!event.data || !isJsonObject(event.data) || Array.isArray(event.data)) {
     errors.push("data must be an object");
   }
 
-  if (event.data && typeof event.data === "object") {
+  if (event.data && isJsonObject(event.data)) {
     validateRequiredBodyFields(event.type, event.data, errors);
     validateZodBody(event.type, event.data, errors);
     if (event.type === "deployment.Planned") {
@@ -663,7 +665,7 @@ function createEvent(type, data, overrides = {}) {
 }
 
 function validatePlanned(data, errors) {
-  if (!data.plan || typeof data.plan !== "object") {
+  if (!data.plan || !isJsonObject(data.plan)) {
     errors.push("deployment.Planned plan is required");
     return;
   }
@@ -679,7 +681,7 @@ function validateMatchDecided(data, errors) {
   if (!OBJECTIVES.has(data.objective)) {
     errors.push("match.Decided objective must be a supported objective");
   }
-  if (typeof data.tie !== "boolean") {
+  if (!isJsonBoolean(data.tie)) {
     errors.push("match.Decided tie must be a boolean");
   }
   validateSha(data.catalogContentHash, "catalogContentHash", errors);
@@ -691,7 +693,7 @@ function validateMatchDecided(data, errors) {
       if (entry.region !== undefined) requireString(entry, "region", errors, `ranking.${index}.region`);
       if (entry.rationale !== undefined) requireString(entry, "rationale", errors, `ranking.${index}.rationale`);
       for (const field of ["specificity", "priority", "objectiveScore", "rank"]) {
-        if (typeof entry[field] !== "number") {
+        if (!isJsonNumber(entry[field])) {
           errors.push(`ranking.${index}.${field} must be a number`);
         }
       }
@@ -714,7 +716,7 @@ function validateDispatchDecided(data, errors) {
   if (!OBJECTIVES.has(data.objective)) {
     errors.push("dispatch.Decided objective must be a supported objective");
   }
-  if (!data.ledgerInput || typeof data.ledgerInput !== "object") {
+  if (!data.ledgerInput || !isJsonObject(data.ledgerInput)) {
     errors.push("dispatch.Decided ledgerInput is required");
   } else {
     if (data.ledgerInput.view !== "CreditLedgerView") {
@@ -731,7 +733,7 @@ function validateDispatchDecided(data, errors) {
   } else {
     data.candidates.forEach((candidate, index) => {
       requireString(candidate, "provider", errors, `candidates.${index}.provider`);
-      if (typeof candidate.effectiveMarginalCost !== "number") {
+      if (!isJsonNumber(candidate.effectiveMarginalCost)) {
         errors.push(`candidates.${index}.effectiveMarginalCost must be a number`);
       }
       if (candidate.rationale !== undefined) {
@@ -742,13 +744,13 @@ function validateDispatchDecided(data, errors) {
 }
 
 function validateSha(value, path, errors) {
-  if (typeof value !== "string" || !SHA256_REF.test(value)) {
+  if (!isJsonString(value) || !SHA256_REF.test(value)) {
     errors.push(`${path} must be sha256`);
   }
 }
 
 function requireString(value, field, errors, label = field) {
-  if (typeof value?.[field] !== "string" || value[field].length === 0) {
+  if (!isJsonString(value?.[field]) || value[field].length === 0) {
     errors.push(`${label} is required`);
   }
 }
@@ -757,7 +759,7 @@ function sortForCanonicalJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortForCanonicalJson);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))

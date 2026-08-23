@@ -5,6 +5,8 @@ import {
   outputPlaceholder,
   validateEmission
 } from "../../hobo-realize-emission-contract/src/realize-emission-contract.js";
+import { asJsonObject, isJsonNumber, isJsonString, isJsonObject, type JsonValue, type JsonObject, type JsonBag, type StringBag } from "./json.js";
+
 
 export const CLOUDFLARE_PROVIDER_ID = "@hobo/provider-cloudflare";
 export const CLOUDFLARE_PROVIDER_VERSION = "hobo.provider-cloudflare/v1";
@@ -20,10 +22,15 @@ export type CloudflareCapabilityPort =
   | "queue"
   | "dns";
 
-type OptionValues = Record<string, any>;
-type OutputValues = Record<string, string>;
-type ServiceMatrix = Record<string, string[]>;
-type HintValue = string[] | Record<string, unknown>;
+type OptionValues = JsonBag;
+type OutputValues = StringBag;
+interface ServiceMatrix {
+  [colo: string]: string[];
+}
+interface ResourceClassByColo {
+  [colo: string]: string[];
+}
+type HintValue = string[] | JsonObject;
 
 interface CapabilityDefinition {
   port: CloudflareCapabilityPort;
@@ -134,7 +141,7 @@ interface EdgeShopPlanOptions {
   colo?: string;
   env?: string;
   envType?: string;
-  resourceOptions?: Record<string, CloudflareOptionBlock[]>;
+  resourceOptions?: { [resourceId: string]: CloudflareOptionBlock[] };
   resources?: PlanResource[];
 }
 
@@ -143,7 +150,7 @@ interface CapabilityInfo {
   service: string;
   resourceClass: string;
   resourceClasses: string[];
-  resourceClassesByColo: Record<string, string[]>;
+  resourceClassesByColo: ResourceClassByColo;
   features: string[];
   regions: string[];
   conformance: { tags: string[] };
@@ -174,12 +181,7 @@ interface PlanRejectedResult {
   type: "deployment.PlanRejected";
   provider: string;
   resourceId: string;
-  reason: {
-    code: string;
-    resourceId: string;
-    [key: string]: unknown;
-  };
-  [key: string]: unknown;
+  reason: JsonBag;
 }
 
 interface PostgresPreferWarning {
@@ -196,7 +198,6 @@ interface PlanPlannedResult {
   planId: string;
   colo: string;
   warnings: PostgresPreferWarning[];
-  [key: string]: unknown;
 }
 
 type EvaluationResult = PlanRejectedResult | PlanPlannedResult;
@@ -206,7 +207,6 @@ interface AppliedResult {
   provider: string;
   planId: string;
   resources: string[];
-  [key: string]: unknown;
 }
 
 type ApplySimulationResult = PlanRejectedResult | AppliedResult;
@@ -256,7 +256,7 @@ interface IacNode {
     options: OptionValues;
     metadata: { hoboPlan: string; hoboResource: string };
     bundle?: { $build: string };
-    bindings?: Record<string, string>;
+    bindings?: StringBag;
   };
   outputs: string[];
 }
@@ -276,7 +276,7 @@ interface PortabilityReport {
   apiVersion: string;
   planId: string;
   entries: PortabilityReportEntry[];
-  zeroSecretExceptions: unknown[];
+  zeroSecretExceptions: JsonValue[];
 }
 
 interface RealizeEmission {
@@ -297,7 +297,6 @@ interface RealizeEmission {
     apiVersion: string;
     artifacts: BuildArtifact[];
   };
-  [key: string]: unknown;
 }
 
 interface CampEvidenceFields {
@@ -307,7 +306,9 @@ interface CampEvidenceFields {
   quota: boolean;
 }
 
-type CampEvidenceOverrides = Partial<Record<CloudflareCapabilityPort | "default", Partial<CampEvidenceFields>>>;
+type CampEvidenceOverrides = {
+  [K in CloudflareCapabilityPort | "default"]?: Partial<CampEvidenceFields>;
+};
 type CampEvidenceOption = "pass" | "fail" | CampEvidenceOverrides;
 
 interface NegotiateHints {
@@ -560,8 +561,12 @@ export function createCloudflareProvider(options: CloudflareProviderOptions = {}
       provisioned.set(id, resource);
       return resource;
     },
-    client(capability: CloudflareCapabilityPort, resource: Record<string, unknown> = {}) {
-      const outputs = (resource.outputs ?? resource) as OutputValues;
+    client(capability: CloudflareCapabilityPort, resource: JsonObject = {}) {
+      const outputsBag = isJsonObject(resource.outputs) ? resource.outputs : resource;
+      const outputs: OutputValues = {};
+      for (const [key, value] of Object.entries(outputsBag)) {
+        if (isJsonString(value)) outputs[key] = value;
+      }
       return createCloudflareClient(capability, outputs);
     },
     negotiate(capability: CloudflareCapabilityPort, hints: NegotiateHints = {}): NegotiateResult {
@@ -701,7 +706,7 @@ export function createCloudflareEdgeShopPlan(options: EdgeShopPlanOptions = {}):
   };
 }
 
-export function mergeCloudflareResolvedOptions(_provider: unknown, optionBlocks: CloudflareOptionBlock[] = []) {
+export function mergeCloudflareResolvedOptions(_provider: CapabilityManifestSource | null, optionBlocks: CloudflareOptionBlock[] = []) {
   const merged = new Map<string, MergedOptionEntry>();
   const dropped: CloudflareOptionBlock[] = [];
 
@@ -725,7 +730,7 @@ export function mergeCloudflareResolvedOptions(_provider: unknown, optionBlocks:
       optionName: block.optionName ?? prior.optionName,
       options: {
         ...prior.options,
-        ...(block.options ?? {})
+        ...block.options
       }
     });
   }
@@ -864,7 +869,11 @@ export function realizeCloudflarePlan(provider: CapabilityManifestSource, plan: 
   return emission;
 }
 
-export function simulateCloudflareApply(provider: CapabilityManifestSource, plan: Plan, options: { accountQuota?: Record<string, number> } = {}): ApplySimulationResult {
+interface AccountQuota {
+  [port: string]: number;
+}
+
+export function simulateCloudflareApply(provider: CapabilityManifestSource, plan: Plan, options: { accountQuota?: AccountQuota } = {}): ApplySimulationResult {
   const evaluation = evaluateCloudflarePlan(provider, plan);
   if (evaluation.type === "deployment.PlanRejected") return evaluation;
 
@@ -1054,17 +1063,20 @@ function rejectCloudflareSpecificRequirements(resource: ResolvedResource, resolv
 
   if (resource.type === "compute") {
     const options = resolved?.options ?? {};
-    const violations: Record<string, unknown> = {};
-    if ((options.cpuMs ?? 0) > WORKER_LIMITS.cpuMs) violations.cpuMs = options.cpuMs;
-    if ((options.scriptSizeMb ?? 0) > WORKER_LIMITS.scriptSizeMb) violations.scriptSizeMb = options.scriptSizeMb;
-    if ((options.memoryMb ?? 0) > WORKER_LIMITS.memoryMb) violations.memoryMb = options.memoryMb;
+    const violations: JsonBag = {};
+    const cpuMs = options.cpuMs;
+    const scriptSizeMb = options.scriptSizeMb;
+    const memoryMb = options.memoryMb;
+    if (isJsonNumber(cpuMs) && cpuMs > WORKER_LIMITS.cpuMs) violations.cpuMs = cpuMs;
+    if (isJsonNumber(scriptSizeMb) && scriptSizeMb > WORKER_LIMITS.scriptSizeMb) violations.scriptSizeMb = scriptSizeMb;
+    if (isJsonNumber(memoryMb) && memoryMb > WORKER_LIMITS.memoryMb) violations.memoryMb = memoryMb;
     if (Object.keys(violations).length > 0) {
       return planRejected("cloudflare-worker-limit-exceeded", resource.id, {
         message: "Worker CPU, memory, or bundle size exceeds the Cloudflare edge limit captured by this provider contract.",
         provider: CLOUDFLARE_PROVIDER_ID,
         capability: resource.type,
         violations,
-        limits: WORKER_LIMITS
+        limits: asJsonObject(WORKER_LIMITS)
       });
     }
   }
@@ -1141,7 +1153,7 @@ function availableColosFor(definition: CapabilityDefinition, serviceMatrix: Serv
   );
 }
 
-function availableResourceClassesByColo(definition: CapabilityDefinition, serviceMatrix: ServiceMatrix, colos: string[]): Record<string, string[]> {
+function availableResourceClassesByColo(definition: CapabilityDefinition, serviceMatrix: ServiceMatrix, colos: string[]): ResourceClassByColo {
   return Object.fromEntries(colos.map((colo) => [
     colo,
     resourceClassesFor(definition).filter((resourceClass) => serviceMatrix[colo]?.includes(resourceClass))
@@ -1241,26 +1253,26 @@ function normalizeCampEvidence(evidence: CampEvidenceOption = "pass", capability
     iam: true,
     mtls: true,
     quota: true,
-    ...(evidence[capability] ?? evidence.default ?? {})
+    ...(evidence[capability] ?? evidence.default)
   };
 }
 
 function normalizeHintValues(value: HintValue | undefined): Set<string> {
   if (Array.isArray(value)) return new Set(value);
-  if (!value || typeof value !== "object") return new Set();
+  if (!value || !isJsonObject(value)) return new Set();
 
   const features = new Set<string>();
   for (const [key, hintValue] of Object.entries(value)) {
     if (key === "region" || key === "colo") continue;
     features.add(key);
-    if (typeof hintValue === "string") features.add(hintValue);
+    if (isJsonString(hintValue)) features.add(hintValue);
   }
   return features;
 }
 
 function normalizePreferHints(value: HintValue | undefined, definition: CapabilityDefinition): string[] {
   if (Array.isArray(value)) return value.filter((feature) => definition.features.includes(feature));
-  if (!value || typeof value !== "object") return [];
+  if (!value || !isJsonObject(value)) return [];
   return Object.keys(value);
 }
 
@@ -1272,43 +1284,49 @@ function requireCapability(port: CloudflareCapabilityPort): CapabilityDefinition
 
 function fakeOutputsFor(definition: CapabilityDefinition, id: string, colo: string): OutputValues {
   if (definition.port === "compute") {
-    return {
+    const outputs: OutputValues = {
       url: `https://${id}.${colo.toLowerCase()}.workers.dev`,
       scriptName: id,
       route: `${id}.example.com/*`
     };
+    return outputs;
   }
   if (definition.port === "objectStore") {
-    return {
+    const outputs: OutputValues = {
       bucketName: id,
       endpoint: `https://${id}.r2.cloudflarestorage.com`,
       jurisdiction: colo
     };
+    return outputs;
   }
   if (definition.port === "database") {
-    return {
+    const outputs: OutputValues = {
       databaseId: id,
       bindingName: bindingNameFor(id, "databaseId"),
       connectionString: `d1://${colo}/${id}`
     };
+    return outputs;
   }
   if (definition.port === "kv") {
-    return {
+    const outputs: OutputValues = {
       namespaceId: id,
       bindingName: bindingNameFor(id, "namespaceId")
     };
+    return outputs;
   }
   if (definition.port === "queue") {
-    return {
+    const outputs: OutputValues = {
       queueName: id,
       producerBinding: bindingNameFor(id, "queueName")
     };
+    return outputs;
   }
-  return {
+  const outputs: OutputValues = {
     zoneId: `zone-${id}`,
     recordId: `record-${id}`,
     fqdn: `${id}.example.com`
   };
+  return outputs;
 }
 
 function createCloudflareClient(port: CloudflareCapabilityPort, outputs: OutputValues) {
@@ -1372,7 +1390,7 @@ function createCloudflareClient(port: CloudflareCapabilityPort, outputs: OutputV
   };
 }
 
-function planRejected(code: string, resourceId: string, reason: Record<string, unknown>): PlanRejectedResult {
+function planRejected(code: string, resourceId: string, reason: JsonBag): PlanRejectedResult {
   return {
     type: "deployment.PlanRejected",
     provider: CLOUDFLARE_PROVIDER_ID,
@@ -1385,15 +1403,17 @@ function planRejected(code: string, resourceId: string, reason: Record<string, u
   };
 }
 
+type OutputByPort = { readonly [K in CloudflareCapabilityPort]: string };
+
 function primaryOutputFor(port: CloudflareCapabilityPort): string {
-  const outputByPort: Record<CloudflareCapabilityPort, string> = {
+  const outputByPort = {
     compute: "url",
     objectStore: "bucketName",
     database: "connectionString",
     kv: "namespaceId",
     queue: "queueName",
     dns: "fqdn"
-  };
+  } satisfies OutputByPort;
   return outputByPort[port];
 }
 

@@ -59,7 +59,7 @@ function workspaceGlobs(): string[] {
 	const globs: string[] = [];
 	let inPackages = false;
 	for (const line of raw.split("\n")) {
-		if (/^packages:/u.test(line)) {
+		if (line.startsWith("packages:")) {
 			inPackages = true;
 			continue;
 		}
@@ -148,6 +148,7 @@ function collectDeclaredEdges(
 	packageJsonPath: string,
 	packageMap: Map<string, string>,
 ): WorkspaceEdge[] {
+	// SAFETY: assertion to `.parse(readFileSync(packageJsonPath, "utf8")) as { dependencies?: Record<string, string>; devDependencies?: Record<strin` is required at this boundary.
 	const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
 		dependencies?: Record<string, string>;
 		devDependencies?: Record<string, string>;
@@ -335,6 +336,7 @@ function main(): void {
 	const packageMap = new Map<string, string>();
 
 	for (const packageJsonPath of packageJsonFiles) {
+		// SAFETY: assertion to `eadFileSync(packageJsonPath, "utf8")) as { name?: string; }; if (pkg.` is required at this boundary.
 		const pkg = JSON.parse(readFileSync(packageJsonPath, "utf8")) as {
 			name?: string;
 		};

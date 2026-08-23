@@ -54,7 +54,7 @@ export type CdApplyEvent = Readonly<{
 	schemaVersion: typeof ATTESTED_APPLY_SCHEMA;
 	seq: number;
 	time: string;
-	data: Readonly<Record<string, unknown>>;
+	data: Readonly<Record<string, JsonValue>>;
 }>;
 
 export type AttestedPrincipal = Readonly<{
@@ -96,6 +96,24 @@ export type AttestedApplyResult = Readonly<{
 	reason?: string;
 }>;
 
+type AttestedApplyWorker = {
+	readonly schemaVersion: typeof ATTESTED_APPLY_SCHEMA;
+	readonly mode: "live" | "simulate";
+	apply(
+		set: ResolvedDeploymentSet,
+		input?: {
+			readonly deploymentId?: string;
+			readonly parentPrincipal?: PrincipalRef;
+		},
+	): Promise<AttestedApplyResult>;
+	status(
+		set: ResolvedDeploymentSet,
+		deploymentId: string,
+	): Promise<readonly SecretFreeStatus[]>;
+	eventsFor(deploymentId: string): readonly CdApplyEvent[];
+	listDeployments(): readonly string[];
+};
+
 export type AttestedApplyWorkerOptions = Readonly<{
 	readonly executor?: Executor;
 	readonly iac?: IacProvider;
@@ -125,25 +143,7 @@ type DeploymentRecord = Readonly<{
  */
 export function createAttestedApplyWorker(
 	options: AttestedApplyWorkerOptions = {},
-): {
-	readonly schemaVersion: typeof ATTESTED_APPLY_SCHEMA;
-	readonly mode: "live" | "simulate";
-	apply(
-		set: ResolvedDeploymentSet,
-		input?: {
-			readonly deploymentId?: string;
-			readonly parentPrincipal?: PrincipalRef;
-		},
-	): Promise<AttestedApplyResult>;
-	status(
-		set: ResolvedDeploymentSet,
-		deploymentId: string,
-	): Promise<readonly SecretFreeStatus[]>;
-	/** Event log for a prior apply (CLI logs path). */
-	eventsFor(deploymentId: string): readonly CdApplyEvent[];
-	/** Last recorded deployment ids (most recent first). */
-	listDeployments(): readonly string[];
-} {
+): AttestedApplyWorker {
 	const now = options.now ?? (() => new Date().toISOString());
 	const mode = options.mode ?? "simulate";
 	const hostId = options.hostId ?? "host-local-fixture";
@@ -188,7 +188,7 @@ export function createAttestedApplyWorker(
 			let seq = 0;
 			const emit = (
 				type: CdApplyEvent["type"],
-				data: Readonly<Record<string, unknown>>,
+				data: Readonly<Record<string, JsonValue>>,
 			) => {
 				seq += 1;
 				const evt = Object.freeze({
@@ -354,12 +354,12 @@ export function createAttestedApplyWorker(
 					);
 				}
 
-				const outputs: Record<string, unknown> = {
+				const outputs = {
 					...exec.outputs,
 					// Inject a secret-looking field so scrubbing is proven even on live adapters.
-					...(mode === "simulate"
-						? { apiToken: "should-never-appear-in-projection" }
-						: {}),
+					...(mode === "simulate" && {
+						apiToken: "should-never-appear-in-projection",
+					}),
 				};
 
 				const status = createSecretFreeStatus({
@@ -630,3 +630,4 @@ export function createContractAssertedApplyAttestation(input: {
 	});
 	return attestor.createDocument({ launchMeasurement: launch });
 }
+import type { JsonValue } from "../plan-types.js";

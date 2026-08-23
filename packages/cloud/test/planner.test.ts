@@ -18,7 +18,7 @@ import {
 const HELLO_BINDLE_PLAN_HASH =
 	"sha256:30eb585558f0614fac037fa5ada935eaad03e86f35c39110af21b2c58bdaf5b6";
 
-function fixture(name: string): unknown {
+function fixture(name: string): object {
 	return JSON.parse(
 		readFileSync(
 			fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)),
@@ -45,6 +45,7 @@ describe("Planner: hello-bindle golden DeploymentPlan DAG", () => {
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
 
+		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
 		const golden = fixture("golden-plan.json") as DeploymentPlan;
 		expect(JSON.parse(canonicalPlanJson(result.plan))).toEqual(
 			JSON.parse(canonicalPlanJson(golden)),
@@ -90,7 +91,7 @@ describe("Planner: hello-bindle golden DeploymentPlan DAG", () => {
 			for (const rejectedCandidate of decision.rejectedCandidates) {
 				expect(rejectedCandidate.reason.length).toBeGreaterThan(0);
 			}
-			expect(typeof decision.tie).toBe("boolean");
+			expect(decision.tie).toBeTypeOf("boolean");
 			expect(decision.catalogContentHash).toBe(reg.catalogHash);
 		}
 	});

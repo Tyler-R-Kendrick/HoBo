@@ -1,4 +1,19 @@
-import type { RoutingPolicy, SparseBudgetPolicy } from "./policy-planner.js";
+import {
+	isJsonArray,
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json-inspect.js";
+import type {
+	MutableSparseBudgetPolicy,
+	RoutingPolicy,
+	SparseBudgetPolicy,
+} from "./policy-planner.js";
+
+export type { JsonObject, JsonValue };
 
 export type ExampleUiKind = "counter" | "hello" | "notes" | "todos" | "queue" | "saas";
 export type ExamplePolicy = SparseBudgetPolicy;
@@ -31,18 +46,31 @@ export type RuntimeAction =
 	| "listOrders"
 	| "adminListUsers";
 
+export type ExampleRuntimeRoute = {
+	readonly method: "GET" | "POST" | "PATCH" | "DELETE";
+	readonly path: string;
+	readonly action: RuntimeAction;
+	readonly resource?: string;
+	readonly key?: string;
+};
+
+type MutableRuntimeRoute = {
+	method: ExampleRuntimeRoute["method"];
+	path: string;
+	action: RuntimeAction;
+	resource?: string;
+	key?: string;
+};
+
+export type ExampleRuntimeResource = {
+	readonly kind: "kv" | "queue";
+	readonly initial: JsonValue;
+};
+
 export interface ExampleRuntimeDescriptor {
 	readonly schemaVersion: "hobo.try-runtime/v1";
-	readonly resources: Readonly<
-		Record<string, { readonly kind: "kv" | "queue"; readonly initial: unknown }>
-	>;
-	readonly routes: readonly {
-		readonly method: "GET" | "POST" | "PATCH" | "DELETE";
-		readonly path: string;
-		readonly action: RuntimeAction;
-		readonly resource?: string;
-		readonly key?: string;
-	}[];
+	readonly resources: Readonly<Record<string, ExampleRuntimeResource>>;
+	readonly routes: readonly ExampleRuntimeRoute[];
 }
 
 export interface ExampleTopology {
@@ -116,12 +144,12 @@ const ACTIONS = [
 	"adminListUsers",
 ] as const;
 
-export function parseExamplesCatalog(value: unknown): readonly ExampleCatalogEntry[] {
-	if (!Array.isArray(value)) throw new TypeError("Examples catalog must be an array");
+export function parseExamplesCatalog(value: JsonValue): readonly ExampleCatalogEntry[] {
+	if (!isJsonArray(value)) throw new TypeError("Examples catalog must be an array");
 	return value.map((entry, index) => parseExample(entry, `catalog[${index}]`));
 }
 
-function parseExample(value: unknown, label: string): ExampleCatalogEntry {
+function parseExample(value: JsonValue, label: string): ExampleCatalogEntry {
 	const input = record(value, label);
 	const ui = oneOf(input.ui, `${label}.ui`, [
 		"counter",
@@ -175,7 +203,7 @@ function parseExample(value: unknown, label: string): ExampleCatalogEntry {
 }
 
 function parseBindleWebApp(
-	value: unknown,
+	value: JsonValue | undefined,
 	label: string,
 ): ExampleBindleWebApp | null {
 	if (value === undefined || value === null) return null;
@@ -187,11 +215,11 @@ function parseBindleWebApp(
 }
 
 function parseBindleContainers(
-	value: unknown,
+	value: JsonValue | undefined,
 	label: string,
 ): readonly ExampleBindleContainer[] {
 	if (value === undefined) return [];
-	if (!Array.isArray(value)) {
+	if (!isJsonArray(value)) {
 		throw new TypeError(`${label} must be an array`);
 	}
 	return value.map((entry, index) => {
@@ -203,11 +231,11 @@ function parseBindleContainers(
 	});
 }
 
-function parseTopology(value: unknown, label: string): ExampleTopology {
+function parseTopology(value: JsonValue, label: string): ExampleTopology {
 	const input = record(value, label);
 	const home = record(input.homeStation, `${label}.homeStation`);
 	const junction = record(input.junction, `${label}.junction`);
-	if (!Array.isArray(input.yards) || input.yards.length === 0) {
+	if (!isJsonArray(input.yards) || input.yards.length === 0) {
 		throw new TypeError(`${label}.yards must be a non-empty array`);
 	}
 	const yards = input.yards.map((value, index) => {
@@ -239,90 +267,147 @@ function parseTopology(value: unknown, label: string): ExampleTopology {
 	};
 }
 
-function parseRuntime(value: unknown, label: string): ExampleRuntimeDescriptor {
+function parseRuntime(value: JsonValue, label: string): ExampleRuntimeDescriptor {
 	const input = record(value, label);
 	if (input.schemaVersion !== "hobo.try-runtime/v1") {
 		throw new TypeError(`${label}.schemaVersion is invalid`);
 	}
 	const resourcesInput = record(input.resources, `${label}.resources`);
-	const resources: Record<string, { kind: "kv" | "queue"; initial: unknown }> = {};
+	const resources: Record<string, ExampleRuntimeResource> = {};
 	for (const [name, raw] of Object.entries(resourcesInput)) {
 		const resource = record(raw, `${label}.resources.${name}`);
 		resources[name] = {
 			kind: oneOf(resource.kind, `${label}.resources.${name}.kind`, ["kv", "queue"] as const),
-			initial: resource.initial,
+			initial: resource.initial ?? null,
 		};
 	}
-	if (!Array.isArray(input.routes) || input.routes.length === 0) {
+	if (!isJsonArray(input.routes) || input.routes.length === 0) {
 		throw new TypeError(`${label}.routes must be a non-empty array`);
 	}
 	const routes = input.routes.map((raw, index) => {
 		const route = record(raw, `${label}.routes[${index}]`);
-		const resource = route.resource === undefined ? undefined : string(route.resource, `${label}.routes[${index}].resource`);
+		const resource =
+			route.resource === undefined
+				? undefined
+				: string(route.resource, `${label}.routes[${index}].resource`);
 		if (resource !== undefined && !(resource in resources)) {
 			throw new TypeError(`${label}.routes[${index}] references an unknown resource`);
 		}
-		return {
+		const parsed: MutableRuntimeRoute = {
 			method: oneOf(route.method, `${label}.routes[${index}].method`, METHODS),
 			path: string(route.path, `${label}.routes[${index}].path`),
 			action: oneOf(route.action, `${label}.routes[${index}].action`, ACTIONS),
-			...(resource === undefined ? {} : { resource }),
-			...(route.key === undefined ? {} : { key: string(route.key, `${label}.routes[${index}].key`) }),
 		};
+		if (resource !== undefined) parsed.resource = resource;
+		if (route.key !== undefined) {
+			parsed.key = string(route.key, `${label}.routes[${index}].key`);
+		}
+		return parsed;
 	});
 	return { schemaVersion: "hobo.try-runtime/v1", resources, routes };
 }
 
-function parsePolicy(value: unknown, label: string): ExamplePolicy {
+function parsePolicy(value: JsonValue, label: string): ExamplePolicy {
 	const input = record(value, label);
-	const output: Record<string, unknown> = {};
-	if (input.preferLocal !== undefined) output.preferLocal = boolean(input.preferLocal, `${label}.preferLocal`);
-	if (input.routing !== undefined) output.routing = oneOf(input.routing, `${label}.routing`, ["local-first", "latency-first", "cost-first"] as const) satisfies RoutingPolicy;
-	if (input.redundancy !== undefined) output.redundancy = oneOf(input.redundancy, `${label}.redundancy`, ["none", "active-passive", "active-active", "mirror"] as const);
-	if (input.maxReplicas !== undefined) output.maxReplicas = integer(input.maxReplicas, `${label}.maxReplicas`, 0);
-	if (input.maxConcurrent !== undefined) output.maxConcurrent = integer(input.maxConcurrent, `${label}.maxConcurrent`, 1);
-	if (input.monthlySpendCapUsd !== undefined) output.monthlySpendCapUsd = number(input.monthlySpendCapUsd, `${label}.monthlySpendCapUsd`);
-	if (input.resourcePool !== undefined) output.resourcePool = strings(input.resourcePool, `${label}.resourcePool`).map((entry) => oneOf(entry, `${label}.resourcePool`, ["local", "anonymous-remote", "paid-remote"] as const));
-	return output as ExamplePolicy;
+	const output: MutableSparseBudgetPolicy = {};
+	if (input.preferLocal !== undefined) {
+		output.preferLocal = boolean(input.preferLocal, `${label}.preferLocal`);
+	}
+	if (input.routing !== undefined) {
+		output.routing = oneOf(input.routing, `${label}.routing`, [
+			"local-first",
+			"latency-first",
+			"cost-first",
+		] as const) satisfies RoutingPolicy;
+	}
+	if (input.redundancy !== undefined) {
+		output.redundancy = oneOf(input.redundancy, `${label}.redundancy`, [
+			"none",
+			"active-passive",
+			"active-active",
+			"mirror",
+		] as const);
+	}
+	if (input.maxReplicas !== undefined) {
+		output.maxReplicas = integer(input.maxReplicas, `${label}.maxReplicas`, 0);
+	}
+	if (input.maxConcurrent !== undefined) {
+		output.maxConcurrent = integer(input.maxConcurrent, `${label}.maxConcurrent`, 1);
+	}
+	if (input.monthlySpendCapUsd !== undefined) {
+		output.monthlySpendCapUsd = number(
+			input.monthlySpendCapUsd,
+			`${label}.monthlySpendCapUsd`,
+		);
+	}
+	if (input.resourcePool !== undefined) {
+		output.resourcePool = strings(input.resourcePool, `${label}.resourcePool`).map(
+			(entry) =>
+				oneOf(entry, `${label}.resourcePool`, [
+					"local",
+					"anonymous-remote",
+					"paid-remote",
+				] as const),
+		);
+	}
+	return output;
 }
 
-function record(value: unknown, label: string): Record<string, unknown> {
-	if (!value || typeof value !== "object" || Array.isArray(value)) throw new TypeError(`${label} must be an object`);
-	return value as Record<string, unknown>;
-}
-
-function string(value: unknown, label: string): string {
-	if (typeof value !== "string" || value.length === 0) throw new TypeError(`${label} must be a non-empty string`);
+function record(value: JsonValue, label: string): JsonObject {
+	if (!isJsonObject(value)) throw new TypeError(`${label} must be an object`);
 	return value;
 }
 
-function stringAllowEmpty(value: unknown, label: string): string {
-	if (typeof value !== "string") throw new TypeError(`${label} must be a string`);
+function string(value: JsonValue, label: string): string {
+	if (!isJsonString(value) || value.length === 0) {
+		throw new TypeError(`${label} must be a non-empty string`);
+	}
 	return value;
 }
 
-function strings(value: unknown, label: string): string[] {
-	if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) throw new TypeError(`${label} must be a string array`);
-	return [...new Set(value)];
-}
-
-function boolean(value: unknown, label: string): boolean {
-	if (typeof value !== "boolean") throw new TypeError(`${label} must be boolean`);
+function stringAllowEmpty(value: JsonValue, label: string): string {
+	if (!isJsonString(value)) throw new TypeError(`${label} must be a string`);
 	return value;
 }
 
-function number(value: unknown, label: string): number {
-	if (typeof value !== "number" || !Number.isFinite(value) || value < 0) throw new TypeError(`${label} must be a non-negative number`);
+function strings(value: JsonValue, label: string): string[] {
+	if (!isJsonArray(value)) throw new TypeError(`${label} must be a string array`);
+	const out: string[] = [];
+	for (const entry of value) {
+		if (!isJsonString(entry)) throw new TypeError(`${label} must be a string array`);
+		out.push(entry);
+	}
+	return [...new Set(out)];
+}
+
+function boolean(value: JsonValue, label: string): boolean {
+	if (!isJsonBoolean(value)) throw new TypeError(`${label} must be boolean`);
 	return value;
 }
 
-function integer(value: unknown, label: string, minimum: number): number {
+function number(value: JsonValue, label: string): number {
+	if (!isJsonNumber(value) || !Number.isFinite(value) || value < 0) {
+		throw new TypeError(`${label} must be a non-negative number`);
+	}
+	return value;
+}
+
+function integer(value: JsonValue, label: string, minimum: number): number {
 	const parsed = number(value, label);
-	if (!Number.isInteger(parsed) || parsed < minimum) throw new TypeError(`${label} must be an integer >= ${minimum}`);
+	if (!Number.isInteger(parsed) || parsed < minimum) {
+		throw new TypeError(`${label} must be an integer >= ${minimum}`);
+	}
 	return parsed;
 }
 
-function oneOf<const T extends readonly string[]>(value: unknown, label: string, choices: T): T[number] {
-	if (typeof value !== "string" || !choices.includes(value)) throw new TypeError(`${label} is invalid`);
-	return value as T[number];
+function oneOf<const T extends readonly string[]>(
+	value: JsonValue,
+	label: string,
+	choices: T,
+): T[number] {
+	if (!isJsonString(value)) throw new TypeError(`${label} is invalid`);
+	for (const choice of choices) {
+		if (choice === value) return choice;
+	}
+	throw new TypeError(`${label} is invalid`);
 }

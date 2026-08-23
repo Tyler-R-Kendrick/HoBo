@@ -30,11 +30,13 @@ export type YardInventoryEvent =
 /**
  * Event-sourced Yard inventory read model. Selection pins a snapshot hash.
  */
-export function createYardInventory(brokerId: string): {
+export interface YardInventory {
 	readonly apply: (event: YardInventoryEvent) => void;
 	readonly snapshot: () => YardInventorySnapshot;
 	readonly get: (yardId: string) => YardInstanceRegistration | undefined;
-} {
+}
+
+export function createYardInventory(brokerId: string): YardInventory {
 	const yards = new Map<string, YardInstanceRegistration>();
 	let seq = 0;
 
@@ -92,13 +94,15 @@ export function createYardInventory(brokerId: string): {
 	};
 }
 
-export function createYardRuntimeCatalog(): {
+export interface YardRuntimeCatalog {
 	readonly register: (runtime: YardRuntimeRegistration) => void;
 	readonly snapshot: () => YardRuntimeCatalogSnapshot;
 	readonly approvedForProvider: (
 		providerId: string,
 	) => readonly YardRuntimeRegistration[];
-} {
+}
+
+export function createYardRuntimeCatalog(): YardRuntimeCatalog {
 	const runtimes = new Map<string, YardRuntimeRegistration>();
 	let seq = 0;
 
@@ -164,13 +168,17 @@ export function localYardInstance(options: {
 		ownerTenantId: options.ownerTenantId,
 		providerId: options.providerId,
 		runtimeId: options.runtimeId ?? `${options.providerId}-runtime`,
-		shape: Object.freeze({
+		layout: Object.freeze({
 			providerId: options.providerId,
 			regions: Object.freeze([...(options.regions ?? ["local"])]),
+			// SAFETY: assertion required at this I/O or test boundary.
 			require: Object.freeze([] as string[]),
+			// SAFETY: assertion required at this I/O or test boundary.
 			prefer: Object.freeze([] as string[]),
 			residency: Object.freeze([...(options.residency ?? [])]),
+			// SAFETY: assertion required at this I/O or test boundary.
 			isolation: Object.freeze([] as string[]),
+			// SAFETY: assertion required at this I/O or test boundary.
 			network: Object.freeze([] as string[]),
 			componentHosts: Object.freeze([
 				...(options.componentHosts ?? ["local", "wasm", "oci"]),

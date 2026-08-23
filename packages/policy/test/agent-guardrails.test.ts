@@ -9,9 +9,10 @@ import {
 	evaluateAgentGuardrail,
 	rebuildAgentGuardrailState,
 } from "../src/agent-guardrails.js";
+import type { JsonObject } from "../src/json.js";
 import { POLICY_IR_SCHEMA_VERSION } from "../src/policy-ir.js";
 
-function decisionRequest(overrides: Record<string, unknown> = {}) {
+function decisionRequest(overrides: JsonObject = {}) {
 	const context = {
 		owner: {
 			tenantId: "tenant-a",
@@ -23,7 +24,8 @@ function decisionRequest(overrides: Record<string, unknown> = {}) {
 		costEstimateUsd: 0,
 		correlationId: "corr-633",
 		occurredAt: "2026-07-01T12:00:00.000Z",
-		...(overrides.context as Record<string, unknown> | undefined),
+		// SAFETY: assertion required at this I/O or test boundary.
+		...(overrides.context as JsonObject | undefined),
 	};
 	return {
 		schemaVersion: POLICY_IR_SCHEMA_VERSION,
@@ -45,7 +47,7 @@ function decisionRequest(overrides: Record<string, unknown> = {}) {
 	};
 }
 
-function agentPolicy(overrides: Record<string, unknown> = {}) {
+function agentPolicy(overrides: JsonObject = {}) {
 	return {
 		agentId: "tenant-a/agent-deploy",
 		actionClasses: {
@@ -63,11 +65,11 @@ function agentPolicy(overrides: Record<string, unknown> = {}) {
 	};
 }
 
-function meteringView(scopeCosts: Record<string, unknown> = {}, seq = 10) {
+function meteringView(scopeCosts: JsonObject = {}, seq = 10) {
 	return { seq, scopeCosts };
 }
 
-function obligationSatisfied(overrides: Record<string, unknown> = {}) {
+function obligationSatisfied(overrides: JsonObject = {}) {
 	return {
 		type: "policy.ObligationSatisfied",
 		seq: 3,

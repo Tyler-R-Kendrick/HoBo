@@ -148,7 +148,8 @@ describe("default vercel yard", () => {
 			call();
 			expect.unreachable("an unusable region list must be refused");
 		} catch (error) {
-			expect((error as VercelYardSpecError).code).toBe(code);
+			if (!(error instanceof VercelYardSpecError)) throw error;
+			expect(error.code).toBe(code);
 		}
 	});
 

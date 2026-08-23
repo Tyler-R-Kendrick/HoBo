@@ -53,7 +53,7 @@ export function buildPrismaCapabilityBinding(
 		},
 		...(input.expiresAtMs !== undefined
 			? { expiresAtMs: input.expiresAtMs }
-			: {}),
+			: undefined),
 		renewable: false,
 		// Undocumented for the claimable tier, so declared false rather than
 		// promised. See the README's "Not verified" section.
@@ -68,7 +68,7 @@ export function buildPrismaCapabilityBinding(
 		throw new PrismaProviderError(
 			"PROVIDER_CONTRACT_CHANGED",
 			"the claimable database did not produce a valid portable binding",
-			{ cause },
+			{ cause: cause instanceof Error ? cause : new Error(String(cause)) },
 		);
 	}
 }

@@ -42,9 +42,7 @@ export const CODE_FEATURE_FLAGS = {
  * Product defaults: every code.* progressive flag is ON by default.
  * Disable via OpenFeature / `hobo feature set <key> --percent 0` when needed.
  */
-export const CODE_FEATURE_DEFAULTS: Readonly<
-	Record<(typeof CODE_FEATURE_FLAGS)[keyof typeof CODE_FEATURE_FLAGS], true>
-> = {
+export const CODE_FEATURE_DEFAULTS = {
 	[CODE_FEATURE_FLAGS.harnessEnabled]: true,
 	[CODE_FEATURE_FLAGS.visualEvidence]: true,
 	[CODE_FEATURE_FLAGS.monetizationSurface]: true,
@@ -205,7 +203,9 @@ export function bindCodeStation(options: {
 		// declared dev-scenario Station instead of ad-hoc literals.
 		const declaration = codeDevStation("local-dev", {
 			name,
-			...(options.tenant !== undefined ? { tenant: options.tenant } : {}),
+			...(options.tenant !== undefined
+				? { tenant: options.tenant }
+				: undefined),
 		});
 		initStation({
 			hoboHome: options.hoboHome,
@@ -226,7 +226,9 @@ export function bindCodeStation(options: {
 
 	return {
 		stationId: bound.stationId,
-		...(bound.railHash !== undefined ? { railHash: bound.railHash } : {}),
+		...(bound.railHash !== undefined
+			? { railHash: bound.railHash }
+			: undefined),
 		bootstrapActive: bound.bootstrapActive,
 		present: true,
 	};
@@ -266,9 +268,9 @@ export function composeCodePlatform(options: {
 		hoboHome: options.hoboHome,
 		...(options.stationId !== undefined
 			? { stationId: options.stationId }
-			: {}),
+			: undefined),
 		autoInit: options.autoInitStation !== false,
-		...(options.tenant !== undefined ? { tenant: options.tenant } : {}),
+		...(options.tenant !== undefined ? { tenant: options.tenant } : undefined),
 	});
 
 	const targetingKey = options.targetingKey ?? "code-harness";
@@ -336,6 +338,7 @@ export function createMemoryFeaturePort(
 		evaluateBoolean(key) {
 			const value =
 				flags[key] ??
+				// SAFETY: parsed or fixture value is the named domain type after this assertion.
 				CODE_FEATURE_DEFAULTS[key as keyof typeof CODE_FEATURE_DEFAULTS] ??
 				true;
 			return {

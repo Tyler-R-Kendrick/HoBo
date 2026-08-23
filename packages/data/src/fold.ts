@@ -1,5 +1,6 @@
 import type { EventEnvelope, QuarantineRecord } from "@hobo/core";
 
+import { parseOffendingSeq } from "./json.js";
 import type { UpcasterRegistry } from "./upcaster.js";
 
 // A deterministic fold `(state, event) -> state`, read-only by contract.
@@ -45,9 +46,8 @@ export function foldEvents<S>(
 	const quarantinedSeqs = new Set<number>();
 	for (const event of materialized) {
 		if (isQuarantineFact(event)) {
-			const offending = (event.data as { offendingSeq?: unknown })
-				?.offendingSeq;
-			if (typeof offending === "number") quarantinedSeqs.add(offending);
+			const offending = parseOffendingSeq(event.data);
+			if (offending !== undefined) quarantinedSeqs.add(offending);
 		}
 	}
 

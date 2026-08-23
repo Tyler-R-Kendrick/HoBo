@@ -42,7 +42,7 @@ function mockTransport() {
 			url,
 			method: init.method,
 			headers: init.headers,
-			...(init.body === undefined ? {} : { body: init.body }),
+			...(init.body === undefined ? undefined : { body: init.body }),
 		});
 		if (url.endsWith("/CreateBuild")) {
 			return {
@@ -73,7 +73,7 @@ function warmingExecutor(): DepotBuildExecutor & { calls: number } {
 			const warm = seen.has(input.buildId);
 			seen.add(input.buildId);
 			return {
-				digest: RECORDED_SPEEDUP.image.digest as string,
+				digest: String(RECORDED_SPEEDUP.image.digest),
 				cacheHitRatio: warm ? 0.9 : 0,
 				meteredUnits: warm ? 1 : 10,
 			};
@@ -109,7 +109,8 @@ describe("Depot BuildMachineProvider (hobo:build-machine, replay lane)", () => {
 
 		const image = await provider.execute({ buildId: "checkout-api" });
 
-		const create = requests[0] as RecordedRequest;
+		const create = requests[0];
+		assert.ok(create);
 		assert.ok(create.url.endsWith(RECORDED_CREATE.request.path));
 		assert.equal(create.method, RECORDED_CREATE.request.method);
 		assert.equal(create.headers["content-type"], "application/json");
@@ -138,7 +139,10 @@ describe("Depot BuildMachineProvider (hobo:build-machine, replay lane)", () => {
 		await provider.execute({ buildId: "checkout-api", estimatedUnits: 10 });
 
 		assert.equal(facts.length, 2);
-		const [cold, warm] = facts as [CacheHitFact, CacheHitFact];
+		const cold = facts[0];
+		const warm = facts[1];
+		assert.ok(cold);
+		assert.ok(warm);
 		assert.equal(cold.type, BUILD_CACHE_HIT_OBSERVED);
 		assert.equal(cold.cacheLane, DEPOT_CACHE_LANE);
 		// The pact-recorded sequence: cold 0/10 units, warm 0.9/1 unit.

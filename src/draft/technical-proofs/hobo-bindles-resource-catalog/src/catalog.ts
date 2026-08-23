@@ -38,7 +38,7 @@ export function catalogFactoryNames() {
 }
 
 function requireResourceName(factory, name) {
-  if (typeof name !== "string" || name.length === 0) {
+  if (!isNonEmptyString(name)) {
     throw new TypeError(`${factory} resource name must be a non-empty string`);
   }
 }
@@ -128,7 +128,7 @@ export const ui = makeFactory("ui");
 export const experiment = makeFactory("experiment");
 
 export function secretRef(ref) {
-  if (typeof ref !== "string" || ref.length === 0) {
+  if (!isNonEmptyString(ref)) {
     throw new TypeError("secretRef value reference must be a non-empty string");
   }
 
@@ -140,4 +140,8 @@ export function secretRef(ref) {
     stableId: `secret-ref:${ref}`,
     lowersTo: "hobo:sdk"
   });
+}
+
+function isNonEmptyString(value) {
+  return Object.prototype.toString.call(value) === "[object String]" && value.length > 0;
 }

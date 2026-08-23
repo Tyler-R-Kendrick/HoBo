@@ -8,6 +8,7 @@ import {
 	createDualAdapterPair,
 	verifyDualAdapters,
 } from "./identity-adapter-port.js";
+import type { JsonObject } from "./json.js";
 import type { MappingSpec } from "./mapping-spec.js";
 import { IdentityMigrationService } from "./migration-aggregate.js";
 import {
@@ -42,7 +43,7 @@ export type TenantLifecycleEvent = Readonly<{
 		| "tenant.CutoverFailed";
 	tenant: string;
 	time: string;
-	data: Readonly<Record<string, unknown>>;
+	data: JsonObject;
 }>;
 
 export type FencePort = Readonly<{
@@ -99,10 +100,7 @@ export function runSpectrumIdentityCutover(input: {
 }): SpectrumCutoverResult {
 	const now = input.now ?? (() => new Date().toISOString());
 	const events: TenantLifecycleEvent[] = [];
-	const push = (
-		type: TenantLifecycleEvent["type"],
-		data: Readonly<Record<string, unknown>>,
-	) => {
+	const push = (type: TenantLifecycleEvent["type"], data: JsonObject) => {
 		events.push(
 			Object.freeze({
 				type,
@@ -125,7 +123,7 @@ export function runSpectrumIdentityCutover(input: {
 		sourceAdapter: input.sourceAdapter,
 		targetAdapter: input.targetAdapter,
 		spectrumPromotion: true,
-		...(input.mapping !== undefined ? { mapping: input.mapping } : {}),
+		...(input.mapping !== undefined ? { mapping: input.mapping } : undefined),
 		now: now(),
 	};
 	const decision = decideIdentityMigration(matchInput);
@@ -152,7 +150,9 @@ export function runSpectrumIdentityCutover(input: {
 	});
 	const svc = new IdentityMigrationService({
 		tenant: input.tenant,
-		...(input.vaultRoot !== undefined ? { vaultRoot: input.vaultRoot } : {}),
+		...(input.vaultRoot !== undefined
+			? { vaultRoot: input.vaultRoot }
+			: undefined),
 		now,
 	});
 	const started = svc.start({

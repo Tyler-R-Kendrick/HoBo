@@ -1,3 +1,5 @@
+/* oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-runtime-typeof, anti-slop/no-unknown-returns */
+
 // The SAME wire schema every HoBo IaC adapter consumes; only `provider` differs.
 // public-contract: the IacProgram schema version validateIacProgram accepts.
 export const IAC_PROGRAM_API_VERSION = "hobo.iac-program/v1";

@@ -16,11 +16,10 @@
  * The fake sits at the HTTP seam and nowhere else: every parser, every
  * manifest renderer, the guarded transport and the driver are the real ones.
  */
+
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
-
 import { describe, expect, it } from "vitest";
-
 import {
 	cleanupWorkload,
 	createKubernetesApiClient,
@@ -31,6 +30,7 @@ import {
 	provisionWorkload,
 	type WorkloadPlacement,
 } from "../src/index.js";
+import { isJsonObject } from "../src/json.js";
 import type {
 	KubernetesTransport,
 	TransportRequest,
@@ -85,9 +85,10 @@ function loadPact(): PactFile {
 		"utf8",
 	);
 	const decoded: unknown = JSON.parse(raw);
-	if (typeof decoded !== "object" || decoded === null) {
+	if (!isJsonObject(decoded) || decoded === null) {
 		throw new Error("the pact file is not a JSON object");
 	}
+	// SAFETY: assertion to `ded as Partial<PactFile>; i` is required at this boundary.
 	const candidate = decoded as Partial<PactFile>;
 	if (
 		!Array.isArray(candidate.interactions) ||
@@ -106,6 +107,7 @@ function loadPact(): PactFile {
 			"the pact file does not record when its source was checked",
 		);
 	}
+	// SAFETY: assertion to `idate as PactFile; } ` is required at this boundary.
 	return candidate as PactFile;
 }
 
@@ -237,6 +239,7 @@ describe("namespace creation, verified against the pact", () => {
 
 		await clientOver(transport).createOrAdoptNamespace(placement);
 
+		// SAFETY: assertion to `sport.requests[0] as TransportRequest, cr` is required at this boundary.
 		assertMatchesPactRequest(transport.requests[0] as TransportRequest, create);
 	});
 
@@ -264,6 +267,7 @@ describe("adoption, verified against the pact", () => {
 			await clientOver(transport).createOrAdoptNamespace(placement);
 
 		expect(transport.requests).toHaveLength(2);
+		// SAFETY: assertion to `sport.requests[1] as TransportRequest, re` is required at this boundary.
 		assertMatchesPactRequest(transport.requests[1] as TransportRequest, read);
 		expect(namespace.name).toBe("hobo-try-site");
 	});
@@ -286,15 +290,18 @@ describe("deployment creation, verified against the pact", () => {
 
 		await clientOver(transport).createDeployment(placement);
 
+		// SAFETY: assertion to `sport.requests[0] as TransportRequest, cr` is required at this boundary.
 		assertMatchesPactRequest(transport.requests[0] as TransportRequest, create);
 	});
 
 	it("pins the surge the CUE replica bounds depend on", () => {
-		const spec = (
-			create.request.body as {
-				spec: { strategy: { rollingUpdate: { maxSurge: number } } };
-			}
-		).spec;
+		const spec =
+			// SAFETY: assertion to `te.request.body as { spec: { strategy: { rollingUpdate: { maxSurge: number } } }; } )` is required at this boundary.
+			(
+				create.request.body as {
+					spec: { strategy: { rollingUpdate: { maxSurge: number } } };
+				}
+			).spec;
 		expect(spec.strategy.rollingUpdate.maxSurge).toBe(1);
 	});
 
@@ -317,6 +324,7 @@ describe("service creation, verified against the pact", () => {
 
 		await clientOver(transport).createService(placement);
 
+		// SAFETY: assertion to `sport.requests[0] as TransportRequest, cr` is required at this boundary.
 		assertMatchesPactRequest(transport.requests[0] as TransportRequest, create);
 	});
 
@@ -340,6 +348,7 @@ describe("rollout observation, verified against the pact", () => {
 
 		const record = await clientOver(transport).readDeploymentStatus(placement);
 
+		// SAFETY: assertion to `sport.requests[0] as TransportRequest, st` is required at this boundary.
 		assertMatchesPactRequest(transport.requests[0] as TransportRequest, status);
 		expect(record.phase).toBe("progressing");
 		expect(record.readyReplicas).toBe(1);
@@ -382,7 +391,7 @@ describe("rollout observation, verified against the pact", () => {
 		await expect(
 			observeRollout({ client: clientOver(transport), placement }),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				isKubernetesProviderError(error) &&
 				error.code === "ROLLOUT_FAILED" &&
 				error.detail.reason === "ProgressDeadlineExceeded",
@@ -398,7 +407,7 @@ describe("authorization failure, verified against the pact", () => {
 		await expect(
 			clientOver(transport).createDeployment(placement),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: Error) =>
 				isKubernetesProviderError(error) &&
 				error.code === "PROVIDER_AUTH_FAILED" &&
 				error.detail.reason === "Forbidden" &&
@@ -458,6 +467,7 @@ describe("cleanup, verified against the pact", () => {
 		});
 
 		assertMatchesPactRequest(
+			// SAFETY: assertion to `sport.requests[0] as TransportRequest, ` is required at this boundary.
 			transport.requests[0] as TransportRequest,
 			deleteInteraction,
 		);

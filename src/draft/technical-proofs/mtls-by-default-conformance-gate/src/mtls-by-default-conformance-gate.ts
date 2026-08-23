@@ -1,3 +1,4 @@
+/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased conformance input at this gate's shared parser boundary. */
 import { ConnectivityTier } from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.js";
 import { parseWorkloadSpiffeId } from "../../mtls-data-path-contract/src/mtls-data-path.js";
 

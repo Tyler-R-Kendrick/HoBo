@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 const credentialFieldPattern = /(token|credential|authorization|svid|secret|key)$/i;
 const secretLikePattern = /(eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_.-]+|provider-token-[a-zA-Z0-9_-]+|AKIA[0-9A-Z]+)/g;
 const secretLikeTestPattern = /(eyJ[a-zA-Z0-9_-]*\.[a-zA-Z0-9_.-]+|provider-token-[a-zA-Z0-9_-]+|AKIA[0-9A-Z]+)/;
@@ -169,12 +170,12 @@ export function redactCredentialMaterial(value, fieldName = "") {
   if (Array.isArray(value)) {
     return value.map((item) => redactCredentialMaterial(item, fieldName));
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value).map(([key, entry]) => [key, redactCredentialMaterial(entry, key)])
     );
   }
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     if (credentialFieldPattern.test(fieldName)) {
       return `<redacted:${fieldName}>`;
     }

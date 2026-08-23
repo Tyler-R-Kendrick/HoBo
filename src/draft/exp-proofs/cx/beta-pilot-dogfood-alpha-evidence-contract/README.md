@@ -22,7 +22,7 @@ release status when the evidence gate records no launch-risk delta.
 ## Verification
 
 ```powershell
-pnpm --dir src\draft\exp-proofs\beta-pilot-dogfood-alpha-evidence-contract test
+pnpm --dir src\draft\exp-proofs\cx\beta-pilot-dogfood-alpha-evidence-contract test
 ```
 
 ## Architecture Evidence

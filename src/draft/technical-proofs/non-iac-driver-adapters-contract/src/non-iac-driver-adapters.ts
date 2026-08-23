@@ -4,6 +4,8 @@ import {
   createDriver,
   stableDigest
 } from "../../resource-definition-driver-contract/src/resource-definition-driver-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const NON_IAC_DRIVER_ADAPTERS_VERSION = "hobo.non-iac-driver-adapters/v1";
 
@@ -339,7 +341,7 @@ function renderTemplateValue(value, scope) {
       Object.entries(value).map(([key, item]) => [key, renderTemplateValue(item, scope)])
     );
   }
-  if (typeof value !== "string") {
+  if (!isJsonString(value)) {
     return value;
   }
   return renderTemplateString(value, scope);
@@ -355,7 +357,7 @@ function renderTemplateString(value, scope) {
   }
   return value.replace(PLACEHOLDER_PATTERN, (_match, expression) => {
     const resolved = resolvePlaceholder(expression.trim(), scope);
-    if (resolved && typeof resolved === "object") {
+    if (resolved && isJsonObject(resolved)) {
       throw new NonIacDriverAdapterError(
         "template-placeholder-not-scalar",
         `template placeholder ${expression.trim()} cannot be interpolated as text`
@@ -454,10 +456,10 @@ function assertEgressWithinScope(requestedEgress, allowedEgress) {
 }
 
 async function runContainerExecutor(executor, request) {
-  if (typeof executor.run === "function") {
+  if (executor.run instanceof Function) {
     return executor.run(request);
   }
-  if (typeof executor.dispatch === "function") {
+  if (executor.dispatch instanceof Function) {
     return executor.dispatch(request.script, {
       context: request.context,
       sandbox: request.sandbox
@@ -470,10 +472,10 @@ async function runContainerExecutor(executor, request) {
 }
 
 async function callWebhookService(service, request) {
-  if (typeof service.handle === "function") {
+  if (service.handle instanceof Function) {
     return service.handle(request);
   }
-  if (typeof service === "function") {
+  if (service instanceof Function) {
     return service(request);
   }
   throw new NonIacDriverAdapterError(
@@ -512,11 +514,11 @@ function requirePlainObject(value, { code, message }) {
 }
 
 function isPlainObject(value) {
-  return Boolean(value && typeof value === "object" && !Array.isArray(value));
+  return Boolean(value && isJsonObject(value) && !Array.isArray(value));
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }
 
 function clone(value) {

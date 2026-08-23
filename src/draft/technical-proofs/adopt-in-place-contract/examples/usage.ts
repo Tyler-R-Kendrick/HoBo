@@ -133,8 +133,7 @@ assert.throws(
 			state: createFixtureIacState(),
 			source,
 		}),
-	(error: unknown) =>
-		error instanceof AdoptInPlaceError && (error as { code?: string }).code === "import-id-collision",
+	(error: AdoptInPlaceError) => error.code === "import-id-collision",
 );
 console.log("id collision: AdoptInPlaceError code=import-id-collision");
 

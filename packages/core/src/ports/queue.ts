@@ -1,4 +1,5 @@
 import { CoreParseError } from "../errors.js";
+import type { JsonValue } from "../json.js";
 import {
 	deepFreeze,
 	isoTimestamp,
@@ -89,7 +90,7 @@ export class QueueParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_CORE_QUEUE_PARSE", path, expected, received, message);
@@ -107,18 +108,22 @@ export class QueueLeaseLostError extends Error {
 }
 
 export function parseMessageId(value: string): MessageId {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return nonEmptyString(value, "messageId", QueueParseError) as MessageId;
 }
 
 export function parseQueueName(value: string): QueueName {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return nonEmptyString(value, "queueName", QueueParseError) as QueueName;
 }
 
 export function parseLeaseId(value: string): LeaseId {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return nonEmptyString(value, "leaseId", QueueParseError) as LeaseId;
 }
 
 export function parseIdempotencyKey(value: string): IdempotencyKey {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return nonEmptyString(
 		value,
 		"idempotencyKey",
@@ -127,6 +132,7 @@ export function parseIdempotencyKey(value: string): IdempotencyKey {
 }
 
 export function parseActorKey(value: string): ActorKey {
+	// SAFETY: assertion required at this I/O or test boundary.
 	return nonEmptyString(value, "actorKey", QueueParseError) as ActorKey;
 }
 

@@ -120,7 +120,7 @@ export function statusEnvelope<T>(
 	data: T,
 	options: StatusEnvelopeOptions,
 ): EventEnvelope<T> {
-	return Object.freeze({
+	const envelope: EventEnvelope<T> = {
 		id: options.id ?? `${options.streamId}#${options.seq}`,
 		type,
 		v: 1,
@@ -129,7 +129,8 @@ export function statusEnvelope<T>(
 		ts: options.ts,
 		actor: options.actor ?? SYSTEM_ACTOR,
 		tenant: options.tenant ?? "local",
-		...(options.project !== undefined ? { project: options.project } : {}),
 		data,
-	});
+	};
+	if (options.project === undefined) return Object.freeze(envelope);
+	return Object.freeze({ ...envelope, project: options.project });
 }

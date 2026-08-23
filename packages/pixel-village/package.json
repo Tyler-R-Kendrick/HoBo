@@ -57,6 +57,7 @@
 		"e2e:feel": "playwright test test/e2e/feel.spec.ts",
 		"e2e:liveness": "playwright test test/e2e/liveness.spec.ts",
 		"e2e:access": "playwright test test/e2e/access-trust.spec.ts",
+		"e2e:coverage": "node --import tsx ./scripts/browser-coverage.mts",
 		"review:experience": "node --import tsx ./scripts/review-experience.mts",
 		"review:drift": "node --import tsx ./scripts/experience-drift.mts",
 		"serve": "node --import tsx ./scripts/serve-demo.mts"

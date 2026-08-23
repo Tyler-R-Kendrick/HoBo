@@ -114,6 +114,12 @@ async function ensureBundle(): Promise<string> {
 					format: "esm",
 					platform: "browser",
 					outfile: outFile,
+					// Inlined so a coverage run can attribute executed ranges in the
+					// bundle back to the original sources without the static server
+					// needing a route for a .map sibling. Inline keeps the map with
+					// the bytes V8 reports on, which is exactly what the attribution
+					// needs.
+					sourcemap: "inline",
 					logLevel: "warning",
 				});
 				return outFile;

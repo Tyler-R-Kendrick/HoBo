@@ -8,16 +8,14 @@
  * so the suite survives the diegetic-prop visual rewrite.
  */
 
-// @ts-expect-error - global playwright install, resolved by absolute path
 export {
 	expect,
 	test,
-} from "/home/codex/.local/lib/node_modules/playwright/test.mjs";
+} from "playwright/test";
 
 import pixelmatch from "pixelmatch";
+import type { Page } from "playwright";
 import { PNG } from "pngjs";
-// @ts-expect-error - global playwright install, resolved by absolute path
-import type { Page } from "/home/codex/.local/lib/node_modules/playwright/index.mjs";
 import type { ZoneId } from "../../src/layout.js";
 import { YARD_LAYOUT } from "../../src/layout.js";
 import type { BeatRegion } from "../../src/scenarios/scenario.js";

@@ -18,9 +18,8 @@
  */
 
 import AxeBuilder from "@axe-core/playwright";
+import type { Page } from "playwright";
 import type { PNG } from "pngjs";
-// @ts-expect-error - global playwright install, resolved by absolute path
-import type { Page } from "/home/codex/.local/lib/node_modules/playwright/index.mjs";
 import { type Harness, startHarness } from "../../scripts/demo-harness.mjs";
 import { deriveYardVisualState } from "../../src/entity-state.js";
 import { presentYard } from "../../src/phaser/yard-presenter.js";

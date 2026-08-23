@@ -81,10 +81,19 @@ export function publishCapabilityManifest(
 	const capabilitiesDocument = {
 		schema: CAPABILITIES_SCHEMA,
 		providerId,
-		equivalenceClasses: ports.map((port) => ({
-			class: port,
-			...EQUIVALENCE_CLASSES[port],
-		})),
+		equivalenceClasses: ports.map((port) => {
+			const mapping = EQUIVALENCE_CLASSES[port];
+			// `features` is a readonly tuple on the mapping, and a readonly array
+			// is not a `JsonValue` — spreading the mapping wholesale carries that
+			// readonly-ness into the document and the digest call rejects it.
+			// Copying is what publishing means here anyway: the document is a
+			// snapshot, not a live view of the table it was built from.
+			return {
+				class: port,
+				...mapping,
+				features: [...mapping.features],
+			};
+		}),
 		capabilities: ports.map((port) => {
 			const mapping = EQUIVALENCE_CLASSES[port];
 			return {

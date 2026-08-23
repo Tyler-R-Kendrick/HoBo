@@ -1,4 +1,5 @@
 import { randomBytes } from "node:crypto";
+import type { JsonValue } from "@bufbuild/protobuf";
 import { CoreParseError } from "@hobo/core";
 
 // W3C trace-context (traceparent) parse/format for trajectory capture
@@ -11,7 +12,7 @@ export class TrajectoryCaptureParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_TRAINING_TRAJECTORY_PARSE", path, expected, received, message);

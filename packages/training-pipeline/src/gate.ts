@@ -32,7 +32,7 @@ export class PromotionGateParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_TRAINING_PROMOTION_PARSE", path, expected, received, message);

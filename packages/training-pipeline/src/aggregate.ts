@@ -1,4 +1,5 @@
 import { create } from "@bufbuild/protobuf";
+import { diagnosticJson } from "@hobo/core";
 import {
 	type EvalResult,
 	EvalResultSchema,
@@ -33,7 +34,7 @@ export function aggregateEvalResults(
 		throw new PromotionGateParseError(
 			"samples",
 			"at least one graded trajectory",
-			samples,
+			diagnosticJson(samples),
 		);
 	}
 

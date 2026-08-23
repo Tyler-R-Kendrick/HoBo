@@ -32,6 +32,7 @@ export {
 } from "./envelope.js";
 export {
 	CoreParseError,
+	diagnosticJson,
 	EnvelopeParseError,
 	ManifestParseError,
 	PortDescriptorParseError,
@@ -46,6 +47,9 @@ export {
 	ExtensionRegistryError,
 	parseExtensionPointId,
 } from "./extension-registry.js";
+// The JSON view `diagnosticJson` returns and every parse boundary accepts: a
+// package exporting those cannot keep the name of their type to itself.
+export type { JsonObject, JsonValue } from "./json.js";
 export type {
 	CapabilityManifestBundle,
 	ParseCapabilityManifestOptions,

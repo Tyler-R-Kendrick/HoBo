@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
 import type {
+	JsonValue,
 	OptimizeRequest,
 	TrainingCandidate,
 	TrainingEngineId,
@@ -8,6 +9,7 @@ import type {
 } from "@hobo/core";
 import {
 	CoreParseError,
+	diagnosticJson,
 	hashTrajectory,
 	parseTrainingCandidate,
 	parseTrainingEngineId,
@@ -53,7 +55,7 @@ export class TrainingOptimizerParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: unknown,
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_TRAINING_OPTIMIZER_PARSE", path, expected, received, message);
@@ -79,7 +81,11 @@ export interface BuiltinTrainingEngine extends TrainingEnginePort {
 }
 
 function fail(path: string, expected: string, received: unknown): never {
-	throw new TrainingOptimizerParseError(path, expected, received);
+	throw new TrainingOptimizerParseError(
+		path,
+		expected,
+		diagnosticJson(received),
+	);
 }
 
 function parsePositiveInt(
@@ -116,7 +122,13 @@ export function parseOptimizerConfig(value: unknown): OptimizerConfig {
 	const rawEngineId = record.engineId ?? BUILTIN_TRAINING_ENGINE_ID;
 	let engineId: TrainingEngineId;
 	try {
-		engineId = parseTrainingEngineId(rawEngineId);
+		// SAFETY: unchecked config value handed to the parse that checks it —
+		// `parseTrainingEngineId` refuses anything that is not a non-empty JSON
+		// string, and the catch below turns that refusal into this boundary's own
+		// typed error. Narrowing here first would duplicate the parser's rule in
+		// the caller, which is the arrangement parse-don't-validate exists to
+		// avoid.
+		engineId = parseTrainingEngineId(rawEngineId as JsonValue | undefined);
 	} catch {
 		fail("config.engineId", "non-empty string", rawEngineId);
 	}
@@ -138,8 +150,8 @@ export function parseOptimizerConfig(value: unknown): OptimizerConfig {
 
 interface DemoExample {
 	readonly index: number;
-	readonly input: unknown;
-	readonly output: unknown;
+	readonly input: JsonValue;
+	readonly output: JsonValue;
 	readonly reward: number;
 }
 
@@ -156,10 +168,20 @@ function sha256Digest(value: unknown): string {
 		.digest("hex")}`;
 }
 
-function parseJsonOr(value: string, fallback: unknown): unknown {
+/**
+ * Decode a span's stored JSON, falling back when it is absent or malformed.
+ *
+ * Returns `JsonValue` rather than `unknown` because that is what it can only
+ * ever produce: `JSON.parse` yields a JSON value or throws, and the fallback is
+ * a JSON value by the signature. Typing it `unknown` pushed a cast onto every
+ * caller, including the one that hands demos to
+ * `serializeTrainingArtifactProgram` — which wants exactly this type.
+ */
+function parseJsonOr(value: string, fallback: JsonValue): JsonValue {
 	if (value.length === 0) return fallback;
 	try {
-		return JSON.parse(value);
+		// SAFETY: JSON.parse yields a JsonValue or throws.
+		return JSON.parse(value) as JsonValue;
 	} catch {
 		return fallback;
 	}

@@ -86,7 +86,7 @@ export function assembleCampEvalSidecar(
 
 export function runEvalSidecarSuite(input: {
 	readonly suite: CampEvalSidecar;
-	readonly actuals?: Readonly<Record<string, readonly unknown[]>>;
+	readonly actuals?: Readonly<Record<string, readonly JsonValue[]>>;
 	readonly invokers?: Readonly<Record<string, TrainableFn>>;
 }): EvalSidecarRun {
 	const regions = input.suite.trainable.map((region) =>
@@ -151,7 +151,7 @@ function composePromotionGates(
 
 function toGoldenRegion(
 	region: TrainableRegion,
-	actuals: readonly unknown[],
+	actuals: readonly JsonValue[],
 	fn?: TrainableFn,
 ): TrainableGoldenRegion {
 	return {
@@ -359,12 +359,15 @@ function readJsonBody(
 
 function parseActuals(
 	body: JsonValue | undefined,
-): Readonly<Record<string, readonly unknown[]>> | undefined {
+): Readonly<Record<string, readonly JsonValue[]>> | undefined {
 	if (!body || !isJsonObject(body)) return undefined;
 	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const raw = (body as { actuals?: unknown }).actuals;
 	if (!raw || !isJsonObject(raw)) return undefined;
-	const actuals: Record<string, unknown[]> = {};
+	// The values come off a parsed `JsonObject`, so they are `JsonValue` and
+	// nothing looser -- saying `unknown` here only cost the golden-case builder
+	// downstream its ability to use them.
+	const actuals: Record<string, JsonValue[]> = {};
 	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	for (const [key, value] of Object.entries(raw as JsonObject)) {
 		if (!Array.isArray(value)) continue;

@@ -1,4 +1,4 @@
-import { verifyJwtWithJwks } from "@hobo/identity";
+import { type JsonWebKeySet, verifyJwtWithJwks } from "@hobo/identity";
 
 import { type BundleManifest, bundleManifestDigest } from "./ingest.js";
 
@@ -151,7 +151,11 @@ export function parseProvenanceStatement(raw: unknown): ProvenanceParseResult {
 // key material (a JWKS) plus the issuer/audience it was minted for. There is
 // no ambient default.
 export interface SignatureVerifier {
-	jwks: Readonly<{ keys: Record<string, unknown>[] }>;
+	// The verifier's own JWKS type rather than a local `Record<string,
+	// unknown>[]` restatement: a JWKS key is JSON by definition, and the looser
+	// shape only meant every caller had to convince `verifyJwtWithJwks` of
+	// something already true.
+	jwks: Readonly<JsonWebKeySet>;
 	issuer: string;
 	audience: string;
 	now: number;

@@ -539,7 +539,12 @@ function createProjectResolver(
 		productId: VERCEL_PROJECT_PRODUCT_ID,
 
 		async reconcile(request, transport) {
-			const parsed = parseResolveRequest(request);
+			// Round-trip so an already-typed `ResolveRequest` can go back through
+			// core's parse boundary, which takes untrusted JSON while the resolver
+			// port hands this method the domain type. Same idiom as `desired` above.
+			const parsed = parseResolveRequest(
+				parseJsonObject(JSON.stringify(request)),
+			);
 			assertProduct(parsed, VERCEL_PROJECT_PRODUCT_ID);
 			const credential = await resolveCredential(options, parsed.credentialRef);
 			const dispatch = guardedDispatch(transport);
@@ -605,7 +610,12 @@ function createProjectResolver(
 		},
 
 		async delete(request, transport) {
-			const parsed = parseResolveRequest(request);
+			// Round-trip so an already-typed `ResolveRequest` can go back through
+			// core's parse boundary, which takes untrusted JSON while the resolver
+			// port hands this method the domain type. Same idiom as `desired` above.
+			const parsed = parseResolveRequest(
+				parseJsonObject(JSON.stringify(request)),
+			);
 			assertProduct(parsed, VERCEL_PROJECT_PRODUCT_ID);
 			const credential = await resolveCredential(options, parsed.credentialRef);
 			const dispatch = guardedDispatch(transport);
@@ -633,7 +643,12 @@ function createProjectResolver(
 		},
 
 		async read(request, transport) {
-			const parsed = parseResolveRequest(request);
+			// Round-trip so an already-typed `ResolveRequest` can go back through
+			// core's parse boundary, which takes untrusted JSON while the resolver
+			// port hands this method the domain type. Same idiom as `desired` above.
+			const parsed = parseResolveRequest(
+				parseJsonObject(JSON.stringify(request)),
+			);
 			assertProduct(parsed, VERCEL_PROJECT_PRODUCT_ID);
 			const credential = await resolveCredential(options, parsed.credentialRef);
 			const dispatch = guardedDispatch(transport);
@@ -781,7 +796,12 @@ function createEdgeConfigResolver(
 		productId: VERCEL_EDGE_CONFIG_PRODUCT_ID,
 
 		async reconcile(request, transport) {
-			const parsed = parseResolveRequest(request);
+			// Round-trip so an already-typed `ResolveRequest` can go back through
+			// core's parse boundary, which takes untrusted JSON while the resolver
+			// port hands this method the domain type. Same idiom as `desired` above.
+			const parsed = parseResolveRequest(
+				parseJsonObject(JSON.stringify(request)),
+			);
 			assertProduct(parsed, VERCEL_EDGE_CONFIG_PRODUCT_ID);
 			const credential = await resolveCredential(options, parsed.credentialRef);
 			const dispatch = guardedDispatch(transport);
@@ -853,7 +873,12 @@ function createEdgeConfigResolver(
 		},
 
 		async delete(request, transport) {
-			const parsed = parseResolveRequest(request);
+			// Round-trip so an already-typed `ResolveRequest` can go back through
+			// core's parse boundary, which takes untrusted JSON while the resolver
+			// port hands this method the domain type. Same idiom as `desired` above.
+			const parsed = parseResolveRequest(
+				parseJsonObject(JSON.stringify(request)),
+			);
 			assertProduct(parsed, VERCEL_EDGE_CONFIG_PRODUCT_ID);
 			const credential = await resolveCredential(options, parsed.credentialRef);
 			const dispatch = guardedDispatch(transport);
@@ -891,7 +916,12 @@ function createEdgeConfigResolver(
 		},
 
 		async read(request, transport) {
-			const parsed = parseResolveRequest(request);
+			// Round-trip so an already-typed `ResolveRequest` can go back through
+			// core's parse boundary, which takes untrusted JSON while the resolver
+			// port hands this method the domain type. Same idiom as `desired` above.
+			const parsed = parseResolveRequest(
+				parseJsonObject(JSON.stringify(request)),
+			);
 			assertProduct(parsed, VERCEL_EDGE_CONFIG_PRODUCT_ID);
 			const credential = await resolveCredential(options, parsed.credentialRef);
 			const dispatch = guardedDispatch(transport);

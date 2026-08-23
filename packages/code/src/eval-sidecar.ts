@@ -57,7 +57,12 @@ export type TrainableRegionForm =
 
 export interface TrainableExample {
 	readonly input: JsonValue;
-	readonly output: unknown;
+	// `JsonValue`, matching `input`: the only producer runs the value through
+	// `cloneAsJson`, which returns exactly that. Declaring `unknown` threw the
+	// narrowing away at the boundary and left every consumer — the golden-case
+	// and fuzz-seed builders among them — unable to accept a value that was
+	// already JSON.
+	readonly output: JsonValue;
 }
 
 export interface TrainableRegion {

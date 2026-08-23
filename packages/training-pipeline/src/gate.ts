@@ -1,6 +1,6 @@
 import type { JsonValue } from "@bufbuild/protobuf";
 import { create, fromJson } from "@bufbuild/protobuf";
-import { CoreParseError } from "@hobo/core";
+import { CoreParseError, diagnosticJson } from "@hobo/core";
 import {
 	type EvalResult,
 	EvalResultSchema,
@@ -41,7 +41,7 @@ export class PromotionGateParseError extends CoreParseError {
 }
 
 function fail(path: string, expected: string, received: unknown): never {
-	throw new PromotionGateParseError(path, expected, received);
+	throw new PromotionGateParseError(path, expected, diagnosticJson(received));
 }
 
 function nonEmpty(value: string, path: string): string {

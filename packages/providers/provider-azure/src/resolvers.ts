@@ -1058,7 +1058,14 @@ function createResolver(
 		// Parse, don't validate: the core boundary canonicalizes the bags, screens
 		// credential-shaped keys at any depth, and freezes the record before a
 		// single byte of it reaches a URL or a request body.
-		const request = parseResolveRequest(input);
+		//
+		// The round-trip is what lets an already-typed `ResolveRequest` back
+		// through that boundary: `parseResolveRequest` takes untrusted JSON, and
+		// the interface hands this function the domain type. Re-screening a value
+		// the caller says is already parsed is deliberate belt-and-braces for the
+		// one provider whose requests carry subscription and resource-group
+		// identifiers into URLs. The same idiom is used for `desired` below.
+		const request = parseResolveRequest(parseJsonObject(JSON.stringify(input)));
 		if (request.ref.productId !== spec.productId) {
 			throw new ResolverError(
 				"RESOLVER_PRODUCT_UNSUPPORTED",

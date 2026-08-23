@@ -169,12 +169,23 @@ export function publishCapabilityManifest(
 		capabilities: categories.map((category) => {
 			const manifest = executionHostManifest(category, { providerId });
 			const capability = manifest.capabilities[0];
+			// Refuse rather than emit a capability with holes in it. Optional
+			// chaining here would leave `port`, `interface`, `version` and
+			// `stability` undefined, and `canonicalJson` drops undefined fields —
+			// so a manifest missing its capability would publish as a document
+			// that parses cleanly and describes nothing a consumer can dispatch
+			// against. Every category has exactly one capability by construction;
+			// if that ever stops being true, this is the line that should say so.
+			if (capability === undefined)
+				throw new Error(
+					`execution host manifest for ${category} declares no capability`,
+				);
 			return {
-				port: capability?.port,
-				interface: capability?.interface,
-				version: capability?.version,
-				stability: capability?.stability,
-				features: [...(capability?.features ?? [])],
+				port: capability.port,
+				interface: capability.interface,
+				version: capability.version,
+				stability: capability.stability,
+				features: [...capability.features],
 				regions: [...regions],
 				category,
 				...(category === RUNNER_CATEGORY

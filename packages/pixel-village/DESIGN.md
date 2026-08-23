@@ -21,6 +21,7 @@ colors:
   deep: "#262b44"
   stone: "#c0cbdc"
   slate: "#52607c"
+  slate-deep: "#3f4a63"
   grass: "#84c669"
   path: "#eaa56c"
   wood: "#a35422"
@@ -212,7 +213,8 @@ vendored art, so chrome and sprites never clash.
 | **primary / outline** (`#3f2631`) | Every border and sprite edge | Deep plum-black, never pure `#000` |
 | **deep** (`#262b44`) | Headers, dark panels, night ground | Cool navy |
 | **neutral / stone** (`#c0cbdc`) | Panel and page ground | Light slate — the UI "paper" |
-| **secondary / slate** (`#52607c`) | Captions, meta, secondary chrome | |
+| **secondary / slate** (`#52607c`) | Secondary chrome, borders | Non-text only — see slate-deep |
+| **slate-deep** (`#3f4a63`) | Captions, meta, any secondary **text** on stone | Slate darkened toward deep. Slate itself is 3.85:1 on stone, under the 4.5:1 AA floor for normal text; this is 5.41:1. Borders keep slate — they answer to the 3:1 non-text rule, which slate passes. |
 | **grass** (`#84c669`) | Success, healthy status, ground | |
 | **path** (`#eaa56c`) | Roads, rails, warm highlight | |
 | **wood** (`#a35422`) | Primary buttons, structures | |

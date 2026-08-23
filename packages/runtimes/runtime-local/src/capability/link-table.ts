@@ -3,6 +3,7 @@ import {
 	type CapabilityGrant,
 	type CapabilityGrantDeniedEvent,
 	type CapabilityLinkTableEvent,
+	type ComponentExport,
 	type LinkCalledEvent,
 	type LinkEstablishedEvent,
 } from "@hobo/core";
@@ -18,10 +19,7 @@ export interface CapabilityLinkTable {
 	registerComponent(input: { id: string; imports: readonly string[] }): void;
 	registerProvider(input: {
 		id: string;
-		exports: Record<
-			string,
-			Record<string, (...args: JsonValue[]) => JsonValue>
-		>;
+		exports: Record<string, Record<string, ComponentExport>>;
 	}): void;
 	link(input: {
 		componentId: string;
@@ -48,7 +46,7 @@ interface StoredComponent {
 
 interface StoredProvider {
 	id: string;
-	exports: Record<string, Record<string, (...args: JsonValue[]) => JsonValue>>;
+	exports: Record<string, Record<string, ComponentExport>>;
 }
 
 interface StoredGrant {

@@ -115,7 +115,12 @@ function componentDescriptor(
 		imports: [],
 		exports: {
 			[HTTP_INCOMING_HANDLER]: {
-				// SAFETY: component host table is untyped at the descriptor boundary.
+				// SAFETY: the export table is heterogeneous by design -- each
+				// interface has its own argument shape, and `ComponentExport`
+				// describes the table, not this entry. The host reads it back through
+				// the matching handler type (`HttpIncomingHandler` in runtime-local),
+				// so the two-step cast is where that agreement is recorded rather
+				// than a claim that the signatures line up.
 				handle: (async (httpReq: HttpRequest): Promise<HttpResponse> => {
 					const req = httpReq;
 					const webReq = new Request(`http://component.local${req.path}`, {
@@ -132,7 +137,7 @@ function componentDescriptor(
 						headers: [...webRes.headers.entries()] as [string, string][],
 						body: await webRes.text(),
 					};
-				}) as ParsedComponentDescriptor["exports"][string][string],
+				}) as unknown as ParsedComponentDescriptor["exports"][string][string],
 			},
 		},
 	};

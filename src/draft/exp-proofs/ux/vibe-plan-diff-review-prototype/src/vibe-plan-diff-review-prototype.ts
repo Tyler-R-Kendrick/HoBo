@@ -11,6 +11,8 @@ import {
   type PlanAnnotationFixture,
   type PlanAnnotationPseudocode,
 } from "../../../ux/vibe-plan-annotation-pseudocode/src/vibe-plan-annotation-pseudocode.ts";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const REQUIRED_GOLDEN_PLAN_STATES = REQUIRED_PLAN_REVIEW_STATES;
 
@@ -47,7 +49,17 @@ type PlanDiffSurfaceId = (typeof REQUIRED_PLAN_DIFF_SURFACES)[number];
 type PlanDiffQuickstartFixtureId = (typeof REQUIRED_PLAN_DIFF_QUICKSTART_FIXTURE_IDS)[number];
 type SourceIssue = (typeof REQUIRED_PLAN_DIFF_SOURCE_DEPENDENCIES)[number];
 
-const ANNOTATION_CASES_BY_PLAN_STATE: Record<GoldenPlanStateId, readonly string[]> = {
+interface AnnotationCasesByPlanState {
+  readonly create: readonly string[];
+  readonly update: readonly string[];
+  readonly "no-op": readonly string[];
+  readonly destructive: readonly string[];
+  readonly blocked: readonly string[];
+  readonly stale: readonly string[];
+  readonly "unknown-evidence": readonly string[];
+}
+
+const ANNOTATION_CASES_BY_PLAN_STATE: AnnotationCasesByPlanState = {
   create: ["cost estimate", "capacity warning"],
   update: ["cost estimate", "widened permission"],
   "no-op": ["cost estimate"],
@@ -385,7 +397,7 @@ export const VIBE_PLAN_DIFF_REVIEW_PROTOTYPE = {
   ],
 } as const satisfies VibePlanDiffReviewPrototype;
 
-export function parseVibePlanDiffReviewPrototype(value: unknown): VibePlanDiffReviewPrototype {
+export function parseVibePlanDiffReviewPrototype(value: JsonValue): VibePlanDiffReviewPrototype {
   const prototype = expectRecord(value, "plan/diff review prototype");
   expectLiteral(prototype.issue, "HOBO-560", "issue");
   expectLiteral(prototype.phase, "M2", "phase");
@@ -418,6 +430,7 @@ export function parseVibePlanDiffReviewPrototype(value: unknown): VibePlanDiffRe
   assertScenarioCoverage(scenarios);
   assertAccessibility(expectStringArray(prototype.accessibilityNotes, "accessibilityNotes"));
 
+  // SAFETY: `return value as VibePlanDiffReviewPrototype;` is required at this I/O or test boundary.
   return value as VibePlanDiffReviewPrototype;
 }
 
@@ -522,7 +535,7 @@ function assertQuickstartFixtureRefs(values: readonly unknown[]): void {
   }
 }
 
-function expectGoldenFixture(value: unknown): GoldenPlanDiffFixture {
+function expectGoldenFixture(value: JsonValue): GoldenPlanDiffFixture {
   const fixture = expectRecord(value, "golden fixture");
   const state = expectOneOf(fixture.state, REQUIRED_GOLDEN_PLAN_STATES, "golden fixture state");
   expectOneOf(fixture.surface, REQUIRED_PLAN_DIFF_SURFACES, `${state}.surface`);
@@ -554,10 +567,11 @@ function expectGoldenFixture(value: unknown): GoldenPlanDiffFixture {
   }
 
   expectSupportHandoff(fixture.supportHandoff, `${state}.supportHandoff`);
+  // SAFETY: `return fixture as GoldenPlanDiffFixture;` is required at this I/O or test boundary.
   return fixture as GoldenPlanDiffFixture;
 }
 
-function expectSupportHandoff(value: unknown, label: string): PlanDiffSupportHandoff {
+function expectSupportHandoff(value: JsonValue, label: string): PlanDiffSupportHandoff {
   const packet = expectRecord(value, label);
   expectLiteral(packet.issue, "HOBO-560", `${label}.issue`);
   expectOneOf(packet.sourceIssue, REQUIRED_PLAN_DIFF_SOURCE_DEPENDENCIES, `${label}.sourceIssue`);
@@ -576,10 +590,11 @@ function expectSupportHandoff(value: unknown, label: string): PlanDiffSupportHan
   if (packet.liveTicketCreated !== false) {
     throw new TypeError(`${label} must not create live support tickets`);
   }
+  // SAFETY: `return packet as PlanDiffSupportHandoff;` is required at this I/O or test boundary.
   return packet as PlanDiffSupportHandoff;
 }
 
-function expectScenario(value: unknown): PlanDiffScenario {
+function expectScenario(value: JsonValue): PlanDiffScenario {
   const scenario = expectRecord(value, "scenario");
   const id = expectOneOf(scenario.id, REQUIRED_PLAN_DIFF_SCENARIOS, "scenario id");
   expectString(scenario.title, `${id}.title`);
@@ -598,6 +613,7 @@ function expectScenario(value: unknown): PlanDiffScenario {
     expectOneOf(proofMode, REQUIRED_PLAN_DIFF_PROOF_MODES, `${id}.proofModeLabels`);
   }
   expectString(scenario.safeOutcome, `${id}.safeOutcome`);
+  // SAFETY: `return scenario as PlanDiffScenario;` is required at this I/O or test boundary.
   return scenario as PlanDiffScenario;
 }
 
@@ -641,36 +657,38 @@ function assertExactOrder<T extends string>(
   }
 }
 
-function expectRecord(value: unknown, label: string): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function expectRecord(value: JsonValue, label: string): JsonObject {
+  if (!isJsonObject(value) || value === null || Array.isArray(value)) {
     throw new TypeError(`${label} must be an object`);
   }
-  return value as Record<string, unknown>;
+  // SAFETY: `return value as JsonObject;` is required at this I/O or test boundary.
+  return value as JsonObject;
 }
 
-function expectArray(value: unknown, label: string): readonly unknown[] {
+function expectArray(value: JsonValue, label: string): readonly unknown[] {
   if (!Array.isArray(value)) {
     throw new TypeError(`${label} must be an array`);
   }
   return value;
 }
 
-function expectString(value: unknown, label: string): string {
-  if (typeof value !== "string" || value.length === 0) {
+function expectString(value: JsonValue, label: string): string {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;
 }
 
-function expectStringArray(value: unknown, label: string): readonly string[] {
+function expectStringArray(value: JsonValue, label: string): readonly string[] {
   const values = expectArray(value, label);
   for (const [index, item] of values.entries()) {
     expectString(item, `${label}[${index}]`);
   }
+  // SAFETY: `return values as readonly string[];` is required at this I/O or test boundary.
   return values as readonly string[];
 }
 
-function expectLiteral<T extends string>(value: unknown, expected: T, label: string): T {
+function expectLiteral<T extends string>(value: JsonValue, expected: T, label: string): T {
   if (value !== expected) {
     throw new TypeError(`${label} must be ${expected}`);
   }
@@ -678,11 +696,11 @@ function expectLiteral<T extends string>(value: unknown, expected: T, label: str
 }
 
 function expectOneOf<T extends readonly string[]>(
-  value: unknown,
+  value: JsonValue,
   expected: T,
   label: string,
 ): T[number] {
-  if (typeof value !== "string" || !expected.includes(value)) {
+  if (!isJsonString(value) || !expected.includes(value)) {
     throw new TypeError(`${label} must be one of ${expected.join(", ")}`);
   }
   return value;

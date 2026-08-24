@@ -12,6 +12,8 @@ import {
   DOCUMENTED_MCP_TOOLS,
   MCP_RATE_LIMIT_ERROR,
 } from "../src/hobo-mcp-server.js";
+import { isJsonNumber } from "../src/json.js";
+
 
 const identity = { kind: "agent", id: "agent:ops", tenantId: "tenant:acme" };
 
@@ -104,7 +106,7 @@ describe("HOBO-634 @hobo/mcp gateway server POC", () => {
     assert.equal(throttled.ok, false);
     assert.equal(throttled.throttled, true);
     assert.equal(throttled.error.code, MCP_RATE_LIMIT_ERROR);
-    assert.ok(Number.isFinite(throttled.error.retryAfterMs));
+    assert.ok(isJsonNumber(throttled.error.retryAfterMs));
 
     const legit = await legitServer.callTool("plan", { cwd: "/repo" }, { toolCallId: "legit-1", now });
     assert.equal(legit.ok, true);

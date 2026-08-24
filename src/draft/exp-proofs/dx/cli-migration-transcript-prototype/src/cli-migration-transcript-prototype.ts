@@ -505,11 +505,13 @@ export function parseCliMigrationTranscriptPrototype(
   };
 }
 
-export function assertMigrationExampleParity(examples: MigrationExamples): {
+export interface MigrationExampleParity {
   equivalent: boolean;
   requestId: string;
   resultCode: string;
-} {
+}
+
+export function assertMigrationExampleParity(examples: MigrationExamples): MigrationExampleParity {
   const requestEqual = JSON.stringify(examples.sdk.request) === JSON.stringify(examples.api.request);
   const resultEqual = JSON.stringify(examples.sdk.resultEnvelope) === JSON.stringify(examples.api.resultEnvelope);
 

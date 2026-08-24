@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-conditional-empty-object-spread -- optional certificate fields must remain omitted when absent. */
 /**
  * The `binding.postgresql/v1` this pack produces.
  *
@@ -97,7 +96,7 @@ export function buildPostgresBinding(
 			credentialRef: input.credentialRef,
 			...(input.certificateRef !== undefined
 				? { certificateRef: input.certificateRef }
-				: {}),
+				: undefined),
 			metadataRefs: {
 				database: parsePostgresIdentifier(input.database, "binding database"),
 				role: parsePostgresIdentifier(input.role, "binding role"),

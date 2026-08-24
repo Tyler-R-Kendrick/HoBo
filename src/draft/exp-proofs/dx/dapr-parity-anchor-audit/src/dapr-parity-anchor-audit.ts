@@ -10,6 +10,11 @@ export const AUDITED_DAPR_FEATURES = ["Bindings", "Distributed lock"] as const;
 
 export type AuditedDaprFeature = (typeof AUDITED_DAPR_FEATURES)[number];
 
+interface AuditedFeatureRowMatchers {
+  readonly Bindings: RegExp;
+  readonly "Distributed lock": RegExp;
+}
+
 // domain-view: parse-produced draft-proof record; its wire form is the DaprParityRow proto message in data-models/.
 export type DaprParityRow = {
   feature: AuditedDaprFeature;
@@ -29,9 +34,12 @@ const DESIGN_ANCHOR_PATTERN =
 
 function extractMappingRows(markdown: string): DaprParityRow[] {
   const rows: DaprParityRow[] = [];
-  const mappingSection = markdown.split("## HoBo mapping")[1] ?? markdown;
+  const mappingSection =
+    markdown.split("## Primitive mapping")[1] ??
+    markdown.split("## HoBo mapping")[1] ??
+    markdown;
 
-  const rowMatchers: Record<AuditedDaprFeature, RegExp> = {
+  const rowMatchers: AuditedFeatureRowMatchers = {
     Bindings:
       /\| \*\*Bindings\*\* \(input\/output connectors\) \|([^|]+)\|([^|]+)\|/,
     "Distributed lock":
@@ -51,6 +59,7 @@ function extractMappingRows(markdown: string): DaprParityRow[] {
       throw new Error(`missing parity status marker for ${feature}`);
     }
 
+    // SAFETY: `const status = statusMatch[1] as DaprParityRow["status"];` is required at this I/O or test boundary.
     const status = statusMatch[1] as DaprParityRow["status"];
     const rowText = `${equivalent} ${notes}`;
     const designAnchors = [...rowText.matchAll(DESIGN_ANCHOR_PATTERN)].map((anchor) => anchor[0]);

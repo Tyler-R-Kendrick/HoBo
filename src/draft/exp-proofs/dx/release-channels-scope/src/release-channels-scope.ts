@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 export const REQUIRED_BOUNDARIES = Object.freeze(["service", "ux", "security", "support"]);
 
 const REQUIRED_M1_EVIDENCE = Object.freeze([
@@ -354,7 +355,7 @@ export function canCreateReleaseChannelsFollowUp({
   };
 }
 
-export function classifyReleaseChannelsDecision(decision: unknown) {
+export function classifyReleaseChannelsDecision(decision: JsonValue) {
   const text = String(decision ?? "").toLowerCase();
 
   if (/\b(cutline|go-no-go|decision record|accepted risk|release program)\b/.test(text)) {

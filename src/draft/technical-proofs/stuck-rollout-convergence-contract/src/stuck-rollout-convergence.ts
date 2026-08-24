@@ -1,7 +1,8 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased rollout and JSON-like values at the shared input and canonicalization boundaries. */
 import {
   replayRollout,
 } from "../../delivery-orchestrator-skeleton-contract/src/delivery-orchestrator.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export function createInMemoryRecoveryLease() {
   const owners = new Map();
@@ -249,7 +250,7 @@ function recoveryReason({ events, now, progressDeadlineMs, observed }) {
 }
 
 function parseRollout(rollout) {
-  if (!rollout || typeof rollout !== "object" || Array.isArray(rollout)) {
+  if (!rollout || !isJsonObject(rollout) || Array.isArray(rollout)) {
     throw new Error("rollout must be an object");
   }
   const target = rollout.target ?? {};
@@ -349,7 +350,7 @@ function terminalStatusFromEvents(status, events) {
 }
 
 function nonEmptyString(value, path) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${path} must be a non-empty string`);
   }
   return value;
@@ -363,7 +364,7 @@ function cloneJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
 

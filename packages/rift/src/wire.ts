@@ -16,7 +16,14 @@ import { CowTier as CowTierPb } from "./_generated/rift_workspace_pb.js";
 import type { Capability, CowTier } from "./capability.js";
 import type { WorkspaceRecord } from "./workspace.js";
 
-const TIER_TO_WIRE: Readonly<Record<CowTier, CowTierPb>> = {
+interface CowTierToWire {
+	readonly reflink: CowTierPb;
+	readonly overlayfs: CowTierPb;
+	readonly hardlink: CowTierPb;
+	readonly copy: CowTierPb;
+}
+
+const TIER_TO_WIRE: CowTierToWire = {
 	reflink: CowTierPb.REFLINK,
 	overlayfs: CowTierPb.OVERLAYFS,
 	hardlink: CowTierPb.HARDLINK,
@@ -29,19 +36,22 @@ export function tierToWire(tier: CowTier): CowTierPb {
 
 /** Unknown/unspecified is not a tier we can act on, so it parses to null. */
 export function tierFromWire(tier: CowTierPb): CowTier | null {
-	for (const [domain, wire] of Object.entries(TIER_TO_WIRE)) {
-		if (wire === tier) return domain as CowTier;
-	}
+	if (tier === TIER_TO_WIRE.reflink) return "reflink";
+	if (tier === TIER_TO_WIRE.overlayfs) return "overlayfs";
+	if (tier === TIER_TO_WIRE.hardlink) return "hardlink";
+	if (tier === TIER_TO_WIRE.copy) return "copy";
 	return null;
 }
 
 /** Field-for-field wire form of a capability probe. */
-export function capabilityToWire(capability: Capability): {
+interface CapabilityWire {
 	tier: CowTierPb;
 	available: CowTierPb[];
 	reason: string;
 	isolatesInPlaceWrites: boolean;
-} {
+}
+
+export function capabilityToWire(capability: Capability): CapabilityWire {
 	return {
 		tier: tierToWire(capability.tier),
 		available: capability.available.map(tierToWire),
@@ -55,7 +65,7 @@ export function capabilityToWire(capability: Capability): {
  * proto3 has no optional scalar presence here — the domain type keeps the
  * distinction, the wire form does not need it.
  */
-export function workspaceToWire(record: WorkspaceRecord): {
+interface WorkspaceWire {
 	name: string;
 	path: string;
 	tier: CowTierPb;
@@ -63,7 +73,9 @@ export function workspaceToWire(record: WorkspaceRecord): {
 	upper: string;
 	work: string;
 	createdAt: string;
-} {
+}
+
+export function workspaceToWire(record: WorkspaceRecord): WorkspaceWire {
 	return {
 		name: record.name,
 		path: record.path,

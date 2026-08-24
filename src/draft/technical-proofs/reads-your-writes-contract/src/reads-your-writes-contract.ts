@@ -1,10 +1,10 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased sequence inputs at the shared boundary and select the supported cloning capability. */
-
 import { createCommandRuntime } from "../../cqrs-command-aggregate-contract/src/cqrs-command-aggregate-contract.js";
 import {
   createInMemoryReactor,
   isSeqAtLeast,
 } from "../../reactor-skeleton-contract/src/reactor-skeleton-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export class ReadsYourWritesAckViolationError extends Error {
   constructor({ subscriptionId, seqFloor, subscriptionSeq }) {
@@ -203,7 +203,7 @@ function normalizeSeqVector(seq) {
   if (seq === undefined) {
     return {};
   }
-  if (!seq || typeof seq !== "object" || Array.isArray(seq)) {
+  if (!seq || !isJsonObject(seq) || Array.isArray(seq)) {
     throw new TypeError("seq must be an object");
   }
 
@@ -225,7 +225,7 @@ function assertSeq(value, label) {
 }
 
 function assertNonEmptyString(value, label) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;
@@ -241,5 +241,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

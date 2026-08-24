@@ -1,9 +1,7 @@
 import { createHash } from "node:crypto";
-
+import { isJsonObject, type JsonBag, type JsonValue } from "../json.js";
 import type { BuildArtifact, BuildManifest, TargetRuntime } from "./parse.js";
 import { BUILD_MANIFEST_SCHEMA } from "./parse.js";
-import { isJsonObject, type JsonBag, type JsonValue } from "../json.js";
-
 
 export type BuildStartedEvent = {
 	readonly type: "build.Started";
@@ -62,7 +60,10 @@ export function projectBuildManifest(
 	};
 }
 
-export function stableStringify(value: JsonValue): string {
+// `unknown`: this serializes and never reads a field, so a `JsonValue`
+// parameter is a promise it neither needs nor checks -- paid for by callers
+// laundering records that are about to be stringified anyway.
+export function stableStringify(value: unknown): string {
 	return `${JSON.stringify(value, replacer)}\n`;
 
 	function replacer(_key: string, inner: JsonValue): JsonValue {

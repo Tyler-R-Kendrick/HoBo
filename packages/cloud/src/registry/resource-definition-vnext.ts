@@ -20,10 +20,8 @@ import type {
 	ProviderClass,
 	SelectionCandidate,
 } from "@hobo/capability-profiles";
-
+import type { JsonObject, JsonValue } from "../json.js";
 import type { ResourceDefinition } from "./catalog.js";
-import { type JsonObject } from "../json.js";
-
 
 // public-contract: versions the portable resource-definition schema.
 export const RESOURCE_DEFINITION_VNEXT_SCHEMA =
@@ -228,10 +226,16 @@ export function semanticsDigestInput(
 		continuity: semantics.continuity,
 		supportsExport: semantics.supportsExport,
 		sponsorExposureMinorUnits: semantics.sponsorExposureMinorUnits,
+		// Array values are readonly on the semantics record and mutable in the
+		// JSON view; copying is what publishing means here anyway -- this is a
+		// snapshot, not a live window onto the definition it came from.
 		structuredCapabilities: Object.fromEntries(
-			Object.entries(semantics.structuredCapabilities).sort(([a], [b]) =>
-				a.localeCompare(b),
-			),
+			Object.entries(semantics.structuredCapabilities)
+				.sort(([a], [b]) => a.localeCompare(b))
+				.map(([key, value]): [string, JsonValue] => [
+					key,
+					typeof value === "object" ? [...value] : value,
+				]),
 		),
 	};
 }

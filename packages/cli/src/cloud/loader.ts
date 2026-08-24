@@ -9,10 +9,8 @@ import {
 	collectBindleManifest,
 	type ManifestV1,
 } from "@hobo/bindles";
-
+import { isJsonObject, isJsonString, type JsonValue } from "../json.js";
 import { BindleImportError } from "../shell/errors.js";
-import { isJsonString, isJsonObject, type JsonValue } from "../json.js";
-
 
 // The TypeScript-source bindle loader (docs/plans/0006 item 3-1). It
 // materializes the collection target the cloud verbs operate on from the
@@ -83,7 +81,9 @@ export async function loadBindleDefinition(
 	return null;
 }
 
-function isUncompiledTypeScript(candidate: string, error: JsonValue): boolean {
+// `error` is a `catch` binding, which is `unknown`; the body already handles
+// that with `error instanceof Error ? … : String(error)`.
+function isUncompiledTypeScript(candidate: string, error: unknown): boolean {
 	if (!/\.(ts|mts)$/u.test(candidate)) return false;
 	const message = error instanceof Error ? error.message : String(error);
 	return /ERR_UNKNOWN_FILE_EXTENSION|Unknown file extension|\.ts['"]/u.test(
@@ -91,7 +91,9 @@ function isUncompiledTypeScript(candidate: string, error: JsonValue): boolean {
 	);
 }
 
-function isBindleDefinition(value: JsonValue): value is BindleDefinition {
+// `unknown`: this tests a value pulled off an imported ESM namespace, which is
+// exactly the untyped input a type guard exists for.
+function isBindleDefinition(value: unknown): value is BindleDefinition {
 	if (value === null || !isJsonObject(value)) {
 		return false;
 	}

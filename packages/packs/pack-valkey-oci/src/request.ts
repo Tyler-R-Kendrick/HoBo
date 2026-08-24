@@ -28,8 +28,14 @@ import {
 	buildValkeyContainerSpec,
 	type ValkeyContainerSpec,
 } from "./deployment.js";
-import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
-
+import {
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 declare const resourceRefBrand: unique symbol;
 
@@ -50,7 +56,11 @@ function configurationInvalid(detail: string): never {
 	throw new PackError("PACK_CONFIGURATION_INVALID", detail);
 }
 
-export function parseValkeyResourceRef(input: JsonValue): ValkeyResourceRef {
+export function parseValkeyResourceRef(
+	// Accepts `undefined`: the argument is a field read off a `JsonObject`, and
+	// an absent field is one of the shapes this parse refuses.
+	input: JsonValue | undefined,
+): ValkeyResourceRef {
 	if (!isJsonString(input) || !RESOURCE_REF.test(input)) {
 		configurationInvalid("resourceRef must be shaped resource:<yard>/<name>");
 	}
@@ -71,7 +81,10 @@ export type ValkeyDeploymentPlan = {
 };
 
 function asRecord(
-	input: JsonValue,
+	// Accepts `undefined`: callers read fields off a `JsonObject`, which is
+	// `JsonValue | undefined` under `noUncheckedIndexedAccess`. An absent field is
+	// one of the shapes this function exists to refuse.
+	input: JsonValue | undefined,
 	what: string,
 ): Readonly<JsonObject> {
 	if (!isJsonObject(input) || input === null || Array.isArray(input)) {
@@ -88,24 +101,27 @@ function asRecord(
  * `integer`/`enum` parsers cannot describe, and the failure would name the
  * wrong culprit.
  */
-interface ValkeyConfigValues {
+// A `type` alias rather than an `interface`, so it keeps an implicit index
+// signature and stays assignable to the
+// `Readonly<Record<string, PackConfigurationInputValue>>` the request expects.
+type ValkeyConfigValues = {
 	dataVolume?: PackConfigurationInputValue;
 	authPasswordRef?: PackConfigurationInputValue;
 	durabilityMode?: PackConfigurationInputValue;
 	evictionPolicy?: PackConfigurationInputValue;
 	maxmemoryBytes?: PackConfigurationInputValue;
 	databases?: PackConfigurationInputValue;
-}
+};
 
-function parseValues(input: JsonValue): ValkeyConfigValues {
+function parseValues(
+	// Accepts `undefined`: the argument is a field read off a `JsonObject`, and
+	// an absent field is one of the shapes this parse refuses.
+	input: JsonValue | undefined,
+): ValkeyConfigValues {
 	const raw = asRecord(input, "values");
 	const values: ValkeyConfigValues = {};
 	for (const [key, value] of Object.entries(raw)) {
-		if (
-			!isJsonString(value) &&
-			!isJsonNumber(value) &&
-			!isJsonBoolean(value)
-		) {
+		if (!isJsonString(value) && !isJsonNumber(value) && !isJsonBoolean(value)) {
 			configurationInvalid(
 				`configuration ${key} must be a string, number, or boolean`,
 			);
@@ -128,7 +144,10 @@ function parseValues(input: JsonValue): ValkeyConfigValues {
 	return values;
 }
 
-function parseVolumeBinding(input: JsonValue, index: number): PackVolumeBinding {
+function parseVolumeBinding(
+	input: JsonValue,
+	index: number,
+): PackVolumeBinding {
 	const raw = asRecord(input, `volumeBindings[${index}]`);
 	const volumeName = raw.volumeName;
 	if (!isJsonString(volumeName) || volumeName.length === 0) {
@@ -149,10 +168,7 @@ function parseVolumeBinding(input: JsonValue, index: number): PackVolumeBinding 
 		};
 	}
 	if (storage.kind === "external-storage") {
-		if (
-			!isJsonString(storage.storageRef) ||
-			storage.storageRef.length === 0
-		) {
+		if (!isJsonString(storage.storageRef) || storage.storageRef.length === 0) {
 			configurationInvalid(
 				`volumeBindings[${index}].storage.storageRef must be a non-empty string`,
 			);
@@ -167,7 +183,10 @@ function parseVolumeBinding(input: JsonValue, index: number): PackVolumeBinding 
 	);
 }
 
-function parseVolumeBindings(input: JsonValue): readonly PackVolumeBinding[] {
+function parseVolumeBindings(
+	// The body opens with `if (input === undefined) return []`.
+	input: JsonValue | undefined,
+): readonly PackVolumeBinding[] {
 	if (input === undefined) return [];
 	if (!Array.isArray(input))
 		configurationInvalid("volumeBindings must be an array");

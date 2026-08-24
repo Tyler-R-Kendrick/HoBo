@@ -3,15 +3,13 @@
  * The CD plane never re-renders raw Git/Helm under high privilege.
  */
 import { createHash } from "node:crypto";
-
+import { isJsonObject, type JsonObject, type JsonValue } from "../json.js";
 import {
 	DEPLOYMENT_PLAN_SCHEMA,
 	type DeploymentPlan,
 	hashDeploymentPlan,
 	type ResourcePlan,
 } from "../plan-types.js";
-import { isJsonObject, type JsonValue, type JsonObject } from "../json.js";
-
 
 // public-contract: resolved deployment set schema.
 export const RESOLVED_SET_SCHEMA = "hobo.resolved-deployment-set/v1" as const;
@@ -129,7 +127,10 @@ export function listResources(
 	return set.plan.resources;
 }
 
-function stableStringify(value: JsonValue): string {
+// `unknown`: this serializes, it does not inspect. A `JsonValue` parameter is a
+// promise the function neither needs nor checks, paid for by callers converting
+// perfectly good domain records before handing them over to be stringified.
+function stableStringify(value: unknown): string {
 	if (value === null || !isJsonObject(value)) {
 		return JSON.stringify(value);
 	}

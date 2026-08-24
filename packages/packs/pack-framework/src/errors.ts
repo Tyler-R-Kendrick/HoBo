@@ -1,4 +1,4 @@
-/* eslint-disable no-control-regex, anti-slop/no-unknown-parameters -- error redaction owns the erased error boundary. */
+import { type JsonValue } from "./json.js";
 /**
  * Stable error codes for pack mechanics.
  *
@@ -31,8 +31,15 @@ export type PackErrorDetail = Readonly<
 
 export type PackErrorOptions = {
 	readonly detail?: PackErrorDetail;
-	readonly cause?: unknown;
+	readonly cause?: JsonValue;
 };
+
+export interface PackErrorJson {
+	readonly name: string;
+	readonly code: PackErrorCode;
+	readonly message: string;
+	readonly detail: PackErrorDetail;
+}
 
 /** Shapes that must never survive into a message, a log line, or a receipt. */
 const CREDENTIAL_PATTERNS: readonly RegExp[] = [
@@ -43,8 +50,14 @@ const CREDENTIAL_PATTERNS: readonly RegExp[] = [
 	/-----BEGIN [A-Z ]*PRIVATE KEY-----[\s\S]*?-----END [A-Z ]*PRIVATE KEY-----/giu,
 ];
 
-// biome-ignore lint/suspicious/noControlCharactersInRegex: matching control characters is the point; an error message that carries a raw escape sequence corrupts whatever log renders it.
-const CONTROL_CHARS = /[\u0000-\u001f\u007f]/gu;
+function stripControlChars(text: string): string {
+	let out = "";
+	for (let i = 0; i < text.length; i++) {
+		const code = text.charCodeAt(i);
+		out += code <= 0x1f || code === 0x7f ? " " : text[i];
+	}
+	return out;
+}
 
 /**
  * Redact credential-shaped substrings and flatten control characters.
@@ -56,7 +69,7 @@ export function redactPackText(text: string, maxLength = 256): string {
 	let out = text;
 	for (const pattern of CREDENTIAL_PATTERNS)
 		out = out.replace(pattern, "[redacted]");
-	out = out.replace(CONTROL_CHARS, " ").trim();
+	out = stripControlChars(out).trim();
 	return out.length > maxLength ? `${out.slice(0, maxLength)}…` : out;
 }
 
@@ -75,11 +88,11 @@ export class PackError extends Error {
 		);
 		this.name = "PackError";
 		this.code = code;
-		this.detail = Object.freeze({ ...options.detail });
+		this.detail = Object.freeze({ ...(options.detail) });
 	}
 
 	/** Receipt-safe projection; already redacted by construction. */
-	toJSON() {
+	toJSON(): PackErrorJson {
 		return {
 			name: this.name,
 			code: this.code,
@@ -89,6 +102,6 @@ export class PackError extends Error {
 	}
 }
 
-export function isPackError(value: unknown): value is PackError {
+export function isPackError(value: JsonValue): value is PackError {
 	return value instanceof PackError;
 }

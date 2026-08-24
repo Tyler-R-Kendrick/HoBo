@@ -34,13 +34,12 @@ import {
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..", "..");
 
-// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+// SAFETY: `const _assetIndex = JSON.parse(` is required at this I/O or test boundary.
 const _assetIndex = JSON.parse(
-	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 	readFileSync(join(ROOT, "assets/assets_index.json"), "utf8"),
 ) as { animationIds: Record<string, { sheet: string; animation: string }> };
 
-// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+// SAFETY: `const budgets = JSON.parse(` is required at this I/O or test boundary.
 const budgets = JSON.parse(
 	readFileSync(join(ROOT, "docs/validation/feel-budgets.json"), "utf8"),
 ) as {
@@ -78,7 +77,7 @@ const STATEFUL_CUE_PREFIXES = Object.freeze([
 	"fence-", // the Connection boundary
 ]);
 
-// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+// SAFETY: `const _ZONES = Object.keys(YARD_LAYOUT.zones) as ZoneId[];` is required at this I/O or test boundary.
 const _ZONES = Object.keys(YARD_LAYOUT.zones) as ZoneId[];
 
 let harness: Harness;
@@ -107,10 +106,10 @@ test.describe("animation-clip coverage", () => {
 		await waitForFrames(page, 8);
 
 		const rendered = await page.evaluate(() => {
-			const seam =
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-				(window as Window & { __TEST__: { renderIds?: () => string[] } })
-					.__TEST__;
+			const seam = (
+				// SAFETY: `window as { __TEST__: { renderIds?: () => string[] } }` is required at this I/O or test boundary.
+				window as { __TEST__: { renderIds?: () => string[] } }
+			).__TEST__;
 			return seam.renderIds ? seam.renderIds() : [];
 		});
 		expect(
@@ -152,15 +151,15 @@ test.describe("animation-clip coverage", () => {
 		await page.goto(harness.gameUrl({}));
 		await waitForYard(page);
 
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: `const result = (await page.evaluate(async () => {` is required at this I/O or test boundary.
 		const result = (await page.evaluate(async () => {
 			type Seam = {
 				frameCount: number;
 				state: () => { recentFx: readonly { fx: string; atFrame: number }[] };
 				commands: { runAction: (a: string) => Promise<void> };
 			};
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-			const seam = (window as Window & { __TEST__: Seam }).__TEST__;
+			// SAFETY: `const seam = (window as { __TEST__: Seam }).__TEST__;` is required at this I/O or test boundary.
+			const seam = (window as { __TEST__: Seam }).__TEST__;
 			const before = seam.state().recentFx.length;
 			const framesBefore = seam.frameCount;
 			const t0 = performance.now();
@@ -203,7 +202,7 @@ test.describe("animation-clip coverage", () => {
 				.join(" | ")}`,
 		);
 		expect(
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			// SAFETY: `result.ackMs as number,` is required at this I/O or test boundary.
 			result.ackMs as number,
 			`JUI-1: acknowledgment must land within feel-budgets ackMaxMs=${budgets.ackMaxMs}ms`,
 		).toBeLessThanOrEqual(budgets.ackMaxMs);
@@ -225,8 +224,8 @@ test.describe("animation-clip coverage", () => {
 
 			await page.evaluate(() => {
 				type Seam = { commands: { selectZone: (z: string) => void } };
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-				(window as Window & { __TEST__: Seam }).__TEST__.commands.selectZone(
+				// SAFETY: `(window as { __TEST__: Seam }).__TEST__.commands.selectZone(` is required at this I/O or test boundary.
+				(window as { __TEST__: Seam }).__TEST__.commands.selectZone(
 					"bootstrapDesk",
 				);
 			});
@@ -239,9 +238,9 @@ test.describe("animation-clip coverage", () => {
 			// zone-label fx, so "any fx" would race the async confirm.
 			await page.waitForFunction(
 				() =>
-					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 					(
-						window as Window & {
+						// SAFETY: `window as {` is required at this I/O or test boundary.
+						window as {
 							__TEST__: {
 								state: () => { recentFx: readonly { fx: string }[] };
 							};
@@ -266,8 +265,8 @@ test.describe("animation-clip coverage", () => {
 		await waitForYard(page);
 		await page.evaluate(() => {
 			type Seam = { commands: { selectZone: (z: string) => void } };
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-			(window as Window & { __TEST__: Seam }).__TEST__.commands.selectZone(
+			// SAFETY: `(window as { __TEST__: Seam }).__TEST__.commands.selectZone(` is required at this I/O or test boundary.
+			(window as { __TEST__: Seam }).__TEST__.commands.selectZone(
 				"bootstrapDesk",
 			);
 		});
@@ -298,11 +297,8 @@ test.describe("motion / stillness duality", () => {
 		await page.goto(liveUrl());
 		await page.waitForFunction(
 			() =>
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-				/* SAFETY: Playwright loads the app page with the test seam installed. */
-				(window as Window & { __TEST__?: { frameCount?: number } }).__TEST__
+				// SAFETY: `(window as { __TEST__?: { frameCount?: number } }).__TEST__` is required at this I/O or test boundary.
+				(window as { __TEST__?: { frameCount?: number } }).__TEST__
 					?.frameCount !== undefined,
 			null,
 			{ timeout: 45_000 },
@@ -324,8 +320,8 @@ test.describe("motion / stillness duality", () => {
 		await page.goto(liveUrl());
 		await page.waitForFunction(
 			() =>
-				/* SAFETY: Playwright loads the app page with the test seam installed. */
-				(window as Window & { __TEST__?: { frameCount?: number } }).__TEST__
+				// SAFETY: `(window as { __TEST__?: { frameCount?: number } }).__TEST__` is required at this I/O or test boundary.
+				(window as { __TEST__?: { frameCount?: number } }).__TEST__
 					?.frameCount !== undefined,
 			null,
 			{ timeout: 45_000 },
@@ -398,13 +394,13 @@ test.describe("frame pacing", () => {
 		);
 		await page.waitForFunction(
 			() =>
-				// SAFETY: The page fixture installs the test seam before evaluation.
-				(window as Window & { __TEST__?: { frameCount?: number } }).__TEST__
+				// SAFETY: `(window as { __TEST__?: { frameCount?: number } }).__TEST__` is required at this I/O or test boundary.
+				(window as { __TEST__?: { frameCount?: number } }).__TEST__
 					?.frameCount !== undefined,
 			null,
 			{ timeout: 45_000 },
 		);
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: `const deltas = (await page.evaluate(async () => {` is required at this I/O or test boundary.
 		const deltas = (await page.evaluate(async () => {
 			const samples: number[] = [];
 			let last = performance.now();

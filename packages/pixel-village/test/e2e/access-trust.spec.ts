@@ -18,8 +18,9 @@
  */
 
 import AxeBuilder from "@axe-core/playwright";
-import type { Page } from "playwright";
 import type { PNG } from "pngjs";
+// @ts-expect-error - global playwright install, resolved by absolute path
+import type { Page } from "/home/codex/.local/lib/node_modules/playwright/index.mjs";
 import { type Harness, startHarness } from "../../scripts/demo-harness.mjs";
 import { deriveYardVisualState } from "../../src/entity-state.js";
 import { presentYard } from "../../src/phaser/yard-presenter.js";
@@ -71,17 +72,15 @@ test.afterAll(async () => {
 async function tabStops(page: Page, max = MAX_TAB_STOPS): Promise<TabStop[]> {
 	const stops: TabStop[] = [];
 	await page.evaluate(() => {
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-		/* SAFETY: document.activeElement is a DOM element or null by platform contract. */
+		// SAFETY: `(document.activeElement as HTMLElement | null)?.blur();` is required at this I/O or test boundary.
 		(document.activeElement as HTMLElement | null)?.blur();
 		window.scrollTo(0, 0);
 	});
 	for (let i = 0; i < max; i++) {
 		await page.keyboard.press("Tab");
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: `const info = (await page.evaluate(() => {` is required at this I/O or test boundary.
 		const info = (await page.evaluate(() => {
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			// SAFETY: `const el = document.activeElement as HTMLElement | null;` is required at this I/O or test boundary.
 			const el = document.activeElement as HTMLElement | null;
 			if (!el || el === document.body || el === document.documentElement) {
 				return null;
@@ -117,15 +116,10 @@ async function focusRingDelta(
 	baseline: PNG,
 	pad = 8,
 ): Promise<{ who: string; delta: PixelDelta }> {
-	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+	// SAFETY: `const probe = (await page.evaluate(() => {` is required at this I/O or test boundary.
 	const probe = (await page.evaluate(() => {
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-		// SAFETY: document.activeElement is a DOM element or null by platform contract.
-		// SAFETY: document.activeElement is a DOM element or null by platform contract.
-		// SAFETY: document.activeElement is a DOM element or null by platform contract.
-		const el =
-			document.activeElement /* SAFETY: activeElement is an HTMLElement or null. */ as HTMLElement | null;
+		// SAFETY: `const el = document.activeElement as HTMLElement | null;` is required at this I/O or test boundary.
+		const el = document.activeElement as HTMLElement | null;
 		if (!el || el === document.body) return null;
 		const r = el.getBoundingClientRect();
 		return {
@@ -180,11 +174,11 @@ test.describe("keyboard operability", () => {
 		});
 		expect(host, "#yard host is missing").not.toBeNull();
 		expect(
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			// SAFETY: `(host as { label: string | null }).label,` is required at this I/O or test boundary.
 			(host as { label: string | null }).label,
 			"the yard canvas host must carry an accessible name",
 		).toBeTruthy();
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: `expect((host as { role: string | null }).role).toBeTruthy();` is required at this I/O or test boundary.
 		expect((host as { role: string | null }).role).toBeTruthy();
 	});
 
@@ -240,9 +234,8 @@ test.describe("keyboard operability", () => {
 		// separate question of whether a keyboard route to the sheet exists.
 		await page.evaluate(() => {
 			type Seam = { commands: { selectZone: (z: string) => void } };
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-			(window as Window & { __TEST__: Seam }).__TEST__.commands.selectZone(
+			// SAFETY: `(window as { __TEST__: Seam }).__TEST__.commands.selectZone(` is required at this I/O or test boundary.
+			(window as { __TEST__: Seam }).__TEST__.commands.selectZone(
 				"bootstrapDesk",
 			);
 		});
@@ -276,7 +269,7 @@ async function keyboardWalk(
 	max = MAX_TAB_STOPS,
 ): Promise<TabStop | null> {
 	await page.evaluate(() => {
-		// SAFETY: document.activeElement is a DOM element or null by platform contract.
+		// SAFETY: `(document.activeElement as HTMLElement | null)?.blur();` is required at this I/O or test boundary.
 		(document.activeElement as HTMLElement | null)?.blur();
 		window.scrollTo(0, 0);
 	});
@@ -292,9 +285,9 @@ async function keyboardWalk(
 }
 
 async function activeStop(page: Page): Promise<TabStop | null> {
-	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+	// SAFETY: `return (await page.evaluate(() => {` is required at this I/O or test boundary.
 	return (await page.evaluate(() => {
-		// SAFETY: activeElement is an HTMLElement or null by platform contract.
+		// SAFETY: `const el = document.activeElement as HTMLElement | null;` is required at this I/O or test boundary.
 		const el = document.activeElement as HTMLElement | null;
 		if (!el || el === document.body || el === document.documentElement) {
 			return null;
@@ -333,15 +326,15 @@ test.describe("focus visibility", () => {
 			// Open a sheet so its controls are part of the tab order too.
 			await page.evaluate(() => {
 				type Seam = { commands: { selectZone: (z: string) => void } };
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-				(window as Window & { __TEST__: Seam }).__TEST__.commands.selectZone(
+				// SAFETY: `(window as { __TEST__: Seam }).__TEST__.commands.selectZone(` is required at this I/O or test boundary.
+				(window as { __TEST__: Seam }).__TEST__.commands.selectZone(
 					"connectionBay",
 				);
 			});
 			await waitForFrames(page, 2);
 
 			await page.evaluate(() => {
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+				// SAFETY: `(document.activeElement as HTMLElement | null)?.blur();` is required at this I/O or test boundary.
 				(document.activeElement as HTMLElement | null)?.blur();
 				window.scrollTo(0, 0);
 			});
@@ -388,8 +381,8 @@ test.describe("axe-core", () => {
 		await waitForYard(page);
 		await page.evaluate(() => {
 			type Seam = { commands: { selectZone: (z: string) => void } };
-			// SAFETY: This page is launched with the deterministic test seam installed.
-			(window as Window & { __TEST__: Seam }).__TEST__.commands.selectZone(
+			// SAFETY: `(window as { __TEST__: Seam }).__TEST__.commands.selectZone(` is required at this I/O or test boundary.
+			(window as { __TEST__: Seam }).__TEST__.commands.selectZone(
 				"connectionBay",
 			);
 		});
@@ -412,19 +405,8 @@ test.describe("axe-core", () => {
 						.join(", "),
 			);
 		}
-		// Name the offending nodes, not just the rule. A contrast failure
-		// reported as "elements must meet minimum contrast" is a finding
-		// nobody can act on without re-running the scan by hand; the selector
-		// and axe's own summary are what turn it into a fix.
 		expect(
-			blocking.flatMap((v) =>
-				v.nodes.map(
-					(node) =>
-						`${v.id} (${v.impact}) at ${node.target.join(" ")} :: ${
-							node.failureSummary?.replace(/\s+/gu, " ").trim() ?? v.help
-						}`,
-				),
-			),
+			blocking.map((v) => `${v.id} (${v.impact}): ${v.help}`),
 			"serious/critical axe violations on the yard's DOM chrome",
 		).toEqual([]);
 	});

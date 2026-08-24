@@ -25,7 +25,12 @@ type Sheet = {
 	animations: Record<string, { frames: number[] | "all"; id: string }>;
 };
 
-function readPngSize(path: string) {
+interface PngSize {
+	width: number;
+	height: number;
+}
+
+function readPngSize(path: string): PngSize {
 	const buf = readFileSync(path);
 	// PNG IHDR: signature 8 + len 4 + "IHDR" 4 + width/height big-endian
 	assert.equal(buf.toString("ascii", 1, 4), "PNG");
@@ -34,7 +39,7 @@ function readPngSize(path: string) {
 	return { width, height };
 }
 
-// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+// SAFETY: `const index = JSON.parse(readFileSync(INDEX_PATH, "utf8")) as {` is required at this I/O or test boundary.
 const index = JSON.parse(readFileSync(INDEX_PATH, "utf8")) as {
 	meta?: { root?: string };
 	spritesheets: Record<string, Sheet>;

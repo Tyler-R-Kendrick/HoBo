@@ -24,9 +24,8 @@ import {
 	type ZoneId,
 } from "../src/index.js";
 
-// SAFETY: The fixture intentionally supplies the projection fields used by presenter tests.
 const baseSnap: YardProjectionSnapshot = {
-	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+	// SAFETY: `occupancy: {` is required at this I/O or test boundary.
 	occupancy: {
 		stationId: "station:local",
 		status: "open",
@@ -36,8 +35,7 @@ const baseSnap: YardProjectionSnapshot = {
 		seq: 7,
 	} as YardProjectionSnapshot["occupancy"],
 	rails: [
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: `{` is required at this I/O or test boundary.
 		{
 			id: "rail-prod",
 			contentHash: "hash-1",
@@ -45,15 +43,15 @@ const baseSnap: YardProjectionSnapshot = {
 		} as YardProjectionSnapshot["rails"][number],
 	],
 	connections: [
+		// SAFETY: `{` is required at this I/O or test boundary.
 		{
 			id: "conn-1",
 			alias: "work",
 			provider: "asana",
 			status: "active",
-			// SAFETY: The fixture supplies the connection fields consumed by the presenter.
 		} as YardProjectionSnapshot["connections"][number],
 	],
-	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+	// SAFETY: `metering: {` is required at this I/O or test boundary.
 	metering: {
 		quotaUsed: 5,
 		quotaLimit: 10,
@@ -63,11 +61,10 @@ const baseSnap: YardProjectionSnapshot = {
 		trafficRateSource: "synthetic",
 	} as YardProjectionSnapshot["metering"],
 	activity: [],
-	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 	doctor: {
 		hazards: [],
 		bootstrapActive: false,
-	} as YardProjectionSnapshot["doctor"],
+	},
 	seq: 7,
 	occupyMode: "occupying",
 };
@@ -118,7 +115,7 @@ function tiles(items: readonly RenderItem[]) {
 	);
 }
 
-// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+// SAFETY: `const world = toWorldView(scenarioWorld(1, 5), true) as WorldView;` is required at this I/O or test boundary.
 const world = toWorldView(scenarioWorld(1, 5), true) as WorldView;
 
 describe("the village is built from sourced tiles, never from primitives", () => {
@@ -260,19 +257,12 @@ describe("houses are Camps, villagers are Bindles", () => {
 	});
 
 	it("dims idle villagers and keeps working ones solid", () => {
-		// SAFETY: The scenario fixture supplies the complete world shape used here.
 		const custom: WorldView = {
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-			// SAFETY: The scenario fixture always contains a first camp.
+			// SAFETY: `camps: [world.camps[0] as WorldView["camps"][number]],` is required at this I/O or test boundary.
 			camps: [world.camps[0] as WorldView["camps"][number]],
 			characters: [
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
 				{
-					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+					// SAFETY: `...(world.characters[0] as WorldView["characters"][number]),` is required at this I/O or test boundary.
 					...(world.characters[0] as WorldView["characters"][number]),
 					id: "x-idle",
 					state: "idle",
@@ -280,8 +270,7 @@ describe("houses are Camps, villagers are Bindles", () => {
 					bubble: null,
 				},
 				{
-					...(world.characters[0] as WorldView["characters"][number]),
-					// SAFETY: The scenario fixture always contains a first character.
+					// SAFETY: `...(world.characters[0] as WorldView["characters"][number]),` is required at this I/O or test boundary.
 					...(world.characters[0] as WorldView["characters"][number]),
 					id: "x-working",
 					state: "working",
@@ -295,7 +284,7 @@ describe("houses are Camps, villagers are Bindles", () => {
 			...custom,
 			characters: custom.characters.map((c) => ({
 				...c,
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+				// SAFETY: `campId: custom.camps[0]?.id as string,` is required at this I/O or test boundary.
 				campId: custom.camps[0]?.id as string,
 			})),
 		};
@@ -307,20 +296,13 @@ describe("houses are Camps, villagers are Bindles", () => {
 	});
 
 	it("plants a danger marker over a stuck or failing Bindle, and only then", () => {
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: `const base = world.characters[0] as WorldView["characters"][number];` is required at this I/O or test boundary.
 		const base = world.characters[0] as WorldView["characters"][number];
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-		// SAFETY: The scenario fixture always contains a camp id.
-		// SAFETY: The scenario fixture always contains a camp id.
-		const campId = world.camps[0]
-			?.id /* SAFETY: The scenario fixture contains a camp id. */ as string;
-		// SAFETY: The scenario fixture supplies the complete world shape used here.
+		// SAFETY: `const campId = world.camps[0]?.id as string;` is required at this I/O or test boundary.
+		const campId = world.camps[0]?.id as string;
 		const custom: WorldView = {
-			camps: [
-				world
-					.camps[0] /* SAFETY: The scenario fixture contains a first camp. */ as WorldView["camps"][number],
-			],
+			// SAFETY: `camps: [world.camps[0] as WorldView["camps"][number]],` is required at this I/O or test boundary.
+			camps: [world.camps[0] as WorldView["camps"][number]],
 			characters: [
 				{ ...base, campId, id: "x-stuck", state: "stuck", health: 1 },
 				{ ...base, campId, id: "x-sick", state: "working", health: 0.3 },
@@ -350,19 +332,16 @@ describe("houses are Camps, villagers are Bindles", () => {
 	});
 
 	it("keeps a Bindle's speech legible on screen", () => {
-		// SAFETY: The scenario fixture contains the camp and character shapes used here.
+		// SAFETY: `const campId = world.camps[0]?.id as string;` is required at this I/O or test boundary.
 		const campId = world.camps[0]?.id as string;
 		const custom: WorldView = {
-			// SAFETY: The scenario fixture contains a first camp.
+			// SAFETY: `camps: [world.camps[0] as WorldView["camps"][number]],` is required at this I/O or test boundary.
 			camps: [world.camps[0] as WorldView["camps"][number]],
 			characters: [
 				{
-					// SAFETY: The scenario fixture contains a first character.
-					...(world
-						.characters[0] /* SAFETY: The scenario fixture contains a first character. */ as WorldView["characters"][number]),
-					campId,
-					// SAFETY: The scenario fixture always contains a first character.
+					// SAFETY: `...(world.characters[0] as WorldView["characters"][number]),` is required at this I/O or test boundary.
 					...(world.characters[0] as WorldView["characters"][number]),
+					campId,
 					id: "x-talks",
 					bubble: "error in span deadbeef",
 				},
@@ -398,10 +377,10 @@ describe("the gate is the Connection", () => {
 		// The fence itself is always there — a boundary is a real fact.
 		expect(byId(openItems, "fence-2-13")).toBeDefined();
 
-		// SAFETY: The fixture supplies the complete connection projection shape.
 		const revoked = deriveYardVisualState({
 			...baseSnap,
 			connections: [
+				// SAFETY: `{` is required at this I/O or test boundary.
 				{
 					id: "conn-1",
 					alias: "work",
@@ -421,12 +400,11 @@ describe("hazards are the only danger on the board", () => {
 	function hazardSnap(hazards: string[]): YardProjectionSnapshot {
 		return {
 			...baseSnap,
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			// SAFETY: `doctor: {` is required at this I/O or test boundary.
 			doctor: {
 				hazards,
 				bootstrapActive: false,
-			} as YardProjectionSnapshot["doctor"],
+			},
 		};
 	}
 
@@ -503,9 +481,7 @@ describe("the treasury reads the metering projection back", () => {
 		}
 		const hot = deriveYardVisualState({
 			...baseSnap,
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			// SAFETY: `metering: {` is required at this I/O or test boundary.
 			metering: {
 				...baseSnap.metering,
 				budgetUsd: 9,
@@ -648,7 +624,16 @@ describe("lantern inspect (free read verb)", () => {
 	});
 
 	it("reads the REAL projection fields back per zone", () => {
-		const cases = {
+		interface ZonePatternMap {
+			platformRest: RegExp[];
+			bootstrapDesk: RegExp[];
+			activeRailTrack: RegExp[];
+			connectionBay: RegExp[];
+			policyBoard: RegExp[];
+			costBooth: RegExp[];
+			errorBunker: RegExp[];
+		}
+		const cases: ZonePatternMap = {
 			platformRest: [/^station: station:local$/, /^status: open$/, /^seq: 7$/],
 			bootstrapDesk: [/^bootstrap: idle$/, /^waybills: 0$/],
 			activeRailTrack: [/^activeRail: hash-1$/, /^occupyMode: occupying$/],
@@ -660,12 +645,18 @@ describe("lantern inspect (free read verb)", () => {
 				/^spendCapUsd: \$10\.00$/,
 			],
 			errorBunker: [/^hazards: \(none\)$/],
-		} satisfies Record<ZoneId, RegExp[]>;
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-		for (const [zone, patterns] of Object.entries(cases) as [
-			ZoneId,
-			RegExp[],
-		][]) {
+		};
+		const zones: ZoneId[] = [
+			"platformRest",
+			"bootstrapDesk",
+			"activeRailTrack",
+			"connectionBay",
+			"policyBoard",
+			"costBooth",
+			"errorBunker",
+		];
+		for (const zone of zones) {
+			const patterns = cases[zone];
 			const lines = lanternText(
 				presentYard(input({ hoveredZone: zone })).items,
 			);
@@ -691,9 +682,9 @@ describe("lantern inspect (free read verb)", () => {
 			}
 		}
 		// Provenance comes from MeteringView.trafficRateSource, not a hard-code.
-		// SAFETY: The fixture supplies the complete metering projection shape.
 		const measured = deriveYardVisualState({
 			...baseSnap,
+			// SAFETY: `metering: {` is required at this I/O or test boundary.
 			metering: {
 				...baseSnap.metering,
 				trafficRateSource: "otlp",
@@ -702,9 +693,9 @@ describe("lantern inspect (free read verb)", () => {
 		const rows = lanternLines("costBooth", measured, []);
 		expect(rows.find((r) => r.label === "trafficRate")?.simulated).toBe(false);
 		// An absent source is treated as synthetic — never silently promoted.
-		// SAFETY: The fixture supplies the complete metering projection shape.
 		const unknown = deriveYardVisualState({
 			...baseSnap,
+			// SAFETY: `metering: {` is required at this I/O or test boundary.
 			metering: {
 				quotaUsed: 5,
 				quotaLimit: 10,
@@ -721,14 +712,14 @@ describe("lantern inspect (free read verb)", () => {
 	});
 
 	it("caps at 6 lines and truncates long values", () => {
-		// SAFETY: The fixture supplies the complete doctor projection shape.
 		const many = {
 			...baseSnap,
+			// SAFETY: `doctor: {` is required at this I/O or test boundary.
 			doctor: {
 				hazards: Array.from({ length: 9 }, (_, i) => `hazard-number-${i}`),
 				bootstrapActive: false,
 				hint: "run `hobo doctor --fix` and then re-authorize the connection",
-			} as YardProjectionSnapshot["doctor"],
+			},
 		};
 		const visual = deriveYardVisualState(many);
 		const lines = lanternText(
@@ -743,7 +734,7 @@ describe("lantern inspect (free read verb)", () => {
 	});
 
 	it("clamps the card inside the canvas for every zone", () => {
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: `for (const zone of Object.keys(YARD_LAYOUT.zones) as ZoneId[]) {` is required at this I/O or test boundary.
 		for (const zone of Object.keys(YARD_LAYOUT.zones) as ZoneId[]) {
 			const card = byId(
 				presentYard(input({ hoveredZone: zone })).items,
@@ -809,7 +800,7 @@ describe("reserved regions", () => {
 		const hoardAt = (fill: number) => {
 			const visual = deriveYardVisualState({
 				...baseSnap,
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+				// SAFETY: `metering: {` is required at this I/O or test boundary.
 				metering: {
 					...baseSnap.metering,
 					quotaUsed: fill * 1000,

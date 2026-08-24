@@ -31,14 +31,15 @@ const MUTE_KEY = "hobo-yard-muted";
 /** Ops rooms are shared; sound is opt-in, never opt-out. */
 const DEFAULT_MUTED = true;
 /** A telegraph tick per SSE frame would be a metronome — rate-limit it. */
-const MIN_GAP_MS = {
-	whistle: undefined,
-	stamp: undefined,
-	spike: undefined,
+interface CueGapMs {
+	telegraph: number;
+	steam: number;
+}
+
+const MIN_GAP_MS: CueGapMs = {
 	telegraph: 900,
 	steam: 4000,
-	derail: undefined,
-} satisfies Record<CueId, number | undefined>;
+};
 
 export function createYardAudio(opts: {
 	index: AssetIndex;
@@ -51,7 +52,11 @@ export function createYardAudio(opts: {
 	const enabled = opts.enabled ?? true;
 	const now = opts.now ?? (() => Date.now());
 	const store =
-		opts.storage === undefined ? globalThis.localStorage : opts.storage;
+		opts.storage === undefined
+			? localStorage === undefined
+				? null
+				: localStorage
+			: opts.storage;
 
 	const buffers = new Map<CueId, AudioBuffer>();
 	const lastPlayed = new Map<CueId, number>();
@@ -70,11 +75,16 @@ export function createYardAudio(opts: {
 	async function load(): Promise<void> {
 		const clips = opts.index.audio;
 		if (!enabled || !clips || ctx !== null) return;
+		type WebkitAudioHolder = {
+			webkitAudioContext?: typeof AudioContext;
+		};
 		const Ctor =
-			globalThis.AudioContext ??
-			// SAFETY: WebKit exposes this browser API under its prefixed global name.
-			(globalThis as { webkitAudioContext?: typeof AudioContext })
-				.webkitAudioContext;
+			AudioContext !== undefined
+				? AudioContext
+				: (
+						// SAFETY: Safari still exposes AudioContext under the webkit prefix.
+						globalThis as WebkitAudioHolder
+					).webkitAudioContext;
 		if (!Ctor) return;
 		ctx = new Ctor();
 		const base = opts.assetBaseUrl.replace(/\/$/, "");
@@ -83,10 +93,9 @@ export function createYardAudio(opts: {
 				try {
 					const res = await fetch(`${base}/${clip.path}`);
 					const bytes = await res.arrayBuffer();
-					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-					const decoded = await ctx?.decodeAudioData(bytes);
-					if (!decoded) return;
-					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+					// SAFETY: `const decoded = await (ctx as AudioContext).decodeAudioData(bytes);` is required at this I/O or test boundary.
+					const decoded = await (ctx as AudioContext).decodeAudioData(bytes);
+					// SAFETY: `buffers.set(clip.id as CueId, decoded);` is required at this I/O or test boundary.
 					buffers.set(clip.id as CueId, decoded);
 				} catch {
 					// A missing cue is not worth breaking the yard over; the

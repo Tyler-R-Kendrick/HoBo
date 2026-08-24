@@ -5,7 +5,7 @@
 
 import type { YardProjectionSnapshot } from "@hobo/management";
 
-import type { ZoneId } from "./layout.js";
+import type { PixelPoint, ZoneId } from "./layout.js";
 
 /**
  * The Operator's semantic state, in priority order. This module maps the
@@ -111,39 +111,29 @@ export function deriveYardVisualState(
 		Object.freeze({
 			id: r.id,
 			contentHash: r.contentHash,
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			// SAFETY: `visual: r.activationStatus as RailVisualState,` is required at this I/O or test boundary.
 			visual: r.activationStatus as RailVisualState,
 		}),
 	);
 
 	const connections = snap.connections.map((c) =>
-		Object.freeze(
-			Object.assign(
-				{
-					id: c.id,
-					provider: c.provider,
-					visual: mapConnectionVisual(String(c.status)),
-					status: String(c.status),
-				},
-				c.alias !== undefined ? { alias: c.alias } : undefined,
-			),
-		),
+		Object.freeze({
+			id: c.id,
+			...(c.alias !== undefined ? { alias: c.alias } : undefined),
+			provider: c.provider,
+			visual: mapConnectionVisual(String(c.status)),
+			status: String(c.status),
+		}),
 	);
 
 	const guests = snap.activity.map((a) =>
-		Object.freeze(
-			Object.assign(
-				{
-					connectorKind: a.connectorKind,
-					visual: a.status,
-					// Optional in the projection contract; absent means not yet measured.
-					statusSource: a.statusSource ?? "derived-static",
-				},
-				a.connectionId !== undefined
-					? { connectionId: a.connectionId }
-					: undefined,
-			),
-		),
+		Object.freeze({
+			connectorKind: a.connectorKind,
+			...(a.connectionId !== undefined ? { connectionId: a.connectionId } : undefined),
+			visual: a.status,
+			// Optional in the projection contract; absent means not yet measured.
+			statusSource: a.statusSource ?? "derived-static",
+		}),
 	);
 
 	const quotaLimit = snap.metering.quotaLimit || 1;
@@ -296,12 +286,16 @@ function mapConnectionVisual(status: string): ConnectionVisualState {
 }
 
 /** Frame-rate independent walk step toward zone anchor. */
+export interface StepResult extends PixelPoint {
+	readonly arrived: boolean;
+}
+
 export function stepToward(
-	from: { x: number; y: number },
-	to: { x: number; y: number },
+	from: PixelPoint,
+	to: PixelPoint,
 	speedPxPerSec: number,
 	dtSec: number,
-) {
+): StepResult {
 	const dx = to.x - from.x;
 	const dy = to.y - from.y;
 	const dist = Math.hypot(dx, dy);

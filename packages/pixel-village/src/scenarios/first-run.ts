@@ -7,7 +7,6 @@ import {
 	baseSnapshot,
 	beat,
 	makeRail,
-	type SnapshotPatch,
 	type YardScenario,
 	zoneRegion,
 } from "./scenario.js";
@@ -29,16 +28,12 @@ export const firstRun: YardScenario = Object.freeze({
 		const bootstrap = tick >= BOOTSTRAP_TICK;
 		const seq = bootstrap ? 2 : open ? 1 : 0;
 		return baseSnapshot({
-			occupancy: Object.assign(
-				{
-					status: open ? "open" : "closed",
-					bootstrapActive: bootstrap,
-					seq,
-				} satisfies NonNullable<SnapshotPatch["occupancy"]>,
-				bootstrap
-					? ({ bootstrapRailHash: BOOTSTRAP_HASH } as const)
-					: undefined,
-			),
+			occupancy: {
+				status: open ? "open" : "closed",
+				...(bootstrap ? { bootstrapRailHash: BOOTSTRAP_HASH } : undefined),
+				bootstrapActive: bootstrap,
+				seq,
+			},
 			rails: bootstrap
 				? [
 						makeRail({

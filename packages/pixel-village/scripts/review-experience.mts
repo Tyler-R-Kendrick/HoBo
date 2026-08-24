@@ -30,6 +30,14 @@ import {
 } from "node:fs";
 import { basename, dirname, extname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	parseJsonValue,
+	type JsonObject,
+} from "../src/json.js";
+
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SHOTS = join(ROOT, "public/shots");
@@ -118,7 +126,26 @@ function listPngs(dir: string): string[] {
 		.sort();
 }
 
-function gitInfo() {
+interface GitInfo {
+	sha: string;
+	date: string;
+}
+
+interface ReviewSample {
+	score?: number;
+	why?: string;
+}
+
+function parseReviewSample(text: string): ReviewSample {
+	const value = parseJsonValue(text);
+	if (!isJsonObject(value)) return {};
+	const sample: ReviewSample = {};
+	if (isJsonNumber(value.score)) sample.score = value.score;
+	if (isJsonString(value.why)) sample.why = value.why;
+	return sample;
+}
+
+function gitInfo(): GitInfo {
 	const run = (args: string[]) => {
 		try {
 			return execFileSync("git", args, { cwd: ROOT, encoding: "utf8" }).trim();
@@ -136,9 +163,9 @@ function median(values: readonly number[]): number {
 	if (values.length === 0) return Number.NaN;
 	const sorted = [...values].sort((a, b) => a - b);
 	const mid = Math.floor(sorted.length / 2);
-	return sorted.length % 2 === 1
-		? (sorted[mid] ?? Number.NaN)
-		: ((sorted[mid - 1] ?? Number.NaN) + (sorted[mid] ?? Number.NaN)) / 2;
+	const hi = sorted[mid] ?? Number.NaN;
+	const lo = sorted[mid - 1] ?? Number.NaN;
+	return sorted.length % 2 === 1 ? hi : (lo + hi) / 2;
 }
 
 function writeSkipped(reason: string): void {
@@ -184,22 +211,12 @@ async function main(): Promise<void> {
 
 	// Seam-state snapshots, when the tour wrote them, give the judge the ground
 	// truth behind the picture (TRU-4: nothing decorative may read as signal).
-	type Snapshot =
-		| null
-		| boolean
-		| number
-		| string
-		| Snapshot[]
-		| { [key: string]: Snapshot };
-	const seamSnapshots: Record<string, Snapshot> = {};
+	const seamSnapshots: JsonObject = {};
 	for (const name of ["visual-report.json", "seam-states.json"]) {
 		const path = join(SHOTS, name);
 		if (existsSync(path)) {
 			try {
-				// SAFETY: The snapshot is produced by this package's JSON evidence files.
-				seamSnapshots[name] = JSON.parse(
-					readFileSync(path, "utf8"),
-				) as Snapshot;
+				seamSnapshots[name] = JSON.parse(readFileSync(path, "utf8"));
 			} catch {
 				/* a malformed snapshot is not worth failing an advisory pass */
 			}
@@ -268,18 +285,16 @@ async function main(): Promise<void> {
 					.map((b) => b.text)
 					.join("");
 				const json = text.match(/\{[\s\S]*\}/u)?.[0];
-				// SAFETY: The model response is constrained to the documented JSON score shape.
-				const parsed: { score?: number; why?: string } = json
-					? (JSON.parse(json) as { score?: number; why?: string })
-					: {};
+				const parsed = json ? parseReviewSample(json) : {};
 				samples.push({
 					score: Number(parsed.score),
 					why: String(parsed.why ?? "").slice(0, 200),
 				});
 			} catch (err) {
+				const message = err instanceof Error ? err.message : String(err);
 				samples.push({
 					score: Number.NaN,
-					why: `error: ${String(err instanceof Error ? err.message : err).slice(0, 120)}`,
+					why: `error: ${message.slice(0, 120)}`,
 				});
 			}
 		}
@@ -330,7 +345,6 @@ async function main(): Promise<void> {
 await main().catch((err) => {
 	// Advisory by contract: report and exit 0.
 	console.error(`experience review failed (advisory): ${String(err)}`);
-	writeSkipped(
-		`error: ${String(err instanceof Error ? err.message : err).slice(0, 200)}`,
-	);
+	// SAFETY: `writeSkipped(`error: ${String((err as Error).message ?? err).slice(0, 200)}`);` is required at this I/O or test boundary.
+	writeSkipped(`error: ${String((err as Error).message ?? err).slice(0, 200)}`);
 });

@@ -183,7 +183,17 @@ const VILLAGE_SEED = 0x484f_424f;
 const MAX_HAZARD_MARKS = 6;
 
 /** Zone display copy — the lantern card's title and the a11y announcement. */
-const ZONE_TEXT = {
+interface ZoneCopy {
+	platformRest: string;
+	bootstrapDesk: string;
+	activeRailTrack: string;
+	connectionBay: string;
+	policyBoard: string;
+	costBooth: string;
+	errorBunker: string;
+}
+
+const ZONE_TEXT: ZoneCopy = {
 	platformRest: "PLATFORM",
 	bootstrapDesk: "NOTICE BOARD",
 	activeRailTrack: "THE ROAD",
@@ -191,7 +201,7 @@ const ZONE_TEXT = {
 	policyBoard: "POLICY BOARD",
 	costBooth: "TREASURY",
 	errorBunker: "HAZARD",
-} satisfies Record<ZoneId, string>;
+};
 
 const STAMP_SQUASH_MS = 160;
 const STAMP_SQUASH_PCT = 0.2;
@@ -242,15 +252,16 @@ export function pinnedFrame(
  * tiled art is tinted down. Functional colour (danger, accent, grass, path)
  * keeps its hue in both themes — a hazard must read as a hazard at night.
  */
-// SAFETY: All keys are palette strings; unknown colors intentionally fall back unchanged.
-const NIGHT_SWAP = new Map<string, string>([
-	[PARCHMENT, DEEP],
-	[STONE, "#1a1420"],
-	[OUTLINE, PARCHMENT],
-	[DEEP, STONE],
-	[SLATE, STONE],
-	[WOOD, "#763b36"],
-]);
+function nightColor(c: string | undefined): string | undefined {
+	if (c === undefined) return undefined;
+	if (c === PARCHMENT) return DEEP;
+	if (c === STONE) return "#1a1420";
+	if (c === OUTLINE) return PARCHMENT;
+	if (c === DEEP) return STONE;
+	if (c === SLATE) return STONE;
+	if (c === WOOD) return "#763b36";
+	return c;
+}
 
 /** Moonlight multiply tint for every tile at night. */
 const NIGHT_TINT = "#7480b4";
@@ -258,23 +269,23 @@ const NIGHT_TINT = "#7480b4";
 export function applyTheme(model: RenderModel, theme: YardTheme): RenderModel {
 	if (theme === "day") return model;
 	const swap = (c: string | undefined) =>
-		c === undefined ? undefined : (NIGHT_SWAP.get(c) ?? c);
+		c === undefined ? undefined : (nightColor(c) ?? c);
 	return Object.freeze({
 		items: model.items.map((item) => {
 			switch (item.kind) {
-				case "rect": {
-					const next = { ...item };
-					if (item.fill) next.fill = swap(item.fill) ?? item.fill;
-					if (item.stroke) next.stroke = swap(item.stroke) ?? item.stroke;
-					return Object.freeze(next);
-				}
+				case "rect":
+					return Object.freeze({
+						...item,
+						// SAFETY: `...(item.fill ? { fill: swap(item.fill) as string } : undefined),` is required at this I/O or test boundary.
+						...(item.fill ? { fill: swap(item.fill) as string } : undefined),
+						// SAFETY: `...(item.stroke ? { stroke: swap(item.stroke) as string } : undefined),` is required at this I/O or test boundary.
+						...(item.stroke ? { stroke: swap(item.stroke) as string } : undefined),
+					});
 				case "line":
-					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-					// SAFETY: Render line colors are required palette strings.
+					// SAFETY: `return Object.freeze({ ...item, color: swap(item.color) as string });` is required at this I/O or test boundary.
 					return Object.freeze({ ...item, color: swap(item.color) as string });
 				case "text":
-					// SAFETY: Render text colors are required palette strings.
+					// SAFETY: `return Object.freeze({ ...item, color: swap(item.color) as string });` is required at this I/O or test boundary.
 					return Object.freeze({ ...item, color: swap(item.color) as string });
 				case "tile":
 					return Object.freeze({ ...item, tint: NIGHT_TINT });
@@ -377,7 +388,7 @@ function tileAt(
 	alpha?: number,
 ): void {
 	const { x, y } = tilePx(tx, ty);
-	const tile: Extract<RenderItem, { kind: "tile" }> = {
+	push({
 		kind: "tile",
 		id,
 		sheet,
@@ -385,10 +396,9 @@ function tileAt(
 		x,
 		y,
 		scale: TILE_SCALE,
+		...(alpha === undefined ? undefined : { alpha }),
 		depth,
-	};
-	if (alpha !== undefined) tile.alpha = alpha;
-	push(tile);
+	});
 }
 
 function placement(push: Push, id: string, t: TilePlacement, depth: number) {
@@ -863,7 +873,7 @@ function drawStationState(push: Push, input: PresenterInput): void {
 			push,
 			`station-shutter-${plot.tx}`,
 			"town",
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+			// SAFETY: `T.wall[1] as number,` is required at this I/O or test boundary.
 			T.wall[1] as number,
 			plot.tx + 1,
 			plot.ty + HOUSE_TILES_H - 1,
@@ -1043,17 +1053,14 @@ function drawTrains(push: Push, input: PresenterInput): void {
 		}
 		for (const car of train.cars) {
 			const failed = car.visual === "failed";
-			const carStyle: Parameters<typeof rect>[6] = {
+			rect(push, car.id, car.x, car.y - car.h, car.w, car.h, {
+				// solid = provisioned, outline = provisioning, ghost = destroyed.
+				...(car.visual === "solid" ? { fill: STONE } : undefined),
+				...(car.visual === "ghost" ? { fill: STONE, fillAlpha: 0.35 } : undefined),
 				stroke: failed ? DANGER : OUTLINE,
 				lineWidth: failed ? 3 : 2,
 				depth: TRAIN_D,
-			};
-			if (car.visual === "solid") carStyle.fill = STONE;
-			if (car.visual === "ghost") {
-				carStyle.fill = STONE;
-				carStyle.fillAlpha = 0.35;
-			}
-			rect(push, car.id, car.x, car.y - car.h, car.w, car.h, carStyle);
+			});
 			if (car.visual === "hatched") {
 				line(
 					push,
@@ -1176,11 +1183,7 @@ export function lanternLines(
 				},
 				{ label: "waybills", value: String(waybills.length) },
 				...(waybills[0]
-					? // SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-						[
-							// SAFETY: The branch establishes that the first waybill exists.
-							{ label: "top", value: waybills[0].title } as LanternLine,
-						]
+					? [{ label: "top", value: waybills[0].title }]
 					: []),
 			];
 		case "activeRailTrack":

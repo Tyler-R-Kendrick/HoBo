@@ -4,6 +4,8 @@
  * Closes the Argo ServerSideDiff / incomplete-masking class of leaks.
  */
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "../json.js";
+
 
 // public-contract: secret-free projection schema.
 export const SECRET_FREE_SCHEMA = "hobo.secret-free-projection/v1" as const;
@@ -53,7 +55,7 @@ export type SecretFreeStatus = Readonly<{
  * plaintext secrets are always redacted.
  */
 export function toSecretFreeOutputs(
-	outputs: Readonly<Record<string, JsonValue>>,
+	outputs: Readonly<JsonObject>,
 ): {
 	readonly outputs: Readonly<Record<string, string | SecretRef>>;
 	readonly secretRefs: readonly string[];
@@ -64,8 +66,8 @@ export function toSecretFreeOutputs(
 		const asString =
 			raw === null || raw === undefined
 				? ""
-				: raw === String(raw)
-					? String(raw)
+				: isJsonString(raw)
+					? raw
 					: JSON.stringify(raw);
 		if (
 			SECRET_KEY_PATTERN.test(key) ||
@@ -74,7 +76,7 @@ export function toSecretFreeOutputs(
 			const ref = makeSecretRef(key, asString);
 			out[key] = Object.freeze({ ref, kind: "secretRef" as const });
 			refs.push(ref);
-		} else if (raw !== null && raw === Object(raw)) {
+		} else if (isJsonObject(raw) && raw !== null) {
 			// Nested objects: only surface a content hash, never nested secrets.
 			const hash = contentHash(asString);
 			out[key] = Object.freeze({
@@ -108,10 +110,10 @@ export function createSecretFreeDiff(input: {
 		return Object.freeze({
 			path: c.path,
 			action: c.action,
-			...(c.before !== undefined && {
-				before: scrubValue(c.path, c.before),
-			}),
-			...(c.after !== undefined && { after: scrubValue(c.path, c.after) }),
+			...(c.before !== undefined
+				? { before: scrubValue(c.path, c.before) }
+				: undefined),
+			...(c.after !== undefined ? { after: scrubValue(c.path, c.after) } : undefined),
 		});
 	});
 	const body = {
@@ -134,7 +136,7 @@ export function createSecretFreeDiff(input: {
 export function createSecretFreeStatus(input: {
 	readonly resourceId: string;
 	readonly state: string;
-	readonly outputs: Readonly<Record<string, JsonValue>>;
+	readonly outputs: Readonly<JsonObject>;
 }): SecretFreeStatus {
 	const scrubbed = toSecretFreeOutputs(input.outputs);
 	return Object.freeze({
@@ -152,7 +154,7 @@ export function createSecretFreeStatus(input: {
  * Throws if a known secret pattern is found in string leaves.
  */
 export function assertSecretFree(value: JsonValue, path = "$"): void {
-	if (value === String(value)) {
+	if (isJsonString(value)) {
 		if (PLAINTEXT_SECRET_PATTERN.test(value)) {
 			throw Object.assign(
 				new Error(`secret-free violation at ${path}: plaintext secret pattern`),
@@ -167,20 +169,20 @@ export function assertSecretFree(value: JsonValue, path = "$"): void {
 		});
 		return;
 	}
-	if (value !== null && value === Object(value)) {
-		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
-		for (const [k, v] of Object.entries(value as Record<string, JsonValue>)) {
+	if (value && isJsonObject(value)) {
+		// SAFETY: `for (const [k, v] of Object.entries(value as JsonObject)) {` is required at this I/O or test boundary.
+		for (const [k, v] of Object.entries(value as JsonObject)) {
 			// Opaque identifiers (credentialId, grantId, …) are references, not secrets.
 			const opaqueId = /(?:Id|Ref|Hash|Digest)$/.test(k);
 			if (
 				!opaqueId &&
 				SECRET_KEY_PATTERN.test(k) &&
-				v === String(v) &&
-				!String(v).startsWith("secretRef:") &&
-				!String(v).startsWith("valueRef:") &&
-				!String(v).startsWith("sha256:") &&
-				!String(v).startsWith("scoped-") &&
-				String(v).length > 0
+				isJsonString(v) &&
+				!v.startsWith("secretRef:") &&
+				!v.startsWith("valueRef:") &&
+				!v.startsWith("sha256:") &&
+				!v.startsWith("scoped-") &&
+				v.length > 0
 			) {
 				throw Object.assign(
 					new Error(
@@ -196,7 +198,7 @@ export function assertSecretFree(value: JsonValue, path = "$"): void {
 
 function scrubValue(path: string, value: JsonValue): string | SecretRef {
 	const asString =
-		value === String(value) ? String(value) : JSON.stringify(value ?? null);
+		isJsonString(value) ? value : JSON.stringify(value ?? null);
 	if (
 		SECRET_KEY_PATTERN.test(path) ||
 		PLAINTEXT_SECRET_PATTERN.test(asString)
@@ -206,7 +208,7 @@ function scrubValue(path: string, value: JsonValue): string | SecretRef {
 			kind: "secretRef" as const,
 		});
 	}
-	if (value === String(value)) return String(value);
+	if (isJsonString(value)) return value;
 	return Object.freeze({
 		ref: `valueRef:${path}:${contentHash(asString)}`,
 		kind: "valueRef" as const,
@@ -220,4 +222,3 @@ function makeSecretRef(key: string, value: string): string {
 function contentHash(value: string): string {
 	return createHash("sha256").update(value).digest("hex");
 }
-import type { JsonValue } from "../plan-types.js";

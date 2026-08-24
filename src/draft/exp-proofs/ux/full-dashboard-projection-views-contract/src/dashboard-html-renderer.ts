@@ -1,4 +1,6 @@
 import type { DashboardRenderResult, RenderedDashboardView } from "./full-dashboard-projection-views.ts";
+import { type JsonValue } from "./json.js";
+
 
 export type DashboardHtmlDocument = {
   readonly lang: string;
@@ -7,7 +9,7 @@ export type DashboardHtmlDocument = {
   readonly html: string;
 };
 
-function escapeHtml(value: unknown): string {
+function escapeHtml(value: JsonValue): string {
   return String(value)
     .replaceAll("&", "&amp;")
     .replaceAll("<", "&lt;")

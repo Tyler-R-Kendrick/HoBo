@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export type BuildErrorCode =
   | "HOBO_BUILD_USAGE"
   | "HOBO_BUILD_CODEGEN_DRIFT"
@@ -11,23 +12,11 @@ export type BuildErrorCode =
   | "HOBO_BUILD_COMPONENTIZE_FAILED"
   | "HOBO_BUILD_INTERNAL";
 
-export type JsonValue =
-  | null
-  | boolean
-  | number
-  | string
-  | readonly JsonValue[]
-  | { readonly [key: string]: JsonValue };
-
 export class BuildError extends Error {
   readonly code: BuildErrorCode;
-  readonly detail: { readonly [key: string]: JsonValue };
+  readonly detail: JsonObject;
 
-  constructor(
-    code: BuildErrorCode,
-    message: string,
-    detail: { readonly [key: string]: JsonValue } = {},
-  ) {
+  constructor(code: BuildErrorCode, message: string, detail: JsonObject = {}) {
     super(message);
     this.name = "BuildError";
     this.code = code;

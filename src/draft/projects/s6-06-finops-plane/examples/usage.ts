@@ -19,6 +19,8 @@ import {
 	runFinOpsPlaneScenario,
 	withinCostTolerance,
 } from "../src/index.ts";
+import { type JsonObject } from "../src/json.js";
+
 
 // 1) The committed end-to-end scenario runs with every acceptance bullet green.
 const scenario = loadFinOpsPlaneScenario();
@@ -37,7 +39,7 @@ assert.equal(withinCostTolerance(result.planEstimate.projectedMonthlyUsd, scenar
 
 // 3) Estimation fails closed when the plan targets a region cost.json does not cover.
 const uncoveredResources = scenario.plan.resources.map(
-  ({ region: _region, ...resource }) => resource,
+	({ region: _region, ...resource }: JsonObject & { region?: string }) => resource,
 );
 assert.throws(
 	() =>

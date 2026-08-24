@@ -16,6 +16,8 @@
  */
 import type { AgentEvent, OfficeState } from "./model.js";
 import { attributesToRecord, ensureCharacter } from "./otel.js";
+import { isJsonString } from "./json.js";
+
 
 interface OtlpValue {
 	stringValue?: string;
@@ -71,7 +73,7 @@ export interface OtlpMetricsRequest {
 
 function nanoToMs(value: string | number | undefined): number {
 	if (value === undefined) return 0;
-	const n = typeof value === "string" ? Number(value) : value;
+	const n = isJsonString(value) ? Number(value) : value;
 	return Math.floor(n / 1_000_000);
 }
 
@@ -123,7 +125,7 @@ export function mapLogsPayload(
 					characterId: character.id,
 					severity,
 					message,
-					...(record.traceId !== undefined ? { traceId: record.traceId } : {}),
+					...(record.traceId !== undefined ? { traceId: record.traceId } : undefined),
 				});
 			}
 		}
@@ -137,7 +139,12 @@ export function mapLogsPayload(
  *   hobo.error.rate gauge/sum 0..1 → health = 1 - value
  * Anything else is recorded in the ActivityLog under its own name only.
  */
-export const METRIC_HEALTH_MAP: Record<string, (value: number) => number> = {
+interface MetricHealthMap {
+	"hobo.health": (value: number) => number;
+	"hobo.error.rate": (value: number) => number;
+}
+
+export const METRIC_HEALTH_MAP: MetricHealthMap = {
 	"hobo.health": (value) => value,
 	"hobo.error.rate": (value) => 1 - value,
 };

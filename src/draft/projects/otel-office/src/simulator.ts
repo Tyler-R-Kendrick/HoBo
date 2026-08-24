@@ -11,6 +11,7 @@
  *
  * Same seed → identical event stream (mulberry32 RNG, tick-driven, no wall clock).
  */
+import { type StringBag } from "./json.js";
 import { deriveLayout } from "./layout.js";
 import {
 	type AgentEvent,
@@ -49,13 +50,15 @@ interface SimBindle {
 	kind: Character["kind"];
 }
 
-const TOPOLOGY: {
+interface SimTopology {
 	station: string;
 	yards: { id: string; name: string }[];
 	camps: { id: string; name: string; yardId: string; rect: Camp["rect"] }[];
 	junctions: { id: string; name: string; from: string; to: string }[];
 	bindles: SimBindle[];
-} = {
+}
+
+const TOPOLOGY: SimTopology = {
 	station: "station-local",
 	yards: [
 		{ id: "yard-platform", name: "platform" },
@@ -110,7 +113,13 @@ export interface Simulation {
 	step(): AgentEvent[];
 }
 
-const SPAN_SHAPES: { name: string; kind: SpanKind; attrs: Record<string, string> }[] = [
+interface SpanTemplate {
+	name: string;
+	kind: SpanKind;
+	attrs: StringBag;
+}
+
+const SPAN_TEMPLATES: SpanTemplate[] = [
 	{ name: "HTTP POST /bindles", kind: "server", attrs: {} },
 	{ name: "GET /trails/:id", kind: "server", attrs: {} },
 	{ name: "pg SELECT", kind: "client", attrs: { "db.system": "postgresql" } },
@@ -120,7 +129,15 @@ const SPAN_SHAPES: { name: string; kind: SpanKind; attrs: Record<string, string>
 	{ name: "reconcile loop", kind: "internal", attrs: {} },
 ];
 
-const KIND_TO_OTLP: Record<SpanKind, number> = {
+interface KindToOtlp {
+	internal: 1;
+	server: 2;
+	client: 3;
+	producer: 4;
+	consumer: 5;
+}
+
+const KIND_TO_OTLP: KindToOtlp = {
 	internal: 1,
 	server: 2,
 	client: 3,
@@ -254,7 +271,7 @@ export function createSimulation(seed = 1): Simulation {
 									spanId: span.spanId,
 									...(span.parentSpanId !== undefined
 										? { parentSpanId: span.parentSpanId }
-										: {}),
+										: undefined),
 									name: span.name,
 									kind: KIND_TO_OTLP[span.kind],
 									startTimeUnixNano: String(span.startMs * 1_000_000),
@@ -288,7 +305,7 @@ export function createSimulation(seed = 1): Simulation {
 									severityNumber: record.severityNumber,
 									severityText: record.severityText,
 									body: { stringValue: record.message },
-									...(record.traceId !== undefined ? { traceId: record.traceId } : {}),
+									...(record.traceId !== undefined ? { traceId: record.traceId } : undefined),
 								},
 							],
 						},
@@ -382,24 +399,24 @@ export function createSimulation(seed = 1): Simulation {
 				}
 			} else if (roll < 0.45 + 0.35) {
 				// Open a new span via an OTLP payload; sometimes a cross-camp call.
-				const shape = pick(SPAN_SHAPES);
+				const template = pick(SPAN_TEMPLATES);
 				spanSeq += 1;
 				const spanId = `span-${spanSeq}`;
 				const traceId = `trace-${spanSeq}`;
 				const crossing =
-					rng() < 0.2 && (shape.kind === "client" || shape.kind === "producer")
+					rng() < 0.2 && (template.kind === "client" || template.kind === "producer")
 						? Object.values(state.junctions).find(
 								(j) => j.fromCampId === ch.campId || j.toCampId === ch.campId,
 							)
 						: undefined;
-				const attrs = { ...shape.attrs };
+				const attrs = { ...template.attrs };
 				if (crossing !== undefined) attrs["hobo.junction"] = crossing.id;
 				tracePayloads.push(
 					tracePayload(ch, {
 						traceId,
 						spanId,
-						name: shape.name,
-						kind: shape.kind,
+						name: template.name,
+						kind: template.kind,
 						attrs,
 						startMs: clock,
 					}),
@@ -420,7 +437,7 @@ export function createSimulation(seed = 1): Simulation {
 							traceId,
 							spanId: `span-${spanSeq}`,
 							parentSpanId: spanId,
-							name: shape.name,
+							name: template.name,
 						});
 					}
 				}

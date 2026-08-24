@@ -1,3 +1,4 @@
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
 export const PLAN_COST_ESTIMATE_SCHEMA = "hobo.finops.plan-estimate/v1";
 export const SHOWBACK_RECONCILE_SCHEMA = "hobo.finops.showback-reconcile/v1";
 
@@ -102,7 +103,7 @@ function resolveUnitPrice(costJson, dimension, priceKey) {
   if (price === undefined) {
     throw new RangeError(`missing unit price for dimension ${dimension}`);
   }
-  if (Number.isFinite(price)) {
+  if (isJsonNumber(price)) {
     return price;
   }
   const tree = expectObject(price, `unitPrices.${dimension}`);
@@ -126,7 +127,7 @@ function roundUsd(value) {
 }
 
 function expectObject(value, label) {
-  if (!value || !(value instanceof Object) || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${label} must be an object`);
   }
   return value;
@@ -140,7 +141,7 @@ function requireArray(value, label) {
 }
 
 function requireString(value, label) {
-  if (String(value) !== value || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;

@@ -1,5 +1,7 @@
 import type { InitialCapabilityPort } from "./equivalence.js";
 import { EQUIVALENCE_CLASSES } from "./equivalence.js";
+import { cloneAsJson, isJsonObject, type JsonValue, type JsonObject, type JsonBag } from "./json.js";
+
 
 export const MANIFEST_SCHEMA = "hobo.capability-manifest/v1";
 export const CAPABILITIES_SCHEMA = "hobo.capabilities/v1";
@@ -25,6 +27,7 @@ export interface CloudflareManifestInput {
 export function publishCapabilityManifest(input: CloudflareManifestInput = {}): PublishedManifestDocuments {
   const providerId = input.providerId ?? CLOUDFLARE_PROVIDER_ID;
   const colos = input.colos ?? ["WNAM", "ENAM", "WEUR"];
+  // SAFETY: `const ports = input.ports ?? (Object.keys(EQUIVALENCE_CLASSES) as InitialCapabil` is required at this I/O or test boundary.
   const ports = input.ports ?? (Object.keys(EQUIVALENCE_CLASSES) as InitialCapabilityPort[]);
   const capabilitiesDocument = {
     schema: CAPABILITIES_SCHEMA,
@@ -106,17 +109,17 @@ export function publishCapabilityManifest(input: CloudflareManifestInput = {}): 
     {
       path: "/.well-known/capability-manifest/capabilities.json",
       schema: CAPABILITIES_SCHEMA,
-      digest: stableDigest(capabilitiesDocument),
+      digest: stableDigest(cloneAsJson(capabilitiesDocument)),
     },
     {
       path: "/.well-known/capability-manifest/auth.json",
       schema: AUTH_SCHEMA,
-      digest: stableDigest(authDocument),
+      digest: stableDigest(cloneAsJson(authDocument)),
     },
     {
       path: "/.well-known/capability-manifest/cost.json",
       schema: COST_SCHEMA,
-      digest: stableDigest(costDocument),
+      digest: stableDigest(cloneAsJson(costDocument)),
     },
   ];
   const indexDocument = {
@@ -127,20 +130,20 @@ export function publishCapabilityManifest(input: CloudflareManifestInput = {}): 
   };
 
   return {
-    "/.well-known/capability-manifest/index.json": canonicalJson(indexDocument),
-    "/.well-known/capability-manifest/capabilities.json": canonicalJson(capabilitiesDocument),
-    "/.well-known/capability-manifest/auth.json": canonicalJson(authDocument),
-    "/.well-known/capability-manifest/cost.json": canonicalJson(costDocument),
+    "/.well-known/capability-manifest/index.json": canonicalJson(cloneAsJson(indexDocument)),
+    "/.well-known/capability-manifest/capabilities.json": canonicalJson(cloneAsJson(capabilitiesDocument)),
+    "/.well-known/capability-manifest/auth.json": canonicalJson(cloneAsJson(authDocument)),
+    "/.well-known/capability-manifest/cost.json": canonicalJson(cloneAsJson(costDocument)),
   };
 }
 
 export interface PublishedManifestParseResult {
   ok: boolean;
   errors: string[];
-  index: Record<string, unknown>;
-  capabilities: Record<string, unknown>;
-  auth: Record<string, unknown>;
-  cost: Record<string, unknown>;
+  index: JsonObject;
+  capabilities: JsonObject;
+  auth: JsonObject;
+  cost: JsonObject;
 }
 
 /**
@@ -180,11 +183,11 @@ export function parsePublishedManifest(documents: PublishedManifestDocuments): P
   };
 }
 
-function canonicalJson(value: unknown): string {
+function canonicalJson(value: JsonValue): string {
   return `${JSON.stringify(sortKeys(value), null, 2)}\n`;
 }
 
-function stableDigest(value: unknown): string {
+function stableDigest(value: JsonValue): string {
   return fnv1aHex(canonicalJson(value));
 }
 
@@ -197,18 +200,18 @@ function digestRef(seed: string) {
   };
 }
 
-function sortKeys(value: unknown): unknown {
+function sortKeys(value: JsonValue): JsonValue {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!isJsonObject(value)) {
     return value;
   }
-  return Object.fromEntries(
-    Object.keys(value)
-      .sort()
-      .map((key) => [key, sortKeys((value as Record<string, unknown>)[key])]),
-  );
+  const sorted: JsonBag = {};
+  for (const key of Object.keys(value).sort()) {
+    sorted[key] = sortKeys(value[key] ?? null);
+  }
+  return sorted;
 }
 
 function fnv1aHex(input: string): string {

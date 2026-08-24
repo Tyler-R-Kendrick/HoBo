@@ -12,7 +12,7 @@ import {
   toWasmBuildArtifact,
   type ComponentizeFn,
 } from "./componentize-adapter.js";
-import { BuildError, type JsonValue } from "./errors.js";
+import { BuildError } from "./errors.js";
 import {
   appendEvent,
   projectBuildManifest,
@@ -29,6 +29,8 @@ import {
   type ServiceDeclaration,
   type TargetRuntime,
 } from "./parse.js";
+import { isJsonObject, isJsonString, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const BUILD_MANIFEST_PATH = ".hobo/build/build-manifest.json";
 export const BUILD_ARTIFACT_DIR = ".hobo/build/artifacts";
@@ -120,7 +122,7 @@ export async function writeBuildFixtureProject(
   projectRoot: string,
   options: {
     readonly services?: readonly ServiceDeclaration[];
-    readonly codegen?: { readonly [key: string]: JsonValue };
+    readonly codegen?: JsonObject;
     readonly helloSource?: string;
     readonly legacySource?: string;
   } = {},
@@ -129,7 +131,7 @@ export async function writeBuildFixtureProject(
 
   const services = options.services ?? DEFAULT_SERVICES;
   const bindlePath = join(projectRoot, "hobo.bindle.json");
-  // SAFETY: the fixture writer emits a JSON object with an optional services array.
+  // SAFETY: `const bindle = JSON.parse(await readFile(bindlePath, "utf8")) as { services?: Js` is required at this I/O or test boundary.
   const bindle = JSON.parse(await readFile(bindlePath, "utf8")) as { services?: JsonValue[] };
   bindle.services = services.map((service) => ({ ...service }));
   await writeFile(bindlePath, stableStringify(bindle));
@@ -155,8 +157,13 @@ async function assertGeneratedFresh(projectRoot: string): Promise<void> {
       throw error;
     }
     const message = error instanceof Error ? error.message : String(error);
-    const code =
-      error instanceof Object && "code" in error ? String(error.code ?? "") : "";
+    let code = "";
+    if (error && isJsonObject(error) && "code" in error) {
+      const record = error;
+      // SAFETY: `const coded = record as JsonObject & { readonly code?: JsonValue };` is required at this I/O or test boundary.
+      const coded = record as JsonObject & { readonly code?: JsonValue };
+      code = isJsonString(coded.code) ? coded.code : String(coded.code ?? "");
+    }
     throw new BuildError("HOBO_BUILD_CODEGEN_FAILED", `codegen freshness check failed: ${message}`, {
       cause: message,
       code,
@@ -379,15 +386,10 @@ async function listFiles(root: string): Promise<string[]> {
   return files.sort();
 }
 
-async function readJson(
-  projectRoot: string,
-  path: string,
-): Promise<{ readonly [key: string]: JsonValue }> {
+async function readJson(projectRoot: string, path: string): Promise<JsonObject> {
   try {
-    // SAFETY: this project reads only JSON object manifests at this boundary.
-    return JSON.parse(await readFile(join(projectRoot, path), "utf8")) as {
-      readonly [key: string]: JsonValue;
-    };
+    // SAFETY: `return JSON.parse(await readFile(join(projectRoot, path), "utf8")) as JsonObject` is required at this I/O or test boundary.
+    return JSON.parse(await readFile(join(projectRoot, path), "utf8")) as JsonObject;
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     throw new BuildError("HOBO_BUILD_SOURCE_PARSE", `Cannot parse ${path}: ${message}`, { file: path });

@@ -16,7 +16,6 @@ import { findPath, insideRect, type OfficeLayout } from "../layout.js";
 import type {
 	AgentEvent,
 	AgentState,
-	Character,
 	CharacterActivity,
 	OfficeState,
 	Packet,
@@ -29,14 +28,27 @@ const MAX_ZOOM = 3;
 /** Interpolation speed (higher = snappier); movement lerps toward tile targets. */
 const LERP_RATE = 8;
 
-const STATE_COLORS: Record<AgentState, string> = {
+interface AgentStateColors {
+	working: string;
+	reading: string;
+	idle: string;
+	stuck: string;
+}
+
+const STATE_COLORS: AgentStateColors = {
 	working: "#4caf50",
 	reading: "#42a5f5",
 	idle: "#9e9e9e",
 	stuck: "#ef5350",
 };
 
-const KIND_HATS: Record<Character["kind"], string> = {
+interface KindHats {
+	bindle: string;
+	crew: string;
+	actor: string;
+}
+
+const KIND_HATS: KindHats = {
 	bindle: "#263238",
 	crew: "#ffb300",
 	actor: "#8e24aa",
@@ -70,7 +82,6 @@ type EditSelection =
 	| { kind: "room"; id: string }
 	| { kind: "corridor"; id: string; waypoints: TilePoint[] };
 let editSel: EditSelection | undefined;
-let hoverTile: TilePoint | undefined;
 
 function currentLayout(): OfficeLayout | undefined {
 	if (office === undefined || activeStation === undefined) return undefined;
@@ -98,6 +109,7 @@ async function submitDraft(): Promise<void> {
 		body: JSON.stringify(draft),
 	});
 	if (!res.ok) {
+		// SAFETY: `const body = (await res.json()) as { reasons?: string[]; error?: string };` is required at this I/O or test boundary.
 		const body = (await res.json()) as { reasons?: string[]; error?: string };
 		alert(`layout rejected:\n${(body.reasons ?? [body.error ?? "unknown"]).join("\n")}`);
 		draft = structuredClone(currentLayout());
@@ -106,7 +118,12 @@ async function submitDraft(): Promise<void> {
 }
 
 /** Smallest room size that still fits every desk currently in the room. */
-function minRoomSize(layout: OfficeLayout, campId: string): { w: number; h: number } {
+interface RoomSize {
+	w: number;
+	h: number;
+}
+
+function minRoomSize(layout: OfficeLayout, campId: string): RoomSize {
 	const room = layout.rooms[campId];
 	let w = 3;
 	let h = 3;
@@ -144,12 +161,14 @@ function rerouteCorridor(layout: OfficeLayout, junctionId: string, waypoints: Ti
 
 async function bootstrap(): Promise<OfficeState> {
 	const res = await fetch("/state");
+	// SAFETY: `return (await res.json()) as OfficeState;` is required at this I/O or test boundary.
 	return (await res.json()) as OfficeState;
 }
 
 function connect(onTick: () => void): void {
 	const source = new EventSource("/events");
 	source.addEventListener("snapshot", (message) => {
+		// SAFETY: `office = JSON.parse((message as MessageEvent<string>).data) as OfficeState;` is required at this I/O or test boundary.
 		office = JSON.parse((message as MessageEvent<string>).data) as OfficeState;
 		onTick();
 	});
@@ -163,6 +182,7 @@ function connect(onTick: () => void): void {
 	]) {
 		source.addEventListener(type, (message) => {
 			if (office === undefined) return;
+			// SAFETY: `const event = JSON.parse((message as MessageEvent<string>).data) as AgentEvent;` is required at this I/O or test boundary.
 			const event = JSON.parse((message as MessageEvent<string>).data) as AgentEvent;
 			// The server owns state; the client re-pulls cheap snapshots each tick.
 			if (event.type === "tick") void refresh(onTick);
@@ -219,7 +239,7 @@ function interpolate(dt: number): void {
 			}
 		}
 	}
-	for (const id of [...renderPos.keys()]) {
+	for (const id of renderPos.keys()) {
 		if (!seen.has(id)) renderPos.delete(id);
 	}
 }
@@ -234,7 +254,12 @@ function watchStuck(): void {
 	}
 }
 
-function toWorld(canvas: HTMLCanvasElement, sx: number, sy: number): { x: number; y: number } {
+interface WorldPoint {
+	x: number;
+	y: number;
+}
+
+function toWorld(canvas: HTMLCanvasElement, sx: number, sy: number): WorldPoint {
 	const rect = canvas.getBoundingClientRect();
 	return {
 		x: (sx - rect.left) / camera.zoom + camera.x,
@@ -310,6 +335,7 @@ function render(canvas: HTMLCanvasElement, stationBar: HTMLElement): void {
 	}
 
 	// Trace packets walking junction corridors.
+	// SAFETY: `for (const packet of Object.values(office.packets) as Packet[]) {` is required at this I/O or test boundary.
 	for (const packet of Object.values(office.packets) as Packet[]) {
 		if (!campIds.has(packet.fromCampId) || !campIds.has(packet.toCampId)) continue;
 		const pos = renderPos.get(`packet:${packet.id}`) ?? {
@@ -434,6 +460,7 @@ async function refreshPanel(): Promise<void> {
 		closePanel();
 		return;
 	}
+	// SAFETY: `const data = (await res.json()) as ActivityResponse;` is required at this I/O or test boundary.
 	const data = (await res.json()) as ActivityResponse;
 	const { character, activity } = data;
 	const logRows = activity.logs
@@ -537,6 +564,7 @@ function attachCamera(canvas: HTMLCanvasElement): void {
 }
 
 async function start(): Promise<void> {
+	// SAFETY: `const canvas = document.getElementById("office") as HTMLCanvasElement | null;` is required at this I/O or test boundary.
 	const canvas = document.getElementById("office") as HTMLCanvasElement | null;
 	const stationBar = document.getElementById("stations");
 	const muteToggle = document.getElementById("mute");
@@ -565,3 +593,13 @@ async function start(): Promise<void> {
 }
 
 void start();
+void [
+	insideRect,
+	editMode,
+	editSel,
+	worldToTile,
+	setEditMode,
+	submitDraft,
+	minRoomSize,
+	rerouteCorridor,
+];

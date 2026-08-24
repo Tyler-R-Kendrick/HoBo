@@ -14,16 +14,18 @@
  * Unknown services materialize stations/yards/camps/characters on demand so a
  * real OTLP exporter can point at POST /v1/traces with zero provisioning.
  */
+import { type StringBag } from "./json.js";
 import { syncLayout } from "./layout.js";
 import {
 	type AgentEvent,
 	type Character,
 	type OfficeState,
-	type PrimitiveKind,
 	type SpanKind,
 	junctionForCamps,
 } from "./model.js";
 import type { TraceIndex } from "./trace-index.js";
+import { isJsonString } from "./json.js";
+
 
 interface OtlpValue {
 	stringValue?: string;
@@ -67,8 +69,8 @@ export interface OtlpTraceRequest {
 	resourceSpans?: OtlpResourceSpans[];
 }
 
-export function attributesToRecord(attrs: OtlpAttribute[] | undefined): Record<string, string> {
-	const out: Record<string, string> = {};
+export function attributesToRecord(attrs: OtlpAttribute[] | undefined): StringBag {
+	const out: StringBag = {};
 	for (const attr of attrs ?? []) {
 		const v = attr.value;
 		if (v.stringValue !== undefined) out[attr.key] = v.stringValue;
@@ -78,25 +80,34 @@ export function attributesToRecord(attrs: OtlpAttribute[] | undefined): Record<s
 	return out;
 }
 
-const SPAN_KINDS: Record<number, SpanKind> = {
-	1: "internal",
-	2: "server",
-	3: "client",
-	4: "producer",
-	5: "consumer",
-};
-
 export function spanKindFromOtlp(kind: number | undefined): SpanKind {
-	return SPAN_KINDS[kind ?? 1] ?? "internal";
+	switch (kind) {
+		case 2:
+			return "server";
+		case 3:
+			return "client";
+		case 4:
+			return "producer";
+		case 5:
+			return "consumer";
+		default:
+			return "internal";
+	}
 }
 
 function nanoToMs(value: string | number | undefined): number {
 	if (value === undefined) return 0;
-	const n = typeof value === "string" ? Number(value) : value;
+	const n = isJsonString(value) ? Number(value) : value;
 	return Math.floor(n / 1_000_000);
 }
 
-const PRIMITIVES: Record<string, PrimitiveKind> = {
+interface PrimitiveKindByName {
+	bindle: "bindle";
+	crew: "crew";
+	actor: "actor";
+}
+
+const PRIMITIVES: PrimitiveKindByName = {
 	bindle: "bindle",
 	crew: "crew",
 	actor: "actor",
@@ -225,7 +236,7 @@ export function mapTracePayload(
 			yardId,
 			campId: character.campId,
 			characterId: character.id,
-			...(span.parentSpanId !== undefined ? { parentSpanId: span.parentSpanId } : {}),
+			...(span.parentSpanId !== undefined ? { parentSpanId: span.parentSpanId } : undefined),
 			junctionId: attrs["hobo.junction"],
 		});
 		if (span.endTimeUnixNano !== undefined) {

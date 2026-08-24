@@ -1,7 +1,7 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased probe and JSON-like values at the doctor contract boundary before normalization and redaction. */
-
 import { access, readdir, readFile } from "node:fs/promises";
 import path from "node:path";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const HOBO_DOCTOR_CONTRACT_VERSION = "hobo.doctor/v1";
 
@@ -91,7 +91,7 @@ export async function runDoctor(options = {}) {
   const checks = [];
   const findings = [];
 
-  checks.push(...await runToolchainChecks(options.toolchain ?? {}));
+  checks.push(...await runToolchainChecks(options.toolchain));
   checks.push(await runSvidCheck(options.credentialStore));
   checks.push(...await runConnectivityChecks(options, options.offline === true));
   checks.push(await runLocalStoreCheck(cwd));
@@ -274,7 +274,7 @@ async function runExtraCheck(extraCheck) {
 }
 
 async function resolveProbe(probe, fallback) {
-  if (typeof probe === "function") {
+  if (probe instanceof Function) {
     return await probe();
   }
 
@@ -466,7 +466,7 @@ function stripNullValues(value) {
 }
 
 function sanitizeValue(value) {
-  if (typeof value === "string") {
+  if (isJsonString(value)) {
     return redact(value);
   }
 
@@ -474,7 +474,7 @@ function sanitizeValue(value) {
     return value.map((entry) => sanitizeValue(entry));
   }
 
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .filter(([, entry]) => entry !== null && entry !== undefined)
@@ -510,7 +510,7 @@ function toPortablePath(filePath) {
 }
 
 function redact(value) {
-  if (typeof value !== "string") {
+  if (!isJsonString(value)) {
     return value;
   }
 

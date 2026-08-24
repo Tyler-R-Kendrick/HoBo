@@ -71,21 +71,23 @@ const REDIS_FEATURE_KEYS = [
 	"restTransport",
 ] as const;
 
-type RedisFeatureKey = (typeof REDIS_FEATURE_KEYS)[number];
-type MutableCapabilityRequirementInput = {
-	-readonly [Key in keyof CapabilityRequirementInput]: CapabilityRequirementInput[Key];
-};
-
 function booleanFeatures(
 	input: RedisStoreInput,
 ): readonly StructuredFeatureRequirementInput[] {
-	const requested = {
+	interface RedisFeatureFlags {
+		ttl?: boolean;
+		atomicIncrement?: boolean;
+		atomicCompareAndSet?: boolean;
+		sortedSets?: boolean;
+		restTransport?: boolean;
+	}
+	const requested: RedisFeatureFlags = {
 		ttl: input.ttl,
 		atomicIncrement: input.atomicIncrement,
 		atomicCompareAndSet: input.atomicCompareAndSet,
 		sortedSets: input.sortedSets,
 		restTransport: input.restTransport,
-	} satisfies Partial<Record<RedisFeatureKey, boolean | undefined>>;
+	};
 	const features: StructuredFeatureRequirementInput[] = [];
 	for (const key of REDIS_FEATURE_KEYS) {
 		const value = requested[key];
@@ -132,20 +134,22 @@ function buildStoreRequirement(
 	profileId: typeof KV_REDIS_COMPATIBLE_PROFILE | typeof KV_VALKEY_PROFILE,
 	input: RedisStoreInput,
 ): CapabilityRequirement {
-	const requirement: MutableCapabilityRequirementInput = {
+	const requirement: CapabilityRequirementInput = {
 		requiredProfiles: [{ profileId, versionRange: ">=1" }],
 		features: [
 			...booleanFeatures(input),
 			...valueSizeFeature(input.minValueBytes),
 		],
 		guarantees: REDIS_GUARANTEES,
+		...(input.runtime !== undefined ? { runtime: input.runtime } : undefined),
+		...(input.realization !== undefined
+			? { realization: input.realization }
+			: undefined),
+		...(input.portability !== undefined
+			? { portability: input.portability }
+			: undefined),
+		...(input.trustRef !== undefined ? { trustRef: input.trustRef } : undefined),
 	};
-	if (input.runtime !== undefined) requirement.runtime = input.runtime;
-	if (input.realization !== undefined)
-		requirement.realization = input.realization;
-	if (input.portability !== undefined)
-		requirement.portability = input.portability;
-	if (input.trustRef !== undefined) requirement.trustRef = input.trustRef;
 	return parseCapabilityRequirement(requirement);
 }
 

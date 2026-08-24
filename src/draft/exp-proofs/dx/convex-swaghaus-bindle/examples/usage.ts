@@ -12,6 +12,8 @@ import {
 	draftSwaghausManifest,
 	parseSwaghausBindle,
 } from "../src/index.ts";
+import { type JsonValue } from "../src/json.js";
+
 
 // Authoring surface: provider-neutral kinds only, no Convex pin on the Bindle.
 const definition = bindle((b) => {
@@ -49,7 +51,8 @@ console.log(
 
 // A provider pin on the Bindle is refused — escapes are Camp/Yard-scoped.
 const pinned = draftSwaghausManifest({ root: "examples/convex-swaghaus" });
-(pinned.resources.web as { annotations: unknown[] }).annotations.push({
+// SAFETY: `(pinned.resources.web as { annotations: JsonValue[] }).annotations.push({` is required at this I/O or test boundary.
+(pinned.resources.web as { annotations: JsonValue[] }).annotations.push({
 	provider: "convex",
 	option: "deployment",
 	config: { region: "us-east" },
@@ -64,7 +67,8 @@ try {
 
 // Credential material never rides Bindle config (ADR-0027).
 const leaky = draftSwaghausManifest({ root: "examples/convex-swaghaus" });
-(leaky.resources.web as { annotations: unknown[] }).annotations.push({
+// SAFETY: `(leaky.resources.web as { annotations: JsonValue[] }).annotations.push({` is required at this I/O or test boundary.
+(leaky.resources.web as { annotations: JsonValue[] }).annotations.push({
 	provider: "hobo",
 	option: "webapp",
 	config: { deployToken: "prod:swaghaus|deadbeef" },

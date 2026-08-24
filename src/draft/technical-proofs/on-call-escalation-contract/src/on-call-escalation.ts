@@ -1,5 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased ladder, string, and recursive value contracts at the shared parser and serialization boundaries before domain evaluation. */
-
 import { handoffRequested } from "../../crew-event-contract/src/crew-event-contract.js";
 import {
   INCIDENT_EVENT_TYPES,
@@ -7,6 +5,8 @@ import {
   makeIncidentEvent,
 } from "../../incident-aggregate-contract/src/incident-aggregate.js";
 import { createSreOperator } from "../../sre-operator-skeleton-contract/src/sre-operator-skeleton.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const ON_CALL_ESCALATION_SCHEMA_VERSION = "hobo.on-call-escalation/v1";
 export const ON_CALL_ACK_OBLIGATION_KIND = "incident.on-call-ack-deadline";
@@ -315,7 +315,7 @@ function createHandoffPackage({ incident, input }) {
 
 function normalizeLadder(input) {
   const ladder = requiredArray(input, "ladder").map((receiver, index) => {
-    if (!receiver || typeof receiver !== "object" || Array.isArray(receiver)) {
+    if (!receiver || !isJsonObject(receiver) || Array.isArray(receiver)) {
       throw new Error(`ladder[${index}] must be an object`);
     }
     return deepFreeze({
@@ -342,7 +342,7 @@ function requiredArray(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value;
@@ -378,7 +378,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

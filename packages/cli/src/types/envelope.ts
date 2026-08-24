@@ -1,3 +1,4 @@
+import { type JsonObject } from "../json.js";
 // domain-view: parsed CLI-facing type (string unions, branded ids, literal fields); the package's data-models/*.proto is its wire contract (technical-standards.md).
 export interface CliClients {
 	readonly readApi: string;
@@ -21,7 +22,7 @@ export interface CliEnvelope {
 	readonly message: string;
 	readonly remediation: readonly string[];
 	readonly context: CliContext;
-	readonly data: Record<string, unknown>;
+	readonly data: JsonObject;
 }
 
 export interface CommandResult {
@@ -30,7 +31,7 @@ export interface CommandResult {
 	readonly code?: string;
 	readonly message?: string;
 	readonly remediation?: readonly string[];
-	readonly data?: Record<string, unknown>;
+	readonly data?: JsonObject;
 }
 
 export function publicContext(context: CliContext): CliContext {

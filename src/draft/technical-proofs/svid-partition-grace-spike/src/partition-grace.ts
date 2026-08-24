@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased lease and clone contracts at the shared parser boundary before domain evaluation. */
-
+import { isJsonString, isJsonObject } from "./json.js";
 const DEFAULT_TTL_MS = 15 * 60 * 1000;
 const DEFAULT_ROTATION_FRACTION = 2 / 3;
 const DEFAULT_MAX_GRACE_MS = 5 * 60 * 1000;
@@ -236,7 +235,7 @@ function iso(ms) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -259,14 +258,14 @@ function nonNegativeInteger(value, field) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

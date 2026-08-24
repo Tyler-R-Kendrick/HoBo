@@ -131,7 +131,8 @@ main
                                                                                                                         └── sdlc/anti-slop-120-draft-mcp-bootstrap-slo-slsa-snapshot  #1379 mcp-poc+bootstrap-saga+slo-promotion+slo-rollback+slsa+snapshot-replay+split-horizon+sre-operator
                                                                                                                          └── sdlc/anti-slop-121-draft-streamer-stub-svid-wrpc  #1380 streamer-runtime+stub-generation+stuck-rollout+svid-partition+token-broker-ha+usage-permissions+vscode+websocket-fanout+wire-version+wrpc-lattice+wrpc-membrane
                                                                                                                           └── sdlc/anti-slop-122-draft-exp-cx-ux-4count  #1381 launch-posture+compat-matrix+onboarding-script+launch-blocker+workspace-telemetry+svid-guard+vibe-walkthroughs
-                                                                                                                           └── sdlc/anti-slop-123-draft-exp-tinies  80 remaining 1-3 count exp-proofs
+                                                                                                                           └── sdlc/anti-slop-123-draft-exp-tinies  #1382 80 remaining 1-3 count exp-proofs
+                                                                                                                            └── sdlc/anti-slop-124-draft-exp-5count  xaa-scope+sre-drift+vibe-dashboard+pilot+snapshop+support
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -274,7 +275,8 @@ Layer 119: `outbound-xaa-token-exchange-contract` + `persona-operating-profile-c
 Layer 120: `s3-08-hobo-mcp-server-poc` + `self-host-bootstrap-saga-contract` + `slo-promotion-gate-contract` + `slo-rollback-decision-correctness-spike` + `slsa-provenance-certification-contract` + `snapshot-replay-divergence-contract` + `split-horizon-partition-connectivity-contract` + `sre-operator-skeleton-contract` oxlint `--deny-warnings` clean (#1379).
 Layer 121: `streamer-runtime-port-contract` + `stub-implementation-generation-contract` + `stuck-rollout-convergence-contract` + `svid-partition-grace-spike` + `token-broker-ha-cache-contract` + `usage-inferred-permissions-contract` + `vscode-extension-contract` + `websocket-streamer-fanout-contract` + `wire-version-negotiation-contract` + `wrpc-lattice-transport-contract` + `wrpc-membrane-failure-contract` oxlint `--deny-warnings` clean (#1380). Restores `classifyFailure` parse of Error instances so membrane subclasses keep partial-failure. 4-count technical-proofs are cleared.
 Layer 122: `ai-generation-launch-posture-contract` + `compatibility-matrix-scope-contract` + `customer-onboarding-script-contract` + `launch-blocker-taxonomy-contract` + `workspace-activation-telemetry-contract` + `svid-cross-tenant-guard-contract` + `vibe-clickable-first-run-walkthrough` + `vibe-marketplace-installability-mockups` + `vibe-pilot-first-proof-walkthrough` + `vibe-plan-review-states` oxlint `--deny-warnings` clean (#1381). 4-count exp-proofs are cleared.
-Layer 123: 80 remaining 1–3 count `src/draft/exp-proofs` packages oxlint `--deny-warnings` clean.
-Next: remaining 5+ count `src/draft` exp-proofs, then projects.
+Layer 123: 80 remaining 1–3 count `src/draft/exp-proofs` packages oxlint `--deny-warnings` clean (#1382).
+Layer 124: `xaa-scope-inference-contract` + `sre-drift-remediation-journey-contract` + `vibe-deployment-dashboard-mockups` + `vibe-first-customer-pilot-storyboard` + `vibe-snapshop-launch-demo-storyboard` + `vibe-support-case-redacted-evidence` oxlint `--deny-warnings` clean. 5-count exp-proofs are cleared.
+Next: remaining 6+ count `src/draft` exp-proofs, then projects.
 Full-repo `lint:slop --deny-warnings` is still red until those land.
 GitHub stack metadata is at the 100-entry cap; later layers still open PRs via `gh stack submit --auto`.

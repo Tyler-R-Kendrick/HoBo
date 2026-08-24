@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const REQUIRED_SURFACES = [
   "workspace-onboarding",
   "plan-diff",
@@ -217,7 +218,7 @@ export const ACCESSIBILITY_USABILITY_BASELINE = {
 export function validateAccessibilityUsabilityBaseline(baseline) {
   const errors = [];
 
-  if (!baseline || Object(baseline) !== baseline) {
+  if (!baseline || !isJsonObject(baseline)) {
     return { ok: false, errors: ["baseline record is required"] };
   }
   if (baseline.issue !== "HOBO-505") {

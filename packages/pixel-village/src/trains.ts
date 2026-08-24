@@ -86,21 +86,37 @@ const MAX_CARS = 8;
 /** Keep the consist clear of the track ends. */
 const EDGE_MARGIN = 12;
 
-const CAR_VISUAL = {
+interface CarVisualByLifecycle {
+	provisioning: CarVisual;
+	provisioned: CarVisual;
+	failed: CarVisual;
+	destroying: CarVisual;
+	destroyed: CarVisual;
+}
+
+interface PhaseProgress {
+	assembling: number;
+	running: number;
+	arrived: number;
+	derailed: number;
+	backing: number;
+}
+
+const CAR_VISUAL: CarVisualByLifecycle = {
 	provisioning: "outline",
 	provisioned: "solid",
 	failed: "failed",
 	destroying: "hatched",
 	destroyed: "ghost",
-} satisfies Record<ResourceLifecycleWire, CarVisual>;
+};
 
-const PHASE_PROGRESS = {
+const PHASE_PROGRESS: PhaseProgress = {
 	assembling: 0.06,
 	running: 0.5,
 	arrived: 0.94,
 	derailed: 0.62,
 	backing: 0.32,
-} satisfies Record<TrainPhase, number>;
+};
 
 export function phaseForRow(row: DeploymentWireRow): TrainPhase {
 	const lifecycles = Object.values(row.resources ?? {});

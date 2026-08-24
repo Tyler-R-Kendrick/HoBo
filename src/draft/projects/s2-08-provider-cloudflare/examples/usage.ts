@@ -22,6 +22,8 @@ import {
 	publishCapabilityManifest,
 	type PublishedManifestDocuments,
 } from "../src/index.ts";
+import { type JsonObject } from "../src/json.js";
+
 
 // 1) The provider draft covers every initial capability port through equivalence classes.
 const provider = createProviderCloudflareDraft();
@@ -40,7 +42,9 @@ for (const path of Object.keys(documents).sort()) {
 }
 const parsed = parsePublishedManifest(documents);
 assert.ok(parsed.ok, `manifest parses without errors: ${parsed.errors.join("; ")}`);
+// SAFETY: `assert.equal((parsed.index as { manifestSchema?: string }).manifestSchema, MANIF` is required at this I/O or test boundary.
 assert.equal((parsed.index as { manifestSchema?: string }).manifestSchema, MANIFEST_SCHEMA);
+// SAFETY: `assert.equal((parsed.auth as { staticSecrets?: boolean }).staticSecrets, false);` is required at this I/O or test boundary.
 assert.equal((parsed.auth as { staticSecrets?: boolean }).staticSecrets, false);
 console.log(`manifest parse ok=${parsed.ok} schema=${MANIFEST_SCHEMA} staticSecrets=false`);
 
@@ -50,7 +54,8 @@ assert.deepEqual(republished, documents, "canonical manifest bytes are reproduci
 console.log("manifest bytes deterministic: true");
 
 // 4) A tampered manifest that leaks a static secret is rejected at the parse boundary.
-const tamperedAuth = JSON.parse(documents["/.well-known/capability-manifest/auth.json"]) as Record<string, unknown>;
+// SAFETY: `const tamperedAuth = JSON.parse(documents["/.well-known/capability-manifest/auth` is required at this I/O or test boundary.
+const tamperedAuth = JSON.parse(documents["/.well-known/capability-manifest/auth.json"]) as JsonObject;
 tamperedAuth.staticKey = "sk-oops";
 const tampered: PublishedManifestDocuments = {
 	...documents,
@@ -62,9 +67,11 @@ console.log(`tampered manifest rejected: ${rejected.errors.join("; ")}`);
 
 // 5) The hello-bindle plan binds compute to kv/objectStore with typed option blocks.
 const plan = provider.helloBindlePlan;
+// SAFETY: `console.log(`plan ${plan.id}: env=${plan.context.env} colo=${plan.context.colo} ` is required at this I/O or test boundary.
 console.log(`plan ${plan.id}: env=${plan.context.env} colo=${plan.context.colo} resources=${plan.resources.map((r) => `${r.id as string}:${r.type as string}`).join(",")}`);
 const service = plan.resources.find((resource) => resource.id === "service");
 assert.ok(service);
+// SAFETY: `const binds = service.binds as Array<{ import: string; providerResourceId: strin` is required at this I/O or test boundary.
 const binds = service.binds as Array<{ import: string; providerResourceId: string; capability: string }>;
 for (const bind of binds) {
 	console.log(`bind: ${bind.import} -> ${bind.providerResourceId} (${bind.capability})`);

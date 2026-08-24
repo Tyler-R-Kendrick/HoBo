@@ -1,5 +1,7 @@
 import { createDecisionRequest } from "../../../technical-proofs/hobo-policy-ir-contract/src/policy-ir.js";
 import { evaluateBudgetQuotaPolicy } from "../../../technical-proofs/budget-quota-policy-contract/src/budget-quota-policy.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const FINOPS_DEPLOY_GATE_ENGINE = "hobo.finops.deploy-gate/contract@0.1.0";
 
@@ -103,7 +105,7 @@ function readCounterValue(input) {
   if (Number.isFinite(input) && input >= 0) {
     return input;
   }
-  if (input instanceof Object && !Array.isArray(input)) {
+  if (isJsonObject(input) && !Array.isArray(input)) {
     for (const key of ["cost", "costUsd", "spendUsd", "value"]) {
       if (Number.isFinite(input[key]) && input[key] >= 0) {
         return input[key];
@@ -127,14 +129,14 @@ function normalizePolicies(policies) {
 }
 
 function expectObject(value, label) {
-  if (!value || !(value instanceof Object) || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${label} must be an object`);
   }
   return value;
 }
 
 function requireString(value, label) {
-  if (String(value) !== value || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;

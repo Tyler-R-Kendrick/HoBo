@@ -211,11 +211,11 @@ describe("the declaration guard", () => {
 			expect.unreachable("the guard should have thrown");
 		} catch (error) {
 			expect(error).toBeInstanceOf(KvRedisCompatibleError);
-			// SAFETY: the preceding instanceof assertion establishes this error type.
+			// SAFETY: `expect((error as KvRedisCompatibleError).code).toBe(` is required at this I/O or test boundary.
 			expect((error as KvRedisCompatibleError).code).toBe(
 				"QUEUE_TOPIC_IMPLICATION",
 			);
-			// SAFETY: all Error instances expose the standard message property.
+			// SAFETY: `expect((error as Error).message).toMatch(/retains|offset/u);` is required at this I/O or test boundary.
 			expect((error as Error).message).toMatch(/retains|offset/u);
 		}
 	});

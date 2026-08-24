@@ -38,8 +38,16 @@ import {
 	stationRailsPublish,
 	stationUp,
 } from "@hobo/management";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "../src/json.js";
 
-const playwright = await import("playwright");
+
+const playwright = await import(
+	"/home/codex/.local/lib/node_modules/playwright/index.mjs"
+);
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const PUBLIC = join(ROOT, "public");
@@ -61,57 +69,17 @@ for (const d of [SHOTS, RECORDINGS, BASELINES, EXP_EVIDENCE]) {
 	mkdirSync(d, { recursive: true });
 }
 
-type TestState = {
-	ready: boolean;
-	connCount: number;
-	trafficRate: number;
-	bootstrapActive: boolean;
-	bo: { x: number; y: number };
-	zone: string;
-	sheetOpen: boolean;
-	sheetKind: string | null;
-};
-
-type TestApi = {
-	ready?: boolean;
-	frameCount?: number;
-	commands: {
-		advanceFrame: (ms: number) => void;
-		selectZone: (zone: string) => void;
-		dismissSheet: () => void;
-	};
-	state: () => TestState;
-};
-
-declare global {
-	interface Window {
-		__TEST__: TestApi;
-	}
-}
-
-type Report = {
-	gameUrl: string;
-	apiUrl: string;
-	checks: string[];
-	errors: string[];
-	skillStack: string[];
-	recordings: string[];
-	initialState?: TestState;
-	pixelSample?: { colours: number; dominant: number; bo: TestState["bo"] };
-	consoleErrors?: string[];
-};
-
-const MIME = {
-	".html": "text/html; charset=utf-8",
-	".js": "text/javascript; charset=utf-8",
-	".css": "text/css; charset=utf-8",
-	".json": "application/json",
-	".png": "image/png",
-	".jpg": "image/jpeg",
-	".jpeg": "image/jpeg",
-	".svg": "image/svg+xml",
-	".gif": "image/gif",
-} satisfies Record<string, string>;
+const MIME = new Map<string, string>([
+	[".html", "text/html; charset=utf-8"],
+	[".js", "text/javascript; charset=utf-8"],
+	[".css", "text/css; charset=utf-8"],
+	[".json", "application/json"],
+	[".png", "image/png"],
+	[".jpg", "image/jpeg"],
+	[".jpeg", "image/jpeg"],
+	[".svg", "image/svg+xml"],
+	[".gif", "image/gif"],
+]);
 
 function staticHandler(base: string) {
 	return (req: IncomingMessage, res: ServerResponse) => {
@@ -131,7 +99,7 @@ function staticHandler(base: string) {
 			}
 			const ext = extname(file);
 			res.writeHead(200, {
-				"content-type": MIME[ext] || "application/octet-stream",
+				"content-type": MIME.get(ext) ?? "application/octet-stream",
 				"cache-control": "no-store",
 			});
 			res.end(readFileSync(file));
@@ -171,7 +139,46 @@ function webmToMp4(webm: string, mp4: string): void {
 	}
 }
 
-function imgdiff(baseline: string, current: string, out: string) {
+interface ImgDiffResult {
+	ok: boolean;
+	detail: string;
+}
+
+interface SceneRichness {
+	colours: number;
+	dominant: number;
+}
+
+interface PlayReport {
+	gameUrl: string;
+	apiUrl: string;
+	checks: string[];
+	errors: string[];
+	skillStack: string[];
+	recordings: string[];
+	initialState?: JsonValue;
+	pixelSample?: JsonValue;
+	consoleErrors?: string[];
+}
+
+type SeamWindow = Window & {
+	__TEST__: {
+		ready?: boolean;
+		frameCount?: number;
+		state: () => JsonValue;
+		commands: {
+			advanceFrame: (dt: number) => void;
+			selectZone: (zone: string) => void;
+			dismissSheet: () => void;
+		};
+	};
+};
+
+function imgdiff(
+	baseline: string,
+	current: string,
+	out: string,
+): ImgDiffResult {
 	if (!existsSync(baseline)) {
 		copyFileSync(current, baseline);
 		return { ok: true, detail: "baseline created" };
@@ -236,7 +243,7 @@ top = max(counts.values()) / total
 print(f"{len(counts)} {top:.4f}")
 `;
 
-function sceneRichness(png: string) {
+function sceneRichness(png: string): SceneRichness {
 	const r = spawnSync(
 		"uv",
 		["run", "--with", "pillow", "python", "-c", SCENE_RICHNESS_PY, png],
@@ -258,7 +265,8 @@ function sleep(ms: number) {
 async function advance(page: import("playwright").Page, n: number) {
 	for (let i = 0; i < n; i++) {
 		await page.evaluate(() => {
-			window.__TEST__.commands.advanceFrame(16.67);
+			// SAFETY: play-demo host installs the playwright seam on window.
+			(window as SeamWindow).__TEST__.commands.advanceFrame(16.67);
 		});
 	}
 	await page.waitForTimeout(50);
@@ -275,8 +283,8 @@ const pub = stationRailsPublish(ctx, {
 	name: "prod",
 	version: "1.0.0",
 });
-// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-const hash = String((pub.data as { contentHash: string }).contentHash);
+const pubData = isJsonObject(pub.data) ? pub.data : {};
+const hash = String(pubData.contentHash ?? "");
 stationRailsApprove(ctx, { stationId: "station:local", hashOrId: hash });
 stationRailsActivate(ctx, { stationId: "station:local", hashOrId: hash });
 connectionCreate(ctx, {
@@ -303,7 +311,7 @@ await new Promise<void>((resolve) =>
 	staticSrv.listen(0, "127.0.0.1", () => resolve()),
 );
 const staticAddr = staticSrv.address();
-if (!staticAddr || !("port" in staticAddr)) {
+if (!staticAddr || isJsonString(staticAddr)) {
 	throw new Error("static bind failed");
 }
 const origin = `http://127.0.0.1:${staticAddr.port}`;
@@ -314,7 +322,7 @@ console.log("API", api.url);
 console.log("GAME", gameUrl);
 
 const browser = await playwright.chromium.launch({ headless: true });
-const report: Report = {
+const report: PlayReport = {
 	gameUrl,
 	apiUrl: api.url,
 	checks: [],
@@ -352,11 +360,11 @@ async function withRecording(
 	const page = await context.newPage();
 	// NEVER `return` from a finally here: it swallows tour failures and the run
 	// self-reports OK while writing stale screenshots.
-	let failure: Error | null = null;
+	let failure: JsonValue = null;
 	try {
 		await fn(page);
 	} catch (err) {
-		failure = err instanceof Error ? err : new Error(String(err));
+		failure = err;
 	}
 	const vid = page.video();
 	await page.close();
@@ -397,44 +405,40 @@ try {
 			await page.goto(gameUrl, { waitUntil: "load", timeout: 30000 });
 			await page.waitForFunction(
 				() =>
-					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-					window.__TEST__?.ready === true,
+					// SAFETY: play-demo host installs the playwright seam on window.
+					(window as SeamWindow).__TEST__
+						?.ready === true,
 				null,
 				{ timeout: 20000 },
 			);
 			await page.waitForFunction(
 				() =>
-					// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-					(window.__TEST__?.frameCount ?? 0) >= 8,
+					// SAFETY: play-demo host installs the playwright seam on window.
+					((window as SeamWindow).__TEST__?.frameCount ?? 0) >= 8,
 				null,
 				{ timeout: 10000 },
 			);
 
-			const st = await page.evaluate(() => window.__TEST__.state());
+			const st = await page.evaluate(() =>
+				// SAFETY: play-demo host installs the playwright seam on window.
+				(window as SeamWindow).__TEST__.state(),
+			);
 			report.initialState = st;
-			// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-			check("test seam ready", st.ready);
+			const stObj = isJsonObject(st) ? st : {};
+			const connCount = Number(stObj.connCount ?? 0);
+			const trafficRate = Number(stObj.trafficRate ?? 0);
+			check("test seam ready", stObj.ready === true);
 			check(
 				"connection authorized present",
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-				st.connCount >= 1,
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-				`conn=${st.connCount}`,
+				connCount >= 1,
+				`conn=${connCount}`,
 			);
 			check(
 				"traffic rate > 0",
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-				st.trafficRate > 0,
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-				`traffic=${st.trafficRate}`,
+				trafficRate > 0,
+				`traffic=${trafficRate}`,
 			);
-			check(
-				"bootstrap inactive",
-				// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-				st.bootstrapActive === false,
-			);
+			check("bootstrap inactive", stObj.bootstrapActive === false);
 
 			await page.screenshot({
 				path: join(SHOTS, "01-boot-live.png"),
@@ -456,10 +460,10 @@ try {
 				"platformRest",
 				"activeRailTrack",
 			] as const) {
-				await page.evaluate(
-					(z) => window.__TEST__.commands.selectZone(z),
-					zone,
-				);
+				await page.evaluate((z) => {
+					// SAFETY: play-demo host installs the playwright seam on window.
+					(window as SeamWindow).__TEST__.commands.selectZone(z);
+				}, zone);
 				await advance(page, 45);
 				await sleep(400);
 			}
@@ -474,7 +478,12 @@ try {
 
 			// #yard hosts a WebGL canvas — sample the captured element shot instead
 			// of getImageData (Phaser keeps no preserved drawing buffer).
-			const boPos = await page.evaluate(() => window.__TEST__.state().bo);
+			const boRaw = await page.evaluate(() =>
+				// SAFETY: play-demo host installs the playwright seam on window.
+				(window as SeamWindow).__TEST__.state(),
+			);
+			const boState = isJsonObject(boRaw) ? boRaw : {};
+			const boPos = isJsonObject(boState.bo) ? boState.bo : {};
 			const richness = sceneRichness(join(SHOTS, "canvas-only.png"));
 			report.pixelSample = { ...richness, bo: boPos };
 			check(
@@ -498,21 +507,31 @@ try {
 		{ width: 1400, height: 920 },
 		async (page) => {
 			await page.goto(gameUrl, { waitUntil: "load", timeout: 30000 });
-			await page.waitForFunction(() => window.__TEST__?.ready === true, null, {
-				timeout: 20000,
-			});
-			await page.evaluate(() =>
-				window.__TEST__.commands.selectZone("connectionBay"),
+			await page.waitForFunction(
+				() =>
+					// SAFETY: play-demo host installs the playwright seam on window.
+					(window as SeamWindow).__TEST__
+						?.ready === true,
+				null,
+				{ timeout: 20000 },
 			);
+			await page.evaluate(() => {
+				// SAFETY: play-demo host installs the playwright seam on window.
+				(window as SeamWindow).__TEST__.commands.selectZone("connectionBay");
+			});
 			await advance(page, 80);
 			await sleep(800);
-			const stBay = await page.evaluate(() => window.__TEST__.state());
+			const stBayRaw = await page.evaluate(() =>
+				// SAFETY: play-demo host installs the playwright seam on window.
+				(window as SeamWindow).__TEST__.state(),
+			);
+			const stBay = isJsonObject(stBayRaw) ? stBayRaw : {};
 			check(
 				"connection bay zone",
 				stBay.zone === "connectionBay",
-				`zone=${stBay.zone}`,
+				`zone=${String(stBay.zone ?? "")}`,
 			);
-			check("sheet opens", stBay.sheetOpen, `kind=${stBay.sheetKind}`);
+			check("sheet opens", stBay.sheetOpen === true, `kind=${String(stBay.sheetKind ?? "")}`);
 			await page.screenshot({
 				path: join(SHOTS, "02-connection-bay-sheet.png"),
 				fullPage: true,
@@ -529,7 +548,10 @@ try {
 				.click()
 				.catch(() => {});
 			await sleep(600);
-			await page.evaluate(() => window.__TEST__.commands.dismissSheet());
+			await page.evaluate(() => {
+				// SAFETY: play-demo host installs the playwright seam on window.
+				(window as SeamWindow).__TEST__.commands.dismissSheet();
+			});
 			await sleep(400);
 		},
 	);
@@ -545,23 +567,34 @@ try {
 		{ width: 1400, height: 920 },
 		async (page) => {
 			await page.goto(gameUrl, { waitUntil: "load", timeout: 30000 });
-			await page.waitForFunction(() => window.__TEST__?.ready === true, null, {
-				timeout: 20000,
-			});
+			await page.waitForFunction(
+				() =>
+					// SAFETY: play-demo host installs the playwright seam on window.
+					(window as SeamWindow).__TEST__
+						?.ready === true,
+				null,
+				{ timeout: 20000 },
+			);
 			for (const [zone, shot] of [
 				["policyBoard", "04-policy-board.png"],
 				["costBooth", "03-cost-booth.png"],
 				["errorBunker", "05-error-bunker.png"],
 			] as const) {
 				await page.evaluate((z) => {
-					window.__TEST__.commands.dismissSheet();
-					window.__TEST__.commands.selectZone(z);
+					// SAFETY: play-demo host installs the playwright seam on window.
+					const seam = (window as SeamWindow).__TEST__;
+					seam.commands.dismissSheet();
+					seam.commands.selectZone(z);
 				}, zone);
 				await advance(page, 70);
 				await sleep(700);
 				await page.screenshot({ path: join(SHOTS, shot), fullPage: true });
-				const stZ = await page.evaluate(() => window.__TEST__.state());
-				check(`${zone} zone`, stZ.zone === zone, `zone=${stZ.zone}`);
+				const stZRaw = await page.evaluate(() =>
+					// SAFETY: play-demo host installs the playwright seam on window.
+					(window as SeamWindow).__TEST__.state(),
+				);
+				const stZ = isJsonObject(stZRaw) ? stZRaw : {};
+				check(`${zone} zone`, stZ.zone === zone, `zone=${String(stZ.zone ?? "")}`);
 			}
 			await page.screenshot({
 				path: join(SHOTS, "06-after-actions.png"),
@@ -572,8 +605,7 @@ try {
 	);
 } catch (err) {
 	const msg = err instanceof Error ? err.message : String(err);
-	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-	(report.errors as string[]).push(msg);
+	report.errors.push(msg);
 	console.error(err);
 } finally {
 	await browser.close();
@@ -602,13 +634,19 @@ const evidenceFiles = [
 	"recordings/04-rail-cost-doctor.mp4",
 ];
 
-const files: Record<string, { bytes: number; sha256: string }> = {};
+interface EvidenceFileMeta {
+	bytes: number;
+	sha256: string;
+}
+interface EvidenceFileMap {
+	[name: string]: EvidenceFileMeta | undefined;
+}
+const files: EvidenceFileMap = {};
 for (const rel of evidenceFiles) {
 	if (rel === "evidence-manifest.json") continue;
 	const abs = join(SHOTS, rel);
 	if (!existsSync(abs)) {
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-		(report.errors as string[]).push(
+		report.errors.push(
 			`missing evidence file after capture: ${rel}`,
 		);
 		continue;
@@ -683,8 +721,7 @@ for (const rel of syncList) {
 
 console.log("report", join(SHOTS, "visual-report.json"));
 console.log("manifest", manifestPath);
-// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
-if ((report.errors as string[]).length > 0) {
+if (report.errors.length > 0) {
 	console.error("EVIDENCE CAPTURE FAILED");
 	process.exit(1);
 }

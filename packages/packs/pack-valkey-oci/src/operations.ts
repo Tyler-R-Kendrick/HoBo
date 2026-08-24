@@ -57,7 +57,7 @@ export function parseValkeyFilePath(
 	}
 	if (input.length > 4096)
 		operationInvalid(`${what} exceeds the 4096 character path limit`);
-	// SAFETY: path traversal, absolute paths, and size checks passed above.
+	// SAFETY: `return input as ValkeyFilePath;` is required at this I/O or test boundary.
 	return input as ValkeyFilePath;
 }
 

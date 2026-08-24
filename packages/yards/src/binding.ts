@@ -27,6 +27,7 @@ import {
 	findCredentialKey,
 	isPlainObject,
 } from "./canonical.js";
+import { isJsonString, type JsonObject, type JsonValue } from "./json.js";
 
 export const YARD_BINDING_CONTRACT = "hobo.yard-binding/v1"; // public-contract: contract id on every yard binding record
 
@@ -39,7 +40,7 @@ export interface YardBindingInput {
 	readonly productId?: string;
 	readonly connectivityId?: string;
 	readonly require?: readonly string[];
-	readonly properties?: Readonly<Record<string, unknown>>;
+	readonly properties?: Readonly<JsonObject>;
 }
 
 export interface YardBinding {
@@ -48,7 +49,7 @@ export interface YardBinding {
 	readonly productId?: string;
 	readonly connectivityId?: string;
 	readonly require: readonly string[];
-	readonly properties: Readonly<Record<string, unknown>>;
+	readonly properties: Readonly<JsonObject>;
 }
 
 export type YardBindingErrorCode =
@@ -110,14 +111,11 @@ function parseRow(
 		throw new TypeError("yard binding row must be an object");
 	}
 	const profile = row.profile;
-	if (
-		typeof profile !== "string" ||
-		!YARD_BINDING_PROFILE_PATTERN.test(profile)
-	) {
+	if (!isJsonString(profile) || !YARD_BINDING_PROFILE_PATTERN.test(profile)) {
 		throw new YardBindingError(
 			"YARD_BINDING_PROFILE_INVALID",
 			`yard binding profile must match <primitive-family>.<path>/v<major> (got ${JSON.stringify(profile)})`,
-			typeof profile === "string" ? profile : undefined,
+			isJsonString(profile) ? profile : undefined,
 		);
 	}
 	const productId = parseConstraint(profile, "productId", row.productId);
@@ -145,8 +143,8 @@ function parseRow(
 	return {
 		contract: YARD_BINDING_CONTRACT,
 		profile,
-		...(productId !== undefined ? { productId } : {}),
-		...(connectivityId !== undefined ? { connectivityId } : {}),
+		...(productId !== undefined ? { productId } : undefined),
+		...(connectivityId !== undefined ? { connectivityId } : undefined),
 		require: parseRequire(profile, row.require),
 		properties,
 	};
@@ -160,10 +158,10 @@ function parseRow(
 function parseConstraint(
 	profile: string,
 	field: "productId" | "connectivityId",
-	value: unknown,
+	value: JsonValue | undefined,
 ): string | undefined {
 	if (value === undefined) return undefined;
-	if (typeof value !== "string") {
+	if (!isJsonString(value)) {
 		throw new TypeError(
 			`yard binding ${field} must be a string when present (profile ${profile})`,
 		);
@@ -189,7 +187,7 @@ function parseRequire(
 		);
 	}
 	for (const entry of value) {
-		if (typeof entry !== "string" || entry.length === 0) {
+		if (!isJsonString(entry) || entry.length === 0) {
 			throw new TypeError(
 				`yard binding require entries must be non-empty strings (profile ${profile})`,
 			);
@@ -200,8 +198,8 @@ function parseRequire(
 
 function parseProperties(
 	profile: string,
-	value: Readonly<Record<string, unknown>> | undefined,
-): Readonly<Record<string, unknown>> {
+	value: Readonly<JsonObject> | undefined,
+): Readonly<JsonObject> {
 	if (value === undefined) return Object.freeze({});
 	if (!isPlainObject(value)) {
 		throw new TypeError(

@@ -12,6 +12,25 @@ for (const file of files) {
 	const path = join(workflowDir, file);
 	const text = readFileSync(path, "utf8");
 	const lines = text.split(/\r?\n/);
+	const jobsIndex = lines.findIndex((line) => line === "jobs:");
+	if (jobsIndex === -1) {
+		errors.push(file + ": missing jobs section");
+	} else {
+		const jobStarts = lines
+			.map((line, index) => ({ line, index }))
+			.filter(
+				(entry) =>
+					entry.index > jobsIndex &&
+					/^  [A-Za-z0-9_-]+:$/.test(entry.line),
+			)
+			.map((entry) => entry.index);
+		for (const [position, start] of jobStarts.entries()) {
+			const end = jobStarts[position + 1] ?? lines.length;
+			if (!lines.slice(start, end).some((line) => line.trim() === "if: \${{ false }}")) {
+				errors.push(file + ":" + (start + 1) + ": hosted Actions job is not disabled");
+			}
+		}
+	}
 	const firstCheckout = lines.findIndex((line) =>
 		line.includes("actions/checkout@"),
 	);

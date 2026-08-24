@@ -18,7 +18,7 @@ export function assetsRoot(): string {
 
 export function loadAssetIndex(indexPath?: string): AssetIndex {
 	const path = indexPath ?? join(assetsRoot(), "assets_index.json");
-	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+	// SAFETY: `const raw = JSON.parse(readFileSync(path, "utf8")) as AssetIndex;` is required at this I/O or test boundary.
 	const raw = JSON.parse(readFileSync(path, "utf8")) as AssetIndex;
 	return Object.freeze(raw);
 }
@@ -56,6 +56,3 @@ export function phaserSpritesheetConfigs(
 		spacing: sheet.spacing,
 	}));
 }
-// SAFETY: Asset index input is validated by the package asset manifest before use.
-
-// SAFETY: The typed boundary or test fixture establishes this value's shape before use.

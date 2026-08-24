@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- JSON fixture construction is test-boundary data. */
 /**
  * Every case here is a line in `manifest.cases.jsonl`.
  *
@@ -21,14 +20,11 @@ import {
 } from "../src/index.js";
 import { fixtureManifest } from "./harness.js";
 
-type Patch = Partial<Record<keyof PackManifestInput, unknown>>;
+type Patch = Partial<Omit<PackManifestInput, "signature">>;
 
 const manifest = (patch: Patch = {}) =>
 	parsePackManifest(
-		fixtureManifest(
-			(draft) =>
-				({ ...draft, ...patch }) as Omit<PackManifestInput, "signature">,
-		),
+		fixtureManifest((draft) => ({ ...draft, ...patch })),
 	);
 
 describeConcern("pack manifest", {
@@ -52,4 +48,3 @@ describeConcern("pack manifest", {
 			manifest(patch).configSchema.map((field) => field.key),
 	}),
 });
-/* eslint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- JSON fixture construction is test-boundary data. */

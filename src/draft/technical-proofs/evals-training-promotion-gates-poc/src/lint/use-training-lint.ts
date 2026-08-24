@@ -1,10 +1,10 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this check parses erased source input at the lint boundary before semantic grounding analysis. */
+import { isJsonString } from "../json.js";
 export const USE_TRAINING_LINT_SCHEMA = "hobo.lint.use-training/v1";
 
 const REQUIRED_GROUNDINGS = ["intent", "contract", "rubric"] as const;
 
 export function lintUseTrainingSource(source) {
-  if (typeof source !== "string" || source.length === 0) {
+  if (!isJsonString(source) || source.length === 0) {
     throw new TypeError("source must be a non-empty string");
   }
 

@@ -1,4 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased OTLP backend and batch inputs at the shared export boundary before domain validation. */
+import { isJsonNumber, isJsonObject } from "../json.js";
 export const TENANT_OTLP_EXPORT_SCHEMA = "hobo.otlp.tenant-export/v1";
 
 export function createTenantOtlpBackend({ tenantId, endpoint }) {
@@ -25,7 +25,7 @@ export function createTenantOtlpBackend({ tenantId, endpoint }) {
 }
 
 export function exportTrainingTelemetry({ backend, tenantId, spans, rewards }) {
-  if (!backend || typeof backend.exportBatch !== "function") {
+  if (!backend || !(backend.exportBatch instanceof Function)) {
     throw new TypeError("backend must expose exportBatch");
   }
   if (tenantId !== backend.tenantId) {
@@ -41,7 +41,7 @@ export function exportTrainingTelemetry({ backend, tenantId, spans, rewards }) {
 }
 
 function validateBatch(batch, tenantId) {
-  if (!batch || typeof batch !== "object") {
+  if (!batch || !isJsonObject(batch)) {
     throw new TypeError("batch must be an object");
   }
   if (batch.tenantId !== tenantId) {
@@ -64,7 +64,7 @@ function validateBatch(batch, tenantId) {
   }
 
   for (const reward of batch.rewards) {
-    if (!reward?.trajectoryId || typeof reward.reward !== "number") {
+    if (!reward?.trajectoryId || !isJsonNumber(reward.reward)) {
       throw new TypeError("each reward requires trajectoryId and numeric reward");
     }
   }

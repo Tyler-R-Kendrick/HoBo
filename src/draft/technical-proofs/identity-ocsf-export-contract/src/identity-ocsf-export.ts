@@ -1,5 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these guards establish the runtime shapes at the export and serialization boundaries before the domain projection or recursive freeze. */
-
 import { createHash } from "node:crypto";
 
 import {
@@ -11,6 +9,8 @@ import {
   exportPolicyEventToOcsf,
   validatePolicyAuditEvent,
 } from "../../../exp-proofs/api/policy-audit-export-contract/src/policy-audit-export.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const IDENTITY_OCSF_EXPORT_VERSION = "hobo.identity-ocsf-export/v1";
 
@@ -400,7 +400,7 @@ function stripNulls(value) {
 }
 
 function requireString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${path} is required`);
   }
 }
@@ -412,7 +412,7 @@ function sha256Digest(value) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );
@@ -423,7 +423,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

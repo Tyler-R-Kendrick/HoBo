@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-known-value-widening -- image digest table is a closed pack-owned contract. */
 /**
  * The pinned PostgreSQL image.
  *
@@ -40,9 +39,12 @@ export const POSTGRES_IMAGE_INDEX_DIGEST =
  * nobody has run is a claim without evidence — `ARCHITECTURE_UNSUPPORTED` is the
  * honest answer for them.
  */
-export const POSTGRES_IMAGE_DIGESTS: Readonly<
-	Partial<Record<PackArchitecture, string>>
-> = {
+interface PostgresImageDigests {
+	"linux/amd64": string;
+	"linux/arm64": string;
+}
+
+export const POSTGRES_IMAGE_DIGESTS: PostgresImageDigests = {
 	"linux/amd64":
 		"sha256:b6a16ed0eb96e2c362811f7eeb951eac8b459e7b40be4149ea5444aa7c65569b",
 	"linux/arm64":
@@ -73,10 +75,23 @@ export const POSTGRES_DATA_MOUNT_PATH = "/var/lib/postgresql" as const;
 
 export const POSTGRES_PORT = 5432 as const;
 
+function postgresImageDigest(
+	architecture: PackArchitecture,
+): string | undefined {
+	switch (architecture) {
+		case "linux/amd64":
+			return POSTGRES_IMAGE_DIGESTS["linux/amd64"];
+		case "linux/arm64":
+			return POSTGRES_IMAGE_DIGESTS["linux/arm64"];
+		default:
+			return undefined;
+	}
+}
+
 export function postgresImageReference(
 	architecture: PackArchitecture,
 ): string | undefined {
-	const digest = POSTGRES_IMAGE_DIGESTS[architecture];
+	const digest = postgresImageDigest(architecture);
 	return digest === undefined
 		? undefined
 		: `${POSTGRES_IMAGE_REPOSITORY}@${digest}`;

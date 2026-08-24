@@ -4,7 +4,8 @@
  * Built-in analysis uses Harness health samples (SLO/Golden/guardrail).
  */
 import type { DeliveryHealthSignal } from "@hobo/identity";
-import type { JsonValue } from "../plan-types.js";
+import { type JsonValue } from "../json.js";
+
 
 // public-contract: progressive analysis adapter schema.
 export const PROGRESSIVE_ANALYSIS_SCHEMA =
@@ -107,7 +108,7 @@ export function createResidualProgressiveAnalysis(options: {
 	readonly fallback?: ProgressiveAnalysisPort;
 }): ProgressiveAnalysisPort {
 	const fallback = options.fallback ?? createBuiltinProgressiveAnalysis();
-	// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+	// SAFETY: `const fetchImpl = options.fetchImpl ?? (globalThis.fetch as FetchLike);` is required at this I/O or test boundary.
 	const fetchImpl = options.fetchImpl ?? (globalThis.fetch as FetchLike);
 	return Object.freeze({
 		kind: options.kind,
@@ -117,7 +118,7 @@ export function createResidualProgressiveAnalysis(options: {
 					method: "POST",
 					headers: {
 						"content-type": "application/json",
-						...options.headers,
+						...(options.headers),
 					},
 					body: JSON.stringify({
 						type: "io.hobo.progressive.analysis",
@@ -135,7 +136,7 @@ export function createResidualProgressiveAnalysis(options: {
 						reason: `${options.kind}-http-${res.status};fallback:${fb.reason}`,
 					});
 				}
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const body = (await res.json()) as {` is required at this I/O or test boundary.
 				const body = (await res.json()) as {
 					verdict?: ProgressiveAnalysisVerdict;
 					reason?: string;

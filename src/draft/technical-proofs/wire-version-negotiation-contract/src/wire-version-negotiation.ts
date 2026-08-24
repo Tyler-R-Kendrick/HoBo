@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased wire-contract values and provider handlers at the shared registration/link boundary before negotiation or invocation. */
-
+import { isJsonString } from "./json.js";
 const SEMVER_RE = /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/;
 
 export class WireVersionIncompatibleError extends Error {
@@ -88,7 +87,7 @@ class WireVersionLinker {
 
     const provider = this.#requireProvider(link.providerId);
     const handler = provider.handlers?.[link.exportInterface]?.[operation];
-    if (typeof handler !== "function") {
+    if (!(handler instanceof Function)) {
       throw new Error(`wrpc.operation_not_found: ${link.exportInterface}.${operation}`);
     }
     return handler(payload, link);
@@ -218,7 +217,7 @@ function dedupeVersions(candidates) {
 }
 
 function normalizeVersion(version) {
-  if (typeof version !== "string" || !SEMVER_RE.test(version)) {
+  if (!isJsonString(version) || !SEMVER_RE.test(version)) {
     throw new Error(`wrpc.invalid_semver: ${String(version)}`);
   }
   const [core] = version.split(/[+-]/, 1);
@@ -242,7 +241,7 @@ function linkKey(componentId, importInterface) {
 }
 
 function assertId(id, kind) {
-  if (typeof id !== "string" || id.length === 0) {
+  if (!isJsonString(id) || id.length === 0) {
     throw new Error(`wrpc.${kind}_id_required`);
   }
 }

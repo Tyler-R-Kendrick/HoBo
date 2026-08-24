@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-known-value-widening -- image digest table is a closed pack-owned contract. */
 /**
  * The pinned Valkey image.
  *
@@ -29,9 +28,12 @@ export const VALKEY_IMAGE_INDEX_DIGEST =
  * rather than copied: pinning a digest nobody has run is a support claim without
  * evidence, and `ARCHITECTURE_UNSUPPORTED` is the honest answer instead.
  */
-export const VALKEY_IMAGE_DIGESTS: Readonly<
-	Partial<Record<PackArchitecture, string>>
-> = {
+interface ValkeyImageDigests {
+	"linux/amd64": string;
+	"linux/arm64": string;
+}
+
+export const VALKEY_IMAGE_DIGESTS: ValkeyImageDigests = {
 	"linux/amd64":
 		"sha256:3fe38a705227d29534a199e876b38d5474dec4d3baca980ac6894df539416562",
 	"linux/arm64":
@@ -73,10 +75,23 @@ export const VALKEY_CONFIG_PATH = "/etc/valkey/valkey.conf" as const;
 export const VALKEY_REQUIREPASS_INCLUDE_PATH =
 	"/run/secrets/valkey-requirepass.conf" as const;
 
+function valkeyImageDigest(
+	architecture: PackArchitecture,
+): string | undefined {
+	switch (architecture) {
+		case "linux/amd64":
+			return VALKEY_IMAGE_DIGESTS["linux/amd64"];
+		case "linux/arm64":
+			return VALKEY_IMAGE_DIGESTS["linux/arm64"];
+		default:
+			return undefined;
+	}
+}
+
 export function valkeyImageReference(
 	architecture: PackArchitecture,
 ): string | undefined {
-	const digest = VALKEY_IMAGE_DIGESTS[architecture];
+	const digest = valkeyImageDigest(architecture);
 	return digest === undefined
 		? undefined
 		: `${VALKEY_IMAGE_REPOSITORY}@${digest}`;

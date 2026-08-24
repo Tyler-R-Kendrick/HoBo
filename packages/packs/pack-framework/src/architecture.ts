@@ -21,8 +21,10 @@ export const PACK_ARCHITECTURES = [
 export type PackArchitecture = (typeof PACK_ARCHITECTURES)[number];
 
 export function isPackArchitecture(value: string): value is PackArchitecture {
-	// SAFETY: membership in the closed literal list establishes the architecture union.
-	return (PACK_ARCHITECTURES as readonly string[]).includes(value);
+	for (const architecture of PACK_ARCHITECTURES) {
+		if (architecture === value) return true;
+	}
+	return false;
 }
 
 export function parsePackArchitecture(input: string): PackArchitecture {

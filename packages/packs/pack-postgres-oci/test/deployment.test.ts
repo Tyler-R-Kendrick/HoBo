@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-unknown-returns -- error assertion helper crosses the test boundary. */
 import assert from "node:assert/strict";
 import { PackError, parsePackConfiguration } from "@hobo/pack-framework";
 import { describe, it } from "vitest";
@@ -18,14 +17,23 @@ const VOLUME_BINDING = {
 	storage: { kind: "local-volume", volumeId: "vol-pg-0001" },
 } as const;
 
+interface PostgresConfigValues {
+	dataVolume: string;
+	superuserPasswordRef: string;
+	databaseName?: string;
+	ownerRole?: string;
+	hostAuthMethod?: string;
+	maxConnections?: number;
+}
+
 function configWith(
-	values: Record<string, string | number | boolean>,
+	values: PostgresConfigValues,
 	bindings: readonly (typeof VOLUME_BINDING)[] = [VOLUME_BINDING],
 ) {
 	return parsePackConfiguration(manifest, { values, volumeBindings: bindings });
 }
 
-function expectPackError(fn: () => unknown, code: string): void {
+function expectPackError(fn: () => void, code: string): void {
 	try {
 		fn();
 	} catch (error) {
@@ -173,4 +181,3 @@ describe("buildPostgresContainerSpec", () => {
 		);
 	});
 });
-/* eslint-disable anti-slop/no-unknown-returns -- error assertion helper crosses the test boundary. */

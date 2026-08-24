@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-unknown-returns -- assertion helper intentionally accepts throwing callbacks. */
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
@@ -9,7 +8,7 @@ import {
 } from "../src/index.js";
 import { FIXTURE_ANCHORS, fixtureManifest, stubVerifier } from "./harness.js";
 
-function expectPackError(fn: () => unknown, code: string): void {
+function expectPackError(fn: () => void, code: string): void {
 	try {
 		fn();
 	} catch (error) {
@@ -197,4 +196,3 @@ describe("verifyPackManifest", () => {
 		assert.ok(!manifest.signingPayload.includes('"signature"'));
 	});
 });
-/* eslint-disable anti-slop/no-unknown-returns -- assertion helper intentionally accepts throwing callbacks. */

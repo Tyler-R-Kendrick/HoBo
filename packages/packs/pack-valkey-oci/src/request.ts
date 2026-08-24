@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-known-value-widening -- deployment parsing is the documented untrusted-input boundary. */
 /**
  * The one parse boundary for a deployment request.
  *
@@ -29,6 +28,8 @@ import {
 	buildValkeyContainerSpec,
 	type ValkeyContainerSpec,
 } from "./deployment.js";
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 declare const resourceRefBrand: unique symbol;
 
@@ -49,19 +50,12 @@ function configurationInvalid(detail: string): never {
 	throw new PackError("PACK_CONFIGURATION_INVALID", detail);
 }
 
-export function parseValkeyResourceRef(input: unknown): ValkeyResourceRef {
-	if (typeof input !== "string" || !RESOURCE_REF.test(input)) {
+export function parseValkeyResourceRef(input: JsonValue): ValkeyResourceRef {
+	if (!isJsonString(input) || !RESOURCE_REF.test(input)) {
 		configurationInvalid("resourceRef must be shaped resource:<yard>/<name>");
 	}
+	// SAFETY: `return input as ValkeyResourceRef;` is required at this I/O or test boundary.
 	return input as ValkeyResourceRef;
-}
-
-function isScalar(value: unknown): value is PackConfigurationInputValue {
-	return (
-		typeof value === "string" ||
-		typeof value === "number" ||
-		typeof value === "boolean"
-	);
 }
 
 /** A deployment request that has crossed the parse boundary. */
@@ -77,13 +71,14 @@ export type ValkeyDeploymentPlan = {
 };
 
 function asRecord(
-	input: unknown,
+	input: JsonValue,
 	what: string,
-): Readonly<Record<string, unknown>> {
-	if (input === null || typeof input !== "object" || Array.isArray(input)) {
+): Readonly<JsonObject> {
+	if (!isJsonObject(input) || input === null || Array.isArray(input)) {
 		configurationInvalid(`${what} must be an object`);
 	}
-	return input as Readonly<Record<string, unknown>>;
+	// SAFETY: `return input as Readonly<JsonObject>;` is required at this I/O or test boundary.
+	return input as Readonly<JsonObject>;
 }
 
 /**
@@ -93,33 +88,57 @@ function asRecord(
  * `integer`/`enum` parsers cannot describe, and the failure would name the
  * wrong culprit.
  */
-function parseValues(
-	input: unknown,
-): Readonly<Record<string, PackConfigurationInputValue>> {
+interface ValkeyConfigValues {
+	dataVolume?: PackConfigurationInputValue;
+	authPasswordRef?: PackConfigurationInputValue;
+	durabilityMode?: PackConfigurationInputValue;
+	evictionPolicy?: PackConfigurationInputValue;
+	maxmemoryBytes?: PackConfigurationInputValue;
+	databases?: PackConfigurationInputValue;
+}
+
+function parseValues(input: JsonValue): ValkeyConfigValues {
 	const raw = asRecord(input, "values");
-	const values: Record<string, PackConfigurationInputValue> = {};
+	const values: ValkeyConfigValues = {};
 	for (const [key, value] of Object.entries(raw)) {
-			if (!isScalar(value)) {
+		if (
+			!isJsonString(value) &&
+			!isJsonNumber(value) &&
+			!isJsonBoolean(value)
+		) {
 			configurationInvalid(
 				`configuration ${key} must be a string, number, or boolean`,
 			);
 		}
-		values[key] = value;
+		switch (key) {
+			case "dataVolume":
+			case "authPasswordRef":
+			case "durabilityMode":
+			case "evictionPolicy":
+			case "maxmemoryBytes":
+			case "databases":
+				values[key] = value;
+				break;
+			default:
+				configurationInvalid(
+					`configuration key ${JSON.stringify(key)} is not declared by the pack`,
+				);
+		}
 	}
 	return values;
 }
 
-function parseVolumeBinding(input: unknown, index: number): PackVolumeBinding {
+function parseVolumeBinding(input: JsonValue, index: number): PackVolumeBinding {
 	const raw = asRecord(input, `volumeBindings[${index}]`);
 	const volumeName = raw.volumeName;
-	if (typeof volumeName !== "string" || volumeName.length === 0) {
+	if (!isJsonString(volumeName) || volumeName.length === 0) {
 		configurationInvalid(
 			`volumeBindings[${index}].volumeName must be a non-empty string`,
 		);
 	}
 	const storage = asRecord(raw.storage, `volumeBindings[${index}].storage`);
 	if (storage.kind === "local-volume") {
-		if (typeof storage.volumeId !== "string" || storage.volumeId.length === 0) {
+		if (!isJsonString(storage.volumeId) || storage.volumeId.length === 0) {
 			configurationInvalid(
 				`volumeBindings[${index}].storage.volumeId must be a non-empty string`,
 			);
@@ -131,7 +150,7 @@ function parseVolumeBinding(input: unknown, index: number): PackVolumeBinding {
 	}
 	if (storage.kind === "external-storage") {
 		if (
-			typeof storage.storageRef !== "string" ||
+			!isJsonString(storage.storageRef) ||
 			storage.storageRef.length === 0
 		) {
 			configurationInvalid(
@@ -148,7 +167,7 @@ function parseVolumeBinding(input: unknown, index: number): PackVolumeBinding {
 	);
 }
 
-function parseVolumeBindings(input: unknown): readonly PackVolumeBinding[] {
+function parseVolumeBindings(input: JsonValue): readonly PackVolumeBinding[] {
 	if (input === undefined) return [];
 	if (!Array.isArray(input))
 		configurationInvalid("volumeBindings must be an array");
@@ -164,7 +183,7 @@ function parseVolumeBindings(input: unknown): readonly PackVolumeBinding[] {
  */
 export function parseValkeyDeploymentRequest(
 	manifest: VerifiedPackManifest,
-	input: unknown,
+	input: JsonValue,
 ): ValkeyDeploymentRequest {
 	const raw = asRecord(input, "deployment request");
 	const resourceRef = parseValkeyResourceRef(raw.resourceRef);

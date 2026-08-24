@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */
 import assert from "node:assert/strict";
 import {
 	PackError,
@@ -24,6 +23,8 @@ import {
 	stubVerifier,
 	verifiedPostgresPack,
 } from "./harness.js";
+import { type JsonValue } from "../src/json.js";
+
 
 describe("the postgres pack manifest", () => {
 	it("parses and identifies itself as pack.postgres.oci/v1", () => {
@@ -59,7 +60,7 @@ describe("the postgres pack manifest", () => {
 	it("cannot be re-pinned to a tag", () => {
 		assert.throws(
 			() => parsePinnedImageRef(`${POSTGRES_IMAGE_REPOSITORY}:18-alpine`),
-			(error: unknown) => {
+			(error: JsonValue) => {
 				assert.ok(error instanceof PackError);
 				assert.equal(error.code, "PACK_INTEGRITY_UNVERIFIED");
 				return true;
@@ -174,7 +175,7 @@ describe("verification of the postgres pack", () => {
 					anchors: FIXTURE_ANCHORS,
 					requestedArchitecture: "linux/s390x",
 				}),
-			(error: unknown) => {
+			(error: JsonValue) => {
 				assert.ok(error instanceof PackError);
 				assert.equal(error.code, "ARCHITECTURE_UNSUPPORTED");
 				return true;
@@ -191,7 +192,7 @@ describe("verification of the postgres pack", () => {
 					anchors: FIXTURE_ANCHORS,
 					requestedArchitecture: "linux/amd64",
 				}),
-			(error: unknown) => {
+			(error: JsonValue) => {
 				assert.ok(error instanceof PackError);
 				assert.equal(error.code, "PACK_INTEGRITY_UNVERIFIED");
 				return true;
@@ -211,7 +212,7 @@ describe("verification of the postgres pack", () => {
 					},
 					requestedArchitecture: "linux/amd64",
 				}),
-			(error: unknown) => {
+			(error: JsonValue) => {
 				assert.ok(error instanceof PackError);
 				assert.equal(error.code, "PACK_INTEGRITY_UNVERIFIED");
 				return true;
@@ -232,7 +233,7 @@ describe("verification of the postgres pack", () => {
 					anchors: FIXTURE_ANCHORS,
 					requestedArchitecture: "linux/amd64",
 				}),
-			(error: unknown) => {
+			(error: JsonValue) => {
 				assert.ok(error instanceof PackError);
 				assert.equal(error.code, "PROVIDER_CONTRACT_CHANGED");
 				return true;
@@ -240,4 +241,3 @@ describe("verification of the postgres pack", () => {
 		);
 	});
 });
-/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */

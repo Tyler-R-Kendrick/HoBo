@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */
 import assert from "node:assert/strict";
 import { PackError } from "@hobo/pack-framework";
 import { describe, it } from "vitest";
@@ -14,6 +13,8 @@ import {
 	verifiedOtherPack,
 	verifiedValkeyPack,
 } from "./harness.js";
+import { type JsonValue } from "../src/json.js";
+
 
 const manifest = verifiedValkeyPack();
 
@@ -90,7 +91,7 @@ describe("buildValkeyBinding", () => {
 	it("refuses TLS without the certificate to verify against", () => {
 		assert.throws(
 			() => binding({ tls: true }),
-			(error: unknown) =>
+			(error: JsonValue) =>
 				error instanceof PackError &&
 				error.code === "PACK_CONFIGURATION_INVALID",
 		);
@@ -102,7 +103,7 @@ describe("buildValkeyBinding", () => {
 	it("rejects a database index outside the SELECT space", () => {
 		assert.throws(
 			() => binding({ database: 300 }),
-			(error: unknown) =>
+			(error: JsonValue) =>
 				error instanceof PackError &&
 				error.code === "PACK_CONFIGURATION_INVALID",
 		);
@@ -130,9 +131,8 @@ describe("buildValkeyBinding", () => {
 					retention: DURABLE,
 					producerEvidenceRef: "evidence:pack/valkey/cache-main",
 				}),
-			(error: unknown) =>
+			(error: JsonValue) =>
 				error instanceof PackError && error.code === "PACK_MANIFEST_INVALID",
 		);
 	});
 });
-/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */

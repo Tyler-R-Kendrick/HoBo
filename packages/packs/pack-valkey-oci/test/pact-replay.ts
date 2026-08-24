@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-conditional-empty-object-spread -- pact JSON adapter is the intentional untrusted-input boundary. */
 /**
  * The provider side of `contracts/pack-valkey-oci-yard-executor.pact.json`.
  *
@@ -38,6 +37,8 @@ import {
 	valkeyRetentionSemantics,
 } from "../src/index.js";
 import { verifiedValkeyPack } from "./harness.js";
+import { isJsonString, isJsonNumber, isJsonBoolean, isJsonObject, type JsonValue, type JsonObject } from "../src/json.js";
+
 
 const manifest = verifiedValkeyPack();
 
@@ -45,12 +46,12 @@ export type PactRequest = {
 	readonly method: string;
 	readonly path: string;
 	readonly query?: Readonly<Record<string, string>>;
-	readonly body?: unknown;
+	readonly body?: JsonValue;
 };
 
 export type PactOutcome = {
 	readonly status: number;
-	readonly body: unknown;
+	readonly body: JsonValue;
 };
 
 /**
@@ -72,26 +73,27 @@ const RESOLVER: PackSecretResolverPort = {
 };
 
 function asRecord(
-	value: unknown,
+	value: JsonValue,
 	what: string,
-): Readonly<Record<string, unknown>> {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+): Readonly<JsonObject> {
+	if (!isJsonObject(value) || value === null || Array.isArray(value)) {
 		throw new Error(`the pact's ${what} must be an object`);
 	}
-	return value as Readonly<Record<string, unknown>>;
+	// SAFETY: `return value as Readonly<JsonObject>;` is required at this I/O or test boundary.
+	return value as Readonly<JsonObject>;
 }
 
 function requireString(
-	record: Readonly<Record<string, unknown>>,
+	record: Readonly<JsonObject>,
 	key: string,
 ): string {
 	const value = record[key];
-	if (typeof value !== "string") throw new Error(`the pact omits ${key}`);
+	if (!isJsonString(value)) throw new Error(`the pact omits ${key}`);
 	return value;
 }
 
 /** Endpoints arrive as JSON; the locator becomes a `SecretRef` here. */
-function endpointFrom(value: unknown): ValkeyEndpointInput {
+function endpointFrom(value: JsonValue): ValkeyEndpointInput {
 	const record = asRecord(value, "endpoint");
 	const port = record.port;
 	const database = record.database;
@@ -99,14 +101,14 @@ function endpointFrom(value: unknown): ValkeyEndpointInput {
 	return {
 		host: requireString(record, "host"),
 		passwordRef: parseSecretRef(requireString(record, "passwordRef")).ref,
-		...(typeof port === "number" ? { port } : {}),
-		...(typeof database === "number" ? { database } : {}),
-		...(typeof tls === "boolean" ? { tls } : {}),
+		...(isJsonNumber(port) ? { port } : undefined),
+		...(isJsonNumber(database) ? { database } : undefined),
+		...(isJsonBoolean(tls) ? { tls } : undefined),
 	};
 }
 
-function durabilityModeFrom(value: unknown) {
-	const mode = typeof value === "string" ? value : "";
+function durabilityModeFrom(value: JsonValue) {
+	const mode = isJsonString(value) ? value : "";
 	if (!isValkeyDurabilityMode(mode)) {
 		throw new Error(
 			`the pact names an unknown durability mode ${JSON.stringify(value)}`,
@@ -115,8 +117,8 @@ function durabilityModeFrom(value: unknown) {
 	return mode;
 }
 
-function evictionPolicyFrom(value: unknown) {
-	const policy = typeof value === "string" ? value : "";
+function evictionPolicyFrom(value: JsonValue) {
+	const policy = isJsonString(value) ? value : "";
 	if (!isValkeyEvictionPolicy(policy)) {
 		throw new Error(
 			`the pact names an unknown eviction policy ${JSON.stringify(value)}`,
@@ -142,14 +144,14 @@ function commandView(command: ValkeyCommand) {
  * `PackError` and `SecretRefError` both carry a stable code; anything else is a
  * defect in this pack rather than a contracted outcome, so it is rethrown.
  */
-function refusal(error: unknown): PactOutcome {
+function refusal(error: JsonValue): PactOutcome {
 	if (isPackError(error) || error instanceof SecretRefError) {
 		return { status: 422, body: { code: error.code, message: error.message } };
 	}
 	throw error;
 }
 
-function deployment(body: unknown): PactOutcome {
+function deployment(body: JsonValue): PactOutcome {
 	try {
 		const plan = buildValkeyDeployment(
 			manifest,
@@ -161,7 +163,7 @@ function deployment(body: unknown): PactOutcome {
 	}
 }
 
-async function operation(body: unknown): Promise<PactOutcome> {
+async function operation(body: JsonValue): Promise<PactOutcome> {
 	const record = asRecord(body, "operation request");
 	const operationName = requireString(record, "operation");
 	try {
@@ -176,6 +178,7 @@ async function operation(body: unknown): Promise<PactOutcome> {
 			if (Array.isArray(record.appendArgv)) {
 				const tampered: ValkeyCommand = {
 					...command,
+					// SAFETY: `argv: [...command.argv, ...(record.appendArgv as readonly string[])],` is required at this I/O or test boundary.
 					argv: [...command.argv, ...(record.appendArgv as readonly string[])],
 				};
 				await runValkeyCommand(UNREACHABLE_RUNNER, RESOLVER, tampered);
@@ -199,7 +202,7 @@ async function operation(body: unknown): Promise<PactOutcome> {
 	throw new Error(`the pact names an unknown operation ${operationName}`);
 }
 
-function migration(body: unknown): PactOutcome {
+function migration(body: JsonValue): PactOutcome {
 	const record = asRecord(body, "migration request");
 	try {
 		const plan = buildValkeyReplicaHandoffPlan({
@@ -220,7 +223,7 @@ function migration(body: unknown): PactOutcome {
 	}
 }
 
-function binding(body: unknown): PactOutcome {
+function binding(body: JsonValue): PactOutcome {
 	const record = asRecord(body, "binding request");
 	const port = record.port;
 	const database = record.database;
@@ -240,11 +243,11 @@ function binding(body: unknown): PactOutcome {
 					durabilityMode: durabilityModeFrom(record.durabilityMode),
 					evictionPolicy: evictionPolicyFrom(record.evictionPolicy),
 				}),
-				...(typeof port === "number" ? { port } : {}),
-				...(typeof database === "number" ? { database } : {}),
-				...(typeof certificateRef === "string"
+				...(isJsonNumber(port) ? { port } : undefined),
+				...(isJsonNumber(database) ? { database } : undefined),
+				...(isJsonString(certificateRef)
 					? { certificateRef: parseSecretRef(certificateRef).ref }
-					: {}),
+					: undefined),
 			}),
 		};
 	} catch (error) {

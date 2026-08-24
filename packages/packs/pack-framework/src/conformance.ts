@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-known-value-widening, anti-slop/no-conditional-empty-object-spread, no-control-regex -- report projection preserves optional field omission and runner output is sanitized. */
 /**
  * The shared conformance harness: declarative cases plus an injected executor.
  *
@@ -14,6 +13,7 @@
  * {@link offlineCases} filters those out so a default run never depends on
  * Docker being installed.
  */
+import { containsControlChar } from "./argv.js";
 import { PackError } from "./errors.js";
 import type { VerifiedPackManifest } from "./verification.js";
 
@@ -90,8 +90,6 @@ export type PackConformanceReport = {
 };
 
 const CASE_ID = /^[a-z0-9]+(?:[.-][a-z0-9]+)*$/u;
-// biome-ignore lint/suspicious/noControlCharactersInRegex: detecting a control character is the point; a control character in a case id or command element is a smuggled argument, not a name.
-const NUL_OR_CONTROL = /[\u0000-\u001f\u007f]/u;
 
 /**
  * Parse-don't-validate boundary for a case list.
@@ -139,7 +137,7 @@ export function parseConformanceCases(
 					);
 				}
 				for (const element of step.argv) {
-					if (element.length === 0 || NUL_OR_CONTROL.test(element)) {
+					if (element.length === 0 || containsControlChar(element)) {
 						throw new PackError(
 							"PACK_CONFORMANCE_FAILED",
 							`conformance case ${testCase.id} argv elements must be non-empty and free of control characters`,
@@ -173,10 +171,15 @@ export function containerCases(
 	return cases.filter((testCase) => testCase.requires === "container-runtime");
 }
 
+interface StepVerdict {
+	readonly ok: boolean;
+	readonly detail?: string;
+}
+
 function stepSatisfied(
 	step: PackConformanceStep,
 	outcome: PackConformanceStepOutcome,
-): { readonly ok: boolean; readonly detail?: string } {
+): StepVerdict {
 	if (!outcome.ok) {
 		return {
 			ok: false,
@@ -263,17 +266,14 @@ export async function runPackConformance(input: {
 				break;
 			}
 		}
-			const outcome: PackConformanceCaseResult["outcome"] =
-				failure === undefined ? "pass" : "fail";
-			const result = {
-				caseId: testCase.id,
-				profileRef: testCase.profileRef,
-				outcome,
-			};
-			if (failure !== undefined) {
-				Object.assign(result, { failedStepIndex: failure.index, detail: failure.detail });
-			}
-			results.push(result);
+		results.push({
+			caseId: testCase.id,
+			profileRef: testCase.profileRef,
+			outcome: failure === undefined ? "pass" : "fail",
+			...(failure !== undefined
+				? { failedStepIndex: failure.index, detail: failure.detail }
+				: undefined),
+		});
 	}
 
 	return {

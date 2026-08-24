@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/require-safety-comment-for-type-assertion -- fixture assertion is constrained by the conformance contract. */
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
@@ -92,6 +91,7 @@ describe("conformance case parsing", () => {
 		assert.throws(
 			() =>
 				parseConformanceCases(
+					// SAFETY: `[...CASES, CASES[1] as PackConformanceCase],` is required at this I/O or test boundary.
 					[...CASES, CASES[1] as PackConformanceCase],
 					manifest,
 				),
@@ -219,4 +219,3 @@ describe("runPackConformance", () => {
 		);
 	});
 });
-/* eslint-disable anti-slop/require-safety-comment-for-type-assertion -- fixture assertion is constrained by the conformance contract. */

@@ -11,6 +11,8 @@ import {
 	parseEnvRouting,
 	parseSwaghausBindle,
 } from "../src/index.ts";
+import { type JsonValue } from "../src/json.js";
+
 
 const repoRoot = path.resolve(import.meta.dirname, "../../../../../..");
 const APP_ROOT = "examples/convex-swaghaus";
@@ -56,6 +58,7 @@ describe("manifest parse boundary", () => {
 	});
 
 	it("refuses an env name with no declared Bindle routing", () => {
+		// SAFETY: `expect(() => parseEnvRouting("STRIPE_SECRET" as never)).toThrow(` is required at this I/O or test boundary.
 		expect(() => parseEnvRouting("STRIPE_SECRET" as never)).toThrow(
 			/no Bindle routing is declared/u,
 		);
@@ -63,7 +66,8 @@ describe("manifest parse boundary", () => {
 
 	it("refuses a provider pin on the Bindle", () => {
 		const manifest = draftSwaghausManifest({ root: APP_ROOT });
-		const web = manifest.resources.web as { annotations: unknown[] };
+		// SAFETY: `const web = manifest.resources.web as { annotations: JsonValue[] };` is required at this I/O or test boundary.
+		const web = manifest.resources.web as { annotations: JsonValue[] };
 		web.annotations.push({
 			provider: "convex",
 			option: "deployment",
@@ -76,7 +80,8 @@ describe("manifest parse boundary", () => {
 
 	it("refuses plaintext secret material in annotation config", () => {
 		const manifest = draftSwaghausManifest({ root: APP_ROOT });
-		const web = manifest.resources.web as { annotations: unknown[] };
+		// SAFETY: `const web = manifest.resources.web as { annotations: JsonValue[] };` is required at this I/O or test boundary.
+		const web = manifest.resources.web as { annotations: JsonValue[] };
 		web.annotations.push({
 			provider: "hobo",
 			option: "webapp",
@@ -92,6 +97,7 @@ describe("manifest parse boundary", () => {
 		const trimmed = {
 			...manifest,
 			edges: manifest.edges.filter(
+				// SAFETY: `(edge) => (edge as { to: string }).to !== "auth",` is required at this I/O or test boundary.
 				(edge) => (edge as { to: string }).to !== "auth",
 			),
 		};

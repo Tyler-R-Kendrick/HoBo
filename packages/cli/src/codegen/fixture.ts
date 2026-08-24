@@ -3,6 +3,8 @@ import { dirname, join } from "node:path";
 
 import { stableStringify } from "./text.js";
 import { type CodegenLayout, defaultCodegenLayout } from "./types.js";
+import { type JsonValue } from "../json.js";
+
 
 // The canonical ticket/incident fixture project used by build/codegen tests
 // and CI timing gates. `reverse` shuffles source ordering to prove the
@@ -35,12 +37,16 @@ export async function writeFixtureProject(
 	);
 }
 
-export function fixtureSources(options: CodegenFixtureOptions = {}): {
+export interface FixtureSources {
 	readonly wit: string;
-	readonly zod: unknown;
-	readonly allow: unknown;
-	readonly bindle: unknown;
-} {
+	readonly zod: JsonValue;
+	readonly allow: JsonValue;
+	readonly bindle: JsonValue;
+}
+
+export function fixtureSources(
+	options: CodegenFixtureOptions = {},
+): FixtureSources {
 	const reverse = options.reverse === true;
 	const resourceEntries: readonly (readonly [string, unknown])[] = [
 		[
@@ -130,7 +136,7 @@ export function fixtureSources(options: CodegenFixtureOptions = {}): {
 	};
 }
 
-async function writeJson(path: string, value: unknown): Promise<void> {
+async function writeJson(path: string, value: JsonValue): Promise<void> {
 	await writeText(path, stableStringify(value));
 }
 

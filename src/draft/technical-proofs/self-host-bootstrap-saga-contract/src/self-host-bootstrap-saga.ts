@@ -1,6 +1,6 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased event and value inputs at the saga's shared parser boundaries. */
-
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const completedType = "bootstrap.Completed";
 const attemptStartedType = "bootstrap.AttemptStarted";
@@ -387,7 +387,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -408,7 +408,7 @@ function codedError(code, message) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new TypeError(`${fieldName} is required`);
   }
   return value.trim();
@@ -419,7 +419,7 @@ function clone(value) {
 }
 
 function freeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

@@ -487,12 +487,18 @@ export function parseVibeDocsPortalIaStates(
     throw new VibeDocsPortalIaStatesParseError(validation.errors);
   }
 
+  // SAFETY: `return states as ParsedVibeDocsPortalIaStates;` is required at this I/O or test boundary.
   return states as ParsedVibeDocsPortalIaStates;
+}
+
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
 }
 
 export function validateVibeDocsPortalIaStates(
   states: VibeDocsPortalIaStates,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (states.issue !== "HOBO-551") {

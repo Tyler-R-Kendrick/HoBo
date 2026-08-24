@@ -17,6 +17,8 @@ import {
 	startCodeSession,
 	validateLockedVisual,
 } from "@hobo/code";
+import { isJsonString, isJsonBoolean, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const EXPERIENCE_ID = "hobo-code-harness-experience" as const;
 
@@ -33,24 +35,25 @@ export interface ExperienceResult {
  * Parse, don't validate: untrusted experience outcome becomes a frozen derived
  * domain type or throws.
  */
-export function parseExperienceResult(input: unknown): ExperienceResult {
-	if (!input || typeof input !== "object" || Array.isArray(input)) {
+export function parseExperienceResult(input: JsonValue): ExperienceResult {
+	if (!input || !isJsonObject(input) || Array.isArray(input)) {
 		throw new TypeError("ExperienceResult must be an object");
 	}
-	const source = input as Record<string, unknown>;
+	// SAFETY: `const source = input as JsonObject;` is required at this I/O or test boundary.
+	const source = input as JsonObject;
 	const orphans = Array.isArray(source.orphans)
-		? source.orphans.filter((o): o is string => typeof o === "string")
+		? source.orphans.filter((o): o is string => isJsonString(o))
 		: [];
-	if (typeof source.isolationClean !== "boolean") {
+	if (!isJsonBoolean(source.isolationClean)) {
 		throw new TypeError("isolationClean must be boolean");
 	}
-	if (typeof source.templateOk !== "boolean") {
+	if (!isJsonBoolean(source.templateOk)) {
 		throw new TypeError("templateOk must be boolean");
 	}
-	if (typeof source.visualOk !== "boolean") {
+	if (!isJsonBoolean(source.visualOk)) {
 		throw new TypeError("visualOk must be boolean");
 	}
-	if (typeof source.evidenceOk !== "boolean") {
+	if (!isJsonBoolean(source.evidenceOk)) {
 		throw new TypeError("evidenceOk must be boolean");
 	}
 	return Object.freeze({

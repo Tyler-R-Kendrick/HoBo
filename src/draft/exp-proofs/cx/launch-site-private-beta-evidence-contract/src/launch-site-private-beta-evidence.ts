@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this validator rejects non-object values at the erased proof boundary before reading contract fields. */
-
+import { isJsonObject } from "./json.js";
 const REQUIRED_DEMO_ASSETS = new Set([
   "claim-index",
   "demo-script",
@@ -245,7 +244,7 @@ export const launchSitePrivateBetaEvidence = {
 export function validateLaunchSitePrivateBetaEvidence(record: typeof launchSitePrivateBetaEvidence) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["launch site private beta evidence is required"] };
   }
   if (record.issue !== "HOBO-465") errors.push("issue must be HOBO-465");

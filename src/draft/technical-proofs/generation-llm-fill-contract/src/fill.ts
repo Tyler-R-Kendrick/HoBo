@@ -1,5 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased contract values at the validation boundary. */
-
 import { createHash } from "node:crypto";
 
 import {
@@ -8,6 +6,8 @@ import {
   validateGenerationEvent
 } from "../../generation-pipeline-io-contract/src/contract.js";
 import { validateScaffoldCandidate } from "../../generation-scaffold-stage-contract/src/scaffold.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const fillCandidateSchema = "hobo.gen.llm-fill-candidate/v1";
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
@@ -295,7 +295,7 @@ function sha256Digest(value) {
 }
 
 function assertObject(value, code, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new FillContractError(code, path);
   }
 }
@@ -307,7 +307,7 @@ function assertEqual(actual, expected, code, path) {
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new FillContractError(code, path);
   }
 }
@@ -320,13 +320,13 @@ function assertDigest(value, code, path) {
 }
 
 function assertStringArray(value, code, path) {
-  if (!Array.isArray(value) || !value.every((item) => typeof item === "string" && item.length > 0)) {
+  if (!Array.isArray(value) || !value.every((item) => isJsonString(item) && item.length > 0)) {
     throw new FillContractError(code, path);
   }
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
 

@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export type DogfoodYardGaEvidenceStatus = "accepted" | "accepted-risk" | "in-review" | "missing";
 export type DogfoodYardGaProofMode = "design-record" | "issue-state" | "manual-review" | "release-cutline";
 export type DogfoodYardGaBlockerState = "blocked" | "accepted-risk" | "cleared";
@@ -335,13 +336,14 @@ export function parseDogfoodYardGaHandoffEvidence(
   });
 }
 
-export function validateDogfoodYardGaHandoffEvidence(record: unknown) {
+export function validateDogfoodYardGaHandoffEvidence(record: JsonValue) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["Dogfood Yard GA handoff evidence record is required"] };
   }
 
+  // SAFETY: `const value = record as Partial<DogfoodYardGaHandoffEvidenceRecord>;` is required at this I/O or test boundary.
   const value = record as Partial<DogfoodYardGaHandoffEvidenceRecord>;
   const evidence = Array.isArray(value.evidence) ? value.evidence : [];
   const blockers = Array.isArray(value.blockers) ? value.blockers : [];

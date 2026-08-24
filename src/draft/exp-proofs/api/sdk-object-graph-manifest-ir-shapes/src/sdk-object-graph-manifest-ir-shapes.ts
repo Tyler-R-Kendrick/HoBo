@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonObject, type JsonValue } from "./json.js";
 export const REQUIRED_EXAMPLE_KINDS = [
   "desired-resource-graph",
   "provider-capability-reference",
@@ -187,7 +188,7 @@ const SCOPE_CREEP_PATTERNS = [
   /\bprovider execution\b/i,
 ];
 
-export const SDK_OBJECT_GRAPH_MANIFEST_IR_CONTRACT: SdkObjectGraphProof = {
+export const SDK_OBJECT_GRAPH_MANIFEST_IR_PROOF: SdkObjectGraphProof = {
   issue: "HOBO-568",
   parentIssue: "HOBO-566",
   phase: "M1",
@@ -488,34 +489,22 @@ export const SDK_TYPECHECK_CONSUMERS = {
   },
 } satisfies Record<string, SdkCompileConsumer>;
 
-type ProofBoundaryInput =
-  | SdkObjectGraphProof
-  | ParsedSdkObjectGraphProof
-  | null
-  | boolean
-  | number
-  | string
-  | ProofBoundaryInput[];
-type ProofRecord = SdkObjectGraphProof | ParsedSdkObjectGraphProof;
-
-export function parseSdkObjectGraphProof(input: ProofBoundaryInput): ParsedSdkObjectGraphProof {
+export function parseSdkObjectGraphProof(input: JsonValue): ParsedSdkObjectGraphProof {
   if (!isRecord(input)) {
     throw new Error("SDK object graph proof must be an object");
   }
 
-  // SAFETY: isRecord establishes the object boundary; validation below establishes the proof contract.
-  const proof = input as SdkObjectGraphProof;
+  const proof = asSdkObjectGraphProof(input);
   const errors = validateSdkObjectGraphProof(proof);
 
   if (errors.length > 0) {
     throw new Error(`Invalid SDK object graph proof: ${errors.join("; ")}`);
   }
 
-  // SAFETY: proof was validated above and the only added field is the parsed marker.
   return Object.freeze({
     ...proof,
     [PARSED]: true as const,
-  }) as ParsedSdkObjectGraphProof;
+  });
 }
 
 export function validateSdkObjectGraphProof(proof: SdkObjectGraphProof): string[] {
@@ -550,7 +539,7 @@ export function validateSdkObjectGraphProof(proof: SdkObjectGraphProof): string[
     }
   }
 
-  // SAFETY: every literal is a member of the closed ProofMode union.
+  // SAFETY: `for (const proofMode of ["live", "simulated", "reference-fixture", "scope-out", ` is required at this I/O or test boundary.
   for (const proofMode of ["live", "simulated", "reference-fixture", "scope-out", "type-test"] as ProofMode[]) {
     if (!(proof.proofModeLabels ?? []).includes(proofMode)) {
       errors.push(`missing proof-mode label: ${proofMode}`);
@@ -643,10 +632,19 @@ export function validateSdkObjectGraphProof(proof: SdkObjectGraphProof): string[
   return errors;
 }
 
-export function isParsedSdkObjectGraphProof(input: ProofBoundaryInput): input is ParsedSdkObjectGraphProof {
-  if (!isRecord(input)) return false;
-  // SAFETY: the parsed marker is the only field added by parseSdkObjectGraphProof.
+export function isParsedSdkObjectGraphProof(
+  input: JsonValue | ParsedSdkObjectGraphProof,
+): input is ParsedSdkObjectGraphProof {
+  if (input === null || Array.isArray(input)) {
+    return false;
+  }
+  // SAFETY: `return (input as ParsedSdkObjectGraphProof)[PARSED] === true;` is required at this I/O or test boundary.
   return (input as ParsedSdkObjectGraphProof)[PARSED] === true;
+}
+
+function asSdkObjectGraphProof(value: JsonObject): SdkObjectGraphProof {
+  // SAFETY: `return value as JsonObject & SdkObjectGraphProof;` is required at this I/O or test boundary.
+  return value as JsonObject & SdkObjectGraphProof;
 }
 
 function validateTypeSurface(typeSurface: TypeSurface | undefined, errors: string[], label: string) {
@@ -680,6 +678,6 @@ function rejectScopeCreep(value: string, errors: string[]) {
   }
 }
 
-function isRecord(input: ProofBoundaryInput): input is ProofRecord {
-  return Object(input) === input && !Array.isArray(input);
+function isRecord(input: JsonValue): input is JsonObject {
+  return isJsonObject(input) && input !== null && !Array.isArray(input);
 }

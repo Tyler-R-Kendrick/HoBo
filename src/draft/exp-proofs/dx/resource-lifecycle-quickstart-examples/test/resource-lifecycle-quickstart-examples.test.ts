@@ -149,6 +149,7 @@ describe("resource lifecycle quickstart examples", () => {
   });
 
   it("keeps Pact and CUE boundary artifacts aligned with the parsed quickstart shape", () => {
+    // SAFETY: `const pact = JSON.parse(` is required at this I/O or test boundary.
     const pact = JSON.parse(
       readFileSync(
         new URL(

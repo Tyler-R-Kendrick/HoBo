@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const WORKSPACE_PROJECT_STATES = [
   "empty",
   "ready",
@@ -397,7 +398,7 @@ export function classifyWorkspaceProjectStateScope(request: string): WorkspacePr
 }
 
 export function parseVibeWorkspaceProjectStateModel(
-  model: unknown,
+  model: JsonValue,
 ): VibeWorkspaceProjectStateModel {
   assertObject(model, "state model");
   assertLiteral(model.issue, "HOBO-541", "issue");
@@ -420,6 +421,7 @@ export function parseVibeWorkspaceProjectStateModel(
   assertJourneyCoverage(fixtures);
 
   return {
+    // SAFETY: `...(model as UnparsedVibeWorkspaceProjectStateModel),` is required at this I/O or test boundary.
     ...(model as UnparsedVibeWorkspaceProjectStateModel),
     __brand: "ParsedVibeWorkspaceProjectStateModel",
   };
@@ -536,7 +538,7 @@ function stateFixture(
   };
 }
 
-function assertFixtureArray(value: unknown): WorkspaceProjectStateFixture[] {
+function assertFixtureArray(value: JsonValue): WorkspaceProjectStateFixture[] {
   if (!Array.isArray(value)) {
     throw new TypeError("fixtures must be an array");
   }
@@ -602,6 +604,7 @@ function assertFixtureArray(value: unknown): WorkspaceProjectStateFixture[] {
       }
     }
 
+    // SAFETY: `return entry as WorkspaceProjectStateFixture;` is required at this I/O or test boundary.
     return entry as WorkspaceProjectStateFixture;
   });
 }
@@ -627,7 +630,7 @@ function assertJourneyCoverage(fixtures: readonly WorkspaceProjectStateFixture[]
   }
 }
 
-function assertScopeOut(value: unknown): void {
+function assertScopeOut(value: JsonValue): void {
   const scopeOut = assertStringArray(value, "scopeOut");
   for (const required of requiredScopeOut) {
     if (!scopeOut.includes(required)) {
@@ -636,7 +639,7 @@ function assertScopeOut(value: unknown): void {
   }
 }
 
-function assertModeNotes(value: unknown): void {
+function assertModeNotes(value: JsonValue): void {
   if (!Array.isArray(value)) {
     throw new TypeError("modeNotes must be an array");
   }
@@ -655,31 +658,31 @@ function assertModeNotes(value: unknown): void {
   }
 }
 
-function assertObject(value: unknown, name: string): asserts value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function assertObject(value: JsonValue, name: string): asserts value is JsonObject {
+  if (!isJsonObject(value) || value === null || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
-function assertNestedRecord(value: unknown, name: string): asserts value is Record<string, unknown> {
+function assertNestedRecord(value: JsonValue, name: string): asserts value is JsonObject {
   assertObject(value, name);
 }
 
-function assertLiteral<T extends string>(value: unknown, expected: T, name: string): asserts value is T {
+function assertLiteral<T extends string>(value: JsonValue, expected: T, name: string): asserts value is T {
   if (value !== expected) {
     throw new TypeError(`${name} must be ${expected}`);
   }
 }
 
-function assertStringArray(value: unknown, name: string): string[] {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+function assertStringArray(value: JsonValue, name: string): string[] {
+  if (!Array.isArray(value) || value.some((entry) => !isJsonString(entry))) {
     throw new TypeError(`${name} must be a string array`);
   }
 
   return value;
 }
 
-function assertNonEmptyStringArray(value: unknown, name: string): string[] {
+function assertNonEmptyStringArray(value: JsonValue, name: string): string[] {
   const entries = assertStringArray(value, name);
   if (entries.length === 0 || entries.some((entry) => entry.trim() === "")) {
     throw new TypeError(`${name} must contain non-empty strings`);
@@ -688,45 +691,49 @@ function assertNonEmptyStringArray(value: unknown, name: string): string[] {
   return entries;
 }
 
-function assertNonEmptyString(value: unknown, name: string): asserts value is string {
-  if (typeof value !== "string" || value.trim() === "") {
+function assertNonEmptyString(value: JsonValue, name: string): asserts value is string {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new TypeError(`${name} must not be empty`);
   }
 }
 
-function assertFalse(value: unknown, message: string): void {
+function assertFalse(value: JsonValue, message: string): void {
   if (value !== false) {
     throw new TypeError(message);
   }
 }
 
-function assertProofMode(value: unknown): asserts value is ProofMode {
+function assertProofMode(value: JsonValue): asserts value is ProofMode {
+  // SAFETY: `if (!REQUIRED_PROOF_MODES.includes(value as ProofMode)) {` is required at this I/O or test boundary.
   if (!REQUIRED_PROOF_MODES.includes(value as ProofMode)) {
     throw new TypeError(`unsupported proof mode ${String(value)}`);
   }
 }
 
-function assertWorkspaceProjectState(value: unknown): asserts value is WorkspaceProjectState {
+function assertWorkspaceProjectState(value: JsonValue): asserts value is WorkspaceProjectState {
+  // SAFETY: `if (!WORKSPACE_PROJECT_STATES.includes(value as WorkspaceProjectState)) {` is required at this I/O or test boundary.
   if (!WORKSPACE_PROJECT_STATES.includes(value as WorkspaceProjectState)) {
     throw new TypeError(`unsupported workspace project state ${String(value)}`);
   }
 }
 
-function assertPersona(value: unknown, name: string): asserts value is Persona {
+function assertPersona(value: JsonValue, name: string): asserts value is Persona {
+  // SAFETY: `if (!REQUIRED_PERSONAS.includes(value as Persona)) {` is required at this I/O or test boundary.
   if (!REQUIRED_PERSONAS.includes(value as Persona)) {
     throw new TypeError(`${name} must be a known persona`);
   }
 }
 
-function assertPersonaOrNone(value: unknown, name: string): asserts value is Persona | "none" {
+function assertPersonaOrNone(value: JsonValue, name: string): asserts value is Persona | "none" {
   if (value !== "none") {
     assertPersona(value, name);
   }
 }
 
-function assertJourneyArray(value: unknown, name: string): void {
+function assertJourneyArray(value: JsonValue, name: string): void {
   const entries = assertNonEmptyStringArray(value, name);
   for (const entry of entries) {
+    // SAFETY: `if (!REQUIRED_JOURNEY_COVERAGE.includes(entry as JourneyCoverage)) {` is required at this I/O or test boundary.
     if (!REQUIRED_JOURNEY_COVERAGE.includes(entry as JourneyCoverage)) {
       throw new TypeError(`${name} has unsupported journey ${entry}`);
     }

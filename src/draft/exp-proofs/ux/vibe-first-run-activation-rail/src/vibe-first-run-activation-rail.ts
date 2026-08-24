@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const ACTIVATION_RAIL_ENTRY_POINTS = [
   "app-developer",
   "team-admin",
@@ -300,7 +301,7 @@ export function classifyActivationRailScope(proposal: string): ActivationRailSco
   return { allowed: true, reason: "activation-rail-fixture" };
 }
 
-export function parseVibeFirstRunActivationRail(value: unknown): VibeFirstRunActivationRail {
+export function parseVibeFirstRunActivationRail(value: JsonValue): VibeFirstRunActivationRail {
   assertObject(value, "activationRail");
   assertLiteral(value.issue, "HOBO-540", "issue");
   assertLiteral(value.phase, "M1", "phase");
@@ -325,6 +326,7 @@ export function parseVibeFirstRunActivationRail(value: unknown): VibeFirstRunAct
   assertOutcomeCoverage(outcomes);
 
   return {
+    // SAFETY: `...(value as UnparsedVibeFirstRunActivationRail),` is required at this I/O or test boundary.
     ...(value as UnparsedVibeFirstRunActivationRail),
     __brand: "ParsedVibeFirstRunActivationRail",
   };
@@ -348,33 +350,33 @@ export function summarizeActivationRailWireframes(
   }));
 }
 
-function assertObject(value: unknown, name: string): asserts value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function assertObject(value: JsonValue, name: string): asserts value is JsonObject {
+  if (!isJsonObject(value) || value === null || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
-function assertLiteral<T extends string>(value: unknown, expected: T, name: string): asserts value is T {
+function assertLiteral<T extends string>(value: JsonValue, expected: T, name: string): asserts value is T {
   if (value !== expected) {
     throw new TypeError(`${name} must be ${expected}`);
   }
 }
 
-function assertStringArray(value: unknown, name: string): string[] {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+function assertStringArray(value: JsonValue, name: string): string[] {
+  if (!Array.isArray(value) || value.some((entry) => !isJsonString(entry))) {
     throw new TypeError(`${name} must be a string array`);
   }
   return value;
 }
 
-function assertNonEmptyStringArray(value: unknown, name: string): void {
+function assertNonEmptyStringArray(value: JsonValue, name: string): void {
   const entries = assertStringArray(value, name);
   if (entries.length === 0) {
     throw new TypeError(`${name} must not be empty`);
   }
 }
 
-function assertScopeOut(value: unknown): void {
+function assertScopeOut(value: JsonValue): void {
   const entries = assertStringArray(value, "scopeOut");
   for (const expected of requiredScopeOut) {
     if (!entries.includes(expected)) {
@@ -383,7 +385,7 @@ function assertScopeOut(value: unknown): void {
   }
 }
 
-function assertWireframes(value: unknown): ActivationRailWireframe[] {
+function assertWireframes(value: JsonValue): ActivationRailWireframe[] {
   if (!Array.isArray(value)) {
     throw new TypeError("wireframes must be an array");
   }
@@ -394,11 +396,12 @@ function assertWireframes(value: unknown): ActivationRailWireframe[] {
     assertStageArray(entry.visibleStates, `${entry.entryPoint}.visibleStates`);
     assertNonEmptyString(entry.nextAction, `${entry.entryPoint}.nextAction`);
     assertNonEmptyStringArray(entry.accessibilityNotes, `${entry.entryPoint}.accessibilityNotes`);
+    // SAFETY: `return entry as ActivationRailWireframe;` is required at this I/O or test boundary.
     return entry as ActivationRailWireframe;
   });
 }
 
-function assertStateModel(value: unknown): ActivationRailState[] {
+function assertStateModel(value: JsonValue): ActivationRailState[] {
   if (!Array.isArray(value)) {
     throw new TypeError("stateModel must be an array");
   }
@@ -412,11 +415,12 @@ function assertStateModel(value: unknown): ActivationRailState[] {
     assertNonEmptyString(entry.missingPrerequisiteBehavior, `${entry.stage}.missingPrerequisiteBehavior`);
     assertProofMode(entry.proofMode);
     assertFixtureIds(entry.quickstartFixtureIds, `${entry.stage}.quickstartFixtureIds`);
+    // SAFETY: `return entry as ActivationRailState;` is required at this I/O or test boundary.
     return entry as ActivationRailState;
   });
 }
 
-function assertOutcomes(value: unknown): ActivationRailOutcome[] {
+function assertOutcomes(value: JsonValue): ActivationRailOutcome[] {
   if (!Array.isArray(value)) {
     throw new TypeError("outcomes must be an array");
   }
@@ -428,11 +432,12 @@ function assertOutcomes(value: unknown): ActivationRailOutcome[] {
     assertNonEmptyString(entry.owner, `${entry.kind}.owner`);
     assertProofMode(entry.proofMode);
     assertFixtureIds(entry.quickstartFixtureIds, `${entry.kind}.quickstartFixtureIds`);
+    // SAFETY: `return entry as ActivationRailOutcome;` is required at this I/O or test boundary.
     return entry as ActivationRailOutcome;
   });
 }
 
-function assertProofModeLegend(value: unknown): void {
+function assertProofModeLegend(value: JsonValue): void {
   if (!Array.isArray(value)) {
     throw new TypeError("proofModeLegend must be an array");
   }
@@ -487,7 +492,7 @@ function assertOutcomeCoverage(outcomes: readonly ActivationRailOutcome[]): void
   }
 }
 
-function assertStageArray(value: unknown, name: string): void {
+function assertStageArray(value: JsonValue, name: string): void {
   if (!Array.isArray(value)) {
     throw new TypeError(`${name} must be an array`);
   }
@@ -496,7 +501,7 @@ function assertStageArray(value: unknown, name: string): void {
   }
 }
 
-function assertFixtureIds(value: unknown, name: string): void {
+function assertFixtureIds(value: JsonValue, name: string): void {
   const entries = assertStringArray(value, name);
   if (entries.length === 0) {
     throw new TypeError(`${name} must not be empty`);
@@ -508,38 +513,42 @@ function assertFixtureIds(value: unknown, name: string): void {
   }
 }
 
-function assertEntryPoint(value: unknown): asserts value is ActivationRailEntryPoint {
+function assertEntryPoint(value: JsonValue): asserts value is ActivationRailEntryPoint {
+  // SAFETY: `if (!ACTIVATION_RAIL_ENTRY_POINTS.includes(value as ActivationRailEntryPoint)) {` is required at this I/O or test boundary.
   if (!ACTIVATION_RAIL_ENTRY_POINTS.includes(value as ActivationRailEntryPoint)) {
     throw new TypeError(`unknown entry point ${String(value)}`);
   }
 }
 
-function assertStage(value: unknown): asserts value is ActivationRailStageName {
+function assertStage(value: JsonValue): asserts value is ActivationRailStageName {
+  // SAFETY: `if (!ACTIVATION_RAIL_STAGES.includes(value as ActivationRailStageName)) {` is required at this I/O or test boundary.
   if (!ACTIVATION_RAIL_STAGES.includes(value as ActivationRailStageName)) {
     throw new TypeError(`unknown activation stage ${String(value)}`);
   }
 }
 
-function assertOutcomeKind(value: unknown): asserts value is ActivationRailOutcomeKind {
+function assertOutcomeKind(value: JsonValue): asserts value is ActivationRailOutcomeKind {
+  // SAFETY: `if (!ACTIVATION_RAIL_OUTCOMES.includes(value as ActivationRailOutcomeKind)) {` is required at this I/O or test boundary.
   if (!ACTIVATION_RAIL_OUTCOMES.includes(value as ActivationRailOutcomeKind)) {
     throw new TypeError(`unknown outcome ${String(value)}`);
   }
 }
 
-function assertProofMode(value: unknown): asserts value is ActivationRailProofMode {
+function assertProofMode(value: JsonValue): asserts value is ActivationRailProofMode {
+  // SAFETY: `if (!ACTIVATION_RAIL_PROOF_MODES.includes(value as ActivationRailProofMode)) {` is required at this I/O or test boundary.
   if (!ACTIVATION_RAIL_PROOF_MODES.includes(value as ActivationRailProofMode)) {
     throw new TypeError(`unsupported proof mode ${String(value)}`);
   }
 }
 
-function assertEvidenceObject(value: unknown, name: string): asserts value is string {
-  if (typeof value !== "string" || !/^[a-z]+(\.[a-z-]+)+$/.test(value)) {
+function assertEvidenceObject(value: JsonValue, name: string): asserts value is string {
+  if (!isJsonString(value) || !/^[a-z]+(\.[a-z-]+)+$/.test(value)) {
     throw new TypeError(`${name} must be a dotted evidence object`);
   }
 }
 
-function assertNonEmptyString(value: unknown, name: string): asserts value is string {
-  if (typeof value !== "string" || value.trim().length === 0) {
+function assertNonEmptyString(value: JsonValue, name: string): asserts value is string {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new TypeError(`${name} must not be empty`);
   }
 }

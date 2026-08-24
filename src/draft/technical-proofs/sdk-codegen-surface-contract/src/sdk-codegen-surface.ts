@@ -1,8 +1,9 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased SDK source and JSON-like values at shared input boundaries. */
 import { createHash } from "node:crypto";
 import { mkdtemp, mkdir, readFile, readdir, rm, writeFile } from "node:fs/promises";
 import { dirname, join, relative } from "node:path";
 import { tmpdir } from "node:os";
+import { isJsonObject } from "./json.js";
+
 
 const GENERATED_ROOTS = [".hobo/generated", "src/_generated"];
 
@@ -55,6 +56,22 @@ export function fixtureSdkSources(overrides = {}) {
     {
       name: "CloseTicketResult",
       fields: [{ name: "closed", type: "boolean" }],
+    },
+  ];
+  const _resources = [
+    {
+      name: "db",
+      kind: "data",
+      clientType: "DataClient",
+      port: "hobo:data",
+      allow: allowScopes.db ?? [],
+    },
+    {
+      name: "uploads",
+      kind: "bucket",
+      clientType: "BlobClient",
+      port: "wasi:blobstore",
+      allow: allowScopes.uploads ?? [],
     },
   ];
   const api = [
@@ -274,7 +291,7 @@ export function createMcpCodegenTool({ sources }) {
 }
 
 function normalizeSources(sources) {
-  if (!sources || typeof sources !== "object") {
+  if (!sources || !isJsonObject(sources)) {
     throw new CodegenSurfaceError("HOBO_CODEGEN_BAD_INPUT", "sources", "must be an object");
   }
   const records = sortByName(sources.wit?.records ?? []);
@@ -446,9 +463,9 @@ function generateBindings(sources) {
     generatedHeader(),
     `export interface DataClient<Name extends string, Verbs extends string> {
   readonly name: Name;
-  read(id: string): Verbs extends "read" ? Promise<unknown> : never;
-  write(id: string, value: unknown): Verbs extends "write" ? Promise<void> : never;
-  query(filter: unknown): Verbs extends "query" ? Promise<readonly unknown[]> : never;
+  read(id: string): Verbs extends "read" ? Promise<JsonValue> : never;
+  write(id: string, value: JsonValue): Verbs extends "write" ? Promise<void> : never;
+  query(filter: JsonValue): Verbs extends "query" ? Promise<readonly unknown[]> : never;
 }`,
     `export interface BlobClient<Name extends string, Verbs extends string> {
   readonly name: Name;
@@ -607,7 +624,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(

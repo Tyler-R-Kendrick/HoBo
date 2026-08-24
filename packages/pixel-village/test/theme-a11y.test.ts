@@ -24,7 +24,7 @@ function input(over: Partial<PresenterInput> = {}): PresenterInput {
 		particles: [],
 		testMode: false,
 		ready: true,
-		// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+		// SAFETY: `world: toWorldView(scenarioWorld(1, 5), true) as WorldView,` is required at this I/O or test boundary.
 		world: toWorldView(scenarioWorld(1, 5), true) as WorldView,
 		scenarioMode: false,
 		waybills: deriveWaybills(snap),

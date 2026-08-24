@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this validator receives erased runtime input at the proof boundary and rejects non-object records before contract checks. */
-
+import { isJsonObject } from "./json.js";
 export type CustomerOnboardingPhase = "M0" | "M1" | "M2" | "M3" | "M4";
 
 type ClaimAudience = "internal" | "customer-facing" | "release-notes" | "support-handoff";
@@ -239,7 +238,7 @@ export const CUSTOMER_ONBOARDING_SCOPE = {
 export function validateCustomerOnboardingScope(record: typeof CUSTOMER_ONBOARDING_SCOPE) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["customer onboarding scope record is required"] };
   }
   if (record.issue !== "HOBO-449") errors.push("issue must be HOBO-449");

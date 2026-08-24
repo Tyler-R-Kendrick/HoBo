@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const TRUST_TIERS = [
   "generated-sandbox",
   "verified-publisher",
@@ -137,7 +138,7 @@ export function classifyLaunchDispositions(record) {
 export function validateMarketplacePublisherTrustEvidence(record) {
   const errors = [];
 
-  if (!record || Object(record) !== record) {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["marketplace publisher trust evidence record is required"] };
   }
 

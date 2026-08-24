@@ -157,7 +157,18 @@ export const V1_CRITICAL_PATH_DEPENDENCY_MAP: CriticalPathDependencyMap = {
   ],
 };
 
-export function validateCriticalPathDependencyMap(record: CriticalPathDependencyMap): { ok: boolean; errors: string[] } {
+export interface CriticalPathValidationOutcome {
+  ok: boolean;
+  errors: string[];
+}
+
+export interface CriticalPathByLaunchGate {
+  privateBeta: CriticalPathDependency[];
+  releaseCandidate: CriticalPathDependency[];
+  ga: CriticalPathDependency[];
+}
+
+export function validateCriticalPathDependencyMap(record: CriticalPathDependencyMap): CriticalPathValidationOutcome {
   const errors: string[] = [];
   const actualDomains = record.dependencies.map((dependency) => dependency.domain);
 
@@ -190,11 +201,7 @@ export function validateCriticalPathDependencyMap(record: CriticalPathDependency
   return { ok: errors.length === 0, errors };
 }
 
-export function criticalPathByLaunchGate(record: CriticalPathDependencyMap): {
-  privateBeta: CriticalPathDependency[];
-  releaseCandidate: CriticalPathDependency[];
-  ga: CriticalPathDependency[];
-} {
+export function criticalPathByLaunchGate(record: CriticalPathDependencyMap): CriticalPathByLaunchGate {
   return {
     privateBeta: record.dependencies.filter((dependency) => dependency.blockerType === "beta-blocker"),
     releaseCandidate: record.dependencies.filter((dependency) => dependency.blockerType === "rc-blocker"),

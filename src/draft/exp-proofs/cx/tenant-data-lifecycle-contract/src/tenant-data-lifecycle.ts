@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 type TenantDataClassId =
   | "customer-product-data"
   | "telemetry"
@@ -90,16 +91,6 @@ type WorkClassification = Readonly<{
   owner: string;
   inScope: boolean;
 }>;
-
-type TenantDataLifecycleDecision =
-  | string
-  | number
-  | boolean
-  | bigint
-  | symbol
-  | null
-  | undefined
-  | { toString(): string };
 
 const REQUIRED_DATA_CLASSES = Object.freeze([
   "customer-product-data",
@@ -376,9 +367,7 @@ export function canCreateTenantDataFollowUp({ phase, m0Accepted }: FollowUpGateR
   };
 }
 
-export function classifyTenantDataLifecycleDecision(
-  decision: TenantDataLifecycleDecision,
-): WorkClassification {
+export function classifyTenantDataLifecycleDecision(decision: JsonValue): WorkClassification {
   const text = String(decision ?? "").toLowerCase();
 
   if (/\b(dpa|legal terms|privacy policy|subprocessor|legal)\b/.test(text)) {

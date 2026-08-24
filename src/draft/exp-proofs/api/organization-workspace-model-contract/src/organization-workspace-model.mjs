@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 const REQUIRED_BOUNDARIES = ["service", "ux", "security", "support"];
 const IMPLEMENTATION_PHASES = new Set(["M1", "M2", "M3", "M4"]);
 const VALID_PROOF_MODES = new Set([
@@ -194,7 +195,7 @@ export function classifyWorkspaceDecision(decision) {
 export function validateOrganizationWorkspaceModel(model) {
   const errors = [];
 
-  if (!model || Object(model) !== model) {
+  if (!model || !isJsonObject(model)) {
     return { ok: false, errors: ["model is required"] };
   }
   if (model.issue !== "HOBO-413") {

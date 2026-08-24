@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this validator receives erased caller input at the proof boundary and uses typeof only to reject non-object records before domain checks. */
-
+import { isJsonObject } from "./json.js";
 export const REQUIRED_EVIDENCE_SOURCES = [
   "e2e-tests",
   "accessibility-checks",
@@ -190,7 +189,7 @@ export const V1_SUPPORTED_PLATFORM_MATRIX = {
 export function validateSupportedPlatformMatrix(matrix) {
   const errors = [];
 
-  if (!matrix || typeof matrix !== "object") {
+  if (!matrix || !isJsonObject(matrix)) {
     return { ok: false, errors: ["matrix is required"] };
   }
   if (matrix.issue !== "HOBO-511") errors.push("issue must be HOBO-511");

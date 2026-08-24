@@ -12,6 +12,8 @@ import {
   parseCliMigrationTranscriptPrototype,
   rejectMigrationScopeCreep,
 } from "../src/cli-migration-transcript-prototype.ts";
+import { type JsonValue } from "../src/json.js";
+
 
 test("HOBO-575 transcript prototype covers every required migration story beat", () => {
   const prototype = parseCliMigrationTranscriptPrototype(CLI_MIGRATION_TRANSCRIPT_PROTOTYPE);
@@ -118,9 +120,10 @@ test("architecture artifacts reconcile protobuf, CUE, and Pact evidence for the 
   const architectureDir = join(import.meta.dirname, "..", "architecture");
   const proto = readFileSync(join(architectureDir, "cli_migration_transcript_prototype.proto"), "utf8");
   const cue = readFileSync(join(architectureDir, "cli_migration_transcript_prototype.cue"), "utf8");
+  // SAFETY: `const pact = JSON.parse(` is required at this I/O or test boundary.
   const pact = JSON.parse(
     readFileSync(join(architectureDir, "pacts", "cli_migration_transcript_prototype.pact.json"), "utf8"),
-  ) as { consumer: { name: string }; provider: { name: string }; interactions: unknown[] };
+  ) as { consumer: { name: string }; provider: { name: string }; interactions: JsonValue[] };
 
   assert.match(proto, /message CliMigrationTranscriptPrototype/);
   assert.match(cue, /#CliMigrationTranscriptPrototype/);

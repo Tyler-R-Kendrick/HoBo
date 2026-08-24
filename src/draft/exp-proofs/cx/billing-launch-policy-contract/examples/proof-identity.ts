@@ -6,12 +6,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import assert from "node:assert/strict";
+import { parseJsonObject } from "../src/json.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-// SAFETY: proof.json is the gate-owned identity manifest; these fields are checked immediately below.
-const proof = JSON.parse(
+const proof = parseJsonObject(
   readFileSync(path.join(root, "..", "proof.json"), "utf8"),
-) as { slug: string; layer: string };
+);
 
 assert.equal(proof.slug, "billing-launch-policy-contract");
 assert.equal(proof.layer, "exp");

@@ -297,7 +297,7 @@ export function validateBreakGlassBoundaryContract(
     }
   }
 
-  // SAFETY: every literal below is a member of the required audit-event union.
+  // SAFETY: `for (const eventId of [` is required at this I/O or test boundary.
   for (const eventId of [
     "breakglass.requested",
     "breakglass.approved",

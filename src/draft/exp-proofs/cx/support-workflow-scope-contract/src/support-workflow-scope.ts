@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 const IMPLEMENTATION_PHASES = new Set(["M1", "M2", "M3", "M4"]);
 
 const REQUIRED_M1_EVIDENCE = Object.freeze([
@@ -307,7 +308,7 @@ export function canCreateSupportWorkflowFollowUp({
   };
 }
 
-export function classifySupportWorkflowDecision(decision: string) {
+export function classifySupportWorkflowDecision(decision: JsonValue) {
   const text = String(decision ?? "").toLowerCase();
 
   if (/\b(helpdesk|ticket automation|support portal|queue automation|zendesk|intercom)\b/.test(text)) {

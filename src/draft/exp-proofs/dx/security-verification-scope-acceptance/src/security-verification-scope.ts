@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export type SecurityVerificationPhase = "M0" | "M1" | "M2" | "M3" | "M4";
 
 type ClaimAudience = "internal" | "release-notes" | "public-docs" | "customer-assurance";
@@ -187,7 +188,7 @@ export const SECURITY_VERIFICATION_SCOPE = {
 export function validateSecurityVerificationScope(record: typeof SECURITY_VERIFICATION_SCOPE) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["security verification scope record is required"] };
   }
   if (record.issue !== "HOBO-441") errors.push("issue must be HOBO-441");

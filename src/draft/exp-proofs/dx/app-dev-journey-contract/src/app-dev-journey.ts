@@ -14,6 +14,8 @@ import {
 } from "../../../../technical-proofs/hobo-up-convergence-contract/src/up-convergence.js";
 import { collectBindleResources } from "../../../../technical-proofs/resource-collection-engine-contract/src/resource-collection-engine.js";
 import { createRunInspectorProjection } from "../../../../technical-proofs/run-inspector-projection-contract/src/run-inspector.js";
+import { isJsonString } from "./json.js";
+
 
 const FIXED_NOW = "2026-06-28T07:00:00.000Z";
 const RUN_ID = "run-snapshop-upload-001";
@@ -21,7 +23,7 @@ const CLOUD_PROVIDER_PATTERN =
   /\b(aws|azure|gcp|google cloud|lambda|s3|dynamodb|terraform|pulumi|kubernetes|dockerfile)\b/i;
 
 export async function runAppDeveloperJourney({ workspaceRoot } = {}) {
-  if (typeof workspaceRoot !== "string" || workspaceRoot.length === 0) {
+  if (!isJsonString(workspaceRoot) || workspaceRoot.length === 0) {
     throw new TypeError("workspaceRoot must be a non-empty string");
   }
 

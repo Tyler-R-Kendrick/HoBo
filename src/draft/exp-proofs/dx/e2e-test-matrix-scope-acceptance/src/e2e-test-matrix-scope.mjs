@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const REQUIRED_BOUNDARIES = ["service", "ux", "security", "support"];
 
 const IMPLEMENTATION_PHASES = new Set(["M1", "M2", "M3", "M4"]);
@@ -203,7 +204,7 @@ export function classifyE2eEvidenceGap(gap) {
 export function validateE2eTestMatrixScope(scope) {
   const errors = [];
 
-  if (!scope || typeof scope !== "object") {
+  if (!scope || !isJsonObject(scope)) {
     return { ok: false, errors: ["scope record is required"] };
   }
   if (scope.issue !== "HOBO-438") {

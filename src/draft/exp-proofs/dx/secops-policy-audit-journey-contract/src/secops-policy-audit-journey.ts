@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { createIdentityEvent, foldCredentialAudit } from "../../../../technical-proofs/identity-event-contract/src/identity-event-contract.js";
 import { createPolicyAuditEvent } from "../../../api/policy-audit-export-contract/src/policy-audit-export.js";
 import { runHoboUp, sampleSnapshopProject } from "../../../../technical-proofs/hobo-up-convergence-contract/src/up-convergence.js";
+import { isJsonObject } from "./json.js";
+
 
 export const SECOPS_POLICY_AUDIT_JOURNEY_VERSION = "hobo.secops-policy-audit-journey/v1";
 
@@ -384,7 +386,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
@@ -403,7 +405,7 @@ function addMinutes(value, minutes) {
 }
 
 function freeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

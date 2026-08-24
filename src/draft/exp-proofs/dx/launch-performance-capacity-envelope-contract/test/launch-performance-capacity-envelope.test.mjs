@@ -18,7 +18,7 @@ test("M0 envelope defines workflows, beta load, thresholds, capacity assumptions
     "betaLoadAssumptions",
     "thresholds",
     "capacityAssumptions",
-    "loadTestFixtureShape",
+    "loadTestFixtureContract",
     "nonGoals",
   ]);
   for (const section of REQUIRED_ENVELOPE_SECTIONS) {
@@ -62,7 +62,7 @@ test("cost guardrails align with usage metering, billing, and entitlements owner
 
 test("load-test fixture shape is deterministic and avoids live production execution", () => {
   assert.deepEqual(
-    LAUNCH_PERFORMANCE_CAPACITY_ENVELOPE.loadTestFixtureShape.map((fixture) => fixture.id),
+    LAUNCH_PERFORMANCE_CAPACITY_ENVELOPE.loadTestFixtureContract.map((fixture) => fixture.id),
     [
       "fixture.local-smoke",
       "fixture.saas-beta-synthetic",
@@ -71,7 +71,7 @@ test("load-test fixture shape is deterministic and avoids live production execut
     ],
   );
 
-  for (const fixture of LAUNCH_PERFORMANCE_CAPACITY_ENVELOPE.loadTestFixtureShape) {
+  for (const fixture of LAUNCH_PERFORMANCE_CAPACITY_ENVELOPE.loadTestFixtureContract) {
     assert.ok(fixture.dataSet, `${fixture.id} missing dataSet`);
     assert.ok(fixture.measurementMode, `${fixture.id} missing measurementMode`);
     assert.equal(fixture.executesAgainstProduction, false, `${fixture.id} must not execute against production`);
@@ -88,7 +88,7 @@ test("validation rejects missing support routing, unaligned cost guardrails, and
     ...invalid.costGuardrails[0],
     ownerProject: "Unowned Cost Project",
   };
-  invalid.loadTestFixtureShape.push({
+  invalid.loadTestFixtureContract.push({
     id: "fixture.production-load-test",
     dataSet: "live customer production traffic",
     measurementMode: "live-production",
@@ -110,11 +110,11 @@ test("validation requires threshold, cost guardrail, and fixture sections", () =
     ...LAUNCH_PERFORMANCE_CAPACITY_ENVELOPE,
     thresholds: [],
     costGuardrails: [],
-    loadTestFixtureShape: [],
+    loadTestFixtureContract: [],
   });
 
   assert.equal(result.ok, false);
   assert.match(result.errors.join("\n"), /thresholds must be a non-empty list/);
   assert.match(result.errors.join("\n"), /costGuardrails must be a non-empty list/);
-  assert.match(result.errors.join("\n"), /loadTestFixtureShape must be a non-empty list/);
+  assert.match(result.errors.join("\n"), /loadTestFixtureContract must be a non-empty list/);
 });

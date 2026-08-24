@@ -5,6 +5,8 @@ import {
   expectObject,
   nonEmptyString,
 } from "./parse-utils.js";
+import { type JsonValue } from "./json.js";
+
 
 export type PortKind = "runtime" | "provider" | "port";
 export type InterfaceStability = "stable" | "preview" | "experimental";
@@ -32,7 +34,7 @@ const STABILITIES = new Set<InterfaceStability>(["stable", "preview", "experimen
 const WIT_INTERFACE_REF =
   /^[a-z][a-z0-9-]*:[a-z0-9-]+\/[a-z0-9-]+(?:@[0-9]+\.[0-9]+\.[0-9]+)?$/;
 
-export function createPortDescriptor(input: unknown): PortDescriptor {
+export function createPortDescriptor(input: JsonValue): PortDescriptor {
   const source = expectObject(input, "port descriptor", PortDescriptorParseError);
   const descriptor: PortDescriptor = {
     kind: enumValue(source.kind, PORT_KINDS, "kind", PortDescriptorParseError),
@@ -43,7 +45,7 @@ export function createPortDescriptor(input: unknown): PortDescriptor {
   return deepFreeze(descriptor);
 }
 
-function parseInterfaceRef(value: unknown, field: string): string {
+function parseInterfaceRef(value: JsonValue | undefined, field: string): string {
   const ref = nonEmptyString(value, field, PortDescriptorParseError);
   if (!WIT_INTERFACE_REF.test(ref)) {
     throw new PortDescriptorParseError(field, "WIT-style interface ref", value);

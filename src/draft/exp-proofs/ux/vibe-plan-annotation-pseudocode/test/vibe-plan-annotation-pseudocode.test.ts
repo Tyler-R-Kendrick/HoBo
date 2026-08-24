@@ -49,6 +49,7 @@ describe("vibe plan annotation pseudocode", () => {
   });
 
   it("keeps Pact and CUE architecture artifacts aligned with the parsed contract shape", () => {
+    // SAFETY: `const pact = JSON.parse(` is required at this I/O or test boundary.
     const pact = JSON.parse(
       readFileSync(
         new URL("../architecture/pacts/vibe_plan_annotation_pseudocode.pact.json", import.meta.url),

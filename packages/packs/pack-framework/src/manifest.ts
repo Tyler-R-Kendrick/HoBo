@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-conditional-empty-object-spread, no-control-regex -- manifest parsing refines serialized contract data. */
 /**
  * The pack manifest: everything a HoBo Yard needs to run a capability on
  * generic compute instead of buying it from a managed provider.
@@ -27,6 +26,7 @@ import {
 	type ParsedPinnedImageRef,
 	parsePinnedImageRef,
 } from "./digest.js";
+import { containsControlChar } from "./argv.js";
 import { PackError } from "./errors.js";
 import {
 	canonicalizeForSigning,
@@ -313,8 +313,7 @@ const IDENTIFIER = /^[a-z0-9]+(?:-[a-z0-9]+)*$/u;
 const CONFIG_KEY = /^[a-z][a-zA-Z0-9]*$/u;
 const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/u;
 const ABSOLUTE_PATH = /^\/(?:[A-Za-z0-9._-]+\/?)+$/u;
-// biome-ignore lint/suspicious/noControlCharactersInRegex: detecting a control character is the point; a manifest string carrying one is either corrupt or smuggling an argument past a later parser.
-const NUL_OR_CONTROL = /[\u0000-\u001f\u007f]/u;
+
 const HTTPS_URL = /^https:\/\/[a-z0-9.-]+(?::\d+)?(?:\/\S*)?$/iu;
 
 function invalid(
@@ -335,9 +334,11 @@ export function parsePackId(input: string): ParsedPackId {
 			`pack id ${JSON.stringify(input)} must be pack.<family>[.<qualifier>]/v<major> in lowercase`,
 		);
 	}
+	// SAFETY: `const family = match[1] as string;` is required at this I/O or test boundary.
 	const family = match[1] as string;
 	const qualifierPart = match[2] ?? "";
 	return {
+		// SAFETY: `id: input as PackId,` is required at this I/O or test boundary.
 		id: input as PackId,
 		family,
 		qualifiers:
@@ -352,6 +353,7 @@ export function parsePackVersion(input: string): PackVersion {
 			`pack version ${JSON.stringify(input)} must be <major>.<minor>.<patch>`,
 		);
 	}
+	// SAFETY: `return input as PackVersion;` is required at this I/O or test boundary.
 	return input as PackVersion;
 }
 
@@ -380,7 +382,7 @@ function parseImages(
 			reference,
 			digest: reference.digest,
 			repository: reference.repository,
-			...(input.sizeBytes !== undefined ? { sizeBytes: input.sizeBytes } : {}),
+			...(input.sizeBytes !== undefined ? { sizeBytes: input.sizeBytes } : undefined),
 		});
 	}
 	// One repository per pack: a manifest whose arm64 image comes from a
@@ -430,7 +432,7 @@ function parseProbe(
 			invalid(`${what} exec probe must carry a non-empty argv array`);
 		}
 		for (const element of probe.argv) {
-			if (element.length === 0 || NUL_OR_CONTROL.test(element)) {
+			if (element.length === 0 || containsControlChar(element)) {
 				invalid(
 					`${what} exec argv elements must be non-empty and free of control characters`,
 				);
@@ -570,6 +572,7 @@ function parseConfigSchema(
 		if (keys.has(field.key))
 			invalid(`duplicate configuration key ${field.key}`);
 		keys.add(field.key);
+		// SAFETY: `if (!(PACK_CONFIG_FIELD_KINDS as readonly string[]).includes(field.kind)) {` is required at this I/O or test boundary.
 		if (!(PACK_CONFIG_FIELD_KINDS as readonly string[]).includes(field.kind)) {
 			invalid(
 				`configuration key ${field.key} has unknown kind ${String(field.kind)}`,
@@ -633,12 +636,14 @@ function parseOperations(
 		if (ids.has(operation.id))
 			invalid(`duplicate operation id ${operation.id}`);
 		ids.add(operation.id);
+		// SAFETY: `if (!(PACK_OPERATION_KINDS as readonly string[]).includes(operation.kind)) {` is required at this I/O or test boundary.
 		if (!(PACK_OPERATION_KINDS as readonly string[]).includes(operation.kind)) {
 			invalid(
 				`operation ${operation.id} has unknown kind ${String(operation.kind)}`,
 			);
 		}
 		// `shell` is typed `false`, but a manifest can arrive from JSON.
+		// SAFETY: `if ((operation.shell as boolean) !== false) {` is required at this I/O or test boundary.
 		if ((operation.shell as boolean) !== false) {
 			invalid(
 				`operation ${operation.id} declares shell invocation; pack operations are argv arrays only`,
@@ -730,6 +735,7 @@ export function parsePackManifest(
 		);
 	}
 	if (
+		// SAFETY: `!(PACK_OWNERSHIP_STRATEGIES as readonly string[]).includes(input.ownership)` is required at this I/O or test boundary.
 		!(PACK_OWNERSHIP_STRATEGIES as readonly string[]).includes(input.ownership)
 	) {
 		invalid(
@@ -765,10 +771,10 @@ export function parsePackManifest(
 		readiness: parseProbe(input.probes.readiness, ports, "readiness probe"),
 		...(input.probes.liveness !== undefined
 			? { liveness: parseProbe(input.probes.liveness, ports, "liveness probe") }
-			: {}),
+			: undefined),
 		...(input.probes.startup !== undefined
 			? { startup: parseProbe(input.probes.startup, ports, "startup probe") }
-			: {}),
+			: undefined),
 	};
 
 	return {

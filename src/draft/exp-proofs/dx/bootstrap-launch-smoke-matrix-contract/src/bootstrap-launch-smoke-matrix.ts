@@ -37,8 +37,8 @@ export type BootstrapLaunchSmokePath = Readonly<{
   fixtures: readonly string[];
   mockedBoundaries: readonly string[];
   unsupportedStates: readonly string[];
-  firstProjectShape: string;
-  firstDeployShape: string;
+  firstProjectContract: string;
+  firstDeployContract: string;
   seedAuth: BootstrapSeedAuthEvidence;
   stages: readonly BootstrapLaunchSmokeStage[];
 }>;
@@ -193,8 +193,8 @@ export const BOOTSTRAP_LAUNCH_SMOKE_MATRIX: BootstrapLaunchSmokeMatrix = Object.
         "live deploy execution",
         "cleanup runner implementation",
       ]),
-      firstProjectShape: "Starter workspace, project id, selected template, and provider capability fixture.",
-      firstDeployShape: "Mock deploy result with status, logs pointer, rollback hint, and unsupported-state label.",
+      firstProjectContract: "Starter workspace, project id, selected template, and provider capability fixture.",
+      firstDeployContract: "Mock deploy result with status, logs pointer, rollback hint, and unsupported-state label.",
       seedAuth: {
         credentialSource: "SaaS workspace seed fixture",
         allowedScopes: Object.freeze(["workspace.bootstrap", "project.create"]),
@@ -232,8 +232,8 @@ export const BOOTSTRAP_LAUNCH_SMOKE_MATRIX: BootstrapLaunchSmokeMatrix = Object.
         "upgrade runner implementation",
         "ambient cloud credentials",
       ]),
-      firstProjectShape: "Seed Yard project record with imported provenance and target resource-state fixture.",
-      firstDeployShape: "Offline deploy smoke result proving target shape without running provider calls.",
+      firstProjectContract: "Seed Yard project record with imported provenance and target resource-state fixture.",
+      firstDeployContract: "Offline deploy smoke result proving target shape without running provider calls.",
       seedAuth: {
         credentialSource: "single-use operator bootstrap secret fixture",
         allowedScopes: Object.freeze(["bootstrap.seed-yard", "identity.handoff"]),
@@ -270,8 +270,8 @@ export const BOOTSTRAP_LAUNCH_SMOKE_MATRIX: BootstrapLaunchSmokeMatrix = Object.
         "customer data scans",
         "uninstall cleanup execution",
       ]),
-      firstProjectShape: "Local sample app, generated config fixture, and project manifest.",
-      firstDeployShape: "Mock deploy shape with local log bundle and explicit simulated-provider label.",
+      firstProjectContract: "Local sample app, generated config fixture, and project manifest.",
+      firstDeployContract: "Mock deploy shape with local log bundle and explicit simulated-provider label.",
       seedAuth: {
         credentialSource: "local dev auth fixture",
         allowedScopes: Object.freeze(["local.bootstrap", "project.create"]),
@@ -349,10 +349,10 @@ export function validateBootstrapLaunchSmokeMatrix(target: Partial<MutableBootst
       continue;
     }
 
-    if (!path.firstProjectShape) {
+    if (!path.firstProjectContract) {
       errors.push(`Missing first project shape: ${pathId}`);
     }
-    if (!path.firstDeployShape) {
+    if (!path.firstDeployContract) {
       errors.push(`Missing first deploy shape: ${pathId}`);
     }
     if ((path.fixtures ?? []).length === 0) {

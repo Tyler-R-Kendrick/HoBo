@@ -1,7 +1,6 @@
 import type { ProviderPort } from "@hobo/core";
 import { createPortDescriptor } from "@hobo/core";
-import { type JsonValue } from "./json.js";
-
+import type { JsonValue } from "./json.js";
 
 // public-contract: the IaC provider port interface id this boundary serves.
 export const IAC_CROSSPLANE_INTERFACE = "hobo:iac/provider";
@@ -29,4 +28,9 @@ const crossplanePortDescriptor = createPortDescriptor({
 if (crossplanePortDescriptor.kind !== "provider") {
 	throw new Error("iac-crossplane port must be a provider port");
 }
-export const IAC_CROSSPLANE_PORT: ProviderPort = crossplanePortDescriptor;
+// SAFETY: the guard above establishes `kind === "provider"`. `PortDescriptor`
+// is one interface rather than a discriminated union, so narrowing the property
+// does not narrow the object -- this assertion is where the guard's result is
+// recorded, and it cannot outlive the check that precedes it.
+export const IAC_CROSSPLANE_PORT: ProviderPort =
+	crossplanePortDescriptor as ProviderPort;

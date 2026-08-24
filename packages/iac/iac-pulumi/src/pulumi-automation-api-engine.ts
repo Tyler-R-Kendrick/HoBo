@@ -13,12 +13,16 @@ import {
 	PINNED_PULUMI_AUTOMATION_VERSION,
 } from "./iac-pulumi-automation-adapter.js";
 import {
+	cloneAsJson,
+	type JsonBag,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
+import {
 	PULUMI_CLI_MISSING,
 	PulumiEngineUnavailableError,
 	renderPulumiYamlProgram,
 } from "./pulumi-cli-engine.js";
-import { type JsonValue, type JsonObject } from "./json.js";
-
 
 // The REAL Pulumi Automation API engine (HOBO-715). Same
 // preview/apply/refresh/destroy shape as the in-memory stand-in and the CLI
@@ -103,7 +107,11 @@ export function createPulumiAutomationApiEngine(
 			// SAFETY: `automation = (await import(` is required at this I/O or test boundary.
 			const loaded = await import("@pulumi/pulumi/automation/index.js");
 			// SAFETY: @pulumi/pulumi automation index is the typed Automation module.
-			automation = loaded as AutomationModuleLike;
+			// Two-step: the module namespace and `AutomationModuleLike` overlap
+			// only in the members this engine calls, which is the point of the
+			// structural stand-in -- TypeScript is right that they are not the
+			// same type, and the cast is where that narrowing is recorded.
+			automation = loaded as unknown as AutomationModuleLike;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			throw new PulumiEngineUnavailableError(
@@ -167,13 +175,17 @@ export function createPulumiAutomationApiEngine(
 		}
 	}
 
-	async function outputsOf(
-		stack: AutomationStackLike,
-	): Promise<JsonObject> {
+	async function outputsOf(stack: AutomationStackLike): Promise<JsonObject> {
 		try {
 			const raw = await stack.outputs();
+			// A stack output value is `unknown` on the Automation API surface but
+			// JSON on the wire; `cloneAsJson` is the conversion that says so
+			// without asserting a shape nobody checked.
 			return Object.fromEntries(
-				Object.entries(raw).map(([key, entry]) => [key, entry.value]),
+				Object.entries(raw).map(([key, entry]) => [
+					key,
+					cloneAsJson(entry.value),
+				]),
 			);
 		} catch {
 			return {};
@@ -187,7 +199,7 @@ export function createPulumiAutomationApiEngine(
 		// engine invocation) so `hobo drift`/`hobo import` can enumerate held
 		// state even on a host where the pulumi engine has since gone missing.
 		snapshot(): Readonly<JsonObject> {
-			const stacks: JsonObject = {};
+			const stacks: JsonBag = {};
 			const checkpointRoot = join(stateDir, ".pulumi", "stacks");
 			if (!existsSync(checkpointRoot) || !existsSync(programsDir)) {
 				return Object.freeze(stacks);
@@ -246,7 +258,7 @@ export function createPulumiAutomationApiEngine(
 			});
 		},
 		async apply(program: IacProgramLike, expectedChanges: readonly unknown[]) {
-			const resources: JsonObject = {};
+			const resources: JsonBag = {};
 			for (const resource of program.resources) {
 				const { stack, stackKey } = await stackFor(program, resource);
 				await stack.up();
@@ -303,7 +315,7 @@ export function createPulumiAutomationApiEngine(
 			});
 		},
 		async destroy(program: IacProgramLike) {
-			const destroyed: JsonObject = {};
+			const destroyed: JsonBag = {};
 			for (const resource of [...program.resources].reverse()) {
 				const { stack, stackKey } = await stackFor(program, resource);
 				await stack.destroy();

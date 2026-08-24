@@ -1,4 +1,9 @@
-import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 // The SAME wire schema every HoBo IaC adapter consumes; only `provider` differs.
 // public-contract: the IacProgram schema version validateIacProgram accepts.
 export const IAC_PROGRAM_API_VERSION = "hobo.iac-program/v1";
@@ -75,7 +80,8 @@ export interface CrossplaneClusterLike {
 	compositions():
 		| readonly CrossplaneComposition[]
 		| Promise<readonly CrossplaneComposition[]>;
-	applyClaim(claim: CrossplaneClaim): JsonValue | Promise<JsonValue>;
+	// A command, not a query: every caller awaits it and discards the result.
+	applyClaim(claim: CrossplaneClaim): void | Promise<void>;
 	waitForReady(name: string, pollLimit: number): boolean | Promise<boolean>;
 	/** Absent claims come back nullish; callers already branch on that. */
 	getClaim(
@@ -86,12 +92,10 @@ export interface CrossplaneClusterLike {
 		| null
 		| Promise<CrossplaneClaim | undefined | null>;
 	claimNames(): string[] | Promise<string[]>;
-	deleteClaim(name: string): JsonValue | Promise<JsonValue>;
+	deleteClaim(name: string): void | Promise<void>;
 }
 
-export function createFixtureIacProgram(
-	overrides: JsonObject = {},
-) {
+export function createFixtureIacProgram(overrides: JsonObject = {}) {
 	const base = {
 		apiVersion: IAC_PROGRAM_API_VERSION,
 		kind: "iac-program",

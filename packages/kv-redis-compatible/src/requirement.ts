@@ -74,12 +74,15 @@ const REDIS_FEATURE_KEYS = [
 function booleanFeatures(
 	input: RedisStoreInput,
 ): readonly StructuredFeatureRequirementInput[] {
+	// Explicit `| undefined` on each field: under `exactOptionalPropertyTypes`,
+	// "may be absent" and "may be present and undefined" are different types, and
+	// these are copied straight off an input whose own fields are optional.
 	interface RedisFeatureFlags {
-		ttl?: boolean;
-		atomicIncrement?: boolean;
-		atomicCompareAndSet?: boolean;
-		sortedSets?: boolean;
-		restTransport?: boolean;
+		ttl?: boolean | undefined;
+		atomicIncrement?: boolean | undefined;
+		atomicCompareAndSet?: boolean | undefined;
+		sortedSets?: boolean | undefined;
+		restTransport?: boolean | undefined;
 	}
 	const requested: RedisFeatureFlags = {
 		ttl: input.ttl,
@@ -148,7 +151,9 @@ function buildStoreRequirement(
 		...(input.portability !== undefined
 			? { portability: input.portability }
 			: undefined),
-		...(input.trustRef !== undefined ? { trustRef: input.trustRef } : undefined),
+		...(input.trustRef !== undefined
+			? { trustRef: input.trustRef }
+			: undefined),
 	};
 	return parseCapabilityRequirement(requirement);
 }

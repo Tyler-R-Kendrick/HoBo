@@ -1,4 +1,9 @@
-import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 // One adapter, two interchangeable binaries (they share the plan/apply/state
 // protocol); OpenTofu is the default per control-plane.md §IaC backends.
 // public-contract: the pinned OpenTofu toolchain the default engine declares.
@@ -46,9 +51,18 @@ export class TerraformStateError extends Error {
 	}
 }
 
-/** Stored stack/workspace state as this module reads it. */
+/**
+ * Stored stack/workspace state as this module reads it.
+ *
+ * `resources` is read back as `JsonValue` and narrowed at use, rather than
+ * declared as `Record<string, ResourceOutcome>` beside a `JsonValue` index
+ * signature. TypeScript requires every named property to be assignable to that
+ * signature, and a record of a *specific* interface is not -- the two
+ * declarations contradict each other, and the index signature is the one that
+ * has to hold, because this shape is parsed from a state file nobody here
+ * wrote.
+ */
 interface StoredState {
-	readonly resources?: Record<string, ResourceOutcome>;
 	readonly [key: string]: JsonValue;
 }
 

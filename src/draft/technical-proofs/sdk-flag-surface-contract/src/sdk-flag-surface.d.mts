@@ -1,10 +1,5 @@
-export type JsonValue =
-  | null
-  | boolean
-  | string
-  | number
-  | JsonValue[]
-  | { [key: string]: JsonValue };
+import { type JsonValue } from "./json.js";
+export type { JsonValue };
 
 export type FlagValueType = "boolean" | "string" | "number" | "object";
 
@@ -40,7 +35,7 @@ export interface SdkFlagRef<T extends JsonValue> {
     key: string;
     type: FlagValueType;
   };
-  event: unknown;
+  event: JsonValue;
 }
 
 export interface SdkFlagContract {

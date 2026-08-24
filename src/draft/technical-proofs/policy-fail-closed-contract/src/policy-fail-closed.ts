@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased evaluator results, callback inputs, and thrown errors at the fail-closed boundary before branching on their domain shape. */
 import {
   createBuiltInPolicyEngine,
   createGoldenDecisionRequest,
@@ -9,6 +8,8 @@ import {
 import {
   evaluateGatekeeper,
 } from "../../gatekeeper-verify-contract/src/gatekeeper-verify.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const POLICY_FAIL_CLOSED_SCHEMA_VERSION = "hobo.policy-fail-closed/v1";
 
@@ -102,7 +103,7 @@ export function evaluateGuardedStep({ step, execute }) {
   if (!isNonEmptyString(step)) {
     throw new TypeError("step is required");
   }
-  if (typeof execute !== "function") {
+  if (!(execute instanceof Function)) {
     throw new TypeError("execute must be a function");
   }
 
@@ -219,15 +220,15 @@ function cacheExpired({ cache, now }) {
 function isStructuredDecision(decision) {
   return (
     decision &&
-    typeof decision === "object" &&
+    isJsonObject(decision) &&
     ["allow", "deny", "warn", "mutate", "allow-degraded", "require-approval"].includes(decision.effect) &&
     isNonEmptyString(decision.reason) &&
     decision.evidence &&
-    typeof decision.evidence === "object" &&
+    isJsonObject(decision.evidence) &&
     Array.isArray(decision.evidence.policyIds)
   );
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }

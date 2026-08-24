@@ -143,6 +143,7 @@ describe("HOBO-561 topology/status prototype", () => {
   });
 
   it("aligns Pact and CUE architecture fixtures with the parsed prototype", () => {
+    // SAFETY: `const pact = JSON.parse(` is required at this I/O or test boundary.
     const pact = JSON.parse(
       readFileSync(
         new URL("../architecture/pacts/vibe_topology_status_prototype.pact.json", import.meta.url),

@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { parseJsonValue, type JsonValue } from "../src/json.js";
 import { type ManifestV1, parseManifest } from "@hobo/bindles";
 import { createCloudflareProvider } from "@hobo/provider-cloudflare";
 import { describe, expect, it } from "vitest";
@@ -427,8 +428,8 @@ describe("E19 placement: pickN cardinality", () => {
 });
 
 describe("E19 placement: determinism + plan() integration", () => {
-	function fixture(name: string): object {
-		return JSON.parse(
+	function fixture(name: string): JsonValue {
+		return parseJsonValue(
 			readFileSync(
 				fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)),
 				"utf8",

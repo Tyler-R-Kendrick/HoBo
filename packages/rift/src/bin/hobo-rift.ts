@@ -20,7 +20,6 @@ import {
 	removeWorkspace,
 	runInWorkspace,
 } from "../workspace.js";
-import { type JsonValue } from "../json.js";
 
 const argv = process.argv.slice(2);
 
@@ -63,7 +62,15 @@ const command = verb();
 const root = flag("root") ?? process.cwd();
 const json = ours.includes("--json");
 
-function emit(human: string, data: JsonValue): void {
+/**
+ * Print the human line, or the JSON form under `--json`.
+ *
+ * `data` is `unknown` because serializing is the only thing done with it. A
+ * `JsonValue` parameter would be a promise this function does not need and
+ * cannot check, paid for by every caller laundering an ordinary domain record
+ * into a JSON view before handing it over.
+ */
+function emit(human: string, data: unknown): void {
 	process.stdout.write(
 		json ? `${JSON.stringify(data, null, 2)}\n` : `${human}\n`,
 	);

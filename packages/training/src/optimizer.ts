@@ -8,11 +8,19 @@ import type {
 } from "@hobo/core";
 import {
 	CoreParseError,
+	diagnosticJson,
 	hashTrajectory,
 	parseTrainingCandidate,
 	parseTrainingEngineId,
 	serializeTrainingArtifactProgram,
 } from "@hobo/core";
+import {
+	isJsonNumber,
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+	parseJsonValue,
+} from "./json.js";
 import { createSeededPrng, type SeededPrng } from "./prng.js";
 import {
 	createTraceSink,
@@ -20,8 +28,6 @@ import {
 	type OptimizerStepDecision,
 	type OptimizerTraceSpan,
 } from "./trace-sink.js";
-import { isJsonNumber, isJsonObject, parseJsonValue, type JsonValue, type JsonObject } from "./json.js";
-
 
 // The built-in OPTO-style optimizer behind core's hobo:training-engine port
 // (ADR-0025, docs/plans/0017 F26). Propose -> score -> keep-best over
@@ -55,7 +61,11 @@ export class TrainingOptimizerParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: JsonValue,
+		// Matches `CoreParseError.received`. An absent value is a legitimate
+		// diagnostic -- "expected a number, got nothing" -- and narrowing this to
+		// `JsonValue` makes the commonest parse failure the one that cannot be
+		// reported.
+		received: JsonValue | undefined,
 		message?: string,
 	) {
 		super("HOBO_TRAINING_OPTIMIZER_PARSE", path, expected, received, message);
@@ -80,12 +90,21 @@ export interface BuiltinTrainingEngine extends TrainingEnginePort {
 	drainTraceSpans(): readonly OptimizerTraceSpan[];
 }
 
-function fail(path: string, expected: string, received: JsonValue): never {
-	throw new TrainingOptimizerParseError(path, expected, received);
+// `received` is `unknown` because it is whatever the caller actually handed
+// over -- an absent config field, a domain object, a string. It is *reported*,
+// not inspected, so `diagnosticJson` renders it as the JSON view the error
+// carries. Narrowing this parameter to `JsonValue` instead pushes the problem
+// onto every call site, several of which legitimately pass `undefined`.
+function fail(path: string, expected: string, received: unknown): never {
+	throw new TrainingOptimizerParseError(
+		path,
+		expected,
+		diagnosticJson(received),
+	);
 }
 
 function parsePositiveInt(
-	value: JsonValue,
+	value: JsonValue | undefined,
 	path: string,
 	fallback: number,
 ): number {

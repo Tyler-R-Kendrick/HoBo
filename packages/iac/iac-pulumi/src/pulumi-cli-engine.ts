@@ -11,10 +11,10 @@ import {
 	isJsonNumber,
 	isJsonObject,
 	isJsonString,
-	parseJsonObject,
+	type JsonBag,
 	type JsonObject,
+	parseJsonObject,
 } from "./json.js";
-
 
 // The REAL Pulumi backend (docs/plans/0006 item 3-2). This engine speaks the
 // exact preview/apply/refresh/destroy shape the in-memory stand-in defined
@@ -100,13 +100,12 @@ export function renderPulumiYamlProgram(
 	const inputs = resource.inputs ?? {};
 	// SAFETY: `const cfOptions = (inputs.options ?? {}) as JsonObject;` is required at this I/O or test boundary.
 	const cfOptions = (inputs.options ?? {}) as JsonObject;
-	const properties: JsonObject = { accountId: options.accountId };
+	const properties: JsonBag = { accountId: options.accountId };
 	if (token === "cloudflare:WorkersScript") {
 		properties.name = resource.name;
-		properties.content =
-			isJsonString(cfOptions.script)
-				? cfOptions.script
-				: DEFAULT_WORKER_SCRIPT;
+		properties.content = isJsonString(cfOptions.script)
+			? cfOptions.script
+			: DEFAULT_WORKER_SCRIPT;
 	} else if (token === "cloudflare:WorkersKvNamespace") {
 		properties.title = resource.name;
 	} else {
@@ -282,7 +281,7 @@ export function createPulumiCliAutomationEngine(
 		// pulumi CLI fails closed with the typed PulumiEngineUnavailableError.
 		snapshot() {
 			ensureAvailable();
-			const stacks: JsonObject = {};
+			const stacks: JsonBag = {};
 			if (!existsSync(programsDir)) {
 				return Object.freeze(stacks);
 			}
@@ -340,7 +339,7 @@ export function createPulumiCliAutomationEngine(
 		},
 		async apply(program: IacProgramLike, expectedChanges: readonly unknown[]) {
 			ensureAvailable();
-			const resources: JsonObject = {};
+			const resources: JsonBag = {};
 			for (const resource of program.resources) {
 				const { dir, stackKey } = ensureStack(program, resource);
 				run(["up", "--yes", "--skip-preview"], dir);
@@ -394,7 +393,7 @@ export function createPulumiCliAutomationEngine(
 		},
 		async destroy(program: IacProgramLike) {
 			ensureAvailable();
-			const destroyed: JsonObject = {};
+			const destroyed: JsonBag = {};
 			for (const resource of [...program.resources].reverse()) {
 				const { dir, stackKey } = ensureStack(program, resource);
 				run(["destroy", "--yes"], dir);

@@ -5,8 +5,7 @@ import type {
 	CrossplaneComposition,
 } from "./crossplane-adapter.js";
 import { CrossplaneProgramError } from "./crossplane-adapter.js";
-import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
-
+import { isJsonObject, type JsonObject, type JsonValue } from "./json.js";
 
 // The REAL cluster lane (HOBO-716): the same CrossplaneClusterLike surface the
 // in-memory fixture implements, driven through `kubectl` against a live
@@ -133,7 +132,11 @@ export function createKubectlCrossplaneCluster(
 			readonly conditions?: readonly KubectlCondition[];
 			readonly outputs?: JsonObject;
 		};
-		readonly [key: string]: JsonValue;
+		// No `[key: string]: JsonValue` index signature: TypeScript requires every
+		// named property to be assignable to it, and `status` -- a specific shape
+		// this module reads by name -- is not. The named fields are the ones this
+		// code actually uses, so they are the half worth keeping; unknown keys on
+		// a kubectl document are ignored here rather than typed.
 	}
 
 	function toClusterDocument(claim: CrossplaneClaim): string {

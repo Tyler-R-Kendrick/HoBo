@@ -7,22 +7,22 @@ import {
 	writeFileSync,
 } from "node:fs";
 import { join } from "node:path";
-
+import {
+	asJsonObject,
+	cloneAsJson,
+	isJsonObject,
+	isJsonString,
+	type JsonBag,
+	type JsonObject,
+	parseJsonObject,
+	parseJsonValue,
+} from "./json.js";
 import {
 	createWorkspaceKey,
 	outputsToBindings,
 	PINNED_TERRAFORM_VERSION,
 	PINNED_TOFU_VERSION,
 } from "./terraform-adapter.js";
-import {
-	asJsonObject,
-	isJsonObject,
-	isJsonString,
-	parseJsonObject,
-	parseJsonValue,
-	type JsonObject,
-} from "./json.js";
-
 
 // The REAL HCL engine (HOBO-717): drives the OpenTofu (`tofu`, default) or
 // Terraform (`terraform`) binary — they share the plan/apply/state protocol —
@@ -115,8 +115,8 @@ export function renderTerraformJsonProgram(
 		);
 	}
 
-	const document: JsonObject = {};
-	const outputs: JsonObject = {};
+	const document: JsonBag = {};
+	const outputs: JsonBag = {};
 	const wanted = resource.outputs ?? ["binding"];
 
 	if (token === "terraform_data") {
@@ -146,16 +146,15 @@ export function renderTerraformJsonProgram(
 		document.terraform = {
 			required_providers: { cloudflare: CLOUDFLARE_PROVIDER_REQUIREMENT },
 		};
-		const properties: JsonObject = {
+		const properties: JsonBag = {
 			account_id: options.accountId,
 		};
 		if (token === "cloudflare_workers_script") {
 			properties.name = resource.name;
 			const cfOptions = asJsonObject(resource.inputs?.options ?? {});
-			properties.content =
-				isJsonString(cfOptions.script)
-					? cfOptions.script
-					: DEFAULT_WORKER_SCRIPT;
+			properties.content = isJsonString(cfOptions.script)
+				? cfOptions.script
+				: DEFAULT_WORKER_SCRIPT;
 		} else if (token === "cloudflare_workers_kv_namespace") {
 			properties.title = resource.name;
 		} else {
@@ -364,8 +363,14 @@ export function createTerraformCliEngine(options: TerraformCliEngineOptions) {
 				string,
 				{ value: unknown }
 			>;
+			// A terraform output value is `unknown` on the CLI surface but JSON on
+			// the wire; `cloneAsJson` is the conversion that says so without
+			// asserting a shape nobody checked.
 			return Object.fromEntries(
-				Object.entries(parsed).map(([key, entry]) => [key, entry.value]),
+				Object.entries(parsed).map(([key, entry]) => [
+					key,
+					cloneAsJson(entry.value),
+				]),
 			);
 		} catch {
 			return {};
@@ -381,7 +386,7 @@ export function createTerraformCliEngine(options: TerraformCliEngineOptions) {
 		// every other operation.
 		snapshot() {
 			ensureAvailable();
-			const workspaces: JsonObject = {};
+			const workspaces: JsonBag = {};
 			if (!existsSync(workspacesDir)) {
 				return Object.freeze(workspaces);
 			}
@@ -430,7 +435,7 @@ export function createTerraformCliEngine(options: TerraformCliEngineOptions) {
 		},
 		async apply(program: IacProgramLike, expectedChanges: readonly unknown[]) {
 			ensureAvailable();
-			const resources: JsonObject = {};
+			const resources: JsonBag = {};
 			for (const resource of program.resources) {
 				const { dir, workspaceKey } = ensureWorkspace(program, resource);
 				run(["apply", "-input=false", "-no-color", "-auto-approve"], dir);
@@ -483,7 +488,7 @@ export function createTerraformCliEngine(options: TerraformCliEngineOptions) {
 		},
 		async destroy(program: IacProgramLike) {
 			ensureAvailable();
-			const destroyed: JsonObject = {};
+			const destroyed: JsonBag = {};
 			for (const resource of [...program.resources].reverse()) {
 				const { dir, workspaceKey } = ensureWorkspace(program, resource);
 				run(["destroy", "-input=false", "-no-color", "-auto-approve"], dir);

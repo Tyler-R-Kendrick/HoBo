@@ -1,4 +1,9 @@
-import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 // public-contract: the pinned Pulumi toolchain version every engine (in-memory and CLI) declares.
 export const PINNED_PULUMI_AUTOMATION_VERSION = "3.130.0";
 // public-contract: the IacProgram schema version validateIacProgram accepts.
@@ -39,9 +44,18 @@ export class PulumiStateError extends Error {
 	}
 }
 
-/** Stored stack/workspace state as this module reads it. */
+/**
+ * Stored stack/workspace state as this module reads it.
+ *
+ * `resources` is read back as `JsonValue` and narrowed at use, rather than
+ * declared as `Record<string, ResourceOutcome>` beside a `JsonValue` index
+ * signature. TypeScript requires every named property to be assignable to that
+ * signature, and a record of a *specific* interface is not — the two
+ * declarations contradict each other, and the index signature is the one that
+ * has to hold, because this shape is parsed from a state file nobody here
+ * wrote.
+ */
 interface StoredState {
-	readonly resources?: Record<string, ResourceOutcome>;
 	readonly [key: string]: JsonValue;
 }
 
@@ -130,9 +144,7 @@ export function createPerResourceStackKey(program, resourceName) {
 	return `${deploymentId}/${resourceName}`;
 }
 
-export function createStateBackendConfig(
-	overrides: JsonObject = {},
-) {
+export function createStateBackendConfig(overrides: JsonObject = {}) {
 	return deepFreeze({
 		kind: "memory",
 		lockHolder: null,

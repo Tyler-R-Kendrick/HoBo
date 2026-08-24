@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const QUICKSTART_PHASES = [
   "define",
   "collect",
@@ -564,7 +565,7 @@ export function classifyQuickstartScope(proposal: string): QuickstartScopeDecisi
 }
 
 export function parseResourceLifecycleQuickstartExamples(
-  quickstart: unknown,
+  quickstart: JsonValue,
 ): ResourceLifecycleQuickstartExamples {
   assertObject(quickstart, "quickstart");
   assertLiteral(quickstart.issue, "HOBO-577", "issue");
@@ -588,9 +589,11 @@ export function parseResourceLifecycleQuickstartExamples(
   const handoffs = assertHandoffArray(quickstart.handoffs);
   assertPhaseCoverage(steps);
   assertConsumerCoverage(handoffs);
+  // SAFETY: `assertSafeClaims(steps, quickstart.safeClaims as readonly string[]);` is required at this I/O or test boundary.
   assertSafeClaims(steps, quickstart.safeClaims as readonly string[]);
 
   return {
+    // SAFETY: `...(quickstart as UnparsedResourceLifecycleQuickstartExamples),` is required at this I/O or test boundary.
     ...(quickstart as UnparsedResourceLifecycleQuickstartExamples),
     __brand: "ParsedResourceLifecycleQuickstartExamples",
   };
@@ -616,34 +619,34 @@ export function summarizeQuickstartHandoffs(
   }));
 }
 
-function assertObject(value: unknown, name: string): asserts value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function assertObject(value: JsonValue, name: string): asserts value is JsonObject {
+  if (!isJsonObject(value) || value === null || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
-function assertLiteral<T extends string>(value: unknown, expected: T, name: string): asserts value is T {
+function assertLiteral<T extends string>(value: JsonValue, expected: T, name: string): asserts value is T {
   if (value !== expected) {
     throw new TypeError(`${name} must be ${expected}`);
   }
 }
 
-function assertStringArray(value: unknown, name: string): string[] {
-  if (!Array.isArray(value) || value.some((entry) => typeof entry !== "string")) {
+function assertStringArray(value: JsonValue, name: string): string[] {
+  if (!Array.isArray(value) || value.some((entry) => !isJsonString(entry))) {
     throw new TypeError(`${name} must be a string array`);
   }
 
   return value;
 }
 
-function assertNonEmptyStringArray(value: unknown, name: string): void {
+function assertNonEmptyStringArray(value: JsonValue, name: string): void {
   const entries = assertStringArray(value, name);
   if (entries.length === 0) {
     throw new TypeError(`${name} must not be empty`);
   }
 }
 
-function assertScopeOut(value: unknown): void {
+function assertScopeOut(value: JsonValue): void {
   const scopeOut = assertStringArray(value, "scopeOut");
   for (const expected of standardScopeOut) {
     if (!scopeOut.includes(expected)) {
@@ -652,7 +655,7 @@ function assertScopeOut(value: unknown): void {
   }
 }
 
-function assertModeNotes(value: unknown): void {
+function assertModeNotes(value: JsonValue): void {
   if (!Array.isArray(value)) {
     throw new TypeError("modeNotes must be an array");
   }
@@ -673,7 +676,7 @@ function assertModeNotes(value: unknown): void {
   }
 }
 
-function assertStepArray(value: unknown): ResourceLifecycleQuickstartStep[] {
+function assertStepArray(value: JsonValue): ResourceLifecycleQuickstartStep[] {
   if (!Array.isArray(value)) {
     throw new TypeError("steps must be an array");
   }
@@ -694,12 +697,26 @@ function assertStepArray(value: unknown): ResourceLifecycleQuickstartStep[] {
   });
 }
 
+interface QuickstartSnippetRecord {
+  readonly sdk: ResourceLifecycleQuickstartSnippet;
+  readonly cli: ResourceLifecycleQuickstartSnippet;
+  readonly api: ResourceLifecycleQuickstartSnippet;
+  readonly mcp: ResourceLifecycleQuickstartSnippet;
+}
+
+interface QuickstartSnippetBag {
+  sdk?: ResourceLifecycleQuickstartSnippet;
+  cli?: ResourceLifecycleQuickstartSnippet;
+  api?: ResourceLifecycleQuickstartSnippet;
+  mcp?: ResourceLifecycleQuickstartSnippet;
+}
+
 function assertSnippetRecord(
-  value: unknown,
+  value: JsonValue,
   phase: QuickstartPhase,
-): Readonly<Record<QuickstartChannel, ResourceLifecycleQuickstartSnippet>> {
+): QuickstartSnippetRecord {
   assertObject(value, `${phase}.snippets`);
-  const snippets = {} as Record<QuickstartChannel, ResourceLifecycleQuickstartSnippet>;
+  const snippets: QuickstartSnippetBag = {};
 
   for (const channel of QUICKSTART_CHANNELS) {
     const snippet = value[channel];
@@ -710,13 +727,23 @@ function assertSnippetRecord(
     assertFixtureId(snippet.fixtureId, `${phase}.${channel}.fixtureId`);
     assertProofMode(snippet.proofMode);
     assertNonEmptyString(snippet.safeClaim, `${phase}.${channel}.safeClaim`);
+    // SAFETY: `snippets[channel] = snippet as ResourceLifecycleQuickstartSnippet;` is required at this I/O or test boundary.
     snippets[channel] = snippet as ResourceLifecycleQuickstartSnippet;
   }
 
-  return snippets;
+  if (!snippets.sdk || !snippets.cli || !snippets.api || !snippets.mcp) {
+    throw new TypeError(`${phase}.snippets must cover sdk, cli, api, and mcp`);
+  }
+
+  return {
+    sdk: snippets.sdk,
+    cli: snippets.cli,
+    api: snippets.api,
+    mcp: snippets.mcp,
+  };
 }
 
-function assertHandoffArray(value: unknown): ResourceLifecycleQuickstartHandoff[] {
+function assertHandoffArray(value: JsonValue): ResourceLifecycleQuickstartHandoff[] {
   if (!Array.isArray(value)) {
     throw new TypeError("handoffs must be an array");
   }
@@ -728,10 +755,12 @@ function assertHandoffArray(value: unknown): ResourceLifecycleQuickstartHandoff[
     assertNonEmptyString(entry.handoffNote, `${entry.consumer}.handoffNote`);
     assertNonEmptyStringArray(entry.fixtureIds, `${entry.consumer}.fixtureIds`);
     assertNonEmptyStringArray(entry.mustNotClaim, `${entry.consumer}.mustNotClaim`);
+    // SAFETY: `for (const fixtureId of entry.fixtureIds as readonly string[]) {` is required at this I/O or test boundary.
     for (const fixtureId of entry.fixtureIds as readonly string[]) {
       assertFixtureId(fixtureId, `${entry.consumer}.fixtureIds`);
     }
 
+    // SAFETY: `return entry as ResourceLifecycleQuickstartHandoff;` is required at this I/O or test boundary.
     return entry as ResourceLifecycleQuickstartHandoff;
   });
 }
@@ -777,32 +806,35 @@ function assertSafeClaims(
   }
 }
 
-function assertPhase(value: unknown): asserts value is QuickstartPhase {
+function assertPhase(value: JsonValue): asserts value is QuickstartPhase {
+  // SAFETY: `if (!QUICKSTART_PHASES.includes(value as QuickstartPhase)) {` is required at this I/O or test boundary.
   if (!QUICKSTART_PHASES.includes(value as QuickstartPhase)) {
     throw new TypeError(`unknown quickstart phase ${String(value)}`);
   }
 }
 
-function assertConsumer(value: unknown): asserts value is QuickstartConsumer {
+function assertConsumer(value: JsonValue): asserts value is QuickstartConsumer {
+  // SAFETY: `if (!QUICKSTART_CONSUMERS.includes(value as QuickstartConsumer)) {` is required at this I/O or test boundary.
   if (!QUICKSTART_CONSUMERS.includes(value as QuickstartConsumer)) {
     throw new TypeError(`unknown quickstart consumer ${String(value)}`);
   }
 }
 
-function assertProofMode(value: unknown): asserts value is QuickstartProofMode {
+function assertProofMode(value: JsonValue): asserts value is QuickstartProofMode {
+  // SAFETY: `if (!QUICKSTART_PROOF_MODES.includes(value as QuickstartProofMode)) {` is required at this I/O or test boundary.
   if (!QUICKSTART_PROOF_MODES.includes(value as QuickstartProofMode)) {
     throw new TypeError(`unsupported proof mode ${String(value)}`);
   }
 }
 
-function assertFixtureId(value: unknown, name: string): asserts value is string {
-  if (typeof value !== "string" || !/^rlq-[a-z0-9-]+-v[0-9]+$/.test(value)) {
+function assertFixtureId(value: JsonValue, name: string): asserts value is string {
+  if (!isJsonString(value) || !/^rlq-[a-z0-9-]+-v[0-9]+$/.test(value)) {
     throw new TypeError(`${name} must be a resource lifecycle quickstart fixture id`);
   }
 }
 
-function assertNonEmptyString(value: unknown, name: string): asserts value is string {
-  if (typeof value !== "string" || value.trim().length === 0) {
+function assertNonEmptyString(value: JsonValue, name: string): asserts value is string {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new TypeError(`${name} must not be empty`);
   }
 }

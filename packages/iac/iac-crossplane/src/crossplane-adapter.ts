@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-runtime-typeof, anti-slop/no-unknown-returns */
-
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 // The SAME wire schema every HoBo IaC adapter consumes; only `provider` differs.
 // public-contract: the IacProgram schema version validateIacProgram accepts.
 export const IAC_PROGRAM_API_VERSION = "hobo.iac-program/v1";
@@ -40,34 +39,34 @@ export class CrossplaneApplyError extends Error {
 export interface CrossplaneComposition {
 	readonly name: string;
 	readonly labels?: Record<string, string>;
-	readonly [key: string]: unknown;
+	readonly [key: string]: JsonValue;
 }
 
 /** A claim as the adapter reads it — see `claimFor` for the writer. */
 export interface CrossplaneClaim {
 	readonly id: string;
 	readonly name: string;
-	readonly spec: Record<string, unknown>;
+	readonly spec: JsonObject;
 	readonly specHash: string;
 	readonly status: {
 		readonly phase: string;
-		readonly outputs: Record<string, unknown>;
+		readonly outputs: JsonObject;
 	};
 	/** Snapshot of outputs recorded at apply time; drives status-drift detection. */
-	readonly appliedOutputs?: Record<string, unknown>;
+	readonly appliedOutputs?: JsonObject;
 }
 
 /** A realized resource inside an `outputs` payload. Distinct from a claim. */
 export interface CrossplaneResourceOutcome {
 	readonly id?: string;
 	readonly status?: string;
-	readonly outputs?: Record<string, unknown>;
+	readonly outputs?: JsonObject;
 }
 
 /** Fields the in-memory cluster lets a test mutate on a stored claim. */
 export interface CrossplaneClaimMutation {
-	readonly specPatch?: Record<string, unknown>;
-	readonly statusPatch?: Record<string, unknown>;
+	readonly specPatch?: JsonObject;
+	readonly statusPatch?: JsonObject;
 	readonly phase?: string;
 }
 
@@ -76,7 +75,7 @@ export interface CrossplaneClusterLike {
 	compositions():
 		| readonly CrossplaneComposition[]
 		| Promise<readonly CrossplaneComposition[]>;
-	applyClaim(claim: CrossplaneClaim): unknown | Promise<unknown>;
+	applyClaim(claim: CrossplaneClaim): JsonValue | Promise<JsonValue>;
 	waitForReady(name: string, pollLimit: number): boolean | Promise<boolean>;
 	/** Absent claims come back nullish; callers already branch on that. */
 	getClaim(
@@ -87,11 +86,11 @@ export interface CrossplaneClusterLike {
 		| null
 		| Promise<CrossplaneClaim | undefined | null>;
 	claimNames(): string[] | Promise<string[]>;
-	deleteClaim(name: string): unknown | Promise<unknown>;
+	deleteClaim(name: string): JsonValue | Promise<JsonValue>;
 }
 
 export function createFixtureIacProgram(
-	overrides: Record<string, unknown> = {},
+	overrides: JsonObject = {},
 ) {
 	const base = {
 		apiVersion: IAC_PROGRAM_API_VERSION,
@@ -444,7 +443,7 @@ function assertConformance(condition, assertion) {
 export function validateIacProgram(program) {
 	// Parse, don't validate: returns a frozen, derived parsed domain program so
 	// callers work with a trusted ParsedIacProgram instead of re-checking DTO fields.
-	if (!program || typeof program !== "object") {
+	if (!program || !isJsonObject(program)) {
 		throw new CrossplaneProgramError(
 			"invalid-program",
 			"IacProgram must be an object",
@@ -650,7 +649,7 @@ function resolveStackOutputs(stackOutputs, resources) {
 }
 
 function resolveValue(value, resources) {
-	const match = typeof value === "string" ? OUTPUT_REF.exec(value) : undefined;
+	const match = isJsonString(value) ? OUTPUT_REF.exec(value) : undefined;
 	if (!match) return structuredClone(value);
 
 	const [, resourceName, outputName] = match;
@@ -658,7 +657,7 @@ function resolveValue(value, resources) {
 }
 
 function validateOutputReference(value, resources) {
-	if (typeof value !== "string" || !value.startsWith("${resources.")) {
+	if (!isJsonString(value) || !value.startsWith("${resources.")) {
 		return;
 	}
 
@@ -688,7 +687,7 @@ function stableJson(value) {
 	if (Array.isArray(value)) {
 		return `[${value.map((item) => stableJson(item)).join(",")}]`;
 	}
-	if (value && typeof value === "object") {
+	if (value && isJsonObject(value)) {
 		return `{${Object.keys(value)
 			.sort()
 			.map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
@@ -711,11 +710,11 @@ function deepMerge(left, right) {
 }
 
 function isPlainObject(value) {
-	return Boolean(value && typeof value === "object" && !Array.isArray(value));
+	return Boolean(value && isJsonObject(value) && !Array.isArray(value));
 }
 
 function deepFreeze(value) {
-	if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+	if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
 		return value;
 	}
 

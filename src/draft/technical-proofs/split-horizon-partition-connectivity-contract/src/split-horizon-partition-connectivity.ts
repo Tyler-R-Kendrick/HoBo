@@ -1,6 +1,6 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased input contracts at the shared parser boundary before domain evaluation. */
-
 import { routeCrossCampTraffic } from "../../cross-camp-routing-policy-contract/src/cross-camp-routing-policy.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export function evaluateSplitHorizonResolution(check) {
   const normalized = normalizeResolutionCheck(check);
@@ -138,7 +138,7 @@ export function evaluateTrustLeaseFreshness(input) {
 }
 
 function normalizeTrustLeaseInput(input) {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError("trust lease input is required");
   }
   const nowMs = timestampMs(input.now, "now");
@@ -183,7 +183,7 @@ function failClosedTrust(input, code) {
 }
 
 function normalizeResolutionCheck(check) {
-  if (!check || typeof check !== "object" || Array.isArray(check)) {
+  if (!check || !isJsonObject(check) || Array.isArray(check)) {
     throw new TypeError("resolution check is required");
   }
   return {
@@ -226,7 +226,7 @@ function targetsKey(targets) {
 }
 
 function requiredString(value, path) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new TypeError(`${path} must be a non-empty string`);
   }
   return value.trim();

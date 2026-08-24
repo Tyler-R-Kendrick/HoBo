@@ -76,7 +76,47 @@ export type Layout = Readonly<{
 	trafficEmitter: Readonly<{ x: number; y: number; width: number }>;
 }>;
 
-const ZONE_LABEL = {
+export interface PixelPoint {
+	readonly x: number;
+	readonly y: number;
+}
+
+export interface PixelSize {
+	readonly width: number;
+	readonly height: number;
+}
+
+interface ZoneCopy {
+	platformRest: string;
+	bootstrapDesk: string;
+	activeRailTrack: string;
+	connectionBay: string;
+	policyBoard: string;
+	costBooth: string;
+	errorBunker: string;
+}
+
+interface ZoneDepth {
+	platformRest: number;
+	bootstrapDesk: number;
+	activeRailTrack: number;
+	connectionBay: number;
+	policyBoard: number;
+	costBooth: number;
+	errorBunker: number;
+}
+
+interface ZoneMap {
+	platformRest: ZoneLayout;
+	bootstrapDesk: ZoneLayout;
+	activeRailTrack: ZoneLayout;
+	connectionBay: ZoneLayout;
+	policyBoard: ZoneLayout;
+	costBooth: ZoneLayout;
+	errorBunker: ZoneLayout;
+}
+
+const ZONE_LABEL: ZoneCopy = {
 	platformRest: "Platform Rest",
 	bootstrapDesk: "Bootstrap Desk",
 	activeRailTrack: "Active Rail Track",
@@ -84,10 +124,10 @@ const ZONE_LABEL = {
 	policyBoard: "Policy Board",
 	costBooth: "Cost Booth",
 	errorBunker: "Error Bunker",
-} satisfies Record<ZoneId, string>;
+};
 
 /** Draw order hint only; hit-testing resolves overlaps by area, not by depth. */
-const ZONE_DEPTH = {
+const ZONE_DEPTH: ZoneDepth = {
 	platformRest: 10,
 	bootstrapDesk: 11,
 	activeRailTrack: 5,
@@ -95,7 +135,7 @@ const ZONE_DEPTH = {
 	policyBoard: 8,
 	costBooth: 9,
 	errorBunker: 9,
-} satisfies Record<ZoneId, number>;
+};
 
 /**
  * Zone rects are the village grid, not free-floating boxes: a rect is exactly
@@ -122,7 +162,7 @@ function zoneFromTiles(id: ZoneId): ZoneLayout {
 	});
 }
 
-const ZONES = {
+const ZONES: ZoneMap = {
 	platformRest: zoneFromTiles("platformRest"),
 	bootstrapDesk: zoneFromTiles("bootstrapDesk"),
 	activeRailTrack: zoneFromTiles("activeRailTrack"),
@@ -130,7 +170,7 @@ const ZONES = {
 	policyBoard: zoneFromTiles("policyBoard"),
 	costBooth: zoneFromTiles("costBooth"),
 	errorBunker: zoneFromTiles("errorBunker"),
-} satisfies Record<ZoneId, ZoneLayout>;
+};
 
 /**
  * DESIGN.md reserved region: the band the Camp houses and their Bindles own.
@@ -209,7 +249,7 @@ export function zoneAt(x: number, y: number): ZoneId | null {
 	return hit?.id ?? null;
 }
 
-export function zoneAnchor(id: ZoneId) {
+export function zoneAnchor(id: ZoneId): PixelPoint {
 	const z = YARD_LAYOUT.zones[id];
 	return { x: z.anchorX, y: z.anchorY };
 }

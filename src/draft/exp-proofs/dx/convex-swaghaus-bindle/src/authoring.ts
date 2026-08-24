@@ -14,6 +14,8 @@ import {
 	parseSwaghausBindle,
 	type SwaghausBindlePlan,
 } from "./parse.ts";
+import { type JsonObject } from "./json.js";
+
 
 export type AuthorInput = {
 	/** Repo-relative Convex app directory handed to `convexApp(root)`. */
@@ -27,7 +29,7 @@ export type AuthorInput = {
 /** The serialized manifest graph the control plane actually receives. */
 export type BindleManifest = {
 	readonly name: string;
-	readonly resources: Record<string, unknown>;
+	readonly resources: JsonObject;
 	readonly edges: readonly unknown[];
 };
 
@@ -48,6 +50,7 @@ export function draftSwaghausManifest(input: AuthorInput): BindleManifest {
 		return { backend, auth, web };
 	});
 
+	// SAFETY: `return JSON.parse(` is required at this I/O or test boundary.
 	return JSON.parse(
 		JSON.stringify({
 			name: definition.name,

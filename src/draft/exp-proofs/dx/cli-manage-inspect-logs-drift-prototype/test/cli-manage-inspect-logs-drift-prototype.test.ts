@@ -89,6 +89,7 @@ describe("CLI manage inspect/logs/drift prototype", () => {
   });
 
   it("aligns Pact and CUE architecture fixtures with the parsed prototype", () => {
+    // SAFETY: `const pact = JSON.parse(` is required at this I/O or test boundary.
     const pact = JSON.parse(
       readFileSync(
         new URL(

@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this proof owns the erased scope boundary; the parser establishes an object candidate and the validator checks every required field before accepting it. */
-
+import { isJsonObject, type JsonValue } from "./json.js";
 export const REQUIRED_BOUNDARIES = ["service", "ux", "security", "support"] as const;
 
 type Boundary = (typeof REQUIRED_BOUNDARIES)[number];
@@ -57,20 +56,6 @@ interface FollowUpGate {
   allowedAfter: string;
   blockedBefore: string;
 }
-
-type SupportDebugRequest = string;
-
-type SupportDebugRequestClassification = Readonly<{
-  owner: string;
-  inScope: boolean;
-}>;
-
-type SupportDebugToolsScopeCandidate = Partial<SupportDebugToolsScope>;
-
-type SupportDebugToolsScopeValidation = Readonly<{
-  ok: boolean;
-  errors: string[];
-}>;
 
 interface SupportDebugToolsScope {
   issue: string;
@@ -451,9 +436,17 @@ export function canCreateSupportDebugFollowUp({
   return Boolean(m0Accepted) && IMPLEMENTATION_PHASES.has(phase);
 }
 
-export function classifySupportDebugRequest(
-  request: SupportDebugRequest,
-): SupportDebugRequestClassification {
+export interface ScopeClassification {
+  owner: string;
+  inScope: boolean;
+}
+
+export interface ScopeValidation {
+  ok: boolean;
+  errors: string[];
+}
+
+export function classifySupportDebugRequest(request: JsonValue): ScopeClassification {
   const text = String(request ?? "").toLowerCase();
 
   if (/\b(provider credential|credential secret|secret material|raw customer data|unredacted)\b/.test(text)) {
@@ -481,25 +474,15 @@ export function classifySupportDebugRequest(
   return { owner: "Support & Debug Tools", inScope: true };
 }
 
-function parseSupportDebugToolsScope(input: unknown): SupportDebugToolsScopeCandidate | undefined {
-  if (!input || typeof input !== "object") {
-    return undefined;
-  }
-
-  // SAFETY: the object boundary above establishes a record candidate; validation
-  // below checks every required field before the candidate is treated as valid.
-  return input as SupportDebugToolsScopeCandidate;
-}
-
-export function validateSupportDebugToolsScope(
-  scope: unknown,
-): SupportDebugToolsScopeValidation {
+export function validateSupportDebugToolsScope(scope: JsonValue): ScopeValidation {
   const errors: string[] = [];
 
-  const record = parseSupportDebugToolsScope(scope);
-  if (!record) {
+  if (!scope || !isJsonObject(scope)) {
     return { ok: false, errors: ["scope record is required"] };
   }
+
+  // SAFETY: `const record = scope as Partial<SupportDebugToolsScope>;` is required at this I/O or test boundary.
+  const record = scope as Partial<SupportDebugToolsScope>;
 
   if (record.issue !== "HOBO-426") {
     errors.push("issue must be HOBO-426");

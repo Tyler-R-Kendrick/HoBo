@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const REQUIRED_DECISION_TREE_CASES = [
   "happy-reference-check",
   "install-failure",
@@ -319,7 +320,7 @@ export const VIBE_TROUBLESHOOTING_DECISION_TREES: VibeTroubleshootingDecisionTre
 };
 
 export function parseVibeTroubleshootingDecisionTrees(
-  value: unknown,
+  value: JsonValue,
 ): ParsedVibeTroubleshootingDecisionTrees {
   assertRecord(value, "proof");
   assertLiteral(value.issue, "HOBO-553", "issue");
@@ -419,14 +420,14 @@ function redaction(
   };
 }
 
-function assertDecisionCases(value: unknown): readonly TroubleshootingDecisionCase[] {
+function assertDecisionCases(value: JsonValue): readonly TroubleshootingDecisionCase[] {
   if (!Array.isArray(value)) {
     throw new TypeError("cases must be an array");
   }
   return value.map((item, index) => assertDecisionCase(item, `cases[${index}]`));
 }
 
-function assertDecisionCase(value: unknown, label: string): TroubleshootingDecisionCase {
+function assertDecisionCase(value: JsonValue, label: string): TroubleshootingDecisionCase {
   assertRecord(value, label);
   assertRecord(value.redaction, `${label}.redaction`);
   return {
@@ -471,7 +472,7 @@ function assertDecisionCase(value: unknown, label: string): TroubleshootingDecis
   };
 }
 
-function assertProofModes(value: unknown): readonly ProofMode[] {
+function assertProofModes(value: JsonValue): readonly ProofMode[] {
   if (!Array.isArray(value)) {
     throw new TypeError("proofModes must be an array");
   }
@@ -484,28 +485,28 @@ function assertProofModes(value: unknown): readonly ProofMode[] {
   return modes;
 }
 
-function assertString(value: unknown, field: string): string {
-  if (typeof value !== "string" || value.length === 0) {
+function assertString(value: JsonValue, field: string): string {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${field} must be a non-empty string`);
   }
   return value;
 }
 
-function assertStringArray(value: unknown, field: string): readonly string[] {
+function assertStringArray(value: JsonValue, field: string): readonly string[] {
   if (!Array.isArray(value) || value.length === 0) {
     throw new TypeError(`${field} must be a non-empty array`);
   }
   return value.map((item, index) => assertString(item, `${field}[${index}]`));
 }
 
-function assertRecord(value: unknown, field: string): asserts value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function assertRecord(value: JsonValue, field: string): asserts value is JsonObject {
+  if (!isJsonObject(value) || value === null || Array.isArray(value)) {
     throw new TypeError(`${field} must be an object`);
   }
 }
 
 function assertLiteral<const T extends string | boolean>(
-  value: unknown,
+  value: JsonValue,
   expected: T,
   field: string,
 ): T {
@@ -516,13 +517,14 @@ function assertLiteral<const T extends string | boolean>(
 }
 
 function assertOneOf<const T extends readonly string[]>(
-  value: unknown,
+  value: JsonValue,
   allowed: T,
   field: string,
 ): T[number] {
-  if (typeof value !== "string" || !allowed.includes(value)) {
+  if (!isJsonString(value) || !allowed.includes(value)) {
     throw new TypeError(`${field} must be one of ${allowed.join(", ")}`);
   }
+  // SAFETY: `return value as T[number];` is required at this I/O or test boundary.
   return value as T[number];
 }
 

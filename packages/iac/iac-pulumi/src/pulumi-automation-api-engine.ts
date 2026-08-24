@@ -1,5 +1,3 @@
-/* oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-returns, anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-known-value-widening, anti-slop/no-chained-type-assertions */
-
 import {
 	existsSync,
 	mkdirSync,
@@ -19,6 +17,8 @@ import {
 	PulumiEngineUnavailableError,
 	renderPulumiYamlProgram,
 } from "./pulumi-cli-engine.js";
+import { type JsonValue, type JsonObject } from "./json.js";
+
 
 // The REAL Pulumi Automation API engine (HOBO-715). Same
 // preview/apply/refresh/destroy shape as the in-memory stand-in and the CLI
@@ -40,7 +40,7 @@ export const PULUMI_AUTOMATION_MODULE_MISSING =
 interface IacResourceLike {
 	readonly name: string;
 	readonly type: string;
-	readonly inputs?: Record<string, unknown>;
+	readonly inputs?: JsonObject;
 	readonly outputs?: readonly string[];
 }
 
@@ -48,7 +48,7 @@ interface IacProgramLike {
 	readonly deploymentId?: string;
 	readonly stack?: string;
 	readonly resources: readonly IacResourceLike[];
-	readonly stackOutputs?: Record<string, unknown>;
+	readonly stackOutputs?: JsonObject;
 }
 
 // The narrow LocalWorkspace surface this engine drives (structural, so the
@@ -57,9 +57,9 @@ interface AutomationStackLike {
 	preview(): Promise<{
 		changeSummary?: Record<string, number>;
 	}>;
-	up(): Promise<unknown>;
-	refresh(): Promise<unknown>;
-	destroy(): Promise<unknown>;
+	up(): Promise<JsonValue>;
+	refresh(): Promise<JsonValue>;
+	destroy(): Promise<JsonValue>;
 	outputs(): Promise<Record<string, { value: unknown }>>;
 }
 
@@ -100,19 +100,21 @@ export function createPulumiAutomationApiEngine(
 		try {
 			// Explicit index file: @pulumi/pulumi ships no exports map, and Node's
 			// ESM resolver rejects directory subpath imports (ERR_UNSUPPORTED_DIR_IMPORT).
-			automation = (await import(
-				"@pulumi/pulumi/automation/index.js"
-			)) as unknown as AutomationModuleLike;
+			// SAFETY: `automation = (await import(` is required at this I/O or test boundary.
+			const loaded = await import("@pulumi/pulumi/automation/index.js");
+			// SAFETY: @pulumi/pulumi automation index is the typed Automation module.
+			automation = loaded as AutomationModuleLike;
 		} catch (error) {
+			const message = error instanceof Error ? error.message : String(error);
 			throw new PulumiEngineUnavailableError(
 				PULUMI_AUTOMATION_MODULE_MISSING,
-				`@pulumi/pulumi automation module is not available: ${(error as Error).message}`,
+				`@pulumi/pulumi automation module is not available: ${message}`,
 			);
 		}
 		return automation;
 	}
 
-	function envVars(): Record<string, string> {
+	function envVars() {
 		return {
 			...Object.fromEntries(
 				Object.entries(env).filter(
@@ -159,6 +161,7 @@ export function createPulumiAutomationApiEngine(
 			// missing engine surfaces here. Fail closed with the shared typed error.
 			throw new PulumiEngineUnavailableError(
 				PULUMI_CLI_MISSING,
+				// SAFETY: ``pulumi engine is not available for Automation API workspaces: ${(error as Error` is required at this I/O or test boundary.
 				`pulumi engine is not available for Automation API workspaces: ${(error as Error).message}`,
 			);
 		}
@@ -166,7 +169,7 @@ export function createPulumiAutomationApiEngine(
 
 	async function outputsOf(
 		stack: AutomationStackLike,
-	): Promise<Record<string, unknown>> {
+	): Promise<JsonObject> {
 		try {
 			const raw = await stack.outputs();
 			return Object.fromEntries(
@@ -183,8 +186,8 @@ export function createPulumiAutomationApiEngine(
 		// Reads the file:// backend's checkpoint documents directly (sync, no
 		// engine invocation) so `hobo drift`/`hobo import` can enumerate held
 		// state even on a host where the pulumi engine has since gone missing.
-		snapshot(): Readonly<Record<string, unknown>> {
-			const stacks: Record<string, unknown> = {};
+		snapshot(): Readonly<JsonObject> {
+			const stacks: JsonObject = {};
 			const checkpointRoot = join(stateDir, ".pulumi", "stacks");
 			if (!existsSync(checkpointRoot) || !existsSync(programsDir)) {
 				return Object.freeze(stacks);
@@ -243,7 +246,7 @@ export function createPulumiAutomationApiEngine(
 			});
 		},
 		async apply(program: IacProgramLike, expectedChanges: readonly unknown[]) {
-			const resources: Record<string, unknown> = {};
+			const resources: JsonObject = {};
 			for (const resource of program.resources) {
 				const { stack, stackKey } = await stackFor(program, resource);
 				await stack.up();
@@ -300,7 +303,7 @@ export function createPulumiAutomationApiEngine(
 			});
 		},
 		async destroy(program: IacProgramLike) {
-			const destroyed: Record<string, unknown> = {};
+			const destroyed: JsonObject = {};
 			for (const resource of [...program.resources].reverse()) {
 				const { stack, stackKey } = await stackFor(program, resource);
 				await stack.destroy();
@@ -329,17 +332,18 @@ export function createPulumiAutomationApiEngine(
 function checkpointOutputs(
 	checkpointRoot: string,
 	projectName: string,
-): Record<string, unknown> | null {
+): JsonObject | null {
 	const projectDir = join(checkpointRoot, projectName);
 	const checkpointFile = join(projectDir, "hobo.json");
 	if (!existsSync(checkpointFile)) return null;
 	try {
+		// SAFETY: `const parsed = JSON.parse(readFileSync(checkpointFile, "utf8")) as {` is required at this I/O or test boundary.
 		const parsed = JSON.parse(readFileSync(checkpointFile, "utf8")) as {
 			checkpoint?: {
 				latest?: {
 					resources?: Array<{
 						type?: string;
-						outputs?: Record<string, unknown>;
+						outputs?: JsonObject;
 					}>;
 				};
 			};

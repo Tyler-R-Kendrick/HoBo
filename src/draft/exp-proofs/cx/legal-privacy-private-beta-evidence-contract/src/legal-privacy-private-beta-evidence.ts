@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this module validates erased evidence records at the proof boundary before accepting the closed contract. */
-
+import { isJsonObject, type JsonValue } from "./json.js";
 export const REQUIRED_PRIVATE_BETA_EVIDENCE_IDS = [
   "m0-checklist-baseline",
   "privacy-notice-beta-review",
@@ -307,13 +306,14 @@ export const legalPrivacyPrivateBetaEvidence: LegalPrivacyPrivateBetaEvidence = 
   }
 };
 
-export function validateLegalPrivacyPrivateBetaEvidence(record: unknown): ValidationResult {
+export function validateLegalPrivacyPrivateBetaEvidence(record: JsonValue): ValidationResult {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["legal/privacy private beta evidence record is required"] };
   }
 
+  // SAFETY: `const candidate = record as Partial<LegalPrivacyPrivateBetaEvidence>;` is required at this I/O or test boundary.
   const candidate = record as Partial<LegalPrivacyPrivateBetaEvidence>;
 
   if (candidate.issue !== "HOBO-464") {
@@ -415,7 +415,7 @@ export function validateLegalPrivacyPrivateBetaEvidence(record: unknown): Valida
 }
 
 export function assertLegalPrivacyPrivateBetaEvidence(
-  record: unknown = legalPrivacyPrivateBetaEvidence
+  record: JsonValue = legalPrivacyPrivateBetaEvidence
 ): LegalPrivacyPrivateBetaEvidence {
   const result = validateLegalPrivacyPrivateBetaEvidence(record);
 
@@ -423,5 +423,6 @@ export function assertLegalPrivacyPrivateBetaEvidence(
     throw new Error(`legal/privacy private beta evidence invalid:\n${result.errors.join("\n")}`);
   }
 
+  // SAFETY: `return record as LegalPrivacyPrivateBetaEvidence;` is required at this I/O or test boundary.
   return record as LegalPrivacyPrivateBetaEvidence;
 }

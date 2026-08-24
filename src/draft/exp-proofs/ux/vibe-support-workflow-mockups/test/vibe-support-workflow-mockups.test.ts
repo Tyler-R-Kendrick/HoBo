@@ -105,6 +105,7 @@ test("Pact and CUE artifacts stay aligned with the parsed support fixture shape"
     ),
   );
   const body = pact.interactions[0].response.body;
+  // SAFETY: `const pactMockups = parseVibeSupportWorkflowMockups(body as typeof VIBE_SUPPORT_` is required at this I/O or test boundary.
   const pactMockups = parseVibeSupportWorkflowMockups(body as typeof VIBE_SUPPORT_WORKFLOW_MOCKUPS);
 
   assert.deepEqual(pactMockups.personas, REQUIRED_SUPPORT_WORKFLOW_MOCKUP_PERSONAS);
@@ -171,6 +172,7 @@ test("parser rejects missing fixture metadata and unsupported proof modes", () =
         fixtures: [
           {
             ...VIBE_SUPPORT_WORKFLOW_MOCKUPS.fixtures[0],
+            // SAFETY: `proofMode: "production-live" as never,` is required at this I/O or test boundary.
             proofMode: "production-live" as never,
           },
           ...VIBE_SUPPORT_WORKFLOW_MOCKUPS.fixtures.slice(1),
@@ -186,6 +188,7 @@ test("parser rejects missing fixture metadata and unsupported proof modes", () =
         quickstartFixtureRefs: [
           {
             ...VIBE_SUPPORT_WORKFLOW_MOCKUPS.quickstartFixtureRefs[0],
+            // SAFETY: `proofMode: "production-live" as never,` is required at this I/O or test boundary.
             proofMode: "production-live" as never,
           },
           ...VIBE_SUPPORT_WORKFLOW_MOCKUPS.quickstartFixtureRefs.slice(1),

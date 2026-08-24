@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { asJsonObject, type JsonBag } from "../src/json.js";
+
 
 async function loadContract() {
   const module = await import("../src/release-notes-ga-handoff-evidence.ts").catch((error) => ({
@@ -134,17 +136,16 @@ test("scope guards reject publication, docs portal, customer comms, unsupported 
 
 test("malformed evidence collections return parser errors instead of throwing", async () => {
   const { releaseNotesGaHandoffEvidence, validateReleaseNotesGaHandoffEvidence } = await loadContract();
-  const invalid = {
-    ...structuredClone(releaseNotesGaHandoffEvidence),
-    evidence: {},
-    blockers: "not-blockers",
-    acceptedRisks: null,
-    releaseCutlineDependencies: false,
-    missingEvidence: {},
-    followUps: {},
-    scopeOut: {},
-    publicClaimGuards: {},
-  };
+  const invalid: JsonBag = { ...asJsonObject(structuredClone(releaseNotesGaHandoffEvidence)) };
+
+  invalid.evidence = {};
+  invalid.blockers = "not-blockers";
+  invalid.acceptedRisks = null;
+  invalid.releaseCutlineDependencies = false;
+  invalid.missingEvidence = {};
+  invalid.followUps = {};
+  invalid.scopeOut = {};
+  invalid.publicClaimGuards = {};
 
   const result = validateReleaseNotesGaHandoffEvidence(invalid);
 

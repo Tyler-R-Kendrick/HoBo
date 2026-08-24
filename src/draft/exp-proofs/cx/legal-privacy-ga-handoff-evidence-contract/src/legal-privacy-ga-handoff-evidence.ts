@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this module validates erased evidence records at the proof boundary before accepting the closed contract. */
-
+import { isJsonObject, type JsonValue } from "./json.js";
 export type EvidenceStatus = "accepted" | "accepted-risk" | "missing";
 export type ProofMode = "design-record" | "issue-state" | "manual-review" | "release-cutline";
 export type BlockerState = "cleared" | "accepted-risk";
@@ -239,13 +238,14 @@ export const legalPrivacyGaHandoffEvidence: LegalPrivacyGaHandoffEvidenceRecord 
   publicClaimGuards: [],
 };
 
-export function validateLegalPrivacyGaHandoffEvidence(record: unknown) {
+export function validateLegalPrivacyGaHandoffEvidence(record: JsonValue) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["legal/privacy GA handoff evidence record is required"] };
   }
 
+  // SAFETY: `const value = record as Partial<LegalPrivacyGaHandoffEvidenceRecord>;` is required at this I/O or test boundary.
   const value = record as Partial<LegalPrivacyGaHandoffEvidenceRecord>;
   const evidence = Array.isArray(value.evidence) ? value.evidence : [];
   const blockers = Array.isArray(value.blockers) ? value.blockers : [];

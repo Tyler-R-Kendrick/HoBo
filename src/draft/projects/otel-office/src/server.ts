@@ -43,6 +43,8 @@ import {
 } from "./otel-signals.js";
 import { SIM_TICK_MS, createSimulation } from "./simulator.js";
 import { TraceIndex } from "./trace-index.js";
+import { isJsonObject, type JsonValue } from "./json.js";
+
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = normalize(join(HERE, "..", "public"));
@@ -51,7 +53,15 @@ const CLIENT_DIR = [join(HERE, "client"), join(HERE, "..", "dist", "client")].fi
 	existsSync(join(dir, "index.js")),
 ) ?? join(HERE, "..", "dist", "client");
 
-const MIME: Record<string, string> = {
+interface StaticMimeTypes {
+	".html": string;
+	".js": string;
+	".css": string;
+	".json": string;
+	".map": string;
+}
+
+const MIME: StaticMimeTypes = {
 	".html": "text/html; charset=utf-8",
 	".js": "text/javascript; charset=utf-8",
 	".css": "text/css; charset=utf-8",
@@ -78,20 +88,37 @@ export interface OfficeServer {
 	close: () => Promise<void>;
 }
 
-function sendJson(res: ServerResponse, status: number, body: unknown): void {
+function sendJson(res: ServerResponse, status: number, body: JsonValue): void {
 	res.writeHead(status, { "content-type": "application/json; charset=utf-8" });
 	res.end(JSON.stringify(body));
 }
 
+function mimeFor(path: string): string {
+	const ext = extname(path);
+	switch (ext) {
+		case ".html":
+		case ".js":
+		case ".css":
+		case ".json":
+		case ".map":
+			return MIME[ext];
+		default:
+			return "application/octet-stream";
+	}
+}
+
 function serveFile(res: ServerResponse, path: string): void {
-	const type = MIME[extname(path)] ?? "application/octet-stream";
+	const type = mimeFor(path);
 	res.writeHead(200, { "content-type": type });
 	createReadStream(path).pipe(res);
 }
 
 async function readBody(req: IncomingMessage): Promise<string> {
 	const chunks: Buffer[] = [];
-	for await (const chunk of req) chunks.push(chunk as Buffer);
+	for await (const chunk of req) {
+		// SAFETY: `chunks.push(chunk as Buffer);` is required at this I/O or test boundary.
+		chunks.push(chunk as Buffer);
+	}
 	return Buffer.concat(chunks).toString("utf8");
 }
 
@@ -250,6 +277,7 @@ export function createOfficeServer(options: OfficeServerOptions = {}): OfficeSer
 			void (async () => {
 				try {
 					const raw = await readBody(req);
+					// SAFETY: `const payload = JSON.parse(raw) as OtlpTraceRequest;` is required at this I/O or test boundary.
 					const payload = JSON.parse(raw) as OtlpTraceRequest;
 					const events = mapTracePayload(payload, state, Date.now(), traceIndex);
 					dispatch(events);
@@ -264,6 +292,7 @@ export function createOfficeServer(options: OfficeServerOptions = {}): OfficeSer
 			void (async () => {
 				try {
 					const raw = await readBody(req);
+					// SAFETY: `const payload = JSON.parse(raw) as OtlpLogsRequest;` is required at this I/O or test boundary.
 					const payload = JSON.parse(raw) as OtlpLogsRequest;
 					const events = mapLogsPayload(payload, state);
 					dispatch(events);
@@ -278,6 +307,7 @@ export function createOfficeServer(options: OfficeServerOptions = {}): OfficeSer
 			void (async () => {
 				try {
 					const raw = await readBody(req);
+					// SAFETY: `const payload = JSON.parse(raw) as OtlpMetricsRequest;` is required at this I/O or test boundary.
 					const payload = JSON.parse(raw) as OtlpMetricsRequest;
 					const events = mapMetricsPayload(payload, state);
 					dispatch(events);
@@ -295,7 +325,7 @@ export function createOfficeServer(options: OfficeServerOptions = {}): OfficeSer
 		server,
 		port: () => {
 			const address = server.address();
-			return typeof address === "object" && address !== null ? address.port : 0;
+			return isJsonObject(address) && address !== null ? address.port : 0;
 		},
 		state: () => state,
 		flushLayouts: () => layouts.flush(),

@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-unknown-returns -- error assertion helper crosses the test boundary. */
 import assert from "node:assert/strict";
 import {
 	PackError,
@@ -22,7 +21,7 @@ import { FIXTURE_ANCHORS, FIXTURE_SIGNATURE, stubVerifier } from "./harness.js";
 
 const manifest = createValkeyPackManifest(FIXTURE_SIGNATURE);
 
-function expectPackError(fn: () => unknown, code: string): void {
+function expectPackError(fn: () => void, code: string): void {
 	try {
 		fn();
 	} catch (error) {
@@ -224,4 +223,3 @@ describe("the valkey pack manifest", () => {
 		);
 	});
 });
-/* eslint-disable anti-slop/no-unknown-returns -- error assertion helper crosses the test boundary. */

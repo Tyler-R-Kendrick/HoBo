@@ -43,7 +43,7 @@ export function fixtureCharacterState(
 	index: number,
 ): AgentState {
 	const phase = (tick + index * 2 + (seed % STATE_CYCLE.length)) >>> 0;
-	// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+	// SAFETY: `return STATE_CYCLE[phase % STATE_CYCLE.length] as AgentState;` is required at this I/O or test boundary.
 	return STATE_CYCLE[phase % STATE_CYCLE.length] as AgentState;
 }
 

@@ -1,3 +1,4 @@
+import { asJsonObject, type JsonObject } from "./json.js";
 export const IDENTITY_EVENT_SCHEMA_VERSION = "hobo.identity-events/v1";
 
 export const CREDENTIAL_AUDIT_RETENTION = Object.freeze({
@@ -17,7 +18,7 @@ export type IdentityEvent = Readonly<{
   correlationId: string;
   causationId: string;
   retention: typeof CREDENTIAL_AUDIT_RETENTION;
-  data: Readonly<Record<string, unknown>>;
+  data: Readonly<JsonObject>;
 }>;
 
 export function createIdentityIssuedEvent(input: {
@@ -41,13 +42,13 @@ export function createIdentityIssuedEvent(input: {
     correlationId: `corr-${input.identityId}`,
     causationId: `cmd-issue-${input.identityId}`,
     retention: CREDENTIAL_AUDIT_RETENTION,
-    data: {
+    data: asJsonObject({
       identityId: input.identityId,
       subject: input.subject,
       svidRef: input.svidRef,
       scope: input.scope,
       expiresAt: input.expiresAt,
-    },
+    }),
   };
 }
 
@@ -72,13 +73,13 @@ export function createIdentityRotatedEvent(input: {
     correlationId: `corr-${input.identityId}`,
     causationId: `cmd-rotate-${input.identityId}`,
     retention: CREDENTIAL_AUDIT_RETENTION,
-    data: {
+    data: asJsonObject({
       identityId: input.identityId,
       previousIdentityId: input.previousIdentityId,
       subject: input.subject,
       svidRef: input.svidRef,
       expiresAt: input.expiresAt,
-    },
+    }),
   };
 }
 

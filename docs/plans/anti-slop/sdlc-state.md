@@ -142,7 +142,8 @@ main
                                                                                                                                    └── sdlc/anti-slop-131-draft-exp-19-25count  #1390 sdk-to-cli+scenario-matrix+full-dashboard+freshness-rbac+refusal-envelopes+plan-diff+topology-status+private-beta-notes
                                                                                                                                     └── sdlc/anti-slop-132-draft-exp-28-33count  #1391 marketplace-discovery+workspace-states+sdk-object-graph+role-journey+cli-refusal+dx-backbone+quickstart-examples+first-run-rail
                                                                                                                                      └── sdlc/anti-slop-133-draft-exp-highcount  #1392 convex-swaghaus-bindle+marketplace-trust-copy+control-plane-api-lifecycle
-                                                                                                                                      └── sdlc/anti-slop-134-draft-projects-small  finops-plane+otel-office+hobo-build+provider-cloudflare
+                                                                                                                                      └── sdlc/anti-slop-134-draft-projects-small  #1393 finops-plane+otel-office+hobo-build+provider-cloudflare
+                                                                                                                                       └── sdlc/anti-slop-135-draft-projects-identity  s3-02-hobo-identity
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -296,7 +297,8 @@ Layer 130: `bootstrap-launch-smoke-matrix-contract` + `admin-console-scope` + `l
 Layer 131: `sdk-to-cli-golden-path` + `dx-resource-lifecycle-scenario-matrix` + `full-dashboard-projection-views-contract` + `vibe-dashboard-freshness-rbac-fixtures` + `dx-result-refusal-proof-envelopes` + `vibe-plan-diff-review-prototype` + `vibe-topology-status-prototype` + `v1-release-notes-private-beta-evidence-contract` oxlint `--deny-warnings` clean (#1390). Remaining 19–25 count exp-proofs are cleared.
 Layer 132: `vibe-marketplace-discovery-prototype` + `vibe-workspace-project-states` + `sdk-object-graph-manifest-ir-shapes` + `role-journey-cli-mcp-transcripts` + `cli-error-refusal-examples` + `dx-backbone-resource-lifecycle-vibe` + `resource-lifecycle-quickstart-examples` + `vibe-first-run-activation-rail` oxlint `--deny-warnings` clean (#1391). Remaining 28–33 count exp-proofs are cleared.
 Layer 133: `convex-swaghaus-bindle` + `vibe-marketplace-trust-copy-states` + `control-plane-api-resource-lifecycle-shapes` oxlint `--deny-warnings` clean (#1392). Remaining 36–92 count exp-proofs are cleared. `src/draft/exp-proofs` is oxlint-clean.
-Layer 134: `s6-06-finops-plane` + `otel-office` + `s1-23-hobo-build` + `s2-08-provider-cloudflare` oxlint `--deny-warnings` clean.
-Next: remaining `src/draft/projects` (`s3-02-hobo-identity`, `s1-24-conformance-sdk`, `s0-03-hobo-core`), then the full-repo `lint:slop --deny-warnings` gate.
+Layer 134: `s6-06-finops-plane` + `otel-office` + `s1-23-hobo-build` + `s2-08-provider-cloudflare` oxlint `--deny-warnings` clean (#1393).
+Layer 135: `s3-02-hobo-identity` oxlint `--deny-warnings` clean.
+Next: remaining `src/draft/projects` (`s1-24-conformance-sdk`, `s0-03-hobo-core`), then the full-repo `lint:slop --deny-warnings` gate.
 Full-repo `lint:slop --deny-warnings` is still red until those land.
 GitHub stack metadata is at the 100-entry cap; later layers still open PRs via `gh stack submit --auto`.

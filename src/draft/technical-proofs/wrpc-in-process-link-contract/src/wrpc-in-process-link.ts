@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased codec, operation, and identifier contracts at the in-process membrane boundary. */
-
+import { isJsonString } from "./json.js";
 export class NoRouteError extends Error {
   constructor({ componentId, importInterface }) {
     const routeKey = linkKey(componentId, importInterface);
@@ -34,7 +33,7 @@ class InProcessWrpcMembrane {
   #links = new Map();
 
   constructor(codec) {
-    if (!codec || typeof codec.encode !== "function" || typeof codec.decode !== "function") {
+    if (!codec || !(codec.encode instanceof Function) || !(codec.decode instanceof Function)) {
       throw new Error("wrpc.codec_required");
     }
     this.codec = codec;
@@ -90,7 +89,7 @@ class InProcessWrpcMembrane {
 
     const provider = this.#requireProvider(link.providerId);
     const implementation = provider.exports?.[link.exportInterface]?.[operation];
-    if (typeof implementation !== "function") {
+    if (!(implementation instanceof Function)) {
       throw new Error(`wrpc.operation_not_found: ${link.exportInterface}.${operation}`);
     }
 
@@ -163,7 +162,7 @@ function linkKey(componentId, importInterface) {
 }
 
 function assertId(id, kind) {
-  if (typeof id !== "string" || id.length === 0) {
+  if (!isJsonString(id) || id.length === 0) {
     throw new Error(`wrpc.${kind}_id_required`);
   }
 }

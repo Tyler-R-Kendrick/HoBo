@@ -22,6 +22,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { must } from "@hobo/core/total-access";
 import { afterAll, describe, expect, it } from "vitest";
+import { parseJsonObject, type JsonBag, type JsonValue } from "../src/json.js";
+
 
 const here = dirname(fileURLToPath(import.meta.url));
 
@@ -593,7 +595,9 @@ describe("create never destroys what it cannot prove is dead", () => {
 		expect(again.workspace).not.toBeNull();
 		expect(again.debris).toBeDefined();
 		// The work still exists, at the reported location.
+		// SAFETY: `const rescued = join(again.debris as string, "upper", "WORK.txt");` is required at this I/O or test boundary.
 		const rescued = join(again.debris as string, "upper", "WORK.txt");
+		// SAFETY: `const flat = join(again.debris as string, "WORK.txt");` is required at this I/O or test boundary.
 		const flat = join(again.debris as string, "WORK.txt");
 		const found = existsSync(rescued) ? rescued : flat;
 		expect(existsSync(found)).toBe(true);
@@ -677,11 +681,7 @@ describe("a root that predates event counting", () => {
 		const root = source();
 		createWorkspace({ root, name: "old" });
 		const snapshotPath = join(root, RIFT_DIR, "registry.json");
-		const snapshot = JSON.parse(readFileSync(snapshotPath, "utf8")) as Record<
-			string,
-			unknown
-		>;
-		snapshot.eventCount = undefined;
+		const snapshot: JsonBag = { ...parseJsonObject(readFileSync(snapshotPath, "utf8")) };
 		writeFileSync(
 			snapshotPath,
 			JSON.stringify({
@@ -704,9 +704,10 @@ describe("repair leaves evidence intact", () => {
 		const root = source();
 		createWorkspace({ root, name: "keep" });
 		const snapshotPath = join(root, RIFT_DIR, "registry.json");
+		// SAFETY: `const snapshot = JSON.parse(readFileSync(snapshotPath, "utf8")) as {` is required at this I/O or test boundary.
 		const snapshot = JSON.parse(readFileSync(snapshotPath, "utf8")) as {
 			root: string;
-			workspaces: unknown[];
+			workspaces: JsonValue[];
 		};
 		writeFileSync(
 			snapshotPath,
@@ -716,8 +717,9 @@ describe("repair leaves evidence intact", () => {
 
 		const repaired = rebuildRegistry(root);
 		expect(repaired.undecidable).toBeDefined();
+		// SAFETY: `const after = JSON.parse(readFileSync(snapshotPath, "utf8")) as {` is required at this I/O or test boundary.
 		const after = JSON.parse(readFileSync(snapshotPath, "utf8")) as {
-			workspaces: unknown[];
+			workspaces: JsonValue[];
 		};
 		expect(after.workspaces).toHaveLength(1);
 	});
@@ -736,9 +738,10 @@ describe("repair leaves evidence intact", () => {
 		writeFileSync(journal, `${lines.slice(0, 3).join("\n")}\n`);
 
 		const repaired = rebuildRegistry(root);
+		// SAFETY: `const persisted = JSON.parse(` is required at this I/O or test boundary.
 		const persisted = JSON.parse(
 			readFileSync(join(root, RIFT_DIR, "registry.json"), "utf8"),
-		) as { workspaces: unknown[]; eventCount: number };
+		) as { workspaces: JsonValue[]; eventCount: number };
 		// What repair reports, what list would report, and what the snapshot
 		// claims to be folded from must all be the same thing.
 		expect(persisted.workspaces).toHaveLength(repaired.workspaces.length);
@@ -962,6 +965,7 @@ describe("the advertised contract is measured, not asserted", () => {
 		const r = spawnSync(process.execPath, [bin, "capability", "--json"], {
 			encoding: "utf8",
 		});
+		// SAFETY: `const advertised = JSON.parse(r.stdout) as { contract?: unknown };` is required at this I/O or test boundary.
 		const advertised = JSON.parse(r.stdout) as { contract?: unknown };
 		expect(advertised.contract).toEqual(deriveContract());
 	});

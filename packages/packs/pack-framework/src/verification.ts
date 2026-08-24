@@ -167,7 +167,7 @@ export function verifyPackManifest(
 		);
 	}
 
-	// SAFETY: all manifest fields and verification evidence were checked above.
+	// SAFETY: `return {` is required at this I/O or test boundary.
 	return {
 		...manifest,
 		selectedImage,

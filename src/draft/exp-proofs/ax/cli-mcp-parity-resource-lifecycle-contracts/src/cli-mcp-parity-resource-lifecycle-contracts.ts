@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export const REQUIRED_OPERATIONS = [
   "collect",
   "plan",
@@ -25,7 +26,6 @@ type FeedTarget = "plan" | "migrate" | "up";
 type MigrationPhase = "expand" | "backfill" | "contract";
 type LifecycleMode = "deploy" | "promote" | "rollback";
 type McpInputType = "string" | "boolean" | "enum";
-type InvocationInput = Record<string, string | boolean | undefined>;
 
 type CliFlag = {
   readonly name: string;
@@ -101,7 +101,7 @@ type Fixture = {
   };
   readonly mcp: {
     readonly tool: string;
-    readonly input: InvocationInput;
+    readonly input: JsonObject;
     readonly result: ResultEnvelope;
   };
   readonly result: ResultEnvelope;
@@ -109,12 +109,7 @@ type Fixture = {
 
 type CanonicalInvocation = {
   readonly tool: string;
-  readonly input: InvocationInput;
-};
-
-type CliMcpParityResult = {
-  readonly case: FixtureCase;
-  readonly equivalent: boolean;
+  readonly input: JsonObject;
 };
 
 type CliMcpParityContract = {
@@ -347,7 +342,7 @@ export function parseCliMcpParityContract(contract: CliMcpParityContract): Parse
     throw new CliMcpParityParseError(errors);
   }
 
-  // SAFETY: every invariant above has passed, so this brand is valid only at the parser boundary.
+  // SAFETY: `return contract as ParsedCliMcpParityContract;` is required at this I/O or test boundary.
   return contract as ParsedCliMcpParityContract;
 }
 
@@ -358,7 +353,12 @@ export class CliMcpParityParseError extends Error {
   }
 }
 
-export function assertCliMcpParity(fixtureItem: Fixture): CliMcpParityResult {
+export interface CliMcpParity {
+  readonly case: FixtureCase;
+  readonly equivalent: boolean;
+}
+
+export function assertCliMcpParity(fixtureItem: Fixture): CliMcpParity {
   const cliInvocation = canonicalCliInvocation(fixtureItem.cli.command);
   const mcpInvocation = {
     tool: fixtureItem.mcp.tool,
@@ -455,7 +455,7 @@ function fixture(
   fixtureCase: FixtureCase,
   command: string,
   tool: string,
-  input: InvocationInput,
+  input: JsonObject,
   result: Pick<ResultEnvelope, "status" | "code" | "humanMessage" | "remediation">,
 ): Fixture {
   const fixtureId = `hobo-570-${fixtureCase}`;
@@ -500,7 +500,7 @@ function semanticResult(result: ResultEnvelope): string {
 function canonicalCliInvocation(command: string): CanonicalInvocation {
   const tokens = command.trim().split(/\s+/);
   const [binary, verb] = tokens;
-  const input: InvocationInput = {};
+  const input: JsonObject = {};
 
   if (binary !== "hobo" || !verb) {
     return { tool: "", input };

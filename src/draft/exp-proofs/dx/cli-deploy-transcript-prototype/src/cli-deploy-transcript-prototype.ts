@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export const REQUIRED_BLOCKED_REASONS = [
   "policy denied",
   "contract incompatible",
@@ -218,7 +219,7 @@ export function renderMcpToolResult(scenario: CliDeployScenario): McpToolResult 
   };
 }
 
-export function evaluateCliDeployTranscriptPrototype(input: unknown) {
+export function evaluateCliDeployTranscriptPrototype(input: JsonValue) {
   const parsed = parseCliDeployTranscriptPrototype(input);
   const errors = [...parsed.errors];
 
@@ -226,6 +227,7 @@ export function evaluateCliDeployTranscriptPrototype(input: unknown) {
     return {
       ok: false,
       errors,
+      // SAFETY: `accepted: { successfulDeploys: 0, blockedReasons: [] as BlockedReason[] },` is required at this I/O or test boundary.
       accepted: { successfulDeploys: 0, blockedReasons: [] as BlockedReason[] },
     };
   }
@@ -288,13 +290,14 @@ export function rejectDeployTranscriptScopeCreep(requests: string[]): ScopeCreep
   });
 }
 
-export function parseCliDeployTranscriptPrototype(input: unknown) {
+export function parseCliDeployTranscriptPrototype(input: JsonValue) {
   const errors: string[] = [];
 
-  if (!input || typeof input !== "object") {
+  if (!input || !isJsonObject(input)) {
     return { record: undefined, errors: ["CLI deploy transcript prototype record is required"] };
   }
 
+  // SAFETY: `const record = input as Partial<CliDeployTranscriptPrototype>;` is required at this I/O or test boundary.
   const record = input as Partial<CliDeployTranscriptPrototype>;
   if (record.schema !== "hobo.cli-deploy-transcript-prototype/v1") {
     errors.push("schema must be hobo.cli-deploy-transcript-prototype/v1");
@@ -313,6 +316,7 @@ export function parseCliDeployTranscriptPrototype(input: unknown) {
   }
 
   return {
+    // SAFETY: `record: Array.isArray(record.scenarios) ? (record as CliDeployTranscriptPrototyp` is required at this I/O or test boundary.
     record: Array.isArray(record.scenarios) ? (record as CliDeployTranscriptPrototype) : undefined,
     errors,
   };

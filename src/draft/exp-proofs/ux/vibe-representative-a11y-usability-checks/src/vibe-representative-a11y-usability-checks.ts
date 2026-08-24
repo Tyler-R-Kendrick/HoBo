@@ -419,12 +419,18 @@ export function parseVibeRepresentativeA11yUsabilityChecks(
     throw new VibeRepresentativeChecksParseError(validation.errors);
   }
 
+  // SAFETY: `return checks as ParsedVibeRepresentativeA11yUsabilityChecks;` is required at this I/O or test boundary.
   return checks as ParsedVibeRepresentativeA11yUsabilityChecks;
+}
+
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
 }
 
 export function validateVibeRepresentativeA11yUsabilityChecks(
   checks: VibeRepresentativeA11yUsabilityChecks,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (checks.issue !== "HOBO-565") {

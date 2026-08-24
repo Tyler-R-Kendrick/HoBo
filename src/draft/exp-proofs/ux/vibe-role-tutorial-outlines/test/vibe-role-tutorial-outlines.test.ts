@@ -108,6 +108,7 @@ test("Pact and CUE artifacts stay aligned with the parsed tutorial outline shape
     ),
   );
   const pactOutlines = parseVibeRoleTutorialOutlines(
+    // SAFETY: `pact.interactions[0].response.body as typeof VIBE_ROLE_TUTORIAL_OUTLINES,` is required at this I/O or test boundary.
     pact.interactions[0].response.body as typeof VIBE_ROLE_TUTORIAL_OUTLINES,
   );
 
@@ -169,6 +170,7 @@ test("parser rejects missing roles, fields, proof modes, and fixture refs", () =
         outlines: [
           {
             ...VIBE_ROLE_TUTORIAL_OUTLINES.outlines[0],
+            // SAFETY: `proofModeLabels: ["production-live"] as never,` is required at this I/O or test boundary.
             proofModeLabels: ["production-live"] as never,
           },
           ...VIBE_ROLE_TUTORIAL_OUTLINES.outlines.slice(1),

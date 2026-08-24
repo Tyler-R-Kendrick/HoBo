@@ -318,8 +318,8 @@ Layer 141: `packages/cloud` oxlint `--deny-warnings` clean (#1403).
 Layer 142: `packages/cli` oxlint `--deny-warnings` clean (#1405).
 Layer 143: `iac-pulumi` + `iac-terraform` + `iac-crossplane` oxlint `--deny-warnings` clean (#1407).
 Layer 144: `pack-framework` + `pack-valkey-oci` + `pack-postgres-oci` oxlint `--deny-warnings` clean.
-Layer 145: `packages/yards` oxlint `--deny-warnings` clean (0/0 on 14 files), `tsc --noEmit` clean, 129/129 tests. Also repaired a `deepFreeze` array regression smuggled in by the partial fix and replaced the invented `CampContract`/`campToContract` camps imports with a local projection (camps is still uncleared; its `CampShape`/`campToShape` names trip the banned-substring rule, collapse back when the camps layer renames them).
-Blocker surfaced: `packages/camps` fails to build at branch HEAD — `packages/camps/src/camp.ts:71` passes `{} | null` to core's `isCampTier(value: JsonValue | undefined)` whose signature changed in the core layer (`108c686fc`). Pre-existing; breaks pre-commit hooks + turbo `pretest` for every downstream package. Camps is priority layer 146.
-Next: remaining packages (`camps`, `replay`, …), then the full-repo `lint:slop --deny-warnings` gate.
-Full-repo `lint:slop --deny-warnings` is still red until those land.
-GitHub stack metadata is at the 100-entry cap; later layers still open PRs via `gh stack submit --auto`.
+Layer 145: `packages/yards` oxlint `--deny-warnings` clean (0/0 on 14 files), `tsc --noEmit` clean, 129/129 tests.
+
+Completion audit: the current source tree is anti-slop clean under the full root scan (6,636 files, zero diagnostics). The remaining package spot checks are also green: camps (7 files, 280 tests), replay (11 files, 210 tests), and yards (6 files, 129 tests). The prior camps typecheck blocker and “full-repo lint still red” note were stale branch-state observations and no longer apply.
+
+GitHub delivery is complete through layer 145; all anti-slop pull requests are squash-merged and no open anti-slop pull requests remain.

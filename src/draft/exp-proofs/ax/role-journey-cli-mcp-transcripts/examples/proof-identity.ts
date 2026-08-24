@@ -6,12 +6,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import assert from "node:assert/strict";
+import { parseJsonObject } from "../src/json.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-// SAFETY: proof.json is the gate-owned manifest; the checked shape supplies the slug and layer asserted below.
-const proof = JSON.parse(
+const proof = parseJsonObject(
   readFileSync(path.join(root, "..", "proof.json"), "utf8"),
-) as { slug: string; layer: string };
+);
 
 assert.equal(proof.slug, "role-journey-cli-mcp-transcripts");
 assert.equal(proof.layer, "exp");

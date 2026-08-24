@@ -14,6 +14,8 @@ import {
 	createCollectCommand,
 	createHoboCli,
 } from "../src/index.js";
+import { type JsonValue, type JsonObject } from "../src/json.js";
+
 
 // S1-20: `hobo collect` runs run-to-collect on the project Bindle and prints /
 // emits the manifest IR, with --check failing on drift against the committed
@@ -37,7 +39,7 @@ function helloTarget(): CollectionTarget {
 
 async function withProject(
 	callback: (cwd: string) => Promise<void>,
-	golden?: unknown,
+	golden?: JsonValue,
 ): Promise<void> {
 	const dir = await mkdtemp(path.join(tmpdir(), "hobo-collect-"));
 	// A minimal project marker so the project-scoped verb resolves a projectDir.
@@ -64,6 +66,7 @@ describe("hobo collect prints the manifest IR", () => {
 			const result = await cli.run(["collect", "--json"], { cwd });
 
 			expect(result.exitCode).toBe(0);
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				ok: boolean;
 				verb: string;
@@ -72,7 +75,7 @@ describe("hobo collect prints the manifest IR", () => {
 					manifestHash: string;
 					resources: string[];
 					binds: string[];
-					manifest: { schema: string; resources: Record<string, unknown> };
+					manifest: { schema: string; resources: JsonObject };
 					events: Array<{ type: string }>;
 				};
 			};
@@ -105,6 +108,7 @@ describe("hobo collect prints the manifest IR", () => {
 	it("falls back to the shell stub when no target is injected", async () => {
 		await withProject(async (cwd) => {
 			const result = await createHoboCli().run(["collect", "--json"], { cwd });
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				status: string;
 				code: string;
@@ -127,6 +131,7 @@ describe("hobo collect --check enforces the golden manifest", () => {
 			const result = await cli.run(["collect", "--check", "--json"], { cwd });
 
 			expect(result.exitCode).toBe(0);
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				ok: boolean;
 				data: { checked: boolean };
@@ -151,6 +156,7 @@ describe("hobo collect --check enforces the golden manifest", () => {
 			const result = await cli.run(["collect", "--check", "--json"], { cwd });
 
 			expect(result.exitCode).toBe(1);
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				ok: boolean;
 				code: string;
@@ -170,6 +176,7 @@ describe("hobo collect --check enforces the golden manifest", () => {
 			const result = await cli.run(["collect", "--check", "--json"], { cwd });
 
 			expect(result.exitCode).toBe(1);
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as { code: string };` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as { code: string };
 			expect(envelope.code).toBe("HOBO_COLLECT_NO_GOLDEN");
 		});

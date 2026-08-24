@@ -5,14 +5,20 @@ import {
   generateKeyPairSync,
   type KeyObject,
 } from "node:crypto";
+import { asJsonObject, cloneAsJson, isJsonString, isJsonNumber, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const JWT_ALGORITHM = "RS256";
+
+export interface JwksDocument {
+  readonly keys: JsonObject[];
+}
 
 export type KmsLike = Readonly<{
   hasKey(kid: string): boolean;
   generateRsaKey(kid: string): void;
   sign(kid: string, payload: string): Buffer;
-  publicJwk(kid: string): Record<string, unknown>;
+  publicJwk(kid: string): JsonObject;
 }>;
 
 export function createInMemoryKms(): KmsLike {
@@ -41,7 +47,7 @@ export function createInMemoryKms(): KmsLike {
       if (!key) {
         throw new Error(`unknown KMS key: ${kid}`);
       }
-      return { ...key.publicKey.export({ format: "jwk" }), kid, alg: JWT_ALGORITHM, use: "sig" };
+      return asJsonObject({ ...key.publicKey.export({ format: "jwk" }), kid, alg: JWT_ALGORITHM, use: "sig" });
     },
   };
 }
@@ -95,14 +101,14 @@ export class JwtSvidIssuer {
     };
   }
 
-  jwks(): Readonly<{ keys: Record<string, unknown>[] }> {
+  jwks(): JwksDocument {
     return { keys: this.jwksKeyIds.map((kid) => this.kms.publicJwk(kid)) };
   }
 
   async signJwtSvid(claims: JwtSvidClaims): Promise<string> {
     const header = { alg: JWT_ALGORITHM, kid: this.activeKeyId, typ: "JWT" };
     const payload = { ...claims, iss: this.issuerUrl };
-    const signingInput = `${toBase64UrlJson(header)}.${toBase64UrlJson(payload)}`;
+    const signingInput = `${toBase64UrlJson(cloneAsJson(header))}.${toBase64UrlJson(cloneAsJson(payload))}`;
     const signature = this.kms.sign(this.activeKeyId, signingInput);
     return `${signingInput}.${toBase64Url(signature)}`;
   }
@@ -120,18 +126,20 @@ export class JwtSvidIssuer {
 
 export async function verifyJwtWithJwks(
   token: string,
-  jwks: Readonly<{ keys: Record<string, unknown>[] }>,
+  jwks: Readonly<{ keys: JsonObject[] }>,
   options: { issuer: string; audience: string; now: number },
-): Promise<{ header: Record<string, unknown>; claims: Record<string, unknown> }> {
+): Promise<{ header: JsonObject; claims: JsonObject }> {
   const [encodedHeader, encodedClaims, encodedSignature] = token.split(".");
   if (!encodedHeader || !encodedClaims || !encodedSignature) {
     throw new Error("JWT must have three segments");
   }
 
-  const header = JSON.parse(fromBase64Url(encodedHeader).toString("utf8")) as Record<string, unknown>;
-  const claims = JSON.parse(fromBase64Url(encodedClaims).toString("utf8")) as Record<string, unknown>;
+  // SAFETY: `const header = JSON.parse(fromBase64Url(encodedHeader).toString("utf8")) as Json` is required at this I/O or test boundary.
+  const header = JSON.parse(fromBase64Url(encodedHeader).toString("utf8")) as JsonObject;
+  // SAFETY: `const claims = JSON.parse(fromBase64Url(encodedClaims).toString("utf8")) as Json` is required at this I/O or test boundary.
+  const claims = JSON.parse(fromBase64Url(encodedClaims).toString("utf8")) as JsonObject;
   const kid = header.kid;
-  if (typeof kid !== "string") {
+  if (!isJsonString(kid)) {
     throw new Error("JWT header missing kid");
   }
   const key = jwks.keys.find((candidate) => candidate.kid === kid);
@@ -156,17 +164,17 @@ export async function verifyJwtWithJwks(
   }
   const exp = claims.exp;
   const nbf = claims.nbf;
-  if (typeof exp !== "number" || exp <= options.now) {
+  if (!isJsonNumber(exp) || exp <= options.now) {
     throw new Error("JWT is expired");
   }
-  if (typeof nbf !== "number" || nbf > options.now) {
+  if (!isJsonNumber(nbf) || nbf > options.now) {
     throw new Error("JWT is not yet valid");
   }
 
   return { header, claims };
 }
 
-function toBase64UrlJson(value: unknown): string {
+function toBase64UrlJson(value: JsonValue): string {
   return toBase64Url(Buffer.from(JSON.stringify(value)));
 }
 

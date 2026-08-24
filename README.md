@@ -123,6 +123,10 @@ Lint workflow/package-manager wiring before pushing CI changes:
 pnpm run actions:lint
 ```
 
+Hosted GitHub Actions runners are intentionally disabled to prevent CI spend. Every workflow job carries an explicit `if: \${{ false }}` gate, and `pnpm run actions:lint` verifies that shutdown. Re-enable runners only through a reviewed change that removes those gates after the runner budget is approved.
+
+For a local release-quality verification pass, use `pnpm run verify:full`. The opt-in `pnpm run verify:extended` adds coverage, mutation, property, and fuzz testing.
+
 Run the core local gate:
 
 ```sh

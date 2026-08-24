@@ -33,8 +33,125 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # When CI is restored, real publish should `needs: artifact-trust` from the
-  # main fabric (or re-run the same signed-artifact verification steps here).
   publish-dry-run:
     # Hosted Actions runners are disabled until explicitly re-enabled.
     if: ${{ false }}
+    name: allowlist dry-run (no registry write)
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - run: corepack enable pnpm
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+          # registry-url only matters once live publish is enabled
+          registry-url: https://registry.npmjs.org
+
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+
+      - name: Fail closed if live mode without NPM_TOKEN
+        env:
+          MODE: ${{ inputs.mode }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          set -euo pipefail
+          if [ "${MODE}" = "live" ]; then
+            if [ -z "${NPM_TOKEN:-}" ]; then
+              echo "::error::live publish requested but secrets.NPM_TOKEN is missing or empty (fail closed)"
+              exit 1
+            fi
+            echo "::error::live npm publish is not enabled yet (allowlist freeze + green CI + H-E1b). Use mode=dry-run."
+            exit 1
+          fi
+
+      - name: List packages that would publish (allowlist ∩ not private)
+        env:
+          MODE: ${{ inputs.mode }}
+        run: |
+          set -euo pipefail
+          node --input-type=module <<'EOF'
+          import { readFileSync, readdirSync, statSync } from "node:fs";
+          import { join } from "node:path";
+
+          const ALLOWLIST = new Set([
+            "@hobo/core",
+            "@hobo/bindles",
+            "@hobo/contracts",
+            "@hobo/contract-harness",
+            "@hobo/runtime",
+            "@hobo/runtime-local",
+            "@hobo/storage-sqlite",
+            "@hobo/wit",
+            "@hobo/cli",
+            "@hobo/hobo",
+            "@hobo/mcp",
+            "@hobo/conformance",
+            "@hobo/identity",
+            "@hobo/policy",
+            "@hobo/connectivity",
+            "@hobo/events",
+            "@hobo/data",
+            "@hobo/stations",
+            "@hobo/trails",
+            "@hobo/replay",
+            "@hobo/adapter-hono",
+          ]);
+
+          function* walkPackageJson(dir) {
+            for (const ent of readdirSync(dir, { withFileTypes: true })) {
+              if (ent.name === "node_modules" || ent.name === "dist") continue;
+              const p = join(dir, ent.name);
+              if (ent.isDirectory()) yield* walkPackageJson(p);
+              else if (ent.name === "package.json") yield p;
+            }
+          }
+
+          const would = [];
+          const privateOnAllowlist = [];
+          const publicNotAllowlisted = [];
+
+          for (const file of walkPackageJson("packages")) {
+            const m = JSON.parse(readFileSync(file, "utf8"));
+            if (!m.name || !String(m.name).startsWith("@hobo/")) continue;
+            const isPrivate = m.private === true;
+            const onList = ALLOWLIST.has(m.name);
+            if (onList && !isPrivate) {
+              would.push({ name: m.name, version: m.version ?? "?", path: file, bin: m.bin ?? null });
+            } else if (onList && isPrivate) {
+              privateOnAllowlist.push(m.name);
+            } else if (!isPrivate && !onList) {
+              publicNotAllowlisted.push(m.name);
+            }
+          }
+
+          would.sort((a, b) => a.name.localeCompare(b.name));
+          console.log("=== npm publish dry-run (no registry write) ===");
+          console.log(`mode=${process.env.MODE ?? "dry-run"}`);
+          console.log(`allowlisted + publishable packages (${would.length}):`);
+          for (const p of would) {
+            const bins = p.bin ? ` bin=${JSON.stringify(p.bin)}` : " (library, no bin)";
+            console.log(`  - ${p.name}@${p.version}${bins}`);
+          }
+          if (privateOnAllowlist.length) {
+            console.log("allowlisted but currently private (would NOT publish):");
+            for (const n of privateOnAllowlist.sort()) console.log(`  - ${n}`);
+          }
+          if (publicNotAllowlisted.length) {
+            console.log("public but NOT on first-publish allowlist (blocked by policy):");
+            for (const n of publicNotAllowlisted.sort()) console.log(`  - ${n}`);
+          }
+          console.log("policy: docs/design/npm-publish-allowlist.md");
+          console.log("manual publish not enabled until secrets + allowlist freeze + green CI");
+          EOF
+
+      - name: Echo residual gate
+        run: |
+          echo "Dry-run complete. No packages were published."
+          echo "Enable live publish only after: green CI, artifact-trust, NPM_TOKEN, allowlist freeze."

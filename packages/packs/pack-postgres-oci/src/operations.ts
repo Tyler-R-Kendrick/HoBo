@@ -174,12 +174,17 @@ function connectionArgv(endpoint: PostgresEndpoint): readonly string[] {
 	];
 }
 
-interface PostgresClientEnv {
+// A `type` alias rather than an `interface`, so it keeps an implicit index
+// signature and stays assignable to the `Readonly<Record<string, string>>` the
+// process-env fields expect. An interface has no such signature, which is why
+// naming these four variables made the value stop fitting where it is used --
+// the same reason the provider manifests give for their own alias.
+type PostgresClientEnv = {
 	PGSSLMODE: string;
 	PGCLIENTENCODING: string;
 	LC_ALL: string;
 	PAGER: string;
-}
+};
 
 function baseEnv(endpoint: PostgresEndpoint): PostgresClientEnv {
 	return {

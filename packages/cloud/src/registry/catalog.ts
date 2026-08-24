@@ -7,10 +7,15 @@ import {
 	providerApproved,
 	providerRegistered,
 } from "../events.js";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 import type { CapabilityVerdict } from "../plan-types.js";
 import { collectStream } from "../store/index.js";
-import { isJsonString, isJsonNumber, isJsonObject, type JsonValue, type JsonObject } from "../json.js";
-
 
 // The Registry is a Provider + Capability Manifest catalog (control-plane.md
 // "Registry"). Per Decision D2 (build plan) it is a *projection* over provider
@@ -237,14 +242,17 @@ function negotiateFromEntry(
 
 // Parse a `provider.Registered` fact body into ResourceDefinitions
 // (parse-don't-validate: malformed entries are dropped, never half-trusted).
+// `unknown`: the argument is an event payload typed `data?: unknown` by the
+// stream it is read from, and this function is the parse boundary that decides
+// what it is. A `JsonValue` parameter would put a claim in front of the check
+// whose whole job is to establish it.
 export function parseRegisteredDefinitions(
-	data: JsonValue,
+	data: unknown,
 ): ResourceDefinition[] {
 	if (data === null || !isJsonObject(data)) return [];
 	// SAFETY: `const body = data as { providerId?: JsonValue; definitions?: unknown };` is required at this I/O or test boundary.
 	const body = data as { providerId?: JsonValue; definitions?: unknown };
-	if (!isJsonString(body.providerId) || body.providerId.length === 0)
-		return [];
+	if (!isJsonString(body.providerId) || body.providerId.length === 0) return [];
 	if (!Array.isArray(body.definitions)) return [];
 
 	const parsed: ResourceDefinition[] = [];
@@ -273,13 +281,13 @@ export function parseRegisteredDefinitions(
 			specificity: isJsonNumber(rec.specificity) ? rec.specificity : 10,
 			priority: isJsonNumber(rec.priority) ? rec.priority : 0,
 			cost: {
-				sku:
-					isJsonString(cost.sku)
-						? cost.sku
-						: `${body.providerId}-${rec.port}`,
+				sku: isJsonString(cost.sku)
+					? cost.sku
+					: `${body.providerId}-${rec.port}`,
 				unit: isJsonString(cost.unit) ? cost.unit : "hour",
-				marginalPrice:
-					isJsonString(cost.marginalPrice) ? cost.marginalPrice : "0",
+				marginalPrice: isJsonString(cost.marginalPrice)
+					? cost.marginalPrice
+					: "0",
 			},
 			satisfies: negotiateFromEntry(rec.port, features),
 		});

@@ -17,8 +17,7 @@ import { createHash } from "node:crypto";
 // constant has been exported without a `// public-contract:` marker since it
 // was written; touching this file is what surfaced it.
 import { DEPLOYMENT_PLAN_SCHEMA } from "@hobo/manifest-plan";
-import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
-
+import { isJsonObject, type JsonObject, type JsonValue } from "./json.js";
 
 // ── The declaration manifest, re-exported from its owner ────────────────────
 //
@@ -202,7 +201,11 @@ export interface PlanRemediation {
 
 export type PlanHash = `sha256:${string}`;
 
-function sortKeys(value: JsonValue): JsonValue {
+// `unknown` in: this is the pre-serialization pass for `JSON.stringify`, so it
+// walks whatever it is handed and never reads a typed field. Requiring
+// `JsonValue` only forced `canonicalPlanJson` to launder a `DeploymentPlan`
+// that was about to be stringified anyway.
+function sortKeys(value: unknown): JsonValue {
 	if (Array.isArray(value)) return value.map(sortKeys);
 	if (value && isJsonObject(value)) {
 		return Object.fromEntries(
@@ -213,7 +216,10 @@ function sortKeys(value: JsonValue): JsonValue {
 				.map((key) => [key, sortKeys((value as JsonObject)[key])]),
 		);
 	}
-	return value;
+	// SAFETY: everything that is not an array or object here is a JSON scalar by
+	// the time a plan reaches serialization; the walk above has handled the two
+	// container cases.
+	return value as JsonValue;
 }
 
 // Canonical, key-sorted serialization — the byte-stable form a plan is

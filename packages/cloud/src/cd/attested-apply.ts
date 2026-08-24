@@ -23,6 +23,7 @@ import {
 	createInProcessCredentialBroker,
 	createInProcessExecutor,
 } from "../executor/executor.js";
+import type { JsonObject } from "../json.js";
 import {
 	listResources,
 	providerForResource,
@@ -35,8 +36,6 @@ import {
 	type SecretFreeDiff,
 	type SecretFreeStatus,
 } from "./secret-free.js";
-import { type JsonObject } from "../json.js";
-
 
 // public-contract: attested apply worker schema.
 export const ATTESTED_APPLY_SCHEMA = "hobo.attested-apply/v1" as const;
@@ -192,10 +191,7 @@ export function createAttestedApplyWorker(
 				`dep_${randomUUID().replace(/-/g, "").slice(0, 12)}`;
 			const events: CdApplyEvent[] = [];
 			let seq = 0;
-			const emit = (
-				type: CdApplyEvent["type"],
-				data: Readonly<JsonObject>,
-			) => {
+			const emit = (type: CdApplyEvent["type"], data: Readonly<JsonObject>) => {
 				seq += 1;
 				const evt = Object.freeze({
 					id: `evt-${type}-${seq}`,
@@ -279,7 +275,7 @@ export function createAttestedApplyWorker(
 				principal: principal.svidSubject,
 				attestation: "attested",
 				mode,
-				secretRefs: set.secretRefs,
+				secretRefs: [...set.secretRefs],
 				ambientCredentials: false,
 			});
 
@@ -420,7 +416,7 @@ export function createAttestedApplyWorker(
 					ttlSeconds: credential.ttlSeconds,
 					credentialRevoked: true,
 					status: status.state,
-					secretRefs: status.secretRefs,
+					secretRefs: [...status.secretRefs],
 					diffHash: diff.contentHash,
 					changes: exec.diff.changes,
 					sandboxAmbient: false,

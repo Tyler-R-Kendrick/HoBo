@@ -1,6 +1,10 @@
 import { createHash } from "node:crypto";
-import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
-
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 // Bundle-manifest ingest (docs/plans/0017 F24): an untrusted, schema-versioned
 // manifest document is parsed — parse, don't validate — into parsed derived
@@ -87,12 +91,19 @@ export function bundleManifestDigest(manifest: BundleManifest): string {
 	return `sha256:${digest}`;
 }
 
-function nonEmptyString(value: JsonValue): value is string {
+// Accepts `undefined`: every caller reads a field off a `JsonObject`, which is
+// `JsonValue | undefined` under `noUncheckedIndexedAccess`. An absent field is
+// precisely what this guard exists to reject, so refusing to accept the type
+// that expresses "absent" made it unusable at its only call sites.
+function nonEmptyString(value: JsonValue | undefined): value is string {
 	return isJsonString(value) && value.length > 0;
 }
 
 function parseCapabilities(
-	raw: JsonValue,
+	// The body opens with `if (raw === undefined) return []`, so the annotation
+	// was already contradicted by the line beneath it -- capabilities are an
+	// optional manifest field and absence is the ordinary case.
+	raw: JsonValue | undefined,
 	errors: IngestError[],
 ): BundleCapability[] {
 	if (raw === undefined) return [];
@@ -192,8 +203,7 @@ export function ingestBundleManifest(raw: JsonValue): IngestResult {
 		// SAFETY: `provider: record.provider as string,` is required at this I/O or test boundary.
 		provider: record.provider as string,
 		capabilities,
-		description:
-			isJsonString(record.description) ? record.description : "",
+		description: isJsonString(record.description) ? record.description : "",
 	};
 	const manifestDigest = bundleManifestDigest(manifest);
 	return {

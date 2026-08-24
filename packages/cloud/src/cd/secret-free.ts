@@ -4,8 +4,12 @@
  * Closes the Argo ServerSideDiff / incomplete-masking class of leaks.
  */
 import { createHash } from "node:crypto";
-import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "../json.js";
-
+import {
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "../json.js";
 
 // public-contract: secret-free projection schema.
 export const SECRET_FREE_SCHEMA = "hobo.secret-free-projection/v1" as const;
@@ -54,9 +58,7 @@ export type SecretFreeStatus = Readonly<{
  * Keys that look secret-bearing become secretRef; values that look like
  * plaintext secrets are always redacted.
  */
-export function toSecretFreeOutputs(
-	outputs: Readonly<JsonObject>,
-): {
+export function toSecretFreeOutputs(outputs: Readonly<JsonObject>): {
 	readonly outputs: Readonly<Record<string, string | SecretRef>>;
 	readonly secretRefs: readonly string[];
 } {
@@ -113,7 +115,9 @@ export function createSecretFreeDiff(input: {
 			...(c.before !== undefined
 				? { before: scrubValue(c.path, c.before) }
 				: undefined),
-			...(c.after !== undefined ? { after: scrubValue(c.path, c.after) } : undefined),
+			...(c.after !== undefined
+				? { after: scrubValue(c.path, c.after) }
+				: undefined),
 		});
 	});
 	const body = {
@@ -153,7 +157,12 @@ export function createSecretFreeStatus(input: {
  * Assert a projection/event payload contains no plaintext secrets.
  * Throws if a known secret pattern is found in string leaves.
  */
-export function assertSecretFree(value: JsonValue, path = "$"): void {
+// `unknown`, not `JsonValue`: this walks a structure type-testing as it goes
+// (`isJsonString`, `isJsonObject`, …), so it is written against untyped input
+// already. Demanding `JsonValue` only made every caller launder a domain record
+// into a JSON view before it could be *checked for secrets* -- work done purely
+// to satisfy the checker, on the path where getting it wrong leaks a credential.
+export function assertSecretFree(value: unknown, path = "$"): void {
 	if (isJsonString(value)) {
 		if (PLAINTEXT_SECRET_PATTERN.test(value)) {
 			throw Object.assign(
@@ -197,8 +206,7 @@ export function assertSecretFree(value: JsonValue, path = "$"): void {
 }
 
 function scrubValue(path: string, value: JsonValue): string | SecretRef {
-	const asString =
-		isJsonString(value) ? value : JSON.stringify(value ?? null);
+	const asString = isJsonString(value) ? value : JSON.stringify(value ?? null);
 	if (
 		SECRET_KEY_PATTERN.test(path) ||
 		PLAINTEXT_SECRET_PATTERN.test(asString)

@@ -1,4 +1,4 @@
-import { type JsonValue } from "./json.js";
+import type { JsonValue } from "./json.js";
 /**
  * Stable error codes for pack mechanics.
  *
@@ -31,7 +31,11 @@ export type PackErrorDetail = Readonly<
 
 export type PackErrorOptions = {
 	readonly detail?: PackErrorDetail;
-	readonly cause?: JsonValue;
+	// `unknown`, matching the platform: this is handed straight to `Error`'s own
+	// `cause` and never serialized -- `toJSON` deliberately omits it, since a
+	// cause carries whatever was thrown and this projection is receipt-safe. The
+	// callers are `catch` bindings, which are `unknown` by definition.
+	readonly cause?: unknown;
 };
 
 export interface PackErrorJson {
@@ -88,7 +92,7 @@ export class PackError extends Error {
 		);
 		this.name = "PackError";
 		this.code = code;
-		this.detail = Object.freeze({ ...(options.detail) });
+		this.detail = Object.freeze({ ...options.detail });
 	}
 
 	/** Receipt-safe projection; already redacted by construction. */
@@ -102,6 +106,9 @@ export class PackError extends Error {
 	}
 }
 
-export function isPackError(value: JsonValue): value is PackError {
+// `unknown`, not `JsonValue`: a `PackError` is not JSON, so a predicate
+// narrowing between them has no overlap and cannot type-check. Testing a caught
+// value is the whole use.
+export function isPackError(value: unknown): value is PackError {
 	return value instanceof PackError;
 }

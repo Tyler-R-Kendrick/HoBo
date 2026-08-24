@@ -51,15 +51,13 @@ import {
 	type TrustPolicy,
 	tryParseProfileId,
 } from "@hobo/capability-profiles";
-
+import type { JsonBag, JsonObject, JsonValue } from "../json.js";
 import type { PlanRemediation } from "../plan-types.js";
 import {
 	type ResourceDefinitionVNext,
 	semanticsDigestInput,
 	toSelectionCandidate,
 } from "../registry/resource-definition-vnext.js";
-import { type JsonValue, type JsonObject } from "../json.js";
-
 
 /**
  * Two Yard binding rows set the same realization parameter to different values.
@@ -373,7 +371,7 @@ function mergeRealizationParameters(rows: readonly YardBindingRow[]):
 	if (merged.size === 0) {
 		return undefined;
 	}
-	const parameters: JsonObject = {};
+	const parameters: JsonBag = {};
 	for (const name of [...merged.keys()].sort()) {
 		const entry = merged.get(name);
 		if (entry !== undefined) {
@@ -686,7 +684,9 @@ export function matchCapabilityRequirement(
 		catalogHash,
 		tie,
 		...(appliedRows !== undefined ? { appliedRows } : undefined),
-		...(realizationParameters !== undefined ? { realizationParameters } : undefined),
+		...(realizationParameters !== undefined
+			? { realizationParameters }
+			: undefined),
 		...(nonPortableRows !== undefined ? { nonPortableRows } : undefined),
 		...(resolved !== undefined ? { bindingResolved: resolved } : undefined),
 	};

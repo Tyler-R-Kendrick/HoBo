@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
-import { isJsonString, type JsonValue, type JsonObject } from "../json.js";
-
+import { isJsonString, type JsonObject, type JsonValue } from "../json.js";
 
 // The Executor (control-plane.md "Executor sandbox model"): the sandboxed apply
 // step. IaC apply runs untrusted-ish provider code, so it is isolated — no
@@ -144,7 +143,9 @@ export interface InProcessExecutorOptions {
 	now?: () => string;
 }
 
-function hashRef(value: JsonValue): string {
+// `unknown`: this hashes a serialization of the value and never reads a field
+// off it, so demanding `JsonValue` only moved work to the call sites.
+function hashRef(value: unknown): string {
 	return `sha256:${createHash("sha256").update(JSON.stringify(value)).digest("hex")}`;
 }
 
@@ -163,10 +164,7 @@ export function createInProcessExecutor(
 			const execId = `exec-${program.action}-${hashRef({ programId: program.programId, action: program.action }).slice(7, 19)}`;
 			const events: ExecEvent[] = [];
 			let seq = 0;
-			const push = (
-				type: ExecEventType,
-				data: JsonObject,
-			): void => {
+			const push = (type: ExecEventType, data: JsonObject): void => {
 				seq += 1;
 				events.push({ type, execId, seq, data });
 			};
@@ -198,8 +196,7 @@ export function createInProcessExecutor(
 			}
 			const ambientEnv = runOptions.ambientEnv ?? {};
 			const leaked = AMBIENT_CREDENTIAL_KEYS.filter(
-				(key) =>
-					isJsonString(ambientEnv[key]) && ambientEnv[key].length > 0,
+				(key) => isJsonString(ambientEnv[key]) && ambientEnv[key].length > 0,
 			);
 			if (leaked.length > 0) {
 				return fail(

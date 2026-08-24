@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */
 import assert from "node:assert/strict";
 import { redactSecretRef } from "@hobo/bindings";
 import { PackError } from "@hobo/pack-framework";
@@ -13,6 +12,8 @@ import {
 	SUPERUSER_REF,
 	verifiedPostgresPack,
 } from "./harness.js";
+import { type JsonValue } from "../src/json.js";
+
 
 const manifest = verifiedPostgresPack();
 
@@ -62,7 +63,7 @@ describe("buildPostgresBinding", () => {
 	it("refuses to claim TLS without naming the certificate to verify against", () => {
 		assert.throws(
 			() => buildPostgresBinding(manifest, { ...INPUT, tls: true }),
-			(error: unknown) => {
+			(error: JsonValue) => {
 				assert.ok(error instanceof PackError);
 				assert.equal(error.code, "PACK_CONFIGURATION_INVALID");
 				return true;
@@ -92,4 +93,3 @@ describe("buildPostgresBinding", () => {
 		assert.equal(binding.rotationSupported, true);
 	});
 });
-/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */

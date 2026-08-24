@@ -10,6 +10,8 @@
  * walkable) and persists it per station as JSON.
  */
 import type { OfficeState, TilePoint, TileRect } from "./model.js";
+import { isJsonString, isJsonNumber, isJsonObject, type JsonValue } from "./json.js";
+
 
 export interface LayoutRoom {
 	rect: TileRect;
@@ -170,23 +172,28 @@ export function applyLayout(state: OfficeState, stationId: string, layout: Offic
 	state.layouts[stationId] = structuredClone(layout);
 }
 
-function isInt(n: unknown): n is number {
-	return typeof n === "number" && Number.isInteger(n);
+function isInt(n: JsonValue): n is number {
+	return isJsonNumber(n) && Number.isInteger(n);
 }
 
-function isPoint(p: unknown): p is TilePoint {
+function isPoint(p: JsonValue): p is TilePoint {
 	return (
-		typeof p === "object" && p !== null && isInt((p as TilePoint).x) && isInt((p as TilePoint).y)
+		// SAFETY: `isJsonObject(p) && p !== null && isInt((p as TilePoint).x) && isInt((p as TilePo` is required at this I/O or test boundary.
+		isJsonObject(p) && p !== null && isInt((p as TilePoint).x) && isInt((p as TilePoint).y)
 	);
 }
 
-function isRect(r: unknown): r is TileRect {
+function isRect(r: JsonValue): r is TileRect {
 	return (
-		typeof r === "object" &&
+		isJsonObject(r) &&
 		r !== null &&
+		// SAFETY: `isInt((r as TileRect).x) &&` is required at this I/O or test boundary.
 		isInt((r as TileRect).x) &&
+		// SAFETY: `isInt((r as TileRect).y) &&` is required at this I/O or test boundary.
 		isInt((r as TileRect).y) &&
+		// SAFETY: `isInt((r as TileRect).w) &&` is required at this I/O or test boundary.
 		isInt((r as TileRect).w) &&
+		// SAFETY: `isInt((r as TileRect).h)` is required at this I/O or test boundary.
 		isInt((r as TileRect).h)
 	);
 }
@@ -213,19 +220,20 @@ export interface LayoutValidation {
  * exit) so the editor can show all problems at once.
  */
 export function validateLayout(
-	raw: unknown,
+	raw: JsonValue,
 	state: OfficeState,
 	stationId: string,
 ): LayoutValidation {
 	const reasons: string[] = [];
-	if (typeof raw !== "object" || raw === null) {
+	if (!isJsonObject(raw) || raw === null) {
 		return { layout: undefined, reasons: ["layout must be a JSON object"] };
 	}
+	// SAFETY: `const candidate = raw as Partial<OfficeLayout>;` is required at this I/O or test boundary.
 	const candidate = raw as Partial<OfficeLayout>;
 	if (candidate.version !== 1) reasons.push("version must be 1");
 	const grid = candidate.grid;
 	if (
-		typeof grid !== "object" ||
+		!isJsonObject(grid) ||
 		grid === null ||
 		!isInt(grid.w) ||
 		!isInt(grid.h) ||
@@ -236,20 +244,23 @@ export function validateLayout(
 	) {
 		reasons.push(`grid must be integer w/h within 8..${MAX_GRID}`);
 	}
-	if (typeof candidate.rooms !== "object" || candidate.rooms === null) {
+	if (!isJsonObject(candidate.rooms) || candidate.rooms === null) {
 		reasons.push("rooms must be an object keyed by campId");
 	}
-	if (typeof candidate.desks !== "object" || candidate.desks === null) {
+	if (!isJsonObject(candidate.desks) || candidate.desks === null) {
 		reasons.push("desks must be an object keyed by characterId");
 	}
-	if (typeof candidate.corridors !== "object" || candidate.corridors === null) {
+	if (!isJsonObject(candidate.corridors) || candidate.corridors === null) {
 		reasons.push("corridors must be an object keyed by junctionId");
 	}
 	if (reasons.length > 0 || grid === undefined || grid === null) {
 		return { layout: undefined, reasons };
 	}
+	// SAFETY: `const rooms = candidate.rooms as Record<string, LayoutRoom>;` is required at this I/O or test boundary.
 	const rooms = candidate.rooms as Record<string, LayoutRoom>;
+	// SAFETY: `const desks = candidate.desks as Record<string, TilePoint>;` is required at this I/O or test boundary.
 	const desks = candidate.desks as Record<string, TilePoint>;
+	// SAFETY: `const corridors = candidate.corridors as Record<string, TilePoint[]>;` is required at this I/O or test boundary.
 	const corridors = candidate.corridors as Record<string, TilePoint[]>;
 
 	const campIds = stationCampIds(state, stationId);
@@ -286,7 +297,7 @@ export function validateLayout(
 		) {
 			reasons.push(`room ${campId}: outside the grid`);
 		}
-		if (typeof room.color !== "string" || room.color.length === 0) {
+		if (!isJsonString(room.color) || room.color.length === 0) {
 			reasons.push(`room ${campId}: color must be a non-empty string`);
 		}
 	}

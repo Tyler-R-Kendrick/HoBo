@@ -6,6 +6,8 @@ import {
 } from "../../built-in-policy-engine-contract/src/built-in-policy-engine.js";
 import { createFlagChanged } from "../../flag-event-contract/src/flag-event-contract.js";
 import { POLICY_IR_SCHEMA_VERSION } from "../../hobo-policy-ir-contract/src/policy-ir.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const POLICY_GATED_FLAG_FLIPS_SCHEMA_VERSION = "hobo.policy-gated-flag-flips/v1";
 export const FLAG_CHANGE_ACTION = "hobo:flag:change";
@@ -320,11 +322,11 @@ export function handleFlagFlipObligationSignal({
 }
 
 function normalizeFlipInput(input) {
-  if (!input || Object.prototype.toString.call(input) !== "[object Object]") {
+  if (!input || !isJsonObject(input)) {
     throw new TypeError("flag flip input must be an object");
   }
   const ref = input.ref ?? input.flagRef;
-  if (!ref || !isString(ref.key) || !isString(ref.type)) {
+  if (!ref || !isJsonString(ref.key) || !isJsonString(ref.type)) {
     throw new TypeError("flag flip input requires ref { key, type }");
   }
   if (!input.actor) {
@@ -354,7 +356,7 @@ function createPolicyRequest(input, risk, subjectOverride) {
     kind: SUBJECT_KINDS.has(input.actor.kind) ? input.actor.kind : "user",
     id: input.actor.id,
     roles: input.actor.claims
-      ?.filter((claim) => claim.key === "role" && isString(claim.value))
+      ?.filter((claim) => claim.key === "role" && isJsonString(claim.value))
       .map((claim) => claim.value),
   };
   if (subject.roles?.length === 0) {
@@ -457,11 +459,7 @@ function applyPolicyMutations(value, mutations) {
 }
 
 function isApprovalSatisfied(approval) {
-  return approval?.approved === true && isString(approval.approvedBy) && approval.approvedBy.length > 0;
-}
-
-function isString(value) {
-  return Object.prototype.toString.call(value) === "[object String]";
+  return approval?.approved === true && isJsonString(approval.approvedBy) && approval.approvedBy.length > 0;
 }
 
 function statusForEvents(events) {

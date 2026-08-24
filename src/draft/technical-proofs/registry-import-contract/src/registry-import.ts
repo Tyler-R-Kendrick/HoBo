@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse untrusted registry payloads at the import boundary. */
 import { createHash } from "node:crypto";
 
 import {
@@ -7,6 +6,8 @@ import {
 } from "../../registry-artifact-descriptor-contract/src/registry-descriptor.js";
 import { hoboAdd } from "../../hobo-add-install-verification-contract/src/hobo-add-install-verification.js";
 import { parseBundleManifest } from "../../signed-offline-bundle-contract/src/bundle-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const REGISTRY_IMPORT_CONTRACT = "hobo.registry-import/v1";
 
@@ -229,7 +230,7 @@ function payloadFor(payloads, digest) {
   if (payloads instanceof Map) {
     return payloads.get(digest) ?? null;
   }
-  if (payloads && typeof payloads === "object" && !Array.isArray(payloads)) {
+  if (payloads && isJsonObject(payloads) && !Array.isArray(payloads)) {
     return payloads[digest] ?? null;
   }
   return null;
@@ -289,13 +290,13 @@ function rejected(reasons) {
 }
 
 function coordinateKey(coordinate) {
-  if (!coordinate || typeof coordinate !== "object" || Array.isArray(coordinate)) {
+  if (!coordinate || !isJsonObject(coordinate) || Array.isArray(coordinate)) {
     throw new Error("mirror coordinate must be an object");
   }
-  if (typeof coordinate.name !== "string" || coordinate.name.length === 0) {
+  if (!isJsonString(coordinate.name) || coordinate.name.length === 0) {
     throw new Error("mirror coordinate name must be a non-empty string");
   }
-  if (typeof coordinate.version !== "string" || coordinate.version.length === 0) {
+  if (!isJsonString(coordinate.version) || coordinate.version.length === 0) {
     throw new Error("mirror coordinate version must be a non-empty string");
   }
   return `${coordinate.name}@${coordinate.version}`;

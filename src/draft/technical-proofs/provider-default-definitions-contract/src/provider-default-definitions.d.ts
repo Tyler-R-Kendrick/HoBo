@@ -1,5 +1,4 @@
-type ProviderValue = string | number | boolean | null | ProviderValue[] | { [key: string]: ProviderValue };
-
+import { type JsonObject } from "./json.js";
 export type ProviderCapability = {
   type: string;
   satisfies: string[];
@@ -9,14 +8,14 @@ export type ProviderEquivalence = {
   resourceClass: string;
   driver: string;
   satisfies: string[];
-  options?: Record<string, ProviderValue>;
+  options?: JsonObject;
 };
 
 export interface RealizationOutput {
   type: string;
   resourceClass: string;
   driver: string;
-  with: Record<string, ProviderValue>;
+  with: JsonObject;
 }
 
 export type Provider = {
@@ -36,14 +35,14 @@ export interface ProviderDefaultDefinition {
   satisfies: string[];
   match: Record<string, string>;
   priority?: number;
-  with: Record<string, ProviderValue>;
+  with: JsonObject;
   equivalence: {
     providerResourceClass: string;
   };
   realization: {
     resourceClass: string;
     driver: string;
-    with: Record<string, ProviderValue>;
+    with: JsonObject;
   };
 }
 

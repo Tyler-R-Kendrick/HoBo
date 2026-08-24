@@ -118,7 +118,8 @@ main
                                                                                                            └── sdlc/anti-slop-107-draft-svid-mtls-token-topology-attest  #1366 svid-rotation+tier-five-mtls+token-exchange+topology+attestation
                                                                                                             └── sdlc/anti-slop-108-draft-capability-cost-routing-catalog  #1367 capability+cost+routing+catalog
                                                                                                              └── sdlc/anti-slop-109-draft-deploy-artifact-dns-flag-gen  #1368 deploy-view+artifact-version+dns-threat+flag-gov+remediation+gen-sanitize+promo+provider
-                                                                                                              └── sdlc/anti-slop-110-draft-gen-gov-auth-dsl-dev  gen-validation+governance+auth-json+code-dsl+dev-fidelity+dev-loop+experiment+up-convergence
+                                                                                                              └── sdlc/anti-slop-110-draft-gen-gov-auth-dsl-dev  #1369 gen-validation+governance+auth-json+code-dsl+dev-fidelity+dev-loop+experiment+up-convergence
+                                                                                                               └── sdlc/anti-slop-111-draft-incident-jwt-obligation-sandbox  incident+guardrail+junction+jwt-svid+manifest+sandbox+obligation+openexperiment
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -248,7 +249,8 @@ Layer 106: `registry-publish-flow-contract` + `runbook-execution-engine-contract
 Layer 107: `svid-auto-rotation-contract` + `tier-five-public-mtls-contract` + `token-broker-exchange-contract` + `topology-objects-contract` + `workload-attestation-intake-contract` oxlint `--deny-warnings` clean (#1366). 7-count technical-proofs are cleared.
 Layer 108: `capability-enforcement-contract` + `capability-indexed-discovery-contract` + `connectivity-cost-feedback-contract` + `control-plane-action-taxonomy-contract` + `cost-degradation-saga-contract` + `cross-camp-routing-policy-contract` + `cross-layer-generated-stack-propagation-contract` + `curated-catalog-policy-contract` oxlint `--deny-warnings` clean (#1367).
 Layer 109: `deployment-view-saga-graph-contract` + `distributed-artifact-version-policy` + `dns-validation-gate-threat-model` + `feature-flag-governance-contract` + `gated-autonomous-remediation-contract` + `generation-material-sanitization-contract` + `generation-promotion-policy-gate-contract` + `generation-provider-loop-contract` oxlint `--deny-warnings` clean (#1368).
-Layer 110: `generation-validation-stage-contract` + `governance-conformance-suite-contract` + `hobo-auth-json-contract` + `hobo-code-dsl-contract` + `hobo-dev-fidelity-drift-contract` + `hobo-dev-loop-contract` + `hobo-experiment-port` + `hobo-up-convergence-contract` oxlint `--deny-warnings` clean.
+Layer 110: `generation-validation-stage-contract` + `governance-conformance-suite-contract` + `hobo-auth-json-contract` + `hobo-code-dsl-contract` + `hobo-dev-fidelity-drift-contract` + `hobo-dev-loop-contract` + `hobo-experiment-port` + `hobo-up-convergence-contract` oxlint `--deny-warnings` clean (#1369).
+Layer 111: `incident-aggregate-contract` + `issue-worker-guardrail-mapping-contract` + `junction-connectivity-inference-spike` + `jwt-svid-issuance-contract` + `manifest-resource-intent-bridge-contract` + `no-egress-generation-sandbox-contract` + `obligation-engine-contract` + `openexperiment-runtime-data-contract` oxlint `--deny-warnings` clean.
 Next: remaining 6-count `src/draft/technical-proofs`, then 5-count, 4-count, exp-proofs, projects.
 Full-repo `lint:slop --deny-warnings` is still red until those land.
 GitHub stack metadata is at the 100-entry cap; later layers still open PRs via `gh stack submit --auto`.

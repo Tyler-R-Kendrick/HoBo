@@ -1,5 +1,7 @@
 /* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased capability and path values at the sandbox boundary. */
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const profileSchema = "hobo.sandbox.profile/v1";
 const conformanceSchema = "hobo.sandbox.conformance/v1";
@@ -146,7 +148,7 @@ function validateCapabilities(capabilities) {
     if (!Array.isArray(capability.verbs) || capability.verbs.length === 0) {
       throw new SandboxContractError("capability.verbs_required", `${path}.verbs`);
     }
-    if (!capability.verbs.every((verb) => typeof verb === "string" && verb.length > 0)) {
+    if (!capability.verbs.every((verb) => isJsonString(verb) && verb.length > 0)) {
       throw new SandboxContractError("capability.verbs_required", `${path}.verbs`);
     }
     if (!isNonEmptyObject(capability.scope)) {
@@ -193,13 +195,13 @@ function assertEqual(actual, expected, code, path) {
 }
 
 function assertObject(value, code, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new SandboxContractError(code, path);
   }
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new SandboxContractError(code, path);
   }
 }
@@ -212,7 +214,7 @@ function assertAbsolutePath(value, code, path) {
 }
 
 function isNonEmptyObject(value) {
-  return value && typeof value === "object" && !Array.isArray(value) && Object.keys(value).length > 0;
+  return value && isJsonObject(value) && !Array.isArray(value) && Object.keys(value).length > 0;
 }
 
 function isInside(parent, child) {
@@ -224,7 +226,7 @@ function isEgressCapability(interfaceName) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
 

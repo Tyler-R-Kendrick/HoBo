@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { type JsonValue } from "../src/json.js";
+
 
 const contract = await import("../src/dogfood-yard-m1-evidence.ts").catch(() => null);
 
@@ -97,7 +99,7 @@ test("parser rejects live provider calls, customer data, readiness claims, and r
           "Build hosted Yard runtime, run production provider calls, inspect live customer data, and mark beta readiness.",
         ],
       }),
-    (error: unknown) => {
+    (error: JsonValue) => {
       assert.equal(error instanceof DogfoodYardM1EvidenceParseError, true);
       const details = error instanceof DogfoodYardM1EvidenceParseError ? error.errors.join("\n") : String(error);
       assert.match(details, /runtime/i);

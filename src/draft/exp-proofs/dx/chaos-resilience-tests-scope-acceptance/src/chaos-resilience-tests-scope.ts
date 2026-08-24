@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export type ChaosResiliencePhase = "M0" | "M1" | "M2" | "M3" | "M4";
 
 export const REQUIRED_OPERATING_BOUNDARIES = Object.freeze(["service", "ux", "security", "support"]);
@@ -196,7 +197,7 @@ export const CHAOS_RESILIENCE_TESTS_SCOPE = {
 export function validateChaosResilienceScope(record: typeof CHAOS_RESILIENCE_TESTS_SCOPE) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["chaos resilience scope record is required"] };
   }
   if (record.issue !== "HOBO-439") errors.push("issue must be HOBO-439");
@@ -250,7 +251,12 @@ export function canStartChaosResilienceFollowUp({
   };
 }
 
-export function classifyChaosResilienceRequest(request: unknown): { owner: string; inScope: boolean } {
+export interface ChaosResilienceClassification {
+  owner: string;
+  inScope: boolean;
+}
+
+export function classifyChaosResilienceRequest(request: JsonValue): ChaosResilienceClassification {
   const text = String(request ?? "").toLowerCase();
 
   if (/\bslo\b|\bburn\b|\bmetric\b|\bobservability\b|\bcapacity\b|\berror budget\b/.test(text)) {

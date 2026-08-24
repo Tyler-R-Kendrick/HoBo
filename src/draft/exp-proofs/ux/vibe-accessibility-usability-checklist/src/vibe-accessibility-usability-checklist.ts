@@ -144,7 +144,18 @@ const REQUIRED_SCENARIOS: readonly ChecklistScenarioId[] = [
   "proof-mode-labels",
 ] as const;
 
-const SURFACE_OWNER: Readonly<Record<LaunchSurface, string>> = {
+interface SurfaceOwnerMap {
+  readonly "workspace-onboarding": string;
+  readonly "plan-diff": string;
+  readonly "deployment-dashboard": string;
+  readonly "marketplace-install": string;
+  readonly "publisher-portal": string;
+  readonly docs: string;
+  readonly "admin-support": string;
+  readonly "release-support-artifacts": string;
+}
+
+const SURFACE_OWNER: SurfaceOwnerMap = {
   "workspace-onboarding": "Workspace & Onboarding UX",
   "plan-diff": "Plan/Diff Viewer",
   "deployment-dashboard": "Deployment Dashboard & Topology Explorer",
@@ -446,12 +457,18 @@ export function parseVibeAccessibilityChecklist(
     throw new VibeAccessibilityChecklistParseError(validation.errors);
   }
 
+  // SAFETY: `return checklist as ParsedVibeAccessibilityChecklist;` is required at this I/O or test boundary.
   return checklist as ParsedVibeAccessibilityChecklist;
+}
+
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
 }
 
 export function validateVibeAccessibilityChecklist(
   checklist: VibeAccessibilityChecklist,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (checklist.issue !== "HOBO-554") {

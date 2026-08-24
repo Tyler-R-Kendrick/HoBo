@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue } from "./json.js";
 export const REQUIRED_ASSET_KINDS = [
   "screenshots",
   "recording-manifest",
@@ -266,7 +267,7 @@ export const VIBE_LAUNCH_ASSET_REFRESH_PLAN: VibeLaunchAssetRefreshPlan = {
   ],
 };
 
-export function evaluateLaunchAssetRefreshPlan(input: unknown) {
+export function evaluateLaunchAssetRefreshPlan(input: JsonValue) {
   const parsed = parseLaunchAssetRefreshPlan(input);
   const errors = [...parsed.errors];
 
@@ -342,13 +343,14 @@ export function evaluateLaunchAssetRefreshPlan(input: unknown) {
   };
 }
 
-export function parseLaunchAssetRefreshPlan(input: unknown) {
+export function parseLaunchAssetRefreshPlan(input: JsonValue) {
   const errors: string[] = [];
 
-  if (!input || typeof input !== "object") {
+  if (!input || !isJsonObject(input)) {
     return { errors: ["launch asset refresh plan record is required"] };
   }
 
+  // SAFETY: `const record = input as Partial<VibeLaunchAssetRefreshPlan>;` is required at this I/O or test boundary.
   const record = input as Partial<VibeLaunchAssetRefreshPlan>;
   if (record.schema !== "hobo.vibe-launch-asset-refresh-plan/v1") {
     errors.push("schema must be hobo.vibe-launch-asset-refresh-plan/v1");
@@ -378,6 +380,7 @@ export function parseLaunchAssetRefreshPlan(input: unknown) {
 
   return {
     errors,
+    // SAFETY: `value: { ...(record as VibeLaunchAssetRefreshPlan), __parsed: "VibeLaunchAssetRe` is required at this I/O or test boundary.
     value: { ...(record as VibeLaunchAssetRefreshPlan), __parsed: "VibeLaunchAssetRefreshPlan" as const },
   };
 }
@@ -409,8 +412,8 @@ function emptyAcceptedSummary(): AcceptedSummary {
   };
 }
 
-function requireText(value: unknown, message: string, errors: string[]) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+function requireText(value: JsonValue, message: string, errors: string[]) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     errors.push(message);
   }
 }

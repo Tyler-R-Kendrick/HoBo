@@ -1,5 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { asJsonObject, type JsonBag } from "../src/json.js";
+
 
 async function loadContract() {
   const module = await import("../src/release-notes-release-candidate-evidence.ts").catch((error) => ({
@@ -154,17 +156,15 @@ test("malformed evidence collections return parser errors instead of throwing", 
     releaseNotesReleaseCandidateEvidence,
     validateReleaseNotesReleaseCandidateEvidence,
   } = await loadContract();
-  // SAFETY: This fixture deliberately replaces validated fields with malformed values to exercise parser errors.
-  const invalid = {
-    ...structuredClone(releaseNotesReleaseCandidateEvidence),
-    evidence: {},
-    blockers: "not-blockers",
-    acceptedRisks: null,
-    releaseCutlineDependencies: false,
-    followUps: {},
-    scopeOut: {},
-    publicClaimGuards: {},
-  } as typeof releaseNotesReleaseCandidateEvidence;
+  const invalid: JsonBag = { ...asJsonObject(structuredClone(releaseNotesReleaseCandidateEvidence)) };
+
+  invalid.evidence = {};
+  invalid.blockers = "not-blockers";
+  invalid.acceptedRisks = null;
+  invalid.releaseCutlineDependencies = false;
+  invalid.followUps = {};
+  invalid.scopeOut = {};
+  invalid.publicClaimGuards = {};
 
   const result = validateReleaseNotesReleaseCandidateEvidence(invalid);
 

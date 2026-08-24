@@ -298,12 +298,18 @@ export function parseVibeSupportCaseRedactedEvidence(
     throw new VibeSupportCaseRedactedEvidenceParseError(validation.errors);
   }
 
+  // SAFETY: `return record as ParsedVibeSupportCaseRedactedEvidence;` is required at this I/O or test boundary.
   return record as ParsedVibeSupportCaseRedactedEvidence;
+}
+
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
 }
 
 export function validateVibeSupportCaseRedactedEvidence(
   record: VibeSupportCaseRedactedEvidence,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (record.issue !== "HOBO-564") {

@@ -16,6 +16,7 @@ import {
   type JwtSvidClaims,
   type KmsLike,
 } from "./issuer.js";
+import { isJsonObject, isJsonString, type JsonValue } from "./json.js";
 
 export const IDENTITY_BOUNDARY_SCHEMA = "hobo.draft.s3_02_hobo_identity/v1";
 
@@ -47,6 +48,12 @@ export type IssueSvidResult =
       reason: string;
       events: readonly IdentityEvent[];
     }>;
+
+type RotateSvidInput = {
+  identityId: string;
+  now?: string;
+  nextKeyId?: string;
+};
 
 export type RotateSvidResult =
   | Readonly<{
@@ -180,11 +187,7 @@ export class IdentityService {
     return { status: "issued", svid: record, token, events: [event] };
   }
 
-  async rotateSvid(input: {
-    identityId: string;
-    now?: string;
-    nextKeyId?: string;
-  }): Promise<RotateSvidResult> {
+  async rotateSvid(input: RotateSvidInput): Promise<RotateSvidResult> {
     const current = this.activeSvids.get(input.identityId);
     if (!current) {
       return { status: "denied", reason: "unknown-identity", events: [] };
@@ -263,7 +266,7 @@ export class IdentityService {
     if (scopeWidens(current.scope[0], input.requestedScope)) {
       return { status: "denied", reason: "scope-widening-requires-live-identity", events: [] };
     }
-    const rotateInput: { identityId: string; now?: string } = { identityId: input.identityId };
+    const rotateInput: RotateSvidInput = { identityId: input.identityId };
     if (input.now !== undefined) {
       rotateInput.now = input.now;
     }
@@ -283,15 +286,15 @@ export class IdentityService {
         audience: input.audience,
         now: nowSeconds,
       });
-      const scope = verified.claims.scope;
-      if (!Array.isArray(scope)) {
+      const scope = parseScopeEntries(verified.claims.scope ?? null);
+      if (scope === undefined) {
         return { status: "denied", reason: "scope-claim-missing" };
       }
       return {
         status: "authenticated",
         subject: String(verified.claims.sub),
         tenant: String(verified.claims.tenant),
-        scope: scope as ScopeEntry[],
+        scope,
       };
     } catch (error) {
       return {
@@ -325,6 +328,24 @@ function scopeWidens(current: ScopeEntry | undefined, requested: ScopeEntry): bo
     }
   }
   return requested.verbs.length > current.verbs.length;
+}
+
+function parseScopeEntries(value: JsonValue): ScopeEntry[] | undefined {
+  if (!Array.isArray(value)) {
+    return undefined;
+  }
+  const entries: ScopeEntry[] = [];
+  for (const entry of value) {
+    if (!isJsonObject(entry) || !isJsonString(entry.port) || !isJsonString(entry.resource) || !Array.isArray(entry.verbs)) {
+      return undefined;
+    }
+    const verbs = entry.verbs.filter((verb) => isJsonString(verb));
+    if (verbs.length !== entry.verbs.length) {
+      return undefined;
+    }
+    entries.push({ port: entry.port, resource: entry.resource, verbs });
+  }
+  return entries;
 }
 
 export {

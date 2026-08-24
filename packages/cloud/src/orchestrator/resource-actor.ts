@@ -79,7 +79,7 @@ export function foldResourceActor(
 	};
 
 	for (const event of events) {
-		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+		// SAFETY: `const data = event.data as {` is required at this I/O or test boundary.
 		const data = event.data as {
 			resourceId?: string;
 			outputs?: Record<string, string>;
@@ -203,13 +203,13 @@ export async function reconcileResource(
 			tenant: ctx.tenant,
 			// The deployment stream may already be fenced by an earlier leased
 			// write; continue it under the current owner epoch (no rotation).
-			...(fenceToken !== undefined && { fenceToken }),
-			...(ctx.correlationId !== undefined && {
-				correlationId: ctx.correlationId,
-			}),
+			...(fenceToken !== undefined ? { fenceToken } : undefined),
+			...(ctx.correlationId !== undefined
+				? { correlationId: ctx.correlationId }
+				: undefined),
 		};
 		let lastSeq =
-			// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+			// SAFETY: `events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;` is required at this I/O or test boundary.
 			events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
 
 		// Transition Pending/Planning → Provisioning (durable boundary) unless we
@@ -236,7 +236,7 @@ export async function reconcileResource(
 		const grant = {
 			grantId: credential.id,
 			tokenRef: `tokenref://scoped/${credential.id}`,
-			...(ctx.actor?.id !== undefined && { svidSubject: ctx.actor.id }),
+			...(ctx.actor?.id !== undefined ? { svidSubject: ctx.actor.id } : undefined),
 			scope: {
 				port: resource.port,
 				resource: resource.name,
@@ -371,13 +371,13 @@ export async function destroyResource(
 			tenant: ctx.tenant,
 			// Same fenced-stream rule as reconcile: continue under the current
 			// owner epoch.
-			...(fenceToken !== undefined && { fenceToken }),
-			...(ctx.correlationId !== undefined && {
-				correlationId: ctx.correlationId,
-			}),
+			...(fenceToken !== undefined ? { fenceToken } : undefined),
+			...(ctx.correlationId !== undefined
+				? { correlationId: ctx.correlationId }
+				: undefined),
 		};
 		let lastSeq =
-			// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+			// SAFETY: `events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;` is required at this I/O or test boundary.
 			events.length > 0 ? (events[events.length - 1] as EventEnvelope).seq : 0;
 
 		const program = iacProgramFor(

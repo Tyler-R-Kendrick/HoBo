@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export type EnterpriseHardeningPhase = "M0" | "M1" | "M2" | "M3" | "M4";
 
 type EnterpriseReadinessAudience = "internal" | "release-notes" | "public-docs" | "customer-assurance";
@@ -277,7 +278,7 @@ export function validateEnterpriseDeploymentHardeningScope(
 ) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["enterprise deployment hardening scope record is required"] };
   }
   if (record.issue !== "HOBO-453") errors.push("issue must be HOBO-453");

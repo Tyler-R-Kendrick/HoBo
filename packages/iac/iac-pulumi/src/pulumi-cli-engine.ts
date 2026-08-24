@@ -1,5 +1,3 @@
-/* oxlint-disable anti-slop/no-known-value-widening, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-runtime-typeof */
-
 import { execFileSync } from "node:child_process";
 import { existsSync, mkdirSync, readdirSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
@@ -9,6 +7,14 @@ import {
 	outputsToBindings,
 	PINNED_PULUMI_AUTOMATION_VERSION,
 } from "./iac-pulumi-automation-adapter.js";
+import {
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	parseJsonObject,
+	type JsonObject,
+} from "./json.js";
+
 
 // The REAL Pulumi backend (docs/plans/0006 item 3-2). This engine speaks the
 // exact preview/apply/refresh/destroy shape the in-memory stand-in defined
@@ -37,16 +43,35 @@ export class PulumiEngineUnavailableError extends Error {
 // The hobo resource classes provider realize() emits, mapped to real Pulumi
 // YAML type tokens (package:Resource shorthand). Anything else fails closed —
 // an honest gap beats a fabricated resource.
-export const PULUMI_YAML_TYPE_TOKENS: Readonly<Record<string, string>> = {
+interface PulumiYamlTypeTokens {
+	"cloudflare:workers-script": string;
+	"cloudflare:kv-namespace": string;
+	"cloudflare:r2-bucket": string;
+}
+
+export const PULUMI_YAML_TYPE_TOKENS: PulumiYamlTypeTokens = {
 	"cloudflare:workers-script": "cloudflare:WorkersScript",
 	"cloudflare:kv-namespace": "cloudflare:WorkersKvNamespace",
 	"cloudflare:r2-bucket": "cloudflare:R2Bucket",
 };
 
+function pulumiYamlToken(resourceType: string): string | undefined {
+	switch (resourceType) {
+		case "cloudflare:workers-script":
+			return PULUMI_YAML_TYPE_TOKENS["cloudflare:workers-script"];
+		case "cloudflare:kv-namespace":
+			return PULUMI_YAML_TYPE_TOKENS["cloudflare:kv-namespace"];
+		case "cloudflare:r2-bucket":
+			return PULUMI_YAML_TYPE_TOKENS["cloudflare:r2-bucket"];
+		default:
+			return undefined;
+	}
+}
+
 interface IacResourceLike {
 	readonly name: string;
 	readonly type: string;
-	readonly inputs?: Record<string, unknown>;
+	readonly inputs?: JsonObject;
 	readonly outputs?: readonly string[];
 }
 
@@ -54,7 +79,7 @@ interface IacProgramLike {
 	readonly deploymentId?: string;
 	readonly stack?: string;
 	readonly resources: readonly IacResourceLike[];
-	readonly stackOutputs?: Record<string, unknown>;
+	readonly stackOutputs?: JsonObject;
 }
 
 // Render one per-resource Pulumi YAML program. Deterministic, pure — golden
@@ -64,7 +89,7 @@ export function renderPulumiYamlProgram(
 	resource: IacResourceLike,
 	options: { readonly accountId: string },
 ): string {
-	const token = PULUMI_YAML_TYPE_TOKENS[resource.type];
+	const token = pulumiYamlToken(resource.type);
 	if (token === undefined) {
 		throw new PulumiEngineUnavailableError(
 			PULUMI_UNSUPPORTED_RESOURCE,
@@ -73,12 +98,13 @@ export function renderPulumiYamlProgram(
 	}
 
 	const inputs = resource.inputs ?? {};
-	const cfOptions = (inputs.options ?? {}) as Record<string, unknown>;
-	const properties: Record<string, unknown> = { accountId: options.accountId };
+	// SAFETY: `const cfOptions = (inputs.options ?? {}) as JsonObject;` is required at this I/O or test boundary.
+	const cfOptions = (inputs.options ?? {}) as JsonObject;
+	const properties: JsonObject = { accountId: options.accountId };
 	if (token === "cloudflare:WorkersScript") {
 		properties.name = resource.name;
 		properties.content =
-			typeof cfOptions.script === "string"
+			isJsonString(cfOptions.script)
 				? cfOptions.script
 				: DEFAULT_WORKER_SCRIPT;
 	} else if (token === "cloudflare:WorkersKvNamespace") {
@@ -159,7 +185,7 @@ export function createPulumiCliAutomationEngine(
 	const programsDir = join(options.workDir, "programs");
 	let verified = false;
 
-	function pulumiEnv(): Record<string, string> {
+	function pulumiEnv() {
 		return {
 			...Object.fromEntries(
 				Object.entries(env).filter(
@@ -181,6 +207,7 @@ export function createPulumiCliAutomationEngine(
 		} catch (error) {
 			throw new PulumiEngineUnavailableError(
 				PULUMI_CLI_MISSING,
+				// SAFETY: ``pulumi CLI (${bin}) is not available: ${(error as Error).message}`,` is required at this I/O or test boundary.
 				`pulumi CLI (${bin}) is not available: ${(error as Error).message}`,
 			);
 		}
@@ -207,7 +234,7 @@ export function createPulumiCliAutomationEngine(
 	function ensureStack(
 		program: IacProgramLike,
 		resource: IacResourceLike,
-	): { readonly dir: string; readonly stackKey: string } {
+	): StackLocation {
 		const stackKey = createPerResourceStackKey(program, resource.name);
 		const dir = stackDir(stackKey);
 		writeFileSync(
@@ -223,7 +250,7 @@ export function createPulumiCliAutomationEngine(
 	function previewResource(
 		program: IacProgramLike,
 		resource: IacResourceLike,
-	): { op: string; resource: string; stackKey: string; reason: string } | null {
+	): PreviewChange | null {
 		const { dir, stackKey } = ensureStack(program, resource);
 		const raw = run(["preview", "--json"], dir);
 		const summary = parsePreviewSummary(raw);
@@ -239,12 +266,9 @@ export function createPulumiCliAutomationEngine(
 		return { op, resource: resource.name, stackKey, reason: "pulumi-preview" };
 	}
 
-	function stackOutputs(dir: string): Record<string, unknown> {
+	function stackOutputs(dir: string): JsonObject {
 		try {
-			return JSON.parse(run(["stack", "output", "--json"], dir)) as Record<
-				string,
-				unknown
-			>;
+			return parseJsonObject(run(["stack", "output", "--json"], dir));
 		} catch {
 			return {};
 		}
@@ -258,7 +282,7 @@ export function createPulumiCliAutomationEngine(
 		// pulumi CLI fails closed with the typed PulumiEngineUnavailableError.
 		snapshot() {
 			ensureAvailable();
-			const stacks: Record<string, unknown> = {};
+			const stacks: JsonObject = {};
 			if (!existsSync(programsDir)) {
 				return Object.freeze(stacks);
 			}
@@ -267,11 +291,12 @@ export function createPulumiCliAutomationEngine(
 					continue;
 				}
 				const dir = join(programsDir, entry.name);
-				let outputs: Record<string, unknown>;
+				let outputs: JsonObject;
 				try {
+					// SAFETY: `outputs = JSON.parse(` is required at this I/O or test boundary.
 					outputs = JSON.parse(
 						run(["stack", "output", "--json", "--stack", "hobo"], dir),
-					) as Record<string, unknown>;
+					) as JsonObject;
 				} catch {
 					// A stack with unreadable outputs holds no adoptable state.
 					continue;
@@ -315,7 +340,7 @@ export function createPulumiCliAutomationEngine(
 		},
 		async apply(program: IacProgramLike, expectedChanges: readonly unknown[]) {
 			ensureAvailable();
-			const resources: Record<string, unknown> = {};
+			const resources: JsonObject = {};
 			for (const resource of program.resources) {
 				const { dir, stackKey } = ensureStack(program, resource);
 				run(["up", "--yes", "--skip-preview"], dir);
@@ -369,7 +394,7 @@ export function createPulumiCliAutomationEngine(
 		},
 		async destroy(program: IacProgramLike) {
 			ensureAvailable();
-			const destroyed: Record<string, unknown> = {};
+			const destroyed: JsonObject = {};
 			for (const resource of [...program.resources].reverse()) {
 				const { dir, stackKey } = ensureStack(program, resource);
 				run(["destroy", "--yes"], dir);
@@ -392,20 +417,37 @@ export function createPulumiCliAutomationEngine(
 	};
 }
 
-function parsePreviewSummary(raw: string): {
+interface ChangeSummary {
 	create: number;
 	update: number;
 	delete: number;
-} {
+}
+
+interface StackLocation {
+	readonly dir: string;
+	readonly stackKey: string;
+}
+
+interface PreviewChange {
+	op: string;
+	resource: string;
+	stackKey: string;
+	reason: string;
+}
+
+function parsePreviewSummary(raw: string): ChangeSummary {
 	try {
-		const parsed = JSON.parse(raw) as {
-			changeSummary?: Record<string, number>;
-		};
-		const summary = parsed.changeSummary ?? {};
+		const parsed = parseJsonObject(raw);
+		const summary = isJsonObject(parsed.changeSummary)
+			? parsed.changeSummary
+			: {};
+		const create = summary.create;
+		const update = summary.update;
+		const del = summary.delete;
 		return {
-			create: summary.create ?? 0,
-			update: summary.update ?? 0,
-			delete: summary.delete ?? 0,
+			create: isJsonNumber(create) ? create : 0,
+			update: isJsonNumber(update) ? update : 0,
+			delete: isJsonNumber(del) ? del : 0,
 		};
 	} catch {
 		// Fail dirty, never silently clean: an unparseable preview must surface

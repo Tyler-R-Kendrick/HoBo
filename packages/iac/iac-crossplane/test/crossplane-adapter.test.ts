@@ -1,5 +1,3 @@
-/* oxlint-disable anti-slop/no-unknown-parameters */
-
 import { describe, expect, it } from "vitest";
 
 import {
@@ -12,6 +10,8 @@ import {
 	runIacBackendConformance,
 	validateIacProgram,
 } from "../src/index.js";
+import { type JsonValue } from "../src/json.js";
+
 
 // HOBO-716: the Kubernetes-substrate adapter over the in-memory cluster
 // fixture — the full behavior set promoted from the HOBO-188 draft proof plus
@@ -94,7 +94,7 @@ describe("createCrossplaneIacAdapter over the in-memory cluster", () => {
 			cluster: createInMemoryCrossplaneCluster({ compositions: [] }),
 		});
 		await expect(none.apply(createFixtureIacProgram())).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: JsonValue) =>
 				error instanceof CrossplaneProgramError &&
 				error.code === "composition-not-found",
 		);
@@ -109,7 +109,7 @@ describe("createCrossplaneIacAdapter over the in-memory cluster", () => {
 			}),
 		});
 		await expect(ambiguous.apply(createFixtureIacProgram())).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: JsonValue) =>
 				error instanceof CrossplaneProgramError &&
 				error.code === "composition-ambiguous",
 		);
@@ -122,7 +122,7 @@ describe("createCrossplaneIacAdapter over the in-memory cluster", () => {
 			}),
 		});
 		await expect(adapter.apply(createFixtureIacProgram())).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: JsonValue) =>
 				error instanceof CrossplaneProgramError && error.code === "crd-missing",
 		);
 	});

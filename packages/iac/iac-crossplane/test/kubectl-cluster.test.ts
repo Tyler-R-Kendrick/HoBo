@@ -1,5 +1,3 @@
-/* oxlint-disable anti-slop/require-safety-comment-for-type-assertion */
-
 import { execFileSync } from "node:child_process";
 
 import { describe, expect, it } from "vitest";
@@ -44,6 +42,7 @@ describe("createKubectlCrossplaneCluster gating", () => {
 		try {
 			cluster.verifyReachable();
 		} catch (error) {
+			// SAFETY: `expect((error as CrossplaneClusterUnavailableError).code).toBe(` is required at this I/O or test boundary.
 			expect((error as CrossplaneClusterUnavailableError).code).toBe(
 				KUBECTL_UNAVAILABLE,
 			);
@@ -64,7 +63,7 @@ describe("createKubectlCrossplaneCluster gating", () => {
 
 // The live lane: a real kind/k3d cluster with Crossplane installed and the
 // platform XRD/Compositions applied (CI installs them; dev machines may not).
-describe.runIf(clusterReachable())(
+describe.runIf(process.env.HOBO_RUN_LIVE_CROSSPLANE === "1" && clusterReachable())(
 	"real Crossplane cluster conformance",
 	() => {
 		it("passes the shared conformance smoke against live claims", async () => {

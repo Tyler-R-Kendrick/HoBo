@@ -1,7 +1,7 @@
-/* oxlint-disable anti-slop/no-unknown-parameters, anti-slop/no-unknown-returns, anti-slop/require-safety-comment-for-type-assertion */
-
 import type { ProviderPort } from "@hobo/core";
 import { createPortDescriptor } from "@hobo/core";
+import { type JsonValue } from "./json.js";
+
 
 export const IAC_PULUMI_INTERFACE = "hobo:iac/provider";
 
@@ -12,18 +12,22 @@ export const IAC_PULUMI_INTERFACE = "hobo:iac/provider";
 export interface IacProvider {
 	readonly id: string;
 	readonly pulumiVersion: string;
-	readonly stateBackend: unknown;
-	preview(program: unknown): Promise<unknown>;
-	apply(program: unknown): Promise<unknown>;
-	refresh(program: unknown): Promise<unknown>;
-	destroy(program: unknown): Promise<unknown>;
+	readonly stateBackend: JsonValue;
+	preview(program: JsonValue): Promise<JsonValue>;
+	apply(program: JsonValue): Promise<JsonValue>;
+	refresh(program: JsonValue): Promise<JsonValue>;
+	destroy(program: JsonValue): Promise<JsonValue>;
 }
 
 // The provider-port descriptor for this boundary, built through @hobo/core so
 // the adapter's only inward dependency is the shared port vocabulary.
-export const IAC_PULUMI_PORT: ProviderPort = createPortDescriptor({
+const pulumiPortDescriptor = createPortDescriptor({
 	kind: "provider",
 	name: "iac-pulumi",
 	interface: IAC_PULUMI_INTERFACE,
 	stability: "preview",
-}) as ProviderPort;
+});
+if (pulumiPortDescriptor.kind !== "provider") {
+	throw new Error("iac-pulumi port must be a provider port");
+}
+export const IAC_PULUMI_PORT: ProviderPort = pulumiPortDescriptor;

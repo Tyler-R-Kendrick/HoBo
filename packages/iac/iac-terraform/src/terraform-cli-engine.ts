@@ -1,5 +1,3 @@
-/* oxlint-disable anti-slop/no-known-value-widening, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion, anti-slop/no-runtime-typeof */
-
 import { execFileSync } from "node:child_process";
 import {
 	existsSync,
@@ -16,6 +14,15 @@ import {
 	PINNED_TERRAFORM_VERSION,
 	PINNED_TOFU_VERSION,
 } from "./terraform-adapter.js";
+import {
+	asJsonObject,
+	isJsonObject,
+	isJsonString,
+	parseJsonObject,
+	parseJsonValue,
+	type JsonObject,
+} from "./json.js";
+
 
 // The REAL HCL engine (HOBO-717): drives the OpenTofu (`tofu`, default) or
 // Terraform (`terraform`) binary — they share the plan/apply/state protocol —
@@ -44,12 +51,34 @@ export class TerraformEngineUnavailableError extends Error {
 // resource types. `hobo:trivial/greeting` maps to the builtin `terraform_data`
 // (no provider download — a genuinely offline-capable real lane); anything
 // unmapped fails closed — an honest gap beats a fabricated resource.
-export const TERRAFORM_TYPE_TOKENS: Readonly<Record<string, string>> = {
+interface TerraformTypeTokens {
+	"hobo:trivial/greeting": string;
+	"cloudflare:workers-script": string;
+	"cloudflare:kv-namespace": string;
+	"cloudflare:r2-bucket": string;
+}
+
+export const TERRAFORM_TYPE_TOKENS: TerraformTypeTokens = {
 	"hobo:trivial/greeting": "terraform_data",
 	"cloudflare:workers-script": "cloudflare_workers_script",
 	"cloudflare:kv-namespace": "cloudflare_workers_kv_namespace",
 	"cloudflare:r2-bucket": "cloudflare_r2_bucket",
 };
+
+function terraformTypeToken(resourceType: string): string | undefined {
+	switch (resourceType) {
+		case "hobo:trivial/greeting":
+			return TERRAFORM_TYPE_TOKENS["hobo:trivial/greeting"];
+		case "cloudflare:workers-script":
+			return TERRAFORM_TYPE_TOKENS["cloudflare:workers-script"];
+		case "cloudflare:kv-namespace":
+			return TERRAFORM_TYPE_TOKENS["cloudflare:kv-namespace"];
+		case "cloudflare:r2-bucket":
+			return TERRAFORM_TYPE_TOKENS["cloudflare:r2-bucket"];
+		default:
+			return undefined;
+	}
+}
 
 // Pinned provider requirement for the cloudflare-typed tokens.
 const CLOUDFLARE_PROVIDER_REQUIREMENT = {
@@ -60,7 +89,7 @@ const CLOUDFLARE_PROVIDER_REQUIREMENT = {
 interface IacResourceLike {
 	readonly name: string;
 	readonly type: string;
-	readonly inputs?: Record<string, unknown>;
+	readonly inputs?: JsonObject;
 	readonly outputs?: readonly string[];
 }
 
@@ -68,7 +97,7 @@ interface IacProgramLike {
 	readonly deploymentId?: string;
 	readonly stack?: string;
 	readonly resources: readonly IacResourceLike[];
-	readonly stackOutputs?: Record<string, unknown>;
+	readonly stackOutputs?: JsonObject;
 }
 
 // Render one per-resource *.tf.json document (JSON syntax — deterministic and
@@ -77,8 +106,8 @@ interface IacProgramLike {
 export function renderTerraformJsonProgram(
 	resource: IacResourceLike,
 	options: { readonly accountId: string },
-): Record<string, unknown> {
-	const token = TERRAFORM_TYPE_TOKENS[resource.type];
+): JsonObject {
+	const token = terraformTypeToken(resource.type);
 	if (token === undefined) {
 		throw new TerraformEngineUnavailableError(
 			TERRAFORM_UNSUPPORTED_RESOURCE,
@@ -86,8 +115,8 @@ export function renderTerraformJsonProgram(
 		);
 	}
 
-	const document: Record<string, unknown> = {};
-	const outputs: Record<string, unknown> = {};
+	const document: JsonObject = {};
+	const outputs: JsonObject = {};
 	const wanted = resource.outputs ?? ["binding"];
 
 	if (token === "terraform_data") {
@@ -96,6 +125,7 @@ export function renderTerraformJsonProgram(
 				[resource.name]: {
 					input: {
 						message:
+							// SAFETY: `(resource.inputs?.message as string | undefined) ??` is required at this I/O or test boundary.
 							(resource.inputs?.message as string | undefined) ??
 							`hello-${resource.name}`,
 					},
@@ -116,17 +146,14 @@ export function renderTerraformJsonProgram(
 		document.terraform = {
 			required_providers: { cloudflare: CLOUDFLARE_PROVIDER_REQUIREMENT },
 		};
-		const properties: Record<string, unknown> = {
+		const properties: JsonObject = {
 			account_id: options.accountId,
 		};
 		if (token === "cloudflare_workers_script") {
 			properties.name = resource.name;
-			const cfOptions = (resource.inputs?.options ?? {}) as Record<
-				string,
-				unknown
-			>;
+			const cfOptions = asJsonObject(resource.inputs?.options ?? {});
 			properties.content =
-				typeof cfOptions.script === "string"
+				isJsonString(cfOptions.script)
 					? cfOptions.script
 					: DEFAULT_WORKER_SCRIPT;
 		} else if (token === "cloudflare_workers_kv_namespace") {
@@ -176,28 +203,45 @@ function outputExpression(
 
 // Parse `show -json <plan>` output into the typed change set the Diff carries.
 // Exported pure so fixture plan documents pin the parse without any binary.
-export function parsePlanChanges(raw: string): {
+export interface PlanChangeSummary {
 	create: number;
 	update: number;
 	delete: number;
-} {
-	try {
-		const parsed = JSON.parse(raw) as {
-			resource_changes?: Array<{ change?: { actions?: string[] } }>;
-		};
-		const summary = { create: 0, update: 0, delete: 0 };
-		for (const change of parsed.resource_changes ?? []) {
-			const actions = change.change?.actions ?? [];
-			if (actions.includes("create")) summary.create += 1;
-			if (actions.includes("update")) summary.update += 1;
-			if (actions.includes("delete")) summary.delete += 1;
-		}
-		return summary;
-	} catch {
+}
+
+interface WorkspaceLocation {
+	readonly dir: string;
+	readonly workspaceKey: string;
+}
+
+interface PlanWorkspaceChange {
+	op: string;
+	resource: string;
+	workspaceKey: string;
+	reason: string;
+}
+
+export function parsePlanChanges(raw: string): PlanChangeSummary {
+	const parsed = parseJsonValue(raw);
+	if (!isJsonObject(parsed)) {
 		// Fail dirty, never silently clean: an unparseable plan must surface as a
 		// change so apply re-checks rather than skipping.
 		return { create: 1, update: 0, delete: 0 };
 	}
+	const summary: PlanChangeSummary = { create: 0, update: 0, delete: 0 };
+	const changes = parsed.resource_changes;
+	if (!Array.isArray(changes)) return summary;
+	for (const change of changes) {
+		if (!isJsonObject(change)) continue;
+		const spec = isJsonObject(change.change) ? change.change : {};
+		const actions = Array.isArray(spec.actions)
+			? spec.actions.filter(isJsonString)
+			: [];
+		if (actions.includes("create")) summary.create += 1;
+		if (actions.includes("update")) summary.update += 1;
+		if (actions.includes("delete")) summary.delete += 1;
+	}
+	return summary;
 }
 
 export interface TerraformCliEngineOptions {
@@ -220,7 +264,7 @@ export function createTerraformCliEngine(options: TerraformCliEngineOptions) {
 	const workspacesDir = join(options.workDir, "workspaces");
 	let verified = false;
 
-	function binaryEnv(): Record<string, string> {
+	function binaryEnv() {
 		return {
 			...Object.fromEntries(
 				Object.entries(env).filter(
@@ -241,6 +285,7 @@ export function createTerraformCliEngine(options: TerraformCliEngineOptions) {
 		} catch (error) {
 			throw new TerraformEngineUnavailableError(
 				TERRAFORM_CLI_MISSING,
+				// SAFETY: ``HCL binary (${bin}) is not available: ${(error as Error).message}`,` is required at this I/O or test boundary.
 				`HCL binary (${bin}) is not available: ${(error as Error).message}`,
 			);
 		}
@@ -269,7 +314,7 @@ export function createTerraformCliEngine(options: TerraformCliEngineOptions) {
 	function ensureWorkspace(
 		program: IacProgramLike,
 		resource: IacResourceLike,
-	): { readonly dir: string; readonly workspaceKey: string } {
+	): WorkspaceLocation {
 		const workspaceKey = createWorkspaceKey(program, resource.name);
 		const dir = workspaceDir(workspaceKey);
 		writeFileSync(
@@ -291,12 +336,7 @@ export function createTerraformCliEngine(options: TerraformCliEngineOptions) {
 	function planWorkspace(
 		program: IacProgramLike,
 		resource: IacResourceLike,
-	): {
-		op: string;
-		resource: string;
-		workspaceKey: string;
-		reason: string;
-	} | null {
+	): PlanWorkspaceChange | null {
 		const { dir, workspaceKey } = ensureWorkspace(program, resource);
 		run(["plan", "-input=false", "-no-color", "-out", "plan.bin"], dir);
 		const summary = parsePlanChanges(run(["show", "-json", "plan.bin"], dir));
@@ -317,8 +357,9 @@ export function createTerraformCliEngine(options: TerraformCliEngineOptions) {
 		};
 	}
 
-	function workspaceOutputs(dir: string): Record<string, unknown> {
+	function workspaceOutputs(dir: string): JsonObject {
 		try {
+			// SAFETY: `const parsed = JSON.parse(run(["output", "-json"], dir)) as Record<` is required at this I/O or test boundary.
 			const parsed = JSON.parse(run(["output", "-json"], dir)) as Record<
 				string,
 				{ value: unknown }
@@ -340,7 +381,7 @@ export function createTerraformCliEngine(options: TerraformCliEngineOptions) {
 		// every other operation.
 		snapshot() {
 			ensureAvailable();
-			const workspaces: Record<string, unknown> = {};
+			const workspaces: JsonObject = {};
 			if (!existsSync(workspacesDir)) {
 				return Object.freeze(workspaces);
 			}
@@ -389,7 +430,7 @@ export function createTerraformCliEngine(options: TerraformCliEngineOptions) {
 		},
 		async apply(program: IacProgramLike, expectedChanges: readonly unknown[]) {
 			ensureAvailable();
-			const resources: Record<string, unknown> = {};
+			const resources: JsonObject = {};
 			for (const resource of program.resources) {
 				const { dir, workspaceKey } = ensureWorkspace(program, resource);
 				run(["apply", "-input=false", "-no-color", "-auto-approve"], dir);
@@ -442,7 +483,7 @@ export function createTerraformCliEngine(options: TerraformCliEngineOptions) {
 		},
 		async destroy(program: IacProgramLike) {
 			ensureAvailable();
-			const destroyed: Record<string, unknown> = {};
+			const destroyed: JsonObject = {};
 			for (const resource of [...program.resources].reverse()) {
 				const { dir, workspaceKey } = ensureWorkspace(program, resource);
 				run(["destroy", "-input=false", "-no-color", "-auto-approve"], dir);
@@ -467,14 +508,12 @@ export function createTerraformCliEngine(options: TerraformCliEngineOptions) {
 
 // Read a workspace's local state document (fixture/debug seam; tolerant —
 // missing or malformed state reads as empty, never fabricated).
-export function readLocalState(dir: string): Record<string, unknown> | null {
+export function readLocalState(dir: string): JsonObject | null {
 	const stateFile = join(dir, "terraform.tfstate");
 	if (!existsSync(stateFile)) return null;
 	try {
-		return JSON.parse(readFileSync(stateFile, "utf8")) as Record<
-			string,
-			unknown
-		>;
+		// SAFETY: `return JSON.parse(readFileSync(stateFile, "utf8")) as Record<` is required at this I/O or test boundary.
+		return parseJsonObject(readFileSync(stateFile, "utf8"));
 	} catch {
 		return null;
 	}

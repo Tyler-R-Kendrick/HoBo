@@ -1,3 +1,4 @@
+import type { JsonValue } from "../json.js";
 import type {
   Authorship,
   LaneReport,
@@ -20,17 +21,16 @@ export function runThinIdiomLayerLane(sourceFiles: readonly SourceFileScan[]): L
   const cases: VectorCaseResult[] = sourceFiles.map((file) => {
     const fileViolations = violationsByPath.get(file.path) ?? [];
     if (fileViolations.length === 0) {
-      return { name: file.path, status: "passed" as LaneStatus };
+      return passedCase(file.path);
     }
 
-    return {
-      name: file.path,
-      status: "failed" as LaneStatus,
-      reason: fileViolations.map((entry) => `${entry.reason}: ${entry.match}`).join("; "),
-      expectedJson: JSON.stringify({ violations: [] }),
-      actualJson: JSON.stringify({ violations: fileViolations }),
-      diffPaths: ["violations"],
-    };
+    return failedCase(
+      file.path,
+      fileViolations.map((entry) => `${entry.reason}: ${entry.match}`).join("; "),
+      { violations: [] },
+      { violations: fileViolations },
+      ["violations"],
+    );
   });
 
   return Object.freeze({
@@ -49,15 +49,14 @@ export function runAuthorshipLane(authorship: Authorship): LaneReport {
     status,
     cases: [
       status === "passed"
-        ? { name: `${authorship}-uses-same-gate`, status: "passed" as LaneStatus }
-        : {
-            name: `${authorship}-uses-same-gate`,
-            status: "failed" as LaneStatus,
-            reason: `unknown idiom-layer authorship: ${authorship}`,
-            expectedJson: JSON.stringify({ authorship: "hand-authored|generated" }),
-            actualJson: JSON.stringify({ authorship }),
-            diffPaths: ["authorship"],
-          },
+        ? passedCase(`${authorship}-uses-same-gate`)
+        : failedCase(
+            `${authorship}-uses-same-gate`,
+            `unknown idiom-layer authorship: ${authorship}`,
+            { authorship: "hand-authored|generated" },
+            { authorship },
+            ["authorship"],
+          ),
     ],
   });
 }
@@ -68,23 +67,20 @@ export function runCoverageLane(input: {
   annexVectors: readonly SemanticsAnnexVector[];
   helperClaims?: readonly string[];
 }): LaneReport {
-  const coveredClaims = new Set([
-    ...input.annexVectors.map((vector) => vector.name),
-  ]);
+  const coveredClaims = new Set(input.annexVectors.map((vector) => vector.name));
 
   const helperClaimCases: VectorCaseResult[] = (input.helperClaims ?? []).map((name) => {
     if (coveredClaims.has(name)) {
-      return { name, status: "passed" as LaneStatus };
+      return passedCase(name);
     }
 
-    return {
+    return failedCase(
       name,
-      status: "failed" as LaneStatus,
-      reason: "helper claim has no golden-IR or semantics-annex vector",
-      expectedJson: JSON.stringify({ covered: true }),
-      actualJson: JSON.stringify({ covered: false }),
-      diffPaths: ["covered"],
-    };
+      "helper claim has no golden-IR or semantics-annex vector",
+      { covered: true },
+      { covered: false },
+      ["covered"],
+    );
   });
 
   return Object.freeze({
@@ -93,8 +89,29 @@ export function runCoverageLane(input: {
     cases:
       helperClaimCases.length > 0
         ? helperClaimCases
-        : [{ name: "no-helper-claims", status: "passed" as LaneStatus }],
+        : [passedCase("no-helper-claims")],
   });
+}
+
+function passedCase(name: string): VectorCaseResult {
+  return { name, status: "passed" };
+}
+
+function failedCase(
+  name: string,
+  reason: string,
+  expected: JsonValue,
+  actual: JsonValue,
+  diffPaths: string[],
+): VectorCaseResult {
+  return {
+    name,
+    status: "failed",
+    reason,
+    expectedJson: JSON.stringify(expected),
+    actualJson: JSON.stringify(actual),
+    diffPaths,
+  };
 }
 
 function assertThinIdiomLayer(files: readonly SourceFileScan[]) {

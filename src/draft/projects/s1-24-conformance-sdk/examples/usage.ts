@@ -20,8 +20,10 @@ import {
 	sdkConformanceGateSpec,
 } from "../src/sdk/index.ts";
 import { createDriftAdapter, createReferenceAdapter } from "../test/fixtures/drift-adapters.ts";
+import { type JsonValue } from "../src/json.js";
 
-const fixture = (name: string): unknown =>
+
+const fixture = (name: string): JsonValue =>
 	JSON.parse(readFileSync(new URL(`../src/sdk/${name}`, import.meta.url), "utf8"));
 
 // 1) The committed corpus and annex vectors parse into typed fixtures.
@@ -92,7 +94,7 @@ await runSdkIdiomConformance({ corpus: [], annexVectors, adapter: createReferenc
 	() => {
 		throw new Error("expected TypeError");
 	},
-	(error: unknown) => assert.ok(error instanceof TypeError),
+	(error: JsonValue) => assert.ok(error instanceof TypeError),
 );
 console.log("empty corpus rejected: TypeError");
 

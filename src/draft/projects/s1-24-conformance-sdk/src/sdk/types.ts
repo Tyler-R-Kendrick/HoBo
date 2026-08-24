@@ -1,3 +1,4 @@
+import { type JsonValue, type JsonObject } from "../json.js";
 /**
  * Types derived from data-models/proto/sdk_conformance.proto.
  * Do not invent parallel interfaces — keep aligned with protobuf messages.
@@ -17,7 +18,12 @@ export const SEMANTICS_ANNEX_SPEC_VERSION = "hobo.sdk.semantics-annex/v1" as con
 
 export interface WitResult<T> {
   ok?: T;
-  err?: { tag: string; message?: string; [key: string]: unknown };
+  err?: {
+    tag: string;
+    message?: string;
+    deadlineMs?: number;
+    retry?: string;
+  };
 }
 
 export interface CancellationSignal {
@@ -41,19 +47,18 @@ export interface LoweredOutput {
 export interface WitCall {
   interface: string;
   function: string;
-  args: Record<string, unknown>;
+  args: JsonObject;
 }
 
 export interface ManifestIr {
   schema: "hobo.manifest/v1";
   bindle: string;
-  resources: readonly { kind: string; name: string; [key: string]: unknown }[];
+  resources: readonly { kind: string; name: string; allow?: JsonValue }[];
   handlers?: readonly {
     resource: string;
     event: string;
     exportName: string;
   }[];
-  [key: string]: unknown;
 }
 
 export interface LowerProgram {
@@ -78,10 +83,10 @@ export interface SemanticsAnnexVector {
   readonly name: string;
   readonly category: AnnexCategory;
   readonly specVersion: typeof SEMANTICS_ANNEX_SPEC_VERSION;
-  readonly result?: WitResult<unknown>;
+  readonly result?: WitResult<JsonValue>;
   readonly expectedThrow?: { name: string; tag: string };
   readonly signal?: CancellationSignal;
-  readonly expected?: WitResult<unknown>;
+  readonly expected?: WitResult<JsonValue>;
   readonly facts?: readonly CollectionFact[];
   readonly expectedError?: string;
 }

@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks are the shared parser and canonical-serialization boundary for erased safety-gate inputs before domain evaluation. */
 import { createHash } from "node:crypto";
 
 import { validateGenerationEvent } from "../../generation-pipeline-io-contract/src/contract.js";
@@ -7,6 +6,8 @@ import {
   validateSandboxEvent,
   validateSandboxProfile
 } from "../../no-egress-generation-sandbox-contract/src/contract.js";
+import { isJsonString, isJsonBoolean, isJsonObject } from "./json.js";
+
 
 export const SAFETY_REPORT_SCHEMA = "hobo.gen.safety-report/v1";
 
@@ -91,7 +92,7 @@ export function validateSafetyReport(report) {
   parseDigestRef(parsed.candidateRef, "$.candidateRef");
   parseDigestRef(parsed.validationReportRef, "$.validationReportRef");
   digest(parsed.sandboxProfileDigest, "$.sandboxProfileDigest");
-  if (typeof parsed.passed !== "boolean") {
+  if (!isJsonBoolean(parsed.passed)) {
     throw new SafetyGateContractError("safety.report_passed", "$.passed");
   }
   if (!Array.isArray(parsed.findings)) {
@@ -525,14 +526,14 @@ function equal(actual, expected, code, path) {
 }
 
 function expectObject(value, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new SafetyGateContractError("safety.expected_object", path);
   }
   return value;
 }
 
 function nonEmptyString(value, path) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new SafetyGateContractError("safety.expected_string", path);
   }
   return value;
@@ -543,7 +544,7 @@ function sha256Digest(value) {
 }
 
 function stableStringify(value) {
-  if (value === null || typeof value !== "object") {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {

@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- canonical JSON owns the erased JSON boundary. */
 /**
  * Pack manifest signing.
  *
@@ -10,6 +9,14 @@
 import { createHash } from "node:crypto";
 
 import { PackError } from "./errors.js";
+import {
+	isJsonBoolean,
+	isJsonNumber,
+	isJsonObject,
+	isJsonString,
+	type JsonValue,
+} from "./json.js";
+
 
 export const PACK_SIGNATURE_ALGORITHMS = [
 	"ed25519",
@@ -55,6 +62,7 @@ const SHA256 = /^sha256:[0-9a-f]{64}$/u;
 
 export function parsePackSignature(input: PackSignature): PackSignature {
 	if (
+		// SAFETY: `!(PACK_SIGNATURE_ALGORITHMS as readonly string[]).includes(input.algorithm)` is required at this I/O or test boundary.
 		!(PACK_SIGNATURE_ALGORITHMS as readonly string[]).includes(input.algorithm)
 	) {
 		throw new PackError(
@@ -96,44 +104,37 @@ export function parsePackSignature(input: PackSignature): PackSignature {
  * Array order is preserved because it is semantic here — argv order, probe
  * order, and the order of configuration fields all matter.
  */
-export function canonicalJson(value: unknown): string {
+export function canonicalJson(value: JsonValue): string {
 	if (value === null) return "null";
 	if (Array.isArray(value)) {
 		return `[${value.map((entry) => canonicalJson(entry)).join(",")}]`;
 	}
-	switch (typeof value) {
-		case "string":
-			return JSON.stringify(value);
-		case "number":
-			if (!Number.isFinite(value)) {
-				throw new PackError(
-					"PACK_MANIFEST_INVALID",
-					"a pack manifest cannot contain a non-finite number",
-				);
-			}
-			return JSON.stringify(value);
-		case "boolean":
-			return value ? "true" : "false";
-		case "undefined":
-			return "null";
-		case "object": {
-			// SAFETY: this branch is the object arm of canonical JSON serialization.
-			const entries = Object.entries(value as Record<string, unknown>)
-				.filter(([, entryValue]) => entryValue !== undefined)
-				.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
-			return `{${entries
-				.map(
-					([key, entryValue]) =>
-						`${JSON.stringify(key)}:${canonicalJson(entryValue)}`,
-				)
-				.join(",")}}`;
-		}
-		default:
+	if (isJsonString(value)) return JSON.stringify(value);
+	if (isJsonNumber(value)) {
+		if (!Number.isFinite(value)) {
 			throw new PackError(
 				"PACK_MANIFEST_INVALID",
-				`a pack manifest cannot contain a ${typeof value} value`,
+				"a pack manifest cannot contain a non-finite number",
 			);
+		}
+		return JSON.stringify(value);
 	}
+	if (isJsonBoolean(value)) return value ? "true" : "false";
+	if (isJsonObject(value)) {
+		const entries = Object.entries(value)
+			.filter(([, entryValue]) => entryValue !== undefined)
+			.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0));
+		return `{${entries
+			.map(
+				([key, entryValue]) =>
+					`${JSON.stringify(key)}:${canonicalJson(entryValue ?? null)}`,
+			)
+			.join(",")}}`;
+	}
+	throw new PackError(
+		"PACK_MANIFEST_INVALID",
+		"a pack manifest cannot contain a non-JSON value",
+	);
 }
 
 export function sha256Of(payload: string): string {

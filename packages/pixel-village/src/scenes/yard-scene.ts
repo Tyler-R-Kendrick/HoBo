@@ -76,11 +76,11 @@ export function describeYardSceneLoad(
 	}));
 
 	const images = [
-		...Object.entries(index.images ?? {}).map(([key, img]) => ({
+		...Object.entries(index.images).map(([key, img]) => ({
 			key,
 			url: url(img.path),
 		})),
-		...Object.entries(index.backgrounds ?? {}).map(([key, img]) => ({
+		...Object.entries(index.backgrounds).map(([key, img]) => ({
 			key: `bg-${key}`,
 			url: url(img.path),
 		})),

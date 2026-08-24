@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish contracts at the erased runtime-port and clone boundaries. */
 import {
   createManualClock as createEventStoreClock,
   createRuntimeLocalEventStore,
@@ -9,6 +8,8 @@ import {
 import {
   createInMemoryActorHost,
 } from "../../actor-host-runtime-port-contract/src/actor-host-runtime-port.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const RUNTIME_PORT_CONFORMANCE_VERSION =
   "hobo.runtime-port-conformance/v1";
@@ -38,7 +39,7 @@ export function createBrokenFenceRuntimeBackend() {
 }
 
 export async function runRuntimePortDurabilitySuite(createBackend) {
-  if (typeof createBackend !== "function") {
+  if (!(createBackend instanceof Function)) {
     throw new TypeError("createBackend must be a function");
   }
 
@@ -366,7 +367,7 @@ function createBrokenFenceActorHost() {
 
     state(key, request = {}) {
       const actorKey = requireNonEmptyString(key, "key");
-      if (typeof request.fold !== "function") {
+      if (!(request.fold instanceof Function)) {
         throw new TypeError("request.fold must be a function");
       }
       const stream = getBrokenStream(streams, actorKey);
@@ -414,7 +415,7 @@ function getBrokenStream(streams, key) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -428,7 +429,7 @@ function stableValue(value) {
   if (Array.isArray(value)) {
     return value.map(stableValue);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -442,7 +443,7 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function"
+  return structuredClone instanceof Function
     ? structuredClone(value)
     : JSON.parse(JSON.stringify(value));
 }

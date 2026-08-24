@@ -1,15 +1,9 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject, type JsonValue } from "./json.js";
+
 
 const DEFAULT_PROTOCOL_VERSION = "yard-receipt-consumption/v1";
 const DEFAULT_ISSUER = "meta-cloud-broker";
-
-type CanonicalValue =
-  | null
-  | boolean
-  | number
-  | string
-  | readonly CanonicalValue[]
-  | { readonly [key: string]: CanonicalValue };
 
 export type ResourcePlan = Readonly<{
   resourceId: string;
@@ -134,7 +128,7 @@ export function consumeResolutionReceipt(input: ConsumeReceiptInput): YardPlanni
 export function rejectAdminReceiptMutation(_input: {
   actor: "admin-console" | string;
   receipt: ResolutionReceipt;
-  patch: unknown;
+  patch: JsonValue;
 }) {
   return {
     allowed: false,
@@ -225,11 +219,11 @@ function withoutProof(receipt: ResolutionReceipt): Omit<ResolutionReceipt, "dige
   return payload;
 }
 
-function canonicalJson(value: CanonicalValue): string {
+function canonicalJson(value: JsonValue): string {
   if (Array.isArray(value)) {
     return `[${value.map(canonicalJson).join(",")}]`;
   }
-  if (value !== null && !Array.isArray(value) && Object.prototype.toString.call(value) === "[object Object]") {
+  if (value && isJsonObject(value)) {
     return `{${Object.entries(value)
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`)
@@ -238,6 +232,6 @@ function canonicalJson(value: CanonicalValue): string {
   return JSON.stringify(value);
 }
 
-function isNonEmptyString(value: string): boolean {
-  return value.trim().length > 0;
+function isNonEmptyString(value: JsonValue): value is string {
+  return isJsonString(value) && value.trim().length > 0;
 }

@@ -1,6 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
 
-const tagOf = Object.prototype.toString;
 
 export const TELEMETRY_ENVELOPE_SCHEMA_VERSION = "hobo.telemetry-envelope/v1";
 export const BOUNDARY_EXPORT_SCHEMA_VERSION = "hobo.boundary-export/v1";
@@ -98,7 +98,7 @@ export function fromCloudEvent(cloudEvent) {
   }
   assertEqual(event.specversion, "1.0", "cloudEvent.specversion");
 
-  if (isString(event.hoboenvelope)) {
+  if (isJsonString(event.hoboenvelope)) {
     return parseTelemetryEnvelope(JSON.parse(event.hoboenvelope));
   }
 
@@ -224,7 +224,7 @@ export function validateEventNamespaceCatalog(eventTypes) {
 
 function normalizeTraceMeta(envelope, options) {
   const meta = { ...envelope.meta };
-  if (!isString(meta.traceparent)) {
+  if (!isJsonString(meta.traceparent)) {
     if (options.missingTraceparent === "synthesize-root") {
       meta.traceparent = synthesizeTraceparent(envelope);
       meta.traceparentSynthetic = true;
@@ -272,7 +272,7 @@ function normalizeEventType(type) {
 }
 
 function requireObject(value, path) {
-  if (value === null || !isObject(value) || Array.isArray(value)) {
+  if (value === null || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${path} must be an object`);
   }
   return value;
@@ -283,7 +283,7 @@ function requirePlainObject(value, path) {
 }
 
 function requireString(value, path) {
-  if (!isString(value) || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${path} must be a non-empty string`);
   }
   return value;
@@ -323,7 +323,7 @@ function sortJson(value) {
   if (Array.isArray(value)) {
     return value.map(sortJson);
   }
-  if (value && isObject(value)) {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .filter(([, entryValue]) => entryValue !== undefined)
@@ -332,14 +332,6 @@ function sortJson(value) {
     );
   }
   return value;
-}
-
-function isObject(value) {
-  return tagOf.call(value) === "[object Object]";
-}
-
-function isString(value) {
-  return tagOf.call(value) === "[object String]";
 }
 
 function sha256(value) {

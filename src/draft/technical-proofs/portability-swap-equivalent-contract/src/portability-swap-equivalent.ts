@@ -1,5 +1,6 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse untrusted listing and interface fixture values before normalization. */
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const PORTABILITY_SWAP_EQUIVALENT_CONTRACT = "hobo.portability-swap-equivalent/v1";
 
@@ -134,7 +135,7 @@ export function createFixtureListing({
 }
 
 function normalizeListing(listing) {
-  if (!listing || typeof listing !== "object" || Array.isArray(listing)) {
+  if (!listing || !isJsonObject(listing) || Array.isArray(listing)) {
     throw new Error("listing must be an object");
   }
   const listingId = requireString(listing.listingId, "listing.listingId");
@@ -157,8 +158,8 @@ function normalizeListing(listing) {
 }
 
 function normalizeInterfaceDeclaration(declaration) {
-  const candidate = typeof declaration === "string" ? { ref: declaration } : declaration;
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  const candidate = isJsonString(declaration) ? { ref: declaration } : declaration;
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     throw new Error("interface declaration must be a ref string or object");
   }
   const ref = requireString(candidate.ref, "interface.ref");
@@ -293,7 +294,7 @@ function parseInterfaceRef(ref) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -308,7 +309,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   for (const nested of Object.values(value)) {

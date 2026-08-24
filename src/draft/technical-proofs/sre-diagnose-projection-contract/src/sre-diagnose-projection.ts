@@ -5,6 +5,8 @@ import {
 } from "../../incident-aggregate-contract/src/incident-aggregate.js";
 import { handoffRequested } from "../../crew-event-contract/src/crew-event-contract.js";
 import { createSreOperator } from "../../sre-operator-skeleton-contract/src/sre-operator-skeleton.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export function createProjectionReadStore(snapshots = {}) {
   const entries = new Map();
@@ -157,13 +159,13 @@ function validateIncidentEvents(events) {
 }
 
 function readRunbookProjections(runbook, projections) {
-  if (!isObjectRecord(runbook)) {
+  if (!runbook || !isJsonObject(runbook) || Array.isArray(runbook)) {
     throw new Error("runbook is required");
   }
   if (!Array.isArray(runbook.diagnose) || runbook.diagnose.length === 0) {
     throw new Error("runbook.diagnose must list projection reads");
   }
-  if (!projections || !isCallable(projections.read)) {
+  if (!projections || !(projections.read instanceof Function)) {
     throw new Error("read-only projections are required");
   }
 
@@ -197,7 +199,7 @@ function assertRootCause(value) {
 }
 
 function normalizeSnapshot(query, snapshot) {
-  if (!isObjectRecord(snapshot)) {
+  if (!snapshot || !isJsonObject(snapshot) || Array.isArray(snapshot)) {
     throw new Error(`projection ${query} must be an object`);
   }
   if (!Number.isSafeInteger(snapshot.atSeq) || snapshot.atSeq < 0) {
@@ -222,7 +224,7 @@ function missingSnapshot(query) {
 }
 
 function assertNonEmptyString(value, label) {
-  if (!isString(value) || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${label} must be a non-empty string`);
   }
 }
@@ -235,7 +237,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!isObjectRecord(value) || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 
@@ -244,18 +246,4 @@ function deepFreeze(value) {
   }
 
   return Object.freeze(value);
-}
-
-function isObjectRecord(value) {
-  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
-}
-
-function isCallable(value) {
-  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
-    Object.prototype.toString.call(value),
-  );
-}
-
-function isString(value) {
-  return Object.prototype.toString.call(value) === "[object String]";
 }

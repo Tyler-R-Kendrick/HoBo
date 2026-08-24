@@ -6,12 +6,12 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import assert from "node:assert/strict";
+import { parseJsonObject } from "../src/json.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-// SAFETY: the adjacent proof.json is this package's gate-validated manifest, whose slug and layer fields are checked immediately below.
-const proof = JSON.parse(
+const proof = parseJsonObject(
   readFileSync(path.join(root, "..", "proof.json"), "utf8"),
-) as { slug: string; layer: string };
+);
 
 assert.equal(proof.slug, "yard-receipt-consumption-contract");
 assert.equal(proof.layer, "technical");

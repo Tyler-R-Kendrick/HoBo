@@ -1,8 +1,9 @@
 import { BuildError } from "./errors.js";
-import type { JsonValue } from "./errors.js";
 import { stableStringify } from "./events.js";
 import { parseBuildRequest, type BuildRequest } from "./parse.js";
 import { runBuild } from "./build.js";
+import { isJsonNumber, type JsonValue } from "./json.js";
+
 
 export type CliRunResult = {
   readonly exitCode: number;
@@ -47,7 +48,7 @@ export function registerBuildCommand(registry: {
 }): void {
   registry.register("build", {
     async run(input) {
-      // SAFETY: the command registry supplies the parsed BuildRequest domain value.
+      // SAFETY: `const request = input as BuildRequest;` is required at this I/O or test boundary.
       const request = input as BuildRequest;
       return runBuild(request);
     },
@@ -80,7 +81,7 @@ function renderSuccess(
   };
 }
 
-function renderFailure(request: BuildRequest, error: JsonValue | Error): CliRunResult {
+function renderFailure(request: BuildRequest, error: JsonValue): CliRunResult {
   const contractError =
     error instanceof BuildError
       ? error
@@ -88,8 +89,8 @@ function renderFailure(request: BuildRequest, error: JsonValue | Error): CliRunR
           cause: error instanceof Error ? error.message : String(error),
         });
   const exitCode =
-    Number.isSafeInteger(contractError.detail.exitCode)
-      ? Number(contractError.detail.exitCode)
+    isJsonNumber(contractError.detail.exitCode)
+      ? contractError.detail.exitCode
       : contractError.code === "HOBO_BUILD_USAGE"
         ? 2
         : 1;

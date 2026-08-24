@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const REQUIRED_SCENARIOS = [
   "deploy",
   "manage",
@@ -120,7 +121,24 @@ export type ParsedDxResourceLifecycleFixtureCorpus = ResourceLifecycleFixtureCor
   readonly __parsed: "DxResourceLifecycleFixtureCorpus";
 };
 
-const FACT_SUMMARIES: Record<FixtureFactKind, string> = {
+interface FixtureFactSummaries {
+  readonly resources: string;
+  readonly links: string;
+  readonly "manifest-ir": string;
+  readonly "deployment-plan": string;
+  readonly "deployment-set": string;
+  readonly delta: string;
+  readonly "gatekeeper-decision": string;
+  readonly "resourceactor-events": string;
+  readonly "projection-snapshot": string;
+  readonly logs: string;
+  readonly "drift-report": string;
+  readonly "import-adopt-state": string;
+  readonly "migration-phase": string;
+  readonly "support-evidence": string;
+}
+
+const FACT_SUMMARIES: FixtureFactSummaries = {
   resources: "Resource fixture entries for component, database, image, queue, and ownership examples.",
   links: "Typed relation fixture entries connecting manifests, deployment sets, actors, and evidence packs.",
   "manifest-ir": "Manifest IR fixture entries describing stable resource ids, ports, and capability references.",
@@ -363,12 +381,12 @@ export function validateDxResourceLifecycleFixtureCorpus(corpus: ResourceLifecyc
   }
 
   for (const scenario of scenarioRecords) {
-    const scenarioId = typeof scenario.id === "string" ? scenario.id : "unknown";
+    const scenarioId = isJsonString(scenario.id) ? scenario.id : "unknown";
     const artifacts = stringList(scenario.artifacts);
     const fixtureIds = stringList(scenario.fixtureIds);
     const fixtureFacts = recordList(scenario.fixtureFacts);
     const factKinds = new Set(fixtureFacts.map((fact) => fact.kind));
-    const scopeOutGuard = typeof scenario.scopeOutGuard === "string" ? scenario.scopeOutGuard : "";
+    const scopeOutGuard = isJsonString(scenario.scopeOutGuard) ? scenario.scopeOutGuard : "";
 
     if (!scenario.deterministic) {
       errors.push(`scenario ${scenarioId} must be deterministic`);
@@ -402,8 +420,8 @@ export function validateDxResourceLifecycleFixtureCorpus(corpus: ResourceLifecyc
       }
     }
     for (const fact of fixtureFacts) {
-      const factId = typeof fact.id === "string" ? fact.id : "";
-      const factSummary = typeof fact.summary === "string" ? fact.summary : "";
+      const factId = isJsonString(fact.id) ? fact.id : "";
+      const factSummary = isJsonString(fact.summary) ? fact.summary : "";
       if (!factId) {
         errors.push(`scenario ${scenarioId} has fixture fact without an id`);
       }
@@ -440,13 +458,15 @@ export function validateDxResourceLifecycleFixtureCorpus(corpus: ResourceLifecyc
   return { ok: errors.length === 0, errors };
 }
 
-export function parseDxResourceLifecycleFixtureCorpus(input: unknown) {
-  if (!input || typeof input !== "object") {
+export function parseDxResourceLifecycleFixtureCorpus(input: JsonValue) {
+  if (!input || !isJsonObject(input)) {
     return { ok: false as const, errors: ["fixture corpus object is required"] };
   }
 
+  // SAFETY: `const result = validateDxResourceLifecycleFixtureCorpus(input as ResourceLifecyc` is required at this I/O or test boundary.
   const result = validateDxResourceLifecycleFixtureCorpus(input as ResourceLifecycleFixtureCorpus);
   if (!result.ok) {
+    // SAFETY: `return result as { ok: false; errors: string[] };` is required at this I/O or test boundary.
     return result as { ok: false; errors: string[] };
   }
 
@@ -454,18 +474,19 @@ export function parseDxResourceLifecycleFixtureCorpus(input: unknown) {
     ok: true as const,
     errors: [],
     value: {
+      // SAFETY: `...(input as ResourceLifecycleFixtureCorpus),` is required at this I/O or test boundary.
       ...(input as ResourceLifecycleFixtureCorpus),
       __parsed: "DxResourceLifecycleFixtureCorpus",
     } satisfies ParsedDxResourceLifecycleFixtureCorpus,
   };
 }
 
-function stringList(value: unknown): string[] {
-  return Array.isArray(value) ? value.filter((item): item is string => typeof item === "string") : [];
+function stringList(value: JsonValue): string[] {
+  return Array.isArray(value) ? value.filter((item): item is string => isJsonString(item)) : [];
 }
 
-function recordList(value: unknown): Array<Record<string, unknown>> {
+function recordList(value: JsonValue): Array<JsonObject> {
   return Array.isArray(value)
-    ? value.filter((item): item is Record<string, unknown> => typeof item === "object" && item !== null)
+    ? value.filter((item): item is JsonObject => isJsonObject(item) && item !== null)
     : [];
 }

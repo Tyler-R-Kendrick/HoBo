@@ -10,6 +10,8 @@ import {
   POLICY_IR_SCHEMA_VERSION,
   createDecisionRequest,
 } from "../../hobo-policy-ir-contract/src/policy-ir.js";
+import { isJsonString } from "./json.js";
+
 
 const REQUIRED_HIGH_PRIVILEGE_ACTIONS = Object.freeze([
   "hobo:derivative:upgrade",
@@ -83,11 +85,12 @@ export function buildControlPlanePolicyRequest({
       id: operation.resourceId ?? operation.actionId,
     },
     phase: operation.phase,
-    context: Object.assign({}, operation.context, {
+    context: {
+      ...(operation.context),
       actionId: operation.actionId,
       command: operation.command,
       surface: operation.surface,
-    }),
+    },
   });
 }
 
@@ -99,7 +102,7 @@ export async function guardControlPlaneSideEffect({
   auditSink,
   sideEffect,
 } = {}) {
-  if (!isFunction(sideEffect)) {
+  if (!(sideEffect instanceof Function)) {
     throw new TypeError("sideEffect must be a function");
   }
 
@@ -173,9 +176,5 @@ function missing(route, reason) {
 }
 
 function isNonEmptyString(value) {
-  return Object.prototype.toString.call(value) === "[object String]" && value.trim().length > 0;
-}
-
-function isFunction(value) {
-  return Object.prototype.toString.call(value) === "[object Function]";
+  return isJsonString(value) && value.trim().length > 0;
 }

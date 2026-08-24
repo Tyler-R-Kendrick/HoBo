@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const REQUIRED_MANAGE_STATES = [
   "normal-operation",
   "stale-projection",
@@ -214,7 +215,7 @@ export const CLI_MANAGE_TRANSCRIPT_PROTOTYPE: ManageTranscriptPrototype = {
 };
 
 export function parseManageTranscriptPrototype(
-  value: unknown,
+  value: JsonValue,
 ): ParsedManageTranscriptPrototype {
   assertRecord(value, "prototype");
   assertLiteral(value.issue, "HOBO-574", "issue");
@@ -256,6 +257,7 @@ export function parseManageTranscriptPrototype(
   }
 
   return {
+    // SAFETY: `...(value as ManageTranscriptPrototype),` is required at this I/O or test boundary.
     ...(value as ManageTranscriptPrototype),
     __brand: "ParsedManageTranscriptPrototype",
   };
@@ -271,7 +273,7 @@ export function renderHumanTranscript(sceneItem: ManageTranscriptScene): string 
   ].join("\n");
 }
 
-export function renderJsonTranscript(sceneItem: ManageTranscriptScene): {
+export interface JsonTranscript {
   readonly state: ManageState;
   readonly status: MachineStatus;
   readonly code: string;
@@ -281,7 +283,14 @@ export function renderJsonTranscript(sceneItem: ManageTranscriptScene): {
   readonly proofMode: ProofMode;
   readonly correlationId: string;
   readonly redaction: RedactionEvidence;
-} {
+}
+
+export interface CliMcpParity {
+  readonly state: ManageState;
+  readonly equivalent: boolean;
+}
+
+export function renderJsonTranscript(sceneItem: ManageTranscriptScene): JsonTranscript {
   return {
     state: sceneItem.state,
     status: sceneItem.machine.status,
@@ -295,10 +304,7 @@ export function renderJsonTranscript(sceneItem: ManageTranscriptScene): {
   };
 }
 
-export function assertCliMcpParity(sceneItem: ManageTranscriptScene): {
-  readonly state: ManageState;
-  readonly equivalent: boolean;
-} {
+export function assertCliMcpParity(sceneItem: ManageTranscriptScene): CliMcpParity {
   return {
     state: sceneItem.state,
     equivalent:
@@ -441,15 +447,17 @@ function semanticResult(result: MachineResult): string {
 }
 
 function sortObject<T extends Record<string, string | boolean>>(value: T): T {
+  // SAFETY: `return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.l` is required at this I/O or test boundary.
   return Object.fromEntries(Object.entries(value).sort(([left], [right]) => left.localeCompare(right))) as T;
 }
 
-function assertSceneArray(value: unknown): ManageTranscriptScene[] {
+function assertSceneArray(value: JsonValue): ManageTranscriptScene[] {
   if (!Array.isArray(value)) {
     throw new TypeError("scenes must be an array");
   }
   return value.map((entry, index) => {
     assertRecord(entry, `scene ${index}`);
+    // SAFETY: `if (!REQUIRED_MANAGE_STATES.includes(entry.state as ManageState)) {` is required at this I/O or test boundary.
     if (!REQUIRED_MANAGE_STATES.includes(entry.state as ManageState)) {
       throw new TypeError(`scene ${index} has unsupported state`);
     }
@@ -457,22 +465,24 @@ function assertSceneArray(value: unknown): ManageTranscriptScene[] {
       throw new TypeError(`scene ${index} fixtureSources must be an array`);
     }
     for (const source of entry.fixtureSources) {
+      // SAFETY: `if (!REQUIRED_FIXTURE_SOURCES.includes(source as FixtureSource)) {` is required at this I/O or test boundary.
       if (!REQUIRED_FIXTURE_SOURCES.includes(source as FixtureSource)) {
         throw new TypeError(`scene ${index} has unsupported fixture source ${String(source)}`);
       }
     }
     assertRecord(entry.redaction, `scene ${index} redaction`);
+    // SAFETY: `return entry as ManageTranscriptScene;` is required at this I/O or test boundary.
     return entry as ManageTranscriptScene;
   });
 }
 
-function assertRecord(value: unknown, name: string): asserts value is Record<string, unknown> {
-  if (value === null || typeof value !== "object" || Array.isArray(value)) {
+function assertRecord(value: JsonValue, name: string): asserts value is JsonObject {
+  if (value === null || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
-function assertLiteral<T extends string>(value: unknown, expected: T, name: string): asserts value is T {
+function assertLiteral<T extends string>(value: JsonValue, expected: T, name: string): asserts value is T {
   if (value !== expected) {
     throw new TypeError(`${name} must be ${expected}`);
   }

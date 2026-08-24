@@ -1,3 +1,4 @@
+import { type JsonValue } from "../json.js";
 export class CliError extends Error {
 	readonly exitCode: number;
 	readonly code: string;
@@ -51,7 +52,7 @@ export class NoBindleError extends CliError {
 }
 
 export class BindleImportError extends CliError {
-	constructor(sourcePath: string, cause: unknown) {
+	constructor(sourcePath: string, cause: JsonValue) {
 		const detail = cause instanceof Error ? cause.message : String(cause);
 		super(
 			`Bindle at ${sourcePath} failed to load: ${detail}`,

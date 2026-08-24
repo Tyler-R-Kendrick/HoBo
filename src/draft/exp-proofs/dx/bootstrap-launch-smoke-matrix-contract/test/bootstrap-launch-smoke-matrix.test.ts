@@ -35,8 +35,8 @@ test("launch smoke matrix covers SaaS, self-host, and local bootstrap stages", (
       REQUIRED_STAGES,
       `${path.id} must name every launch-smoke stage`,
     );
-    assert.ok(path.firstProjectShape, `${path.id} must name first project shape`);
-    assert.ok(path.firstDeployShape, `${path.id} must name first deploy shape`);
+    assert.ok(path.firstProjectContract, `${path.id} must name first project shape`);
+    assert.ok(path.firstDeployContract, `${path.id} must name first deploy shape`);
   }
 });
 

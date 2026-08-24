@@ -20,6 +20,8 @@ import {
 	type CodegenSourceLayout,
 	defaultCodegenLayout,
 } from "./types.js";
+import { type JsonValue } from "../json.js";
+
 
 // The default project codegen engine: reads the WIT/Zod/allow/bindle sources
 // from the layout, normalizes them into a deterministic source model, and
@@ -87,9 +89,9 @@ export async function loadSourceModel(
 
 interface ProjectSources {
 	readonly wit: string;
-	readonly zod: unknown;
-	readonly allow: unknown;
-	readonly bindle: unknown;
+	readonly zod: JsonValue;
+	readonly allow: JsonValue;
+	readonly bindle: JsonValue;
 }
 
 async function readProjectSources(
@@ -122,7 +124,7 @@ async function readTextSource(
 async function readJsonSource(
 	projectRoot: string,
 	path: string,
-): Promise<unknown> {
+): Promise<JsonValue> {
 	const source = await readTextSource(projectRoot, path);
 	try {
 		return JSON.parse(source);
@@ -165,7 +167,7 @@ export interface SourceModelField {
 	readonly name: string;
 	readonly type: string;
 	/** Deterministic example value used for contract-backed trainable stubs. */
-	readonly example: unknown;
+	readonly example: JsonValue;
 }
 
 export interface SourceModelResource {
@@ -208,8 +210,11 @@ function normalizeSourceModel(
 	};
 
 	assertValidWitSource(sources.wit, layout.wit);
+	// SAFETY: `const zod = toStableValue(sources.zod) as RawZod;` is required at this I/O or test boundary.
 	const zod = toStableValue(sources.zod) as RawZod;
+	// SAFETY: `const allow = toStableValue(sources.allow) as RawAllow;` is required at this I/O or test boundary.
 	const allow = toStableValue(sources.allow) as RawAllow;
+	// SAFETY: `const bindle = toStableValue(sources.bindle) as RawBindleFile;` is required at this I/O or test boundary.
 	const bindle = toStableValue(sources.bindle) as RawBindleFile;
 
 	const resources = Object.entries(zod.resources ?? {})
@@ -281,7 +286,7 @@ function renderFieldType(field: RawField): string {
 	return "unknown";
 }
 
-function exampleFieldValue(field: RawField): unknown {
+function exampleFieldValue(field: RawField): JsonValue {
 	if (field.type === "string") return "example";
 	if (field.type === "number") return 0;
 	if (field.type === "boolean") return false;

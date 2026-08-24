@@ -25,7 +25,7 @@ export function createContractAssertedCdFixtures(input?: {
 				name: "web",
 				port: "hobo:web-app",
 				provider: "local-host",
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `deps: [] as string[],` is required at this I/O or test boundary.
 				deps: [] as string[],
 			},
 			{

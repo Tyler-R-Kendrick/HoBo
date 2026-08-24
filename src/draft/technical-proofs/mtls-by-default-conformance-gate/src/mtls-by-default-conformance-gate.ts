@@ -1,6 +1,7 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased conformance input at this gate's shared parser boundary. */
 import { ConnectivityTier } from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.js";
 import { parseWorkloadSpiffeId } from "../../mtls-data-path-contract/src/mtls-data-path.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const MTLS_BY_DEFAULT_CONFORMANCE_SCHEMA_VERSION = "hobo.mtls-by-default-conformance/v1";
 
@@ -183,7 +184,7 @@ function validateRejectionCheck({ target, checks, key, failureCode, failureReaso
 
 function pushCheck({ target, checks, key }) {
   const check = target.checks?.[key];
-  if (!check || typeof check !== "object" || Array.isArray(check)) return null;
+  if (!check || !isJsonObject(check) || Array.isArray(check)) return null;
 
   const normalized = {
     tier: target.tier,
@@ -209,13 +210,13 @@ function tierName(tier) {
 }
 
 function stringOrNull(value) {
-  return typeof value === "string" && value.length > 0 ? value : null;
+  return isJsonString(value) && value.length > 0 ? value : null;
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.length > 0;
+  return isJsonString(value) && value.length > 0;
 }
 
 function isIsoDate(value) {
-  return typeof value === "string" && !Number.isNaN(new Date(value).getTime());
+  return isJsonString(value) && !Number.isNaN(new Date(value).getTime());
 }

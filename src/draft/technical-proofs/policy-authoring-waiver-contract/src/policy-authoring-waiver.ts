@@ -1,5 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased input contracts at the shared parser boundary. */
-
 import {
   buildControlPlaneActionId,
 } from "../../control-plane-action-taxonomy-contract/src/control-plane-action-taxonomy.js";
@@ -7,6 +5,8 @@ import {
   composePolicyPacks,
   definePolicyPack,
 } from "../../deny-ceiling-algebra-poc/src/deny-ceiling-algebra.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const POLICY_AUTHORING_SCHEMA_VERSION = "hobo.policy-authoring/v1";
 export const POLICY_WAIVER_SCHEMA_VERSION = "hobo.policy-waiver/v1";
@@ -391,7 +391,7 @@ function denyDecision(reason, target, evidence = {}) {
 }
 
 function expectObject(value, path) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${path} must be an object`);
   }
   return value;
@@ -441,5 +441,5 @@ function toIsoDate(value, path) {
 }
 
 function isNonEmptyString(value) {
-  return typeof value === "string" && value.trim().length > 0;
+  return isJsonString(value) && value.trim().length > 0;
 }

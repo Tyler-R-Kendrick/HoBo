@@ -1,3 +1,4 @@
+import { isJsonString } from "./json.js";
 const HTTP_INCOMING = "wasi:http/incoming-handler@0.2.0";
 
 export class ComponentTrapError extends Error {
@@ -196,7 +197,7 @@ function linkKey(componentId, importInterface) {
 }
 
 function assertId(id, kind) {
-  if (id === null || id === undefined || String(id) !== id || id.length === 0) {
+  if (!isJsonString(id) || id.length === 0) {
     throw new Error(`component_host.${kind}_id_required`);
   }
 }

@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export const REQUIRED_DASHBOARD_VIEWS = [
   "deployments-timeline",
   "topology-graph",
@@ -50,7 +51,7 @@ export type RenderedDashboardView = {
   readonly projectionOnly: true;
   readonly scrubberAtSeq?: number;
   readonly replayDiffStatus?: "unchanged" | "changed";
-  readonly payload: Record<string, unknown>;
+  readonly payload: JsonObject;
 };
 
 // domain-view: parse-produced draft-proof record; its wire form is the DashboardRenderResult proto message in data-models/.
@@ -67,7 +68,7 @@ type EventEnvelope = {
   readonly id: string;
   readonly type: string;
   readonly correlationId: string;
-  readonly data: Record<string, unknown>;
+  readonly data: JsonObject;
 };
 
 type ValidationError = {
@@ -146,10 +147,12 @@ export function validateDashboardRenderResult(
   return errors;
 }
 
-export function classifyDashboardRequest(input: string): {
+export interface DashboardClassification {
   readonly owner: "Full Dashboard" | "Production apps/dashboard";
   readonly inScope: boolean;
-} {
+}
+
+export function classifyDashboardRequest(input: string): DashboardClassification {
   const normalized = input.trim().toLowerCase();
   if (
     /\b(next\.js production app|live gateway websocket|real camp stream|provider api)\b/i.test(

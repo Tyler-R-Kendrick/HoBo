@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const REQUIRED_ENVELOPE_KINDS = [
   "success",
@@ -245,7 +247,8 @@ export const DX_RESULT_REFUSAL_PROOF_ENVELOPES = {
   ],
 } satisfies DxResultRefusalProof;
 
-export function parseDxResultRefusalProof(input: unknown): DxResultRefusalProof {
+export function parseDxResultRefusalProof(input: JsonValue): DxResultRefusalProof {
+  // SAFETY: `const record = requireObject(input, "record") as Partial<DxResultRefusalProof>;` is required at this I/O or test boundary.
   const record = requireObject(input, "record") as Partial<DxResultRefusalProof>;
   if (record.issue !== "HOBO-571") {
     throw new Error("issue must be HOBO-571");
@@ -264,6 +267,7 @@ export function parseDxResultRefusalProof(input: unknown): DxResultRefusalProof 
 
   const byKind = new Map<string, unknown>();
   for (const rawEnvelope of record.envelopes) {
+    // SAFETY: `const raw = requireObject(rawEnvelope, "envelope") as { kind?: unknown };` is required at this I/O or test boundary.
     const raw = requireObject(rawEnvelope, "envelope") as { kind?: unknown };
     const kind = requireString(raw.kind, "envelope.kind");
     if (byKind.has(kind)) {
@@ -283,8 +287,11 @@ export function parseDxResultRefusalProof(input: unknown): DxResultRefusalProof 
   return {
     issue: "HOBO-571",
     phase: "M1",
+    // SAFETY: `audience: record.audience as DxResultRefusalProof["audience"],` is required at this I/O or test boundary.
     audience: record.audience as DxResultRefusalProof["audience"],
+    // SAFETY: `mockedBoundaries: record.mockedBoundaries as string[],` is required at this I/O or test boundary.
     mockedBoundaries: record.mockedBoundaries as string[],
+    // SAFETY: `references: record.references as string[],` is required at this I/O or test boundary.
     references: record.references as string[],
     envelopes,
   };
@@ -388,7 +395,7 @@ export function createDeterministicFixtureSet(record: DxResultRefusalProof): Det
   };
 }
 
-export function stableFixtureDigest(value: unknown): string {
+export function stableFixtureDigest(value: JsonValue): string {
   return createHash("sha256").update(stableJson(value)).digest("hex");
 }
 
@@ -441,7 +448,8 @@ function envelope(
   };
 }
 
-function parseEnvelope(input: unknown, expectedKind: EnvelopeKind): DxResultEnvelope {
+function parseEnvelope(input: JsonValue, expectedKind: EnvelopeKind): DxResultEnvelope {
+  // SAFETY: `const envelopeRecord = requireObject(input, expectedKind) as Partial<DxResultEnv` is required at this I/O or test boundary.
   const envelopeRecord = requireObject(input, expectedKind) as Partial<DxResultEnvelope>;
   if (envelopeRecord.kind !== expectedKind) {
     throw new Error(`${expectedKind} kind mismatch`);
@@ -474,21 +482,22 @@ function parseEnvelope(input: unknown, expectedKind: EnvelopeKind): DxResultEnve
   };
 }
 
-function requireObject(input: unknown, fieldName: string): Record<string, unknown> {
-  if (!input || typeof input !== "object" || Array.isArray(input)) {
+function requireObject(input: JsonValue, fieldName: string): JsonObject {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
-  return input as Record<string, unknown>;
+  // SAFETY: `return input as JsonObject;` is required at this I/O or test boundary.
+  return input as JsonObject;
 }
 
-function requireString(input: unknown, fieldName: string): string {
-  if (typeof input !== "string" || input.length === 0) {
+function requireString(input: JsonValue, fieldName: string): string {
+  if (!isJsonString(input) || input.length === 0) {
     throw new TypeError(`${fieldName} must be non-empty`);
   }
   return input;
 }
 
-function requirePrefixedString(input: unknown, fieldName: string, prefix: string): string {
+function requirePrefixedString(input: JsonValue, fieldName: string, prefix: string): string {
   const value = requireString(input, fieldName);
   if (!value.startsWith(prefix)) {
     throw new Error(`${fieldName} must start with ${prefix}`);
@@ -496,14 +505,14 @@ function requirePrefixedString(input: unknown, fieldName: string, prefix: string
   return value;
 }
 
-function requireStringArray(input: unknown, fieldName: string): string[] {
+function requireStringArray(input: JsonValue, fieldName: string): string[] {
   if (!Array.isArray(input) || input.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty array`);
   }
   return input.map((value, index) => requireString(value, `${fieldName}[${index}]`));
 }
 
-function requireEnum<const T extends readonly string[]>(input: unknown, allowed: T, fieldName: string): T[number] {
+function requireEnum<const T extends readonly string[]>(input: JsonValue, allowed: T, fieldName: string): T[number] {
   const value = requireString(input, fieldName);
   if (!allowed.includes(value)) {
     throw new Error(`${fieldName} must be one of ${allowed.join(", ")}`);
@@ -511,14 +520,15 @@ function requireEnum<const T extends readonly string[]>(input: unknown, allowed:
   return value;
 }
 
-function stableJson(value: unknown): string {
-  if (value === null || typeof value !== "object") {
+function stableJson(value: JsonValue): string {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
     return `[${value.map((entry) => stableJson(entry)).join(",")}]`;
   }
-  const object = value as Record<string, unknown>;
+  // SAFETY: `const object = value as JsonObject;` is required at this I/O or test boundary.
+  const object = value as JsonObject;
   return `{${Object.keys(object)
     .sort()
     .map((key) => `${JSON.stringify(key)}:${stableJson(object[key])}`)

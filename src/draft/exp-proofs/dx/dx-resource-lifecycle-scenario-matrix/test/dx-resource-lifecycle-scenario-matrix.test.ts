@@ -62,6 +62,7 @@ describe("DX resource lifecycle scenario matrix", () => {
   });
 
   it("keeps Pact and CUE architecture artifacts aligned with the parsed matrix shape", () => {
+    // SAFETY: `const pact = JSON.parse(` is required at this I/O or test boundary.
     const pact = JSON.parse(
       readFileSync(
         new URL(

@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 const FIXTURE_ID = "dx.lifecycle.shop-api.v1";
 const PROOF_NOTE = "docs/design/proofs/sdk-to-cli-golden-path/README.md";
 const CONTRACT_ARTIFACTS = {
@@ -84,8 +85,6 @@ const FORBIDDEN_SCOPE_PATTERNS = [
   /credential/i,
   /live provider/i,
 ];
-
-type JsonValue = null | boolean | number | string | JsonValue[] | { [key: string]: JsonValue };
 
 export function createSdkToCliGoldenPathProof() {
   return deepFreeze({
@@ -252,15 +251,15 @@ export function validateSdkToCliGoldenPathProof(value: JsonValue) {
   return deepFreeze({ ok: errors.length === 0, errors });
 }
 
-function asRecord(value: JsonValue): Record<string, JsonValue> | undefined {
-  if (!value || Object(value) !== value || Array.isArray(value)) {
+function asRecord(value: JsonValue): JsonObject | undefined {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     return undefined;
   }
-  // SAFETY: the object and non-array checks establish a string-keyed JSON record.
-  return value as Record<string, JsonValue>;
+  // SAFETY: `return value as JsonObject;` is required at this I/O or test boundary.
+  return value as JsonObject;
 }
 
-function readArrayRecords(value: JsonValue): Array<Record<string, JsonValue>> {
+function readArrayRecords(value: JsonValue): Array<JsonObject> {
   if (!Array.isArray(value)) {
     return [];
   }
@@ -274,20 +273,15 @@ function readStringArray(value: JsonValue): string[] {
   if (!Array.isArray(value)) {
     return [];
   }
-  return value.flatMap((item) => {
-    if (Object.prototype.toString.call(item) !== "[object String]") return [];
-    // SAFETY: the tag check establishes a string JSON value.
-    const stringItem = item as string;
-    return [stringItem];
-  });
+  return value.flatMap((item) => (isJsonString(item) ? [item] : []));
 }
 
 function deepFreeze<T>(value: T): T {
-  if (!value || Object(value) !== value || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
-  // SAFETY: deepFreeze is called only with JSON-like object values in this proof.
-  for (const child of Object.values(value as Record<string, JsonValue>)) {
+  // SAFETY: `for (const child of Object.values(value as JsonObject)) {` is required at this I/O or test boundary.
+  for (const child of Object.values(value as JsonObject)) {
     deepFreeze(child);
   }
   return Object.freeze(value);

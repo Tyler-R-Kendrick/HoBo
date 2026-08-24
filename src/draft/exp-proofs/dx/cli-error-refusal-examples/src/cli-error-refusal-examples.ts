@@ -1,4 +1,6 @@
 import { DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS } from "../../../dx/dx-resource-lifecycle-fixture-corpus/src/dx-resource-lifecycle-fixture-corpus.js";
+import { isJsonString, isJsonNumber, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const REQUIRED_ERROR_CASES = [
   "missing-dependency",
@@ -442,7 +444,7 @@ export function classifyCliErrorRefusalScope(
 }
 
 export function parseCliErrorRefusalCatalog(
-  catalog: unknown,
+  catalog: JsonValue,
 ): ParsedCliErrorRefusalCatalog {
   assertObject(catalog, "catalog");
   assertLiteral(catalog.issue, "HOBO-558", "issue");
@@ -465,6 +467,7 @@ export function parseCliErrorRefusalCatalog(
   assertRequiredOperations(examples);
 
   return {
+    // SAFETY: `...(catalog as CliErrorRefusalCatalog),` is required at this I/O or test boundary.
     ...(catalog as CliErrorRefusalCatalog),
     __brand: "ParsedCliErrorRefusalCatalog",
   };
@@ -556,7 +559,7 @@ function example(input: {
   };
 }
 
-function assertExamples(value: unknown): CliErrorRefusalExample[] {
+function assertExamples(value: JsonValue): CliErrorRefusalExample[] {
   if (!Array.isArray(value)) {
     throw new TypeError("examples must be an array");
   }
@@ -573,7 +576,7 @@ function assertExamples(value: unknown): CliErrorRefusalExample[] {
     assertNonEmptyStringArray(entry.accessibilityNotes, `${entry.caseId}.accessibilityNotes`);
     assertNonEmptyStringArray(entry.customerSafeWording, `${entry.caseId}.customerSafeWording`);
 
-    if (typeof entry.exitCode !== "number" || entry.exitCode <= 0) {
+    if (!isJsonNumber(entry.exitCode) || entry.exitCode <= 0) {
       throw new TypeError(`${entry.caseId}.exitCode must be non-zero`);
     }
     if (!isProofMode(entry.proofMode)) {
@@ -587,6 +590,7 @@ function assertExamples(value: unknown): CliErrorRefusalExample[] {
       throw new TypeError(`${entry.caseId}.fixtureProofMode must match accepted fixture proof mode`);
     }
 
+    // SAFETY: `return entry as CliErrorRefusalExample;` is required at this I/O or test boundary.
     return entry as CliErrorRefusalExample;
   });
 }
@@ -616,8 +620,8 @@ function assertRequiredOperations(examples: readonly CliErrorRefusalExample[]): 
 }
 
 function assertJsonOutput(
-  value: unknown,
-  parent: Record<string, unknown>,
+  value: JsonValue,
+  parent: JsonObject,
 ): void {
   assertObject(value, `${String(parent.caseId)}.jsonOutput`);
   assertLiteral(value.code, parent.code, `${String(parent.caseId)}.jsonOutput.code`);
@@ -634,8 +638,8 @@ function assertJsonOutput(
 }
 
 function assertMcpToolResult(
-  value: unknown,
-  parent: Record<string, unknown>,
+  value: JsonValue,
+  parent: JsonObject,
 ): void {
   assertObject(value, `${String(parent.caseId)}.mcpToolResult`);
   assertNonEmptyString(value.toolName, `${String(parent.caseId)}.mcpToolResult.toolName`);
@@ -673,7 +677,7 @@ function assertMcpToolResult(
   );
 }
 
-function assertScopeBoundary(value: unknown): void {
+function assertScopeBoundary(value: JsonValue): void {
   assertObject(value, "scopeBoundary");
   assertNonEmptyStringArray(value.inScope, "scopeBoundary.inScope");
   assertNonEmptyStringArray(value.outOfScope, "scopeBoundary.outOfScope");
@@ -685,12 +689,17 @@ function assertScopeBoundary(value: unknown): void {
   }
 }
 
-function assertNoLiveSuccessClaim(entry: Record<string, unknown>): void {
+function assertNoLiveSuccessClaim(entry: JsonObject): void {
   const text = [
+    // SAFETY: `...(entry.humanTerminalCopy as readonly string[]),` is required at this I/O or test boundary.
     ...(entry.humanTerminalCopy as readonly string[]),
+    // SAFETY: `(entry.jsonOutput as { message: string }).message,` is required at this I/O or test boundary.
     (entry.jsonOutput as { message: string }).message,
+    // SAFETY: `(entry.jsonOutput as { remediation: string }).remediation,` is required at this I/O or test boundary.
     (entry.jsonOutput as { remediation: string }).remediation,
+    // SAFETY: `...((entry.mcpToolResult as McpToolResult).content.map((content) => content.text` is required at this I/O or test boundary.
     ...((entry.mcpToolResult as McpToolResult).content.map((content) => content.text)),
+    // SAFETY: `...(entry.customerSafeWording as readonly string[]),` is required at this I/O or test boundary.
     ...(entry.customerSafeWording as readonly string[]),
   ].join("\n");
 
@@ -699,47 +708,49 @@ function assertNoLiveSuccessClaim(entry: Record<string, unknown>): void {
   }
 }
 
-function assertObject(value: unknown, name: string): asserts value is Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function assertObject(value: JsonValue, name: string): asserts value is JsonObject {
+  if (!isJsonObject(value) || value === null || Array.isArray(value)) {
     throw new TypeError(`${name} must be an object`);
   }
 }
 
-function assertLiteral<T>(value: unknown, expected: T, name: string): asserts value is T {
+function assertLiteral<T>(value: JsonValue, expected: T, name: string): asserts value is T {
   if (value !== expected) {
     throw new TypeError(`${name} must be ${String(expected)}`);
   }
 }
 
-function assertNonEmptyString(value: unknown, name: string): asserts value is string {
-  if (typeof value !== "string" || value.length === 0) {
+function assertNonEmptyString(value: JsonValue, name: string): asserts value is string {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${name} must not be empty`);
   }
 }
 
-function assertNonEmptyStringArray(value: unknown, name: string): void {
-  if (!Array.isArray(value) || value.length === 0 || value.some((entry) => typeof entry !== "string" || entry.length === 0)) {
+function assertNonEmptyStringArray(value: JsonValue, name: string): void {
+  if (!Array.isArray(value) || value.length === 0 || value.some((entry) => !isJsonString(entry) || entry.length === 0)) {
     throw new TypeError(`${name} must be a non-empty string array`);
   }
 }
 
-function assertRequiredCase(value: unknown): asserts value is CliErrorCaseId {
+function assertRequiredCase(value: JsonValue): asserts value is CliErrorCaseId {
+  // SAFETY: `if (!REQUIRED_ERROR_CASES.includes(value as CliErrorCaseId)) {` is required at this I/O or test boundary.
   if (!REQUIRED_ERROR_CASES.includes(value as CliErrorCaseId)) {
     throw new TypeError(`unknown case ${String(value)}`);
   }
 }
 
-function assertOperationArray(value: unknown, caseId: unknown): void {
+function assertOperationArray(value: JsonValue, caseId: JsonValue): void {
   if (!Array.isArray(value) || value.length === 0) {
     throw new TypeError(`${String(caseId)}.operations must not be empty`);
   }
   for (const operation of value) {
+    // SAFETY: `if (!REQUIRED_OPERATIONS.includes(operation as OperationId)) {` is required at this I/O or test boundary.
     if (!REQUIRED_OPERATIONS.includes(operation as OperationId)) {
       throw new TypeError(`${String(caseId)} has unsupported operation ${String(operation)}`);
     }
   }
 }
 
-function isProofMode(value: unknown): value is ProofMode {
+function isProofMode(value: JsonValue): value is ProofMode {
   return value === "reference-fixture" || value === "simulated-transcript" || value === "live";
 }

@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this proof validates erased evidence records at its parser boundary before accepting the closed contract. */
-
+import { isJsonObject, type JsonValue } from "./json.js";
 export type EvidenceStatus = "accepted" | "accepted-risk" | "missing";
 export type ProofMode = "design-record" | "issue-state" | "manual-review" | "live-recording";
 export type LaunchRiskEffect = "unchanged" | "increased" | "reduced";
@@ -254,13 +253,14 @@ export const launchSiteGaHandoffEvidence: LaunchSiteGaHandoffEvidenceRecord = {
   ],
 };
 
-export function validateLaunchSiteGaHandoffEvidence(record: unknown) {
+export function validateLaunchSiteGaHandoffEvidence(record: JsonValue) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["launch-site GA handoff evidence record is required"] };
   }
 
+  // SAFETY: `const value = record as Partial<LaunchSiteGaHandoffEvidenceRecord>;` is required at this I/O or test boundary.
   const value = record as Partial<LaunchSiteGaHandoffEvidenceRecord>;
   const evidence = Array.isArray(value.evidence) ? value.evidence : [];
   const blockers = Array.isArray(value.blockers) ? value.blockers : [];

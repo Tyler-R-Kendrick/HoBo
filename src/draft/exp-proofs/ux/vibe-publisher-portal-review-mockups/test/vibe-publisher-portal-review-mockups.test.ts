@@ -117,6 +117,7 @@ test("Pact and CUE artifacts stay aligned with the parsed fixture shape", () => 
   );
   const body = pact.interactions[0].response.body;
   const pactMockups = parseVibePublisherPortalReviewMockups(
+    // SAFETY: `body as typeof VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS,` is required at this I/O or test boundary.
     body as typeof VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS,
   );
 
@@ -179,6 +180,7 @@ test("parser rejects missing fixture metadata and unsupported proof modes", () =
         fixtures: [
           {
             ...VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS.fixtures[0],
+            // SAFETY: `proofMode: "production-live" as never,` is required at this I/O or test boundary.
             proofMode: "production-live" as never,
           },
           ...VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS.fixtures.slice(1),
@@ -245,6 +247,7 @@ test("validator rejects quickstart fixture drift from HOBO-577", () => {
         quickstartFixtureRefs: [
           {
             ...VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS.quickstartFixtureRefs[0],
+            // SAFETY: `sourceIssue: "HOBO-548" as never,` is required at this I/O or test boundary.
             sourceIssue: "HOBO-548" as never,
           },
           ...VIBE_PUBLISHER_PORTAL_REVIEW_MOCKUPS.quickstartFixtureRefs.slice(1),

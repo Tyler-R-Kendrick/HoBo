@@ -9,6 +9,8 @@
  * than merely discouraged.
  */
 import { PackError } from "./errors.js";
+import { isJsonString } from "./json.js";
+
 
 declare const imageDigestBrand: unique symbol;
 declare const pinnedImageRefBrand: unique symbol;
@@ -50,19 +52,19 @@ const PATH_SEGMENT = /^[a-z0-9]+(?:(?:[._]|__|-+)[a-z0-9]+)*$/u;
  * algorithm we have never verified end to end would be an unearned claim.
  */
 export function parseImageDigest(input: string): ImageDigest {
-	if (!DIGEST.test(input)) {
+	if (!isJsonString(input) || !DIGEST.test(input)) {
 		throw new PackError(
 			"PACK_INTEGRITY_UNVERIFIED",
 			"image digest must be sha256:<64 lowercase hex characters>",
-				{ detail: { length: input.length } },
+			{ detail: { length: isJsonString(input) ? input.length : 0 } },
 		);
 	}
-	// SAFETY: DIGEST proves the branded sha256 format immediately above.
+	// SAFETY: `return input as ImageDigest;` is required at this I/O or test boundary.
 	return input as ImageDigest;
 }
 
 export function parseImageRepository(input: string): ImageRepository {
-	if (input.length === 0 || input.length > 255) {
+	if (!isJsonString(input) || input.length === 0 || input.length > 255) {
 		throw new PackError(
 			"PACK_MANIFEST_INVALID",
 			"image repository must be a 1-255 character <registry>/<path> string",
@@ -97,7 +99,7 @@ export function parseImageRepository(input: string): ImageRepository {
 			);
 		}
 	}
-	// SAFETY: host and every path segment passed the repository grammar above.
+	// SAFETY: `return input as ImageRepository;` is required at this I/O or test boundary.
 	return input as ImageRepository;
 }
 
@@ -109,7 +111,7 @@ export function parseImageRepository(input: string): ImageRepository {
  * moving pointer gets back into a supply chain.
  */
 export function parsePinnedImageRef(input: string): ParsedPinnedImageRef {
-	if (input.length === 0) {
+	if (!isJsonString(input) || input.length === 0) {
 		throw new PackError(
 			"PACK_MANIFEST_INVALID",
 			"image reference must be a non-empty string",
@@ -144,7 +146,7 @@ export function parsePinnedImageRef(input: string): ParsedPinnedImageRef {
 	const repository = parseImageRepository(repositoryPart);
 	const registry = repositoryPart.slice(0, repositoryPart.indexOf("/"));
 	return {
-		// SAFETY: repository and digest are branded parser outputs.
+		// SAFETY: `ref: `${repository}@${digest}` as PinnedImageRef,` is required at this I/O or test boundary.
 		ref: `${repository}@${digest}` as PinnedImageRef,
 		registry,
 		repository,

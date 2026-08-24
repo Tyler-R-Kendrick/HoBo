@@ -618,7 +618,10 @@ function settledAction(context: GcpResolverContext): ResolverAction {
 }
 
 function assertProjectId(projectId: string): string {
-	if (projectId.trim().length === 0) {
+	// `typeof` first: this is called with option-bag input, so the annotation is
+	// a claim about the caller rather than a fact about the value, and
+	// `.trim()` on a non-string throws a TypeError instead of naming the field.
+	if (typeof projectId !== "string" || projectId.trim().length === 0) {
 		throw new ResolverError(
 			"RESOLVER_PRODUCT_UNSUPPORTED",
 			"gcp resolvers need a projectId: every Google API path is project-scoped, and guessing one would target the wrong project",

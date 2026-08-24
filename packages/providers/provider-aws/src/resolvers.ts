@@ -320,7 +320,16 @@ async function resolveAwsCredentials(
 			)}. Register the reference with the credential resolver before deploying`,
 		);
 	}
+	// Check the shape before reading fields. `resolve` is an injected host
+	// callback, so `AwsCredentials` is what it *promises* to return, not what it
+	// did -- and reading `.accessKeyId` off `undefined` or a string throws a
+	// TypeError, which is precisely the untyped failure this boundary exists to
+	// turn into a refusal an operator can act on.
 	if (
+		material === null ||
+		typeof material !== "object" ||
+		typeof material.accessKeyId !== "string" ||
+		typeof material.secretAccessKey !== "string" ||
 		material.accessKeyId.trim().length === 0 ||
 		material.secretAccessKey.trim().length === 0
 	) {

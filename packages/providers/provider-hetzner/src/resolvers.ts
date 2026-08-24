@@ -559,7 +559,15 @@ async function resolveObjectStorageKeys(
 			)}`,
 		);
 	}
+	// Check the shape before reading fields: `resolve` is an injected host
+	// callback, so the key-pair type is what it promises, not what it returned.
+	// Reading `.accessKeyId` off `undefined` throws a TypeError -- the untyped
+	// failure this boundary exists to turn into an actionable refusal.
 	if (
+		keys === null ||
+		typeof keys !== "object" ||
+		typeof keys.accessKeyId !== "string" ||
+		typeof keys.secretAccessKey !== "string" ||
 		keys.accessKeyId.trim().length === 0 ||
 		keys.secretAccessKey.trim().length === 0
 	) {

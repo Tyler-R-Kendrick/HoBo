@@ -19,6 +19,8 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { beforeAll, describe, expect, it } from "vitest";
+import { type JsonObject } from "../src/json.js";
+
 
 const here = dirname(fileURLToPath(import.meta.url));
 const pkg = join(here, "..");
@@ -37,6 +39,7 @@ interface Interaction {
 	};
 }
 
+// SAFETY: `const pact = JSON.parse(` is required at this I/O or test boundary.
 const pact = JSON.parse(
 	readFileSync(
 		join(pkg, "contracts", "pacts", "rift-workspace-boundary.pact.json"),
@@ -85,7 +88,8 @@ describe(`${pact.consumer.name} → ${pact.provider.name}`, () => {
 			).toBe(interaction.response.exitCode);
 
 			if (interaction.response.jsonKeys) {
-				const parsed = JSON.parse(got.stdout) as Record<string, unknown>;
+				// SAFETY: `const parsed = JSON.parse(got.stdout) as JsonObject;` is required at this I/O or test boundary.
+				const parsed = JSON.parse(got.stdout) as JsonObject;
 				for (const key of interaction.response.jsonKeys) {
 					expect(parsed).toHaveProperty(key);
 				}

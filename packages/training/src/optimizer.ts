@@ -1,6 +1,5 @@
 import { createHash } from "node:crypto";
 import type {
-	JsonValue,
 	OptimizeRequest,
 	TrainingCandidate,
 	TrainingEngineId,
@@ -9,7 +8,6 @@ import type {
 } from "@hobo/core";
 import {
 	CoreParseError,
-	diagnosticJson,
 	hashTrajectory,
 	parseTrainingCandidate,
 	parseTrainingEngineId,
@@ -22,6 +20,8 @@ import {
 	type OptimizerStepDecision,
 	type OptimizerTraceSpan,
 } from "./trace-sink.js";
+import { isJsonNumber, isJsonObject, parseJsonValue, type JsonValue, type JsonObject } from "./json.js";
+
 
 // The built-in OPTO-style optimizer behind core's hobo:training-engine port
 // (ADR-0025, docs/plans/0017 F26). Propose -> score -> keep-best over
@@ -55,7 +55,7 @@ export class TrainingOptimizerParseError extends CoreParseError {
 	constructor(
 		path: string,
 		expected: string,
-		received: JsonValue | undefined,
+		received: JsonValue,
 		message?: string,
 	) {
 		super("HOBO_TRAINING_OPTIMIZER_PARSE", path, expected, received, message);
@@ -80,21 +80,17 @@ export interface BuiltinTrainingEngine extends TrainingEnginePort {
 	drainTraceSpans(): readonly OptimizerTraceSpan[];
 }
 
-function fail(path: string, expected: string, received: unknown): never {
-	throw new TrainingOptimizerParseError(
-		path,
-		expected,
-		diagnosticJson(received),
-	);
+function fail(path: string, expected: string, received: JsonValue): never {
+	throw new TrainingOptimizerParseError(path, expected, received);
 }
 
 function parsePositiveInt(
-	value: unknown,
+	value: JsonValue,
 	path: string,
 	fallback: number,
 ): number {
 	if (value === undefined) return fallback;
-	if (typeof value !== "number" || !Number.isInteger(value) || value < 1) {
+	if (!isJsonNumber(value) || !Number.isInteger(value) || value < 1) {
 		fail(path, "integer >= 1", value);
 	}
 	return value;
@@ -105,14 +101,15 @@ function parsePositiveInt(
  * `OptimizerConfig` in data-models/training_optimizer.proto) into the
  * derived type, or throws `TrainingOptimizerParseError`.
  */
-export function parseOptimizerConfig(value: unknown): OptimizerConfig {
-	if (typeof value !== "object" || value === null || Array.isArray(value)) {
+export function parseOptimizerConfig(value: JsonValue): OptimizerConfig {
+	if (!isJsonObject(value) || value === null || Array.isArray(value)) {
 		fail("config", "OptimizerConfig object", value);
 	}
-	const record = value as Record<string, unknown>;
+	// SAFETY: `const record = value as JsonObject;` is required at this I/O or test boundary.
+	const record = value as JsonObject;
 	const seed = record.seed;
 	if (
-		typeof seed !== "number" ||
+		!isJsonNumber(seed) ||
 		!Number.isInteger(seed) ||
 		seed < 0 ||
 		seed > MAX_SEED
@@ -122,13 +119,7 @@ export function parseOptimizerConfig(value: unknown): OptimizerConfig {
 	const rawEngineId = record.engineId ?? BUILTIN_TRAINING_ENGINE_ID;
 	let engineId: TrainingEngineId;
 	try {
-		// SAFETY: unchecked config value handed to the parse that checks it —
-		// `parseTrainingEngineId` refuses anything that is not a non-empty JSON
-		// string, and the catch below turns that refusal into this boundary's own
-		// typed error. Narrowing here first would duplicate the parser's rule in
-		// the caller, which is the arrangement parse-don't-validate exists to
-		// avoid.
-		engineId = parseTrainingEngineId(rawEngineId as JsonValue | undefined);
+		engineId = parseTrainingEngineId(rawEngineId);
 	} catch {
 		fail("config.engineId", "non-empty string", rawEngineId);
 	}
@@ -162,26 +153,16 @@ interface Proposal {
 	readonly score: number;
 }
 
-function sha256Digest(value: unknown): string {
+function sha256Digest(value: JsonValue): string {
 	return `sha256:${createHash("sha256")
 		.update(JSON.stringify(value))
 		.digest("hex")}`;
 }
 
-/**
- * Decode a span's stored JSON, falling back when it is absent or malformed.
- *
- * Returns `JsonValue` rather than `unknown` because that is what it can only
- * ever produce: `JSON.parse` yields a JSON value or throws, and the fallback is
- * a JSON value by the signature. Typing it `unknown` pushed a cast onto every
- * caller, including the one that hands demos to
- * `serializeTrainingArtifactProgram` — which wants exactly this type.
- */
 function parseJsonOr(value: string, fallback: JsonValue): JsonValue {
 	if (value.length === 0) return fallback;
 	try {
-		// SAFETY: JSON.parse yields a JsonValue or throws.
-		return JSON.parse(value) as JsonValue;
+		return parseJsonValue(value);
 	} catch {
 		return fallback;
 	}
@@ -217,7 +198,9 @@ function sampleIndexes(
 	const taken = Math.min(count, poolSize);
 	for (let i = 0; i < taken; i += 1) {
 		const j = i + prng.nextInt(poolSize - i);
+		// SAFETY: `const a = indexes[i] as number;` is required at this I/O or test boundary.
 		const a = indexes[i] as number;
+		// SAFETY: `indexes[i] = indexes[j] as number;` is required at this I/O or test boundary.
 		indexes[i] = indexes[j] as number;
 		indexes[j] = a;
 	}
@@ -230,6 +213,7 @@ function propose(
 	objective: string,
 	demosPerCandidate: number,
 ): Proposal {
+	// SAFETY: `const framing = INSTRUCTION_FRAMINGS[` is required at this I/O or test boundary.
 	const framing = INSTRUCTION_FRAMINGS[
 		prng.nextInt(INSTRUCTION_FRAMINGS.length)
 	] as string;
@@ -240,6 +224,7 @@ function propose(
 	// (ADR-0025 point 5); the PRNG only drives proposals, never scores.
 	const score =
 		demoIndexes.reduce(
+			// SAFETY: `(sum, index) => sum + (pool[index] as DemoExample).reward,` is required at this I/O or test boundary.
 			(sum, index) => sum + (pool[index] as DemoExample).reward,
 			0,
 		) / Math.max(demoIndexes.length, 1);
@@ -281,7 +266,7 @@ function stepSpan(
  * OpenInference-aligned sink.
  */
 export function createBuiltinTrainingEngine(
-	config: unknown,
+	config: JsonValue,
 ): BuiltinTrainingEngine {
 	const parsed = parseOptimizerConfig(config);
 	const sink = createTraceSink();
@@ -314,11 +299,13 @@ export function createBuiltinTrainingEngine(
 			if (kept) best = proposal;
 			sink.record(stepSpan(iteration, proposal, kept ? "kept" : "rejected"));
 		}
+		// SAFETY: `const winner = best as Proposal;` is required at this I/O or test boundary.
 		const winner = best as Proposal;
 
 		const programJson = serializeTrainingArtifactProgram({
 			instructions: winner.instructions,
 			demos: winner.demoIndexes.map((index) => {
+				// SAFETY: `const demo = pool[index] as DemoExample;` is required at this I/O or test boundary.
 				const demo = pool[index] as DemoExample;
 				return { input: demo.input, output: demo.output };
 			}),

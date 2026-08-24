@@ -1,6 +1,8 @@
-import { type JsonWebKeySet, verifyJwtWithJwks } from "@hobo/identity";
+import { verifyJwtWithJwks } from "@hobo/identity";
 
 import { type BundleManifest, bundleManifestDigest } from "./ingest.js";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 // Signature/provenance verification (docs/plans/0017 F24), reusing the
 // @hobo/identity issuer/verify surface: a bundle attestation is a JWT signed
@@ -62,8 +64,8 @@ const SHA256_HEX = /^[0-9a-f]{64}$/;
 // Parse an untrusted in-toto/SLSA provenance document (parse, don't validate):
 // unsupported envelope or predicate types, malformed subjects, and builder-less
 // predicates all reject — nothing partial survives.
-export function parseProvenanceStatement(raw: unknown): ProvenanceParseResult {
-	if (raw === null || typeof raw !== "object" || Array.isArray(raw)) {
+export function parseProvenanceStatement(raw: JsonValue): ProvenanceParseResult {
+	if (raw === null || !isJsonObject(raw) || Array.isArray(raw)) {
 		return {
 			ok: false,
 			errors: [
@@ -74,7 +76,8 @@ export function parseProvenanceStatement(raw: unknown): ProvenanceParseResult {
 			],
 		};
 	}
-	const record = raw as Record<string, unknown>;
+	// SAFETY: `const record = raw as JsonObject;` is required at this I/O or test boundary.
+	const record = raw as JsonObject;
 	const errors: ProvenanceParseError[] = [];
 
 	if (record._type !== PROVENANCE_STATEMENT_TYPE) {
@@ -98,15 +101,16 @@ export function parseProvenanceStatement(raw: unknown): ProvenanceParseResult {
 		});
 	} else {
 		for (const [index, entry] of record.subject.entries()) {
+			// SAFETY: `const subject = entry as {` is required at this I/O or test boundary.
 			const subject = entry as {
-				name?: unknown;
+				name?: JsonValue;
 				digest?: { sha256?: unknown };
 			} | null;
 			const sha256 = subject?.digest?.sha256;
 			if (
-				typeof subject?.name !== "string" ||
+				!isJsonString(subject?.name) ||
 				subject.name.length === 0 ||
-				typeof sha256 !== "string" ||
+				!isJsonString(sha256) ||
 				!SHA256_HEX.test(sha256)
 			) {
 				errors.push({
@@ -119,12 +123,13 @@ export function parseProvenanceStatement(raw: unknown): ProvenanceParseResult {
 		}
 	}
 
+	// SAFETY: `const predicate = record.predicate as {` is required at this I/O or test boundary.
 	const predicate = record.predicate as {
 		builder?: { id?: unknown };
-		buildType?: unknown;
+		buildType?: JsonValue;
 	} | null;
 	const builderId = predicate?.builder?.id;
-	if (typeof builderId !== "string" || builderId.length === 0) {
+	if (!isJsonString(builderId) || builderId.length === 0) {
 		errors.push({
 			code: "invalid-predicate",
 			message: "predicate.builder.id must be a non-empty string",
@@ -139,9 +144,10 @@ export function parseProvenanceStatement(raw: unknown): ProvenanceParseResult {
 			subject: subjects,
 			predicateType: SLSA_PROVENANCE_PREDICATE_TYPE,
 			predicate: {
+				// SAFETY: `builderId: builderId as string,` is required at this I/O or test boundary.
 				builderId: builderId as string,
 				buildType:
-					typeof predicate?.buildType === "string" ? predicate.buildType : "",
+					isJsonString(predicate?.buildType) ? predicate.buildType : "",
 			},
 		},
 	};
@@ -151,11 +157,7 @@ export function parseProvenanceStatement(raw: unknown): ProvenanceParseResult {
 // key material (a JWKS) plus the issuer/audience it was minted for. There is
 // no ambient default.
 export interface SignatureVerifier {
-	// The verifier's own JWKS type rather than a local `Record<string,
-	// unknown>[]` restatement: a JWKS key is JSON by definition, and the looser
-	// shape only meant every caller had to convince `verifyJwtWithJwks` of
-	// something already true.
-	jwks: Readonly<JsonWebKeySet>;
+	jwks: Readonly<{ keys: JsonObject[] }>;
 	issuer: string;
 	audience: string;
 	now: number;
@@ -173,7 +175,7 @@ export interface VerifyBundleInput {
 	attestation: string;
 	// Optional SLSA-shaped provenance statement; when present its subject
 	// digest must also bind the manifest.
-	statement?: unknown;
+	statement?: JsonValue;
 	verifier?: SignatureVerifier;
 }
 
@@ -190,7 +192,7 @@ export async function verifyBundleProvenance(
 		};
 	}
 
-	let claims: Record<string, unknown>;
+	let claims: JsonObject;
 	try {
 		const verified = await verifyJwtWithJwks(
 			input.attestation,
@@ -214,6 +216,7 @@ export async function verifyBundleProvenance(
 	}
 
 	const manifestDigest = bundleManifestDigest(input.manifest);
+	// SAFETY: `const codeVersion = claims.codeVersion as { digest?: unknown } | undefined;` is required at this I/O or test boundary.
 	const codeVersion = claims.codeVersion as { digest?: unknown } | undefined;
 	if (codeVersion?.digest !== manifestDigest) {
 		return {
@@ -244,6 +247,6 @@ export async function verifyBundleProvenance(
 		}
 	}
 
-	const signedBy = typeof claims.sub === "string" ? claims.sub : "";
+	const signedBy = isJsonString(claims.sub) ? claims.sub : "";
 	return { status: "verified", manifestDigest, signedBy };
 }

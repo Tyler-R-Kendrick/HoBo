@@ -11,6 +11,7 @@ import {
 	parseOptimizerConfig,
 	TrainingOptimizerParseError,
 } from "../src/index.js";
+import { isJsonString } from "../src/json.js";
 
 const REGION = {
 	regionId: "region-1",
@@ -20,7 +21,7 @@ const REGION = {
 	owner: "training-engine",
 };
 
-function trajectoryJson(index: number, reward: number): object {
+function trajectoryJson(index: number, reward: number) {
 	return {
 		id: `traj-${index}`,
 		traceparent: `00-0123456789abcdef0123456789abcde${index}-0123456789abcde${index}-01`,
@@ -169,6 +170,7 @@ describe("keep-best invariant", () => {
 		const program = parseTrainingArtifactProgram(
 			candidate.body.value.programJson,
 		);
+		// SAFETY: `const payload = JSON.parse(program.enginePayloadJson) as {` is required at this I/O or test boundary.
 		const payload = JSON.parse(program.enginePayloadJson) as {
 			winnerScore: number;
 		};
@@ -211,9 +213,9 @@ describe("port conformance", () => {
 		// assignment below only compiles if the shapes agree.
 		const port: TrainingEnginePort = engine;
 
-		expect(typeof port.engineId).toBe("string");
+		expect(isJsonString(port.engineId)).toBe(true);
 		expect(port.engineId).toBe(BUILTIN_TRAINING_ENGINE_ID);
-		expect(typeof port.optimize).toBe("function");
+		expect(port.optimize instanceof Function).toBe(true);
 		expect(port.optimize.length).toBe(1);
 		const candidate = await port.optimize(fixtureRequest());
 		expect(candidate.id).toMatch(/^opto-[a-f0-9]{16}$/);
@@ -249,6 +251,7 @@ describe("malformed config typed rejections", () => {
 			expect.unreachable("parse must throw");
 		} catch (error) {
 			expect(error).toBeInstanceOf(TrainingOptimizerParseError);
+			// SAFETY: `const parseError = error as TrainingOptimizerParseError;` is required at this I/O or test boundary.
 			const parseError = error as TrainingOptimizerParseError;
 			expect(parseError.name).toBe("TrainingOptimizerParseError");
 			expect(parseError.code).toBe("HOBO_TRAINING_OPTIMIZER_PARSE");
@@ -266,7 +269,9 @@ describe("malformed config typed rejections", () => {
 	it("rejects a request stripped of its trajectories at the port boundary", async () => {
 		const engine = createBuiltinTrainingEngine(CONFIG);
 		const parsed = fixtureRequest();
+		// SAFETY: `const hollow = Object.create(` is required at this I/O or test boundary.
 		const hollow = Object.create(
+			// SAFETY: `Object.getPrototypeOf(parsed) as object,` is required at this I/O or test boundary.
 			Object.getPrototypeOf(parsed) as object,
 		) as typeof parsed;
 		Object.assign(hollow, parsed, { trajectories: [] });

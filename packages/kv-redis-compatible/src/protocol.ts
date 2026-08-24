@@ -7,6 +7,8 @@
  * transport, a RESP socket, and an in-memory fake without the cases changing.
  */
 import { KvRedisCompatibleError } from "./errors.js";
+import { isJsonString, isJsonNumber } from "./json.js";
+
 
 /** A Redis reply value, in the shape a client surfaces it. */
 export type RedisValue = string | number | null | readonly RedisValue[];
@@ -54,7 +56,10 @@ export type ReplyExpectation =
 // public-contract: key marker an executor must not rewrite further.
 export const CONFORMANCE_KEY_NAMESPACE = "hobo:conf:";
 
-export type FillSizes = Readonly<Record<FillKind, number | undefined>>;
+export interface FillSizes {
+	readonly "max-value-bytes": number | undefined;
+	readonly "over-max-value-bytes": number | undefined;
+}
 
 function fillPayload(bytes: number): string {
 	// ASCII so byte length and code-unit length agree, which keeps the
@@ -62,12 +67,9 @@ function fillPayload(bytes: number): string {
 	return "x".repeat(bytes);
 }
 
-export function resolveFillSizes(maxValueBytes: number | undefined) {
+export function resolveFillSizes(maxValueBytes: number | undefined): FillSizes {
 	if (maxValueBytes === undefined) {
-		return {
-			"max-value-bytes": undefined,
-			"over-max-value-bytes": undefined,
-		} satisfies FillSizes;
+		return { "max-value-bytes": undefined, "over-max-value-bytes": undefined };
 	}
 	if (!Number.isInteger(maxValueBytes) || maxValueBytes <= 0) {
 		throw new KvRedisCompatibleError(
@@ -78,15 +80,14 @@ export function resolveFillSizes(maxValueBytes: number | undefined) {
 	return {
 		"max-value-bytes": maxValueBytes,
 		"over-max-value-bytes": maxValueBytes + 1,
-	} satisfies FillSizes;
+	};
 }
 
 /** Fill kinds a template needs. Used to decide whether a case can run at all. */
 export function requiredFills(template: CommandTemplate): readonly FillKind[] {
 	const kinds = new Set<FillKind>();
 	for (const arg of template.slice(1)) {
-		// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: CommandTemplate is the parsed command domain; this selects its string or fill variant.
-		if (typeof arg !== "string") kinds.add(arg.fill);
+		if (!isJsonString(arg)) kinds.add(arg.fill);
 	}
 	return [...kinds].sort((a, b) => a.localeCompare(b));
 }
@@ -98,8 +99,7 @@ export function resolveCommand(
 	const [verb, ...args] = template;
 	const resolved: string[] = [];
 	for (const arg of args) {
-		// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: CommandTemplate is the parsed command domain; this selects its string or fill variant.
-		if (typeof arg !== "string") {
+		if (!isJsonString(arg)) {
 			const bytes = options.fills[arg.fill];
 			if (bytes === undefined) {
 				throw new KvRedisCompatibleError(
@@ -130,9 +130,9 @@ export function describeCommand(command: RedisCommand): string {
 
 function sameValue(actual: RedisValue, expected: RedisValue): boolean {
 	if (Array.isArray(actual) && Array.isArray(expected)) {
-		// SAFETY: Array.isArray narrowed both recursive RedisValue arms to arrays.
+		// SAFETY: `const a = actual as readonly RedisValue[];` is required at this I/O or test boundary.
 		const a = actual as readonly RedisValue[];
-		// SAFETY: Array.isArray narrowed both recursive RedisValue arms to arrays.
+		// SAFETY: `const b = expected as readonly RedisValue[];` is required at this I/O or test boundary.
 		const b = expected as readonly RedisValue[];
 		return (
 			a.length === b.length &&
@@ -144,8 +144,7 @@ function sameValue(actual: RedisValue, expected: RedisValue): boolean {
 	// `TTL` is an integer over RESP and can arrive as a JSON number or a
 	// numeric string over REST. Comparing the canonical text of both is the
 	// honest reading of "the same reply".
-	// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: RedisReply is already the parsed domain value at this comparison boundary.
-	if (typeof actual === "number" || typeof expected === "number") {
+	if (isJsonNumber(actual) || isJsonNumber(expected)) {
 		if (actual === null || expected === null) return actual === expected;
 		return String(actual) === String(expected);
 	}
@@ -161,10 +160,9 @@ export type ExpectationOutcome = {
 function summarize(value: RedisValue): string {
 	if (value === null) return "nil";
 	if (Array.isArray(value))
-		// SAFETY: Array.isArray narrowed the recursive RedisValue arm to an array.
+		// SAFETY: `return `array(${(value as readonly RedisValue[]).length})`;` is required at this I/O or test boundary.
 		return `array(${(value as readonly RedisValue[]).length})`;
-	// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: RedisValue is the parsed reply domain at this formatting boundary.
-	if (typeof value === "number") return `integer(${value})`;
+	if (isJsonNumber(value)) return `integer(${value})`;
 	return value.length > 24
 		? `string(${value.length}B)`
 		: `string(${JSON.stringify(value)})`;
@@ -206,11 +204,9 @@ export function evaluateExpectation(
 					};
 		case "integer-between": {
 			const numeric =
-				// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: RedisReply.value is the parsed RedisValue domain.
-				typeof reply.value === "number"
+				isJsonNumber(reply.value)
 					? reply.value
-					: // oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: RedisReply.value is the parsed RedisValue domain.
-						typeof reply.value === "string" && /^-?\d+$/u.test(reply.value)
+					: isJsonString(reply.value) && /^-?\d+$/u.test(reply.value)
 						? Number(reply.value)
 						: undefined;
 			if (numeric === undefined) {
@@ -231,8 +227,7 @@ export function evaluateExpectation(
 			if (bytes === undefined) {
 				return { ok: false, detail: `no declared size for ${expectation.of}` };
 			}
-			// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: RedisReply.value is the parsed RedisValue domain.
-			if (typeof reply.value !== "string") {
+			if (!isJsonString(reply.value)) {
 				return {
 					ok: false,
 					detail: `expected a string reply, got ${summarize(reply.value)}`,

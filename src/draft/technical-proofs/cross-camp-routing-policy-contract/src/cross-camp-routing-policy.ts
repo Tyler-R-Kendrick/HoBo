@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject } from "./json.js";
 export function routeCrossCampTraffic(request) {
   const normalized = normalizeRequest(request);
   if (normalized.policy.kind === "weighted") {
@@ -141,7 +142,7 @@ function routeGeo(normalized) {
 }
 
 function normalizeRequest(request) {
-  if (!isRecord(request)) {
+  if (!request || !isJsonObject(request)) {
     throw new Error("routing request is required");
   }
   return {
@@ -218,14 +219,16 @@ function routingChanged(request, data) {
 }
 
 function routeResult(status, record, events, reason) {
-  const result = { status, events: clone(events) };
-  if (reason) result.reason = reason;
-  if (record) result.record = clone(record);
-  return deepFreeze(result);
+  return deepFreeze({
+    status,
+    ...(reason ? { reason } : undefined),
+    ...(record ? { record: clone(record) } : undefined),
+    events: clone(events),
+  });
 }
 
 function requireString(value, field) {
-  if (!isString(value) || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value.trim();
@@ -252,7 +255,7 @@ function clone(value) {
 }
 
 function deepFreeze(value) {
-  if (!isObjectLike(value)) {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   for (const child of Object.values(value)) {
@@ -260,4 +263,3 @@ function deepFreeze(value) {
   }
   return Object.freeze(value);
 }
-import { isObjectLike, isRecord, isString } from "./json.js";

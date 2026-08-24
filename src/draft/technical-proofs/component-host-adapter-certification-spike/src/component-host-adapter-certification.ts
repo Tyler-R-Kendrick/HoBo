@@ -2,6 +2,8 @@ import {
   createReferenceRuntimeLocalHost,
   runComponentHostConformance,
 } from "../../component-host-conformance-suite/src/component-host-conformance.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const ADAPTER_CERTIFICATION_SCHEMA = "hobo.component-host-adapter-certification-spike/v1";
 export const COMPONENT_HOST_SUITE = "@hobo/conformance/component-host";
@@ -348,7 +350,7 @@ function createProfile(base, overrides) {
 }
 
 function normalizeProfile(profile, fieldName) {
-  if (!isPlainObject(profile)) {
+  if (!profile || !isJsonObject(profile)) {
     throw new TypeError(`${fieldName} is required`);
   }
   requireNonEmptyString(profile.id, `${fieldName}.id`);
@@ -412,13 +414,13 @@ function camelToKebab(value) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (!isNonEmptyString(value)) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
 }
 
 function deepFreeze(value) {
-  if (!isObjectLike(value) || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   Object.freeze(value);
@@ -426,16 +428,4 @@ function deepFreeze(value) {
     deepFreeze(child);
   }
   return value;
-}
-
-function isPlainObject(value) {
-  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
-}
-
-function isObjectLike(value) {
-  return value !== null && (Array.isArray(value) || isPlainObject(value));
-}
-
-function isNonEmptyString(value) {
-  return Object.prototype.toString.call(value) === "[object String]" && value.length > 0;
 }

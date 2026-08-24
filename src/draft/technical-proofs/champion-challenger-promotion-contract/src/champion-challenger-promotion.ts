@@ -1,6 +1,8 @@
 import { createHash } from "node:crypto";
 
 import { validateCandidatePatch } from "../../training-engine-port-contract/src/training-engine-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const CHAMPION_CHALLENGER_PROMOTION_SCHEMA = "hobo.champion-challenger-promotion/v1";
 
@@ -76,7 +78,7 @@ export function checkGeneratedRegionDrift({ source, expectedSource, regionId }) 
 export function createChampionChallengerPromotion({ now = () => "2026-06-28T19:10:00.000Z" } = {}) {
   return Object.freeze({
     shadowTraffic({ champion, challenger, requests }) {
-      if (!isCallable(champion) || !isCallable(challenger)) {
+      if (!(champion instanceof Function) || !(challenger instanceof Function)) {
         throw new ChampionChallengerPromotionError("promotion.callable_required", "$.shadow");
       }
       if (!Array.isArray(requests)) {
@@ -203,7 +205,7 @@ function isCandidateAlreadyApplied(source, candidate) {
     });
     const currentRegionSource = source.slice(currentRegion.startOffset, currentRegion.endOffset);
     const replacement = candidate?.edits?.[0]?.replacement;
-    if (!isString(replacement)) {
+    if (!isJsonString(replacement)) {
       return false;
     }
     const normalizedReplacement =
@@ -256,7 +258,7 @@ function assertCertifiedGate(gate) {
 }
 
 function validateSignedProvenance(provenance) {
-  if (!isObjectRecord(provenance)) {
+  if (!provenance || !isJsonObject(provenance) || Array.isArray(provenance)) {
     throw new ChampionChallengerPromotionError("promotion.provenance_required", "$.provenance");
   }
   if (provenance.kind !== "generation-provenance") {
@@ -321,7 +323,7 @@ function promotionEvent(type, candidate, region, ts, effect, data = {}) {
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (!isString(value) || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new ChampionChallengerPromotionError(code, path);
   }
 }
@@ -338,7 +340,7 @@ function digest(value) {
 }
 
 function stableJson(value) {
-  if (!isObjectRecord(value)) {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
   if (Array.isArray(value)) {
@@ -348,20 +350,6 @@ function stableJson(value) {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
     .join(",")}}`;
-}
-
-function isObjectRecord(value) {
-  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
-}
-
-function isCallable(value) {
-  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
-    Object.prototype.toString.call(value),
-  );
-}
-
-function isString(value) {
-  return Object.prototype.toString.call(value) === "[object String]";
 }
 
 function escapeRegExp(value) {

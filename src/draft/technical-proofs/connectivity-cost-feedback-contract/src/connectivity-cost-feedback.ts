@@ -2,7 +2,8 @@ import {
   ConnectivityTier,
   validateConnectivityPlan
 } from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.js";
-import { isRecord } from "./json.js";
+import { isJsonObject } from "./json.js";
+
 
 const TIER_LABELS = Object.freeze({
   [ConnectivityTier.SAME_PROVIDER_REGION]: "tier-1-same-provider-region",
@@ -45,37 +46,32 @@ export function estimateConnectivityFeedback({ plan, costCatalog, latencyCatalog
     estimate.unratedReason = cost.reason;
   }
 
-  const plannerFeedback = {
-    signal: "connectivity-cost-latency",
-    edgeId: plan.edgeId,
-    tier: plan.tier,
-    egressPerGbUsd: estimate.egressPerGbUsd,
-    latencyMsP50: estimate.latencyMsP50,
-    rating: estimate.rating,
-  };
-  const topologyAnnotation = {
-    edgeId: plan.edgeId,
-    sourceResourceId: plan.source.resourceId,
-    targetResourceId: plan.target.resourceId,
-    tier: plan.tier,
-    tierLabel: TIER_LABELS[plan.tier],
-    estimatedEgressPerGbUsd: estimate.egressPerGbUsd,
-    estimatedLatencyMsP50: estimate.latencyMsP50,
-    rating: estimate.rating,
-  };
-  if (estimate.unratedReason) {
-    plannerFeedback.unratedReason = estimate.unratedReason;
-    topologyAnnotation.unratedReason = estimate.unratedReason;
-  }
-
   return {
     ok: true,
     edgeId: plan.edgeId,
     tier: plan.tier,
     tierLabel: TIER_LABELS[plan.tier],
     estimate,
-    plannerFeedback,
-    topologyAnnotation
+    plannerFeedback: {
+      signal: "connectivity-cost-latency",
+      edgeId: plan.edgeId,
+      tier: plan.tier,
+      egressPerGbUsd: estimate.egressPerGbUsd,
+      latencyMsP50: estimate.latencyMsP50,
+      rating: estimate.rating,
+      ...(estimate.unratedReason ? { unratedReason: estimate.unratedReason } : undefined)
+    },
+    topologyAnnotation: {
+      edgeId: plan.edgeId,
+      sourceResourceId: plan.source.resourceId,
+      targetResourceId: plan.target.resourceId,
+      tier: plan.tier,
+      tierLabel: TIER_LABELS[plan.tier],
+      estimatedEgressPerGbUsd: estimate.egressPerGbUsd,
+      estimatedLatencyMsP50: estimate.latencyMsP50,
+      rating: estimate.rating,
+      ...(estimate.unratedReason ? { unratedReason: estimate.unratedReason } : undefined)
+    }
   };
 }
 
@@ -106,7 +102,7 @@ export function detectStaleTopologyAnnotation({
 } = {}) {
   const current = estimateConnectivityFeedback({ plan: currentPlan, costCatalog, latencyCatalog });
   if (!current.ok) return current;
-  if (!isRecord(existingAnnotation)) {
+  if (!existingAnnotation || !isJsonObject(existingAnnotation) || Array.isArray(existingAnnotation)) {
     return invalid("connectivity-feedback.annotation.invalid", "existingAnnotation must be an object");
   }
 
@@ -131,11 +127,11 @@ function lookupTierValue({ table, tier, plan, field, allowMissing = false, missi
     }
     return invalid("connectivity-feedback.catalog.invalid", "tier catalog must be an object");
   }
-  if (!isRecord(table)) {
+  if (!isJsonObject(table) || Array.isArray(table)) {
     return invalid("connectivity-feedback.catalog.invalid", "tier catalog must be an object");
   }
   const tierEntry = table[tier];
-  if (!isRecord(tierEntry)) {
+  if (!tierEntry || !isJsonObject(tierEntry) || Array.isArray(tierEntry)) {
     if (allowMissing) {
       return { ok: true, key, value: null, missing: true, reason: missingReason ?? `missing catalog entry for tier ${tier}` };
     }

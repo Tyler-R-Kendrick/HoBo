@@ -1,5 +1,6 @@
 import { createHash } from "node:crypto";
-import { isObjectLike, isRecord, isString } from "./json.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const COST_DEGRADATION_SAGA_ENGINE_ID =
   "hobo.cost-degradation-saga/contract@0.1.0";
@@ -728,14 +729,14 @@ function normalizeScope(input, path) {
 }
 
 function expectObject(input, fieldName) {
-  if (!isRecord(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
   return input;
 }
 
 function requireString(input, fieldName) {
-  if (!isString(input) || input.length === 0) {
+  if (!isJsonString(input) || input.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return input;
@@ -807,7 +808,7 @@ function optionalPositiveInteger(input, fieldName) {
 }
 
 function normalizeInstant(input, fieldName) {
-  if (!isString(input)) {
+  if (!isJsonString(input)) {
     throw new TypeError(`${fieldName} must be an ISO-8601 string`);
   }
   const timestamp = Date.parse(input);
@@ -833,7 +834,7 @@ function stableStringify(value) {
   if (Array.isArray(value)) {
     return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
   }
-  if (isObjectLike(value)) {
+  if (value && isJsonObject(value)) {
     return `{${Object.keys(value)
       .filter((key) => value[key] !== undefined)
       .sort()

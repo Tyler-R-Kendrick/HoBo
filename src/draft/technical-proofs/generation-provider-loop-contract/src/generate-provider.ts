@@ -24,9 +24,10 @@ import {
 import {
   runValidationStage
 } from "../../generation-validation-stage-contract/src/validation-stage.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const providerArtifactMediaType = "application/vnd.hobo.provider.layer.v1+json";
-const objectTag = Object.prototype.toString;
 const defaultModel = Object.freeze({
   provider: "fixture",
   id: "deterministic-provider-loop-poc",
@@ -245,7 +246,7 @@ function sanitizeMaterials(materialRefs) {
     );
     const codes = promptInjectionFindings(rawRef);
     const requiresSanitizedRef =
-      objectTag.call(parsed.content) === "[object String]" ||
+      isJsonString(parsed.content) ||
       codes.length > 0 ||
       parsed.sanitized !== true ||
       parsed.trusted !== false;
@@ -557,14 +558,14 @@ function assertFunction(value, code, path) {
 }
 
 function assertObject(value, code, path) {
-  if (!value || objectTag.call(value) !== "[object Object]" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new ProviderGenerationLoopError(code, path);
   }
   return value;
 }
 
 function nonEmptyString(value, path) {
-  if (objectTag.call(value) !== "[object String]" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new ProviderGenerationLoopError("provider_loop.expected_string", path);
   }
   return value;

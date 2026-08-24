@@ -1,4 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this validator receives erased records at its parser boundary and uses typeof only to reject non-object records before domain checks. */
+import { isJsonObject } from "./json.js";
 const REQUIRED_EVIDENCE_IDS = [
   "release-summary-dogfood-cutline",
   "supported-install-alpha-smoke",
@@ -141,7 +141,7 @@ export function evaluateDogfoodAlphaGate(record = RELEASE_NOTES_DOGFOOD_ALPHA_GA
 export function validateDogfoodAlphaGate(record) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["dogfood alpha gate record is required"] };
   }
 

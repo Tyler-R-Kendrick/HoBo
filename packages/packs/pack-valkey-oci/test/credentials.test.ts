@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-unknown-parameters, anti-slop/no-known-value-widening -- custody test doubles are local boundary fixtures. */
 /**
  * The interesting property is negative: nothing in this package ever holds the
  * password, so a custody that returns one is a broken custody rather than a
@@ -17,16 +16,20 @@ import {
 	VALKEY_PACK_ID,
 	VALKEY_PASSWORD_POLICY,
 } from "../src/index.js";
+import { type JsonValue } from "../src/json.js";
+
 
 type Recorded = {
 	readonly scope: PackSecretScope;
 	readonly policy: PackSecretPolicy;
 };
 
-function recordingCustody(locator: string): {
+interface RecordingCustody {
 	readonly custody: PackSecretCustodyPort;
 	readonly calls: Recorded[];
-} {
+}
+
+function recordingCustody(locator: string): RecordingCustody {
 	const calls: Recorded[] = [];
 	return {
 		calls,
@@ -74,7 +77,7 @@ describe("valkey credential provisioning", () => {
 		await expect(
 			provisionValkeyAuthCredential(custody, "resource:yard-1/cache-main"),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: JsonValue) =>
 				isPackError(error) && error.code === "SECRET_CUSTODY_UNAVAILABLE",
 		);
 	});
@@ -86,7 +89,7 @@ describe("valkey credential provisioning", () => {
 		await expect(
 			provisionValkeyAuthCredential(custody, "resource:yard-1/cache-main"),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: JsonValue) =>
 				isPackError(error) && error.code === "SECRET_CUSTODY_UNAVAILABLE",
 		);
 	});
@@ -99,9 +102,8 @@ describe("valkey credential provisioning", () => {
 		await expect(
 			provisionValkeyAuthCredential(custody, "resource:yard-1/cache-main"),
 		).rejects.toSatisfy(
-			(error: unknown) =>
+			(error: JsonValue) =>
 				isPackError(error) && error.code === "SECRET_CUSTODY_UNAVAILABLE",
 		);
 	});
 });
-/* eslint-disable anti-slop/no-unknown-parameters, anti-slop/no-known-value-widening -- custody test doubles are local boundary fixtures. */

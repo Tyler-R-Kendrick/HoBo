@@ -73,12 +73,11 @@ export function createReferenceRedisStore(
 		value: string,
 		expiresAtMs?: number,
 	): void => {
-		const entry: Entry = {
+		store.set(key, {
 			kind: "string",
 			string: value,
-		};
-		if (expiresAtMs !== undefined) entry.expiresAtMs = expiresAtMs;
-		store.set(key, entry);
+			...(expiresAtMs !== undefined ? { expiresAtMs } : undefined),
+		});
 	};
 
 	function handleSet(args: readonly string[]): RedisReply {
@@ -94,7 +93,7 @@ export function createReferenceRedisStore(
 		let expiresAtMs: number | undefined;
 		let nx = false;
 		for (let index = 0; index < rest.length; index += 1) {
-			// SAFETY: the command parser guarantees every rest item is a string.
+			// SAFETY: `const flag = (rest[index] as string).toUpperCase();` is required at this I/O or test boundary.
 			const flag = (rest[index] as string).toUpperCase();
 			if (flag === "NX") {
 				nx = true;

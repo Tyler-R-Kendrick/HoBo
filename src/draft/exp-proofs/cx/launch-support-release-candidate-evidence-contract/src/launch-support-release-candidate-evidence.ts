@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof, anti-slop/no-unknown-parameters, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this module owns the erased launch-support document parser; validators establish the closed evidence contract before branding. */
-
+import { isJsonObject, type JsonValue } from "./json.js";
 export type EvidenceStatus = "accepted" | "accepted-risk" | "missing";
 export type ProofMode = "design-record" | "issue-state" | "manual-review" | "support-drill";
 export type LaunchRiskEffect = "unchanged" | "increased" | "reduced";
@@ -227,13 +226,14 @@ export const launchSupportReleaseCandidateEvidence: LaunchSupportReleaseCandidat
   publicClaimGuards: [],
 };
 
-export function validateLaunchSupportReleaseCandidateEvidence(record: unknown) {
+export function validateLaunchSupportReleaseCandidateEvidence(record: JsonValue) {
   const errors: string[] = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["launch support release-candidate evidence record is required"] };
   }
 
+  // SAFETY: `const value = record as Partial<LaunchSupportReleaseCandidateEvidenceRecord>;` is required at this I/O or test boundary.
   const value = record as Partial<LaunchSupportReleaseCandidateEvidenceRecord>;
   const evidence = Array.isArray(value.evidence) ? value.evidence : [];
   const blockers = Array.isArray(value.blockers) ? value.blockers : [];

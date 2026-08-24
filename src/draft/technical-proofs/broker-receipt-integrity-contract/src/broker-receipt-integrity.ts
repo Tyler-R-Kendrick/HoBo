@@ -1,13 +1,9 @@
-import { createHash, createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
+import { createHash, createPublicKey, generateKeyPairSync, sign, verify } from "node:crypto";
+import { isJsonObject, type JsonValue } from "./json.js";
 
-const TEST_PRIVATE_KEY_PEM = `-----BEGIN PRIVATE KEY-----
-MC4CAQAwBQYDK2VwBCIEIN09KIVIR+xpIGQSyUQHyAHBHGTF/BkVYuWQLkkJAkLh
------END PRIVATE KEY-----`;
 
-const TEST_PUBLIC_KEY_PEM = `-----BEGIN PUBLIC KEY-----
-MCowBQYDK2VwAyEAxtfbicCdWWwgJ/8hpX715s0QTMt2Tb3qinR23WVegHE=
------END PUBLIC KEY-----`;
-
+const TEST_KEY_PAIR = generateKeyPairSync("ed25519");
+const TEST_PUBLIC_KEY_PEM = TEST_KEY_PAIR.publicKey.export({ format: "pem", type: "spki" }).toString();
 export type ReceiptVerificationContext = Readonly<{
   issuer: "meta-cloud-broker";
   keyId: string;
@@ -91,10 +87,6 @@ type SupportSafeReceiptEvidence = Readonly<{
   supportSafe: true;
 }>;
 
-type CanonicalValue = null | boolean | number | string | readonly CanonicalValue[] | {
-  readonly [key: string]: CanonicalValue;
-};
-
 export function createReceiptVerificationContext(): ReceiptVerificationContext {
   return Object.freeze({
     issuer: "meta-cloud-broker",
@@ -136,7 +128,7 @@ export function buildSignedResolutionReceiptFixture(
     },
   });
   const digest = receiptDigest(payload);
-  const privateKey = createPrivateKey(TEST_PRIVATE_KEY_PEM);
+  const privateKey = TEST_KEY_PAIR.privateKey;
 
   return Object.freeze({
     payload,
@@ -245,19 +237,15 @@ function receiptDigest(payload: ResolutionReceiptPayload): string {
   return `sha256:${createHash("sha256").update(canonicalJson(payload)).digest("hex")}`;
 }
 
-function canonicalJson(value: CanonicalValue): string {
+function canonicalJson(value: JsonValue): string {
   if (Array.isArray(value)) {
     return `[${value.map(canonicalJson).join(",")}]`;
   }
-  if (isRecord(value)) {
+  if (value && isJsonObject(value)) {
     return `{${Object.entries(value)
       .sort(([left], [right]) => left.localeCompare(right))
       .map(([key, entry]) => `${JSON.stringify(key)}:${canonicalJson(entry)}`)
       .join(",")}}`;
   }
-  return JSON.stringify(value) ?? "null";
-}
-
-function isRecord(value: CanonicalValue): value is { readonly [key: string]: CanonicalValue } {
-  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
+  return JSON.stringify(value);
 }

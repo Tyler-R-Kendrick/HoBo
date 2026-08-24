@@ -11,6 +11,8 @@ import {
   makeIncidentEvent,
 } from "../../incident-aggregate-contract/src/incident-aggregate.js";
 import { validateRemediationAction } from "../../hobo-remediation-action-contract/src/remediation-action-contract.js";
+import { isJsonString, isJsonNumber, isJsonObject } from "./json.js";
+
 
 export const AUTONOMOUS_DRIFT_REMEDIATION_VERSION = "hobo.autonomous-drift-remediation/v1";
 
@@ -352,7 +354,7 @@ function evaluateBlastRadiusBudget(action, budget) {
 }
 
 function validateDriftSignal(candidate) {
-  if (!isRecord(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     throw new TypeError("drift signal must be an object");
   }
   if (candidate.type !== "resource.DriftDetected") {
@@ -415,7 +417,7 @@ function crewBlastRadius(action) {
 
 function nextCrewSeq(events = []) {
   return events
-    .filter((event) => isNumber(event.seq) && event.type?.startsWith("crew."))
+    .filter((event) => isJsonNumber(event.seq) && event.type?.startsWith("crew."))
     .reduce((max, event) => Math.max(max, event.seq), 0) + 1;
 }
 
@@ -449,7 +451,7 @@ function validateIso(value, fieldName) {
 }
 
 function requiredString(value, fieldName) {
-  if (!isString(value) || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new TypeError(`${fieldName} is required`);
   }
   return value.trim();
@@ -463,27 +465,11 @@ function slug(value) {
 }
 
 function freeze(value) {
-  if (!isObjectLike(value) || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {
     freeze(child);
   }
   return Object.freeze(value);
-}
-
-function isRecord(value) {
-  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
-}
-
-function isObjectLike(value) {
-  return Array.isArray(value) || isRecord(value);
-}
-
-function isNumber(value) {
-  return Object.prototype.toString.call(value) === "[object Number]";
-}
-
-function isString(value) {
-  return Object.prototype.toString.call(value) === "[object String]";
 }

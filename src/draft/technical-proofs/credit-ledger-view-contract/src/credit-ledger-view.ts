@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const CREDIT_LEDGER_VIEW = "CreditLedgerView";
 
@@ -235,7 +237,7 @@ function usageFallsInsideCreditWindow(usage, credit) {
 }
 
 function normalizeInstant(value, fieldName) {
-  if (Object.prototype.toString.call(value) !== "[object String]") {
+  if (!isJsonString(value)) {
     throw new TypeError(`${fieldName} must be an ISO-8601 string`);
   }
   const timestamp = Date.parse(value);
@@ -246,7 +248,7 @@ function normalizeInstant(value, fieldName) {
 }
 
 function requireString(value, fieldName) {
-  if (Object.prototype.toString.call(value) !== "[object String]" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -286,7 +288,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (Object.prototype.toString.call(value) === "[object Object]") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))

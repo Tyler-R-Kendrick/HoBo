@@ -1,7 +1,7 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish the erased provider-operation and string input contracts at the membrane boundary. */
-
 import { createRuntimeLocalEventStore } from "../../camp-eventstore-runtime-port-contract/src/camp-eventstore-runtime-port.js";
 import { classifyFailure } from "../../system-failure-classifier-contract/src/classifier.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const MEMBRANE_FAILURE_CONTRACT_VERSION = "hobo.wrpc-membrane-failure/v1";
 
@@ -177,7 +177,7 @@ class MembraneFailureContract {
       provider.maxInFlight ?? 32,
       "provider.maxInFlight",
     );
-    if (!provider.operations || typeof provider.operations !== "object") {
+    if (!provider.operations || !isJsonObject(provider.operations)) {
       throw new TypeError("provider.operations must be an object");
     }
 
@@ -194,7 +194,7 @@ class MembraneFailureContract {
     const provider = this.#requireProvider(providerId);
     const op = requireNonEmptyString(operation, "operation");
     const implementation = provider.operations[op];
-    if (typeof implementation !== "function") {
+    if (!(implementation instanceof Function)) {
       throw new Error(`wrpc.operation_not_found: ${providerId}.${op}`);
     }
 
@@ -448,9 +448,8 @@ function normalizeNonNegativeInteger(value, fieldName) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
 }
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish the erased provider-operation and string input contracts at the membrane boundary. */

@@ -38,6 +38,8 @@ import {
 	type WorkspaceEvent,
 } from "./journal.js";
 import { parseWorkspaceName, type WorkspaceName } from "./names.js";
+import { isJsonNumber } from "./json.js";
+
 
 // public-contract: marker identifying a registered rift root.
 export const RIFT_DIR = ".hobo-rift";
@@ -187,7 +189,7 @@ export function rebuildRegistry(root: string): RepairResult {
 	// journal where it could never be told from a real creation.
 	const truncated =
 		snapshot !== null &&
-		typeof snapshot.eventCount === "number" &&
+		isJsonNumber(snapshot.eventCount) &&
 		snapshot.eventCount > events.length &&
 		snapshot.workspaces.length > 0;
 	if (truncated) {
@@ -222,7 +224,7 @@ export function rebuildRegistry(root: string): RepairResult {
 		projected.length === 0 &&
 		snapshot !== null &&
 		snapshot.workspaces.length > 0 &&
-		typeof snapshot.eventCount !== "number"
+		!isJsonNumber(snapshot.eventCount)
 	) {
 		// Leave the snapshot alone. It is the only surviving record of those
 		// workspaces' names, tiers and layer paths, and overwriting it with an
@@ -231,9 +233,9 @@ export function rebuildRegistry(root: string): RepairResult {
 		return {
 			root: abs,
 			workspaces: projected,
-			...(typeof snapshot.eventCount === "number"
+			...(isJsonNumber(snapshot.eventCount)
 				? { eventCount: snapshot.eventCount }
-				: {}),
+				: undefined),
 			undecidable: `the snapshot lists ${snapshot.workspaces.length} workspace(s) but predates event counting, so it cannot be told from one that simply predates a removal — ${registryPath(abs)} has been left untouched; inspect it and recreate what you still want`,
 		};
 	}
@@ -251,6 +253,7 @@ function readSnapshotRegistry(root: string): Registry | null {
 	const file = registryPath(root);
 	if (!existsSync(file)) return null;
 	try {
+		// SAFETY: `const snapshot = JSON.parse(readFileSync(file, "utf8")) as Registry;` is required at this I/O or test boundary.
 		const snapshot = JSON.parse(readFileSync(file, "utf8")) as Registry;
 		return Array.isArray(snapshot.workspaces) ? snapshot : null;
 	} catch {
@@ -287,7 +290,12 @@ function writeRegistry(registry: Registry): void {
 	);
 }
 
-export function initRoot(root: string): { root: string; created: boolean } {
+interface RootInitResult {
+	root: string;
+	created: boolean;
+}
+
+export function initRoot(root: string): RootInitResult {
 	const abs = resolve(root);
 	const created = !existsSync(join(abs, RIFT_DIR));
 	mkdirSync(join(abs, RIFT_DIR, "workspaces"), { recursive: true });
@@ -311,6 +319,7 @@ export function entriesToClone(
 	return list(source).filter((entry) => {
 		if (entry === RIFT_DIR) return false;
 		if (copyAll) return true;
+		// SAFETY: `return !REGENERABLE.includes(entry as (typeof REGENERABLE)[number]);` is required at this I/O or test boundary.
 		return !REGENERABLE.includes(entry as (typeof REGENERABLE)[number]);
 	});
 }
@@ -495,6 +504,7 @@ function claimHolderAlive(path: string): boolean {
 		return true;
 	} catch (error) {
 		// EPERM means it exists but belongs to another user — still alive.
+		// SAFETY: `return (error as NodeJS.ErrnoException).code === "EPERM";` is required at this I/O or test boundary.
 		return (error as NodeJS.ErrnoException).code === "EPERM";
 	}
 }

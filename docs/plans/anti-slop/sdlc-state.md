@@ -150,7 +150,8 @@ main
                                                                                                                                            └── sdlc/anti-slop-139-packages-rift-registry  #1398 rift+registry+training+kv-redis
                                                                                                                                             └── sdlc/anti-slop-140-packages-pixel-village  #1401 pixel-village
                                                                                                                                              └── sdlc/anti-slop-141-packages-cloud  #1403 packages/cloud
-                                                                                                                                              └── sdlc/anti-slop-142-packages-cli  packages/cli
+                                                                                                                                              └── sdlc/anti-slop-142-packages-cli  #1405 packages/cli
+                                                                                                                                               └── sdlc/anti-slop-143-packages-iac  iac-pulumi+terraform+crossplane
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -312,7 +313,8 @@ Layer 138: `schema-tools` + `componentize` + `claims` + `convex` + `junctions` p
 Layer 139: `rift` + `registry` + `training` + `kv-redis-compatible` oxlint `--deny-warnings` clean (#1398).
 Layer 140: `pixel-village` oxlint `--deny-warnings` clean (#1401).
 Layer 141: `packages/cloud` oxlint `--deny-warnings` clean (#1403).
-Layer 142: `packages/cli` oxlint `--deny-warnings` clean.
-Next: remaining packages (`iac`, `packs`, `yards`, `replay`, …), then the full-repo `lint:slop --deny-warnings` gate.
+Layer 142: `packages/cli` oxlint `--deny-warnings` clean (#1405).
+Layer 143: `iac-pulumi` + `iac-terraform` + `iac-crossplane` oxlint `--deny-warnings` clean.
+Next: remaining packages (`packs`, `yards`, `replay`, …), then the full-repo `lint:slop --deny-warnings` gate.
 Full-repo `lint:slop --deny-warnings` is still red until those land.
 GitHub stack metadata is at the 100-entry cap; later layers still open PRs via `gh stack submit --auto`.

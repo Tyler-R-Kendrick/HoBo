@@ -1,15 +1,24 @@
 #!/usr/bin/env node
-import { readdirSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
-const workflowDir = join(process.cwd(), ".github", "workflows");
-const files = readdirSync(workflowDir)
+const root = join(process.cwd(), ".github");
+const workflowDir = join(root, "workflows");
+const disabledWorkflowDir = join(root, "workflows-disabled");
+const recognizedFiles = existsSync(workflowDir)
+	? readdirSync(workflowDir).filter((name) => /\.ya?ml$/.test(name))
+	: [];
+const files = existsSync(disabledWorkflowDir)
+	? readdirSync(disabledWorkflowDir)
 	.filter((name) => /\.ya?ml$/.test(name))
 	.sort();
 const errors: string[] = [];
+if (recognizedFiles.length > 0) {
+	errors.push(`.github/workflows must contain no workflow files (found ${recognizedFiles.join(", ")})`);
+}
 
 for (const file of files) {
-	const path = join(workflowDir, file);
+	const path = join(disabledWorkflowDir, file);
 	const text = readFileSync(path, "utf8");
 	const lines = text.split(/\r?\n/);
 	const jobsIndex = lines.findIndex((line) => line === "jobs:");
@@ -70,4 +79,4 @@ if (errors.length > 0) {
 	for (const error of errors) console.error(`ERR ${error}`);
 	process.exit(1);
 }
-console.log(`actions lint ok: ${files.length} workflow file(s)`);
+console.log(`actions lint ok: ${files.length} disabled workflow file(s); .github/workflows is empty`);

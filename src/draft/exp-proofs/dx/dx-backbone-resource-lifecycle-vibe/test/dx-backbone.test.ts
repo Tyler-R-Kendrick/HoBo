@@ -151,6 +151,7 @@ test("malformed untrusted records fail closed with validation errors", () => {
   assert.match(empty.errors.join("\n"), /child slices must be an array/);
   assert.throws(() => parseDxBackboneRecord({}), /child slices must be an array/);
 
+  // SAFETY: `const malformed = structuredClone(DX_BACKBONE_RECORD) as typeof DX_BACKBONE_RECO` is required at this I/O or test boundary.
   const malformed = structuredClone(DX_BACKBONE_RECORD) as typeof DX_BACKBONE_RECORD & {
     childSlices: Array<{ scopeOut?: string[] }>;
   };

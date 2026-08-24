@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const ERROR_BUDGET_DEPLOY_GATE_VERSION = "hobo.error-budget-deploy-gate/v1";
 
@@ -445,7 +447,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (value === null || Object.prototype.toString.call(value) !== "[object Object]") {
+  if (!value || !isJsonObject(value)) {
     return value;
   }
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
@@ -456,13 +458,13 @@ function cloneJson(value) {
 }
 
 function assertObject(value, name) {
-  if (value === null || Object.prototype.toString.call(value) !== "[object Object]") {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new Error(`${name} must be an object`);
   }
 }
 
 function assertNonEmptyString(value, name) {
-  if (Object.prototype.toString.call(value) !== "[object String]" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${name} must be a non-empty string`);
   }
 }

@@ -45,9 +45,47 @@ jobs:
   agent-e2e:
     # Hosted Actions runners are disabled until explicitly re-enabled.
     if: ${{ false }}
+    name: agent-e2e
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Build MCP surface + identity + Yard and dependencies
+        run: pnpm exec turbo run build --filter @hobo/mcp... --filter @hobo/identity... --filter @hobo/cloud... --concurrency=100%
+      - name: Agent deploys via MCP over brokered tokens (parity + scope + inert output)
+        run: pnpm --filter @hobo/mcp test
+      - name: Brokered-tokens-only + >=99% brokered ratio (token broker)
+        run: pnpm --filter @hobo/identity test
+      - name: CredentialAudit trail + seeded PlanRejected self-correction
+        run: pnpm --filter @hobo/cloud test
+
   adversarial:
     # Hosted Actions runners are disabled until explicitly re-enabled.
     if: ${{ false }}
+    name: adversarial
+    runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - run: corepack enable pnpm
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Build MCP surface and dependencies
+        run: pnpm exec turbo run build --filter @hobo/mcp... --concurrency=100%
+      - name: Prompt-injection corpus fail-closed + rate-limit backpressure
+        run: pnpm --filter @hobo/mcp exec vitest run test/injection.test.ts test/rate-limit.test.ts
+
   live:
     name: live-cloud (held)
     # Hosted Actions runners are disabled until explicitly re-enabled.

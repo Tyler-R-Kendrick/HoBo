@@ -1,5 +1,6 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased corpus, field, and JSON-like value contracts at the shared parser and canonicalization boundaries. */
 import { evaluateRolloutMetricGate, stableDigest } from "../../slo-gated-rollback-analysis-contract/src/slo-gated-rollback-analysis.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const SPIKE_SCHEMA = "hobo.slo-rollback-decision-correctness/v1";
 
@@ -182,7 +183,7 @@ function rate(count, total) {
 }
 
 function validateCorpus(corpus) {
-  if (!corpus || typeof corpus !== "object" || Array.isArray(corpus)) {
+  if (!corpus || !isJsonObject(corpus) || Array.isArray(corpus)) {
     throw new Error("corpus must be an object");
   }
   if (!Array.isArray(corpus.fixtures) || corpus.fixtures.length === 0) {
@@ -197,7 +198,7 @@ function validateCorpus(corpus) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value.trim();
@@ -231,7 +232,7 @@ function cloneJson(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

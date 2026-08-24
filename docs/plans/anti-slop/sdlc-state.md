@@ -134,7 +134,8 @@ main
                                                                                                                            └── sdlc/anti-slop-123-draft-exp-tinies  #1382 80 remaining 1-3 count exp-proofs
                                                                                                                             └── sdlc/anti-slop-124-draft-exp-5count  #1383 xaa-scope+sre-drift+vibe-dashboard+pilot+snapshop+support
                                                                                                                              └── sdlc/anti-slop-125-draft-exp-6count  #1384 billing-credits+legal-privacy-beta/rc+dogfood-yard-rc+readiness-dashboard+vibe-publisher/support
-                                                                                                                              └── sdlc/anti-slop-126-draft-exp-7count  cli-mcp-parity+hosted-broker-ga+backup-restore-drill+cli-deploy+vibe-a11y+vibe-tutorials
+                                                                                                                              └── sdlc/anti-slop-126-draft-exp-7count  #1385 cli-mcp-parity+hosted-broker-ga+backup-restore-drill+cli-deploy+vibe-a11y+vibe-tutorials
+                                                                                                                               └── sdlc/anti-slop-127-draft-exp-8count-cx  beta-pilot-ga/rc+known-limitations+launch-site-demo/ga+launch-support-rc+legal-privacy-ga+release-notes-ga
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -280,7 +281,8 @@ Layer 122: `ai-generation-launch-posture-contract` + `compatibility-matrix-scope
 Layer 123: 80 remaining 1–3 count `src/draft/exp-proofs` packages oxlint `--deny-warnings` clean (#1382).
 Layer 124: `xaa-scope-inference-contract` + `sre-drift-remediation-journey-contract` + `vibe-deployment-dashboard-mockups` + `vibe-first-customer-pilot-storyboard` + `vibe-snapshop-launch-demo-storyboard` + `vibe-support-case-redacted-evidence` oxlint `--deny-warnings` clean (#1383). 5-count exp-proofs are cleared.
 Layer 125: `billing-credits-scope-contract` + `legal-privacy-private-beta-evidence-contract` + `legal-privacy-release-candidate-evidence-contract` + `dogfood-yard-release-candidate-contract` + `v1-readiness-dashboard-contract` + `vibe-publisher-portal-review-mockups` + `vibe-support-workflow-mockups` oxlint `--deny-warnings` clean (#1384). 6-count exp-proofs are cleared.
-Layer 126: `cli-mcp-parity-resource-lifecycle-contracts` + `hosted-broker-ga-handoff-evidence-contract` + `backup-restore-launch-drill-contract` + `cli-deploy-transcript-prototype` + `vibe-representative-a11y-usability-checks` + `vibe-role-tutorial-outlines` oxlint `--deny-warnings` clean. 7-count exp-proofs are cleared.
-Next: remaining 8+ count `src/draft` exp-proofs, then projects.
+Layer 126: `cli-mcp-parity-resource-lifecycle-contracts` + `hosted-broker-ga-handoff-evidence-contract` + `backup-restore-launch-drill-contract` + `cli-deploy-transcript-prototype` + `vibe-representative-a11y-usability-checks` + `vibe-role-tutorial-outlines` oxlint `--deny-warnings` clean (#1385). 7-count exp-proofs are cleared.
+Layer 127: `beta-pilot-ga-handoff-evidence-contract` + `beta-pilot-release-candidate-evidence-contract` + `known-limitations-register-contract` + `launch-site-demo-alpha-evidence-contract` + `launch-site-ga-handoff-evidence-contract` + `launch-support-release-candidate-evidence-contract` + `legal-privacy-ga-handoff-evidence-contract` + `v1-release-notes-upgrade-guide-ga-handoff-evidence-contract` oxlint `--deny-warnings` clean.
+Next: remaining 8-count `src/draft` exp-proofs, then 9+ count and projects.
 Full-repo `lint:slop --deny-warnings` is still red until those land.
 GitHub stack metadata is at the 100-entry cap; later layers still open PRs via `gh stack submit --auto`.

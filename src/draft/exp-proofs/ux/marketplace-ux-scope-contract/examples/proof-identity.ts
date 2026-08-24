@@ -6,9 +6,10 @@ import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import path from "node:path";
 import assert from "node:assert/strict";
+import { parseJsonObject } from "../src/json.js";
 
 const root = path.dirname(fileURLToPath(import.meta.url));
-const proof = JSON.parse(
+const proof = parseJsonObject(
   readFileSync(path.join(root, "..", "proof.json"), "utf8"),
 );
 

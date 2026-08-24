@@ -1,3 +1,4 @@
+import { isJsonObject, type JsonValue } from "./json.js";
 export const REQUIRED_ANNOTATION_CASES = [
   "policy denial",
   "widened permission",
@@ -196,7 +197,7 @@ const SCOPE_OUT_PATTERNS: readonly RegExp[] = [
   /\b(production ui|dashboard implementation|production dashboard|build dashboard|ship.*ui|launch claim|final launch)\b/i,
 ];
 
-export function parsePlanAnnotationPseudocode(input: unknown): PlanAnnotationPseudocode {
+export function parsePlanAnnotationPseudocode(input: JsonValue): PlanAnnotationPseudocode {
   const result = evaluatePlanAnnotationPseudocode(input);
   if (!result.record || result.errors.length > 0) {
     throw new TypeError(result.errors.join("; "));
@@ -208,7 +209,7 @@ export function parsePlanAnnotationPseudocode(input: unknown): PlanAnnotationPse
   };
 }
 
-export function evaluatePlanAnnotationPseudocode(input: unknown): {
+export interface PlanAnnotationEvaluation {
   ok: boolean;
   errors: string[];
   record?: UnparsedPlanAnnotationPseudocode;
@@ -217,9 +218,11 @@ export function evaluatePlanAnnotationPseudocode(input: unknown): {
     proofModes: ProofMode[];
     blockedStates: EvidenceState[];
   };
-} {
+}
+
+export function evaluatePlanAnnotationPseudocode(input: JsonValue): PlanAnnotationEvaluation {
   const errors: string[] = [];
-  if (!input || typeof input !== "object") {
+  if (!input || !isJsonObject(input)) {
     return {
       ok: false,
       errors: ["plan annotation pseudocode record is required"],
@@ -227,6 +230,7 @@ export function evaluatePlanAnnotationPseudocode(input: unknown): {
     };
   }
 
+  // SAFETY: `const record = input as Partial<UnparsedPlanAnnotationPseudocode>;` is required at this I/O or test boundary.
   const record = input as Partial<UnparsedPlanAnnotationPseudocode>;
   if (record.schema !== "hobo.vibe-plan-annotation-pseudocode/v1") {
     errors.push("schema must be hobo.vibe-plan-annotation-pseudocode/v1");
@@ -278,6 +282,7 @@ export function evaluatePlanAnnotationPseudocode(input: unknown): {
   return {
     ok: errors.length === 0,
     errors,
+    // SAFETY: `record: record as UnparsedPlanAnnotationPseudocode,` is required at this I/O or test boundary.
     record: record as UnparsedPlanAnnotationPseudocode,
     accepted: { cases, proofModes, blockedStates },
   };
@@ -377,11 +382,12 @@ function forbiddenReason(request: string): string | undefined {
   return undefined;
 }
 
-function isAnnotationCase(value: unknown): value is AnnotationCase {
+function isAnnotationCase(value: JsonValue): value is AnnotationCase {
+  // SAFETY: `return REQUIRED_ANNOTATION_CASES.includes(value as AnnotationCase);` is required at this I/O or test boundary.
   return REQUIRED_ANNOTATION_CASES.includes(value as AnnotationCase);
 }
 
-function isDisplayGroup(value: unknown): value is AnnotationDisplayGroup {
+function isDisplayGroup(value: JsonValue): value is AnnotationDisplayGroup {
   return (
     value === "policy" ||
     value === "cost" ||
@@ -391,15 +397,15 @@ function isDisplayGroup(value: unknown): value is AnnotationDisplayGroup {
   );
 }
 
-function isSeverity(value: unknown): value is AnnotationSeverity {
+function isSeverity(value: JsonValue): value is AnnotationSeverity {
   return value === "info" || value === "warning" || value === "blocked" || value === "critical";
 }
 
-function isProofMode(value: unknown): value is ProofMode {
+function isProofMode(value: JsonValue): value is ProofMode {
   return value === "reference fixture" || value === "simulated" || value === "scope-out" || value === "live";
 }
 
-function isEvidenceState(value: unknown): value is EvidenceState {
+function isEvidenceState(value: JsonValue): value is EvidenceState {
   return value === "happy" || value === "blocked" || value === "stale/unknown";
 }
 

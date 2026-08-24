@@ -1,4 +1,3 @@
-/* oxlint-disable anti-slop/no-conditional-empty-object-spread -- optional certificate fields must remain omitted when absent. */
 /**
  * The `binding.redis-protocol/v1` this pack produces.
  *
@@ -103,7 +102,7 @@ export function buildValkeyBinding(
 			credentialRef: input.credentialRef,
 			...(input.certificateRef !== undefined
 				? { certificateRef: input.certificateRef }
-				: {}),
+				: undefined),
 			metadataRefs: {
 				database: String(database),
 				serverVersion: VALKEY_SERVER_VERSION,

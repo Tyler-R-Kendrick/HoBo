@@ -16,7 +16,8 @@ permissions:
 jobs:
   hello-bindle-fixture:
     name: hello-bindle sandbox fixture (simulate)
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/e2e')
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 20
     permissions:
@@ -49,7 +50,8 @@ jobs:
 
   hello-bindle-fixture-quarantine:
     name: hello-bindle fixture quarantine (simulate)
-    if: github.event_name == 'pull_request' && contains(github.event.pull_request.labels.*.name, 'hobo/e2e-quarantine')
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 20
     continue-on-error: true

@@ -391,12 +391,18 @@ export function parseVibePublisherPortalReviewMockups(
     throw new VibePublisherPortalReviewMockupsParseError(validation.errors);
   }
 
+  // SAFETY: `return mockups as ParsedVibePublisherPortalReviewMockups;` is required at this I/O or test boundary.
   return mockups as ParsedVibePublisherPortalReviewMockups;
+}
+
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
 }
 
 export function validateVibePublisherPortalReviewMockups(
   mockups: VibePublisherPortalReviewMockups,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (mockups.issue !== "HOBO-548") {

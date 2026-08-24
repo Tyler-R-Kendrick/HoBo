@@ -11,6 +11,8 @@ import {
   summarizeCliErrorRefusalExamples,
 } from "../src/cli-error-refusal-examples.ts";
 import { DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS } from "../../../dx/dx-resource-lifecycle-fixture-corpus/src/dx-resource-lifecycle-fixture-corpus.ts";
+import { type JsonValue } from "../src/json.js";
+
 
 const ACCEPTED_FIXTURE_IDS = new Set(
   DX_RESOURCE_LIFECYCLE_FIXTURE_CORPUS.scenarios.flatMap((scenario) =>
@@ -159,12 +161,13 @@ describe("CLI error and refusal examples", () => {
       new URL("../architecture/cli_error_refusal_examples.cue", import.meta.url),
       "utf8",
     );
+    // SAFETY: `const pact = JSON.parse(` is required at this I/O or test boundary.
     const pact = JSON.parse(
       readFileSync(
         new URL("../architecture/pacts/cli_error_refusal_examples.pact.json", import.meta.url),
         "utf8",
       ),
-    ) as { consumer: { name: string }; provider: { name: string }; interactions: unknown[] };
+    ) as { consumer: { name: string }; provider: { name: string }; interactions: JsonValue[] };
 
     assert.match(proto, /message CliErrorRefusalCatalog/);
     assert.match(cue, /#CliErrorRefusalCatalog/);

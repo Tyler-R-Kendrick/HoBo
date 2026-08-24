@@ -1,3 +1,4 @@
+import { type JsonObject } from "./json.js";
 export const POLICY_AUTHORING_SCHEMA_VERSION: "hobo.policy-authoring/v1";
 export const POLICY_WAIVER_SCHEMA_VERSION: "hobo.policy-waiver/v1";
 export const POLICY_WAIVER_REQUESTED: "policy.WaiverRequested";
@@ -102,19 +103,6 @@ export interface DeniedResult {
   reason: string;
 }
 
-export interface PolicyWaiverEventData {
-  waiverId: string;
-  status: "requested" | "approved";
-  target: NormalizedPolicyTarget;
-  requester: NormalizedPolicyPrincipal;
-  approverRole: string;
-  reason: string;
-  requestedAt: string;
-  approvedAt?: string;
-  expiresAt: string;
-  sourcePolicyIds: string[];
-}
-
 export interface PolicyWaiverEvent {
   type: typeof POLICY_WAIVER_REQUESTED | typeof POLICY_WAIVER_APPROVED;
   schemaVersion: typeof POLICY_WAIVER_SCHEMA_VERSION;
@@ -124,7 +112,7 @@ export interface PolicyWaiverEvent {
     id: string;
     roles: string[];
   };
-  data: PolicyWaiverEventData;
+  data: JsonObject;
 }
 
 export interface RequestedPolicyWaiver {
@@ -159,14 +147,7 @@ export interface PolicyWaiverDecision {
   effect: PolicyDecisionEffect;
   reason: string;
   target: NormalizedPolicyTarget;
-  evidence:
-    | { code: string; waiverId?: string; expiresAt?: string }
-    | {
-        waiverId: string;
-        sourcePolicyIds: string[];
-        expiresAt: string;
-        auditEventTypes: (typeof POLICY_WAIVER_REQUESTED | typeof POLICY_WAIVER_APPROVED)[];
-      };
+  evidence: JsonObject;
 }
 
 export function definePolicyRule(input: {

@@ -1,3 +1,4 @@
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const REQUIRED_DASHBOARD_READ_STATES = [
   "fresh",
   "stale",
@@ -474,7 +475,7 @@ export function classifyDashboardFixtureScope(input: string): ScopeClassificatio
 }
 
 export function parseDashboardFreshnessRbacFixtures(
-  value: unknown,
+  value: JsonValue,
 ): DashboardFreshnessRbacFixtureProof {
   const proof = expectRecord(value, "dashboard fixture proof");
   expectLiteral(proof.issue, "HOBO-545", "issue");
@@ -509,6 +510,7 @@ export function parseDashboardFreshnessRbacFixtures(
     expectStringArray(proof.accessibilityNotes, "accessibilityNotes"),
   );
 
+  // SAFETY: `return value as DashboardFreshnessRbacFixtureProof;` is required at this I/O or test boundary.
   return value as DashboardFreshnessRbacFixtureProof;
 }
 
@@ -540,7 +542,7 @@ export function renderSupportHandoffPacket(
   };
 }
 
-function expectFixture(value: unknown): DashboardReadStateFixture {
+function expectFixture(value: JsonValue): DashboardReadStateFixture {
   const fixture = expectRecord(value, "fixture");
   const state = expectOneOf(
     fixture.state,
@@ -585,10 +587,11 @@ function expectFixture(value: unknown): DashboardReadStateFixture {
     throw new TypeError(`${state} must include withheld redaction evidence`);
   }
 
+  // SAFETY: `return fixture as DashboardReadStateFixture;` is required at this I/O or test boundary.
   return fixture as DashboardReadStateFixture;
 }
 
-function expectCoveragePath(value: unknown): DashboardFixtureCoveragePath {
+function expectCoveragePath(value: JsonValue): DashboardFixtureCoveragePath {
   const path = expectRecord(value, "coveragePath");
   const id = expectOneOf(path.id, REQUIRED_DASHBOARD_COVERAGE_PATHS, "coveragePath.id");
   const fixtureIds = expectStringArray(path.fixtureIds, `${id}.fixtureIds`);
@@ -604,6 +607,7 @@ function expectCoveragePath(value: unknown): DashboardFixtureCoveragePath {
     expectOneOf(proofMode, REQUIRED_DASHBOARD_PROOF_MODES, `${id}.proofModeLabels`);
   }
   expectString(path.safeOutcome, `${id}.safeOutcome`);
+  // SAFETY: `return path as DashboardFixtureCoveragePath;` is required at this I/O or test boundary.
   return path as DashboardFixtureCoveragePath;
 }
 
@@ -665,37 +669,39 @@ function assertAccessibilityNotes(notes: readonly string[]): void {
   }
 }
 
-function expectRecord(value: unknown, label: string): Record<string, unknown> {
-  if (typeof value !== "object" || value === null || Array.isArray(value)) {
+function expectRecord(value: JsonValue, label: string): JsonObject {
+  if (!isJsonObject(value) || value === null || Array.isArray(value)) {
     throw new TypeError(`${label} must be an object`);
   }
-  return value as Record<string, unknown>;
+  // SAFETY: `return value as JsonObject;` is required at this I/O or test boundary.
+  return value as JsonObject;
 }
 
-function expectArray(value: unknown, label: string): readonly unknown[] {
+function expectArray(value: JsonValue, label: string): readonly unknown[] {
   if (!Array.isArray(value)) {
     throw new TypeError(`${label} must be an array`);
   }
   return value;
 }
 
-function expectString(value: unknown, label: string): string {
-  if (typeof value !== "string" || value.length === 0) {
+function expectString(value: JsonValue, label: string): string {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${label} must be a non-empty string`);
   }
   return value;
 }
 
-function expectStringArray(value: unknown, label: string): readonly string[] {
+function expectStringArray(value: JsonValue, label: string): readonly string[] {
   const values = expectArray(value, label);
   for (const [index, item] of values.entries()) {
     expectString(item, `${label}[${index}]`);
   }
+  // SAFETY: `return values as readonly string[];` is required at this I/O or test boundary.
   return values as readonly string[];
 }
 
 function expectLiteral<T extends string>(
-  value: unknown,
+  value: JsonValue,
   expected: T,
   label: string,
 ): T {
@@ -706,11 +712,11 @@ function expectLiteral<T extends string>(
 }
 
 function expectOneOf<T extends readonly string[]>(
-  value: unknown,
+  value: JsonValue,
   expected: T,
   label: string,
 ): T[number] {
-  if (typeof value !== "string" || !expected.includes(value)) {
+  if (!isJsonString(value) || !expected.includes(value)) {
     throw new TypeError(`${label} must be one of ${expected.join(", ")}`);
   }
   return value;

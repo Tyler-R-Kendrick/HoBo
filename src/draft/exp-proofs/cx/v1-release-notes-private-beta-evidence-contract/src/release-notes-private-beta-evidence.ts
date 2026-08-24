@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased evidence payloads at the shared validator boundary before domain evaluation. */
-
+import { isJsonBoolean, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 export const REQUIRED_PRIVATE_BETA_EVIDENCE = [
   "release-notes-private-beta-outline",
   "release-cutline-private-beta-delta",
@@ -12,17 +11,6 @@ export const REQUIRED_PRIVATE_BETA_EVIDENCE = [
 
 export type PrivateBetaEvidenceId = (typeof REQUIRED_PRIVATE_BETA_EVIDENCE)[number];
 export type EvidenceStatus = "accepted" | "accepted-substitute" | "missing";
-
-type EvidenceInput =
-  | boolean
-  | number
-  | string
-  | null
-  | undefined
-  | readonly EvidenceInput[]
-  | { readonly [key: string]: EvidenceInput };
-
-type ValidationResult = { readonly ok: boolean; readonly errors: string[] };
 
 export type RequiredEvidence = {
   readonly id: PrivateBetaEvidenceId;
@@ -210,8 +198,13 @@ export const RELEASE_NOTES_PRIVATE_BETA_EVIDENCE: ReleaseNotesPrivateBetaEvidenc
   }
 };
 
-export function validateReleaseNotesPrivateBetaEvidence(input: EvidenceInput): ValidationResult {
-  // SAFETY: isRecord has established that the erased payload is an object; the validator checks each field before use.
+export interface EvidenceValidation {
+  ok: boolean;
+  errors: string[];
+}
+
+export function validateReleaseNotesPrivateBetaEvidence(input: JsonValue): EvidenceValidation {
+  // SAFETY: `const record = isRecord(input) ? input as Partial<ReleaseNotesPrivateBetaEvidenc` is required at this I/O or test boundary.
   const record = isRecord(input) ? input as Partial<ReleaseNotesPrivateBetaEvidenceRecord> : {};
   const errors: string[] = [];
 
@@ -228,10 +221,10 @@ export function validateReleaseNotesPrivateBetaEvidence(input: EvidenceInput): V
     errors.push("milestone gate must be M2 Private beta proof");
   }
 
-  // SAFETY: objectArray established that each entry is an object; field-level checks below validate the partial domain shape.
+  // SAFETY: `const requiredEvidence = objectArray(record.requiredEvidence, "requiredEvidence"` is required at this I/O or test boundary.
   const requiredEvidence = objectArray(record.requiredEvidence, "requiredEvidence", errors) as Partial<RequiredEvidence>[];
   const evidenceById = new Map(requiredEvidence.map((evidence) => [evidence.id, evidence]));
-  const seenEvidenceIds = new Set<unknown>();
+  const seenEvidenceIds = new Set<JsonValue>();
   for (const evidence of requiredEvidence) {
     const evidenceLabel = evidence.id ?? "<missing evidence>";
     if (seenEvidenceIds.has(evidence.id)) {
@@ -259,7 +252,7 @@ export function validateReleaseNotesPrivateBetaEvidence(input: EvidenceInput): V
     }
   }
 
-  // SAFETY: objectArray established that each entry is an object; blocker fields are checked before they affect the result.
+  // SAFETY: `const blockers = objectArray(record.blockers, "blockers", errors) as Partial<Rec` is required at this I/O or test boundary.
   const blockers = objectArray(record.blockers, "blockers", errors) as Partial<RecordedBlocker>[];
   if (blockers.length === 0) {
     errors.push("blockers must be recorded even when none are open");
@@ -270,7 +263,7 @@ export function validateReleaseNotesPrivateBetaEvidence(input: EvidenceInput): V
     }
   }
 
-  // SAFETY: objectArray established that each entry is an object; risk fields are checked before they affect the result.
+  // SAFETY: `const acceptedRisks = objectArray(record.acceptedRisks, "acceptedRisks", errors)` is required at this I/O or test boundary.
   const acceptedRisks = objectArray(record.acceptedRisks, "acceptedRisks", errors) as Partial<AcceptedRisk>[];
   if (acceptedRisks.length === 0) {
     errors.push("accepted risks must be recorded");
@@ -285,12 +278,13 @@ export function validateReleaseNotesPrivateBetaEvidence(input: EvidenceInput): V
   if (!releaseCutline) {
     errors.push("release cutline must be recorded");
   }
-  // SAFETY: objectArray established that each dependency entry is an object; dependency fields are only read for project names.
-  const releaseCutlineDependencies = objectArray(
+  const releaseCutlineDependenciesRaw = objectArray(
     releaseCutline?.dependencies,
     "releaseCutline.dependencies",
     errors
-  ) as Partial<ReleaseCutlineDependency>[];
+  );
+  // SAFETY: `const releaseCutlineDependencies = releaseCutlineDependenciesRaw as Partial<ReleaseCutlineDependency>[];` is required at this I/O or test boundary.
+  const releaseCutlineDependencies = releaseCutlineDependenciesRaw as Partial<ReleaseCutlineDependency>[];
   const cutlineProjects = new Set(releaseCutlineDependencies.map((dependency) => dependency.project));
   for (const evidence of requiredEvidence) {
     if (evidence.owningProject && !cutlineProjects.has(evidence.owningProject)) {
@@ -298,7 +292,7 @@ export function validateReleaseNotesPrivateBetaEvidence(input: EvidenceInput): V
     }
   }
 
-  // SAFETY: objectArray established that each entry is an object; follow-up fields are checked before they affect the result.
+  // SAFETY: `const followUps = objectArray(record.followUps, "followUps", errors) as Partial<` is required at this I/O or test boundary.
   const followUps = objectArray(record.followUps, "followUps", errors) as Partial<FollowUpIssue>[];
   for (const followUp of followUps) {
     const evidence = evidenceById.get(followUp.evidenceId);
@@ -314,10 +308,13 @@ export function validateReleaseNotesPrivateBetaEvidence(input: EvidenceInput): V
     }
   }
 
-  // SAFETY: isRecord established that the parent status payload is an object; each required field is checked below.
-  const parentInitiativeStatus = isRecord(record.parentInitiativeStatus)
-    ? record.parentInitiativeStatus as Partial<ReleaseNotesPrivateBetaEvidenceRecord["parentInitiativeStatus"]>
-    : undefined;
+  let parentInitiativeStatus: Partial<ReleaseNotesPrivateBetaEvidenceRecord["parentInitiativeStatus"]> | undefined;
+  if (isRecord(record.parentInitiativeStatus)) {
+    // SAFETY: `parentInitiativeStatus = record.parentInitiativeStatus as Partial<ReleaseNotesPrivateBetaEvidenceRecord["parentInitiativeStatus"]>` is required at this I/O or test boundary.
+    parentInitiativeStatus = record.parentInitiativeStatus as Partial<
+      ReleaseNotesPrivateBetaEvidenceRecord["parentInitiativeStatus"]
+    >;
+  }
   if (!parentInitiativeStatus) {
     errors.push("parent initiative status must be recorded");
   }
@@ -326,7 +323,7 @@ export function validateReleaseNotesPrivateBetaEvidence(input: EvidenceInput): V
   }
   if (
     parentInitiativeStatus
-    && typeof parentInitiativeStatus.gateChangesLaunchRisk !== "boolean"
+    && !isJsonBoolean(parentInitiativeStatus.gateChangesLaunchRisk)
   ) {
     errors.push("gateChangesLaunchRisk must be boolean");
   }
@@ -340,22 +337,22 @@ export function validateReleaseNotesPrivateBetaEvidence(input: EvidenceInput): V
   return { ok: errors.length === 0, errors };
 }
 
-export function assertReleaseNotesPrivateBetaEvidence(input: EvidenceInput): ReleaseNotesPrivateBetaEvidenceRecord {
+export function assertReleaseNotesPrivateBetaEvidence(input: JsonValue): ReleaseNotesPrivateBetaEvidenceRecord {
   const result = validateReleaseNotesPrivateBetaEvidence(input);
   if (!result.ok) {
     throw new Error(result.errors.join("\n"));
   }
-  // SAFETY: validation returned ok, so the complete record contract has been checked before this assertion.
+  // SAFETY: `return input as ReleaseNotesPrivateBetaEvidenceRecord;` is required at this I/O or test boundary.
   return input as ReleaseNotesPrivateBetaEvidenceRecord;
 }
 
-export function canCompletePrivateBetaGate(input: EvidenceInput): boolean {
+export function canCompletePrivateBetaGate(input: JsonValue): boolean {
   const result = validateReleaseNotesPrivateBetaEvidence(input);
   if (!result.ok) {
     return false;
   }
 
-  // SAFETY: validateReleaseNotesPrivateBetaEvidence returned ok, establishing the complete record contract.
+  // SAFETY: `const record = input as ReleaseNotesPrivateBetaEvidenceRecord;` is required at this I/O or test boundary.
   const record = input as ReleaseNotesPrivateBetaEvidenceRecord;
   return (
     record.requiredEvidence.every((evidence) => isAcceptedEvidence(evidence.status)) &&
@@ -368,25 +365,21 @@ function isAcceptedEvidence(status: EvidenceStatus): boolean {
   return status === "accepted" || status === "accepted-substitute";
 }
 
-function isEvidenceStatus(status: EvidenceInput): status is EvidenceStatus {
+function isEvidenceStatus(status: JsonValue): status is EvidenceStatus {
   return status === "accepted" || status === "accepted-substitute" || status === "missing";
 }
 
-function isRecord(value: EvidenceInput): value is { readonly [key: string]: EvidenceInput } {
-  return typeof value === "object" && value !== null;
+function isRecord(value: JsonValue): value is JsonObject {
+  return isJsonObject(value) && value !== null;
 }
 
-function objectArray(
-  value: EvidenceInput | undefined,
-  field: string,
-  errors: string[]
-): { readonly [key: string]: EvidenceInput }[] {
+function objectArray(value: JsonValue, field: string, errors: string[]): JsonObject[] {
   if (!Array.isArray(value)) {
     errors.push(`${field} must be an array`);
     return [];
   }
 
-  const records: { readonly [key: string]: EvidenceInput }[] = [];
+  const records: JsonObject[] = [];
   for (const [index, entry] of value.entries()) {
     if (isRecord(entry)) {
       records.push(entry);

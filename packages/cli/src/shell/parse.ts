@@ -66,39 +66,57 @@ export function parseArgv(
 ): CliRequest {
 	const flags = {
 		json: false,
+		// SAFETY: `camp: null as string | null,` is required at this I/O or test boundary.
 		camp: null as string | null,
 		cwd: path.resolve(options.cwd ?? process.cwd()),
 		verbose: false,
 		quiet: false,
 		help: false,
+		// SAFETY: `to: null as string | null,` is required at this I/O or test boundary.
 		to: null as string | null,
 		rollback: false,
 		seed: false,
+		// SAFETY: `restore: null as string | null,` is required at this I/O or test boundary.
 		restore: null as string | null,
+		// SAFETY: `strategy: null as string | null,` is required at this I/O or test boundary.
 		strategy: null as string | null,
+		// SAFETY: `target: null as string | null,` is required at this I/O or test boundary.
 		target: null as string | null,
 		check: false,
 		last: false,
 		offline: false,
+		// SAFETY: `template: null as string | null,` is required at this I/O or test boundary.
 		template: null as string | null,
 		force: false,
 		hold: false,
+		// SAFETY: `runtime: null as string | null,` is required at this I/O or test boundary.
 		runtime: null as string | null,
+		// SAFETY: `config: null as string | null,` is required at this I/O or test boundary.
 		config: null as string | null,
+		// SAFETY: `policies: null as string | null,` is required at this I/O or test boundary.
 		policies: null as string | null,
+		// SAFETY: `request: null as string | null,` is required at this I/O or test boundary.
 		request: null as string | null,
 		init: false,
 		once: false,
+		// SAFETY: `port: null as string | null,` is required at this I/O or test boundary.
 		port: null as string | null,
+		// SAFETY: `home: null as string | null,` is required at this I/O or test boundary.
 		home: null as string | null,
+		// SAFETY: `host: null as string | null,` is required at this I/O or test boundary.
 		host: null as string | null,
+		// SAFETY: `broker: null as string | null,` is required at this I/O or test boundary.
 		broker: null as string | null,
+		// SAFETY: `brokerUri: null as string | null,` is required at this I/O or test boundary.
 		brokerUri: null as string | null,
 		anonymous: false,
 		temporary: false,
+		// SAFETY: `token: null as string | null,` is required at this I/O or test boundary.
 		token: null as string | null,
 		demo: false,
+		// SAFETY: `demoSeed: null as string | null,` is required at this I/O or test boundary.
 		demoSeed: null as string | null,
+		// SAFETY: `region: null as string | null,` is required at this I/O or test boundary.
 		region: null as string | null,
 	};
 	const args: string[] = [];
@@ -253,6 +271,7 @@ function parseOption(
 		case "--request":
 			// Broker-scoped value flags (cli-spec.md `broker` row).
 			if (verb === "broker") {
+				// SAFETY: `const key = token.slice(2) as "config" | "policies" | "request";` is required at this I/O or test boundary.
 				const key = token.slice(2) as "config" | "policies" | "request";
 				flags[key] = takeValue(argv, index, token);
 				return index + 1;

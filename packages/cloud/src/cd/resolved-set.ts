@@ -10,6 +10,8 @@ import {
 	hashDeploymentPlan,
 	type ResourcePlan,
 } from "../plan-types.js";
+import { isJsonObject, type JsonValue, type JsonObject } from "../json.js";
+
 
 // public-contract: resolved deployment set schema.
 export const RESOLVED_SET_SCHEMA = "hobo.resolved-deployment-set/v1" as const;
@@ -57,10 +59,6 @@ export type ResolvedDeploymentSet = Readonly<{
 	contentHash: `sha256:${string}`;
 }>;
 
-type ResolvedDeploymentSetBody = Omit<ResolvedDeploymentSet, "contentHash"> & {
-	progressive?: NonNullable<ResolvedDeploymentSet["progressive"]>;
-};
-
 export function createResolvedDeploymentSet(input: {
 	readonly tenant: string;
 	readonly environment: string;
@@ -89,7 +87,7 @@ export function createResolvedDeploymentSet(input: {
 	const setId =
 		input.setId ??
 		`set_${createHash("sha256").update(planHash).digest("hex").slice(0, 12)}`;
-	const body: ResolvedDeploymentSetBody = {
+	const body = {
 		schemaVersion: RESOLVED_SET_SCHEMA,
 		setId,
 		tenant: input.tenant,
@@ -100,8 +98,10 @@ export function createResolvedDeploymentSet(input: {
 		matches: input.matches,
 		gatekeeper: input.gatekeeper,
 		secretRefs: Object.freeze([...(input.secretRefs ?? [])]),
+		...(input.progressive !== undefined
+			? { progressive: input.progressive }
+			: undefined),
 	};
-	if (input.progressive !== undefined) body.progressive = input.progressive;
 	const contentHash =
 		`sha256:${createHash("sha256").update(stableStringify(body)).digest("hex")}` as const;
 	return Object.freeze({
@@ -129,18 +129,15 @@ export function listResources(
 	return set.plan.resources;
 }
 
-type HashableValue = JsonValue | ResolvedDeploymentSetBody;
-
-function stableStringify(value: HashableValue): string {
-	if (value === null || value !== Object(value)) {
+function stableStringify(value: JsonValue): string {
+	if (value === null || !isJsonObject(value)) {
 		return JSON.stringify(value);
 	}
 	if (Array.isArray(value)) {
 		return `[${value.map(stableStringify).join(",")}]`;
 	}
-	// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
-	const obj = value as Record<string, JsonValue>;
+	// SAFETY: `const obj = value as JsonObject;` is required at this I/O or test boundary.
+	const obj = value as JsonObject;
 	const keys = Object.keys(obj).sort();
 	return `{${keys.map((k) => `${JSON.stringify(k)}:${stableStringify(obj[k])}`).join(",")}}`;
 }
-import type { JsonValue } from "../plan-types.js";

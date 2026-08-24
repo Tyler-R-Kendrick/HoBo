@@ -35,6 +35,8 @@ import {
 	type SecretFreeDiff,
 	type SecretFreeStatus,
 } from "./secret-free.js";
+import { type JsonObject } from "../json.js";
+
 
 // public-contract: attested apply worker schema.
 export const ATTESTED_APPLY_SCHEMA = "hobo.attested-apply/v1" as const;
@@ -54,7 +56,7 @@ export type CdApplyEvent = Readonly<{
 	schemaVersion: typeof ATTESTED_APPLY_SCHEMA;
 	seq: number;
 	time: string;
-	data: Readonly<Record<string, JsonValue>>;
+	data: Readonly<JsonObject>;
 }>;
 
 export type AttestedPrincipal = Readonly<{
@@ -96,24 +98,6 @@ export type AttestedApplyResult = Readonly<{
 	reason?: string;
 }>;
 
-type AttestedApplyWorker = {
-	readonly schemaVersion: typeof ATTESTED_APPLY_SCHEMA;
-	readonly mode: "live" | "simulate";
-	apply(
-		set: ResolvedDeploymentSet,
-		input?: {
-			readonly deploymentId?: string;
-			readonly parentPrincipal?: PrincipalRef;
-		},
-	): Promise<AttestedApplyResult>;
-	status(
-		set: ResolvedDeploymentSet,
-		deploymentId: string,
-	): Promise<readonly SecretFreeStatus[]>;
-	eventsFor(deploymentId: string): readonly CdApplyEvent[];
-	listDeployments(): readonly string[];
-};
-
 export type AttestedApplyWorkerOptions = Readonly<{
 	readonly executor?: Executor;
 	readonly iac?: IacProvider;
@@ -141,6 +125,28 @@ type DeploymentRecord = Readonly<{
  * Create an attested apply worker bound to a code digest + host measurement.
  * Simulate and live both drive Executor + short-lived credentials.
  */
+export interface AttestedApplyInput {
+	readonly deploymentId?: string;
+	readonly parentPrincipal?: PrincipalRef;
+}
+
+export interface AttestedApplyWorker {
+	readonly schemaVersion: typeof ATTESTED_APPLY_SCHEMA;
+	readonly mode: "live" | "simulate";
+	apply(
+		set: ResolvedDeploymentSet,
+		input?: AttestedApplyInput,
+	): Promise<AttestedApplyResult>;
+	status(
+		set: ResolvedDeploymentSet,
+		deploymentId: string,
+	): Promise<readonly SecretFreeStatus[]>;
+	/** Event log for a prior apply (CLI logs path). */
+	eventsFor(deploymentId: string): readonly CdApplyEvent[];
+	/** Last recorded deployment ids (most recent first). */
+	listDeployments(): readonly string[];
+}
+
 export function createAttestedApplyWorker(
 	options: AttestedApplyWorkerOptions = {},
 ): AttestedApplyWorker {
@@ -188,7 +194,7 @@ export function createAttestedApplyWorker(
 			let seq = 0;
 			const emit = (
 				type: CdApplyEvent["type"],
-				data: Readonly<Record<string, JsonValue>>,
+				data: Readonly<JsonObject>,
 			) => {
 				seq += 1;
 				const evt = Object.freeze({
@@ -354,12 +360,12 @@ export function createAttestedApplyWorker(
 					);
 				}
 
-				const outputs = {
+				const outputs: JsonObject = {
 					...exec.outputs,
 					// Inject a secret-looking field so scrubbing is proven even on live adapters.
-					...(mode === "simulate" && {
-						apiToken: "should-never-appear-in-projection",
-					}),
+					...(mode === "simulate"
+						? { apiToken: "should-never-appear-in-projection" }
+						: undefined),
 				};
 
 				const status = createSecretFreeStatus({
@@ -630,4 +636,3 @@ export function createContractAssertedApplyAttestation(input: {
 	});
 	return attestor.createDocument({ launchMeasurement: launch });
 }
-import type { JsonValue } from "../plan-types.js";

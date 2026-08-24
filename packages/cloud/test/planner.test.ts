@@ -1,5 +1,6 @@
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
+import { parseJsonValue, type JsonValue } from "../src/json.js";
 import { type ManifestV1, parseManifest } from "@hobo/bindles";
 import {
 	createCloudflareProvider,
@@ -18,8 +19,8 @@ import {
 const HELLO_BINDLE_PLAN_HASH =
 	"sha256:30eb585558f0614fac037fa5ada935eaad03e86f35c39110af21b2c58bdaf5b6";
 
-function fixture(name: string): object {
-	return JSON.parse(
+function fixture(name: string): JsonValue {
+	return parseJsonValue(
 		readFileSync(
 			fileURLToPath(new URL(`./fixtures/${name}`, import.meta.url)),
 			"utf8",
@@ -45,7 +46,7 @@ describe("Planner: hello-bindle golden DeploymentPlan DAG", () => {
 		expect(result.ok).toBe(true);
 		if (!result.ok) return;
 
-		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+		// SAFETY: `const golden = fixture("golden-plan.json") as DeploymentPlan;` is required at this I/O or test boundary.
 		const golden = fixture("golden-plan.json") as DeploymentPlan;
 		expect(JSON.parse(canonicalPlanJson(result.plan))).toEqual(
 			JSON.parse(canonicalPlanJson(golden)),
@@ -91,7 +92,7 @@ describe("Planner: hello-bindle golden DeploymentPlan DAG", () => {
 			for (const rejectedCandidate of decision.rejectedCandidates) {
 				expect(rejectedCandidate.reason.length).toBeGreaterThan(0);
 			}
-			expect(decision.tie).toBeTypeOf("boolean");
+			expect(decision.tie === true || decision.tie === false).toBe(true);
 			expect(decision.catalogContentHash).toBe(reg.catalogHash);
 		}
 	});

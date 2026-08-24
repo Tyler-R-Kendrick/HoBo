@@ -18,6 +18,8 @@ import {
 	decideFailurePath,
 	toSecretFreeOutputs,
 } from "../src/index.js";
+import { isJsonObject } from "../src/json.js";
+
 
 describe("Continuous Delivery plane (production path)", () => {
 	it("delivers resolved set under attested apply + progressive promote", async () => {
@@ -33,8 +35,10 @@ describe("Continuous Delivery plane (production path)", () => {
 		for (const step of result.apply.steps) {
 			const token = step.status.outputs.apiToken;
 			expect(token).toBeDefined();
-			expect(token).toMatchObject({ kind: "secretRef" });
-			expect(token).toMatchObject({ ref: expect.stringContaining("secretRef:") });
+			if (isJsonObject(token)) {
+				expect(token.kind).toBe("secretRef");
+				expect(token.ref.startsWith("secretRef:")).toBe(true);
+			}
 			assertSecretFree(step.status);
 			assertSecretFree(step.diff);
 		}
@@ -86,7 +90,10 @@ describe("Continuous Delivery plane (production path)", () => {
 			assertSecretFree(step.status);
 			const pwd = step.status.outputs.dbPassword;
 			if (pwd !== undefined) {
-				expect(pwd).toMatchObject({ kind: "secretRef" });
+				expect(isJsonObject(pwd)).toBe(true);
+				if (isJsonObject(pwd)) {
+					expect(pwd.kind).toBe("secretRef");
+				}
 			}
 		}
 		// status after apply returns recorded secret-free statuses
@@ -213,7 +220,7 @@ describe("Continuous Delivery plane (production path)", () => {
 			},
 		});
 		expect(status.secretFree).toBe(true);
-		expect(status.outputs.password).toMatchObject({ kind: "secretRef" });
+		expect(isJsonObject(status.outputs.password)).toBe(true);
 		assertSecretFree(status);
 		const scrubbed = toSecretFreeOutputs({
 			api_key: "xoxb-1234567890-abcdefghij",

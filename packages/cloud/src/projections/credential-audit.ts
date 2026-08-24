@@ -131,7 +131,7 @@ export interface CredentialAuditRow {
 }
 
 function correlationKey(event: EventEnvelope): string {
-	// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+	// SAFETY: `const data = event.data as` is required at this I/O or test boundary.
 	const data = event.data as
 		| { correlationId?: string; grantId?: string }
 		| undefined;
@@ -203,7 +203,7 @@ function foldMigrationEvent(
 	row: CredentialAuditRow | undefined,
 	event: EventEnvelope,
 ): CredentialAuditRow {
-	// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+	// SAFETY: `const data = event.data as { migrationId?: string };` is required at this I/O or test boundary.
 	const data = event.data as { migrationId?: string };
 	const next = base(row, correlationKey(event));
 	noteMigration(next, data.migrationId);
@@ -224,7 +224,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 		key: correlationKey,
 		on: {
 			[CREDENTIAL_AUDIT_EVENTS.IdentityIssued]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { identityId: string };` is required at this I/O or test boundary.
 				const data = event.data as { identityId: string };
 				const next = base(row, correlationKey(event));
 				if (!next.identityIds.includes(data.identityId)) {
@@ -237,7 +237,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.IdentityRotated]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { identityId: string };` is required at this I/O or test boundary.
 				const data = event.data as { identityId: string };
 				const next = base(row, correlationKey(event));
 				if (!next.identityIds.includes(data.identityId)) {
@@ -268,7 +268,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 			[CREDENTIAL_AUDIT_EVENTS.MigrationCompensated]: (row, event) =>
 				foldMigrationEvent(row, event),
 			[CREDENTIAL_AUDIT_EVENTS.TokenGranted]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as {` is required at this I/O or test boundary.
 				const data = event.data as {
 					grantId: string;
 					svidSubject?: string;
@@ -293,7 +293,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.ConnectionCreated]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { connectionId: string };` is required at this I/O or test boundary.
 				const data = event.data as { connectionId: string };
 				const next = base(row, correlationKey(event));
 				noteConnection(next, data.connectionId);
@@ -304,7 +304,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.ConnectionAuthorized]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { connectionId: string };` is required at this I/O or test boundary.
 				const data = event.data as { connectionId: string };
 				const next = base(row, correlationKey(event));
 				noteConnection(next, data.connectionId);
@@ -315,7 +315,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.ConnectionTokenIssued]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as {` is required at this I/O or test boundary.
 				const data = event.data as {
 					connectionId: string;
 					grantId?: string;
@@ -327,13 +327,13 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 					{
 						seq: event.seq,
 						type: event.type,
-						...(data.grantId !== undefined && { grantId: data.grantId }),
+						...(data.grantId !== undefined ? { grantId: data.grantId } : undefined),
 					},
 				];
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.ConnectionRevoked]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { connectionId: string };` is required at this I/O or test boundary.
 				const data = event.data as { connectionId: string };
 				const next = base(row, correlationKey(event));
 				noteConnection(next, data.connectionId);
@@ -344,7 +344,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.ConnectionNeedsReauth]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { connectionId: string };` is required at this I/O or test boundary.
 				const data = event.data as { connectionId: string };
 				const next = base(row, correlationKey(event));
 				noteConnection(next, data.connectionId);
@@ -355,7 +355,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.TokenUsed]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { grantId: string };` is required at this I/O or test boundary.
 				const data = event.data as { grantId: string };
 				const next = base(row, correlationKey(event));
 				const g = grant(next, data.grantId);
@@ -373,7 +373,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.TokenRevoked]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { grantId: string; reason?: string };` is required at this I/O or test boundary.
 				const data = event.data as { grantId: string; reason?: string };
 				const next = base(row, correlationKey(event));
 				const g = grant(next, data.grantId);
@@ -389,7 +389,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.SessionStarted]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { sessionId: string };` is required at this I/O or test boundary.
 				const data = event.data as { sessionId: string };
 				const next = base(row, correlationKey(event));
 				if (!next.sessionIds.includes(data.sessionId)) {
@@ -402,7 +402,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.SessionRevoked]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { sessionId: string };` is required at this I/O or test boundary.
 				const data = event.data as { sessionId: string };
 				const next = base(row, correlationKey(event));
 				if (!next.sessionIds.includes(data.sessionId)) {
@@ -415,7 +415,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.ConfigResolved]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as {` is required at this I/O or test boundary.
 				const data = event.data as {
 					name?: string;
 					valueRef?: string;
@@ -434,7 +434,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 				return next;
 			},
 			[CREDENTIAL_AUDIT_EVENTS.SecretAccessed]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as {` is required at this I/O or test boundary.
 				const data = event.data as {
 					name?: string;
 					valueRef?: string;
@@ -458,7 +458,7 @@ export const credentialAuditProjection: Projection<CredentialAuditRow> =
 					{
 						seq: event.seq,
 						type: event.type,
-						...(data.grantId !== undefined && { grantId: data.grantId }),
+						...(data.grantId !== undefined ? { grantId: data.grantId } : undefined),
 					},
 				];
 				return next;

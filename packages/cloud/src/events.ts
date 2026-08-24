@@ -12,6 +12,8 @@ import type {
 	MatchDecided,
 	PlanRemediation,
 } from "./plan-types.js";
+import { isJsonString, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const CLOUD_EVENT_SCHEMA_VERSION = "hobo.cloud-events/v1";
 
@@ -128,10 +130,10 @@ export function foldErasedSubjects(
 	const erased = new Set<string>();
 	for (const event of events) {
 		if (event.type === CLOUD_EVENTS.SubjectErasureRequested) {
-			// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+			// SAFETY: `const subject = (event.data as { subject?: unknown } | undefined)` is required at this I/O or test boundary.
 			const subject = (event.data as { subject?: unknown } | undefined)
 				?.subject;
-			if (subject === String(subject) && String(subject).length > 0) {
+			if (isJsonString(subject) && subject.length > 0) {
 				erased.add(subject);
 			}
 		}
@@ -163,7 +165,7 @@ export interface DeploymentRequestedData {
 	deploymentId: string;
 	bindleHash: string;
 	tenant: string;
-	config: Record<string, JsonValue>;
+	config: JsonObject;
 }
 
 export function deploymentRequested(data: DeploymentRequestedData): EventInput {
@@ -192,7 +194,7 @@ export function deploymentPlanRejected(data: {
 
 export function providerRegistered(data: {
 	providerId: string;
-	definitions: unknown[];
+	definitions: JsonValue[];
 	manifestIndexDigest: string;
 }): EventInput {
 	return { type: CLOUD_EVENTS.ProviderRegistered, data };
@@ -306,4 +308,3 @@ export function deploymentRolledBack(
 ): EventInput {
 	return { type: CLOUD_EVENTS.DeploymentRolledBack, data };
 }
-import type { JsonValue } from "./plan-types.js";

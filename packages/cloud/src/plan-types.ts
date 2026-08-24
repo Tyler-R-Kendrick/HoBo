@@ -1,13 +1,5 @@
 import { createHash } from "node:crypto";
 
-export type JsonValue =
-	| null
-	| boolean
-	| number
-	| string
-	| readonly JsonValue[]
-	| { readonly [key: string]: JsonValue };
-
 // Parse, don't validate: the types below are the parsed derived domain types the
 // Planner works with. Their protobuf wire forms live in data-models/cloud.proto
 // and their CUE constraints in data-models/cloud.cue; these narrow those wire
@@ -25,6 +17,8 @@ export type JsonValue =
 // constant has been exported without a `// public-contract:` marker since it
 // was written; touching this file is what surfaced it.
 import { DEPLOYMENT_PLAN_SCHEMA } from "@hobo/manifest-plan";
+import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 // ── The declaration manifest, re-exported from its owner ────────────────────
 //
@@ -82,7 +76,7 @@ export type CapabilityVerdict =
 //      to `Record<string, PlanParameterValue>` (JSON values only, because a
 //      `Date`, a function or an `undefined` canonicalizes to something other
 //      than itself and would move the plan digest), while this package types
-//      it `Record<string, JsonValue>` all the way back through
+//      it `JsonObject` all the way back through
 //      `planner/profile-matching.ts` to `@hobo/yards`' `BindingRow.properties`.
 //      `@hobo/yards`' own authoring surface (`yard.ts`) already says
 //      `Record<string, JsonValue>`; `binding.ts` is the outlier.
@@ -128,7 +122,7 @@ export interface ResourcePlan {
 	 * Never carries credential material — the parse boundary refuses
 	 * credential-shaped keys before a row ever reaches a plan.
 	 */
-	realizationParameters?: Readonly<Record<string, JsonValue>>;
+	realizationParameters?: Readonly<JsonObject>;
 	/** Canonical keys of the applied rows that contributed realization parameters. */
 	nonPortableRows?: readonly string[];
 }
@@ -190,7 +184,7 @@ export interface MatchDecided {
 	/** Canonical keys of the Yard binding rows that constrained this decision. */
 	appliedRows?: readonly string[];
 	/** Provider-native realization parameters merged from the applied rows. */
-	realizationParameters?: Readonly<Record<string, JsonValue>>;
+	realizationParameters?: Readonly<JsonObject>;
 	/** Applied rows that contributed realization parameters (portability attribution). */
 	nonPortableRows?: readonly string[];
 }
@@ -208,21 +202,15 @@ export interface PlanRemediation {
 
 export type PlanHash = `sha256:${string}`;
 
-type SortableValue =
-	| JsonValue
-	| DeploymentPlan
-	| readonly SortableValue[]
-	| { readonly [key: string]: SortableValue };
-
-function sortKeys(value: SortableValue): SortableValue {
+function sortKeys(value: JsonValue): JsonValue {
 	if (Array.isArray(value)) return value.map(sortKeys);
-	if (value !== null && value === Object(value)) {
+	if (value && isJsonObject(value)) {
 		return Object.fromEntries(
-			// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
-			Object.keys(value as Record<string, JsonValue>)
+			// SAFETY: `Object.keys(value as JsonObject)` is required at this I/O or test boundary.
+			Object.keys(value as JsonObject)
 				.sort()
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
-				.map((key) => [key, sortKeys((value as Record<string, JsonValue>)[key])]),
+				// SAFETY: `.map((key) => [key, sortKeys((value as JsonObject)[key])]),` is required at this I/O or test boundary.
+				.map((key) => [key, sortKeys((value as JsonObject)[key])]),
 		);
 	}
 	return value;

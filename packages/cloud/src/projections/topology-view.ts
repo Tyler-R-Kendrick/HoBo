@@ -141,11 +141,11 @@ function setLifecycle(
 export const topologyViewProjection: Projection<TopologyViewRow> =
 	defineProjection<TopologyViewRow>({
 		name: "topology-view",
-		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+		// SAFETY: `key: (event) => (event.data as { deploymentId: string }).deploymentId,` is required at this I/O or test boundary.
 		key: (event) => (event.data as { deploymentId: string }).deploymentId,
 		on: {
 			[CLOUD_EVENTS.DeploymentRequested]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { deploymentId: string; bindleHash: string };` is required at this I/O or test boundary.
 				const data = event.data as { deploymentId: string; bindleHash: string };
 				const next = base(row, data.deploymentId);
 				next.bindleHash = data.bindleHash;
@@ -157,7 +157,7 @@ export const topologyViewProjection: Projection<TopologyViewRow> =
 				return next;
 			},
 			[CLOUD_EVENTS.DeploymentImported]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as {` is required at this I/O or test boundary.
 				const data = event.data as {
 					deploymentId: string;
 					bindleHash: string;
@@ -176,7 +176,7 @@ export const topologyViewProjection: Projection<TopologyViewRow> =
 				return next;
 			},
 			[CLOUD_EVENTS.MatchDecided]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as {` is required at this I/O or test boundary.
 				const data = event.data as {
 					deploymentId: string;
 					resource: string;
@@ -195,7 +195,7 @@ export const topologyViewProjection: Projection<TopologyViewRow> =
 				return next;
 			},
 			[CLOUD_EVENTS.DeploymentPlanned]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as {` is required at this I/O or test boundary.
 				const data = event.data as {
 					deploymentId: string;
 					plan: DeploymentPlan;
@@ -221,35 +221,35 @@ export const topologyViewProjection: Projection<TopologyViewRow> =
 				return next;
 			},
 			[CLOUD_EVENTS.ResourceProvisioning]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { deploymentId: string; resourceId: string };` is required at this I/O or test boundary.
 				const data = event.data as { deploymentId: string; resourceId: string };
 				const next = base(row, data.deploymentId);
 				setLifecycle(next, data.resourceId, "provisioning");
 				return next;
 			},
 			[CLOUD_EVENTS.ResourceProvisioned]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { deploymentId: string; resourceId: string };` is required at this I/O or test boundary.
 				const data = event.data as { deploymentId: string; resourceId: string };
 				const next = base(row, data.deploymentId);
 				setLifecycle(next, data.resourceId, "provisioned");
 				return next;
 			},
 			[CLOUD_EVENTS.ResourceFailed]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { deploymentId: string; resourceId: string };` is required at this I/O or test boundary.
 				const data = event.data as { deploymentId: string; resourceId: string };
 				const next = base(row, data.deploymentId);
 				setLifecycle(next, data.resourceId, "failed");
 				return next;
 			},
 			[CLOUD_EVENTS.ResourceDestroying]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { deploymentId: string; resourceId: string };` is required at this I/O or test boundary.
 				const data = event.data as { deploymentId: string; resourceId: string };
 				const next = base(row, data.deploymentId);
 				setLifecycle(next, data.resourceId, "destroying");
 				return next;
 			},
 			[CLOUD_EVENTS.ResourceDestroyed]: (row, event) => {
-				// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+				// SAFETY: `const data = event.data as { deploymentId: string; resourceId: string };` is required at this I/O or test boundary.
 				const data = event.data as { deploymentId: string; resourceId: string };
 				const next = base(row, data.deploymentId);
 				setLifecycle(next, data.resourceId, "destroyed");

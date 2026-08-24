@@ -150,9 +150,9 @@ export function createContinuousDeliveryPlane(
 		schemaVersion: CD_PLANE_SCHEMA,
 		async deliver(set, opts = {}) {
 			const apply = await worker.apply(set, {
-				...(opts.deploymentId !== undefined && {
-					deploymentId: opts.deploymentId,
-				}),
+				...(opts.deploymentId !== undefined
+					? { deploymentId: opts.deploymentId }
+					: undefined),
 			});
 
 			if (apply.status === "failed" || opts.forceFailure === "apply-failed") {
@@ -168,12 +168,12 @@ export function createContinuousDeliveryPlane(
 						principal: apply.principal.svidSubject,
 					},
 					envelope: opts.envelope ?? createDefaultSafetyEnvelope(),
-					...(opts.selfHealAgent !== undefined && {
-						selfHealAgent: opts.selfHealAgent,
-					}),
-					...(opts.attemptFixInLane !== undefined && {
-						attemptFixInLane: opts.attemptFixInLane,
-					}),
+					...(opts.selfHealAgent !== undefined
+						? { selfHealAgent: opts.selfHealAgent }
+						: undefined),
+					...(opts.attemptFixInLane !== undefined
+						? { attemptFixInLane: opts.attemptFixInLane }
+						: undefined),
 				});
 				const result: ContinuousDeliveryResult = Object.freeze({
 					schemaVersion: CD_PLANE_SCHEMA,
@@ -194,9 +194,9 @@ export function createContinuousDeliveryPlane(
 				deploymentId: apply.deploymentId,
 				store,
 				harness,
-				...(opts.healthSamples !== undefined && {
-					healthSamples: opts.healthSamples,
-				}),
+				...(opts.healthSamples !== undefined
+					? { healthSamples: opts.healthSamples }
+					: undefined),
 				analysis: opts.analysis ?? options.analysis,
 			});
 
@@ -251,12 +251,12 @@ export function createContinuousDeliveryPlane(
 						secretFree: true,
 					},
 					envelope: opts.envelope ?? createDefaultSafetyEnvelope(),
-					...(opts.selfHealAgent !== undefined && {
-						selfHealAgent: opts.selfHealAgent,
-					}),
-					...(opts.attemptFixInLane !== undefined && {
-						attemptFixInLane: opts.attemptFixInLane,
-					}),
+					...(opts.selfHealAgent !== undefined
+						? { selfHealAgent: opts.selfHealAgent }
+						: undefined),
+					...(opts.attemptFixInLane !== undefined
+						? { attemptFixInLane: opts.attemptFixInLane }
+						: undefined),
 				});
 				const result: ContinuousDeliveryResult = Object.freeze({
 					schemaVersion: CD_PLANE_SCHEMA,

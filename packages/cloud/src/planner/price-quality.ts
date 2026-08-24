@@ -153,8 +153,11 @@ export function assessCostObjective(
 					? "unpriced-candidates"
 					: undefined;
 
-	if (reason === undefined) {
-		return { claimable: true, unpriced, unparseable, coverage };
-	}
-	return { claimable: false, reason, unpriced, unparseable, coverage };
+	return {
+		claimable: reason === undefined,
+		...(reason === undefined ? undefined : { reason }),
+		unpriced,
+		unparseable,
+		coverage,
+	};
 }

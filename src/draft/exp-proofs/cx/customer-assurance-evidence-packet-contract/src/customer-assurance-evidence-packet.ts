@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 type CustomerAssuranceSectionId =
   | "dpa-needs"
   | "subprocessors-providers"
@@ -100,11 +101,6 @@ type GateDecision = Readonly<{
 type WorkClassification = Readonly<{
   owner: string;
   inScope: boolean;
-}>;
-
-type PacketValidationResult = Readonly<{
-  ok: boolean;
-  errors: string[];
 }>;
 
 const REQUIRED_SECTION_IDS = Object.freeze([
@@ -389,8 +385,8 @@ export function canCreateCustomerAssuranceFollowUp({ phase, m0Accepted }: Follow
   };
 }
 
-export function classifyCustomerAssuranceWork(decision: string): WorkClassification {
-  const text = decision.toLowerCase();
+export function classifyCustomerAssuranceWork(decision: JsonValue): WorkClassification {
+  const text = String(decision ?? "").toLowerCase();
 
   if (/\b(dpa|legal terms|privacy notice|privacy policy|subprocessor|legal)\b/.test(text)) {
     return { owner: "Legal, Privacy & Terms Readiness", inScope: false };
@@ -408,9 +404,14 @@ export function classifyCustomerAssuranceWork(decision: string): WorkClassificat
   return { owner: "Compliance Evidence Pack", inScope: true };
 }
 
+export interface PacketValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: string[];
+}
+
 export function validateCustomerAssuranceEvidencePacket(
   packet: PacketValidationTarget,
-): PacketValidationResult {
+): PacketValidationOutcome {
   const errors = [];
 
   if (packet?.issue !== "HOBO-493") {

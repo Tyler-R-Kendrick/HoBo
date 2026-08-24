@@ -47,8 +47,8 @@ export async function runSdkIdiomConformance(
   const thinLayer = runThinIdiomLayerLane(sourceFiles);
   const authorshipLane = runAuthorshipLane(authorship);
   const coverage = runCoverageLane({
-    ...(corpusPath ? { corpusPath } : {}),
-    ...(annexPath ? { annexPath } : {}),
+    ...(corpusPath ? { corpusPath } : undefined),
+    ...(annexPath ? { annexPath } : undefined),
     annexVectors,
     helperClaims,
   });

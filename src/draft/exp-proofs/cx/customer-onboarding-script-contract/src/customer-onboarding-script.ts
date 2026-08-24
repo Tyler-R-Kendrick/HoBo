@@ -39,8 +39,10 @@ const PILOT_NOTE_CATEGORIES = [
   "engineering-gap",
   "go-no-go-risk",
 ] as const;
-
 type PilotNoteCategory = (typeof PILOT_NOTE_CATEGORIES)[number];
+interface PilotNoteRoutingMatrix {
+  readonly [K in PilotNoteCategory]: string;
+}
 
 export type CustomerOnboardingScriptRecord = typeof CUSTOMER_ONBOARDING_SCRIPT;
 
@@ -250,7 +252,7 @@ export const CUSTOMER_ONBOARDING_SCRIPT = {
     "docs-gap": "V1 Release Notes & Upgrade Guide",
     "engineering-gap": "Owning engineering project",
     "go-no-go-risk": "V1 Release Program & Cutline",
-  } satisfies Record<PilotNoteCategory, string>,
+  } satisfies PilotNoteRoutingMatrix,
   followUpGate: {
     allowedAfter: "M0 accepted",
     blockedBefore:

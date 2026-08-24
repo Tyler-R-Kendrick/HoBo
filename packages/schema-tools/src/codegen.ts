@@ -24,6 +24,8 @@ import {
 	type DataModelPackage,
 	type DriftEntry,
 } from "./types.js";
+import { isJsonNumber, type JsonObject } from "./json.js";
+
 
 async function runCommand(
 	command: string,
@@ -42,12 +44,13 @@ async function runCommand(
 				env,
 			},
 			(error, stdout, stderr) => {
+				// SAFETY: `if (error && (error as NodeJS.ErrnoException).code === "ENOENT") {` is required at this I/O or test boundary.
 				if (error && (error as NodeJS.ErrnoException).code === "ENOENT") {
 					reject(new Error(`command not found: ${command}`));
 					return;
 				}
 				const code =
-					typeof error?.code === "number" ? error.code : error ? 1 : 0;
+					isJsonNumber(error?.code) ? error.code : error ? 1 : 0;
 				resolvePromise({
 					stdout: String(stdout),
 					stderr: String(stderr),
@@ -78,10 +81,12 @@ function resolveBufBin(repoRoot: string): string | undefined {
 	return candidates.find((candidate) => existsSync(candidate));
 }
 
-function resolveBufCommand(repoRoot: string): {
+interface BufCommand {
 	command: string;
 	args: string[];
-} {
+}
+
+function resolveBufCommand(repoRoot: string): BufCommand {
 	const bufBin = resolveBufBin(repoRoot);
 	if (bufBin) {
 		if (process.platform === "win32") {
@@ -338,7 +343,7 @@ export async function sha256Directory(root: string): Promise<string> {
 
 export async function writeManifest(
 	path: string,
-	content: Record<string, unknown>,
+	content: JsonObject,
 ): Promise<void> {
 	await mkdir(dirname(path), { recursive: true });
 	await writeFile(path, `${JSON.stringify(content, null, 2)}\n`);

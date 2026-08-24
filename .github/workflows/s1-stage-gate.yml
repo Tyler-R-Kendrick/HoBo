@@ -28,6 +28,8 @@ concurrency:
 
 jobs:
   conformance:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: conformance
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15
@@ -44,6 +46,8 @@ jobs:
         run: pnpm --filter @hobo/conformance test
 
   offline:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: offline-hello-bindle
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15
@@ -80,6 +84,8 @@ jobs:
           GOOGLE_APPLICATION_CREDENTIALS: ""
 
   replay:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: replay-equals-live
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15
@@ -98,6 +104,8 @@ jobs:
         run: pnpm --filter @hobo/conformance exec vitest run test/replay-corpus.test.ts
 
   record:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: record
     needs: [conformance, offline, replay]
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}

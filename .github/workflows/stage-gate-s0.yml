@@ -19,6 +19,8 @@ concurrency:
 
 jobs:
   stage-gate:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: S0 stage gate (${{ matrix.artifact }} / ${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     timeout-minutes: 20
@@ -81,6 +83,8 @@ jobs:
           if-no-files-found: warn
 
   digest-parity:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: Cross-OS digest parity
     needs: stage-gate
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}

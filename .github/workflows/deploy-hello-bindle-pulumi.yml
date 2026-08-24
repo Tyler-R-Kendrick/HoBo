@@ -18,6 +18,8 @@ concurrency:
 
 jobs:
   pulumi-live:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: Pulumi live preview/apply/refresh/destroy
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 20

@@ -25,6 +25,8 @@ concurrency:
 
 jobs:
   deploy:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: Deploy hello-bindle to Vercel
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 10

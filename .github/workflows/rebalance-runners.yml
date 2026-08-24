@@ -34,6 +34,8 @@ concurrency:
 
 jobs:
   rebalance:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     # Deliberately independent of the routed variable it manages, or a bad
     # flip could strand it: hosted by default, dispatchable onto the
     # last-resort label (a host-runner started from the requesting machine)

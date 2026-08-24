@@ -43,6 +43,8 @@ concurrency:
 
 jobs:
   agent-e2e:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: agent-e2e
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 20
@@ -65,6 +67,8 @@ jobs:
         run: pnpm --filter @hobo/cloud test
 
   adversarial:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: adversarial
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15
@@ -84,7 +88,8 @@ jobs:
 
   live:
     name: live-cloud (held)
-    if: github.event_name == 'workflow_dispatch'
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 30
     environment: s3-live-cloud

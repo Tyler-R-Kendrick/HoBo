@@ -21,7 +21,8 @@ permissions:
 jobs:
   multi-cloud-shop-fixture:
     name: multi-cloud-shop provider fixture
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/behavior-fixture')
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:
@@ -53,7 +54,8 @@ jobs:
 
   s4-stage-gate-drill:
     name: S4 stage gate multi-cloud drill
-    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch' || contains(github.event.pull_request.labels.*.name, 'hobo/s4-drill')
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 30
     permissions:

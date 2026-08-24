@@ -21,8 +21,9 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  # Future Changesets publish automation must declare `needs: artifact-trust`.
   artifact-trust:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: artifact signing and install verification
     needs: pr-gate
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
@@ -47,7 +48,8 @@ jobs:
     name: PR impact gate
     # The weekly schedule exists for main-gate and the fixture lanes; a
     # scheduled pr-gate diffs main against itself and checks nothing.
-    if: github.event_name != 'schedule'
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 25
     permissions:
@@ -136,11 +138,8 @@ jobs:
     name: Main full gate
     # Full gate on path into main and already on main: merge queue, direct push
     # to main, weekly schedule, and manual dispatch. PR events stay on pr-gate.
-    if: >
-      github.event_name == 'merge_group' ||
-      github.event_name == 'schedule' ||
-      github.event_name == 'workflow_dispatch' ||
-      (github.event_name == 'push' && github.ref == 'refs/heads/main')
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 40
     permissions:
@@ -174,6 +173,8 @@ jobs:
         run: pnpm exec turbo run test --concurrency=100%
 
   dev-cold-loop-gate:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: hobo dev cold loop (offline <=60s)
     needs: pr-gate
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
@@ -197,6 +198,8 @@ jobs:
             node --import tsx scripts/ci/dev-cold-loop-timing.mts
 
   ci-guard:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: CI fabric contract guard
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 10
@@ -217,6 +220,8 @@ jobs:
         run: node --import tsx packages/ci-guard/bin/assert-ci-contract.ts
 
   secret-scan:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: Secret scan
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 10

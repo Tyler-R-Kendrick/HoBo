@@ -14,6 +14,8 @@ concurrency:
 
 jobs:
   property-and-harness:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: fast-check and Jazzer smoke
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 20
@@ -32,6 +34,8 @@ jobs:
         run: pnpm run test:fuzz
 
   docker-gated:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: RESTler Toxiproxy plan
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15

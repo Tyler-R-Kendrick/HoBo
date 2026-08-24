@@ -12,6 +12,8 @@ on:
 
 jobs:
   componentize:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 15
     strategy:

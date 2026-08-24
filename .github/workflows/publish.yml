@@ -33,9 +33,9 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  # When CI is restored, real publish should `needs: artifact-trust` from the
-  # main fabric (or re-run the same signed-artifact verification steps here).
   publish-dry-run:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: allowlist dry-run (no registry write)
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 15

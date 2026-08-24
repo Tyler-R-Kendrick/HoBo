@@ -40,6 +40,8 @@ concurrency:
 
 jobs:
   rehearsal:
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     name: rehearsal
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 20
@@ -63,7 +65,8 @@ jobs:
     name: live-cloud (held)
     # Live cloud lane is manual-only and gated by an environment so a human must
     # approve before any real provider call. It never runs on PRs or pushes.
-    if: github.event_name == 'workflow_dispatch'
+    # Hosted Actions runners are disabled until explicitly re-enabled.
+    if: ${{ false }}
     runs-on: ${{ vars.HOBO_RUNNER_LINUX_SMALL || 'ubuntu-latest' }}
     timeout-minutes: 30
     environment: s2-live-cloud

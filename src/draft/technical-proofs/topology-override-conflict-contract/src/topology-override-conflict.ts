@@ -3,6 +3,8 @@ import { createHash } from "node:crypto";
 import { ConnectivityTier } from "../../connectivity-tier-ir-contract/src/connectivity-tier-ir.js";
 import { normalizeConnectivityTier } from "../../connectivity-policy-enforcement-contract/src/connectivity-policy-enforcement.js";
 import { validateJunctionConnectivityPlan } from "../../junction-connectivity-plan-contract/src/junction-connectivity-plan.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const TOPOLOGY_OVERRIDE_CONFLICT_SCHEMA_VERSION = "hobo.topology-override-conflict/v1";
 
@@ -204,7 +206,7 @@ function validateOverrides(overrides) {
 }
 
 function validatePolicyDecision(policyDecision) {
-  if (!isRecord(policyDecision)) {
+  if (!policyDecision || !isJsonObject(policyDecision) || Array.isArray(policyDecision)) {
     return invalid("topology.policy-decision.invalid", "policyDecision must be an object");
   }
   if (policyDecision.phase !== "can-deploy") {
@@ -329,22 +331,21 @@ function overrideIntent(override) {
 }
 
 function failure({ code, reason, type, overrides, inferenceHash, topologySeq, conflict }) {
-  const result = {
+  return {
     ok: false,
     phase: "can-deploy",
     code,
     reason,
-  };
-  if (conflict) result.conflict = conflict;
-  result.decisionEvent = decisionEvent(type, {
+    ...(conflict ? { conflict } : undefined),
+    decisionEvent: decisionEvent(type, {
       overrides,
       inferenceHash,
       topologySeq,
       code,
       reason,
       conflict
-    });
-  return result;
+    })
+  };
 }
 
 function decisionEvent(type, { overrides = [], inferenceHash, topologySeq, policyDecision, code, reason, conflict }) {
@@ -396,7 +397,7 @@ function invalid(code, reason) {
 }
 
 function isNonEmptyString(value) {
-  return isString(value) && value.length > 0;
+  return isJsonString(value) && value.length > 0;
 }
 
 function stableDigest(value) {
@@ -409,19 +410,6 @@ function canonicalJson(value) {
 
 function sortKeys(value) {
   if (Array.isArray(value)) return value.map(sortKeys);
-  if (!isObjectLike(value)) return value;
+  if (!value || !isJsonObject(value)) return value;
   return Object.fromEntries(Object.keys(value).sort().map((key) => [key, sortKeys(value[key])]));
-}
-
-function isRecord(value) {
-  return Object.prototype.toString.call(value) === "[object Object]";
-}
-
-function isObjectLike(value) {
-  const tag = Object.prototype.toString.call(value);
-  return tag === "[object Object]" || tag === "[object Array]";
-}
-
-function isString(value) {
-  return Object.prototype.toString.call(value) === "[object String]";
 }

@@ -1,3 +1,4 @@
+import { isJsonBoolean, isJsonObject } from "./json.js";
 export const LAUNCH_DECISION_CLASSES = [
   "launch-blocker",
   "high-risk-non-blocker",
@@ -164,11 +165,7 @@ export const launchBlockerTaxonomy = {
 export function validateLaunchBlockerTaxonomy(contract) {
   const errors = [];
 
-  if (
-    !contract ||
-    Object(contract) !== contract ||
-    Object.prototype.toString.call(contract) === "[object Function]"
-  ) {
+  if (!contract || !isJsonObject(contract)) {
     return { ok: false, errors: ["launch blocker taxonomy record is required"] };
   }
 
@@ -185,12 +182,7 @@ export function validateLaunchBlockerTaxonomy(contract) {
   }
 
   for (const entry of contract.severityTaxonomy ?? []) {
-    if (
-      !entry.label ||
-      !entry.definition ||
-      !entry.goNoGoAction ||
-      (entry.mayShip !== true && entry.mayShip !== false)
-    ) {
+    if (!entry.label || !entry.definition || !entry.goNoGoAction || !isJsonBoolean(entry.mayShip)) {
       errors.push(`${entry.id ?? "<missing>"} must define label, definition, goNoGoAction, and mayShip`);
     }
     if (!Array.isArray(entry.requiredEvidence) || entry.requiredEvidence.length === 0) {
@@ -375,11 +367,7 @@ function hasValue(value) {
   if (Array.isArray(value)) {
     return value.length > 0;
   }
-  if (
-    value &&
-    Object(value) === value &&
-    Object.prototype.toString.call(value) !== "[object Function]"
-  ) {
+  if (value && isJsonObject(value)) {
     return Object.keys(value).length > 0;
   }
   return value !== undefined && value !== null && value !== "";

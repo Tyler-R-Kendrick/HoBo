@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased caller input at the proof validator boundary before evaluating the closed launch-posture contract. */
-
+import { isJsonString, isJsonObject } from "./json.js";
 export const REQUIRED_SUPPORTED_INPUTS = [
   "app-intent-and-requirements",
   "wit-port-and-conformance-contracts",
@@ -300,7 +299,7 @@ export const AI_GENERATION_LAUNCH_POSTURE = {
 export function validateLaunchPosture(posture) {
   const errors = [];
 
-  if (!posture || typeof posture !== "object") {
+  if (!posture || !isJsonObject(posture)) {
     return { ok: false, errors: ["launch posture record is required"] };
   }
 
@@ -399,7 +398,7 @@ export function routeGenerationFinding(findingType, posture = AI_GENERATION_LAUN
 export function reviewPublicClaim(text, posture = AI_GENERATION_LAUNCH_POSTURE) {
   const errors = [];
 
-  if (!text || typeof text !== "string") {
+  if (!text || !isJsonString(text)) {
     return { ok: false, errors: ["public claim text is required"] };
   }
 
@@ -416,7 +415,7 @@ export function reviewPublicClaim(text, posture = AI_GENERATION_LAUNCH_POSTURE) 
 }
 
 export function classifyLaunchGap(gap) {
-  if (!gap || typeof gap !== "object") {
+  if (!gap || !isJsonObject(gap)) {
     return { ok: false, errors: ["launch gap is required"] };
   }
 

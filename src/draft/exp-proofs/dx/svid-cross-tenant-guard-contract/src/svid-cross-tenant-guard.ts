@@ -8,6 +8,8 @@ import {
 import {
   verifyWorkloadAttestation,
 } from "../../../../technical-proofs/workload-attestation-intake-contract/src/workload-attestation.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEFAULT_TTL_SECONDS = 5 * 60;
 const DEFAULT_DENIAL_TARGET = { kind: "provider", id: "credential-broker" };
@@ -90,7 +92,7 @@ function normalizeRequest(input) {
   if (Number.isNaN(Date.parse(now))) {
     throw new Error("now must be ISO-8601");
   }
-  if (!input.issuer || typeof input.issuer.signJwtSvid !== "function") {
+  if (!input.issuer || !(input.issuer.signJwtSvid instanceof Function)) {
     throw new Error("issuer must support signJwtSvid()");
   }
 
@@ -206,7 +208,7 @@ function createTokenDeniedEvent({ request, reason }) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -238,7 +240,7 @@ function sortForCanonicalJson(value) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );

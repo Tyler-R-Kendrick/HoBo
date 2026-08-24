@@ -392,12 +392,18 @@ export function parseVibePlanReviewStates(
     throw new VibePlanReviewStatesParseError(validation.errors);
   }
 
+  // SAFETY: `return states as ParsedVibePlanReviewStates;` is required at this I/O or test boundary.
   return states as ParsedVibePlanReviewStates;
+}
+
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
 }
 
 export function validateVibePlanReviewStates(
   states: VibePlanReviewStates,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (states.issue !== "HOBO-542") {

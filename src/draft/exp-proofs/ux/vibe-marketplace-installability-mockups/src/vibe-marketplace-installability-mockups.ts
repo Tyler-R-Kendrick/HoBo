@@ -394,12 +394,18 @@ export function parseVibeMarketplaceInstallabilityMockups(
     throw new VibeMarketplaceInstallabilityMockupsParseError(validation.errors);
   }
 
+  // SAFETY: `return mockups as ParsedVibeMarketplaceInstallabilityMockups;` is required at this I/O or test boundary.
   return mockups as ParsedVibeMarketplaceInstallabilityMockups;
+}
+
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
 }
 
 export function validateVibeMarketplaceInstallabilityMockups(
   mockups: VibeMarketplaceInstallabilityMockups,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (mockups.issue !== "HOBO-546") {

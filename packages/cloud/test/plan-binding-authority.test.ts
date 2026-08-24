@@ -30,6 +30,8 @@ import {
 	type ResourceDefinitionVNext,
 	type YardBindingContext,
 } from "../src/index.js";
+import { type JsonObject } from "../src/json.js";
+
 
 const NOW = Date.UTC(2026, 7, 8);
 
@@ -105,7 +107,7 @@ function definition(
 		specificity: 1,
 		priority: 1,
 		cost: { sku: id, unit: "hour", marginalPrice: "0" },
-		// SAFETY: The surrounding parser, protocol branch, or fixture establishes this asserted shape.
+		// SAFETY: `satisfies: () => ({ ok: true, missing: [] }) as never,` is required at this I/O or test boundary.
 		satisfies: () => ({ ok: true, missing: [] }) as never,
 		semantics: semantics({
 			productId,
@@ -172,7 +174,7 @@ function authority(
 
 const kvYard = (
 	productId: string,
-	properties?: Record<string, JsonValue>,
+	properties?: JsonObject,
 ): YardBindingContext => ({
 	yardId: "yard:edge",
 	providerId: "cloudflare",
@@ -181,7 +183,7 @@ const kvYard = (
 			contract: "hobo.yard-binding/v1",
 			profile: "kv.key-value/v1",
 			productId,
-			...(properties !== undefined && { properties }),
+			...(properties !== undefined ? { properties } : undefined),
 		},
 	],
 });
@@ -320,4 +322,3 @@ describe("plan() without binding authority", () => {
 		expect(assets?.productId).toBeUndefined();
 	});
 });
-import type { JsonValue } from "../src/plan-types.js";

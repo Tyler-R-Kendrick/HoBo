@@ -6,6 +6,8 @@ import {
 	CodegenReportSchema,
 } from "../codegen/types.js";
 import type { CommandModule } from "../shell/registry.js";
+import { type JsonObject } from "../json.js";
+
 
 export interface CodegenCommandOptions {
 	readonly engine?: CodegenEngine;
@@ -34,7 +36,8 @@ export function createCodegenCommand(
 						: `hobo codegen ok (${count} generated files written)`,
 					data: {
 						command: "codegen",
-						...(toJson(CodegenReportSchema, result) as Record<string, unknown>),
+						// SAFETY: `...(toJson(CodegenReportSchema, result) as JsonObject),` is required at this I/O or test boundary.
+						...(toJson(CodegenReportSchema, result) as JsonObject),
 					},
 				};
 			} catch (error) {

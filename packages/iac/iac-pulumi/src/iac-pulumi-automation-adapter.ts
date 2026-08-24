@@ -4,6 +4,7 @@ import {
 	type JsonObject,
 	type JsonValue,
 } from "./json.js";
+import type { IacProgramLike } from "./pulumi-automation-api-engine.js";
 // public-contract: the pinned Pulumi toolchain version every engine (in-memory and CLI) declares.
 export const PINNED_PULUMI_AUTOMATION_VERSION = "3.130.0";
 // public-contract: the IacProgram schema version validateIacProgram accepts.
@@ -85,16 +86,20 @@ interface EngineLike {
 	readonly pulumiVersion?: string;
 	snapshot?(): JsonValue;
 	preview(
-		program: JsonValue,
+		program: IacProgramLike,
 	): Promise<{ changes: readonly unknown[] }> | { changes: readonly unknown[] };
 	apply(
-		program: JsonValue,
+		program: IacProgramLike,
 		expected: readonly unknown[],
 	):
 		| Promise<{ appliedChanges?: readonly unknown[]; outputs?: unknown }>
 		| { appliedChanges?: readonly unknown[]; outputs?: unknown };
-	refresh(program: JsonValue): JsonValue;
-	destroy(program: JsonValue): JsonValue;
+	// Both arms: the real Automation-API engine awaits Pulumi, the in-memory
+	// stand-in answers synchronously, and the adapter awaits either. Naming only
+	// the synchronous arm described the stand-in and not the engine this package
+	// exists to drive.
+	refresh(program: IacProgramLike): JsonValue | Promise<JsonValue>;
+	destroy(program: IacProgramLike): JsonValue | Promise<JsonValue>;
 }
 
 /** Options for the offline state backend. */

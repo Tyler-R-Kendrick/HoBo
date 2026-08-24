@@ -3,13 +3,12 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 
 import { digest, normalizeText } from "../codegen/text.js";
+import type { JsonObject } from "../json.js";
 import {
 	type AgentDocsArtifact,
 	type GenerateAgentDocsInput,
 	generateAgentDocs,
 } from "./generate.js";
-import { type JsonObject } from "../json.js";
-
 
 // S3-05 — the agent-docs freshness gate. Mirrors src/build/codegen-gate.ts
 // (assertGeneratedFresh): regenerate the artifact set from the single source
@@ -31,7 +30,9 @@ export class AgentDocsError extends Error {
 	constructor(
 		readonly code: string,
 		message: string,
-		readonly detail: JsonObject = {},
+		// Carried for reporting, never read back as JSON here -- the drift entries
+		// this is handed are domain records, not `JsonValue` leaves.
+		readonly detail: Readonly<Record<string, unknown>> = {},
 	) {
 		super(message);
 		this.name = "AgentDocsError";

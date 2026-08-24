@@ -1,3 +1,4 @@
+import { isJsonString, type JsonValue } from "../json.js";
 import type {
 	CliContext,
 	CliEnvelope,
@@ -6,8 +7,6 @@ import type {
 import { buildEnvelope, publicContext } from "../types/envelope.js";
 import { CliError } from "./errors.js";
 import type { CliFlags } from "./parse.js";
-import { isJsonString, type JsonValue } from "../json.js";
-
 
 export interface CliRunResult {
 	readonly exitCode: number;
@@ -62,7 +61,8 @@ ${envelope.message}
 }
 
 export function renderError(
-	error: JsonValue,
+	// A caught binding, which is `unknown`.
+	error: unknown,
 	input: {
 		readonly verb: string | null;
 		readonly flags: CliFlags;
@@ -143,11 +143,13 @@ export function renderError(
 	};
 }
 
-function errorMessage(error: JsonValue): string {
+// Both of these are handed a caught binding and already narrow it themselves
+// with `instanceof Error ? … : String(error)`.
+function errorMessage(error: unknown): string {
 	return error instanceof Error ? error.message : String(error);
 }
 
-function verboseDiagnostics(error: JsonValue, verbose: boolean): string {
+function verboseDiagnostics(error: unknown, verbose: boolean): string {
 	if (!verbose) {
 		return "";
 	}

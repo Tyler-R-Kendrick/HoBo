@@ -9,6 +9,8 @@ import {
 	type JunctionMemberManifest,
 	JunctionParseError,
 } from "./types.js";
+import { isJsonString } from "./json.js";
+
 
 /**
  * Optional per-member manifest declarations. Everything the tier selection
@@ -46,9 +48,7 @@ export function junction(
 	name: string,
 	config: JunctionConfig,
 ): JunctionDefinition {
-	// SAFETY: this parser boundary rejects non-string runtime inputs before applying the name grammar.
-	// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: name is an untrusted parser-boundary value.
-	if (typeof name !== "string" || !JUNCTION_NAME_PATTERN.test(name)) {
+	if (!isJsonString(name) || !JUNCTION_NAME_PATTERN.test(name)) {
 		throw new JunctionParseError(
 			"junction.name.invalid",
 			"junction name must be a non-empty lowercase DNS-safe string (a-z, 0-9, -)",
@@ -114,9 +114,7 @@ function parseMember(
 	input: JunctionMemberManifestInput | undefined,
 ): JunctionMemberManifest {
 	const region = input?.region ?? null;
-	// SAFETY: this parser boundary rejects non-string manifest regions before storing the refined value.
-	// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: region is an untrusted manifest value.
-	if (region !== null && (typeof region !== "string" || region.length === 0)) {
+	if (region !== null && (!isJsonString(region) || region.length === 0)) {
 		throw new JunctionParseError(
 			"junction.manifest.invalid",
 			`manifest region for ${yardEntry.name} must be a non-empty string`,
@@ -142,9 +140,7 @@ function parseMember(
 	const residency = input?.residency ?? [];
 	if (
 		!Array.isArray(residency) ||
-		// SAFETY: this parser boundary rejects non-string residency tags before storing them.
-		// oxlint-disable-next-line anti-slop/no-runtime-typeof -- SAFETY: residency entries are untrusted manifest values.
-		residency.some((entry) => typeof entry !== "string" || entry.length === 0)
+		residency.some((entry) => !isJsonString(entry) || entry.length === 0)
 	) {
 		throw new JunctionParseError(
 			"junction.manifest.invalid",

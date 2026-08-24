@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */
 import assert from "node:assert/strict";
 import { describe, it } from "vitest";
 
@@ -11,6 +10,8 @@ import {
 	type PackSecretCustodyPort,
 	type PackSecretScope,
 } from "../src/index.js";
+import { type JsonValue } from "../src/json.js";
+
 
 const SCOPE: PackSecretScope = {
 	packId: "pack.example.oci/v1",
@@ -94,7 +95,7 @@ describe("pack secret custody", () => {
 		};
 		await assert.rejects(
 			generateSecret(custody, SCOPE, POLICY),
-			(error: unknown) => {
+			(error: JsonValue) => {
 				assert.ok(error instanceof PackError);
 				assert.equal(error.code, "SECRET_CUSTODY_UNAVAILABLE");
 				// The offending value must not survive into the error text.
@@ -115,7 +116,7 @@ describe("pack secret custody", () => {
 		};
 		await assert.rejects(
 			generateSecret(custody, SCOPE, { minimumLength: 8, alphabet: "hex" }),
-			(error: unknown) => {
+			(error: JsonValue) => {
 				assert.ok(error instanceof PackError);
 				assert.equal(error.code, "PACK_CONFIGURATION_INVALID");
 				return true;
@@ -131,7 +132,7 @@ describe("pack secret custody", () => {
 		};
 		await assert.rejects(
 			generateSecret(custody, SCOPE, POLICY),
-			(error: unknown) => {
+			(error: JsonValue) => {
 				assert.ok(error instanceof PackError);
 				assert.equal(error.code, "SECRET_CUSTODY_UNAVAILABLE");
 				return true;
@@ -156,4 +157,3 @@ describe("pack secret custody", () => {
 		assert.ok(!String(ref.ref).includes("imported-material"));
 	});
 });
-/* eslint-disable anti-slop/no-unknown-parameters -- Vitest callbacks receive erased thrown values. */

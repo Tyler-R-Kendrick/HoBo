@@ -6,6 +6,8 @@ import { createHash } from "node:crypto";
 import { existsSync, readFileSync, statSync } from "node:fs";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isJsonObject } from "../src/json.js";
+
 
 const ROOT = join(dirname(fileURLToPath(import.meta.url)), "..");
 const SHOTS = join(ROOT, "public", "shots");
@@ -47,13 +49,13 @@ if (!existsSync(MANIFEST)) {
 	process.exit(1);
 }
 
-// SAFETY: The typed boundary or test fixture establishes this value's shape before use.
+// SAFETY: `const manifest = JSON.parse(readFileSync(MANIFEST, "utf8")) as {` is required at this I/O or test boundary.
 const manifest = JSON.parse(readFileSync(MANIFEST, "utf8")) as {
 	generatedAt?: string;
 	files?: Record<string, { bytes: number; sha256: string }>;
 };
 
-if (!manifest.files || Array.isArray(manifest.files)) {
+if (!manifest.files || !isJsonObject(manifest.files)) {
 	fail("evidence-manifest.json missing files map");
 }
 

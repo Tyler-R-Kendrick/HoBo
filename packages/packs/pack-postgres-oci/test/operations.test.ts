@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-unknown-returns, anti-slop/no-unknown-parameters -- error assertion helper crosses the test boundary. */
 import assert from "node:assert/strict";
 import { parseSecretRef, SecretValue } from "@hobo/bindings";
 import { PackError, type ProcessRunner } from "@hobo/pack-framework";
@@ -14,6 +13,8 @@ import {
 	runPostgresCommand,
 } from "../src/index.js";
 import { SUPERUSER_REF } from "./harness.js";
+import { type JsonValue } from "../src/json.js";
+
 
 const PASSWORD_REF = parseSecretRef(SUPERUSER_REF).ref;
 
@@ -26,7 +27,7 @@ const ENDPOINT = {
 	passwordRef: PASSWORD_REF,
 } as const;
 
-function expectPackError(fn: () => unknown, code: string): void {
+function expectPackError(fn: () => void, code: string): void {
 	try {
 		fn();
 	} catch (error) {
@@ -258,7 +259,7 @@ describe("runPostgresCommand", () => {
 				{ resolve: () => Promise.reject(new Error("vault sealed")) },
 				buildVacuumAnalyzeArgv({ endpoint: ENDPOINT }),
 			),
-			(error: unknown) => {
+			(error: JsonValue) => {
 				assert.ok(error instanceof PackError);
 				assert.equal(error.code, "SECRET_CUSTODY_UNAVAILABLE");
 				return true;
@@ -267,4 +268,3 @@ describe("runPostgresCommand", () => {
 		assert.equal(spawned, false);
 	});
 });
-/* eslint-disable anti-slop/no-unknown-returns, anti-slop/no-unknown-parameters -- error assertion helper crosses the test boundary. */

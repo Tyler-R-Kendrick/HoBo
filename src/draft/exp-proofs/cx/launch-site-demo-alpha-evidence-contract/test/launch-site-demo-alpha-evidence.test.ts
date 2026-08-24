@@ -1,7 +1,7 @@
-/* oxlint-disable anti-slop/no-chained-type-assertions, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this test deliberately mutates a controlled parsed fixture to exercise malformed collection refusal paths. */
-
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { asJsonObject, type JsonBag } from "../src/json.js";
+
 
 async function loadContract() {
   const module = await import("../src/launch-site-demo-alpha-evidence.ts").catch((error) => ({
@@ -77,7 +77,7 @@ test("follow-up execution issues are allowed only for missing evidence", async (
 
 test("malformed evidence collections return parser errors instead of throwing", async () => {
   const { launchSiteDemoAlphaEvidence, validateLaunchSiteDemoAlphaEvidence } = await loadContract();
-  const invalid = structuredClone(launchSiteDemoAlphaEvidence) as unknown as Record<string, unknown>;
+  const invalid: JsonBag = { ...asJsonObject(structuredClone(launchSiteDemoAlphaEvidence)) };
 
   invalid.evidence = {};
   invalid.blockers = "not-blockers";

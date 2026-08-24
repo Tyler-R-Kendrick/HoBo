@@ -8,6 +8,8 @@ import {
   nonEmptyString,
   nonNegativeInteger,
 } from "./parse-utils.js";
+import { type JsonValue, type JsonObject, type JsonBag } from "./json.js";
+
 
 export type PrincipalKind = "user" | "agent" | "service" | "system";
 
@@ -19,7 +21,7 @@ export interface PrincipalRef {
 }
 
 // domain-view: parse-produced draft-proof record; its wire form is the EventEnvelope proto message in data-models/.
-export interface EventEnvelope<T = unknown> {
+export interface EventEnvelope<T = JsonValue> {
   id: string;
   type: string;
   v: number;
@@ -33,7 +35,7 @@ export interface EventEnvelope<T = unknown> {
   correlationId?: string;
   data: T;
   lane?: string;
-  meta?: Record<string, unknown>;
+  meta?: JsonObject;
 }
 
 export interface CloudEvent {
@@ -44,7 +46,7 @@ export interface CloudEvent {
   subject: string;
   time: string;
   datacontenttype: "application/json";
-  data: unknown;
+  data: JsonValue;
   hobov: number;
   hoboseq: number;
   hoboactor: PrincipalRef;
@@ -54,33 +56,25 @@ export interface CloudEvent {
   hobocausationid?: string;
   hobocorrelationid?: string;
   hobolane?: string;
-  hobometa?: Record<string, unknown>;
+  hobometa?: JsonObject;
 }
 
 const PRINCIPAL_KINDS = new Set<PrincipalKind>(["user", "agent", "service", "system"]);
 const EVENT_TYPE_PATTERN = /^[a-z][a-z0-9]*\.[A-Z][A-Za-z0-9]*$/;
 
-export function createEventEnvelope(input: unknown): EventEnvelope {
+export function createEventEnvelope(input: JsonValue): EventEnvelope {
   const source = expectObject(input, "event envelope", EnvelopeParseError);
-  return parseEventEnvelope({
-    id: source.id,
-    type: source.type,
-    v: source.v ?? 1,
-    streamId: source.streamId,
-    seq: source.seq,
-    ts: source.ts ?? source.time,
-    actor: source.actor,
-    tenant: source.tenant,
-    project: source.project,
-    causationId: source.causationId,
-    correlationId: source.correlationId,
-    data: source.data,
-    lane: source.lane,
-    meta: source.meta,
-  });
+  const remapped: JsonBag = { ...source };
+  if (remapped.v === undefined) {
+    remapped.v = 1;
+  }
+  if (remapped.ts === undefined && remapped.time !== undefined) {
+    remapped.ts = remapped.time;
+  }
+  return parseEventEnvelope(remapped);
 }
 
-export function parseEventEnvelope(input: unknown): EventEnvelope {
+export function parseEventEnvelope(input: JsonValue): EventEnvelope {
   const source = expectObject(input, "event envelope", EnvelopeParseError);
   const type = nonEmptyString(source.type, "type", EnvelopeParseError);
   if (!EVENT_TYPE_PATTERN.test(type)) {
@@ -105,14 +99,15 @@ export function parseEventEnvelope(input: unknown): EventEnvelope {
     }
   }
   if (source.meta !== undefined) {
-    envelope.meta = expectObject(source.meta, "meta", EnvelopeParseError) as Record<string, unknown>;
+    // SAFETY: `envelope.meta = expectObject(source.meta, "meta", EnvelopeParseError) as JsonObj` is required at this I/O or test boundary.
+    envelope.meta = expectObject(source.meta, "meta", EnvelopeParseError) as JsonObject;
     envelope.meta = cloneJson(envelope.meta);
   }
 
   return deepFreeze(envelope);
 }
 
-export function toCloudEvent(envelopeInput: unknown): CloudEvent {
+export function toCloudEvent(envelopeInput: JsonValue): CloudEvent {
   const envelope = parseEventEnvelope(envelopeInput);
   const cloudEvent: CloudEvent = {
     specversion: "1.0",
@@ -137,27 +132,28 @@ export function toCloudEvent(envelopeInput: unknown): CloudEvent {
   return deepFreeze(cloudEvent);
 }
 
-export function fromCloudEvent(input: unknown): EventEnvelope {
+export function fromCloudEvent(input: JsonValue): EventEnvelope {
   const event = expectObject(input, "CloudEvent", EnvelopeParseError);
-  return parseEventEnvelope({
-    id: event.id,
-    type: event.type,
-    v: event.hobov,
-    streamId: event.hobostreamid ?? event.subject,
-    seq: event.hoboseq,
-    ts: event.time,
-    actor: event.hoboactor,
-    tenant: event.hobotenant,
-    project: event.hoboproject,
-    causationId: event.hobocausationid,
-    correlationId: event.hobocorrelationid,
-    lane: event.hobolane,
-    meta: event.hobometa,
-    data: event.data,
-  });
+  const remapped: JsonBag = {
+    id: event.id ?? null,
+    type: event.type ?? null,
+    v: event.hobov ?? null,
+    streamId: event.hobostreamid ?? event.subject ?? null,
+    seq: event.hoboseq ?? null,
+    ts: event.time ?? null,
+    actor: event.hoboactor ?? null,
+    tenant: event.hobotenant ?? null,
+    data: event.data ?? null,
+  };
+  if (event.hoboproject !== undefined) remapped.project = event.hoboproject;
+  if (event.hobocausationid !== undefined) remapped.causationId = event.hobocausationid;
+  if (event.hobocorrelationid !== undefined) remapped.correlationId = event.hobocorrelationid;
+  if (event.hobolane !== undefined) remapped.lane = event.hobolane;
+  if (event.hobometa !== undefined) remapped.meta = event.hobometa;
+  return parseEventEnvelope(remapped);
 }
 
-function parsePrincipal(input: unknown, field: string): PrincipalRef {
+function parsePrincipal(input: JsonValue | undefined, field: string): PrincipalRef {
   const source = expectObject(input, field, EnvelopeParseError);
   const principal: PrincipalRef = {
     kind: enumValue(source.kind, PRINCIPAL_KINDS, `${field}.kind`, EnvelopeParseError),

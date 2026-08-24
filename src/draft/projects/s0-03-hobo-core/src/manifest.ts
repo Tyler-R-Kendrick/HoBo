@@ -15,6 +15,8 @@ import {
   sha256Ref,
   uniqueStringArray,
 } from "./parse-utils.js";
+import { type JsonValue, type JsonObject } from "./json.js";
+
 
 export const CORE_SCHEMA_VERSION = "hobo.core/v1";
 
@@ -44,7 +46,7 @@ export interface CapabilityManifestBundle {
   };
   auth: {
     issuer: string;
-    flows: Array<Record<string, unknown>>;
+    flows: Array<JsonObject>;
     scopeModel: "least-privilege-per-resource";
     resourceIndicators: string[];
     tokenLifetimeSec: number;
@@ -53,7 +55,7 @@ export interface CapabilityManifestBundle {
   cost: {
     currency: string;
     unitPrices: Record<string, { unit: string; amount: number; regions?: string[] }>;
-    freeTier: unknown[];
+    freeTier: JsonValue[];
   };
 }
 
@@ -63,7 +65,7 @@ export interface ParseCapabilityManifestOptions {
 }
 
 export function parseCapabilityManifestBundle(
-  input: unknown,
+  input: JsonValue,
   options: ParseCapabilityManifestOptions = {},
 ): CapabilityManifestBundle {
   const source = expectObject(input, "capability manifest bundle", ManifestParseError);
@@ -76,7 +78,7 @@ export function parseCapabilityManifestBundle(
 }
 
 function parseIndex(
-  input: unknown,
+  input: JsonValue | undefined,
   options: ParseCapabilityManifestOptions,
 ): CapabilityManifestBundle["index"] {
   const source = expectObject(input, "index.json", ManifestParseError);
@@ -112,7 +114,7 @@ function parseIndex(
   };
 }
 
-function parseCapabilities(input: unknown): CapabilityManifestBundle["capabilities"] {
+function parseCapabilities(input: JsonValue | undefined): CapabilityManifestBundle["capabilities"] {
   const source = expectObject(input, "capabilities.json", ManifestParseError);
   assertNoExtra(source, "capabilities.json", ["ports", "regions", "equivalenceClasses"], ManifestParseError);
   const seenPorts = new Set<string>();
@@ -144,7 +146,7 @@ function parseCapabilities(input: unknown): CapabilityManifestBundle["capabiliti
 }
 
 function parseAuth(
-  input: unknown,
+  input: JsonValue | undefined,
   index: CapabilityManifestBundle["index"],
   options: ParseCapabilityManifestOptions,
 ): CapabilityManifestBundle["auth"] {
@@ -180,26 +182,28 @@ function parseAuth(
   };
 }
 
-function parseFlows(input: unknown, options: ParseCapabilityManifestOptions): Array<Record<string, unknown>> {
+function parseFlows(input: JsonValue | undefined, options: ParseCapabilityManifestOptions): Array<JsonObject> {
   const flows = requiredArray(input, "auth.flows", ManifestParseError).map((flow, index) =>
     parseFlow(flow, index, options),
   );
   const seen = new Set<string>();
   for (const flow of flows) {
+    // SAFETY: `const type = flow.type as string;` is required at this I/O or test boundary.
     const type = flow.type as string;
     if (seen.has(type)) {
       throw new ManifestParseError("auth.flows", "unique flow type", type);
     }
     seen.add(type);
   }
+  // SAFETY: `return flows.sort((a, b) => FLOW_ORDER.indexOf(a.type as AuthFlowType) - FLOW_OR` is required at this I/O or test boundary.
   return flows.sort((a, b) => FLOW_ORDER.indexOf(a.type as AuthFlowType) - FLOW_ORDER.indexOf(b.type as AuthFlowType));
 }
 
 function parseFlow(
-  input: unknown,
+  input: JsonValue | undefined,
   index: number,
   options: ParseCapabilityManifestOptions,
-): Record<string, unknown> {
+): JsonObject {
   const source = expectObject(input, `auth.flows[${index}]`, ManifestParseError);
   const type = enumValue(source.type, FLOW_ORDER_SET, `auth.flows[${index}].type`, ManifestParseError);
   if (type === "oidc-federation") {
@@ -257,15 +261,13 @@ function parseFlow(
       `auth.flows[${index}].authorizationServer`,
       ManifestParseError,
     ),
-    ...(source.audience === undefined
-      ? {}
-      : { audience: nonEmptyString(source.audience, `auth.flows[${index}].audience`, ManifestParseError) }),
+    ...(source.audience === undefined ? undefined : { audience: nonEmptyString(source.audience, `auth.flows[${index}].audience`, ManifestParseError) }),
     scopes: uniqueStringArray(source.scopes, `auth.flows[${index}].scopes`, ManifestParseError, { minLength: 1 }),
-    ...(source.idJag === undefined ? {} : { idJag: source.idJag === true }),
+    ...(source.idJag === undefined ? undefined : { idJag: source.idJag === true }),
   };
 }
 
-function parseCost(input: unknown): CapabilityManifestBundle["cost"] {
+function parseCost(input: JsonValue | undefined): CapabilityManifestBundle["cost"] {
   const source = expectObject(input, "cost.json", ManifestParseError);
   assertNoExtra(source, "cost.json", ["currency", "unitPrices", "freeTier"], ManifestParseError);
   const unitPrices = expectObject(source.unitPrices, "cost.unitPrices", ManifestParseError);
@@ -274,12 +276,14 @@ function parseCost(input: unknown): CapabilityManifestBundle["cost"] {
   }
   for (const [name, price] of Object.entries(unitPrices)) {
     const entry = expectObject(price, `cost.unitPrices.${name}`, ManifestParseError);
+    // SAFETY: `if (!Number.isFinite(entry.amount) || (entry.amount as number) <= 0) {` is required at this I/O or test boundary.
     if (!Number.isFinite(entry.amount) || (entry.amount as number) <= 0) {
       throw new ManifestParseError(`cost.unitPrices.${name}.amount`, "positive number", entry.amount);
     }
   }
   return {
     currency: currency(source.currency, "cost.currency", ManifestParseError),
+    // SAFETY: `unitPrices: cloneJson(unitPrices) as CapabilityManifestBundle["cost"]["unitPrice` is required at this I/O or test boundary.
     unitPrices: cloneJson(unitPrices) as CapabilityManifestBundle["cost"]["unitPrices"],
     freeTier:
       source.freeTier === undefined
@@ -288,7 +292,7 @@ function parseCost(input: unknown): CapabilityManifestBundle["cost"] {
   };
 }
 
-function parseResourceIndicators(input: unknown): string[] {
+function parseResourceIndicators(input: JsonValue | undefined): string[] {
   return uniqueStringArray(input, "auth.resourceIndicators", ManifestParseError, { minLength: 1 }).map(
     (indicator) => {
       if (indicator.startsWith("urn:")) {

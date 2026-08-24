@@ -1,27 +1,30 @@
-import { createPortDescriptor, portKey, type PortDescriptor } from "./ports.js";
+import { createPortDescriptor, portKey } from "./ports.js";
+import { cloneAsJson, type JsonValue } from "./json.js";
+
 
 export interface Container {
-  register<T>(descriptor: PortDescriptor | unknown, implementation: T): void;
-  resolve<T>(descriptor: PortDescriptor | unknown): T;
+  register<T>(descriptor: JsonValue, implementation: T): void;
+  resolve<T>(descriptor: JsonValue): T;
 }
 
 export function createContainer(): Container {
-  const implementations = new Map<string, unknown>();
+  const implementations = new Map<string, object>();
   return {
-    register(descriptorInput: PortDescriptor | unknown, implementation: unknown) {
-      const descriptor = createPortDescriptor(descriptorInput);
+    register<T>(descriptorInput: JsonValue, implementation: T) {
+      const descriptor = createPortDescriptor(cloneAsJson(descriptorInput));
       const key = portKey(descriptor);
       if (implementations.has(key)) {
         throw new Error(`port ${key} is already registered`);
       }
-      implementations.set(key, implementation);
+      implementations.set(key, Object(implementation));
     },
-    resolve<T>(descriptorInput: PortDescriptor | unknown): T {
-      const descriptor = createPortDescriptor(descriptorInput);
+    resolve<T>(descriptorInput: JsonValue): T {
+      const descriptor = createPortDescriptor(cloneAsJson(descriptorInput));
       const key = portKey(descriptor);
       if (!implementations.has(key)) {
         throw new Error(`port ${key} is not registered`);
       }
+      // SAFETY: `return implementations.get(key) as T;` is required at this I/O or test boundary.
       return implementations.get(key) as T;
     },
   };

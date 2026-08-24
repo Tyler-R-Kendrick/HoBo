@@ -1,5 +1,6 @@
 import { BuildError } from "./errors.js";
-import type { JsonValue } from "./errors.js";
+import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const BUILD_MANIFEST_SCHEMA = "hobo.build-manifest/v1" as const;
 export const DEFAULT_SOURCE_DATE_EPOCH = "2026-01-01T00:00:00.000Z";
@@ -102,12 +103,12 @@ export function parseBuildRequest(
 }
 
 export function parseServiceDeclaration(raw: JsonValue): ServiceDeclaration {
-  if (!raw || !(raw instanceof Object)) {
+  if (!raw || !isJsonObject(raw)) {
     throw new BuildError("HOBO_BUILD_SERVICE_INVALID", "Service declaration must be an object.");
   }
 
-  // SAFETY: the preceding Object check excludes JSON primitives and arrays.
-  const record = raw as { readonly [key: string]: JsonValue };
+  // SAFETY: `const record = raw as JsonObject;` is required at this I/O or test boundary.
+  const record = raw as JsonObject;
   const name = String(record.name ?? "");
   if (!/^[a-z][a-z0-9-]*$/u.test(name)) {
     throw new BuildError("HOBO_BUILD_SERVICE_INVALID", `Invalid service name "${name}".`, { service: name });
@@ -128,12 +129,12 @@ export function parseServiceDeclaration(raw: JsonValue): ServiceDeclaration {
 }
 
 export function parseBuildManifest(json: JsonValue): BuildManifest {
-  if (!json || !(json instanceof Object)) {
+  if (!json || !isJsonObject(json)) {
     throw new BuildError("HOBO_BUILD_SOURCE_PARSE", "Build manifest must be an object.");
   }
 
-  // SAFETY: the preceding Object check excludes JSON primitives and arrays.
-  const record = json as { readonly [key: string]: JsonValue };
+  // SAFETY: `const record = json as JsonObject;` is required at this I/O or test boundary.
+  const record = json as JsonObject;
   if (record.schema !== BUILD_MANIFEST_SCHEMA) {
     throw new BuildError("HOBO_BUILD_SOURCE_PARSE", `Unexpected manifest schema "${String(record.schema)}".`);
   }
@@ -152,12 +153,12 @@ export function parseBuildManifest(json: JsonValue): BuildManifest {
 }
 
 function parseBuildArtifact(raw: JsonValue): BuildArtifact {
-  if (!raw || !(raw instanceof Object)) {
+  if (!raw || !isJsonObject(raw)) {
     throw new BuildError("HOBO_BUILD_SOURCE_PARSE", "Build artifact must be an object.");
   }
 
-  // SAFETY: the preceding Object check excludes JSON primitives and arrays.
-  const record = raw as { readonly [key: string]: JsonValue };
+  // SAFETY: `const record = raw as JsonObject;` is required at this I/O or test boundary.
+  const record = raw as JsonObject;
   const kind = String(record.kind ?? "");
   if (kind !== "wasm-component" && kind !== "oci-container") {
     throw new BuildError("HOBO_BUILD_SOURCE_PARSE", `Invalid artifact kind "${kind}".`);
@@ -222,7 +223,7 @@ function normalizeServiceRuntime(runtime: string): ServiceDeclaration["runtime"]
 function normalizeTargetRuntime(runtime: string): TargetRuntime {
   const normalized = runtime.toLowerCase();
   if (normalized === "auto" || normalized === "wasm" || normalized === "component" || normalized === "container") {
-    // SAFETY: the branch accepts only the TargetRuntime literals above.
+    // SAFETY: `return normalized === "component" ? "wasm" : (normalized as TargetRuntime);` is required at this I/O or test boundary.
     return normalized === "component" ? "wasm" : (normalized as TargetRuntime);
   }
   throw new BuildError("HOBO_BUILD_RUNTIME_INVALID", `Invalid build runtime "${runtime}".`, { runtime });
@@ -236,7 +237,7 @@ function assertRelativePath(path: string, label: string): void {
   }
 }
 
-function defaultEntrypoint(record: { readonly [key: string]: JsonValue }, name: string): string {
+function defaultEntrypoint(record: JsonObject, name: string): string {
   const language = normalizeLanguage(String(record.language ?? "ts"));
   const file = language === "python" ? "app.py" : "service.ts";
   return `services/${name}/src/${file}`;

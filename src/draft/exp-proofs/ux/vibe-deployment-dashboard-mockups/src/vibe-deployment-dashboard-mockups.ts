@@ -378,12 +378,18 @@ export function parseVibeDeploymentDashboardMockups(
     throw new VibeDeploymentDashboardMockupsParseError(validation.errors);
   }
 
+  // SAFETY: `return mockups as ParsedVibeDeploymentDashboardMockups;` is required at this I/O or test boundary.
   return mockups as ParsedVibeDeploymentDashboardMockups;
+}
+
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
 }
 
 export function validateVibeDeploymentDashboardMockups(
   mockups: VibeDeploymentDashboardMockups,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (mockups.issue !== "HOBO-544") {

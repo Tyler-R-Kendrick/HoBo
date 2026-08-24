@@ -1,4 +1,3 @@
-/* eslint-disable anti-slop/no-unknown-returns, anti-slop/no-unknown-parameters -- error assertion helper crosses the test boundary. */
 import assert from "node:assert/strict";
 import { parseSecretRef, SecretValue } from "@hobo/bindings";
 import { PackError, type ProcessRunner } from "@hobo/pack-framework";
@@ -14,6 +13,8 @@ import {
 	VALKEY_CLI_AUTH_ENV,
 } from "../src/index.js";
 import { AUTH_REF } from "./harness.js";
+import { type JsonValue } from "../src/json.js";
+
 
 const SOURCE = {
 	host: "valkey-a.yard-1.hobo.test",
@@ -24,7 +25,7 @@ const TARGET = {
 	passwordRef: AUTH_REF,
 } as const;
 
-function expectPackError(fn: () => unknown, code: string): void {
+function expectPackError(fn: () => void, code: string): void {
 	try {
 		fn();
 	} catch (error) {
@@ -240,10 +241,9 @@ describe("runValkeyCommand", () => {
 		};
 		await assert.rejects(
 			() => runValkeyCommand(runner, resolver, command),
-			(error: unknown) =>
+			(error: JsonValue) =>
 				error instanceof PackError &&
 				error.code === "SECRET_CUSTODY_UNAVAILABLE",
 		);
 	});
 });
-/* eslint-disable anti-slop/no-unknown-returns, anti-slop/no-unknown-parameters -- error assertion helper crosses the test boundary. */

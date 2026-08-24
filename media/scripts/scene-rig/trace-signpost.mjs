@@ -222,7 +222,7 @@ const bridgeEdge = new Uint8Array(w * h); // synthetic dark edge pixels
 {
 	// post left/right edges on non-occluded rows (post exists roughly from the
 	// top of the topmost band to the grass)
-	const edges = new Array(h).fill(null);
+	const edges = Array.from({ length: h }, () => null);
 	for (let y = 0; y < h; y++) {
 		if (occluded[y]) continue;
 		const cx = postCx(y);

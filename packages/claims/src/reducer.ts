@@ -52,20 +52,6 @@ export type ReduceResult = {
 	readonly events: readonly ClaimEvent[];
 };
 
-type GuestLeaseReservedEvent = {
-	type: "GuestLeaseReserved";
-	leaseId: string;
-	expiresAt?: Instant;
-	claimBy?: Instant;
-};
-
-type ClaimActionSecuredEvent = {
-	type: "ClaimActionSecured";
-	itemId: string;
-	oneTimeActionRef: string;
-	deadline?: Instant;
-};
-
 export function initialState(
 	deploymentRef: string,
 	fencingToken: string,
@@ -104,14 +90,13 @@ function replaceItem(
 function deriveEarliestDeadline(
 	items: readonly ClaimItem[],
 ): Instant | undefined {
-	const deadlines = items
-		.filter(
-			(item) => item.status !== "completed" && item.deadline !== undefined,
-		)
-		.map((item) => {
-			// SAFETY: the filter immediately above excludes undefined deadlines.
-			return item.deadline as Instant;
-		});
+	const deadlines: Instant[] = [];
+	for (const item of items) {
+		if (item.status === "completed" || item.deadline === undefined) {
+			continue;
+		}
+		deadlines.push(item.deadline);
+	}
 	return deadlines.length === 0 ? undefined : Math.min(...deadlines);
 }
 
@@ -189,7 +174,7 @@ function refreshBundle(
 		earliest === undefined
 			? (() => {
 					const { earliestDeadline: _dropped, ...rest } = withDeadline;
-					// SAFETY: removing the optional derived deadline preserves the ClaimBundle shape.
+					// SAFETY: `return rest as ClaimBundle;` is required at this I/O or test boundary.
 					return rest as ClaimBundle;
 				})()
 			: { ...withDeadline, earliestDeadline: earliest };
@@ -264,15 +249,16 @@ export function reduce(
 		}
 		case "ReserveGuestLease": {
 			next = { ...state, lease: command.lease };
-			const leaseEvent: GuestLeaseReservedEvent = {
+			emit(events, {
 				type: "GuestLeaseReserved",
 				leaseId: command.lease.id,
-			};
-			if (command.lease.expiresAt !== undefined)
-				leaseEvent.expiresAt = command.lease.expiresAt;
-			if (command.lease.claimBy !== undefined)
-				leaseEvent.claimBy = command.lease.claimBy;
-			emit(events, leaseEvent);
+				...(command.lease.expiresAt !== undefined
+					? { expiresAt: command.lease.expiresAt }
+					: undefined),
+				...(command.lease.claimBy !== undefined
+					? { claimBy: command.lease.claimBy }
+					: undefined),
+			});
 			break;
 		}
 		case "StartGuestDeployment": {
@@ -323,22 +309,22 @@ export function reduce(
 		}
 		case "RecordClaimAction": {
 			const bundle = requireBundle(state);
-			const updated = replaceItem(bundle, command.itemId, (item) => {
-				const updatedItem = {
-					...item,
-					oneTimeActionRef: command.oneTimeActionRef,
-				};
-				if (command.deadline !== undefined) updatedItem.deadline = command.deadline;
-				return updatedItem;
-			});
+			const updated = replaceItem(bundle, command.itemId, (item) => ({
+				...item,
+				oneTimeActionRef: command.oneTimeActionRef,
+				...(command.deadline !== undefined
+					? { deadline: command.deadline }
+					: undefined),
+			}));
 			next = refreshBundle(state, updated);
-			const actionEvent: ClaimActionSecuredEvent = {
+			emit(events, {
 				type: "ClaimActionSecured",
 				itemId: command.itemId,
 				oneTimeActionRef: command.oneTimeActionRef,
-			};
-			if (command.deadline !== undefined) actionEvent.deadline = command.deadline;
-			emit(events, actionEvent);
+				...(command.deadline !== undefined
+					? { deadline: command.deadline }
+					: undefined),
+			});
 			break;
 		}
 		case "BeginClaimBundle": {
@@ -578,15 +564,13 @@ export function reduce(
 				break;
 			}
 			const lease = state.lease;
-			if (lease === undefined) {
-				next = { ...state, lifecycle: "Expired" };
-			} else {
-				next = {
-					...state,
-					lifecycle: "Expired",
-					lease: { ...lease, status: "expired" as const },
-				};
-			}
+			next = {
+				...state,
+				lifecycle: "Expired",
+				...(lease !== undefined
+					? { lease: { ...lease, status: "expired" as const } }
+					: undefined),
+			};
 			emit(events, {
 				type: "GuestLeaseExpired",
 				leaseId: command.leaseId,

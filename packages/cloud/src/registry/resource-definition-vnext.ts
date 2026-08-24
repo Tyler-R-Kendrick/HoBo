@@ -22,6 +22,8 @@ import type {
 } from "@hobo/capability-profiles";
 
 import type { ResourceDefinition } from "./catalog.js";
+import { type JsonObject } from "../json.js";
+
 
 // public-contract: versions the portable resource-definition schema.
 export const RESOURCE_DEFINITION_VNEXT_SCHEMA =
@@ -169,9 +171,9 @@ export function toSelectionCandidate(
 		producesBindingProfiles: semantics.producesBindingProfiles,
 		migrationProfiles: semantics.migrationProfiles,
 		providerClass: semantics.providerClass,
-		...(semantics.evidenceExpiresAtMs !== undefined && {
-			evidenceExpiresAtMs: semantics.evidenceExpiresAtMs,
-		}),
+		...(semantics.evidenceExpiresAtMs !== undefined
+			? { evidenceExpiresAtMs: semantics.evidenceExpiresAtMs }
+			: undefined),
 		evidenceSignatureValid: semantics.evidenceSignatureValid,
 		creatorAuthorityAfterClaim: semantics.creatorAuthorityAfterClaim,
 		claimAtomicity: semantics.claimAtomicity,
@@ -194,7 +196,7 @@ export function toSelectionCandidate(
  */
 export function semanticsDigestInput(
 	definition: ResourceDefinitionVNext,
-): Record<string, JsonValue> | undefined {
+): JsonObject | undefined {
 	const semantics = definition.semantics;
 	if (semantics === undefined) return undefined;
 	return {
@@ -233,4 +235,3 @@ export function semanticsDigestInput(
 		),
 	};
 }
-import type { JsonValue } from "../plan-types.js";

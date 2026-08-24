@@ -106,10 +106,10 @@ describe("pulumi CLI engine (3-2)", () => {
 		expect(() => {
 			void new PulumiEngineUnavailableError(PULUMI_CLI_MISSING, "probe");
 			createPulumiCliAutomationEngine({
-					workDir,
-					pulumiBin: "definitely-not-pulumi-xyz",
-					env: {},
-				});
+				workDir,
+				pulumiBin: "definitely-not-pulumi-xyz",
+				env: {},
+			});
 		}).not.toThrow();
 	});
 });

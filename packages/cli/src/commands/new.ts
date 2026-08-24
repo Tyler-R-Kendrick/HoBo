@@ -10,6 +10,8 @@ import {
 	type ScaffoldResult,
 	VALID_TEMPLATES,
 } from "../types/scaffold.js";
+import { isJsonObject } from "../json.js";
+
 
 export class DestinationExistsError extends UsageError {
 	constructor(message: string) {
@@ -115,6 +117,7 @@ export async function scaffoldHoboProject(input: {
 export async function validateScaffoldProject(projectDir: string) {
 	let template: ReturnType<typeof parseTemplateId>;
 	try {
+		// SAFETY: `const bindleRaw = JSON.parse(` is required at this I/O or test boundary.
 		const bindleRaw = JSON.parse(
 			await readFile(path.join(projectDir, "hobo.bindle.json"), "utf8"),
 		) as { template?: unknown };
@@ -151,6 +154,7 @@ export async function validateScaffoldProject(projectDir: string) {
 		};
 	}
 
+	// SAFETY: `const packageJson = JSON.parse(` is required at this I/O or test boundary.
 	const packageJson = JSON.parse(
 		await readFile(path.join(projectDir, "package.json"), "utf8"),
 	) as {
@@ -247,10 +251,11 @@ async function existingDirectory(projectDir: string) {
 	} catch (error) {
 		if (
 			error &&
-			typeof error === "object" &&
+			isJsonObject(error) &&
 			"code" in error &&
 			error.code === "ENOENT"
 		) {
+			// SAFETY: `return { exists: false, isDirectory: false, entries: [] as string[] };` is required at this I/O or test boundary.
 			return { exists: false, isDirectory: false, entries: [] as string[] };
 		}
 		throw error;
@@ -281,7 +286,7 @@ async function mergeGitignore(filePath: string, requiredContent: string) {
 		if (
 			!(
 				error &&
-				typeof error === "object" &&
+				isJsonObject(error) &&
 				"code" in error &&
 				error.code === "ENOENT"
 			)

@@ -6,6 +6,8 @@ import {
 	type DevRuntime,
 } from "../dev/local-camp.js";
 import type { CommandModule } from "../shell/registry.js";
+import { isJsonString, isJsonNumber } from "../json.js";
+
 
 export interface DevServeResult {
 	readonly primaryUrl: string;
@@ -101,7 +103,7 @@ export function createDevCommand(deps: DevCommandDeps = {}): CommandModule {
 			}
 			const portRaw = flags.port;
 			const port =
-				typeof portRaw === "string" || typeof portRaw === "number"
+				isJsonString(portRaw) || isJsonNumber(portRaw)
 					? Number(portRaw)
 					: undefined;
 
@@ -110,7 +112,7 @@ export function createDevCommand(deps: DevCommandDeps = {}): CommandModule {
 				try {
 					const serve = await deps.serveProject({
 						projectDir,
-						...(port !== undefined && Number.isInteger(port) ? { port } : {}),
+						...(port !== undefined && Number.isInteger(port) ? { port } : undefined),
 						once,
 						emitProgress,
 					});
@@ -148,20 +150,20 @@ export function createDevCommand(deps: DevCommandDeps = {}): CommandModule {
 							endpoints: serve.endpoints,
 							...(serve.exposedEndpoints !== undefined
 								? { exposedEndpoints: serve.exposedEndpoints }
-								: {}),
+								: undefined),
 							serviceDiscovery: serve.serviceDiscovery,
 							...(serve.bindleEnv !== undefined
 								? { bindleEnv: serve.bindleEnv }
-								: {}),
+								: undefined),
 							...(serve.namedEndpoints !== undefined
 								? { namedEndpoints: serve.namedEndpoints }
-								: {}),
+								: undefined),
 							...(serve.primaryNamedUrl !== undefined
 								? {
 										primaryNamedUrl: serve.primaryNamedUrl,
 										localNamedUrl: serve.primaryNamedUrl,
 									}
-								: {}),
+								: undefined),
 							offline: true,
 							bootMs,
 							withinColdBudget: bootMs <= DEV_COLD_BUDGET_MS,

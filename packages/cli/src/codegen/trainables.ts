@@ -90,14 +90,25 @@ export async function scanTrainableDirectives(
 	return found;
 }
 
+export interface TrainablesBuild {
+	readonly artifact: CodegenArtifact;
+	readonly stubs: readonly TrainableStub[];
+}
+
+interface TrainableStepEntry {
+	readonly stub: TrainableStub;
+	readonly code: string;
+}
+
+interface TrainableDirectiveEntry extends TrainableStepEntry {
+	readonly importLine: string;
+}
+
 export function buildTrainables(
 	model: SourceModel,
 	layout: CodegenLayout,
 	directives: readonly DirectiveFunction[] = [],
-): {
-	readonly artifact: CodegenArtifact;
-	readonly stubs: readonly TrainableStub[];
-} {
+): TrainablesBuild {
 	const stepEntries = model.bindles.flatMap((bindle) =>
 		bindle.steps.map((step) => toStepEntry(model, bindle, step)),
 	);
@@ -148,7 +159,7 @@ function toStepEntry(
 	model: SourceModel,
 	bindle: SourceModelBindle,
 	step: string,
-): { readonly stub: TrainableStub; readonly code: string } {
+): TrainableStepEntry {
 	const resource =
 		model.resources.find((candidate) =>
 			step.startsWith(`${candidate.name}.`),
@@ -186,11 +197,7 @@ function toStepEntry(
 function toDirectiveEntry(
 	directive: DirectiveFunction,
 	layout: CodegenLayout,
-): {
-	readonly stub: TrainableStub;
-	readonly code: string;
-	readonly importLine: string;
-} {
+): TrainableDirectiveEntry {
 	const stub = create(TrainableStubSchema, {
 		methodRef: directive.name,
 		exportName: `${directive.name}Training`,

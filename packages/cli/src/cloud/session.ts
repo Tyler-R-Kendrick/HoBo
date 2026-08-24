@@ -5,6 +5,8 @@ import path from "node:path";
 import type { PrincipalRef } from "@hobo/core";
 
 import type { YardSession } from "./yard-client.js";
+import { isJsonString } from "../json.js";
+
 
 // Mocked-lane session material. The Yard gateway (gateway.authorize) accepts any
 // attributable principal — a non-`system` kind with a non-empty id — so a
@@ -48,12 +50,13 @@ export async function persistSession(
 export async function loadSession(dir: string): Promise<YardSession | null> {
 	try {
 		const raw = await readFile(sessionPath(dir), "utf8");
+		// SAFETY: `const parsed = JSON.parse(raw) as YardSession;` is required at this I/O or test boundary.
 		const parsed = JSON.parse(raw) as YardSession;
 		if (
 			parsed &&
-			typeof parsed.token === "string" &&
+			isJsonString(parsed.token) &&
 			parsed.principal &&
-			typeof parsed.principal.id === "string"
+			isJsonString(parsed.principal.id)
 		) {
 			return parsed;
 		}

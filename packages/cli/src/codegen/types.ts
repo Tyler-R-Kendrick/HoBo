@@ -1,3 +1,4 @@
+import { type JsonObject } from "../json.js";
 // The project codegen engine behind `hobo codegen`/`hobo stub` and the
 // `hobo build` freshness gate. Record types (artifacts, drift entries,
 // reports, trainable stubs) are the GENERATED protobuf types from
@@ -78,7 +79,7 @@ export class CodegenError extends Error {
 	constructor(
 		readonly code: string,
 		message: string,
-		readonly detail: Record<string, unknown> = {},
+		readonly detail: JsonObject = {},
 	) {
 		super(message);
 		this.name = "CodegenError";

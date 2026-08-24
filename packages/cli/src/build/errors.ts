@@ -1,4 +1,6 @@
 import { CliError } from "../shell/errors.js";
+import { isJsonNumber, type JsonObject } from "../json.js";
+
 
 export type BuildErrorCode =
 	| "HOBO_BUILD_USAGE"
@@ -16,12 +18,12 @@ export type BuildErrorCode =
 
 export class BuildError extends Error {
 	readonly code: BuildErrorCode;
-	readonly detail: Record<string, unknown>;
+	readonly detail: JsonObject;
 
 	constructor(
 		code: BuildErrorCode,
 		message: string,
-		detail: Record<string, unknown> = {},
+		detail: JsonObject = {},
 	) {
 		super(message);
 		this.name = "BuildError";
@@ -33,7 +35,7 @@ export class BuildError extends Error {
 export class BuildCliError extends CliError {
 	constructor(error: BuildError) {
 		const exitCode =
-			typeof error.detail.exitCode === "number"
+			isJsonNumber(error.detail.exitCode)
 				? error.detail.exitCode
 				: error.code === "HOBO_BUILD_USAGE"
 					? 2

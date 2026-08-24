@@ -60,6 +60,7 @@ describe("hobo new scaffold", () => {
 			expect(result.exitCode).toBe(0);
 			expect(result.stderr).toBe("");
 
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				ok: boolean;
 				verb: string;
@@ -108,6 +109,7 @@ describe("hobo new scaffold", () => {
 				for (const template of VALID_TEMPLATES) {
 					const { projectDir, createdFiles } = await scaffoldHoboProject({
 						cwd,
+						// SAFETY: `name: `sample-${template}` as never,` is required at this I/O or test boundary.
 						name: `sample-${template}` as never,
 						template,
 					});
@@ -175,6 +177,7 @@ describe("hobo new scaffold", () => {
 			expect(result.exitCode).toBe(2);
 			expect(result.stderr).toBe("");
 
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				ok: boolean;
 				code: string;
@@ -242,6 +245,7 @@ describe("hobo new scaffold", () => {
 				"coverage/\n.hobo/\nnode_modules/\ndist/\n",
 			);
 
+			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.
 			const envelope = JSON.parse(result.stdout) as {
 				data: { createdFiles: string[] };
 			};

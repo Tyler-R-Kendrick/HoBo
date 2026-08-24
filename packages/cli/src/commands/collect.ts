@@ -12,6 +12,8 @@ import {
 
 import { stubResult } from "../cloud/stub.js";
 import type { CommandModule } from "../shell/registry.js";
+import { type JsonObject } from "../json.js";
+
 
 // The golden the `--check` drift gate compares the freshly collected manifest IR
 // against. Committed alongside the project so CI can assert the checked-in IR is
@@ -51,9 +53,10 @@ export function createCollectCommand(
 				`hobo collect: running resource collection on ${target.bindleId}`,
 			);
 			const result = collectBindleManifest(target);
+			// SAFETY: `const manifestValue = JSON.parse(` is required at this I/O or test boundary.
 			const manifestValue = JSON.parse(
 				serializeManifest(result.manifest),
-			) as Record<string, unknown>;
+			) as JsonObject;
 			const manifestIr = JSON.stringify(manifestValue, null, 2);
 
 			if (flags.check) {

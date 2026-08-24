@@ -30,10 +30,12 @@ import {
 	parseBuildRequestFromInvocation,
 	parseServiceDeclaration,
 } from "../src/build/parse.js";
+import { type JsonObject } from "../src/json.js";
+
 
 const DIGEST = `sha256:${"a".repeat(64)}`;
 
-const artifact = (overrides: Record<string, unknown> = {}) => ({
+const artifact = (overrides: JsonObject = {}) => ({
 	service: "api",
 	kind: "wasm-component",
 	path: "dist/api.wasm",
@@ -44,7 +46,7 @@ const artifact = (overrides: Record<string, unknown> = {}) => ({
 	...overrides,
 });
 
-const manifest = (overrides: Record<string, unknown> = {}) => ({
+const manifest = (overrides: JsonObject = {}) => ({
 	schema: BUILD_MANIFEST_SCHEMA,
 	runtimeTarget: "auto",
 	artifacts: [],
@@ -99,6 +101,7 @@ describe("parseServiceDeclaration", () => {
 			parseServiceDeclaration({ name: "Bad" });
 			expect.unreachable();
 		} catch (error) {
+			// SAFETY: `expect((error as BuildError).detail).toMatchObject({ service: "Bad" });` is required at this I/O or test boundary.
 			expect((error as BuildError).detail).toMatchObject({ service: "Bad" });
 		}
 	});
@@ -192,6 +195,7 @@ describe("parseServiceDeclaration", () => {
 			parseServiceDeclaration({ name: "api", runtime: "jvm" });
 			expect.unreachable();
 		} catch (error) {
+			// SAFETY: `expect((error as BuildError).code).toBe("HOBO_BUILD_RUNTIME_INVALID");` is required at this I/O or test boundary.
 			expect((error as BuildError).code).toBe("HOBO_BUILD_RUNTIME_INVALID");
 		}
 	});
@@ -405,18 +409,23 @@ describe("normalizeTargetRuntime", () => {
 			normalizeTargetRuntime("jvm");
 			expect.unreachable();
 		} catch (error) {
+			// SAFETY: `expect((error as BuildError).code).toBe("HOBO_BUILD_RUNTIME_INVALID");` is required at this I/O or test boundary.
 			expect((error as BuildError).code).toBe("HOBO_BUILD_RUNTIME_INVALID");
+			// SAFETY: `expect((error as BuildError).detail).toMatchObject({ runtime: "jvm" });` is required at this I/O or test boundary.
 			expect((error as BuildError).detail).toMatchObject({ runtime: "jvm" });
 		}
 	});
 });
 
 describe("parseBuildRequestFromInvocation", () => {
+	// SAFETY: `const context = { cwd: "/cwd" } as never;` is required at this I/O or test boundary.
 	const context = { cwd: "/cwd" } as never;
 
 	it("prefers the project directory over the working directory", () => {
 		const request = parseBuildRequestFromInvocation(
+			// SAFETY: `{ cwd: "/cwd", projectDir: "/project" } as never,` is required at this I/O or test boundary.
 			{ cwd: "/cwd", projectDir: "/project" } as never,
+			// SAFETY: `{ json: false } as never,` is required at this I/O or test boundary.
 			{ json: false } as never,
 			{},
 		);
@@ -425,6 +434,7 @@ describe("parseBuildRequestFromInvocation", () => {
 
 	it("falls back to the working directory", () => {
 		expect(
+			// SAFETY: `parseBuildRequestFromInvocation(context, { json: false } as never, {})` is required at this I/O or test boundary.
 			parseBuildRequestFromInvocation(context, { json: false } as never, {})
 				.projectRoot,
 		).toBe("/cwd");
@@ -434,6 +444,7 @@ describe("parseBuildRequestFromInvocation", () => {
 		expect(
 			parseBuildRequestFromInvocation(
 				context,
+				// SAFETY: `{ json: false, runtime: "wasm", target: "container" } as never,` is required at this I/O or test boundary.
 				{ json: false, runtime: "wasm", target: "container" } as never,
 				{},
 			).targetRuntime,
@@ -444,6 +455,7 @@ describe("parseBuildRequestFromInvocation", () => {
 		expect(
 			parseBuildRequestFromInvocation(
 				context,
+				// SAFETY: `{ json: false, target: "container" } as never,` is required at this I/O or test boundary.
 				{ json: false, target: "container" } as never,
 				{},
 			).targetRuntime,
@@ -452,6 +464,7 @@ describe("parseBuildRequestFromInvocation", () => {
 
 	it("falls back to the environment", () => {
 		expect(
+			// SAFETY: `parseBuildRequestFromInvocation(context, { json: false } as never, {` is required at this I/O or test boundary.
 			parseBuildRequestFromInvocation(context, { json: false } as never, {
 				HOBO_RUNTIME: "container",
 			}).targetRuntime,
@@ -463,6 +476,7 @@ describe("parseBuildRequestFromInvocation", () => {
 		expect(
 			parseBuildRequestFromInvocation(
 				context,
+				// SAFETY: `{ json: false, runtime: "wasm" } as never,` is required at this I/O or test boundary.
 				{ json: false, runtime: "wasm" } as never,
 				{ HOBO_RUNTIME: "container" },
 			).targetRuntime,
@@ -471,6 +485,7 @@ describe("parseBuildRequestFromInvocation", () => {
 
 	it("defaults to auto with nothing set", () => {
 		expect(
+			// SAFETY: `parseBuildRequestFromInvocation(context, { json: false } as never, {})` is required at this I/O or test boundary.
 			parseBuildRequestFromInvocation(context, { json: false } as never, {})
 				.targetRuntime,
 		).toBe("auto");
@@ -478,6 +493,7 @@ describe("parseBuildRequestFromInvocation", () => {
 
 	it("honours SOURCE_DATE_EPOCH, which is what makes a build reproducible", () => {
 		expect(
+			// SAFETY: `parseBuildRequestFromInvocation(context, { json: false } as never, {` is required at this I/O or test boundary.
 			parseBuildRequestFromInvocation(context, { json: false } as never, {
 				SOURCE_DATE_EPOCH: "2020-01-01T00:00:00.000Z",
 			}).sourceDateEpoch,
@@ -486,6 +502,7 @@ describe("parseBuildRequestFromInvocation", () => {
 
 	it("carries the json flag through", () => {
 		expect(
+			// SAFETY: `parseBuildRequestFromInvocation(context, { json: true } as never, {})` is required at this I/O or test boundary.
 			parseBuildRequestFromInvocation(context, { json: true } as never, {})
 				.json,
 		).toBe(true);

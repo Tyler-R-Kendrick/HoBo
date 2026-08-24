@@ -20,6 +20,7 @@ import {
 	removeWorkspace,
 	runInWorkspace,
 } from "../workspace.js";
+import { type JsonValue } from "../json.js";
 
 const argv = process.argv.slice(2);
 
@@ -45,7 +46,10 @@ function flag(name: string): string | undefined {
  */
 function verb(): string {
 	for (let i = 0; i < ours.length; i += 1) {
-		const token = ours[i] as string;
+		const token = ours[i];
+		if (token === undefined) {
+			continue;
+		}
 		if (token.startsWith("-")) {
 			if (VALUE_FLAGS.has(token)) i += 1;
 			continue;
@@ -59,7 +63,7 @@ const command = verb();
 const root = flag("root") ?? process.cwd();
 const json = ours.includes("--json");
 
-function emit(human: string, data: unknown): void {
+function emit(human: string, data: JsonValue): void {
 	process.stdout.write(
 		json ? `${JSON.stringify(data, null, 2)}\n` : `${human}\n`,
 	);

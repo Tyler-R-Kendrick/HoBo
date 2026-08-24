@@ -1,8 +1,9 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased input and clone contracts at the shared parser/serialization boundaries. */
 import {
   replayFlagEvents,
   validateFlagEvent
 } from "../../flag-event-contract/src/flag-event-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const SINGLE_WRITER_TOPOLOGY = "single-writer-camp";
 const ACTIVE_ACTIVE_TOPOLOGY = "active-active-eventual";
@@ -411,14 +412,14 @@ function eventValue(event) {
 }
 
 function assertObject(value, field) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${field} must be an object`);
   }
   return value;
 }
 
 function assertNonEmptyString(value, field) {
-  if (typeof value !== "string" || value.trim() === "") {
+  if (!isJsonString(value) || value.trim() === "") {
     throw new TypeError(`${field} must be a non-empty string`);
   }
   return value;
@@ -442,7 +443,7 @@ function deepFreeze(value) {
   if (Array.isArray(value)) {
     return Object.freeze(value.map(deepFreeze));
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.freeze(Object.fromEntries(Object.entries(value).map(([key, child]) => [key, deepFreeze(child)])));
   }
   return value;
@@ -452,5 +453,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return typeof structuredClone === "function" ? structuredClone(value) : JSON.parse(JSON.stringify(value));
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

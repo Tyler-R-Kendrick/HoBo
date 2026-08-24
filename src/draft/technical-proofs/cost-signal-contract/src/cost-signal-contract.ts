@@ -1,6 +1,6 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased snapshot, ledger, and recursive canonicalization values at the contract boundary. */
-
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const COST_JSON_SCHEMA_VERSION = "hobo.cost/v1";
 export const COST_SIGNAL_EVENT_SCHEMA_VERSION = "hobo.cost-signal-event/v1";
@@ -178,7 +178,7 @@ export function serializeCreditLedgerView(input) {
   };
 
   const digest = `sha256:${sha256(canonicalJson(normalized))}`;
-  if (typeof snapshot.digest === "string" && snapshot.digest !== digest) {
+  if (isJsonString(snapshot.digest) && snapshot.digest !== digest) {
     if (!SHA256_REF.test(snapshot.digest)) {
       throw new TypeError("snapshot.digest must be a sha256 reference");
     }
@@ -423,14 +423,14 @@ function validateUnitPrice(value, path) {
 }
 
 function requireObject(value, fieldName) {
-  if (!value || typeof value !== "object" || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
   return value;
 }
 
 function requireString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;
@@ -521,7 +521,7 @@ function sortKeys(value) {
   if (Array.isArray(value)) {
     return value.map(sortKeys);
   }
-  if (value && typeof value === "object") {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -534,4 +534,3 @@ function sortKeys(value) {
 function sha256(value) {
   return createHash("sha256").update(value).digest("hex");
 }
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased snapshot, ledger, and recursive canonicalization values at the contract boundary. */

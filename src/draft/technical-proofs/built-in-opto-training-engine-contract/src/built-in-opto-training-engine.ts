@@ -1,5 +1,4 @@
 import { createHash } from "node:crypto";
-import { isJsonObject, isJsonString } from "../../training-engine-port-contract/src/json.js";
 
 import {
   BUILT_IN_ENGINE_ID,
@@ -10,6 +9,8 @@ import {
   optimizeTrainingCandidate,
   validateCandidatePatch
 } from "../../training-engine-port-contract/src/training-engine-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const BUILT_IN_OPTO_TRAINING_ENGINE_CONTRACT = "hobo.built-in-opto-training-engine/v1";
 

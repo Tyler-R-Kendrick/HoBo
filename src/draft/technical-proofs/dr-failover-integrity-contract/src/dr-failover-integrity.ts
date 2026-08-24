@@ -1,9 +1,9 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks parse erased failover candidates and checkpoints at their shared input boundary. */
-
 import {
   buildDisasterRecoveryPostmortem,
   orchestrateDisasterRecovery,
 } from "../../disaster-recovery-failover-contract/src/disaster-recovery-failover.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const EVENT_TYPES = {
   ownerSelected: "failoverIntegrity.OwnerSelected",
@@ -142,7 +142,7 @@ function compareCandidate(left, right) {
 }
 
 function validateCandidate(candidate) {
-  if (!candidate || typeof candidate !== "object" || Array.isArray(candidate)) {
+  if (!candidate || !isJsonObject(candidate) || Array.isArray(candidate)) {
     throw new Error("failover candidate must be an object");
   }
 
@@ -208,7 +208,7 @@ function buildIntegrityEvents({ state, ownerDecision, staleOwner, rpo }) {
 }
 
 function validateCheckpoint(checkpoint) {
-  if (!checkpoint || typeof checkpoint !== "object" || Array.isArray(checkpoint)) {
+  if (!checkpoint || !isJsonObject(checkpoint) || Array.isArray(checkpoint)) {
     throw new Error("checkpoint is required");
   }
   if (!Array.isArray(checkpoint.completedSteps)) {
@@ -225,7 +225,7 @@ function validateCheckpoint(checkpoint) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new Error(`${fieldName} is required`);
   }
   return value.trim();
@@ -246,7 +246,7 @@ function slug(value) {
 }
 
 function deepFreeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
 

@@ -146,7 +146,8 @@ main
                                                                                                                                        └── sdlc/anti-slop-135-draft-projects-identity  #1394 s3-02-hobo-identity
                                                                                                                                         └── sdlc/anti-slop-136-draft-projects-conformance-sdk  #1395 s1-24-conformance-sdk
                                                                                                                                          └── sdlc/anti-slop-137-draft-projects-hobo-core  #1396 s0-03-hobo-core
-                                                                                                                                          └── sdlc/anti-slop-138-packages-tinies  schema-tools+componentize+claims+convex+junctions
+                                                                                                                                          └── sdlc/anti-slop-138-packages-tinies  #1397 schema-tools+componentize+claims+convex+junctions
+                                                                                                                                           └── sdlc/anti-slop-139-packages-rift-registry  rift+registry+training+kv-redis
 ```
 
 Full-repo `pnpm run lint:slop` stays opt-in (large backlog). Pre-commit and
@@ -304,7 +305,8 @@ Layer 134: `s6-06-finops-plane` + `otel-office` + `s1-23-hobo-build` + `s2-08-pr
 Layer 135: `s3-02-hobo-identity` oxlint `--deny-warnings` clean (#1394).
 Layer 136: `s1-24-conformance-sdk` oxlint `--deny-warnings` clean (#1395).
 Layer 137: `s0-03-hobo-core` oxlint `--deny-warnings` clean (#1396). Remaining `src/draft/projects` are oxlint-clean.
-Layer 138: `schema-tools` + `componentize` + `claims` + `convex` + `junctions` plus cucumber steps, media, vitest coverage config, and the HOBO-50 projection-model proof oxlint `--deny-warnings` clean.
+Layer 138: `schema-tools` + `componentize` + `claims` + `convex` + `junctions` plus cucumber steps, media, vitest coverage config, and the HOBO-50 projection-model proof oxlint `--deny-warnings` clean (#1397).
+Layer 139: `rift` + `registry` + `training` + `kv-redis-compatible` oxlint `--deny-warnings` clean.
 Next: remaining packages (`pixel-village`, `cloud`, `cli`, `packs`, `yards`, `replay`, …), then the full-repo `lint:slop --deny-warnings` gate.
 Full-repo `lint:slop --deny-warnings` is still red until those land.
 GitHub stack metadata is at the 100-entry cap; later layers still open PRs via `gh stack submit --auto`.

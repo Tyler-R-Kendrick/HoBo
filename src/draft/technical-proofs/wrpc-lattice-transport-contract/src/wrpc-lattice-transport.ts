@@ -1,8 +1,9 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased provider-export, operation, and string input contracts at this transport boundary. */
 import {
   MembraneOverloadedError,
   MembraneSeveredError,
 } from "../../wrpc-membrane-failure-contract/src/wrpc-membrane-failure.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 export const LATTICE_TRANSPORT_CONTRACT_VERSION = "hobo.wrpc.lattice-transport/v1";
 
@@ -105,7 +106,7 @@ class LatticeTransportContract {
     const id = requireNonEmptyString(provider?.id, "provider.id");
     const hostId = requireNonEmptyString(provider?.hostId, "provider.hostId");
     this.#requireHost(hostId);
-    if (!provider.exports || typeof provider.exports !== "object") {
+    if (!provider.exports || !isJsonObject(provider.exports)) {
       throw new TypeError("provider.exports must be an object");
     }
 
@@ -175,7 +176,7 @@ class LatticeTransportContract {
     const provider = this.#requireProvider(link.providerId);
     const op = requireNonEmptyString(operation, "operation");
     const implementation = provider.exports?.[link.exportInterface]?.[op];
-    if (typeof implementation !== "function") {
+    if (!(implementation instanceof Function)) {
       throw new Error(`wrpc.operation_not_found: ${link.exportInterface}.${op}`);
     }
 
@@ -654,7 +655,7 @@ function normalizeNonNegativeInteger(value, fieldName) {
 }
 
 function requireNonEmptyString(value, fieldName) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return value;

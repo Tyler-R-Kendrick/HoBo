@@ -108,6 +108,7 @@ describe("HOBO-545 dashboard freshness/RBAC fixtures", () => {
   });
 
   it("aligns Pact and CUE architecture fixtures with the parsed proof", () => {
+    // SAFETY: `const pact = JSON.parse(` is required at this I/O or test boundary.
     const pact = JSON.parse(
       readFileSync(
         new URL(

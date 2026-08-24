@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: this parser-boundary guard rejects non-object inputs before reading contract fields; downstream checks validate the erased record. */
-
+import { isJsonObject } from "./json.js";
 export const REQUIRED_POLICY_SECTIONS = [
   "supportedPlans",
   "prepaidCredits",
@@ -197,7 +196,7 @@ export const BILLING_LAUNCH_POLICY = {
 export function validateBillingLaunchPolicy(record) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["billing launch policy record is required"] };
   }
 

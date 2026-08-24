@@ -1,6 +1,6 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased request and authorization contracts at the shared Yard shell parser boundary before domain evaluation. */
-
 import { assertReplayEqualsLive } from "../../replay-live-equivalence-poc/src/equivalence.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEPLOY_STREAM_PREFIX = "deployment:";
 
@@ -288,7 +288,7 @@ function parseDeployCommand(body) {
 }
 
 function authenticate(authorization) {
-  if (!authorization || typeof authorization !== "string") {
+  if (!authorization || !isJsonString(authorization)) {
     return { ok: false, status: 401, reason: "missing-authorization" };
   }
 
@@ -318,7 +318,7 @@ function defaultAuthorize(principal, command) {
 }
 
 function requiredString(value, fieldName) {
-  if (typeof value !== "string" || value.trim().length === 0) {
+  if (!isJsonString(value) || value.trim().length === 0) {
     throw new TypeError(`${fieldName} is required`);
   }
   return value.trim();
@@ -333,7 +333,7 @@ function clone(value) {
 }
 
 function freeze(value) {
-  if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+  if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
     return value;
   }
   for (const child of Object.values(value)) {

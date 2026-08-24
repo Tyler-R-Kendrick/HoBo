@@ -1,5 +1,3 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: these checks establish erased authorization-server, string, and object contracts at the shared parser boundaries before domain evaluation. */
-
 import {
   buildJwtBearerGrantRequest,
   createFixtureIdJag,
@@ -10,6 +8,8 @@ import {
   createIdentityEvent,
   validateIdentityEvent,
 } from "../../identity-event-contract/src/identity-event-contract.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const DEFAULT_ID_JAG_TTL_MS = 5 * 60 * 1000;
 const DEFAULT_ACCESS_TOKEN_MAX_LIFETIME_MS = 10 * 60 * 1000;
@@ -364,7 +364,7 @@ function normalizeCredential(rawCredential, { request, now, accessTokenMaxLifeti
 
 async function redeemJwtBearer(authorizationServer, { request, assertion }) {
   const jwtBearerRequest = buildJwtBearerGrantRequest({ assertion });
-  if (authorizationServer && typeof authorizationServer.redeemJwtBearer === "function") {
+  if (authorizationServer && authorizationServer.redeemJwtBearer instanceof Function) {
     return authorizationServer.redeemJwtBearer(jwtBearerRequest, {
       target: clone(request.target),
     });
@@ -516,7 +516,7 @@ function assertObject(value, field) {
 }
 
 function requireString(value, field) {
-  if (typeof value !== "string" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new Error(`${field} must be a non-empty string`);
   }
   return value;
@@ -525,7 +525,7 @@ function requireString(value, field) {
 function isPlainObject(value) {
   return (
     value !== null &&
-    typeof value === "object" &&
+    isJsonObject(value) &&
     !Array.isArray(value) &&
     (Object.getPrototypeOf(value) === Object.prototype || Object.getPrototypeOf(value) === null)
   );

@@ -1,7 +1,7 @@
-/* oxlint-disable anti-slop/no-chained-type-assertions, anti-slop/no-unsafe-dictionary-type, anti-slop/require-safety-comment-for-type-assertion -- SAFETY: this test deliberately erases the valid fixture to exercise malformed parser-boundary inputs. */
-
 import assert from "node:assert/strict";
 import { test } from "vitest";
+import { asJsonObject, type JsonBag } from "../src/json.js";
+
 
 async function loadContract() {
   const module = await import("../src/legal-privacy-ga-handoff-evidence.ts").catch((error) => ({
@@ -131,7 +131,7 @@ test("scope guards reject legal drafting, legal workflow, billing, unsupported c
 
 test("malformed evidence collections return parser errors instead of throwing", async () => {
   const { legalPrivacyGaHandoffEvidence, validateLegalPrivacyGaHandoffEvidence } = await loadContract();
-  const invalid = structuredClone(legalPrivacyGaHandoffEvidence) as unknown as Record<string, unknown>;
+  const invalid: JsonBag = { ...asJsonObject(structuredClone(legalPrivacyGaHandoffEvidence)) };
 
   invalid.evidence = {};
   invalid.blockers = "not-blockers";

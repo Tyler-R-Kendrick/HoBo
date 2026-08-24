@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-runtime-typeof -- SAFETY: normalizeError is the parser boundary for erased runtime failure values; these checks refine untrusted fields before classification. */
-
+import { isJsonString, isJsonObject } from "./json.js";
 export const CLASSIFICATION_EVENT_TYPE = "failure.Classified";
 
 export const failureClasses = Object.freeze({
@@ -109,7 +108,7 @@ export function classifyFailure(error, context = {}) {
 }
 
 export function crossesNoGoThreshold(classifications, descriptor) {
-  const classes = classifications.map((entry) => (typeof entry === "string" ? entry : entry.class));
+  const classes = classifications.map((entry) => (isJsonString(entry) ? entry : entry.class));
 
   if (descriptor.kind === "any-fatal") {
     return classes.some((failureClass) => failureClass === "poison" || failureClass === "split-brain");
@@ -139,14 +138,14 @@ export function makeClassificationEvent({ id, correlationId, sourceEventId, clas
 }
 
 function normalizeError(error) {
-  if (!error || typeof error !== "object") {
+  if (!error || !isJsonObject(error)) {
     return {};
   }
 
   return {
     ...error,
-    code: typeof error.code === "string" ? error.code.toUpperCase() : undefined,
-    membrane: typeof error.membrane === "string" ? error.membrane.toLowerCase() : undefined,
+    code: isJsonString(error.code) ? error.code.toUpperCase() : undefined,
+    membrane: isJsonString(error.membrane) ? error.membrane.toLowerCase() : undefined,
   };
 }
 

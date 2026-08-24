@@ -16,6 +16,7 @@ import {
 	dockForZone,
 } from "./dom-overlay.js";
 import { type BoAnimState, detectRecentSuccess } from "./entity-state.js";
+import { isJsonNumber, isJsonObject, parseJsonValue } from "./json.js";
 import { YARD_LAYOUT, type ZoneId, zoneAnchor, zoneAt } from "./layout.js";
 import { createWorldClient } from "./net/world-client.js";
 import { createYardClient } from "./net/yard-client.js";
@@ -56,8 +57,6 @@ import {
 } from "./waybills.js";
 import { toWorldView, type WorldView } from "./world-view.js";
 import { createYardEngine, selectZoneWithSnapshot } from "./yard-engine.js";
-import { isJsonNumber } from "./json.js";
-
 
 const params = new URLSearchParams(location.search);
 const API = params.get("api") || "http://127.0.0.1:8790";
@@ -258,10 +257,7 @@ function newsreelLines(
 	if (isJsonNumber(last?.rails) && now.rails !== last.rails) {
 		lines.push(`RAILS: ${last.rails} → ${now.rails}`);
 	}
-	if (
-		isJsonNumber(last?.connections) &&
-		now.connections !== last.connections
-	) {
+	if (isJsonNumber(last?.connections) && now.connections !== last.connections) {
 		lines.push(`CONNECTIONS: ${last.connections} → ${now.connections}`);
 	}
 	if (
@@ -550,8 +546,10 @@ const testHost: YardTestHost = {
 const seam = createTestSeam(testHost);
 seam.seed = TEST_MODE ? TEST_SEED : null;
 type TestWindow = Window & { __TEST__: typeof seam };
-// SAFETY: playwright seam is installed on window by this host module.
-(window as TestWindow).__TEST__ = seam;
+// SAFETY: two-step, because `Window` and `TestWindow` overlap only in the
+// property this line is about to install -- the seam does not exist on `window`
+// until it is written here, which is exactly what the compiler is pointing out.
+(window as unknown as TestWindow).__TEST__ = seam;
 
 /** Mute toggle lives in the dev drawer beside the other chrome. */
 function wireMuteControl(): void {

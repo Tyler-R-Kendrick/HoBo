@@ -48,7 +48,11 @@ interface IacResourceLike {
 	readonly outputs?: readonly string[];
 }
 
-interface IacProgramLike {
+// Exported so the adapter's `EngineLike` can describe the same input rather
+// than widening to `JsonValue` -- every engine call is downstream of
+// `validateIacProgram`, so a bare `JsonValue` (which includes `null`) was never
+// what actually arrives.
+export interface IacProgramLike {
 	readonly deploymentId?: string;
 	readonly stack?: string;
 	readonly resources: readonly IacResourceLike[];

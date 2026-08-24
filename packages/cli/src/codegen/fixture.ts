@@ -1,10 +1,8 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
-
+import type { JsonValue } from "../json.js";
 import { stableStringify } from "./text.js";
 import { type CodegenLayout, defaultCodegenLayout } from "./types.js";
-import { type JsonValue } from "../json.js";
-
 
 // The canonical ticket/incident fixture project used by build/codegen tests
 // and CI timing gates. `reverse` shuffles source ordering to prove the
@@ -39,9 +37,12 @@ export async function writeFixtureProject(
 
 export interface FixtureSources {
 	readonly wit: string;
-	readonly zod: JsonValue;
-	readonly allow: JsonValue;
-	readonly bindle: JsonValue;
+	// Written out through `writeJson` -> `stableStringify` and never read back
+	// as JSON here. These carry `Map`s and `Set`s, which the serializer's
+	// replacer handles and `JsonValue` cannot describe.
+	readonly zod: unknown;
+	readonly allow: unknown;
+	readonly bindle: unknown;
 }
 
 export function fixtureSources(
@@ -136,7 +137,7 @@ export function fixtureSources(
 	};
 }
 
-async function writeJson(path: string, value: JsonValue): Promise<void> {
+async function writeJson(path: string, value: unknown): Promise<void> {
 	await writeText(path, stableStringify(value));
 }
 

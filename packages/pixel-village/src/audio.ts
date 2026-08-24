@@ -31,10 +31,11 @@ const MUTE_KEY = "hobo-yard-muted";
 /** Ops rooms are shared; sound is opt-in, never opt-out. */
 const DEFAULT_MUTED = true;
 /** A telegraph tick per SSE frame would be a metronome — rate-limit it. */
-interface CueGapMs {
-	telegraph: number;
-	steam: number;
-}
+// Keyed by `CueId` with the rate-limited cues optional, because `MIN_GAP_MS` is
+// indexed by an arbitrary `CueId` at the call site and the lookup is guarded by
+// `gap !== undefined`. Naming only the two throttled cues made every other cue
+// an implicit-any index.
+type CueGapMs = Partial<Record<CueId, number>>;
 
 const MIN_GAP_MS: CueGapMs = {
 	telegraph: 900,
@@ -81,10 +82,8 @@ export function createYardAudio(opts: {
 		const Ctor =
 			AudioContext !== undefined
 				? AudioContext
-				: (
-						// SAFETY: Safari still exposes AudioContext under the webkit prefix.
-						globalThis as WebkitAudioHolder
-					).webkitAudioContext;
+				: // SAFETY: Safari still exposes AudioContext under the webkit prefix.
+					(globalThis as WebkitAudioHolder).webkitAudioContext;
 		if (!Ctor) return;
 		ctx = new Ctor();
 		const base = opts.assetBaseUrl.replace(/\/$/, "");

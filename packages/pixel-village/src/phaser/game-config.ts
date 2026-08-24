@@ -2,9 +2,9 @@
  * Phaser game config — FIT scale, no global window state, Arcade optional.
  * Physics: none for control-yard (projection-driven, not a platformer).
  */
-import { YARD_HEIGHT, YARD_WIDTH } from "../layout.js";
-import { type JsonObject } from "../json.js";
 
+import type { JsonObject } from "../json.js";
+import { YARD_HEIGHT, YARD_WIDTH } from "../layout.js";
 
 export type YardGameConfigOptions = Readonly<{
 	parent?: string | HTMLElement;
@@ -13,9 +13,12 @@ export type YardGameConfigOptions = Readonly<{
 	backgroundColor?: string;
 }>;
 
+// Returns a Phaser runtime config, not a JSON document: `parent` may be a live
+// `HTMLElement`, which no `JsonValue` can describe. This is handed straight to
+// Phaser and never serialized.
 export function yardPhaserConfig(
 	opts: YardGameConfigOptions = {},
-): JsonObject {
+): Readonly<Record<string, unknown>> {
 	return {
 		type: 0, // Phaser.AUTO at runtime
 		width: YARD_WIDTH,

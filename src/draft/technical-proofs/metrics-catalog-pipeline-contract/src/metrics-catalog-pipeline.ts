@@ -198,6 +198,7 @@ export function createMetricPipeline({ catalog = METRICS_CATALOG, collector } = 
   function recordServiceRequest({
     service,
     routeTemplate,
+    route: _route,
     method,
     statusCode,
     durationMs,

@@ -172,14 +172,14 @@ The `docs:freshness` gate enforces the minimum rule: changes under `src/`, `scri
 
 ## CI and gates
 
-GitHub Actions run three primary lanes:
+Hosted GitHub Actions workflows are disabled. The preserved workflow definitions under [`.github/workflows-disabled/`](./.github/workflows-disabled/) do not run because GitHub only discovers workflow files directly under `.github/workflows/`, which is intentionally empty.
 
-- [`HoBo CI Fabric`](./.github/workflows/hobo-ci.yml): PR impact gate (`pnpm agent:check` plus doc lint/freshness on doc-affecting diffs), main full gate, contract guard, and secret scan.
-- [`HoBo CI Fixture Lanes`](./.github/workflows/fixtures.yml): label/schedule/manual cost-gated multi-cloud fixture jobs (multi-cloud-shop, S4 drill) so label adds do not re-run the whole PR gate.
-- [`HoBo Examples E2E`](./.github/workflows/examples-e2e.yml): the hello-bindle fixture lanes (simulate-mode, `packages/ci-guard` runners), also label/schedule/manual gated.
-- [`HoBo Runner Rebalance`](./.github/workflows/rebalance-runners.yml): daily/manual dogfood of [`examples/ci-runner-balancing`](./examples/ci-runner-balancing/README.md) — CI jobs consume `vars.HOBO_RUNNER_LINUX_SMALL` (falling back to `ubuntu-latest`), and this lane rebalances that variable across runner providers to maximize free credits and minimize paid minutes (record: [`docs/design/ci-runner-balancing-example.md`](./docs/design/ci-runner-balancing-example.md)).
-- [`HoBo fuzz nightly`](./.github/workflows/fuzz-nightly.yml): bounded fast-check oracles plus docker-gated RESTler/Toxiproxy/Schemathesis against simulators only ([`docs/design/fuzzing.md`](./docs/design/fuzzing.md)). Never live Azure/AWS/GCP.
-- Manual live-deploy lanes (`workflow_dispatch` + repo secrets): [`deploy-hello-bindle-vercel.yml`](./.github/workflows/deploy-hello-bindle-vercel.yml) (Vercel CLI) and [`deploy-hello-bindle-pulumi.yml`](./.github/workflows/deploy-hello-bindle-pulumi.yml) (the real pinned Pulumi CLI engine behind the same `@hobo/iac-pulumi` adapter the composed deploy path uses; `HOBO_PULUMI_LIVE=1` selects it locally).
+Run the verification lanes locally:
+
+- `pnpm run actions:lint` checks that no recognized workflow files exist and that preserved definitions remain valid.
+- `pnpm run verify:full` runs the release-quality local validation lane.
+- `pnpm run verify:extended` adds coverage, mutation, property, and fuzz testing.
+
 
 The website is **not** CI-deployed: [`site/`](./site/README.md) is built locally and pushed to the `gh-pages` branch directly (GitHub Pages serves that branch), so publishing works even when Actions runs are unavailable.
 

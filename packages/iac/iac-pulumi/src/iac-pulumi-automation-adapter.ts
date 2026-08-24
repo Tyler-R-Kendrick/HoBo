@@ -1,5 +1,4 @@
-/* oxlint-disable anti-slop/no-unsafe-dictionary-type, anti-slop/no-unknown-returns, anti-slop/no-unknown-parameters, anti-slop/no-runtime-typeof */
-
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 // public-contract: the pinned Pulumi toolchain version every engine (in-memory and CLI) declares.
 export const PINNED_PULUMI_AUTOMATION_VERSION = "3.130.0";
 // public-contract: the IacProgram schema version validateIacProgram accepts.
@@ -43,21 +42,21 @@ export class PulumiStateError extends Error {
 /** Stored stack/workspace state as this module reads it. */
 interface StoredState {
 	readonly resources?: Record<string, ResourceOutcome>;
-	readonly [key: string]: unknown;
+	readonly [key: string]: JsonValue;
 }
 
 /** A resource in a realization outputs payload. */
 interface ResourceOutcome {
 	readonly id?: string;
 	readonly status?: string;
-	readonly outputs?: Record<string, unknown>;
+	readonly outputs?: JsonObject;
 }
 
 /** Overrides accepted by the trivial fixture program. */
 interface ProgramOverrides {
-	readonly resources?: unknown;
-	readonly stackOutputs?: unknown;
-	readonly [key: string]: unknown;
+	readonly resources?: JsonValue;
+	readonly stackOutputs?: JsonValue;
+	readonly [key: string]: JsonValue;
 }
 
 /** Options for the Pulumi automation adapter. */
@@ -70,18 +69,18 @@ interface AdapterOptions {
 /** What an adapter actually calls on its engine — any lane may implement it. */
 interface EngineLike {
 	readonly pulumiVersion?: string;
-	snapshot?(): unknown;
+	snapshot?(): JsonValue;
 	preview(
-		program: unknown,
+		program: JsonValue,
 	): Promise<{ changes: readonly unknown[] }> | { changes: readonly unknown[] };
 	apply(
-		program: unknown,
+		program: JsonValue,
 		expected: readonly unknown[],
 	):
 		| Promise<{ appliedChanges?: readonly unknown[]; outputs?: unknown }>
 		| { appliedChanges?: readonly unknown[]; outputs?: unknown };
-	refresh(program: unknown): unknown;
-	destroy(program: unknown): unknown;
+	refresh(program: JsonValue): JsonValue;
+	destroy(program: JsonValue): JsonValue;
 }
 
 /** Options for the offline state backend. */
@@ -132,7 +131,7 @@ export function createPerResourceStackKey(program, resourceName) {
 }
 
 export function createStateBackendConfig(
-	overrides: Record<string, unknown> = {},
+	overrides: JsonObject = {},
 ) {
 	return deepFreeze({
 		kind: "memory",
@@ -171,7 +170,7 @@ export function createPulumiAutomationAdapter(options: AdapterOptions = {}) {
 		// answers by enumerating its per-resource stacks (and fails closed with a
 		// typed PulumiEngineUnavailableError when the pulumi binary is missing).
 		snapshotState() {
-			return typeof engine.snapshot === "function"
+			return engine.snapshot instanceof Function
 				? engine.snapshot()
 				: stateBackend.snapshot();
 		},
@@ -518,7 +517,7 @@ export async function runIacBackendConformance({ adapter, program }) {
 export function validateIacProgram(program) {
 	// Parse, don't validate: returns a frozen, derived parsed domain program so
 	// callers work with a trusted ParsedIacProgram instead of re-checking DTO fields.
-	if (!program || typeof program !== "object") {
+	if (!program || !isJsonObject(program)) {
 		throw new PulumiProgramError(
 			"invalid-program",
 			"IacProgram must be an object",
@@ -587,7 +586,7 @@ function assertConformance(condition, assertion) {
 }
 
 function validateOutputReference(value, resources) {
-	if (typeof value !== "string" || !value.startsWith("${resources.")) {
+	if (!isJsonString(value) || !value.startsWith("${resources.")) {
 		return;
 	}
 
@@ -681,7 +680,7 @@ function resolveStackOutputs(stackOutputs, resources) {
 }
 
 function resolveValue(value, resources) {
-	const match = typeof value === "string" ? OUTPUT_REF.exec(value) : undefined;
+	const match = isJsonString(value) ? OUTPUT_REF.exec(value) : undefined;
 
 	if (!match) {
 		return structuredClone(value);
@@ -696,7 +695,7 @@ function resourceId(name) {
 }
 
 function collectValues(value) {
-	if (!value || typeof value !== "object") {
+	if (!value || !isJsonObject(value)) {
 		return [value];
 	}
 
@@ -721,7 +720,7 @@ function stableJson(value) {
 	if (Array.isArray(value)) {
 		return `[${value.map((item) => stableJson(item)).join(",")}]`;
 	}
-	if (value && typeof value === "object") {
+	if (value && isJsonObject(value)) {
 		return `{${Object.keys(value)
 			.sort()
 			.map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`)
@@ -732,7 +731,7 @@ function stableJson(value) {
 }
 
 function deepFreeze(value) {
-	if (!value || typeof value !== "object" || Object.isFrozen(value)) {
+	if (!value || !isJsonObject(value) || Object.isFrozen(value)) {
 		return value;
 	}
 

@@ -1,3 +1,4 @@
+import { type JsonValue } from "./json.js";
 const REQUIRED_M1_EVIDENCE = Object.freeze([
   "teardown-state-schema",
   "dependency-drain-matrix",
@@ -340,7 +341,7 @@ export function canCreateTeardownRecoveryFollowUp({
   };
 }
 
-export function classifyTeardownRecoveryDecision(decision: unknown) {
+export function classifyTeardownRecoveryDecision(decision: JsonValue) {
   const text = String(decision ?? "").toLowerCase();
 
   if (/\b(provider adapter|provider delete|real azure|real aws|real gcp|live provider)\b/.test(text)) {

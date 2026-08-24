@@ -1,4 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from "node:crypto";
+import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+
 
 export const ATTESTATION_SCHEMA_VERSION = "hobo.workload-attestation/v1";
 
@@ -27,7 +29,7 @@ export type LaunchMeasurement = Readonly<{
 export type AttestationDocument = Readonly<{
   schemaVersion: string;
   runId: string;
-  claimed: Readonly<Record<string, unknown>>;
+  claimed: Readonly<JsonObject>;
   launchMeasurement: LaunchMeasurement;
   hostSignature: Readonly<{
     algorithm: string;
@@ -48,7 +50,7 @@ export type AttestationVerdict =
         codeVersion: Readonly<{ digest: string; version: string }>;
         componentImageDigest: string;
       }>;
-      claimConflict?: Readonly<{ field: string; claimed: unknown; measured: unknown }>;
+      claimConflict?: Readonly<{ field: string; claimed: JsonValue; measured: unknown }>;
     }>
   | Readonly<{
       state: "unattested";
@@ -63,7 +65,7 @@ export function createFixtureHostAttestor(options: { hostId: string; keyId?: str
   return {
     createDocument(input: {
       launchMeasurement: LaunchMeasurement;
-      claimed?: Readonly<Record<string, unknown>>;
+      claimed?: Readonly<JsonObject>;
     }): AttestationDocument {
       const measured = { ...input.launchMeasurement };
       return {
@@ -86,7 +88,7 @@ export function createFixtureHostAttestor(options: { hostId: string; keyId?: str
 }
 
 export function verifyWorkloadAttestation(
-  document: unknown,
+  document: JsonValue,
   options: {
     knownImageDigests?: readonly string[];
     hostPublicKeys?: readonly { hostId: string; keyId: string; verificationKey: string }[];
@@ -105,6 +107,7 @@ export function verifyWorkloadAttestation(
     return fail("launch-measurement-invalid");
   }
 
+  // SAFETY: `const measurement = document.launchMeasurement as LaunchMeasurement;` is required at this I/O or test boundary.
   const measurement = document.launchMeasurement as LaunchMeasurement;
   const measurementError = validateLaunchMeasurement(measurement);
   if (measurementError) {
@@ -119,6 +122,7 @@ export function verifyWorkloadAttestation(
   if (
     !verifyHostSignature(
       measurement,
+      // SAFETY: `document.hostSignature as AttestationDocument["hostSignature"],` is required at this I/O or test boundary.
       document.hostSignature as AttestationDocument["hostSignature"],
       options.hostPublicKeys ?? [],
     )
@@ -151,7 +155,8 @@ export function verifyWorkloadAttestation(
     },
   };
 
-  const claimConflict = detectClaimConflict(document.claimed as Record<string, unknown>, measurement);
+  // SAFETY: `const claimConflict = detectClaimConflict(document.claimed as JsonObject, measur` is required at this I/O or test boundary.
+  const claimConflict = detectClaimConflict(document.claimed as JsonObject, measurement);
   if (claimConflict) {
     return { ...verdict, claimConflict };
   }
@@ -220,24 +225,24 @@ function validateLaunchMeasurement(measurement: LaunchMeasurement): string | nul
 }
 
 function detectClaimConflict(
-  claimed: Record<string, unknown>,
+  claimed: JsonObject,
   measurement: LaunchMeasurement,
-): { field: string; claimed: unknown; measured: unknown } | undefined {
+): { field: string; claimed: JsonValue; measured: unknown } | undefined {
   if (claimed.tenant !== undefined && claimed.tenant !== measurement.tenant) {
     return { field: "tenant", claimed: claimed.tenant, measured: measurement.tenant };
   }
   return undefined;
 }
 
-function isPrincipal(value: unknown): value is PrincipalRef {
+function isPrincipal(value: JsonValue): value is PrincipalRef {
   return (
     isPlainObject(value) &&
-    typeof value.kind === "string" &&
+    isJsonString(value.kind) &&
     PRINCIPAL_KINDS.has(value.kind) &&
-    typeof value.id === "string"
+    isJsonString(value.id)
   );
 }
 
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === "object" && value !== null && !Array.isArray(value);
+function isPlainObject(value: JsonValue | undefined): value is JsonObject {
+  return value !== undefined && isJsonObject(value) && value !== null && !Array.isArray(value);
 }

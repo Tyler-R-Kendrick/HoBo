@@ -17,7 +17,7 @@ import {
 	YardBindingError,
 	YardDefineError,
 	yard,
-	yardToShape,
+	yardToContract,
 } from "../src/index.js";
 
 /**
@@ -39,7 +39,7 @@ function rawSlotBinding(
 	};
 }
 
-function codeOf(run: () => unknown): string {
+function codeOf(run: () => void): string {
 	try {
 		run();
 	} catch (error) {
@@ -122,7 +122,7 @@ describe("defineYard() — slots compile to binding rows", () => {
 		expect(defined.bindings[0]?.productId).toBeUndefined();
 	});
 
-	it("returns a real Yard: frozen, shape-projectable, bindings intact", () => {
+	it("returns a real Yard: frozen, contract-projectable, bindings intact", () => {
 		const defined = defineYard("gcp-edge", {
 			provider: { id: "gcp" },
 			regions: ["us-central1"],
@@ -136,14 +136,14 @@ describe("defineYard() — slots compile to binding rows", () => {
 		});
 
 		expect(Object.isFrozen(defined)).toBe(true);
-		const shape = yardToShape(defined);
-		expect(shape.providerId).toBe("gcp");
-		expect(shape.regions).toEqual(["us-central1"]);
-		expect(shape.residency).toEqual(["us"]);
-		expect(shape.componentHosts).toEqual(["gcp.cloud-run/v1"]);
-		expect(shape.labels).toEqual({ tier: "edge" });
-		expect(shape.camps).toHaveLength(1);
-		expect(shape.bindings).toEqual([
+		const contract = yardToContract(defined);
+		expect(contract.providerId).toBe("gcp");
+		expect(contract.regions).toEqual(["us-central1"]);
+		expect(contract.residency).toEqual(["us"]);
+		expect(contract.componentHosts).toEqual(["gcp.cloud-run/v1"]);
+		expect(contract.labels).toEqual({ tier: "edge" });
+		expect(contract.camps).toHaveLength(1);
+		expect(contract.bindings).toEqual([
 			{
 				contract: YARD_BINDING_CONTRACT,
 				profile: "web.static/v1",
@@ -289,13 +289,16 @@ describe("defineYard() — refusals", () => {
 		expect(() =>
 			defineYard("aws-prod", {
 				provider: "aws",
+				// SAFETY: the row deliberately carries a retired contract id; the
+				// compile step must refuse it, so the typed signature is bypassed
+				// on purpose.
 				kv: {
 					contract: "hobo.slot-binding/v0",
 					slot: "kv",
 					profile: "kv.key-value/v1",
 					productId: "aws.elasticache/v1",
 					properties: {},
-				} as unknown as SlotBinding,
+				} as never,
 			}),
 		).toThrow(/must carry contract/u);
 	});
@@ -480,6 +483,7 @@ describe("defineStation() — registration, not containment", () => {
 	it("refuses non-Yard registrations", () => {
 		expect(() =>
 			defineStation("edge", {
+				// SAFETY: `yards: [{ kind: "camp", name: "prod" }] as never,` is required at this I/O or test boundary.
 				yards: [{ kind: "camp", name: "prod" }] as never,
 			}),
 		).toThrow(/parsed Yard objects/u);

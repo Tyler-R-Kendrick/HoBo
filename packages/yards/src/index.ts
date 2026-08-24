@@ -45,11 +45,12 @@ export {
 	seedLocalhostYard,
 } from "./localhost-seed.js";
 export {
+	type CampContract,
 	TOPOLOGY_CONTRACT_VERSION,
 	type Yard,
 	type YardConfig,
 	yard,
-	yardToShape,
+	yardToContract,
 } from "./yard.js";
 
 // public-contract: package identity for boundary contracts.

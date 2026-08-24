@@ -15,6 +15,8 @@ import {
 	TrainableStubSchema,
 } from "../codegen/types.js";
 import type { CommandModule } from "../shell/registry.js";
+import { type JsonObject } from "../json.js";
+
 
 export interface StubCommandOptions {
 	readonly engine?: CodegenEngine;
@@ -48,7 +50,8 @@ export function createStubCommand(
 					data: {
 						command: "stub",
 						trainables: stubs.map((stub) => toJson(TrainableStubSchema, stub)),
-						...(toJson(CodegenReportSchema, result) as Record<string, unknown>),
+						// SAFETY: `...(toJson(CodegenReportSchema, result) as JsonObject),` is required at this I/O or test boundary.
+						...(toJson(CodegenReportSchema, result) as JsonObject),
 					},
 				};
 			} catch (error) {

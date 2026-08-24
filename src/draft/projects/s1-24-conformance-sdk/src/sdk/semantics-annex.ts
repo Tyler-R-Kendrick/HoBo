@@ -7,6 +7,7 @@ import {
   type VectorCaseResult,
 } from "./types.js";
 
+
 export class HoboWitError extends Error {
   readonly tag: string;
 
@@ -166,11 +167,11 @@ async function runExpectedErrorVector(
   }
 }
 
-function failedCase(
+function failedCase<T, U>(
   vector: SemanticsAnnexVector,
   reason: string,
-  expected: unknown,
-  actual: unknown,
+  expected: T,
+  actual: U,
 ): VectorCaseResult {
   return {
     name: vector.name,

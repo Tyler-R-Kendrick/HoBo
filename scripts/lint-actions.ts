@@ -11,7 +11,8 @@ const recognizedFiles = existsSync(workflowDir)
 const files = existsSync(disabledWorkflowDir)
 	? readdirSync(disabledWorkflowDir)
 	.filter((name) => /\.ya?ml$/.test(name))
-	.sort();
+	.sort()
+	: [];
 const errors: string[] = [];
 if (recognizedFiles.length > 0) {
 	errors.push(`.github/workflows must contain no workflow files (found ${recognizedFiles.join(", ")})`);

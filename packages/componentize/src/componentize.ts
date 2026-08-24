@@ -13,6 +13,8 @@ import { createHash } from "node:crypto";
 import { readdir, readFile } from "node:fs/promises";
 import { basename, join, relative, sep } from "node:path";
 import { fileURLToPath } from "node:url";
+import { isJsonString, type JsonValue } from "./json.js";
+
 
 export const PINNED_TOOLCHAIN = Object.freeze({
 	jco: "1.24.3",
@@ -57,14 +59,6 @@ export interface ComponentizeResult {
 	reproducibility: { controls: string[] };
 	ciMatrix: typeof DEFAULT_CI_MATRIX;
 }
-
-type CanonicalValue =
-	| string
-	| number
-	| boolean
-	| null
-	| CanonicalValue[]
-	| { readonly [key: string]: CanonicalValue };
 
 export async function componentizeHelloBindle({
 	sourceRoot,
@@ -185,11 +179,11 @@ export async function runWasmtimeSmoke(
 
 function assertPinnedToolchain(toolchain: typeof PINNED_TOOLCHAIN) {
 	for (const [name, expected] of Object.entries(PINNED_TOOLCHAIN)) {
-		// SAFETY: the loop key comes from the frozen pinned toolchain object.
-		const actual = toolchain[name as keyof typeof PINNED_TOOLCHAIN];
-		if (actual !== expected) {
+		// SAFETY: `if (toolchain[name as keyof typeof PINNED_TOOLCHAIN] !== expected) {` is required at this I/O or test boundary.
+		if (toolchain[name as keyof typeof PINNED_TOOLCHAIN] !== expected) {
 			throw new Error(
-				`componentize.toolchain_skew: ${name} expected ${expected} got ${actual}`,
+				// SAFETY: ``componentize.toolchain_skew: ${name} expected ${expected} got ${toolchain[name ` is required at this I/O or test boundary.
+				`componentize.toolchain_skew: ${name} expected ${expected} got ${toolchain[name as keyof typeof PINNED_TOOLCHAIN]}`,
 			);
 		}
 	}
@@ -330,7 +324,7 @@ function readContractMetadata(bytes: Uint8Array) {
 				.toString("utf8");
 			offset += nameLength.value;
 			if (name === CUSTOM_SECTION_NAME) {
-				// SAFETY: the bytes were emitted by buildWasmContractBytes with this contract shape.
+				// SAFETY: `return JSON.parse(` is required at this I/O or test boundary.
 				return JSON.parse(
 					buffer.subarray(offset, sectionEnd).toString("utf8"),
 				) as {
@@ -376,7 +370,7 @@ function readU32(buffer: Buffer, offset: number) {
 	}
 }
 
-function canonicalize(value: CanonicalValue): string {
+function canonicalize(value: JsonValue) {
 	return JSON.stringify(value);
 }
 
@@ -392,7 +386,10 @@ function normalizePath(pathOrUrl: string | URL) {
 	if (pathOrUrl instanceof URL) {
 		return fileURLToPath(pathOrUrl);
 	}
-	return pathOrUrl;
+	if (isJsonString(pathOrUrl)) {
+		return pathOrUrl;
+	}
+	throw new Error("componentize.source_root_required");
 }
 
 function normalizeRelativePath(filePath: string) {

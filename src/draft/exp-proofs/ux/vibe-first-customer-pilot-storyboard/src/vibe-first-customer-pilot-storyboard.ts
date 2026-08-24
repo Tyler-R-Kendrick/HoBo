@@ -348,12 +348,18 @@ export function parseVibeFirstCustomerPilotStoryboard(
     throw new VibeFirstCustomerPilotStoryboardParseError(validation.errors);
   }
 
+  // SAFETY: `return storyboard as ParsedVibeFirstCustomerPilotStoryboard;` is required at this I/O or test boundary.
   return storyboard as ParsedVibeFirstCustomerPilotStoryboard;
+}
+
+export interface ValidationOutcome {
+  readonly ok: boolean;
+  readonly errors: readonly ValidationError[];
 }
 
 export function validateVibeFirstCustomerPilotStoryboard(
   storyboard: VibeFirstCustomerPilotStoryboard,
-): { readonly ok: boolean; readonly errors: readonly ValidationError[] } {
+): ValidationOutcome {
   const errors: ValidationError[] = [];
 
   if (storyboard.issue !== "HOBO-549") {

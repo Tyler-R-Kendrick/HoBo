@@ -3,6 +3,8 @@ import {
   validateFlagEvent,
 } from "../../flag-event-contract/src/flag-event-contract.js";
 import { createBuiltInFlagStore } from "../../built-in-flag-store-contract/src/built-in-flag-store.js";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const emptyContext = Object.freeze({ attributes: [] });
 
@@ -43,7 +45,7 @@ export function createFlagSurfaceEventLog(entries = []) {
     },
     entries: entriesSnapshot,
     subscribe(listener) {
-      if (!isCallable(listener)) {
+      if (!(listener instanceof Function)) {
         throw new Error("flag surface event-log subscriber must be a function");
       }
       listeners.add(listener);
@@ -54,7 +56,7 @@ export function createFlagSurfaceEventLog(entries = []) {
 
 export function createSdkFlagSurface(options = {}) {
   const eventLog = options.eventLog ?? createFlagSurfaceEventLog();
-  const requestContext = isCallable(options.requestContext) ? options.requestContext : () => emptyContext;
+  const requestContext = options.requestContext instanceof Function ? options.requestContext : () => emptyContext;
   const clientContext = normalizeContext(options.clientContext);
 
   async function details(flag, context) {
@@ -151,10 +153,10 @@ function detailsMethod(valueType) {
 }
 
 function validateSdkFlag(flag) {
-  if (!isObjectRecord(flag)) {
+  if (!flag || !isJsonObject(flag)) {
     throw new Error("flag reference must be an object");
   }
-  if (!isString(flag.key) || flag.key.length === 0) {
+  if (!isJsonString(flag.key) || flag.key.length === 0) {
     throw new Error("flag reference requires key");
   }
   if (!["boolean", "string", "number", "object"].includes(flag.type)) {
@@ -181,7 +183,7 @@ function normalizeEntries(entries) {
 }
 
 function normalizeContext(context) {
-  if (!isObjectRecord(context)) {
+  if (!context || !isJsonObject(context)) {
     return clone(emptyContext);
   }
 
@@ -199,7 +201,7 @@ function stableValue(value) {
   if (Array.isArray(value)) {
     return value.map(stableValue);
   }
-  if (isObjectRecord(value)) {
+  if (value && isJsonObject(value)) {
     return Object.fromEntries(
       Object.entries(value)
         .sort(([left], [right]) => left.localeCompare(right))
@@ -213,19 +215,5 @@ function clone(value) {
   if (value === undefined) {
     return undefined;
   }
-  return isCallable(structuredClone) ? structuredClone(value) : JSON.parse(JSON.stringify(value));
-}
-
-function isObjectRecord(value) {
-  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
-}
-
-function isCallable(value) {
-  return ["[object Function]", "[object AsyncFunction]", "[object GeneratorFunction]"].includes(
-    Object.prototype.toString.call(value),
-  );
-}
-
-function isString(value) {
-  return Object.prototype.toString.call(value) === "[object String]";
+  return structuredClone instanceof Function ? structuredClone(value) : JSON.parse(JSON.stringify(value));
 }

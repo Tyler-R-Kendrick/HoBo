@@ -1,4 +1,6 @@
 import { createHash } from "node:crypto";
+import { isJsonString, isJsonBoolean, isJsonObject } from "./json.js";
+
 
 export const RUNAWAY_SPEND_BREAKER_ENGINE_ID =
   "hobo.runaway-spend-circuit-breaker/contract@0.1.0";
@@ -105,7 +107,7 @@ export function replaySpendCircuitEvents(events) {
   const seenEventIds = new Set();
 
   for (const event of events) {
-    if (!isObjectRecord(event)) {
+    if (!event || !isJsonObject(event) || Array.isArray(event)) {
       ignoredEvents.push({ event, reason: "malformed-event" });
       continue;
     }
@@ -518,14 +520,14 @@ function readGeneration(event, fallback) {
 }
 
 function expectObject(input, fieldName) {
-  if (!isObjectRecord(input)) {
+  if (!input || !isJsonObject(input) || Array.isArray(input)) {
     throw new TypeError(`${fieldName} must be an object`);
   }
   return input;
 }
 
 function requireString(input, fieldName) {
-  if (!isString(input) || input.length === 0) {
+  if (!isJsonString(input) || input.length === 0) {
     throw new TypeError(`${fieldName} must be a non-empty string`);
   }
   return input;
@@ -535,7 +537,7 @@ function optionalString(input) {
   if (input === undefined || input === null) {
     return null;
   }
-  if (!isString(input) || input.length === 0) {
+  if (!isJsonString(input) || input.length === 0) {
     return null;
   }
   return input;
@@ -552,7 +554,7 @@ function optionalBoolean(input, fieldName) {
   if (input === undefined || input === null) {
     return null;
   }
-  if (!isBoolean(input)) {
+  if (!isJsonBoolean(input)) {
     throw new TypeError(`${fieldName} must be a boolean`);
   }
   return input;
@@ -597,7 +599,7 @@ function optionalNonNegativeInteger(input, fieldName = "value") {
 }
 
 function normalizeInstant(input, fieldName) {
-  if (!isString(input)) {
+  if (!isJsonString(input)) {
     throw new TypeError(`${fieldName} must be an ISO-8601 string`);
   }
   const timestamp = Date.parse(input);
@@ -619,23 +621,11 @@ function stableStringify(value) {
   if (Array.isArray(value)) {
     return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
   }
-  if (isObjectRecord(value)) {
+  if (value && isJsonObject(value)) {
     return `{${Object.keys(value)
       .sort()
       .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
       .join(",")}}`;
   }
   return JSON.stringify(value);
-}
-
-function isObjectRecord(value) {
-  return value !== null && Object.prototype.toString.call(value) === "[object Object]";
-}
-
-function isString(value) {
-  return Object.prototype.toString.call(value) === "[object String]";
-}
-
-function isBoolean(value) {
-  return Object.prototype.toString.call(value) === "[object Boolean]";
 }

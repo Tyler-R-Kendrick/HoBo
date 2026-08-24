@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 const VALID_PROOF_MODES = new Set(["live-product", "reference-fixture", "simulated-reference", "design-record"]);
 const REQUIRED_EVIDENCE_KINDS = new Set(["screenshots", "recording-manifest", "command-transcript", "fixture-data", "docs"]);
 const FORBIDDEN_IMPLEMENTATION_PATTERNS = [
@@ -230,7 +231,7 @@ export const launchDemoGoldenPath = {
 export function validateLaunchDemoGoldenPath(record) {
   const errors = [];
 
-  if (!record || typeof record !== "object") {
+  if (!record || !isJsonObject(record)) {
     return { ok: false, errors: ["launch demo golden path record is required"] };
   }
   if (record.issue !== "HOBO-488") {

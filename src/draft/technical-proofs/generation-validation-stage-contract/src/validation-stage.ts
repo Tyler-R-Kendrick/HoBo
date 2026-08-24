@@ -10,10 +10,11 @@ import {
   profileDigest,
   validateSandboxProfile
 } from "../../no-egress-generation-sandbox-contract/src/contract.js";
+import { isJsonString, isJsonBoolean, isJsonObject } from "./json.js";
+
 
 const validationReportSchema = "hobo.gen.validation-report/v1";
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
-const tagOf = Object.prototype.toString;
 
 export class ValidationStageContractError extends Error {
   constructor(code, path = "$") {
@@ -340,13 +341,13 @@ function assertFunction(value, code, path) {
 }
 
 function assertObject(value, code, path) {
-  if (!value || value instanceof Function || Object(value) !== value || Array.isArray(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new ValidationStageContractError(code, path);
   }
 }
 
 function assertBoolean(value, code, path) {
-  if (tagOf.call(value) !== "[object Boolean]") {
+  if (!isJsonBoolean(value)) {
     throw new ValidationStageContractError(code, path);
   }
 }
@@ -358,13 +359,13 @@ function assertEqual(actual, expected, code, path) {
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (tagOf.call(value) !== "[object String]" || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new ValidationStageContractError(code, path);
   }
 }
 
 function stableStringify(value) {
-  if (value === null || value instanceof Function || Object(value) !== value) {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
 

@@ -1,4 +1,6 @@
 import { createHash, createPrivateKey, createPublicKey, sign, verify } from "node:crypto";
+import { isJsonString, isJsonObject } from "./json.js";
+
 
 const provenanceSchema = "hobo.generation.provenance/v1";
 const digestPattern = /^sha256:[a-f0-9]{64}$/;
@@ -228,13 +230,13 @@ function assertEqual(actual, expected, code, path) {
 }
 
 function assertObject(value, code, path) {
-  if (!isRecord(value)) {
+  if (!value || !isJsonObject(value) || Array.isArray(value)) {
     throw new ProvenanceContractError(code, path);
   }
 }
 
 function assertNonEmptyString(value, code, path) {
-  if (!isString(value) || value.length === 0) {
+  if (!isJsonString(value) || value.length === 0) {
     throw new ProvenanceContractError(code, path);
   }
 }
@@ -254,7 +256,7 @@ function assertIsoTimestamp(value, code, path) {
 }
 
 function stableStringify(value) {
-  if (value === null || (!isRecord(value) && !Array.isArray(value))) {
+  if (value === null || !isJsonObject(value)) {
     return JSON.stringify(value);
   }
 
@@ -266,12 +268,4 @@ function stableStringify(value) {
     .sort()
     .map((key) => `${JSON.stringify(key)}:${stableStringify(value[key])}`)
     .join(",")}}`;
-}
-
-function isRecord(value) {
-  return Object.prototype.toString.call(value) === "[object Object]";
-}
-
-function isString(value) {
-  return Object.prototype.toString.call(value) === "[object String]";
 }

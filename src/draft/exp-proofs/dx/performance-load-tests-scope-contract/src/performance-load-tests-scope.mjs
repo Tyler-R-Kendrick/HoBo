@@ -1,3 +1,4 @@
+import { isJsonObject } from "./json.js";
 export const REQUIRED_BOUNDARIES = ["service", "ux", "security", "support"];
 
 const FOLLOW_UP_PHASES = new Set(["M1", "M2", "M3", "M4"]);
@@ -237,7 +238,7 @@ export function classifyPerformanceEvidenceGap(gap) {
 export function validatePerformanceLoadTestsScope(scope) {
   const errors = [];
 
-  if (!scope || typeof scope !== "object") {
+  if (!scope || !isJsonObject(scope)) {
     return { ok: false, errors: ["scope record is required"] };
   }
   if (scope.issue !== "HOBO-440") {

@@ -374,6 +374,77 @@ describe("typed provider errors", () => {
 		});
 	});
 
+	/**
+	 * A rate-limited caller's only useful next question is "how long". The
+	 * header is optional and its value is attacker-adjacent — it comes off the
+	 * wire — so the parse is deliberately narrow, and everything it cannot read
+	 * becomes "no advice" rather than a bad number a caller would sleep on.
+	 */
+	async function rateLimitDetail(
+		headers: Record<string, string>,
+	): Promise<Record<string, unknown>> {
+		const transport = createStubTransport({
+			challenge: { status: 429, body: "{}", headers },
+		});
+		const { input } = harness({ transport });
+		try {
+			await provisionTemporaryAccountYard(input);
+		} catch (error) {
+			return error as unknown as Record<string, unknown>;
+		}
+		throw new Error("expected a rate-limit refusal");
+	}
+
+	it("surfaces a Retry-After the provider sent", async () => {
+		expect(await rateLimitDetail({ "retry-after": "30" })).toMatchObject({
+			code: "PROVIDER_RATE_LIMITED",
+			retryAfterSeconds: 30,
+		});
+	});
+
+	it("reads Retry-After whichever way the header is cased", async () => {
+		// HTTP header names are case-insensitive and transports differ about
+		// whether they normalise them. Reading only one casing would drop the
+		// advice on whichever transport disagreed.
+		expect(await rateLimitDetail({ "Retry-After": "30" })).toMatchObject({
+			retryAfterSeconds: 30,
+		});
+	});
+
+	it("accepts an immediate retry", async () => {
+		// Zero is a real answer -- `>= 0`, not `> 0` -- and dropping it would turn
+		// "you may retry now" into "no advice".
+		expect(await rateLimitDetail({ "retry-after": "0" })).toMatchObject({
+			retryAfterSeconds: 0,
+		});
+	});
+
+	it("gives no advice rather than bad advice", async () => {
+		// The header comes off the wire. A date-form Retry-After, a negative, or
+		// junk all become absent instead of a number a caller would sleep on:
+		// `Number("soon")` is NaN and `-5` fails the sign check.
+		for (const raw of ["Wed, 21 Oct 2026 07:28:00 GMT", "-5", "soon"]) {
+			const detail = await rateLimitDetail({ "retry-after": raw });
+			expect(detail.code).toBe("PROVIDER_RATE_LIMITED");
+			expect(detail.retryAfterSeconds).toBeUndefined();
+		}
+	});
+
+	it("reads an empty Retry-After as an immediate retry", async () => {
+		// Recorded rather than argued with. `Number("")` is 0, which is finite and
+		// non-negative, so a header present but empty is read as "retry now"
+		// rather than as no advice. Defensible -- the provider did send the
+		// header -- but it is a consequence of the coercion rather than a choice
+		// the code states, so it is pinned here to stay deliberate.
+		expect(await rateLimitDetail({ "retry-after": "" })).toMatchObject({
+			retryAfterSeconds: 0,
+		});
+	});
+
+	it("omits the field entirely when the provider sent no header", async () => {
+		expect((await rateLimitDetail({})).retryAfterSeconds).toBeUndefined();
+	});
+
 	it("maps a 503 on the mutating call to PROVIDER_OPERATION_AMBIGUOUS", async () => {
 		const transport = createStubTransport({
 			challenge: { status: 200, body: challengeBody() },

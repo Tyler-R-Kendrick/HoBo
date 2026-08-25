@@ -501,11 +501,34 @@ export function validateIacProgram(program) {
 		}
 	}
 
+	// Resource inputs are where cross-resource references actually live —
+	// `resolveValue` substitutes them at apply time — yet only stackOutputs was
+	// checked here. A claim referencing a resource that is not in the program,
+	// or an output its target does not declare, parsed cleanly and then failed
+	// at resolve, deep inside the apply. This walks the resources the way every
+	// sibling adapter (iac-terraform, the provider mirrors) does.
+	for (const value of collectValues(program.resources)) {
+		validateOutputReference(value, resources);
+	}
 	for (const value of Object.values(program.stackOutputs ?? {})) {
 		validateOutputReference(value, resources);
 	}
 
 	return deepFreeze(structuredClone(program));
+}
+
+function collectValues(value) {
+	// Arrays first: `isJsonObject` excludes them by design, so without this
+	// branch `program.resources` — itself an array — would come back as one
+	// opaque value and nothing inside any resource would be checked. That is
+	// the exact bug just fixed in iac-terraform and provider-kubernetes.
+	if (Array.isArray(value)) {
+		return value.flatMap((entry) => collectValues(entry));
+	}
+	if (!value || !isJsonObject(value)) {
+		return [value];
+	}
+	return Object.values(value).flatMap((child) => collectValues(child));
 }
 
 async function ensureRequiredCrds(cluster: CrossplaneClusterLike) {

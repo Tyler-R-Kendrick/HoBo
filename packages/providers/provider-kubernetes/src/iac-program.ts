@@ -113,6 +113,14 @@ function assertOutputReference<T>(
 }
 
 function collectValues<T>(value: T): JsonValue[] {
+	// Arrays first, and `isJsonObject` is why. It excludes arrays by design, so
+	// without this branch an array fell to the clause below and was returned as
+	// a single non-string value -- and since the caller passes `program.resources`,
+	// which IS an array, that meant no output reference inside any resource was
+	// ever checked. Only stackOutputs was, because it is iterated directly.
+	if (Array.isArray(value)) {
+		return value.flatMap((entry) => collectValues(entry));
+	}
 	if (!value || !isJsonObject(value)) {
 		return [cloneAsJson(value)];
 	}

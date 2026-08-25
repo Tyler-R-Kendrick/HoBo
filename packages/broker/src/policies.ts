@@ -260,6 +260,18 @@ export function parseBrokerPolicySet(
 			);
 		}
 	}
+	// Required, and refused by name. This used to read `raw.billing ?? {}`,
+	// which looked like a default but threw every time it was taken — `{}` has
+	// no quota, and quota is required — so the operator saw "quota must be a
+	// non-empty string" for a billing block they never wrote. There is no honest
+	// default here: a quota is the name of a policy someone chose, and inventing
+	// one would be inventing policy. The refusal now names the missing block.
+	if (raw.billing === undefined) {
+		throw new BrokerParseError(
+			"invalid-policy-set",
+			"invalid-policy-set: billing is required — a policy set states its quota posture explicitly",
+		);
+	}
 	return {
 		schemaVersion: BROKER_SCHEMA_VERSION,
 		brokerId: requireString(
@@ -268,7 +280,7 @@ export function parseBrokerPolicySet(
 			"brokerId",
 		),
 		placementPolicies,
-		billing: parseBillingPolicy(raw.billing ?? {}),
+		billing: parseBillingPolicy(raw.billing),
 		delivery: parseDeliveryPolicy(raw.delivery ?? { engine: "in-proc" }),
 		// SAFETY: assertion required at this I/O or test boundary.
 		requiredConnectorKinds: requiredRaw as ConnectorKind[],
@@ -334,6 +346,16 @@ export function parseBrokerRequest(
 			"empty-requirements: a broker request must place at least one resource",
 		);
 	}
+	// Required, and refused by name. `raw.scope ?? {}` read as a default but
+	// threw every time it was taken — `{}` has no bindleId, and a request must
+	// name the bindle it places into. The refusal now says that, instead of
+	// surfacing as a field error about a scope block nobody wrote.
+	if (raw.scope === undefined) {
+		throw new BrokerParseError(
+			"invalid-request",
+			"invalid-request: scope is required — a request names the bindle it places into",
+		);
+	}
 	return {
 		schemaVersion: BROKER_SCHEMA_VERSION,
 		requestId: requireString(
@@ -341,7 +363,7 @@ export function parseBrokerRequest(
 			"invalid-request",
 			"requestId",
 		),
-		scope: parseTopologyScope(raw.scope ?? {}),
+		scope: parseTopologyScope(raw.scope),
 		requirements: requirementsRaw.map(parseResourceRequirement),
 		spendEstimateUsd: nonNegativeNumber(
 			raw.spendEstimateUsd ?? raw.spend_estimate_usd,

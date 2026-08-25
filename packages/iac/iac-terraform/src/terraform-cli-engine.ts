@@ -202,6 +202,10 @@ function outputExpression(
 
 // Parse `show -json <plan>` output into the typed change set the Diff carries.
 // Exported pure so fixture plan documents pin the parse without any binary.
+// parallel-type-allowed: this is the derived shape of a third-party CLI's
+// output (`terraform show -json`), not a HoBo record, message or object. It
+// crosses no service boundary and has no protobuf definition to import -- the
+// package ships no _generated/ tree because nothing here is a HoBo wire type.
 export interface PlanChangeSummary {
 	create: number;
 	update: number;

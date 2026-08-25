@@ -96,6 +96,15 @@ const OK_SPAWN = [
 	{}, // redeploy
 ];
 
+/**
+ * Stubbed responses carry both `json()` and `text()`, because the module reads
+ * each of them: the account-subdomain lookup takes `json()`, while the
+ * admin-key bridge takes `text()` and runs it through `parseJsonValue` rather
+ * than trusting `json()`'s `any`. A stub offering only one of the two does not
+ * fail as a wrong answer -- it fails as `response.text is not a function`, from
+ * inside the module, which reads as a bug in the code under test.
+ */
+
 /** A fetch that answers `/version` and the admin-key bridge, nothing else. */
 function happyFetch(adminKey = "convex-admin-key") {
 	const seen: string[] = [];
@@ -104,10 +113,20 @@ function happyFetch(adminKey = "convex-admin-key") {
 		seen.push(href);
 		if (href.endsWith("/version")) return { ok: true, status: 200 };
 		if (href.endsWith("/.hobo/admin-key")) {
-			return { ok: true, status: 200, json: async () => ({ adminKey }) };
+			return {
+				ok: true,
+				status: 200,
+				json: async () => ({ adminKey }),
+				text: async () => JSON.stringify({ adminKey }),
+			};
 		}
 		void init;
-		return { ok: true, status: 200, json: async () => ({ success: true }) };
+		return {
+			ok: true,
+			status: 200,
+			json: async () => ({ success: true }),
+			text: async () => JSON.stringify({ success: true }),
+		};
 	}) as unknown as typeof fetch;
 	return { impl, seen };
 }
@@ -473,12 +492,19 @@ describe("resolving the origin when wrangler printed none", () => {
 			seen.push(href);
 			if (href.endsWith("/version")) return { ok: true, status: 200 };
 			if (href.endsWith("/.hobo/admin-key")) {
-				return { ok: true, status: 200, json: async () => ({ adminKey: "k" }) };
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ adminKey: "k" }),
+					text: async () => JSON.stringify({ adminKey: "k" }),
+				};
 			}
 			return {
 				ok: true,
 				status: 200,
 				json: async () => ({ success: true, result: { subdomain } }),
+				text: async () =>
+					JSON.stringify({ success: true, result: { subdomain } }),
 			};
 		}) as unknown as typeof fetch;
 		return { impl, seen };
@@ -528,12 +554,18 @@ describe("resolving the origin when wrangler printed none", () => {
 			if (href.includes("/scripts/")) throw new Error("network blip");
 			if (href.endsWith("/version")) return { ok: true, status: 200 };
 			if (href.endsWith("/.hobo/admin-key")) {
-				return { ok: true, status: 200, json: async () => ({ adminKey: "k" }) };
+				return {
+					ok: true,
+					status: 200,
+					json: async () => ({ adminKey: "k" }),
+					text: async () => JSON.stringify({ adminKey: "k" }),
+				};
 			}
 			return {
 				ok: true,
 				status: 200,
 				json: async () => ({ result: { subdomain: "acct" } }),
+				text: async () => JSON.stringify({ result: { subdomain: "acct" } }),
 			};
 		}) as unknown as typeof fetch;
 		const result = await provisionConvexBackendOnCloudflare({
@@ -680,7 +712,12 @@ describe("failures carry the claim URL", () => {
 		// answering 503.
 		const impl = (async (url: string | URL) => {
 			if (String(url).endsWith("/version")) return { ok: false, status: 503 };
-			return { ok: true, status: 200, json: async () => ({ adminKey: "k" }) };
+			return {
+				ok: true,
+				status: 200,
+				json: async () => ({ adminKey: "k" }),
+				text: async () => JSON.stringify({ adminKey: "k" }),
+			};
 		}) as unknown as typeof fetch;
 		const error = await failureFrom(OK_SPAWN, impl);
 		expect(error.message).toContain("did not become ready");
@@ -706,7 +743,12 @@ describe("failures carry the claim URL", () => {
 		for (const body of [{}, { adminKey: "" }, { adminKey: 42 }]) {
 			const impl = (async (url: string | URL) => {
 				if (String(url).endsWith("/version")) return { ok: true, status: 200 };
-				return { ok: true, status: 200, json: async () => body };
+				return {
+					ok: true,
+					status: 200,
+					json: async () => body,
+					text: async () => JSON.stringify(body),
+				};
 			}) as unknown as typeof fetch;
 			const error = await failureFrom(OK_SPAWN, impl, 5_000);
 			expect(error.message).toContain("returned no adminKey");

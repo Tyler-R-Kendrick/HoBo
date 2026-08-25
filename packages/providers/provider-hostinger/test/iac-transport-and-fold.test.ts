@@ -582,8 +582,8 @@ describe("event-store fold", () => {
 		);
 		const yard = registered?.data.yard as Record<string, unknown>;
 		expect(yard.providerId).toBe("hostinger");
-		expect((yard.shape as Record<string, unknown>).regions).toEqual(["ams"]);
-		expect((yard.shape as Record<string, string[]>).require).toContain(
+		expect((yard.layout as Record<string, unknown>).regions).toEqual(["ams"]);
+		expect((yard.layout as Record<string, string[]>).require).toContain(
 			"managed-container-substrate",
 		);
 	});
@@ -594,9 +594,9 @@ describe("event-store fold", () => {
 		const [registered] = normalizeHostingerYardSignal(
 			signal("vps.running", { virtualMachineId: "vm-1" }),
 		);
-		const shape = (registered?.data.yard as Record<string, unknown>)
-			.shape as Record<string, unknown>;
-		expect(shape.regions).toEqual(["phx"]);
+		const layout = (registered?.data.yard as Record<string, unknown>)
+			.layout as Record<string, unknown>;
+		expect(layout.regions).toEqual(["phx"]);
 	});
 
 	it("omits optional account and zone properties when the payload lacks them", () => {
@@ -605,9 +605,9 @@ describe("event-store fold", () => {
 		const [registered] = normalizeHostingerYardSignal(
 			signal("vps.running", { virtualMachineId: "vm-1" }),
 		);
-		const shape = (registered?.data.yard as Record<string, unknown>)
-			.shape as Record<string, Record<string, unknown>>;
-		expect(shape.properties).toEqual({});
+		const layout = (registered?.data.yard as Record<string, unknown>)
+			.layout as Record<string, Record<string, unknown>>;
+		expect(layout.properties).toEqual({});
 	});
 
 	it("carries account and zone references through when present", () => {
@@ -618,9 +618,9 @@ describe("event-store fold", () => {
 				zoneId: "z-1",
 			}),
 		);
-		const shape = (registered?.data.yard as Record<string, unknown>)
-			.shape as Record<string, Record<string, unknown>>;
-		expect(shape.properties).toEqual({
+		const layout = (registered?.data.yard as Record<string, unknown>)
+			.layout as Record<string, Record<string, unknown>>;
+		expect(layout.properties).toEqual({
 			"hostinger.accountRef": "acct-1",
 			"hostinger.zoneId": "z-1",
 		});

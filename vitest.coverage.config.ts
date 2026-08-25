@@ -95,6 +95,20 @@ export default defineConfig({
 				),
 			),
 		],
+		// Every test file gets a throwaway HOBO_HOME, so a test that omits an
+		// explicit one cannot write into the developer's real ~/.hobo -- and, for
+		// this lane especially, cannot *read* state an earlier file left there.
+		// See test/setup/isolate-hobo-home.ts for the incident that prompted it: a
+		// clean run left 33 files under ~/.hobo/durable, including an auth session
+		// written by a test whose whole assertion was that `auth --help` prints a
+		// help page.
+		//
+		// This lane runs `isolate: false` with `fileParallelism: true`, so it is
+		// the one that can least afford ambient shared state -- and, until this
+		// line came back, the only lane without the guard.
+		setupFiles: [
+			fileURLToPath(new URL("./test/setup/isolate-hobo-home.ts", import.meta.url)),
+		],
 		testTimeout: 30_000,
 		hookTimeout: 30_000,
 		reporters: ["dot"],

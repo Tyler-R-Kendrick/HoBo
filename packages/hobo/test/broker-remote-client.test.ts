@@ -89,7 +89,11 @@ function fetchStub(
 }
 
 const SESSION_PAYLOAD = {
-	ephemeralPrincipal: { id: "anon-1", kind: "ephemeral" },
+	// `user`, not `ephemeral`: PrincipalKind is user|agent|service|system, and
+	// `principalFrom` refuses anything else, so an "ephemeral" kind makes every
+	// session in this file unparseable. The mock lane models anonymous sessions
+	// the same way -- a user principal whose id is `anonymous:<deploymentId>`.
+	ephemeralPrincipal: { id: "anon-1", kind: "user" },
 	accessToken: "at-1",
 	claimToken: "ct-1",
 	claimUrl: "https://broker.example/claim/ct-1",

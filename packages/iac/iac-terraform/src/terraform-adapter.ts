@@ -163,9 +163,20 @@ export function createTerraformAdapter(options: AdapterOptions = {}) {
 	// proven by runIacBackendConformance.
 	const engine = options.engine ?? createInMemoryHclEngine({ stateBackend });
 	const binary = options.binary ?? engine.binary ?? "tofu";
+	// An engine's reported version is evidence about the binary that engine
+	// runs, so it only applies when that is the binary we resolved. Without the
+	// check, `createTerraformAdapter({ binary: "terraform" })` over the default
+	// in-memory engine reported terraform 1.8.3 -- the engine hardcodes the tofu
+	// version, and it shadowed the pinned default below. Terraform has no 1.8.3;
+	// that is OpenTofu's line. These values go onto provisioning receipts, whose
+	// whole job is to say which toolchain did the work.
+	const engineVersion =
+		engine.binary === undefined || engine.binary === binary
+			? engine.toolchainVersion
+			: undefined;
 	const toolchainVersion =
 		options.toolchainVersion ??
-		engine.toolchainVersion ??
+		engineVersion ??
 		(binary === "terraform" ? PINNED_TERRAFORM_VERSION : PINNED_TOFU_VERSION);
 
 	return deepFreeze({
@@ -687,6 +698,14 @@ function resourceId(name) {
 }
 
 function collectValues(value) {
+	// Arrays first: `isJsonObject` excludes them by design, so without this
+	// branch an array fell through and was returned as a single non-string
+	// value. The caller passes `program.resources`, which IS an array, so no
+	// output reference inside any resource was ever validated -- only
+	// stackOutputs, which is iterated directly.
+	if (Array.isArray(value)) {
+		return value.flatMap((entry) => collectValues(entry));
+	}
 	if (!value || !isJsonObject(value)) {
 		return [value];
 	}

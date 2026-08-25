@@ -526,10 +526,10 @@ describe("event-store fold", () => {
 		);
 		const yard = registered?.data.yard as Record<string, unknown>;
 		expect(yard.providerId).toBe("kubernetes");
-		expect((yard.shape as Record<string, string[]>).require).toContain(
+		expect((yard.layout as Record<string, string[]>).require).toContain(
 			"managed-container-substrate",
 		);
-		expect((yard.shape as Record<string, unknown>).regions).toEqual([
+		expect((yard.layout as Record<string, unknown>).regions).toEqual([
 			"eu-west",
 		]);
 	});
@@ -543,7 +543,7 @@ describe("event-store fold", () => {
 			signal("deployment.available", { uid: "u-1" }),
 		);
 		const shape = (registered?.data.yard as Record<string, unknown>)
-			.shape as Record<string, unknown>;
+			.layout as Record<string, unknown>;
 		expect(shape.regions).toEqual(["in-cluster"]);
 	});
 
@@ -554,7 +554,7 @@ describe("event-store fold", () => {
 			signal("deployment.available", { uid: "u-1" }),
 		);
 		const shape = (registered?.data.yard as Record<string, unknown>)
-			.shape as Record<string, Record<string, unknown>>;
+			.layout as Record<string, Record<string, unknown>>;
 		expect(shape.properties).toEqual({});
 	});
 
@@ -567,7 +567,7 @@ describe("event-store fold", () => {
 			}),
 		);
 		const shape = (registered?.data.yard as Record<string, unknown>)
-			.shape as Record<string, Record<string, unknown>>;
+			.layout as Record<string, Record<string, unknown>>;
 		expect(shape.properties).toEqual({
 			"kubernetes.apiServerUrl": "https://apiserver.internal",
 			"kubernetes.namespace": "hobo-1",

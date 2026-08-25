@@ -158,7 +158,12 @@ function kubernetesYardFromPayload(
 		ownerTenantId: String(p.ownerTenantId ?? "local"),
 		providerId: "kubernetes",
 		runtimeId: String(p.runtimeId ?? "kubernetes.yard-runtime/v1"),
-		["shape"]: {
+		// `layout`, matching YardInstanceRegistration in the broker and every
+		// sibling provider's fold. This was emitted as `shape`, which meant a
+		// registered Kubernetes yard carried no `layout` for anything reading the
+		// canonical record -- the field was simply absent, so placement read it as
+		// a yard that declared no regions, requirements or properties at all.
+		layout: {
 			providerId: "kubernetes",
 			regions: Array.isArray(p.regions)
 				? p.regions.map(String)

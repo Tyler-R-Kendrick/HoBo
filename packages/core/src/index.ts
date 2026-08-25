@@ -751,6 +751,8 @@ export type {
 	GeneratedRegion,
 	OpenInferenceSpan,
 	OptimizeRequest,
+	ParsedOptimizeRequest,
+	ParsedTrajectory,
 	ProgramDemo,
 	Traceparent,
 	TrainingArtifact,

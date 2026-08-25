@@ -8,13 +8,14 @@ import { create, toJson } from "@bufbuild/protobuf";
 import {
 	hashTrajectory,
 	type OptimizeRequest,
+	type ParsedOptimizeRequest,
+	type ParsedTrajectory,
 	parseOptimizeRequest,
 	parseTrainingCandidate,
 	serializeTrainingArtifactProgram,
 	type TrainingCandidate,
 	type TrainingEngineId,
 	type TrainingEnginePort,
-	type Trajectory,
 } from "@hobo/core";
 import { AxEnginePayloadSchema } from "./_generated/ax_engine_payload_pb.js";
 import {
@@ -71,7 +72,7 @@ function parseJsonRecord(value: string): JsonObject | null {
 	}
 }
 
-function rootSpanIo(trajectory: Trajectory): TrajectoryIo | null {
+function rootSpanIo(trajectory: ParsedTrajectory): TrajectoryIo | null {
 	const root = trajectory.spans.find((span) => span.parentId === "");
 	if (!root) return null;
 	const input = parseJsonRecord(root.inputsJson);
@@ -87,7 +88,7 @@ function rootSpanIo(trajectory: Trajectory): TrajectoryIo | null {
 	if (Object.keys(input).length === 0 || Object.keys(output).length === 0) {
 		return null;
 	}
-	return { input, output, reward: trajectory.reward?.score ?? 0 };
+	return { input, output, reward: trajectory.reward.score };
 }
 
 /**
@@ -95,7 +96,7 @@ function rootSpanIo(trajectory: Trajectory): TrajectoryIo | null {
  * the DSPy-style "the signature is the program" primitive.
  */
 function deriveSignature(
-	request: OptimizeRequest,
+	request: ParsedOptimizeRequest,
 	ios: readonly TrajectoryIo[],
 ): string {
 	const first = ios[0];
@@ -109,7 +110,7 @@ function deriveSignature(
 			.sort()
 			.map((key) => `${key}:string`)
 			.join(", ");
-	const objective = (request.rubric?.objective ?? "").replaceAll('"', "'");
+	const objective = request.rubric.objective.replaceAll('"', "'");
 	return `"${objective}" ${fields(first.input)} -> ${fields(first.output)}`;
 }
 
@@ -242,8 +243,7 @@ export function createAxTrainingEngine(
 					)
 				: "";
 			const programJson = serializeTrainingArtifactProgram({
-				instructions:
-					(instructionOf(axSerialized) ?? parsed.rubric?.objective) || "",
+				instructions: instructionOf(axSerialized) ?? parsed.rubric.objective,
 				demos: ios
 					.filter((io) => io.reward >= DEMO_REWARD_FLOOR)
 					.map((io) => ({ input: io.input, output: io.output })),
@@ -259,13 +259,13 @@ export function createAxTrainingEngine(
 					trajectoryHashes: parsed.trajectories.map((trajectory) =>
 						hashTrajectory(trajectory),
 					),
-					rubricRef: parsed.rubric?.id ?? "",
-					contractRef: parsed.contract?.ref ?? "",
+					rubricRef: parsed.rubric.id,
+					contractRef: parsed.contract.ref,
 				},
 				artifact: {
 					engineId,
 					engineVersion: AX_ENGINE_VERSION,
-					methodRef: parsed.contract?.method ?? "",
+					methodRef: parsed.contract.method,
 					programJson,
 				},
 			});

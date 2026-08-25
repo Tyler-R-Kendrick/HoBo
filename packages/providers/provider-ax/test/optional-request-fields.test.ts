@@ -8,17 +8,14 @@
  * invariant `parseOptimizeRequest` asserts and is *still* unusable, because
  * usability depends on something the parser does not check.
  *
- * **The parser guarantees more than the engine assumes.** `optimize` reads its
- * request through optional chaining — `parsed.rubric?.objective ?? ""`,
- * `parsed.contract?.method ?? ""`, `trajectory.reward?.score ?? 0` — but
- * `parseOptimizeRequest` has already refused a request missing any of the
- * three, and refused a rubric whose id is empty. Those fallback arms are
- * therefore unreachable through the port; tests asserting on them were written
- * for this file and deleted once the parser refused every one of them. They
- * are recorded here rather than in a test because a test that cannot fail is
- * worse than a comment that can be read: the engine is re-hedging a guarantee
- * the boundary already makes, and the honest fix is in the return type of
- * `parseOptimizeRequest`, not in this package.
+ * **The parser guarantees more than the engine used to assume.** `optimize`
+ * once read its request through optional chaining — `parsed.rubric?.objective
+ * ?? ""`, `trajectory.reward?.score ?? 0` — even though `parseOptimizeRequest`
+ * had already refused a request missing any of those fields. The fix this file
+ * originally deferred has landed: `parseOptimizeRequest` now returns
+ * `ParsedOptimizeRequest`, whose type records the fields the assertions
+ * establish, and the engine reads them directly. The fallback arms are gone
+ * rather than untested — a guarantee readable off the type needs no re-hedge.
  *
  * What the parser genuinely does not check is whether the span graph has a
  * root. It checks that every `parentId` names a span in the same trajectory —

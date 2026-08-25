@@ -113,6 +113,32 @@ export function createOpenBaoSecretsPort(options: {
 		};
 	}
 
+	/**
+	 * A transport failure is a denial, not an escape. `fetch` rejecting — DNS,
+	 * refused connection, timeout — and `res.json()` throwing on a truncated
+	 * body were the only live failure modes that left the port's ok/denied
+	 * answer shape: an unreachable OpenBao took the caller down with a
+	 * TypeError above whatever policy was waiting for the denial, and it is
+	 * also the likeliest live failure in production. Every reachable-server
+	 * case already failed closed (no fetch, auth rejected, missing token,
+	 * non-2xx); this closes the unreachable-server case the same way. The
+	 * reason carries the transport error's own message — an address or errno,
+	 * never secret material — so "server down" stays distinguishable from
+	 * "wrong port" at the call site.
+	 */
+	function transportDenied(
+		stage: string,
+		error: unknown,
+	): { status: "denied"; reason: string; code: string } {
+		return {
+			status: "denied",
+			reason: `openbao ${stage} transport failed: ${
+				error instanceof Error ? error.message : String(error)
+			}`,
+			code: "openbao-transport-failed",
+		};
+	}
+
 	async function jwtLogin(): Promise<
 		| { status: "ok"; token: string; leaseDurationSec: number }
 		| { status: "denied"; reason: string; code: string }
@@ -135,14 +161,19 @@ export function createOpenBaoSecretsPort(options: {
 				),
 			};
 		}
-		const res = await options.fetch(`${addr}/v1/auth/jwt/login`, {
-			method: "POST",
-			headers: nsHeaders(),
-			body: JSON.stringify({
-				role: options.role,
-				jwt: options.svidJwt,
-			}),
-		});
+		let res: Awaited<ReturnType<FetchLike>>;
+		try {
+			res = await options.fetch(`${addr}/v1/auth/jwt/login`, {
+				method: "POST",
+				headers: nsHeaders(),
+				body: JSON.stringify({
+					role: options.role,
+					jwt: options.svidJwt,
+				}),
+			});
+		} catch (error) {
+			return transportDenied("jwt login", error);
+		}
 		if (!res.ok) {
 			return {
 				status: "denied",
@@ -150,13 +181,15 @@ export function createOpenBaoSecretsPort(options: {
 				code: "openbao-auth-failed",
 			};
 		}
-		// SAFETY: assertion to `wait res.json()) as { auth?: { client_token?: string; lease_duration?: number; }; }; ` is required at this boundary.
-		const data = (await res.json()) as {
-			auth?: {
-				client_token?: string;
-				lease_duration?: number;
+		let data: { auth?: { client_token?: string; lease_duration?: number } };
+		try {
+			// SAFETY: OpenBao's login body is parsed at this secrets-port boundary.
+			data = (await res.json()) as {
+				auth?: { client_token?: string; lease_duration?: number };
 			};
-		};
+		} catch (error) {
+			return transportDenied("jwt login", error);
+		}
 		const token = data.auth?.client_token;
 		if (!token) {
 			return {
@@ -194,10 +227,15 @@ export function createOpenBaoSecretsPort(options: {
 				? `?version=${encodeURIComponent(versionId)}`
 				: "";
 		const path = `${addr}/v1/${mount}/data/${name.replace(/^\//, "")}${q}`;
-		const res = await options.fetch(path, {
-			method: "GET",
-			headers: nsHeaders({ "X-Vault-Token": login.token }),
-		});
+		let res: Awaited<ReturnType<FetchLike>>;
+		try {
+			res = await options.fetch(path, {
+				method: "GET",
+				headers: nsHeaders({ "X-Vault-Token": login.token }),
+			});
+		} catch (error) {
+			return transportDenied("kv get", error);
+		}
 		if (!res.ok) {
 			return {
 				status: "denied",
@@ -217,7 +255,12 @@ export function createOpenBaoSecretsPort(options: {
 			};
 			lease_duration?: number;
 		}
-		const parsed = await res.json();
+		let parsed: unknown;
+		try {
+			parsed = await res.json();
+		} catch (error) {
+			return transportDenied("kv get", error);
+		}
 		// SAFETY: OpenBao KV JSON body is parsed at this secrets-port boundary.
 		const data = parsed as OpenBaoKvBody;
 		const body = data.data?.data;
@@ -270,11 +313,16 @@ export function createOpenBaoSecretsPort(options: {
 			};
 		}
 		const path = `${addr}/v1/${mount}/data/${name.replace(/^\//, "")}`;
-		const res = await options.fetch(path, {
-			method: "POST",
-			headers: nsHeaders({ "X-Vault-Token": login.token }),
-			body: JSON.stringify({ data: { value } }),
-		});
+		let res: Awaited<ReturnType<FetchLike>>;
+		try {
+			res = await options.fetch(path, {
+				method: "POST",
+				headers: nsHeaders({ "X-Vault-Token": login.token }),
+				body: JSON.stringify({ data: { value } }),
+			});
+		} catch (error) {
+			return transportDenied("kv put", error);
+		}
 		if (!res.ok) {
 			return {
 				status: "denied",
@@ -282,10 +330,13 @@ export function createOpenBaoSecretsPort(options: {
 				code: "openbao-kv-put-http-error",
 			};
 		}
-		// SAFETY: assertion to `wait res.json()) as { data?: { version?: number }; }; ` is required at this boundary.
-		const data = (await res.json()) as {
-			data?: { version?: number };
-		};
+		let data: { data?: { version?: number } };
+		try {
+			// SAFETY: OpenBao's KV write body is parsed at this secrets-port boundary.
+			data = (await res.json()) as { data?: { version?: number } };
+		} catch (error) {
+			return transportDenied("kv put", error);
+		}
 		const versionId =
 			data.data?.version !== undefined
 				? `obv${data.data.version}`
@@ -300,15 +351,20 @@ export function createOpenBaoSecretsPort(options: {
 		const login = await jwtLogin();
 		if (login.status === "denied") return null;
 		const path = `${addr}/v1/${mount}/metadata/${name.replace(/^\//, "")}`;
-		const res = await options.fetch(path, {
-			method: "GET",
-			headers: nsHeaders({ "X-Vault-Token": login.token }),
-		});
-		if (!res.ok) return null;
-		// SAFETY: assertion to `wait res.json()) as { data?: { versions?: JsonObject }; }; ` is required at this boundary.
-		const data = (await res.json()) as {
-			data?: { versions?: JsonObject };
-		};
+		let data: { data?: { versions?: JsonObject } };
+		try {
+			const res = await options.fetch(path, {
+				method: "GET",
+				headers: nsHeaders({ "X-Vault-Token": login.token }),
+			});
+			if (!res.ok) return null;
+			// SAFETY: OpenBao's KV metadata body is parsed at this boundary.
+			data = (await res.json()) as { data?: { versions?: JsonObject } };
+		} catch {
+			// null is this helper's failure shape: version listing is advisory,
+			// and an unreachable server means "no versions known", not a crash.
+			return null;
+		}
 		const versions = data.data?.versions;
 		if (!versions) return null;
 		return Object.freeze(

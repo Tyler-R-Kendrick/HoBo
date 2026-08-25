@@ -534,14 +534,33 @@ describe("the local station helper", () => {
 				HOBO_OPENBAO_ADDR: "http://127.0.0.1:1",
 			},
 		});
-		// And it *throws* rather than answering `denied`. `jwtLogin` does not wrap
-		// its fetch, so a transport failure — server down, wrong port, DNS —
-		// escapes as a TypeError, while every other live failure (no fetch, auth
-		// rejected, no token, non-2xx) is a typed refusal. That is the one
-		// failure mode a caller following the documented contract would not
-		// survive, and it is also the likeliest one in production. Recorded as it
-		// behaves today rather than quietly changed here; flagged for a fix.
-		await expect(port.access("db/password")).rejects.toThrow();
+		// And it answers `denied` rather than throwing. This test once recorded
+		// the opposite — `jwtLogin` did not wrap its fetch, so a transport
+		// failure escaped as a TypeError while every other live failure was a
+		// typed refusal, and that gap was flagged for a fix rather than quietly
+		// changed. The fix landed: an unreachable server is now the same kind of
+		// answer as an unauthorized one, carrying the transport error's own
+		// message so "server down" stays diagnosable at the call site.
+		const result = await port.access("db/password");
+		expect(result.status).toBe("denied");
+		if (result.status !== "denied") throw new Error("expected a denial");
+		expect(result.code).toBe("openbao-transport-failed");
+		expect(result.reason).toMatch(/transport failed/u);
+	});
+
+	it("degrades a put to the local store when the server is unreachable", async () => {
+		// Every other live put failure (auth rejected, non-2xx) already fell
+		// through to the local versioned store; a transport throw used to escape
+		// `put` entirely instead. An unreachable server now takes the same
+		// degradation path, so a write neither crashes nor silently vanishes.
+		const port = createLocalStationOpenBaoSecretsPort({
+			env: {
+				HOBO_OPENBAO_LIVE: "1",
+				HOBO_OPENBAO_ADDR: "http://127.0.0.1:1",
+			},
+		});
+		const written = await port.put("db/password", "seed-1");
+		expect(written.versionId).toBe("obv1");
 	});
 
 	it("addresses the server from HOBO_OPENBAO_ADDR", async () => {

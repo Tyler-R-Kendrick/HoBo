@@ -230,19 +230,58 @@ function assertTrajectoryInvariants(trajectory: Trajectory): void {
 	}
 }
 
-export function parseTrajectory(value: JsonValue | undefined): Trajectory {
+// domain-view: parse-don't-validate refined views of the generated wire
+// types. The wire shape declares every nested message optional, but the
+// parsers below refuse a document missing any of these fields — and until
+// now the return type did not say so, so every consumer re-hedged with
+// `?.`/`??` fallbacks against absences the boundary had already refused:
+// dead defensive arms guarding a guarantee nobody could read off the type.
+// These types record exactly what the assertions establish, nothing more.
+// Omit-and-replace rather than intersect: intersecting `Trajectory[]` with
+// `ParsedTrajectory[]` leaves `.map` resolving elements as the wire type, so
+// the refinement would be invisible exactly where consumers iterate.
+export type ParsedTrajectory = Omit<
+	Trajectory,
+	"run" | "subject" | "reward"
+> & {
+	run: Omit<NonNullable<Trajectory["run"]>, "agent"> & {
+		agent: NonNullable<NonNullable<Trajectory["run"]>["agent"]>;
+	};
+	subject: Omit<NonNullable<Trajectory["subject"]>, "generatedRegion"> & {
+		generatedRegion: NonNullable<
+			NonNullable<Trajectory["subject"]>["generatedRegion"]
+		>;
+	};
+	reward: NonNullable<Trajectory["reward"]>;
+};
+
+export type ParsedOptimizeRequest = Omit<
+	OptimizeRequest,
+	"generatedRegion" | "rubric" | "contract" | "trajectories"
+> & {
+	generatedRegion: NonNullable<OptimizeRequest["generatedRegion"]>;
+	rubric: NonNullable<OptimizeRequest["rubric"]>;
+	contract: NonNullable<OptimizeRequest["contract"]>;
+	trajectories: ParsedTrajectory[];
+};
+
+export function parseTrajectory(
+	value: JsonValue | undefined,
+): ParsedTrajectory {
 	const trajectory = fromJsonOrFail<Trajectory>(
 		TrajectorySchema,
 		value,
 		"trajectory",
 	);
 	assertTrajectoryInvariants(trajectory);
-	return deepFreeze(trajectory);
+	// SAFETY: assertTrajectoryInvariants established run/agent, subject/
+	// generatedRegion and reward present; the refined type records that.
+	return deepFreeze(trajectory) as ParsedTrajectory;
 }
 
 export function parseOptimizeRequest(
 	value: JsonValue | undefined,
-): OptimizeRequest {
+): ParsedOptimizeRequest {
 	const request = fromJsonOrFail<OptimizeRequest>(
 		OptimizeRequestSchema,
 		value,
@@ -273,7 +312,10 @@ export function parseOptimizeRequest(
 			contract.allowedRegionId,
 		);
 	}
-	return deepFreeze(request);
+	// SAFETY: the assertions above established generatedRegion, rubric and
+	// contract present, and every trajectory passed assertTrajectoryInvariants;
+	// the refined type records that.
+	return deepFreeze(request) as ParsedOptimizeRequest;
 }
 
 function assertArtifactInvariants(artifact: TrainingArtifact): void {

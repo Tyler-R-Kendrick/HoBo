@@ -384,6 +384,42 @@ describe("the website resolvers fill a plan without buying one", () => {
 		expect(bodyOf(create).order_id).toBe(ORDER_ID);
 	});
 
+	/**
+	 * Hostinger's website records are not uniformly populated — a freshly
+	 * created site, or one on a plan that does not expose a hosting account,
+	 * comes back with most of these fields missing. The outputs are recorded
+	 * alongside `desired` and read back by later reconciles, so an absent field
+	 * has to be *absent*: a key whose value is the string "undefined" reads as a
+	 * real hosting account or document root to everything downstream, and would
+	 * make the next reconcile see drift against a value that was never there.
+	 */
+	it("omits every optional output the account did not report", async () => {
+		const fake = fakeTransport((call) => {
+			if (call.method === "GET" && call.path === WEBSITES_PATH) {
+				// Only the domain: the field the resolver keys on, and nothing else.
+				return json(200, { data: [{ domain: "example.com" }], meta: {} });
+			}
+			return unexpected(call);
+		});
+		const outcome = parseResolveOutcome(
+			await resolverFor(HOSTINGER_WEB_HOSTING_PRODUCT_ID).reconcile(
+				websiteRequest(HOSTINGER_WEB_HOSTING_PRODUCT_ID),
+				fake.transport,
+			),
+		);
+		expect(outcome.outputs.domain).toBe("example.com");
+		expect(outcome.outputs.url).toBe("https://example.com");
+		for (const key of [
+			"hostingAccount",
+			"vhostType",
+			"websiteType",
+			"documentRoot",
+			"orderId",
+		]) {
+			expect(outcome.outputs).not.toHaveProperty(key);
+		}
+	});
+
 	/** The property the whole design exists to have. */
 	it("reconciles twice into one site and one create", async () => {
 		const fake = websiteWorld();

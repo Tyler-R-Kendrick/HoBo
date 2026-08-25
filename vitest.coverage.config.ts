@@ -143,6 +143,21 @@ export default defineConfig({
 				"**/_generated/**",
 			],
 			reporter: ["text-summary", "json-summary"],
+			/**
+			 * Write the report even when tests fail.
+			 *
+			 * The default is `false`, which means a single failing test anywhere in
+			 * the workspace suppresses the coverage report entirely -- not the
+			 * thresholds, the *report*. That is backwards for a ratchet: the moment
+			 * you most need to know where coverage stands is when something is
+			 * broken, and a lane that answers "no number" is indistinguishable from
+			 * one that was never run.
+			 *
+			 * It cost this campaign five full runs, each ~25 minutes, that produced
+			 * no summary at all. The thresholds below still fail the build; this
+			 * only stops the measurement being thrown away with it.
+			 */
+			reportOnFailure: true,
 			reportsDirectory: "./.coverage",
 			/**
 			 * A ratchet, not a target.

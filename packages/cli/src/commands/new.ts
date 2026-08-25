@@ -10,8 +10,6 @@ import {
 	type ScaffoldResult,
 	VALID_TEMPLATES,
 } from "../types/scaffold.js";
-import { isJsonObject } from "../json.js";
-
 
 export class DestinationExistsError extends UsageError {
 	constructor(message: string) {
@@ -240,6 +238,25 @@ export async function validateScaffoldProject(projectDir: string) {
 	};
 }
 
+/**
+ * Is this caught value a filesystem "no such file or directory"?
+ *
+ * Not `isJsonObject(error)`: that guard requires `[object Object]`, and a real
+ * `Error` tags as `[object Error]` -- so the check was false for every error
+ * Node actually throws, and the ENOENT branches it guarded were dead. The
+ * visible consequence was that `hobo new` crashed with "Internal CLI error" on
+ * the ordinary case of the target directory not existing yet, which is the case
+ * scaffolding exists for.
+ */
+function isNotFound(error: unknown): boolean {
+	return (
+		typeof error === "object" &&
+		error !== null &&
+		"code" in error &&
+		(error as { code?: unknown }).code === "ENOENT"
+	);
+}
+
 async function existingDirectory(projectDir: string) {
 	try {
 		const info = await stat(projectDir);
@@ -249,12 +266,7 @@ async function existingDirectory(projectDir: string) {
 			entries: info.isDirectory() ? await readdir(projectDir) : [],
 		};
 	} catch (error) {
-		if (
-			error &&
-			isJsonObject(error) &&
-			"code" in error &&
-			error.code === "ENOENT"
-		) {
+		if (isNotFound(error)) {
 			// SAFETY: `return { exists: false, isDirectory: false, entries: [] as string[] };` is required at this I/O or test boundary.
 			return { exists: false, isDirectory: false, entries: [] as string[] };
 		}
@@ -283,14 +295,7 @@ async function mergeGitignore(filePath: string, requiredContent: string) {
 	try {
 		current = await readFile(filePath, "utf8");
 	} catch (error) {
-		if (
-			!(
-				error &&
-				isJsonObject(error) &&
-				"code" in error &&
-				error.code === "ENOENT"
-			)
-		) {
+		if (!isNotFound(error)) {
 			throw error;
 		}
 	}

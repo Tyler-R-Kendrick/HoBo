@@ -84,7 +84,20 @@ export default defineConfig({
 	resolve: { alias: workspaceSrcAliases() },
 	test: {
 		environment: "node",
-		isolate: false,
+		/**
+		 * Isolated, unlike the fast lanes. `isolate: false` was a speed
+		 * optimization, and in this lane it bought nondeterminism: two
+		 * consecutive full runs of the same commit produced 253 and then 66
+		 * failures, with cross-file pathologies like one test fetching another
+		 * test file's server out of the shared module registry. A measurement
+		 * lane whose failure set is a coin flip corrupts both signals it exists
+		 * to produce — the failures are noise, and every flaked file's source
+		 * drags the coverage number it was supposed to certify. Package-scoped
+		 * runs pass with and without isolation, so the sharing only ever paid
+		 * at full scale, which is exactly where it broke. The ordinary lanes
+		 * keep their speed; this one buys back determinism.
+		 */
+		isolate: true,
 		fileParallelism: true,
 		pool: "threads",
 		globalSetup: [
@@ -103,9 +116,9 @@ export default defineConfig({
 		// written by a test whose whole assertion was that `auth --help` prints a
 		// help page.
 		//
-		// This lane runs `isolate: false` with `fileParallelism: true`, so it is
-		// the one that can least afford ambient shared state -- and, until this
-		// line came back, the only lane without the guard.
+		// Even isolated, files race through one real ~/.hobo unless each gets
+		// its own -- and, until this line came back, this was the only lane
+		// without the guard.
 		setupFiles: [
 			fileURLToPath(new URL("./test/setup/isolate-hobo-home.ts", import.meta.url)),
 		],

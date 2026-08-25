@@ -187,25 +187,26 @@ export default defineConfig({
 			 *                                  netbird-api, ci-guard parse/
 			 *                                  fixture-runner/workflows)
 			 *
-			 * Statements, functions and lines now clear the 80% goal. Branches do
-			 * not, and that is the honest remaining work — see below.
+			 * Re-measured 2026-08-25 under the isolated lane (isolate: true, see
+			 * above): statements 89.40%, branches 81.90%, functions 91.60%, lines
+			 * 90.41%. Every repo-wide metric now clears the 80% goal, branches
+			 * included; the floors below are re-baselined to that run.
 			 *
 			 * Set at the measured line rather than at the goal deliberately, for the
 			 * reason the Stryker configs already give: a gate nobody can pass gets
 			 * deleted, not met. Raise each number as the real one improves; never
 			 * lower one to make a red build green.
 			 *
-			 * Branches at 67.83% are the long pole and a genuine programme of work,
-			 * not an afternoon: ~7,000 uncovered branches remain. The leverage is
-			 * concentrated rather than spread — `packages/code` is 15,445 statements
-			 * on its own, and pixel-village, camps and control-yard all sit well
-			 * under the average. Attack those before anything else.
+			 * The remaining sub-80 packages are pixel-village (browser-only
+			 * surface), runtime-wasm (shells out to jco/wasmtime) and
+			 * `packages/code` at ~79.5 (CLI entrypoints and interactive
+			 * closures) — each needs a harness, not more of the same tests.
 			 */
 			thresholds: {
-				statements: 80.2,
-				branches: 68.9,
-				functions: 85.2,
-				lines: 81.7,
+				statements: 87,
+				branches: 79,
+				functions: 89,
+				lines: 88,
 
 				/**
 				 * Per-package floors, so the repo-wide aggregate cannot hide a
@@ -214,8 +215,18 @@ export default defineConfig({
 				 * Without these, adding well-covered code to a healthy package
 				 * offsets a regression in a weak one and the single global number
 				 * never moves. Each floor is that package's own measured coverage
-				 * on 2026-08-20, minus two points -- enough slack to absorb harmless
-				 * churn, tight enough to catch a real drop.
+				 * under the isolated lane on 2026-08-25, minus two points -- enough
+				 * slack to absorb harmless churn, tight enough to catch a real drop.
+				 *
+				 * The 2026-08-25 re-baseline moved twelve metrics *down* (adapters,
+				 * ci-guard, dispatcher, kv-redis-compatible and packs functions;
+				 * manifest-plan statements/branches/lines; mcp branches; yards
+				 * statements/functions/lines). Those floors were set from the
+				 * shared-state lane, where files inherited coverage from modules
+				 * other test files had loaded into the same worker; isolate: true
+				 * attributes coverage to what each file actually exercises. This is
+				 * a recalibration of the instrument, not a shed -- the same tests
+				 * assert the same behaviour.
 				 *
 				 * These are a ratchet, not a target. The goal remains 80% on every
 				 * metric everywhere; the floors below record where each package
@@ -227,97 +238,97 @@ export default defineConfig({
 				 * Packages under 50 statements are not gated: the percentages swing
 				 * too far on a single line to mean anything.
 				 */
-				"packages/adapters/**": { statements: 85, branches: 75, functions: 94, lines: 87 },
+				"packages/adapters/**": { statements: 87, branches: 85, functions: 84, lines: 89 },
 				"packages/auth-md/**": { statements: 85, branches: 79, functions: 81, lines: 86 },
 				"packages/bindings/**": { statements: 94, branches: 89, functions: 95, lines: 94 },
-				"packages/bindles/**": { statements: 74, branches: 65, functions: 79, lines: 75 },
-				"packages/broker/**": { statements: 76, branches: 65, functions: 84, lines: 77 },
-				"packages/camps/**": { statements: 60, branches: 50, functions: 70, lines: 62 },
-				"packages/capability-matrix/**": { statements: 85, branches: 60, functions: 91, lines: 87 },
-				"packages/capability-profiles/**": { statements: 86, branches: 74, functions: 98, lines: 89 },
-				"packages/ci-guard/**": { statements: 84, branches: 77, functions: 93, lines: 83 },
+				"packages/bindles/**": { statements: 85, branches: 79, functions: 88, lines: 85 },
+				"packages/broker/**": { statements: 85, branches: 79, functions: 89, lines: 86 },
+				"packages/camps/**": { statements: 97, branches: 96, functions: 98, lines: 98 },
+				"packages/capability-matrix/**": { statements: 95, branches: 81, functions: 95, lines: 97 },
+				"packages/capability-profiles/**": { statements: 92, branches: 84, functions: 98, lines: 93 },
+				"packages/ci-guard/**": { statements: 91, branches: 88, functions: 90, lines: 91 },
 				"packages/claims/**": { statements: 87, branches: 81, functions: 96, lines: 90 },
-				"packages/cli/**": { statements: 80, branches: 62, functions: 92, lines: 81 },
-				"packages/cloud/**": { statements: 86, branches: 72, functions: 88, lines: 88 },
-				"packages/code/**": { statements: 75, branches: 63, functions: 81, lines: 77 },
-				"packages/componentize/**": { statements: 88, branches: 73, functions: 93, lines: 88 },
-				"packages/conformance/**": { statements: 78, branches: 66, functions: 84, lines: 78 },
-				"packages/connectivity/**": { statements: 71, branches: 60, functions: 76, lines: 74 },
-				"packages/connectors/**": { statements: 86, branches: 78, functions: 84, lines: 86 },
+				"packages/cli/**": { statements: 89, branches: 79, functions: 93, lines: 89 },
+				"packages/cloud/**": { statements: 90, branches: 79, functions: 92, lines: 91 },
+				"packages/code/**": { statements: 85, branches: 77, functions: 87, lines: 87 },
+				"packages/componentize/**": { statements: 91, branches: 83, functions: 93, lines: 91 },
+				"packages/conformance/**": { statements: 89, branches: 78, functions: 92, lines: 89 },
+				"packages/connectivity/**": { statements: 85, branches: 78, functions: 87, lines: 87 },
+				"packages/connectors/**": { statements: 88, branches: 80, functions: 88, lines: 88 },
 				"packages/contract-harness/**": { statements: 86, branches: 85, functions: 98, lines: 85 },
-				"packages/contracts/**": { statements: 83, branches: 70, functions: 86, lines: 83 },
-				"packages/control-api/**": { statements: 78, branches: 68, functions: 81, lines: 80 },
-				"packages/control-yard/**": { statements: 59, branches: 35, functions: 63, lines: 60 },
-				"packages/convex/**": { statements: 74, branches: 53, functions: 71, lines: 79 },
-				"packages/core/**": { statements: 88, branches: 78, functions: 91, lines: 89 },
-				"packages/data/**": { statements: 72, branches: 59, functions: 69, lines: 73 },
-				"packages/data-postgres/**": { statements: 84, branches: 73, functions: 94, lines: 85 },
-				"packages/dispatcher/**": { statements: 83, branches: 67, functions: 92, lines: 84 },
+				"packages/contracts/**": { statements: 87, branches: 79, functions: 86, lines: 87 },
+				"packages/control-api/**": { statements: 94, branches: 89, functions: 98, lines: 94 },
+				"packages/control-yard/**": { statements: 91, branches: 85, functions: 89, lines: 91 },
+				"packages/convex/**": { statements: 98, branches: 94, functions: 98, lines: 98 },
+				"packages/core/**": { statements: 91, branches: 83, functions: 95, lines: 91 },
+				"packages/data/**": { statements: 89, branches: 84, functions: 83, lines: 91 },
+				"packages/data-postgres/**": { statements: 94, branches: 92, functions: 95, lines: 94 },
+				"packages/dispatcher/**": { statements: 92, branches: 85, functions: 89, lines: 92 },
 				"packages/evals/**": { statements: 90, branches: 89, functions: 94, lines: 91 },
-				"packages/events/**": { statements: 83, branches: 70, functions: 87, lines: 85 },
-				"packages/fuzz/**": { statements: 87, branches: 77, functions: 91, lines: 90 },
-				"packages/hobo/**": { statements: 76, branches: 61, functions: 81, lines: 77 },
-				"packages/iac/**": { statements: 70, branches: 59, functions: 77, lines: 70 },
-				"packages/identity/**": { statements: 80, branches: 66, functions: 84, lines: 81 },
+				"packages/events/**": { statements: 90, branches: 80, functions: 87, lines: 92 },
+				"packages/fuzz/**": { statements: 89, branches: 78, functions: 92, lines: 91 },
+				"packages/hobo/**": { statements: 87, branches: 78, functions: 88, lines: 88 },
+				"packages/iac/**": { statements: 84, branches: 80, functions: 88, lines: 84 },
+				"packages/identity/**": { statements: 88, branches: 79, functions: 90, lines: 89 },
 				"packages/junctions/**": { statements: 95, branches: 90, functions: 98, lines: 95 },
-				"packages/kv-redis-compatible/**": { statements: 85, branches: 73, functions: 90, lines: 92 },
-				"packages/management/**": { statements: 77, branches: 53, functions: 83, lines: 80 },
-				"packages/manifest-capability/**": { statements: 93, branches: 89, functions: 95, lines: 93 },
+				"packages/kv-redis-compatible/**": { statements: 86, branches: 78, functions: 80, lines: 92 },
+				"packages/management/**": { statements: 97, branches: 87, functions: 94, lines: 96 },
+				"packages/manifest-capability/**": { statements: 93, branches: 89, functions: 96, lines: 93 },
 				"packages/manifest-declaration/**": { statements: 96, branches: 94, functions: 98, lines: 96 },
-				"packages/manifest-plan/**": { statements: 94, branches: 88, functions: 98, lines: 95 },
+				"packages/manifest-plan/**": { statements: 88, branches: 84, functions: 98, lines: 92 },
 				"packages/manifest-request/**": { statements: 96, branches: 92, functions: 98, lines: 96 },
 				"packages/manifest-round-trip/**": { statements: 94, branches: 91, functions: 98, lines: 98 },
-				"packages/mcp/**": { statements: 95, branches: 85, functions: 96, lines: 97 },
-				"packages/packs/**": { statements: 82, branches: 76, functions: 90, lines: 82 },
-				"packages/patterns/**": { statements: 73, branches: 61, functions: 77, lines: 75 },
-				"packages/pixel-village/**": { statements: 46, branches: 41, functions: 48, lines: 46 },
-				"packages/policy/**": { statements: 82, branches: 76, functions: 91, lines: 82 },
-				"packages/providers/provider-aws/**": { statements: 87, branches: 69, functions: 92, lines: 88 },
-				"packages/providers/provider-ax/**": { statements: 88, branches: 55, functions: 98, lines: 95 },
-				"packages/providers/provider-azure/**": { statements: 89, branches: 73, functions: 93, lines: 90 },
-				"packages/providers/provider-browser-wasm/**": { statements: 74, branches: 71, functions: 78, lines: 75 },
-				"packages/providers/provider-cloudflare/**": { statements: 80, branches: 67, functions: 83, lines: 80 },
-				"packages/providers/provider-convex/**": { statements: 86, branches: 76, functions: 93, lines: 87 },
-				"packages/providers/provider-digitalocean/**": { statements: 77, branches: 64, functions: 84, lines: 79 },
-				"packages/providers/provider-flux/**": { statements: 79, branches: 74, functions: 98, lines: 79 },
-				"packages/providers/provider-gcp/**": { statements: 87, branches: 72, functions: 90, lines: 88 },
-				"packages/providers/provider-hetzner/**": { statements: 82, branches: 66, functions: 87, lines: 85 },
-				"packages/providers/provider-hostinger/**": { statements: 87, branches: 70, functions: 92, lines: 88 },
-				"packages/providers/provider-kafka/**": { statements: 80, branches: 64, functions: 84, lines: 81 },
-				"packages/providers/provider-kubernetes/**": { statements: 81, branches: 70, functions: 90, lines: 81 },
-				"packages/providers/provider-lakebed/**": { statements: 76, branches: 55, functions: 70, lines: 76 },
-				"packages/providers/provider-neon/**": { statements: 84, branches: 73, functions: 93, lines: 86 },
-				"packages/providers/provider-netlify/**": { statements: 60, branches: 52, functions: 57, lines: 61 },
-				"packages/providers/provider-prisma-postgres/**": { statements: 86, branches: 77, functions: 96, lines: 87 },
-				"packages/providers/provider-railway/**": { statements: 82, branches: 68, functions: 82, lines: 83 },
+				"packages/mcp/**": { statements: 95, branches: 82, functions: 96, lines: 97 },
+				"packages/packs/**": { statements: 83, branches: 80, functions: 85, lines: 83 },
+				"packages/patterns/**": { statements: 88, branches: 80, functions: 93, lines: 89 },
+				"packages/pixel-village/**": { statements: 59, branches: 57, functions: 62, lines: 60 },
+				"packages/policy/**": { statements: 92, branches: 92, functions: 91, lines: 92 },
+				"packages/providers/provider-aws/**": { statements: 91, branches: 79, functions: 96, lines: 91 },
+				"packages/providers/provider-ax/**": { statements: 95, branches: 79, functions: 98, lines: 98 },
+				"packages/providers/provider-azure/**": { statements: 91, branches: 78, functions: 97, lines: 92 },
+				"packages/providers/provider-browser-wasm/**": { statements: 83, branches: 79, functions: 91, lines: 84 },
+				"packages/providers/provider-cloudflare/**": { statements: 89, branches: 79, functions: 92, lines: 90 },
+				"packages/providers/provider-convex/**": { statements: 87, branches: 78, functions: 93, lines: 87 },
+				"packages/providers/provider-digitalocean/**": { statements: 90, branches: 78, functions: 96, lines: 91 },
+				"packages/providers/provider-flux/**": { statements: 96, branches: 96, functions: 98, lines: 96 },
+				"packages/providers/provider-gcp/**": { statements: 89, branches: 78, functions: 94, lines: 90 },
+				"packages/providers/provider-hetzner/**": { statements: 93, branches: 80, functions: 95, lines: 93 },
+				"packages/providers/provider-hostinger/**": { statements: 88, branches: 78, functions: 95, lines: 89 },
+				"packages/providers/provider-kafka/**": { statements: 87, branches: 81, functions: 91, lines: 88 },
+				"packages/providers/provider-kubernetes/**": { statements: 87, branches: 79, functions: 94, lines: 88 },
+				"packages/providers/provider-lakebed/**": { statements: 85, branches: 84, functions: 80, lines: 85 },
+				"packages/providers/provider-neon/**": { statements: 87, branches: 78, functions: 93, lines: 88 },
+				"packages/providers/provider-netlify/**": { statements: 83, branches: 78, functions: 81, lines: 83 },
+				"packages/providers/provider-prisma-postgres/**": { statements: 90, branches: 81, functions: 96, lines: 90 },
+				"packages/providers/provider-railway/**": { statements: 97, branches: 96, functions: 98, lines: 96 },
 				"packages/providers/provider-ttl-sh/**": { statements: 91, branches: 87, functions: 91, lines: 91 },
-				"packages/providers/provider-upstash/**": { statements: 84, branches: 76, functions: 87, lines: 85 },
-				"packages/providers/provider-vercel/**": { statements: 81, branches: 73, functions: 78, lines: 82 },
-				"packages/providers/provider-webernetes/**": { statements: 82, branches: 74, functions: 88, lines: 85 },
-				"packages/providers/runner-blacksmith/**": { statements: 88, branches: 79, functions: 92, lines: 88 },
-				"packages/providers/runner-depot/**": { statements: 80, branches: 73, functions: 87, lines: 80 },
-				"packages/providers/runner-github/**": { statements: 82, branches: 78, functions: 87, lines: 83 },
+				"packages/providers/provider-upstash/**": { statements: 87, branches: 78, functions: 90, lines: 88 },
+				"packages/providers/provider-vercel/**": { statements: 87, branches: 79, functions: 89, lines: 88 },
+				"packages/providers/provider-webernetes/**": { statements: 92, branches: 89, functions: 90, lines: 94 },
+				"packages/providers/runner-blacksmith/**": { statements: 88, branches: 79, functions: 98, lines: 88 },
+				"packages/providers/runner-depot/**": { statements: 93, branches: 87, functions: 94, lines: 93 },
+				"packages/providers/runner-github/**": { statements: 87, branches: 82, functions: 87, lines: 87 },
 				"packages/recipes/**": { statements: 89, branches: 82, functions: 95, lines: 90 },
-				"packages/registry/**": { statements: 93, branches: 86, functions: 98, lines: 94 },
-				"packages/replay/**": { statements: 82, branches: 71, functions: 80, lines: 85 },
-				"packages/rift/**": { statements: 68, branches: 52, functions: 80, lines: 70 },
-				"packages/runtime/**": { statements: 81, branches: 71, functions: 81, lines: 80 },
-				"packages/runtimes/**": { statements: 70, branches: 55, functions: 74, lines: 70 },
-				"packages/schema-tools/**": { statements: 75, branches: 63, functions: 86, lines: 77 },
+				"packages/registry/**": { statements: 93, branches: 87, functions: 98, lines: 94 },
+				"packages/replay/**": { statements: 86, branches: 80, functions: 82, lines: 88 },
+				"packages/rift/**": { statements: 86, branches: 82, functions: 81, lines: 88 },
+				"packages/runtime/**": { statements: 86, branches: 78, functions: 85, lines: 86 },
+				"packages/runtimes/**": { statements: 86, branches: 83, functions: 87, lines: 87 },
+				"packages/schema-tools/**": { statements: 88, branches: 83, functions: 92, lines: 90 },
 				"packages/sdk/**": { statements: 96, branches: 89, functions: 98, lines: 96 },
-				"packages/stage-gate/**": { statements: 62, branches: 57, functions: 70, lines: 63 },
-				"packages/stations/**": { statements: 85, branches: 78, functions: 93, lines: 86 },
+				"packages/stage-gate/**": { statements: 86, branches: 89, functions: 89, lines: 86 },
+				"packages/stations/**": { statements: 91, branches: 85, functions: 94, lines: 91 },
 				"packages/status-page/**": { statements: 92, branches: 82, functions: 91, lines: 93 },
-				"packages/storage-sqlite/**": { statements: 69, branches: 60, functions: 81, lines: 70 },
+				"packages/storage-sqlite/**": { statements: 90, branches: 82, functions: 94, lines: 91 },
 				"packages/testing/**": { statements: 89, branches: 81, functions: 94, lines: 91 },
-				"packages/trails/**": { statements: 84, branches: 74, functions: 91, lines: 85 },
-				"packages/training/**": { statements: 93, branches: 80, functions: 98, lines: 96 },
+				"packages/trails/**": { statements: 86, branches: 78, functions: 91, lines: 87 },
+				"packages/training/**": { statements: 93, branches: 83, functions: 98, lines: 96 },
 				"packages/training-pipeline/**": { statements: 92, branches: 85, functions: 94, lines: 93 },
 				"packages/trust/**": { statements: 89, branches: 87, functions: 87, lines: 89 },
-				"packages/wasp/**": { statements: 80, branches: 73, functions: 87, lines: 85 },
-				"packages/wit/**": { statements: 76, branches: 63, functions: 77, lines: 76 },
-				"packages/yard-world/**": { statements: 87, branches: 80, functions: 88, lines: 89 },
-				"packages/yards/**": { statements: 87, branches: 84, functions: 88, lines: 87 },
+				"packages/wasp/**": { statements: 88, branches: 81, functions: 93, lines: 90 },
+				"packages/wit/**": { statements: 89, branches: 82, functions: 92, lines: 89 },
+				"packages/yard-world/**": { statements: 91, branches: 81, functions: 98, lines: 93 },
+				"packages/yards/**": { statements: 83, branches: 84, functions: 78, lines: 83 },
 			},
 		},
 	},

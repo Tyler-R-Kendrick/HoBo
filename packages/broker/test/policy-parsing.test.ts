@@ -298,23 +298,22 @@ describe("policy sets", () => {
 		...over,
 	});
 
-	it("refuses a policy set that omits billing entirely", () => {
-		// Worth pinning because the code reads as though it does the opposite.
-		// `parseBillingPolicy(raw.billing ?? {})` looks like a default, but `{}`
-		// has no `quota`, and `quota` is required — so the fallback throws every
-		// time it is taken and no policy set without a billing block can parse.
-		//
-		// Recorded as behaviour rather than fixed here: either the default should
-		// carry a quota name or billing should be a required field, and choosing
-		// between those is a policy decision, not a test one.
-		expect(
-			codeOf(() =>
-				parseBrokerPolicySet({
-					schemaVersion: BROKER_SCHEMA_VERSION,
-					brokerId: "b1",
-				} as never),
-			),
-		).toBe("invalid-billing-policy");
+	it("refuses a policy set that omits billing, naming the missing block", () => {
+		// Billing is required — quota is a policy someone chose, and there is no
+		// honest default to invent. What matters is *which* refusal: this used to
+		// fall into `parseBillingPolicy({})` and report "quota must be a non-empty
+		// string" against a billing block the operator never wrote. The refusal
+		// now names the block, so the fix it points at is the real one.
+		try {
+			parseBrokerPolicySet({
+				schemaVersion: BROKER_SCHEMA_VERSION,
+				brokerId: "b1",
+			} as never);
+			throw new Error("expected a refusal");
+		} catch (error) {
+			expect((error as BrokerParseError).code).toBe("invalid-policy-set");
+			expect((error as Error).message).toMatch(/billing is required/u);
+		}
 	});
 
 	it("refuses a schema version it does not implement", () => {
@@ -380,20 +379,22 @@ describe("broker requests", () => {
 		...over,
 	});
 
-	it("refuses a request that names no scope", () => {
-		// The same shape as the billing default above: `parseTopologyScope(raw.scope
-		// ?? {})` looks like a default, but `bindleId` is required, so `{}` always
-		// throws. A request must name at least the bindle it is placing into --
-		// which is right, and the `?? {}` is what makes it read as optional.
-		expect(
-			codeOf(() =>
-				parseBrokerRequest({
-					schemaVersion: BROKER_SCHEMA_VERSION,
-					requestId: "r1",
-					requirements: [{ resourceId: "db", port: "hobo:sql" }],
-				} as never),
-			),
-		).toBe("invalid-scope");
+	it("refuses a request that names no scope, naming the missing block", () => {
+		// A request must name at least the bindle it is placing into. This used
+		// to fall into `parseTopologyScope({})` and refuse over a missing
+		// bindleId inside a scope block the caller never wrote; it now says the
+		// scope itself is missing, which is the fix the caller actually needs.
+		try {
+			parseBrokerRequest({
+				schemaVersion: BROKER_SCHEMA_VERSION,
+				requestId: "r1",
+				requirements: [{ resourceId: "db", port: "hobo:sql" }],
+			} as never);
+			throw new Error("expected a refusal");
+		} catch (error) {
+			expect((error as BrokerParseError).code).toBe("invalid-request");
+			expect((error as Error).message).toMatch(/scope is required/u);
+		}
 	});
 
 	it("refuses a request that places nothing", () => {

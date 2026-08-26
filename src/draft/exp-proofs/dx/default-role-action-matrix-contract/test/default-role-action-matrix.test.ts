@@ -10,7 +10,14 @@ import {
 } from "../src/default-role-action-matrix.js";
 
 describe("default role action matrix contract", () => {
-  it("resolves every built-in role to its Plan 29 grant set", () => {
+	it("rejects a non-object request at the parser boundary", () => {
+		assert.throws(
+			() => evaluateControlPlaneAuthorization([]),
+			/input must be an object/,
+		);
+	});
+
+	it("resolves every built-in role to its Plan 29 grant set", () => {
     assert.deepEqual(BUILT_IN_ROLES, [
       "Org-Admin",
       "Security/Policy-Admin",

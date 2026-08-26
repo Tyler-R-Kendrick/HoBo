@@ -3,7 +3,9 @@
   "slug": "finops-budget-routing-control-plane",
   "title": "FinOps Budget Routing Control Plane",
   "references": {
-    "technicalProofs": [],
+    "technicalProofs": [
+      "src/draft/technical-proofs/cost-degradation-saga-contract"
+    ],
     "epicProofs": [],
     "expProofs": [],
     "designDocs": [

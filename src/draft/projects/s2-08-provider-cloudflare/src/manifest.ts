@@ -1,6 +1,6 @@
 import type { InitialCapabilityPort } from "./equivalence.js";
 import { EQUIVALENCE_CLASSES } from "./equivalence.js";
-import { cloneAsJson, isJsonObject, type JsonValue, type JsonObject, type JsonBag } from "./json.js";
+import { cloneAsJson, isJsonObject, type JsonValue, type JsonBag } from "./json.js";
 
 
 export const MANIFEST_SCHEMA = "hobo.capability-manifest/v1";
@@ -9,6 +9,11 @@ export const AUTH_SCHEMA = "hobo.provider-auth/v1";
 export const COST_SCHEMA = "hobo.cost/v1";
 
 export const CLOUDFLARE_PROVIDER_ID = "@hobo/provider-cloudflare";
+
+interface ParsedManifestIndex { manifestSchema?: string; schema?: string; providerId?: string; }
+interface ParsedCapabilities { schema?: string; capabilities?: Array<{ port?: string }>; }
+interface ParsedAuth { schema?: string; staticSecrets?: boolean; staticKey?: string; clientSecret?: string; }
+interface ParsedCost { schema?: string; }
 
 export interface PublishedManifestDocuments {
   "/.well-known/capability-manifest/index.json": string;
@@ -27,7 +32,7 @@ export interface CloudflareManifestInput {
 export function publishCapabilityManifest(input: CloudflareManifestInput = {}): PublishedManifestDocuments {
   const providerId = input.providerId ?? CLOUDFLARE_PROVIDER_ID;
   const colos = input.colos ?? ["WNAM", "ENAM", "WEUR"];
-  // SAFETY: `const ports = input.ports ?? (Object.keys(EQUIVALENCE_CLASSES) as InitialCapabil` is required at this I/O or test boundary.
+  // SAFETY: the equivalence-class object is the single source of truth for these keys.
   const ports = input.ports ?? (Object.keys(EQUIVALENCE_CLASSES) as InitialCapabilityPort[]);
   const capabilitiesDocument = {
     schema: CAPABILITIES_SCHEMA,
@@ -140,10 +145,10 @@ export function publishCapabilityManifest(input: CloudflareManifestInput = {}): 
 export interface PublishedManifestParseResult {
   ok: boolean;
   errors: string[];
-  index: JsonObject;
-  capabilities: JsonObject;
-  auth: JsonObject;
-  cost: JsonObject;
+  index: ParsedManifestIndex;
+  capabilities: ParsedCapabilities;
+  auth: ParsedAuth;
+  cost: ParsedCost;
 }
 
 /**
@@ -151,10 +156,15 @@ export interface PublishedManifestParseResult {
  * a parsed derived type or structured errors — no broad DTO checks downstream.
  */
 export function parsePublishedManifest(documents: PublishedManifestDocuments): PublishedManifestParseResult {
-  const index = JSON.parse(documents["/.well-known/capability-manifest/index.json"]);
-  const capabilities = JSON.parse(documents["/.well-known/capability-manifest/capabilities.json"]);
-  const auth = JSON.parse(documents["/.well-known/capability-manifest/auth.json"]);
-  const cost = JSON.parse(documents["/.well-known/capability-manifest/cost.json"]);
+  // SAFETY: these documents were emitted by canonicalJson and are parsed into the project JSON value domain.
+  // SAFETY: the index document is emitted by canonicalJson and is parsed into the project JSON object domain.
+  const index = JSON.parse(documents["/.well-known/capability-manifest/index.json"]) as ParsedManifestIndex;
+  // SAFETY: the capabilities document is emitted by canonicalJson and is parsed into the project JSON object domain.
+  const capabilities = JSON.parse(documents["/.well-known/capability-manifest/capabilities.json"]) as ParsedCapabilities;
+  // SAFETY: the auth document is emitted by canonicalJson and is parsed into the project JSON object domain.
+  const auth = JSON.parse(documents["/.well-known/capability-manifest/auth.json"]) as ParsedAuth;
+  // SAFETY: the cost document is emitted by canonicalJson and is parsed into the project JSON object domain.
+  const cost = JSON.parse(documents["/.well-known/capability-manifest/cost.json"]) as ParsedCost;
   const errors: string[] = [];
 
   if (index.manifestSchema !== MANIFEST_SCHEMA) {

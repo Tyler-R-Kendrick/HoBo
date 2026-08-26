@@ -8,6 +8,8 @@
       "src/draft/technical-proofs/budget-quota-policy-contract",
       "src/draft/technical-proofs/choreography-saga-engine-contract",
       "src/draft/technical-proofs/credit-ledger-view-contract",
+      "src/draft/technical-proofs/connectivity-cost-feedback-contract",
+      "src/draft/technical-proofs/cost-degradation-saga-contract",
       "src/draft/technical-proofs/failure-taxonomy-safe-fix-classifier",
       "src/draft/technical-proofs/golden-suite-chaos-verification-contract",
       "src/draft/technical-proofs/metering-view-projection-contract",

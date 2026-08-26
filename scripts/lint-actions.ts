@@ -10,12 +10,14 @@ const recognizedFiles = existsSync(workflowDir)
 	: [];
 const files = existsSync(disabledWorkflowDir)
 	? readdirSync(disabledWorkflowDir)
-	.filter((name) => /\.ya?ml$/.test(name))
-	.sort()
+			.filter((name) => /\.ya?ml$/.test(name))
+			.sort()
 	: [];
 const errors: string[] = [];
 if (recognizedFiles.length > 0) {
-	errors.push(`.github/workflows must contain no workflow files (found ${recognizedFiles.join(", ")})`);
+	errors.push(
+		`.github/workflows must contain no workflow files (found ${recognizedFiles.join(", ")})`,
+	);
 }
 
 for (const file of files) {
@@ -30,14 +32,19 @@ for (const file of files) {
 			.map((line, index) => ({ line, index }))
 			.filter(
 				(entry) =>
-					entry.index > jobsIndex &&
-					/^  [A-Za-z0-9_-]+:$/.test(entry.line),
+					entry.index > jobsIndex && /^  [A-Za-z0-9_-]+:$/.test(entry.line),
 			)
 			.map((entry) => entry.index);
 		for (const [position, start] of jobStarts.entries()) {
 			const end = jobStarts[position + 1] ?? lines.length;
-			if (!lines.slice(start, end).some((line) => line.trim() === "if: \${{ false }}")) {
-				errors.push(file + ":" + (start + 1) + ": hosted Actions job is not disabled");
+			if (
+				!lines
+					.slice(start, end)
+					.some((line) => line.trim() === "if: ${{ false }}")
+			) {
+				errors.push(
+					file + ":" + (start + 1) + ": hosted Actions job is not disabled",
+				);
 			}
 		}
 	}
@@ -80,4 +87,6 @@ if (errors.length > 0) {
 	for (const error of errors) console.error(`ERR ${error}`);
 	process.exit(1);
 }
-console.log(`actions lint ok: ${files.length} disabled workflow file(s); .github/workflows is empty`);
+console.log(
+	`actions lint ok: ${files.length} disabled workflow file(s); .github/workflows is empty`,
+);

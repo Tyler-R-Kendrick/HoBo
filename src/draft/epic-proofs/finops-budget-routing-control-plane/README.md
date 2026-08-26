@@ -90,7 +90,7 @@ npm.cmd --prefix src/draft/epic-proofs/finops-budget-routing-control-plane test
 - Stability decisions are deterministic against pinned routing history.
 - Pact-style fixtures name every mocked boundary.
 - DX, OpsX, and FinX views share one DecisionGraph id.
-- The validated cost-degradation saga proof is included in this rollup; its deterministic simulation contract is unchanged.
+- `proof.json` pins the validated cost-degradation saga proof in this rollup; its deterministic simulation contract is unchanged.
 
 ## What Is Mocked
 

@@ -42,10 +42,8 @@ for (const path of Object.keys(documents).sort()) {
 }
 const parsed = parsePublishedManifest(documents);
 assert.ok(parsed.ok, `manifest parses without errors: ${parsed.errors.join("; ")}`);
-// SAFETY: `assert.equal((parsed.index as { manifestSchema?: string }).manifestSchema, MANIF` is required at this I/O or test boundary.
-assert.equal((parsed.index as { manifestSchema?: string }).manifestSchema, MANIFEST_SCHEMA);
-// SAFETY: `assert.equal((parsed.auth as { staticSecrets?: boolean }).staticSecrets, false);` is required at this I/O or test boundary.
-assert.equal((parsed.auth as { staticSecrets?: boolean }).staticSecrets, false);
+assert.equal(parsed.index.manifestSchema, MANIFEST_SCHEMA);
+assert.equal(parsed.auth.staticSecrets, false);
 console.log(`manifest parse ok=${parsed.ok} schema=${MANIFEST_SCHEMA} staticSecrets=false`);
 
 // 3) Publication is deterministic: same input, byte-identical canonical documents.
@@ -67,12 +65,10 @@ console.log(`tampered manifest rejected: ${rejected.errors.join("; ")}`);
 
 // 5) The hello-bindle plan binds compute to kv/objectStore with typed option blocks.
 const plan = provider.helloBindlePlan;
-// SAFETY: `console.log(`plan ${plan.id}: env=${plan.context.env} colo=${plan.context.colo} ` is required at this I/O or test boundary.
-console.log(`plan ${plan.id}: env=${plan.context.env} colo=${plan.context.colo} resources=${plan.resources.map((r) => `${r.id as string}:${r.type as string}`).join(",")}`);
+console.log(`plan ${plan.id}: env=${plan.context.env} colo=${plan.context.colo} resources=${plan.resources.map((r) => `${r.id}:${r.type}`).join(",")}`);
 const service = plan.resources.find((resource) => resource.id === "service");
 assert.ok(service);
-// SAFETY: `const binds = service.binds as Array<{ import: string; providerResourceId: strin` is required at this I/O or test boundary.
-const binds = service.binds as Array<{ import: string; providerResourceId: string; capability: string }>;
+const binds = service.binds ?? [];
 for (const bind of binds) {
 	console.log(`bind: ${bind.import} -> ${bind.providerResourceId} (${bind.capability})`);
 }

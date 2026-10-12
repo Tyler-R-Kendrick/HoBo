@@ -100,7 +100,7 @@ function initGit(request: Request, pins: Pins, name: string): void {
 	const borrowed =
 		request.reference === undefined
 			? ""
-			: `, objects borrowed from ${request.reference} (keep that clone in place)`;
+			: `, objects borrowed from ${request.reference}; keep that clone in place`;
 	const moved = result.was === null ? "" : `was ${short(result.was)}; `;
 	const how = `${moved}${result.shallow ? "shallow" : "full"}${borrowed}`;
 	console.log(

@@ -52,7 +52,11 @@ function resolveCommit(
 	if (HEX_REF.test(ref)) {
 		const local = peel(sub, ref);
 		if (local !== null) {
-			return { commit: local, served: false, from: "this submodule" };
+			return {
+				commit: local,
+				served: false,
+				from: "this submodule's objects (which include any --reference clone)",
+			};
 		}
 		const borrowed =
 			options.reference === undefined ? null : peel(options.reference, ref);

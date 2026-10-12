@@ -456,6 +456,7 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0160 | [data-plane](./adr/03-data-plane.md#adr-0160) | `drizzle-kit` as the default relational schema-diff engine behind the migration port: deploy-owned generation at plan phase, ADR-0032 gated apply unchanged, Drizzle schema modules as accepted authoring input. | — (migration engine default) |
 | ADR-0161 | [identity-security](./adr/02-identity-security.md#adr-0161) | Better Auth as the default self-hosted full-featured `hobo:auth` adapter: auth bundle over `hobo:data/relational` + brokered signing secret + membrane-portable routes; ADR-0038/0073 model unchanged. | — (auth bundle) |
 | ADR-0162 | [architecture-core](./adr/01-architecture-core.md#adr-0162) | Package tiering criterion (surface identity + depth) for the boundary gate's banked-edge allowlist; per-group verdicts retiring 11 of 14 entries; corrects the training/eval-provider and pack-framework composition claims. | — (package tiering) |
+| ADR-0169 | [architecture-core](./adr/01-architecture-core.md#adr-0169) | One pin, one fetch/bump command and one offline drift check per consumed sibling: a git pin is the submodule gitlink, an executable is a sha256-pinned release asset in a machine-wide content-addressed cache, driven by `tools/pins/siblings.json` and `scripts/bootstrap-siblings.mts`; proven by `scripts/test/pins*.test.ts` and `scripts/test/bootstrap-siblings*.test.ts` against real git repositories and a real http server. | — (sibling pins) |
 
 ## ADR Numbering and Status Audit
 

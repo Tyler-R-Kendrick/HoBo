@@ -20,7 +20,7 @@ package adapter_opensesame
 	provider: "vercel"
 	// Not a variable the run depends on (PATH, NODE_*, OPENSESAME_*, the proxy and CA
 	// variables, the loaders'): src/binding.ts builds this pattern from its two lists.
-	env_name: =~"^[A-Z][A-Z0-9_]*$" & !~"^(?:HOBO_OPENSESAME_CHILD|PATH|HOME|SHELL|IFS|HTTPS_PROXY|HTTP_PROXY|ALL_PROXY|NO_PROXY|SSL_CERT_FILE|SSL_CERT_DIR|(?:OPENSESAME|NODE|LD|DYLD)_[A-Z0-9_]*)$"
+	env_name: =~"^[A-Z][A-Z0-9_]*$" & !~"^(?:HOBO_OPENSESAME_CHILD|PATH|HOME|SHELL|IFS|HTTPS_PROXY|HTTP_PROXY|ALL_PROXY|NO_PROXY|SSL_CERT_FILE|SSL_CERT_DIR|REQUESTS_CA_BUNDLE|CURL_CA_BUNDLE|GIT_SSL_CAINFO|(?:OPENSESAME|NODE|LD|DYLD)_[A-Z0-9_]*)$"
 	// Absolute prefixes of named segments: no empty segment, no "." or ".."
 	// (the rule OpenSesame's spec/conformance/surrogate-scope.json holds both
 	// of its enforcers to, narrowed to characters that survive paths="a,b").

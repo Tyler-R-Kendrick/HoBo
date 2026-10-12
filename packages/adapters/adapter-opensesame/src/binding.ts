@@ -40,8 +40,10 @@ export const PATH_NO_DOT_SEGMENT_PATTERN = "/\\.{1,2}(/|$)";
  * Variables the run depends on: a surrogate placed in one of them would switch
  * the proxy off (NODE_USE_ENV_PROXY), loop the relaunch (HOBO_OPENSESAME_CHILD),
  * load code (NODE_OPTIONS, LD_PRELOAD, DYLD_*), redirect lookup (PATH, HOME) or
- * break the CA (SSL_*, NODE_EXTRA_CA_CERTS). OpenSesame itself refuses to bind the
- * proxy and CA variables; the rest it would place without complaint.
+ * break the CA (SSL_*, NODE_EXTRA_CA_CERTS, REQUESTS_CA_BUNDLE, CURL_CA_BUNDLE, GIT_SSL_CAINFO).
+ * OpenSesame itself refuses to bind the proxy and CA variables (its TRUST_VARS,
+ * PROXY_VARS and NO_PROXY_VARS; test/reserved-names-drift.test.ts holds this list
+ * to a copy of them); the rest it would place without complaint.
  */
 export const RESERVED_ENV_NAMES = [
 	"HOBO_OPENSESAME_CHILD",
@@ -55,6 +57,9 @@ export const RESERVED_ENV_NAMES = [
 	"NO_PROXY",
 	"SSL_CERT_FILE",
 	"SSL_CERT_DIR",
+	"REQUESTS_CA_BUNDLE",
+	"CURL_CA_BUNDLE",
+	"GIT_SSL_CAINFO",
 ] as const;
 /** Whole families: Node's, OpenSesame's own, and the loaders'. */
 export const RESERVED_ENV_PREFIXES = [

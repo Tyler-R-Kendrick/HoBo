@@ -68,6 +68,7 @@ describe("bootstrap-siblings: initialising a git pin", () => {
 			run.stdout,
 			new RegExp(`lib {2}initialised at ${short(f.remote.shas[1])}`),
 		);
+		assert.match(run.stdout, /\(keep that clone in place\)/);
 		// The gitlink, not the branch tip: shas[2] is the tip and is not what was asked for.
 		assert.equal(git(f.sub, ["rev-parse", "HEAD"]), f.remote.shas[1]);
 		assert.equal(git(f.sub, ["rev-parse", "--is-shallow-repository"]), "true");

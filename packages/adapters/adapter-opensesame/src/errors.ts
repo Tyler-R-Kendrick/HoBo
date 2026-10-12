@@ -15,6 +15,8 @@ export const ADAPTER_ERROR_CODES = [
 	"bridge_missing",
 	/** A surrogate would have no bounded scope. */
 	"scope_unbounded",
+	/** A binding names a variable the run depends on (PATH, NODE_OPTIONS, the proxy and CA variables, ...). */
+	"reserved_env_name",
 	/** The provider is not one OpenSesame brokers for this adapter (aws). */
 	"provider_not_brokered",
 	/** The child holds a placeholder, or nothing, where a surrogate belongs. */

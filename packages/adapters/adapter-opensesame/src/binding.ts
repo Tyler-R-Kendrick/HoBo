@@ -37,6 +37,36 @@ export const PATH_NO_EMPTY_SEGMENT_PATTERN = "//";
 export const PATH_NO_DOT_SEGMENT_PATTERN = "/\\.{1,2}(/|$)";
 
 /**
+ * Variables the run depends on: a surrogate placed in one of them would switch
+ * the proxy off (NODE_USE_ENV_PROXY), loop the relaunch (HOBO_OPENSESAME_CHILD),
+ * load code (NODE_OPTIONS, LD_PRELOAD, DYLD_*), redirect lookup (PATH, HOME) or
+ * break the CA (SSL_*, NODE_EXTRA_CA_CERTS). OpenSesame itself refuses to bind the
+ * proxy and CA variables; the rest it would place without complaint.
+ */
+export const RESERVED_ENV_NAMES = [
+	"HOBO_OPENSESAME_CHILD",
+	"PATH",
+	"HOME",
+	"SHELL",
+	"IFS",
+	"HTTPS_PROXY",
+	"HTTP_PROXY",
+	"ALL_PROXY",
+	"NO_PROXY",
+	"SSL_CERT_FILE",
+	"SSL_CERT_DIR",
+] as const;
+/** Whole families: Node's, OpenSesame's own, and the loaders'. */
+export const RESERVED_ENV_PREFIXES = [
+	"OPENSESAME",
+	"NODE",
+	"LD",
+	"DYLD",
+] as const;
+// public-contract: the CUE's reserved-name refusal, built from the two lists above (the only source) and compared with the .cue.
+export const RESERVED_ENV_NAME_PATTERN = `^(?:${RESERVED_ENV_NAMES.join("|")}|(?:${RESERVED_ENV_PREFIXES.join("|")})_[A-Z0-9_]*)$`;
+
+/**
  * The verbs a binding may grant. OpenSesame's plugin checks seven; HEAD and
  * OPTIONS are left out because no HoBo client sends them, and a surrogate
  * never gets a verb nobody asked for.
@@ -47,6 +77,7 @@ export type HttpMethod = (typeof HTTP_METHODS)[number];
 const locatorRe = new RegExp(LOCATOR_PATTERN, "u");
 const connectionRe = new RegExp(CONNECTION_PATTERN, "u");
 const envNameRe = new RegExp(ENV_NAME_PATTERN, "u");
+const reservedRe = new RegExp(RESERVED_ENV_NAME_PATTERN, "u");
 const pathRe = new RegExp(PATH_PATTERN, "u");
 const emptySegmentRe = new RegExp(PATH_NO_EMPTY_SEGMENT_PATTERN, "u");
 const dotSegmentRe = new RegExp(PATH_NO_DOT_SEGMENT_PATTERN, "u");
@@ -183,6 +214,12 @@ function parseOne(input: JsonValue, index: number): ParsedCredentialBinding {
 	const envName = str(input, "env_name", where);
 	if (!envNameRe.test(envName)) {
 		throw invalid(where, `env_name must match ${ENV_NAME_PATTERN}`);
+	}
+	if (reservedRe.test(envName)) {
+		throw new OpenSesameAdapterError(
+			"reserved_env_name",
+			`${where}: env_name is a variable the run depends on; bind the surrogate to a name of its own`,
+		);
 	}
 	if (str(input, "projection", where) !== "legacy-token") {
 		throw invalid(where, "projection must be legacy-token");

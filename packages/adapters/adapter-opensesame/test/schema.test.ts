@@ -74,6 +74,8 @@ describe("renderEnvSchema", () => {
 			// SAFETY: a forged method; the renderer must refuse what the parser would have.
 			{ ...good, methods: forgedMethods as HttpMethod[] },
 			{ ...good, envName: "A=1\nB" },
+			{ ...good, envName: "HOBO_OPENSESAME_CHILD" },
+			{ ...good, envName: "NODE_OPTIONS" },
 		];
 		for (const binding of forged) {
 			expect(codeOf(() => renderEnvSchema([binding]))).toBe("schema_injection");

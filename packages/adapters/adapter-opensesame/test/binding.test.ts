@@ -11,6 +11,7 @@ import {
 	PATH_NO_EMPTY_SEGMENT_PATTERN,
 	PATH_PATTERN,
 	parseCredentialBindings,
+	RESERVED_ENV_NAME_PATTERN,
 } from "../src/binding.js";
 import { OpenSesameAdapterError } from "../src/errors.js";
 import type { JsonObject, JsonValue } from "../src/json.js";
@@ -263,6 +264,64 @@ describe("parseCredentialBindings", () => {
 		}
 	});
 
+	// Names the run depends on: a surrogate placed in one of them switches the proxy
+	// off, loops the relaunch, injects code or breaks the CA (review S3).
+	const RESERVED = [
+		"HOBO_OPENSESAME_CHILD",
+		"NODE_USE_ENV_PROXY",
+		"PATH",
+		"NODE_OPTIONS",
+		"OPENSESAME_STORE_PASSWORD",
+		"LD_PRELOAD",
+		"LD_LIBRARY_PATH",
+		"DYLD_INSERT_LIBRARIES",
+		"DYLD_LIBRARY_PATH",
+		"NODE_PATH",
+		"NODE_EXTRA_CA_CERTS",
+		"HTTPS_PROXY",
+		"HTTP_PROXY",
+		"ALL_PROXY",
+		"NO_PROXY",
+		"SSL_CERT_FILE",
+		"SSL_CERT_DIR",
+		"HOME",
+		"SHELL",
+		"IFS",
+		"OPENSESAME_ENV_PARSE",
+		"NODE_ANYTHING",
+		"LD_AUDIT",
+		"DYLD_FALLBACK_LIBRARY_PATH",
+	] as const;
+
+	it.each(
+		RESERVED,
+	)("rejects the reserved variable %s with reserved_env_name", (name) => {
+		expect(
+			codeOf(() =>
+				parseCredentialBindings(document(record({ env_name: name }))),
+			),
+		).toBe("reserved_env_name");
+	});
+
+	it("accepts names that only resemble a reserved one", () => {
+		for (const name of [
+			"VERCEL_TOKEN",
+			"HOBO_VERCEL_TOKEN",
+			"PATHS",
+			"MY_PROXY_TOKEN",
+			"NODEJS_TOKEN",
+			"LDAP_TOKEN",
+			"HOMEPAGE_TOKEN",
+		]) {
+			expect(
+				codeOf(() =>
+					parseCredentialBindings(document(record({ env_name: name }))),
+				),
+				name,
+			).toBe("no error");
+		}
+	});
+
 	it("rejects a projection other than legacy-token", () => {
 		expect(
 			codeOf(() =>
@@ -369,6 +428,7 @@ describe("the parser and the CUE are one definition", () => {
 			PATH_PATTERN,
 			PATH_NO_EMPTY_SEGMENT_PATTERN,
 			PATH_NO_DOT_SEGMENT_PATTERN,
+			RESERVED_ENV_NAME_PATTERN,
 		]) {
 			expect(regexes, pattern).toContain(pattern);
 		}

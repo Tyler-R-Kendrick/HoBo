@@ -20,11 +20,13 @@ import {
 	PATH_NO_EMPTY_SEGMENT_PATTERN,
 	PATH_PATTERN,
 	type ParsedCredentialBinding,
+	RESERVED_ENV_NAME_PATTERN,
 } from "./binding.js";
 import { OpenSesameAdapterError } from "./errors.js";
 
 const HEADER = "# @defaultSensitive=false\n# ---\n";
 
+const reservedRe = new RegExp(RESERVED_ENV_NAME_PATTERN, "u");
 const connectionRe = new RegExp(CONNECTION_PATTERN, "u");
 const envNameRe = new RegExp(ENV_NAME_PATTERN, "u");
 const pathRe = new RegExp(PATH_PATTERN, "u");
@@ -39,7 +41,9 @@ function refuse(field: string): never {
 }
 
 function assertRenderable(binding: ParsedCredentialBinding): void {
-	if (!envNameRe.test(binding.envName)) refuse("env_name");
+	if (!envNameRe.test(binding.envName) || reservedRe.test(binding.envName)) {
+		refuse("env_name");
+	}
 	if (!connectionRe.test(binding.connection)) refuse("connection");
 	for (const path of binding.paths) {
 		if (!pathRe.test(path) || emptyRe.test(path) || dotRe.test(path)) {

@@ -1,0 +1,50 @@
+/**
+ * Every way the adapter refuses, as one closed set. A caller switches on
+ * `code`; the message says what to change and never carries a value: a
+ * rejected field is frequently a credential pasted where a reference belongs,
+ * so no message here interpolates what it rejected.
+ */
+export const ADAPTER_ERROR_CODES = [
+	/** A binding record or the bindings document does not parse. */
+	"binding_invalid",
+	/** The `opensesame` executable cannot be started. */
+	"opensesame_bin_missing",
+	/** No `node`, no env-spec bridge, or no `@env-spec/parser` behind it. */
+	"bridge_missing",
+	/** A surrogate would have no bounded scope. */
+	"scope_unbounded",
+	/** The provider is not one OpenSesame brokers for this adapter (aws). */
+	"provider_not_brokered",
+	/** The child holds a placeholder, or nothing, where a surrogate belongs. */
+	"placeholders_only",
+	/** The sealed entry cannot be read (wrong passphrase, empty entry). */
+	"store_unreadable",
+	/** The plugin changed since it was pinned. There is no fallback. */
+	"plugin_pin_mismatch",
+	/** A surrogate was sent to a host that is not its provider's (exit 77). */
+	"tripwire_misdirected",
+	/** OpenSesame was told to stop (SIGTERM, SIGHUP) and ended the run. */
+	"signalled",
+	/** The child exited non-zero by itself. */
+	"child_exit",
+	/** This Node cannot send `fetch` through `HTTPS_PROXY`. */
+	"node_proxy_unsupported",
+	/** This process already is the child of a proxied run. */
+	"recursion_guard",
+	/** A value would have broken out of the generated `.env.schema`. */
+	"schema_injection",
+	/** Secrets enter by a person's `opensesame pass insert`, never through HoBo. */
+	"read_only",
+] as const;
+
+export type OpenSesameAdapterErrorCode = (typeof ADAPTER_ERROR_CODES)[number];
+
+export class OpenSesameAdapterError extends Error {
+	readonly code: OpenSesameAdapterErrorCode;
+
+	constructor(code: OpenSesameAdapterErrorCode, message: string) {
+		super(message);
+		this.name = "OpenSesameAdapterError";
+		this.code = code;
+	}
+}

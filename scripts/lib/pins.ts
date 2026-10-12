@@ -28,6 +28,7 @@ export type PinsErrorCode =
 	| "TARGET_DROPPED"
 	| "GIT_FAILED"
 	| "SUBMODULE_STATE"
+	| "NOT_PUSHED"
 	| "USAGE";
 
 /** Every refusal is named; a bare Error would be untraceable. */

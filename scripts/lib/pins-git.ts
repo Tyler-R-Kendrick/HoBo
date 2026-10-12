@@ -29,6 +29,7 @@ import {
 	isAllowedTransport,
 	type NetOptions,
 	netGit,
+	remoteHas,
 	remoteTip,
 } from "./pins-git-net.ts";
 
@@ -251,6 +252,14 @@ export function statusPin(
 		}
 	}
 	const tip = online ? remoteTip(root, pin.repo, pin.branch, options) : null;
+	if (online && tip !== commit && !remoteHas(root, pin.repo, commit, options)) {
+		problems.push(
+			`the pinned commit ${short(commit)} is not available from ${pin.repo}`,
+		);
+		fixes.push(
+			`push it, or move the pin to a pushed commit: pnpm run pins:bump ${name} <a pushed ref>`,
+		);
+	}
 	return { commit, problems, fixes, tip };
 }
 
@@ -267,15 +276,25 @@ function peel(cwd: string, value: string): string | null {
 	return result.status === 0 ? result.stdout : null;
 }
 
+interface Resolved {
+	readonly commit: string;
+	/** The server was asked for it just now, so nobody has to ask again. */
+	readonly served: boolean;
+	/** Where a commit the server may not have came from. */
+	readonly from: string;
+}
+
 function resolveCommit(
 	sub: string,
 	pin: GitPin,
 	ref: string,
 	options: GitOptions,
-): string {
+): Resolved {
 	if (HEX_REF.test(ref)) {
 		const local = peel(sub, ref);
-		if (local !== null) return local;
+		if (local !== null) {
+			return { commit: local, served: false, from: "this submodule" };
+		}
 		const borrowed =
 			options.reference === undefined ? null : peel(options.reference, ref);
 		if (borrowed !== null && options.reference !== undefined) {
@@ -292,7 +311,11 @@ function resolveCommit(
 					`fetch from the reference clone failed:\n${lent.stderr}`,
 				);
 			}
-			return borrowed;
+			return {
+				commit: borrowed,
+				served: false,
+				from: `the --reference clone ${options.reference}`,
+			};
 		}
 		if (ref.length !== 40) {
 			throw new PinsError(
@@ -315,7 +338,7 @@ function resolveCommit(
 	const commit = peel(sub, "FETCH_HEAD");
 	if (commit === null)
 		throw new PinsError("GIT_FAILED", `${ref} did not resolve to a commit`);
-	return commit;
+	return { commit, served: true, from: pin.repo };
 }
 
 export interface Bump {
@@ -349,7 +372,16 @@ export function bumpPin(
 		);
 	}
 	const sub = join(root, pin.path);
-	const to = resolveCommit(sub, pin, ref, options);
+	const resolved = resolveCommit(sub, pin, ref, options);
+	const to = resolved.commit;
+	// A commit found here (in the submodule, or a --reference clone) may exist
+	// nowhere else: a pin other checkouts cannot fetch is a broken build.
+	if (!resolved.served && !remoteHas(sub, pin.repo, to, options)) {
+		throw new PinsError(
+			"NOT_PUSHED",
+			`${short(to)} exists here (in ${resolved.from}) but ${pin.repo} does not serve it. Push it first, then bump to it`,
+		);
+	}
 	must(
 		sub,
 		["checkout", "--quiet", "--detach", to],

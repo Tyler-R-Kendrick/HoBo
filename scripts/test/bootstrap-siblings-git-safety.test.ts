@@ -8,7 +8,7 @@
  * Real repositories on disk, the real script, git configuration isolated.
  */
 import assert from "node:assert/strict";
-import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { existsSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
@@ -242,5 +242,89 @@ describe("network git pins the transports", () => {
 			}
 			Object.assign(process.env, saved);
 		}
+	});
+});
+
+/** A commit that exists in the reference clone and nowhere the remote can see. */
+function localOnlyCommit(f: Fixture): string {
+	writeFileSync(join(f.reference, "f.txt"), "never pushed\n");
+	git(f.reference, ["add", "f.txt"]);
+	git(f.reference, ["commit", "-q", "-m", "local only"]);
+	return git(f.reference, ["rev-parse", "HEAD"]);
+}
+
+describe("a commit the remote does not serve is never pinned", () => {
+	it("bump refuses a commit only the --reference clone has, and changes nothing", () => {
+		const f = fixture(1);
+		assert.equal(runBootstrap(f.work, ["--reference", f.reference]).status, 0);
+		const local = localOnlyCommit(f);
+		const before = git(f.sub, ["rev-parse", "HEAD"]);
+		const run = runBootstrap(f.work, [
+			"--bump",
+			"lib",
+			local.slice(0, 7),
+			"--reference",
+			f.reference,
+		]);
+		assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+		assert.match(
+			run.stderr,
+			new RegExp(`NOT_PUSHED: ${local.slice(0, 7)} exists here`),
+		);
+		assert.match(run.stderr, /does not serve it/);
+		assert.match(run.stderr, /Push it first/);
+		assert.equal(
+			git(f.sub, ["rev-parse", "HEAD"]),
+			before,
+			"the submodule did not move",
+		);
+		assert.equal(
+			git(f.work, ["diff", "--cached", "--name-only"]),
+			"",
+			"nothing was staged",
+		);
+	});
+
+	it("a failure to ask is an error, not a no", () => {
+		const f = fixture(1);
+		assert.equal(runBootstrap(f.work, ["--reference", f.reference]).status, 0);
+		const local = localOnlyCommit(f);
+		rmSync(f.remote.dir, { recursive: true, force: true });
+		const run = runBootstrap(f.work, [
+			"--bump",
+			"lib",
+			local,
+			"--reference",
+			f.reference,
+		]);
+		assert.equal(run.status, 1);
+		assert.match(run.stderr, /GIT_FAILED: could not ask /);
+		assert.doesNotMatch(run.stderr, /Push it first/);
+	});
+
+	it("--status --online fails when the pinned commit is not on the remote", () => {
+		const f = fixture(1);
+		const local = localOnlyCommit(f);
+		const work = makeWork(scratch("unpushed"), f.remote, 1, { gitlink: local });
+		const run = runBootstrap(work, ["--status", "--online"]);
+		assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+		assert.match(
+			run.stdout,
+			new RegExp(
+				`the pinned commit ${local.slice(0, 7)} is not available from`,
+			),
+		);
+		assert.match(
+			run.stdout,
+			/push it, or move the pin to a pushed commit: pnpm run pins:bump lib <a pushed ref>/,
+		);
+	});
+
+	it("--status --online is quiet about a pin the remote serves", () => {
+		const f = fixture(1);
+		assert.equal(runBootstrap(f.work, ["--reference", f.reference]).status, 0);
+		const run = runBootstrap(f.work, ["--status", "--online"]);
+		assert.equal(run.status, 0, `${run.stdout}${run.stderr}`);
+		assert.doesNotMatch(run.stdout, /not available from/);
 	});
 });

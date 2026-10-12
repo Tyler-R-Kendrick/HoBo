@@ -95,6 +95,8 @@ export interface PinsFileOptions {
 	readonly path?: string;
 	readonly repo?: string;
 	readonly sparse?: readonly string[] | null;
+	/** Pin the gitlink at this commit instead of one of the remote's (it need not exist there). */
+	readonly gitlink?: string;
 	/** Raw JSON of the manifest's `assets` section. */
 	readonly assets?: string;
 }
@@ -135,13 +137,23 @@ export function makeWork(
 	git(stage, ["init", "-q"]);
 	const path = options.path ?? "external/lib";
 	git(stage, ["submodule", "add", "-q", remote.url, path]);
-	git(join(stage, path), ["checkout", "-q", remote.shas[pinned] ?? ""]);
+	if (options.gitlink === undefined) {
+		git(join(stage, path), ["checkout", "-q", remote.shas[pinned] ?? ""]);
+	}
 	mkdirSync(join(stage, "tools/pins"), { recursive: true });
 	writeFileSync(
 		join(stage, "tools/pins/siblings.json"),
 		pinsJson(remote.url, options),
 	);
 	git(stage, ["add", "-A"]);
+	if (options.gitlink !== undefined) {
+		// After `add -A`, which would re-read the submodule's own HEAD.
+		git(stage, [
+			"update-index",
+			"--cacheinfo",
+			`160000,${options.gitlink},${path}`,
+		]);
+	}
 	git(stage, ["commit", "-q", "-m", "super"]);
 	const work = join(parent, "work");
 	git(parent, ["clone", "-q", stage, work]);

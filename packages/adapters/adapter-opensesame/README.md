@@ -19,7 +19,7 @@ else. See [ADR-0170](../../../docs/design/adr/02-identity-security.md#adr-0170).
 | **AWS** | **Not brokered.** A binding with `provider: "aws"` fails with `provider_not_brokered`. AWS requests are signed with SigV4 in process from a live secret key, which header substitution cannot serve, and OpenSesame's AWS helper fails closed until its STS mint exists. |
 | Other providers | `provider_not_brokered`. |
 | Platforms | Linux. The real lane reads `/proc`. |
-| Node | `>= 22.21` (the adapter's `engines`): `NODE_USE_ENV_PROXY` is what sends `fetch` through `HTTPS_PROXY`. Without it the surrogate would be sent nowhere, so the launch refuses (`node_proxy_unsupported`). |
+| Node | `>= 22.21` (the adapter's `engines`): `NODE_USE_ENV_PROXY` is what sends `fetch` through `HTTPS_PROXY`. Without it `fetch` ignores `HTTPS_PROXY` and dials the provider directly, with a surrogate only the proxy can redeem, so the launch refuses (`node_proxy_unsupported`). |
 
 ## The bindings file
 

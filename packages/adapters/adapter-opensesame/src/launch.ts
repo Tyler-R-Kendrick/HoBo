@@ -76,7 +76,7 @@ export function buildLaunch(input: LaunchInput): Launch {
 	if (!nodeProxiesFetch(input.nodeVersion ?? process.versions.node)) {
 		throw new OpenSesameAdapterError(
 			"node_proxy_unsupported",
-			"this Node cannot send fetch through HTTPS_PROXY (NODE_USE_ENV_PROXY needs 22.21 or 24): without it the surrogate would be sent nowhere",
+			"this Node cannot send fetch through HTTPS_PROXY (NODE_USE_ENV_PROXY needs 22.21 or 24): without it fetch ignores HTTPS_PROXY and dials the provider directly with a surrogate only the proxy can redeem",
 		);
 	}
 	const bridge = input.env.OPENSESAME_ENV_PARSE;

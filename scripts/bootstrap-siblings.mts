@@ -24,7 +24,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-
+import { type Pins, PinsError, parsePins } from "./lib/pins.ts";
 import { git } from "./lib/pins-git.ts";
 import {
 	PINS_FILE,
@@ -34,7 +34,6 @@ import {
 	runInit,
 	runStatus,
 } from "./lib/pins-verbs.ts";
-import { type Pins, PinsError, parsePins } from "./lib/pins.ts";
 
 const USAGE = `usage: bootstrap-siblings.mts [--root DIR] [--reference DIR]
          [--status [--offline|--online] | --fetch [name...] | --bump NAME REF [--repo URL]]`;

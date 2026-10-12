@@ -7,9 +7,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-
-import { gitlinkOf, modulesUrl, sameRepo } from "../lib/pins-git.ts";
 import { parsePins } from "../lib/pins.ts";
+import { gitlinkOf, modulesUrl, sameRepo } from "../lib/pins-git.ts";
 import { REPO_ROOT } from "./support/pins-support.ts";
 
 const read = (path: string): string =>

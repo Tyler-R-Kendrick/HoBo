@@ -16,8 +16,8 @@ import { basename, join } from "node:path";
 import {
 	type AssetFile,
 	type AssetPin,
-	PinsError,
 	type Pins,
+	PinsError,
 	parsePins,
 } from "./pins.ts";
 import {
@@ -28,8 +28,8 @@ import {
 	serializePins,
 } from "./pins-assets.ts";
 import {
-	type FetchOptions,
 	ensureCached,
+	type FetchOptions,
 	fetchText,
 	fetchVerified,
 	verifyCached,

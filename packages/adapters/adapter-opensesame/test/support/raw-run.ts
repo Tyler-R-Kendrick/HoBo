@@ -36,7 +36,7 @@ export const UNBOUNDED_SCHEMA = `# @defaultSensitive=false
 # ---
 
 # @required @sensitive
-VERCEL_TOKEN=opensesameConnection(conn://qdai/vercel, projection=legacy-token)
+VERCEL_TOKEN=opensesameConnection(conn://acme/vercel, projection=legacy-token)
 `;
 
 /** A scope with paths but no methods: the schema must not parse. */
@@ -44,5 +44,5 @@ export const PATHS_WITHOUT_METHODS_SCHEMA = `# @defaultSensitive=false
 # ---
 
 # @required @sensitive
-VERCEL_TOKEN=opensesameConnection(conn://qdai/vercel, projection=legacy-token, paths="/v9/projects")
+VERCEL_TOKEN=opensesameConnection(conn://acme/vercel, projection=legacy-token, paths="/v9/projects")
 `;

@@ -26,7 +26,7 @@ export const SAMPLE_LINES = {
 		"Error: the surrogate-proxy plugin no longer matches its install pin; reinstall it or run 'opensesame plugins disable surrogate-proxy'",
 	],
 	"wrong-passphrase": [
-		"Error: the sealed entry connections/acme/vercel (for VERCEL_TOKEN) cannot be read: wrong passphrase for the store",
+		"Error: the sealed entry connections/acme/vercel (for VERCEL_TOKEN) cannot be read: crypto: crypto failure",
 	],
 	"empty-entry": [
 		"Error: the sealed entry connections/acme/vercel (for VERCEL_TOKEN) is empty",

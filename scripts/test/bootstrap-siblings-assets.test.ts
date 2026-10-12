@@ -200,6 +200,11 @@ describe("bootstrap-siblings --status (assets)", () => {
 			`the report names ${cached}:\n${run.stdout}`,
 		);
 		assert.match(run.stdout, new RegExp(`hashes to ${sha256Hex(edited)}`));
+		assert.match(
+			run.stdout,
+			/fix: pnpm run pins:fetch mirror {3}\(replaces the corrupt file\)/,
+		);
+		assert.doesNotMatch(run.stdout, /fix: delete/);
 		// Fetching replaces the corrupt file instead of trusting it.
 		ok(await runBootstrapAsync(root, ["--fetch", "mirror"]));
 		assert.deepEqual(readFileSync(cached), BYTES);
@@ -220,12 +225,18 @@ describe("bootstrap-siblings --status (assets)", () => {
 	});
 
 	it("--online compares the pin with the release's published SHA256SUMS", async () => {
-		const { root, srv } = await setup((origin) => pinned(origin));
+		const { root, srv, cached } = await setup((origin) => pinned(origin));
 		const sums = "/example/mirror/releases/download/v1.0.0/SHA256SUMS";
 		srv.setFile(sums, `${DIGEST}  mirror\n`);
 		ok(await runBootstrapAsync(root, ["--fetch", "mirror"]));
 		const agrees = ok(await runBootstrapAsync(root, ["--status", "--online"]));
 		assert.match(agrees.stdout, /matches SHA256SUMS/);
+		// A corrupt cache is not the release's fault: no suggestion to re-pin.
+		writeFileSync(cached, "corrupt");
+		const corrupt = await runBootstrapAsync(root, ["--status", "--online"]);
+		assert.equal(corrupt.status, 1);
+		assert.doesNotMatch(corrupt.stdout, /pins:bump/);
+		ok(await runBootstrapAsync(root, ["--fetch", "mirror"]));
 		srv.setFile(sums, `${sha256Hex("rebuilt")}  mirror\n`);
 		const differs = await runBootstrapAsync(root, ["--status", "--online"]);
 		assert.equal(differs.status, 1);
@@ -337,5 +348,36 @@ describe("bootstrap-siblings --bump (assets)", () => {
 				`SHA256SUMS of v2\\.0\\.0 lists none of mirror-linux-x64, mirror-linux-arm64`,
 			),
 		);
+	});
+});
+
+describe("bootstrap-siblings vendored pins", () => {
+	const VENDOR =
+		'{"anti-slop":{"from":"OpenSesame","path":"skills/x/assets/anti-slop","dest":"tools/oxlint/anti-slop"}}';
+
+	it("status lists a vendored copy and says it does not check it", async () => {
+		const root = scratch("vendor");
+		writeManifest(root, "{}", VENDOR);
+		const run = ok(await runBootstrapAsync(root, ["--status", "--offline"]));
+		assert.match(
+			run.stdout,
+			/anti-slop {2}vendored from OpenSesame {2}\(not checked by pins:status\)/,
+		);
+	});
+
+	it("fetch and bump refuse a vendored copy and name where it comes from", async () => {
+		const root = scratch("vendor-verbs");
+		writeManifest(root, "{}", VENDOR);
+		for (const args of [
+			["--fetch", "anti-slop"],
+			["--bump", "anti-slop", "main"],
+		]) {
+			const run = await runBootstrapAsync(root, args);
+			assert.equal(run.status, 2, `${args.join(" ")}\n${run.stderr}`);
+			assert.match(
+				run.stderr,
+				/anti-slop is a vendored copy of \.\.\/OpenSesame\/skills\/x\/assets\/anti-slop/,
+			);
+		}
 	});
 });

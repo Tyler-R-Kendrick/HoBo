@@ -93,12 +93,16 @@ export async function statusAsset(
 		problems.push(
 			`${path} hashes to ${cached.actual}, the pin says ${file.sha256}`,
 		);
-		fixes.push(`delete ${path}, then ${fetchHint(name)}`);
+		fixes.push(`${fetchHint(name)}   (replaces the corrupt file)`);
 	}
 	if (ctx.online) {
-		problems.push(...(await compareWithRelease(pin, ctx)));
-		if (problems.length > 0)
-			fixes.push(`pnpm run pins:bump ${name} ${pin.tag}`);
+		const published = await compareWithRelease(pin, ctx);
+		problems.push(...published);
+		if (published.length > 0) {
+			fixes.push(
+				`pnpm run pins:bump ${name} ${pin.tag}   (re-pin to what the release publishes now, once you know why it changed)`,
+			);
+		}
 	}
 	const where =
 		cached.state === "ok"

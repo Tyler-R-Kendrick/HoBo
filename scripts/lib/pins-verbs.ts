@@ -50,7 +50,19 @@ function hasAsset(pins: Pins, name: string): boolean {
 	return Object.hasOwn(pins.assets, name);
 }
 
+/** A vendored copy is placed by the installer of the repository it comes from. */
+function refuseVendored(pins: Pins, name: string): void {
+	const pin = Object.hasOwn(pins.vendor, name) ? pins.vendor[name] : undefined;
+	if (pin !== undefined) {
+		throw new PinsError(
+			"USAGE",
+			`${name} is a vendored copy of ../${pin.from}/${pin.path}; refresh it with that repository's installer. pins:fetch and pins:bump do not move vendored pins`,
+		);
+	}
+}
+
 function unknownPin(pins: Pins, name: string): never {
+	refuseVendored(pins, name);
 	const known = [...Object.keys(pins.git), ...Object.keys(pins.assets)];
 	throw new PinsError(
 		"USAGE",
@@ -139,6 +151,11 @@ export async function runStatus(request: Request, pins: Pins): Promise<number> {
 		console.log(report.summary);
 		printProblems(report.problems, report.fixes);
 		if (report.problems.length > 0) failed += 1;
+	}
+	for (const [name, pin] of Object.entries(pins.vendor)) {
+		console.log(
+			`${name}  vendored from ${pin.from}  (not checked by pins:status)`,
+		);
 	}
 	if (failed > 0) console.error(`ERR ${failed} pin(s) out of date`);
 	return failed === 0 ? 0 : 1;

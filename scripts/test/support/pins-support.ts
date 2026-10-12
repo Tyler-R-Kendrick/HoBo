@@ -145,13 +145,17 @@ export function pinsJson(
 }
 
 /** A root with only a manifest: no git pins, the given `assets` section. */
-export function writeManifest(root: string, assets: string): void {
+export function writeManifest(
+	root: string,
+	assets: string,
+	vendor = "{}",
+): void {
 	mkdirSync(join(root, "tools/pins"), { recursive: true });
 	const manifest = {
 		schemaVersion: 1,
 		git: {},
 		assets: JSON.parse(assets),
-		vendor: {},
+		vendor: JSON.parse(vendor),
 	};
 	writeFileSync(
 		join(root, "tools/pins/siblings.json"),

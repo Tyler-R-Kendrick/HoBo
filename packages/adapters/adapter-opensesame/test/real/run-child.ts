@@ -13,7 +13,7 @@ import type { ProxiedRunOutcome } from "../../src/_generated/adapter_opensesame_
 import type { ParsedCredentialBinding } from "../../src/binding.js";
 import { isJsonObject, isJsonString, parseJsonValue } from "../../src/json.js";
 import { runProxied } from "../../src/launch.js";
-import type { Sandbox } from "./sandbox.js";
+import { SANDBOX_PASS_ENV, type Sandbox } from "./sandbox.js";
 
 export const CHILD_FETCH = join(
 	dirname(fileURLToPath(import.meta.url)),
@@ -126,6 +126,8 @@ export async function until(
 export type RunOptions = Readonly<{
 	bindings: readonly ParsedCredentialBinding[];
 	env: NodeJS.ProcessEnv;
+	/** Names handed to OpenSesame beyond the allowlist. Defaults to what a sandboxed shell has. */
+	passEnv?: readonly string[] | undefined;
 	/** Runs while the child holds (`wait: true`), e.g. to signal OpenSesame. */
 	whileHeld?: ((host: EventEmitter, out: string) => Promise<void>) | undefined;
 }>;
@@ -148,6 +150,7 @@ export async function runChild(
 		bindings: options.bindings,
 		argv: [process.execPath, "--no-warnings", CHILD_FETCH, out],
 		env: options.env,
+		passEnv: options.passEnv ?? SANDBOX_PASS_ENV,
 		stderr: sink,
 		signals: host,
 		tmpRoot: sandbox.path("work"),

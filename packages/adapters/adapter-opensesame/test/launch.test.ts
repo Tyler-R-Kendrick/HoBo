@@ -55,11 +55,20 @@ async function codeOfAsync<T>(run: () => Promise<T>): Promise<string> {
 
 const baseEnv = { PATH: process.env.PATH ?? "", NODE_NO_WARNINGS: "1" };
 
+/** What the stand-in is told through the environment; the allowlist would leave these behind. */
+const FAKE_KNOBS = [
+	"FAKE_OPENSESAME_RECORD",
+	"FAKE_OPENSESAME_SCENARIO",
+	"FAKE_OPENSESAME_STORE_TOKEN",
+	"OPENSESAME_STORE_PASSWORD",
+];
+
 function launchOf(overrides: Partial<Parameters<typeof buildLaunch>[0]> = {}) {
 	return buildLaunch({
 		bin: "/opt/opensesame/opensesame",
 		schemaPath: "/tmp/x/.env.schema",
 		argv: ["node", "app.js", "--flag"],
+		bindings: parsed(),
 		env: baseEnv,
 		nodeVersion: "22.22.0",
 		exists: () => true,
@@ -76,6 +85,7 @@ function stubInput(overrides: Partial<RunInput> = {}): RunInput {
 			...baseEnv,
 			FAKE_OPENSESAME_RECORD: join(work, "record.json"),
 		},
+		passEnv: FAKE_KNOBS,
 		stderr: new PassThrough(),
 		...overrides,
 	};
@@ -103,11 +113,10 @@ describe("buildLaunch", () => {
 		expect(launch.args.slice(-3)).toEqual(["--", "-e", "1"]);
 	});
 
-	it("sets NODE_USE_ENV_PROXY=1 and the child marker, and adds nothing else", () => {
+	it("sets NODE_USE_ENV_PROXY=1 and the child marker on the environment it keeps, and adds nothing else", () => {
 		const launch = launchOf({ env: { ...baseEnv, KEEP: "1" } });
 		expect(launch.env).toEqual({
 			...baseEnv,
-			KEEP: "1",
 			NODE_USE_ENV_PROXY: "1",
 			HOBO_OPENSESAME_CHILD: "1",
 		});
@@ -162,6 +171,28 @@ describe("buildLaunch", () => {
 	it("refuses an empty command", () => {
 		expect(codeOf(() => launchOf({ argv: [] }))).toBe("launch_invalid");
 	});
+
+	it("refuses a NUL in the command as a typed error, not a TypeError from spawn", () => {
+		for (const argv of [["node", "a\0b"], ["no\0de"], ["node", "\0"]]) {
+			expect(
+				codeOf(() => launchOf({ argv })),
+				JSON.stringify(argv),
+			).toBe("launch_invalid");
+		}
+	});
+
+	it("refuses a NUL in a value it would pass on, and does not echo the value", () => {
+		const secret = "tok\0en-looking-value";
+		let message = "";
+		try {
+			launchOf({ env: { ...baseEnv, FAKE_X: secret }, passEnv: ["FAKE_X"] });
+		} catch (error) {
+			message = error instanceof Error ? error.message : "";
+		}
+		expect(message).not.toBe("");
+		expect(message).not.toContain("token-looking");
+		expect(message).toContain("FAKE_X");
+	});
 });
 
 describe("runProxied with a stand-in binary", () => {
@@ -198,6 +229,68 @@ describe("runProxied with a stand-in binary", () => {
 		expect(record.schema).not.toContain(passphrase);
 		expect(JSON.stringify(child)).not.toContain(passphrase);
 		expect(child.env.OPENSESAME_STORE_PASSWORD).toBeUndefined();
+	});
+
+	it("the child holds none of the credentials the caller's environment holds, and not the one it listed for OpenSesame", async () => {
+		const input = stubInput();
+		await runProxied({
+			...input,
+			env: {
+				...input.env,
+				OPENSESAME_STORE_PASSWORD: "store-passphrase-for-tests",
+				AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE",
+				AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+				GITHUB_TOKEN: "ghp_not_a_real_token_0123456789",
+				CLOUDFLARE_API_TOKEN: "cf-not-a-real-token",
+				NPM_TOKEN: "npm_not_a_real_token",
+			},
+		});
+		const child = JSON.parse(readFileSync(join(work, "child.json"), "utf8"));
+		const held = Object.keys(child.env);
+		for (const name of [
+			"AWS_ACCESS_KEY_ID",
+			"AWS_SECRET_ACCESS_KEY",
+			"GITHUB_TOKEN",
+			"CLOUDFLARE_API_TOKEN",
+			"NPM_TOKEN",
+			"OPENSESAME_STORE_PASSWORD",
+		]) {
+			expect(held, name).not.toContain(name);
+		}
+		expect(JSON.stringify(child)).not.toContain("not-a-real");
+	});
+
+	it("OpenSesame is not given the passphrase unless the caller lists it", async () => {
+		const input = stubInput();
+		await runProxied({
+			...input,
+			passEnv: ["FAKE_OPENSESAME_RECORD"],
+			env: {
+				...input.env,
+				OPENSESAME_STORE_PASSWORD: "store-passphrase-for-tests",
+			},
+		});
+		const record = JSON.parse(readFileSync(join(work, "record.json"), "utf8"));
+		expect(record.sawStorePassword).toBe(false);
+	});
+
+	it("refuses to start beside a real credential for the provider it brokers", async () => {
+		const input = stubInput({ tmpRoot: work });
+		expect(
+			await codeOfAsync(() =>
+				runProxied({
+					...input,
+					env: {
+						...input.env,
+						VERCEL_API_TOKEN: "vtok_dummy_marker_0123456789abcdef",
+					},
+				}),
+			),
+		).toBe("real_credential_in_env");
+		expect(existsSync(join(work, "record.json"))).toBe(false);
+		expect(
+			readdirSync(work).filter((n) => n.startsWith("hobo-opensesame-")),
+		).toEqual([]);
 	});
 
 	it("the child holds an osr_ surrogate and the run exits as the child does", async () => {

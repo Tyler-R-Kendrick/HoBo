@@ -1,4 +1,5 @@
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { parseCredentialBindings } from "../../src/binding.js";
@@ -13,7 +14,7 @@ import {
 import { record } from "./evidence.js";
 import { type Kit, resolveKit } from "./kit.js";
 import { get, runChild } from "./run-child.js";
-import { Sandbox, STORE_PASSPHRASE } from "./sandbox.js";
+import { SANDBOX_PASS_ENV, Sandbox, STORE_PASSPHRASE } from "./sandbox.js";
 import { canReadProcesses, processesNaming, startDecoy } from "./sweep.js";
 import {
 	startUpstream,
@@ -437,12 +438,90 @@ describe("a proxied run under the real opensesame", () => {
 		}
 	});
 
+	it("the child holds nothing from the caller's environment but what the allowlist and passEnv let through", async () => {
+		const { sandbox, env } = await fresh();
+		const foreign = {
+			AWS_ACCESS_KEY_ID: "AKIAIOSFODNN7EXAMPLE",
+			AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
+			GITHUB_TOKEN: "ghp_not_a_real_token_0123456789",
+			CLOUDFLARE_API_TOKEN: "cf-not-a-real-token",
+			NPM_TOKEN: "npm_not_a_real_token",
+			HOBO_API_KEY: "hobo-not-a-real-key",
+		};
+		const run = await runChild(
+			sandbox,
+			{ requests: [] },
+			{ bindings: bindings(), env: { ...env, ...foreign } },
+		);
+		expect(run.outcome).toMatchObject({ kind: "child_exit", exitCode: 0 });
+		const held = run.childEnv ?? {};
+		for (const name of Object.keys(foreign)) {
+			expect(held, name).not.toHaveProperty(name);
+		}
+		expect(JSON.stringify(held)).not.toContain("not-a-real");
+		expect(JSON.stringify(held)).not.toContain("AKIA");
+		// What a command needs is there, and so is the surrogate.
+		expect(held.PATH).toBeDefined();
+		expect(held.HOME).toBe(sandbox.path("home"));
+		expect(held.VERCEL_TOKEN).toMatch(/^osr_[0-9a-f]{32}$/u);
+		expect(held.OPENSESAME_STORE_PASSWORD).toBeUndefined();
+		// Listed by name, a variable is passed on as the caller's own choice.
+		const listed = await runChild(
+			sandbox,
+			{ requests: [] },
+			{
+				bindings: bindings(),
+				env: { ...env, ...foreign },
+				passEnv: [...SANDBOX_PASS_ENV, "GITHUB_TOKEN"],
+			},
+		);
+		expect(listed.childEnv?.GITHUB_TOKEN).toBe(foreign.GITHUB_TOKEN);
+		expect(listed.childEnv).not.toHaveProperty("AWS_SECRET_ACCESS_KEY");
+	});
+
+	it("a real token already in the process refuses the run before OpenSesame is started, wherever the binding puts the surrogate", async () => {
+		const { sandbox, env } = await fresh();
+		const other = parseCredentialBindings({
+			bindings: [
+				{
+					locator: "hobo-token://vercel/deploy",
+					connection: "conn://acme/vercel",
+					provider: "vercel",
+					env_name: "HOBO_VERCEL",
+					paths: ["/v9/projects"],
+					methods: ["GET"],
+					projection: "legacy-token",
+				},
+			],
+		});
+		for (const name of ["VERCEL_TOKEN", "VERCEL_API_TOKEN"]) {
+			await expect(
+				runChild(
+					sandbox,
+					{ requests: [] },
+					{ bindings: other, env: { ...env, [name]: sandbox.token } },
+				),
+			).rejects.toMatchObject({ code: "real_credential_in_env" });
+		}
+		// Nothing started: no schema was written, and no command ever recorded its environment.
+		expect(
+			readdirSync(sandbox.path("work")).filter((n) =>
+				n.startsWith("hobo-opensesame-"),
+			),
+		).toEqual([]);
+		for (const run of readdirSync(sandbox.path("out"))) {
+			expect(existsSync(join(sandbox.path("out"), run, "env.txt"))).toBe(false);
+		}
+		expect(sandbox.noticeKinds()).toEqual([]);
+	});
+
 	it("buildLaunch refuses to start inside the run it started", () => {
 		expect(() =>
 			buildLaunch({
 				bin: kit.opensesame,
 				schemaPath: "/x",
 				argv: ["true"],
+				bindings: bindings(),
 				env: { HOBO_OPENSESAME_CHILD: "1" },
 			}),
 		).toThrow(/already runs under OpenSesame/u);

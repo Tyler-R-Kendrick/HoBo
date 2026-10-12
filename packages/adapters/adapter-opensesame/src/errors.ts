@@ -35,6 +35,8 @@ export const ADAPTER_ERROR_CODES = [
 	"node_proxy_unsupported",
 	/** This process already is the child of a proxied run. */
 	"recursion_guard",
+	/** This process already holds a real credential for a provider the run brokers. */
+	"real_credential_in_env",
 	/** A value would have broken out of the generated `.env.schema`. */
 	"schema_injection",
 	/** Secrets enter by a person's `opensesame pass insert`, never through HoBo. */

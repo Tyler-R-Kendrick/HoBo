@@ -82,6 +82,11 @@ describe("a failing child's output, and a sealed token, reach nothing the adapte
 						String(status),
 						stderrFile,
 					],
+					passEnv: [
+						"FAKE_OPENSESAME_RECORD",
+						"FAKE_OPENSESAME_SCENARIO",
+						"FAKE_OPENSESAME_STORE_TOKEN",
+					],
 					env: {
 						PATH: process.env.PATH ?? "",
 						FAKE_OPENSESAME_RECORD: record,

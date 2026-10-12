@@ -25,6 +25,20 @@ import { filesNaming } from "./sweep.js";
 import { mintPki, type Pki, UPSTREAM_HOST, type Upstream } from "./tls.js";
 
 export const STORE_PASSPHRASE = "store-passphrase-for-tests";
+
+/**
+ * What a person's shell would hand OpenSesame beyond the adapter's allowlist
+ * (HOME, PATH, XDG_* and NODE_* already pass): where the store is, how to unlock
+ * it, the test build's upstream, and git's isolation.
+ */
+export const SANDBOX_PASS_ENV: readonly string[] = [
+	"OPENSESAME_STORE_DIR",
+	"OPENSESAME_TOMBS_CONFIG",
+	"OPENSESAME_STORE_PASSWORD",
+	"OPENSESAME_SURROGATE_TEST_UPSTREAM",
+	"GIT_CONFIG_GLOBAL",
+	"GIT_CONFIG_SYSTEM",
+];
 export const CONNECTION_ENTRY = "connections/acme/vercel";
 const SEED = createHash("sha256").update(String(process.pid)).digest("hex");
 let sequence = 0;

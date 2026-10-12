@@ -25,12 +25,12 @@ import { join } from "node:path";
 import type { ProxiedRunOutcome } from "./_generated/adapter_opensesame_pb.js";
 import type { ParsedCredentialBinding } from "./binding.js";
 import { createCapture } from "./capture.js";
+import { childEnvOf } from "./child-env.js";
 import { OpenSesameAdapterError } from "./errors.js";
 import { parseOutcome } from "./outcome.js";
+import { CHILD_MARKER } from "./run-markers.js";
 import { renderEnvSchema } from "./schema.js";
 
-// public-contract: the environment marker a proxied run sets on everything it starts, and refuses to find already set.
-export const CHILD_MARKER = "HOBO_OPENSESAME_CHILD";
 const CAPTURE_LIMIT = 64 * 1024;
 
 export type Launch = Readonly<{
@@ -46,13 +46,23 @@ export type LaunchInput = Readonly<{
 	schemaPath: string;
 	/** The command to run under it. */
 	argv: readonly string[];
-	/** The caller's environment; passed through, plus what the run needs. */
+	/** The credentials the run brokers: the variables a surrogate goes in, and the providers whose real tokens must not be in `env`. */
+	bindings: readonly ParsedCredentialBinding[];
+	/** The caller's environment. Only the allowlist in `child-env.ts` and `passEnv` are passed on. */
 	env: NodeJS.ProcessEnv;
+	/** Variable names, beyond the allowlist, to pass on as they are (the store passphrase, OPENSESAME_STORE_DIR, ...). */
+	passEnv?: readonly string[] | undefined;
+	/** The platform whose variables are kept. Defaults to this process's. */
+	platform?: NodeJS.Platform | undefined;
 	/** Node's version, for the `fetch` proxy check. Defaults to this process's. */
 	nodeVersion?: string | undefined;
 	/** Whether a path exists. Defaults to the filesystem. */
 	exists?: ((path: string) => boolean) | undefined;
 }>;
+
+function hasNul(text: string): boolean {
+	return text.includes("\0");
+}
 
 /** `NODE_USE_ENV_PROXY` exists from v22.21.0 and v24.0.0. */
 function nodeProxiesFetch(version: string): boolean {
@@ -71,6 +81,12 @@ export function buildLaunch(input: LaunchInput): Launch {
 		throw new OpenSesameAdapterError(
 			"launch_invalid",
 			"a proxied run needs a command",
+		);
+	}
+	if ([input.bin, input.schemaPath, ...input.argv].some(hasNul)) {
+		throw new OpenSesameAdapterError(
+			"launch_invalid",
+			"the command, the executable and the schema path cannot hold a NUL byte",
 		);
 	}
 	if (!nodeProxiesFetch(input.nodeVersion ?? process.versions.node)) {
@@ -98,7 +114,12 @@ export function buildLaunch(input: LaunchInput): Launch {
 			...input.argv,
 		]),
 		env: Object.freeze({
-			...input.env,
+			...childEnvOf({
+				env: input.env,
+				passEnv: input.passEnv ?? [],
+				bindings: input.bindings,
+				platform: input.platform ?? process.platform,
+			}),
 			NODE_USE_ENV_PROXY: "1",
 			[CHILD_MARKER]: "1",
 		}),
@@ -139,6 +160,8 @@ export type RunInput = Readonly<{
 	bindings: readonly ParsedCredentialBinding[];
 	argv: readonly string[];
 	env?: NodeJS.ProcessEnv;
+	passEnv?: readonly string[] | undefined;
+	platform?: NodeJS.Platform | undefined;
 	spawn?: SpawnFn;
 	signals?: SignalSource;
 	stderr?: StderrSink;
@@ -197,7 +220,10 @@ export async function runProxied(input: RunInput): Promise<ProxiedRunOutcome> {
 	const checks = {
 		bin: input.bin,
 		argv: input.argv,
+		bindings: input.bindings,
 		env,
+		passEnv: input.passEnv,
+		platform: input.platform,
 		nodeVersion: input.nodeVersion,
 		exists: input.exists,
 	};

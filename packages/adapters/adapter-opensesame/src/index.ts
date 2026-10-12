@@ -20,7 +20,6 @@ export {
 export { surrogateEvidence } from "./evidence.js";
 export {
 	buildLaunch,
-	CHILD_MARKER,
 	type Launch,
 	type LaunchInput,
 	type RunInput,
@@ -36,6 +35,6 @@ export {
 export {
 	createOpenSesameSecretsPort,
 	type OpenSesamePortOptions,
-	SURROGATE_PATTERN,
 } from "./port.js";
+export { CHILD_MARKER, SURROGATE_PATTERN } from "./run-markers.js";
 export { renderEnvSchema } from "./schema.js";

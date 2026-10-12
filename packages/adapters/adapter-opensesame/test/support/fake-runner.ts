@@ -66,6 +66,12 @@ export function createFakeRunner(): ScenarioRunner {
 					bindings,
 					argv: [process.execPath, "--no-warnings", CHILD, childOut],
 					env,
+					passEnv: [
+						"OPENSESAME_STORE_PASSWORD",
+						"FAKE_OPENSESAME_RECORD",
+						"FAKE_OPENSESAME_SCENARIO",
+						"FAKE_OPENSESAME_STORE_TOKEN",
+					],
 					stderr: sink,
 					tmpRoot: join(work, "tmp"),
 				});

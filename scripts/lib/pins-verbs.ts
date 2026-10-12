@@ -12,6 +12,7 @@ import {
 	type AssetContext,
 	bumpAsset,
 	fetchAsset,
+	refuseOverridesInCi,
 	statusAsset,
 } from "./pins-asset-ops.ts";
 import { cacheDir, currentTarget } from "./pins-assets.ts";
@@ -115,6 +116,7 @@ export function runInit(request: Request, pins: Pins): number {
 
 /** Named pins, or all of them (an unpublished asset is skipped, not an error). */
 export async function runFetch(request: Request, pins: Pins): Promise<number> {
+	refuseOverridesInCi(Object.keys(pins.assets), process.env);
 	const explicit = request.names.length > 0;
 	const names = explicit
 		? request.names
@@ -145,6 +147,7 @@ function printProblems(
 }
 
 export async function runStatus(request: Request, pins: Pins): Promise<number> {
+	refuseOverridesInCi(Object.keys(pins.assets), process.env);
 	let failed = 0;
 	for (const [name, pin] of Object.entries(pins.git)) {
 		const status = statusPin(

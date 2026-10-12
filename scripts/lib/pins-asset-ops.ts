@@ -64,6 +64,31 @@ function fetchHint(name: string): string {
 	return `pnpm run pins:fetch ${name}`;
 }
 
+/** Whether this run is a CI run: `CI` set to anything but empty, false or 0. */
+function inCi(env: NodeJS.ProcessEnv): boolean {
+	const ci = (env.CI ?? "").toLowerCase();
+	return ci !== "" && ci !== "false" && ci !== "0";
+}
+
+/**
+ * An override variable points a lane at a local binary, which nothing has
+ * verified. Refuse it in CI, where a green run has to mean the pinned bytes
+ * ran, unless `HOBO_PINS_ALLOW_OVERRIDE=1` says the run means something else.
+ */
+export function refuseOverridesInCi(
+	names: readonly string[],
+	env: NodeJS.ProcessEnv,
+): void {
+	if (!inCi(env) || env.HOBO_PINS_ALLOW_OVERRIDE === "1") return;
+	const set = names.map(overrideEnv).filter((variable) => env[variable]);
+	if (set.length > 0) {
+		throw new PinsError(
+			"OVERRIDE_IN_CI",
+			`${set.join(", ")} ${set.length > 1 ? "are" : "is"} set in CI: a binary named by an override is unverified, so a green run would not mean the pinned release ran. Unset ${set.length > 1 ? "them" : "it"}, or set HOBO_PINS_ALLOW_OVERRIDE=1 if this run is meant to test a local build`,
+		);
+	}
+}
+
 /** Offline: the cached bytes still hash to the pin. Online: the release still says so. */
 export async function statusAsset(
 	name: string,
@@ -112,6 +137,10 @@ export async function statusAsset(
 			);
 		}
 	}
+	const variable = overrideEnv(name);
+	const shadowed = ctx.env[variable]
+		? `; ${variable} is set and shadows this pin: that binary is not verified`
+		: "";
 	const where =
 		cached.state === "ok"
 			? "cached"
@@ -122,7 +151,7 @@ export async function statusAsset(
 	const online =
 		ctx.online && problems.length === 0 ? "; matches SHA256SUMS" : "";
 	return {
-		summary: `${name}  ${pin.tag}  ${mark}  (${ctx.target} sha256 ${short(file.sha256)}, ${where}${online})`,
+		summary: `${name}  ${pin.tag}  ${mark}  (${ctx.target} sha256 ${short(file.sha256)}, ${where}${online}${shadowed})`,
 		problems,
 		fixes,
 	};

@@ -30,6 +30,7 @@ export type PinsErrorCode =
 	| "SUBMODULE_STATE"
 	| "NOT_PUSHED"
 	| "CACHE_UNSAFE"
+	| "OVERRIDE_IN_CI"
 	| "USAGE";
 
 /** Every refusal is named; a bare Error would be untraceable. */

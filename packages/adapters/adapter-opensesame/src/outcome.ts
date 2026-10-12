@@ -201,8 +201,8 @@ const WHAT_HAPPENED = {
 	child_exit: "the proxied command exited with a failing status",
 	tripwire:
 		"a surrogate was sent to a host that is not its provider's; the run was revoked and the child stopped",
-	signalled:
-		"OpenSesame was told to stop; the run was revoked and the child stopped",
+	// What happened to the command is in the notice, which differs: asked to stop, OpenSesame revoked and stopped it; killed, it may still run.
+	signalled: "OpenSesame was ended by a signal",
 	placeholders_only:
 		"the proxied command holds a placeholder, not a surrogate: install and enable the surrogate-proxy plugin and seal the token with `opensesame pass insert`",
 	scope_unbounded:
@@ -245,7 +245,10 @@ export function outcomeError(
 /**
  * The status a process relaunched under OpenSesame should exit with: the
  * child's own, a tripwire's 77 or a signal's 128+n as OpenSesame returned it,
- * and 1 for anything that left placeholders or never started the child.
+ * and 1 for anything that left placeholders or never started the child. When
+ * OpenSesame itself was killed by a signal the status is 128+n of that signal,
+ * and the command it started may still be running with its surrogate: the
+ * notice says so, and nothing here can stop it.
  */
 export function exitCodeOf(run: ProxiedRunOutcome): number {
 	const kind = kindOf(run);

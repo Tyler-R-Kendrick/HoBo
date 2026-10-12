@@ -29,7 +29,7 @@ export const ADAPTER_ERROR_CODES = [
 	"plugin_pin_mismatch",
 	/** A surrogate was sent to a host that is not its provider's (exit 77). */
 	"tripwire_misdirected",
-	/** OpenSesame was told to stop (SIGTERM, SIGHUP) and ended the run. */
+	/** OpenSesame ended on a signal: told to stop (it revoked the run), killed (the command may still be running), or this process was signalled before OpenSesame was started (nothing was). */
 	"signalled",
 	/** The child exited non-zero by itself. */
 	"child_exit",

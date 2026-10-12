@@ -251,6 +251,24 @@ describe("parseOutcome: how a proxied run ended", () => {
 		expect(outcomeError(outcome)?.message).toMatch(/may still be running/u);
 	});
 
+	it("reports that signal as the exit status 128+n, and never claims the command was stopped", () => {
+		const killed = parseOutcome(null, "SIGKILL", "");
+		expect(exitCodeOf(killed)).toBe(137);
+		const message = outcomeError(killed)?.message ?? "";
+		expect(message).not.toMatch(/child stopped|revoked/u);
+		expect(outcomeError(killed)?.code).toBe("signalled");
+		// A run OpenSesame ended on request does say so: it revoked the run and stopped the command.
+		const asked = parseOutcome(
+			143,
+			null,
+			"opensesame: SIGTERM: the run is ended and its surrogates are revoked (1); the child is stopped\n",
+		);
+		expect(exitCodeOf(asked)).toBe(143);
+		expect(outcomeError(asked)?.message).toMatch(
+			/revoked and the command stopped/u,
+		);
+	});
+
 	it("keeps the kind inside the closed set the CUE names", () => {
 		for (const [scenario, code] of [
 			["plugin-absent", 0],

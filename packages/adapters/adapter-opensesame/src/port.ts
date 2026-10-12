@@ -17,7 +17,10 @@
 
 import type { SecretsAccessResult, SecretsPort } from "@hobo/identity";
 
-import type { ParsedCredentialBinding } from "./binding.js";
+import {
+	isParsedCredentialBinding,
+	type ParsedCredentialBinding,
+} from "./binding.js";
 import { OpenSesameAdapterError } from "./errors.js";
 
 // public-contract: `osr_` and 32 lower-case hex digits, the shape of what OpenSesame's plugin issues.
@@ -40,6 +43,14 @@ function valueRefOf(binding: ParsedCredentialBinding): string {
 export function createOpenSesameSecretsPort(
 	options: OpenSesamePortOptions,
 ): SecretsPort {
+	if (
+		!options.bindings.every((binding) => isParsedCredentialBinding(binding))
+	) {
+		throw new OpenSesameAdapterError(
+			"binding_invalid",
+			"the port serves bindings the parser made, not copies or literals",
+		);
+	}
 	const find = (locator: string) =>
 		options.bindings.find((binding) => binding.locator === locator);
 

@@ -7,6 +7,7 @@ export type {
 export {
 	HTTP_METHODS,
 	type HttpMethod,
+	isParsedCredentialBinding,
 	type ParsedCredentialBinding,
 	parseCredentialBindings,
 } from "./binding.js";

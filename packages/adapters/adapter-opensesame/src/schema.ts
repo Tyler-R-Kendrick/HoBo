@@ -7,31 +7,19 @@
  *
  * The entry names a connection and bounds a scope; the token it stands for is
  * sealed in the person's store and never appears here. The renderer takes
- * parsed bindings, and still re-checks every value it interpolates: a binding
- * forged past the parser must not be able to add an entry, close a quote or
- * start a comment, so the failure is `schema_injection`, not a surprising file.
+ * parsed bindings only. A value the parser did not make (a spread copy, a literal,
+ * an assigned object: the right fields, never checked) could add an entry, close
+ * a quote or start a comment, so it is refused at run time with `schema_injection`
+ * as well as at compile time.
  */
 
 import {
-	CONNECTION_PATTERN,
-	ENV_NAME_PATTERN,
-	HTTP_METHODS,
-	PATH_NO_DOT_SEGMENT_PATTERN,
-	PATH_NO_EMPTY_SEGMENT_PATTERN,
-	PATH_PATTERN,
+	isParsedCredentialBinding,
 	type ParsedCredentialBinding,
-	RESERVED_ENV_NAME_PATTERN,
 } from "./binding.js";
 import { OpenSesameAdapterError } from "./errors.js";
 
 const HEADER = "# @defaultSensitive=false\n# ---\n";
-
-const reservedRe = new RegExp(RESERVED_ENV_NAME_PATTERN, "u");
-const connectionRe = new RegExp(CONNECTION_PATTERN, "u");
-const envNameRe = new RegExp(ENV_NAME_PATTERN, "u");
-const pathRe = new RegExp(PATH_PATTERN, "u");
-const emptyRe = new RegExp(PATH_NO_EMPTY_SEGMENT_PATTERN, "u");
-const dotRe = new RegExp(PATH_NO_DOT_SEGMENT_PATTERN, "u");
 
 function refuse(field: string): never {
 	throw new OpenSesameAdapterError(
@@ -40,28 +28,27 @@ function refuse(field: string): never {
 	);
 }
 
-function assertRenderable(binding: ParsedCredentialBinding): void {
-	if (!envNameRe.test(binding.envName) || reservedRe.test(binding.envName)) {
-		refuse("env_name");
-	}
-	if (!connectionRe.test(binding.connection)) refuse("connection");
-	for (const path of binding.paths) {
-		if (!pathRe.test(path) || emptyRe.test(path) || dotRe.test(path)) {
-			refuse("paths");
-		}
-	}
-	for (const method of binding.methods) {
-		if (!HTTP_METHODS.some((known) => known === method)) refuse("methods");
-	}
-	if (binding.projection !== "legacy-token") refuse("projection");
+/**
+ * A binding is written into a file as it is, so it must be one the parser made:
+ * a copy or a literal has the right fields and has not been checked.
+ */
+function assertParsed(binding: ParsedCredentialBinding): void {
+	if (!isParsedCredentialBinding(binding))
+		refuse("a binding that was not parsed");
 }
 
 function entry(binding: ParsedCredentialBinding): string {
-	assertRenderable(binding);
+	assertParsed(binding);
 	return [
 		"# @required @sensitive",
 		`${binding.envName}=opensesameConnection(${binding.connection}, projection=${binding.projection}, paths="${binding.paths.join(",")}", methods="${binding.methods.join(",")}")`,
 	].join("\n");
+}
+
+/** Code-unit order: the same on every machine and locale, unlike `localeCompare`. */
+function compareCodeUnits(left: string, right: string): number {
+	if (left === right) return 0;
+	return left < right ? -1 : 1;
 }
 
 /** The schema text for `bindings`, entries ordered by variable name. */
@@ -69,7 +56,7 @@ export function renderEnvSchema(
 	bindings: readonly ParsedCredentialBinding[],
 ): string {
 	const entries = [...bindings]
-		.sort((left, right) => left.envName.localeCompare(right.envName))
+		.sort((left, right) => compareCodeUnits(left.envName, right.envName))
 		.map(entry);
 	if (entries.length === 0) return HEADER;
 	return `${HEADER}\n${entries.join("\n\n")}\n`;

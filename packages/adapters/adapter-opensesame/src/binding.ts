@@ -82,20 +82,56 @@ const pathRe = new RegExp(PATH_PATTERN, "u");
 const emptySegmentRe = new RegExp(PATH_NO_EMPTY_SEGMENT_PATTERN, "u");
 const dotSegmentRe = new RegExp(PATH_NO_DOT_SEGMENT_PATTERN, "u");
 
-const parsed: unique symbol = Symbol("ParsedCredentialBinding");
-
-/**
- * A binding that passed `parseCredentialBindings`. The brand is a module-local
- * symbol, so a value can only be made here; the shape is the generated
- * `CredentialBinding` narrowed to what the CUE allows.
- */
-export type ParsedCredentialBinding = Readonly<
+/** The generated `CredentialBinding` narrowed to what the CUE allows. */
+type ParsedFields = Readonly<
 	Omit<CredentialBinding, "$typeName" | "paths" | "methods" | "provider"> & {
 		provider: "vercel";
 		paths: readonly string[];
 		methods: readonly HttpMethod[];
 	}
-> & { readonly [parsed]: true };
+>;
+
+/**
+ * A binding that passed `parseCredentialBindings`. It is nominal: the `#brand`
+ * is a private field, so a spread copy, an object literal or `Object.assign` has
+ * the right public fields and is still not one (a compile error), and
+ * `isParsedCredentialBinding` tells a forged value at run time. Only
+ * `parseOne` below constructs it, after every check; the class is exported as a type only.
+ */
+class ParsedCredentialBinding implements ParsedFields {
+	readonly #brand = true;
+	readonly locator: string;
+	readonly connection: string;
+	readonly provider: "vercel";
+	readonly envName: string;
+	readonly paths: readonly string[];
+	readonly methods: readonly HttpMethod[];
+	readonly projection: string;
+
+	constructor(fields: ParsedFields) {
+		this.locator = fields.locator;
+		this.connection = fields.connection;
+		this.provider = fields.provider;
+		this.envName = fields.envName;
+		this.paths = Object.freeze([...fields.paths]);
+		this.methods = Object.freeze([...fields.methods]);
+		this.projection = fields.projection;
+		Object.freeze(this);
+	}
+
+	static is(value: ParsedFields): value is ParsedCredentialBinding {
+		return #brand in value && value.#brand;
+	}
+}
+
+export type { ParsedCredentialBinding };
+
+/** Whether `value` was made by `parseCredentialBindings`, not copied or written. */
+export function isParsedCredentialBinding(
+	value: ParsedFields,
+): value is ParsedCredentialBinding {
+	return ParsedCredentialBinding.is(value);
+}
 
 const FIELDS = [
 	"locator",
@@ -233,16 +269,15 @@ function parseOne(input: JsonValue, index: number): ParsedCredentialBinding {
 		}
 		methods.push(method);
 	}
-	return Object.freeze({
+	return new ParsedCredentialBinding({
 		locator,
 		connection,
 		provider,
 		envName,
-		paths: Object.freeze([...paths]),
-		methods: Object.freeze(methods),
+		paths,
+		methods,
 		projection: "legacy-token",
-		[parsed]: true,
-	} as const);
+	});
 }
 
 /**

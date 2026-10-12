@@ -3,7 +3,10 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
 
-import type { HttpMethod } from "../src/binding.js";
+import {
+	isParsedCredentialBinding,
+	type ParsedCredentialBinding,
+} from "../src/binding.js";
 import { OpenSesameAdapterError } from "../src/errors.js";
 import { renderEnvSchema } from "../src/schema.js";
 import { onlyBinding, parsed, vercelRecord } from "./fixtures/bindings.js";
@@ -62,29 +65,53 @@ describe("renderEnvSchema", () => {
 		expect(text).not.toMatch(/osr_[0-9a-f]{8}|ostest_|vtok_|Bearer |ghp_|sk_/u);
 	});
 
-	it("refuses a value that would break out of the entry, even from a forged binding", () => {
+	it("refuses a binding the parser did not make: a copy, a literal or an assigned object", () => {
 		const good = onlyBinding();
-		const forgedMethods: string[] = ["GET\nX=1"];
-		const forged = [
-			{ ...good, connection: "conn://acme/vercel\nINJECTED=1" },
-			{ ...good, connection: 'conn://acme/vercel", paths="/' },
-			{ ...good, paths: ['/v9/projects"), X=opensesameConnection(conn://a/b'] },
-			{ ...good, paths: ["/v9#comment"] },
-			{ ...good, paths: ["/v9/a,/"] },
-			// SAFETY: a forged method; the renderer must refuse what the parser would have.
-			{ ...good, methods: forgedMethods as HttpMethod[] },
-			{ ...good, envName: "A=1\nB" },
-			{ ...good, envName: "HOBO_OPENSESAME_CHILD" },
-			{ ...good, envName: "NODE_OPTIONS" },
+		const forgeries: ParsedCredentialBinding[] = [
+			// SAFETY: forged on purpose; the renderer must refuse what the parser did not make.
+			{
+				...good,
+				connection: "conn://acme/vercel\nINJECTED=1",
+			} as ParsedCredentialBinding,
+			// SAFETY: forged on purpose.
+			{ ...good, envName: "HOBO_OPENSESAME_CHILD" } as ParsedCredentialBinding,
+			// SAFETY: forged on purpose.
+			Object.assign({}, good, { paths: ["/"] }) as ParsedCredentialBinding,
+			// SAFETY: forged on purpose: an object that inherits the parser's prototype has no brand.
+			Object.assign(
+				Object.create(Object.getPrototypeOf(good)),
+				good,
+			) as ParsedCredentialBinding,
 		];
-		for (const binding of forged) {
+		for (const binding of forgeries) {
+			expect(isParsedCredentialBinding(binding)).toBe(false);
 			expect(codeOf(() => renderEnvSchema([binding]))).toBe("schema_injection");
 		}
+		expect(isParsedCredentialBinding(good)).toBe(true);
+	});
+
+	it("sorts by code unit, not by the locale: A_B before AB on every machine", () => {
+		const a = vercelRecord({
+			locator: "hobo-token://vercel/ab",
+			env_name: "AB_TOKEN",
+		});
+		const b = vercelRecord({
+			locator: "hobo-token://vercel/a-b",
+			env_name: "A_BTOKEN",
+		});
+		const names = [
+			...renderEnvSchema(parsed(a, b)).matchAll(/^([A-Z_]+)=/gmu),
+		].map((m) => m[1]);
+		expect(names).toEqual(["AB_TOKEN", "A_BTOKEN"]);
 	});
 
 	it("never echoes the refused value", () => {
 		const leaked = "vtok_dummy_marker_0123456789abcdef";
-		const forged = { ...onlyBinding(), connection: `conn://${leaked}\n` };
+		// SAFETY: forged on purpose.
+		const forged = {
+			...onlyBinding(),
+			connection: `conn://${leaked}\n`,
+		} as ParsedCredentialBinding;
 		try {
 			renderEnvSchema([forged]);
 			expect.unreachable("must refuse");

@@ -12,10 +12,11 @@ binary. It lets HoBo run under OpenSesame's proxied invocation and hold a surrog
 ## Parse, don't validate
 
 Parse, don't validate: the bindings file crosses one boundary, `parseCredentialBindings`, and becomes frozen
-`ParsedCredentialBinding` derived types (a narrowing of the generated `CredentialBinding`, branded with a symbol that
-only the parser holds). The schema renderer, the launch and the port take the parsed type and never re-check a string;
-the renderer still re-checks what it interpolates and fails `schema_injection`, because a forged value must not
-add an entry to the file. The regular expressions are the CUE's; `test/binding.test.ts` reads them out of the `.cue`.
+`ParsedCredentialBinding` derived types (a narrowing of the generated `CredentialBinding`, held in a class with a private
+`#brand`, exported as a type only). The type is nominal: a spread copy, an object literal or an `Object.assign` has the right
+fields and is not one (`test/binding.test-d.ts`, `typecheck:types`), and `isParsedCredentialBinding` tells a forged value at run
+time; the renderer, the port and the evidence maker refuse one (`schema_injection`, `binding_invalid`). Nothing downstream
+re-checks a string. The regular expressions are the CUE's; `test/binding.test.ts` reads them out of the `.cue`.
 A run's end crosses another boundary, `parseOutcome`, and becomes a `ProxiedRunOutcome` whose `kind` is a closed set.
 
 ## Residual ranking (unchanged)

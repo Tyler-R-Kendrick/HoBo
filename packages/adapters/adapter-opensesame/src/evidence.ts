@@ -12,7 +12,11 @@ import {
 	type SurrogateEvidence,
 	SurrogateEvidenceSchema,
 } from "./_generated/adapter_opensesame_pb.js";
-import type { ParsedCredentialBinding } from "./binding.js";
+import {
+	isParsedCredentialBinding,
+	type ParsedCredentialBinding,
+} from "./binding.js";
+import { OpenSesameAdapterError } from "./errors.js";
 
 function digest(text: string): string {
 	return `sha256:${createHash("sha256").update(text).digest("hex")}`;
@@ -21,6 +25,12 @@ function digest(text: string): string {
 export function surrogateEvidence(
 	binding: ParsedCredentialBinding,
 ): SurrogateEvidence {
+	if (!isParsedCredentialBinding(binding)) {
+		throw new OpenSesameAdapterError(
+			"binding_invalid",
+			"evidence is made from a binding the parser made",
+		);
+	}
 	const scope = JSON.stringify({
 		paths: [...binding.paths].sort(),
 		methods: [...binding.methods].sort(),

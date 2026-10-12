@@ -11,7 +11,7 @@
  */
 import { createHash } from "node:crypto";
 import { createReadStream, rmSync } from "node:fs";
-import { chmod, mkdir, open, rename, rm, rmdir } from "node:fs/promises";
+import { chmod, lstat, mkdir, open, rename, rm, rmdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { type AssetFile, assertAllowedUrl, PinsError } from "./pins.ts";
@@ -219,22 +219,36 @@ export async function fetchText(
 export type CacheState =
 	| { readonly state: "absent" }
 	| { readonly state: "ok" }
-	| { readonly state: "mismatch"; readonly actual: string };
+	| { readonly state: "mismatch"; readonly actual: string }
+	/** Something is there that is not a regular file: a link, a directory, a device. */
+	| { readonly state: "invalid"; readonly reason: string };
 
-/** Re-hash what the cache holds for `file`; never trusts a file by its name. */
+function describeKind(info: Awaited<ReturnType<typeof lstat>>): string {
+	if (info.isSymbolicLink()) return "a symbolic link";
+	if (info.isDirectory()) return "a directory";
+	return "not a regular file";
+}
+
+/**
+ * Re-hash what the cache holds for `file`; never trusts a file by its name,
+ * and never reads anything but a regular file (a link to a correct file, or to
+ * /dev/zero, is not a verified file).
+ */
 export async function verifyCached(
 	cache: string,
 	file: AssetFile,
 ): Promise<CacheState> {
 	const path = cachedPath(cache, file);
-	let actual: string;
+	let info: Awaited<ReturnType<typeof lstat>>;
 	try {
-		actual = await sha256OfFile(path);
+		info = await lstat(path);
 	} catch (error) {
 		if (error instanceof Error && "code" in error && error.code === "ENOENT")
 			return { state: "absent" };
 		throw error;
 	}
+	if (!info.isFile()) return { state: "invalid", reason: describeKind(info) };
+	const actual = await sha256OfFile(path);
 	return actual === file.sha256
 		? { state: "ok" }
 		: { state: "mismatch", actual };
@@ -251,6 +265,8 @@ export async function ensureCached(
 	const state = await verifyCached(cache, file);
 	if (state.state === "ok") return { path, downloaded: false };
 	if (state.state === "mismatch") await rm(path, { force: true });
+	if (state.state === "invalid")
+		await rm(path, { recursive: true, force: true });
 	await fetchVerified(file.url, file.sha256, path, {
 		...options,
 		maxBytes: file.size,

@@ -66,6 +66,12 @@ const GITLINK = /^160000 ([0-9a-f]{40}) 0\t/u;
 
 /** The commit the index pins `path` at. */
 export function gitlinkOf(root: string, path: string): string {
+	if (git(root, ["rev-parse", "--is-inside-work-tree"]).stdout !== "true") {
+		throw new PinsError(
+			"SUBMODULE_STATE",
+			`${root} is not a git checkout (a zip download has no submodules); clone with git: git clone --recurse-submodules <the repository>`,
+		);
+	}
 	const line = git(root, ["ls-files", "-s", "--", path]).stdout;
 	const commit = GITLINK.exec(line)?.[1];
 	if (commit === undefined) {

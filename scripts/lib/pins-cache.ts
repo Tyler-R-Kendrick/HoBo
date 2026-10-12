@@ -136,7 +136,14 @@ export async function prepareCache(
 	cache: string,
 	sha256?: string,
 ): Promise<void> {
-	await mkdir(cache, { recursive: true, mode: 0o700 });
+	try {
+		await mkdir(cache, { recursive: true, mode: 0o700 });
+	} catch (error) {
+		// A file where the directory belongs is reported below, not thrown as EEXIST.
+		const exists =
+			error instanceof Error && "code" in error && error.code === "EEXIST";
+		if (!exists) throw error;
+	}
 	const unsafe = await cacheProblem(cache, sha256);
 	if (unsafe !== null) {
 		throw new PinsError(

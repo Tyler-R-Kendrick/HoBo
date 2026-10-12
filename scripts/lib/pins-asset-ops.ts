@@ -128,6 +128,11 @@ export async function statusAsset(
 		);
 		fixes.push(`${fetchHint(name)}   (replaces the corrupt file)`);
 	}
+	if (cached.state === "invalid") {
+		const path = join(ctx.cache, file.sha256, file.entry);
+		problems.push(`${path} is not a regular file (${cached.reason})`);
+		fixes.push(`${fetchHint(name)}   (replaces it)`);
+	}
 	if (ctx.online) {
 		const published = await compareWithRelease(pin, ctx);
 		problems.push(...published);
@@ -146,7 +151,9 @@ export async function statusAsset(
 			? "cached"
 			: cached.state === "absent"
 				? `not cached; ${fetchHint(name)}`
-				: "cache corrupt";
+				: cached.state === "invalid"
+					? "cache invalid"
+					: "cache corrupt";
 	const mark = problems.length === 0 ? "ok" : "FAIL";
 	const online =
 		ctx.online && problems.length === 0 ? "; matches SHA256SUMS" : "";

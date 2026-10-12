@@ -163,6 +163,13 @@ try {
 	if (error instanceof PinsError) {
 		console.error(`ERR ${error.message}`);
 		process.exitCode = error.code === "USAGE" ? 2 : 1;
+	} else if (error instanceof Error && process.env.HOBO_PINS_DEBUG !== "1") {
+		// A system error (a path that is the wrong kind, a timeout) is one line,
+		// not a stack; HOBO_PINS_DEBUG=1 shows the stack.
+		console.error(
+			`ERR ${"code" in error ? String(error.code) : error.name}: ${error.message}`,
+		);
+		process.exitCode = 1;
 	} else {
 		throw error;
 	}

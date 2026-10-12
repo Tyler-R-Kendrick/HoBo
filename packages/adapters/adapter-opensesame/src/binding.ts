@@ -23,13 +23,17 @@ import {
 	type JsonValue,
 } from "./json.js";
 
+// public-contract: the CUE's locator pattern; test/binding.test.ts compares it with adapter_opensesame.cue.
 export const LOCATOR_PATTERN = "^hobo-token://[a-z0-9-]+/[a-z0-9-]+$";
+// public-contract: the CUE's connection pattern.
 export const CONNECTION_PATTERN = "^conn://[a-z0-9-]+(/[a-z0-9-]+){1,2}$";
+// public-contract: the CUE's variable-name pattern.
 export const ENV_NAME_PATTERN = "^[A-Z][A-Z0-9_]*$";
+// public-contract: the CUE's path-prefix pattern.
 export const PATH_PATTERN = "^/[A-Za-z0-9._~%/-]+$";
-/** A path with an empty segment (`//`) bounds nothing. */
+// public-contract: the CUE's refusal of an empty path segment (`//` bounds nothing).
 export const PATH_NO_EMPTY_SEGMENT_PATTERN = "//";
-/** A `.` or `..` segment walks out of the prefix it was granted. */
+// public-contract: the CUE's refusal of a `.` or `..` segment, which walks out of the prefix it was granted.
 export const PATH_NO_DOT_SEGMENT_PATTERN = "/\\.{1,2}(/|$)";
 
 /**

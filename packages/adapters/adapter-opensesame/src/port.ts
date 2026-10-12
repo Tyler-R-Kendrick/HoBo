@@ -20,7 +20,7 @@ import type { SecretsAccessResult, SecretsPort } from "@hobo/identity";
 import type { ParsedCredentialBinding } from "./binding.js";
 import { OpenSesameAdapterError } from "./errors.js";
 
-/** `osr_` and 32 lower-case hex digits: what OpenSesame's plugin issues. */
+// public-contract: `osr_` and 32 lower-case hex digits, the shape of what OpenSesame's plugin issues.
 export const SURROGATE_PATTERN = "^osr_[0-9a-f]{32}$";
 const surrogateRe = new RegExp(SURROGATE_PATTERN, "u");
 

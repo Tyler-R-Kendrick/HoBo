@@ -29,7 +29,7 @@ import { OpenSesameAdapterError } from "./errors.js";
 import { parseOutcome } from "./outcome.js";
 import { renderEnvSchema } from "./schema.js";
 
-/** The child marker: set for everything a proxied run starts, refused if already set. */
+// public-contract: the environment marker a proxied run sets on everything it starts, and refuses to find already set.
 export const CHILD_MARKER = "HOBO_OPENSESAME_CHILD";
 const CAPTURE_LIMIT = 64 * 1024;
 

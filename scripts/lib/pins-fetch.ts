@@ -11,7 +11,7 @@
  */
 import { createHash } from "node:crypto";
 import { createReadStream } from "node:fs";
-import { chmod, mkdir, open, rename, rm } from "node:fs/promises";
+import { chmod, mkdir, open, rename, rm, rmdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { type AssetFile, assertAllowedUrl, PinsError } from "./pins.ts";
@@ -100,14 +100,23 @@ export async function fetchVerified(
 ): Promise<void> {
 	const limit = options.maxBytes ?? DEFAULT_MAX_BYTES;
 	const partial = `${dest}.${process.pid}.partial`;
-	await mkdir(dirname(dest), { recursive: true });
+	const created = await mkdir(dirname(dest), { recursive: true });
+	// Whatever fails, leave neither the partial file nor a directory we made.
+	const discard = async (): Promise<void> => {
+		await rm(partial, { force: true });
+		if (created !== undefined) await removeEmptyDirs(dirname(dest), created);
+	};
 	const response = await getFollowing(
 		url,
 		options,
 		AbortSignal.timeout(options.timeoutMs ?? 300_000),
-	);
+	).catch(async (error: Error) => {
+		await discard();
+		throw error;
+	});
 	if (!response.ok || response.body === null) {
 		await response.body?.cancel();
+		await discard();
 		throw new PinsError("HTTP_STATUS", `${url} answered ${response.status}`);
 	}
 	const hash = createHash("sha256");
@@ -126,20 +135,20 @@ export async function fetchVerified(
 		}
 	} catch (error) {
 		await handle.close();
-		await rm(partial, { force: true });
+		await discard();
 		throw error;
 	}
 	await handle.close();
 	const actual = hash.digest("hex");
 	if (actual !== sha256) {
-		await rm(partial, { force: true });
+		await discard();
 		throw new PinsError(
 			"DIGEST_MISMATCH",
 			`${url} hashes to ${actual} but the pin says ${sha256}; refusing to use these bytes`,
 		);
 	}
 	if (options.expectedSize !== undefined && seen !== options.expectedSize) {
-		await rm(partial, { force: true });
+		await discard();
 		throw new PinsError(
 			"SIZE_MISMATCH",
 			`${url} is ${seen} bytes but the pin says ${options.expectedSize}`,
@@ -147,6 +156,52 @@ export async function fetchVerified(
 	}
 	await chmod(partial, 0o755);
 	await rename(partial, dest);
+}
+
+/** `rmdir` from `leaf` up to `top`, stopping at the first one that is not empty. */
+async function removeEmptyDirs(leaf: string, top: string): Promise<void> {
+	let dir = leaf;
+	for (;;) {
+		try {
+			await rmdir(dir);
+		} catch {
+			return;
+		}
+		if (dir === top) return;
+		dir = dirname(dir);
+	}
+}
+
+const MAX_TEXT_BYTES = 1024 ** 2;
+
+/** A small text document (a release's SHA256SUMS), under the same URL rules. */
+export async function fetchText(
+	url: string,
+	options: FetchOptions = {},
+): Promise<string> {
+	const limit = options.maxBytes ?? MAX_TEXT_BYTES;
+	const response = await getFollowing(
+		url,
+		options,
+		AbortSignal.timeout(options.timeoutMs ?? 60_000),
+	);
+	if (!response.ok || response.body === null) {
+		await response.body?.cancel();
+		throw new PinsError("HTTP_STATUS", `${url} answered ${response.status}`);
+	}
+	const chunks: Uint8Array[] = [];
+	let seen = 0;
+	for await (const chunk of response.body) {
+		seen += chunk.byteLength;
+		if (seen > limit) {
+			throw new PinsError(
+				"SIZE_EXCEEDED",
+				`${url} sent more than ${limit} bytes`,
+			);
+		}
+		chunks.push(chunk);
+	}
+	return Buffer.concat(chunks).toString("utf8");
 }
 
 export type CacheState =

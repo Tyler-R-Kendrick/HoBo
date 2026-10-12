@@ -15,6 +15,7 @@ import { describe, it } from "node:test";
 
 import {
 	type AssetPin,
+	isSafeRef,
 	type JsonObject,
 	type Pins,
 	PinsError,
@@ -26,6 +27,8 @@ import {
 	currentTarget,
 	overrideEnv,
 	parseSums,
+	releaseBase,
+	serializePins,
 } from "../lib/pins-assets.ts";
 import { REPO_ROOT } from "./support/pins-support.ts";
 
@@ -90,6 +93,14 @@ describe("parsePins", () => {
 		assert.equal(pins.assets.mirror, null);
 		assert.equal(pins.assets["opensesame-kit"], null);
 		assert.equal(pins.vendor["anti-slop"]?.dest, "tools/oxlint/anti-slop");
+	});
+
+	it("the committed manifest is in canonical form, so a bump changes only what it means to", () => {
+		const text = readFileSync(
+			join(REPO_ROOT, "tools/pins/siblings.json"),
+			"utf8",
+		);
+		assert.equal(serializePins(parsePins(text)), text);
 	});
 
 	it("rejects an asset whose sha256 is not 64 hex characters", () => {
@@ -238,6 +249,16 @@ describe("assetFor", () => {
 		);
 	});
 
+	it("does not find a build under a name from the prototype chain", () => {
+		for (const target of ["constructor", "__proto__", "toString"]) {
+			assert.throws(
+				() => assetFor(pin, "mirror", target),
+				(error: Error) =>
+					error instanceof PinsError && error.code === "TARGET_UNSUPPORTED",
+			);
+		}
+	});
+
 	it("names this machine's target as platform-arch", () => {
 		assert.equal(currentTarget("linux", "x64"), "linux-x64");
 		assert.equal(currentTarget("linux", "arm64"), "linux-arm64");
@@ -274,5 +295,42 @@ describe("parseSums", () => {
 	it("refuses a malformed line and a path", () => {
 		assert.throws(() => parseSums("nonsense\n"), /SUMS_MALFORMED/);
 		assert.throws(() => parseSums(`${DIGEST}  ../escape\n`), /SUMS_MALFORMED/);
+	});
+});
+
+describe("isSafeRef and releaseBase", () => {
+	it("accepts commits, branches and tags and refuses what git would read as an option or a walk", () => {
+		for (const ok of [
+			"main",
+			"91af43f",
+			"v1.2.3",
+			"feature/x-y",
+			"a".repeat(40),
+		]) {
+			assert.equal(isSafeRef(ok), true, ok);
+		}
+		for (const bad of [
+			"",
+			"-x",
+			"--upload-pack=evil",
+			"a..b",
+			"a//b",
+			"x y",
+			"a;b",
+			"$(id)",
+		]) {
+			assert.equal(isSafeRef(bad), false, bad);
+		}
+	});
+
+	it("finds a release's assets under the repository URL, with or without .git", () => {
+		assert.equal(
+			releaseBase("https://github.com/o/r.git", "v1.0.0"),
+			"https://github.com/o/r/releases/download/v1.0.0/",
+		);
+		assert.equal(
+			releaseBase("https://github.com/o/r/", "v1.0.0"),
+			"https://github.com/o/r/releases/download/v1.0.0/",
+		);
 	});
 });

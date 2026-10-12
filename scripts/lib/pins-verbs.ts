@@ -1,10 +1,20 @@
 /**
- * The verbs of `bootstrap-siblings.mts` over git pins: initialise, report,
- * fetch, move. Each prints what it did and returns the
+ * The verbs of `bootstrap-siblings.mts`, over git pins and asset pins alike:
+ * initialise, report, fetch, move. Each prints what it did and returns the
  * process exit code; a refusal is a thrown `PinsError`.
  *
  * Erasable TypeScript with node builtins only.
  */
+import { renameSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+
+import {
+	type AssetContext,
+	bumpAsset,
+	fetchAsset,
+	statusAsset,
+} from "./pins-asset-ops.ts";
+import { cacheDir, currentTarget } from "./pins-assets.ts";
 import { bumpPin, initPin, short, statusPin } from "./pins-git.ts";
 import { type GitPin, type Pins, PinsError } from "./pins.ts";
 
@@ -15,8 +25,19 @@ export interface Request {
 	readonly root: string;
 	readonly reference: string | undefined;
 	readonly online: boolean;
+	readonly repo: string | undefined;
 	readonly names: readonly string[];
 	readonly allowLocal: boolean;
+}
+
+function assetContext(request: Request): AssetContext {
+	return {
+		cache: cacheDir(),
+		target: currentTarget(),
+		env: process.env,
+		online: request.online,
+		fetchOptions: { allowLocal: request.allowLocal },
+	};
 }
 
 // A pin name comes from the command line: only the manifest's own keys count,
@@ -25,10 +46,15 @@ function gitPinOf(pins: Pins, name: string): GitPin | undefined {
 	return Object.hasOwn(pins.git, name) ? pins.git[name] : undefined;
 }
 
+function hasAsset(pins: Pins, name: string): boolean {
+	return Object.hasOwn(pins.assets, name);
+}
+
 function unknownPin(pins: Pins, name: string): never {
+	const known = [...Object.keys(pins.git), ...Object.keys(pins.assets)];
 	throw new PinsError(
 		"USAGE",
-		`no pin named ${name}; pins: ${Object.keys(pins.git).join(", ")}`,
+		`no pin named ${name}; pins: ${known.join(", ")}`,
 	);
 }
 
@@ -58,11 +84,24 @@ export function runInit(request: Request, pins: Pins): number {
 	return 0;
 }
 
-/** Named git pins, or all of them. */
-export function runFetch(request: Request, pins: Pins): number {
-	const names =
-		request.names.length > 0 ? request.names : Object.keys(pins.git);
-	for (const name of names) initGit(request, pins, name);
+/** Named pins, or all of them (an unpublished asset is skipped, not an error). */
+export async function runFetch(request: Request, pins: Pins): Promise<number> {
+	const explicit = request.names.length > 0;
+	const names = explicit
+		? request.names
+		: [...Object.keys(pins.git), ...Object.keys(pins.assets)];
+	const ctx = assetContext(request);
+	for (const name of names) {
+		if (gitPinOf(pins, name) !== undefined) {
+			initGit(request, pins, name);
+		} else if (hasAsset(pins, name)) {
+			console.log(
+				await fetchAsset(name, pins.assets[name] ?? null, ctx, explicit),
+			);
+		} else {
+			unknownPin(pins, name);
+		}
+	}
 	return 0;
 }
 
@@ -76,7 +115,7 @@ function printProblems(
 	);
 }
 
-export function runStatus(request: Request, pins: Pins): number {
+export async function runStatus(request: Request, pins: Pins): Promise<number> {
 	let failed = 0;
 	for (const [name, pin] of Object.entries(pins.git)) {
 		const status = statusPin(request.root, name, pin, request.online);
@@ -94,17 +133,51 @@ export function runStatus(request: Request, pins: Pins): number {
 		console.log(`${name}  ${short(status.commit)}  FAIL`);
 		printProblems(status.problems, status.fixes);
 	}
+	const ctx = assetContext(request);
+	for (const [name, pin] of Object.entries(pins.assets)) {
+		const report = await statusAsset(name, pin, ctx);
+		console.log(report.summary);
+		printProblems(report.problems, report.fixes);
+		if (report.problems.length > 0) failed += 1;
+	}
 	if (failed > 0) console.error(`ERR ${failed} pin(s) out of date`);
 	return failed === 0 ? 0 : 1;
 }
 
-export function runBump(request: Request, pins: Pins): number {
+export async function runBump(request: Request, pins: Pins): Promise<number> {
 	const [name = "", ref = ""] = request.names;
-	const pin = gitPinOf(pins, name);
-	if (pin === undefined) return unknownPin(pins, name);
-	const { from, to } = bumpPin(request.root, name, pin, ref, request.reference);
-	console.log(
-		`${name}  ${short(from)} -> ${short(to)}  (gitlink staged; commit it)`,
+	const gitPin = gitPinOf(pins, name);
+	if (gitPin !== undefined) {
+		if (request.repo !== undefined) {
+			throw new PinsError(
+				"USAGE",
+				"--repo applies to asset pins, not git pins",
+			);
+		}
+		const { from, to } = bumpPin(
+			request.root,
+			name,
+			gitPin,
+			ref,
+			request.reference,
+		);
+		console.log(
+			`${name}  ${short(from)} -> ${short(to)}  (gitlink staged; commit it)`,
+		);
+		return 0;
+	}
+	if (!hasAsset(pins, name)) return unknownPin(pins, name);
+	const { text, line } = await bumpAsset(
+		pins,
+		name,
+		ref,
+		request.repo,
+		assetContext(request),
+		request.allowLocal,
 	);
+	const file = join(request.root, PINS_FILE);
+	writeFileSync(`${file}.tmp`, text);
+	renameSync(`${file}.tmp`, file);
+	console.log(`${line}\n${PINS_FILE} rewritten; review and commit it`);
 	return 0;
 }

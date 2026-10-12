@@ -6,7 +6,7 @@
  * Nothing here touches the network beyond 127.0.0.1, the user's git
  * configuration, or the real `external/ts-autocode` submodule.
  */
-import { execFileSync, spawnSync } from "node:child_process";
+import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
 import {
@@ -144,6 +144,21 @@ export function pinsJson(
 	return `${JSON.stringify(manifest, null, 2)}\n`;
 }
 
+/** A root with only a manifest: no git pins, the given `assets` section. */
+export function writeManifest(root: string, assets: string): void {
+	mkdirSync(join(root, "tools/pins"), { recursive: true });
+	const manifest = {
+		schemaVersion: 1,
+		git: {},
+		assets: JSON.parse(assets),
+		vendor: {},
+	};
+	writeFileSync(
+		join(root, "tools/pins/siblings.json"),
+		`${JSON.stringify(manifest, null, 2)}\n`,
+	);
+}
+
 /**
  * A work tree shaped like a fresh clone: `external/lib` is a gitlink at
  * `remote.shas[pinned]`, `.gitmodules` names the remote, and the submodule has
@@ -186,6 +201,27 @@ export interface ScriptRun {
 	readonly stderr: string;
 }
 
+function scriptCall(
+	root: string,
+	args: readonly string[],
+	env: NodeJS.ProcessEnv,
+	more: GitConfig,
+) {
+	return {
+		argv: ["--experimental-strip-types", SCRIPT, "--root", root, ...args],
+		env: gitEnv(
+			{
+				NODE_NO_WARNINGS: "1",
+				HOME: join(root, ".home"),
+				XDG_CACHE_HOME: join(root, ".cache"),
+				HOBO_PINS_ALLOW_LOCAL: "1",
+				...env,
+			},
+			more,
+		),
+	};
+}
+
 /** Runs the real script under Node's native type stripping, no loader. */
 export function runBootstrap(
 	root: string,
@@ -193,29 +229,45 @@ export function runBootstrap(
 	env: NodeJS.ProcessEnv = {},
 	more: GitConfig = [],
 ): ScriptRun {
-	const result = spawnSync(
-		process.execPath,
-		["--experimental-strip-types", SCRIPT, "--root", root, ...args],
-		{
-			cwd: root,
-			encoding: "utf8",
-			env: gitEnv(
-				{
-					NODE_NO_WARNINGS: "1",
-					HOME: join(root, ".home"),
-					XDG_CACHE_HOME: join(root, ".cache"),
-					HOBO_PINS_ALLOW_LOCAL: "1",
-					...env,
-				},
-				more,
-			),
-		},
-	);
+	const call = scriptCall(root, args, env, more);
+	const result = spawnSync(process.execPath, call.argv, {
+		cwd: root,
+		encoding: "utf8",
+		env: call.env,
+	});
 	return {
 		status: result.status,
 		stdout: result.stdout,
 		stderr: result.stderr,
 	};
+}
+
+/**
+ * The same, without blocking this process: a test that serves the script's
+ * downloads from an in-process HTTP server must not freeze its own event loop.
+ */
+export function runBootstrapAsync(
+	root: string,
+	args: readonly string[],
+	env: NodeJS.ProcessEnv = {},
+): Promise<ScriptRun> {
+	const call = scriptCall(root, args, env, []);
+	return new Promise((resolve, reject) => {
+		const child = spawn(process.execPath, call.argv, {
+			cwd: root,
+			env: call.env,
+		});
+		let stdout = "";
+		let stderr = "";
+		child.stdout.on("data", (chunk) => {
+			stdout += chunk;
+		});
+		child.stderr.on("data", (chunk) => {
+			stderr += chunk;
+		});
+		child.on("error", reject);
+		child.on("close", (status) => resolve({ status, stdout, stderr }));
+	});
 }
 
 export interface FileServer {

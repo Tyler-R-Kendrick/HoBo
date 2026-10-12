@@ -8,7 +8,7 @@
 import { homedir } from "node:os";
 import { isAbsolute, join } from "node:path";
 
-import { type AssetFile, type AssetPin, PinsError } from "./pins.ts";
+import { type AssetFile, type AssetPin, type Pins, PinsError } from "./pins.ts";
 
 /** `linux-x64`, `linux-arm64`: the key under which an asset pin lists a file. */
 export function currentTarget(
@@ -23,7 +23,7 @@ export function assetFor(
 	name: string,
 	target: string = currentTarget(),
 ): AssetFile {
-	const file = pin.files[target];
+	const file = Object.hasOwn(pin.files, target) ? pin.files[target] : undefined;
 	if (file === undefined) {
 		const supported = Object.keys(pin.files).sort().join(", ");
 		throw new PinsError(
@@ -85,4 +85,13 @@ export function parseSums(text: string): ReadonlyMap<string, string> {
 		sums.set(name, digest);
 	}
 	return sums;
+}
+
+/**
+ * The canonical text of a manifest. The parser builds every object with its
+ * keys in a fixed order, so this is also what `siblings.json` already looks
+ * like, and a bump changes only the lines it means to.
+ */
+export function serializePins(pins: Pins): string {
+	return `${JSON.stringify(pins, null, 2)}\n`;
 }

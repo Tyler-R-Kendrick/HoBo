@@ -19,6 +19,7 @@ import { PinsError } from "../lib/pins.ts";
 import { cachedPath } from "../lib/pins-assets.ts";
 import {
 	ensureCached,
+	fetchText,
 	fetchVerified,
 	verifyCached,
 } from "../lib/pins-fetch.ts";
@@ -83,6 +84,25 @@ describe("fetchVerified", () => {
 		assert.deepEqual(readdirSync(dir), []);
 	});
 
+	it("leaves no directory it created when the fetch fails", async () => {
+		server = await startServer();
+		server.setFile("/tool", "tampered bytes");
+		const dir = scratch("fetch-dir");
+		const dest = join(dir, "a", "b", "tool");
+		await assert.rejects(
+			fetchVerified(`${server.origin}/tool`, sha256Hex("pinned"), dest, {
+				allowLocal: true,
+			}),
+			PinsError,
+		);
+		assert.equal(existsSync(join(dir, "a")), false);
+		assert.equal(
+			existsSync(dir),
+			true,
+			"a directory that was already there stays",
+		);
+	});
+
 	it("stops reading at the declared size", async () => {
 		server = await startServer();
 		server.setFile("/big", Buffer.alloc(5000, 7));
@@ -131,6 +151,38 @@ describe("fetchVerified", () => {
 			fetchVerified("http://127.0.0.1:9/tool", DIGEST, join(dir, "x")),
 			(error: Error) =>
 				error instanceof PinsError && error.code === "PINS_MALFORMED",
+		);
+	});
+});
+
+describe("fetchText", () => {
+	let server: FileServer | undefined;
+	afterEach(async () => {
+		await server?.close();
+		server = undefined;
+	});
+
+	it("reads a small document", async () => {
+		server = await startServer();
+		server.setFile("/sums", "abc  file\n");
+		assert.equal(
+			await fetchText(`${server.origin}/sums`, { allowLocal: true }),
+			"abc  file\n",
+		);
+	});
+
+	it("stops at its size cap and refuses an http error status", async () => {
+		server = await startServer();
+		server.setFile("/big", Buffer.alloc(5000, 65));
+		await assert.rejects(
+			fetchText(`${server.origin}/big`, { allowLocal: true, maxBytes: 100 }),
+			(error: Error) =>
+				error instanceof PinsError && error.code === "SIZE_EXCEEDED",
+		);
+		await assert.rejects(
+			fetchText(`${server.origin}/none`, { allowLocal: true }),
+			(error: Error) =>
+				error instanceof PinsError && error.code === "HTTP_STATUS",
 		);
 	});
 });

@@ -6,8 +6,10 @@
  *
  *   (no verb)                     initialise every git pin (the submodule at its gitlink)
  *   --status [--offline|--online] report every pin; exit 1 when one has drifted
- *   --fetch [name...]             initialise git pins
- *   --bump <name> <ref>           move one pin and stage the change
+ *   --fetch [name...]             initialise git pins; download and verify asset pins
+ *   --bump <name> <ref> [--repo URL]
+ *                                 move one pin: a git pin's gitlink (staged), or an
+ *                                 asset pin to a release tag (siblings.json rewritten)
  *
  *   --reference <dir>             borrow objects from a local clone (no download for what it has)
  *   --root <dir>                  the repository to act on (default: the one holding this script)
@@ -35,11 +37,12 @@ import {
 import { type Pins, PinsError, parsePins } from "./lib/pins.ts";
 
 const USAGE = `usage: bootstrap-siblings.mts [--root DIR] [--reference DIR]
-         [--status [--offline|--online] | --fetch [name...] | --bump NAME REF]`;
+         [--status [--offline|--online] | --fetch [name...] | --bump NAME REF [--repo URL]]`;
 
 const OPTIONS = {
 	root: { type: "string" },
 	reference: { type: "string" },
+	repo: { type: "string" },
 	status: { type: "boolean" },
 	offline: { type: "boolean" },
 	online: { type: "boolean" },
@@ -51,10 +54,16 @@ function usage(message: string): never {
 	throw new PinsError("USAGE", `${message}\n${USAGE}`);
 }
 
+/** pnpm passes the `--` of `pnpm run pins:status -- --online` through; no pin name or ref starts with a dash. */
+function withoutSeparator(args: readonly string[]): string[] {
+	const at = args.indexOf("--");
+	return at === -1 ? [...args] : [...args.slice(0, at), ...args.slice(at + 1)];
+}
+
 function readArgs(args: readonly string[]) {
 	try {
 		return parseArgs({
-			args: [...args],
+			args: withoutSeparator(args),
 			allowPositionals: true,
 			options: OPTIONS,
 		});
@@ -77,6 +86,8 @@ function parseRequest(args: readonly string[]): Request {
 		usage("--offline and --online cannot be combined");
 	if ((values.offline === true || values.online === true) && verb !== "status")
 		usage("--offline and --online belong to --status");
+	if (values.repo !== undefined && verb !== "bump")
+		usage("--repo belongs to --bump");
 	if (verb === "bump" && positionals.length !== 2)
 		usage("--bump takes a pin name and a ref");
 	if (verb !== "bump" && verb !== "fetch" && positionals.length > 0)
@@ -96,6 +107,7 @@ function parseRequest(args: readonly string[]): Request {
 		root: resolve(values.root ?? here),
 		reference,
 		online: values.online === true,
+		repo: values.repo,
 		names: positionals,
 		allowLocal: process.env.HOBO_PINS_ALLOW_LOCAL === "1",
 	};
@@ -114,23 +126,23 @@ function loadPins(request: Request): Pins {
 	});
 }
 
-function main(args: readonly string[]): number {
+async function main(args: readonly string[]): Promise<number> {
 	const request = parseRequest(args);
 	const pins = loadPins(request);
 	switch (request.verb) {
 		case "status":
-			return runStatus(request, pins);
+			return await runStatus(request, pins);
 		case "bump":
-			return runBump(request, pins);
+			return await runBump(request, pins);
 		case "fetch":
-			return runFetch(request, pins);
+			return await runFetch(request, pins);
 		default:
 			return runInit(request, pins);
 	}
 }
 
 try {
-	process.exitCode = main(process.argv.slice(2));
+	process.exitCode = await main(process.argv.slice(2));
 } catch (error) {
 	if (error instanceof PinsError) {
 		console.error(`ERR ${error.message}`);

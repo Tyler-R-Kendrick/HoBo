@@ -5,7 +5,7 @@
 	"description": "Optional OpenSesame SecretsPort adapter for HoBo: a proxied invocation (`opensesame dev --agent run`) with secret references in place of credentials, so the process holds an osr_ surrogate and never the real token. Vercel only; AWS is a typed provider_not_brokered refusal.",
 	"type": "module",
 	"engines": {
-		"node": ">=22.21"
+		"node": "^22.21.0 || >=24"
 	},
 	"files": [
 		"LICENSE",

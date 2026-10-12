@@ -7,6 +7,8 @@
 export const ADAPTER_ERROR_CODES = [
 	/** A binding record or the bindings document does not parse. */
 	"binding_invalid",
+	/** The command to run is empty, or the launch cannot be built. */
+	"launch_invalid",
 	/** The `opensesame` executable cannot be started. */
 	"opensesame_bin_missing",
 	/** No `node`, no env-spec bridge, or no `@env-spec/parser` behind it. */

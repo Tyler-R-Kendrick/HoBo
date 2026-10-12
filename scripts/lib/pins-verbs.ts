@@ -32,13 +32,18 @@ export interface Request {
 	readonly online: boolean;
 	readonly repo: string | undefined;
 	readonly drop: readonly string[];
+	readonly force: boolean;
 	readonly entry: string | undefined;
 	readonly names: readonly string[];
 	readonly allowLocal: boolean;
 }
 
 function gitOptions(request: Request): GitOptions {
-	return { reference: request.reference, allowLocal: request.allowLocal };
+	return {
+		reference: request.reference,
+		allowLocal: request.allowLocal,
+		force: request.force,
+	};
 }
 
 function assetContext(request: Request): AssetContext {
@@ -95,7 +100,8 @@ function initGit(request: Request, pins: Pins, name: string): void {
 		request.reference === undefined
 			? ""
 			: `, objects borrowed from ${request.reference}`;
-	const how = `${result.shallow ? "shallow" : "full"}${borrowed}`;
+	const moved = result.was === null ? "" : `was ${short(result.was)}; `;
+	const how = `${moved}${result.shallow ? "shallow" : "full"}${borrowed}`;
 	console.log(
 		`${name}  ${result.kind} at ${short(result.head)}  (${how}${sparse})`,
 	);

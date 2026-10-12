@@ -36,7 +36,8 @@ import {
 } from "./lib/pins-verbs.ts";
 
 const USAGE = `usage: bootstrap-siblings.mts [--root DIR] [--reference DIR]
-         [--status [--offline|--online] | --fetch [name...] | --bump NAME REF [--repo URL] [--drop TARGET]... [--entry NAME]]`;
+         [--status [--offline|--online] | --fetch [name...] | --bump NAME REF [--repo URL] [--drop TARGET]... [--entry NAME]]
+         [--force]`;
 
 const OPTIONS = {
 	root: { type: "string" },
@@ -44,6 +45,7 @@ const OPTIONS = {
 	repo: { type: "string" },
 	drop: { type: "string", multiple: true },
 	entry: { type: "string" },
+	force: { type: "boolean" },
 	status: { type: "boolean" },
 	offline: { type: "boolean" },
 	online: { type: "boolean" },
@@ -91,6 +93,10 @@ function parseRequest(args: readonly string[]): Request {
 		usage("--repo belongs to --bump");
 	if (values.drop !== undefined && verb !== "bump")
 		usage("--drop belongs to --bump");
+	if (values.force === true && verb === "status")
+		usage(
+			"--force belongs to the verbs that move a submodule, not to --status",
+		);
 	if (values.entry !== undefined && verb !== "bump")
 		usage("--entry belongs to --bump");
 	if (values.entry !== undefined && !isFileName(values.entry))
@@ -117,6 +123,7 @@ function parseRequest(args: readonly string[]): Request {
 		repo: values.repo,
 		drop: values.drop ?? [],
 		entry: values.entry,
+		force: values.force === true,
 		names: positionals,
 		allowLocal: process.env.HOBO_PINS_ALLOW_LOCAL === "1",
 	};

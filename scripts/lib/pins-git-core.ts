@@ -92,6 +92,35 @@ export function isDirty(root: string, path: string): boolean {
 	);
 }
 
+/**
+ * Whether any branch, tag, remote-tracking ref or `refs/pins/*` contains
+ * `commit`: if none does, the only thing holding it is the reflog.
+ */
+export function onAnyRef(root: string, path: string, commit: string): boolean {
+	return (
+		git(join(root, path), [
+			"for-each-ref",
+			"--contains",
+			commit,
+			"--count=1",
+			"--format=%(refname)",
+		]).stdout !== ""
+	);
+}
+
+/**
+ * Remember a commit the pins put the submodule on. A shallow clone does not
+ * have it in any remote-tracking ref's history, so without this a later move
+ * off it would look like abandoning unpushed work.
+ */
+export function keepPin(root: string, path: string, commit: string): void {
+	must(
+		join(root, path),
+		["update-ref", `refs/pins/${commit}`, commit],
+		"recording the pinned commit",
+	);
+}
+
 export function isShallow(root: string, path: string): boolean {
 	return (
 		git(join(root, path), ["rev-parse", "--is-shallow-repository"]).stdout ===

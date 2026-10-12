@@ -13,26 +13,31 @@
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { type GitPin, isSafeRef, PinsError } from "./pins.ts";
+import { type GitPin, PinsError } from "./pins.ts";
 import {
 	git,
 	gitlinkOf,
 	headOf,
 	isDirty,
 	isShallow,
-	modulesEntry,
+	keepPin,
 	must,
-	sameRepo,
 	short,
 } from "./pins-git-core.ts";
 import {
-	isAllowedTransport,
+	assertCoherent,
+	assertNotAbandoning,
+	coherence,
+	type GitOptions,
+} from "./pins-git-guard.ts";
+import {
 	type NetOptions,
 	netGit,
 	remoteHas,
 	remoteTip,
 } from "./pins-git-net.ts";
 
+export { type Bump, bumpPin } from "./pins-git-bump.ts";
 export {
 	type GitResult,
 	git,
@@ -43,69 +48,7 @@ export {
 	sameRepo,
 	short,
 } from "./pins-git-core.ts";
-
-export interface GitOptions extends NetOptions {
-	/** `--reference`: a local clone to borrow objects from. */
-	readonly reference: string | undefined;
-}
-
-interface Findings {
-	readonly problems: string[];
-	readonly fixes: string[];
-}
-
-/**
- * The places a submodule's repository is named must agree with the manifest
- * before anything is fetched: `.gitmodules`, and the URL this clone configured
- * the last time it ran `git submodule init`. `git submodule update` uses those,
- * not the manifest, so a branch that edits `.gitmodules` would otherwise make
- * `setup` contact a host the manifest never named.
- */
-function coherence(root: string, pin: GitPin, allowLocal: boolean): Findings {
-	const found: Findings = { problems: [], fixes: [] };
-	const entry = modulesEntry(root, pin.path);
-	if (entry === null) {
-		found.problems.push(`${pin.path} is not registered in .gitmodules`);
-		found.fixes.push(`git submodule add ${pin.repo} ${pin.path}`);
-		return found;
-	}
-	const setUrl = `git config -f .gitmodules submodule.${entry.name}.url ${pin.repo}`;
-	if (!isAllowedTransport(entry.url, allowLocal)) {
-		found.problems.push(
-			`.gitmodules names ${entry.url} for ${pin.path}, which is not an https URL`,
-		);
-		found.fixes.push(setUrl);
-	} else if (!sameRepo(entry.url, pin.repo)) {
-		found.problems.push(
-			`.gitmodules names ${entry.url} for ${pin.path}; siblings.json says ${pin.repo}`,
-		);
-		found.fixes.push(
-			`${setUrl}   (or correct tools/pins/siblings.json if .gitmodules is right)`,
-		);
-	}
-	const configured = git(root, [
-		"config",
-		"--get",
-		`submodule.${entry.name}.url`,
-	]).stdout;
-	if (configured !== "" && !sameRepo(configured, entry.url)) {
-		found.problems.push(
-			`this clone's configured URL for ${pin.path} is ${configured}, not ${entry.url} (a stale "git submodule init")`,
-		);
-		found.fixes.push(`git submodule sync -- ${pin.path}`);
-	}
-	return found;
-}
-
-function assertCoherent(root: string, pin: GitPin, allowLocal: boolean): void {
-	const { problems, fixes } = coherence(root, pin, allowLocal);
-	if (problems.length > 0) {
-		throw new PinsError(
-			"SUBMODULE_STATE",
-			`${problems.join("\n")}\nfix: ${fixes.join("\n     ")}`,
-		);
-	}
-}
+export type { GitOptions } from "./pins-git-guard.ts";
 
 function updateSubmodule(root: string, pin: GitPin, options: GitOptions): void {
 	const refArgs =
@@ -175,6 +118,8 @@ function applySparse(root: string, pin: GitPin): boolean {
 export interface InitResult {
 	readonly kind: "initialised" | "updated" | "already pinned";
 	readonly head: string;
+	/** The commit HEAD was moved off, when it was moved. */
+	readonly was: string | null;
 	readonly shallow: boolean;
 	readonly sparseChanged: boolean;
 }
@@ -194,6 +139,9 @@ export function initPin(
 			`${pin.path} has uncommitted changes; commit or discard them before moving it to ${short(want)}`,
 		);
 	}
+	if (before !== null && before !== want) {
+		assertNotAbandoning(root, pin, before, want, options.force);
+	}
 	if (before !== want) updateSubmodule(root, pin, options);
 	const head = headOf(root, pin.path);
 	if (head !== want) {
@@ -202,6 +150,7 @@ export function initPin(
 			`${pin.path} is at ${head === null ? "nothing" : short(head)} after update; the pin is ${short(want)}`,
 		);
 	}
+	keepPin(root, pin.path, head);
 	const sparseChanged = applySparse(root, pin);
 	const kind =
 		before === want
@@ -209,7 +158,13 @@ export function initPin(
 			: before === null
 				? "initialised"
 				: "updated";
-	return { kind, head, shallow: isShallow(root, pin.path), sparseChanged };
+	return {
+		kind,
+		head,
+		was: before !== null && before !== want ? before : null,
+		shallow: isShallow(root, pin.path),
+		sparseChanged,
+	};
 }
 
 export interface GitStatus {
@@ -261,132 +216,4 @@ export function statusPin(
 		);
 	}
 	return { commit, problems, fixes, tip };
-}
-
-const HEX_REF = /^[0-9a-f]{4,40}$/iu;
-
-function peel(cwd: string, value: string): string | null {
-	const result = git(cwd, [
-		"rev-parse",
-		"--verify",
-		"--quiet",
-		"--end-of-options",
-		`${value}^{commit}`,
-	]);
-	return result.status === 0 ? result.stdout : null;
-}
-
-interface Resolved {
-	readonly commit: string;
-	/** The server was asked for it just now, so nobody has to ask again. */
-	readonly served: boolean;
-	/** Where a commit the server may not have came from. */
-	readonly from: string;
-}
-
-function resolveCommit(
-	sub: string,
-	pin: GitPin,
-	ref: string,
-	options: GitOptions,
-): Resolved {
-	if (HEX_REF.test(ref)) {
-		const local = peel(sub, ref);
-		if (local !== null) {
-			return { commit: local, served: false, from: "this submodule" };
-		}
-		const borrowed =
-			options.reference === undefined ? null : peel(options.reference, ref);
-		if (borrowed !== null && options.reference !== undefined) {
-			const lent = netGit(
-				sub,
-				["fetch", "--depth", "1", "--no-tags", options.reference, borrowed],
-				options,
-				false,
-				true,
-			);
-			if (lent.status !== 0) {
-				throw new PinsError(
-					"GIT_FAILED",
-					`fetch from the reference clone failed:\n${lent.stderr}`,
-				);
-			}
-			return {
-				commit: borrowed,
-				served: false,
-				from: `the --reference clone ${options.reference}`,
-			};
-		}
-		if (ref.length !== 40) {
-			throw new PinsError(
-				"GIT_FAILED",
-				`cannot resolve ${ref} to a commit: give a full 40-character id, a branch or a tag, or --reference <a local clone that has it>`,
-			);
-		}
-	}
-	const fetched = netGit(
-		sub,
-		["fetch", "--depth", "1", "--no-tags", pin.repo, "--", ref],
-		options,
-	);
-	if (fetched.status !== 0) {
-		throw new PinsError(
-			"GIT_FAILED",
-			`fetch of ${ref} failed:\n${fetched.stderr}`,
-		);
-	}
-	const commit = peel(sub, "FETCH_HEAD");
-	if (commit === null)
-		throw new PinsError("GIT_FAILED", `${ref} did not resolve to a commit`);
-	return { commit, served: true, from: pin.repo };
-}
-
-export interface Bump {
-	readonly from: string;
-	readonly to: string;
-}
-
-/** Check the submodule out at `ref` and stage the new gitlink; nothing else moves. */
-export function bumpPin(
-	root: string,
-	name: string,
-	pin: GitPin,
-	ref: string,
-	options: GitOptions,
-): Bump {
-	if (!isSafeRef(ref)) {
-		throw new PinsError("USAGE", `${ref} is not a commit, branch or tag name`);
-	}
-	const from = gitlinkOf(root, pin.path);
-	assertCoherent(root, pin, options.allowLocal);
-	if (headOf(root, pin.path) === null) {
-		throw new PinsError(
-			"SUBMODULE_STATE",
-			`${pin.path} is not fetched; run pnpm run pins:fetch ${name} first`,
-		);
-	}
-	if (isDirty(root, pin.path)) {
-		throw new PinsError(
-			"SUBMODULE_STATE",
-			`${pin.path} has uncommitted changes; commit or discard them first`,
-		);
-	}
-	const sub = join(root, pin.path);
-	const resolved = resolveCommit(sub, pin, ref, options);
-	const to = resolved.commit;
-	// A commit found here (in the submodule, or a --reference clone) may exist
-	// nowhere else: a pin other checkouts cannot fetch is a broken build.
-	if (!resolved.served && !remoteHas(sub, pin.repo, to, options)) {
-		throw new PinsError(
-			"NOT_PUSHED",
-			`${short(to)} exists here (in ${resolved.from}) but ${pin.repo} does not serve it. Push it first, then bump to it`,
-		);
-	}
-	must(
-		sub,
-		["checkout", "--quiet", "--detach", to],
-		`checkout of ${short(to)}`,
-	);
-	must(root, ["add", "--", pin.path], "staging the gitlink");
-	return { from, to };
 }

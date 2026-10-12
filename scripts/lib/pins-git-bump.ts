@@ -1,0 +1,156 @@
+/**
+ * `pins:bump` for a git pin: resolve a commit, branch or tag, ask the server
+ * whether it serves it, check the submodule out there and stage the gitlink.
+ *
+ * Erasable TypeScript with node builtins only.
+ */
+import { join } from "node:path";
+import { type GitPin, isSafeRef, PinsError } from "./pins.ts";
+import {
+	git,
+	gitlinkOf,
+	headOf,
+	isDirty,
+	keepPin,
+	must,
+	short,
+} from "./pins-git-core.ts";
+import {
+	assertCoherent,
+	assertNotAbandoning,
+	type GitOptions,
+} from "./pins-git-guard.ts";
+import { netGit, remoteHas } from "./pins-git-net.ts";
+
+const HEX_REF = /^[0-9a-f]{4,40}$/iu;
+
+function peel(cwd: string, value: string): string | null {
+	const result = git(cwd, [
+		"rev-parse",
+		"--verify",
+		"--quiet",
+		"--end-of-options",
+		`${value}^{commit}`,
+	]);
+	return result.status === 0 ? result.stdout : null;
+}
+
+interface Resolved {
+	readonly commit: string;
+	/** The server was asked for it just now, so nobody has to ask again. */
+	readonly served: boolean;
+	/** Where a commit the server may not have came from. */
+	readonly from: string;
+}
+
+function resolveCommit(
+	sub: string,
+	pin: GitPin,
+	ref: string,
+	options: GitOptions,
+): Resolved {
+	if (HEX_REF.test(ref)) {
+		const local = peel(sub, ref);
+		if (local !== null) {
+			return { commit: local, served: false, from: "this submodule" };
+		}
+		const borrowed =
+			options.reference === undefined ? null : peel(options.reference, ref);
+		if (borrowed !== null && options.reference !== undefined) {
+			const lent = netGit(
+				sub,
+				["fetch", "--depth", "1", "--no-tags", options.reference, borrowed],
+				options,
+				false,
+				true,
+			);
+			if (lent.status !== 0) {
+				throw new PinsError(
+					"GIT_FAILED",
+					`fetch from the reference clone failed:\n${lent.stderr}`,
+				);
+			}
+			return {
+				commit: borrowed,
+				served: false,
+				from: `the --reference clone ${options.reference}`,
+			};
+		}
+		if (ref.length !== 40) {
+			throw new PinsError(
+				"GIT_FAILED",
+				`cannot resolve ${ref} to a commit: give a full 40-character id, a branch or a tag, or --reference <a local clone that has it>`,
+			);
+		}
+	}
+	const fetched = netGit(
+		sub,
+		["fetch", "--depth", "1", "--no-tags", pin.repo, "--", ref],
+		options,
+	);
+	if (fetched.status !== 0) {
+		throw new PinsError(
+			"GIT_FAILED",
+			`fetch of ${ref} failed:\n${fetched.stderr}`,
+		);
+	}
+	const commit = peel(sub, "FETCH_HEAD");
+	if (commit === null)
+		throw new PinsError("GIT_FAILED", `${ref} did not resolve to a commit`);
+	return { commit, served: true, from: pin.repo };
+}
+
+export interface Bump {
+	readonly from: string;
+	readonly to: string;
+}
+
+/** Check the submodule out at `ref` and stage the new gitlink; nothing else moves. */
+export function bumpPin(
+	root: string,
+	name: string,
+	pin: GitPin,
+	ref: string,
+	options: GitOptions,
+): Bump {
+	if (!isSafeRef(ref)) {
+		throw new PinsError("USAGE", `${ref} is not a commit, branch or tag name`);
+	}
+	const from = gitlinkOf(root, pin.path);
+	assertCoherent(root, pin, options.allowLocal);
+	if (headOf(root, pin.path) === null) {
+		throw new PinsError(
+			"SUBMODULE_STATE",
+			`${pin.path} is not fetched; run pnpm run pins:fetch ${name} first`,
+		);
+	}
+	if (isDirty(root, pin.path)) {
+		throw new PinsError(
+			"SUBMODULE_STATE",
+			`${pin.path} has uncommitted changes; commit or discard them first`,
+		);
+	}
+	const sub = join(root, pin.path);
+	const here = headOf(root, pin.path);
+	const resolved = resolveCommit(sub, pin, ref, options);
+	const to = resolved.commit;
+	// A commit found here (in the submodule, or a --reference clone) may exist
+	// nowhere else: a pin other checkouts cannot fetch is a broken build.
+	if (!resolved.served && !remoteHas(sub, pin.repo, to, options)) {
+		throw new PinsError(
+			"NOT_PUSHED",
+			`${short(to)} exists here (in ${resolved.from}) but ${pin.repo} does not serve it. Push it first, then bump to it`,
+		);
+	}
+	if (here !== null && here !== to) {
+		assertNotAbandoning(root, pin, here, to, options.force);
+	}
+	must(
+		sub,
+		["checkout", "--quiet", "--detach", to],
+		`checkout of ${short(to)}`,
+	);
+	keepPin(root, pin.path, to);
+	must(root, ["add", "--", pin.path], "staging the gitlink");
+	return { from, to };
+}

@@ -6,7 +6,13 @@
  *
  * `access` reads the variable a binding names from the environment the process
  * was started with under `opensesame dev --agent run`, and serves it only when
- * it is shaped like a surrogate. A placeholder (`ostest_`), an absent variable
+ * it is shaped like a surrogate AND the same environment carries the markers of
+ * a run `runProxied` started: HOBO_OPENSESAME_CHILD=1, NODE_USE_ENV_PROXY=1 and
+ * an HTTPS_PROXY on loopback. That is shape plus run markers, not cryptographic
+ * provenance: the port cannot ask OpenSesame whether a surrogate is live, so an
+ * `osr_` copied from another run into an environment that also fakes all three
+ * markers would pass. What it stops is the plain mistakes: a surrogate pasted or
+ * left over, served as material, then sent straight to the provider with no proxy. A placeholder (`ostest_`), an absent variable
  * and a plain token the person exported are all denied as `placeholders_only`:
  * a run without the plugin exits 0 and hands the child a placeholder, and
  * against an emulator that accepts any token that is a false green.
@@ -22,12 +28,36 @@ import {
 	type ParsedCredentialBinding,
 } from "./binding.js";
 import { OpenSesameAdapterError } from "./errors.js";
+import { CHILD_MARKER } from "./launch.js";
 
 // public-contract: `osr_` and 32 lower-case hex digits, the shape of what OpenSesame's plugin issues.
 export const SURROGATE_PATTERN = "^osr_[0-9a-f]{32}$";
 const surrogateRe = new RegExp(SURROGATE_PATTERN, "u");
 
 const VERSION = "surrogate";
+
+const LOOPBACK_HOSTS = ["127.0.0.1", "[::1]", "localhost"];
+
+/** What a run started by `runProxied` leaves in the environment, or the first thing missing. */
+function missingRunMarker(env: NodeJS.ProcessEnv): string | undefined {
+	if (env[CHILD_MARKER] !== "1") return `${CHILD_MARKER} is not 1`;
+	if (env.NODE_USE_ENV_PROXY !== "1") return "NODE_USE_ENV_PROXY is not 1";
+	const proxy = env.HTTPS_PROXY;
+	if (proxy === undefined) return "HTTPS_PROXY is not set";
+	try {
+		const url = new URL(proxy);
+		if (
+			url.protocol === "http:" &&
+			url.port !== "" &&
+			LOOPBACK_HOSTS.includes(url.hostname)
+		) {
+			return undefined;
+		}
+	} catch {
+		// Not a URL: the same answer.
+	}
+	return "HTTPS_PROXY is not an http proxy on loopback with a port";
+}
 
 export type OpenSesamePortOptions = Readonly<{
 	bindings: readonly ParsedCredentialBinding[];
@@ -61,6 +91,14 @@ export function createOpenSesameSecretsPort(
 				status: "denied",
 				reason: "no binding for this credential reference",
 				code: "secret-not-found",
+			};
+		}
+		const missing = missingRunMarker(options.env);
+		if (missing !== undefined) {
+			return {
+				status: "denied",
+				reason: `no_run_provenance: ${missing}, so ${binding.envName} was not delivered by a run started by runProxied`,
+				code: "placeholders_only",
 			};
 		}
 		const value = options.env[binding.envName];

@@ -16,8 +16,18 @@ const SURROGATE = `osr_${"0123456789abcdef".repeat(2)}`;
 const LOCATOR = "hobo-token://vercel/deploy";
 const VERSION_FALLBACK = "surrogate";
 
+/** What a process started by `runProxied` has beside the surrogate: the run's markers. */
+const RUN = {
+	HOBO_OPENSESAME_CHILD: "1",
+	NODE_USE_ENV_PROXY: "1",
+	HTTPS_PROXY: "http://opensesame:run-secret@127.0.0.1:41234",
+};
+
 function portWith(env: NodeJS.ProcessEnv): SecretsPort {
-	return createOpenSesameSecretsPort({ bindings: parsed(), env });
+	return createOpenSesameSecretsPort({
+		bindings: parsed(),
+		env: { ...RUN, ...env },
+	});
 }
 
 describe("the OpenSesame SecretsPort", () => {
@@ -73,7 +83,7 @@ describe("the OpenSesame SecretsPort", () => {
 		});
 	});
 
-	it("never serves a plain token as material: only a surrogate of this run passes", async () => {
+	it("never serves a plain token as material: only a value shaped like a surrogate passes", async () => {
 		const plain = "vtok_dummy_marker_0123456789abcdef";
 		const result = await portWith({ VERCEL_TOKEN: plain }).access(LOCATOR);
 		expect(result).toMatchObject({
@@ -96,6 +106,91 @@ describe("the OpenSesame SecretsPort", () => {
 				value,
 			).toMatchObject({ status: "denied" });
 		}
+	});
+
+	describe("run provenance: shape alone is not enough", () => {
+		// An `osr_` + 32 hex a person pasted, or one left from another or an earlier run, has the
+		// right shape and no run behind it. What is checked is the shape and the markers a run
+		// started by runProxied carries; it is not cryptographic provenance (the port cannot ask
+		// OpenSesame whether a surrogate is live).
+		function accessWith(env: NodeJS.ProcessEnv) {
+			return createOpenSesameSecretsPort({ bindings: parsed(), env }).access(
+				LOCATOR,
+			);
+		}
+
+		it("serves a surrogate when the child marker, NODE_USE_ENV_PROXY and a loopback proxy are all there", async () => {
+			for (const proxy of [
+				"http://opensesame:s@127.0.0.1:44719",
+				"http://localhost:8080",
+				"http://[::1]:3128",
+			]) {
+				const result = await accessWith({
+					...RUN,
+					HTTPS_PROXY: proxy,
+					VERCEL_TOKEN: SURROGATE,
+				});
+				expect(result.status, proxy).toBe("ok");
+			}
+		});
+
+		it("denies a surrogate-shaped value with no run behind it, naming the reason and not the value", async () => {
+			const result = await accessWith({ VERCEL_TOKEN: SURROGATE });
+			expect(result).toMatchObject({
+				status: "denied",
+				code: "placeholders_only",
+			});
+			if (result.status === "denied") {
+				expect(result.reason).toMatch(/^no_run_provenance: /u);
+				expect(result.reason).not.toContain(SURROGATE);
+			}
+		});
+
+		it.each([
+			["the child marker is missing", { HOBO_OPENSESAME_CHILD: undefined }],
+			["the child marker is not 1", { HOBO_OPENSESAME_CHILD: "0" }],
+			["NODE_USE_ENV_PROXY is missing", { NODE_USE_ENV_PROXY: undefined }],
+			["NODE_USE_ENV_PROXY is off", { NODE_USE_ENV_PROXY: "0" }],
+			["there is no HTTPS_PROXY", { HTTPS_PROXY: undefined }],
+			[
+				"HTTPS_PROXY is not loopback",
+				{ HTTPS_PROXY: "http://proxy.example:8080" },
+			],
+			[
+				"HTTPS_PROXY is a private address",
+				{ HTTPS_PROXY: "http://10.0.0.1:3128" },
+			],
+			[
+				"HTTPS_PROXY only starts like loopback",
+				{ HTTPS_PROXY: "http://127.0.0.1.evil.example:80" },
+			],
+			["HTTPS_PROXY has no port", { HTTPS_PROXY: "http://127.0.0.1" }],
+			["HTTPS_PROXY is not http", { HTTPS_PROXY: "https://127.0.0.1:8443" }],
+			["HTTPS_PROXY is not a URL", { HTTPS_PROXY: "127.0.0.1:8080" }],
+		])("denies when %s", async (_why, change) => {
+			const result = await accessWith({
+				...RUN,
+				...change,
+				VERCEL_TOKEN: SURROGATE,
+			});
+			expect(result).toMatchObject({
+				status: "denied",
+				code: "placeholders_only",
+			});
+			if (result.status === "denied")
+				expect(result.reason).toMatch(/^no_run_provenance: /u);
+		});
+
+		it("denies accessVersion the same way", async () => {
+			const port = createOpenSesameSecretsPort({
+				bindings: parsed(),
+				env: { VERCEL_TOKEN: SURROGATE },
+			});
+			expect(await port.accessVersion(LOCATOR, "surrogate")).toMatchObject({
+				status: "denied",
+				code: "placeholders_only",
+			});
+		});
 	});
 
 	it("accessVersion serves the one version and refuses another", async () => {
@@ -139,7 +234,7 @@ describe("the OpenSesame SecretsPort", () => {
 					env_name: "EDGE_TOKEN",
 				}),
 			),
-			env: { VERCEL_TOKEN: SURROGATE, EDGE_TOKEN: other },
+			env: { ...RUN, VERCEL_TOKEN: SURROGATE, EDGE_TOKEN: other },
 		});
 		expect(await port.access(LOCATOR)).toMatchObject({ material: SURROGATE });
 		expect(await port.access("hobo-token://vercel/edge")).toMatchObject({

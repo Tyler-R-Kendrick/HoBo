@@ -1019,3 +1019,38 @@ ADR-0038's adapter spectrum has hosted IdPs (WorkOS · Auth0 · Supabase Auth ·
 - **(+)** Self-hosters get real auth (orgs, OAuth, sessions) with zero SaaS dependency and zero pasted secrets, one declaration away.
 - **(+)** Auth data joins the governed data plane: its schema evolves through the same gated migrations as app data.
 - **(−)** A third-party framework's release cadence now sits inside a default bundle; version pinning and upgrade testing are platform obligations.
+
+## ADR-0170
+**HoBo runs under OpenSesame's proxied invocation and holds a surrogate, never the credential: an optional `SecretsPort` adapter, Vercel only, AWS refused by type.**
+
+**Status:** Accepted — extends [ADR-0113](#adr-0113) (residual `SecretsPort`) and [ADR-0027](#adr-0027) (the resolution ladder: this is a `provider-federation` source); implements the receiving end of OpenSesame's surrogate credentials (ADR 0150 there). Does not change [ADR-0161](#adr-0161) or add a SecretRef scheme.
+
+### Context
+HoBo deploys with provider credentials. Reading `VERCEL_TOKEN` from the environment (`packages/hobo/src/compose.ts`) means the process, and anything an agent runs beside it, holds a long-lived secret. OpenSesame runs a command with **secret references in place of credentials**, like `op run`: `opensesame dev --agent run -- <cmd>` reads an `.env.schema` whose entry is `NAME=opensesameConnection(conn://…, projection=legacy-token, paths="…", methods="…")`, and its optional `surrogate-proxy` plugin gives the child an `osr_` surrogate, a proxy and a CA. The proxy swaps the surrogate for the sealed token at the provider's own host, only inside the declared scope, and revokes it when the run ends or a surrogate is sent anywhere else (exit 77). The plugin brokers `vercel` and `github` only.
+
+Three facts, each checked against the OpenSesame code and the real binary rather than its docs, shape the adapter:
+
+1. **A run without a surrogate still succeeds.** With the plugin absent or off, or no sealed entry, `dev run --agent` starts the child, hands it an `ostest_…` placeholder and exits as the child does — 0. Against an emulator that accepts any token that is a false green.
+2. **The status alone does not say how a run ended.** 77 (tripwire), 143 and 129 (SIGTERM, SIGHUP) are also statuses a child can return; a child killed by a signal makes OpenSesame exit 1; every refusal before the child starts is `Error: …` and 1.
+3. **HoBo's clients use global `fetch`**, which honours `HTTPS_PROXY` only with `NODE_USE_ENV_PROXY=1` (Node 22.21+ or 24+). Shown by the real lane to work through the plugin's proxy on Node 22.22; shown without the variable to send the surrogate straight out, not through the proxy.
+
+### Decision
+1. **`@hobo/adapter-opensesame` (`packages/adapters/`) is an optional `SecretsPort` of kind `opensesame`** (one additive member of the union in `@hobo/identity`). `access(locator)` returns the child's own `osr_` surrogate (`^osr_[0-9a-f]{32}$`, read from the environment it was started with) as `provider-federation` material; anything else — a placeholder, nothing, a plain token — is denied `placeholders_only`. `put` is read-only: secrets enter by a person's `opensesame pass insert`, never through HoBo. It is not a default dependency of `@hobo/identity` or the composed `hobo` binary.
+2. **Bindings are references.** `hobo.credentials.json` (a `CredentialBindings` document: protobuf + CUE under the package's `data-models/`) maps the existing locator `hobo-token://vercel/deploy` to a connection, the variable the child reads, and a **non-empty** scope of path prefixes and methods. An unbounded scope is unrepresentable, as it is for the plugin; the parser's patterns are the CUE's, and OpenSesame's `surrogate-scope.json` vectors are replayed against it.
+3. **The adapter renders the schema, launches, and reads the end.** `renderEnvSchema` writes the `.env.schema` (0600, in a directory of its own, removed after); `buildLaunch` refuses a nested run, a Node that cannot proxy `fetch`, a missing env-spec bridge; `runProxied` passes SIGTERM and SIGHUP on to OpenSesame and classifies the end from the status **and** OpenSesame's own stderr lines (`parseOutcome`): a run that left a placeholder is `placeholders_only` whatever its status, and 77/143/129 count as a tripwire/signal only beside OpenSesame's line. The stderr read is advisory (the child shares the stream); the port is the gate.
+4. **Vercel only; AWS is `provider_not_brokered`.** AWS requests are signed with SigV4 in process from a live secret key, which header substitution cannot serve, and OpenSesame's AWS credential helper fails closed until its STS mint exists. The adapter says so and refuses the binding; the real path waits for that OpenSesame slice.
+5. **No public test-build asset.** The plugin's test build (`--features upstream-override`) is the only build that can be aimed at a loopback server and must never hold a real token, so it is not published. The real lane (`test:real`, env-gated by `HOBO_OPENSESAME_KIT`, fails rather than skips) runs against a kit built locally; the package README says exactly how.
+6. **Node `>= 22.21` is stated in this package's `engines` only.** The boundary gate gains one exact edge (`adapter-opensesame -> identity`, the second port implementer, the same reason as `adapter-openbao`).
+
+### Non-goals
+- Not a way to hold a credential: nothing here reveals, caches or logs one, and no message echoes a rejected value.
+- Not wired into `hobo up` yet: relaunching the composed binary under OpenSesame and the `OPENSESAME_PLACEHOLDERS_ONLY` guard in `compose.ts` are the next slice, on this package.
+- Not a replacement for bound-resource or federated identity where a provider offers one.
+- No Windows or macOS lane: the real lane reads `/proc`, and OpenSesame's proxied-run suite is Linux only.
+
+### Consequences
+- **(+)** A HoBo process started this way holds a spent-on-exit surrogate, and the adapter turns the one silent downgrade (a green run with a placeholder) into a typed failure.
+- **(+)** The process boundary is a pact verified against a stand-in binary on every test run and against the real one under `test:real`.
+- **(−)** The real lane needs a locally built kit: a few GB of Rust build, or about nine minutes and 1.7 GB of RAM for the CLI with `CARGO_PROFILE_DEV_DEBUG=0` on `/dev/shm`. Until a release publishes one, only people who can run `cargo build` run it.
+- **(−)** OpenSesame's wording is a contract the adapter reads: `test/fixtures/opensesame-lines.ts` copies the lines, the pact pins what they mean, and the real lane fails if the binary's lines drift.
+- **(−)** AWS credentials from OpenSesame at deploy time are not available until the STS mint lands.

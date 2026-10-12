@@ -80,6 +80,17 @@ binding changes between lanes — the swap logic is identical.
 Success requires `reapplied` **and** zero failed probe samples; any probe
 failure exits non-zero and the archived evidence names the failing samples.
 
+## Credential delivery (who holds the token)
+
+| Source | Providers | Status |
+|---|---|---|
+| Process environment (`VERCEL_TOKEN`, `CLOUDFLARE_API_TOKEN`) | Vercel, Cloudflare | Default; the process holds the credential |
+| `@hobo/adapter-opensesame` — run under `opensesame dev --agent run`, hold an `osr_` surrogate | **Vercel** | **Real-lane verified, locally**: `test:real` against the real `opensesame`, the plugin's test build and a recording TLS upstream (needs `HOBO_OPENSESAME_KIT`, fails rather than skips; no public test-build asset). Not yet wired into `hobo up` |
+| `@hobo/adapter-opensesame` | AWS | **Refused** (`provider_not_brokered`): SigV4 signs in process from a live key, and OpenSesame's STS mint does not exist yet |
+
+A proxied run whose plugin is missing or off exits 0 with a placeholder; the adapter reports that as `placeholders_only`, never as a pass.
+Verified means the adapter against the real OpenSesame binary on Linux — not against `api.vercel.com`.
+
 ## Operator takeaway
 
 1. **Offline dogfood:** hello-bindle + self-host-yard + self-host-station — no cloud account.  

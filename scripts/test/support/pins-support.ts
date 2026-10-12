@@ -8,7 +8,14 @@
  */
 import { execFileSync, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { mkdirSync, mkdtempSync, writeFileSync } from "node:fs";
+import {
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	rmSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import {
 	createServer,
 	type IncomingMessage,
@@ -26,8 +33,48 @@ export const REPO_ROOT = join(
 
 export const SCRIPT = join(REPO_ROOT, "scripts/bootstrap-siblings.mts");
 
+const made: string[] = [];
+/** What `mkdtemp` makes of `pins-<label>-`: six random characters. */
+const SCRATCH_NAME = /^pins-[a-z-]+-[A-Za-z0-9]{6}$/u;
+const STALE_AFTER_MS = 10 * 60_000;
+
+/** Directories an earlier run leaked (a killed one); young ones may be live runs. */
+function sweepStale(): void {
+	for (const name of readdirSync(tmpdir())) {
+		if (!SCRATCH_NAME.test(name)) continue;
+		const path = join(tmpdir(), name);
+		try {
+			const info = statSync(path);
+			const mine = info.uid === process.getuid?.();
+			if (
+				mine &&
+				info.isDirectory() &&
+				Date.now() - info.mtimeMs > STALE_AFTER_MS
+			) {
+				rmSync(path, { recursive: true, force: true });
+			}
+		} catch {
+			// Gone already, or not ours to read: leave it.
+		}
+	}
+}
+
+function removeMade(): void {
+	for (const dir of made) rmSync(dir, { recursive: true, force: true });
+}
+
+/**
+ * A fresh temp directory that is removed when this process exits. Stale ones
+ * left by an earlier run are swept the first time it is called.
+ */
 export function scratch(label: string): string {
-	return mkdtempSync(join(tmpdir(), `pins-${label}-`));
+	if (made.length === 0) {
+		sweepStale();
+		process.once("exit", removeMade);
+	}
+	const dir = mkdtempSync(join(tmpdir(), `pins-${label}-`));
+	made.push(dir);
+	return dir;
 }
 
 export function sha256Hex(bytes: Uint8Array | string): string {

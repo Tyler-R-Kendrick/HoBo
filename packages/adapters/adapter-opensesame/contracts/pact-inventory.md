@@ -29,6 +29,11 @@ is what the adapter concluded.
 - Every response carries `tokenLeaked: false`: the dummy token that stands for
   the sealed one must appear in no child environment, argument, schema, line of
   output or outcome. The consumer test refuses a pact that records otherwise.
+  Against the stand-in binary that is true by construction (the stand-in never
+  reads the dummy), so it proves nothing there; the proof is the real lane, where
+  the token is sealed, redeemed once at a recording upstream and swept for in the
+  child's environment and arguments, the output, the outcome, every file under the
+  sandbox and every process. The pact says so in `metadata.tokenLeaked`.
 - A run that exits 0 with a placeholder (`plugin-absent`, `no-sealed-entry`) is
   `424`, never `200`: against an emulator that accepts any token it is a false green.
 - `HoboOpenSesameAdapter` and `OpenSesameProxiedRun` are participant names the

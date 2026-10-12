@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import {
@@ -9,7 +10,7 @@ import {
 } from "@hobo/contract-harness";
 import { describe, expect, it } from "vitest";
 
-import { isJsonNumber, isJsonString } from "../../src/json.js";
+import { isJsonNumber, isJsonString, parseJsonValue } from "../../src/json.js";
 import { exitCodeOf, outcomeError, parseOutcome } from "../../src/outcome.js";
 import { linesFor } from "../../test/fixtures/opensesame-lines.js";
 import { fieldOf, jsonBody } from "../../test/support/pact-json.js";
@@ -83,6 +84,25 @@ describe("the proxied-run boundary (consumer contract)", () => {
 				/osr_|ostest_|vtok_|Bearer /u,
 			);
 		}
+	});
+
+	it("says what tokenLeaked proves: true by construction against the stand-in, evidence only in the real lane", () => {
+		const raw = parseJsonValue(
+			readFileSync(
+				path.join(
+					contractsDir,
+					"pacts/opensesame-proxied-run-boundary.pact.json",
+				),
+				"utf8",
+			),
+		);
+		const metadata = fieldOf(raw, "metadata");
+		const note = fieldOf(metadata ?? null, "tokenLeaked");
+		if (!isJsonString(note))
+			throw new Error("the pact carries no tokenLeaked note");
+		expect(note).toMatch(/by construction/u);
+		expect(note).toMatch(/stand-in/u);
+		expect(note).toMatch(/real lane/u);
 	});
 
 	it("the adapter concludes from OpenSesame's real lines what the pact says the run was", async () => {

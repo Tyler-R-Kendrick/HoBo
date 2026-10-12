@@ -62,7 +62,11 @@ export type ObservedRun = Readonly<{
 	outcome: ProxiedRunOutcome;
 	/** The variables the child recorded, or `undefined` when it never ran. */
 	childEnv: Readonly<Record<string, string>> | undefined;
-	/** Whether the dummy token that stands for the sealed one showed up anywhere it must not. */
+	/**
+	 * Whether the dummy token that stands for the sealed one showed up anywhere it
+	 * must not. The stand-in never reads that dummy, so `false` there is true by
+	 * construction; only the real lane's sweep makes it evidence.
+	 */
 	leaked: boolean;
 }>;
 

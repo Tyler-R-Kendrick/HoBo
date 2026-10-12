@@ -382,6 +382,7 @@
   "metadata": {
     "pactSpecification": {
       "version": "3.0.0"
-    }
+    },
+    "tokenLeaked": "tokenLeaked is false by construction against the stand-in binary, which never reads the dummy that stands for the sealed token; it is evidence only in the real lane (test/real), where the token is sealed by `opensesame pass insert`, redeemed once at a recording upstream, and swept for in the child's environment and arguments, the output, the outcome, every file under the sandbox and every process."
   }
 }

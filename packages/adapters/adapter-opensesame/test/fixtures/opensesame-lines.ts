@@ -51,3 +51,11 @@ export const SAMPLE_LINES = {
 } as const;
 
 export type SampleScenario = keyof typeof SAMPLE_LINES;
+
+/** The sample lines for a scenario of the pact, if OpenSesame prints any of its own. */
+export function linesFor(scenario: string): string {
+	const entry = Object.entries(SAMPLE_LINES).find(
+		([known]) => known === scenario,
+	);
+	return entry === undefined ? "" : `${entry[1].join("\n")}\n`;
+}

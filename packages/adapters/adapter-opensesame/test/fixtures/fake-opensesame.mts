@@ -90,11 +90,14 @@ const names = [
 const delivered =
 	scenario !== "plugin-absent" && scenario !== "no-sealed-entry";
 
-// An agent child never inherits the store passphrase, nor this fake's own knobs.
+// An agent child never inherits the store passphrase, nor this fake's own knobs
+// (FAKE_OPENSESAME_STORE_TOKEN stands for the sealed token: only the "upstream"
+// ever sees it).
 const env: NodeJS.ProcessEnv = { ...process.env };
 delete env.OPENSESAME_STORE_PASSWORD;
-delete env.FAKE_OPENSESAME_SCENARIO;
-delete env.FAKE_OPENSESAME_RECORD;
+for (const key of Object.keys(env)) {
+	if (key.startsWith("FAKE_OPENSESAME_")) delete env[key];
+}
 for (const name of names) {
 	env[name] = delivered
 		? `osr_${randomBytes(16).toString("hex")}`

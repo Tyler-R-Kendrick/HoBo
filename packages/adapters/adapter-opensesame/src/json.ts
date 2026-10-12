@@ -13,6 +13,10 @@ export function isJsonString<T>(value: T): value is T & string {
 	return tagOf.call(value) === "[object String]";
 }
 
+export function isJsonNumber<T>(value: T): value is T & number {
+	return tagOf.call(value) === "[object Number]";
+}
+
 export function isJsonObject<T>(value: T): value is T & JsonObject {
 	return (
 		value !== undefined &&

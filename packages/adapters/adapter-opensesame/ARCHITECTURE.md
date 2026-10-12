@@ -31,7 +31,7 @@ This adapter owns no aggregate. It implements the residual `SecretsPort` for a p
   `listVersions`. `put` is rejected: secrets enter by a person's `opensesame pass insert`.
 - **Event** - upstream `@hobo/identity` emits refs-only `secret.Accessed` / `config.Resolved` (never-compact
   CredentialAudit). The adapter's own record of a run is a `ProxiedRunOutcome` (a closed `kind`, an exit status and one
-  scrubbed line) and a `SurrogateEvidence` (digests of the connection and the scope); neither carries a surrogate or a token.
+  fixed sentence chosen by the kind: no line of output, OpenSesame's or the child's, is ever copied into it) and a `SurrogateEvidence` (digests of the connection and the scope); neither carries a surrogate or a token.
 - **Actor** - none owned here; OpenSesame's plugin is the actor that issues, redeems and revokes a surrogate for the
   life of one run, and the Camp / Station / config-resolver actors in identity and runtime packages invoke the port.
 - **Event store** - the credential-audit stream on the platform EventStore (identity package), not an OpenSesame journal.
@@ -55,4 +55,10 @@ This adapter owns no aggregate. It implements the residual `SecretsPort` for a p
 A proxied run that cannot deliver a surrogate still starts the child and exits as the child does. The only signal
 is a line on stderr, so `parseOutcome` reads OpenSesame's own lines (column 0, `opensesame: ` or `Error: `) beside the
 status. The child shares that stream, so this is a diagnosis, not a gate; the gate is the port, which serves only a
-value shaped `osr_` + 32 hex from the child's own environment.
+value shaped `osr_` + 32 hex from the child's own environment, under the run's markers.
+
+A child can print a line in one of OpenSesame's shapes, and can exit 77, 143 or 129 itself. What it gains is a
+fail-closed kind (a tripwire, a refusal, a placeholder) with a fixed sentence; it never gains a pass, and nothing it
+wrote reaches the outcome or an error message. An `Error:` line that is not one of OpenSesame's is the child's own
+failure (every uncaught Node exception starts that way): `child_exit`, the status, no words. The status 77, 143 or
+129 is advisory beside its line.

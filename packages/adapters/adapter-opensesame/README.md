@@ -103,8 +103,10 @@ Where the docs and the code are not the same thing, or the status alone is not e
 - Every refusal before the child starts (pin mismatch, unreadable entry, no bounded scope, a schema
   that does not parse) is `Error: <message>` on stderr and status `1`.
 - `--schema` is a global flag of `dev`: `opensesame dev --agent --schema <file> run -- <cmd>`.
-- The classification reads stderr, which the child shares, so it is advisory. The gate that a surrogate
-  was really delivered is the port, which checks the child's own variable.
+- The classification reads stderr, which the child shares, so it is advisory. A child can print a line in
+  OpenSesame's shape (and exit 77, 143 or 129 itself); what that gains it is a fail-closed kind with a fixed
+  sentence, never a pass, and none of its text reaches the outcome or an error message (a `child_exit`
+  carries the status and no words). The gate that a surrogate was really delivered is the port.
 
 ## Tests
 

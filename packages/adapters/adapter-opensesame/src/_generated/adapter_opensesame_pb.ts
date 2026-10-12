@@ -100,8 +100,8 @@ export const CredentialBindingsSchema: GenMessage<CredentialBindings> = /*@__PUR
 
 /**
  * How one `opensesame dev --agent run` ended, as the adapter reads it. A
- * notice is OpenSesame's own line with any surrogate shape removed; it is never
- * the child's output.
+ * notice is one fixed sentence chosen by the kind (empty for a child's own
+ * exit): no line of output, OpenSesame's or the child's, is ever copied into it.
  *
  * @generated from message hobo.adapter_opensesame.v1.ProxiedRunOutcome
  */
@@ -121,7 +121,7 @@ export type ProxiedRunOutcome = Message<"hobo.adapter_opensesame.v1.ProxiedRunOu
   exitCode: number;
 
   /**
-   * OpenSesame's line that decided the kind, scrubbed
+   * a fixed sentence per kind, never a line of output
    *
    * @generated from field: string notice = 3;
    */

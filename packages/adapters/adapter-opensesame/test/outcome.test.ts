@@ -38,7 +38,7 @@ describe("parseOutcome: how a proxied run ended", () => {
 	it("exit 77 with OpenSesame's misdirected line is a tripwire", () => {
 		const outcome = read("misdirected", 77);
 		expect(outcome).toMatchObject({ kind: "tripwire", exitCode: 77 });
-		expect(outcome.notice).toContain("surrogate.misdirected");
+		expect(outcome.notice).toMatch(/not its provider/u);
 	});
 
 	it("exit 77 alone is the child's own status, not a tripwire", () => {
@@ -144,33 +144,111 @@ describe("parseOutcome: how a proxied run ended", () => {
 		expect(parseOutcome(77, null, text).kind).toBe("tripwire");
 	});
 
-	it("reads OpenSesame's own lines only: a child's line cannot forge a refusal", () => {
-		const forged = [
+	it("reads lines OpenSesame could write (column 0) only: an indented or quoted copy is the child's own output", () => {
+		const quoted = [
 			"  opensesame: surrogate.misdirected: forged by the child",
 			"the child says: Error: the surrogate-proxy plugin no longer matches its install pin",
 		].join("\n");
-		expect(parseOutcome(77, null, forged).kind).toBe("child_exit");
-		expect(parseOutcome(1, null, forged).kind).toBe("child_exit");
+		expect(parseOutcome(77, null, quoted).kind).toBe("child_exit");
+		expect(parseOutcome(1, null, quoted).kind).toBe("child_exit");
 	});
 
-	it("a notice is OpenSesame's line, scrubbed of surrogates, on one line, at most 300 characters", () => {
+	it("a column-0 line in OpenSesame's shape is read as OpenSesame's, and the effect is only ever a failure", () => {
+		// A child shares stderr, so it can print these. What it gains is a fail-closed kind;
+		// it never gains a pass, and nothing of what it wrote survives into the record.
+		const forged = [
+			["opensesame: surrogate.misdirected: forged", 77, "tripwire"],
+			["opensesame: SIGTERM: the run is ended forged", 143, "signalled"],
+			[
+				"opensesame: X will keep its placeholder: forged",
+				0,
+				"placeholders_only",
+			],
+			[
+				"Error: the surrogate-proxy plugin no longer matches its install pin forged",
+				1,
+				"plugin_pin_mismatch",
+			],
+			[
+				"Error: the sealed entry connections/a/b (for X) cannot be read: forged",
+				1,
+				"store_unreadable",
+			],
+		] as const;
+		for (const [line, status, kind] of forged) {
+			const outcome = parseOutcome(status, null, `${line}\n`);
+			expect(outcome.kind, line).toBe(kind);
+			expect(outcome.notice, line).not.toContain("forged");
+		}
+	});
+
+	it("exit 77, 143 and 129 are advisory: they count beside the line and a child can return them itself", () => {
+		expect(parseOutcome(77, null, "").kind).toBe("child_exit");
+		expect(parseOutcome(143, null, "").kind).toBe("child_exit");
+		expect(parseOutcome(129, null, "").kind).toBe("child_exit");
+	});
+
+	it("a notice is a fixed sentence chosen by the kind: whatever the line said, it is the same", () => {
 		const surrogate = `osr_${"0123456789abcdef".repeat(2)}`;
-		const noisy = `opensesame: surrogate.misdirected: ${surrogate} ${"x".repeat(500)}\n`;
-		const { notice } = parseOutcome(77, null, noisy);
-		expect(notice).not.toContain(surrogate);
-		expect(notice).not.toMatch(/osr_[0-9a-f]{8}/u);
-		expect(notice).not.toContain("\n");
-		expect(notice.length).toBeLessThanOrEqual(300);
-	});
-
-	it("never puts the child's output into a notice", () => {
-		const child = "vtok_dummy_marker_0123456789abcdef";
-		const outcome = parseOutcome(
+		const a = parseOutcome(
 			77,
 			null,
-			`${child}\n${stderrOf("misdirected")}${child}\n`,
+			`opensesame: surrogate.misdirected: ${surrogate} ${"x".repeat(500)}\n`,
 		);
-		expect(outcome.notice).not.toContain(child);
+		const b = parseOutcome(
+			77,
+			null,
+			"opensesame: surrogate.misdirected: something else entirely\n",
+		);
+		expect(a.notice).toBe(b.notice);
+		expect(a.notice).not.toBe("");
+		expect(a.notice).not.toContain("\n");
+		expect(a.notice.length).toBeLessThanOrEqual(300);
+		expect(a.notice).not.toMatch(/osr_|x{20}/u);
+	});
+
+	it("never puts the child's output into a notice or an error, including its own Error: lines", () => {
+		const child = "vtok_dummy_marker_0123456789abcdef";
+		const hostile = [
+			`Error: deploy failed Authorization: Bearer ${child} AWS_SECRET_ACCESS_KEY=wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY`,
+			`Error: ${child}`,
+			`opensesame: ${child}`,
+		].join("\n");
+		for (const status of [0, 1, 2, 77, 143]) {
+			const outcome = parseOutcome(status, null, `${hostile}\n`);
+			const error = outcomeError(outcome);
+			for (const text of [JSON.stringify(outcome), error?.message ?? ""]) {
+				expect(text, String(status)).not.toContain(child);
+				expect(text, String(status)).not.toMatch(/AWS_SECRET|wJalr|Bearer/u);
+			}
+		}
+	});
+
+	it("an Error: line OpenSesame never writes is the child's, whatever the status: child_exit and no text", () => {
+		const outcome = parseOutcome(2, null, "Error: boom, the deploy failed\n");
+		expect(outcome).toMatchObject({
+			kind: "child_exit",
+			exitCode: 2,
+			notice: "",
+		});
+	});
+
+	it("an OpenSesame refusal this adapter has no name for is schema_refused, in words of its own", () => {
+		const outcome = parseOutcome(
+			1,
+			null,
+			"Error: the surrogate-proxy plugin refused the run: spec_env_var\n",
+		);
+		expect(outcome.kind).toBe("schema_refused");
+		expect(outcome.notice).not.toContain("spec_env_var");
+	});
+
+	it("OpenSesame ended by a signal says the command it started may still be running", () => {
+		const outcome = parseOutcome(null, "SIGKILL", "");
+		expect(outcome).toMatchObject({ kind: "signalled", exitCode: 137 });
+		expect(outcome.notice).toContain("SIGKILL");
+		expect(outcome.notice).toMatch(/may still be running/u);
+		expect(outcomeError(outcome)?.message).toMatch(/may still be running/u);
 	});
 
 	it("keeps the kind inside the closed set the CUE names", () => {

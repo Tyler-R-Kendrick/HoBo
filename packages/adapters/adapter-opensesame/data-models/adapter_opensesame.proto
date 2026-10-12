@@ -23,12 +23,12 @@ message CredentialBindings {
 }
 
 // How one `opensesame dev --agent run` ended, as the adapter reads it. A
-// notice is OpenSesame's own line with any surrogate shape removed; it is never
-// the child's output.
+// notice is one fixed sentence chosen by the kind (empty for a child's own
+// exit): no line of output, OpenSesame's or the child's, is ever copied into it.
 message ProxiedRunOutcome {
   string kind = 1; // child_exit | tripwire | signalled | placeholders_only | scope_unbounded | schema_refused | plugin_pin_mismatch | store_unreadable | bridge_missing
   int32 exit_code = 2; // the status the run ended with
-  string notice = 3; // OpenSesame's line that decided the kind, scrubbed
+  string notice = 3; // a fixed sentence per kind, never a line of output
 }
 
 // What a run leaves behind about a surrogate without naming one: digests of

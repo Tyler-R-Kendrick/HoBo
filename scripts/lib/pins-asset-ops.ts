@@ -16,6 +16,8 @@ import { basename, join } from "node:path";
 import {
 	type AssetFile,
 	type AssetPin,
+	checkRepoUrl,
+	isReleaseTag,
 	type Pins,
 	PinsError,
 	parsePins,
@@ -250,6 +252,13 @@ export async function bumpAsset(
 	options: BumpOptions,
 	ctx: AssetContext,
 ): Promise<Bumped> {
+	// Nothing the operator typed reaches a URL, the cache or the network unchecked.
+	if (!isReleaseTag(tag)) {
+		throw new PinsError("USAGE", `${tag} is not a release tag`);
+	}
+	if (options.repo !== undefined) {
+		checkRepoUrl(options.repo, "--repo", options.allowLocal);
+	}
 	const pin = pins.assets[name] ?? null;
 	const repo = options.repo ?? pin?.repo;
 	if (repo === undefined) {
@@ -299,6 +308,9 @@ export async function bumpAsset(
 		(now) => options.entry !== undefined && !oldEntries(pin).includes(now),
 	);
 	const lines = [move, `  kept: ${plan.keep.join(", ")}  ${lost}`];
+	if (pin?.repo !== repo) {
+		lines.push(`  repo: ${pin?.repo ?? "(none)"} -> ${repo}`);
+	}
 	if (renamed.length > 0) {
 		lines.push(
 			`  entry: ${oldEntries(pin).join(", ") || "(none)"} -> ${renamed.join(", ")}`,

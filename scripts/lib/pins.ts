@@ -196,17 +196,32 @@ function readPath(value: Json | undefined, where: string): string {
 		? path
 		: malformed(where, `${path} must stay inside the repository`);
 }
+/** A repository URL a pin may name: https, or (tests only) loopback http or a local path. */
+export function checkRepoUrl(
+	repo: string,
+	where: string,
+	allowLocal: boolean,
+): string {
+	const local = allowLocal && (isAbsolute(repo) || repo.startsWith("file://"));
+	if (!local) assertAllowedUrl(repo, allowLocal, where);
+	return repo;
+}
+
+/** The tag of a release a pin may name: what a release URL can safely carry. */
+export function isReleaseTag(value: string): boolean {
+	return TAG.test(value);
+}
+
 function readRepo(
 	value: Json | undefined,
 	where: string,
 	options: ParseOptions,
 ): string {
-	const repo = readString(value, where);
-	const local =
-		options.allowLocal === true &&
-		(isAbsolute(repo) || repo.startsWith("file://"));
-	if (!local) assertAllowedUrl(repo, options.allowLocal === true, where);
-	return repo;
+	return checkRepoUrl(
+		readString(value, where),
+		where,
+		options.allowLocal === true,
+	);
 }
 function mapEntries<T>(
 	value: Json | undefined,
@@ -283,7 +298,8 @@ function parseAssetPin(
 	const object = readObject(value, where);
 	readOnly(object, ["repo", "tag", "files"], where);
 	const tag = readString(object.tag, `${where}.tag`);
-	if (!TAG.test(tag)) malformed(`${where}.tag`, `${tag} is not a release tag`);
+	if (!isReleaseTag(tag))
+		malformed(`${where}.tag`, `${tag} is not a release tag`);
 	const filesObject = readObject(object.files, `${where}.files`);
 	for (const target of Object.keys(filesObject)) {
 		if (!TARGET.test(target))

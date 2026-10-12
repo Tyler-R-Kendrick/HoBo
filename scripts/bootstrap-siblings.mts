@@ -36,7 +36,7 @@ import {
 } from "./lib/pins-verbs.ts";
 
 const USAGE = `usage: bootstrap-siblings.mts [--root DIR] [--reference DIR]
-         [--status [--offline|--online] | --fetch [name...] | --bump NAME REF [--repo URL]]`;
+         [--status [--offline|--online] | --fetch [name...] | --bump NAME REF [--repo URL] [--drop TARGET]... [--entry NAME]]`;
 
 const OPTIONS = {
 	root: { type: "string" },

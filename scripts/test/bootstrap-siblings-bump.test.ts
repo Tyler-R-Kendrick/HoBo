@@ -250,3 +250,82 @@ describe("bump keeps the name a binary runs under", () => {
 		);
 	});
 });
+
+describe("bump checks what it was given before it asks anyone", () => {
+	it("a tag that is not a release tag is refused before any request or cache write", async () => {
+		const { root, srv, manifest } = await setup();
+		const before = readFileSync(manifest, "utf8");
+		srv.hits.length = 0;
+		for (const tag of ["../../../../other/place", "v1/../x", "a b", "v1;rm"]) {
+			const run = await runBootstrapAsync(root, ["--bump", "mirror", tag]);
+			assert.equal(run.status, 2, `${tag}\n${run.stdout}${run.stderr}`);
+			assert.match(run.stderr, /is not a release tag/);
+		}
+		assert.deepEqual(srv.hits, [], "no request left this machine");
+		assert.deepEqual(cacheEntries(root), []);
+		assert.equal(readFileSync(manifest, "utf8"), before);
+	});
+
+	it("--repo that is not an allowed URL is refused before any request", async () => {
+		const { root, srv } = await setup();
+		srv.hits.length = 0;
+		const run = await runBootstrapAsync(root, [
+			"--bump",
+			"mirror",
+			"v2.0.0",
+			"--repo",
+			"ftp://example.com/x",
+		]);
+		assert.equal(run.status, 1);
+		assert.match(run.stderr, /PINS_MALFORMED/);
+		assert.deepEqual(srv.hits, []);
+	});
+
+	it("moving the pin to another repository is announced as repo: old -> new", async () => {
+		const { root, srv, repo, manifest } = await setup();
+		release(srv, { "linux-x64": NEW_X64, "linux-arm64": NEW_ARM });
+		const same = await runBootstrapAsync(root, [
+			"--bump",
+			"mirror",
+			"v2.0.0",
+			"--repo",
+			repo,
+		]);
+		assert.equal(same.status, 0, `${same.stdout}${same.stderr}`);
+		assert.doesNotMatch(
+			same.stdout,
+			/repo:/,
+			"an unchanged repository is not announced",
+		);
+		const fork = `${srv.origin}/someone-else/fork`;
+		for (const target of ["linux-x64", "linux-arm64"]) {
+			const bytes = target === "linux-x64" ? NEW_X64 : NEW_ARM;
+			srv.setFile(
+				`/someone-else/fork/releases/download/v2.0.1/mirror-${target}`,
+				bytes,
+			);
+		}
+		srv.setFile(
+			"/someone-else/fork/releases/download/v2.0.1/SHA256SUMS",
+			`${sha256Hex(NEW_X64)}  mirror-linux-x64\n${sha256Hex(NEW_ARM)}  mirror-linux-arm64\n`,
+		);
+		const moved = await runBootstrapAsync(root, [
+			"--bump",
+			"mirror",
+			"v2.0.1",
+			"--repo",
+			fork,
+		]);
+		assert.equal(moved.status, 0, `${moved.stdout}${moved.stderr}`);
+		assert.match(
+			moved.stdout,
+			new RegExp(
+				`repo: ${repo.replace(/[/.]/gu, "\\$&")} -> ${fork.replace(/[/.]/gu, "\\$&")}`,
+			),
+		);
+		assert.equal(
+			JSON.parse(readFileSync(manifest, "utf8")).assets.mirror.repo,
+			fork,
+		);
+	});
+});

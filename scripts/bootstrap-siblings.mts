@@ -7,7 +7,7 @@
  *   (no verb)                     initialise every git pin (the submodule at its gitlink)
  *   --status [--offline|--online] report every pin; exit 1 when one has drifted
  *   --fetch [name...]             initialise git pins; download and verify asset pins
- *   --bump <name> <ref> [--repo URL]
+ *   --bump <name> <ref> [--repo URL] [--drop TARGET]...
  *                                 move one pin: a git pin's gitlink (staged), or an
  *                                 asset pin to a release tag (siblings.json rewritten)
  *
@@ -42,6 +42,7 @@ const OPTIONS = {
 	root: { type: "string" },
 	reference: { type: "string" },
 	repo: { type: "string" },
+	drop: { type: "string", multiple: true },
 	status: { type: "boolean" },
 	offline: { type: "boolean" },
 	online: { type: "boolean" },
@@ -87,6 +88,8 @@ function parseRequest(args: readonly string[]): Request {
 		usage("--offline and --online belong to --status");
 	if (values.repo !== undefined && verb !== "bump")
 		usage("--repo belongs to --bump");
+	if (values.drop !== undefined && verb !== "bump")
+		usage("--drop belongs to --bump");
 	if (verb === "bump" && positionals.length !== 2)
 		usage("--bump takes a pin name and a ref");
 	if (verb !== "bump" && verb !== "fetch" && positionals.length > 0)
@@ -107,6 +110,7 @@ function parseRequest(args: readonly string[]): Request {
 		reference,
 		online: values.online === true,
 		repo: values.repo,
+		drop: values.drop ?? [],
 		names: positionals,
 		allowLocal: process.env.HOBO_PINS_ALLOW_LOCAL === "1",
 	};

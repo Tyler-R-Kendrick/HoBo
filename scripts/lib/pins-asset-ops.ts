@@ -166,6 +166,70 @@ export async function fetchAsset(
 		: `${name}  already cached at ${path}`;
 }
 
+export interface BumpOptions {
+	/** `--repo`: the repository that publishes the release. */
+	readonly repo: string | undefined;
+	/** `--drop`: targets the new release is allowed to stop publishing. */
+	readonly drop: readonly string[];
+	readonly allowLocal: boolean;
+}
+
+export interface Bumped {
+	readonly text: string;
+	/** What to print: the move, then what was kept and what was dropped. */
+	readonly lines: readonly string[];
+}
+
+interface TargetPlan {
+	readonly keep: string[];
+	readonly dropped: readonly string[];
+	readonly unpublished: string[];
+}
+
+/**
+ * Refuse a bump that would lose a build without being told to: every target
+ * the pin has must be published by the release, or named in `--drop`.
+ */
+function planTargets(
+	name: string,
+	tag: string,
+	pin: AssetPin | null,
+	sums: ReadonlyMap<string, string>,
+	drop: readonly string[],
+): TargetPlan {
+	const listed = (target: string): boolean => sums.has(`${name}-${target}`);
+	const had = pin === null ? [] : Object.keys(pin.files);
+	for (const target of drop) {
+		if (!had.includes(target)) {
+			throw new PinsError(
+				"USAGE",
+				`--drop ${target}: the pin has no such target (it has ${had.join(", ") || "none"})`,
+			);
+		}
+		if (listed(target)) {
+			throw new PinsError(
+				"USAGE",
+				`--drop ${target}: the release publishes it`,
+			);
+		}
+	}
+	const undeclared = had.filter(
+		(target) => !listed(target) && !drop.includes(target),
+	);
+	if (undeclared.length > 0) {
+		throw new PinsError(
+			"TARGET_DROPPED",
+			`${SUMS} of ${tag} does not list ${undeclared.map((target) => `${name}-${target}`).join(", ")}; the pin would lose ${undeclared.join(", ")}. Re-run with ${undeclared.map((target) => `--drop ${target}`).join(" ")} if that is meant`,
+		);
+	}
+	const wanted = pin === null ? [...DEFAULT_TARGETS] : had;
+	return {
+		keep: wanted.filter(listed),
+		dropped: drop,
+		unpublished: pin === null ? wanted.filter((target) => !listed(target)) : [],
+	};
+}
+
 /**
  * Point `name` at release `tag`: read its SHA256SUMS, download each file it
  * pins into the cache, check it against the published sum, measure it, and
@@ -175,12 +239,11 @@ export async function bumpAsset(
 	pins: Pins,
 	name: string,
 	tag: string,
-	repoOverride: string | undefined,
+	options: BumpOptions,
 	ctx: AssetContext,
-	allowLocal: boolean,
-): Promise<{ readonly text: string; readonly line: string }> {
+): Promise<Bumped> {
 	const pin = pins.assets[name] ?? null;
-	const repo = repoOverride ?? pin?.repo;
+	const repo = options.repo ?? pin?.repo;
 	if (repo === undefined) {
 		throw new PinsError(
 			"USAGE",
@@ -189,12 +252,17 @@ export async function bumpAsset(
 	}
 	const base = releaseBase(repo, tag);
 	const sums = parseSums(await fetchText(`${base}${SUMS}`, ctx.fetchOptions));
-	const targets = pin === null ? DEFAULT_TARGETS : Object.keys(pin.files);
+	const plan = planTargets(name, tag, pin, sums, options.drop);
+	if (plan.keep.length === 0) {
+		throw new PinsError(
+			"SUMS_MALFORMED",
+			`${SUMS} of ${tag} lists none of ${DEFAULT_TARGETS.map((target) => `${name}-${target}`).join(", ")}`,
+		);
+	}
 	const files: Record<string, AssetFile> = {};
-	for (const target of targets) {
+	for (const target of plan.keep) {
 		const published = `${name}-${target}`;
-		const sha256 = sums.get(published);
-		if (sha256 === undefined) continue;
+		const sha256 = sums.get(published) ?? "";
 		const dest = join(ctx.cache, sha256, name);
 		await fetchVerified(`${base}${published}`, sha256, dest, ctx.fetchOptions);
 		files[target] = {
@@ -204,22 +272,17 @@ export async function bumpAsset(
 			entry: name,
 		};
 	}
-	if (Object.keys(files).length === 0) {
-		throw new PinsError(
-			"SUMS_MALFORMED",
-			`${SUMS} of ${tag} lists none of ${targets.map((target) => `${name}-${target}`).join(", ")}`,
-		);
-	}
 	const entry: AssetPin = { repo, tag, files };
 	const next: Pins = {
 		...pins,
 		assets: { ...pins.assets, [name]: entry },
 	};
 	const text = serializePins(next);
-	parsePins(text, { allowLocal });
-	const targetsLine = Object.keys(files).join(", ");
-	return {
-		text,
-		line: `${name}  ${pin?.tag ?? "unpinned"} -> ${tag}  (${targetsLine}; each downloaded and checked against ${SUMS})`,
-	};
+	parsePins(text, { allowLocal: options.allowLocal });
+	const move = `${name}  ${pin?.tag ?? "unpinned"} -> ${tag}  (each file downloaded and checked against ${SUMS})`;
+	const lost =
+		plan.unpublished.length > 0
+			? `not published: ${plan.unpublished.join(", ")}`
+			: `dropped: ${plan.dropped.length > 0 ? plan.dropped.join(", ") : "none"}`;
+	return { text, lines: [move, `  kept: ${plan.keep.join(", ")}  ${lost}`] };
 }

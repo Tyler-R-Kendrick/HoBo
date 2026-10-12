@@ -25,6 +25,7 @@ export interface Request {
 	readonly reference: string | undefined;
 	readonly online: boolean;
 	readonly repo: string | undefined;
+	readonly drop: readonly string[];
 	readonly names: readonly string[];
 	readonly allowLocal: boolean;
 }
@@ -183,17 +184,18 @@ export async function runBump(request: Request, pins: Pins): Promise<number> {
 		return 0;
 	}
 	if (!hasAsset(pins, name)) return unknownPin(pins, name);
-	const { text, line } = await bumpAsset(
+	const { text, lines } = await bumpAsset(
 		pins,
 		name,
 		ref,
-		request.repo,
+		{ repo: request.repo, drop: request.drop, allowLocal: request.allowLocal },
 		assetContext(request),
-		request.allowLocal,
 	);
 	const file = join(request.root, PINS_FILE);
 	writeFileSync(`${file}.tmp`, text);
 	renameSync(`${file}.tmp`, file);
-	console.log(`${line}\n${PINS_FILE} rewritten; review and commit it`);
+	console.log(
+		`${lines.join("\n")}\n${PINS_FILE} rewritten; review and commit it`,
+	);
 	return 0;
 }

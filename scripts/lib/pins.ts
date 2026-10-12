@@ -25,6 +25,7 @@ export type PinsErrorCode =
 	| "NETWORK"
 	| "REDIRECT_REFUSED"
 	| "SUMS_MALFORMED"
+	| "TARGET_DROPPED"
 	| "GIT_FAILED"
 	| "SUBMODULE_STATE"
 	| "USAGE";

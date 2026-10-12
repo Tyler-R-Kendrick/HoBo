@@ -10,12 +10,13 @@
  * Erasable TypeScript with node builtins only.
  */
 import { createHash } from "node:crypto";
-import { createReadStream } from "node:fs";
+import { createReadStream, rmSync } from "node:fs";
 import { chmod, mkdir, open, rename, rm, rmdir } from "node:fs/promises";
 import { dirname } from "node:path";
 
 import { type AssetFile, assertAllowedUrl, PinsError } from "./pins.ts";
 import { cachedPath } from "./pins-assets.ts";
+import { prepareCache } from "./pins-cache.ts";
 
 export async function sha256OfFile(path: string): Promise<string> {
 	const hash = createHash("sha256");
@@ -100,7 +101,7 @@ export async function fetchVerified(
 ): Promise<void> {
 	const limit = options.maxBytes ?? DEFAULT_MAX_BYTES;
 	const partial = `${dest}.${process.pid}.partial`;
-	const created = await mkdir(dirname(dest), { recursive: true });
+	const created = await mkdir(dirname(dest), { recursive: true, mode: 0o700 });
 	// Whatever fails, leave neither the partial file nor a directory we made.
 	const discard = async (): Promise<void> => {
 		await rm(partial, { force: true });
@@ -122,6 +123,13 @@ export async function fetchVerified(
 	const hash = createHash("sha256");
 	let seen = 0;
 	const handle = await open(partial, "wx", 0o600);
+	// A signal must not leave the partial file in a cache nobody sweeps soon.
+	const onSignal = (signal: NodeJS.Signals): void => {
+		rmSync(partial, { force: true });
+		process.kill(process.pid, signal);
+	};
+	process.once("SIGINT", onSignal);
+	process.once("SIGTERM", onSignal);
 	try {
 		for await (const chunk of response.body) {
 			seen += chunk.byteLength;
@@ -134,10 +142,14 @@ export async function fetchVerified(
 			await handle.write(chunk);
 		}
 	} catch (error) {
+		process.off("SIGINT", onSignal);
+		process.off("SIGTERM", onSignal);
 		await handle.close();
 		await discard();
 		throw error;
 	}
+	process.off("SIGINT", onSignal);
+	process.off("SIGTERM", onSignal);
 	await handle.close();
 	const actual = hash.digest("hex");
 	if (actual !== sha256) {
@@ -234,6 +246,7 @@ export async function ensureCached(
 	file: AssetFile,
 	options: FetchOptions = {},
 ): Promise<{ readonly path: string; readonly downloaded: boolean }> {
+	await prepareCache(cache, file.sha256);
 	const path = cachedPath(cache, file);
 	const state = await verifyCached(cache, file);
 	if (state.state === "ok") return { path, downloaded: false };

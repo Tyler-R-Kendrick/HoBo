@@ -6,7 +6,7 @@
  * Nothing here touches the network beyond 127.0.0.1, the user's git
  * configuration, or the real `external/ts-autocode` submodule.
  */
-import { spawn, spawnSync } from "node:child_process";
+import { type ChildProcess, spawn, spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import {
 	mkdirSync,
@@ -155,28 +155,50 @@ export function runBootstrap(
  * The same, without blocking this process: a test that serves the script's
  * downloads from an in-process HTTP server must not freeze its own event loop.
  */
-export function runBootstrapAsync(
+export async function runBootstrapAsync(
 	root: string,
 	args: readonly string[],
 	env: NodeJS.ProcessEnv = {},
 ): Promise<ScriptRun> {
+	return await spawnBootstrap(root, args, env).done;
+}
+
+export interface RunningScript {
+	readonly child: ChildProcess;
+	/** Resolves when the script ends, by exit or by signal. */
+	readonly done: Promise<
+		ScriptRun & { readonly signal: NodeJS.Signals | null }
+	>;
+}
+
+/** The script as a child the test can signal; `runBootstrapAsync` is this, awaited. */
+export function spawnBootstrap(
+	root: string,
+	args: readonly string[],
+	env: NodeJS.ProcessEnv = {},
+): RunningScript {
 	const call = scriptCall(root, args, env, []);
-	return new Promise((resolve, reject) => {
-		const child = spawn(process.execPath, call.argv, {
-			cwd: root,
-			env: call.env,
-		});
-		let stdout = "";
-		let stderr = "";
-		child.stdout.on("data", (chunk) => {
-			stdout += chunk;
-		});
-		child.stderr.on("data", (chunk) => {
-			stderr += chunk;
-		});
-		child.on("error", reject);
-		child.on("close", (status) => resolve({ status, stdout, stderr }));
+	const child = spawn(process.execPath, call.argv, {
+		cwd: root,
+		env: call.env,
 	});
+	let stdout = "";
+	let stderr = "";
+	child.stdout.on("data", (chunk) => {
+		stdout += chunk;
+	});
+	child.stderr.on("data", (chunk) => {
+		stderr += chunk;
+	});
+	const done = new Promise<ScriptRun & { signal: NodeJS.Signals | null }>(
+		(resolve, reject) => {
+			child.on("error", reject);
+			child.on("close", (status, signal) =>
+				resolve({ status, signal, stdout, stderr }),
+			);
+		},
+	);
+	return { child, done };
 }
 
 export interface FileServer {
@@ -185,6 +207,8 @@ export interface FileServer {
 	readonly hits: string[];
 	setFile(path: string, bytes: Uint8Array | string): void;
 	setRedirect(path: string, location: string): void;
+	/** Answer `path` with `first` and then stall: the declared length is `total`, the rest never comes. */
+	setStall(path: string, first: Uint8Array | string, total: number): void;
 	close(): Promise<void>;
 }
 
@@ -192,6 +216,7 @@ export interface FileServer {
 export async function startServer(): Promise<FileServer> {
 	const files = new Map<string, Uint8Array>();
 	const redirects = new Map<string, string>();
+	const stalls = new Map<string, { first: Uint8Array; total: number }>();
 	const hits: string[] = [];
 	const server = createServer(
 		(request: IncomingMessage, response: ServerResponse) => {
@@ -201,6 +226,12 @@ export async function startServer(): Promise<FileServer> {
 			if (location !== undefined) {
 				response.writeHead(302, { location });
 				response.end();
+				return;
+			}
+			const stall = stalls.get(path);
+			if (stall !== undefined) {
+				response.writeHead(200, { "content-length": String(stall.total) });
+				response.write(stall.first);
 				return;
 			}
 			const bytes = files.get(path);
@@ -225,8 +256,15 @@ export async function startServer(): Promise<FileServer> {
 		setRedirect(path, location) {
 			redirects.set(path, location);
 		},
+		setStall(path, first, total) {
+			stalls.set(path, {
+				first: first instanceof Uint8Array ? first : Buffer.from(first),
+				total,
+			});
+		},
 		close: () =>
 			new Promise<void>((resolve, reject) => {
+				server.closeAllConnections();
 				server.close((error) =>
 					error === undefined ? resolve() : reject(error),
 				);

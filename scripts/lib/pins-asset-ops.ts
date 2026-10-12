@@ -29,6 +29,7 @@ import {
 	releaseBase,
 	serializePins,
 } from "./pins-assets.ts";
+import { cacheProblem, prepareCache } from "./pins-cache.ts";
 import {
 	ensureCached,
 	type FetchOptions,
@@ -89,6 +90,11 @@ export async function statusAsset(
 	const file = assetFor(pin, name, ctx.target);
 	const problems: string[] = [];
 	const fixes: string[] = [];
+	const unsafe = await cacheProblem(ctx.cache, file.sha256);
+	if (unsafe !== null) {
+		problems.push(unsafe.problem);
+		fixes.push(unsafe.fix);
+	}
 	const cached = await verifyCached(ctx.cache, file);
 	if (cached.state === "mismatch") {
 		const path = join(ctx.cache, file.sha256, file.entry);
@@ -276,12 +282,14 @@ export async function bumpAsset(
 			`${SUMS} of ${tag} lists none of ${DEFAULT_TARGETS.map((target) => `${name}-${target}`).join(", ")}`,
 		);
 	}
+	await prepareCache(ctx.cache);
 	const files: Record<string, AssetFile> = {};
 	for (const target of plan.keep) {
 		const published = `${name}-${target}`;
 		const sha256 = sums.get(published) ?? "";
 		// The name a binary runs under is the pin's, not the release's: carry it over.
 		const entry = options.entry ?? pin?.files[target]?.entry ?? name;
+		await prepareCache(ctx.cache, sha256);
 		const dest = join(ctx.cache, sha256, entry);
 		await fetchVerified(`${base}${published}`, sha256, dest, ctx.fetchOptions);
 		files[target] = {

@@ -29,6 +29,7 @@ export type PinsErrorCode =
 	| "GIT_FAILED"
 	| "SUBMODULE_STATE"
 	| "NOT_PUSHED"
+	| "CACHE_UNSAFE"
 	| "USAGE";
 
 /** Every refusal is named; a bare Error would be untraceable. */

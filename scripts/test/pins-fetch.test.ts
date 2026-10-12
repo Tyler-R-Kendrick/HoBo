@@ -1,0 +1,206 @@
+/**
+ * The verified, content-addressed fetch that every asset pin goes through:
+ * bytes are kept only when they hash to the pin, nothing unverified is ever
+ * executable, and the cache is keyed by content and re-hashed before it is
+ * trusted.
+ */
+import assert from "node:assert/strict";
+import {
+	existsSync,
+	readdirSync,
+	readFileSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
+import { join } from "node:path";
+import { afterEach, describe, it } from "node:test";
+
+import { PinsError } from "../lib/pins.ts";
+import { cachedPath } from "../lib/pins-assets.ts";
+import {
+	ensureCached,
+	fetchVerified,
+	verifyCached,
+} from "../lib/pins-fetch.ts";
+import {
+	type FileServer,
+	scratch,
+	sha256Hex,
+	startServer,
+} from "./support/pins-support.ts";
+
+const DIGEST = "a".repeat(64);
+
+describe("fetchVerified", () => {
+	let server: FileServer | undefined;
+	afterEach(async () => {
+		await server?.close();
+		server = undefined;
+	});
+
+	it("writes the file only after its digest matches, executable, with no partial left", async () => {
+		server = await startServer();
+		const bytes = Buffer.from("#!/bin/sh\necho hi\n");
+		server.setFile("/tool", bytes);
+		const dir = scratch("fetch-ok");
+		const dest = join(dir, "tool");
+		await fetchVerified(`${server.origin}/tool`, sha256Hex(bytes), dest, {
+			allowLocal: true,
+		});
+		assert.deepEqual(readFileSync(dest), bytes);
+		assert.ok(
+			(statSync(dest).mode & 0o111) !== 0,
+			"verified file is executable",
+		);
+		assert.deepEqual(readdirSync(dir), ["tool"]);
+	});
+
+	it("deletes the partial file and extracts nothing when the digest differs", async () => {
+		server = await startServer();
+		server.setFile("/tool", "tampered bytes");
+		const dir = scratch("fetch-bad");
+		const dest = join(dir, "tool");
+		await assert.rejects(
+			fetchVerified(
+				`${server.origin}/tool`,
+				sha256Hex("the pinned bytes"),
+				dest,
+				{
+					allowLocal: true,
+				},
+			),
+			(error: Error) =>
+				error instanceof PinsError &&
+				error.code === "DIGEST_MISMATCH" &&
+				error.message.includes(sha256Hex("tampered bytes")),
+		);
+		assert.equal(existsSync(dest), false, "nothing is installed");
+		assert.equal(
+			existsSync(`${dest}.partial`),
+			false,
+			"no partial file is left",
+		);
+		assert.deepEqual(readdirSync(dir), []);
+	});
+
+	it("stops reading at the declared size", async () => {
+		server = await startServer();
+		server.setFile("/big", Buffer.alloc(5000, 7));
+		const dir = scratch("fetch-size");
+		const dest = join(dir, "big");
+		await assert.rejects(
+			fetchVerified(`${server.origin}/big`, DIGEST, dest, {
+				allowLocal: true,
+				maxBytes: 100,
+			}),
+			(error: Error) =>
+				error instanceof PinsError && error.code === "SIZE_EXCEEDED",
+		);
+		assert.deepEqual(readdirSync(dir), []);
+	});
+
+	it("reports an http error status without leaving a file", async () => {
+		server = await startServer();
+		const dir = scratch("fetch-404");
+		await assert.rejects(
+			fetchVerified(`${server.origin}/missing`, DIGEST, join(dir, "x"), {
+				allowLocal: true,
+			}),
+			(error: Error) =>
+				error instanceof PinsError && error.code === "HTTP_STATUS",
+		);
+		assert.deepEqual(readdirSync(dir), []);
+	});
+
+	it("refuses a redirect to a host that is not loopback before contacting it", async () => {
+		server = await startServer();
+		server.setRedirect("/go", "http://example.invalid/tool");
+		const dir = scratch("fetch-redirect");
+		await assert.rejects(
+			fetchVerified(`${server.origin}/go`, DIGEST, join(dir, "x"), {
+				allowLocal: true,
+			}),
+			(error: Error) =>
+				error instanceof PinsError && error.code === "REDIRECT_REFUSED",
+		);
+	});
+
+	it("refuses an http url unless local sources are allowed", async () => {
+		const dir = scratch("fetch-scheme");
+		await assert.rejects(
+			fetchVerified("http://127.0.0.1:9/tool", DIGEST, join(dir, "x")),
+			(error: Error) =>
+				error instanceof PinsError && error.code === "PINS_MALFORMED",
+		);
+	});
+});
+
+describe("the content-addressed cache", () => {
+	let server: FileServer | undefined;
+	afterEach(async () => {
+		await server?.close();
+		server = undefined;
+	});
+
+	function file(origin: string, path: string, bytes: Buffer) {
+		return {
+			url: `${origin}${path}`,
+			sha256: sha256Hex(bytes),
+			size: bytes.byteLength,
+			entry: "tool",
+		};
+	}
+
+	it("the same bytes fetched from two urls occupy one directory and one request", async () => {
+		server = await startServer();
+		const bytes = Buffer.from("same bytes");
+		server.setFile("/one", bytes);
+		server.setFile("/two", bytes);
+		const cache = scratch("cache");
+		const first = await ensureCached(
+			cache,
+			file(server.origin, "/one", bytes),
+			{ allowLocal: true },
+		);
+		const second = await ensureCached(
+			cache,
+			file(server.origin, "/two", bytes),
+			{ allowLocal: true },
+		);
+		assert.equal(first.downloaded, true);
+		assert.equal(second.downloaded, false);
+		assert.equal(first.path, second.path);
+		assert.deepEqual(readdirSync(cache), [sha256Hex(bytes)]);
+		assert.deepEqual(server.hits, ["GET /one"]);
+	});
+
+	it("verifyCached tells absent, ok and a file edited by one byte", async () => {
+		server = await startServer();
+		const bytes = Buffer.from("verify me");
+		server.setFile("/v", bytes);
+		const cache = scratch("verify");
+		const entry = file(server.origin, "/v", bytes);
+		assert.deepEqual(await verifyCached(cache, entry), { state: "absent" });
+		await ensureCached(cache, entry, { allowLocal: true });
+		assert.deepEqual(await verifyCached(cache, entry), { state: "ok" });
+		const path = cachedPath(cache, entry);
+		const edited = Buffer.from(readFileSync(path));
+		edited[0] = (edited[0] ?? 0) ^ 1;
+		writeFileSync(path, edited);
+		const state = await verifyCached(cache, entry);
+		assert.equal(state.state, "mismatch");
+	});
+
+	it("a cached file that no longer matches is replaced, not trusted", async () => {
+		server = await startServer();
+		const bytes = Buffer.from("heal me");
+		server.setFile("/h", bytes);
+		const cache = scratch("heal");
+		const entry = file(server.origin, "/h", bytes);
+		await ensureCached(cache, entry, { allowLocal: true });
+		writeFileSync(cachedPath(cache, entry), "corrupt");
+		const again = await ensureCached(cache, entry, { allowLocal: true });
+		assert.equal(again.downloaded, true);
+		assert.deepEqual(readFileSync(again.path), bytes);
+	});
+});

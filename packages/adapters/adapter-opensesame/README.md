@@ -51,6 +51,8 @@ surrogate for it may reach. It is a `CredentialBindings` document
 - `paths` and `methods` are required and non-empty: an unbounded scope cannot be written. Bounded is not narrow: a
   one-segment prefix such as `/v9` with all five methods is bounded by path alone, and that is the operator's choice;
   nothing here narrows it.
+- The bindings file is a repository file, so a hostile checkout can name any sealed `connections/*` entry in the person's
+  store. Show the person the connection and the scope before the run; nothing in this package does.
 - `env_name` may not be a variable the run depends on (`reserved_env_name`): the proxy and CA variables, `PATH`, `HOME`,
   `SHELL`, `IFS`, and the `NODE_*`, `OPENSESAME_*`, `LD_*`, `DYLD_*` and `HOBO_OPENSESAME_CHILD` names. The parser and the
   CUE share one list.

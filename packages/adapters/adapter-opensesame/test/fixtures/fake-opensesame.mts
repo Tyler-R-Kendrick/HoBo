@@ -13,7 +13,7 @@
 // model is right.
 import { spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { readFileSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, readFileSync, statSync, writeFileSync } from "node:fs";
 import { dirname } from "node:path";
 
 import { SAMPLE_LINES, type SampleScenario } from "./opensesame-lines.ts";
@@ -27,6 +27,9 @@ if (argv[0] === "--version") {
 }
 
 const scenario = process.env.FAKE_OPENSESAME_SCENARIO ?? "surrogate-delivered";
+if (process.env.FAKE_OPENSESAME_PIDFILE !== undefined) {
+	writeFileSync(process.env.FAKE_OPENSESAME_PIDFILE, String(process.pid));
+}
 const recordPath = process.env.FAKE_OPENSESAME_RECORD;
 
 function usage(): never {
@@ -120,16 +123,41 @@ if (scenario === "no-sealed-entry") say("no-sealed-entry");
 const [program, ...args] = command;
 const child = spawn(program ?? "", args, { env, stdio: "inherit" });
 child.on("error", () => process.exit(1));
+
+// How the real tool ends a run it is signalled about (apps/cli/src/dev_supervise.rs):
+// SIGTERM and SIGHUP revoke the run, stop the child, say so and exit 143 or 129.
+// An interrupt (SIGINT, SIGQUIT) does not stop the child, so here it is only noted.
+// FAKE_OPENSESAME_SIGNALS names a file that gets one line per signal received.
+let ending: SampleScenario | undefined;
+function note(signal: string): void {
+	const file = process.env.FAKE_OPENSESAME_SIGNALS;
+	if (file !== undefined) appendFileSync(file, `${signal}\n`);
+}
+for (const [signal, line] of [
+	["SIGTERM", "sigterm"],
+	["SIGHUP", "sighup"],
+] as const) {
+	process.on(signal, () => {
+		note(signal);
+		ending = line;
+		child.kill("SIGTERM");
+	});
+}
+for (const signal of ["SIGINT", "SIGQUIT"] as const) {
+	process.on(signal, () => note(signal));
+}
+
 child.on("close", (code) => {
-	if (scenario === "misdirected") {
+	const finish = ending ?? scenario;
+	if (finish === "misdirected") {
 		say("misdirected");
 		process.exit(77);
 	}
-	if (scenario === "sigterm") {
+	if (finish === "sigterm") {
 		say("sigterm");
 		process.exit(143);
 	}
-	if (scenario === "sighup") {
+	if (finish === "sighup") {
 		say("sighup");
 		process.exit(129);
 	}

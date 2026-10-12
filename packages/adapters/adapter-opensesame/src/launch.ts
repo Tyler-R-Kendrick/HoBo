@@ -5,15 +5,19 @@
  *
  * `buildLaunch` is pure: it checks what must hold before anything starts (this
  * process is not itself such a child, this Node can send `fetch` through
- * `HTTPS_PROXY`, the env-spec bridge named by OPENSESAME_ENV_PARSE exists) and
- * returns the argv and environment. `runProxied` writes the schema 0600 in a
- * directory of its own, runs it, passes SIGTERM and SIGHUP on to OpenSesame
- * (which revokes the run and stops the child; a parent that simply died would
- * leave the child running), reads how it ended, and always removes the schema.
+ * `HTTPS_PROXY`, the env-spec bridge named by OPENSESAME_ENV_PARSE exists, no
+ * real credential for a bound provider is already in the environment) and
+ * returns the argv and the environment it builds: an allowlist plus `passEnv`
+ * (`child-env.ts`), not the caller's. `runProxied` finds and identifies the
+ * `opensesame` (`opensesame-bin.ts`), writes the schema 0600 in a directory of its
+ * own, runs it, passes the signals it is sent on to OpenSesame, reads how it
+ * ended, and removes the schema when the run ends, throws, or is interrupted.
+ * `supervise.ts` says what that covers and what it cannot (SIGKILL, a crash).
  *
- * The store passphrase is never read or set here: OpenSesame takes it from the
- * terminal or from OPENSESAME_STORE_PASSWORD in the caller's environment, and
- * strips it from the child itself.
+ * The store passphrase is never read or set here. OpenSesame takes it from the
+ * terminal, or from OPENSESAME_STORE_PASSWORD when the caller lists that name in
+ * `passEnv`, and only after `--version` has identified the executable; it strips
+ * the passphrase from the command itself.
  */
 
 import { spawn } from "node:child_process";
@@ -31,6 +35,13 @@ import { type BinProbe, trustedOpenSesame } from "./opensesame-bin.js";
 import { parseOutcome } from "./outcome.js";
 import { CHILD_MARKER } from "./run-markers.js";
 import { renderEnvSchema } from "./schema.js";
+import {
+	guardRun,
+	type SignalSource,
+	type SpawnedProcess,
+} from "./supervise.js";
+
+export type { SignalSource, SpawnedProcess } from "./supervise.js";
 
 const CAPTURE_LIMIT = 64 * 1024;
 
@@ -127,30 +138,11 @@ export function buildLaunch(input: LaunchInput): Launch {
 	});
 }
 
-/** The part of a spawned process the run reads. A `ChildProcess` is one. */
-export interface SpawnedProcess {
-	readonly stderr: {
-		on(event: "data", listener: (chunk: Buffer | string) => void): void;
-	} | null;
-	on(event: "error", listener: (error: Error) => void): void;
-	on(
-		event: "close",
-		listener: (code: number | null, signal: NodeJS.Signals | null) => void,
-	): void;
-	kill(signal: NodeJS.Signals): boolean;
-}
-
 export type SpawnFn = (
 	command: string,
 	args: readonly string[],
 	env: NodeJS.ProcessEnv,
 ) => SpawnedProcess;
-
-/** Where signals come from. `process` is one. */
-export interface SignalSource {
-	on(event: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void): void;
-	off(event: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void): void;
-}
 
 export interface StderrSink {
 	write(chunk: string): void;
@@ -171,35 +163,29 @@ export type RunInput = Readonly<{
 	tmpRoot?: string | undefined;
 	/** Runs `opensesame --version` for the identity check. Defaults to doing so. */
 	probe?: BinProbe | undefined;
+	/**
+	 * Re-raises SIGINT or SIGQUIT after the run is cleaned up. Defaults to doing
+	 * so on this process, and to nothing when `signals` is injected.
+	 */
+	raise?: ((signal: NodeJS.Signals) => void) | undefined;
 }>;
 
 /** Stdin and stdout are the person's; stderr is read as well as shown. */
 const nodeSpawn: SpawnFn = (command, args, env) =>
 	spawn(command, [...args], { env, stdio: ["inherit", "inherit", "pipe"] });
 
-const FORWARDED: readonly NodeJS.Signals[] = ["SIGTERM", "SIGHUP"];
-
 function wait(
 	child: SpawnedProcess,
 	sink: StderrSink,
-	signals: SignalSource,
 ): Promise<ProxiedRunOutcome> {
 	return new Promise((resolve, reject) => {
 		const capture = createCapture(CAPTURE_LIMIT);
-		const forward = (signal: NodeJS.Signals) => {
-			child.kill(signal);
-		};
-		for (const name of FORWARDED) signals.on(name, forward);
-		const release = () => {
-			for (const name of FORWARDED) signals.off(name, forward);
-		};
 		child.stderr?.on("data", (chunk) => {
 			const text = String(chunk);
 			sink.write(text);
 			capture.push(text);
 		});
 		child.on("error", (error) => {
-			release();
 			reject(
 				new OpenSesameAdapterError(
 					"opensesame_bin_missing",
@@ -208,15 +194,22 @@ function wait(
 			);
 		});
 		child.on("close", (code, signal) => {
-			release();
 			resolve(parseOutcome(code, signal, capture.text()));
 		});
 	});
 }
 
+/** Re-raise an interrupt on this process, once the run is cleaned up, so its default action applies. */
+function raiseOnProcess(signal: NodeJS.Signals): void {
+	process.kill(process.pid, signal);
+}
+
 /**
- * Run `argv` under OpenSesame with `bindings` and say how it ended. The command
- * is not started unless the launch is valid; the schema is gone when this returns.
+ * Run `argv` under OpenSesame with `bindings` and say how it ended. Nothing is
+ * started unless the launch is valid, OpenSesame is found and identified, and no
+ * signal has arrived. The schema is removed when the run ends, throws, or is
+ * ended by SIGTERM, SIGHUP, SIGINT or SIGQUIT, and from the process's `exit`
+ * event; `supervise.ts` says what that cannot cover (SIGKILL, a crash).
  */
 export async function runProxied(input: RunInput): Promise<ProxiedRunOutcome> {
 	const env = input.env ?? process.env;
@@ -234,27 +227,41 @@ export async function runProxied(input: RunInput): Promise<ProxiedRunOutcome> {
 	buildLaunch({ ...checks, schemaPath: "" });
 	// Found, checked and identified before the passphrase can reach it.
 	const bin = trustedOpenSesame({ bin: input.bin, env, probe: input.probe });
-	const dir = await mkdtemp(
-		join(input.tmpRoot ?? tmpdir(), "hobo-opensesame-"),
+	// Guarded from here, before the first await, to the schema's removal.
+	const guard = guardRun(
+		input.signals ?? process,
+		input.raise ?? (input.signals === undefined ? raiseOnProcess : undefined),
 	);
+	let dir: string | undefined;
 	try {
+		dir = await mkdtemp(join(input.tmpRoot ?? tmpdir(), "hobo-opensesame-"));
+		guard.own(dir);
 		const schemaPath = join(dir, ".env.schema");
 		const launch = buildLaunch({ ...checks, bin, schemaPath });
 		await writeFile(schemaPath, renderEnvSchema(input.bindings), {
 			mode: 0o600,
 			flag: "wx",
 		});
+		const interrupted = guard.received();
+		if (interrupted !== undefined) {
+			throw new OpenSesameAdapterError(
+				"signalled",
+				`${interrupted} arrived before OpenSesame was started; nothing was started`,
+			);
+		}
 		const child = (input.spawn ?? nodeSpawn)(
 			launch.command,
 			launch.args,
 			launch.env,
 		);
-		return await wait(
-			child,
-			input.stderr ?? process.stderr,
-			input.signals ?? process,
-		);
+		guard.attach(child);
+		return await wait(child, input.stderr ?? process.stderr);
 	} finally {
-		await rm(dir, { recursive: true, force: true });
+		guard.detach();
+		try {
+			if (dir !== undefined) await rm(dir, { recursive: true, force: true });
+		} finally {
+			guard.release();
+		}
 	}
 }

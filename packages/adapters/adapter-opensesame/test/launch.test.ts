@@ -1,4 +1,3 @@
-import { EventEmitter } from "node:events";
 import {
 	existsSync,
 	mkdtempSync,
@@ -13,12 +12,7 @@ import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
 import { OpenSesameAdapterError } from "../src/errors.js";
-import {
-	buildLaunch,
-	type RunInput,
-	runProxied,
-	type SpawnedProcess,
-} from "../src/launch.js";
+import { buildLaunch, type RunInput, runProxied } from "../src/launch.js";
 import { parsed } from "./fixtures/bindings.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -389,56 +383,5 @@ describe("runProxied with a stand-in binary", () => {
 		expect(
 			readdirSync(work).filter((n) => n.startsWith("hobo-opensesame-")),
 		).toEqual([]);
-	});
-});
-
-async function until(condition: () => boolean): Promise<void> {
-	const deadline = Date.now() + 5000;
-	while (!condition()) {
-		if (Date.now() > deadline) throw new Error("the run never started");
-		await new Promise((resolve) => setTimeout(resolve, 5));
-	}
-}
-
-describe("runProxied signals", () => {
-	class Stub extends EventEmitter implements SpawnedProcess {
-		readonly stderr = new PassThrough();
-		readonly killed: string[] = [];
-		kill(signal: NodeJS.Signals): boolean {
-			this.killed.push(signal);
-			return true;
-		}
-	}
-
-	it("passes SIGTERM and SIGHUP on to OpenSesame, which revokes the run and stops the child", async () => {
-		const stub = new Stub();
-		const host = new EventEmitter();
-		const run = runProxied(
-			stubInput({
-				spawn: () => stub,
-				signals: host,
-			}),
-		);
-		await until(() => host.listenerCount("SIGTERM") === 1);
-		host.emit("SIGTERM", "SIGTERM");
-		host.emit("SIGHUP", "SIGHUP");
-		expect(stub.killed).toEqual(["SIGTERM", "SIGHUP"]);
-		stub.stderr.write(
-			"opensesame: SIGTERM: the run is ended and its surrogates are revoked (1); the child is stopped\n",
-		);
-		stub.emit("close", 143, null);
-		expect(await run).toMatchObject({ kind: "signalled", exitCode: 143 });
-	});
-
-	it("stops listening for signals once the run is over", async () => {
-		const stub = new Stub();
-		const host = new EventEmitter();
-		const run = runProxied(stubInput({ spawn: () => stub, signals: host }));
-		await until(() => host.listenerCount("SIGTERM") === 1);
-		expect(host.listenerCount("SIGHUP")).toBe(1);
-		stub.emit("close", 0, null);
-		await run;
-		expect(host.listenerCount("SIGTERM")).toBe(0);
-		expect(host.listenerCount("SIGHUP")).toBe(0);
 	});
 });

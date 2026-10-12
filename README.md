@@ -97,8 +97,10 @@ Canonical terminology lives in [`docs/design/glossary.md`](./docs/design/glossar
 
 - Node.js ≥ 22 locally (`node:sqlite`); CI uses Node 24. `package.json` `engines.node` is `>=22`.
 - pnpm through Corepack, using the checked-in `pnpm-lock.yaml`.
-- Clone the git tree with submodules (`git clone --recurse-submodules …`; `external/ts-autocode` is a workspace member). A GitHub zip without that submodule is incomplete, and `pnpm install` silently skips the missing packages until a build fails.
+- Clone the git tree with submodules (`git clone --recurse-submodules …`; `external/ts-autocode` is a workspace member). A GitHub zip without that submodule is incomplete, and `pnpm install` silently skips the missing packages until a build fails. A clone made without them is completed by `pnpm run pins:fetch` (a shallow fetch of exactly the pinned commit; add `-- --reference <local clone>` to download nothing that clone has), and `pnpm run setup` does the same before it installs. `pnpm run pins:status` says offline whether the checkout still matches its pin.
 - Run the CLI as `pnpm hobo <verb> …` — the root script builds `@hobo/hobo` + `@hobo/adapter-hono` on first use. Fastest first success: `pnpm hobo dev --cwd examples/hello-bindle` serves a live local URL.
+
+Everything HoBo takes from a sibling repository (the `ts-autocode` submodule today; the `mirror` and `opensesame-kit` executables once they publish releases) is pinned in [`tools/pins/siblings.json`](./tools/pins/siblings.json) and handled by one script with three verbs: `pnpm run pins:status` (offline drift check), `pnpm run pins:fetch [name…]` (obtain a pin) and `pnpm run pins:bump <name> <ref>` (move one). See [ADR-0169](./docs/design/adr/01-architecture-core.md#adr-0169).
 
 Install dependencies **first** (cold clones need this before most gates):
 

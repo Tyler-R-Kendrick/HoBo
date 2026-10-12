@@ -511,6 +511,14 @@ Rules:
 - Prefer Vitest for normal local validation.
 - Prefer Node only for final compatibility validation.
 
+### Sibling consumption (pins)
+
+Everything HoBo takes from a sibling repository is pinned in `tools/pins/siblings.json` and handled by one script, `scripts/bootstrap-siblings.mts` (erasable TypeScript, node builtins only, so it runs before `pnpm install`; ADR-0169). A consumer takes the narrowest artifact: source linked into the workspace is a submodule, an executable is a hash-pinned release asset, a process boundary is a contract. Nothing is built from a sibling's source here.
+
+- `pnpm run pins:fetch [name...]`: a git pin (`ts-autocode`) is a shallow `git submodule update` of exactly the gitlink (`-- --reference <local clone>` downloads nothing that clone has); an asset pin (`mirror`, `opensesame-kit`) is a release file, hashed while it streams and kept in `${XDG_CACHE_HOME:-~/.cache}/siblings/<sha256>/`. An asset with no release yet is `null`: point `MIRROR_BIN` / `HOBO_OPENSESAME_KIT` at a local build.
+- `pnpm run pins:status [-- --online]`: offline drift check (gitlink against the checkout, a clean tree, `.gitmodules` against the manifest, cached bytes re-hashed); exit 1 prints the command that fixes it. Run it before trusting a lane that uses a sibling.
+- `pnpm run pins:bump <name> <ref>`: a git pin moves and stages its gitlink; an asset pin reads the release's `SHA256SUMS`, downloads each file to check it and rewrites only its entry. Never edit a pin by hand and never `git submodule update --remote`.
+
 ## Testing policy
 
 This repo does not use traditional E2E tests. Do not add `test:e2e`, `e2e/`, or Playwright tests that require real downstream services.

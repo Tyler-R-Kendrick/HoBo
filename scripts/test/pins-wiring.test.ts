@@ -65,6 +65,15 @@ describe("pins wiring", () => {
 		assert.ok(install > status, "status runs before pnpm install");
 		assert.match(job, /if: \$\{\{ false \}\}/u);
 	});
+
+	it("the setup docs name the three verbs", () => {
+		for (const doc of ["README.md", "CONTRIBUTING.md", "AGENTS.md"]) {
+			const text = read(doc);
+			for (const verb of ["pins:status", "pins:fetch", "pins:bump"]) {
+				assert.ok(text.includes(verb), `${doc} mentions ${verb}`);
+			}
+		}
+	});
 });
 
 describe("the committed manifest", () => {

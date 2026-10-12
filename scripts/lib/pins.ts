@@ -153,12 +153,28 @@ export function isRepoPath(value: string): boolean {
 	);
 }
 
+function hasControlOrSpace(value: string): boolean {
+	for (const char of value) {
+		const code = char.codePointAt(0) ?? 0;
+		if (code <= 0x20 || code === 0x7f) return true;
+	}
+	return false;
+}
+
 /** https, or (tests only) http on loopback; never credentials in the URL. */
 export function assertAllowedUrl(
 	value: string,
 	allowLocal: boolean,
 	where: string,
 ): URL {
+	// `new URL` quietly strips or encodes some of these; the raw text is what
+	// ends up in a manifest, a log line and a git argument, so refuse it.
+	if (hasControlOrSpace(value)) {
+		return malformed(
+			where,
+			"a URL must not contain a space or a control character",
+		);
+	}
 	let url: URL;
 	try {
 		url = new URL(value);

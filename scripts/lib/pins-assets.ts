@@ -66,9 +66,9 @@ export function releaseBase(repo: string, tag: string): string {
 	return `${repo.replace(/\/+$/u, "").replace(/\.git$/u, "")}/releases/download/${tag}/`;
 }
 
-const SUMS_LINE = /^([0-9a-f]{64}) [ *]([^\s/\\][^/\\]*)$/u;
+const SUMS_LINE = /^([0-9a-f]{64}) [ *]([A-Za-z0-9][A-Za-z0-9._@+-]*)$/u;
 
-/** `sha256sum` output: name -> digest. Anything else in the file is an error. */
+/** `sha256sum` output: name -> digest. A line that is not `<64 hex> <name>` is an error. */
 export function parseSums(text: string): ReadonlyMap<string, string> {
 	const sums = new Map<string, string>();
 	for (const line of text.split(/\r?\n/u)) {

@@ -128,6 +128,29 @@ describe("parsePins", () => {
 		assert.equal(refusal(text, { allowLocal: true }).code, "PINS_MALFORMED");
 	});
 
+	it("rejects a url or a repository with a space or a control character", () => {
+		for (const bad of ["a b", "a\tb", "a\nb", "a\u0000b", "a\u007fb"]) {
+			assert.equal(
+				refusal(assetManifest({ url: `https://example.com/${bad}` })).code,
+				"PINS_MALFORMED",
+				JSON.stringify(bad),
+			);
+			const git = {
+				lib: {
+					path: "external/lib",
+					repo: `https://github.com/o/r${bad}.git`,
+					branch: "main",
+					sparse: null,
+				},
+			};
+			assert.equal(
+				refusal(manifest({ git })).code,
+				"PINS_MALFORMED",
+				JSON.stringify(bad),
+			);
+		}
+	});
+
 	it("rejects a url that carries credentials", () => {
 		const error = refusal(
 			assetManifest({ url: "https://user:pw@example.com/m" }),
@@ -307,6 +330,36 @@ describe("parseSums", () => {
 		assert.throws(
 			() => parseSums(`${DIGEST.toUpperCase()}  tool\n`),
 			/SUMS_MALFORMED/,
+		);
+	});
+
+	it("refuses a name with anything after it, a trailing space, a control character or a leading dot", () => {
+		for (const bad of [
+			"tool extra fields",
+			"tool ",
+			"to\u0000ol",
+			"to\rol",
+			"to\u0001ol",
+			".hidden",
+			"..",
+			"a/b",
+			"a\\b",
+		]) {
+			assert.throws(
+				() => parseSums(`${DIGEST}  ${bad}\n`),
+				/SUMS_MALFORMED/,
+				JSON.stringify(bad),
+			);
+		}
+	});
+
+	it("accepts CRLF line endings and the names a release really has", () => {
+		const sums = parseSums(
+			`${DIGEST}  mirror-linux-x64\r\n${DIGEST} *kit_1.2.3+build@x.tgz\r\n`,
+		);
+		assert.deepEqual(
+			[...sums.keys()],
+			["mirror-linux-x64", "kit_1.2.3+build@x.tgz"],
 		);
 	});
 

@@ -135,6 +135,11 @@ export function isSafeRef(value: string): boolean {
 	return REF.test(value) && !value.includes("..") && !value.includes("//");
 }
 
+/** A file name, not a path: what `entry` and a release asset are called. */
+export function isFileName(value: string): boolean {
+	return SEGMENT.test(value) && value !== "." && value !== "..";
+}
+
 /** A path under the repository root: no escape, no option-looking segment. */
 export function isRepoPath(value: string): boolean {
 	return (
@@ -261,7 +266,7 @@ function parseAssetFile(
 	if (!isCount(size) || size > MAX_ASSET_BYTES)
 		malformed(`${where}.size`, "must be a positive integer byte count");
 	const entry = readString(object.entry, `${where}.entry`);
-	if (!SEGMENT.test(entry) || entry === "." || entry === "..") {
+	if (!isFileName(entry)) {
 		malformed(`${where}.entry`, `${entry} must be a plain file name`);
 	}
 	const url = readString(object.url, `${where}.url`);

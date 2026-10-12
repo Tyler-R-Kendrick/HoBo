@@ -180,3 +180,73 @@ describe("bump never drops a build quietly", () => {
 		assert.match(run.stdout, /kept: linux-x64 {2}not published: linux-arm64/);
 	});
 });
+
+describe("bump keeps the name a binary runs under", () => {
+	it("carries a non-default entry over and caches the file under it", async () => {
+		const { root, srv, manifest } = await setup("mirror.real-name");
+		release(srv, { "linux-x64": NEW_X64, "linux-arm64": NEW_ARM });
+		const run = await runBootstrapAsync(root, ["--bump", "mirror", "v2.0.0"]);
+		assert.equal(run.status, 0, `${run.stdout}${run.stderr}`);
+		const files = JSON.parse(readFileSync(manifest, "utf8")).assets.mirror
+			.files;
+		assert.equal(files["linux-x64"].entry, "mirror.real-name");
+		assert.equal(files["linux-arm64"].entry, "mirror.real-name");
+		assert.ok(
+			existsSync(
+				join(root, ".cache/siblings", sha256Hex(NEW_X64), "mirror.real-name"),
+			),
+		);
+	});
+
+	it("--entry renames it on purpose and says so; a bad name is a usage error", async () => {
+		const { root, srv, manifest } = await setup("mirror.real-name");
+		release(srv, { "linux-x64": NEW_X64, "linux-arm64": NEW_ARM });
+		const bad = await runBootstrapAsync(root, [
+			"--bump",
+			"mirror",
+			"v2.0.0",
+			"--entry",
+			"bin/mirror",
+		]);
+		assert.equal(bad.status, 2);
+		assert.match(bad.stderr, /--entry bin\/mirror is not a plain file name/);
+		const run = await runBootstrapAsync(root, [
+			"--bump",
+			"mirror",
+			"v2.0.0",
+			"--entry",
+			"mirror",
+		]);
+		assert.equal(run.status, 0, `${run.stdout}${run.stderr}`);
+		assert.match(run.stdout, /entry: mirror\.real-name -> mirror/);
+		assert.equal(
+			JSON.parse(readFileSync(manifest, "utf8")).assets.mirror.files[
+				"linux-x64"
+			].entry,
+			"mirror",
+		);
+	});
+
+	it("a first bump names the file after the pin", async () => {
+		const srv = await startServer();
+		server = srv;
+		const root = scratch("bump-entry");
+		writeManifest(root, '{"mirror":null}');
+		release(srv, { "linux-x64": NEW_X64, "linux-arm64": NEW_ARM });
+		const run = await runBootstrapAsync(root, [
+			"--bump",
+			"mirror",
+			"v2.0.0",
+			"--repo",
+			`${srv.origin}/example/mirror`,
+		]);
+		assert.equal(run.status, 0, `${run.stdout}${run.stderr}`);
+		const manifest = join(root, "tools/pins/siblings.json");
+		assert.equal(
+			JSON.parse(readFileSync(manifest, "utf8")).assets.mirror.files[
+				"linux-x64"
+			].entry,
+			"mirror",
+		);
+	});
+});

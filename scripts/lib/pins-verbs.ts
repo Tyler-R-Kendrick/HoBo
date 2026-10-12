@@ -26,6 +26,7 @@ export interface Request {
 	readonly online: boolean;
 	readonly repo: string | undefined;
 	readonly drop: readonly string[];
+	readonly entry: string | undefined;
 	readonly names: readonly string[];
 	readonly allowLocal: boolean;
 }
@@ -188,7 +189,12 @@ export async function runBump(request: Request, pins: Pins): Promise<number> {
 		pins,
 		name,
 		ref,
-		{ repo: request.repo, drop: request.drop, allowLocal: request.allowLocal },
+		{
+			repo: request.repo,
+			drop: request.drop,
+			entry: request.entry,
+			allowLocal: request.allowLocal,
+		},
 		assetContext(request),
 	);
 	const file = join(request.root, PINS_FILE);

@@ -7,7 +7,7 @@
  *   (no verb)                     initialise every git pin (the submodule at its gitlink)
  *   --status [--offline|--online] report every pin; exit 1 when one has drifted
  *   --fetch [name...]             initialise git pins; download and verify asset pins
- *   --bump <name> <ref> [--repo URL] [--drop TARGET]...
+ *   --bump <name> <ref> [--repo URL] [--drop TARGET]... [--entry NAME]
  *                                 move one pin: a git pin's gitlink (staged), or an
  *                                 asset pin to a release tag (siblings.json rewritten)
  *
@@ -24,7 +24,7 @@ import { existsSync, readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
-import { type Pins, PinsError, parsePins } from "./lib/pins.ts";
+import { isFileName, type Pins, PinsError, parsePins } from "./lib/pins.ts";
 import { git } from "./lib/pins-git.ts";
 import {
 	PINS_FILE,
@@ -43,6 +43,7 @@ const OPTIONS = {
 	reference: { type: "string" },
 	repo: { type: "string" },
 	drop: { type: "string", multiple: true },
+	entry: { type: "string" },
 	status: { type: "boolean" },
 	offline: { type: "boolean" },
 	online: { type: "boolean" },
@@ -90,6 +91,10 @@ function parseRequest(args: readonly string[]): Request {
 		usage("--repo belongs to --bump");
 	if (values.drop !== undefined && verb !== "bump")
 		usage("--drop belongs to --bump");
+	if (values.entry !== undefined && verb !== "bump")
+		usage("--entry belongs to --bump");
+	if (values.entry !== undefined && !isFileName(values.entry))
+		usage(`--entry ${values.entry} is not a plain file name`);
 	if (verb === "bump" && positionals.length !== 2)
 		usage("--bump takes a pin name and a ref");
 	if (verb !== "bump" && verb !== "fetch" && positionals.length > 0)
@@ -111,6 +116,7 @@ function parseRequest(args: readonly string[]): Request {
 		online: values.online === true,
 		repo: values.repo,
 		drop: values.drop ?? [],
+		entry: values.entry,
 		names: positionals,
 		allowLocal: process.env.HOBO_PINS_ALLOW_LOCAL === "1",
 	};

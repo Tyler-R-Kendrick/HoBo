@@ -166,11 +166,19 @@ export async function fetchAsset(
 		: `${name}  already cached at ${path}`;
 }
 
+function oldEntries(pin: AssetPin | null): string[] {
+	return pin === null
+		? []
+		: [...new Set(Object.values(pin.files).map((file) => file.entry))];
+}
+
 export interface BumpOptions {
 	/** `--repo`: the repository that publishes the release. */
 	readonly repo: string | undefined;
 	/** `--drop`: targets the new release is allowed to stop publishing. */
 	readonly drop: readonly string[];
+	/** `--entry`: rename the file the verified bytes are kept and run under. */
+	readonly entry: string | undefined;
 	readonly allowLocal: boolean;
 }
 
@@ -263,19 +271,20 @@ export async function bumpAsset(
 	for (const target of plan.keep) {
 		const published = `${name}-${target}`;
 		const sha256 = sums.get(published) ?? "";
-		const dest = join(ctx.cache, sha256, name);
+		// The name a binary runs under is the pin's, not the release's: carry it over.
+		const entry = options.entry ?? pin?.files[target]?.entry ?? name;
+		const dest = join(ctx.cache, sha256, entry);
 		await fetchVerified(`${base}${published}`, sha256, dest, ctx.fetchOptions);
 		files[target] = {
 			url: `${base}${published}`,
 			sha256,
 			size: statSync(dest).size,
-			entry: name,
+			entry,
 		};
 	}
-	const entry: AssetPin = { repo, tag, files };
 	const next: Pins = {
 		...pins,
-		assets: { ...pins.assets, [name]: entry },
+		assets: { ...pins.assets, [name]: { repo, tag, files } },
 	};
 	const text = serializePins(next);
 	parsePins(text, { allowLocal: options.allowLocal });
@@ -284,5 +293,16 @@ export async function bumpAsset(
 		plan.unpublished.length > 0
 			? `not published: ${plan.unpublished.join(", ")}`
 			: `dropped: ${plan.dropped.length > 0 ? plan.dropped.join(", ") : "none"}`;
-	return { text, lines: [move, `  kept: ${plan.keep.join(", ")}  ${lost}`] };
+	const renamed = [
+		...new Set(Object.values(files).map((file) => file.entry)),
+	].filter(
+		(now) => options.entry !== undefined && !oldEntries(pin).includes(now),
+	);
+	const lines = [move, `  kept: ${plan.keep.join(", ")}  ${lost}`];
+	if (renamed.length > 0) {
+		lines.push(
+			`  entry: ${oldEntries(pin).join(", ") || "(none)"} -> ${renamed.join(", ")}`,
+		);
+	}
+	return { text, lines };
 }

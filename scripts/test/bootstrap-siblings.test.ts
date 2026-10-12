@@ -213,7 +213,6 @@ describe("bootstrap-siblings --status", () => {
 
 	it("fails when .gitmodules and siblings.json name different repositories", () => {
 		const f = fixture(1, { repo: "https://github.com/example/other.git" });
-		ok(runBootstrap(f.work, ["--reference", f.reference]));
 		const run = runBootstrap(f.work, ["--status", "--offline"]);
 		assert.equal(run.status, 1);
 		assert.match(

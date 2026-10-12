@@ -21,13 +21,14 @@ export function git(
 	cwd: string,
 	args: readonly string[],
 	visible = false,
+	env: NodeJS.ProcessEnv = {},
 ): GitResult {
 	const result = spawnSync("git", [...args], {
 		cwd,
 		encoding: "utf8",
 		maxBuffer: 64 * 1024 * 1024,
 		stdio: visible ? ["ignore", "inherit", "inherit"] : "pipe",
-		env: { ...process.env, GIT_TERMINAL_PROMPT: "0", LC_ALL: "C" },
+		env: { ...process.env, GIT_TERMINAL_PROMPT: "0", LC_ALL: "C", ...env },
 	});
 	if (result.error !== undefined) {
 		throw new PinsError(
@@ -100,8 +101,14 @@ export function isShallow(root: string, path: string): boolean {
 
 const MODULES_LINE = /^submodule\.(.+)\.(path|url) (.*)$/u;
 
-/** The url `.gitmodules` records for the submodule at `path`, if any. */
-export function modulesUrl(root: string, path: string): string | null {
+export interface ModulesEntry {
+	/** The submodule's name in `.gitmodules` (often, not always, its path). */
+	readonly name: string;
+	readonly url: string;
+}
+
+/** What `.gitmodules` records for the submodule at `path`, if anything. */
+export function modulesEntry(root: string, path: string): ModulesEntry | null {
 	const lines = git(root, [
 		"config",
 		"-f",
@@ -119,9 +126,15 @@ export function modulesUrl(root: string, path: string): string | null {
 		(match?.[2] === "path" ? paths : urls).set(name, value);
 	}
 	for (const [name, recorded] of paths) {
-		if (recorded === path) return urls.get(name) ?? null;
+		const url = urls.get(name);
+		if (recorded === path && url !== undefined) return { name, url };
 	}
 	return null;
+}
+
+/** The url `.gitmodules` records for the submodule at `path`, if any. */
+export function modulesUrl(root: string, path: string): string | null {
+	return modulesEntry(root, path)?.url ?? null;
 }
 
 /** `https://Host/a/b.git/`, `file:///a/b` and `/a/b` compare by what they name. */

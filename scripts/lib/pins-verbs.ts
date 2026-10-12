@@ -15,7 +15,13 @@ import {
 	statusAsset,
 } from "./pins-asset-ops.ts";
 import { cacheDir, currentTarget } from "./pins-assets.ts";
-import { bumpPin, initPin, short, statusPin } from "./pins-git.ts";
+import {
+	bumpPin,
+	type GitOptions,
+	initPin,
+	short,
+	statusPin,
+} from "./pins-git.ts";
 
 export const PINS_FILE = "tools/pins/siblings.json";
 
@@ -29,6 +35,10 @@ export interface Request {
 	readonly entry: string | undefined;
 	readonly names: readonly string[];
 	readonly allowLocal: boolean;
+}
+
+function gitOptions(request: Request): GitOptions {
+	return { reference: request.reference, allowLocal: request.allowLocal };
 }
 
 function assetContext(request: Request): AssetContext {
@@ -74,7 +84,7 @@ function unknownPin(pins: Pins, name: string): never {
 function initGit(request: Request, pins: Pins, name: string): void {
 	const pin = gitPinOf(pins, name);
 	if (pin === undefined) return unknownPin(pins, name);
-	const result = initPin(request.root, pin, request.reference);
+	const result = initPin(request.root, pin, gitOptions(request));
 	const sparse = pin.sparse === null ? "" : `; sparse: ${pin.sparse.join(" ")}`;
 	if (result.kind === "already pinned") {
 		const note = result.sparseChanged ? `  (sparse set updated${sparse})` : "";
@@ -131,7 +141,13 @@ function printProblems(
 export async function runStatus(request: Request, pins: Pins): Promise<number> {
 	let failed = 0;
 	for (const [name, pin] of Object.entries(pins.git)) {
-		const status = statusPin(request.root, name, pin, request.online);
+		const status = statusPin(
+			request.root,
+			name,
+			pin,
+			request.online,
+			gitOptions(request),
+		);
 		if (status.problems.length === 0) {
 			const tip =
 				status.tip === null
@@ -177,7 +193,7 @@ export async function runBump(request: Request, pins: Pins): Promise<number> {
 			name,
 			gitPin,
 			ref,
-			request.reference,
+			gitOptions(request),
 		);
 		console.log(
 			`${name}  ${short(from)} -> ${short(to)}  (gitlink staged; commit it)`,

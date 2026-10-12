@@ -1,0 +1,246 @@
+/**
+ * What the git side of the bootstrap script trusts, and what it refuses to
+ * do on trust: the repository named by the manifest, by `.gitmodules` and by
+ * this clone's own configuration must be the same one before any network call,
+ * a transport git would run code for is never used, a commit only a local
+ * clone has is never pinned, and local work is not abandoned by a `setup`.
+ *
+ * Real repositories on disk, the real script, git configuration isolated.
+ */
+import assert from "node:assert/strict";
+import { existsSync, readFileSync, writeFileSync } from "node:fs";
+import { join } from "node:path";
+import { describe, it } from "node:test";
+
+import {
+	allowedProtocols,
+	isAllowedTransport,
+	netArgs,
+	remoteTip,
+} from "../lib/pins-git-net.ts";
+import {
+	git,
+	makeReference,
+	makeRemote,
+	makeWork,
+	type PinsFileOptions,
+	type Remote,
+	runBootstrap,
+	scratch,
+} from "./support/pins-support.ts";
+
+interface Fixture {
+	readonly dir: string;
+	readonly remote: Remote;
+	readonly work: string;
+	readonly reference: string;
+	readonly sub: string;
+}
+
+function fixture(pinned = 1, options: PinsFileOptions = {}): Fixture {
+	const dir = scratch("safety");
+	const remote = makeRemote(dir);
+	const work = makeWork(dir, remote, pinned, options);
+	return {
+		dir,
+		remote,
+		work,
+		reference: makeReference(dir, remote),
+		sub: join(work, "external/lib"),
+	};
+}
+
+const OTHER = "https://github.com/example/other.git";
+
+/**
+ * An `ext::` URL whose command leaves a marker if git ever runs it. (The ext
+ * helper splits on spaces and does not interpret quotes, so the command is a
+ * script file, not `sh -c '...'`.)
+ */
+interface ExtCommand {
+	readonly url: string;
+	readonly marker: string;
+}
+
+function extUrl(dir: string): ExtCommand {
+	const marker = join(dir, "ext-ran");
+	const script = join(dir, "ext-command.sh");
+	writeFileSync(script, `#!/bin/sh\ntouch '${marker}'\n`, { mode: 0o755 });
+	return { url: `ext::${script}`, marker };
+}
+
+describe("the repository must be the same everywhere before anything is fetched", () => {
+	it("init refuses when .gitmodules names another repository, and fetches nothing", () => {
+		const f = fixture(1, { repo: OTHER });
+		const run = runBootstrap(f.work, ["--reference", f.reference]);
+		assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+		assert.match(
+			run.stderr,
+			/SUBMODULE_STATE: \.gitmodules names .* for external\/lib; siblings\.json says https:\/\/github\.com\/example\/other\.git/,
+		);
+		assert.match(
+			run.stderr,
+			/fix: git config -f \.gitmodules submodule\.external\/lib\.url https:\/\/github\.com\/example\/other\.git/,
+		);
+		assert.equal(existsSync(join(f.sub, ".git")), false, "nothing was cloned");
+		assert.doesNotMatch(
+			readFileSync(join(f.work, ".git/config"), "utf8"),
+			/\[submodule "external\/lib"\]/u,
+			"git submodule init did not run",
+		);
+	});
+
+	it("naming the pin does not get around it, and neither does bump", () => {
+		const f = fixture(1, { repo: OTHER });
+		const named = runBootstrap(f.work, ["--fetch", "lib"]);
+		assert.equal(named.status, 1);
+		assert.match(named.stderr, /siblings\.json says/);
+		const good = fixture(1);
+		const first = runBootstrap(good.work, []);
+		assert.equal(first.status, 0, first.stderr);
+		git(good.work, [
+			"config",
+			"-f",
+			".gitmodules",
+			"submodule.external/lib.url",
+			OTHER,
+		]);
+		const bump = runBootstrap(good.work, ["--bump", "lib", "main"]);
+		assert.equal(bump.status, 1);
+		assert.match(bump.stderr, /\.gitmodules names/);
+		assert.equal(
+			git(good.work, ["diff", "--cached", "--name-only"]),
+			"",
+			"nothing was staged",
+		);
+	});
+
+	it("a stale configured URL is refused with the command that syncs it", () => {
+		const f = fixture(1);
+		assert.equal(runBootstrap(f.work, []).status, 0);
+		git(f.work, [
+			"config",
+			"submodule.external/lib.url",
+			"file:///somewhere/else",
+		]);
+		const run = runBootstrap(f.work, ["--fetch", "lib"]);
+		assert.equal(run.status, 1);
+		assert.match(
+			run.stderr,
+			/configured URL for external\/lib is file:\/\/\/somewhere\/else/,
+		);
+		assert.match(run.stderr, /fix: git submodule sync -- external\/lib/);
+		const status = runBootstrap(f.work, ["--status", "--offline"]);
+		assert.equal(status.status, 1);
+		assert.match(status.stdout, /fix: git submodule sync -- external\/lib/);
+	});
+
+	it("a path missing from .gitmodules is refused, and the fix says how to register it", () => {
+		const f = fixture(1);
+		git(f.work, [
+			"config",
+			"-f",
+			".gitmodules",
+			"--remove-section",
+			"submodule.external/lib",
+		]);
+		const init = runBootstrap(f.work, []);
+		assert.equal(init.status, 1);
+		assert.match(
+			init.stderr,
+			/external\/lib is not registered in \.gitmodules/,
+		);
+		const status = runBootstrap(f.work, ["--status", "--offline"]);
+		assert.equal(status.status, 1);
+		assert.match(
+			status.stdout,
+			new RegExp(
+				`fix: git submodule add ${f.remote.url.replace(/[/.]/gu, "\\$&")} external/lib`,
+			),
+		);
+	});
+
+	it("a transport that runs code is never handed to git, even if git would allow it", () => {
+		const f = fixture(1, { repo: "https://example.com/o/r.git" });
+		const { url, marker } = extUrl(f.dir);
+		git(f.work, [
+			"config",
+			"-f",
+			".gitmodules",
+			"submodule.external/lib.url",
+			url,
+		]);
+		// The user's configuration enables ext; the script must not care.
+		const run = runBootstrap(f.work, [], { HOBO_PINS_ALLOW_LOCAL: "" }, [
+			["protocol.ext.allow", "always"],
+		]);
+		assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+		assert.match(run.stderr, /which is not an https URL/);
+		assert.equal(existsSync(marker), false, "the ext transport did not run");
+	});
+});
+
+describe("network git pins the transports", () => {
+	it("allows https and ssh, and file or http only where the tests or a --reference clone need them", () => {
+		assert.equal(allowedProtocols(false, false), "https:ssh");
+		assert.equal(allowedProtocols(false, true), "https:ssh:file");
+		assert.equal(allowedProtocols(true, false), "https:ssh:http:file");
+	});
+
+	it("every network call starts with protocol.allow=never", () => {
+		assert.deepEqual(netArgs(["fetch", "x"]).slice(0, 3), [
+			"-c",
+			"protocol.allow=never",
+			"fetch",
+		]);
+	});
+
+	it("isAllowedTransport accepts https and refuses what runs code or sends in the clear", () => {
+		for (const ok of ["https://github.com/o/r.git", "HTTPS://github.com/o/r"]) {
+			assert.equal(isAllowedTransport(ok, false), true, ok);
+		}
+		for (const bad of [
+			"ext::sh -c 'id'",
+			"fd::3",
+			"file:///tmp/repo",
+			"/tmp/repo",
+			"git://github.com/o/r.git",
+			"http://github.com/o/r.git",
+			"ssh://git@github.com/o/r.git",
+		]) {
+			assert.equal(isAllowedTransport(bad, false), false, bad);
+		}
+		assert.equal(isAllowedTransport("file:///tmp/repo", true), true);
+		assert.equal(isAllowedTransport("/tmp/repo", true), true);
+		assert.equal(isAllowedTransport("http://127.0.0.1:8080/r", true), true);
+		assert.equal(isAllowedTransport("http://example.com/r", true), false);
+	});
+
+	it("ls-remote of an ext:: URL fails and runs nothing even when the configuration enables ext", () => {
+		const dir = scratch("net");
+		const { url, marker } = extUrl(dir);
+		const saved = { ...process.env };
+		Object.assign(process.env, {
+			GIT_CONFIG_GLOBAL: "/dev/null",
+			GIT_CONFIG_NOSYSTEM: "1",
+			GIT_CONFIG_COUNT: "1",
+			GIT_CONFIG_KEY_0: "protocol.ext.allow",
+			GIT_CONFIG_VALUE_0: "always",
+		});
+		try {
+			assert.throws(
+				() =>
+					remoteTip(dir, url, "main", {
+						allowLocal: false,
+					}),
+				/GIT_FAILED/,
+			);
+			assert.equal(existsSync(marker), false);
+		} finally {
+			for (const key of Object.keys(process.env)) {
+				if (!(key in saved)) delete process.env[key];
+			}
+			Object.assign(process.env, saved);
+		}
+	});
+});

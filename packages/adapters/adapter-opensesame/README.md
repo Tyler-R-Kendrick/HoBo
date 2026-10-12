@@ -19,7 +19,7 @@ else. See [ADR-0170](../../../docs/design/adr/02-identity-security.md#adr-0170).
 | **AWS** | **Not brokered.** A binding with `provider: "aws"` fails with `provider_not_brokered`. AWS requests are signed with SigV4 in process from a live secret key, which header substitution cannot serve, and OpenSesame's AWS helper fails closed until its STS mint exists. |
 | Other providers | `provider_not_brokered`. |
 | Platforms | Linux. The real lane reads `/proc`. |
-| Node | `>= 22.21` (the adapter's `engines`): `NODE_USE_ENV_PROXY` is what sends `fetch` through `HTTPS_PROXY`. Without it `fetch` ignores `HTTPS_PROXY` and dials the provider directly, with a surrogate only the proxy can redeem, so the launch refuses (`node_proxy_unsupported`). |
+| Node | `^22.21 \|\| >=24` (the adapter's `engines`; Node 23 has no `NODE_USE_ENV_PROXY`): it is what sends `fetch` through `HTTPS_PROXY`. Without it `fetch` ignores `HTTPS_PROXY` and dials the provider directly, with a surrogate only the proxy can redeem, so the launch refuses (`node_proxy_unsupported`). |
 
 ## The bindings file
 
@@ -48,7 +48,12 @@ surrogate for it may reach. It is a `CredentialBindings` document
 - `connection` is the OpenSesame connection; its last segment names the provider.
   The token is the sealed entry `connections/acme/vercel`, put there by a person with
   `opensesame pass insert connections/acme/vercel` (HoBo never writes it).
-- `paths` and `methods` are required and non-empty: an unbounded scope cannot be written.
+- `paths` and `methods` are required and non-empty: an unbounded scope cannot be written. Bounded is not narrow: a
+  one-segment prefix such as `/v9` with all five methods is bounded by path alone, and that is the operator's choice;
+  nothing here narrows it.
+- `env_name` may not be a variable the run depends on (`reserved_env_name`): the proxy and CA variables, `PATH`, `HOME`,
+  `SHELL`, `IFS`, and the `NODE_*`, `OPENSESAME_*`, `LD_*`, `DYLD_*` and `HOBO_OPENSESAME_CHILD` names. The parser and the
+  CUE share one list.
 
 ## Use
 
@@ -65,7 +70,13 @@ import {
 const bindings = parseCredentialBindings(JSON.parse(readFileSync("hobo.credentials.json", "utf8")));
 
 // Parent: relaunch under OpenSesame. The schema is written 0600 and removed after.
-const outcome = await runProxied({ bin: "opensesame", bindings, argv: [process.execPath, "hobo", "up"] });
+// OpenSesame is started with an allowlist of this environment plus what passEnv names, never all of it.
+const outcome = await runProxied({
+  bin: "opensesame",
+  bindings,
+  argv: [process.execPath, "hobo", "up"],
+  passEnv: ["OPENSESAME_STORE_PASSWORD"], // unlocks the store; OpenSesame strips it from the command
+});
 const failure = outcomeError(outcome);   // typed refusal, or undefined for a clean child
 process.exitCode = exitCodeOf(outcome);  // never 0 for a run that left placeholders
 
@@ -74,17 +85,47 @@ const port = createOpenSesameSecretsPort({ bindings, env: process.env });
 const resolveCredential = createOpenSesameCredentialResolver(port);
 ```
 
-`runProxied` passes `SIGTERM` and `SIGHUP` on to OpenSesame, which revokes the run
-and stops the child; it never reads or sets the store passphrase (OpenSesame takes it from the
-terminal or `OPENSESAME_STORE_PASSWORD` and strips it from the child).
+What `runProxied` does before and around the run:
+
+- **The environment is built, not inherited.** OpenSesame hands its command everything it was started with except the
+  store passphrase and the names a binding overwrites, so the caller's AWS keys, `GITHUB_TOKEN` or a real `VERCEL_TOKEN`
+  would reach it. The run starts from an allowlist (`PATH`, `HOME`, `USER`, `LOGNAME`, `SHELL`, `LANG`, `TERM`, `TMPDIR`,
+  `TZ`, `CI`, `LC_*`, `NODE_*`, `XDG_*`, `HOBO_*` minus credential-shaped names, the Windows trio on win32, and the
+  checked `OPENSESAME_ENV_PARSE`), plus the names you list in `passEnv`, plus the run's own two variables, which win.
+  `OPENSESAME_STORE_PASSWORD`, `OPENSESAME_STORE_DIR` and the like are `passEnv` names. A process that already holds a
+  value that is not a surrogate in a bound variable or in the provider's conventional ones (`VERCEL_TOKEN`,
+  `VERCEL_API_TOKEN`) is refused with `real_credential_in_env` before anything is written.
+- **The executable is found and identified first.** A bare `opensesame` is looked up on the absolute entries of `PATH`
+  only (an empty or relative entry means the working directory, where a planted stub lives); one that group or others
+  can write is `opensesame_bin_untrusted`; a path with a separator is your explicit choice. It is then asked
+  `--version` with `PATH` alone in its environment and must answer `opensesame X.Y.Z` before the real launch, which is
+  the first place the passphrase can appear. That is a shape check, not authentication.
+- **Signals.** From before the first await to the schema's removal, `SIGTERM` and `SIGHUP` are passed on to OpenSesame
+  as they are (it revokes the run and stops the command; you get the `signalled` outcome). `SIGINT` and `SIGQUIT` are
+  passed on as `SIGTERM`, because OpenSesame does not stop the command on an interrupt, and are re-raised on this process
+  once the schema is gone, so Ctrl-C still ends it by the signal. A signal before OpenSesame is started starts nothing
+  (`signalled`). From the `exit` event, OpenSesame is sent `SIGTERM` and the schema directory is removed.
+- **What no handler can reach.** `SIGKILL` and a crash. The `hobo-opensesame-*` directory stays in the temp directory
+  with its 0600 `.env.schema` (connection names, paths and methods, never a token), and OpenSesame and its command keep
+  running with their surrogate until the command ends or the surrogate's lifetime runs out. If OpenSesame itself is
+  ended by a signal, the outcome is `signalled` with `128+n` (`exitCodeOf` returns it) and a notice that the command may
+  still be running.
+- It never reads or sets the store passphrase itself: OpenSesame takes it from the terminal, or from
+  `OPENSESAME_STORE_PASSWORD` when you list that name in `passEnv`, and strips it from the command.
+
+What the port proves: it serves a value shaped `osr_` + 32 hex from the process's own environment, and only when that
+environment also carries a run's markers (`HOBO_OPENSESAME_CHILD=1`, `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY` an `http` URL
+on loopback with a port; else `placeholders_only` with `no_run_provenance`). That is shape plus run markers, not
+cryptographic provenance: the port cannot ask OpenSesame whether a surrogate is live.
 
 ## Failures
 
 Every refusal is an `OpenSesameAdapterError` with one `code`, and no message carries a
 rejected value: `binding_invalid`, `launch_invalid`, `opensesame_bin_missing`,
-`bridge_missing`, `scope_unbounded`, `provider_not_brokered`, `placeholders_only`,
-`store_unreadable`, `plugin_pin_mismatch`, `tripwire_misdirected`, `signalled`,
-`child_exit`, `node_proxy_unsupported`, `recursion_guard`, `schema_injection`, `read_only`.
+`opensesame_bin_untrusted`, `bridge_missing`, `scope_unbounded`, `reserved_env_name`,
+`provider_not_brokered`, `placeholders_only`, `store_unreadable`, `plugin_pin_mismatch`,
+`tripwire_misdirected`, `signalled`, `child_exit`, `node_proxy_unsupported`, `recursion_guard`,
+`real_credential_in_env`, `schema_injection`, `read_only`.
 
 The one that matters most is `placeholders_only`. With the plugin missing or off, `opensesame dev run --agent`
 **still starts the child and exits 0**, handing it an `ostest_…` placeholder. Against an emulator that
@@ -100,6 +141,8 @@ Where the docs and the code are not the same thing, or the status alone is not e
   status as one of these only beside OpenSesame's own line (`opensesame: surrogate.misdirected: …`,
   `opensesame: SIGTERM: the run is ended …`).
 - A child **killed by a signal** makes OpenSesame exit `1`, not `128+n`.
+- An interrupt (`SIGINT`) sent to OpenSesame does not stop the command (OpenSesame's own docs), which is why the adapter
+  passes it on as `SIGTERM`.
 - Every refusal before the child starts (pin mismatch, unreadable entry, no bounded scope, a schema
   that does not parse) is `Error: <message>` on stderr and status `1`.
 - `--schema` is a global flag of `dev`: `opensesame dev --agent --schema <file> run -- <cmd>`.
@@ -118,7 +161,9 @@ HOBO_OPENSESAME_KIT=<dir> pnpm --filter @hobo/adapter-opensesame test:real
 ```
 
 The default lane runs a stand-in `opensesame` (`test/fixtures/fake-opensesame.mts`) that takes exactly the
-real argv and prints the real lines. It is a model; the **real lane** is what says it is right.
+real argv and prints the real lines. It is a model; the **real lane** is what says it is right. The pact's
+`tokenLeaked: false` is true by construction against the stand-in, which never reads the dummy that stands for the sealed
+token; only the real lane, which seals it, redeems it at a recording upstream and sweeps for it, is evidence.
 
 ### The real lane, and how to build its kit
 

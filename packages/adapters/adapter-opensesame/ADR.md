@@ -23,9 +23,14 @@ Ship the receiving end as an **optional L2 adapter** under `packages/adapters/`:
 - A `SecretsPort` of kind `opensesame`: `access()` returns the run's surrogate as `provider-federation`
   material; `put()` is read-only (`read_only`); a placeholder is `placeholders_only`, never a success.
 - Bindings (`hobo.credentials.json`) hold references and a bounded scope; an unbounded scope is unrepresentable.
+  Bounded is not narrow: a one-segment prefix with all five methods is bounded by path alone, the operator's choice.
+  `env_name` may not name a variable the run depends on (`reserved_env_name`).
 - The existing locator `hobo-token://vercel/deploy` maps to a connection. No new SecretRef scheme.
 - Vercel only. AWS is a typed `provider_not_brokered` refusal until OpenSesame's STS mint lands.
-- Node `>= 22.21` is stated in this package's `engines` only.
+- Node `^22.21 || >=24` is stated in this package's `engines` only (Node 23 has no `NODE_USE_ENV_PROXY`).
+- The command starts from an environment the launch builds (an allowlist plus `passEnv`), never the caller's;
+  the `opensesame` is found on absolute `PATH` entries and identified with `--version` before the passphrase goes to it;
+  an interrupt ends the run it started, except SIGKILL and a crash (the 0600 schema, references only, stays).
 - The real lane builds or points at a local kit (`HOBO_OPENSESAME_KIT`); no public test-build plugin is published.
 
 ## Consequences
@@ -33,5 +38,6 @@ Ship the receiving end as an **optional L2 adapter** under `packages/adapters/`:
 - A HoBo process started this way never holds the real credential, and the adapter fails closed (`placeholders_only`)
   instead of passing a run that silently got a placeholder.
 - The status of a proxied run is read from OpenSesame's exit status **and** its own stderr lines, because a child can
-  exit with 77, 143 or 129 itself. That is advisory; the port is the gate.
+  exit with 77, 143 or 129 itself. That is advisory; the port is the gate, and the port proves shape plus run markers,
+  not cryptographic provenance. No text the child printed reaches an outcome or an error.
 - Deploys that need AWS credentials from OpenSesame wait for the STS mint (a slice in OpenSesame).

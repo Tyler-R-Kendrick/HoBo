@@ -8,7 +8,9 @@ package adapter_opensesame
 // A binding names a credential and bounds what a surrogate for it may do.
 // An unbounded scope is unrepresentable: `paths` and `methods` are non-empty,
 // which mirrors the plugin's own refusal to issue a surrogate for an entry
-// with no bounded scope.
+// with no bounded scope. Bounded is not narrow: a one-segment prefix such as
+// "/v9" with all five methods is bounded by path alone, which is the operator's
+// choice and which nothing here narrows.
 #CredentialBinding: {
 	locator:    =~"^hobo-token://[a-z0-9-]+/[a-z0-9-]+$"
 	connection: =~"^conn://[a-z0-9-]+(/[a-z0-9-]+){1,2}$"

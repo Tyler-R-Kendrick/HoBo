@@ -38,7 +38,7 @@ This adapter owns no aggregate. It implements the residual `SecretsPort` for a p
 - **Event store** - the credential-audit stream on the platform EventStore (identity package), not an OpenSesame journal.
 - **Materialized view / projection** - the credential-audit projection folds `secret.Accessed` by correlation; the
   surrogate is never projected, only the `opensesame://<connection>#surrogate` reference.
-- **Snapshot** - none. A surrogate lives for one run (OpenSesame revokes it when the child exits, at most 12 hours).
+- **Snapshot** - none. A surrogate lives for one run (OpenSesame revokes it when the child exits, at most 12 hours; a parent killed by SIGKILL leaves the run going until then).
 - **Read store** - the plugin's notices (`opensesame plugins notices surrogate-proxy`) are OpenSesame's read store of
   tripwires and refusals; agents see references and outcome kinds only.
 
@@ -50,6 +50,34 @@ This adapter owns no aggregate. It implements the residual `SecretsPort` for a p
 | `@hobo/bindings` `parseSecretRef` | locators are `hobo-token://` references |
 | `opensesame dev --agent --schema <file> run -- <cmd>` | process boundary; the pact |
 | OpenSesame surrogate-proxy plugin | OpenSesame's, never linked here |
+
+## Launch, and what surrounds it
+
+`runProxied` is a small pipeline, each step in a module of its own: `buildLaunch` (pure: the argv, and the environment from
+`child-env.ts`), `opensesame-bin.ts` (find and identify the executable), the schema written 0600 in a directory of its own, and
+`supervise.ts` (the signals and the exit event, from before the first await to the schema's removal).
+
+- **The environment is an allowlist.** OpenSesame passes its command everything it was started with except the store
+  passphrase and the names a binding overwrites, so the launch builds the environment: `PATH`, `HOME`, `USER`, `LOGNAME`,
+  `SHELL`, `LANG`, `TERM`, `TMPDIR`, `TZ`, `CI`, the `LC_*`, `NODE_*`, `XDG_*` and `HOBO_*` families (credential-shaped names left
+  out), the Windows trio on win32, the checked `OPENSESAME_ENV_PARSE`, whatever the caller lists in `passEnv`, and the run's two
+  own variables, which win. A non-surrogate value in a bound variable or a conventional one for the bound provider
+  (`VERCEL_TOKEN`, `VERCEL_API_TOKEN`) refuses the run (`real_credential_in_env`).
+- **The executable is found and identified before the passphrase can reach it.** Absolute `PATH` entries only, not group- or
+  other-writable unless the caller named the path; then `--version` with `PATH` alone, `opensesame X.Y.Z`. A shape check, not
+  authentication.
+- **Interruption.** SIGTERM and SIGHUP pass on as they are; SIGINT and SIGQUIT pass on as SIGTERM (OpenSesame does not stop the
+  command on an interrupt) and are re-raised once the schema is gone; a signal before the start starts nothing; the exit event
+  sends SIGTERM and removes the directory. Not SIGKILL, not a crash: the 0600 schema (references only) stays, and OpenSesame
+  and its command run on until the command ends or the surrogate's lifetime runs out.
+
+## What the port proves
+
+It serves a value shaped `osr_` + 32 hex from the process's own environment, and only beside a run's markers
+(`HOBO_OPENSESAME_CHILD=1`, `NODE_USE_ENV_PROXY=1`, `HTTPS_PROXY` an `http` URL on loopback with a port). That is shape plus run
+markers, not cryptographic provenance: the port cannot ask OpenSesame whether a surrogate is live, so an `osr_` copied from
+another run into an environment that fakes all three markers would pass. It stops the plain mistakes: a surrogate pasted or
+left over and sent to the provider with no proxy.
 
 ## Why stderr is read, and what it is not
 

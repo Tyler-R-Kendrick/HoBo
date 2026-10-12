@@ -116,6 +116,30 @@ describe("discoverDataModelPackages", () => {
 		).toEqual([]);
 	});
 
+	it("descends into packages/adapters, where an adapter opts into codegen the same way", async () => {
+		const root = await makeTempRepo({
+			withBufTemplate: false,
+			withCueCache: false,
+		});
+		try {
+			const packagesRoot = join(root, "packages");
+			await scaffoldPackage(packagesRoot, join("adapters", "adapter-sample"));
+			// An adapter whose data-models carry no buf.yaml stays documentation-only.
+			await scaffoldPackage(packagesRoot, join("adapters", "adapter-plain"), {
+				bufYaml: false,
+			});
+			const discovered = discoverDataModelPackages(root, { packagesRoot });
+			expect(discovered.map((pkg) => pkg.name)).toEqual([
+				"adapters/adapter-sample",
+			]);
+			expect(discovered[0]?.generatedDir).toBe(
+				join(packagesRoot, "adapters", "adapter-sample", "src", "_generated"),
+			);
+		} finally {
+			await removeTempRepo(root);
+		}
+	});
+
 	it("sees the real repo: core is in the codegen lane, runtime-local is documentation-only", () => {
 		const discovered = discoverDataModelPackages(REPO_ROOT);
 		const names = discovered.map((pkg) => pkg.name);

@@ -19,6 +19,13 @@ import { dirname } from "node:path";
 import { SAMPLE_LINES, type SampleScenario } from "./opensesame-lines.ts";
 
 const argv = process.argv.slice(2);
+
+// What the adapter asks before it hands over the passphrase (the real tool prints `opensesame 0.1.0`).
+if (argv[0] === "--version") {
+	process.stdout.write("opensesame 0.1.0\n");
+	process.exit(0);
+}
+
 const scenario = process.env.FAKE_OPENSESAME_SCENARIO ?? "surrogate-delivered";
 const recordPath = process.env.FAKE_OPENSESAME_RECORD;
 

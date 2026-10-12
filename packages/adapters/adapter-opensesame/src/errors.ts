@@ -11,6 +11,8 @@ export const ADAPTER_ERROR_CODES = [
 	"launch_invalid",
 	/** The `opensesame` executable cannot be started. */
 	"opensesame_bin_missing",
+	/** The `opensesame` found is writable by others, or does not answer `--version` as opensesame. Nothing was started. */
+	"opensesame_bin_untrusted",
 	/** No `node`, no env-spec bridge, or no `@env-spec/parser` behind it. */
 	"bridge_missing",
 	/** A surrogate would have no bounded scope. */

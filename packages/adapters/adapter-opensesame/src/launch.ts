@@ -27,6 +27,7 @@ import type { ParsedCredentialBinding } from "./binding.js";
 import { createCapture } from "./capture.js";
 import { childEnvOf } from "./child-env.js";
 import { OpenSesameAdapterError } from "./errors.js";
+import { type BinProbe, trustedOpenSesame } from "./opensesame-bin.js";
 import { parseOutcome } from "./outcome.js";
 import { CHILD_MARKER } from "./run-markers.js";
 import { renderEnvSchema } from "./schema.js";
@@ -168,6 +169,8 @@ export type RunInput = Readonly<{
 	nodeVersion?: string | undefined;
 	exists?: ((path: string) => boolean) | undefined;
 	tmpRoot?: string | undefined;
+	/** Runs `opensesame --version` for the identity check. Defaults to doing so. */
+	probe?: BinProbe | undefined;
 }>;
 
 /** Stdin and stdout are the person's; stderr is read as well as shown. */
@@ -229,12 +232,14 @@ export async function runProxied(input: RunInput): Promise<ProxiedRunOutcome> {
 	};
 	// Refuse before anything is written: a launch that cannot happen leaves no schema.
 	buildLaunch({ ...checks, schemaPath: "" });
+	// Found, checked and identified before the passphrase can reach it.
+	const bin = trustedOpenSesame({ bin: input.bin, env, probe: input.probe });
 	const dir = await mkdtemp(
 		join(input.tmpRoot ?? tmpdir(), "hobo-opensesame-"),
 	);
 	try {
 		const schemaPath = join(dir, ".env.schema");
-		const launch = buildLaunch({ ...checks, schemaPath });
+		const launch = buildLaunch({ ...checks, bin, schemaPath });
 		await writeFile(schemaPath, renderEnvSchema(input.bindings), {
 			mode: 0o600,
 			flag: "wx",

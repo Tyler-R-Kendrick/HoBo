@@ -1,5 +1,5 @@
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join } from "node:path";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
+import { delimiter, dirname, join } from "node:path";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
 import { parseCredentialBindings } from "../../src/binding.js";
@@ -513,6 +513,38 @@ describe("a proxied run under the real opensesame", () => {
 			expect(existsSync(join(sandbox.path("out"), run, "env.txt"))).toBe(false);
 		}
 		expect(sandbox.noticeKinds()).toEqual([]);
+	});
+
+	it("a bare opensesame is found on absolute PATH entries only: a stub planted in the working directory is never started, the real binary is identified, and the run is the real one", async () => {
+		const { sandbox, env } = await fresh();
+		const planted = sandbox.path("work");
+		const ran = sandbox.path("stub-ran");
+		writeFileSync(
+			join(planted, "opensesame"),
+			`#!/bin/sh\necho "$@" >> '${ran}'\n`,
+			{ mode: 0o755 },
+		);
+		const here = process.cwd();
+		process.chdir(planted);
+		try {
+			const run = await runChild(
+				sandbox,
+				{ requests: [] },
+				{
+					bindings: bindings(),
+					bin: "opensesame",
+					env: {
+						...env,
+						PATH: `.${delimiter}${delimiter}${dirname(kit.opensesame)}${delimiter}${env.PATH ?? ""}`,
+					},
+				},
+			);
+			expect(run.outcome).toMatchObject({ kind: "child_exit", exitCode: 0 });
+			expect(run.childEnv?.VERCEL_TOKEN).toMatch(/^osr_[0-9a-f]{32}$/u);
+		} finally {
+			process.chdir(here);
+		}
+		expect(existsSync(ran)).toBe(false);
 	});
 
 	it("buildLaunch refuses to start inside the run it started", () => {

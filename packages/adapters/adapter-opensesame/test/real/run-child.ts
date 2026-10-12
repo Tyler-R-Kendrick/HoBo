@@ -126,6 +126,8 @@ export async function until(
 export type RunOptions = Readonly<{
 	bindings: readonly ParsedCredentialBinding[];
 	env: NodeJS.ProcessEnv;
+	/** The executable: a path, or a bare name found on `env`'s PATH. Defaults to the kit's. */
+	bin?: string | undefined;
 	/** Names handed to OpenSesame beyond the allowlist. Defaults to what a sandboxed shell has. */
 	passEnv?: readonly string[] | undefined;
 	/** Runs while the child holds (`wait: true`), e.g. to signal OpenSesame. */
@@ -146,7 +148,7 @@ export async function runChild(
 	const host = new EventEmitter();
 	const started = Date.now();
 	const running = runProxied({
-		bin: sandbox.kit.opensesame,
+		bin: options.bin ?? sandbox.kit.opensesame,
 		bindings: options.bindings,
 		argv: [process.execPath, "--no-warnings", CHILD_FETCH, out],
 		env: options.env,

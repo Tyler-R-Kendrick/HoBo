@@ -86,6 +86,8 @@ function stubInput(overrides: Partial<RunInput> = {}): RunInput {
 			FAKE_OPENSESAME_RECORD: join(work, "record.json"),
 		},
 		passEnv: FAKE_KNOBS,
+		// Most runs do not need the real `--version` round trip; opensesame-bin.test.ts and the pact do.
+		probe: () => ({ status: 0, stdout: "opensesame 0.1.0\n" }),
 		stderr: new PassThrough(),
 		...overrides,
 	};

@@ -53,7 +53,7 @@ describe("pins wiring", () => {
 		);
 	});
 
-	it("the disabled PR gate checks the pins right after checkout and before installing", () => {
+	it("the disabled PR gate checks the pins after checkout and before installing", () => {
 		const job = jobText(
 			read(".github/workflows-disabled/hobo-ci.yml"),
 			"pr-gate",

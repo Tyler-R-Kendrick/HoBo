@@ -868,7 +868,7 @@ Before this decision one sibling was pinned, by a gitlink, and obtained by a com
 - **Tests:** `scripts/test/pins*.test.ts` and `scripts/test/bootstrap-siblings*.test.ts` run the real script under native type stripping against real git repositories on disk and a real loopback HTTP server, with git's configuration isolated; `scripts/test/pins-wiring.test.ts` pins the package scripts, `setup`, the remediation text, the disabled CI job and the manifest's agreement with `.gitmodules`. `pnpm run test:scripts` runs them.
 - **Protobuf and CUE (tracked gap):** the manifest is JSON parsed by one hand-written decoder, not a protobuf/CUE-backed data model, because the script must run before any package is installed. If the manifest outgrows this, the decoder is the one place to replace.
 - **PACT (tracked gap):** the process boundaries here are git and HTTP; they are proven by tests against the real tools, not by PACT files. The release convention in decision 6 is the contract the two sibling release workflows must meet, and should become a consumer pact when the first one exists.
-- **Hosted CI is disabled:** `.github/workflows-disabled/hobo-ci.yml` runs `pins:status --offline` right after checkout in `pr-gate`, behind the same `if: ${{ false }}` as every job (`pnpm run actions:lint`).
+- **Hosted CI is disabled:** `.github/workflows-disabled/hobo-ci.yml` runs `pins:status --offline` in `pr-gate` after checkout and `setup-node` (strip-types needs Node 22.6+) and before `pnpm install`, behind the same `if: ${{ false }}` as every job (`pnpm run actions:lint`).
 
 ### Consequences
 - **(+)** A bump is one reviewable change (a gitlink, or one `siblings.json` entry), and the drift check is offline and names its fix.

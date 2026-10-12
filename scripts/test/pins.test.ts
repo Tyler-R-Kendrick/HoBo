@@ -292,6 +292,24 @@ describe("parseSums", () => {
 		assert.equal(sums.get("kit.tgz"), "b".repeat(64));
 	});
 
+	it("refuses a file name listed twice, with or without the binary marker", () => {
+		assert.throws(
+			() => parseSums(`${DIGEST}  tool\n${"b".repeat(64)}  tool\n`),
+			/SUMS_MALFORMED/,
+		);
+		assert.throws(
+			() => parseSums(`${DIGEST}  tool\n${DIGEST} *tool\n`),
+			/SUMS_MALFORMED/,
+		);
+	});
+
+	it("refuses an upper-case digest, which no lower-case pin could ever match", () => {
+		assert.throws(
+			() => parseSums(`${DIGEST.toUpperCase()}  tool\n`),
+			/SUMS_MALFORMED/,
+		);
+	});
+
 	it("refuses a malformed line and a path", () => {
 		assert.throws(() => parseSums("nonsense\n"), /SUMS_MALFORMED/);
 		assert.throws(() => parseSums(`${DIGEST}  ../escape\n`), /SUMS_MALFORMED/);

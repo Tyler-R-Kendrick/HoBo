@@ -145,6 +145,53 @@ describe("fetchVerified", () => {
 		);
 	});
 
+	it("follows five redirects and refuses a sixth", async () => {
+		server = await startServer();
+		const bytes = Buffer.from("at the end of the chain");
+		server.setFile("/final", bytes);
+		const chain = (hops: number): string => {
+			for (let hop = 1; hop <= hops; hop += 1) {
+				const next = hop === hops ? "/final" : `/hop${hop + 1}`;
+				server?.setRedirect(`/hop${hop}`, `${server.origin}${next}`);
+			}
+			return `${server?.origin}/hop1`;
+		};
+		const dir = scratch("fetch-hops");
+		await fetchVerified(chain(5), sha256Hex(bytes), join(dir, "five"), {
+			allowLocal: true,
+		});
+		assert.deepEqual(readFileSync(join(dir, "five")), bytes);
+		await assert.rejects(
+			fetchVerified(chain(6), sha256Hex(bytes), join(dir, "six"), {
+				allowLocal: true,
+			}),
+			(error: Error) =>
+				error instanceof PinsError &&
+				error.code === "REDIRECT_REFUSED" &&
+				/more than 5 times/u.test(error.message),
+		);
+		assert.equal(existsSync(join(dir, "six")), false);
+	});
+
+	it("refuses a file whose length is not the pinned size even when its digest matches", async () => {
+		server = await startServer();
+		const bytes = Buffer.from("exactly this long");
+		server.setFile("/tool", bytes);
+		const dir = scratch("fetch-length");
+		const dest = join(dir, "tool");
+		await assert.rejects(
+			fetchVerified(`${server.origin}/tool`, sha256Hex(bytes), dest, {
+				allowLocal: true,
+				expectedSize: bytes.byteLength + 1,
+			}),
+			(error: Error) =>
+				error instanceof PinsError &&
+				error.code === "SIZE_MISMATCH" &&
+				error.message.includes(`${bytes.byteLength} bytes`),
+		);
+		assert.deepEqual(readdirSync(dir), [], "nothing was kept");
+	});
+
 	it("refuses an http url unless local sources are allowed", async () => {
 		const dir = scratch("fetch-scheme");
 		await assert.rejects(

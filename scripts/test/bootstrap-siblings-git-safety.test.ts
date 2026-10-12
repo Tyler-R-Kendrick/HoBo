@@ -328,3 +328,41 @@ describe("a commit the remote does not serve is never pinned", () => {
 		assert.doesNotMatch(run.stdout, /not available from/);
 	});
 });
+
+describe("the script does not move a submodule it cannot account for", () => {
+	it("bump refuses a submodule with uncommitted changes and keeps them", () => {
+		const f = fixture(1);
+		assert.equal(runBootstrap(f.work, ["--reference", f.reference]).status, 0);
+		writeFileSync(join(f.sub, "README.md"), "local edit\n");
+		const before = git(f.sub, ["rev-parse", "HEAD"]);
+		const run = runBootstrap(f.work, ["--bump", "lib", "main"]);
+		assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+		assert.match(run.stderr, /external\/lib has uncommitted changes/);
+		assert.equal(
+			git(f.sub, ["rev-parse", "HEAD"]),
+			before,
+			"HEAD did not move",
+		);
+		assert.equal(
+			readFileSync(join(f.sub, "README.md"), "utf8"),
+			"local edit\n",
+		);
+		assert.equal(
+			git(f.work, ["diff", "--cached", "--name-only"]),
+			"",
+			"nothing was staged",
+		);
+	});
+
+	it("init reports a submodule that git declined to update, instead of calling it pinned", () => {
+		const f = fixture(1);
+		// `update = none` makes `git submodule update` skip the path and succeed.
+		git(f.work, ["config", "submodule.external/lib.update", "none"]);
+		const run = runBootstrap(f.work, []);
+		assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+		assert.match(
+			run.stderr,
+			/external\/lib is at nothing after update; the pin is /,
+		);
+	});
+});

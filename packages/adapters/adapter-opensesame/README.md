@@ -2,10 +2,20 @@
 
 **Optional.** Run HoBo under [OpenSesame](https://github.com/Tyler-R-Kendrick/OpenSesame)'s
 proxied invocation (`opensesame dev --agent run`, like `op run`) with secret
-**references** in place of credentials, so the process holds an `osr_` surrogate
-and never the real token. OpenSesame's `surrogate-proxy` plugin swaps the
+**references** in place of credentials, so the command holds an `osr_` surrogate
+in place of the real token. OpenSesame's `surrogate-proxy` plugin swaps the
 surrogate for the token, once, at the provider's own host (`api.vercel.com`),
 inside the scope the binding declared.
+
+That guarantee is conditional, and narrower than "never holds the real token". It
+holds for the environment this adapter builds for the command: an allowlist chosen
+by variable **name**, plus the names you list in `passEnv`, with a refusal when a
+bound variable or the provider's conventional ones (`VERCEL_TOKEN`,
+`VERCEL_API_TOKEN`) already hold a real token. It cannot see a token under a name
+the allowlist lets through (`HOBO_PAT`, `HOBO_DEPLOY_KEY`), in `passEnv` (passed as
+given), or in files the command can read as you (`HOME` and `XDG_*` point at them).
+[ADR-0170](../../../docs/design/adr/02-identity-security.md#adr-0170) lists what is not
+proven.
 
 It is a `SecretsPort` of kind `opensesame` (ADR-0113 residual port, ADR-0027
 rank `provider-federation`): `access()` returns the run's surrogate and nothing
@@ -91,22 +101,47 @@ What `runProxied` does before and around the run:
 
 - **The environment is built, not inherited.** OpenSesame hands its command everything it was started with except the
   store passphrase and the names a binding overwrites, so the caller's AWS keys, `GITHUB_TOKEN` or a real `VERCEL_TOKEN`
-  would reach it. The run starts from an allowlist (`PATH`, `HOME`, `USER`, `LOGNAME`, `SHELL`, `LANG`, `TERM`, `TMPDIR`,
+  would reach it. The run starts from an allowlist (`HOME`, `USER`, `LOGNAME`, `SHELL`, `LANG`, `TERM`, `TMPDIR`,
   `TZ`, `CI`, `LC_*`, `NODE_*`, `XDG_*`, `HOBO_*` minus credential-shaped names, the Windows trio on win32, and the
   checked `OPENSESAME_ENV_PARSE`), plus the names you list in `passEnv`, plus the run's own two variables, which win.
+  The allowlist is a heuristic by name: a variable that matches a prefix and does not look credential-shaped reaches the
+  command whatever it holds.
   `OPENSESAME_STORE_PASSWORD`, `OPENSESAME_STORE_DIR` and the like are `passEnv` names. A process that already holds a
   value that is not a surrogate in a bound variable or in the provider's conventional ones (`VERCEL_TOKEN`,
   `VERCEL_API_TOKEN`) is refused with `real_credential_in_env` before anything is written.
+- **`PATH` is reduced, not inherited.** OpenSesame's first act is to run a bare `node` (the env-spec bridge) with the store
+  passphrase in its environment, so an empty or relative `PATH` entry would let a `./node` in a checkout take it. `PATH` is
+  always your entries that are absolute, exist and are trusted places (below), each written as it resolves; if none remain,
+  `/usr/local/bin:/usr/bin:/bin` (on Windows, SystemRoot's `System32` and SystemRoot). Listing `PATH` in `passEnv` does not
+  change that. A command that lives only in a dropped directory has to be named by absolute path in `argv`, and `node`
+  must be in a trusted directory or OpenSesame reports `bridge_missing`. **The adapter does not rely on OpenSesame also
+  fixing its own schema bridge** (removing the passphrase from it, an absolute path for `node`); this holds either way.
+- **A trusted place** resolves through every symlink; it and every directory above it belong to you or root and are not
+  writable by group or others (a sticky directory you or root own, like `/tmp`, is allowed); it is not under a
+  `node_modules/.bin` directory and not inside the working directory's tree (the filesystem root and your home directory
+  are not projects). Not checked: file contents, ACLs, extended attributes, Windows ownership, a mount that lies about
+  modes, or that a trusted place stays trusted between the check and the use (a swap there needs write access to a directory
+  the rule refuses). Edge cases: on a umask-002 system (Debian and Ubuntu private groups) a download made executable is 0775
+  and is refused until you fix its mode; on WSL `/mnt/c` and on FAT every file looks 0777 and is refused; on Windows a bare
+  `opensesame` is not resolved (no `PATHEXT`) and no owner or mode is checked, so give the path. All of these fail closed with a message
+  that names the file and what to change.
 - **The executable is found and identified first.** A bare `opensesame` is looked up on the absolute entries of `PATH`
-  only (an empty or relative entry means the working directory, where a planted stub lives); one that group or others
-  can write is `opensesame_bin_untrusted`; a path with a separator is your explicit choice. It is then asked
-  `--version` with `PATH` alone in its environment and must answer `opensesame X.Y.Z` before the real launch, which is
-  the first place the passphrase can appear. That is a shape check, not authentication.
+  only; the first executable file found must be in a trusted place, or the run is refused (`opensesame_bin_untrusted`)
+  rather than moving on to a later one. A path with a separator is your explicit choice: resolved once through its links,
+  and not held to the rule. The resolved path is what is probed and what is started. It is asked `--version` with the
+  reduced `PATH` alone in its environment and must answer `opensesame X.Y.Z` before the real launch, which is the first
+  place the passphrase can appear. That is a shape check, not authentication.
 - **Signals.** From before the first await to the schema's removal, `SIGTERM` and `SIGHUP` are passed on to OpenSesame
   as they are (it revokes the run and stops the command; you get the `signalled` outcome). `SIGINT` and `SIGQUIT` are
   passed on as `SIGTERM`, because OpenSesame does not stop the command on an interrupt, and are re-raised on this process
   once the schema is gone, so Ctrl-C still ends it by the signal. A signal before OpenSesame is started starts nothing
-  (`signalled`). From the `exit` event, OpenSesame is sent `SIGTERM` and the schema directory is removed.
+  (`signalled`), and a `SIGTERM` or `SIGHUP` that finds nothing running (before the start, or after the command ended) is
+  re-raised the same way, so a supervisor's "stop" is not swallowed. From the `exit` event, OpenSesame is sent `SIGTERM`
+  and the schema directory is removed, neither able to throw. The read of OpenSesame's stderr ends a second after it exits
+  even when a descendant (a daemon the command started) holds the pipe open.
+- **Documented, not changed.** An ignored signal (`nohup`, `trap '' HUP`) is not respected: the listeners replace the ignore,
+  where OpenSesame itself keeps it. A second Ctrl-C is passed on as `SIGTERM` again and never escalates, so a wedged
+  OpenSesame needs `SIGKILL`, and the re-raised interrupt also reaches your own `SIGINT` handlers.
 - **What no handler can reach.** `SIGKILL` and a crash. The `hobo-opensesame-*` directory stays in the temp directory
   with its 0600 `.env.schema` (connection names, paths and methods, never a token), and OpenSesame and its command keep
   running with their surrogate until the command ends or the surrogate's lifetime runs out. If OpenSesame itself is
@@ -133,7 +168,7 @@ The one that matters most is `placeholders_only`. With the plugin missing or off
 **still starts the child and exits 0**, handing it an `ostest_…` placeholder. Against an emulator that
 accepts any token that is a false green, so the adapter treats it as a failure: the port denies anything
 that is not `osr_` + 32 hex, and a run that printed OpenSesame's placeholder line is `placeholders_only`
-whatever its status.
+unless a more specific kind applies: a tripwire (77), a signal (143, 129) or a recognised refusal beside its own line wins.
 
 ## What the binary really does (checked against `apps/cli` at OpenSesame `b60790eb3`)
 
@@ -148,10 +183,13 @@ Where the docs and the code are not the same thing, or the status alone is not e
 - Every refusal before the child starts (pin mismatch, unreadable entry, no bounded scope, a schema
   that does not parse) is `Error: <message>` on stderr and status `1`.
 - `--schema` is a global flag of `dev`: `opensesame dev --agent --schema <file> run -- <cmd>`.
-- The classification reads stderr, which the child shares, so it is advisory. A child can print a line in
-  OpenSesame's shape (and exit 77, 143 or 129 itself); what that gains it is a fail-closed kind with a fixed
-  sentence, never a pass, and none of its text reaches the outcome or an error message (a `child_exit`
-  carries the status and no words). The gate that a surrogate was really delivered is the port.
+- The classification reads stderr, which the child shares, so it is advisory. OpenSesame prints its end-of-run line with no
+  newline before it, so a child's unterminated last write (or a spinner ending on `\r`) leaves it glued to the child's own
+  text: the `opensesame: ` sentences and the pin-mismatch sentence are therefore matched anywhere in the retained output,
+  and the other `Error:` classes, printed before the child exists, at the start of a line. A child can print one of them
+  (and exit 77, 143 or 129 itself); what that gains it is a fail-closed kind with a fixed sentence, never a pass, and none
+  of its text reaches the outcome or an error message. The one thing of the child's that does is the exit status it chose
+  (eight bits: `exitCode`, "status N"). The gate that a surrogate was really delivered is the port.
 
 ## Tests
 

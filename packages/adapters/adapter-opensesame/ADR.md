@@ -29,15 +29,19 @@ Ship the receiving end as an **optional L2 adapter** under `packages/adapters/`:
 - Vercel only. AWS is a typed `provider_not_brokered` refusal until OpenSesame's STS mint lands.
 - Node `^22.21 || >=24` is stated in this package's `engines` only (Node 23 has no `NODE_USE_ENV_PROXY`).
 - The command starts from an environment the launch builds (an allowlist plus `passEnv`), never the caller's;
-  the `opensesame` is found on absolute `PATH` entries and identified with `--version` before the passphrase goes to it;
-  an interrupt ends the run it started, except SIGKILL and a crash (the 0600 schema, references only, stays).
+  `PATH` is reduced to trusted absolute directories (OpenSesame's own first act is a bare `node` lookup, and the adapter does not
+  rely on OpenSesame fixing it); the `opensesame` is found on those, must sit in a trusted place (owner, ancestors, mode,
+  location) and is identified with `--version`, a shape check, before the passphrase goes to it; an interrupt ends the run it
+  started, except SIGKILL and a crash (the 0600 schema, references only, stays).
 - The real lane builds or points at a local kit (`HOBO_OPENSESAME_KIT`); no public test-build plugin is published.
 
 ## Consequences
 
-- A HoBo process started this way never holds the real credential, and the adapter fails closed (`placeholders_only`)
+- The command a HoBo process starts this way holds a surrogate in place of the credential in the environment the adapter
+  builds (an allowlist by name plus `passEnv`; a token under another name, in `passEnv` or in files the user can read is not
+  seen), and the adapter fails closed (`placeholders_only`)
   instead of passing a run that silently got a placeholder.
 - The status of a proxied run is read from OpenSesame's exit status **and** its own stderr lines, because a child can
   exit with 77, 143 or 129 itself. That is advisory; the port is the gate, and the port proves shape plus run markers,
-  not cryptographic provenance. No text the child printed reaches an outcome or an error.
+  not cryptographic provenance. No text the child printed reaches an outcome or an error; the exit status it chose does.
 - Deploys that need AWS credentials from OpenSesame wait for the STS mint (a slice in OpenSesame).

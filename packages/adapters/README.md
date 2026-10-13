@@ -6,7 +6,7 @@ into HoBo’s framework-free surfaces.
 | Package | Purpose |
 |---------|---------|
 | [`@hobo/adapter-hono`](./adapter-hono/) | Wire [Hono](https://hono.dev) apps as bindle HTTP entrypoints |
-| [`@hobo/adapter-opensesame`](./adapter-opensesame/) | Optional `SecretsPort` that runs HoBo under OpenSesame's proxied invocation and holds an `osr_` surrogate instead of a credential (Vercel; AWS is `provider_not_brokered`) |
+| [`@hobo/adapter-opensesame`](./adapter-opensesame/) | Optional `SecretsPort` that runs HoBo under OpenSesame's proxied invocation and holds an `osr_` surrogate instead of a credential, in the environment it builds (Vercel; AWS is `provider_not_brokered`; see its README for what is and is not guaranteed) |
 
 ## Boundary
 

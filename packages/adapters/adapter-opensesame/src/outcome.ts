@@ -29,7 +29,7 @@
  * `Error:` classes are printed before the child exists and so start a line. The
  * child shares stderr, so it can print any of these: that gains it a fail-closed
  * kind (a tripwire, a refusal, a placeholder) and never a pass, and nothing it
- * wrote survives. A status of 77, 143 or 129 is advisory beside its line, since a
+ * wrote survives except the exit status it chose. A status of 77, 143 or 129 is advisory beside its line, since a
  * child can return them itself. The gate that a surrogate was really delivered is
  * the SecretsPort, which checks the child's own variable and the run's markers.
  *

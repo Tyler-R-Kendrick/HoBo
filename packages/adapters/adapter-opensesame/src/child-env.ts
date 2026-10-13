@@ -18,6 +18,7 @@
 import { ENV_NAME_PATTERN, type ParsedCredentialBinding } from "./binding.js";
 import { OpenSesameAdapterError } from "./errors.js";
 import { isSurrogate } from "./run-markers.js";
+import { type Trust, trustedPath } from "./trust.js";
 
 const nameRe = new RegExp(ENV_NAME_PATTERN, "u");
 
@@ -65,6 +66,8 @@ export type ChildEnvInput = Readonly<{
 	passEnv: readonly string[];
 	bindings: readonly ParsedCredentialBinding[];
 	platform: NodeJS.Platform;
+	/** What a PATH entry is checked against; see `trust.ts`. */
+	trust: Trust;
 }>;
 
 const INHERITED_NAMES: ReadonlySet<string> = new Set(INHERITED);
@@ -115,14 +118,32 @@ function refuseBadPassEnv(passEnv: readonly string[]): void {
 	}
 }
 
-/** The environment OpenSesame is started with; the run's own variables are added by the caller. */
+function isPathName(name: string, platform: NodeJS.Platform): boolean {
+	return platform === "win32" ? name.toUpperCase() === "PATH" : name === "PATH";
+}
+
+/**
+ * The environment OpenSesame is started with; the run's own variables are added by the caller.
+ *
+ * PATH is always reduced to trusted absolute directories (`trustedPath`), listed
+ * in `passEnv` or not: OpenSesame's first act is a bare `node` lookup with the
+ * store passphrase in its environment, and an empty or relative entry makes that
+ * lookup find whatever sits in the working directory. A name that cannot be an
+ * environment variable (empty, with `=` or a NUL) is dropped, not passed.
+ */
 export function childEnvOf(input: ChildEnvInput): NodeJS.ProcessEnv {
 	refuseRealCredentials(input);
 	refuseBadPassEnv(input.passEnv);
 	const listed = new Set(input.passEnv);
 	const out: NodeJS.ProcessEnv = {};
+	let pathName: string | undefined;
 	for (const [name, value] of Object.entries(input.env)) {
 		if (value === undefined) continue;
+		if (name === "" || name.includes("=") || name.includes("\0")) continue;
+		if (isPathName(name, input.platform)) {
+			pathName = name;
+			continue;
+		}
 		if (!listed.has(name) && !inherits(name, input.platform)) continue;
 		if (value.includes("\0")) {
 			throw new OpenSesameAdapterError(
@@ -132,5 +153,12 @@ export function childEnvOf(input: ChildEnvInput): NodeJS.ProcessEnv {
 		}
 		out[name] = value;
 	}
+	const name = pathName ?? (input.platform === "win32" ? "Path" : "PATH");
+	out[name] = trustedPath(
+		pathName === undefined ? undefined : input.env[pathName],
+		input.trust,
+		input.platform,
+		input.env,
+	);
 	return out;
 }

@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import { OpenSesameAdapterError } from "../src/errors.js";
 import { buildLaunch, type Launch, type LaunchInput } from "../src/launch.js";
 import { parsed, vercelRecord } from "./fixtures/bindings.js";
+import { dir, link, memoryTrust, SYSTEM } from "./support/trust-fs.js";
 
 const DUMMY = "vtok_dummy_marker_0123456789abcdef";
 const SURROGATE = `osr_${"0123456789abcdef".repeat(2)}`;
@@ -19,6 +20,8 @@ function launchWith(
 		env,
 		nodeVersion: "22.22.0",
 		exists: () => true,
+		// The places /usr/bin, /bin and /usr/local/bin exist and are root's; nothing else is, whatever machine this runs on.
+		trust: memoryTrust(SYSTEM, { cwd: "/work/checkout" }),
 		...more,
 	});
 }
@@ -218,5 +221,57 @@ describe("a real credential already in the process refuses the run", () => {
 			}),
 		);
 		expect(error).toBeUndefined();
+	});
+});
+
+describe("the PATH OpenSesame starts with is the caller's reduced to trusted places", () => {
+	const nodes = {
+		...SYSTEM,
+		"/opt": dir(0, 0o755),
+		"/opt/shared": dir(4242, 0o755),
+		"/work": dir(0, 0o755),
+		"/work/checkout": dir(1000, 0o755),
+		"/opt/into-checkout": link("/work/checkout"),
+	};
+	const trust = memoryTrust(nodes, { cwd: "/work/checkout" });
+	const pathOf = (value: string, more: Partial<LaunchInput> = {}) =>
+		launchWith({ PATH: value }, { trust, ...more }).env.PATH;
+
+	it("drops the entries that mean the working directory or can be written by someone else, whatever the caller's PATH said", () => {
+		expect(
+			pathOf(
+				[
+					".",
+					"",
+					"bin",
+					"/nowhere",
+					"/opt/shared",
+					"/opt/into-checkout",
+					"/work/checkout",
+					"/usr/local/bin",
+					"/usr/bin",
+					"",
+				].join(":"),
+			),
+		).toBe("/usr/local/bin:/usr/bin");
+	});
+
+	it("does so for a PATH the caller lists in passEnv too: the allowlist is not a way around it", () => {
+		expect(pathOf(".:/usr/bin", { passEnv: ["PATH"] })).toBe("/usr/bin");
+	});
+
+	it("starts from a fixed system PATH when nothing the caller listed is usable, or when there is no PATH", () => {
+		expect(pathOf(".:")).toBe("/usr/local/bin:/usr/bin:/bin");
+		expect(launchWith({}, { trust }).env.PATH).toBe(
+			"/usr/local/bin:/usr/bin:/bin",
+		);
+	});
+
+	it("names Windows' system directories there, and keeps the variable's own spelling", () => {
+		const win = launchWith(
+			{ Path: ".;rel", SYSTEMROOT: "D:\\Win" },
+			{ trust: memoryTrust({}, { euid: undefined }), platform: "win32" },
+		).env;
+		expect(win.Path).toBe("D:\\Win\\System32;D:\\Win");
 	});
 });

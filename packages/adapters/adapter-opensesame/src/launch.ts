@@ -40,6 +40,7 @@ import {
 	type SignalSource,
 	type SpawnedProcess,
 } from "./supervise.js";
+import { nodeTrust, type Trust } from "./trust.js";
 
 export type { SignalSource, SpawnedProcess } from "./supervise.js";
 
@@ -66,6 +67,8 @@ export type LaunchInput = Readonly<{
 	passEnv?: readonly string[] | undefined;
 	/** The platform whose variables are kept. Defaults to this process's. */
 	platform?: NodeJS.Platform | undefined;
+	/** What PATH entries are checked against (the user, the file system, the working directory). Defaults to this process's. */
+	trust?: Trust | undefined;
 	/** Node's version, for the `fetch` proxy check. Defaults to this process's. */
 	nodeVersion?: string | undefined;
 	/** Whether a path exists. Defaults to the filesystem. */
@@ -131,6 +134,7 @@ export function buildLaunch(input: LaunchInput): Launch {
 				passEnv: input.passEnv ?? [],
 				bindings: input.bindings,
 				platform: input.platform ?? process.platform,
+				trust: input.trust ?? nodeTrust(),
 			}),
 			NODE_USE_ENV_PROXY: "1",
 			[CHILD_MARKER]: "1",
@@ -155,6 +159,8 @@ export type RunInput = Readonly<{
 	env?: NodeJS.ProcessEnv;
 	passEnv?: readonly string[] | undefined;
 	platform?: NodeJS.Platform | undefined;
+	/** What PATH entries and the `opensesame` file are checked against. Defaults to this process's user, file system and working directory. */
+	trust?: Trust | undefined;
 	spawn?: SpawnFn;
 	signals?: SignalSource;
 	stderr?: StderrSink;
@@ -213,6 +219,7 @@ function raiseOnProcess(signal: NodeJS.Signals): void {
  */
 export async function runProxied(input: RunInput): Promise<ProxiedRunOutcome> {
 	const env = input.env ?? process.env;
+	const trust = input.trust ?? nodeTrust();
 	const checks = {
 		bin: input.bin,
 		argv: input.argv,
@@ -220,13 +227,20 @@ export async function runProxied(input: RunInput): Promise<ProxiedRunOutcome> {
 		env,
 		passEnv: input.passEnv,
 		platform: input.platform,
+		trust,
 		nodeVersion: input.nodeVersion,
 		exists: input.exists,
 	};
 	// Refuse before anything is written: a launch that cannot happen leaves no schema.
 	buildLaunch({ ...checks, schemaPath: "" });
 	// Found, checked and identified before the passphrase can reach it.
-	const bin = trustedOpenSesame({ bin: input.bin, env, probe: input.probe });
+	const bin = trustedOpenSesame({
+		bin: input.bin,
+		env,
+		probe: input.probe,
+		trust,
+		platform: input.platform,
+	});
 	// Guarded from here, before the first await, to the schema's removal.
 	const guard = guardRun(
 		input.signals ?? process,

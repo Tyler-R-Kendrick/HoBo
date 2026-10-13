@@ -14,6 +14,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { OpenSesameAdapterError } from "../src/errors.js";
 import { buildLaunch, type RunInput, runProxied } from "../src/launch.js";
 import { parsed } from "./fixtures/bindings.js";
+import { memoryTrust, SYSTEM } from "./support/trust-fs.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FAKE = join(here, "fixtures/fake-opensesame.mts");
@@ -110,9 +111,13 @@ describe("buildLaunch", () => {
 	});
 
 	it("sets NODE_USE_ENV_PROXY=1 and the child marker on the environment it keeps, and adds nothing else", () => {
-		const launch = launchOf({ env: { ...baseEnv, KEEP: "1" } });
+		const launch = launchOf({
+			env: { PATH: "/usr/bin", NODE_NO_WARNINGS: "1", KEEP: "1" },
+			trust: memoryTrust(SYSTEM, { cwd: "/work/checkout" }),
+		});
 		expect(launch.env).toEqual({
-			...baseEnv,
+			PATH: "/usr/bin",
+			NODE_NO_WARNINGS: "1",
 			NODE_USE_ENV_PROXY: "1",
 			HOBO_OPENSESAME_CHILD: "1",
 		});

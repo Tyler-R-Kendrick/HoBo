@@ -1,5 +1,6 @@
 import { EventEmitter } from "node:events";
 import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { PassThrough } from "node:stream";
@@ -11,6 +12,7 @@ import {
 	runProxied,
 	type SpawnedProcess,
 } from "../src/launch.js";
+import { guardRun } from "../src/supervise.js";
 import { parsed } from "./fixtures/bindings.js";
 
 let work = "";
@@ -282,5 +284,100 @@ describe("an interrupt that stopped the run ends the process that was interrupte
 		stub.emit("close", 0, null);
 		await run;
 		expect(raised).toEqual([]);
+	});
+});
+
+describe("a signal that finds nothing running is not lost", () => {
+	it("re-raises SIGTERM and SIGHUP that arrive after the command ended, once the schema is gone", async () => {
+		for (const signal of ["SIGTERM", "SIGHUP"] as const) {
+			const raised: { signal: string; dirs: string[] }[] = [];
+			const host = new EventEmitter();
+			const { stub, run } = await started({
+				signals: host,
+				remove: (dir) => {
+					// The command has ended; the supervisor says stop while the schema is being removed.
+					host.emit(signal, signal);
+					return rm(dir, { recursive: true, force: true });
+				},
+				raise: (raisedSignal) => {
+					raised.push({ signal: raisedSignal, dirs: schemaDirs() });
+				},
+			});
+			stub.emit("close", 0, null);
+			await run;
+			expect(stub.killed, signal).toEqual([]);
+			expect(raised, signal).toEqual([{ signal, dirs: [] }]);
+		}
+	});
+
+	it("re-raises SIGTERM that arrived before OpenSesame was started, which the run refused to start for", async () => {
+		const host = new EventEmitter();
+		const raised: string[] = [];
+		const run = runProxied(
+			input({ signals: host, raise: (signal) => raised.push(signal) }),
+		);
+		host.emit("SIGTERM", "SIGTERM");
+		expect(await codeOf(run)).toBe("signalled");
+		expect(raised).toEqual(["SIGTERM"]);
+	});
+
+	it("does not re-raise a SIGTERM that reached a running OpenSesame, but does one that came after it", () => {
+		const host = new EventEmitter();
+		const raised: string[] = [];
+		const killed: string[] = [];
+		const guard = guardRun(host, (signal) => raised.push(signal));
+		guard.attach({
+			stderr: null,
+			on: () => undefined,
+			kill: (signal) => {
+				killed.push(signal);
+				return true;
+			},
+		});
+		host.emit("SIGTERM", "SIGTERM");
+		guard.detach();
+		host.emit("SIGHUP", "SIGHUP");
+		guard.release();
+		expect(killed).toEqual(["SIGTERM"]);
+		expect(raised).toEqual(["SIGHUP"]);
+	});
+});
+
+describe("the exit handler cannot make the process lose its other exit handlers", () => {
+	it("survives a schema directory it cannot remove and a kill that throws, and later listeners still run", () => {
+		const host = new EventEmitter();
+		const guard = guardRun(host, undefined);
+		guard.own("not\0a-path");
+		guard.attach({
+			stderr: null,
+			on: () => undefined,
+			kill: () => {
+				throw new Error("ESRCH");
+			},
+		});
+		let later = 0;
+		host.on("exit", () => {
+			later += 1;
+		});
+		expect(() => host.emit("exit", 1)).not.toThrow();
+		expect(later).toBe(1);
+		guard.release();
+	});
+
+	it("still removes the directory when the kill throws", () => {
+		const host = new EventEmitter();
+		const dir = mkdtempSync(join(work, "hobo-opensesame-"));
+		const guard = guardRun(host, undefined);
+		guard.own(dir);
+		guard.attach({
+			stderr: null,
+			on: () => undefined,
+			kill: () => {
+				throw new Error("EPERM");
+			},
+		});
+		host.emit("exit", 1);
+		expect(schemaDirs()).toEqual([]);
+		guard.release();
 	});
 });

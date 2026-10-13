@@ -169,6 +169,8 @@ export type RunInput = Readonly<{
 	tmpRoot?: string | undefined;
 	/** Runs `opensesame --version` for the identity check. Defaults to doing so. */
 	probe?: BinProbe | undefined;
+	/** Removes the schema directory. Defaults to a recursive, forced removal; a seam for tests. */
+	remove?: ((dir: string) => Promise<void>) | undefined;
 	/**
 	 * Re-raises SIGINT or SIGQUIT after the run is cleaned up. Defaults to doing
 	 * so on this process, and to nothing when `signals` is injected.
@@ -203,6 +205,10 @@ function wait(
 			resolve(parseOutcome(code, signal, capture.text()));
 		});
 	});
+}
+
+function removeDir(dir: string): Promise<void> {
+	return rm(dir, { recursive: true, force: true });
 }
 
 /** Re-raise an interrupt on this process, once the run is cleaned up, so its default action applies. */
@@ -273,7 +279,7 @@ export async function runProxied(input: RunInput): Promise<ProxiedRunOutcome> {
 	} finally {
 		guard.detach();
 		try {
-			if (dir !== undefined) await rm(dir, { recursive: true, force: true });
+			if (dir !== undefined) await (input.remove ?? removeDir)(dir);
 		} finally {
 			guard.release();
 		}

@@ -16,7 +16,14 @@ import { parsed, vercelRecord } from "./fixtures/bindings.js";
 const here = dirname(fileURLToPath(import.meta.url));
 const LISTS = ["TRUST_VARS", "PROXY_VARS", "NO_PROXY_VARS"] as const;
 
-function fixture(): Record<(typeof LISTS)[number], string[]> {
+/** OpenSesame's three lists of variables a binding may not name. */
+type ReservedLists = {
+	TRUST_VARS: string[];
+	PROXY_VARS: string[];
+	NO_PROXY_VARS: string[];
+};
+
+function fixture(): ReservedLists {
 	const document = parseJsonValue(
 		readFileSync(join(here, "fixtures/opensesame-reserved-vars.json"), "utf8"),
 	);
@@ -37,7 +44,7 @@ function fixture(): Record<(typeof LISTS)[number], string[]> {
 }
 
 /** The `&[&str]` lists of OpenSesame's env.rs, read as text. */
-function listsIn(source: string): Record<(typeof LISTS)[number], string[]> {
+function listsIn(source: string): ReservedLists {
 	const out: Record<string, string[]> = {};
 	for (const list of LISTS) {
 		const body = new RegExp(

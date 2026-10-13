@@ -1,5 +1,5 @@
 import { EventEmitter } from "node:events";
-import { mkdtempSync, readdirSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readdirSync, rmSync } from "node:fs";
 import { rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -379,5 +379,95 @@ describe("the exit handler cannot make the process lose its other exit handlers"
 		host.emit("exit", 1);
 		expect(schemaDirs()).toEqual([]);
 		guard.release();
+	});
+});
+
+describe("the schema directory is found again wherever the process has gone by the end", () => {
+	it("a relative temp root is made absolute at the start: a chdir during the run leaves nothing behind", async () => {
+		const here = process.cwd();
+		mkdirSync(join(work, "t"));
+		mkdirSync(join(work, "elsewhere"));
+		process.chdir(work);
+		try {
+			const { stub, run } = await started({ tmpRoot: "t" });
+			process.chdir(join(work, "elsewhere"));
+			stub.emit("close", 0, null);
+			await run;
+		} finally {
+			process.chdir(here);
+		}
+		expect(
+			readdirSync(join(work, "t")).filter((n) =>
+				n.startsWith("hobo-opensesame-"),
+			),
+		).toEqual([]);
+	});
+
+	it("hands OpenSesame an absolute schema path whatever the temp root was", async () => {
+		mkdirSync(join(work, "t"));
+		const here = process.cwd();
+		process.chdir(work);
+		try {
+			const seen: string[] = [];
+			const stub = new Stub();
+			const host = new EventEmitter();
+			const run = runProxied(
+				input({
+					signals: host,
+					tmpRoot: "t",
+					spawn: (_command, args) => {
+						seen.push(args[3] ?? "");
+						return stub;
+					},
+				}),
+			);
+			await until(() => seen.length === 1);
+			stub.emit("close", 0, null);
+			await run;
+			expect(seen[0]).toMatch(/^\//u);
+			expect(seen[0]).toContain(join(work, "t"));
+		} finally {
+			process.chdir(here);
+		}
+	});
+});
+
+describe("a failing removal is not the run's error", () => {
+	const failing = () => Promise.reject(new Error("EBUSY: busy"));
+
+	it("returns the outcome of a run that finished, and lets go of the handlers", async () => {
+		const host = new EventEmitter();
+		const { stub, run } = await started({ signals: host, remove: failing });
+		stub.emit("close", 0, null);
+		expect(await run).toMatchObject({ kind: "child_exit", exitCode: 0 });
+		expect(listeners(host)).toEqual(NONE);
+	});
+
+	it("does not mask the error that ended the run", async () => {
+		const host = new EventEmitter();
+		const { stub, run } = await started({ signals: host, remove: failing });
+		stub.emit("error", Object.assign(new Error("spawn"), { code: "ENOENT" }));
+		expect(await codeOf(run)).toBe("opensesame_bin_missing");
+		expect(listeners(host)).toEqual(NONE);
+	});
+});
+
+describe("the read of OpenSesame's stderr ends soon after OpenSesame does", () => {
+	it("resolves with the outcome and lets go of the pipe when a descendant holds it open after the exit", async () => {
+		const { stub, run } = await started({ stderrGraceMs: 20 });
+		let destroyed = false;
+		Object.assign(stub.stderr, { destroy: () => (destroyed = true) });
+		stub.stderr.write("opensesame: surrogate.misdirected: x\n");
+		stub.emit("exit", 77, null);
+		// No close: something else still holds the write end.
+		expect(await run).toMatchObject({ kind: "tripwire", exitCode: 77 });
+		expect(destroyed).toBe(true);
+	});
+
+	it("does not cut off a close that comes inside the grace, and settles once", async () => {
+		const { stub, run } = await started({ stderrGraceMs: 5_000 });
+		stub.emit("exit", 3, null);
+		stub.emit("close", 3, null);
+		expect(await run).toMatchObject({ kind: "child_exit", exitCode: 3 });
 	});
 });

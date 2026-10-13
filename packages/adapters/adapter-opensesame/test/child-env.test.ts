@@ -169,6 +169,22 @@ describe("the environment a run starts from is an allowlist, not the caller's", 
 	});
 });
 
+describe("a name that cannot be an environment variable is dropped, not passed", () => {
+	it("drops names that are empty or hold = or a NUL, instead of reaching spawn as a raw TypeError or as a changed variable", () => {
+		const { env } = launchWith({
+			PATH: "/usr/bin",
+			"HOBO_A=B": "x",
+			"HOBO_\0X": "y",
+			"": "z",
+			HOBO_OK: "1",
+		});
+		expect(Object.keys(env).sort()).toEqual(
+			["HOBO_OK", "HOBO_OPENSESAME_CHILD", "NODE_USE_ENV_PROXY", "PATH"].sort(),
+		);
+		expect(env.HOBO_A).toBeUndefined();
+	});
+});
+
 describe("a real credential already in the process refuses the run", () => {
 	it("refuses a bound variable that holds something other than a surrogate", () => {
 		const error = refusal(() =>

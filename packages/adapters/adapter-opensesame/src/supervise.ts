@@ -36,8 +36,16 @@ import { rmSync } from "node:fs";
 export interface SpawnedProcess {
 	readonly stderr: {
 		on(event: "data", listener: (chunk: Buffer | string) => void): void;
+		/** Lets go of the pipe. A `Readable` has it. */
+		destroy?(): void;
 	} | null;
 	on(event: "error", listener: (error: Error) => void): void;
+	/** The process has ended; its stderr may still be held open by something it started. */
+	on(
+		event: "exit",
+		listener: (code: number | null, signal: NodeJS.Signals | null) => void,
+	): void;
+	/** The process has ended and its stderr is closed. */
 	on(
 		event: "close",
 		listener: (code: number | null, signal: NodeJS.Signals | null) => void,

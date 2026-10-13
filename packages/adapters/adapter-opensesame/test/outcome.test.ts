@@ -281,6 +281,15 @@ describe("parseOutcome: how a proxied run ended", () => {
 		);
 	});
 
+	it("a failing child's error message is exactly the fixed sentence and its status, nothing appended", () => {
+		const outcome = parseOutcome(3, null, "whatever it printed\n");
+		expect(outcomeError(outcome)?.message).toBe(
+			"the proxied command exited with a failing status (status 3)",
+		);
+		expect(outcomeError(outcome)?.code).toBe("child_exit");
+		expect(outcome.notice).toBe("");
+	});
+
 	it("keeps the kind inside the closed set the CUE names", () => {
 		for (const [scenario, code] of [
 			["plugin-absent", 0],

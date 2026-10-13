@@ -24,7 +24,7 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import type { ProxiedRunOutcome } from "./_generated/adapter_opensesame_pb.js";
 import type { ParsedCredentialBinding } from "./binding.js";
@@ -45,6 +45,7 @@ import { nodeTrust, type Trust } from "./trust.js";
 export type { SignalSource, SpawnedProcess } from "./supervise.js";
 
 const CAPTURE_LIMIT = 64 * 1024;
+const STDERR_GRACE_MS = 1000;
 
 export type Launch = Readonly<{
 	command: string;
@@ -169,6 +170,8 @@ export type RunInput = Readonly<{
 	tmpRoot?: string | undefined;
 	/** Runs `opensesame --version` for the identity check. Defaults to doing so. */
 	probe?: BinProbe | undefined;
+	/** How long after OpenSesame exits its stderr is still read, in ms. Defaults to 1000. */
+	stderrGraceMs?: number | undefined;
 	/** Removes the schema directory. Defaults to a recursive, forced removal; a seam for tests. */
 	remove?: ((dir: string) => Promise<void>) | undefined;
 	/**
@@ -182,18 +185,37 @@ export type RunInput = Readonly<{
 const nodeSpawn: SpawnFn = (command, args, env) =>
 	spawn(command, [...args], { env, stdio: ["inherit", "inherit", "pipe"] });
 
+/**
+ * Wait for OpenSesame to end and read its stderr. `close` (the stderr pipe is
+ * closed) is the usual end, but a descendant that inherited the pipe, such as a
+ * daemon the command started, holds it open after OpenSesame has gone, so the
+ * read ends `graceMs` after `exit` whether or not the pipe has: the run is
+ * already over and revoked, and a hang would keep the handlers installed.
+ */
 function wait(
 	child: SpawnedProcess,
 	sink: StderrSink,
+	graceMs: number,
 ): Promise<ProxiedRunOutcome> {
 	return new Promise((resolve, reject) => {
 		const capture = createCapture(CAPTURE_LIMIT);
+		let settled = false;
+		let timer: NodeJS.Timeout | undefined;
+		const settle = (code: number | null, signal: NodeJS.Signals | null) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
+			resolve(parseOutcome(code, signal, capture.text()));
+		};
 		child.stderr?.on("data", (chunk) => {
 			const text = String(chunk);
 			sink.write(text);
 			capture.push(text);
 		});
 		child.on("error", (error) => {
+			if (settled) return;
+			settled = true;
+			clearTimeout(timer);
 			reject(
 				new OpenSesameAdapterError(
 					"opensesame_bin_missing",
@@ -201,9 +223,13 @@ function wait(
 				),
 			);
 		});
-		child.on("close", (code, signal) => {
-			resolve(parseOutcome(code, signal, capture.text()));
+		child.on("exit", (code, signal) => {
+			timer = setTimeout(() => {
+				child.stderr?.destroy?.();
+				settle(code, signal);
+			}, graceMs);
 		});
+		child.on("close", settle);
 	});
 }
 
@@ -252,9 +278,11 @@ export async function runProxied(input: RunInput): Promise<ProxiedRunOutcome> {
 		input.signals ?? process,
 		input.raise ?? (input.signals === undefined ? raiseOnProcess : undefined),
 	);
+	// Absolute now: a chdir during the run must not move where the schema is, or where it is removed from.
+	const root = resolve(input.tmpRoot ?? tmpdir());
 	let dir: string | undefined;
 	try {
-		dir = await mkdtemp(join(input.tmpRoot ?? tmpdir(), "hobo-opensesame-"));
+		dir = await mkdtemp(join(root, "hobo-opensesame-"));
 		guard.own(dir);
 		const schemaPath = join(dir, ".env.schema");
 		const launch = buildLaunch({ ...checks, bin, schemaPath });
@@ -275,11 +303,18 @@ export async function runProxied(input: RunInput): Promise<ProxiedRunOutcome> {
 			launch.env,
 		);
 		guard.attach(child);
-		return await wait(child, input.stderr ?? process.stderr);
+		return await wait(
+			child,
+			input.stderr ?? process.stderr,
+			input.stderrGraceMs ?? STDERR_GRACE_MS,
+		);
 	} finally {
 		guard.detach();
 		try {
 			if (dir !== undefined) await (input.remove ?? removeDir)(dir);
+		} catch {
+			// The directory holds references only. A failed removal is not the run's error, and must not
+			// replace the one that ended it; the temp directory's own cleanup takes it.
 		} finally {
 			guard.release();
 		}

@@ -357,6 +357,30 @@ describe("runProxied with a stand-in binary", () => {
 		}
 	});
 
+	it("does not hang on a descendant that holds the stderr pipe open after OpenSesame has ended", async () => {
+		const grandchild = join(work, "grandchild.pid");
+		const script = `const { spawn } = require("node:child_process");
+const held = spawn(process.execPath, ["-e", "setTimeout(() => {}, 20000)"], { detached: true, stdio: ["ignore", "ignore", "inherit"] });
+require("node:fs").writeFileSync(${JSON.stringify(grandchild)}, String(held.pid));
+held.unref();`;
+		const started = Date.now();
+		try {
+			const outcome = await runProxied({
+				...stubInput(),
+				argv: [process.execPath, "-e", script],
+				stderrGraceMs: 300,
+			});
+			expect(outcome).toMatchObject({ kind: "child_exit", exitCode: 0 });
+			expect(Date.now() - started).toBeLessThan(10_000);
+		} finally {
+			try {
+				process.kill(Number(readFileSync(grandchild, "utf8")), "SIGKILL");
+			} catch {
+				// Already gone.
+			}
+		}
+	});
+
 	it("a placeholder run leaves the child an ostest_ value, which is not a surrogate", async () => {
 		const input = stubInput();
 		await runProxied({

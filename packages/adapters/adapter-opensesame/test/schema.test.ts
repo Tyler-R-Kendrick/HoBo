@@ -77,6 +77,10 @@ describe("renderEnvSchema", () => {
 			{ ...good, envName: "HOBO_OPENSESAME_CHILD" } as ParsedCredentialBinding,
 			// SAFETY: forged on purpose.
 			Object.assign({}, good, { paths: ["/"] }) as ParsedCredentialBinding,
+			// The class is reachable from any parsed binding; constructing it anew is not parsing.
+			Reflect.construct(good.constructor, [
+				{ ...good, envName: "HTTPS_PROXY", paths: ["/"] },
+			]),
 			// SAFETY: forged on purpose: an object that inherits the parser's prototype has no brand.
 			Object.assign(
 				Object.create(Object.getPrototypeOf(good)),

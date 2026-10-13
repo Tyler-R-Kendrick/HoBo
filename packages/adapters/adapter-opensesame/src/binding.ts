@@ -100,8 +100,10 @@ type ParsedFields = Readonly<
  * A binding that passed `parseCredentialBindings`. It is nominal: the `#brand`
  * is a private field, so a spread copy, an object literal or `Object.assign` has
  * the right public fields and is still not one (a compile error), and
- * `isParsedCredentialBinding` tells a forged value at run time. Only
- * `parseOne` below constructs it, after every check; the class is exported as a type only.
+ * `isParsedCredentialBinding` tells a forged value at run time by a module-private
+ * registry that only `parseOne` below adds to, after every check. The class is
+ * exported as a type only, and constructing a second instance through
+ * `binding.constructor` does not register it.
  */
 class ParsedCredentialBinding implements ParsedFields {
 	readonly #brand = true;
@@ -125,8 +127,20 @@ class ParsedCredentialBinding implements ParsedFields {
 	}
 
 	static is(value: ParsedFields): value is ParsedCredentialBinding {
-		return #brand in value && value.#brand;
+		return parsedBindings.has(value) && #brand in value && value.#brand;
 	}
+}
+
+/**
+ * The bindings `parseOne` made. The class is reachable from any instance
+ * (`binding.constructor`), so constructing one is not proof of parsing; being in
+ * this module-private set is, and nothing outside the module can add to it.
+ */
+const parsedBindings = new WeakSet<ParsedFields>();
+
+function parsedBy(binding: ParsedCredentialBinding): ParsedCredentialBinding {
+	parsedBindings.add(binding);
+	return binding;
 }
 
 export type { ParsedCredentialBinding };
@@ -274,15 +288,17 @@ function parseOne(input: JsonValue, index: number): ParsedCredentialBinding {
 		}
 		methods.push(method);
 	}
-	return new ParsedCredentialBinding({
-		locator,
-		connection,
-		provider,
-		envName,
-		paths,
-		methods,
-		projection: "legacy-token",
-	});
+	return parsedBy(
+		new ParsedCredentialBinding({
+			locator,
+			connection,
+			provider,
+			envName,
+			paths,
+			methods,
+			projection: "legacy-token",
+		}),
+	);
 }
 
 /**

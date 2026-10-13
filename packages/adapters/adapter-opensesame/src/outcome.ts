@@ -20,14 +20,18 @@
  *   on stderr says so, which is why that line is read at all: a green exit
  *   with a placeholder is the false pass this adapter exists to refuse.
  *
- * Only lines in the shape OpenSesame writes (column 0, `opensesame: ` or
- * `Error: `, then the closed set of sentences below) are read, and a refusal needs a
- * failing status beside it. The child shares stderr, so it can print one of those
- * shapes: that gains it a fail-closed kind (a tripwire, a refusal, a placeholder)
- * and never a pass, and nothing it wrote survives. A status of 77, 143 or 129 is
- * advisory beside its line, since a child can return them itself. The gate that
- * a surrogate was really delivered is the SecretsPort, which checks the child's
- * own variable and the run's markers.
+ * Only sentences in the shape OpenSesame writes (the closed set below) are read,
+ * and a refusal needs a failing status beside it. The `opensesame: ` sentences
+ * (tripwire, signal, placeholders) and the pin-mismatch sentence are matched
+ * anywhere in the retained stderr, because OpenSesame prints its end-of-run line
+ * with no newline before it and a child's unterminated last write, or a spinner
+ * ending on a carriage return, leaves it glued to the child's text; the other
+ * `Error:` classes are printed before the child exists and so start a line. The
+ * child shares stderr, so it can print any of these: that gains it a fail-closed
+ * kind (a tripwire, a refusal, a placeholder) and never a pass, and nothing it
+ * wrote survives. A status of 77, 143 or 129 is advisory beside its line, since a
+ * child can return them itself. The gate that a surrogate was really delivered is
+ * the SecretsPort, which checks the child's own variable and the run's markers.
  *
  * No text produced by the child, or by a line it could have forged, is ever
  * copied into a `ProxiedRunOutcome` or an error: the notice is a fixed sentence
@@ -64,16 +68,30 @@ export type OutcomeKind = (typeof OUTCOME_KINDS)[number];
 
 const TRIPWIRE_EXIT = 77;
 
-const TRIPWIRE = /^opensesame: surrogate\.misdirected: /u;
-const SIGTERM_LINE = /^opensesame: SIGTERM: the run is ended/u;
-const SIGHUP_LINE = /^opensesame: SIGHUP: the run is ended/u;
+/**
+ * OpenSesame's own sentences after its `opensesame: ` prefix. They are matched
+ * anywhere in the retained stderr, not only at the start of a line: it prints
+ * its end-of-run line after it has stopped the child with no newline before it,
+ * so a child whose last write had none (a partial write, a spinner ending on a
+ * carriage return) leaves the line glued to its own text. A child that prints one
+ * of them on purpose gains only a fail-closed kind, as it could at column 0.
+ */
+const TRIPWIRE = /^surrogate\.misdirected: /u;
+const SIGTERM_LINE = /^SIGTERM: the run is ended/u;
+const SIGHUP_LINE = /^SIGHUP: the run is ended/u;
 const PLACEHOLDER_LINES: readonly RegExp[] = [
-	/^opensesame: .*delivering placeholders/u,
-	/^opensesame: \S+ will keep its placeholder/u,
-	/^opensesame: \S+ has no token to redeem/u,
+	/^.*delivering placeholders/u,
+	/^\S+ will keep its placeholder/u,
+	/^\S+ has no token to redeem/u,
 ];
+const OWN_PREFIX = "opensesame: ";
+/** How much of what follows the prefix is read; the longest sentence OpenSesame writes is under 300. */
+const SENTENCE_LIMIT = 512;
 const PIN =
 	/^Error: the surrogate-proxy plugin no longer matches its install pin/u;
+/** The same sentence anywhere; the pin check runs before the child exists, but a line is a line. */
+const PIN_ANYWHERE =
+	/Error: the surrogate-proxy plugin no longer matches its install pin/u;
 const STORE =
 	/^Error: the sealed entry \S+ \(for [A-Z][A-Z0-9_]*\) (?:cannot be read|is empty)/u;
 const SCOPE =
@@ -117,8 +135,24 @@ function outcome(
 	);
 }
 
-function isOwnLine(line: string): boolean {
-	return line.startsWith("opensesame: ") || line.startsWith("Error: ");
+/** What follows each `opensesame: ` in the text, up to the end of its line and a fixed length. */
+function sentencesOf(stderr: string): string[] {
+	const out: string[] = [];
+	for (
+		let at = stderr.indexOf(OWN_PREFIX);
+		at >= 0;
+		at = stderr.indexOf(OWN_PREFIX, at + OWN_PREFIX.length)
+	) {
+		const from = at + OWN_PREFIX.length;
+		const window = stderr.slice(from, from + SENTENCE_LIMIT);
+		out.push(window.split(/[\r\n]/u, 1)[0] ?? "");
+	}
+	return out;
+}
+
+/** Lines for the `Error:` block, which is printed before the child exists and so starts a line. */
+function linesOf(stderr: string): string[] {
+	return stderr.split(/\r\n|\r|\n/u);
 }
 
 /** The fatal error is the last thing OpenSesame prints: its line and what follows. */
@@ -161,7 +195,7 @@ export function parseOutcome(
 		);
 	}
 	const status = exitCode ?? 1;
-	const own = stderr.split("\n").filter(isOwnLine);
+	const own = sentencesOf(stderr);
 
 	if (status === TRIPWIRE_EXIT && own.some((line) => TRIPWIRE.test(line))) {
 		return outcome("tripwire", status, NOTICE.tripwire);
@@ -173,8 +207,11 @@ export function parseOutcome(
 		const name = status === 143 ? "SIGTERM" : "SIGHUP";
 		return outcome("signalled", status, `${name}: ${NOTICE.signalled}`);
 	}
+	if (status !== 0 && PIN_ANYWHERE.test(stderr)) {
+		return outcome("plugin_pin_mismatch", status, NOTICE.plugin_pin_mismatch);
+	}
 	if (status !== 0) {
-		const kind = classifyError(errorBlock(stderr.split("\n")));
+		const kind = classifyError(errorBlock(linesOf(stderr)));
 		if (kind !== undefined) return outcome(kind, status, NOTICE[kind]);
 	}
 	if (

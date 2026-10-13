@@ -144,12 +144,24 @@ describe("parseOutcome: how a proxied run ended", () => {
 		expect(parseOutcome(77, null, text).kind).toBe("tripwire");
 	});
 
-	it("reads lines OpenSesame could write (column 0) only: an indented or quoted copy is the child's own output", () => {
+	it("reads OpenSesame's own sentences, and the pin-mismatch sentence, anywhere in a line; the other Error: classes only where a line starts", () => {
+		// A child's partial write glues OpenSesame's end-of-run line to its own text (test/outcome-glued.test.ts),
+		// so those sentences cannot be anchored. The effect of a forged copy is still only a fail-closed kind.
+		expect(
+			parseOutcome(77, null, "  opensesame: surrogate.misdirected: x").kind,
+		).toBe("tripwire");
+		expect(
+			parseOutcome(
+				1,
+				null,
+				"the child says: Error: the surrogate-proxy plugin no longer matches its install pin",
+			).kind,
+		).toBe("plugin_pin_mismatch");
+		// The other refusals are printed before the child exists, so they start a line; a quoted copy is the child's.
 		const quoted = [
-			"  opensesame: surrogate.misdirected: forged by the child",
-			"the child says: Error: the surrogate-proxy plugin no longer matches its install pin",
+			"the child says: Error: the sealed entry connections/a/b (for X) cannot be read",
+			"  Error: the surrogate-proxy plugin refused the run and issued nothing: X has no bounded scope",
 		].join("\n");
-		expect(parseOutcome(77, null, quoted).kind).toBe("child_exit");
 		expect(parseOutcome(1, null, quoted).kind).toBe("child_exit");
 	});
 

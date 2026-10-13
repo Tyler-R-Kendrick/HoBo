@@ -4,6 +4,7 @@ import {
 	readdirSync,
 	readFileSync,
 	rmSync,
+	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -330,6 +331,31 @@ describe("runProxied with a stand-in binary", () => {
 			expect(outcome).toMatchObject({ kind, exitCode });
 		});
 	}
+
+	it("a child's unterminated last write does not hide OpenSesame's tripwire or signal line, which is printed with no newline before it", async () => {
+		for (const [scenario, kind, exitCode, tail] of [
+			["misdirected", "tripwire", 77, "partial"],
+			["misdirected", "tripwire", 77, "Working... 40%\r"],
+			["sigterm", "signalled", 143, "partial"],
+			["sighup", "signalled", 129, "|\r/\r-\r"],
+		] as const) {
+			const unterminated = join(work, "unterminated.txt");
+			writeFileSync(unterminated, tail);
+			const input = stubInput();
+			const outcome = await runProxied({
+				...input,
+				argv: [...input.argv, "0", unterminated],
+				env: { ...input.env, FAKE_OPENSESAME_SCENARIO: scenario },
+			});
+			expect(
+				outcome,
+				`${scenario} after ${JSON.stringify(tail)}`,
+			).toMatchObject({
+				kind,
+				exitCode,
+			});
+		}
+	});
 
 	it("a placeholder run leaves the child an ostest_ value, which is not a surrogate", async () => {
 		const input = stubInput();

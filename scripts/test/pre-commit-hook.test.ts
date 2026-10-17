@@ -100,7 +100,9 @@ function fixture(): string {
 			},
 		}),
 	);
-	mkdirSync(join(repo, "node_modules"));
+	// What the gates need first: tsx, which generated:guard loads.
+	mkdirSync(join(repo, "node_modules", "tsx"), { recursive: true });
+	writeFileSync(join(repo, "node_modules", "tsx", "package.json"), "{}");
 	return repo;
 }
 
@@ -199,16 +201,21 @@ describe(".githooks/pre-commit", () => {
 		);
 	});
 
-	it("says in one line how to install when there is no node_modules", () => {
-		const repo = fixture();
-		rmSync(join(repo, "node_modules"), { recursive: true });
-		const result = hook(repo);
-		assert.notEqual(result.status, 0);
-		const lines = result.stderr.trim().split("\n");
-		assert.equal(lines.length, 1, result.stderr);
-		assert.match(lines[0] ?? "", /install/u);
-		assert.match(lines[0] ?? "", /HOBO_SKIP_HOOKS=1/u);
-		assert.deepEqual(calls(repo), []);
+	it("says in one line how to install when dependencies are missing", () => {
+		// No node_modules at all, or one an install never filled (empty, or
+		// without tsx): either way the first gate would die in a stack trace.
+		for (const shape of ["absent", "empty"]) {
+			const repo = fixture();
+			rmSync(join(repo, "node_modules"), { recursive: true });
+			if (shape === "empty") mkdirSync(join(repo, "node_modules"));
+			const result = hook(repo);
+			assert.notEqual(result.status, 0, shape);
+			const lines = result.stderr.trim().split("\n");
+			assert.equal(lines.length, 1, `${shape}: ${result.stderr}`);
+			assert.match(lines[0] ?? "", /install/u);
+			assert.match(lines[0] ?? "", /HOBO_SKIP_HOOKS=1/u);
+			assert.deepEqual(calls(repo), [], shape);
+		}
 	});
 
 	it("is skipped by HOBO_SKIP_HOOKS=1 or true, and not by 0 or false", () => {

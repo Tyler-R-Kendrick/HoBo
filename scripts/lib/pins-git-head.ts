@@ -185,9 +185,18 @@ function foreignReason(
 	if (!insideEither(sub.gitDir, owner)) return null;
 	const moduleDirs = join(owner.gitDir, "modules");
 	const named = moduleNameOf(moduleDirs, sub.gitDir);
+	// Another live section's directory: git's own update of that section takes
+	// it over (its core.worktree becomes that section's path).
+	const claimed =
+		named !== null &&
+		named !== entry.name &&
+		modulesSectionNames(root).includes(named)
+			? named
+			: null;
 	const theirs = !originIs(root, sub.gitDir, entry.url);
 	if (
 		!theirs &&
+		claimed === null &&
 		inside(sub.gitDir, moduleDirs) &&
 		worktreeIs(root, sub.gitDir, path)
 	)
@@ -197,11 +206,14 @@ function foreignReason(
 			reason: `belongs to another repository: its remote.origin.url is not ${entry.url}, the URL .gitmodules gives ${path}`,
 			fix,
 		};
+	if (claimed !== null)
+		return {
+			reason: `is the module directory of the .gitmodules section "${claimed}", which git's update of that section would take over`,
+			fix,
+		};
 	return {
 		reason: `is inside the superproject's git directory but is not this submodule's (${modules})`,
-		fix: existsSync(modules)
-			? fix
-			: (renameFix(root, entry.name, named) ?? fix),
+		fix: existsSync(modules) ? fix : (renameFix(entry.name, named) ?? fix),
 	};
 }
 
@@ -243,20 +255,14 @@ function moduleNameOf(moduleDirs: string, gitDir: string): string | null {
 
 /**
  * A `.git` naming a module directory git made under another name,
- * `modules/<X>`, that no other section claims, while the section's own
- * `modules/<name>` does not exist (the section was renamed after cloning):
- * renaming the section back to X makes it the submodule's own again, and
- * keeps the clone and its work. Offered only for this repository's own
- * clone: the caller has checked its origin.
+ * `modules/<X>`, while the section's own `modules/<name>` does not exist (the
+ * section was renamed after cloning): renaming the section back to X makes it
+ * the submodule's own again, and keeps the clone and its work. Offered only
+ * for this repository's own clone (the caller has checked its origin) and a
+ * name no other section carries (it has checked that too).
  */
-function renameFix(
-	root: string,
-	name: string,
-	other: string | null,
-): string | null {
-	if (other === null) return null;
-	if (gitIgnoresName(other) || modulesSectionNames(root).includes(other))
-		return null;
+function renameFix(name: string, other: string | null): string | null {
+	if (other === null || gitIgnoresName(other)) return null;
 	return `git config -f .gitmodules --rename-section ${shellWord(`submodule.${name}`)} ${shellWord(`submodule.${other}`)}`;
 }
 

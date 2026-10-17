@@ -1,6 +1,7 @@
 /**
- * The Kubernetes provider's IaC-program check, its capability surface and its
- * yard spec rows. The event-store fold's payload handling is in
+ * The Kubernetes provider's capability surface, its yard spec rows and the
+ * programs realize() emits. The local IaC-program check is in
+ * `iac-program-local.test.ts` and the event-store fold's payload handling in
  * `yard-event-fold-payloads.test.ts`.
  *
  * The property that shapes this whole package is the **honest count of one
@@ -29,15 +30,7 @@ import { describe, expect, it } from "vitest";
 
 import { kubernetesYardSpec } from "../src/default-yard.js";
 import { EQUIVALENCE_CLASSES } from "../src/equivalence.js";
-import {
-	assertLocalIacProgram,
-	IAC_PROGRAM_API_VERSION,
-	IAC_PROGRAM_KIND,
-	IAC_PROVIDER,
-	type IacProgram,
-	KUBERNETES_IAC_PROVIDER,
-} from "../src/iac-program.js";
-import type { JsonValue } from "../src/json.js";
+import { assertLocalIacProgram } from "../src/iac-program.js";
 import {
 	createKubernetesProvider,
 	kubernetesDriverProgram,
@@ -50,173 +43,6 @@ import {
 	resolveEquivalence,
 } from "../src/realize.js";
 import type { ResourcePlan } from "../src/types.js";
-
-/** A program's fields as a document may carry them: the declared type, any other JSON, or absent. */
-type ProgramFields = {
-	readonly [field in keyof IacProgram]?:
-		| IacProgram[field]
-		| JsonValue
-		| undefined;
-};
-
-function program(overrides: ProgramFields = {}): IacProgram {
-	const document = {
-		apiVersion: IAC_PROGRAM_API_VERSION,
-		kind: IAC_PROGRAM_KIND,
-		provider: IAC_PROVIDER,
-		deploymentId: "d-1",
-		stack: "kubernetes/d-1",
-		resources: [
-			{
-				name: "api",
-				type: "kubernetes:deployment",
-				provider: KUBERNETES_IAC_PROVIDER,
-				inputs: {},
-				outputs: ["binding", "clusterIP"],
-			},
-		],
-		stackOutputs: {},
-		...overrides,
-	};
-	// SAFETY: the guard is the parse boundary for programs that crossed a
-	// document boundary, so these tests hand it what the type forbids (a
-	// foreign version, no resource list). It re-checks every field it relies on
-	// before trusting the declared type.
-	return document as IacProgram;
-}
-
-describe("assertLocalIacProgram", () => {
-	it("returns a well-formed program unchanged", () => {
-		const input = program();
-		expect(assertLocalIacProgram(input)).toBe(input);
-	});
-
-	it("refuses a wrong schema version, kind, or IaC lane", () => {
-		// The engine dispatches on all three. A program claiming a combination it
-		// does not know is rejected there with a far less legible error.
-		expect(() => assertLocalIacProgram(program({ apiVersion: "v2" }))).toThrow(
-			/apiVersion must be/u,
-		);
-		expect(() => assertLocalIacProgram(program({ kind: "stack" }))).toThrow(
-			/kind must be iac-program/u,
-		);
-		expect(() =>
-			assertLocalIacProgram(program({ provider: "terraform" })),
-		).toThrow(/provider must be pulumi/u);
-	});
-
-	it("refuses a program with no resources at all", () => {
-		// An empty program applies cleanly and creates nothing — a deploy that
-		// reports success and deploys nothing.
-		expect(() => assertLocalIacProgram(program({ resources: [] }))).toThrow(
-			/at least one resource/u,
-		);
-		expect(() =>
-			assertLocalIacProgram(program({ resources: undefined })),
-		).toThrow(/at least one resource/u);
-	});
-
-	it("refuses an unnamed resource", () => {
-		// Names are how references resolve and how the engine addresses state
-		// across applies. An unnamed resource cannot be updated on a second run.
-		expect(() =>
-			assertLocalIacProgram(
-				program({
-					resources: [
-						{
-							name: "",
-							type: "kubernetes:deployment",
-							provider: KUBERNETES_IAC_PROVIDER,
-							inputs: {},
-							outputs: [],
-						},
-					],
-				}),
-			),
-		).toThrow(/missing name/u);
-	});
-
-	it("refuses two resources sharing a name", () => {
-		// A duplicate makes every reference to that name ambiguous, and which one
-		// the engine binds to is not something a plan author should reason about.
-		const resource = {
-			name: "api",
-			type: "kubernetes:deployment",
-			provider: KUBERNETES_IAC_PROVIDER,
-			inputs: {},
-			outputs: [],
-		};
-		expect(() =>
-			assertLocalIacProgram(
-				program({ resources: [resource, { ...resource }] }),
-			),
-		).toThrow(/duplicate resource api/u);
-	});
-
-	it("accepts a reference to a declared output", () => {
-		expect(() =>
-			assertLocalIacProgram(
-				program({ stackOutputs: { ip: "${resources.api.outputs.clusterIP}" } }),
-			),
-		).not.toThrow();
-	});
-
-	it("refuses a reference to a resource or output that does not exist", () => {
-		// Both fail at apply time, after earlier resources have been created.
-		for (const value of [
-			"${resources.ghost.outputs.clusterIP}",
-			"${resources.api.outputs.nope}",
-		]) {
-			expect(() =>
-				assertLocalIacProgram(program({ stackOutputs: { ip: value } })),
-			).toThrow(/unresolved output reference/u);
-		}
-	});
-
-	it("refuses a malformed reference rather than deploying it as a literal", () => {
-		// Anything starting `${resources.` was meant to be a reference. Passing a
-		// typo through would set an environment variable to the literal text.
-		for (const value of [
-			"${resources.api.outputs}",
-			"${resources..outputs.x}",
-			"${resources.api.outputs.x} trailing",
-		]) {
-			expect(() =>
-				assertLocalIacProgram(program({ stackOutputs: { ip: value } })),
-			).toThrow(/invalid output reference/u);
-		}
-	});
-
-	it("leaves a value that is not trying to be a reference alone", () => {
-		expect(() =>
-			assertLocalIacProgram(
-				program({ stackOutputs: { note: "costs $5 ${notaref}" } }),
-			),
-		).not.toThrow();
-	});
-
-	it("checks references nested anywhere inside a resource's inputs", () => {
-		// Bind references live inside nested `bindings` arrays, so a top-level-only
-		// walk would miss the common case entirely.
-		expect(() =>
-			assertLocalIacProgram(
-				program({
-					resources: [
-						{
-							name: "api",
-							type: "kubernetes:deployment",
-							provider: KUBERNETES_IAC_PROVIDER,
-							inputs: {
-								bindings: [{ ref: "${resources.ghost.outputs.binding}" }],
-							},
-							outputs: ["binding"],
-						},
-					],
-				}),
-			),
-		).toThrow(/unresolved output reference/u);
-	});
-});
 
 describe("the equivalence table's honest count", () => {
 	it("claims exactly one class: compute", () => {

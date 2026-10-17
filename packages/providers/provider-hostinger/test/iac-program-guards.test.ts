@@ -58,8 +58,9 @@ function resource(over: Partial<Resource> = {}): Resource {
 	};
 }
 
-function program(over: ProgramFields = {}): Program {
-	const document = {
+/** A well-formed program: every fixture field keeps its declared type. */
+function program(over: Partial<Program> = {}): Program {
+	return {
 		apiVersion: IAC_PROGRAM_API_VERSION,
 		kind: IAC_PROGRAM_KIND,
 		provider: IAC_PROVIDER,
@@ -69,8 +70,16 @@ function program(over: ProgramFields = {}): Program {
 		stackOutputs: {},
 		...over,
 	};
+}
+
+/**
+ * A program as it arrives across a document boundary, carrying a field the
+ * type forbids. Only the cases that test such a field build one this way.
+ */
+function documentProgram(over: ProgramFields): Program {
+	const document = { ...program(), ...over };
 	// SAFETY: the guard is the parse boundary for programs that crossed a
-	// document boundary, so these tests hand it what the type forbids (a
+	// document boundary, so these cases hand it what the type forbids (a
 	// foreign version, a resource list that is not a list). It re-checks every
 	// field it relies on before trusting the declared type.
 	return document as Program;
@@ -101,17 +110,19 @@ describe("the program header", () => {
 	it("refuses an apiVersion it does not mirror", () => {
 		// The mirror is only valid for the version it was written against; a
 		// future program may mean something different by the same field names.
-		expect(refusal(program({ apiVersion: "hobo.iac-program/v0" }))).toMatch(
-			/apiVersion/u,
-		);
+		expect(
+			refusal(documentProgram({ apiVersion: "hobo.iac-program/v0" })),
+		).toMatch(/apiVersion/u);
 	});
 
 	it("refuses a kind that is not a program", () => {
-		expect(refusal(program({ kind: "iac-stack" }))).toMatch(/kind/u);
+		expect(refusal(documentProgram({ kind: "iac-stack" }))).toMatch(/kind/u);
 	});
 
 	it("refuses a program targeting another IaC lane", () => {
-		expect(refusal(program({ provider: "terraform" }))).toMatch(/provider/u);
+		expect(refusal(documentProgram({ provider: "terraform" }))).toMatch(
+			/provider/u,
+		);
 	});
 });
 
@@ -124,7 +135,9 @@ describe("the resource list", () => {
 	});
 
 	it("refuses a resource list that is not a list", () => {
-		expect(refusal(program({ resources: {} }))).toMatch(/at least one/u);
+		expect(refusal(documentProgram({ resources: {} }))).toMatch(
+			/at least one/u,
+		);
 	});
 
 	it("refuses a resource with no name", () => {

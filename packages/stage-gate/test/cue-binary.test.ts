@@ -61,6 +61,16 @@ describe.runIf(POSIX)("cueBinary", () => {
 		);
 	});
 
+	it("reads only the first line: `cue version v0.14.0` on a later one is refused", () => {
+		const cue = fakeCue(
+			join(scratch, "second-line"),
+			"cue (devel)\ncue version v0.14.0",
+		);
+		expect(() => cueBinary({ HOBO_CUE_BIN: cue }, bareRoot)).toThrow(
+			/is "cue \(devel\)", not cue v0\.14\.0/u,
+		);
+	});
+
 	it("treats an empty HOBO_CUE_BIN as unset, and falls back to the cache", () => {
 		const root = join(scratch, "repo");
 		const cached = fakeCue(

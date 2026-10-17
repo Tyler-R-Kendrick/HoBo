@@ -27,6 +27,14 @@ describe("scanGroup", () => {
 		expect(scanGroup(GROUP, table([zombie(100), leaderExited]))).toBe("live");
 	});
 
+	it("is live for a Z member whose num_threads is not 1: only a zombie of one thread is let go", () => {
+		// Linux never writes 0 or a word there; a line that does is not read as a zombie.
+		for (const threads of [0, Number.NaN]) {
+			const odd = { ...zombie(101), threads };
+			expect(scanGroup(GROUP, table([zombie(100), odd]))).toBe("live");
+		}
+	});
+
 	it("is live when the table shows no member, as a /proc of another PID namespace does", () => {
 		// kill(-pgid, 0) has just found a member: a table that shows none cannot say it is gone.
 		const elsewhere = { ...zombie(100), state: "S", pgrp: 7 };

@@ -15,15 +15,20 @@
 import { createHash } from "node:crypto";
 
 import {
-	isJsonArray,
 	isJsonBoolean,
-	isJsonInteger,
 	isJsonObject,
 	isJsonString,
 	type JsonObject,
 	type JsonValue,
 	parseJsonText,
 } from "./json.js";
+import {
+	arrayOf,
+	countOf,
+	fieldOf,
+	memberOf,
+	objectOf,
+} from "./report-read.js";
 
 const SCENARIO_STATUSES = [
 	"passed",
@@ -90,52 +95,6 @@ export function reportDigestOf(bytes: Uint8Array): ReportDigest {
 	const hex = createHash("sha256").update(bytes).digest("hex");
 	// SAFETY: a sha256 hex digest is 64 lowercase hex digits, the whole ReportDigest invariant.
 	return `sha256:${hex}` as ReportDigest;
-}
-
-/** `a.b` from a parent path and a key; the root has the empty path. */
-function pathOf(parent: string, key: string): string {
-	return parent === "" ? key : `${parent}.${key}`;
-}
-
-/** Own fields only: a report key named like an Object.prototype member reads as absent. */
-function fieldOf(node: JsonObject, key: string): JsonValue | undefined {
-	return Object.hasOwn(node, key) ? node[key] : undefined;
-}
-
-function countOf(
-	node: JsonObject,
-	key: string,
-	path: string,
-	issues: string[],
-): number {
-	const value = fieldOf(node, key);
-	if (isJsonInteger(value) && value >= 0) return value;
-	issues.push(`${pathOf(path, key)}: expected a non-negative integer`);
-	return 0;
-}
-
-function objectOf(
-	node: JsonObject,
-	key: string,
-	path: string,
-	issues: string[],
-): JsonObject {
-	const value = fieldOf(node, key);
-	if (isJsonObject(value)) return value;
-	issues.push(`${pathOf(path, key)}: expected an object`);
-	return {};
-}
-
-function arrayOf(
-	node: JsonObject,
-	key: string,
-	path: string,
-	issues: string[],
-): readonly JsonValue[] {
-	const value = fieldOf(node, key);
-	if (isJsonArray(value)) return value;
-	issues.push(`${pathOf(path, key)}: expected an array`);
-	return [];
 }
 
 function requireFlag(
@@ -219,13 +178,6 @@ interface ScenarioTally {
 	readonly byStatus: Map<ScenarioStatus, number>;
 	scenarios: number;
 	fuzzySteps: number;
-}
-
-function memberOf<T extends string>(
-	allowed: readonly T[],
-	value: JsonValue | undefined,
-): T | undefined {
-	return allowed.find((entry) => entry === value);
 }
 
 function tallyStep(
@@ -376,6 +328,16 @@ export function parseAiBddRunReport(bytes: Uint8Array): AcceptanceEvidence {
 	if (exitCode === 0 && notPassed > 0) {
 		issues.push(
 			`exitCode is 0 but ${notPassed} scenario(s) failed, were inconclusive, blocked or ended in error: the report contradicts itself`,
+		);
+	}
+	// ai-bdd exits 0 for an empty selection (no plans, every scenario rejected): a pass that replayed nothing.
+	if (exitCode === 0 && tally.scenarios === 0) {
+		issues.push(
+			"exitCode is 0 but the run has no scenario: nothing was replayed",
+		);
+	} else if (exitCode === 0 && totals.passed + totals.healed === 0) {
+		issues.push(
+			`exitCode is 0 but no scenario passed or healed (${totals.skipped} skipped): nothing was replayed`,
 		);
 	}
 	if (issues.length > 0 || exitCode === undefined) {

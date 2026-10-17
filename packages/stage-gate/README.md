@@ -49,7 +49,9 @@ than 1, `options.frozen` or `options.noAgent` false, `options.updateRecordings`
 true, any model call (a judge call means the verdict cache `.ai-bdd/cache/` was
 cold), a status outside the seven, an exit code outside 0..4, totals that
 disagree with the scenarios, exit 0 beside a failed/inconclusive/blocked/error
-scenario, and a run id that is not one directory name.
+scenario, exit 0 for a run with no scenario or with none passed or healed (ai-bdd
+exits 0 for an empty selection, so that pass replayed nothing), and a run id that
+is not one directory name.
 
 HoBo imports no ai-bdd code. The contract on this side is the schema and two
 real reports copied byte for byte into `test/fixtures/ai-bdd/` (sha256 and origin

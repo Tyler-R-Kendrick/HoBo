@@ -178,6 +178,37 @@ describe("parseAiBddRunReport", () => {
 		expect(evidence).toMatchObject({ failed: 1, passed: 4, exitCode: 1 });
 	});
 
+	it("refuses exit 0 for a run with no scenario at all", () => {
+		// ai-bdd exits 0 for an empty run (no plans, or every scenario rejected):
+		// nothing replayed, so it is not evidence that the documented scenarios do.
+		const doc = fixtureDoc("passed");
+		doc.scenarios = [];
+		doc.totals = { ...docAt(doc, "totals"), passed: 0 };
+		expect(issuesOf(bytesOf(doc))).toEqual([
+			"exitCode is 0 but the run has no scenario: nothing was replayed",
+		]);
+	});
+
+	it("refuses exit 0 when every scenario was skipped", () => {
+		const doc = fixtureDoc("passed");
+		for (const index of [0, 1, 2, 3, 4])
+			scenarioAt(doc, index).status = "skipped";
+		doc.totals = { ...docAt(doc, "totals"), passed: 0, skipped: 5 };
+		expect(issuesOf(bytesOf(doc))).toEqual([
+			"exitCode is 0 but no scenario passed or healed (5 skipped): nothing was replayed",
+		]);
+	});
+
+	it("accepts exit 0 with some scenarios skipped beside one that passed", () => {
+		const doc = fixtureDoc("passed");
+		for (const index of [1, 2, 3, 4]) scenarioAt(doc, index).status = "skipped";
+		doc.totals = { ...docAt(doc, "totals"), passed: 1, skipped: 4 };
+		expect(parseAiBddRunReport(bytesOf(doc))).toMatchObject({
+			passed: 1,
+			skipped: 4,
+		});
+	});
+
 	it("refuses bytes that are not a JSON object", () => {
 		expect(issuesOf(Buffer.from("[]"))).toEqual([
 			"report.json is not a JSON object",

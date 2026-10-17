@@ -27,7 +27,11 @@ package stage_gate
 	scenarios_total: passed + healed + failed + inconclusive + blocked + error + skipped
 
 	_notPassed: failed + inconclusive + blocked + error
+	_replayed:  passed + healed
 	if exit_code == 0 {
 		_notPassed: 0
+		// An empty or all-skipped run exits 0 too; it replayed nothing.
+		scenarios_total: >0
+		_replayed:       >0
 	}
 }

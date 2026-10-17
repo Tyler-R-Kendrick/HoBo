@@ -173,10 +173,13 @@ What `runProxied` does before and around the run:
   running with their surrogate until the command ends or the surrogate's lifetime runs out. If OpenSesame itself is
   ended by a signal, the outcome is `signalled` with `128+n` (`exitCodeOf` returns it) and a notice that the command may
   still be running.
-- **`buildLaunch` returns a `Launch` that prints without its environment.** Its `env` is what `spawn` is given and holds the
-  passphrase when you list it in `passEnv`, so logging the value (`console.log`, `util.inspect`, `JSON.stringify`, a template
-  string) shows the names in the environment and the adapter's own arguments, never a value and never the arguments of your
-  command. `launch.env` itself is the real environment: do not log that.
+- **`buildLaunch` returns a `Launch` that keeps its environment and the command's arguments out of sight.** `launch.env` (the
+  passphrase, when you list it in `passEnv`) and `launch.args` (your command, which may carry a token as an argument) are what
+  `spawn` is given, and they are accessors over private fields: they are not own properties, so `Object.keys` and
+  `Object.entries`, a spread, `Object.assign`, `structuredClone`, `util.inspect` with `customInspect: false` or `showHidden`
+  (which is what `console.dir` and `node:assert` messages do) find only `command`. `console.log`, `util.inspect`, `JSON.stringify`
+  and a template string print the names in the environment and the adapter's own arguments, never a value. Reading `launch.env`
+  yourself is deliberate and gives the real environment: do not log that.
 - It never reads or sets the store passphrase itself: OpenSesame takes it from the terminal, or from
   `OPENSESAME_STORE_PASSWORD` when you list that name in `passEnv`, and strips it from the command.
 

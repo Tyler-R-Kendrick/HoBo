@@ -3,9 +3,11 @@
  * `spawn` needs, in a frozen value that prints none of them in full. The
  * environment holds the store passphrase when the caller lists it in `passEnv`,
  * and the argv holds the caller's command, which may carry a token as an
- * argument, so logging or serialising a Launch (`util.inspect`, `console.log`,
- * `JSON.stringify`, a template string) shows the names of the environment and
- * the arguments that are the adapter's own, and nothing else.
+ * argument, so logging, serialising, enumerating or copying a Launch
+ * (`util.inspect`, `console.log` and `console.dir`, `JSON.stringify`, a template
+ * string, `Object.entries`, a spread, `structuredClone`, an assertion message)
+ * shows the names of the environment and the arguments that are the adapter's
+ * own, or nothing, and never a value.
  */
 
 import { inspect } from "node:util";
@@ -41,20 +43,35 @@ function summaryOf(parts: LaunchParts): LaunchSummary {
 }
 
 /**
- * A frozen Launch. The three fields are what `spawn` is given; the methods that
- * serialise and print it are on the prototype, so they are not enumerable and a
- * spread or `Object.keys` sees the fields only.
+ * A frozen Launch. `command` is the executable, which is no secret and is what
+ * enumerating one shows. `args` (the caller's command may carry a token as an
+ * argument) and `env` (the store passphrase, when listed in `passEnv`) are
+ * accessors over private fields: `launch.args` and `launch.env` are what `spawn`
+ * is given, and nothing that enumerates, copies or dumps the object reaches them
+ * (`Object.keys` and `entries`, a spread, `Object.assign`, `structuredClone`,
+ * `inspect` with `customInspect: false` and `showHidden`, which is what
+ * `console.dir` and `node:assert` messages do). The printers are on the
+ * prototype too, so they are not enumerable either. Reading `launch.env` is
+ * deliberate; logging it is the caller's.
  */
 export class Launch implements LaunchParts {
 	readonly command: string;
-	readonly args: readonly string[];
-	readonly env: NodeJS.ProcessEnv;
+	readonly #args: readonly string[];
+	readonly #env: NodeJS.ProcessEnv;
 
 	constructor(parts: LaunchParts) {
 		this.command = parts.command;
-		this.args = parts.args;
-		this.env = parts.env;
+		this.#args = parts.args;
+		this.#env = parts.env;
 		Object.freeze(this);
+	}
+
+	get args(): readonly string[] {
+		return this.#args;
+	}
+
+	get env(): NodeJS.ProcessEnv {
+		return this.#env;
 	}
 
 	toJSON(): LaunchSummary {

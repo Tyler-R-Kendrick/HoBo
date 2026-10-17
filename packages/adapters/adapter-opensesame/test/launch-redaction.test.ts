@@ -1,3 +1,4 @@
+import assert from "node:assert/strict";
 import { format, inspect } from "node:util";
 import { describe, expect, it } from "vitest";
 
@@ -56,8 +57,49 @@ describe("the Launch value holds the environment for spawn and prints none of it
 		]);
 		expect(run.env.OPENSESAME_STORE_PASSWORD).toBe(PASSPHRASE);
 		expect(run.env.HOBO_LISTED).toBe(OTHER);
-		expect(Object.keys(run)).toEqual(["command", "args", "env"]);
 		expect(Object.isFrozen(run)).toBe(true);
+	});
+
+	it("keeps env and args out of every way of enumerating, copying and inspecting it, not only the printers it overrides", () => {
+		const run = launch();
+		const message = (check: () => void): string => {
+			try {
+				check();
+			} catch (error) {
+				return String(error instanceof Error ? error.message : error);
+			}
+			return "";
+		};
+		const copies: unknown[] = [
+			{ ...run },
+			Object.assign({}, run),
+			structuredClone(run),
+			Object.fromEntries(Object.entries(run)),
+		];
+		const vectors: string[] = [
+			Object.keys(run).join(","),
+			Object.getOwnPropertyNames(run).join(","),
+			Reflect.ownKeys(run).map(String).join(","),
+			// console.dir forces customInspect: false; showHidden is what a debugger's dump does.
+			inspect(run, { customInspect: false }),
+			inspect(run, { customInspect: false, showHidden: true, depth: null }),
+			inspect(run, { customInspect: false, getters: true, depth: null }),
+			// node:assert prints the objects it was given when they differ.
+			message(() => assert.deepStrictEqual(run, {})),
+			message(() => assert.strictEqual(run, launch())),
+			message(() => assert.deepStrictEqual({ ...run }, {})),
+			...copies.map((copy) => inspect(copy, { depth: null, showHidden: true })),
+			...copies.map((copy) => JSON.stringify(copy)),
+		];
+		for (const text of vectors) {
+			expect(text).not.toContain(PASSPHRASE);
+			expect(text).not.toContain(OTHER);
+			expect(text).not.toContain("argv-secret-for-tests");
+		}
+		// What is left to enumerate is the executable, which is not a secret.
+		expect(Object.keys(run)).toEqual(["command"]);
+		expect(run.env.OPENSESAME_STORE_PASSWORD).toBe(PASSPHRASE);
+		expect(run.args).toContain("--token=argv-secret-for-tests");
 	});
 
 	it("prints neither the passphrase nor any other value of the environment, however it is logged", () => {

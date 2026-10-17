@@ -44,12 +44,13 @@ const RECORDS = join(HERE, "fixtures", "records");
 const SCHEMAS = ["stage_gate_record.cue", "acceptance_evidence.cue"];
 const DEFINITIONS = ["StageGateRecord", "AcceptanceEvidence"];
 
+// Before the scratch dir: a cue it refuses fails the module before afterAll is registered.
+const CUE = cueBinary(process.env, REPO_ROOT);
+
 const scratch = mkdtempSync(join(tmpdir(), "hobo-record-cue-"));
 afterAll(() => {
 	rmSync(scratch, { recursive: true, force: true });
 });
-
-const CUE = cueBinary(process.env, REPO_ROOT);
 
 interface Vet {
 	readonly accepted: boolean;

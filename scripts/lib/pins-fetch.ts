@@ -28,6 +28,7 @@ import { dirname } from "node:path";
 import { type AssetFile, assertAllowedUrl, PinsError } from "./pins.ts";
 import { cachedPath } from "./pins-assets.ts";
 import { prepareCache } from "./pins-cache.ts";
+import { netTimeout, netTimeoutMs, Watchdog } from "./pins-net.ts";
 import { armGuard, partialPath, removeEmptyDirs } from "./pins-partial.ts";
 
 export async function sha256OfFile(path: string): Promise<string> {
@@ -55,8 +56,44 @@ export interface FetchOptions {
 	readonly maxBytes?: number;
 	/** The finished file must be exactly this long. */
 	readonly expectedSize?: number;
+	/** The whole download, redirects and body; default the larger of its own default and `idleMs`. */
 	readonly timeoutMs?: number;
+	/** The longest wait for a response or for the next bytes (default HOBO_PINS_NET_TIMEOUT_MS). */
+	readonly idleMs?: number;
 	readonly fetch?: typeof fetch;
+}
+
+/** What may end a request early: silence, the total deadline, or `extra` (a signal). */
+interface Waits {
+	readonly signal: AbortSignal;
+	readonly watchdog: Watchdog;
+	readonly total: AbortSignal;
+	readonly totalMs: number;
+}
+
+function waitsFor(
+	options: FetchOptions,
+	defaultTotalMs: number,
+	extra?: AbortSignal,
+): Waits {
+	const watchdog = new Watchdog(options.idleMs ?? netTimeoutMs());
+	const totalMs = options.timeoutMs ?? Math.max(defaultTotalMs, watchdog.ms);
+	const total = AbortSignal.timeout(totalMs);
+	const signals = [watchdog.signal, total];
+	if (extra !== undefined) signals.push(extra);
+	return { signal: AbortSignal.any(signals), watchdog, total, totalMs };
+}
+
+/** The NET_TIMEOUT a request that was cut short by `waits` ends in, if it was. */
+function timedOut(waits: Waits, what: string): PinsError | null {
+	if (waits.watchdog.fired) return netTimeout(what, waits.watchdog.ms);
+	if (waits.total.aborted) {
+		return new PinsError(
+			"NET_TIMEOUT",
+			`${what} did not finish within ${waits.totalMs} ms; nothing was kept`,
+		);
+	}
+	return null;
 }
 
 const MAX_REDIRECTS = 5;
@@ -65,7 +102,7 @@ const DEFAULT_MAX_BYTES = 512 * 1024 ** 2;
 async function getFollowing(
 	url: string,
 	options: FetchOptions,
-	signal: AbortSignal,
+	waits: Waits,
 ): Promise<Response> {
 	const allowLocal = options.allowLocal === true;
 	const get = options.fetch ?? fetch;
@@ -73,8 +110,14 @@ async function getFollowing(
 	for (let hop = 0; hop <= MAX_REDIRECTS; hop += 1) {
 		let response: Response;
 		try {
-			response = await get(current, { redirect: "manual", signal });
+			waits.watchdog.touch();
+			response = await get(current, {
+				redirect: "manual",
+				signal: waits.signal,
+			});
 		} catch (error) {
+			const late = timedOut(waits, `the download of ${current}`);
+			if (late !== null) throw late;
 			const cause =
 				error instanceof Error && error.cause instanceof Error
 					? error.cause.message
@@ -133,6 +176,7 @@ export async function fetchVerified(
 	const partial = partialPath(dest);
 	const controller = new AbortController();
 	const guard = armGuard(partial, () => controller.abort());
+	const waits = waitsFor(options, 300_000, controller.signal);
 	let created: string | undefined;
 	// Whatever fails, leave neither the partial file nor a directory we made.
 	const discard = (): void => {
@@ -143,11 +187,7 @@ export async function fetchVerified(
 	try {
 		created = mkdirSync(dirname(dest), { recursive: true, mode: 0o700 });
 		guard.made(created);
-		const signal = AbortSignal.any([
-			controller.signal,
-			AbortSignal.timeout(options.timeoutMs ?? 300_000),
-		]);
-		const response = await getFollowing(url, options, signal);
+		const response = await getFollowing(url, options, waits);
 		if (!response.ok || response.body === null) {
 			await response.body?.cancel();
 			throw new PinsError("HTTP_STATUS", `${url} answered ${response.status}`);
@@ -165,6 +205,7 @@ export async function fetchVerified(
 				);
 			hash.update(chunk);
 			writeSync(fd, chunk);
+			waits.watchdog.touch();
 		}
 		const actual = hash.digest("hex");
 		if (actual !== sha256) {
@@ -204,42 +245,47 @@ export async function fetchVerified(
 				`the download of ${url} was interrupted by ${signal}; nothing was kept`,
 			);
 		}
-		throw error;
+		throw timedOut(waits, `the download of ${url}`) ?? error;
 	} finally {
+		waits.watchdog.stop();
 		guard.release();
 	}
 }
 
 const MAX_TEXT_BYTES = 1024 ** 2;
 
-/** A small text document (a release's SHA256SUMS), under the same URL rules. */
+/** A small text document (a release's SHA256SUMS), under the same URL rules and waits. */
 export async function fetchText(
 	url: string,
 	options: FetchOptions = {},
 ): Promise<string> {
 	const limit = options.maxBytes ?? MAX_TEXT_BYTES;
-	const response = await getFollowing(
-		url,
-		options,
-		AbortSignal.timeout(options.timeoutMs ?? 60_000),
-	);
-	if (!response.ok || response.body === null) {
-		await response.body?.cancel();
-		throw new PinsError("HTTP_STATUS", `${url} answered ${response.status}`);
-	}
-	const chunks: Uint8Array[] = [];
-	let seen = 0;
-	for await (const chunk of response.body) {
-		seen += chunk.byteLength;
-		if (seen > limit) {
-			throw new PinsError(
-				"SIZE_EXCEEDED",
-				`${url} sent more than ${limit} bytes`,
-			);
+	const waits = waitsFor(options, 60_000);
+	try {
+		const response = await getFollowing(url, options, waits);
+		if (!response.ok || response.body === null) {
+			await response.body?.cancel();
+			throw new PinsError("HTTP_STATUS", `${url} answered ${response.status}`);
 		}
-		chunks.push(chunk);
+		const chunks: Uint8Array[] = [];
+		let seen = 0;
+		for await (const chunk of response.body) {
+			seen += chunk.byteLength;
+			if (seen > limit) {
+				throw new PinsError(
+					"SIZE_EXCEEDED",
+					`${url} sent more than ${limit} bytes`,
+				);
+			}
+			chunks.push(chunk);
+			waits.watchdog.touch();
+		}
+		return Buffer.concat(chunks).toString("utf8");
+	} catch (error) {
+		throw timedOut(waits, `the download of ${url}`) ?? error;
+	} finally {
+		waits.watchdog.stop();
 	}
-	return Buffer.concat(chunks).toString("utf8");
 }
 
 export type CacheState =

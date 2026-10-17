@@ -17,6 +17,9 @@
  * Runs before `pnpm install`: erasable TypeScript, node builtins only, and
  * `git` on PATH. Exit 0 ok, 1 a check or an operation failed, 2 wrong usage.
  *
+ * HOBO_PINS_NET_TIMEOUT_MS bounds every network wait (default 120000, at most
+ * 600000); running out is NET_TIMEOUT, with nothing staged or kept.
+ *
  * HOBO_PINS_ALLOW_LOCAL=1 additionally accepts loopback http URLs and local
  * repository paths in the manifest. The tests set it; nothing else should.
  */
@@ -26,6 +29,7 @@ import { fileURLToPath } from "node:url";
 import { parseArgs } from "node:util";
 import { isFileName, type Pins, PinsError, parsePins } from "./lib/pins.ts";
 import { git } from "./lib/pins-git.ts";
+import { netTimeoutMs } from "./lib/pins-net.ts";
 import {
 	PINS_FILE,
 	type Request,
@@ -114,6 +118,7 @@ function parseRequest(args: readonly string[]): Request {
 	) {
 		usage(`--reference ${reference} is not a git repository`);
 	}
+	netTimeoutMs(); // a bad HOBO_PINS_NET_TIMEOUT_MS is a usage error before anything runs
 	const here = fileURLToPath(new URL("..", import.meta.url));
 	return {
 		verb,

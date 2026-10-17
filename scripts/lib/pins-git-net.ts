@@ -7,13 +7,15 @@
  * and plain `http://` are refused, as is `file:` unless the tests (or a
  * `--reference` clone the operator named) need it. GIT_ALLOW_PROTOCOL
  * overrides any configured `protocol.<name>.allow`, so a repository or global
- * config that enables `ext` cannot widen this.
+ * config that enables `ext` cannot widen this. Every call has a deadline
+ * (HOBO_PINS_NET_TIMEOUT_MS, `pins-net.ts`) and a low-speed limit.
  *
  * Erasable TypeScript with node builtins only.
  */
 import { isAbsolute } from "node:path";
 import { PinsError } from "./pins.ts";
 import { type GitResult, git } from "./pins-git-core.ts";
+import { netTimeoutMs } from "./pins-net.ts";
 
 export interface NetOptions {
 	/** Tests only: loopback http and local repositories (HOBO_PINS_ALLOW_LOCAL). */
@@ -41,9 +43,20 @@ export function isAllowedTransport(url: string, allowLocal: boolean): boolean {
 	);
 }
 
-/** The argument vector of a network git call: no protocol unless allowed by name. */
+/**
+ * The argument vector of a network git call: no protocol unless allowed by
+ * name, and give up on a link slower than 1000 bytes/s for 30 s.
+ */
 export function netArgs(args: readonly string[]): string[] {
-	return ["-c", "protocol.allow=never", ...args];
+	return [
+		"-c",
+		"protocol.allow=never",
+		"-c",
+		"http.lowSpeedLimit=1000",
+		"-c",
+		"http.lowSpeedTime=30",
+		...args,
+	];
 }
 
 /**
@@ -57,9 +70,13 @@ export function netGit(
 	visible = false,
 	allowFile = false,
 ): GitResult {
-	return git(cwd, netArgs(args), visible, {
-		GIT_ALLOW_PROTOCOL: allowedProtocols(options.allowLocal, allowFile),
-	});
+	return git(
+		cwd,
+		netArgs(args),
+		visible,
+		{ GIT_ALLOW_PROTOCOL: allowedProtocols(options.allowLocal, allowFile) },
+		{ ms: netTimeoutMs(), what: `git ${args.join(" ")}` },
+	);
 }
 
 function mustNet(

@@ -188,11 +188,9 @@ describe("network git pins the transports", () => {
 	});
 
 	it("every network call starts with protocol.allow=never", () => {
-		assert.deepEqual(netArgs(["fetch", "x"]).slice(0, 3), [
-			"-c",
-			"protocol.allow=never",
-			"fetch",
-		]);
+		const args = netArgs(["fetch", "x"]);
+		assert.deepEqual(args.slice(0, 2), ["-c", "protocol.allow=never"]);
+		assert.deepEqual(args.slice(-2), ["fetch", "x"], "settings, then the call");
 	});
 
 	it("isAllowedTransport accepts https and refuses what runs code or sends in the clear", () => {

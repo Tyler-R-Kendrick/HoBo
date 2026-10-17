@@ -10,6 +10,7 @@ import { existsSync } from "node:fs";
 import { join } from "node:path";
 
 import { PinsError } from "./pins.ts";
+import { netTimeout } from "./pins-net.ts";
 
 export interface GitResult {
 	readonly status: number;
@@ -17,19 +18,67 @@ export interface GitResult {
 	readonly stderr: string;
 }
 
+/**
+ * Run git in its own process group under a deadline, from a small node
+ * parent: when the deadline passes the whole group gets SIGTERM, then
+ * SIGKILL, so no transport helper outlives the call holding a pipe or a
+ * connection. A signal the parent gets is passed on to the group. Exit 124
+ * means the deadline passed.
+ */
+const UNDER_DEADLINE = `
+const { spawn } = require("node:child_process");
+const [ms, ...args] = process.argv.slice(1);
+const child = spawn("git", args, { stdio: "inherit", detached: true });
+const group = (signal) => { try { process.kill(-child.pid, signal); } catch {} };
+for (const name of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(name, () => group(name));
+let late = false;
+const timer = setTimeout(() => {
+	late = true;
+	group("SIGTERM");
+	setTimeout(() => { group("SIGKILL"); process.exit(124); }, 2000).unref();
+}, Number(ms));
+child.on("error", (error) => { console.error(error.message); process.exit(127); });
+child.on("exit", (code, signal) => {
+	clearTimeout(timer);
+	process.exit(late ? 124 : (code ?? (signal === null ? 1 : 128)));
+});
+`;
+
+/** A git call with a deadline: how long, and what to call it in the error. */
+export interface Deadline {
+	readonly ms: number;
+	readonly what: string;
+}
+
 export function git(
 	cwd: string,
 	args: readonly string[],
 	visible = false,
 	env: NodeJS.ProcessEnv = {},
+	deadline?: Deadline,
 ): GitResult {
-	const result = spawnSync("git", [...args], {
+	const [command, argv] =
+		deadline === undefined
+			? ["git", [...args]]
+			: [
+					process.execPath,
+					["-e", UNDER_DEADLINE, String(deadline.ms), ...args],
+				];
+	const result = spawnSync(command, argv, {
 		cwd,
 		encoding: "utf8",
 		maxBuffer: 64 * 1024 * 1024,
 		stdio: visible ? ["ignore", "inherit", "inherit"] : "pipe",
 		env: { ...process.env, GIT_TERMINAL_PROMPT: "0", LC_ALL: "C", ...env },
+		// The group is killed at the deadline; this only bounds the parent.
+		...(deadline === undefined ? {} : { timeout: deadline.ms + 10_000 }),
 	});
+	if (
+		deadline !== undefined &&
+		(result.status === 124 || isTimeout(result.error))
+	) {
+		throw netTimeout(deadline.what, deadline.ms);
+	}
 	if (result.error !== undefined) {
 		throw new PinsError(
 			"GIT_FAILED",
@@ -41,6 +90,10 @@ export function git(
 		stdout: (result.stdout ?? "").trim(),
 		stderr: (result.stderr ?? "").trim(),
 	};
+}
+
+function isTimeout(error: Error | undefined): boolean {
+	return error !== undefined && "code" in error && error.code === "ETIMEDOUT";
 }
 
 export function must(

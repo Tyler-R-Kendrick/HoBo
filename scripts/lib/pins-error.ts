@@ -22,6 +22,7 @@ export type PinsErrorCode =
 	| "CACHE_UNSAFE"
 	| "OVERRIDE_IN_CI"
 	| "INTERRUPTED"
+	| "NET_TIMEOUT"
 	| "USAGE";
 
 /** Every refusal is named; a bare Error would be untraceable. */

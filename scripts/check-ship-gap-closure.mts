@@ -37,9 +37,28 @@ const REQUIRED_PATHS = [
 	"docs/design/instances/accepted-risks-2026-07-30.md",
 	"docs/design/instances/residual-human-blockers-2026-07-30.md",
 	"docs/design/pre-public-secret-scan.md",
-	".github/workflows/publish.yml",
 	"packages/componentize/src/componentize.ts",
 ] as const;
+
+/**
+ * Hosted CI is switched off by keeping the workflow files in
+ * `.github/workflows-disabled/`, where GitHub does not discover them. A
+ * workflow counts as present in either directory, and its integrity markers
+ * are checked wherever it lives, so switching CI off or back on never turns
+ * this check red or silently skips it.
+ */
+const WORKFLOW_DIRS = [
+	".github/workflows",
+	".github/workflows-disabled",
+] as const;
+
+function workflowPath(name: string): string | undefined {
+	return WORKFLOW_DIRS.map((dir) => `${dir}/${name}`).find((rel) =>
+		existsSync(path.join(repoRoot, rel)),
+	);
+}
+
+const REQUIRED_WORKFLOWS = ["publish.yml"] as const;
 
 function read(rel: string): string {
 	return readFileSync(path.join(repoRoot, rel), "utf8");
@@ -50,6 +69,13 @@ const failures: string[] = [];
 for (const rel of REQUIRED_PATHS) {
 	if (!existsSync(path.join(repoRoot, rel))) {
 		failures.push(`missing required path: ${rel}`);
+	}
+}
+for (const name of REQUIRED_WORKFLOWS) {
+	if (workflowPath(name) === undefined) {
+		failures.push(
+			`missing required workflow: ${name} (in ${WORKFLOW_DIRS.join(" or ")})`,
+		);
 	}
 }
 
@@ -102,11 +128,8 @@ if (!hoboPkg.bin?.hobo) {
 }
 
 // Workflow integrity markers
-const s0 = existsSync(
-	path.join(repoRoot, ".github/workflows/stage-gate-s0.yml"),
-)
-	? read(".github/workflows/stage-gate-s0.yml")
-	: "";
+const s0Path = workflowPath("stage-gate-s0.yml");
+const s0 = s0Path === undefined ? "" : read(s0Path);
 if (s0 && !/stage-gate-s0-record-linux/u.test(s0)) {
 	failures.push("stage-gate-s0.yml missing stable linux artifact name");
 }
@@ -116,9 +139,8 @@ if (s0 && /stage-gate-s0-record-ubuntu-latest/u.test(s0)) {
 	);
 }
 
-const hoboCi = existsSync(path.join(repoRoot, ".github/workflows/hobo-ci.yml"))
-	? read(".github/workflows/hobo-ci.yml")
-	: "";
+const hoboCiPath = workflowPath("hobo-ci.yml");
+const hoboCi = hoboCiPath === undefined ? "" : read(hoboCiPath);
 if (hoboCi) {
 	// Require push trigger targeting main (inline list form used in this repo).
 	const hasPushMain =

@@ -10,8 +10,11 @@
  *   own, out of reach of a group signal, and closes it from its SIGTERM and
  *   SIGINT handlers: that is why the signal goes first. A process ai-bdd
  *   started in another group and that ignores SIGTERM can outlive the check.
- *   On Linux a zombie in the group does not count as left: under a PID 1 or
- *   subreaper that never reaps, one would hold every stop for the whole grace.
+ *   On Linux a group that holds only zombies of one thread counts as gone
+ *   (src/process-group.ts): under a PID 1 or subreaper that never reaps, one
+ *   would hold every stop for the whole grace. Where /proc cannot show that
+ *   (a process whose main thread exited while others run, a /proc of another
+ *   PID namespace, none readable), the group counts as live until SIGKILL.
  *   Once ai-bdd has exited and its group is gone, its output is waited for
  *   DRAIN_MS more at most: a process outside the group that holds the pipe
  *   open does not hold the check.
@@ -123,6 +126,7 @@ function signalGroup(child: ChildProcess, signal: NodeJS.Signals | 0): boolean {
 	} catch {
 		return false;
 	}
+	// The kernel has found a member; on Linux /proc is read only then, to tell a zombie from it.
 	return signal !== 0 || process.platform !== "linux"
 		? true
 		: !procShowsGroupGone(child.pid);

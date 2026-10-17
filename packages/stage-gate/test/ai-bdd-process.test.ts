@@ -3,7 +3,8 @@
  * release-gate suites drive it through the gate; these give it commands that
  * misbehave in one way each.
  */
-import { execFile, spawn } from "node:child_process";
+import { execFile, spawn, spawnSync } from "node:child_process";
+import { existsSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -139,7 +140,62 @@ describe("runAiBdd on Linux, where a group can hold only zombies", () => {
 		},
 		30_000,
 	);
+
+	it.runIf(process.platform === "linux" && HAS_PYTHON3)(
+		"kills a member whose main thread exited while its other threads run, although /proc shows it Z",
+		async () => {
+			// The member ignores SIGTERM, starts a thread that writes the marker 3 s later,
+			// and ends its main thread (pthread_exit): /proc shows Z with num_threads 2.
+			const marker = join(
+				tmpdir(),
+				`hobo-leader-exit-${process.pid}-${Date.now()}`,
+			);
+			const started = Date.now();
+			const run = await runAiBdd(
+				{
+					command: [
+						"sh",
+						"-c",
+						'python3 -c "$HOBO_TEST_PY" >/dev/null 2>&1 & echo holder $!; sleep 0.3; exit 0',
+					],
+					cwd: tmpdir(),
+					env: { ...process.env, HOBO_TEST_PY: LEADER_EXIT_PY, MARKER: marker },
+					timeoutMs: 20_000,
+					graceMs: 1500,
+					relay: () => undefined,
+				},
+				[],
+			);
+			const took = Date.now() - started;
+			try {
+				// Past the moment the thread would have written the marker, had it lived.
+				await new Promise((done) =>
+					setTimeout(done, Math.max(0, started + 4000 - Date.now())),
+				);
+				expect(run.status).toBe(0);
+				expect(existsSync(marker)).toBe(false);
+				expect(took).toBeGreaterThanOrEqual(1500);
+			} finally {
+				killQuietly(Number(/holder (\d+)/u.exec(run.tail)?.[1] ?? 0));
+				rmSync(marker, { force: true });
+			}
+		},
+		30_000,
+	);
 });
+
+const HAS_PYTHON3 = spawnSync("python3", ["-c", ""]).status === 0;
+
+/** Ignores SIGTERM, starts a thread that writes $MARKER after 3 s, and ends its main thread. */
+const LEADER_EXIT_PY = [
+	"import ctypes, os, signal, threading, time",
+	"signal.signal(signal.SIGTERM, signal.SIG_IGN)",
+	"def later():",
+	"    time.sleep(3)",
+	"    open(os.environ['MARKER'], 'w').close()",
+	"threading.Thread(target=later).start()",
+	"ctypes.CDLL(None).pthread_exit(None)",
+].join("\n");
 
 interface StopOutcome {
 	readonly stopMs: number;

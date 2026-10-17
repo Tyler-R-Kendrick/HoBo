@@ -7,6 +7,7 @@ import {
 	readFileSync,
 	rmSync,
 	statSync,
+	writeFileSync,
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
@@ -38,7 +39,8 @@ function pidIn(path: string): number | undefined {
 }
 
 function end(pid: number | undefined): void {
-	if (pid === undefined) return;
+	// kill(0) and kill(-n) signal a whole process group, the test runner's included; a pid file read while it is still empty is 0.
+	if (pid === undefined || !Number.isInteger(pid) || pid <= 1) return;
 	try {
 		process.kill(pid, "SIGKILL");
 	} catch {
@@ -70,21 +72,31 @@ type Ended = {
 	stdout: string;
 };
 
-/** Run the adapter in a process of its own, signal it once the command is up, and say how it ended. */
-async function signalled(signal: NodeJS.Signals): Promise<Ended> {
+/**
+ * Run the adapter in a process of its own, signal it once the command is up, and say how it ended.
+ * With `hold`, the stand-in is held right after it starts the command (see the fixture) until the
+ * signal has been sent and passed on, so the signal reaches it before it has done anything else.
+ */
+async function signalled(
+	signal: NodeJS.Signals,
+	hold?: string,
+): Promise<Ended> {
+	const env: NodeJS.ProcessEnv = {
+		PATH: process.env.PATH ?? "",
+		NODE_NO_WARNINGS: "1",
+		TMPDIR: tmp,
+		RUNNER_PASS_ENV:
+			"FAKE_OPENSESAME_SIGNALS,FAKE_OPENSESAME_PIDFILE,FAKE_OPENSESAME_HOLD_AFTER_SPAWN",
+		FAKE_OPENSESAME_SIGNALS: join(work, "signals.log"),
+		FAKE_OPENSESAME_PIDFILE: join(out, "fake.pid"),
+		FAKE_OPENSESAME_HOLD_AFTER_SPAWN: hold,
+	};
 	const runner = spawn(
 		process.execPath,
 		["--import", "tsx", RUNNER, FAKE, out],
 		{
 			cwd: PACKAGE,
-			env: {
-				PATH: process.env.PATH ?? "",
-				NODE_NO_WARNINGS: "1",
-				TMPDIR: tmp,
-				RUNNER_PASS_ENV: "FAKE_OPENSESAME_SIGNALS,FAKE_OPENSESAME_PIDFILE",
-				FAKE_OPENSESAME_SIGNALS: join(work, "signals.log"),
-				FAKE_OPENSESAME_PIDFILE: join(out, "fake.pid"),
-			},
+			env,
 			stdio: ["ignore", "pipe", "pipe"],
 		},
 	);
@@ -100,6 +112,11 @@ async function signalled(signal: NodeJS.Signals): Promise<Ended> {
 	});
 	await until(() => existsSync(join(out, "child.pid")));
 	runner.kill(signal);
+	if (hold !== undefined) {
+		// Long enough for the adapter, which is idle, to pass the signal on; the held stand-in cannot have moved.
+		await new Promise((resolve) => setTimeout(resolve, 400));
+		writeFileSync(hold, "");
+	}
 	return await exited;
 }
 
@@ -170,4 +187,29 @@ describe("a real process running the adapter, signalled while its command runs",
 		expect(alive(pidIn(join(out, "fake.pid")))).toBe(true);
 		expect(received()).toEqual([]);
 	}, 90_000);
+});
+
+describe("a stand-in that is held right after it started the command still hears the signal", () => {
+	// The real tool installs its handlers before it starts the command. A stand-in that installs them after is
+	// killed by the default action of a signal that arrives in between, which is what a busy machine does to it.
+	for (const [signal, heard] of [
+		["SIGTERM", "SIGTERM"],
+		["SIGHUP", "SIGHUP"],
+		["SIGINT", "SIGTERM"],
+		["SIGQUIT", "SIGTERM"],
+	] as const) {
+		it(`${signal}, sent while the stand-in is held: it notes ${heard}, the command stops and the schema is gone`, async () => {
+			const ended = await signalled(signal, join(work, "release"));
+			if (signal === "SIGTERM" || signal === "SIGHUP") {
+				expect(ended.code).toBe(0);
+				expect(ended.stdout).toContain('"kind":"signalled"');
+			} else {
+				expect(ended.signal).toBe(signal);
+			}
+			expect(received()).toEqual([heard]);
+			expect(schemaDirs()).toEqual([]);
+			expect(await stops(join(out, "child.pid"))).toBe(true);
+			expect(await stops(join(out, "fake.pid"))).toBe(true);
+		}, 90_000);
+	}
 });

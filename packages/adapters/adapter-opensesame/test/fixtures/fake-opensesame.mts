@@ -11,9 +11,15 @@
 // (test/fixtures/opensesame-lines.ts). The real lane (test/real) replays the
 // same scenarios against the real binary, which is the only thing that says this
 // model is right.
-import { spawn } from "node:child_process";
+import { type ChildProcess, spawn } from "node:child_process";
 import { randomBytes } from "node:crypto";
-import { appendFileSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import {
+	appendFileSync,
+	existsSync,
+	readFileSync,
+	statSync,
+	writeFileSync,
+} from "node:fs";
 import { dirname } from "node:path";
 
 import { SAMPLE_LINES, type SampleScenario } from "./opensesame-lines.ts";
@@ -120,14 +126,15 @@ if (delivered) {
 if (scenario === "plugin-absent") say("plugin-absent");
 if (scenario === "no-sealed-entry") say("no-sealed-entry");
 
-const [program, ...args] = command;
-const child = spawn(program ?? "", args, { env, stdio: "inherit" });
-child.on("error", () => process.exit(1));
-
 // How the real tool ends a run it is signalled about (apps/cli/src/dev_supervise.rs):
 // SIGTERM and SIGHUP revoke the run, stop the child, say so and exit 143 or 129.
 // An interrupt (SIGINT, SIGQUIT) does not stop the child, so here it is only noted.
 // FAKE_OPENSESAME_SIGNALS names a file that gets one line per signal received.
+// The handlers are installed BEFORE the command is started, as the real tool does: a
+// signal that arrives once the command is up (a caller waiting for the command to say so
+// is exactly that) must find them, and a stand-in that listens afterwards is killed by the
+// default action of whatever it is sent if it is slow to get there.
+let child: ChildProcess | undefined;
 let ending: SampleScenario | undefined;
 function note(signal: string): void {
 	const file = process.env.FAKE_OPENSESAME_SIGNALS;
@@ -140,11 +147,27 @@ for (const [signal, line] of [
 	process.on(signal, () => {
 		note(signal);
 		ending = line;
-		child.kill("SIGTERM");
+		child?.kill("SIGTERM");
 	});
 }
 for (const signal of ["SIGINT", "SIGQUIT"] as const) {
 	process.on(signal, () => note(signal));
+}
+
+const [program, ...args] = command;
+child = spawn(program ?? "", args, { env, stdio: "inherit" });
+child.on("error", () => process.exit(1));
+
+// Test seam: the stand-in does nothing, not even run its event loop, between starting the
+// command and the next line until the file named by FAKE_OPENSESAME_HOLD_AFTER_SPAWN exists.
+// A busy machine does the same thing for as long as it likes (the process is descheduled
+// right after the command starts), and a signal that arrives then must still be heard.
+const hold = process.env.FAKE_OPENSESAME_HOLD_AFTER_SPAWN;
+if (hold !== undefined) {
+	const pause = new Int32Array(new SharedArrayBuffer(4));
+	for (let waited = 0; !existsSync(hold) && waited < 60_000; waited += 10) {
+		Atomics.wait(pause, 0, 0, 10);
+	}
 }
 
 child.on("close", (code) => {

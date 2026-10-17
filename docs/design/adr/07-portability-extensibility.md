@@ -441,6 +441,34 @@ The HOBO-340 spike vectors live in [`../../../src/draft/technical-proofs/version
 - **(+)** The release program has a decision record; "M0" in any Productization doc resolves to one canonical M0–M4 definition inside `docs/design/`.
 - **(−)** Two ladders coexist — capability scope stays flat while readiness evidence is phased — so future docs must state which surface they phase.
 
+## ADR-0172
+**The ai-bdd release gate: HoBo runs ai-bdd as a process, replay-only, reads its report only after an exit code that writes one, and records infrastructure as "not run".**
+
+**Status:** Accepted — extends [ADR-0116](#adr-0116) (release program: the M3/M4 evidence gates need an acceptance check that a reader can trust) and the S0 stage-gate runner ([build-s0](../build-s0-stage-gate-acceptance.md)); follows the repo's testing policy (no E2E against live services) by admitting only replay.
+
+### Context
+ai-bdd turns product docs into scenarios, characterizes them once (driver plus models), commits the plans and recordings, and replays them afterwards. A replay with committed plans and recordings is deterministic and needs no model, which is exactly what a release gate can trust and what HoBo's testing policy allows. ai-bdd is not on npm and lives in its own repository, so HoBo cannot import it; what it publishes is a process contract: exit codes (0 passed, 1 a scenario failed, inconclusive or blocked, 2 usage or config, 3 infrastructure, 4 frozen violation), `.ai-bdd/report/report.json` (`RunReport`, `schemaVersion` 1, with a JSON Schema whose version 1 is closed), and `ai-bdd verify-run <runDir>`, which recomputes the evidence hashes of a run. Three facts of that contract shape the gate: exit 2 and 4 write no report, so a stale `report.json` from an earlier run can still be on disk; `--no-agent` stops the agent but not the judge, so with an empty verdict cache (`.ai-bdd/cache/`, not committed) a frozen run can still call a model; and exit 3 means the run could not be carried out, not that the product is wrong.
+
+### Decision
+1. **A process boundary, nothing more.** `@hobo/stage-gate` runs the argv in `HOBO_AI_BDD_CMD` (a JSON array, default `["ai-bdd"]`, so the target project's own devDependency through its package manager's exec, or a path) with `HOBO_AI_BDD_PROJECT` as the working directory. HoBo imports no ai-bdd code. The provider's side of the contract, as HoBo's offline tests see it, is the schema and two reports from real runs copied byte for byte into `packages/stage-gate/test/fixtures/ai-bdd/` with their sha256 and origin, plus the consumer pact `stage-gate-ai-bdd-report.pact.json` (one synthetic interaction per exit code). The env-gated real lane is the provider verification.
+2. **The release gate is three replay-only checks, in order.** `defineReleaseGate()` (`gate_id: "release"`): `acceptance-plans-fresh` (`ai-bdd compile --check`), `acceptance-replay` (`ai-bdd run --frozen --no-agent --reporter json,junit`), `acceptance-evidence-intact` (`ai-bdd verify-run .ai-bdd/runs/<runId>`). Each later check `requires` the one before it to have passed; if it did not, the later check is recorded `skipped` and never started, because its input (a fresh plan, this run's report) does not exist.
+3. **Exit code first.** The report is read only after `run` exits 0 or 1, the codes that always write one. After 2, 3 or 4 it is not opened, whatever is on disk. Before `verify-run`, the copy in `.ai-bdd/runs/<runId>/report.json` must be the same bytes as `.ai-bdd/report/report.json`.
+4. **Infrastructure is "not run".** Exit 3 of any ai-bdd command, and an `HOBO_AI_BDD_CMD` that cannot be started, make the check `not_run` (exit code 3) — never `failed`, never `passed`. A record with a `not_run` check and no failed one has status `not_run` and the runner exits 3. `not_run` is opt-in per check (`notRunExitCodes`), so the S0 gate's meaning of exit 3 (a failure) does not change.
+5. **Parse, don't validate.** `parseAiBddRunReport` turns the report bytes into a frozen `AcceptanceEvidence` (`data-models/acceptance_evidence.proto` + `.cue`) whose `report_digest` is the sha256 of the bytes read, or refuses with every reason: `schemaVersion` not 1, `options.frozen`/`options.noAgent` false, `options.updateRecordings` true, `usage.modelCalls` (or any purpose's) above 0, an unknown status, an exit code outside 0..4, totals that disagree with the scenarios, exit 0 beside a failed, inconclusive, blocked or error scenario, a run id that is not one directory name. For every field the schema requires, `src/acceptance-fields.ts` says whether the parser reads it or ignores it and why, and a test removes each one from a real report to prove it.
+6. **Zero model calls means the verdict cache is present.** The gate does not relax the zero for the judge. A clean CI checkout replays with zero model calls only if it restores `.ai-bdd/cache/` (or the suite has no subjective step); otherwise the replay check fails and its message names the cache.
+7. **The record.** `gate_id` is `"s0" | "release"`; a passed `release` record holds exactly the three checks, all passed, with `report_digest` in the replay check's evidence. The signature and artifact requirements stay S0's.
+
+### Non-goals
+- No `acceptance` verdict in Gatekeeper / `hobo can-deploy` yet; that is a follow-up that reads the release record.
+- HoBo does not install, pin or build ai-bdd; the target project owns that dependency.
+- No JSON Schema validator dependency: the parser enforces what it reads, and the field table states what it leaves alone.
+
+### Consequences
+- **(+)** A release record now says, with a digest a reader can recompute, that the documented scenarios replayed from committed evidence with no model in the loop.
+- **(+)** Three failure kinds stay apart: a product regression (exit 1, `failed`), a stale or misconfigured project (exit 4 or 2, `failed`), and an environment that could not run the suite (exit 3, `not_run`).
+- **(−)** A suite with subjective steps needs its verdict cache carried into CI; without it the gate refuses, by design.
+- **(−)** The real lane needs an ai-bdd install with its driver; on a machine without one it is selected only by setting `HOBO_AI_BDD_CMD`, and then fails rather than skips.
+
 ## ADR-0122
 **Cross-provider overlay mesh: WireGuard is the portable default behind a `mesh` port, with provider-native peering (VPC peering/PrivateLink) and managed meshes (Tailscale/Cilium ClusterMesh) as opt-in per-Junction adapters — only-registered-considered.**
 

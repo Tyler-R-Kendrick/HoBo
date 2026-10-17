@@ -29,6 +29,17 @@ function samePath(left: string, right: string): boolean {
 	return normal(left) === normal(right);
 }
 
+/**
+ * git 2.43's `check_submodule_name` (submodule-config.c): a name that is
+ * empty or has a `..` component, split on `/` and on `\` alike, is ignored
+ * with "ignoring suspicious submodule name". git keeps a submodule's
+ * repository at `<git dir>/modules/<name>`, so such a name would reach out
+ * of that directory.
+ */
+function gitIgnoresName(name: string): boolean {
+	return name === "" || name.split(/[/\\]/u).includes("..");
+}
+
 /** Every `submodule.<name>.<key>` value, NUL-separated so no value can forge a line. */
 function modulesValues(root: string): Map<string, Map<string, string[]>> {
 	const out = git(root, [
@@ -68,7 +79,9 @@ function modulesValues(root: string): Map<string, Map<string, string[]>> {
  * What `.gitmodules` records for the submodule at `path`, read the way git
  * reads it (`git config -z`). Refused (GITMODULES_AMBIGUOUS) when git could
  * pick a repository the script did not compare: two sections naming the path,
- * a path or url set twice in one section, or a value with a control character.
+ * a path or url set twice in one section, a value with a control character,
+ * or a section name git ignores (checked before anything builds the module
+ * directory from it).
  */
 export function modulesEntry(root: string, path: string): ModulesEntry | null {
 	const sections = modulesValues(root);
@@ -85,6 +98,13 @@ export function modulesEntry(root: string, path: string): ModulesEntry | null {
 	const [found] = naming;
 	if (found === undefined) return null;
 	const [name, values] = found;
+	if (gitIgnoresName(name)) {
+		throw new Refusal(
+			"GITMODULES_AMBIGUOUS",
+			`.gitmodules names the section for ${path} "${name}", which git ignores (an empty name, or one with a ".." component), so git and the script would not read the same submodule`,
+			`rename the section: [submodule "${path}"] in place of [submodule "${name}"] in .gitmodules`,
+		);
+	}
 	for (const key of ["path", "url"]) {
 		if ((values.get(key) ?? []).length > 1) {
 			throw new Refusal(

@@ -9,7 +9,7 @@ import { configDefaults, defineConfig } from "vitest/config";
 // seconds, so vitest's 5 s default fails tests whose assertions held. The
 // budget is a deadline for the machine, not the property under test: what
 // must be fast says so itself (the stderr read ends within 10 s of a held
-// pipe, a hostile line is read in under 500 ms).
+// pipe, a hostile line is read in under 500 ms of CPU time).
 export default defineConfig({
 	test: {
 		exclude: [...configDefaults.exclude, "test/real/**"],

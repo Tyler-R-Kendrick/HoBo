@@ -88,11 +88,17 @@ describe("OpenSesame's tripwire, signal and refusal lines are read where a child
 	});
 
 	it("does not take long to read, however the prefix is repeated", () => {
+		// CPU time, not the clock: a loaded machine that does not run this process for a while has not made the read slower.
+		// What keeps the work linear is pinned by its length in sentences.test.ts; this is the end-to-end smoke.
 		const hostile = "opensesame: ".repeat(10_000);
 		for (const status of [0, 1, 77, 129, 143]) {
-			const started = Date.now();
+			const before = process.cpuUsage();
 			parseOutcome(status, null, `${hostile}\n${hostile}`);
-			expect(Date.now() - started, `status ${status}`).toBeLessThan(500);
+			const spent = process.cpuUsage(before);
+			expect(
+				(spent.user + spent.system) / 1000,
+				`status ${status}`,
+			).toBeLessThan(500);
 		}
 	});
 

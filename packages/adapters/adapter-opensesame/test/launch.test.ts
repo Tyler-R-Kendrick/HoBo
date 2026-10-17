@@ -331,13 +331,15 @@ describe("runProxied with a stand-in binary", () => {
 		});
 	}
 
-	it("a child's unterminated last write does not hide OpenSesame's tripwire or signal line, which is printed with no newline before it", async () => {
-		for (const [scenario, kind, exitCode, tail] of [
-			["misdirected", "tripwire", 77, "partial"],
-			["misdirected", "tripwire", 77, "Working... 40%\r"],
-			["sigterm", "signalled", 143, "partial"],
-			["sighup", "signalled", 129, "|\r/\r-\r"],
-		] as const) {
+	// One test per case: each starts OpenSesame's stand-in and the command, which a heavily loaded machine
+	// does slowly, and four of them in one test were slower than the lane's deadline for the machine.
+	for (const [scenario, kind, exitCode, tail] of [
+		["misdirected", "tripwire", 77, "partial"],
+		["misdirected", "tripwire", 77, "Working... 40%\r"],
+		["sigterm", "signalled", 143, "partial"],
+		["sighup", "signalled", 129, "|\r/\r-\r"],
+	] as const) {
+		it(`a child's unterminated last write does not hide OpenSesame's ${scenario} line, which is printed with no newline before it: ${JSON.stringify(tail)}`, async () => {
 			const unterminated = join(work, "unterminated.txt");
 			writeFileSync(unterminated, tail);
 			const input = stubInput();
@@ -346,15 +348,9 @@ describe("runProxied with a stand-in binary", () => {
 				argv: [...input.argv, "0", unterminated],
 				env: { ...input.env, FAKE_OPENSESAME_SCENARIO: scenario },
 			});
-			expect(
-				outcome,
-				`${scenario} after ${JSON.stringify(tail)}`,
-			).toMatchObject({
-				kind,
-				exitCode,
-			});
-		}
-	});
+			expect(outcome).toMatchObject({ kind, exitCode });
+		});
+	}
 
 	it("does not hang on a descendant that holds the stderr pipe open after OpenSesame has ended", async () => {
 		const grandchild = join(work, "grandchild.pid");

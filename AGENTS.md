@@ -535,6 +535,20 @@ Use these lanes instead:
 - `pnpm test:fuzz:nightly` for the docker-gated RESTler/Toxiproxy/Testcontainers plan. Skip without Docker. Never live Azure/AWS/GCP/paid SaaS.
 - `pnpm test:mutation` for the mutation-score gate. Scoped on purpose — see "Mutation testing" below.
 
+### Fixture paths: never a made-up directory at the filesystem root
+
+A test that hands code `hoboHome: "/nonexistent/..."` (or a `cwd`, `home` or
+`HOBO_HOME` of that shape) only holds while the code reads the path. The session
+store, event journal and one-time-action store create the directory they are
+given, so a run as root, which every CI container is, makes `/nonexistent/...` on
+the host and leaves it there; later suites that use `/nonexistent` to mean
+"missing" then find a directory. Make the directory with
+`mkdtempSync(join(tmpdir(), ...))` in `beforeAll` and remove it in `afterAll`
+(`rmSync(dir, { recursive: true, force: true })`). A path the code never writes
+to (a PATH entry, an executable that must fail to launch) is listed with its
+reason in `READ_ONLY` in `test/nonexistent-path-fixtures.test.ts`, which scans
+every test source and fails on any other `"/nonexistent…"` literal.
+
 ### Characterization (approval) tests — for generated artifacts
 
 Rule-based tests assert *behaviour* ("an unknown category is rejected").

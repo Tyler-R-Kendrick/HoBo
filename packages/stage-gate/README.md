@@ -25,6 +25,7 @@ pnpm --filter @hobo/stage-gate run typecheck
 pnpm --filter @hobo/stage-gate run lint
 pnpm --filter @hobo/stage-gate run test
 pnpm --filter @hobo/stage-gate run test:contract:consumer
+pnpm --filter @hobo/stage-gate run test:real   # selected by HOBO_AI_BDD_CMD
 ```
 
 ## Parse, don't validate
@@ -86,6 +87,18 @@ a subjective step is judged from the verdict cache (`.ai-bdd/cache/`, not
 committed) or by a model call. A clean CI checkout therefore replays with zero
 model calls only when that cache is restored first (or the suite has no
 subjective step); otherwise the replay check fails and names the cache.
+
+The real lane (`test/acceptance-real.test.ts`, `test:real`) runs the gate
+against a real ai-bdd and is selected by setting `HOBO_AI_BDD_CMD`; it then also
+needs `HOBO_AI_BDD_PROJECT` (a project whose plans, recordings and verdict cache
+replay with no agent) and `HOBO_AI_BDD_STALE_DOC` (one of its docs, which the
+negative control edits for one run and restores). Once selected it fails, never
+skips, when either is missing or the command cannot run (the gate then records
+`not_run`, which the lane does not accept). ai-bdd's offline test project (fake
+driver and fake models, built by its `tests/acceptance/helpers/project.ts`) is a
+project of that kind; its CLI is
+`["node","--conditions=source","<ai-bdd>/packages/cli/src/bin.ts","-c","<the project's test config>"]`
+and needs ai-bdd's own dependencies installed.
 
 The gate's tests run real processes against a stand-in ai-bdd
 (`test/helpers/fake-ai-bdd.mts`) that plays back

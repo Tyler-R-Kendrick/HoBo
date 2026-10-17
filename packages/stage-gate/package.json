@@ -27,6 +27,7 @@
 		"typecheck": "tsc --noEmit -p tsconfig.json",
 		"lint": "biome check .",
 		"test": "vitest run --no-isolate",
-		"test:contract:consumer": "vitest run contracts/consumer --no-isolate"
+		"test:contract:consumer": "vitest run contracts/consumer --no-isolate",
+		"test:real": "vitest run test/acceptance-real.test.ts --no-isolate"
 	}
 }

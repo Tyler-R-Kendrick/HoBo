@@ -5,6 +5,13 @@
  * and checked again at efe9c5adb, whose env-spec bridge looks `node` up only in
  * PATH directories group and others cannot write (crates/env-spec/src/node_bridge.rs).
  * `bridge-no-node` is the older binary's line, `bridge-untrusted-node` the newer one's.
+ * The `bridge-no-usable-node*` and `bridge-node-override-*` lines are what
+ * OpenSesame's #1461 prints (merged to its main as 6d4cdc795; from
+ * crates/env-spec/src/node_bridge.rs and node_bridge/operator.rs there, read
+ * as source, not run): the PATH search in its new words, and `OPENSESAME_NODE`
+ * (an absolute path to the `node` to run) refused with a reason that names the
+ * variable. The older `bridge-untrusted-node` words are kept for the kit the
+ * real lane was built from (efe9c5adb), which predates it.
  * The fake binary prints them; test/real/ checks that the real binary prints
  * lines the adapter classifies the same way.
  */
@@ -53,6 +60,30 @@ export const SAMPLE_LINES = {
 	],
 	"bridge-node-elsewhere": [
 		"Error: env-spec parse failed: no usable `node`: only absolute, existing directories that group and others cannot write are searched, and none of /usr/sbin holds a `node`",
+	],
+	"bridge-no-usable-node": [
+		'Error: env-spec parse failed: no usable `node`: PATH entries are searched only when absolute, existing, owned by root or you, not writable by others, and group-writable only by root\'s group or one of yours; PATH has none (skipped: "/opt/hostedtoolcache/node/22.22.0/x64/bin" writable by others; "." relative)',
+	],
+	"bridge-no-usable-node-elsewhere": [
+		"Error: env-spec parse failed: no usable `node`: PATH entries are searched only when absolute, existing, owned by root or you, not writable by others, and group-writable only by root's group or one of yours; none of /usr/sbin holds a `node`",
+	],
+	"bridge-no-usable-node-rejected": [
+		'Error: env-spec parse failed: no usable `node`: PATH entries are searched only when absolute, existing, owned by root or you, not writable by others, and group-writable only by root\'s group or one of yours; none of /usr/local/bin holds a `node` (skipped: node "/usr/local/bin/node" owned by uid 4242)',
+	],
+	"bridge-node-override-empty": [
+		"Error: env-spec parse failed: OPENSESAME_NODE is set but empty; unset it or name a file",
+	],
+	"bridge-node-override-relative": [
+		'Error: env-spec parse failed: OPENSESAME_NODE must be an absolute path, not "./node"',
+	],
+	"bridge-node-override-missing": [
+		'Error: env-spec parse failed: OPENSESAME_NODE does not exist: "/opt/ci/node/bin/node"',
+	],
+	"bridge-node-override-not-file": [
+		'Error: env-spec parse failed: OPENSESAME_NODE is not a regular file: "/opt/ci/node/bin"',
+	],
+	"bridge-node-override-not-executable": [
+		'Error: env-spec parse failed: OPENSESAME_NODE is not executable: "/opt/ci/node/bin/node"',
 	],
 	"schema-syntax": [
 		"Error: env-spec parse failed: bridge failed: SyntaxError: unexpected token at line 3",

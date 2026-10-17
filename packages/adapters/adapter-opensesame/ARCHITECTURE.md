@@ -70,7 +70,8 @@ rule for a place, used by the executable lookup and by `PATH`.
   existing, trusted directories that only their owner can add a file to (no sticky `/tmp`), as they resolve, once each, else
   the system directories (`/usr/local/bin`, `/usr/bin`, `/bin`) held to the same rule, else a `bridge_missing` refusal before
   anything is started (an empty `PATH` would search the working directory); listing it in `passEnv` changes nothing. The adapter relies on neither OpenSesame. With no `node`
-  in those directories OpenSesame refuses before the command starts: `bridge_missing`, from either version's words.
+  in those directories OpenSesame refuses before the command starts: `bridge_missing`, from either version's words. So is an
+  `OPENSESAME_NODE` it cannot use (its #1461, merged): the adapter neither resolves nor allowlists that variable, and a caller lists it in `passEnv`.
 - **A trusted place** resolves through every symlink; it and every directory above it belong to the effective user or root and are
   not writable by group or others (a sticky directory they own is allowed above it); it is not under `node_modules/.bin` and not inside the
   working directory's tree (root and the home directory are not projects). Not checked: contents, ACLs, a mount that lies about

@@ -121,11 +121,20 @@ const SCOPE =
 const BRIDGE_SCOPE = /^Error: env-spec parse failed: /u;
 /**
  * The parser or `node` is missing. An older OpenSesame ran a bare `node` and
- * said `os error 2`; a newer one searches only PATH directories group and
- * others cannot write, and says it found "no usable `node`" there.
+ * said `os error 2`; a newer one searches only PATH directories others cannot
+ * write (and, since its #1461, group-writable only by root's group or the
+ * caller's own), and says it found "no usable `node`" there. A bad
+ * `OPENSESAME_NODE` is `NODE_OVERRIDE` below.
  */
 const BRIDGE_NOT_FOUND =
 	/Cannot find (?:package|module)|ERR_MODULE_NOT_FOUND|MODULE_NOT_FOUND|No such file or directory|os error 2|ENOENT|no usable `node`/u;
+/**
+ * An `OPENSESAME_NODE` OpenSesame refuses to run (its #1461): every such error
+ * is `OPENSESAME_NODE <why>` after `env-spec parse failed: `, whatever the why
+ * (empty, not absolute, missing, not a regular file, not executable). Anchored
+ * to the start of the error, so a schema error that mentions the name is not it.
+ */
+const NODE_OVERRIDE = /^Error: env-spec parse failed: OPENSESAME_NODE /u;
 const SCHEMA = /^Error: (?:env-spec parse failed|resolve failed): /u;
 /** Every other fatal sentence OpenSesame writes about its plugin before the command starts. */
 const PLUGIN_REFUSAL = /^Error: the surrogate-proxy plugin /u;
@@ -149,7 +158,7 @@ const NOTICE = {
 	plugin_pin_mismatch: "the surrogate-proxy plugin changed since it was pinned",
 	store_unreadable: "the sealed entry for the connection cannot be read",
 	bridge_missing:
-		"OpenSesame could not run the env-spec bridge (node, or @env-spec/parser)",
+		"OpenSesame could not run the env-spec bridge (node, OPENSESAME_NODE, or @env-spec/parser)",
 } as const satisfies Readonly<Record<OutcomeKind, string>>;
 
 function outcome(
@@ -181,6 +190,7 @@ function classifyError(block: readonly string[]): OutcomeKind | undefined {
 	if (PIN.test(first)) return "plugin_pin_mismatch";
 	if (STORE.test(first)) return "store_unreadable";
 	if (SCOPE.test(first)) return "scope_unbounded";
+	if (NODE_OVERRIDE.test(first)) return "bridge_missing";
 	if (BRIDGE_SCOPE.test(first) && BRIDGE_NOT_FOUND.test(whole)) {
 		return "bridge_missing";
 	}
@@ -275,7 +285,7 @@ const WHAT_HAPPENED = {
 		"the surrogate-proxy plugin changed since it was pinned; reinstall it (there is no fallback to placeholders)",
 	store_unreadable: "the sealed entry for the connection cannot be read",
 	bridge_missing:
-		"OpenSesame cannot read the schema: it needs node, in a PATH directory that group and others cannot write, and the env-spec bridge with @env-spec/parser (OPENSESAME_ENV_PARSE)",
+		"OpenSesame cannot read the schema: it needs a node it trusts, found in a PATH directory that others cannot write or, where your OpenSesame reads OPENSESAME_NODE, the absolute path in that variable (list it in passEnv), and the env-spec bridge with @env-spec/parser (OPENSESAME_ENV_PARSE)",
 } as const satisfies Readonly<Record<OutcomeKind, string>>;
 
 function kindOf(run: ProxiedRunOutcome): OutcomeKind {

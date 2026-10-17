@@ -121,12 +121,16 @@ What `runProxied` does before and around the run:
   with `bridge_missing` before anything is started or any passphrase is passed, because an empty `PATH` makes the
   lookup search the working directory. Listing `PATH` in `passEnv` does not change that. A command that
   lives only in a dropped directory has to be named by absolute path in `argv`.
-- **`node` for the schema comes from that `PATH`.** OpenSesame searches the `PATH` the adapter built, so `node` must sit in
-  one of those directories. When none holds one (for example where Node is installed in a world-writable directory),
-  OpenSesame refuses the run before the command starts and the outcome is `bridge_missing`, from either version's words
-  (`os error 2`, or ``no usable `node` ``). An `OPENSESAME_NODE` override is proposed in OpenSesame and, on 2026-10-17, is not on its
-  main; the adapter does not depend on it. If your OpenSesame reads it, list it in `passEnv`, where it is passed as given,
-  like any listed name and like an explicit `bin` path.
+- **`node` for the schema comes from that `PATH`, or from `OPENSESAME_NODE` if you list it.** OpenSesame searches the
+  `PATH` the adapter built, so `node` must sit in one of those directories. When none holds one (for example where Node is
+  installed in a world-writable directory), OpenSesame refuses the run before the command starts and the outcome is
+  `bridge_missing`, from either version's words (`os error 2`, or ``no usable `node` ``), with advice that names the
+  override. OpenSesame's #1461 (merged to its main as `6d4cdc795`) reads `OPENSESAME_NODE`: an absolute path to the `node`
+  to run, final (never a reason to search `PATH` instead) and exempt from the directory and file checks. **The adapter does
+  not resolve, check or allowlist that variable.** It is not on the allowlist, so it reaches OpenSesame only when you list it
+  in `passEnv`, where it is passed as given: your explicit choice, like an explicit `bin` path. A value OpenSesame cannot use
+  (not absolute, missing, not a regular file, not executable, empty) is `bridge_missing`, in its #1461 words or the older
+  ones.
 - **A trusted place** resolves through every symlink; it and every directory above it belong to you or root and are not
   writable by group or others (a sticky directory you or root own, like `/tmp`, is allowed above it); it is not under a
   `node_modules/.bin` directory and not inside the working directory's tree (the filesystem root and your home directory

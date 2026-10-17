@@ -68,8 +68,12 @@ export interface Remote {
 	readonly shas: readonly string[];
 }
 
-/** A repository with three commits, each rewriting the same four files. */
-export function makeRemote(parent: string): Remote {
+/**
+ * A repository with three commits, each rewriting the same four files. Two
+ * made with different labels share no commit, so a test can have a second
+ * upstream whose history is not the first one's.
+ */
+export function makeRemote(parent: string, label = "revision"): Remote {
 	const dir = join(parent, "remote");
 	mkdirSync(dir, { recursive: true });
 	git(dir, ["init", "-q"]);
@@ -82,10 +86,10 @@ export function makeRemote(parent: string): Remote {
 			"docs/z.txt",
 		]) {
 			mkdirSync(dirname(join(dir, file)), { recursive: true });
-			writeFileSync(join(dir, file), `revision ${revision}\n`);
+			writeFileSync(join(dir, file), `${label} ${revision}\n`);
 		}
 		git(dir, ["add", "-A"]);
-		git(dir, ["commit", "-q", "-m", `revision ${revision}`]);
+		git(dir, ["commit", "-q", "-m", `${label} ${revision}`]);
 		shas.push(git(dir, ["rev-parse", "HEAD"]));
 	}
 	return { dir, url: `file://${dir}`, shas };

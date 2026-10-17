@@ -18,9 +18,10 @@ import {
 } from "node:path";
 
 import { inside, sameFile } from "./pins-file-identity.ts";
-import { git, Refusal, shellWord } from "./pins-git-core.ts";
+import { git, Refusal, sameRepo, shellWord } from "./pins-git-core.ts";
 import {
 	gitIgnoresName,
+	type ModulesEntry,
 	modulesEntry,
 	modulesSectionNames,
 } from "./pins-gitmodules.ts";
@@ -135,8 +136,13 @@ interface Foreign {
  * cloned with --separate-git-dir, is itself a submodule, or is a linked
  * worktree (whose `modules/` is its own, not the common directory's), and
  * keeps using the one it cloned when the section is later renamed: a module
- * directory whose `core.worktree` is this path is git's own record of that.
- * An older git, or a plain clone, keeps it in the path's own `.git`
+ * directory whose `core.worktree` is this path was made for this path, and
+ * is taken as the submodule's own when its `remote.origin.url` is also the
+ * repository `.gitmodules` names for the path. `core.worktree` says which
+ * path git made it for and nothing about whose repository it is, so a
+ * renamed section whose URL changed to another upstream finds the old
+ * upstream's clone refused, not adopted and moved to the new upstream's
+ * commit. An older git, or a plain clone, keeps it in the path's own `.git`
  * directory. A hand-made `git clone --separate-git-dir` keeps it in a
  * directory that serves no other work tree: not named `.git` (that is the
  * repository of the directory holding it), not a linked worktree, outside
@@ -159,11 +165,11 @@ function foreignReason(
 		};
 	if (sameFile(sub.gitDir, join(root, path, ".git"))) return null;
 	const owner = repositoryOf(root);
-	const name = nameOf(root, path);
+	const entry = entryOf(root, path);
 	const modules =
-		owner === null || name === undefined
+		owner === null || entry === undefined
 			? null
-			: realOr(join(owner.gitDir, "modules", name));
+			: realOr(join(owner.gitDir, "modules", entry.name));
 	if (modules !== null && sameFile(sub.gitDir, modules)) return null;
 	if (basename(sub.gitDir).toLowerCase() === ".git")
 		return {
@@ -173,22 +179,46 @@ function foreignReason(
 	// Without the name there is no module directory to tell the submodule's
 	// own from another's; `coherence` refuses that `.gitmodules`, so status
 	// says it once and fetch and bump stop on it first.
-	if (owner === null || name === undefined || modules === null) return null;
+	if (owner === null || entry === undefined || modules === null) return null;
+	// core.worktree needs no check outside the superproject's git directory:
+	// it decides git's top level, which headOf has already found to be this path.
+	if (!insideEither(sub.gitDir, owner)) return null;
 	const moduleDirs = join(owner.gitDir, "modules");
-	if (inside(sub.gitDir, moduleDirs) && worktreeIs(root, sub.gitDir, path))
+	const named = moduleNameOf(moduleDirs, sub.gitDir);
+	const theirs = !originIs(root, sub.gitDir, entry.url);
+	if (
+		!theirs &&
+		inside(sub.gitDir, moduleDirs) &&
+		worktreeIs(root, sub.gitDir, path)
+	)
 		return null;
-	for (const dir of [owner.gitDir, owner.common]) {
-		if (inside(sub.gitDir, dir))
-			return {
-				reason: `is inside the superproject's git directory but is not this submodule's (${modules})`,
-				fix: existsSync(modules)
-					? fix
-					: (renameFix(root, name, moduleDirs, sub.gitDir) ?? fix),
-			};
-	}
-	// core.worktree needs no check: it decides git's top level, which
-	// headOf has already found to be this path.
-	return null;
+	if (theirs)
+		return {
+			reason: `belongs to another repository: its remote.origin.url is not ${entry.url}, the URL .gitmodules gives ${path}`,
+			fix,
+		};
+	return {
+		reason: `is inside the superproject's git directory but is not this submodule's (${modules})`,
+		fix: existsSync(modules)
+			? fix
+			: (renameFix(root, entry.name, named) ?? fix),
+	};
+}
+
+function insideEither(gitDir: string, owner: Repository): boolean {
+	return [owner.gitDir, owner.common].some((dir) => inside(gitDir, dir));
+}
+
+/** Whether the repository's `remote.origin.url` is the repository `wanted` names. */
+function originIs(root: string, gitDir: string, wanted: string): boolean {
+	const origin = git(root, [
+		"config",
+		"-f",
+		join(gitDir, "config"),
+		"--get",
+		"remote.origin.url",
+	]);
+	return origin.status === 0 && sameRepo(origin.stdout, wanted);
 }
 
 /** Whether the repository's own `core.worktree` names `path`: git made it for this path. */
@@ -205,30 +235,35 @@ function worktreeIs(root: string, gitDir: string, path: string): boolean {
 	);
 }
 
+/** The name git gave a module directory: its path under `<git dir>/modules`, or null outside it. */
+function moduleNameOf(moduleDirs: string, gitDir: string): string | null {
+	const name = relative(realOr(moduleDirs), gitDir).split(sep).join("/");
+	return name === "" || name.startsWith("..") || isAbsolute(name) ? null : name;
+}
+
 /**
  * A `.git` naming a module directory git made under another name,
  * `modules/<X>`, that no other section claims, while the section's own
  * `modules/<name>` does not exist (the section was renamed after cloning):
  * renaming the section back to X makes it the submodule's own again, and
- * keeps the clone and its work.
+ * keeps the clone and its work. Offered only for this repository's own
+ * clone: the caller has checked its origin.
  */
 function renameFix(
 	root: string,
 	name: string,
-	moduleDirs: string,
-	gitDir: string,
+	other: string | null,
 ): string | null {
-	const other = relative(realOr(moduleDirs), gitDir).split(sep).join("/");
-	if (other === "" || other.startsWith("..") || isAbsolute(other)) return null;
+	if (other === null) return null;
 	if (gitIgnoresName(other) || modulesSectionNames(root).includes(other))
 		return null;
 	return `git config -f .gitmodules --rename-section ${shellWord(`submodule.${name}`)} ${shellWord(`submodule.${other}`)}`;
 }
 
-/** The submodule's name in `.gitmodules`, or undefined when it names none or is refused. */
-function nameOf(root: string, path: string): string | undefined {
+/** The submodule at `path` in `.gitmodules`, or undefined when it names none or is refused. */
+function entryOf(root: string, path: string): ModulesEntry | undefined {
 	try {
-		return modulesEntry(root, path)?.name;
+		return modulesEntry(root, path) ?? undefined;
 	} catch (error) {
 		if (error instanceof Refusal) return undefined;
 		throw error;

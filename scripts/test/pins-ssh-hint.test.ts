@@ -1,8 +1,8 @@
 /**
  * The pins run git without a terminal (each network git is in its own
  * session, so its deadline can end it with everything it started). ssh then
- * cannot ask for a passphrase or a host key, and git cannot ask for a
- * username. When git's error says that is what went wrong, the GIT_FAILED
+ * cannot ask for a passphrase, a password or a host key, and git cannot ask
+ * for a username or a password. When git's error says that is what went wrong, the GIT_FAILED
  * message says why and what to do instead. The pins' own remotes are https;
  * ssh is reached only through a user's `url.<base>.insteadOf`.
  *
@@ -24,7 +24,7 @@ import {
 
 const URL = "https://good.invalid/o/r.git";
 const HINT =
-	/hint: pins run git without a terminal, so ssh cannot ask for a passphrase or a host key and git cannot ask for a username/u;
+	/hint: pins run git without a terminal, so ssh cannot ask for a passphrase, a password or a host key, and git cannot ask for a username/u;
 
 interface ViaSsh {
 	readonly work: string;
@@ -65,6 +65,7 @@ describe("an ssh or credential prompt git could not show", () => {
 	for (const says of [
 		"git@example.invalid: Permission denied (publickey).",
 		"Host key verification failed.",
+		"git@example.invalid: Permission denied (keyboard-interactive).",
 	]) {
 		it(`"${says}" gets the hint, from status --online and from fetch`, () => {
 			const { work, ssh } = viaSsh(says);
@@ -98,15 +99,18 @@ describe("an ssh or credential prompt git could not show", () => {
 
 describe("terminalHint", () => {
 	it("answers the ssh and credential failures a prompt would have avoided", () => {
-		for (const said of [
+		const unanswered = [
 			"git@example.invalid: Permission denied (publickey).",
 			"git@example.invalid: Permission denied (publickey,password).",
 			"Host key verification failed.",
 			"fatal: could not read Username for 'https://example.invalid': terminal prompts disabled",
 			"fatal: Authentication failed for 'https://example.invalid/o/r.git/'",
-		]) {
-			assert.notEqual(terminalHint(said), "", said);
-		}
+			"fatal: could not read Password for 'https://someone@example.invalid': terminal prompts disabled",
+			"git@example.invalid: Permission denied (password).",
+			"git@example.invalid: Permission denied (password,keyboard-interactive).",
+			"git@example.invalid: Permission denied (keyboard-interactive).",
+		].filter((said) => terminalHint(said) === "");
+		assert.deepEqual(unanswered, [], "failures that got no hint");
 	});
 
 	it("says nothing about a local permission error", () => {

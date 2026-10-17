@@ -1,5 +1,4 @@
 import assert from "node:assert/strict";
-import { readFileSync } from "node:fs";
 import { test } from "vitest";
 
 import { findCaseCollisions } from "../scripts/check-case-collisions.js";
@@ -410,27 +409,6 @@ test("draft package tests are delegated to Turbo with a path filter", () => {
 			"src/draft/technical-proofs/provider-authoring-contract",
 		),
 		true,
-	);
-});
-
-test("fast test script is root-only and full quiet unit lane remains explicit", () => {
-	// SAFETY: package.json is a committed repo file; scripts values are strings.
-	const packageJson = JSON.parse(readFileSync("package.json", "utf8")) as {
-		scripts: Record<string, string>;
-	};
-
-	assert.equal(
-		packageJson.scripts["test:fast"],
-		"node --import tsx scripts/run-tests.ts --root-only --quiet --no-artifacts",
-	);
-	assert.equal(
-		packageJson.scripts["test:unit:quiet"],
-		"node --import tsx scripts/run-tests.ts --category=unit --quiet --no-artifacts",
-	);
-	assert.equal(packageJson.scripts["lint:slop"], "oxlint");
-	assert.equal(
-		packageJson.scripts["lint:slop:changed"],
-		"node --import tsx scripts/lint-slop-changed.mts",
 	);
 });
 

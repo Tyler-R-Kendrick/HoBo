@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { checkCliDocs } from "./check-cli-docs.ts";
 import { checkCompetitorDocs } from "./check-competitor-docs.ts";
 import { checkDesignDocs } from "./check-design-docs.ts";
+import { reachRemedy } from "./lib/base-ref.ts";
 
 type Problem = {
 	file: string;
@@ -23,12 +24,16 @@ const base =
 const staged = args.has("--staged");
 const all = args.has("--all");
 
-function capture(command: string, commandArgs: string[]) {
+/** The command's output, or `undefined` when it failed. */
+function tryCapture(
+	command: string,
+	commandArgs: string[],
+): string | undefined {
 	const result = spawnSync(command, commandArgs, {
 		encoding: "utf8",
 		shell: false,
 	});
-	if (result.status !== 0) return "";
+	if (result.error || result.status !== 0) return undefined;
 	return result.stdout.trim();
 }
 
@@ -39,21 +44,38 @@ function splitFiles(output: string) {
 		.filter(Boolean);
 }
 
+/**
+ * A listing the linters are chosen from. A git failure (an unknown or
+ * unfetched base, a shallow clone, no repository) used to read as "no changed
+ * markdown files", so the gate skipped every linter and passed. It is an
+ * error instead.
+ */
+function listing(
+	commandArgs: string[],
+	failure: string,
+	remedy = "",
+): string[] {
+	const listed = tryCapture("git", commandArgs);
+	if (listed !== undefined) return splitFiles(listed);
+	console.error(
+		`fail  lint:docs — ${failure}, so no docs linter ran.${remedy && ` ${remedy}`}`,
+	);
+	process.exit(2);
+}
+
 function changedFiles() {
-	if (all) return splitFiles(capture("git", ["ls-files"]));
-	if (staged)
-		return splitFiles(
-			capture("git", ["diff", "--cached", "--name-only", "--diff-filter=ACMR"]),
+	if (all) return listing(["ls-files"], "git could not list the tracked files");
+	if (staged) {
+		return listing(
+			["diff", "--cached", "--name-only", "--diff-filter=ACMR"],
+			"git could not list the staged files",
 		);
-	const mergeBase = capture("git", ["merge-base", base, "HEAD"]) || base;
-	return splitFiles(
-		capture("git", [
-			"diff",
-			"--name-only",
-			"--diff-filter=ACMR",
-			mergeBase,
-			"HEAD",
-		]),
+	}
+	const mergeBase = tryCapture("git", ["merge-base", base, "HEAD"]) || base;
+	return listing(
+		["diff", "--name-only", "--diff-filter=ACMR", mergeBase, "HEAD"],
+		`git could not diff against ${base}`,
+		reachRemedy(base),
 	);
 }
 

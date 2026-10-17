@@ -53,6 +53,7 @@ export type {
 } from "../_generated/training_engine_pb.js";
 export {
 	OpenInferenceSpanKind,
+	OptimizeRequestSchema,
 	TrajectoryRewardSchema,
 } from "../_generated/training_engine_pb.js";
 

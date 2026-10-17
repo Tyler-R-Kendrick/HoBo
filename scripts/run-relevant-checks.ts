@@ -1,7 +1,12 @@
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 
-import { commandForPlatform } from "./lib/env.ts";
+import { isCommit, reachRemedy } from "./lib/base-ref.ts";
+import {
+	type CommandInvocation,
+	commandForPlatform,
+	withoutPackageManager,
+} from "./lib/env.ts";
 import { type JsonValue, runtimeKind } from "./lib/inspectable.ts";
 import { type Check, selectRelevantChecks } from "./relevant-check-policy.js";
 
@@ -24,28 +29,71 @@ type ChangedFileRecord = {
 	status: string;
 };
 
+/**
+ * How a check is actually started: pnpm-shaped checks run through
+ * scripts/run-script.mts or `node_modules/.bin` (see `withoutPackageManager`),
+ * so root-script gates need no usable pnpm; what still needs pnpm (turbo's
+ * package-test lanes, installs) stays pnpm. A check that cannot be started that
+ * way is reported and fails.
+ */
+function invocationFor(
+	command: string,
+	commandArgs: string[],
+): CommandInvocation | undefined {
+	let direct: CommandInvocation;
+	try {
+		direct = withoutPackageManager(command, commandArgs);
+	} catch (cause) {
+		cannotStart(command, commandArgs, reason(cause));
+		return undefined;
+	}
+	const shown = direct.command === process.execPath ? "node" : direct.command;
+	console.log(`\n▶ ${[shown, ...direct.args].join(" ")}`);
+	return commandForPlatform(direct.command, direct.args);
+}
+
+function reason(cause: unknown): string {
+	return cause instanceof Error ? cause.message : String(cause);
+}
+
+function cannotStart(command: string, commandArgs: string[], why: string) {
+	console.error(`fail  ${[command, ...commandArgs].join(" ")} — ${why}`);
+}
+
 function run(command: string, commandArgs: string[]) {
-	const printable = [command, ...commandArgs].join(" ");
-	console.log(`\n▶ ${printable}`);
-	const platformCommand = commandForPlatform(command, commandArgs);
+	const platformCommand = invocationFor(command, commandArgs);
+	if (platformCommand === undefined) return 1;
 	const result = spawnSync(platformCommand.command, platformCommand.args, {
 		stdio: "inherit",
 		shell: false,
 	});
+	if (result.error) {
+		cannotStart(
+			command,
+			commandArgs,
+			`could not start ${platformCommand.command}: ${result.error.message}`,
+		);
+	}
 	return result.status ?? 1;
 }
 
 function runAsync(check: Check): Promise<number> {
-	const printable = [check.command, ...check.args].join(" ");
-	console.log(`\n▶ ${printable}`);
-	const platformCommand = commandForPlatform(check.command, check.args);
+	const platformCommand = invocationFor(check.command, check.args);
+	if (platformCommand === undefined) return Promise.resolve(1);
 	const child = spawn(platformCommand.command, platformCommand.args, {
 		stdio: "inherit",
 		shell: false,
 	});
 
 	return new Promise<number>((resolve) => {
-		child.once("error", () => resolve(1));
+		child.once("error", (error) => {
+			cannotStart(
+				check.command,
+				check.args,
+				`could not start ${platformCommand.command}: ${error.message}`,
+			);
+			resolve(1);
+		});
 		child.once("exit", (status) => resolve(status ?? 1));
 	});
 }
@@ -109,15 +157,43 @@ async function runBounded(
 	return statuses;
 }
 
-function capture(command: string, commandArgs: string[]) {
+/** The command's output, or `undefined` when it failed. */
+function tryCapture(
+	command: string,
+	commandArgs: string[],
+): string | undefined {
 	const platformCommand = commandForPlatform(command, commandArgs);
 	const result = spawnSync(platformCommand.command, platformCommand.args, {
 		encoding: "utf8",
 		shell: false,
 		maxBuffer: 32 * 1024 * 1024,
 	});
-	if (result.error || result.status !== 0) return "";
+	if (result.error || result.status !== 0) return undefined;
 	return result.stdout.trim();
+}
+
+/** For probes whose failure has a meaning of its own (no merge base, no file). */
+function capture(command: string, commandArgs: string[]) {
+	return tryCapture(command, commandArgs) ?? "";
+}
+
+/**
+ * The listing every gate is chosen from. A git failure here (an unknown or
+ * unfetched base, a depth-1 clone's HEAD~1, no repository) used to read as an
+ * empty list, so agent:check printed "ok" having selected nothing. It is an
+ * error instead.
+ */
+function changedListing(commandArgs: string[]): string {
+	const listed = tryCapture("git", commandArgs);
+	if (listed !== undefined) return listed;
+	console.error(
+		all
+			? "fail  agent:check — git could not list the tracked files, so no check was selected."
+			: staged
+				? "fail  agent:check — git could not list the staged files, so no check was selected."
+				: `fail  agent:check — git could not diff against ${base}, so no check was selected. ${reachRemedy(base)}`,
+	);
+	process.exit(2);
 }
 
 function parseChangedFileRecords(raw: string): ChangedFileRecord[] {
@@ -133,14 +209,14 @@ function parseChangedFileRecords(raw: string): ChangedFileRecord[] {
 
 function changedFileRecords(): ChangedFileRecord[] {
 	if (all) {
-		return capture("git", ["ls-files"])
+		return changedListing(["ls-files"])
 			.split(/\r?\n/)
 			.filter(Boolean)
 			.map((file) => ({ status: "M", path: file }));
 	}
 	if (staged) {
 		return parseChangedFileRecords(
-			capture("git", [
+			changedListing([
 				"diff",
 				"--cached",
 				"--name-status",
@@ -150,7 +226,7 @@ function changedFileRecords(): ChangedFileRecord[] {
 		);
 	}
 	return parseChangedFileRecords(
-		capture("git", [
+		changedListing([
 			"diff",
 			"--name-status",
 			"--find-renames=100%",
@@ -202,6 +278,15 @@ function rootPackageJsonScriptsOnlyChanged() {
 	}
 }
 
+// The gates are handed this base in staged mode too, where nothing else diffs
+// against it, so a named one has to be a commit before anything is chosen.
+// (Otherwise the diff below refuses a base it cannot reach.)
+if (staged && baseArg !== undefined && !isCommit(base)) {
+	console.error(
+		`fail  agent:check — --base=${base} is not a commit here, so no check was selected. ${reachRemedy(base)}`,
+	);
+	process.exit(2);
+}
 const diffBase = capture("git", ["merge-base", base, "HEAD"]) || base;
 const records = changedFileRecords();
 const files = records.map((record) => record.path);

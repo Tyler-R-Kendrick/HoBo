@@ -771,6 +771,7 @@ export type {
 export {
 	hashTrajectory,
 	OpenInferenceSpanKind,
+	OptimizeRequestSchema,
 	parseOptimizeRequest,
 	parseTraceparent,
 	parseTrainingArtifact,

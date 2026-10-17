@@ -68,6 +68,23 @@ describe("OpenSesame's own bare `node` lookup cannot find a planted node with th
 			"a node_modules/.bin entry",
 			() => `${join(checkout, "node_modules", ".bin")}${delimiter}${NODE_DIR}`,
 		],
+		[
+			"a sticky directory anyone can add a file to, like /tmp",
+			() => {
+				// Sticky stops others removing a name, not adding one: a lookup by name finds what they add.
+				const shared = join(work, "shared");
+				mkdirSync(shared);
+				chmodSync(shared, 0o1777);
+				writeFileSync(
+					join(shared, "node"),
+					readFileSync(join(checkout, "node")),
+					{
+						mode: 0o755,
+					},
+				);
+				return `${shared}${delimiter}${NODE_DIR}`;
+			},
+		],
 	];
 	for (const [label, path] of variants) {
 		it(`with ${label}`, async () => {

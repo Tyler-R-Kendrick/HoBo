@@ -232,6 +232,24 @@ describe("the PATH a run is started with keeps only places that pass the same ru
 		).toBe("/usr/local/bin:/usr/bin");
 	});
 
+	it("drops a sticky directory group or others can write, /tmp included: sticky stops them removing a name, not adding one, and a lookup is by name", () => {
+		const sticky = memoryTrust(
+			{
+				...nodes,
+				"/tmp": dir(0, 0o1777),
+				"/opt/drop": dir(ME, 0o1777),
+				"/opt/team": dir(ME, 0o1775),
+			},
+			{ cwd: "/work/checkout" },
+		);
+		expect(
+			trustedPath("/tmp:/opt/drop:/opt/team:/usr/bin", sticky, "linux", {}),
+		).toBe("/usr/bin");
+		expect(trustedPath("/tmp", sticky, "linux", {})).toBe(
+			"/usr/local/bin:/usr/bin:/bin",
+		);
+	});
+
 	it("writes a symlinked entry as where it ends, once", () => {
 		expect(make("/opt/link-to-mine:/opt/mine:/usr/bin")).toBe(
 			"/opt/mine:/usr/bin",

@@ -159,11 +159,23 @@ function defaultPath(
 }
 
 /**
+ * Whether others can put a new name in `directory`. Sticky stops them removing
+ * or renaming a name, not adding one, so a sticky `/tmp` that is fine above a
+ * file is not fine as a directory a program is looked up in by name.
+ */
+function othersCanAdd(directory: string, trust: Trust): boolean {
+	if (trust.euid === undefined) return false;
+	const mode = trust.fs.stat(directory)?.mode;
+	return mode === undefined || (mode & GROUP_OR_OTHERS_WRITE) !== 0;
+}
+
+/**
  * The PATH a run is started with: the caller's, reduced to the absolute
- * directories that exist and are trusted places, each written as it resolves
- * and none twice. An empty or relative entry means the working directory, and
- * OpenSesame's first act is a bare `node` lookup with the store passphrase in its
- * environment. When nothing is left, a fixed system PATH.
+ * directories that exist, are trusted places and that only their owner can add
+ * a file to (a sticky `/tmp` is not one), each written as it resolves and none
+ * twice. An empty or relative entry means the working directory, and an older
+ * OpenSesame's first act is a bare `node` lookup with the store passphrase in
+ * its environment. When nothing is left, a fixed system PATH.
  */
 export function trustedPath(
 	pathValue: string | undefined,
@@ -176,7 +188,8 @@ export function trustedPath(
 		if (trust.fs.stat(entry)?.directory !== true) continue;
 		if (placeProblem(entry, trust) !== undefined) continue;
 		const real = trust.fs.realpath(entry);
-		if (real !== undefined && !kept.includes(real)) kept.push(real);
+		if (real === undefined || othersCanAdd(real, trust)) continue;
+		if (!kept.includes(real)) kept.push(real);
 	}
 	const flavour = platform === "win32" ? path.win32 : path.posix;
 	return kept.length === 0

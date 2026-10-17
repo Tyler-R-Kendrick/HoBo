@@ -94,18 +94,33 @@ describe("scanGroup", () => {
 				const ready = () =>
 					stateOf(String(pgid)).comm === "a) Z 1 2 (b" &&
 					stateOf(zombiePid).state === "Z";
-				for (let tries = 0; tries < 50 && !ready(); tries += 1) {
+				// Readiness has no bound worth asserting: under memory pressure a fork or exec
+				// can stall for seconds, so wait as long as the test may run.
+				const until = Date.now() + 20_000;
+				while (!ready() && Date.now() < until) {
 					await new Promise((done) => setTimeout(done, 100));
 				}
-				expect(ready()).toBe(true);
+				expect(
+					ready(),
+					`never ready: ${statLineOf(String(pgid))} | ${statLineOf(zombiePid)}`,
+				).toBe(true);
 				expect(scanGroup({ pgid, sid: pgid }, "/proc")).toBe("live");
 			} finally {
 				process.kill(-pgid, "SIGKILL");
 			}
 		},
-		20_000,
+		40_000,
 	);
 });
+
+/** A process's /proc stat line as it reads now, for a failure message. */
+function statLineOf(pid: string): string {
+	try {
+		return readFileSync(`/proc/${pid}/stat`, "utf8").trim();
+	} catch (cause) {
+		return `/proc/${pid}/stat unreadable: ${cause instanceof Error ? cause.message : String(cause)}`;
+	}
+}
 
 interface ProcState {
 	readonly comm: string;

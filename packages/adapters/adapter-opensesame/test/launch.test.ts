@@ -15,7 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { OpenSesameAdapterError } from "../src/errors.js";
 import { buildLaunch, type RunInput, runProxied } from "../src/launch.js";
 import { parsed } from "./fixtures/bindings.js";
-import { memoryTrust, SYSTEM } from "./support/trust-fs.js";
+import { KIT, memoryTrust, SYSTEM } from "./support/trust-fs.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FAKE = join(here, "fixtures/fake-opensesame.mts");
@@ -67,7 +67,6 @@ function launchOf(overrides: Partial<Parameters<typeof buildLaunch>[0]> = {}) {
 		bindings: parsed(),
 		env: baseEnv,
 		nodeVersion: "22.22.0",
-		exists: () => true,
 		...overrides,
 	});
 }
@@ -124,9 +123,10 @@ describe("buildLaunch", () => {
 		});
 	});
 
-	it("passes OPENSESAME_ENV_PARSE through when its file exists", () => {
+	it("passes OPENSESAME_ENV_PARSE through when its file exists in a trusted place", () => {
 		const launch = launchOf({
 			env: { ...baseEnv, OPENSESAME_ENV_PARSE: "/kit/bridge/parse.mjs" },
+			trust: memoryTrust(KIT, { cwd: "/work/checkout" }),
 		});
 		expect(launch.env.OPENSESAME_ENV_PARSE).toBe("/kit/bridge/parse.mjs");
 	});
@@ -164,7 +164,6 @@ describe("buildLaunch", () => {
 			codeOf(() =>
 				launchOf({
 					env: { ...baseEnv, OPENSESAME_ENV_PARSE: "/nowhere/parse.mjs" },
-					exists: () => false,
 				}),
 			),
 		).toBe("bridge_missing");

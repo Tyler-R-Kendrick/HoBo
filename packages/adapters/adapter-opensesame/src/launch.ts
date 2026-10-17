@@ -5,7 +5,8 @@
  *
  * `buildLaunch` is pure: it checks what must hold before anything starts (this
  * process is not itself such a child, this Node can send `fetch` through
- * `HTTPS_PROXY`, the env-spec bridge named by OPENSESAME_ENV_PARSE exists, no
+ * `HTTPS_PROXY`, the env-spec bridge named by OPENSESAME_ENV_PARSE is an absolute
+ * path to a file in a trusted place (`bridge.ts`), no
  * real credential for a bound provider is already in the environment) and
  * returns the argv and the environment it builds: an allowlist plus `passEnv`
  * (`child-env.ts`), not the caller's. `runProxied` finds and identifies the
@@ -21,13 +22,13 @@
  */
 
 import { spawn } from "node:child_process";
-import { existsSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 
 import type { ProxiedRunOutcome } from "./_generated/adapter_opensesame_pb.js";
 import type { ParsedCredentialBinding } from "./binding.js";
+import { checkBridge } from "./bridge.js";
 import { createCapture } from "./capture.js";
 import { childEnvOf } from "./child-env.js";
 import { OpenSesameAdapterError } from "./errors.js";
@@ -72,8 +73,6 @@ export type LaunchInput = Readonly<{
 	trust?: Trust | undefined;
 	/** Node's version, for the `fetch` proxy check. Defaults to this process's. */
 	nodeVersion?: string | undefined;
-	/** Whether a path exists. Defaults to the filesystem. */
-	exists?: ((path: string) => boolean) | undefined;
 }>;
 
 function hasNul(text: string): boolean {
@@ -111,13 +110,13 @@ export function buildLaunch(input: LaunchInput): Launch {
 			"this Node cannot send fetch through HTTPS_PROXY (NODE_USE_ENV_PROXY needs 22.21 or 24): without it fetch ignores HTTPS_PROXY and dials the provider directly with a surrogate only the proxy can redeem",
 		);
 	}
-	const bridge = input.env.OPENSESAME_ENV_PARSE;
-	if (bridge !== undefined && !(input.exists ?? existsSync)(bridge)) {
-		throw new OpenSesameAdapterError(
-			"bridge_missing",
-			"OPENSESAME_ENV_PARSE names an env-spec bridge that does not exist",
-		);
-	}
+	const trust = input.trust ?? nodeTrust();
+	const platform = input.platform ?? process.platform;
+	checkBridge({
+		bridge: input.env.OPENSESAME_ENV_PARSE,
+		platform,
+		trust,
+	});
 	return Object.freeze({
 		command: input.bin,
 		args: Object.freeze([
@@ -134,8 +133,8 @@ export function buildLaunch(input: LaunchInput): Launch {
 				env: input.env,
 				passEnv: input.passEnv ?? [],
 				bindings: input.bindings,
-				platform: input.platform ?? process.platform,
-				trust: input.trust ?? nodeTrust(),
+				platform,
+				trust,
 			}),
 			NODE_USE_ENV_PROXY: "1",
 			[CHILD_MARKER]: "1",
@@ -166,7 +165,6 @@ export type RunInput = Readonly<{
 	signals?: SignalSource;
 	stderr?: StderrSink;
 	nodeVersion?: string | undefined;
-	exists?: ((path: string) => boolean) | undefined;
 	tmpRoot?: string | undefined;
 	/** Runs `opensesame --version` for the identity check. Defaults to doing so. */
 	probe?: BinProbe | undefined;
@@ -264,7 +262,6 @@ export async function runProxied(input: RunInput): Promise<ProxiedRunOutcome> {
 		platform: input.platform,
 		trust,
 		nodeVersion: input.nodeVersion,
-		exists: input.exists,
 	};
 	// Refuse before anything is written: a launch that cannot happen leaves no schema.
 	buildLaunch({ ...checks, schemaPath: "" });

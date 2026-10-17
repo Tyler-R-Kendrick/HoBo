@@ -34,7 +34,7 @@ const INHERITED = [
 	"TMPDIR",
 	"TZ",
 	"CI",
-	// The launch has already checked the file it names exists; OpenSesame reads it, the command has no use for it.
+	// The launch has already checked it names an absolute path to a file in a trusted place (bridge.ts); OpenSesame reads it, the command has no use for it.
 	"OPENSESAME_ENV_PARSE",
 ] as const;
 

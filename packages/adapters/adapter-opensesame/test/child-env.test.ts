@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 import { OpenSesameAdapterError } from "../src/errors.js";
 import { buildLaunch, type Launch, type LaunchInput } from "../src/launch.js";
 import { parsed, vercelRecord } from "./fixtures/bindings.js";
-import { dir, link, memoryTrust, SYSTEM } from "./support/trust-fs.js";
+import { dir, KIT, link, memoryTrust, SYSTEM } from "./support/trust-fs.js";
 
 const DUMMY = "vtok_dummy_marker_0123456789abcdef";
 const SURROGATE = `osr_${"0123456789abcdef".repeat(2)}`;
@@ -19,7 +19,6 @@ function launchWith(
 		bindings: parsed(),
 		env,
 		nodeVersion: "22.22.0",
-		exists: () => true,
 		// The places /usr/bin, /bin and /usr/local/bin exist and are root's; nothing else is, whatever machine this runs on.
 		trust: memoryTrust(SYSTEM, { cwd: "/work/checkout" }),
 		...more,
@@ -96,12 +95,16 @@ describe("the environment a run starts from is an allowlist, not the caller's", 
 		});
 	});
 
-	it("passes the env-spec bridge OpenSesame is told to use, because the launch has already checked it exists", () => {
-		const { env } = launchWith({
-			PATH: "/usr/bin",
-			OPENSESAME_ENV_PARSE: "/kit/bridge/parse.mjs",
-			OPENSESAME_STORE_DIR: "/somewhere/store",
-		});
+	it("passes the env-spec bridge OpenSesame is told to use, because the launch has already checked it exists and is in a trusted place", () => {
+		const kit = memoryTrust(KIT, { cwd: "/work/checkout" });
+		const { env } = launchWith(
+			{
+				PATH: "/usr/bin",
+				OPENSESAME_ENV_PARSE: "/kit/bridge/parse.mjs",
+				OPENSESAME_STORE_DIR: "/somewhere/store",
+			},
+			{ trust: kit },
+		);
 		expect(env.OPENSESAME_ENV_PARSE).toBe("/kit/bridge/parse.mjs");
 		expect(env).not.toHaveProperty("OPENSESAME_STORE_DIR");
 	});

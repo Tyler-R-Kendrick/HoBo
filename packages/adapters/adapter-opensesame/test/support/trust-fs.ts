@@ -64,3 +64,11 @@ export const SYSTEM = {
 	"/usr/local/bin": dir(0, 0o755),
 	"/bin": dir(0, 0o755),
 } satisfies Record<string, TreeNode>;
+
+/** The system tree and a kit (a bridge script) root owns under /kit, in a place the rule trusts. */
+export const KIT = {
+	...SYSTEM,
+	"/kit": dir(0, 0o755),
+	"/kit/bridge": dir(0, 0o755),
+	"/kit/bridge/parse.mjs": file(0, 0o644),
+} satisfies Record<string, TreeNode>;

@@ -46,7 +46,6 @@ function launchAccepts(nodeVersion: string): boolean {
 			bindings: parsed(),
 			env: { PATH: "/usr/bin" },
 			nodeVersion,
-			exists: () => true,
 		});
 		return true;
 	} catch (error) {

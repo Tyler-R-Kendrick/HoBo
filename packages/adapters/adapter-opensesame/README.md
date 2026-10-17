@@ -109,6 +109,10 @@ What `runProxied` does before and around the run:
   `OPENSESAME_STORE_PASSWORD`, `OPENSESAME_STORE_DIR` and the like are `passEnv` names. A process that already holds a
   value that is not a surrogate in a bound variable or in the provider's conventional ones (`VERCEL_TOKEN`,
   `VERCEL_API_TOKEN`) is refused with `real_credential_in_env` before anything is written.
+- **The env-spec bridge is a program path, so it is checked.** `OPENSESAME_ENV_PARSE` is the one OpenSesame variable on the
+  allowlist, because Node runs the script it names (an OpenSesame before `c403ba90a` runs it with the whole environment). It
+  must be an absolute path to a file in a trusted place (below), or the run is refused with `bridge_missing` before anything
+  is started: a relative path is the working directory's, where a checkout puts files. Unset, OpenSesame uses its own.
 - **`PATH` is reduced, not inherited.** An OpenSesame built before its commit `c403ba90a` runs a bare `node` (the
   env-spec bridge) as its first act, with the store passphrase in its environment, so an empty or relative `PATH` entry
   would let a `./node` in a checkout take it. A current one looks `node` up only in `PATH` directories that group and

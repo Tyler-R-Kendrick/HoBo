@@ -148,7 +148,21 @@ skips, when either is missing or the command cannot run (the gate then records
 driver and fake models, built by its `tests/acceptance/helpers/project.ts`) is a
 project of that kind; its CLI is
 `["node","--conditions=source","<ai-bdd>/packages/cli/src/bin.ts","-c","<the project's test config>"]`
-and needs ai-bdd's own dependencies installed.
+and needs ai-bdd's own dependencies installed (no build: Node runs its sources).
+
+Run on 2026-10-17 against ai-bdd `4190d7e`, its dependencies installed by the
+package manager (`opm ci`, 352 packages from the shared store, no install
+script run): a project laid out as `createProject` does (the corpus config, the
+`release-notes` and `reports` docs, the base fake-model rules, a test config as
+`writeTestConfig` writes it), compiled and characterized once (`compile`, then
+`run`: 10 model calls, recordings created), then `test:real` with
+`HOBO_AI_BDD_STALE_DOC=docs/release-notes.md`: both tests passed. The release
+record of that project (`hobo-stage-gate run release`) passed with
+`report_digest` `sha256:c8e1af0b...14932e`, equal to `sha256sum
+.ai-bdd/report/report.json`, `model_calls` 0 and 2 scenarios replayed; the stale
+control failed `acceptance-plans-fresh` with exit 4 (`docs/release-notes.md
+[stale]`) and started nothing after it; and `HOBO_AI_BDD_CMD='["/bin/true"]'`
+over the same project's real report failed the replay on freshness.
 
 The gate's tests run real processes against a stand-in ai-bdd
 (`test/helpers/fake-ai-bdd.mts`) that plays back

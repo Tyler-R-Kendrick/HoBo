@@ -21,6 +21,8 @@ const SIGNALS = ["SIGINT", "SIGTERM", "SIGHUP"] as const;
 
 interface Armed {
 	readonly partial: string;
+	/** The guarded path is a directory to remove whole (a probe repository). */
+	readonly tree: boolean;
 	readonly leaf: string;
 	/** The topmost directory the fetch made, once it has made any. */
 	top: string | undefined;
@@ -60,7 +62,7 @@ export function removeEmptyDirs(leaf: string, top: string | undefined): void {
 }
 
 function clean(guard: Armed): void {
-	rmSync(guard.partial, { force: true });
+	rmSync(guard.partial, { force: true, recursive: guard.tree });
 	removeEmptyDirs(guard.leaf, guard.top);
 }
 
@@ -94,10 +96,16 @@ export interface Guard {
  * Arm a guard for a download into `partial`, whose directory the fetch may
  * create. Call it before creating anything, and release it after the verified
  * file has been renamed into place (or the failure path has cleaned up).
+ * With `tree`, `partial` is a directory (a probe repository) removed whole.
  */
-export function armGuard(partial: string, abort: () => void): Guard {
+export function armGuard(
+	partial: string,
+	abort: () => void,
+	tree = false,
+): Guard {
 	const guard: Armed = {
 		partial,
+		tree,
 		leaf: dirname(partial),
 		top: undefined,
 		abort,

@@ -31,12 +31,8 @@ import {
 	coherence,
 	type GitOptions,
 } from "./pins-git-guard.ts";
-import {
-	type NetOptions,
-	netGit,
-	remoteHas,
-	remoteTip,
-} from "./pins-git-net.ts";
+import { type NetOptions, netGit, remoteTip } from "./pins-git-net.ts";
+import { remoteHas } from "./pins-git-probe.ts";
 
 export { type Bump, bumpPin } from "./pins-git-bump.ts";
 export {
@@ -180,13 +176,13 @@ export interface GitStatus {
 }
 
 /** Offline: gitlink against HEAD, a clean tree, and the repository named the same everywhere. */
-export function statusPin(
+export async function statusPin(
 	root: string,
 	name: string,
 	pin: GitPin,
 	online: boolean,
 	options: NetOptions,
-): GitStatus {
+): Promise<GitStatus> {
 	const commit = gitlinkOf(root, pin.path);
 	const { problems, fixes } = coherence(root, pin, options.allowLocal);
 	let head: string | null;
@@ -222,7 +218,11 @@ export function statusPin(
 		}
 	}
 	const tip = online ? remoteTip(root, pin.repo, pin.branch, options) : null;
-	if (online && tip !== commit && !remoteHas(pin.repo, commit, options)) {
+	if (
+		online &&
+		tip !== commit &&
+		!(await remoteHas(pin.repo, commit, options))
+	) {
 		problems.push(
 			`the pinned commit ${short(commit)} is not available from ${pin.repo}`,
 		);

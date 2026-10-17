@@ -20,7 +20,8 @@ import {
 	assertNotAbandoning,
 	type GitOptions,
 } from "./pins-git-guard.ts";
-import { NOT_SERVED, netGit, remoteHas } from "./pins-git-net.ts";
+import { NOT_SERVED, netGit } from "./pins-git-net.ts";
+import { remoteHas } from "./pins-git-probe.ts";
 
 const HEX_REF = /^[0-9a-f]{4,40}$/iu;
 
@@ -157,13 +158,13 @@ export interface Bump {
 }
 
 /** Check the submodule out at `ref` and stage the new gitlink; nothing else moves. */
-export function bumpPin(
+export async function bumpPin(
 	root: string,
 	name: string,
 	pin: GitPin,
 	ref: string,
 	options: GitOptions,
-): Bump {
+): Promise<Bump> {
 	if (!isSafeRef(ref)) {
 		throw new PinsError("USAGE", `${ref} is not a commit, branch or tag name`);
 	}
@@ -187,7 +188,7 @@ export function bumpPin(
 	const to = resolved.commit;
 	// A commit found here (in the submodule, or a --reference clone) may exist
 	// nowhere else: a pin other checkouts cannot fetch is a broken build.
-	if (!resolved.served && !remoteHas(pin.repo, to, options)) {
+	if (!resolved.served && !(await remoteHas(pin.repo, to, options))) {
 		throw new PinsError(
 			"NOT_PUSHED",
 			`${short(to)} exists here (in ${resolved.from}) but ${pin.repo} does not serve it. Push it first, then bump to it`,

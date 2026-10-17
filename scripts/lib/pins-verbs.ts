@@ -150,7 +150,7 @@ export async function runStatus(request: Request, pins: Pins): Promise<number> {
 	refuseOverridesInCi(Object.keys(pins.assets), process.env);
 	let failed = 0;
 	for (const [name, pin] of Object.entries(pins.git)) {
-		const status = statusPin(
+		const status = await statusPin(
 			request.root,
 			name,
 			pin,
@@ -197,7 +197,7 @@ export async function runBump(request: Request, pins: Pins): Promise<number> {
 				"--repo applies to asset pins, not git pins",
 			);
 		}
-		const { from, to } = bumpPin(
+		const { from, to } = await bumpPin(
 			request.root,
 			name,
 			gitPin,

@@ -5,21 +5,31 @@
  * `--depth`, writes `shallow`: run in the superproject or the submodule it
  * would turn a full clone shallow and add objects to the user's repository.
  * So the question is asked from a new, empty bare repository under the cache
- * root (private, checked like the asset cache), which is removed as soon as
- * the answer is in; a leftover of a killed run is swept after an hour.
+ * root (private, checked like the asset cache), removed as soon as the
+ * answer is in. Its git runs asynchronously under the same signal guard as a
+ * download (`pins-partial.ts`): SIGINT, SIGTERM or SIGHUP removes the
+ * repository and ends that git's process group. One a harder kill left is
+ * swept, older than an hour, before every probe (`sweepProbes`).
  *
  * Erasable TypeScript with node builtins only.
  */
-import { lstatSync, mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { randomBytes } from "node:crypto";
+import { lstatSync, mkdirSync, rmSync } from "node:fs";
 import { join } from "node:path";
 
 import { PinsError } from "./pins.ts";
 import { cacheDir } from "./pins-assets.ts";
-import { dirProblem } from "./pins-cache.ts";
-import { git } from "./pins-git-core.ts";
-
-/** The prefix of a probe repository's directory in the cache root. */
-export const PROBE_PREFIX = ".probe-";
+import { dirProblem, sweepProbes } from "./pins-cache.ts";
+import { type GitResult, git, gitEnvironment } from "./pins-git-core.ts";
+import {
+	allowedProtocols,
+	type NetOptions,
+	NOT_SERVED,
+	netArgs,
+} from "./pins-git-net.ts";
+import { netTimeout, netTimeoutMs } from "./pins-net.ts";
+import { armGuard } from "./pins-partial.ts";
 
 function assertPrivate(cache: string): void {
 	try {
@@ -41,14 +51,93 @@ function assertPrivate(cache: string): void {
 	}
 }
 
-/** Run `ask` in a new, empty bare repository that is removed afterwards. */
-export function withProbeRepo<T>(
-	ask: (repo: string) => T,
+/** One network git, in its own process group, ended at the deadline or by `stop`. */
+interface ProbeGit {
+	readonly result: Promise<GitResult>;
+	stop(): void;
+}
+
+function probeGit(
+	repo: string,
+	args: readonly string[],
+	options: NetOptions,
+): ProbeGit {
+	const ms = netTimeoutMs();
+	const child = spawn("git", netArgs(args), {
+		cwd: repo,
+		detached: true,
+		stdio: ["ignore", "pipe", "pipe"],
+		env: {
+			...gitEnvironment(),
+			GIT_TERMINAL_PROMPT: "0",
+			LC_ALL: "C",
+			GIT_ALLOW_PROTOCOL: allowedProtocols(options.allowLocal, false),
+		},
+	});
+	const group = (signal: NodeJS.Signals): void => {
+		try {
+			if (child.pid !== undefined) process.kill(-child.pid, signal);
+		} catch {
+			// Already gone.
+		}
+	};
+	const stop = (): void => {
+		group("SIGTERM");
+		setTimeout(() => group("SIGKILL"), 2000).unref();
+	};
+	let late = false;
+	const timer = setTimeout(() => {
+		late = true;
+		stop();
+	}, ms);
+	let stdout = "";
+	let stderr = "";
+	child.stdout.on("data", (chunk) => {
+		stdout += chunk;
+	});
+	child.stderr.on("data", (chunk) => {
+		stderr += chunk;
+	});
+	const result = new Promise<GitResult>((resolve, reject) => {
+		child.on("error", (error) => {
+			clearTimeout(timer);
+			reject(new PinsError("GIT_FAILED", `cannot run git: ${error.message}`));
+		});
+		child.on("close", (code) => {
+			clearTimeout(timer);
+			if (late) reject(netTimeout(`git ${args.join(" ")}`, ms));
+			else
+				resolve({
+					status: code ?? 128,
+					stdout: stdout.trim(),
+					stderr: stderr.trim(),
+				});
+		});
+	});
+	return { result, stop };
+}
+
+/**
+ * Run `ask` in a new, empty bare repository that is removed afterwards, also
+ * when a signal ends the run; `ask` gets the repository and a way to run one
+ * network git in it.
+ */
+export async function withProbeRepo<T>(
+	ask: (
+		repo: string,
+		run: (args: readonly string[]) => Promise<GitResult>,
+	) => Promise<T>,
+	options: NetOptions,
 	cache: string = cacheDir(),
-): T {
+): Promise<T> {
 	assertPrivate(cache);
-	const repo = mkdtempSync(join(cache, PROBE_PREFIX));
+	sweepProbes(cache);
+	const repo = join(cache, `.probe-${randomBytes(6).toString("hex")}`);
+	let current: ProbeGit | undefined;
+	// Armed before the directory exists, released after it is gone.
+	const guard = armGuard(repo, () => current?.stop(), true);
 	try {
+		mkdirSync(repo, { mode: 0o700 });
 		// No template: no hook of anyone's can run in it.
 		const init = git(repo, ["init", "--quiet", "--bare", "--template=", "."]);
 		if (init.status !== 0) {
@@ -57,8 +146,44 @@ export function withProbeRepo<T>(
 				`cannot create a probe repository: ${init.stderr}`,
 			);
 		}
-		return ask(repo);
+		const answer = await ask(repo, (args) => {
+			current = probeGit(repo, args, options);
+			return current.result;
+		});
+		const signal = guard.interrupted();
+		if (signal !== null) {
+			throw new PinsError(
+				"INTERRUPTED",
+				`the probe was interrupted by ${signal}`,
+			);
+		}
+		return answer;
 	} finally {
 		rmSync(repo, { recursive: true, force: true });
+		guard.release();
 	}
+}
+
+/**
+ * Whether `url` will serve `sha`. A commit that exists only here (made in a
+ * `--reference` clone, or never pushed) is answered "not our ref", which no
+ * amount of local objects can hide: this asks the server by fetching the
+ * commit into a throwaway repository, never into the superproject or the
+ * submodule. A failure that is not that answer (no network, a bad host) is an
+ * error, not a "no".
+ */
+export async function remoteHas(
+	url: string,
+	sha: string,
+	options: NetOptions,
+): Promise<boolean> {
+	return await withProbeRepo(async (_repo, run) => {
+		const result = await run(["fetch", "--depth", "1", "--no-tags", url, sha]);
+		if (result.status === 0) return true;
+		if (NOT_SERVED.test(result.stderr)) return false;
+		throw new PinsError(
+			"GIT_FAILED",
+			`could not ask ${url} for ${sha.slice(0, 7)}: ${result.stderr}`,
+		);
+	}, options);
 }

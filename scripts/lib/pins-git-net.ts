@@ -15,7 +15,6 @@
 import { isAbsolute } from "node:path";
 import { PinsError } from "./pins.ts";
 import { type GitResult, git } from "./pins-git-core.ts";
-import { withProbeRepo } from "./pins-git-probe.ts";
 import { netTimeoutMs } from "./pins-net.ts";
 
 export interface NetOptions {
@@ -119,31 +118,3 @@ export function remoteTip(
 /** What a server says when it will not serve a commit (protocol v2, v0, and a missing ref). */
 export const NOT_SERVED =
 	/not our ref|unadvertised object|couldn't find remote ref/iu;
-
-/**
- * Whether `url` will serve `sha`. A commit that exists only here (made in a
- * `--reference` clone, or never pushed) is answered "not our ref", which no
- * amount of local objects can hide: this asks the server by fetching the
- * commit into a throwaway repository (`pins-git-probe.ts`), never into the
- * superproject or the submodule. A failure that is not that answer (no
- * network, a bad host) is an error, not a "no".
- */
-export function remoteHas(
-	url: string,
-	sha: string,
-	options: NetOptions,
-): boolean {
-	return withProbeRepo((probe) => {
-		const result = netGit(
-			probe,
-			["fetch", "--depth", "1", "--no-tags", url, sha],
-			options,
-		);
-		if (result.status === 0) return true;
-		if (NOT_SERVED.test(result.stderr)) return false;
-		throw new PinsError(
-			"GIT_FAILED",
-			`could not ask ${url} for ${sha.slice(0, 7)}: ${result.stderr}`,
-		);
-	});
-}

@@ -7,6 +7,7 @@
  *
  * Erasable TypeScript with node builtins only.
  */
+import { lstatSync, readdirSync, rmSync } from "node:fs";
 import { lstat, mkdir, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 
@@ -111,20 +112,37 @@ function abandoned(
 	return age > MAX_AGE_MS || pid === process.pid || !alive(pid);
 }
 
-/** A throwaway probe repository (`pins-git-probe.ts`) a killed run left behind. */
-async function sweepProbe(
-	path: string,
-	now: number,
-	removed: string[],
-): Promise<void> {
+/**
+ * Remove the throwaway probe repositories (`.probe-*`, `pins-git-probe.ts`)
+ * that a killed run left in the cache root: only real directories (a link is
+ * never followed or removed), only the user's own, only older than an hour
+ * (no probe runs that long: its git call has a deadline of at most ten
+ * minutes). Synchronous, so the git-only verbs can call it too.
+ */
+export function sweepProbes(cache: string, now: number = Date.now()): string[] {
+	const removed: string[] = [];
+	let names: string[];
 	try {
-		if (now - (await lstat(path)).mtimeMs > MAX_AGE_MS) {
-			await rm(path, { recursive: true, force: true });
-			removed.push(path);
-		}
+		names = readdirSync(cache);
 	} catch {
-		// Gone already.
+		return removed;
 	}
+	const uid = process.getuid?.();
+	for (const name of names) {
+		if (!name.startsWith(".probe-")) continue;
+		const path = join(cache, name);
+		try {
+			const info = lstatSync(path);
+			const mine = uid === undefined || info.uid === uid;
+			if (info.isDirectory() && mine && now - info.mtimeMs > MAX_AGE_MS) {
+				rmSync(path, { recursive: true, force: true });
+				removed.push(path);
+			}
+		} catch {
+			// Gone between the listing and now.
+		}
+	}
+	return removed;
 }
 
 /**
@@ -138,7 +156,7 @@ export async function sweepPartials(
 	now: number = Date.now(),
 	alive: (pid: number) => boolean = pidAlive,
 ): Promise<string[]> {
-	const removed: string[] = [];
+	const removed: string[] = sweepProbes(cache, now);
 	let dirs: string[];
 	try {
 		dirs = await readdir(cache);
@@ -146,10 +164,7 @@ export async function sweepPartials(
 		return removed;
 	}
 	for (const dir of dirs) {
-		if (dir.startsWith(".probe-")) {
-			await sweepProbe(join(cache, dir), now, removed);
-			continue;
-		}
+		if (dir.startsWith(".probe-")) continue;
 		let names: string[];
 		try {
 			names = await readdir(join(cache, dir));

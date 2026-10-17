@@ -175,8 +175,9 @@ export async function fetchVerified(
 	const limit = options.maxBytes ?? DEFAULT_MAX_BYTES;
 	const partial = partialPath(dest);
 	const controller = new AbortController();
-	const guard = armGuard(partial, () => controller.abort());
+	// Read (and validate) the bound first: a refusal must leave no handler armed.
 	const waits = waitsFor(options, 300_000, controller.signal);
+	const guard = armGuard(partial, () => controller.abort());
 	let created: string | undefined;
 	// Whatever fails, leave neither the partial file nor a directory we made.
 	const discard = (): void => {

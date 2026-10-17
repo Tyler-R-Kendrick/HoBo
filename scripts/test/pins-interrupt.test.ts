@@ -170,6 +170,31 @@ describe("a program that embeds the fetch", () => {
 		);
 	});
 
+	it("a bad HOBO_PINS_NET_TIMEOUT_MS is refused before any handler is armed", async () => {
+		const before = SIGNALS.map((name) => process.listenerCount(name));
+		const saved = process.env.HOBO_PINS_NET_TIMEOUT_MS;
+		process.env.HOBO_PINS_NET_TIMEOUT_MS = "2m";
+		try {
+			await assert.rejects(
+				fetchVerified(
+					"https://example.invalid/tool",
+					DIGEST,
+					join(scratch("interrupt-badenv"), "a", "tool"),
+					{ fetch: async () => new Response(BYTES) },
+				),
+				(error: Error) => error instanceof PinsError && error.code === "USAGE",
+			);
+		} finally {
+			if (saved === undefined) delete process.env.HOBO_PINS_NET_TIMEOUT_MS;
+			else process.env.HOBO_PINS_NET_TIMEOUT_MS = saved;
+		}
+		assert.deepEqual(
+			SIGNALS.map((name) => process.listenerCount(name)),
+			before,
+			"no handler is left behind",
+		);
+	});
+
 	it("a signal its own handler also receives reaches that handler once, and the fetch ends", async () => {
 		server = await startServer();
 		server.setStall("/stall", Buffer.alloc(3000, 1), 100_000);

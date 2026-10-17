@@ -32,7 +32,7 @@
  * narrower policy that tries to relax an outer restriction.
  */
 import { describe, expect, it } from "vitest";
-
+import type { JsonObject } from "../src/json.js";
 import {
 	BrokerParseError,
 	effectivePlacementPolicy,
@@ -44,7 +44,6 @@ import {
 	parseResourceRequirement,
 	parseTopologyScope,
 } from "../src/policies.js";
-import type { JsonObject } from "../src/json.js";
 import { BROKER_SCHEMA_VERSION, type TopologyScope } from "../src/types.js";
 
 /** The code carried by a refusal, or the string that was thrown instead. */
@@ -83,9 +82,9 @@ describe("placement policies", () => {
 	it("refuses an empty id as firmly as a missing one", () => {
 		// An empty string is falsy in the places this id is later used, so
 		// accepting it would produce a policy that silently matches nothing.
-		expect(
-			codeOf(() => parsePlacementPolicy(placement({ id: "" }))),
-		).toBe("invalid-placement-policy");
+		expect(codeOf(() => parsePlacementPolicy(placement({ id: "" })))).toBe(
+			"invalid-placement-policy",
+		);
 	});
 
 	it("accepts the snake_case spelling of every aliased field", () => {
@@ -106,17 +105,13 @@ describe("placement policies", () => {
 
 	it("refuses a scope kind outside the known set", () => {
 		expect(
-			codeOf(() =>
-				parsePlacementPolicy(placement({ scopeKind: "tenant" })),
-			),
+			codeOf(() => parsePlacementPolicy(placement({ scopeKind: "tenant" }))),
 		).toBe("invalid-scope-kind");
 	});
 
 	it("refuses an objective outside the known set", () => {
 		expect(
-			codeOf(() =>
-				parsePlacementPolicy(placement({ objective: "fastest" })),
-			),
+			codeOf(() => parsePlacementPolicy(placement({ objective: "fastest" }))),
 		).toBe("invalid-objective");
 	});
 
@@ -125,9 +120,7 @@ describe("placement policies", () => {
 		// would parse and then place anywhere, which is the opposite of what
 		// pinning means.
 		expect(
-			codeOf(() =>
-				parsePlacementPolicy(placement({ objective: "pinned" })),
-			),
+			codeOf(() => parsePlacementPolicy(placement({ objective: "pinned" }))),
 		).toBe("pinned-provider-required");
 	});
 
@@ -147,15 +140,12 @@ describe("placement policies", () => {
 		// `=== true`, not truthiness. A lockdown flag that turned on for the
 		// string "false" would be the worst possible direction for this bug to
 		// go, so the non-boolean cases are pinned.
-		const on = parsePlacementPolicy(
-			placement({ requireExplicitCamps: true }),
-		);
+		const on = parsePlacementPolicy(placement({ requireExplicitCamps: true }));
 		expect(on.requireExplicitCamps).toBe(true);
 		for (const value of ["true", 1, {}, []]) {
 			expect(
-				parsePlacementPolicy(
-					placement({ requireExplicitCamps: value }),
-				).requireExplicitCamps,
+				parsePlacementPolicy(placement({ requireExplicitCamps: value }))
+					.requireExplicitCamps,
 			).toBe(false);
 		}
 	});
@@ -173,18 +163,14 @@ describe("billing policies", () => {
 	});
 
 	it("requires a quota name", () => {
-		expect(codeOf(() => parseBillingPolicy({}))).toBe(
-			"invalid-billing-policy",
-		);
+		expect(codeOf(() => parseBillingPolicy({}))).toBe("invalid-billing-policy");
 	});
 
 	it("refuses a negative amount", () => {
 		// Negative consumption would make every downstream comparison against a
 		// limit pass.
 		expect(
-			codeOf(() =>
-				parseBillingPolicy({ quota: "standard", quotaUsed: -1 }),
-			),
+			codeOf(() => parseBillingPolicy({ quota: "standard", quotaUsed: -1 })),
 		).toBe("invalid-billing-policy");
 	});
 
@@ -194,9 +180,7 @@ describe("billing policies", () => {
 		// would let it through — and then `quotaUsed > quotaLimit` is false too,
 		// so an unbounded spend would pass the overflow gate.
 		expect(
-			codeOf(() =>
-				parseBillingPolicy({ quota: "standard", quotaUsed: NaN }),
-			),
+			codeOf(() => parseBillingPolicy({ quota: "standard", quotaUsed: NaN })),
 		).toBe("invalid-billing-policy");
 	});
 
@@ -236,9 +220,7 @@ describe("delivery policies", () => {
 	it("defaults the sync mode to manual", () => {
 		// Manual, because automatic sync is the one that acts on its own; a
 		// missing field must not opt an operator into that.
-		expect(parseDeliveryPolicy({ engine: "in-proc" }).syncMode).toBe(
-			"manual",
-		);
+		expect(parseDeliveryPolicy({ engine: "in-proc" }).syncMode).toBe("manual");
 	});
 
 	it("refuses an unknown sync mode", () => {
@@ -256,9 +238,7 @@ describe("delivery policies", () => {
 		// The dependent constraint: argo without a destination would parse and
 		// then fail at delivery time, far from the policy that caused it.
 		expect(
-			codeOf(() =>
-				parseDeliveryPolicy({ engine: "argo", gitopsRepo: "g" }),
-			),
+			codeOf(() => parseDeliveryPolicy({ engine: "argo", gitopsRepo: "g" })),
 		).toBe("argo-destination-required");
 		expect(
 			codeOf(() =>
@@ -428,9 +408,7 @@ describe("broker requests", () => {
 	});
 
 	it("defaults the scope to bindle-only and the estimate to zero", () => {
-		const parsed = parseBrokerRequest(
-			request({ scope: { bindleId: "app" } }),
-		);
+		const parsed = parseBrokerRequest(request({ scope: { bindleId: "app" } }));
 		expect(parsed.scope.campId).toBeUndefined();
 		expect(parsed.spendEstimateUsd).toBe(0);
 	});
@@ -485,9 +463,9 @@ describe("topology scopes and requirements", () => {
 	it("requires a port", () => {
 		// The port is what the requirement is *for*; without it there is nothing
 		// to match a provider against.
-		expect(
-			codeOf(() => parseResourceRequirement({ resourceId: "db" })),
-		).toBe("invalid-requirement");
+		expect(codeOf(() => parseResourceRequirement({ resourceId: "db" }))).toBe(
+			"invalid-requirement",
+		);
 	});
 });
 

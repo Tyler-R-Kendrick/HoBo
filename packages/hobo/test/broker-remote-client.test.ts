@@ -39,8 +39,8 @@ import {
 	PLACE_PAYLOAD,
 	SESSION_PAYLOAD,
 	sentHeader,
-	without,
 	withField,
+	without,
 } from "./support/remote-broker-fixtures.js";
 
 describe("construction", () => {

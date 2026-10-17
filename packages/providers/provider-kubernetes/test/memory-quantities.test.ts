@@ -25,18 +25,22 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { parseMemoryBytes, parseWorkloadPlacement } from "../src/index.js";
+import {
+	isKubernetesProviderError,
+	parseMemoryBytes,
+	parseWorkloadPlacement,
+} from "../src/index.js";
 // The bounds are exported from the module rather than the package index. The
 // tests below assert against them rather than against literals, so a policy
 // change moves the expectations with it.
 import { MAX_MEMORY_BYTES, MIN_MEMORY_BYTES } from "../src/placement.js";
 
 /** The message of the refusal, or a marker when there was none. */
-function refusal(value: unknown): string {
+function refusal<T>(value: T): string {
 	try {
-		parseMemoryBytes(value as never, "memory");
+		parseMemoryBytes(value, "memory");
 	} catch (error) {
-		return (error as Error).message;
+		return error instanceof Error ? error.message : String(error);
 	}
 	return "no-refusal";
 }
@@ -68,12 +72,9 @@ describe("memory given as a byte count", () => {
 	it("names the field it was parsing", () => {
 		// These are read from several places in a manifest; "memory" alone does
 		// not say which.
-		try {
-			parseMemoryBytes(0 as never, "limits.memory");
-			throw new Error("expected a refusal");
-		} catch (error) {
-			expect((error as Error).message).toContain("limits.memory");
-		}
+		expect(() => parseMemoryBytes(0, "limits.memory")).toThrow(
+			/limits\.memory/u,
+		);
 	});
 });
 
@@ -220,12 +221,12 @@ describe("naming the kind of a value a placement refused", () => {
 	};
 
 	/** The `value` detail from the rejection for a placement with this image. */
-	function kindOfRefusedImage(image: unknown): string {
+	function kindOfRefusedImage<T>(image: T): string {
 		try {
-			parseWorkloadPlacement({ ...VALID, image } as never);
+			parseWorkloadPlacement({ ...VALID, image });
 		} catch (error) {
-			const detail = (error as { detail?: { value?: unknown } }).detail;
-			return String(detail?.value);
+			if (!isKubernetesProviderError(error)) throw error;
+			return String(error.detail.value);
 		}
 		throw new Error("expected the placement to be rejected");
 	}

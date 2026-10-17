@@ -1,6 +1,7 @@
 /**
- * The Kubernetes provider's IaC-program check, its capability surface, its yard
- * spec rows, and the event-store fold.
+ * The Kubernetes provider's IaC-program check, its capability surface and its
+ * yard spec rows. The event-store fold's payload handling is in
+ * `yard-event-fold-payloads.test.ts`.
  *
  * The property that shapes this whole package is the **honest count of one
  * equivalence class**. Kubernetes natively provides compute — a Deployment
@@ -36,6 +37,7 @@ import {
 	type IacProgram,
 	KUBERNETES_IAC_PROVIDER,
 } from "../src/iac-program.js";
+import type { JsonValue } from "../src/json.js";
 import {
 	createKubernetesProvider,
 	kubernetesDriverProgram,
@@ -47,14 +49,18 @@ import {
 	realizeResourcePlans,
 	resolveEquivalence,
 } from "../src/realize.js";
-import {
-	KUBERNETES_EVENT_STORE_RESOLVER_ID,
-	kubernetesEventStoreFoldDescriptor,
-	normalizeKubernetesYardSignal,
-} from "../src/yard-event-fold.js";
+import type { ResourcePlan } from "../src/types.js";
 
-function program(overrides: Partial<IacProgram> = {}): IacProgram {
-	return {
+/** A program's fields as a document may carry them: the declared type, any other JSON, or absent. */
+type ProgramFields = {
+	readonly [field in keyof IacProgram]?:
+		| IacProgram[field]
+		| JsonValue
+		| undefined;
+};
+
+function program(overrides: ProgramFields = {}): IacProgram {
+	const document = {
 		apiVersion: IAC_PROGRAM_API_VERSION,
 		kind: IAC_PROGRAM_KIND,
 		provider: IAC_PROVIDER,
@@ -71,7 +77,12 @@ function program(overrides: Partial<IacProgram> = {}): IacProgram {
 		],
 		stackOutputs: {},
 		...overrides,
-	} as IacProgram;
+	};
+	// SAFETY: the guard is the parse boundary for programs that crossed a
+	// document boundary, so these tests hand it what the type forbids (a
+	// foreign version, no resource list). It re-checks every field it relies on
+	// before trusting the declared type.
+	return document as IacProgram;
 }
 
 describe("assertLocalIacProgram", () => {
@@ -83,14 +94,14 @@ describe("assertLocalIacProgram", () => {
 	it("refuses a wrong schema version, kind, or IaC lane", () => {
 		// The engine dispatches on all three. A program claiming a combination it
 		// does not know is rejected there with a far less legible error.
+		expect(() => assertLocalIacProgram(program({ apiVersion: "v2" }))).toThrow(
+			/apiVersion must be/u,
+		);
+		expect(() => assertLocalIacProgram(program({ kind: "stack" }))).toThrow(
+			/kind must be iac-program/u,
+		);
 		expect(() =>
-			assertLocalIacProgram(program({ apiVersion: "v2" } as never)),
-		).toThrow(/apiVersion must be/u);
-		expect(() =>
-			assertLocalIacProgram(program({ kind: "stack" } as never)),
-		).toThrow(/kind must be iac-program/u);
-		expect(() =>
-			assertLocalIacProgram(program({ provider: "terraform" } as never)),
+			assertLocalIacProgram(program({ provider: "terraform" })),
 		).toThrow(/provider must be pulumi/u);
 	});
 
@@ -101,7 +112,7 @@ describe("assertLocalIacProgram", () => {
 			/at least one resource/u,
 		);
 		expect(() =>
-			assertLocalIacProgram(program({ resources: undefined } as never)),
+			assertLocalIacProgram(program({ resources: undefined })),
 		).toThrow(/at least one resource/u);
 	});
 
@@ -238,9 +249,13 @@ describe("the equivalence table's honest count", () => {
 	});
 });
 
-describe("realize", () => {
-	const PLAN = { name: "api", port: "compute" } as never;
+const PLAN = {
+	name: "api",
+	port: "compute",
+	provider: "kubernetes",
+} satisfies ResourcePlan;
 
+describe("realize", () => {
 	it("merges Kubernetes option blocks in declaration order", () => {
 		// Later wins, so a caller can layer a specific override on a general
 		// default rather than restating the whole block.
@@ -248,7 +263,7 @@ describe("realize", () => {
 			mergeKubernetesOptions([
 				{ providerId: "kubernetes", options: { replicas: 1, ns: "default" } },
 				{ providerId: "kubernetes", options: { replicas: 3 } },
-			] as never),
+			]),
 		).toEqual({ replicas: 3, ns: "default" });
 	});
 
@@ -259,7 +274,7 @@ describe("realize", () => {
 			mergeKubernetesOptions([
 				{ providerId: "aws", options: { instanceType: "t3.micro" } },
 				{ providerId: "kubernetes", options: { replicas: 2 } },
-			] as never),
+			]),
 		).toEqual({ replicas: 2 });
 	});
 
@@ -293,7 +308,7 @@ describe("realize", () => {
 		const { build } = realizeResourcePlan({
 			...PLAN,
 			build: { artifactId: "a-1", source: "./src", target: "wasm32-wasi" },
-		} as never);
+		});
 		expect(build?.artifacts[0]?.id).toBe("a-1");
 	});
 
@@ -301,8 +316,8 @@ describe("realize", () => {
 		// A dependency edge becomes an output reference, and it has to resolve
 		// against a resource in the *same* program.
 		const { iac } = realizeResourcePlans([
-			{ name: "web", port: "compute" } as never,
-			{ name: "api", port: "compute", deps: ["web"] } as never,
+			{ ...PLAN, name: "web" },
+			{ ...PLAN, name: "api", deps: ["web"] },
 		]);
 		expect(iac.resources).toHaveLength(2);
 		expect(() => assertLocalIacProgram(iac)).not.toThrow();
@@ -374,9 +389,9 @@ describe("provider surface", () => {
 		] as const) {
 			expect(parsed).toEqual(
 				JSON.parse(
-					manifest.published[
-						`/.well-known/capability-manifest/${document}`
-					] as string,
+					String(
+						manifest.published[`/.well-known/capability-manifest/${document}`],
+					),
 				),
 			);
 		}
@@ -392,16 +407,13 @@ describe("provider surface", () => {
 	it("refuses a client for a port it has none for, naming the port", () => {
 		// Named because a placement that reached here picked the wrong provider,
 		// and the reader needs to know which port did it.
-		expect(() => provider.client("database" as never, {})).toThrow(
+		expect(() => provider.client("database", {})).toThrow(
 			/no client for port database/u,
 		);
 	});
 
 	it("emits a driver program naming the mapped resource class", () => {
-		const driver = kubernetesDriverProgram({
-			name: "api",
-			port: "compute",
-		} as never);
+		const driver = kubernetesDriverProgram(PLAN);
 		expect(driver.apiVersion).toBe("hobo.driver-program/v1");
 		expect(driver.driver).toBe("kubernetes-deploy");
 		expect(driver.resources[0]?.type).toBe("kubernetes:deployment");
@@ -411,7 +423,7 @@ describe("provider surface", () => {
 		// A driver program built from a bad plan would fail inside whatever
 		// executed it, far from the plan that caused it.
 		expect(() =>
-			kubernetesDriverProgram({ name: "db", port: "database" } as never),
+			kubernetesDriverProgram({ ...PLAN, name: "db", port: "database" }),
 		).toThrow(/cannot realize port database/u);
 	});
 });
@@ -437,7 +449,7 @@ describe("yard spec rows", () => {
 		const rows = kubernetesYardSpec().bindings;
 		const key = (row: (typeof rows)[number]) =>
 			`${row.profile} ${row.productId ?? ""} ${row.connectivityId ?? ""}`;
-		expect(rows.map(key)).toEqual([...rows.map(key)].sort());
+		expect(rows.map(key)).toEqual(rows.map(key).sort());
 	});
 
 	it("freezes the spec and every row", () => {
@@ -449,207 +461,6 @@ describe("yard spec rows", () => {
 	it("is stable across calls", () => {
 		expect(JSON.stringify(kubernetesYardSpec())).toBe(
 			JSON.stringify(kubernetesYardSpec()),
-		);
-	});
-});
-
-describe("event-store fold", () => {
-	function signal(kind: string, payload: Record<string, unknown> = {}) {
-		return {
-			providerId: "kubernetes" as const,
-			kind,
-			payload,
-			observedAt: "2026-01-01T00:00:00.000Z",
-		} as never;
-	}
-
-	it("publishes the resolver id stored events are written under", () => {
-		// A rename orphans every fact already written under the old id, so this
-		// string is a migration rather than a label.
-		expect(KUBERNETES_EVENT_STORE_RESOLVER_ID).toBe(
-			"kubernetes.yard.event-store/v1",
-		);
-		expect(kubernetesEventStoreFoldDescriptor().implementationRef).toContain(
-			"kubernetes",
-		);
-	});
-
-	it("folds a created namespace into generation-started", () => {
-		const [event] = normalizeKubernetesYardSignal(
-			signal("namespace.created", { namespace: "hobo-1", attemptId: "a-1" }),
-		);
-		expect(event?.type).toBe("yard.GenerationProgressed");
-		expect(event?.data.status).toBe("started");
-		expect((event?.data.externalRefs as Record<string, string>).namespace).toBe(
-			"hobo-1",
-		);
-	});
-
-	it("accepts the object's bare name when no namespace field is spelled out", () => {
-		// `p.namespace ?? p.name`. A watch event and a create response spell it
-		// differently, and a fold that knew only one would record an empty
-		// external reference — a fact nothing can join back to the object.
-		const [event] = normalizeKubernetesYardSignal(
-			signal("namespace.created", { name: "hobo-2" }),
-		);
-		expect((event?.data.externalRefs as Record<string, string>).namespace).toBe(
-			"hobo-2",
-		);
-	});
-
-	it("folds a created deployment into generation-provisioned", () => {
-		const [event] = normalizeKubernetesYardSignal(
-			signal("deployment.created", { uid: "u-1", namespace: "hobo-1" }),
-		);
-		expect(event?.type).toBe("yard.GenerationProvisioned");
-		expect(event?.data.yardId).toBe("u-1");
-	});
-
-	it("folds an available deployment into the whole registration sequence", () => {
-		// Four events in order. A consumer replaying these rebuilds the yard's
-		// lifecycle; emitting only `Ready` would produce a yard that exists with
-		// no record of being attested.
-		const events = normalizeKubernetesYardSignal(
-			signal("deployment.available", { uid: "u-1", attemptId: "a-1" }),
-		);
-		expect(events.map((event) => event.type)).toEqual([
-			"yard.Registered",
-			"yard.AttestationStarted",
-			"yard.Attested",
-			"yard.Ready",
-		]);
-	});
-
-	it("registers the yard with kubernetes's substrate requirements", () => {
-		const [registered] = normalizeKubernetesYardSignal(
-			signal("deployment.available", { uid: "u-1", regions: ["eu-west"] }),
-		);
-		const yard = registered?.data.yard as Record<string, unknown>;
-		expect(yard.providerId).toBe("kubernetes");
-		expect((yard.layout as Record<string, string[]>).require).toContain(
-			"managed-container-substrate",
-		);
-		expect((yard.layout as Record<string, unknown>).regions).toEqual([
-			"eu-west",
-		]);
-	});
-
-	it("defaults the region to in-cluster rather than registering none", () => {
-		// A yard with no region cannot be placed against, so it would be
-		// registered and then never selected — present and useless. `in-cluster`
-		// is also the honest answer: a cluster's location is the operator's fact,
-		// not something this provider can discover.
-		const [registered] = normalizeKubernetesYardSignal(
-			signal("deployment.available", { uid: "u-1" }),
-		);
-		const shape = (registered?.data.yard as Record<string, unknown>)
-			.layout as Record<string, unknown>;
-		expect(shape.regions).toEqual(["in-cluster"]);
-	});
-
-	it("omits optional apiserver and namespace properties when absent", () => {
-		// Conditional spread: an empty-string `kubernetes.apiServerUrl` would look
-		// like a real address to whatever joined on it.
-		const [registered] = normalizeKubernetesYardSignal(
-			signal("deployment.available", { uid: "u-1" }),
-		);
-		const shape = (registered?.data.yard as Record<string, unknown>)
-			.layout as Record<string, Record<string, unknown>>;
-		expect(shape.properties).toEqual({});
-	});
-
-	it("carries the apiserver and namespace through when present", () => {
-		const [registered] = normalizeKubernetesYardSignal(
-			signal("deployment.available", {
-				uid: "u-1",
-				apiServerUrl: "https://apiserver.internal",
-				namespace: "hobo-1",
-			}),
-		);
-		const shape = (registered?.data.yard as Record<string, unknown>)
-			.layout as Record<string, Record<string, unknown>>;
-		expect(shape.properties).toEqual({
-			"kubernetes.apiServerUrl": "https://apiserver.internal",
-			"kubernetes.namespace": "hobo-1",
-		});
-	});
-
-	it("folds a failure into a typed failure fact", () => {
-		const [event] = normalizeKubernetesYardSignal(
-			signal("generation.failed", {
-				code: "insufficient-nodes",
-				message: "no schedulable node",
-				retryable: true,
-			}),
-		);
-		expect(event?.type).toBe("yard.GenerationFailed");
-		expect(event?.data.failure).toMatchObject({
-			code: "insufficient-nodes",
-			retryable: true,
-		});
-	});
-
-	it("defaults a failure that named no code or message", () => {
-		// A fact with an empty code cannot be dispatched on, and a retry policy
-		// reading one would treat every failure identically.
-		const [event] = normalizeKubernetesYardSignal(signal("generation.failed"));
-		const failure = event?.data.failure as Record<string, unknown>;
-		expect(String(failure.code).length).toBeGreaterThan(0);
-		expect(String(failure.message).length).toBeGreaterThan(0);
-		expect(failure.retryable).toBe(false);
-	});
-
-	it("treats anything but a literal true as not retryable", () => {
-		// `=== true`. A truthy `"false"` string from a JSON payload would
-		// otherwise put a permanently-failing generation into a retry loop.
-		for (const retryable of ["true", 1, {}, "false"]) {
-			const [event] = normalizeKubernetesYardSignal(
-				signal("generation.failed", { retryable }),
-			);
-			expect((event?.data.failure as Record<string, unknown>).retryable).toBe(
-				false,
-			);
-		}
-	});
-
-	it("normalizes an unrecognised signal rather than dropping it", () => {
-		// A dropped signal is a fact that silently never happened. A normalized
-		// one is at least in the store for whoever adds the case later.
-		const [event] = normalizeKubernetesYardSignal(
-			signal("pod.evicted", { podName: "api-abc" }),
-		);
-		expect(event?.type).toBe("yard.ProviderSignalNormalized");
-		expect(event?.data.kind).toBe("pod.evicted");
-		expect(event?.data.payload).toEqual({ podName: "api-abc" });
-	});
-
-	it("stamps every event with the observation time it was given", () => {
-		// The cluster's clock, not ours. Restamping with local time would make a
-		// replayed backlog look like it all happened at import.
-		for (const kind of [
-			"namespace.created",
-			"deployment.created",
-			"deployment.available",
-			"generation.failed",
-			"unknown.kind",
-		]) {
-			for (const event of normalizeKubernetesYardSignal(signal(kind))) {
-				expect(event.occurredAt).toBe("2026-01-01T00:00:00.000Z");
-			}
-		}
-	});
-
-	it("falls back to now when the signal carried no observation time", () => {
-		// So an event is never written without a time — an undefined `occurredAt`
-		// would sort unpredictably against everything else in the stream.
-		const before = Date.now();
-		const [event] = normalizeKubernetesYardSignal({
-			providerId: "kubernetes",
-			kind: "deployment.created",
-			payload: {},
-		} as never);
-		expect(Date.parse(String(event?.occurredAt))).toBeGreaterThanOrEqual(
-			before - 1000,
 		);
 	});
 });

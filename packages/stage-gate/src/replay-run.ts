@@ -48,9 +48,9 @@ const CLOCK_SKEW_MS = 5000;
 
 /**
  * Why `runsDir/<runId>`, when it exists, is not a run directory ai-bdd made;
- * undefined when it is one or is absent. ai-bdd creates a run directory and
- * refuses to write through a symbolic link, so a link is not its run, and the
- * gate does not follow one out of runsDir.
+ * undefined when it is one or is absent. ai-bdd makes a new directory for
+ * each run (and refuses one that resolves outside runsDir), so a link is not
+ * its run, and the gate follows none.
  */
 export function runDirectoryProblem(
 	config: AcceptanceConfig,

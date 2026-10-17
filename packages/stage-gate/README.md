@@ -89,9 +89,9 @@ The report must be this run's. Before spawning `run`, the replay step notes the
 time and the run directories that exist; after exit 0 or 1 the report's `runId`
 must name a run directory that did not exist before, its `startedAt` must be no
 earlier than the spawn (5 s of clock skew allowed), and that directory must be a
-directory, not a symbolic link (ai-bdd refuses to create one, and the gate does
-not follow one out of `runsDir`; `evidence-intact` checks it again), and the
-one this ai-bdd named in the `Run: <dir>` line it prints on stdout after a run
+directory, not a symbolic link (ai-bdd makes a new directory for each run and
+refuses one that resolves outside `runsDir`; the gate follows no link, and
+`evidence-intact` checks again), and the one this ai-bdd named in the `Run: <dir>` line it prints on stdout after a run
 that wrote a report (ai-bdd's `printRunSummary`, on exit 0, 1 and 3). Otherwise
 the check fails with a message naming the run id and why, and records nothing of
 that report: an earlier run's report survives exit 2 and 4, a wrapper that

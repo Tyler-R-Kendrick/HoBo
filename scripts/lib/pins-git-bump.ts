@@ -20,7 +20,7 @@ import {
 	assertNotAbandoning,
 	type GitOptions,
 } from "./pins-git-guard.ts";
-import { netGit, remoteHas } from "./pins-git-net.ts";
+import { NOT_SERVED, netGit, remoteHas } from "./pins-git-net.ts";
 
 const HEX_REF = /^[0-9a-f]{4,40}$/iu;
 
@@ -43,6 +43,74 @@ interface Resolved {
 	readonly from: string;
 }
 
+/** A commit id (or a short one) this clone, or the --reference clone, already has. */
+function localCommit(
+	sub: string,
+	ref: string,
+	options: GitOptions,
+): Resolved | null {
+	const local = peel(sub, ref);
+	if (local !== null) {
+		return {
+			commit: local,
+			served: false,
+			from: "this submodule's objects (which include any --reference clone)",
+		};
+	}
+	const borrowed =
+		options.reference === undefined ? null : peel(options.reference, ref);
+	if (borrowed === null || options.reference === undefined) return null;
+	const lent = netGit(
+		sub,
+		["fetch", "--depth", "1", "--no-tags", options.reference, borrowed],
+		options,
+		false,
+		true,
+	);
+	if (lent.status !== 0) {
+		throw new PinsError(
+			"GIT_FAILED",
+			`fetch from the reference clone failed:\n${lent.stderr}`,
+		);
+	}
+	return {
+		commit: borrowed,
+		served: false,
+		from: `the --reference clone ${options.reference}`,
+	};
+}
+
+/** Fetch `what` (a full id or a ref name) from the pin's repository; null when it has no such ref. */
+function fetchFromPin(
+	sub: string,
+	pin: GitPin,
+	what: string,
+	options: GitOptions,
+): Resolved | null {
+	const fetched = netGit(
+		sub,
+		["fetch", "--depth", "1", "--no-tags", pin.repo, "--", what],
+		options,
+	);
+	if (fetched.status !== 0) {
+		if (NOT_SERVED.test(fetched.stderr)) return null;
+		throw new PinsError(
+			"GIT_FAILED",
+			`fetch of ${what} failed:\n${fetched.stderr}`,
+		);
+	}
+	const commit = peel(sub, "FETCH_HEAD");
+	if (commit === null)
+		throw new PinsError("GIT_FAILED", `${what} did not resolve to a commit`);
+	return { commit, served: true, from: pin.repo };
+}
+
+/**
+ * A commit id is looked up here first (and through --reference); a full id
+ * the clones lack is fetched by id. Anything else, including a tag or branch
+ * whose name is all hex (`beefcafe`, `2024`), is `refs/tags/<name>` on the
+ * server, then `refs/heads/<name>` (peeled to its commit).
+ */
 function resolveCommit(
 	sub: string,
 	pin: GitPin,
@@ -50,58 +118,27 @@ function resolveCommit(
 	options: GitOptions,
 ): Resolved {
 	if (HEX_REF.test(ref)) {
-		const local = peel(sub, ref);
-		if (local !== null) {
-			return {
-				commit: local,
-				served: false,
-				from: "this submodule's objects (which include any --reference clone)",
-			};
-		}
-		const borrowed =
-			options.reference === undefined ? null : peel(options.reference, ref);
-		if (borrowed !== null && options.reference !== undefined) {
-			const lent = netGit(
-				sub,
-				["fetch", "--depth", "1", "--no-tags", options.reference, borrowed],
-				options,
-				false,
-				true,
-			);
-			if (lent.status !== 0) {
-				throw new PinsError(
-					"GIT_FAILED",
-					`fetch from the reference clone failed:\n${lent.stderr}`,
-				);
-			}
-			return {
-				commit: borrowed,
-				served: false,
-				from: `the --reference clone ${options.reference}`,
-			};
-		}
-		if (ref.length !== 40) {
-			throw new PinsError(
-				"GIT_FAILED",
-				`cannot resolve ${ref} to a commit: give a full 40-character id, a branch or a tag, or --reference <a local clone that has it>`,
-			);
+		const here = localCommit(sub, ref, options);
+		if (here !== null) return here;
+		if (ref.length === 40) {
+			const byId = fetchFromPin(sub, pin, ref, options);
+			if (byId !== null) return byId;
+			throw new PinsError("GIT_FAILED", `${pin.repo} does not serve ${ref}`);
 		}
 	}
-	const fetched = netGit(
-		sub,
-		["fetch", "--depth", "1", "--no-tags", pin.repo, "--", ref],
-		options,
+	const names = ref.startsWith("refs/")
+		? [ref]
+		: [`refs/tags/${ref}`, `refs/heads/${ref}`];
+	for (const name of names) {
+		const found = fetchFromPin(sub, pin, name, options);
+		if (found !== null) return found;
+	}
+	throw new PinsError(
+		"GIT_FAILED",
+		HEX_REF.test(ref)
+			? `cannot resolve ${ref} to a commit: give a full 40-character id, a branch or a tag, or --reference <a local clone that has it>`
+			: `${pin.repo} has no tag or branch named ${ref}`,
 	);
-	if (fetched.status !== 0) {
-		throw new PinsError(
-			"GIT_FAILED",
-			`fetch of ${ref} failed:\n${fetched.stderr}`,
-		);
-	}
-	const commit = peel(sub, "FETCH_HEAD");
-	if (commit === null)
-		throw new PinsError("GIT_FAILED", `${ref} did not resolve to a commit`);
-	return { commit, served: true, from: pin.repo };
 }
 
 export interface Bump {

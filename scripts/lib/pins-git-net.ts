@@ -117,7 +117,8 @@ export function remoteTip(
 }
 
 /** What a server says when it will not serve a commit (protocol v2, v0, and a missing ref). */
-const NOT_SERVED = /not our ref|unadvertised object|couldn't find remote ref/iu;
+export const NOT_SERVED =
+	/not our ref|unadvertised object|couldn't find remote ref/iu;
 
 /**
  * Whether `url` will serve `sha`. A commit that exists only here (made in a

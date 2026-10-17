@@ -12,7 +12,7 @@
  */
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { existsSync, writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
@@ -45,6 +45,18 @@ interface Source {
 	readonly repair: Repair;
 }
 
+/** A file holding the stale URL, for another configuration to include. */
+function includedFile(dir: string, stale: string): string {
+	const file = join(dir, "included.cfg");
+	writeFileSync(file, `[submodule "external/lib"]\n\turl = ${stale}\n`);
+	return file;
+}
+
+const INCLUDED =
+	/the file .*\/included\.cfg \(included from .*\) sets the URL for external\/lib to .*stale/u;
+const UNSET_INCLUDED =
+	/fix: git config -f .*\/included\.cfg --unset-all submodule\.external\/lib\.url\n/u;
+
 function globalFile(dir: string, body: string): NodeJS.ProcessEnv {
 	const file = join(dir, "global.cfg");
 	writeFileSync(file, body);
@@ -73,7 +85,7 @@ const SOURCES: readonly Source[] = [
 			return { env: {}, more: [] };
 		},
 		said: /this worktree's configured URL for external\/lib \(config\.worktree\) is .*stale/u,
-		fix: /fix: git config --worktree --unset submodule\.external\/lib\.url\n/u,
+		fix: /fix: git config --worktree --unset-all submodule\.external\/lib\.url\n/u,
 		repair: "fix",
 	},
 	{
@@ -90,7 +102,7 @@ const SOURCES: readonly Source[] = [
 			more: [],
 		}),
 		said: /the global git config sets the URL for external\/lib to .*stale/u,
-		fix: /fix: git submodule sync -- external\/lib {3}\(this clone's URL then overrides it; or: git config -f .*\/global\.cfg --unset submodule\.external\/lib\.url\)/u,
+		fix: /fix: git submodule sync -- external\/lib {3}\(this clone's URL then overrides it; or: git config -f .*\/global\.cfg --unset-all submodule\.external\/lib\.url\)/u,
 		repair: "fix",
 	},
 	{
@@ -104,7 +116,72 @@ const SOURCES: readonly Source[] = [
 			};
 		},
 		said: /the global git config sets the URL for external\/lib to .*stale/u,
-		fix: /or: git config -f .*\/included\.cfg --unset submodule\.external\/lib\.url\)/u,
+		fix: /or: git config -f .*\/included\.cfg --unset-all submodule\.external\/lib\.url\)/u,
+		repair: "alternative",
+	},
+	{
+		label: "a file this clone's .git/config includes after its section",
+		arrange: (dir, work, stale) => {
+			git(work, ["submodule", "init", "--", "external/lib"]);
+			const included = includedFile(dir, stale);
+			appendFileSync(
+				join(work, ".git/config"),
+				`[include]\n\tpath = ${included}\n`,
+			);
+			return { env: {}, more: [] };
+		},
+		said: INCLUDED,
+		fix: UNSET_INCLUDED,
+		repair: "fix",
+	},
+	{
+		label: "a file config.worktree includes",
+		arrange: (dir, work, stale) => {
+			git(work, ["config", "extensions.worktreeConfig", "true"]);
+			git(work, [
+				"config",
+				"--worktree",
+				"include.path",
+				includedFile(dir, stale),
+			]);
+			return { env: {}, more: [] };
+		},
+		said: INCLUDED,
+		fix: UNSET_INCLUDED,
+		repair: "fix",
+	},
+	{
+		label: "a file the command line includes (git -c include.path)",
+		arrange: (dir, _work, stale) => ({
+			env: {},
+			more: [["include.path", includedFile(dir, stale)]],
+		}),
+		said: INCLUDED,
+		fix: UNSET_INCLUDED,
+		repair: "fix",
+	},
+	{
+		label: "the key set twice in this clone's .git/config",
+		arrange: (_dir, work, stale) => {
+			git(work, ["submodule", "init", "--", "external/lib"]);
+			git(work, ["config", "--add", KEY, stale]);
+			return { env: {}, more: [] };
+		},
+		said: /this clone's configured URL for external\/lib is .*stale, not .* \(set 2 times in \.git\/config\)/u,
+		fix: /fix: git config --unset-all submodule\.external\/lib\.url && git submodule sync -- external\/lib\n/u,
+		repair: "fix",
+	},
+	{
+		label: "the key set twice in the global file, removed there",
+		arrange: (dir, _work, stale) => ({
+			env: globalFile(
+				dir,
+				`[submodule "external/lib"]\n\turl = ${dir}/remote\n\turl = ${stale}\n`,
+			),
+			more: [],
+		}),
+		said: /the global git config sets the URL for external\/lib to .*stale/u,
+		fix: /or: git config -f .*\/global\.cfg --unset-all submodule\.external\/lib\.url\)/u,
 		repair: "alternative",
 	},
 ];

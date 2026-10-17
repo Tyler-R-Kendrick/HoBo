@@ -163,7 +163,11 @@ SIGTERM to the check is passed on to the group (which, being a group of its
 own, does not see the terminal's Ctrl-C) before the check exits. The signal
 goes first because Playwright launches each browser as the leader of a group of
 its own, which a signal to ai-bdd's group does not reach, and closes it from
-its own SIGTERM and SIGINT handlers. A process ai-bdd starts in another group
+its own SIGTERM and SIGINT handlers. When kill answers EPERM or EACCES (members
+this check may not signal: another user's, as the command `sudo` or `su` runs,
+or a security module refusing), or what SIGKILL hit is still running a second
+later, the stop says so and the check is `not_run` with that reason; it never
+passes over a group it could not confirm stopped. A process ai-bdd starts in another group
 that ignores SIGTERM can outlive the check, but it cannot hold the check open
 by holding ai-bdd's output: once ai-bdd has exited and its group is gone, the
 output is waited for a second more at most. The runner bounds each release

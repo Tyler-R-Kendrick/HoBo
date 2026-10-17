@@ -4,64 +4,17 @@
  * in a temp dir; the odd comm reads the real one.
  */
 import { spawn } from "node:child_process";
-import {
-	mkdirSync,
-	mkdtempSync,
-	readFileSync,
-	rmSync,
-	symlinkSync,
-	writeFileSync,
-} from "node:fs";
-import { tmpdir } from "node:os";
+import { readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 import { scanGroup } from "../src/process-group.js";
+import { PGID, procTables, zombie } from "./helpers/proc-table.js";
 
-const scratch = mkdtempSync(join(tmpdir(), "hobo-process-group-"));
-afterAll(() => {
-	rmSync(scratch, { recursive: true, force: true });
-});
-
-const PGID = 4242;
-
-interface Entry {
-	readonly pid: number;
-	readonly comm: string;
-	readonly state: string;
-	readonly pgrp: number;
-	/** num_threads, field 20. */
-	readonly threads: number;
-}
-
-/** A /proc/<pid>/stat line as Linux writes it: 52 fields, comm unescaped in parentheses. */
-function statLine({ pid, comm, state, pgrp, threads }: Entry): string {
-	const flags = "0 -1 4227084 91 0 0 0 0 0 0 0 20 0";
-	const rest = `0 414627 0 0 18446744073709551615${" 0".repeat(13)} 17${" 0".repeat(13)}`;
-	return `${pid} (${comm}) ${state} 1 ${pgrp} ${pgrp} ${flags} ${threads} ${rest}\n`;
-}
-
-let tables = 0;
-
-/** A directory laid out like /proc, holding `entries` and a non-pid entry. */
-function table(entries: readonly Entry[]): string {
-	tables += 1;
-	const root = join(scratch, `proc-${tables}`);
-	mkdirSync(join(root, "self"), { recursive: true });
-	for (const entry of entries) {
-		mkdirSync(join(root, String(entry.pid)));
-		writeFileSync(join(root, String(entry.pid), "stat"), statLine(entry));
-	}
-	return root;
-}
-
-const zombie = (pid: number): Entry => ({
-	pid,
-	comm: "sleep",
-	state: "Z",
-	pgrp: PGID,
-	threads: 1,
-});
+const tables = procTables();
+afterAll(tables.remove);
+const { table } = tables;
+const scratch = tables.dir;
 
 describe("scanGroup", () => {
 	it("is zombies for a group whose members are all zombies of one thread", () => {

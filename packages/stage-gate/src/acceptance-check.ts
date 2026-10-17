@@ -18,8 +18,10 @@
  *   directory's report has the digest the replay recorded.
  *
  * An exit code of 3, a command that cannot be started, one ended by a signal,
- * and one that outlives HOBO_AI_BDD_TIMEOUT_MS are `not_run` (this process
- * exits 3): never `failed`, never `passed`. Configuration that cannot be used
+ * one that outlives HOBO_AI_BDD_TIMEOUT_MS, and one whose process group the
+ * check could not confirm stopped (kill refused, or still running after
+ * SIGKILL: ai-bdd-process.ts) are `not_run` (this process exits 3): never
+ * `failed`, never `passed`. Configuration that cannot be used
  * (acceptance-config.ts) is a failure with exit 2, like ai-bdd's own usage
  * errors.
  */
@@ -108,6 +110,14 @@ function commandResult(
 ): AcceptanceResult {
 	const command = `ai-bdd ${run.args.join(" ")}`;
 	const base = { step, command, ...extra };
+	if (run.stop.kind === "unconfirmed") {
+		const reason = `${command}: the check could not confirm its process group stopped: ${run.stop.reason}`;
+		return result("not_run", NOT_RUN, {
+			...base,
+			reason,
+			output_tail: run.tail,
+		});
+	}
 	if (run.timedOut) {
 		const reason = `${command} did not finish within ${timeoutMs} ms (HOBO_AI_BDD_TIMEOUT_MS): its process group was sent SIGTERM, and SIGKILL after ${AI_BDD_GRACE_MS / 1000} s`;
 		return result("not_run", NOT_RUN, {
@@ -177,8 +187,13 @@ async function replay(
 		"--reporter",
 		"json,junit",
 	]);
-	if (run.unstartable !== "" || (run.status !== 0 && run.status !== 1)) {
-		// Exit 2 and 4 write no report; exit 3 writes one that says nothing about the product. None is read.
+	if (
+		run.stop.kind === "unconfirmed" ||
+		run.unstartable !== "" ||
+		(run.status !== 0 && run.status !== 1)
+	) {
+		// Exit 2 and 4 write no report; exit 3 writes one that says nothing about the product. None is read,
+		// nor one of a run whose process group the check could not confirm stopped.
 		return commandResult(
 			"replay",
 			run,

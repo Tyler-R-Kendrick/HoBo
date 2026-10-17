@@ -15,6 +15,9 @@
  *   one would hold every stop for the whole grace. Where /proc cannot show that
  *   (a process whose main thread exited while others run, a /proc of another
  *   PID namespace, none readable), the group counts as live until SIGKILL.
+ *   The run carries how the stop ended (`stop`): one that kill refused
+ *   (EPERM, EACCES) or that SIGKILL did not end within a second is
+ *   unconfirmed, and the check records it not run.
  *   Once ai-bdd has exited and its group is gone, its output is waited for
  *   DRAIN_MS more at most: a process outside the group that holds the pipe
  *   open does not hold the check.
@@ -68,6 +71,12 @@ export interface AiBddRun {
 	readonly tail: string;
 	/** The directory of the last `Run: <dir>` line on its stdout: `ai-bdd run` names the run it made so. */
 	readonly printedRunDir: string | undefined;
+	/**
+	 * How the stop of its process group went once it ended (process-group.ts):
+	 * gone, killed, or unconfirmed (kill was refused, or what SIGKILL hit was
+	 * still running), which the check records as not run.
+	 */
+	readonly stop: GroupStop;
 }
 
 const RUN_LINE = /^Run: (.+)$/u;
@@ -121,6 +130,7 @@ let stoppedBy: NodeJS.Signals | undefined;
 function commandTarget(child: ChildProcess): StopTarget {
 	const exited = () => child.exitCode !== null || child.signalCode !== null;
 	return {
+		label: `ai-bdd (pid ${child.pid})`,
 		signal: (signal) =>
 			!exited() && child.kill(signal) ? { kind: "sent" } : { kind: "gone" },
 		probe: () => (exited() ? { kind: "gone" } : { kind: "live" }),
@@ -131,6 +141,7 @@ function commandTarget(child: ChildProcess): StopTarget {
 function targetOf(child: ChildProcess): StopTarget {
 	if (child.pid === undefined) {
 		return {
+			label: "ai-bdd (not started)",
 			signal: () => ({ kind: "gone" }),
 			probe: () => ({ kind: "gone" }),
 		};
@@ -235,7 +246,13 @@ export function runAiBdd(
 		let timedOut = false;
 		/** Waits DRAIN_MS for `close` after the group is gone; cleared once settled, so it keeps nothing alive. */
 		let drain: NodeJS.Timeout | undefined;
-		const finish = (status: number | null, unstartable: string) => {
+		/** No group was started, or none of it was left. */
+		const NOTHING_LEFT: GroupStop = { kind: "gone" };
+		const finish = (
+			status: number | null,
+			unstartable: string,
+			stop: GroupStop = NOTHING_LEFT,
+		) => {
 			if (done) return;
 			done = true;
 			clearTimeout(drain);
@@ -247,6 +264,7 @@ export function runAiBdd(
 				timedOut,
 				tail: output.tail(),
 				printedRunDir: runLine.last(),
+				stop,
 			});
 		};
 		if (stoppedBy !== undefined) {
@@ -269,15 +287,17 @@ export function runAiBdd(
 		}
 		running.set(child, graceMs);
 		let closed: Ending | undefined;
-		let groupGone = false;
+		/** How the stop of its group went, once it has ended. */
+		let groupStop: GroupStop | undefined;
 		const end = () => {
-			if (!groupGone || closed === undefined) return;
+			if (groupStop === undefined || closed === undefined) return;
 			clearTimeout(timer);
 			running.delete(child);
 			stopping.delete(child);
 			finish(
 				timedOut ? null : closed.status,
 				closed.signal === null ? "" : `ended by ${closed.signal}`,
+				groupStop,
 			);
 		};
 		const timer = setTimeout(() => {
@@ -296,8 +316,8 @@ export function runAiBdd(
 		});
 		// What it started and left running in its group goes with it.
 		child.on("exit", (status, signal) => {
-			void stopGroup(child, "SIGTERM", graceMs).then(() => {
-				groupGone = true;
+			void stopGroup(child, "SIGTERM", graceMs).then((stop) => {
+				groupStop = stop;
 				end();
 				if (done) return;
 				// A process outside the group can hold ai-bdd's stdout or stderr open, and `close` would wait for it.

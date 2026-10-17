@@ -96,12 +96,16 @@ export function coherence(
 	return found;
 }
 
-/** How to say where a configured URL came from, and the fix that works there. */
-function staleUrl(
-	path: string,
-	name: string,
-	scope: string,
-): { said: string; why: string; fix: string } {
+/** A configured URL `.gitmodules` does not name: how to say where it came from, and the fix that works there. */
+interface StaleUrl {
+	/** Comes before the URL. */
+	readonly said: string;
+	/** Comes after the URL `.gitmodules` names. */
+	readonly why: string;
+	readonly fix: string;
+}
+
+function staleUrl(path: string, name: string, scope: string): StaleUrl {
 	const key = `submodule.${name}.url`;
 	const sync = `git submodule sync -- ${path}`;
 	if (scope === "local" || scope === "worktree") {

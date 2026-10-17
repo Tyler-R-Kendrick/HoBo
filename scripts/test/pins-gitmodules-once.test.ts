@@ -24,7 +24,7 @@ import {
 } from "./support/pins-support.ts";
 
 /** A checkout set up the ordinary way: external/lib cloned and at the pin. */
-function setUp(): { work: string; url: string } {
+function setUp() {
 	const dir = scratch("gitmodules-once");
 	const remote = makeRemote(dir);
 	const work = makeWork(dir, remote, 1);

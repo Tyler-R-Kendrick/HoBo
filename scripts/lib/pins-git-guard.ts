@@ -7,15 +7,9 @@
  */
 
 import { type GitPin, PinsError } from "./pins.ts";
-import {
-	git,
-	modulesEntry,
-	onAnyRef,
-	Refusal,
-	sameRepo,
-	short,
-} from "./pins-git-core.ts";
+import { git, onAnyRef, Refusal, sameRepo, short } from "./pins-git-core.ts";
 import { isAllowedTransport, type NetOptions } from "./pins-git-net.ts";
+import { modulesEntry } from "./pins-gitmodules.ts";
 
 export interface GitOptions extends NetOptions {
 	/** `--reference`: a local clone to borrow objects from. */

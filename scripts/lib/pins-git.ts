@@ -45,11 +45,11 @@ export {
 	gitlinkOf,
 	headOf,
 	isDirty,
-	modulesUrl,
 	sameRepo,
 	short,
 } from "./pins-git-core.ts";
 export type { GitOptions } from "./pins-git-guard.ts";
+export { modulesUrl } from "./pins-gitmodules.ts";
 
 function updateSubmodule(root: string, pin: GitPin, options: GitOptions): void {
 	const refArgs =

@@ -226,7 +226,9 @@ async function killGroup(target: StopTarget): Promise<GroupStop> {
 		if (Date.now() >= deadline) {
 			return {
 				kind: "unconfirmed",
-				reason: `${target.label}: members were still running ${KILL_CONFIRM_MS} ms after SIGKILL`,
+				// Not "SIGKILL did not kill them": it skips another user's members, and with one of
+				// ours left a zombie beside them kill(-pgid, 0) never answers EPERM.
+				reason: `${target.label}: members were still running ${KILL_CONFIRM_MS} ms after SIGKILL was sent to the group (it reaches none of another user's, and may not have ended the rest yet)`,
 			};
 		}
 		await sleep(POLL_MS);
@@ -237,7 +239,7 @@ async function killGroup(target: StopTarget): Promise<GroupStop> {
  * Stop a group: `signal` to all of it, then SIGKILL to what is left after
  * graceMs, or at once when /proc shows only zombies. Resolves gone when the
  * kernel finds no member, killed once SIGKILL has landed, and unconfirmed
- * when kill is refused or what SIGKILL hit is still running.
+ * when kill is refused or members are still running after SIGKILL.
  */
 export async function stopGroup(
 	target: StopTarget,

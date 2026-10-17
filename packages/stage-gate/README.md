@@ -167,8 +167,8 @@ stop ends one of three ways, which the run carries (`AiBddRun.stop`):
   group signal reaches (it is atomic with `fork`).
 - **unconfirmed**, with a reason: kill answered `EPERM` or `EACCES` (members
   this check may not signal: another user's, such as the command `sudo` or `su`
-  runs, or a security module refusing), or what SIGKILL hit was still running a
-  second later. The check then records `not_run` with that reason before it
+  runs, or a security module refusing), or members were still running a second
+  after SIGKILL was sent (it reaches none of another user's). The check then records `not_run` with that reason before it
   reads any exit code or report: it never passes over a group it could not
   confirm stopped.
 

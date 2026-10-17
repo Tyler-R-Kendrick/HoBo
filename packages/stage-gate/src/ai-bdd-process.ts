@@ -14,7 +14,7 @@
  *   SIGKILLed at once, and what /proc cannot read as such counts as live
  *   (src/process-group.ts). The run carries how the stop ended (`stop`):
  *   gone, killed, or unconfirmed when kill was refused (EPERM, EACCES) or
- *   SIGKILL did not end the group within a second, which the check records
+ *   members were still running a second after SIGKILL, which the check records
  *   as not run.
  *   Once ai-bdd has exited and its group is gone, its output is waited for
  *   DRAIN_MS more at most: a process outside the group that holds the pipe
@@ -71,7 +71,7 @@ export interface AiBddRun {
 	readonly printedRunDir: string | undefined;
 	/**
 	 * How the stop of its process group went once it ended (process-group.ts):
-	 * gone, killed, or unconfirmed (kill was refused, or what SIGKILL hit was
+	 * gone, killed, or unconfirmed (kill was refused, or members were
 	 * still running), which the check records as not run.
 	 */
 	readonly stop: GroupStop;

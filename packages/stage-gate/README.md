@@ -133,7 +133,12 @@ absent `model_calls` with its constraint `"0"` and accept the record).
 `test:schema` vets the records in `test/fixtures/records/` with `cue vet -c`
 against both schemas and checks that the parser agrees; it needs the cue binary
 (`HOBO_CUE_BIN`, the `.tools/cue/v0.14.0` cache the root `test:schema` fills, or
-`cue` on `PATH`) and fails without it. A passed release record needs no
+`cue` on `PATH`) and fails without it. An empty `HOBO_CUE_BIN` is unset, as the
+bindles CUE gate reads it; one that names no file is an error. Whichever binary
+it finds must print `cue version v0.14.0` (or `cue version 0.14.0`, which
+schema-tools also takes) as its first line: another patch version is refused,
+although it prints `cue.lang.version v0.14.0` too, because the fixtures and the
+required fields (`!`) are checked against v0.14.0 only. A passed release record needs no
 signature or artifact (the runner writes an unsigned signature and the zero
 artifact); those requirements stay S0's.
 

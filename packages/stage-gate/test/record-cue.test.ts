@@ -6,9 +6,11 @@
  * that is not required satisfies `model_calls: "0"` by being left out; the
  * tests below remove every field one at a time to pin that each is required.
  *
- * This suite needs the cue binary (v0.14.0): HOBO_CUE_BIN, which must exist,
- * else the cache the root test:schema lane fills at .tools/cue/v0.14.0, else
- * cue on PATH; whichever it finds must say it is v0.14.0.
+ * This suite needs the cue binary (v0.14.0): HOBO_CUE_BIN, which must exist
+ * (empty is unset), else the cache the root test:schema lane fills at
+ * .tools/cue/v0.14.0, else cue on PATH; whichever it finds must print
+ * `cue version v0.14.0` (or `0.14.0`) first, and another patch version is
+ * refused (test/helpers/cue-binary.ts).
  * The package's `test:schema` runs it and the root `test:schema` reaches
  * that; without cue it fails, never skips.
  */

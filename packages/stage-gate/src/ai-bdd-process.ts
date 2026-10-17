@@ -23,10 +23,10 @@
  *   characters.
  */
 import { type ChildProcess, spawn } from "node:child_process";
-import { readdirSync, readFileSync } from "node:fs";
 import { StringDecoder } from "node:string_decoder";
 
 import { CHECK_OUTPUT_LIMIT } from "./gate-status.js";
+import { procShowsGroupGone } from "./process-group.js";
 
 /** Relayed from the start, and again from the end, of a command's output. */
 export const RELAY_BYTES = CHECK_OUTPUT_LIMIT / 8;
@@ -110,33 +110,6 @@ const stopping = new Map<ChildProcess, Promise<void>>();
 /** Set once the gate itself is told to stop: no ai-bdd starts after that. */
 let stoppedBy: NodeJS.Signals | undefined;
 
-/**
- * Linux: whether group `pgid` holds a process that is not a zombie. A zombie
- * still takes a signal until its parent reaps it, and a PID 1 or subreaper
- * that never reaps would otherwise hold every stop for the whole grace period.
- * Without a readable /proc, the group counts as live.
- */
-function liveMemberIn(pgid: number): boolean {
-	let entries: string[];
-	try {
-		entries = readdirSync("/proc");
-	} catch {
-		return true;
-	}
-	return entries.some((entry) => {
-		if (!/^\d+$/u.test(entry)) return false;
-		let stat: string;
-		try {
-			stat = readFileSync(`/proc/${entry}/stat`, "utf8");
-		} catch {
-			return false;
-		}
-		// "pid (comm) state ppid pgrp ...": comm may hold spaces and parentheses.
-		const [state, , pgrp] = stat.slice(stat.lastIndexOf(")") + 2).split(" ");
-		return Number(pgrp) === pgid && state !== "Z";
-	});
-}
-
 /** Signal ai-bdd's process group (0 only asks whether any of it is left); false when none is. */
 function signalGroup(child: ChildProcess, signal: NodeJS.Signals | 0): boolean {
 	if (child.pid === undefined) return false;
@@ -152,7 +125,7 @@ function signalGroup(child: ChildProcess, signal: NodeJS.Signals | 0): boolean {
 	}
 	return signal !== 0 || process.platform !== "linux"
 		? true
-		: liveMemberIn(child.pid);
+		: !procShowsGroupGone(child.pid);
 }
 
 /**

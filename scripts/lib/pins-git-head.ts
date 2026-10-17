@@ -165,7 +165,12 @@ interface Foreign {
  * path git made it for and nothing about whose repository it is, so a
  * renamed section whose URL changed to another upstream finds the old
  * upstream's clone refused, not adopted and moved to the new upstream's
- * commit. An older git, or a plain clone, keeps it in the path's own `.git`
+ * commit. That is the only place the origin is compared: not for the
+ * section's own `modules/<name>` (while `submodule.<name>.url` is set the
+ * stale-URL check owns a changed URL; after `git submodule deinit` the path is
+ * empty and nothing here runs), and not for a clone the person made by hand,
+ * which is theirs and may have an ssh origin they push through
+ * (ADR-0169, `pins-module-origin-scope.test.ts`). An older git, or a plain clone, keeps it in the path's own `.git`
  * directory. A hand-made `git clone --separate-git-dir` keeps it in a
  * directory that serves no other work tree: not named `.git` (that is the
  * repository of the directory holding it), not a linked worktree, outside
@@ -186,6 +191,7 @@ function foreignReason(
 			reason: `is a linked worktree of the repository at ${sub.common}`,
 			fix,
 		};
+	// The path's own `.git` directory: a plain clone, theirs; its origin is not compared.
 	if (sameFile(sub.gitDir, join(root, path, ".git"))) return null;
 	const owner = repositoryOf(root);
 	const entry = entryOf(root, path);
@@ -193,6 +199,7 @@ function foreignReason(
 		owner === null || entry === undefined
 			? null
 			: realOr(join(owner.gitDir, "modules", entry.name));
+	// The section's own module directory: its origin is not compared (see above).
 	if (modules !== null && sameFile(sub.gitDir, modules)) return null;
 	if (basename(sub.gitDir).toLowerCase() === ".git")
 		return {
@@ -203,8 +210,9 @@ function foreignReason(
 	// own from another's; `coherence` refuses that `.gitmodules`, so status
 	// says it once and fetch and bump stop on it first.
 	if (owner === null || entry === undefined || modules === null) return null;
-	// core.worktree needs no check outside the superproject's git directory:
-	// it decides git's top level, which headOf has already found to be this path.
+	// Outside the superproject's git directory (a hand-made separate git
+	// directory) nothing is compared: core.worktree needs no check either, as it
+	// decides git's top level, which headOf has already found to be this path.
 	if (!insideEither(sub.gitDir, owner)) return null;
 	const moduleDirs = join(owner.gitDir, "modules");
 	const named = moduleNameOf(moduleDirs, sub.gitDir);

@@ -4,7 +4,7 @@
  * misbehave in one way each.
  */
 import { execFile, spawn, spawnSync } from "node:child_process";
-import { existsSync, rmSync } from "node:fs";
+import { existsSync, rmSync, statSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -113,30 +113,45 @@ describe("runAiBdd on Linux, where a group can hold only zombies", () => {
 		"is done with a group whose only member is a zombie its parent never reaps",
 		async () => {
 			// The inner shell leaves `sleep 0.1` in ai-bdd's group, then moves itself to a
-			// session of its own (setsid) as `sleep 8`, which never waits for it: once
-			// ai-bdd exits, the group holds one zombie, as under a PID 1 or subreaper that
-			// does not reap.
-			const started = Date.now();
+			// session of its own (setsid) as a node process that never waits for it, and
+			// writes $READY once /proc shows the sleep a zombie. ai-bdd (the outer shell)
+			// exits only then, so the group holds one zombie, as under a PID 1 or
+			// subreaper that does not reap, and no live member for the stop to end early.
+			const ready = join(
+				tmpdir(),
+				`hobo-zombie-only-${process.pid}-${Date.now()}.ready`,
+			);
 			const run = await runAiBdd(
 				{
 					command: [
 						"sh",
 						"-c",
-						"sh -c 'sleep 0.1 & echo holder $$; exec setsid sleep 8 >/dev/null 2>&1' & sleep 0.3; exit 0",
+						`sh -c 'sleep 0.1 & echo holder $$; exec setsid "$NODE" -e "$HOBO_TEST_JS" $! >/dev/null 2>&1' & ${UNTIL_READY}`,
 					],
 					cwd: tmpdir(),
-					env: process.env,
+					env: {
+						...process.env,
+						HOBO_TEST_JS: ZOMBIE_PARENT_JS,
+						NODE: process.execPath,
+						READY: ready,
+					},
 					timeoutMs: 20_000,
 					graceMs: 5000,
 					relay: () => undefined,
 				},
 				[],
 			);
-			const took = Date.now() - started;
-			killQuietly(Number(/holder (\d+)/u.exec(run.tail)?.[1] ?? 0));
-			expect(run.status).toBe(0);
-			// Not the 5 s grace: a zombie is not a member to wait for.
-			expect(took).toBeLessThan(3000);
+			const finished = Date.now();
+			try {
+				expect(existsSync(ready)).toBe(true);
+				expect(run.status).toBe(0);
+				// Not the 5 s grace: a zombie is not a member to wait for. Counted from
+				// $READY, so the member's own startup is not the stop's time.
+				expect(finished - statSync(ready).mtimeMs).toBeLessThan(3000);
+			} finally {
+				killQuietly(Number(/holder (\d+)/u.exec(run.tail)?.[1] ?? 0));
+				rmSync(ready, { force: true });
+			}
 		},
 		30_000,
 	);
@@ -210,6 +225,17 @@ const LEADER_EXIT_PY = [
 	"    open(os.environ['MARKER'], 'w').close()",
 	"threading.Thread(target=later).start()",
 	"ctypes.CDLL(None).pthread_exit(None)",
+].join("\n");
+
+/** Waits for the zombie its argv names (a child of this process, which never waits for it), then writes $READY. */
+const ZOMBIE_PARENT_JS = [
+	"const fs = require('node:fs');",
+	"const state = () => {",
+	"  try { return /^State:\\s+(\\S)/mu.exec(fs.readFileSync('/proc/' + process.argv[1] + '/status', 'utf8'))?.[1]; } catch { return undefined; }",
+	"};",
+	"const tick = () => { if (state() === 'Z') fs.writeFileSync(process.env.READY, ''); else setTimeout(tick, 20); };",
+	"tick();",
+	"setTimeout(() => {}, 8000);",
 ].join("\n");
 
 interface StopOutcome {

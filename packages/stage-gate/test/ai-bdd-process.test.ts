@@ -3,11 +3,21 @@
  * release-gate suites drive it through the gate; these give it commands that
  * misbehave in one way each.
  */
+import { execFile } from "node:child_process";
 import { tmpdir } from "node:os";
+import { dirname, join } from "node:path";
+import { fileURLToPath } from "node:url";
+import { promisify } from "node:util";
 
 import { describe, expect, it } from "vitest";
 import { runAiBdd } from "../src/ai-bdd-process.js";
-import { killQuietly } from "./helpers/release-gate.js";
+import { killQuietly, REPO_ROOT } from "./helpers/release-gate.js";
+
+const STOP_SCRIPT = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"helpers",
+	"stop-ai-bdd.mts",
+);
 
 function nodeCommand(source: string): readonly string[] {
 	return [process.execPath, "-e", source];
@@ -64,4 +74,45 @@ describe("runAiBdd settles when the command exits", () => {
 			killQuietly(holder);
 		}
 	}, 40_000);
+});
+
+interface StopOutcome {
+	readonly stopMs: number;
+	readonly tail: string;
+	readonly afterStatus: number | null;
+	readonly afterUnstartable: string;
+}
+
+describe("stopRunningAiBdd, as the check calls it on its own SIGINT or SIGTERM", () => {
+	it("passes that signal on, is done once the group is gone, and starts no ai-bdd after", async () => {
+		const answer = (signal: string) =>
+			`process.on('${signal}', () => { console.log('got ${signal}'); process.exit(0); });`;
+		const { stdout } = await promisify(execFile)(
+			process.execPath,
+			[
+				"--import",
+				"tsx",
+				STOP_SCRIPT,
+				"SIGINT",
+				"20000",
+				JSON.stringify(
+					nodeCommand(
+						`${answer("SIGINT")} ${answer("SIGTERM")} console.log('up'); setInterval(() => {}, 1000)`,
+					),
+				),
+				JSON.stringify(nodeCommand("process.exit(0)")),
+			],
+			{ cwd: REPO_ROOT, timeout: 60_000 },
+		);
+		// SAFETY: stop-ai-bdd.mts prints one StopOutcome as JSON.
+		const outcome = JSON.parse(stdout) as StopOutcome;
+		// The signal the check got, not SIGTERM in its place.
+		expect(outcome.tail).toContain("got SIGINT");
+		// The group was gone at once: the 20 s grace was not waited out.
+		expect(outcome.stopMs).toBeLessThan(5000);
+		expect(outcome).toMatchObject({
+			afterStatus: null,
+			afterUnstartable: "not started: the check was stopped by SIGINT",
+		});
+	}, 60_000);
 });

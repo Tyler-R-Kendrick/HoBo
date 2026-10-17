@@ -9,7 +9,7 @@ import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
 import { describe, it } from "node:test";
 
-import * as core from "../lib/pins-git-core.ts";
+import { gitEnvironment, LOCAL_REPO_ENV } from "../lib/pins-git-core.ts";
 
 const KEPT = ["GIT_CONFIG", "GIT_CONFIG_PARAMETERS", "GIT_CONFIG_COUNT"];
 
@@ -21,8 +21,7 @@ const printed = execFileSync("git", ["rev-parse", "--local-env-vars"], {
 
 describe("the repository-locating variables", () => {
 	it("are every name the installed git prints for --local-env-vars, plus GIT_NAMESPACE", () => {
-		const list: readonly string[] =
-			(core as { LOCAL_REPO_ENV?: readonly string[] }).LOCAL_REPO_ENV ?? [];
+		const list: readonly string[] = LOCAL_REPO_ENV;
 		for (const name of [...printed, "GIT_NAMESPACE"]) {
 			assert.ok(list.includes(name), `${name} is in LOCAL_REPO_ENV`);
 		}
@@ -34,7 +33,7 @@ describe("the repository-locating variables", () => {
 		given.GIT_CONFIG_KEY_0 = "a.b";
 		given.GIT_CONFIG_VALUE_0 = "c";
 		given.GIT_CEILING_DIRECTORIES = "/home";
-		const env = core.gitEnvironment(given);
+		const env = gitEnvironment(given);
 		for (const name of [...printed, "GIT_NAMESPACE"]) {
 			if (KEPT.includes(name)) assert.equal(env[name], "x", `${name} is kept`);
 			else assert.equal(env[name], undefined, `${name} is dropped`);

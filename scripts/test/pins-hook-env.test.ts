@@ -40,7 +40,7 @@ function hookEnv(work: string): NodeJS.ProcessEnv {
 }
 
 /** Commit ids and scratch paths differ between two fixtures; the rest must not. */
-function shape(text: string, work: string, remote: Remote): string {
+function comparable(text: string, work: string, remote: Remote): string {
 	return text
 		.replaceAll(work, "<work>")
 		.replaceAll(remote.dir, "<remote>")
@@ -82,8 +82,8 @@ describe("a verb run from a git hook acts on the submodule, not the superproject
 			);
 			assert.equal(run.status, expected.status, `${run.stdout}${run.stderr}`);
 			assert.equal(
-				shape(run.stdout, hooked.work, hooked.remote),
-				shape(expected.stdout, plain.work, plain.remote),
+				comparable(run.stdout, hooked.work, hooked.remote),
+				comparable(expected.stdout, plain.work, plain.remote),
 			);
 			const after = superState(hooked.work);
 			assert.deepEqual(

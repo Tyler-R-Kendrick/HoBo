@@ -24,8 +24,14 @@ const URL = "https://good.invalid/o/r.git";
 const HINT =
 	/hint: pins run git without a terminal, so ssh cannot ask for a passphrase or a host key and git cannot ask for a username/u;
 
+interface ViaSsh {
+	readonly work: string;
+	/** The stand-in for ssh (GIT_SSH_COMMAND). */
+	readonly ssh: string;
+}
+
 /** A work tree whose manifest and .gitmodules name URL, and an ssh that says `says`. */
-function viaSsh(says: string): { work: string; ssh: string } {
+function viaSsh(says: string): ViaSsh {
 	const dir = scratch("ssh-hint");
 	const remote = makeRemote(dir);
 	const work = makeWork(dir, remote, 1);

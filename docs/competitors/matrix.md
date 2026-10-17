@@ -122,92 +122,92 @@ Captures are considered stale after 180 days. Staleness never fails the build �
 
 | Competitor | Researched | Age (days) | State |
 | ---------- | ---------- | ---------- | ----- |
-| [Wasm host landscape](wasm-hosts.md) | 2026-08-12 | 8 | pre-v1 — rewrite to contract |
-| [Alchemy](alchemy.md) | 2026-08-19 | 1 | fresh |
-| [AWS Amplify](aws-amplify.md) | 2026-08-19 | 1 | fresh |
-| [Backstage](backstage.md) | 2026-08-19 | 1 | fresh |
-| [Control Plane](control-plane.md) | 2026-08-19 | 1 | fresh |
-| [Crossplane](crossplane.md) | 2026-08-19 | 1 | fresh |
-| [Cycloid](cycloid.md) | 2026-08-19 | 1 | fresh |
-| [Dapr](dapr.md) | 2026-08-19 | 1 | fresh |
-| [DuploCloud](duplocloud.md) | 2026-08-19 | 1 | fresh |
-| [Encore](encore.md) | 2026-08-19 | 1 | fresh |
-| [Facets.cloud](facets.md) | 2026-08-19 | 1 | fresh |
-| [Fly.io](flyio.md) | 2026-08-19 | 1 | fresh |
-| [Harness Platform](harness.md) | 2026-08-19 | 1 | fresh |
-| [Heroku](heroku.md) | 2026-08-19 | 1 | fresh |
-| [Humanitec](humanitec.md) | 2026-08-19 | 1 | fresh |
-| [Kratix](kratix.md) | 2026-08-19 | 1 | fresh |
-| [KubeVela](kubevela.md) | 2026-08-19 | 1 | fresh |
-| [KusionStack](kusionstack.md) | 2026-08-19 | 1 | fresh |
-| [Lagoon](lagoon.md) | 2026-08-19 | 1 | fresh |
-| [Massdriver](massdriver.md) | 2026-08-19 | 1 | fresh |
-| [Mia-Platform](mia-platform.md) | 2026-08-19 | 1 | fresh |
-| [Modal](modal.md) | 2026-08-19 | 1 | fresh |
-| [Netlify](netlify.md) | 2026-08-19 | 1 | fresh |
-| [Northflank](northflank.md) | 2026-08-19 | 1 | fresh |
-| [OpenChoreo](openchoreo.md) | 2026-08-19 | 1 | fresh |
-| [Porter](porter.md) | 2026-08-19 | 1 | fresh |
-| [Qovery](qovery.md) | 2026-08-19 | 1 | fresh |
-| [Radius](radius.md) | 2026-08-19 | 1 | fresh |
-| [Railway](railway.md) | 2026-08-19 | 1 | fresh |
-| [Release](release.md) | 2026-08-19 | 1 | fresh |
-| [Render](render.md) | 2026-08-19 | 1 | fresh |
-| [Spin / Fermyon](spin-fermyon.md) | 2026-08-19 | 1 | fresh |
-| [SST](sst.md) | 2026-08-19 | 1 | fresh |
-| [Supabase](supabase.md) | 2026-08-19 | 1 | fresh |
-| [Upsun](upsun.md) | 2026-08-19 | 1 | fresh |
-| [Vercel](vercel.md) | 2026-08-19 | 1 | fresh |
-| [Winglang](winglang.md) | 2026-08-19 | 1 | fresh |
-| [Anonymous container hosts](anon-container-hosts.md) | 2026-08-20 | 0 | fresh |
-| [Antimetal](antimetal.md) | 2026-08-20 | 0 | fresh |
-| [Appvia Wayfinder](appvia-wayfinder.md) | 2026-08-20 | 0 | fresh |
-| [Argo CD](argo-cd.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
-| [.NET Aspire](aspire.md) | 2026-08-20 | 0 | fresh |
-| [Atlassian Compass](atlassian-compass.md) | 2026-08-20 | 0 | fresh |
-| [CapRover](caprover.md) | 2026-08-20 | 0 | fresh |
-| [CAST AI](cast-ai.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
-| [celld](celld.md) | 2026-08-20 | 0 | fresh |
-| [CloudBolt](cloudbolt.md) | 2026-08-20 | 0 | fresh |
-| [Cloudify](cloudify.md) | 2026-08-20 | 0 | fresh |
-| [Convex](convex.md) | 2026-08-20 | 0 | fresh |
-| [Coolify](coolify.md) | 2026-08-20 | 0 | fresh |
-| [Cortex](cortex.md) | 2026-08-20 | 0 | fresh |
-| [Dokku](dokku.md) | 2026-08-20 | 0 | fresh |
-| [Dokploy](dokploy.md) | 2026-08-20 | 0 | fresh |
-| [FinOps tooling cohort](finops-tooling.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
-| [Flux CD](flux-cd.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
-| [Flux Network](flux-network.md) | 2026-08-20 | 0 | fresh |
-| [HPE Morpheus](hpe-morpheus.md) | 2026-08-20 | 0 | fresh |
-| [Infracost](infracost.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
-| [InsForge](insforge.md) | 2026-08-20 | 0 | fresh |
-| [Kamal](kamal.md) | 2026-08-20 | 0 | fresh |
-| [Kubecost](kubecost.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
-| [Kubernetes](kubernetes.md) | 2026-08-20 | 0 | fresh |
-| [Lakebed](lakebed.md) | 2026-08-20 | 0 | fresh |
-| [NetBird](netbird.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
-| [NetScaler](netscaler.md) | 2026-08-20 | 0 | fresh |
-| [Nitric](nitric.md) | 2026-08-20 | 0 | fresh |
-| [Nomad](nomad.md) | 2026-08-20 | 0 | fresh |
-| [Octopus Deploy](octopus-deploy.md) | 2026-08-20 | 0 | fresh |
-| [OpenCost](opencost.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
-| [OpenShift](openshift.md) | 2026-08-20 | 0 | fresh |
-| [OpenStack](openstack.md) | 2026-08-20 | 0 | fresh |
-| [OpsLevel](opslevel.md) | 2026-08-20 | 0 | fresh |
-| [Port](port.md) | 2026-08-20 | 0 | fresh |
-| [Pulumi](pulumi.md) | 2026-08-20 | 0 | fresh |
-| [Rancher Fleet](rancher-fleet.md) | 2026-08-20 | 0 | fresh |
-| [Red Hat Developer Hub](red-hat-developer-hub.md) | 2026-08-20 | 0 | fresh |
-| [Rivet](rivet.md) | 2026-08-20 | 0 | fresh |
-| [Roadie](roadie.md) | 2026-08-20 | 0 | fresh |
-| [ServerKit](serverkit.md) | 2026-08-20 | 0 | fresh |
-| [shoo.dev](shoo.md) | 2026-08-20 | 0 | fresh |
-| [StackGen](stackgen.md) | 2026-08-20 | 0 | fresh |
-| [System Initiative](system-initiative.md) | 2026-08-20 | 0 | fresh |
-| [Tailscale](tailscale.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
-| [Vantage](vantage.md) | 2026-08-20 | 0 | pre-v1 — rewrite to contract |
-| [wasmCloud](wasmcloud.md) | 2026-08-20 | 0 | fresh |
-| [Wasp](wasp.md) | 2026-08-20 | 0 | fresh |
+| [Wasm host landscape](wasm-hosts.md) | 2026-08-12 | 66 | pre-v1 — rewrite to contract |
+| [Alchemy](alchemy.md) | 2026-08-19 | 59 | fresh |
+| [AWS Amplify](aws-amplify.md) | 2026-08-19 | 59 | fresh |
+| [Backstage](backstage.md) | 2026-08-19 | 59 | fresh |
+| [Control Plane](control-plane.md) | 2026-08-19 | 59 | fresh |
+| [Crossplane](crossplane.md) | 2026-08-19 | 59 | fresh |
+| [Cycloid](cycloid.md) | 2026-08-19 | 59 | fresh |
+| [Dapr](dapr.md) | 2026-08-19 | 59 | fresh |
+| [DuploCloud](duplocloud.md) | 2026-08-19 | 59 | fresh |
+| [Encore](encore.md) | 2026-08-19 | 59 | fresh |
+| [Facets.cloud](facets.md) | 2026-08-19 | 59 | fresh |
+| [Fly.io](flyio.md) | 2026-08-19 | 59 | fresh |
+| [Harness Platform](harness.md) | 2026-08-19 | 59 | fresh |
+| [Heroku](heroku.md) | 2026-08-19 | 59 | fresh |
+| [Humanitec](humanitec.md) | 2026-08-19 | 59 | fresh |
+| [Kratix](kratix.md) | 2026-08-19 | 59 | fresh |
+| [KubeVela](kubevela.md) | 2026-08-19 | 59 | fresh |
+| [KusionStack](kusionstack.md) | 2026-08-19 | 59 | fresh |
+| [Lagoon](lagoon.md) | 2026-08-19 | 59 | fresh |
+| [Massdriver](massdriver.md) | 2026-08-19 | 59 | fresh |
+| [Mia-Platform](mia-platform.md) | 2026-08-19 | 59 | fresh |
+| [Modal](modal.md) | 2026-08-19 | 59 | fresh |
+| [Netlify](netlify.md) | 2026-08-19 | 59 | fresh |
+| [Northflank](northflank.md) | 2026-08-19 | 59 | fresh |
+| [OpenChoreo](openchoreo.md) | 2026-08-19 | 59 | fresh |
+| [Porter](porter.md) | 2026-08-19 | 59 | fresh |
+| [Qovery](qovery.md) | 2026-08-19 | 59 | fresh |
+| [Radius](radius.md) | 2026-08-19 | 59 | fresh |
+| [Railway](railway.md) | 2026-08-19 | 59 | fresh |
+| [Release](release.md) | 2026-08-19 | 59 | fresh |
+| [Render](render.md) | 2026-08-19 | 59 | fresh |
+| [Spin / Fermyon](spin-fermyon.md) | 2026-08-19 | 59 | fresh |
+| [SST](sst.md) | 2026-08-19 | 59 | fresh |
+| [Supabase](supabase.md) | 2026-08-19 | 59 | fresh |
+| [Upsun](upsun.md) | 2026-08-19 | 59 | fresh |
+| [Vercel](vercel.md) | 2026-08-19 | 59 | fresh |
+| [Winglang](winglang.md) | 2026-08-19 | 59 | fresh |
+| [Anonymous container hosts](anon-container-hosts.md) | 2026-08-20 | 58 | fresh |
+| [Antimetal](antimetal.md) | 2026-08-20 | 58 | fresh |
+| [Appvia Wayfinder](appvia-wayfinder.md) | 2026-08-20 | 58 | fresh |
+| [Argo CD](argo-cd.md) | 2026-08-20 | 58 | pre-v1 — rewrite to contract |
+| [.NET Aspire](aspire.md) | 2026-08-20 | 58 | fresh |
+| [Atlassian Compass](atlassian-compass.md) | 2026-08-20 | 58 | fresh |
+| [CapRover](caprover.md) | 2026-08-20 | 58 | fresh |
+| [CAST AI](cast-ai.md) | 2026-08-20 | 58 | pre-v1 — rewrite to contract |
+| [celld](celld.md) | 2026-08-20 | 58 | fresh |
+| [CloudBolt](cloudbolt.md) | 2026-08-20 | 58 | fresh |
+| [Cloudify](cloudify.md) | 2026-08-20 | 58 | fresh |
+| [Convex](convex.md) | 2026-08-20 | 58 | fresh |
+| [Coolify](coolify.md) | 2026-08-20 | 58 | fresh |
+| [Cortex](cortex.md) | 2026-08-20 | 58 | fresh |
+| [Dokku](dokku.md) | 2026-08-20 | 58 | fresh |
+| [Dokploy](dokploy.md) | 2026-08-20 | 58 | fresh |
+| [FinOps tooling cohort](finops-tooling.md) | 2026-08-20 | 58 | pre-v1 — rewrite to contract |
+| [Flux CD](flux-cd.md) | 2026-08-20 | 58 | pre-v1 — rewrite to contract |
+| [Flux Network](flux-network.md) | 2026-08-20 | 58 | fresh |
+| [HPE Morpheus](hpe-morpheus.md) | 2026-08-20 | 58 | fresh |
+| [Infracost](infracost.md) | 2026-08-20 | 58 | pre-v1 — rewrite to contract |
+| [InsForge](insforge.md) | 2026-08-20 | 58 | fresh |
+| [Kamal](kamal.md) | 2026-08-20 | 58 | fresh |
+| [Kubecost](kubecost.md) | 2026-08-20 | 58 | pre-v1 — rewrite to contract |
+| [Kubernetes](kubernetes.md) | 2026-08-20 | 58 | fresh |
+| [Lakebed](lakebed.md) | 2026-08-20 | 58 | fresh |
+| [NetBird](netbird.md) | 2026-08-20 | 58 | pre-v1 — rewrite to contract |
+| [NetScaler](netscaler.md) | 2026-08-20 | 58 | fresh |
+| [Nitric](nitric.md) | 2026-08-20 | 58 | fresh |
+| [Nomad](nomad.md) | 2026-08-20 | 58 | fresh |
+| [Octopus Deploy](octopus-deploy.md) | 2026-08-20 | 58 | fresh |
+| [OpenCost](opencost.md) | 2026-08-20 | 58 | pre-v1 — rewrite to contract |
+| [OpenShift](openshift.md) | 2026-08-20 | 58 | fresh |
+| [OpenStack](openstack.md) | 2026-08-20 | 58 | fresh |
+| [OpsLevel](opslevel.md) | 2026-08-20 | 58 | fresh |
+| [Port](port.md) | 2026-08-20 | 58 | fresh |
+| [Pulumi](pulumi.md) | 2026-08-20 | 58 | fresh |
+| [Rancher Fleet](rancher-fleet.md) | 2026-08-20 | 58 | fresh |
+| [Red Hat Developer Hub](red-hat-developer-hub.md) | 2026-08-20 | 58 | fresh |
+| [Rivet](rivet.md) | 2026-08-20 | 58 | fresh |
+| [Roadie](roadie.md) | 2026-08-20 | 58 | fresh |
+| [ServerKit](serverkit.md) | 2026-08-20 | 58 | fresh |
+| [shoo.dev](shoo.md) | 2026-08-20 | 58 | fresh |
+| [StackGen](stackgen.md) | 2026-08-20 | 58 | fresh |
+| [System Initiative](system-initiative.md) | 2026-08-20 | 58 | fresh |
+| [Tailscale](tailscale.md) | 2026-08-20 | 58 | pre-v1 — rewrite to contract |
+| [Vantage](vantage.md) | 2026-08-20 | 58 | pre-v1 — rewrite to contract |
+| [wasmCloud](wasmcloud.md) | 2026-08-20 | 58 | fresh |
+| [Wasp](wasp.md) | 2026-08-20 | 58 | fresh |
 
 _86 canonical captures across 13 categories; 75 at contract v1._
 

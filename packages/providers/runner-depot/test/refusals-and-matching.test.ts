@@ -25,17 +25,27 @@
  * static credential has already leaked it to everyone who can fetch the
  * well-known path.
  */
+import type {
+	BuildMachineProvider,
+	GithubActionsClient,
+} from "@hobo/runner-github";
 import { describe, expect, it } from "vitest";
 
-import { createDepotBuildMachineProvider } from "../src/build-machine-provider.js";
+import {
+	createDepotBuildMachineProvider,
+	type DepotBuildExecutor,
+	type DepotBuildMachineProviderOptions,
+} from "../src/build-machine-provider.js";
 import { createDepotCatalogEntry } from "../src/catalog-entry.js";
+import type { DepotClient } from "../src/depot-client.js";
+import { type JsonObject, parseJsonObject } from "../src/json.js";
 import {
 	AUTH_SCHEMA,
 	MANIFEST_SCHEMA,
+	type PublishedManifestDocuments,
 	parsePublishedManifest,
 	publishCapabilityManifest,
 } from "../src/manifest.js";
-
 import { createDepotRunnerProvider } from "../src/runner-provider.js";
 
 // `manifest.ts` re-exports the auth and bundle schema ids but imports the cost
@@ -44,33 +54,41 @@ import { createDepotRunnerProvider } from "../src/runner-provider.js";
 // of this test "passed" a `toContain(undefined)`.
 const COST_SCHEMA_ID = "hobo.cost/v1";
 
-/** A Depot client that records calls and answers plausibly. */
-function fakeClient(
-	overrides: Partial<{
-		dispatchWorkflow: (input: unknown) => Promise<void>;
-		createBuild: () => Promise<{ buildId: string; buildToken: string }>;
-	}> = {},
-) {
-	const calls: { name: string; input: unknown }[] = [];
-	return {
-		calls,
-		client: {
-			async dispatchWorkflow(input: unknown) {
-				calls.push({ name: "dispatchWorkflow", input });
-				return overrides.dispatchWorkflow?.(input);
-			},
-			async createBuild() {
-				calls.push({ name: "createBuild", input: undefined });
-				return (
-					(await overrides.createBuild?.()) ?? {
-						buildId: "depot-build-1",
-						buildToken: "token",
-					}
-				);
-			},
-		} as never,
+/** A GitHub Actions client that records every call; no run ever appears. */
+function fakeActionsClient() {
+	const calls: string[] = [];
+	const client: GithubActionsClient = {
+		async dispatchWorkflow() {
+			calls.push("dispatchWorkflow");
+		},
+		async findDispatchedRun() {
+			calls.push("findDispatchedRun");
+			return undefined;
+		},
+		async getRun() {
+			calls.push("getRun");
+			throw new Error("no run is tracked in these tests");
+		},
+		async latestContainerDigest() {
+			calls.push("latestContainerDigest");
+			throw new Error("no image is published in these tests");
+		},
 	};
+	return { client, calls };
 }
+
+/** A Depot client that answers plausibly. */
+const DEPOT_CLIENT: DepotClient = {
+	async createBuild() {
+		return { buildId: "depot-build-1", buildToken: "token" };
+	},
+	async getBuild(buildId) {
+		return { buildId, status: "running" };
+	},
+};
+
+/** Tracking that would give up after one immediate poll. */
+const TRACKING = { attempts: 1, intervalMs: 0 };
 
 describe("matching a capability request", () => {
 	const capabilityFor = (port: string) => {
@@ -150,7 +168,7 @@ describe("matching a capability request", () => {
 			port: known.port,
 			features: ["time-travel"],
 		});
-		expect((answer as { missing?: string[] }).missing).toEqual(["time-travel"]);
+		expect(answer).toMatchObject({ missing: ["time-travel"] });
 	});
 
 	it("costs each capability", () => {
@@ -164,57 +182,50 @@ describe("what the runner lane refuses", () => {
 	it("refuses an empty job id", async () => {
 		// The job id is how every later event is correlated; an empty one produces
 		// a run nobody can attribute.
-		const { client } = fakeClient();
+		const { client } = fakeActionsClient();
 		const provider = createDepotRunnerProvider({
-			// SAFETY: the fake implements the client surface the provider calls.
-			client: client as never,
-			tracking: { pollIntervalMs: 0, maxPolls: 1 } as never,
+			client,
+			tracking: TRACKING,
 		});
-		await expect(provider.run({ jobId: "" } as never)).rejects.toThrow(
-			/non-empty/u,
-		);
+		await expect(provider.run({ jobId: "" })).rejects.toThrow(/non-empty/u);
 	});
 
 	it("refuses before dispatching anything", async () => {
 		// The check is first, so a malformed job never reaches the API.
-		const { client, calls } = fakeClient();
+		const { client, calls } = fakeActionsClient();
 		const provider = createDepotRunnerProvider({
-			// SAFETY: the fake implements the client surface the provider calls.
-			client: client as never,
-			tracking: { pollIntervalMs: 0, maxPolls: 1 } as never,
+			client,
+			tracking: TRACKING,
 		});
-		await provider.run({ jobId: "" } as never).catch(() => undefined);
+		await provider.run({ jobId: "" }).catch(() => undefined);
 		expect(calls).toHaveLength(0);
 	});
 
 	it("names itself by default", () => {
-		const { client } = fakeClient();
+		const { client } = fakeActionsClient();
 		const provider = createDepotRunnerProvider({
-			// SAFETY: the fake implements the client surface the provider calls.
-			client: client as never,
-			tracking: { pollIntervalMs: 0, maxPolls: 1 } as never,
+			client,
+			tracking: TRACKING,
 		});
 		expect(provider.id).toContain("depot");
 	});
 
 	it("takes an explicit id", () => {
-		const { client } = fakeClient();
+		const { client } = fakeActionsClient();
 		expect(
 			createDepotRunnerProvider({
-				// SAFETY: the fake implements the client surface the provider calls.
-				client: client as never,
-				tracking: { pollIntervalMs: 0, maxPolls: 1 } as never,
+				client,
+				tracking: TRACKING,
 				id: "@hobo/runner-depot:west",
 			}).id,
 		).toBe("@hobo/runner-depot:west");
 	});
 
 	it("publishes a runner manifest", () => {
-		const { client } = fakeClient();
+		const { client } = fakeActionsClient();
 		const provider = createDepotRunnerProvider({
-			// SAFETY: the fake implements the client surface the provider calls.
-			client: client as never,
-			tracking: { pollIntervalMs: 0, maxPolls: 1 } as never,
+			client,
+			tracking: TRACKING,
 		});
 		expect(provider.capabilityManifest().capabilities).toHaveLength(1);
 	});
@@ -222,18 +233,21 @@ describe("what the runner lane refuses", () => {
 
 describe("what the build lane refuses", () => {
 	const build = (
-		options: Record<string, unknown> = {},
-	): ReturnType<typeof createDepotBuildMachineProvider> => {
-		const { client } = fakeClient();
-		return createDepotBuildMachineProvider({
-			// SAFETY: the fake implements the client surface the provider calls.
-			client: client as never,
+		options: Partial<DepotBuildMachineProviderOptions> = {},
+	): BuildMachineProvider =>
+		createDepotBuildMachineProvider({
+			client: DEPOT_CLIENT,
+			registry: "registry.depot.dev/hobo",
 			...options,
-		} as never);
-	};
+		});
+
+	/** An executor that reports this digest for one metered unit. */
+	const reporting = (digest: string): DepotBuildExecutor => ({
+		execute: async () => ({ digest, cacheHitRatio: 0, meteredUnits: 1 }),
+	});
 
 	it("refuses an empty build id", async () => {
-		await expect(build().execute({ buildId: "" } as never)).rejects.toThrow(
+		await expect(build().execute({ buildId: "" })).rejects.toThrow(
 			/non-empty/u,
 		);
 	});
@@ -244,7 +258,7 @@ describe("what the build lane refuses", () => {
 		await expect(
 			build({ creditBudget: { remainingUnits: 0 } }).execute({
 				buildId: "b1",
-			} as never),
+			}),
 		).rejects.toThrow(/credit/iu);
 	});
 
@@ -253,7 +267,7 @@ describe("what the build lane refuses", () => {
 			build({ creditBudget: { remainingUnits: 1 } }).execute({
 				buildId: "b1",
 				estimatedUnits: 5,
-			} as never),
+			}),
 		).rejects.toThrow(/credit/iu);
 	});
 
@@ -263,17 +277,15 @@ describe("what the build lane refuses", () => {
 		await expect(
 			build({
 				creditBudget: { remainingUnits: 1 },
-				executor: {
-					execute: async () => ({ digest: "sha256:abc" }),
-				},
-			}).execute({ buildId: "b1", estimatedUnits: 1 } as never),
+				executor: reporting("sha256:abc"),
+			}).execute({ buildId: "b1", estimatedUnits: 1 }),
 		).resolves.toBeDefined();
 	});
 
 	it("refuses when no executor is wired", async () => {
 		// Credit first, executor second: an over-budget build reports the budget
 		// rather than a configuration problem it also has.
-		await expect(build().execute({ buildId: "b1" } as never)).rejects.toThrow(
+		await expect(build().execute({ buildId: "b1" })).rejects.toThrow(
 			/executor/iu,
 		);
 	});
@@ -283,8 +295,8 @@ describe("what the build lane refuses", () => {
 		// let the image a deploy runs differ from the one that was built.
 		await expect(
 			build({
-				executor: { execute: async () => ({ digest: "latest" }) },
-			}).execute({ buildId: "b1" } as never),
+				executor: reporting("latest"),
+			}).execute({ buildId: "b1" }),
 		).rejects.toThrow(/non-digest/u);
 	});
 });
@@ -292,17 +304,15 @@ describe("what the build lane refuses", () => {
 describe("parsing a published manifest", () => {
 	const published = () => publishCapabilityManifest();
 
-	const withDocument = (path: string, mutate: (doc: JsonRecord) => void) => {
-		const documents = { ...published() };
-		// SAFETY: every published document is a JSON object by construction.
-		const parsed = JSON.parse(
-			documents[path as keyof typeof documents],
-		) as JsonRecord;
-		mutate(parsed);
-		return { ...documents, [path]: JSON.stringify(parsed) };
+	/** The published bundle with one document parsed, rewritten and re-encoded. */
+	const withDocument = (
+		path: keyof PublishedManifestDocuments,
+		rewrite: (doc: JsonObject) => JsonObject,
+	): PublishedManifestDocuments => {
+		const documents = published();
+		const rewritten = rewrite(parseJsonObject(documents[path]));
+		return { ...documents, [path]: JSON.stringify(rewritten) };
 	};
-
-	type JsonRecord = Record<string, unknown>;
 
 	it("accepts what the package itself publishes", () => {
 		expect(parsePublishedManifest(published()).ok).toBe(true);
@@ -315,9 +325,7 @@ describe("parsing a published manifest", () => {
 	it("refuses a wrong index schema", () => {
 		const documents = withDocument(
 			"/.well-known/capability-manifest/index.json",
-			(doc) => {
-				doc.manifestSchema = "hobo.capability-manifest/v0";
-			},
+			(doc) => ({ ...doc, manifestSchema: "hobo.capability-manifest/v0" }),
 		);
 		expect(parsePublishedManifest(documents).errors.join(" ")).toContain(
 			MANIFEST_SCHEMA,
@@ -327,9 +335,7 @@ describe("parsing a published manifest", () => {
 	it("refuses a wrong auth schema", () => {
 		const documents = withDocument(
 			"/.well-known/capability-manifest/auth.json",
-			(doc) => {
-				doc.schema = "hobo.provider-auth/v0";
-			},
+			(doc) => ({ ...doc, schema: "hobo.provider-auth/v0" }),
 		);
 		expect(parsePublishedManifest(documents).errors.join(" ")).toContain(
 			AUTH_SCHEMA,
@@ -339,9 +345,7 @@ describe("parsing a published manifest", () => {
 	it("refuses a wrong cost schema", () => {
 		const documents = withDocument(
 			"/.well-known/capability-manifest/cost.json",
-			(doc) => {
-				doc.schema = "hobo.cost/v0";
-			},
+			(doc) => ({ ...doc, schema: "hobo.cost/v0" }),
 		);
 		expect(parsePublishedManifest(documents).errors.join(" ")).toContain(
 			COST_SCHEMA_ID,
@@ -358,9 +362,7 @@ describe("parsing a published manifest", () => {
 		// refusal rather than a warning.
 		const documents = withDocument(
 			"/.well-known/capability-manifest/auth.json",
-			(doc) => {
-				doc[field] = "secret-material";
-			},
+			(doc) => ({ ...doc, [field]: "secret-material" }),
 		);
 		expect(parsePublishedManifest(documents).errors.join(" ")).toMatch(
 			/static secrets/u,
@@ -372,9 +374,7 @@ describe("parsing a published manifest", () => {
 		// document that simply forgot the field cannot pass as brokered.
 		const documents = withDocument(
 			"/.well-known/capability-manifest/auth.json",
-			(doc) => {
-				doc.staticSecrets = true;
-			},
+			(doc) => ({ ...doc, staticSecrets: true }),
 		);
 		expect(parsePublishedManifest(documents).errors.join(" ")).toMatch(
 			/staticSecrets must be false/u,
@@ -386,9 +386,7 @@ describe("parsing a published manifest", () => {
 		// half-published provider; three means something else got in.
 		const documents = withDocument(
 			"/.well-known/capability-manifest/capabilities.json",
-			(doc) => {
-				doc.capabilities = [{ port: "runner" }];
-			},
+			(doc) => ({ ...doc, capabilities: [{ port: "runner" }] }),
 		);
 		expect(parsePublishedManifest(documents).ok).toBe(false);
 	});
@@ -398,11 +396,12 @@ describe("parsing a published manifest", () => {
 		// pass, not discover the next error only after fixing this one.
 		const documents = withDocument(
 			"/.well-known/capability-manifest/auth.json",
-			(doc) => {
-				doc.schema = "wrong";
-				doc.staticSecrets = true;
-				doc.pat = "leaked";
-			},
+			(doc) => ({
+				...doc,
+				schema: "wrong",
+				staticSecrets: true,
+				pat: "leaked",
+			}),
 		);
 		expect(
 			parsePublishedManifest(documents).errors.length,

@@ -1,7 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 
-import { commandForPlatform } from "./lib/env.ts";
+import { commandForPlatform, withoutPackageManager } from "./lib/env.ts";
 import { type JsonValue, runtimeKind } from "./lib/inspectable.ts";
 import { type Check, selectRelevantChecks } from "./relevant-check-policy.js";
 
@@ -24,10 +24,21 @@ type ChangedFileRecord = {
 	status: string;
 };
 
+/**
+ * How a check is actually started: pnpm-shaped checks run through `node --run`
+ * or `node_modules/.bin` (see `withoutPackageManager`), so the pre-commit hook
+ * needs no usable pnpm; what still needs pnpm stays pnpm.
+ */
+function invocationFor(command: string, commandArgs: string[]) {
+	const direct = withoutPackageManager(command, commandArgs);
+	const platformCommand = commandForPlatform(direct.command, direct.args);
+	const shown = direct.command === process.execPath ? "node" : direct.command;
+	console.log(`\n▶ ${[shown, ...direct.args].join(" ")}`);
+	return platformCommand;
+}
+
 function run(command: string, commandArgs: string[]) {
-	const printable = [command, ...commandArgs].join(" ");
-	console.log(`\n▶ ${printable}`);
-	const platformCommand = commandForPlatform(command, commandArgs);
+	const platformCommand = invocationFor(command, commandArgs);
 	const result = spawnSync(platformCommand.command, platformCommand.args, {
 		stdio: "inherit",
 		shell: false,
@@ -36,9 +47,7 @@ function run(command: string, commandArgs: string[]) {
 }
 
 function runAsync(check: Check): Promise<number> {
-	const printable = [check.command, ...check.args].join(" ");
-	console.log(`\n▶ ${printable}`);
-	const platformCommand = commandForPlatform(check.command, check.args);
+	const platformCommand = invocationFor(check.command, check.args);
 	const child = spawn(platformCommand.command, platformCommand.args, {
 		stdio: "inherit",
 		shell: false,

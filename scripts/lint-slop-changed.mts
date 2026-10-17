@@ -16,7 +16,11 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import process from "node:process";
 
-import { commandForPlatform, sanitizeNodeOptions } from "./lib/env.ts";
+import {
+	commandForPlatform,
+	sanitizeNodeOptions,
+	withoutPackageManager,
+} from "./lib/env.ts";
 
 const LINTABLE = /\.(?:[cm]?[jt]s|[jt]sx)$/u;
 const CHUNK_SIZE = 200;
@@ -72,13 +76,14 @@ if (files.length === 0) {
 let failure = 0;
 for (let index = 0; index < files.length; index += CHUNK_SIZE) {
 	const chunk = files.slice(index, index + CHUNK_SIZE);
-	const invocation = commandForPlatform("pnpm", [
+	const direct = withoutPackageManager("pnpm", [
 		"exec",
 		"oxlint",
 		"--deny-warnings",
 		"--no-error-on-unmatched-pattern",
 		...chunk,
 	]);
+	const invocation = commandForPlatform(direct.command, direct.args);
 	const result = spawnSync(invocation.command, invocation.args, {
 		stdio: "inherit",
 		env: sanitizeNodeOptions(),

@@ -158,7 +158,7 @@ Optional: enable the repo pre-commit hook:
 npm run prepare-hooks
 ```
 
-After that, `.githooks/pre-commit` runs the generated-files guard (`pnpm run generated:guard`) and the staged impact-routed gate (`pnpm run check:relevant:staged`), which selects the relevant subset of the architecture guard, tests, technical standards, docs linters, and docs freshness for the staged diff before each commit. `npm run architecture:guard:staged` runs before the heavier test suite so missing PACT/protobuf/CUE/parse/event evidence is caught locally instead of burning CI.
+After that, `.githooks/pre-commit` runs the generated-files guard (`node --run generated:guard`) and the staged impact-routed gate (`node --run check:relevant:staged`), which selects the relevant subset of the architecture guard, tests, technical standards, docs linters, and docs freshness for the staged diff before each commit. `npm run architecture:guard:staged` runs before the heavier test suite so missing PACT/protobuf/CUE/parse/event evidence is caught locally instead of burning CI.
 
 ## Technical standards
 

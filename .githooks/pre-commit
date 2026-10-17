@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
 set -eu
 
-pnpm run generated:guard
-BASE="${HOBO_ARCHITECTURE_BASE:-$(pnpm --silent run fetch:pr-base)}"
-pnpm run check:relevant:staged -- --base="$BASE"
+node --run generated:guard
+BASE="${HOBO_ARCHITECTURE_BASE:-$(node --run fetch:pr-base 2>/dev/null)}"
+node --run check:relevant:staged -- --base="$BASE"

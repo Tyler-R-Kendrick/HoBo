@@ -23,4 +23,8 @@ message AcceptanceEvidence {
   // The exit code ai-bdd wrote into the report: 0 passed, 1 a scenario failed,
   // inconclusive or blocked, 3 infrastructure. 2 and 4 write no report.
   int32 exit_code = 15;
+  // ISO 8601, as the report states it. The gate requires it no earlier than
+  // its own spawn of `ai-bdd run` (less 5 s of clock skew), and the report's
+  // run directory to be new, so an earlier run's report is never this run's.
+  string started_at = 16;
 }

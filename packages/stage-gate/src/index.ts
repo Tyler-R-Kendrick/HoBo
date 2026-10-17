@@ -10,13 +10,15 @@ export {
 } from "./acceptance.js";
 export {
 	ACCEPTANCE_STEPS,
-	type AcceptanceConfig,
 	type AcceptanceOutcome,
 	type AcceptanceResult,
 	type AcceptanceStep,
-	acceptanceConfigOf,
 	checkAcceptance,
 } from "./acceptance-check.js";
+export {
+	type AcceptanceConfig,
+	acceptanceConfigOf,
+} from "./acceptance-config.js";
 export { RUN_REPORT_FIELDS } from "./acceptance-fields.js";
 export { defineReleaseGate, defineStageGateS0 } from "./definition.js";
 export {

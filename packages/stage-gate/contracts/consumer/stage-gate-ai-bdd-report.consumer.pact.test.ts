@@ -230,8 +230,10 @@ describe("ai-bdd report consumer pact", () => {
 				step === "replay" &&
 				(interaction.exitCode === 0 || interaction.exitCode === 1);
 			if (readsReport && reportFile !== undefined) {
+				// The stand-in writes the report as a run would: a run id of its own, started now.
+				const written = join(project, ".ai-bdd", "report", "report.json");
 				const digest = createHash("sha256")
-					.update(readFileSync(reportFile))
+					.update(readFileSync(written))
 					.digest("hex");
 				expect(result.evidence.report_digest).toBe(`sha256:${digest}`);
 			} else {

@@ -46,6 +46,7 @@ describe("parseAiBddRunReport", () => {
 		const evidence = parseAiBddRunReport(bytes);
 		expect(evidence).toEqual({
 			runId: "01a132d2-fe9a-7d3a-a7d8-157d681d6417",
+			startedAt: "2026-10-13T01:14:10.915Z",
 			reportDigest: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
 			scenariosTotal: 5,
 			passed: 5,

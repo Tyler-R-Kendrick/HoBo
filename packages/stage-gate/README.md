@@ -80,6 +80,18 @@ project's own devDependency use its package manager's exec, for example
 | `acceptance-replay` | `run --frozen --no-agent --reporter json,junit` | exit 0 and a report that parses as replay-only evidence with that exit code |
 | `acceptance-evidence-intact` | `verify-run .ai-bdd/runs/<runId>` | the run directory holds the same report, and exit 0 |
 
+The report must be this run's. Before spawning `run`, the replay step notes the
+time and the run directories that exist; after exit 0 or 1 the report's `runId`
+must name a run directory that did not exist before, and its `startedAt` must be
+no earlier than the spawn (5 s of clock skew allowed). Otherwise the check fails
+with a message naming the run id and why, and records nothing of that report: an
+earlier run's report survives exit 2 and 4, a wrapper that swallows ai-bdd's
+failure, and a CLI that never loaded. ai-bdd writes the latest report to
+`join(dirname(runsDir), "report")`; the gate takes `runsDir` from
+`HOBO_AI_BDD_RUNS_DIR` (relative to the project, default `.ai-bdd/runs`), because
+it cannot read a `.ts`/`.mjs` ai-bdd config without running project code. A
+project that moves `runsDir` must set it; one that does not fails on freshness.
+
 Each check `requires` the one before it; if that did not pass it is recorded
 `skipped` (exit code -1) and never started. The exit code is read before the
 report: after `run` exits 2 or 4 no report was written and an earlier one may

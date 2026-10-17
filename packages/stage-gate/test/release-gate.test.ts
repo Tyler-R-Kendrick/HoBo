@@ -20,8 +20,9 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 import { afterEach, describe, expect, it } from "vitest";
-
+import { checkAcceptance } from "../src/acceptance-check.js";
 import { defineReleaseGate } from "../src/definition.js";
+import { isJsonObject, isJsonString, parseJsonText } from "../src/json.js";
 import {
 	parseStageGateRecord,
 	serializeStageGateRecord,
@@ -62,6 +63,8 @@ interface FakePlan {
 		readonly exit: number;
 		readonly report?: string;
 		readonly runCopy?: "same" | "different" | "none";
+		readonly startedAt?: string;
+		readonly runsDir?: string;
 	};
 	readonly verifyRun: number;
 }
@@ -88,6 +91,7 @@ async function runGate(
 	plan: FakePlan,
 	command: readonly string[] = FAKE_COMMAND,
 	project = newDir(),
+	extraEnv: Readonly<Record<string, string>> = {},
 ): Promise<GateRun> {
 	const log = join(newDir(), "calls.log");
 	writeFileSync(log, "");
@@ -98,10 +102,31 @@ async function runGate(
 			HOBO_AI_BDD_PROJECT: project,
 			FAKE_AI_BDD: JSON.stringify(plan),
 			FAKE_AI_BDD_LOG: log,
+			...extraEnv,
 		},
 	});
 	const calls = readFileSync(log, "utf8").split("\n").filter(Boolean);
 	return { result, project, calls };
+}
+
+function runIdOf(reportPath: string): string {
+	const runId = parseJsonText(readFileSync(reportPath, "utf8"));
+	const id = isJsonObject(runId) ? runId.runId : undefined;
+	if (!isJsonString(id)) throw new Error(`${reportPath} has no runId`);
+	return id;
+}
+
+/** A project that already holds the passed fixture as its latest report and its run directory: a run that happened before. */
+function earlierRun(project: string): string {
+	const runId = "01a132d2-fe9a-7d3a-a7d8-157d681d6417";
+	for (const dir of [
+		join(project, ".ai-bdd", "report"),
+		join(project, ".ai-bdd", "runs", runId),
+	]) {
+		mkdirSync(dir, { recursive: true });
+		writeFileSync(join(dir, "report.json"), readFileSync(PASSED));
+	}
+	return runId;
 }
 
 function sha256Of(path: string): string {
@@ -178,9 +203,10 @@ describe("the release gate through real processes", () => {
 			const reportPath = join(run.project, ".ai-bdd", "report", "report.json");
 			// The digest is of the file ai-bdd wrote: `sha256sum report.json` prints the same.
 			expect(replay.evidence.report_digest).toBe(sha256Of(reportPath));
-			expect(replay.evidence.report_digest).toBe(sha256Of(PASSED));
+			const runId = runIdOf(reportPath);
+			expect(runId).not.toBe("01a132d2-fe9a-7d3a-a7d8-157d681d6417");
 			expect(replay.evidence).toMatchObject({
-				run_id: "01a132d2-fe9a-7d3a-a7d8-157d681d6417",
+				run_id: runId,
 				scenarios_total: "5",
 				scenarios_passed: "5",
 				model_calls: "0",
@@ -189,12 +215,12 @@ describe("the release gate through real processes", () => {
 				report_exit_code: "0",
 			});
 			expect(checkOf(run, "acceptance-evidence-intact").evidence).toMatchObject(
-				{ report_digest: sha256Of(PASSED), exit_code: "0" },
+				{ report_digest: sha256Of(reportPath), run_id: runId, exit_code: "0" },
 			);
 			expect(run.calls).toEqual([
 				'["compile","--check"]',
 				'["run","--frozen","--no-agent","--reporter","json,junit"]',
-				`["verify-run",${JSON.stringify(join(run.project, ".ai-bdd", "runs", "01a132d2-fe9a-7d3a-a7d8-157d681d6417"))}]`,
+				`["verify-run",${JSON.stringify(join(run.project, ".ai-bdd", "runs", runId))}]`,
 			]);
 			const reparsed = parseStageGateRecord(
 				serializeStageGateRecord(run.result.record),
@@ -290,7 +316,9 @@ describe("the release gate through real processes", () => {
 			expect(replay.evidence).toMatchObject({
 				scenarios_failed: "1",
 				scenarios_passed: "4",
-				report_digest: sha256Of(report),
+				report_digest: sha256Of(
+					join(run.project, ".ai-bdd", "report", "report.json"),
+				),
 				report_exit_code: "1",
 			});
 			expect(checkOf(run, "acceptance-evidence-intact").status).toBe("skipped");
@@ -354,6 +382,89 @@ describe("the release gate through real processes", () => {
 		},
 		TIMEOUT,
 	);
+
+	it(
+		"the reviewer's repro: a no-op command and an earlier run's report and run directory fail the record",
+		async () => {
+			const project = newDir();
+			const runId = earlierRun(project);
+			const run = await runGate(ALL_PASS, ["/bin/true"], project);
+			const replay = checkOf(run, "acceptance-replay");
+			expect(replay).toMatchObject({ status: "failed", exitCode: 1 });
+			expect(replay.evidence.reason).toBe(
+				`report.json names run ${runId}, which was already in .ai-bdd/runs before this run started: it is not this run's report`,
+			);
+			// Nothing of the earlier run is recorded as if this run had produced it.
+			expect(replay.evidence.report_digest).toBeUndefined();
+			expect(replay.evidence.scenarios_total).toBeUndefined();
+			expect(checkOf(run, "acceptance-evidence-intact").status).toBe("skipped");
+			expect(run.result.record.status).toBe("failed");
+		},
+		TIMEOUT,
+	);
+
+	it(
+		"a report that started before the run was spawned is refused",
+		async () => {
+			const run = await runGate({
+				...ALL_PASS,
+				run: { exit: 0, report: PASSED, startedAt: "2026-10-13T01:14:10.915Z" },
+			});
+			const replay = checkOf(run, "acceptance-replay");
+			expect(replay).toMatchObject({ status: "failed", exitCode: 1 });
+			expect(replay.evidence.reason).toMatch(
+				/^report\.json for run [0-9a-f-]+ started at 2026-10-13T01:14:10\.915Z, before this run was started at .* \(5 s of clock skew allowed\): it is not this run's report$/u,
+			);
+		},
+		TIMEOUT,
+	);
+
+	it(
+		"a project that moved runsDir passes with HOBO_AI_BDD_RUNS_DIR, and fails on a stale default report without it",
+		async () => {
+			const moved = {
+				...ALL_PASS,
+				run: { exit: 0, report: PASSED, runsDir: "out/runs" },
+			};
+			const named = await runGate(moved, FAKE_COMMAND, newDir(), {
+				HOBO_AI_BDD_RUNS_DIR: "out/runs",
+			});
+			expect(named.result.record.status).toBe("passed");
+			const project = newDir();
+			earlierRun(project);
+			const unnamed = await runGate(moved, FAKE_COMMAND, project);
+			expect(checkOf(unnamed, "acceptance-replay").evidence.reason).toContain(
+				"which was already in .ai-bdd/runs before this run started",
+			);
+			expect(unnamed.result.record.status).toBe("failed");
+		},
+		TIMEOUT,
+	);
+
+	it("a run that fails to load (exit 1, no report) fails on freshness, not on the old run's data", () => {
+		const project = newDir();
+		const runId = earlierRun(project);
+		// Node exits 1 when the CLI's entry cannot be loaded, before ai-bdd writes anything.
+		const result = checkAcceptance(
+			["replay"],
+			{
+				...process.env,
+				HOBO_AI_BDD_CMD: JSON.stringify([
+					process.execPath,
+					join(newDir(), "missing-bin.js"),
+				]),
+				HOBO_AI_BDD_PROJECT: project,
+			},
+			project,
+		);
+		expect(result).toMatchObject({ outcome: "failed", exitCode: 1 });
+		expect(result.evidence.reason).toBe(
+			`report.json names run ${runId}, which was already in .ai-bdd/runs before this run started: it is not this run's report`,
+		);
+		expect(result.evidence.run_id).toBeUndefined();
+		expect(result.evidence.report_digest).toBeUndefined();
+		expect(result.evidence.scenarios_total).toBeUndefined();
+	});
 
 	it(
 		"a gate with no project configured fails with exit 2",

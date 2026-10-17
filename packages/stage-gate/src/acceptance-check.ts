@@ -18,11 +18,15 @@
  * failure with exit 2, like ai-bdd's own usage errors.
  */
 import { spawnSync } from "node:child_process";
-import { readFileSync, statSync } from "node:fs";
-import { join, resolve } from "node:path";
+import { readdirSync, readFileSync } from "node:fs";
+import { join, relative, sep } from "node:path";
 
 import { type AcceptanceEvidence, parseAiBddRunReport } from "./acceptance.js";
-import { isJsonArray, isJsonString, parseJsonText } from "./json.js";
+import {
+	type AcceptanceConfig,
+	acceptanceConfigOf,
+} from "./acceptance-config.js";
+import { isJsonString } from "./json.js";
 import type { CheckEvidence } from "./types.js";
 
 export const ACCEPTANCE_STEPS = [
@@ -43,17 +47,9 @@ export interface AcceptanceResult {
 	readonly transcript: string;
 }
 
-export interface AcceptanceConfig {
-	readonly command: readonly string[];
-	readonly project: string;
-	/** The environment ai-bdd runs with: the one the check was given. */
-	readonly env: NodeJS.ProcessEnv;
-}
-
 const NOT_RUN = 3;
 const USAGE = 2;
 const TAIL_CHARS = 2000;
-const REPORT = [".ai-bdd", "report", "report.json"] as const;
 
 interface AiBddRun {
 	readonly args: readonly string[];
@@ -146,6 +142,7 @@ function evidenceFields(evidence: AcceptanceEvidence): CheckEvidence {
 		frozen: String(evidence.frozen),
 		no_agent: String(evidence.noAgent),
 		report_exit_code: String(evidence.exitCode),
+		report_started_at: evidence.startedAt,
 	};
 }
 
@@ -153,18 +150,63 @@ type ReportRead =
 	| { readonly bytes: Buffer; readonly evidence: AcceptanceEvidence }
 	| { readonly refused: string };
 
-function readReport(project: string): ReportRead {
+function readReport(config: AcceptanceConfig): ReportRead {
 	let bytes: Buffer;
 	try {
-		bytes = readFileSync(join(project, ...REPORT));
+		bytes = readFileSync(config.reportFile);
 	} catch {
-		return { refused: `${REPORT.join("/")} is missing` };
+		return { refused: `${shown(config, config.reportFile)} is missing` };
 	}
 	try {
 		return { bytes, evidence: parseAiBddRunReport(bytes) };
 	} catch (cause) {
 		return { refused: cause instanceof Error ? cause.message : String(cause) };
 	}
+}
+
+/** A path as a person reads it in a message: relative to the project when inside it. */
+function shown(config: AcceptanceConfig, path: string): string {
+	const rel = relative(config.project, path);
+	return rel === "" || rel.startsWith("..") ? path : rel.split(sep).join("/");
+}
+
+/** The run directories that exist now; none when the runs directory does not. */
+function runIds(config: AcceptanceConfig): ReadonlySet<string> {
+	try {
+		return new Set(readdirSync(config.runsDir));
+	} catch {
+		return new Set();
+	}
+}
+
+/** Allowed difference between this machine's clock and the one that stamped `startedAt`. */
+const CLOCK_SKEW_MS = 5000;
+
+/**
+ * Whether the report on disk is the one the run just spawned wrote: its run
+ * directory is new, and it started no earlier than the spawn (less skew). An
+ * old report survives exit 2 and 4, a moved runsDir, a wrapper that swallows
+ * ai-bdd's failure, and a CLI that never loaded; none of those is this run.
+ */
+function staleBecause(
+	config: AcceptanceConfig,
+	evidence: AcceptanceEvidence,
+	before: ReadonlySet<string>,
+	spawnedAt: number,
+): string | undefined {
+	const runs = shown(config, config.runsDir);
+	const stale = "it is not this run's report";
+	if (before.has(evidence.runId)) {
+		return `report.json names run ${evidence.runId}, which was already in ${runs} before this run started: ${stale}`;
+	}
+	if (!runIds(config).has(evidence.runId)) {
+		return `report.json names run ${evidence.runId}, which ${runs} does not hold: ${stale}`;
+	}
+	if (Date.parse(evidence.startedAt) < spawnedAt - CLOCK_SKEW_MS) {
+		const spawned = new Date(spawnedAt).toISOString();
+		return `report.json for run ${evidence.runId} started at ${evidence.startedAt}, before this run was started at ${spawned} (5 s of clock skew allowed): ${stale}`;
+	}
+	return undefined;
 }
 
 function plansFresh(config: AcceptanceConfig): AcceptanceResult {
@@ -176,6 +218,8 @@ function plansFresh(config: AcceptanceConfig): AcceptanceResult {
 }
 
 function replay(config: AcceptanceConfig): AcceptanceResult {
+	const before = runIds(config);
+	const spawnedAt = Date.now();
 	const run = runAiBdd(config, [
 		"run",
 		"--frozen",
@@ -184,13 +228,18 @@ function replay(config: AcceptanceConfig): AcceptanceResult {
 		"json,junit",
 	]);
 	if (run.unstartable !== "" || (run.status !== 0 && run.status !== 1)) {
-		// Exit 2 and 4 write no report and 3 says nothing about the product: whatever is on disk is not read.
+		// Exit 2 and 4 write no report; exit 3 writes one that says nothing about the product. None is read.
 		return commandResult("replay", run, { report: "not read" });
 	}
 	const step = { step: "replay", exit_code: String(run.status) };
-	const read = readReport(config.project);
+	const read = readReport(config);
 	if ("refused" in read) {
 		return result("failed", 1, { ...step, reason: read.refused }, run.output);
+	}
+	const stale = staleBecause(config, read.evidence, before, spawnedAt);
+	if (stale !== undefined) {
+		// Nothing of an earlier run goes into this run's evidence.
+		return result("failed", 1, { ...step, reason: stale }, run.output);
 	}
 	const fields = { ...step, ...evidenceFields(read.evidence) };
 	if (read.evidence.exitCode !== run.status) {
@@ -204,11 +253,11 @@ function replay(config: AcceptanceConfig): AcceptanceResult {
 
 function evidenceIntact(config: AcceptanceConfig): AcceptanceResult {
 	const step = { step: "evidence-intact" };
-	const read = readReport(config.project);
+	const read = readReport(config);
 	if ("refused" in read) {
 		return result("failed", 1, { ...step, reason: read.refused });
 	}
-	const runDir = join(config.project, ".ai-bdd", "runs", read.evidence.runId);
+	const runDir = join(config.runsDir, read.evidence.runId);
 	const fields = {
 		...step,
 		run_id: read.evidence.runId,
@@ -218,11 +267,11 @@ function evidenceIntact(config: AcceptanceConfig): AcceptanceResult {
 	try {
 		copy = readFileSync(join(runDir, "report.json"));
 	} catch {
-		const reason = `.ai-bdd/runs/${read.evidence.runId}/report.json is missing`;
+		const reason = `${shown(config, join(runDir, "report.json"))} is missing`;
 		return result("failed", 1, { ...fields, reason });
 	}
 	if (!copy.equals(read.bytes)) {
-		const reason = `.ai-bdd/runs/${read.evidence.runId}/report.json differs from ${REPORT.join("/")}`;
+		const reason = `${shown(config, join(runDir, "report.json"))} differs from ${shown(config, config.reportFile)}`;
 		return result("failed", 1, { ...fields, reason });
 	}
 	return commandResult(
@@ -240,37 +289,6 @@ const STEPS = {
 	AcceptanceStep,
 	(config: AcceptanceConfig) => AcceptanceResult
 >;
-
-function commandOf(raw: string | undefined): readonly string[] | undefined {
-	if (raw === undefined) return ["ai-bdd"];
-	const parsed = parseJsonText(raw);
-	if (!isJsonArray(parsed) || parsed.length === 0) return undefined;
-	const words = parsed.filter((word) => isJsonString(word) && word !== "");
-	return words.length === parsed.length ? words.map(String) : undefined;
-}
-
-/** HOBO_AI_BDD_CMD (a JSON argv, default ["ai-bdd"]) and HOBO_AI_BDD_PROJECT (a directory, relative to `cwd`). */
-export function acceptanceConfigOf(
-	env: NodeJS.ProcessEnv,
-	cwd: string,
-): AcceptanceConfig | string {
-	const command = commandOf(env.HOBO_AI_BDD_CMD);
-	if (command === undefined) {
-		return 'HOBO_AI_BDD_CMD must be a JSON array of non-empty strings, for example ["ai-bdd"]';
-	}
-	const projectRaw = env.HOBO_AI_BDD_PROJECT ?? "";
-	if (projectRaw === "") {
-		return "HOBO_AI_BDD_PROJECT is not set: name the ai-bdd project directory";
-	}
-	const project = resolve(cwd, projectRaw);
-	const isDirectory = statSync(project, {
-		throwIfNoEntry: false,
-	})?.isDirectory();
-	if (isDirectory !== true) {
-		return `HOBO_AI_BDD_PROJECT ${project} is not a directory`;
-	}
-	return { command, project, env };
-}
 
 function stepsOf(
 	argv: readonly string[],

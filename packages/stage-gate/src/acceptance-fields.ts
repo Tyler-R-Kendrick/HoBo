@@ -20,7 +20,7 @@ const TIMING = "ignored: timing, not outcome";
 export const RUN_REPORT_FIELDS = {
 	schemaVersion: "read",
 	runId: "read",
-	startedAt: "ignored: the stage-gate record carries its own start and finish",
+	startedAt: "read",
 	finishedAt: "ignored: the stage-gate record carries its own start and finish",
 	options: "read",
 	"options.frozen": "read",

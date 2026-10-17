@@ -73,6 +73,8 @@ export type ReportDigest = string & { readonly [digestBrand]: true };
 export interface AcceptanceEvidence {
 	readonly runId: AiBddRunId;
 	readonly reportDigest: ReportDigest;
+	/** ISO 8601, as the report states it: when ai-bdd says the run began. */
+	readonly startedAt: string;
 	readonly scenariosTotal: number;
 	readonly passed: number;
 	readonly healed: number;
@@ -211,6 +213,21 @@ function readRunId(report: JsonObject, issues: string[]): string {
 	return "";
 }
 
+const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/u;
+
+function readStartedAt(report: JsonObject, issues: string[]): string {
+	const startedAt = fieldOf(report, "startedAt");
+	if (
+		isJsonString(startedAt) &&
+		ISO_RE.test(startedAt) &&
+		Number.isFinite(Date.parse(startedAt))
+	) {
+		return startedAt;
+	}
+	issues.push("startedAt: expected an ISO 8601 timestamp");
+	return "";
+}
+
 function readExitCode(
 	report: JsonObject,
 	issues: string[],
@@ -260,6 +277,7 @@ export function parseAiBddRunReport(bytes: Uint8Array): AcceptanceEvidence {
 	const issues: string[] = [];
 	closedKeys(report, "", RUN_REPORT_KEYS.RunReport, issues);
 	const runId = readRunId(report, issues);
+	const startedAt = readStartedAt(report, issues);
 	readOptions(report, issues);
 	const tally: ScenarioTally = {
 		run: readUsage(report, issues),
@@ -301,6 +319,7 @@ export function parseAiBddRunReport(bytes: Uint8Array): AcceptanceEvidence {
 		// SAFETY: readRunId returned it only after RUN_ID_RE matched, the whole AiBddRunId invariant.
 		runId: runId as AiBddRunId,
 		reportDigest: reportDigestOf(bytes),
+		startedAt,
 		scenariosTotal: tally.scenarios,
 		...totals,
 		fuzzySteps: tally.fuzzySteps,

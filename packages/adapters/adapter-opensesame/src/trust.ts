@@ -219,7 +219,7 @@ export function trustedPath(
 	if (kept.length === 0) {
 		throw new OpenSesameAdapterError(
 			"bridge_missing",
-			"no directory is left to look `node` up in: every entry of PATH is empty, relative, missing or in a place others could have written, and so is each system directory (/usr/local/bin, /usr/bin, /bin; on Windows SystemRoot's System32 and SystemRoot). Nothing was started and the store passphrase went nowhere. Put `node` in a directory only you and root can write and name it on PATH, or, where your OpenSesame reads OPENSESAME_NODE, name the file there and list that name in passEnv",
+			"no directory is left to look `node` up in: every entry of PATH is empty, relative, missing or in a place others could have written, and so is each system directory (/usr/local/bin, /usr/bin, /bin; on Windows SystemRoot's System32 and SystemRoot). Nothing was started and the store passphrase went nowhere. Put `opensesame` and `node` in a directory only you and root can write, and put that directory on PATH",
 		);
 	}
 	return kept.join(flavour.delimiter);

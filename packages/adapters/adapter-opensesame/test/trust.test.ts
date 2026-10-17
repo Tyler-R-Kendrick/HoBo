@@ -323,6 +323,9 @@ describe("the PATH a run is started with keeps only places that pass the same ru
 					),
 				);
 				expect(said?.code, label).toBe("bridge_missing");
+				// The remedy is a trusted directory on PATH; OPENSESAME_NODE does not help when OpenSesame is never started.
+				expect(said?.message, label).toContain("on PATH");
+				expect(said?.message, label).not.toContain("OPENSESAME_NODE");
 			}
 		}
 	});

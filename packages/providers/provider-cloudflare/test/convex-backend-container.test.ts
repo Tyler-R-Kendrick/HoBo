@@ -47,12 +47,14 @@ import {
 	parseWorkersDevUrl,
 	provisionConvexBackendOnCloudflare,
 } from "../src/convex-backend-container.js";
+import { type JsonValue, parseJsonValue } from "../src/json.js";
+import type { TemporaryPreviewAccount } from "../src/temporary-station.js";
 
-const ACCOUNT = {
+const ACCOUNT: TemporaryPreviewAccount = {
 	accountId: "acct-temporary",
 	apiToken: "temp-token",
 	claimUrl: "https://dash.cloudflare.com/claim-preview?claimToken=abc",
-} as never;
+};
 
 const dirs: string[] = [];
 
@@ -77,8 +79,8 @@ function recordingSpawn(
 ) {
 	const calls: Array<{ command: string; args: readonly string[] }> = [];
 	let index = 0;
-	const spawn: ConvexCloudflareSpawn = async ({ command, args, env }) => {
-		calls.push({ command, args, ...{ env } });
+	const spawn: ConvexCloudflareSpawn = async ({ command, args }) => {
+		calls.push({ command, args });
 		const result = results[Math.min(index, results.length - 1)];
 		index += 1;
 		return {
@@ -97,41 +99,40 @@ const OK_SPAWN = [
 ];
 
 /**
- * Stubbed responses carry both `json()` and `text()`, because the module reads
- * each of them: the account-subdomain lookup takes `json()`, while the
+ * Stubs answer with real `Response` objects, because the module reads both
+ * `json()` and `text()`: the account-subdomain lookup takes `json()`, while the
  * admin-key bridge takes `text()` and runs it through `parseJsonValue` rather
- * than trusting `json()`'s `any`. A stub offering only one of the two does not
- * fail as a wrong answer -- it fails as `response.text is not a function`, from
- * inside the module, which reads as a bug in the code under test.
+ * than trusting `json()`'s `any`. A hand-built stub offering only one of the two
+ * does not fail as a wrong answer -- it fails as `response.text is not a
+ * function`, from inside the module, which reads as a bug in the code under
+ * test.
  */
+function jsonResponse(body: JsonValue): Response {
+	return new Response(JSON.stringify(body), { status: 200 });
+}
+
+/** A response that carries nothing but its status. */
+function statusOnly(status: number): Response {
+	return new Response(null, { status });
+}
 
 /** A fetch that answers `/version` and the admin-key bridge, nothing else. */
 function happyFetch(adminKey = "convex-admin-key") {
 	const seen: string[] = [];
-	const impl = (async (url: string | URL, init?: RequestInit) => {
+	const impl: typeof fetch = async (url, init) => {
 		const href = String(url);
 		seen.push(href);
-		if (href.endsWith("/version")) return { ok: true, status: 200 };
+		if (href.endsWith("/version")) return statusOnly(200);
 		if (href.endsWith("/.hobo/admin-key")) {
-			return {
-				ok: true,
-				status: 200,
-				json: async () => ({ adminKey }),
-				text: async () => JSON.stringify({ adminKey }),
-			};
+			return jsonResponse({ adminKey });
 		}
 		void init;
-		return {
-			ok: true,
-			status: 200,
-			json: async () => ({ success: true }),
-			text: async () => JSON.stringify({ success: true }),
-		};
-	}) as unknown as typeof fetch;
+		return jsonResponse({ success: true });
+	};
 	return { impl, seen };
 }
 
-async function provisionOk(overrides: Record<string, unknown> = {}) {
+async function provisionOk() {
 	const dir = workDir();
 	const { spawn, calls } = recordingSpawn(OK_SPAWN);
 	const fetched = happyFetch();
@@ -140,7 +141,6 @@ async function provisionOk(overrides: Record<string, unknown> = {}) {
 		temporaryAccount: ACCOUNT,
 		spawn,
 		fetchImpl: fetched.impl,
-		...overrides,
 	});
 	return { result, dir, calls, seen: fetched.seen };
 }
@@ -241,10 +241,10 @@ describe("materializeConvexCloudflareBackendScaffold", () => {
 
 	it("writes a package.json naming the worker", async () => {
 		const dir = await scaffold();
-		const manifest = JSON.parse(
+		const manifest = parseJsonValue(
 			readFileSync(path.join(dir, "package.json"), "utf8"),
-		) as { name?: string };
-		expect(manifest.name).toBe("hobo-convex-test");
+		);
+		expect(manifest).toMatchObject({ name: "hobo-convex-test" });
 	});
 
 	it("embeds the origins into the worker module", async () => {
@@ -485,28 +485,20 @@ describe("resolving the origin when wrangler printed none", () => {
 	/** Deploy output with no URL, forcing the subdomain-API fallback. */
 	const SILENT_DEPLOY = [{}, { stdout: "Total Upload: 4 KiB\n" }, {}];
 
-	function fetchWithSubdomain(subdomain: unknown) {
+	function fetchWithSubdomain(subdomain?: string) {
 		const seen: string[] = [];
-		const impl = (async (url: string | URL) => {
+		const impl: typeof fetch = async (url) => {
 			const href = String(url);
 			seen.push(href);
-			if (href.endsWith("/version")) return { ok: true, status: 200 };
+			if (href.endsWith("/version")) return statusOnly(200);
 			if (href.endsWith("/.hobo/admin-key")) {
-				return {
-					ok: true,
-					status: 200,
-					json: async () => ({ adminKey: "k" }),
-					text: async () => JSON.stringify({ adminKey: "k" }),
-				};
+				return jsonResponse({ adminKey: "k" });
 			}
-			return {
-				ok: true,
-				status: 200,
-				json: async () => ({ success: true, result: { subdomain } }),
-				text: async () =>
-					JSON.stringify({ success: true, result: { subdomain } }),
-			};
-		}) as unknown as typeof fetch;
+			return jsonResponse({
+				success: true,
+				result: subdomain === undefined ? {} : { subdomain },
+			});
+		};
 		return { impl, seen };
 	}
 
@@ -548,26 +540,16 @@ describe("resolving the origin when wrangler printed none", () => {
 		// `.catch(() => undefined)`. The subdomain is often already enabled, and
 		// a 409 on the enable must not fail a provision whose read then succeeds.
 		const seen: string[] = [];
-		const impl = (async (url: string | URL) => {
+		const impl: typeof fetch = async (url) => {
 			const href = String(url);
 			seen.push(href);
 			if (href.includes("/scripts/")) throw new Error("network blip");
-			if (href.endsWith("/version")) return { ok: true, status: 200 };
+			if (href.endsWith("/version")) return statusOnly(200);
 			if (href.endsWith("/.hobo/admin-key")) {
-				return {
-					ok: true,
-					status: 200,
-					json: async () => ({ adminKey: "k" }),
-					text: async () => JSON.stringify({ adminKey: "k" }),
-				};
+				return jsonResponse({ adminKey: "k" });
 			}
-			return {
-				ok: true,
-				status: 200,
-				json: async () => ({ result: { subdomain: "acct" } }),
-				text: async () => JSON.stringify({ result: { subdomain: "acct" } }),
-			};
-		}) as unknown as typeof fetch;
+			return jsonResponse({ result: { subdomain: "acct" } });
+		};
 		const result = await provisionConvexBackendOnCloudflare({
 			workDir: workDir(),
 			workerName: "w1",
@@ -617,8 +599,8 @@ describe("failures carry the claim URL", () => {
 				waitForReadyMs,
 			});
 		} catch (error) {
-			expect(error).toBeInstanceOf(ConvexCloudflareContainersError);
-			return error as ConvexCloudflareContainersError;
+			if (error instanceof ConvexCloudflareContainersError) return error;
+			throw error;
 		}
 		throw new Error("expected the provision to fail");
 	}
@@ -710,15 +692,10 @@ describe("failures carry the claim URL", () => {
 		// The last error is carried into the message. "Did not become ready" on
 		// its own would not distinguish a container that never started from one
 		// answering 503.
-		const impl = (async (url: string | URL) => {
-			if (String(url).endsWith("/version")) return { ok: false, status: 503 };
-			return {
-				ok: true,
-				status: 200,
-				json: async () => ({ adminKey: "k" }),
-				text: async () => JSON.stringify({ adminKey: "k" }),
-			};
-		}) as unknown as typeof fetch;
+		const impl: typeof fetch = async (url) => {
+			if (String(url).endsWith("/version")) return statusOnly(503);
+			return jsonResponse({ adminKey: "k" });
+		};
 		const error = await failureFrom(OK_SPAWN, impl);
 		expect(error.message).toContain("did not become ready");
 	});
@@ -727,10 +704,10 @@ describe("failures carry the claim URL", () => {
 		// The status is in the message because a 401 and a 404 mean different
 		// things here: the wrong token versus a worker that never mounted the
 		// bridge route.
-		const impl = (async (url: string | URL) => {
-			if (String(url).endsWith("/version")) return { ok: true, status: 200 };
-			return { ok: false, status: 401 };
-		}) as unknown as typeof fetch;
+		const impl: typeof fetch = async (url) => {
+			if (String(url).endsWith("/version")) return statusOnly(200);
+			return statusOnly(401);
+		};
 		const error = await failureFrom(OK_SPAWN, impl, 5_000);
 		expect(error.message).toContain("Failed to mint Convex admin key");
 		expect(error.message).toContain("401");
@@ -741,15 +718,10 @@ describe("failures carry the claim URL", () => {
 		// admin key, and every later `convex deploy` would fail authenticating
 		// with an empty credential.
 		for (const body of [{}, { adminKey: "" }, { adminKey: 42 }]) {
-			const impl = (async (url: string | URL) => {
-				if (String(url).endsWith("/version")) return { ok: true, status: 200 };
-				return {
-					ok: true,
-					status: 200,
-					json: async () => body,
-					text: async () => JSON.stringify(body),
-				};
-			}) as unknown as typeof fetch;
+			const impl: typeof fetch = async (url) => {
+				if (String(url).endsWith("/version")) return statusOnly(200);
+				return jsonResponse(body);
+			};
 			const error = await failureFrom(OK_SPAWN, impl, 5_000);
 			expect(error.message).toContain("returned no adminKey");
 		}

@@ -37,10 +37,17 @@ import {
 	IAC_PROGRAM_KIND,
 	IAC_PROVIDER,
 } from "../src/iac-program.js";
+import type { JsonObject, JsonValue } from "../src/json.js";
 
 type Program = Parameters<typeof assertLocalIacProgram>[0];
+type Resource = Program["resources"][number];
 
-function resource(over: Record<string, unknown> = {}) {
+/** A program's fields as a document may carry them: the declared type, or any other JSON. */
+type ProgramFields = {
+	readonly [field in keyof Program]?: Program[field] | JsonValue;
+};
+
+function resource(over: Partial<Resource> = {}): Resource {
 	return {
 		name: "db",
 		type: "provider:resource",
@@ -51,7 +58,8 @@ function resource(over: Record<string, unknown> = {}) {
 	};
 }
 
-function program(over: Record<string, unknown> = {}): Program {
+/** A well-formed program: every fixture field keeps its declared type. */
+function program(over: Partial<Program> = {}): Program {
 	return {
 		apiVersion: IAC_PROGRAM_API_VERSION,
 		kind: IAC_PROGRAM_KIND,
@@ -61,7 +69,20 @@ function program(over: Record<string, unknown> = {}): Program {
 		resources: [resource()],
 		stackOutputs: {},
 		...over,
-	} as Program;
+	};
+}
+
+/**
+ * A program as it arrives across a document boundary, carrying a field the
+ * type forbids. Only the cases that test such a field build one this way.
+ */
+function documentProgram(over: ProgramFields): Program {
+	const document = { ...program(), ...over };
+	// SAFETY: the guard is the parse boundary for programs that crossed a
+	// document boundary, so these cases hand it what the type forbids (a
+	// foreign version, a resource list that is not a list). It re-checks every
+	// field it relies on before trusting the declared type.
+	return document as Program;
 }
 
 /** The message of the refusal, or a marker when there wasn't one. */
@@ -69,7 +90,7 @@ function refusal(value: Program): string {
 	try {
 		assertLocalIacProgram(value);
 	} catch (error) {
-		return (error as Error).message;
+		return error instanceof Error ? error.message : String(error);
 	}
 	return "no-refusal";
 }
@@ -89,17 +110,19 @@ describe("the program header", () => {
 	it("refuses an apiVersion it does not mirror", () => {
 		// The mirror is only valid for the version it was written against; a
 		// future program may mean something different by the same field names.
-		expect(refusal(program({ apiVersion: "hobo.iac-program/v0" }))).toMatch(
-			/apiVersion/u,
-		);
+		expect(
+			refusal(documentProgram({ apiVersion: "hobo.iac-program/v0" })),
+		).toMatch(/apiVersion/u);
 	});
 
 	it("refuses a kind that is not a program", () => {
-		expect(refusal(program({ kind: "iac-stack" }))).toMatch(/kind/u);
+		expect(refusal(documentProgram({ kind: "iac-stack" }))).toMatch(/kind/u);
 	});
 
 	it("refuses a program targeting another IaC lane", () => {
-		expect(refusal(program({ provider: "terraform" }))).toMatch(/provider/u);
+		expect(refusal(documentProgram({ provider: "terraform" }))).toMatch(
+			/provider/u,
+		);
 	});
 });
 
@@ -112,7 +135,9 @@ describe("the resource list", () => {
 	});
 
 	it("refuses a resource list that is not a list", () => {
-		expect(refusal(program({ resources: {} }))).toMatch(/at least one/u);
+		expect(refusal(documentProgram({ resources: {} }))).toMatch(
+			/at least one/u,
+		);
 	});
 
 	it("refuses a resource with no name", () => {
@@ -136,7 +161,7 @@ describe("the resource list", () => {
 });
 
 describe("output references", () => {
-	const withInputs = (inputs: Record<string, unknown>, outs = {}) =>
+	const withInputs = (inputs: JsonObject, outs: Program["stackOutputs"] = {}) =>
 		program({
 			resources: [resource({ inputs })],
 			stackOutputs: outs,

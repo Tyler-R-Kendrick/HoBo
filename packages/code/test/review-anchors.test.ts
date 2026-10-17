@@ -26,12 +26,19 @@
  * out from under the comment. A reviewer can act on the second and not the
  * first.
  */
+import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 
+import {
+	type ReviewAnchor,
+	ReviewAnchorSchema,
+	type ReviewHunk,
+	ReviewHunkSchema,
+} from "../src/_generated/code_review_pb.js";
 import { coverageIdentity, reanchor } from "../src/review/review-anchors.js";
 
-function anchor(over: Record<string, unknown> = {}) {
-	return {
+function anchor(): ReviewAnchor {
+	return create(ReviewAnchorSchema, {
 		anchorId: "anchor-1",
 		generationId: "gen-1",
 		fileId: "file-1",
@@ -41,20 +48,19 @@ function anchor(over: Record<string, unknown> = {}) {
 		side: 2,
 		contextBeforeHashes: [],
 		contextAfterHashes: [],
-		...over,
-	} as never;
+	});
 }
 
 function hunk(
 	hunkId: string,
 	fingerprint: string,
 	lineHashes: readonly string[] = [],
-) {
-	return {
+): ReviewHunk {
+	return create(ReviewHunkSchema, {
 		hunkId,
 		fingerprint,
 		lines: lineHashes.map((rawTextHash) => ({ rawTextHash })),
-	} as never;
+	});
 }
 
 describe("nothing moved", () => {
@@ -130,7 +136,7 @@ describe("matching by hunk fingerprint", () => {
 		// make the second attempt depend on the first.
 		const original = anchor();
 		reanchor(original, [hunk("hunk-9", "fp-1")], "gen-2", "file-2");
-		expect((original as { generationId: string }).generationId).toBe("gen-1");
+		expect(original.generationId).toBe("gen-1");
 	});
 
 	it("refuses rather than choosing when two hunks share the fingerprint", () => {

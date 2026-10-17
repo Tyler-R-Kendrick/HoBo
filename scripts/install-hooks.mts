@@ -3,7 +3,8 @@
 // manual step. This must be fail-open: a `prepare` script that throws breaks
 // `pnpm install` for everyone, so every failure path exits 0. Opt out with
 // `HOBO_SKIP_HOOKS=1`, and CI is skipped automatically (it runs gates directly
-// and does not need local commit hooks).
+// and does not need local commit hooks). Both are booleans: 1, true, yes or on
+// opt out, and 0 or false do not, as in scripts/ensure-hooks-path.sh.
 import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 
@@ -12,8 +13,13 @@ function skip(reason: string): never {
 	process.exit(0);
 }
 
-if (process.env.HOBO_SKIP_HOOKS) skip("HOBO_SKIP_HOOKS is set");
-if (process.env.CI) skip("CI environment");
+/** An opt-out flag's value read as a boolean, the way the shell scripts read it. */
+function on(value: string | undefined): boolean {
+	return /^(?:1|true|yes|on)$/iu.test(value ?? "");
+}
+
+if (on(process.env.HOBO_SKIP_HOOKS)) skip("HOBO_SKIP_HOOKS is set");
+if (on(process.env.CI)) skip("CI environment");
 if (!existsSync(".git")) skip("not a git working tree");
 if (!existsSync(".githooks")) skip(".githooks directory is missing");
 

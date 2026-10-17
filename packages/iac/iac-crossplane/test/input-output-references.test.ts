@@ -17,8 +17,9 @@
 import { describe, expect, it } from "vitest";
 
 import { validateIacProgram } from "../src/index.js";
+import type { JsonObject, JsonValue } from "../src/json.js";
 
-function resource(name: string, over: Record<string, unknown> = {}) {
+function resource(name: string, over: JsonObject = {}): JsonObject {
 	return {
 		name,
 		type: "hobo:database/postgres",
@@ -31,7 +32,7 @@ function resource(name: string, over: Record<string, unknown> = {}) {
 	};
 }
 
-function program(over: Record<string, unknown> = {}) {
+function program(over: JsonObject = {}): JsonObject {
 	return {
 		apiVersion: "hobo.iac-program/v1",
 		kind: "iac-program",
@@ -41,15 +42,15 @@ function program(over: Record<string, unknown> = {}) {
 		resources: [resource("database")],
 		stackOutputs: {},
 		...over,
-	} as never;
+	};
 }
 
 /** The message of the refusal, or a marker when there was none. */
-function refusal(value: unknown): string {
+function refusal(value: JsonValue): string {
 	try {
-		validateIacProgram(value as never);
+		validateIacProgram(value);
 	} catch (error) {
-		return (error as Error).message;
+		return error instanceof Error ? error.message : String(error);
 	}
 	return "no-refusal";
 }

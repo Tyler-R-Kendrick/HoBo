@@ -138,7 +138,7 @@ describe("applying a completion", () => {
 		const result = provider().applyCompletion(["/re"], 0, 3, {
 			value: "/review",
 			label: "/review",
-		} as never);
+		});
 		expect(result.lines).toEqual(["/review"]);
 	});
 
@@ -147,7 +147,7 @@ describe("applying a completion", () => {
 		const result = provider().applyCompletion(["/re"], 0, 3, {
 			value: "/review",
 			label: "/review",
-		} as never);
+		});
 		expect(result.cursorCol).toBe("/review".length);
 		expect(result.cursorLine).toBe(0);
 	});
@@ -156,7 +156,7 @@ describe("applying a completion", () => {
 		const result = provider().applyCompletion(["first", "/re"], 1, 3, {
 			value: "/review",
 			label: "/review",
-		} as never);
+		});
 		expect(result.lines).toEqual(["first", "/review"]);
 	});
 
@@ -167,7 +167,7 @@ describe("applying a completion", () => {
 		provider().applyCompletion(lines, 0, 3, {
 			value: "/review",
 			label: "/review",
-		} as never);
+		});
 		expect(lines).toEqual(["/re"]);
 	});
 });
@@ -183,9 +183,9 @@ describe("the editor theme", () => {
 		// A missing slot is not a styling bug -- the editor calls it, so an
 		// absent one throws while rendering the popup.
 		const theme = inkEditorTheme();
-		for (const paint of Object.values(theme.selectList ?? {})) {
+		for (const paint of Object.values(theme.selectList)) {
 			expect(paint).toBeTypeOf("function");
-			expect(typeof (paint as (s: string) => string)("x")).toBe("string");
+			expect(paint("x")).toEqual(expect.any(String));
 		}
 	});
 
@@ -194,8 +194,8 @@ describe("the editor theme", () => {
 		// theme that dropped or truncated the text would make the popup unusable
 		// in exactly one of the two modes, which is easy to miss.
 		const theme = inkEditorTheme();
-		for (const paint of Object.values(theme.selectList ?? {})) {
-			expect((paint as (s: string) => string)("review")).toContain("review");
+		for (const paint of Object.values(theme.selectList)) {
+			expect(paint("review")).toContain("review");
 		}
 	});
 });

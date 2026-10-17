@@ -53,11 +53,11 @@ function store() {
 }
 
 /** The message of the refusal, or a marker when there was none. */
-function refusal(run: () => unknown): string {
+function refusal(run: () => void): string {
 	try {
 		run();
 	} catch (error) {
-		return (error as Error).message;
+		return error instanceof Error ? error.message : String(error);
 	}
 	return "no-refusal";
 }

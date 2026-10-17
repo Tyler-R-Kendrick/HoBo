@@ -149,8 +149,9 @@ prints full batch output only on failure, and uses smaller single-worker batches
 on Windows so large worktrees exercise the same suites without exhausting local
 process or terminal resources. Long-running batches print periodic progress so
 local hooks stay observable while type-heavy fixtures compile. The pre-commit
-hook clears Git's hook-local environment before the Node/npm gate stack so nested
-repo probes run against the working tree instead of hook-only state.
+hook leaves Git's hook environment (`GIT_INDEX_FILE`, and `GIT_DIR` in a linked
+worktree) in place, because its gates must read the index being committed; tests
+that build repositories of their own clear those variables themselves.
 
 The repo pre-commit hook is installed for you: the root `prepare` script points `core.hooksPath` at `.githooks` on install, and the session-start hooks of Claude Code, Codex, Cursor and Copilot do it when it is unset (see [`docs/agent-tooling.md`](./docs/agent-tooling.md)). Set it by hand after an install that ran no lifecycle scripts:
 
@@ -158,7 +159,7 @@ The repo pre-commit hook is installed for you: the root `prepare` script points 
 npm run prepare-hooks
 ```
 
-`.githooks/pre-commit` then runs, through `scripts/run-script.mts` and with no package manager, the generated-files guard (`generated:guard`) and the staged impact-routed gate (`check:relevant:staged`), which selects the relevant subset of the architecture guard, tests, technical standards, docs linters, and docs freshness for the staged diff before each commit. `npm run architecture:guard:staged` runs before the heavier test suite so missing PACT/protobuf/CUE/parse/event evidence is caught locally instead of burning CI.
+`.githooks/pre-commit` then runs, through `scripts/run-script.mts`, the generated-files guard (`generated:guard`) and the staged impact-routed gate (`check:relevant:staged`), which selects the relevant subset of the architecture guard, tests, technical standards, docs linters, and docs freshness for the staged diff before each commit. The root-script gates need Node and installed dependencies but no package manager. A change under a workspace package selects the turbo package-test lane, which runs package scripts through pnpm, and a few root scripts (such as `install:check`) call pnpm themselves; without pnpm those gates fail and the commit is refused. `npm run architecture:guard:staged` runs before the heavier test suite so missing PACT/protobuf/CUE/parse/event evidence is caught locally instead of burning CI.
 
 ## Technical standards
 

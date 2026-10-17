@@ -1,7 +1,8 @@
 #!/usr/bin/env sh
-# The commit gate. It needs Node and installed dependencies, not a package
-# manager: every script runs through scripts/run-script.mts, which hands the
-# script its arguments as arguments, so a base branch name is never shell text.
+# The commit gate. Its root-script gates need Node and installed dependencies,
+# not a package manager (turbo's package-test lanes still run pnpm): every
+# script runs through scripts/run-script.mts, which hands the script its
+# arguments as arguments, so a base branch name is never shell text.
 set -eu
 
 case $(printf '%s' "${HOBO_SKIP_HOOKS:-}" | tr '[:upper:]' '[:lower:]') in

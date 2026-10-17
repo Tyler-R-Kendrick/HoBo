@@ -32,8 +32,9 @@ type ChangedFileRecord = {
 /**
  * How a check is actually started: pnpm-shaped checks run through
  * scripts/run-script.mts or `node_modules/.bin` (see `withoutPackageManager`),
- * so the pre-commit hook needs no usable pnpm; what still needs pnpm stays
- * pnpm. A check that cannot be started that way is reported and fails.
+ * so root-script gates need no usable pnpm; what still needs pnpm (turbo's
+ * package-test lanes, installs) stays pnpm. A check that cannot be started that
+ * way is reported and fails.
  */
 function invocationFor(
 	command: string,

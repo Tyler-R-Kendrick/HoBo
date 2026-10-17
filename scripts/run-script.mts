@@ -5,7 +5,8 @@
  *   node --experimental-strip-types scripts/run-script.mts <name> [--] [args...]
  *
  * The pre-commit hook and the relevant-check runner start their gates through
- * it, so a commit needs Node and installed dependencies, not a usable pnpm. It
+ * it, so a root-script gate needs Node and installed dependencies, not a usable
+ * pnpm (turbo's package-test lanes still run package scripts through pnpm). It
  * does what `pnpm run` does for a script with no `pre`/`post` script: runs it
  * from the repository root, with `node_modules/.bin` first on PATH and the
  * arguments appended.

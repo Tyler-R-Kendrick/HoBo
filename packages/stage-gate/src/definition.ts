@@ -1,11 +1,15 @@
+import { RELEASE_CHECK_IDS } from "./record-constraints.js";
 import type { StageGateCheck, StageGateDefinition } from "./types.js";
 
 const NODE = process.execPath;
 const TSX_IMPORT = "--import";
 const TSX = "tsx";
 
-function nodeTsxScript(scriptPath: string): readonly string[] {
-	return [NODE, TSX_IMPORT, TSX, scriptPath];
+function nodeTsxScript(
+	scriptPath: string,
+	...args: readonly string[]
+): readonly string[] {
+	return [NODE, TSX_IMPORT, TSX, scriptPath, ...args];
 }
 
 export function defineStageGateS0(): StageGateDefinition {
@@ -68,5 +72,46 @@ export function defineStageGateS0(): StageGateDefinition {
 	return {
 		gateId: "s0",
 		checks,
+	};
+}
+
+/** ai-bdd exit code 3: infrastructure (driver or model unavailable, a scenario ended `error`). */
+const AI_BDD_INFRASTRUCTURE = 3;
+
+/**
+ * The release gate (ADR-0172): ai-bdd's three replay-only commands against the
+ * project in `HOBO_AI_BDD_PROJECT`, run by `HOBO_AI_BDD_CMD` (a JSON argv,
+ * default `["ai-bdd"]`). Each check needs the one before it to have passed,
+ * and an infrastructure exit is `not_run`. Commands are relative to the
+ * repository root, like the S0 gate's.
+ */
+export function defineReleaseGate(): StageGateDefinition {
+	const script = "packages/stage-gate/scripts/check-acceptance.mts";
+	const [plansFresh, replay, evidenceIntact] = RELEASE_CHECK_IDS;
+	const notRunExitCodes = [AI_BDD_INFRASTRUCTURE];
+	return {
+		gateId: "release",
+		checks: [
+			{
+				checkId: plansFresh,
+				kind: "acceptance",
+				command: nodeTsxScript(script, "plans-fresh"),
+				notRunExitCodes,
+			},
+			{
+				checkId: replay,
+				kind: "acceptance",
+				command: nodeTsxScript(script, "replay"),
+				requires: [plansFresh],
+				notRunExitCodes,
+			},
+			{
+				checkId: evidenceIntact,
+				kind: "acceptance",
+				command: nodeTsxScript(script, "evidence-intact"),
+				requires: [replay],
+				notRunExitCodes,
+			},
+		],
 	};
 }

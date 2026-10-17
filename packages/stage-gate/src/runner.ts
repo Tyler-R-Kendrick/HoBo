@@ -3,13 +3,19 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { delimiter, dirname, join } from "node:path";
 
+import {
+	checkStatusOf,
+	NOT_STARTED_EXIT_CODE,
+	recordStatusOf,
+	runnerExitCodeOf,
+	unmetRequirements,
+} from "./gate-status.js";
 import { isJsonString, parseJsonText } from "./json.js";
 import { serializeStageGateRecord } from "./parse.js";
 import type {
 	CheckEvidence,
 	CheckResult,
 	ComponentArtifact,
-	RecordStatus,
 	RunStageGateOptions,
 	RunStageGateResult,
 	SignatureEvidence,
@@ -272,12 +278,23 @@ export async function runStageGate(
 		provenanceTier: "",
 		conformanceReportDigest: "",
 	};
-	let failed = false;
+	const passed = new Set<string>();
 
 	const sourceDateEpoch = process.env.SOURCE_DATE_EPOCH;
 	const reproducibleKinds = new Set(["build", "sign", "verify"]);
 
 	for (const check of definition.checks) {
+		const unmet = unmetRequirements(check, passed);
+		if (unmet.length > 0) {
+			checkResults.push({
+				checkId: check.checkId,
+				command: check.command,
+				exitCode: NOT_STARTED_EXIT_CODE,
+				status: "skipped",
+				evidence: { skipped_because: `${unmet.join(", ")} did not pass` },
+			});
+			continue;
+		}
 		const checkEnv =
 			sourceDateEpoch && reproducibleKinds.has(check.kind)
 				? { ...env, SOURCE_DATE_EPOCH: sourceDateEpoch }
@@ -294,9 +311,9 @@ export async function runStageGate(
 		if (Object.keys(evidence).length === 0) {
 			Object.assign(evidence, rawEvidence);
 		}
-		const status = exitCode === 0 ? "passed" : "failed";
-		if (status === "failed") {
-			failed = true;
+		const status = checkStatusOf(check, exitCode);
+		if (status === "passed") {
+			passed.add(check.checkId);
 		}
 		checkResults.push({
 			checkId: check.checkId,
@@ -316,7 +333,7 @@ export async function runStageGate(
 	}
 
 	const finishedAt = new Date().toISOString();
-	const status: RecordStatus = failed ? "failed" : "passed";
+	const status = recordStatusOf(checkResults);
 	const record: StageGateRecord = {
 		gateId: definition.gateId,
 		status,
@@ -340,6 +357,6 @@ export async function runStageGate(
 
 	return {
 		record,
-		exitCode: failed ? 1 : 0,
+		exitCode: runnerExitCodeOf(status),
 	};
 }

@@ -8,14 +8,25 @@ export {
 	reportDigestOf,
 	type ScenarioTotals,
 } from "./acceptance.js";
+export {
+	ACCEPTANCE_STEPS,
+	type AcceptanceConfig,
+	type AcceptanceOutcome,
+	type AcceptanceResult,
+	type AcceptanceStep,
+	acceptanceConfigOf,
+	checkAcceptance,
+} from "./acceptance-check.js";
 export { RUN_REPORT_FIELDS } from "./acceptance-fields.js";
-export { defineStageGateS0 } from "./definition.js";
+export { defineReleaseGate, defineStageGateS0 } from "./definition.js";
 export {
 	parseStageGateRecord,
 	serializeStageGateRecord,
 } from "./parse.js";
+export { RELEASE_CHECK_IDS } from "./record-constraints.js";
 export { runStageGate } from "./runner.js";
 export type {
+	CheckEvidence,
 	CheckResult,
 	ComponentArtifact,
 	RunStageGateOptions,
@@ -25,5 +36,6 @@ export type {
 	StageGateCheckKind,
 	StageGateDefinition,
 	StageGateRecord,
+	StageGateRecordJson,
 } from "./types.js";
 export { StageGateParseError } from "./types.js";

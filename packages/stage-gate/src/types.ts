@@ -6,12 +6,25 @@ export type StageGateCheckKind =
 	| "conformance"
 	| "build"
 	| "sign"
-	| "verify";
+	| "verify"
+	| "acceptance";
 
 export interface StageGateCheck {
 	readonly checkId: string;
 	readonly command: readonly string[];
 	readonly kind: StageGateCheckKind;
+	/**
+	 * Check ids that must have passed earlier in the same run. When one did
+	 * not, this check is recorded `skipped` and never started: its input (a
+	 * fresh plan, the report of this run) does not exist.
+	 */
+	readonly requires?: readonly string[];
+	/**
+	 * Exit codes that mean the check could not be carried out (ai-bdd's 3,
+	 * infrastructure): recorded `not_run`, never `failed` or `passed`. Unset,
+	 * every non-zero exit is a failure, as for the S0 gate.
+	 */
+	readonly notRunExitCodes?: readonly number[];
 }
 
 export interface StageGateDefinition {
@@ -19,8 +32,10 @@ export interface StageGateDefinition {
 	readonly checks: readonly StageGateCheck[];
 }
 
-export type CheckStatus = "passed" | "failed" | "skipped";
-export type RecordStatus = "passed" | "failed" | "skipped";
+/** `not_run`: the check could not be carried out, so it says nothing about what it checks (ADR-0172). */
+export type CheckStatus = "passed" | "failed" | "skipped" | "not_run";
+/** `not_run`: no check failed, and at least one could not be carried out. */
+export type RecordStatus = "passed" | "failed" | "skipped" | "not_run";
 
 /** What a check left behind as evidence: string fields only (data-models/stage_gate_record.proto `map<string, string> evidence`). */
 export interface CheckEvidence {

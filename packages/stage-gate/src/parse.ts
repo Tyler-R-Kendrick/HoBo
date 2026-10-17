@@ -6,6 +6,7 @@ import {
 	type JsonObject,
 	type JsonValue,
 } from "./json.js";
+import { validatePassedRecordConstraints } from "./record-constraints.js";
 import type {
 	CheckEvidence,
 	CheckResult,
@@ -21,8 +22,18 @@ import { StageGateParseError } from "./types.js";
 const DIGEST_RE = /^sha256:[a-f0-9]{64}$/;
 const HTTPS_RE = /^https:\/\//;
 const ISO_RE = /^\d{4}-\d{2}-\d{2}T/;
-const CHECK_STATUS: readonly CheckStatus[] = ["passed", "failed", "skipped"];
-const RECORD_STATUS: readonly RecordStatus[] = ["passed", "failed", "skipped"];
+const CHECK_STATUS: readonly CheckStatus[] = [
+	"passed",
+	"failed",
+	"skipped",
+	"not_run",
+];
+const RECORD_STATUS: readonly RecordStatus[] = [
+	"passed",
+	"failed",
+	"skipped",
+	"not_run",
+];
 
 function memberOf<T extends string>(
 	allowed: readonly T[],
@@ -107,7 +118,7 @@ function parseCheckResult(
 	}
 	const status = memberOf(CHECK_STATUS, fieldOf(raw, "status"));
 	if (status === undefined) {
-		issues.push(`${path}.status: expected passed|failed|skipped`);
+		issues.push(`${path}.status: expected passed|failed|skipped|not_run`);
 	}
 	const evidence = parseEvidence(fieldOf(raw, "evidence"), issues, path);
 	if (
@@ -204,31 +215,6 @@ function parseSignatureEvidence(
 	return { verified, signerIdentity, provenanceTier, conformanceReportDigest };
 }
 
-function validatePassedRecordConstraints(
-	record: StageGateRecord,
-	issues: string[],
-): void {
-	if (record.status !== "passed") {
-		return;
-	}
-	if (record.gateId !== "s0") {
-		issues.push('gate_id must be "s0" for passed S0 records');
-	}
-	for (const check of record.checks) {
-		if (check.status !== "passed") {
-			issues.push(
-				`passed record requires every check passed (${check.checkId})`,
-			);
-		}
-	}
-	if (!record.signature.verified) {
-		issues.push("passed record requires signature.verified === true");
-	}
-	if (!DIGEST_RE.test(record.artifact.digestSha256)) {
-		issues.push("passed record requires artifact.digest_sha256");
-	}
-}
-
 function isoTimestamp(
 	raw: JsonObject,
 	snake: string,
@@ -294,7 +280,7 @@ export function parseStageGateRecord(raw: JsonValue): StageGateRecord {
 	}
 	const status = memberOf(RECORD_STATUS, fieldOf(raw, "status"));
 	if (status === undefined) {
-		issues.push("status: expected passed|failed|skipped");
+		issues.push("status: expected passed|failed|skipped|not_run");
 	}
 	const repoCommit = wireField(raw, "repo_commit", "repoCommit");
 	if (!isJsonString(repoCommit)) {

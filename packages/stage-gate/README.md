@@ -1,6 +1,6 @@
 # @hobo/stage-gate
 
-Reusable stage-gate runner (S0-12). `defineStageGateS0()` declares the ordered S0
+Reusable stage-gate runner (S0-12, and the release gate of ADR-0172). `defineStageGateS0()` declares the ordered S0
 toolchain checks (boundary lint, architecture guard, schema drift, PACT
 consumer/provider, conformance self-test, sign/verify, hello-bindle determinism
 and health, tamper-refuse), `runStageGate` executes them and captures evidence,
@@ -55,6 +55,42 @@ real reports copied byte for byte into `test/fixtures/ai-bdd/` (sha256 and origi
 in its README); `src/acceptance-fields.ts` says, for every field the schema
 requires, whether the parser reads it or ignores it and why, and
 `test/acceptance-fields.test.ts` holds the parser to that table.
+
+## The release gate (ADR-0172)
+
+`defineReleaseGate()` (`hobo-stage-gate run release [--out <file>]`) runs ai-bdd's
+three replay-only commands against the project in `HOBO_AI_BDD_PROJECT`, with
+`HOBO_AI_BDD_CMD` as the command (a JSON argv, default `["ai-bdd"]`; for the
+project's own devDependency use its package manager's exec, for example
+`["opm","exec","ai-bdd","--"]`, or a path). Each check is
+`scripts/check-acceptance.mts <step>`:
+
+| Check | ai-bdd command | Passes on |
+|---|---|---|
+| `acceptance-plans-fresh` | `compile --check` | exit 0 (4: a plan is stale) |
+| `acceptance-replay` | `run --frozen --no-agent --reporter json,junit` | exit 0 and a report that parses as replay-only evidence with that exit code |
+| `acceptance-evidence-intact` | `verify-run .ai-bdd/runs/<runId>` | the run directory holds the same report, and exit 0 |
+
+Each check `requires` the one before it; if that did not pass it is recorded
+`skipped` (exit code -1) and never started. The exit code is read before the
+report: after `run` exits 2 or 4 no report was written and an earlier one may
+still be on disk, after 3 the run said nothing about the product, so in all
+three cases `report.json` is not opened. Exit 3 and a command that cannot be
+started are `not_run` (check and record), never `failed` or `passed`, and the
+runner then exits 3. A passed release record holds exactly the three checks and
+the replay's `report_digest`; it carries no signature or artifact, which stay
+S0's.
+
+Zero model calls is required, and `--no-agent` stops the agent but not the judge:
+a subjective step is judged from the verdict cache (`.ai-bdd/cache/`, not
+committed) or by a model call. A clean CI checkout therefore replays with zero
+model calls only when that cache is restored first (or the suite has no
+subjective step); otherwise the replay check fails and names the cache.
+
+The gate's tests run real processes against a stand-in ai-bdd
+(`test/helpers/fake-ai-bdd.mts`) that plays back
+`contracts/pacts/stage-gate-ai-bdd-report.pact.json`, one interaction per exit
+code, writing the copied real reports.
 
 ## Position in the event architecture
 

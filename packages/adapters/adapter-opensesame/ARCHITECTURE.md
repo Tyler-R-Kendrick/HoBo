@@ -64,7 +64,8 @@ rule for a place, used by the executable lookup and by `PATH`.
   trio on win32, the checked `OPENSESAME_ENV_PARSE` (an absolute path to a file in a trusted place, else `bridge_missing`: Node runs the script it names), whatever the caller lists in `passEnv`, and the run's two own variables, which
   win. A non-surrogate value in a bound variable or a conventional one for the bound provider (`VERCEL_TOKEN`, `VERCEL_API_TOKEN`)
   refuses the run (`real_credential_in_env`). The allowlist cannot see what a name does not say: `HOBO_PAT` reaches the command, and
-  `passEnv` is passed as given.
+  `passEnv` is passed as given. Operator code supplies `passEnv` (the `runProxied` caller's argument), never a repository file,
+  the environment or a model; `CredentialBindings` has no such field and must not get one.
 - **`PATH` is reduced.** An older OpenSesame's first act is a bare `node` lookup with the passphrase in its environment (a current
   one searches only directories group and others cannot write, with a minimal environment), so `PATH` is the caller's absolute,
   existing, trusted directories that only their owner can add a file to (no sticky `/tmp`), as they resolve, once each, else

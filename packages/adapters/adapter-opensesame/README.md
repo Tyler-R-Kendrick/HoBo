@@ -106,7 +106,11 @@ What `runProxied` does before and around the run:
   checked `OPENSESAME_ENV_PARSE`), plus the names you list in `passEnv`, plus the run's own two variables, which win.
   The allowlist is a heuristic by name: a variable that matches a prefix and does not look credential-shaped reaches the
   command whatever it holds.
-  `OPENSESAME_STORE_PASSWORD`, `OPENSESAME_STORE_DIR` and the like are `passEnv` names. A process that already holds a
+  `OPENSESAME_STORE_PASSWORD`, `OPENSESAME_STORE_DIR` and the like are `passEnv` names. **Who supplies `passEnv`:** the code
+  that calls `runProxied`, which is operator code and nothing else. Never read it from `hobo.credentials.json`, from a file in
+  the repository being run, from the environment or from a model: a list a repository controls can name what the allowlist
+  keeps back (the store passphrase, `OPENSESAME_NODE`, a real token under another name) and have it passed on as given.
+  `CredentialBindings` has no such field and must not get one. A process that already holds a
   value that is not a surrogate in a bound variable or in the provider's conventional ones (`VERCEL_TOKEN`,
   `VERCEL_API_TOKEN`) is refused with `real_credential_in_env` before anything is written.
 - **The env-spec bridge is a program path, so it is checked.** `OPENSESAME_ENV_PARSE` is the one OpenSesame variable on the

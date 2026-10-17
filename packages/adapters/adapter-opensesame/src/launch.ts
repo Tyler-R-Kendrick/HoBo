@@ -61,7 +61,7 @@ export type LaunchInput = Readonly<{
 	bindings: readonly ParsedCredentialBinding[];
 	/** The caller's environment. Only the allowlist in `child-env.ts` and `passEnv` are passed on. */
 	env: NodeJS.ProcessEnv;
-	/** Variable names, beyond the allowlist, to pass on as they are (the store passphrase, OPENSESAME_STORE_DIR, ...). */
+	/** Variable names, beyond the allowlist, to pass on as they are (the store passphrase, OPENSESAME_STORE_DIR, ...). Operator code supplies this, never a repository file, the environment or a model. */
 	passEnv?: readonly string[] | undefined;
 	/** The platform whose variables are kept. Defaults to this process's. */
 	platform?: NodeJS.Platform | undefined;

@@ -129,11 +129,11 @@ export function createOpenBaoSecretsPort(options: {
 	 * never secret material — so "server down" stays distinguishable from
 	 * "wrong port" at the call site.
 	 */
-	function transportDenied<E>(stage: string, error: E): TransportDenial {
+	function transportDenied(stage: string, cause: unknown): TransportDenial {
 		return {
 			status: "denied",
 			reason: `openbao ${stage} transport failed: ${
-				error instanceof Error ? error.message : String(error)
+				cause instanceof Error ? cause.message : String(cause)
 			}`,
 			code: "openbao-transport-failed",
 		};

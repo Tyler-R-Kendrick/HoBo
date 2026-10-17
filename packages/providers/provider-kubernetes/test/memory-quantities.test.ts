@@ -30,13 +30,14 @@ import {
 	parseMemoryBytes,
 	parseWorkloadPlacement,
 } from "../src/index.js";
+import type { JsonValue } from "../src/json.js";
 // The bounds are exported from the module rather than the package index. The
 // tests below assert against them rather than against literals, so a policy
 // change moves the expectations with it.
 import { MAX_MEMORY_BYTES, MIN_MEMORY_BYTES } from "../src/placement.js";
 
 /** The message of the refusal, or a marker when there was none. */
-function refusal<T>(value: T): string {
+function refusal(value: JsonValue | undefined): string {
 	try {
 		parseMemoryBytes(value, "memory");
 	} catch (error) {
@@ -221,7 +222,7 @@ describe("naming the kind of a value a placement refused", () => {
 	};
 
 	/** The `value` detail from the rejection for a placement with this image. */
-	function kindOfRefusedImage<T>(image: T): string {
+	function kindOfRefusedImage(image: JsonValue | undefined): string {
 		try {
 			parseWorkloadPlacement({ ...VALID, image });
 		} catch (error) {

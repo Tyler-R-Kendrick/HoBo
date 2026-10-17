@@ -1,15 +1,16 @@
 /**
  * The submodule's HEAD, read only from the submodule's own repository: the
  * checks that come before any git runs in a submodule path (no symbolic
- * link on the way, git's top level is the path, the repository is not the
- * superproject's).
+ * link on the way, git's top level is the path, the repository is the
+ * submodule's own and not the superproject's or another checkout's).
  *
  * Erasable TypeScript with node builtins only.
  */
 import { existsSync, lstatSync, realpathSync } from "node:fs";
-import { join } from "node:path";
+import { basename, dirname, join, sep } from "node:path";
 
 import { git, Refusal } from "./pins-git-core.ts";
+import { modulesEntry } from "./pins-gitmodules.ts";
 
 function realOr(path: string): string {
 	try {
@@ -47,6 +48,7 @@ export function headOf(root: string, path: string): string | null {
 		);
 	}
 	refuseSharedRepository(root, path, sub);
+	refuseForeignRepository(root, path, sub);
 	const result = git(sub, ["rev-parse", "--verify", "HEAD"]);
 	return result.status === 0 ? result.stdout : null;
 }
@@ -77,6 +79,89 @@ function refuseSharedRepository(root: string, path: string, sub: string): void {
 	throw new Refusal(
 		"SUBMODULE_STATE",
 		`${path}/.git names the superproject's own repository (${shared}); nothing is run in it`,
+		reclone(path),
+	);
+}
+
+interface Repository {
+	/** `git rev-parse --absolute-git-dir`, resolved. */
+	readonly gitDir: string;
+	/** `git rev-parse --git-common-dir`, resolved. */
+	readonly common: string;
+}
+
+function repositoryOf(dir: string): Repository | null {
+	const result = git(dir, [
+		"rev-parse",
+		"--absolute-git-dir",
+		"--path-format=absolute",
+		"--git-common-dir",
+	]);
+	const [gitDir, common] = result.stdout.split("\n");
+	if (result.status !== 0 || gitDir === undefined || common === undefined)
+		return null;
+	return { gitDir: realOr(gitDir), common: realOr(common) };
+}
+
+function within(path: string, dir: string): boolean {
+	return path === dir || path.startsWith(`${dir}${sep}`);
+}
+
+/**
+ * Why the repository a submodule's `.git` names is not the submodule's own,
+ * or null when it is. git keeps a submodule's repository at
+ * `<superproject git dir>/modules/<name>`, also when the superproject was
+ * cloned with --separate-git-dir, is itself a submodule, or is a linked
+ * worktree (whose `modules/` is its own, not the common directory's). An
+ * older git, or a plain clone, keeps it in the path's own `.git` directory.
+ * A hand-made `git clone --separate-git-dir` keeps it in a directory that
+ * serves no other work tree: not named `.git` (that is the repository of the
+ * directory holding it), not a linked worktree, outside the superproject's
+ * git directory, and with no core.worktree naming another directory.
+ * Anything else belongs to another checkout, and a fetch there would move
+ * that one.
+ */
+function foreignReason(
+	root: string,
+	path: string,
+	sub: Repository,
+): string | null {
+	if (sub.common !== sub.gitDir)
+		return `is a linked worktree of the repository at ${sub.common}`;
+	if (sub.gitDir === realOr(join(root, path, ".git"))) return null;
+	const owner = repositoryOf(root);
+	const name = modulesEntry(root, path)?.name;
+	const modules =
+		owner === null || name === undefined
+			? null
+			: realOr(join(owner.gitDir, "modules", name));
+	if (sub.gitDir === modules) return null;
+	if (basename(sub.gitDir) === ".git")
+		return `is the repository of another working tree (${dirname(sub.gitDir)})`;
+	for (const dir of [owner?.gitDir, owner?.common]) {
+		if (dir !== undefined && within(sub.gitDir, dir)) {
+			const own = modules ?? `no .gitmodules entry names ${path}`;
+			return `is inside the superproject's git directory but is not this submodule's (${own})`;
+		}
+	}
+	// core.worktree needs no check: it decides git's top level, which
+	// headOf has already found to be this path.
+	return null;
+}
+
+/** A `.git` file naming another checkout's repository is refused. */
+function refuseForeignRepository(
+	root: string,
+	path: string,
+	dir: string,
+): void {
+	const sub = repositoryOf(dir);
+	if (sub === null) return; // The top-level check has already refused it.
+	const reason = foreignReason(root, path, sub);
+	if (reason === null) return;
+	throw new Refusal(
+		"SUBMODULE_STATE",
+		`${path}/.git names ${sub.gitDir}, which ${reason}; nothing is run in it`,
 		reclone(path),
 	);
 }

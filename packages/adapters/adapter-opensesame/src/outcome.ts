@@ -140,17 +140,24 @@ function outcome(
 	);
 }
 
-/** What follows each `opensesame: ` in the text, up to the end of its line and a fixed length. */
+/**
+ * What follows each `opensesame: ` in the text, up to the end of its line, the
+ * next prefix, or a fixed length, whichever comes first. Stopping at the next
+ * prefix keeps the windows apart, so each character is read once however the
+ * prefix is repeated; none of OpenSesame's sentences holds the prefix itself.
+ */
 function sentencesOf(stderr: string): string[] {
 	const out: string[] = [];
-	for (
-		let at = stderr.indexOf(OWN_PREFIX);
-		at >= 0;
-		at = stderr.indexOf(OWN_PREFIX, at + OWN_PREFIX.length)
-	) {
+	let at = stderr.indexOf(OWN_PREFIX);
+	while (at >= 0) {
 		const from = at + OWN_PREFIX.length;
-		const window = stderr.slice(from, from + SENTENCE_LIMIT);
-		out.push(window.split(/[\r\n]/u, 1)[0] ?? "");
+		const next = stderr.indexOf(OWN_PREFIX, from);
+		const end = Math.min(
+			from + SENTENCE_LIMIT,
+			next < 0 ? stderr.length : next,
+		);
+		out.push(stderr.slice(from, end).split(/[\r\n]/u, 1)[0] ?? "");
+		at = next;
 	}
 	return out;
 }

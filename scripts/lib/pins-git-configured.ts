@@ -79,11 +79,13 @@ interface StaleUrl {
 	readonly fix: string;
 }
 
-const INCLUDED_FROM: Readonly<Record<string, string>> = {
-	local: "this clone's .git/config",
-	worktree: "config.worktree",
-	command: "the command line",
-};
+/** What includes a file in `scope`'s configuration, in words. */
+function includedFrom(scope: string): string {
+	if (scope === "local") return "this clone's .git/config";
+	if (scope === "worktree") return "config.worktree";
+	if (scope === "command") return "the command line";
+	return `the ${scope} configuration`;
+}
 
 /** The file a scope keeps itself, when `origin` is it. */
 function isOwnFile(root: string, origin: string, own: string): boolean {
@@ -149,9 +151,8 @@ function staleUrl(
 		};
 	}
 	if (file !== undefined) {
-		const from = INCLUDED_FROM[last.scope] ?? `the ${last.scope} configuration`;
 		return {
-			said: `the file ${file} (included from ${from}) sets the URL for ${path} to`,
+			said: `the file ${file} (included from ${includedFrom(last.scope)}) sets the URL for ${path} to`,
 			why: "",
 			fix: `git config -f ${shellWord(file)} ${unsetAll}`,
 		};

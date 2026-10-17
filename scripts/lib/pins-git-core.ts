@@ -182,12 +182,11 @@ export function git(
 			`cannot run git: ${result.error.message}`,
 		);
 	}
-	return {
-		status: exitStatus(result.status, result.signal),
-		stdout: (result.stdout ?? "").trim(),
-		stderr: (result.stderr ?? "").trim(),
-		...(result.signal === null ? {} : { signal: result.signal }),
-	};
+	const status = exitStatus(result.status, result.signal);
+	const stdout = (result.stdout ?? "").trim();
+	const stderr = (result.stderr ?? "").trim();
+	if (result.signal === null) return { status, stdout, stderr };
+	return { status, stdout, stderr, signal: result.signal };
 }
 
 function isTimeout(error: Error | undefined): boolean {

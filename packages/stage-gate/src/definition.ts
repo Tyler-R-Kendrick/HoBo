@@ -94,16 +94,15 @@ const CHECK_MARGIN_MS = 60_000;
  * which check-acceptance bounds by HOBO_AI_BDD_TIMEOUT_MS; the runner's own
  * bound is that plus a margin, a backstop that stops the check with SIGTERM
  * (check-acceptance then passes SIGTERM on to ai-bdd's process group, and
- * SIGKILL after AI_BDD_GRACE_MS).
+ * SIGKILL after AI_BDD_GRACE_MS). The backstop is read from the env the
+ * runner runs the checks with, the same env the checks read their bound from.
  */
-export function defineReleaseGate(
-	env: NodeJS.ProcessEnv = process.env,
-): StageGateDefinition {
+export function defineReleaseGate(): StageGateDefinition {
 	const script = "packages/stage-gate/scripts/check-acceptance.mts";
 	const [plansFresh, replay, evidenceIntact] = RELEASE_CHECK_IDS;
 	const notRunExitCodes = [AI_BDD_INFRASTRUCTURE];
 	// An unusable value is the check's own usage error (exit 2); the backstop uses the default.
-	const timeoutMs =
+	const timeoutMs = (env: NodeJS.ProcessEnv): number =>
 		(aiBddTimeoutMsOf(env) ?? DEFAULT_AI_BDD_TIMEOUT_MS) + CHECK_MARGIN_MS;
 	return {
 		gateId: "release",

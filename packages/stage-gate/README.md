@@ -142,7 +142,8 @@ its own SIGTERM and SIGINT handlers. A process ai-bdd starts in another group
 that ignores SIGTERM can outlive the check, but it cannot hold the check open
 by holding ai-bdd's output: once ai-bdd has exited and its group is gone, the
 output is waited for a second more at most. The runner bounds each release
-check too (`timeoutMs`: ai-bdd's bound plus a minute), a backstop that stops
+check too (`timeoutMs`: ai-bdd's bound plus a minute, read from the env the
+runner runs the check with), a backstop that stops
 the check with SIGTERM (which it passes on as above) and records it `not_run`. ai-bdd's output is relayed to the check's
 stderr as it comes, but only its first and last 2 MiB (`RELAY_BYTES`, an eighth
 of the runner's 16 MiB capture limit `CHECK_OUTPUT_LIMIT`), so a passing run that

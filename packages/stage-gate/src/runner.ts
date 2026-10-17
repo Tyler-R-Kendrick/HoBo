@@ -335,7 +335,9 @@ export async function runStageGate(
 			handed === undefined
 				? ownEnv
 				: { ...ownEnv, [REQUIRED_EVIDENCE_ENV]: handed },
-			check.timeoutMs,
+			check.timeoutMs instanceof Function
+				? check.timeoutMs(ownEnv)
+				: check.timeoutMs,
 		);
 		const evidence = parseEvidenceJson(rawEvidence.stdout ?? undefined);
 		if (Object.keys(evidence).length === 0) {

@@ -10,6 +10,8 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 import { checkAcceptance } from "../src/acceptance-check.js";
+import { defineReleaseGate } from "../src/definition.js";
+import { runStageGate } from "../src/runner.js";
 import {
 	ALL_PASS,
 	checkOf,
@@ -88,6 +90,46 @@ describe("the release gate bounds ai-bdd", () => {
 			} finally {
 				killQuietly(browser);
 			}
+		},
+		TIMEOUT,
+	);
+
+	it("each release check's backstop is ai-bdd's bound in the runner's env, plus a minute", () => {
+		const env = { HOBO_AI_BDD_TIMEOUT_MS: "1000" };
+		// The env the runner is given, not the one defineReleaseGate() ran in.
+		expect(process.env.HOBO_AI_BDD_TIMEOUT_MS).toBeUndefined();
+		const bounds = defineReleaseGate().checks.map((check) =>
+			check.timeoutMs instanceof Function
+				? check.timeoutMs(env)
+				: check.timeoutMs,
+		);
+		expect(bounds).toEqual([61_000, 61_000, 61_000]);
+	});
+
+	it(
+		"the runner bounds a check by a timeoutMs computed from the env it runs the check with",
+		async () => {
+			const { record } = await runStageGate(
+				{
+					gateId: "release",
+					checks: [
+						{
+							checkId: "slow",
+							kind: "acceptance",
+							command: [process.execPath, "-e", "setTimeout(() => {}, 8000)"],
+							timeoutMs: (env) => Number(env.SLOW_BOUND_MS),
+						},
+					],
+				},
+				{ cwd: newDir(), env: { SLOW_BOUND_MS: "400" } },
+			);
+			expect(record.checks[0]).toMatchObject({
+				status: "not_run",
+				exitCode: 3,
+			});
+			expect(record.checks[0]?.evidence.error).toContain(
+				"did not finish within 400 ms (timeoutMs)",
+			);
 		},
 		TIMEOUT,
 	);

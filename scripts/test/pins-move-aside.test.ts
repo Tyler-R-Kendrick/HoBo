@@ -47,7 +47,12 @@ function setUp() {
 }
 
 /** The fix `status` prints, and the name it says the checkout goes to. */
-function printedFix(root: string): { fix: string; target: string } {
+interface PrintedFix {
+	readonly fix: string;
+	readonly target: string;
+}
+
+function printedFix(root: string): PrintedFix {
 	const run = runBootstrap(root, ["--status", "--offline"]);
 	assert.equal(run.status, 1, run.stdout);
 	const fix =

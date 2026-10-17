@@ -206,7 +206,7 @@ describe("a signal while the probe's git is writing into the repository", () => 
 });
 
 describe("a program that embeds the probe", () => {
-	it("gets INTERRUPTED and keeps its own handler", async () => {
+	it("gets INTERRUPTED, keeps its own handler, and sends no late SIGKILL", async () => {
 		const dir = scratch("probe-embedded");
 		const remote = makeRemote(dir);
 		const mark = join(dir, "probe-git.pid");
@@ -240,5 +240,6 @@ describe("a program that embeds the probe", () => {
 		assert.match(out, /outcome: rejected INTERRUPTED/u);
 		assert.match(out, /own handler calls: 1\b/u);
 		assert.match(out, /probes left: 0\b/u);
+		assert.match(out, /group SIGKILLs after the git ended: 0\b/u);
 	});
 });

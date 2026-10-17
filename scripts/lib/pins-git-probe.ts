@@ -82,9 +82,11 @@ function probeGit(
 			// Already gone.
 		}
 	};
+	let escalation: ReturnType<typeof setTimeout> | undefined;
 	const stop = (): void => {
 		group("SIGTERM");
-		setTimeout(() => group("SIGKILL"), 2000).unref();
+		// Cancelled at close: once git is gone its group id may be reused.
+		escalation ??= setTimeout(() => group("SIGKILL"), 2000).unref();
 	};
 	let late = false;
 	const timer = setTimeout(() => {
@@ -106,6 +108,7 @@ function probeGit(
 		});
 		child.on("close", (code) => {
 			clearTimeout(timer);
+			clearTimeout(escalation);
 			if (late) reject(netTimeout(`git ${args.join(" ")}`, ms));
 			else
 				resolve({

@@ -47,6 +47,19 @@ export function identify(pid: number | undefined): ProcId | undefined {
 	return stat === undefined ? undefined : { pid, started: stat.started };
 }
 
+/** What that process is now, for a failure message: its state, its parent and its command line. */
+export function describe(id: ProcId | undefined): string {
+	if (id === undefined) return "no process";
+	try {
+		const status = readFileSync(`/proc/${id.pid}/status`, "utf8");
+		const field = (name: string) =>
+			new RegExp(`^${name}:\\s*(.*)$`, "mu").exec(status)?.[1] ?? "?";
+		return `pid ${id.pid} (started ${id.started}) is ${field("State")}, parent ${field("PPid")}: ${commandOf(id.pid).slice(0, 160)}`;
+	} catch {
+		return `pid ${id.pid} (started ${id.started}) is gone`;
+	}
+}
+
 /** Whether that very process is still running: not gone, not a zombie, not another process that has its pid. */
 export function running(id: ProcId | undefined): boolean {
 	if (id === undefined) return false;

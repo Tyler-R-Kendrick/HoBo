@@ -14,7 +14,13 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-import { end, identify, type ProcId, running } from "./support/procs.js";
+import {
+	describe as describeProc,
+	end,
+	identify,
+	type ProcId,
+	running,
+} from "./support/procs.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
 const FAKE = join(here, "fixtures/fake-opensesame.mts");
@@ -125,13 +131,13 @@ function schemaDirs(): string[] {
 	return readdirSync(tmp).filter((n) => n.startsWith("hobo-opensesame-"));
 }
 
-/** Whether that process is gone within ten seconds; the number alone could be a newer process's by then. */
-async function stops(id: ProcId | undefined): Promise<boolean> {
+/** Nothing if that process is gone within ten seconds, else what it is (the number alone could be a newer process's by then). */
+async function survivor(id: ProcId | undefined): Promise<string | undefined> {
 	try {
 		await until(() => !running(id), 10_000);
-		return true;
+		return undefined;
 	} catch {
-		return false;
+		return describeProc(id);
 	}
 }
 
@@ -148,8 +154,8 @@ describe("a real process running the adapter, signalled while its command runs",
 			expect(ended.stdout).toContain(`"exitCode":${exitCode}`);
 			expect(received()).toEqual([signal]);
 			expect(schemaDirs()).toEqual([]);
-			expect(await stops(command)).toBe(true);
-			expect(await stops(standIn)).toBe(true);
+			expect(await survivor(command)).toBeUndefined();
+			expect(await survivor(standIn)).toBeUndefined();
 		}, 90_000);
 	}
 
@@ -160,8 +166,8 @@ describe("a real process running the adapter, signalled while its command runs",
 			expect(ended.stdout).not.toContain("OUTCOME");
 			expect(received()).toEqual(["SIGTERM"]);
 			expect(schemaDirs()).toEqual([]);
-			expect(await stops(command)).toBe(true);
-			expect(await stops(standIn)).toBe(true);
+			expect(await survivor(command)).toBeUndefined();
+			expect(await survivor(standIn)).toBeUndefined();
 		}, 90_000);
 	}
 
@@ -202,8 +208,8 @@ describe("a stand-in that is held right after it started the command still hears
 			}
 			expect(received()).toEqual([heard]);
 			expect(schemaDirs()).toEqual([]);
-			expect(await stops(command)).toBe(true);
-			expect(await stops(standIn)).toBe(true);
+			expect(await survivor(command)).toBeUndefined();
+			expect(await survivor(standIn)).toBeUndefined();
 		}, 90_000);
 	}
 });

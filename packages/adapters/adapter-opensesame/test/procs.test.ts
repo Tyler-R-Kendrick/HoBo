@@ -1,7 +1,12 @@
 import { spawn } from "node:child_process";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { end, identify, running } from "./support/procs.js";
+import {
+	describe as describeProc,
+	end,
+	identify,
+	running,
+} from "./support/procs.js";
 
 const sleepers: number[] = [];
 afterEach(() => {
@@ -61,5 +66,23 @@ describe("a recorded pid is a process, not a number", () => {
 		expect(running(undefined)).toBe(false);
 		expect(() => end(undefined)).not.toThrow();
 		expect(identify(2 ** 22 + 7)).toBeUndefined();
+	});
+
+	it("says what a surviving process is, for a failure message", async () => {
+		const pid = sleeper();
+		await until(() => identify(pid) !== undefined);
+		const id = identify(pid);
+		expect(describeProc(id)).toMatch(
+			new RegExp(
+				`^pid ${pid} \\(started \\d+\\) is [SRD] .*, parent ${process.pid}: .*setTimeout`,
+				"u",
+			),
+		);
+		end(id);
+		await until(() => !running(id));
+		expect(describeProc({ pid, started: "1" })).toContain(
+			`pid ${pid} (started 1)`,
+		);
+		expect(describeProc(undefined)).toBe("no process");
 	});
 });

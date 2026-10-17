@@ -742,7 +742,7 @@ describe("home resolution", () => {
 		// means the action is "missing" even though it was just minted.
 		const { result } = await ceremony("open", ["item-db"], {
 			seedAction: true,
-			env: { HOBO_HOME: "/nonexistent/elsewhere" },
+			env: { HOBO_HOME: await tempDir("hobo-claim-decoy-home-") },
 		});
 		expect(result.ok).toBe(true);
 	});

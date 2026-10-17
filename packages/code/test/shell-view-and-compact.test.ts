@@ -25,7 +25,10 @@
  * on screen are already a compacted view; compacting *those* again would
  * summarise a summary and lose what the first pass dropped.
  */
-import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { InSessionPanes } from "../src/in-session-panes.js";
 import {
 	activeAgentLabel,
@@ -40,6 +43,35 @@ import {
 	withHarnessFromLivePanes,
 } from "../src/interactive-shell.js";
 
+/**
+ * The directories the shell is built over. Building the initial state writes
+ * into the home (a chat under `durable/code`, the current session under
+ * `runtime/code`), so both are real directories made here and removed after.
+ * A made-up absolute path is not a stand-in: run as root, which every CI
+ * container is, the write creates it at the filesystem root and leaves it there.
+ */
+let fixtureRoot = "";
+
+beforeAll(() => {
+	fixtureRoot = mkdtempSync(join(tmpdir(), "hobo-shell-view-tests-"));
+	mkdirSync(join(fixtureRoot, "home"));
+	mkdirSync(join(fixtureRoot, "project"));
+});
+
+afterAll(() => {
+	rmSync(fixtureRoot, { recursive: true, force: true });
+});
+
+/** An unset root would make both paths relative, and the shell would write into the working directory. */
+const fixtureDirs = () => {
+	if (fixtureRoot === "")
+		throw new Error("the fixture root is made in beforeAll");
+	return {
+		hoboHome: join(fixtureRoot, "home"),
+		cwd: join(fixtureRoot, "project"),
+	};
+};
+
 const base = (overrides: Partial<InteractiveShellState> = {}) =>
 	// SAFETY: the fixture is the state shape these views are declared over.
 	({
@@ -48,8 +80,7 @@ const base = (overrides: Partial<InteractiveShellState> = {}) =>
 			height: 24,
 			welcome: false,
 			env: {},
-			hoboHome: "/nonexistent/hobo-home-for-view-tests",
-			cwd: "/nonexistent/project-for-view-tests",
+			...fixtureDirs(),
 		}),
 		...overrides,
 		// SAFETY: the fixture is the state shape these views are declared over.

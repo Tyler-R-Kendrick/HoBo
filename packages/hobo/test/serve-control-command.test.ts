@@ -284,8 +284,8 @@ describe("home resolution", () => {
 		const dir = home();
 		const { result } = await serve(["control"], {
 			hoboHome: dir,
-			flags: { home: "/nonexistent/elsewhere" },
-			env: { HOBO_HOME: "/nonexistent/env" },
+			flags: { home: home() },
+			env: { HOBO_HOME: home() },
 		});
 		expect((result.data as Record<string, unknown>).hoboHome).toBe(dir);
 	});

@@ -226,9 +226,9 @@ async function killGroup(target: StopTarget): Promise<GroupStop> {
 		if (Date.now() >= deadline) {
 			return {
 				kind: "unconfirmed",
-				// Not "SIGKILL did not kill them": it skips another user's members, and with one of
-				// ours left a zombie beside them kill(-pgid, 0) never answers EPERM.
-				reason: `${target.label}: members were still running ${KILL_CONFIRM_MS} ms after SIGKILL was sent to the group (it reaches none of another user's, and may not have ended the rest yet)`,
+				// Not "SIGKILL did not kill them": without CAP_KILL it skips another user's members, and
+				// with one of ours left a zombie beside them kill(-pgid, 0) never answers EPERM.
+				reason: `${target.label}: members were still running ${KILL_CONFIRM_MS} ms after SIGKILL was sent to the group (SIGKILL cannot reach another user's members unless the check has CAP_KILL, and may not have ended the rest yet)`,
 			};
 		}
 		await sleep(POLL_MS);

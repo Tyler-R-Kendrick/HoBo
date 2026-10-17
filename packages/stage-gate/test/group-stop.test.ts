@@ -119,13 +119,14 @@ describe("stopGroup, with a kill that answers as the kernel would", () => {
 
 	it("is unconfirmed when members are still running KILL_CONFIRM_MS after SIGKILL, without claiming it reached them", async () => {
 		// With another user's member beside one of ours, kill(-pgid, 0) keeps finding our
-		// zombie, so no EPERM ever shows; the reason must not say SIGKILL reached the other.
+		// zombie, so no EPERM ever shows. The reason must not say SIGKILL reached the other,
+		// nor that it never can: a caller with CAP_KILL signals any user's process.
 		const { kill, sent } = fakeKill(() => "ok");
 		const started = Date.now();
 		const stop = await stopGroup(groupTarget(GROUP, { kill }), "SIGTERM", 300);
 		expect(stop).toEqual({
 			kind: "unconfirmed",
-			reason: `process group ${PGID}: members were still running ${KILL_CONFIRM_MS} ms after SIGKILL was sent to the group (it reaches none of another user's, and may not have ended the rest yet)`,
+			reason: `process group ${PGID}: members were still running ${KILL_CONFIRM_MS} ms after SIGKILL was sent to the group (SIGKILL cannot reach another user's members unless the check has CAP_KILL, and may not have ended the rest yet)`,
 		});
 		expect(sent).toContain("SIGKILL");
 		expect(Date.now() - started).toBeGreaterThanOrEqual(300 + KILL_CONFIRM_MS);

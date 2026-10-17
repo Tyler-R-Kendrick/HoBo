@@ -69,7 +69,8 @@ declare const digestBrand: unique symbol;
 /** `sha256:` plus the 64 lowercase hex digits of the exact report bytes read. */
 export type ReportDigest = string & { readonly [digestBrand]: true };
 
-// domain-view: frozen parse result of a RunReport v1 that stands as replay-only evidence; data-models/acceptance_evidence.proto AcceptanceEvidence is its wire form.
+// domain-view: frozen parse result of a RunReport v1 that stands as replay-only evidence; data-models/acceptance_evidence.proto + .cue is its schema of record.
+// Nothing serializes this type as such: in a stage-gate record it travels as the acceptance-replay check's flat string evidence (run_id, report_digest, scenarios_*, report_*), which stage_gate_record.cue constrains.
 export interface AcceptanceEvidence {
 	readonly runId: AiBddRunId;
 	readonly reportDigest: ReportDigest;

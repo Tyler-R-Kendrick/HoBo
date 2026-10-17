@@ -4,7 +4,11 @@ package hobo.stage_gate.v1;
 // What the release gate keeps from one ai-bdd run report
 // (.ai-bdd/report/report.json, RunReport schemaVersion 1), ADR-0172.
 // Only a report of a frozen, no-agent run with zero model calls becomes one;
-// report_digest is the sha256 of the exact bytes that were read.
+// report_digest is the sha256 of the exact bytes that were read. This message
+// is the schema of record; a stage-gate record carries the same facts as the
+// acceptance-replay check's string evidence (run_id, report_digest,
+// scenarios_*, report_exit_code, report_started_at), constrained in
+// stage_gate_record.cue.
 message AcceptanceEvidence {
   string run_id = 1;
   string report_digest = 2;

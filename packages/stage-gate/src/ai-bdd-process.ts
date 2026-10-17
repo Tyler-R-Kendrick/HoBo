@@ -121,12 +121,20 @@ export function runAiBdd(
 			output.end();
 			settle({ args, status, unstartable, timedOut, tail: output.tail() });
 		};
-		const child = spawn(executable, [...prefix, ...args], {
-			cwd: spec.cwd,
-			env: spec.env,
-			stdio: ["ignore", "pipe", "pipe"],
-			detached: process.platform !== "win32",
-		});
+		let child: ChildProcess;
+		try {
+			child = spawn(executable, [...prefix, ...args], {
+				cwd: spec.cwd,
+				env: spec.env,
+				stdio: ["ignore", "pipe", "pipe"],
+				detached: process.platform !== "win32",
+			});
+		} catch (cause) {
+			// Node refuses some commands before any process exists (a .cmd shim on Windows: EINVAL).
+			const reason = cause instanceof Error ? cause.message : String(cause);
+			finish(null, reason);
+			return;
+		}
 		running.add(child);
 		const timer = setTimeout(() => {
 			timedOut = true;

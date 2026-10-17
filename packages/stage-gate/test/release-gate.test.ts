@@ -644,6 +644,24 @@ describe("the release gate through real processes", () => {
 		TIMEOUT,
 	);
 
+	it("a command Node refuses to spawn (as it refuses a .cmd shim on Windows) is not run", async () => {
+		const project = newDir();
+		// spawn() throws synchronously for an argument it will not pass to the OS.
+		const result = await checkAcceptance(
+			["plans-fresh"],
+			{
+				...process.env,
+				HOBO_AI_BDD_CMD: JSON.stringify(["ai\u0000bdd"]),
+				HOBO_AI_BDD_PROJECT: project,
+			},
+			project,
+		);
+		expect(result).toMatchObject({ outcome: "not_run", exitCode: 3 });
+		expect(result.evidence.reason).toMatch(
+			/^ai-bdd compile --check did not run: /u,
+		);
+	});
+
 	it(
 		"a gate with no project configured fails with exit 2",
 		async () => {

@@ -71,7 +71,11 @@ the run's. The values of ignored fields (`recording`, `mode`, `coverage`,
 three replay-only commands against the project in `HOBO_AI_BDD_PROJECT`, with
 `HOBO_AI_BDD_CMD` as the command (a JSON argv, default `["ai-bdd"]`; for the
 project's own devDependency use its package manager's exec, for example
-`["opm","exec","ai-bdd","--"]`, or a path). Each check is
+`["opm","exec","ai-bdd","--"]`, or a path). On Windows the default cannot start:
+without a shell Node does not spawn the `ai-bdd.cmd` shim (and refuses a `.cmd`
+outright, EINVAL), so `["ai-bdd"]` and `["ai-bdd.cmd"]` are both recorded
+`not_run`; name Node and the CLI's script instead,
+`["node","<project>\\node_modules\\@ai-bdd\\cli\\dist\\bin.js"]`. Each check is
 `scripts/check-acceptance.mts <step>`:
 
 | Check | ai-bdd command | Passes on |
@@ -101,7 +105,8 @@ project may have replaced it); `check-acceptance.mts all` hands them over in
 process, and `evidence-intact` alone, with neither, is a usage error. The exit
 code is read before the
 report: after `run` exits 2 or 4 no report was written and an earlier one may
-still be on disk, after 3 the run said nothing about the product, so in all
+still be on disk; after 3 ai-bdd writes a report, but of a run that could not be
+carried out, which says nothing about the product. In all
 three cases `report.json` is not opened. Exit 3 and a command that cannot be
 started are `not_run` (check and record), never `failed` or `passed`, and the
 runner then exits 3. A passed release record holds exactly the three checks; the

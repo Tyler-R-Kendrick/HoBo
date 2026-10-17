@@ -5,17 +5,21 @@
  * - `plans-fresh`: `ai-bdd compile --check` (exit 4 when a plan is stale; no
  *   model call).
  * - `replay`: `ai-bdd run --frozen --no-agent --reporter json,junit`. The exit
- *   code is read first: only 0 and 1 write `.ai-bdd/report/report.json`, so
- *   only then is it opened, parsed into `AcceptanceEvidence`, and held to the
- *   process's own exit code. After 2 or 4 a stale report from an earlier run
- *   can still be on disk; after 3 the run said nothing about the product.
- * - `evidence-intact`: `ai-bdd verify-run .ai-bdd/runs/<runId>` for the run the
- *   report names, after checking that the run directory holds the same report.
+ *   code is read first. ai-bdd writes `report.json` after 0, 1 and 3, and not
+ *   after 2 or 4 (an earlier run's report may still be on disk then); only
+ *   after 0 or 1 is it opened, and only if it is this run's (its run directory
+ *   is new and it started no earlier than the spawn), then parsed into
+ *   `AcceptanceEvidence` and held to the process's own exit code. The report
+ *   exit 3 writes describes a run that could not be carried out: never read.
+ * - `evidence-intact`: `ai-bdd verify-run <runsDir>/<runId>` for the run the
+ *   replay judged, named by the replay's own evidence, after checking that its
+ *   directory's report has the digest the replay recorded.
  *
- * An exit code of 3, a command that cannot be started, or one ended by a
- * signal, is `not_run` (this process exits 3): never `failed`, never `passed`.
- * Configuration that cannot be used (HOBO_AI_BDD_CMD, HOBO_AI_BDD_PROJECT) is a
- * failure with exit 2, like ai-bdd's own usage errors.
+ * An exit code of 3, a command that cannot be started, one ended by a signal,
+ * and one that outlives HOBO_AI_BDD_TIMEOUT_MS are `not_run` (this process
+ * exits 3): never `failed`, never `passed`. Configuration that cannot be used
+ * (acceptance-config.ts) is a failure with exit 2, like ai-bdd's own usage
+ * errors.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";

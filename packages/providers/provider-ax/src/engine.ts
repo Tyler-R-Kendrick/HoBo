@@ -92,6 +92,20 @@ function rootSpanIo(trajectory: ParsedTrajectory): TrajectoryIo | null {
 }
 
 /**
+ * The request as the JSON its parser reads. A generated message carries a
+ * `$typeName` brand on itself and every nested message; it is not a field, and
+ * `fromJson` refuses it as one, so it is dropped on the way across.
+ */
+function requestJson(request: OptimizeRequest): JsonValue {
+	const text = JSON.stringify(request, (key, value) =>
+		key === "$typeName" ? undefined : value,
+	);
+	// SAFETY: `JSON.parse` of `JSON.stringify`'s output is a JSON value by
+	// construction; the parser it feeds checks every field it then reads.
+	return JSON.parse(text) as JsonValue;
+}
+
+/**
  * Lower the request's objective + recorded I/O shape to an ax signature:
  * the DSPy-style "the signature is the program" primitive.
  */
@@ -182,9 +196,7 @@ export function createAxTrainingEngine(
 			// honest way across: it is the same value, viewed as the JSON the
 			// parser is written against, with no cast claiming a shape nobody
 			// checked.
-			const parsed = parseOptimizeRequest(
-				JSON.parse(JSON.stringify(request)) as JsonValue,
-			);
+			const parsed = parseOptimizeRequest(requestJson(request));
 			const ios = parsed.trajectories
 				.map((trajectory) => rootSpanIo(trajectory))
 				.filter((io): io is TrajectoryIo => io !== null);

@@ -56,7 +56,7 @@ const COPIED = {
 		"39b3124e109795fcb285de613fb0eee1bf60322a017c0d1b6c54639e7bdebbb1",
 	"report.v1.failed.json":
 		"b8924cf22dd6ad3b5a7c235b24943e69b698f5b2d865e5db6020da5959f7b76f",
-	// ai-bdd pins this digest too (schema.test.ts): v1 is frozen once released.
+	// ai-bdd pins this digest too (V1_SHA256 in packages/sdk/test/report/schema.test.ts, main at 7f9456a): v1 is frozen once released.
 	"run-report.v1.schema.json":
 		"7e907a6232b9b8de41e14154243d11612be07d8bba4e831085cf828f4ca3d423",
 } as const;

@@ -10,18 +10,20 @@ these copies are the provider's side of that contract as far as HoBo's offline t
 | `b8924cf22dd6ad3b5a7c235b24943e69b698f5b2d865e5db6020da5959f7b76f  report.v1.failed.json` | `packages/sdk/test/report/fixtures/report.v1.failed.json` | A real frozen run **without** `--no-agent` against a build with a regression: two failed scenarios, healed steps, eleven model calls (eight `act`, three `judge`), exit 1. The gate refuses it as replay-only evidence. |
 | `7e907a6232b9b8de41e14154243d11612be07d8bba4e831085cf828f4ca3d423  run-report.v1.schema.json` | `packages/sdk/schema/run-report.v1.schema.json` | The JSON Schema (draft 2020-12) of `RunReport` v1. ai-bdd pins the same sha256 in its `schema.test.ts`: v1 is frozen once released, and a new field means `schemaVersion` 2 and a new file. This copy has the bounds added before release: `startedAt`/`finishedAt` in `toISOString()` form, non-negative durations and cost, judge values in 0..1. |
 
-Copied on 2026-10-17 from the ai-bdd branch `claude/ecstatic-mayer-wbm2c3-runreport`: the two reports at `c1d4df5`,
-where they were last changed by `ad10782` ("run report fixtures from real runs, validated against the published
-schema"; still byte-identical at `4190d7e`), and the schema at `4190d7e` ("run report v1 pins startedAt and finishedAt
-to the toISOString form"), which last changed it. Branch commits can be rewritten before they merge; the sha256 column
-is the identity that holds, and `test/acceptance-fields.test.ts` fails if a file here stops matching it.
+Origin: ai-bdd `main` at `7f9456a`, the squash merge of ai-bdd #12 ("feat(sdk): a JSON Schema for the run report,
+real fixtures, and exit codes a release gate can rely on"), where all three first appear on `main`; each file here is
+byte-identical to it there (checked with `git show 7f9456a:<path> | sha256sum`), and ai-bdd's
+`packages/sdk/test/report/schema.test.ts` pins the schema's sha256 as `V1_SHA256` at that commit. They were copied on
+2026-10-17 from that pull request's branch before it merged; the squash kept the bytes. The sha256 column is the
+identity that holds, and `test/acceptance-fields.test.ts` fails if a file here stops matching it.
 
 How they are used:
 
 - `test/acceptance-parse.test.ts` parses both, and edits a copy of `passed` one field at a time for each refusal.
 - `test/acceptance-fields.test.ts` walks the schema and holds `src/acceptance-fields.ts` to it: every field the
   schema requires is read by `parseAiBddRunReport` or ignored on purpose, with the reason written down.
-- `test/release-gate.test.ts` has a stand-in `ai-bdd` (`test/helpers/fake-ai-bdd.mts`) write `passed` as the
+- The release-gate suites (`test/release-gate.test.ts`, `release-freshness.test.ts`, `release-bounds.test.ts`, through
+  `test/helpers/release-gate.ts`) have a stand-in `ai-bdd` (`test/helpers/fake-ai-bdd.mts`) write `passed` as the
   report of a run, so the digest recorded in a stage-gate record can be compared with these bytes.
 
 To refresh after ai-bdd regenerates them (its `UPDATE_REPORT_FIXTURES=1` acceptance run), copy the files again,

@@ -155,17 +155,33 @@ export function earlierRun(project: string): string {
 	return runId;
 }
 
-/** Whether a process is gone, waiting up to two seconds for it to be reaped. */
-export async function gone(pid: number): Promise<boolean> {
-	for (let attempt = 0; attempt < 20; attempt += 1) {
+/**
+ * Whether a process has ended, waiting up to `attempts` x 100 ms (10 s) for
+ * it to. A zombie has ended: kill(pid, 0) still finds one until its parent
+ * reaps it, and an orphan's parent is init, which on some hosts takes seconds.
+ * The wait is only spent by a test that is about to fail.
+ */
+export async function gone(pid: number, attempts = 100): Promise<boolean> {
+	for (let attempt = 0; attempt < attempts; attempt += 1) {
 		try {
 			process.kill(pid, 0);
 		} catch {
 			return true;
 		}
+		if (isZombie(pid)) return true;
 		await new Promise((done) => setTimeout(done, 100));
 	}
 	return false;
+}
+
+/** Linux: whether /proc/<pid>/status says the process is a zombie (State: Z). */
+function isZombie(pid: number): boolean {
+	if (process.platform !== "linux") return false;
+	try {
+		return /^State:\s+Z/mu.test(readFileSync(`/proc/${pid}/status`, "utf8"));
+	} catch {
+		return false;
+	}
 }
 
 /** Ends a process a failed test left behind; one that is gone already is fine. */

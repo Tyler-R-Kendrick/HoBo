@@ -12,9 +12,14 @@
 # somebody chose. It acts only on this checkout's own repository: a copy with
 # no .git of its own, inside some other repository, leaves that one alone. It
 # prints nothing and always exits 0, so a session never fails because of it.
-# HOBO_SKIP_HOOKS or CI skips it, as they skip scripts/install-hooks.mts.
+# HOBO_SKIP_HOOKS or CI set to 1, true, yes or on skips it, as they skip
+# scripts/install-hooks.mts.
 cd "$(dirname "$0")/.." 2>/dev/null || exit 0
-[ -z "${HOBO_SKIP_HOOKS:-}${CI:-}" ] || exit 0
+for flag in "${HOBO_SKIP_HOOKS:-}" "${CI:-}"; do
+	case $(printf '%s' "$flag" | tr '[:upper:]' '[:lower:]') in
+	1 | true | yes | on) exit 0 ;;
+	esac
+done
 [ -d .githooks ] || exit 0
 [ -e .git ] || exit 0
 top=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0

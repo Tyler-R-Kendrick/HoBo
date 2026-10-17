@@ -214,10 +214,23 @@ describe("scripts/ensure-hooks-path.sh", () => {
 	});
 
 	it("honours the opt-outs scripts/install-hooks.mts honours", () => {
-		for (const optOut of [{ HOBO_SKIP_HOOKS: "1" }, { CI: "true" }]) {
+		for (const optOut of [
+			{ HOBO_SKIP_HOOKS: "1" },
+			{ HOBO_SKIP_HOOKS: "TRUE" },
+			{ CI: "true" },
+			{ CI: "yes" },
+		]) {
 			const repo = checkout();
 			assert.equal(script(repo, optOut).status, 0);
 			assert.equal(hooksPath(repo), "", JSON.stringify(optOut));
+		}
+	});
+
+	it("reads the opt-outs as booleans, so 0 and false do not opt out", () => {
+		for (const value of [{ HOBO_SKIP_HOOKS: "0" }, { CI: "false" }]) {
+			const repo = checkout();
+			assert.equal(script(repo, value).status, 0);
+			assert.equal(hooksPath(repo), ".githooks", JSON.stringify(value));
 		}
 	});
 

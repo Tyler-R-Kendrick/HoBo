@@ -383,9 +383,8 @@ describe("typed provider errors", () => {
 	async function rateLimitDetail(
 		headers: Record<string, string>,
 	): Promise<TemporaryAccountError> {
-		const transport = createStubTransport({
-			challenge: { status: 429, body: "{}", headers },
-		});
+		const challenge = { status: 429, body: "{}", headers };
+		const transport = createStubTransport({ challenge });
 		const { input } = harness({ transport });
 		try {
 			await provisionTemporaryAccountYard(input);

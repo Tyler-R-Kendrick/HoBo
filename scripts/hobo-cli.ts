@@ -32,7 +32,7 @@ const SUBMODULE_MARKER = path.join(
 if (!existsSync(SUBMODULE_MARKER)) {
 	console.error(
 		"external/ts-autocode submodule is missing (workspace package ts-autocode-grounding cannot resolve).\n" +
-			"Fix: git submodule update --init external/ts-autocode && pnpm install",
+			"Fix: pnpm run pins:fetch ts-autocode && pnpm install",
 	);
 	process.exit(1);
 }

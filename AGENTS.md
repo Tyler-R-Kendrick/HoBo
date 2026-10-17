@@ -511,6 +511,14 @@ Rules:
 - Prefer Vitest for normal local validation.
 - Prefer Node only for final compatibility validation.
 
+### Sibling consumption (pins)
+
+Everything HoBo takes from a sibling repository is pinned in `tools/pins/siblings.json` and handled by one script, `scripts/bootstrap-siblings.mts` (erasable TypeScript, node builtins only, so it runs before `pnpm install`; ADR-0169). A consumer takes the narrowest artifact: source linked into the workspace is a submodule, an executable is a hash-pinned release asset, a process boundary is a contract. Nothing is built from a sibling's source here.
+
+- `pnpm run pins:fetch [name...]`: a git pin (`ts-autocode`) is a shallow `git submodule update` of exactly the gitlink (`-- --reference <local clone>` downloads nothing that clone has); an asset pin (`mirror`, `opensesame-kit`) is a release file, hashed while it streams and kept in `${XDG_CACHE_HOME:-~/.cache}/siblings/<sha256>/`. An asset with no release yet is `null`: point `MIRROR_BIN` / `HOBO_OPENSESAME_KIT` at a local build.
+- `pnpm run pins:status [-- --online]`: offline drift check (gitlink against the checkout, a clean tree, `.gitmodules` against the manifest, cached bytes re-hashed); exit 1 prints what fixes each problem. Run it before trusting a lane that uses a sibling.
+- `pnpm run pins:bump <name> <ref>`: a git pin moves and stages its gitlink; an asset pin reads the release's `SHA256SUMS`, downloads each file to check it and rewrites only its entry. It refuses a repository the manifest did not name, an ambiguous `.gitmodules`, a submodule path that is not a repository of its own (or whose repository was made for another upstream, or is another section's), a commit the remote does not serve, and (unless `--force`) work committed inside the submodule; an asset bump refuses to drop a target without `--drop`. Never edit a pin by hand and never `git submodule update --remote`. `HOBO_PINS_NET_TIMEOUT_MS` (default 120000, at most 600000) bounds every network wait, a whole clone included. The pins run git without a terminal and without `GIT_DIR`/`GIT_WORK_TREE`/`GIT_INDEX_FILE` and the other repository-locating variables (so they behave the same from a git hook): if your git config rewrites the https remotes to ssh, the key must be in ssh-agent and the host in `known_hosts`. A submodule path that is a symbolic link is refused. `MIRROR_BIN` / `HOBO_OPENSESAME_KIT` name a binary nobody verified: in CI (`CI`, `GITHUB_ACTIONS` or `TF_BUILD` set) `pins:status` and `pins:fetch` exit 1 while one is set, unless `HOBO_PINS_ALLOW_OVERRIDE=1`. Nothing else refuses them: a lane that reads the variable itself (the OpenSesame adapter's real-kit lane, landing separately, does) must run `pins:status` first to get the same refusal.
+
 ## Testing policy
 
 This repo does not use traditional E2E tests. Do not add `test:e2e`, `e2e/`, or Playwright tests that require real downstream services.

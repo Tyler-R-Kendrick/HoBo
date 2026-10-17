@@ -72,6 +72,8 @@ jobs:
           key: turbo-${{ runner.os }}-${{ github.sha }}
           restore-keys: |
             turbo-${{ runner.os }}-
+      - name: Check the sibling pins (gitlink against checkout, offline)
+        run: node --experimental-strip-types scripts/bootstrap-siblings.mts --status --offline
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
       - name: Fetch base branch for Turbo affected
         run: git fetch origin "${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}"

@@ -198,8 +198,37 @@ export class Refusal extends PinsError {
 
 const GITLINK = /^160000 ([0-9a-f]{40}) 0\t/u;
 
-/** The commit the index pins `path` at. */
+/** git 2.31: `rev-parse --path-format=absolute` (`config --show-scope` is 2.26). */
+const MIN_GIT = { major: 2, minor: 31 } as const;
+let gitChecked = false;
+
+/**
+ * Refuses, once per process, a git older than the pins need. A version git
+ * prints in another form is let through: every read that needs a newer git
+ * also fails closed on its own.
+ */
+export function requireGit(root: string): void {
+	if (gitChecked) return;
+	const said = git(root, ["--version"]).stdout;
+	const match = /^git version (\d+)\.(\d+)/u.exec(said);
+	if (match !== null) {
+		const [major, minor] = [Number(match[1]), Number(match[2])];
+		if (
+			major < MIN_GIT.major ||
+			(major === MIN_GIT.major && minor < MIN_GIT.minor)
+		) {
+			throw new PinsError(
+				"GIT_FAILED",
+				`${said} is older than ${MIN_GIT.major}.${MIN_GIT.minor}, which the pins need (git rev-parse --path-format=absolute, git config --show-scope); install git ${MIN_GIT.major}.${MIN_GIT.minor} or newer`,
+			);
+		}
+	}
+	gitChecked = true;
+}
+
+/** The commit the index pins `path` at: the first git call of every git verb, after the version check. */
 export function gitlinkOf(root: string, path: string): string {
+	requireGit(root);
 	if (git(root, ["rev-parse", "--is-inside-work-tree"]).stdout !== "true") {
 		throw new PinsError(
 			"SUBMODULE_STATE",

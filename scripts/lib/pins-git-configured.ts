@@ -5,7 +5,7 @@
  *
  * Erasable TypeScript with node builtins only.
  */
-import { git, sameRepo } from "./pins-git-core.ts";
+import { git, gitFailure, sameRepo } from "./pins-git-core.ts";
 
 /** A problem with the configured URL, and its fix. */
 export interface UrlProblem {
@@ -27,8 +27,9 @@ export function shellWord(value: string): string {
  * child git gets as GIT_CONFIG_COUNT or GIT_CONFIG_PARAMETERS), the last one
  * winning. GIT_CONFIG is dropped, so nothing redirects the read;
  * `--show-scope` and `--show-origin` say where the fix goes. An exit other
- * than 0 (a value) or 1 (none set) is git failing to answer, and that is a
- * problem too, never "nothing is configured".
+ * than 0 (a value) or 1 (none set), a death by a signal included, is git
+ * failing to answer, and that is a problem too, never "nothing is
+ * configured".
  */
 export function configuredUrlProblem(
 	root: string,
@@ -46,9 +47,8 @@ export function configuredUrlProblem(
 		key,
 	]);
 	if (read.status !== 0 && read.status !== 1) {
-		const said = read.stderr.split("\n")[0] ?? "";
 		return {
-			problem: `cannot read the URL git's configuration gives ${path} (git config exited ${read.status}: ${said})`,
+			problem: `cannot read the URL git's configuration gives ${path} (${gitFailure("git config", read)})`,
 			fix: `run git config --show-scope --show-origin --get ${shellWord(key)} to see why; the pins need git 2.31 or newer`,
 		};
 	}

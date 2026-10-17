@@ -46,6 +46,9 @@ done`;
 
 const OLD_VERSION = `if [ "$1" = "--version" ]; then echo "git version 2.25.1"; exit 0; fi`;
 
+/** The URL read dies by a signal, as an OOM kill or a sandbox's SIGSYS would end it. */
+const KILLED_ON_READ = `case "$*" in *--show-scope*submodule.*.url*) kill -KILL $$ ;; esac`;
+
 function setUp(when: string) {
 	const dir = scratch("git-version");
 	const remote = makeRemote(dir);
@@ -83,6 +86,26 @@ describe("a git older than the pins need", () => {
 				run.stderr,
 				/GIT_FAILED: git version 2\.25\.1 is older than 2\.31, which the pins need/u,
 			);
+		}
+		assert.equal(existsSync(join(work, "external/lib/.git")), false);
+	});
+
+	it("a stale-URL read killed by a signal is a problem, not an empty answer", () => {
+		const { work, env } = setUp(KILLED_ON_READ);
+		const status = runBootstrap(work, ["--status", "--offline"], env);
+		assert.equal(status.status, 1, status.stdout);
+		assert.match(
+			status.stdout,
+			/cannot read the URL git's configuration gives external\/lib \(git config was killed by SIGKILL\)/u,
+		);
+		for (const args of [["--fetch", "lib"], []]) {
+			const run = runBootstrap(work, args, env);
+			assert.equal(
+				run.status,
+				1,
+				`${args.join(" ")}: ${run.stdout}${run.stderr}`,
+			);
+			assert.match(run.stderr, /SUBMODULE_STATE: cannot read the URL/u);
 		}
 		assert.equal(existsSync(join(work, "external/lib/.git")), false);
 	});

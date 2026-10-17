@@ -16,6 +16,7 @@ import { spawn } from "node:child_process";
 
 import { PinsError } from "./pins.ts";
 import {
+	exitStatus,
 	type GitResult,
 	gitEnvironment,
 	UNDER_DEADLINE,
@@ -80,13 +81,17 @@ export function netGitWatched(
 		child.on("error", (error) => {
 			reject(new PinsError("GIT_FAILED", `cannot run git: ${error.message}`));
 		});
-		child.on("close", (code) => {
+		child.on("close", (code, signal) => {
 			if (!live && heldBytes > 0) process.stderr.write(Buffer.concat(held));
 			if (code === 124) {
 				reject(netTimeout(`git ${args.join(" ")}`, ms));
 				return;
 			}
-			resolve({ status: code ?? 1, stdout: "", stderr: tail.trim() });
+			resolve({
+				status: exitStatus(code, signal),
+				stdout: "",
+				stderr: tail.trim(),
+			});
 		});
 	});
 }

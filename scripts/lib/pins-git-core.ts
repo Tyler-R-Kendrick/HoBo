@@ -10,6 +10,7 @@ import {
 	type SpawnSyncOptionsWithStringEncoding,
 	spawnSync,
 } from "node:child_process";
+import { constants } from "node:os";
 import { join } from "node:path";
 
 import { PinsError, type PinsErrorCode } from "./pins.ts";
@@ -18,9 +19,28 @@ import { netTimeout } from "./pins-net.ts";
 export { sameRepo } from "./pins-repo-url.ts";
 
 export interface GitResult {
+	/** git's exit status; a death by a signal is 128 + its number, as a shell reports it, never 1. */
 	readonly status: number;
 	readonly stdout: string;
 	readonly stderr: string;
+	/** The signal that ended git, when one did. */
+	readonly signal?: NodeJS.Signals;
+}
+
+/** Why git did not answer: the signal that ended it, or its exit and first line of error. */
+export function gitFailure(what: string, read: GitResult): string {
+	return read.signal === undefined
+		? `${what} exited ${read.status}: ${read.stderr.split("\n")[0] ?? ""}`
+		: `${what} was killed by ${read.signal}`;
+}
+
+/** An exit status as a shell reports it: 128 + the signal's number for a death by a signal. */
+export function exitStatus(
+	code: number | null,
+	signal: NodeJS.Signals | null,
+): number {
+	if (code !== null) return code;
+	return 128 + (signal === null ? 0 : (constants.signals[signal] ?? 0));
 }
 
 /**
@@ -156,9 +176,10 @@ export function git(
 		);
 	}
 	return {
-		status: result.status ?? 1,
+		status: exitStatus(result.status, result.signal),
 		stdout: (result.stdout ?? "").trim(),
 		stderr: (result.stderr ?? "").trim(),
+		...(result.signal === null ? {} : { signal: result.signal }),
 	};
 }
 

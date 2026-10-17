@@ -90,6 +90,20 @@ describe("lint:slop:changed when git cannot list the changed files", () => {
 		assert.match(result.stderr, /could not list the staged files/u);
 	});
 
+	it("names deepening, not fetching, for HEAD~1 in a depth-1 clone", () => {
+		const source = emptyRepo();
+		for (const index of [0, 1]) {
+			writeFileSync(join(source, `file-${index}.txt`), `${index}\n`);
+			git(source, ["add", "."]);
+			git(source, ["commit", "--quiet", "--no-verify", "-m", `${index}`]);
+		}
+		const clone = join(emptyDir(), "clone");
+		git(source, ["clone", "--quiet", "--depth=1", `file://${source}`, clone]);
+		const result = runLane(clone, "--base=HEAD~1");
+		assert.equal(result.status, 2, result.stdout + result.stderr);
+		assert.match(result.stderr, /git fetch --deepen=1/u);
+	});
+
 	it("still passes an empty but readable diff", () => {
 		// The control: nothing staged in a real repository is a genuine "nothing
 		// to lint", not a failure to look.

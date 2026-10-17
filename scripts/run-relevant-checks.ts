@@ -1,6 +1,7 @@
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 
+import { isCommit, reachRemedy } from "./lib/base-ref.ts";
 import {
 	type CommandInvocation,
 	commandForPlatform,
@@ -189,7 +190,7 @@ function changedListing(commandArgs: string[]): string {
 			? "fail  agent:check — git could not list the tracked files, so no check was selected."
 			: staged
 				? "fail  agent:check — git could not list the staged files, so no check was selected."
-				: `fail  agent:check — git could not diff against ${base}, so no check was selected. Fetch it (git fetch origin main) or pass --base=<ref>.`,
+				: `fail  agent:check — git could not diff against ${base}, so no check was selected. ${reachRemedy(base)}`,
 	);
 	process.exit(2);
 }
@@ -276,6 +277,15 @@ function rootPackageJsonScriptsOnlyChanged() {
 	}
 }
 
+// The gates are handed this base in staged mode too, where nothing else diffs
+// against it, so a named one has to be a commit before anything is chosen.
+// (Otherwise the diff below refuses a base it cannot reach.)
+if (staged && baseArg !== undefined && !isCommit(base)) {
+	console.error(
+		`fail  agent:check — --base=${base} is not a commit here, so no check was selected. ${reachRemedy(base)}`,
+	);
+	process.exit(2);
+}
 const diffBase = capture("git", ["merge-base", base, "HEAD"]) || base;
 const records = changedFileRecords();
 const files = records.map((record) => record.path);

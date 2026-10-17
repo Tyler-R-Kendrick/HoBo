@@ -16,6 +16,7 @@ import { spawnSync } from "node:child_process";
 import { existsSync } from "node:fs";
 import process from "node:process";
 
+import { reachRemedy } from "./lib/base-ref.ts";
 import {
 	type CommandInvocation,
 	commandForPlatform,
@@ -52,7 +53,7 @@ function changedFiles(staged: boolean, base: string): string[] {
 		console.error(
 			staged
 				? "fail  lint:slop:changed — git could not list the staged files, so nothing was linted."
-				: `fail  lint:slop:changed — git could not diff against ${base}, so nothing was linted. Fetch it (git fetch origin main) or pass --base=<ref>.`,
+				: `fail  lint:slop:changed — git could not diff against ${base}, so nothing was linted. ${reachRemedy(base)}`,
 		);
 		process.exit(2);
 	}

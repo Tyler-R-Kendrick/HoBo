@@ -32,6 +32,7 @@ import { checkBridge } from "./bridge.js";
 import { createCapture } from "./capture.js";
 import { childEnvOf } from "./child-env.js";
 import { OpenSesameAdapterError } from "./errors.js";
+import { Launch } from "./launch-value.js";
 import { type BinProbe, trustedOpenSesame } from "./opensesame-bin.js";
 import { createOutcomeScan, parseOutcome } from "./outcome.js";
 import { CHILD_MARKER } from "./run-markers.js";
@@ -43,16 +44,11 @@ import {
 } from "./supervise.js";
 import { nodeTrust, type Trust } from "./trust.js";
 
+export type { Launch } from "./launch-value.js";
 export type { SignalSource, SpawnedProcess } from "./supervise.js";
 
 const CAPTURE_LIMIT = 64 * 1024;
 const STDERR_GRACE_MS = 1000;
-
-export type Launch = Readonly<{
-	command: string;
-	args: readonly string[];
-	env: NodeJS.ProcessEnv;
-}>;
 
 export type LaunchInput = Readonly<{
 	/** The `opensesame` executable. */
@@ -117,7 +113,7 @@ export function buildLaunch(input: LaunchInput): Launch {
 		platform,
 		trust,
 	});
-	return Object.freeze({
+	return new Launch({
 		command: input.bin,
 		args: Object.freeze([
 			"dev",

@@ -166,6 +166,10 @@ What `runProxied` does before and around the run:
   running with their surrogate until the command ends or the surrogate's lifetime runs out. If OpenSesame itself is
   ended by a signal, the outcome is `signalled` with `128+n` (`exitCodeOf` returns it) and a notice that the command may
   still be running.
+- **`buildLaunch` returns a `Launch` that prints without its environment.** Its `env` is what `spawn` is given and holds the
+  passphrase when you list it in `passEnv`, so logging the value (`console.log`, `util.inspect`, `JSON.stringify`, a template
+  string) shows the names in the environment and the adapter's own arguments, never a value and never the arguments of your
+  command. `launch.env` itself is the real environment: do not log that.
 - It never reads or sets the store passphrase itself: OpenSesame takes it from the terminal, or from
   `OPENSESAME_STORE_PASSWORD` when you list that name in `passEnv`, and strips it from the command.
 

@@ -54,7 +54,7 @@ This adapter owns no aggregate. It implements the residual `SecretsPort` for a p
 ## Launch, and what surrounds it
 
 `runProxied` is a small pipeline, each step in a module of its own: `buildLaunch` (pure: the argv, and the environment from
-`child-env.ts`), `opensesame-bin.ts` (find, trust and identify the executable), the schema written 0600 in a directory of its own,
+`child-env.ts`, in a `Launch` that prints and serialises without its values, `launch-value.ts`), `opensesame-bin.ts` (find, trust and identify the executable), the schema written 0600 in a directory of its own,
 and `supervise.ts` (the signals and the exit event, from before the first await to the schema's removal). `trust.ts` is the one
 rule for a place, used by the executable lookup and by `PATH`.
 

@@ -36,7 +36,11 @@ import {
 	type AcceptanceConfig,
 	acceptanceConfigOf,
 } from "./acceptance-config.js";
-import { type AiBddRun, runAiBdd as spawnAiBdd } from "./ai-bdd-process.js";
+import {
+	AI_BDD_GRACE_MS,
+	type AiBddRun,
+	runAiBdd as spawnAiBdd,
+} from "./ai-bdd-process.js";
 import { REQUIRED_EVIDENCE_ENV } from "./gate-status.js";
 import { isJsonObject, isJsonString, parseJsonText } from "./json.js";
 import type { CheckEvidence } from "./types.js";
@@ -98,7 +102,7 @@ function commandResult(
 	const command = `ai-bdd ${run.args.join(" ")}`;
 	const base = { step, command, ...extra };
 	if (run.timedOut) {
-		const reason = `${command} did not finish within ${timeoutMs} ms (HOBO_AI_BDD_TIMEOUT_MS): its process group was killed`;
+		const reason = `${command} did not finish within ${timeoutMs} ms (HOBO_AI_BDD_TIMEOUT_MS): its process group was sent SIGTERM, and SIGKILL after ${AI_BDD_GRACE_MS / 1000} s`;
 		return result("not_run", NOT_RUN, {
 			...base,
 			reason,

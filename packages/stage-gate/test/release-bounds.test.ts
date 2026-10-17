@@ -15,6 +15,7 @@ import {
 	checkOf,
 	FAKE_COMMAND,
 	gone,
+	killQuietly,
 	newDir,
 	PASSED,
 	removeTempDirs,
@@ -26,7 +27,7 @@ afterEach(removeTempDirs);
 
 describe("the release gate bounds ai-bdd", () => {
 	it(
-		"a hung ai-bdd is killed with its process group at HOBO_AI_BDD_TIMEOUT_MS, and the check is not run",
+		"a hung ai-bdd is stopped with its process group at HOBO_AI_BDD_TIMEOUT_MS, and the check is not run",
 		async () => {
 			const pidFile = join(newDir(), "child.pid");
 			const sleepMs = 40_000;
@@ -45,12 +46,48 @@ describe("the release gate bounds ai-bdd", () => {
 			const replay = checkOf(run, "acceptance-replay");
 			expect(replay).toMatchObject({ status: "not_run", exitCode: 3 });
 			expect(replay.evidence.reason).toBe(
-				"ai-bdd run --frozen --no-agent --reporter json,junit did not finish within 1500 ms (HOBO_AI_BDD_TIMEOUT_MS): its process group was killed",
+				"ai-bdd run --frozen --no-agent --reporter json,junit did not finish within 1500 ms (HOBO_AI_BDD_TIMEOUT_MS): its process group was sent SIGTERM, and SIGKILL after 10 s",
 			);
 			expect(run.result.record.status).toBe("not_run");
-			// The child it started (a browser, in a real run) went with it.
+			// The child it started in its own group went with it (a browser Playwright launches is not in it: see the next test).
 			const child = Number(readFileSync(pidFile, "utf8"));
 			expect(await gone(child)).toBe(true);
+		},
+		TIMEOUT,
+	);
+
+	it.each([
+		[
+			"at HOBO_AI_BDD_TIMEOUT_MS",
+			{ HOBO_AI_BDD_TIMEOUT_MS: "1500" },
+			undefined,
+		],
+		["by the runner's backstop", { HOBO_AI_BDD_TIMEOUT_MS: "600000" }, 5000],
+	])(
+		"a hung ai-bdd stopped %s gets SIGTERM first, so the browser it launched in a group of its own is closed",
+		async (_label, env, replayBackstopMs) => {
+			const detachedPidFile = join(newDir(), "browser.pid");
+			const run = await runGate(
+				{
+					...ALL_PASS,
+					run: { exit: 0, report: PASSED, sleepMs: 40_000, detachedPidFile },
+				},
+				FAKE_COMMAND,
+				newDir(),
+				env,
+				replayBackstopMs,
+			);
+			expect(checkOf(run, "acceptance-replay")).toMatchObject({
+				status: "not_run",
+				exitCode: 3,
+			});
+			// A group kill never reaches it; the stand-in ends it on SIGTERM, as Playwright does.
+			const browser = Number(readFileSync(detachedPidFile, "utf8"));
+			try {
+				expect(await gone(browser)).toBe(true);
+			} finally {
+				killQuietly(browser);
+			}
 		},
 		TIMEOUT,
 	);

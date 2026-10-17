@@ -130,12 +130,18 @@ artifact); those requirements stay S0's.
 Every ai-bdd command runs in a process group of its own and is bounded by
 `HOBO_AI_BDD_TIMEOUT_MS` (milliseconds, default 30 minutes; a value that is not a
 whole number from 1 to 24 hours is a usage error, exit 2). One that outlives it is
-killed with its whole group (the browser it started too) and the check is
-`not_run`, with a reason naming the command and the bound; when ai-bdd exits, what
-it left running in its group is killed as well, and so is everything on SIGINT
-or SIGTERM to the check. The runner bounds each release check too
-(`timeoutMs`: ai-bdd's bound plus a minute), a backstop that stops the check with
-SIGTERM and records it `not_run`. ai-bdd's output is relayed to the check's
+stopped and the check is `not_run`, with a reason naming the command and the
+bound. Stopping a group sends it SIGTERM and, after a grace period of 10 s
+(`AI_BDD_GRACE_MS`), SIGKILL to whatever of it is left. What ai-bdd leaves
+running in its group when it exits is stopped the same way, and SIGINT or
+SIGTERM to the check is passed on to the group (which, being a group of its
+own, does not see the terminal's Ctrl-C) before the check exits. The signal
+goes first because Playwright launches each browser as the leader of a group of
+its own, which a signal to ai-bdd's group does not reach, and closes it from
+its own SIGTERM and SIGINT handlers. A process ai-bdd starts in another group
+that ignores SIGTERM can outlive the check. The runner bounds each release
+check too (`timeoutMs`: ai-bdd's bound plus a minute), a backstop that stops
+the check with SIGTERM (which it passes on as above) and records it `not_run`. ai-bdd's output is relayed to the check's
 stderr as it comes, but only its first and last 2 MiB (`RELAY_BYTES`, an eighth
 of the runner's 16 MiB capture limit `CHECK_OUTPUT_LIMIT`), so a passing run that
 prints a lot is never killed for its output; the evidence keeps its last 2,000

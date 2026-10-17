@@ -20,7 +20,11 @@ import { fileURLToPath } from "node:url";
 import { defineReleaseGate } from "../../src/definition.js";
 import { isJsonObject, isJsonString, parseJsonText } from "../../src/json.js";
 import { runStageGate } from "../../src/runner.js";
-import type { CheckResult, RunStageGateResult } from "../../src/types.js";
+import type {
+	CheckResult,
+	RunStageGateResult,
+	StageGateDefinition,
+} from "../../src/types.js";
 import {
 	bytesOf,
 	docAt,
@@ -61,6 +65,7 @@ export interface FakePlan {
 		readonly runsDir?: string;
 		readonly sleepMs?: number;
 		readonly pidFile?: string;
+		readonly detachedPidFile?: string;
 		readonly outputBytes?: number;
 	};
 	readonly verifyRun: number;
@@ -84,15 +89,32 @@ export function checkOf(run: GateRun, checkId: string): CheckResult {
 	return found;
 }
 
+/** The release gate, its replay check's runner bound (the backstop) replaced when `replayBackstopMs` is set. */
+function releaseGate(
+	replayBackstopMs: number | undefined,
+): StageGateDefinition {
+	const gate = defineReleaseGate();
+	if (replayBackstopMs === undefined) return gate;
+	return {
+		...gate,
+		checks: gate.checks.map((check) =>
+			check.checkId === "acceptance-replay"
+				? { ...check, timeoutMs: replayBackstopMs }
+				: check,
+		),
+	};
+}
+
 export async function runGate(
 	plan: FakePlan,
 	command: readonly string[] = FAKE_COMMAND,
 	project = newDir(),
 	extraEnv: Readonly<Record<string, string>> = {},
+	replayBackstopMs?: number,
 ): Promise<GateRun> {
 	const log = join(newDir(), "calls.log");
 	writeFileSync(log, "");
-	const result = await runStageGate(defineReleaseGate(), {
+	const result = await runStageGate(releaseGate(replayBackstopMs), {
 		cwd: REPO_ROOT,
 		env: {
 			HOBO_AI_BDD_CMD: JSON.stringify(command),
@@ -137,6 +159,15 @@ export async function gone(pid: number): Promise<boolean> {
 		await new Promise((done) => setTimeout(done, 100));
 	}
 	return false;
+}
+
+/** Ends a process a failed test left behind; one that is gone already is fine. */
+export function killQuietly(pid: number): void {
+	try {
+		process.kill(pid, "SIGKILL");
+	} catch {
+		// Gone already.
+	}
 }
 
 export function sha256Of(path: string): string {

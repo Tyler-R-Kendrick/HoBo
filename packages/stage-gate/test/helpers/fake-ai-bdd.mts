@@ -11,8 +11,8 @@
 // report goes to join(dirname(runsDir), "report"), as ai-bdd writes it.
 //
 // FAKE_AI_BDD (JSON): { compileCheck: <exit>, run: { exit, report?: <file>,
-// runCopy?: "same" | "different" | "none", startedAt?: <ISO>, runsDir?: <dir> },
-// verifyRun: <exit> }
+// runCopy?: "same" | "different" | "none", startedAt?: <ISO>, runsDir?: <dir>,
+// sleepMs?, pidFile?, detachedPidFile?, outputBytes? }, verifyRun: <exit> }
 
 import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
@@ -33,6 +33,12 @@ interface RunPlan {
 	/** Hang this long (a child of its own process group first, its pid written to pidFile). */
 	readonly sleepMs?: number;
 	readonly pidFile?: string;
+	/**
+	 * While hanging, also hold a child in a process group of its own, as
+	 * Playwright launches a browser, and end it on SIGTERM or SIGINT, as
+	 * Playwright does, then exit. Its pid is written here.
+	 */
+	readonly detachedPidFile?: string;
 	/** Print this many bytes of output before finishing. */
 	readonly outputBytes?: number;
 }
@@ -97,6 +103,28 @@ if (command === "compile" && rest[0] === "--check") {
 		child.unref();
 		if (plan.run.pidFile !== undefined) {
 			writeFileSync(plan.run.pidFile, String(child.pid));
+		}
+		if (plan.run.detachedPidFile !== undefined) {
+			const browser = spawn(
+				process.execPath,
+				["-e", "setTimeout(() => {}, 60000)"],
+				{ stdio: "ignore", detached: true },
+			);
+			browser.unref();
+			writeFileSync(plan.run.detachedPidFile, String(browser.pid));
+			for (const [signal, code] of [
+				["SIGTERM", 143],
+				["SIGINT", 130],
+			] as const) {
+				process.once(signal, () => {
+					try {
+						process.kill(-(browser.pid ?? 0), "SIGTERM");
+					} catch {
+						// Already gone.
+					}
+					process.exit(code);
+				});
+			}
 		}
 		await new Promise((done) => setTimeout(done, plan.run.sleepMs));
 	}

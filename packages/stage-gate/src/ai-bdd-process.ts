@@ -2,14 +2,20 @@
  * One ai-bdd command as a process (ADR-0172), bounded in time and in what it
  * passes on:
  *
- * - It runs in a process group of its own (POSIX), so a timeout, or a signal
- *   to the gate, kills ai-bdd and whatever it started (a browser) together,
- *   and so does its own exit, which leaves nothing of the run behind.
- * - Its output is relayed live, but only the first and the last
- *   RELAY_BYTES: the stage-gate runner captures a check's stderr up to
- *   CHECK_OUTPUT_LIMIT, and a check that writes more is killed for it, so a
- *   passing run that prints a lot must not reach that limit. Nothing is
- *   buffered whole; the evidence keeps the last TAIL_CHARS characters.
+ * - It runs in a process group of its own (POSIX). A timeout, or SIGINT or
+ *   SIGTERM to the gate, stops that group: the signal first (SIGTERM for a
+ *   timeout, else the one the gate got), and SIGKILL to whatever of it is left
+ *   after AI_BDD_GRACE_MS. Its own exit stops what it left in its group the
+ *   same way. Playwright launches each browser as the leader of a group of its
+ *   own, out of reach of a group signal, and closes it from its SIGTERM and
+ *   SIGINT handlers: that is why the signal goes first. A process ai-bdd
+ *   started in another group and that ignores SIGTERM can outlive the check.
+ * - Its output is relayed, but only the first RELAY_BYTES as they come and
+ *   the last RELAY_BYTES when it exits: the stage-gate runner captures a
+ *   check's stderr up to CHECK_OUTPUT_LIMIT, and a check that writes more is
+ *   killed for it, so a passing run that prints a lot must not reach that
+ *   limit. Nothing is buffered whole; the evidence keeps the last TAIL_CHARS
+ *   characters.
  */
 import { type ChildProcess, spawn } from "node:child_process";
 
@@ -19,11 +25,17 @@ import { CHECK_OUTPUT_LIMIT } from "./gate-status.js";
 export const RELAY_BYTES = CHECK_OUTPUT_LIMIT / 8;
 const TAIL_CHARS = 2000;
 
+/** How long a process group has to end after it is signalled, before SIGKILL. */
+export const AI_BDD_GRACE_MS = 10_000;
+const POLL_MS = 100;
+
 export interface AiBddCommand {
 	readonly command: readonly string[];
 	readonly cwd: string;
 	readonly env: NodeJS.ProcessEnv;
 	readonly timeoutMs: number;
+	/** Between the signal that stops its group and SIGKILL; AI_BDD_GRACE_MS unless set. */
+	readonly graceMs?: number;
 	/** Where the output is relayed (the check's stderr). */
 	readonly relay: (chunk: Buffer) => void;
 }
@@ -40,21 +52,63 @@ export interface AiBddRun {
 	readonly tail: string;
 }
 
-const running = new Set<ChildProcess>();
+/** Each ai-bdd still running, and its grace period. */
+const running = new Map<ChildProcess, number>();
+/** Each group being stopped: a second stop of the same group waits for the first. */
+const stopping = new Map<ChildProcess, Promise<void>>();
+/** Set once the gate itself is told to stop: no ai-bdd starts after that. */
+let stoppedBy: NodeJS.Signals | undefined;
 
-function killGroup(child: ChildProcess): void {
-	if (child.pid === undefined) return;
+/** Signal ai-bdd's process group (0 only asks whether any of it is left); false when none is. */
+function signalGroup(child: ChildProcess, signal: NodeJS.Signals | 0): boolean {
+	if (child.pid === undefined) return false;
+	if (process.platform === "win32") {
+		// No process groups: the command itself, and every signal ends it at once.
+		if (child.exitCode !== null || child.signalCode !== null) return false;
+		return signal === 0 || child.kill(signal);
+	}
 	try {
-		if (process.platform === "win32") child.kill("SIGKILL");
-		else process.kill(-child.pid, "SIGKILL");
+		process.kill(-child.pid, signal);
+		return true;
 	} catch {
-		// The group is already gone.
+		return false;
 	}
 }
 
-/** Kill every ai-bdd process group still running (the entry script does, on SIGINT and SIGTERM). */
-export function killRunningAiBdd(): void {
-	for (const child of running) killGroup(child);
+/**
+ * Stop ai-bdd's process group: `signal` to all of it, then SIGKILL to what is
+ * left after graceMs. Resolves once none of the group is left, or it was killed.
+ */
+function stopGroup(
+	child: ChildProcess,
+	signal: NodeJS.Signals,
+	graceMs: number,
+): Promise<void> {
+	const pending = stopping.get(child);
+	if (pending !== undefined) return pending;
+	const stop = (async () => {
+		if (!signalGroup(child, signal)) return;
+		const deadline = Date.now() + graceMs;
+		while (Date.now() < deadline) {
+			await new Promise((done) => setTimeout(done, POLL_MS));
+			if (!signalGroup(child, 0)) return;
+		}
+		signalGroup(child, "SIGKILL");
+	})();
+	stopping.set(child, stop);
+	return stop;
+}
+
+/**
+ * The gate was told to stop (the entry script calls this on SIGINT and
+ * SIGTERM): pass the signal on to every ai-bdd group still running, SIGKILL
+ * what is left after its grace, and start no other. Resolves when all are gone.
+ */
+export async function stopRunningAiBdd(signal: NodeJS.Signals): Promise<void> {
+	stoppedBy = signal;
+	await Promise.all(
+		[...running].map(([child, graceMs]) => stopGroup(child, signal, graceMs)),
+	);
 }
 
 interface OutputRelay {
@@ -106,11 +160,17 @@ function boundedRelay(relay: (chunk: Buffer) => void): OutputRelay {
 	};
 }
 
+interface Ending {
+	readonly status: number | null;
+	readonly signal: NodeJS.Signals | null;
+}
+
 export function runAiBdd(
 	spec: AiBddCommand,
 	args: readonly string[],
 ): Promise<AiBddRun> {
 	const [executable = "", ...prefix] = spec.command;
+	const graceMs = spec.graceMs ?? AI_BDD_GRACE_MS;
 	const output = boundedRelay(spec.relay);
 	return new Promise((settle) => {
 		let done = false;
@@ -121,6 +181,10 @@ export function runAiBdd(
 			output.end();
 			settle({ args, status, unstartable, timedOut, tail: output.tail() });
 		};
+		if (stoppedBy !== undefined) {
+			finish(null, `not started: the check was stopped by ${stoppedBy}`);
+			return;
+		}
 		let child: ChildProcess;
 		try {
 			child = spawn(executable, [...prefix, ...args], {
@@ -135,10 +199,22 @@ export function runAiBdd(
 			finish(null, reason);
 			return;
 		}
-		running.add(child);
+		running.set(child, graceMs);
+		let closed: Ending | undefined;
+		let groupGone = false;
+		const end = () => {
+			if (!groupGone || closed === undefined) return;
+			clearTimeout(timer);
+			running.delete(child);
+			stopping.delete(child);
+			finish(
+				timedOut ? null : closed.status,
+				closed.signal === null ? "" : `ended by ${closed.signal}`,
+			);
+		};
 		const timer = setTimeout(() => {
 			timedOut = true;
-			killGroup(child);
+			void stopGroup(child, "SIGTERM", graceMs);
 		}, spec.timeoutMs);
 		child.stdout?.on("data", output.write);
 		child.stderr?.on("data", output.write);
@@ -147,15 +223,16 @@ export function runAiBdd(
 			running.delete(child);
 			finish(null, `${cause.name}: ${cause.message}`);
 		});
-		// What it started and left running goes with it.
-		child.on("exit", () => killGroup(child));
+		// What it started and left running in its group goes with it.
+		child.on("exit", () => {
+			void stopGroup(child, "SIGTERM", graceMs).then(() => {
+				groupGone = true;
+				end();
+			});
+		});
 		child.on("close", (status, signal) => {
-			clearTimeout(timer);
-			running.delete(child);
-			finish(
-				timedOut ? null : status,
-				signal === null ? "" : `ended by ${signal}`,
-			);
+			closed = { status, signal };
+			end();
 		});
 	});
 }

@@ -93,7 +93,8 @@ const CHECK_MARGIN_MS = 60_000;
  * repository root, like the S0 gate's. Each check runs one ai-bdd command,
  * which check-acceptance bounds by HOBO_AI_BDD_TIMEOUT_MS; the runner's own
  * bound is that plus a margin, a backstop that stops the check with SIGTERM
- * (check-acceptance then kills ai-bdd's process group).
+ * (check-acceptance then passes SIGTERM on to ai-bdd's process group, and
+ * SIGKILL after AI_BDD_GRACE_MS).
  */
 export function defineReleaseGate(
 	env: NodeJS.ProcessEnv = process.env,

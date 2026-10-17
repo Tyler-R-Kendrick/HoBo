@@ -103,6 +103,8 @@ const NAME = /^[a-z0-9][a-z0-9-]*$/u;
 const TARGET = /^[a-z0-9]+-[a-z0-9_]+$/u;
 const SHA256 = /^[0-9a-f]{64}$/u;
 const SEGMENT = /^[A-Za-z0-9._@+-]+$/u;
+// ASCII only, so 200 characters are 200 bytes: room for the partial suffix under NAME_MAX.
+const FILE_NAME = /^[A-Za-z0-9._@+-]{1,200}$/u;
 const REF = /^[A-Za-z0-9][A-Za-z0-9._/+-]*$/u;
 const TAG = /^[A-Za-z0-9][A-Za-z0-9._+-]*$/u;
 const LOOPBACK = new Set(["127.0.0.1", "localhost", "[::1]"]);
@@ -113,9 +115,9 @@ export function isSafeRef(value: string): boolean {
 	return REF.test(value) && !value.includes("..") && !value.includes("//");
 }
 
-/** A file name, not a path: what `entry` and a release asset are called. */
+/** A file name, not a path, of at most 200 bytes: what `entry` and a release asset are called. */
 export function isFileName(value: string): boolean {
-	return SEGMENT.test(value) && value !== "." && value !== "..";
+	return FILE_NAME.test(value) && value !== "." && value !== "..";
 }
 
 /** A path under the repository root: no escape, no option-looking segment. */

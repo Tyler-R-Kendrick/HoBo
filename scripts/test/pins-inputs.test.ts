@@ -96,3 +96,57 @@ describe("bump --repo naming the pin's own repository", () => {
 		});
 	}
 });
+
+describe("bump checks a name it was given before any request", () => {
+	for (const [label, entry] of [
+		["longer than 200 bytes", "e".repeat(201)],
+		["a path", "bin/mirror"],
+		["a backslash", "bin\\mirror"],
+		["a control character", "mir\tror"],
+	] as const) {
+		it(`--entry ${label} is a usage error, and nothing is requested`, async () => {
+			const { root, srv } = await released();
+			srv.hits.length = 0;
+			const run = await runBootstrapAsync(root, [
+				"--bump",
+				"mirror",
+				"v2.0.0",
+				"--entry",
+				entry,
+			]);
+			assert.equal(run.status, 2, `${run.stdout}${run.stderr}`);
+			assert.match(run.stderr, /--entry .* is not a plain file name/u);
+			assert.deepEqual(srv.hits, []);
+		});
+	}
+
+	it("--entry of exactly 200 bytes is accepted", async () => {
+		const { root, manifest } = await released();
+		const entry = "e".repeat(200);
+		const run = await runBootstrapAsync(root, [
+			"--bump",
+			"mirror",
+			"v2.0.0",
+			"--entry",
+			entry,
+		]);
+		assert.equal(run.status, 0, `${run.stdout}${run.stderr}`);
+		const pin = JSON.parse(readFileSync(manifest, "utf8")).assets.mirror;
+		assert.equal(pin.files["linux-x64"].entry, entry);
+	});
+
+	it("--drop of a target the pin never had is refused before SHA256SUMS is read", async () => {
+		const { root, srv } = await released();
+		srv.hits.length = 0;
+		const run = await runBootstrapAsync(root, [
+			"--bump",
+			"mirror",
+			"v2.0.0",
+			"--drop",
+			"linux-arm64",
+		]);
+		assert.equal(run.status, 2, `${run.stdout}${run.stderr}`);
+		assert.match(run.stderr, /--drop linux-arm64: the pin has no such target/u);
+		assert.deepEqual(srv.hits, []);
+	});
+});

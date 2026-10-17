@@ -253,12 +253,6 @@ function planTargets(
 	const listed = (target: string): boolean => sums.has(`${name}-${target}`);
 	const had = pin === null ? [] : Object.keys(pin.files);
 	for (const target of drop) {
-		if (!had.includes(target)) {
-			throw new PinsError(
-				"USAGE",
-				`--drop ${target}: the pin has no such target (it has ${had.join(", ") || "none"})`,
-			);
-		}
 		if (listed(target)) {
 			throw new PinsError(
 				"USAGE",
@@ -316,6 +310,15 @@ export async function bumpAsset(
 			"USAGE",
 			`${name} has no repository yet: pass --repo <url of the repository that publishes the release>`,
 		);
+	}
+	const had = pin === null ? [] : Object.keys(pin.files);
+	for (const target of options.drop) {
+		if (!had.includes(target)) {
+			throw new PinsError(
+				"USAGE",
+				`--drop ${target}: the pin has no such target (it has ${had.join(", ") || "none"})`,
+			);
+		}
 	}
 	const base = releaseBase(repo, tag);
 	const sums = parseSums(await fetchText(`${base}${SUMS}`, ctx.fetchOptions));

@@ -112,9 +112,13 @@ describe("event-store fold", () => {
 		const [registered] = normalizeKubernetesYardSignal(
 			signal("deployment.available", { uid: "u-1" }),
 		);
-		expect(registered?.data.yard).toMatchObject({
-			layout: { properties: {} },
-		});
+		// Exact, not a subset: `properties: {}` inside toMatchObject would match
+		// any object, including the empty-string key this test exists to catch.
+		expect(registered?.data.yard).toEqual(
+			expect.objectContaining({
+				layout: expect.objectContaining({ properties: {} }),
+			}),
+		);
 	});
 
 	it("carries the apiserver and namespace through when present", () => {
@@ -125,14 +129,16 @@ describe("event-store fold", () => {
 				namespace: "hobo-1",
 			}),
 		);
-		expect(registered?.data.yard).toMatchObject({
-			layout: {
-				properties: {
-					"kubernetes.apiServerUrl": "https://apiserver.internal",
-					"kubernetes.namespace": "hobo-1",
-				},
-			},
-		});
+		expect(registered?.data.yard).toEqual(
+			expect.objectContaining({
+				layout: expect.objectContaining({
+					properties: {
+						"kubernetes.apiServerUrl": "https://apiserver.internal",
+						"kubernetes.namespace": "hobo-1",
+					},
+				}),
+			}),
+		);
 	});
 
 	it("folds a failure into a typed failure fact", () => {

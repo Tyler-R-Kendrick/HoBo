@@ -111,9 +111,13 @@ describe("event-store fold", () => {
 		const [registered] = normalizeHostingerYardSignal(
 			signal("vps.running", { virtualMachineId: "vm-1" }),
 		);
-		expect(registered?.data.yard).toMatchObject({
-			layout: { properties: {} },
-		});
+		// Exact, not a subset: `properties: {}` inside toMatchObject would match
+		// any object, including the empty-string key this test exists to catch.
+		expect(registered?.data.yard).toEqual(
+			expect.objectContaining({
+				layout: expect.objectContaining({ properties: {} }),
+			}),
+		);
 	});
 
 	it("carries account and zone references through when present", () => {
@@ -124,14 +128,16 @@ describe("event-store fold", () => {
 				zoneId: "z-1",
 			}),
 		);
-		expect(registered?.data.yard).toMatchObject({
-			layout: {
-				properties: {
-					"hostinger.accountRef": "acct-1",
-					"hostinger.zoneId": "z-1",
-				},
-			},
-		});
+		expect(registered?.data.yard).toEqual(
+			expect.objectContaining({
+				layout: expect.objectContaining({
+					properties: {
+						"hostinger.accountRef": "acct-1",
+						"hostinger.zoneId": "z-1",
+					},
+				}),
+			}),
+		);
 	});
 
 	it("folds a failure into a typed failure fact", () => {

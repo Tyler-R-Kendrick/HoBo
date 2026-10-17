@@ -32,7 +32,10 @@
  *
  * All pure: no terminal, no tmux, no station.
  */
-import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { InSessionPanes } from "../src/in-session-panes.js";
 import {
 	applyHarnessNav,
@@ -44,14 +47,43 @@ import {
 } from "../src/interactive-shell.js";
 
 /**
+ * The directories the shell is built over. Building the initial state writes
+ * into the home (a chat under `durable/code`, the current session under
+ * `runtime/code`), so both are real directories made here and removed after.
+ * A made-up absolute path is not a stand-in: run as root, which every CI
+ * container is, the write creates it at the filesystem root and leaves it there.
+ */
+let fixtureRoot = "";
+
+beforeAll(() => {
+	fixtureRoot = mkdtempSync(join(tmpdir(), "hobo-shell-key-reducer-"));
+	mkdirSync(join(fixtureRoot, "home"));
+	mkdirSync(join(fixtureRoot, "project"));
+});
+
+afterAll(() => {
+	rmSync(fixtureRoot, { recursive: true, force: true });
+});
+
+/** An unset root would make both paths relative, and the shell would write into the working directory. */
+const fixtureDirs = () => {
+	if (fixtureRoot === "")
+		throw new Error("the fixture root is made in beforeAll");
+	return {
+		hoboHome: join(fixtureRoot, "home"),
+		cwd: join(fixtureRoot, "project"),
+	};
+};
+
+/**
  * A shell with nothing seated and no claimed work.
  *
  * `createInitialShellState` reads `HOBO_HOME` from the ambient environment and
  * builds the agent board from that station's real tasks. Left to the process
  * environment, whichever other suite happened to log a station in decides
  * whether this shell has claimed work -- and `/mux` opens instead of refusing.
- * The env and home are pinned to a path that does not exist, and the board is
- * overridden outright, so these tests describe the shell rather than the run.
+ * The env is empty, the home is the fixture's own, and the board is overridden
+ * outright, so these tests describe the shell rather than the run.
  */
 const base = (overrides: Partial<InteractiveShellState> = {}) =>
 	// SAFETY: the fixture is the state shape the reducer is declared over.
@@ -61,8 +93,7 @@ const base = (overrides: Partial<InteractiveShellState> = {}) =>
 			height: 24,
 			welcome: false,
 			env: {},
-			hoboHome: "/nonexistent/hobo-home-for-key-reducer-tests",
-			cwd: "/nonexistent/project-for-key-reducer-tests",
+			...fixtureDirs(),
 		}),
 		agentBoard: {
 			schema: "hobo.code.agent-work/v1",
@@ -220,12 +251,11 @@ describe("the help key", () => {
 });
 
 describe("the approval gate", () => {
-	// SAFETY: the fixture stands in for the gate the host builds.
-	const pending = {
+	const pending: PendingApproval = {
 		runId: "run-1",
 		sandboxRoot: "/tmp/sandbox",
 		changes: [],
-	} as unknown as PendingApproval;
+	};
 
 	const gated = (overrides: Partial<InteractiveShellState> = {}) =>
 		base({ pendingApproval: pending, ...overrides });

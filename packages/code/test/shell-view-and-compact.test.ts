@@ -25,7 +25,10 @@
  * on screen are already a compacted view; compacting *those* again would
  * summarise a summary and lose what the first pass dropped.
  */
-import { describe, expect, it } from "vitest";
+import { mkdirSync, mkdtempSync, rmSync } from "node:fs";
+import { tmpdir } from "node:os";
+import { join } from "node:path";
+import { afterAll, beforeAll, describe, expect, it } from "vitest";
 import type { InSessionPanes } from "../src/in-session-panes.js";
 import {
 	activeAgentLabel,
@@ -40,6 +43,35 @@ import {
 	withHarnessFromLivePanes,
 } from "../src/interactive-shell.js";
 
+/**
+ * The directories the shell is built over. Building the initial state writes
+ * into the home (a chat under `durable/code`, the current session under
+ * `runtime/code`), so both are real directories made here and removed after.
+ * A made-up absolute path is not a stand-in: run as root, which every CI
+ * container is, the write creates it at the filesystem root and leaves it there.
+ */
+let fixtureRoot = "";
+
+beforeAll(() => {
+	fixtureRoot = mkdtempSync(join(tmpdir(), "hobo-shell-view-tests-"));
+	mkdirSync(join(fixtureRoot, "home"));
+	mkdirSync(join(fixtureRoot, "project"));
+});
+
+afterAll(() => {
+	rmSync(fixtureRoot, { recursive: true, force: true });
+});
+
+/** An unset root would make both paths relative, and the shell would write into the working directory. */
+const fixtureDirs = () => {
+	if (fixtureRoot === "")
+		throw new Error("the fixture root is made in beforeAll");
+	return {
+		hoboHome: join(fixtureRoot, "home"),
+		cwd: join(fixtureRoot, "project"),
+	};
+};
+
 const base = (overrides: Partial<InteractiveShellState> = {}) =>
 	// SAFETY: the fixture is the state shape these views are declared over.
 	({
@@ -48,15 +80,16 @@ const base = (overrides: Partial<InteractiveShellState> = {}) =>
 			height: 24,
 			welcome: false,
 			env: {},
-			hoboHome: "/nonexistent/hobo-home-for-view-tests",
-			cwd: "/nonexistent/project-for-view-tests",
+			...fixtureDirs(),
 		}),
 		...overrides,
 		// SAFETY: the fixture is the state shape these views are declared over.
 	}) as InteractiveShellState;
 
-const message = (text: string, role: ShellMessage["role"] = "user") =>
-	({ role, text, at: 1 }) as ShellMessage;
+const message = (
+	text: string,
+	role: ShellMessage["role"] = "user",
+): ShellMessage => ({ role, text, at: 1 });
 
 /**
  * Panes carrying enough captured output to scroll. `syncAgentsBodyLines`
@@ -253,15 +286,14 @@ describe("the frame title", () => {
 	});
 
 	it("builds a frame for a pending approval", () => {
-		// SAFETY: the fixture stands in for the gate the host builds.
-		const approval = {
+		const approval: PendingApproval = {
 			runId: "run-1",
 			sandboxRoot: "/tmp/sandbox",
 			changes: [
 				{ path: "a.ts", status: "M" },
 				{ path: "b.ts", status: "A" },
 			],
-		} as unknown as PendingApproval;
+		};
 		expect(
 			JSON.stringify(buildShellTree(base({ pendingApproval: approval }))),
 		).toContain("run-1");
@@ -270,15 +302,14 @@ describe("the frame title", () => {
 	it("lists every change the approval covers", () => {
 		// Not a count: the dialog names each path and its status, so the reader
 		// approves what they can actually see rather than a number.
-		// SAFETY: the fixture stands in for the gate the host builds.
-		const approval = {
+		const approval: PendingApproval = {
 			runId: "run-1",
 			sandboxRoot: "/tmp/sandbox",
 			changes: [
 				{ path: "a.ts", status: "M" },
 				{ path: "b.ts", status: "A" },
 			],
-		} as unknown as PendingApproval;
+		};
 		const painted = JSON.stringify(
 			buildShellTree(base({ pendingApproval: approval })),
 		);
@@ -289,12 +320,11 @@ describe("the frame title", () => {
 	it("shows each change's status beside its path", () => {
 		// Added and modified are different risks; a bare path list would hide
 		// which is which.
-		// SAFETY: the fixture stands in for the gate the host builds.
-		const approval = {
+		const approval: PendingApproval = {
 			runId: "run-1",
 			sandboxRoot: "/tmp/sandbox",
 			changes: [{ path: "a.ts", status: "M" }],
-		} as unknown as PendingApproval;
+		};
 		expect(
 			JSON.stringify(buildShellTree(base({ pendingApproval: approval }))),
 		).toContain("M  a.ts");
@@ -303,24 +333,22 @@ describe("the frame title", () => {
 	it("promises the canonical tree is untouched until yes", () => {
 		// The sentence the gate exists for, rendered where the decision is made
 		// rather than in documentation elsewhere.
-		// SAFETY: the fixture stands in for the gate the host builds.
-		const approval = {
+		const approval: PendingApproval = {
 			runId: "run-1",
 			sandboxRoot: "/tmp/sandbox",
 			changes: [{ path: "a.ts", status: "M" }],
-		} as unknown as PendingApproval;
+		};
 		expect(
 			JSON.stringify(buildShellTree(base({ pendingApproval: approval }))),
 		).toContain("canonical tree is untouched");
 	});
 
 	it("names the sandbox the changes are held in", () => {
-		// SAFETY: the fixture stands in for the gate the host builds.
-		const approval = {
+		const approval: PendingApproval = {
 			runId: "run-1",
 			sandboxRoot: "/tmp/sandbox",
 			changes: [{ path: "a.ts", status: "M" }],
-		} as unknown as PendingApproval;
+		};
 		expect(
 			JSON.stringify(buildShellTree(base({ pendingApproval: approval }))),
 		).toContain("/tmp/sandbox");

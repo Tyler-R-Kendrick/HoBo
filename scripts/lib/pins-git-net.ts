@@ -15,6 +15,7 @@
 import { isAbsolute } from "node:path";
 import { PinsError } from "./pins.ts";
 import { type GitResult, git } from "./pins-git-core.ts";
+import { terminalHint } from "./pins-git-hint.ts";
 import { netTimeoutMs } from "./pins-net.ts";
 
 export interface NetOptions {
@@ -89,7 +90,7 @@ function mustNet(
 	if (result.status !== 0) {
 		throw new PinsError(
 			"GIT_FAILED",
-			`${what} failed: git ${args.join(" ")}\n${result.stderr}`,
+			`${what} failed: git ${args.join(" ")}\n${result.stderr}${terminalHint(result.stderr)}`,
 		);
 	}
 	return result.stdout;

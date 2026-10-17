@@ -20,6 +20,7 @@ import {
 	assertNotAbandoning,
 	type GitOptions,
 } from "./pins-git-guard.ts";
+import { terminalHint } from "./pins-git-hint.ts";
 import { NOT_SERVED, netGit } from "./pins-git-net.ts";
 import { remoteHas } from "./pins-git-probe.ts";
 
@@ -107,7 +108,7 @@ function fetchFromPin(
 		if (NOT_SERVED.test(fetched.stderr)) return null;
 		throw new PinsError(
 			"GIT_FAILED",
-			`fetch of ${what} failed:\n${fetched.stderr}`,
+			`fetch of ${what} failed:\n${fetched.stderr}${terminalHint(fetched.stderr)}`,
 		);
 	}
 	const commit = peel(sub, "FETCH_HEAD");

@@ -104,12 +104,15 @@ export function git(
 		cwd,
 		encoding: "utf8",
 		maxBuffer: 64 * 1024 * 1024,
-		stdio: visible ? ["ignore", "inherit", "inherit"] : "pipe",
+		// stderr is captured even when visible, so a failure can be explained
+		// (pins-git-hint.ts); it is passed on once the call returns.
+		stdio: visible ? ["ignore", "inherit", "pipe"] : "pipe",
 		env: { ...gitEnvironment(), GIT_TERMINAL_PROMPT: "0", LC_ALL: "C", ...env },
 	};
 	// The group is killed at the deadline; this only bounds the parent.
 	if (deadline !== undefined) options.timeout = deadline.ms + 10_000;
 	const result = spawnSync(command, argv, options);
+	if (visible && result.stderr) process.stderr.write(result.stderr);
 	if (
 		deadline !== undefined &&
 		(result.status === 124 || isTimeout(result.error))

@@ -22,6 +22,7 @@ import { PinsError } from "./pins.ts";
 import { cacheDir } from "./pins-assets.ts";
 import { dirProblem, sweepProbes } from "./pins-cache.ts";
 import { type GitResult, git, gitEnvironment } from "./pins-git-core.ts";
+import { terminalHint } from "./pins-git-hint.ts";
 import {
 	allowedProtocols,
 	type NetOptions,
@@ -183,7 +184,7 @@ export async function remoteHas(
 		if (NOT_SERVED.test(result.stderr)) return false;
 		throw new PinsError(
 			"GIT_FAILED",
-			`could not ask ${url} for ${sha.slice(0, 7)}: ${result.stderr}`,
+			`could not ask ${url} for ${sha.slice(0, 7)}: ${result.stderr}${terminalHint(result.stderr)}`,
 		);
 	}, options);
 }

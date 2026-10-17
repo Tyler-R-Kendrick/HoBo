@@ -31,6 +31,7 @@ import {
 	coherence,
 	type GitOptions,
 } from "./pins-git-guard.ts";
+import { terminalHint } from "./pins-git-hint.ts";
 import { type NetOptions, netGit, remoteTip } from "./pins-git-net.ts";
 import { remoteHas } from "./pins-git-probe.ts";
 
@@ -69,7 +70,8 @@ function updateSubmodule(root: string, pin: GitPin, options: GitOptions): void {
 	// A new clone, or one already shallow, takes only the pinned commit; a full
 	// clone a developer made stays full (a depth fetch would make it shallow).
 	const shallow = !existsSync(join(sub, ".git")) || isShallow(root, pin.path);
-	if (update(shallow).status === 0) return;
+	const first = update(shallow);
+	if (first.status === 0) return;
 	// A server that refuses a fetch of an unadvertised commit leaves a shallow
 	// clone of the tip: take the full history, then check out the pin.
 	if (existsSync(join(sub, ".git"))) {
@@ -86,13 +88,17 @@ function updateSubmodule(root: string, pin: GitPin, options: GitOptions): void {
 			options,
 		);
 		if (full.status !== 0) {
-			throw new PinsError("GIT_FAILED", `full fetch failed:\n${full.stderr}`);
+			throw new PinsError(
+				"GIT_FAILED",
+				`full fetch failed:\n${full.stderr}${terminalHint(full.stderr)}`,
+			);
 		}
 	}
-	if (update(false).status !== 0) {
+	const second = update(false);
+	if (second.status !== 0) {
 		throw new PinsError(
 			"GIT_FAILED",
-			`git submodule update failed for ${pin.path}, shallow and full`,
+			`git submodule update failed for ${pin.path}, shallow and full${terminalHint(`${first.stderr}\n${second.stderr}`)}`,
 		);
 	}
 }

@@ -21,7 +21,7 @@ other surfaces consume.
 
 ```bash
 pnpm --filter @hobo/stage-gate run build
-pnpm --filter @hobo/stage-gate run typecheck
+pnpm --filter @hobo/stage-gate run typecheck   # src, then src + test/ + contracts/ (tsconfig.test.json)
 pnpm --filter @hobo/stage-gate run lint
 pnpm --filter @hobo/stage-gate run test
 pnpm --filter @hobo/stage-gate run test:contract:consumer

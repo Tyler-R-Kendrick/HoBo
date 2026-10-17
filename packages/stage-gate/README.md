@@ -157,7 +157,8 @@ for the whole grace period, and the scan can miss a member forked while it ran,
 which the kernel's group signal reaches (it is atomic with `fork`). Anything else counts as live and is SIGKILLed when the grace ends: a
 process whose main thread exited while its other threads run (`Z` with
 `num_threads` above 1), a `/proc` of another PID namespace (it shows no member),
-and a `/proc` that cannot be read. What ai-bdd leaves
+an entry whose `stat` cannot be read for any reason but its process being gone
+(`ENOENT`, `ESRCH`), and a `/proc` that cannot be read. What ai-bdd leaves
 running in its group when it exits is stopped the same way, and SIGINT or
 SIGTERM to the check is passed on to the group (which, being a group of its
 own, does not see the terminal's Ctrl-C) before the check exits. The signal

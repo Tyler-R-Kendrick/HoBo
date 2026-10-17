@@ -4,7 +4,7 @@
  * in a temp dir; the odd comm reads the real one.
  */
 import { spawn } from "node:child_process";
-import { readFileSync, symlinkSync } from "node:fs";
+import { mkdirSync, readFileSync, symlinkSync } from "node:fs";
 import { join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
@@ -32,6 +32,14 @@ describe("scanGroup", () => {
 		const elsewhere = { ...zombie(100), state: "S", pgrp: 7 };
 		expect(scanGroup(PGID, table([elsewhere]))).toBe("live");
 		expect(scanGroup(PGID, table([]))).toBe("live");
+	});
+
+	it("is live when an entry's stat cannot be read for a reason other than its process being gone", () => {
+		// EISDIR here; EACCES under hidepid=1 for another user's process, EMFILE at the fd limit.
+		// Such an entry may be a member the scan cannot see, so beside a zombie it is not a group of zombies.
+		const root = table([zombie(100)]);
+		mkdirSync(join(root, "101", "stat"), { recursive: true });
+		expect(scanGroup(PGID, root)).toBe("live");
 	});
 
 	it("is live without a readable table", () => {

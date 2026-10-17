@@ -64,17 +64,30 @@ export const POLL_MS = 100;
 /** How long SIGKILL has to land before the stop says it cannot confirm the group ended. */
 export const KILL_CONFIRM_MS = 1000;
 
+/** The errno code of what kill or a read threw ("unknown" when it has none). */
+function codeOf(cause: unknown): string {
+	return cause instanceof Error && "code" in cause && cause.code !== undefined
+		? String(cause.code)
+		: "unknown";
+}
+
 /**
- * The fields of `<procRoot>/<pid>/stat` after its comm, or undefined once the
- * process is gone. "pid (comm) state ppid pgrp ...": comm may hold spaces and
- * parentheses, so the fields start after the last ")".
+ * The fields of `<procRoot>/<pid>/stat` after its comm; "gone" once the
+ * process is (ENOENT, ESRCH), and "unreadable" for any other error, which
+ * cannot tell whether it is a member (EACCES for another user's process under
+ * hidepid=1, EMFILE at the fd limit). "pid (comm) state ppid pgrp ...": comm
+ * may hold spaces and parentheses, so the fields start after the last ")".
  */
-function statFields(procRoot: string, pid: string): string[] | undefined {
+function statFields(
+	procRoot: string,
+	pid: string,
+): string[] | "gone" | "unreadable" {
 	let stat: string;
 	try {
 		stat = readFileSync(join(procRoot, pid, "stat"), "utf8");
-	} catch {
-		return undefined;
+	} catch (cause) {
+		const code = codeOf(cause);
+		return code === "ENOENT" || code === "ESRCH" ? "gone" : "unreadable";
 	}
 	return stat.slice(stat.lastIndexOf(")") + 2).split(" ");
 }
@@ -87,6 +100,7 @@ function statFields(procRoot: string, pid: string): string[] | undefined {
  *   with num_threads above 1;
  * - a /proc of another PID namespace shows no member, although the kernel
  *   has just found one;
+ * - an entry whose stat cannot be read may be a member it cannot see;
  * - an unreadable /proc shows nothing.
  */
 export function scanGroup(pgid: number, procRoot: string): "zombies" | "live" {
@@ -100,19 +114,13 @@ export function scanGroup(pgid: number, procRoot: string): "zombies" | "live" {
 	for (const entry of entries) {
 		if (!/^\d+$/u.test(entry)) continue;
 		const fields = statFields(procRoot, entry);
+		if (fields === "unreadable") return "live";
 		// state is field 3, pgrp field 5 and num_threads field 20 of the line.
-		if (fields === undefined || Number(fields[2]) !== pgid) continue;
+		if (fields === "gone" || Number(fields[2]) !== pgid) continue;
 		seen = true;
 		if (fields[0] !== "Z" || Number(fields[17]) !== 1) return "live";
 	}
 	return seen ? "zombies" : "live";
-}
-
-/** The errno code of what kill threw ("unknown" when it has none). */
-function codeOf(cause: unknown): string {
-	return cause instanceof Error && "code" in cause && cause.code !== undefined
-		? String(cause.code)
-		: "unknown";
 }
 
 /** `signal` (0 only asks) to every member of group `pgid`. */

@@ -1,7 +1,9 @@
 /**
  * A `.gitmodules` section renamed after the submodule was cloned. git keeps
  * using the existing clone (`modules/<old name>`, whose `core.worktree` is
- * this path), and so do the pins: following every printed fix in turn ends
+ * this path), and so do the pins, for the same repository (a clone made for
+ * another upstream is refused: `pins-module-origin.test.ts`): following every
+ * printed fix in turn ends
  * with the uncommitted change, or the local commit, still there, and status
  * naming that work. Before, the second fix was `rm -rf <path> && git
  * submodule update --init`, and following it lost the change and left the
@@ -9,9 +11,11 @@
  *
  * No printed fix deletes a checkout: where the `.git` names a repository
  * that cannot be the submodule's, the fix moves the checkout aside
- * (`mv <path> <path>.kept`), so any work in it is kept; where it names a
- * module directory git made under another name and no `core.worktree`
- * says whose it is, the fix renames the section to that name.
+ * (`mv <path> <path>.kept`, or the first free `.kept.N`:
+ * `pins-move-aside.test.ts`), so any work in it is kept; where it names a
+ * module directory git made under another name, of the same repository, with
+ * no `core.worktree` to say which path it was made for, the fix renames the
+ * section to that name.
  */
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";

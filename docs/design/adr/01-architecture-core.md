@@ -889,3 +889,39 @@ Before this decision one sibling was pinned, by a gitlink, and obtained by a com
 - **(−)** An asset is one file per target. A multi-file kit must either be an archive extracted by the lane that uses it or become several pins; the layout is decided with the OpenSesame release workflow, not here.
 - **(−)** `--reference` helps only when the local clone has the commit, and a shallow fetch of a commit that is not a branch tip relies on the server allowing it (GitHub does for reachable commits; the full-fetch fallback covers the rest).
 - **(−)** `pins:fetch` and `setup` now refuse more than they did: a `.gitmodules` that disagrees with the manifest, a commit made by hand inside the submodule, a cache others can write. Each refusal prints its fix; `--force` is the one override.
+
+## ADR-0173
+**The vendored anti-slop plugin carries a SHA-256 manifest and an offline drift test; HoBo keeps its own rule lineage until OpenSesame's rules pass HoBo's recent working set.**
+
+**Status:** Accepted — manifest and drift test only. Adopting OpenSesame's rule set was measured and deferred: the adoption condition below does not hold.
+
+### Context
+HoBo vendors the anti-slop Oxlint plugin (descended from `dmmulroy/anti-slop`, MIT) in three places: [`tools/oxlint/anti-slop`](../../../tools/oxlint/anti-slop/index.ts), which `oxlint.config.ts` loads, and the `install-anti-slop` skill's asset under `.claude/skills/` and `.agents/skills/`. The three were byte-identical (21 files each), but nothing asserted it: `skills:mirror-check` compares the two skill mirrors with each other, never with `tools/`.
+
+The actively maintained lineage is OpenSesame's `skills/install-anti-slop` asset (commit `8043081f8`, its ADR 0200). It now ships `MANIFEST.sha256` (one `<sha256>  <path>` line per file), a `verify.mjs` that checks a copy against it, the MIT `LICENSE`, and an installer flag `--no-tests` that leaves its RuleTester suites out. Against HoBo's copy, 8 of the 21 shared files are byte-identical and 13 differ in logic; upstream adds `shared/typescript-program.ts`, which builds a TypeScript program for type-aware checks.
+
+The adoption condition was set before this ADR: adopt OpenSesame's rule set only if `lint:slop:changed` stays clean on the files HoBo's last 30 commits on `main` changed. Measured with oxlint 1.79.0, HoBo's `oxlint.config.ts` and its rule list unchanged, HoBo at `248ff34c` and OpenSesame at `51f27bc9`:
+
+| Scope | HoBo's copy | OpenSesame's copy |
+|---|---|---|
+| Last 30 commits' changed lintable files (72) | 374 findings in 34 files | 765 findings in 58 files (24 newly flagged, none cleared) |
+| `lint:slop` repo-wide | 3,814 diagnostics (3,740 anti-slop) in 438 files, 9.0 s | 10,538 diagnostics (10,464 anti-slop) in 1,039 files, 65.5 s |
+
+Repo-wide, by rule: `no-known-value-widening` 127 → 5,880, `require-safety-comment-for-type-assertion` 2,010 → 2,435, `no-unknown-parameters` 259 → 623, `no-unsafe-dictionary-type` 578 → 652, `no-unknown-returns` 68 → 155, `no-object-parameters` 2 → 12, `no-unknown-type-aliases` 0 → 11; the other rules are unchanged. The condition fails under either reading: the lane is not clean on those files even with HoBo's own copy, and OpenSesame's copy flags 24 more of them.
+
+### Decision
+1. **Each copy carries `MANIFEST.sha256`** in the upstream format: `<sha256>  <path>`, paths relative to the copy, sorted bytewise, LF endings, no line for the manifest itself. For HoBo's 21 rule files it is byte-identical to what upstream's own renderer produces, and `sha256sum -c MANIFEST.sha256` reads it. Each copy also carries upstream's MIT `LICENSE` (the notice HoBo's copy had lost), listed in the manifest like any other file, so the copy is 22 files.
+2. **[`scripts/test/anti-slop-vendor.test.ts`](../../../scripts/test/anti-slop-vendor.test.ts) is the drift check**, run by `test:scripts` and selected by `scripts/relevant-check-policy.ts` (so pre-commit and `agent:check` run it) whenever a copy or the test changes: every listed file is present, a regular file (never a symlink) and matches its digest, no unlisted file exists, and the three copies are identical, manifest included. It is offline and needs nothing but Node. `.gitattributes` marks the three trees `-text`, so no checkout rewrites their line endings.
+3. **Upstream `verify.mjs` is not vendored.** The JavaScript-family file policy in `AGENTS.md` bans new `.mjs` implementation files, and the TypeScript test already does its job, so no exception is warranted. The test therefore does not expect the manifest's `verify.mjs` line or its test-only lines (`*.test.*`, `*.spec.*`, fixture and snapshot directories), and reports either file as extra if it appears. That lets the upstream manifest be vendored unchanged.
+4. **HoBo keeps its rule lineage; no rule changes here.** To edit a rule, change `tools/oxlint/anti-slop`, copy the tree over both skill assets, and regenerate the manifest in all three: `cd tools/oxlint/anti-slop && find . -type f ! -name MANIFEST.sha256 | sed 's|^\./||' | LC_ALL=C sort | xargs sha256sum > MANIFEST.sha256` (GNU coreutils; `shasum -a 256` prints the same format).
+5. **Adoption is one command per copy.** For each of the three trees run `node <OpenSesame>/skills/install-anti-slop/scripts/install.mjs <tree> --force --no-tests`, then delete `<tree>/verify.mjs`. Regenerate nothing: the manifest comes from the asset. `--force` copies over an existing tree without deleting, so a file upstream dropped stays behind, and the drift test names it as extra. Run against this branch, that sequence leaves 24 files per copy and the drift test passes unchanged. `pins:bump anti-slop` will wrap this command once it lands (#1582).
+6. **Revisit when** the files under active change pass OpenSesame's rules: rerun the measurement above and adopt when OpenSesame's copy adds no finding to the last 30 commits' changed files, or when a maintainer accepts the measured cost.
+
+### Consequences
+- **(+)** A hand edit to one copy, a missed manifest update, or a stale file left by an install fails the pre-commit check and `test:scripts` offline, with one line naming each file.
+- **(+)** Adopting OpenSesame's lineage later is mechanical: the test and the manifest format do not change.
+- **(−)** Two lineages remain. Fixes made upstream (its type-aware imported-dictionary analysis among them) do not reach HoBo until adoption.
+- **(−)** The manifest detects drift, not tampering: whoever can edit a rule can edit the manifest beside it.
+- **(−)** The measurement shows the changed-file lane is not holding: 34 of the 72 files changed by the last 30 commits fail HoBo's own rules, so those commits reached `main` without passing `lint:slop:changed`. Adoption waits on that backlog as much as on upstream's stricter rules.
+- **(+)** Each copy ships the upstream MIT `LICENSE`, so the vendored code carries its notice; the manifest holds it like any rule file.
+- **(−)** The skill's own `scripts/install.mjs` and `SKILL.md` stay at the older upstream version, which needs no `verify.mjs`. The current upstream installer imports `verify.mjs`, so syncing it would reopen point 3.

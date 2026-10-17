@@ -3,8 +3,10 @@ import { defineConfig } from "oxlint";
 /**
  * anti-slop (vendored Oxlint plugin, https://github.com/dmmulroy/anti-slop):
  * rejects low-evidence / low-signal TypeScript patterns. The plugin is vendored
- * at tools/oxlint/anti-slop/ — edit it there to match repo standards.
- * Install/refresh via the `install-anti-slop` skill (.agents/skills, .claude/skills).
+ * at tools/oxlint/anti-slop/ — edit it there, copy the tree over both skill
+ * assets (.agents/skills, .claude/skills install-anti-slop) and regenerate
+ * MANIFEST.sha256 in all three (ADR-0173); scripts/test/anti-slop-vendor.test.ts
+ * fails on any drift. Install/refresh via the `install-anti-slop` skill.
  */
 export default defineConfig({
 	ignorePatterns: [

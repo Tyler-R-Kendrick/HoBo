@@ -379,6 +379,27 @@ export function selectRelevantChecks(
 		});
 	}
 
+	if (
+		files.some(
+			(file) =>
+				/^(?:tools\/oxlint\/anti-slop|\.(?:claude|agents)\/skills\/install-anti-slop\/assets\/anti-slop)\//u.test(
+					file,
+				) || file === "scripts/test/anti-slop-vendor.test.ts",
+		)
+	) {
+		checks.push({
+			command: "node",
+			args: [
+				"--import",
+				"tsx",
+				"--test",
+				"scripts/test/anti-slop-vendor.test.ts",
+			],
+			reason:
+				"vendored anti-slop copies must match their SHA-256 manifests and each other (ADR-0173)",
+		});
+	}
+
 	if (uiChanged) {
 		checks.push({
 			command: "pnpm",

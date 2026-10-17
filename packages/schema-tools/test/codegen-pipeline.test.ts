@@ -19,6 +19,12 @@ const POC_PACKAGES_SOURCE = join(
 	"src/draft/technical-proofs/s0-04-protobuf-cue-codegen/packages",
 );
 const CODEGEN_INTEGRATION_TIMEOUT_MS = 60_000;
+// `codegen --check --json` runs over the whole repository, so it grows with
+// each package it covers (@hobo/adapter-opensesame's data-models are one). Alone
+// it took 22 s at load average 64 on the 4-CPU build machine, and it timed out
+// at 60 s beside another suite at load 44. The budget is for the machine, not
+// the property under test: the assertions are unchanged.
+const REPO_WIDE_CODEGEN_TIMEOUT_MS = 180_000;
 
 let POC_PACKAGES = POC_PACKAGES_SOURCE;
 let tempRoot: string | undefined;
@@ -139,7 +145,7 @@ describe("json envelope", () => {
 			const sample = createCodegenReport({ status: "CLEAN", durationMs: 1 });
 			expect(JSON.parse(reportToJson(sample)).status).toBe("CLEAN");
 		},
-		CODEGEN_INTEGRATION_TIMEOUT_MS,
+		REPO_WIDE_CODEGEN_TIMEOUT_MS,
 	);
 });
 

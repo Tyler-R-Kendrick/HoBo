@@ -76,7 +76,8 @@ rule for a place, used by the executable lookup and by `PATH`.
 - **A trusted place** resolves through every symlink; it and every directory above it belong to the effective user or root and are
   not writable by group or others (a sticky directory they own is allowed above it); it is not under `node_modules/.bin` and not inside the
   working directory's tree (root and the home directory are not projects). Not checked: contents, ACLs, a mount that lies about
-  modes, Windows ownership, or the gap between check and use.
+  modes, Windows ownership, or the gap between check and use. A rootless user namespace shows root's files as `nobody`'s and
+  is refused until the programs sit in directories the container's user owns (reasoned, not run).
 - **The executable is found, trusted and identified before the passphrase can reach it.** Absolute `PATH` entries only; the first
   match must be a trusted place, else `opensesame_bin_untrusted`; an explicit path is the caller's choice. The resolved path is probed
   with `--version` (reduced `PATH` alone) and started: a shape check, not authentication.

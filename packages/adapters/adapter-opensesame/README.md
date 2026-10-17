@@ -145,7 +145,10 @@ What `runProxied` does before and around the run:
   are not projects). Not checked: file contents, ACLs, extended attributes, Windows ownership, a mount that lies about
   modes, or that a trusted place stays trusted between the check and the use (a swap there needs write access to a directory
   the rule refuses). Edge cases: on a umask-002 system (Debian and Ubuntu private groups) a download made executable is 0775
-  and is refused until you fix its mode; on WSL `/mnt/c` and on FAT every file looks 0777 and is refused; on Windows a bare
+  and is refused until you fix its mode; on WSL `/mnt/c` and on FAT every file looks 0777 and is refused; in a rootless user namespace (a rootless container) files root owns on the host
+  appear to belong to `nobody`, so `/usr/bin` and the rest look owned by another user: a bare `opensesame` would be
+  `opensesame_bin_untrusted`, every system `PATH` entry is dropped, and with none left the run is `bridge_missing`, until
+  `opensesame` and `node` sit in directories the container's user owns (reasoned from the rule, not run); on Windows a bare
   `opensesame` is not resolved (no `PATHEXT`) and no owner or mode is checked, so give the path. All of these fail closed with a message
   that names the file and what to change.
 - **The executable is found and identified first.** A bare `opensesame` is looked up on the absolute entries of `PATH`

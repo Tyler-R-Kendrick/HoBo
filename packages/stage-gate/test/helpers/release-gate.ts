@@ -174,11 +174,16 @@ export async function gone(pid: number, attempts = 100): Promise<boolean> {
 	return false;
 }
 
-/** Linux: whether /proc/<pid>/status says the process is a zombie (State: Z). */
+/**
+ * Linux: whether /proc/<pid>/status says the process is a zombie of one thread
+ * (State: Z, Threads: 1). A process whose main thread exited while other
+ * threads run reads Z too, with more threads, and is still running.
+ */
 function isZombie(pid: number): boolean {
 	if (process.platform !== "linux") return false;
 	try {
-		return /^State:\s+Z/mu.test(readFileSync(`/proc/${pid}/status`, "utf8"));
+		const status = readFileSync(`/proc/${pid}/status`, "utf8");
+		return /^State:\s+Z/mu.test(status) && /^Threads:\s+1$/mu.test(status);
 	} catch {
 		return false;
 	}

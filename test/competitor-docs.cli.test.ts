@@ -347,22 +347,86 @@ test("a missing category page is reported because the vocabulary is closed", asy
 	).toBe(true);
 });
 
-test("the freshness ledger marks a capture stale only past the threshold", async () => {
-	const fresh = await corpus({
+const DAY = 86_400_000;
+const isoDay = (ms: number) => new Date(ms).toISOString().slice(0, 10);
+
+test("a matrix generated on one day passes the check on every later day", async () => {
+	const root = await corpus({
 		"docs/competitors/acme.md": capture({ research_date: "2026-05-01" }),
 	});
-	await checkCompetitorDocs({ root: fresh, fix: true, now: NOW });
-	expect(
-		await readFile(path.join(fresh, "docs/competitors/matrix.md"), "utf8"),
-	).not.toContain("stale — refresh");
+	await checkCompetitorDocs({ root, fix: true, now: NOW });
+	// 30 days on, and 400 days on, which carries the capture across the
+	// 180-day staleness line. Neither may call for a regeneration.
+	for (const days of [30, 400]) {
+		const { problems } = await checkCompetitorDocs({
+			root,
+			now: NOW + days * DAY,
+		});
+		expect(problems, `${days} days later`).toEqual([]);
+	}
+});
 
-	const stale = await corpus({
-		"docs/competitors/acme.md": capture({ research_date: "2024-01-01" }),
+test("the generated matrix is the same bytes on every day", async () => {
+	const matrixAt = async (now: number) => {
+		const root = await corpus({
+			"docs/competitors/acme.md": capture({ research_date: "2026-05-01" }),
+		});
+		await checkCompetitorDocs({ root, fix: true, now });
+		return readFile(path.join(root, "docs/competitors/matrix.md"), "utf8");
+	};
+	expect(await matrixAt(NOW + 400 * DAY)).toBe(await matrixAt(NOW));
+});
+
+test("the check lists a capture older than 180 days, by the clock it runs on", async () => {
+	const root = await corpus({
+		"docs/competitors/acme.md": capture({ research_date: "2026-05-01" }),
 	});
-	await checkCompetitorDocs({ root: stale, fix: true, now: NOW });
-	expect(
-		await readFile(path.join(stale, "docs/competitors/matrix.md"), "utf8"),
-	).toContain("stale — refresh");
+	await checkCompetitorDocs({ root, fix: true, now: NOW });
+	const run = async (now: number) => {
+		const logs: string[] = [];
+		const code = await main({
+			root,
+			argv: [],
+			now,
+			log: (m) => logs.push(m),
+			error: () => {},
+		});
+		return { code, out: logs.join("\n") };
+	};
+
+	const early = await run(NOW);
+	expect(early.code).toBe(0);
+	expect(early.out).not.toContain("older than 180 days");
+
+	// The same committed files, 400 days later: still clean, and now listed.
+	const late = await run(NOW + 400 * DAY);
+	expect(late.code).toBe(0);
+	expect(late.out).toContain("1 capture(s) older than 180 days");
+	expect(late.out).toContain("acme");
+	expect(late.out).toContain("2026-05-01");
+});
+
+test("a capture is stale from the 181st day, not the 180th", async () => {
+	const researched = (daysOld: number) =>
+		corpus({
+			"docs/competitors/acme.md": capture({
+				research_date: isoDay(NOW - daysOld * DAY),
+			}),
+		});
+	const listed = async (root: string) => {
+		await checkCompetitorDocs({ root, fix: true, now: NOW });
+		const logs: string[] = [];
+		await main({
+			root,
+			argv: [],
+			now: NOW,
+			log: (m) => logs.push(m),
+			error: () => {},
+		});
+		return logs.join("\n").includes("older than 180 days");
+	};
+	expect(await listed(await researched(180))).toBe(false);
+	expect(await listed(await researched(181))).toBe(true);
 });
 
 test("staleness never turns into a build failure", async () => {

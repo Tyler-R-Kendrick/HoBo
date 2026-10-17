@@ -5,6 +5,7 @@ import { checkCliDocs } from "./check-cli-docs.ts";
 import { checkCompetitorDocs } from "./check-competitor-docs.ts";
 import { checkDesignDocs } from "./check-design-docs.ts";
 import { reachRemedy } from "./lib/base-ref.ts";
+import { GIT_OUTPUT_MAX_BUFFER } from "./lib/git-output.ts";
 
 type Problem = {
 	file: string;
@@ -32,6 +33,7 @@ function tryCapture(
 	const result = spawnSync(command, commandArgs, {
 		encoding: "utf8",
 		shell: false,
+		maxBuffer: GIT_OUTPUT_MAX_BUFFER,
 	});
 	if (result.error || result.status !== 0) return undefined;
 	return result.stdout.trim();

@@ -148,6 +148,8 @@ add the category to the competitor's `categories` list and the checker will requ
 
 Regenerate derived views with `pnpm run docs:competitors:fix`.
 
-Staleness is reported, not failed: captures older than 180 days are listed in the
-[freshness ledger](matrix.md#freshness-ledger) so refresh work can be scheduled rather than blocking
-unrelated changes.
+Staleness is reported, not failed: `pnpm run docs:competitors` lists the captures older than 180 days
+on the day it runs, so refresh work can be scheduled rather than blocking unrelated changes. The
+[freshness ledger](matrix.md#freshness-ledger) in the committed matrix holds only the researched date
+and the contract state, oldest first, because a file that printed today's age would be out of date
+tomorrow and fail the drift check above.

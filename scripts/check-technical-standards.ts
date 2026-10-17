@@ -1,5 +1,6 @@
 import { spawnSync } from "node:child_process";
 import { existsSync, readFileSync } from "node:fs";
+import { GIT_OUTPUT_MAX_BUFFER } from "./lib/git-output.ts";
 
 type Mode = "worktree" | "staged";
 
@@ -42,6 +43,7 @@ function run(command: string, args: string[]): string {
 	const result = spawnSync(command, args, {
 		encoding: "utf8",
 		shell: false,
+		maxBuffer: GIT_OUTPUT_MAX_BUFFER,
 	});
 
 	if (result.status !== 0) {

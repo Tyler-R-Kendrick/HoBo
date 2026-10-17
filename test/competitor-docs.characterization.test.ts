@@ -29,6 +29,7 @@ import {
 	renderCategoryIndex,
 	renderIndex,
 	renderMatrix,
+	staleCaptures,
 } from "../scripts/check-competitor-docs.js";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -36,9 +37,9 @@ const snapshot = (name: string) =>
 	path.join(here, "__snapshots__", `${name}.md`);
 
 /**
- * A fixed instant, so the freshness ledger's age column is deterministic.
- * Chosen to sit a known distance from the fixture dates below: one capture is
- * inside the 180-day window, one is well outside it.
+ * A fixed instant for the staleness report, which is the one output here that
+ * reads a clock. Chosen to sit a known distance from the fixture dates below:
+ * two captures are inside the 180-day window, one is well outside it.
  */
 const NOW = Date.parse("2026-06-01T00:00:00Z");
 
@@ -95,7 +96,7 @@ const CORPUS: Competitor[] = [
 		hobo_surface: ["delivery"],
 		evidence: "not-present",
 		status: "renamed",
-		// Older than STALE_AFTER_DAYS relative to NOW: exercises the stale branch.
+		// Older than STALE_AFTER_DAYS relative to NOW: the one stale capture.
 		research_date: "2025-01-15",
 		contract: undefined,
 		file: "docs/competitors/legacy-corp.md",
@@ -103,7 +104,7 @@ const CORPUS: Competitor[] = [
 ];
 
 test("the cross-category matrix and freshness ledger render as approved", async () => {
-	await expect(renderMatrix(CORPUS, NOW)).toMatchFileSnapshot(
+	await expect(renderMatrix(CORPUS)).toMatchFileSnapshot(
 		snapshot("competitor-matrix"),
 	);
 });
@@ -127,13 +128,32 @@ test("an empty corpus still renders every closed-vocabulary category", async () 
 });
 
 /**
- * The regression that motivated threading a clock through `renderMatrix`:
- * the age column used `Date.now()` internally, so this function's output — and
- * therefore three committed documents — changed every single day.
+ * The regression this pins: the ledger printed each capture's age, so this
+ * function's output — and the committed `matrix.md` — changed every single day
+ * and `lint:docs` failed until someone regenerated it. `renderMatrix` takes no
+ * clock; what a clock decides lives in `staleCaptures`.
  */
-test("the matrix is a pure function of its inputs and clock", () => {
-	const once = renderMatrix(CORPUS, NOW);
-	const again = renderMatrix(CORPUS, NOW);
-	expect(again).toBe(once);
-	expect(renderMatrix(CORPUS, NOW + 86_400_000)).not.toBe(once);
+test("the matrix is a pure function of the corpus", () => {
+	expect(renderMatrix(CORPUS)).toBe(renderMatrix(CORPUS));
+	expect(renderMatrix.length).toBe(1);
+	expect(renderMatrix(CORPUS)).not.toMatch(/Age \(days\)|stale — refresh/);
+});
+
+test("staleCaptures lists what the clock says is past 180 days, oldest first", () => {
+	expect(staleCaptures(CORPUS, NOW)).toEqual([
+		{
+			slug: "legacy-corp",
+			name: "Legacy Corp",
+			research_date: "2025-01-15",
+			age: 502,
+		},
+	]);
+	// The same corpus on a later clock: the 2026-05-01 capture joins, behind it.
+	const later = staleCaptures(CORPUS, NOW + 400 * 86_400_000);
+	expect(later.map((row) => row.slug)).toEqual([
+		"legacy-corp",
+		"acme",
+		"zebra",
+	]);
+	expect(staleCaptures(CORPUS, Date.parse("2025-01-01T00:00:00Z"))).toEqual([]);
 });

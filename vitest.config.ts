@@ -12,6 +12,9 @@ export default defineConfig({
     // Absolute: vitest resolves globalSetup against the project root (cwd),
     // which is a package dir when running filtered test commands.
     globalSetup: [
+      // One root of throwaway HOBO_HOMEs for the run, removed when it ends
+      // (test/setup/hobo-test-homes.ts; see the setup file below).
+      fileURLToPath(new URL("./test/setup/hobo-test-homes.ts", import.meta.url)),
       fileURLToPath(
         new URL(
           "./packages/runtimes/runtime-wasm/test/wasmtime-global-setup.ts",

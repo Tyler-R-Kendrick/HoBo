@@ -29,11 +29,24 @@
  *
  * `HOBO_HOME` is deliberately left alone when the runner already set one, so a
  * developer debugging against a specific home keeps it.
+ *
+ * The throwaway home is removed, and the variable unset, once the file's tests
+ * are done: every run otherwise left one empty `hobo-test-home-*` per worker in
+ * the temp directory, and with `isolate: false` the next file a worker runs
+ * makes its own here rather than inheriting a removed one.
  */
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { afterAll } from "vitest";
 
 if (!process.env.HOBO_HOME) {
-	process.env.HOBO_HOME = mkdtempSync(join(tmpdir(), "hobo-test-home-"));
+	const home = mkdtempSync(join(tmpdir(), "hobo-test-home-"));
+	process.env.HOBO_HOME = home;
+	afterAll(() => {
+		rmSync(home, { recursive: true, force: true });
+		if (process.env.HOBO_HOME === home) {
+			Reflect.deleteProperty(process.env, "HOBO_HOME");
+		}
+	});
 }

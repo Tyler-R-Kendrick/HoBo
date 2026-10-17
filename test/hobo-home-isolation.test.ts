@@ -18,10 +18,21 @@
  * because the real home may legitimately contain a developer's own data — this
  * suite is not entitled to look at it, let alone assert about its contents.
  */
-import { existsSync } from "node:fs";
-import { homedir } from "node:os";
-import { join, resolve } from "node:path";
-import { describe, expect, it } from "vitest";
+import { spawnSync } from "node:child_process";
+import {
+	existsSync,
+	mkdirSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
+import { createRequire } from "node:module";
+import { homedir, tmpdir } from "node:os";
+import { dirname, join, resolve } from "node:path";
+import { fileURLToPath } from "node:url";
+import { afterAll, describe, expect, it } from "vitest";
 
 describe("HOBO_HOME isolation", () => {
 	it("is set for every test file", () => {
@@ -58,4 +69,93 @@ describe("HOBO_HOME isolation", () => {
 			resolve(process.cwd()),
 		);
 	});
+});
+
+const SETUP = fileURLToPath(
+	new URL("./setup/isolate-hobo-home.ts", import.meta.url),
+);
+const scratch = mkdtempSync(join(tmpdir(), "hobo-home-teardown-"));
+afterAll(() => {
+	rmSync(scratch, { recursive: true, force: true });
+});
+
+let projects = 0;
+
+/**
+ * Runs two test files, one after the other in one worker as the root config
+ * runs files (isolate: false), with only the setup file under test, a TMPDIR
+ * of their own, and `env`. Each records the HOBO_HOME it saw and whether it
+ * existed. Returns those lines and what is left in that TMPDIR.
+ */
+function runTwoFiles(env: NodeJS.ProcessEnv): {
+	status: number | null;
+	seen: string[];
+	left: string[];
+} {
+	projects += 1;
+	const project = join(scratch, `project-${projects}`);
+	const temp = join(project, "tmp");
+	const seenFile = join(project, "seen.txt");
+	mkdirSync(temp, { recursive: true });
+	writeFileSync(seenFile, "");
+	const probe = `import { appendFileSync, existsSync } from "node:fs";
+it("records its home", () => {
+	const home = process.env.HOBO_HOME ?? "";
+	appendFileSync(process.env.SEEN_FILE ?? "", home + " " + existsSync(home) + "\\n");
+});
+`;
+	writeFileSync(join(project, "a.probe.test.mjs"), probe);
+	writeFileSync(join(project, "b.probe.test.mjs"), probe);
+	writeFileSync(
+		join(project, "vitest.config.mjs"),
+		`export default { test: { globals: true, isolate: false, pool: "threads", fileParallelism: false, maxWorkers: 1, include: ["*.probe.test.mjs"], setupFiles: [${JSON.stringify(SETUP)}] } };\n`,
+	);
+	const vitest = join(
+		dirname(createRequire(import.meta.url).resolve("vitest/package.json")),
+		"vitest.mjs",
+	);
+	// Another vitest run of its own: none of this one's VITEST_* settings or HOBO_HOME.
+	const inherited = Object.fromEntries(
+		Object.entries(process.env).filter(
+			([key]) => !key.startsWith("VITEST") && key !== "HOBO_HOME",
+		),
+	);
+	const run = spawnSync(
+		process.execPath,
+		[vitest, "run", "--root", project, "--config", "vitest.config.mjs"],
+		{
+			cwd: project,
+			env: { ...inherited, TMPDIR: temp, SEEN_FILE: seenFile, ...env },
+			encoding: "utf8",
+			timeout: 60_000,
+		},
+	);
+	return {
+		status: run.status,
+		seen: readFileSync(seenFile, "utf8").split("\n").filter(Boolean),
+		left: readdirSync(temp).filter((name) =>
+			name.startsWith("hobo-test-home-"),
+		),
+	};
+}
+
+describe("the throwaway HOBO_HOME", () => {
+	it("is removed once each file is done, and the next file gets one of its own", () => {
+		const { status, seen, left } = runTwoFiles({});
+		expect(status).toBe(0);
+		expect(seen).toHaveLength(2);
+		for (const line of seen) {
+			expect(line).toMatch(/\/hobo-test-home-[^/ ]+ true$/u);
+		}
+		expect(left).toEqual([]);
+	}, 60_000);
+
+	it("is never one the runner set: that one is left as it was", () => {
+		const own = join(scratch, "own-home");
+		mkdirSync(own);
+		const { status, seen } = runTwoFiles({ HOBO_HOME: own });
+		expect(status).toBe(0);
+		expect(seen).toEqual([`${own} true`, `${own} true`]);
+		expect(existsSync(own)).toBe(true);
+	}, 60_000);
 });

@@ -427,7 +427,12 @@ test("fast test script is root-only and full quiet unit lane remains explicit", 
 		packageJson.scripts["test:unit:quiet"],
 		"node --import tsx scripts/run-tests.ts --category=unit --quiet --no-artifacts",
 	);
-	assert.equal(packageJson.scripts["lint:slop"], "oxlint");
+	// The whole-repository lane denies warnings, as the changed-file lane
+	// does (5ff4548a); the bare `oxlint` this pinned let warnings through.
+	assert.equal(
+		packageJson.scripts["lint:slop"],
+		"oxlint --deny-warnings --no-error-on-unmatched-pattern .",
+	);
 	assert.equal(
 		packageJson.scripts["lint:slop:changed"],
 		"node --import tsx scripts/lint-slop-changed.mts",

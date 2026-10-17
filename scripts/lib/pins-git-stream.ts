@@ -16,6 +16,7 @@ import { spawn } from "node:child_process";
 
 import { PinsError } from "./pins.ts";
 import {
+	endedBySignal,
 	exitStatus,
 	type GitResult,
 	gitEnvironment,
@@ -89,10 +90,11 @@ export function netGitWatched(
 			}
 			const status = exitStatus(code, signal);
 			const stderr = tail.trim();
+			const ended = endedBySignal(code, signal, true);
 			resolve(
-				signal === null
+				ended === null
 					? { status, stdout: "", stderr }
-					: { status, stdout: "", stderr, signal },
+					: { status, stdout: "", stderr, signal: ended },
 			);
 		});
 	});

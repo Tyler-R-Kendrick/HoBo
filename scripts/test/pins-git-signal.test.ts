@@ -4,12 +4,13 @@
  * or streamed (`netGitWatched`). Through the wrapper the signal used to
  * become a plain exit 128, so the same OOM kill read as "exited 128: " there
  * and "killed by SIGKILL" on a direct call. A real exit status is left alone:
- * 129 is git's usage error, not a SIGHUP.
+ * 129 is git's usage error, not a SIGHUP. The edges of the wrapper's way of
+ * doing it (a core file, the inspector, SIGPIPE) are in
+ * `pins-git-signal-edges.test.ts`.
  *
  * A stand-in `git` first on PATH ends itself the way the test says.
  */
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
 import {
 	chmodSync,
 	existsSync,
@@ -20,43 +21,36 @@ import {
 import { constants } from "node:os";
 import { join } from "node:path";
 import { describe, it } from "node:test";
-import { pathToFileURL } from "node:url";
-
+import {
+	lib,
+	REAL_GIT,
+	runWithStandIn,
+} from "./support/pins-signal-support.ts";
 import {
 	git,
 	makeRemote,
 	makeWork,
-	REPO_ROOT,
 	runBootstrap,
 	scratch,
 } from "./support/pins-support.ts";
 
-const REAL_GIT = spawnSync("sh", ["-c", "command -v git"], {
-	encoding: "utf8",
-}).stdout.trim();
+/** Every signal a git can plausibly die of: the wrapper re-raises six and exits 128 + N for the rest. */
+const SIGNALS = [
+	"SIGHUP",
+	"SIGINT",
+	"SIGTERM",
+	"SIGKILL",
+	"SIGUSR2",
+	"SIGALRM",
+	"SIGQUIT",
+	"SIGABRT",
+	"SIGSEGV",
+	"SIGUSR1",
+	"SIGPIPE",
+] as const;
 
-const SIGNALS = ["SIGKILL", "SIGTERM", "SIGSEGV"] as const;
-
-/** A directory holding a `git` that does `STANDIN_ACTION` (`kill:<SIG>` or `exit:<n>`). */
-function standIn(dir: string): string {
-	const bin = join(dir, "bin");
-	mkdirSync(bin);
-	writeFileSync(
-		join(bin, "git"),
-		`#!/bin/sh
-case "$STANDIN_ACTION" in
-  kill:SIG*) kill -s "\${STANDIN_ACTION#kill:SIG}" $$ ;;
-  exit:*) exit "\${STANDIN_ACTION#exit:}" ;;
-esac
-exec '${REAL_GIT}' "$@"
-`,
-	);
-	chmodSync(join(bin, "git"), 0o755);
-	return bin;
-}
-
-const lib = (name: string) =>
-	JSON.stringify(pathToFileURL(join(REPO_ROOT, "scripts/lib", name)).href);
+/** The ones the end-to-end refusal is walked for: it does not depend on how the wrapper ends. */
+const REFUSED_FOR = ["SIGKILL", "SIGTERM", "SIGSEGV"] as const;
 
 /** One program: the same stand-in git run directly, under the wrapper, and streamed. */
 const PROGRAM = `
@@ -78,22 +72,7 @@ interface Row {
 function runAll(
 	action: string,
 ): Record<"direct" | "wrapped" | "streamed", Row> {
-	const dir = scratch("signal");
-	const run = spawnSync(
-		process.execPath,
-		["--experimental-strip-types", "--input-type=module", "-e", PROGRAM],
-		{
-			cwd: dir,
-			encoding: "utf8",
-			env: {
-				...process.env,
-				NODE_OPTIONS: "",
-				NODE_NO_WARNINGS: "1",
-				PATH: `${standIn(dir)}:${process.env.PATH ?? ""}`,
-				STANDIN_ACTION: action,
-			},
-		},
-	);
+	const { run } = runWithStandIn(PROGRAM, action);
 	assert.equal(run.status, 0, run.stderr);
 	return JSON.parse(run.stdout);
 }
@@ -132,7 +111,7 @@ describe("a git ended by a signal, however it was run", () => {
 });
 
 describe("a stale-URL read ended by a signal still refuses before any network call", () => {
-	for (const signal of SIGNALS) {
+	for (const signal of REFUSED_FOR) {
 		it(`${signal}: status, fetch and setup exit 1 and run no network git`, () => {
 			const dir = scratch("signal-e2e");
 			const remote = makeRemote(dir);
@@ -143,6 +122,7 @@ describe("a stale-URL read ended by a signal still refuses before any network ca
 			writeFileSync(
 				join(bin, "git"),
 				`#!/bin/sh
+ulimit -c 0 2>/dev/null
 echo "$*" >> '${calls}'
 case "$*" in *--show-scope*submodule.*.url*) kill -s ${signal.slice(3)} $$ ;; esac
 exec '${REAL_GIT}' "$@"

@@ -51,6 +51,60 @@ export function exitStatus(
 }
 
 /**
+ * The signals the deadline wrapper repeats when its git dies of one: the ones
+ * Node leaves at their default action (the wrapper's own SIGINT, SIGTERM and
+ * SIGHUP listeners are dropped first) and that dump no core.
+ */
+export const REPEATED_SIGNALS = [
+	"SIGHUP",
+	"SIGINT",
+	"SIGTERM",
+	"SIGKILL",
+	"SIGUSR2",
+	"SIGALRM",
+] as const;
+
+/**
+ * The signals a git can die of that the wrapper reports as the status 128 + N.
+ * Their statuses (QUIT 131, ABRT 134, USR1 138, SEGV 139, PIPE 141, ...) are
+ * read back as the signal: git exits with them only when a program it ran was
+ * ended by that signal. 129 (git's usage error) and 130 are not among them.
+ */
+const EXIT_SIGNALS: readonly NodeJS.Signals[] = [
+	"SIGQUIT",
+	"SIGILL",
+	"SIGTRAP",
+	"SIGABRT",
+	"SIGBUS",
+	"SIGFPE",
+	"SIGUSR1",
+	"SIGSEGV",
+	"SIGPIPE",
+	"SIGSYS",
+];
+
+const EXIT_STATUSES: ReadonlyMap<number, NodeJS.Signals> = new Map(
+	EXIT_SIGNALS.map((name): [number, NodeJS.Signals] => [
+		128 + (constants.signals[name] ?? 0),
+		name,
+	]),
+);
+
+/**
+ * The signal a git died of. A direct call, or a wrapper that repeated the
+ * signal, reports it; a wrapped call also names it through the status 128 + N
+ * the wrapper exits with for the signals it does not repeat.
+ */
+export function endedBySignal(
+	code: number | null,
+	signal: NodeJS.Signals | null,
+	wrapped: boolean,
+): NodeJS.Signals | null {
+	if (signal !== null) return signal;
+	return wrapped && code !== null ? (EXIT_STATUSES.get(code) ?? null) : null;
+}
+
+/**
  * Run git in its own process group under a deadline, from a small node
  * parent: when the deadline passes the whole group gets SIGTERM, then
  * SIGKILL, so no transport helper outlives the call holding a pipe or a
@@ -60,14 +114,22 @@ export function exitStatus(
  * leave git running. git starts on the event loop's check phase, after any
  * signal already pending has been handled, and a signal handled before git
  * exists ends the parent with 128 + its number (130 for SIGINT) without
- * starting git. Exit 124 means the deadline passed. A git that dies of a
- * signal ends the parent by the same signal (the way a shell reports it), so
- * a caller sees 128 + its number and its name; a real exit status, 129
- * included, is passed through as it is.
+ * starting git. Exit 124 means the deadline passed.
+ *
+ * A git that dies of a signal is reported as that signal. For the six Node
+ * leaves at their default action and that dump no core (REPEATED_SIGNALS) the
+ * parent ends by the same signal, so a caller sees the signal itself. Not for
+ * the others: re-raising SIGSEGV, SIGABRT or SIGQUIT made node write a core
+ * file of its own, SIGUSR1 started Node's inspector, and SIGPIPE, which Node
+ * ignores, ended the parent only after a 1 s fallback. For those the parent
+ * exits with the explicit status 128 + N and `endedBySignal` reads the name
+ * back from it. A real exit status, 129 and 130 included, is passed through
+ * as it is.
  */
 export const UNDER_DEADLINE = `
 const { spawn } = require("node:child_process");
 const { signals } = require("node:os").constants;
+const again = ${JSON.stringify(REPEATED_SIGNALS)};
 const [ms, ...args] = process.argv.slice(1);
 let child;
 const group = (signal) => {
@@ -88,8 +150,8 @@ setImmediate(() => {
 		clearTimeout(timer);
 		if (late) process.exit(124);
 		if (code !== null) process.exit(code);
-		// git died of a signal: die of the same one, so the caller reads the
-		// signal itself (128 + its number, and its name) and not an exit status.
+		if (!again.includes(signal)) process.exit(128 + signals[signal]);
+		// git died of a signal that is safe to repeat: die of the same one.
 		for (const name of ["SIGINT", "SIGTERM", "SIGHUP"]) process.removeAllListeners(name);
 		process.kill(process.pid, signal);
 		setTimeout(() => process.exit(128 + signals[signal]), 1000);
@@ -194,8 +256,13 @@ export function git(
 	const status = exitStatus(result.status, result.signal);
 	const stdout = (result.stdout ?? "").trim();
 	const stderr = (result.stderr ?? "").trim();
-	if (result.signal === null) return { status, stdout, stderr };
-	return { status, stdout, stderr, signal: result.signal };
+	const signal = endedBySignal(
+		result.status,
+		result.signal,
+		deadline !== undefined,
+	);
+	if (signal === null) return { status, stdout, stderr };
+	return { status, stdout, stderr, signal };
 }
 
 function isTimeout(error: Error | undefined): boolean {

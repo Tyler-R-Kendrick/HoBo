@@ -10,6 +10,9 @@
  *   own, out of reach of a group signal, and closes it from its SIGTERM and
  *   SIGINT handlers: that is why the signal goes first. A process ai-bdd
  *   started in another group and that ignores SIGTERM can outlive the check.
+ *   Once ai-bdd has exited and its group is gone, its output is waited for
+ *   DRAIN_MS more at most: a process outside the group that holds the pipe
+ *   open does not hold the check.
  * - Its output is relayed, but only the first RELAY_BYTES as they come and
  *   the last RELAY_BYTES when it exits: the stage-gate runner captures a
  *   check's stderr up to CHECK_OUTPUT_LIMIT, and a check that writes more is
@@ -28,6 +31,8 @@ const TAIL_CHARS = 2000;
 /** How long a process group has to end after it is signalled, before SIGKILL. */
 export const AI_BDD_GRACE_MS = 10_000;
 const POLL_MS = 100;
+/** How long after its group is gone ai-bdd's output may stay open before it is no longer waited for. */
+const DRAIN_MS = 1000;
 
 export interface AiBddCommand {
 	readonly command: readonly string[];
@@ -224,10 +229,18 @@ export function runAiBdd(
 			finish(null, `${cause.name}: ${cause.message}`);
 		});
 		// What it started and left running in its group goes with it.
-		child.on("exit", () => {
+		child.on("exit", (status, signal) => {
 			void stopGroup(child, "SIGTERM", graceMs).then(() => {
 				groupGone = true;
 				end();
+				// A process outside the group can hold ai-bdd's stdout or stderr open, and `close` would wait for it.
+				setTimeout(() => {
+					if (done) return;
+					child.stdout?.destroy();
+					child.stderr?.destroy();
+					closed = closed ?? { status, signal };
+					end();
+				}, DRAIN_MS);
 			});
 		});
 		child.on("close", (status, signal) => {

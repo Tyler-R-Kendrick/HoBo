@@ -163,6 +163,8 @@ export async function gone(pid: number): Promise<boolean> {
 
 /** Ends a process a failed test left behind; one that is gone already is fine. */
 export function killQuietly(pid: number): void {
+	// 0 or less would signal a whole process group, this test's own among them.
+	if (!Number.isInteger(pid) || pid <= 0) return;
 	try {
 		process.kill(pid, "SIGKILL");
 	} catch {

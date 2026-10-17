@@ -139,7 +139,9 @@ own, does not see the terminal's Ctrl-C) before the check exits. The signal
 goes first because Playwright launches each browser as the leader of a group of
 its own, which a signal to ai-bdd's group does not reach, and closes it from
 its own SIGTERM and SIGINT handlers. A process ai-bdd starts in another group
-that ignores SIGTERM can outlive the check. The runner bounds each release
+that ignores SIGTERM can outlive the check, but it cannot hold the check open
+by holding ai-bdd's output: once ai-bdd has exited and its group is gone, the
+output is waited for a second more at most. The runner bounds each release
 check too (`timeoutMs`: ai-bdd's bound plus a minute), a backstop that stops
 the check with SIGTERM (which it passes on as above) and records it `not_run`. ai-bdd's output is relayed to the check's
 stderr as it comes, but only its first and last 2 MiB (`RELAY_BYTES`, an eighth

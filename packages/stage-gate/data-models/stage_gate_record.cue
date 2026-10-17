@@ -11,71 +11,78 @@ import "strconv"
 #RecordStatus: "passed" | "failed" | "skipped" | "not_run"
 
 #CheckResult: {
-	check_id: string & !=""
-	command: [...string]
+	check_id!: string & !=""
+	command!: [...string]
 	// -1: never started (a required check did not pass); status is then skipped.
-	exit_code: int
-	status:    #CheckStatus
+	exit_code!: int
+	status!:    #CheckStatus
 	evidence?: {[string]: string}
 }
 
 #ComponentArtifact: {
-	digest_sha256: #DigestSha256
-	byte_length: int & >=0
-	media_type: string & !=""
+	digest_sha256!: #DigestSha256
+	byte_length!: int & >=0
+	media_type!: string & !=""
 }
 
 #SignatureEvidence: {
-	verified: bool
-	signer_identity: string
-	provenance_tier: string
+	verified!: bool
+	signer_identity!: string
+	provenance_tier!: string
 	conformance_report_digest: #DigestSha256 | ""
 }
 
+// A field marked `!` must be present in the data. CUE fills an absent field
+// with the value its constraints give it, so without the mark a record that
+// leaves out `model_calls` would satisfy `model_calls: "0"`, and one that
+// leaves out a check's `status` would satisfy the `status: "passed"` a passed
+// record asks for. Every field parseStageGateRecord requires is marked.
 #StageGateRecord: {
-	gate_id: "s0" | "release"
-	status: #RecordStatus
-	repo_commit: string
+	gate_id!: "s0" | "release"
+	status!: #RecordStatus
+	repo_commit!: string
 	ci_run_url?: string & =~"^https://" | ""
-	started_at: #IsoTimestamp
-	finished_at: #IsoTimestamp
-	checks: [...#CheckResult]
-	artifact?: #ComponentArtifact
-	signature?: #SignatureEvidence
+	started_at!: #IsoTimestamp
+	finished_at!: #IsoTimestamp
+	checks!: [...#CheckResult]
+	artifact!: #ComponentArtifact
+	signature!: #SignatureEvidence
 
+	// A field a conditional block gives a value is marked `!` there too: a
+	// regular field unified with a required one satisfies the requirement.
 	if status == "passed" {
-		checks: [...#CheckResult & {status: "passed"}]
+		checks!: [...#CheckResult & {status!: "passed"}]
 	}
 	// S0 attests a built, signed component.
 	if gate_id == "s0" && status == "passed" {
-		signature: verified: true
-		artifact: digest_sha256: #DigestSha256
+		signature!: verified!: true
+		artifact!: digest_sha256!: #DigestSha256
 	}
 	// The release gate attests a replay (ADR-0172): its three checks in order;
 	// the replay's evidence of a replay-only run that replayed a scenario; and
 	// evidence-intact naming the same run and report the replay judged.
 	if gate_id == "release" && status == "passed" {
-		checks: [
-			{check_id: "acceptance-plans-fresh"},
+		checks!: [
+			{check_id!: "acceptance-plans-fresh"},
 			{
-				check_id: "acceptance-replay"
-				evidence: {
-					report_digest:    #DigestSha256
-					run_id:           string & !=""
-					model_calls:      "0"
-					frozen:           "true"
-					no_agent:         "true"
-					report_exit_code: "0"
-					scenarios_total:  =~"^[1-9][0-9]*$"
-					scenarios_passed: =~"^[0-9]+$"
-					scenarios_healed: =~"^[0-9]+$"
+				check_id!: "acceptance-replay"
+				evidence!: {
+					report_digest!:    #DigestSha256
+					run_id!:           string & !=""
+					model_calls!:      "0"
+					frozen!:           "true"
+					no_agent!:         "true"
+					report_exit_code!: "0"
+					scenarios_total!:  =~"^[1-9][0-9]*$"
+					scenarios_passed!: =~"^[0-9]+$"
+					scenarios_healed!: =~"^[0-9]+$"
 				}
 			},
 			{
-				check_id: "acceptance-evidence-intact"
-				evidence: {
-					report_digest: checks[1].evidence.report_digest
-					run_id:        checks[1].evidence.run_id
+				check_id!: "acceptance-evidence-intact"
+				evidence!: {
+					report_digest!: checks[1].evidence.report_digest
+					run_id!:        checks[1].evidence.run_id
 				}
 			},
 		]

@@ -24,6 +24,7 @@ pnpm --filter @hobo/stage-gate run build
 pnpm --filter @hobo/stage-gate run typecheck   # src, then src + test/ + contracts/ (tsconfig.test.json)
 pnpm --filter @hobo/stage-gate run lint
 pnpm --filter @hobo/stage-gate run test
+pnpm --filter @hobo/stage-gate run test:schema   # cue vet -c of test/fixtures/records; needs cue v0.14.0
 pnpm --filter @hobo/stage-gate run test:contract:consumer
 pnpm --filter @hobo/stage-gate run test:real   # selected by HOBO_AI_BDD_CMD
 ```
@@ -115,9 +116,16 @@ replay's evidence of a replay-only run that replayed a scenario (`report_digest`
 `run_id`, `model_calls` "0", `frozen` and `no_agent` "true", `report_exit_code`
 "0", `scenarios_total` above 0 and `scenarios_passed` + `scenarios_healed` above
 0, each count present and in decimal digits within int64, as the CUE's
-`strconv.Atoi` reads it); and evidence-intact naming the same `run_id` and `report_digest`
-(`src/record-constraints.ts`, and the same in `stage_gate_record.cue`). It carries
-no signature or artifact, which stay S0's.
+`strconv.Atoi` reads it); and evidence-intact naming the same `run_id` and
+`report_digest` (`src/record-constraints.ts`, and the same in `stage_gate_record.cue`, where
+every field the parser requires is marked `!`: CUE would otherwise fill an
+absent `model_calls` with its constraint `"0"` and accept the record).
+`test:schema` vets the records in `test/fixtures/records/` with `cue vet -c`
+against both schemas and checks that the parser agrees; it needs the cue binary
+(`HOBO_CUE_BIN`, the `.tools/cue/v0.14.0` cache the root `test:schema` fills, or
+`cue` on `PATH`) and fails without it. A passed release record needs no
+signature or artifact (the runner writes an unsigned signature and the zero
+artifact); those requirements stay S0's.
 
 Every ai-bdd command runs in a process group of its own and is bounded by
 `HOBO_AI_BDD_TIMEOUT_MS` (milliseconds, default 30 minutes; a value that is not a

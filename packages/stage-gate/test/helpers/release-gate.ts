@@ -67,6 +67,7 @@ export interface FakePlan {
 		readonly pidFile?: string;
 		readonly detachedPidFile?: string;
 		readonly outputBytes?: number;
+		readonly printedRun?: "other" | "none";
 	};
 	readonly verifyRun: number;
 }

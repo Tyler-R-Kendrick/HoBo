@@ -28,6 +28,7 @@ import {
 	isJsonArray,
 	isJsonInteger,
 	isJsonObject,
+	isJsonString,
 	type JsonObject,
 	type JsonValue,
 	parseJsonText,
@@ -44,6 +45,8 @@ interface Interaction {
 	readonly status: number;
 	readonly exitCode: number;
 	readonly report: JsonObject | undefined;
+	/** The `Run: <dir>` line a run that wrote a report prints on stdout, naming that run. */
+	readonly stdoutRunLine: string | undefined;
 }
 
 function objectAt(node: JsonValue | undefined, what: string): JsonObject {
@@ -70,6 +73,9 @@ function interactions(): Interaction[] {
 			status: response.status,
 			exitCode,
 			report: isJsonObject(body.report) ? body.report : undefined,
+			stdoutRunLine: isJsonString(body.stdoutRunLine)
+				? body.stdoutRunLine
+				: undefined,
 		};
 	});
 }
@@ -163,6 +169,17 @@ describe("ai-bdd report consumer pact", () => {
 		expect(covered.sort()).toEqual([...EXPECTED.keys()].sort());
 	});
 
+	it("names the run of every report written in a Run: line, as the gate requires", () => {
+		const runs = all.filter((i) => i.path === "/run");
+		expect(
+			runs.map((i) => [i.exitCode, i.stdoutRunLine !== undefined]),
+		).toEqual(runs.map((i) => [i.exitCode, i.report !== undefined]));
+		for (const run of runs) {
+			if (run.report === undefined) continue;
+			expect(run.stdoutRunLine).toBe(`Run: .ai-bdd/runs/${run.report.runId}`);
+		}
+	});
+
 	it.each(all.map((i) => [i.description, i]))(
 		"%s",
 		async (_description, interaction) => {
@@ -210,7 +227,13 @@ describe("ai-bdd report consumer pact", () => {
 			}
 			const plan = {
 				compileCheck: interaction.exitCode,
-				run: { exit: interaction.exitCode, report: reportFile },
+				run: {
+					exit: interaction.exitCode,
+					report: reportFile,
+					// The stand-in prints its own run's directory, as ai-bdd does; none when the pact names none.
+					printedRun:
+						interaction.stdoutRunLine === undefined ? "none" : undefined,
+				},
 				verifyRun: interaction.exitCode,
 			};
 			const result = await checkAcceptance(

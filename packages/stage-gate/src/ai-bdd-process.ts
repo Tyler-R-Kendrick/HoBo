@@ -21,6 +21,7 @@
  *   characters.
  */
 import { type ChildProcess, spawn } from "node:child_process";
+import { StringDecoder } from "node:string_decoder";
 
 import { CHECK_OUTPUT_LIMIT } from "./gate-status.js";
 
@@ -51,10 +52,52 @@ export interface AiBddRun {
 	readonly status: number | null;
 	/** Why it has no exit code: a spawn error or a signal. Empty when it exited. */
 	readonly unstartable: string;
-	/** It outlived `timeoutMs`, and its process group was killed. */
+	/** It outlived `timeoutMs`, and its process group was stopped. */
 	readonly timedOut: boolean;
 	/** The last characters of its output, stdout and stderr as they came. */
 	readonly tail: string;
+	/** The directory of the last `Run: <dir>` line on its stdout: `ai-bdd run` names the run it made so. */
+	readonly printedRunDir: string | undefined;
+}
+
+const RUN_LINE = /^Run: (.+)$/u;
+/** A stdout line longer than this is not read for RUN_LINE. */
+const LINE_LIMIT = 64 * 1024;
+
+interface RunLineWatch {
+	readonly write: (chunk: Buffer) => void;
+	readonly last: () => string | undefined;
+}
+
+/** Reads a stream line by line for the last `Run: <dir>` line, holding one line at most. */
+function watchRunLine(): RunLineWatch {
+	const decoder = new StringDecoder("utf8");
+	let partial = "";
+	let overlong = false;
+	let last: string | undefined;
+	const take = (line: string) => {
+		const dir = RUN_LINE.exec(line.replace(/\r$/u, ""))?.[1];
+		if (dir !== undefined) last = dir;
+	};
+	return {
+		write(chunk) {
+			const lines = `${partial}${decoder.write(chunk)}`.split("\n");
+			partial = lines.pop() ?? "";
+			for (const line of lines) {
+				if (!overlong) take(line);
+				overlong = false;
+			}
+			if (partial.length > LINE_LIMIT) {
+				partial = "";
+				overlong = true;
+			}
+		},
+		last() {
+			if (!overlong) take(`${partial}${decoder.end()}`);
+			partial = "";
+			return last;
+		},
+	};
 }
 
 /** Each ai-bdd still running, and its grace period. */
@@ -177,6 +220,7 @@ export function runAiBdd(
 	const [executable = "", ...prefix] = spec.command;
 	const graceMs = spec.graceMs ?? AI_BDD_GRACE_MS;
 	const output = boundedRelay(spec.relay);
+	const runLine = watchRunLine();
 	return new Promise((settle) => {
 		let done = false;
 		let timedOut = false;
@@ -184,7 +228,14 @@ export function runAiBdd(
 			if (done) return;
 			done = true;
 			output.end();
-			settle({ args, status, unstartable, timedOut, tail: output.tail() });
+			settle({
+				args,
+				status,
+				unstartable,
+				timedOut,
+				tail: output.tail(),
+				printedRunDir: runLine.last(),
+			});
 		};
 		if (stoppedBy !== undefined) {
 			finish(null, `not started: the check was stopped by ${stoppedBy}`);
@@ -221,7 +272,10 @@ export function runAiBdd(
 			timedOut = true;
 			void stopGroup(child, "SIGTERM", graceMs);
 		}, spec.timeoutMs);
-		child.stdout?.on("data", output.write);
+		child.stdout?.on("data", (chunk: Buffer) => {
+			output.write(chunk);
+			runLine.write(chunk);
+		});
 		child.stderr?.on("data", output.write);
 		child.on("error", (cause) => {
 			clearTimeout(timer);

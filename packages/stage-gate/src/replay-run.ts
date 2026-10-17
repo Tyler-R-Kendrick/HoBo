@@ -4,8 +4,8 @@
  * survives exit 2 and 4, a moved runsDir, a wrapper that swallows ai-bdd's
  * failure, and a CLI that never loaded.
  */
-import { readdirSync, readFileSync } from "node:fs";
-import { relative, sep } from "node:path";
+import { readdirSync, readFileSync, realpathSync } from "node:fs";
+import { join, relative, resolve, sep } from "node:path";
 
 import { type AcceptanceEvidence, parseAiBddRunReport } from "./acceptance.js";
 import type { AcceptanceConfig } from "./acceptance-config.js";
@@ -46,17 +46,30 @@ export function runIds(config: AcceptanceConfig): ReadonlySet<string> {
 /** Allowed difference between this machine's clock and the one that stamped `startedAt`. */
 const CLOCK_SKEW_MS = 5000;
 
+/** A path with its symbolic links resolved, or as given when it does not exist. */
+function realOf(path: string): string {
+	try {
+		return realpathSync(path);
+	} catch {
+		return path;
+	}
+}
+
 /**
  * Whether the report on disk is the one the run just spawned wrote: its run
- * directory is new, and it started no earlier than the spawn (less skew). An
- * old report survives exit 2 and 4, a moved runsDir, a wrapper that swallows
- * ai-bdd's failure, and a CLI that never loaded; none of those is this run.
+ * directory is new, it started no earlier than the spawn (less skew), and it
+ * is the run this ai-bdd named in its `Run: <dir>` line. An old report
+ * survives exit 2 and 4, a moved runsDir, a wrapper that swallows ai-bdd's
+ * failure, and a CLI that never loaded; another `ai-bdd run` in the same
+ * project can write the latest report after this one. None of those is this
+ * run.
  */
 export function staleBecause(
 	config: AcceptanceConfig,
 	evidence: AcceptanceEvidence,
 	before: ReadonlySet<string>,
 	spawnedAt: number,
+	printedRunDir: string | undefined,
 ): string | undefined {
 	const runs = shown(config, config.runsDir);
 	const stale = "it is not this run's report";
@@ -69,6 +82,13 @@ export function staleBecause(
 	if (Date.parse(evidence.startedAt) < spawnedAt - CLOCK_SKEW_MS) {
 		const spawned = new Date(spawnedAt).toISOString();
 		return `report.json for run ${evidence.runId} started at ${evidence.startedAt}, before this run was started at ${spawned} (5 s of clock skew allowed): ${stale}`;
+	}
+	if (printedRunDir === undefined) {
+		return `report.json names run ${evidence.runId}, but this ai-bdd printed no "Run: <dir>" line to tie it to this run`;
+	}
+	const printed = realOf(resolve(config.project, printedRunDir));
+	if (printed !== realOf(join(config.runsDir, evidence.runId))) {
+		return `report.json names run ${evidence.runId}, but this ai-bdd printed "Run: ${printedRunDir}": ${stale}`;
 	}
 	return undefined;
 }

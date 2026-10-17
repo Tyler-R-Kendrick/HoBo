@@ -84,6 +84,33 @@ describe("the release gate records only this run's report", () => {
 		TIMEOUT,
 	);
 
+	const PRINTED: readonly (readonly [string, "other" | "none", RegExp])[] = [
+		[
+			"another new run's directory (a concurrent run wrote the latest report)",
+			"other",
+			/^report\.json names run [0-9a-f-]{36}, but this ai-bdd printed "Run: \.ai-bdd\/runs\/[0-9a-f-]{36}": it is not this run's report$/u,
+		],
+		[
+			"no Run: line",
+			"none",
+			/^report\.json names run [0-9a-f-]{36}, but this ai-bdd printed no "Run: <dir>" line to tie it to this run$/u,
+		],
+	];
+	it.each(PRINTED)(
+		"a report is refused when ai-bdd printed %s",
+		async (_label, printedRun, reason) => {
+			const run = await runGate({
+				...ALL_PASS,
+				run: { exit: 0, report: PASSED, printedRun },
+			});
+			const replay = checkOf(run, "acceptance-replay");
+			expect(replay).toMatchObject({ status: "failed", exitCode: 1 });
+			expect(replay.evidence.reason).toMatch(reason);
+			expect(replay.evidence.report_digest).toBeUndefined();
+		},
+		TIMEOUT,
+	);
+
 	it("a run that fails to load (exit 1, no report) fails on freshness, not on the old run's data", async () => {
 		const project = newDir();
 		const runId = earlierRun(project);

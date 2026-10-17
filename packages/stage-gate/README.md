@@ -87,11 +87,14 @@ outright, EINVAL), so `["ai-bdd"]` and `["ai-bdd.cmd"]` are both recorded
 
 The report must be this run's. Before spawning `run`, the replay step notes the
 time and the run directories that exist; after exit 0 or 1 the report's `runId`
-must name a run directory that did not exist before, and its `startedAt` must be
-no earlier than the spawn (5 s of clock skew allowed). Otherwise the check fails
-with a message naming the run id and why, and records nothing of that report: an
-earlier run's report survives exit 2 and 4, a wrapper that swallows ai-bdd's
-failure, and a CLI that never loaded. ai-bdd writes the latest report to
+must name a run directory that did not exist before, its `startedAt` must be no
+earlier than the spawn (5 s of clock skew allowed), and that directory must be the
+one this ai-bdd named in the `Run: <dir>` line it prints on stdout after a run
+that wrote a report (ai-bdd's `printRunSummary`, on exit 0, 1 and 3). Otherwise
+the check fails with a message naming the run id and why, and records nothing of
+that report: an earlier run's report survives exit 2 and 4, a wrapper that
+swallows ai-bdd's failure, and a CLI that never loaded, and another `ai-bdd run`
+in the same project can write the latest report after this one. ai-bdd writes the latest report to
 `join(dirname(runsDir), "report")`; the gate takes `runsDir` from
 `HOBO_AI_BDD_RUNS_DIR` (relative to the project, default `.ai-bdd/runs`), because
 it cannot read a `.ts`/`.mjs` ai-bdd config without running project code. A

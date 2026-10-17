@@ -65,6 +65,7 @@
 				"body": {
 					"exitCode": 0,
 					"reportWritten": true,
+					"stdoutRunLine": "Run: .ai-bdd/runs/01a132d2-fe9a-7d3a-a7d8-157d681d6417",
 					"report": {
 						"schemaVersion": 1,
 						"runId": "01a132d2-fe9a-7d3a-a7d8-157d681d6417",
@@ -152,6 +153,7 @@
 				"body": {
 					"exitCode": 1,
 					"reportWritten": true,
+					"stdoutRunLine": "Run: .ai-bdd/runs/01a132d2-fe9a-7d3a-a7d8-157d681d6417",
 					"report": {
 						"schemaVersion": 1,
 						"runId": "01a132d2-fe9a-7d3a-a7d8-157d681d6417",
@@ -262,6 +264,7 @@
 				"body": {
 					"exitCode": 3,
 					"reportWritten": true,
+					"stdoutRunLine": "Run: .ai-bdd/runs/01a132d2-fe9a-7d3a-a7d8-157d681d6417",
 					"report": {
 						"schemaVersion": 1,
 						"runId": "01a132d2-fe9a-7d3a-a7d8-157d681d6417",

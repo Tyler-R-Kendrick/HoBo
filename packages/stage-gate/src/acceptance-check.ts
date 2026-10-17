@@ -9,7 +9,8 @@
  *   when the run reached its scenarios, and not after 2 or 4 (an earlier run's
  *   report may still be on disk then); only
  *   after 0 or 1 is it opened, and only if it is this run's (its run directory
- *   is new and it started no earlier than the spawn), then parsed into
+ *   is new, it started no earlier than the spawn, and it is the run ai-bdd
+ *   named in its `Run: <dir>` line; replay-run.ts), then parsed into
  *   `AcceptanceEvidence` and held to the process's own exit code. The report
  *   exit 3 writes describes a run that could not be carried out: never read.
  * - `evidence-intact`: `ai-bdd verify-run <runsDir>/<runId>` for the run the
@@ -184,7 +185,13 @@ async function replay(
 	if ("refused" in read) {
 		return result("failed", 1, { ...step, reason: read.refused });
 	}
-	const stale = staleBecause(config, read.evidence, before, spawnedAt);
+	const stale = staleBecause(
+		config,
+		read.evidence,
+		before,
+		spawnedAt,
+		run.printedRunDir,
+	);
 	if (stale !== undefined) {
 		// Nothing of an earlier run goes into this run's evidence.
 		return result("failed", 1, { ...step, reason: stale });

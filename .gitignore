@@ -90,3 +90,10 @@ reports/mutation/
 # they are machine- and path-specific, so committing them makes every build
 # machine fight over the same file for no benefit.
 *.tsbuildinfo
+
+# A submodule checkout the sibling pins moved aside (scripts/lib/pins-git-head.ts:
+# `mv external/<name> external/<name>.kept`, then `.kept.1`, ...). Local scratch
+# that holds a person's work; its `.git` file would make `git add -A` stage it
+# as an embedded repository.
+/external/*.kept
+/external/*.kept.[0-9]*

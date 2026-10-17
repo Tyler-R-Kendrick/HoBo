@@ -8,19 +8,12 @@
 import { resolve } from "node:path";
 
 import { sameFile } from "./pins-file-identity.ts";
-import { git, gitFailure, sameRepo } from "./pins-git-core.ts";
+import { git, gitFailure, sameRepo, shellWord } from "./pins-git-core.ts";
 
 /** A problem with the configured URL, and its fix. */
 export interface UrlProblem {
 	readonly problem: string;
 	readonly fix: string;
-}
-
-/** `value` as one shell word: as it is when plain, else single-quoted. */
-export function shellWord(value: string): string {
-	return /^[\w./:@%+=,-]+$/u.test(value)
-		? value
-		: `'${value.replaceAll("'", `'\\''`)}'`;
 }
 
 /** One value of the key, as git lists it: the scope, the file (or the command line), the value. */

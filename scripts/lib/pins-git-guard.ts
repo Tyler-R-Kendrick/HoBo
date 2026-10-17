@@ -7,8 +7,14 @@
  */
 
 import { type GitPin, PinsError } from "./pins.ts";
-import { configuredUrlProblem, shellWord } from "./pins-git-configured.ts";
-import { onAnyRef, Refusal, sameRepo, short } from "./pins-git-core.ts";
+import { configuredUrlProblem } from "./pins-git-configured.ts";
+import {
+	onAnyRef,
+	Refusal,
+	sameRepo,
+	shellWord,
+	short,
+} from "./pins-git-core.ts";
 import { isAllowedTransport, type NetOptions } from "./pins-git-net.ts";
 import { modulesEntry, modulesSection } from "./pins-gitmodules.ts";
 
@@ -54,7 +60,7 @@ export function coherence(
 		found.fixes.push(registerFix(root, pin));
 		return found;
 	}
-	const setUrl = `git config -f .gitmodules submodule.${entry.name}.url ${pin.repo}`;
+	const setUrl = `git config -f .gitmodules ${shellWord(`submodule.${entry.name}.url`)} ${shellWord(pin.repo)}`;
 	if (!isAllowedTransport(entry.url, allowLocal)) {
 		found.problems.push(
 			`.gitmodules names ${entry.url} for ${pin.path}, which is not an https URL`,

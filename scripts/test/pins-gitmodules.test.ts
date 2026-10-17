@@ -11,11 +11,13 @@
  * attempt to reach `evil.invalid`.
  */
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import { existsSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import {
+	gitEnv,
 	makeRemote,
 	makeWork,
 	runBootstrap,
@@ -129,5 +131,16 @@ describe(".gitmodules that git could read another way is refused", () => {
 			/GITMODULES_AMBIGUOUS: git cannot read \.gitmodules/u,
 		);
 		assertNothingContacted(work, `${run.stdout}${run.stderr}`);
+	});
+
+	it("a section name in a printed fix is quoted for the shell", () => {
+		const work = withModules(section("lib$(touch PWNED)", EVIL));
+		const status = runBootstrap(work, ["--status"], NOT_LOCAL);
+		const fix = /fix: (.+?)(?: {3}\(|$)/mu.exec(status.stdout)?.[1] ?? "";
+		assert.match(fix, /'submodule\.lib\$\(touch PWNED\)\.url'/u, status.stdout);
+		execFileSync("sh", ["-c", fix], { cwd: work, env: gitEnv() });
+		assert.equal(existsSync(join(work, "PWNED")), false, "nothing ran");
+		const after = runBootstrap(work, ["--status"], NOT_LOCAL);
+		assert.doesNotMatch(after.stdout, /\.gitmodules names/u, after.stdout);
 	});
 });

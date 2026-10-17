@@ -34,6 +34,13 @@ export function gitFailure(what: string, read: GitResult): string {
 		: `${what} was killed by ${read.signal}`;
 }
 
+/** `value` as one shell word, for a printed fix: as it is when plain, else single-quoted. */
+export function shellWord(value: string): string {
+	return /^[\w./:@%+=,-]+$/u.test(value)
+		? value
+		: `'${value.replaceAll("'", `'\\''`)}'`;
+}
+
 /** An exit status as a shell reports it: 128 + the signal's number for a death by a signal. */
 export function exitStatus(
 	code: number | null,

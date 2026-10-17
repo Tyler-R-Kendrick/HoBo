@@ -31,6 +31,7 @@ export type PinsErrorCode =
 	| "NOT_PUSHED"
 	| "CACHE_UNSAFE"
 	| "OVERRIDE_IN_CI"
+	| "INTERRUPTED"
 	| "USAGE";
 
 /** Every refusal is named; a bare Error would be untraceable. */

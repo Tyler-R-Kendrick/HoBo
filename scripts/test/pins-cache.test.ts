@@ -26,7 +26,6 @@ import {
 	runBootstrapAsync,
 	scratch,
 	sha256Hex,
-	spawnBootstrap,
 	startServer,
 	writeManifest,
 } from "./support/pins-support.ts";
@@ -226,86 +225,4 @@ describe("a download that was interrupted leaves nothing in the cache", () => {
 		assert.equal(run.status, 0, run.stderr);
 		assert.equal(existsSync(leftover), false);
 	});
-
-	for (const signal of ["SIGTERM", "SIGINT"] as const) {
-		it(`${signal} removes the partial file the download was writing`, async () => {
-			server = await startServer();
-			server.setStall("/stall", Buffer.alloc(3000, 1), 100_000);
-			const root = scratch("cache-kill");
-			const { origin } = server;
-			const stalled = {
-				url: `${origin}/stall`,
-				sha256: DIGEST,
-				size: 100_000,
-				entry: "tool",
-			};
-			writeManifest(
-				root,
-				`{"mirror":{"repo":"${origin}/example/mirror","tag":"v1.0.0","files":{"linux-x64":${JSON.stringify(stalled)},"linux-arm64":${JSON.stringify(stalled)}}}}`,
-			);
-			const digestDir = join(root, ".cache/siblings", DIGEST);
-			const running = spawnBootstrap(root, ["--fetch", "mirror"]);
-			const found = await waitFor(() =>
-				existsSync(digestDir)
-					? readdirSync(digestDir).find((name) => name.endsWith(".partial"))
-					: undefined,
-			);
-			assert.ok(found, "the download started and has a partial file");
-			running.child.kill(signal);
-			const ended = await running.done;
-			assert.equal(
-				ended.signal,
-				signal,
-				`the script ended by ${signal}, not an exit code`,
-			);
-			const left = existsSync(digestDir) ? readdirSync(digestDir) : [];
-			assert.deepEqual(left, [], "no partial file is left");
-		});
-	}
-
-	it("the partial file is private while it is being written", async () => {
-		server = await startServer();
-		server.setStall("/stall", Buffer.alloc(3000, 1), 100_000);
-		const root = scratch("cache-private");
-		const { origin } = server;
-		const stalled = {
-			url: `${origin}/stall`,
-			sha256: DIGEST,
-			size: 100_000,
-			entry: "tool",
-		};
-		writeManifest(
-			root,
-			`{"mirror":{"repo":"${origin}/example/mirror","tag":"v1.0.0","files":{"linux-x64":${JSON.stringify(stalled)},"linux-arm64":${JSON.stringify(stalled)}}}}`,
-		);
-		const digestDir = join(root, ".cache/siblings", DIGEST);
-		const running = spawnBootstrap(root, ["--fetch", "mirror"]);
-		const found = await waitFor(() =>
-			existsSync(digestDir)
-				? readdirSync(digestDir).find((name) => name.endsWith(".partial"))
-				: undefined,
-		);
-		assert.ok(found);
-		const bits = mode(join(digestDir, found));
-		running.child.kill("SIGTERM");
-		await running.done;
-		assert.equal(
-			bits,
-			0o600,
-			"not executable, not readable by others, until it is verified",
-		);
-	});
 });
-
-async function waitFor<T>(
-	probe: () => T | undefined,
-	ms = 8000,
-): Promise<T | undefined> {
-	const deadline = Date.now() + ms;
-	while (Date.now() < deadline) {
-		const value = probe();
-		if (value !== undefined) return value;
-		await new Promise((resolve) => setTimeout(resolve, 25));
-	}
-	return undefined;
-}

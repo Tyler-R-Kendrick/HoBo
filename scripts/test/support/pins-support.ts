@@ -81,6 +81,25 @@ export function scratch(label: string): string {
 	return dir;
 }
 
+/**
+ * Wait for a condition another process makes true (a file with bytes in it).
+ * Not a pause: it returns the moment `probe` answers, and says what it was
+ * waiting for when it never does.
+ */
+export async function waitUntil<T>(
+	what: string,
+	probe: () => T | undefined,
+	ms = 10_000,
+): Promise<T> {
+	const deadline = Date.now() + ms;
+	for (;;) {
+		const value = probe();
+		if (value !== undefined) return value;
+		if (Date.now() > deadline) throw new Error(`timed out waiting for ${what}`);
+		await new Promise((resolve) => setTimeout(resolve, 5));
+	}
+}
+
 export function sha256Hex(bytes: Uint8Array | string): string {
 	return createHash("sha256").update(bytes).digest("hex");
 }
@@ -209,6 +228,16 @@ export interface FileServer {
 	setRedirect(path: string, location: string): void;
 	/** Answer `path` with `first` and then stall: the declared length is `total`, the rest never comes. */
 	setStall(path: string, first: Uint8Array | string, total: number): void;
+	/** Accept the request for `path` and never answer it, not even with headers. */
+	setHang(path: string): void;
+	/** Answer `path` with `first`, hold the rest until `release()`, then send `rest`. */
+	setGate(
+		path: string,
+		first: Uint8Array | string,
+		rest: Uint8Array | string,
+	): { release(): void };
+	/** Resolves once a request for `path` has reached the server. */
+	requested(path: string): Promise<void>;
 	close(): Promise<void>;
 }
 
@@ -217,11 +246,30 @@ export async function startServer(): Promise<FileServer> {
 	const files = new Map<string, Uint8Array>();
 	const redirects = new Map<string, string>();
 	const stalls = new Map<string, { first: Uint8Array; total: number }>();
+	const hangs = new Set<string>();
+	const gates = new Map<
+		string,
+		{ first: Uint8Array; rest: Uint8Array; open: Promise<void> }
+	>();
+	const waiting = new Map<string, (() => void)[]>();
 	const hits: string[] = [];
 	const server = createServer(
 		(request: IncomingMessage, response: ServerResponse) => {
 			const path = request.url ?? "/";
 			hits.push(`${request.method ?? "GET"} ${path}`);
+			for (const wake of waiting.get(path) ?? []) wake();
+			if (hangs.has(path)) return;
+			const gate = gates.get(path);
+			if (gate !== undefined) {
+				response.writeHead(200, {
+					"content-length": String(
+						gate.first.byteLength + gate.rest.byteLength,
+					),
+				});
+				response.write(gate.first);
+				void gate.open.then(() => response.end(gate.rest));
+				return;
+			}
 			const location = redirects.get(path);
 			if (location !== undefined) {
 				response.writeHead(302, { location });
@@ -260,6 +308,26 @@ export async function startServer(): Promise<FileServer> {
 			stalls.set(path, {
 				first: first instanceof Uint8Array ? first : Buffer.from(first),
 				total,
+			});
+		},
+		setHang(path) {
+			hangs.add(path);
+		},
+		setGate(path, first, rest) {
+			let release = (): void => undefined;
+			const open = new Promise<void>((resolve) => {
+				release = resolve;
+			});
+			const bytes = (value: Uint8Array | string): Uint8Array =>
+				value instanceof Uint8Array ? value : Buffer.from(value);
+			gates.set(path, { first: bytes(first), rest: bytes(rest), open });
+			return { release };
+		},
+		requested(path) {
+			if (hits.some((hit) => hit.endsWith(` ${path}`)))
+				return Promise.resolve();
+			return new Promise<void>((resolve) => {
+				waiting.set(path, [...(waiting.get(path) ?? []), resolve]);
 			});
 		},
 		close: () =>

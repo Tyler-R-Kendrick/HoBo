@@ -220,6 +220,10 @@ const ALLOWANCES = {
 		literals: { "/nonexistent-root": 1, "/nonexistent-root/packages": 1 },
 		why: "roots for a read-only walk that returns [] when packagesRoot is absent (src/discover.ts:34)",
 	},
+	"scripts/test/bootstrap-siblings.test.ts": {
+		literals: { "/nonexistent-dir": 1 },
+		why: "a --reference the script refuses with a usage error before it runs anything (scripts/bootstrap-siblings.mts:112-119)",
+	},
 } satisfies Readonly<Record<string, Allowance>>;
 
 const ALLOWED: ReadonlyMap<string, Allowance> = new Map(

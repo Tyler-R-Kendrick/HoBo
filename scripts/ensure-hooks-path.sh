@@ -14,6 +14,12 @@
 # prints nothing and always exits 0, so a session never fails because of it.
 # HOBO_SKIP_HOOKS or CI set to 1, true, yes or on skips it, as they skip
 # scripts/install-hooks.mts.
+#
+# Git's repository variables (GIT_DIR, GIT_COMMON_DIR, GIT_WORK_TREE, …) are
+# dropped first: git exports an absolute GIT_DIR to hooks in a linked
+# worktree, and an inherited one would send the write to that repository. The
+# pre-commit hook must not do the same; its gates read git's temporary index.
+unset $(git rev-parse --local-env-vars 2>/dev/null)
 cd "$(dirname "$0")/.." 2>/dev/null || exit 0
 for flag in "${HOBO_SKIP_HOOKS:-}" "${CI:-}"; do
 	case $(printf '%s' "$flag" | tr '[:upper:]' '[:lower:]') in

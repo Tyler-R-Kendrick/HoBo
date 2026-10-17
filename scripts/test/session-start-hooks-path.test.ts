@@ -246,6 +246,36 @@ describe("scripts/ensure-hooks-path.sh", () => {
 		assert.equal(hooksPath(outer), "");
 	});
 
+	it("ignores a GIT_DIR or GIT_COMMON_DIR it inherits", () => {
+		// Git exports an absolute GIT_DIR to hooks in a linked worktree, and a
+		// shell or IDE may export one too. Followed, it sends the write to that
+		// repository, silencing its own hooks, and leaves this one unset.
+		const other = checkout();
+		const linked = join(tempDir(), "linked");
+		const added = git(other, [
+			"worktree",
+			"add",
+			"--quiet",
+			"--orphan",
+			"-b",
+			"side",
+			linked,
+		]);
+		assert.equal(added.status, 0, added.stderr);
+		for (const inherited of [
+			{ GIT_DIR: join(other, ".git") },
+			{ GIT_DIR: join(other, ".git", "worktrees", "linked") },
+			{ GIT_COMMON_DIR: join(other, ".git") },
+			{ GIT_DIR: join(other, ".git"), GIT_WORK_TREE: other },
+		]) {
+			const repo = checkout();
+			const result = script(repo, inherited);
+			assert.equal(result.status, 0, result.stderr);
+			assert.equal(hooksPath(other), "", JSON.stringify(inherited));
+			assert.equal(hooksPath(repo), ".githooks", JSON.stringify(inherited));
+		}
+	});
+
 	it("succeeds silently outside a repository", () => {
 		const result = script(furnish(tempDir()));
 		assert.equal(result.status, 0, result.stderr);

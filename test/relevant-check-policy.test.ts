@@ -715,6 +715,35 @@ test("any skill-tree edit selects the byte-identical mirror gate", () => {
 	);
 });
 
+const isAntiSlopDriftTest = (check: {
+	command: string;
+	args: readonly string[];
+}) =>
+	check.command === "node" &&
+	check.args.join(" ") ===
+		"--import tsx --test scripts/test/anti-slop-vendor.test.ts";
+
+test("an edit to any vendored anti-slop copy selects its manifest drift test", () => {
+	for (const file of [
+		"tools/oxlint/anti-slop/rules/no-runtime-typeof.ts",
+		"tools/oxlint/anti-slop/MANIFEST.sha256",
+		".claude/skills/install-anti-slop/assets/anti-slop/index.ts",
+		".agents/skills/install-anti-slop/assets/anti-slop/LICENSE",
+		"scripts/test/anti-slop-vendor.test.ts",
+	]) {
+		assert.ok(plan([file]).checks.some(isAntiSlopDriftTest), file);
+	}
+});
+
+test("unrelated changes do not select the anti-slop drift test", () => {
+	for (const file of [
+		"packages/core/src/index.ts",
+		".agents/skills/install-anti-slop/SKILL.md",
+	]) {
+		assert.ok(!plan([file]).checks.some(isAntiSlopDriftTest), file);
+	}
+});
+
 test("gate script changes select the optimizexp drift lane", () => {
 	const { checks } = plan(["scripts/check-optimizexp.mts"]);
 	assert.ok(checks.some(isOptimizexpLane));

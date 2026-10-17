@@ -69,10 +69,13 @@ function updateSubmodule(root: string, pin: GitPin, options: GitOptions): void {
 			options,
 			true,
 		);
-	if (update(true).status === 0) return;
+	const sub = join(root, pin.path);
+	// A new clone, or one already shallow, takes only the pinned commit; a full
+	// clone a developer made stays full (a depth fetch would make it shallow).
+	const shallow = !existsSync(join(sub, ".git")) || isShallow(root, pin.path);
+	if (update(shallow).status === 0) return;
 	// A server that refuses a fetch of an unadvertised commit leaves a shallow
 	// clone of the tip: take the full history, then check out the pin.
-	const sub = join(root, pin.path);
 	if (existsSync(join(sub, ".git"))) {
 		const unshallow = isShallow(root, pin.path) ? ["--unshallow"] : [];
 		const full = netGit(

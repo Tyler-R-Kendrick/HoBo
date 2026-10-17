@@ -79,3 +79,25 @@ describe("bump of a full submodule clone", () => {
 		assert.equal(git(sub, ["rev-list", "--count", remote.shas[2] ?? ""]), "3");
 	});
 });
+
+describe("fetch of a full submodule clone", () => {
+	it("moves it to a new gitlink without --depth, so the clone stays full", () => {
+		const dir = scratch("fetch-full");
+		const remote = makeRemote(dir);
+		const work = makeWork(dir, remote, 0);
+		const sub = join(work, "external/lib");
+		// A developer's own full clone of the library, at the pin.
+		git(work, ["submodule", "update", "--init", "--", "external/lib"]);
+		assert.equal(git(sub, ["rev-parse", "--is-shallow-repository"]), "false");
+		// Someone else moves the pin to a commit this clone has not fetched.
+		git(remote.dir, ["commit", "-q", "--allow-empty", "-m", "four"]);
+		const four = git(remote.dir, ["rev-parse", "HEAD"]);
+		git(work, ["update-index", "--cacheinfo", `160000,${four},external/lib`]);
+		git(work, ["commit", "-q", "-m", "bump"]);
+		const run = runBootstrap(work, ["--fetch", "lib"]);
+		assert.equal(run.status, 0, `${run.stdout}${run.stderr}`);
+		assert.equal(git(sub, ["rev-parse", "HEAD"]), four);
+		assert.equal(git(sub, ["rev-parse", "--is-shallow-repository"]), "false");
+		assert.equal(git(sub, ["rev-list", "--count", "HEAD"]), "4");
+	});
+});

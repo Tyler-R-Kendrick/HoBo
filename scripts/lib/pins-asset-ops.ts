@@ -65,10 +65,16 @@ function fetchHint(name: string): string {
 	return `pnpm run pins:fetch ${name}`;
 }
 
-/** Whether this run is a CI run: `CI` set to anything but empty, false or 0. */
+/**
+ * Whether this run is a CI run: `CI` (GitHub, GitLab, CircleCI and most
+ * others), `GITHUB_ACTIONS` or `TF_BUILD` (Azure Pipelines) set to anything
+ * but empty, false or 0. Nothing else is read.
+ */
 function inCi(env: NodeJS.ProcessEnv): boolean {
-	const ci = (env.CI ?? "").toLowerCase();
-	return ci !== "" && ci !== "false" && ci !== "0";
+	return [env.CI, env.GITHUB_ACTIONS, env.TF_BUILD].some((value) => {
+		const set = (value ?? "").toLowerCase();
+		return set !== "" && set !== "false" && set !== "0";
+	});
 }
 
 /**

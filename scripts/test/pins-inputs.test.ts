@@ -9,6 +9,8 @@ import { readFileSync } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, it } from "node:test";
 
+import { PinsError } from "../lib/pins.ts";
+import { refuseOverridesInCi } from "../lib/pins-asset-ops.ts";
 import { sameRepo } from "../lib/pins-git.ts";
 import {
 	type FileServer,
@@ -148,5 +150,39 @@ describe("bump checks a name it was given before any request", () => {
 		assert.equal(run.status, 2, `${run.stdout}${run.stderr}`);
 		assert.match(run.stderr, /--drop linux-arm64: the pin has no such target/u);
 		assert.deepEqual(srv.hits, []);
+	});
+});
+
+describe("an override in CI", () => {
+	const refused = (env: NodeJS.ProcessEnv): boolean => {
+		try {
+			refuseOverridesInCi(["mirror"], { MIRROR_BIN: "/opt/mirror", ...env });
+			return false;
+		} catch (error) {
+			return error instanceof PinsError && error.code === "OVERRIDE_IN_CI";
+		}
+	};
+
+	it("is refused when CI, GITHUB_ACTIONS or TF_BUILD says this is CI", () => {
+		for (const env of [
+			{ CI: "true" },
+			{ GITHUB_ACTIONS: "true" },
+			{ TF_BUILD: "True" },
+			{ TF_BUILD: "true", CI: "" },
+		]) {
+			assert.equal(refused(env), true, JSON.stringify(env));
+		}
+	});
+
+	it("is allowed outside CI, and in CI when HOBO_PINS_ALLOW_OVERRIDE=1", () => {
+		for (const env of [
+			{},
+			{ CI: "false" },
+			{ GITHUB_ACTIONS: "false" },
+			{ TF_BUILD: "" },
+			{ GITHUB_ACTIONS: "true", HOBO_PINS_ALLOW_OVERRIDE: "1" },
+		]) {
+			assert.equal(refused(env), false, JSON.stringify(env));
+		}
 	});
 });

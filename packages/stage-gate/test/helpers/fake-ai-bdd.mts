@@ -14,6 +14,7 @@
 // runCopy?: "same" | "different" | "none", startedAt?: <ISO>, runsDir?: <dir> },
 // verifyRun: <exit> }
 
+import { spawn } from "node:child_process";
 import { randomUUID } from "node:crypto";
 import {
 	appendFileSync,
@@ -29,6 +30,11 @@ interface RunPlan {
 	readonly runCopy?: "same" | "different" | "none";
 	readonly startedAt?: string;
 	readonly runsDir?: string;
+	/** Hang this long (a child of its own process group first, its pid written to pidFile). */
+	readonly sleepMs?: number;
+	readonly pidFile?: string;
+	/** Print this many bytes of output before finishing. */
+	readonly outputBytes?: number;
 }
 
 interface Plan {
@@ -80,6 +86,28 @@ if (command === "compile" && rest[0] === "--check") {
 	}
 	process.exitCode = plan.compileCheck;
 } else if (command === "run") {
+	if (plan.run.sleepMs !== undefined) {
+		// A hung driver: a child (a browser, say) and the CLI itself, both waiting.
+		const child = spawn(
+			process.execPath,
+			["-e", "setTimeout(() => {}, 60000)"],
+			{ stdio: "ignore" },
+		);
+		// The CLI does not wait for it: only a kill of the group ends it early.
+		child.unref();
+		if (plan.run.pidFile !== undefined) {
+			writeFileSync(plan.run.pidFile, String(child.pid));
+		}
+		await new Promise((done) => setTimeout(done, plan.run.sleepMs));
+	}
+	const chunk = `${"x".repeat(1023)}\n`;
+	for (
+		let written = 0;
+		written < (plan.run.outputBytes ?? 0);
+		written += 1024
+	) {
+		process.stdout.write(chunk);
+	}
 	if (plan.run.exit === 0 || plan.run.exit === 1 || plan.run.exit === 3) {
 		writeReport(plan.run);
 	}

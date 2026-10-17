@@ -6,12 +6,23 @@
 //
 //   node --import tsx packages/stage-gate/scripts/check-acceptance.mts [plans-fresh|replay|evidence-intact|all]
 import { checkAcceptance } from "../src/acceptance-check.ts";
+import { killRunningAiBdd } from "../src/ai-bdd-process.ts";
 
-const result = checkAcceptance(
+// Stopped (by the runner's timeoutMs, or Ctrl-C): ai-bdd's process group goes too.
+for (const [signal, code] of [
+	["SIGINT", 130],
+	["SIGTERM", 143],
+] as const) {
+	process.once(signal, () => {
+		killRunningAiBdd();
+		process.exit(code);
+	});
+}
+
+const result = await checkAcceptance(
 	process.argv.slice(2),
 	process.env,
 	process.cwd(),
 );
-if (result.transcript !== "") process.stderr.write(result.transcript);
 process.stdout.write(`${JSON.stringify(result.evidence)}\n`);
 process.exitCode = result.exitCode;

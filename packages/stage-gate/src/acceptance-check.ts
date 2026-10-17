@@ -17,7 +17,6 @@
  * Configuration that cannot be used (HOBO_AI_BDD_CMD, HOBO_AI_BDD_PROJECT) is a
  * failure with exit 2, like ai-bdd's own usage errors.
  */
-import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
@@ -32,6 +31,7 @@ import {
 	type AcceptanceConfig,
 	acceptanceConfigOf,
 } from "./acceptance-config.js";
+import { type AiBddRun, runAiBdd as spawnAiBdd } from "./ai-bdd-process.js";
 import { REQUIRED_EVIDENCE_ENV } from "./gate-status.js";
 import { isJsonObject, isJsonString, parseJsonText } from "./json.js";
 import type { CheckEvidence } from "./types.js";
@@ -50,51 +50,37 @@ export interface AcceptanceResult {
 	readonly exitCode: number;
 	/** One flat JSON object: the line the stage-gate runner keeps as the check's evidence. */
 	readonly evidence: CheckEvidence;
-	/** What ai-bdd printed, for a person reading the log; never part of the evidence beyond its tail. */
-	readonly transcript: string;
+}
+
+/** Where ai-bdd's own output goes, as it comes (bounded, see ai-bdd-process.ts). */
+export type OutputSink = (chunk: Buffer) => void;
+
+function runAiBdd(
+	config: AcceptanceConfig,
+	relay: OutputSink,
+	args: readonly string[],
+): Promise<AiBddRun> {
+	return spawnAiBdd(
+		{
+			command: config.command,
+			cwd: config.project,
+			env: config.env,
+			timeoutMs: config.timeoutMs,
+			relay,
+		},
+		args,
+	);
 }
 
 const NOT_RUN = 3;
 const USAGE = 2;
-const TAIL_CHARS = 2000;
-
-interface AiBddRun {
-	readonly args: readonly string[];
-	readonly status: number | null;
-	readonly unstartable: string;
-	readonly output: string;
-}
-
-function runAiBdd(config: AcceptanceConfig, args: readonly string[]): AiBddRun {
-	const [executable = "", ...prefix] = config.command;
-	const result = spawnSync(executable, [...prefix, ...args], {
-		cwd: config.project,
-		env: config.env,
-		encoding: "utf8",
-		stdio: ["ignore", "pipe", "pipe"],
-		maxBuffer: 64 * 1024 * 1024,
-	});
-	let unstartable = "";
-	if (result.error) {
-		unstartable = `${result.error.name}: ${result.error.message}`;
-	} else if (result.signal) {
-		unstartable = `ended by ${result.signal}`;
-	}
-	return {
-		args,
-		status: result.status,
-		unstartable,
-		output: `${result.stdout ?? ""}${result.stderr ?? ""}`,
-	};
-}
 
 function result(
 	outcome: AcceptanceOutcome,
 	exitCode: number,
 	evidence: CheckEvidence,
-	transcript = "",
 ): AcceptanceResult {
-	return { outcome, exitCode, evidence: { outcome, ...evidence }, transcript };
+	return { outcome, exitCode, evidence: { outcome, ...evidence } };
 }
 
 /** How one ai-bdd command ended, when its exit code is all there is to read. */
@@ -102,34 +88,35 @@ function commandResult(
 	step: AcceptanceStep,
 	run: AiBddRun,
 	extra: CheckEvidence,
+	timeoutMs: number,
 ): AcceptanceResult {
 	const command = `ai-bdd ${run.args.join(" ")}`;
 	const base = { step, command, ...extra };
+	if (run.timedOut) {
+		const reason = `${command} did not finish within ${timeoutMs} ms (HOBO_AI_BDD_TIMEOUT_MS): its process group was killed`;
+		return result("not_run", NOT_RUN, {
+			...base,
+			reason,
+			output_tail: run.tail,
+		});
+	}
 	if (run.unstartable !== "" || run.status === null) {
-		return result(
-			"not_run",
-			NOT_RUN,
-			{ ...base, reason: `${command} did not run: ${run.unstartable}` },
-			run.output,
-		);
+		const reason = `${command} did not run: ${run.unstartable}`;
+		return result("not_run", NOT_RUN, { ...base, reason });
 	}
 	if (run.status === 0) {
-		return result("passed", 0, { ...base, exit_code: "0" }, run.output);
+		return result("passed", 0, { ...base, exit_code: "0" });
 	}
 	const evidence = {
 		...base,
 		exit_code: String(run.status),
-		output_tail: run.output.slice(-TAIL_CHARS),
+		output_tail: run.tail,
 	};
 	if (run.status === NOT_RUN) {
-		return result(
-			"not_run",
-			NOT_RUN,
-			{ ...evidence, reason: `${command} exited 3: infrastructure` },
-			run.output,
-		);
+		const reason = `${command} exited 3: infrastructure`;
+		return result("not_run", NOT_RUN, { ...evidence, reason });
 	}
-	return result("failed", run.status, evidence, run.output);
+	return result("failed", run.status, evidence);
 }
 
 function evidenceFields(evidence: AcceptanceEvidence): CheckEvidence {
@@ -216,18 +203,21 @@ function staleBecause(
 	return undefined;
 }
 
-function plansFresh(config: AcceptanceConfig): AcceptanceResult {
-	return commandResult(
-		"plans-fresh",
-		runAiBdd(config, ["compile", "--check"]),
-		{},
-	);
+async function plansFresh(
+	config: AcceptanceConfig,
+	relay: OutputSink,
+): Promise<AcceptanceResult> {
+	const run = await runAiBdd(config, relay, ["compile", "--check"]);
+	return commandResult("plans-fresh", run, {}, config.timeoutMs);
 }
 
-function replay(config: AcceptanceConfig): AcceptanceResult {
+async function replay(
+	config: AcceptanceConfig,
+	relay: OutputSink,
+): Promise<AcceptanceResult> {
 	const before = runIds(config);
 	const spawnedAt = Date.now();
-	const run = runAiBdd(config, [
+	const run = await runAiBdd(config, relay, [
 		"run",
 		"--frozen",
 		"--no-agent",
@@ -236,26 +226,30 @@ function replay(config: AcceptanceConfig): AcceptanceResult {
 	]);
 	if (run.unstartable !== "" || (run.status !== 0 && run.status !== 1)) {
 		// Exit 2 and 4 write no report; exit 3 writes one that says nothing about the product. None is read.
-		return commandResult("replay", run, { report: "not read" });
+		return commandResult(
+			"replay",
+			run,
+			{ report: "not read" },
+			config.timeoutMs,
+		);
 	}
 	const step = { step: "replay", exit_code: String(run.status) };
 	const read = readReport(config);
 	if ("refused" in read) {
-		return result("failed", 1, { ...step, reason: read.refused }, run.output);
+		return result("failed", 1, { ...step, reason: read.refused });
 	}
 	const stale = staleBecause(config, read.evidence, before, spawnedAt);
 	if (stale !== undefined) {
 		// Nothing of an earlier run goes into this run's evidence.
-		return result("failed", 1, { ...step, reason: stale }, run.output);
+		return result("failed", 1, { ...step, reason: stale });
 	}
 	const fields = { ...step, ...evidenceFields(read.evidence) };
 	if (read.evidence.exitCode !== run.status) {
 		const reason = `report.json says exit ${read.evidence.exitCode} but ai-bdd exited ${run.status}`;
-		return result("failed", 1, { ...fields, reason }, run.output);
+		return result("failed", 1, { ...fields, reason });
 	}
-	if (run.status === 0) return result("passed", 0, fields, run.output);
-	const tail = run.output.slice(-TAIL_CHARS);
-	return result("failed", 1, { ...fields, output_tail: tail }, run.output);
+	if (run.status === 0) return result("passed", 0, fields);
+	return result("failed", 1, { ...fields, output_tail: run.tail });
 }
 
 /** What one step is handed: the evidence of the steps before it, by check id. */
@@ -281,10 +275,11 @@ function judgedRunOf(
  * evidence (run id and report digest), not by whatever report.json says now:
  * another run in the project may have replaced it between the two checks.
  */
-function evidenceIntact(
+async function evidenceIntact(
 	config: AcceptanceConfig,
+	relay: OutputSink,
 	handed: Handed,
-): AcceptanceResult {
+): Promise<AcceptanceResult> {
 	const step = { step: "evidence-intact" };
 	const judged = judgedRunOf(handed.get("acceptance-replay"));
 	if (judged === undefined) {
@@ -310,11 +305,8 @@ function evidenceIntact(
 		const reason = `${shown(config, copyPath)} is not the report acceptance-replay judged (${digest}, not ${judged.reportDigest})`;
 		return result("failed", 1, { ...fields, reason });
 	}
-	return commandResult(
-		"evidence-intact",
-		runAiBdd(config, ["verify-run", runDir]),
-		fields,
-	);
+	const run = await runAiBdd(config, relay, ["verify-run", runDir]);
+	return commandResult("evidence-intact", run, fields, config.timeoutMs);
 }
 
 const STEPS = {
@@ -323,7 +315,11 @@ const STEPS = {
 	"evidence-intact": evidenceIntact,
 } satisfies Record<
 	AcceptanceStep,
-	(config: AcceptanceConfig, handed: Handed) => AcceptanceResult
+	(
+		config: AcceptanceConfig,
+		relay: OutputSink,
+		handed: Handed,
+	) => Promise<AcceptanceResult>
 >;
 
 /** The evidence the stage-gate runner hands a check that requires others (gate-status.ts). */
@@ -356,11 +352,12 @@ function stepsOf(
  * Run one step, or all three in order (stopping at the first that does not
  * pass, since the next one's input then does not exist).
  */
-export function checkAcceptance(
+export async function checkAcceptance(
 	argv: readonly string[],
 	env: NodeJS.ProcessEnv,
 	cwd: string,
-): AcceptanceResult {
+	relay: OutputSink = (chunk) => process.stderr.write(chunk),
+): Promise<AcceptanceResult> {
 	const steps = stepsOf(argv);
 	if (steps === undefined) {
 		const reason = `usage: check-acceptance [${ACCEPTANCE_STEPS.join("|")}|all]`;
@@ -372,15 +369,13 @@ export function checkAcceptance(
 	}
 	const handed = handedOf(env);
 	let evidence: CheckEvidence = {};
-	let transcript = "";
 	let last = result("failed", USAGE, { reason: "no step ran" });
 	for (const step of steps) {
-		last = STEPS[step](config, handed);
+		last = await STEPS[step](config, relay, handed);
 		// `all` hands each step's evidence to the next in process, as the runner does across processes.
 		handed.set(`acceptance-${step}`, last.evidence);
 		evidence = { ...evidence, ...last.evidence };
-		transcript += last.transcript;
 		if (last.outcome !== "passed") break;
 	}
-	return { ...last, evidence, transcript };
+	return { ...last, evidence };
 }

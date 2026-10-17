@@ -112,6 +112,20 @@ replay's evidence of a replay-only run that replayed a scenario (`report_digest`
 (`src/record-constraints.ts`, and the same in `stage_gate_record.cue`). It carries
 no signature or artifact, which stay S0's.
 
+Every ai-bdd command runs in a process group of its own and is bounded by
+`HOBO_AI_BDD_TIMEOUT_MS` (milliseconds, default 30 minutes; a value that is not a
+whole number from 1 to 24 hours is a usage error, exit 2). One that outlives it is
+killed with its whole group (the browser it started too) and the check is
+`not_run`, with a reason naming the command and the bound; when ai-bdd exits, what
+it left running in its group is killed as well, and so is everything on SIGINT
+or SIGTERM to the check. The runner bounds each release check too
+(`timeoutMs`: ai-bdd's bound plus a minute), a backstop that stops the check with
+SIGTERM and records it `not_run`. ai-bdd's output is relayed to the check's
+stderr as it comes, but only its first and last 2 MiB (`RELAY_BYTES`, an eighth
+of the runner's 16 MiB capture limit `CHECK_OUTPUT_LIMIT`), so a passing run that
+prints a lot is never killed for its output; the evidence keeps its last 2,000
+characters.
+
 Zero model calls is required, and `--no-agent` stops the agent but not the judge:
 a subjective step is judged from the verdict cache (`.ai-bdd/cache/`, not
 committed) or by a model call. A clean CI checkout therefore replays with zero

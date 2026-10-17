@@ -165,7 +165,7 @@ describe("ai-bdd report consumer pact", () => {
 
 	it.each(all.map((i) => [i.description, i]))(
 		"%s",
-		(_description, interaction) => {
+		async (_description, interaction) => {
 			const step = STEP_OF_PATH.get(interaction.path);
 			if (step === undefined)
 				throw new Error(`pact: unknown path ${interaction.path}`);
@@ -213,7 +213,7 @@ describe("ai-bdd report consumer pact", () => {
 				run: { exit: interaction.exitCode, report: reportFile },
 				verifyRun: interaction.exitCode,
 			};
-			const result = checkAcceptance(
+			const result = await checkAcceptance(
 				[step],
 				{
 					...process.env,

@@ -4,7 +4,9 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { delimiter, dirname, join } from "node:path";
 
 import {
+	CHECK_OUTPUT_LIMIT,
 	checkStatusOf,
+	NOT_RUN_EXIT_CODE,
 	NOT_STARTED_EXIT_CODE,
 	REQUIRED_EVIDENCE_ENV,
 	recordStatusOf,
@@ -119,16 +121,23 @@ export function createCommandInvocation(
 interface CheckRun {
 	readonly exitCode: number;
 	readonly evidence: Record<string, string>;
+	/** It outlived its `timeoutMs` and was stopped. */
+	readonly timedOut: boolean;
 }
 
 function runCheck(
 	command: readonly string[],
 	cwd: string,
 	env: NodeJS.ProcessEnv,
+	timeoutMs?: number,
 ): CheckRun {
 	const [executable, ...args] = command;
 	if (!executable) {
-		return { exitCode: 1, evidence: { error: "empty command" } };
+		return {
+			exitCode: 1,
+			evidence: { error: "empty command" },
+			timedOut: false,
+		};
 	}
 	const invocation = createCommandInvocation(
 		executable,
@@ -143,12 +152,21 @@ function runCheck(
 		encoding: "utf8",
 		windowsVerbatimArguments: invocation.windowsVerbatimArguments,
 		stdio: ["ignore", "pipe", "pipe"],
-		maxBuffer: 16 * 1024 * 1024,
+		maxBuffer: CHECK_OUTPUT_LIMIT,
+		killSignal: "SIGTERM",
+		// undefined: no bound, as before timeoutMs existed.
+		timeout: timeoutMs,
 	});
-	const exitCode = result.status ?? 1;
+	const timedOut =
+		result.error !== undefined &&
+		"code" in result.error &&
+		result.error.code === "ETIMEDOUT";
+	const exitCode = timedOut ? NOT_RUN_EXIT_CODE : (result.status ?? 1);
 	const failed = exitCode !== 0;
 	const evidence: Record<string, string> = {};
-	if (result.error) {
+	if (timedOut) {
+		evidence.error = `${command.join(" ")} did not finish within ${timeoutMs} ms (timeoutMs): stopped with SIGTERM`;
+	} else if (result.error) {
 		evidence.error = `${result.error.name}: ${result.error.message}`;
 	}
 	if (result.stdout?.trim()) {
@@ -171,6 +189,7 @@ function runCheck(
 	return {
 		exitCode,
 		evidence,
+		timedOut,
 	};
 }
 
@@ -306,18 +325,23 @@ export async function runStageGate(
 					})();
 		const { [REQUIRED_EVIDENCE_ENV]: _inherited, ...ownEnv } = checkEnv;
 		const handed = requiredEvidenceOf(check, passed);
-		const { exitCode, evidence: rawEvidence } = runCheck(
+		const {
+			exitCode,
+			evidence: rawEvidence,
+			timedOut,
+		} = runCheck(
 			check.command,
 			cwd,
 			handed === undefined
 				? ownEnv
 				: { ...ownEnv, [REQUIRED_EVIDENCE_ENV]: handed },
+			check.timeoutMs,
 		);
 		const evidence = parseEvidenceJson(rawEvidence.stdout ?? undefined);
 		if (Object.keys(evidence).length === 0) {
 			Object.assign(evidence, rawEvidence);
 		}
-		const status = checkStatusOf(check, exitCode);
+		const status = timedOut ? "not_run" : checkStatusOf(check, exitCode);
 		if (status === "passed") {
 			passed.set(check.checkId, evidence);
 		}

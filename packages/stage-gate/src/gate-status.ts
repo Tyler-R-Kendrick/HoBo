@@ -20,6 +20,13 @@ import type {
 // public-contract: the variable a check that `requires` others reads their evidence from (scripts/check-acceptance.mts does).
 export const REQUIRED_EVIDENCE_ENV = "HOBO_STAGE_GATE_REQUIRED_EVIDENCE";
 
+/**
+ * How much of a check's stdout, and of its stderr, the runner captures; a
+ * check that writes more is killed for it. The one output bound: a check that
+ * relays another process's output (check-acceptance.mts) relays less.
+ */
+export const CHECK_OUTPUT_LIMIT = 16 * 1024 * 1024;
+
 /** The exit code recorded for a check that was never started. */
 export const NOT_STARTED_EXIT_CODE = -1;
 

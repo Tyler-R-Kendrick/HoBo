@@ -65,6 +65,9 @@ interface FakePlan {
 		readonly runCopy?: "same" | "different" | "none";
 		readonly startedAt?: string;
 		readonly runsDir?: string;
+		readonly sleepMs?: number;
+		readonly pidFile?: string;
+		readonly outputBytes?: number;
 	};
 	readonly verifyRun: number;
 }
@@ -127,6 +130,19 @@ function earlierRun(project: string): string {
 		writeFileSync(join(dir, "report.json"), readFileSync(PASSED));
 	}
 	return runId;
+}
+
+/** Whether a process is gone, waiting up to two seconds for it to be reaped. */
+async function gone(pid: number): Promise<boolean> {
+	for (let attempt = 0; attempt < 20; attempt += 1) {
+		try {
+			process.kill(pid, 0);
+		} catch {
+			return true;
+		}
+		await new Promise((done) => setTimeout(done, 100));
+	}
+	return false;
 }
 
 function sha256Of(path: string): string {
@@ -443,11 +459,11 @@ describe("the release gate through real processes", () => {
 		TIMEOUT,
 	);
 
-	it("a run that fails to load (exit 1, no report) fails on freshness, not on the old run's data", () => {
+	it("a run that fails to load (exit 1, no report) fails on freshness, not on the old run's data", async () => {
 		const project = newDir();
 		const runId = earlierRun(project);
 		// Node exits 1 when the CLI's entry cannot be loaded, before ai-bdd writes anything.
-		const result = checkAcceptance(
+		const result = await checkAcceptance(
 			["replay"],
 			{
 				...process.env,
@@ -468,7 +484,7 @@ describe("the release gate through real processes", () => {
 		expect(result.evidence.scenarios_total).toBeUndefined();
 	});
 
-	it("evidence-intact verifies the run the replay judged, though report.json was replaced in between", () => {
+	it("evidence-intact verifies the run the replay judged, though report.json was replaced in between", async () => {
 		const project = newDir();
 		const log = join(newDir(), "calls.log");
 		const env = {
@@ -478,11 +494,11 @@ describe("the release gate through real processes", () => {
 			FAKE_AI_BDD: JSON.stringify(ALL_PASS),
 			FAKE_AI_BDD_LOG: log,
 		};
-		const replay = checkAcceptance(["replay"], env, project);
+		const replay = await checkAcceptance(["replay"], env, project);
 		expect(replay.outcome).toBe("passed");
 		// Another run in the same project replaces the latest report.
 		earlierRun(project);
-		const intact = checkAcceptance(
+		const intact = await checkAcceptance(
 			["evidence-intact"],
 			{
 				...env,
@@ -506,7 +522,7 @@ describe("the release gate through real processes", () => {
 		);
 	});
 
-	it("evidence-intact refuses a run directory whose report is not the one the replay judged", () => {
+	it("evidence-intact refuses a run directory whose report is not the one the replay judged", async () => {
 		const project = newDir();
 		const env = {
 			...process.env,
@@ -515,7 +531,7 @@ describe("the release gate through real processes", () => {
 			FAKE_AI_BDD: JSON.stringify(ALL_PASS),
 			FAKE_AI_BDD_LOG: join(newDir(), "calls.log"),
 		};
-		const replay = checkAcceptance(["replay"], env, project);
+		const replay = await checkAcceptance(["replay"], env, project);
 		const copy = join(
 			project,
 			".ai-bdd",
@@ -524,7 +540,7 @@ describe("the release gate through real processes", () => {
 			"report.json",
 		);
 		writeFileSync(copy, `${readFileSync(copy, "utf8")} `);
-		const intact = checkAcceptance(
+		const intact = await checkAcceptance(
 			["evidence-intact"],
 			{
 				...env,
@@ -540,9 +556,9 @@ describe("the release gate through real processes", () => {
 		);
 	});
 
-	it("evidence-intact alone, without the replay's evidence, is a usage error", () => {
+	it("evidence-intact alone, without the replay's evidence, is a usage error", async () => {
 		const project = newDir();
-		const result = checkAcceptance(
+		const result = await checkAcceptance(
 			["evidence-intact"],
 			{
 				...process.env,
@@ -557,9 +573,9 @@ describe("the release gate through real processes", () => {
 		);
 	});
 
-	it("all hands the replay's run to the verify step in process", () => {
+	it("all hands the replay's run to the verify step in process", async () => {
 		const project = newDir();
-		const result = checkAcceptance(
+		const result = await checkAcceptance(
 			["all"],
 			{
 				...process.env,
@@ -575,6 +591,58 @@ describe("the release gate through real processes", () => {
 			runIdOf(join(project, ".ai-bdd", "report", "report.json")),
 		);
 	});
+
+	it(
+		"a hung ai-bdd is killed with its process group at HOBO_AI_BDD_TIMEOUT_MS, and the check is not run",
+		async () => {
+			const pidFile = join(newDir(), "child.pid");
+			const run = await runGate(
+				{
+					...ALL_PASS,
+					run: { exit: 0, report: PASSED, sleepMs: 20_000, pidFile },
+				},
+				FAKE_COMMAND,
+				newDir(),
+				{ HOBO_AI_BDD_TIMEOUT_MS: "1500" },
+			);
+			const replay = checkOf(run, "acceptance-replay");
+			expect(replay).toMatchObject({ status: "not_run", exitCode: 3 });
+			expect(replay.evidence.reason).toBe(
+				"ai-bdd run --frozen --no-agent --reporter json,junit did not finish within 1500 ms (HOBO_AI_BDD_TIMEOUT_MS): its process group was killed",
+			);
+			expect(run.result.record.status).toBe("not_run");
+			// The child it started (a browser, in a real run) went with it.
+			const child = Number(readFileSync(pidFile, "utf8"));
+			expect(await gone(child)).toBe(true);
+		},
+		TIMEOUT,
+	);
+
+	it.each(["0", "-5", "abc", "1.5", ""])(
+		"HOBO_AI_BDD_TIMEOUT_MS=%j is a usage error",
+		async (value) => {
+			const run = await runGate(ALL_PASS, FAKE_COMMAND, newDir(), {
+				HOBO_AI_BDD_TIMEOUT_MS: value,
+			});
+			const plans = checkOf(run, "acceptance-plans-fresh");
+			expect(plans).toMatchObject({ status: "failed", exitCode: 2 });
+			expect(plans.evidence.reason).toContain("HOBO_AI_BDD_TIMEOUT_MS");
+		},
+		TIMEOUT,
+	);
+
+	it(
+		"a passing replay that prints more than 16 MiB is not killed for its output",
+		async () => {
+			const run = await runGate({
+				...ALL_PASS,
+				run: { exit: 0, report: PASSED, outputBytes: 20 * 1024 * 1024 },
+			});
+			expect(checkOf(run, "acceptance-replay").status).toBe("passed");
+			expect(run.result.record.status).toBe("passed");
+		},
+		TIMEOUT,
+	);
 
 	it(
 		"a gate with no project configured fails with exit 2",

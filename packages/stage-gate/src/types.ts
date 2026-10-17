@@ -27,6 +27,12 @@ export interface StageGateCheck {
 	 * every non-zero exit is a failure, as for the S0 gate.
 	 */
 	readonly notRunExitCodes?: readonly number[];
+	/**
+	 * How long the check may run. One that outlives it is stopped with
+	 * SIGTERM and recorded `not_run` (exit code 3): it said nothing about what
+	 * it checks. Unset, a check runs as long as it takes.
+	 */
+	readonly timeoutMs?: number;
 }
 
 export interface StageGateDefinition {

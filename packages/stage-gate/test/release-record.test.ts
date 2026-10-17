@@ -293,6 +293,28 @@ describe("runStageGate with requires and notRunExitCodes", () => {
 		};
 	}
 
+	it("records a check that outlives its timeoutMs as not run", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "hobo-release-record-"));
+		dirs.push(cwd);
+		const result = await runStageGate(
+			{
+				gateId: "release",
+				checks: [
+					nodeCheck("slow", "setTimeout(() => {}, 8000)", { timeoutMs: 500 }),
+				],
+			},
+			{ cwd },
+		);
+		expect(result.record.checks[0]).toMatchObject({
+			status: "not_run",
+			exitCode: 3,
+		});
+		expect(result.record.checks[0]?.evidence.error).toContain(
+			"did not finish within 500 ms",
+		);
+		expect(result.exitCode).toBe(3);
+	}, 20_000);
+
 	it("hands a check the evidence of the checks it requires", async () => {
 		const cwd = mkdtempSync(join(tmpdir(), "hobo-release-record-"));
 		dirs.push(cwd);

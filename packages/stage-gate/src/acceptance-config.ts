@@ -10,7 +10,11 @@
  *   to join(dirname(runsDir), "report"), so the report path follows from it.
  *   The gate cannot read a .ts/.mjs/.js ai-bdd config without running project
  *   code, so a project that moves `runsDir` must name it here; one that does
- *   not fails the replay on freshness rather than read another directory.
+ *   not fails the replay on freshness rather than read another directory;
+ * - HOBO_AI_BDD_TIMEOUT_MS: how long one ai-bdd command may run, default 30
+ *   minutes; one that outlives it is killed with its process group and the
+ *   check is not run. A value that is not a whole number of milliseconds from
+ *   1 to 24 hours is a usage error.
  */
 import { statSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
@@ -26,6 +30,21 @@ export interface AcceptanceConfig {
 	readonly runsDir: string;
 	/** Absolute: join(dirname(runsDir), "report", "report.json"), where ai-bdd writes the latest report. */
 	readonly reportFile: string;
+	/** How long one ai-bdd command may run. */
+	readonly timeoutMs: number;
+}
+
+/** 30 minutes. */
+export const DEFAULT_AI_BDD_TIMEOUT_MS = 30 * 60 * 1000;
+const MAX_AI_BDD_TIMEOUT_MS = 24 * 60 * 60 * 1000;
+
+/** HOBO_AI_BDD_TIMEOUT_MS as milliseconds, the default when unset, undefined when it is not usable. */
+export function aiBddTimeoutMsOf(env: NodeJS.ProcessEnv): number | undefined {
+	const raw = env.HOBO_AI_BDD_TIMEOUT_MS;
+	if (raw === undefined) return DEFAULT_AI_BDD_TIMEOUT_MS;
+	if (!/^[1-9][0-9]{0,8}$/u.test(raw)) return undefined;
+	const ms = Number(raw);
+	return ms <= MAX_AI_BDD_TIMEOUT_MS ? ms : undefined;
 }
 
 function commandOf(raw: string | undefined): readonly string[] | undefined {
@@ -62,5 +81,9 @@ export function acceptanceConfigOf(
 	}
 	const runsDir = resolve(project, runsRaw);
 	const reportFile = join(dirname(runsDir), "report", "report.json");
-	return { command, project, env, runsDir, reportFile };
+	const timeoutMs = aiBddTimeoutMsOf(env);
+	if (timeoutMs === undefined) {
+		return `HOBO_AI_BDD_TIMEOUT_MS must be a whole number of milliseconds from 1 to ${MAX_AI_BDD_TIMEOUT_MS} (unset: ${DEFAULT_AI_BDD_TIMEOUT_MS}, 30 minutes)`;
+	}
+	return { command, project, env, runsDir, reportFile, timeoutMs };
 }

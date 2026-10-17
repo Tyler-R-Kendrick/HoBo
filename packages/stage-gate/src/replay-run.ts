@@ -43,7 +43,11 @@ export function runIds(config: AcceptanceConfig): ReadonlySet<string> {
 	}
 }
 
-/** Allowed difference between this machine's clock and the one that stamped `startedAt`. */
+/**
+ * Allowed difference between this machine's clock and the one that stamped
+ * `startedAt`. Past it the check fails closed: a fresh run on a clock more than
+ * this far behind is refused, not recorded `not_run`.
+ */
 const CLOCK_SKEW_MS = 5000;
 
 /**

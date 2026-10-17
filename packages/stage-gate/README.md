@@ -88,15 +88,20 @@ outright, EINVAL), so `["ai-bdd"]` and `["ai-bdd.cmd"]` are both recorded
 The report must be this run's. Before spawning `run`, the replay step notes the
 time and the run directories that exist; after exit 0 or 1 the report's `runId`
 must name a run directory that did not exist before, its `startedAt` must be no
-earlier than the spawn (5 s of clock skew allowed), and that directory must be a
+earlier than the spawn (5 s of clock skew allowed), that directory must be a
 directory, not a symbolic link (ai-bdd makes a new directory for each run and
 refuses one that resolves outside `runsDir`; the gate follows no link, and
-`evidence-intact` checks again), and the one this ai-bdd named in the `Run: <dir>` line it prints on stdout after a run
-that wrote a report (ai-bdd's `printRunSummary`, on exit 0, 1 and 3). Otherwise
-the check fails with a message naming the run id and why, and records nothing of
-that report: an earlier run's report survives exit 2 and 4, a wrapper that
-swallows ai-bdd's failure, and a CLI that never loaded, and another `ai-bdd run`
-in the same project can write the latest report after this one. ai-bdd writes the latest report to
+`evidence-intact` checks again), and it must be the one this ai-bdd named in the
+`Run: <dir>` line it prints on stdout after a run that wrote a report (ai-bdd's
+`printRunSummary`, on exit 0, 1 and 3). Otherwise the check fails with a
+message naming the run id and why, and records nothing of that report: an
+earlier run's report survives exit 2 and 4, a wrapper that swallows ai-bdd's
+failure, and a CLI that never loaded, and another `ai-bdd run` in the same
+project can write the latest report after this one. The skew check fails
+closed: when ai-bdd's clock runs more than 5 s behind this one, a run that
+really is fresh is refused (`failed`, naming both times), not recorded as
+`not_run`; `startedAt` has no upper bound, since the new run directory already
+shows the report is new. ai-bdd writes the latest report to
 `join(dirname(runsDir), "report")`; the gate takes `runsDir` from
 `HOBO_AI_BDD_RUNS_DIR` (relative to the project, default `.ai-bdd/runs`), because
 it cannot read a `.ts`/`.mjs` ai-bdd config without running project code. A
@@ -148,12 +153,12 @@ that ignores SIGTERM can outlive the check, but it cannot hold the check open
 by holding ai-bdd's output: once ai-bdd has exited and its group is gone, the
 output is waited for a second more at most. The runner bounds each release
 check too (`timeoutMs`: ai-bdd's bound plus a minute, read from the env the
-runner runs the check with), a backstop that stops
-the check with SIGTERM (which it passes on as above) and records it `not_run`. ai-bdd's output is relayed to the check's
-stderr as it comes, but only its first and last 2 MiB (`RELAY_BYTES`, an eighth
-of the runner's 16 MiB capture limit `CHECK_OUTPUT_LIMIT`), so a passing run that
-prints a lot is never killed for its output; the evidence keeps its last 2,000
-characters.
+runner runs the check with), a backstop that stops the check with SIGTERM (which
+it passes on as above) and records it `not_run`. Of ai-bdd's output the check's
+stderr gets the first 2 MiB live and the last 2 MiB at exit, with a line saying
+how much between them was not relayed (`RELAY_BYTES`, an eighth of the runner's
+16 MiB capture limit `CHECK_OUTPUT_LIMIT`), so a passing run that prints a lot
+is never killed for its output; the evidence keeps its last 2,000 characters.
 
 Zero model calls is required, and `--no-agent` stops the agent but not the judge:
 a subjective step is judged from the verdict cache (`.ai-bdd/cache/`, not

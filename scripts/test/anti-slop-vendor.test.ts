@@ -84,26 +84,49 @@ function readManifest(copy: string): ManifestReading {
 	return { digests, problems };
 }
 
-/** Every file under `copy` but its manifest, as sorted posix paths. */
-function listFiles(copy: string, prefix = ""): string[] {
-	const found: string[] = [];
+interface CopyListing {
+	/** Regular files, as sorted posix paths. */
+	readonly files: readonly string[];
+	/** Anything else under the copy (a symlink, a socket), as sorted posix paths. */
+	readonly irregular: readonly string[];
+}
+
+/** Every entry under `copy` but its manifest. A symlink is never followed. */
+function listCopy(copy: string, prefix = ""): CopyListing {
+	const files: string[] = [];
+	const irregular: string[] = [];
 	for (const entry of readdirSync(join(root, copy, prefix), {
 		withFileTypes: true,
 	})) {
 		const path = `${prefix}${entry.name}`;
 		if (path === MANIFEST_NAME) continue;
-		if (entry.isDirectory()) found.push(...listFiles(copy, `${path}/`));
-		else found.push(path);
+		if (entry.isDirectory()) {
+			const inner = listCopy(copy, `${path}/`);
+			files.push(...inner.files);
+			irregular.push(...inner.irregular);
+		} else if (entry.isFile()) files.push(path);
+		else irregular.push(path);
 	}
-	return found.sort();
+	return { files: files.sort(), irregular: irregular.sort() };
+}
+
+function listFiles(copy: string): readonly string[] {
+	return listCopy(copy).files;
 }
 
 describe("vendored anti-slop plugin", () => {
 	it("every vendored anti-slop file hashes to its manifest", () => {
 		for (const copy of COPIES) {
 			const { digests, problems } = readManifest(copy);
-			const present = new Set(listFiles(copy));
-			const found = [...problems];
+			const { files, irregular } = listCopy(copy);
+			const present = new Set(files);
+			const found = [
+				...problems,
+				...irregular.map(
+					(path) =>
+						`Not a regular file: ${copy}/${path} (a symlink or special file)`,
+				),
+			];
 			for (const [path, digest] of digests) {
 				if (isNotVendored(path)) continue;
 				if (!present.has(path))

@@ -172,7 +172,7 @@ The `docs:freshness` gate enforces the minimum rule: changes under `src/`, `scri
 
 ## CI and gates
 
-Hosted GitHub Actions workflows are disabled. The preserved workflow definitions under [`.github/workflows-disabled/`](./.github/workflows-disabled/) do not run because GitHub only discovers workflow files directly under `.github/workflows/`, which is intentionally empty.
+Hosted GitHub Actions workflows are disabled. The preserved workflow definitions under [`.github/workflows-disabled/`](./.github/workflows-disabled/) do not run because GitHub only discovers workflow files directly under `.github/workflows/`, which is intentionally empty. Checks that read a workflow definition, such as `ship:gap-closure`, look in both directories, so moving the definitions between them neither fails nor skips those checks.
 
 Run the verification lanes locally:
 

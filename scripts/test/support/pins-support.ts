@@ -129,7 +129,8 @@ export interface ScriptRun {
 	readonly stderr: string;
 }
 
-function scriptCall(
+/** The argv (after `node`) and environment `runBootstrap` runs the script with. */
+export function scriptCall(
 	root: string,
 	args: readonly string[],
 	env: NodeJS.ProcessEnv,

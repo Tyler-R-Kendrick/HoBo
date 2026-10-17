@@ -7,8 +7,9 @@
  * Erasable TypeScript with node builtins only.
  */
 import { existsSync, lstatSync, realpathSync } from "node:fs";
-import { basename, dirname, join, sep } from "node:path";
+import { basename, dirname, join } from "node:path";
 
+import { inside, sameFile } from "./pins-file-identity.ts";
 import { git, Refusal } from "./pins-git-core.ts";
 import { modulesEntry } from "./pins-gitmodules.ts";
 
@@ -71,11 +72,13 @@ function commonDir(dir: string): string | null {
 /**
  * A `.git` file can name any repository: `gitdir: ../../.git` makes git work
  * on the superproject's while its top level is the submodule's path. Refused
- * before anything runs there.
+ * before anything runs there. Repositories are compared by identity, so a
+ * bind mount, or `../../.GIT` on a case-insensitive filesystem, is the same.
  */
 function refuseSharedRepository(root: string, path: string, sub: string): void {
 	const shared = commonDir(sub);
-	if (shared === null || shared !== commonDir(root)) return;
+	const own = commonDir(root);
+	if (shared === null || own === null || !sameFile(shared, own)) return;
 	throw new Refusal(
 		"SUBMODULE_STATE",
 		`${path}/.git names the superproject's own repository (${shared}); nothing is run in it`,
@@ -103,10 +106,6 @@ function repositoryOf(dir: string): Repository | null {
 	return { gitDir: realOr(gitDir), common: realOr(common) };
 }
 
-function within(path: string, dir: string): boolean {
-	return path === dir || path.startsWith(`${dir}${sep}`);
-}
-
 /**
  * Why the repository a submodule's `.git` names is not the submodule's own,
  * or null when it is. git keeps a submodule's repository at
@@ -119,31 +118,32 @@ function within(path: string, dir: string): boolean {
  * directory holding it), not a linked worktree, outside the superproject's
  * git directory, and with no core.worktree naming another directory.
  * Anything else belongs to another checkout, and a fetch there would move
- * that one.
+ * that one. Directories are compared by identity and `.git` without case:
+ * a path string misses a bind mount and a case-insensitive filesystem.
  */
 function foreignReason(
 	root: string,
 	path: string,
 	sub: Repository,
 ): string | null {
-	if (sub.common !== sub.gitDir)
+	if (!sameFile(sub.common, sub.gitDir))
 		return `is a linked worktree of the repository at ${sub.common}`;
-	if (sub.gitDir === realOr(join(root, path, ".git"))) return null;
+	if (sameFile(sub.gitDir, join(root, path, ".git"))) return null;
 	const owner = repositoryOf(root);
 	const name = nameOf(root, path);
 	const modules =
 		owner === null || name === undefined
 			? null
 			: realOr(join(owner.gitDir, "modules", name));
-	if (sub.gitDir === modules) return null;
-	if (basename(sub.gitDir) === ".git")
+	if (modules !== null && sameFile(sub.gitDir, modules)) return null;
+	if (basename(sub.gitDir).toLowerCase() === ".git")
 		return `is the repository of another working tree (${dirname(sub.gitDir)})`;
 	// Without the name there is no module directory to tell the submodule's
 	// own from another's; `coherence` refuses that `.gitmodules`, so status
 	// says it once and fetch and bump stop on it first.
 	if (owner === null || modules === null) return null;
 	for (const dir of [owner.gitDir, owner.common]) {
-		if (within(sub.gitDir, dir))
+		if (inside(sub.gitDir, dir))
 			return `is inside the superproject's git directory but is not this submodule's (${modules})`;
 	}
 	// core.worktree needs no check: it decides git's top level, which

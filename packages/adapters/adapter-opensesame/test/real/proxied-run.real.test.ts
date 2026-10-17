@@ -353,7 +353,7 @@ describe("a proxied run under the real opensesame", () => {
 	it("an env-spec bridge without its parser is bridge_missing, not a bad schema", async () => {
 		const { sandbox, env } = await fresh();
 		const { copyFileSync, mkdirSync } = await import("node:fs");
-		mkdirSync(sandbox.path("bare-bridge"));
+		mkdirSync(sandbox.path("bare-bridge"), { mode: 0o755 });
 		copyFileSync(
 			kit.bridge,
 			sandbox.path("bare-bridge/opensesame-env-parse.mjs"),

@@ -233,7 +233,7 @@ Where the docs and the code are not the same thing, or the status alone is not e
 pnpm --filter @hobo/adapter-opensesame test                    # default lane: no binary needed
 pnpm --filter @hobo/adapter-opensesame test:contract:consumer
 pnpm --filter @hobo/adapter-opensesame test:contract:provider  # the pact, against a stand-in binary
-HOBO_OPENSESAME_KIT=<dir> pnpm --filter @hobo/adapter-opensesame test:real
+HOBO_OPENSESAME_KIT=<absolute dir, see below> pnpm --filter @hobo/adapter-opensesame test:real
 ```
 
 The default lane runs a stand-in `opensesame` (`test/fixtures/fake-opensesame.mts`) that takes exactly the
@@ -254,16 +254,28 @@ one heavy build at a time; point `CARGO_TARGET_DIR` at a shared target and keep 
 CARGO_BUILD_JOBS=2` on a busy machine; check `df -h /` first, the debug build needs a few GB):
 
 ```bash
+# $KIT: an absolute path OUTSIDE this package and the repository checkout, made under umask 022 (see the rule below).
+umask 022                                  # for this shell: cp keeps a source file's group-write bit unless the umask clears it
+export KIT=$HOME/.cache/hobo-opensesame-kit
+mkdir -p "$KIT/bridge"
 cd OpenSesame
 export CARGO_TARGET_DIR=$HOME/.cache/packages/cargo-target CARGO_INCREMENTAL=0 CARGO_BUILD_JOBS=2
 cargo +1.88.0 build --locked -p opensesame-surrogate-proxy --features upstream-override --bin opensesame-surrogate-proxy
 cp "$CARGO_TARGET_DIR/debug/opensesame-surrogate-proxy" "$KIT/"      # copy now: the next build of the other flavour overwrites it
 cargo +1.88.0 build --locked -p opensesame-cli --bin opensesame
 cp "$CARGO_TARGET_DIR/debug/opensesame" "$KIT/"
-mkdir -p "$KIT/bridge" && cp packages/env-spec-bridge/bin/opensesame-env-parse.mjs "$KIT/bridge/"
+cp packages/env-spec-bridge/bin/opensesame-env-parse.mjs "$KIT/bridge/"
 # @env-spec/parser@0.4.1 in $KIT/bridge/node_modules, from any package manager
 export HOBO_OPENSESAME_KIT=$KIT
 ```
+
+**The kit is held to the adapter's own trust rule.** Every real run starts OpenSesame with
+`OPENSESAME_ENV_PARSE=$KIT/bridge/opensesame-env-parse.mjs`, and the adapter refuses a bridge that is not an absolute path in a trusted
+place (a trusted place, above): the script and every directory above it owned by you or root and **not writable by group or others**,
+not inside the working directory's tree (so not inside this package or the checkout), not under a `node_modules/.bin`. A kit
+that fails this makes every real run `bridge_missing`, which is why the recipe makes `$KIT` under `umask 022` (Debian and Ubuntu
+default to `umask 002`, which makes 0775 directories and 0664 files; if that happened, `chmod -R go-w "$KIT"`). The lane checks
+the bridge once, before any test, and stops with `KIT_UNTRUSTED` and the reason.
 
 Build the plugin and the CLI as **two** commands: `opensesame-cli` must never link the plugin (a gate in OpenSesame
 fails if it does), and `--features upstream-override` on the CLI build would not reach it. If the disk is short,

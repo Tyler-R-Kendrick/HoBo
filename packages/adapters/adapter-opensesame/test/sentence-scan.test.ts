@@ -1,6 +1,10 @@
 import { describe, expect, it } from "vitest";
 
-import { createOutcomeScan, OWN_SENTENCES } from "../src/outcome.js";
+import {
+	createOutcomeScan,
+	OWN_SENTENCES,
+	parseOutcome,
+} from "../src/outcome.js";
 import {
 	CARRY_LIMIT,
 	OWN_PREFIX,
@@ -53,6 +57,11 @@ const TEXTS: readonly string[] = [
 	`opensesame:${OWN_PREFIX}surrogate.misdirected: x\nopens${OWN_PREFIX}`,
 	`${"opensesame: ".repeat(40)}SIGHUP: the run is ended`,
 	"no sentence at all\nonly Error: lines\n",
+	// A sentence in two shapes at once (forged: OpenSesame writes none), after one that fills only the first of them.
+	`${OWN_PREFIX}surrogate.misdirected: first\n${OWN_PREFIX}surrogate.misdirected: second, delivering placeholders\n`,
+	`${OWN_PREFIX}SIGTERM: the run is ended\n${OWN_PREFIX}SIGTERM: the run is ended again, delivering placeholders\n`,
+	`${OWN_PREFIX}SIGHUP: the run is ended\r${OWN_PREFIX}SIGHUP: the run is ended; delivering placeholders\r`,
+	`${OWN_PREFIX}no surrogate for X; delivering placeholders\n${OWN_PREFIX}AWS_TOKEN will keep its placeholder; delivering placeholders\n`,
 ];
 
 describe("scanning stderr as it arrives reads what reading the whole text reads", () => {
@@ -81,6 +90,17 @@ describe("scanning stderr as it arrives reads what reading the whole text reads"
 				expect(kindsIn(scanned(split(text, cuts))), cuts.join(",")).toEqual(
 					want,
 				);
+			}
+		}
+	});
+
+	it("and so reads the same outcome from the scan's sentences as from the whole text, at every status", () => {
+		for (const text of TEXTS) {
+			for (const status of [0, 1, 77, 129, 143]) {
+				expect(
+					parseOutcome(status, null, text, scanned([...text])),
+					`${JSON.stringify(text.slice(0, 50))} at ${status}`,
+				).toEqual(parseOutcome(status, null, text));
 			}
 		}
 	});

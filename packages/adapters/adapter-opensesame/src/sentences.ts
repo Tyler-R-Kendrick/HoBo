@@ -98,16 +98,18 @@ function readSentences(
 /**
  * A reader of stderr that sees every chunk as it arrives and keeps, of
  * OpenSesame's sentences, only those that match one of `patterns` (the first
- * match of each). It is independent of what a capture retains: a child that
+ * match of each pattern). It is independent of what a capture retains: a child that
  * writes more after the line, or before it, cannot evict it, because nothing is
  * evicted: what it holds is at most `patterns.length` sentences of at most
  * SENTENCE_LIMIT characters, and a carry of the one sentence in progress.
  */
 export function createSentenceScan(patterns: readonly RegExp[]): SentenceScan {
 	const kept: (string | undefined)[] = patterns.map(() => undefined);
+	// A sentence fills every slot whose pattern it matches: one that is in two shapes counts as both, as it does when the whole text is read.
 	const take = (sentence: string) => {
-		const at = patterns.findIndex((pattern) => pattern.test(sentence));
-		if (at >= 0) kept[at] ??= sentence;
+		patterns.forEach((pattern, at) => {
+			if (pattern.test(sentence)) kept[at] ??= sentence;
+		});
 	};
 	let carry = "";
 	return {

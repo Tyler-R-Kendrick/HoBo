@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { OpenSesameAdapterError } from "../src/errors.js";
 import { buildLaunch, type RunInput, runProxied } from "../src/launch.js";
 import { parsed } from "./fixtures/bindings.js";
+import { commandOf, end, identify } from "./support/procs.js";
 import { KIT, memoryTrust, SYSTEM } from "./support/trust-fs.js";
 
 const here = dirname(fileURLToPath(import.meta.url));
@@ -369,7 +370,9 @@ held.unref();`;
 			expect(Date.now() - started).toBeLessThan(10_000);
 		} finally {
 			try {
-				process.kill(Number(readFileSync(grandchild, "utf8")), "SIGKILL");
+				const pid = Number(readFileSync(grandchild, "utf8"));
+				// It ends by itself after 20 s and a pid is recycled within seconds: signal it only while it is still the sleeper.
+				if (commandOf(pid).includes("20000")) end(identify(pid));
 			} catch {
 				// Already gone.
 			}

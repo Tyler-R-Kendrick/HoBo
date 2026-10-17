@@ -16,6 +16,7 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeAll, describe, expect, it } from "vitest";
 
+import { end, identify, type ProcId } from "../support/procs.js";
 import { type Kit, resolveKit } from "./kit.js";
 import { SANDBOX_PASS_ENV, Sandbox } from "./sandbox.js";
 import { canReadProcesses, processesNaming } from "./sweep.js";
@@ -28,20 +29,15 @@ const PACKAGE = join(here, "../..");
 let kit: Kit;
 const sandboxes: Sandbox[] = [];
 const upstreams: Upstream[] = [];
-const leftovers = new Set<number>();
+const leftovers = new Set<ProcId>();
 
 beforeAll(() => {
 	kit = resolveKit(process.env);
 });
 
 afterEach(async () => {
-	for (const pid of leftovers) {
-		try {
-			process.kill(pid, "SIGKILL");
-		} catch {
-			// Already gone.
-		}
-	}
+	// By process, not by number: a pid is recycled within seconds, and a stranger must not be killed for it.
+	for (const id of leftovers) end(id);
 	leftovers.clear();
 	for (const upstream of upstreams.splice(0)) await upstream.close();
 	for (const sandbox of sandboxes.splice(0)) sandbox.cleanup();
@@ -101,7 +97,10 @@ async function run(signal: NodeJS.Signals) {
 		);
 	});
 	await until(() => existsSync(join(out, "child.pid")));
-	for (const pid of around(tmp)) leftovers.add(pid);
+	for (const pid of around(tmp)) {
+		const id = identify(pid);
+		if (id !== undefined) leftovers.add(id);
+	}
 	runner.kill(signal);
 	const ended = await exited;
 	const gone = async () => {

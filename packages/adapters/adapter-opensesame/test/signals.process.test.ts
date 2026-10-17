@@ -14,6 +14,8 @@ import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
+import { end, identify, type ProcId, running } from "./support/procs.js";
+
 const here = dirname(fileURLToPath(import.meta.url));
 const FAKE = join(here, "fixtures/fake-opensesame.mts");
 const RUNNER = join(here, "fixtures/run-adapter.mts");
@@ -22,7 +24,12 @@ const PACKAGE = join(here, "..");
 let work = "";
 let out = "";
 let tmp = "";
+/** The command and the stand-in as processes (not as pid numbers, which are recycled within seconds), once the command is up. */
+let command: ProcId | undefined;
+let standIn: ProcId | undefined;
 beforeEach(() => {
+	command = undefined;
+	standIn = undefined;
 	work = mkdtempSync(join(tmpdir(), "hobo-signals-process-"));
 	out = join(work, "out");
 	tmp = join(work, "tmp");
@@ -30,32 +37,13 @@ beforeEach(() => {
 	mkdirSync(tmp);
 });
 afterEach(() => {
-	for (const file of ["child.pid", "fake.pid"]) end(pidIn(join(out, file)));
+	end(command);
+	end(standIn);
 	rmSync(work, { recursive: true, force: true });
 });
 
 function pidIn(path: string): number | undefined {
 	return existsSync(path) ? Number(readFileSync(path, "utf8")) : undefined;
-}
-
-function end(pid: number | undefined): void {
-	// kill(0) and kill(-n) signal a whole process group, the test runner's included; a pid file read while it is still empty is 0.
-	if (pid === undefined || !Number.isInteger(pid) || pid <= 1) return;
-	try {
-		process.kill(pid, "SIGKILL");
-	} catch {
-		// Already gone.
-	}
-}
-
-function alive(pid: number | undefined): boolean {
-	if (pid === undefined) return false;
-	try {
-		process.kill(pid, 0);
-		return true;
-	} catch {
-		return false;
-	}
 }
 
 async function until(condition: () => boolean, ms = 30_000): Promise<void> {
@@ -110,7 +98,13 @@ async function signalled(
 			resolve({ code, signal: exitSignal, stdout }),
 		);
 	});
-	await until(() => existsSync(join(out, "child.pid")));
+	await until(
+		() =>
+			(pidIn(join(out, "child.pid")) ?? 0) > 1 &&
+			(pidIn(join(out, "fake.pid")) ?? 0) > 1,
+	);
+	command = identify(pidIn(join(out, "child.pid")));
+	standIn = identify(pidIn(join(out, "fake.pid")));
 	runner.kill(signal);
 	if (hold !== undefined) {
 		// Long enough for the adapter, which is idle, to pass the signal on; the held stand-in cannot have moved.
@@ -131,10 +125,10 @@ function schemaDirs(): string[] {
 	return readdirSync(tmp).filter((n) => n.startsWith("hobo-opensesame-"));
 }
 
-async function stops(path: string): Promise<boolean> {
-	const pid = pidIn(path);
+/** Whether that process is gone within ten seconds; the number alone could be a newer process's by then. */
+async function stops(id: ProcId | undefined): Promise<boolean> {
 	try {
-		await until(() => !alive(pid), 10_000);
+		await until(() => !running(id), 10_000);
 		return true;
 	} catch {
 		return false;
@@ -154,8 +148,8 @@ describe("a real process running the adapter, signalled while its command runs",
 			expect(ended.stdout).toContain(`"exitCode":${exitCode}`);
 			expect(received()).toEqual([signal]);
 			expect(schemaDirs()).toEqual([]);
-			expect(await stops(join(out, "child.pid"))).toBe(true);
-			expect(await stops(join(out, "fake.pid"))).toBe(true);
+			expect(await stops(command)).toBe(true);
+			expect(await stops(standIn)).toBe(true);
 		}, 90_000);
 	}
 
@@ -166,8 +160,8 @@ describe("a real process running the adapter, signalled while its command runs",
 			expect(ended.stdout).not.toContain("OUTCOME");
 			expect(received()).toEqual(["SIGTERM"]);
 			expect(schemaDirs()).toEqual([]);
-			expect(await stops(join(out, "child.pid"))).toBe(true);
-			expect(await stops(join(out, "fake.pid"))).toBe(true);
+			expect(await stops(command)).toBe(true);
+			expect(await stops(standIn)).toBe(true);
 		}, 90_000);
 	}
 
@@ -183,8 +177,8 @@ describe("a real process running the adapter, signalled while its command runs",
 		const text = readFileSync(schema, "utf8");
 		expect(text).toContain("opensesameConnection(conn://acme/vercel");
 		expect(text).not.toMatch(/osr_|ostest_|vtok_|Bearer|PASSWORD/u);
-		expect(alive(pidIn(join(out, "child.pid")))).toBe(true);
-		expect(alive(pidIn(join(out, "fake.pid")))).toBe(true);
+		expect(running(command)).toBe(true);
+		expect(running(standIn)).toBe(true);
 		expect(received()).toEqual([]);
 	}, 90_000);
 });
@@ -208,8 +202,8 @@ describe("a stand-in that is held right after it started the command still hears
 			}
 			expect(received()).toEqual([heard]);
 			expect(schemaDirs()).toEqual([]);
-			expect(await stops(join(out, "child.pid"))).toBe(true);
-			expect(await stops(join(out, "fake.pid"))).toBe(true);
+			expect(await stops(command)).toBe(true);
+			expect(await stops(standIn)).toBe(true);
 		}, 90_000);
 	}
 });

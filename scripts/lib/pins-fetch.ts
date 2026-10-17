@@ -26,7 +26,7 @@ import { dirname } from "node:path";
 import { type AssetFile, assertAllowedUrl, PinsError } from "./pins.ts";
 import { cachedPath } from "./pins-assets.ts";
 import { prepareCache } from "./pins-cache.ts";
-import { armGuard, removeEmptyDirs } from "./pins-partial.ts";
+import { armGuard, partialPath, removeEmptyDirs } from "./pins-partial.ts";
 
 export async function sha256OfFile(path: string): Promise<string> {
 	const hash = createHash("sha256");
@@ -115,7 +115,7 @@ export async function fetchVerified(
 	options: FetchOptions = {},
 ): Promise<void> {
 	const limit = options.maxBytes ?? DEFAULT_MAX_BYTES;
-	const partial = `${dest}.${process.pid}.partial`;
+	const partial = partialPath(dest);
 	const controller = new AbortController();
 	const guard = armGuard(partial, () => controller.abort());
 	let created: string | undefined;
@@ -139,6 +139,7 @@ export async function fetchVerified(
 		}
 		const hash = createHash("sha256");
 		let seen = 0;
+		// O_CREAT | O_EXCL: never an existing file, never through a link.
 		fd = openSync(partial, "wx", 0o600);
 		for await (const chunk of response.body) {
 			seen += chunk.byteLength;

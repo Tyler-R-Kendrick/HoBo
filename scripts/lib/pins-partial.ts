@@ -13,6 +13,7 @@
  *
  * Erasable TypeScript with node builtins only.
  */
+import { randomBytes } from "node:crypto";
 import { rmdirSync, rmSync } from "node:fs";
 import { dirname } from "node:path";
 
@@ -29,6 +30,21 @@ interface Armed {
 
 const armed = new Set<Armed>();
 let listening = false;
+
+/**
+ * `<dest>.<pid>.<12 random hex>.partial`: the pid says whose it is, the random
+ * part makes it unique, so a file a killed run left (even one whose pid this
+ * run has, as pid 1 in a container) can never be the name this run opens.
+ */
+export function partialPath(dest: string): string {
+	return `${dest}.${process.pid}.${randomBytes(6).toString("hex")}.partial`;
+}
+
+/** The pid in a partial file's name (with or without the random part), if it is one. */
+export function partialOwner(name: string): number | null {
+	const pid = /\.(\d+)(?:\.[0-9a-f]{12})?\.partial$/u.exec(name)?.[1];
+	return pid === undefined ? null : Number(pid);
+}
 
 /** `rmdir` from `leaf` up to `top`, stopping at the first one that is not empty. */
 export function removeEmptyDirs(leaf: string, top: string | undefined): void {

@@ -11,6 +11,7 @@ import { lstat, mkdir, readdir, rm } from "node:fs/promises";
 import { join } from "node:path";
 
 import { PinsError } from "./pins.ts";
+import { isLivePartial, partialOwner } from "./pins-partial.ts";
 
 export interface DirInfo {
 	readonly uid: number;
@@ -76,7 +77,14 @@ export async function cacheProblem(
 	);
 }
 
+/** A partial file younger than this may be a download that is just starting. */
 const MIN_AGE_MS = 60_000;
+/**
+ * A live download writes, or gives up, long before this: every network wait is
+ * bounded by HOBO_PINS_NET_TIMEOUT_MS (at most ten minutes). Past it a partial
+ * file is a leftover whatever its pid says, which a reused pid cannot fake.
+ */
+const MAX_AGE_MS = 3_600_000;
 
 function pidAlive(pid: number): boolean {
 	try {
@@ -88,8 +96,26 @@ function pidAlive(pid: number): boolean {
 }
 
 /**
- * Remove `*.<pid>.partial` files older than a minute whose process is gone.
- * A live process's file, or a young one, may be a download in progress.
+ * Whether a partial file `age` ms old, named after `pid`, belongs to nobody.
+ * This process knows its own live downloads, so a file named after its own pid
+ * that is not one of them (a killed run that was also pid 1) is a leftover; for
+ * another pid, a live process keeps the file until the age bound.
+ */
+function abandoned(
+	path: string,
+	pid: number,
+	age: number,
+	alive: (pid: number) => boolean,
+): boolean {
+	if (age <= MIN_AGE_MS || isLivePartial(path)) return false;
+	return age > MAX_AGE_MS || pid === process.pid || !alive(pid);
+}
+
+/**
+ * Remove the `*.partial` files no live download is writing: older than a
+ * minute and either older than an hour or named after a process that is gone.
+ * Lock-free: nothing is held, and a reused pid only delays a sweep, by at most
+ * the hour.
  */
 export async function sweepPartials(
 	cache: string,
@@ -111,12 +137,12 @@ export async function sweepPartials(
 			continue;
 		}
 		for (const name of names) {
-			const pid = /\.(\d+)\.partial$/u.exec(name)?.[1];
-			if (pid === undefined) continue;
+			const pid = partialOwner(name);
+			if (pid === null) continue;
 			const path = join(cache, dir, name);
 			try {
 				const age = now - (await lstat(path)).mtimeMs;
-				if (age > MIN_AGE_MS && !alive(Number(pid))) {
+				if (abandoned(path, pid, age, alive)) {
 					await rm(path, { force: true });
 					removed.push(path);
 				}

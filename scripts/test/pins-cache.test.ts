@@ -26,7 +26,9 @@ import {
 	runBootstrapAsync,
 	scratch,
 	sha256Hex,
+	spawnBootstrap,
 	startServer,
+	waitUntil,
 	writeManifest,
 } from "./support/pins-support.ts";
 
@@ -168,9 +170,10 @@ function partial(
 	name: string,
 	pid: number,
 	ageMs: number,
+	suffix = "",
 ): string {
 	mkdirSync(dir, { recursive: true, mode: 0o700 });
-	const path = join(dir, `${name}.${pid}.partial`);
+	const path = join(dir, `${name}.${pid}${suffix}.partial`);
 	writeFileSync(path, "half a download", { mode: 0o600 });
 	const then = new Date(Date.now() - ageMs);
 	utimesSync(path, then, then);
@@ -182,7 +185,7 @@ describe("a download that was interrupted leaves nothing in the cache", () => {
 		const cache = join(scratch("cache-sweep"), "siblings");
 		const dir = join(cache, "a".repeat(64));
 		const dead = partial(dir, "tool", deadPid(), 5 * 60_000);
-		const live = partial(dir, "live", process.pid, 5 * 60_000);
+		const live = partial(dir, "live", process.ppid, 5 * 60_000);
 		const young = partial(dir, "young", deadPid(), 5_000);
 		const whole = join(dir, "tool");
 		writeFileSync(whole, "a verified file");
@@ -196,7 +199,7 @@ describe("a download that was interrupted leaves nothing in the cache", () => {
 		assert.equal(
 			existsSync(live),
 			true,
-			"a live process's is not touched, however old",
+			"another live process's is not touched within the hour",
 		);
 		assert.equal(
 			existsSync(young),
@@ -224,5 +227,79 @@ describe("a download that was interrupted leaves nothing in the cache", () => {
 		const run = await runBootstrapAsync(root, ["--fetch", "mirror"]);
 		assert.equal(run.status, 0, run.stderr);
 		assert.equal(existsSync(leftover), false);
+	});
+});
+
+describe("a leftover partial file never blocks a later run", () => {
+	const RANDOM = ".0123456789ab";
+
+	it("one named after this process's own pid (a container's pid 1) is swept and does not collide", async () => {
+		server = await startServer();
+		server.setFile("/bin", BYTES);
+		const cache = join(scratch("cache-own-pid"), "siblings");
+		const dir = join(cache, DIGEST);
+		const legacy = partial(dir, "tool", process.pid, 5 * 60_000);
+		const current = partial(dir, "tool", process.pid, 5 * 60_000, RANDOM);
+		const { path } = await ensureCached(cache, pinnedFile(server.origin), {
+			allowLocal: true,
+		});
+		assert.deepEqual(readdirSync(dir), ["tool"], "only the verified file");
+		assert.equal(path, join(dir, "tool"));
+		assert.equal(existsSync(legacy) || existsSync(current), false);
+	});
+
+	it("an old one is swept whatever its pid says, a young one and a live process's are kept", async () => {
+		const cache = join(scratch("cache-age"), "siblings");
+		const dir = join(cache, "b".repeat(64));
+		const stale = partial(dir, "a", 4242, 2 * 3_600_000, RANDOM);
+		const live = partial(dir, "b", 4243, 5 * 60_000, RANDOM);
+		const dead = partial(dir, "c", 4244, 5 * 60_000, RANDOM);
+		const young = partial(dir, "d", 4245, 5_000, RANDOM);
+		const removed = await sweepPartials(
+			cache,
+			Date.now(),
+			(pid) => pid !== 4244,
+		);
+		assert.deepEqual(removed.sort(), [stale, dead].sort());
+		assert.equal(existsSync(live), true, "its process is alive");
+		assert.equal(existsSync(young), true, "it may be a download starting now");
+	});
+
+	it("a run killed with SIGKILL leaves one the next run neither trips on nor keeps", async () => {
+		server = await startServer();
+		server.setStall("/stall", Buffer.alloc(10, 1), BYTES.byteLength);
+		server.setFile("/bin", BYTES);
+		const root = scratch("cache-sigkill");
+		const stalled = {
+			...pinnedFile(server.origin),
+			url: `${server.origin}/stall`,
+		};
+		writeManifest(
+			root,
+			`{"mirror":{"repo":"${server.origin}/example/mirror","tag":"v1.0.0","files":{"linux-x64":${JSON.stringify(stalled)},"linux-arm64":${JSON.stringify(stalled)}}}}`,
+		);
+		const dir = join(root, ".cache/siblings", DIGEST);
+		const running = spawnBootstrap(root, ["--fetch", "mirror"]);
+		const left = await waitUntil("a partial file with bytes in it", () =>
+			existsSync(dir)
+				? readdirSync(dir).find((name) => name.endsWith(".partial"))
+				: undefined,
+		);
+		running.child.kill("SIGKILL");
+		await running.done;
+		assert.match(
+			left,
+			new RegExp(`^tool\\.${running.child.pid}\\.[0-9a-f]{12}\\.partial$`, "u"),
+			"named after its process, with a random part",
+		);
+		writeManifest(
+			root,
+			`{"mirror":{"repo":"${server.origin}/example/mirror","tag":"v1.0.0","files":{"linux-x64":${JSON.stringify(pinnedFile(server.origin))},"linux-arm64":${JSON.stringify(pinnedFile(server.origin))}}}}`,
+		);
+		const old = new Date(Date.now() - 5 * 60_000);
+		utimesSync(join(dir, left), old, old);
+		const next = await runBootstrapAsync(root, ["--fetch", "mirror"]);
+		assert.equal(next.status, 0, next.stderr);
+		assert.deepEqual(readdirSync(dir), ["tool"], "the leftover was swept");
 	});
 });

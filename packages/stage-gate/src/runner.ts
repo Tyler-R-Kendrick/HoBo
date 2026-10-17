@@ -3,8 +3,10 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { delimiter, dirname, join } from "node:path";
 
+import { isJsonString, parseJsonText } from "./json.js";
 import { serializeStageGateRecord } from "./parse.js";
 import type {
+	CheckEvidence,
 	CheckResult,
 	ComponentArtifact,
 	RecordStatus,
@@ -65,13 +67,20 @@ function quoteWindowsShellArg(value: string): string {
 	return `"${value.replaceAll('"', '\\"')}"`;
 }
 
+/** The process to spawn for a check command, after platform resolution. */
+export interface CommandInvocation {
+	readonly executable: string;
+	readonly args: string[];
+	readonly windowsVerbatimArguments?: boolean;
+}
+
 export function createCommandInvocation(
 	executable: string,
 	args: readonly string[],
 	platform: NodeJS.Platform = process.platform,
 	comspec = process.env.ComSpec ?? "cmd.exe",
 	env: NodeJS.ProcessEnv = process.env,
-): { executable: string; args: string[]; windowsVerbatimArguments?: boolean } {
+): CommandInvocation {
 	const resolvedExecutable = resolveCommandExecutable(
 		executable,
 		platform,
@@ -98,11 +107,17 @@ export function createCommandInvocation(
 	};
 }
 
+/** A check's exit code and the output it left, before evidence parsing. */
+interface CheckRun {
+	readonly exitCode: number;
+	readonly evidence: Record<string, string>;
+}
+
 function runCheck(
 	command: readonly string[],
 	cwd: string,
 	env: NodeJS.ProcessEnv,
-): { exitCode: number; evidence: Record<string, string> } {
+): CheckRun {
 	const [executable, ...args] = command;
 	if (!executable) {
 		return { exitCode: 1, evidence: { error: "empty command" } };
@@ -162,24 +177,14 @@ function trimEvidence(output: string, exitCode: number): string {
 	return `${text.slice(0, 4000)}\n\n... output truncated; failure tail follows ...\n\n${text.slice(-8000)}`;
 }
 
-function parseEvidenceJson(stdout: string | undefined): Record<string, string> {
+function parseEvidenceJson(stdout: string | undefined): CheckEvidence {
+	const evidence: Record<string, string> = {};
 	if (!stdout) {
-		return {};
+		return evidence;
 	}
 	const lines = stdout.trim().split("\n");
-	const lastLine = lines.at(-1) ?? "";
-	try {
-		const parsed = JSON.parse(lastLine) as Record<string, unknown>;
-		const evidence: Record<string, string> = {};
-		for (const [key, value] of Object.entries(parsed)) {
-			if (typeof value === "string") {
-				evidence[key] = value;
-			} else if (value !== undefined && value !== null) {
-				evidence[key] = JSON.stringify(value);
-			}
-		}
-		return evidence;
-	} catch {
+	const parsed = parseJsonText(lines.at(-1) ?? "");
+	if (parsed === undefined || parsed === null) {
 		// Return the text as-is. `stdout` has already been through
 		// `trimEvidence`, which is the only place that should decide how much of
 		// a check's output to keep, because it is the only place that knows the
@@ -188,8 +193,17 @@ function parseEvidenceJson(stdout: string | undefined): Record<string, string> {
 		// preserving — so for a failing check that printed a long non-JSON log
 		// (a failing test suite, the common case) the record kept only the first
 		// 4000 characters and threw away the end, which is where the reason is.
-		return { stdout };
+		evidence.stdout = stdout;
+		return evidence;
 	}
+	for (const [key, value] of Object.entries(parsed)) {
+		if (isJsonString(value)) {
+			evidence[key] = value;
+		} else if (value !== undefined && value !== null) {
+			evidence[key] = JSON.stringify(value);
+		}
+	}
+	return evidence;
 }
 
 function mergeArtifactEvidence(

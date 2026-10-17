@@ -1,175 +1,207 @@
+import {
+	isJsonBoolean,
+	isJsonInteger,
+	isJsonObject,
+	isJsonString,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 import type {
+	CheckEvidence,
 	CheckResult,
+	CheckStatus,
 	ComponentArtifact,
 	RecordStatus,
 	SignatureEvidence,
 	StageGateRecord,
+	StageGateRecordJson,
 } from "./types.js";
 import { StageGateParseError } from "./types.js";
 
 const DIGEST_RE = /^sha256:[a-f0-9]{64}$/;
 const HTTPS_RE = /^https:\/\//;
 const ISO_RE = /^\d{4}-\d{2}-\d{2}T/;
-const CHECK_STATUS = new Set(["passed", "failed", "skipped"]);
-const RECORD_STATUS = new Set(["passed", "failed", "skipped"]);
+const CHECK_STATUS: readonly CheckStatus[] = ["passed", "failed", "skipped"];
+const RECORD_STATUS: readonly RecordStatus[] = ["passed", "failed", "skipped"];
 
-function isObject(value: unknown): value is Record<string, unknown> {
-	return typeof value === "object" && value !== null && !Array.isArray(value);
+function memberOf<T extends string>(
+	allowed: readonly T[],
+	value: JsonValue | undefined,
+): T | undefined {
+	return allowed.find((entry) => entry === value);
 }
 
-function pushIssue(issues: string[], message: string): void {
-	issues.push(message);
+/** Own field only: a key named like an Object.prototype member reads as absent. */
+function fieldOf(raw: JsonObject, key: string): JsonValue | undefined {
+	return Object.hasOwn(raw, key) ? raw[key] : undefined;
 }
 
-/** eli5: a non-array `command` is an error and yields no command words. */
-function parseCommandFallback(issues: string[], path: string): string[] {
-	pushIssue(issues, `${path}.command: expected array`);
-	return [];
+/** A field under its snake_case wire name, else its camelCase alias (null falls through, as `??` does). */
+function wireField(
+	raw: JsonObject,
+	snake: string,
+	camel: string,
+): JsonValue | undefined {
+	return fieldOf(raw, snake) ?? fieldOf(raw, camel);
+}
+
+function nonEmptyString(value: JsonValue | undefined): string | undefined {
+	return isJsonString(value) && value.length > 0 ? value : undefined;
+}
+
+function parseCommand(
+	raw: JsonValue | undefined,
+	issues: string[],
+	path: string,
+): string[] {
+	if (!Array.isArray(raw)) {
+		// eli5: a non-array `command` is an error and yields no command words.
+		issues.push(`${path}.command: expected array`);
+		return [];
+	}
+	return raw.map((entry: JsonValue, index) => {
+		if (isJsonString(entry)) return entry;
+		issues.push(`${path}.command[${index}]: expected string`);
+		return "";
+	});
+}
+
+function parseEvidence(
+	raw: JsonValue | undefined,
+	issues: string[],
+	path: string,
+): CheckEvidence {
+	const evidence: Record<string, string> = {};
+	if (raw === undefined) return evidence;
+	if (!isJsonObject(raw)) {
+		issues.push(`${path}.evidence: expected object`);
+		return evidence;
+	}
+	for (const [key, value] of Object.entries(raw)) {
+		if (isJsonString(value)) {
+			evidence[key] = value;
+		} else {
+			issues.push(`${path}.evidence.${key}: expected string`);
+		}
+	}
+	return evidence;
 }
 
 function parseCheckResult(
-	raw: unknown,
+	raw: JsonValue,
 	issues: string[],
 	path: string,
 ): CheckResult | null {
-	if (!isObject(raw)) {
-		pushIssue(issues, `${path}: expected object`);
+	if (!isJsonObject(raw)) {
+		issues.push(`${path}: expected object`);
 		return null;
 	}
-	const checkId = raw.check_id ?? raw.checkId;
-	if (typeof checkId !== "string" || checkId.length === 0) {
-		pushIssue(issues, `${path}.check_id: required non-empty string`);
+	const checkId = nonEmptyString(wireField(raw, "check_id", "checkId"));
+	if (checkId === undefined) {
+		issues.push(`${path}.check_id: required non-empty string`);
 	}
-	const commandRaw = raw.command;
-	const command = Array.isArray(commandRaw)
-		? commandRaw.map((entry, index) => {
-				if (typeof entry !== "string") {
-					pushIssue(issues, `${path}.command[${index}]: expected string`);
-					return "";
-				}
-				return entry;
-			})
-		: parseCommandFallback(issues, path);
-	const exitCode = raw.exit_code ?? raw.exitCode;
-	if (typeof exitCode !== "number" || !Number.isInteger(exitCode)) {
-		pushIssue(issues, `${path}.exit_code: expected integer`);
+	const command = parseCommand(fieldOf(raw, "command"), issues, path);
+	const exitCode = wireField(raw, "exit_code", "exitCode");
+	if (!isJsonInteger(exitCode)) {
+		issues.push(`${path}.exit_code: expected integer`);
 	}
-	const status = raw.status;
-	if (typeof status !== "string" || !CHECK_STATUS.has(status)) {
-		pushIssue(issues, `${path}.status: expected passed|failed|skipped`);
+	const status = memberOf(CHECK_STATUS, fieldOf(raw, "status"));
+	if (status === undefined) {
+		issues.push(`${path}.status: expected passed|failed|skipped`);
 	}
-	const evidenceRaw = raw.evidence;
-	const evidence: Record<string, string> = {};
-	if (evidenceRaw !== undefined) {
-		if (!isObject(evidenceRaw)) {
-			pushIssue(issues, `${path}.evidence: expected object`);
-		} else {
-			for (const [key, value] of Object.entries(evidenceRaw)) {
-				if (typeof value !== "string") {
-					pushIssue(issues, `${path}.evidence.${key}: expected string`);
-					continue;
-				}
-				evidence[key] = value;
-			}
-		}
-	}
-	if (issues.length > 0) {
+	const evidence = parseEvidence(fieldOf(raw, "evidence"), issues, path);
+	if (
+		issues.length > 0 ||
+		checkId === undefined ||
+		!isJsonInteger(exitCode) ||
+		status === undefined
+	) {
 		return null;
 	}
-	return {
-		checkId: checkId as string,
-		command,
-		exitCode: exitCode as number,
-		status: status as CheckResult["status"],
-		evidence,
-	};
+	return { checkId, command, exitCode, status, evidence };
 }
 
 function parseComponentArtifact(
-	raw: unknown,
+	raw: JsonValue | undefined,
 	issues: string[],
 	path: string,
 ): ComponentArtifact | null {
-	if (!isObject(raw)) {
-		pushIssue(issues, `${path}: expected object`);
+	if (!isJsonObject(raw)) {
+		issues.push(`${path}: expected object`);
 		return null;
 	}
-	const digest = raw.digest_sha256 ?? raw.digestSha256;
-	if (typeof digest !== "string" || !DIGEST_RE.test(digest)) {
-		pushIssue(issues, `${path}.digest_sha256: expected sha256:<64 hex>`);
+	const digest = wireField(raw, "digest_sha256", "digestSha256");
+	const digestSha256 =
+		isJsonString(digest) && DIGEST_RE.test(digest) ? digest : undefined;
+	if (digestSha256 === undefined) {
+		issues.push(`${path}.digest_sha256: expected sha256:<64 hex>`);
 	}
-	const byteLength = raw.byte_length ?? raw.byteLength;
+	const length = wireField(raw, "byte_length", "byteLength");
+	const byteLength = isJsonInteger(length) && length >= 0 ? length : undefined;
+	if (byteLength === undefined) {
+		issues.push(`${path}.byte_length: expected non-negative integer`);
+	}
+	const mediaType = nonEmptyString(wireField(raw, "media_type", "mediaType"));
+	if (mediaType === undefined) {
+		issues.push(`${path}.media_type: required non-empty string`);
+	}
 	if (
-		typeof byteLength !== "number" ||
-		byteLength < 0 ||
-		!Number.isInteger(byteLength)
+		issues.length > 0 ||
+		digestSha256 === undefined ||
+		byteLength === undefined ||
+		mediaType === undefined
 	) {
-		pushIssue(issues, `${path}.byte_length: expected non-negative integer`);
-	}
-	const mediaType = raw.media_type ?? raw.mediaType;
-	if (typeof mediaType !== "string" || mediaType.length === 0) {
-		pushIssue(issues, `${path}.media_type: required non-empty string`);
-	}
-	if (issues.length > 0) {
 		return null;
 	}
-	return {
-		digestSha256: digest as string,
-		byteLength: byteLength as number,
-		mediaType: mediaType as string,
-	};
+	return { digestSha256, byteLength, mediaType };
+}
+
+function parseConformanceDigest(
+	raw: JsonValue | undefined,
+	issues: string[],
+	path: string,
+): string {
+	if (raw === undefined || raw === "") return "";
+	if (isJsonString(raw) && DIGEST_RE.test(raw)) return raw;
+	issues.push(`${path}.conformance_report_digest: invalid digest`);
+	return "";
 }
 
 function parseSignatureEvidence(
-	raw: unknown,
+	raw: JsonValue | undefined,
 	issues: string[],
 	path: string,
 ): SignatureEvidence | null {
-	if (!isObject(raw)) {
-		pushIssue(issues, `${path}: expected object`);
+	if (!isJsonObject(raw)) {
+		issues.push(`${path}: expected object`);
 		return null;
 	}
-	const verified = raw.verified;
-	if (typeof verified !== "boolean") {
-		pushIssue(issues, `${path}.verified: expected boolean`);
+	const verified = fieldOf(raw, "verified");
+	if (!isJsonBoolean(verified)) {
+		issues.push(`${path}.verified: expected boolean`);
 	}
-	const signerIdentity = raw.signer_identity ?? raw.signerIdentity;
-	if (typeof signerIdentity !== "string") {
-		pushIssue(issues, `${path}.signer_identity: expected string`);
+	const signerIdentity = wireField(raw, "signer_identity", "signerIdentity");
+	if (!isJsonString(signerIdentity)) {
+		issues.push(`${path}.signer_identity: expected string`);
 	}
-	const provenanceTier = raw.provenance_tier ?? raw.provenanceTier;
-	if (typeof provenanceTier !== "string") {
-		pushIssue(issues, `${path}.provenance_tier: expected string`);
+	const provenanceTier = wireField(raw, "provenance_tier", "provenanceTier");
+	if (!isJsonString(provenanceTier)) {
+		issues.push(`${path}.provenance_tier: expected string`);
 	}
-	const conformanceReportDigest =
-		raw.conformance_report_digest ?? raw.conformanceReportDigest;
+	const conformanceReportDigest = parseConformanceDigest(
+		wireField(raw, "conformance_report_digest", "conformanceReportDigest"),
+		issues,
+		path,
+	);
 	if (
-		conformanceReportDigest !== undefined &&
-		conformanceReportDigest !== "" &&
-		(typeof conformanceReportDigest !== "string" ||
-			!DIGEST_RE.test(conformanceReportDigest))
+		issues.length > 0 ||
+		!isJsonBoolean(verified) ||
+		!isJsonString(signerIdentity) ||
+		!isJsonString(provenanceTier)
 	) {
-		pushIssue(issues, `${path}.conformance_report_digest: invalid digest`);
-	}
-	if (issues.length > 0) {
 		return null;
 	}
-	return {
-		verified: verified as boolean,
-		signerIdentity: signerIdentity as string,
-		provenanceTier: provenanceTier as string,
-		conformanceReportDigest: (conformanceReportDigest ?? "") as string,
-	};
-}
-
-function compareIsoTimestamps(
-	startedAt: string,
-	finishedAt: string,
-	issues: string[],
-): void {
-	if (startedAt >= finishedAt) {
-		pushIssue(issues, "finished_at must be >= started_at");
-	}
+	return { verified, signerIdentity, provenanceTier, conformanceReportDigest };
 }
 
 function validatePassedRecordConstraints(
@@ -180,114 +212,143 @@ function validatePassedRecordConstraints(
 		return;
 	}
 	if (record.gateId !== "s0") {
-		pushIssue(issues, 'gate_id must be "s0" for passed S0 records');
+		issues.push('gate_id must be "s0" for passed S0 records');
 	}
 	for (const check of record.checks) {
 		if (check.status !== "passed") {
-			pushIssue(
-				issues,
+			issues.push(
 				`passed record requires every check passed (${check.checkId})`,
 			);
 		}
 	}
 	if (!record.signature.verified) {
-		pushIssue(issues, "passed record requires signature.verified === true");
+		issues.push("passed record requires signature.verified === true");
 	}
 	if (!DIGEST_RE.test(record.artifact.digestSha256)) {
-		pushIssue(issues, "passed record requires artifact.digest_sha256");
+		issues.push("passed record requires artifact.digest_sha256");
 	}
 }
 
-export function parseStageGateRecord(raw: unknown): StageGateRecord {
+function isoTimestamp(
+	raw: JsonObject,
+	snake: string,
+	camel: string,
+	issues: string[],
+): string | undefined {
+	const value = wireField(raw, snake, camel);
+	if (isJsonString(value) && ISO_RE.test(value)) return value;
+	issues.push(`${snake}: expected ISO-8601 timestamp`);
+	return undefined;
+}
+
+function parseCiRunUrl(raw: JsonObject, issues: string[]): string {
+	const ciRunUrl = wireField(raw, "ci_run_url", "ciRunUrl") ?? "";
+	if (!isJsonString(ciRunUrl)) {
+		issues.push("ci_run_url: expected string");
+		return "";
+	}
+	if (ciRunUrl.length > 0 && !HTTPS_RE.test(ciRunUrl)) {
+		issues.push("ci_run_url: must start with https:// when set");
+	}
+	return ciRunUrl;
+}
+
+function parseChecks(raw: JsonObject, issues: string[]): CheckResult[] {
+	const checksRaw = fieldOf(raw, "checks");
+	const checks: CheckResult[] = [];
+	if (!Array.isArray(checksRaw)) {
+		issues.push("checks: expected array");
+		return checks;
+	}
+	for (const [index, entry] of checksRaw.entries()) {
+		const parsed = parseCheckResult(entry, issues, `checks[${index}]`);
+		if (parsed) {
+			checks.push(parsed);
+		}
+	}
+	return checks;
+}
+
+const ZERO_ARTIFACT: ComponentArtifact = {
+	digestSha256: `sha256:${"0".repeat(64)}`,
+	byteLength: 0,
+	mediaType: "application/octet-stream",
+};
+
+const UNSIGNED: SignatureEvidence = {
+	verified: false,
+	signerIdentity: "",
+	provenanceTier: "",
+	conformanceReportDigest: "",
+};
+
+export function parseStageGateRecord(raw: JsonValue): StageGateRecord {
 	const issues: string[] = [];
-	if (!isObject(raw)) {
+	if (!isJsonObject(raw)) {
 		throw new StageGateParseError(["record: expected object"]);
 	}
 
-	const gateId = raw.gate_id ?? raw.gateId;
-	if (typeof gateId !== "string" || gateId.length === 0) {
-		pushIssue(issues, "gate_id: required non-empty string");
+	const gateId = nonEmptyString(wireField(raw, "gate_id", "gateId"));
+	if (gateId === undefined) {
+		issues.push("gate_id: required non-empty string");
 	}
-	const status = raw.status;
-	if (typeof status !== "string" || !RECORD_STATUS.has(status)) {
-		pushIssue(issues, "status: expected passed|failed|skipped");
+	const status = memberOf(RECORD_STATUS, fieldOf(raw, "status"));
+	if (status === undefined) {
+		issues.push("status: expected passed|failed|skipped");
 	}
-	const repoCommit = raw.repo_commit ?? raw.repoCommit;
-	if (typeof repoCommit !== "string") {
-		pushIssue(issues, "repo_commit: expected string");
+	const repoCommit = wireField(raw, "repo_commit", "repoCommit");
+	if (!isJsonString(repoCommit)) {
+		issues.push("repo_commit: expected string");
 	}
-	const ciRunUrl = raw.ci_run_url ?? raw.ciRunUrl ?? "";
-	if (typeof ciRunUrl !== "string") {
-		pushIssue(issues, "ci_run_url: expected string");
-	} else if (ciRunUrl.length > 0 && !HTTPS_RE.test(ciRunUrl)) {
-		pushIssue(issues, "ci_run_url: must start with https:// when set");
-	}
-	const startedAt = raw.started_at ?? raw.startedAt;
-	if (typeof startedAt !== "string" || !ISO_RE.test(startedAt)) {
-		pushIssue(issues, "started_at: expected ISO-8601 timestamp");
-	}
-	const finishedAt = raw.finished_at ?? raw.finishedAt;
-	if (typeof finishedAt !== "string" || !ISO_RE.test(finishedAt)) {
-		pushIssue(issues, "finished_at: expected ISO-8601 timestamp");
-	}
+	const ciRunUrl = parseCiRunUrl(raw, issues);
+	const startedAt = isoTimestamp(raw, "started_at", "startedAt", issues);
+	const finishedAt = isoTimestamp(raw, "finished_at", "finishedAt", issues);
 	if (
-		typeof startedAt === "string" &&
-		typeof finishedAt === "string" &&
-		ISO_RE.test(startedAt) &&
-		ISO_RE.test(finishedAt)
+		startedAt !== undefined &&
+		finishedAt !== undefined &&
+		startedAt >= finishedAt
 	) {
-		compareIsoTimestamps(startedAt, finishedAt, issues);
+		issues.push("finished_at must be >= started_at");
 	}
 
-	const checksRaw = raw.checks;
-	const checks: CheckResult[] = [];
-	if (!Array.isArray(checksRaw)) {
-		pushIssue(issues, "checks: expected array");
-	} else {
-		for (const [index, entry] of checksRaw.entries()) {
-			const parsed = parseCheckResult(entry, issues, `checks[${index}]`);
-			if (parsed) {
-				checks.push(parsed);
-			}
-		}
-	}
+	const checks = parseChecks(raw, issues);
 
 	const artifactIssues: string[] = [];
-	const artifact = parseComponentArtifact(
-		raw.artifact,
-		artifactIssues,
-		"artifact",
-	) ?? {
-		digestSha256: `sha256:${"0".repeat(64)}`,
-		byteLength: 0,
-		mediaType: "application/octet-stream",
-	};
+	const artifact =
+		parseComponentArtifact(
+			fieldOf(raw, "artifact"),
+			artifactIssues,
+			"artifact",
+		) ?? ZERO_ARTIFACT;
 	issues.push(...artifactIssues);
 
 	const signatureIssues: string[] = [];
-	const signature = parseSignatureEvidence(
-		raw.signature,
-		signatureIssues,
-		"signature",
-	) ?? {
-		verified: false,
-		signerIdentity: "",
-		provenanceTier: "",
-		conformanceReportDigest: "",
-	};
+	const signature =
+		parseSignatureEvidence(
+			fieldOf(raw, "signature"),
+			signatureIssues,
+			"signature",
+		) ?? UNSIGNED;
 	issues.push(...signatureIssues);
 
-	if (issues.length > 0) {
+	if (
+		issues.length > 0 ||
+		gateId === undefined ||
+		status === undefined ||
+		!isJsonString(repoCommit) ||
+		startedAt === undefined ||
+		finishedAt === undefined
+	) {
 		throw new StageGateParseError(issues);
 	}
 
 	const record: StageGateRecord = {
-		gateId: gateId as string,
-		status: status as RecordStatus,
-		repoCommit: repoCommit as string,
-		ciRunUrl: ciRunUrl as string,
-		startedAt: startedAt as string,
-		finishedAt: finishedAt as string,
+		gateId,
+		status,
+		repoCommit,
+		ciRunUrl,
+		startedAt,
+		finishedAt,
 		checks,
 		artifact,
 		signature,
@@ -304,7 +365,7 @@ export function parseStageGateRecord(raw: unknown): StageGateRecord {
 
 export function serializeStageGateRecord(
 	record: StageGateRecord,
-): Record<string, unknown> {
+): StageGateRecordJson {
 	return {
 		gate_id: record.gateId,
 		status: record.status,

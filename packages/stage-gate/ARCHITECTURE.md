@@ -16,6 +16,10 @@ parser applies protobuf shape plus CUE constraints and returns deep-frozen
 derived types (`StageGateRecord`, `CheckResult`, `ComponentArtifact`,
 `SignatureEvidence`). Downstream code and acceptance surfaces only consume
 parsed records; malformed or tampered input throws `StageGateParseError`.
+Records and check output are narrowed through the tag guards in `src/json.ts`
+(own fields only, so a key named like an `Object.prototype` member reads as
+absent), never through `typeof`; `serializeStageGateRecord` returns the named
+`StageGateRecordJson` wire form, which goes back through the parser unchanged.
 
 Check execution resolves `pnpm` through a non-repo-local Windows executable or
 the prepared Corepack shim and records spawn errors plus failure output tails in

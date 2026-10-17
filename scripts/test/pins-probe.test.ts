@@ -6,7 +6,14 @@
  * submodule (a full clone included) keep every object and their history.
  */
 import assert from "node:assert/strict";
-import { existsSync, mkdirSync, readdirSync, utimesSync } from "node:fs";
+import { execFileSync } from "node:child_process";
+import {
+	existsSync,
+	mkdirSync,
+	readdirSync,
+	utimesSync,
+	writeFileSync,
+} from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
@@ -102,5 +109,34 @@ describe("a probe repository a killed run left", () => {
 		const removed = await sweepPartials(cache);
 		assert.deepEqual(removed, [old]);
 		assert.equal(existsSync(young), true, "it may be a probe running now");
+	});
+});
+
+describe("the probe's captured output", () => {
+	it("is capped at 64 MiB: a git that writes more is stopped and refused", () => {
+		const dir = scratch("probe-flood");
+		const remote = makeRemote(dir);
+		const work = makeWork(dir, remote, 0);
+		assert.equal(runBootstrap(work, []).status, 0);
+		const real = execFileSync("sh", ["-c", "command -v git"], {
+			encoding: "utf8",
+		}).trim();
+		const bin = join(dir, "bin");
+		mkdirSync(bin);
+		writeFileSync(
+			join(bin, "git"),
+			`#!/bin/sh\ncase "$(pwd)" in */.probe-*) case " $* " in *" fetch "*) head -c 70000000 /dev/zero | tr '\\0' x >&2; exit 1;; esac;; esac\nexec '${real}' "$@"\n`,
+			{ mode: 0o755 },
+		);
+		const run = runBootstrap(work, ["--status", "--online"], {
+			PATH: `${bin}:${process.env.PATH ?? ""}`,
+		});
+		assert.equal(run.status, 1, run.stderr.slice(0, 500));
+		assert.match(run.stderr, /GIT_FAILED: .*wrote more than 64 MiB/u);
+		assert.ok(
+			run.stderr.length < 10_000,
+			`${run.stderr.length} bytes of error`,
+		);
+		assert.deepEqual(probesLeft(work), []);
 	});
 });

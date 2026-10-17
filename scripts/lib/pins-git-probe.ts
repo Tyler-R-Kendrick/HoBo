@@ -52,6 +52,9 @@ function assertPrivate(cache: string): void {
 	}
 }
 
+/** What a probe's git may write before it is stopped (the old spawnSync bound). */
+const MAX_OUTPUT_BYTES = 64 * 1024 ** 2;
+
 /** One network git, in its own process group, ended at the deadline or by `stop`. */
 interface ProbeGit {
 	readonly result: Promise<GitResult>;
@@ -67,7 +70,8 @@ function probeGit(
 	const child = spawn("git", netArgs(args), {
 		cwd: repo,
 		detached: true,
-		stdio: ["ignore", "pipe", "pipe"],
+		// The answer is the exit status and stderr; stdout is not needed.
+		stdio: ["ignore", "ignore", "pipe"],
 		env: {
 			...gitEnvironment(),
 			GIT_TERMINAL_PROMPT: "0",
@@ -93,13 +97,16 @@ function probeGit(
 		late = true;
 		stop();
 	}, ms);
-	let stdout = "";
 	let stderr = "";
-	child.stdout.on("data", (chunk) => {
-		stdout += chunk;
-	});
-	child.stderr.on("data", (chunk) => {
-		stderr += chunk;
+	let flooded = false;
+	child.stderr.on("data", (chunk: Buffer) => {
+		if (flooded) return;
+		if (stderr.length + chunk.length > MAX_OUTPUT_BYTES) {
+			flooded = true;
+			stop();
+			return;
+		}
+		stderr += chunk.toString("utf8");
 	});
 	const result = new Promise<GitResult>((resolve, reject) => {
 		child.on("error", (error) => {
@@ -110,10 +117,17 @@ function probeGit(
 			clearTimeout(timer);
 			clearTimeout(escalation);
 			if (late) reject(netTimeout(`git ${args.join(" ")}`, ms));
-			else
+			else if (flooded) {
+				reject(
+					new PinsError(
+						"GIT_FAILED",
+						`git ${args.join(" ")} wrote more than 64 MiB of output; it was stopped`,
+					),
+				);
+			} else
 				resolve({
 					status: code ?? 128,
-					stdout: stdout.trim(),
+					stdout: "",
 					stderr: stderr.trim(),
 				});
 		});

@@ -26,36 +26,50 @@
  */
 import { describe, expect, it } from "vitest";
 
-import { buildPgDumpArgv, buildPgRestoreArgv } from "../src/migration.js";
+import type { JsonValue } from "../src/json.js";
+import {
+	buildPgDumpArgv,
+	buildPgRestoreArgv,
+	type PgDumpSpec,
+	type PgRestoreSpec,
+	type PostgresTarget,
+} from "../src/migration.js";
 
-const TARGET = {
+const TARGET: PostgresTarget = {
 	host: "db.example.neon.tech",
 	port: 5432,
 	username: "app",
 	database: "appdb",
+	sslMode: "require",
 };
 
-const dump = (over: Record<string, unknown> = {}) =>
-	buildPgDumpArgv({
-		target: TARGET,
-		format: "custom",
-		filePath: "/tmp/dump.bin",
-		...over,
-	} as never);
+const DUMP: PgDumpSpec = {
+	target: TARGET,
+	format: "custom",
+	filePath: "/tmp/dump.bin",
+};
 
-const restore = (over: Record<string, unknown> = {}) =>
-	buildPgRestoreArgv({
-		target: TARGET,
-		filePath: "/tmp/dump.bin",
-		...over,
-	} as never);
+const dump = (over: Partial<PgDumpSpec> = {}) =>
+	buildPgDumpArgv({ ...DUMP, ...over });
+
+const restore = (over: Partial<PgRestoreSpec> = {}) =>
+	buildPgRestoreArgv({ target: TARGET, filePath: "/tmp/dump.bin", ...over });
+
+/** A dump spec as config delivers it: `dataOnly` may be any JSON value. */
+function dumpFromConfig(dataOnly: JsonValue): readonly string[] {
+	const spec: Omit<PgDumpSpec, "dataOnly"> & { readonly dataOnly: JsonValue } =
+		{ ...DUMP, dataOnly };
+	// SAFETY: deliberately outside the declared type. Specs arrive from callers
+	// and config untyped, and the builder reads `=== true`, which is pinned here.
+	return buildPgDumpArgv(spec as PgDumpSpec);
+}
 
 /** The message of the refusal, or a marker when there was none. */
-function refusal(run: () => unknown): string {
+function refusal(run: () => void): string {
 	try {
 		run();
 	} catch (error) {
-		return (error as Error).message;
+		return error instanceof Error ? error.message : String(error);
 	}
 	return "no-refusal";
 }
@@ -92,8 +106,9 @@ describe("choosing what pg_dump copies", () => {
 	it("treats a non-boolean as absent rather than as true", () => {
 		// `=== true`, not truthiness. These arrive from callers and config, and a
 		// flag emitted for `"no"` would drop every row from the dump.
-		for (const value of ["true", 1, {}, "no"]) {
-			expect(dump({ dataOnly: value })).not.toContain("--data-only");
+		const notTrue: JsonValue[] = ["true", 1, {}, "no"];
+		for (const value of notTrue) {
+			expect(dumpFromConfig(value)).not.toContain("--data-only");
 		}
 	});
 });

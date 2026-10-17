@@ -1,6 +1,6 @@
 /**
  * `pins:bump` for a git pin: resolve a commit, branch or tag, ask the server
- * whether it serves it, check the submodule out there and stage the gitlink.
+ * whether it serves it (from a throwaway repository), check the submodule out there and stage the gitlink.
  *
  * Erasable TypeScript with node builtins only.
  */
@@ -140,7 +140,7 @@ export function bumpPin(
 	const to = resolved.commit;
 	// A commit found here (in the submodule, or a --reference clone) may exist
 	// nowhere else: a pin other checkouts cannot fetch is a broken build.
-	if (!resolved.served && !remoteHas(sub, pin.repo, to, options)) {
+	if (!resolved.served && !remoteHas(pin.repo, to, options)) {
 		throw new PinsError(
 			"NOT_PUSHED",
 			`${short(to)} exists here (in ${resolved.from}) but ${pin.repo} does not serve it. Push it first, then bump to it`,

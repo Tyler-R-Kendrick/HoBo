@@ -207,7 +207,7 @@ export function statusPin(
 		}
 	}
 	const tip = online ? remoteTip(root, pin.repo, pin.branch, options) : null;
-	if (online && tip !== commit && !remoteHas(root, pin.repo, commit, options)) {
+	if (online && tip !== commit && !remoteHas(pin.repo, commit, options)) {
 		problems.push(
 			`the pinned commit ${short(commit)} is not available from ${pin.repo}`,
 		);

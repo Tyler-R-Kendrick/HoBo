@@ -111,6 +111,22 @@ function abandoned(
 	return age > MAX_AGE_MS || pid === process.pid || !alive(pid);
 }
 
+/** A throwaway probe repository (`pins-git-probe.ts`) a killed run left behind. */
+async function sweepProbe(
+	path: string,
+	now: number,
+	removed: string[],
+): Promise<void> {
+	try {
+		if (now - (await lstat(path)).mtimeMs > MAX_AGE_MS) {
+			await rm(path, { recursive: true, force: true });
+			removed.push(path);
+		}
+	} catch {
+		// Gone already.
+	}
+}
+
 /**
  * Remove the `*.partial` files no live download is writing: older than a
  * minute and either older than an hour or named after a process that is gone.
@@ -130,6 +146,10 @@ export async function sweepPartials(
 		return removed;
 	}
 	for (const dir of dirs) {
+		if (dir.startsWith(".probe-")) {
+			await sweepProbe(join(cache, dir), now, removed);
+			continue;
+		}
 		let names: string[];
 		try {
 			names = await readdir(join(cache, dir));

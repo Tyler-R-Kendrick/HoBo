@@ -29,15 +29,19 @@ describe("the release gate bounds ai-bdd", () => {
 		"a hung ai-bdd is killed with its process group at HOBO_AI_BDD_TIMEOUT_MS, and the check is not run",
 		async () => {
 			const pidFile = join(newDir(), "child.pid");
+			const sleepMs = 40_000;
+			const started = Date.now();
 			const run = await runGate(
 				{
 					...ALL_PASS,
-					run: { exit: 0, report: PASSED, sleepMs: 20_000, pidFile },
+					run: { exit: 0, report: PASSED, sleepMs, pidFile },
 				},
 				FAKE_COMMAND,
 				newDir(),
 				{ HOBO_AI_BDD_TIMEOUT_MS: "1500" },
 			);
+			// Killed at the bound, not ended by the stand-in waking up: a bound that only marked the run would wait the whole sleepMs.
+			expect(Date.now() - started).toBeLessThan(sleepMs / 2);
 			const replay = checkOf(run, "acceptance-replay");
 			expect(replay).toMatchObject({ status: "not_run", exitCode: 3 });
 			expect(replay.evidence.reason).toBe(

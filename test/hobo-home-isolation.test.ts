@@ -79,6 +79,15 @@ afterAll(() => {
 	rmSync(scratch, { recursive: true, force: true });
 });
 
+/** What a run of the two probe files saw, and left. */
+interface TwoFiles {
+	readonly status: number | null;
+	/** "<HOBO_HOME> <whether it existed>", one line per file. */
+	readonly seen: string[];
+	/** The throwaway homes left in the run's TMPDIR. */
+	readonly left: string[];
+}
+
 let projects = 0;
 
 /**
@@ -87,11 +96,7 @@ let projects = 0;
  * of their own, and `env`. Each records the HOBO_HOME it saw and whether it
  * existed. Returns those lines and what is left in that TMPDIR.
  */
-function runTwoFiles(env: NodeJS.ProcessEnv): {
-	status: number | null;
-	seen: string[];
-	left: string[];
-} {
+function runTwoFiles(env: NodeJS.ProcessEnv): TwoFiles {
 	projects += 1;
 	const project = join(scratch, `project-${projects}`);
 	const temp = join(project, "tmp");

@@ -16,8 +16,8 @@
 import { readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
 
-/** process.kill's shape; a test passes one that answers as the kernel would. */
-export type Kill = (pid: number, signal: NodeJS.Signals | 0) => unknown;
+/** process.kill's shape (it throws what the kernel answers); a test passes one that answers as the kernel would. */
+export type Kill = (pid: number, signal: NodeJS.Signals | 0) => void;
 
 /** kill refused the signal: EPERM, EACCES, or another error that is not ESRCH. */
 export interface Refused {

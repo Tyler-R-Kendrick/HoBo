@@ -35,7 +35,6 @@ function fakeKill(answer: (signal: Sent, before: readonly Sent[]) => Answer) {
 		if (given !== "ok") {
 			throw Object.assign(new Error(`kill ${given}`), { code: given });
 		}
-		return true;
 	};
 	return { kill, sent };
 }

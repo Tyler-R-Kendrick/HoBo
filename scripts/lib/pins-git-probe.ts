@@ -147,17 +147,27 @@ export async function withProbeRepo<T>(
 				`cannot create a probe repository: ${init.stderr}`,
 			);
 		}
-		const answer = await ask(repo, (args) => {
-			current = probeGit(repo, args, options);
-			return current.result;
-		});
-		const signal = guard.interrupted();
-		if (signal !== null) {
-			throw new PinsError(
-				"INTERRUPTED",
-				`the probe was interrupted by ${signal}`,
-			);
+		const interrupted = (): PinsError | null => {
+			const signal = guard.interrupted();
+			return signal === null
+				? null
+				: new PinsError(
+						"INTERRUPTED",
+						`the probe was interrupted by ${signal}`,
+					);
+		};
+		let answer: T;
+		try {
+			answer = await ask(repo, (args) => {
+				current = probeGit(repo, args, options);
+				return current.result;
+			});
+		} catch (error) {
+			// The git a signal stopped fails; the signal is what happened.
+			throw interrupted() ?? error;
 		}
+		const stopped = interrupted();
+		if (stopped !== null) throw stopped;
 		return answer;
 	} finally {
 		rmSync(repo, { recursive: true, force: true });

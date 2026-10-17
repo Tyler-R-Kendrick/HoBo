@@ -9,7 +9,7 @@
  * signalled, and records its pid: the test signals once the hold has begun.
  */
 import assert from "node:assert/strict";
-import { execFileSync } from "node:child_process";
+import { execFileSync, spawn } from "node:child_process";
 import {
 	existsSync,
 	lutimesSync,
@@ -25,8 +25,10 @@ import { join } from "node:path";
 import { describe, it } from "node:test";
 
 import {
+	gitEnv,
 	makeRemote,
 	makeWork,
+	REPO_ROOT,
 	runBootstrap,
 	scratch,
 	spawnBootstrap,
@@ -200,5 +202,43 @@ describe("a signal while the probe's git is writing into the repository", () => 
 			utimesSync(join(cache, name), hours, hours);
 		assert.equal(runBootstrap(work, ["--status", "--online"]).status, 0);
 		assert.deepEqual(probes(work), []);
+	});
+});
+
+describe("a program that embeds the probe", () => {
+	it("gets INTERRUPTED and keeps its own handler", async () => {
+		const dir = scratch("probe-embedded");
+		const remote = makeRemote(dir);
+		const mark = join(dir, "probe-git.pid");
+		const child = spawn(
+			process.execPath,
+			[
+				"--experimental-strip-types",
+				join(REPO_ROOT, "scripts/test/support/embedded-probe.mts"),
+				remote.url,
+				remote.shas[1] ?? "",
+			],
+			{
+				env: gitEnv({
+					NODE_OPTIONS: "",
+					NODE_NO_WARNINGS: "1",
+					XDG_CACHE_HOME: join(dir, "cache"),
+					PATH: `${holdingGit(dir)}:${process.env.PATH ?? ""}`,
+					PROBE_MARK: mark,
+				}),
+			},
+		);
+		let out = "";
+		child.stdout.on("data", (chunk) => {
+			out += chunk;
+		});
+		child.stderr.on("data", (chunk) => {
+			out += chunk;
+		});
+		const code = await new Promise((resolve) => child.on("close", resolve));
+		assert.equal(code, 0, out);
+		assert.match(out, /outcome: rejected INTERRUPTED/u);
+		assert.match(out, /own handler calls: 1\b/u);
+		assert.match(out, /probes left: 0\b/u);
 	});
 });

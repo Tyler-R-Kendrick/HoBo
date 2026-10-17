@@ -17,7 +17,6 @@ import { type GitPin, PinsError } from "./pins.ts";
 import {
 	git,
 	gitlinkOf,
-	headOf,
 	isDirty,
 	isShallow,
 	keepPin,
@@ -31,6 +30,7 @@ import {
 	coherence,
 	type GitOptions,
 } from "./pins-git-guard.ts";
+import { headOf } from "./pins-git-head.ts";
 import { terminalHint } from "./pins-git-hint.ts";
 import { type NetOptions, netGit, remoteTip } from "./pins-git-net.ts";
 import { remoteHas } from "./pins-git-probe.ts";
@@ -41,12 +41,12 @@ export {
 	type GitResult,
 	git,
 	gitlinkOf,
-	headOf,
 	isDirty,
 	sameRepo,
 	short,
 } from "./pins-git-core.ts";
 export type { GitOptions } from "./pins-git-guard.ts";
+export { headOf } from "./pins-git-head.ts";
 export { modulesUrl } from "./pins-gitmodules.ts";
 
 async function updateSubmodule(

@@ -9,7 +9,6 @@ import { type GitPin, isSafeRef, PinsError } from "./pins.ts";
 import {
 	git,
 	gitlinkOf,
-	headOf,
 	isDirty,
 	keepPin,
 	must,
@@ -20,6 +19,7 @@ import {
 	assertNotAbandoning,
 	type GitOptions,
 } from "./pins-git-guard.ts";
+import { headOf } from "./pins-git-head.ts";
 import { terminalHint } from "./pins-git-hint.ts";
 import { NOT_SERVED, netGit } from "./pins-git-net.ts";
 import { remoteHas } from "./pins-git-probe.ts";

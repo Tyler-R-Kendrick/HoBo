@@ -76,6 +76,40 @@ describe("runAiBdd settles when the command exits", () => {
 	}, 40_000);
 });
 
+describe("runAiBdd on Linux, where a group can hold only zombies", () => {
+	it.runIf(process.platform === "linux")(
+		"is done with a group whose only member is a zombie its parent never reaps",
+		async () => {
+			// The inner shell leaves `sleep 0.1` in ai-bdd's group, then moves itself to a
+			// session of its own (setsid) as `sleep 8`, which never waits for it: once
+			// ai-bdd exits, the group holds one zombie, as under a PID 1 or subreaper that
+			// does not reap.
+			const started = Date.now();
+			const run = await runAiBdd(
+				{
+					command: [
+						"sh",
+						"-c",
+						"sh -c 'sleep 0.1 & echo holder $$; exec setsid sleep 8 >/dev/null 2>&1' & sleep 0.3; exit 0",
+					],
+					cwd: tmpdir(),
+					env: process.env,
+					timeoutMs: 20_000,
+					graceMs: 5000,
+					relay: () => undefined,
+				},
+				[],
+			);
+			const took = Date.now() - started;
+			killQuietly(Number(/holder (\d+)/u.exec(run.tail)?.[1] ?? 0));
+			expect(run.status).toBe(0);
+			// Not the 5 s grace: a zombie is not a member to wait for.
+			expect(took).toBeLessThan(3000);
+		},
+		30_000,
+	);
+});
+
 interface StopOutcome {
 	readonly stopMs: number;
 	readonly tail: string;

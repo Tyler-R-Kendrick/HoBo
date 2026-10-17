@@ -142,7 +142,10 @@ Every ai-bdd command runs in a process group of its own and is bounded by
 whole number from 1 to 24 hours is a usage error, exit 2). One that outlives it is
 stopped and the check is `not_run`, with a reason naming the command and the
 bound. Stopping a group sends it SIGTERM and, after a grace period of 10 s
-(`AI_BDD_GRACE_MS`), SIGKILL to whatever of it is left. What ai-bdd leaves
+(`AI_BDD_GRACE_MS`), SIGKILL to whatever of it is left. On Linux a zombie in the
+group does not count as left: under a PID 1 or subreaper that never reaps (a
+container whose PID 1 is not an init), it would otherwise hold every stop for
+the whole grace period. What ai-bdd leaves
 running in its group when it exits is stopped the same way, and SIGINT or
 SIGTERM to the check is passed on to the group (which, being a group of its
 own, does not see the terminal's Ctrl-C) before the check exits. The signal

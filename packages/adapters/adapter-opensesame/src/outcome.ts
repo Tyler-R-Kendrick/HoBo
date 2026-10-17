@@ -51,6 +51,7 @@ import {
 	OpenSesameAdapterError,
 	type OpenSesameAdapterErrorCode,
 } from "./errors.js";
+import { sentencesOf } from "./sentences.js";
 
 export const OUTCOME_KINDS = [
 	"child_exit",
@@ -84,9 +85,6 @@ const PLACEHOLDER_LINES: readonly RegExp[] = [
 	/^\S+ will keep its placeholder/u,
 	/^\S+ has no token to redeem/u,
 ];
-const OWN_PREFIX = "opensesame: ";
-/** How much of what follows the prefix is read; the longest sentence OpenSesame writes is under 300. */
-const SENTENCE_LIMIT = 512;
 const PIN =
 	/^Error: the surrogate-proxy plugin no longer matches its install pin/u;
 /** The same sentence anywhere; the pin check runs before the child exists, but a line is a line. */
@@ -138,28 +136,6 @@ function outcome(
 	return Object.freeze(
 		create(ProxiedRunOutcomeSchema, { kind, exitCode, notice }),
 	);
-}
-
-/**
- * What follows each `opensesame: ` in the text, up to the end of its line, the
- * next prefix, or a fixed length, whichever comes first. Stopping at the next
- * prefix keeps the windows apart, so each character is read once however the
- * prefix is repeated; none of OpenSesame's sentences holds the prefix itself.
- */
-function sentencesOf(stderr: string): string[] {
-	const out: string[] = [];
-	let at = stderr.indexOf(OWN_PREFIX);
-	while (at >= 0) {
-		const from = at + OWN_PREFIX.length;
-		const next = stderr.indexOf(OWN_PREFIX, from);
-		const end = Math.min(
-			from + SENTENCE_LIMIT,
-			next < 0 ? stderr.length : next,
-		);
-		out.push(stderr.slice(from, end).split(/[\r\n]/u, 1)[0] ?? "");
-		at = next;
-	}
-	return out;
 }
 
 /** Lines for the `Error:` block, which is printed before the child exists and so starts a line. */

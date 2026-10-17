@@ -78,14 +78,15 @@ export const LOCAL_REPO_ENV = [
 ] as const;
 
 /**
- * In git's list, but kept: they carry configuration (`git -c`, and
- * GIT_CONFIG_KEY_n/GIT_CONFIG_VALUE_n through GIT_CONFIG_COUNT), not the
- * location of a repository, and the tests' hermetic configuration is passed
- * this way. GIT_CEILING_DIRECTORIES is not in git's list and stays too: it
- * only narrows where git looks.
+ * In git's list, but kept: they carry the invoking user's configuration
+ * (`git -c`, and GIT_CONFIG_KEY_n/GIT_CONFIG_VALUE_n through
+ * GIT_CONFIG_COUNT), which git itself passes to a submodule's commands; CI
+ * credentials and the tests' hermetic configuration travel this way (ADR-0169
+ * says why that is in scope). GIT_CONFIG is not kept: it only redirects the
+ * `git config` command, and git drops it for a submodule too.
+ * GIT_CEILING_DIRECTORIES is not in git's list and stays: it only narrows.
  */
 const KEPT_CONFIGURATION: ReadonlySet<string> = new Set([
-	"GIT_CONFIG",
 	"GIT_CONFIG_PARAMETERS",
 	"GIT_CONFIG_COUNT",
 ]);

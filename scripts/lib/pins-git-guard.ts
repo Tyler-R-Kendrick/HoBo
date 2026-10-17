@@ -67,8 +67,10 @@ export function coherence(
 			`${setUrl}   (or correct tools/pins/siblings.json if .gitmodules is right)`,
 		);
 	}
+	// --local: the URL `git submodule update` will use is this repository's own.
 	const configured = git(root, [
 		"config",
+		"--local",
 		"--get",
 		`submodule.${entry.name}.url`,
 	]).stdout;

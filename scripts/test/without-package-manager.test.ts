@@ -25,8 +25,14 @@ const scripts = {
 	test: "vitest",
 	lint: "biome",
 };
+const bins = new Set(["oxlint", "turbo"]);
 const posix = (command: string, args: string[]) =>
-	withoutPackageManager(command, args, { root, scripts, platform: "linux" });
+	withoutPackageManager(command, args, {
+		root,
+		scripts,
+		platform: "linux",
+		hasBin: (name) => bins.has(name),
+	});
 
 const scratch: string[] = [];
 after(() => {
@@ -78,6 +84,7 @@ describe("running a pnpm-shaped check without pnpm", () => {
 			root: dir,
 			scripts: manifest,
 			platform: "linux",
+			hasBin: () => false,
 		});
 		const result = spawnSync(direct.command, direct.args, {
 			cwd: dir,
@@ -100,6 +107,27 @@ describe("running a pnpm-shaped check without pnpm", () => {
 				args: ["--deny-warnings", "a.ts"],
 			},
 		);
+	});
+
+	it("refuses an exec it would have to guess at", () => {
+		// pnpm reads these as options, a path or a PATH lookup; joining them onto
+		// node_modules/.bin would run something else, or nothing.
+		for (const [args, says] of [
+			[
+				["exec", "--filter", "./pkg", "turbo", "run", "test"],
+				/plain binary name/u,
+			],
+			[["exec", "-r", "turbo"], /plain binary name/u],
+			[["exec", "node", "-v"], /plain binary name/u],
+			[["exec", "../../usr/bin/env"], /plain binary name/u],
+			[["exec", "tools/oxlint"], /plain binary name/u],
+			[["exec", ".."], /plain binary name/u],
+			[["exec", "a..b"], /plain binary name/u],
+			[["exec"], /plain binary name/u],
+			[["exec", "vitest"], /node_modules\/\.bin\/vitest/u],
+		] as const) {
+			assert.throws(() => posix("pnpm", [...args]), says, args.join(" "));
+		}
 	});
 
 	it("keeps pnpm for a script with lifecycle hooks the launcher does not run", () => {

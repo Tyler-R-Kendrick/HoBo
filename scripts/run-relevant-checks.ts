@@ -1,7 +1,11 @@
 import { spawn, spawnSync } from "node:child_process";
 import fs from "node:fs";
 
-import { commandForPlatform, withoutPackageManager } from "./lib/env.ts";
+import {
+	type CommandInvocation,
+	commandForPlatform,
+	withoutPackageManager,
+} from "./lib/env.ts";
 import { type JsonValue, runtimeKind } from "./lib/inspectable.ts";
 import { type Check, selectRelevantChecks } from "./relevant-check-policy.js";
 
@@ -28,34 +32,66 @@ type ChangedFileRecord = {
  * How a check is actually started: pnpm-shaped checks run through
  * scripts/run-script.mts or `node_modules/.bin` (see `withoutPackageManager`),
  * so the pre-commit hook needs no usable pnpm; what still needs pnpm stays
- * pnpm.
+ * pnpm. A check that cannot be started that way is reported and fails.
  */
-function invocationFor(command: string, commandArgs: string[]) {
-	const direct = withoutPackageManager(command, commandArgs);
-	const platformCommand = commandForPlatform(direct.command, direct.args);
+function invocationFor(
+	command: string,
+	commandArgs: string[],
+): CommandInvocation | undefined {
+	let direct: CommandInvocation;
+	try {
+		direct = withoutPackageManager(command, commandArgs);
+	} catch (cause) {
+		cannotStart(command, commandArgs, reason(cause));
+		return undefined;
+	}
 	const shown = direct.command === process.execPath ? "node" : direct.command;
 	console.log(`\n▶ ${[shown, ...direct.args].join(" ")}`);
-	return platformCommand;
+	return commandForPlatform(direct.command, direct.args);
+}
+
+function reason(cause: unknown): string {
+	return cause instanceof Error ? cause.message : String(cause);
+}
+
+function cannotStart(command: string, commandArgs: string[], why: string) {
+	console.error(`fail  ${[command, ...commandArgs].join(" ")} — ${why}`);
 }
 
 function run(command: string, commandArgs: string[]) {
 	const platformCommand = invocationFor(command, commandArgs);
+	if (platformCommand === undefined) return 1;
 	const result = spawnSync(platformCommand.command, platformCommand.args, {
 		stdio: "inherit",
 		shell: false,
 	});
+	if (result.error) {
+		cannotStart(
+			command,
+			commandArgs,
+			`could not start ${platformCommand.command}: ${result.error.message}`,
+		);
+	}
 	return result.status ?? 1;
 }
 
 function runAsync(check: Check): Promise<number> {
 	const platformCommand = invocationFor(check.command, check.args);
+	if (platformCommand === undefined) return Promise.resolve(1);
 	const child = spawn(platformCommand.command, platformCommand.args, {
 		stdio: "inherit",
 		shell: false,
 	});
 
 	return new Promise<number>((resolve) => {
-		child.once("error", () => resolve(1));
+		child.once("error", (error) => {
+			cannotStart(
+				check.command,
+				check.args,
+				`could not start ${platformCommand.command}: ${error.message}`,
+			);
+			resolve(1);
+		});
 		child.once("exit", (status) => resolve(status ?? 1));
 	});
 }

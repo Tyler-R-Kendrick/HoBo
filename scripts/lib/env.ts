@@ -6,7 +6,7 @@
  * processes, invoking pnpm the same way on Windows and POSIX shells, and
  * running pnpm-shaped commands without a package manager at all.
  */
-import { readFileSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 export type CommandInvocation = {
@@ -55,6 +55,7 @@ export type CheckoutFacts = {
 	readonly root: string;
 	readonly scripts: { readonly [name: string]: string };
 	readonly platform: string;
+	readonly hasBin: (name: string) => boolean;
 };
 
 /** The root package.json scripts, or none when it cannot be read. */
@@ -69,6 +70,18 @@ function rootScripts(root: string): { readonly [name: string]: string } {
 	}
 }
 
+function checkoutFacts(root: string): CheckoutFacts {
+	return {
+		root,
+		scripts: rootScripts(root),
+		platform: process.platform,
+		hasBin: (name) => existsSync(join(root, "node_modules", ".bin", name)),
+	};
+}
+
+/** A name `pnpm exec` resolves in node_modules/.bin alone: no option, path or `node`. */
+const PLAIN_BIN = /^[A-Za-z0-9_@][A-Za-z0-9_.+@-]*$/u;
+
 /**
  * A `pnpm run <script>` or `pnpm exec <bin>` command, run with what Node and
  * the checkout already provide, so a gate does not need a usable pnpm:
@@ -78,7 +91,10 @@ function rootScripts(root: string): { readonly [name: string]: string } {
  *   package.json script with `node_modules/.bin` on PATH, like pnpm, and hands
  *   it the arguments as arguments. (`node --run` spliced them into shell text,
  *   so an argument holding `'` broke out of its quote.)
- * - `pnpm exec <bin> [args]` becomes `node_modules/.bin/<bin> [args]`.
+ * - `pnpm exec <bin> [args]` becomes `node_modules/.bin/<bin> [args]`, for a
+ *   plain binary name that is there. Anything else (an option such as
+ *   `--filter`, a path, `node`, a binary that is not installed) throws: pnpm
+ *   would read it some other way, and guessing would run the wrong thing.
  *
  * Everything else stays pnpm: installs, filters, unknown scripts, and scripts
  * with `pre`/`post` scripts, which the launcher does not run. So does Windows,
@@ -87,23 +103,33 @@ function rootScripts(root: string): { readonly [name: string]: string } {
 export function withoutPackageManager(
 	command: string,
 	args: string[],
-	facts: CheckoutFacts = {
-		root: process.cwd(),
-		scripts: rootScripts(process.cwd()),
-		platform: process.platform,
-	},
+	facts: CheckoutFacts = checkoutFacts(process.cwd()),
 ): CommandInvocation {
 	const unchanged = { command, args };
 	if (command !== "pnpm" || facts.platform === "win32") return unchanged;
 	const [verb, name, ...rest] = args;
-	if (name === undefined) return unchanged;
 	if (verb === "exec") {
+		if (
+			name === undefined ||
+			!PLAIN_BIN.test(name) ||
+			name.includes("..") ||
+			name === "node"
+		) {
+			throw new Error(
+				`pnpm exec ${args.slice(1).join(" ")}: only a plain binary name in node_modules/.bin runs without pnpm`,
+			);
+		}
+		if (!facts.hasBin(name)) {
+			throw new Error(
+				`pnpm exec ${name}: node_modules/.bin/${name} is not installed; install dependencies first`,
+			);
+		}
 		return {
 			command: join(facts.root, "node_modules", ".bin", name),
 			args: rest,
 		};
 	}
-	if (verb !== "run") return unchanged;
+	if (verb !== "run" || name === undefined) return unchanged;
 	const known = (script: string) => Object.hasOwn(facts.scripts, script);
 	if (!known(name) || known(`pre${name}`) || known(`post${name}`)) {
 		return unchanged;

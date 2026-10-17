@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { after, describe, it } from "node:test";
@@ -25,6 +25,39 @@ function emptyRepo(): string {
 	const dir = emptyDir();
 	const init = spawnSync("git", ["init", "--quiet"], { cwd: dir });
 	assert.equal(init.status, 0, String(init.stderr));
+	return dir;
+}
+
+const fixtureEnv = {
+	...process.env,
+	GIT_CONFIG_GLOBAL: "/dev/null",
+	GIT_CONFIG_NOSYSTEM: "1",
+	GIT_AUTHOR_NAME: "fixture",
+	GIT_AUTHOR_EMAIL: "fixture@example.invalid",
+	GIT_COMMITTER_NAME: "fixture",
+	GIT_COMMITTER_EMAIL: "fixture@example.invalid",
+};
+
+function git(cwd: string, args: string[]) {
+	const result = spawnSync("git", args, {
+		cwd,
+		encoding: "utf8",
+		env: fixtureEnv,
+	});
+	assert.equal(result.status, 0, result.stderr);
+}
+
+/** A repository with a staged TypeScript file and the given oxlint stand-in. */
+function stagedRepo(oxlint: string | undefined): string {
+	const dir = emptyRepo();
+	writeFileSync(join(dir, "a.ts"), "export const a = 1;\n");
+	git(dir, ["add", "a.ts"]);
+	if (oxlint !== undefined) {
+		mkdirSync(join(dir, "node_modules", ".bin"), { recursive: true });
+		writeFileSync(join(dir, "node_modules", ".bin", "oxlint"), oxlint, {
+			mode: 0o644,
+		});
+	}
 	return dir;
 }
 
@@ -63,5 +96,30 @@ describe("lint:slop:changed when git cannot list the changed files", () => {
 		const result = runLane(emptyRepo(), "--staged");
 		assert.equal(result.status, 0, result.stdout + result.stderr);
 		assert.match(result.stdout, /no changed lintable files/u);
+	});
+});
+
+// A lint that never ran is not a clean lint, and the person committing has to
+// be told why it did not run: an exec it could not resolve used to crash with
+// a stack trace, and a binary that would not start printed nothing.
+describe("lint:slop:changed when oxlint cannot start", () => {
+	it("says oxlint is not installed, without a stack trace", () => {
+		const result = runLane(stagedRepo(undefined), "--staged");
+		assert.equal(result.status, 2, result.stdout + result.stderr);
+		assert.match(
+			result.stderr,
+			/fail {2}lint:slop:changed — pnpm exec oxlint: node_modules\/\.bin\/oxlint is not installed/u,
+		);
+		assert.doesNotMatch(result.stderr, /^\s+at /mu);
+	});
+
+	it("says why an installed oxlint could not start", () => {
+		// Present but not executable: the spawn itself fails (EACCES).
+		const result = runLane(stagedRepo("#!/bin/sh\nexit 0\n"), "--staged");
+		assert.notEqual(result.status, 0, result.stdout + result.stderr);
+		assert.match(
+			result.stderr,
+			/fail {2}lint:slop:changed — could not start .*oxlint: .*EACCES/u,
+		);
 	});
 });

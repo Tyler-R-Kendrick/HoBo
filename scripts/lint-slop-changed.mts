@@ -17,6 +17,7 @@ import { existsSync } from "node:fs";
 import process from "node:process";
 
 import {
+	type CommandInvocation,
 	commandForPlatform,
 	sanitizeNodeOptions,
 	withoutPackageManager,
@@ -64,6 +65,29 @@ const baseFlag = args.find((arg) => arg.startsWith("--base="));
 const base =
 	baseFlag === undefined ? "HEAD~1" : baseFlag.slice("--base=".length);
 
+function cannotLint(why: string): void {
+	console.error(`fail  lint:slop:changed — ${why}`);
+}
+
+/** Oxlint over `chunk`, or a refusal when it cannot run without pnpm. */
+function oxlint(chunk: string[]): CommandInvocation {
+	try {
+		const direct = withoutPackageManager("pnpm", [
+			"exec",
+			"oxlint",
+			"--deny-warnings",
+			"--no-error-on-unmatched-pattern",
+			...chunk,
+		]);
+		return commandForPlatform(direct.command, direct.args);
+	} catch (cause) {
+		cannotLint(
+			`${cause instanceof Error ? cause.message : String(cause)}, so nothing was linted.`,
+		);
+		return process.exit(2);
+	}
+}
+
 const files = changedFiles(staged, base)
 	.filter((file) => LINTABLE.test(file))
 	.filter((file) => existsSync(file));
@@ -76,18 +100,16 @@ if (files.length === 0) {
 let failure = 0;
 for (let index = 0; index < files.length; index += CHUNK_SIZE) {
 	const chunk = files.slice(index, index + CHUNK_SIZE);
-	const direct = withoutPackageManager("pnpm", [
-		"exec",
-		"oxlint",
-		"--deny-warnings",
-		"--no-error-on-unmatched-pattern",
-		...chunk,
-	]);
-	const invocation = commandForPlatform(direct.command, direct.args);
+	const invocation = oxlint(chunk);
 	const result = spawnSync(invocation.command, invocation.args, {
 		stdio: "inherit",
 		env: sanitizeNodeOptions(),
 	});
+	if (result.error) {
+		cannotLint(
+			`could not start ${invocation.command}: ${result.error.message}`,
+		);
+	}
 	if (result.status !== 0) failure = result.status ?? 1;
 }
 

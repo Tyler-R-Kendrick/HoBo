@@ -178,19 +178,25 @@ project of that kind; its CLI is
 `["node","--conditions=source","<ai-bdd>/packages/cli/src/bin.ts","-c","<the project's test config>"]`
 and needs ai-bdd's own dependencies installed (no build: Node runs its sources).
 
-Run on 2026-10-17 against ai-bdd `4190d7e`, its dependencies installed by the
-package manager (`opm ci`, 352 packages from the shared store, no install
-script run): a project laid out as `createProject` does (the corpus config, the
-`release-notes` and `reports` docs, the base fake-model rules, a test config as
-`writeTestConfig` writes it), compiled and characterized once (`compile`, then
-`run`: 10 model calls, recordings created), then `test:real` with
-`HOBO_AI_BDD_STALE_DOC=docs/release-notes.md`: both tests passed. The release
-record of that project (`hobo-stage-gate run release`) passed with
-`report_digest` `sha256:c8e1af0b...14932e`, equal to `sha256sum
-.ai-bdd/report/report.json`, `model_calls` 0 and 2 scenarios replayed; the stale
-control failed `acceptance-plans-fresh` with exit 4 (`docs/release-notes.md
-[stale]`) and started nothing after it; and `HOBO_AI_BDD_CMD='["/bin/true"]'`
-over the same project's real report failed the replay on freshness.
+Run on 2026-10-17 against ai-bdd `7f9456a` (`main`, the merge of its run report
+schema), its dependencies installed by the package manager (`opm ci`, 361
+packages, 352 from the shared store, no install script run): a project laid out
+as `createProject` does (the corpus config, the `release-notes` and `reports`
+docs, the base fake-model rules, a test config as `writeTestConfig` writes it),
+compiled and characterized once (`compile`, then `run`: 10 model calls,
+recordings created), then `test:real` with
+`HOBO_AI_BDD_STALE_DOC=docs/release-notes.md`: both tests passed, the stale
+control failing `acceptance-plans-fresh` with exit 4 and starting nothing after
+it. The release record of that project (`hobo-stage-gate run release`) passed
+with `report_digest` `sha256:c40d6ce5...cf4ce3a`, equal to `sha256sum
+.ai-bdd/report/report.json`, `model_calls` 0 and 2 scenarios replayed, the
+report bound to the `Run: .ai-bdd/runs/<id>` line ai-bdd printed, and `cue vet
+-c` accepts the record. `HOBO_AI_BDD_CMD='["/bin/true"]'` over the same
+project's real report failed the replay on freshness, and SIGINT to
+`check-acceptance.mts replay` mid-run reached ai-bdd ("interrupted, finishing
+up"), after which the check exited 130 with no ai-bdd process left. (The first
+record, on 2026-10-17 against the pull request's `4190d7e`, passed the same
+way.)
 
 The gate's tests run real processes against a stand-in ai-bdd
 (`test/helpers/fake-ai-bdd.mts`) that plays back

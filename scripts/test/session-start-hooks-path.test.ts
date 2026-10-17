@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import {
+	copyFileSync,
 	mkdirSync,
 	mkdtempSync,
 	readFileSync,
@@ -15,6 +16,7 @@ import { fileURLToPath } from "node:url";
 import type { JsonValue } from "../lib/inspectable.ts";
 
 const root = join(dirname(fileURLToPath(import.meta.url)), "../..");
+const SCRIPT = "scripts/ensure-hooks-path.sh";
 const tag = Object.prototype.toString;
 
 function isRecord(
@@ -27,22 +29,69 @@ function isText(value: JsonValue | undefined): value is string {
 	return tag.call(value) === "[object String]";
 }
 
-/** The command of the first SessionStart hook in `.claude/settings.json`. */
-function sessionStartCommand(): string {
-	const settings: JsonValue = JSON.parse(
-		readFileSync(join(root, ".claude/settings.json"), "utf8"),
-	);
-	const hooks = isRecord(settings) ? settings.hooks : undefined;
-	const groups = isRecord(hooks) ? hooks.SessionStart : undefined;
-	const group = Array.isArray(groups) ? groups[0] : undefined;
-	const entries = isRecord(group) ? group.hooks : undefined;
-	const entry = Array.isArray(entries) ? entries[0] : undefined;
-	const command = isRecord(entry) ? entry.command : undefined;
-	if (!isText(command)) {
-		assert.fail(".claude/settings.json has no SessionStart hook command");
+/** Follows object keys and array indexes through a JSON document. */
+function walk(
+	value: JsonValue | undefined,
+	path: readonly (string | number)[],
+) {
+	let at = value;
+	for (const step of path) {
+		if (Array.isArray(at) && Number.isInteger(step)) at = at[Number(step)];
+		else if (isRecord(at) && isText(step)) at = at[step];
+		else return undefined;
 	}
+	return at;
+}
+
+/** The session-start command an agent's checked-in config runs. */
+function configured(file: string, path: readonly (string | number)[]): string {
+	const config: JsonValue = JSON.parse(readFileSync(join(root, file), "utf8"));
+	const command = walk(config, path);
+	if (!isText(command)) assert.fail(`${file} has no session-start command`);
 	return command;
 }
+
+const AGENTS = [
+	{
+		agent: "Claude Code",
+		command: () =>
+			configured(".claude/settings.json", [
+				"hooks",
+				"SessionStart",
+				0,
+				"hooks",
+				0,
+				"command",
+			]),
+	},
+	{
+		agent: "Codex",
+		command: () =>
+			configured(".codex/hooks.json", [
+				"hooks",
+				"SessionStart",
+				0,
+				"hooks",
+				0,
+				"command",
+			]),
+	},
+	{
+		agent: "Cursor",
+		command: () =>
+			configured(".cursor/hooks.json", ["hooks", "sessionStart", 0, "command"]),
+	},
+	{
+		agent: "Copilot",
+		command: () =>
+			configured(".github/hooks/git-hooks-path.json", [
+				"hooks",
+				"sessionStart",
+				0,
+				"bash",
+			]),
+	},
+] as const;
 
 const scratch: string[] = [];
 after(() => {
@@ -57,8 +106,7 @@ function tempDir(): string {
 
 // Only the fixture repository's own config counts: no global or system file,
 // no CI marker and no opt-out inherited from whoever runs the suite.
-const isolated = tempDir();
-const globalConfig = join(isolated, "gitconfig");
+const globalConfig = join(tempDir(), "gitconfig");
 writeFileSync(globalConfig, "");
 const env = Object.fromEntries(
 	Object.entries(process.env).filter(
@@ -74,12 +122,19 @@ function git(cwd: string, args: string[]) {
 	return spawnSync("git", args, { cwd, encoding: "utf8", env });
 }
 
-/** A repository (no commits) whose tree carries a `.githooks` directory. */
-function repoWithHooks(): string {
+/** Gives a checkout the two things the script looks for. */
+function furnish(dir: string): string {
+	mkdirSync(join(dir, ".githooks"), { recursive: true });
+	mkdirSync(join(dir, "scripts"), { recursive: true });
+	copyFileSync(join(root, SCRIPT), join(dir, SCRIPT));
+	return dir;
+}
+
+/** A repository (no commits) shaped like this one. */
+function checkout(): string {
 	const dir = tempDir();
 	assert.equal(git(dir, ["init", "--quiet"]).status, 0);
-	mkdirSync(join(dir, ".githooks"));
-	return dir;
+	return furnish(dir);
 }
 
 function hooksPath(repo: string): string {
@@ -92,37 +147,42 @@ function hooksPath(repo: string): string {
 	]).stdout.trim();
 }
 
-function runHook(projectDir: string, extra: Record<string, string> = {}) {
-	return spawnSync("sh", ["-c", sessionStartCommand()], {
-		cwd: tempDir(),
+/** Runs a shell command the way an agent's hook runner does: from the checkout. */
+function sh(command: string, cwd: string, extra: Record<string, string> = {}) {
+	return spawnSync("sh", ["-c", command], {
+		cwd,
 		encoding: "utf8",
-		env: { ...env, ...extra, CLAUDE_PROJECT_DIR: projectDir },
+		env: { ...env, ...extra, CLAUDE_PROJECT_DIR: cwd },
 	});
 }
 
-// Commits in agent sessions met no hook: `core.hooksPath` is set only by the
+const script = (dir: string, extra: Record<string, string> = {}) =>
+	sh(`sh ${SCRIPT}`, dir, extra);
+
+// Commits in agent sessions met no hook: core.hooksPath is set only by the
 // root `prepare` script, which an install without lifecycle scripts (or a
-// worktree sharing another checkout's node_modules) never runs. The session
-// hook closes that, and must never get in a session's way doing it.
-describe("the SessionStart hook that installs the git hooks", () => {
+// worktree sharing another checkout's node_modules) never runs. Each agent's
+// session-start hook runs scripts/ensure-hooks-path.sh to close that, and it
+// must never get in a session's way doing it.
+describe("scripts/ensure-hooks-path.sh", () => {
 	it("points an unset core.hooksPath at .githooks, silently", () => {
-		const repo = repoWithHooks();
-		const result = runHook(repo);
+		const repo = checkout();
+		const result = script(repo);
 		assert.equal(result.status, 0, result.stderr);
 		assert.equal(result.stdout + result.stderr, "");
 		assert.equal(hooksPath(repo), ".githooks");
 	});
 
 	it("is idempotent", () => {
-		const repo = repoWithHooks();
-		runHook(repo);
-		const again = runHook(repo);
+		const repo = checkout();
+		script(repo);
+		const again = script(repo);
 		assert.equal(again.status, 0, again.stderr);
 		assert.equal(hooksPath(repo), ".githooks");
 	});
 
 	it("writes the shared config from a worktree", () => {
-		const repo = repoWithHooks();
+		const repo = checkout();
 		const worktree = join(tempDir(), "wt");
 		const added = git(repo, [
 			"worktree",
@@ -134,31 +194,50 @@ describe("the SessionStart hook that installs the git hooks", () => {
 			worktree,
 		]);
 		assert.equal(added.status, 0, added.stderr);
-		mkdirSync(join(worktree, ".githooks"));
-		assert.equal(runHook(worktree).status, 0);
+		assert.equal(script(furnish(worktree)).status, 0);
 		assert.equal(hooksPath(repo), ".githooks");
 	});
 
 	it("never replaces a hooks path someone already chose", () => {
-		const repo = repoWithHooks();
+		const repo = checkout();
 		git(repo, ["config", "core.hooksPath", "my-hooks"]);
-		assert.equal(runHook(repo).status, 0);
+		assert.equal(script(repo).status, 0);
 		assert.equal(hooksPath(repo), "my-hooks");
 	});
 
 	it("honours the opt-outs scripts/install-hooks.mts honours", () => {
 		for (const optOut of [{ HOBO_SKIP_HOOKS: "1" }, { CI: "true" }]) {
-			const repo = repoWithHooks();
-			assert.equal(runHook(repo, optOut).status, 0);
+			const repo = checkout();
+			assert.equal(script(repo, optOut).status, 0);
 			assert.equal(hooksPath(repo), "");
 		}
 	});
 
 	it("succeeds silently outside a repository", () => {
-		const dir = tempDir();
-		mkdirSync(join(dir, ".githooks"));
-		const result = runHook(dir);
+		const result = script(furnish(tempDir()));
 		assert.equal(result.status, 0, result.stderr);
 		assert.equal(result.stdout + result.stderr, "");
+	});
+});
+
+describe("each agent's session-start hook", () => {
+	for (const { agent, command } of AGENTS) {
+		it(`runs the shared script for ${agent}`, () => {
+			const repo = checkout();
+			const result = sh(command(), repo);
+			assert.equal(result.status, 0, result.stderr);
+			assert.equal(result.stdout + result.stderr, "");
+			assert.equal(hooksPath(repo), ".githooks");
+		});
+	}
+
+	it("still succeeds, silently, when the script is missing", () => {
+		for (const { command } of AGENTS) {
+			const repo = tempDir();
+			git(repo, ["init", "--quiet"]);
+			const result = sh(command(), repo);
+			assert.equal(result.status, 0, result.stderr);
+			assert.equal(result.stdout + result.stderr, "");
+		}
 	});
 });

@@ -6,8 +6,9 @@
  * that is not required satisfies `model_calls: "0"` by being left out; the
  * tests below remove every field one at a time to pin that each is required.
  *
- * This suite needs the cue binary (v0.14.0): HOBO_CUE_BIN, else the cache
- * the root test:schema lane fills at .tools/cue/v0.14.0, else cue on PATH.
+ * This suite needs the cue binary (v0.14.0): HOBO_CUE_BIN, which must exist,
+ * else the cache the root test:schema lane fills at .tools/cue/v0.14.0, else
+ * cue on PATH; whichever it finds must say it is v0.14.0.
  * The package's `test:schema` runs it and the root `test:schema` reaches
  * that; without cue it fails, never skips.
  */
@@ -46,21 +47,44 @@ afterAll(() => {
 	rmSync(scratch, { recursive: true, force: true });
 });
 
-function cueBinary(): string {
-	const configured = process.env.HOBO_CUE_BIN;
-	if (configured !== undefined && existsSync(configured)) return configured;
-	const exe = process.platform === "win32" ? "cue.exe" : "cue";
-	const cached = join(REPO_ROOT, ".tools", "cue", "v0.14.0", exe);
-	if (existsSync(cached)) return cached;
+/** The version the root test:schema lane caches, and the one this suite is written against. */
+const CUE_VERSION = "v0.14.0";
+
+/** `binary` when its `cue version` names CUE_VERSION; otherwise a thrown error naming what was found. */
+function pinned(binary: string, source: string): string {
+	let version: string;
 	try {
-		const lookup = process.platform === "win32" ? "where.exe" : "which";
-		const found = execFileSync(lookup, ["cue"], { encoding: "utf8" });
-		return found.split(/\r?\n/u)[0]?.trim() ?? "cue";
-	} catch {
+		version = execFileSync(binary, ["version"], { encoding: "utf8" });
+	} catch (cause) {
+		const reason = cause instanceof Error ? cause.message : String(cause);
 		throw new Error(
-			"cue v0.14.0 not found: run the root test:schema lane (it caches .tools/cue/v0.14.0), set HOBO_CUE_BIN, or put cue on PATH",
+			`cue ${CUE_VERSION} not found (${source} ${binary}: ${reason}): run the root test:schema lane (it caches .tools/cue/${CUE_VERSION}), set HOBO_CUE_BIN, or put cue ${CUE_VERSION} on PATH`,
 		);
 	}
+	if (!version.includes(CUE_VERSION)) {
+		const found = version.split(/\r?\n/u)[0] ?? version;
+		throw new Error(
+			`${source} ${binary} is "${found}", not cue ${CUE_VERSION}: required fields (!) and these fixtures are checked against ${CUE_VERSION}`,
+		);
+	}
+	return binary;
+}
+
+/** HOBO_CUE_BIN when set (it must exist), else the cached binary, else cue on PATH; each must be CUE_VERSION. */
+function cueBinary(): string {
+	const configured = process.env.HOBO_CUE_BIN;
+	if (configured !== undefined) {
+		if (!existsSync(configured)) {
+			throw new Error(
+				`HOBO_CUE_BIN names ${configured}, which does not exist: unset it or name cue ${CUE_VERSION}`,
+			);
+		}
+		return pinned(configured, "HOBO_CUE_BIN");
+	}
+	const exe = process.platform === "win32" ? "cue.exe" : "cue";
+	const cached = join(REPO_ROOT, ".tools", "cue", CUE_VERSION, exe);
+	if (existsSync(cached)) return pinned(cached, "the cached");
+	return pinned("cue", "PATH's");
 }
 
 const CUE = cueBinary();

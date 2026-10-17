@@ -128,11 +128,13 @@ describe("procShowsGroupGone", () => {
 	);
 });
 
-/** The comm and state of a real process, read independently of procShowsGroupGone. */
-function stateOf(pid: string): {
+interface ProcState {
 	readonly comm: string;
 	readonly state: string;
-} {
+}
+
+/** The comm and state of a real process, read independently of procShowsGroupGone. */
+function stateOf(pid: string): ProcState {
 	let stat: string;
 	try {
 		stat = readFileSync(`/proc/${pid}/stat`, "utf8");

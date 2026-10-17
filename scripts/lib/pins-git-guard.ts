@@ -8,10 +8,10 @@
 
 import { type GitPin, PinsError } from "./pins.ts";
 import {
-	GitmodulesError,
 	git,
 	modulesEntry,
 	onAnyRef,
+	Refusal,
 	sameRepo,
 	short,
 } from "./pins-git-core.ts";
@@ -28,7 +28,7 @@ export interface Findings {
 	readonly problems: string[];
 	readonly fixes: string[];
 	/** `.gitmodules` git could read differently: what fetch and bump throw. */
-	refusal?: GitmodulesError;
+	refusal?: Refusal;
 }
 
 /**
@@ -48,7 +48,7 @@ export function coherence(
 	try {
 		entry = modulesEntry(root, pin.path);
 	} catch (error) {
-		if (!(error instanceof GitmodulesError)) throw error;
+		if (!(error instanceof Refusal)) throw error;
 		found.problems.push(error.problem);
 		found.fixes.push(error.fix);
 		found.refusal = error;

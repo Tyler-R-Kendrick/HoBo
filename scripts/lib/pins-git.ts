@@ -22,6 +22,7 @@ import {
 	isShallow,
 	keepPin,
 	must,
+	Refusal,
 	short,
 } from "./pins-git-core.ts";
 import {
@@ -185,7 +186,18 @@ export function statusPin(
 ): GitStatus {
 	const commit = gitlinkOf(root, pin.path);
 	const { problems, fixes } = coherence(root, pin, options.allowLocal);
-	const head = headOf(root, pin.path);
+	let head: string | null;
+	try {
+		head = headOf(root, pin.path);
+	} catch (error) {
+		if (!(error instanceof Refusal)) throw error;
+		return {
+			commit,
+			problems: [...problems, error.problem],
+			fixes: [...fixes, error.fix],
+			tip: null,
+		};
+	}
 	if (head === null) {
 		problems.push(`${pin.path} is not fetched`);
 		fixes.push(`pnpm run pins:fetch ${name}`);

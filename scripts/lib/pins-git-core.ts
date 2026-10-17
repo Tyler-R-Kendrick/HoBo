@@ -6,10 +6,10 @@
  * Erasable TypeScript with node builtins only.
  */
 import { spawnSync } from "node:child_process";
-import { existsSync } from "node:fs";
+import { existsSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 
-import { PinsError } from "./pins.ts";
+import { PinsError, type PinsErrorCode } from "./pins.ts";
 import { netTimeout } from "./pins-net.ts";
 
 export interface GitResult {
@@ -115,6 +115,17 @@ export function short(commit: string): string {
 	return commit.slice(0, 7);
 }
 
+/** A refusal that `status` prints as a problem with its fix, and the other verbs throw. */
+export class Refusal extends PinsError {
+	readonly problem: string;
+	readonly fix: string;
+	constructor(code: PinsErrorCode, problem: string, fix: string) {
+		super(code, `${problem}\nfix: ${fix}`);
+		this.problem = problem;
+		this.fix = fix;
+	}
+}
+
 const GITLINK = /^160000 ([0-9a-f]{40}) 0\t/u;
 
 /** The commit the index pins `path` at. */
@@ -136,10 +147,37 @@ export function gitlinkOf(root: string, path: string): string {
 	return commit;
 }
 
-/** HEAD of the submodule's own repository, or null when it is not fetched yet. */
+function realOr(path: string): string {
+	try {
+		return realpathSync(path);
+	} catch {
+		return path;
+	}
+}
+
+/**
+ * HEAD of the submodule's own repository, or null when it is not fetched yet.
+ * Only a repository whose top level is the submodule's path answers: an empty
+ * `.git` directory makes git walk up to the superproject, and a `.git` file
+ * whose module directory is gone makes it fail, and both are refused here,
+ * before any command runs in what git would take for the submodule.
+ */
 export function headOf(root: string, path: string): string | null {
-	if (!existsSync(join(root, path, ".git"))) return null;
-	const result = git(join(root, path), ["rev-parse", "--verify", "HEAD"]);
+	const sub = join(root, path);
+	if (!existsSync(join(sub, ".git"))) return null;
+	const top = git(sub, ["rev-parse", "--show-toplevel"]);
+	if (top.status !== 0 || realOr(top.stdout) !== realOr(sub)) {
+		const answer =
+			top.status === 0
+				? `git answers for ${top.stdout} instead`
+				: `git says: ${top.stderr.split("\n")[0] ?? ""}`;
+		throw new Refusal(
+			"SUBMODULE_STATE",
+			`${path}/.git is not a usable repository of its own (${answer}); nothing is run in it`,
+			`rm -rf ${path} && git submodule update --init -- ${path}   (deletes ${path}: copy out anything you need first)`,
+		);
+	}
+	const result = git(sub, ["rev-parse", "--verify", "HEAD"]);
 	return result.status === 0 ? result.stdout : null;
 }
 
@@ -193,17 +231,6 @@ export interface ModulesEntry {
 	readonly url: string;
 }
 
-/** `.gitmodules` that git could read differently from the script: refused, with the fix. */
-export class GitmodulesError extends PinsError {
-	readonly problem: string;
-	readonly fix: string;
-	constructor(problem: string, fix: string) {
-		super("GITMODULES_AMBIGUOUS", `${problem}\nfix: ${fix}`);
-		this.problem = problem;
-		this.fix = fix;
-	}
-}
-
 function hasControl(value: string): boolean {
 	return [...value].some((char) => {
 		const code = char.codePointAt(0) ?? 0;
@@ -238,7 +265,8 @@ function modulesValues(root: string): Map<string, Map<string, string[]>> {
 		const key = cut === -1 ? entry : entry.slice(0, cut);
 		const value = cut === -1 ? "" : entry.slice(cut + 1);
 		if (hasControl(key) || hasControl(value)) {
-			throw new GitmodulesError(
+			throw new Refusal(
+				"GITMODULES_AMBIGUOUS",
 				`.gitmodules: ${key.slice(0, 80)} holds a line break or another control character, which git reads from an escape such as \\n; such a value is refused`,
 				`remove the escape from that value in .gitmodules`,
 			);
@@ -267,7 +295,8 @@ export function modulesEntry(root: string, path: string): ModulesEntry | null {
 		(values.get("path") ?? []).some((value) => samePath(value, path)),
 	);
 	if (naming.length > 1) {
-		throw new GitmodulesError(
+		throw new Refusal(
+			"GITMODULES_AMBIGUOUS",
 			`.gitmodules has ${naming.length} sections for ${path} (${naming.map(([name]) => `"${name}"`).join(", ")}); git uses one of them, so which repository it would contact is not certain`,
 			`keep one [submodule] section for ${path} in .gitmodules`,
 		);
@@ -277,7 +306,8 @@ export function modulesEntry(root: string, path: string): ModulesEntry | null {
 	const [name, values] = found;
 	for (const key of ["path", "url"]) {
 		if ((values.get(key) ?? []).length > 1) {
-			throw new GitmodulesError(
+			throw new Refusal(
+				"GITMODULES_AMBIGUOUS",
 				`.gitmodules sets submodule.${name}.${key} more than once`,
 				`keep one ${key} line in the [submodule "${name}"] section of .gitmodules`,
 			);

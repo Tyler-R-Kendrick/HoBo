@@ -4,7 +4,9 @@ import { fileURLToPath } from "node:url";
 
 /**
  * Validates the competitor corpus against docs/competitors/metadata-contract.md,
- * and regenerates the derived matrix + freshness ledger with --fix.
+ * and regenerates the derived matrix + freshness ledger with --fix. What it
+ * writes into the repo never depends on the day it runs; how old a capture is
+ * is read off the clock at check time and only reported (see `staleCaptures`).
  *
  * Deliberately dependency-free: the front matter we own is a fixed, flat shape,
  * so a scoped parser beats adding a YAML runtime dependency for docs linting.
@@ -492,13 +494,14 @@ function checkLinks(
 }
 
 /**
- * The freshness ledger ages every capture against a clock. That clock is a
- * parameter rather than a call to `Date.now()` inside the loop: with the call
- * inlined, this function's output changed every day, which made it impossible
- * to characterize with a snapshot and meant nothing ever pinned the table's
- * shape. Production still passes the wall clock; tests pass a fixed instant.
+ * The committed matrix is a pure function of the front matter. It used to print
+ * each capture's age in days, and mark one stale past 180, so the file went out
+ * of date the day after it was generated and `lint:docs` failed until someone
+ * regenerated it. The ledger now lists the researched date and the contract
+ * state, oldest first; the age against today's date is `staleCaptures`'s job,
+ * run by the check itself.
  */
-export function renderMatrix(competitors: Competitor[], now: number) {
+export function renderMatrix(competitors: Competitor[]) {
 	const rows = [...competitors].sort((a, b) => a.slug.localeCompare(b.slug));
 	const lines: string[] = [];
 	lines.push("");
@@ -516,27 +519,55 @@ export function renderMatrix(competitors: Competitor[], now: number) {
 	lines.push("### Freshness ledger");
 	lines.push("");
 	lines.push(
-		`Captures are considered stale after ${STALE_AFTER_DAYS} days. Staleness never fails the build — it schedules refresh work.`,
+		`Captures are considered stale ${STALE_AFTER_DAYS} days after their researched date. Staleness never fails the build — it schedules refresh work: \`pnpm run docs:competitors\` lists the stale captures on the day it runs.`,
 	);
 	lines.push("");
-	lines.push("| Competitor | Researched | Age (days) | State |");
-	lines.push("| ---------- | ---------- | ---------- | ----- |");
-	for (const row of [...rows].sort((a, b) =>
-		a.research_date.localeCompare(b.research_date),
-	)) {
-		const age = Math.floor(
-			(now - Date.parse(`${row.research_date}T00:00:00Z`)) / 86_400_000,
-		);
+	lines.push("| Competitor | Researched | State |");
+	lines.push("| ---------- | ---------- | ----- |");
+	for (const row of [...rows].sort(
+		(a, b) =>
+			a.research_date.localeCompare(b.research_date) ||
+			a.slug.localeCompare(b.slug),
+	))
 		lines.push(
-			`| [${row.name}](${row.slug}.md) | ${row.research_date} | ${age} | ${age > STALE_AFTER_DAYS ? "**stale — refresh**" : row.contract === "v1" ? "fresh" : "pre-v1 — rewrite to contract"} |`,
+			`| [${row.name}](${row.slug}.md) | ${row.research_date} | ${row.contract === "v1" ? "contract v1" : "pre-v1 — rewrite to contract"} |`,
 		);
-	}
 	lines.push("");
 	lines.push(
 		`_${rows.length} canonical captures across ${new Set(rows.flatMap((r) => r.categories)).size} categories; ${rows.filter((r) => r.contract === "v1").length} at contract v1._`,
 	);
 	lines.push("");
 	return lines.join("\n");
+}
+
+export type StaleCapture = {
+	slug: string;
+	name: string;
+	research_date: string;
+	/** Whole days between the researched date and the clock. */
+	age: number;
+};
+
+/**
+ * The captures researched more than `STALE_AFTER_DAYS` before `now`, oldest
+ * first. The clock is a parameter so the policy can be tested; the check passes
+ * the wall clock. Nothing derived from it is written to a committed file.
+ */
+export function staleCaptures(
+	competitors: readonly Competitor[],
+	now: number,
+): StaleCapture[] {
+	return competitors
+		.map((row) => ({
+			slug: row.slug,
+			name: row.name,
+			research_date: row.research_date,
+			age: Math.floor(
+				(now - Date.parse(`${row.research_date}T00:00:00Z`)) / 86_400_000,
+			),
+		}))
+		.filter((row) => row.age > STALE_AFTER_DAYS)
+		.sort((a, b) => b.age - a.age || a.slug.localeCompare(b.slug));
 }
 
 /** Category slug -> display title, mirroring the Linear project milestones. */
@@ -631,9 +662,14 @@ export function renderCategoryIndex(competitors: Competitor[]) {
 export async function checkCompetitorDocs(options: {
 	root: string;
 	fix?: boolean;
-	/** Injectable clock for the freshness ledger; defaults to the wall clock. */
+	/** Injectable clock for the staleness report; defaults to the wall clock. */
 	now?: number;
-}): Promise<{ problems: Problem[]; competitors: Competitor[] }> {
+}): Promise<{
+	problems: Problem[];
+	competitors: Competitor[];
+	/** Captures past the staleness line on `now`. A report, never a problem. */
+	stale: StaleCapture[];
+}> {
 	const { root, fix = false } = options;
 	const dir = path.join(root, "docs/competitors");
 	const problems: Problem[] = [];
@@ -800,7 +836,7 @@ export async function checkCompetitorDocs(options: {
 	syncGenerated(
 		"docs/competitors/matrix.md",
 		"competitor-matrix",
-		() => renderMatrix(competitors, options.now ?? Date.now()),
+		() => renderMatrix(competitors),
 		"missing generated cross-category matrix",
 	);
 	syncGenerated(
@@ -816,7 +852,11 @@ export async function checkCompetitorDocs(options: {
 		"missing category index",
 	);
 
-	return { problems, competitors };
+	return {
+		problems,
+		competitors,
+		stale: staleCaptures(competitors, options.now ?? Date.now()),
+	};
 }
 
 /**
@@ -842,7 +882,8 @@ export async function main(options: {
 		fix: options.argv.includes("--fix"),
 	};
 	if (options.now !== undefined) checkInput.now = options.now;
-	const { problems, competitors } = await checkCompetitorDocs(checkInput);
+	const { problems, competitors, stale } =
+		await checkCompetitorDocs(checkInput);
 	for (const problem of problems)
 		error(
 			`${problem.file}:${problem.line} competitor-docs - ${problem.message}`,
@@ -850,6 +891,13 @@ export async function main(options: {
 	log(
 		`competitor-docs: ${competitors.length} canonical captures checked, ${problems.length} problem(s).`,
 	);
+	if (stale.length > 0) {
+		log(
+			`competitor-docs: ${stale.length} capture(s) older than ${STALE_AFTER_DAYS} days; refresh work is due (this does not fail the check):`,
+		);
+		for (const row of stale)
+			log(`  - ${row.slug} (researched ${row.research_date}, ${row.age} days)`);
+	}
 	return problems.length > 0 ? 1 : 0;
 }
 

@@ -7,12 +7,12 @@
 
 ### Freshness ledger
 
-Captures are considered stale after 180 days. Staleness never fails the build — it schedules refresh work.
+Captures are considered stale 180 days after their researched date. Staleness never fails the build — it schedules refresh work: `pnpm run docs:competitors` lists the stale captures on the day it runs.
 
-| Competitor | Researched | Age (days) | State |
-| ---------- | ---------- | ---------- | ----- |
-| [Legacy Corp](legacy-corp.md) | 2025-01-15 | 502 | **stale — refresh** |
-| [Acme](acme.md) | 2026-05-01 | 31 | fresh |
-| [zebra systems](zebra.md) | 2026-05-20 | 12 | fresh |
+| Competitor | Researched | State |
+| ---------- | ---------- | ----- |
+| [Legacy Corp](legacy-corp.md) | 2025-01-15 | pre-v1 — rewrite to contract |
+| [Acme](acme.md) | 2026-05-01 | contract v1 |
+| [zebra systems](zebra.md) | 2026-05-20 | contract v1 |
 
 _3 canonical captures across 3 categories; 2 at contract v1._

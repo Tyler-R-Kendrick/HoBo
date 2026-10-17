@@ -49,6 +49,37 @@ child.on("exit", (code, signal) => {
 });
 `;
 
+/**
+ * The variables that tell git which repository to use. They beat the working
+ * directory, and git exports some of them to every hook (GIT_DIR and
+ * GIT_INDEX_FILE in a linked worktree), so a pins verb run from a hook would
+ * act on the superproject instead of the submodule or the probe. Git drops
+ * the same set when it runs a command in a submodule (`local_repo_env`).
+ * GIT_CONFIG_* stay: they configure git, they do not locate a repository.
+ */
+const REPOSITORY_LOCATORS = [
+	"GIT_DIR",
+	"GIT_WORK_TREE",
+	"GIT_INDEX_FILE",
+	"GIT_COMMON_DIR",
+	"GIT_OBJECT_DIRECTORY",
+	"GIT_ALTERNATE_OBJECT_DIRECTORIES",
+	"GIT_SHALLOW_FILE",
+	"GIT_GRAFT_FILE",
+	"GIT_PREFIX",
+	"GIT_IMPLICIT_WORK_TREE",
+	"GIT_NAMESPACE",
+] as const;
+
+/** This process's environment without the repository-locating variables. */
+export function gitEnvironment(
+	from: NodeJS.ProcessEnv = process.env,
+): NodeJS.ProcessEnv {
+	const env = { ...from };
+	for (const name of REPOSITORY_LOCATORS) delete env[name];
+	return env;
+}
+
 /** A git call with a deadline: how long, and what to call it in the error. */
 export interface Deadline {
 	readonly ms: number;
@@ -74,7 +105,7 @@ export function git(
 		encoding: "utf8",
 		maxBuffer: 64 * 1024 * 1024,
 		stdio: visible ? ["ignore", "inherit", "inherit"] : "pipe",
-		env: { ...process.env, GIT_TERMINAL_PROMPT: "0", LC_ALL: "C", ...env },
+		env: { ...gitEnvironment(), GIT_TERMINAL_PROMPT: "0", LC_ALL: "C", ...env },
 	};
 	// The group is killed at the deadline; this only bounds the parent.
 	if (deadline !== undefined) options.timeout = deadline.ms + 10_000;

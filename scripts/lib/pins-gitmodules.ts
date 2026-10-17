@@ -12,6 +12,13 @@ export interface ModulesEntry {
 	readonly url: string;
 }
 
+/** A section as written: git matches its path exactly, so `./a` or `a/` registers nothing. */
+export interface ModulesSection {
+	readonly name: string;
+	readonly path: string | undefined;
+	readonly url: string | undefined;
+}
+
 function hasControl(value: string): boolean {
 	return [...value].some((char) => {
 		const code = char.codePointAt(0) ?? 0;
@@ -84,6 +91,17 @@ function modulesValues(root: string): Map<string, Map<string, string[]>> {
  * directory from it).
  */
 export function modulesEntry(root: string, path: string): ModulesEntry | null {
+	const section = modulesSection(root, path);
+	return section?.path === path && section.url !== undefined
+		? { name: section.name, url: section.url }
+		: null;
+}
+
+/** The one section that names `path` in any spelling, as written; refused as `modulesEntry` says. */
+export function modulesSection(
+	root: string,
+	path: string,
+): ModulesSection | null {
 	const sections = modulesValues(root);
 	const naming = [...sections].filter(([, values]) =>
 		(values.get("path") ?? []).some((value) => samePath(value, path)),
@@ -114,10 +132,7 @@ export function modulesEntry(root: string, path: string): ModulesEntry | null {
 			);
 		}
 	}
-	const url = values.get("url")?.[0];
-	return values.get("path")?.[0] === path && url !== undefined
-		? { name, url }
-		: null;
+	return { name, path: values.get("path")?.[0], url: values.get("url")?.[0] };
 }
 
 /** The url `.gitmodules` records for the submodule at `path`, if any. */

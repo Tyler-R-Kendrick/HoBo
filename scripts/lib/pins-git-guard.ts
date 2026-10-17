@@ -7,10 +7,10 @@
  */
 
 import { type GitPin, PinsError } from "./pins.ts";
-import { configuredUrlProblem } from "./pins-git-configured.ts";
+import { configuredUrlProblem, shellWord } from "./pins-git-configured.ts";
 import { onAnyRef, Refusal, sameRepo, short } from "./pins-git-core.ts";
 import { isAllowedTransport, type NetOptions } from "./pins-git-net.ts";
-import { modulesEntry } from "./pins-gitmodules.ts";
+import { modulesEntry, modulesSection } from "./pins-gitmodules.ts";
 
 export interface GitOptions extends NetOptions {
 	/** `--reference`: a local clone to borrow objects from. */
@@ -50,13 +50,8 @@ export function coherence(
 		return found;
 	}
 	if (entry === null) {
-		// The gitlink is in the index (gitlinkOf comes first), so
-		// `git submodule add` would refuse: "already exists in the index".
-		const key = `-f .gitmodules submodule.${pin.path}`;
 		found.problems.push(`${pin.path} is not registered in .gitmodules`);
-		found.fixes.push(
-			`git config ${key}.path ${pin.path} && git config ${key}.url ${pin.repo}`,
-		);
+		found.fixes.push(registerFix(root, pin));
 		return found;
 	}
 	const setUrl = `git config -f .gitmodules submodule.${entry.name}.url ${pin.repo}`;
@@ -79,6 +74,26 @@ export function coherence(
 		found.fixes.push(stale.fix);
 	}
 	return found;
+}
+
+/**
+ * The `git config -f .gitmodules` lines that register the path: in the
+ * section that already names it in another spelling (git matches the path
+ * exactly, so `./a` or `a/` registers nothing), else in a new one named
+ * after it. `git submodule add` would refuse: the gitlink is in the index,
+ * since gitlinkOf comes first.
+ */
+function registerFix(root: string, pin: GitPin): string {
+	const section = modulesSection(root, pin.path);
+	const key = `submodule.${section?.name ?? pin.path}`;
+	const lines: string[] = [];
+	if (section?.path !== pin.path) {
+		lines.push(`${shellWord(`${key}.path`)} ${pin.path}`);
+	}
+	if (section?.url === undefined) {
+		lines.push(`${shellWord(`${key}.url`)} ${shellWord(pin.repo)}`);
+	}
+	return lines.map((line) => `git config -f .gitmodules ${line}`).join(" && ");
 }
 
 export function assertCoherent(

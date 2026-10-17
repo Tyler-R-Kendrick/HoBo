@@ -24,11 +24,12 @@ import {
 } from "./support/pins-support.ts";
 
 /** A checkout set up the ordinary way: external/lib cloned and at the pin. */
-function setUp() {
+/** A checkout whose submodule is cloned and at the pin, unless `fetched` is false. */
+function setUp(fetched = true) {
 	const dir = scratch("gitmodules-once");
 	const remote = makeRemote(dir);
 	const work = makeWork(dir, remote, 1);
-	assert.equal(runBootstrap(work, []).status, 0);
+	if (fetched) assert.equal(runBootstrap(work, []).status, 0);
 	return { work, url: remote.url };
 }
 
@@ -80,4 +81,42 @@ describe("status says a .gitmodules problem once, with a fix that works", () => 
 		const after = statusOf(work);
 		assert.match(after, /^exit 0\n/u, `the printed fix is enough: ${after}`);
 	});
+
+	// git matches a submodule's path exactly, so a section that spells it
+	// another way registers nothing; the fix corrects that section, where a
+	// new one would make two for the path. The section's name is the one git
+	// clones under (modules/<name>), so these start before the first fetch.
+	const SPELLINGS: readonly [string, (url: string) => string][] = [
+		[
+			"section lib, path ./external/lib",
+			(url) => `[submodule "lib"]\n\tpath = ./external/lib\n\turl = ${url}\n`,
+		],
+		[
+			"section lib, path external/lib/",
+			(url) => `[submodule "lib"]\n\tpath = external/lib/\n\turl = ${url}\n`,
+		],
+		[
+			"section external/lib, path ./external/lib",
+			(url) =>
+				`[submodule "external/lib"]\n\tpath = ./external/lib\n\turl = ${url}\n`,
+		],
+		[
+			"section lib, path exact, no url",
+			() => `[submodule "lib"]\n\tpath = external/lib\n`,
+		],
+	];
+	for (const [label, modules] of SPELLINGS) {
+		it(`not registered (${label}): the printed fix is enough`, () => {
+			const { work, url } = setUp(false);
+			writeFileSync(join(work, ".gitmodules"), modules(url));
+			const said = statusOf(work);
+			assert.match(said, /external\/lib is not registered in \.gitmodules/u);
+			const fix = /fix: (.+)/u.exec(said)?.[1] ?? "";
+			execFileSync("sh", ["-c", fix], { cwd: work, env: gitEnv() });
+			const setup = runBootstrap(work, []);
+			assert.equal(setup.status, 0, `after "${fix}": ${setup.stderr}`);
+			const after = statusOf(work);
+			assert.match(after, /^exit 0\n/u, `after "${fix}": ${after}`);
+		});
+	}
 });

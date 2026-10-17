@@ -6,7 +6,7 @@
  * HOBO_AI_BDD_CMD.
  */
 import { spawn } from "node:child_process";
-import { existsSync, readFileSync } from "node:fs";
+import { existsSync, readFileSync, statSync } from "node:fs";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -35,7 +35,6 @@ describe("the release gate bounds ai-bdd", () => {
 		async () => {
 			const pidFile = join(newDir(), "child.pid");
 			const sleepMs = 40_000;
-			const started = Date.now();
 			const run = await runGate(
 				{
 					...ALL_PASS,
@@ -43,14 +42,20 @@ describe("the release gate bounds ai-bdd", () => {
 				},
 				FAKE_COMMAND,
 				newDir(),
-				{ HOBO_AI_BDD_TIMEOUT_MS: "1500" },
+				// 5 s, as the next test's: the bound counts from ai-bdd's spawn and the stand-in
+				// must launch (a Node startup) and write pidFile inside it, which 1.5 s does not
+				// leave under load.
+				{ HOBO_AI_BDD_TIMEOUT_MS: "5000" },
 			);
+			const finished = Date.now();
 			// Killed at the bound, not ended by the stand-in waking up: a bound that only marked the run would wait the whole sleepMs.
-			expect(Date.now() - started).toBeLessThan(sleepMs / 2);
+			// Counted from the stand-in's own start (it writes pidFile as it begins), not from the
+			// test's: the Node startups of the checks before and around it are not the bound's.
+			expect(finished - statSync(pidFile).mtimeMs).toBeLessThan(sleepMs / 2);
 			const replay = checkOf(run, "acceptance-replay");
 			expect(replay).toMatchObject({ status: "not_run", exitCode: 3 });
 			expect(replay.evidence.reason).toBe(
-				"ai-bdd run --frozen --no-agent --reporter json,junit did not finish within 1500 ms (HOBO_AI_BDD_TIMEOUT_MS): its process group was sent SIGTERM, and SIGKILL after 10 s",
+				"ai-bdd run --frozen --no-agent --reporter json,junit did not finish within 5000 ms (HOBO_AI_BDD_TIMEOUT_MS): its process group was sent SIGTERM, and SIGKILL after 10 s",
 			);
 			expect(run.result.record.status).toBe("not_run");
 			// The child it started in its own group went with it (a browser Playwright launches is not in it: see the next test).

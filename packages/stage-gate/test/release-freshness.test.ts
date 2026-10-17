@@ -5,7 +5,7 @@
  * report.json holds by then. Through real processes, with
  * test/helpers/fake-ai-bdd.mts as HOBO_AI_BDD_CMD.
  */
-import { readFileSync, writeFileSync } from "node:fs";
+import { readFileSync, renameSync, symlinkSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -93,6 +93,20 @@ describe("the release gate records only this run's report", () => {
 			});
 			expect(checkOf(run, "acceptance-replay").evidence.reason).toMatch(
 				/^report\.json names run [0-9a-f-]{36}, which \.ai-bdd\/runs does not hold: it is not this run's report$/u,
+			);
+		},
+		TIMEOUT,
+	);
+
+	it(
+		"a report whose run directory is a symbolic link is refused (ai-bdd creates a directory)",
+		async () => {
+			const run = await runGate({
+				...ALL_PASS,
+				run: { exit: 0, report: PASSED, runCopy: "linked" },
+			});
+			expect(checkOf(run, "acceptance-replay").evidence.reason).toMatch(
+				/^report\.json names run ([0-9a-f-]{36}), but \.ai-bdd\/runs\/\1 is a symbolic link, not the directory ai-bdd creates: it is not this run's report$/u,
 			);
 		},
 		TIMEOUT,
@@ -219,6 +233,38 @@ describe("the release gate records only this run's report", () => {
 		expect(intact).toMatchObject({ outcome: "failed", exitCode: 1 });
 		expect(intact.evidence.reason).toContain(
 			"is not the report acceptance-replay judged",
+		);
+	});
+
+	it("evidence-intact refuses the judged run once its directory is a symbolic link", async () => {
+		const project = newDir();
+		const env = {
+			...process.env,
+			HOBO_AI_BDD_CMD: JSON.stringify(FAKE_COMMAND),
+			HOBO_AI_BDD_PROJECT: project,
+			FAKE_AI_BDD: JSON.stringify(ALL_PASS),
+			FAKE_AI_BDD_LOG: join(newDir(), "calls.log"),
+		};
+		const replay = await checkAcceptance(["replay"], env, project);
+		const runId = replay.evidence.run_id ?? "";
+		const runDir = join(project, ".ai-bdd", "runs", runId);
+		// The same bytes, moved elsewhere and linked back.
+		const elsewhere = join(newDir(), runId);
+		renameSync(runDir, elsewhere);
+		symlinkSync(elsewhere, runDir, "dir");
+		const intact = await checkAcceptance(
+			["evidence-intact"],
+			{
+				...env,
+				HOBO_STAGE_GATE_REQUIRED_EVIDENCE: JSON.stringify({
+					"acceptance-replay": replay.evidence,
+				}),
+			},
+			project,
+		);
+		expect(intact).toMatchObject({ outcome: "failed", exitCode: 1 });
+		expect(intact.evidence.reason).toBe(
+			`.ai-bdd/runs/${runId} is a symbolic link, not the directory ai-bdd creates`,
 		);
 	});
 

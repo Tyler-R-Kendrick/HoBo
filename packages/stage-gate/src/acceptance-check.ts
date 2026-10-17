@@ -43,7 +43,13 @@ import {
 } from "./ai-bdd-process.js";
 import { REQUIRED_EVIDENCE_ENV } from "./gate-status.js";
 import { isJsonObject, isJsonString, parseJsonText } from "./json.js";
-import { readReport, runIds, shown, staleBecause } from "./replay-run.js";
+import {
+	readReport,
+	runDirectoryProblem,
+	runIds,
+	shown,
+	staleBecause,
+} from "./replay-run.js";
 import type { CheckEvidence } from "./types.js";
 
 export const ACCEPTANCE_STEPS = [
@@ -246,6 +252,10 @@ async function evidenceIntact(
 		run_id: judged.runId,
 		report_digest: judged.reportDigest,
 	};
+	const problem = runDirectoryProblem(config, judged.runId);
+	if (problem !== undefined) {
+		return result("failed", 1, { ...fields, reason: problem });
+	}
 	let copy: Buffer;
 	try {
 		copy = readFileSync(copyPath);

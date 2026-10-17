@@ -22,15 +22,20 @@ import {
 	appendFileSync,
 	mkdirSync,
 	readFileSync,
+	symlinkSync,
 	writeFileSync,
 } from "node:fs";
-import { dirname, join } from "node:path";
+import { dirname, join, resolve } from "node:path";
 
 interface RunPlan {
 	readonly exit: number;
 	readonly report?: string;
-	/** The run directory's copy of the report; "no-directory" leaves no run directory at all. */
-	readonly runCopy?: "same" | "different" | "none" | "no-directory";
+	/**
+	 * The run directory's copy of the report; "no-directory" leaves no run
+	 * directory at all, and "linked" makes it a symbolic link to a directory
+	 * outside runsDir that holds the copy.
+	 */
+	readonly runCopy?: "same" | "different" | "none" | "no-directory" | "linked";
 	readonly startedAt?: string;
 	readonly runsDir?: string;
 	/** Hang this long (a child of its own process group first, its pid written to pidFile). */
@@ -85,6 +90,12 @@ function writeReport(run: RunPlan): string | undefined {
 	writeFileSync(join(latest, "report.json"), bytes);
 	const runDir = join(runsDir, report.runId);
 	if (run.runCopy === "no-directory") return runDir;
+	if (run.runCopy === "linked") {
+		const elsewhere = resolve(dirname(runsDir), "elsewhere", report.runId);
+		mkdirSync(elsewhere, { recursive: true });
+		mkdirSync(runsDir, { recursive: true });
+		symlinkSync(elsewhere, runDir, "dir");
+	}
 	mkdirSync(runDir, { recursive: true });
 	if (run.runCopy === "none") return runDir;
 	writeFileSync(

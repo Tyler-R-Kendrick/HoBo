@@ -60,7 +60,12 @@ export interface FakePlan {
 	readonly run: {
 		readonly exit: number;
 		readonly report?: string;
-		readonly runCopy?: "same" | "different" | "none" | "no-directory";
+		readonly runCopy?:
+			| "same"
+			| "different"
+			| "none"
+			| "no-directory"
+			| "linked";
 		readonly startedAt?: string;
 		readonly runsDir?: string;
 		readonly sleepMs?: number;

@@ -4,7 +4,7 @@
  * survives exit 2 and 4, a moved runsDir, a wrapper that swallows ai-bdd's
  * failure, and a CLI that never loaded.
  */
-import { readdirSync, readFileSync, realpathSync } from "node:fs";
+import { lstatSync, readdirSync, readFileSync, realpathSync } from "node:fs";
 import { join, relative, resolve, sep } from "node:path";
 
 import { type AcceptanceEvidence, parseAiBddRunReport } from "./acceptance.js";
@@ -46,6 +46,24 @@ export function runIds(config: AcceptanceConfig): ReadonlySet<string> {
 /** Allowed difference between this machine's clock and the one that stamped `startedAt`. */
 const CLOCK_SKEW_MS = 5000;
 
+/**
+ * Why `runsDir/<runId>`, when it exists, is not a run directory ai-bdd made;
+ * undefined when it is one or is absent. ai-bdd creates a run directory and
+ * refuses to write through a symbolic link, so a link is not its run, and the
+ * gate does not follow one out of runsDir.
+ */
+export function runDirectoryProblem(
+	config: AcceptanceConfig,
+	runId: string,
+): string | undefined {
+	const runDir = join(config.runsDir, runId);
+	const entry = lstatSync(runDir, { throwIfNoEntry: false });
+	if (entry === undefined || entry.isDirectory()) return undefined;
+	return entry.isSymbolicLink()
+		? `${shown(config, runDir)} is a symbolic link, not the directory ai-bdd creates`
+		: `${shown(config, runDir)} is not a directory`;
+}
+
 /** A path with its symbolic links resolved, or as given when it does not exist. */
 function realOf(path: string): string {
 	try {
@@ -78,6 +96,10 @@ export function staleBecause(
 	}
 	if (!runIds(config).has(evidence.runId)) {
 		return `report.json names run ${evidence.runId}, which ${runs} does not hold: ${stale}`;
+	}
+	const problem = runDirectoryProblem(config, evidence.runId);
+	if (problem !== undefined) {
+		return `report.json names run ${evidence.runId}, but ${problem}: ${stale}`;
 	}
 	if (Date.parse(evidence.startedAt) < spawnedAt - CLOCK_SKEW_MS) {
 		const spawned = new Date(spawnedAt).toISOString();

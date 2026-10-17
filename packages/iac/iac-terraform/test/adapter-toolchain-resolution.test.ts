@@ -27,8 +27,12 @@ import { describe, expect, it } from "vitest";
 
 import { createTerraformAdapter } from "../src/terraform-adapter.js";
 
+type Engine = NonNullable<
+	NonNullable<Parameters<typeof createTerraformAdapter>[0]>["engine"]
+>;
+
 /** A minimal engine; every capability beyond preview/apply is optional. */
-function engineStub(over: Record<string, unknown> = {}) {
+function engineStub(over: Partial<Engine> = {}): Engine {
 	return {
 		async preview() {
 			return { changes: [] };
@@ -36,14 +40,14 @@ function engineStub(over: Record<string, unknown> = {}) {
 		async apply() {
 			return { appliedChanges: [], outputs: {} };
 		},
-		async refresh() {
+		refresh() {
 			return {};
 		},
-		async destroy() {
+		destroy() {
 			return {};
 		},
 		...over,
-	} as never;
+	};
 }
 
 describe("which binary the adapter reports", () => {
@@ -156,9 +160,10 @@ describe("snapshotting estate state", () => {
 	it("does not mistake a non-callable snapshot property for a capability", () => {
 		// `instanceof Function`, not a truthiness check. An engine carrying a
 		// `snapshot` string would otherwise be called and throw.
-		const adapter = createTerraformAdapter({
-			engine: engineStub({ snapshot: "not-callable" }),
-		});
+		// SAFETY: deliberately outside the engine type, where `snapshot` is a
+		// method; the adapter probes it with `instanceof Function`, pinned here.
+		const engine = { ...engineStub(), snapshot: "not-callable" } as never;
+		const adapter = createTerraformAdapter({ engine });
 		expect(() => adapter.snapshotState()).not.toThrow();
 	});
 });
@@ -176,6 +181,6 @@ describe("the adapter it hands back", () => {
 		// safe to serialise into a receipt, the backend is not.
 		const adapter = createTerraformAdapter();
 		expect(adapter.stateBackend).toBeDefined();
-		expect(typeof adapter.stateBackend).not.toBe("function");
+		expect(adapter.stateBackend).not.toBeTypeOf("function");
 	});
 });

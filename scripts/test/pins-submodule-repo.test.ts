@@ -20,7 +20,7 @@ import {
 } from "./support/pins-support.ts";
 
 const REMEDY =
-	"rm -rf external/lib && git submodule update --init -- external/lib";
+	"mv external/lib external/lib.kept && git submodule update --init -- external/lib";
 
 function superState(work: string) {
 	return {

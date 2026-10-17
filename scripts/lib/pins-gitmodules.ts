@@ -43,7 +43,7 @@ function samePath(left: string, right: string): boolean {
  * repository at `<git dir>/modules/<name>`, so such a name would reach out
  * of that directory.
  */
-function gitIgnoresName(name: string): boolean {
+export function gitIgnoresName(name: string): boolean {
 	return name === "" || name.split(/[/\\]/u).includes("..");
 }
 
@@ -145,6 +145,11 @@ export function modulesSection(
 		}
 	}
 	return { name, path: values.get("path")?.[0], url: values.get("url")?.[0] };
+}
+
+/** The names of every `[submodule]` section in `.gitmodules`. */
+export function modulesSectionNames(root: string): readonly string[] {
+	return [...modulesValues(root).keys()];
 }
 
 /** The url `.gitmodules` records for the submodule at `path`, if any. */

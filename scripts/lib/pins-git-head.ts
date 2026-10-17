@@ -7,11 +7,23 @@
  * Erasable TypeScript with node builtins only.
  */
 import { existsSync, lstatSync, realpathSync } from "node:fs";
-import { basename, dirname, join } from "node:path";
+import {
+	basename,
+	dirname,
+	isAbsolute,
+	join,
+	relative,
+	resolve,
+	sep,
+} from "node:path";
 
 import { inside, sameFile } from "./pins-file-identity.ts";
-import { git, Refusal } from "./pins-git-core.ts";
-import { modulesEntry } from "./pins-gitmodules.ts";
+import { git, Refusal, shellWord } from "./pins-git-core.ts";
+import {
+	gitIgnoresName,
+	modulesEntry,
+	modulesSectionNames,
+} from "./pins-gitmodules.ts";
 
 function realOr(path: string): string {
 	try {
@@ -45,7 +57,7 @@ export function headOf(root: string, path: string): string | null {
 		throw new Refusal(
 			"SUBMODULE_STATE",
 			`${path}/.git is not a usable repository of its own (${answer}); nothing is run in it`,
-			reclone(path),
+			moveAside(path),
 		);
 	}
 	refuseSharedRepository(root, path, sub);
@@ -54,9 +66,13 @@ export function headOf(root: string, path: string): string | null {
 	return result.status === 0 ? result.stdout : null;
 }
 
-/** The fix for a submodule whose repository cannot be used: clone it again. */
-function reclone(path: string): string {
-	return `rm -rf ${path} && git submodule update --init -- ${path}   (deletes ${path}: copy out anything you need first)`;
+/**
+ * The fix for a submodule whose repository cannot be used: move the checkout
+ * aside and clone again. Nothing is deleted, so an uncommitted change in it,
+ * or a commit only its repository holds, is still there to take back.
+ */
+function moveAside(path: string): string {
+	return `mv ${path} ${path}.kept && git submodule update --init -- ${path}   (keeps the old checkout, and any work in it, at ${path}.kept)`;
 }
 
 /** The repository a directory's git uses (its common directory), resolved. */
@@ -82,7 +98,7 @@ function refuseSharedRepository(root: string, path: string, sub: string): void {
 	throw new Refusal(
 		"SUBMODULE_STATE",
 		`${path}/.git names the superproject's own repository (${shared}); nothing is run in it`,
-		reclone(path),
+		moveAside(path),
 	);
 }
 
@@ -106,28 +122,41 @@ function repositoryOf(dir: string): Repository | null {
 	return { gitDir: realOr(gitDir), common: realOr(common) };
 }
 
+/** Why the repository a `.git` names is not the submodule's own, and the fix that keeps the work. */
+interface Foreign {
+	readonly reason: string;
+	readonly fix: string;
+}
+
 /**
  * Why the repository a submodule's `.git` names is not the submodule's own,
  * or null when it is. git keeps a submodule's repository at
  * `<superproject git dir>/modules/<name>`, also when the superproject was
  * cloned with --separate-git-dir, is itself a submodule, or is a linked
- * worktree (whose `modules/` is its own, not the common directory's). An
- * older git, or a plain clone, keeps it in the path's own `.git` directory.
- * A hand-made `git clone --separate-git-dir` keeps it in a directory that
- * serves no other work tree: not named `.git` (that is the repository of the
- * directory holding it), not a linked worktree, outside the superproject's
- * git directory, and with no core.worktree naming another directory.
- * Anything else belongs to another checkout, and a fetch there would move
- * that one. Directories are compared by identity and `.git` without case:
- * a path string misses a bind mount and a case-insensitive filesystem.
+ * worktree (whose `modules/` is its own, not the common directory's), and
+ * keeps using the one it cloned when the section is later renamed: a module
+ * directory whose `core.worktree` is this path is git's own record of that.
+ * An older git, or a plain clone, keeps it in the path's own `.git`
+ * directory. A hand-made `git clone --separate-git-dir` keeps it in a
+ * directory that serves no other work tree: not named `.git` (that is the
+ * repository of the directory holding it), not a linked worktree, outside
+ * the superproject's git directory, and with no core.worktree naming another
+ * directory. Anything else belongs to another checkout, and a fetch there
+ * would move that one. Directories are compared by identity and `.git`
+ * without case: a path string misses a bind mount and a case-insensitive
+ * filesystem.
  */
 function foreignReason(
 	root: string,
 	path: string,
 	sub: Repository,
-): string | null {
+): Foreign | null {
+	const fix = moveAside(path);
 	if (!sameFile(sub.common, sub.gitDir))
-		return `is a linked worktree of the repository at ${sub.common}`;
+		return {
+			reason: `is a linked worktree of the repository at ${sub.common}`,
+			fix,
+		};
 	if (sameFile(sub.gitDir, join(root, path, ".git"))) return null;
 	const owner = repositoryOf(root);
 	const name = nameOf(root, path);
@@ -137,18 +166,63 @@ function foreignReason(
 			: realOr(join(owner.gitDir, "modules", name));
 	if (modules !== null && sameFile(sub.gitDir, modules)) return null;
 	if (basename(sub.gitDir).toLowerCase() === ".git")
-		return `is the repository of another working tree (${dirname(sub.gitDir)})`;
+		return {
+			reason: `is the repository of another working tree (${dirname(sub.gitDir)})`,
+			fix,
+		};
 	// Without the name there is no module directory to tell the submodule's
 	// own from another's; `coherence` refuses that `.gitmodules`, so status
 	// says it once and fetch and bump stop on it first.
-	if (owner === null || modules === null) return null;
+	if (owner === null || name === undefined || modules === null) return null;
+	const moduleDirs = join(owner.gitDir, "modules");
+	if (inside(sub.gitDir, moduleDirs) && worktreeIs(root, sub.gitDir, path))
+		return null;
 	for (const dir of [owner.gitDir, owner.common]) {
 		if (inside(sub.gitDir, dir))
-			return `is inside the superproject's git directory but is not this submodule's (${modules})`;
+			return {
+				reason: `is inside the superproject's git directory but is not this submodule's (${modules})`,
+				fix: existsSync(modules)
+					? fix
+					: (renameFix(root, name, moduleDirs, sub.gitDir) ?? fix),
+			};
 	}
 	// core.worktree needs no check: it decides git's top level, which
 	// headOf has already found to be this path.
 	return null;
+}
+
+/** Whether the repository's own `core.worktree` names `path`: git made it for this path. */
+function worktreeIs(root: string, gitDir: string, path: string): boolean {
+	const set = git(root, [
+		"config",
+		"-f",
+		join(gitDir, "config"),
+		"--get",
+		"core.worktree",
+	]);
+	return (
+		set.status === 0 && sameFile(resolve(gitDir, set.stdout), join(root, path))
+	);
+}
+
+/**
+ * A `.git` naming a module directory git made under another name,
+ * `modules/<X>`, that no other section claims, while the section's own
+ * `modules/<name>` does not exist (the section was renamed after cloning):
+ * renaming the section back to X makes it the submodule's own again, and
+ * keeps the clone and its work.
+ */
+function renameFix(
+	root: string,
+	name: string,
+	moduleDirs: string,
+	gitDir: string,
+): string | null {
+	const other = relative(realOr(moduleDirs), gitDir).split(sep).join("/");
+	if (other === "" || other.startsWith("..") || isAbsolute(other)) return null;
+	if (gitIgnoresName(other) || modulesSectionNames(root).includes(other))
+		return null;
+	return `git config -f .gitmodules --rename-section ${shellWord(`submodule.${name}`)} ${shellWord(`submodule.${other}`)}`;
 }
 
 /** The submodule's name in `.gitmodules`, or undefined when it names none or is refused. */
@@ -169,12 +243,12 @@ function refuseForeignRepository(
 ): void {
 	const sub = repositoryOf(dir);
 	if (sub === null) return; // The top-level check has already refused it.
-	const reason = foreignReason(root, path, sub);
-	if (reason === null) return;
+	const foreign = foreignReason(root, path, sub);
+	if (foreign === null) return;
 	throw new Refusal(
 		"SUBMODULE_STATE",
-		`${path}/.git names ${sub.gitDir}, which ${reason}; nothing is run in it`,
-		reclone(path),
+		`${path}/.git names ${sub.gitDir}, which ${foreign.reason}; nothing is run in it`,
+		foreign.fix,
 	);
 }
 
@@ -205,7 +279,7 @@ function refuseLinkedPath(root: string, path: string): void {
 			throw new Refusal(
 				"SUBMODULE_STATE",
 				`${path}/.git is a symbolic link; a submodule's .git is its own, so nothing is run in it`,
-				reclone(path),
+				moveAside(path),
 			);
 		}
 		return;

@@ -28,7 +28,7 @@ import {
 } from "./support/pins-support.ts";
 
 const FIX =
-	"fix: rm -rf external/lib && git submodule update --init -- external/lib";
+	"fix: mv external/lib external/lib.kept && git submodule update --init -- external/lib";
 
 function superState(work: string) {
 	return {

@@ -21,27 +21,37 @@ import { commandForPlatform, sanitizeNodeOptions } from "./lib/env.ts";
 const LINTABLE = /\.(?:[cm]?[jt]s|[jt]sx)$/u;
 const CHUNK_SIZE = 200;
 
-function git(args: string[]): string {
+/** git's output, or `undefined` when git failed: a failure is not "no output". */
+function git(args: string[]): string | undefined {
 	const result = spawnSync("git", args, {
 		encoding: "utf8",
 		maxBuffer: 32 * 1024 * 1024,
 		env: sanitizeNodeOptions(),
 	});
-	if (result.error || result.status !== 0) return "";
+	if (result.error || result.status !== 0) return undefined;
 	return result.stdout.trim();
 }
 
+/**
+ * The changed files, or a refusal. When git cannot list them (an unknown or
+ * unfetched base, a shallow clone, no repository) the lane used to read the
+ * failure as an empty diff and report itself clean, so a gate that never saw a
+ * file passed. It fails closed instead.
+ */
 function changedFiles(staged: boolean, base: string): string[] {
 	const diffArgs = ["diff", "--name-only", "--diff-filter=ACMR"];
-	if (staged) {
-		return git([...diffArgs, "--cached"])
-			.split(/\r?\n/)
-			.filter(Boolean);
+	const listed = staged
+		? git([...diffArgs, "--cached"])
+		: git([...diffArgs, git(["merge-base", base, "HEAD"]) || base, "HEAD"]);
+	if (listed === undefined) {
+		console.error(
+			staged
+				? "fail  lint:slop:changed — git could not list the staged files, so nothing was linted."
+				: `fail  lint:slop:changed — git could not diff against ${base}, so nothing was linted. Fetch it (git fetch origin main) or pass --base=<ref>.`,
+		);
+		process.exit(2);
 	}
-	const mergeBase = git(["merge-base", base, "HEAD"]) || base;
-	return git([...diffArgs, mergeBase, "HEAD"])
-		.split(/\r?\n/)
-		.filter(Boolean);
+	return listed.split(/\r?\n/).filter(Boolean);
 }
 
 const args = process.argv.slice(2);

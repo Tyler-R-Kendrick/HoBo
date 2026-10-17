@@ -20,6 +20,9 @@ import {
 	bumpPin,
 	type GitOptions,
 	initPin,
+	MIN_GIT,
+	requireGit,
+	SPARSE_GIT,
 	short,
 	statusPin,
 } from "./pins-git.ts";
@@ -63,6 +66,15 @@ function gitPinOf(pins: Pins, name: string): GitPin | undefined {
 	return Object.hasOwn(pins.git, name) ? pins.git[name] : undefined;
 }
 
+/**
+ * Refuses, before the first git pin is read, a git older than the manifest
+ * needs: 2.35 when any pin has a sparse cone, 2.31 otherwise.
+ */
+function requireGitFor(request: Request, pins: Pins): void {
+	const sparse = Object.values(pins.git).some((pin) => pin.sparse !== null);
+	requireGit(request.root, sparse ? SPARSE_GIT : MIN_GIT);
+}
+
 function hasAsset(pins: Pins, name: string): boolean {
 	return Object.hasOwn(pins.assets, name);
 }
@@ -94,6 +106,7 @@ async function initGit(
 ): Promise<void> {
 	const pin = gitPinOf(pins, name);
 	if (pin === undefined) return unknownPin(pins, name);
+	requireGitFor(request, pins);
 	const result = await initPin(request.root, pin, gitOptions(request));
 	const sparse = pin.sparse === null ? "" : `; sparse: ${pin.sparse.join(" ")}`;
 	if (result.kind === "already pinned") {
@@ -153,6 +166,7 @@ function printProblems(
 export async function runStatus(request: Request, pins: Pins): Promise<number> {
 	refuseOverridesInCi(Object.keys(pins.assets), process.env);
 	let failed = 0;
+	if (Object.keys(pins.git).length > 0) requireGitFor(request, pins);
 	for (const [name, pin] of Object.entries(pins.git)) {
 		const status = await statusPin(
 			request.root,
@@ -201,6 +215,7 @@ export async function runBump(request: Request, pins: Pins): Promise<number> {
 				"--repo applies to asset pins, not git pins",
 			);
 		}
+		requireGitFor(request, pins);
 		const { from, to } = await bumpPin(
 			request.root,
 			name,

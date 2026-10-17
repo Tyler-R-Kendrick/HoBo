@@ -219,32 +219,54 @@ export class Refusal extends PinsError {
 
 const GITLINK = /^160000 ([0-9a-f]{40}) 0\t/u;
 
-/** git 2.31: `rev-parse --path-format=absolute` (`config --show-scope` is 2.26). */
-const MIN_GIT = { major: 2, minor: 31 } as const;
-let gitChecked = false;
+/** A git version the pins need, and what needs it. */
+export interface GitNeed {
+	readonly major: number;
+	readonly minor: number;
+	readonly why: string;
+}
+
+/** Every git pin: `rev-parse --path-format=absolute` (`config --show-scope` is 2.26). */
+export const MIN_GIT: GitNeed = {
+	major: 2,
+	minor: 31,
+	why: "git rev-parse --path-format=absolute, git config --show-scope",
+};
+
+/** A pin with a sparse cone: `sparse-checkout set --cone`, which `set` takes from 2.35. */
+export const SPARSE_GIT: GitNeed = {
+	major: 2,
+	minor: 35,
+	why: "git sparse-checkout set --cone, for a pin with a sparse cone",
+};
+
+/** What `git --version` said, read once per process; null when it is in another form. */
+let found: { said: string; major: number; minor: number } | null | undefined;
 
 /**
- * Refuses, once per process, a git older than the pins need. A version git
- * prints in another form is let through: every read that needs a newer git
- * also fails closed on its own.
+ * Refuses a git older than `need`. The version is read once per process. A
+ * version git prints in another form is let through: every read that needs
+ * a newer git also fails closed on its own.
  */
-export function requireGit(root: string): void {
-	if (gitChecked) return;
-	const said = git(root, ["--version"]).stdout;
-	const match = /^git version (\d+)\.(\d+)/u.exec(said);
-	if (match !== null) {
-		const [major, minor] = [Number(match[1]), Number(match[2])];
-		if (
-			major < MIN_GIT.major ||
-			(major === MIN_GIT.major && minor < MIN_GIT.minor)
-		) {
-			throw new PinsError(
-				"GIT_FAILED",
-				`${said} is older than ${MIN_GIT.major}.${MIN_GIT.minor}, which the pins need (git rev-parse --path-format=absolute, git config --show-scope); install git ${MIN_GIT.major}.${MIN_GIT.minor} or newer`,
-			);
-		}
+export function requireGit(root: string, need: GitNeed = MIN_GIT): void {
+	if (found === undefined) {
+		const said = git(root, ["--version"]).stdout;
+		const match = /^git version (\d+)\.(\d+)/u.exec(said);
+		found =
+			match === null
+				? null
+				: { said, major: Number(match[1]), minor: Number(match[2]) };
 	}
-	gitChecked = true;
+	if (found === null) return;
+	if (
+		found.major < need.major ||
+		(found.major === need.major && found.minor < need.minor)
+	) {
+		throw new PinsError(
+			"GIT_FAILED",
+			`${found.said} is older than ${need.major}.${need.minor}, which the pins need (${need.why}); install git ${need.major}.${need.minor} or newer`,
+		);
+	}
 }
 
 /** The commit the index pins `path` at: the first git call of every git verb, after the version check. */

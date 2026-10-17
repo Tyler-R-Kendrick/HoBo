@@ -42,6 +42,9 @@ export {
 	git,
 	gitlinkOf,
 	isDirty,
+	MIN_GIT,
+	requireGit,
+	SPARSE_GIT,
 	sameRepo,
 	short,
 } from "./pins-git-core.ts";

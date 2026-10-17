@@ -46,13 +46,15 @@ done`;
 
 const OLD_VERSION = `if [ "$1" = "--version" ]; then echo "git version 2.25.1"; exit 0; fi`;
 
+const BEFORE_SPARSE_SET_CONE = `if [ "$1" = "--version" ]; then echo "git version 2.33.0"; exit 0; fi`;
+
 /** The URL read dies by a signal, as an OOM kill or a sandbox's SIGSYS would end it. */
 const KILLED_ON_READ = `case "$*" in *--show-scope*submodule.*.url*) kill -KILL $$ ;; esac`;
 
-function setUp(when: string) {
+function setUp(when: string, sparse: readonly string[] | null = null) {
 	const dir = scratch("git-version");
 	const remote = makeRemote(dir);
-	const work = makeWork(dir, remote, 1);
+	const work = makeWork(dir, remote, 1, { sparse });
 	const stale = join(dir, "stale");
 	git(dir, ["clone", "-q", "--bare", remote.dir, stale]);
 	git(work, ["submodule", "init", "--", "external/lib"]);
@@ -108,5 +110,29 @@ describe("a git older than the pins need", () => {
 			assert.match(run.stderr, /SUBMODULE_STATE: cannot read the URL/u);
 		}
 		assert.equal(existsSync(join(work, "external/lib/.git")), false);
+	});
+
+	it("a pin with a sparse cone needs git 2.35 (sparse-checkout set --cone); without one, 2.31 is enough", () => {
+		const sparse = setUp(BEFORE_SPARSE_SET_CONE, ["packages/a"]);
+		for (const args of [["--status", "--offline"], ["--fetch", "lib"], []]) {
+			const run = runBootstrap(sparse.work, args, sparse.env);
+			assert.equal(
+				run.status,
+				1,
+				`${args.join(" ")}: ${run.stdout}${run.stderr}`,
+			);
+			assert.match(
+				run.stderr,
+				/GIT_FAILED: git version 2\.33\.0 is older than 2\.35, which the pins need/u,
+			);
+		}
+		assert.equal(existsSync(join(sparse.work, "external/lib/.git")), false);
+		const full = setUp(BEFORE_SPARSE_SET_CONE);
+		const status = runBootstrap(full.work, ["--status", "--offline"], full.env);
+		assert.doesNotMatch(`${status.stdout}${status.stderr}`, /GIT_FAILED/u);
+		assert.match(
+			status.stdout,
+			/this clone's configured URL for external\/lib/u,
+		);
 	});
 });

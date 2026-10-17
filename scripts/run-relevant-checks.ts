@@ -109,15 +109,43 @@ async function runBounded(
 	return statuses;
 }
 
-function capture(command: string, commandArgs: string[]) {
+/** The command's output, or `undefined` when it failed. */
+function tryCapture(
+	command: string,
+	commandArgs: string[],
+): string | undefined {
 	const platformCommand = commandForPlatform(command, commandArgs);
 	const result = spawnSync(platformCommand.command, platformCommand.args, {
 		encoding: "utf8",
 		shell: false,
 		maxBuffer: 32 * 1024 * 1024,
 	});
-	if (result.error || result.status !== 0) return "";
+	if (result.error || result.status !== 0) return undefined;
 	return result.stdout.trim();
+}
+
+/** For probes whose failure has a meaning of its own (no merge base, no file). */
+function capture(command: string, commandArgs: string[]) {
+	return tryCapture(command, commandArgs) ?? "";
+}
+
+/**
+ * The listing every gate is chosen from. A git failure here (an unknown or
+ * unfetched base, a depth-1 clone's HEAD~1, no repository) used to read as an
+ * empty list, so agent:check printed "ok" having selected nothing. It is an
+ * error instead.
+ */
+function changedListing(commandArgs: string[]): string {
+	const listed = tryCapture("git", commandArgs);
+	if (listed !== undefined) return listed;
+	console.error(
+		all
+			? "fail  agent:check — git could not list the tracked files, so no check was selected."
+			: staged
+				? "fail  agent:check — git could not list the staged files, so no check was selected."
+				: `fail  agent:check — git could not diff against ${base}, so no check was selected. Fetch it (git fetch origin main) or pass --base=<ref>.`,
+	);
+	process.exit(2);
 }
 
 function parseChangedFileRecords(raw: string): ChangedFileRecord[] {
@@ -133,14 +161,14 @@ function parseChangedFileRecords(raw: string): ChangedFileRecord[] {
 
 function changedFileRecords(): ChangedFileRecord[] {
 	if (all) {
-		return capture("git", ["ls-files"])
+		return changedListing(["ls-files"])
 			.split(/\r?\n/)
 			.filter(Boolean)
 			.map((file) => ({ status: "M", path: file }));
 	}
 	if (staged) {
 		return parseChangedFileRecords(
-			capture("git", [
+			changedListing([
 				"diff",
 				"--cached",
 				"--name-status",
@@ -150,7 +178,7 @@ function changedFileRecords(): ChangedFileRecord[] {
 		);
 	}
 	return parseChangedFileRecords(
-		capture("git", [
+		changedListing([
 			"diff",
 			"--name-status",
 			"--find-renames=100%",

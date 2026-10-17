@@ -58,7 +58,7 @@ export function headOf(root: string, path: string): string | null {
 		throw new Refusal(
 			"SUBMODULE_STATE",
 			`${path}/.git is not a usable repository of its own (${answer}); nothing is run in it`,
-			moveAside(path),
+			moveAside(root, path),
 		);
 	}
 	refuseSharedRepository(root, path, sub);
@@ -70,10 +70,33 @@ export function headOf(root: string, path: string): string | null {
 /**
  * The fix for a submodule whose repository cannot be used: move the checkout
  * aside and clone again. Nothing is deleted, so an uncommitted change in it,
- * or a commit only its repository holds, is still there to take back.
+ * or a commit only its repository holds, is still there to take back. The
+ * name is the first of `<path>.kept`, `<path>.kept.1`, `<path>.kept.2`, ...
+ * with nothing at it (a link, even a dangling one, counts), chosen now: a
+ * `mv` onto a name that is taken nests the checkout in an empty directory or
+ * in a link's target, or fails and leaves status printing the same fix.
  */
-function moveAside(path: string): string {
-	return `mv ${path} ${path}.kept && git submodule update --init -- ${path}   (keeps the old checkout, and any work in it, at ${path}.kept)`;
+function moveAside(root: string, path: string): string {
+	const target = freeName(root, `${path}.kept`);
+	return `mv ${shellWord(path)} ${shellWord(target)} && git submodule update --init -- ${shellWord(path)}   (keeps the old checkout, and any work in it, at ${target})`;
+}
+
+/** `base`, else `base.1`, `base.2`, ...: the first name under `root` with nothing at it. */
+function freeName(root: string, base: string): string {
+	for (let count = 0; ; count += 1) {
+		const name = count === 0 ? base : `${base}.${count}`;
+		if (!existsAsLink(join(root, name))) return name;
+	}
+}
+
+/** Whether anything is at `path`, a dangling link included (`existsSync` follows links). */
+function existsAsLink(path: string): boolean {
+	try {
+		lstatSync(path);
+		return true;
+	} catch {
+		return false;
+	}
 }
 
 /** The repository a directory's git uses (its common directory), resolved. */
@@ -99,7 +122,7 @@ function refuseSharedRepository(root: string, path: string, sub: string): void {
 	throw new Refusal(
 		"SUBMODULE_STATE",
 		`${path}/.git names the superproject's own repository (${shared}); nothing is run in it`,
-		moveAside(path),
+		moveAside(root, path),
 	);
 }
 
@@ -157,7 +180,7 @@ function foreignReason(
 	path: string,
 	sub: Repository,
 ): Foreign | null {
-	const fix = moveAside(path);
+	const fix = moveAside(root, path);
 	if (!sameFile(sub.common, sub.gitDir))
 		return {
 			reason: `is a linked worktree of the repository at ${sub.common}`,
@@ -320,7 +343,7 @@ function refuseLinkedPath(root: string, path: string): void {
 			throw new Refusal(
 				"SUBMODULE_STATE",
 				`${path}/.git is a symbolic link; a submodule's .git is its own, so nothing is run in it`,
-				moveAside(path),
+				moveAside(root, path),
 			);
 		}
 		return;

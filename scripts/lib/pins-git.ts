@@ -34,6 +34,7 @@ import {
 import { terminalHint } from "./pins-git-hint.ts";
 import { type NetOptions, netGit, remoteTip } from "./pins-git-net.ts";
 import { remoteHas } from "./pins-git-probe.ts";
+import { netGitWatched, onTerminal } from "./pins-git-stream.ts";
 
 export { type Bump, bumpPin } from "./pins-git-bump.ts";
 export {
@@ -48,29 +49,35 @@ export {
 export type { GitOptions } from "./pins-git-guard.ts";
 export { modulesUrl } from "./pins-gitmodules.ts";
 
-function updateSubmodule(root: string, pin: GitPin, options: GitOptions): void {
+async function updateSubmodule(
+	root: string,
+	pin: GitPin,
+	options: GitOptions,
+): Promise<void> {
 	const refArgs =
 		options.reference === undefined ? [] : ["--reference", options.reference];
+	// A person at a terminal sees git's progress as it arrives.
+	const progress = onTerminal() ? ["--progress"] : [];
 	const update = (depth: boolean) =>
-		netGit(
+		netGitWatched(
 			root,
 			[
 				"submodule",
 				"update",
 				"--init",
+				...progress,
 				...(depth ? ["--depth", "1"] : []),
 				...refArgs,
 				"--",
 				pin.path,
 			],
 			options,
-			true,
 		);
 	const sub = join(root, pin.path);
 	// A new clone, or one already shallow, takes only the pinned commit; a full
 	// clone a developer made stays full (a depth fetch would make it shallow).
 	const shallow = !existsSync(join(sub, ".git")) || isShallow(root, pin.path);
-	const first = update(shallow);
+	const first = await update(shallow);
 	if (first.status === 0) return;
 	// A server that refuses a fetch of an unadvertised commit leaves a shallow
 	// clone of the tip: take the full history, then check out the pin.
@@ -94,7 +101,7 @@ function updateSubmodule(root: string, pin: GitPin, options: GitOptions): void {
 			);
 		}
 	}
-	const second = update(false);
+	const second = await update(false);
 	if (second.status !== 0) {
 		throw new PinsError(
 			"GIT_FAILED",
@@ -131,11 +138,11 @@ export interface InitResult {
 }
 
 /** Make the submodule's HEAD the gitlink, fetching only that commit when it can. */
-export function initPin(
+export async function initPin(
 	root: string,
 	pin: GitPin,
 	options: GitOptions,
-): InitResult {
+): Promise<InitResult> {
 	const want = gitlinkOf(root, pin.path);
 	assertCoherent(root, pin, options.allowLocal);
 	const before = headOf(root, pin.path);
@@ -148,7 +155,7 @@ export function initPin(
 	if (before !== null && before !== want) {
 		assertNotAbandoning(root, pin, before, want, options.force);
 	}
-	if (before !== want) updateSubmodule(root, pin, options);
+	if (before !== want) await updateSubmodule(root, pin, options);
 	const head = headOf(root, pin.path);
 	if (head !== want) {
 		throw new PinsError(

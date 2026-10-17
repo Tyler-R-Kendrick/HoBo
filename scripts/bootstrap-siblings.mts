@@ -158,7 +158,7 @@ async function main(args: readonly string[]): Promise<number> {
 		case "fetch":
 			return await runFetch(request, pins);
 		default:
-			return runInit(request, pins);
+			return await runInit(request, pins);
 	}
 }
 

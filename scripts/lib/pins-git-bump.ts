@@ -76,7 +76,6 @@ function localCommit(
 		sub,
 		["fetch", ...depthFor(sub), "--no-tags", options.reference, borrowed],
 		options,
-		false,
 		true,
 	);
 	if (lent.status !== 0) {

@@ -30,7 +30,7 @@ export interface GitResult {
  * connection. A signal the parent gets is passed on to the group. Exit 124
  * means the deadline passed.
  */
-const UNDER_DEADLINE = `
+export const UNDER_DEADLINE = `
 const { spawn } = require("node:child_process");
 const [ms, ...args] = process.argv.slice(1);
 const child = spawn("git", args, { stdio: "inherit", detached: true });
@@ -110,7 +110,6 @@ export interface Deadline {
 export function git(
 	cwd: string,
 	args: readonly string[],
-	visible = false,
 	env: NodeJS.ProcessEnv = {},
 	deadline?: Deadline,
 ): GitResult {
@@ -125,15 +124,12 @@ export function git(
 		cwd,
 		encoding: "utf8",
 		maxBuffer: 64 * 1024 * 1024,
-		// stderr is captured even when visible, so a failure can be explained
-		// (pins-git-hint.ts); it is passed on once the call returns.
-		stdio: visible ? ["ignore", "inherit", "pipe"] : "pipe",
+		stdio: "pipe",
 		env: { ...gitEnvironment(), GIT_TERMINAL_PROMPT: "0", LC_ALL: "C", ...env },
 	};
 	// The group is killed at the deadline; this only bounds the parent.
 	if (deadline !== undefined) options.timeout = deadline.ms + 10_000;
 	const result = spawnSync(command, argv, options);
-	if (visible && result.stderr) process.stderr.write(result.stderr);
 	if (
 		deadline !== undefined &&
 		(result.status === 124 || isTimeout(result.error))

@@ -87,10 +87,14 @@ function unknownPin(pins: Pins, name: string): never {
 	);
 }
 
-function initGit(request: Request, pins: Pins, name: string): void {
+async function initGit(
+	request: Request,
+	pins: Pins,
+	name: string,
+): Promise<void> {
 	const pin = gitPinOf(pins, name);
 	if (pin === undefined) return unknownPin(pins, name);
-	const result = initPin(request.root, pin, gitOptions(request));
+	const result = await initPin(request.root, pin, gitOptions(request));
 	const sparse = pin.sparse === null ? "" : `; sparse: ${pin.sparse.join(" ")}`;
 	if (result.kind === "already pinned") {
 		const note = result.sparseChanged ? `  (sparse set updated${sparse})` : "";
@@ -109,8 +113,8 @@ function initGit(request: Request, pins: Pins, name: string): void {
 }
 
 /** No verb: every git pin, nothing downloaded. */
-export function runInit(request: Request, pins: Pins): number {
-	for (const name of Object.keys(pins.git)) initGit(request, pins, name);
+export async function runInit(request: Request, pins: Pins): Promise<number> {
+	for (const name of Object.keys(pins.git)) await initGit(request, pins, name);
 	return 0;
 }
 
@@ -124,7 +128,7 @@ export async function runFetch(request: Request, pins: Pins): Promise<number> {
 	const ctx = assetContext(request);
 	for (const name of names) {
 		if (gitPinOf(pins, name) !== undefined) {
-			initGit(request, pins, name);
+			await initGit(request, pins, name);
 		} else if (hasAsset(pins, name)) {
 			console.log(
 				await fetchAsset(name, pins.assets[name] ?? null, ctx, explicit),

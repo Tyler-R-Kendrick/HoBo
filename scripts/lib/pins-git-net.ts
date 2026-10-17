@@ -68,13 +68,11 @@ export function netGit(
 	cwd: string,
 	args: readonly string[],
 	options: NetOptions,
-	visible = false,
 	allowFile = false,
 ): GitResult {
 	return git(
 		cwd,
 		netArgs(args),
-		visible,
 		{ GIT_ALLOW_PROTOCOL: allowedProtocols(options.allowLocal, allowFile) },
 		{ ms: netTimeoutMs(), what: `git ${args.join(" ")}` },
 	);

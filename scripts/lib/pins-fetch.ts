@@ -14,8 +14,10 @@ import {
 	closeSync,
 	createReadStream,
 	fchmodSync,
+	fstatSync,
 	mkdirSync,
 	openSync,
+	readSync,
 	renameSync,
 	rmSync,
 	writeSync,
@@ -31,6 +33,19 @@ import { armGuard, partialPath, removeEmptyDirs } from "./pins-partial.ts";
 export async function sha256OfFile(path: string): Promise<string> {
 	const hash = createHash("sha256");
 	for await (const chunk of createReadStream(path)) hash.update(chunk);
+	return hash.digest("hex");
+}
+
+/** The sha256 of the first `length` bytes of an open file, read through `fd`. */
+function sha256OfFd(fd: number, length: number): string {
+	const hash = createHash("sha256");
+	const buffer = Buffer.alloc(64 * 1024);
+	for (let position = 0; position < length; ) {
+		const read = readSync(fd, buffer, 0, buffer.length, position);
+		if (read === 0) break;
+		hash.update(buffer.subarray(0, read));
+		position += read;
+	}
 	return hash.digest("hex");
 }
 
@@ -140,7 +155,7 @@ export async function fetchVerified(
 		const hash = createHash("sha256");
 		let seen = 0;
 		// O_CREAT | O_EXCL: never an existing file, never through a link.
-		fd = openSync(partial, "wx", 0o600);
+		fd = openSync(partial, "wx+", 0o600);
 		for await (const chunk of response.body) {
 			seen += chunk.byteLength;
 			if (seen > limit)
@@ -164,9 +179,20 @@ export async function fetchVerified(
 				`${url} is ${seen} bytes but the pin says ${options.expectedSize}`,
 			);
 		}
+		// The stream was verified; now verify what the open file holds, and
+		// make that file executable through the same descriptor.
+		const onDisk = sha256OfFd(fd, seen);
+		if (onDisk !== sha256 || fstatSync(fd).size !== seen) {
+			throw new PinsError(
+				"DIGEST_MISMATCH",
+				`${url} arrived intact but the file on disk hashes to ${onDisk}; refusing to use it`,
+			);
+		}
 		fchmodSync(fd, 0o755);
 		closeSync(fd);
 		fd = undefined;
+		// Residual: rename publishes by name. Only the cache's owner (0700) can
+		// swap the name between the check above and this rename.
 		renameSync(partial, dest);
 	} catch (error) {
 		if (fd !== undefined) closeSync(fd);

@@ -6,11 +6,14 @@
  */
 import assert from "node:assert/strict";
 import {
+	closeSync,
 	existsSync,
+	openSync,
 	readdirSync,
 	readFileSync,
 	statSync,
 	writeFileSync,
+	writeSync,
 } from "node:fs";
 import { join } from "node:path";
 import { afterEach, describe, it } from "node:test";
@@ -28,6 +31,7 @@ import {
 	scratch,
 	sha256Hex,
 	startServer,
+	waitUntil,
 } from "./support/pins-support.ts";
 
 const DIGEST = "a".repeat(64);
@@ -117,6 +121,45 @@ describe("fetchVerified", () => {
 				error instanceof PinsError && error.code === "SIZE_EXCEEDED",
 		);
 		assert.deepEqual(readdirSync(dir), []);
+	});
+
+	it("checks the bytes the open file holds, not only the bytes that arrived", async () => {
+		server = await startServer();
+		const bytes = Buffer.from("#!/bin/sh\necho the pinned build\n");
+		const gate = server.setGate(
+			"/tool",
+			bytes.subarray(0, 10),
+			bytes.subarray(10),
+		);
+		const dir = scratch("fetch-fd");
+		const dest = join(dir, "tool");
+		const fetched = fetchVerified(
+			`${server.origin}/tool`,
+			sha256Hex(bytes),
+			dest,
+			{
+				allowLocal: true,
+			},
+		);
+		const partial = await waitUntil("a partial file with bytes in it", () => {
+			const name = readdirSync(dir).find((entry) => entry.endsWith(".partial"));
+			return name !== undefined && statSync(join(dir, name)).size > 0
+				? join(dir, name)
+				: undefined;
+		});
+		// Someone who can write the cache changes a byte the stream already hashed.
+		const fd = openSync(partial, "r+");
+		writeSync(fd, Buffer.from("X"), 0, 1, 0);
+		closeSync(fd);
+		gate.release();
+		await assert.rejects(
+			fetched,
+			(error: Error) =>
+				error instanceof PinsError &&
+				error.code === "DIGEST_MISMATCH" &&
+				/on disk/u.test(error.message),
+		);
+		assert.deepEqual(readdirSync(dir), [], "nothing was published");
 	});
 
 	it("reports an http error status without leaving a file", async () => {

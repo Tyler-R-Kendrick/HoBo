@@ -105,13 +105,21 @@ function tempDir(): string {
 }
 
 // Only the fixture repository's own config counts: no global or system file,
-// no CI marker and no opt-out inherited from whoever runs the suite.
+// no CI marker and no opt-out inherited from whoever runs the suite, and no
+// repository either (run from a git hook, GIT_DIR would point every fixture
+// at the outer one).
 const globalConfig = join(tempDir(), "gitconfig");
 writeFileSync(globalConfig, "");
+const inherited = new Set([
+	"CI",
+	"HOBO_SKIP_HOOKS",
+	"GIT_DIR",
+	"GIT_WORK_TREE",
+	"GIT_INDEX_FILE",
+	"GIT_COMMON_DIR",
+]);
 const env = Object.fromEntries(
-	Object.entries(process.env).filter(
-		([name]) => name !== "CI" && name !== "HOBO_SKIP_HOOKS",
-	),
+	Object.entries(process.env).filter(([name]) => !inherited.has(name)),
 );
 Object.assign(env, {
 	GIT_CONFIG_GLOBAL: globalConfig,
@@ -209,8 +217,20 @@ describe("scripts/ensure-hooks-path.sh", () => {
 		for (const optOut of [{ HOBO_SKIP_HOOKS: "1" }, { CI: "true" }]) {
 			const repo = checkout();
 			assert.equal(script(repo, optOut).status, 0);
-			assert.equal(hooksPath(repo), "");
+			assert.equal(hooksPath(repo), "", JSON.stringify(optOut));
 		}
+	});
+
+	it("never writes the config of a repository it is merely inside", () => {
+		// A copy of this checkout with no .git of its own (vendored, or a
+		// tarball unpacked into a dotfiles repository) must leave the enclosing
+		// repository alone: a hooks path there would silence its own hooks.
+		const outer = checkout();
+		const inner = furnish(join(outer, "vendor", "hobo"));
+		const result = script(inner);
+		assert.equal(result.status, 0, result.stderr);
+		assert.equal(result.stdout + result.stderr, "");
+		assert.equal(hooksPath(outer), "");
 	});
 
 	it("succeeds silently outside a repository", () => {

@@ -190,7 +190,7 @@ describe("the executable is identified with nothing to steal before it gets the 
 		trustedOpenSesame({
 			bin: exe,
 			env: {
-				PATH: [".", "", "relative", "/nonexistent", open, good].join(delimiter),
+				PATH: [".", "", "relative", `${good}-x`, open, good].join(delimiter),
 				OPENSESAME_STORE_PASSWORD: PASSPHRASE,
 				AWS_SECRET_ACCESS_KEY: "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
 			},

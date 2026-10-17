@@ -9,7 +9,7 @@ import {
 	type SpawnSyncOptionsWithStringEncoding,
 	spawnSync,
 } from "node:child_process";
-import { existsSync, realpathSync } from "node:fs";
+import { existsSync, lstatSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 
 import { PinsError, type PinsErrorCode } from "./pins.ts";
@@ -194,16 +194,20 @@ function realOr(path: string): string {
 
 /**
  * HEAD of the submodule's own repository, or null when it is not fetched yet.
- * Only a repository whose top level is the submodule's path answers: an empty
+ * The path must not be or pass through a symbolic link, and only a repository
+ * whose top level is the submodule's path answers: an empty
  * `.git` directory makes git walk up to the superproject, and a `.git` file
  * whose module directory is gone makes it fail, and both are refused here,
  * before any command runs in what git would take for the submodule.
  */
 export function headOf(root: string, path: string): string | null {
+	refuseLinkedPath(root, path);
 	const sub = join(root, path);
 	if (!existsSync(join(sub, ".git"))) return null;
 	const top = git(sub, ["rev-parse", "--show-toplevel"]);
-	if (top.status !== 0 || realOr(top.stdout) !== realOr(sub)) {
+	// Against the path under the root's real location, never the path's own
+	// target: a link that resolves to the superproject must not match it.
+	if (top.status !== 0 || realOr(top.stdout) !== join(realOr(root), path)) {
 		const answer =
 			top.status === 0
 				? `git answers for ${top.stdout} instead`
@@ -216,6 +220,37 @@ export function headOf(root: string, path: string): string | null {
 	}
 	const result = git(sub, ["rev-parse", "--verify", "HEAD"]);
 	return result.status === 0 ? result.stdout : null;
+}
+
+/** The first part of `path` under `root` that is a symbolic link, if any. */
+function linkOnPath(root: string, path: string): string | null {
+	const parts = path.split("/");
+	for (let end = 1; end <= parts.length; end += 1) {
+		const prefix = parts.slice(0, end).join("/");
+		try {
+			if (lstatSync(join(root, prefix)).isSymbolicLink()) return prefix;
+		} catch {
+			return null; // Not there (yet): nothing further down can be a link.
+		}
+	}
+	return null;
+}
+
+/**
+ * A submodule path is a directory of this checkout. A link there (or in a
+ * directory above it) points git at whatever it names, the superproject
+ * included, so it is refused before anything runs.
+ */
+function refuseLinkedPath(root: string, path: string): void {
+	const link = linkOnPath(root, path);
+	if (link === null) return;
+	throw new Refusal(
+		"SUBMODULE_STATE",
+		`${link} is a symbolic link; ${path} must be a directory of this checkout, so nothing is run in it`,
+		link === path
+			? `rm ${path} && git submodule update --init -- ${path}`
+			: `rm ${link} && git checkout -- ${link} && git submodule update --init -- ${path}`,
+	);
 }
 
 /** Uncommitted changes to tracked files (untracked build output is ignored). */

@@ -22,6 +22,9 @@ import {
  * Auth: short-lived SVID JWT only (auth/jwt login). Never store a long-lived
  * OpenBao/Vault token. Offline mode: deterministic HMAC, network-free.
  */
+/** The port's denied answer, as a transport failure produces it. */
+type TransportDenial = Extract<SecretsAccessResult, { status: "denied" }>;
+
 export function createOpenBaoSecretsPort(options: {
 	readonly openbaoAddr: string;
 	readonly role: string;
@@ -126,10 +129,7 @@ export function createOpenBaoSecretsPort(options: {
 	 * never secret material — so "server down" stays distinguishable from
 	 * "wrong port" at the call site.
 	 */
-	function transportDenied(
-		stage: string,
-		error: unknown,
-	): { status: "denied"; reason: string; code: string } {
+	function transportDenied<E>(stage: string, error: E): TransportDenial {
 		return {
 			status: "denied",
 			reason: `openbao ${stage} transport failed: ${

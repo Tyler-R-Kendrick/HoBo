@@ -65,11 +65,13 @@ rule for a place, used by the executable lookup and by `PATH`.
   win. A non-surrogate value in a bound variable or a conventional one for the bound provider (`VERCEL_TOKEN`, `VERCEL_API_TOKEN`)
   refuses the run (`real_credential_in_env`). The allowlist cannot see what a name does not say: `HOBO_PAT` reaches the command, and
   `passEnv` is passed as given.
-- **`PATH` is reduced.** OpenSesame's first act is a bare `node` lookup with the passphrase in its environment, so `PATH` is
-  the caller's absolute, existing, trusted directories (as they resolve, once each), else `/usr/local/bin:/usr/bin:/bin`; listing
-  it in `passEnv` changes nothing. The adapter does not rely on OpenSesame fixing its own bridge.
+- **`PATH` is reduced.** An older OpenSesame's first act is a bare `node` lookup with the passphrase in its environment (a current
+  one searches only directories group and others cannot write, with a minimal environment), so `PATH` is the caller's absolute,
+  existing, trusted directories that only their owner can add a file to (no sticky `/tmp`), as they resolve, once each, else
+  `/usr/local/bin:/usr/bin:/bin`; listing it in `passEnv` changes nothing. The adapter relies on neither OpenSesame. With no `node`
+  in those directories OpenSesame refuses before the command starts: `bridge_missing`, from either version's words.
 - **A trusted place** resolves through every symlink; it and every directory above it belong to the effective user or root and are
-  not writable by group or others (a sticky directory they own is allowed); it is not under `node_modules/.bin` and not inside the
+  not writable by group or others (a sticky directory they own is allowed above it); it is not under `node_modules/.bin` and not inside the
   working directory's tree (root and the home directory are not projects). Not checked: contents, ACLs, a mount that lies about
   modes, Windows ownership, or the gap between check and use.
 - **The executable is found, trusted and identified before the passphrase can reach it.** Absolute `PATH` entries only; the first

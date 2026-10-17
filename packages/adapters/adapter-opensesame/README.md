@@ -109,15 +109,23 @@ What `runProxied` does before and around the run:
   `OPENSESAME_STORE_PASSWORD`, `OPENSESAME_STORE_DIR` and the like are `passEnv` names. A process that already holds a
   value that is not a surrogate in a bound variable or in the provider's conventional ones (`VERCEL_TOKEN`,
   `VERCEL_API_TOKEN`) is refused with `real_credential_in_env` before anything is written.
-- **`PATH` is reduced, not inherited.** OpenSesame's first act is to run a bare `node` (the env-spec bridge) with the store
-  passphrase in its environment, so an empty or relative `PATH` entry would let a `./node` in a checkout take it. `PATH` is
-  always your entries that are absolute, exist and are trusted places (below), each written as it resolves; if none remain,
-  `/usr/local/bin:/usr/bin:/bin` (on Windows, SystemRoot's `System32` and SystemRoot). Listing `PATH` in `passEnv` does not
-  change that. A command that lives only in a dropped directory has to be named by absolute path in `argv`, and `node`
-  must be in a trusted directory or OpenSesame reports `bridge_missing`. **The adapter does not rely on OpenSesame also
-  fixing its own schema bridge** (removing the passphrase from it, an absolute path for `node`); this holds either way.
+- **`PATH` is reduced, not inherited.** An OpenSesame built before its commit `c403ba90a` runs a bare `node` (the
+  env-spec bridge) as its first act, with the store passphrase in its environment, so an empty or relative `PATH` entry
+  would let a `./node` in a checkout take it. A current one looks `node` up only in `PATH` directories that group and
+  others cannot write and starts it with a minimal environment. **The adapter does not rely on that**; this holds with
+  either. `PATH` is always your entries that are absolute, exist, are trusted places (below) and that only their owner can
+  add a file to (a sticky `/tmp` is fine above a file, not as a directory a program is looked up in by name: sticky stops
+  others removing a name, not adding one), each written as it resolves; if none remain, `/usr/local/bin:/usr/bin:/bin`
+  (on Windows, SystemRoot's `System32` and SystemRoot). Listing `PATH` in `passEnv` does not change that. A command that
+  lives only in a dropped directory has to be named by absolute path in `argv`.
+- **`node` for the schema comes from that `PATH`.** OpenSesame searches the `PATH` the adapter built, so `node` must sit in
+  one of those directories. When none holds one (for example where Node is installed in a world-writable directory),
+  OpenSesame refuses the run before the command starts and the outcome is `bridge_missing`, from either version's words
+  (`os error 2`, or ``no usable `node` ``). An `OPENSESAME_NODE` override is proposed in OpenSesame and, on 2026-10-17, is not on its
+  main; the adapter does not depend on it. If your OpenSesame reads it, list it in `passEnv`, where it is passed as given,
+  like any listed name and like an explicit `bin` path.
 - **A trusted place** resolves through every symlink; it and every directory above it belong to you or root and are not
-  writable by group or others (a sticky directory you or root own, like `/tmp`, is allowed); it is not under a
+  writable by group or others (a sticky directory you or root own, like `/tmp`, is allowed above it); it is not under a
   `node_modules/.bin` directory and not inside the working directory's tree (the filesystem root and your home directory
   are not projects). Not checked: file contents, ACLs, extended attributes, Windows ownership, a mount that lies about
   modes, or that a trusted place stays trusted between the check and the use (a swap there needs write access to a directory

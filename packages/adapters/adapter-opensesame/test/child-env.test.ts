@@ -106,6 +106,14 @@ describe("the environment a run starts from is an allowlist, not the caller's", 
 		expect(env).not.toHaveProperty("OPENSESAME_STORE_DIR");
 	});
 
+	it("passes OPENSESAME_NODE only when the caller lists it, and then as given: the adapter neither depends on it nor resolves it", () => {
+		const env = { PATH: "/usr/bin", OPENSESAME_NODE: "/opt/ci/node/bin/node" };
+		expect(launchWith(env).env).not.toHaveProperty("OPENSESAME_NODE");
+		expect(
+			launchWith(env, { passEnv: ["OPENSESAME_NODE"] }).env.OPENSESAME_NODE,
+		).toBe("/opt/ci/node/bin/node");
+	});
+
 	it("keeps the Windows variables only on Windows", () => {
 		const win = {
 			SYSTEMROOT: "C:\\Windows",

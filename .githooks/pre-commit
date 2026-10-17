@@ -1,6 +1,33 @@
 #!/usr/bin/env sh
+# The commit gate. It needs Node and installed dependencies, not a package
+# manager: every script runs through scripts/run-script.mts, which hands the
+# script its arguments as arguments, so a base branch name is never shell text.
 set -eu
 
-node --run generated:guard
-BASE="${HOBO_ARCHITECTURE_BASE:-$(node --run fetch:pr-base 2>/dev/null)}"
-node --run check:relevant:staged -- --base="$BASE"
+case $(printf '%s' "${HOBO_SKIP_HOOKS:-}" | tr '[:upper:]' '[:lower:]') in
+1 | true | yes | on) exit 0 ;;
+esac
+
+if [ ! -d node_modules ]; then
+	echo "pre-commit: dependencies are not installed (no node_modules); run pnpm install, or set HOBO_SKIP_HOOKS=1 to commit without this hook." >&2
+	exit 1
+fi
+
+run() {
+	node --experimental-strip-types scripts/run-script.mts "$@"
+}
+
+if [ -n "${HOBO_ARCHITECTURE_BASE:-}" ]; then
+	BASE=$HOBO_ARCHITECTURE_BASE
+elif ! BASE=$(run fetch:pr-base); then
+	echo "pre-commit: fetch:pr-base could not find the base to check against (its error is above); fix that, or name the base with HOBO_ARCHITECTURE_BASE=<ref>." >&2
+	exit 1
+fi
+
+if ! git rev-parse --verify --quiet --end-of-options "$BASE^{commit}" >/dev/null; then
+	printf "pre-commit: the base '%s' is not a commit in this repository; fetch it, or name another with HOBO_ARCHITECTURE_BASE=<ref>.\n" "$BASE" >&2
+	exit 1
+fi
+
+run generated:guard
+run check:relevant:staged -- --base="$BASE"

@@ -73,13 +73,15 @@ function rootScripts(root: string): { readonly [name: string]: string } {
  * A `pnpm run <script>` or `pnpm exec <bin>` command, run with what Node and
  * the checkout already provide, so a gate does not need a usable pnpm:
  *
- * - `pnpm run <script> [args]` becomes `node --run <script> -- [args]`
- *   (Node 22, which `engines` requires). It runs the root package.json script
- *   with `node_modules/.bin` on PATH, like pnpm.
+ * - `pnpm run <script> [args]` becomes `node --experimental-strip-types
+ *   scripts/run-script.mts <script> -- [args]`, which runs the root
+ *   package.json script with `node_modules/.bin` on PATH, like pnpm, and hands
+ *   it the arguments as arguments. (`node --run` spliced them into shell text,
+ *   so an argument holding `'` broke out of its quote.)
  * - `pnpm exec <bin> [args]` becomes `node_modules/.bin/<bin> [args]`.
  *
  * Everything else stays pnpm: installs, filters, unknown scripts, and scripts
- * with `pre`/`post` hooks, which `node --run` does not run. So does Windows,
+ * with `pre`/`post` scripts, which the launcher does not run. So does Windows,
  * where the `.bin` shims need cmd.exe and nothing here verifies that path.
  */
 export function withoutPackageManager(
@@ -102,16 +104,19 @@ export function withoutPackageManager(
 		};
 	}
 	if (verb !== "run") return unchanged;
-	const hooked =
-		facts.scripts[`pre${name}`] !== undefined ||
-		facts.scripts[`post${name}`] !== undefined;
-	if (facts.scripts[name] === undefined || hooked) return unchanged;
+	const known = (script: string) => Object.hasOwn(facts.scripts, script);
+	if (!known(name) || known(`pre${name}`) || known(`post${name}`)) {
+		return unchanged;
+	}
 	const scriptArgs = rest[0] === "--" ? rest.slice(1) : rest;
 	return {
 		command: process.execPath,
-		args:
-			scriptArgs.length === 0
-				? ["--run", name]
-				: ["--run", name, "--", ...scriptArgs],
+		args: [
+			"--experimental-strip-types",
+			join(facts.root, "scripts", "run-script.mts"),
+			name,
+			"--",
+			...scriptArgs,
+		],
 	};
 }

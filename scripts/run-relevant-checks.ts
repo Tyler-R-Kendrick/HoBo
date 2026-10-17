@@ -25,9 +25,10 @@ type ChangedFileRecord = {
 };
 
 /**
- * How a check is actually started: pnpm-shaped checks run through `node --run`
- * or `node_modules/.bin` (see `withoutPackageManager`), so the pre-commit hook
- * needs no usable pnpm; what still needs pnpm stays pnpm.
+ * How a check is actually started: pnpm-shaped checks run through
+ * scripts/run-script.mts or `node_modules/.bin` (see `withoutPackageManager`),
+ * so the pre-commit hook needs no usable pnpm; what still needs pnpm stays
+ * pnpm.
  */
 function invocationFor(command: string, commandArgs: string[]) {
 	const direct = withoutPackageManager(command, commandArgs);

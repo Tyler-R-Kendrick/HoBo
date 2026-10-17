@@ -44,10 +44,11 @@ import {
 	parseResourceRequirement,
 	parseTopologyScope,
 } from "../src/policies.js";
-import { BROKER_SCHEMA_VERSION } from "../src/types.js";
+import type { JsonObject } from "../src/json.js";
+import { BROKER_SCHEMA_VERSION, type TopologyScope } from "../src/types.js";
 
 /** The code carried by a refusal, or the string that was thrown instead. */
-function codeOf(run: () => unknown): string {
+function codeOf(run: () => void): string {
 	try {
 		run();
 	} catch (error) {
@@ -57,7 +58,7 @@ function codeOf(run: () => unknown): string {
 	return "no-refusal";
 }
 
-const placement = (over: Record<string, unknown> = {}) => ({
+const placement = (over: JsonObject = {}) => ({
 	id: "p1",
 	scopeKind: "bindle",
 	objective: "min-cost",
@@ -68,13 +69,13 @@ describe("placement policies", () => {
 	it("refuses anything that is not an object", () => {
 		// Including an array, which `typeof` alone would call an object and let
 		// through as a record with numeric keys.
-		expect(codeOf(() => parsePlacementPolicy([] as never))).toBe(
+		expect(codeOf(() => parsePlacementPolicy([]))).toBe(
 			"invalid-placement-policy",
 		);
 		expect(codeOf(() => parsePlacementPolicy(null))).toBe(
 			"invalid-placement-policy",
 		);
-		expect(codeOf(() => parsePlacementPolicy("p1" as never))).toBe(
+		expect(codeOf(() => parsePlacementPolicy("p1"))).toBe(
 			"invalid-placement-policy",
 		);
 	});
@@ -83,7 +84,7 @@ describe("placement policies", () => {
 		// An empty string is falsy in the places this id is later used, so
 		// accepting it would produce a policy that silently matches nothing.
 		expect(
-			codeOf(() => parsePlacementPolicy(placement({ id: "" }) as never)),
+			codeOf(() => parsePlacementPolicy(placement({ id: "" }))),
 		).toBe("invalid-placement-policy");
 	});
 
@@ -97,7 +98,7 @@ describe("placement policies", () => {
 			objective: "pinned",
 			pinned_provider_id: "aws",
 			require_explicit_camps: true,
-		} as never);
+		});
 		expect(parsed.scopeKind).toBe("camp");
 		expect(parsed.pinnedProviderId).toBe("aws");
 		expect(parsed.requireExplicitCamps).toBe(true);
@@ -106,7 +107,7 @@ describe("placement policies", () => {
 	it("refuses a scope kind outside the known set", () => {
 		expect(
 			codeOf(() =>
-				parsePlacementPolicy(placement({ scopeKind: "tenant" }) as never),
+				parsePlacementPolicy(placement({ scopeKind: "tenant" })),
 			),
 		).toBe("invalid-scope-kind");
 	});
@@ -114,7 +115,7 @@ describe("placement policies", () => {
 	it("refuses an objective outside the known set", () => {
 		expect(
 			codeOf(() =>
-				parsePlacementPolicy(placement({ objective: "fastest" }) as never),
+				parsePlacementPolicy(placement({ objective: "fastest" })),
 			),
 		).toBe("invalid-objective");
 	});
@@ -125,7 +126,7 @@ describe("placement policies", () => {
 		// pinning means.
 		expect(
 			codeOf(() =>
-				parsePlacementPolicy(placement({ objective: "pinned" }) as never),
+				parsePlacementPolicy(placement({ objective: "pinned" })),
 			),
 		).toBe("pinned-provider-required");
 	});
@@ -136,7 +137,7 @@ describe("placement policies", () => {
 		expect(
 			codeOf(() =>
 				parsePlacementPolicy(
-					placement({ objective: "pinned", pinnedProviderId: "" }) as never,
+					placement({ objective: "pinned", pinnedProviderId: "" }),
 				),
 			),
 		).toBe("pinned-provider-required");
@@ -147,13 +148,13 @@ describe("placement policies", () => {
 		// string "false" would be the worst possible direction for this bug to
 		// go, so the non-boolean cases are pinned.
 		const on = parsePlacementPolicy(
-			placement({ requireExplicitCamps: true }) as never,
+			placement({ requireExplicitCamps: true }),
 		);
 		expect(on.requireExplicitCamps).toBe(true);
 		for (const value of ["true", 1, {}, []]) {
 			expect(
 				parsePlacementPolicy(
-					placement({ requireExplicitCamps: value }) as never,
+					placement({ requireExplicitCamps: value }),
 				).requireExplicitCamps,
 			).toBe(false);
 		}
@@ -164,7 +165,7 @@ describe("billing policies", () => {
 	it("defaults every amount to zero rather than refusing", () => {
 		// A policy set that has not configured spend yet is legitimate; the
 		// numbers are floors, not requirements.
-		const parsed = parseBillingPolicy({ quota: "standard" } as never);
+		const parsed = parseBillingPolicy({ quota: "standard" });
 		expect(parsed.quotaUsed).toBe(0);
 		expect(parsed.quotaLimit).toBe(0);
 		expect(parsed.budgetUsd).toBe(0);
@@ -172,7 +173,7 @@ describe("billing policies", () => {
 	});
 
 	it("requires a quota name", () => {
-		expect(codeOf(() => parseBillingPolicy({} as never))).toBe(
+		expect(codeOf(() => parseBillingPolicy({}))).toBe(
 			"invalid-billing-policy",
 		);
 	});
@@ -182,7 +183,7 @@ describe("billing policies", () => {
 		// limit pass.
 		expect(
 			codeOf(() =>
-				parseBillingPolicy({ quota: "standard", quotaUsed: -1 } as never),
+				parseBillingPolicy({ quota: "standard", quotaUsed: -1 }),
 			),
 		).toBe("invalid-billing-policy");
 	});
@@ -194,7 +195,7 @@ describe("billing policies", () => {
 		// so an unbounded spend would pass the overflow gate.
 		expect(
 			codeOf(() =>
-				parseBillingPolicy({ quota: "standard", quotaUsed: NaN } as never),
+				parseBillingPolicy({ quota: "standard", quotaUsed: NaN }),
 			),
 		).toBe("invalid-billing-policy");
 	});
@@ -206,7 +207,7 @@ describe("billing policies", () => {
 					quota: "standard",
 					quota_used: 10,
 					quota_limit: 5,
-				} as never),
+				}),
 			),
 		).toBe("quota-overflow");
 	});
@@ -220,14 +221,14 @@ describe("billing policies", () => {
 				quota: "standard",
 				quotaUsed: 5,
 				quotaLimit: 5,
-			} as never).quotaUsed,
+			}).quotaUsed,
 		).toBe(5);
 	});
 });
 
 describe("delivery policies", () => {
 	it("refuses an unknown engine", () => {
-		expect(codeOf(() => parseDeliveryPolicy({ engine: "flux" } as never))).toBe(
+		expect(codeOf(() => parseDeliveryPolicy({ engine: "flux" }))).toBe(
 			"invalid-delivery-engine",
 		);
 	});
@@ -235,7 +236,7 @@ describe("delivery policies", () => {
 	it("defaults the sync mode to manual", () => {
 		// Manual, because automatic sync is the one that acts on its own; a
 		// missing field must not opt an operator into that.
-		expect(parseDeliveryPolicy({ engine: "in-proc" } as never).syncMode).toBe(
+		expect(parseDeliveryPolicy({ engine: "in-proc" }).syncMode).toBe(
 			"manual",
 		);
 	});
@@ -246,7 +247,7 @@ describe("delivery policies", () => {
 				parseDeliveryPolicy({
 					engine: "in-proc",
 					sync_mode: "hourly",
-				} as never),
+				}),
 			),
 		).toBe("invalid-sync-mode");
 	});
@@ -256,7 +257,7 @@ describe("delivery policies", () => {
 		// then fail at delivery time, far from the policy that caused it.
 		expect(
 			codeOf(() =>
-				parseDeliveryPolicy({ engine: "argo", gitopsRepo: "g" } as never),
+				parseDeliveryPolicy({ engine: "argo", gitopsRepo: "g" }),
 			),
 		).toBe("argo-destination-required");
 		expect(
@@ -264,7 +265,7 @@ describe("delivery policies", () => {
 				parseDeliveryPolicy({
 					engine: "argo",
 					destinationNamespace: "n",
-				} as never),
+				}),
 			),
 		).toBe("argo-destination-required");
 	});
@@ -276,7 +277,7 @@ describe("delivery policies", () => {
 			destination_namespace: "apps",
 			sync_mode: "auto",
 			prune: true,
-		} as never);
+		});
 		expect(parsed.gitopsRepo).toBe("git://repo");
 		expect(parsed.destinationNamespace).toBe("apps");
 		expect(parsed.syncMode).toBe("auto");
@@ -284,14 +285,14 @@ describe("delivery policies", () => {
 	});
 
 	it("does not demand a destination for in-proc", () => {
-		const parsed = parseDeliveryPolicy({ engine: "in-proc" } as never);
+		const parsed = parseDeliveryPolicy({ engine: "in-proc" });
 		expect(parsed.gitopsRepo).toBeUndefined();
 		expect(parsed.prune).toBe(false);
 	});
 });
 
 describe("policy sets", () => {
-	const set = (over: Record<string, unknown> = {}) => ({
+	const set = (over: JsonObject = {}) => ({
 		schemaVersion: BROKER_SCHEMA_VERSION,
 		brokerId: "b1",
 		billing: { quota: "standard" },
@@ -304,28 +305,29 @@ describe("policy sets", () => {
 		// fall into `parseBillingPolicy({})` and report "quota must be a non-empty
 		// string" against a billing block the operator never wrote. The refusal
 		// now names the block, so the fix it points at is the real one.
-		try {
+		expect(() =>
 			parseBrokerPolicySet({
 				schemaVersion: BROKER_SCHEMA_VERSION,
 				brokerId: "b1",
-			} as never);
-			throw new Error("expected a refusal");
-		} catch (error) {
-			expect((error as BrokerParseError).code).toBe("invalid-policy-set");
-			expect((error as Error).message).toMatch(/billing is required/u);
-		}
+			}),
+		).toThrow(
+			expect.objectContaining({
+				code: "invalid-policy-set",
+				message: expect.stringMatching(/billing is required/u),
+			}),
+		);
 	});
 
 	it("refuses a schema version it does not implement", () => {
 		// Pinned rather than range-checked: a policy document from a future
 		// broker may mean something different by the same field names.
 		expect(
-			codeOf(() => parseBrokerPolicySet(set({ schemaVersion: "v0" }) as never)),
+			codeOf(() => parseBrokerPolicySet(set({ schemaVersion: "v0" }))),
 		).toBe("unsupported-schema");
 	});
 
 	it("defaults to no placement policies rather than refusing", () => {
-		const parsed = parseBrokerPolicySet(set() as never);
+		const parsed = parseBrokerPolicySet(set());
 		expect(parsed.placementPolicies).toEqual([]);
 	});
 
@@ -334,7 +336,7 @@ describe("policy sets", () => {
 		// the alternative is a refusal, and the broker prefers to run with no
 		// placement policy than not at all.
 		expect(
-			parseBrokerPolicySet(set({ placement_policies: "all" }) as never)
+			parseBrokerPolicySet(set({ placement_policies: "all" }))
 				.placementPolicies,
 		).toEqual([]);
 	});
@@ -346,7 +348,7 @@ describe("policy sets", () => {
 				parseBrokerPolicySet(
 					set({
 						placementPolicies: [placement({ objective: "fastest" })],
-					}) as never,
+					}),
 				),
 			),
 		).toBe("invalid-objective");
@@ -356,7 +358,7 @@ describe("policy sets", () => {
 		expect(
 			codeOf(() =>
 				parseBrokerPolicySet(
-					set({ required_connector_kinds: ["smoke-signal"] }) as never,
+					set({ required_connector_kinds: ["smoke-signal"] }),
 				),
 			),
 		).toBe("invalid-connector-kind");
@@ -364,14 +366,14 @@ describe("policy sets", () => {
 
 	it("supplies in-proc delivery and a zero billing policy by default", () => {
 		// So a minimal policy set is usable rather than merely parseable.
-		const parsed = parseBrokerPolicySet(set() as never);
+		const parsed = parseBrokerPolicySet(set());
 		expect(parsed.delivery.engine).toBe("in-proc");
 		expect(parsed.billing.quotaLimit).toBe(0);
 	});
 });
 
 describe("broker requests", () => {
-	const request = (over: Record<string, unknown> = {}) => ({
+	const request = (over: JsonObject = {}) => ({
 		schemaVersion: BROKER_SCHEMA_VERSION,
 		requestId: "r1",
 		scope: { bindleId: "app" },
@@ -384,17 +386,18 @@ describe("broker requests", () => {
 		// to fall into `parseTopologyScope({})` and refuse over a missing
 		// bindleId inside a scope block the caller never wrote; it now says the
 		// scope itself is missing, which is the fix the caller actually needs.
-		try {
+		expect(() =>
 			parseBrokerRequest({
 				schemaVersion: BROKER_SCHEMA_VERSION,
 				requestId: "r1",
 				requirements: [{ resourceId: "db", port: "hobo:sql" }],
-			} as never);
-			throw new Error("expected a refusal");
-		} catch (error) {
-			expect((error as BrokerParseError).code).toBe("invalid-request");
-			expect((error as Error).message).toMatch(/scope is required/u);
-		}
+			}),
+		).toThrow(
+			expect.objectContaining({
+				code: "invalid-request",
+				message: expect.stringMatching(/scope is required/u),
+			}),
+		);
 	});
 
 	it("refuses a request that places nothing", () => {
@@ -402,10 +405,10 @@ describe("broker requests", () => {
 		// bug, and answering it with an empty receipt would look like a
 		// completed placement.
 		expect(
-			codeOf(() => parseBrokerRequest(request({ requirements: [] }) as never)),
+			codeOf(() => parseBrokerRequest(request({ requirements: [] }))),
 		).toBe("empty-requirements");
 		expect(
-			codeOf(() => parseBrokerRequest(request({ requirements: {} }) as never)),
+			codeOf(() => parseBrokerRequest(request({ requirements: {} }))),
 		).toBe("empty-requirements");
 	});
 
@@ -419,14 +422,14 @@ describe("broker requests", () => {
 					requestId: "r1",
 					scope: { bindleId: "app" },
 					requirements: [{ resourceId: "db", port: "hobo:sql" }],
-				} as never),
+				}),
 			),
 		).toBe("unsupported-schema");
 	});
 
 	it("defaults the scope to bindle-only and the estimate to zero", () => {
 		const parsed = parseBrokerRequest(
-			request({ scope: { bindleId: "app" } }) as never,
+			request({ scope: { bindleId: "app" } }),
 		);
 		expect(parsed.scope.campId).toBeUndefined();
 		expect(parsed.spendEstimateUsd).toBe(0);
@@ -439,7 +442,7 @@ describe("broker requests", () => {
 			scope: { bindle_id: "app" },
 			requirements: [{ resource_id: "db", port: "hobo:sql" }],
 			spend_estimate_usd: 12.5,
-		} as never);
+		});
 		expect(parsed.requestId).toBe("r2");
 		expect(parsed.spendEstimateUsd).toBe(12.5);
 		expect(parsed.requirements[0]?.resourceId).toBe("db");
@@ -451,7 +454,7 @@ describe("topology scopes and requirements", () => {
 		// `effectivePlacementPolicy` decides which layers apply by testing these
 		// for `undefined`, so a present-but-undefined key and an absent one have
 		// to stay indistinguishable.
-		const parsed = parseTopologyScope({ bindle_id: "app" } as never);
+		const parsed = parseTopologyScope({ bindle_id: "app" });
 		expect(Object.keys(parsed)).toEqual(["bindleId"]);
 	});
 
@@ -461,7 +464,7 @@ describe("topology scopes and requirements", () => {
 			camp_id: "c",
 			yard_id: "y",
 			junction_id: "j",
-		} as never);
+		});
 		expect(parsed).toEqual({
 			bindleId: "app",
 			campId: "c",
@@ -475,7 +478,7 @@ describe("topology scopes and requirements", () => {
 			resourceId: "db",
 			port: "hobo:sql",
 			features: ["ha", 7, "", null, "backup"],
-		} as never);
+		});
 		expect(parsed.features).toEqual(["ha", "backup"]);
 	});
 
@@ -483,27 +486,27 @@ describe("topology scopes and requirements", () => {
 		// The port is what the requirement is *for*; without it there is nothing
 		// to match a provider against.
 		expect(
-			codeOf(() => parseResourceRequirement({ resourceId: "db" } as never)),
+			codeOf(() => parseResourceRequirement({ resourceId: "db" })),
 		).toBe("invalid-requirement");
 	});
 });
 
 describe("layering placement policies", () => {
-	function policies(...layers: Array<Record<string, unknown>>) {
+	function policies(...layers: JsonObject[]) {
 		return parseBrokerPolicySet({
 			schemaVersion: BROKER_SCHEMA_VERSION,
 			brokerId: "b1",
 			billing: { quota: "standard" },
 			placementPolicies: layers,
-		} as never);
+		});
 	}
 
-	const scope = {
+	const scope: TopologyScope = {
 		bindleId: "app",
 		campId: "c",
 		yardId: "y",
 		junctionId: "j",
-	} as never;
+	};
 
 	it("returns nothing when no layer applies to the scope", () => {
 		// A junction-scoped policy against a bindle-only scope. Returning a
@@ -511,7 +514,7 @@ describe("layering placement policies", () => {
 		expect(
 			effectivePlacementPolicy(
 				policies(placement({ id: "j1", scopeKind: "junction" })),
-				{ bindleId: "app" } as never,
+				{ bindleId: "app" },
 			),
 		).toBeUndefined();
 	});

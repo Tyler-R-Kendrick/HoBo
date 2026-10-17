@@ -244,16 +244,26 @@ function insideEither(gitDir: string, owner: Repository): boolean {
 	return [owner.gitDir, owner.common].some((dir) => inside(gitDir, dir));
 }
 
-/** Whether the repository's `remote.origin.url` is the repository `wanted` names. */
+/**
+ * Whether the repository fetches `origin` from the repository `wanted` names.
+ * git reads `remote.origin.url` through `[include]`, and fetches from the first
+ * of several values while `--get` answers the last one: so every value is read,
+ * includes followed, and only a single value that is `wanted` counts.
+ */
 function originIs(root: string, gitDir: string, wanted: string): boolean {
 	const origin = git(root, [
 		"config",
+		"-z",
 		"-f",
 		join(gitDir, "config"),
-		"--get",
+		"--includes",
+		"--get-all",
 		"remote.origin.url",
 	]);
-	return origin.status === 0 && sameRepo(origin.stdout, wanted);
+	const urls = origin.stdout.split("\0").slice(0, -1);
+	return (
+		origin.status === 0 && urls.length === 1 && sameRepo(urls[0] ?? "", wanted)
+	);
 }
 
 /** Whether the repository's own `core.worktree` names `path`: git made it for this path. */

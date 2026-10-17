@@ -4,6 +4,7 @@
  * the child may have written: it returns text to classify and decides nothing.
  */
 
+// public-contract: the prefix OpenSesame writes before its own sentences on stderr (apps/cli); outcome.ts reads by it and the tests pin it.
 export const OWN_PREFIX = "opensesame: ";
 /** How much of what follows the prefix is read; the longest sentence OpenSesame writes is under 300. */
 export const SENTENCE_LIMIT = 512;

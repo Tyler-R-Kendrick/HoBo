@@ -29,7 +29,8 @@ import { dirname, join } from "node:path";
 interface RunPlan {
 	readonly exit: number;
 	readonly report?: string;
-	readonly runCopy?: "same" | "different" | "none";
+	/** The run directory's copy of the report; "no-directory" leaves no run directory at all. */
+	readonly runCopy?: "same" | "different" | "none" | "no-directory";
 	readonly startedAt?: string;
 	readonly runsDir?: string;
 	/** Hang this long (a child of its own process group first, its pid written to pidFile). */
@@ -83,6 +84,7 @@ function writeReport(run: RunPlan): string | undefined {
 	mkdirSync(latest, { recursive: true });
 	writeFileSync(join(latest, "report.json"), bytes);
 	const runDir = join(runsDir, report.runId);
+	if (run.runCopy === "no-directory") return runDir;
 	mkdirSync(runDir, { recursive: true });
 	if (run.runCopy === "none") return runDir;
 	writeFileSync(

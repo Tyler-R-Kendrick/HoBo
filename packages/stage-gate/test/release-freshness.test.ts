@@ -84,6 +84,20 @@ describe("the release gate records only this run's report", () => {
 		TIMEOUT,
 	);
 
+	it(
+		"a report whose run directory is not there after the run is refused",
+		async () => {
+			const run = await runGate({
+				...ALL_PASS,
+				run: { exit: 0, report: PASSED, runCopy: "no-directory" },
+			});
+			expect(checkOf(run, "acceptance-replay").evidence.reason).toMatch(
+				/^report\.json names run [0-9a-f-]{36}, which \.ai-bdd\/runs does not hold: it is not this run's report$/u,
+			);
+		},
+		TIMEOUT,
+	);
+
 	const PRINTED: readonly (readonly [string, "other" | "none", RegExp])[] = [
 		[
 			"another new run's directory (a concurrent run wrote the latest report)",

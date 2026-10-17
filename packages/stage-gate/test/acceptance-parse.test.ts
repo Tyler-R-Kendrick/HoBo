@@ -270,11 +270,26 @@ describe("parseAiBddRunReport", () => {
 		"2026-10-13T01:14:10Z",
 		"2026-10-13T01:14:10.915+00:00",
 		"2026-10-13 01:14:10.915Z",
+		// The form, but no date: month 13, hour 25.
+		"2026-13-45T25:61:61.000Z",
 	])("refuses startedAt %j, which is not the toISOString form v1 pins", (startedAt) => {
 		const doc = fixtureDoc("passed");
 		doc.startedAt = startedAt;
 		expect(issuesOf(bytesOf(doc))).toEqual([
 			"startedAt: expected an ISO 8601 timestamp in toISOString form (YYYY-MM-DDTHH:MM:SS.sssZ)",
+		]);
+	});
+
+	it("refuses run-level and per-purpose tokens, and a cost above zero", () => {
+		const doc = fixtureDoc("passed");
+		const usage = docAt(doc, "usage");
+		usage.inputTokens = 5;
+		usage.estimatedCostUsd = 0.01;
+		docAt(docAt(usage, "byPurpose"), "judge").outputTokens = 3;
+		expect(issuesOf(bytesOf(doc))).toEqual([
+			"usage.inputTokens is 5: a replay-only run spends no tokens",
+			"usage.estimatedCostUsd is 0.01: a replay-only run costs nothing",
+			"usage.byPurpose.judge.outputTokens is 3: a replay-only run spends no tokens",
 		]);
 	});
 

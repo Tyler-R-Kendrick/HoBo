@@ -37,10 +37,17 @@ import {
 	IAC_PROGRAM_KIND,
 	IAC_PROVIDER,
 } from "../src/iac-program.js";
+import type { JsonObject, JsonValue } from "../src/json.js";
 
 type Program = Parameters<typeof assertLocalIacProgram>[0];
+type Resource = Program["resources"][number];
 
-function resource(over: Record<string, unknown> = {}) {
+/** A program's fields as a document may carry them: the declared type, or any other JSON. */
+type ProgramFields = {
+	readonly [field in keyof Program]?: Program[field] | JsonValue;
+};
+
+function resource(over: Partial<Resource> = {}): Resource {
 	return {
 		name: "db",
 		type: "provider:resource",
@@ -51,8 +58,8 @@ function resource(over: Record<string, unknown> = {}) {
 	};
 }
 
-function program(over: Record<string, unknown> = {}): Program {
-	return {
+function program(over: ProgramFields = {}): Program {
+	const document = {
 		apiVersion: IAC_PROGRAM_API_VERSION,
 		kind: IAC_PROGRAM_KIND,
 		provider: IAC_PROVIDER,
@@ -61,7 +68,12 @@ function program(over: Record<string, unknown> = {}): Program {
 		resources: [resource()],
 		stackOutputs: {},
 		...over,
-	} as Program;
+	};
+	// SAFETY: the guard is the parse boundary for programs that crossed a
+	// document boundary, so these tests hand it what the type forbids (a
+	// foreign version, a resource list that is not a list). It re-checks every
+	// field it relies on before trusting the declared type.
+	return document as Program;
 }
 
 /** The message of the refusal, or a marker when there wasn't one. */
@@ -69,7 +81,7 @@ function refusal(value: Program): string {
 	try {
 		assertLocalIacProgram(value);
 	} catch (error) {
-		return (error as Error).message;
+		return error instanceof Error ? error.message : String(error);
 	}
 	return "no-refusal";
 }
@@ -136,7 +148,7 @@ describe("the resource list", () => {
 });
 
 describe("output references", () => {
-	const withInputs = (inputs: Record<string, unknown>, outs = {}) =>
+	const withInputs = (inputs: JsonObject, outs: Program["stackOutputs"] = {}) =>
 		program({
 			resources: [resource({ inputs })],
 			stackOutputs: outs,

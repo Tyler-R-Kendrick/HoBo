@@ -125,8 +125,8 @@ runner then exits 3. A passed release record holds exactly the three checks; the
 replay's evidence of a replay-only run that replayed a scenario (`report_digest`,
 `run_id`, `model_calls` "0", `frozen` and `no_agent` "true", `report_exit_code`
 "0", `scenarios_total` above 0 and `scenarios_passed` + `scenarios_healed` above
-0, each count present and in decimal digits within int64, as the CUE's
-`strconv.Atoi` reads it); and evidence-intact naming the same `run_id` and
+0, each count present and in decimal digits within int64, a leading zero
+allowed, as the CUE's `strconv.Atoi` reads it); and evidence-intact naming the same `run_id` and
 `report_digest` (`src/record-constraints.ts`, and the same in `stage_gate_record.cue`, where
 every field the parser requires is marked `!`: CUE would otherwise fill an
 absent `model_calls` with its constraint `"0"` and accept the record).

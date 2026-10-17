@@ -73,7 +73,7 @@ import "strconv"
 					frozen!:           "true"
 					no_agent!:         "true"
 					report_exit_code!: "0"
-					scenarios_total!:  =~"^[1-9][0-9]*$"
+					scenarios_total!:  =~"^[0-9]+$"
 					scenarios_passed!: =~"^[0-9]+$"
 					scenarios_healed!: =~"^[0-9]+$"
 				}
@@ -86,6 +86,9 @@ import "strconv"
 				}
 			},
 		]
+		// Each count is read as strconv.Atoi reads it, as record-constraints.ts
+		// does: decimal digits (a leading zero allowed) within int64.
+		_total: strconv.Atoi(checks[1].evidence.scenarios_total) & >0
 		_replayed: strconv.Atoi(checks[1].evidence.scenarios_passed) + strconv.Atoi(checks[1].evidence.scenarios_healed)
 		_replayed: >0
 	}

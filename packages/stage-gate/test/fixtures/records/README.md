@@ -16,5 +16,8 @@ refused. `parseStageGateRecord` must agree on each `StageGateRecord` file.
   its fields were not marked required (`release-intact-without-evidence`,
   `release-intact-empty-evidence`, `release-replay-without-model-calls`,
   `release-replay-without-replay-only-flags`).
+- `release-passed-total-leading-zero.json` (valid) and `release-replay-total-past-int64.json` and
+  `release-replay-total-zero.json` (invalid) pin that the CUE reads `scenarios_total` as the parser does: decimal
+  digits, a leading zero allowed (`strconv.Atoi`), within int64, above 0.
 - `AcceptanceEvidence/valid/passed.json` is what `parseAiBddRunReport` reads from
   `../ai-bdd/report.v1.passed.json`, in snake case; the test checks it still is.

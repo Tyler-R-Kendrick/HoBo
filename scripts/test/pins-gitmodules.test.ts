@@ -50,7 +50,11 @@ function assertNothingContacted(work: string, output: string): void {
 		/Cloning into|Could not resolve host|unable to access/u,
 		"git was never asked to contact a host",
 	);
-	assert.equal(existsSync(join(work, "external/lib/.git")), false, "nothing was cloned");
+	assert.equal(
+		existsSync(join(work, "external/lib/.git")),
+		false,
+		"nothing was cloned",
+	);
 	assert.doesNotMatch(
 		readFileSync(join(work, ".git/config"), "utf8"),
 		/\[submodule /u,

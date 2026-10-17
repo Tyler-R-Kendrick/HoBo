@@ -5,7 +5,10 @@
  *
  * Erasable TypeScript with node builtins only.
  */
-import { spawnSync } from "node:child_process";
+import {
+	type SpawnSyncOptionsWithStringEncoding,
+	spawnSync,
+} from "node:child_process";
 import { existsSync, realpathSync } from "node:fs";
 import { join } from "node:path";
 
@@ -66,15 +69,16 @@ export function git(
 					process.execPath,
 					["-e", UNDER_DEADLINE, String(deadline.ms), ...args],
 				];
-	const result = spawnSync(command, argv, {
+	const options: SpawnSyncOptionsWithStringEncoding = {
 		cwd,
 		encoding: "utf8",
 		maxBuffer: 64 * 1024 * 1024,
 		stdio: visible ? ["ignore", "inherit", "inherit"] : "pipe",
 		env: { ...process.env, GIT_TERMINAL_PROMPT: "0", LC_ALL: "C", ...env },
-		// The group is killed at the deadline; this only bounds the parent.
-		...(deadline === undefined ? {} : { timeout: deadline.ms + 10_000 }),
-	});
+	};
+	// The group is killed at the deadline; this only bounds the parent.
+	if (deadline !== undefined) options.timeout = deadline.ms + 10_000;
+	const result = spawnSync(command, argv, options);
 	if (
 		deadline !== undefined &&
 		(result.status === 124 || isTimeout(result.error))

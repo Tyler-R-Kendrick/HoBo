@@ -89,8 +89,14 @@ async function bounded(
 	return { ...ended, ms: Date.now() - started, killed };
 }
 
+interface Pointed {
+	readonly work: string;
+	/** The commit the submodule is checked out at. */
+	readonly head: string;
+}
+
 /** An initialised work tree whose manifest, .gitmodules and config all name `url`. */
-function pointedAt(url: string): { work: string; head: string } {
+function pointedAt(url: string): Pointed {
 	const dir = scratch("timeout-git");
 	const remote = makeRemote(dir);
 	const work = makeWork(dir, remote, 0);

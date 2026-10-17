@@ -62,7 +62,14 @@ export function removeEmptyDirs(leaf: string, top: string | undefined): void {
 }
 
 function clean(guard: Armed): void {
-	rmSync(guard.partial, { force: true, recursive: guard.tree });
+	// A tree may still gain an entry from a git that is only now stopping;
+	// the retries apply to a recursive removal only.
+	rmSync(guard.partial, {
+		force: true,
+		recursive: guard.tree,
+		maxRetries: 2,
+		retryDelay: 20,
+	});
 	removeEmptyDirs(guard.leaf, guard.top);
 }
 
@@ -74,8 +81,15 @@ function stopListening(): void {
 function onSignal(signal: NodeJS.Signals): void {
 	for (const guard of armed) {
 		guard.signal = signal;
-		clean(guard);
+		// Stop the writer first, then clean. The listener must never throw: a
+		// throw here would skip the other guards and the re-raise, so whatever
+		// cannot be removed now is left to the hourly sweep.
 		guard.abort();
+		try {
+			clean(guard);
+		} catch {
+			// Swept later (sweepProbes, sweepPartials).
+		}
 	}
 	stopListening();
 	// Re-raise only when nobody else will handle it: the default action then

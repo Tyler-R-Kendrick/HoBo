@@ -16,6 +16,7 @@ import {
 	mkdirSync,
 	readdirSync,
 	readFileSync,
+	rmSync,
 	symlinkSync,
 	utimesSync,
 	writeFileSync,
@@ -133,5 +134,71 @@ describe("a probe repository a killed run left", () => {
 			true,
 			"and is never followed",
 		);
+	});
+});
+
+/** A `git` that keeps creating entries in the probe repository until it is stopped. */
+function writingGit(dir: string): string {
+	const bin = join(dir, "busy-bin");
+	mkdirSync(bin);
+	writeFileSync(
+		join(bin, "git"),
+		`#!/bin/sh
+case "$(pwd)" in */.probe-*) case " $* " in *" fetch "*) echo "$$ $(pwd)" > "$PROBE_MARK"; i=0; while :; do i=$((i+1)); mkdir -p "objects/d$i" 2>/dev/null && : > "objects/d$i/f" 2>/dev/null; done;; esac;; esac\nexec '${REAL_GIT}' "$@"\n`,
+		{ mode: 0o755 },
+	);
+	return bin;
+}
+
+describe("a signal while the probe's git is writing into the repository", () => {
+	it("ends the run by the signal, with no stack trace and the git stopped, 10 times running", async () => {
+		const dir = scratch("probe-busy");
+		const remote = makeRemote(dir);
+		const work = makeWork(dir, remote, 1);
+		assert.equal(runBootstrap(work, []).status, 0);
+		const bin = writingGit(dir);
+		const mark = join(dir, "busy.mark");
+		for (let round = 0; round < 10; round += 1) {
+			rmSync(mark, { force: true });
+			const run = spawnBootstrap(work, ["--status", "--online"], {
+				PATH: `${bin}:${process.env.PATH ?? ""}`,
+				PROBE_MARK: mark,
+			});
+			const [pid, repo] = await waitUntil("the probe's git to start", () => {
+				const text = existsSync(mark) ? readFileSync(mark, "utf8").trim() : "";
+				const [first = "", ...rest] = text.split(" ");
+				return text === ""
+					? undefined
+					: ([Number(first), rest.join(" ")] as const);
+			});
+			await waitUntil("the probe's git to be writing", () =>
+				existsSync(join(repo, "objects/d20")) ? true : undefined,
+			);
+			run.child.kill("SIGINT");
+			const ended = await run.done;
+			// A git the run failed to stop would write forever: end it here first.
+			const stopped = await waitUntil(
+				"the probe's git to end",
+				() => (running(pid) ? undefined : true),
+				3000,
+			).catch(() => {
+				process.kill(pid, "SIGKILL");
+				return false;
+			});
+			assert.equal(ended.signal, "SIGINT", `round ${round}: ${ended.stderr}`);
+			assert.doesNotMatch(
+				ended.stderr,
+				/Error|\n\s+at /u,
+				`round ${round}: no stack`,
+			);
+			assert.equal(stopped, true, `round ${round}: the run stopped its git`);
+		}
+		// What a race left is swept once it is old.
+		const cache = join(work, ".cache/siblings");
+		const hours = new Date(Date.now() - 2 * 3_600_000);
+		for (const name of probes(work))
+			utimesSync(join(cache, name), hours, hours);
+		assert.equal(runBootstrap(work, ["--status", "--online"]).status, 0);
+		assert.deepEqual(probes(work), []);
 	});
 });

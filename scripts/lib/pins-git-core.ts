@@ -60,7 +60,10 @@ export function exitStatus(
  * leave git running. git starts on the event loop's check phase, after any
  * signal already pending has been handled, and a signal handled before git
  * exists ends the parent with 128 + its number (130 for SIGINT) without
- * starting git. Exit 124 means the deadline passed.
+ * starting git. Exit 124 means the deadline passed. A git that dies of a
+ * signal ends the parent by the same signal (the way a shell reports it), so
+ * a caller sees 128 + its number and its name; a real exit status, 129
+ * included, is passed through as it is.
  */
 export const UNDER_DEADLINE = `
 const { spawn } = require("node:child_process");
@@ -83,7 +86,13 @@ setImmediate(() => {
 	child.on("error", (error) => { console.error(error.message); process.exit(127); });
 	child.on("exit", (code, signal) => {
 		clearTimeout(timer);
-		process.exit(late ? 124 : (code ?? (signal === null ? 1 : 128)));
+		if (late) process.exit(124);
+		if (code !== null) process.exit(code);
+		// git died of a signal: die of the same one, so the caller reads the
+		// signal itself (128 + its number, and its name) and not an exit status.
+		for (const name of ["SIGINT", "SIGTERM", "SIGHUP"]) process.removeAllListeners(name);
+		process.kill(process.pid, signal);
+		setTimeout(() => process.exit(128 + signals[signal]), 1000);
 	});
 });
 `;

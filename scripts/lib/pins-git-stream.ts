@@ -87,11 +87,13 @@ export function netGitWatched(
 				reject(netTimeout(`git ${args.join(" ")}`, ms));
 				return;
 			}
-			resolve({
-				status: exitStatus(code, signal),
-				stdout: "",
-				stderr: tail.trim(),
-			});
+			const status = exitStatus(code, signal);
+			const stderr = tail.trim();
+			resolve(
+				signal === null
+					? { status, stdout: "", stderr }
+					: { status, stdout: "", stderr, signal },
+			);
 		});
 	});
 }

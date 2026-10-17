@@ -5,8 +5,9 @@
  * - `plans-fresh`: `ai-bdd compile --check` (exit 4 when a plan is stale; no
  *   model call).
  * - `replay`: `ai-bdd run --frozen --no-agent --reporter json,junit`. The exit
- *   code is read first. ai-bdd writes `report.json` after 0, 1 and 3, and not
- *   after 2 or 4 (an earlier run's report may still be on disk then); only
+ *   code is read first. ai-bdd writes `report.json` after 0 and 1, after 3
+ *   when the run reached its scenarios, and not after 2 or 4 (an earlier run's
+ *   report may still be on disk then); only
  *   after 0 or 1 is it opened, and only if it is this run's (its run directory
  *   is new and it started no earlier than the spawn), then parsed into
  *   `AcceptanceEvidence` and held to the process's own exit code. The report

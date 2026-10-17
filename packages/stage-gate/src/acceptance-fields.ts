@@ -15,7 +15,6 @@
  */
 const ID =
 	"ignored: identifies the scenario or step; report_digest pins the whole report";
-const TIMING = "ignored: timing, not outcome";
 
 export const RUN_REPORT_FIELDS = {
 	schemaVersion: "read",
@@ -59,7 +58,7 @@ export const RUN_REPORT_FIELDS = {
 	"scenarios[].steps[].usage.modelCalls": "read",
 	"scenarios[].steps[].usage.inputTokens": "read",
 	"scenarios[].steps[].usage.outputTokens": "read",
-	"scenarios[].steps[].durationMs": TIMING,
+	"scenarios[].steps[].durationMs": "read",
 	"scenarios[].steps[].evidence":
 		"ignored: evidence hashes are checked by `ai-bdd verify-run` (acceptance-evidence-intact)",
 	"scenarios[].steps[].sources": ID,
@@ -69,7 +68,7 @@ export const RUN_REPORT_FIELDS = {
 	"scenarios[].usage.modelCalls": "read",
 	"scenarios[].usage.inputTokens": "read",
 	"scenarios[].usage.outputTokens": "read",
-	"scenarios[].durationMs": TIMING,
+	"scenarios[].durationMs": "read",
 	totals: "read",
 	"totals.passed": "read",
 	"totals.failed": "read",

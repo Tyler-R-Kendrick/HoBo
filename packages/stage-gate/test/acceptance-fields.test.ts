@@ -56,9 +56,9 @@ const COPIED = {
 		"39b3124e109795fcb285de613fb0eee1bf60322a017c0d1b6c54639e7bdebbb1",
 	"report.v1.failed.json":
 		"b8924cf22dd6ad3b5a7c235b24943e69b698f5b2d865e5db6020da5959f7b76f",
-	// ai-bdd pins this digest too: version 1 of the schema is closed and never edited.
+	// ai-bdd pins this digest too (schema.test.ts): v1 is frozen once released.
 	"run-report.v1.schema.json":
-		"1efd7ec47083fc69fdb60b87e941778e5976810e4262acdd767231c9976e2d9a",
+		"7e907a6232b9b8de41e14154243d11612be07d8bba4e831085cf828f4ca3d423",
 } as const;
 
 const LEDGER = Object.entries(RUN_REPORT_FIELDS);

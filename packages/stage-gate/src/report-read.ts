@@ -7,6 +7,7 @@
 import {
 	isJsonArray,
 	isJsonInteger,
+	isJsonNumber,
 	isJsonObject,
 	type JsonObject,
 	type JsonValue,
@@ -83,4 +84,15 @@ export function closedKeys(
 			issues.push(`${pathOf(path, key)}: required by RunReport v1`);
 		}
 	}
+}
+
+/** `durationMs`, which RunReport v1 bounds at 0. */
+export function durationOf(
+	node: JsonObject,
+	path: string,
+	issues: string[],
+): void {
+	const value = fieldOf(node, "durationMs");
+	if (isJsonNumber(value) && Number.isFinite(value) && value >= 0) return;
+	issues.push(`${pathOf(path, "durationMs")}: expected a non-negative number`);
 }

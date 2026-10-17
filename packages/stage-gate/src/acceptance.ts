@@ -27,6 +27,7 @@ import {
 	arrayOf,
 	closedKeys,
 	countOf,
+	durationOf,
 	fieldOf,
 	memberOf,
 	objectOf,
@@ -136,6 +137,7 @@ function tallyStep(
 		return;
 	}
 	closedKeys(step, path, RUN_REPORT_KEYS.StepResult, issues);
+	durationOf(step, path, issues);
 	readNestedUsage(step, path, tally.run, issues);
 	const determinism = memberOf(DETERMINISM, fieldOf(step, "determinism"));
 	if (determinism === undefined) {
@@ -161,6 +163,7 @@ function tallyScenario(
 		return;
 	}
 	closedKeys(scenario, path, RUN_REPORT_KEYS.ScenarioResult, issues);
+	durationOf(scenario, path, issues);
 	readNestedUsage(scenario, path, tally.run, issues);
 	const status = memberOf(SCENARIO_STATUSES, fieldOf(scenario, "status"));
 	if (status === undefined) {
@@ -224,7 +227,8 @@ function readRunId(report: JsonObject, issues: string[]): string {
 	return "";
 }
 
-const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/u;
+/** The form RunReport v1 pins for startedAt: Date.prototype.toISOString(), UTC with milliseconds. */
+const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z$/u;
 
 function readStartedAt(report: JsonObject, issues: string[]): string {
 	const startedAt = fieldOf(report, "startedAt");
@@ -235,7 +239,9 @@ function readStartedAt(report: JsonObject, issues: string[]): string {
 	) {
 		return startedAt;
 	}
-	issues.push("startedAt: expected an ISO 8601 timestamp");
+	issues.push(
+		"startedAt: expected an ISO 8601 timestamp in toISOString form (YYYY-MM-DDTHH:MM:SS.sssZ)",
+	);
 	return "";
 }
 

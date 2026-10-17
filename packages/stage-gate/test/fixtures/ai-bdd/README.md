@@ -8,12 +8,13 @@ these copies are the provider's side of that contract as far as HoBo's offline t
 |---|---|---|
 | `39b3124e109795fcb285de613fb0eee1bf60322a017c0d1b6c54639e7bdebbb1  report.v1.passed.json` | `packages/sdk/test/report/fixtures/report.v1.passed.json` | A real `ai-bdd run --frozen --no-agent --reporter json,junit` over the offline test project (fake driver, fake models): five scenarios replayed, exit 0, zero model calls. Its one subjective step was judged from the verdict cache the characterizing run before it left. |
 | `b8924cf22dd6ad3b5a7c235b24943e69b698f5b2d865e5db6020da5959f7b76f  report.v1.failed.json` | `packages/sdk/test/report/fixtures/report.v1.failed.json` | A real frozen run **without** `--no-agent` against a build with a regression: two failed scenarios, healed steps, eleven model calls (eight `act`, three `judge`), exit 1. The gate refuses it as replay-only evidence. |
-| `1efd7ec47083fc69fdb60b87e941778e5976810e4262acdd767231c9976e2d9a  run-report.v1.schema.json` | `packages/sdk/schema/run-report.v1.schema.json` | The JSON Schema (draft 2020-12) of `RunReport` v1. ai-bdd pins the same sha256: version 1 is closed, a new field means `schemaVersion` 2 and a new file. |
+| `7e907a6232b9b8de41e14154243d11612be07d8bba4e831085cf828f4ca3d423  run-report.v1.schema.json` | `packages/sdk/schema/run-report.v1.schema.json` | The JSON Schema (draft 2020-12) of `RunReport` v1. ai-bdd pins the same sha256 in its `schema.test.ts`: v1 is frozen once released, and a new field means `schemaVersion` 2 and a new file. This copy has the bounds added before release: `startedAt`/`finishedAt` in `toISOString()` form, non-negative durations and cost, judge values in 0..1. |
 
-Copied on 2026-10-17 from the ai-bdd branch `claude/ecstatic-mayer-wbm2c3-runreport` at `c1d4df5`, where the two
-reports were last changed by `ad10782` ("run report fixtures from real runs, validated against the published
-schema") and the schema by `305382b`. Branch commits can be rewritten before they merge; the sha256 column is the
-identity that holds, and `test/acceptance-fields.test.ts` fails if a file here stops matching it.
+Copied on 2026-10-17 from the ai-bdd branch `claude/ecstatic-mayer-wbm2c3-runreport`: the two reports at `c1d4df5`,
+where they were last changed by `ad10782` ("run report fixtures from real runs, validated against the published
+schema"; still byte-identical at `4190d7e`), and the schema at `4190d7e` ("run report v1 pins startedAt and finishedAt
+to the toISOString form"), which last changed it. Branch commits can be rewritten before they merge; the sha256 column
+is the identity that holds, and `test/acceptance-fields.test.ts` fails if a file here stops matching it.
 
 How they are used:
 

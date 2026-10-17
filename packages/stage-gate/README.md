@@ -105,8 +105,9 @@ project may have replaced it); `check-acceptance.mts all` hands them over in
 process, and `evidence-intact` alone, with neither, is a usage error. The exit
 code is read before the
 report: after `run` exits 2 or 4 no report was written and an earlier one may
-still be on disk; after 3 ai-bdd writes a report, but of a run that could not be
-carried out, which says nothing about the product. In all
+still be on disk; after 3 ai-bdd writes a report when the run reached its
+scenarios (not on an internal error), but of a run that could not be carried
+out, which says nothing about the product. In all
 three cases `report.json` is not opened. Exit 3 and a command that cannot be
 started are `not_run` (check and record), never `failed` or `passed`, and the
 runner then exits 3. A passed release record holds exactly the three checks; the

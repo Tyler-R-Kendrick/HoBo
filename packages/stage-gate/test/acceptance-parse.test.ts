@@ -266,6 +266,28 @@ describe("parseAiBddRunReport", () => {
 		);
 	});
 
+	it.each([
+		"2026-10-13T01:14:10Z",
+		"2026-10-13T01:14:10.915+00:00",
+		"2026-10-13 01:14:10.915Z",
+	])("refuses startedAt %j, which is not the toISOString form v1 pins", (startedAt) => {
+		const doc = fixtureDoc("passed");
+		doc.startedAt = startedAt;
+		expect(issuesOf(bytesOf(doc))).toEqual([
+			"startedAt: expected an ISO 8601 timestamp in toISOString form (YYYY-MM-DDTHH:MM:SS.sssZ)",
+		]);
+	});
+
+	it("refuses a negative duration, which v1 bounds at 0", () => {
+		const doc = fixtureDoc("passed");
+		scenarioAt(doc, 1).durationMs = -1;
+		stepAt(doc, 0, 2).durationMs = -0.5;
+		expect(issuesOf(bytesOf(doc))).toEqual([
+			"scenarios[0].steps[2].durationMs: expected a non-negative number",
+			"scenarios[1].durationMs: expected a non-negative number",
+		]);
+	});
+
 	it("refuses bytes that are not a JSON object", () => {
 		expect(issuesOf(Buffer.from("[]"))).toEqual([
 			"report.json is not a JSON object",

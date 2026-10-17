@@ -7,7 +7,8 @@ package stage_gate
 	// One directory name under .ai-bdd/runs/.
 	run_id:          string & =~"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$"
 	report_digest:   #DigestSha256
-	started_at:      #IsoTimestamp
+	// Date.prototype.toISOString(), the form RunReport v1 pins.
+	started_at: string & =~"^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}\\.[0-9]{3}Z$"
 	scenarios_total: int & >=0
 	passed:          int & >=0
 	healed:          int & >=0

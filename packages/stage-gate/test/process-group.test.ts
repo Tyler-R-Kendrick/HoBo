@@ -1,7 +1,7 @@
 /**
- * procShowsGroupGone (ADR-0172): when the stop of ai-bdd's group may stop
- * waiting although kill(-pgid, 0) still finds a member. Most cases read a
- * process table laid out in a temp dir; the odd comm reads the real one.
+ * scanGroup (ADR-0172): what the process table shows of ai-bdd's group once
+ * kill(-pgid, 0) has found a member. Most cases read a process table laid out
+ * in a temp dir; the odd comm reads the real one.
  */
 import { spawn } from "node:child_process";
 import {
@@ -16,7 +16,7 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
-import { procShowsGroupGone } from "../src/process-group.js";
+import { scanGroup } from "../src/process-group.js";
 
 const scratch = mkdtempSync(join(tmpdir(), "hobo-process-group-"));
 afterAll(() => {
@@ -63,30 +63,26 @@ const zombie = (pid: number): Entry => ({
 	threads: 1,
 });
 
-describe("procShowsGroupGone", () => {
-	it("is true for a group whose members are all zombies of one thread", () => {
-		expect(procShowsGroupGone(PGID, table([zombie(100), zombie(101)]))).toBe(
-			true,
-		);
+describe("scanGroup", () => {
+	it("is zombies for a group whose members are all zombies of one thread", () => {
+		expect(scanGroup(PGID, table([zombie(100), zombie(101)]))).toBe("zombies");
 	});
 
-	it("is false while a member whose main thread exited still runs other threads", () => {
+	it("is live while a member whose main thread exited still runs other threads", () => {
 		// Linux shows such a thread-group leader as Z, with num_threads above 1.
 		const leaderExited = { ...zombie(101), comm: "python3", threads: 2 };
-		expect(procShowsGroupGone(PGID, table([zombie(100), leaderExited]))).toBe(
-			false,
-		);
+		expect(scanGroup(PGID, table([zombie(100), leaderExited]))).toBe("live");
 	});
 
-	it("is false when the table shows no member, as a /proc of another PID namespace does", () => {
+	it("is live when the table shows no member, as a /proc of another PID namespace does", () => {
 		// kill(-pgid, 0) has just found a member: a table that shows none cannot say it is gone.
 		const elsewhere = { ...zombie(100), state: "S", pgrp: 7 };
-		expect(procShowsGroupGone(PGID, table([elsewhere]))).toBe(false);
-		expect(procShowsGroupGone(PGID, table([]))).toBe(false);
+		expect(scanGroup(PGID, table([elsewhere]))).toBe("live");
+		expect(scanGroup(PGID, table([]))).toBe("live");
 	});
 
-	it("is false without a readable table", () => {
-		expect(procShowsGroupGone(PGID, join(scratch, "no-such-proc"))).toBe(false);
+	it("is live without a readable table", () => {
+		expect(scanGroup(PGID, join(scratch, "no-such-proc"))).toBe("live");
 	});
 
 	it.runIf(process.platform === "linux")(
@@ -119,7 +115,7 @@ describe("procShowsGroupGone", () => {
 					await new Promise((done) => setTimeout(done, 100));
 				}
 				expect(ready()).toBe(true);
-				expect(procShowsGroupGone(pgid)).toBe(false);
+				expect(scanGroup(pgid, "/proc")).toBe("live");
 			} finally {
 				process.kill(-pgid, "SIGKILL");
 			}
@@ -133,7 +129,7 @@ interface ProcState {
 	readonly state: string;
 }
 
-/** The comm and state of a real process, read independently of procShowsGroupGone. */
+/** The comm and state of a real process, read independently of scanGroup. */
 function stateOf(pid: string): ProcState {
 	let stat: string;
 	try {

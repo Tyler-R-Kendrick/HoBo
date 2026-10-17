@@ -29,7 +29,12 @@ import { type ChildProcess, spawn } from "node:child_process";
 import { StringDecoder } from "node:string_decoder";
 
 import { CHECK_OUTPUT_LIMIT } from "./gate-status.js";
-import { procShowsGroupGone } from "./process-group.js";
+import {
+	type GroupStop,
+	groupTarget,
+	type StopTarget,
+	stopGroup as stopTarget,
+} from "./process-group.js";
 
 /** Relayed from the start, and again from the end, of a command's output. */
 export const RELAY_BYTES = CHECK_OUTPUT_LIMIT / 8;
@@ -37,7 +42,6 @@ const TAIL_CHARS = 2000;
 
 /** How long a process group has to end after it is signalled, before SIGKILL. */
 export const AI_BDD_GRACE_MS = 10_000;
-const POLL_MS = 100;
 /** How long after its group is gone ai-bdd's output may stay open before it is no longer waited for. */
 const DRAIN_MS = 1000;
 
@@ -109,49 +113,45 @@ function watchRunLine(): RunLineWatch {
 /** Each ai-bdd still running, and its grace period. */
 const running = new Map<ChildProcess, number>();
 /** Each group being stopped: a second stop of the same group waits for the first. */
-const stopping = new Map<ChildProcess, Promise<void>>();
+const stopping = new Map<ChildProcess, Promise<GroupStop>>();
 /** Set once the gate itself is told to stop: no ai-bdd starts after that. */
 let stoppedBy: NodeJS.Signals | undefined;
 
-/** Signal ai-bdd's process group (0 only asks whether any of it is left); false when none is. */
-function signalGroup(child: ChildProcess, signal: NodeJS.Signals | 0): boolean {
-	if (child.pid === undefined) return false;
-	if (process.platform === "win32") {
-		// No process groups: the command itself, and every signal ends it at once.
-		if (child.exitCode !== null || child.signalCode !== null) return false;
-		return signal === 0 || child.kill(signal);
-	}
-	try {
-		process.kill(-child.pid, signal);
-	} catch {
-		return false;
-	}
-	// The kernel has found a member; on Linux /proc is read only then, to tell a zombie from it.
-	return signal !== 0 || process.platform !== "linux"
-		? true
-		: !procShowsGroupGone(child.pid);
+/** Windows has no process groups: the command itself, which every signal ends at once. */
+function commandTarget(child: ChildProcess): StopTarget {
+	const exited = () => child.exitCode !== null || child.signalCode !== null;
+	return {
+		signal: (signal) =>
+			!exited() && child.kill(signal) ? { kind: "sent" } : { kind: "gone" },
+		probe: () => (exited() ? { kind: "gone" } : { kind: "live" }),
+	};
 }
 
-/**
- * Stop ai-bdd's process group: `signal` to all of it, then SIGKILL to what is
- * left after graceMs. Resolves once none of the group is left, or it was killed.
- */
+/** ai-bdd's process group, or on Windows the command itself. */
+function targetOf(child: ChildProcess): StopTarget {
+	if (child.pid === undefined) {
+		return {
+			signal: () => ({ kind: "gone" }),
+			probe: () => ({ kind: "gone" }),
+		};
+	}
+	if (process.platform === "win32") return commandTarget(child);
+	// On Linux /proc is read once the kernel has found a member, to tell a zombie from it.
+	return groupTarget(
+		{ pgid: child.pid },
+		process.platform === "linux" ? { procRoot: "/proc" } : {},
+	);
+}
+
+/** Stop ai-bdd's process group (process-group.ts); a second stop of it waits for the first. */
 function stopGroup(
 	child: ChildProcess,
 	signal: NodeJS.Signals,
 	graceMs: number,
-): Promise<void> {
+): Promise<GroupStop> {
 	const pending = stopping.get(child);
 	if (pending !== undefined) return pending;
-	const stop = (async () => {
-		if (!signalGroup(child, signal)) return;
-		const deadline = Date.now() + graceMs;
-		while (Date.now() < deadline) {
-			await new Promise((done) => setTimeout(done, POLL_MS));
-			if (!signalGroup(child, 0)) return;
-		}
-		signalGroup(child, "SIGKILL");
-	})();
+	const stop = stopTarget(targetOf(child), signal, graceMs);
 	stopping.set(child, stop);
 	return stop;
 }

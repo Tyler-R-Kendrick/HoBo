@@ -204,17 +204,17 @@ describe(".githooks/pre-commit", () => {
 	it("says in one line how to install when dependencies are missing", () => {
 		// No node_modules at all, or one an install never filled (empty, or
 		// without tsx): either way the first gate would die in a stack trace.
-		for (const shape of ["absent", "empty"]) {
+		for (const install of ["absent", "empty"]) {
 			const repo = fixture();
 			rmSync(join(repo, "node_modules"), { recursive: true });
-			if (shape === "empty") mkdirSync(join(repo, "node_modules"));
+			if (install === "empty") mkdirSync(join(repo, "node_modules"));
 			const result = hook(repo);
-			assert.notEqual(result.status, 0, shape);
+			assert.notEqual(result.status, 0, install);
 			const lines = result.stderr.trim().split("\n");
-			assert.equal(lines.length, 1, `${shape}: ${result.stderr}`);
+			assert.equal(lines.length, 1, `${install}: ${result.stderr}`);
 			assert.match(lines[0] ?? "", /install/u);
 			assert.match(lines[0] ?? "", /HOBO_SKIP_HOOKS=1/u);
-			assert.deepEqual(calls(repo), [], shape);
+			assert.deepEqual(calls(repo), [], install);
 		}
 	});
 

@@ -4,6 +4,7 @@
 import { spawnSync } from "node:child_process";
 
 import { commandForPlatform, sanitizeNodeOptions } from "./lib/env.ts";
+import { GIT_OUTPUT_MAX_BUFFER } from "./lib/git-output.ts";
 
 const base = process.env.HOBO_CHECK_BASE ?? "HEAD~1";
 
@@ -19,7 +20,7 @@ const diff = spawnSync(
 		"*.spec.ts",
 		"*.spec.mts",
 	],
-	{ encoding: "utf8" },
+	{ encoding: "utf8", maxBuffer: GIT_OUTPUT_MAX_BUFFER },
 );
 
 // Match the old shell behavior: on any git error (e.g. base ref missing in a

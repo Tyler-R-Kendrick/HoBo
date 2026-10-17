@@ -21,12 +21,19 @@ import { spawnSync } from "node:child_process";
 import { readdirSync, readFileSync } from "node:fs";
 import { join, relative, sep } from "node:path";
 
-import { type AcceptanceEvidence, parseAiBddRunReport } from "./acceptance.js";
+import {
+	type AcceptanceEvidence,
+	isAiBddRunId,
+	isReportDigest,
+	parseAiBddRunReport,
+	reportDigestOf,
+} from "./acceptance.js";
 import {
 	type AcceptanceConfig,
 	acceptanceConfigOf,
 } from "./acceptance-config.js";
-import { isJsonString } from "./json.js";
+import { REQUIRED_EVIDENCE_ENV } from "./gate-status.js";
+import { isJsonObject, isJsonString, parseJsonText } from "./json.js";
 import type { CheckEvidence } from "./types.js";
 
 export const ACCEPTANCE_STEPS = [
@@ -251,27 +258,56 @@ function replay(config: AcceptanceConfig): AcceptanceResult {
 	return result("failed", 1, { ...fields, output_tail: tail }, run.output);
 }
 
-function evidenceIntact(config: AcceptanceConfig): AcceptanceResult {
+/** What one step is handed: the evidence of the steps before it, by check id. */
+type Handed = ReadonlyMap<string, CheckEvidence>;
+
+interface JudgedRun {
+	readonly runId: string;
+	readonly reportDigest: string;
+}
+
+function judgedRunOf(
+	evidence: CheckEvidence | undefined,
+): JudgedRun | undefined {
+	const runId = evidence?.run_id ?? "";
+	const reportDigest = evidence?.report_digest ?? "";
+	return isAiBddRunId(runId) && isReportDigest(reportDigest)
+		? { runId, reportDigest }
+		: undefined;
+}
+
+/**
+ * verify-run on the run acceptance-replay judged, named by the replay's own
+ * evidence (run id and report digest), not by whatever report.json says now:
+ * another run in the project may have replaced it between the two checks.
+ */
+function evidenceIntact(
+	config: AcceptanceConfig,
+	handed: Handed,
+): AcceptanceResult {
 	const step = { step: "evidence-intact" };
-	const read = readReport(config);
-	if ("refused" in read) {
-		return result("failed", 1, { ...step, reason: read.refused });
+	const judged = judgedRunOf(handed.get("acceptance-replay"));
+	if (judged === undefined) {
+		const reason = `evidence-intact needs the evidence of acceptance-replay (its run_id and report_digest): run it as the release gate's check, which hands it over in ${REQUIRED_EVIDENCE_ENV}, or with \`all\``;
+		return result("failed", USAGE, { ...step, reason });
 	}
-	const runDir = join(config.runsDir, read.evidence.runId);
+	const runDir = join(config.runsDir, judged.runId);
+	const copyPath = join(runDir, "report.json");
 	const fields = {
 		...step,
-		run_id: read.evidence.runId,
-		report_digest: read.evidence.reportDigest,
+		run_id: judged.runId,
+		report_digest: judged.reportDigest,
 	};
 	let copy: Buffer;
 	try {
-		copy = readFileSync(join(runDir, "report.json"));
+		copy = readFileSync(copyPath);
 	} catch {
-		const reason = `${shown(config, join(runDir, "report.json"))} is missing`;
+		const reason = `${shown(config, copyPath)} is missing`;
 		return result("failed", 1, { ...fields, reason });
 	}
-	if (!copy.equals(read.bytes)) {
-		const reason = `${shown(config, join(runDir, "report.json"))} differs from ${shown(config, config.reportFile)}`;
+	const digest = reportDigestOf(copy);
+	if (digest !== judged.reportDigest) {
+		const reason = `${shown(config, copyPath)} is not the report acceptance-replay judged (${digest}, not ${judged.reportDigest})`;
 		return result("failed", 1, { ...fields, reason });
 	}
 	return commandResult(
@@ -287,8 +323,24 @@ const STEPS = {
 	"evidence-intact": evidenceIntact,
 } satisfies Record<
 	AcceptanceStep,
-	(config: AcceptanceConfig) => AcceptanceResult
+	(config: AcceptanceConfig, handed: Handed) => AcceptanceResult
 >;
+
+/** The evidence the stage-gate runner hands a check that requires others (gate-status.ts). */
+function handedOf(env: NodeJS.ProcessEnv): Map<string, CheckEvidence> {
+	const handed = new Map<string, CheckEvidence>();
+	const parsed = parseJsonText(env[REQUIRED_EVIDENCE_ENV] ?? "");
+	if (!isJsonObject(parsed)) return handed;
+	for (const [checkId, evidence] of Object.entries(parsed)) {
+		if (!isJsonObject(evidence)) continue;
+		const strings: Record<string, string> = {};
+		for (const [key, value] of Object.entries(evidence)) {
+			if (isJsonString(value)) strings[key] = value;
+		}
+		handed.set(checkId, strings);
+	}
+	return handed;
+}
 
 function stepsOf(
 	argv: readonly string[],
@@ -318,11 +370,14 @@ export function checkAcceptance(
 	if (isJsonString(config)) {
 		return result("failed", USAGE, { reason: config });
 	}
+	const handed = handedOf(env);
 	let evidence: CheckEvidence = {};
 	let transcript = "";
 	let last = result("failed", USAGE, { reason: "no step ran" });
 	for (const step of steps) {
-		last = STEPS[step](config);
+		last = STEPS[step](config, handed);
+		// `all` hands each step's evidence to the next in process, as the runner does across processes.
+		handed.set(`acceptance-${step}`, last.evidence);
 		evidence = { ...evidence, ...last.evidence };
 		transcript += last.transcript;
 		if (last.outcome !== "passed") break;

@@ -1,5 +1,7 @@
 package stage_gate
 
+import "strconv"
+
 #DigestSha256: string & =~"^sha256:[a-f0-9]{64}$"
 #IsoTimestamp: string & =~"^[0-9]{4}-[0-9]{2}-[0-9]{2}T"
 
@@ -49,14 +51,36 @@ package stage_gate
 		signature: verified: true
 		artifact: digest_sha256: #DigestSha256
 	}
-	// The release gate attests a replay: its three checks in order, and the
-	// digest of the report that says so (ADR-0172).
+	// The release gate attests a replay (ADR-0172): its three checks in order;
+	// the replay's evidence of a replay-only run that replayed a scenario; and
+	// evidence-intact naming the same run and report the replay judged.
 	if gate_id == "release" && status == "passed" {
 		checks: [
 			{check_id: "acceptance-plans-fresh"},
-			{check_id: "acceptance-replay", evidence: report_digest: #DigestSha256},
-			{check_id: "acceptance-evidence-intact"},
+			{
+				check_id: "acceptance-replay"
+				evidence: {
+					report_digest:    #DigestSha256
+					run_id:           string & !=""
+					model_calls:      "0"
+					frozen:           "true"
+					no_agent:         "true"
+					report_exit_code: "0"
+					scenarios_total:  =~"^[1-9][0-9]*$"
+					scenarios_passed: =~"^[0-9]+$"
+					scenarios_healed: =~"^[0-9]+$"
+				}
+			},
+			{
+				check_id: "acceptance-evidence-intact"
+				evidence: {
+					report_digest: checks[1].evidence.report_digest
+					run_id:        checks[1].evidence.run_id
+				}
+			},
 		]
+		_replayed: strconv.Atoi(checks[1].evidence.scenarios_passed) + strconv.Atoi(checks[1].evidence.scenarios_healed)
+		_replayed: >0
 	}
 	if finished_at != "" && started_at != "" {
 		finished_at: string

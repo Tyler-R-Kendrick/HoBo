@@ -206,6 +206,16 @@ function readTotals(
 	};
 }
 
+/** A run id as the gate uses it: exactly one directory name under the runs directory. */
+export function isAiBddRunId(value: string): value is AiBddRunId {
+	return RUN_ID_RE.test(value);
+}
+
+/** `sha256:` and 64 lowercase hex digits. */
+export function isReportDigest(value: string): value is ReportDigest {
+	return /^sha256:[a-f0-9]{64}$/u.test(value);
+}
+
 function readRunId(report: JsonObject, issues: string[]): string {
 	const runId = fieldOf(report, "runId");
 	if (isJsonString(runId) && RUN_ID_RE.test(runId)) return runId;

@@ -363,7 +363,9 @@ describe("the release gate through real processes", () => {
 			});
 			const intact = checkOf(run, "acceptance-evidence-intact");
 			expect(intact.status).toBe("failed");
-			expect(intact.evidence.reason).toContain("differs from");
+			expect(intact.evidence.reason).toContain(
+				"is not the report acceptance-replay judged",
+			);
 			expect(run.calls).not.toContainEqual(
 				expect.stringContaining("verify-run"),
 			);
@@ -464,6 +466,114 @@ describe("the release gate through real processes", () => {
 		expect(result.evidence.run_id).toBeUndefined();
 		expect(result.evidence.report_digest).toBeUndefined();
 		expect(result.evidence.scenarios_total).toBeUndefined();
+	});
+
+	it("evidence-intact verifies the run the replay judged, though report.json was replaced in between", () => {
+		const project = newDir();
+		const log = join(newDir(), "calls.log");
+		const env = {
+			...process.env,
+			HOBO_AI_BDD_CMD: JSON.stringify(FAKE_COMMAND),
+			HOBO_AI_BDD_PROJECT: project,
+			FAKE_AI_BDD: JSON.stringify(ALL_PASS),
+			FAKE_AI_BDD_LOG: log,
+		};
+		const replay = checkAcceptance(["replay"], env, project);
+		expect(replay.outcome).toBe("passed");
+		// Another run in the same project replaces the latest report.
+		earlierRun(project);
+		const intact = checkAcceptance(
+			["evidence-intact"],
+			{
+				...env,
+				HOBO_STAGE_GATE_REQUIRED_EVIDENCE: JSON.stringify({
+					"acceptance-replay": replay.evidence,
+				}),
+			},
+			project,
+		);
+		expect(intact.outcome).toBe("passed");
+		expect(intact.evidence).toMatchObject({
+			run_id: replay.evidence.run_id,
+			report_digest: replay.evidence.report_digest,
+		});
+		const calls = readFileSync(log, "utf8").trim().split("\n");
+		expect(calls.at(-1)).toBe(
+			JSON.stringify([
+				"verify-run",
+				join(project, ".ai-bdd", "runs", replay.evidence.run_id ?? ""),
+			]),
+		);
+	});
+
+	it("evidence-intact refuses a run directory whose report is not the one the replay judged", () => {
+		const project = newDir();
+		const env = {
+			...process.env,
+			HOBO_AI_BDD_CMD: JSON.stringify(FAKE_COMMAND),
+			HOBO_AI_BDD_PROJECT: project,
+			FAKE_AI_BDD: JSON.stringify(ALL_PASS),
+			FAKE_AI_BDD_LOG: join(newDir(), "calls.log"),
+		};
+		const replay = checkAcceptance(["replay"], env, project);
+		const copy = join(
+			project,
+			".ai-bdd",
+			"runs",
+			replay.evidence.run_id ?? "",
+			"report.json",
+		);
+		writeFileSync(copy, `${readFileSync(copy, "utf8")} `);
+		const intact = checkAcceptance(
+			["evidence-intact"],
+			{
+				...env,
+				HOBO_STAGE_GATE_REQUIRED_EVIDENCE: JSON.stringify({
+					"acceptance-replay": replay.evidence,
+				}),
+			},
+			project,
+		);
+		expect(intact).toMatchObject({ outcome: "failed", exitCode: 1 });
+		expect(intact.evidence.reason).toContain(
+			"is not the report acceptance-replay judged",
+		);
+	});
+
+	it("evidence-intact alone, without the replay's evidence, is a usage error", () => {
+		const project = newDir();
+		const result = checkAcceptance(
+			["evidence-intact"],
+			{
+				...process.env,
+				HOBO_AI_BDD_CMD: JSON.stringify(FAKE_COMMAND),
+				HOBO_AI_BDD_PROJECT: project,
+			},
+			project,
+		);
+		expect(result).toMatchObject({ outcome: "failed", exitCode: 2 });
+		expect(result.evidence.reason).toContain(
+			"needs the evidence of acceptance-replay",
+		);
+	});
+
+	it("all hands the replay's run to the verify step in process", () => {
+		const project = newDir();
+		const result = checkAcceptance(
+			["all"],
+			{
+				...process.env,
+				HOBO_AI_BDD_CMD: JSON.stringify(FAKE_COMMAND),
+				HOBO_AI_BDD_PROJECT: project,
+				FAKE_AI_BDD: JSON.stringify(ALL_PASS),
+				FAKE_AI_BDD_LOG: join(newDir(), "calls.log"),
+			},
+			project,
+		);
+		expect(result).toMatchObject({ outcome: "passed", exitCode: 0 });
+		expect(result.evidence.run_id).toBe(
+			runIdOf(join(project, ".ai-bdd", "report", "report.json")),
+		);
 	});
 
 	it(

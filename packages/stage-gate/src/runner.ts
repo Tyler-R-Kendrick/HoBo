@@ -6,7 +6,9 @@ import { delimiter, dirname, join } from "node:path";
 import {
 	checkStatusOf,
 	NOT_STARTED_EXIT_CODE,
+	REQUIRED_EVIDENCE_ENV,
 	recordStatusOf,
+	requiredEvidenceOf,
 	runnerExitCodeOf,
 	unmetRequirements,
 } from "./gate-status.js";
@@ -278,7 +280,7 @@ export async function runStageGate(
 		provenanceTier: "",
 		conformanceReportDigest: "",
 	};
-	const passed = new Set<string>();
+	const passed = new Map<string, CheckEvidence>();
 
 	const sourceDateEpoch = process.env.SOURCE_DATE_EPOCH;
 	const reproducibleKinds = new Set(["build", "sign", "verify"]);
@@ -302,10 +304,14 @@ export async function runStageGate(
 						const { SOURCE_DATE_EPOCH: _omit, ...rest } = env;
 						return rest;
 					})();
+		const { [REQUIRED_EVIDENCE_ENV]: _inherited, ...ownEnv } = checkEnv;
+		const handed = requiredEvidenceOf(check, passed);
 		const { exitCode, evidence: rawEvidence } = runCheck(
 			check.command,
 			cwd,
-			checkEnv,
+			handed === undefined
+				? ownEnv
+				: { ...ownEnv, [REQUIRED_EVIDENCE_ENV]: handed },
 		);
 		const evidence = parseEvidenceJson(rawEvidence.stdout ?? undefined);
 		if (Object.keys(evidence).length === 0) {
@@ -313,7 +319,7 @@ export async function runStageGate(
 		}
 		const status = checkStatusOf(check, exitCode);
 		if (status === "passed") {
-			passed.add(check.checkId);
+			passed.set(check.checkId, evidence);
 		}
 		checkResults.push({
 			checkId: check.checkId,

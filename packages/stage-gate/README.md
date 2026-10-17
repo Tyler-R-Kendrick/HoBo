@@ -78,7 +78,7 @@ project's own devDependency use its package manager's exec, for example
 |---|---|---|
 | `acceptance-plans-fresh` | `compile --check` | exit 0 (4: a plan is stale) |
 | `acceptance-replay` | `run --frozen --no-agent --reporter json,junit` | exit 0 and a report that parses as replay-only evidence with that exit code |
-| `acceptance-evidence-intact` | `verify-run .ai-bdd/runs/<runId>` | the run directory holds the same report, and exit 0 |
+| `acceptance-evidence-intact` | `verify-run <runsDir>/<runId>` for the run the replay judged | that run directory's report has the replay's digest, and exit 0 |
 
 The report must be this run's. Before spawning `run`, the replay step notes the
 time and the run directories that exist; after exit 0 or 1 the report's `runId`
@@ -93,14 +93,24 @@ it cannot read a `.ts`/`.mjs` ai-bdd config without running project code. A
 project that moves `runsDir` must set it; one that does not fails on freshness.
 
 Each check `requires` the one before it; if that did not pass it is recorded
-`skipped` (exit code -1) and never started. The exit code is read before the
+`skipped` (exit code -1) and never started; when it passed, the runner hands its
+evidence to the next check in `HOBO_STAGE_GATE_REQUIRED_EVIDENCE`. That is how
+`acceptance-evidence-intact` knows which run to verify: the replay's `run_id` and
+`report_digest`, not whatever `report.json` says by then (another run in the
+project may have replaced it); `check-acceptance.mts all` hands them over in
+process, and `evidence-intact` alone, with neither, is a usage error. The exit
+code is read before the
 report: after `run` exits 2 or 4 no report was written and an earlier one may
 still be on disk, after 3 the run said nothing about the product, so in all
 three cases `report.json` is not opened. Exit 3 and a command that cannot be
 started are `not_run` (check and record), never `failed` or `passed`, and the
-runner then exits 3. A passed release record holds exactly the three checks and
-the replay's `report_digest`; it carries no signature or artifact, which stay
-S0's.
+runner then exits 3. A passed release record holds exactly the three checks; the
+replay's evidence of a replay-only run that replayed a scenario (`report_digest`,
+`run_id`, `model_calls` "0", `frozen` and `no_agent` "true", `report_exit_code`
+"0", `scenarios_total` above 0 and `scenarios_passed` + `scenarios_healed` above
+0); and evidence-intact naming the same `run_id` and `report_digest`
+(`src/record-constraints.ts`, and the same in `stage_gate_record.cue`). It carries
+no signature or artifact, which stay S0's.
 
 Zero model calls is required, and `--no-agent` stops the agent but not the judge:
 a subjective step is judged from the verdict cache (`.ai-bdd/cache/`, not

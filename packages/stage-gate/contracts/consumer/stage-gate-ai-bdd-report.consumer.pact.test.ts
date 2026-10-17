@@ -175,8 +175,9 @@ describe("ai-bdd report consumer pact", () => {
 				reportFile = join(newDir(), "report.json");
 				writeFileSync(reportFile, writtenReport(interaction.report));
 			}
+			let handed = "";
 			if (step === "evidence-intact") {
-				// verify-run checks the run the current report names: put a passing replay's report in place.
+				// verify-run checks the run acceptance-replay judged, which the runner hands over: put that run in place.
 				const runDir = join(
 					project,
 					".ai-bdd",
@@ -192,6 +193,12 @@ describe("ai-bdd report consumer pact", () => {
 				const bytes = writtenReport(passed);
 				writeFileSync(join(project, ".ai-bdd", "report", "report.json"), bytes);
 				writeFileSync(join(runDir, "report.json"), bytes);
+				handed = JSON.stringify({
+					"acceptance-replay": {
+						run_id: "01a132d2-fe9a-7d3a-a7d8-157d681d6417",
+						report_digest: `sha256:${createHash("sha256").update(bytes).digest("hex")}`,
+					},
+				});
 			}
 			if (interaction.report === undefined && step === "replay") {
 				// An earlier run's report is on disk; after exit 2 or 4 it must not be read.
@@ -219,6 +226,7 @@ describe("ai-bdd report consumer pact", () => {
 					HOBO_AI_BDD_PROJECT: project,
 					FAKE_AI_BDD: JSON.stringify(plan),
 					FAKE_AI_BDD_LOG: join(newDir(), "calls.log"),
+					HOBO_STAGE_GATE_REQUIRED_EVIDENCE: handed,
 				},
 				project,
 			);

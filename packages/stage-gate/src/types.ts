@@ -16,7 +16,9 @@ export interface StageGateCheck {
 	/**
 	 * Check ids that must have passed earlier in the same run. When one did
 	 * not, this check is recorded `skipped` and never started: its input (a
-	 * fresh plan, the report of this run) does not exist.
+	 * fresh plan, the report of this run) does not exist. When they all
+	 * passed, the check is handed their evidence as one JSON object keyed by
+	 * check id in HOBO_STAGE_GATE_REQUIRED_EVIDENCE (gate-status.ts).
 	 */
 	readonly requires?: readonly string[];
 	/**

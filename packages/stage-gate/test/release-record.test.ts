@@ -48,10 +48,26 @@ function check(
 	};
 }
 
+/** What acceptance-replay records for a replay-only run that passed. */
+const REPLAY_EVIDENCE = {
+	run_id: "01a132d3-0000-7000-8000-000000000001",
+	report_digest: DIGEST,
+	model_calls: "0",
+	frozen: "true",
+	no_agent: "true",
+	report_exit_code: "0",
+	scenarios_total: "5",
+	scenarios_passed: "5",
+	scenarios_healed: "0",
+};
+
 const RELEASE_CHECKS = [
 	check("acceptance-plans-fresh"),
-	check("acceptance-replay", "passed", { report_digest: DIGEST }),
-	check("acceptance-evidence-intact"),
+	check("acceptance-replay", "passed", REPLAY_EVIDENCE),
+	check("acceptance-evidence-intact", "passed", {
+		run_id: REPLAY_EVIDENCE.run_id,
+		report_digest: DIGEST,
+	}),
 ];
 
 /** A passed release record as the runner writes it: no signature, a zero artifact. */
@@ -122,9 +138,80 @@ describe("a passed release record", () => {
 				],
 			}),
 		);
-		expect(issues).toEqual([
+		expect(issues).toContain(
 			"passed release record requires acceptance-replay evidence report_digest",
+		);
+	});
+
+	it.each([
+		[
+			"another report digest",
+			{
+				run_id: REPLAY_EVIDENCE.run_id,
+				report_digest: `sha256:${"b".repeat(64)}`,
+			},
+		],
+		["another run id", { run_id: "other", report_digest: DIGEST }],
+		["no evidence", {}],
+	])("is refused when evidence-intact names %s than the replay judged", (_label, evidence) => {
+		const issues = issuesOf(
+			releaseRecord({
+				checks: [
+					...RELEASE_CHECKS.slice(0, 2),
+					check("acceptance-evidence-intact", "passed", evidence),
+				],
+			}),
+		);
+		expect(issues).toEqual([
+			"passed release record requires acceptance-evidence-intact to name the replay's run_id and report_digest",
 		]);
+	});
+
+	it.each([
+		["model_calls", "3"],
+		["frozen", "false"],
+		["no_agent", "false"],
+		["report_exit_code", "1"],
+	])("is refused when the replay evidence says %s %s", (key, value) => {
+		const issues = issuesOf(
+			releaseRecord({
+				checks: [
+					RELEASE_CHECKS[0] ?? check("acceptance-plans-fresh"),
+					check("acceptance-replay", "passed", {
+						...REPLAY_EVIDENCE,
+						[key]: value,
+					}),
+					RELEASE_CHECKS[2] ?? check("acceptance-evidence-intact"),
+				],
+			}),
+		);
+		expect(issues).toContain(
+			`passed release record requires acceptance-replay evidence ${key} "${{ model_calls: "0", frozen: "true", no_agent: "true", report_exit_code: "0" }[key]}"`,
+		);
+	});
+
+	it.each([
+		["nothing replayed", { scenarios_total: "0", scenarios_passed: "0" }],
+		[
+			"every scenario skipped",
+			{ scenarios_passed: "0", scenarios_healed: "0" },
+		],
+	])("is refused when the replay evidence shows %s", (_label, counts) => {
+		const issues = issuesOf(
+			releaseRecord({
+				checks: [
+					RELEASE_CHECKS[0] ?? check("acceptance-plans-fresh"),
+					check("acceptance-replay", "passed", {
+						...REPLAY_EVIDENCE,
+						...counts,
+					}),
+					RELEASE_CHECKS[2] ?? check("acceptance-evidence-intact"),
+				],
+			}),
+		);
+		expect(issues).toContain(
+			"passed release record requires acceptance-replay evidence that a scenario replayed (scenarios_total above 0, scenarios_passed + scenarios_healed above 0)",
+		);
 	});
 
 	it("is refused with a check that was not run", () => {
@@ -205,6 +292,37 @@ describe("runStageGate with requires and notRunExitCodes", () => {
 			...extra,
 		};
 	}
+
+	it("hands a check the evidence of the checks it requires", async () => {
+		const cwd = mkdtempSync(join(tmpdir(), "hobo-release-record-"));
+		dirs.push(cwd);
+		const result = await runStageGate(
+			{
+				gateId: "release",
+				checks: [
+					nodeCheck(
+						"first",
+						'console.log(JSON.stringify({ run_id: "r1", report_digest: "d1" }))',
+					),
+					nodeCheck(
+						"second",
+						"console.log(JSON.stringify({ got: process.env.HOBO_STAGE_GATE_REQUIRED_EVIDENCE ?? 'none' }))",
+						{ requires: ["first"] },
+					),
+					nodeCheck(
+						"third",
+						"console.log(JSON.stringify({ got: process.env.HOBO_STAGE_GATE_REQUIRED_EVIDENCE ?? 'none' }))",
+					),
+				],
+			},
+			{ cwd },
+		);
+		expect(JSON.parse(result.record.checks[1]?.evidence.got ?? "")).toEqual({
+			first: { run_id: "r1", report_digest: "d1" },
+		});
+		// A check that requires nothing is handed nothing.
+		expect(result.record.checks[2]?.evidence.got).toBe("none");
+	});
 
 	it("does not start a check whose requirement did not pass, and exits 3 when infrastructure stopped the run", async () => {
 		const cwd = mkdtempSync(join(tmpdir(), "hobo-release-record-"));

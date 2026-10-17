@@ -10,11 +10,15 @@
  * `requires` did not all pass is `skipped` and never started.
  */
 import type {
+	CheckEvidence,
 	CheckResult,
 	CheckStatus,
 	RecordStatus,
 	StageGateCheck,
 } from "./types.js";
+
+// public-contract: the variable a check that `requires` others reads their evidence from (scripts/check-acceptance.mts does).
+export const REQUIRED_EVIDENCE_ENV = "HOBO_STAGE_GATE_REQUIRED_EVIDENCE";
 
 /** The exit code recorded for a check that was never started. */
 export const NOT_STARTED_EXIT_CODE = -1;
@@ -33,9 +37,26 @@ export function checkStatusOf(
 /** The `requires` of a check that have not passed in this run, in the order the check lists them. */
 export function unmetRequirements(
 	check: StageGateCheck,
-	passed: ReadonlySet<string>,
+	passed: ReadonlyMap<string, CheckEvidence>,
 ): readonly string[] {
 	return (check.requires ?? []).filter((checkId) => !passed.has(checkId));
+}
+
+/**
+ * The evidence of the checks a check requires, as one JSON object keyed by
+ * check id: what the check is handed in REQUIRED_EVIDENCE_ENV, so a later
+ * check works on the earlier one's result instead of re-reading the disk.
+ * `undefined` for a check that requires nothing.
+ */
+export function requiredEvidenceOf(
+	check: StageGateCheck,
+	passed: ReadonlyMap<string, CheckEvidence>,
+): string | undefined {
+	const required = check.requires ?? [];
+	if (required.length === 0) return undefined;
+	return JSON.stringify(
+		Object.fromEntries(required.map((id) => [id, passed.get(id) ?? {}])),
+	);
 }
 
 export function recordStatusOf(checks: readonly CheckResult[]): RecordStatus {

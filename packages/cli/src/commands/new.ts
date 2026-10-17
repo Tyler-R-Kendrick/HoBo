@@ -248,13 +248,8 @@ export async function validateScaffoldProject(projectDir: string) {
  * the ordinary case of the target directory not existing yet, which is the case
  * scaffolding exists for.
  */
-function isNotFound(error: unknown): boolean {
-	return (
-		typeof error === "object" &&
-		error !== null &&
-		"code" in error &&
-		(error as { code?: unknown }).code === "ENOENT"
-	);
+function isNotFound<E>(error: E): boolean {
+	return error instanceof Error && "code" in error && error.code === "ENOENT";
 }
 
 async function existingDirectory(projectDir: string) {

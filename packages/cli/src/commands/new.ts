@@ -246,15 +246,14 @@ export async function validateScaffoldProject(projectDir: string) {
  * Node actually throws, and the ENOENT branches it guarded were dead. The
  * visible consequence was that `hobo new` crashed with "Internal CLI error" on
  * the ordinary case of the target directory not existing yet, which is the case
- * scaffolding exists for.
+ * scaffolding exists for. Nor `instanceof Error`, which an Error from another
+ * realm fails: any object whose `code` is ENOENT counts. `Object(cause)` is
+ * every object as itself and boxes a primitive (or null) into one with no
+ * `code`, so the comparison needs no guess about what was thrown.
  */
-function isNotFound(error: unknown): boolean {
-	return (
-		typeof error === "object" &&
-		error !== null &&
-		"code" in error &&
-		(error as { code?: unknown }).code === "ENOENT"
-	);
+export function isNotFound(cause: unknown): boolean {
+	const boxed: { readonly code?: unknown } = Object(cause);
+	return boxed.code === "ENOENT";
 }
 
 async function existingDirectory(projectDir: string) {

@@ -21,6 +21,7 @@
  * root. It checks that every `parentId` names a span in the same trajectory —
  * which a cycle satisfies.
  */
+import { parseOptimizeRequest } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import { createAxTrainingEngine } from "../src/index.js";
@@ -37,7 +38,8 @@ describe("a trajectory whose spans have no root", () => {
 	 */
 	function cyclicSpans() {
 		const base = trajectory("t1", "cannot log in", "access", 0.95);
-		const root = base.spans[0];
+		const [root] = base.spans;
+		if (root === undefined) throw new Error("trajectory() records a root span");
 		return {
 			...base,
 			spans: [
@@ -51,13 +53,8 @@ describe("a trajectory whose spans have no root", () => {
 		// Stated first because the rest of this test is only interesting if the
 		// shape actually reaches the engine. A cycle satisfies "every parentId
 		// references another span" — the parser has no reachability check.
-		const { parseOptimizeRequest } = await import("@hobo/core");
 		expect(() =>
-			parseOptimizeRequest(
-				JSON.parse(
-					JSON.stringify(optimizeRequest([cyclicSpans()] as never)),
-				) as never,
-			),
+			parseOptimizeRequest(optimizeRequest([cyclicSpans()])),
 		).not.toThrow();
 	});
 
@@ -67,18 +64,20 @@ describe("a trajectory whose spans have no root", () => {
 		// to `spans[0]` would derive a signature from an arbitrary inner step and
 		// train against it as though it were the method's own contract.
 		await expect(
-			engine().optimize(optimizeRequest([cyclicSpans()] as never) as never),
-		).rejects.toThrow();
+			engine().optimize(parseOptimizeRequest(optimizeRequest([cyclicSpans()]))),
+		).rejects.toThrow(/no trajectory with recorded root-span/u);
 	});
 
 	it("does not poison a request that also carries a usable trajectory", async () => {
 		// Unusable trajectories are filtered, not fatal: one bad recording in a
 		// batch must not cost the whole optimization run.
 		const candidate = await engine().optimize(
-			optimizeRequest([
-				cyclicSpans(),
-				trajectory("t2", "cannot log in again", "access", 0.95),
-			] as never) as never,
+			parseOptimizeRequest(
+				optimizeRequest([
+					cyclicSpans(),
+					trajectory("t2", "cannot log in again", "access", 0.95),
+				]),
+			),
 		);
 		expect(candidate.body.case).toBe("artifact");
 	});

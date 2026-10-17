@@ -31,7 +31,12 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
-import { scrubEnvironment } from "../src/sandbox.js";
+import type { JsonValue } from "../src/json.js";
+import {
+	type AgentSandboxPosture,
+	SANDBOX_POSTURE_SCHEMA,
+	scrubEnvironment,
+} from "../src/sandbox.js";
 import { connectAcpAgentOverStdio } from "../src/stdio.js";
 import type { GovernedAcpClient } from "../src/types.js";
 
@@ -103,31 +108,32 @@ function reportingAgent(name: string, expression: string): string[] {
 	];
 }
 
-function posture(root: string, envAllowlist: readonly string[] = []) {
+function posture(
+	root: string,
+	envAllowlist: readonly string[] = [],
+): AgentSandboxPosture {
 	return {
-		schema: "hobo.agent-sandbox-posture/v1",
+		schema: SANDBOX_POSTURE_SCHEMA,
 		ambientCredentials: false,
 		filesystem: { scope: "workspace", root },
 		network: { scope: "allowlist", allowlist: [] },
 		envAllowlist,
-	} as never;
+	};
 }
 
 /** A governed client that records what the agent asked it for. */
 function recordingClient() {
 	const seen: string[] = [];
-	return {
-		seen,
-		client: {
-			async requestPermission() {
-				seen.push("requestPermission");
-				return { outcome: { outcome: "cancelled" } };
-			},
-			async sessionUpdate() {
-				seen.push("sessionUpdate");
-			},
-		} as unknown as GovernedAcpClient,
+	const client: GovernedAcpClient = {
+		async requestPermission() {
+			seen.push("requestPermission");
+			return { outcome: { outcome: "cancelled" } };
+		},
+		async sessionUpdate() {
+			seen.push("sessionUpdate");
+		},
 	};
+	return { seen, client };
 }
 
 /** A child that stays alive on stdin and speaks nothing. */
@@ -159,10 +165,13 @@ describe("spawning an agent over stdio", () => {
 			client: recordingClient().client,
 		});
 		try {
-			for (const method of ["initialize", "newSession", "prompt", "cancel"]) {
-				expect(
-					handle.connection[method as keyof typeof handle.connection],
-				).toBeTypeOf("function");
+			for (const method of [
+				"initialize",
+				"newSession",
+				"prompt",
+				"cancel",
+			] as const) {
+				expect(handle.connection[method]).toBeTypeOf("function");
 			}
 		} finally {
 			handle.dispose();
@@ -248,7 +257,7 @@ describe("spawning an agent over stdio", () => {
 describe("the environment the agent inherits", () => {
 	it("passes through an allowlisted variable", () => {
 		expect(
-			scrubEnvironment(posture("/tmp", ["WANTED"]), { WANTED: "yes" } as never),
+			scrubEnvironment(posture("/tmp", ["WANTED"]), { WANTED: "yes" }),
 		).toEqual({ WANTED: "yes" });
 	});
 
@@ -261,7 +270,7 @@ describe("the environment the agent inherits", () => {
 				WANTED: "yes",
 				AWS_SECRET_ACCESS_KEY: "leaked",
 				SSH_AUTH_SOCK: "/tmp/agent.sock",
-			} as never),
+			}),
 		).toEqual({ WANTED: "yes" });
 	});
 
@@ -269,7 +278,7 @@ describe("the environment the agent inherits", () => {
 		expect(
 			scrubEnvironment(posture("/tmp", []), {
 				AWS_SECRET_ACCESS_KEY: "leaked",
-			} as never),
+			}),
 		).toEqual({});
 	});
 
@@ -279,16 +288,16 @@ describe("the environment the agent inherits", () => {
 		expect(
 			scrubEnvironment(posture("/tmp", ["WANTED", "MISSING"]), {
 				WANTED: "yes",
-			} as never),
+			}),
 		).toEqual({ WANTED: "yes" });
 	});
 
 	it("keeps an allowlisted variable set to the empty string", () => {
 		// Deliberately different from absent: `FOO=` is a choice the operator
 		// made, and the check is `!== undefined` rather than truthiness.
-		expect(
-			scrubEnvironment(posture("/tmp", ["EMPTY"]), { EMPTY: "" } as never),
-		).toEqual({ EMPTY: "" });
+		expect(scrubEnvironment(posture("/tmp", ["EMPTY"]), { EMPTY: "" })).toEqual(
+			{ EMPTY: "" },
+		);
 	});
 });
 
@@ -331,10 +340,10 @@ describe("the environment the spawn actually hands the child", () => {
 				client: recordingClient().client,
 			});
 			try {
-				const childEnv = JSON.parse(
+				const childEnv: JsonValue = JSON.parse(
 					await waitForFile(join(root, "env.json")),
-				) as Record<string, string>;
-				expect(childEnv.HOBO_ACP_TEST_ALLOWED).toBe("visible");
+				);
+				expect(childEnv).toMatchObject({ HOBO_ACP_TEST_ALLOWED: "visible" });
 				expect(childEnv).not.toHaveProperty("HOBO_ACP_TEST_SECRET");
 			} finally {
 				handle.dispose();

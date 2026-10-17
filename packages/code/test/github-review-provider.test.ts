@@ -26,21 +26,29 @@
  * stable for the same input, different for different ones, and able to carry a
  * bigint, which `JSON.stringify` throws on by default.
  */
+import { create } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 
 import {
+	PendingReviewSchema,
+	ReviewSnapshotSchema,
+} from "../src/_generated/code_review_pb.js";
+import {
 	createFakeGithubProvider,
 	createGithubCliProvider,
+	type ReviewProviderSubmitInput,
+	type ReviewProviderSubmitResult,
 	reviewEffectDigest,
 } from "../src/review/github-review-provider.js";
+import type { SessionProcessRunner } from "../src/session-orchestrator.js";
 
 /** A runner that records its invocations and answers from a script. */
 function recordingRunner(
 	result: { code?: number; stdout?: string; stderr?: string } = {},
 ) {
 	const calls: Array<{ command: string; args: string[]; cwd: string }> = [];
-	const runner = {
-		async run(command: string, args: readonly string[], cwd: string) {
+	const runner: SessionProcessRunner = {
+		async run(command, args, cwd) {
 			calls.push({ command, args: [...args], cwd });
 			return {
 				code: result.code ?? 0,
@@ -48,34 +56,45 @@ function recordingRunner(
 				stderr: result.stderr ?? "",
 			};
 		},
-	} as never;
+	};
 	return { runner, calls };
 }
 
-function input(over: Record<string, unknown> = {}) {
-	const { pending, snapshot, ...rest } = over as {
-		pending?: Record<string, unknown>;
-		snapshot?: Record<string, unknown>;
-	};
+type SnapshotInit = NonNullable<
+	Parameters<typeof create<typeof ReviewSnapshotSchema>>[1]
+>;
+type PendingInit = NonNullable<
+	Parameters<typeof create<typeof PendingReviewSchema>>[1]
+>;
+
+/** What a test changes: the snapshot is replaced whole, pending is merged. */
+type InputOverrides = {
+	readonly commandId?: string;
+	readonly snapshot?: SnapshotInit;
+	readonly pending?: PendingInit;
+};
+
+function input(over: InputOverrides = {}): ReviewProviderSubmitInput {
 	return {
-		commandId: "cmd-1",
-		snapshot: {
-			target: {
-				number: 42,
-				repository: "acme/widgets",
-				repositoryRoot: "/repo",
+		commandId: over.commandId ?? "cmd-1",
+		snapshot: create(
+			ReviewSnapshotSchema,
+			over.snapshot ?? {
+				target: {
+					number: 42,
+					repository: "acme/widgets",
+					repositoryRoot: "/repo",
+				},
 			},
-			...snapshot,
-		},
-		pending: {
+		),
+		pending: create(PendingReviewSchema, {
 			summaryBody: "looks good",
 			decision: 1,
 			effectDigest: "digest-1",
 			expectedProviderHeadOid: "head-oid",
-			...pending,
-		},
-		...rest,
-	} as never;
+			...over.pending,
+		}),
+	};
 }
 
 /** The value of a `-f key=value` pair in the gh argv. */
@@ -102,8 +121,11 @@ describe("the effect digest", () => {
 		// `JSON.stringify` throws outright on a bigint. Proto number fields
 		// deserialise to bigints, so without the replacer every digest over a
 		// real pending review would fail rather than differ.
-		expect(() => reviewEffectDigest({ n: 10n } as never)).not.toThrow();
-		expect(reviewEffectDigest({ n: 10n } as never)).toBe(
+		// SAFETY: deliberately outside JsonObject; the replacer exists for a
+		// bigint that reaches the digest untyped, and this pins how it is read.
+		const withBigint = { n: 10n } as never;
+		expect(() => reviewEffectDigest(withBigint)).not.toThrow();
+		expect(reviewEffectDigest(withBigint)).toBe(
 			reviewEffectDigest({ n: "10" }),
 		);
 	});
@@ -120,9 +142,9 @@ describe("the fake provider", () => {
 	});
 
 	it("records the submission it accepted", async () => {
-		const store: { submissions?: unknown[] } = { submissions: [] };
-		await createFakeGithubProvider(store as never).submitReview(input());
-		expect(store.submissions).toHaveLength(1);
+		const submissions: ReviewProviderSubmitResult[] = [];
+		await createFakeGithubProvider({ submissions }).submitReview(input());
+		expect(submissions).toHaveLength(1);
 	});
 
 	it("returns the original receipt when the same command is retried", async () => {
@@ -169,9 +191,7 @@ describe("publishing through the gh CLI", () => {
 		// as provider drift.
 		const { runner, calls } = recordingRunner();
 		await expect(
-			createGithubCliProvider(runner).submitReview(
-				input({ snapshot: { target: undefined } }),
-			),
+			createGithubCliProvider(runner).submitReview(input({ snapshot: {} })),
 		).rejects.toThrow(/pull-request target/u);
 		expect(calls).toHaveLength(0);
 	});

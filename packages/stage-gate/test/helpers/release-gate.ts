@@ -71,6 +71,7 @@ export interface FakePlan {
 		readonly sleepMs?: number;
 		readonly pidFile?: string;
 		readonly detachedPidFile?: string;
+		readonly pauseAfterBrowserMs?: number;
 		readonly outputBytes?: number;
 		readonly printedRun?: "other" | "none";
 	};

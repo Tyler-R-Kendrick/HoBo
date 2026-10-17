@@ -13,7 +13,8 @@
 //
 // FAKE_AI_BDD (JSON): { compileCheck: <exit>, run: { exit, report?: <file>,
 // runCopy?: "same" | "different" | "none", startedAt?: <ISO>, runsDir?: <dir>,
-// sleepMs?, pidFile?, detachedPidFile?, outputBytes?, printedRun? },
+// sleepMs?, pidFile?, detachedPidFile?, pauseAfterBrowserMs?, outputBytes?,
+// printedRun? },
 // verifyRun: <exit> }
 
 import { spawn } from "node:child_process";
@@ -47,6 +48,8 @@ interface RunPlan {
 	 * Playwright does, then exit. Its pid is written here.
 	 */
 	readonly detachedPidFile?: string;
+	/** Wait this long once the browser's pid is written, before anything else (a test signals it then). */
+	readonly pauseAfterBrowserMs?: number;
 	/** Print this many bytes of output before finishing. */
 	readonly outputBytes?: number;
 	/**
@@ -137,25 +140,34 @@ if (command === "compile" && rest[0] === "--check") {
 			writeFileSync(plan.run.pidFile, String(child.pid));
 		}
 		if (plan.run.detachedPidFile !== undefined) {
-			const browser = spawn(
-				process.execPath,
-				["-e", "setTimeout(() => {}, 60000)"],
-				{ stdio: "ignore", detached: true },
-			);
-			browser.unref();
-			writeFileSync(plan.run.detachedPidFile, String(browser.pid));
+			// The handlers go first: a SIGTERM or SIGINT between the launch and them
+			// would end this process by default and leave the browser running.
+			let browserPid: number | undefined;
 			for (const [signal, code] of [
 				["SIGTERM", 143],
 				["SIGINT", 130],
 			] as const) {
 				process.once(signal, () => {
 					try {
-						process.kill(-(browser.pid ?? 0), "SIGTERM");
+						if (browserPid !== undefined) process.kill(-browserPid, "SIGTERM");
 					} catch {
 						// Already gone.
 					}
 					process.exit(code);
 				});
+			}
+			const browser = spawn(
+				process.execPath,
+				["-e", "setTimeout(() => {}, 60000)"],
+				{ stdio: "ignore", detached: true },
+			);
+			browser.unref();
+			browserPid = browser.pid;
+			writeFileSync(plan.run.detachedPidFile, String(browser.pid));
+			if (plan.run.pauseAfterBrowserMs !== undefined) {
+				await new Promise((done) =>
+					setTimeout(done, plan.run.pauseAfterBrowserMs),
+				);
 			}
 		}
 		await new Promise((done) => setTimeout(done, plan.run.sleepMs));

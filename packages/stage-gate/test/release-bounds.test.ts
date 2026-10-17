@@ -5,7 +5,8 @@
  * is not run. Through real processes, with test/helpers/fake-ai-bdd.mts as
  * HOBO_AI_BDD_CMD.
  */
-import { readFileSync } from "node:fs";
+import { spawn } from "node:child_process";
+import { existsSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
@@ -16,6 +17,7 @@ import {
 	ALL_PASS,
 	checkOf,
 	FAKE_COMMAND,
+	type FakePlan,
 	gone,
 	killQuietly,
 	newDir,
@@ -64,7 +66,12 @@ describe("the release gate bounds ai-bdd", () => {
 			{ HOBO_AI_BDD_TIMEOUT_MS: "1500" },
 			undefined,
 		],
-		["by the runner's backstop", { HOBO_AI_BDD_TIMEOUT_MS: "600000" }, 5000],
+		// The backstop counts from the check's spawn, and two Node startups (the tsx
+		// check, then the stand-in) come before the stand-in launches its browser:
+		// 1.3 to 2.5 s at load average 35 on 4 CPUs, and past 5 s at 57 to 67, where
+		// a 5 s backstop stopped it before any browser.pid was written. 15 s leaves
+		// that headroom and is still well under the stand-in's 40 s.
+		["by the runner's backstop", { HOBO_AI_BDD_TIMEOUT_MS: "600000" }, 15_000],
 	])(
 		"a hung ai-bdd stopped %s gets SIGTERM first, so the browser it launched in a group of its own is closed",
 		async (_label, env, replayBackstopMs) => {
@@ -89,6 +96,61 @@ describe("the release gate bounds ai-bdd", () => {
 				expect(await gone(browser)).toBe(true);
 			} finally {
 				killQuietly(browser);
+			}
+		},
+		TIMEOUT,
+	);
+
+	it(
+		"the stand-in closes its browser although it is signalled the moment the browser is up",
+		async () => {
+			// Its handlers must already be there: a test that signals it then is a gate that stops it then.
+			const dir = newDir();
+			const detachedPidFile = join(dir, "browser.pid");
+			const [node = "", ...fakeArgs] = FAKE_COMMAND;
+			const plan: FakePlan = {
+				...ALL_PASS,
+				run: {
+					exit: 0,
+					report: PASSED,
+					sleepMs: 40_000,
+					detachedPidFile,
+					pauseAfterBrowserMs: 3000,
+				},
+			};
+			const fake = spawn(node, [...fakeArgs, "run"], {
+				cwd: dir,
+				env: {
+					...process.env,
+					FAKE_AI_BDD: JSON.stringify(plan),
+					FAKE_AI_BDD_LOG: join(dir, "calls.log"),
+				},
+				stdio: "ignore",
+				// A group of its own, as the gate gives ai-bdd: what it leaves in it is ended below.
+				detached: true,
+			});
+			const exited = new Promise((done) => fake.on("exit", done));
+			let browser = 0;
+			try {
+				for (
+					let tries = 0;
+					tries < 300 && !existsSync(detachedPidFile);
+					tries += 1
+				) {
+					await new Promise((done) => setTimeout(done, 50));
+				}
+				browser = Number(readFileSync(detachedPidFile, "utf8"));
+				fake.kill("SIGTERM");
+				await exited;
+				expect(await gone(browser)).toBe(true);
+			} finally {
+				killQuietly(browser);
+				try {
+					// Never -0: that would be this test's own group.
+					if (fake.pid !== undefined) process.kill(-fake.pid, "SIGKILL");
+				} catch {
+					// Its group is gone.
+				}
 			}
 		},
 		TIMEOUT,

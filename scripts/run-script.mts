@@ -17,6 +17,12 @@
  * `main';touch PWNED;#` ran `touch PWNED`. Here each argument reaches the
  * script as itself.
  *
+ * One difference from pnpm follows: the script text itself sees the arguments
+ * as `$1`, `$2`, … and `$#` (and `$0` is the script's name), where pnpm leaves
+ * them empty. No root script uses them; do not write one that does, or it
+ * behaves differently under the package manager. As with pnpm, a script that
+ * ends in a `#` comment swallows its arguments.
+ *
  * Refused with exit 2: no name, an unknown script, and a script with a `pre`
  * or `post` script, which pnpm would run and this launcher does not.
  */

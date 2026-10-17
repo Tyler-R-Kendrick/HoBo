@@ -13,6 +13,8 @@ import { readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { describe, it } from "node:test";
 
+import { terminalHint } from "../lib/pins-git-hint.ts";
+
 import {
 	makeRemote,
 	makeWork,
@@ -91,5 +93,29 @@ describe("an ssh or credential prompt git could not show", () => {
 		assert.equal(result.status, 1);
 		assert.match(result.stderr, /ERR GIT_FAILED/u);
 		assert.doesNotMatch(result.stderr, /hint:/u);
+	});
+});
+
+describe("terminalHint", () => {
+	it("answers the ssh and credential failures a prompt would have avoided", () => {
+		for (const said of [
+			"git@example.invalid: Permission denied (publickey).",
+			"git@example.invalid: Permission denied (publickey,password).",
+			"Host key verification failed.",
+			"fatal: could not read Username for 'https://example.invalid': terminal prompts disabled",
+			"fatal: Authentication failed for 'https://example.invalid/o/r.git/'",
+		]) {
+			assert.notEqual(terminalHint(said), "", said);
+		}
+	});
+
+	it("says nothing about a local permission error", () => {
+		for (const said of [
+			"error: could not lock config file .git/config: Permission denied",
+			"fatal: could not create work tree dir 'external/lib': Permission denied",
+			"error: unable to create file README.md: Permission denied",
+		]) {
+			assert.equal(terminalHint(said), "", said);
+		}
 	});
 });

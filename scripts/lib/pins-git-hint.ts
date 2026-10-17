@@ -9,8 +9,12 @@
  * Erasable TypeScript with node builtins only.
  */
 
+/**
+ * Only the forms ssh and git print for a missing key, host key or
+ * credential: a bare "Permission denied" is also a local file error.
+ */
 const NEEDED_A_TERMINAL =
-	/publickey|Permission denied|Host key verification failed|could not read Username/iu;
+	/Permission denied \(publickey|Host key verification failed|could not read Username|Authentication failed/u;
 
 /** A hint line to append to a GIT_FAILED message, or "" when git's error is something else. */
 export function terminalHint(stderr: string): string {

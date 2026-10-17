@@ -61,9 +61,12 @@ describe("the release gate bounds ai-bdd", () => {
 	);
 
 	it.each([
+		// The bound counts from ai-bdd's spawn, and the stand-in takes 240 to 770 ms
+		// (load 33) to launch its browser and write browser.pid: 1.5 s left about
+		// 0.7 s of headroom. 5 s is still well under the stand-in's 40 s.
 		[
 			"at HOBO_AI_BDD_TIMEOUT_MS",
-			{ HOBO_AI_BDD_TIMEOUT_MS: "1500" },
+			{ HOBO_AI_BDD_TIMEOUT_MS: "5000" },
 			undefined,
 		],
 		// The backstop counts from the check's spawn, and two Node startups (the tsx

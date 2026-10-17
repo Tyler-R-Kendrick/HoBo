@@ -25,111 +25,23 @@ import { describe, expect, it } from "vitest";
 import {
 	createRemoteBrokerClient,
 	RemoteBrokerClientError,
+	type RemoteClaimRequest,
+	type RemotePlaceRequest,
 } from "../src/broker-remote-client.js";
-
-const BROKER = "https://broker.example";
-
-const DISCOVERY = {
-	brokerId: "broker-1",
-	supportsAnonymous: true,
-	anonymousSessionEndpoint: "/v1/anonymous-session",
-	placeEndpoint: "/v1/place",
-	claimEndpoint: "/v1/claim",
-} as never;
-
-const CREDENTIAL = {
-	scheme: "bearer",
-	token: "tok-1",
-	principal: { id: "user-1", kind: "user" },
-} as never;
-
-/** A discovery client answering with a fixed document. */
-function discoveryFor(document: unknown = DISCOVERY) {
-	let calls = 0;
-	return {
-		client: {
-			async discover() {
-				calls += 1;
-				return document as never;
-			},
-		} as never,
-		get calls() {
-			return calls;
-		},
-	};
-}
-
-/** A fetch stand-in recording requests and answering from a queue. */
-function fetchStub(
-	responses: ReadonlyArray<{
-		ok?: boolean;
-		status?: number;
-		json?: unknown;
-		jsonThrows?: boolean;
-	}>,
-) {
-	const seen: Array<{ url: string; init: RequestInit }> = [];
-	let index = 0;
-	const impl = (async (url: string, init: RequestInit) => {
-		seen.push({ url, init });
-		const next = responses[Math.min(index, responses.length - 1)];
-		index += 1;
-		return {
-			ok: next?.ok ?? true,
-			status: next?.status ?? 200,
-			json: async () => {
-				if (next?.jsonThrows) throw new Error("not json");
-				// `Object.hasOwn`, not `?? {}` — a deliberate `null` payload has to
-				// reach the parser as null so its own refusal is what fires.
-				return next && Object.hasOwn(next, "json") ? next.json : {};
-			},
-		};
-	}) as unknown as typeof fetch;
-	return { impl, seen };
-}
-
-const SESSION_PAYLOAD = {
-	// `user`, not `ephemeral`: PrincipalKind is user|agent|service|system, and
-	// `principalFrom` refuses anything else, so an "ephemeral" kind makes every
-	// session in this file unparseable. The mock lane models anonymous sessions
-	// the same way -- a user principal whose id is `anonymous:<deploymentId>`.
-	ephemeralPrincipal: { id: "anon-1", kind: "user" },
-	accessToken: "at-1",
-	claimToken: "ct-1",
-	claimUrl: "https://broker.example/claim/ct-1",
-	primaryUrl: "https://app.example",
-	expiresAt: "2026-01-01T00:00:00.000Z",
-	deploymentId: "dep-1",
-};
-
-const PLACE_PAYLOAD = {
-	deploymentId: "dep-1",
-	primaryUrl: "https://app.example",
-	brokerId: "broker-1",
-};
-
-const CLAIM_PAYLOAD = {
-	deploymentId: "dep-1",
-	owner: { id: "user-1", kind: "user" },
-	primaryUrl: "https://app.example",
-};
-
-function client(
-	responses: Parameters<typeof fetchStub>[0] = [],
-	document: unknown = DISCOVERY,
-) {
-	const discovery = discoveryFor(document);
-	const fetched = fetchStub(responses);
-	return {
-		client: createRemoteBrokerClient({
-			brokerUri: BROKER,
-			discovery: discovery.client,
-			fetchImpl: fetched.impl,
-		}),
-		discovery,
-		seen: fetched.seen,
-	};
-}
+import type { JsonValue } from "../src/json.js";
+import {
+	BROKER,
+	CLAIM_PAYLOAD,
+	CREDENTIAL,
+	client,
+	DISCOVERY,
+	discoveryFor,
+	PLACE_PAYLOAD,
+	SESSION_PAYLOAD,
+	sentHeader,
+	without,
+	withField,
+} from "./support/remote-broker-fixtures.js";
 
 describe("construction", () => {
 	it("strips trailing slashes from the broker URI", () => {
@@ -178,17 +90,10 @@ describe("createAnonymousSession", () => {
 			...DISCOVERY,
 			supportsAnonymous: false,
 		});
-		try {
-			await remote.createAnonymousSession();
-			expect.unreachable("an unsupported broker must be refused");
-		} catch (error) {
-			expect((error as RemoteBrokerClientError).code).toBe(
-				"HOBO_ANON_NOT_SUPPORTED",
-			);
-			expect(
-				(error as RemoteBrokerClientError).data as Record<string, unknown>,
-			).toMatchObject({ brokerId: "broker-1" });
-		}
+		await expect(remote.createAnonymousSession()).rejects.toMatchObject({
+			code: "HOBO_ANON_NOT_SUPPORTED",
+			data: { brokerId: "broker-1" },
+		});
 		expect(seen).toEqual([]);
 	});
 
@@ -235,16 +140,11 @@ describe("createAnonymousSession", () => {
 	});
 
 	it("reports a failed request with the status", async () => {
-		const { client: remote } = client([{ ok: false, status: 503 }]);
-		try {
-			await remote.createAnonymousSession();
-			expect.unreachable("a 503 must be reported");
-		} catch (error) {
-			expect((error as RemoteBrokerClientError).code).toBe(
-				"HOBO_ANON_SESSION_FAILED",
-			);
-			expect((error as Error).message).toContain("503");
-		}
+		const { client: remote } = client([{ status: 503 }]);
+		await expect(remote.createAnonymousSession()).rejects.toMatchObject({
+			code: "HOBO_ANON_SESSION_FAILED",
+			message: expect.stringContaining("503"),
+		});
 	});
 
 	it("defaults the TTL rather than reporting an unbounded session", async () => {
@@ -292,16 +192,17 @@ describe("createAnonymousSession", () => {
 	it("refuses a payload with no usable ephemeral principal", async () => {
 		// The principal is who the deployment is attributed to. An absent or
 		// malformed one produces a deployment belonging to nobody.
-		for (const ephemeralPrincipal of [
+		const principals: Array<JsonValue | undefined> = [
 			undefined,
 			null,
 			{},
 			{ id: "anon-1" },
 			{ kind: "ephemeral" },
 			{ id: 7, kind: "ephemeral" },
-		]) {
+		];
+		for (const principal of principals) {
 			const { client: remote } = client([
-				{ json: { ...SESSION_PAYLOAD, ephemeralPrincipal } },
+				{ json: withField(SESSION_PAYLOAD, "ephemeralPrincipal", principal) },
 			]);
 			await expect(remote.createAnonymousSession()).rejects.toMatchObject({
 				code: "HOBO_ANON_SESSION_INVALID",
@@ -322,7 +223,7 @@ describe("createAnonymousSession", () => {
 			"deploymentId",
 		]) {
 			const { client: remote } = client([
-				{ json: { ...SESSION_PAYLOAD, [field]: undefined } },
+				{ json: without(SESSION_PAYLOAD, field) },
 			]);
 			await expect(remote.createAnonymousSession()).rejects.toMatchObject({
 				code: "HOBO_REMOTE_PAYLOAD_INVALID",
@@ -345,7 +246,7 @@ describe("createAnonymousSession", () => {
 		// So the operator knows which of six fields the broker omitted rather
 		// than that one of them was.
 		const { client: remote } = client([
-			{ json: { ...SESSION_PAYLOAD, claimUrl: undefined } },
+			{ json: without(SESSION_PAYLOAD, "claimUrl") },
 		]);
 		await expect(remote.createAnonymousSession()).rejects.toThrow(
 			/missing field claimUrl/u,
@@ -354,11 +255,11 @@ describe("createAnonymousSession", () => {
 });
 
 describe("place", () => {
-	const REQUEST = {
+	const REQUEST: RemotePlaceRequest = {
 		bindleName: "shop",
 		projectDir: "/work/shop",
 		credential: CREDENTIAL,
-	} as never;
+	};
 
 	it("returns the parsed placement", async () => {
 		const { client: remote } = client([{ json: PLACE_PAYLOAD }]);
@@ -373,10 +274,7 @@ describe("place", () => {
 		// Sending it in the body instead would put it in request logs.
 		const { client: remote, seen } = client([{ json: PLACE_PAYLOAD }]);
 		await remote.place(REQUEST);
-		const headers = seen[0]?.init.headers as Record<string, string>;
-		expect(Object.keys(headers).map((k) => k.toLowerCase())).toContain(
-			"authorization",
-		);
+		expect(sentHeader(seen[0]?.init, "authorization")).toBe(true);
 	});
 
 	it("does not put the credential in the request body", async () => {
@@ -394,18 +292,30 @@ describe("place", () => {
 		expect(JSON.parse(String(seen[0]?.init.body)).camp).toBeNull();
 	});
 
+	/** A place request as an untyped caller (CLI flags, plugin JSON) builds it. */
+	function untypedPlace(
+		request: Omit<RemotePlaceRequest, "anonymous"> & {
+			readonly anonymous: JsonValue;
+		},
+	): RemotePlaceRequest {
+		// SAFETY: deliberately outside the declared type. Requests reach the
+		// client from untyped callers, so `anonymous` may be any JSON value; the
+		// client reads it with `=== true`, which is the behaviour under test.
+		return request as RemotePlaceRequest;
+	}
+
 	it("normalizes anonymous to a strict boolean", async () => {
 		// `=== true`. A truthy-but-not-true value from a caller would otherwise
 		// reach the broker as something other than a boolean, and a strict broker
 		// would reject the whole request.
 		const { client: remote, seen } = client([{ json: PLACE_PAYLOAD }]);
-		await remote.place({ ...REQUEST, anonymous: "yes" } as never);
+		await remote.place(untypedPlace({ ...REQUEST, anonymous: "yes" }));
 		expect(JSON.parse(String(seen[0]?.init.body)).anonymous).toBe(false);
 	});
 
 	it("carries anonymous through when it is genuinely true", async () => {
 		const { client: remote, seen } = client([{ json: PLACE_PAYLOAD }]);
-		await remote.place({ ...REQUEST, anonymous: true } as never);
+		await remote.place({ ...REQUEST, anonymous: true });
 		expect(JSON.parse(String(seen[0]?.init.body)).anonymous).toBe(true);
 	});
 
@@ -418,7 +328,7 @@ describe("place", () => {
 		]);
 		const result = await remote.place(REQUEST);
 		expect(result.principal).toEqual({ id: "user-1", kind: "user" });
-		expect(result.credentialScheme).toBe("bearer");
+		expect(result.credentialScheme).toBe("bearer-session");
 	});
 
 	it("carries a human principal only when the credential had one", async () => {
@@ -436,7 +346,7 @@ describe("place", () => {
 				...CREDENTIAL,
 				humanPrincipal: { id: "human-1", kind: "user" },
 			},
-		} as never);
+		});
 		expect(result.humanPrincipal).toEqual({ id: "human-1", kind: "user" });
 	});
 
@@ -509,30 +419,23 @@ describe("place", () => {
 		// The broker knows why it refused. Replacing its message with a generic
 		// one would send an operator to the wrong place.
 		const { client: remote } = client([
-			{ ok: false, status: 400, json: { message: "camp is at capacity" } },
+			{ status: 400, json: { message: "camp is at capacity" } },
 		]);
-		try {
-			await remote.place(REQUEST);
-			expect.unreachable("a 400 must be reported");
-		} catch (error) {
-			expect((error as Error).message).toBe("camp is at capacity");
-			expect((error as RemoteBrokerClientError).code).toBe(
-				"HOBO_REMOTE_PLACE_FAILED",
-			);
-		}
+		await expect(remote.place(REQUEST)).rejects.toMatchObject({
+			message: "camp is at capacity",
+			code: "HOBO_REMOTE_PLACE_FAILED",
+		});
 	});
 
 	it("falls back to the status when the broker sent no message", async () => {
-		const { client: remote } = client([{ ok: false, status: 502, json: {} }]);
+		const { client: remote } = client([{ status: 502, json: {} }]);
 		await expect(remote.place(REQUEST)).rejects.toThrow(/HTTP 502/u);
 	});
 
 	it("survives an error body that is not JSON at all", async () => {
 		// `.catch(() => ({}))`. A gateway's HTML error page must not turn a
 		// reportable failure into an unrelated parse error.
-		const { client: remote } = client([
-			{ ok: false, status: 502, jsonThrows: true },
-		]);
+		const { client: remote } = client([{ status: 502, jsonThrows: true }]);
 		await expect(remote.place(REQUEST)).rejects.toThrow(/HTTP 502/u);
 	});
 
@@ -540,16 +443,11 @@ describe("place", () => {
 		// So a caller can branch on what the broker said rather than on its
 		// prose.
 		const { client: remote } = client([
-			{ ok: false, status: 400, json: { message: "no", retryAfter: 30 } },
+			{ status: 400, json: { message: "no", retryAfter: 30 } },
 		]);
-		try {
-			await remote.place(REQUEST);
-			expect.unreachable("a 400 must be reported");
-		} catch (error) {
-			expect(
-				(error as RemoteBrokerClientError).data as Record<string, unknown>,
-			).toMatchObject({ retryAfter: 30 });
-		}
+		await expect(remote.place(REQUEST)).rejects.toMatchObject({
+			data: { retryAfter: 30 },
+		});
 	});
 
 	it("refuses a success payload that is not an object", async () => {
@@ -564,7 +462,7 @@ describe("place", () => {
 	it("refuses a success payload missing a required locator", async () => {
 		for (const field of ["deploymentId", "primaryUrl", "brokerId"]) {
 			const { client: remote } = client([
-				{ json: { ...PLACE_PAYLOAD, [field]: undefined } },
+				{ json: without(PLACE_PAYLOAD, field) },
 			]);
 			await expect(remote.place(REQUEST)).rejects.toMatchObject({
 				code: "HOBO_REMOTE_PAYLOAD_INVALID",
@@ -574,7 +472,7 @@ describe("place", () => {
 });
 
 describe("claim", () => {
-	const REQUEST = { claimToken: "ct-1", account: "acme" } as never;
+	const REQUEST: RemoteClaimRequest = { claimToken: "ct-1", account: "acme" };
 
 	it("returns the parsed claim", async () => {
 		const { client: remote } = client([{ json: CLAIM_PAYLOAD }]);
@@ -598,19 +496,13 @@ describe("claim", () => {
 		// would make the anonymous lane unclaimable.
 		const { client: remote, seen } = client([{ json: CLAIM_PAYLOAD }]);
 		await remote.claim(REQUEST);
-		const headers = seen[0]?.init.headers as Record<string, string>;
-		expect(Object.keys(headers).map((k) => k.toLowerCase())).not.toContain(
-			"authorization",
-		);
+		expect(sentHeader(seen[0]?.init, "authorization")).toBe(false);
 	});
 
 	it("adds an authorization header when a credential was supplied", async () => {
 		const { client: remote, seen } = client([{ json: CLAIM_PAYLOAD }]);
-		await remote.claim({ ...REQUEST, credential: CREDENTIAL } as never);
-		const headers = seen[0]?.init.headers as Record<string, string>;
-		expect(Object.keys(headers).map((k) => k.toLowerCase())).toContain(
-			"authorization",
-		);
+		await remote.claim({ ...REQUEST, credential: CREDENTIAL });
+		expect(sentHeader(seen[0]?.init, "authorization")).toBe(true);
 	});
 
 	it("distinguishes an invalid token from a broker failure", async () => {
@@ -618,12 +510,12 @@ describe("claim", () => {
 		// should stop; a 500 is worth retrying. One code for both would have a
 		// caller do the wrong thing in one of the two cases.
 		for (const status of [401, 403]) {
-			const { client: remote } = client([{ ok: false, status, json: {} }]);
+			const { client: remote } = client([{ status, json: {} }]);
 			await expect(remote.claim(REQUEST)).rejects.toMatchObject({
 				code: "HOBO_CLAIM_TOKEN_INVALID",
 			});
 		}
-		const { client: remote } = client([{ ok: false, status: 500, json: {} }]);
+		const { client: remote } = client([{ status: 500, json: {} }]);
 		await expect(remote.claim(REQUEST)).rejects.toMatchObject({
 			code: "HOBO_REMOTE_CLAIM_FAILED",
 		});
@@ -633,7 +525,7 @@ describe("claim", () => {
 		// The broker knows more than the status does. A 403 carrying
 		// `HOBO_CLAIM_EXPIRED` means issue a new token, not fix this one.
 		const { client: remote } = client([
-			{ ok: false, status: 403, json: { code: "HOBO_CLAIM_EXPIRED" } },
+			{ status: 403, json: { code: "HOBO_CLAIM_EXPIRED" } },
 		]);
 		await expect(remote.claim(REQUEST)).rejects.toMatchObject({
 			code: "HOBO_CLAIM_EXPIRED",
@@ -641,9 +533,7 @@ describe("claim", () => {
 	});
 
 	it("survives a non-JSON error body", async () => {
-		const { client: remote } = client([
-			{ ok: false, status: 500, jsonThrows: true },
-		]);
+		const { client: remote } = client([{ status: 500, jsonThrows: true }]);
 		await expect(remote.claim(REQUEST)).rejects.toThrow(/HTTP 500/u);
 	});
 
@@ -651,9 +541,16 @@ describe("claim", () => {
 		// A claim result is a statement about who now owns a deployment. Without
 		// an owner it states nothing, and accepting it would report a successful
 		// claim by nobody.
-		for (const owner of [undefined, null, {}, { kind: "user" }, { id: 7 }]) {
+		const owners: Array<JsonValue | undefined> = [
+			undefined,
+			null,
+			{},
+			{ kind: "user" },
+			{ id: 7 },
+		];
+		for (const owner of owners) {
 			const { client: remote } = client([
-				{ json: { ...CLAIM_PAYLOAD, owner } },
+				{ json: withField(CLAIM_PAYLOAD, "owner", owner) },
 			]);
 			await expect(remote.claim(REQUEST)).rejects.toMatchObject({
 				code: "HOBO_REMOTE_CLAIM_INVALID",
@@ -699,9 +596,10 @@ describe("claim", () => {
 			{ json: { ...CLAIM_PAYLOAD, alreadyClaimed: true } },
 		]);
 		expect((await yes.claim(REQUEST)).alreadyClaimed).toBe(true);
-		for (const alreadyClaimed of ["true", 1, undefined, null]) {
+		const notTrue: Array<JsonValue | undefined> = ["true", 1, undefined, null];
+		for (const alreadyClaimed of notTrue) {
 			const { client: no } = client([
-				{ json: { ...CLAIM_PAYLOAD, alreadyClaimed } },
+				{ json: withField(CLAIM_PAYLOAD, "alreadyClaimed", alreadyClaimed) },
 			]);
 			expect((await no.claim(REQUEST)).alreadyClaimed).toBe(false);
 		}
@@ -715,7 +613,7 @@ describe("claim", () => {
 	it("refuses a payload missing a required locator", async () => {
 		for (const field of ["deploymentId", "primaryUrl"]) {
 			const { client: remote } = client([
-				{ json: { ...CLAIM_PAYLOAD, [field]: undefined } },
+				{ json: without(CLAIM_PAYLOAD, field) },
 			]);
 			await expect(remote.claim(REQUEST)).rejects.toMatchObject({
 				code: "HOBO_REMOTE_PAYLOAD_INVALID",

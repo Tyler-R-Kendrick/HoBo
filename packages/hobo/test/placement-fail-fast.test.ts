@@ -28,7 +28,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { bindle } from "@hobo/bindles";
+import { type BindleDefinition, bindle } from "@hobo/bindles";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { resolveBindlePlacement } from "../src/index.js";
@@ -52,9 +52,10 @@ const simple = () =>
 		return { api };
 	});
 
-/** The same definition with a provider pinned onto it. */
-function providerPinned() {
-	return { ...simple(), provider: "aws" } as never;
+/** The same definition with a provider pinned onto it, as an authored one may be. */
+function providerPinned(): BindleDefinition {
+	const pinned = { ...simple(), provider: "aws" };
+	return pinned;
 }
 
 describe("a Bindle that selects a provider", () => {
@@ -111,7 +112,7 @@ describe("a Bindle that selects a provider", () => {
 				return { redis, api };
 			}),
 			provider: "aws",
-		} as never;
+		};
 		const placement = await resolveBindlePlacement({
 			definition,
 			hoboHome: await unconfiguredHome(),
@@ -126,12 +127,14 @@ describe("describing a context that does not exist yet", () => {
 	// fallbacks -- the ones a first-run user actually hits -- were unexercised.
 
 	async function rejectionWithNoYard(campId?: string) {
-		return resolveBindlePlacement({
+		const options = {
 			definition: providerPinned(),
 			hoboHome: await unconfiguredHome(),
 			yard: null,
-			...(campId === undefined ? {} : { campId }),
-		});
+		};
+		return resolveBindlePlacement(
+			campId === undefined ? options : { ...options, campId },
+		);
 	}
 
 	it("names the yard 'local' when none is configured", async () => {
@@ -142,7 +145,7 @@ describe("describing a context that does not exist yet", () => {
 
 	it("still reports a component host", async () => {
 		const placement = await rejectionWithNoYard();
-		expect(typeof placement.componentHost).toBe("string");
+		expect(placement.componentHost).toEqual(expect.any(String));
 		expect(placement.componentHost.length).toBeGreaterThan(0);
 	});
 

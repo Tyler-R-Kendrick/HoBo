@@ -3,11 +3,23 @@ import { existsSync } from "node:fs";
 import { mkdir, writeFile } from "node:fs/promises";
 import { delimiter, dirname, join } from "node:path";
 
+import {
+	CHECK_OUTPUT_LIMIT,
+	checkStatusOf,
+	NOT_RUN_EXIT_CODE,
+	NOT_STARTED_EXIT_CODE,
+	REQUIRED_EVIDENCE_ENV,
+	recordStatusOf,
+	requiredEvidenceOf,
+	runnerExitCodeOf,
+	unmetRequirements,
+} from "./gate-status.js";
+import { isJsonString, parseJsonText } from "./json.js";
 import { serializeStageGateRecord } from "./parse.js";
 import type {
+	CheckEvidence,
 	CheckResult,
 	ComponentArtifact,
-	RecordStatus,
 	RunStageGateOptions,
 	RunStageGateResult,
 	SignatureEvidence,
@@ -65,13 +77,20 @@ function quoteWindowsShellArg(value: string): string {
 	return `"${value.replaceAll('"', '\\"')}"`;
 }
 
+/** The process to spawn for a check command, after platform resolution. */
+export interface CommandInvocation {
+	readonly executable: string;
+	readonly args: string[];
+	readonly windowsVerbatimArguments?: boolean;
+}
+
 export function createCommandInvocation(
 	executable: string,
 	args: readonly string[],
 	platform: NodeJS.Platform = process.platform,
 	comspec = process.env.ComSpec ?? "cmd.exe",
 	env: NodeJS.ProcessEnv = process.env,
-): { executable: string; args: string[]; windowsVerbatimArguments?: boolean } {
+): CommandInvocation {
 	const resolvedExecutable = resolveCommandExecutable(
 		executable,
 		platform,
@@ -98,14 +117,27 @@ export function createCommandInvocation(
 	};
 }
 
+/** A check's exit code and the output it left, before evidence parsing. */
+interface CheckRun {
+	readonly exitCode: number;
+	readonly evidence: Record<string, string>;
+	/** It outlived its `timeoutMs` and was stopped. */
+	readonly timedOut: boolean;
+}
+
 function runCheck(
 	command: readonly string[],
 	cwd: string,
 	env: NodeJS.ProcessEnv,
-): { exitCode: number; evidence: Record<string, string> } {
+	timeoutMs?: number,
+): CheckRun {
 	const [executable, ...args] = command;
 	if (!executable) {
-		return { exitCode: 1, evidence: { error: "empty command" } };
+		return {
+			exitCode: 1,
+			evidence: { error: "empty command" },
+			timedOut: false,
+		};
 	}
 	const invocation = createCommandInvocation(
 		executable,
@@ -120,12 +152,21 @@ function runCheck(
 		encoding: "utf8",
 		windowsVerbatimArguments: invocation.windowsVerbatimArguments,
 		stdio: ["ignore", "pipe", "pipe"],
-		maxBuffer: 16 * 1024 * 1024,
+		maxBuffer: CHECK_OUTPUT_LIMIT,
+		killSignal: "SIGTERM",
+		// undefined: no bound, as before timeoutMs existed.
+		timeout: timeoutMs,
 	});
-	const exitCode = result.status ?? 1;
+	const timedOut =
+		result.error !== undefined &&
+		"code" in result.error &&
+		result.error.code === "ETIMEDOUT";
+	const exitCode = timedOut ? NOT_RUN_EXIT_CODE : (result.status ?? 1);
 	const failed = exitCode !== 0;
 	const evidence: Record<string, string> = {};
-	if (result.error) {
+	if (timedOut) {
+		evidence.error = `${command.join(" ")} did not finish within ${timeoutMs} ms (timeoutMs): stopped with SIGTERM`;
+	} else if (result.error) {
 		evidence.error = `${result.error.name}: ${result.error.message}`;
 	}
 	if (result.stdout?.trim()) {
@@ -148,6 +189,7 @@ function runCheck(
 	return {
 		exitCode,
 		evidence,
+		timedOut,
 	};
 }
 
@@ -162,24 +204,14 @@ function trimEvidence(output: string, exitCode: number): string {
 	return `${text.slice(0, 4000)}\n\n... output truncated; failure tail follows ...\n\n${text.slice(-8000)}`;
 }
 
-function parseEvidenceJson(stdout: string | undefined): Record<string, string> {
+function parseEvidenceJson(stdout: string | undefined): CheckEvidence {
+	const evidence: Record<string, string> = {};
 	if (!stdout) {
-		return {};
+		return evidence;
 	}
 	const lines = stdout.trim().split("\n");
-	const lastLine = lines.at(-1) ?? "";
-	try {
-		const parsed = JSON.parse(lastLine) as Record<string, unknown>;
-		const evidence: Record<string, string> = {};
-		for (const [key, value] of Object.entries(parsed)) {
-			if (typeof value === "string") {
-				evidence[key] = value;
-			} else if (value !== undefined && value !== null) {
-				evidence[key] = JSON.stringify(value);
-			}
-		}
-		return evidence;
-	} catch {
+	const parsed = parseJsonText(lines.at(-1) ?? "");
+	if (parsed === undefined || parsed === null) {
 		// Return the text as-is. `stdout` has already been through
 		// `trimEvidence`, which is the only place that should decide how much of
 		// a check's output to keep, because it is the only place that knows the
@@ -188,8 +220,17 @@ function parseEvidenceJson(stdout: string | undefined): Record<string, string> {
 		// preserving — so for a failing check that printed a long non-JSON log
 		// (a failing test suite, the common case) the record kept only the first
 		// 4000 characters and threw away the end, which is where the reason is.
-		return { stdout };
+		evidence.stdout = stdout;
+		return evidence;
 	}
+	for (const [key, value] of Object.entries(parsed)) {
+		if (isJsonString(value)) {
+			evidence[key] = value;
+		} else if (value !== undefined && value !== null) {
+			evidence[key] = JSON.stringify(value);
+		}
+	}
+	return evidence;
 }
 
 function mergeArtifactEvidence(
@@ -258,12 +299,23 @@ export async function runStageGate(
 		provenanceTier: "",
 		conformanceReportDigest: "",
 	};
-	let failed = false;
+	const passed = new Map<string, CheckEvidence>();
 
 	const sourceDateEpoch = process.env.SOURCE_DATE_EPOCH;
 	const reproducibleKinds = new Set(["build", "sign", "verify"]);
 
 	for (const check of definition.checks) {
+		const unmet = unmetRequirements(check, passed);
+		if (unmet.length > 0) {
+			checkResults.push({
+				checkId: check.checkId,
+				command: check.command,
+				exitCode: NOT_STARTED_EXIT_CODE,
+				status: "skipped",
+				evidence: { skipped_because: `${unmet.join(", ")} did not pass` },
+			});
+			continue;
+		}
 		const checkEnv =
 			sourceDateEpoch && reproducibleKinds.has(check.kind)
 				? { ...env, SOURCE_DATE_EPOCH: sourceDateEpoch }
@@ -271,18 +323,29 @@ export async function runStageGate(
 						const { SOURCE_DATE_EPOCH: _omit, ...rest } = env;
 						return rest;
 					})();
-		const { exitCode, evidence: rawEvidence } = runCheck(
+		const { [REQUIRED_EVIDENCE_ENV]: _inherited, ...ownEnv } = checkEnv;
+		const handed = requiredEvidenceOf(check, passed);
+		const {
+			exitCode,
+			evidence: rawEvidence,
+			timedOut,
+		} = runCheck(
 			check.command,
 			cwd,
-			checkEnv,
+			handed === undefined
+				? ownEnv
+				: { ...ownEnv, [REQUIRED_EVIDENCE_ENV]: handed },
+			check.timeoutMs instanceof Function
+				? check.timeoutMs(ownEnv)
+				: check.timeoutMs,
 		);
 		const evidence = parseEvidenceJson(rawEvidence.stdout ?? undefined);
 		if (Object.keys(evidence).length === 0) {
 			Object.assign(evidence, rawEvidence);
 		}
-		const status = exitCode === 0 ? "passed" : "failed";
-		if (status === "failed") {
-			failed = true;
+		const status = timedOut ? "not_run" : checkStatusOf(check, exitCode);
+		if (status === "passed") {
+			passed.set(check.checkId, evidence);
 		}
 		checkResults.push({
 			checkId: check.checkId,
@@ -302,7 +365,7 @@ export async function runStageGate(
 	}
 
 	const finishedAt = new Date().toISOString();
-	const status: RecordStatus = failed ? "failed" : "passed";
+	const status = recordStatusOf(checkResults);
 	const record: StageGateRecord = {
 		gateId: definition.gateId,
 		status,
@@ -326,6 +389,6 @@ export async function runStageGate(
 
 	return {
 		record,
-		exitCode: failed ? 1 : 0,
+		exitCode: runnerExitCodeOf(status),
 	};
 }

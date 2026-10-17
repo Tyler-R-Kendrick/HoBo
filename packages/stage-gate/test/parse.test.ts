@@ -27,7 +27,7 @@
  * ends up ignored.
  */
 import { describe, expect, it } from "vitest";
-
+import type { JsonObject, JsonValue } from "../src/json.js";
 import {
 	parseStageGateRecord,
 	serializeStageGateRecord,
@@ -36,7 +36,7 @@ import { StageGateParseError } from "../src/types.js";
 
 const DIGEST = `sha256:${"a".repeat(64)}`;
 
-function record(overrides: Record<string, unknown> = {}) {
+function record(overrides: JsonObject = {}) {
 	return {
 		gate_id: "s0",
 		status: "passed",
@@ -68,7 +68,7 @@ function record(overrides: Record<string, unknown> = {}) {
 }
 
 /** The issues a rejected record reported. */
-function issuesOf(raw: unknown): readonly string[] {
+function issuesOf(raw: JsonValue): readonly string[] {
 	try {
 		parseStageGateRecord(raw);
 		expect.unreachable("record should have been rejected");
@@ -356,7 +356,7 @@ describe("rejecting a malformed record", () => {
 });
 
 describe("check results", () => {
-	function checkIssues(check: unknown): string {
+	function checkIssues(check: JsonValue): string {
 		return issuesOf(record({ checks: [check] })).join();
 	}
 
@@ -467,7 +467,7 @@ describe("check results", () => {
 });
 
 describe("the artifact", () => {
-	function artifactIssues(artifact: unknown): string {
+	function artifactIssues(artifact: JsonValue): string {
 		return issuesOf(record({ artifact })).join();
 	}
 
@@ -541,7 +541,7 @@ describe("the artifact", () => {
 });
 
 describe("the signature", () => {
-	function signatureIssues(signature: unknown): string {
+	function signatureIssues(signature: JsonValue): string {
 		return issuesOf(record({ signature })).join();
 	}
 
@@ -621,29 +621,22 @@ describe("serialising back out", () => {
 		// A serialized record handed to a writer that mutates it would reach back
 		// into the parsed record it came from.
 		const parsed = parseStageGateRecord(record());
-		const out = serializeStageGateRecord(parsed) as {
-			checks: { command: string[] }[];
-		};
-		out.checks[0]?.command.push("injected");
-		expect(parsed.checks[0]?.command).toEqual(["tsc", "-b"]);
+		const out = serializeStageGateRecord(parsed);
+		expect(out.checks[0]?.command).toEqual(["tsc", "-b"]);
+		expect(out.checks[0]?.command).not.toBe(parsed.checks[0]?.command);
 	});
 
 	it("copies the evidence map rather than sharing it", () => {
 		const parsed = parseStageGateRecord(record());
-		const out = serializeStageGateRecord(parsed) as {
-			checks: { evidence: Record<string, string> }[];
-		};
-		const evidence = out.checks[0]?.evidence;
-		if (evidence) evidence.injected = "x";
-		expect(parsed.checks[0]?.evidence).toEqual({ log: "clean" });
+		const out = serializeStageGateRecord(parsed);
+		expect(out.checks[0]?.evidence).toEqual({ log: "clean" });
+		expect(out.checks[0]?.evidence).not.toBe(parsed.checks[0]?.evidence);
 	});
 
 	it("writes the conformance digest even when empty", () => {
 		// Omitting the key would make two records with the same meaning differ
 		// byte for byte, and these files get hashed.
-		const out = serializeStageGateRecord(parseStageGateRecord(record())) as {
-			signature: Record<string, unknown>;
-		};
+		const out = serializeStageGateRecord(parseStageGateRecord(record()));
 		expect(out.signature).toHaveProperty("conformance_report_digest", "");
 	});
 });

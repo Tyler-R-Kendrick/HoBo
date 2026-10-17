@@ -97,8 +97,13 @@ const STORE =
 const SCOPE =
 	/^Error: the surrogate-proxy plugin refused the run and issued nothing: \S+ has no bounded scope/u;
 const BRIDGE_SCOPE = /^Error: env-spec parse failed: /u;
+/**
+ * The parser or `node` is missing. An older OpenSesame ran a bare `node` and
+ * said `os error 2`; a newer one searches only PATH directories group and
+ * others cannot write, and says it found "no usable `node`" there.
+ */
 const BRIDGE_NOT_FOUND =
-	/Cannot find (?:package|module)|ERR_MODULE_NOT_FOUND|MODULE_NOT_FOUND|No such file or directory|os error 2|ENOENT/u;
+	/Cannot find (?:package|module)|ERR_MODULE_NOT_FOUND|MODULE_NOT_FOUND|No such file or directory|os error 2|ENOENT|no usable `node`/u;
 const SCHEMA = /^Error: (?:env-spec parse failed|resolve failed): /u;
 /** Every other fatal sentence OpenSesame writes about its plugin before the command starts. */
 const PLUGIN_REFUSAL = /^Error: the surrogate-proxy plugin /u;
@@ -249,7 +254,7 @@ const WHAT_HAPPENED = {
 		"the surrogate-proxy plugin changed since it was pinned; reinstall it (there is no fallback to placeholders)",
 	store_unreadable: "the sealed entry for the connection cannot be read",
 	bridge_missing:
-		"OpenSesame cannot read the schema: it needs node and the env-spec bridge with @env-spec/parser (OPENSESAME_ENV_PARSE)",
+		"OpenSesame cannot read the schema: it needs node, in a PATH directory that group and others cannot write, and the env-spec bridge with @env-spec/parser (OPENSESAME_ENV_PARSE)",
 } as const satisfies Readonly<Record<OutcomeKind, string>>;
 
 function kindOf(run: ProxiedRunOutcome): OutcomeKind {

@@ -134,6 +134,21 @@ describe("parseOutcome: how a proxied run ended", () => {
 		expect(read("bridge-no-node", 1)).toMatchObject({ kind: "bridge_missing" });
 	});
 
+	it("no node in a PATH directory only its owner can write is bridge_missing, not a bad schema", () => {
+		for (const scenario of [
+			"bridge-untrusted-node",
+			"bridge-node-elsewhere",
+		] as const) {
+			expect(read(scenario, 1), scenario).toMatchObject({
+				kind: "bridge_missing",
+				exitCode: 1,
+			});
+			expect(outcomeError(read(scenario, 1))?.code, scenario).toBe(
+				"bridge_missing",
+			);
+		}
+	});
+
 	it("a refusal needs a failing exit: the same words with exit 0 are the child's output", () => {
 		expect(read("plugin-changed", 0)).toMatchObject({ kind: "child_exit" });
 		expect(read("wrong-passphrase", 0)).toMatchObject({ kind: "child_exit" });

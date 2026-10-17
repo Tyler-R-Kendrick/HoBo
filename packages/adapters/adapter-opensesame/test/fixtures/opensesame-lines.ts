@@ -1,7 +1,10 @@
 /**
  * The lines `opensesame dev --agent run` prints for each way a run goes, copied
  * verbatim from its source (apps/cli/src/dev_surrogate.rs, dev_credentials.rs,
- * dev_supervise.rs, dev_run.rs and crates/env-spec) as of OpenSesame b60790eb3.
+ * dev_supervise.rs, dev_run.rs and crates/env-spec) as of OpenSesame b60790eb3,
+ * and checked again at efe9c5adb, whose env-spec bridge looks `node` up only in
+ * PATH directories group and others cannot write (crates/env-spec/src/node_bridge.rs).
+ * `bridge-no-node` is the older binary's line, `bridge-untrusted-node` the newer one's.
  * The fake binary prints them; test/real/ checks that the real binary prints
  * lines the adapter classifies the same way.
  */
@@ -44,6 +47,12 @@ export const SAMPLE_LINES = {
 	],
 	"bridge-no-node": [
 		"Error: env-spec parse failed: io: No such file or directory (os error 2)",
+	],
+	"bridge-untrusted-node": [
+		'Error: env-spec parse failed: no usable `node`: only absolute, existing directories that group and others cannot write are searched, and PATH has none (skipped: "/opt/hostedtoolcache/node/22.22.0/x64/bin" writable by group or others; "." relative)',
+	],
+	"bridge-node-elsewhere": [
+		"Error: env-spec parse failed: no usable `node`: only absolute, existing directories that group and others cannot write are searched, and none of /usr/sbin holds a `node`",
 	],
 	"schema-syntax": [
 		"Error: env-spec parse failed: bridge failed: SyntaxError: unexpected token at line 3",

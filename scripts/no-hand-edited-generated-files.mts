@@ -1,9 +1,11 @@
 import { spawnSync } from "node:child_process";
 
+import { GIT_OUTPUT_MAX_BUFFER } from "./lib/git-output.ts";
+
 const staged = spawnSync(
 	"git",
 	["diff", "--cached", "--name-only", "--diff-filter=ACMR"],
-	{ encoding: "utf8" },
+	{ encoding: "utf8", maxBuffer: GIT_OUTPUT_MAX_BUFFER },
 );
 if (staged.status !== 0) process.exit(staged.status ?? 1);
 const files = staged.stdout.split(/\r?\n/).filter(Boolean);

@@ -110,4 +110,24 @@ describe(".gitmodules that git could read another way is refused", () => {
 		);
 		assertNothingContacted(work, `${run.stdout}${run.stderr}`);
 	});
+
+	it("a .gitmodules git cannot parse is refused as such, naming where git stopped", () => {
+		const work = withModules(
+			`${section("lib", GOOD)}[submodule "x"\n\tpath = y\n`,
+		);
+		const status = runBootstrap(work, ["--status"], NOT_LOCAL);
+		assert.equal(status.status, 1, status.stdout);
+		assert.match(
+			status.stdout,
+			/git cannot read \.gitmodules: .*bad config line \d+ in file \.gitmodules/u,
+		);
+		assert.doesNotMatch(status.stdout, /not registered/u);
+		const run = runBootstrap(work, ["--fetch", "lib"], NOT_LOCAL);
+		assert.equal(run.status, 1, `${run.stdout}${run.stderr}`);
+		assert.match(
+			run.stderr,
+			/GITMODULES_AMBIGUOUS: git cannot read \.gitmodules/u,
+		);
+		assertNothingContacted(work, `${run.stdout}${run.stderr}`);
+	});
 });

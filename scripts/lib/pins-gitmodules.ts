@@ -4,7 +4,7 @@
  *
  * Erasable TypeScript with node builtins only.
  */
-import { git, Refusal } from "./pins-git-core.ts";
+import { git, gitFailure, Refusal } from "./pins-git-core.ts";
 
 export interface ModulesEntry {
 	/** The submodule's name in `.gitmodules` (often, not always, its path). */
@@ -47,16 +47,28 @@ function gitIgnoresName(name: string): boolean {
 	return name === "" || name.split(/[/\\]/u).includes("..");
 }
 
-/** Every `submodule.<name>.<key>` value, NUL-separated so no value can forge a line. */
+/**
+ * Every `submodule.<name>.<key>` value, NUL-separated so no value can forge a
+ * line. A `.gitmodules` git cannot read (an exit other than 0, values, or 1,
+ * none) is refused naming where git stopped, never read as "nothing there".
+ */
 function modulesValues(root: string): Map<string, Map<string, string[]>> {
-	const out = git(root, [
+	const read = git(root, [
 		"config",
 		"-z",
 		"-f",
 		".gitmodules",
 		"--get-regexp",
 		"^submodule\\.",
-	]).stdout;
+	]);
+	if (read.status !== 0 && read.status !== 1) {
+		throw new Refusal(
+			"GITMODULES_AMBIGUOUS",
+			`git cannot read .gitmodules: ${gitFailure("git config", read)}`,
+			"correct .gitmodules where git says it stops (git config -f .gitmodules --list reads it the same way)",
+		);
+	}
+	const out = read.stdout;
 	const sections = new Map<string, Map<string, string[]>>();
 	for (const entry of out.split("\0")) {
 		if (entry === "") continue;

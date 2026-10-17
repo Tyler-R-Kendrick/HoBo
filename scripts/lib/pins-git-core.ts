@@ -197,7 +197,8 @@ function realOr(path: string): string {
 
 /**
  * HEAD of the submodule's own repository, or null when it is not fetched yet.
- * The path must not be or pass through a symbolic link, and only a repository
+ * The path (and its `.git`) must not be or pass through a symbolic link, the
+ * repository must not be the superproject's, and only a repository
  * whose top level is the submodule's path answers: an empty
  * `.git` directory makes git walk up to the superproject, and a `.git` file
  * whose module directory is gone makes it fail, and both are refused here,
@@ -218,11 +219,42 @@ export function headOf(root: string, path: string): string | null {
 		throw new Refusal(
 			"SUBMODULE_STATE",
 			`${path}/.git is not a usable repository of its own (${answer}); nothing is run in it`,
-			`rm -rf ${path} && git submodule update --init -- ${path}   (deletes ${path}: copy out anything you need first)`,
+			reclone(path),
 		);
 	}
+	refuseSharedRepository(root, path, sub);
 	const result = git(sub, ["rev-parse", "--verify", "HEAD"]);
 	return result.status === 0 ? result.stdout : null;
+}
+
+/** The fix for a submodule whose repository cannot be used: clone it again. */
+function reclone(path: string): string {
+	return `rm -rf ${path} && git submodule update --init -- ${path}   (deletes ${path}: copy out anything you need first)`;
+}
+
+/** The repository a directory's git uses (its common directory), resolved. */
+function commonDir(dir: string): string | null {
+	const result = git(dir, [
+		"rev-parse",
+		"--path-format=absolute",
+		"--git-common-dir",
+	]);
+	return result.status === 0 ? realOr(result.stdout) : null;
+}
+
+/**
+ * A `.git` file can name any repository: `gitdir: ../../.git` makes git work
+ * on the superproject's while its top level is the submodule's path. Refused
+ * before anything runs there.
+ */
+function refuseSharedRepository(root: string, path: string, sub: string): void {
+	const shared = commonDir(sub);
+	if (shared === null || shared !== commonDir(root)) return;
+	throw new Refusal(
+		"SUBMODULE_STATE",
+		`${path}/.git names the superproject's own repository (${shared}); nothing is run in it`,
+		reclone(path),
+	);
 }
 
 /** The first part of `path` under `root` that is a symbolic link, if any. */
@@ -246,7 +278,17 @@ function linkOnPath(root: string, path: string): string | null {
  */
 function refuseLinkedPath(root: string, path: string): void {
 	const link = linkOnPath(root, path);
-	if (link === null) return;
+	if (link === null) {
+		// A submodule's `.git` is its own: a link there can name any repository.
+		if (linkOnPath(root, `${path}/.git`) === `${path}/.git`) {
+			throw new Refusal(
+				"SUBMODULE_STATE",
+				`${path}/.git is a symbolic link; a submodule's .git is its own, so nothing is run in it`,
+				reclone(path),
+			);
+		}
+		return;
+	}
 	throw new Refusal(
 		"SUBMODULE_STATE",
 		`${link} is a symbolic link; ${path} must be a directory of this checkout, so nothing is run in it`,

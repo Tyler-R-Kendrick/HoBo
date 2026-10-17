@@ -382,7 +382,7 @@ describe("typed provider errors", () => {
 	 */
 	async function rateLimitDetail(
 		headers: Record<string, string>,
-	): Promise<Record<string, unknown>> {
+	): Promise<TemporaryAccountError> {
 		const transport = createStubTransport({
 			challenge: { status: 429, body: "{}", headers },
 		});
@@ -390,7 +390,8 @@ describe("typed provider errors", () => {
 		try {
 			await provisionTemporaryAccountYard(input);
 		} catch (error) {
-			return error as unknown as Record<string, unknown>;
+			if (error instanceof TemporaryAccountError) return error;
+			throw error;
 		}
 		throw new Error("expected a rate-limit refusal");
 	}

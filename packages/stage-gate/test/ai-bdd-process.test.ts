@@ -3,7 +3,7 @@
  * release-gate suites drive it through the gate; these give it commands that
  * misbehave in one way each.
  */
-import { execFile } from "node:child_process";
+import { execFile, spawn } from "node:child_process";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -74,6 +74,37 @@ describe("runAiBdd settles when the command exits", () => {
 			killQuietly(holder);
 		}
 	}, 40_000);
+});
+
+describe("the check once ai-bdd has settled", () => {
+	it("exits at once: no timer of the run keeps its process alive", async () => {
+		// check-acceptance.mts prints its evidence line last; nothing should be left to wait for after it.
+		const check = spawn(
+			process.execPath,
+			[
+				"--import",
+				"tsx",
+				"packages/stage-gate/scripts/check-acceptance.mts",
+				"plans-fresh",
+			],
+			{
+				cwd: REPO_ROOT,
+				env: {
+					...process.env,
+					HOBO_AI_BDD_CMD: JSON.stringify(nodeCommand("process.exit(0)")),
+					HOBO_AI_BDD_PROJECT: tmpdir(),
+				},
+				stdio: ["ignore", "pipe", "ignore"],
+			},
+		);
+		let printedAt = 0;
+		check.stdout.on("data", () => {
+			printedAt = Date.now();
+		});
+		const code = await new Promise((done) => check.on("exit", done));
+		expect(code).toBe(0);
+		expect(Date.now() - printedAt).toBeLessThan(500);
+	}, 30_000);
 });
 
 describe("runAiBdd on Linux, where a group can hold only zombies", () => {

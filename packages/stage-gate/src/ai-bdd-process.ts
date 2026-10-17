@@ -256,9 +256,12 @@ export function runAiBdd(
 	return new Promise((settle) => {
 		let done = false;
 		let timedOut = false;
+		/** Waits DRAIN_MS for `close` after the group is gone; cleared once settled, so it keeps nothing alive. */
+		let drain: NodeJS.Timeout | undefined;
 		const finish = (status: number | null, unstartable: string) => {
 			if (done) return;
 			done = true;
+			clearTimeout(drain);
 			output.end();
 			settle({
 				args,
@@ -319,9 +322,9 @@ export function runAiBdd(
 			void stopGroup(child, "SIGTERM", graceMs).then(() => {
 				groupGone = true;
 				end();
+				if (done) return;
 				// A process outside the group can hold ai-bdd's stdout or stderr open, and `close` would wait for it.
-				setTimeout(() => {
-					if (done) return;
+				drain = setTimeout(() => {
 					child.stdout?.destroy();
 					child.stderr?.destroy();
 					closed = closed ?? { status, signal };

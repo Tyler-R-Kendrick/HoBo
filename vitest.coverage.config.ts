@@ -101,6 +101,8 @@ export default defineConfig({
 		fileParallelism: true,
 		pool: "threads",
 		globalSetup: [
+			// The run's root of throwaway HOBO_HOMEs (test/setup/hobo-test-homes.ts).
+			fileURLToPath(new URL("./test/setup/hobo-test-homes.ts", import.meta.url)),
 			fileURLToPath(
 				new URL(
 					"./packages/runtimes/runtime-wasm/test/wasmtime-global-setup.ts",

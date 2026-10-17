@@ -30,23 +30,32 @@
  * `HOBO_HOME` is deliberately left alone when the runner already set one, so a
  * developer debugging against a specific home keeps it.
  *
- * The throwaway home is removed, and the variable unset, once the file's tests
- * are done: every run otherwise left one empty `hobo-test-home-*` per worker in
- * the temp directory, and with `isolate: false` the next file a worker runs
- * makes its own here rather than inheriting a removed one.
+ * Each file gets a home of its own inside the run's root, which the global
+ * setup `test/setup/hobo-test-homes.ts` makes and removes when the run ends.
+ * The variable is never unset: a write that outlives its file (a timer, a
+ * child, a module that read the home when it loaded) still lands in a
+ * directory that exists, inside that root. A home already inside the root is
+ * the previous file's in this worker (`isolate: false`) and is replaced; one
+ * outside it is the runner's and is kept. Under a config without that global
+ * setup, an unset home gets one throwaway directory per worker, as before,
+ * and nothing removes it.
  */
-import { mkdtempSync, rmSync } from "node:fs";
+import { mkdtempSync } from "node:fs";
 import { tmpdir } from "node:os";
-import { join } from "node:path";
-import { afterAll } from "vitest";
+import { isAbsolute, join, relative } from "node:path";
+import { HOMES_ROOT_ENV } from "./hobo-test-homes.js";
 
-if (!process.env.HOBO_HOME) {
-	const home = mkdtempSync(join(tmpdir(), "hobo-test-home-"));
-	process.env.HOBO_HOME = home;
-	afterAll(() => {
-		rmSync(home, { recursive: true, force: true });
-		if (process.env.HOBO_HOME === home) {
-			Reflect.deleteProperty(process.env, "HOBO_HOME");
-		}
-	});
+const root = process.env[HOMES_ROOT_ENV];
+const current = process.env.HOBO_HOME;
+
+/** Whether `dir` is inside the run's root. */
+function inRoot(dir: string, homes: string): boolean {
+	const path = relative(homes, dir);
+	return path !== "" && !path.startsWith("..") && !isAbsolute(path);
+}
+
+if (root && (!current || inRoot(current, root))) {
+	process.env.HOBO_HOME = mkdtempSync(join(root, "home-"));
+} else if (!current) {
+	process.env.HOBO_HOME = mkdtempSync(join(tmpdir(), "hobo-test-home-"));
 }

@@ -71,6 +71,9 @@ describe("HOBO_HOME isolation", () => {
 	});
 });
 
+const GLOBAL_SETUP = fileURLToPath(
+	new URL("./setup/hobo-test-homes.ts", import.meta.url),
+);
 const SETUP = fileURLToPath(
 	new URL("./setup/isolate-hobo-home.ts", import.meta.url),
 );
@@ -79,50 +82,60 @@ afterAll(() => {
 	rmSync(scratch, { recursive: true, force: true });
 });
 
-/** What a run of the two probe files saw, and left. */
-interface TwoFiles {
+/** What a run of probe files saw, and left. */
+interface ProbeRun {
 	readonly status: number | null;
-	/** "<HOBO_HOME> <whether it existed>", one line per file. */
+	/** One line per record a probe made: "<label> <HOBO_HOME> <whether it existed>". */
 	readonly seen: string[];
-	/** The throwaway homes left in the run's TMPDIR. */
+	/** The run's TMPDIR, where its root of homes is made. */
+	readonly temp: string;
+	/** What is left in that TMPDIR once the run is over. */
 	readonly left: string[];
 }
+
+/** Each probe file starts with this: `record(label)` notes the HOBO_HOME it sees now. */
+const PROBE_HEAD = `import { appendFileSync, existsSync } from "node:fs";
+const record = (label) => {
+	const home = process.env.HOBO_HOME ?? "";
+	appendFileSync(process.env.SEEN_FILE ?? "", label + " " + home + " " + existsSync(home) + "\\n");
+};
+`;
 
 let projects = 0;
 
 /**
- * Runs two test files, one after the other in one worker as the root config
- * runs files (isolate: false), with only the setup file under test, a TMPDIR
- * of their own, and `env`. Each records the HOBO_HOME it saw and whether it
- * existed. Returns those lines and what is left in that TMPDIR.
+ * Runs probe files (name to body) one after the other in one worker, as the
+ * root config runs files (isolate: false), with only the global setup and the
+ * setup file under test, a TMPDIR of their own, and `env`.
  */
-function runTwoFiles(env: NodeJS.ProcessEnv): TwoFiles {
+function runProbes(
+	files: Readonly<Record<string, string>>,
+	env: NodeJS.ProcessEnv = {},
+): ProbeRun {
 	projects += 1;
 	const project = join(scratch, `project-${projects}`);
 	const temp = join(project, "tmp");
 	const seenFile = join(project, "seen.txt");
 	mkdirSync(temp, { recursive: true });
 	writeFileSync(seenFile, "");
-	const probe = `import { appendFileSync, existsSync } from "node:fs";
-it("records its home", () => {
-	const home = process.env.HOBO_HOME ?? "";
-	appendFileSync(process.env.SEEN_FILE ?? "", home + " " + existsSync(home) + "\\n");
-});
-`;
-	writeFileSync(join(project, "a.probe.test.mjs"), probe);
-	writeFileSync(join(project, "b.probe.test.mjs"), probe);
+	for (const [name, body] of Object.entries(files)) {
+		writeFileSync(join(project, `${name}.probe.test.mjs`), PROBE_HEAD + body);
+	}
 	writeFileSync(
 		join(project, "vitest.config.mjs"),
-		`export default { test: { globals: true, isolate: false, pool: "threads", fileParallelism: false, maxWorkers: 1, include: ["*.probe.test.mjs"], setupFiles: [${JSON.stringify(SETUP)}] } };\n`,
+		`export default { test: { globals: true, isolate: false, pool: "threads", fileParallelism: false, maxWorkers: 1, include: ["*.probe.test.mjs"], globalSetup: [${JSON.stringify(GLOBAL_SETUP)}], setupFiles: [${JSON.stringify(SETUP)}] } };\n`,
 	);
 	const vitest = join(
 		dirname(createRequire(import.meta.url).resolve("vitest/package.json")),
 		"vitest.mjs",
 	);
-	// Another vitest run of its own: none of this one's VITEST_* settings or HOBO_HOME.
+	// Another vitest run of its own: none of this one's VITEST_* settings, HOBO_HOME or root.
 	const inherited = Object.fromEntries(
 		Object.entries(process.env).filter(
-			([key]) => !key.startsWith("VITEST") && key !== "HOBO_HOME",
+			([key]) =>
+				!key.startsWith("VITEST") &&
+				key !== "HOBO_HOME" &&
+				key !== "HOBO_TEST_HOMES",
 		),
 	);
 	const run = spawnSync(
@@ -138,29 +151,64 @@ it("records its home", () => {
 	return {
 		status: run.status,
 		seen: readFileSync(seenFile, "utf8").split("\n").filter(Boolean),
-		left: readdirSync(temp).filter((name) =>
-			name.startsWith("hobo-test-home-"),
-		),
+		temp,
+		left: readdirSync(temp).filter((name) => name.startsWith("hobo-test-home")),
 	};
 }
 
+const RECORDS = `it("records its home", () => record("file"));\n`;
+
+/** "<label> <a home inside the run's root> true" for a run whose TMPDIR is `temp`. */
+function inRoot(label: string, temp: string): RegExp {
+	const dir = temp.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+	return new RegExp(
+		`^${label} ${dir}/hobo-test-homes-[^/ ]+/home-[^/ ]+ true$`,
+		"u",
+	);
+}
+
 describe("the throwaway HOBO_HOME", () => {
-	it("is removed once each file is done, and the next file gets one of its own", () => {
-		const { status, seen, left } = runTwoFiles({});
+	it("is one per file inside the run's root, and all are removed when the run ends", () => {
+		const { status, seen, temp, left } = runProbes({ a: RECORDS, b: RECORDS });
 		expect(status).toBe(0);
 		expect(seen).toHaveLength(2);
-		for (const line of seen) {
-			expect(line).toMatch(/\/hobo-test-home-[^/ ]+ true$/u);
-		}
+		for (const line of seen) expect(line).toMatch(inRoot("file", temp));
+		expect(new Set(seen).size).toBe(2);
 		expect(left).toEqual([]);
 	}, 60_000);
 
-	it("is never one the runner set: that one is left as it was", () => {
+	it("leaves nothing behind for a file whose every test is skipped", () => {
+		// Vitest runs no afterAll for such a file, so only the run's teardown can remove its home.
+		const { status, left } = runProbes({
+			a: RECORDS,
+			skipped: `describe.skip("never selected", () => { it("is skipped", () => {}); });\n`,
+		});
+		expect(status).toBe(0);
+		expect(left).toEqual([]);
+	}, 60_000);
+
+	it("stays set after a file's last test, so a late write lands inside the run's root", () => {
+		// The timer fires once the file's test is done; HOBO_HOME unset then would send it to ~/.hobo.
+		const { status, seen, temp, left } = runProbes({
+			a: `it("leaves a timer", () => { setTimeout(() => record("late"), 0); });\n`,
+			b: `it("keeps the worker busy", async () => { await new Promise((done) => setTimeout(done, 500)); });\n`,
+		});
+		expect(status).toBe(0);
+		expect(seen).toHaveLength(1);
+		expect(seen[0]).toMatch(inRoot("late", temp));
+		expect(left).toEqual([]);
+	}, 60_000);
+
+	it("is never one the runner set: that one is kept, and no root is made", () => {
 		const own = join(scratch, "own-home");
 		mkdirSync(own);
-		const { status, seen } = runTwoFiles({ HOBO_HOME: own });
+		const { status, seen, left } = runProbes(
+			{ a: RECORDS, b: RECORDS },
+			{ HOBO_HOME: own },
+		);
 		expect(status).toBe(0);
-		expect(seen).toEqual([`${own} true`, `${own} true`]);
+		expect(seen).toEqual([`file ${own} true`, `file ${own} true`]);
 		expect(existsSync(own)).toBe(true);
+		expect(left).toEqual([]);
 	}, 60_000);
 });

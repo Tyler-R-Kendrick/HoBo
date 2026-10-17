@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import path from "node:path";
+import { GIT_OUTPUT_MAX_BUFFER } from "./lib/git-output.ts";
 
 const CODE_PATTERNS = [
 	/^src\//,
@@ -51,7 +52,10 @@ const args = new Set(process.argv.slice(2));
 const baseArg = process.argv.find((arg) => arg.startsWith("--base="));
 
 function git(args: string[]) {
-	return execFileSync("git", args, { encoding: "utf8" }).trim();
+	return execFileSync("git", args, {
+		encoding: "utf8",
+		maxBuffer: GIT_OUTPUT_MAX_BUFFER,
+	}).trim();
 }
 
 function changedFiles() {

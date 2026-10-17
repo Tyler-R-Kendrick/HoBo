@@ -12,6 +12,8 @@ import { join } from "node:path";
 import { PinsError, type PinsErrorCode } from "./pins.ts";
 import { netTimeout } from "./pins-net.ts";
 
+export { sameRepo } from "./pins-repo-url.ts";
+
 export interface GitResult {
 	readonly status: number;
 	readonly stdout: string;
@@ -322,16 +324,4 @@ export function modulesEntry(root: string, path: string): ModulesEntry | null {
 /** The url `.gitmodules` records for the submodule at `path`, if any. */
 export function modulesUrl(root: string, path: string): string | null {
 	return modulesEntry(root, path)?.url ?? null;
-}
-
-/** `https://Host/a/b.git/`, `file:///a/b` and `/a/b` compare by what they name. */
-export function sameRepo(left: string, right: string): boolean {
-	const normal = (value: string): string => {
-		const bare = value
-			.replace(/^file:\/\//u, "")
-			.replace(/\/+$/u, "")
-			.replace(/\.git$/u, "");
-		return /^https?:\/\//iu.test(bare) ? bare.toLowerCase() : bare;
-	};
-	return normal(left) === normal(right);
 }

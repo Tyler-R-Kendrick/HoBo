@@ -37,6 +37,7 @@ import {
 	fetchVerified,
 	verifyCached,
 } from "./pins-fetch.ts";
+import { sameRepo } from "./pins-repo-url.ts";
 
 export interface AssetContext {
 	readonly cache: string;
@@ -302,7 +303,14 @@ export async function bumpAsset(
 		checkRepoUrl(options.repo, "--repo", options.allowLocal);
 	}
 	const pin = pins.assets[name] ?? null;
-	const repo = options.repo ?? pin?.repo;
+	// `--repo` naming the pin's own repository (a trailing slash, `.git`) is
+	// not a move: keep the manifest's text and announce nothing.
+	const repo =
+		options.repo !== undefined &&
+		pin !== null &&
+		sameRepo(options.repo, pin.repo)
+			? pin.repo
+			: (options.repo ?? pin?.repo);
 	if (repo === undefined) {
 		throw new PinsError(
 			"USAGE",

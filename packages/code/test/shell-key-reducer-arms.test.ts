@@ -251,12 +251,11 @@ describe("the help key", () => {
 });
 
 describe("the approval gate", () => {
-	// SAFETY: the fixture stands in for the gate the host builds.
-	const pending = {
+	const pending: PendingApproval = {
 		runId: "run-1",
 		sandboxRoot: "/tmp/sandbox",
 		changes: [],
-	} as unknown as PendingApproval;
+	};
 
 	const gated = (overrides: Partial<InteractiveShellState> = {}) =>
 		base({ pendingApproval: pending, ...overrides });

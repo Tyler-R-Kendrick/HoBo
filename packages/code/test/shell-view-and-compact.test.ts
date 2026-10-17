@@ -86,8 +86,10 @@ const base = (overrides: Partial<InteractiveShellState> = {}) =>
 		// SAFETY: the fixture is the state shape these views are declared over.
 	}) as InteractiveShellState;
 
-const message = (text: string, role: ShellMessage["role"] = "user") =>
-	({ role, text, at: 1 }) as ShellMessage;
+const message = (
+	text: string,
+	role: ShellMessage["role"] = "user",
+): ShellMessage => ({ role, text, at: 1 });
 
 /**
  * Panes carrying enough captured output to scroll. `syncAgentsBodyLines`
@@ -284,15 +286,14 @@ describe("the frame title", () => {
 	});
 
 	it("builds a frame for a pending approval", () => {
-		// SAFETY: the fixture stands in for the gate the host builds.
-		const approval = {
+		const approval: PendingApproval = {
 			runId: "run-1",
 			sandboxRoot: "/tmp/sandbox",
 			changes: [
 				{ path: "a.ts", status: "M" },
 				{ path: "b.ts", status: "A" },
 			],
-		} as unknown as PendingApproval;
+		};
 		expect(
 			JSON.stringify(buildShellTree(base({ pendingApproval: approval }))),
 		).toContain("run-1");
@@ -301,15 +302,14 @@ describe("the frame title", () => {
 	it("lists every change the approval covers", () => {
 		// Not a count: the dialog names each path and its status, so the reader
 		// approves what they can actually see rather than a number.
-		// SAFETY: the fixture stands in for the gate the host builds.
-		const approval = {
+		const approval: PendingApproval = {
 			runId: "run-1",
 			sandboxRoot: "/tmp/sandbox",
 			changes: [
 				{ path: "a.ts", status: "M" },
 				{ path: "b.ts", status: "A" },
 			],
-		} as unknown as PendingApproval;
+		};
 		const painted = JSON.stringify(
 			buildShellTree(base({ pendingApproval: approval })),
 		);
@@ -320,12 +320,11 @@ describe("the frame title", () => {
 	it("shows each change's status beside its path", () => {
 		// Added and modified are different risks; a bare path list would hide
 		// which is which.
-		// SAFETY: the fixture stands in for the gate the host builds.
-		const approval = {
+		const approval: PendingApproval = {
 			runId: "run-1",
 			sandboxRoot: "/tmp/sandbox",
 			changes: [{ path: "a.ts", status: "M" }],
-		} as unknown as PendingApproval;
+		};
 		expect(
 			JSON.stringify(buildShellTree(base({ pendingApproval: approval }))),
 		).toContain("M  a.ts");
@@ -334,24 +333,22 @@ describe("the frame title", () => {
 	it("promises the canonical tree is untouched until yes", () => {
 		// The sentence the gate exists for, rendered where the decision is made
 		// rather than in documentation elsewhere.
-		// SAFETY: the fixture stands in for the gate the host builds.
-		const approval = {
+		const approval: PendingApproval = {
 			runId: "run-1",
 			sandboxRoot: "/tmp/sandbox",
 			changes: [{ path: "a.ts", status: "M" }],
-		} as unknown as PendingApproval;
+		};
 		expect(
 			JSON.stringify(buildShellTree(base({ pendingApproval: approval }))),
 		).toContain("canonical tree is untouched");
 	});
 
 	it("names the sandbox the changes are held in", () => {
-		// SAFETY: the fixture stands in for the gate the host builds.
-		const approval = {
+		const approval: PendingApproval = {
 			runId: "run-1",
 			sandboxRoot: "/tmp/sandbox",
 			changes: [{ path: "a.ts", status: "M" }],
-		} as unknown as PendingApproval;
+		};
 		expect(
 			JSON.stringify(buildShellTree(base({ pendingApproval: approval }))),
 		).toContain("/tmp/sandbox");

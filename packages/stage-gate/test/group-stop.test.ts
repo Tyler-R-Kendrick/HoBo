@@ -7,7 +7,7 @@
  * member that runs as another user.
  */
 import { spawnSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { existsSync, mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -152,9 +152,14 @@ describe("the check, when kill answers EPERM", () => {
 	it.runIf(CAN_DROP_KILL)(
 		"records not_run with the reason: a member of another user outlived ai-bdd, and the check may not signal it",
 		() => {
-			// As the command sudo or su runs is: another real uid, which ignores SIGTERM.
-			const member =
-				"trap '' TERM; setpriv --reuid=65534 --regid=65534 --clear-groups sleep 20 >/dev/null 2>&1 & echo holder $! >&2; sleep 0.3; exit 0";
+			// As the command sudo or su runs is: another real uid, which ignores SIGTERM. The
+			// shell says so in $READY once /proc shows the member's uid changed, and only
+			// then exits: a SIGKILL sent before the change would reach it.
+			const ready = join(
+				tmpdir(),
+				`hobo-eperm-${process.pid}-${Date.now()}.ready`,
+			);
+			const member = `trap '' TERM; setpriv --reuid=65534 --regid=65534 --clear-groups sleep 20 >/dev/null 2>&1 & m=$!; echo holder $m >&2; i=0; until grep -q '^Uid:[[:space:]]*65534[[:space:]]' /proc/$m/status 2>/dev/null || [ $i -ge 400 ]; do sleep 0.05; i=$((i+1)); done; [ $i -lt 400 ] && : > "$READY"; exit 0`;
 			const check = spawnSync(
 				"setpriv",
 				[
@@ -171,6 +176,7 @@ describe("the check, when kill answers EPERM", () => {
 						...process.env,
 						HOBO_AI_BDD_CMD: JSON.stringify(["sh", "-c", member]),
 						HOBO_AI_BDD_PROJECT: tmpdir(),
+						READY: ready,
 					},
 					encoding: "utf8",
 					timeout: 30_000,
@@ -178,6 +184,7 @@ describe("the check, when kill answers EPERM", () => {
 			);
 			const holder = Number(/holder (\d+)/u.exec(check.stderr)?.[1] ?? 0);
 			try {
+				expect(existsSync(ready)).toBe(true);
 				const evidenceLine = check.stdout.trim().split("\n").at(-1) ?? "";
 				expect(evidenceLine).toContain('"outcome":"not_run"');
 				expect(evidenceLine).toContain(
@@ -187,6 +194,7 @@ describe("the check, when kill answers EPERM", () => {
 				expect(check.status).toBe(3);
 			} finally {
 				killQuietly(holder);
+				rmSync(ready, { force: true });
 			}
 		},
 		40_000,

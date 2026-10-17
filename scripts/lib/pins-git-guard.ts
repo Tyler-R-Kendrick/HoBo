@@ -49,8 +49,13 @@ export function coherence(
 		return found;
 	}
 	if (entry === null) {
+		// The gitlink is in the index (gitlinkOf comes first), so
+		// `git submodule add` would refuse: "already exists in the index".
+		const key = `-f .gitmodules submodule.${pin.path}`;
 		found.problems.push(`${pin.path} is not registered in .gitmodules`);
-		found.fixes.push(`git submodule add ${pin.repo} ${pin.path}`);
+		found.fixes.push(
+			`git config ${key}.path ${pin.path} && git config ${key}.url ${pin.repo}`,
+		);
 		return found;
 	}
 	const setUrl = `git config -f .gitmodules submodule.${entry.name}.url ${pin.repo}`;

@@ -152,10 +152,11 @@ describe("the repository must be the same everywhere before anything is fetched"
 		);
 		const status = runBootstrap(f.work, ["--status", "--offline"]);
 		assert.equal(status.status, 1);
+		const url = f.remote.url.replace(/[/.]/gu, "\\$&");
 		assert.match(
 			status.stdout,
 			new RegExp(
-				`fix: git submodule add ${f.remote.url.replace(/[/.]/gu, "\\$&")} external/lib`,
+				`fix: git config -f \\.gitmodules submodule\\.external/lib\\.path external/lib && git config -f \\.gitmodules submodule\\.external/lib\\.url ${url}`,
 			),
 		);
 	});

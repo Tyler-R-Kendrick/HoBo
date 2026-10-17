@@ -130,7 +130,7 @@ function foreignReason(
 		return `is a linked worktree of the repository at ${sub.common}`;
 	if (sub.gitDir === realOr(join(root, path, ".git"))) return null;
 	const owner = repositoryOf(root);
-	const name = modulesEntry(root, path)?.name;
+	const name = nameOf(root, path);
 	const modules =
 		owner === null || name === undefined
 			? null
@@ -138,15 +138,27 @@ function foreignReason(
 	if (sub.gitDir === modules) return null;
 	if (basename(sub.gitDir) === ".git")
 		return `is the repository of another working tree (${dirname(sub.gitDir)})`;
-	for (const dir of [owner?.gitDir, owner?.common]) {
-		if (dir !== undefined && within(sub.gitDir, dir)) {
-			const own = modules ?? `no .gitmodules entry names ${path}`;
-			return `is inside the superproject's git directory but is not this submodule's (${own})`;
-		}
+	// Without the name there is no module directory to tell the submodule's
+	// own from another's; `coherence` refuses that `.gitmodules`, so status
+	// says it once and fetch and bump stop on it first.
+	if (owner === null || modules === null) return null;
+	for (const dir of [owner.gitDir, owner.common]) {
+		if (within(sub.gitDir, dir))
+			return `is inside the superproject's git directory but is not this submodule's (${modules})`;
 	}
 	// core.worktree needs no check: it decides git's top level, which
 	// headOf has already found to be this path.
 	return null;
+}
+
+/** The submodule's name in `.gitmodules`, or undefined when it names none or is refused. */
+function nameOf(root: string, path: string): string | undefined {
+	try {
+		return modulesEntry(root, path)?.name;
+	} catch (error) {
+		if (error instanceof Refusal) return undefined;
+		throw error;
+	}
 }
 
 /** A `.git` file naming another checkout's repository is refused. */

@@ -16,7 +16,7 @@ import {
 	type Kill,
 	stopGroup,
 } from "../src/process-group.js";
-import { PGID, procTables, zombie } from "./helpers/proc-table.js";
+import { GROUP, PGID, procTables, zombie } from "./helpers/proc-table.js";
 import { killQuietly, REPO_ROOT } from "./helpers/release-gate.js";
 
 const tables = procTables();
@@ -49,11 +49,7 @@ const untilKilled =
 describe("stopGroup, with a kill that answers as the kernel would", () => {
 	it("is gone when the first signal finds no member (ESRCH), and sends nothing more", async () => {
 		const { kill, sent } = fakeKill(() => "ESRCH");
-		const stop = await stopGroup(
-			groupTarget({ pgid: PGID }, { kill }),
-			"SIGTERM",
-			300,
-		);
+		const stop = await stopGroup(groupTarget(GROUP, { kill }), "SIGTERM", 300);
 		expect(stop).toEqual({ kind: "gone" });
 		expect(sent).toEqual(["SIGTERM"]);
 	});
@@ -61,11 +57,7 @@ describe("stopGroup, with a kill that answers as the kernel would", () => {
 	it("is killed once SIGKILL, sent when the grace ended, has landed", async () => {
 		const { kill, sent } = fakeKill(untilKilled("ESRCH"));
 		const started = Date.now();
-		const stop = await stopGroup(
-			groupTarget({ pgid: PGID }, { kill }),
-			"SIGTERM",
-			300,
-		);
+		const stop = await stopGroup(groupTarget(GROUP, { kill }), "SIGTERM", 300);
 		expect(stop).toEqual({ kind: "killed" });
 		expect(Date.now() - started).toBeGreaterThanOrEqual(300);
 		expect(sent.at(0)).toBe("SIGTERM");
@@ -76,10 +68,7 @@ describe("stopGroup, with a kill that answers as the kernel would", () => {
 		const { kill, sent } = fakeKill(() => "ok");
 		const started = Date.now();
 		const stop = await stopGroup(
-			groupTarget(
-				{ pgid: PGID },
-				{ kill, procRoot: tables.table([zombie(100)]) },
-			),
+			groupTarget(GROUP, { kill, procRoot: tables.table([zombie(100)]) }),
 			"SIGTERM",
 			5000,
 		);
@@ -88,13 +77,21 @@ describe("stopGroup, with a kill that answers as the kernel would", () => {
 		expect(Date.now() - started).toBeLessThan(2000);
 	});
 
-	it("is unconfirmed, at once and with nothing more sent, when the first signal is answered EPERM", async () => {
-		const { kill, sent } = fakeKill(() => "EPERM");
+	it("is gone, with no SIGKILL, once its pgid leads another session's group: the number was reused", async () => {
+		const { kill, sent } = fakeKill(() => "ok");
+		const stranger = { ...zombie(100), state: "S", session: 77 };
 		const stop = await stopGroup(
-			groupTarget({ pgid: PGID }, { kill }),
-			"SIGINT",
+			groupTarget(GROUP, { kill, procRoot: tables.table([stranger]) }),
+			"SIGTERM",
 			300,
 		);
+		expect(stop).toEqual({ kind: "gone" });
+		expect(sent).toEqual(["SIGTERM", 0]);
+	});
+
+	it("is unconfirmed, at once and with nothing more sent, when the first signal is answered EPERM", async () => {
+		const { kill, sent } = fakeKill(() => "EPERM");
+		const stop = await stopGroup(groupTarget(GROUP, { kill }), "SIGINT", 300);
 		expect(stop).toEqual({
 			kind: "unconfirmed",
 			reason: `process group ${PGID}: kill answered EPERM: members this check may not signal (another user's) are left`,
@@ -106,11 +103,7 @@ describe("stopGroup, with a kill that answers as the kernel would", () => {
 		const { kill, sent } = fakeKill((signal) =>
 			signal === 0 ? "EACCES" : "ok",
 		);
-		const stop = await stopGroup(
-			groupTarget({ pgid: PGID }, { kill }),
-			"SIGTERM",
-			5000,
-		);
+		const stop = await stopGroup(groupTarget(GROUP, { kill }), "SIGTERM", 5000);
 		expect(stop).toEqual({
 			kind: "unconfirmed",
 			reason: `process group ${PGID}: kill answered EACCES: a security module refused the signal, so members are left`,
@@ -121,11 +114,7 @@ describe("stopGroup, with a kill that answers as the kernel would", () => {
 	it("is unconfirmed when what SIGKILL hit is still running after KILL_CONFIRM_MS", async () => {
 		const { kill, sent } = fakeKill(() => "ok");
 		const started = Date.now();
-		const stop = await stopGroup(
-			groupTarget({ pgid: PGID }, { kill }),
-			"SIGTERM",
-			300,
-		);
+		const stop = await stopGroup(groupTarget(GROUP, { kill }), "SIGTERM", 300);
 		expect(stop).toEqual({
 			kind: "unconfirmed",
 			reason: `process group ${PGID}: members were still running ${KILL_CONFIRM_MS} ms after SIGKILL`,
@@ -136,11 +125,7 @@ describe("stopGroup, with a kill that answers as the kernel would", () => {
 
 	it("is unconfirmed when, after SIGKILL, only members this check may not signal are left (EPERM)", async () => {
 		const { kill } = fakeKill(untilKilled("EPERM"));
-		const stop = await stopGroup(
-			groupTarget({ pgid: PGID }, { kill }),
-			"SIGTERM",
-			300,
-		);
+		const stop = await stopGroup(groupTarget(GROUP, { kill }), "SIGTERM", 300);
 		expect(stop).toMatchObject({
 			kind: "unconfirmed",
 			reason: expect.stringContaining("kill answered EPERM"),

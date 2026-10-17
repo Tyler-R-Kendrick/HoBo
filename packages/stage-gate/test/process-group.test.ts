@@ -9,7 +9,7 @@ import { join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 import { scanGroup } from "../src/process-group.js";
-import { PGID, procTables, zombie } from "./helpers/proc-table.js";
+import { GROUP, procTables, zombie } from "./helpers/proc-table.js";
 
 const tables = procTables();
 afterAll(tables.remove);
@@ -18,20 +18,34 @@ const scratch = tables.dir;
 
 describe("scanGroup", () => {
 	it("is zombies for a group whose members are all zombies of one thread", () => {
-		expect(scanGroup(PGID, table([zombie(100), zombie(101)]))).toBe("zombies");
+		expect(scanGroup(GROUP, table([zombie(100), zombie(101)]))).toBe("zombies");
 	});
 
 	it("is live while a member whose main thread exited still runs other threads", () => {
 		// Linux shows such a thread-group leader as Z, with num_threads above 1.
 		const leaderExited = { ...zombie(101), comm: "python3", threads: 2 };
-		expect(scanGroup(PGID, table([zombie(100), leaderExited]))).toBe("live");
+		expect(scanGroup(GROUP, table([zombie(100), leaderExited]))).toBe("live");
 	});
 
 	it("is live when the table shows no member, as a /proc of another PID namespace does", () => {
 		// kill(-pgid, 0) has just found a member: a table that shows none cannot say it is gone.
 		const elsewhere = { ...zombie(100), state: "S", pgrp: 7 };
-		expect(scanGroup(PGID, table([elsewhere]))).toBe("live");
-		expect(scanGroup(PGID, table([]))).toBe("live");
+		expect(scanGroup(GROUP, table([elsewhere]))).toBe("live");
+		expect(scanGroup(GROUP, table([]))).toBe("live");
+	});
+
+	it("is elsewhere when the pgid shows only in another session's processes: the number was reused", () => {
+		// Ours leads its own session; a process that took the freed number for a group of its own did not.
+		const stranger = { ...zombie(100), state: "S", session: 77 };
+		expect(scanGroup(GROUP, table([stranger]))).toBe("elsewhere");
+	});
+
+	it("is live when the table is not this PID namespace's: its self names another pid", () => {
+		const stranger = { ...zombie(100), state: "S", session: 77 };
+		expect(scanGroup(GROUP, table([stranger], process.pid + 1))).toBe("live");
+		expect(scanGroup(GROUP, table([zombie(101)], process.pid + 1))).toBe(
+			"live",
+		);
 	});
 
 	it("is live when an entry's stat cannot be read for a reason other than its process being gone", () => {
@@ -39,11 +53,11 @@ describe("scanGroup", () => {
 		// Such an entry may be a member the scan cannot see, so beside a zombie it is not a group of zombies.
 		const root = table([zombie(100)]);
 		mkdirSync(join(root, "101", "stat"), { recursive: true });
-		expect(scanGroup(PGID, root)).toBe("live");
+		expect(scanGroup(GROUP, root)).toBe("live");
 	});
 
 	it("is live without a readable table", () => {
-		expect(scanGroup(PGID, join(scratch, "no-such-proc"))).toBe("live");
+		expect(scanGroup(GROUP, join(scratch, "no-such-proc"))).toBe("live");
 	});
 
 	it.runIf(process.platform === "linux")(
@@ -76,7 +90,7 @@ describe("scanGroup", () => {
 					await new Promise((done) => setTimeout(done, 100));
 				}
 				expect(ready()).toBe(true);
-				expect(scanGroup(pgid, "/proc")).toBe("live");
+				expect(scanGroup({ pgid, sid: pgid }, "/proc")).toBe("live");
 			} finally {
 				process.kill(-pgid, "SIGKILL");
 			}

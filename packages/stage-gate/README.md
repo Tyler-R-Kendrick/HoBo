@@ -149,8 +149,11 @@ stopped and the check is `not_run`, with a reason naming the command and the
 bound. Stopping a group sends it SIGTERM and, after a grace period of 10 s
 (`AI_BDD_GRACE_MS`), SIGKILL to whatever of it is left. Each poll asks the
 kernel first (`kill(-pgid, 0)`); only while it still finds a member, on Linux,
-is `/proc` read (`src/process-group.ts`), and a group whose members `/proc`
-shows are all zombies of one thread (state `Z`, `num_threads` 1) is SIGKILLed
+is `/proc` read (`src/process-group.ts`). A member is a process of the group's
+pgid in the session ai-bdd leads (it is spawned detached, so it calls `setsid`),
+which keeps a stranger that took the freed number for a group of its own out of
+the stop: such a group counts as ours gone, and nothing more is sent to it. A
+group whose members `/proc` shows are all zombies of one thread (state `Z`, `num_threads` 1) is SIGKILLed
 at once rather than waited for: under a PID 1 or subreaper that never reaps (a
 container whose PID 1 is not an init), a zombie would otherwise hold every stop
 for the whole grace period, and the scan can miss a member forked while it ran,

@@ -147,9 +147,11 @@ function targetOf(child: ChildProcess): StopTarget {
 		};
 	}
 	if (process.platform === "win32") return commandTarget(child);
-	// On Linux /proc is read once the kernel has found a member, to tell a zombie from it.
+	// Spawned detached, it called setsid() before exec: it leads a session and a
+	// group, both numbered by its pid. On Linux /proc is read once the kernel has
+	// found a member, to tell a zombie from it.
 	return groupTarget(
-		{ pgid: child.pid },
+		{ pgid: child.pid, sid: child.pid },
 		process.platform === "linux" ? { procRoot: "/proc" } : {},
 	);
 }

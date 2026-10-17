@@ -13,7 +13,7 @@
  * hold every stop for the whole grace period: a group the table shows holding
  * only zombies is SIGKILLed at once.
  */
-import { readdirSync, readFileSync } from "node:fs";
+import { readdirSync, readFileSync, readlinkSync } from "node:fs";
 import { join } from "node:path";
 
 /** process.kill's shape; a test passes one that answers as the kernel would. */
@@ -93,34 +93,59 @@ function statFields(
 }
 
 /**
- * What the process table at `procRoot` shows of group `pgid`: "zombies" when
- * it shows at least one member and every member it shows is a zombie of one
- * thread (state Z, num_threads 1); "live" otherwise:
- * - a process whose main thread exited while its other threads run shows Z
- *   with num_threads above 1;
- * - a /proc of another PID namespace shows no member, although the kernel
- *   has just found one;
- * - an entry whose stat cannot be read may be a member it cannot see;
- * - an unreadable /proc shows nothing.
+ * Whether the table at `procRoot` is this process's PID namespace's: its
+ * `self` names this process. Another namespace's shows pids of its own, and
+ * nothing in it can be matched to ai-bdd's group.
  */
-export function scanGroup(pgid: number, procRoot: string): "zombies" | "live" {
+function ownTable(procRoot: string): boolean {
+	try {
+		return readlinkSync(join(procRoot, "self")) === String(process.pid);
+	} catch {
+		return false;
+	}
+}
+
+/**
+ * What the process table at `procRoot` shows of `group`, counting as members
+ * only the processes of its pgid that are in its session:
+ * - "zombies" when it shows at least one member and every member it shows is
+ *   a zombie of one thread (state Z, num_threads 1);
+ * - "elsewhere" when it shows no member but processes of that pgid in another
+ *   session: the group is gone and its number now leads a stranger's;
+ * - "live" otherwise. A process whose main thread exited while its other
+ *   threads run shows Z with num_threads above 1. An entry whose stat cannot
+ *   be read may be a member it cannot see. A /proc of another PID namespace,
+ *   or one that cannot be read, shows nothing that can be matched, although
+ *   the kernel has just found a member.
+ */
+export function scanGroup(
+	{ pgid, sid }: ProcessGroup,
+	procRoot: string,
+): "zombies" | "elsewhere" | "live" {
+	if (!ownTable(procRoot)) return "live";
 	let entries: string[];
 	try {
 		entries = readdirSync(procRoot);
 	} catch {
 		return "live";
 	}
-	let seen = false;
+	let members = 0;
+	let strangers = 0;
 	for (const entry of entries) {
 		if (!/^\d+$/u.test(entry)) continue;
 		const fields = statFields(procRoot, entry);
 		if (fields === "unreadable") return "live";
-		// state is field 3, pgrp field 5 and num_threads field 20 of the line.
+		// state is field 3, pgrp field 5, session field 6 and num_threads field 20 of the line.
 		if (fields === "gone" || Number(fields[2]) !== pgid) continue;
-		seen = true;
+		if (Number(fields[3]) !== sid) {
+			strangers += 1;
+			continue;
+		}
+		members += 1;
 		if (fields[0] !== "Z" || Number(fields[17]) !== 1) return "live";
 	}
-	return seen ? "zombies" : "live";
+	if (members > 0) return "zombies";
+	return strangers > 0 ? "elsewhere" : "live";
 }
 
 /** `signal` (0 only asks) to every member of group `pgid`. */
@@ -141,13 +166,16 @@ function signalPgid(
 /** A process group (POSIX), as ai-bdd's is when it is spawned. */
 export interface ProcessGroup {
 	readonly pgid: number;
+	/** The session it is in, recorded at spawn: a process that later takes the pgid's number is not in it. */
+	readonly sid: number;
 }
 
 /** How a stop signals `group`, and asks what is left of it. */
 export function groupTarget(
-	{ pgid }: ProcessGroup,
+	group: ProcessGroup,
 	seams: GroupSeams = {},
 ): StopTarget {
+	const { pgid } = group;
 	const kill = seams.kill ?? process.kill;
 	const { procRoot } = seams;
 	return {
@@ -157,7 +185,9 @@ export function groupTarget(
 			const asked = signalPgid(kill, pgid, 0);
 			if (asked.kind !== "sent") return asked;
 			if (procRoot === undefined) return { kind: "live" };
-			return { kind: scanGroup(pgid, procRoot) };
+			const scan = scanGroup(group, procRoot);
+			// The number is a stranger's now: none of ours is left, and nothing more is sent.
+			return scan === "elsewhere" ? { kind: "gone" } : { kind: scan };
 		},
 	};
 }

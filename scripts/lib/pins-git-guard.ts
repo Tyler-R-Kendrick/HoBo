@@ -67,20 +67,58 @@ export function coherence(
 			`${setUrl}   (or correct tools/pins/siblings.json if .gitmodules is right)`,
 		);
 	}
-	// --local: the URL `git submodule update` will use is this repository's own.
-	const configured = git(root, [
+	// No scope, so every one is read, as `git submodule update` reads them:
+	// the system and global files, this clone's own, and the command line
+	// (`git -c`, which a child git gets as GIT_CONFIG_COUNT or
+	// GIT_CONFIG_PARAMETERS), the last one winning. GIT_CONFIG is dropped,
+	// so nothing redirects the read; --show-scope says where the fix goes.
+	const read = git(root, [
 		"config",
-		"--local",
+		"--show-scope",
 		"--get",
 		`submodule.${entry.name}.url`,
 	]).stdout;
+	const tab = read.indexOf("\t");
+	const configured = read.slice(tab + 1);
 	if (configured !== "" && !sameRepo(configured, entry.url)) {
+		const scope = tab === -1 ? "" : read.slice(0, tab);
+		const stale = staleUrl(pin.path, entry.name, scope);
 		found.problems.push(
-			`this clone's configured URL for ${pin.path} is ${configured}, not ${entry.url} (a stale "git submodule init")`,
+			`${stale.said} ${configured}, not ${entry.url}${stale.why}`,
 		);
-		found.fixes.push(`git submodule sync -- ${pin.path}`);
+		found.fixes.push(stale.fix);
 	}
 	return found;
+}
+
+/** How to say where a configured URL came from, and the fix that works there. */
+function staleUrl(
+	path: string,
+	name: string,
+	scope: string,
+): { said: string; why: string; fix: string } {
+	const key = `submodule.${name}.url`;
+	const sync = `git submodule sync -- ${path}`;
+	if (scope === "local" || scope === "worktree") {
+		return {
+			said: `this clone's configured URL for ${path} is`,
+			why: ' (a stale "git submodule init")',
+			fix: sync,
+		};
+	}
+	if (scope === "global" || scope === "system") {
+		return {
+			said: `the ${scope} git config sets the URL for ${path} to`,
+			why: "",
+			fix: `${sync}   (this clone's URL then overrides it; or: git config --${scope} --unset ${key})`,
+		};
+	}
+	const where = "git -c, GIT_CONFIG_COUNT or GIT_CONFIG_PARAMETERS";
+	return {
+		said: `the command line (${where}) sets the URL for ${path} to`,
+		why: "",
+		fix: `drop ${key} from ${where}`,
+	};
 }
 
 export function assertCoherent(

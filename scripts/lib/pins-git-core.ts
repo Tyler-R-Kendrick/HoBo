@@ -27,25 +27,37 @@ export interface GitResult {
  * Run git in its own process group under a deadline, from a small node
  * parent: when the deadline passes the whole group gets SIGTERM, then
  * SIGKILL, so no transport helper outlives the call holding a pipe or a
- * connection. A signal the parent gets is passed on to the group. Exit 124
- * means the deadline passed.
+ * connection. A signal the parent gets is passed on to the group. The
+ * listeners exist before git does: git runs in a session of its own, so a
+ * signal that found the parent with no listener would end the parent and
+ * leave git running. git starts on the event loop's check phase, after any
+ * signal already pending has been handled, and a signal handled before git
+ * exists ends the parent with 128 + its number (130 for SIGINT) without
+ * starting git. Exit 124 means the deadline passed.
  */
 export const UNDER_DEADLINE = `
 const { spawn } = require("node:child_process");
+const { signals } = require("node:os").constants;
 const [ms, ...args] = process.argv.slice(1);
-const child = spawn("git", args, { stdio: "inherit", detached: true });
-const group = (signal) => { try { process.kill(-child.pid, signal); } catch {} };
+let child;
+const group = (signal) => {
+	if (child === undefined) process.exit(128 + signals[signal]);
+	try { process.kill(-child.pid, signal); } catch {}
+};
 for (const name of ["SIGINT", "SIGTERM", "SIGHUP"]) process.on(name, () => group(name));
-let late = false;
-const timer = setTimeout(() => {
-	late = true;
-	group("SIGTERM");
-	setTimeout(() => { group("SIGKILL"); process.exit(124); }, 2000).unref();
-}, Number(ms));
-child.on("error", (error) => { console.error(error.message); process.exit(127); });
-child.on("exit", (code, signal) => {
-	clearTimeout(timer);
-	process.exit(late ? 124 : (code ?? (signal === null ? 1 : 128)));
+setImmediate(() => {
+	child = spawn("git", args, { stdio: "inherit", detached: true });
+	let late = false;
+	const timer = setTimeout(() => {
+		late = true;
+		group("SIGTERM");
+		setTimeout(() => { group("SIGKILL"); process.exit(124); }, 2000).unref();
+	}, Number(ms));
+	child.on("error", (error) => { console.error(error.message); process.exit(127); });
+	child.on("exit", (code, signal) => {
+		clearTimeout(timer);
+		process.exit(late ? 124 : (code ?? (signal === null ? 1 : 128)));
+	});
 });
 `;
 

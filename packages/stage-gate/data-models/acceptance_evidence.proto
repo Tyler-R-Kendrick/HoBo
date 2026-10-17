@@ -1,0 +1,26 @@
+syntax = "proto3";
+package hobo.stage_gate.v1;
+
+// What the release gate keeps from one ai-bdd run report
+// (.ai-bdd/report/report.json, RunReport schemaVersion 1), ADR-0172.
+// Only a report of a frozen, no-agent run with zero model calls becomes one;
+// report_digest is the sha256 of the exact bytes that were read.
+message AcceptanceEvidence {
+  string run_id = 1;
+  string report_digest = 2;
+  uint32 scenarios_total = 3;
+  uint32 passed = 4;
+  uint32 healed = 5;
+  uint32 failed = 6;
+  uint32 inconclusive = 7;
+  uint32 blocked = 8;
+  uint32 error = 9;
+  uint32 skipped = 10;
+  uint32 fuzzy_steps = 11;
+  uint32 model_calls = 12;
+  bool frozen = 13;
+  bool no_agent = 14;
+  // The exit code ai-bdd wrote into the report: 0 passed, 1 a scenario failed,
+  // inconclusive or blocked, 3 infrastructure. 2 and 4 write no report.
+  int32 exit_code = 15;
+}

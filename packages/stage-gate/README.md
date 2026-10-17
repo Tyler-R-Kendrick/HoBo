@@ -36,6 +36,26 @@ and malformed or tampered input throws `StageGateParseError`. Downstream code
 consumes only parsed records — parse, don't validate. Wire forms live in
 `data-models/stage_gate_record.proto` with CUE constraints alongside.
 
+## ai-bdd run reports (ADR-0172)
+
+`parseAiBddRunReport(bytes)` reads the bytes of an ai-bdd `report.json`
+(`RunReport`, `schemaVersion` 1) and returns a frozen `AcceptanceEvidence`
+(`data-models/acceptance_evidence.proto` + `.cue`): run id, the sha256 of the
+exact bytes read (`report_digest`, equal to `sha256sum report.json`), scenarios
+per status, fuzzy steps, model calls, the frozen/no-agent flags and the exit
+code. It refuses a report that is not replay-only evidence: `schemaVersion` other
+than 1, `options.frozen` or `options.noAgent` false, `options.updateRecordings`
+true, any model call (a judge call means the verdict cache `.ai-bdd/cache/` was
+cold), a status outside the seven, an exit code outside 0..4, totals that
+disagree with the scenarios, exit 0 beside a failed/inconclusive/blocked/error
+scenario, and a run id that is not one directory name.
+
+HoBo imports no ai-bdd code. The contract on this side is the schema and two
+real reports copied byte for byte into `test/fixtures/ai-bdd/` (sha256 and origin
+in its README); `src/acceptance-fields.ts` says, for every field the schema
+requires, whether the parser reads it or ignores it and why, and
+`test/acceptance-fields.test.ts` holds the parser to that table.
+
 ## Position in the event architecture
 
 This package is build/CI-time tooling: it hosts no actor and runs no durable

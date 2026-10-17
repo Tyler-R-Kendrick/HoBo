@@ -1,3 +1,14 @@
+export {
+	type AcceptanceEvidence,
+	AcceptanceReportError,
+	type AiBddExitCode,
+	type AiBddRunId,
+	parseAiBddRunReport,
+	type ReportDigest,
+	reportDigestOf,
+	type ScenarioTotals,
+} from "./acceptance.js";
+export { RUN_REPORT_FIELDS } from "./acceptance-fields.js";
 export { defineStageGateS0 } from "./definition.js";
 export {
 	parseStageGateRecord,

@@ -8,6 +8,7 @@
 
 import { type GitPin, PinsError } from "./pins.ts";
 import {
+	GitmodulesError,
 	git,
 	modulesEntry,
 	onAnyRef,
@@ -26,6 +27,8 @@ export interface GitOptions extends NetOptions {
 export interface Findings {
 	readonly problems: string[];
 	readonly fixes: string[];
+	/** `.gitmodules` git could read differently: what fetch and bump throw. */
+	refusal?: GitmodulesError;
 }
 
 /**
@@ -41,7 +44,16 @@ export function coherence(
 	allowLocal: boolean,
 ): Findings {
 	const found: Findings = { problems: [], fixes: [] };
-	const entry = modulesEntry(root, pin.path);
+	let entry: ReturnType<typeof modulesEntry>;
+	try {
+		entry = modulesEntry(root, pin.path);
+	} catch (error) {
+		if (!(error instanceof GitmodulesError)) throw error;
+		found.problems.push(error.problem);
+		found.fixes.push(error.fix);
+		found.refusal = error;
+		return found;
+	}
 	if (entry === null) {
 		found.problems.push(`${pin.path} is not registered in .gitmodules`);
 		found.fixes.push(`git submodule add ${pin.repo} ${pin.path}`);
@@ -80,7 +92,8 @@ export function assertCoherent(
 	pin: GitPin,
 	allowLocal: boolean,
 ): void {
-	const { problems, fixes } = coherence(root, pin, allowLocal);
+	const { problems, fixes, refusal } = coherence(root, pin, allowLocal);
+	if (refusal !== undefined) throw refusal;
 	if (problems.length > 0) {
 		throw new PinsError(
 			"SUBMODULE_STATE",

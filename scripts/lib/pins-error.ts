@@ -23,6 +23,7 @@ export type PinsErrorCode =
 	| "OVERRIDE_IN_CI"
 	| "INTERRUPTED"
 	| "NET_TIMEOUT"
+	| "GITMODULES_AMBIGUOUS"
 	| "USAGE";
 
 /** Every refusal is named; a bare Error would be untraceable. */

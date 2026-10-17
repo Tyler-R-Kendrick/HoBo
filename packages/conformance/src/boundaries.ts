@@ -263,6 +263,12 @@ const ACCEPTED_ADAPTER_PACKAGE_EDGES = new Set([
 	// port; that port vocabulary lives in identity rather than core, same
 	// future-ADR tiering as the training/eval and runner exceptions above.
 	"packages/adapters/adapter-openbao->packages/identity",
+	// The OpenSesame adapter (ADR-0170) is the second implementer of the same
+	// port, for the same reason: SecretsPort, SecretsAccessResult and the
+	// plaintext-conformance oracle live in identity rather than core. The edge
+	// is one exact, named line; it admits no other adapter, runtime or provider,
+	// and boundaries.test.ts pins the neighbours that stay refused.
+	"packages/adapters/adapter-opensesame->packages/identity",
 	// Connector packages (#1052) are AUTHORING-side declarations, not runtime
 	// adapters: they export an opaque symbol built with @hobo/bindles'
 	// defineConnector so b.connector() can resolve it. The edge points at the

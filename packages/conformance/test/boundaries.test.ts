@@ -250,6 +250,69 @@ describe("banked edges retired into the contract-kind exemption", () => {
 });
 
 /**
+ * The secrets-port implementers.
+ *
+ * `SecretsPort` is a residual port whose vocabulary lives in `@hobo/identity`
+ * rather than in core (ADR-0113), so an adapter that implements it must import
+ * identity. Each such adapter is allowed that one edge by name, for that reason,
+ * and nothing else: not another adapter, not a runtime, not identity's
+ * neighbours. A third implementer adds its own line and its own case here.
+ */
+describe("secrets-port implementers may import the port vocabulary and nothing else", () => {
+	const IDENTITY = "packages/identity";
+
+	it.each([
+		"packages/adapters/adapter-openbao",
+		"packages/adapters/adapter-opensesame",
+	])("%s -> @hobo/identity is permitted", (from) => {
+		expect(
+			validateBoundaryImports([parseWorkspaceEdge({ from, to: IDENTITY })])
+				.errors,
+		).toEqual([]);
+	});
+
+	it("the OpenSesame adapter may use the contract vocabulary it parses secret references with", () => {
+		expect(
+			validateBoundaryImports([
+				parseWorkspaceEdge({
+					from: "packages/adapters/adapter-opensesame",
+					to: "packages/bindings",
+				}),
+			]).errors,
+		).toEqual([]);
+	});
+
+	it("the OpenSesame adapter may reach the test harness only as a dev dependency", () => {
+		const from = "packages/adapters/adapter-opensesame";
+		const to = "packages/contract-harness";
+		expect(
+			validateBoundaryImports([parseWorkspaceEdge({ from, to, dev: true })])
+				.errors,
+		).toEqual([]);
+		expect(
+			validateBoundaryImports([parseWorkspaceEdge({ from, to })]).errors,
+		).not.toEqual([]);
+	});
+
+	it.each([
+		[
+			"packages/adapters/adapter-opensesame",
+			"packages/adapters/adapter-openbao",
+		],
+		["packages/adapters/adapter-opensesame", "packages/runtimes/runtime-local"],
+		["packages/adapters/adapter-opensesame", "packages/hobo"],
+		[
+			"packages/adapters/adapter-opensesame",
+			"packages/providers/provider-vercel",
+		],
+	])("%s -> %s is still refused", (from, to) => {
+		expect(
+			validateBoundaryImports([parseWorkspaceEdge({ from, to })]).errors,
+		).not.toEqual([]);
+	});
+});
+
+/**
  * C2 — the dev-marker hole, and why it was only closed by accident.
  *
  * `isDevOnlyTestHarnessEdge` exempts an edge from the layering rules on the

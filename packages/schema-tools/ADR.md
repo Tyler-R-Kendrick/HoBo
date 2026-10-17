@@ -10,7 +10,8 @@ A package opts into codegen by giving its `data-models/` a `buf.yaml`
 module marker; outputs land in the package's checked-in `src/_generated/`
 (`hobo codegen --check` is the drift gate). Discovery covers
 `packages/*/data-models` and nested category packages
-(`packages/{providers,runtimes,iac,build}/*/data-models`).
+(`packages/{adapters,providers,runtimes,iac,build}/*/data-models`; `adapters/` was missing
+until the OpenSesame adapter, the first adapter to opt in, needed it).
 
 ## Schema and constraints
 

@@ -24,13 +24,17 @@ export type SecretsAccessResult =
 /**
  * Residual managed-secrets store (ADR-0113). Prefer identity federation.
  * `openbao` kind is reserved for the optional `@hobo/adapter-openbao` package
- * (not shipped with default identity installs).
+ * (not shipped with default identity installs); `opensesame` for the optional
+ * `@hobo/adapter-opensesame` package, whose `access` returns the run's `osr_`
+ * surrogate (never the credential it stands for) and whose `put` is read-only
+ * (ADR-0170).
  */
 export interface SecretsPort {
 	readonly id: string;
 	readonly kind:
 		| "vault-jwt"
 		| "openbao"
+		| "opensesame"
 		| "aws-sm"
 		| "azure-kv"
 		| "memory-fixture";

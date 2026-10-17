@@ -14,6 +14,7 @@ async function listCueSchemas(dataModelsDir: string): Promise<string[]> {
 // Category containers whose children are themselves packages
 // (pnpm-workspace.yaml globs packages/<category>/*).
 const NESTED_PACKAGE_CATEGORIES = [
+	"adapters",
 	"providers",
 	"runtimes",
 	"iac",

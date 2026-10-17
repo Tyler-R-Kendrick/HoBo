@@ -9,7 +9,7 @@ TypeScript lands in each package's checked-in `src/_generated/`, and
 ## Honest scope
 
 Implemented: workspace discovery (`packages/*/data-models` plus nested category
-packages under `providers/`, `runtimes/`, `iac/`, `build/`), buf-based
+packages under `adapters/`, `providers/`, `runtimes/`, `iac/`, `build/`), buf-based
 generation, fixture vetting against `data-models/fixtures/{valid,invalid}/`,
 drift detection, and the JSON `CodegenReport` envelope with its exit-code
 mapping. Deliberately not here: no schema registry, no runtime validation

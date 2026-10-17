@@ -57,7 +57,13 @@ HoBo imports no ai-bdd code. The contract on this side is the schema and two
 real reports copied byte for byte into `test/fixtures/ai-bdd/` (sha256 and origin
 in its README); `src/acceptance-fields.ts` says, for every field the schema
 requires, whether the parser reads it or ignores it and why, and
-`test/acceptance-fields.test.ts` holds the parser to that table.
+`test/acceptance-fields.test.ts` holds the parser to that table. Every object the
+parser walks is closed to its schema key set (`src/report-keys.ts`, compared with
+the copied schema by the same test): an unknown key is refused, a required key
+that is absent is refused even where the gate ignores its value, a key repeated
+in one object is refused, and a scenario's or step's `usage` must be zero like
+the run's. The values of ignored fields (`recording`, `mode`, `coverage`,
+`warnings`, ...) are not validated.
 
 ## The release gate (ADR-0172)
 

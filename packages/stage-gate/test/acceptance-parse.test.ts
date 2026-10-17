@@ -20,6 +20,7 @@ import {
 	fixtureDoc,
 	type ReportDoc,
 	scenarioAt,
+	stepAt,
 } from "./helpers/ai-bdd-report.js";
 
 function issuesOf(bytes: Uint8Array): readonly string[] {
@@ -207,6 +208,61 @@ describe("parseAiBddRunReport", () => {
 			passed: 1,
 			skipped: 4,
 		});
+	});
+
+	it("refuses a field RunReport v1 does not define, at any level it reads", () => {
+		const doc = fixtureDoc("passed");
+		doc.extraTop = true;
+		doc.options = { ...docAt(doc, "options"), extra: 1 };
+		const usage = docAt(doc, "usage");
+		usage.byPurpose = {
+			...docAt(usage, "byPurpose"),
+			heal: { modelCalls: 5, inputTokens: 0, outputTokens: 0 },
+		};
+		const issues = issuesOf(bytesOf(doc));
+		expect(issues).toContain("extraTop: not a field of RunReport v1");
+		expect(issues).toContain("options.extra: not a field of RunReport v1");
+		expect(issues).toContain(
+			"usage.byPurpose.heal: not a field of RunReport v1",
+		);
+	});
+
+	it.each([
+		"coverage",
+		"warnings",
+		"startedAt",
+	])("refuses a report without %s, a field the gate does not interpret", (field) => {
+		const doc = fixtureDoc("passed");
+		delete doc[field];
+		expect(issuesOf(bytesOf(doc))).toContain(
+			`${field}: required by RunReport v1`,
+		);
+	});
+
+	it("refuses a key repeated in one object (the last one would win)", () => {
+		const text = fixtureBytes("report.v1.passed.json")
+			.toString("utf8")
+			.replace('"frozen": true', '"frozen": false, "frozen": true');
+		expect(issuesOf(Buffer.from(text))).toEqual([
+			'report.json repeats the key "frozen" in one object',
+		]);
+	});
+
+	it("refuses step or scenario usage that contradicts the zero usage of the run", () => {
+		const doc = fixtureDoc("passed");
+		docAt(scenarioAt(doc, 0), "usage").inputTokens = 10;
+		stepAt(doc, 0, 0).usage = {
+			modelCalls: 2,
+			inputTokens: 0,
+			outputTokens: 0,
+		};
+		const issues = issuesOf(bytesOf(doc));
+		expect(issues).toContain(
+			"scenarios[0].steps[0].usage.modelCalls is 2: a replay-only run spends none, and usage.modelCalls says so",
+		);
+		expect(issues).toContain(
+			"scenarios[0].usage.inputTokens is 10: a replay-only run spends none, and usage.inputTokens says so",
+		);
 	});
 
 	it("refuses bytes that are not a JSON object", () => {

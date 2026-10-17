@@ -15,20 +15,28 @@
 import { createHash } from "node:crypto";
 
 import {
-	isJsonBoolean,
+	duplicateKeyIn,
 	isJsonObject,
 	isJsonString,
 	type JsonObject,
 	type JsonValue,
 	parseJsonText,
 } from "./json.js";
+import { RUN_REPORT_KEYS } from "./report-keys.js";
 import {
 	arrayOf,
+	closedKeys,
 	countOf,
 	fieldOf,
 	memberOf,
 	objectOf,
 } from "./report-read.js";
+import {
+	type RunUsage,
+	readNestedUsage,
+	readOptions,
+	readUsage,
+} from "./report-run.js";
 
 const SCENARIO_STATUSES = [
 	"passed",
@@ -41,7 +49,6 @@ const SCENARIO_STATUSES = [
 ] as const;
 type ScenarioStatus = (typeof SCENARIO_STATUSES)[number];
 
-const MODEL_PURPOSES = ["extract", "act", "checkgen", "judge"] as const;
 const DETERMINISM = ["deterministic", "fuzzy", "n/a"] as const;
 const EXIT_CODES = [0, 1, 2, 3, 4] as const;
 
@@ -97,72 +104,6 @@ export function reportDigestOf(bytes: Uint8Array): ReportDigest {
 	return `sha256:${hex}` as ReportDigest;
 }
 
-function requireFlag(
-	options: JsonObject,
-	key: string,
-	expected: boolean,
-	why: string,
-	issues: string[],
-): void {
-	const value = fieldOf(options, key);
-	if (!isJsonBoolean(value)) {
-		issues.push(`options.${key}: expected a boolean`);
-	} else if (value !== expected) {
-		issues.push(`options.${key} is ${String(value)}: ${why}`);
-	}
-}
-
-function readOptions(report: JsonObject, issues: string[]): void {
-	const options = objectOf(report, "options", "", issues);
-	requireFlag(
-		options,
-		"frozen",
-		true,
-		"the run did not replay the committed plans as they are",
-		issues,
-	);
-	requireFlag(
-		options,
-		"noAgent",
-		true,
-		"a step could have fallen back to the agent",
-		issues,
-	);
-	requireFlag(
-		options,
-		"updateRecordings",
-		false,
-		"the run rewrote recordings instead of replaying them",
-		issues,
-	);
-}
-
-function readUsage(report: JsonObject, issues: string[]): void {
-	const usage = objectOf(report, "usage", "", issues);
-	const modelCalls = countOf(usage, "modelCalls", "usage", issues);
-	if (modelCalls > 0) {
-		issues.push(
-			`usage.modelCalls is ${modelCalls}: a replay-only run makes no model call`,
-		);
-	}
-	const byPurpose = objectOf(usage, "byPurpose", "usage", issues);
-	for (const purpose of MODEL_PURPOSES) {
-		const path = `usage.byPurpose.${purpose}`;
-		const calls = countOf(
-			objectOf(byPurpose, purpose, "usage.byPurpose", issues),
-			"modelCalls",
-			path,
-			issues,
-		);
-		if (calls === 0) continue;
-		issues.push(
-			purpose === "judge"
-				? `${path}.modelCalls is ${calls}: the judge was asked because the verdict cache (.ai-bdd/cache/) did not hold its verdict; a zero-model-call replay needs that cache present`
-				: `${path}.modelCalls is ${calls}: a replay-only run makes no ${purpose} call`,
-		);
-	}
-}
-
 /** Scenarios per status, as `totals` states them and the scenarios confirm. */
 export interface ScenarioTotals {
 	readonly passed: number;
@@ -175,6 +116,7 @@ export interface ScenarioTotals {
 }
 
 interface ScenarioTally {
+	readonly run: RunUsage;
 	readonly byStatus: Map<ScenarioStatus, number>;
 	scenarios: number;
 	fuzzySteps: number;
@@ -190,6 +132,8 @@ function tallyStep(
 		issues.push(`${path}: expected an object`);
 		return;
 	}
+	closedKeys(step, path, RUN_REPORT_KEYS.StepResult, issues);
+	readNestedUsage(step, path, tally.run, issues);
 	const determinism = memberOf(DETERMINISM, fieldOf(step, "determinism"));
 	if (determinism === undefined) {
 		issues.push(`${path}.determinism: expected deterministic|fuzzy|n/a`);
@@ -213,6 +157,8 @@ function tallyScenario(
 		issues.push(`${path}: expected an object`);
 		return;
 	}
+	closedKeys(scenario, path, RUN_REPORT_KEYS.ScenarioResult, issues);
+	readNestedUsage(scenario, path, tally.run, issues);
 	const status = memberOf(SCENARIO_STATUSES, fieldOf(scenario, "status"));
 	if (status === undefined) {
 		issues.push(`${path}.status: expected ${SCENARIO_STATUSES.join("|")}`);
@@ -236,6 +182,7 @@ function readTotals(
 	issues: string[],
 ): ScenarioTotals {
 	const totals = objectOf(report, "totals", "", issues);
+	closedKeys(totals, "totals", RUN_REPORT_KEYS.Totals, issues);
 	const read = (status: ScenarioStatus): number => {
 		const count = countOf(totals, status, "totals", issues);
 		const counted = tally.byStatus.get(status) ?? 0;
@@ -287,6 +234,12 @@ function documentOf(bytes: Uint8Array): JsonObject {
 	if (!isJsonObject(document)) {
 		throw new AcceptanceReportError(["report.json is not a JSON object"]);
 	}
+	const repeated = duplicateKeyIn(text);
+	if (repeated !== undefined) {
+		throw new AcceptanceReportError([
+			`report.json repeats the key ${JSON.stringify(repeated)} in one object`,
+		]);
+	}
 	const version = fieldOf(document, "schemaVersion");
 	if (version !== 1) {
 		// Every other field of another version may mean something else, so nothing more is read.
@@ -305,10 +258,11 @@ function documentOf(bytes: Uint8Array): JsonObject {
 export function parseAiBddRunReport(bytes: Uint8Array): AcceptanceEvidence {
 	const report = documentOf(bytes);
 	const issues: string[] = [];
+	closedKeys(report, "", RUN_REPORT_KEYS.RunReport, issues);
 	const runId = readRunId(report, issues);
 	readOptions(report, issues);
-	readUsage(report, issues);
 	const tally: ScenarioTally = {
+		run: readUsage(report, issues),
 		byStatus: new Map(),
 		scenarios: 0,
 		fuzzySteps: 0,

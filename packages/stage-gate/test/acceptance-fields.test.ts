@@ -12,7 +12,10 @@ import { join } from "node:path";
 
 import { describe, expect, it } from "vitest";
 
-import { parseAiBddRunReport } from "../src/acceptance.js";
+import {
+	AcceptanceReportError,
+	parseAiBddRunReport,
+} from "../src/acceptance.js";
 import { RUN_REPORT_FIELDS } from "../src/acceptance-fields.js";
 import {
 	isJsonArray,
@@ -22,13 +25,30 @@ import {
 	type JsonValue,
 	parseJsonText,
 } from "../src/json.js";
+import { RUN_REPORT_KEYS } from "../src/report-keys.js";
 import {
 	bytesOf,
 	FIXTURE_DIR,
 	fixtureBytes,
 	fixtureDoc,
+	nodeAt,
+	perturbAt,
 	removeAt,
 } from "./helpers/ai-bdd-report.js";
+
+function issuesOf(bytes: Uint8Array): readonly string[] {
+	try {
+		parseAiBddRunReport(bytes);
+	} catch (error) {
+		if (error instanceof AcceptanceReportError) return error.issues;
+		throw error;
+	}
+	return [];
+}
+
+function escapeRe(text: string): string {
+	return text.replace(/[.*+?^${}()|[\]\\]/gu, "\\$&");
+}
 
 /** sha256 of each copied file; README.md beside them records the same values and where they came from. */
 const COPIED = {
@@ -140,14 +160,94 @@ describe("RunReport v1 fields against the parser", () => {
 		expect(() => parseAiBddRunReport(bytes)).toThrow();
 	});
 
-	it.each(IGNORED)("a report without %s yields the same evidence", (path) => {
-		const { reportDigest: _whole, ...expected } = parseAiBddRunReport(
+	it.each(
+		IGNORED,
+	)("a report without %s is refused for that missing field alone", (path) => {
+		const issues = issuesOf(bytesOf(removeAt(fixtureDoc("passed"), path)));
+		const field = new RegExp(
+			`^${path.split("[]").map(escapeRe).join("\\[\\d+\\]")}: required by RunReport v1$`,
+			"u",
+		);
+		expect(issues.length).toBeGreaterThan(0);
+		expect(issues.filter((issue) => !field.test(issue))).toEqual([]);
+	});
+
+	it.each(IGNORED)("another value for %s yields the same evidence", (path) => {
+		const { reportDigest: whole, ...expected } = parseAiBddRunReport(
 			fixtureBytes("report.v1.passed.json"),
 		);
 		const { reportDigest, ...evidence } = parseAiBddRunReport(
-			bytesOf(removeAt(fixtureDoc("passed"), path)),
+			bytesOf(perturbAt(fixtureDoc("passed"), path)),
 		);
 		expect(evidence).toEqual(expected);
-		expect(reportDigest).not.toBe(_whole);
+		expect(reportDigest).not.toBe(whole);
+	});
+});
+
+/** Where each closed key set the parser applies sits in the schema. */
+function schemaObjects(root: JsonObject): ReadonlyMap<string, JsonObject> {
+	const props = objectAt(root.properties, "properties");
+	const usage = objectAt(props.usage, "usage");
+	const defs = objectAt(root.$defs, "$defs");
+	return new Map([
+		["RunReport", root],
+		["Options", objectAt(props.options, "options")],
+		["RunUsage", usage],
+		[
+			"ByPurpose",
+			objectAt(
+				objectAt(usage.properties, "usage.properties").byPurpose,
+				"byPurpose",
+			),
+		],
+		["Usage", objectAt(defs.Usage, "Usage")],
+		["ScenarioResult", objectAt(defs.ScenarioResult, "ScenarioResult")],
+		["StepResult", objectAt(defs.StepResult, "StepResult")],
+		["Totals", objectAt(props.totals, "totals")],
+	]);
+}
+
+function stringsOf(node: JsonValue | undefined): string[] {
+	return (isJsonArray(node) ? node : [])
+		.filter((k) => isJsonString(k))
+		.map(String)
+		.sort();
+}
+
+describe("the objects the parser walks are closed", () => {
+	it("each closed key set is the schema's own: every property allowed, the required ones required, nothing else", () => {
+		const objects = schemaObjects(schema());
+		expect([...objects.keys()].sort()).toEqual(
+			Object.keys(RUN_REPORT_KEYS).sort(),
+		);
+		for (const [name, keys] of Object.entries(RUN_REPORT_KEYS)) {
+			const node = objects.get(name);
+			expect(node?.additionalProperties, name).toBe(false);
+			expect([...keys.allowed].sort(), name).toEqual(
+				Object.keys(objectAt(node?.properties, `${name} properties`)).sort(),
+			);
+			expect([...keys.required].sort(), name).toEqual(
+				stringsOf(node?.required),
+			);
+		}
+	});
+
+	it.each([
+		["", "unexpected"],
+		["options", "options.unexpected"],
+		["usage", "usage.unexpected"],
+		["usage.byPurpose", "usage.byPurpose.unexpected"],
+		["usage.byPurpose.judge", "usage.byPurpose.judge.unexpected"],
+		["scenarios.0", "scenarios[0].unexpected"],
+		["scenarios.0.usage", "scenarios[0].usage.unexpected"],
+		["scenarios.0.steps.0", "scenarios[0].steps[0].unexpected"],
+		["scenarios.0.steps.0.usage", "scenarios[0].steps[0].usage.unexpected"],
+		["totals", "totals.unexpected"],
+	])("an extra field in %j is refused", (where, issue) => {
+		const doc = fixtureDoc("passed");
+		nodeAt(doc, where).unexpected = 1;
+		expect(issuesOf(bytesOf(doc))).toEqual([
+			`${issue}: not a field of RunReport v1`,
+		]);
 	});
 });

@@ -75,38 +75,23 @@
 						},
 						"scenarios": [
 							{
-								"status": "passed",
-								"steps": [
-									{
-										"determinism": "deterministic",
-										"fuzzyReasons": []
-									},
-									{
-										"determinism": "fuzzy",
-										"fuzzyReasons": [
-											"subjective"
-										]
-									}
-								]
+								"status": "passed"
 							},
 							{
-								"status": "passed",
-								"steps": [
-									{
-										"determinism": "deterministic",
-										"fuzzyReasons": []
-									},
-									{
-										"determinism": "fuzzy",
-										"fuzzyReasons": [
-											"subjective"
-										]
-									}
-								]
+								"status": "passed"
+							},
+							{
+								"status": "passed"
+							},
+							{
+								"status": "passed"
+							},
+							{
+								"status": "passed"
 							}
 						],
 						"totals": {
-							"passed": 2,
+							"passed": 5,
 							"failed": 0,
 							"healed": 0,
 							"blocked": 0,
@@ -116,18 +101,28 @@
 						},
 						"usage": {
 							"modelCalls": 0,
+							"inputTokens": 0,
+							"outputTokens": 0,
 							"byPurpose": {
 								"extract": {
-									"modelCalls": 0
+									"modelCalls": 0,
+									"inputTokens": 0,
+									"outputTokens": 0
 								},
 								"act": {
-									"modelCalls": 0
+									"modelCalls": 0,
+									"inputTokens": 0,
+									"outputTokens": 0
 								},
 								"checkgen": {
-									"modelCalls": 0
+									"modelCalls": 0,
+									"inputTokens": 0,
+									"outputTokens": 0
 								},
 								"judge": {
-									"modelCalls": 0
+									"modelCalls": 0,
+									"inputTokens": 0,
+									"outputTokens": 0
 								}
 							}
 						},
@@ -166,38 +161,23 @@
 						},
 						"scenarios": [
 							{
-								"status": "passed",
-								"steps": [
-									{
-										"determinism": "deterministic",
-										"fuzzyReasons": []
-									},
-									{
-										"determinism": "fuzzy",
-										"fuzzyReasons": [
-											"subjective"
-										]
-									}
-								]
+								"status": "failed"
 							},
 							{
-								"status": "failed",
-								"steps": [
-									{
-										"determinism": "deterministic",
-										"fuzzyReasons": []
-									},
-									{
-										"determinism": "fuzzy",
-										"fuzzyReasons": [
-											"subjective"
-										]
-									}
-								]
+								"status": "passed"
+							},
+							{
+								"status": "passed"
+							},
+							{
+								"status": "passed"
+							},
+							{
+								"status": "passed"
 							}
 						],
 						"totals": {
-							"passed": 1,
+							"passed": 4,
 							"failed": 1,
 							"healed": 0,
 							"blocked": 0,
@@ -207,18 +187,28 @@
 						},
 						"usage": {
 							"modelCalls": 0,
+							"inputTokens": 0,
+							"outputTokens": 0,
 							"byPurpose": {
 								"extract": {
-									"modelCalls": 0
+									"modelCalls": 0,
+									"inputTokens": 0,
+									"outputTokens": 0
 								},
 								"act": {
-									"modelCalls": 0
+									"modelCalls": 0,
+									"inputTokens": 0,
+									"outputTokens": 0
 								},
 								"checkgen": {
-									"modelCalls": 0
+									"modelCalls": 0,
+									"inputTokens": 0,
+									"outputTokens": 0
 								},
 								"judge": {
-									"modelCalls": 0
+									"modelCalls": 0,
+									"inputTokens": 0,
+									"outputTokens": 0
 								}
 							}
 						},
@@ -280,38 +270,23 @@
 						},
 						"scenarios": [
 							{
-								"status": "passed",
-								"steps": [
-									{
-										"determinism": "deterministic",
-										"fuzzyReasons": []
-									},
-									{
-										"determinism": "fuzzy",
-										"fuzzyReasons": [
-											"subjective"
-										]
-									}
-								]
+								"status": "error"
 							},
 							{
-								"status": "error",
-								"steps": [
-									{
-										"determinism": "deterministic",
-										"fuzzyReasons": []
-									},
-									{
-										"determinism": "fuzzy",
-										"fuzzyReasons": [
-											"subjective"
-										]
-									}
-								]
+								"status": "passed"
+							},
+							{
+								"status": "passed"
+							},
+							{
+								"status": "passed"
+							},
+							{
+								"status": "passed"
 							}
 						],
 						"totals": {
-							"passed": 1,
+							"passed": 4,
 							"failed": 0,
 							"healed": 0,
 							"blocked": 0,
@@ -321,18 +296,28 @@
 						},
 						"usage": {
 							"modelCalls": 0,
+							"inputTokens": 0,
+							"outputTokens": 0,
 							"byPurpose": {
 								"extract": {
-									"modelCalls": 0
+									"modelCalls": 0,
+									"inputTokens": 0,
+									"outputTokens": 0
 								},
 								"act": {
-									"modelCalls": 0
+									"modelCalls": 0,
+									"inputTokens": 0,
+									"outputTokens": 0
 								},
 								"checkgen": {
-									"modelCalls": 0
+									"modelCalls": 0,
+									"inputTokens": 0,
+									"outputTokens": 0
 								},
 								"judge": {
-									"modelCalls": 0
+									"modelCalls": 0,
+									"inputTokens": 0,
+									"outputTokens": 0
 								}
 							}
 						},

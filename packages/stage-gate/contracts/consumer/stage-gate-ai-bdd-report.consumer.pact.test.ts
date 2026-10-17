@@ -120,6 +120,41 @@ function leafPaths(node: JsonValue, prefix: string): string[] {
 	);
 }
 
+/**
+ * The report ai-bdd writes for an interaction: a real report (the passed
+ * fixture) with the fields the pact states laid over it. Objects merge key by
+ * key and arrays entry by entry, so the pact names what the gate reads and the
+ * fixture supplies every other field RunReport v1 requires.
+ */
+function overlay(base: JsonValue, over: JsonValue): JsonValue {
+	if (isJsonArray(base) && isJsonArray(over)) {
+		if (over.length > base.length) {
+			throw new Error("pact: an array longer than the fixture's");
+		}
+		return base.map((entry, index) => {
+			const laid = over[index];
+			return laid === undefined ? entry : overlay(entry, laid);
+		});
+	}
+	if (isJsonObject(base) && isJsonObject(over)) {
+		const merged = new Map<string, JsonValue>(Object.entries(base));
+		for (const [key, value] of Object.entries(over)) {
+			const under = merged.get(key);
+			merged.set(key, under === undefined ? value : overlay(under, value));
+		}
+		return Object.fromEntries(merged);
+	}
+	return over;
+}
+
+function writtenReport(report: JsonObject): string {
+	const real = parseJsonText(
+		fixtureBytes("report.v1.passed.json").toString("utf8"),
+	);
+	if (real === undefined) throw new Error("fixture is not JSON");
+	return `${JSON.stringify(overlay(real, report), null, 2)}\n`;
+}
+
 describe("ai-bdd report consumer pact", () => {
 	const all = interactions();
 
@@ -138,10 +173,7 @@ describe("ai-bdd report consumer pact", () => {
 			let reportFile: string | undefined;
 			if (interaction.report !== undefined) {
 				reportFile = join(newDir(), "report.json");
-				writeFileSync(
-					reportFile,
-					`${JSON.stringify(interaction.report, null, 2)}\n`,
-				);
+				writeFileSync(reportFile, writtenReport(interaction.report));
 			}
 			if (step === "evidence-intact") {
 				// verify-run checks the run the current report names: put a passing replay's report in place.
@@ -156,7 +188,8 @@ describe("ai-bdd report consumer pact", () => {
 				const passed = all.find(
 					(i) => i.path === "/run" && i.exitCode === 0,
 				)?.report;
-				const bytes = `${JSON.stringify(passed)}\n`;
+				if (passed === undefined) throw new Error("pact: no passing run");
+				const bytes = writtenReport(passed);
 				writeFileSync(join(project, ".ai-bdd", "report", "report.json"), bytes);
 				writeFileSync(join(runDir, "report.json"), bytes);
 			}

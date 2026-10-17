@@ -11,6 +11,7 @@ import {
 	type JsonObject,
 	type JsonValue,
 } from "./json.js";
+import type { ReportObjectKeys } from "./report-keys.js";
 
 /** `a.b` from a parent path and a key; the root has the empty path. */
 export function pathOf(parent: string, key: string): string {
@@ -63,4 +64,23 @@ export function memberOf<T extends string>(
 	value: JsonValue | undefined,
 ): T | undefined {
 	return allowed.find((entry) => entry === value);
+}
+
+/** Refuse a key the object's schema does not define, and a required key that is absent. */
+export function closedKeys(
+	node: JsonObject,
+	path: string,
+	keys: ReportObjectKeys,
+	issues: string[],
+): void {
+	for (const key of Object.keys(node)) {
+		if (!keys.allowed.includes(key)) {
+			issues.push(`${pathOf(path, key)}: not a field of RunReport v1`);
+		}
+	}
+	for (const key of keys.required) {
+		if (!Object.hasOwn(node, key)) {
+			issues.push(`${pathOf(path, key)}: required by RunReport v1`);
+		}
+	}
 }

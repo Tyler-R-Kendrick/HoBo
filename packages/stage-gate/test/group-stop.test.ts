@@ -7,7 +7,9 @@
  * member that runs as another user.
  */
 import { spawnSync } from "node:child_process";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
+import { join } from "node:path";
 
 import { afterAll, describe, expect, it } from "vitest";
 import {
@@ -17,7 +19,12 @@ import {
 	stopGroup,
 } from "../src/process-group.js";
 import { GROUP, PGID, procTables, zombie } from "./helpers/proc-table.js";
-import { killQuietly, REPO_ROOT } from "./helpers/release-gate.js";
+import {
+	ALL_PASS,
+	FAKE_COMMAND,
+	killQuietly,
+	REPO_ROOT,
+} from "./helpers/release-gate.js";
 
 const tables = procTables();
 afterAll(tables.remove);
@@ -179,6 +186,60 @@ describe("the check, when kill answers EPERM", () => {
 				expect(check.status).toBe(3);
 			} finally {
 				killQuietly(holder);
+			}
+		},
+		40_000,
+	);
+
+	it.runIf(CAN_DROP_KILL)(
+		"records replay not_run, its report not read, when ai-bdd passed but a member of another user outlived it",
+		() => {
+			// ai-bdd is the tests' stand-in, writing a passing report; its group also keeps a
+			// member of another uid that ignores SIGTERM. Only the stop can tell.
+			const project = mkdtempSync(join(tmpdir(), "hobo-replay-eperm-"));
+			const log = join(project, "calls.log");
+			writeFileSync(log, "");
+			const wrapped =
+				'trap \'\' TERM; setpriv --reuid=65534 --regid=65534 --clear-groups sleep 20 >/dev/null 2>&1 & echo holder $! >&2; exec "$0" "$@"';
+			const check = spawnSync(
+				"setpriv",
+				[
+					"--bounding-set=-kill",
+					process.execPath,
+					"--import",
+					"tsx",
+					"packages/stage-gate/scripts/check-acceptance.mts",
+					"replay",
+				],
+				{
+					cwd: REPO_ROOT,
+					env: {
+						...process.env,
+						HOBO_AI_BDD_CMD: JSON.stringify([
+							"sh",
+							"-c",
+							wrapped,
+							...FAKE_COMMAND,
+						]),
+						HOBO_AI_BDD_PROJECT: project,
+						FAKE_AI_BDD: JSON.stringify(ALL_PASS),
+						FAKE_AI_BDD_LOG: log,
+					},
+					encoding: "utf8",
+					timeout: 30_000,
+				},
+			);
+			const holder = Number(/holder (\d+)/u.exec(check.stderr)?.[1] ?? 0);
+			try {
+				const evidenceLine = check.stdout.trim().split("\n").at(-1) ?? "";
+				expect(evidenceLine).toContain('"outcome":"not_run"');
+				expect(evidenceLine).toContain('"step":"replay"');
+				expect(evidenceLine).toContain('"report":"not read"');
+				expect(evidenceLine).toContain("kill answered EPERM");
+				expect(check.status).toBe(3);
+			} finally {
+				killQuietly(holder);
+				rmSync(project, { recursive: true, force: true });
 			}
 		},
 		40_000,

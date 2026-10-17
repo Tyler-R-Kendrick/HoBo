@@ -43,6 +43,16 @@ interface Resolved {
 	readonly from: string;
 }
 
+/**
+ * `--depth 1` for a shallow clone; nothing for a full one, which a depth
+ * fetch would turn shallow (even for a commit it already has).
+ */
+function depthFor(sub: string): string[] {
+	return git(sub, ["rev-parse", "--is-shallow-repository"]).stdout === "true"
+		? ["--depth", "1"]
+		: [];
+}
+
 /** A commit id (or a short one) this clone, or the --reference clone, already has. */
 function localCommit(
 	sub: string,
@@ -62,7 +72,7 @@ function localCommit(
 	if (borrowed === null || options.reference === undefined) return null;
 	const lent = netGit(
 		sub,
-		["fetch", "--depth", "1", "--no-tags", options.reference, borrowed],
+		["fetch", ...depthFor(sub), "--no-tags", options.reference, borrowed],
 		options,
 		false,
 		true,
@@ -89,7 +99,7 @@ function fetchFromPin(
 ): Resolved | null {
 	const fetched = netGit(
 		sub,
-		["fetch", "--depth", "1", "--no-tags", pin.repo, "--", what],
+		["fetch", ...depthFor(sub), "--no-tags", pin.repo, "--", what],
 		options,
 	);
 	if (fetched.status !== 0) {

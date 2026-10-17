@@ -62,3 +62,20 @@ describe("bump to a ref whose name is all hex", () => {
 		assert.equal(git(work, ["diff", "--cached", "--name-only"]), "");
 	});
 });
+
+describe("bump of a full submodule clone", () => {
+	it("fetches without --depth, so the clone stays full", () => {
+		const dir = scratch("refs-full");
+		const remote = makeRemote(dir);
+		git(remote.dir, ["branch", "side", remote.shas[1] ?? ""]);
+		const work = makeWork(dir, remote, 2);
+		assert.equal(runBootstrap(work, []).status, 0);
+		const sub = join(work, "external/lib");
+		git(sub, ["fetch", "-q", "--unshallow", "origin"]);
+		const run = runBootstrap(work, ["--bump", "lib", "side"]);
+		assert.equal(run.status, 0, `${run.stdout}${run.stderr}`);
+		assert.equal(git(sub, ["rev-parse", "HEAD"]), remote.shas[1]);
+		assert.equal(git(sub, ["rev-parse", "--is-shallow-repository"]), "false");
+		assert.equal(git(sub, ["rev-list", "--count", remote.shas[2] ?? ""]), "3");
+	});
+});

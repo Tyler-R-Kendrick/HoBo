@@ -4,10 +4,16 @@
  * misbehave in one way each.
  */
 import { execFile, spawn, spawnSync } from "node:child_process";
-import { existsSync, rmSync, statSync } from "node:fs";
+import {
+	existsSync,
+	mkdtempSync,
+	readFileSync,
+	rmSync,
+	statSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 import { promisify } from "node:util";
 
 import { describe, expect, it } from "vitest";
@@ -18,6 +24,12 @@ const STOP_SCRIPT = join(
 	dirname(fileURLToPath(import.meta.url)),
 	"helpers",
 	"stop-ai-bdd.mts",
+);
+
+const ACTIVE_RESOURCES_SCRIPT = join(
+	dirname(fileURLToPath(import.meta.url)),
+	"helpers",
+	"report-active-resources.mts",
 );
 
 function nodeCommand(source: string): readonly string[] {
@@ -80,11 +92,15 @@ describe("runAiBdd settles when the command exits", () => {
 describe("the check once ai-bdd has settled", () => {
 	it("exits at once: no timer of the run keeps its process alive", async () => {
 		// check-acceptance.mts prints its evidence line last; nothing should be left to wait for after it.
+		const dir = mkdtempSync(join(tmpdir(), "hobo-active-resources-"));
+		const activeFile = join(dir, "active.json");
 		const check = spawn(
 			process.execPath,
 			[
 				"--import",
 				"tsx",
+				"--import",
+				pathToFileURL(ACTIVE_RESOURCES_SCRIPT).href,
 				"packages/stage-gate/scripts/check-acceptance.mts",
 				"plans-fresh",
 			],
@@ -94,6 +110,9 @@ describe("the check once ai-bdd has settled", () => {
 					...process.env,
 					HOBO_AI_BDD_CMD: JSON.stringify(nodeCommand("process.exit(0)")),
 					HOBO_AI_BDD_PROJECT: tmpdir(),
+					// The run's own timer: 30 s here, so one left armed holds the process far longer than a teardown takes.
+					HOBO_AI_BDD_TIMEOUT_MS: "30000",
+					ACTIVE_RESOURCES_FILE: activeFile,
 				},
 				stdio: ["ignore", "pipe", "ignore"],
 			},
@@ -102,10 +121,29 @@ describe("the check once ai-bdd has settled", () => {
 		check.stdout.on("data", () => {
 			printedAt = Date.now();
 		});
-		const code = await new Promise((done) => check.on("exit", done));
-		expect(code).toBe(0);
-		expect(Date.now() - printedAt).toBeLessThan(500);
-	}, 30_000);
+		// 10 s after the evidence line is far past any teardown under load; a process still alive then is held.
+		const watchdog = setInterval(() => {
+			if (printedAt > 0 && Date.now() - printedAt > 10_000) {
+				check.kill("SIGKILL");
+			}
+		}, 250);
+		try {
+			const ended = await new Promise((done) =>
+				check.on("exit", (status, signal) => done({ status, signal })),
+			);
+			// No wall clock: the resources that kept the loop alive when the line was written.
+			expect(existsSync(activeFile)).toBe(true);
+			// SAFETY: report-active-resources.mts writes a JSON array of strings.
+			const active = JSON.parse(readFileSync(activeFile, "utf8")) as string[];
+			expect(active.filter((type) => type === "Timeout")).toEqual([]);
+			expect(ended).toEqual({ status: 0, signal: null });
+			expect(Date.now() - printedAt).toBeLessThan(10_000);
+		} finally {
+			clearInterval(watchdog);
+			check.kill("SIGKILL");
+			rmSync(dir, { recursive: true, force: true });
+		}
+	}, 60_000);
 });
 
 describe("runAiBdd on Linux, where a group can hold only zombies", () => {

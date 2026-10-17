@@ -26,11 +26,21 @@ import { netTimeout, netTimeoutMs } from "./pins-net.ts";
 const TAIL_BYTES = 64 * 1024;
 const MAX_BUFFERED_BYTES = 64 * 1024 ** 2;
 
+/** What a caller knows of a stream: whether it is a terminal. */
+export interface MaybeTerminal {
+	readonly isTTY?: boolean;
+}
+
 /** Whether a person is watching: the script's stderr is a terminal. */
-export function onTerminal(
-	stream: { isTTY?: boolean } = process.stderr,
-): boolean {
+export function onTerminal(stream: MaybeTerminal = process.stderr): boolean {
 	return stream.isTTY === true;
+}
+
+/** `--progress` for the watched git when a person is watching, else nothing. */
+export function progressArgs(
+	stream: MaybeTerminal = process.stderr,
+): readonly string[] {
+	return onTerminal(stream) ? ["--progress"] : [];
 }
 
 /** `git <args>` with the network rules and deadline, stderr passed on; resolves with a tail of it. */

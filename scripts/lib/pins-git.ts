@@ -34,7 +34,7 @@ import {
 import { terminalHint } from "./pins-git-hint.ts";
 import { type NetOptions, netGit, remoteTip } from "./pins-git-net.ts";
 import { remoteHas } from "./pins-git-probe.ts";
-import { netGitWatched, onTerminal } from "./pins-git-stream.ts";
+import { netGitWatched, progressArgs } from "./pins-git-stream.ts";
 
 export { type Bump, bumpPin } from "./pins-git-bump.ts";
 export {
@@ -57,7 +57,7 @@ async function updateSubmodule(
 	const refArgs =
 		options.reference === undefined ? [] : ["--reference", options.reference];
 	// A person at a terminal sees git's progress as it arrives.
-	const progress = onTerminal() ? ["--progress"] : [];
+	const progress = progressArgs();
 	const update = (depth: boolean) =>
 		netGitWatched(
 			root,

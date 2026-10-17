@@ -13,7 +13,7 @@ export const ADAPTER_ERROR_CODES = [
 	"opensesame_bin_missing",
 	/** The `opensesame` found is writable by others, or does not answer `--version` as opensesame. Nothing was started. */
 	"opensesame_bin_untrusted",
-	/** No `node`, no env-spec bridge, or no `@env-spec/parser` behind it. */
+	/** No `node`, no env-spec bridge, no `@env-spec/parser` behind it, an `OPENSESAME_NODE` OpenSesame cannot use, or no trusted directory left on `PATH` to look `node` up in. */
 	"bridge_missing",
 	/** A surrogate would have no bounded scope. */
 	"scope_unbounded",

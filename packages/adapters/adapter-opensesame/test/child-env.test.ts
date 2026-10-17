@@ -120,7 +120,13 @@ describe("the environment a run starts from is an allowlist, not the caller's", 
 			COMSPEC: "C:\\Windows\\System32\\cmd.exe",
 			PATHEXT: ".COM;.EXE",
 		};
-		expect(launchWith(win, { platform: "win32" }).env).toMatchObject(win);
+		const onWindows = memoryTrust(
+			{ "C:\\Windows": dir(0, 0o755), "C:\\Windows\\System32": dir(0, 0o755) },
+			{ euid: undefined, cwd: "C:\\proj", home: "C:\\Users\\me" },
+		);
+		expect(
+			launchWith(win, { platform: "win32", trust: onWindows }).env,
+		).toMatchObject(win);
 		const linux = launchWith(win, { platform: "linux" }).env;
 		for (const name of Object.keys(win)) expect(linux).not.toHaveProperty(name);
 	});
@@ -284,17 +290,54 @@ describe("the PATH OpenSesame starts with is the caller's reduced to trusted pla
 		expect(pathOf(".:/usr/bin", { passEnv: ["PATH"] })).toBe("/usr/bin");
 	});
 
-	it("starts from a fixed system PATH when nothing the caller listed is usable, or when there is no PATH", () => {
+	it("starts from the fixed system directories that pass the same rule when nothing the caller listed is usable, or when there is no PATH", () => {
 		expect(pathOf(".:")).toBe("/usr/local/bin:/usr/bin:/bin");
 		expect(launchWith({}, { trust }).env.PATH).toBe(
 			"/usr/local/bin:/usr/bin:/bin",
 		);
+		// The directory the rule refused (the 0777 /usr/local/bin of a hosted image) is not handed back as the fallback.
+		const hosted = memoryTrust(
+			{ ...nodes, "/usr/local/bin": dir(1000, 0o777) },
+			{ cwd: "/work/checkout" },
+		);
+		for (const value of ["/usr/local/bin", ".:", "/opt/shared"]) {
+			expect(pathOf(value, { trust: hosted }), value).toBe("/usr/bin:/bin");
+		}
+	});
+
+	it("refuses the run, with the passphrase nowhere, when not even the fixed directories pass", () => {
+		const open = memoryTrust(
+			{
+				"/": dir(0, 0o755),
+				"/usr": dir(0, 0o755),
+				"/usr/bin": dir(1000, 0o777),
+				"/usr/local": dir(0, 0o755),
+				"/usr/local/bin": dir(1000, 0o777),
+				"/bin": dir(1000, 0o777),
+			},
+			{ cwd: "/work/checkout" },
+		);
+		const passphrase = "store-passphrase-for-tests";
+		for (const value of [".:", "/usr/local/bin", "/usr/bin:/bin"]) {
+			const error = refusal(() =>
+				launchWith(
+					{ PATH: value, OPENSESAME_STORE_PASSWORD: passphrase },
+					{ trust: open, passEnv: ["OPENSESAME_STORE_PASSWORD"] },
+				),
+			);
+			expect(error?.code, value).toBe("bridge_missing");
+			expect(error?.message, value).not.toContain(passphrase);
+		}
 	});
 
 	it("names Windows' system directories there, and keeps the variable's own spelling", () => {
+		const onWindows = memoryTrust(
+			{ "D:\\Win": dir(0, 0o755), "D:\\Win\\System32": dir(0, 0o755) },
+			{ euid: undefined },
+		);
 		const win = launchWith(
 			{ Path: ".;rel", SYSTEMROOT: "D:\\Win" },
-			{ trust: memoryTrust({}, { euid: undefined }), platform: "win32" },
+			{ trust: onWindows, platform: "win32" },
 		).env;
 		expect(win.Path).toBe("D:\\Win\\System32;D:\\Win");
 	});

@@ -68,7 +68,8 @@ rule for a place, used by the executable lookup and by `PATH`.
 - **`PATH` is reduced.** An older OpenSesame's first act is a bare `node` lookup with the passphrase in its environment (a current
   one searches only directories group and others cannot write, with a minimal environment), so `PATH` is the caller's absolute,
   existing, trusted directories that only their owner can add a file to (no sticky `/tmp`), as they resolve, once each, else
-  `/usr/local/bin:/usr/bin:/bin`; listing it in `passEnv` changes nothing. The adapter relies on neither OpenSesame. With no `node`
+  the system directories (`/usr/local/bin`, `/usr/bin`, `/bin`) held to the same rule, else a `bridge_missing` refusal before
+  anything is started (an empty `PATH` would search the working directory); listing it in `passEnv` changes nothing. The adapter relies on neither OpenSesame. With no `node`
   in those directories OpenSesame refuses before the command starts: `bridge_missing`, from either version's words.
 - **A trusted place** resolves through every symlink; it and every directory above it belong to the effective user or root and are
   not writable by group or others (a sticky directory they own is allowed above it); it is not under `node_modules/.bin` and not inside the

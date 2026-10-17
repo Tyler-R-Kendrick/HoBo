@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import { placeProblem, trustedPath } from "../src/trust.js";
+import { refusalOf } from "./support/refusal.js";
 import { dir, file, link, memoryTrust, SYSTEM } from "./support/trust-fs.js";
 
 const ME = 1000;
@@ -256,7 +257,7 @@ describe("the PATH a run is started with keeps only places that pass the same ru
 		);
 	});
 
-	it("falls back to a fixed safe PATH when nothing is left", () => {
+	it("falls back to the fixed system directories, each held to the rule, when nothing is left", () => {
 		for (const value of [
 			undefined,
 			"",
@@ -269,14 +270,79 @@ describe("the PATH a run is started with keeps only places that pass the same ru
 		}
 	});
 
-	it("on Windows starts from SystemRoot, and keeps absolute Windows entries", () => {
+	it("does not offer back a fallback directory the rule refused: /usr/local/bin is where hosted images leave a 0777 directory", () => {
+		const shared = memoryTrust(
+			{
+				...nodes,
+				"/usr/local/bin": dir(ME, 0o777),
+				"/bin": dir(STRANGER, 0o755),
+			},
+			{ cwd: "/work/checkout" },
+		);
+		for (const value of [undefined, "", "/usr/local/bin", "/opt/shared:/bin"]) {
+			expect(trustedPath(value, shared, "linux", {}), String(value)).toBe(
+				"/usr/bin",
+			);
+		}
+		const sticky = memoryTrust(
+			{ ...nodes, "/usr/local/bin": dir(0, 0o1777) },
+			{ cwd: "/work/checkout" },
+		);
+		expect(trustedPath("/nowhere", sticky, "linux", {})).toBe("/usr/bin:/bin");
+	});
+
+	it("refuses the run when no directory passes, and never returns an empty PATH: an empty PATH makes execvp search the working directory", () => {
+		const none: Parameters<typeof memoryTrust>[0][] = [
+			{},
+			{
+				"/": dir(0, 0o755),
+				"/usr": dir(0, 0o755),
+				"/usr/bin": dir(ME, 0o777),
+				"/usr/local": dir(0, 0o755),
+				"/usr/local/bin": dir(ME, 0o777),
+				"/bin": dir(ME, 0o777),
+			},
+			{
+				"/": dir(0, 0o755),
+				"/usr": dir(0, 0o755),
+				"/usr/bin": dir(STRANGER, 0o755),
+				"/usr/local": dir(0, 0o755),
+				"/usr/local/bin": dir(STRANGER, 0o755),
+				"/bin": dir(STRANGER, 0o755),
+			},
+		];
+		for (const tree of none) {
+			for (const value of [undefined, "", ".", "/usr/bin:/bin:/opt/shared"]) {
+				const label = `${JSON.stringify(tree)} ${String(value)}`;
+				const said = refusalOf(() =>
+					trustedPath(
+						value,
+						memoryTrust(tree, { cwd: "/work/checkout" }),
+						"linux",
+						{},
+					),
+				);
+				expect(said?.code, label).toBe("bridge_missing");
+			}
+		}
+	});
+
+	it("on Windows starts from SystemRoot, held to the same rule, and keeps absolute Windows entries", () => {
+		const windows = {
+			"C:\\Tools": dir(0, 0o755),
+			"C:\\Windows": dir(0, 0o755),
+			"C:\\Windows\\System32": dir(0, 0o755),
+			"D:\\Win": dir(0, 0o755),
+			"D:\\Win\\System32": dir(0, 0o755),
+		};
 		const win = (value: string | undefined, env: NodeJS.ProcessEnv = {}) =>
 			trustedPath(
 				value,
-				memoryTrust(
-					{ "C:\\Tools": dir(0, 0o755) },
-					{ euid: undefined, cwd: "C:\\proj", home: "C:\\Users\\me" },
-				),
+				memoryTrust(windows, {
+					euid: undefined,
+					cwd: "C:\\proj",
+					home: "C:\\Users\\me",
+				}),
 				"win32",
 				env,
 			);
@@ -284,5 +350,12 @@ describe("the PATH a run is started with keeps only places that pass the same ru
 			"D:\\Win\\System32;D:\\Win",
 		);
 		expect(win(".;rel;")).toBe("C:\\Windows\\System32;C:\\Windows");
+		expect(win("C:\\Tools;C:\\Missing")).toBe("C:\\Tools");
+		// A SystemRoot that is not a directory there, or not absolute, is not a fallback either.
+		for (const env of [{ SYSTEMROOT: "E:\\Gone" }, { SYSTEMROOT: "." }]) {
+			expect(refusalOf(() => win("", env))?.code, JSON.stringify(env)).toBe(
+				"bridge_missing",
+			);
+		}
 	});
 });

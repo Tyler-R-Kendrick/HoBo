@@ -115,8 +115,11 @@ What `runProxied` does before and around the run:
   others cannot write and starts it with a minimal environment. **The adapter does not rely on that**; this holds with
   either. `PATH` is always your entries that are absolute, exist, are trusted places (below) and that only their owner can
   add a file to (a sticky `/tmp` is fine above a file, not as a directory a program is looked up in by name: sticky stops
-  others removing a name, not adding one), each written as it resolves; if none remain, `/usr/local/bin:/usr/bin:/bin`
-  (on Windows, SystemRoot's `System32` and SystemRoot). Listing `PATH` in `passEnv` does not change that. A command that
+  others removing a name, not adding one), each written as it resolves; if none remain, the system directories `/usr/local/bin`, `/usr/bin`
+  and `/bin` that pass the same rule (on Windows, SystemRoot's `System32` and SystemRoot); if not even those pass
+  (`/usr/local/bin` is the directory hosted CI images and Intel Homebrew leave open to all), the run is refused
+  with `bridge_missing` before anything is started or any passphrase is passed, because an empty `PATH` makes the
+  lookup search the working directory. Listing `PATH` in `passEnv` does not change that. A command that
   lives only in a dropped directory has to be named by absolute path in `argv`.
 - **`node` for the schema comes from that `PATH`.** OpenSesame searches the `PATH` the adapter built, so `node` must sit in
   one of those directories. When none holds one (for example where Node is installed in a world-writable directory),

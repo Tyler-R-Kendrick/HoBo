@@ -28,6 +28,8 @@ import { realpathSync, statSync } from "node:fs";
 import { homedir } from "node:os";
 import path from "node:path";
 
+import { OpenSesameAdapterError } from "./errors.js";
+
 /** What the rule reads of one file or directory. */
 export type EntryStat = Readonly<{
 	uid: number;
@@ -85,7 +87,7 @@ export function nodeTrust(): Trust {
 
 const STICKY = 0o1000;
 const GROUP_OR_OTHERS_WRITE = 0o022;
-const SAFE_POSIX_PATH = "/usr/local/bin:/usr/bin:/bin";
+const SAFE_POSIX_PATH = ["/usr/local/bin", "/usr/bin", "/bin"];
 
 function hasNodeModulesBin(target: string): boolean {
 	const parts = target.split(/[\\/]/u);
@@ -149,13 +151,14 @@ export function absolutePathEntries(
 		.filter((entry) => entry !== "" && flavour.isAbsolute(entry));
 }
 
+/** The system directories a PATH falls back to when none of the caller's passes; each is held to the same rule. */
 function defaultPath(
 	platform: NodeJS.Platform,
 	env: NodeJS.ProcessEnv,
-): string {
+): string[] {
 	if (platform !== "win32") return SAFE_POSIX_PATH;
 	const root = env.SYSTEMROOT ?? env.SystemRoot ?? "C:\\Windows";
-	return `${root}\\System32;${root}`;
+	return [`${root}\\System32`, root];
 }
 
 /**
@@ -169,13 +172,31 @@ function othersCanAdd(directory: string, trust: Trust): boolean {
 	return mode === undefined || (mode & GROUP_OR_OTHERS_WRITE) !== 0;
 }
 
+/** The entries that pass the rule, each as it resolves, none twice. */
+function trustedEntries(entries: readonly string[], trust: Trust): string[] {
+	const kept: string[] = [];
+	for (const entry of entries) {
+		if (trust.fs.stat(entry)?.directory !== true) continue;
+		if (placeProblem(entry, trust) !== undefined) continue;
+		const real = trust.fs.realpath(entry);
+		if (real === undefined || othersCanAdd(real, trust)) continue;
+		if (!kept.includes(real)) kept.push(real);
+	}
+	return kept;
+}
+
 /**
  * The PATH a run is started with: the caller's, reduced to the absolute
  * directories that exist, are trusted places and that only their owner can add
  * a file to (a sticky `/tmp` is not one), each written as it resolves and none
  * twice. An empty or relative entry means the working directory, and an older
  * OpenSesame's first act is a bare `node` lookup with the store passphrase in
- * its environment. When nothing is left, a fixed system PATH.
+ * its environment. When nothing is left, the fixed system directories, reduced
+ * the same way: `/usr/local/bin` is exactly the directory a hosted image or an
+ * Intel Homebrew leaves open to all, and the fallback is no way around the rule.
+ * When not even those pass there is no PATH to give: an empty one makes the
+ * lookup search the working directory, so the run is refused
+ * (`bridge_missing`) before anything is started or any passphrase is passed.
  */
 export function trustedPath(
 	pathValue: string | undefined,
@@ -183,16 +204,23 @@ export function trustedPath(
 	platform: NodeJS.Platform,
 	env: NodeJS.ProcessEnv,
 ): string {
-	const kept: string[] = [];
-	for (const entry of absolutePathEntries(pathValue, platform)) {
-		if (trust.fs.stat(entry)?.directory !== true) continue;
-		if (placeProblem(entry, trust) !== undefined) continue;
-		const real = trust.fs.realpath(entry);
-		if (real === undefined || othersCanAdd(real, trust)) continue;
-		if (!kept.includes(real)) kept.push(real);
-	}
 	const flavour = platform === "win32" ? path.win32 : path.posix;
-	return kept.length === 0
-		? defaultPath(platform, env)
-		: kept.join(flavour.delimiter);
+	const mine = trustedEntries(absolutePathEntries(pathValue, platform), trust);
+	const kept =
+		mine.length > 0
+			? mine
+			: trustedEntries(
+					absolutePathEntries(
+						defaultPath(platform, env).join(flavour.delimiter),
+						platform,
+					),
+					trust,
+				);
+	if (kept.length === 0) {
+		throw new OpenSesameAdapterError(
+			"bridge_missing",
+			"no directory is left to look `node` up in: every entry of PATH is empty, relative, missing or in a place others could have written, and so is each system directory (/usr/local/bin, /usr/bin, /bin; on Windows SystemRoot's System32 and SystemRoot). Nothing was started and the store passphrase went nowhere. Put `node` in a directory only you and root can write and name it on PATH, or, where your OpenSesame reads OPENSESAME_NODE, name the file there and list that name in passEnv",
+		);
+	}
+	return kept.join(flavour.delimiter);
 }

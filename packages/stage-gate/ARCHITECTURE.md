@@ -7,7 +7,9 @@ toolchain checks, captures evidence, and emits an append-only `StageGateRecord`.
 
 - Protobuf records live in [`data-models/`](./data-models).
 - CUE constraints bound every protobuf type in that folder.
-- PACT consumer evidence lives under [`contracts/`](./contracts).
+- PACT consumer evidence lives under [`contracts/`](./contracts), including the
+  ai-bdd process boundary (`stage-gate-ai-bdd-report.pact.json`, one interaction
+  per exit code of `compile --check`, `run` and `verify-run`; ADR-0172).
 
 ## Parse, don't validate
 
@@ -16,6 +18,10 @@ parser applies protobuf shape plus CUE constraints and returns deep-frozen
 derived types (`StageGateRecord`, `CheckResult`, `ComponentArtifact`,
 `SignatureEvidence`). Downstream code and acceptance surfaces only consume
 parsed records; malformed or tampered input throws `StageGateParseError`.
+Records and check output are narrowed through the tag guards in `src/json.ts`
+(own fields only, so a key named like an `Object.prototype` member reads as
+absent), never through `typeof`; `serializeStageGateRecord` returns the named
+`StageGateRecordJson` wire form, which goes back through the parser unchanged.
 
 Check execution resolves `pnpm` through a non-repo-local Windows executable or
 the prepared Corepack shim and records spawn errors plus failure output tails in
@@ -24,7 +30,7 @@ closed instead of producing empty evidence.
 
 ## Event architecture
 
-- **Command** — `hobo-stage-gate run <gateId>` requests a full gate execution.
+- **Command** — `hobo-stage-gate run <gateId>` (`s0` or `release`) requests a full gate execution.
 - **Event** — each check completion appends a `CheckResult` to the run record.
 - **Actor** — CI workflow or local runner identity is captured in record metadata.
 - **Event store** — gate records are append-only evidence; runs are never mutated.

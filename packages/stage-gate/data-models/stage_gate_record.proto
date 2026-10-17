@@ -4,7 +4,9 @@ package hobo.stage_gate.v1;
 message CheckResult {
   string check_id = 1;
   repeated string command = 2;
+  // -1 when the check was never started because a check it requires did not pass.
   int32 exit_code = 3;
+  // passed | failed | skipped | not_run (could not be carried out, ADR-0172).
   string status = 4;
   map<string, string> evidence = 5;
 }
@@ -23,7 +25,9 @@ message SignatureEvidence {
 }
 
 message StageGateRecord {
+  // s0 | release (ADR-0172).
   string gate_id = 1;
+  // passed | failed | skipped | not_run.
   string status = 2;
   string repo_commit = 3;
   string ci_run_url = 4;

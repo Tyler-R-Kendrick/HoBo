@@ -1,3 +1,4 @@
+import { existsSync } from "node:fs";
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -122,15 +123,19 @@ describe("remote anonymous up + claim", () => {
 		const discovery = createBrokerDiscoveryClient({
 			fixed: new Map([["https://public.example.com", mock.discovery]]),
 		});
+		// The commands' home. The presenter's offline fixture writes its DPoP key there, and an
+		// env with no HOBO_HOME would put it in the user's own ~/.hobo.
+		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-anon-home-"));
+		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		const up = createBrokerAwareUpCommand({
 			mockRemote: mock,
 			discovery,
-			env: {},
+			env: { HOBO_HOME: hoboHome },
 		});
 		const claim = createClaimCommand({
 			mockRemote: mock,
 			discovery,
-			env: {},
+			env: { HOBO_HOME: hoboHome },
 		});
 
 		const projectDir = await mkdtemp(join(tmpdir(), "hobo-anon-proj-"));
@@ -248,6 +253,9 @@ describe("remote anonymous up + claim", () => {
 		expect(cdata.primaryUrl).toBe(data.primaryUrl);
 		expect(cdata.resources).toEqual(data.resources);
 		expect(cdata.owner.id).toBe("acme");
+		expect(
+			existsSync(join(hoboHome, "keys", "dpop-user_local-fixture.json")),
+		).toBe(true);
 	});
 
 	it("fails closed when anonymous requested but not advertised", async () => {

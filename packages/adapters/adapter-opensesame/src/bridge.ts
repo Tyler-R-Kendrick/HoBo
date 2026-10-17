@@ -16,30 +16,50 @@ import { OpenSesameAdapterError } from "./errors.js";
 import { placeProblem, type Trust } from "./trust.js";
 
 export type BridgeInput = Readonly<{
-	/** The value of OPENSESAME_ENV_PARSE in the caller's environment, if set. */
-	bridge: string | undefined;
+	/** The caller's environment. */
+	env: NodeJS.ProcessEnv;
 	platform: NodeJS.Platform;
 	trust: Trust;
 }>;
 
+const NAME = "OPENSESAME_ENV_PARSE";
+
 function refuse(why: string): OpenSesameAdapterError {
 	return new OpenSesameAdapterError(
 		"bridge_missing",
-		`OPENSESAME_ENV_PARSE ${why}; nothing was started and the store passphrase went nowhere. Name the bridge by an absolute path in a directory only you and root can write, or unset it`,
+		`${NAME} ${why}; nothing was started and the store passphrase went nowhere. Name the bridge by an absolute path in a directory only you and root can write, or unset it`,
 	);
+}
+
+/**
+ * The values of the variable in `env` that reach OpenSesame. The allowlist compares
+ * names without case on Windows, so a plain object holding `opensesame_env_parse` (or
+ * both spellings) passes it on, and each of them is checked.
+ */
+function bridgesIn(
+	env: NodeJS.ProcessEnv,
+	platform: NodeJS.Platform,
+): string[] {
+	const found: string[] = [];
+	for (const [name, value] of Object.entries(env)) {
+		const same =
+			platform === "win32" ? name.toUpperCase() === NAME : name === NAME;
+		if (same && value !== undefined) found.push(value);
+	}
+	return found;
 }
 
 /** Throws a typed refusal unless the bridge is unset, or an absolute path to something that exists, in a trusted place. */
 export function checkBridge(input: BridgeInput): void {
-	const { bridge } = input;
-	if (bridge === undefined) return;
 	const flavour = input.platform === "win32" ? path.win32 : path.posix;
-	if (!flavour.isAbsolute(bridge)) {
-		throw refuse(
-			"must be an absolute path: a relative one means the working directory",
-		);
+	for (const bridge of bridgesIn(input.env, input.platform)) {
+		if (!flavour.isAbsolute(bridge)) {
+			throw refuse(
+				"must be an absolute path: a relative one means the working directory",
+			);
+		}
+		const why = placeProblem(bridge, input.trust);
+		if (why !== undefined)
+			throw refuse(`names a bridge that cannot be used: ${why}`);
 	}
-	const why = placeProblem(bridge, input.trust);
-	if (why !== undefined)
-		throw refuse(`names a bridge that cannot be used: ${why}`);
 }

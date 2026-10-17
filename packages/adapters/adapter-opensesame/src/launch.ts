@@ -109,7 +109,7 @@ export function buildLaunch(input: LaunchInput): Launch {
 	const trust = input.trust ?? nodeTrust();
 	const platform = input.platform ?? process.platform;
 	checkBridge({
-		bridge: input.env.OPENSESAME_ENV_PARSE,
+		env: input.env,
 		platform,
 		trust,
 	});

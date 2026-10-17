@@ -32,15 +32,10 @@ const nodes = {
 	"/work/checkout/node_modules/.bin/parse.mjs": file(ME, 0o755),
 };
 
-function launchWith(
-	bridge: string | undefined,
+function launchWithEnv(
+	env: NodeJS.ProcessEnv,
 	more: Partial<LaunchInput> = {},
 ) {
-	const env: NodeJS.ProcessEnv = {
-		PATH: "/usr/bin",
-		OPENSESAME_STORE_PASSWORD: "store-passphrase-for-tests",
-		OPENSESAME_ENV_PARSE: bridge,
-	};
 	return buildLaunch({
 		bin: "/opt/opensesame/opensesame",
 		schemaPath: "/tmp/x/.env.schema",
@@ -52,6 +47,20 @@ function launchWith(
 		trust: memoryTrust(nodes, { cwd: "/work/checkout" }),
 		...more,
 	});
+}
+
+function launchWith(
+	bridge: string | undefined,
+	more: Partial<LaunchInput> = {},
+) {
+	return launchWithEnv(
+		{
+			PATH: "/usr/bin",
+			OPENSESAME_STORE_PASSWORD: "store-passphrase-for-tests",
+			OPENSESAME_ENV_PARSE: bridge,
+		},
+		more,
+	);
 }
 
 describe("OPENSESAME_ENV_PARSE is a program path: absolute, and in a place the rule trusts", () => {
@@ -137,5 +146,48 @@ describe("OPENSESAME_ENV_PARSE is a program path: absolute, and in a place the r
 			);
 		expect(run("C:\\kit\\parse.mjs")).toBeUndefined();
 		expect(run("kit\\parse.mjs")?.code).toBe("bridge_missing");
+	});
+
+	it("on Windows finds the variable whatever its case, as the allowlist does, and checks every spelling that is passed on", () => {
+		const windows = memoryTrust(
+			{
+				"C:\\Windows": dir(0, 0o755),
+				"C:\\Windows\\System32": dir(0, 0o755),
+				"C:\\kit": dir(0, 0o755),
+				"C:\\kit\\parse.mjs": file(0, 0o644),
+			},
+			{ euid: undefined, cwd: "C:\\proj", home: "C:\\Users\\me" },
+		);
+		const run = (env: NodeJS.ProcessEnv) =>
+			refusalOf(() =>
+				launchWithEnv(env, { platform: "win32", trust: windows }),
+			);
+		for (const name of [
+			"OPENSESAME_ENV_PARSE",
+			"opensesame_env_parse",
+			"Opensesame_Env_Parse",
+		]) {
+			expect(run({ [name]: "kit\\parse.mjs" })?.code, name).toBe(
+				"bridge_missing",
+			);
+			expect(run({ [name]: "C:\\kit\\parse.mjs" }), name).toBeUndefined();
+		}
+		// Two spellings in one plain object both reach OpenSesame, so both are checked.
+		expect(
+			run({
+				OPENSESAME_ENV_PARSE: "C:\\kit\\parse.mjs",
+				opensesame_env_parse: "kit\\parse.mjs",
+			})?.code,
+		).toBe("bridge_missing");
+	});
+
+	it("elsewhere the name is exact: a lower-case spelling is neither passed on nor checked", () => {
+		const launch = launchWithEnv({
+			PATH: "/usr/bin",
+			opensesame_env_parse: "./planted.mjs",
+		});
+		expect(
+			Object.keys(launch.env).map((name) => name.toLowerCase()),
+		).not.toContain("opensesame_env_parse");
 	});
 });

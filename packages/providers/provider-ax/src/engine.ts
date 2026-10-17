@@ -4,10 +4,11 @@ import {
 	optimize as axOptimize,
 	axSerializeOptimizedProgram,
 } from "@ax-llm/ax";
-import { create, toJson } from "@bufbuild/protobuf";
+import { create, isMessage, toJson } from "@bufbuild/protobuf";
 import {
 	hashTrajectory,
 	type OptimizeRequest,
+	OptimizeRequestSchema,
 	type ParsedOptimizeRequest,
 	type ParsedTrajectory,
 	parseOptimizeRequest,
@@ -92,17 +93,20 @@ function rootSpanIo(trajectory: ParsedTrajectory): TrajectoryIo | null {
 }
 
 /**
- * The request as the JSON its parser reads. A generated message carries a
- * `$typeName` brand on itself and every nested message; it is not a field, and
- * `fromJson` refuses it as one, so it is dropped on the way across.
+ * The request as the JSON its parser reads. A generated message is written
+ * with `toJson`, its proto3 JSON: the `$typeName` brand on it and on every
+ * nested message is not a field there (and `fromJson` would refuse it as
+ * one), while a map entry a caller keyed `$typeName` is kept, as is any value
+ * `JSON.stringify` cannot carry. A plain object typed as the request (the
+ * tests hand the port those) has no brand and is its own JSON.
  */
-function requestJson(request: OptimizeRequest): JsonValue {
-	const text = JSON.stringify(request, (key, value) =>
-		key === "$typeName" ? undefined : value,
-	);
+export function requestJson(request: OptimizeRequest): JsonValue {
+	if (isMessage(request, OptimizeRequestSchema)) {
+		return toJson(OptimizeRequestSchema, request);
+	}
 	// SAFETY: `JSON.parse` of `JSON.stringify`'s output is a JSON value by
 	// construction; the parser it feeds checks every field it then reads.
-	return JSON.parse(text) as JsonValue;
+	return JSON.parse(JSON.stringify(request)) as JsonValue;
 }
 
 /**

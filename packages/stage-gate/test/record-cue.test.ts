@@ -12,9 +12,8 @@
  * The package's `test:schema` runs it and the root `test:schema` reaches
  * that; without cue it fails, never skips.
  */
-import { execFileSync, spawnSync } from "node:child_process";
+import { spawnSync } from "node:child_process";
 import {
-	existsSync,
 	mkdtempSync,
 	readdirSync,
 	readFileSync,
@@ -34,6 +33,7 @@ import {
 	nodeAt,
 	type ReportDoc,
 } from "./helpers/ai-bdd-report.js";
+import { cueBinary } from "./helpers/cue-binary.js";
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, "..", "..", "..");
@@ -47,47 +47,7 @@ afterAll(() => {
 	rmSync(scratch, { recursive: true, force: true });
 });
 
-/** The version the root test:schema lane caches, and the one this suite is written against. */
-const CUE_VERSION = "v0.14.0";
-
-/** `binary` when its `cue version` names CUE_VERSION; otherwise a thrown error naming what was found. */
-function pinned(binary: string, source: string): string {
-	let version: string;
-	try {
-		version = execFileSync(binary, ["version"], { encoding: "utf8" });
-	} catch (cause) {
-		const reason = cause instanceof Error ? cause.message : String(cause);
-		throw new Error(
-			`cue ${CUE_VERSION} not found (${source} ${binary}: ${reason}): run the root test:schema lane (it caches .tools/cue/${CUE_VERSION}), set HOBO_CUE_BIN, or put cue ${CUE_VERSION} on PATH`,
-		);
-	}
-	if (!version.includes(CUE_VERSION)) {
-		const found = version.split(/\r?\n/u)[0] ?? version;
-		throw new Error(
-			`${source} ${binary} is "${found}", not cue ${CUE_VERSION}: required fields (!) and these fixtures are checked against ${CUE_VERSION}`,
-		);
-	}
-	return binary;
-}
-
-/** HOBO_CUE_BIN when set (it must exist), else the cached binary, else cue on PATH; each must be CUE_VERSION. */
-function cueBinary(): string {
-	const configured = process.env.HOBO_CUE_BIN;
-	if (configured !== undefined) {
-		if (!existsSync(configured)) {
-			throw new Error(
-				`HOBO_CUE_BIN names ${configured}, which does not exist: unset it or name cue ${CUE_VERSION}`,
-			);
-		}
-		return pinned(configured, "HOBO_CUE_BIN");
-	}
-	const exe = process.platform === "win32" ? "cue.exe" : "cue";
-	const cached = join(REPO_ROOT, ".tools", "cue", CUE_VERSION, exe);
-	if (existsSync(cached)) return pinned(cached, "the cached");
-	return pinned("cue", "PATH's");
-}
-
-const CUE = cueBinary();
+const CUE = cueBinary(process.env, REPO_ROOT);
 
 interface Vet {
 	readonly accepted: boolean;

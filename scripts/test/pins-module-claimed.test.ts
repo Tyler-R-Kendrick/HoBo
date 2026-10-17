@@ -73,10 +73,11 @@ describe("a module directory another live section names", () => {
 
 	it("the printed fix keeps the work and clones the submodule under its own name", () => {
 		const { root, lib } = setUp();
-		const fix = /fix: (.+?)(?: {3}\(|$)/mu.exec(
-			runBootstrap(root, ["--status", "--offline"]).stdout,
-		)?.[1];
-		assert.ok(fix?.startsWith("mv "), `fix: ${fix}`);
+		const fix =
+			/fix: (.+?)(?: {3}\(|$)/mu.exec(
+				runBootstrap(root, ["--status", "--offline"]).stdout,
+			)?.[1] ?? "";
+		assert.match(fix, /^mv /u, `fix: ${fix}`);
 		execFileSync("sh", ["-c", fix], { cwd: root, env: gitEnv() });
 		assert.equal(
 			readFileSync(join(root, "external/lib.kept/README.md"), "utf8"),

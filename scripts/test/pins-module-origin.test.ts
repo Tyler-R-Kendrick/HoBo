@@ -123,10 +123,11 @@ describe("a section renamed and pointed at another upstream", () => {
 	it("the printed fix keeps the old checkout and clones the new upstream beside it", () => {
 		const { root, lib, other } = setUp("uncommitted");
 		point(root, "other", other.url, other.shas[1] ?? "");
-		const fix = /fix: (.+?)(?: {3}\(|$)/mu.exec(
-			runBootstrap(root, ["--status", "--offline"]).stdout,
-		)?.[1];
-		assert.ok(fix?.startsWith("mv "), `fix: ${fix}`);
+		const fix =
+			/fix: (.+?)(?: {3}\(|$)/mu.exec(
+				runBootstrap(root, ["--status", "--offline"]).stdout,
+			)?.[1] ?? "";
+		assert.match(fix, /^mv /u, `fix: ${fix}`);
 		execFileSync("sh", ["-c", fix], { cwd: root, env: gitEnv() });
 		assert.equal(
 			readFileSync(join(root, "external/lib.kept/README.md"), "utf8"),

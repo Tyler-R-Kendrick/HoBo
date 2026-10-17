@@ -32,9 +32,36 @@ const REPLAY_ONLY = {
 	report_exit_code: "0",
 } as const;
 
-function countIn(evidence: CheckEvidence | undefined, key: string): number {
-	const text = evidence?.[key] ?? "";
-	return /^\d+$/u.test(text) ? Number(text) : 0;
+/** strconv.Atoi's ceiling: the CUE reads each count as an int64. */
+const INT64_MAX = 9_223_372_036_854_775_807n;
+
+/** A count as the CUE reads it, or undefined for anything else (absent, signed, not digits, past int64). */
+function countIn(
+	evidence: CheckEvidence | undefined,
+	key: string,
+): bigint | undefined {
+	const text = evidence?.[key];
+	if (text === undefined || !/^\d+$/u.test(text)) return undefined;
+	const count = BigInt(text);
+	return count <= INT64_MAX ? count : undefined;
+}
+
+function validateReplayCounts(
+	replay: CheckEvidence | undefined,
+	issues: string[],
+): void {
+	const total = countIn(replay, "scenarios_total");
+	const passed = countIn(replay, "scenarios_passed");
+	const healed = countIn(replay, "scenarios_healed");
+	if (total === undefined || passed === undefined || healed === undefined) {
+		issues.push(
+			"passed release record requires acceptance-replay evidence scenarios_total, scenarios_passed and scenarios_healed as decimal counts the CUE's strconv.Atoi reads (digits, at most 2^63 - 1)",
+		);
+	} else if (total === 0n || passed + healed === 0n) {
+		issues.push(
+			"passed release record requires acceptance-replay evidence that a scenario replayed (scenarios_total above 0, scenarios_passed + scenarios_healed above 0)",
+		);
+	}
 }
 
 function validateReplayEvidence(
@@ -58,13 +85,7 @@ function validateReplayEvidence(
 			);
 		}
 	}
-	const replayed =
-		countIn(replay, "scenarios_passed") + countIn(replay, "scenarios_healed");
-	if (countIn(replay, "scenarios_total") === 0 || replayed === 0) {
-		issues.push(
-			"passed release record requires acceptance-replay evidence that a scenario replayed (scenarios_total above 0, scenarios_passed + scenarios_healed above 0)",
-		);
-	}
+	validateReplayCounts(replay, issues);
 }
 
 /**

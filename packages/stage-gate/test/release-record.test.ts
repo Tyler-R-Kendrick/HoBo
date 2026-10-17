@@ -97,6 +97,19 @@ function releaseRecord(
 	};
 }
 
+/** A passed release record whose replay evidence is `evidence`. */
+function withReplayEvidence(
+	evidence: Readonly<Record<string, string>>,
+): StageGateRecordJson {
+	return releaseRecord({
+		checks: [
+			RELEASE_CHECKS[0] ?? check("acceptance-plans-fresh"),
+			check("acceptance-replay", "passed", evidence),
+			RELEASE_CHECKS[2] ?? check("acceptance-evidence-intact"),
+		],
+	});
+}
+
 function issuesOf(record: StageGateRecordJson): readonly string[] {
 	try {
 		parseStageGateRecord(record);
@@ -174,16 +187,7 @@ describe("a passed release record", () => {
 		["report_exit_code", "1"],
 	])("is refused when the replay evidence says %s %s", (key, value) => {
 		const issues = issuesOf(
-			releaseRecord({
-				checks: [
-					RELEASE_CHECKS[0] ?? check("acceptance-plans-fresh"),
-					check("acceptance-replay", "passed", {
-						...REPLAY_EVIDENCE,
-						[key]: value,
-					}),
-					RELEASE_CHECKS[2] ?? check("acceptance-evidence-intact"),
-				],
-			}),
+			withReplayEvidence({ ...REPLAY_EVIDENCE, [key]: value }),
 		);
 		expect(issues).toContain(
 			`passed release record requires acceptance-replay evidence ${key} "${{ model_calls: "0", frozen: "true", no_agent: "true", report_exit_code: "0" }[key]}"`,
@@ -198,20 +202,36 @@ describe("a passed release record", () => {
 		],
 	])("is refused when the replay evidence shows %s", (_label, counts) => {
 		const issues = issuesOf(
-			releaseRecord({
-				checks: [
-					RELEASE_CHECKS[0] ?? check("acceptance-plans-fresh"),
-					check("acceptance-replay", "passed", {
-						...REPLAY_EVIDENCE,
-						...counts,
-					}),
-					RELEASE_CHECKS[2] ?? check("acceptance-evidence-intact"),
-				],
-			}),
+			withReplayEvidence({ ...REPLAY_EVIDENCE, ...counts }),
 		);
 		expect(issues).toContain(
 			"passed release record requires acceptance-replay evidence that a scenario replayed (scenarios_total above 0, scenarios_passed + scenarios_healed above 0)",
 		);
+	});
+
+	// The CUE reads each count with strconv.Atoi: decimal digits within int64.
+	const NOT_COUNTS =
+		"passed release record requires acceptance-replay evidence scenarios_total, scenarios_passed and scenarios_healed as decimal counts the CUE's strconv.Atoi reads (digits, at most 2^63 - 1)";
+	it.each([
+		[
+			'scenarios_passed "-1"',
+			{ scenarios_passed: "-1", scenarios_healed: "5" },
+		],
+		[
+			'scenarios_passed "abc"',
+			{ scenarios_passed: "abc", scenarios_healed: "5" },
+		],
+		["scenarios_total 2^63", { scenarios_total: "9223372036854775808" }],
+	])("is refused when the replay evidence has %s", (_label, counts) => {
+		const issues = issuesOf(
+			withReplayEvidence({ ...REPLAY_EVIDENCE, ...counts }),
+		);
+		expect(issues).toContain(NOT_COUNTS);
+	});
+
+	it("is refused when the replay evidence has no scenarios_healed", () => {
+		const { scenarios_healed: _absent, ...evidence } = REPLAY_EVIDENCE;
+		expect(issuesOf(withReplayEvidence(evidence))).toContain(NOT_COUNTS);
 	});
 
 	it("is refused with a check that was not run", () => {

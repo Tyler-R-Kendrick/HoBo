@@ -1,11 +1,17 @@
 /**
  * runAiBdd against a member of ai-bdd's group that forks and exits over and
- * over (ADR-0172): test/helpers/hop.sh ignores SIGTERM and, 100 times, starts
- * itself again in the background and exits. A /proc scan that lists the pids
+ * over (ADR-0172): test/helpers/hop.sh ignores SIGTERM, writes its ready file,
+ * and, 100 times, starts itself again in the background and exits. A /proc scan that lists the pids
  * before such a fork and reads the parent after its exit sees only a zombie;
  * the stop must still end in a SIGKILL to the group, which reaches the child.
  */
-import { mkdtempSync, readdirSync, readFileSync, rmSync } from "node:fs";
+import {
+	existsSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+} from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
@@ -51,7 +57,9 @@ describe("runAiBdd on Linux, against a member that forks and exits while it is s
 								command: [
 									"sh",
 									"-c",
-									'sh "$0" 100 "$1" >/dev/null 2>&1 & sleep 0.3; exit 0',
+									// ai-bdd (this shell) exits once the member ignores SIGTERM and says so in its
+									// ready file: a member SIGTERM ended before that could not escape at all.
+									'sh "$0" 100 "$1" "$1.ready" >/dev/null 2>&1 & i=0; until [ -e "$1.ready" ] || [ $i -ge 400 ]; do sleep 0.05; i=$((i+1)); done; exit 0',
 									HOP,
 									`${token}${run}`,
 								],
@@ -65,6 +73,11 @@ describe("runAiBdd on Linux, against a member that forks and exits while it is s
 						),
 					),
 				);
+				// Each member started, or nothing here could have escaped and the test would prove nothing.
+				const unstarted = Array.from({ length: RUNS }, (_, run) => run).filter(
+					(run) => !existsSync(`${token}${run}.ready`),
+				);
+				expect(unstarted).toEqual([]);
 				// A SIGKILLed hop.sh is gone within moments; one that escaped hops on, then sleeps 3 s.
 				const deadline = Date.now() + 2000;
 				while (survivors(token).length > 0 && Date.now() < deadline) {

@@ -144,22 +144,30 @@ describe("runAiBdd on Linux, where a group can hold only zombies", () => {
 	it.runIf(process.platform === "linux" && HAS_PYTHON3)(
 		"kills a member whose main thread exited while its other threads run, although /proc shows it Z",
 		async () => {
-			// The member ignores SIGTERM, starts a thread that writes the marker 3 s later,
-			// and ends its main thread (pthread_exit): /proc shows Z with num_threads 2.
+			// The member ignores SIGTERM, says so in $READY, starts a thread that writes the
+			// marker 3 s later, and ends its main thread (pthread_exit): /proc shows Z with
+			// num_threads 2. ai-bdd (the shell) exits once $READY is there, so the stop's
+			// SIGTERM never comes before the member ignores it, however slowly it starts.
 			const marker = join(
 				tmpdir(),
 				`hobo-leader-exit-${process.pid}-${Date.now()}`,
 			);
+			const ready = `${marker}.ready`;
 			const started = Date.now();
 			const run = await runAiBdd(
 				{
 					command: [
 						"sh",
 						"-c",
-						'python3 -c "$HOBO_TEST_PY" >/dev/null 2>&1 & echo holder $!; sleep 0.3; exit 0',
+						`python3 -c "$HOBO_TEST_PY" >/dev/null 2>&1 & echo holder $!; ${UNTIL_READY}`,
 					],
 					cwd: tmpdir(),
-					env: { ...process.env, HOBO_TEST_PY: LEADER_EXIT_PY, MARKER: marker },
+					env: {
+						...process.env,
+						HOBO_TEST_PY: LEADER_EXIT_PY,
+						MARKER: marker,
+						READY: ready,
+					},
 					timeoutMs: 20_000,
 					graceMs: 1500,
 					relay: () => undefined,
@@ -172,12 +180,14 @@ describe("runAiBdd on Linux, where a group can hold only zombies", () => {
 				await new Promise((done) =>
 					setTimeout(done, Math.max(0, started + 4000 - Date.now())),
 				);
+				expect(existsSync(ready)).toBe(true);
 				expect(run.status).toBe(0);
 				expect(existsSync(marker)).toBe(false);
 				expect(took).toBeGreaterThanOrEqual(1500);
 			} finally {
 				killQuietly(Number(/holder (\d+)/u.exec(run.tail)?.[1] ?? 0));
 				rmSync(marker, { force: true });
+				rmSync(ready, { force: true });
 			}
 		},
 		30_000,
@@ -186,10 +196,15 @@ describe("runAiBdd on Linux, where a group can hold only zombies", () => {
 
 const HAS_PYTHON3 = spawnSync("python3", ["-c", ""]).status === 0;
 
-/** Ignores SIGTERM, starts a thread that writes $MARKER after 3 s, and ends its main thread. */
+/** The shell's wait for its member to write $READY (20 s at most), then its exit. */
+const UNTIL_READY =
+	'i=0; until [ -e "$READY" ] || [ $i -ge 400 ]; do sleep 0.05; i=$((i+1)); done; exit 0';
+
+/** Ignores SIGTERM, writes $READY, starts a thread that writes $MARKER after 3 s, and ends its main thread. */
 const LEADER_EXIT_PY = [
 	"import ctypes, os, signal, threading, time",
 	"signal.signal(signal.SIGTERM, signal.SIG_IGN)",
+	"open(os.environ['READY'], 'w').close()",
 	"def later():",
 	"    time.sleep(3)",
 	"    open(os.environ['MARKER'], 'w').close()",

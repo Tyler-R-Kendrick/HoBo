@@ -100,9 +100,14 @@ status. The child shares that stream, so this is a diagnosis, not a gate; the ga
 value shaped `osr_` + 32 hex from the child's own environment, under the run's markers.
 
 OpenSesame prints its end-of-run line with no newline before it, so a child's unterminated last write leaves it glued to
-the child's text; the `opensesame: ` sentences and the pin-mismatch sentence are matched anywhere in the retained output, the
-other `Error:` classes at the start of a line. A child can print a line in one of those shapes, and can exit 77, 143 or 129
-itself. What it gains is a fail-closed kind (a tripwire, a refusal, a placeholder) with a fixed sentence; it never gains a
-pass, and nothing it wrote reaches the outcome or an error message except the exit status it chose. An `Error:` line that is not one of OpenSesame's is the child's own
-failure (every uncaught Node exception starts that way): `child_exit`, the status, no words. The status 77, 143 or
-129 is advisory beside its line.
+the child's text; the `opensesame: ` sentences and the pin-mismatch sentence are matched anywhere in the output, the
+other `Error:` classes at the start of a line. A child can **forge or hide**. It can print a line in one of those shapes, and can
+exit 77, 143 or 129 itself: what it gains is a fail-closed kind (a tripwire, a refusal, a placeholder) with a fixed sentence; it
+never gains a pass, and nothing it wrote reaches the outcome or an error message except the exit status it chose. And a
+descendant that outlives OpenSesame's stop keeps writing after its last line, enough to push that line out of the start and end
+a capture retains. So the `opensesame: ` sentences are not read from the capture alone: `createOutcomeScan` (`sentences.ts`) sees
+every chunk as it arrives, carries a sentence split across chunks, and keeps one sentence of each shape (at most six, each within
+512 characters) that no later write can evict. Not preventable here: OpenSesame writes its tripwire sentence in several `write(2)`
+calls, so a writer between them breaks it and the typed tripwire is a `child_exit` with the same failing status. An `Error:` line
+that is not one of OpenSesame's is the child's own failure (every uncaught Node exception starts that way): `child_exit`, the
+status, no words. The status 77, 143 or 129 is advisory beside its line.

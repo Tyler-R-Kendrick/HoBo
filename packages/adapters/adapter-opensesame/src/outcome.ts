@@ -23,15 +23,28 @@
  * Only sentences in the shape OpenSesame writes (the closed set below) are read,
  * and a refusal needs a failing status beside it. The `opensesame: ` sentences
  * (tripwire, signal, placeholders) and the pin-mismatch sentence are matched
- * anywhere in the retained stderr, because OpenSesame prints its end-of-run line
- * with no newline before it and a child's unterminated last write, or a spinner
- * ending on a carriage return, leaves it glued to the child's text; the other
- * `Error:` classes are printed before the child exists and so start a line. The
- * child shares stderr, so it can print any of these: that gains it a fail-closed
- * kind (a tripwire, a refusal, a placeholder) and never a pass, and nothing it
- * wrote survives except the exit status it chose. A status of 77, 143 or 129 is advisory beside its line, since a
- * child can return them itself. The gate that a surrogate was really delivered is
- * the SecretsPort, which checks the child's own variable and the run's markers.
+ * anywhere in the stderr, because OpenSesame prints its end-of-run line with no
+ * newline before it and a child's unterminated last write, or a spinner ending
+ * on a carriage return, leaves it glued to the child's text; the other `Error:`
+ * classes are printed before the child exists and so start a line.
+ *
+ * The child shares stderr, so it can forge or hide. It can print any of these
+ * sentences, which gains it a fail-closed kind (a tripwire, a refusal, a
+ * placeholder) and never a pass, and nothing it wrote survives except the exit
+ * status it chose. And a descendant that outlives OpenSesame's stop keeps
+ * writing after OpenSesame's last line, enough to push it out of the start and
+ * the end a capture retains, which would turn a tripwire into a `child_exit` of
+ * the same status. So the `opensesame: ` sentences are not read from the
+ * capture alone: `createOutcomeScan` sees every chunk as it arrives and keeps
+ * one sentence of each shape (at most six, each within the limit), which no later
+ * write can evict. What stays impossible to prevent here: a forged sentence is
+ * classified only beside the exit status the child chose, so it is a fail-closed
+ * kind and never a pass; and OpenSesame writes its tripwire sentence in several
+ * `write(2)` calls, so a writer that gets in between them breaks the sentence and
+ * the typed tripwire is lost to `child_exit` (the failing status is kept). A
+ * status of 77, 143 or 129 is advisory beside its line, since a child can return
+ * them itself. The gate that a surrogate was really delivered is the
+ * SecretsPort, which checks the child's own variable and the run's markers.
  *
  * No text produced by the child, or by a line it could have forged, is ever
  * copied into a `ProxiedRunOutcome` or an error: the notice is a fixed sentence
@@ -51,7 +64,11 @@ import {
 	OpenSesameAdapterError,
 	type OpenSesameAdapterErrorCode,
 } from "./errors.js";
-import { sentencesOf } from "./sentences.js";
+import {
+	createSentenceScan,
+	type SentenceScan,
+	sentencesOf,
+} from "./sentences.js";
 
 export const OUTCOME_KINDS = [
 	"child_exit",
@@ -84,6 +101,13 @@ const PLACEHOLDER_LINES: readonly RegExp[] = [
 	/^.*delivering placeholders/u,
 	/^\S+ will keep its placeholder/u,
 	/^\S+ has no token to redeem/u,
+];
+/** Every shape of sentence the outcome is read from; a scan keeps one of each. */
+export const OWN_SENTENCES: readonly RegExp[] = [
+	TRIPWIRE,
+	SIGTERM_LINE,
+	SIGHUP_LINE,
+	...PLACEHOLDER_LINES,
 ];
 const PIN =
 	/^Error: the surrogate-proxy plugin no longer matches its install pin/u;
@@ -165,13 +189,27 @@ function classifyError(block: readonly string[]): OutcomeKind | undefined {
 }
 
 /**
+ * A reader to feed every chunk of stderr to as it arrives, for the sentences
+ * `parseOutcome` is read from. A capture keeps the start and the end of a long
+ * stream; a child (or a descendant that outlives OpenSesame's stop) that writes
+ * enough past OpenSesame's last line pushes that line out of both. This keeps
+ * each shape of sentence once it has been seen, so nothing written after can.
+ */
+export function createOutcomeScan(): SentenceScan {
+	return createSentenceScan(OWN_SENTENCES);
+}
+
+/**
  * Read a finished run. `exitCode` is null when OpenSesame itself was ended by
- * `signal`; `stderr` is what it and its child wrote there.
+ * `signal`; `stderr` is what it and its child wrote there (the retained start
+ * and end of it); `sentences` are the sentences a scan of the whole stream
+ * kept, which are read in place of the ones found in `stderr` when given.
  */
 export function parseOutcome(
 	exitCode: number | null,
 	signal: NodeJS.Signals | null,
 	stderr: string,
+	sentences?: readonly string[],
 ): ProxiedRunOutcome {
 	if (signal !== null) {
 		const number = constants.signals[signal];
@@ -183,7 +221,7 @@ export function parseOutcome(
 		);
 	}
 	const status = exitCode ?? 1;
-	const own = sentencesOf(stderr);
+	const own = sentences ?? sentencesOf(stderr);
 
 	if (status === TRIPWIRE_EXIT && own.some((line) => TRIPWIRE.test(line))) {
 		return outcome("tripwire", status, NOTICE.tripwire);

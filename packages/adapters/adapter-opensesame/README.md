@@ -196,11 +196,17 @@ Where the docs and the code are not the same thing, or the status alone is not e
 - `--schema` is a global flag of `dev`: `opensesame dev --agent --schema <file> run -- <cmd>`.
 - The classification reads stderr, which the child shares, so it is advisory. OpenSesame prints its end-of-run line with no
   newline before it, so a child's unterminated last write (or a spinner ending on `\r`) leaves it glued to the child's own
-  text: the `opensesame: ` sentences and the pin-mismatch sentence are therefore matched anywhere in the retained output,
-  and the other `Error:` classes, printed before the child exists, at the start of a line. A child can print one of them
-  (and exit 77, 143 or 129 itself); what that gains it is a fail-closed kind with a fixed sentence, never a pass, and none
-  of its text reaches the outcome or an error message. The one thing of the child's that does is the exit status it chose
-  (eight bits: `exitCode`, "status N"). The gate that a surrogate was really delivered is the port.
+  text: the `opensesame: ` sentences and the pin-mismatch sentence are therefore matched anywhere in the output, and the
+  other `Error:` classes, printed before the child exists, at the start of a line. A child can **forge or hide**. It can print
+  one of them (and exit 77, 143 or 129 itself); what that gains it is a fail-closed kind with a fixed sentence, never a pass,
+  and none of its text reaches the outcome or an error message. The one thing of the child's that does is the exit status it
+  chose (eight bits: `exitCode`, "status N"). A descendant that outlives OpenSesame's stop and keeps writing could push
+  OpenSesame's line out of the 64 KiB start and end the adapter retains, so the `opensesame: ` sentences are kept by a scan
+  of every chunk as it arrives (one of each shape, at most six, each within 512 characters) and not read from the retained
+  text alone: no write after the line can evict it. What cannot be prevented from here: OpenSesame writes its tripwire
+  sentence in several `write(2)` calls, so a writer that gets in between them breaks the sentence, and the typed
+  `tripwire_misdirected` is then a `child_exit` with the same failing status (nothing passes). The gate that a surrogate was
+  really delivered is the port.
 
 ## Tests
 

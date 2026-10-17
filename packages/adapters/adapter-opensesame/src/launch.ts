@@ -32,7 +32,7 @@ import { createCapture } from "./capture.js";
 import { childEnvOf } from "./child-env.js";
 import { OpenSesameAdapterError } from "./errors.js";
 import { type BinProbe, trustedOpenSesame } from "./opensesame-bin.js";
-import { parseOutcome } from "./outcome.js";
+import { createOutcomeScan, parseOutcome } from "./outcome.js";
 import { CHILD_MARKER } from "./run-markers.js";
 import { renderEnvSchema } from "./schema.js";
 import {
@@ -199,18 +199,21 @@ function wait(
 ): Promise<ProxiedRunOutcome> {
 	return new Promise((resolve, reject) => {
 		const capture = createCapture(CAPTURE_LIMIT);
+		// Sees every chunk, so what a descendant writes after OpenSesame's last line cannot push that line out of the capture.
+		const scan = createOutcomeScan();
 		let settled = false;
 		let timer: NodeJS.Timeout | undefined;
 		const settle = (code: number | null, signal: NodeJS.Signals | null) => {
 			if (settled) return;
 			settled = true;
 			clearTimeout(timer);
-			resolve(parseOutcome(code, signal, capture.text()));
+			resolve(parseOutcome(code, signal, capture.text(), scan.sentences()));
 		};
 		child.stderr?.on("data", (chunk) => {
 			const text = String(chunk);
 			sink.write(text);
 			capture.push(text);
+			scan.push(text);
 		});
 		child.on("error", (error) => {
 			if (settled) return;

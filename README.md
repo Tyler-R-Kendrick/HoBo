@@ -152,13 +152,13 @@ local hooks stay observable while type-heavy fixtures compile. The pre-commit
 hook clears Git's hook-local environment before the Node/npm gate stack so nested
 repo probes run against the working tree instead of hook-only state.
 
-Optional: enable the repo pre-commit hook:
+The repo pre-commit hook is installed for you: the root `prepare` script points `core.hooksPath` at `.githooks` on install, and the session-start hooks of Claude Code, Codex, Cursor and Copilot do it when it is unset (see [`docs/agent-tooling.md`](./docs/agent-tooling.md)). Set it by hand after an install that ran no lifecycle scripts:
 
 ```sh
 npm run prepare-hooks
 ```
 
-After that, `.githooks/pre-commit` runs the generated-files guard (`node --run generated:guard`) and the staged impact-routed gate (`node --run check:relevant:staged`), which selects the relevant subset of the architecture guard, tests, technical standards, docs linters, and docs freshness for the staged diff before each commit. `npm run architecture:guard:staged` runs before the heavier test suite so missing PACT/protobuf/CUE/parse/event evidence is caught locally instead of burning CI.
+`.githooks/pre-commit` then runs, through `scripts/run-script.mts` and with no package manager, the generated-files guard (`generated:guard`) and the staged impact-routed gate (`check:relevant:staged`), which selects the relevant subset of the architecture guard, tests, technical standards, docs linters, and docs freshness for the staged diff before each commit. `npm run architecture:guard:staged` runs before the heavier test suite so missing PACT/protobuf/CUE/parse/event evidence is caught locally instead of burning CI.
 
 ## Technical standards
 

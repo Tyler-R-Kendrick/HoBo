@@ -26,6 +26,7 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type { ServePrivateContext } from "@hobo/core";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createWasmRuntimeHost } from "../src/index.js";
@@ -42,13 +43,15 @@ async function scratch(): Promise<string> {
 }
 
 /** A serve context with nothing to serve, in a throwaway project + home. */
-async function context(overrides: Record<string, unknown> = {}) {
+async function context(
+	overrides: Partial<ServePrivateContext> = {},
+): Promise<ServePrivateContext> {
 	return {
 		hoboHome: await scratch(),
 		projectDir: await scratch(),
 		privateComponents: [],
 		...overrides,
-	} as never;
+	};
 }
 
 const TIMEOUT = 180_000;
@@ -106,9 +109,9 @@ describe("serving with nothing declared", () => {
 		async () => {
 			// `ctx.emitProgress ?? (() => {})` — the toolchain ensure emits into it
 			// unconditionally, so a caller omitting it must not crash on the first
-			// message.
+			// message. The context below names no `emitProgress` at all.
 			const result = await createWasmRuntimeHost().servePrivate(
-				await context({ emitProgress: undefined }),
+				await context(),
 			);
 			cleanups.push(() => result.close?.() ?? Promise.resolve());
 			expect(result.kind).toBe("wasm");
@@ -138,7 +141,8 @@ describe("a wasm dependency whose source is missing", () => {
 		try {
 			await host.servePrivate(await context({ projectDir }));
 		} catch (error) {
-			const message = (error as Error).message;
+			if (!(error instanceof Error)) throw error;
+			const { message } = error;
 			expect(message).toMatch(/wasm dependency 'cache' source not found/u);
 			return message.slice(message.lastIndexOf(": ") + 2);
 		}

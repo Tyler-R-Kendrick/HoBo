@@ -70,8 +70,8 @@ describe("install ids and component hosts", () => {
 		// wherever a Camp first tries to serve on it.
 		for (const id of RUNTIME_INSTALL_IDS) {
 			const host = runtimeInstallIdToHost(id);
-			expect(host).toBeDefined();
-			expect(hostToRuntimeInstallId(host as never)).toBe(id);
+			if (host === undefined) throw new Error(`${id} names no host`);
+			expect(hostToRuntimeInstallId(host)).toBe(id);
 		}
 	});
 
@@ -86,6 +86,8 @@ describe("install ids and component hosts", () => {
 		// Stated rather than left to be discovered: the last arm is a bare
 		// return, not a fourth comparison, so any host beyond the three named
 		// ones is reported as cloud-native.
+		// SAFETY: deliberately outside ComponentHostKind; only a value that
+		// bypassed the type reaches the last arm, and this pins what it does.
 		expect(hostToRuntimeInstallId("something-else" as never)).toBe(
 			"runtime-cloud-native",
 		);
@@ -236,6 +238,7 @@ describe("selecting a factory by install id", () => {
 		// RuntimeInstallId, so reaching this arm means a caller already bypassed
 		// the type, and the callers that parse operator input use
 		// runtimeInstallIdToHost, which does refuse.
+		// SAFETY: deliberately outside RuntimeInstallId, for the reason above.
 		expect(
 			createRuntimeInstallableFactory("runtime-nonesuch" as never)().id,
 		).toBe(RUNTIME_PROVIDER_IDS["cloud-native"]);

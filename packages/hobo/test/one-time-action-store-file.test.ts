@@ -40,6 +40,10 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import type {
+	PutOneTimeActionInput,
+	RedeemOneTimeActionInput,
+} from "@hobo/claims";
 import { afterEach, describe, expect, it } from "vitest";
 
 import { createFileOneTimeActionStore } from "../src/one-time-action-store-file.js";
@@ -59,7 +63,9 @@ function home(): string {
 const SECRET = "the-bearer-value-nobody-should-log";
 const FUTURE = 4_000_000_000_000;
 
-function action(over: Record<string, unknown> = {}) {
+function action(
+	over: Partial<PutOneTimeActionInput> = {},
+): PutOneTimeActionInput {
 	return {
 		id: "act-1",
 		value: SECRET,
@@ -70,10 +76,12 @@ function action(over: Record<string, unknown> = {}) {
 		expiresAt: FUTURE,
 		singleUse: true,
 		...over,
-	} as never;
+	};
 }
 
-function redemption(over: Record<string, unknown> = {}) {
+function redemption(
+	over: Partial<RedeemOneTimeActionInput> = {},
+): RedeemOneTimeActionInput {
 	return {
 		id: "act-1",
 		tenantId: "tenant-a",
@@ -82,15 +90,15 @@ function redemption(over: Record<string, unknown> = {}) {
 		audience: "claim",
 		now: 1_000,
 		...over,
-	} as never;
+	};
 }
 
 /** The message of the refusal, or a marker when there was none. */
-async function refusal(run: () => Promise<unknown>): Promise<string> {
+async function refusal(run: () => Promise<object>): Promise<string> {
 	try {
 		await run();
 	} catch (error) {
-		return (error as Error).message;
+		return error instanceof Error ? error.message : String(error);
 	}
 	return "no-refusal";
 }

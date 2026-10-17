@@ -32,8 +32,10 @@
  * Driven with an injected `fetch` throughout — no network, and every response
  * shape chosen to be one the server really produces.
  */
+import type { FetchLike, SecretsAccessResult } from "@hobo/identity";
 import { describe, expect, it } from "vitest";
 
+import type { JsonValue } from "../src/json.js";
 import {
 	createLocalStationOpenBaoSecretsPort,
 	createOpenBaoSecretsPort,
@@ -47,15 +49,11 @@ function scriptedFetch(
 	) => {
 		ok: boolean;
 		status: number;
-		body: unknown;
+		body: JsonValue;
 	},
 ) {
 	const calls: { url: string; method: string; body: string | undefined }[] = [];
-	// SAFETY: the port calls only the (url, init) shape of fetch.
-	const impl = (async (
-		url: string,
-		init?: { method?: string; body?: string },
-	) => {
+	const impl: FetchLike = async (url, init) => {
 		calls.push({
 			url,
 			method: init?.method ?? "GET",
@@ -66,14 +64,15 @@ function scriptedFetch(
 			ok: answer.ok,
 			status: answer.status,
 			json: async () => answer.body,
+			text: async () => JSON.stringify(answer.body),
 		};
-	}) as never;
+	};
 	return { impl, calls };
 }
 
 /** A fetch that logs in successfully and then answers `rest` for everything else. */
 function loggedIn(
-	rest: (url: string) => { ok: boolean; status: number; body: unknown },
+	rest: (url: string) => { ok: boolean; status: number; body: JsonValue },
 	leaseSeconds = 900,
 ) {
 	return scriptedFetch((url) =>
@@ -89,13 +88,12 @@ function loggedIn(
 	);
 }
 
-const live = (fetchImpl: unknown) =>
+const live = (fetchImpl: FetchLike) =>
 	createOpenBaoSecretsPort({
 		openbaoAddr: "https://bao.example",
 		role: "hobo-station-test",
 		svidJwt: "jwt.fixture",
-		// SAFETY: the scripted fetch above implements the shape the port calls.
-		fetch: fetchImpl as never,
+		fetch: fetchImpl,
 	});
 
 const offline = () =>
@@ -157,8 +155,9 @@ describe("the offline lane", () => {
 	// stable — comparing whole objects here would be a test that passes when the
 	// two calls happen to land in the same millisecond and fails when they do
 	// not, which is the worst kind of green.
-	const stable = (result: unknown) => {
-		const { expiresAt: _ignored, ...rest } = result as Record<string, unknown>;
+	const stable = (result: SecretsAccessResult) => {
+		if (result.status !== "ok") return result;
+		const { expiresAt: _ignored, ...rest } = result;
 		return rest;
 	};
 
@@ -174,7 +173,8 @@ describe("the offline lane", () => {
 	it("expires fifteen minutes out", async () => {
 		const before = Date.now();
 		const result = await offline().access("db/password");
-		const at = Date.parse((result as { expiresAt: string }).expiresAt);
+		if (result.status !== "ok") throw new Error("expected a value");
+		const at = Date.parse(result.expiresAt ?? "");
 		expect(at).toBeGreaterThanOrEqual(before + 15 * 60 * 1000);
 	});
 
@@ -325,7 +325,7 @@ describe("logging in", () => {
 			body: {},
 		}));
 		const result = await live(impl).access("db/password");
-		expect((result as { reason?: string }).reason).toContain("404");
+		expect(result).toMatchObject({ reason: expect.stringContaining("404") });
 	});
 
 	it("denies when the login succeeds but carries no token", async () => {

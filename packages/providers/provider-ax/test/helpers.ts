@@ -58,7 +58,7 @@ export function optimizeRequest(
 	return {
 		requestId: "optimize-request-1",
 		generatedRegion: REGION,
-		trajectories,
+		trajectories: [...trajectories],
 		rubric: {
 			id: "rubric://support/classifier@1.0.0",
 			objective: "maximize classification reward",

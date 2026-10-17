@@ -7,7 +7,8 @@
  * reads the Linux process table only while the kernel still finds a member: a
  * group that is gone costs no scan. kill(-pgid, 0) finds a zombie as readily
  * as a live process, and a PID 1 or subreaper that never reaps would otherwise
- * hold every stop for the whole grace period.
+ * hold every stop for the whole grace period: a group the table shows holding
+ * only zombies is SIGKILLed at once.
  */
 import { readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
@@ -130,7 +131,8 @@ const sleep = (ms: number) =>
 
 /**
  * Stop a group: `signal` to all of it, then SIGKILL to what is left after
- * graceMs. Resolves once none of the group is left, or it was killed.
+ * graceMs, or at once when /proc shows only zombies. Resolves once none of
+ * the group is left, or it was killed.
  */
 export async function stopGroup(
 	target: StopTarget,
@@ -141,7 +143,11 @@ export async function stopGroup(
 	const deadline = Date.now() + graceMs;
 	while (Date.now() < deadline) {
 		await sleep(POLL_MS);
-		if (target.probe().kind !== "live") return { kind: "gone" };
+		const probe = target.probe();
+		if (probe.kind === "gone") return { kind: "gone" };
+		// The scan can miss a member forked while it ran. The kernel's group signal
+		// cannot: it is atomic with fork, it reaches that member, and zombies ignore it.
+		if (probe.kind === "zombies") break;
 	}
 	target.signal("SIGKILL");
 	return { kind: "killed" };

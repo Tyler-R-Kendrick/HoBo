@@ -10,9 +10,9 @@
  *   own, out of reach of a group signal, and closes it from its SIGTERM and
  *   SIGINT handlers: that is why the signal goes first. A process ai-bdd
  *   started in another group and that ignores SIGTERM can outlive the check.
- *   On Linux a group that holds only zombies of one thread counts as gone
- *   (src/process-group.ts): under a PID 1 or subreaper that never reaps, one
- *   would hold every stop for the whole grace. Where /proc cannot show that
+ *   On Linux a group that holds only zombies of one thread is SIGKILLed at
+ *   once (src/process-group.ts): under a PID 1 or subreaper that never reaps,
+ *   one would hold every stop for the whole grace. Where /proc cannot show that
  *   (a process whose main thread exited while others run, a /proc of another
  *   PID namespace, none readable), the group counts as live until SIGKILL.
  *   Once ai-bdd has exited and its group is gone, its output is waited for

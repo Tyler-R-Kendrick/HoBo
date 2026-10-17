@@ -150,10 +150,11 @@ bound. Stopping a group sends it SIGTERM and, after a grace period of 10 s
 (`AI_BDD_GRACE_MS`), SIGKILL to whatever of it is left. Each poll asks the
 kernel first (`kill(-pgid, 0)`); only while it still finds a member, on Linux,
 is `/proc` read (`src/process-group.ts`), and a group whose members `/proc`
-shows are all zombies of one thread (state `Z`, `num_threads` 1) counts as
-gone: under a PID 1 or subreaper that never reaps (a container whose PID 1 is
-not an init), a zombie would otherwise hold every stop for the whole grace
-period. Anything else counts as live and is SIGKILLed when the grace ends: a
+shows are all zombies of one thread (state `Z`, `num_threads` 1) is SIGKILLed
+at once rather than waited for: under a PID 1 or subreaper that never reaps (a
+container whose PID 1 is not an init), a zombie would otherwise hold every stop
+for the whole grace period, and the scan can miss a member forked while it ran,
+which the kernel's group signal reaches (it is atomic with `fork`). Anything else counts as live and is SIGKILLed when the grace ends: a
 process whose main thread exited while its other threads run (`Z` with
 `num_threads` above 1), a `/proc` of another PID namespace (it shows no member),
 and a `/proc` that cannot be read. What ai-bdd leaves

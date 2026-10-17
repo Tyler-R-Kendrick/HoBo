@@ -96,8 +96,8 @@ left over and sent to the provider with no proxy.
 ## Why stderr is read, and what it is not
 
 A proxied run that cannot deliver a surrogate still starts the child and exits as the child does. The only signal
-is a line on stderr, so `parseOutcome` reads OpenSesame's own lines (column 0, `opensesame: ` or `Error: `) beside the
-status. The child shares that stream, so this is a diagnosis, not a gate; the gate is the port, which serves only a
+is a line on stderr, so `parseOutcome` reads OpenSesame's own lines (`opensesame: ` sentences anywhere in the output, `Error: ` lines at the start
+of a line) beside the status. The child shares that stream, so this is a diagnosis, not a gate; the gate is the port, which serves only a
 value shaped `osr_` + 32 hex from the child's own environment, under the run's markers.
 
 OpenSesame prints its end-of-run line with no newline before it, so a child's unterminated last write leaves it glued to

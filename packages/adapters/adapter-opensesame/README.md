@@ -193,7 +193,7 @@ accepts any token that is a false green, so the adapter treats it as a failure: 
 that is not `osr_` + 32 hex, and a run that printed OpenSesame's placeholder line is `placeholders_only`
 unless a more specific kind applies: a tripwire (77), a signal (143, 129) or a recognised refusal beside its own line wins.
 
-## What the binary really does (checked against `apps/cli` at OpenSesame `b60790eb3`)
+## What the binary really does (checked against `apps/cli` at OpenSesame `efe9c5adb`; the `OPENSESAME_NODE` words from its `6d4cdc795`)
 
 Where the docs and the code are not the same thing, or the status alone is not enough:
 

@@ -50,33 +50,54 @@ child.on("exit", (code, signal) => {
 `;
 
 /**
- * The variables that tell git which repository to use. They beat the working
+ * git's own `local_repo_env`: exactly the names `git rev-parse
+ * --local-env-vars` prints on git 2.43, the set git clears before it runs a
+ * command in a submodule, plus GIT_NAMESPACE. They beat the working
  * directory, and git exports some of them to every hook (GIT_DIR and
  * GIT_INDEX_FILE in a linked worktree), so a pins verb run from a hook would
- * act on the superproject instead of the submodule or the probe. Git drops
- * the same set when it runs a command in a submodule (`local_repo_env`).
- * GIT_CONFIG_* stay: they configure git, they do not locate a repository.
+ * otherwise act on the superproject instead of the submodule or the probe.
+ * `pins-git-env.test.ts` checks the list against the installed git.
  */
-const REPOSITORY_LOCATORS = [
+export const LOCAL_REPO_ENV = [
+	"GIT_ALTERNATE_OBJECT_DIRECTORIES",
+	"GIT_CONFIG",
+	"GIT_CONFIG_PARAMETERS",
+	"GIT_CONFIG_COUNT",
+	"GIT_OBJECT_DIRECTORY",
 	"GIT_DIR",
 	"GIT_WORK_TREE",
-	"GIT_INDEX_FILE",
-	"GIT_COMMON_DIR",
-	"GIT_OBJECT_DIRECTORY",
-	"GIT_ALTERNATE_OBJECT_DIRECTORIES",
-	"GIT_SHALLOW_FILE",
-	"GIT_GRAFT_FILE",
-	"GIT_PREFIX",
 	"GIT_IMPLICIT_WORK_TREE",
+	"GIT_GRAFT_FILE",
+	"GIT_INDEX_FILE",
+	"GIT_NO_REPLACE_OBJECTS",
+	"GIT_REPLACE_REF_BASE",
+	"GIT_PREFIX",
+	"GIT_SHALLOW_FILE",
+	"GIT_COMMON_DIR",
 	"GIT_NAMESPACE",
 ] as const;
+
+/**
+ * In git's list, but kept: they carry configuration (`git -c`, and
+ * GIT_CONFIG_KEY_n/GIT_CONFIG_VALUE_n through GIT_CONFIG_COUNT), not the
+ * location of a repository, and the tests' hermetic configuration is passed
+ * this way. GIT_CEILING_DIRECTORIES is not in git's list and stays too: it
+ * only narrows where git looks.
+ */
+const KEPT_CONFIGURATION: ReadonlySet<string> = new Set([
+	"GIT_CONFIG",
+	"GIT_CONFIG_PARAMETERS",
+	"GIT_CONFIG_COUNT",
+]);
 
 /** This process's environment without the repository-locating variables. */
 export function gitEnvironment(
 	from: NodeJS.ProcessEnv = process.env,
 ): NodeJS.ProcessEnv {
 	const env = { ...from };
-	for (const name of REPOSITORY_LOCATORS) delete env[name];
+	for (const name of LOCAL_REPO_ENV) {
+		if (!KEPT_CONFIGURATION.has(name)) delete env[name];
+	}
 	return env;
 }
 

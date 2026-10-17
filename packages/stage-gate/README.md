@@ -146,37 +146,63 @@ Every ai-bdd command runs in a process group of its own and is bounded by
 `HOBO_AI_BDD_TIMEOUT_MS` (milliseconds, default 30 minutes; a value that is not a
 whole number from 1 to 24 hours is a usage error, exit 2). One that outlives it is
 stopped and the check is `not_run`, with a reason naming the command and the
-bound. Stopping a group sends it SIGTERM and, after a grace period of 10 s
-(`AI_BDD_GRACE_MS`), SIGKILL to whatever of it is left. Each poll asks the
-kernel first (`kill(-pgid, 0)`); only while it still finds a member, on Linux,
-is `/proc` read (`src/process-group.ts`). A member is a process of the group's
-pgid in the session ai-bdd leads (it is spawned detached, so it calls `setsid`),
-which keeps a stranger that took the freed number for a group of its own out of
-the stop: such a group counts as ours gone, and nothing more is sent to it. A
-group whose members `/proc` shows are all zombies of one thread (state `Z`, `num_threads` 1) is SIGKILLed
-at once rather than waited for: under a PID 1 or subreaper that never reaps (a
-container whose PID 1 is not an init), a zombie would otherwise hold every stop
-for the whole grace period, and the scan can miss a member forked while it ran,
-which the kernel's group signal reaches (it is atomic with `fork`). Anything else counts as live and is SIGKILLed when the grace ends: a
-process whose main thread exited while its other threads run (`Z` with
-`num_threads` above 1), a `/proc` of another PID namespace (it shows no member),
-an entry whose `stat` cannot be read for any reason but its process being gone
-(`ENOENT`, `ESRCH`), and a `/proc` that cannot be read. What ai-bdd leaves
-running in its group when it exits is stopped the same way, and SIGINT or
-SIGTERM to the check is passed on to the group (which, being a group of its
-own, does not see the terminal's Ctrl-C) before the check exits. The signal
-goes first because Playwright launches each browser as the leader of a group of
-its own, which a signal to ai-bdd's group does not reach, and closes it from
-its own SIGTERM and SIGINT handlers. When kill answers EPERM or EACCES (members
-this check may not signal: another user's, as the command `sudo` or `su` runs,
-or a security module refusing), or what SIGKILL hit is still running a second
-later, the stop says so and the check is `not_run` with that reason; it never
-passes over a group it could not confirm stopped. A process ai-bdd starts in another group
-that ignores SIGTERM can outlive the check, but it cannot hold the check open
-by holding ai-bdd's output: once ai-bdd has exited and its group is gone, the
-output is waited for a second more at most. The runner bounds each release
-check too (`timeoutMs`: ai-bdd's bound plus a minute, read from the env the
-runner runs the check with), a backstop that stops the check with SIGTERM (which
+bound. Stopping a group (`src/process-group.ts`) sends it SIGTERM, probes it
+every 100 ms, and sends SIGKILL to what is left after a grace period of 10 s
+(`AI_BDD_GRACE_MS`). What ai-bdd leaves running in its group when it exits is
+stopped the same way, and SIGINT or SIGTERM to the check is passed on to the
+group (which, being a group of its own, does not see the terminal's Ctrl-C)
+before the check exits. The signal goes first because Playwright launches each
+browser as the leader of a group of its own, which a signal to ai-bdd's group
+does not reach, and closes it from its own SIGTERM and SIGINT handlers. Each
+stop ends one of three ways, which the run carries (`AiBddRun.stop`):
+
+- **gone**: kill answered `ESRCH`, so the kernel found no member; nothing more
+  is sent.
+- **killed**: SIGKILL went to the group, and a probe then found it gone or
+  holding only zombies. SIGKILL goes when the grace ends, or at once when, on
+  Linux, `/proc` shows every member as a zombie of one thread (state `Z`,
+  `num_threads` 1): under a PID 1 or subreaper that never reaps (a container
+  whose PID 1 is not an init), zombies would otherwise hold every stop for the
+  whole grace, and the scan can miss a member forked while it ran, which the
+  group signal reaches (it is atomic with `fork`).
+- **unconfirmed**, with a reason: kill answered `EPERM` or `EACCES` (members
+  this check may not signal: another user's, such as the command `sudo` or `su`
+  runs, or a security module refusing), or what SIGKILL hit was still running a
+  second later. The check then records `not_run` with that reason before it
+  reads any exit code or report: it never passes over a group it could not
+  confirm stopped.
+
+On Linux `/proc` is read only while the kernel still finds a member, so a group
+that is gone costs no scan. A member is a process of the group's pgid in the
+session ai-bdd leads (it is spawned detached, so it calls `setsid`): processes
+of that pgid only in another session mean the number now leads a stranger's
+group, ours is gone, and nothing is sent to it. Anything the scan cannot read as
+a zombie of the group counts as live and waits out the grace: a process whose
+main thread exited while its other threads run (`Z`, `num_threads` above 1), an
+entry whose `stat` cannot be read for any reason but its process being gone
+(`ENOENT`, `ESRCH`), and a `/proc` that cannot be read or is another PID
+namespace's (its `self` does not name the check).
+
+What the stop does not guarantee:
+
+- A process ai-bdd starts in another group that ignores SIGTERM can outlive the
+  check. It cannot hold the check open by holding ai-bdd's output: once ai-bdd
+  has exited and its group is gone, the output is waited for a second more at
+  most.
+- A member `/proc` does not list at all (`hidepid=2`, systemd's
+  `ProtectProc=invisible`) is not seen. Beside a zombie the group is then
+  SIGKILLed at once, which reaches that member if the check may signal it; one
+  it may not signal is not reported.
+- A process that takes the group's freed number with `setsid` leads a session
+  numbered like ai-bdd's, so it counts as a member: between two polls, after
+  pid wrap-around, it could be SIGKILLed. There is no pidfd for a process group.
+- Where the scan cannot tell a zombie from a member (another PID namespace's
+  `/proc`, or `hidepid=1` hiding other users' entries), every member counts as
+  live: the stop waits the whole grace, and a group whose zombies are not
+  reaped within a second of SIGKILL is reported unconfirmed.
+
+The runner bounds each release check too (`timeoutMs`: ai-bdd's bound plus a
+minute, read from the env the runner runs the check with), a backstop that stops the check with SIGTERM (which
 it passes on as above) and records it `not_run`. Of ai-bdd's output the check's
 stderr gets the first 2 MiB live and the last 2 MiB at exit, with a line saying
 how much between them was not relayed (`RELAY_BYTES`, an eighth of the runner's

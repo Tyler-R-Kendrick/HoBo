@@ -544,10 +544,13 @@ given, so a run as root, which every CI container is, makes `/nonexistent/...` o
 the host and leaves it there; later suites that use `/nonexistent` to mean
 "missing" then find a directory. Make the directory with
 `mkdtempSync(join(tmpdir(), ...))` in `beforeAll` and remove it in `afterAll`
-(`rmSync(dir, { recursive: true, force: true })`). A path the code never writes
-to (a PATH entry, an executable that must fail to launch) is listed with its
-reason in `READ_ONLY` in `test/nonexistent-path-fixtures.test.ts`, which scans
-every test source and fails on any other `"/nonexistent…"` literal.
+(`rmSync(dir, { recursive: true, force: true })`). The same goes for the other
+names tests use for a root that is not there: `/nowhere`, `/no/such`,
+`/definitely/not`, `/does-not-exist` and `/missing`. A path the code never
+writes to (a PATH entry, an executable that must fail to launch) is listed in
+`ALLOWANCES` in `test/fixture-paths-at-root.test.ts` with the line of source
+that shows it, and that file scans every test source and fails on any other
+such literal.
 
 ### Characterization (approval) tests — for generated artifacts
 

@@ -335,7 +335,7 @@ describe("home resolution", () => {
 		const dir = home();
 		await run(["init"], {
 			hoboHome: dir,
-			env: { HOBO_HOME: home() },
+			env: { HOBO_HOME: "/nonexistent/elsewhere" },
 			flags: { name: "edge" },
 		});
 		const status = await run(["status"], { hoboHome: dir });

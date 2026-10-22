@@ -4,7 +4,7 @@ import { basename, dirname, join, relative, sep } from "node:path";
 import { tmpdir } from "node:os";
 
 import type { ComponentizeSpec, SourceFileDigest } from "./types.js";
-import { type JsonValue } from "./json.js";
+import { stableStringify } from "./json.js";
 
 
 const FORBIDDEN_PATTERNS: ReadonlyArray<readonly [string, RegExp]> = [
@@ -132,10 +132,6 @@ function assertDeterministicSources(
 
 function sha256Text(text: string): string {
   return `sha256:${createHash("sha256").update(text).digest("hex")}`;
-}
-
-function stableStringify(value: JsonValue): string {
-  return JSON.stringify(value);
 }
 
 function normalizeRelativePath(path: string): string {

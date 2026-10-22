@@ -94,16 +94,20 @@ const TOPOLOGY: SimTopology = {
 const OPS_CAMP = { id: "camp-platform-ops", name: "platform-ops", yardId: "yard-platform", rect: { x: 38, y: 16, w: 12, h: 9 } };
 
 function corridorBetween(a: Camp["rect"], b: Camp["rect"]): Junction["corridor"] {
-	// L-shaped corridor: horizontal from a's door to b's column, then vertical.
+	// L-shaped corridor: horizontal from a's door to b's column, then vertical
+	// to b's door. Tiles form a 4-connected walk from a's door to b's door —
+	// the sorted-range version duplicated or skipped the corner tile whenever
+	// the doors were not already aligned, so derived layouts failed their own
+	// contiguity validation.
 	const ax = a.x + a.w;
 	const ay = a.y + Math.floor(a.h / 2);
 	const bx = b.x - 1;
 	const by = b.y + Math.floor(b.h / 2);
 	const tiles: Junction["corridor"] = [];
-	const [fromX, toX] = ax <= bx ? [ax, bx] : [bx, ax];
-	for (let x = fromX; x <= toX; x += 1) tiles.push({ x, y: ay });
-	const [fromY, toY] = ay <= by ? [ay, by] : [by, ay];
-	for (let y = fromY; y <= toY; y += 1) tiles.push({ x: bx, y });
+	const stepX = ax <= bx ? 1 : -1;
+	for (let x = ax; x !== bx + stepX; x += stepX) tiles.push({ x, y: ay });
+	const stepY = ay <= by ? 1 : -1;
+	for (let y = ay + stepY; y !== by + stepY; y += stepY) tiles.push({ x: bx, y });
 	return tiles;
 }
 

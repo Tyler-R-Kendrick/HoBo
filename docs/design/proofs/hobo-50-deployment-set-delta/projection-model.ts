@@ -1,6 +1,7 @@
 import { createHash } from "node:crypto";
 import {
   cloneAsJson,
+  isJsonBoolean,
   isJsonObject,
   isJsonString,
   type JsonBag,
@@ -18,6 +19,7 @@ export interface EnvGroupMember {
   campId: string;
   provider: string;
   campIdOwner?: string;
+  optional?: boolean;
 }
 
 export interface EnvGroup {
@@ -229,7 +231,16 @@ export function validateEnvGroup(envGroup: JsonValue): EnvGroup {
       throw new Error(`duplicate Camp in env-group: ${entry.campId}`);
     }
     campIds.add(entry.campId);
-    members.push({ campId: entry.campId, provider: entry.provider });
+    const optional = entry.optional;
+    if (optional !== undefined && !isJsonBoolean(optional)) {
+      throw new Error("env-group member optional must be a boolean");
+    }
+    const member: EnvGroupMember = {
+      campId: entry.campId,
+      provider: entry.provider,
+    };
+    if (optional !== undefined) member.optional = optional;
+    members.push(member);
   }
 
   return clone({
@@ -348,11 +359,12 @@ function buildDeploymentSet(input: DeploymentSetInput): DeploymentSet {
     manifestDigest: input.manifestDigest,
     previousSetId: input.previousSetId,
     resources: validateResources(input.resources),
-    envGroup: input.envGroup ? validateEnvGroup(input.envGroup) : undefined,
+    envGroup: input.envGroup ? validateEnvGroup(cloneAsJson(input.envGroup)) : undefined,
   };
   deploymentSet.contentAddress = contentAddressDeploymentSet(deploymentSet);
 
-  return canonicalize(deploymentSet);
+  // SAFETY: `return JSON.parse(canonicalJson(deploymentSet)) as DeploymentSet;` is required at this I/O or test boundary.
+  return JSON.parse(canonicalJson(deploymentSet)) as DeploymentSet;
 }
 
 function applyChanges(baseResources: ResourceMap, changes: readonly DeltaChange[]): ResourceMap {

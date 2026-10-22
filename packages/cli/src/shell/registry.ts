@@ -30,6 +30,7 @@ export interface CommandRunInput {
 		readonly request: string | null;
 		readonly init: boolean;
 		readonly once: boolean;
+		readonly serve: boolean;
 		readonly port: string | null;
 		readonly home: string | null;
 		readonly host: string | null;

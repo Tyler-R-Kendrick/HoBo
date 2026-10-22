@@ -73,7 +73,9 @@ export interface DevCommandDeps {
 // `hobo dev` (S1-19) — prefer the composed bare-metal Yard serve path when
 // injected; otherwise boot a one-shot runtime-local Camp probe. Fully offline
 // (no cloud account): NFR-002's ≤ 60 s cold budget applies to the probe.
-// Flags: `--once` probe-and-exit (tests/CI); default keeps listening until SIGINT.
+// Flags: `--once` probe-and-exit (tests/CI); `--serve` forces the long-lived
+// server even without a TTY (agents, supervisors); the interactive default
+// keeps listening until SIGINT. `--once` wins over `--serve`.
 export function createDevCommand(deps: DevCommandDeps = {}): CommandModule {
 	return {
 		implemented: Boolean(
@@ -82,23 +84,30 @@ export function createDevCommand(deps: DevCommandDeps = {}): CommandModule {
 		run: async ({ context, flags, emitProgress }) => {
 			const projectDir = context.projectDir ?? context.cwd;
 			const bridged = process.env.HOBO_CODE_DEV_BRIDGE === "1";
+			// `--serve` is the explicit opt-in to the long-lived server for
+			// non-TTY callers (agents, supervisors, containers) that would
+			// otherwise probe-and-exit. `--once`/`--json` still win.
+			const forceServe = flags.serve === true;
 			// Long-running only for interactive terminals without --json/--once.
 			// Machine-readable and CI runs probe-and-exit so they don't hang.
 			const once =
 				flags.once === true ||
 				flags.json === true ||
-				(!bridged && (!process.stdin.isTTY || !process.stdout.isTTY));
+				(!bridged &&
+					!forceServe &&
+					(!process.stdin.isTTY || !process.stdout.isTTY));
 			// Off-TTY runs probe-and-exit silently otherwise — say why, and how
-			// to get the long-lived interactive server instead.
+			// to get the long-lived server instead.
 			if (
 				once &&
 				flags.once !== true &&
 				flags.json !== true &&
 				!bridged &&
+				!forceServe &&
 				(!process.stdin.isTTY || !process.stdout.isTTY)
 			) {
 				emitProgress(
-					"hobo dev: non-interactive terminal detected — running one-shot probe and exiting. Run `hobo dev` in an interactive terminal for the long-lived dev server.",
+					"hobo dev: non-interactive terminal detected — running one-shot probe and exiting. Run `hobo dev` in an interactive terminal, or pass `--serve`, for the long-lived dev server.",
 				);
 			}
 			const portRaw = flags.port;

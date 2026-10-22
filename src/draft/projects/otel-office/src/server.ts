@@ -43,7 +43,7 @@ import {
 } from "./otel-signals.js";
 import { SIM_TICK_MS, createSimulation } from "./simulator.js";
 import { TraceIndex } from "./trace-index.js";
-import { isJsonObject, type JsonValue } from "./json.js";
+import { cloneAsJson, isJsonString, type JsonValue } from "./json.js";
 
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -204,7 +204,7 @@ export function createOfficeServer(options: OfficeServerOptions = {}): OfficeSer
 			}
 		}
 		if (req.method === "GET" && path === "/state") {
-			sendJson(res, 200, state);
+			sendJson(res, 200, cloneAsJson(state));
 			return;
 		}
 		if (req.method === "GET" && path.startsWith("/character/") && path.endsWith("/activity")) {
@@ -214,7 +214,7 @@ export function createOfficeServer(options: OfficeServerOptions = {}): OfficeSer
 				sendJson(res, 404, { error: "unknown character" });
 				return;
 			}
-			sendJson(res, 200, {
+			sendJson(res, 200, cloneAsJson({
 				character: {
 					id: character.id,
 					name: character.name,
@@ -224,7 +224,7 @@ export function createOfficeServer(options: OfficeServerOptions = {}): OfficeSer
 					health: character.health,
 				},
 				activity: activity.for(id),
-			});
+			}));
 			return;
 		}
 		if (req.method === "GET" && path === "/events") {
@@ -245,7 +245,7 @@ export function createOfficeServer(options: OfficeServerOptions = {}): OfficeSer
 				sendJson(res, 404, { error: "unknown station" });
 				return;
 			}
-			sendJson(res, 200, layout);
+			sendJson(res, 200, cloneAsJson(layout));
 			return;
 		}
 		if (req.method === "PUT" && path.startsWith("/layout/")) {
@@ -325,7 +325,7 @@ export function createOfficeServer(options: OfficeServerOptions = {}): OfficeSer
 		server,
 		port: () => {
 			const address = server.address();
-			return isJsonObject(address) && address !== null ? address.port : 0;
+			return address !== null && !isJsonString(address) ? address.port : 0;
 		},
 		state: () => state,
 		flushLayouts: () => layouts.flush(),

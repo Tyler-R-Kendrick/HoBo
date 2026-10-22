@@ -85,12 +85,26 @@ function fail(message: string): void {
 	failures.push(message);
 }
 
+/** Legacy licence objects (`{ "type": "MIT", "url": ... }`) still ship in the wild. */
+interface LicenseObject {
+	type?: string;
+}
+
+type LicenseField = string | LicenseObject | Array<string | LicenseObject>;
+
 interface Manifest {
 	name?: string;
 	private?: boolean;
-	license?: string;
+	license?: LicenseField;
+	licenses?: LicenseField;
 	files?: string[];
 	version?: string;
+}
+
+const tagOf = Object.prototype.toString;
+
+function isLicenseText<T>(value: T): value is T & string {
+	return tagOf.call(value) === "[object String]";
 }
 
 function readManifest(file: string): Manifest {
@@ -164,13 +178,12 @@ function checkOutbound(): void {
 
 /** Normalise the several shapes a package.json license field takes in the wild. */
 function licenseIdsOf(manifest: Manifest): string[] {
-	// SAFETY: assertion to `nses?: unknown }).licenses; const` is required at this boundary.
-	const extra = manifest as Manifest & { licenses?: string | string[] };
-	const raw = manifest.license ?? extra.licenses;
-	const collect = (value: string | string[] | undefined): string[] => {
+	const raw = manifest.license ?? manifest.licenses;
+	const collect = (value: LicenseField | undefined): string[] => {
 		if (value === undefined) return [];
 		if (Array.isArray(value)) return value.flatMap(collect);
-		return [value];
+		if (isLicenseText(value)) return [value];
+		return value.type === undefined ? [] : [value.type];
 	};
 	// Split SPDX expressions ("(MIT OR Apache-2.0)", "MIT AND ISC") into terms,
 	// then drop any `WITH <exception>` suffix: an SPDX exception grants

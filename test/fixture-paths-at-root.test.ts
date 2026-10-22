@@ -224,6 +224,26 @@ const ALLOWANCES = {
 		literals: { "/nonexistent-dir": 1 },
 		why: "a --reference the script refuses with a usage error before it runs anything (scripts/bootstrap-siblings.mts:112-119)",
 	},
+	"packages/adapters/adapter-opensesame/test/child-env.test.ts": {
+		literals: { "/nowhere": 1 },
+		why: "a PATH entry reduced by trustedPath against the in-memory memoryTrust nodes (src/child-env.ts:157, src/trust.ts:201); no real filesystem is touched",
+	},
+	"packages/adapters/adapter-opensesame/test/fixtures/fake-opensesame.mts": {
+		literals: { "/nonexistent/run-ca.pem": 1 },
+		why: "an SSL_CERT_FILE value the fake tool only assigns into the spawned child's env (test/fixtures/fake-opensesame.mts:124); nothing opens or creates it",
+	},
+	"packages/adapters/adapter-opensesame/test/launch.test.ts": {
+		literals: { "/nowhere/parse.mjs": 1 },
+		why: "an OPENSESAME_ENV_PARSE bridge path checkBridge refuses through the trust probe before anything starts (src/bridge.ts:51-66)",
+	},
+	"packages/adapters/adapter-opensesame/test/real-kit.test.ts": {
+		literals: { "/nowhere": 2 },
+		why: "a cwd the trust rule only realpath-compares as a prefix to keep kits outside the working directory (src/trust.ts:100-103); resolveKit stats the mkdtemp kit dir, never the cwd",
+	},
+	"packages/adapters/adapter-opensesame/test/trust.test.ts": {
+		literals: { "/nowhere": 3 },
+		why: "PATH entries filtered by trustedPath against the in-memory memoryTrust nodes (src/trust.ts:201, test/support/trust-fs.ts); no real filesystem is touched",
+	},
 } satisfies Readonly<Record<string, Allowance>>;
 
 const ALLOWED: ReadonlyMap<string, Allowance> = new Map(

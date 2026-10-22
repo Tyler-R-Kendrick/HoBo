@@ -28,6 +28,8 @@ export interface CliFlags {
 	readonly request: string | null;
 	readonly init: boolean;
 	readonly once: boolean;
+	/** `hobo dev --serve`: force the long-lived server without a TTY. */
+	readonly serve: boolean;
 	readonly port: string | null;
 	readonly home: string | null;
 	readonly host: string | null;
@@ -99,6 +101,7 @@ export function parseArgv(
 		request: null as string | null,
 		init: false,
 		once: false,
+		serve: false,
 		// SAFETY: `port: null as string | null,` is required at this I/O or test boundary.
 		port: null as string | null,
 		// SAFETY: `home: null as string | null,` is required at this I/O or test boundary.
@@ -190,6 +193,7 @@ function parseOption(
 		request: string | null;
 		init: boolean;
 		once: boolean;
+		serve: boolean;
 		port: string | null;
 		home: string | null;
 		host: string | null;
@@ -292,6 +296,13 @@ function parseOption(
 		case "--once":
 			if (verb === "dev" || verb === "serve") {
 				flags.once = true;
+				return index;
+			}
+			throw unknownOption(token, verb);
+		case "--serve":
+			// `hobo dev --serve`: long-lived dev server for non-TTY callers.
+			if (verb === "dev") {
+				flags.serve = true;
 				return index;
 			}
 			throw unknownOption(token, verb);

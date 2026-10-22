@@ -131,7 +131,12 @@ export function ensureCharacter(
 	const yardId = attrs["hobo.yard"] ?? "default";
 	const campId = attrs["hobo.camp"] ?? "default";
 	const serviceName = attrs["service.name"] ?? "unknown-service";
-	const kind = PRIMITIVES[attrs["hobo.primitive"] ?? "bindle"] ?? "bindle";
+	const primitiveName = attrs["hobo.primitive"] ?? "bindle";
+	// SAFETY: `PRIMITIVES[primitiveName as keyof PrimitiveKindByName]` is guarded by Object.hasOwn at this boundary.
+	const kind =
+		(Object.hasOwn(PRIMITIVES, primitiveName)
+			? PRIMITIVES[primitiveName as keyof PrimitiveKindByName]
+			: undefined) ?? "bindle";
 
 	state.stations[stationId] ??= { id: stationId, name: stationId };
 	state.yards[yardId] ??= { id: yardId, stationId, name: yardId };

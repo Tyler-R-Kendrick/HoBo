@@ -10,7 +10,13 @@
  * walkable) and persists it per station as JSON.
  */
 import type { OfficeState, TilePoint, TileRect } from "./model.js";
-import { isJsonString, isJsonNumber, isJsonObject, type JsonValue } from "./json.js";
+import {
+	isJsonString,
+	isJsonNumber,
+	isJsonObject,
+	type JsonObject,
+	type JsonValue,
+} from "./json.js";
 
 
 export interface LayoutRoom {
@@ -172,30 +178,29 @@ export function applyLayout(state: OfficeState, stationId: string, layout: Offic
 	state.layouts[stationId] = structuredClone(layout);
 }
 
-function isInt(n: JsonValue): n is number {
-	return isJsonNumber(n) && Number.isInteger(n);
+function intField(obj: JsonObject, key: string): number | undefined {
+	const value: JsonValue | undefined = obj[key];
+	return value !== undefined && isJsonNumber(value) && Number.isInteger(value)
+		? value
+		: undefined;
 }
 
-function isPoint(p: JsonValue): p is TilePoint {
-	return (
-		// SAFETY: `isJsonObject(p) && p !== null && isInt((p as TilePoint).x) && isInt((p as TilePo` is required at this I/O or test boundary.
-		isJsonObject(p) && p !== null && isInt((p as TilePoint).x) && isInt((p as TilePoint).y)
-	);
+function parsePoint(p: JsonValue): TilePoint | undefined {
+	if (!isJsonObject(p)) return undefined;
+	const x = intField(p, "x");
+	const y = intField(p, "y");
+	return x === undefined || y === undefined ? undefined : { x, y };
 }
 
-function isRect(r: JsonValue): r is TileRect {
-	return (
-		isJsonObject(r) &&
-		r !== null &&
-		// SAFETY: `isInt((r as TileRect).x) &&` is required at this I/O or test boundary.
-		isInt((r as TileRect).x) &&
-		// SAFETY: `isInt((r as TileRect).y) &&` is required at this I/O or test boundary.
-		isInt((r as TileRect).y) &&
-		// SAFETY: `isInt((r as TileRect).w) &&` is required at this I/O or test boundary.
-		isInt((r as TileRect).w) &&
-		// SAFETY: `isInt((r as TileRect).h)` is required at this I/O or test boundary.
-		isInt((r as TileRect).h)
-	);
+function parseRect(r: JsonValue): TileRect | undefined {
+	if (!isJsonObject(r)) return undefined;
+	const x = intField(r, "x");
+	const y = intField(r, "y");
+	const w = intField(r, "w");
+	const h = intField(r, "h");
+	return x === undefined || y === undefined || w === undefined || h === undefined
+		? undefined
+		: { x, y, w, h };
 }
 
 /** Consecutive tiles are 4-connected. */
@@ -225,18 +230,19 @@ export function validateLayout(
 	stationId: string,
 ): LayoutValidation {
 	const reasons: string[] = [];
-	if (!isJsonObject(raw) || raw === null) {
+	if (!isJsonObject(raw)) {
 		return { layout: undefined, reasons: ["layout must be a JSON object"] };
 	}
-	// SAFETY: `const candidate = raw as Partial<OfficeLayout>;` is required at this I/O or test boundary.
-	const candidate = raw as Partial<OfficeLayout>;
-	if (candidate.version !== 1) reasons.push("version must be 1");
-	const grid = candidate.grid;
+	if (raw["version"] !== 1) reasons.push("version must be 1");
+	const gridRaw: JsonValue | undefined = raw["grid"];
+	const gridW =
+		gridRaw !== undefined && isJsonObject(gridRaw) ? intField(gridRaw, "w") : undefined;
+	const gridH =
+		gridRaw !== undefined && isJsonObject(gridRaw) ? intField(gridRaw, "h") : undefined;
+	const grid =
+		gridW !== undefined && gridH !== undefined ? { w: gridW, h: gridH } : undefined;
 	if (
-		!isJsonObject(grid) ||
-		grid === null ||
-		!isInt(grid.w) ||
-		!isInt(grid.h) ||
+		grid === undefined ||
 		grid.w < 8 ||
 		grid.h < 8 ||
 		grid.w > MAX_GRID ||
@@ -244,24 +250,58 @@ export function validateLayout(
 	) {
 		reasons.push(`grid must be integer w/h within 8..${MAX_GRID}`);
 	}
-	if (!isJsonObject(candidate.rooms) || candidate.rooms === null) {
+	const roomsRaw: JsonValue | undefined = raw["rooms"];
+	const desksRaw: JsonValue | undefined = raw["desks"];
+	const corridorsRaw: JsonValue | undefined = raw["corridors"];
+	if (roomsRaw === undefined || !isJsonObject(roomsRaw)) {
 		reasons.push("rooms must be an object keyed by campId");
 	}
-	if (!isJsonObject(candidate.desks) || candidate.desks === null) {
+	if (desksRaw === undefined || !isJsonObject(desksRaw)) {
 		reasons.push("desks must be an object keyed by characterId");
 	}
-	if (!isJsonObject(candidate.corridors) || candidate.corridors === null) {
+	if (corridorsRaw === undefined || !isJsonObject(corridorsRaw)) {
 		reasons.push("corridors must be an object keyed by junctionId");
 	}
-	if (reasons.length > 0 || grid === undefined || grid === null) {
+	if (
+		reasons.length > 0 ||
+		grid === undefined ||
+		roomsRaw === undefined ||
+		!isJsonObject(roomsRaw) ||
+		desksRaw === undefined ||
+		!isJsonObject(desksRaw) ||
+		corridorsRaw === undefined ||
+		!isJsonObject(corridorsRaw)
+	) {
 		return { layout: undefined, reasons };
 	}
-	// SAFETY: `const rooms = candidate.rooms as Record<string, LayoutRoom>;` is required at this I/O or test boundary.
-	const rooms = candidate.rooms as Record<string, LayoutRoom>;
-	// SAFETY: `const desks = candidate.desks as Record<string, TilePoint>;` is required at this I/O or test boundary.
-	const desks = candidate.desks as Record<string, TilePoint>;
-	// SAFETY: `const corridors = candidate.corridors as Record<string, TilePoint[]>;` is required at this I/O or test boundary.
-	const corridors = candidate.corridors as Record<string, TilePoint[]>;
+	// Parse (never cast) each entry into fresh domain values. Entries that
+	// fail to parse keep contributing every applicable reason below; they are
+	// simply absent from the parsed records used for cross-checks.
+	const rooms: Record<string, LayoutRoom> = {};
+	for (const [campId, roomRaw] of Object.entries(roomsRaw)) {
+		if (!isJsonObject(roomRaw)) continue;
+		const rectRaw: JsonValue | undefined = roomRaw["rect"];
+		const colorRaw: JsonValue | undefined = roomRaw["color"];
+		const rect = rectRaw === undefined ? undefined : parseRect(rectRaw);
+		if (rect === undefined) continue;
+		rooms[campId] = {
+			rect,
+			color: colorRaw !== undefined && isJsonString(colorRaw) ? colorRaw : "",
+		};
+	}
+	const desks: Record<string, TilePoint> = {};
+	for (const [charId, deskRaw] of Object.entries(desksRaw)) {
+		const desk = parsePoint(deskRaw);
+		if (desk !== undefined) desks[charId] = desk;
+	}
+	const corridors: Record<string, TilePoint[]> = {};
+	for (const [jnId, corridorRaw] of Object.entries(corridorsRaw)) {
+		if (!Array.isArray(corridorRaw)) continue;
+		const tiles = corridorRaw.map((tile) => parsePoint(tile));
+		if (tiles.every((tile) => tile !== undefined)) {
+			corridors[jnId] = tiles.filter((tile) => tile !== undefined);
+		}
+	}
 
 	const campIds = stationCampIds(state, stationId);
 	const campSet = new Set(campIds);
@@ -275,35 +315,39 @@ export function validateLayout(
 
 	// Rooms: complete, well-formed, inside grid, pairwise non-overlapping.
 	for (const campId of campIds) {
-		if (rooms[campId] === undefined) reasons.push(`missing room for camp ${campId}`);
+		const present: JsonValue | undefined = roomsRaw[campId];
+		if (present === undefined) reasons.push(`missing room for camp ${campId}`);
 	}
-	for (const [campId, room] of Object.entries(rooms)) {
+	for (const [campId, roomRaw] of Object.entries(roomsRaw)) {
 		if (!campSet.has(campId)) {
 			reasons.push(`room for unknown camp ${campId}`);
 			continue;
 		}
-		if (!isRect(room?.rect)) {
+		const rectRaw: JsonValue | undefined =
+			isJsonObject(roomRaw) ? roomRaw["rect"] : undefined;
+		const rect = rectRaw === undefined ? undefined : parseRect(rectRaw);
+		if (rect === undefined) {
 			reasons.push(`room ${campId}: rect must be integer x/y/w/h`);
 			continue;
 		}
-		if (room.rect.w < MIN_ROOM_W || room.rect.h < MIN_ROOM_H) {
+		if (rect.w < MIN_ROOM_W || rect.h < MIN_ROOM_H) {
 			reasons.push(`room ${campId}: smaller than ${MIN_ROOM_W}x${MIN_ROOM_H}`);
 		}
 		if (
-			room.rect.x < 0 ||
-			room.rect.y < 0 ||
-			room.rect.x + room.rect.w > grid.w ||
-			room.rect.y + room.rect.h > grid.h
+			rect.x < 0 ||
+			rect.y < 0 ||
+			rect.x + rect.w > grid.w ||
+			rect.y + rect.h > grid.h
 		) {
 			reasons.push(`room ${campId}: outside the grid`);
 		}
-		if (!isJsonString(room.color) || room.color.length === 0) {
+		const colorRaw: JsonValue | undefined =
+			isJsonObject(roomRaw) ? roomRaw["color"] : undefined;
+		if (colorRaw === undefined || !isJsonString(colorRaw) || colorRaw.length === 0) {
 			reasons.push(`room ${campId}: color must be a non-empty string`);
 		}
 	}
-	const roomEntries = Object.entries(rooms).filter(
-		([id, room]) => campSet.has(id) && isRect(room?.rect),
-	);
+	const roomEntries = Object.entries(rooms).filter(([id]) => campSet.has(id));
 	for (let i = 0; i < roomEntries.length; i += 1) {
 		for (let j = i + 1; j < roomEntries.length; j += 1) {
 			const a = roomEntries[i];
@@ -316,21 +360,23 @@ export function validateLayout(
 
 	// Desks: complete, well-formed, inside their character's camp room, unique.
 	for (const ch of characters) {
-		if (desks[ch.id] === undefined) reasons.push(`missing desk for character ${ch.id}`);
+		const present: JsonValue | undefined = desksRaw[ch.id];
+		if (present === undefined) reasons.push(`missing desk for character ${ch.id}`);
 	}
 	const seenDesks = new Map<string, string>();
-	for (const [charId, desk] of Object.entries(desks)) {
+	for (const [charId, deskRaw] of Object.entries(desksRaw)) {
 		const ch = state.characters[charId];
 		if (ch === undefined || ch.stationId !== stationId) {
 			reasons.push(`desk for unknown character ${charId}`);
 			continue;
 		}
-		if (!isPoint(desk)) {
+		const desk = parsePoint(deskRaw);
+		if (desk === undefined) {
 			reasons.push(`desk ${charId}: must be integer x/y`);
 			continue;
 		}
 		const room = rooms[ch.campId];
-		if (room !== undefined && isRect(room.rect) && !insideRect(desk, room.rect)) {
+		if (room !== undefined && !insideRect(desk, room.rect)) {
 			reasons.push(`desk ${charId}: outside room ${ch.campId}`);
 		}
 		const key = `${desk.x},${desk.y}`;
@@ -342,14 +388,16 @@ export function validateLayout(
 	// Corridors: complete, non-empty, in-grid, contiguous, and walkable (no
 	// tile inside any room of the station).
 	for (const jnId of junctionIds) {
-		if (corridors[jnId] === undefined) reasons.push(`missing corridor for junction ${jnId}`);
+		const present: JsonValue | undefined = corridorsRaw[jnId];
+		if (present === undefined) reasons.push(`missing corridor for junction ${jnId}`);
 	}
-	for (const [jnId, corridor] of Object.entries(corridors)) {
+	for (const [jnId, corridorRaw] of Object.entries(corridorsRaw)) {
 		if (!junctionIds.has(jnId)) {
 			reasons.push(`corridor for unknown junction ${jnId}`);
 			continue;
 		}
-		if (!Array.isArray(corridor) || corridor.length === 0 || !corridor.every(isPoint)) {
+		const corridor = corridors[jnId];
+		if (!Array.isArray(corridorRaw) || corridorRaw.length === 0 || corridor === undefined) {
 			reasons.push(`corridor ${jnId}: must be a non-empty array of integer tiles`);
 			continue;
 		}

@@ -188,14 +188,14 @@ export function reverseDependencyOrder(resources) {
 }
 
 function normalizeResource(raw) {
-  const annotations = raw.annotations ;
+  const annotations = raw.annotations ?? {};
   const scaling = annotations.scaling ?? null;
 
   return {
     id: raw.id,
     kind: raw.kind ?? "service",
     deps: [...(raw.deps ?? [])],
-    env: { ...(raw.env ) },
+    env: { ...raw.env },
     gates: {
       explicitStartup: annotations.explicitStartup === true,
       waitFor: [...(annotations.waitFor ?? [])],

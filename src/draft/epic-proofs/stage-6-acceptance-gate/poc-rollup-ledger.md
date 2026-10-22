@@ -10,3 +10,7 @@ The referenced UX proof changed only its example boundary typing. The Stage-6
 rollup absorbs that change by retaining the existing dashboard Pact, fixture,
 negative scenario, and executable acceptance feature as the integration
 evidence.
+
+The referenced `s6-09-operator-crew-yard-services-contract` leaf likewise
+only restored the nullish defaults the anti-slop sweep stripped, which had left the leaf crashing on omitted optional fields (principal and signal parsing). No
+Stage-6 scenario, gate, or evidence path moves.

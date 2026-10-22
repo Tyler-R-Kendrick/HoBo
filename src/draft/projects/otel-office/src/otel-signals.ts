@@ -161,7 +161,10 @@ export function mapMetricsPayload(
 		const character = ensureCharacter(state, resourceAttrs, now);
 		for (const sm of rm.scopeMetrics ?? []) {
 			for (const metric of sm.metrics ?? []) {
-				const healthMap = METRIC_HEALTH_MAP[metric.name];
+				// SAFETY: `METRIC_HEALTH_MAP[metric.name as keyof MetricHealthMap]` is guarded by Object.hasOwn at this boundary.
+				const healthMap = Object.hasOwn(METRIC_HEALTH_MAP, metric.name)
+					? METRIC_HEALTH_MAP[metric.name as keyof MetricHealthMap]
+					: undefined;
 				const points = [...(metric.sum?.dataPoints ?? []), ...(metric.gauge?.dataPoints ?? [])];
 				for (const point of points) {
 					const raw = point.asDouble ?? Number(point.asInt ?? 0);

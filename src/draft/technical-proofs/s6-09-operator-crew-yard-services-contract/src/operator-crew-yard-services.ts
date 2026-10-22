@@ -537,7 +537,7 @@ function parseEnvironment(value) {
 }
 
 function parseSloBreachSignal(raw): SloBreachSignal {
-  const signal = raw ;
+  const signal = raw ?? {};
   if (!signal.service || !signal.correlationId) {
     throw new OperatorCrewYardServicesError(
       "invalid-slo-signal",
@@ -555,7 +555,7 @@ function parseSloBreachSignal(raw): SloBreachSignal {
 }
 
 function parseRemediation(raw): RemediationPlan {
-  const remediation = raw ;
+  const remediation = raw ?? {};
   return {
     action: remediation.action ?? "failover-provider",
     failureClass: remediation.failureClass ?? "provider-degraded",
@@ -570,7 +570,7 @@ function parseRemediation(raw): RemediationPlan {
 }
 
 function parseRollout(raw) {
-  const rollout = raw ;
+  const rollout = raw ?? {};
   return {
     id: rollout.id ?? "rollout-crew-001",
     strategy: rollout.strategy ?? "canary",
@@ -582,7 +582,7 @@ function parseRollout(raw) {
 }
 
 function parseGovernance(raw) {
-  const governance = raw ;
+  const governance = raw ?? {};
   return {
     flaggedPrompt: governance.flaggedPrompt ?? false,
     blockReason: governance.blockReason ?? null,
@@ -591,7 +591,7 @@ function parseGovernance(raw) {
 
 function parseGitOpsPrincipal(raw): CrewPrincipal {
   const base = CREW_ROSTER.gitops;
-  const principal = raw ;
+  const principal = raw ?? {};
   return {
     ...base,
     agentId: principal.agentId ?? base.agentId,
@@ -602,7 +602,7 @@ function parseGitOpsPrincipal(raw): CrewPrincipal {
 
 function parsePlatformPrincipal(raw): CrewPrincipal {
   const base = CREW_ROSTER["platform-engineer"];
-  const principal = raw ;
+  const principal = raw ?? {};
   return {
     ...base,
     agentId: principal.agentId ?? base.agentId,

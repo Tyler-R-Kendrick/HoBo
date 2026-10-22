@@ -1,5 +1,6 @@
 import { execFileSync } from "node:child_process";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
+import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -178,14 +179,16 @@ export async function typecheckGeneratedAliases(declarations: string): Promise<v
       "ES2022",
       "consumer.ts",
     ];
-    if (process.platform === "win32") {
-      execFileSync(process.env.ComSpec ?? "cmd.exe", ["/d", "/c", "tsc.cmd", ...args], {
-        cwd: dir,
-        stdio: "pipe",
-      });
-    } else {
-      execFileSync("tsc", args, { cwd: dir, stdio: "pipe" });
-    }
+    // Resolve the workspace TypeScript compiler directly instead of a bare
+    // `tsc` on PATH: test lanes that do not put node_modules/.bin on PATH
+    // (the root sharded runner) otherwise fail with spawnSync tsc ENOENT.
+    const tscJs = createRequire(import.meta.url).resolve(
+      "typescript/lib/tsc.js",
+    );
+    execFileSync(process.execPath, [tscJs, ...args], {
+      cwd: dir,
+      stdio: "pipe",
+    });
   } finally {
     await rm(dir, { recursive: true, force: true });
   }

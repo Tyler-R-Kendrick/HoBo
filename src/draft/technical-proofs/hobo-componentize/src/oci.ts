@@ -1,7 +1,7 @@
 import { createHash } from "node:crypto";
 
 import { COMPONENT_MEDIA_TYPE, type OciDescriptor, type WasmComponentArtifact } from "./types.js";
-import { isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+import { stableStringify } from "./json.js";
 
 
 export function buildOciDescriptor(
@@ -47,20 +47,6 @@ export function buildOciDescriptor(
     }),
     manifestDigest: sha256Text(manifestJson),
   });
-}
-
-function stableStringify(value: JsonValue): string {
-  if (value === null || !isJsonObject(value)) {
-    return JSON.stringify(value);
-  }
-  if (Array.isArray(value)) {
-    return `[${value.map((entry) => stableStringify(entry)).join(",")}]`;
-  }
-
-  // SAFETY: `const record = value as JsonObject;` is required at this I/O or test boundary.
-  const record = value as JsonObject;
-  const keys = Object.keys(record).sort();
-  return `{${keys.map((key) => `${JSON.stringify(key)}:${stableStringify(record[key])}`).join(",")}}`;
 }
 
 function sha256Text(text: string): string {

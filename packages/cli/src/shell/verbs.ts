@@ -394,7 +394,7 @@ ${statusLine}
 Serve the project on the local Yard (bare-metal runtime-local). Long-lived
 on an interactive terminal; --once (or a non-TTY / --json run) probes and
 exits for tests and CI. Pass --serve to force the long-lived server from a
-non-TTY caller (agent, supervisor, container); --once wins over --serve.
+non-TTY caller (agent, supervisor, container); --once and --json win over --serve.
 
 Example:
   hobo dev --once

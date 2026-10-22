@@ -47,3 +47,5 @@
 
 | `src/draft/technical-proofs/provider-fly-contract` | latest validated leaf hardening | Fly provider preview/apply evidence unchanged. |
 | `src/draft/technical-proofs/provider-vercel-contract` | latest validated leaf hardening | Vercel provider preview/apply evidence unchanged. |
+| `src/draft/technical-proofs/hobo-realize-emission-contract` | JSON-boundary repair: cloneAsJson at IacProgram context/visit/build-ref boundaries; build-reference predicate replaced with a parser | Emission shape, portability report, and provider simulations unchanged. |
+| `src/draft/technical-proofs/provider-cloudflare-contract` | Local emission context aligned with the upstream JsonValue contract | Cloudflare realization and preview/apply evidence unchanged. |

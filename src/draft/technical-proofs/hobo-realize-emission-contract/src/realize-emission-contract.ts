@@ -1,5 +1,5 @@
 import { createHash } from "node:crypto";
-import { isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
+import { cloneAsJson, isJsonString, isJsonObject, type JsonValue, type JsonObject } from "./json.js";
 
 
 export const REALIZE_EMISSION_VERSION = "hobo.realize-emission/v1";
@@ -224,7 +224,7 @@ export function realizeFixtureProvider(plan: FixtureResourcePlan = createFixture
   const iac: IacProgram = {
     apiVersion: IAC_PROGRAM_VERSION,
     intent: "driver-agnostic-resource-graph",
-    context: plan.context,
+    context: cloneAsJson(plan.context),
     nodes: [
       {
         id: "assets",
@@ -373,7 +373,7 @@ export function validateEmission(emission: RealizeEmission | undefined): Validat
   }
 
   const buildRefs: BuildRefEntry[] = [];
-  visit(emission?.iac, (value, path, key) => {
+  visit(emission?.iac === undefined ? null : cloneAsJson(emission.iac), (value, path, key) => {
     if (isJsonString(key) && DRIVER_DIALECT_FIELDS.has(key)) {
       portabilityReport.lockInMarkers.push({
         path: path.join("."),
@@ -399,10 +399,11 @@ export function validateEmission(emission: RealizeEmission | undefined): Validat
       }
     }
 
-    if (isBuildReference(value)) {
-      buildRefs.push({ artifactId: value.$build, path: path.join(".") });
-      if (!buildArtifacts.has(value.$build)) {
-        errors.push(`build reference ${value.$build} at ${path.join(".")} has no BuildSpec artifact`);
+    const buildId = buildReferenceId(value);
+    if (buildId !== undefined) {
+      buildRefs.push({ artifactId: buildId, path: path.join(".") });
+      if (!buildArtifacts.has(buildId)) {
+        errors.push(`build reference ${buildId} at ${path.join(".")} has no BuildSpec artifact`);
       }
     }
   });
@@ -427,8 +428,10 @@ export function validateEmission(emission: RealizeEmission | undefined): Validat
 
 export function wireBuildOutputs(emission: RealizeEmission, imageRefs: Record<string, string>): RealizeEmission {
   const imageRefByArtifact = new Map(Object.entries(imageRefs));
-  // SAFETY: `const iac = replaceBuildRefs(emission.iac, imageRefByArtifact) as IacProgram | u` is required at this I/O or test boundary.
-  const iac = replaceBuildRefs(emission.iac, imageRefByArtifact) as IacProgram | undefined;
+  // SAFETY: `const iac = replaceBuildRefs(cloneAsJson(emission.iac), imageRefByArtifact) as IacProgram | undefined` is required at this I/O or test boundary.
+  const iac = (emission.iac === undefined
+    ? undefined
+    : replaceBuildRefs(cloneAsJson(emission.iac), imageRefByArtifact)) as IacProgram | undefined;
 
   return {
     ...emission,
@@ -505,12 +508,10 @@ function parseOutputPlaceholder(value: string): ParsedOutputPlaceholder | null {
   };
 }
 
-interface BuildReference {
-  $build: string;
-}
-
-function isBuildReference(value: JsonValue): value is BuildReference {
-  return isJsonObject(value) && isJsonString(value.$build);
+function buildReferenceId(value: JsonValue): string | undefined {
+  if (!isJsonObject(value)) return undefined;
+  const ref: JsonValue | undefined = value.$build;
+  return ref !== undefined && isJsonString(ref) ? ref : undefined;
 }
 
 function findBuildCycles(artifacts: BuildArtifact[]): string[][] {
@@ -562,11 +563,12 @@ function visit(value: JsonValue, callback: VisitCallback, path: VisitPath = [], 
 }
 
 function replaceBuildRefs(value: JsonValue, imageRefByArtifact: Map<string, string>): JsonValue {
-  if (isBuildReference(value)) {
-    const imageRef = imageRefByArtifact.get(value.$build);
+  const buildId = buildReferenceId(value);
+  if (buildId !== undefined) {
+    const imageRef = imageRefByArtifact.get(buildId);
     if (!imageRef) return value;
     return {
-      artifactId: value.$build,
+      artifactId: buildId,
       imageRef
     };
   }

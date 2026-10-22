@@ -8,15 +8,16 @@
 			"note": "Promoted with typing/format hardening; the package copy is canonical (GAPS.md IMPL-005).",
 			"digests": {
 				"context.ts": "sha256:48a51b61ccb05ea48594807606df36302afb85b66c0dbfc3745434a0b6b5496c",
-				"divergence.ts": "sha256:dcc24c61c10e131187ab91fa4303da5ed7d9835357394f1f197b73c799941352",
-				"equivalence.ts": "sha256:8b169a0d2f8fa85efe1d0c2d4bddc35e39a7070f9269377982959e10e4deaf7e",
+				"divergence.ts": "sha256:a8c77f88bcb0efd871a4ed901b727b9d1f920d998fd08d376bdddb50dd000da2",
+				"equivalence.ts": "sha256:04077d6947c3abcb35ca55f04d076005371288962a1cfa59585d9134786dde74",
 				"index.ts": "sha256:3b9f6ddd2ad0d3c9ab36a759f26a551ca3732625e5f943ef1b4633d3f0649f81",
-				"parse.ts": "sha256:c65d76dedea6d7e49e3d0bfd71864633280447613b454a5b57d8bf5cbc5cf316",
-				"recorder.ts": "sha256:8556f00fe2d054da37f0f5fd9aef01c84f8598d796a0b337e9b2a55d4ddfe185",
-				"replayer.ts": "sha256:a984b3f1ac58488efbad79d53cfb6476906841d20b0a60ec2d54394b851cd008",
+				"json.ts": "sha256:4fc6c8c4e15d487ff952392e925c80c827cb7843ccb4cbfd07468ac660d0f2ba",
+				"parse.ts": "sha256:a402a2ad6bc8b54fcff0cfe4b976c72b15f15191d878d7849e8cab5b2686f2db",
+				"recorder.ts": "sha256:16a25034f056cbdf3897026bacf09b1d96d41758c8f59c577d692c819058dac4",
+				"replayer.ts": "sha256:7c3f56a75c9a3db84c0151cd648c9b756e242747ac7284de12d90b639fe7caba",
 				"store.ts": "sha256:c1558f0b7f931f7ef49943aac00637ef43e294c27357406430aeb2ccb49534e4",
-				"test-runtime.ts": "sha256:6ff20013c2c7bc75643ee16a8142f319c8eb0b0a53cf888a7c7521e0b02444fc",
-				"types.ts": "sha256:9e48d761a5e97ff01c57254ad05c1fa1e25917ee538fca0a27aa09b81f43e260"
+				"test-runtime.ts": "sha256:62a1b5aeda764d54e768619c89630e8932114d26e68a526b40ad19f4a9af701b",
+				"types.ts": "sha256:b93daf16499ad79ab5377e211ae89a863d461ff72193e2d73bc4d0264308d2ad"
 			}
 		},
 		{
@@ -25,8 +26,9 @@
 			"status": "frozen",
 			"note": "Promoted as parse-don't-validate port types + vendored WIT; extended with the ADR-0125 artifact form.",
 			"digests": {
-				"training-engine-contract.d.mts": "sha256:ca33e3b4fdfc51161d860992bd316c2228d76fff4fd8a11f6ad91c8dec6d2d2b",
-				"training-engine-contract.ts": "sha256:d50eba5e9ae02b13feee9bc66f2e3774445dace6ae840a6fb86794d78c09c299"
+				"json.ts": "sha256:4fc6c8c4e15d487ff952392e925c80c827cb7843ccb4cbfd07468ac660d0f2ba",
+				"training-engine-contract.d.mts": "sha256:45c6295a22d06d891e7ba17670c730a5c85f8660a1512d5a983c043f44ad0e8d",
+				"training-engine-contract.ts": "sha256:a0daf2513f5f8a7889b4dfd70933b192fc5cc84a052b97c5bc15f36ec8d33529"
 			}
 		},
 		{
@@ -35,7 +37,7 @@
 			"status": "frozen",
 			"note": "The use-training grounding lint; the rest of the poc (evals/promotion pipeline) remains reference until its slice lands.",
 			"digests": {
-				"use-training-lint.ts": "sha256:146aaa2800c400a76b378f973bc6c1d92a7dd490b8cad4d3a119853a92f2a50b"
+				"use-training-lint.ts": "sha256:96f8cd99b203630b218ab0ce02ed63596456493b6564361e365f309ef4ead5ce"
 			}
 		},
 		{
@@ -50,7 +52,8 @@
 			"status": "frozen",
 			"note": "HOBO-152 promotion: project codegen engine typed and split (types/engine/tree/fixture/run-codegen), injectable CodegenEngine; the CLI and build gate no longer dynamic-import the proof (GAPS.md IMPL-004).",
 			"digests": {
-				"codegen-cli-contract.ts": "sha256:9f17d8bc15639123d29623571876bbdc7155f66713eb2365a07b3a8811340e5d"
+				"codegen-cli-contract.ts": "sha256:c7503ccf1a86cfdff67728d3084c9bf293cc3ba8c2f379fc4ada2bb7c967e438",
+				"json.ts": "sha256:4fc6c8c4e15d487ff952392e925c80c827cb7843ccb4cbfd07468ac660d0f2ba"
 			}
 		},
 		{
@@ -59,8 +62,9 @@
 			"status": "frozen",
 			"note": "ADR-0071 promotion: typed engine with traffic-backend category, EventInput-shaped facts (no proof envelope), parse-don't-validate boundaries; reservation-hardening invariants folded in.",
 			"digests": {
-				"dispatcher.d.ts": "sha256:c3c5ba34da8a8d4ee697f9691302e60d2754bdfae4a936a7cb86ba33b39fd4e9",
-				"dispatcher.ts": "sha256:e6ba45e67eba436722ef82c0d7e701aba98f6482ca285c2892f30533c2859508"
+				"dispatcher.d.ts": "sha256:00aac63a6d4af4e04e8a3f81dd464c8fc1fcb2b8b31ae936a602eb9f928b09dd",
+				"dispatcher.ts": "sha256:d8325dc768c215c72edcc90beebf304edbcfab1e601de3016302c131e8f20c2f",
+				"json.ts": "sha256:4fc6c8c4e15d487ff952392e925c80c827cb7843ccb4cbfd07468ac660d0f2ba"
 			}
 		},
 		{
@@ -78,8 +82,8 @@
 				"package.json": "sha256:6ab362f11ef3a3ecfe640c58b8ee513d50805540aeaf5f5bbc96827802132ee3",
 				"src/_generated/hobo/schematools/v1/codegen_report_pb.ts": "sha256:f882b88ea9305180334fa8e46ed9e3c600c2e62e6225810782ca56061becb105",
 				"src/cli.ts": "sha256:a6408260db5ba1912f02de0d24fb940553fa8ee789d05e90b2a14ae870dd92f2",
-				"src/codegen.ts": "sha256:e2cb6e220cc8ef85ed68ab3bea673a2bfbd0181152226432cb1a6eadcea23b86",
-				"src/cue.ts": "sha256:6c120eb8eae063f1e385cc8fb7c57e7bc4792968bdd73c98677a2cc5f0badfd1",
+				"src/codegen.ts": "sha256:9b7acd6261683d9b03cea8d85f380add0a3c535f16cf4212c1b5f7a2a231f1c0",
+				"src/cue.ts": "sha256:6cce81529b610a3a02e12982620d5dfd708aab5e38935f1d0751af8c851b6247",
 				"src/discover.ts": "sha256:685f5decd7f27d0522503c97246c917c9bcdb5d2812d87d13833c5856dc721c7",
 				"src/parse.ts": "sha256:2750ed6d6ac8d3ed6bcbe60c6f1f9a06f43b6903398d615fce901781c6dd0b4a",
 				"src/types.ts": "sha256:2fd23e4a87f8feb36d65841ad16b9fa90bcab6d6cfb4a18df206d244807fdbac",
@@ -93,7 +97,8 @@
 			"status": "frozen",
 			"note": "ADR-0134 promotion: DNS-shaped saga re-expressed over TrafficRoutingPort — fail-closed preconditions (validated change, live incumbent via port.status, TTL lowered + waited => effective RTO), rollback hysteresis (consecutive failures), refusal/TtlLowered/Started/RampAdvanced/RoutingChanged/RolledBack event ladder.",
 			"digests": {
-				"domain-cutover-saga.ts": "sha256:c9c1957ae1d06f476caeaa7d740fd2a3dcfb7422668d08750fa1946baf1ebb5a"
+				"domain-cutover-saga.ts": "sha256:575ea5edd8ee69d9b46d06bcfe1e089beb4d08c07fe92bfcddcc834309af649e",
+				"json.ts": "sha256:4fc6c8c4e15d487ff952392e925c80c827cb7843ccb4cbfd07468ac660d0f2ba"
 			}
 		},
 		{
@@ -102,7 +107,8 @@
 			"status": "frozen",
 			"note": "HOBO-499 M1 promotion: typed 11-field compatibility inputs, dry-run contract + four fixtures, rollback-evidence parser, scope-boundary register with fail-closed guard.",
 			"digests": {
-				"upgrade-rollback-dry-run.ts": "sha256:507a353f947813bf71c27bbd715fa7e7027de52605df53badfe71bf9054d3d51"
+				"json.ts": "sha256:4fc6c8c4e15d487ff952392e925c80c827cb7843ccb4cbfd07468ac660d0f2ba",
+				"upgrade-rollback-dry-run.ts": "sha256:846377abf9222051b48ee5fa08457fea80f253073f0625bd0c370ccbfbb1acd7"
 			}
 		},
 		{
@@ -111,7 +117,8 @@
 			"status": "frozen",
 			"note": "M4 promotion: typed golden-replay corpus + upcaster-totality can-deploy gate (coverage, append-only baseline, total chain, purity, replay); migration.* v1 corpus pinned in packages/events/corpus.",
 			"digests": {
-				"event-body-upcaster-gate.ts": "sha256:7efc40d3e4d2b6383ebd748f9008aca5ad755c68a784ecac6b3fc719081f238e"
+				"event-body-upcaster-gate.ts": "sha256:7bac097f619e18c6b07d42016a4614dc6fd4f098a506da250455b80f3d93051a",
+				"json.ts": "sha256:4fc6c8c4e15d487ff952392e925c80c827cb7843ccb4cbfd07468ac660d0f2ba"
 			}
 		},
 		{

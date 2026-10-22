@@ -38,3 +38,12 @@ pnpm --prefix src/draft/projects/s2-08-provider-cloudflare test
 
 Blocked on HOBO-621 (S2-06 `@hobo/iac-pulumi`). When unblocked, promote to
 `packages/providers/provider-cloudflare/` with credentialed CI conformance lane.
+
+## Cascade absorption
+
+The referenced `hobo-realize-emission-contract` and
+`provider-cloudflare-contract` leaves only repaired their JSON boundaries
+(cloneAsJson crossings, a build-reference parser in place of an invalid type
+predicate, and the local emission context aligned to the upstream JsonValue
+contract). Realization output, the boundary pact, and this project's evidence
+are unchanged.

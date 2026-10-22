@@ -9,7 +9,7 @@ import { mkdirSync, readFileSync, renameSync, writeFileSync } from "node:fs";
 import { homedir } from "node:os";
 import { join } from "node:path";
 import type { OfficeLayout } from "./layout.js";
-import { isJsonObject } from "./json.js";
+import { isJsonObject, parseJsonValue, type JsonObject } from "./json.js";
 
 
 export const LAYOUT_SAVE_DEBOUNCE_MS = 200;
@@ -34,14 +34,16 @@ export class LayoutStore {
 		return join(this.dir, stationFileName(stationId));
 	}
 
-	/** Load a persisted layout; undefined when absent or unreadable/corrupt. */
-	load(stationId: string): OfficeLayout | undefined {
+	/**
+	 * Load a persisted layout as unvalidated JSON; undefined when absent or
+	 * unreadable/corrupt. Callers must run `validateLayout` before use — the
+	 * store deliberately does not claim the bytes are an OfficeLayout.
+	 */
+	load(stationId: string): JsonObject | undefined {
 		try {
 			const raw = readFileSync(this.pathFor(stationId), "utf8");
-			// SAFETY: `const parsed = JSON.parse(raw) as OfficeLayout;` is required at this I/O or test boundary.
-			const parsed = JSON.parse(raw) as OfficeLayout;
-			if (!isJsonObject(parsed) || parsed === null) return undefined;
-			return parsed;
+			const parsed = parseJsonValue(raw);
+			return isJsonObject(parsed) ? parsed : undefined;
 		} catch {
 			return undefined;
 		}

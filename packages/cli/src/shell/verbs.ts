@@ -387,16 +387,18 @@ Example:
 		return `HoBo dev
 
 Usage:
-  hobo dev [global flags] [--once] [--port <port>] [--host <host>] [--home <path>]
+  hobo dev [global flags] [--once] [--serve] [--port <port>] [--host <host>] [--home <path>]
 
 Role: ${verb.role}
 ${statusLine}
 Serve the project on the local Yard (bare-metal runtime-local). Long-lived
 on an interactive terminal; --once (or a non-TTY / --json run) probes and
-exits for tests and CI.
+exits for tests and CI. Pass --serve to force the long-lived server from a
+non-TTY caller (agent, supervisor, container); --once and --json win over --serve.
 
 Example:
   hobo dev --once
+  hobo dev --serve --port 4000
 `;
 	}
 

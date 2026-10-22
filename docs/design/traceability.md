@@ -456,7 +456,16 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 | ADR-0160 | [data-plane](./adr/03-data-plane.md#adr-0160) | `drizzle-kit` as the default relational schema-diff engine behind the migration port: deploy-owned generation at plan phase, ADR-0032 gated apply unchanged, Drizzle schema modules as accepted authoring input. | — (migration engine default) |
 | ADR-0161 | [identity-security](./adr/02-identity-security.md#adr-0161) | Better Auth as the default self-hosted full-featured `hobo:auth` adapter: auth bundle over `hobo:data/relational` + brokered signing secret + membrane-portable routes; ADR-0038/0073 model unchanged. | — (auth bundle) |
 | ADR-0162 | [architecture-core](./adr/01-architecture-core.md#adr-0162) | Package tiering criterion (surface identity + depth) for the boundary gate's banked-edge allowlist; per-group verdicts retiring 11 of 14 entries; corrects the training/eval-provider and pack-framework composition claims. | — (package tiering) |
+| ADR-0163 | [data-plane](./adr/03-data-plane.md#adr-0163) | Drift is a derived fact computed from the deployment view, not stored state — classified by typed lifecycle, with `converging` and `unknown` as first-class answers. | — (derived drift) |
+| ADR-0164 | [architecture-core](./adr/01-architecture-core.md#adr-0164) | Placement is re-evaluable: a separate verdict step decides whether to re-decide, residency outranks opportunity, and movement requires declared consent. | — (placement re-evaluation) |
+| ADR-0165 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0165) | Pack upgrade is a decision with named refusals: numeric version ordering, majors crossed only by name, dropped profile claims and unverified targets blocked rather than skipped. | — (pack upgrade) |
+| ADR-0166 | [data-plane](./adr/03-data-plane.md#adr-0166) | Estimate-versus-actual is a derived report with explicit refusals: integer minor units, unestimated cost never dropped, unrealized estimates excluded from variance, short observed windows refused. | — (cost reconciliation) |
+| ADR-0167 | [architecture-core](./adr/01-architecture-core.md#adr-0167) | Cost-aware placement is scoped to what HoBo can actually price: an unpriced offering is not a free one, and cost-optimality claims are withheld when the candidate set cannot support them. | — (pricing scope) |
+| ADR-0168 | [architecture-core](./adr/01-architecture-core.md#adr-0168) | Price data is resourced by consuming published, unauthenticated feeds: no purchase, no vendor contract, and a credential-free core that cannot fetch. | — (price feeds) |
 | ADR-0169 | [architecture-core](./adr/01-architecture-core.md#adr-0169) | One pin, one fetch/bump command and one offline drift check per consumed sibling: a git pin is the submodule gitlink, an executable is a sha256-pinned release asset in a machine-wide content-addressed cache, driven by `tools/pins/siblings.json` and `scripts/bootstrap-siblings.mts`; proven by `scripts/test/pins*.test.ts` and `scripts/test/bootstrap-siblings*.test.ts` against real git repositories and a real http server. | — (sibling pins) |
+| ADR-0170 | [identity-security](./adr/02-identity-security.md#adr-0170) | HoBo runs under OpenSesame's proxied invocation and holds a surrogate in place of the credential: an optional `SecretsPort` adapter, Vercel only, AWS refused by type. | `packages/adapters/adapter-opensesame` |
+| ADR-0172 | [portability-extensibility](./adr/07-portability-extensibility.md#adr-0172) | The ai-bdd release gate: HoBo runs ai-bdd as a process, replay-only, reads its report only after an exit code that writes one, and records infrastructure as "not run". | `packages/stage-gate` |
+| ADR-0173 | [architecture-core](./adr/01-architecture-core.md#adr-0173) | The vendored anti-slop plugin carries a SHA-256 manifest and an offline drift test; HoBo keeps its own rule lineage until OpenSesame's rules pass HoBo's recent working set. | — (anti-slop vendor pin) |
 
 ## ADR Numbering and Status Audit
 
@@ -464,8 +473,8 @@ Pillars come from the founding intent recorded in [`vision.md`](./vision.md#inte
 - Status policy: every numbered ADR listed in the index is **Accepted / current** unless a future row
   explicitly marks it superseded; proposed decisions remain `ADR-Pn` and are not part of the
   monotonic accepted set.
-- Explicit numbering gaps through `ADR-0149`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
-  ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068. (ADR-0118–ADR-0149 are contiguous except intentional historical gaps above.)
+- Explicit numbering gaps through `ADR-0173`: ADR-0013, ADR-0016, ADR-0017, ADR-0020, ADR-0022,
+  ADR-0029, ADR-0030, ADR-0065, ADR-0066, ADR-0067, ADR-0068, ADR-0171. (ADR-0118–ADR-0173 are contiguous except intentional historical gaps above; ADR-0171 was never assigned.)
 - Gap status: intentional unassigned IDs in the current consolidated suite; none is silently
   referenced from the index or theme docs as an accepted decision.
 

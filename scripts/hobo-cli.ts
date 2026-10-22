@@ -39,21 +39,33 @@ if (!existsSync(SUBMODULE_MARKER)) {
 
 if (!existsSync(HOBO_BIN)) {
 	console.error("hobo CLI not built yet — building @hobo/hobo (one-time)…");
-	execFileSync(
-		"pnpm",
-		[
-			"exec",
-			"turbo",
-			"run",
-			"build",
-			"--filter",
-			"@hobo/hobo",
-			"--filter",
-			"@hobo/adapter-hono",
-			"--concurrency=100%",
-		],
-		{ cwd: REPO_ROOT, stdio: "inherit" },
+	// Prefer the installed turbo binary directly: this script already runs
+	// under `node --import tsx`, so node_modules exists. Going through
+	// `pnpm exec` would need a `pnpm` shim on PATH, which a corepack-only
+	// setup (no writable Node bin dir for `corepack enable`) does not have.
+	const turboBin = path.join(
+		REPO_ROOT,
+		"node_modules",
+		".bin",
+		process.platform === "win32" ? "turbo.cmd" : "turbo",
 	);
+	const turboArgs = [
+		"run",
+		"build",
+		"--filter",
+		"@hobo/hobo",
+		"--filter",
+		"@hobo/adapter-hono",
+		"--concurrency=100%",
+	];
+	if (existsSync(turboBin)) {
+		execFileSync(turboBin, turboArgs, { cwd: REPO_ROOT, stdio: "inherit" });
+	} else {
+		execFileSync("pnpm", ["exec", "turbo", ...turboArgs], {
+			cwd: REPO_ROOT,
+			stdio: "inherit",
+		});
+	}
 	if (!existsSync(HOBO_BIN)) {
 		console.error(`build finished but ${HOBO_BIN} is still missing`);
 		process.exit(1);

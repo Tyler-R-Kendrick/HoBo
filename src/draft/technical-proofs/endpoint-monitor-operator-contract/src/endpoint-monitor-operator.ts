@@ -55,7 +55,7 @@ export function createEndpointMonitorOperator(input = {}) {
 export function runEndpointMonitorCycle(input = {}) {
   const operator = input.operator ?? createEndpointMonitorOperator();
   const observedAt = validateIso(input.observedAt ?? new Date(0).toISOString(), "observedAt");
-  const burnThreshold = validateBurnThreshold(input.burnThreshold );
+  const burnThreshold = validateBurnThreshold(input.burnThreshold ?? {});
   const probes = validateProbes(input.probes ?? []);
   const driftSignals = validateDriftSignals(input.driftSignals ?? []);
   const identityEvents = [];
@@ -349,7 +349,7 @@ function validateDriftSignals(signals) {
       resourceId: requiredString(signal?.resourceId, "driftSignal.resourceId"),
       correlationId: requiredString(signal?.correlationId, "driftSignal.correlationId"),
       occurredAt: validateIso(signal?.occurredAt, "driftSignal.occurredAt"),
-      payload: clone(signal?.payload ),
+      payload: clone(signal?.payload ?? {}),
     }),
   );
 }

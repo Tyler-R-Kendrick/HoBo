@@ -17,6 +17,15 @@ export default defineConfig({
 	trailingSlash: "ignore",
 	vite: {
 		plugins: [temporaryStationApiPlugin()],
+		// Try-site example apps use TC39 standard decorators (@trainable /
+		// @intent from @hobo/runtime). Vite's esbuild otherwise passes standard
+		// decorators through at its default target, and Node rejects them with
+		// "Invalid or unexpected token" when the SSR runner evaluates an example
+		// app for /examples/index.json in dev (the production build already
+		// lowers them). Force esbuild to lower decorators in dev transforms too.
+		esbuild: {
+			supported: { decorators: false },
+		},
 	},
 	markdown: {
 		// Heading anchors. Without these no `.prose h2/h3` carried an `id`, so

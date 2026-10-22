@@ -172,7 +172,7 @@ function renderRootType(name, fields) {
 }
 
 function renderProjectionField(field, projection) {
-  const args = Object.entries(projection.args )
+  const args = Object.entries(projection.args ?? {})
     .map(([name, type]) => `${fieldName(name)}: ${graphqlScalar(type)}!`)
     .join(", ");
   const suffix = projection.list === true ? `[${typeName(projection.readModel)}!]!` : `${typeName(projection.readModel)}!`;
@@ -239,7 +239,7 @@ function materializationKey(name, args) {
 }
 
 function stableObject(value) {
-  return Object.fromEntries(Object.entries(value ).sort(([left], [right]) => left.localeCompare(right)));
+  return Object.fromEntries(Object.entries(value ?? {}).sort(([left], [right]) => left.localeCompare(right)));
 }
 
 function typeName(value) {

@@ -5,7 +5,7 @@ import {
   outputPlaceholder,
   validateEmission
 } from "../../hobo-realize-emission-contract/src/realize-emission-contract.js";
-import { asJsonObject, isJsonNumber, isJsonString, isJsonObject, type JsonValue, type JsonObject, type JsonBag, type StringBag } from "./json.js";
+import { asJsonObject, cloneAsJson, isJsonNumber, isJsonString, isJsonObject, type JsonValue, type JsonObject, type JsonBag, type StringBag } from "./json.js";
 
 
 export const CLOUDFLARE_PROVIDER_ID = "@hobo/provider-cloudflare";
@@ -287,7 +287,7 @@ interface RealizeEmission {
   iac: {
     apiVersion: string;
     intent: string;
-    context: PlanContext | undefined;
+    context: JsonValue | undefined;
     nodes: IacNode[];
     edges: IacEdge[];
     outputPlaceholders: OutputPlaceholderEntry[];
@@ -847,7 +847,7 @@ export function realizeCloudflarePlan(provider: CapabilityManifestSource, plan: 
     iac: {
       apiVersion: IAC_PROGRAM_VERSION,
       intent: "driver-agnostic-resource-graph",
-      context: plan.context,
+      context: plan.context === undefined ? undefined : cloneAsJson(plan.context),
       nodes,
       edges,
       outputPlaceholders,

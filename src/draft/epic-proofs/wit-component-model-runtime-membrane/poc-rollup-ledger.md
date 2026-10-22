@@ -40,6 +40,7 @@ Run: `sprawl-20260629T024118Z-2813`
 | `src/draft/technical-proofs/runtime-local-component-host` | final validated leaf hardening | Local component-host evidence unchanged. |
 | `src/draft/technical-proofs/runtime-port-conformance-contract` | final validated leaf hardening | Runtime-port evidence unchanged. |
 | `src/draft/technical-proofs/streamer-runtime-port-contract` | final validated leaf hardening | Streamer port evidence unchanged. |
+| `src/draft/exp-proofs/api/wrpc-wit-baseline-poc` | baseline lock test again reads the recorded `interfacePinShape` field | Pins, vendored interfaces, and membrane evidence unchanged. |
 | `src/draft/technical-proofs/websocket-streamer-fanout-contract` | final validated leaf hardening | Websocket fanout evidence unchanged. |
 | `src/draft/technical-proofs/wire-version-negotiation-contract` | final validated leaf hardening | Wire-version evidence unchanged. |
 | `src/draft/technical-proofs/wrpc-in-process-link-contract` | final validated leaf hardening | In-process WRPC evidence unchanged. |

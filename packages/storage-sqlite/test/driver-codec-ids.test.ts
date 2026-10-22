@@ -14,6 +14,7 @@ import { join } from "node:path";
 
 import { afterEach, describe, expect, it } from "vitest";
 import { asNullableText } from "../src/driver.js";
+import { isJsonString } from "../src/json.js";
 import {
 	asBigInt,
 	asBytes,
@@ -35,6 +36,7 @@ import {
 	encodeMetadata,
 	encodePayload,
 	parseCodec,
+	type PayloadCodec,
 	UnsupportedCodecError,
 } from "../src/index.js";
 
@@ -259,16 +261,18 @@ describe("payload codecs", () => {
 		// This is the "no ambiguous JSON-looking BLOB" rule: a row whose codec
 		// column names something this build does not implement must fail loudly
 		// rather than be guessed at as JSON.
-		const encoding = (): unknown => encodePayload("gzip-v1" as never, { a: 1 });
+		// SAFETY: `encodePayload("gzip-v1" as PayloadCodec, { a: 1 })` is required at this I/O or test boundary.
+		const encoding = (): Uint8Array => encodePayload("gzip-v1" as PayloadCodec, { a: 1 });
 		expect(encoding).toThrowError(UnsupportedCodecError);
 		try {
 			decodePayload("gzip-v1", new Uint8Array());
 			expect.unreachable("an unknown codec must be refused");
 		} catch (error) {
 			expect(error).toBeInstanceOf(UnsupportedCodecError);
-			expect((error as UnsupportedCodecError).code).toBe("UNSUPPORTED_CODEC");
-			expect((error as UnsupportedCodecError).codec).toBe("gzip-v1");
-			expect((error as UnsupportedCodecError).field).toBe("payload");
+			if (!(error instanceof UnsupportedCodecError)) throw error;
+			expect(error.code).toBe("UNSUPPORTED_CODEC");
+			expect(error.codec).toBe("gzip-v1");
+			expect(error.field).toBe("payload");
 		}
 	});
 
@@ -286,12 +290,14 @@ describe("payload codecs", () => {
 		}
 	});
 
-	it("returns protobuf metadata bytes as-is only when they are object-shaped", () => {
-		// `decodePayload` hands back the raw Uint8Array, which is an object and
-		// not an array — so it survives the guard. Pinning what actually happens
-		// rather than assuming it is coerced to `{}`.
+	it("coerces protobuf metadata bytes to an empty record", () => {
+		// `decodePayload` hands back the raw Uint8Array. A typed array is not a
+		// JsonObject under the tagOf-based guard (`[object Uint8Array]`, not
+		// `[object Object]`), so — like nulls, arrays, and scalars above — it
+		// becomes the empty record metadata callers can always index. Earlier
+		// guard semantics passed the bytes through as a JsonObject in name only.
 		const bytes = new Uint8Array([1, 2]);
-		expect(decodeMetadata("protobuf-v1", bytes)).toBe(bytes);
+		expect(decodeMetadata("protobuf-v1", bytes)).toEqual({});
 	});
 
 	it("parseCodec accepts the two known codecs and names the field otherwise", () => {
@@ -303,8 +309,9 @@ describe("payload codecs", () => {
 		} catch (error) {
 			// The field is what tells an operator which column of the row is
 			// wrong — payload, metadata and state each carry their own codec.
-			expect((error as UnsupportedCodecError).field).toBe("metadata");
-			expect((error as Error).message).toContain("metadata");
+			if (!(error instanceof UnsupportedCodecError)) throw error;
+			expect(error.field).toBe("metadata");
+			expect(error.message).toContain("metadata");
 		}
 	});
 });
@@ -513,7 +520,7 @@ describe("node sqlite driver", () => {
 			// An in-memory database reports `memory` rather than `wal`; the point
 			// is that the read path returns the first column as a scalar rather
 			// than a row object.
-			expect(typeof mode).toBe("string");
+			expect(isJsonString(mode)).toBe(true);
 			expect(driver.pragma("user_version", 4)).toBe(4);
 			expect(Number(driver.pragma("user_version"))).toBe(4);
 		} finally {

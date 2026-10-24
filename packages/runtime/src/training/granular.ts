@@ -128,14 +128,16 @@ type OnPath<T, Path extends readonly unknown[]> = Path extends readonly [
 	: false;
 
 /**
- * `true` when no object type in `T`, at any depth, has a symbol key; `false`,
- * or `boolean` for a union where only some members do, otherwise. Each member
- * of a union is read on its own (`keyof` a union has only the keys every member
- * shares), and an array is read through its elements, since every array's type
- * has symbol-keyed members of its own. `Path` holds the types being read
- * further up: a type that refers to itself is read once, and meeting it again
- * on the way down adds nothing, since that first reading covers every key it
- * has, so a recursive shape neither loops nor fails.
+ * `true` when no object type in `T`, at any depth, has a symbol key, an array
+ * type's own keys aside; `false`, or `boolean` for a union where only some
+ * members do, otherwise. Each member of a union is read on its own (`keyof` a
+ * union has only the keys every member shares), and an array is read only
+ * through its elements, since every array's type has symbol-keyed members of
+ * its own, so a symbol key added to an array type itself is not seen. `Path`
+ * holds the types being read further up: a type that refers to itself is read
+ * once, and meeting it again on the way down adds nothing, since that first
+ * reading covers every key it has, so a recursive shape neither loops nor
+ * fails.
  */
 type SymbolFree<T, Path extends readonly unknown[] = []> = T extends unknown
 	? OnPath<T, Path> extends true
@@ -150,14 +152,25 @@ type SymbolFree<T, Path extends readonly unknown[] = []> = T extends unknown
 	: never;
 
 /**
- * `T`, provided no object type in it, at any depth, has a symbol key, else
- * `never`, so that a value of it passed where this is the parameter type stops
- * compiling. `Object.entries` skips a symbol-keyed entry of a map, and a
- * symbol-keyed field of a shape is carried past the `JsonObject` type
- * unchecked (a symbol key is not compared with a string index signature), so
- * either would be dropped without a word.
+ * `T`, provided no object type in it has a symbol key (`SymbolFree`: at any
+ * depth, an array type's own keys aside), else `never`, so that a value of it
+ * passed where this is the parameter type stops compiling. `Object.entries`
+ * skips a symbol-keyed entry of a map, and a symbol-keyed field of a shape is
+ * carried past the `JsonObject` type unchecked (a symbol key is not compared
+ * with a string index signature), so either would be dropped without a word.
  */
 type StringKeyed<T> = [SymbolFree<T>] extends [true] ? T : never;
+
+/**
+ * `T`, unless `T` is `any`: then `never`, which not even `any` satisfies. `any`
+ * converts to every type unchecked, so a field grounding retyped to `any` would
+ * otherwise be copied as whatever it holds. `methodRef`, `intent`,
+ * `contract.ref` and the output's `returns`, each copied as it is typed, are
+ * held to it (an output retyped to `any` makes its `returns` `any` too);
+ * `params`, `contract.input`, `contract.output` and the field description
+ * `params` holds already fail `StringKeyed` with `any` in them.
+ */
+type NotAny<T> = 0 extends 1 & T ? never : T;
 
 /**
  * ts-autocode-grounding composes HoBo's TrainingOptions; copy them field by
@@ -166,15 +179,18 @@ type StringKeyed<T> = [SymbolFree<T>] extends [true] ? T : never;
  * required `methodRef`) types it, with no assertion; what is not named must be
  * nothing. `params` and `contract.input`, maps by name, are copied entry by
  * entry, so their keys may not be symbols; a declared shape is copied whole as
- * JSON, so it may hold no field that is not JSON and no symbol key at any
- * depth. Each of these is read as `GroundingOptions` types it, not as the
- * interface grounding names for it today. So a ts-autocode bump stops this
- * compiling when it renames a field, adds one (keyed by a name or a symbol, to
- * the options, the contract, the output or a field description, directly or
- * by typing the place as a subtype or a union with one), makes `methodRef` or
- * `intent` optional, retypes one, keys `params` or `contract.input` by symbols
- * too, or gives a declared shape a field that is not JSON or an object with a
- * symbol key at any depth (scripts/test/ts-autocode-grounding-drift.test.ts).
+ * JSON, so it may hold no field that is not JSON and no symbol key, at any
+ * depth but on an array type itself (`SymbolFree`). Each of these is read as
+ * `GroundingOptions` types it, not as the interface grounding names for it
+ * today. So a ts-autocode bump stops this compiling when it renames a field,
+ * adds one (keyed by a name or a symbol, to the options, the contract, the
+ * output or a field description, directly or by typing the place as a subtype
+ * or a union with one), makes `methodRef` or `intent` optional, retypes one,
+ * to `any` included (`NotAny`), keys `params` or `contract.input` by symbols
+ * too, or gives a declared shape a field that is not JSON or a symbol key
+ * (scripts/test/ts-autocode-grounding-drift.test.ts puts one on the shape, on
+ * an object one field down, on a member of a union, and on the shape a
+ * type-alias shape holds of itself).
  * A cast here would let that drift through, and `training()` would then
  * register the method under its function name, with no intent, or without the
  * added field. What the check reads is the types: a property grounding sets
@@ -194,6 +210,9 @@ function trainingOptionsOf(options: GroundingOptions): RegisteredOptions {
 	uncopied satisfies NothingLeft;
 	const { ref, input, output: declaredOutput, ...uncopiedContract } = contract;
 	uncopiedContract satisfies NothingLeft;
+	methodRef satisfies NotAny<typeof methodRef>;
+	intent satisfies NotAny<typeof intent>;
+	ref satisfies NotAny<typeof ref>;
 	const trainingContract: AssembledContract = { ref };
 	if (input !== undefined) {
 		trainingContract.input = declaredJsonByName(input);
@@ -212,6 +231,7 @@ function trainingOptionsOf(options: GroundingOptions): RegisteredOptions {
 	if (output !== undefined) {
 		const { returns, ...uncopiedOutput } = output;
 		uncopiedOutput satisfies NothingLeft;
+		returns satisfies NotAny<typeof returns>;
 		registered.output = { returns: fieldOf(returns) };
 	}
 	return registered;

@@ -10,8 +10,10 @@
  * granular.ts with the runtime package's own compiler options against the
  * pinned grounding source, as it is and then with each change below made in
  * memory. These must stop granular.ts compiling (DRIFTS): `methodRef` or
- * `intent` renamed or made optional; `contract.ref` or `params` retyped; a
- * field description's `example` removed; a field added, by name or by symbol,
+ * `intent` renamed or made optional; `contract.ref` or `params` retyped;
+ * `methodRef`, `intent`, `contract.ref`, `params`' values, `contract.input`'s
+ * values, `contract.output`, a field description's `description`, the output
+ * or its `returns` retyped to `any`; a field description's `example` removed; a field added, by name or by symbol,
  * to the options, the contract, the output or a field description; the
  * output's `returns`, or `params`' values, typed as a field description with
  * a field added; `params` or `contract.input` keyed by symbols too; a
@@ -101,6 +103,60 @@ const DRIFTS: readonly Drift[] = [
 		file: "decorators.ts",
 		from: "\treadonly params?: Record<string, FieldDescription>;\n\treadonly output?",
 		to: "\treadonly params?: Record<string, string>;\n\treadonly output?",
+	},
+	{
+		name: "methodRef retyped to any",
+		file: "decorators.ts",
+		from: `${OPTIONS_HEAD}\treadonly methodRef: string;`,
+		to: `${OPTIONS_HEAD}\treadonly methodRef: any;`,
+	},
+	{
+		name: "intent retyped to any",
+		file: "decorators.ts",
+		from: "\treadonly intent: string;\n\treadonly contract: {",
+		to: "\treadonly intent: any;\n\treadonly contract: {",
+	},
+	{
+		name: "contract.ref retyped to any",
+		file: "decorators.ts",
+		from: "\treadonly contract: {\n\t\treadonly ref: string;",
+		to: "\treadonly contract: {\n\t\treadonly ref: any;",
+	},
+	{
+		name: "the output retyped to any",
+		file: "decorators.ts",
+		from: OUTPUT,
+		to: "\treadonly output?: any;",
+	},
+	{
+		name: "the output's returns retyped to any",
+		file: "decorators.ts",
+		from: OUTPUT,
+		to: "\treadonly output?: { readonly returns: any };",
+	},
+	{
+		name: "params' values retyped to any",
+		file: "decorators.ts",
+		from: PARAMS,
+		to: "\treadonly params?: Record<string, any>;",
+	},
+	{
+		name: "contract.input's values retyped to any",
+		file: "decorators.ts",
+		from: INPUT,
+		to: "\t\treadonly input?: Readonly<Record<string, any>>;",
+	},
+	{
+		name: "contract.output retyped to any",
+		file: "decorators.ts",
+		from: CONTRACT_TAIL,
+		to: "\t\treadonly output?: any;\n\t};",
+	},
+	{
+		name: "a field description's description retyped to any",
+		file: "decorators.ts",
+		from: "export interface FieldDescription {\n\treadonly description: string;",
+		to: "export interface FieldDescription {\n\treadonly description: any;",
 	},
 	{
 		name: "a shape descriptor field that is not JSON",

@@ -11,7 +11,12 @@ import type {
 	SourceModelResource,
 } from "./engine.js";
 import { isPlainIdentifier, isReservedWord } from "./identifiers.js";
-import { emittedPath, projectPath, scannedSources } from "./source-files.js";
+import {
+	emittedPath,
+	preservesJsx,
+	projectPath,
+	scannedSources,
+} from "./source-files.js";
 import {
 	type CodegenArtifact,
 	CodegenArtifactSchema,
@@ -38,6 +43,8 @@ export interface DirectiveFunction {
 	readonly name: string;
 	/** Project-relative source file (posix separators). */
 	readonly file: string;
+	/** The project-relative file TypeScript emits it to, which the trainables module imports. */
+	readonly emitted: string;
 }
 
 /**
@@ -59,18 +66,23 @@ function directiveFunctionNames(source: string): readonly string[] {
 
 /**
  * Scan the layout's source dir for `"use training"`-marked exported
- * functions (deterministic file order; generated roots excluded).
+ * functions (deterministic file order; generated roots excluded), each with
+ * the file TypeScript emits it to. The project's `tsconfig.json` decides that
+ * for a `.tsx` file only, so it is read only once a `.tsx` file holds one.
  */
 export async function scanTrainableDirectives(
 	projectRoot: string,
 	layout: CodegenLayout,
 ): Promise<readonly DirectiveFunction[]> {
 	const found: DirectiveFunction[] = [];
-	for (const file of await scannedSources(projectRoot, layout)) {
-		const source = await readFile(file, "utf8");
-		for (const name of directiveFunctionNames(source)) {
-			found.push({ name, file: projectPath(projectRoot, file) });
-		}
+	let preserveJsx: boolean | undefined;
+	for (const path of await scannedSources(projectRoot, layout)) {
+		const names = directiveFunctionNames(await readFile(path, "utf8"));
+		if (names.length === 0) continue;
+		if (path.endsWith(".tsx")) preserveJsx ??= preservesJsx(projectRoot);
+		const file = projectPath(projectRoot, path);
+		const emitted = emittedPath(file, preserveJsx === true);
+		for (const name of names) found.push({ name, file, emitted });
 	}
 	return found;
 }
@@ -292,7 +304,7 @@ function toDirectiveEntry(
 
 	const fromDir = posix.dirname(layout.files.trainables);
 	const specifier = posix
-		.relative(fromDir, emittedPath(directive.file))
+		.relative(fromDir, directive.emitted)
 		.replace(/^(?!\.)/, "./");
 
 	return {

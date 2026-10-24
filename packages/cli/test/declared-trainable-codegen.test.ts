@@ -90,6 +90,10 @@ export declare class Clock {
 
 const CLASS_BODY = '{\n  greet(): string {\n    return "hi";\n  }\n}';
 
+// A bare "use training" function, for the tests of how trainables.ts imports it.
+const SCORE =
+	'export function score(input: string): string {\n  "use training";\n  return input;\n}\n';
+
 /**
  * Where ECMAScript's NamedEvaluation gives an anonymous class expression a
  * name, `Greeter` each time: a decorated `@trainable` class there registers
@@ -657,10 +661,7 @@ describe("ambient @trainable classes in hobo stub", () => {
 			["src/score.mts", "../score.mjs"],
 			["src/score.cts", "../score.cjs"],
 		]) {
-			await writeFile(
-				join(projectRoot, source),
-				'export function score(input: string): string {\n  "use training";\n  return input;\n}\n',
-			);
+			await writeFile(join(projectRoot, source), SCORE);
 			await runCodegen({ projectRoot, check: false });
 			const trainables = await readFile(
 				join(projectRoot, "src/_generated/trainables.ts"),
@@ -671,6 +672,76 @@ describe("ambient @trainable classes in hobo stub", () => {
 			);
 			await rm(join(projectRoot, source));
 		}
+	});
+
+	it("imports a .tsx source by the file the project's jsx option emits it to", async () => {
+		const source = join(projectRoot, "src/score.tsx");
+		const config = join(projectRoot, "tsconfig.json");
+		const trainables = join(projectRoot, "src/_generated/trainables.ts");
+		await writeFile(source, SCORE);
+		const emittedByJsx: readonly (readonly [jsx: string, emitted: string])[] = [
+			["preserve", "score.jsx"],
+			["react-jsx", "score.js"],
+			["react-native", "score.js"],
+			["react", "score.js"],
+		];
+		for (const [jsx, emitted] of emittedByJsx) {
+			await writeFile(config, JSON.stringify({ compilerOptions: { jsx } }));
+			await runCodegen({ projectRoot, check: false });
+			expect(await readFile(trainables, "utf8"), jsx).toContain(
+				`import { score } from "../${emitted}";`,
+			);
+			// TypeScript's own answers: the file tsc emits for the source, and
+			// the file the generated import resolves to.
+			const parsed = ts.getParsedCommandLineOfConfigFile(config, undefined, {
+				...ts.sys,
+				onUnRecoverableConfigFileDiagnostic: () => undefined,
+			});
+			expect(parsed, jsx).toBeDefined();
+			if (parsed === undefined) return;
+			expect(ts.getOutputFileNames(parsed, source, false), jsx).toEqual([
+				join(projectRoot, "src", emitted),
+			]);
+			expect(
+				ts.resolveModuleName(
+					`../${emitted}`,
+					trainables,
+					parsed.options,
+					ts.sys,
+				).resolvedModule?.resolvedFileName,
+				jsx,
+			).toBe(source);
+		}
+	});
+
+	it("reads jsx through the tsconfig's extends, and refuses a tsconfig it cannot read only for a .tsx source", async () => {
+		const config = join(projectRoot, "tsconfig.json");
+		const trainables = join(projectRoot, "src/_generated/trainables.ts");
+		await writeFile(
+			join(projectRoot, "tsconfig.base.json"),
+			JSON.stringify({ compilerOptions: { jsx: "preserve" } }),
+		);
+		await writeFile(
+			config,
+			JSON.stringify({ extends: "./tsconfig.base.json" }),
+		);
+		await writeFile(join(projectRoot, "src/score.tsx"), SCORE);
+		await runCodegen({ projectRoot, check: false });
+		expect(await readFile(trainables, "utf8")).toContain(
+			'import { score } from "../score.jsx";',
+		);
+
+		await writeFile(config, JSON.stringify({ extends: "./missing.json" }));
+		await expect(runCodegen({ projectRoot, check: false })).rejects.toThrow(
+			/^Cannot read tsconfig\.json, whose jsx option decides the file a \.tsx source is emitted to: TS\d+ .*missing\.json/,
+		);
+
+		await rm(join(projectRoot, "src/score.tsx"));
+		await writeFile(join(projectRoot, "src/score.ts"), SCORE);
+		await runCodegen({ projectRoot, check: false });
+		expect(await readFile(trainables, "utf8")).toContain(
+			'import { score } from "../score.js";',
+		);
 	});
 
 	it("refuses two ambient classes of one name", async () => {

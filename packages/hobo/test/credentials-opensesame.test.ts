@@ -15,6 +15,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createDefaultYardRuntime, selectIacProvider } from "../src/compose.js";
 import {
 	CREDENTIAL_BINDINGS_FILE,
+	CREDENTIALS_BESIDE_SURROGATE,
 	OPENSESAME_PASS_ENV,
 	OpenSesameCredentialsError,
 	type RelaunchInput,
@@ -311,6 +312,62 @@ describe("selectIacProvider under HOBO_CREDENTIALS=opensesame", () => {
 		expect(calls()).toBe(0);
 	});
 
+	it("refuses another provider's credential beside the surrogate, naming it and never its value", () => {
+		const surrogate = `osr_${"0123456789abcdef".repeat(2)}`;
+		// What a command that re-read an .env file held (C-1 of the #1593 review):
+		// with these, the Cloudflare lane was picked, outside OpenSesame.
+		const stray = {
+			CLOUDFLARE_API_TOKEN: "cf_dummy_marker_not_a_secret",
+			CLOUDFLARE_ACCOUNT_ID: "acct_dummy",
+		};
+		for (const marker of [
+			{ HOBO_OPENSESAME_CHILD: "1" },
+			{ HOBO_CREDENTIALS: "opensesame" },
+		]) {
+			let calls = 0;
+			let refusal: unknown;
+			try {
+				selectIacProvider({
+					...selectionDeps,
+					env: { ...marker, VERCEL_TOKEN: surrogate, ...stray },
+					cloudflareFetch: async () => {
+						calls += 1;
+						throw new Error("no request may be made in this test");
+					},
+				});
+			} catch (error) {
+				refusal = error;
+			}
+			expect(refusal).toBeInstanceOf(OpenSesameCredentialsError);
+			if (!(refusal instanceof OpenSesameCredentialsError)) continue;
+			expect(refusal.code).toBe("OPENSESAME_CREDENTIALS_BESIDE_SURROGATE");
+			expect(refusal.message).toContain("CLOUDFLARE_API_TOKEN");
+			expect(refusal.message).not.toContain(stray.CLOUDFLARE_API_TOKEN);
+			expect(calls).toBe(0);
+		}
+		// Every listed name is refused on its own; an empty or surrogate-shaped value is not a credential.
+		expect(CREDENTIALS_BESIDE_SURROGATE).toEqual(
+			expect.arrayContaining([
+				"CLOUDFLARE_API_TOKEN",
+				"AWS_ACCESS_KEY_ID",
+				"PULUMI_ACCESS_TOKEN",
+				"VERCEL_API_TOKEN",
+			]),
+		);
+		for (const name of CREDENTIALS_BESIDE_SURROGATE) {
+			const base = { HOBO_OPENSESAME_CHILD: "1", VERCEL_TOKEN: surrogate };
+			expect(() =>
+				requireOpenSesameSurrogate({ ...base, [name]: "real-looking" }),
+			).toThrow(name);
+			expect(() =>
+				requireOpenSesameSurrogate({ ...base, [name]: "" }),
+			).not.toThrow();
+			expect(() =>
+				requireOpenSesameSurrogate({ ...base, [name]: surrogate }),
+			).not.toThrow();
+		}
+	});
+
 	it("deploys on a surrogate", () => {
 		const provider = selectIacProvider({
 			...selectionDeps,
@@ -350,6 +407,26 @@ describe("the composed hobo under a placeholder", () => {
 		expect(() =>
 			createDefaultYardRuntime({ dataDir: join(work, "yard"), env }),
 		).toThrow(OpenSesameCredentialsError);
+	});
+
+	it("a command holding a stray provider credential is refused as one hobo: line, before any verb", async () => {
+		const sink = new PassThrough();
+		const seen: string[] = [];
+		sink.on("data", (chunk) => seen.push(String(chunk)));
+		const childEnv = {
+			HOBO_OPENSESAME_CHILD: "1",
+			VERCEL_TOKEN: `osr_${"0123456789abcdef".repeat(2)}`,
+			AWS_SECRET_ACCESS_KEY: "aws_dummy_marker_not_a_secret",
+		};
+		const status = await reportingCredentialRefusals(async () => {
+			createDefaultYardRuntime({ dataDir: join(work, "yard"), env: childEnv });
+			return 0;
+		}, sink);
+		expect(status).toBe(1);
+		expect(seen.join("")).toMatch(
+			/^hobo: OPENSESAME_CREDENTIALS_BESIDE_SURROGATE: .*AWS_SECRET_ACCESS_KEY.*\n$/u,
+		);
+		expect(seen.join("")).not.toContain(childEnv.AWS_SECRET_ACCESS_KEY);
 	});
 
 	it("reports the refusal as one hobo: line and status 1", async () => {

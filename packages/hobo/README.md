@@ -52,7 +52,10 @@ The relaunch gets only the Node options that read no environment or code from di
 (`src/relaunch-node-options.ts`): `node --env-file=.env hobo up` does not re-read
 `.env` in the run, and `--require`, any `--import` but hobo's own TypeScript loader,
 and `--inspect` are left out too, from the command line and from `NODE_OPTIONS`, and
-named on one `hobo:` line.
+named on one `hobo:` line. A relaunched process that still holds another provider's credential
+(`CLOUDFLARE_API_TOKEN`, `AWS_*`, `PULUMI_ACCESS_TOKEN`, … beside its surrogate) is
+refused with `OPENSESAME_CREDENTIALS_BESIDE_SURROGATE`, which names the variables and
+never their values.
 
 Related honesty elsewhere in this package:
 

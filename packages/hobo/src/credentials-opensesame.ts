@@ -33,6 +33,7 @@ import {
 	runProxied,
 	SURROGATE_PATTERN,
 } from "@hobo/adapter-opensesame";
+import { AMBIENT_CREDENTIAL_KEYS } from "@hobo/cloud";
 
 import { parseJsonValue } from "./json.js";
 import { nodeOptionsForRun } from "./relaunch-node-options.js";
@@ -59,11 +60,25 @@ export const OPENSESAME_PASS_ENV = [
 
 const surrogateRe = new RegExp(SURROGATE_PATTERN, "u");
 
+/**
+ * Credentials that may not sit beside the surrogate: every provider's that the
+ * executor already refuses as ambient (`AMBIENT_CREDENTIAL_KEYS`, @hobo/cloud),
+ * and Vercel's other conventional name. In a process whose credentials come from
+ * OpenSesame, one of them would pick a lane of its own (CLOUDFLARE_API_TOKEN
+ * selects Cloudflare ahead of Vercel) or be spent outside OpenSesame. The run's
+ * environment is built without them; one that is there came back some other way.
+ */
+export const CREDENTIALS_BESIDE_SURROGATE: readonly string[] = Object.freeze([
+	...AMBIENT_CREDENTIAL_KEYS,
+	"VERCEL_API_TOKEN",
+]);
+
 /** Where hobo's own `hobo:` lines and OpenSesame's stderr go. */
 type Stderr = NonNullable<RunInput["stderr"]>;
 
 export type OpenSesameCredentialsErrorCode =
 	| "OPENSESAME_PLACEHOLDERS_ONLY"
+	| "OPENSESAME_CREDENTIALS_BESIDE_SURROGATE"
 	| "OPENSESAME_BINDINGS_UNREADABLE";
 
 export class OpenSesameCredentialsError extends Error {
@@ -95,9 +110,11 @@ export function usesOpenSesameCredentials(env: NodeJS.ProcessEnv): boolean {
 }
 
 /**
- * Refuse to deploy on anything but a surrogate when credentials come from
- * OpenSesame. The value is never repeated: a plain token exported by mistake
- * would otherwise be printed.
+ * Refuse to deploy on anything but the run's surrogate when credentials come
+ * from OpenSesame: VERCEL_TOKEN must be one, and no other provider's credential
+ * may be beside it (CREDENTIALS_BESIDE_SURROGATE; a surrogate-shaped value is not
+ * one). Names are said, values never: a plain token exported by mistake would
+ * otherwise be printed.
  */
 export function requireOpenSesameSurrogate(env: NodeJS.ProcessEnv): void {
 	const token = env.VERCEL_TOKEN;
@@ -105,6 +122,16 @@ export function requireOpenSesameSurrogate(env: NodeJS.ProcessEnv): void {
 		throw new OpenSesameCredentialsError(
 			"OPENSESAME_PLACEHOLDERS_ONLY",
 			`credentials come from OpenSesame (HOBO_CREDENTIALS=${OPENSESAME_CREDENTIALS}, or a proxied run's command), but VERCEL_TOKEN holds ${token === undefined || token === "" ? "nothing" : "a placeholder or a plain token"}, not an OpenSesame surrogate: nothing was deployed. Run hobo under OpenSesame (it relaunches itself when HOBO_CREDENTIALS=${OPENSESAME_CREDENTIALS}) with the surrogate-proxy plugin installed and on, and the token sealed with \`opensesame pass insert\``,
+		);
+	}
+	const beside = CREDENTIALS_BESIDE_SURROGATE.filter((name) => {
+		const value = env[name];
+		return value !== undefined && value !== "" && !surrogateRe.test(value);
+	});
+	if (beside.length > 0) {
+		throw new OpenSesameCredentialsError(
+			"OPENSESAME_CREDENTIALS_BESIDE_SURROGATE",
+			`credentials come from OpenSesame (HOBO_CREDENTIALS=${OPENSESAME_CREDENTIALS}, or a proxied run's command), but this process also holds ${beside.join(", ")}: a credential beside the surrogate would be used outside OpenSesame, so nothing was deployed. Unset ${beside.length === 1 ? "it" : "them"} where hobo is started, or leave HOBO_CREDENTIALS unset to deploy with ${beside.length === 1 ? "it" : "them"}`,
 		);
 	}
 }

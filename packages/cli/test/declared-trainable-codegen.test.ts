@@ -4,9 +4,11 @@ import { fileURLToPath, pathToFileURL } from "node:url";
 import { serializeTrainingArtifactProgram } from "@hobo/core";
 import {
 	applyTrainingArtifact,
+	generateDeclaredRegistrations,
 	isTrainable,
 	listTrainables,
 	resetTrainables,
+	scanDeclaredTrainables,
 	type Trainable,
 } from "@hobo/runtime";
 import ts from "typescript";
@@ -124,6 +126,20 @@ describe("ambient @trainable classes in hobo stub", () => {
 		await expect(
 			access(join(projectRoot, "src/_generated/declared/Todos.ts")),
 		).rejects.toThrow();
+	});
+
+	it("writes the module @hobo/runtime's generateDeclaredRegistrations writes for the class", async () => {
+		await runCodegen({ projectRoot, check: false });
+		const written = await readFile(
+			join(projectRoot, "src/_generated/declared/Greeter.ts"),
+			"utf8",
+		);
+		const [declared] = scanDeclaredTrainables(AMBIENT);
+		expect(declared).toBeDefined();
+		if (declared === undefined) return;
+		expect(
+			generateDeclaredRegistrations(declared, { file: "src/greeter.ts" }),
+		).toBe(written);
 	});
 
 	it("compiles with declaration emit under the repository's base tsconfig", async () => {

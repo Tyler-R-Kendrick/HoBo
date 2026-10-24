@@ -11,8 +11,10 @@ import {
 	scanDeclaredTrainables,
 	type Trainable,
 } from "@hobo/runtime";
+import { scanDeclaredTrainables as groundingScan } from "ts-autocode-grounding";
 import ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { mayHoldMarkedClass } from "../src/codegen/ambient-trainables.js";
 import { createProjectCodegenEngine } from "../src/codegen/engine.js";
 import { writeFixtureProject } from "../src/codegen/fixture.js";
 import { runCodegen } from "../src/codegen/run-codegen.js";
@@ -85,6 +87,44 @@ export declare class Clock {
   now(zone: string): string;
 }
 `;
+
+describe("the marker prefilter", () => {
+	const ambient = (decorator: string) =>
+		`${decorator}\nexport declare class Esc {\n  run(): string;\n}\n`;
+
+	it("passes every file grounding's scanner finds a marked class in, escaped spellings included", () => {
+		for (const decorator of [
+			"@trainable",
+			"@component({ intent: 'x' })",
+			"@ trainable",
+			"@/* note */ trainable",
+			"@\\u0074rainable",
+			"@\\u{74}rainable",
+			"@tr\\u0061inable",
+			"@\\u0063omponent",
+			"@\\u{0063}omponent()",
+		]) {
+			const source = ambient(decorator);
+			expect(groundingScan(source).length, decorator).toBe(1);
+			expect(mayHoldMarkedClass(source), decorator).toBe(true);
+		}
+	});
+
+	it("skips a file that only names a marker without decorating with it", () => {
+		for (const prefix of [
+			"const component = 1;",
+			"import { trainable } from '@hobo/runtime';",
+			"@trainables",
+			"@trainable_x",
+			"@\\u0074rainableX",
+			"@(trainable)",
+		]) {
+			const source = ambient(prefix);
+			expect(groundingScan(source).length, prefix).toBe(0);
+			expect(mayHoldMarkedClass(source), prefix).toBe(false);
+		}
+	});
+});
 
 describe("ambient @trainable classes in hobo stub", () => {
 	let projectRoot: string;
@@ -267,6 +307,19 @@ describe("ambient @trainable classes in hobo stub", () => {
 			'export { unread as inboxUnread } from "./declared/Inbox.js";',
 		);
 		expect(trainables).not.toContain("Outbox");
+	});
+
+	it("writes registrations for an ambient class whose marker is spelled with an escape", async () => {
+		await writeFile(
+			join(projectRoot, "src/esc.ts"),
+			"@\\u0074rainable\nexport declare class Esc {\n  run(): string;\n}\n",
+		);
+		await runCodegen({ projectRoot, check: false });
+		const declared = await readFile(
+			join(projectRoot, "src/_generated/declared/Esc.ts"),
+			"utf8",
+		);
+		expect(declared).toContain("export const run = defineGrounding(");
 	});
 
 	it("leaves a decorated class with overloads alone, in its own file or beside an ambient class", async () => {

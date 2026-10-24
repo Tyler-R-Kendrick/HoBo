@@ -39,8 +39,41 @@ const MARKERS = new Set(["trainable", "component"]);
  */
 const WINDOWS_DEVICE =
 	/^(?:con|prn|aux|nul|com[0-9]|lpt[0-9]|conin\$|conout\$)$/iu;
-/** A file that never names a marker holds no marked class, so it is not parsed. */
-const MARKER_NAME = /\b(?:trainable|component)\b/u;
+/**
+ * One character of an identifier as source may spell it: itself, or a
+ * unicode escape for it (`\u0074`, `\u{74}`), hex digits in either case.
+ * TypeScript reads both as the same identifier, and so does the scanner.
+ */
+function spelled(char: string): string {
+	const hex = (char.codePointAt(0) ?? 0).toString(16);
+	const digits = [...hex]
+		.map((digit) =>
+			/[a-f]/u.test(digit) ? `[${digit}${digit.toUpperCase()}]` : digit,
+		)
+		.join("");
+	return `(?:${char}|\\\\u${"0".repeat(4 - hex.length)}${digits}|\\\\u\\{0*${digits}\\})`;
+}
+
+/**
+ * `@`, then whitespace or comments, then a marker's name as an identifier
+ * that ends there: what the scanner marks a class by (a decorator whose
+ * expression, or whose call's callee, is that identifier), widened only by
+ * not knowing whether the text is code, a comment or a string.
+ */
+const MARKER_DECORATOR = new RegExp(
+	`@(?:\\s|\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*(?:\\n|$))*(?:${[...MARKERS]
+		.map((marker) => [...marker].map(spelled).join(""))
+		.join("|")})(?![\\p{ID_Continue}$\\u200C\\u200D\\\\])`,
+	"u",
+);
+
+/**
+ * Whether a source file may hold a class with a marker decorator, and so is
+ * parsed: true for every file in which the scanner would find one.
+ */
+export function mayHoldMarkedClass(source: string): boolean {
+	return MARKER_DECORATOR.test(source);
+}
 
 function isMarked(node: ts.ClassDeclaration | ts.ClassExpression): boolean {
 	return (
@@ -194,7 +227,7 @@ export async function scanAmbientTrainableClasses(
 	const decorated = new Map<string, string>();
 	for (const path of await scannedSources(projectRoot, layout)) {
 		const source = await readFile(path, "utf8");
-		if (!MARKER_NAME.test(source)) continue;
+		if (!mayHoldMarkedClass(source)) continue;
 		const file = projectPath(projectRoot, path);
 		for (const marked of markedClasses(source)) {
 			if (!marked.ambient) {

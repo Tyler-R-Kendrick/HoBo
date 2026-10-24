@@ -178,7 +178,16 @@ type StringKeyed<T> = [SymbolFree<T>] extends [true] ? T : never;
  * A cast here would let that drift through, and `training()` would then
  * register the method under its function name, with no intent, or without the
  * added field. What the check reads is the types: a property grounding sets
- * on a value without declaring it in its type is not seen.
+ * on a value without declaring it in its type is not seen. A shape whose type
+ * alias refers to itself is read once, but a shape field typed by an
+ * interface (as one where upstream's `ShapeDescriptor` refers to itself would
+ * be) and a `readonly` array field fail to compile, since `JsonObject` takes
+ * neither (an interface has no index signature, and `JsonValue`'s arrays are
+ * mutable), so a bump that brings one fails closed; a field description typed
+ * as a union with a member that has no `example` compiles, and that member is
+ * copied with none; and an array is read only through its elements, so a
+ * symbol key on the array type itself
+ * (`tags?: string[] & { [GROUNDED]: string }`) compiles, unseen.
  */
 function trainingOptionsOf(options: GroundingOptions): RegisteredOptions {
 	const { methodRef, intent, contract, params, output, ...uncopied } = options;

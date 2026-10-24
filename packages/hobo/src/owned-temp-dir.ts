@@ -31,14 +31,8 @@ const ENDING_SIGNALS: readonly NodeJS.Signals[] = [
 export interface DirOwner {
 	readonly pid: number;
 	on(event: "exit", listener: () => void): void;
-	on(
-		event: NodeJS.Signals,
-		listener: (signal: NodeJS.Signals) => void,
-	): void;
-	off(
-		event: NodeJS.Signals,
-		listener: (signal: NodeJS.Signals) => void,
-	): void;
+	on(event: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void): void;
+	off(event: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void): void;
 	listenerCount(event: NodeJS.Signals): number;
 	kill(pid: number, signal: NodeJS.Signals): void;
 }

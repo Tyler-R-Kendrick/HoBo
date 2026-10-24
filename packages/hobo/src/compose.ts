@@ -113,6 +113,7 @@ import { REGISTRY_STREAM } from "./add-command.js";
 import type { CloudflareFetch } from "./cloudflare-client.js";
 import { createCloudflareDeployProvider } from "./cloudflare-deploy-provider.js";
 import {
+	refuseUnbrokeredLane,
 	requireOpenSesameSurrogate,
 	usesOpenSesameCredentials,
 } from "./credentials-opensesame.js";
@@ -296,6 +297,9 @@ export function selectPulumiEstateAdapter(
 		return deps.adapter;
 	}
 	if (env.HOBO_PULUMI_LIVE === "1") {
+		// Under OpenSesame (ADR-0170) the live lane is refused: its engine would
+		// authenticate with credentials found outside OpenSesame.
+		refuseUnbrokeredLane(env);
 		return memoizedPulumiAdapter(deps.store, "live", () => {
 			const workDir =
 				env.HOBO_PULUMI_WORKDIR ??
@@ -498,7 +502,10 @@ function resolverBackedProviderFor(
 // OPENSESAME_PLACEHOLDERS_ONLY unless `VERCEL_TOKEN` is an OpenSesame surrogate
 // (`osr_` + 32 hex): a proxied run whose plugin is missing or off exits 0 with a
 // placeholder, and against an emulator that accepts any token that would deploy
-// "successfully" on nothing (ADR-0170). With neither set, nothing here changes.
+// "successfully" on nothing (ADR-0170). It also refuses another provider's
+// credential beside the surrogate, and selectPulumiEstateAdapter refuses the
+// live Pulumi lane (OPENSESAME_LANE_NOT_BROKERED). With neither set, nothing
+// here changes.
 export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 	const env = deps.env ?? process.env;
 	if (usesOpenSesameCredentials(env)) requireOpenSesameSurrogate(env);

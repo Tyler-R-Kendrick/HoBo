@@ -70,7 +70,9 @@ and `--inspect` are left out too, from the command line and from `NODE_OPTIONS`,
 named on one `hobo:` line. A relaunched process that still holds another provider's credential
 (`CLOUDFLARE_API_TOKEN`, `AWS_*`, `PULUMI_ACCESS_TOKEN`, … beside its surrogate) is
 refused with `OPENSESAME_CREDENTIALS_BESIDE_SURROGATE`, which names the variables and
-never their values.
+never their values. `HOBO_PULUMI_LIVE=1` is refused there too
+(`OPENSESAME_LANE_NOT_BROKERED`): the live Pulumi engine authenticates with credentials
+found outside OpenSesame, which only brokers Vercel's token.
 
 Related honesty elsewhere in this package:
 

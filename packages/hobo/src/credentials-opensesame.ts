@@ -86,7 +86,8 @@ export type OpenSesameCredentialsErrorCode =
 	| "OPENSESAME_PLACEHOLDERS_ONLY"
 	| "OPENSESAME_CREDENTIALS_BESIDE_SURROGATE"
 	| "OPENSESAME_BINDINGS_UNREADABLE"
-	| "OPENSESAME_NOT_RELAUNCHED";
+	| "OPENSESAME_NOT_RELAUNCHED"
+	| "OPENSESAME_LANE_NOT_BROKERED";
 
 export class OpenSesameCredentialsError extends Error {
 	readonly code: OpenSesameCredentialsErrorCode;
@@ -189,6 +190,23 @@ export function requireOpenSesameSurrogate(env: NodeJS.ProcessEnv): void {
 			`credentials come from OpenSesame (HOBO_CREDENTIALS=${OPENSESAME_CREDENTIALS}, or a proxied run's command), but this process also holds ${beside.join(", ")}: a credential beside the surrogate would be used outside OpenSesame, so nothing was deployed. Unset ${beside.length === 1 ? "it" : "them"} where hobo is started, or leave HOBO_CREDENTIALS unset to deploy with ${beside.length === 1 ? "it" : "them"}`,
 		);
 	}
+}
+
+/**
+ * Refuse the live Pulumi lane when credentials come from OpenSesame. Its engine
+ * authenticates in process with whatever Pulumi and cloud credentials it finds
+ * (PULUMI_ACCESS_TOKEN, an AWS profile, a config passphrase), which a surrogate
+ * swapped at the proxy cannot stand for: OpenSesame brokers Vercel's bearer
+ * token only (ADR-0170 decision 4, the reason AWS is `provider_not_brokered`).
+ * There is no relaunch credential path to take it through, so a proxied run that
+ * selects it is refused, with the variable named, before the lane is built.
+ */
+export function refuseUnbrokeredLane(env: NodeJS.ProcessEnv): void {
+	if (!usesOpenSesameCredentials(env)) return;
+	throw new OpenSesameCredentialsError(
+		"OPENSESAME_LANE_NOT_BROKERED",
+		`credentials come from OpenSesame (HOBO_CREDENTIALS=${OPENSESAME_CREDENTIALS}, or a proxied run's command), but HOBO_PULUMI_LIVE selects the live Pulumi lane, which OpenSesame does not broker: it would deploy with whatever credentials Pulumi finds outside OpenSesame, so nothing was deployed. Unset HOBO_PULUMI_LIVE, or leave HOBO_CREDENTIALS unset to use the live lane`,
+	);
 }
 
 /**

@@ -18,7 +18,11 @@ import {
 	type IacProgramDocument,
 } from "@hobo/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { createDefaultYardRuntime, selectIacProvider } from "../src/compose.js";
+import {
+	createDefaultYardRuntime,
+	selectIacProvider,
+	selectPulumiEstateAdapter,
+} from "../src/compose.js";
 import {
 	CREDENTIAL_BINDINGS_FILE,
 	CREDENTIALS_BESIDE_SURROGATE,
@@ -535,6 +539,43 @@ describe("selectIacProvider under HOBO_CREDENTIALS=opensesame", () => {
 				requireOpenSesameSurrogate({ ...base, [name]: surrogate }),
 			).not.toThrow();
 		}
+	});
+
+	it("refuses the live Pulumi lane, which OpenSesame does not broker, naming the variable", () => {
+		const surrogate = `osr_${"0123456789abcdef".repeat(2)}`;
+		const live = {
+			HOBO_PULUMI_LIVE: "1",
+			// Kept inside this test's directory, and a pulumi that is not there: nothing is run.
+			HOBO_PULUMI_WORKDIR: join(work, "pulumi"),
+			HOBO_PULUMI_BIN: join(work, "no-pulumi"),
+		};
+		for (const marker of [
+			{ HOBO_OPENSESAME_CHILD: "1" },
+			{ HOBO_CREDENTIALS: "opensesame" },
+		]) {
+			const env = { ...marker, VERCEL_TOKEN: surrogate, ...live };
+			for (const select of [
+				() => selectIacProvider({ ...selectionDeps, env }),
+				// drift and import reach the lane through the estate seam alone.
+				() => selectPulumiEstateAdapter({ store: selectionDeps.store, env }),
+			]) {
+				let refusal: unknown;
+				try {
+					select();
+				} catch (error) {
+					refusal = error;
+				}
+				expect(refusal).toBeInstanceOf(OpenSesameCredentialsError);
+				if (!(refusal instanceof OpenSesameCredentialsError)) continue;
+				expect(refusal.code).toBe("OPENSESAME_LANE_NOT_BROKERED");
+				expect(refusal.message).toContain("HOBO_PULUMI_LIVE");
+				expect(refusal.message).not.toContain(live.HOBO_PULUMI_WORKDIR);
+			}
+		}
+		// Outside OpenSesame the live lane is chosen as before.
+		expect(selectIacProvider({ ...selectionDeps, env: live }).id).toMatch(
+			/^pulumi-backed:/u,
+		);
 	});
 
 	it("deploys on a surrogate", () => {

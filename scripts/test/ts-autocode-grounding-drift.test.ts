@@ -5,10 +5,11 @@
  * (`GroundingOptions`) as its own `TrainingOptions`, and hands grounding the
  * decorator metadata it reads (packages/runtime/src/training/granular.ts). A
  * pin bump can rename one of those fields, make a required one optional,
- * retype it, or retype the metadata parameter. Each must stop granular.ts
- * compiling: a cast that lets it through registers a trainable whose identity
- * silently falls back to the function's own name, or whose intent is
- * undefined. This test compiles granular.ts with the runtime package's own
+ * retype it, add one (keyed by a name or by a symbol), or retype the metadata
+ * parameter. Each must stop granular.ts compiling: a cast that lets it through
+ * registers a trainable whose identity silently falls back to the function's
+ * own name, whose intent is undefined, or without the added field. This test
+ * compiles granular.ts with the runtime package's own
  * compiler options against the pinned grounding source, as it is and then with
  * each such change made in memory, and expects every changed compile to fail
  * in granular.ts. It needs the submodule checked out
@@ -33,6 +34,8 @@ interface Drift {
 	/** Text that occurs exactly once in that file at the pin. */
 	readonly from: string;
 	readonly to: string;
+	/** Text put at the head of the file with the change, such as a declaration it uses. */
+	readonly preamble?: string;
 }
 
 const OPTIONS_HEAD = "export interface GroundingOptions {\n";
@@ -41,6 +44,8 @@ const OPTIONS_TAIL =
 	"\treadonly output?: { readonly returns: FieldDescription };\n}";
 const CONTRACT_TAIL = "\t\treadonly output?: ShapeDescriptor;\n\t};";
 const FIELD_TAIL = "\treadonly example?: unknown;\n}";
+/** A symbol a drift keys a field by, as upstream would declare one. */
+const SYMBOL_KEY = "export declare const GROUNDED: unique symbol;\n";
 
 const DRIFTS: readonly Drift[] = [
 	{
@@ -126,6 +131,40 @@ const DRIFTS: readonly Drift[] = [
 		file: "decorators.ts",
 		from: FIELD_TAIL,
 		to: FIELD_TAIL.replace("\n}", "\n\treadonly unit?: string;\n}"),
+	},
+	{
+		name: "a symbol-keyed field is added to the options",
+		file: "decorators.ts",
+		preamble: SYMBOL_KEY,
+		from: OPTIONS_TAIL,
+		to: OPTIONS_TAIL.replace(
+			"\n}",
+			"\n\treadonly [GROUNDED]: { readonly rubric: number };\n}",
+		),
+	},
+	{
+		name: "a symbol-keyed field is added to the contract",
+		file: "decorators.ts",
+		preamble: SYMBOL_KEY,
+		from: CONTRACT_TAIL,
+		to: CONTRACT_TAIL.replace(
+			"\n\t};",
+			"\n\t\treadonly [GROUNDED]: readonly string[];\n\t};",
+		),
+	},
+	{
+		name: "a symbol-keyed field is added to a field description",
+		file: "decorators.ts",
+		preamble: SYMBOL_KEY,
+		from: FIELD_TAIL,
+		to: FIELD_TAIL.replace("\n}", "\n\treadonly [GROUNDED]?: string;\n}"),
+	},
+	{
+		name: "a symbol-keyed field is added to a shape descriptor",
+		file: "decorators.ts",
+		preamble: SYMBOL_KEY,
+		from: `${DESCRIPTOR_HEAD}\treadonly type: string;`,
+		to: `${DESCRIPTOR_HEAD}\treadonly type: string;\n\treadonly [GROUNDED]: string;`,
 	},
 	{
 		name: "granularOptionsFor's metadata parameter retyped",
@@ -237,7 +276,10 @@ describe("ts-autocode grounding drift", () => {
 			);
 			const { messages } = granularDiagnostics(
 				options,
-				{ file: drift.file, text: text.replace(drift.from, drift.to) },
+				{
+					file: drift.file,
+					text: (drift.preamble ?? "") + text.replace(drift.from, drift.to),
+				},
 				pinned.program,
 			);
 			assert.notDeepEqual(

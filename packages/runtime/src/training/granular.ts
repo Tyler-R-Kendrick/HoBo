@@ -92,18 +92,21 @@ interface AssembledOptions {
 
 /**
  * What destructuring a grounding value leaves once every field it carries has
- * been named: nothing. A field upstream adds lands in the rest, which then no
- * longer satisfies this, so it cannot be dropped without a compile error.
+ * been named: nothing. A field upstream adds, keyed by a name or by a symbol,
+ * lands in the rest, which then no longer satisfies this, so it cannot be
+ * dropped without a compile error. (`Record<string, never>` would constrain
+ * only string keys, and let a symbol-keyed field through.)
  */
-type NothingLeft = Readonly<Record<string, never>>;
+type NothingLeft = Readonly<Record<PropertyKey, never>>;
 
 /**
  * ts-autocode-grounding composes HoBo's TrainingOptions; copy them field by
  * field. Each field is named, and assigned where TrainingOptions (and the
  * registry's required `methodRef`) types it, with no assertion; what is not
- * named must be nothing. So a ts-autocode bump that renames a field, adds one,
- * makes `methodRef` or `intent` optional, retypes one, or gives a declared
- * type a field that is not JSON stops this compiling
+ * named must be nothing. So a ts-autocode bump that renames a field, adds one
+ * (keyed by a name or a symbol), makes `methodRef` or `intent` optional,
+ * retypes one, or gives a declared type a field that is not JSON (a symbol key
+ * included) stops this compiling
  * (scripts/test/ts-autocode-grounding-drift.test.ts). A cast here would let
  * that drift through, and `training()` would then register the method under
  * its function name, with no intent, or without the added field.
@@ -134,8 +137,18 @@ function trainingOptionsOf(options: GroundingOptions): RegisteredOptions {
 	return registered;
 }
 
+/**
+ * A declared type, provided no key of it is a symbol, else `never`. JSON has
+ * no symbol keys, and the spread in declaredJson would carry a symbol-keyed
+ * field past its JsonObject return type unchecked (an object's symbol-keyed
+ * fields are not compared with a string index signature). So a symbol-keyed
+ * field upstream adds to a shape turns declaredJson's parameter into `never`,
+ * and its callers stop compiling.
+ */
+type StringKeyed<T> = [Extract<keyof T, symbol>] extends [never] ? T : never;
+
 /** A declared type as JSON: its own fields, each of which must be JSON. */
-function declaredJson(declared: Declared): JsonObject {
+function declaredJson(declared: StringKeyed<Declared>): JsonObject {
 	return { ...declared };
 }
 

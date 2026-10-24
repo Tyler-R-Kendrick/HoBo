@@ -4,7 +4,6 @@ import {
 	type FieldDescription as GroundingField,
 	type GroundingOptions,
 	granularOptionsFor as groundingOptionsFor,
-	type ShapeDescriptor,
 } from "ts-autocode-grounding";
 import { cloneAsJson, type JsonObject, type JsonValue } from "../json.js";
 import { getTrainable, resolveTrainable, training } from "./training.js";
@@ -69,52 +68,72 @@ export function granularOptionsFor(
 	);
 }
 
+/** A declared parameter or output type on a grounding contract. */
+type Declared = NonNullable<GroundingOptions["contract"]["output"]>;
+
+/** What the registry registers: TrainingOptions with the methodRef it requires. */
+type RegisteredOptions = TrainingOptions & { readonly methodRef: string };
+
+/** A TrainingContract as trainingOptionsOf assembles it, one field at a time. */
+interface AssembledContract {
+	ref: string;
+	input?: JsonValue;
+	output?: JsonValue;
+}
+
+/** RegisteredOptions as trainingOptionsOf assembles them, one field at a time. */
+interface AssembledOptions {
+	methodRef: string;
+	intent: string;
+	contract: AssembledContract;
+	params?: Readonly<Record<string, FieldDescription>>;
+	output?: Readonly<Record<string, FieldDescription>>;
+}
+
 /**
  * ts-autocode-grounding composes HoBo's TrainingOptions; copy them field by
  * field. Each field is read by name and assigned where TrainingOptions (and
  * the registry's required `methodRef`) types it, with no assertion, so a
  * ts-autocode bump that renames a field, makes `methodRef` or `intent`
- * optional, retypes one, or gives a shape a field that is not JSON stops this
- * compiling (scripts/test/ts-autocode-grounding-drift.test.ts). A cast here
- * would let that drift through, and `training()` would then register the
- * method under its function name or with no intent.
+ * optional, retypes one, or gives a declared type a field that is not JSON
+ * stops this compiling (scripts/test/ts-autocode-grounding-drift.test.ts). A
+ * cast here would let that drift through, and `training()` would then register
+ * the method under its function name or with no intent.
  */
-function trainingOptionsOf(
-	options: GroundingOptions,
-): TrainingOptions & { readonly methodRef: string } {
+function trainingOptionsOf(options: GroundingOptions): RegisteredOptions {
 	const { contract } = options;
-	return {
+	const trainingContract: AssembledContract = { ref: contract.ref };
+	if (contract.input !== undefined) {
+		trainingContract.input = declaredJsonByName(contract.input);
+	}
+	if (contract.output !== undefined) {
+		trainingContract.output = declaredJson(contract.output);
+	}
+	const registered: AssembledOptions = {
 		methodRef: options.methodRef,
 		intent: options.intent,
-		contract: {
-			ref: contract.ref,
-			...(contract.input === undefined
-				? {}
-				: { input: shapesJson(contract.input) }),
-			...(contract.output === undefined
-				? {}
-				: { output: shapeJson(contract.output) }),
-		},
-		...(options.params === undefined
-			? {}
-			: { params: fieldsOf(options.params) }),
-		...(options.output === undefined
-			? {}
-			: { output: fieldsOf(options.output) }),
+		contract: trainingContract,
 	};
+	if (options.params !== undefined) {
+		registered.params = fieldsOf(options.params);
+	}
+	if (options.output !== undefined) {
+		registered.output = fieldsOf(options.output);
+	}
+	return registered;
 }
 
-/** A declared shape as JSON: its own fields, each of which must be JSON. */
-function shapeJson(shape: ShapeDescriptor): JsonObject {
-	return { ...shape };
+/** A declared type as JSON: its own fields, each of which must be JSON. */
+function declaredJson(declared: Declared): JsonObject {
+	return { ...declared };
 }
 
-function shapesJson(
-	shapes: Readonly<Record<string, ShapeDescriptor>>,
+function declaredJsonByName(
+	byName: Readonly<Record<string, Declared>>,
 ): JsonObject {
 	const json: Record<string, JsonValue> = {};
-	for (const [name, shape] of Object.entries(shapes)) {
-		json[name] = shapeJson(shape);
+	for (const [name, declared] of Object.entries(byName)) {
+		json[name] = declaredJson(declared);
 	}
 	return json;
 }
@@ -123,9 +142,7 @@ function shapesJson(
  * Grounding types a field's example as `unknown`; the manifest lowers it with
  * `JSON.stringify` (training.ts), so it crosses here as that JSON value.
  */
-function fieldsOf(
-	fields: Readonly<Record<string, GroundingField>>,
-): Readonly<Record<string, FieldDescription>> {
+function fieldsOf(fields: Readonly<Record<string, GroundingField>>) {
 	const described: Record<string, FieldDescription> = {};
 	for (const [name, field] of Object.entries(fields)) {
 		described[name] =

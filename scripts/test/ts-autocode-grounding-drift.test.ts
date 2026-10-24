@@ -36,7 +36,7 @@ interface Drift {
 }
 
 const OPTIONS_HEAD = "export interface GroundingOptions {\n";
-const SHAPE_HEAD = "export interface ShapeDescriptor {\n";
+const DESCRIPTOR_HEAD = "export interface ShapeDescriptor {\n";
 
 const DRIFTS: readonly Drift[] = [
 	{
@@ -78,8 +78,8 @@ const DRIFTS: readonly Drift[] = [
 	{
 		name: "a shape descriptor field that is not JSON",
 		file: "decorators.ts",
-		from: `${SHAPE_HEAD}\treadonly type: string;`,
-		to: `${SHAPE_HEAD}\treadonly type: string;\n\treadonly validate: (value: unknown) => boolean;`,
+		from: `${DESCRIPTOR_HEAD}\treadonly type: string;`,
+		to: `${DESCRIPTOR_HEAD}\treadonly type: string;\n\treadonly validate: (value: unknown) => boolean;`,
 	},
 	{
 		name: "granularOptionsFor's metadata parameter retyped",
@@ -126,12 +126,18 @@ function runtimeOptions(): ts.CompilerOptions {
 	};
 }
 
+interface Compiled {
+	/** granular.ts's diagnostics, one line each. */
+	readonly messages: readonly string[];
+	readonly program: ts.Program;
+}
+
 /** granular.ts's diagnostics, with grounding's `src/<file>` replaced by `text` when given. */
 function granularDiagnostics(
 	options: ts.CompilerOptions,
 	replaced?: { readonly file: string; readonly text: string },
 	oldProgram?: ts.Program,
-): { readonly messages: readonly string[]; readonly program: ts.Program } {
+): Compiled {
 	const host = ts.createCompilerHost(options, true);
 	if (replaced !== undefined) {
 		const target = join(GROUNDING, replaced.file);
@@ -144,12 +150,7 @@ function granularDiagnostics(
 		host.readFile = (fileName) =>
 			resolve(fileName) === target ? replaced.text : readFile(fileName);
 	}
-	const program = ts.createProgram({
-		rootNames: [GRANULAR],
-		options,
-		host,
-		...(oldProgram === undefined ? {} : { oldProgram }),
-	});
+	const program = ts.createProgram([GRANULAR], options, host, oldProgram);
 	const source = program.getSourceFile(GRANULAR);
 	assert.ok(source, "granular.ts is part of the program");
 	const messages = [

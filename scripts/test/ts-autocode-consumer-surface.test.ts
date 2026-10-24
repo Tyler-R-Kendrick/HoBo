@@ -495,7 +495,7 @@ describe("the export table", () => {
 				"export const camel = 1;",
 				"export function kebab() { return 2; }",
 			]);
-			write("shapes.ts", ["export const square = 4;"]);
+			write("figures.ts", ["export const square = 4;"]);
 			write("values.ts", [
 				"export const value = 3;",
 				"export const aliased = 5;",
@@ -503,7 +503,7 @@ describe("the export table", () => {
 			]);
 			write("index.ts", [
 				'export type * from "./text.js";',
-				'export type * as shapes from "./shapes.js";',
+				'export type * as figures from "./figures.js";',
 				'export { value } from "./values.js";',
 				'export { type aliased } from "./values.js";',
 				'export type { listed } from "./values.js";',
@@ -514,7 +514,7 @@ describe("the export table", () => {
 				{
 					camel: false,
 					kebab: false,
-					shapes: false,
+					figures: false,
 					value: true,
 					aliased: false,
 					listed: false,

@@ -10,8 +10,10 @@ import {
 	type Trainable,
 } from "@hobo/runtime";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { createProjectCodegenEngine } from "../src/codegen/engine.js";
 import { writeFixtureProject } from "../src/codegen/fixture.js";
 import { runCodegen } from "../src/codegen/run-codegen.js";
+import { defaultCodegenLayout } from "../src/codegen/types.js";
 import { createHoboCli } from "../src/index.js";
 
 // Plan 2 Syntax 0 through `hobo stub` (ADR-0128): an ambient
@@ -259,6 +261,35 @@ describe("ambient @trainable classes in hobo stub", () => {
 		expect(envelope.message).toMatch(
 			/Ambient @trainable class Todos in src\/todos-declared\.ts shares its name with the decorated @trainable class in src\/todos\.ts/,
 		);
+	});
+
+	it("rebases a relative runtime module onto the declared module's directory", async () => {
+		// declared/<Class>.ts sits one directory below trainables.ts.
+		for (const [runtimeModule, fromDeclared] of [
+			["./runtime.js", "../runtime.js"],
+			["../lib/runtime.js", "../../lib/runtime.js"],
+			["@acme/runtime", "@acme/runtime"],
+		]) {
+			const base = defaultCodegenLayout();
+			const engine = createProjectCodegenEngine({
+				layout: { ...base, imports: { ...base.imports, runtimeModule } },
+			});
+			await runCodegen({ projectRoot, check: false }, { engine });
+			const trainables = await readFile(
+				join(projectRoot, "src/_generated/trainables.ts"),
+				"utf8",
+			);
+			expect(trainables).toContain(
+				`import { training } from "${runtimeModule}";`,
+			);
+			const declared = await readFile(
+				join(projectRoot, "src/_generated/declared/Greeter.ts"),
+				"utf8",
+			);
+			expect(declared, runtimeModule).toContain(
+				`import { defineGrounding } from "${fromDeclared}";`,
+			);
+		}
 	});
 
 	it("refuses two ambient classes of one name", async () => {

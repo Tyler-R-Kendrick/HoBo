@@ -107,18 +107,24 @@ function declarationBindings(
 }
 
 /**
- * What a dynamic `import("…")` takes: the member read off it
+ * What a dynamic `import("…")` takes: the member read off the awaited module
  * (`(await import("x")).name`) or destructured from it
  * (`const { name } = await import("x")`); any other use takes the module.
+ * Without an `await` the value is the promise, so `import("x").then(…)` reads
+ * no member of the module, and a `...rest` element takes what is left of it.
  */
 function dynamicBindings(call: ts.CallExpression): Binding[] {
+	const whole: Binding[] = [{ name: "*", typeOnly: false }];
 	let node: ts.Node = call;
+	let awaited = false;
 	while (
 		ts.isParenthesizedExpression(node.parent) ||
 		ts.isAwaitExpression(node.parent)
 	) {
+		awaited ||= ts.isAwaitExpression(node.parent);
 		node = node.parent;
 	}
+	if (!awaited) return whole;
 	const parent = node.parent;
 	if (ts.isPropertyAccessExpression(parent) && parent.expression === node)
 		return [{ name: parent.name.text, typeOnly: false }];
@@ -130,12 +136,16 @@ function dynamicBindings(call: ts.CallExpression): Binding[] {
 		return parent.name.elements.map((element) => {
 			const key = element.propertyName ?? element.name;
 			return {
-				name: ts.isIdentifier(key) || ts.isStringLiteral(key) ? key.text : "*",
+				name:
+					element.dotDotDotToken === undefined &&
+					(ts.isIdentifier(key) || ts.isStringLiteral(key))
+						? key.text
+						: "*",
 				typeOnly: false,
 			};
 		});
 	}
-	return [{ name: "*", typeOnly: false }];
+	return whole;
 }
 
 /** `import("x").Name` names a type, `typeof import("x").name` a value. */
@@ -183,13 +193,12 @@ function referenceOf(
 
 /** Every binding one file takes from a ts-autocode module, at any depth. */
 function importsOf(path: string): ImportedName[] {
-	const source = ts.createSourceFile(
-		path,
-		readFileSync(path, "utf8"),
-		ts.ScriptTarget.Latest,
-		true,
-	);
-	const file = relative(root, path);
+	return importsIn(readFileSync(path, "utf8"), relative(root, path));
+}
+
+/** Every binding a source text takes from a ts-autocode module; `file` names it in messages. */
+function importsIn(text: string, file: string): ImportedName[] {
+	const source = ts.createSourceFile(file, text, ts.ScriptTarget.Latest, true);
 	const found: ImportedName[] = [];
 	const visit = (node: ts.Node): void => {
 		const reference = referenceOf(node);
@@ -352,6 +361,48 @@ function packageClosure(
 	}
 	return neededBy;
 }
+
+describe("the reference scan", () => {
+	const names = (text: string) =>
+		importsIn(text, "probe.ts").map((imported) => imported.name);
+
+	it("reads a member off an awaited import, and a destructured one", () => {
+		assert.deepEqual(
+			names(
+				'const x = (await import("ts-autocode-training")).discoverInSource;',
+			),
+			["discoverInSource"],
+		);
+		assert.deepEqual(
+			names(
+				'const { discoverInSource } = await import("ts-autocode-training");',
+			),
+			["discoverInSource"],
+		);
+	});
+
+	it("takes the whole module when the promise itself is read", () => {
+		assert.deepEqual(
+			names(
+				'export function f() { return import("ts-autocode-training").then((m) => m.nope); }',
+			),
+			["*"],
+		);
+		assert.deepEqual(
+			names('const { then } = import("ts-autocode-training");'),
+			["*"],
+		);
+	});
+
+	it("takes the rest of the module for a rest element", () => {
+		assert.deepEqual(
+			names(
+				'const { discoverInSource, ...rest } = await import("ts-autocode-training");',
+			),
+			["discoverInSource", "*"],
+		);
+	});
+});
 
 describe("ts-autocode consumer surface", () => {
 	it("the submodule is checked out at its pin", () => {

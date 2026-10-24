@@ -148,6 +148,27 @@ function workspaceMembers(): readonly RegExp[] {
 	return members;
 }
 
+/**
+ * Whether any link of an export's alias chain is type-only. `export { type x }`
+ * (or `export type { x }`) still resolves to the value `x` through
+ * `getAliasedSymbol`, but importing it as a value fails to compile (TS1362).
+ */
+function isTypeOnlyAlias(checker: ts.TypeChecker, symbol: ts.Symbol): boolean {
+	const seen = new Set<ts.Symbol>();
+	for (
+		let link: ts.Symbol | undefined = symbol;
+		link !== undefined &&
+		(link.flags & ts.SymbolFlags.Alias) !== 0 &&
+		!seen.has(link);
+		link = checker.getImmediateAliasedSymbol(link)
+	) {
+		seen.add(link);
+		if (link.declarations?.some(ts.isTypeOnlyImportOrExportDeclaration))
+			return true;
+	}
+	return false;
+}
+
 /** What each entry exports: name -> whether it is a value (not only a type). */
 function exportsOf(
 	entries: readonly string[],
@@ -173,7 +194,11 @@ function exportsOf(
 				(symbol.flags & ts.SymbolFlags.Alias) !== 0
 					? checker.getAliasedSymbol(symbol)
 					: symbol;
-			names.set(symbol.name, (target.flags & ts.SymbolFlags.Value) !== 0);
+			names.set(
+				symbol.name,
+				(target.flags & ts.SymbolFlags.Value) !== 0 &&
+					!isTypeOnlyAlias(checker, symbol),
+			);
 		}
 		result.set(entry, names);
 	}

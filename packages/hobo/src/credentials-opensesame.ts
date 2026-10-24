@@ -51,9 +51,12 @@ export const CREDENTIAL_BINDINGS_FILE = "hobo.credentials.json";
  * The names, beyond the adapter's allowlist, passed to OpenSesame as they are:
  * the store passphrase (OpenSesame strips it from the command), where the store
  * is, and HOBO_CREDENTIALS itself, which the allowlist keeps back because its
- * name looks like a credential's, so the relaunched hobo knows its mode. Fixed
- * here, in operator code, never read from the environment or a repository
- * file: a list a checkout controls could pass on what the allowlist keeps back.
+ * name looks like a credential's. The relaunched hobo does not need it to refuse
+ * a placeholder (the run's HOBO_OPENSESAME_CHILD=1 alone turns the guard on); it
+ * is passed so the command runs in the mode its parent was started in, for
+ * whatever reads HOBO_CREDENTIALS there. Fixed here, in operator code, never read
+ * from the environment or a repository file: a list a checkout controls could
+ * pass on what the allowlist keeps back.
  */
 export const OPENSESAME_PASS_ENV = [
 	"HOBO_CREDENTIALS",

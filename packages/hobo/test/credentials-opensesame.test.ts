@@ -305,6 +305,28 @@ describe("HOBO_CREDENTIALS=opensesame relaunch", () => {
 		RUN_TIMEOUT_MS,
 	);
 
+	it(
+		"gives OpenSesame the store passphrase and the store's place, and nothing else of OpenSesame's",
+		async () => {
+			const run = await relaunch("surrogate-delivered", "0", {
+				OPENSESAME_STORE_PASSWORD: "dummy-not-a-secret",
+				OPENSESAME_STORE_DIR: "/dummy/store",
+				OPENSESAME_NOT_LISTED: "kept-back",
+			});
+			expect(run.status).toBe(0);
+			const record = parseJsonValue(
+				readFileSync(join(work, "opensesame-record.json"), "utf8"),
+			);
+			// OpenSesame was given the passphrase (the allowlist alone keeps it back)…
+			expect(isJsonObject(record) && record.sawStorePassword).toBe(true);
+			// …and strips it from the command, which still sees where the store is.
+			expect(run.childEnv.OPENSESAME_STORE_PASSWORD).toBeUndefined();
+			expect(run.childEnv.OPENSESAME_STORE_DIR).toBe("/dummy/store");
+			expect(run.childEnv.OPENSESAME_NOT_LISTED).toBeUndefined();
+		},
+		RUN_TIMEOUT_MS,
+	);
+
 	it("relaunches only when HOBO_CREDENTIALS is opensesame", () => {
 		expect(wantsOpenSesameRelaunch({})).toBe(false);
 		expect(wantsOpenSesameRelaunch({ HOBO_CREDENTIALS: "env" })).toBe(false);

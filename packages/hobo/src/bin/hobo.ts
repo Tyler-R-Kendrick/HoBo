@@ -11,13 +11,16 @@ import { createComposedHoboCli } from "../cli.js";
 import {
 	bootstrapDefaultProviders,
 	createDefaultYardRuntime,
+	type DefaultYardRuntimeOptions,
 	toRegistrableProvider,
 } from "../compose.js";
 import {
 	relaunchInputFor,
 	relaunchUnderOpenSesame,
 	reportingCredentialRefusals,
+	runsAVerb,
 	wantsOpenSesameRelaunch,
+	withoutCredentials,
 	workingDirOf,
 } from "../credentials-opensesame.js";
 import { createBareMetalProvider } from "../local-provider.js";
@@ -29,14 +32,18 @@ import { createBareMetalProvider } from "../local-provider.js";
 // (prefer wasm-sandbox yards, auto-create camps). Before dispatch, the default
 // provider set is recorded as durable registration + approval facts. Bare-metal
 // is bootstrapped alongside cloudflare so local Yards are first-class.
-async function runComposed(): Promise<number> {
-	const runtime = createDefaultYardRuntime();
+const args = process.argv.slice(2);
+
+async function runComposed(
+	options: DefaultYardRuntimeOptions = {},
+): Promise<number> {
+	const runtime = createDefaultYardRuntime(options);
 	await bootstrapDefaultProviders(runtime, [
 		toRegistrableProvider(createCloudflareProvider()),
 		createBareMetalProvider(),
 	]);
 	const cli = createComposedHoboCli({ yardRuntime: runtime });
-	const result = await cli.run(process.argv.slice(2));
+	const result = await cli.run(args);
 
 	if (result.stdout) {
 		process.stdout.write(result.stdout);
@@ -52,11 +59,14 @@ async function runComposed(): Promise<number> {
 // did. The relaunched child carries HOBO_OPENSESAME_CHILD=1 and composes. It
 // gets only the Node options that read no environment or code from disk, and
 // hobo.credentials.json is read from the directory the verb works in (--cwd).
-process.exitCode = wantsOpenSesameRelaunch(process.env)
-	? await relaunchUnderOpenSesame(
-			relaunchInputFor(
-				process,
-				workingDirOf(process.argv.slice(2), process.cwd()),
-			),
-		)
-	: await reportingCredentialRefusals(runComposed);
+// Help and usage errors run no verb: they are answered here, composed with no
+// credential and an IaC lane that refuses, without starting OpenSesame.
+process.exitCode = !wantsOpenSesameRelaunch(process.env)
+	? await reportingCredentialRefusals(() => runComposed())
+	: runsAVerb(args)
+		? await relaunchUnderOpenSesame(
+				relaunchInputFor(process, workingDirOf(args, process.cwd())),
+			)
+		: await reportingCredentialRefusals(() =>
+				runComposed(withoutCredentials()),
+			);

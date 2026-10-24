@@ -47,7 +47,9 @@ with the run's status: the command's own, 77 for a tripwire, 128+n for a signal,
 holds an `osr_` surrogate in `VERCEL_TOKEN`; `selectIacProvider` refuses anything
 else with `OPENSESAME_PLACEHOLDERS_ONLY` before any request (it runs when the
 runtime is composed, so a placeholder run stops there with status 1). Vercel only; AWS is
-not brokered. `src/credentials-opensesame.ts`.
+not brokered. `src/credentials-opensesame.ts`. An invocation that runs no verb
+(`--help`, no verb, an unknown verb or option) needs no credential: it is answered
+without starting OpenSesame, composed with none.
 
 The relaunch gets only the Node options that read no environment or code from disk
 (`src/relaunch-node-options.ts`): `node --env-file=.env hobo up` does not re-read

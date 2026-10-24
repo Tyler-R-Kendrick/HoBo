@@ -33,10 +33,12 @@ import {
 	runProxied,
 	SURROGATE_PATTERN,
 } from "@hobo/adapter-opensesame";
-import { parseArgv } from "@hobo/cli";
+import { CANONICAL_VERBS, parseArgv } from "@hobo/cli";
 import { AMBIENT_CREDENTIAL_KEYS } from "@hobo/cloud";
 
+import type { DefaultYardRuntimeOptions } from "./compose.js";
 import { parseJsonValue } from "./json.js";
+import type { PulumiAutomationAdapter } from "./pulumi-iac-provider.js";
 import { nodeOptionsForRun } from "./relaunch-node-options.js";
 
 // public-contract: the HOBO_CREDENTIALS value that takes credentials from OpenSesame.
@@ -80,7 +82,8 @@ type Stderr = NonNullable<RunInput["stderr"]>;
 export type OpenSesameCredentialsErrorCode =
 	| "OPENSESAME_PLACEHOLDERS_ONLY"
 	| "OPENSESAME_CREDENTIALS_BESIDE_SURROGATE"
-	| "OPENSESAME_BINDINGS_UNREADABLE";
+	| "OPENSESAME_BINDINGS_UNREADABLE"
+	| "OPENSESAME_NOT_RELAUNCHED";
 
 export class OpenSesameCredentialsError extends Error {
 	readonly code: OpenSesameCredentialsErrorCode;
@@ -97,6 +100,54 @@ export function wantsOpenSesameRelaunch(env: NodeJS.ProcessEnv): boolean {
 	return (
 		env.HOBO_CREDENTIALS === OPENSESAME_CREDENTIALS && env[CHILD_MARKER] !== "1"
 	);
+}
+
+const VERBS: ReadonlySet<string> = new Set(
+	CANONICAL_VERBS.map((verb) => verb.name),
+);
+
+/**
+ * Whether `args` run a verb, decided by the CLI's own parser and verb list. The
+ * CLI answers help (`--help` or `-h`, with or without a verb, and no verb at
+ * all), an unknown verb and a usage error (`hobo status`, `hobo --version`)
+ * without running one, so none of them needs a credential, and under
+ * HOBO_CREDENTIALS=opensesame they are answered without starting OpenSesame.
+ */
+export function runsAVerb(args: readonly string[]): boolean {
+	let request: ReturnType<typeof parseArgv>;
+	try {
+		request = parseArgv(args);
+	} catch {
+		return false;
+	}
+	return request.verb !== null && !request.help && VERBS.has(request.verb);
+}
+
+/** An IaC adapter that refuses every call: nothing composed with it can deploy. */
+const refusingAdapter: PulumiAutomationAdapter = Object.freeze({
+	id: "opensesame-not-relaunched",
+	preview: refuseUnrelaunched,
+	apply: refuseUnrelaunched,
+	destroy: refuseUnrelaunched,
+	refresh: refuseUnrelaunched,
+});
+
+function refuseUnrelaunched(): never {
+	throw new OpenSesameCredentialsError(
+		"OPENSESAME_NOT_RELAUNCHED",
+		`HOBO_CREDENTIALS=${OPENSESAME_CREDENTIALS}, but this invocation runs no verb, so it was not run under OpenSesame and holds no credential: nothing was deployed`,
+	);
+}
+
+/**
+ * What an invocation that runs no verb is composed with under
+ * HOBO_CREDENTIALS=opensesame: no environment to take a credential from, and an
+ * IaC adapter that refuses every call, so that a verb run on it all the same
+ * (were `runsAVerb` ever to disagree with the CLI) fails rather than deploys
+ * without OpenSesame.
+ */
+export function withoutCredentials(): DefaultYardRuntimeOptions {
+	return { env: {}, iacAdapter: refusingAdapter };
 }
 
 /**
@@ -141,7 +192,8 @@ export function requireOpenSesameSurrogate(env: NodeJS.ProcessEnv): void {
  * Run the composed CLI, reporting a credential refusal as one `hobo:` line and
  * status 1 instead of a stack trace. The default runtime selects its deploy
  * backend when it is composed, so a run holding a placeholder is refused
- * before any verb runs, `--help` included: nothing in it can deploy.
+ * before its verb runs: nothing in it can deploy. (Help and usage errors are
+ * not relaunched, so they never meet this; see `runsAVerb`.)
  */
 export async function reportingCredentialRefusals(
 	run: () => Promise<number>,

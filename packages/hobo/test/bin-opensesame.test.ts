@@ -186,4 +186,23 @@ describe("the composed hobo binary under HOBO_CREDENTIALS=opensesame", () => {
 		},
 		RUN_TIMEOUT_MS,
 	);
+
+	it(
+		"answers --help without starting OpenSesame, with no bindings anywhere",
+		async () => {
+			const record = standIn("surrogate-delivered");
+			const run = await runBin(
+				[],
+				["--help"],
+				{ HOBO_CREDENTIALS: "opensesame" },
+				record,
+				elsewhere,
+			);
+			expect(run.stderr).not.toMatch(/^hobo: /mu);
+			expect(run.status).toBe(0);
+			expect(run.stdout).toMatch(/^HoBo CLI/u);
+			expect(run.command).toBeUndefined();
+		},
+		RUN_TIMEOUT_MS,
+	);
 });

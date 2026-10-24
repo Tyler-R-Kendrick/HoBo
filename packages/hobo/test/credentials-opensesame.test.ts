@@ -10,7 +10,13 @@ import { join } from "node:path";
 import { PassThrough } from "node:stream";
 import { fileURLToPath } from "node:url";
 import { SURROGATE_PATTERN } from "@hobo/adapter-opensesame";
-import type { EventStore } from "@hobo/core";
+import { createHoboCli } from "@hobo/cli";
+import {
+	type EventStore,
+	IAC_PROGRAM_API_VERSION,
+	IAC_PROGRAM_KIND,
+	type IacProgramDocument,
+} from "@hobo/core";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createDefaultYardRuntime, selectIacProvider } from "../src/compose.js";
 import {
@@ -23,7 +29,9 @@ import {
 	relaunchUnderOpenSesame,
 	reportingCredentialRefusals,
 	requireOpenSesameSurrogate,
+	runsAVerb,
 	wantsOpenSesameRelaunch,
+	withoutCredentials,
 	workingDirOf,
 } from "../src/credentials-opensesame.js";
 import { isJsonObject, isJsonString, parseJsonValue } from "../src/json.js";
@@ -502,5 +510,71 @@ describe("the composed hobo under a placeholder", () => {
 				throw new Error("not a credential refusal");
 			}),
 		).rejects.toThrow("not a credential refusal");
+	});
+});
+
+describe("an invocation that runs no verb, under HOBO_CREDENTIALS=opensesame", () => {
+	// [arguments, whether they run a verb]
+	const cases: ReadonlyArray<readonly [readonly string[], boolean]> = [
+		[[], false],
+		[["--help"], false],
+		[["-h"], false],
+		[["up", "--help"], false],
+		[["--json"], false],
+		[["status"], false],
+		[["--version"], false],
+		[["up", "--no-such-flag"], false],
+		[["up", "--cwd"], false],
+		[["up"], true],
+		[["recipes"], true],
+		[["--json", "--cwd", ".", "down"], true],
+	];
+
+	it("is told apart by the CLI's own parser: the CLI dispatches exactly the ones that run a verb", async () => {
+		for (const [args, verb] of cases) {
+			expect(runsAVerb(args), args.join(" ")).toBe(verb);
+			// The CLI builds a verb's context just before it dispatches it, and never otherwise.
+			let dispatched = false;
+			const cli = createHoboCli({
+				contextFactory: async () => {
+					dispatched = true;
+					throw new Error("dispatch stops here in this test");
+				},
+			});
+			await cli.run(args);
+			expect(dispatched, args.join(" ")).toBe(verb);
+		}
+	});
+
+	it("is composed with no credential and an IaC lane that refuses every call", async () => {
+		const options = withoutCredentials();
+		expect(options.env).toEqual({});
+		// Composing it does not meet the surrogate guard, which HOBO_CREDENTIALS alone would.
+		const runtime = createDefaultYardRuntime({
+			dataDir: join(work, "yard"),
+			...options,
+		});
+		expect(runtime.store).toBeDefined();
+		const adapter = options.iacAdapter;
+		expect(adapter).toBeDefined();
+		if (adapter === undefined) return;
+		const program: IacProgramDocument = {
+			apiVersion: IAC_PROGRAM_API_VERSION,
+			kind: IAC_PROGRAM_KIND,
+			provider: "vercel",
+			deploymentId: "deployment",
+			stack: "stack",
+			resources: [],
+			stackOutputs: {},
+		};
+		for (const call of [
+			() => adapter.preview(program),
+			() => adapter.apply(program),
+			() => adapter.destroy(program),
+			() => adapter.refresh(program),
+		]) {
+			expect(call).toThrow(OpenSesameCredentialsError);
+			expect(call).toThrow(/runs no verb/u);
+		}
 	});
 });

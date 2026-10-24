@@ -728,7 +728,7 @@ const isTsAutocodeSurfaceTest = (check: {
 }) =>
 	check.command === "node" &&
 	check.args.join(" ") ===
-		"--import tsx --test scripts/test/ts-autocode-consumer-surface.test.ts";
+		"--import tsx --test scripts/test/ts-autocode-consumer-surface.test.ts scripts/test/ts-autocode-grounding-drift.test.ts";
 
 test("a ts-autocode pin bump or a workspace edit selects the consumer-surface test", () => {
 	for (const file of [
@@ -736,6 +736,7 @@ test("a ts-autocode pin bump or a workspace edit selects the consumer-surface te
 		"pnpm-workspace.yaml",
 		"tools/pins/siblings.json",
 		"scripts/test/ts-autocode-consumer-surface.test.ts",
+		"scripts/test/ts-autocode-grounding-drift.test.ts",
 	]) {
 		assert.ok(plan([file]).checks.some(isTsAutocodeSurfaceTest), file);
 	}

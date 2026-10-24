@@ -1,12 +1,14 @@
 import {
 	composeOptions,
 	finalizeTrainableClass as finalizeWithRegistry,
+	type FieldDescription as GroundingField,
 	type GroundingOptions,
 	granularOptionsFor as groundingOptionsFor,
+	type ShapeDescriptor,
 } from "ts-autocode-grounding";
-import type { JsonBag, JsonValue } from "../json.js";
+import { cloneAsJson, type JsonObject, type JsonValue } from "../json.js";
 import { getTrainable, resolveTrainable, training } from "./training.js";
-import type { Trainable, TrainingOptions } from "./types.js";
+import type { FieldDescription, Trainable, TrainingOptions } from "./types.js";
 
 // Granular grounding decorators (Plan 2 Syntax 0): @intent / @returns on
 // methods, `description()` values for `params:` maps (TC39 stage-3 only,
@@ -37,12 +39,11 @@ export { composeOptions };
  */
 export function finalizeTrainableClass(
 	cls: new () => object,
-	metadata: JsonBag | undefined,
+	metadata: DecoratorMetadataObject | undefined,
 ): void {
 	finalizeWithRegistry(
 		cls,
-		// SAFETY: class decorator metadata is the grounding bag at this boundary.
-		metadata as never,
+		metadata,
 		{
 			has: (methodRef) => getTrainable(methodRef) !== undefined,
 			register: (baseline, options) =>
@@ -60,38 +61,82 @@ export function resolveDeclared<I, O>(classAndMethod: string): Trainable<I, O> {
 /** Compose options for a stage-3 bare `@trainable` method (granular or inferred). */
 export function granularOptionsFor(
 	methodRef: string,
-	metadata: JsonBag | undefined,
+	metadata: DecoratorMetadataObject | undefined,
 	methodName: string,
 ): TrainingOptions {
 	return trainingOptionsOf(
-		groundingOptionsFor(
-			methodRef,
-			// SAFETY: decorator metadata is the grounding options bag at this boundary.
-			metadata as never,
-			methodName,
-		),
+		groundingOptionsFor(methodRef, metadata, methodName),
 	);
 }
 
 /**
- * GroundingOptions with the contract's declared shapes left out. Assigning to
- * it needs no assertion, and the one assertion in `trainingOptionsOf` is then
- * checked as a conversion between it and TrainingOptions: when a ts-autocode
- * bump drops or renames a field TrainingOptions requires (`intent`), or changes
- * a shared field's type, it stops compiling (TS2352). An `as never` here would
- * let that drift through.
+ * ts-autocode-grounding composes HoBo's TrainingOptions; copy them field by
+ * field. Each field is read by name and assigned where TrainingOptions (and
+ * the registry's required `methodRef`) types it, with no assertion, so a
+ * ts-autocode bump that renames a field, makes `methodRef` or `intent`
+ * optional, retypes one, or gives a shape a field that is not JSON stops this
+ * compiling (scripts/test/ts-autocode-grounding-drift.test.ts). A cast here
+ * would let that drift through, and `training()` would then register the
+ * method under its function name or with no intent.
  */
-type CheckedGrounding = Omit<GroundingOptions, "contract"> & {
-	readonly contract: Pick<GroundingOptions["contract"], "ref">;
-};
+function trainingOptionsOf(
+	options: GroundingOptions,
+): TrainingOptions & { readonly methodRef: string } {
+	const { contract } = options;
+	return {
+		methodRef: options.methodRef,
+		intent: options.intent,
+		contract: {
+			ref: contract.ref,
+			...(contract.input === undefined
+				? {}
+				: { input: shapesJson(contract.input) }),
+			...(contract.output === undefined
+				? {}
+				: { output: shapeJson(contract.output) }),
+		},
+		...(options.params === undefined
+			? {}
+			: { params: fieldsOf(options.params) }),
+		...(options.output === undefined
+			? {}
+			: { output: fieldsOf(options.output) }),
+	};
+}
 
-/** ts-autocode-grounding composes HoBo's TrainingOptions; re-type them, shapes included. */
-function trainingOptionsOf(options: GroundingOptions): TrainingOptions {
-	const checked: CheckedGrounding = options;
-	// SAFETY: contract.input/output are ShapeDescriptor records ({type, optional?, description?}),
-	// which are JSON, but an interface has no index signature, so TypeScript cannot see them as
-	// JsonValue. They are the only fields TrainingOptions types differently.
-	return checked as TrainingOptions;
+/** A declared shape as JSON: its own fields, each of which must be JSON. */
+function shapeJson(shape: ShapeDescriptor): JsonObject {
+	return { ...shape };
+}
+
+function shapesJson(
+	shapes: Readonly<Record<string, ShapeDescriptor>>,
+): JsonObject {
+	const json: Record<string, JsonValue> = {};
+	for (const [name, shape] of Object.entries(shapes)) {
+		json[name] = shapeJson(shape);
+	}
+	return json;
+}
+
+/**
+ * Grounding types a field's example as `unknown`; the manifest lowers it with
+ * `JSON.stringify` (training.ts), so it crosses here as that JSON value.
+ */
+function fieldsOf(
+	fields: Readonly<Record<string, GroundingField>>,
+): Readonly<Record<string, FieldDescription>> {
+	const described: Record<string, FieldDescription> = {};
+	for (const [name, field] of Object.entries(fields)) {
+		described[name] =
+			field.example === undefined
+				? { description: field.description }
+				: {
+						description: field.description,
+						example: cloneAsJson(field.example),
+					};
+	}
+	return described;
 }
 
 /**

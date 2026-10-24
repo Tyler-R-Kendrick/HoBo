@@ -423,6 +423,7 @@ export function selectRelevantChecks(
 				file === "pnpm-workspace.yaml" ||
 				file === "tools/pins/siblings.json" ||
 				file === "scripts/test/ts-autocode-consumer-surface.test.ts" ||
+				file === "scripts/test/ts-autocode-grounding-drift.test.ts" ||
 				(PACKAGE_TYPESCRIPT.test(file) && importsTsAutocode(file)),
 		)
 	) {
@@ -433,9 +434,10 @@ export function selectRelevantChecks(
 				"tsx",
 				"--test",
 				"scripts/test/ts-autocode-consumer-surface.test.ts",
+				"scripts/test/ts-autocode-grounding-drift.test.ts",
 			],
 			reason:
-				"every name HoBo imports from ts-autocode must still be exported at the pinned commit (ADR-0128)",
+				"every name HoBo imports from ts-autocode must still be exported at the pinned commit, and the grounding fields @hobo/runtime registers must still be checked against it (ADR-0128)",
 		});
 	}
 

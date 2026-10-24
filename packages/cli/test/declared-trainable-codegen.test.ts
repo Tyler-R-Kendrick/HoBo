@@ -306,6 +306,61 @@ describe("ambient @trainable classes in hobo stub", () => {
 		}
 	});
 
+	it("refuses an export name the trainables module already binds", async () => {
+		// Trainable.Stubs -> trainableStubs (the manifest); $.training -> training (the import).
+		for (const [className, method, exportName] of [
+			["Trainable", "Stubs", "trainableStubs"],
+			["$", "training", "training"],
+		]) {
+			await writeFile(
+				join(projectRoot, "src/clash.ts"),
+				`@trainable\nexport declare class ${className} {\n  ${method}(): string;\n}\n`,
+			);
+			await expect(
+				runCodegen({ projectRoot, check: false }),
+				exportName,
+			).rejects.toThrow(
+				`generates the export ${exportName}, which the trainables module already binds`,
+			);
+		}
+	});
+
+	it("refuses an empty export name", async () => {
+		await writeFile(
+			join(projectRoot, "src/dollar.ts"),
+			"@trainable\nexport declare class $ {\n  $(): string;\n}\n",
+		);
+		await expect(runCodegen({ projectRoot, check: false })).rejects.toThrow(
+			'Trainable $.$ generates the export name "", which is not an identifier',
+		);
+	});
+
+	it("refuses a method its registration module cannot declare", async () => {
+		for (const method of ["delete", "default", "defineGrounding"]) {
+			await writeFile(
+				join(projectRoot, "src/store.ts"),
+				`@trainable\nexport declare class Store {\n  ${method}(key: string): string;\n}\n`,
+			);
+			await expect(
+				runCodegen({ projectRoot, check: false }),
+				method,
+			).rejects.toThrow(
+				`Ambient @trainable class Store in src/store.ts has a method named ${method}, which declared/Store.ts cannot export as a const`,
+			);
+		}
+	});
+
+	it("refuses a class name that is not a plain ASCII identifier", async () => {
+		// camelCase would drop the letters: Ünï.run -> nRun.
+		await writeFile(
+			join(projectRoot, "src/unicode.ts"),
+			"@trainable\nexport declare class Ünï {\n  run(): string;\n}\n",
+		);
+		await expect(runCodegen({ projectRoot, check: false })).rejects.toThrow(
+			"Ambient @trainable class Ünï in src/unicode.ts is not a plain ASCII identifier",
+		);
+	});
+
 	it("refuses an ambient operation whose export name a bindle step already takes", async () => {
 		// The fixture's bindle has the step incident.classify (export incidentClassify).
 		await writeFile(

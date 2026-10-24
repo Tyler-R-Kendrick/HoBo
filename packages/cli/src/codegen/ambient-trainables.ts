@@ -5,6 +5,7 @@ import {
 	scanDeclaredTrainables,
 } from "ts-autocode-grounding";
 import ts from "typescript";
+import { isPlainIdentifier, isReservedWord } from "./identifiers.js";
 import { projectPath, scannedSources } from "./source-files.js";
 import { CodegenError, type CodegenLayout } from "./types.js";
 
@@ -116,12 +117,29 @@ function scanAmbient(
 			{ file, className: marked.className },
 		);
 	}
+	for (const { method } of declared.operations) {
+		// The emitter writes `export const <method> = defineGrounding(...)`.
+		const why = isReservedWord(method)
+			? "a reserved word"
+			: method === "defineGrounding"
+				? "the name it imports defineGrounding by"
+				: undefined;
+		if (why !== undefined) {
+			throw new CodegenError(
+				"HOBO_CODEGEN_SOURCE_PARSE",
+				`Ambient @trainable class ${marked.className} in ${file} has a method named ${method}, which declared/${marked.className}.ts cannot export as a const (${why}); rename the method`,
+				{ file, className: marked.className, method },
+			);
+		}
+	}
 	return declared;
 }
 
 /**
- * An ambient class's registrations are written to `declared/<Class>.ts`, so
- * its name must be a file name of its own on every file system: not one
+ * An ambient class's registrations are written to `declared/<Class>.ts`, and
+ * its exports are named from the camelCase of `<Class>.<method>`, so its name
+ * must be a plain ASCII identifier (camelCase keeps every character of one)
+ * and a file name of its own on every file system: not one
  * Windows reserves for a device, and not one another ambient class has in
  * another case (macOS and Windows compare names case-insensitively).
  */
@@ -130,6 +148,13 @@ function refuseModuleName(
 	file: string,
 	className: string,
 ): void {
+	if (!isPlainIdentifier(className)) {
+		throw new CodegenError(
+			"HOBO_CODEGEN_SOURCE_PARSE",
+			`Ambient @trainable class ${className} in ${file} is not a plain ASCII identifier; codegen names its module file and exports from it, and would drop letters; rename the class`,
+			{ file, className },
+		);
+	}
 	if (WINDOWS_DEVICE.test(className)) {
 		throw new CodegenError(
 			"HOBO_CODEGEN_SOURCE_PARSE",

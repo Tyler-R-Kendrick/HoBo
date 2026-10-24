@@ -49,15 +49,19 @@ const BINDINGS = {
 };
 
 let root = "";
+/** The project: it holds hobo.credentials.json. */
 let work = "";
+/** A directory with no bindings, to start the bin from. */
+let elsewhere = "";
 let binDir = "";
 let scratch = "";
 beforeEach(() => {
 	root = mkdtempSync(join(tmpdir(), "hobo-bin-opensesame-"));
 	work = join(root, "work");
+	elsewhere = join(root, "elsewhere");
 	binDir = join(root, "bin");
 	scratch = join(root, "tmp");
-	for (const dir of [work, binDir, scratch]) mkdirSync(dir);
+	for (const dir of [work, elsewhere, binDir, scratch]) mkdirSync(dir);
 	writeFileSync(join(work, CREDENTIAL_BINDINGS_FILE), JSON.stringify(BINDINGS));
 });
 afterEach(() => {
@@ -103,13 +107,14 @@ function runBin(
 	args: readonly string[],
 	env: Record<string, string>,
 	record: string,
+	cwd: string = work,
 ): Promise<BinRun> {
 	return new Promise((resolve, reject) => {
 		const child = spawn(
 			process.execPath,
 			[...nodeArgs, "--import", TSX_LOADER, HOBO_BIN, ...args],
 			{
-				cwd: work,
+				cwd,
 				// Built, not inherited: nothing of this test's own environment reaches the bin.
 				env: {
 					PATH: `${binDir}:${process.env.PATH ?? ""}`,
@@ -142,7 +147,7 @@ function runBin(
 
 describe("the composed hobo binary under HOBO_CREDENTIALS=opensesame", () => {
 	it(
-		"relaunches itself under OpenSesame with its TypeScript loader and not its --env-file, and exits as the command did",
+		"relaunches itself under OpenSesame with its TypeScript loader and not its --env-file, reads the bindings from --cwd, and exits as the command did",
 		async () => {
 			const record = standIn("surrogate-delivered");
 			// A file holding another provider's credential: re-read in the command,
@@ -152,11 +157,13 @@ describe("the composed hobo binary under HOBO_CREDENTIALS=opensesame", () => {
 				envFile,
 				"CLOUDFLARE_API_TOKEN=cf_dummy_marker_not_a_secret\nCLOUDFLARE_ACCOUNT_ID=acct_dummy\n",
 			);
+			// Started where there are no bindings: they are read from --cwd (C-7).
 			const run = await runBin(
 				[`--env-file=${envFile}`],
-				["recipes"],
+				["--cwd", work, "recipes"],
 				{ HOBO_CREDENTIALS: "opensesame" },
 				record,
+				elsewhere,
 			);
 			expect(run.stderr.match(/^hobo: .*$/gmu)).toEqual([
 				"hobo: not passed to the run under OpenSesame: --env-file (a Node option reaches it only when it reads no environment or code from disk)",
@@ -171,6 +178,8 @@ describe("the composed hobo binary under HOBO_CREDENTIALS=opensesame", () => {
 				"--import",
 				TSX_LOADER,
 				HOBO_BIN,
+				"--cwd",
+				work,
 				"recipes",
 			]);
 			expect(run.childMarker).toBe("1");

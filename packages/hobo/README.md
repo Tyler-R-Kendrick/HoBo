@@ -40,7 +40,8 @@ a live cloud apply. Selection lives in `src/compose.ts` (`selectIacProvider`):
 The composed `hobo` then relaunches itself once, before composing anything, as
 `opensesame dev --agent --schema <generated> run -- <this invocation>` (through
 [`@hobo/adapter-opensesame`](../adapters/adapter-opensesame/README.md)), reading
-`hobo.credentials.json` (references only) from the working directory, and exits
+`hobo.credentials.json` (references only) from the directory the verb works in
+(`--cwd`, else the working directory), and exits
 with the run's status: the command's own, 77 for a tripwire, 128+n for a signal,
 1 for a run that left placeholders or never started. The relaunched process
 holds an `osr_` surrogate in `VERCEL_TOKEN`; `selectIacProvider` refuses anything

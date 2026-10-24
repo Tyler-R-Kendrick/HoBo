@@ -19,10 +19,12 @@ import {
 	OPENSESAME_PASS_ENV,
 	OpenSesameCredentialsError,
 	type RelaunchInput,
+	relaunchInputFor,
 	relaunchUnderOpenSesame,
 	reportingCredentialRefusals,
 	requireOpenSesameSurrogate,
 	wantsOpenSesameRelaunch,
+	workingDirOf,
 } from "../src/credentials-opensesame.js";
 import { isJsonObject, isJsonString, parseJsonValue } from "../src/json.js";
 import type { VercelFetch } from "../src/vercel-client.js";
@@ -190,6 +192,55 @@ describe("HOBO_CREDENTIALS=opensesame relaunch", () => {
 			expect(second.status).toBe(1);
 			expect(second.started).toBe(false);
 			expect(second.stderr).toMatch(/^hobo: recursion_guard: /mu);
+		},
+		RUN_TIMEOUT_MS,
+	);
+
+	it(
+		"reads the bindings from the directory the verb works in: --cwd, else the working directory",
+		async () => {
+			expect(workingDirOf(["--cwd", work, "up"], "/elsewhere")).toBe(work);
+			expect(workingDirOf(["up", "--cwd", work], "/elsewhere")).toBe(work);
+			expect(workingDirOf(["up"], work)).toBe(work);
+			// What the CLI cannot parse runs no verb; it is not given a directory either.
+			expect(workingDirOf(["up", "--cwd"], work)).toBe(work);
+			expect(workingDirOf(["--no-such-flag"], work)).toBe(work);
+
+			// relaunchInputFor reads them from there, not from where the process started.
+			const elsewhere = mkdtempSync(
+				join(tmpdir(), "hobo-opensesame-elsewhere-"),
+			);
+			try {
+				const input = relaunchInputFor(
+					{
+						execPath: process.execPath,
+						execArgv: [],
+						argv: [process.execPath, CHILD, join(work, "child-env.json")],
+						env: {
+							PATH: process.env.PATH ?? "",
+							NODE_NO_WARNINGS: "1",
+							HOBO_CREDENTIALS: "opensesame",
+							FAKE_OPENSESAME_SCENARIO: "surrogate-delivered",
+						},
+						cwd: () => elsewhere,
+					},
+					workingDirOf(["--cwd", work, "up"], elsewhere),
+				);
+				expect(input.cwd).toBe(work);
+				const status = await relaunchUnderOpenSesame({
+					...input,
+					bin: FAKE_OPENSESAME,
+					passEnv: [...OPENSESAME_PASS_ENV, "FAKE_OPENSESAME_SCENARIO"],
+					stderr: new PassThrough(),
+					tmpRoot: work,
+				});
+				expect(status).toBe(0);
+				expect(readEnv(join(work, "child-env.json")).VERCEL_TOKEN).toMatch(
+					SURROGATE,
+				);
+			} finally {
+				rmSync(elsewhere, { recursive: true, force: true });
+			}
 		},
 		RUN_TIMEOUT_MS,
 	);

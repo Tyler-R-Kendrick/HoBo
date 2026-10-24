@@ -18,6 +18,7 @@ import {
 	relaunchUnderOpenSesame,
 	reportingCredentialRefusals,
 	wantsOpenSesameRelaunch,
+	workingDirOf,
 } from "../credentials-opensesame.js";
 import { createBareMetalProvider } from "../local-provider.js";
 
@@ -49,7 +50,13 @@ async function runComposed(): Promise<number> {
 // HOBO_CREDENTIALS=opensesame (ADR-0170): before composing anything, run this
 // same invocation once more under `opensesame dev --agent run`, and exit as it
 // did. The relaunched child carries HOBO_OPENSESAME_CHILD=1 and composes. It
-// gets only the Node options that read no environment or code from disk.
+// gets only the Node options that read no environment or code from disk, and
+// hobo.credentials.json is read from the directory the verb works in (--cwd).
 process.exitCode = wantsOpenSesameRelaunch(process.env)
-	? await relaunchUnderOpenSesame(relaunchInputFor(process))
+	? await relaunchUnderOpenSesame(
+			relaunchInputFor(
+				process,
+				workingDirOf(process.argv.slice(2), process.cwd()),
+			),
+		)
 	: await reportingCredentialRefusals(runComposed);

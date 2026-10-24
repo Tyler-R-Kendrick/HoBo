@@ -21,7 +21,7 @@
  */
 
 import { readFileSync } from "node:fs";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 
 import {
 	CHILD_MARKER,
@@ -33,6 +33,7 @@ import {
 	runProxied,
 	SURROGATE_PATTERN,
 } from "@hobo/adapter-opensesame";
+import { parseArgv } from "@hobo/cli";
 import { AMBIENT_CREDENTIAL_KEYS } from "@hobo/cloud";
 
 import { parseJsonValue } from "./json.js";
@@ -41,7 +42,7 @@ import { nodeOptionsForRun } from "./relaunch-node-options.js";
 // public-contract: the HOBO_CREDENTIALS value that takes credentials from OpenSesame.
 export const OPENSESAME_CREDENTIALS = "opensesame";
 
-// public-contract: the bindings file, read from the working directory (references only).
+// public-contract: the bindings file, read from the directory hobo works in, its --cwd or else the working directory (references only).
 export const CREDENTIAL_BINDINGS_FILE = "hobo.credentials.json";
 
 /**
@@ -187,12 +188,15 @@ export type RelaunchedProcess = Readonly<{
  * was let `node --env-file=.env` re-read the file into the command, beside the
  * surrogate, after the adapter had kept those names back.
  */
-export function relaunchInputFor(proc: RelaunchedProcess): RelaunchInput {
-	const cwd = proc.cwd();
+export function relaunchInputFor(
+	proc: RelaunchedProcess,
+	bindingsDir: string = proc.cwd(),
+): RelaunchInput {
 	const options = nodeOptionsForRun({
 		execArgv: proc.execArgv,
 		nodeOptions: proc.env.NODE_OPTIONS,
-		cwd,
+		// Node resolves an --import from where it was started, whatever --cwd says.
+		cwd: proc.cwd(),
 	});
 	const env: NodeJS.ProcessEnv = { ...proc.env };
 	if (options.nodeOptions === undefined) delete env.NODE_OPTIONS;
@@ -200,9 +204,23 @@ export function relaunchInputFor(proc: RelaunchedProcess): RelaunchInput {
 	return {
 		argv: [proc.execPath, ...options.execArgv, ...proc.argv.slice(1)],
 		env,
-		cwd,
+		cwd: bindingsDir,
 		leftOut: options.left,
 	};
+}
+
+/**
+ * The directory a `hobo` invocation works in, as the CLI resolves it: its
+ * `--cwd`, else `cwd`. `hobo --cwd app up` reads `app/hobo.credentials.json`,
+ * the same project the verb then works on. An invocation the CLI cannot parse
+ * runs no verb; for it this is `cwd`.
+ */
+export function workingDirOf(args: readonly string[], cwd: string): string {
+	try {
+		return parseArgv(args, { cwd }).cwd;
+	} catch {
+		return resolve(cwd);
+	}
 }
 
 function readBindings(cwd: string): RunInput["bindings"] {

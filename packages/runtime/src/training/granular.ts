@@ -1,6 +1,7 @@
 import {
 	composeOptions,
 	finalizeTrainableClass as finalizeWithRegistry,
+	type GroundingOptions,
 	granularOptionsFor as groundingOptionsFor,
 } from "ts-autocode-grounding";
 import type { JsonBag, JsonValue } from "../json.js";
@@ -45,10 +46,7 @@ export function finalizeTrainableClass(
 		{
 			has: (methodRef) => getTrainable(methodRef) !== undefined,
 			register: (baseline, options) =>
-				// SAFETY: ts-autocode-grounding composes HoBo's TrainingOptions here. Its contract
-				// types declared shapes as ShapeDescriptor records, which are JSON, but an
-				// interface has no index signature, so TypeScript cannot see them as JsonValue.
-				training(baseline, options as never),
+				training(baseline, trainingOptionsOf(options)),
 		},
 		Symbol.for("hobo.trainable.metadata"),
 	);
@@ -65,13 +63,35 @@ export function granularOptionsFor(
 	metadata: JsonBag | undefined,
 	methodName: string,
 ): TrainingOptions {
-	// SAFETY: the composed GroundingOptions are TrainingOptions; its ShapeDescriptor records are JSON (see finalizeTrainableClass above).
-	return groundingOptionsFor(
-		methodRef,
-		// SAFETY: decorator metadata is the grounding options bag at this boundary.
-		metadata as never,
-		methodName,
-	) as never;
+	return trainingOptionsOf(
+		groundingOptionsFor(
+			methodRef,
+			// SAFETY: decorator metadata is the grounding options bag at this boundary.
+			metadata as never,
+			methodName,
+		),
+	);
+}
+
+/**
+ * GroundingOptions with the contract's declared shapes left out. Assigning to
+ * it needs no assertion, and the one assertion in `trainingOptionsOf` is then
+ * checked as a conversion between it and TrainingOptions: when a ts-autocode
+ * bump drops or renames a field TrainingOptions requires (`intent`), or changes
+ * a shared field's type, it stops compiling (TS2352). An `as never` here would
+ * let that drift through.
+ */
+type CheckedGrounding = Omit<GroundingOptions, "contract"> & {
+	readonly contract: Pick<GroundingOptions["contract"], "ref">;
+};
+
+/** ts-autocode-grounding composes HoBo's TrainingOptions; re-type them, shapes included. */
+function trainingOptionsOf(options: GroundingOptions): TrainingOptions {
+	const checked: CheckedGrounding = options;
+	// SAFETY: contract.input/output are ShapeDescriptor records ({type, optional?, description?}),
+	// which are JSON, but an interface has no index signature, so TypeScript cannot see them as
+	// JsonValue. They are the only fields TrainingOptions types differently.
+	return checked as TrainingOptions;
 }
 
 /**

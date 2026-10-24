@@ -74,6 +74,18 @@ const PACKAGE_TYPESCRIPT = /^packages\/.+\.(?:[cm]?ts|tsx)$/u;
 const TS_AUTOCODE_SPECIFIER =
 	/["'`]ts-autocode(?:-[a-z]+)?(?:\/[^"'`]*)?["'`]/u;
 
+/**
+ * What the grounding drift test compiles granular.ts with, beyond ts-autocode
+ * itself: the types its conversion assigns to and the compiler options. None
+ * of them imports ts-autocode, so the import check alone would not select it.
+ */
+const GROUNDING_DRIFT_INPUTS = new Set([
+	"packages/runtime/src/json.ts",
+	"packages/runtime/src/training/types.ts",
+	"packages/runtime/tsconfig.json",
+	"tsconfig.base.json",
+]);
+
 /** Whether source text names a ts-autocode module specifier. */
 export function namesTsAutocode(text: string) {
 	return TS_AUTOCODE_SPECIFIER.test(text);
@@ -431,6 +443,7 @@ export function selectRelevantChecks(
 				file === "tools/pins/siblings.json" ||
 				file === "scripts/test/ts-autocode-consumer-surface.test.ts" ||
 				file === "scripts/test/ts-autocode-grounding-drift.test.ts" ||
+				GROUNDING_DRIFT_INPUTS.has(file) ||
 				(PACKAGE_TYPESCRIPT.test(file) && importsTsAutocode(file)),
 		)
 	) {

@@ -743,6 +743,22 @@ test("a ts-autocode pin bump or a workspace edit selects the consumer-surface te
 	}
 });
 
+test("a change to what the grounding drift test compiles granular.ts with selects it", () => {
+	for (const file of [
+		"packages/runtime/src/json.ts",
+		"packages/runtime/src/training/types.ts",
+		"packages/runtime/tsconfig.json",
+		"tsconfig.base.json",
+	]) {
+		assert.ok(
+			plan([file], { importsTsAutocode: () => false }).checks.some(
+				isTsAutocodeSurfaceTest,
+			),
+			file,
+		);
+	}
+});
+
 test("unrelated changes do not select the ts-autocode consumer-surface test", () => {
 	for (const file of ["packages/core/src/index.ts", "tools/pins/README.md"]) {
 		assert.ok(!plan([file]).checks.some(isTsAutocodeSurfaceTest), file);

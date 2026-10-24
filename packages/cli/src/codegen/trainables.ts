@@ -11,7 +11,7 @@ import type {
 	SourceModelResource,
 } from "./engine.js";
 import { isPlainIdentifier, isReservedWord } from "./identifiers.js";
-import { projectPath, scannedSources } from "./source-files.js";
+import { emittedPath, projectPath, scannedSources } from "./source-files.js";
 import {
 	type CodegenArtifact,
 	CodegenArtifactSchema,
@@ -292,7 +292,7 @@ function toDirectiveEntry(
 
 	const fromDir = posix.dirname(layout.files.trainables);
 	const specifier = posix
-		.relative(fromDir, directive.file.replace(/\.(ts|tsx|mts)$/, ".js"))
+		.relative(fromDir, emittedPath(directive.file))
 		.replace(/^(?!\.)/, "./");
 
 	return {

@@ -640,6 +640,39 @@ describe("ambient @trainable classes in hobo stub", () => {
 		);
 	});
 
+	it("refuses an ambient class named like a decorated class in a .cts file", async () => {
+		await writeFile(
+			join(projectRoot, "src/greeter-impl.cts"),
+			`export const Greeter = @trainable class ${CLASS_BODY};\n`,
+		);
+		await expect(runCodegen({ projectRoot, check: false })).rejects.toThrow(
+			"Ambient @trainable class Greeter in src/greeter.ts shares its name with the decorated @trainable class in src/greeter-impl.cts",
+		);
+	});
+
+	it('imports a "use training" function from the file TypeScript emits for its source', async () => {
+		for (const [source, emitted] of [
+			["src/score.ts", "../score.js"],
+			["src/score.tsx", "../score.js"],
+			["src/score.mts", "../score.mjs"],
+			["src/score.cts", "../score.cjs"],
+		]) {
+			await writeFile(
+				join(projectRoot, source),
+				'export function score(input: string): string {\n  "use training";\n  return input;\n}\n',
+			);
+			await runCodegen({ projectRoot, check: false });
+			const trainables = await readFile(
+				join(projectRoot, "src/_generated/trainables.ts"),
+				"utf8",
+			);
+			expect(trainables, source).toContain(
+				`import { score } from "${emitted}";`,
+			);
+			await rm(join(projectRoot, source));
+		}
+	});
+
 	it("refuses two ambient classes of one name", async () => {
 		await writeFile(join(projectRoot, "src/greeter-again.ts"), AMBIENT);
 		const result = await createHoboCli().run(["stub", "--json"], {

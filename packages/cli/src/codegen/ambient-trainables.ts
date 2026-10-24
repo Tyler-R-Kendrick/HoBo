@@ -126,39 +126,145 @@ function isMarked(node: ts.ClassDeclaration | ts.ClassExpression): boolean {
 }
 
 /**
- * The name a class registers under: its own, or for an anonymous class
- * expression the name of the variable it initializes (through parentheses
- * and type assertions), which JavaScript gives it and grounding's
- * `finalizeTrainableClass` reads as `cls.name`.
+ * Whether a node compiles away around the expression it wraps: parentheses,
+ * and TypeScript's `as`, `satisfies`, `!`, `<T>x` and `x<T>`, as TypeScript's
+ * own `skipOuterExpressions` takes them.
+ */
+function isOuterExpression(
+	node: ts.Node,
+): node is
+	| ts.ParenthesizedExpression
+	| ts.AsExpression
+	| ts.SatisfiesExpression
+	| ts.NonNullExpression
+	| ts.TypeAssertion
+	| ts.ExpressionWithTypeArguments {
+	return (
+		ts.isParenthesizedExpression(node) ||
+		ts.isAsExpression(node) ||
+		ts.isSatisfiesExpression(node) ||
+		ts.isNonNullExpression(node) ||
+		ts.isTypeAssertionExpression(node) ||
+		ts.isExpressionWithTypeArguments(node)
+	);
+}
+
+function skipOuterExpressions(node: ts.Expression): ts.Expression {
+	let inner = node;
+	while (isOuterExpression(inner)) inner = inner.expression;
+	return inner;
+}
+
+/** The assignment operators NamedEvaluation applies to: `=`, `&&=`, `||=`, `??=`. */
+const NAMING_ASSIGNMENTS: ReadonlySet<ts.SyntaxKind> = new Set([
+	ts.SyntaxKind.EqualsToken,
+	ts.SyntaxKind.AmpersandAmpersandEqualsToken,
+	ts.SyntaxKind.BarBarEqualsToken,
+	ts.SyntaxKind.QuestionQuestionEqualsToken,
+]);
+
+/**
+ * The name a property name gives a function or class it holds: an
+ * identifier's text, a string literal's value, a number's canonical string,
+ * a private name with its `#`, or a computed key that is one of those
+ * literals. Undefined for any other computed key, whose value only the run
+ * time knows.
+ */
+function propertyKeyName(name: ts.PropertyName): string | undefined {
+	const key = ts.isComputedPropertyName(name)
+		? skipOuterExpressions(name.expression)
+		: name;
+	if (
+		ts.isIdentifier(key) ||
+		ts.isPrivateIdentifier(key) ||
+		ts.isStringLiteral(key) ||
+		ts.isNoSubstitutionTemplateLiteral(key)
+	) {
+		return key.text;
+	}
+	return ts.isNumericLiteral(key) ? String(Number(key.text)) : undefined;
+}
+
+/**
+ * The name ECMAScript's NamedEvaluation gives the anonymous function or class
+ * `value` from `holder`, the node it sits in once outer expressions are
+ * skipped: the binding of a variable, binding element or parameter it
+ * initializes (a pattern names nothing); the identifier an assignment (`=`,
+ * `&&=`, `||=`, `??=`) or a shorthand default writes; the key of an object
+ * property or of a class field or auto-accessor; and `default` for
+ * `export default`. Where esbuild names a class the spec leaves anonymous,
+ * the name it gives is taken too, so a clash under either compiler is seen:
+ * an assignment target wrapped in parentheses or a type assertion, and a
+ * `__proto__: value` property (which the spec excepts, since it sets the
+ * prototype).
+ */
+function namedEvaluation(holder: ts.Node, value: ts.Node): string | undefined {
+	if (
+		(ts.isVariableDeclaration(holder) ||
+			ts.isBindingElement(holder) ||
+			ts.isParameter(holder)) &&
+		holder.initializer === value
+	) {
+		return ts.isIdentifier(holder.name) ? holder.name.text : undefined;
+	}
+	if (
+		ts.isBinaryExpression(holder) &&
+		holder.right === value &&
+		NAMING_ASSIGNMENTS.has(holder.operatorToken.kind)
+	) {
+		const target = skipOuterExpressions(holder.left);
+		return ts.isIdentifier(target) ? target.text : undefined;
+	}
+	if (ts.isShorthandPropertyAssignment(holder)) {
+		return holder.objectAssignmentInitializer === value
+			? holder.name.text
+			: undefined;
+	}
+	if (
+		(ts.isPropertyAssignment(holder) || ts.isPropertyDeclaration(holder)) &&
+		holder.initializer === value
+	) {
+		return propertyKeyName(holder.name);
+	}
+	if (ts.isExportAssignment(holder) && !holder.isExportEquals) {
+		return "default";
+	}
+	return undefined;
+}
+
+/**
+ * The name a class registers under, which grounding's
+ * `finalizeTrainableClass` reads as `cls.name` when the class decorator runs:
+ * its own name; `default` for an anonymous `export default class`; or, for an
+ * anonymous class expression, the name NamedEvaluation gives it from where it
+ * sits (see namedEvaluation). Undefined when nothing names it, or only a
+ * computed key the run time evaluates. A class that defines a static `name`
+ * method or getter decides its own `cls.name` at run time, which no scan of
+ * its source can read.
  */
 function registeredName(
 	node: ts.ClassDeclaration | ts.ClassExpression,
 ): string | undefined {
 	if (node.name !== undefined) return node.name.text;
-	let bound: ts.Node = node;
-	while (
-		ts.isParenthesizedExpression(bound.parent) ||
-		ts.isAsExpression(bound.parent) ||
-		ts.isSatisfiesExpression(bound.parent) ||
-		ts.isNonNullExpression(bound.parent) ||
-		ts.isTypeAssertionExpression(bound.parent)
-	) {
-		bound = bound.parent;
+	if (ts.isClassDeclaration(node)) {
+		return node.modifiers?.some(
+			(modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword,
+		)
+			? "default"
+			: undefined;
 	}
-	const declaration = bound.parent;
-	return ts.isVariableDeclaration(declaration) &&
-		declaration.initializer === bound &&
-		ts.isIdentifier(declaration.name)
-		? declaration.name.text
-		: undefined;
+	let value: ts.Node = node;
+	while (isOuterExpression(value.parent)) value = value.parent;
+	return namedEvaluation(value.parent, value);
 }
 
 /**
  * The marked classes of one file, found as ts-autocode-grounding's scanner
  * finds them (a class declaration or expression with a marker decorator,
  * ambient when it has `declare`, its own members not searched), each named
- * as it registers: an anonymous class expression bound to a variable takes
- * the variable's name, which the scanner does not see but the run time does.
+ * as it registers: an anonymous class expression takes the name
+ * NamedEvaluation gives it, which the scanner does not see but the run time
+ * does.
  */
 function markedClasses(source: string): readonly MarkedClass[] {
 	const sourceFile = ts.createSourceFile(

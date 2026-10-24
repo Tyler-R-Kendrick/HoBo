@@ -88,6 +88,112 @@ export declare class Clock {
 }
 `;
 
+const CLASS_BODY = '{\n  greet(): string {\n    return "hi";\n  }\n}';
+
+/**
+ * Where ECMAScript's NamedEvaluation gives an anonymous class expression a
+ * name, `Greeter` each time: a decorated `@trainable` class there registers
+ * `Greeter.<method>`, as its own name would, under TypeScript's emit and
+ * esbuild's. The last row is one only esbuild names (the spec leaves a
+ * parenthesized assignment target anonymous); codegen takes either.
+ */
+const NAMED_EVALUATIONS: readonly (readonly [
+	string,
+	(cls: string) => string,
+])[] = [
+	["a const binding", (cls) => `export const Greeter = ${cls};\n`],
+	["a parenthesized binding", (cls) => `export let Greeter = (${cls});\n`],
+	[
+		"a binding through as, satisfies and !",
+		(cls) => `export const Greeter = ((${cls}) as object satisfies object)!;\n`,
+	],
+	[
+		"an assignment",
+		(cls) => `export let Greeter: unknown;\nGreeter = ${cls};\n`,
+	],
+	[
+		"a logical assignment",
+		(cls) => `export let Greeter: unknown;\nGreeter ??= ${cls};\n`,
+	],
+	[
+		"an object property",
+		(cls) => `export const impls = { Greeter: ${cls} };\n`,
+	],
+	[
+		"a string-keyed property",
+		(cls) => `export const impls = { "Greeter": ${cls} };\n`,
+	],
+	[
+		"a computed property key",
+		(cls) => `export const impls = { ["Greeter"]: ${cls} };\n`,
+	],
+	[
+		"a shorthand default in an assignment pattern",
+		(cls) => `export let Greeter: unknown;\n({ Greeter = ${cls} } = {});\n`,
+	],
+	[
+		"an array assignment default",
+		(cls) => `export let Greeter: unknown;\n[Greeter = ${cls}] = [];\n`,
+	],
+	[
+		"a static class field",
+		(cls) => `export class Holder {\n  static Greeter = ${cls};\n}\n`,
+	],
+	[
+		"an instance class field",
+		(cls) => `export class Holder {\n  Greeter = ${cls};\n}\n`,
+	],
+	[
+		"a computed class field key",
+		(cls) => `export class Holder {\n  static ["Greeter"] = ${cls};\n}\n`,
+	],
+	[
+		"an auto-accessor",
+		(cls) => `export class Holder {\n  static accessor Greeter = ${cls};\n}\n`,
+	],
+	[
+		"a destructuring default",
+		(cls) =>
+			`export const { Greeter = ${cls} } = {} as { Greeter?: unknown };\n`,
+	],
+	[
+		"a renamed destructuring default",
+		(cls) =>
+			`export const { impl: Greeter = ${cls} } = {} as { impl?: unknown };\n`,
+	],
+	[
+		"an array destructuring default",
+		(cls) => `export const [Greeter = ${cls}] = [] as unknown[];\n`,
+	],
+	[
+		"a parameter default",
+		(cls) => `export function make(Greeter = ${cls}) {\n  return Greeter;\n}\n`,
+	],
+	[
+		"an assignment to a parenthesized target",
+		(cls) => `export let Greeter: unknown;\n(Greeter) = ${cls};\n`,
+	],
+];
+
+/** Where an anonymous class expression gets no binding's name (`cls.name` is ""). */
+const UNNAMED_PLACES: readonly (readonly [string, (cls: string) => string])[] =
+	[
+		["after a comma", (cls) => `export const Greeter = (0, ${cls});\n`],
+		[
+			"in a conditional",
+			(cls) => `export const Greeter = Math.random() > 0.5 ? ${cls} : null;\n`,
+		],
+		[
+			"assigned to a member",
+			(cls) =>
+				`export const holder: Record<string, unknown> = {};\nholder.Greeter = ${cls};\n`,
+		],
+		[
+			"in a compound assignment",
+			(cls) => `export let Greeter: unknown = "";\nGreeter += ${cls};\n`,
+		],
+	];
+
 describe("the marker prefilter", () => {
 	const ambient = (decorator: string) =>
 		`${decorator}\nexport declare class Esc {\n  run(): string;\n}\n`;
@@ -444,27 +550,36 @@ describe("ambient @trainable classes in hobo stub", () => {
 		);
 	});
 
-	it("refuses an ambient class named like the binding of a decorated class expression", async () => {
-		// An anonymous class expression registers under the name it is bound to.
-		for (const source of [
-			'export const Greeter = @trainable class {\n  greet(): string {\n    return "hi";\n  }\n};\n',
-			'export let Greeter = (@trainable class {\n  greet(): string {\n    return "hi";\n  }\n});\n',
-		]) {
-			await writeFile(join(projectRoot, "src/greeter-impl.ts"), source);
-			await expect(
-				runCodegen({ projectRoot, check: false }),
-				source,
-			).rejects.toThrow(
-				"Ambient @trainable class Greeter in src/greeter.ts shares its name with the decorated @trainable class in src/greeter-impl.ts",
-			);
-		}
+	it.each(
+		NAMED_EVALUATIONS,
+	)("refuses an ambient class named like a decorated class expression that %s names", async (_where, place) => {
+		await writeFile(
+			join(projectRoot, "src/greeter-impl.ts"),
+			place(`@trainable class ${CLASS_BODY}`),
+		);
+		await expect(runCodegen({ projectRoot, check: false })).rejects.toThrow(
+			"Ambient @trainable class Greeter in src/greeter.ts shares its name with the decorated @trainable class in src/greeter-impl.ts",
+		);
 	});
 
-	it("names a class expression by its own name when it has one, as it registers", async () => {
+	it.each(
+		NAMED_EVALUATIONS,
+	)("names a class expression by its own name when it has one, also where %s would name it", async (_where, place) => {
 		// Registers Hello.greet, not Greeter.greet: no clash with the ambient Greeter.
 		await writeFile(
 			join(projectRoot, "src/greeter-impl.ts"),
-			'export const Greeter = @trainable class Hello {\n  greet(): string {\n    return "hi";\n  }\n};\n',
+			place(`@trainable class Hello ${CLASS_BODY}`),
+		);
+		await runCodegen({ projectRoot, check: false });
+		await access(join(projectRoot, "src/_generated/declared/Greeter.ts"));
+	});
+
+	it.each(
+		UNNAMED_PLACES,
+	)("accepts an anonymous decorated class %s, which registers under no binding's name", async (_where, place) => {
+		await writeFile(
+			join(projectRoot, "src/greeter-impl.ts"),
+			place(`@trainable class ${CLASS_BODY}`),
 		);
 		await runCodegen({ projectRoot, check: false });
 		await access(join(projectRoot, "src/_generated/declared/Greeter.ts"));

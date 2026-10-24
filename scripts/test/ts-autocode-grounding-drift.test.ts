@@ -37,6 +37,10 @@ interface Drift {
 
 const OPTIONS_HEAD = "export interface GroundingOptions {\n";
 const DESCRIPTOR_HEAD = "export interface ShapeDescriptor {\n";
+const OPTIONS_TAIL =
+	"\treadonly output?: { readonly returns: FieldDescription };\n}";
+const CONTRACT_TAIL = "\t\treadonly output?: ShapeDescriptor;\n\t};";
+const FIELD_TAIL = "\treadonly example?: unknown;\n}";
 
 const DRIFTS: readonly Drift[] = [
 	{
@@ -80,6 +84,48 @@ const DRIFTS: readonly Drift[] = [
 		file: "decorators.ts",
 		from: `${DESCRIPTOR_HEAD}\treadonly type: string;`,
 		to: `${DESCRIPTOR_HEAD}\treadonly type: string;\n\treadonly validate: (value: unknown) => boolean;`,
+	},
+	{
+		name: "a field is added to the options",
+		file: "decorators.ts",
+		from: OPTIONS_TAIL,
+		to: OPTIONS_TAIL.replace(
+			"\n}",
+			"\n\treadonly rubric: Readonly<Record<string, number>>;\n}",
+		),
+	},
+	{
+		name: "an optional field is added to the options",
+		file: "decorators.ts",
+		from: OPTIONS_TAIL,
+		to: OPTIONS_TAIL.replace(
+			"\n}",
+			"\n\treadonly rubric?: Readonly<Record<string, number>>;\n}",
+		),
+	},
+	{
+		name: "a field is added to the contract",
+		file: "decorators.ts",
+		from: CONTRACT_TAIL,
+		to: CONTRACT_TAIL.replace(
+			"\n\t};",
+			"\n\t\treadonly examples: readonly unknown[];\n\t};",
+		),
+	},
+	{
+		name: "an optional field is added to the contract",
+		file: "decorators.ts",
+		from: CONTRACT_TAIL,
+		to: CONTRACT_TAIL.replace(
+			"\n\t};",
+			"\n\t\treadonly invariants?: readonly string[];\n\t};",
+		),
+	},
+	{
+		name: "a field is added to a field description",
+		file: "decorators.ts",
+		from: FIELD_TAIL,
+		to: FIELD_TAIL.replace("\n}", "\n\treadonly unit?: string;\n}"),
 	},
 	{
 		name: "granularOptionsFor's metadata parameter retyped",

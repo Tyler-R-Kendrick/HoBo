@@ -91,34 +91,45 @@ interface AssembledOptions {
 }
 
 /**
+ * What destructuring a grounding value leaves once every field it carries has
+ * been named: nothing. A field upstream adds lands in the rest, which then no
+ * longer satisfies this, so it cannot be dropped without a compile error.
+ */
+type NothingLeft = Readonly<Record<string, never>>;
+
+/**
  * ts-autocode-grounding composes HoBo's TrainingOptions; copy them field by
- * field. Each field is read by name and assigned where TrainingOptions (and
- * the registry's required `methodRef`) types it, with no assertion, so a
- * ts-autocode bump that renames a field, makes `methodRef` or `intent`
- * optional, retypes one, or gives a declared type a field that is not JSON
- * stops this compiling (scripts/test/ts-autocode-grounding-drift.test.ts). A
- * cast here would let that drift through, and `training()` would then register
- * the method under its function name or with no intent.
+ * field. Each field is named, and assigned where TrainingOptions (and the
+ * registry's required `methodRef`) types it, with no assertion; what is not
+ * named must be nothing. So a ts-autocode bump that renames a field, adds one,
+ * makes `methodRef` or `intent` optional, retypes one, or gives a declared
+ * type a field that is not JSON stops this compiling
+ * (scripts/test/ts-autocode-grounding-drift.test.ts). A cast here would let
+ * that drift through, and `training()` would then register the method under
+ * its function name, with no intent, or without the added field.
  */
 function trainingOptionsOf(options: GroundingOptions): RegisteredOptions {
-	const { contract } = options;
-	const trainingContract: AssembledContract = { ref: contract.ref };
-	if (contract.input !== undefined) {
-		trainingContract.input = declaredJsonByName(contract.input);
+	const { methodRef, intent, contract, params, output, ...uncopied } = options;
+	uncopied satisfies NothingLeft;
+	const { ref, input, output: declaredOutput, ...uncopiedContract } = contract;
+	uncopiedContract satisfies NothingLeft;
+	const trainingContract: AssembledContract = { ref };
+	if (input !== undefined) {
+		trainingContract.input = declaredJsonByName(input);
 	}
-	if (contract.output !== undefined) {
-		trainingContract.output = declaredJson(contract.output);
+	if (declaredOutput !== undefined) {
+		trainingContract.output = declaredJson(declaredOutput);
 	}
 	const registered: AssembledOptions = {
-		methodRef: options.methodRef,
-		intent: options.intent,
+		methodRef,
+		intent,
 		contract: trainingContract,
 	};
-	if (options.params !== undefined) {
-		registered.params = fieldsOf(options.params);
+	if (params !== undefined) {
+		registered.params = fieldsOf(params);
 	}
-	if (options.output !== undefined) {
-		registered.output = fieldsOf(options.output);
+	if (output !== undefined) {
+		registered.output = fieldsOf(output);
 	}
 	return registered;
 }
@@ -145,13 +156,12 @@ function declaredJsonByName(
 function fieldsOf(fields: Readonly<Record<string, GroundingField>>) {
 	const described: Record<string, FieldDescription> = {};
 	for (const [name, field] of Object.entries(fields)) {
+		const { description, example, ...uncopied } = field;
+		uncopied satisfies NothingLeft;
 		described[name] =
-			field.example === undefined
-				? { description: field.description }
-				: {
-						description: field.description,
-						example: cloneAsJson(field.example),
-					};
+			example === undefined
+				? { description }
+				: { description, example: cloneAsJson(example) };
 	}
 	return described;
 }

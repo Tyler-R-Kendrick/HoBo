@@ -403,6 +403,32 @@ describe("ambient @trainable classes in hobo stub", () => {
 		}
 	});
 
+	it("refuses an ambient class named like the binding of a decorated class expression", async () => {
+		// An anonymous class expression registers under the name it is bound to.
+		for (const source of [
+			'export const Greeter = @trainable class {\n  greet(): string {\n    return "hi";\n  }\n};\n',
+			'export let Greeter = (@trainable class {\n  greet(): string {\n    return "hi";\n  }\n});\n',
+		]) {
+			await writeFile(join(projectRoot, "src/greeter-impl.ts"), source);
+			await expect(
+				runCodegen({ projectRoot, check: false }),
+				source,
+			).rejects.toThrow(
+				"Ambient @trainable class Greeter in src/greeter.ts shares its name with the decorated @trainable class in src/greeter-impl.ts",
+			);
+		}
+	});
+
+	it("names a class expression by its own name when it has one, as it registers", async () => {
+		// Registers Hello.greet, not Greeter.greet: no clash with the ambient Greeter.
+		await writeFile(
+			join(projectRoot, "src/greeter-impl.ts"),
+			'export const Greeter = @trainable class Hello {\n  greet(): string {\n    return "hi";\n  }\n};\n',
+		);
+		await runCodegen({ projectRoot, check: false });
+		await access(join(projectRoot, "src/_generated/declared/Greeter.ts"));
+	});
+
 	it("refuses two ambient classes of one name", async () => {
 		await writeFile(join(projectRoot, "src/greeter-again.ts"), AMBIENT);
 		const result = await createHoboCli().run(["stub", "--json"], {

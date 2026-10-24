@@ -87,9 +87,39 @@ function isMarked(node: ts.ClassDeclaration | ts.ClassExpression): boolean {
 }
 
 /**
+ * The name a class registers under: its own, or for an anonymous class
+ * expression the name of the variable it initializes (through parentheses
+ * and type assertions), which JavaScript gives it and grounding's
+ * `finalizeTrainableClass` reads as `cls.name`.
+ */
+function registeredName(
+	node: ts.ClassDeclaration | ts.ClassExpression,
+): string | undefined {
+	if (node.name !== undefined) return node.name.text;
+	let bound: ts.Node = node;
+	while (
+		ts.isParenthesizedExpression(bound.parent) ||
+		ts.isAsExpression(bound.parent) ||
+		ts.isSatisfiesExpression(bound.parent) ||
+		ts.isNonNullExpression(bound.parent) ||
+		ts.isTypeAssertionExpression(bound.parent)
+	) {
+		bound = bound.parent;
+	}
+	const declaration = bound.parent;
+	return ts.isVariableDeclaration(declaration) &&
+		declaration.initializer === bound &&
+		ts.isIdentifier(declaration.name)
+		? declaration.name.text
+		: undefined;
+}
+
+/**
  * The marked classes of one file, found as ts-autocode-grounding's scanner
- * finds them: a named class declaration or expression with a marker
- * decorator, ambient when it has `declare`, its own members not searched.
+ * finds them (a class declaration or expression with a marker decorator,
+ * ambient when it has `declare`, its own members not searched), each named
+ * as it registers: an anonymous class expression bound to a variable takes
+ * the variable's name, which the scanner does not see but the run time does.
  */
 function markedClasses(source: string): readonly MarkedClass[] {
 	const sourceFile = ts.createSourceFile(
@@ -103,18 +133,20 @@ function markedClasses(source: string): readonly MarkedClass[] {
 	const visit = (node: ts.Node): void => {
 		if (
 			(ts.isClassDeclaration(node) || ts.isClassExpression(node)) &&
-			node.name !== undefined &&
 			isMarked(node)
 		) {
-			found.push({
-				className: node.name.text,
-				ambient:
-					node.modifiers?.some(
-						(modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword,
-					) ?? false,
-				text: source.slice(node.getStart(sourceFile), node.end),
-			});
-			return;
+			const className = registeredName(node);
+			if (className !== undefined) {
+				found.push({
+					className,
+					ambient:
+						node.modifiers?.some(
+							(modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword,
+						) ?? false,
+					text: source.slice(node.getStart(sourceFile), node.end),
+				});
+				return;
+			}
 		}
 		ts.forEachChild(node, visit);
 	};

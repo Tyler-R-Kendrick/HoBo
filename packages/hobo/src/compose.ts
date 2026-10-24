@@ -55,9 +55,7 @@ function incomingHttpRequestFrom(
 	return { method, path, headers, body };
 }
 
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { basename } from "node:path";
 
 import type {
 	BindleDefinition,
@@ -112,6 +110,12 @@ import {
 import { REGISTRY_STREAM } from "./add-command.js";
 import type { CloudflareFetch } from "./cloudflare-client.js";
 import { createCloudflareDeployProvider } from "./cloudflare-deploy-provider.js";
+import {
+	refuseUnbrokeredLane,
+	requireOpenSesameSurrogate,
+	usesOpenSesameCredentials,
+} from "./credentials-opensesame.js";
+import { ownedTempDir } from "./owned-temp-dir.js";
 import {
 	createPulumiBackedIacProvider,
 	type PulumiAutomationAdapter,
@@ -199,10 +203,15 @@ export function toRegistrableProvider(
 }
 
 export interface DefaultYardRuntimeOptions {
-	// Durable event-store data directory. Defaults to a fresh OS temp dir (the
-	// mocked lane is ephemeral). Provide a stable dir to inspect the event log
-	// across runs. Callers that create the runtime directly own closing
-	// `runtime.store` when done.
+	// Durable event-store data directory. Defaults to a fresh OS temp dir
+	// (`hobo-yard-*`; the mocked lane is ephemeral) that this process owns and
+	// removes when it exits, an uncaught error included (owned-temp-dir.ts), so no
+	// caller, binary or library, leaves one behind on a normal end. On a signal it
+	// is removed where the entry point asked for that (`removeOwnedDirsOnSignals`,
+	// as both binaries do); a library leaves its host's signals alone. A directory
+	// given here is the caller's and is never removed: provide a stable one to
+	// inspect the event log across runs. Callers that create the runtime directly
+	// own closing `runtime.store` when done.
 	readonly dataDir?: string;
 	// The @hobo/iac-pulumi adapter the deploy path drives. Defaults to a fresh
 	// real `createPulumiAutomationAdapter()` (in-memory backend). Injectable so a
@@ -276,6 +285,18 @@ function memoizedPulumiAdapter(
 	return adapter;
 }
 
+// The live lane's workspace when HOBO_PULUMI_WORKDIR names none: a directory of
+// this process's own, which no later run could find, removed when it exits, and
+// on a signal in the binaries (owned-temp-dir.ts). Its file:// state is the
+// only record of what the lane deployed, so that is said once, on stderr.
+function temporaryLiveWorkDir(): string {
+	const dir = ownedTempDir("hobo-pulumi-live-");
+	process.stderr.write(
+		`hobo: the live Pulumi lane keeps its programs and state in ${dir}, which is removed when this process ends; set HOBO_PULUMI_WORKDIR to a directory to keep them\n`,
+	);
+	return dir;
+}
+
 // Resolve the SHARED Pulumi adapter (the estate seam) for this store + env, or
 // `undefined` when the environment selects a non-Pulumi deploy provider
 // (Cloudflare/Vercel) whose state HoBo holds in the DeploymentView instead.
@@ -292,10 +313,13 @@ export function selectPulumiEstateAdapter(
 		return deps.adapter;
 	}
 	if (env.HOBO_PULUMI_LIVE === "1") {
+		// Under OpenSesame (ADR-0170) the live lane is refused: its engine would
+		// authenticate with credentials found outside OpenSesame.
+		refuseUnbrokeredLane(env);
 		return memoizedPulumiAdapter(deps.store, "live", () => {
-			const workDir =
-				env.HOBO_PULUMI_WORKDIR ??
-				mkdtempSync(join(tmpdir(), "hobo-pulumi-live-"));
+			// HOBO_PULUMI_WORKDIR keeps the lane's programs and file:// state, and is
+			// never removed.
+			const workDir = env.HOBO_PULUMI_WORKDIR ?? temporaryLiveWorkDir();
 			// Default live engine = the REAL Pulumi Automation API (LocalWorkspace,
 			// HOBO-715). `HOBO_PULUMI_LIVE_ENGINE=cli` keeps the pinned CLI engine;
 			// the HOBO_PULUMI_BIN test seam implies the CLI engine (the Automation
@@ -393,6 +417,12 @@ export function readPulumiEstate(
 // it read the env var, so it holds the material and hands the resolvers only a
 // name for it. These locators use the `hobo-token` scheme because that is what
 // `@hobo/bindings`' `parseSecretRef` (which the Vercel resolvers apply) accepts.
+// Under `HOBO_CREDENTIALS=opensesame` (ADR-0170) the material is the run's `osr_`
+// surrogate, not a token: the process was relaunched under OpenSesame's proxied
+// run (credentials-opensesame.ts), `VERCEL_TOKEN` holds what only its proxy can
+// redeem at api.vercel.com, and `fetch` reaches it through `HTTPS_PROXY`
+// (`NODE_USE_ENV_PROXY=1`). Nothing below changes for that; selectIacProvider
+// only refuses to start a lane on anything but a surrogate.
 const CLOUDFLARE_RESOLVER_CREDENTIAL_REF = "hobo-token://cloudflare/api-token";
 const VERCEL_RESOLVER_CREDENTIAL_REF = "hobo-token://vercel/deploy";
 
@@ -482,8 +512,19 @@ function resolverBackedProviderFor(
 // lanes resolve through the SHARED per-store adapter memo (see
 // selectPulumiEstateAdapter) so `up`, `drift`, and `import` composed over the
 // same store all observe the same state backend.
+//
+// Before any of that, `HOBO_CREDENTIALS=opensesame` (or running as a proxied
+// run's command, `HOBO_OPENSESAME_CHILD=1`) refuses with
+// OPENSESAME_PLACEHOLDERS_ONLY unless `VERCEL_TOKEN` is an OpenSesame surrogate
+// (`osr_` + 32 hex): a proxied run whose plugin is missing or off exits 0 with a
+// placeholder, and against an emulator that accepts any token that would deploy
+// "successfully" on nothing (ADR-0170). It also refuses another provider's
+// credential beside the surrogate, and selectPulumiEstateAdapter refuses the
+// live Pulumi lane (OPENSESAME_LANE_NOT_BROKERED). With neither set, nothing
+// here changes.
 export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 	const env = deps.env ?? process.env;
+	if (usesOpenSesameCredentials(env)) requireOpenSesameSurrogate(env);
 	const cloudflareToken = env.CLOUDFLARE_API_TOKEN;
 	const cloudflareAccountId = env.CLOUDFLARE_ACCOUNT_ID;
 	const vercelToken = env.VERCEL_TOKEN;
@@ -528,7 +569,7 @@ export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 export function createDefaultYardRuntime(
 	options: DefaultYardRuntimeOptions = {},
 ): YardRuntime {
-	const dataDir = options.dataDir ?? mkdtempSync(join(tmpdir(), "hobo-yard-"));
+	const dataDir = options.dataDir ?? ownedTempDir("hobo-yard-");
 	const store = createRuntimeLocalEventStore({
 		dataDir,
 		clock: createManualClock(),

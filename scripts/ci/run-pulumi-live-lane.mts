@@ -1,4 +1,4 @@
-import { mkdtempSync } from "node:fs";
+import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 
@@ -26,19 +26,23 @@ if (!accountId || !token) {
 	process.exit(1);
 }
 
-const engine = createPulumiCliAutomationEngine({
-	workDir:
-		process.env.HOBO_PULUMI_WORKDIR ??
-		mkdtempSync(join(tmpdir(), "hobo-pulumi-live-")),
-	env: process.env,
-});
-const adapter = createPulumiAutomationAdapter({ engine });
-
 const { iac: program } = realizeHelloBindle(
 	createHelloBindlePlan({
 		id: `hello-bindle-live-${process.env.GITHUB_RUN_ID ?? "local"}`,
 	}),
 );
+
+// HOBO_PULUMI_WORKDIR keeps the lane's programs and file:// state. Without it
+// they go in a directory of this run's own, removed once teardown completes.
+// When teardown fails it is kept, and named: its state is what the manual
+// sweep needs.
+const keptWorkDir = process.env.HOBO_PULUMI_WORKDIR;
+const workDir = keptWorkDir ?? mkdtempSync(join(tmpdir(), "hobo-pulumi-live-"));
+const engine = createPulumiCliAutomationEngine({
+	workDir,
+	env: process.env,
+});
+const adapter = createPulumiAutomationAdapter({ engine });
 
 let failed = false;
 try {
@@ -60,12 +64,18 @@ try {
 	failed = true;
 	console.error("live lane failed:", error);
 } finally {
+	let tornDown = false;
 	try {
 		await adapter.destroy(program);
 		console.log("destroy: complete");
+		tornDown = true;
 	} catch (error) {
 		failed = true;
 		console.error("teardown failed — manual sweep needed:", error);
+	}
+	if (keptWorkDir === undefined) {
+		if (tornDown) rmSync(workDir, { recursive: true, force: true });
+		else console.error(`the lane's Pulumi state is kept in ${workDir}`);
 	}
 }
 process.exit(failed ? 1 : 0);

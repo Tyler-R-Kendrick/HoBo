@@ -24,6 +24,7 @@
 	},
 	"dependencies": {
 		"@bytecodealliance/jco": "1.24.3",
+		"@hobo/adapter-opensesame": "workspace:*",
 		"@hobo/bindings": "workspace:*",
 		"@hobo/bindles": "workspace:*",
 		"@hobo/broker": "workspace:*",

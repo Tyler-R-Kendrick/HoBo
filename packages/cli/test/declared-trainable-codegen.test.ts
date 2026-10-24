@@ -194,6 +194,26 @@ const UNNAMED_PLACES: readonly (readonly [string, (cls: string) => string])[] =
 		],
 	];
 
+/**
+ * A decorated class inside another marked class: it registers too, once the
+ * code around it runs (a static field when the outer class is defined, a
+ * method's body when the method is called), so its name is checked as well.
+ */
+const NESTED_IN_MARKED: readonly (readonly [string, string])[] = [
+	[
+		"a static field of a @component class",
+		`@component({ intent: "x" })\nexport class Service {\n  static Greeter = @trainable class ${CLASS_BODY};\n}\n`,
+	],
+	[
+		"a class expression in a method of a @trainable class",
+		`@trainable\nexport class Outer {\n  make() {\n    const Greeter = @trainable class ${CLASS_BODY};\n    return Greeter;\n  }\n}\n`,
+	],
+	[
+		"a class declaration in a method of a @trainable class",
+		`@trainable\nexport class Outer {\n  make() {\n    @trainable\n    class Greeter ${CLASS_BODY}\n    return Greeter;\n  }\n}\n`,
+	],
+];
+
 describe("the marker prefilter", () => {
 	const ambient = (decorator: string) =>
 		`${decorator}\nexport declare class Esc {\n  run(): string;\n}\n`;
@@ -583,6 +603,15 @@ describe("ambient @trainable classes in hobo stub", () => {
 		);
 		await runCodegen({ projectRoot, check: false });
 		await access(join(projectRoot, "src/_generated/declared/Greeter.ts"));
+	});
+
+	it.each(
+		NESTED_IN_MARKED,
+	)("refuses an ambient class named like a decorated class in %s", async (_where, source) => {
+		await writeFile(join(projectRoot, "src/greeter-impl.ts"), source);
+		await expect(runCodegen({ projectRoot, check: false })).rejects.toThrow(
+			"Ambient @trainable class Greeter in src/greeter.ts shares its name with the decorated @trainable class in src/greeter-impl.ts",
+		);
 	});
 
 	it("refuses two ambient classes of one name", async () => {

@@ -261,10 +261,12 @@ function registeredName(
 /**
  * The marked classes of one file, found as ts-autocode-grounding's scanner
  * finds them (a class declaration or expression with a marker decorator,
- * ambient when it has `declare`, its own members not searched), each named
- * as it registers: an anonymous class expression takes the name
- * NamedEvaluation gives it, which the scanner does not see but the run time
- * does.
+ * ambient when it has `declare`), each named as it registers: an anonymous
+ * class expression takes the name NamedEvaluation gives it, which the scanner
+ * does not see but the run time does. Unlike the scanner, the search goes on
+ * inside a marked class with a body: a decorated class in one of its static
+ * fields or methods registers too, once that code runs. An ambient class can
+ * hold no code, so the search stops at one.
  */
 function markedClasses(source: string): readonly MarkedClass[] {
 	const sourceFile = ts.createSourceFile(
@@ -281,17 +283,18 @@ function markedClasses(source: string): readonly MarkedClass[] {
 			isMarked(node)
 		) {
 			const className = registeredName(node);
+			const ambient =
+				node.modifiers?.some(
+					(modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword,
+				) ?? false;
 			if (className !== undefined) {
 				found.push({
 					className,
-					ambient:
-						node.modifiers?.some(
-							(modifier) => modifier.kind === ts.SyntaxKind.DeclareKeyword,
-						) ?? false,
+					ambient,
 					text: source.slice(node.getStart(sourceFile), node.end),
 				});
-				return;
 			}
+			if (ambient) return;
 		}
 		ts.forEachChild(node, visit);
 	};

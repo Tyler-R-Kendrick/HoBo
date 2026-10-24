@@ -4,6 +4,7 @@ import {
 	existsSync,
 	mkdirSync,
 	mkdtempSync,
+	readdirSync,
 	readFileSync,
 	rmSync,
 	writeFileSync,
@@ -122,6 +123,11 @@ interface BinInput {
 	readonly stdin?: string;
 }
 
+/** The `hobo-yard-*` event stores the runs left in their TMPDIR (C-8 of the #1593 review). */
+function leftYards(): string[] {
+	return readdirSync(scratch).filter((name) => name.startsWith("hobo-yard-"));
+}
+
 function runBin(input: BinInput): Promise<BinRun> {
 	const bin = input.bin ?? HOBO_BIN;
 	return new Promise((resolve, reject) => {
@@ -206,6 +212,8 @@ describe("the composed hobo binary under HOBO_CREDENTIALS=opensesame", () => {
 				"recipes",
 			]);
 			expect(run.childMarker).toBe("1");
+			// The composed process removed its event store on the way out.
+			expect(leftYards()).toEqual([]);
 		},
 		RUN_TIMEOUT_MS,
 	);
@@ -224,6 +232,8 @@ describe("the composed hobo binary under HOBO_CREDENTIALS=opensesame", () => {
 			expect(run.status).toBe(0);
 			expect(run.stdout).toMatch(/^HoBo CLI/u);
 			expect(run.command).toBeUndefined();
+			// The composed process removed its event store on the way out.
+			expect(leftYards()).toEqual([]);
 		},
 		RUN_TIMEOUT_MS,
 	);
@@ -252,6 +262,8 @@ describe("hobo-mcp under HOBO_CREDENTIALS=opensesame", () => {
 				HOBO_MCP_BIN,
 			]);
 			expect(run.childMarker).toBe("1");
+			// The composed process removed its event store on the way out.
+			expect(leftYards()).toEqual([]);
 			expect(run.sawStorePassword).toBe(true);
 			// The relaunched server answered on the stdout the client reads.
 			const reply = parseJsonValue(run.stdout.trim());
@@ -277,6 +289,8 @@ describe("hobo-mcp under HOBO_CREDENTIALS=opensesame", () => {
 			);
 			expect(run.stdout).toBe("");
 			expect(run.command).toBeUndefined();
+			// The composed process removed its event store on the way out.
+			expect(leftYards()).toEqual([]);
 		},
 		RUN_TIMEOUT_MS,
 	);

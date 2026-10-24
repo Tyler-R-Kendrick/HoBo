@@ -2,6 +2,7 @@
 import { createHoboMcpServer } from "@hobo/mcp";
 
 import { createComposedHoboCli } from "../cli.js";
+import { createDefaultYardRuntime } from "../compose.js";
 import {
 	relaunchInputFor,
 	relaunchMcpUnderOpenSesame,
@@ -9,13 +10,20 @@ import {
 	wantsOpenSesameRelaunch,
 } from "../credentials-opensesame.js";
 import { localOperatorAuth, serveMcpStdio } from "../mcp-stdio.js";
+import { ownedTempDir } from "../owned-temp-dir.js";
 
 // The runnable MCP control surface (docs/plans/0006 item 3-3): the composed
 // hobo CLI (default LOCAL/MOCKED lane; live lanes stay credential-gated by
 // env) exposed over MCP stdio. Every tool call dispatches through the same
 // command registry as the `hobo` binary — one surface, two transports.
 async function serve(): Promise<number> {
-	const server = createHoboMcpServer({ cli: createComposedHoboCli() });
+	// The throwaway event store, removed however this process ends.
+	const yardRuntime = createDefaultYardRuntime({
+		dataDir: ownedTempDir("hobo-yard-"),
+	});
+	const server = createHoboMcpServer({
+		cli: createComposedHoboCli({ yardRuntime }),
+	});
 	await serveMcpStdio({
 		server,
 		auth: localOperatorAuth(),

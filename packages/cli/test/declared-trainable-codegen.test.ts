@@ -1,4 +1,11 @@
-import { access, mkdtemp, readFile, rm, writeFile } from "node:fs/promises";
+import {
+	access,
+	mkdir,
+	mkdtemp,
+	readFile,
+	rm,
+	writeFile,
+} from "node:fs/promises";
 import { join } from "node:path";
 import { fileURLToPath, pathToFileURL } from "node:url";
 import { serializeTrainingArtifactProgram } from "@hobo/core";
@@ -741,6 +748,72 @@ describe("ambient @trainable classes in hobo stub", () => {
 		await runCodegen({ projectRoot, check: false });
 		expect(await readFile(trainables, "utf8")).toContain(
 			'import { score } from "../score.js";',
+		);
+	});
+
+	it("reads jsx past options the cli's TypeScript does not know or accept", async () => {
+		// The cli parses with its own TypeScript, which can be older than the
+		// project's: TypeScript 6 accepts target and lib es2025, 5.9 does not.
+		const trainables = join(projectRoot, "src/_generated/trainables.ts");
+		await writeFile(join(projectRoot, "src/score.tsx"), SCORE);
+		for (const options of [
+			{ target: "es2025" },
+			{ lib: ["es2025"] },
+			{ notAnOption: true },
+		]) {
+			await writeFile(
+				join(projectRoot, "tsconfig.json"),
+				JSON.stringify({ compilerOptions: { jsx: "preserve", ...options } }),
+			);
+			await runCodegen({ projectRoot, check: false });
+			expect(
+				await readFile(trainables, "utf8"),
+				JSON.stringify(options),
+			).toContain('import { score } from "../score.jsx";');
+		}
+	});
+
+	it.each([
+		[
+			"a jsx value TypeScript does not accept",
+			{ compilerOptions: { jsx: "vue" } },
+			undefined,
+			/TS6046 Argument for '--jsx' option must be/,
+		],
+		[
+			"a jsx value of the wrong type",
+			{ compilerOptions: { jsx: 5 } },
+			undefined,
+			/TS5024 Compiler option 'jsx' requires a value of type string/,
+		],
+		[
+			"an extends it cannot read",
+			{ extends: "./base.json" },
+			null,
+			/TS5083 Cannot read file '[^']*base\.json'/,
+		],
+		[
+			"an extends it cannot find",
+			{ extends: "missing-config/tsconfig.json" },
+			undefined,
+			/TS6053 File 'missing-config\/tsconfig\.json' not found/,
+		],
+		[
+			"an extends with a syntax error",
+			{ extends: "./base.json" },
+			'{ "compilerOptions": { "jsx": "preserve" ',
+			/TS1005 '}' expected/,
+		],
+	])("refuses a tsconfig with %s", async (_case, config, base, problem) => {
+		// base: the text of ./base.json, or null to make it a directory.
+		await writeFile(join(projectRoot, "tsconfig.json"), JSON.stringify(config));
+		if (base === null) await mkdir(join(projectRoot, "base.json"));
+		else if (base !== undefined) {
+			await writeFile(join(projectRoot, "base.json"), base);
+		}
+		await writeFile(join(projectRoot, "src/score.tsx"), SCORE);
+		await expect(runCodegen({ projectRoot, check: false })).rejects.toThrow(
+			problem,
 		);
 	});
 

@@ -54,15 +54,44 @@ export function emittedPath(file: string, preserveJsx: boolean): string {
 	);
 }
 
-/** TS18003, "No inputs were found": only the options are read, not the file list. */
-const NO_INPUTS = 18003;
+/**
+ * TS5083 and TS5012, "Cannot read file", and TS6053, "File not found": a
+ * config the tsconfig extends that TypeScript cannot read or find.
+ */
+const UNREADABLE = new Set([5083, 5012, 6053]);
+
+/**
+ * TS6046, "Argument for '--x' option must be", and TS5024, "Compiler option
+ * 'x' requires a value of type": an option value TypeScript does not accept.
+ */
+const INVALID_VALUE = new Set([6046, 5024]);
+
+/**
+ * Whether a problem TypeScript reports reading a tsconfig leaves its `jsx`
+ * unknown: a syntax error (TypeScript numbers those from 1000 to 1999) or a
+ * config it cannot read or find, either of which can drop the `jsx` that
+ * config holds, or a `jsx` value it does not accept. An option, or an option
+ * value, that it does not know leaves `jsx` as read.
+ */
+function leavesJsxUnknown(diagnostic: ts.Diagnostic): boolean {
+	if (diagnostic.code >= 1000 && diagnostic.code < 2000) return true;
+	if (UNREADABLE.has(diagnostic.code)) return true;
+	return (
+		INVALID_VALUE.has(diagnostic.code) &&
+		/'(?:--)?jsx'/u.test(
+			ts.flattenDiagnosticMessageText(diagnostic.messageText, " "),
+		)
+	);
+}
 
 /**
  * Whether the project's `tsconfig.json`, the one at its root that `tsc -p`
  * compiles (`extends` followed), sets `jsx: preserve`, under which TypeScript
  * emits a `.tsx` file as `.jsx`. A project with no `tsconfig.json` does not.
- * A config TypeScript cannot read is refused, since the extension would then
- * be a guess.
+ * The cli reads it with its own TypeScript, which can be older than the
+ * project's and not know a newer `target` or option. Of the options only `jsx`
+ * changes the emitted extension, so a tsconfig is refused only when its `jsx`
+ * is unknown (`leavesJsxUnknown`), since the extension would then be a guess.
  */
 export function preservesJsx(projectRoot: string): boolean {
 	const configFile = join(projectRoot, "tsconfig.json");
@@ -75,11 +104,7 @@ export function preservesJsx(projectRoot: string): boolean {
 			problems.push(diagnostic);
 		},
 	});
-	problems.push(
-		...(parsed?.errors ?? []).filter(
-			(diagnostic) => diagnostic.code !== NO_INPUTS,
-		),
-	);
+	problems.push(...(parsed?.errors ?? []).filter(leavesJsxUnknown));
 	if (parsed === undefined || problems.length > 0) {
 		const messages = problems.map(
 			(diagnostic) =>

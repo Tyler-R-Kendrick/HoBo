@@ -81,6 +81,7 @@ export {
 	type DeclaredOperation,
 	type DeclaredParameter,
 	type DeclaredTrainableClass,
+	defineGrounding,
 	description,
 	type FieldDescription,
 	type FieldMetadata,

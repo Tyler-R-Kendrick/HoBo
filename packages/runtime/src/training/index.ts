@@ -10,6 +10,7 @@ export {
 	trainable,
 } from "./decorators.js";
 export {
+	defineGrounding,
 	description,
 	intent,
 	PENDING_GROUNDINGS,

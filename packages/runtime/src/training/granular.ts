@@ -3,7 +3,7 @@ import {
 	finalizeTrainableClass as finalizeWithRegistry,
 	granularOptionsFor as groundingOptionsFor,
 } from "ts-autocode-grounding";
-import type { JsonBag } from "../json.js";
+import type { JsonBag, JsonValue } from "../json.js";
 import { getTrainable, resolveTrainable, training } from "./training.js";
 import type { Trainable, TrainingOptions } from "./types.js";
 
@@ -45,8 +45,10 @@ export function finalizeTrainableClass(
 		{
 			has: (methodRef) => getTrainable(methodRef) !== undefined,
 			register: (baseline, options) =>
-				// SAFETY: assertion to `as TrainingOptions), }, ` is required at this boundary.
-				training(baseline, options as TrainingOptions),
+				// SAFETY: ts-autocode-grounding composes HoBo's TrainingOptions here. Its contract
+				// types declared shapes as ShapeDescriptor records, which are JSON, but an
+				// interface has no index signature, so TypeScript cannot see them as JsonValue.
+				training(baseline, options as never),
 		},
 		Symbol.for("hobo.trainable.metadata"),
 	);
@@ -63,11 +65,28 @@ export function granularOptionsFor(
 	metadata: JsonBag | undefined,
 	methodName: string,
 ): TrainingOptions {
-	// SAFETY: assertion to `gOptionsFor( methodRef, metadata, methodName, ) as TrainingOptions; } ` is required at this boundary.
+	// SAFETY: the composed GroundingOptions are TrainingOptions; its ShapeDescriptor records are JSON (see finalizeTrainableClass above).
 	return groundingOptionsFor(
 		methodRef,
 		// SAFETY: decorator metadata is the grounding options bag at this boundary.
 		metadata as never,
 		methodName,
-	) as TrainingOptions;
+	) as never;
+}
+
+/**
+ * `defineGrounding(options)`: the callee of the registrations `hobo stub`
+ * generates from an ambient `@trainable declare class`
+ * (`generateDeclaredRegistrations` in scan.ts). ts-autocode-grounding's emitter
+ * writes `import { defineGrounding } from "@hobo/runtime"`, so this is the name
+ * HoBo answers to. It is `training.define`: the signature-only form, registered
+ * in HoBo's training registry and served by the contract-derived stub baseline
+ * (ADR-0125). ts-autocode-grounding exports a `defineGrounding` of its own that
+ * only checks and freezes the options and registers nothing, so it is not the
+ * one re-exported here (ADR-0128).
+ */
+export function defineGrounding<I = JsonValue, O = JsonValue>(
+	options: TrainingOptions<I, O> & { readonly methodRef: string },
+): Trainable<I, O> {
+	return training.define(options);
 }

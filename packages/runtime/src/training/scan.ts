@@ -38,10 +38,12 @@ export function scanDeclaredTrainables(
 }
 
 /**
- * Generate the `training.define` registration source for a scanned class —
- * what `hobo stub` writes into `src/_generated/trainables.ts`. The declared
- * TypeScript signature becomes the contract's shape descriptors, so the
- * registration grounds (shape present) even with every decorator omitted.
+ * Generate the registration source for a scanned class: what `hobo stub`
+ * writes into `src/_generated/trainables.ts`, one
+ * `export const <method> = defineGrounding({...})` per operation, importing
+ * `defineGrounding` from `@hobo/runtime` (granular.ts; it is `training.define`).
+ * The declared TypeScript signature becomes the contract's shape descriptors,
+ * so the registration grounds (shape present) even with every decorator omitted.
  */
 export function generateDeclaredRegistrations(
 	declared: DeclaredTrainableClass,

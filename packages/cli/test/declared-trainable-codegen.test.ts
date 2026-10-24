@@ -93,9 +93,11 @@ const CLASS_BODY = '{\n  greet(): string {\n    return "hi";\n  }\n}';
 /**
  * Where ECMAScript's NamedEvaluation gives an anonymous class expression a
  * name, `Greeter` each time: a decorated `@trainable` class there registers
- * `Greeter.<method>`, as its own name would, under TypeScript's emit and
- * esbuild's. The last row is one only esbuild names (the spec leaves a
- * parenthesized assignment target anonymous); codegen takes either.
+ * `Greeter.<method>`, as its own name would. TypeScript's emit (5.9 and 6.0)
+ * names it so in every row but the last. esbuild (0.28.1) names a subset: it
+ * leaves the class anonymous for a computed class field key and a parameter
+ * default, and it alone names the last row (the spec leaves a parenthesized
+ * assignment target anonymous). Codegen takes the name either compiler gives.
  */
 const NAMED_EVALUATIONS: readonly (readonly [
 	string,

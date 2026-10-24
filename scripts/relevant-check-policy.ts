@@ -70,12 +70,19 @@ function defaultWorkspacePackageExists(workspace: string) {
 }
 
 const PACKAGE_TYPESCRIPT = /^packages\/.+\.(?:[cm]?ts|tsx)$/u;
-const TS_AUTOCODE_SPECIFIER = /["']ts-autocode(?:-[a-z]+)?(?:\/[^"']*)?["']/u;
+/** In any quote, a template literal's included: the surface test scans those too. */
+const TS_AUTOCODE_SPECIFIER =
+	/["'`]ts-autocode(?:-[a-z]+)?(?:\/[^"'`]*)?["'`]/u;
+
+/** Whether source text names a ts-autocode module specifier. */
+export function namesTsAutocode(text: string) {
+	return TS_AUTOCODE_SPECIFIER.test(text);
+}
 
 /** A file that is gone (deleted, renamed away) imports nothing. */
 function defaultImportsTsAutocode(file: string) {
 	try {
-		return TS_AUTOCODE_SPECIFIER.test(readFileSync(file, "utf8"));
+		return namesTsAutocode(readFileSync(file, "utf8"));
 	} catch {
 		return false;
 	}

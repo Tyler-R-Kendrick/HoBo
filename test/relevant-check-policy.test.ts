@@ -4,6 +4,7 @@ import { test } from "vitest";
 import { findCaseCollisions } from "../scripts/check-case-collisions.js";
 import {
 	type Check,
+	namesTsAutocode,
 	selectRelevantChecks,
 } from "../scripts/relevant-check-policy.js";
 
@@ -773,6 +774,24 @@ test("a package source or test file that imports ts-autocode selects the consume
 			),
 			file,
 		);
+	}
+});
+
+test("a ts-autocode specifier in any quote, a template literal's included, names ts-autocode", () => {
+	for (const text of [
+		'import { discoverInSource } from "ts-autocode-training";',
+		"const m = await import('ts-autocode-grounding');",
+		"const m = await import(`ts-autocode-training`);",
+		'export * from "ts-autocode-grounding/sub";',
+	]) {
+		assert.ok(namesTsAutocode(text), text);
+	}
+	for (const text of [
+		'import x from "not-ts-autocode";',
+		'import x from "ts-autocode-trainingX";',
+		"// ts-autocode is a submodule",
+	]) {
+		assert.ok(!namesTsAutocode(text), text);
 	}
 });
 

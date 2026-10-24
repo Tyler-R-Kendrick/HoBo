@@ -320,3 +320,82 @@ describe("hobo-mcp under HOBO_CREDENTIALS=opensesame", () => {
 		RUN_TIMEOUT_MS,
 	);
 });
+
+/**
+ * Start a composed binary, and send it `signal` once `ready` says it is up;
+ * resolves with how it ended. A process that swallows the signal is killed.
+ */
+function signalBin(
+	bin: string,
+	args: readonly string[],
+	ready: (stderr: string) => boolean,
+	signal: NodeJS.Signals,
+): Promise<{ code: number | null; signal: NodeJS.Signals | null }> {
+	return new Promise((resolve, reject) => {
+		const child = spawn(
+			process.execPath,
+			["--import", TSX_LOADER, bin, ...args],
+			{
+				cwd: elsewhere,
+				env: {
+					PATH: process.env.PATH ?? "",
+					HOME: root,
+					HOBO_HOME: join(root, ".hobo"),
+					TMPDIR: scratch,
+					NODE_NO_WARNINGS: "1",
+				},
+				// stdin stays open: hobo-mcp serves it until it ends.
+				stdio: ["pipe", "ignore", "pipe"],
+			},
+		);
+		const err: string[] = [];
+		let sent = false;
+		const poll = setInterval(() => {
+			if (sent || !ready(err.join(""))) return;
+			sent = true;
+			child.kill(signal);
+			const deadline = setTimeout(() => child.kill("SIGKILL"), 15_000);
+			child.on("close", () => clearTimeout(deadline));
+		}, 50);
+		child.stderr.on("data", (chunk) => err.push(String(chunk)));
+		child.on("error", reject);
+		child.on("close", (code, ended) => {
+			clearInterval(poll);
+			resolve({ code, signal: ended });
+		});
+	});
+}
+
+describe("the composed binaries' own event store, on a signal", () => {
+	it(
+		"hobo removes it on a signal it has no other handler for, and still ends by it",
+		async () => {
+			// `serve control` stops gracefully on SIGINT and SIGTERM and has no SIGHUP
+			// handler: SIGHUP finds only the entry point's.
+			const ended = await signalBin(
+				HOBO_BIN,
+				["serve", "control", "--port", "0"],
+				(stderr) => stderr.includes("hobo serve control: http"),
+				"SIGHUP",
+			);
+			expect(ended.signal).toBe("SIGHUP");
+			expect(leftYards()).toEqual([]);
+		},
+		RUN_TIMEOUT_MS,
+	);
+
+	it(
+		"hobo-mcp removes it on SIGTERM while it serves, and still ends by it",
+		async () => {
+			const ended = await signalBin(
+				HOBO_MCP_BIN,
+				[],
+				() => leftYards().length > 0,
+				"SIGTERM",
+			);
+			expect(ended.signal).toBe("SIGTERM");
+			expect(leftYards()).toEqual([]);
+		},
+		RUN_TIMEOUT_MS,
+	);
+});

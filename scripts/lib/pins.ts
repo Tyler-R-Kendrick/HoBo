@@ -18,6 +18,9 @@ import { PinsError } from "./pins-error.ts";
 
 export { PinsError, type PinsErrorCode } from "./pins-error.ts";
 
+/** Where the manifest lives, relative to the repository root. */
+export const PINS_FILE = "tools/pins/siblings.json";
+
 export interface GitPin {
 	readonly path: string;
 	readonly repo: string;

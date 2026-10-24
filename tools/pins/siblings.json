@@ -5,7 +5,11 @@
       "path": "external/ts-autocode",
       "repo": "https://github.com/Tyler-R-Kendrick/ts-autocode.git",
       "branch": "main",
-      "sparse": null
+      "sparse": [
+        "packages/grounding",
+        "packages/training",
+        "packages/rewrite"
+      ]
     }
   },
   "assets": {

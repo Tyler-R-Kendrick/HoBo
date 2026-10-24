@@ -4,6 +4,7 @@ import { test } from "vitest";
 import { findCaseCollisions } from "../scripts/check-case-collisions.js";
 import {
 	type Check,
+	namesTsAutocode,
 	selectRelevantChecks,
 } from "../scripts/relevant-check-policy.js";
 
@@ -719,6 +720,108 @@ test("unrelated changes do not select the anti-slop drift test", () => {
 		".agents/skills/install-anti-slop/SKILL.md",
 	]) {
 		assert.ok(!plan([file]).checks.some(isAntiSlopDriftTest), file);
+	}
+});
+
+const isTsAutocodeSurfaceTest = (check: {
+	command: string;
+	args: readonly string[];
+}) =>
+	check.command === "node" &&
+	check.args.join(" ") ===
+		"--import tsx --test scripts/test/ts-autocode-consumer-surface.test.ts scripts/test/ts-autocode-grounding-drift.test.ts";
+
+test("a ts-autocode pin bump or a workspace edit selects the consumer-surface test", () => {
+	for (const file of [
+		"external/ts-autocode",
+		"pnpm-workspace.yaml",
+		"tools/pins/siblings.json",
+		"scripts/test/ts-autocode-consumer-surface.test.ts",
+		"scripts/test/ts-autocode-grounding-drift.test.ts",
+	]) {
+		assert.ok(plan([file]).checks.some(isTsAutocodeSurfaceTest), file);
+	}
+});
+
+test("a change to what the grounding drift test compiles granular.ts with selects it", () => {
+	for (const file of [
+		"packages/runtime/src/json.ts",
+		"packages/runtime/src/training/types.ts",
+		"packages/runtime/tsconfig.json",
+		"tsconfig.base.json",
+	]) {
+		assert.ok(
+			plan([file], { importsTsAutocode: () => false }).checks.some(
+				isTsAutocodeSurfaceTest,
+			),
+			file,
+		);
+	}
+});
+
+test("unrelated changes do not select the ts-autocode consumer-surface test", () => {
+	for (const file of ["packages/core/src/index.ts", "tools/pins/README.md"]) {
+		assert.ok(!plan([file]).checks.some(isTsAutocodeSurfaceTest), file);
+	}
+});
+
+test("a package source or test file that imports ts-autocode selects the consumer-surface test", () => {
+	const importing = new Set([
+		"packages/cli/src/codegen/text.ts",
+		"packages/runtime/test/define-grounding.test.ts",
+	]);
+	const importsTsAutocode = (file: string) => importing.has(file);
+	for (const file of importing) {
+		assert.ok(
+			plan([file], { importsTsAutocode }).checks.some(isTsAutocodeSurfaceTest),
+			file,
+		);
+	}
+	assert.ok(
+		!plan(["packages/cli/src/codegen/tree.ts"], {
+			importsTsAutocode,
+		}).checks.some(isTsAutocodeSurfaceTest),
+	);
+	// Only TypeScript under packages/ is read: the surface test scans nothing else.
+	for (const file of ["site/src/lib/x.ts", "packages/cli/README.md"]) {
+		assert.ok(
+			!plan([file], { importsTsAutocode: () => true }).checks.some(
+				isTsAutocodeSurfaceTest,
+			),
+			file,
+		);
+	}
+});
+
+test("a ts-autocode specifier in any quote, a template literal's included, names ts-autocode", () => {
+	for (const text of [
+		'import { discoverInSource } from "ts-autocode-training";',
+		"const m = await import('ts-autocode-grounding');",
+		"const m = await import(`ts-autocode-training`);",
+		'export * from "ts-autocode-grounding/sub";',
+	]) {
+		assert.ok(namesTsAutocode(text), text);
+	}
+	for (const text of [
+		'import x from "not-ts-autocode";',
+		'import x from "ts-autocode-trainingX";',
+		"// ts-autocode is a submodule",
+	]) {
+		assert.ok(!namesTsAutocode(text), text);
+	}
+});
+
+test("by default the policy reads a changed package file for a ts-autocode import", () => {
+	assert.ok(
+		plan(["packages/cli/src/codegen/trainables.ts"]).checks.some(
+			isTsAutocodeSurfaceTest,
+		),
+	);
+	for (const file of [
+		"packages/core/src/index.ts",
+		"packages/cli/src/codegen/no-such-file.ts",
+	]) {
+		assert.ok(!plan([file]).checks.some(isTsAutocodeSurfaceTest), file);
 	}
 });
 

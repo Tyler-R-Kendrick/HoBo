@@ -24,7 +24,7 @@ package project_codegen
 #TrainableStub: {
 	method_ref:   string & !=""
 	export_name:  string & =~"^[a-zA-Z_$][a-zA-Z0-9_$]*$"
-	origin:       "bindle-step" | "directive"
+	origin:       "bindle-step" | "directive" | "declared"
 	if origin == "bindle-step" {
 		resource:     string & !=""
 		type_name:    string & !=""
@@ -34,5 +34,10 @@ package project_codegen
 		resource:     ""
 		type_name:    ""
 		contract_ref: string & =~"^inferred://"
+	}
+	if origin == "declared" {
+		resource:     ""
+		type_name:    ""
+		contract_ref: string & =~"^decl://"
 	}
 }

@@ -3,6 +3,7 @@ import { resolve } from "node:path";
 import { toJson } from "@bufbuild/protobuf";
 import { loadSourceModel } from "../codegen/engine.js";
 import { runCodegen } from "../codegen/run-codegen.js";
+import { scanAmbientTrainableClasses } from "../codegen/ambient-trainables.js";
 import {
 	buildTrainables,
 	scanTrainableDirectives,
@@ -23,8 +24,9 @@ export interface StubCommandOptions {
 }
 
 /**
- * `hobo stub` materializes the contract-backed trainable stubs codegen emits
- * for the project's bindle steps and reports their descriptors; `--check`
+ * `hobo stub` materializes the trainable stubs codegen emits (one per bindle
+ * step, one per bare `"use training"` marker, one per operation of an ambient
+ * `@trainable declare class`) and reports their descriptors; `--check`
  * validates the generated tree without writing.
  */
 export function createStubCommand(
@@ -41,7 +43,8 @@ export function createStubCommand(
 				);
 				const model = await loadSourceModel(projectRoot, layout.sources);
 				const directives = await scanTrainableDirectives(projectRoot, layout);
-				const stubs = buildTrainables(model, layout, directives).stubs;
+				const ambient = await scanAmbientTrainableClasses(projectRoot, layout);
+				const stubs = buildTrainables(model, layout, directives, ambient).stubs;
 				return {
 					ok: true,
 					status: "ok",

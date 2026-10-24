@@ -1,30 +1,37 @@
-import { existsSync } from "node:fs";
-import { readdir, readFile } from "node:fs/promises";
-import { join, posix, relative } from "node:path";
+import { readFile } from "node:fs/promises";
+import { posix } from "node:path";
 
 import { create } from "@bufbuild/protobuf";
+import { generateDeclaredRegistrations } from "ts-autocode-grounding";
 import { discoverInSource } from "ts-autocode-training";
+import type { AmbientTrainableClass } from "./ambient-trainables.js";
 import type {
 	SourceModel,
 	SourceModelBindle,
 	SourceModelResource,
 } from "./engine.js";
+import { isPlainIdentifier, isReservedWord } from "./identifiers.js";
+import { emittedPath, projectPath, scannedSources } from "./source-files.js";
 import {
 	type CodegenArtifact,
 	CodegenArtifactSchema,
+	CodegenError,
 	type CodegenLayout,
 	type TrainableStub,
 	TrainableStubSchema,
 } from "./types.js";
 
-// Trainable codegen (ADR-0125 / generated-stack.md). Two of the three
-// declaration syntaxes are generated here: contract-backed
-// `training.define()` stubs for every bindle step (a semantic function until
-// promotion), and inferred `training.infer()` registrations for bare
-// `"use training"` markers found in authored source (syntax 3 — the marker
-// carries no bindings; codegen generates them). Output paths and module
-// specifiers all come from the layout config; record shapes are the
-// generated hobo.cli.v1 proto types.
+// Trainable codegen (ADR-0125 / generated-stack.md). Generated here:
+// contract-backed `training.define()` stubs for every bindle step (a semantic
+// function until promotion); inferred `training.infer()` registrations for
+// bare `"use training"` markers found in authored source (syntax 3 — the
+// marker carries no bindings; codegen generates them); and, for an ambient
+// `@trainable declare class` (Plan 2 Syntax 0), the `defineGrounding(...)`
+// registrations ts-autocode-grounding's emitter writes (ADR-0128), one module
+// per class beside the trainables module, re-exported from it (the classes
+// come from ambient-trainables.ts). Output paths
+// and module specifiers all come from the layout config; record shapes are
+// the generated hobo.cli.v1 proto types.
 
 /** An exported function carrying the bare `"use training"` prologue. */
 export interface DirectiveFunction {
@@ -58,33 +65,11 @@ export async function scanTrainableDirectives(
 	projectRoot: string,
 	layout: CodegenLayout,
 ): Promise<readonly DirectiveFunction[]> {
-	const scanRoot = join(projectRoot, layout.sources.scanDir);
-	if (!existsSync(scanRoot)) return [];
-	const excluded = layout.generatedRoots.map((root) => join(projectRoot, root));
-
-	const files: string[] = [];
-	async function visit(directory: string): Promise<void> {
-		if (excluded.some((root) => directory.startsWith(root))) return;
-		for (const entry of await readdir(directory, { withFileTypes: true })) {
-			const path = join(directory, entry.name);
-			if (entry.isDirectory()) {
-				await visit(path);
-				continue;
-			}
-			if (/\.(ts|tsx|mts)$/.test(entry.name)) files.push(path);
-		}
-	}
-	await visit(scanRoot);
-	files.sort();
-
 	const found: DirectiveFunction[] = [];
-	for (const file of files) {
+	for (const file of await scannedSources(projectRoot, layout)) {
 		const source = await readFile(file, "utf8");
 		for (const name of directiveFunctionNames(source)) {
-			found.push({
-				name,
-				file: relative(projectRoot, file).split("\\").join("/"),
-			});
+			found.push({ name, file: projectPath(projectRoot, file) });
 		}
 	}
 	return found;
@@ -92,6 +77,8 @@ export async function scanTrainableDirectives(
 
 export interface TrainablesBuild {
 	readonly artifact: CodegenArtifact;
+	/** One registration module per ambient @trainable class, beside `artifact`. */
+	readonly declaredArtifacts: readonly CodegenArtifact[];
 	readonly stubs: readonly TrainableStub[];
 }
 
@@ -108,6 +95,7 @@ export function buildTrainables(
 	model: SourceModel,
 	layout: CodegenLayout,
 	directives: readonly DirectiveFunction[] = [],
+	ambient: readonly AmbientTrainableClass[] = [],
 ): TrainablesBuild {
 	const stepEntries = model.bindles.flatMap((bindle) =>
 		bindle.steps.map((step) => toStepEntry(model, bindle, step)),
@@ -115,11 +103,19 @@ export function buildTrainables(
 	const directiveEntries = directives.map((directive) =>
 		toDirectiveEntry(directive, layout),
 	);
+	const declaredModules = ambient.map((entry) =>
+		toDeclaredModule(entry, layout),
+	);
+	const declaredEntries = declaredModules.flatMap((module) => module.entries);
 	const entries = [...stepEntries, ...directiveEntries];
-	const stubs = entries.map((entry) => entry.stub);
+	const stubs = [...entries, ...declaredEntries].map((entry) => entry.stub);
 	const usedTypes = [
 		...new Set(stepEntries.map((entry) => entry.stub.typeName)),
 	].sort();
+	refuseUnusableExports(
+		stubs,
+		moduleBindings(layout.imports.runtimeModule, usedTypes, directives),
+	);
 
 	const header =
 		`// Generated by hobo codegen — do not edit.\n` +
@@ -135,6 +131,13 @@ export function buildTrainables(
 		directiveEntries.map((entry) => entry.importLine).join("");
 
 	const defines = entries.map((entry) => entry.code).join("\n");
+	const reexports =
+		declaredEntries.length > 0
+			? `\n// Ambient @trainable classes: their registrations are generated beside\n` +
+				`// this module (declared/<Class>.ts) and re-exported here, so importing it\n` +
+				`// registers them.\n` +
+				declaredEntries.map((entry) => entry.reexport).join("")
+			: "";
 
 	const manifest =
 		`export const trainableStubs = [\n` +
@@ -149,10 +152,92 @@ export function buildTrainables(
 	return {
 		artifact: create(CodegenArtifactSchema, {
 			path: layout.files.trainables,
-			content: `${header}\n${defines}\n${manifest}`,
+			content: `${header}\n${defines}${reexports}\n${manifest}`,
 		}),
+		declaredArtifacts: declaredModules.map((module) => module.artifact),
 		stubs,
 	};
+}
+
+/**
+ * What the trainables module binds besides its exports' own names, each with
+ * what binds it: the runtime's `training` import, the `trainableStubs`
+ * manifest, the bindings' type imports, and one import per bare
+ * `"use training"` function under its own name. A directive whose name another
+ * of these already binds would be a duplicate binding (TS2300), so it is
+ * refused here, named with the file it is in.
+ */
+function moduleBindings(
+	runtimeModule: string,
+	usedTypes: readonly string[],
+	directives: readonly DirectiveFunction[],
+): ReadonlyMap<string, string> {
+	const bound = new Map<string, string>([
+		["training", `the training import from ${runtimeModule}`],
+		["trainableStubs", "the trainableStubs manifest"],
+		...usedTypes.map((type): [string, string] => [
+			type,
+			`the ${type} type import`,
+		]),
+	]);
+	for (const { name, file } of directives) {
+		const earlier = bound.get(name);
+		if (earlier !== undefined) {
+			throw new CodegenError(
+				"HOBO_CODEGEN_SOURCE_PARSE",
+				`The "use training" function ${name} in ${file} would be imported into the trainables module as ${name}, which ${earlier} already binds; rename the function`,
+				{ name, file },
+			);
+		}
+		bound.set(name, `the import of ${name} from ${file}`);
+	}
+	return bound;
+}
+
+/**
+ * Every export of the trainables module must compile: an identifier that is
+ * not a reserved word (`$.$` camelCases to ""), not a name the module already
+ * binds (its `training` and type imports, a directive's import, the
+ * `trainableStubs` manifest: `Trainable.Stubs` camelCases to that), and not one
+ * another entry exports (`Incident.classify` and the step `incident.classify`
+ * both camelCase to `incidentClassify`).
+ */
+function refuseUnusableExports(
+	stubs: readonly TrainableStub[],
+	bound: ReadonlyMap<string, string>,
+): void {
+	const seen = new Map<string, string>();
+	for (const { exportName, methodRef } of stubs) {
+		const unusable = !isPlainIdentifier(exportName)
+			? "which is not an identifier"
+			: isReservedWord(exportName)
+				? "which is a reserved word"
+				: undefined;
+		if (unusable !== undefined) {
+			throw new CodegenError(
+				"HOBO_CODEGEN_SOURCE_PARSE",
+				`Trainable ${methodRef} generates the export name ${JSON.stringify(exportName)}, ${unusable}`,
+				{ exportName, methodRef },
+			);
+		}
+		const binding = bound.get(exportName);
+		if (binding !== undefined) {
+			throw new CodegenError(
+				"HOBO_CODEGEN_SOURCE_PARSE",
+				`Trainable ${methodRef} generates the export ${exportName}, which the trainables module already binds (${binding})`,
+				{ exportName, methodRef },
+			);
+		}
+		const earlier = seen.get(exportName);
+		if (earlier !== undefined) {
+			throw new CodegenError(
+				"HOBO_CODEGEN_SOURCE_PARSE",
+				`Trainables ${earlier} and ${methodRef} both generate the export ${exportName}`,
+				{ exportName, methodRefs: [earlier, methodRef] },
+			);
+		}
+		seen.set(exportName, methodRef);
+	}
 }
 
 function toStepEntry(
@@ -207,7 +292,7 @@ function toDirectiveEntry(
 
 	const fromDir = posix.dirname(layout.files.trainables);
 	const specifier = posix
-		.relative(fromDir, directive.file.replace(/\.(ts|tsx|mts)$/, ".js"))
+		.relative(fromDir, emittedPath(directive.file))
 		.replace(/^(?!\.)/, "./");
 
 	return {
@@ -217,6 +302,78 @@ function toDirectiveEntry(
 			`// Inferred bindings for the bare "use training" marker in ${directive.file}.\n` +
 			`export const ${stub.exportName} = training.infer(${directive.name});\n`,
 	};
+}
+
+interface DeclaredEntry {
+	readonly stub: TrainableStub;
+	readonly reexport: string;
+}
+
+interface DeclaredModule {
+	readonly artifact: CodegenArtifact;
+	readonly entries: readonly DeclaredEntry[];
+}
+
+/**
+ * The registration module for one ambient class, written by
+ * ts-autocode-grounding's emitter: one `export const <method> =
+ * defineGrounding({...})` per operation, `defineGrounding` imported from the
+ * layout's runtime module (`@hobo/runtime`'s is `training.define`). Every
+ * identity in it is derived from the scanned class and method names. The
+ * trainables module re-exports each operation as `<class><Method>`, the
+ * camelCase of its methodRef, as a bindle step's stub is named.
+ */
+function toDeclaredModule(
+	ambient: AmbientTrainableClass,
+	layout: CodegenLayout,
+): DeclaredModule {
+	const { declared, file } = ambient;
+	const fromDir = posix.dirname(layout.files.trainables);
+	const path = posix.join(fromDir, "declared", `${declared.className}.ts`);
+	const specifier = `./${posix.relative(fromDir, path).replace(/\.ts$/u, ".js")}`;
+	const artifact = create(CodegenArtifactSchema, {
+		path,
+		content: generateDeclaredRegistrations(declared, {
+			runtimeModule: rebased(
+				layout.imports.runtimeModule,
+				fromDir,
+				posix.dirname(path),
+			),
+			// @hobo/runtime's generateDeclaredRegistrations writes this module
+			// with this header too (the declared codegen test holds them equal).
+			header: [
+				"// Generated by hobo codegen — do not edit.",
+				`// Registrations for the ambient @trainable class ${declared.className} in ${file}`,
+				"// (Plan 2 Syntax 0, ADR-0128): signature-only, served by the stub baseline.",
+			],
+		}),
+	});
+	const entries = declared.operations.map((operation) => {
+		const stub = create(TrainableStubSchema, {
+			methodRef: operation.methodRef,
+			exportName: camelCase(operation.methodRef),
+			contractRef: operation.contractRef,
+			origin: "declared",
+		});
+		return {
+			stub,
+			reexport: `export { ${operation.method} as ${stub.exportName} } from ${JSON.stringify(specifier)};\n`,
+		};
+	});
+	return { artifact, entries };
+}
+
+/**
+ * A module specifier written for a module in `fromDir`, as a module in `toDir`
+ * must write it: a relative one is rebased (the layout's runtime module is
+ * relative to trainables.ts, a declared module sits one directory below it;
+ * `.` and `..` alone are relative too),
+ * a bare one is a package name and stays as it is.
+ */
+function rebased(specifier: string, fromDir: string, toDir: string): string {
+	if (!/^\.\.?(?:\/|$)/u.test(specifier)) return specifier;
+	const target = posix.relative(toDir, posix.join(fromDir, specifier));
+	return target.startsWith(".") ? target : `./${target}`;
 }
 
 /** The deterministic example object literal for a resource's fields. */

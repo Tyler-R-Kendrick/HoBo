@@ -3,7 +3,6 @@ import {
 	componentMetadataOf as groundingComponentMetadataOf,
 	param as groundingParam,
 } from "ts-autocode-grounding";
-import type { JsonBag } from "../json.js";
 import { finalizeTrainableClass, granularOptionsFor } from "./granular.js";
 import { getTrainable, resolveTrainable, stub, training } from "./training.js";
 import type { Trainable, TrainingOptions } from "./types.js";
@@ -76,7 +75,7 @@ export function trainable(first: any, second?: any): any {
 		interface DecoratorContextBag {
 			kind?: string;
 			name?: PropertyKey;
-			metadata?: JsonBag;
+			metadata?: DecoratorMetadataObject;
 		}
 		const context: DecoratorContextBag | undefined = second;
 		// Bare stage-3 method: (method, methodContext).

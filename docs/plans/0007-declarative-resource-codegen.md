@@ -127,7 +127,7 @@ phases are dependency-ordered.
   (mirrors stable-ID rule). Red/green TDD; collect/manifest snapshot tests.
 
 ### Phase 3 — Codegen + runtime wiring (G4)
-- **3.1** `hobo stub`: for each declared operation, emit the `training.define()` registration (same generated-region conventions as ADR-0048) and a typed client the app can import (`api.rankFeed(...)`).
+- **3.1** `hobo stub`: for each declared operation, emit the `training.define()` registration (same generated-region conventions as ADR-0048) and a typed client the app can import (`api.rankFeed(...)`). Registration half landed 2026-10-24 for **ambient** classes: `hobo stub` scans the source dir with ts-autocode-grounding and writes `src/_generated/declared/<Class>.ts` (one `defineGrounding` per operation, from `@hobo/runtime`), re-exported from `trainables.ts` as the camelCase of each methodRef (`TrainableStub` origin `declared`; ADR-0128). The typed client is still to come.
 - **3.2** Runtime link: declared operations resolve through `resolveTrainable` to the stub baseline; recorded calls land as specification-by-example traces (existing machinery, no new events).
 - **3.3** Cold-start generation: feed resource-tagged facts to the generation pipeline; promotion writes into the operation's generated region. (Design already covers this; work is plumbing the resource binding through.)
 

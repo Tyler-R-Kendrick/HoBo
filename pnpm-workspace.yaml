@@ -13,8 +13,9 @@ packages:
   - "src/draft/exp-proofs/*/*"
   - "src/draft/epic-proofs/*"
   - "src/draft/projects/*"
-  - "external/ts-autocode"
-  - "external/ts-autocode/packages/*"
+  - "external/ts-autocode/packages/grounding"
+  - "external/ts-autocode/packages/training"
+  - "external/ts-autocode/packages/rewrite"
 minimumReleaseAgeExclude:
   - '@turbo/darwin-64@2.10.1'
   - '@turbo/darwin-arm64@2.10.1'

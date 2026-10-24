@@ -13,7 +13,7 @@
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { type GitPin, PinsError } from "./pins.ts";
+import { type GitPin, PINS_FILE, PinsError } from "./pins.ts";
 import {
 	git,
 	gitlinkOf,
@@ -113,6 +113,22 @@ async function updateSubmodule(
 	}
 }
 
+/** The submodule's sparse-checkout paths, or null when it is checked out in full. */
+function sparsePaths(sub: string): readonly string[] | null {
+	const enabled = git(sub, ["config", "--bool", "core.sparseCheckout"]);
+	if (enabled.status !== 0 || enabled.stdout.trim() !== "true") return null;
+	const current = git(sub, ["sparse-checkout", "list"]);
+	return current.status === 0
+		? current.stdout.split("\n").filter(Boolean)
+		: null;
+}
+
+function sameSet(have: readonly string[], want: readonly string[]): boolean {
+	return (
+		have.length === want.length && want.every((path) => have.includes(path))
+	);
+}
+
 /** Cone-mode sparse checkout of exactly the pin's paths; false when already so. */
 function applySparse(root: string, pin: GitPin): boolean {
 	if (pin.sparse === null) return false;
@@ -121,8 +137,7 @@ function applySparse(root: string, pin: GitPin): boolean {
 	const have =
 		current.status === 0 ? current.stdout.split("\n").filter(Boolean) : [];
 	const want = [...pin.sparse];
-	if (have.length === want.length && want.every((path) => have.includes(path)))
-		return false;
+	if (sameSet(have, want)) return false;
 	must(
 		sub,
 		["sparse-checkout", "set", "--cone", "--", ...want],
@@ -187,8 +202,72 @@ export interface GitStatus {
 	readonly commit: string;
 	readonly problems: readonly string[];
 	readonly fixes: readonly string[];
+	/** What works but is not what pins:fetch makes: reported, never a failure. */
+	readonly warnings: readonly string[];
+	readonly warningFixes: readonly string[];
 	/** Online only: the tip of the pin's branch. */
 	readonly tip: string | null;
+}
+
+/** Whether the submodule's HEAD commit has a directory at `path`. */
+function inHead(sub: string, path: string): boolean {
+	const listed = git(sub, ["ls-tree", "-d", "--name-only", "HEAD", "--", path]);
+	return listed.status === 0 && listed.stdout.trim() === path;
+}
+
+interface SparseReport {
+	readonly kind: "problem" | "warning";
+	readonly text: string;
+	readonly fix: string;
+}
+
+/**
+ * The checkout against the pin's sparse cone. A full checkout has every
+ * directory (a hosted CI checkout is full), and so has a cone wider than the
+ * pin's: each is a warning. A directory of the pin's cone that is not checked
+ * out is a failure, because the workspace links what is in it.
+ */
+function sparseReport(
+	root: string,
+	name: string,
+	pin: GitPin,
+): SparseReport | null {
+	if (pin.sparse === null) return null;
+	const sub = join(root, pin.path);
+	const want = pin.sparse.join(" ");
+	const fix = `pnpm run pins:fetch ${name}   (checks out the pin's sparse cone: ${want})`;
+	const missing = pin.sparse.filter((path) => !existsSync(join(sub, path)));
+	// Fetching again checks out the same commit: a directory it does not
+	// have is the cone's to drop, or the pin's to move.
+	const absent = missing.filter((path) => !inHead(sub, path));
+	if (absent.length > 0) {
+		return {
+			kind: "problem",
+			text: `${pin.path} does not have ${absent.join(", ")}, which the pin's sparse cone names, and neither does the pinned commit`,
+			fix: `drop ${absent.join(", ")} from ${name}'s "sparse" list in ${PINS_FILE}, or move the pin to a commit that has it: pnpm run pins:bump ${name} <ref>`,
+		};
+	}
+	if (missing.length > 0) {
+		return {
+			kind: "problem",
+			text: `${pin.path} does not have ${missing.join(", ")}, which the pin's sparse cone names`,
+			fix,
+		};
+	}
+	const have = sparsePaths(sub);
+	if (have === null) {
+		return {
+			kind: "warning",
+			text: `${pin.path} is checked out in full, not as the pin's sparse cone (${want})`,
+			fix,
+		};
+	}
+	if (sameSet(have, pin.sparse)) return null;
+	return {
+		kind: "warning",
+		text: `${pin.path} is a sparse checkout of ${have.join(" ")}, not the pin's cone (${want})`,
+		fix,
+	};
 }
 
 /** Offline: gitlink against HEAD, a clean tree, and the repository named the same everywhere. */
@@ -210,9 +289,13 @@ export async function statusPin(
 			commit,
 			problems: [...problems, error.problem],
 			fixes: [...fixes, error.fix],
+			warnings: [],
+			warningFixes: [],
 			tip: null,
 		};
 	}
+	const warnings: string[] = [];
+	const warningFixes: string[] = [];
 	if (head === null) {
 		problems.push(`${pin.path} is not fetched`);
 		fixes.push(`pnpm run pins:fetch ${name}`);
@@ -232,6 +315,14 @@ export async function statusPin(
 				`git -C ${pin.path} stash   (keeps them; or commit them there)`,
 			);
 		}
+		const sparse = sparseReport(root, name, pin);
+		if (sparse?.kind === "problem") {
+			problems.push(sparse.text);
+			fixes.push(sparse.fix);
+		} else if (sparse?.kind === "warning") {
+			warnings.push(sparse.text);
+			warningFixes.push(sparse.fix);
+		}
 	}
 	const tip = online ? remoteTip(root, pin.repo, pin.branch, options) : null;
 	if (
@@ -246,5 +337,5 @@ export async function statusPin(
 			`push it, or move the pin to a pushed commit: pnpm run pins:bump ${name} <a pushed ref>`,
 		);
 	}
-	return { commit, problems, fixes, tip };
+	return { commit, problems, fixes, warnings, warningFixes, tip };
 }

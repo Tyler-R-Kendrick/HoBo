@@ -411,6 +411,42 @@ describe("selectIacProvider under HOBO_CREDENTIALS=opensesame", () => {
 		}
 	});
 
+	it("takes exactly osr_ and 32 lower-case hex digits: a near miss is refused", () => {
+		const hex = "0123456789abcdef".repeat(2);
+		const nearMisses = [
+			`osr_${hex.slice(1)}`, // 31 digits
+			`osr_${hex}0`, // 33 digits
+			`osr_${hex.toUpperCase()}`, // upper case
+			`osr_${hex.slice(1)}g`, // not hex
+			`osr_${hex}\n`, // a trailing newline
+			`\nosr_${hex}`, // a leading newline
+			`osr_${hex.slice(0, 16)}\n${hex.slice(16)}`, // two lines
+			`xosr_${hex}`,
+			`OSR_${hex}`,
+			`osr-${hex}`,
+			"osr_",
+		];
+		for (const VERCEL_TOKEN of nearMisses) {
+			const { fetch, calls } = countingFetch();
+			expect(
+				() =>
+					selectIacProvider({
+						...selectionDeps,
+						env: { HOBO_OPENSESAME_CHILD: "1", VERCEL_TOKEN },
+						vercelFetch: fetch,
+					}),
+				JSON.stringify(VERCEL_TOKEN),
+			).toThrow(OpenSesameCredentialsError);
+			expect(calls()).toBe(0);
+		}
+		expect(() =>
+			requireOpenSesameSurrogate({
+				HOBO_OPENSESAME_CHILD: "1",
+				VERCEL_TOKEN: `osr_${hex}`,
+			}),
+		).not.toThrow();
+	});
+
 	it("a proxied run's command refuses a placeholder even without HOBO_CREDENTIALS", () => {
 		const { fetch, calls } = countingFetch();
 		expect(() =>

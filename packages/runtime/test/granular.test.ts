@@ -6,6 +6,7 @@ import {
 	generateDeclaredRegistrations,
 	getTrainable,
 	intent,
+	PENDING_GROUNDINGS,
 	resetTrainables,
 	resolveDeclared,
 	returns,
@@ -106,6 +107,97 @@ test("stage-3: bare @trainable class with NO other decorators infers everything"
 		await resolveDeclared<string, string>("Greeter.greet")("Bo"),
 		"Hi Bo",
 	);
+});
+
+// A field's example is kept as given; the manifest lowers it with
+// JSON.stringify when the method registers, as it always has.
+function pendingParam(method: string, name: ReturnType<typeof description>) {
+	return {
+		[PENDING_GROUNDINGS]: new Map([
+			[method, { intent: "Greet", params: { name } }],
+		]),
+	};
+}
+
+interface Loop {
+	self?: Loop;
+}
+
+test("a field's example reaches the options as given and is lowered to JSON at registration", () => {
+	class Greeter {
+		greet(name: string): string {
+			return name;
+		}
+	}
+	const example = { name: "Ada", greet: () => "hi" };
+	trainable(
+		Greeter,
+		decoratorContext<ClassDecoratorContext>({
+			kind: "class",
+			name: "Greeter",
+			metadata: pendingParam("greet", description("Who", example)),
+		}),
+	);
+	const record = getTrainable("Greeter.greet");
+	assert.ok(record);
+	assert.equal(record.options.params?.name?.example, example);
+	// JSON.stringify drops the function member.
+	assert.equal(record.fact.params.name?.exampleJson, '{"name":"Ada"}');
+});
+
+test("a function example is dropped when lowered, as JSON.stringify drops it", () => {
+	class Clock {
+		now(zone: string): string {
+			return zone;
+		}
+	}
+	const example = () => "UTC";
+	trainable(
+		Clock,
+		decoratorContext<ClassDecoratorContext>({
+			kind: "class",
+			name: "Clock",
+			metadata: pendingParam("now", description("Who", example)),
+		}),
+	);
+	const record = getTrainable("Clock.now");
+	assert.ok(record);
+	assert.equal(record.options.params?.name?.example, example);
+	assert.equal(record.fact.params.name?.exampleJson, "");
+});
+
+test("a BigInt or circular example fails when the method registers, not when it is decorated", () => {
+	const circular: Loop = {};
+	circular.self = circular;
+	for (const [label, example] of [
+		["BigInt", 10n],
+		["circular", circular],
+	] as const) {
+		class Counter {
+			count(n: number): number {
+				return n;
+			}
+		}
+		const decorated = trainable(
+			Counter.prototype.count,
+			decoratorContext<
+				ClassMethodDecoratorContext<
+					Counter,
+					(this: Counter, input: number) => number
+				>
+			>({
+				kind: "method",
+				name: "count",
+				metadata: pendingParam("count", description("How many", example)),
+			}),
+		);
+		assert.throws(
+			() => decorated.call(new Counter(), 1),
+			TypeError,
+			`${label}: registration lowers the example`,
+		);
+		resetTrainables();
+	}
 });
 
 test("description() doubles as a FieldDescription value for stage-3 params maps", () => {

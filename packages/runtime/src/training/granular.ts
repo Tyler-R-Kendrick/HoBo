@@ -5,7 +5,7 @@ import {
 	type GroundingOptions,
 	granularOptionsFor as groundingOptionsFor,
 } from "ts-autocode-grounding";
-import { cloneAsJson, type JsonObject, type JsonValue } from "../json.js";
+import type { JsonObject, JsonValue } from "../json.js";
 import { getTrainable, resolveTrainable, training } from "./training.js";
 import type { FieldDescription, Trainable, TrainingOptions } from "./types.js";
 
@@ -150,8 +150,11 @@ function declaredJsonByName(
 }
 
 /**
- * Grounding types a field's example as `unknown`; the manifest lowers it with
- * `JSON.stringify` (training.ts), so it crosses here as that JSON value.
+ * A field's description and example, the example kept as given: the manifest
+ * lowers it with `JSON.stringify` when the method registers (training.ts
+ * `lowerFields`), as it always has, so a function inside it is dropped there
+ * and a BigInt or circular value throws there, at registration, not when the
+ * class is decorated.
  */
 function fieldsOf(fields: Readonly<Record<string, GroundingField>>) {
 	const described: Record<string, FieldDescription> = {};
@@ -161,7 +164,13 @@ function fieldsOf(fields: Readonly<Record<string, GroundingField>>) {
 		described[name] =
 			example === undefined
 				? { description }
-				: { description, example: cloneAsJson(example) };
+				: {
+						description,
+						// SAFETY: grounding types a field's example `unknown`, and the
+						// registry has always held it as given and lowered it at
+						// registration; converting it here would change both.
+						example: example as JsonValue,
+					};
 	}
 	return described;
 }

@@ -4,20 +4,27 @@
  * `@hobo/runtime` registers what ts-autocode-grounding composes
  * (`GroundingOptions`) as its own `TrainingOptions`, and hands grounding the
  * decorator metadata it reads (packages/runtime/src/training/granular.ts). A
- * pin bump can rename one of those fields, make a required one optional,
- * retype it, add one (keyed by a name or by a symbol, to the options, the
- * contract, the output or a field description, directly or through a subtype
- * or union that carries it), key `params` or `contract.input` by symbols too,
- * give a declared shape a field that is not JSON or a symbol key at any depth,
- * or retype the metadata parameter. Each must stop granular.ts compiling: a
- * cast or a copy that lets it through registers a trainable whose identity
- * silently falls back to the function's own name, whose intent is undefined,
- * or without the added field. This test
- * compiles granular.ts with the runtime package's own
- * compiler options against the pinned grounding source, as it is and then with
- * each such change made in memory, and expects every changed compile to fail
- * in granular.ts. It needs the submodule checked out
- * (`pnpm run pins:fetch ts-autocode`), not built.
+ * cast or a copy that lets an upstream change through registers a trainable
+ * whose identity silently falls back to the function's own name, whose intent
+ * is undefined, or without a field grounding added. This test compiles
+ * granular.ts with the runtime package's own compiler options against the
+ * pinned grounding source, as it is and then with each change below made in
+ * memory. These must stop granular.ts compiling (DRIFTS): `methodRef` or
+ * `intent` renamed or made optional; `contract.ref` or `params` retyped; a
+ * field added, by name or by symbol, to the options, the contract, the output
+ * or a field description; the output's `returns`, or `params`' values, typed
+ * as a field description with a field added; `params` or `contract.input`
+ * keyed by symbols too; a declared shape given a field that is not JSON
+ * (on the shape descriptor, or on `contract.input`'s values) or a symbol key
+ * (on the shape descriptor, on `contract.input`'s values, on an object one
+ * field down, on one member of a union, as the shape descriptor or as
+ * `contract.output`, or, required or optional, on the shape a type-alias
+ * shape descriptor holds of itself); and either metadata parameter retyped.
+ * These must not (STILL_COMPILES), since they drop nothing: a shape field
+ * holding an array of a type-alias shape, a type-alias shape descriptor that
+ * holds itself in an array, or beside `null`, or through a second alias, and
+ * a JSON field added to `contract.input`'s values only. The test needs the
+ * submodule checked out (`pnpm run pins:fetch ts-autocode`), not built.
  */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
@@ -44,6 +51,8 @@ interface Drift {
 
 const OPTIONS_HEAD = "export interface GroundingOptions {\n";
 const DESCRIPTOR_HEAD = "export interface ShapeDescriptor {\n";
+/** The shape descriptor written as a type alias, which, unlike the interface, may refer to itself and still be JSON. */
+const ALIAS_HEAD = "export type ShapeDescriptor = {\n";
 const OUTPUT = "\treadonly output?: { readonly returns: FieldDescription };";
 const OPTIONS_TAIL = `${OUTPUT}\n}`;
 const CONTRACT_TAIL = "\t\treadonly output?: ShapeDescriptor;\n\t};";
@@ -239,6 +248,27 @@ const DRIFTS: readonly Drift[] = [
 		to: `${DESCRIPTOR_HEAD}\treadonly type: string;\n\treadonly items?: { readonly [GROUNDED]: string };`,
 	},
 	{
+		name: "contract.output is a union with a symbol-keyed member",
+		file: "decorators.ts",
+		preamble: SYMBOL_KEY,
+		from: CONTRACT_TAIL,
+		to: "\t\treadonly output?: ShapeDescriptor | { readonly type: string; readonly [GROUNDED]: string };\n\t};",
+	},
+	{
+		name: "a type-alias shape descriptor holds itself with a symbol key added",
+		file: "decorators.ts",
+		preamble: SYMBOL_KEY,
+		from: `${DESCRIPTOR_HEAD}\treadonly type: string;`,
+		to: `${ALIAS_HEAD}\treadonly type: string;\n\treadonly child?: ShapeDescriptor & { readonly [GROUNDED]: string };`,
+	},
+	{
+		name: "a type-alias shape descriptor holds itself with an optional symbol key added",
+		file: "decorators.ts",
+		preamble: SYMBOL_KEY,
+		from: `${DESCRIPTOR_HEAD}\treadonly type: string;`,
+		to: `${ALIAS_HEAD}\treadonly type: string;\n\treadonly child?: ShapeDescriptor & { readonly [GROUNDED]?: string };`,
+	},
+	{
 		name: "granularOptionsFor's metadata parameter retyped",
 		file: "decorators.ts",
 		from: "\tmetadata: Record<PropertyKey, unknown> | undefined,\n\tmethodName: string,",
@@ -249,6 +279,48 @@ const DRIFTS: readonly Drift[] = [
 		file: "component.ts",
 		from: "\tmetadata: Record<PropertyKey, unknown> | undefined,\n\tregistry: GroundingRegistry,",
 		to: "\tmetadata: ReadonlyMap<string, unknown> | undefined,\n\tregistry: GroundingRegistry,",
+	},
+];
+
+/**
+ * Upstream changes that drop nothing, so granular.ts must still compile with
+ * each: the checks above must not refuse a JSON shape for being recursive or
+ * holding arrays, nor a field that only one place adds.
+ */
+const STILL_COMPILES: readonly Drift[] = [
+	{
+		name: "a shape descriptor field holds an array of a type-alias shape",
+		file: "decorators.ts",
+		preamble:
+			"export type ShapeItem = { readonly type: string; readonly description?: string };\n",
+		from: `${DESCRIPTOR_HEAD}\treadonly type: string;`,
+		to: `${DESCRIPTOR_HEAD}\treadonly type: string;\n\treadonly items?: ShapeItem[];`,
+	},
+	{
+		name: "the shape descriptor is a type alias that refers to itself",
+		file: "decorators.ts",
+		from: `${DESCRIPTOR_HEAD}\treadonly type: string;`,
+		to: `${ALIAS_HEAD}\treadonly type: string;\n\treadonly items?: ShapeDescriptor[];`,
+	},
+	{
+		name: "the shape descriptor is a type alias that holds itself or null",
+		file: "decorators.ts",
+		from: `${DESCRIPTOR_HEAD}\treadonly type: string;`,
+		to: `${ALIAS_HEAD}\treadonly type: string;\n\treadonly parent?: ShapeDescriptor | null;`,
+	},
+	{
+		name: "the shape descriptor and a second type alias refer to each other",
+		file: "decorators.ts",
+		preamble:
+			"export type ShapeFields = { readonly [name: string]: ShapeDescriptor };\n",
+		from: `${DESCRIPTOR_HEAD}\treadonly type: string;`,
+		to: `${ALIAS_HEAD}\treadonly type: string;\n\treadonly fields?: ShapeFields;`,
+	},
+	{
+		name: "contract.input holds shapes with a JSON field added",
+		file: "decorators.ts",
+		from: INPUT,
+		to: "\t\treadonly input?: Readonly<Record<string, ShapeDescriptor & { readonly format?: string }>>;",
 	},
 ];
 
@@ -283,6 +355,12 @@ function runtimeOptions(): ts.CompilerOptions {
 	};
 }
 
+/** A file of grounding's `src/` and the text a compile reads in its place. */
+interface Replaced {
+	readonly file: string;
+	readonly text: string;
+}
+
 interface Compiled {
 	/** granular.ts's diagnostics, one line each. */
 	readonly messages: readonly string[];
@@ -292,7 +370,7 @@ interface Compiled {
 /** granular.ts's diagnostics, with grounding's `src/<file>` replaced by `text` when given. */
 function granularDiagnostics(
 	options: ts.CompilerOptions,
-	replaced?: { readonly file: string; readonly text: string },
+	replaced?: Replaced,
 	oldProgram?: ts.Program,
 ): Compiled {
 	const host = ts.createCompilerHost(options, true);
@@ -323,6 +401,20 @@ function granularDiagnostics(
 	return { messages, program };
 }
 
+/** The text of grounding's `src/<file>` with `drift` made, once the text it changes is there exactly once. */
+function drifted(drift: Drift): Replaced {
+	const text = readFileSync(join(GROUNDING, drift.file), "utf8");
+	assert.equal(
+		text.split(drift.from).length,
+		2,
+		`grounding's src/${drift.file} no longer holds the text this change makes exactly once; update the change to the new source`,
+	);
+	return {
+		file: drift.file,
+		text: (drift.preamble ?? "") + text.replace(drift.from, drift.to),
+	};
+}
+
 describe("ts-autocode grounding drift", () => {
 	it("the submodule is checked out at its pin", () => {
 		assert.ok(
@@ -340,18 +432,9 @@ describe("ts-autocode grounding drift", () => {
 
 	for (const drift of DRIFTS) {
 		it(`granular.ts stops compiling when ${drift.name}`, () => {
-			const text = readFileSync(join(GROUNDING, drift.file), "utf8");
-			assert.equal(
-				text.split(drift.from).length,
-				2,
-				`grounding's src/${drift.file} no longer holds the text this drift changes exactly once; update the drift to the new source`,
-			);
 			const { messages } = granularDiagnostics(
 				options,
-				{
-					file: drift.file,
-					text: (drift.preamble ?? "") + text.replace(drift.from, drift.to),
-				},
+				drifted(drift),
 				pinned.program,
 			);
 			assert.notDeepEqual(
@@ -359,6 +442,17 @@ describe("ts-autocode grounding drift", () => {
 				[],
 				`granular.ts still compiles when ${drift.name}`,
 			);
+		});
+	}
+
+	for (const change of STILL_COMPILES) {
+		it(`granular.ts still compiles when ${change.name}`, () => {
+			const { messages } = granularDiagnostics(
+				options,
+				drifted(change),
+				pinned.program,
+			);
+			assert.deepEqual(messages, []);
 		});
 	}
 });

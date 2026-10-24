@@ -103,10 +103,37 @@ describe("the marker prefilter", () => {
 			"@tr\\u0061inable",
 			"@\\u0063omponent",
 			"@\\u{0063}omponent()",
+			// Whitespace to TypeScript's scanner that JavaScript's \s is not.
+			"@\u200Btrainable",
+			"@\u0085trainable",
+			// A line comment ends at any of TypeScript's line terminators.
+			"@// note\rtrainable",
+			"@// note\u2028trainable",
+			"@// note\u2029trainable",
+			// The scanner skips a merge conflict marker as trivia.
+			"@\n<<<<<<< ours\ntrainable",
+			"@\n||||||| base\n=======\n>>>>>>> theirs\ntrainable",
+			"@\n=======\nx\n>>>>>>> theirs\ntrainable",
 		]) {
 			const source = ambient(decorator);
 			expect(groundingScan(source).length, decorator).toBe(1);
 			expect(mayHoldMarkedClass(source), decorator).toBe(true);
+		}
+	});
+
+	it("takes what TypeScript's scanner takes for whitespace and a line terminator, and nothing else", () => {
+		for (let code = 0; code <= 0xffff; code++) {
+			// A lone surrogate is no character; a second @ starts a decorator of its own.
+			if ((code >= 0xd800 && code <= 0xdfff) || code === 0x40) continue;
+			const char = String.fromCharCode(code);
+			expect(
+				mayHoldMarkedClass(ambient(`@${char}trainable`)),
+				`U+${code.toString(16)} after @`,
+			).toBe(ts.isWhiteSpaceLike(code));
+			expect(
+				mayHoldMarkedClass(ambient(`@// note${char}trainable`)),
+				`U+${code.toString(16)} after a line comment`,
+			).toBe(ts.isLineBreak(code));
 		}
 	});
 
@@ -118,6 +145,9 @@ describe("the marker prefilter", () => {
 			"@trainable_x",
 			"@\\u0074rainableX",
 			"@(trainable)",
+			// Not merge conflict markers: no space after <<<<<<<, or not at a line's start.
+			"@\n<<<<<<<ours\ntrainable",
+			"@ <<<<<<< ours\ntrainable",
 		]) {
 			const source = ambient(prefix);
 			expect(groundingScan(source).length, prefix).toBe(0);
@@ -401,6 +431,17 @@ describe("ambient @trainable classes in hobo stub", () => {
 				`import { defineGrounding } from "${fromDeclared}";`,
 			);
 		}
+	});
+
+	it("refuses an ambient class named like a decorated class whose marker follows a comment ended by a lone CR", async () => {
+		// TypeScript ends a line comment at CR, U+2028 and U+2029 as well as LF.
+		await writeFile(
+			join(projectRoot, "src/greeter-impl.ts"),
+			'@// x\rtrainable\nexport class Greeter {\n  greet(): string {\n    return "hi";\n  }\n}\n',
+		);
+		await expect(runCodegen({ projectRoot, check: false })).rejects.toThrow(
+			"Ambient @trainable class Greeter in src/greeter.ts shares its name with the decorated @trainable class in src/greeter-impl.ts",
+		);
 	});
 
 	it("refuses an ambient class named like the binding of a decorated class expression", async () => {

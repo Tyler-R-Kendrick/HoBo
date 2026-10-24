@@ -54,14 +54,50 @@ function spelled(char: string): string {
 	return `(?:${char}|\\\\u${"0".repeat(4 - hex.length)}${digits}|\\\\u\\{0*${digits}\\})`;
 }
 
+/** TypeScript's line terminators (its scanner's `isLineBreak`). */
+const LINE_BREAK = "\\n\\r\\u2028\\u2029";
 /**
- * `@`, then whitespace or comments, then a marker's name as an identifier
- * that ends there: what the scanner marks a class by (a decorator whose
+ * TypeScript's other whitespace (its scanner's `isWhiteSpaceSingleLine`):
+ * JavaScript's `\s` without the line terminators, plus U+0085 and U+200B.
+ */
+const SPACE =
+	"\\t\\v\\f \\u00A0\\u0085\\u1680\\u2000-\\u200B\\u202F\\u205F\\u3000\\uFEFF";
+/** The position after a line terminator, where a merge conflict marker may start. */
+const LINE_START = `(?<=[${LINE_BREAK}])`;
+/** The rest of a line: up to a line terminator or the end of the text, never short of it. */
+const REST_OF_LINE = `[^${LINE_BREAK}]*(?=[${LINE_BREAK}]|$)`;
+/** Any text up to, never past, the first place `end` matches. */
+function upTo(end: string): string {
+	return `(?:(?!${end})[\\s\\S])*(?=${end})`;
+}
+/**
+ * What TypeScript's scanner skips between two tokens, so between `@` and a
+ * decorator's name: whitespace and line terminators; a block comment, to the
+ * first end of comment; a line comment, to the end of its line, which any line
+ * terminator makes; and a merge conflict marker at the start of a line
+ * (scanConflictMarkerTrivia): `<<<<<<< ` and `>>>>>>> ` to the end of the line,
+ * `||||||| ` through to the next `=======` or `>>>>>>> `, and `=======` through
+ * to the next `>>>>>>> `. Each alternative stops where the scanner stops, so
+ * backtracking cannot make a comment longer or a line shorter than the
+ * scanner reads it.
+ */
+const TRIVIA = [
+	`[${SPACE}${LINE_BREAK}]`,
+	"\\/\\*(?:[^*]|\\*(?!\\/))*\\*\\/",
+	`\\/\\/${REST_OF_LINE}`,
+	`${LINE_START}(?:<{7}|>{7}) ${REST_OF_LINE}`,
+	`${LINE_START}\\|{7} ${upTo(`${LINE_START}(?:={7}[\\s\\S]|>{7} )`)}`,
+	`${LINE_START}={7}${upTo(`${LINE_START}>{7} `)}`,
+].join("|");
+
+/**
+ * `@`, then TypeScript's trivia, then a marker's name as an identifier that
+ * ends there: what the scanner marks a class by (a decorator whose
  * expression, or whose call's callee, is that identifier), widened only by
  * not knowing whether the text is code, a comment or a string.
  */
 const MARKER_DECORATOR = new RegExp(
-	`@(?:\\s|\\/\\*[\\s\\S]*?\\*\\/|\\/\\/[^\\n]*(?:\\n|$))*(?:${[...MARKERS]
+	`@(?:${TRIVIA})*(?:${[...MARKERS]
 		.map((marker) => [...marker].map(spelled).join(""))
 		.join("|")})(?![\\p{ID_Continue}$\\u200C\\u200D\\\\])`,
 	"u",
@@ -69,7 +105,10 @@ const MARKER_DECORATOR = new RegExp(
 
 /**
  * Whether a source file may hold a class with a marker decorator, and so is
- * parsed: true for every file in which the scanner would find one.
+ * parsed: true for every file in which the scanner would find one, since the
+ * trivia it allows between `@` and the name is the trivia TypeScript's scanner
+ * skips (checked against `ts.isWhiteSpaceLike` and `ts.isLineBreak` for every
+ * UTF-16 code unit in the codegen test).
  */
 export function mayHoldMarkedClass(source: string): boolean {
 	return MARKER_DECORATOR.test(source);

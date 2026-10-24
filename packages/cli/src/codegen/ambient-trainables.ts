@@ -203,8 +203,10 @@ function scanAmbient(
 /**
  * An ambient class's registrations are written to `declared/<Class>.ts`, and
  * its exports are named from the camelCase of `<Class>.<method>`, so its name
- * must be a plain ASCII identifier (camelCase keeps every character of one)
- * and a file name of its own on every file system: not one
+ * must be a plain ASCII identifier (camelCase keeps only ASCII letters and
+ * digits, so any other letter would vanish from its exports; `_` and `$`
+ * vanish too, and an export that then collides is refused) and a file name of
+ * its own on every file system: not one
  * Windows reserves for a device, and not one another ambient class has in
  * another case (macOS and Windows compare names case-insensitively).
  */

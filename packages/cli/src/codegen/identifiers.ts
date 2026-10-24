@@ -2,7 +2,12 @@
 // and file names from. Generated modules are ES modules, so strict-mode rules
 // apply.
 
-/** An ASCII identifier; `camelCase` keeps every character of one. */
+/**
+ * An ASCII identifier. camelCase (trainables.ts) keeps its letters and digits
+ * but drops `_` and `$`, which it splits words on, so two of these can
+ * camelCase alike (`A_b.run` and `AB.run` are both `aBRun`); the export check
+ * refuses that collision.
+ */
 const PLAIN_IDENTIFIER = /^[A-Za-z_$][\w$]*$/u;
 
 /** Words a module cannot bind with `const` (reserved, strict-mode reserved, or restricted). */

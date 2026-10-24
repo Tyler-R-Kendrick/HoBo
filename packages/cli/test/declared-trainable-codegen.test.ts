@@ -520,6 +520,21 @@ describe("ambient @trainable classes in hobo stub", () => {
 		);
 	});
 
+	it("refuses two exports that camelCase alike once it drops _ and $", async () => {
+		// camelCase splits on anything but ASCII letters and digits: A_b.run and AB.run are both aBRun.
+		await writeFile(
+			join(projectRoot, "src/a-b.ts"),
+			"@trainable\nexport declare class A_b {\n  run(): string;\n}\n",
+		);
+		await writeFile(
+			join(projectRoot, "src/ab.ts"),
+			"@trainable\nexport declare class AB {\n  run(): string;\n}\n",
+		);
+		await expect(runCodegen({ projectRoot, check: false })).rejects.toThrow(
+			"Trainables A_b.run and AB.run both generate the export aBRun",
+		);
+	});
+
 	it("refuses an empty export name", async () => {
 		await writeFile(
 			join(projectRoot, "src/dollar.ts"),

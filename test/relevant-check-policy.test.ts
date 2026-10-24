@@ -747,6 +747,48 @@ test("unrelated changes do not select the ts-autocode consumer-surface test", ()
 	}
 });
 
+test("a package source or test file that imports ts-autocode selects the consumer-surface test", () => {
+	const importing = new Set([
+		"packages/cli/src/codegen/text.ts",
+		"packages/runtime/test/define-grounding.test.ts",
+	]);
+	const importsTsAutocode = (file: string) => importing.has(file);
+	for (const file of importing) {
+		assert.ok(
+			plan([file], { importsTsAutocode }).checks.some(isTsAutocodeSurfaceTest),
+			file,
+		);
+	}
+	assert.ok(
+		!plan(["packages/cli/src/codegen/tree.ts"], {
+			importsTsAutocode,
+		}).checks.some(isTsAutocodeSurfaceTest),
+	);
+	// Only TypeScript under packages/ is read: the surface test scans nothing else.
+	for (const file of ["site/src/lib/x.ts", "packages/cli/README.md"]) {
+		assert.ok(
+			!plan([file], { importsTsAutocode: () => true }).checks.some(
+				isTsAutocodeSurfaceTest,
+			),
+			file,
+		);
+	}
+});
+
+test("by default the policy reads a changed package file for a ts-autocode import", () => {
+	assert.ok(
+		plan(["packages/cli/src/codegen/trainables.ts"]).checks.some(
+			isTsAutocodeSurfaceTest,
+		),
+	);
+	for (const file of [
+		"packages/core/src/index.ts",
+		"packages/cli/src/codegen/no-such-file.ts",
+	]) {
+		assert.ok(!plan([file]).checks.some(isTsAutocodeSurfaceTest), file);
+	}
+});
+
 test("gate script changes select the optimizexp drift lane", () => {
 	const { checks } = plan(["scripts/check-optimizexp.mts"]);
 	assert.ok(checks.some(isOptimizexpLane));

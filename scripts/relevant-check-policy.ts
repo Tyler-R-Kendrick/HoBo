@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { workspaceForDraftFile } from "./lib/proof-manifest.ts";
 
@@ -19,6 +19,8 @@ export type RelevantCheckPolicyOptions = {
 	includeBroadSweeps?: boolean;
 	rootPackageJsonScriptsOnlyChanged?: boolean;
 	workspacePackageExists?: (workspace: string) => boolean;
+	/** Whether a changed TypeScript file under packages/ names a ts-autocode module (default: reads it). */
+	importsTsAutocode?: (file: string) => boolean;
 };
 
 export type RelevantCheckPolicy = {
@@ -67,6 +69,18 @@ function defaultWorkspacePackageExists(workspace: string) {
 	return existsSync(`${workspace}/package.json`);
 }
 
+const PACKAGE_TYPESCRIPT = /^packages\/.+\.(?:[cm]?ts|tsx)$/u;
+const TS_AUTOCODE_SPECIFIER = /["']ts-autocode(?:-[a-z]+)?(?:\/[^"']*)?["']/u;
+
+/** A file that is gone (deleted, renamed away) imports nothing. */
+function defaultImportsTsAutocode(file: string) {
+	try {
+		return TS_AUTOCODE_SPECIFIER.test(readFileSync(file, "utf8"));
+	} catch {
+		return false;
+	}
+}
+
 export function selectRelevantChecks(
 	options: RelevantCheckPolicyOptions,
 ): RelevantCheckPolicy {
@@ -79,6 +93,8 @@ export function selectRelevantChecks(
 	const includeBroadSweeps = Boolean(options.includeBroadSweeps || options.all);
 	const workspacePackageExists =
 		options.workspacePackageExists ?? defaultWorkspacePackageExists;
+	const importsTsAutocode =
+		options.importsTsAutocode ?? defaultImportsTsAutocode;
 
 	const workspaces = [
 		...new Set(
@@ -406,7 +422,8 @@ export function selectRelevantChecks(
 				file === "external/ts-autocode" ||
 				file === "pnpm-workspace.yaml" ||
 				file === "tools/pins/siblings.json" ||
-				file === "scripts/test/ts-autocode-consumer-surface.test.ts",
+				file === "scripts/test/ts-autocode-consumer-surface.test.ts" ||
+				(PACKAGE_TYPESCRIPT.test(file) && importsTsAutocode(file)),
 		)
 	) {
 		checks.push({

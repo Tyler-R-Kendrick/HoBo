@@ -5,12 +5,15 @@
  * dozen names from them. A pin bump (`pnpm run pins:bump ts-autocode <ref>`)
  * can rename or drop one of those names, or turn a value into a type, and
  * nothing else says so until a package build fails somewhere downstream. This
- * test reads every `import`/`export ... from "ts-autocode-*"` in HoBo's package
- * sources and checks each named binding against what the pinned commit's
- * package entry actually exports, with the TypeScript checker over the
- * submodule's source: a value import must be a value export, a type import any
- * export. It needs the submodule checked out (`pnpm run pins:fetch
- * ts-autocode`), not built, and fails rather than skips when it is absent.
+ * test reads every reference to a `ts-autocode*` module in HoBo's packages
+ * (sources and tests): `import`/`export ... from`, `import x = require(...)`,
+ * a dynamic `import(...)` and an `import("...")` type, a subpath included.
+ * It checks each against the pinned commit, with the TypeScript checker over
+ * the submodule's source: the subpath must be an entry the package exports, a
+ * named value must be a value export, a type any export, and every ts-autocode
+ * package the imported ones depend on must be a workspace member too. It
+ * needs the submodule checked out (`pnpm run pins:fetch ts-autocode`), not
+ * built, and fails rather than skips when it is absent.
  */
 import assert from "node:assert/strict";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
@@ -21,33 +24,54 @@ import ts from "typescript";
 
 const root = join(import.meta.dirname, "../..");
 const SUBMODULE = "external/ts-autocode";
-const SPECIFIER = /^ts-autocode(?:-[a-z]+)?$/u;
+const NOT_CHECKED_OUT = `${SUBMODULE} is not checked out: run \`pnpm run pins:fetch ts-autocode\``;
+/** A ts-autocode package name, then an optional subpath. */
+const SPECIFIER = /^(ts-autocode(?:-[a-z]+)?)(?:\/(.+))?$/u;
 const SOURCE_FILE = /\.(?:ts|tsx|mts|cts)$/u;
 const SKIPPED_DIRECTORIES = new Set(["node_modules", "dist", "_generated"]);
+const DEPENDENCY_FIELDS = [
+	"dependencies",
+	"devDependencies",
+	"optionalDependencies",
+	"peerDependencies",
+] as const;
 
 interface ImportedName {
 	readonly file: string;
+	/** The module specifier as written, for messages. */
 	readonly specifier: string;
-	/** The exported name, or `*` for `export * from`. */
+	readonly packageName: string;
+	/** The `exports` key the specifier selects: `.` or `./<subpath>`. */
+	readonly entryPoint: string;
+	/** The exported name, or `*` when the whole module is taken. */
 	readonly name: string;
 	readonly typeOnly: boolean;
 }
 
 interface PackageEntry {
 	readonly directory: string;
-	readonly entry: string;
+	/** `exports` key -> the source file its `import` condition is built from. */
+	readonly entries: ReadonlyMap<string, string>;
+	/** The ts-autocode packages its manifest depends on, in any dependency field. */
+	readonly dependsOn: readonly string[];
 }
 
-/** Every TypeScript file under a `src` directory of a workspace package. */
-function packageSources(directory: string, inSrc: boolean): string[] {
+type Binding = { readonly name: string; readonly typeOnly: boolean };
+
+/** Every TypeScript file under `packages/` that names a ts-autocode module. */
+function packageSources(directory: string): string[] {
 	const files: string[] = [];
 	for (const item of readdirSync(directory, { withFileTypes: true })) {
 		if (SKIPPED_DIRECTORIES.has(item.name) || item.name.startsWith("."))
 			continue;
 		const path = join(directory, item.name);
 		if (item.isDirectory()) {
-			files.push(...packageSources(path, inSrc || item.name === "src"));
-		} else if (inSrc && item.isFile() && SOURCE_FILE.test(item.name)) {
+			files.push(...packageSources(path));
+		} else if (
+			item.isFile() &&
+			SOURCE_FILE.test(item.name) &&
+			readFileSync(path, "utf8").includes("ts-autocode")
+		) {
 			files.push(path);
 		}
 	}
@@ -57,7 +81,7 @@ function packageSources(directory: string, inSrc: boolean): string[] {
 function namesIn(
 	clause: ts.NamedImportBindings | ts.NamedExportBindings | undefined,
 	typeOnly: boolean,
-): { name: string; typeOnly: boolean }[] {
+): Binding[] {
 	if (clause === undefined) return [{ name: "*", typeOnly }];
 	if (ts.isNamespaceImport(clause) || ts.isNamespaceExport(clause))
 		return [{ name: "*", typeOnly }];
@@ -67,61 +91,166 @@ function namesIn(
 	}));
 }
 
-/** The named bindings one file takes from a ts-autocode package. */
+function declarationBindings(
+	statement: ts.ImportDeclaration | ts.ExportDeclaration,
+): Binding[] {
+	if (ts.isExportDeclaration(statement))
+		return namesIn(statement.exportClause, statement.isTypeOnly);
+	const clause = statement.importClause;
+	if (clause === undefined) return [{ name: "*", typeOnly: false }];
+	const bindings = namesIn(clause.namedBindings, clause.isTypeOnly);
+	if (clause.name !== undefined)
+		bindings.push({ name: "default", typeOnly: clause.isTypeOnly });
+	return clause.namedBindings === undefined
+		? bindings.filter((binding) => binding.name !== "*")
+		: bindings;
+}
+
+/**
+ * What a dynamic `import("…")` takes: the member read off it
+ * (`(await import("x")).name`) or destructured from it
+ * (`const { name } = await import("x")`); any other use takes the module.
+ */
+function dynamicBindings(call: ts.CallExpression): Binding[] {
+	let node: ts.Node = call;
+	while (
+		ts.isParenthesizedExpression(node.parent) ||
+		ts.isAwaitExpression(node.parent)
+	) {
+		node = node.parent;
+	}
+	const parent = node.parent;
+	if (ts.isPropertyAccessExpression(parent) && parent.expression === node)
+		return [{ name: parent.name.text, typeOnly: false }];
+	if (
+		ts.isVariableDeclaration(parent) &&
+		parent.initializer === node &&
+		ts.isObjectBindingPattern(parent.name)
+	) {
+		return parent.name.elements.map((element) => {
+			const key = element.propertyName ?? element.name;
+			return {
+				name: ts.isIdentifier(key) || ts.isStringLiteral(key) ? key.text : "*",
+				typeOnly: false,
+			};
+		});
+	}
+	return [{ name: "*", typeOnly: false }];
+}
+
+/** `import("x").Name` names a type, `typeof import("x").name` a value. */
+function importTypeBindings(node: ts.ImportTypeNode): Binding[] {
+	let qualifier = node.qualifier;
+	while (qualifier !== undefined && ts.isQualifiedName(qualifier))
+		qualifier = qualifier.left;
+	return [
+		{
+			name: qualifier === undefined ? "*" : qualifier.text,
+			typeOnly: !node.isTypeOf,
+		},
+	];
+}
+
+/** The module specifier a node references and what it takes, when it is one of the import forms. */
+function referenceOf(
+	node: ts.Node,
+): { module: ts.Node | undefined; bindings: () => Binding[] } | undefined {
+	if (ts.isImportDeclaration(node) || ts.isExportDeclaration(node))
+		return {
+			module: node.moduleSpecifier,
+			bindings: () => declarationBindings(node),
+		};
+	if (
+		ts.isImportEqualsDeclaration(node) &&
+		ts.isExternalModuleReference(node.moduleReference)
+	)
+		return {
+			module: node.moduleReference.expression,
+			bindings: () => [{ name: "*", typeOnly: node.isTypeOnly }],
+		};
+	if (
+		ts.isCallExpression(node) &&
+		node.expression.kind === ts.SyntaxKind.ImportKeyword
+	)
+		return { module: node.arguments[0], bindings: () => dynamicBindings(node) };
+	if (ts.isImportTypeNode(node) && ts.isLiteralTypeNode(node.argument))
+		return {
+			module: node.argument.literal,
+			bindings: () => importTypeBindings(node),
+		};
+	return undefined;
+}
+
+/** Every binding one file takes from a ts-autocode module, at any depth. */
 function importsOf(path: string): ImportedName[] {
 	const source = ts.createSourceFile(
 		path,
 		readFileSync(path, "utf8"),
 		ts.ScriptTarget.Latest,
-		false,
+		true,
 	);
 	const file = relative(root, path);
 	const found: ImportedName[] = [];
-	for (const statement of source.statements) {
-		const isImport = ts.isImportDeclaration(statement);
-		if (!isImport && !ts.isExportDeclaration(statement)) continue;
-		const module = statement.moduleSpecifier;
-		if (module === undefined || !ts.isStringLiteral(module)) continue;
-		if (!SPECIFIER.test(module.text)) continue;
-		const bindings = isImport
-			? namesIn(
-					statement.importClause?.namedBindings,
-					statement.importClause?.isTypeOnly ?? false,
-				)
-			: namesIn(statement.exportClause, statement.isTypeOnly);
-		if (isImport && statement.importClause?.name !== undefined) {
-			bindings.push({
-				name: "default",
-				typeOnly: statement.importClause.isTypeOnly,
-			});
+	const visit = (node: ts.Node): void => {
+		const reference = referenceOf(node);
+		const module = reference?.module;
+		if (reference !== undefined && module !== undefined) {
+			const match = ts.isStringLiteralLike(module)
+				? SPECIFIER.exec(module.text)
+				: null;
+			const packageName = match?.[1];
+			if (match !== null && packageName !== undefined) {
+				const entryPoint = match[2] === undefined ? "." : `./${match[2]}`;
+				for (const binding of reference.bindings()) {
+					found.push({
+						file,
+						specifier: match[0],
+						packageName,
+						entryPoint,
+						...binding,
+					});
+				}
+			}
 		}
-		for (const binding of bindings) {
-			found.push({ file, specifier: module.text, ...binding });
-		}
-	}
+		ts.forEachChild(node, visit);
+	};
+	visit(source);
 	return found;
 }
 
-/** Package name -> its directory and the source file its `.` export is built from. */
+/** Package name -> its directory, its entry points and its ts-autocode dependencies. */
 function submodulePackages(): ReadonlyMap<string, PackageEntry> {
-	const packages = new Map<string, PackageEntry>();
 	const base = join(root, SUBMODULE, "packages");
+	assert.ok(existsSync(base), NOT_CHECKED_OUT);
+	const packages = new Map<string, PackageEntry>();
 	for (const item of readdirSync(base, { withFileTypes: true })) {
 		const manifestPath = join(base, item.name, "package.json");
 		if (!item.isDirectory() || !existsSync(manifestPath)) continue;
 		const manifest: {
 			name?: string;
-			exports?: { "."?: { import?: string } };
-		} = JSON.parse(readFileSync(manifestPath, "utf8"));
-		const built = manifest.exports?.["."]?.import;
-		if (manifest.name === undefined || built === undefined) continue;
-		// tsconfig: rootDir src, outDir dist.
-		const entry = built
-			.replace(/^\.\/dist\//u, "src/")
-			.replace(/\.js$/u, ".ts");
+			/** A string target (no conditions) reads as having no `import` condition. */
+			exports?: Record<string, { import?: string }>;
+		} & Partial<
+			Record<(typeof DEPENDENCY_FIELDS)[number], Record<string, string>>
+		> = JSON.parse(readFileSync(manifestPath, "utf8"));
+		if (manifest.name === undefined) continue;
+		const entries = new Map<string, string>();
+		for (const [key, target] of Object.entries(manifest.exports ?? {})) {
+			const built = target.import;
+			if (built === undefined) continue;
+			// tsconfig: rootDir src, outDir dist.
+			const entry = built
+				.replace(/^\.\/dist\//u, "src/")
+				.replace(/\.js$/u, ".ts");
+			entries.set(key, join(base, item.name, entry));
+		}
+		const dependsOn = DEPENDENCY_FIELDS.flatMap((field) =>
+			Object.keys(manifest[field] ?? {}),
+		).filter((name) => SPECIFIER.test(name) && !name.includes("/"));
 		packages.set(manifest.name, {
 			directory: `${SUBMODULE}/packages/${item.name}`,
-			entry: join(base, item.name, entry),
+			entries,
+			dependsOn: [...new Set(dependsOn)],
 		});
 	}
 	return packages;
@@ -205,69 +334,89 @@ function exportsOf(
 	return result;
 }
 
-function collectImports(): ImportedName[] {
-	return packageSources(join(root, "packages"), false).flatMap(importsOf);
+/** The imported packages and every ts-autocode package they depend on, each with who needs it. */
+function packageClosure(
+	imported: readonly string[],
+	packages: ReadonlyMap<string, PackageEntry>,
+): ReadonlyMap<string, string> {
+	const neededBy = new Map<string, string>(
+		imported.map((name) => [name, "imported by HoBo"]),
+	);
+	const queue = [...imported];
+	for (let name = queue.shift(); name !== undefined; name = queue.shift()) {
+		for (const dependency of packages.get(name)?.dependsOn ?? []) {
+			if (neededBy.has(dependency)) continue;
+			neededBy.set(dependency, `a dependency of ${name}`);
+			queue.push(dependency);
+		}
+	}
+	return neededBy;
 }
 
 describe("ts-autocode consumer surface", () => {
 	it("the submodule is checked out at its pin", () => {
-		assert.ok(
-			existsSync(join(root, SUBMODULE, "packages")),
-			`${SUBMODULE} is not checked out: run \`pnpm run pins:fetch ts-autocode\``,
-		);
+		assert.ok(existsSync(join(root, SUBMODULE, "packages")), NOT_CHECKED_OUT);
 	});
 
-	const imports = collectImports();
-	const packages = submodulePackages();
+	const imports = packageSources(join(root, "packages")).flatMap(importsOf);
 
 	it("finds HoBo's imports from ts-autocode (the scan is not empty)", () => {
 		assert.ok(
 			imports.length > 0,
-			"no import from a ts-autocode package was found under packages/**/src",
+			"no import from a ts-autocode package was found under packages/",
 		);
 	});
 
-	it("every ts-autocode package HoBo imports is a workspace member", () => {
+	it("every ts-autocode package HoBo imports, and each they depend on, is a workspace member", () => {
+		const packages = submodulePackages();
 		const members = workspaceMembers();
-		const problems = [...new Set(imports.map((i) => i.specifier))]
-			.filter((specifier) => {
-				const found = packages.get(specifier);
+		const imported = [...new Set(imports.map((i) => i.packageName))];
+		const problems = [...packageClosure(imported, packages)]
+			.filter(([name]) => {
+				const found = packages.get(name);
 				return (
 					found === undefined ||
 					!members.some((member) => member.test(found.directory))
 				);
 			})
 			.map(
-				(specifier) =>
-					`${specifier}: ${packages.has(specifier) ? "not listed in pnpm-workspace.yaml" : `no package of that name under ${SUBMODULE}/packages`}`,
+				([name, why]) =>
+					`${name} (${why}): ${packages.has(name) ? "not listed in pnpm-workspace.yaml" : `no package of that name under ${SUBMODULE}/packages`}`,
 			);
 		assert.deepEqual(problems, []);
 	});
 
-	it("every ts-autocode export HoBo imports exists at the pinned commit", () => {
-		const used = [...new Set(imports.map((i) => i.specifier))].flatMap(
-			(specifier) => {
-				const found = packages.get(specifier);
-				return found === undefined ? [] : [found.entry];
-			},
-		);
+	it("every ts-autocode entry point and export HoBo imports exists at the pinned commit", () => {
+		const packages = submodulePackages();
+		const entryOf = (imported: ImportedName) =>
+			packages.get(imported.packageName)?.entries.get(imported.entryPoint);
+		const used = [
+			...new Set(imports.flatMap((imported) => entryOf(imported) ?? [])),
+		];
 		const exported = exportsOf(used);
-		const problems: string[] = [];
+		const problems = new Set<string>();
 		for (const imported of imports) {
-			const found = packages.get(imported.specifier);
-			const names = found === undefined ? undefined : exported.get(found.entry);
+			if (!packages.has(imported.packageName)) continue; // reported by the membership test
+			const entry = entryOf(imported);
+			if (entry === undefined) {
+				problems.add(
+					`${imported.file}: ${imported.specifier} is not an entry point ${imported.packageName} exports (no "import" condition for "${imported.entryPoint}")`,
+				);
+				continue;
+			}
+			const names = exported.get(entry);
 			if (names === undefined || imported.name === "*") continue;
 			const isValue = names.get(imported.name);
 			if (isValue === undefined) {
-				problems.push(
+				problems.add(
 					`${imported.file}: ${imported.name} is not exported by ${imported.specifier}`,
 				);
 			} else if (!imported.typeOnly && !isValue) {
-				problems.push(
+				problems.add(
 					`${imported.file}: ${imported.name} is imported as a value but ${imported.specifier} exports only a type`,
 				);
 			}
 		}
-		assert.deepEqual(problems, []);
+		assert.deepEqual([...problems], []);
 	});
 });

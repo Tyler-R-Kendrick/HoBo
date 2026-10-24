@@ -9,11 +9,8 @@ import {
 	toStableValue,
 	union,
 } from "./text.js";
-import {
-	buildTrainables,
-	scanAmbientTrainableClasses,
-	scanTrainableDirectives,
-} from "./trainables.js";
+import { scanAmbientTrainableClasses } from "./ambient-trainables.js";
+import { buildTrainables, scanTrainableDirectives } from "./trainables.js";
 import {
 	type CodegenArtifact,
 	CodegenArtifactSchema,

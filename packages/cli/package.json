@@ -25,7 +25,8 @@
 		"@hobo/core": "workspace:*",
 		"@hobo/patterns": "workspace:*",
 		"ts-autocode-grounding": "workspace:*",
-		"ts-autocode-training": "workspace:*"
+		"ts-autocode-training": "workspace:*",
+		"typescript": "^5.9.3"
 	},
 	"devDependencies": {
 		"@hobo/data": "workspace:*",

@@ -1,19 +1,16 @@
-import { existsSync } from "node:fs";
-import { readdir, readFile } from "node:fs/promises";
-import { join, posix, relative } from "node:path";
+import { readFile } from "node:fs/promises";
+import { posix } from "node:path";
 
 import { create } from "@bufbuild/protobuf";
-import {
-	type DeclaredTrainableClass,
-	generateDeclaredRegistrations,
-	scanDeclaredTrainables,
-} from "ts-autocode-grounding";
+import { generateDeclaredRegistrations } from "ts-autocode-grounding";
 import { discoverInSource } from "ts-autocode-training";
+import type { AmbientTrainableClass } from "./ambient-trainables.js";
 import type {
 	SourceModel,
 	SourceModelBindle,
 	SourceModelResource,
 } from "./engine.js";
+import { projectPath, scannedSources } from "./source-files.js";
 import {
 	type CodegenArtifact,
 	CodegenArtifactSchema,
@@ -30,7 +27,8 @@ import {
 // marker carries no bindings; codegen generates them); and, for an ambient
 // `@trainable declare class` (Plan 2 Syntax 0), the `defineGrounding(...)`
 // registrations ts-autocode-grounding's emitter writes (ADR-0128), one module
-// per class beside the trainables module, re-exported from it. Output paths
+// per class beside the trainables module, re-exported from it (the classes
+// come from ambient-trainables.ts). Output paths
 // and module specifiers all come from the layout config; record shapes are
 // the generated hobo.cli.v1 proto types.
 
@@ -58,35 +56,6 @@ function directiveFunctionNames(source: string): readonly string[] {
 	return [...names];
 }
 
-/** The layout's TypeScript sources, in a deterministic order, generated roots excluded. */
-async function scannedSources(
-	projectRoot: string,
-	layout: CodegenLayout,
-): Promise<readonly string[]> {
-	const scanRoot = join(projectRoot, layout.sources.scanDir);
-	if (!existsSync(scanRoot)) return [];
-	const excluded = layout.generatedRoots.map((root) => join(projectRoot, root));
-
-	const files: string[] = [];
-	async function visit(directory: string): Promise<void> {
-		if (excluded.some((root) => directory.startsWith(root))) return;
-		for (const entry of await readdir(directory, { withFileTypes: true })) {
-			const path = join(directory, entry.name);
-			if (entry.isDirectory()) {
-				await visit(path);
-				continue;
-			}
-			if (/\.(ts|tsx|mts)$/.test(entry.name)) files.push(path);
-		}
-	}
-	await visit(scanRoot);
-	return files.sort();
-}
-
-function projectPath(projectRoot: string, file: string): string {
-	return relative(projectRoot, file).split("\\").join("/");
-}
-
 /**
  * Scan the layout's source dir for `"use training"`-marked exported
  * functions (deterministic file order; generated roots excluded).
@@ -100,67 +69,6 @@ export async function scanTrainableDirectives(
 		const source = await readFile(file, "utf8");
 		for (const name of directiveFunctionNames(source)) {
 			found.push({ name, file: projectPath(projectRoot, file) });
-		}
-	}
-	return found;
-}
-
-/** An ambient `@trainable declare class` found in authored source. */
-export interface AmbientTrainableClass {
-	/** Project-relative source file (posix separators). */
-	readonly file: string;
-	readonly declared: DeclaredTrainableClass;
-}
-
-/**
- * Only a file with an ambient class and one of the scanner's marker decorators
- * is parsed: the scanner also walks classes with bodies, and refuses some of
- * them (overloads), which register themselves and are none of codegen's business.
- */
-const MARKER_DECORATOR = /@(?:trainable|component)\b/u;
-const AMBIENT_CLASS = /\bdeclare\s+(?:abstract\s+)?class\b/u;
-
-/**
- * Scan the layout's source dir for ambient `@trainable declare class`
- * declarations (Plan 2 Syntax 0). An ambient class is erased at compile time,
- * so no decorator ever registers it; codegen emits its registrations instead.
- * A decorated class with a body registers itself when it is evaluated, so it
- * is not ambient and is left out. Scanning is ts-autocode-grounding's AST walk
- * (ADR-0128); a class it refuses (an overloaded or non-identifier method
- * name), or two ambient classes of one name, is a codegen error.
- */
-export async function scanAmbientTrainableClasses(
-	projectRoot: string,
-	layout: CodegenLayout,
-): Promise<readonly AmbientTrainableClass[]> {
-	const found: AmbientTrainableClass[] = [];
-	for (const path of await scannedSources(projectRoot, layout)) {
-		const source = await readFile(path, "utf8");
-		if (!MARKER_DECORATOR.test(source) || !AMBIENT_CLASS.test(source)) continue;
-		const file = projectPath(projectRoot, path);
-		let classes: readonly DeclaredTrainableClass[];
-		try {
-			classes = scanDeclaredTrainables(source);
-		} catch (error) {
-			throw new CodegenError(
-				"HOBO_CODEGEN_SOURCE_PARSE",
-				`Cannot scan ${file} for @trainable classes: ${error instanceof Error ? error.message : error}`,
-				{ file },
-			);
-		}
-		for (const declared of classes) {
-			if (!declared.ambient) continue;
-			const earlier = found.find(
-				(entry) => entry.declared.className === declared.className,
-			);
-			if (earlier !== undefined) {
-				throw new CodegenError(
-					"HOBO_CODEGEN_SOURCE_PARSE",
-					`Ambient @trainable class ${declared.className} is declared in both ${earlier.file} and ${file}; its method refs would collide`,
-					{ file, className: declared.className, earlier: earlier.file },
-				);
-			}
-			found.push({ file, declared });
 		}
 	}
 	return found;

@@ -3,9 +3,9 @@ import { resolve } from "node:path";
 import { toJson } from "@bufbuild/protobuf";
 import { loadSourceModel } from "../codegen/engine.js";
 import { runCodegen } from "../codegen/run-codegen.js";
+import { scanAmbientTrainableClasses } from "../codegen/ambient-trainables.js";
 import {
 	buildTrainables,
-	scanAmbientTrainableClasses,
 	scanTrainableDirectives,
 } from "../codegen/trainables.js";
 import {

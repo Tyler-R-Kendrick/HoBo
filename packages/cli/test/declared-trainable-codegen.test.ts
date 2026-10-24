@@ -45,6 +45,42 @@ export class Todos {
 }
 `;
 
+// One file, both kinds: only the ambient class gets registrations.
+const MIXED = `
+@trainable
+export declare class Inbox {
+  unread(): number;
+}
+
+@trainable
+export class Outbox {
+  pending(): number {
+    return 0;
+  }
+}
+`;
+
+// Overloads in a decorated class are its own business; it registers itself.
+const DECORATED_OVERLOADS = `
+@trainable
+export class Router {
+  route(path: string): string;
+  route(path: string, method: string): string;
+  route(path: string, method?: string): string {
+    return method ?? path;
+  }
+}
+`;
+
+// Overloads in an ambient class would write two `export const now`.
+const AMBIENT_OVERLOADS = `
+@trainable
+export declare class Clock {
+  now(): string;
+  now(zone: string): string;
+}
+`;
+
 describe("ambient @trainable classes in hobo stub", () => {
 	let projectRoot: string;
 
@@ -156,6 +192,73 @@ describe("ambient @trainable classes in hobo stub", () => {
 			}),
 		});
 		await expect(mod.greeterGreet("Ada")).resolves.toBe("Hello, Ada!");
+	});
+
+	it("writes registrations for the ambient class of a file that also holds a decorated one, and none for the decorated one", async () => {
+		await writeFile(join(projectRoot, "src/mailbox.ts"), MIXED);
+		await runCodegen({ projectRoot, check: false });
+
+		await access(join(projectRoot, "src/_generated/declared/Inbox.ts"));
+		await expect(
+			access(join(projectRoot, "src/_generated/declared/Outbox.ts")),
+		).rejects.toThrow();
+		const trainables = await readFile(
+			join(projectRoot, "src/_generated/trainables.ts"),
+			"utf8",
+		);
+		expect(trainables).toContain(
+			'export { unread as inboxUnread } from "./declared/Inbox.js";',
+		);
+		expect(trainables).not.toContain("Outbox");
+	});
+
+	it("leaves a decorated class with overloads alone, in its own file or beside an ambient class", async () => {
+		await writeFile(join(projectRoot, "src/router.ts"), DECORATED_OVERLOADS);
+		await writeFile(
+			join(projectRoot, "src/mailbox.ts"),
+			MIXED + DECORATED_OVERLOADS.replace("Router", "Relay"),
+		);
+		const result = await createHoboCli().run(["stub", "--json"], {
+			cwd: projectRoot,
+		});
+		expect(result.exitCode, result.stdout).toBe(0);
+		const methodRefs = JSON.parse(result.stdout).data.trainables.map(
+			(stub: { methodRef: string }) => stub.methodRef,
+		);
+		expect(methodRefs).toContain("Inbox.unread");
+		expect(methodRefs).not.toContain("Router.route");
+		expect(methodRefs).not.toContain("Relay.route");
+	});
+
+	it("refuses an ambient class with overloads, also beside a decorated class", async () => {
+		await writeFile(
+			join(projectRoot, "src/clock.ts"),
+			AMBIENT_OVERLOADS + DECORATED,
+		);
+		const result = await createHoboCli().run(["stub", "--json"], {
+			cwd: projectRoot,
+		});
+		expect(result.exitCode).not.toBe(0);
+		const envelope = JSON.parse(result.stdout);
+		expect(envelope.code).toBe("HOBO_CODEGEN_SOURCE_PARSE");
+		expect(envelope.message).toMatch(/src\/clock\.ts.*Clock\.now/);
+	});
+
+	it("refuses an ambient class that shares its name with a decorated class", async () => {
+		// src/todos.ts holds the decorated Todos.
+		await writeFile(
+			join(projectRoot, "src/todos-declared.ts"),
+			"@trainable\nexport declare class Todos {\n  list(): string[];\n}\n",
+		);
+		const result = await createHoboCli().run(["stub", "--json"], {
+			cwd: projectRoot,
+		});
+		expect(result.exitCode).not.toBe(0);
+		const envelope = JSON.parse(result.stdout);
+		expect(envelope.code).toBe("HOBO_CODEGEN_SOURCE_PARSE");
+		expect(envelope.message).toMatch(
+			/Ambient @trainable class Todos in src\/todos-declared\.ts shares its name with the decorated @trainable class in src\/todos\.ts/,
+		);
 	});
 
 	it("refuses two ambient classes of one name", async () => {

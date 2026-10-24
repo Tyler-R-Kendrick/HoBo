@@ -602,6 +602,9 @@ importers:
       ts-autocode-training:
         specifier: workspace:*
         version: link:../../external/ts-autocode/packages/training
+      typescript:
+        specifier: ^5.9.3
+        version: 5.9.3
     devDependencies:
       '@hobo/data':
         specifier: workspace:*

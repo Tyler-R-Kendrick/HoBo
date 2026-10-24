@@ -6,7 +6,6 @@ settings:
 
 overrides:
   ts-autocode-grounding: workspace:*
-  ts-autocode-harness: workspace:*
   ts-autocode-rewrite: workspace:*
   ts-autocode-training: workspace:*
 

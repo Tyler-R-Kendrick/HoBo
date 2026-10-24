@@ -9,7 +9,11 @@ import {
 	toStableValue,
 	union,
 } from "./text.js";
-import { buildTrainables, scanTrainableDirectives } from "./trainables.js";
+import {
+	buildTrainables,
+	scanAmbientTrainableClasses,
+	scanTrainableDirectives,
+} from "./trainables.js";
 import {
 	type CodegenArtifact,
 	CodegenArtifactSchema,
@@ -43,6 +47,8 @@ export function createProjectCodegenEngine(
 		async generate(projectRoot: string): Promise<readonly CodegenArtifact[]> {
 			const model = await loadSourceModel(projectRoot, layout.sources);
 			const directives = await scanTrainableDirectives(projectRoot, layout);
+			const ambient = await scanAmbientTrainableClasses(projectRoot, layout);
+			const trainables = buildTrainables(model, layout, directives, ambient);
 			const { files, imports } = layout;
 			const artifact = (path: string, content: string) =>
 				create(CodegenArtifactSchema, { path, content });
@@ -67,7 +73,8 @@ export function createProjectCodegenEngine(
 				artifact(files.steps, renderStepSignatures(model, imports)),
 				artifact(files.workflows, renderWorkflowSignatures(model, imports)),
 				artifact(files.withOptions, renderWithOptions(model)),
-				buildTrainables(model, layout, directives).artifact,
+				trainables.artifact,
+				...trainables.declaredArtifacts,
 			];
 		},
 	};

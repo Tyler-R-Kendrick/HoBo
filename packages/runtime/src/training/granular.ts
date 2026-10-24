@@ -96,8 +96,9 @@ function trainingOptionsOf(options: GroundingOptions): TrainingOptions {
 
 /**
  * `defineGrounding(options)`: the callee of the registrations `hobo stub`
- * generates from an ambient `@trainable declare class`
- * (`generateDeclaredRegistrations` in scan.ts). ts-autocode-grounding's emitter
+ * generates from an ambient `@trainable declare class` into
+ * `src/_generated/declared/<Class>.ts` (ts-autocode-grounding's
+ * `generateDeclaredRegistrations`, wrapped in scan.ts). The emitter
  * writes `import { defineGrounding } from "@hobo/runtime"`, so this is the name
  * HoBo answers to. It is `training.define`: the signature-only form, registered
  * in HoBo's training registry and served by the contract-derived stub baseline

@@ -6,8 +6,9 @@ deterministic-replay library that backs them.
 - **Trainable methods (ADR-0025 / ADR-0125)** — `training(fn, opts)`,
   signature-only `training.define()` empty implementations served by a
   contract-derived stub (`defineGrounding()` is the same function under the
-  name the `hobo stub` registrations generated from an ambient
-  `@trainable declare class` call; ADR-0128), the optional `@trainable` class-method decorator,
+  name the registrations call that `hobo stub` generates for an ambient
+  `@trainable declare class`, in `src/_generated/declared/<Class>.ts`;
+  ADR-0128), the optional `@trainable` class-method decorator,
   the `"use training"` grounding lint, and `applyTrainingArtifact()` for
   apply-at-load promotion. See `src/training/`.
 - **Deterministic replay** (`./replay` export) — the replay/divergence/

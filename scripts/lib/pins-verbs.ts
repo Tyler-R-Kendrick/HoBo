@@ -163,6 +163,17 @@ function printProblems(
 	);
 }
 
+/** A warning leaves the exit status alone. */
+function printWarnings(
+	warnings: readonly string[],
+	fixes: readonly string[],
+): void {
+	printProblems(
+		warnings.map((warning) => `warning: ${warning}`),
+		fixes,
+	);
+}
+
 export async function runStatus(request: Request, pins: Pins): Promise<number> {
 	refuseOverridesInCi(Object.keys(pins.assets), process.env);
 	let failed = 0;
@@ -183,11 +194,13 @@ export async function runStatus(request: Request, pins: Pins): Promise<number> {
 						? `  (the tip of ${pin.branch})`
 						: `  (${pin.branch} is at ${short(status.tip)})`;
 			console.log(`${name}  ${short(status.commit)}  ok${tip}`);
+			printWarnings(status.warnings, status.warningFixes);
 			continue;
 		}
 		failed += 1;
 		console.log(`${name}  ${short(status.commit)}  FAIL`);
 		printProblems(status.problems, status.fixes);
+		printWarnings(status.warnings, status.warningFixes);
 	}
 	const ctx = assetContext(request);
 	for (const [name, pin] of Object.entries(pins.assets)) {

@@ -90,6 +90,23 @@ describe("pins:status and the sparse cone", () => {
 		);
 	});
 
+	it("a cone directory the pinned commit does not have fails, naming the pin's cone and the bump as the fix", () => {
+		const dir = scratch("sparse-status-absent");
+		const remote = makeRemote(dir);
+		const work = makeWork(dir, remote, 1, {
+			sparse: ["packages/a", "packages/gone"],
+		});
+		ok(runBootstrap(work, ["--reference", makeReference(dir, remote)]));
+		const run = runBootstrap(work, ["--status", "--offline"]);
+		assert.equal(run.status, 1, run.stdout);
+		assert.match(
+			run.stdout,
+			/ {2}external\/lib does not have packages\/gone, which the pin's sparse cone names, and neither does the pinned commit\n {2}fix: drop packages\/gone from lib's "sparse" list in tools\/pins\/siblings\.json, or move the pin to a commit that has it: pnpm run pins:bump lib <ref>/,
+		);
+		// Fetching again checks out the same commit, so it is not offered.
+		assert.doesNotMatch(run.stdout, /fix: pnpm run pins:fetch lib/);
+	});
+
 	it("a cone without a pinned directory fails, with pins:fetch as the fix", () => {
 		const f = fetched();
 		git(f.sub, ["sparse-checkout", "set", "--cone", "packages/b"]);

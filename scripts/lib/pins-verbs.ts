@@ -7,7 +7,7 @@
  */
 import { renameSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
-import { type GitPin, type Pins, PinsError } from "./pins.ts";
+import { type GitPin, PINS_FILE, type Pins, PinsError } from "./pins.ts";
 import {
 	type AssetContext,
 	bumpAsset,
@@ -27,7 +27,7 @@ import {
 	statusPin,
 } from "./pins-git.ts";
 
-export const PINS_FILE = "tools/pins/siblings.json";
+export { PINS_FILE };
 
 export interface Request {
 	readonly verb: "init" | "status" | "fetch" | "bump";

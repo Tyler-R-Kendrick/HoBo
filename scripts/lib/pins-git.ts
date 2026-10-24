@@ -13,7 +13,7 @@
  */
 import { existsSync } from "node:fs";
 import { join } from "node:path";
-import { type GitPin, PinsError } from "./pins.ts";
+import { type GitPin, PINS_FILE, PinsError } from "./pins.ts";
 import {
 	git,
 	gitlinkOf,
@@ -209,6 +209,12 @@ export interface GitStatus {
 	readonly tip: string | null;
 }
 
+/** Whether the submodule's HEAD commit has a directory at `path`. */
+function inHead(sub: string, path: string): boolean {
+	const listed = git(sub, ["ls-tree", "-d", "--name-only", "HEAD", "--", path]);
+	return listed.status === 0 && listed.stdout.trim() === path;
+}
+
 interface SparseReport {
 	readonly kind: "problem" | "warning";
 	readonly text: string;
@@ -231,6 +237,16 @@ function sparseReport(
 	const want = pin.sparse.join(" ");
 	const fix = `pnpm run pins:fetch ${name}   (checks out the pin's sparse cone: ${want})`;
 	const missing = pin.sparse.filter((path) => !existsSync(join(sub, path)));
+	// Fetching again checks out the same commit: a directory it does not
+	// have is the cone's to drop, or the pin's to move.
+	const absent = missing.filter((path) => !inHead(sub, path));
+	if (absent.length > 0) {
+		return {
+			kind: "problem",
+			text: `${pin.path} does not have ${absent.join(", ")}, which the pin's sparse cone names, and neither does the pinned commit`,
+			fix: `drop ${absent.join(", ")} from ${name}'s "sparse" list in ${PINS_FILE}, or move the pin to a commit that has it: pnpm run pins:bump ${name} <ref>`,
+		};
+	}
 	if (missing.length > 0) {
 		return {
 			kind: "problem",

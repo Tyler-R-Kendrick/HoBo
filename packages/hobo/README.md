@@ -36,6 +36,18 @@ a live cloud apply. Selection lives in `src/compose.ts` (`selectIacProvider`):
 | Live Cloudflare Workers | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` |
 | Live Vercel | `VERCEL_TOKEN` |
 
+**Credentials from OpenSesame (`HOBO_CREDENTIALS=opensesame`, [ADR-0170](../../docs/design/adr/02-identity-security.md#adr-0170)).**
+The composed `hobo` then relaunches itself once, before composing anything, as
+`opensesame dev --agent --schema <generated> run -- <this invocation>` (through
+[`@hobo/adapter-opensesame`](../adapters/adapter-opensesame/README.md)), reading
+`hobo.credentials.json` (references only) from the working directory, and exits
+with the run's status: the command's own, 77 for a tripwire, 128+n for a signal,
+1 for a run that left placeholders or never started. The relaunched process
+holds an `osr_` surrogate in `VERCEL_TOKEN`; `selectIacProvider` refuses anything
+else with `OPENSESAME_PLACEHOLDERS_ONLY` before any request (it runs when the
+runtime is composed, so a placeholder run stops there with status 1). Vercel only; AWS is
+not brokered. `src/credentials-opensesame.ts`.
+
 Related honesty elsewhere in this package:
 
 - **`hobo login`** — fixture/OIDC session under `HOBO_HOME`; full production OIDC/SPIRE is not the default (`src/login-command.ts` `HONEST SCOPE`).

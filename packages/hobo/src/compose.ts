@@ -113,6 +113,10 @@ import { REGISTRY_STREAM } from "./add-command.js";
 import type { CloudflareFetch } from "./cloudflare-client.js";
 import { createCloudflareDeployProvider } from "./cloudflare-deploy-provider.js";
 import {
+	requireOpenSesameSurrogate,
+	usesOpenSesameCredentials,
+} from "./credentials-opensesame.js";
+import {
 	createPulumiBackedIacProvider,
 	type PulumiAutomationAdapter,
 } from "./pulumi-iac-provider.js";
@@ -393,6 +397,12 @@ export function readPulumiEstate(
 // it read the env var, so it holds the material and hands the resolvers only a
 // name for it. These locators use the `hobo-token` scheme because that is what
 // `@hobo/bindings`' `parseSecretRef` (which the Vercel resolvers apply) accepts.
+// Under `HOBO_CREDENTIALS=opensesame` (ADR-0170) the material is the run's `osr_`
+// surrogate, not a token: the process was relaunched under OpenSesame's proxied
+// run (credentials-opensesame.ts), `VERCEL_TOKEN` holds what only its proxy can
+// redeem at api.vercel.com, and `fetch` reaches it through `HTTPS_PROXY`
+// (`NODE_USE_ENV_PROXY=1`). Nothing below changes for that; selectIacProvider
+// only refuses to start a lane on anything but a surrogate.
 const CLOUDFLARE_RESOLVER_CREDENTIAL_REF = "hobo-token://cloudflare/api-token";
 const VERCEL_RESOLVER_CREDENTIAL_REF = "hobo-token://vercel/deploy";
 
@@ -482,8 +492,16 @@ function resolverBackedProviderFor(
 // lanes resolve through the SHARED per-store adapter memo (see
 // selectPulumiEstateAdapter) so `up`, `drift`, and `import` composed over the
 // same store all observe the same state backend.
+//
+// Before any of that, `HOBO_CREDENTIALS=opensesame` (or running as a proxied
+// run's command, `HOBO_OPENSESAME_CHILD=1`) refuses with
+// OPENSESAME_PLACEHOLDERS_ONLY unless `VERCEL_TOKEN` is an OpenSesame surrogate
+// (`osr_` + 32 hex): a proxied run whose plugin is missing or off exits 0 with a
+// placeholder, and against an emulator that accepts any token that would deploy
+// "successfully" on nothing (ADR-0170). With neither set, nothing here changes.
 export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 	const env = deps.env ?? process.env;
+	if (usesOpenSesameCredentials(env)) requireOpenSesameSurrogate(env);
 	const cloudflareToken = env.CLOUDFLARE_API_TOKEN;
 	const cloudflareAccountId = env.CLOUDFLARE_ACCOUNT_ID;
 	const vercelToken = env.VERCEL_TOKEN;

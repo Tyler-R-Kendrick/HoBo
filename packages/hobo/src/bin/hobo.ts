@@ -13,6 +13,11 @@ import {
 	createDefaultYardRuntime,
 	toRegistrableProvider,
 } from "../compose.js";
+import {
+	relaunchUnderOpenSesame,
+	reportingCredentialRefusals,
+	wantsOpenSesameRelaunch,
+} from "../credentials-opensesame.js";
 import { createBareMetalProvider } from "../local-provider.js";
 
 // The real composed `hobo` binary. Unlike @hobo/cli's bare bin (which calls
@@ -22,18 +27,31 @@ import { createBareMetalProvider } from "../local-provider.js";
 // (prefer wasm-sandbox yards, auto-create camps). Before dispatch, the default
 // provider set is recorded as durable registration + approval facts. Bare-metal
 // is bootstrapped alongside cloudflare so local Yards are first-class.
-const runtime = createDefaultYardRuntime();
-await bootstrapDefaultProviders(runtime, [
-	toRegistrableProvider(createCloudflareProvider()),
-	createBareMetalProvider(),
-]);
-const cli = createComposedHoboCli({ yardRuntime: runtime });
-const result = await cli.run(process.argv.slice(2));
+async function runComposed(): Promise<number> {
+	const runtime = createDefaultYardRuntime();
+	await bootstrapDefaultProviders(runtime, [
+		toRegistrableProvider(createCloudflareProvider()),
+		createBareMetalProvider(),
+	]);
+	const cli = createComposedHoboCli({ yardRuntime: runtime });
+	const result = await cli.run(process.argv.slice(2));
 
-if (result.stdout) {
-	process.stdout.write(result.stdout);
+	if (result.stdout) {
+		process.stdout.write(result.stdout);
+	}
+	if (result.stderr) {
+		process.stderr.write(result.stderr);
+	}
+	return result.exitCode;
 }
-if (result.stderr) {
-	process.stderr.write(result.stderr);
-}
-process.exitCode = result.exitCode;
+
+// HOBO_CREDENTIALS=opensesame (ADR-0170): before composing anything, run this
+// same invocation once more under `opensesame dev --agent run`, and exit as it
+// did. The relaunched child carries HOBO_OPENSESAME_CHILD=1 and composes.
+process.exitCode = wantsOpenSesameRelaunch(process.env)
+	? await relaunchUnderOpenSesame({
+			argv: [process.execPath, ...process.execArgv, ...process.argv.slice(1)],
+			env: process.env,
+			cwd: process.cwd(),
+		})
+	: await reportingCredentialRefusals(runComposed);

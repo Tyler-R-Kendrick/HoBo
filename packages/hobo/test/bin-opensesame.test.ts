@@ -274,6 +274,31 @@ describe("hobo-mcp under HOBO_CREDENTIALS=opensesame", () => {
 	);
 
 	it(
+		"a relaunched server holding a placeholder says so on one line, not a stack trace",
+		async () => {
+			const record = standIn("plugin-absent");
+			const run = await runBin({
+				bin: HOBO_MCP_BIN,
+				env: {
+					HOBO_CREDENTIALS: "opensesame",
+					OPENSESAME_STORE_PASSWORD: "dummy-not-a-secret",
+				},
+				record,
+				stdin: `${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" })}\n`,
+			});
+			expect(run.status).toBe(1);
+			expect(run.command).toBeDefined();
+			// The composed server's refusal, then the parent's reading of the run.
+			expect(run.stderr).toMatch(/^hobo: OPENSESAME_PLACEHOLDERS_ONLY: /mu);
+			expect(run.stderr).toMatch(/^hobo: placeholders_only: /mu);
+			expect(run.stderr).not.toMatch(/^\s+at /mu);
+			expect(run.stdout).toBe("");
+			expect(leftYards()).toEqual([]);
+		},
+		RUN_TIMEOUT_MS,
+	);
+
+	it(
 		"without the store passphrase, starts nothing and says why on one line",
 		async () => {
 			const record = standIn("surrogate-delivered");

@@ -55,9 +55,7 @@ function incomingHttpRequestFrom(
 	return { method, path, headers, body };
 }
 
-import { mkdtempSync } from "node:fs";
-import { tmpdir } from "node:os";
-import { basename, join } from "node:path";
+import { basename } from "node:path";
 
 import type {
 	BindleDefinition,
@@ -205,8 +203,11 @@ export function toRegistrableProvider(
 }
 
 export interface DefaultYardRuntimeOptions {
-	// Durable event-store data directory. Defaults to a fresh OS temp dir (the
-	// mocked lane is ephemeral). Provide a stable dir to inspect the event log
+	// Durable event-store data directory. Defaults to a fresh OS temp dir
+	// (`hobo-yard-*`; the mocked lane is ephemeral) that this process owns and
+	// removes when it ends, on an error or a signal too (owned-temp-dir.ts), so no
+	// caller, binary or library, leaves one behind. A directory given here is the
+	// caller's and is never removed: provide a stable one to inspect the event log
 	// across runs. Callers that create the runtime directly own closing
 	// `runtime.store` when done.
 	readonly dataDir?: string;
@@ -556,7 +557,7 @@ export function selectIacProvider(deps: SelectIacProviderDeps): IacProvider {
 export function createDefaultYardRuntime(
 	options: DefaultYardRuntimeOptions = {},
 ): YardRuntime {
-	const dataDir = options.dataDir ?? mkdtempSync(join(tmpdir(), "hobo-yard-"));
+	const dataDir = options.dataDir ?? ownedTempDir("hobo-yard-");
 	const store = createRuntimeLocalEventStore({
 		dataDir,
 		clock: createManualClock(),

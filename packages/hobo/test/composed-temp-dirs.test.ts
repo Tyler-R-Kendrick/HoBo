@@ -12,9 +12,11 @@ import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 
-// The temporary directories the composition makes for itself: the live Pulumi
-// lane's workspace (`hobo-pulumi-live-*`) when HOBO_PULUMI_WORKDIR is unset,
-// removed however the process ends, like the bins' event store.
+// The temporary directories the composition makes for itself: the default
+// runtime's event store (`hobo-yard-*`) when no dataDir is given, and the live
+// Pulumi lane's workspace (`hobo-pulumi-live-*`) when HOBO_PULUMI_WORKDIR is
+// unset. Each is removed however the process ends; a directory the caller
+// names is the caller's.
 
 const TSX_LOADER = createRequire(import.meta.url).resolve("tsx");
 const FIXTURE = fileURLToPath(
@@ -99,6 +101,30 @@ describe("the live Pulumi lane's own workspace", () => {
 				expect(left("hobo-pulumi-live-")).toEqual([]);
 				// A directory the caller named is the caller's: it is kept.
 				expect(existsSync(join(yard, "eventstore.sqlite"))).toBe(true);
+			},
+			RUN_TIMEOUT_MS,
+		);
+	}
+});
+
+describe("the default runtime's own event store", () => {
+	for (const [label, mode, signal, expected] of [
+		["a normal end", "normal", undefined, { code: 0, signal: null }],
+		["an uncaught error", "throw", undefined, { code: 1, signal: null }],
+		[
+			"SIGTERM, which still ends the process",
+			"wait",
+			"SIGTERM",
+			{ code: null, signal: "SIGTERM" },
+		],
+	] as const) {
+		it(
+			`is removed on ${label}, with the live lane's workspace`,
+			async () => {
+				const ended = await run(mode, "default", signal);
+				expect(ended).toEqual(expected);
+				expect(left("hobo-yard-")).toEqual([]);
+				expect(left("hobo-pulumi-live-")).toEqual([]);
 			},
 			RUN_TIMEOUT_MS,
 		);

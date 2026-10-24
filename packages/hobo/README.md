@@ -20,9 +20,11 @@ await cli.run(["up", "--json"], { cwd: projectDir });
 - `createDefaultCollectionTarget(projectDir?)` — the default collect target.
 
 Composed binaries: `dist/bin/hobo.js` (product `hobo`) and `dist/bin/hobo-mcp.js`.
-Each keeps its throwaway event store in a `hobo-yard-*` directory under `TMPDIR` and
-removes it when it ends: normally, on an error, or on SIGTERM, SIGHUP, SIGINT or
-SIGQUIT (`src/owned-temp-dir.ts`; not on SIGKILL or a crash).
+`createDefaultYardRuntime()` without a `dataDir` keeps its throwaway event store in a
+`hobo-yard-*` directory under `TMPDIR` that the process owns and removes when it ends:
+normally, on an error, or on SIGTERM, SIGHUP, SIGINT or SIGQUIT (`src/owned-temp-dir.ts`;
+not on SIGKILL or a crash). Both binaries, `createComposedHoboCli()` and `@hobo/code`'s
+in-process runner use that default; a `dataDir` you pass is yours and is never removed.
 Canonical verb list: **38** verbs in `@hobo/cli` (`packages/cli/src/shell/verbs.ts`).
 
 ## HONEST SCOPE (default deploy lane)

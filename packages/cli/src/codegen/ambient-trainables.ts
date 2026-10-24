@@ -32,6 +32,12 @@ interface MarkedClass {
 }
 
 const MARKERS = new Set(["trainable", "component"]);
+/**
+ * File names Windows reserves for devices whatever the extension, so an
+ * ambient class named one has no `declared/<Class>.ts` to be written to.
+ */
+const WINDOWS_DEVICE =
+	/^(?:con|prn|aux|nul|com[0-9]|lpt[0-9]|conin\$|conout\$)$/iu;
 /** A file that never names a marker holds no marked class, so it is not parsed. */
 const MARKER_NAME = /\b(?:trainable|component)\b/u;
 
@@ -114,9 +120,43 @@ function scanAmbient(
 }
 
 /**
+ * An ambient class's registrations are written to `declared/<Class>.ts`, so
+ * its name must be a file name of its own on every file system: not one
+ * Windows reserves for a device, and not one another ambient class has in
+ * another case (macOS and Windows compare names case-insensitively).
+ */
+function refuseModuleName(
+	found: readonly AmbientTrainableClass[],
+	file: string,
+	className: string,
+): void {
+	if (WINDOWS_DEVICE.test(className)) {
+		throw new CodegenError(
+			"HOBO_CODEGEN_SOURCE_PARSE",
+			`Ambient @trainable class ${className} in ${file} cannot have a registration module: Windows reserves the file name ${className}.ts for a device; rename the class`,
+			{ file, className },
+		);
+	}
+	const earlier = found.find(
+		(entry) =>
+			entry.declared.className.toLowerCase() === className.toLowerCase(),
+	);
+	if (earlier === undefined) return;
+	const earlierName = earlier.declared.className;
+	throw new CodegenError(
+		"HOBO_CODEGEN_SOURCE_PARSE",
+		earlierName === className
+			? `Ambient @trainable class ${className} is declared in both ${earlier.file} and ${file}; its method refs would collide`
+			: `Ambient @trainable classes ${earlierName} (${earlier.file}) and ${className} (${file}) differ only in case; declared/${earlierName}.ts and declared/${className}.ts are one file on a case-insensitive file system`,
+		{ file, className, earlier: earlier.file },
+	);
+}
+
+/**
  * Scan the layout's source dir for ambient `@trainable declare class`
  * declarations. Refused: a class the scanner refuses (an overloaded or
- * non-identifier method name), two ambient classes of one name, and an
+ * non-identifier method name), two ambient classes of one name in any case
+ * or one named like a Windows device (see refuseModuleName), and an
  * ambient class named like a decorated `@trainable` class, whose methods
  * register under the same `<Class>.<method>` refs (one registration would
  * silently replace the other).
@@ -138,16 +178,7 @@ export async function scanAmbientTrainableClasses(
 				}
 				continue;
 			}
-			const earlier = found.find(
-				(entry) => entry.declared.className === marked.className,
-			);
-			if (earlier !== undefined) {
-				throw new CodegenError(
-					"HOBO_CODEGEN_SOURCE_PARSE",
-					`Ambient @trainable class ${marked.className} is declared in both ${earlier.file} and ${file}; its method refs would collide`,
-					{ file, className: marked.className, earlier: earlier.file },
-				);
-			}
+			refuseModuleName(found, file, marked.className);
 			found.push({ file, declared: scanAmbient(file, marked) });
 		}
 	}

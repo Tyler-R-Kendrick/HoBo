@@ -274,6 +274,38 @@ describe("ambient @trainable classes in hobo stub", () => {
 		);
 	});
 
+	it("refuses two ambient classes whose names differ only in case", async () => {
+		// declared/Foo.ts and declared/FOO.ts are one file on macOS and Windows.
+		await writeFile(
+			join(projectRoot, "src/foo-a.ts"),
+			"@trainable\nexport declare class Foo {\n  a(): string;\n}\n",
+		);
+		await writeFile(
+			join(projectRoot, "src/foo-b.ts"),
+			"@trainable\nexport declare class FOO {\n  b(): string;\n}\n",
+		);
+		await expect(runCodegen({ projectRoot, check: false })).rejects.toThrow(
+			/Ambient @trainable classes Foo \(src\/foo-a\.ts\) and FOO \(src\/foo-b\.ts\) differ only in case/,
+		);
+	});
+
+	it("refuses an ambient class named like a Windows device", async () => {
+		for (const name of ["Con", "NUL", "aux", "Com1", "LPT9", "CONIN$"]) {
+			await writeFile(
+				join(projectRoot, "src/device.ts"),
+				`@trainable\nexport declare class ${name} {\n  run(): string;\n}\n`,
+			);
+			await expect(
+				runCodegen({ projectRoot, check: false }),
+				name,
+			).rejects.toThrow(
+				new RegExp(
+					`Ambient @trainable class ${name.replace("$", "\\$")} in src/device\\.ts cannot have a registration module: Windows reserves the file name`,
+				),
+			);
+		}
+	});
+
 	it("refuses an ambient operation whose export name a bindle step already takes", async () => {
 		// The fixture's bindle has the step incident.classify (export incidentClassify).
 		await writeFile(

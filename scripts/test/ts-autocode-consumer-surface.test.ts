@@ -16,8 +16,16 @@
  * built, and fails rather than skips when it is absent.
  */
 import assert from "node:assert/strict";
-import { existsSync, readdirSync, readFileSync } from "node:fs";
-import { join, relative } from "node:path";
+import {
+	existsSync,
+	mkdtempSync,
+	readdirSync,
+	readFileSync,
+	rmSync,
+	writeFileSync,
+} from "node:fs";
+import { tmpdir } from "node:os";
+import { basename, dirname, join, relative, resolve } from "node:path";
 import { describe, it } from "node:test";
 
 import ts from "typescript";
@@ -286,41 +294,110 @@ function workspaceMembers(): readonly RegExp[] {
 	return members;
 }
 
-/**
- * Whether any link of an export's alias chain is type-only. `export { type x }`
- * (or `export type { x }`) still resolves to the value `x` through
- * `getAliasedSymbol`, but importing it as a value fails to compile (TS1362).
- */
-function isTypeOnlyAlias(checker: ts.TypeChecker, symbol: ts.Symbol): boolean {
-	const seen = new Set<ts.Symbol>();
-	for (
-		let link: ts.Symbol | undefined = symbol;
-		link !== undefined &&
-		(link.flags & ts.SymbolFlags.Alias) !== 0 &&
-		!seen.has(link);
-		link = checker.getImmediateAliasedSymbol(link)
-	) {
-		seen.add(link);
-		if (link.declarations?.some(ts.isTypeOnlyImportOrExportDeclaration))
-			return true;
-	}
-	return false;
+/** A module beside an entry that imports each of `names` from it as a value, then uses it. */
+interface ValueProbe {
+	readonly path: string;
+	readonly text: string;
+	readonly names: readonly string[];
+	readonly exported: Map<string, boolean>;
 }
 
-/** What each entry exports: name -> whether it is a value (not only a type). */
+function valueProbe(
+	entry: string,
+	index: number,
+	exported: Map<string, boolean>,
+): ValueProbe {
+	const names = [...exported]
+		.filter(([, isValue]) => isValue)
+		.map(([name]) => name);
+	const specifier = `./${basename(entry)
+		.replace(/\.ts$/u, ".js")
+		.replace(/\.mts$/u, ".mjs")
+		.replace(/\.cts$/u, ".cjs")}`;
+	const text = [
+		...names.map(
+			(name, at) =>
+				`import { ${name} as v${at} } from ${JSON.stringify(specifier)};`,
+		),
+		...names.map((_, at) => `v${at};`),
+	].join("\n");
+	return {
+		path: join(dirname(entry), `.hobo-surface-probe-${index}.ts`),
+		text,
+		names,
+		exported,
+	};
+}
+
+/**
+ * Compile the probes (in memory) and mark every name with a diagnostic on its
+ * import line (`n`) or its use line (`names.length + n`) as a type.
+ */
+function markTypeOnly(
+	probes: readonly ValueProbe[],
+	options: ts.CompilerOptions,
+	oldProgram: ts.Program,
+): void {
+	const byPath = new Map(probes.map((probe) => [resolve(probe.path), probe]));
+	const host = ts.createCompilerHost(options, true);
+	const getSourceFile = host.getSourceFile.bind(host);
+	const fileExists = host.fileExists.bind(host);
+	const readFile = host.readFile.bind(host);
+	host.fileExists = (fileName) =>
+		byPath.has(resolve(fileName)) || fileExists(fileName);
+	host.readFile = (fileName) =>
+		byPath.get(resolve(fileName))?.text ?? readFile(fileName);
+	host.getSourceFile = (fileName, language, onError, shouldCreate) => {
+		const probe = byPath.get(resolve(fileName));
+		return probe === undefined
+			? getSourceFile(fileName, language, onError, shouldCreate)
+			: ts.createSourceFile(fileName, probe.text, language, true);
+	};
+	const program = ts.createProgram({
+		rootNames: probes.map((probe) => probe.path),
+		options,
+		host,
+		oldProgram,
+	});
+	for (const probe of probes) {
+		if (probe.names.length === 0) continue;
+		const source = program.getSourceFile(probe.path);
+		assert.ok(source, "the value probe is part of the program");
+		for (const diagnostic of [
+			...program.getSyntacticDiagnostics(source),
+			...program.getSemanticDiagnostics(source),
+		]) {
+			if (diagnostic.start === undefined) continue;
+			const line = source.getLineAndCharacterOfPosition(diagnostic.start).line;
+			const name = probe.names[line % probe.names.length];
+			if (name !== undefined) probe.exported.set(name, false);
+		}
+	}
+}
+
+/**
+ * What each entry exports: name -> whether a module can import it as a value.
+ * A name whose symbol is a value can still be exported type-only
+ * (`export type { x }`, `export { type x }`, `export type * from`, a type-only
+ * link anywhere down a re-export chain), and importing it as a value does not
+ * compile (TS1362). So the compiler is asked directly: a probe module beside
+ * each entry imports every such name as a value and uses it, and a name that
+ * draws a diagnostic is a type.
+ */
 function exportsOf(
 	entries: readonly string[],
 ): ReadonlyMap<string, ReadonlyMap<string, boolean>> {
-	const program = ts.createProgram(entries, {
+	const options: ts.CompilerOptions = {
 		module: ts.ModuleKind.NodeNext,
 		moduleResolution: ts.ModuleResolutionKind.NodeNext,
 		target: ts.ScriptTarget.ES2022,
 		noEmit: true,
 		skipLibCheck: true,
 		types: [],
-	});
+	};
+	const program = ts.createProgram(entries, options);
 	const checker = program.getTypeChecker();
-	const result = new Map<string, ReadonlyMap<string, boolean>>();
+	const result = new Map<string, Map<string, boolean>>();
 	for (const entry of entries) {
 		const source = program.getSourceFile(entry);
 		assert.ok(source, `${relative(root, entry)} is part of the program`);
@@ -332,14 +409,17 @@ function exportsOf(
 				(symbol.flags & ts.SymbolFlags.Alias) !== 0
 					? checker.getAliasedSymbol(symbol)
 					: symbol;
-			names.set(
-				symbol.name,
-				(target.flags & ts.SymbolFlags.Value) !== 0 &&
-					!isTypeOnlyAlias(checker, symbol),
-			);
+			names.set(symbol.name, (target.flags & ts.SymbolFlags.Value) !== 0);
 		}
 		result.set(entry, names);
 	}
+	markTypeOnly(
+		entries.map((entry, index) =>
+			valueProbe(entry, index, result.get(entry) ?? new Map()),
+		),
+		options,
+		program,
+	);
 	return result;
 }
 
@@ -401,6 +481,48 @@ describe("the reference scan", () => {
 			),
 			["discoverInSource", "*"],
 		);
+	});
+});
+
+describe("the export table", () => {
+	it("reads a name exported type-only, in every form, as a type", () => {
+		const dir = mkdtempSync(join(tmpdir(), "hobo-surface-"));
+		try {
+			const write = (name: string, lines: readonly string[]) =>
+				writeFileSync(join(dir, name), `${lines.join("\n")}\n`);
+			write("package.json", ['{ "type": "module" }']);
+			write("text.ts", [
+				"export const camel = 1;",
+				"export function kebab() { return 2; }",
+			]);
+			write("shapes.ts", ["export const square = 4;"]);
+			write("values.ts", [
+				"export const value = 3;",
+				"export const aliased = 5;",
+				"export const listed = 6;",
+			]);
+			write("index.ts", [
+				'export type * from "./text.js";',
+				'export type * as shapes from "./shapes.js";',
+				'export { value } from "./values.js";',
+				'export { type aliased } from "./values.js";',
+				'export type { listed } from "./values.js";',
+			]);
+			const entry = join(dir, "index.ts");
+			assert.deepEqual(
+				Object.fromEntries(exportsOf([entry]).get(entry) ?? []),
+				{
+					camel: false,
+					kebab: false,
+					shapes: false,
+					value: true,
+					aliased: false,
+					listed: false,
+				},
+			);
+		} finally {
+			rmSync(dir, { recursive: true, force: true });
+		}
 	});
 });
 

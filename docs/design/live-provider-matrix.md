@@ -48,7 +48,7 @@ Shared temp contract: `hobo.temporary-environment-station/v1` in `@hobo/core` (`
 
 | Adapter | Default | Live |
 |---|---|---|
-| `@hobo/iac-pulumi` | **In-memory** Automation stand-in | `HOBO_PULUMI_LIVE=1` (+ engine binary/module) |
+| `@hobo/iac-pulumi` | **In-memory** Automation stand-in | `HOBO_PULUMI_LIVE=1` (+ engine binary/module). Its programs and `file://` state go in `HOBO_PULUMI_WORKDIR`, which is kept; without it, in a `hobo-pulumi-live-*` directory **deleted when the process exits**, said on one `hobo:` line on stderr. Set `HOBO_PULUMI_WORKDIR` to keep the state |
 | `@hobo/iac-terraform` | Offline/test | CLI engine when binary present |
 | `@hobo/iac-crossplane` | Offline/test | Cluster-gated |
 

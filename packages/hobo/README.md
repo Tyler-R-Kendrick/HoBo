@@ -39,7 +39,7 @@ a live cloud apply. Selection lives in `src/compose.ts` (`selectIacProvider`):
 | Path | When |
 |---|---|
 | In-memory Pulumi stand-in | **Default** (no special env) |
-| Real Pulumi Automation/CLI | `HOBO_PULUMI_LIVE=1` (engine- and credential-gated); its programs and `file://` state go in `HOBO_PULUMI_WORKDIR`, else in a `hobo-pulumi-live-*` directory removed when the process ends, so set `HOBO_PULUMI_WORKDIR` to keep the state |
+| Real Pulumi Automation/CLI | `HOBO_PULUMI_LIVE=1` (engine- and credential-gated); its programs and `file://` state go in `HOBO_PULUMI_WORKDIR`, which is kept, else in a `hobo-pulumi-live-*` directory removed when the process ends (one `hobo:` line on stderr names it), so set `HOBO_PULUMI_WORKDIR` to keep the state |
 | Direct-HTTP resolver plane | a cloud credential **plus** `HOBO_DEPLOY_RESOLVERS=1` (opt-in) |
 | Live Cloudflare Workers | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` |
 | Live Vercel | `VERCEL_TOKEN` |

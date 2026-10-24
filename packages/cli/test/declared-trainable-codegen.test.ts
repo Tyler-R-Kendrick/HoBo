@@ -411,6 +411,33 @@ describe("ambient @trainable classes in hobo stub", () => {
 		}
 	});
 
+	it('refuses a "use training" function whose import the trainables module already binds', async () => {
+		for (const name of ["training", "trainableStubs"]) {
+			await writeFile(
+				join(projectRoot, "src/clash.ts"),
+				`export function ${name}(input: string): string {\n  "use training";\n  return input;\n}\n`,
+			);
+			await expect(
+				runCodegen({ projectRoot, check: false }),
+				name,
+			).rejects.toThrow(
+				`The "use training" function ${name} in src/clash.ts would be imported into the trainables module as ${name}, which`,
+			);
+		}
+	});
+
+	it('refuses two "use training" functions of one name', async () => {
+		for (const file of ["src/a.ts", "src/b.ts"]) {
+			await writeFile(
+				join(projectRoot, file),
+				'export function welcome(input: string): string {\n  "use training";\n  return input;\n}\n',
+			);
+		}
+		await expect(runCodegen({ projectRoot, check: false })).rejects.toThrow(
+			'The "use training" function welcome in src/b.ts would be imported into the trainables module as welcome, which the import of welcome from src/a.ts already binds',
+		);
+	});
+
 	it("refuses an empty export name", async () => {
 		await writeFile(
 			join(projectRoot, "src/dollar.ts"),

@@ -14,9 +14,9 @@ import {
 import { scanDeclaredTrainables as groundingScan } from "ts-autocode-grounding";
 import ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { mayHoldMarkedClass } from "../src/codegen/ambient-trainables.js";
 import { createProjectCodegenEngine } from "../src/codegen/engine.js";
 import { writeFixtureProject } from "../src/codegen/fixture.js";
+import { mayHoldMarkedClass } from "../src/codegen/marker-prefilter.js";
 import { runCodegen } from "../src/codegen/run-codegen.js";
 import { defaultCodegenLayout } from "../src/codegen/types.js";
 import { createHoboCli } from "../src/index.js";
@@ -262,6 +262,30 @@ describe("the marker prefilter", () => {
 			).toBe(ts.isLineBreak(code));
 		}
 	});
+
+	it("reads a file in time linear in its length", () => {
+		// Each `@` here starts trivia that runs on to a point many other `@`s
+		// share (the end of the text, the end of one long line, one long
+		// escape), so a reader that walks it again from every `@` is quadratic:
+		// a backtracking prefilter took 44 s on the conflict-marker text.
+		const cases: readonly (readonly [string, string])[] = [
+			["conflict markers with no end", "@\n||||||| x\n".repeat(32_000)],
+			["unterminated block comments", "@/*".repeat(125_000)],
+			[
+				"line comments on one line, then whitespace",
+				`${"@//".repeat(62_500)}\n${" ".repeat(187_500)}x`,
+			],
+			[
+				"line comments on one line, then one long escape",
+				`${"@//".repeat(62_500)}\n\\u{${"0".repeat(187_500)}74}rainablex`,
+			],
+		];
+		for (const [label, text] of cases) {
+			const started = performance.now();
+			expect(mayHoldMarkedClass(text), label).toBe(false);
+			expect(performance.now() - started, label).toBeLessThan(2_000);
+		}
+	}, 600_000);
 
 	it("skips a file that only names a marker without decorating with it", () => {
 		for (const prefix of [

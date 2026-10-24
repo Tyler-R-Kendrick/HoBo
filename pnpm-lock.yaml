@@ -303,66 +303,11 @@ importers:
         specifier: workspace:*
         version: link:../../packages/wasp
 
-  external/ts-autocode:
-    dependencies:
-      '@ax-llm/ax':
-        specifier: ^23.0.0
-        version: 23.0.5(zod@4.4.3)
-      effect:
-        specifier: ^3.21.4
-        version: 3.22.0
-      ts-autocode-grounding:
-        specifier: workspace:*
-        version: link:packages/grounding
-      ts-autocode-harness:
-        specifier: workspace:*
-        version: link:packages/harness
-      ts-autocode-rewrite:
-        specifier: workspace:*
-        version: link:packages/rewrite
-      ts-autocode-training:
-        specifier: workspace:*
-        version: link:packages/training
-      typescript:
-        specifier: ^5.9.3
-        version: 5.9.3
-      unstorage:
-        specifier: ^1.17.5
-        version: 1.17.5
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
-    devDependencies:
-      '@types/node':
-        specifier: ^22.15.3
-        version: 22.20.0
-      vitest:
-        specifier: ^4.1.9
-        version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@22.20.0)(@vitest/coverage-v8@4.1.10(vitest@4.1.9))(vite@8.1.2(@types/node@22.20.0)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))
-
   external/ts-autocode/packages/grounding:
     dependencies:
       typescript:
         specifier: ^5.9.3
         version: 5.9.3
-
-  external/ts-autocode/packages/harness:
-    dependencies:
-      '@microsoft/mxc-sdk':
-        specifier: ^0.7.0
-        version: 0.7.0
-      deepagents:
-        specifier: ^1.10.7
-        version: 1.11.1(973eac3b8b4ad4ac0d1829213f5cefbf)
-      effect:
-        specifier: ^3.21.4
-        version: 3.22.0
-      unstorage:
-        specifier: ^1.17.5
-        version: 1.17.5
-      zod:
-        specifier: ^4.4.3
-        version: 4.4.3
 
   external/ts-autocode/packages/rewrite:
     dependencies:

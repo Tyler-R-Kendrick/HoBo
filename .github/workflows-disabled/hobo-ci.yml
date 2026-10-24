@@ -75,6 +75,8 @@ jobs:
       - name: Check the sibling pins (gitlink against checkout, offline)
         run: node --experimental-strip-types scripts/bootstrap-siblings.mts --status --offline
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      - name: Every name HoBo imports from ts-autocode exists at the pin
+        run: node --import tsx --test scripts/test/ts-autocode-consumer-surface.test.ts
       - name: Fetch base branch for Turbo affected
         run: git fetch origin "${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}"
       - uses: cue-lang/setup-cue@v1.0.0

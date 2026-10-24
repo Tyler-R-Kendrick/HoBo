@@ -400,6 +400,28 @@ export function selectRelevantChecks(
 		});
 	}
 
+	if (
+		files.some(
+			(file) =>
+				file === "external/ts-autocode" ||
+				file === "pnpm-workspace.yaml" ||
+				file === "tools/pins/siblings.json" ||
+				file === "scripts/test/ts-autocode-consumer-surface.test.ts",
+		)
+	) {
+		checks.push({
+			command: "node",
+			args: [
+				"--import",
+				"tsx",
+				"--test",
+				"scripts/test/ts-autocode-consumer-surface.test.ts",
+			],
+			reason:
+				"every name HoBo imports from ts-autocode must still be exported at the pinned commit (ADR-0128)",
+		});
+	}
+
 	if (uiChanged) {
 		checks.push({
 			command: "pnpm",

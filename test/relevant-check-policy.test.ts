@@ -722,6 +722,31 @@ test("unrelated changes do not select the anti-slop drift test", () => {
 	}
 });
 
+const isTsAutocodeSurfaceTest = (check: {
+	command: string;
+	args: readonly string[];
+}) =>
+	check.command === "node" &&
+	check.args.join(" ") ===
+		"--import tsx --test scripts/test/ts-autocode-consumer-surface.test.ts";
+
+test("a ts-autocode pin bump or a workspace edit selects the consumer-surface test", () => {
+	for (const file of [
+		"external/ts-autocode",
+		"pnpm-workspace.yaml",
+		"tools/pins/siblings.json",
+		"scripts/test/ts-autocode-consumer-surface.test.ts",
+	]) {
+		assert.ok(plan([file]).checks.some(isTsAutocodeSurfaceTest), file);
+	}
+});
+
+test("unrelated changes do not select the ts-autocode consumer-surface test", () => {
+	for (const file of ["packages/core/src/index.ts", "tools/pins/README.md"]) {
+		assert.ok(!plan([file]).checks.some(isTsAutocodeSurfaceTest), file);
+	}
+});
+
 test("gate script changes select the optimizexp drift lane", () => {
 	const { checks } = plan(["scripts/check-optimizexp.mts"]);
 	assert.ok(checks.some(isOptimizexpLane));

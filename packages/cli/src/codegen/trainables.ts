@@ -366,11 +366,12 @@ function toDeclaredModule(
 /**
  * A module specifier written for a module in `fromDir`, as a module in `toDir`
  * must write it: a relative one is rebased (the layout's runtime module is
- * relative to trainables.ts, a declared module sits one directory below it),
+ * relative to trainables.ts, a declared module sits one directory below it;
+ * `.` and `..` alone are relative too),
  * a bare one is a package name and stays as it is.
  */
 function rebased(specifier: string, fromDir: string, toDir: string): string {
-	if (!/^\.\.?\//u.test(specifier)) return specifier;
+	if (!/^\.\.?(?:\/|$)/u.test(specifier)) return specifier;
 	const target = posix.relative(toDir, posix.join(fromDir, specifier));
 	return target.startsWith(".") ? target : `./${target}`;
 }

@@ -323,6 +323,9 @@ describe("ambient @trainable classes in hobo stub", () => {
 		for (const [runtimeModule, fromDeclared] of [
 			["./runtime.js", "../runtime.js"],
 			["../lib/runtime.js", "../../lib/runtime.js"],
+			// A directory's own index, bare.
+			[".", ".."],
+			["..", "../.."],
 			["@acme/runtime", "@acme/runtime"],
 		]) {
 			const base = defaultCodegenLayout();

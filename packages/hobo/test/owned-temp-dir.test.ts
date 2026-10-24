@@ -132,6 +132,30 @@ describe("ownedTempDir", () => {
 	);
 
 	it(
+		"as a library, changes nothing about the host's signals: a SIGTERM the host emits to itself does not end it",
+		async () => {
+			// What the hobo suite's own serve-control test does, in a process that
+			// composed a default runtime earlier: the library's handler took the
+			// emit for a signal and ended the whole host (vitest, rc 143).
+			const ended = await run("library-emit");
+			expect(ended.code).toBe(0);
+			expect(ended.stdout).toContain("host still running");
+			expect(leftBehind()).toEqual([]);
+		},
+		RUN_TIMEOUT_MS,
+	);
+
+	it(
+		"for an entry point, takes a signal it is emitted without a name as the one it listens for",
+		async () => {
+			const ended = await run("entry-emit-hup");
+			expect(ended.signal).toBe("SIGHUP");
+			expect(leftBehind()).toEqual([]);
+		},
+		RUN_TIMEOUT_MS,
+	);
+
+	it(
 		"leaves a SIGTERM the process handles itself to that handler, and is removed when it exits",
 		async () => {
 			const ended = await run("graceful", "SIGTERM");

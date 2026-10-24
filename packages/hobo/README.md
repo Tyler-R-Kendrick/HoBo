@@ -21,10 +21,13 @@ await cli.run(["up", "--json"], { cwd: projectDir });
 
 Composed binaries: `dist/bin/hobo.js` (product `hobo`) and `dist/bin/hobo-mcp.js`.
 `createDefaultYardRuntime()` without a `dataDir` keeps its throwaway event store in a
-`hobo-yard-*` directory under `TMPDIR` that the process owns and removes when it ends:
-normally, on an error, or on SIGTERM, SIGHUP, SIGINT or SIGQUIT (`src/owned-temp-dir.ts`;
-not on SIGKILL or a crash). Both binaries, `createComposedHoboCli()` and `@hobo/code`'s
-in-process runner use that default; a `dataDir` you pass is yours and is never removed.
+`hobo-yard-*` directory under `TMPDIR` that the process owns and removes when it exits,
+an uncaught error included (`src/owned-temp-dir.ts`). Both binaries, `createComposedHoboCli()`
+and `@hobo/code`'s in-process runner use that default; a `dataDir` you pass is yours and
+is never removed. As entry points, the binaries also remove it (and the live Pulumi lane's
+workspace) on SIGTERM, SIGHUP, SIGINT or SIGQUIT, then end by the signal
+(`removeOwnedDirsOnSignals`); the library itself installs no signal handler, so a host
+that embeds it keeps its own signal handling. SIGKILL and a crash are out of reach.
 Canonical verb list: **38** verbs in `@hobo/cli` (`packages/cli/src/shell/verbs.ts`).
 
 ## HONEST SCOPE (default deploy lane)

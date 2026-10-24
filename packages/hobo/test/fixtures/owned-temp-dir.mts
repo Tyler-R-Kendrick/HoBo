@@ -1,6 +1,6 @@
 // Makes an owned temp dir (src/owned-temp-dir.ts), says where on stdout, and
 // then ends the way it is told:
-//   node --import tsx owned-temp-dir.mts <normal|throw|wait|two|graceful> <ready file>
+//   node --import tsx owned-temp-dir.mts <normal|throw|wait|two|graceful|library-emit|entry-emit-hup> <ready file>
 // `wait`, `two` and `graceful` write the ready file and wait for a signal; `two`
 // makes a second directory first, as a process holding both a hobo-yard-* store
 // and a hobo-pulumi-live-* workspace does; `graceful`
@@ -9,15 +9,31 @@
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 
-import { ownedTempDir } from "../../src/owned-temp-dir.ts";
+import {
+	ownedTempDir,
+	removeOwnedDirsOnSignals,
+} from "../../src/owned-temp-dir.ts";
 
 const [mode, ready] = process.argv.slice(2);
+// As the bins do; `library-emit` plays a host that composed HoBo and asked for nothing.
+if (mode !== "library-emit") removeOwnedDirsOnSignals();
 const dir = ownedTempDir("hobo-yard-");
 writeFileSync(join(dir, "eventstore.sqlite"), "");
 process.stdout.write(`${dir}\n`);
 if (mode === "two")
 	process.stdout.write(`${ownedTempDir("hobo-pulumi-live-")}\n`);
 
+if (mode === "library-emit") {
+	// No entry-point handlers: a host that emits SIGTERM to its own listeners
+	// (a test of its graceful stop, say) and has none yet.
+	process.emit("SIGTERM");
+	process.stdout.write("host still running\n");
+}
+if (mode === "entry-emit-hup") {
+	// As an entry point does; then a SIGHUP emitted with no signal argument.
+	process.emit("SIGHUP");
+	setInterval(() => {}, 1000);
+}
 if (mode === "throw") throw new Error("the composed run failed");
 if (mode === "graceful") {
 	process.once("SIGTERM", () => {

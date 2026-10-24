@@ -1,5 +1,6 @@
-// Composes what the composed binaries compose, and selects the live Pulumi
-// lane over it, then ends the way it is told:
+// Composes what the composed binaries compose, as they do (signal handlers
+// asked for first), and selects the live Pulumi lane over it, then ends the way
+// it is told:
 //   node --import tsx composed-temp-dirs.mts <normal|throw|wait> <ready file> <data dir|default>
 // With `default` the runtime makes its own event-store directory. The live lane
 // is pointed at a pulumi that is not there: it is built, never run.
@@ -11,8 +12,11 @@ import {
 	createDefaultYardRuntime,
 	selectPulumiEstateAdapter,
 } from "../../src/compose.ts";
+import { removeOwnedDirsOnSignals } from "../../src/owned-temp-dir.ts";
 
 const [mode, ready, dataDir] = process.argv.slice(2);
+// As the bins do before they compose.
+removeOwnedDirsOnSignals();
 const runtime = createDefaultYardRuntime(
 	dataDir === undefined || dataDir === "default" ? {} : { dataDir },
 );

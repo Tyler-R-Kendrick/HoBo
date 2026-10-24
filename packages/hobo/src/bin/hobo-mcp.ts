@@ -9,14 +9,16 @@ import {
 	wantsOpenSesameRelaunch,
 } from "../credentials-opensesame.js";
 import { localOperatorAuth, serveMcpStdio } from "../mcp-stdio.js";
+import { removeOwnedDirsOnSignals } from "../owned-temp-dir.js";
 
 // The runnable MCP control surface (docs/plans/0006 item 3-3): the composed
 // hobo CLI (default LOCAL/MOCKED lane; live lanes stay credential-gated by
 // env) exposed over MCP stdio. Every tool call dispatches through the same
 // command registry as the `hobo` binary — one surface, two transports.
 async function serve(): Promise<number> {
-	// Its throwaway event store is the default runtime's own, removed however
-	// this process ends.
+	// The default runtime's throwaway event store is removed on exit; as the
+	// entry point, this process has it removed on a signal too.
+	removeOwnedDirsOnSignals();
 	const server = createHoboMcpServer({ cli: createComposedHoboCli() });
 	await serveMcpStdio({
 		server,

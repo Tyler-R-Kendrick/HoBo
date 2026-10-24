@@ -205,11 +205,13 @@ export function toRegistrableProvider(
 export interface DefaultYardRuntimeOptions {
 	// Durable event-store data directory. Defaults to a fresh OS temp dir
 	// (`hobo-yard-*`; the mocked lane is ephemeral) that this process owns and
-	// removes when it ends, on an error or a signal too (owned-temp-dir.ts), so no
-	// caller, binary or library, leaves one behind. A directory given here is the
-	// caller's and is never removed: provide a stable one to inspect the event log
-	// across runs. Callers that create the runtime directly own closing
-	// `runtime.store` when done.
+	// removes when it exits, an uncaught error included (owned-temp-dir.ts), so no
+	// caller, binary or library, leaves one behind on a normal end. On a signal it
+	// is removed where the entry point asked for that (`removeOwnedDirsOnSignals`,
+	// as both binaries do); a library leaves its host's signals alone. A directory
+	// given here is the caller's and is never removed: provide a stable one to
+	// inspect the event log across runs. Callers that create the runtime directly
+	// own closing `runtime.store` when done.
 	readonly dataDir?: string;
 	// The @hobo/iac-pulumi adapter the deploy path drives. Defaults to a fresh
 	// real `createPulumiAutomationAdapter()` (in-memory backend). Injectable so a
@@ -305,7 +307,8 @@ export function selectPulumiEstateAdapter(
 		return memoizedPulumiAdapter(deps.store, "live", () => {
 			// HOBO_PULUMI_WORKDIR keeps the lane's programs and file:// state; without
 			// it they live in a directory of this process's own, which no later run
-			// could find, removed however the process ends (owned-temp-dir.ts).
+			// could find, removed when it exits, and on a signal in the binaries
+			// (owned-temp-dir.ts).
 			const workDir =
 				env.HOBO_PULUMI_WORKDIR ?? ownedTempDir("hobo-pulumi-live-");
 			// Default live engine = the REAL Pulumi Automation API (LocalWorkspace,

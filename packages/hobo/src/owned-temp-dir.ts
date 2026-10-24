@@ -1,20 +1,27 @@
 /**
  * A temporary directory a process makes for itself and removes on every way
- * out a handler can reach. The composed binaries keep their throwaway event
- * store in one (`hobo-yard-*`), and the live Pulumi lane, without
- * HOBO_PULUMI_WORKDIR, its programs and state (`hobo-pulumi-live-*`); both were
- * left in TMPDIR by every run.
+ * out a handler can reach. The default runtime keeps its throwaway event store
+ * in one (`hobo-yard-*`), and the live Pulumi lane, without HOBO_PULUMI_WORKDIR,
+ * its programs and state (`hobo-pulumi-live-*`); both were left in TMPDIR by
+ * every run.
  *
- * - A normal end, and an uncaught error, which Node ends through the same
- *   `exit` event: the directory is removed there.
- * - SIGTERM, SIGHUP, SIGINT and SIGQUIT: when nothing else in the process
- *   listens for the signal, the directory is removed and the signal raised
- *   again with these handlers off, so the process still ends by it (status
- *   128+n), as it would have. When something else listens (a server's graceful
- *   stop, installed after this), that handler decides how the process ends, and
- *   the `exit` event removes the directory then.
+ * - `ownedTempDir`, safe in any process: the directory is removed on the `exit`
+ *   event, which a normal end and an uncaught error both reach. It touches no
+ *   signal: a library does not decide how its host ends.
+ * - `removeOwnedDirsOnSignals`, for a process's entry point only (the two
+ *   binaries): also on SIGTERM, SIGHUP, SIGINT and SIGQUIT. When nothing else
+ *   in the process listens for the signal, every owned directory is removed and
+ *   the signal raised again with these handlers off, so the process still ends
+ *   by it (status 128+n), as it would have. When something else listens (a
+ *   server's graceful stop, installed later), that handler decides how the
+ *   process ends, and `exit` removes the directories then. Each handler knows
+ *   its own signal: one emitted with `process.emit` carries no name. It does
+ *   nothing in a worker thread, which shares its pid with the whole process.
  *
- * Every directory an owner holds is removed by one set of handlers.
+ * Installed by the library, the signal handlers ended hosts that never asked
+ * for them: the hobo suite's serve-control test emits SIGINT to its own
+ * handlers, and in a vitest worker thread that composed a default runtime the
+ * handler took the emit for a signal and killed the whole runner.
  *
  * What no handler can reach: SIGKILL, and a crash of the process itself.
  */
@@ -22,6 +29,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { isMainThread } from "node:worker_threads";
 
 const ENDING_SIGNALS: readonly NodeJS.Signals[] = [
 	"SIGTERM",
@@ -30,12 +38,11 @@ const ENDING_SIGNALS: readonly NodeJS.Signals[] = [
 	"SIGQUIT",
 ];
 
-/** The part of a process the directory's removal is tied to. `process` is one. */
+/** The part of a process the directories' removal is tied to. `process` is one. */
 export interface DirOwner {
 	readonly pid: number;
-	on(event: "exit", listener: () => void): void;
-	on(event: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void): void;
-	off(event: NodeJS.Signals, listener: (signal: NodeJS.Signals) => void): void;
+	on(event: "exit" | NodeJS.Signals, listener: () => void): void;
+	off(event: NodeJS.Signals, listener: () => void): void;
 	listenerCount(event: NodeJS.Signals): number;
 	kill(pid: number, signal: NodeJS.Signals): void;
 }
@@ -48,41 +55,53 @@ function removeDir(dir: string): void {
 	}
 }
 
-/**
- * The directories each owner holds, and its one set of handlers. One set, not one
- * per directory: with a handler each, every handler saw the others as "something
- * else listens" and left the signal alone, so a process holding two directories
- * did not end on SIGTERM at all.
- */
-const owned = new WeakMap<DirOwner, Set<string>>();
+function removeAll(dirs: Set<string>): void {
+	for (const dir of dirs) removeDir(dir);
+	dirs.clear();
+}
 
-function guard(owner: DirOwner): Set<string> {
+/** Each owner's directories, removed by one `exit` listener. */
+const owned = new WeakMap<DirOwner, Set<string>>();
+/** Owners whose entry point asked for the signal handlers, and has them now. */
+const signalled = new WeakSet<DirOwner>();
+
+function dirsOf(owner: DirOwner): Set<string> {
 	const known = owned.get(owner);
 	if (known !== undefined) return known;
 	const dirs = new Set<string>();
 	owned.set(owner, dirs);
-	const removeAll = () => {
-		for (const dir of dirs) removeDir(dir);
-		dirs.clear();
-	};
-	const onSignal = (signal: NodeJS.Signals) => {
-		if (owner.listenerCount(signal) > 1) return;
-		for (const name of ENDING_SIGNALS) owner.off(name, onSignal);
-		owned.delete(owner);
-		removeAll();
-		owner.kill(owner.pid, signal);
-	};
-	owner.on("exit", removeAll);
-	for (const name of ENDING_SIGNALS) owner.on(name, onSignal);
+	owner.on("exit", () => removeAll(dirs));
 	return dirs;
 }
 
-/** Make `<TMPDIR>/<prefix>XXXXXX`, removed when `owner` ends; returns its path. */
+/** Make `<TMPDIR>/<prefix>XXXXXX`, removed when `owner` exits; returns its path. */
 export function ownedTempDir(
 	prefix: string,
 	owner: DirOwner = process,
 ): string {
 	const dir = mkdtempSync(join(tmpdir(), prefix));
-	guard(owner).add(dir);
+	dirsOf(owner).add(dir);
 	return dir;
+}
+
+/**
+ * For a process's entry point: remove every directory `owner` owns, made before
+ * or after this call, on SIGTERM, SIGHUP, SIGINT and SIGQUIT too, then raise the
+ * signal again. One set of handlers per owner, however often it is called.
+ */
+export function removeOwnedDirsOnSignals(owner: DirOwner = process): void {
+	if (!isMainThread || signalled.has(owner)) return;
+	signalled.add(owner);
+	const dirs = dirsOf(owner);
+	const handlers = ENDING_SIGNALS.map((signal) => {
+		const onSignal = () => {
+			if (owner.listenerCount(signal) > 1) return;
+			for (const [name, handler] of handlers) owner.off(name, handler);
+			signalled.delete(owner);
+			removeAll(dirs);
+			owner.kill(owner.pid, signal);
+		};
+		return [signal, onSignal] as const;
+	});
+	for (const [name, handler] of handlers) owner.on(name, handler);
 }

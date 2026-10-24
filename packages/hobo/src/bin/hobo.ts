@@ -24,6 +24,7 @@ import {
 	workingDirOf,
 } from "../credentials-opensesame.js";
 import { createBareMetalProvider } from "../local-provider.js";
+import { removeOwnedDirsOnSignals } from "../owned-temp-dir.js";
 
 // The real composed `hobo` binary. Unlike @hobo/cli's bare bin (which calls
 // createHoboCli() un-injected, leaving the cloud verbs as shell stubs), this
@@ -37,8 +38,10 @@ const args = process.argv.slice(2);
 async function runComposed(
 	options: DefaultYardRuntimeOptions = {},
 ): Promise<number> {
-	// Its throwaway event store is the runtime's own, removed however this
-	// process ends.
+	// The runtime's throwaway event store (and the live Pulumi lane's workspace)
+	// are removed on exit; as the entry point, this process has them removed on a
+	// signal too.
+	removeOwnedDirsOnSignals();
 	const runtime = createDefaultYardRuntime(options);
 	await bootstrapDefaultProviders(runtime, [
 		toRegistrableProvider(createCloudflareProvider()),

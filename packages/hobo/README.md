@@ -48,6 +48,12 @@ else with `OPENSESAME_PLACEHOLDERS_ONLY` before any request (it runs when the
 runtime is composed, so a placeholder run stops there with status 1). Vercel only; AWS is
 not brokered. `src/credentials-opensesame.ts`.
 
+The relaunch gets only the Node options that read no environment or code from disk
+(`src/relaunch-node-options.ts`): `node --env-file=.env hobo up` does not re-read
+`.env` in the run, and `--require`, any `--import` but hobo's own TypeScript loader,
+and `--inspect` are left out too, from the command line and from `NODE_OPTIONS`, and
+named on one `hobo:` line.
+
 Related honesty elsewhere in this package:
 
 - **`hobo login`** — fixture/OIDC session under `HOBO_HOME`; full production OIDC/SPIRE is not the default (`src/login-command.ts` `HONEST SCOPE`).

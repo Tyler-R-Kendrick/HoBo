@@ -35,6 +35,7 @@ import {
 } from "@hobo/adapter-opensesame";
 
 import { parseJsonValue } from "./json.js";
+import { nodeOptionsForRun } from "./relaunch-node-options.js";
 
 // public-contract: the HOBO_CREDENTIALS value that takes credentials from OpenSesame.
 export const OPENSESAME_CREDENTIALS = "opensesame";
@@ -139,7 +140,43 @@ export type RelaunchInput = Readonly<{
 	passEnv?: readonly string[] | undefined;
 	stderr?: Stderr | undefined;
 	tmpRoot?: string | undefined;
+	/** Node options this process has that `argv` and `env` leave out, by name; said on stderr before the run. */
+	leftOut?: readonly string[] | undefined;
 }>;
+
+/** What a relaunch is made from: this process. `process` is one. */
+export type RelaunchedProcess = Readonly<{
+	execPath: string;
+	execArgv: readonly string[];
+	argv: readonly string[];
+	env: NodeJS.ProcessEnv;
+	cwd(): string;
+}>;
+
+/**
+ * The relaunch of `proc`: the same Node, script and arguments, with only the
+ * Node options that read no environment or code from disk, from its command line
+ * and from NODE_OPTIONS (relaunch-node-options.ts). Passing `execArgv` on as it
+ * was let `node --env-file=.env` re-read the file into the command, beside the
+ * surrogate, after the adapter had kept those names back.
+ */
+export function relaunchInputFor(proc: RelaunchedProcess): RelaunchInput {
+	const cwd = proc.cwd();
+	const options = nodeOptionsForRun({
+		execArgv: proc.execArgv,
+		nodeOptions: proc.env.NODE_OPTIONS,
+		cwd,
+	});
+	const env: NodeJS.ProcessEnv = { ...proc.env };
+	if (options.nodeOptions === undefined) delete env.NODE_OPTIONS;
+	else env.NODE_OPTIONS = options.nodeOptions;
+	return {
+		argv: [proc.execPath, ...options.execArgv, ...proc.argv.slice(1)],
+		env,
+		cwd,
+		leftOut: options.left,
+	};
+}
 
 function readBindings(cwd: string): RunInput["bindings"] {
 	const path = join(cwd, CREDENTIAL_BINDINGS_FILE);
@@ -166,6 +203,12 @@ export async function relaunchUnderOpenSesame(
 	input: RelaunchInput,
 ): Promise<number> {
 	const stderr = input.stderr ?? process.stderr;
+	const leftOut = input.leftOut ?? [];
+	if (leftOut.length > 0) {
+		stderr.write(
+			`hobo: not passed to the run under OpenSesame: ${leftOut.join(", ")} (a Node option reaches it only when it reads no environment or code from disk)\n`,
+		);
+	}
 	try {
 		const outcome = await runProxied({
 			bin: input.bin ?? "opensesame",

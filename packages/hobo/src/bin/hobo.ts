@@ -14,6 +14,7 @@ import {
 	toRegistrableProvider,
 } from "../compose.js";
 import {
+	relaunchInputFor,
 	relaunchUnderOpenSesame,
 	reportingCredentialRefusals,
 	wantsOpenSesameRelaunch,
@@ -47,11 +48,8 @@ async function runComposed(): Promise<number> {
 
 // HOBO_CREDENTIALS=opensesame (ADR-0170): before composing anything, run this
 // same invocation once more under `opensesame dev --agent run`, and exit as it
-// did. The relaunched child carries HOBO_OPENSESAME_CHILD=1 and composes.
+// did. The relaunched child carries HOBO_OPENSESAME_CHILD=1 and composes. It
+// gets only the Node options that read no environment or code from disk.
 process.exitCode = wantsOpenSesameRelaunch(process.env)
-	? await relaunchUnderOpenSesame({
-			argv: [process.execPath, ...process.execArgv, ...process.argv.slice(1)],
-			env: process.env,
-			cwd: process.cwd(),
-		})
+	? await relaunchUnderOpenSesame(relaunchInputFor(process))
 	: await reportingCredentialRefusals(runComposed);

@@ -142,20 +142,30 @@ function runBin(
 
 describe("the composed hobo binary under HOBO_CREDENTIALS=opensesame", () => {
 	it(
-		"relaunches itself under OpenSesame with its own Node options, and exits as the command did",
+		"relaunches itself under OpenSesame with its TypeScript loader and not its --env-file, and exits as the command did",
 		async () => {
 			const record = standIn("surrogate-delivered");
+			// A file holding another provider's credential: re-read in the command,
+			// it would sit beside the surrogate (C-1 of the #1593 review).
+			const envFile = join(root, "fixture.env");
+			writeFileSync(
+				envFile,
+				"CLOUDFLARE_API_TOKEN=cf_dummy_marker_not_a_secret\nCLOUDFLARE_ACCOUNT_ID=acct_dummy\n",
+			);
 			const run = await runBin(
-				[],
+				[`--env-file=${envFile}`],
 				["recipes"],
 				{ HOBO_CREDENTIALS: "opensesame" },
 				record,
 			);
-			expect(run.stderr).not.toMatch(/^hobo: /mu);
+			expect(run.stderr.match(/^hobo: .*$/gmu)).toEqual([
+				"hobo: not passed to the run under OpenSesame: --env-file (a Node option reaches it only when it reads no environment or code from disk)",
+			]);
 			expect(run.status).toBe(0);
 			expect(run.stdout).toMatch(/recipes\s+listed/u);
 			// The bin started OpenSesame, and asked it to run this same invocation,
-			// TypeScript loader included: without it the command could not load.
+			// TypeScript loader included (without it the command could not load),
+			// --env-file left out.
 			expect(run.command).toEqual([
 				process.execPath,
 				"--import",

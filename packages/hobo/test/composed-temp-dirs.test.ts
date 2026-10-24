@@ -4,7 +4,9 @@ import {
 	mkdirSync,
 	mkdtempSync,
 	readdirSync,
+	readFileSync,
 	rmSync,
+	writeFileSync,
 } from "node:fs";
 import { createRequire } from "node:module";
 import { tmpdir } from "node:os";
@@ -16,7 +18,7 @@ import { afterEach, beforeEach, describe, expect, it } from "vitest";
 // runtime's event store (`hobo-yard-*`) when no dataDir is given, and the live
 // Pulumi lane's workspace (`hobo-pulumi-live-*`) when HOBO_PULUMI_WORKDIR is
 // unset. Each is removed however the process ends; a directory the caller
-// names is the caller's.
+// names (a dataDir, a HOBO_PULUMI_WORKDIR) is the caller's, used and kept.
 
 const TSX_LOADER = createRequire(import.meta.url).resolve("tsx");
 const FIXTURE = fileURLToPath(
@@ -37,23 +39,27 @@ afterEach(() => {
 interface Ended {
 	readonly code: number | null;
 	readonly signal: NodeJS.Signals | null;
+	/** The `hobo-pulumi-live-*` directories in TMPDIR once the lane was built. */
+	readonly made: readonly string[];
 }
 
 function run(
 	mode: string,
 	dataDir: string,
 	signal?: NodeJS.Signals,
+	env: Readonly<Record<string, string>> = {},
 ): Promise<Ended> {
-	const ready = join(scratch, "ready");
+	const report = join(scratch, "report.json");
 	return new Promise((resolve, reject) => {
 		const child = spawn(
 			process.execPath,
-			["--import", TSX_LOADER, FIXTURE, mode, ready, dataDir],
+			["--import", TSX_LOADER, FIXTURE, mode, report, dataDir],
 			{
 				env: {
 					PATH: process.env.PATH ?? "",
 					TMPDIR: scratch,
 					NODE_NO_WARNINGS: "1",
+					...env,
 				},
 				stdio: ["ignore", "ignore", "ignore"],
 			},
@@ -61,7 +67,7 @@ function run(
 		child.on("error", reject);
 		if (signal !== undefined) {
 			const poll = setInterval(() => {
-				if (!existsSync(ready)) return;
+				if (!existsSync(report)) return;
 				clearInterval(poll);
 				child.kill(signal);
 				const deadline = setTimeout(
@@ -72,7 +78,15 @@ function run(
 			}, 50);
 			child.on("close", () => clearInterval(poll));
 		}
-		child.on("close", (code, ended) => resolve({ code, signal: ended }));
+		child.on("close", (code, ended) => {
+			if (!existsSync(report)) {
+				reject(new Error(`the fixture ended (${code ?? ended}) unready`));
+				return;
+			}
+			// SAFETY: the fixture writes a JSON array of directory names.
+			const made = JSON.parse(readFileSync(report, "utf8")) as string[];
+			resolve({ code, signal: ended, made });
+		});
 	});
 }
 
@@ -97,7 +111,9 @@ describe("the live Pulumi lane's own workspace", () => {
 				const yard = join(scratch, "kept-yard");
 				mkdirSync(yard);
 				const ended = await run(mode, yard, signal);
-				expect(ended).toEqual(expected);
+				expect({ code: ended.code, signal: ended.signal }).toEqual(expected);
+				// The lane made its own workspace, and nothing of it is left.
+				expect(ended.made).toHaveLength(1);
 				expect(left("hobo-pulumi-live-")).toEqual([]);
 				// A directory the caller named is the caller's: it is kept.
 				expect(existsSync(join(yard, "eventstore.sqlite"))).toBe(true);
@@ -122,9 +138,44 @@ describe("the default runtime's own event store", () => {
 			`is removed on ${label}, with the live lane's workspace`,
 			async () => {
 				const ended = await run(mode, "default", signal);
-				expect(ended).toEqual(expected);
+				expect({ code: ended.code, signal: ended.signal }).toEqual(expected);
 				expect(left("hobo-yard-")).toEqual([]);
 				expect(left("hobo-pulumi-live-")).toEqual([]);
+			},
+			RUN_TIMEOUT_MS,
+		);
+	}
+});
+
+describe("a HOBO_PULUMI_WORKDIR the caller names", () => {
+	for (const [label, mode, signal, expected] of [
+		["a normal end", "normal", undefined, { code: 0, signal: null }],
+		["an uncaught error", "throw", undefined, { code: 1, signal: null }],
+		[
+			"SIGTERM, which still ends the process",
+			"wait",
+			"SIGTERM",
+			{ code: null, signal: "SIGTERM" },
+		],
+	] as const) {
+		it(
+			`is the live lane's workspace, kept on ${label}`,
+			async () => {
+				const yard = join(scratch, "kept-yard");
+				mkdirSync(yard);
+				const workDir = join(scratch, "kept-pulumi");
+				mkdirSync(workDir);
+				writeFileSync(join(workDir, "sentinel"), "earlier state");
+				const ended = await run(mode, yard, signal, {
+					HOBO_PULUMI_WORKDIR: workDir,
+				});
+				expect({ code: ended.code, signal: ended.signal }).toEqual(expected);
+				// The lane took the caller's directory: it made none of its own.
+				expect(ended.made).toEqual([]);
+				expect(left("hobo-pulumi-live-")).toEqual([]);
+				expect(readFileSync(join(workDir, "sentinel"), "utf8")).toBe(
+					"earlier state",
+				);
 			},
 			RUN_TIMEOUT_MS,
 		);

@@ -117,6 +117,7 @@ import {
 	requireOpenSesameSurrogate,
 	usesOpenSesameCredentials,
 } from "./credentials-opensesame.js";
+import { ownedTempDir } from "./owned-temp-dir.js";
 import {
 	createPulumiBackedIacProvider,
 	type PulumiAutomationAdapter,
@@ -301,9 +302,11 @@ export function selectPulumiEstateAdapter(
 		// authenticate with credentials found outside OpenSesame.
 		refuseUnbrokeredLane(env);
 		return memoizedPulumiAdapter(deps.store, "live", () => {
+			// HOBO_PULUMI_WORKDIR keeps the lane's programs and file:// state; without
+			// it they live in a directory of this process's own, which no later run
+			// could find, removed however the process ends (owned-temp-dir.ts).
 			const workDir =
-				env.HOBO_PULUMI_WORKDIR ??
-				mkdtempSync(join(tmpdir(), "hobo-pulumi-live-"));
+				env.HOBO_PULUMI_WORKDIR ?? ownedTempDir("hobo-pulumi-live-");
 			// Default live engine = the REAL Pulumi Automation API (LocalWorkspace,
 			// HOBO-715). `HOBO_PULUMI_LIVE_ENGINE=cli` keeps the pinned CLI engine;
 			// the HOBO_PULUMI_BIN test seam implies the CLI engine (the Automation

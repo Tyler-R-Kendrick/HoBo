@@ -1,8 +1,9 @@
 /**
  * A temporary directory a process makes for itself and removes on every way
  * out a handler can reach. The composed binaries keep their throwaway event
- * store in one (`hobo-yard-*`); made by `createDefaultYardRuntime`'s default,
- * it was left in TMPDIR by every run.
+ * store in one (`hobo-yard-*`), and the live Pulumi lane, without
+ * HOBO_PULUMI_WORKDIR, its programs and state (`hobo-pulumi-live-*`); both were
+ * left in TMPDIR by every run.
  *
  * - A normal end, and an uncaught error, which Node ends through the same
  *   `exit` event: the directory is removed there.

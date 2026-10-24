@@ -1,6 +1,6 @@
 // Makes an owned temp dir (src/owned-temp-dir.ts), says where on stdout, and
 // then ends the way it is told:
-//   node --import tsx owned-temp-dir.mts <normal|throw|wait|two|graceful|library-emit|entry-emit-hup> <ready file>
+//   node --import tsx owned-temp-dir.mts <normal|throw|wait|two|graceful|library-emit|entry-emit-hup|worker> <ready file>
 // `wait`, `two` and `graceful` write the ready file and wait for a signal; `two`
 // makes a second directory first, as a process holding both a hobo-yard-* store
 // and a hobo-pulumi-live-* workspace does; `graceful`
@@ -8,13 +8,30 @@
 // which records whether the directory is still there, then exits 0.
 import { existsSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
+import { isMainThread, Worker, workerData } from "node:worker_threads";
 
 import {
 	ownedTempDir,
 	removeOwnedDirsOnSignals,
 } from "../../src/owned-temp-dir.ts";
 
+// `worker`: the entry point's call made from a worker thread, which shares its
+// pid with the whole process, then a SIGTERM emitted there with nothing else listening.
+if (!isMainThread && workerData === "worker") {
+	removeOwnedDirsOnSignals();
+	ownedTempDir("hobo-yard-");
+	process.emit("SIGTERM");
+	process.stdout.write("worker ran\n");
+	process.exit(0);
+}
+
 const [mode, ready] = process.argv.slice(2);
+if (mode === "worker") {
+	const worker = new Worker(new URL(import.meta.url), { workerData: "worker" });
+	await new Promise((resolve) => worker.once("exit", resolve));
+	process.stdout.write("process still running after its worker\n");
+	process.exit(0);
+}
 // As the bins do; `library-emit` plays a host that composed HoBo and asked for nothing.
 if (mode !== "library-emit") removeOwnedDirsOnSignals();
 const dir = ownedTempDir("hobo-yard-");

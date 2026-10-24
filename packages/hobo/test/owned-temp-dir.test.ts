@@ -146,6 +146,17 @@ describe("ownedTempDir", () => {
 	);
 
 	it(
+		"installs no signal handler in a worker thread, whose pid is the whole process's",
+		async () => {
+			const ended = await run("worker");
+			expect(ended.code).toBe(0);
+			expect(ended.stdout).toContain("worker ran");
+			expect(ended.stdout).toContain("process still running after its worker");
+		},
+		RUN_TIMEOUT_MS,
+	);
+
+	it(
 		"for an entry point, takes a signal it is emitted without a name as the one it listens for",
 		async () => {
 			const ended = await run("entry-emit-hup");

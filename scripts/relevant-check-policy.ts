@@ -1,4 +1,4 @@
-import { existsSync } from "node:fs";
+import { existsSync, readFileSync } from "node:fs";
 
 import { workspaceForDraftFile } from "./lib/proof-manifest.ts";
 
@@ -19,6 +19,8 @@ export type RelevantCheckPolicyOptions = {
 	includeBroadSweeps?: boolean;
 	rootPackageJsonScriptsOnlyChanged?: boolean;
 	workspacePackageExists?: (workspace: string) => boolean;
+	/** Whether a changed TypeScript file under packages/ names a ts-autocode module (default: reads it). */
+	importsTsAutocode?: (file: string) => boolean;
 };
 
 export type RelevantCheckPolicy = {
@@ -67,6 +69,37 @@ function defaultWorkspacePackageExists(workspace: string) {
 	return existsSync(`${workspace}/package.json`);
 }
 
+const PACKAGE_TYPESCRIPT = /^packages\/.+\.(?:[cm]?ts|tsx)$/u;
+/** In any quote, a template literal's included: the surface test scans those too. */
+const TS_AUTOCODE_SPECIFIER =
+	/["'`]ts-autocode(?:-[a-z]+)?(?:\/[^"'`]*)?["'`]/u;
+
+/**
+ * What the grounding drift test compiles granular.ts with, beyond ts-autocode
+ * itself: the types its conversion assigns to and the compiler options. None
+ * of them imports ts-autocode, so the import check alone would not select it.
+ */
+const GROUNDING_DRIFT_INPUTS = new Set([
+	"packages/runtime/src/json.ts",
+	"packages/runtime/src/training/types.ts",
+	"packages/runtime/tsconfig.json",
+	"tsconfig.base.json",
+]);
+
+/** Whether source text names a ts-autocode module specifier. */
+export function namesTsAutocode(text: string) {
+	return TS_AUTOCODE_SPECIFIER.test(text);
+}
+
+/** A file that is gone (deleted, renamed away) imports nothing. */
+function defaultImportsTsAutocode(file: string) {
+	try {
+		return namesTsAutocode(readFileSync(file, "utf8"));
+	} catch {
+		return false;
+	}
+}
+
 export function selectRelevantChecks(
 	options: RelevantCheckPolicyOptions,
 ): RelevantCheckPolicy {
@@ -79,6 +112,8 @@ export function selectRelevantChecks(
 	const includeBroadSweeps = Boolean(options.includeBroadSweeps || options.all);
 	const workspacePackageExists =
 		options.workspacePackageExists ?? defaultWorkspacePackageExists;
+	const importsTsAutocode =
+		options.importsTsAutocode ?? defaultImportsTsAutocode;
 
 	const workspaces = [
 		...new Set(
@@ -397,6 +432,32 @@ export function selectRelevantChecks(
 			],
 			reason:
 				"vendored anti-slop copies must match their SHA-256 manifests and each other (ADR-0173)",
+		});
+	}
+
+	if (
+		files.some(
+			(file) =>
+				file === "external/ts-autocode" ||
+				file === "pnpm-workspace.yaml" ||
+				file === "tools/pins/siblings.json" ||
+				file === "scripts/test/ts-autocode-consumer-surface.test.ts" ||
+				file === "scripts/test/ts-autocode-grounding-drift.test.ts" ||
+				GROUNDING_DRIFT_INPUTS.has(file) ||
+				(PACKAGE_TYPESCRIPT.test(file) && importsTsAutocode(file)),
+		)
+	) {
+		checks.push({
+			command: "node",
+			args: [
+				"--import",
+				"tsx",
+				"--test",
+				"scripts/test/ts-autocode-consumer-surface.test.ts",
+				"scripts/test/ts-autocode-grounding-drift.test.ts",
+			],
+			reason:
+				"every name HoBo imports from ts-autocode must still be exported at the pinned commit, and the grounding fields @hobo/runtime registers must still be checked against it (ADR-0128)",
 		});
 	}
 

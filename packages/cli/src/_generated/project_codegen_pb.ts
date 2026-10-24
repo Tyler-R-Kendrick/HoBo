@@ -101,8 +101,10 @@ export const CodegenReportSchema: GenMessage<CodegenReport> = /*@__PURE__*/
 
 /**
  * One trainable binding codegen emits (ADR-0125): a contract-backed stub
- * per bindle step, or an inferred registration generated from a bare
- * "use training" marker found in authored source.
+ * per bindle step, an inferred registration generated from a bare
+ * "use training" marker found in authored source, or a signature-only
+ * registration per operation of an ambient @trainable class (origin
+ * "declared", ADR-0128).
  *
  * @generated from message hobo.cli.v1.TrainableStub
  */

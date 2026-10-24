@@ -50,7 +50,12 @@ export interface CodegenGeneratedFiles {
 
 /** Module specifiers emitted into generated code. */
 export interface CodegenGeneratedImports {
-	/** The runtime package generated trainable stubs import `training` from. */
+	/**
+	 * The runtime package generated trainable stubs import `training` from, and
+	 * declared modules `defineGrounding`. A package name, or a specifier
+	 * relative to the trainables module, which is rebased for each
+	 * `declared/<Class>.ts` one directory below it.
+	 */
 	readonly runtimeModule: string;
 	/** How generated modules reference the generated bindings module. */
 	readonly bindingsSpecifier: string;

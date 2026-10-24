@@ -5,9 +5,15 @@ deterministic-replay library that backs them.
 
 - **Trainable methods (ADR-0025 / ADR-0125)** — `training(fn, opts)`,
   signature-only `training.define()` empty implementations served by a
-  contract-derived stub, the optional `@trainable` class-method decorator,
+  contract-derived stub (`defineGrounding()` is the same function under the
+  name the registrations call that `hobo stub` generates for an ambient
+  `@trainable declare class`, in `src/_generated/declared/<Class>.ts`;
+  ADR-0128), the optional `@trainable` class-method decorator,
   the `"use training"` grounding lint, and `applyTrainingArtifact()` for
-  apply-at-load promotion. See `src/training/`.
+  apply-at-load promotion. See `src/training/`. The JSON types this surface
+  is typed in (`JsonValue`, `JsonObject`, `JsonBag`) are exported from the
+  root too, so a generated module whose exports infer `Trainable<JsonValue,
+  JsonValue>` compiles with `declaration: true`.
 - **Deterministic replay** (`./replay` export) — the replay/divergence/
   equivalence engine (ADR-0086), promoted from the
   `deterministic-replay-engine` draft proof (frozen in

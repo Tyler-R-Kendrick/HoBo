@@ -75,6 +75,10 @@ jobs:
       - name: Check the sibling pins (gitlink against checkout, offline)
         run: node --experimental-strip-types scripts/bootstrap-siblings.mts --status --offline
       - run: pnpm install --frozen-lockfile --config.confirmModulesPurge=false
+      # The same pair agent:check selects (scripts/relevant-check-policy.ts):
+      # the imported names, and granular.ts's copy of grounding's fields.
+      - name: Every name HoBo imports from ts-autocode exists at the pin, and its grounding fields are still checked
+        run: node --import tsx --test scripts/test/ts-autocode-consumer-surface.test.ts scripts/test/ts-autocode-grounding-drift.test.ts
       - name: Fetch base branch for Turbo affected
         run: git fetch origin "${{ github.event_name == 'pull_request' && github.base_ref || 'main' }}"
       - uses: cue-lang/setup-cue@v1.0.0

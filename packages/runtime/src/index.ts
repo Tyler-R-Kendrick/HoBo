@@ -51,6 +51,10 @@ export {
 	RuntimeAuthoringError,
 	WorkflowFailure,
 } from "./errors.js";
+// The JSON types the trainable surface is typed in. A generated module's
+// exports (`training.define`, `defineGrounding`) infer `Trainable<JsonValue,
+// JsonValue>`, and declaration emit can name that type only through the root.
+export type { JsonBag, JsonObject, JsonValue } from "./json.js";
 export {
 	type PlacementResolved,
 	type ResolveActorPlacementInput,
@@ -81,6 +85,7 @@ export {
 	type DeclaredOperation,
 	type DeclaredParameter,
 	type DeclaredTrainableClass,
+	defineGrounding,
 	description,
 	type FieldDescription,
 	type FieldMetadata,

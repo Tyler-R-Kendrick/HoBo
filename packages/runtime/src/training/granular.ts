@@ -229,14 +229,27 @@ function fieldsByName(params: StringKeyed<Params>) {
 	return described;
 }
 
+/** `true` when some member of `T` declares `Key`, else `never`. */
+type Declares<T, Key extends PropertyKey> = T extends unknown
+	? Key extends keyof T
+		? true
+		: never
+	: never;
+
 /**
  * A field's description and example, the example kept as given: the manifest
  * lowers it with `JSON.stringify` when the method registers (training.ts
  * `lowerFields`), as it always has, so a function inside it is dropped there
  * and a BigInt or circular value throws there, at registration, not when the
- * class is decorated.
+ * class is decorated. `example` is read as optional on every field: where
+ * grounding types a field as a union with a member that has none, that
+ * member is copied with no example rather than refused. Some field must still
+ * declare it, so a bump that drops `example` altogether stops this compiling.
  */
-function fieldOf(field: Field): FieldDescription {
+function fieldOf(
+	field: Field & { readonly example?: unknown },
+): FieldDescription {
+	true satisfies Declares<Field, "example">;
 	const { description, example, ...uncopied } = field;
 	uncopied satisfies NothingLeft;
 	return example === undefined

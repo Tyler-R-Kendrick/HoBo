@@ -11,20 +11,23 @@
  * pinned grounding source, as it is and then with each change below made in
  * memory. These must stop granular.ts compiling (DRIFTS): `methodRef` or
  * `intent` renamed or made optional; `contract.ref` or `params` retyped; a
- * field added, by name or by symbol, to the options, the contract, the output
- * or a field description; the output's `returns`, or `params`' values, typed
- * as a field description with a field added; `params` or `contract.input`
- * keyed by symbols too; a declared shape given a field that is not JSON
- * (on the shape descriptor, or on `contract.input`'s values) or a symbol key
- * (on the shape descriptor, on `contract.input`'s values, on an object one
- * field down, on one member of a union, as the shape descriptor or as
- * `contract.output`, or, required or optional, on the shape a type-alias
- * shape descriptor holds of itself); and either metadata parameter retyped.
+ * field description's `example` removed; a field added, by name or by symbol,
+ * to the options, the contract, the output or a field description; the
+ * output's `returns`, or `params`' values, typed as a field description with
+ * a field added; `params` or `contract.input` keyed by symbols too; a
+ * declared shape given a field that is not JSON (on the shape descriptor, or
+ * on `contract.input`'s values) or a symbol key (on the shape descriptor, on
+ * `contract.input`'s values, on an object one field down, on one member of a
+ * union, as the shape descriptor or as `contract.output`, or, required or
+ * optional, on the shape a type-alias shape descriptor holds of itself); and
+ * either metadata parameter retyped.
  * These must not (STILL_COMPILES), since they drop nothing: a shape field
  * holding an array of a type-alias shape, a type-alias shape descriptor that
- * holds itself in an array, or beside `null`, or through a second alias, and
- * a JSON field added to `contract.input`'s values only. The test needs the
- * submodule checked out (`pnpm run pins:fetch ts-autocode`), not built.
+ * holds itself in an array, or beside `null`, or through a second alias, a
+ * JSON field added to `contract.input`'s values only, and the output's
+ * `returns` or `params`' values typed as a union with a field description
+ * that has no `example`. The test needs the submodule checked out
+ * (`pnpm run pins:fetch ts-autocode`), not built.
  */
 import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
@@ -146,6 +149,12 @@ const DRIFTS: readonly Drift[] = [
 		file: "decorators.ts",
 		from: FIELD_TAIL,
 		to: FIELD_TAIL.replace("\n}", "\n\treadonly unit?: string;\n}"),
+	},
+	{
+		name: "a field description's example is removed",
+		file: "decorators.ts",
+		from: FIELD_TAIL,
+		to: "}",
 	},
 	{
 		name: "a symbol-keyed field is added to the options",
@@ -285,7 +294,8 @@ const DRIFTS: readonly Drift[] = [
 /**
  * Upstream changes that drop nothing, so granular.ts must still compile with
  * each: the checks above must not refuse a JSON shape for being recursive or
- * holding arrays, nor a field that only one place adds.
+ * holding arrays, a field that only one place adds, nor a field description
+ * that has no example.
  */
 const STILL_COMPILES: readonly Drift[] = [
 	{
@@ -321,6 +331,18 @@ const STILL_COMPILES: readonly Drift[] = [
 		file: "decorators.ts",
 		from: INPUT,
 		to: "\t\treadonly input?: Readonly<Record<string, ShapeDescriptor & { readonly format?: string }>>;",
+	},
+	{
+		name: "the output's returns is a union with a field description that has no example",
+		file: "decorators.ts",
+		from: OUTPUT,
+		to: "\treadonly output?: { readonly returns: FieldDescription | { readonly description: string } };",
+	},
+	{
+		name: "params' values are a union with a field description that has no example",
+		file: "decorators.ts",
+		from: PARAMS,
+		to: "\treadonly params?: Record<string, FieldDescription | { readonly description: string }>;",
 	},
 ];
 

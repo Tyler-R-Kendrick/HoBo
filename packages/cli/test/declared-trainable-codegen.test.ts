@@ -776,37 +776,43 @@ describe("ambient @trainable classes in hobo stub", () => {
 	it.each([
 		[
 			"a jsx value TypeScript does not accept",
-			{ compilerOptions: { jsx: "vue" } },
+			JSON.stringify({ compilerOptions: { jsx: "vue" } }),
 			undefined,
 			/TS6046 Argument for '--jsx' option must be/,
 		],
 		[
 			"a jsx value of the wrong type",
-			{ compilerOptions: { jsx: 5 } },
+			JSON.stringify({ compilerOptions: { jsx: 5 } }),
 			undefined,
 			/TS5024 Compiler option 'jsx' requires a value of type string/,
 		],
 		[
+			"a syntax error",
+			'{ "compilerOptions": { "jsx": "preserve" ',
+			undefined,
+			/TS1005 '}' expected/,
+		],
+		[
 			"an extends it cannot read",
-			{ extends: "./base.json" },
+			JSON.stringify({ extends: "./base.json" }),
 			null,
 			/TS5083 Cannot read file '[^']*base\.json'/,
 		],
 		[
 			"an extends it cannot find",
-			{ extends: "missing-config/tsconfig.json" },
+			JSON.stringify({ extends: "missing-config/tsconfig.json" }),
 			undefined,
 			/TS6053 File 'missing-config\/tsconfig\.json' not found/,
 		],
 		[
 			"an extends with a syntax error",
-			{ extends: "./base.json" },
+			JSON.stringify({ extends: "./base.json" }),
 			'{ "compilerOptions": { "jsx": "preserve" ',
 			/TS1005 '}' expected/,
 		],
 	])("refuses a tsconfig with %s", async (_case, config, base, problem) => {
 		// base: the text of ./base.json, or null to make it a directory.
-		await writeFile(join(projectRoot, "tsconfig.json"), JSON.stringify(config));
+		await writeFile(join(projectRoot, "tsconfig.json"), config);
 		if (base === null) await mkdir(join(projectRoot, "base.json"));
 		else if (base !== undefined) {
 			await writeFile(join(projectRoot, "base.json"), base);

@@ -104,7 +104,14 @@ export function preservesJsx(projectRoot: string): boolean {
 			problems.push(diagnostic);
 		},
 	});
-	problems.push(...(parsed?.errors ?? []).filter(leavesJsxUnknown));
+	// TypeScript keeps the tsconfig's own parse errors on its source file, not
+	// in parsed.errors as it does an extended config's;
+	// getConfigFileParsingDiagnostics returns both.
+	if (parsed !== undefined) {
+		problems.push(
+			...ts.getConfigFileParsingDiagnostics(parsed).filter(leavesJsxUnknown),
+		);
+	}
 	if (parsed === undefined || problems.length > 0) {
 		const messages = problems.map(
 			(diagnostic) =>

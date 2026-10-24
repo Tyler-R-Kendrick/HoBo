@@ -9,7 +9,7 @@ export const MARKERS: ReadonlySet<string> = new Set(["trainable", "component"]);
 
 /**
  * One character of an identifier as source may spell it: itself, or a
- * unicode escape for it (`t`, `\u{74}`), hex digits in either case.
+ * unicode escape for it (`\u0074`, `\u{74}`), hex digits in either case.
  * TypeScript reads both as the same identifier, and so does the scanner.
  */
 function spelled(char: string): string {

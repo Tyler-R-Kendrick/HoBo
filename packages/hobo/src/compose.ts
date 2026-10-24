@@ -285,6 +285,18 @@ function memoizedPulumiAdapter(
 	return adapter;
 }
 
+// The live lane's workspace when HOBO_PULUMI_WORKDIR names none: a directory of
+// this process's own, which no later run could find, removed when it exits, and
+// on a signal in the binaries (owned-temp-dir.ts). Its file:// state is the
+// only record of what the lane deployed, so that is said once, on stderr.
+function temporaryLiveWorkDir(): string {
+	const dir = ownedTempDir("hobo-pulumi-live-");
+	process.stderr.write(
+		`hobo: the live Pulumi lane keeps its programs and state in ${dir}, which is removed when this process ends; set HOBO_PULUMI_WORKDIR to a directory to keep them\n`,
+	);
+	return dir;
+}
+
 // Resolve the SHARED Pulumi adapter (the estate seam) for this store + env, or
 // `undefined` when the environment selects a non-Pulumi deploy provider
 // (Cloudflare/Vercel) whose state HoBo holds in the DeploymentView instead.
@@ -305,12 +317,9 @@ export function selectPulumiEstateAdapter(
 		// authenticate with credentials found outside OpenSesame.
 		refuseUnbrokeredLane(env);
 		return memoizedPulumiAdapter(deps.store, "live", () => {
-			// HOBO_PULUMI_WORKDIR keeps the lane's programs and file:// state; without
-			// it they live in a directory of this process's own, which no later run
-			// could find, removed when it exits, and on a signal in the binaries
-			// (owned-temp-dir.ts).
-			const workDir =
-				env.HOBO_PULUMI_WORKDIR ?? ownedTempDir("hobo-pulumi-live-");
+			// HOBO_PULUMI_WORKDIR keeps the lane's programs and file:// state, and is
+			// never removed.
+			const workDir = env.HOBO_PULUMI_WORKDIR ?? temporaryLiveWorkDir();
 			// Default live engine = the REAL Pulumi Automation API (LocalWorkspace,
 			// HOBO-715). `HOBO_PULUMI_LIVE_ENGINE=cli` keeps the pinned CLI engine;
 			// the HOBO_PULUMI_BIN test seam implies the CLI engine (the Automation

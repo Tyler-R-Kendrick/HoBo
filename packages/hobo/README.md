@@ -25,9 +25,14 @@ Composed binaries: `dist/bin/hobo.js` (product `hobo`) and `dist/bin/hobo-mcp.js
 an uncaught error included (`src/owned-temp-dir.ts`). Both binaries, `createComposedHoboCli()`
 and `@hobo/code`'s in-process runner use that default; a `dataDir` you pass is yours and
 is never removed. As entry points, the binaries also remove it (and the live Pulumi lane's
-workspace) on SIGTERM, SIGHUP, SIGINT or SIGQUIT, then end by the signal
-(`removeOwnedDirsOnSignals`); the library itself installs no signal handler, so a host
-that embeds it keeps its own signal handling. SIGKILL and a crash are out of reach.
+workspace) on SIGTERM, SIGHUP, SIGINT or SIGQUIT (`removeOwnedDirsOnSignals`). When nothing
+else in the process listens for the signal, the directories are removed and the signal
+raised again, so the process still ends by it (status 128+n). When a verb handles the
+signal itself (`hobo serve control` stops gracefully on SIGTERM and SIGINT and exits 0),
+that handler decides how the process ends, and the directories are removed on `exit`.
+The library itself installs no signal handler, so a host that embeds it keeps its own
+signal handling: `hobo-code`, which composes in process, installs none, and a signal that
+ends it leaves its `hobo-yard-*`. SIGKILL and a crash are out of reach.
 Canonical verb list: **38** verbs in `@hobo/cli` (`packages/cli/src/shell/verbs.ts`).
 
 ## HONEST SCOPE (default deploy lane)

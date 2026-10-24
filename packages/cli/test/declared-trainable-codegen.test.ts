@@ -9,6 +9,7 @@ import {
 	resetTrainables,
 	type Trainable,
 } from "@hobo/runtime";
+import ts from "typescript";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import { createProjectCodegenEngine } from "../src/codegen/engine.js";
 import { writeFixtureProject } from "../src/codegen/fixture.js";
@@ -123,6 +124,44 @@ describe("ambient @trainable classes in hobo stub", () => {
 		await expect(
 			access(join(projectRoot, "src/_generated/declared/Todos.ts")),
 		).rejects.toThrow();
+	});
+
+	it("compiles with declaration emit under the repository's base tsconfig", async () => {
+		// declaration: true is tsconfig.base.json's default; every export's
+		// inferred type must be nameable from @hobo/runtime's root.
+		await runCodegen({ projectRoot, check: false });
+		const base = fileURLToPath(
+			new URL("../../../tsconfig.base.json", import.meta.url),
+		);
+		const config = ts.readConfigFile(base, ts.sys.readFile);
+		const { options, errors } = ts.convertCompilerOptionsFromJson(
+			config.config?.compilerOptions,
+			join(base, ".."),
+		);
+		expect(errors).toEqual([]);
+		const program = ts.createProgram(
+			[join(projectRoot, "src/_generated/trainables.ts")],
+			{
+				...options,
+				declaration: true,
+				emitDeclarationOnly: true,
+				rootDir: projectRoot,
+				outDir: join(projectRoot, ".tsc-out"),
+				types: [],
+			},
+		);
+		const emitted = program.emit(undefined, () => undefined);
+		const diagnostics = [
+			...ts.getPreEmitDiagnostics(program),
+			...emitted.diagnostics,
+		].map((diagnostic) => {
+			const where =
+				diagnostic.file === undefined
+					? ""
+					: `${diagnostic.file.fileName.slice(projectRoot.length + 1)}: `;
+			return `${where}TS${diagnostic.code} ${ts.flattenDiagnosticMessageText(diagnostic.messageText, " ")}`;
+		});
+		expect(diagnostics).toEqual([]);
 	});
 
 	it("hobo stub reports each ambient operation, and --check holds the tree", async () => {

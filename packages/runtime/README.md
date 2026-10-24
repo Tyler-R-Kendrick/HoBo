@@ -10,7 +10,10 @@ deterministic-replay library that backs them.
   `@trainable declare class`, in `src/_generated/declared/<Class>.ts`;
   ADR-0128), the optional `@trainable` class-method decorator,
   the `"use training"` grounding lint, and `applyTrainingArtifact()` for
-  apply-at-load promotion. See `src/training/`.
+  apply-at-load promotion. See `src/training/`. The JSON types this surface
+  is typed in (`JsonValue`, `JsonObject`, `JsonBag`) are exported from the
+  root too, so a generated module whose exports infer `Trainable<JsonValue,
+  JsonValue>` compiles with `declaration: true`.
 - **Deterministic replay** (`./replay` export) — the replay/divergence/
   equivalence engine (ADR-0086), promoted from the
   `deterministic-replay-engine` draft proof (frozen in

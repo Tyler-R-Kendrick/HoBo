@@ -23,6 +23,9 @@ import { isJsonObject, isJsonString, parseJsonValue } from "../src/json.js";
 // OpenSesame only its allowlist and the bin's fixed passEnv.
 
 const HOBO_BIN = fileURLToPath(new URL("../src/bin/hobo.ts", import.meta.url));
+const HOBO_MCP_BIN = fileURLToPath(
+	new URL("../src/bin/hobo-mcp.ts", import.meta.url),
+);
 const FAKE_OPENSESAME = fileURLToPath(
 	new URL(
 		"../../adapters/adapter-opensesame/test/fixtures/fake-opensesame.mts",
@@ -85,36 +88,54 @@ interface BinRun {
 	/** The command line OpenSesame was asked to run, after `--`; absent when it was not started. */
 	readonly command: readonly string[] | undefined;
 	readonly childMarker: string | undefined;
+	/** Whether OpenSesame was given the store passphrase. */
+	readonly sawStorePassword: boolean;
 }
 
 function recorded(record: string) {
-	if (!existsSync(record)) return { command: undefined, marker: undefined };
+	const none = {
+		command: undefined,
+		marker: undefined,
+		sawStorePassword: false,
+	};
+	if (!existsSync(record)) return none;
 	const parsed = parseJsonValue(readFileSync(record, "utf8"));
-	if (!isJsonObject(parsed) || !Array.isArray(parsed.argv)) {
-		return { command: undefined, marker: undefined };
-	}
+	if (!isJsonObject(parsed) || !Array.isArray(parsed.argv)) return none;
 	const argv = parsed.argv.filter(isJsonString);
 	return {
 		command: argv.slice(argv.indexOf("--") + 1),
 		marker: isJsonString(parsed.sawChildMarker)
 			? parsed.sawChildMarker
 			: undefined,
+		sawStorePassword: parsed.sawStorePassword === true,
 	};
 }
 
-function runBin(
-	nodeArgs: readonly string[],
-	args: readonly string[],
-	env: Record<string, string>,
-	record: string,
-	cwd: string = work,
-): Promise<BinRun> {
+interface BinInput {
+	readonly bin?: string;
+	readonly nodeArgs?: readonly string[];
+	readonly args?: readonly string[];
+	readonly env: Record<string, string>;
+	readonly record: string;
+	readonly cwd?: string;
+	/** Written to the bin's stdin, which is then closed. */
+	readonly stdin?: string;
+}
+
+function runBin(input: BinInput): Promise<BinRun> {
+	const bin = input.bin ?? HOBO_BIN;
 	return new Promise((resolve, reject) => {
 		const child = spawn(
 			process.execPath,
-			[...nodeArgs, "--import", TSX_LOADER, HOBO_BIN, ...args],
+			[
+				...(input.nodeArgs ?? []),
+				"--import",
+				TSX_LOADER,
+				bin,
+				...(input.args ?? []),
+			],
 			{
-				cwd,
+				cwd: input.cwd ?? work,
 				// Built, not inherited: nothing of this test's own environment reaches the bin.
 				env: {
 					PATH: `${binDir}:${process.env.PATH ?? ""}`,
@@ -122,24 +143,26 @@ function runBin(
 					HOBO_HOME: join(root, ".hobo"),
 					TMPDIR: scratch,
 					NODE_NO_WARNINGS: "1",
-					...env,
+					...input.env,
 				},
-				stdio: ["ignore", "pipe", "pipe"],
+				stdio: ["pipe", "pipe", "pipe"],
 			},
 		);
+		child.stdin.end(input.stdin ?? "");
 		const out: string[] = [];
 		const err: string[] = [];
 		child.stdout.on("data", (chunk) => out.push(String(chunk)));
 		child.stderr.on("data", (chunk) => err.push(String(chunk)));
 		child.on("error", reject);
 		child.on("close", (status) => {
-			const { command, marker } = recorded(record);
+			const { command, marker, sawStorePassword } = recorded(input.record);
 			resolve({
 				status,
 				stdout: out.join(""),
 				stderr: err.join(""),
 				command,
 				childMarker: marker,
+				sawStorePassword,
 			});
 		});
 	});
@@ -158,13 +181,13 @@ describe("the composed hobo binary under HOBO_CREDENTIALS=opensesame", () => {
 				"CLOUDFLARE_API_TOKEN=cf_dummy_marker_not_a_secret\nCLOUDFLARE_ACCOUNT_ID=acct_dummy\n",
 			);
 			// Started where there are no bindings: they are read from --cwd (C-7).
-			const run = await runBin(
-				[`--env-file=${envFile}`],
-				["--cwd", work, "recipes"],
-				{ HOBO_CREDENTIALS: "opensesame" },
+			const run = await runBin({
+				nodeArgs: [`--env-file=${envFile}`],
+				args: ["--cwd", work, "recipes"],
+				env: { HOBO_CREDENTIALS: "opensesame" },
 				record,
-				elsewhere,
-			);
+				cwd: elsewhere,
+			});
 			expect(run.stderr.match(/^hobo: .*$/gmu)).toEqual([
 				"hobo: not passed to the run under OpenSesame: --env-file (a Node option reaches it only when it reads no environment or code from disk)",
 			]);
@@ -191,16 +214,68 @@ describe("the composed hobo binary under HOBO_CREDENTIALS=opensesame", () => {
 		"answers --help without starting OpenSesame, with no bindings anywhere",
 		async () => {
 			const record = standIn("surrogate-delivered");
-			const run = await runBin(
-				[],
-				["--help"],
-				{ HOBO_CREDENTIALS: "opensesame" },
+			const run = await runBin({
+				args: ["--help"],
+				env: { HOBO_CREDENTIALS: "opensesame" },
 				record,
-				elsewhere,
-			);
+				cwd: elsewhere,
+			});
 			expect(run.stderr).not.toMatch(/^hobo: /mu);
 			expect(run.status).toBe(0);
 			expect(run.stdout).toMatch(/^HoBo CLI/u);
+			expect(run.command).toBeUndefined();
+		},
+		RUN_TIMEOUT_MS,
+	);
+});
+
+describe("hobo-mcp under HOBO_CREDENTIALS=opensesame", () => {
+	it(
+		"relaunches under OpenSesame, given the store passphrase, and serves MCP through it",
+		async () => {
+			const record = standIn("surrogate-delivered");
+			const run = await runBin({
+				bin: HOBO_MCP_BIN,
+				env: {
+					HOBO_CREDENTIALS: "opensesame",
+					OPENSESAME_STORE_PASSWORD: "dummy-not-a-secret",
+				},
+				record,
+				stdin: `${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" })}\n`,
+			});
+			expect(run.stderr).not.toMatch(/^hobo: /mu);
+			expect(run.status).toBe(0);
+			expect(run.command).toEqual([
+				process.execPath,
+				"--import",
+				TSX_LOADER,
+				HOBO_MCP_BIN,
+			]);
+			expect(run.childMarker).toBe("1");
+			expect(run.sawStorePassword).toBe(true);
+			// The relaunched server answered on the stdout the client reads.
+			const reply = parseJsonValue(run.stdout.trim());
+			expect(isJsonObject(reply) && reply.id).toBe(1);
+			expect(isJsonObject(reply) && isJsonObject(reply.result)).toBe(true);
+		},
+		RUN_TIMEOUT_MS,
+	);
+
+	it(
+		"without the store passphrase, starts nothing and says why on one line",
+		async () => {
+			const record = standIn("surrogate-delivered");
+			const run = await runBin({
+				bin: HOBO_MCP_BIN,
+				env: { HOBO_CREDENTIALS: "opensesame" },
+				record,
+				stdin: `${JSON.stringify({ jsonrpc: "2.0", id: 1, method: "tools/list" })}\n`,
+			});
+			expect(run.status).toBe(1);
+			expect(run.stderr).toMatch(
+				/^hobo: OPENSESAME_STORE_PASSWORD_REQUIRED: [^\n]*\n$/u,
+			);
+			expect(run.stdout).toBe("");
 			expect(run.command).toBeUndefined();
 		},
 		RUN_TIMEOUT_MS,

@@ -333,3 +333,23 @@ export async function relaunchUnderOpenSesame(
 		throw error;
 	}
 }
+
+/**
+ * `hobo-mcp`'s relaunch: the same as `hobo`'s, once the store passphrase is in
+ * the environment. Its stdin is the MCP stream, and OpenSesame, given no
+ * OPENSESAME_STORE_PASSWORD and no terminal on stdin, reads the passphrase as a
+ * line of stdin (its `prompt_password`): the client's first message. So without
+ * one it starts nothing, says so on one line, and is status 1.
+ */
+export async function relaunchMcpUnderOpenSesame(
+	input: RelaunchInput,
+): Promise<number> {
+	const passphrase = input.env.OPENSESAME_STORE_PASSWORD;
+	if (passphrase === undefined || passphrase === "") {
+		(input.stderr ?? process.stderr).write(
+			`hobo: OPENSESAME_STORE_PASSWORD_REQUIRED: hobo-mcp under HOBO_CREDENTIALS=${OPENSESAME_CREDENTIALS} needs OPENSESAME_STORE_PASSWORD in its environment, because its stdin carries the MCP stream and OpenSesame would read the store passphrase from it; nothing was started. Set it in the MCP server's environment, or leave HOBO_CREDENTIALS unset\n`,
+		);
+		return 1;
+	}
+	return relaunchUnderOpenSesame(input);
+}

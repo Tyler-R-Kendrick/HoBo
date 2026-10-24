@@ -51,6 +51,15 @@ not brokered. `src/credentials-opensesame.ts`. An invocation that runs no verb
 (`--help`, no verb, an unknown verb or option) needs no credential: it is answered
 without starting OpenSesame, composed with none.
 
+`hobo-mcp` relaunches the same way (its tools run the same verbs), stdin and stdout
+passing through to the relaunched server, but only with `OPENSESAME_STORE_PASSWORD`
+in its environment: its stdin is the MCP stream, which OpenSesame would otherwise
+read the store passphrase from. Without it, it starts nothing and exits 1 with one
+`hobo: OPENSESAME_STORE_PASSWORD_REQUIRED` line. The library entry points
+(`createComposedHoboCli`, `createDefaultYardRuntime`, `openBareMetalYard`) never
+relaunch; outside a proxied run they throw the typed `OpenSesameCredentialsError`
+when the runtime is composed.
+
 The relaunch gets only the Node options that read no environment or code from disk
 (`src/relaunch-node-options.ts`): `node --env-file=.env hobo up` does not re-read
 `.env` in the run, and `--require`, any `--import` but hobo's own TypeScript loader,

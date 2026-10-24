@@ -26,6 +26,7 @@ import {
 	OpenSesameCredentialsError,
 	type RelaunchInput,
 	relaunchInputFor,
+	relaunchMcpUnderOpenSesame,
 	relaunchUnderOpenSesame,
 	reportingCredentialRefusals,
 	requireOpenSesameSurrogate,
@@ -249,6 +250,57 @@ describe("HOBO_CREDENTIALS=opensesame relaunch", () => {
 			} finally {
 				rmSync(elsewhere, { recursive: true, force: true });
 			}
+		},
+		RUN_TIMEOUT_MS,
+	);
+
+	it(
+		"hobo-mcp's relaunch starts nothing without the store passphrase, and runs with it",
+		async () => {
+			const record = join(work, "opensesame-record.json");
+			const base = {
+				argv: [process.execPath, CHILD, join(work, "child-env.json")],
+				cwd: work,
+				bin: FAKE_OPENSESAME,
+				passEnv: [
+					...OPENSESAME_PASS_ENV,
+					"FAKE_OPENSESAME_RECORD",
+					"FAKE_OPENSESAME_SCENARIO",
+				],
+				tmpRoot: work,
+			};
+			const env = {
+				PATH: process.env.PATH ?? "",
+				NODE_NO_WARNINGS: "1",
+				HOBO_CREDENTIALS: "opensesame",
+				FAKE_OPENSESAME_RECORD: record,
+				FAKE_OPENSESAME_SCENARIO: "surrogate-delivered",
+			};
+			for (const passphrase of [undefined, ""]) {
+				const sink = new PassThrough();
+				const seen: string[] = [];
+				sink.on("data", (chunk) => seen.push(String(chunk)));
+				const status = await relaunchMcpUnderOpenSesame({
+					...base,
+					env:
+						passphrase === undefined
+							? env
+							: { ...env, OPENSESAME_STORE_PASSWORD: passphrase },
+					stderr: sink,
+				});
+				expect(status).toBe(1);
+				expect(seen.join("")).toMatch(
+					/^hobo: OPENSESAME_STORE_PASSWORD_REQUIRED: [^\n]*\n$/u,
+				);
+				expect(existsSync(record)).toBe(false);
+			}
+			const status = await relaunchMcpUnderOpenSesame({
+				...base,
+				env: { ...env, OPENSESAME_STORE_PASSWORD: "dummy-not-a-secret" },
+				stderr: new PassThrough(),
+			});
+			expect(status).toBe(0);
+			expect(existsSync(record)).toBe(true);
 		},
 		RUN_TIMEOUT_MS,
 	);

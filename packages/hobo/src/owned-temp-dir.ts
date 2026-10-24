@@ -13,6 +13,8 @@
  *   stop, installed after this), that handler decides how the process ends, and
  *   the `exit` event removes the directory then.
  *
+ * Every directory an owner holds is removed by one set of handlers.
+ *
  * What no handler can reach: SIGKILL, and a crash of the process itself.
  */
 
@@ -37,26 +39,49 @@ export interface DirOwner {
 	kill(pid: number, signal: NodeJS.Signals): void;
 }
 
+function removeDir(dir: string): void {
+	try {
+		rmSync(dir, { recursive: true, force: true });
+	} catch {
+		// Best effort while the process ends: a throw here would skip the exit listeners after this one.
+	}
+}
+
+/**
+ * The directories each owner holds, and its one set of handlers. One set, not one
+ * per directory: with a handler each, every handler saw the others as "something
+ * else listens" and left the signal alone, so a process holding two directories
+ * did not end on SIGTERM at all.
+ */
+const owned = new WeakMap<DirOwner, Set<string>>();
+
+function guard(owner: DirOwner): Set<string> {
+	const known = owned.get(owner);
+	if (known !== undefined) return known;
+	const dirs = new Set<string>();
+	owned.set(owner, dirs);
+	const removeAll = () => {
+		for (const dir of dirs) removeDir(dir);
+		dirs.clear();
+	};
+	const onSignal = (signal: NodeJS.Signals) => {
+		if (owner.listenerCount(signal) > 1) return;
+		for (const name of ENDING_SIGNALS) owner.off(name, onSignal);
+		owned.delete(owner);
+		removeAll();
+		owner.kill(owner.pid, signal);
+	};
+	owner.on("exit", removeAll);
+	for (const name of ENDING_SIGNALS) owner.on(name, onSignal);
+	return dirs;
+}
+
 /** Make `<TMPDIR>/<prefix>XXXXXX`, removed when `owner` ends; returns its path. */
 export function ownedTempDir(
 	prefix: string,
 	owner: DirOwner = process,
 ): string {
 	const dir = mkdtempSync(join(tmpdir(), prefix));
-	const remove = () => {
-		try {
-			rmSync(dir, { recursive: true, force: true });
-		} catch {
-			// Best effort while the process ends: a throw here would skip the exit listeners after this one.
-		}
-	};
-	const onSignal = (signal: NodeJS.Signals) => {
-		if (owner.listenerCount(signal) > 1) return;
-		for (const name of ENDING_SIGNALS) owner.off(name, onSignal);
-		remove();
-		owner.kill(owner.pid, signal);
-	};
-	owner.on("exit", remove);
-	for (const name of ENDING_SIGNALS) owner.on(name, onSignal);
+	guard(owner).add(dir);
 	return dir;
 }

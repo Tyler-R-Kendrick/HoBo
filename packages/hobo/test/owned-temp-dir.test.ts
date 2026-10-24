@@ -31,6 +31,9 @@ interface Ended {
 	readonly dir: string;
 }
 
+/** How long a signalled process gets to end before it is killed, and the test fails. */
+const SIGNAL_GRACE_MS = 15_000;
+
 function run(mode: string, signal?: NodeJS.Signals): Promise<Ended> {
 	const ready = join(scratch, "ready");
 	return new Promise((resolve, reject) => {
@@ -54,6 +57,12 @@ function run(mode: string, signal?: NodeJS.Signals): Promise<Ended> {
 				if (!existsSync(ready)) return;
 				clearInterval(poll);
 				child.kill(signal);
+				// A process that swallows the signal is not left running.
+				const deadline = setTimeout(
+					() => child.kill("SIGKILL"),
+					SIGNAL_GRACE_MS,
+				);
+				child.on("close", () => clearTimeout(deadline));
 			}, 20);
 			child.on("close", () => clearInterval(poll));
 		}
@@ -70,7 +79,10 @@ function run(mode: string, signal?: NodeJS.Signals): Promise<Ended> {
 }
 
 function leftBehind(): string[] {
-	return readdirSync(scratch).filter((name) => name.startsWith("hobo-yard-"));
+	return readdirSync(scratch).filter(
+		(name) =>
+			name.startsWith("hobo-yard-") || name.startsWith("hobo-pulumi-live-"),
+	);
 }
 
 describe("ownedTempDir", () => {
@@ -107,6 +119,17 @@ describe("ownedTempDir", () => {
 			RUN_TIMEOUT_MS,
 		);
 	}
+
+	it(
+		"removes every directory a process owns on a signal, which still ends it",
+		async () => {
+			const ended = await run("two", "SIGTERM");
+			expect(ended.stdout.split("\n").filter(Boolean)).toHaveLength(2);
+			expect(ended.signal).toBe("SIGTERM");
+			expect(leftBehind()).toEqual([]);
+		},
+		RUN_TIMEOUT_MS,
+	);
 
 	it(
 		"leaves a SIGTERM the process handles itself to that handler, and is removed when it exits",

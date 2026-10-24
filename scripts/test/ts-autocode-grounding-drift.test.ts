@@ -5,10 +5,14 @@
  * (`GroundingOptions`) as its own `TrainingOptions`, and hands grounding the
  * decorator metadata it reads (packages/runtime/src/training/granular.ts). A
  * pin bump can rename one of those fields, make a required one optional,
- * retype it, add one (keyed by a name or by a symbol), or retype the metadata
- * parameter. Each must stop granular.ts compiling: a cast that lets it through
- * registers a trainable whose identity silently falls back to the function's
- * own name, whose intent is undefined, or without the added field. This test
+ * retype it, add one (keyed by a name or by a symbol, to the options, the
+ * contract, the output or a field description, directly or through a subtype
+ * or union that carries it), key `params` or `contract.input` by symbols too,
+ * give a declared shape a field that is not JSON or a symbol key at any depth,
+ * or retype the metadata parameter. Each must stop granular.ts compiling: a
+ * cast or a copy that lets it through registers a trainable whose identity
+ * silently falls back to the function's own name, whose intent is undefined,
+ * or without the added field. This test
  * compiles granular.ts with the runtime package's own
  * compiler options against the pinned grounding source, as it is and then with
  * each such change made in memory, and expects every changed compile to fail
@@ -40,10 +44,12 @@ interface Drift {
 
 const OPTIONS_HEAD = "export interface GroundingOptions {\n";
 const DESCRIPTOR_HEAD = "export interface ShapeDescriptor {\n";
-const OPTIONS_TAIL =
-	"\treadonly output?: { readonly returns: FieldDescription };\n}";
+const OUTPUT = "\treadonly output?: { readonly returns: FieldDescription };";
+const OPTIONS_TAIL = `${OUTPUT}\n}`;
 const CONTRACT_TAIL = "\t\treadonly output?: ShapeDescriptor;\n\t};";
 const FIELD_TAIL = "\treadonly example?: unknown;\n}";
+const PARAMS = "\treadonly params?: Record<string, FieldDescription>;";
+const INPUT = "\t\treadonly input?: Readonly<Record<string, ShapeDescriptor>>;";
 /** A symbol a drift keys a field by, as upstream would declare one. */
 const SYMBOL_KEY = "export declare const GROUNDED: unique symbol;\n";
 
@@ -165,6 +171,72 @@ const DRIFTS: readonly Drift[] = [
 		preamble: SYMBOL_KEY,
 		from: `${DESCRIPTOR_HEAD}\treadonly type: string;`,
 		to: `${DESCRIPTOR_HEAD}\treadonly type: string;\n\treadonly [GROUNDED]: string;`,
+	},
+	{
+		name: "a field is added to the output",
+		file: "decorators.ts",
+		from: OUTPUT,
+		to: "\treadonly output?: { readonly returns: FieldDescription; readonly throws?: FieldDescription };",
+	},
+	{
+		name: "a symbol-keyed field is added to the output",
+		file: "decorators.ts",
+		preamble: SYMBOL_KEY,
+		from: OUTPUT,
+		to: "\treadonly output?: { readonly returns: FieldDescription; readonly [GROUNDED]: string };",
+	},
+	{
+		name: "the output's returns holds a field description with a field added",
+		file: "decorators.ts",
+		from: OUTPUT,
+		to: "\treadonly output?: { readonly returns: FieldDescription & { readonly unit: string } };",
+	},
+	{
+		name: "params holds a field description subtype with a field added",
+		file: "decorators.ts",
+		preamble:
+			"export interface ParamDescription extends FieldDescription {\n\treadonly unit?: string;\n}\n",
+		from: PARAMS,
+		to: "\treadonly params?: Record<string, ParamDescription>;",
+	},
+	{
+		name: "params is keyed by symbols too",
+		file: "decorators.ts",
+		from: PARAMS,
+		to: "\treadonly params?: Record<PropertyKey, FieldDescription>;",
+	},
+	{
+		name: "contract.input is keyed by symbols too",
+		file: "decorators.ts",
+		from: INPUT,
+		to: "\t\treadonly input?: Readonly<Record<PropertyKey, ShapeDescriptor>>;",
+	},
+	{
+		name: "contract.input holds shapes with a field that is not JSON",
+		file: "decorators.ts",
+		from: INPUT,
+		to: "\t\treadonly input?: Readonly<Record<string, ShapeDescriptor & { readonly validate: (value: unknown) => boolean }>>;",
+	},
+	{
+		name: "contract.input holds shapes with a symbol-keyed field",
+		file: "decorators.ts",
+		preamble: SYMBOL_KEY,
+		from: INPUT,
+		to: "\t\treadonly input?: Readonly<Record<string, ShapeDescriptor & { readonly [GROUNDED]: string }>>;",
+	},
+	{
+		name: "a shape descriptor is a union with a symbol-keyed member",
+		file: "decorators.ts",
+		preamble: SYMBOL_KEY,
+		from: DESCRIPTOR_HEAD,
+		to: `export type ShapeDescriptor = ShapeBase | (ShapeBase & { readonly [GROUNDED]: string });\nexport interface ShapeBase {\n`,
+	},
+	{
+		name: "a shape descriptor field holds an object with a symbol key",
+		file: "decorators.ts",
+		preamble: SYMBOL_KEY,
+		from: `${DESCRIPTOR_HEAD}\treadonly type: string;`,
+		to: `${DESCRIPTOR_HEAD}\treadonly type: string;\n\treadonly items?: { readonly [GROUNDED]: string };`,
 	},
 	{
 		name: "granularOptionsFor's metadata parameter retyped",

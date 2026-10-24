@@ -1,7 +1,6 @@
 import {
 	composeOptions,
 	finalizeTrainableClass as finalizeWithRegistry,
-	type FieldDescription as GroundingField,
 	type GroundingOptions,
 	granularOptionsFor as groundingOptionsFor,
 } from "ts-autocode-grounding";
@@ -68,8 +67,21 @@ export function granularOptionsFor(
 	);
 }
 
-/** A declared parameter or output type on a grounding contract. */
-type Declared = NonNullable<GroundingOptions["contract"]["output"]>;
+/**
+ * What grounding's options hold, read off `GroundingOptions` itself rather
+ * than off the interfaces it names today, so a bump that types one of these
+ * places as a subtype (a field description or shape with a field added) or as
+ * a union is copied, and checked, as that type.
+ */
+type Params = NonNullable<GroundingOptions["params"]>;
+type Output = NonNullable<GroundingOptions["output"]>;
+type Input = NonNullable<GroundingOptions["contract"]["input"]>;
+/** A field description: a value of `params`, or the output's `returns`. */
+type Field = Params[string] | Output["returns"];
+/** A declared type: the contract's output, or a value of its input. */
+type Declared =
+	| NonNullable<GroundingOptions["contract"]["output"]>
+	| Input[string];
 
 /** What the registry registers: TrainingOptions with the methodRef it requires. */
 type RegisteredOptions = TrainingOptions & { readonly methodRef: string };
@@ -99,17 +111,74 @@ interface AssembledOptions {
  */
 type NothingLeft = Readonly<Record<PropertyKey, never>>;
 
+/** `true` when `A` and `B` are one type (each a subtype of the other is not enough). */
+type Same<A, B> =
+	(<G>() => G extends A ? 1 : 2) extends <G>() => G extends B ? 1 : 2
+		? true
+		: false;
+
+/** `true` when `T` is one of the types in `Path`. */
+type OnPath<T, Path extends readonly unknown[]> = Path extends readonly [
+	infer Head,
+	...infer Rest,
+]
+	? Same<T, Head> extends true
+		? true
+		: OnPath<T, Rest>
+	: false;
+
+/**
+ * `true` when no object type in `T`, at any depth, has a symbol key; `false`,
+ * or `boolean` for a union where only some members do, otherwise. Each member
+ * of a union is read on its own (`keyof` a union has only the keys every member
+ * shares), and an array is read through its elements, since every array's type
+ * has symbol-keyed members of its own. `Path` holds the types being read
+ * further up: a type that refers to itself is read once, and meeting it again
+ * on the way down adds nothing, since that first reading covers every key it
+ * has, so a recursive shape neither loops nor fails.
+ */
+type SymbolFree<T, Path extends readonly unknown[] = []> = T extends unknown
+	? OnPath<T, Path> extends true
+		? true
+		: T extends readonly (infer Element)[]
+			? SymbolFree<Element, [...Path, T]>
+			: T extends object
+				? [Extract<keyof T, symbol>] extends [never]
+					? { [Key in keyof T]-?: SymbolFree<T[Key], [...Path, T]> }[keyof T]
+					: false
+				: true
+	: never;
+
+/**
+ * `T`, provided no object type in it, at any depth, has a symbol key, else
+ * `never`, so that a value of it passed where this is the parameter type stops
+ * compiling. `Object.entries` skips a symbol-keyed entry of a map, and a
+ * symbol-keyed field of a shape is carried past the `JsonObject` type
+ * unchecked (a symbol key is not compared with a string index signature), so
+ * either would be dropped without a word.
+ */
+type StringKeyed<T> = [SymbolFree<T>] extends [true] ? T : never;
+
 /**
  * ts-autocode-grounding composes HoBo's TrainingOptions; copy them field by
- * field. Each field is named, and assigned where TrainingOptions (and the
- * registry's required `methodRef`) types it, with no assertion; what is not
- * named must be nothing. So a ts-autocode bump that renames a field, adds one
- * (keyed by a name or a symbol), makes `methodRef` or `intent` optional,
- * retypes one, or gives a declared type a field that is not JSON (a symbol key
- * included) stops this compiling
- * (scripts/test/ts-autocode-grounding-drift.test.ts). A cast here would let
- * that drift through, and `training()` would then register the method under
- * its function name, with no intent, or without the added field.
+ * field. Every field of the options, the contract, the output and each field
+ * description is named, and assigned where TrainingOptions (and the registry's
+ * required `methodRef`) types it, with no assertion; what is not named must be
+ * nothing. `params` and `contract.input`, maps by name, are copied entry by
+ * entry, so their keys may not be symbols; a declared shape is copied whole as
+ * JSON, so it may hold no field that is not JSON and no symbol key at any
+ * depth. Each of these is read as `GroundingOptions` types it, not as the
+ * interface grounding names for it today. So a ts-autocode bump stops this
+ * compiling when it renames a field, adds one (keyed by a name or a symbol, to
+ * the options, the contract, the output or a field description, directly or
+ * by typing the place as a subtype or a union with one), makes `methodRef` or
+ * `intent` optional, retypes one, keys `params` or `contract.input` by symbols
+ * too, or gives a declared shape a field that is not JSON or an object with a
+ * symbol key at any depth (scripts/test/ts-autocode-grounding-drift.test.ts).
+ * A cast here would let that drift through, and `training()` would then
+ * register the method under its function name, with no intent, or without the
+ * added field. What the check reads is the types: a property grounding sets
+ * on a value without declaring it in its type is not seen.
  */
 function trainingOptionsOf(options: GroundingOptions): RegisteredOptions {
 	const { methodRef, intent, contract, params, output, ...uncopied } = options;
@@ -129,37 +198,35 @@ function trainingOptionsOf(options: GroundingOptions): RegisteredOptions {
 		contract: trainingContract,
 	};
 	if (params !== undefined) {
-		registered.params = fieldsOf(params);
+		registered.params = fieldsByName(params);
 	}
 	if (output !== undefined) {
-		registered.output = fieldsOf(output);
+		const { returns, ...uncopiedOutput } = output;
+		uncopiedOutput satisfies NothingLeft;
+		registered.output = { returns: fieldOf(returns) };
 	}
 	return registered;
 }
-
-/**
- * A declared type, provided no key of it is a symbol, else `never`. JSON has
- * no symbol keys, and the spread in declaredJson would carry a symbol-keyed
- * field past its JsonObject return type unchecked (an object's symbol-keyed
- * fields are not compared with a string index signature). So a symbol-keyed
- * field upstream adds to a shape turns declaredJson's parameter into `never`,
- * and its callers stop compiling.
- */
-type StringKeyed<T> = [Extract<keyof T, symbol>] extends [never] ? T : never;
 
 /** A declared type as JSON: its own fields, each of which must be JSON. */
 function declaredJson(declared: StringKeyed<Declared>): JsonObject {
 	return { ...declared };
 }
 
-function declaredJsonByName(
-	byName: Readonly<Record<string, Declared>>,
-): JsonObject {
+function declaredJsonByName(input: StringKeyed<Input>): JsonObject {
 	const json: Record<string, JsonValue> = {};
-	for (const [name, declared] of Object.entries(byName)) {
+	for (const [name, declared] of Object.entries(input)) {
 		json[name] = declaredJson(declared);
 	}
 	return json;
+}
+
+function fieldsByName(params: StringKeyed<Params>) {
+	const described: Record<string, FieldDescription> = {};
+	for (const [name, field] of Object.entries(params)) {
+		described[name] = fieldOf(field);
+	}
+	return described;
 }
 
 /**
@@ -169,23 +236,18 @@ function declaredJsonByName(
  * and a BigInt or circular value throws there, at registration, not when the
  * class is decorated.
  */
-function fieldsOf(fields: Readonly<Record<string, GroundingField>>) {
-	const described: Record<string, FieldDescription> = {};
-	for (const [name, field] of Object.entries(fields)) {
-		const { description, example, ...uncopied } = field;
-		uncopied satisfies NothingLeft;
-		described[name] =
-			example === undefined
-				? { description }
-				: {
-						description,
-						// SAFETY: grounding types a field's example `unknown`, and the
-						// registry has always held it as given and lowered it at
-						// registration; converting it here would change both.
-						example: example as JsonValue,
-					};
-	}
-	return described;
+function fieldOf(field: Field): FieldDescription {
+	const { description, example, ...uncopied } = field;
+	uncopied satisfies NothingLeft;
+	return example === undefined
+		? { description }
+		: {
+				description,
+				// SAFETY: grounding types a field's example `unknown`, and the
+				// registry has always held it as given and lowered it at
+				// registration; converting it here would change both.
+				example: example as JsonValue,
+			};
 }
 
 /**

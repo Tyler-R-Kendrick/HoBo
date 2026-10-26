@@ -459,7 +459,7 @@ describe("designer consensus CLI", () => {
 		} finally { rmSync(root, { recursive: true, force: true }); }
 	});
 
-	it("enforces blocker resolution authority and permits auditable fixed and withdrawn outcomes", () => {
+	it("validates auditable blocker resolutions within and across replayed review cycles", () => {
 		const root = seedRepo();
 		try {
 			const file = proposal(root, { relevanceSignals: { categories: ["design"], acceptanceTags: [], featureTags: [], keywords: [] } });
@@ -488,6 +488,23 @@ describe("designer consensus CLI", () => {
 			});
 			assert.notEqual(badOverride.code, 0);
 			assert.match(badOverride.output, /authorizationRef/);
+			for (const persona of COUNCIL_PERSONAS.filter((item) => item !== "steve-jobs")) {
+				const stage = state.personas[persona].currentInvestment === 0 ? "submitted" : "position";
+				const result = append(root, state, persona, stage);
+				assert.equal(result.code, 0, result.output);
+				state = result.json.state as CouncilState;
+			}
+			for (const persona of COUNCIL_PERSONAS) {
+				if (state.personas[persona].submitted) continue;
+				const stage = state.personas[persona].currentInvestment === 0 ? "submitted" : "vote";
+				const result = append(root, state, persona, stage, { stance: persona === "steve-jobs" ? "nay" : "yay" });
+				assert.equal(result.code, 0, result.output);
+				state = result.json.state as CouncilState;
+			}
+			const decided = run(root, ["--mode", "decide", "--run", "run-1", "--review", "review-1"]);
+			assert.equal(decided.code, 0, decided.output);
+			state = decided.json.state as CouncilState;
+			assert.equal(state.status, "rework-required");
 			const fixed = resolveBlocker(root, state, {
 				blockerId: "HB-fixed", originatingPersona: "steve-jobs", resolutionType: "fixed",
 				implementationEvidenceRefs: ["test/passing"], resolver: "implementer", originAcknowledged: false, resultingStatus: "resolved",
@@ -499,8 +516,37 @@ describe("designer consensus CLI", () => {
 				implementationEvidenceRefs: ["test/corrected-classification"], resolver: "steve-jobs", originAcknowledged: true, resultingStatus: "withdrawn",
 			});
 			assert.equal(withdrawn.code, 0, withdrawn.output);
-			const validation = run(root, ["--mode", "validate", "--run", "run-1", "--review", "review-1"]);
-			assert.equal(validation.code, 0, validation.output);
+			state = withdrawn.json.state as CouncilState;
+			const validate = () => run(root, ["--mode", "validate", "--run", "run-1", "--review", "review-1"]);
+			assert.equal(validate().code, 0);
+			const stateFile = path.join(root, ".optimizexp", "runs", "run-1", "consensus", "review-1", "state.json");
+			const missing = structuredClone(state);
+			missing.personas["steve-jobs"].hardBlockers = [];
+			writeFileSync(stateFile, JSON.stringify(missing));
+			const currentCycleMissing = validate();
+			assert.notEqual(currentCycleMissing.code, 0);
+			assert.match(currentCycleMissing.output, /blocker-resolution-state-mismatch:HB-fixed/);
+			writeFileSync(stateFile, JSON.stringify(state));
+			const refreshed = proposal(root, {
+				normalizedDiffHash: sha("9"), evidenceDigest: sha("8"),
+				relevanceSignals: { categories: ["design"], acceptanceTags: [], featureTags: [], keywords: [] },
+			});
+			const resumed = run(root, ["--mode", "init", "--run", "run-1", "--review", "review-1", "--base-sha", sha("a"), "--head-sha", sha("7"), "--proposal", refreshed]);
+			assert.equal(resumed.code, 0, resumed.output);
+			state = resumed.json.state as CouncilState;
+			assert.equal(state.cycle, 1);
+			assert.deepEqual(state.personas["steve-jobs"].hardBlockers, []);
+			const historical = validate();
+			assert.equal(historical.code, 0, historical.output);
+			const bus = path.join(root, ".optimizexp", "bus", "entries");
+			const resolutionFile = readdirSync(bus).map((name) => path.join(bus, name)).find((name) => JSON.parse(readFileSync(name, "utf8")).blockerId === "HB-fixed");
+			assert.ok(resolutionFile);
+			const forged = JSON.parse(readFileSync(resolutionFile, "utf8"));
+			forged.resolver = "";
+			writeFileSync(resolutionFile, JSON.stringify(forged));
+			const invalidHistory = validate();
+			assert.notEqual(invalidHistory.code, 0);
+			assert.match(invalidHistory.output, /resolver/);
 		} finally { rmSync(root, { recursive: true, force: true }); }
 	});
 

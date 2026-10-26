@@ -8,6 +8,15 @@ A developer or agent should be able to describe an app once, then let HoBo place
 
 **Website:** the landing page, developer docs, and agent docs live at **<https://tyler-r-kendrick.github.io/HoBo/>** — source in [`site/`](./site/README.md), published by pushing the built `site/dist/` to the `gh-pages` branch (no Actions dependency; see the site README for the publish commands).
 
+## HoBo.CI
+
+[HoBo.CI](./packages/ci/README.md) adds allocation-first CI routing as sibling SDK packages.
+The [GitHub Actions relay](./packages/ci-gh-actions/README.md) is the first experimental
+target for `runs-on: hobo`, with GitHub, Blacksmith, Depot, WarpBuild and operator-owned
+host bridges. Dagger and Cloudflare CI implement the same portable pipeline contract.
+A shared budget ledger, cross-backend command corpus and executable `act` harness
+verify substitution locally. Hosted deployment remains a separate release workflow.
+
 ## Why HoBo exists
 
 Modern app teams still choose between two bad defaults:

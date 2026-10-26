@@ -1,0 +1,19 @@
+syntax = "proto3";
+package hobo.ci.cf.v1;
+
+// SDK readiness is metadata only; it is never execution authorization.
+message Readiness {
+  string integration = 1;
+  string status = 2;
+  bool execution_available = 3;
+  string target_sdk = 4;
+  string target_documentation = 5;
+  repeated string pending_gates = 6;
+}
+
+// Shell wrapper response retains exact user-command exit status and binary-safe logs.
+message CommandEnvelope {
+  int32 exit_code = 1;
+  string stdout_base64 = 2;
+  string stderr_base64 = 3;
+}

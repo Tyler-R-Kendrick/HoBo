@@ -894,7 +894,8 @@ function listStateFiles(root: string): string[] {
 function validateOne(root: string, state: CouncilState): string[] {
 	const problems = validateCouncilState(state);
 	const history = reviewEntries(root, state.runId, state.reviewId);
-	try { replayCouncilHistory(root, state, history); }
+	let historyVerified = false;
+	try { replayCouncilHistory(root, state, history); historyVerified = true; }
 	catch (error) { problems.push(error instanceof Error ? error.message : String(error)); }
 	const ids = new Set<string>();
 	let lastCycle = -1;
@@ -925,7 +926,9 @@ function validateOne(root: string, state: CouncilState): string[] {
 		const stored = (COUNCIL_PERSONAS as readonly string[]).includes(persona)
 			? state.personas[persona].hardBlockers.find((blocker) => blocker.id === resolution.blockerId)
 			: undefined;
-		if (!stored || stored.status !== resolution.resultingStatus) problems.push(`blocker-resolution-state-mismatch:${String(resolution.blockerId)}`);
+		// Verified cycle transitions retain only open blockers; historical resolutions remain in the bus.
+		const retired = !stored && resolution.cycle < state.cycle && historyVerified;
+		if (!retired && (!stored || stored.status !== resolution.resultingStatus)) problems.push(`blocker-resolution-state-mismatch:${String(resolution.blockerId)}`);
 	}
 	for (const persona of COUNCIL_PERSONAS) {
 		for (const blocker of state.personas[persona].hardBlockers) {

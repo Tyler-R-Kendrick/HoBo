@@ -250,3 +250,7 @@ the anonymous dimension (`data-models/anonymous_conformance.proto` +
 `.cue`, `contracts/pacts/anonymous-conformance-adapter.pact.json`, replayed by
 `contracts/consumer/anonymous-adapter-boundary.test.ts`), and records unrun
 `camp` tiers honestly for later production verification.
+
+HoBo.CI sibling SDKs (`ci`, `ci-gh-actions`, `ci-dagger`, `ci-cf`) are registered
+as application-layer packages in the boundary classifier. They compose the existing
+Dispatcher without provider-layer exceptions; see `../ci/ADR.md`.

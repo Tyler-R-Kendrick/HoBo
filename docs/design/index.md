@@ -210,3 +210,9 @@ All implementation-facing design work follows the cross-cutting standards in [`t
 When a draft package, validation script, workflow, or public contract changes, update this design suite or the nearest proof/contract README in the same change. CI runs `pnpm run docs:freshness` so implementation-facing changes cannot merge without a documentation update.
 
 - [Contract-First Testing Strategy](./contract-first-testing.md)
+
+## HoBo.CI SDK family
+
+[HoBo.CI contracts and routing](../../packages/ci/README.md),
+[GitHub Actions hosted relay](../../packages/ci-gh-actions/README.md), and
+[implementation plan with live acceptance gates](../plans/hobo-ci/README.md).

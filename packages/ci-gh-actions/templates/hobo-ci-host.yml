@@ -1,0 +1,37 @@
+# Install once alongside .hobo-ci/bootstrap.ts, then pin this commit in HoBo.
+# This workflow only supports trusted private repositories and Linux x64 hosts.
+name: HoBo CI host
+run-name: HoBo lease ${{ inputs.lease_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      lease_id:
+        required: true
+        type: string
+      runs_on:
+        required: true
+        type: string
+      timeout_minutes:
+        required: true
+        type: string
+permissions:
+  contents: read
+  id-token: write
+jobs:
+  host:
+    runs-on: ${{ inputs.runs_on }}
+    timeout-minutes: ${{ fromJSON(inputs.timeout_minutes) }}
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Host one original HoBo job
+        env:
+          HOBO_CI_RELAY_URL: ${{ vars.HOBO_CI_RELAY_URL }}
+          HOBO_CI_LEASE_ID: ${{ inputs.lease_id }}
+          HOBO_CI_TIMEOUT_MINUTES: ${{ inputs.timeout_minutes }}
+        run: node --experimental-strip-types .hobo-ci/bootstrap.ts

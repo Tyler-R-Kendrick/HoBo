@@ -29,3 +29,9 @@ regression coverage. No live-provider proof is claimed by these tests.
 Native pre-launch crash recovery cancels untouched reservations for fresh
 admission; running intents remain uncertain. Disk reopen, journal rebuild and
 completed-result replay are verified independently.
+
+The SDK council rejected a broken documented pnpm invocation; the corrected
+installer and harness commands passed, including 40 actual workflow jobs.
+Closeout also repaired cross-cycle validation of resolved council findings:
+22 protocol regressions pass, including current-cycle deletion and historical
+tampering rejection. Resolved records remain auditable in the append-only bus.

@@ -105,7 +105,10 @@ Every blocker has an ID, claim, rule, evidence references, requested resolution,
 and status. It leaves the active set only through an append-only
 `blocker-resolution` entry citing changed implementation, passing evidence,
 corrected artifact, policy-permitted override, or a reasoned originating-persona
-withdrawal. Snapshot-only deletion is invalid.
+withdrawal. Snapshot-only deletion is invalid. A verified cycle transition retains open
+blockers and leaves older resolved records in the bus. Validation accepts their
+absence from a later snapshot only after successful history replay; current-cycle
+records and retained statuses must still match their resolution entries.
 
 ## Council bus
 

@@ -1,0 +1,46 @@
+{
+  "consumer": {
+    "name": "HoboCiReadinessConsumer"
+  },
+  "provider": {
+    "name": "HoboCiCfSdk"
+  },
+  "metadata": {
+    "pactSpecification": {
+      "version": "4.0.0"
+    },
+    "evidence": "Hand-authored synchronous-message SDK contract; mocked consumer verification only; no vendor verification."
+  },
+  "interactions": [
+    {
+      "type": "Synchronous/Messages",
+      "description": "read HoBo CI Cf planned SDK readiness",
+      "request": {
+        "contents": {
+          "operation": "getReadiness"
+        },
+        "contentType": "application/json"
+      },
+      "response": [
+        {
+          "contents": {
+            "integration": "cf",
+            "status": "planned",
+            "executionAvailable": false,
+            "targetSdk": "@cloudflare/ci",
+            "targetDocumentation": "https://github.com/cloudflare/ci",
+            "pendingGates": [
+              "Pin and verify the Cloudflare CI SDK version and supported runtime.",
+              "Define protobuf execution commands, events, and CUE constraints.",
+              "Bind Workflows and isolated sandboxes to the customer's Cloudflare account.",
+              "Authorize execution through HoBo account-scoped budget reservations.",
+              "Prove checkpoint replay, cancellation, artifact integrity, and usage settlement.",
+              "Verify Cloudflare CI and Workflows PACT contracts with executable fixtures."
+            ]
+          },
+          "contentType": "application/json"
+        }
+      ]
+    }
+  ]
+}

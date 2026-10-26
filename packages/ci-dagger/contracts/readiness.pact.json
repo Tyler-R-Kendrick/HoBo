@@ -1,0 +1,46 @@
+{
+  "consumer": {
+    "name": "HoboCiReadinessConsumer"
+  },
+  "provider": {
+    "name": "HoboCiDaggerSdk"
+  },
+  "metadata": {
+    "pactSpecification": {
+      "version": "4.0.0"
+    },
+    "evidence": "Hand-authored synchronous-message SDK contract; mocked consumer verification only; no vendor verification."
+  },
+  "interactions": [
+    {
+      "type": "Synchronous/Messages",
+      "description": "read HoBo CI Dagger planned SDK readiness",
+      "request": {
+        "contents": {
+          "operation": "getReadiness"
+        },
+        "contentType": "application/json"
+      },
+      "response": [
+        {
+          "contents": {
+            "integration": "dagger",
+            "status": "planned",
+            "executionAvailable": false,
+            "targetSdk": "@dagger.io/dagger",
+            "targetDocumentation": "https://docs.dagger.io/",
+            "pendingGates": [
+              "Pin and verify the Dagger SDK and engine versions.",
+              "Define protobuf execution commands, events, and CUE constraints.",
+              "Authorize execution through HoBo account-scoped budget reservations.",
+              "Execute a digest-pinned module on an isolated engine host.",
+              "Prove cancellation, retries, artifact integrity, and usage settlement.",
+              "Verify SDK and engine PACT contracts with executable fixtures."
+            ]
+          },
+          "contentType": "application/json"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "integration": "dagger",
+  "status": "planned",
+  "executionAvailable": true,
+  "targetSdk": "@dagger.io/dagger",
+  "targetDocumentation": "https://docs.dagger.io/",
+  "pendingGates": [
+    "Execution remains deferred."
+  ]
+}

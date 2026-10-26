@@ -319,6 +319,20 @@ export class LeaseStore {
 	}
 	recover(at: string): void {
 		for (const lease of this.all()) {
+			if (lease.pipelineId && lease.state === "reserved") {
+				// No backend call can precede PipelineStarted. Release untouched
+				// reservations so a restarted coordinator can re-admit current policy.
+				this.transition(
+					lease.id,
+					["reserved"],
+					(entry) => {
+						entry.state = "cancelled";
+					},
+					"ci.LeaseCancelled",
+					at,
+				);
+				continue;
+			}
 			this.transition(
 				lease.id,
 				lease.pipelineId

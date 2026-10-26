@@ -1,13 +1,15 @@
 import { mkdtemp, rm } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { create } from "@bufbuild/protobuf";
+import { create, toJsonString } from "@bufbuild/protobuf";
+import { stableHash } from "@hobo/dispatcher";
 import { afterEach, describe, expect, it } from "vitest";
 import {
 	type Account,
 	AccountSchema,
 	JobSchema,
 	OfferSchema,
+	PipelineSchema,
 	PipelineStepResultSchema,
 } from "../src/_generated/ci_pb.js";
 import {
@@ -230,6 +232,58 @@ describe("persistent interchangeable pipeline scheduler", () => {
 			),
 		).rejects.toThrow(/different input/);
 		expect(h.calls).toHaveLength(1);
+	});
+	it.each([
+		"reserved",
+		"running",
+	])("recovers a durable %s native lease without replaying launch intent", async (state) => {
+		const directory = await mkdtemp(join(tmpdir(), "hobo-ci-intent-"));
+		let store = new LeaseStore(join(directory, "ledger.sqlite"));
+		const a = account();
+		const p = pipeline();
+		const calls: string[] = [];
+		try {
+			const lease = store.reservePipeline(
+				a,
+				p,
+				stableHash(JSON.parse(toJsonString(PipelineSchema, p))),
+				["dag"],
+				NOW,
+			);
+			if (!lease) throw new Error("fixture reservation");
+			if (state === "running")
+				store.transition(
+					lease.id,
+					["reserved"],
+					(entry) => {
+						entry.state = "running";
+					},
+					"ci.PipelineStarted",
+					NOW,
+				);
+			store.close();
+			store = new LeaseStore(join(directory, "ledger.sqlite"));
+			store.rebuild();
+			store.recover(NOW);
+			const scheduler = new PipelineScheduler(
+				store,
+				a.id,
+				new Map([["dag", backend("dagger", calls)]]),
+				() => NOW,
+			);
+			if (state === "reserved") {
+				expect(store.get(lease.id)?.state).toBe("cancelled");
+				expect((await scheduler.execute(a, p)).status).toBe("succeeded");
+				expect(calls).toEqual(["dagger"]);
+			} else {
+				expect(store.get(lease.id)?.state).toBe("uncertain");
+				await expect(scheduler.execute(a, p)).rejects.toThrow(/reconciliation/);
+				expect(calls).toEqual([]);
+			}
+		} finally {
+			store.close();
+			await rm(directory, { recursive: true, force: true });
+		}
 	});
 	it("fails over only a definitive pre-allocation refusal", async () => {
 		const h = setup();

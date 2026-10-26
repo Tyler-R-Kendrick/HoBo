@@ -102,6 +102,8 @@ automatic fallback; unknown launch, interrupted execution or unconfirmed stop
 retains an `uncertain` reservation. Ordinary command failure never retries
 side effects on another provider. On process startup call `store.recover()`
 with current ISO time before accepting commands.
+Recovery cancels native reservations that never recorded launch intent so they
+can be admitted against current policy; interrupted running leases remain uncertain.
 
 The root entrypoint and scheduler target Node. Cloudflare Workers import the
 portable `@hobo/ci/execution` entrypoint, which has no Node ledger or Dispatcher

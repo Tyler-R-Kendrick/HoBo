@@ -25,3 +25,7 @@ Delayed expiry, changed credit facts, displaced Actions demand, uncertain launch
 abort/rejection races, input mutation, artifact truncation/size, UTF-8 bounds,
 Cloudflare timeout/snapshot rules, account-bound scheduler contexts and Dagger command caching/teardown have
 regression coverage. No live-provider proof is claimed by these tests.
+
+Native pre-launch crash recovery cancels untouched reservations for fresh
+admission; running intents remain uncertain. Disk reopen, journal rebuild and
+completed-result replay are verified independently.

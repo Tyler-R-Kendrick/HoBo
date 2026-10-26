@@ -493,3 +493,12 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - **Validation:** SDK/contract suites; 40 actual act jobs over eight admitted routing scenarios plus a denied zero-budget scenario. Provider transports are strict local contracts; no live-provider acceptance claimed.
 - **Review repairs:** stale allocation and expiry, displaced queued demand, ambiguous launches, cancellation races, snapshot overlays, cache identity, bounded artifact reads, sibling-query shutdown races and tenant-bound backend contexts.
 - **Closeout:** local gates, current-head independent review and exact-six SDK/DX council precede squash merge. GitHub records the final PR/head/merge state.
+
+## 2026-10-26 — HoBo.CI delivery closed
+
+- **PR:** [#1594](https://github.com/Tyler-R-Kendrick/HoBo/pull/1594), squash-merged to `main` as `a262136d98e6699f8093c45fb36e32ea0a931864`.
+- **Result:** closed; all implementation and review findings repaired. No external resource or live-provider credentials used.
+- **Validation:** 238 CI SDK/contract tests, 22 council protocol regressions, 19 relevant PR-base checks and 40 actual act jobs; denied account-budget case launches zero jobs.
+- **Review:** independent technical review clean; exact-six SDK/DX council unanimous yay at final head `56fdbe73b6f09dc3a39b94bb5f8310cc17e4fb9b`, cycle 2. Current-head assertion passed immediately before merge; no unresolved PR threads.
+- **Failure classes repaired:** tenant binding, ambiguous shutdown, pre-launch restart, documented pnpm argument forwarding and historical resolved-blocker validation. CodeRabbit automatic review was skipped; no GitHub Actions failure was waived.
+- **Release limits:** provider bridges remain experimental; hosted onboarding, production deployment and vendor invoice feeds are separately documented platform/release work.

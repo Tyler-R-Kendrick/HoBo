@@ -230,6 +230,7 @@ export class Relay {
 		const bound = Date.parse(now) + lease.reservedMinutes * 60000;
 		if (
 			!offer.enabled ||
+			(offer.backend !== "" && offer.backend !== "gh-actions") ||
 			!offer.bridgeAcknowledged ||
 			offer.provider !== lease.provider ||
 			offer.priceMicrosPerMinute !== lease.priceMicrosPerMinute ||

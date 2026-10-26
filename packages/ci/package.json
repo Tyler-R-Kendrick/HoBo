@@ -12,6 +12,18 @@
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./execution": {
+      "types": "./dist/execution.d.ts",
+      "default": "./dist/execution.js"
+    },
+    "./store": {
+      "types": "./dist/store.d.ts",
+      "default": "./dist/store.js"
+    },
+    "./scheduler": {
+      "types": "./dist/scheduler.d.ts",
+      "default": "./dist/scheduler.js"
     }
   },
   "scripts": {
@@ -22,6 +34,7 @@
   },
   "dependencies": {
     "@bufbuild/protobuf": "2.12.1",
-    "@hobo/dispatcher": "workspace:*"
+    "@hobo/dispatcher": "workspace:*",
+    "zod": "^4.1.13"
   }
 }

@@ -1,25 +1,49 @@
-# Dagger integration readiness
+# Dagger execution adapter
 
-Status: planned. HoBo CI GitHub Actions remains the first delivery target.
+Status: implemented SDK execution. Local contracts verify the portable pipeline
+boundary; provider connectivity is a separate runtime binding.
 
-This package implements a readiness query and parser, with execution explicitly
-unavailable. Local protobuf defines `Readiness`, and schema-tools generates its
-runtime record. The derived domain type `PlannedReadiness` refines that generated type. Its
-parser applies the CUE-mirrored invariants once and returns a frozen view:
-parse, don't validate, rather than a raw DTO with a separate validity boolean.
+The runtime record types come from shared `@hobo/ci` protobufs and this package's
+local Readiness protobuf. Parse, don't validate: `parsePipeline` establishes a parsed
+domain type and `parseReadiness` establishes the derived domain type `DaggerReadiness`.
+CUE constraints, valid/invalid fixture instances and schema-tools drift checks
+protect generated records. There is no duplicate handwritten execution DTO.
 
-A synchronous-message Pact pins the in-process SDK boundary, with valid/invalid
-CUE fixtures, TypeScript, and scoped codegen checks protecting the schema.
-The Pact is hand-authored consumer evidence; it asserts neither an HTTP service
-nor Dagger provider verification.
+A command pipeline opens one owned Dagger SDK connection. Its steps chain only the
+source workspace Directory between clean image environments. argv is passed to
+`withExec` without a shell interpolation layer; a fixed GNU timeout wrapper bounds
+execution. Expected failure outputs use `ReturnType.Any` and remain observable.
+Artifacts use a fixed path-checking shell operation and common bytes/digest records.
 
-There is no execution command or lifecycle event yet. No actor, event store,
-projection, snapshot, or read store is implemented by the readiness-only API.
-Before execution, define commands/events, checkpoint and outbox replay behavior,
-usage projections, and snapshot/read store persistence alongside cancellation.
-These requirements remain deferred work, not implied behavior of a getter.
+The shared actor owns execution commands, the event store, budget reservation,
+lease projection, snapshot and read store. The Dagger adapter does not mutate those
+views. It executes only after the scheduler admits the bound account/offer and
+returns results to that actor for settlement. Ambiguous startup/cleanup is retained
+as uncertainty and is never blindly failed over to a second backend.
 
-Future execution will reuse HoBo account/budget authorization and customer-owned
-provider credentials. Pin SDK/runtime bindings and verify external boundaries
-with PACT fixtures before deployment. No provider price, free allocation, or
-live execution evidence is asserted by this readiness contract.
+The SDK itself does not expose a command-termination acknowledgment. An operator's
+connector may supply `stop()` backed by its engine control API. During an active
+operation, cancellation without that acknowledgment returns uncertain even after
+closing the SDK session. This is an explicit execution contract, not an assumption
+that closing a GraphQL client killed a remote process.
+
+Pact fixtures are hand-authored in-process consumer expectations, not captured
+provider traffic or vendor verification. They execute the shipped adapter through
+its SDK-shaped port, while a compile-time witness checks the real pinned SDK's
+compatibility. An additional strict loopback GraphQL contract drives the default
+connector through the actual SDK, so transport behavior is executable too. TypeScript, execution tests, readiness tests, CUE fixtures, codegen
+checks and lint are the validation gates.
+
+A reserved `HOBO_CI_EXECUTION_ID=pipeline.id` environment value enters every command
+DAG after user env. Different logical executions cannot silently reuse a prior
+side-effecting command cache. The same execution ID remains replay-stable; callers
+must give a new run/revision a new logical ID. Artifacts are size-checked within the
+engine before encoding, avoiding oversized file materialization into SDK output.
+Session close caches its Promise, so repeated callers share both pending and failed
+shutdown acknowledgment instead of observing a false completed close.
+
+SDK exit-code/stdout/stderr reads are tracked through `allSettled` independently of
+`Promise.all`'s first failure. The first error reaches cleanup promptly, but cannot
+clear active work while sibling queries remain unresolved. Even when all reads
+settle, a rejected exit-code query does not establish remote completion; positive
+provider stop acknowledgment is required before that state can be treated as stopped.

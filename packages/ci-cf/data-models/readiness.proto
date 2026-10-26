@@ -10,3 +10,10 @@ message Readiness {
   string target_documentation = 5;
   repeated string pending_gates = 6;
 }
+
+// Shell wrapper response retains exact user-command exit status and binary-safe logs.
+message CommandEnvelope {
+  int32 exit_code = 1;
+  string stdout_base64 = 2;
+  string stderr_base64 = 3;
+}

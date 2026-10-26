@@ -2,7 +2,7 @@ package ci
 
 #Offer: {
  id: string & !=""
- provider: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes"
+ provider: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "dagger" | "cloudflare"
  providerAccountId: string & !=""
  enabled: bool
  runsOn: string & !=""
@@ -15,6 +15,7 @@ package ci
  validUntil: string & !=""
  sourceUrl: string & =~"^https://"
  bridgeAcknowledged: bool
+ backend?: "" | "gh-actions" | "dagger" | "cf"
 }
 #Account: {
  id: string & !=""
@@ -47,17 +48,35 @@ package ci
 }
 #Lease: {
  id: string & !="", accountId: string & !="", offerId: string & !=""
- provider: string & !="", jobId: int & >0, originalRunId: int & >0
- runAttempt: int & >=1, repositoryId: int & >0, repository: string & !=""
- installationId: int & >0
+ provider: string & !="", jobId: int & >=0, originalRunId: int & >=0
+ runAttempt: int & >=0, repositoryId: int & >=0, repository: string
+ installationId: int & >=0
  state: "reserved" | "dispatching" | "dispatched" | "claiming" | "running" | "uncertain" | "completed" | "cancelled"
  reservedMinutes: number & >0, reservedFreeMinutes: number & >=0
- reservedPaidMicros: int & >=0, runnerName: string & !="", createdAt: string & !=""
+ reservedPaidMicros: int & >=0, runnerName: string, createdAt: string & !=""
  hostRunId: int & >=0, runnerId: int & >=0, actualJobId: int & >=0
  billedMinutes: number & >=0, paidMicros: int & >=0, settledAt: string, priceMicrosPerMinute: int & >=0
  freeValidUntil: string, billedFreeMinutes: number & >=0
+ pipelineId?: string, result?: #PipelineResult, pipelineDigest?: string
 }
 #CiEvent: {type: string & !="", accountId: string, leaseId: string, at: string & !="", detail: string}
 #Snapshot: {leases: [...#Lease], events: [...#CiEvent]}
 
-#Ci: #Offer | #Account | #Connection | #Configuration | #Job | #Lease | #CiEvent | #Snapshot
+#Ci: #Offer | #Account | #Connection | #Configuration | #Job | #Lease | #CiEvent | #Snapshot | #PipelineStep | #Pipeline | #PipelineStepResult | #PipelineArtifact | #PipelineResult
+
+#PipelineStep: {id: string & !="", argv: [string & !="", ...string], cwd: string, env: [string]: string}
+#Pipeline: {
+ id: string & =~"^[A-Za-z0-9_-]{1,100}$"
+ accountId: string & !=""
+ steps: [#PipelineStep, ...#PipelineStep]
+ artifactPaths: [...string]
+ timeoutSeconds: int & >=1 & <=19800
+ requiredCapabilities: [...("commands" | "artifacts" | "cancellation")]
+}
+#PipelineStepResult: {id: string & !="", exitCode: int & >=0 & <=255, stdout: string, stderr: string}
+#PipelineArtifact: {path: string & !="", data: string, sha256: string & =~"^[a-f0-9]{64}$"}
+#PipelineResult: {
+ id: string & !="", backend: "" | "gh-actions" | "dagger" | "cf"
+ status: "succeeded" | "failed" | "cancelled" | "timed_out" | "uncertain" | "blocked"
+ steps: [...#PipelineStepResult], artifacts: [...#PipelineArtifact], error: string
+}

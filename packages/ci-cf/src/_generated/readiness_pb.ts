@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file readiness.proto.
  */
 export const file_readiness: GenFile = /*@__PURE__*/
-  fileDesc("Cg9yZWFkaW5lc3MucHJvdG8SDWhvYm8uY2kuY2YudjEilgEKCVJlYWRpbmVzcxITCgtpbnRlZ3JhdGlvbhgBIAEoCRIOCgZzdGF0dXMYAiABKAkSGwoTZXhlY3V0aW9uX2F2YWlsYWJsZRgDIAEoCBISCgp0YXJnZXRfc2RrGAQgASgJEhwKFHRhcmdldF9kb2N1bWVudGF0aW9uGAUgASgJEhUKDXBlbmRpbmdfZ2F0ZXMYBiADKAliBnByb3RvMw");
+  fileDesc("Cg9yZWFkaW5lc3MucHJvdG8SDWhvYm8uY2kuY2YudjEilgEKCVJlYWRpbmVzcxITCgtpbnRlZ3JhdGlvbhgBIAEoCRIOCgZzdGF0dXMYAiABKAkSGwoTZXhlY3V0aW9uX2F2YWlsYWJsZRgDIAEoCBISCgp0YXJnZXRfc2RrGAQgASgJEhwKFHRhcmdldF9kb2N1bWVudGF0aW9uGAUgASgJEhUKDXBlbmRpbmdfZ2F0ZXMYBiADKAkiUgoPQ29tbWFuZEVudmVsb3BlEhEKCWV4aXRfY29kZRgBIAEoBRIVCg1zdGRvdXRfYmFzZTY0GAIgASgJEhUKDXN0ZGVycl9iYXNlNjQYAyABKAliBnByb3RvMw");
 
 /**
  * SDK readiness is metadata only; it is never execution authorization.
@@ -55,4 +55,33 @@ export type Readiness = Message<"hobo.ci.cf.v1.Readiness"> & {
  */
 export const ReadinessSchema: GenMessage<Readiness> = /*@__PURE__*/
   messageDesc(file_readiness, 0);
+
+/**
+ * Shell wrapper response retains exact user-command exit status and binary-safe logs.
+ *
+ * @generated from message hobo.ci.cf.v1.CommandEnvelope
+ */
+export type CommandEnvelope = Message<"hobo.ci.cf.v1.CommandEnvelope"> & {
+  /**
+   * @generated from field: int32 exit_code = 1;
+   */
+  exitCode: number;
+
+  /**
+   * @generated from field: string stdout_base64 = 2;
+   */
+  stdoutBase64: string;
+
+  /**
+   * @generated from field: string stderr_base64 = 3;
+   */
+  stderrBase64: string;
+};
+
+/**
+ * Describes the message hobo.ci.cf.v1.CommandEnvelope.
+ * Use `create(CommandEnvelopeSchema)` to create a new message.
+ */
+export const CommandEnvelopeSchema: GenMessage<CommandEnvelope> = /*@__PURE__*/
+  messageDesc(file_readiness, 1);
 

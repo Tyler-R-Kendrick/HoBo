@@ -484,3 +484,12 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - **local:** PR-base `agent:check` green; `validate:final` 743/743 files, 4,629 passed and one skipped
 - **status:** independent review and current-head council consensus pending before merge
 - **protocol:** `/sdlc finish`
+
+## 2026-10-26 — HoBo.CI SDKs and allocation relay
+
+- **Branch:** `feat/hobo-ci`; initiative `docs/plans/hobo-ci/sdlc-state.md`.
+- **Scope:** four monorepo packages; Actions-first hosted relay contract, five provider bridges, portable Actions/Dagger/Cloudflare execution and shared durable allocation accounting.
+- **Dispatch:** parent owns shared contract/ledger; isolated Dagger, Cloudflare, Actions/act and independent protocol reviews.
+- **Validation:** SDK/contract suites; 40 actual act jobs over eight admitted routing scenarios plus a denied zero-budget scenario. Provider transports are strict local contracts; no live-provider acceptance claimed.
+- **Review repairs:** stale allocation and expiry, displaced queued demand, ambiguous launches, cancellation races, snapshot overlays, cache identity, bounded artifact reads, sibling-query shutdown races and tenant-bound backend contexts.
+- **Closeout:** local gates, current-head independent review and exact-six SDK/DX council precede squash merge. GitHub records the final PR/head/merge state.

@@ -24,10 +24,25 @@ export function parseConfiguration(json: string): Configuration {
 			if (!/^[a-zA-Z0-9_-]{1,80}$/.test(offer.id) || ids.has(offer.id))
 				throw new Error("invalid or duplicate offer");
 			ids.add(offer.id);
+			if (!["", "gh-actions", "dagger", "cf"].includes(offer.backend))
+				throw new Error("unsupported execution backend");
 			if (
-				!["github", "blacksmith", "depot", "warpbuild", "kubernetes"].includes(
-					offer.provider,
-				)
+				(offer.provider === "dagger" && offer.backend !== "dagger") ||
+				(offer.provider === "cloudflare" && offer.backend !== "cf")
+			)
+				throw new Error(
+					"native provider requires its matching execution backend",
+				);
+			if (
+				![
+					"github",
+					"blacksmith",
+					"depot",
+					"warpbuild",
+					"kubernetes",
+					"dagger",
+					"cloudflare",
+				].includes(offer.provider)
 			)
 				throw new Error("unsupported provider");
 			micros(offer.priceMicrosPerMinute, offer.budgetMicros, offer.spentMicros);

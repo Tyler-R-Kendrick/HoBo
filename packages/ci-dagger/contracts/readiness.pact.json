@@ -14,7 +14,7 @@
   "interactions": [
     {
       "type": "Synchronous/Messages",
-      "description": "read HoBo CI Dagger planned SDK readiness",
+      "description": "read HoBo CI Dagger implemented SDK readiness",
       "request": {
         "contents": {
           "operation": "getReadiness"
@@ -25,17 +25,13 @@
         {
           "contents": {
             "integration": "dagger",
-            "status": "planned",
-            "executionAvailable": false,
+            "status": "implemented",
+            "executionAvailable": true,
             "targetSdk": "@dagger.io/dagger",
             "targetDocumentation": "https://docs.dagger.io/",
             "pendingGates": [
-              "Pin and verify the Dagger SDK and engine versions.",
-              "Define protobuf execution commands, events, and CUE constraints.",
-              "Authorize execution through HoBo account-scoped budget reservations.",
-              "Execute a digest-pinned module on an isolated engine host.",
-              "Prove cancellation, retries, artifact integrity, and usage settlement.",
-              "Verify SDK and engine PACT contracts with executable fixtures."
+              "Bind a customer-owned engine and authoritative budget reservations before hosted execution.",
+              "Verify provider shutdown acknowledgments and invoice reconciliation with PACT evidence."
             ]
           },
           "contentType": "application/json"

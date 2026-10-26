@@ -25,17 +25,17 @@ describe("in-process readiness SDK consumer contract", () => {
 		).toEqual(expected);
 	});
 
-	it("parses the approved protobuf JSON into an immutable planned view", () => {
+	it("parses the approved protobuf JSON into an immutable implemented view", () => {
 		const parsed = parseReadiness(JSON.stringify(expected));
-		expect(parsed.status).toBe("planned");
-		expect(parsed.executionAvailable).toBe(false);
+		expect(parsed.status).toBe("implemented");
+		expect(parsed.executionAvailable).toBe(true);
 		expect(parsed.pendingGates).toEqual(expected.pendingGates);
 		expect(Object.isFrozen(parsed)).toBe(true);
 		expect(Object.isFrozen(parsed.pendingGates)).toBe(true);
 	});
 
 	it.each([
-		["execution", { ...expected, executionAvailable: true }],
+		["execution", { ...expected, executionAvailable: false }],
 		["status", { ...expected, status: "ready" }],
 		["integration", { ...expected, integration: "another-integration" }],
 		["SDK", { ...expected, targetSdk: "another-sdk" }],
@@ -47,7 +47,7 @@ describe("in-process readiness SDK consumer contract", () => {
 		["blank gates", { ...expected, pendingGates: ["   "] }],
 	])("rejects invalid %s instead of granting execution readiness", (_name, invalid) => {
 		expect(() => parseReadiness(JSON.stringify(invalid))).toThrow(
-			/invalid planned/,
+			/invalid implemented/,
 		);
 	});
 

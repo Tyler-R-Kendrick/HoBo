@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file ci.proto.
  */
 export const file_ci: GenFile = /*@__PURE__*/
-  fileDesc("CghjaS5wcm90bxIKaG9iby5jaS52MSK4AgoFT2ZmZXISCgoCaWQYASABKAkSEAoIcHJvdmlkZXIYAiABKAkSGwoTcHJvdmlkZXJfYWNjb3VudF9pZBgDIAEoCRIPCgdlbmFibGVkGAQgASgIEg8KB3J1bnNfb24YBSABKAkSFAoMZnJlZV9taW51dGVzGAYgASgBEh8KF3ByaWNlX21pY3Jvc19wZXJfbWludXRlGAcgASgBEhUKDWJ1ZGdldF9taWNyb3MYCCABKAESFAoMc3BlbnRfbWljcm9zGAkgASgBEhMKC2NvbmN1cnJlbmN5GAogASgNEhMKC29ic2VydmVkX2F0GAsgASgJEhMKC3ZhbGlkX3VudGlsGAwgASgJEhIKCnNvdXJjZV91cmwYDSABKAkSGwoTYnJpZGdlX2Fja25vd2xlZGdlZBgOIAEoCCKbAQoHQWNjb3VudBIKCgJpZBgBIAEoCRIVCg1idWRnZXRfbWljcm9zGAIgASgBEhQKDHNwZW50X21pY3JvcxgDIAEoARIbChNtYXhfcnVudGltZV9taW51dGVzGAQgASgNEhcKD3N0YXJ0dXBfbWludXRlcxgFIAEoDRIhCgZvZmZlcnMYBiADKAsyES5ob2JvLmNpLnYxLk9mZmVyIrICCgpDb25uZWN0aW9uEhIKCmFjY291bnRfaWQYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRIVCg1yZXBvc2l0b3J5X2lkGAMgASgBEhcKD2luc3RhbGxhdGlvbl9pZBgEIAEoARIXCg9icmlkZ2Vfd29ya2Zsb3cYBSABKAkSEgoKYnJpZGdlX3NoYRgGIAEoCRIXCg9ydW5uZXJfZ3JvdXBfaWQYByABKA0SFgoOYWxsb3dlZF9ldmVudHMYCCADKAkSFAoMYWxsb3dlZF9yZWZzGAkgAygJEicKH3RydXN0ZWRfcmVwb3NpdG9yeV9hY2tub3dsZWRnZWQYCiABKAgSEgoKYnJpZGdlX3JlZhgLIAEoCRIbChNkaXNwYXRjaGVyX2FjdG9yX2lkGAwgASgBImMKDUNvbmZpZ3VyYXRpb24SJQoIYWNjb3VudHMYASADKAsyEy5ob2JvLmNpLnYxLkFjY291bnQSKwoLY29ubmVjdGlvbnMYAiADKAsyFi5ob2JvLmNpLnYxLkNvbm5lY3Rpb24irwEKA0pvYhIKCgJpZBgBIAEoARIOCgZydW5faWQYAiABKAESEwoLcnVuX2F0dGVtcHQYAyABKA0SFQoNcmVwb3NpdG9yeV9pZBgEIAEoARIXCg9pbnN0YWxsYXRpb25faWQYBSABKAESEgoKcmVwb3NpdG9yeRgGIAEoCRIOCgZsYWJlbHMYByADKAkSDgoGYWN0aW9uGAggASgJEhMKC3J1bm5lcl9uYW1lGAkgASgJIrQECgVMZWFzZRIKCgJpZBgBIAEoCRISCgphY2NvdW50X2lkGAIgASgJEhAKCG9mZmVyX2lkGAMgASgJEhAKCHByb3ZpZGVyGAQgASgJEg4KBmpvYl9pZBgFIAEoARIXCg9vcmlnaW5hbF9ydW5faWQYBiABKAESEwoLcnVuX2F0dGVtcHQYByABKA0SFQoNcmVwb3NpdG9yeV9pZBgIIAEoARISCgpyZXBvc2l0b3J5GAkgASgJEhcKD2luc3RhbGxhdGlvbl9pZBgKIAEoARINCgVzdGF0ZRgLIAEoCRIYChByZXNlcnZlZF9taW51dGVzGAwgASgBEh0KFXJlc2VydmVkX2ZyZWVfbWludXRlcxgNIAEoARIcChRyZXNlcnZlZF9wYWlkX21pY3JvcxgOIAEoARITCgtydW5uZXJfbmFtZRgPIAEoCRISCgpjcmVhdGVkX2F0GBAgASgJEhMKC2hvc3RfcnVuX2lkGBEgASgBEhEKCXJ1bm5lcl9pZBgSIAEoARIVCg1hY3R1YWxfam9iX2lkGBMgASgBEhYKDmJpbGxlZF9taW51dGVzGBQgASgBEhMKC3BhaWRfbWljcm9zGBUgASgBEhIKCnNldHRsZWRfYXQYFiABKAkSHwoXcHJpY2VfbWljcm9zX3Blcl9taW51dGUYFyABKAESGAoQZnJlZV92YWxpZF91bnRpbBgYIAEoCRIbChNiaWxsZWRfZnJlZV9taW51dGVzGBkgASgBIlkKB0NpRXZlbnQSDAoEdHlwZRgBIAEoCRISCgphY2NvdW50X2lkGAIgASgJEhAKCGxlYXNlX2lkGAMgASgJEgoKAmF0GAQgASgJEg4KBmRldGFpbBgFIAEoCSJSCghTbmFwc2hvdBIhCgZsZWFzZXMYASADKAsyES5ob2JvLmNpLnYxLkxlYXNlEiMKBmV2ZW50cxgCIAMoCzITLmhvYm8uY2kudjEuQ2lFdmVudGIGcHJvdG8z");
+  fileDesc("CghjaS5wcm90bxIKaG9iby5jaS52MSLJAgoFT2ZmZXISCgoCaWQYASABKAkSEAoIcHJvdmlkZXIYAiABKAkSGwoTcHJvdmlkZXJfYWNjb3VudF9pZBgDIAEoCRIPCgdlbmFibGVkGAQgASgIEg8KB3J1bnNfb24YBSABKAkSFAoMZnJlZV9taW51dGVzGAYgASgBEh8KF3ByaWNlX21pY3Jvc19wZXJfbWludXRlGAcgASgBEhUKDWJ1ZGdldF9taWNyb3MYCCABKAESFAoMc3BlbnRfbWljcm9zGAkgASgBEhMKC2NvbmN1cnJlbmN5GAogASgNEhMKC29ic2VydmVkX2F0GAsgASgJEhMKC3ZhbGlkX3VudGlsGAwgASgJEhIKCnNvdXJjZV91cmwYDSABKAkSGwoTYnJpZGdlX2Fja25vd2xlZGdlZBgOIAEoCBIPCgdiYWNrZW5kGA8gASgJIpsBCgdBY2NvdW50EgoKAmlkGAEgASgJEhUKDWJ1ZGdldF9taWNyb3MYAiABKAESFAoMc3BlbnRfbWljcm9zGAMgASgBEhsKE21heF9ydW50aW1lX21pbnV0ZXMYBCABKA0SFwoPc3RhcnR1cF9taW51dGVzGAUgASgNEiEKBm9mZmVycxgGIAMoCzIRLmhvYm8uY2kudjEuT2ZmZXIisgIKCkNvbm5lY3Rpb24SEgoKYWNjb3VudF9pZBgBIAEoCRISCgpyZXBvc2l0b3J5GAIgASgJEhUKDXJlcG9zaXRvcnlfaWQYAyABKAESFwoPaW5zdGFsbGF0aW9uX2lkGAQgASgBEhcKD2JyaWRnZV93b3JrZmxvdxgFIAEoCRISCgpicmlkZ2Vfc2hhGAYgASgJEhcKD3J1bm5lcl9ncm91cF9pZBgHIAEoDRIWCg5hbGxvd2VkX2V2ZW50cxgIIAMoCRIUCgxhbGxvd2VkX3JlZnMYCSADKAkSJwofdHJ1c3RlZF9yZXBvc2l0b3J5X2Fja25vd2xlZGdlZBgKIAEoCBISCgpicmlkZ2VfcmVmGAsgASgJEhsKE2Rpc3BhdGNoZXJfYWN0b3JfaWQYDCABKAEiYwoNQ29uZmlndXJhdGlvbhIlCghhY2NvdW50cxgBIAMoCzITLmhvYm8uY2kudjEuQWNjb3VudBIrCgtjb25uZWN0aW9ucxgCIAMoCzIWLmhvYm8uY2kudjEuQ29ubmVjdGlvbiKvAQoDSm9iEgoKAmlkGAEgASgBEg4KBnJ1bl9pZBgCIAEoARITCgtydW5fYXR0ZW1wdBgDIAEoDRIVCg1yZXBvc2l0b3J5X2lkGAQgASgBEhcKD2luc3RhbGxhdGlvbl9pZBgFIAEoARISCgpyZXBvc2l0b3J5GAYgASgJEg4KBmxhYmVscxgHIAMoCRIOCgZhY3Rpb24YCCABKAkSEwoLcnVubmVyX25hbWUYCSABKAkijgUKBUxlYXNlEgoKAmlkGAEgASgJEhIKCmFjY291bnRfaWQYAiABKAkSEAoIb2ZmZXJfaWQYAyABKAkSEAoIcHJvdmlkZXIYBCABKAkSDgoGam9iX2lkGAUgASgBEhcKD29yaWdpbmFsX3J1bl9pZBgGIAEoARITCgtydW5fYXR0ZW1wdBgHIAEoDRIVCg1yZXBvc2l0b3J5X2lkGAggASgBEhIKCnJlcG9zaXRvcnkYCSABKAkSFwoPaW5zdGFsbGF0aW9uX2lkGAogASgBEg0KBXN0YXRlGAsgASgJEhgKEHJlc2VydmVkX21pbnV0ZXMYDCABKAESHQoVcmVzZXJ2ZWRfZnJlZV9taW51dGVzGA0gASgBEhwKFHJlc2VydmVkX3BhaWRfbWljcm9zGA4gASgBEhMKC3J1bm5lcl9uYW1lGA8gASgJEhIKCmNyZWF0ZWRfYXQYECABKAkSEwoLaG9zdF9ydW5faWQYESABKAESEQoJcnVubmVyX2lkGBIgASgBEhUKDWFjdHVhbF9qb2JfaWQYEyABKAESFgoOYmlsbGVkX21pbnV0ZXMYFCABKAESEwoLcGFpZF9taWNyb3MYFSABKAESEgoKc2V0dGxlZF9hdBgWIAEoCRIfChdwcmljZV9taWNyb3NfcGVyX21pbnV0ZRgXIAEoARIYChBmcmVlX3ZhbGlkX3VudGlsGBggASgJEhsKE2JpbGxlZF9mcmVlX21pbnV0ZXMYGSABKAESEwoLcGlwZWxpbmVfaWQYGiABKAkSKgoGcmVzdWx0GBsgASgLMhouaG9iby5jaS52MS5QaXBlbGluZVJlc3VsdBIXCg9waXBlbGluZV9kaWdlc3QYHCABKAkiWQoHQ2lFdmVudBIMCgR0eXBlGAEgASgJEhIKCmFjY291bnRfaWQYAiABKAkSEAoIbGVhc2VfaWQYAyABKAkSCgoCYXQYBCABKAkSDgoGZGV0YWlsGAUgASgJIlIKCFNuYXBzaG90EiEKBmxlYXNlcxgBIAMoCzIRLmhvYm8uY2kudjEuTGVhc2USIwoGZXZlbnRzGAIgAygLMhMuaG9iby5jaS52MS5DaUV2ZW50IpEBCgxQaXBlbGluZVN0ZXASCgoCaWQYASABKAkSDAoEYXJndhgCIAMoCRILCgNjd2QYAyABKAkSLgoDZW52GAQgAygLMiEuaG9iby5jaS52MS5QaXBlbGluZVN0ZXAuRW52RW50cnkaKgoIRW52RW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASKjAQoIUGlwZWxpbmUSCgoCaWQYASABKAkSEgoKYWNjb3VudF9pZBgCIAEoCRInCgVzdGVwcxgDIAMoCzIYLmhvYm8uY2kudjEuUGlwZWxpbmVTdGVwEhYKDmFydGlmYWN0X3BhdGhzGAQgAygJEhcKD3RpbWVvdXRfc2Vjb25kcxgFIAEoDRIdChVyZXF1aXJlZF9jYXBhYmlsaXRpZXMYBiADKAkiUwoSUGlwZWxpbmVTdGVwUmVzdWx0EgoKAmlkGAEgASgJEhEKCWV4aXRfY29kZRgCIAEoBRIOCgZzdGRvdXQYAyABKAkSDgoGc3RkZXJyGAQgASgJIj4KEFBpcGVsaW5lQXJ0aWZhY3QSDAoEcGF0aBgBIAEoCRIMCgRkYXRhGAIgASgMEg4KBnNoYTI1NhgDIAEoCSKsAQoOUGlwZWxpbmVSZXN1bHQSCgoCaWQYASABKAkSDwoHYmFja2VuZBgCIAEoCRIOCgZzdGF0dXMYAyABKAkSLQoFc3RlcHMYBCADKAsyHi5ob2JvLmNpLnYxLlBpcGVsaW5lU3RlcFJlc3VsdBIvCglhcnRpZmFjdHMYBSADKAsyHC5ob2JvLmNpLnYxLlBpcGVsaW5lQXJ0aWZhY3QSDQoFZXJyb3IYBiABKAliBnByb3RvMw");
 
 /**
  * All costs are integer USD microdollars. Allocations are runner minutes.
@@ -87,6 +87,11 @@ export type Offer = Message<"hobo.ci.v1.Offer"> & {
    * @generated from field: bool bridge_acknowledged = 14;
    */
   bridgeAcknowledged: boolean;
+
+  /**
+   * @generated from field: string backend = 15;
+   */
+  backend: string;
 };
 
 /**
@@ -417,6 +422,21 @@ export type Lease = Message<"hobo.ci.v1.Lease"> & {
    * @generated from field: double billed_free_minutes = 25;
    */
   billedFreeMinutes: number;
+
+  /**
+   * @generated from field: string pipeline_id = 26;
+   */
+  pipelineId: string;
+
+  /**
+   * @generated from field: hobo.ci.v1.PipelineResult result = 27;
+   */
+  result?: PipelineResult | undefined;
+
+  /**
+   * @generated from field: string pipeline_digest = 28;
+   */
+  pipelineDigest: string;
 };
 
 /**
@@ -484,4 +504,181 @@ export type Snapshot = Message<"hobo.ci.v1.Snapshot"> & {
  */
 export const SnapshotSchema: GenMessage<Snapshot> = /*@__PURE__*/
   messageDesc(file_ci, 7);
+
+/**
+ * A portable command pipeline. The backend binds its source workspace separately.
+ *
+ * @generated from message hobo.ci.v1.PipelineStep
+ */
+export type PipelineStep = Message<"hobo.ci.v1.PipelineStep"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: repeated string argv = 2;
+   */
+  argv: string[];
+
+  /**
+   * @generated from field: string cwd = 3;
+   */
+  cwd: string;
+
+  /**
+   * @generated from field: map<string, string> env = 4;
+   */
+  env: { [key: string]: string };
+};
+
+/**
+ * Describes the message hobo.ci.v1.PipelineStep.
+ * Use `create(PipelineStepSchema)` to create a new message.
+ */
+export const PipelineStepSchema: GenMessage<PipelineStep> = /*@__PURE__*/
+  messageDesc(file_ci, 8);
+
+/**
+ * @generated from message hobo.ci.v1.Pipeline
+ */
+export type Pipeline = Message<"hobo.ci.v1.Pipeline"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string account_id = 2;
+   */
+  accountId: string;
+
+  /**
+   * @generated from field: repeated hobo.ci.v1.PipelineStep steps = 3;
+   */
+  steps: PipelineStep[];
+
+  /**
+   * @generated from field: repeated string artifact_paths = 4;
+   */
+  artifactPaths: string[];
+
+  /**
+   * @generated from field: uint32 timeout_seconds = 5;
+   */
+  timeoutSeconds: number;
+
+  /**
+   * @generated from field: repeated string required_capabilities = 6;
+   */
+  requiredCapabilities: string[];
+};
+
+/**
+ * Describes the message hobo.ci.v1.Pipeline.
+ * Use `create(PipelineSchema)` to create a new message.
+ */
+export const PipelineSchema: GenMessage<Pipeline> = /*@__PURE__*/
+  messageDesc(file_ci, 9);
+
+/**
+ * @generated from message hobo.ci.v1.PipelineStepResult
+ */
+export type PipelineStepResult = Message<"hobo.ci.v1.PipelineStepResult"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: int32 exit_code = 2;
+   */
+  exitCode: number;
+
+  /**
+   * @generated from field: string stdout = 3;
+   */
+  stdout: string;
+
+  /**
+   * @generated from field: string stderr = 4;
+   */
+  stderr: string;
+};
+
+/**
+ * Describes the message hobo.ci.v1.PipelineStepResult.
+ * Use `create(PipelineStepResultSchema)` to create a new message.
+ */
+export const PipelineStepResultSchema: GenMessage<PipelineStepResult> = /*@__PURE__*/
+  messageDesc(file_ci, 10);
+
+/**
+ * @generated from message hobo.ci.v1.PipelineArtifact
+ */
+export type PipelineArtifact = Message<"hobo.ci.v1.PipelineArtifact"> & {
+  /**
+   * @generated from field: string path = 1;
+   */
+  path: string;
+
+  /**
+   * @generated from field: bytes data = 2;
+   */
+  data: Uint8Array;
+
+  /**
+   * @generated from field: string sha256 = 3;
+   */
+  sha256: string;
+};
+
+/**
+ * Describes the message hobo.ci.v1.PipelineArtifact.
+ * Use `create(PipelineArtifactSchema)` to create a new message.
+ */
+export const PipelineArtifactSchema: GenMessage<PipelineArtifact> = /*@__PURE__*/
+  messageDesc(file_ci, 11);
+
+/**
+ * @generated from message hobo.ci.v1.PipelineResult
+ */
+export type PipelineResult = Message<"hobo.ci.v1.PipelineResult"> & {
+  /**
+   * @generated from field: string id = 1;
+   */
+  id: string;
+
+  /**
+   * @generated from field: string backend = 2;
+   */
+  backend: string;
+
+  /**
+   * @generated from field: string status = 3;
+   */
+  status: string;
+
+  /**
+   * @generated from field: repeated hobo.ci.v1.PipelineStepResult steps = 4;
+   */
+  steps: PipelineStepResult[];
+
+  /**
+   * @generated from field: repeated hobo.ci.v1.PipelineArtifact artifacts = 5;
+   */
+  artifacts: PipelineArtifact[];
+
+  /**
+   * @generated from field: string error = 6;
+   */
+  error: string;
+};
+
+/**
+ * Describes the message hobo.ci.v1.PipelineResult.
+ * Use `create(PipelineResultSchema)` to create a new message.
+ */
+export const PipelineResultSchema: GenMessage<PipelineResult> = /*@__PURE__*/
+  messageDesc(file_ci, 12);
 

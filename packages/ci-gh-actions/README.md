@@ -143,3 +143,24 @@ starts a queued host after the credit window ends, bootstrap can still incur cos
 settlement conservatively treats usage outside the pinned window as paid. Provider
 spend controls and native queue cancellation are required for an external billing
 ceiling. The current relay enforces budget admission using configured evidence.
+
+
+## Portable pipelines and local workflows
+
+`createActionsBackend({workspace})` runs the shared parsed `@hobo/ci` pipeline in
+an explicitly bound original runner or `act` workspace. It preserves sequential
+files, isolates step env, rejects artifact/cwd escapes and waits for process-group
+termination before acknowledging cancellation. It does not remotely execute an
+Actions job from the relay process. Dagger and Cloudflare factories implement the
+same command/artifact contract; see `contracts/backend-swap.consumer.test.ts`.
+All backends reserve `HOBO_CI_EXECUTION_ID` for the logical execution identity.
+
+`LeaseStore` now belongs to `@hobo/ci/store`; this package keeps its compatibility
+export. Native pipelines and original GitHub jobs share account/provider budget
+and free-minute reservations. Original `runs-on: hobo` jobs only select
+`gh-actions` offers; native pipeline routing selects compatible bound backends.
+
+Actual local workflow verification is available through `act:install` and
+`test:act`; `act/README.md` documents the pinned binary, unchanged workflow,
+40 executed jobs and zero-launch budget refusal. These tests create no remote
+App, repository or provider resources.

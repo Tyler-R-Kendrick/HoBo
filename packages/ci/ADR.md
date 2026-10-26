@@ -30,8 +30,26 @@ fixtures. The runtime/provider and webhook/bootstrap PACT boundaries belong to
 Parse, don't validate: configuration constructors establish parsed domain types from
 protobuf JSON before the pure routing decision. In this first SDK the parsed type
 is the generated record plus its constructor's dependent checks; callers should
-not mutate it after parsing. A future immutable/branded surface can strengthen
-compile-time enforcement without duplicating the protobuf fields.
+not mutate it after parsing. Portable pipeline constructors additionally deep-freeze executable fields and
+return a branded parsed type, so a reservation digest cannot diverge from the
+commands later executed. Configuration updates remain operator-owned inputs.
 
 The runtime actor owns the event store; a projection supplies a snapshot in the
 read store. The pure SDK neither emits commands nor mutates a read store itself.
+
+
+Portable execution adds `Pipeline`, steps/results and byte artifacts to the same
+protobuf/CUE family. A Worker-safe execution module owns sequencing, fail-fast
+behavior, UTF-8 output bounds, artifact integrity and cancellation normalization.
+Backend session close must acknowledge work stopped; infrastructure idle lifetime
+and invoices remain provider-specific metering inputs. Generic synchronous and
+asynchronous allocation failures are equally uncertain. Promises that reject
+while aborting are drained to prevent an unhandled rejection crashing the actor.
+
+The Node pipeline scheduler filters capability/backend compatibility before
+ranking and reserves through the shared SQLite actor. `ci.PipelineStarted` and
+`ci.BackendRefused` complement existing lease events. The lease stores a canonical
+input digest and final result; snapshots/read-store projections replay them.
+A new logical execution identity prevents Dagger cache reuse across side-effect
+runs. Replay retains its original identity and never invokes another provider.
+Native pipeline IDs are distinct from repository-scoped GitHub job keys.

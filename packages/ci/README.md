@@ -111,8 +111,8 @@ imports. Budget admission belongs to the authenticated control plane before
 the Worker pipeline starts. Native adapters execute inside their explicitly
 bound engine/workspace; the Node relay does not become a vendor runner.
 
-Run `pnpm --filter @hobo/ci-gh-actions act:install -- --directory /tmp/hobo-ci-tools`
-and `pnpm --filter @hobo/ci-gh-actions test:act -- --act /tmp/hobo-ci-tools/act`
+Run `pnpm --filter @hobo/ci-gh-actions act:install --directory /tmp/hobo-ci-tools`
+and `pnpm --filter @hobo/ci-gh-actions test:act --act /tmp/hobo-ci-tools/act`
 for actual local workflow execution. See its `act/README.md` for evidence and
 boundary details. The ordinary test lane includes the cross-backend command
 corpus, budget policy regressions and the SDK protocol contracts.

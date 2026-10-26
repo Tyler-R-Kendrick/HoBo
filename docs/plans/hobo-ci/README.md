@@ -51,7 +51,7 @@ Cloudflare tests execute its installed SDK's real timeout resolver.
   allocation ambiguity, stop acknowledgment and protocol boundary Pacts.
 - `contracts/backend-swap.consumer.test.ts`: unchanged pipeline cases through
   all backend adapters, including real filesystem mutations and process stops.
-- `pnpm --filter @hobo/ci-gh-actions test:act -- --act <act-0.2.89>`:
+- `pnpm --filter @hobo/ci-gh-actions test:act --act <act-0.2.89>`:
   40 actual workflow jobs across eight admitted routing scenarios, plus
   zero-budget refusal with zero launches. Same workflow digest in every run.
 - Shared and package-scoped `codegen:check`: protobuf/CUE fixtures and generated

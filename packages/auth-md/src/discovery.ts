@@ -13,6 +13,7 @@ import { createHash } from "node:crypto";
 import { authMdError } from "./errors.js";
 import type { HttpPort } from "./http.js";
 import { requestBounded, requestJson } from "./http.js";
+import { authMdJsonObject, authMdJsonString } from "./json.js";
 import type { HttpsUrl, Scope } from "./types.js";
 import { parseHttpsUrl, parseScopes } from "./types.js";
 
@@ -63,6 +64,8 @@ export interface DiscoveryOptions {
 	readonly port: HttpPort;
 	/** The protected resource origin or URL, e.g. `https://api.example.com`. */
 	readonly resource: string;
+	/** Explicit protected-resource metadata path; must remain on the selected resource origin. */
+	readonly metadataUrl?: string;
 	/** Fetch the prose companion too (default true). */
 	readonly includeDocument?: boolean;
 }
@@ -83,16 +86,10 @@ export function authMdDocumentUrl(resource: string): HttpsUrl {
 	);
 }
 
-export function parseProtectedResourceMetadata(
-	raw: unknown,
+export function parseProtectedResourceMetadata<T>(
+	raw: T,
 ): ProtectedResourceMetadata {
-	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-		throw authMdError(
-			"AUTHMD_METADATA_INVALID",
-			"protected resource metadata must be a JSON object",
-		);
-	}
-	const record = raw as Record<string, unknown>;
+	const record = authMdJsonObject(raw, "protected resource metadata");
 	const resource = parseHttpsUrl(record.resource, "resource");
 	const authorizationServersRaw = record.authorization_servers;
 	if (
@@ -106,7 +103,7 @@ export function parseProtectedResourceMetadata(
 		);
 	}
 	const authorizationServers = Object.freeze(
-		(authorizationServersRaw ?? []).map((entry: unknown) =>
+		(authorizationServersRaw ?? []).map((entry) =>
 			parseHttpsUrl(entry, "authorization_servers[]"),
 		),
 	);
@@ -127,8 +124,8 @@ export function parseProtectedResourceMetadata(
 		);
 	}
 	const bearerMethods = Object.freeze(
-		(bearerMethodsRaw ?? []).map((entry: unknown, index: number) => {
-			if (typeof entry !== "string" || entry.length === 0) {
+		(bearerMethodsRaw ?? []).map((entry, index) => {
+			if (!authMdJsonString(entry) || entry.length === 0) {
 				throw authMdError(
 					"AUTHMD_METADATA_INVALID",
 					`bearer_methods_supported[${index}] must be a non-empty string`,
@@ -139,23 +136,24 @@ export function parseProtectedResourceMetadata(
 		}),
 	);
 
-	return Object.freeze({
+	const metadata: ProtectedResourceMetadata = {
 		resource,
 		authorizationServers,
 		scopesSupported: parseScopes(record.scopes_supported, "scopes_supported"),
 		bearerMethodsSupported: bearerMethods,
-		...(record.anonymous_registration_endpoint === undefined
-			? {}
-			: {
-					anonymousRegistrationEndpoint: parseHttpsUrl(
-						record.anonymous_registration_endpoint,
-						"anonymous_registration_endpoint",
-					),
-				}),
-		...(record.auth_md_url === undefined
-			? {}
-			: { authMdUrl: parseHttpsUrl(record.auth_md_url, "auth_md_url") }),
-	});
+	};
+	if (record.anonymous_registration_endpoint !== undefined)
+		Object.assign(metadata, {
+			anonymousRegistrationEndpoint: parseHttpsUrl(
+				record.anonymous_registration_endpoint,
+				"anonymous_registration_endpoint",
+			),
+		});
+	if (record.auth_md_url !== undefined)
+		Object.assign(metadata, {
+			authMdUrl: parseHttpsUrl(record.auth_md_url, "auth_md_url"),
+		});
+	return Object.freeze(metadata);
 }
 
 const SCOPE_BULLET_PATTERN = /^[-*]\s+`([^`]+)`/u;
@@ -221,30 +219,44 @@ export function reconcileDiscovery(
 		}
 	}
 
-	return Object.freeze({
+	const discovery: AuthMdDiscovery = {
 		metadata,
-		...(document === undefined ? {} : { document }),
 		conflicts: Object.freeze(conflicts),
 		effectiveScopes: metadata.scopesSupported,
 		anonymousRegistrationSupported:
 			metadata.anonymousRegistrationEndpoint !== undefined,
-		...(metadata.anonymousRegistrationEndpoint === undefined
-			? {}
-			: {
-					anonymousRegistrationEndpoint: metadata.anonymousRegistrationEndpoint,
-				}),
-	});
+	};
+	if (document !== undefined) Object.assign(discovery, { document });
+	if (metadata.anonymousRegistrationEndpoint !== undefined)
+		Object.assign(discovery, {
+			anonymousRegistrationEndpoint: metadata.anonymousRegistrationEndpoint,
+		});
+	return Object.freeze(discovery);
 }
 
 export async function discoverAuthMd(
 	options: DiscoveryOptions,
 ): Promise<AuthMdDiscovery> {
+	const metadataUrl =
+		options.metadataUrl === undefined
+			? protectedResourceMetadataUrl(options.resource)
+			: parseHttpsUrl(options.metadataUrl, "metadataUrl");
+	if (
+		new URL(metadataUrl).origin !==
+		new URL(parseHttpsUrl(options.resource, "resource")).origin
+	)
+		throw authMdError(
+			"AUTHMD_METADATA_INVALID",
+			"protected-resource metadata must remain on the selected resource origin",
+		);
 	const metadata = parseProtectedResourceMetadata(
-		await requestJson(
-			options.port,
-			protectedResourceMetadataUrl(options.resource),
-		),
+		await requestJson(options.port, metadataUrl),
 	);
+	if (new URL(metadata.resource).origin !== new URL(options.resource).origin)
+		throw authMdError(
+			"AUTHMD_METADATA_INVALID",
+			"metadata resource differs from the selected resource origin",
+		);
 
 	if (options.includeDocument === false) {
 		return reconcileDiscovery(metadata);

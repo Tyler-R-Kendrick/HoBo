@@ -24,11 +24,16 @@
 		"@hobo/cloud": "workspace:*",
 		"@hobo/core": "workspace:*",
 		"@hobo/contracts": "workspace:*",
-		"@hobo/dispatcher": "workspace:*"
+		"@hobo/dispatcher": "workspace:*",
+		"@bufbuild/protobuf": "2.12.1",
+		"esbuild": "^0.25.0"
 	},
 	"devDependencies": {
+		"typescript": "^6.0.3",
 		"@hobo/contract-harness": "workspace:*",
-		"vitest": "^4.1.9"
+		"vitest": "^4.1.9",
+		"@hobo/runtime-local": "workspace:*",
+		"@hobo/runner-github": "workspace:*"
 	},
-	"description": "HoBo operator SDK (ADR-0072): thin authoring factories over the dispatcher/policy/cloud engines plus frozen, parse-validated declarations for waiver/chaos/runbook/generateProvider/runner (docs/plans/0017 F23)."
+	"description": "HoBo operator SDK: executable runbooks, scoped waivers, reversible chaos experiments, provider generation, and local or explicitly configured remote runners."
 }

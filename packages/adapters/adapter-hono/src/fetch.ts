@@ -9,14 +9,10 @@
  */
 
 /** Minimal surface we need from Hono (avoids hard-coupling to every Hono release type). */
-import { isJsonObject, type JsonValue } from "./json.js";
+import { isJsonObject } from "./json.js";
 
 export interface HonoFetchApp {
-	readonly fetch: (
-		request: Request,
-		env?: JsonValue,
-		executionCtx?: JsonValue,
-	) => Response | Promise<Response>;
+	readonly fetch: (request: Request) => Response | Promise<Response>;
 }
 
 /** Framework-free handler shape used by local Yard / Camp hosts. */

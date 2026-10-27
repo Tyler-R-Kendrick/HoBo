@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import { readdir } from "node:fs/promises";
-import { join, relative } from "node:path";
+import { join, relative, sep } from "node:path";
 
 import ts from "typescript";
 import { CodegenError, type CodegenLayout } from "./types.js";
@@ -19,7 +19,12 @@ export async function scannedSources(
 
 	const files: string[] = [];
 	async function visit(directory: string): Promise<void> {
-		if (excluded.some((root) => directory.startsWith(root))) return;
+		if (
+			excluded.some(
+				(root) => directory === root || directory.startsWith(`${root}${sep}`),
+			)
+		)
+			return;
 		for (const entry of await readdir(directory, { withFileTypes: true })) {
 			const path = join(directory, entry.name);
 			if (entry.isDirectory()) {

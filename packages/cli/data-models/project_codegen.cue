@@ -5,7 +5,9 @@ package project_codegen
 
 #CodegenArtifact: {
 	path:    #RelativePath
-	content: string
+	content?: string
+	binaryContent?: string
+	if binaryContent == _|_ { content: string }
 }
 
 #DriftEntry: {
@@ -41,3 +43,26 @@ package project_codegen
 		contract_ref: string & =~"^decl://"
 	}
 }
+
+#CodegenFieldSchema: {
+	kind: "string" | "number" | "integer" | "boolean" | "null" | "enum" | "object" | "array" | "tuple" | "record" | "union" | "oneof" | "intersection" | "ref" | "any" | "unknown" | "never"
+	fields?: [string]: #CodegenFieldSchema
+	items?: #CodegenFieldSchema
+	variants?: [...#CodegenFieldSchema]
+	valuesJson?: [...string]
+	optional?: bool
+	nullable?: bool
+	reference?: string
+	tuple?: [...#CodegenFieldSchema]
+	format?: string
+	closed?: bool
+	if kind == "ref" { reference: string & !="" }
+	if kind == "array" || kind == "record" { items: #CodegenFieldSchema }
+	if kind == "union" || kind == "oneof" || kind == "intersection" { variants: [#CodegenFieldSchema, ...#CodegenFieldSchema] }
+	if kind == "enum" { valuesJson: [string, ...string] }
+}
+
+#GeneratedJson: null | bool | number | string | [...#GeneratedJson] | {[string]: #GeneratedJson}
+#GeneratedResourcePut: { key: string & !="", value: #GeneratedJson }
+#GeneratedResourceRemoved: { key: string & !="" }
+#GeneratedResourceSnapshot: { values: {[string]: #GeneratedJson} }

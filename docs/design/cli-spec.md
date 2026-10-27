@@ -17,13 +17,13 @@ surfaces.
 
 | Verb | Role | Semantics | Implementation issues |
 |---|---|---|---|
-| `up` | lifecycle | Realize the current object graph: build, plan, gate, provision, and deploy. `--camp`, `--strategy`, `--to`, `--rollback`, `--seed`, and `--restore` select target or revision without adding lifecycle verbs. `--broker` / `--broker-uri` target a remote broker (discovery required); `--anonymous` / `--temporary` request an ephemeral deploy when discovery advertises support. No flags = local embedded broker (zero-config, offline). | HOBO-130, HOBO-164, HOBO-198, HOBO-203, HOBO-208, HOBO-213, HOBO-219, HOBO-224 |
+| `up` | lifecycle | Realize the current object graph: build, plan, gate, provision, and deploy. `--camp`, `--strategy`, `--to`, `--rollback`, `--seed`, and `--restore` select target or revision without adding lifecycle verbs. `--broker` / `--broker-uri` target a remote broker (discovery required); `--anonymous` / `--temporary` request an ephemeral deploy when discovery advertises support. Without a flag, environment, or profile broker selection, use the local embedded broker. | HOBO-130, HOBO-164, HOBO-198, HOBO-203, HOBO-208, HOBO-213, HOBO-219, HOBO-224 |
 | `down` | lifecycle | Tear down what `up` realized, in reverse dependency order. | HOBO-132 |
 | `dev` | local loop | Run against `runtime-local` with hot reload, replay, codegen-in-watch, and honest fidelity labels. Every workload lane participates: wasm components in any supported language recompile in-watch and OCI-fallback services restart-on-change per the dev-loop matrix ([ADR-0109](./adr/07-portability-extensibility.md#adr-0109)). | HOBO-122, HOBO-190, HOBO-198, HOBO-392, HOBO-612 (draft POC: `src/draft/technical-proofs/hobo-612-dev-local-loop-poc/`) |
 | `new` | local loop | Scaffold a runnable SDK program. | HOBO-118, HOBO-198 |
 | `login` | identity | Obtain a dev SVID through OIDC; never paste provider keys. Optional `--broker` / `--broker-uri` associates a default remote broker on the HOBO_HOME profile (identity plane; not placement). | HOBO-136, HOBO-184 |
 | `connection` | identity | Manage durable Station-owned Connections (create/authorize/list/get/revoke/rotate). Scoped by `--station` / profile.defaultStation. | HOBO-connection, ADR-0131 |
-| `identity` | identity | Observe continuous identity migration (status/inspect). Zero Bindle config; Matching + dual fixtures drive dual-path. | ADR-0132 |
+| `identity` | identity | Observe identity migration (status/inspect), or manage auth.md agent registration, claim, scoped token exchange, rotation and revocation (`agent discover/register/status/claim/poll/token/rotate/revoke`). Agent identity, human login and infrastructure ownership remain separate. | ADR-0132 |
 | `trails` | migration | Observe continuous migration Trails (`status`, `plan`, `inspect`). App-owned recipes; identity continuous stays zero Bindle config (`identity.continuous` compose). | ADR-0134 |
 | `access` | identity | Request elevated or cross-env access / break-glass (short-lived capability; audited). | ADR-0133 |
 | `feature` | delivery | OpenFeature flags, canary, and experiment observe (`list`, `eval`, `set`, `kill`, `canary`, `experiment`). Sole app evaluation API is OpenFeature; no vendor SDKs. | ADR-0044, ADR-0083 |
@@ -55,6 +55,7 @@ surfaces.
 | `erase` | governance | Request crypto-shred erasure and projection rebuild for a data subject without rewriting historical events. | HOBO-295 |
 | `broker` | governance | The broker (the Conductor) on the CLI. Requires Station context when available (profile / `HOBO_STATION` / `--station`); receipts pin `stationId` + `railHash`. `broker config [--init]` scaffolds/validates `hobo.broker.json` (importable as a Rail under a Station); `broker up [--config --request]` assembles the Conductor against Station + active Rail + local-host catalog when no cloud config; `broker resolve --policies --request` runs one resolution; `broker matrix` prints the closed rejection-code catalog. App lifecycle stays `up`/`down`. | HOBO-521, HOBO-525, HOBO-528, HOBO-529 |
 | `serve` | control plane (local) | **Local control-plane HTTP+SSE** for the Yard game UI (`hobo serve control`). Same management surface as station/connection verbs; default `127.0.0.1:8790`. | ADR-0150 |
+| `yard` | control plane | Install, equip, and inspect the local Yard (`init`, `ensure`, `status`, `doctor`). Setup and diagnostics, not a second lifecycle verb. | ADR-0131 |
 | `station` | control plane (ops/setup) | **Station occupancy setup/ops family — not a lifecycle verb.** `station init` creates a Station under `HOBO_HOME` with a sealed bootstrap Rail and sets `profile.defaultStation` (imports existing `hobo.broker.json` as an approved Rail when present); `station up` / `station down` start/stop occupancy (data retained on down); `station status` projects isolation, active Rail hash, bootstrap-active, Connection counts; `station rails` manages Rails (`list`, `publish`, `approve`, `activate`, `status`). Missing Station fails closed with remediation `hobo station init`. | ADR-0131 |
 | `replay` | observability | **Session Replay** (DOM/session reconstruction on every **App Kit**) — subcommands `list`, `get`, `open`, `summarize`, `retention`, `doctor`. Distinct from control-plane event-log replay and auth `session.*`. Local dual fixtures default-on for all App Kits (not only `web`); production flag/sample gated; `HOBO_REPLAY=0` kill switch. MCP parity via CANONICAL_VERBS. | ADR-0137 |
 | `derivative` | extensibility | Manage derived HoBo implementations; `derivative upgrade` checks descriptors, runs upcasters, and reruns conformance. | HOBO-36, HOBO-336, HOBO-386 |
@@ -115,7 +116,12 @@ Target resolution for `up` / default remote association:
 3. Persisted profile under `HOBO_HOME` / `~/.hobo/profile.json`
 4. Embedded local broker (zero-config default)
 
-Remote paths **must** fetch a discovery document before place/claim. Anonymous/`--temporary` is **forbidden** unless discovery sets `supportsAnonymous` (or lists `anonymous` in auth methods). Success prints claim token/URL + TTL + primary URL (Cloudflare temporary / Lakebed claim style). Agents use SPIFFE-style SVID principals distinct from human login; DPoP-capable presentation is preferred for remote agent credentials.
+The embedded broker is self-hosted. Hosted HoBo brokers and hosting relays are
+optional; an explicitly selected network endpoint can also be self-hosted.
+There is no automatic hosted-broker fallback. `--anonymous` / `--temporary`
+alone do not select a network broker or impose a local lease TTL.
+
+Remote paths **must** fetch a discovery document before place/claim. Anonymous/`--temporary` is **forbidden** unless parsed discovery supports it. An explicit `supportsAnonymous: false` takes precedence over the auth-method list; when omitted, support is derived from the `anonymous` auth method. Successful remote anonymous placement returns claim token/URL, expiry, primary URL, and any TTL/restrictions supplied by the broker (Cloudflare temporary / Lakebed claim style). Agents use SPIFFE-style SVID principals distinct from human login; DPoP-capable presentation is preferred for remote agent credentials.
 
 Identity remains the identity plane (`login` / SVID / claim); placement remains the broker plane. No new lifecycle verbs.
 
@@ -139,7 +145,6 @@ authoritative source.
 | `teardown` | `down` | Retired. Use the same destructive verb everywhere. |
 | `rollback` | `up` | Retired as a verb. Use `hobo up --rollback` or `hobo up --to <revision>`. |
 | `promote` | `up` | Retired as a verb. Use `hobo up --camp <target> --to <revision>`. |
-| `yard` | `up` | Rejected. A Yard is an SDK object/program; bootstrap it with `hobo up ./platform`. |
 | `forge` | `build` | Rejected. Build/componentization is `hobo build`. |
 | `train` | `up` | Rejected. Training is declared in code and promoted through the same gate. |
 | `crew` | `inspect` | Rejected. The Crew is SDK code plus dashboard/MCP surfaces, observed through projections. |

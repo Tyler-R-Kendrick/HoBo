@@ -47,3 +47,12 @@ Promoted from `src/draft/technical-proofs/runtime-local-component-host` in S1-02
 (HOBO-591). wRPC link layer promoted in S1-03 (HOBO-592 / PR #784). Capability
 enforcement promoted from `src/draft/technical-proofs/capability-enforcement-contract`
 in S1-04 (HOBO-593). Binding resolver adapter added in S1-15 (HOBO-605).
+
+## Durable EventStore reopen coverage
+
+`createRuntimeLocalEventStore` delegates ID allocation to the shared
+`@hobo/storage-sqlite` journal. Reopening with its default manual clock preserves
+old IDs and permits new appends; IDs are never restarted from an empty-database
+assumption. `test/eventstore-reopen-ids.test.ts` exercises this against real
+SQLite. The generated API integration test also closes and reopens the default
+store before resuming a journaled workflow without repeating completed effects.

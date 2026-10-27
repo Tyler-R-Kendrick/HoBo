@@ -1,9 +1,10 @@
 import { resolve } from "node:path";
 
 import { toJson } from "@bufbuild/protobuf";
-import { loadSourceModel } from "../codegen/engine.js";
-import { runCodegen } from "../codegen/run-codegen.js";
 import { scanAmbientTrainableClasses } from "../codegen/ambient-trainables.js";
+import { loadSourceModel } from "../codegen/engine.js";
+import { selectProjectCodegenEngine } from "../codegen/project-engine.js";
+import { runCodegen } from "../codegen/run-codegen.js";
 import {
 	buildTrainables,
 	scanTrainableDirectives,
@@ -12,12 +13,10 @@ import {
 	type CodegenEngine,
 	CodegenError,
 	CodegenReportSchema,
-	defaultCodegenLayout,
 	TrainableStubSchema,
 } from "../codegen/types.js";
+import type { JsonObject } from "../json.js";
 import type { CommandModule } from "../shell/registry.js";
-import { type JsonObject } from "../json.js";
-
 
 export interface StubCommandOptions {
 	readonly engine?: CodegenEngine;
@@ -35,16 +34,28 @@ export function createStubCommand(
 	return {
 		run: async ({ context, flags }) => {
 			const projectRoot = resolve(context.projectDir ?? context.cwd);
-			const layout = options.engine?.layout ?? defaultCodegenLayout();
+			const engine =
+				options.engine ?? (await selectProjectCodegenEngine(projectRoot));
+			const layout = engine.layout;
 			try {
 				const result = await runCodegen(
 					{ projectRoot, check: flags.check },
-					options,
+					{ engine },
 				);
-				const model = await loadSourceModel(projectRoot, layout.sources);
-				const directives = await scanTrainableDirectives(projectRoot, layout);
-				const ambient = await scanAmbientTrainableClasses(projectRoot, layout);
-				const stubs = buildTrainables(model, layout, directives, ambient).stubs;
+				const stubs = engine.describeTrainables
+					? await engine.describeTrainables(projectRoot)
+					: await (async () => {
+							const model = await loadSourceModel(projectRoot, layout.sources);
+							const directives = await scanTrainableDirectives(
+								projectRoot,
+								layout,
+							);
+							const ambient = await scanAmbientTrainableClasses(
+								projectRoot,
+								layout,
+							);
+							return buildTrainables(model, layout, directives, ambient).stubs;
+						})();
 				return {
 					ok: true,
 					status: "ok",

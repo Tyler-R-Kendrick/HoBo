@@ -62,7 +62,7 @@ message RunnerDeclaration {
   string kind = 2; // self-hosted | github | depot | blacksmith
   string provider_id = 3; // dispatcher candidate id, e.g. runner.github
   string category = 4; // always "runner"
-  string behind = 5; // self-hosted only: "relay" (outbound Relay, no inbound ports)
+  string behind = 5; // optional self-hosted transport: "relay"; omitted selects direct local execution
   double list_unit_cost = 6;
   double switching_cost = 7;
 }
@@ -78,4 +78,65 @@ message PluginDeclaration {
   string package_name = 2;
   string entry = 3; // package-relative, starts with ./
   repeated PluginExtensionEntry extensions = 4;
+}
+
+// Persisted execution facts use @hobo/core EventEnvelope for identity, tenant,
+// ordering and actor. These fields describe the SDK-owned data payload; details
+// is JSON so the effect owner can retain observed, provider-specific evidence.
+message OperatorExecutionFact {
+  string execution_id = 1;
+  string kind = 2; // waiver | chaos | runbook | runner | provider-generation
+  string step = 3;
+  string status = 4;
+  string detail_json = 5;
+}
+
+message RunbookDiagnosis {
+  repeated string conditions = 1;
+  string evidence_json = 2;
+}
+
+message RunbookExecutionResult {
+  string execution_id = 1;
+  string status = 2; // completed | blocked | unmatched
+  repeated string completed_actions = 3;
+  string reason = 4;
+}
+
+message WaiverExecutionState {
+  string decision_id = 1;
+  string status = 2; // missing | requested | approved | expired | revoked
+  string requester = 3;
+  string approved_by = 4;
+  WaiverDeclaration declaration = 5;
+  string policy_fingerprint = 6;
+  int32 revision = 7;
+}
+
+message LocalRunnerJob {
+  string job_id = 1;
+  repeated string argv = 2;
+  string cwd = 3;
+  map<string, string> env = 4;
+  int32 timeout_ms = 5;
+  int32 max_output_bytes = 6;
+}
+
+message RunnerExecutionResult {
+  string job_id = 1;
+  string provider_id = 2;
+  string status = 3; // succeeded | failed
+  int32 exit_code = 4;
+  string stdout = 5;
+  string stderr = 6;
+  bool timed_out = 7;
+}
+
+message GeneratedProviderReceipt {
+  string provider_id = 1;
+  string source_path = 2;
+  string digest = 3;
+  string signature = 4;
+  string public_key = 5;
+  int32 operation_count = 6;
 }

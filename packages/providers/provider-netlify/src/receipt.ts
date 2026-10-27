@@ -135,6 +135,7 @@ export function scanForCredentialMaterial(
 	value: JsonValue,
 ): readonly CredentialScanHit[] {
 	const hits: CredentialScanHit[] = [];
+	const seen = new WeakSet<object>();
 
 	const walk = (node: JsonValue, path: string): void => {
 		if (isJsonString(node)) {
@@ -144,6 +145,16 @@ export function scanForCredentialMaterial(
 				}
 			}
 			return;
+		}
+		if (node !== null && (isJsonArray(node) || isJsonObject(node))) {
+			if (seen.has(node)) return;
+			seen.add(node);
+			const toJSON = "toJSON" in node ? node.toJSON : undefined;
+			if (toJSON instanceof Function) {
+				// SAFETY: custom serialization is an I/O boundary; scan its wire view.
+				walk(toJSON.call(node) as JsonValue, path);
+				return;
+			}
 		}
 		if (isJsonArray(node)) {
 			node.forEach((entry, index) => {

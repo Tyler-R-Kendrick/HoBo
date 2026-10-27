@@ -8,9 +8,9 @@ import { WAIVER_SCHEMA } from "./schema.js";
 
 // Greenfield declaration factory (walkthrough §4.6): a waiver is a governed,
 // time-boxed, separation-of-duties exception to a policy denial. The factory's
-// honest scope is the declaration contract — parse, freeze, schema-version;
-// the approval/expiry engine (policy.WaiverApproved / policy.WaiverExpired)
-// is a separate initiative.
+// authoring boundary parses and freezes the declaration. createWaiverService
+// executes request/approval/authorization/expiry against the durable EventStore
+// and the existing policy evaluator (waiver-chaos-execution.ts).
 
 // domain-view: authored break-glass waiver; wire form is WaiverDeclaration in data-models/sdk.proto.
 export interface WaiverDeclaration {

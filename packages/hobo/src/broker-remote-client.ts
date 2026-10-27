@@ -138,11 +138,21 @@ export function createRemoteBrokerClient(options: {
 		return cachedDiscovery;
 	}
 
-	function resolveUrl(endpoint: string): string {
-		if (endpoint.startsWith("http://") || endpoint.startsWith("https://")) {
-			return endpoint;
+	function resolveUrl(endpoint: string, anonymousSession = false): string {
+		const base = new URL(brokerUri);
+		const resolved = new URL(endpoint, `${brokerUri}/`);
+		if (
+			(resolved.origin !== base.origin &&
+				!(anonymousSession && resolved.protocol === "https:")) ||
+			resolved.username !== "" ||
+			resolved.password !== ""
+		) {
+			throw new RemoteBrokerClientError(
+				"broker discovery endpoint must remain on the selected broker origin and contain no user information",
+				"HOBO_BROKER_ENDPOINT_UNSAFE",
+			);
 		}
-		return `${brokerUri}${endpoint.startsWith("/") ? "" : "/"}${endpoint}`;
+		return resolved.toString();
 	}
 
 	return {
@@ -162,16 +172,20 @@ export function createRemoteBrokerClient(options: {
 			if (options.mock) {
 				return options.mock.createAnonymousSession(input.bindleName);
 			}
-			const res = await fetchImpl(resolveUrl(doc.anonymousSessionEndpoint), {
-				method: "POST",
-				headers: {
-					"content-type": "application/json",
-					accept: "application/json",
+			const res = await fetchImpl(
+				resolveUrl(doc.anonymousSessionEndpoint, true),
+				{
+					method: "POST",
+					redirect: "error",
+					headers: {
+						"content-type": "application/json",
+						accept: "application/json",
+					},
+					body: JSON.stringify({
+						bindleName: input.bindleName ?? "unknown",
+					}),
 				},
-				body: JSON.stringify({
-					bindleName: input.bindleName ?? "unknown",
-				}),
-			});
+			);
 			if (!res.ok) {
 				throw new RemoteBrokerClientError(
 					`anonymous session failed (HTTP ${res.status})`,
@@ -192,6 +206,7 @@ export function createRemoteBrokerClient(options: {
 			};
 			const res = await fetchImpl(resolveUrl(doc.placeEndpoint), {
 				method: "POST",
+				redirect: "error",
 				headers,
 				body: JSON.stringify({
 					bindleName: request.bindleName,
@@ -228,6 +243,7 @@ export function createRemoteBrokerClient(options: {
 			}
 			const res = await fetchImpl(resolveUrl(doc.claimEndpoint), {
 				method: "POST",
+				redirect: "error",
 				headers,
 				body: JSON.stringify({
 					claimToken: request.claimToken,

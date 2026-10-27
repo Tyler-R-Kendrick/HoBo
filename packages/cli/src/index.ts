@@ -23,6 +23,11 @@ export {
 	generateAgentDocs,
 } from "./agent-docs/generate.js";
 export {
+	buildContainerImage,
+	type ContainerBuildFn,
+	validateContainerArchive,
+} from "./build/container-build.js";
+export {
 	BINDLE_SOURCE_CANDIDATES,
 	compileProjectManifest,
 	DEFAULT_COMPONENT_HOST,
@@ -52,7 +57,16 @@ export {
 	type YardRuntime,
 	type YardSession,
 } from "./cloud/yard-client.js";
+export { createProjectCodegenEngine } from "./codegen/engine.js";
+export { selectProjectCodegenEngine } from "./codegen/project-engine.js";
+export { runCodegen } from "./codegen/run-codegen.js";
 export type { CodegenEngine } from "./codegen/types.js";
+export {
+	createTypeScriptProjectCodegenEngine,
+	packageTypeScriptAppArtifacts,
+	selectTypeScriptProjectCodegenEngine,
+	type TypeScriptProjectCodegenOptions,
+} from "./codegen/typescript-project-engine.js";
 export {
 	BUILD_MANIFEST_PATH,
 	BuildError,

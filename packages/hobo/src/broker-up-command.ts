@@ -1,3 +1,7 @@
+import {
+	presentAuthMdCredential,
+	recordAuthMdDeployment,
+} from "./auth-md-command.js";
 /**
  * `hobo up` composition: deploy through embedded or remote broker.
  *
@@ -50,6 +54,7 @@ import {
 	createCredentialPresenter,
 } from "./credential-presenter.js";
 import { isJsonString, type JsonObject } from "./json.js";
+import { startLocalDeployment } from "./local-deployment.js";
 import { serveProjectOnLocalYard } from "./wasm-host.js";
 
 async function freePort(): Promise<number> {
@@ -70,6 +75,7 @@ async function freePort(): Promise<number> {
 }
 
 export interface BrokerAwareUpCommandDeps {
+	readonly authMdFetch?: typeof fetch;
 	readonly discovery?: BrokerDiscoveryClient;
 	readonly presenter?: CredentialPresenter;
 	/** Inject remote client factory (tests). */
@@ -84,6 +90,8 @@ export interface BrokerAwareUpCommandDeps {
 	 * offline bindle-source path when no runtime is wired.
 	 */
 	readonly runtime?: YardRuntime;
+	/** Product composition keeps the self-hosted process running beyond CLI exit. */
+	readonly persistentLocal?: boolean;
 }
 
 export function createBrokerAwareUpCommand(
@@ -167,6 +175,11 @@ export function createBrokerAwareUpCommand(
 						definitionName: definition.name,
 						definition,
 						emitProgress,
+						persistent: deps.persistentLocal === true,
+						ttlSeconds:
+							flags.anonymous === true || flags.temporary === true
+								? localTtlSeconds(env.HOBO_LOCAL_DEPLOYMENT_TTL_SECONDS)
+								: 0,
 					});
 				}
 
@@ -194,6 +207,9 @@ export function createBrokerAwareUpCommand(
 					deps.createRemoteClient?.(target.uri) ??
 					createRemoteBrokerClient({
 						brokerUri: target.uri,
+						...(deps.authMdFetch === undefined
+							? undefined
+							: { fetchImpl: deps.authMdFetch }),
 						...(deps.discovery ? { discovery: deps.discovery } : undefined),
 						...(deps.mockRemote
 							? { mock: deps.mockRemote }
@@ -229,6 +245,25 @@ export function createBrokerAwareUpCommand(
 					throw error;
 				}
 
+				const agentCredential =
+					discovery.resourceMetadataUrl === undefined
+						? null
+						: await presentAuthMdCredential({
+								hoboHome,
+								resource: target.uri,
+								metadataUrl: discovery.resourceMetadataUrl,
+								project: env.HOBO_PROJECT ?? definition.name,
+								...(env.HOBO_TENANT === undefined
+									? undefined
+									: { tenant: env.HOBO_TENANT }),
+								...(deps.authMdFetch === undefined
+									? undefined
+									: { fetchImpl: deps.authMdFetch }),
+								operationUrl: new URL(
+									discovery.placeEndpoint,
+									`${target.uri}/`,
+								).toString(),
+							});
 				const wantAnonymous = target.mode === "anonymous";
 				// Also enter anonymous when auth has no principal and broker allows it
 				// only if explicitly requested via --anonymous/--temporary (product: opt-in).
@@ -261,12 +296,14 @@ export function createBrokerAwareUpCommand(
 					const session = await client.createAnonymousSession({
 						bindleName: definition.name,
 					});
-					const credential = presenter.presentAnonymous({
-						audience: discovery.issuer,
-						ephemeralPrincipal: session.ephemeralPrincipal,
-						accessToken: session.accessToken,
-						expiresAt: session.expiresAt,
-					});
+					const credential =
+						agentCredential ??
+						presenter.presentAnonymous({
+							audience: discovery.issuer,
+							ephemeralPrincipal: session.ephemeralPrincipal,
+							accessToken: session.accessToken,
+							expiresAt: session.expiresAt,
+						});
 					const placed = await client.place({
 						bindleName: definition.name,
 						projectDir,
@@ -275,6 +312,12 @@ export function createBrokerAwareUpCommand(
 						anonymous: true,
 						claimToken: session.claimToken,
 					});
+
+					await recordAuthMdDeployment(
+						hoboHome,
+						credential,
+						placed.deploymentId,
+					);
 
 					const claimHint = `hobo claim <account> --broker ${target.uri} --token ${session.claimToken}`;
 					emitProgress(
@@ -311,12 +354,14 @@ export function createBrokerAwareUpCommand(
 				}
 
 				// Authenticated remote
-				const credential = await presenter.presentAuthenticated({
-					audience: discovery.issuer,
-					hoboHome,
-					env,
-					requirePrincipal: true,
-				});
+				const credential =
+					agentCredential ??
+					(await presenter.presentAuthenticated({
+						audience: discovery.issuer,
+						hoboHome,
+						env,
+						requirePrincipal: true,
+					}));
 				if (credential === null) {
 					return {
 						ok: false,
@@ -349,6 +394,8 @@ export function createBrokerAwareUpCommand(
 					credential,
 					anonymous: false,
 				});
+
+				await recordAuthMdDeployment(hoboHome, credential, placed.deploymentId);
 
 				return {
 					ok: true,
@@ -416,10 +463,21 @@ export function createBrokerAwareUpCommand(
 	};
 }
 
+function localTtlSeconds(raw: string | undefined): number {
+	const value = raw === undefined ? 3600 : Number(raw);
+	if (!Number.isSafeInteger(value) || value < 1 || value > 604800)
+		throw new Error(
+			"HOBO_LOCAL_DEPLOYMENT_TTL_SECONDS must be an integer from 1 to 604800",
+		);
+	return value;
+}
+
 async function runLocalUp(input: {
 	readonly projectDir: string;
 	readonly hoboHome: string;
 	readonly definitionName: string;
+	readonly persistent?: boolean;
+	readonly ttlSeconds?: number;
 	readonly definition: NonNullable<
 		Awaited<ReturnType<typeof loadBindleDefinition>>
 	>;
@@ -462,6 +520,42 @@ async function runLocalUp(input: {
 	emitProgress(`hobo up: ${placement.message}`);
 
 	const port = await freePort();
+	if (input.persistent) {
+		const { receipt, reused } = await startLocalDeployment({
+			projectDir,
+			hoboHome,
+			componentHost: placement.componentHost,
+			port,
+			ttlSeconds: input.ttlSeconds ?? 0,
+			bindleName: definition.name,
+			brokerId: placement.brokerId,
+			campId: placement.campId,
+			providerId: placement.providerId,
+		});
+		return {
+			ok: true,
+			status: "deployed",
+			code: "HOBO_OK",
+			message: `hobo up: ${reused ? "reusing" : "running"} ${definition.name} at ${receipt.primaryUrl}`,
+			data: {
+				command: "up",
+				projectDir,
+				mode: "local",
+				bindleName: definition.name,
+				brokerId: receipt.brokerId,
+				campId: receipt.campId,
+				providerId: receipt.providerId,
+				componentHost: receipt.componentHost,
+				primaryUrl: receipt.primaryUrl,
+				deploymentId: receipt.leaseId,
+				pid: receipt.pid,
+				persistent: true,
+				reused,
+				...(receipt.expiresAt ? { expiresAt: receipt.expiresAt } : undefined),
+				probe: { status: receipt.probeStatus },
+			},
+		};
+	}
 	const serve = await serveProjectOnLocalYard({
 		projectDir,
 		hoboHome,

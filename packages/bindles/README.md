@@ -66,3 +66,14 @@ Bindle collection is modeled as a command that emits manifest snapshot events fo
 lowering actors. Projections materialize resource descriptors and `dependsOn` relationships;
 snapshots land in the read store for SDK slices — actors emit events and never mutate read models
 in place.
+
+## HTTP entrypoint typing
+
+Component entrypoint factories may return a framework-neutral
+`(Request) => Response | Promise<Response>` handler or an object with that
+`fetch` signature, alongside the existing JSON/handler-object forms. This
+matches what local component hosts accept; no framework types enter Bindles.
+The `hello-bindle` Hono example and `multi-cloud-shop` function-handler example
+are checked with their own `typecheck` scripts as well as runtime tests.
+This adjusts the TypeScript behavior surface, not the manifest Protobuf/CUE
+records; the existing SDK-lowering PACT tests remain the manifest boundary.

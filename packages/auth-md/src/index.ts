@@ -4,6 +4,12 @@
  * README.md for the three independent state machines this package keeps
  * separate.
  */
+
+export type {
+	RevokedAgentPrincipalRecord,
+	StoredCliAuthMdClaimInitiationRecord,
+	StoredCliAuthMdStateRecord,
+} from "./_generated/auth_md_pb.js";
 export {
 	type AssertionExpectation,
 	type AssertionVerifier,
@@ -126,6 +132,11 @@ export {
 	type PlaneSnapshot,
 	planeSnapshot,
 } from "./state-machines.js";
+export {
+	type AgentAccessToken,
+	discoverAgentTokenEndpoint,
+	exchangeAgentAccessToken,
+} from "./token-exchange.js";
 export {
 	type Audience,
 	type HttpsUrl,

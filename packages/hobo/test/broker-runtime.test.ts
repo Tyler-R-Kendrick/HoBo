@@ -121,6 +121,9 @@ describe("embedded broker-runtime", () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-broker-up-"));
 		cleanups.push(() => rm(hoboHome, { recursive: true, force: true }));
 		const cli = createComposedHoboCli();
+		cleanups.push(async () => {
+			await cli.run(["down", "--json"], { cwd: helloBindleDir });
+		});
 		const up = await cli.run(["up", "--home", hoboHome, "--json"], {
 			cwd: helloBindleDir,
 		});

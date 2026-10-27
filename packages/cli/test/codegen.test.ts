@@ -32,9 +32,9 @@ describe("hobo codegen", () => {
 		expect(envelope.ok).toBe(true);
 		expect(envelope.verb).toBe("codegen");
 		expect(envelope.data.mode).toBe("write");
-		expect(envelope.data.written).toContain("src/_generated/api-tree.d.ts");
+		expect(envelope.data.written).toContain("src/_generated/api-tree.ts");
 		await expect(
-			access(join(projectRoot, "src/_generated/api-tree.d.ts")),
+			access(join(projectRoot, "src/_generated/api-tree.ts")),
 		).resolves.toBeUndefined();
 	});
 
@@ -49,13 +49,13 @@ describe("hobo codegen", () => {
 		const envelope = JSON.parse(result.stdout);
 		expect(envelope.ok).toBe(true);
 		expect(envelope.data.mode).toBe("check");
-		expect(envelope.data.checked).toContain("src/_generated/api-tree.d.ts");
+		expect(envelope.data.checked).toContain("src/_generated/api-tree.ts");
 	});
 
 	it("--check reports drift and exits non-zero on a stale tree", async () => {
 		await createHoboCli().run(["codegen"], { cwd: projectRoot });
 		await writeFile(
-			join(projectRoot, "src/_generated/hooks.d.ts"),
+			join(projectRoot, "src/_generated/hooks.ts"),
 			"stale generated file\n",
 		);
 
@@ -79,9 +79,9 @@ describe("hobo codegen", () => {
 				generatedRoots: [".hobo/generated", "generated"],
 				files: {
 					manifest: ".hobo/generated/manifest.json",
-					apiTree: "generated/api.d.ts",
+					apiTree: "generated/api.ts",
 					bindings: "generated/models.d.ts",
-					hooks: "generated/hooks.d.ts",
+					hooks: "generated/hooks.ts",
 					steps: "generated/steps.d.ts",
 					workflows: "generated/workflows.d.ts",
 					withOptions: "generated/options.d.ts",
@@ -98,7 +98,7 @@ describe("hobo codegen", () => {
 
 		expect(report.written).toContain("generated/models.d.ts");
 		const apiTree = await readFile(
-			join(projectRoot, "generated/api.d.ts"),
+			join(projectRoot, "generated/api.ts"),
 			"utf8",
 		);
 		expect(apiTree).toContain('from "./models.js"');
@@ -113,12 +113,12 @@ describe("hobo codegen", () => {
 	it("regeneration is idempotent across a clean rewrite", async () => {
 		await createHoboCli().run(["codegen"], { cwd: projectRoot });
 		const first = await readFile(
-			join(projectRoot, "src/_generated/api-tree.d.ts"),
+			join(projectRoot, "src/_generated/api-tree.ts"),
 			"utf8",
 		);
 		await createHoboCli().run(["codegen"], { cwd: projectRoot });
 		const second = await readFile(
-			join(projectRoot, "src/_generated/api-tree.d.ts"),
+			join(projectRoot, "src/_generated/api-tree.ts"),
 			"utf8",
 		);
 		expect(second).toBe(first);

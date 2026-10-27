@@ -9,8 +9,7 @@ import {
 	helpText,
 	runHobo,
 } from "../src/index.js";
-import { type JsonObject } from "../src/json.js";
-
+import type { JsonObject } from "../src/json.js";
 
 const canonicalVerbNames = [
 	"up",
@@ -93,7 +92,7 @@ Canonical verbs:
   new         local loop    Scaffold a runnable SDK program
   login       identity      Obtain a dev SVID through OIDC
   connection  identity      Manage durable Connections (create/authorize/list/get/revoke/rotate)
-  identity    identity      Observe continuous identity migration status (status/inspect; zero Bindle config)
+  identity    identity      Inspect migration identity (status/inspect) or manage auth.md agents (agent discover/register/status/claim/poll/token/rotate/revoke)
   trails      migration     Observe Trails status/plan/inspect (continuous migration; identity hands-off)
   access      identity      Request elevated/cross-env access or break-glass (short-lived capability; audited)
   feature     delivery      OpenFeature flags / canary / experiment status (list|eval|set|kill)

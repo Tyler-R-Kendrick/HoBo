@@ -7,6 +7,7 @@ import {
 	deploymentViewProjection,
 } from "@hobo/cloud";
 import type { PrincipalRef } from "@hobo/core";
+import { markAuthMdInfrastructureClaim } from "./auth-md-command.js";
 import { defaultHoboHome } from "./bare-metal-yard.js";
 import {
 	type BrokerDiscoveryClient,
@@ -31,6 +32,7 @@ import { isJsonString } from "./json.js";
 export interface ClaimCommandDeps {
 	// The shared Yard runtime whose durable log carries the deployment. The
 	// composed CLI injects the same runtime `up` writes to.
+	readonly fetchImpl?: typeof fetch;
 	readonly runtime?: YardRuntime;
 	readonly discovery?: BrokerDiscoveryClient;
 	readonly presenter?: CredentialPresenter;
@@ -140,6 +142,9 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 						deps.createRemoteClient?.(brokerUri) ??
 						createRemoteBrokerClient({
 							brokerUri,
+							...(deps.fetchImpl === undefined
+								? undefined
+								: { fetchImpl: deps.fetchImpl }),
 							...(deps.discovery ? { discovery: deps.discovery } : undefined),
 							...(deps.mockRemote ? { mock: deps.mockRemote } : undefined),
 						});
@@ -159,6 +164,12 @@ export function createClaimCommand(deps: ClaimCommandDeps = {}): CommandModule {
 						account,
 						...(credential !== null ? { credential } : undefined),
 					});
+
+					await markAuthMdInfrastructureClaim(
+						hoboHome,
+						brokerUri,
+						result.deploymentId,
+					);
 
 					return {
 						ok: true,

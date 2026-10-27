@@ -23,10 +23,21 @@ That is precisely why the default wiring lives at this root: adapter-free
 `@hobo/cli` must not import an infra adapter, so it accepts an injected runtime
 and the composition root supplies the concrete one.
 
-## The composed default runtime (local / offline-default lane)
+## Product local execution and cloud runtime assembly
 
-`createDefaultYardRuntime()` assembles the `YardRuntime` the deploy verbs drive.
-Every field is reused from an existing constructor — no runtime is reimplemented:
+Product `up` defaults to a persistent self-hosted local worker. The worker
+reuses `serveProjectOnLocalYard`, publishes its receipt after a real HTTP probe,
+and exposes authenticated loopback control for lease reuse and shutdown.
+Source and artifact fingerprints distinguish reuse from a real code update;
+changed code replaces the old worker through its authenticated shutdown path.
+Anonymous/temporary leases expire inside the worker; remote brokers and relays
+are optional. The control token is stored separately with owner-only access.
+`deployment.LocalStarted` and `deployment.LocalStopped` facts use the existing
+durable EventStore.
+
+`createDefaultYardRuntime()` assembles the cloud `YardRuntime`, also available
+for explicitly injected deterministic fixtures. Its fields reuse existing
+constructors:
 
 - **event store** — `@hobo/runtime-local`'s file-backed **event store** with a
   manual clock. All deploy verbs share ONE store, so `up` then `down` fold the
@@ -34,10 +45,10 @@ Every field is reused from an existing constructor — no runtime is reimplement
 - **actor host** — `@hobo/data`'s in-memory host. Each resource is a
   choreographed **actor** whose state is folded from the **event** stream.
 - **executor / IaC** — `@hobo/cloud`'s in-process executor over
-  `selectIacProvider` (`src/compose.ts`). **HONEST SCOPE:** the **default**
-  backend is the real `@hobo/iac-pulumi` adapter with an **in-memory Automation-API
-  stand-in** (offline, deterministic). There is **no** separate mock `IacProvider`
-  on the default path. Live paths are opt-in:
+  `selectIacProvider` (`src/compose.ts`). The library's unconfigured backend
+  uses the Pulumi adapter's in-memory Automation API for fixtures. Product `up`
+  uses persistent local hosting instead of reporting this backend as a live
+  deployment. Explicit live paths are:
   - `HOBO_PULUMI_LIVE=1` → real Pulumi Automation/CLI engines (binary- and
     credential-gated)
   - Cloudflare / Vercel env tokens → credential-gated live deploy providers
@@ -51,7 +62,7 @@ Every field is reused from an existing constructor — no runtime is reimplement
 
 ## Event-sourced flow
 
-`hobo up` issues a Deploy **command** through the gateway, which records
+The selected cloud lane issues a Deploy **command** through the gateway, which records
 past-tense **events** into the shared **event store**. Resource **actors**
 reconcile desired against observed state through the executor; the
 `DeploymentView` **projection** (a **materialized view**) is rebuilt from those
@@ -61,12 +72,13 @@ reverse-dependency teardown to `deployment` destroyed.
 
 ## Parse, don't validate
 
-This package adds no new wire records; it composes existing ones. Consistent with
+Local launch, receipt and lifecycle event records live in the package's
+Protobuf/CUE models and are parsed through generated messages. Consistent with
 the repo rule, boundary payloads are turned into **parse, don't validate**
 **derived types** at the seams they cross — the `@hobo/cli` yard-client and the
 `@hobo/cloud` gateway own those parsers, and the composition root only hands them
-already-parsed runtime objects. The `data-models/` proto + CUE here describe the
-composed runtime manifest purely as architecture-guard evidence.
+already-parsed runtime objects. Actual persisted receipts and lifecycle payloads
+are checked against these contracts in the process integration tests.
 
 ## How @hobo/iac-pulumi is wired (and what “default” means)
 
@@ -76,10 +88,10 @@ bridges that shape: it resolves each resource’s real `ResourcePlan` from the d
 `deployment.Planned` fact, lowers it with `provider.realize()` to a
 `hobo.iac-program/v1` program, and applies it through the real Pulumi adapter.
 
-**Default backend = in-memory stand-in** inside that adapter (offline).
+The unconfigured library backend is the adapter's in-memory fixture backend.
 `HOBO_PULUMI_LIVE=1` swaps the real Pulumi Automation API or pinned CLI engine.
-See the `HONEST SCOPE` block at the top of `src/compose.ts` and the product
-summary in [README.md](./README.md).
+The product's credential-free path hosts the app in the persistent local worker.
+See [README.md](./README.md) for selection and lifecycle details.
 
 ## HTTP frameworks are L2 packages under `packages/adapters/`
 
@@ -128,6 +140,12 @@ Examples only *consume* them — adapter source does not live under `examples/`.
 2. `HOBO_BROKER` / `HOBO_BROKER_URI`
 3. `HOBO_HOME/profile.json` default from `hobo login --broker`
 4. Local embedded broker / Yard event-sourced lane
+
+The local broker is self-hosted; hosted brokers and hosting relays are optional.
+A network URI describes transport and may point to a self-hosted service.
+The local source-Bindle fallback probes its server and closes it before
+returning; use `hobo dev --serve` for foreground serving. The no-remote-service
+regression test checks that path, not a separately hosted broker HTTP server.
 
 Remote paths **discover** first (`.well-known/hobo-broker`). Anonymous/`--temporary` requires `supportsAnonymous`. Claim rebinds ownership locally (event store) or remotely (`--broker` + `--token`) without re-provision. Human vs agent principals stay distinct: the credential presenter mints **real ES256 DPoP** proofs and audience-bound **JWT-SVIDs** (self-verified before send). Follow-ons: broker **server-side** DPoP verify, SPIRE Workload API fetch, WebAuthn human step-up.
 

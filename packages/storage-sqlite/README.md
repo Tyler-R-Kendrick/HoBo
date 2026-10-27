@@ -31,3 +31,15 @@ Parse, don't validate: journal inputs cross one parser boundary (stream ids,
 expected revisions, fence tokens) and become derived types — branded positions
 and fenced append requests — so `SqliteJournal` internals operate on parsed
 values, not raw DTOs.
+
+## Durable event IDs
+
+Journal ULIDs are seeded from the durable event count on open. Allocation also
+checks existing IDs inside the append transaction, so resetting a manual clock,
+reopening a database, or interleaving independent local handles cannot reuse an
+old event ID. The time/counter algorithm stays deterministic for fixture clocks;
+this does not relax the single active storage-owner deployment model.
+`packages/runtimes/runtime-local/test/eventstore-reopen-ids.test.ts` covers default
+clock reopen and independent handles; the generated API execution test covers
+workflow resume after reopen. EventEnvelope wire records and their Protobuf/CUE
+constraints are unchanged; the storage journal tests exercise the append port.

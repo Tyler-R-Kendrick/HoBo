@@ -55,6 +55,19 @@ describe("describeDeployTarget", () => {
 });
 
 describe("resolver lane", () => {
+	it.each([
+		"0",
+		"false",
+		"true",
+		"",
+		" 1",
+	])("does not opt into resolvers for %j", (value) => {
+		const target = describeDeployTarget({
+			VERCEL_TOKEN: "t",
+			HOBO_DEPLOY_RESOLVERS: value,
+		});
+		expect(target.lane).toBe("deploy-provider");
+	});
 	// The lane is reported separately from the cloud because the two converge
 	// differently: a resolver re-run adopts an existing resource, where the
 	// bespoke clients re-upload. An operator reading only "cloudflare" would

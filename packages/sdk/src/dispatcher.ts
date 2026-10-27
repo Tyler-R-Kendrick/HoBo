@@ -28,7 +28,7 @@ export interface RunnerDeclaration {
 	readonly kind: RunnerKind;
 	readonly providerId: string;
 	readonly category: "runner";
-	/** Self-hosted runners are reached via the outbound Relay — never inbound ports. */
+	/** Optional outbound relay; omitted for direct local self-hosted execution. */
 	readonly behind?: "relay";
 	readonly listUnitCost: number;
 	readonly switchingCost: number;
@@ -41,7 +41,7 @@ export interface RunnerOptions {
 }
 
 export interface SelfHostedRunnerOptions extends RunnerOptions {
-	behind: "relay";
+	behind?: "relay";
 }
 
 export type DispatcherObjective = "min-cost" | "maximize-credits";
@@ -63,11 +63,11 @@ export interface DispatcherDeclaration {
 function nonNegative(
 	declaration: string,
 	path: string,
-	value: unknown,
+	value: RunnerOptions["listUnitCost"],
 	fallback: number,
 ): number {
 	if (value === undefined) return fallback;
-	if (typeof value !== "number" || !Number.isFinite(value) || value < 0) {
+	if (!Number.isFinite(value) || value < 0) {
 		throw new SdkDeclarationError(
 			declaration,
 			path,
@@ -87,12 +87,11 @@ function makeRunner(
 		options.id !== undefined
 			? requireNonEmptyString("runner", "options.id", options.id)
 			: `runner.${kind}`;
-	return deepFreeze({
+	const declaration = {
 		schema: RUNNER_SCHEMA,
 		kind,
 		providerId,
 		category: "runner" as const,
-		...(behind !== undefined ? { behind } : {}),
 		listUnitCost: nonNegative(
 			"runner",
 			"options.listUnitCost",
@@ -105,20 +104,23 @@ function makeRunner(
 			options.switchingCost,
 			0,
 		),
-	});
+	};
+	return behind === undefined
+		? deepFreeze(declaration)
+		: deepFreeze({ ...declaration, behind });
 }
 
 export const runner = Object.freeze({
-	selfHosted(options: SelfHostedRunnerOptions): RunnerDeclaration {
+	selfHosted(options: SelfHostedRunnerOptions = {}): RunnerDeclaration {
 		requireRecord("runner.selfHosted", "options", options);
-		if (options.behind !== "relay") {
+		if (options.behind !== undefined && options.behind !== "relay") {
 			throw new SdkDeclarationError(
 				"runner.selfHosted",
 				"options.behind",
-				'must be "relay" — self-hosted Executors are reached via the outbound Relay only',
+				'must be "relay" when a relay transport is requested',
 			);
 		}
-		return makeRunner("self-hosted", options, "relay");
+		return makeRunner("self-hosted", options, options.behind);
 	},
 	github: (options: RunnerOptions = {}): RunnerDeclaration =>
 		makeRunner("github", options),
@@ -173,7 +175,7 @@ export function dispatcher(
 
 	return Object.freeze({
 		schema: DISPATCHER_DECLARATION_SCHEMA,
-		objective: objective as DispatcherObjective,
+		objective,
 		engineObjective: "maximize-credits" as const,
 		runners: Object.freeze([...runners]),
 		registry,

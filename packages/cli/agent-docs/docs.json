@@ -78,7 +78,7 @@
     {
       "name": "identity",
       "role": "identity",
-      "summary": "Observe continuous identity migration status (status/inspect; zero Bindle config)",
+      "summary": "Inspect migration identity (status/inspect) or manage auth.md agents (agent discover/register/status/claim/poll/token/rotate/revoke)",
       "cli": "hobo identity",
       "mcpTool": "identity",
       "capability": {

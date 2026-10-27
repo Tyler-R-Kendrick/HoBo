@@ -71,3 +71,29 @@ export { type WaiverDeclaration, type WaiverSpec, waiver } from "./waiver.js";
 
 // public-contract: package id consumers assert against.
 export const HOBO_SDK_PACKAGE = "@hobo/sdk";
+
+export type * from "./provider-runner-execution.js";
+export {
+	createGeneratedHttpProvider,
+	executeLocalRunner,
+	executeProviderGeneration,
+	executeRemoteRunner,
+	loadGeneratedProvider,
+} from "./provider-runner-execution.js";
+export {
+	executeRunbook,
+	type RunbookAction,
+	type RunbookDiagnosis,
+	RunbookExecutionError,
+	type RunbookExecutionOptions,
+	type RunbookExecutionResult,
+} from "./runbook-execution.js";
+export type * from "./waiver-chaos-execution.js";
+export {
+	createCampChaosTarget,
+	createFetchChaosTarget,
+	createWaiverService,
+	executeChaosExperiment,
+	replayChaosExecution,
+	replayWaiver,
+} from "./waiver-chaos-execution.js";

@@ -330,12 +330,23 @@ export async function scanAmbientTrainableClasses(
 	projectRoot: string,
 	layout: CodegenLayout,
 ): Promise<readonly AmbientTrainableClass[]> {
+	const sources = await Promise.all(
+		(await scannedSources(projectRoot, layout)).map(async (path) => ({
+			file: projectPath(projectRoot, path),
+			source: await readFile(path, "utf8"),
+		})),
+	);
+	return scanAmbientTrainableSources(sources);
+}
+
+/** Compiler-selected source views use the same parser and collision checks as directory scans. */
+export function scanAmbientTrainableSources(
+	sources: readonly { readonly file: string; readonly source: string }[],
+): readonly AmbientTrainableClass[] {
 	const found: AmbientTrainableClass[] = [];
 	const decorated = new Map<string, string>();
-	for (const path of await scannedSources(projectRoot, layout)) {
-		const source = await readFile(path, "utf8");
+	for (const { file, source } of sources) {
 		if (!mayHoldMarkedClass(source)) continue;
-		const file = projectPath(projectRoot, path);
 		for (const marked of markedClasses(source)) {
 			if (!marked.ambient) {
 				if (!decorated.has(marked.className)) {

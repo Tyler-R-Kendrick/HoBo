@@ -279,9 +279,18 @@ export interface BindleHandlerObject {
 	readonly [key: string]: JsonValue | undefined;
 }
 
+/** Framework-neutral HTTP handler accepted by the local component hosts. */
+export type BindleFetchHandler = (
+	request: Request,
+) => Response | Promise<Response>;
+
 export type BindleEntrypoint = (
 	context?: BindleRuntimeContext,
-) => JsonValue | BindleHandlerObject;
+) =>
+	| JsonValue
+	| BindleHandlerObject
+	| BindleFetchHandler
+	| { readonly fetch: BindleFetchHandler };
 
 /** App entrypoint factory; the Station supplies runtime context when serving. */
 export type ComponentBinding = BindleEntrypoint | DeclaredComponent;

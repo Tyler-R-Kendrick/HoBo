@@ -35,3 +35,12 @@ throwaway HOBO_HOME dirs don't re-download per test under parallel sweeps.
 Parse, don't validate: WIT/component inputs cross one parser boundary at the
 Wasm host and become derived types (parsed component refs, capability grants);
 the host never passes raw descriptor DTOs into the runtime core.
+
+## Guest environment regression gate
+
+The generated WASI entry parses the `x-hobo-bindle-env` JSON object with
+self-contained guards; it cannot reference TypeScript host-only helper names.
+`packages/hobo/test/wasm-guest-generic.test.ts` componentizes and executes a guest
+in Wasmtime and checks tenant environment injection. This is an execution gate
+beyond the runtime's TypeScript build: template contents are compiled separately
+by esbuild and jco. No Protobuf, CUE, or WIT record changes are introduced.

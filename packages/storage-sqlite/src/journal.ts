@@ -128,7 +128,6 @@ export class SqliteJournal {
 		this.db = db;
 		this.partitionId = options.partitionId ?? "default";
 		this.clock = options.clock ?? { now: () => new Date().toISOString() };
-		this.nextUlid = createUlidGenerator(this.clock);
 
 		if (options.nativePragmas !== false && db.kind === "node") {
 			this.db.exec(`PRAGMA journal_mode = ${NATIVE_PRAGMAS.journal_mode}`);
@@ -145,6 +144,25 @@ export class SqliteJournal {
 		}
 
 		migrateToCurrent(this.db, { now: options.now ?? this.clock.now() });
+		// A deterministic clock can restart at the same instant after reopen.
+		// Seed from durable state, then check under the append transaction so
+		// independent handles and clock rewinds cannot reuse an existing ID.
+		const existing = this.db
+			.prepare("SELECT COUNT(*) AS count FROM events")
+			.get();
+		const next = createUlidGenerator(
+			this.clock,
+			requireNonNegInt(
+				Number(asBigInt(existing?.count ?? 0, "eventCount")),
+				"eventCount",
+			),
+		);
+		const findId = this.db.prepare("SELECT id FROM events WHERE id = ?");
+		this.nextUlid = () => {
+			let candidate = next();
+			while (findId.get(candidate) !== undefined) candidate = next();
+			return candidate;
+		};
 	}
 
 	close(): void {

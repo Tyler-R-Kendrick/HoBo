@@ -575,9 +575,9 @@ function applyMeshEnv(request) {
   if (raw) {
     try {
       const map = JSON.parse(raw);
-      if (map && isJsonObject(map)) {
+      if (map && typeof map === "object" && !Array.isArray(map)) {
         for (const [key, value] of Object.entries(map)) {
-          if (isJsonString(value)) g.process.env[key] = value;
+          if (typeof value === "string") g.process.env[key] = value;
         }
       }
     } catch {

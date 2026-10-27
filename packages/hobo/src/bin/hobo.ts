@@ -1,7 +1,9 @@
 #!/usr/bin/env node
+import { join } from "node:path";
 // Register TypeScript bindle sources before composing the CLI so `hobo dev`
 // runs the flagship src/bindle.ts authoring path without a separate build.
 import { register } from "tsx/esm/api";
+import { defaultHoboHome } from "../bare-metal-yard.js";
 
 register();
 
@@ -22,12 +24,17 @@ import { createBareMetalProvider } from "../local-provider.js";
 // (prefer wasm-sandbox yards, auto-create camps). Before dispatch, the default
 // provider set is recorded as durable registration + approval facts. Bare-metal
 // is bootstrapped alongside cloudflare so local Yards are first-class.
-const runtime = createDefaultYardRuntime();
+const runtime = createDefaultYardRuntime({
+	dataDir: join(defaultHoboHome(), "runtime"),
+});
 await bootstrapDefaultProviders(runtime, [
 	toRegistrableProvider(createCloudflareProvider()),
 	createBareMetalProvider(),
 ]);
-const cli = createComposedHoboCli({ yardRuntime: runtime });
+const cli = createComposedHoboCli({
+	yardRuntime: runtime,
+	requireRealExecution: true,
+});
 const result = await cli.run(process.argv.slice(2));
 
 if (result.stdout) {

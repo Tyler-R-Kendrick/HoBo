@@ -1,6 +1,6 @@
 import { BuildError, remediationFor } from "../build/errors.js";
 import { parseBuildRequestFromInvocation } from "../build/parse.js";
-import { runBuild } from "../build/run-build.js";
+import { type RunBuildOptions, runBuild } from "../build/run-build.js";
 import type { CommandModule } from "../shell/registry.js";
 
 export { BuildCliError, BuildError } from "../build/errors.js";
@@ -17,7 +17,15 @@ export {
 	writeBuildFixtureProject,
 } from "../build/run-build.js";
 
-export function createBuildCommand(): CommandModule {
+export function createBuildCommand(
+	options: Pick<
+		RunBuildOptions,
+		| "componentize"
+		| "realComponentizeFactory"
+		| "requireRealComponentize"
+		| "containerBuild"
+	> = {},
+): CommandModule {
 	return {
 		run: async ({ context, flags }) => {
 			try {
@@ -26,7 +34,7 @@ export function createBuildCommand(): CommandModule {
 					flags,
 					process.env,
 				);
-				const result = await runBuild(request);
+				const result = await runBuild({ ...request, ...options });
 				return {
 					ok: true,
 					status: "ok",

@@ -73,3 +73,76 @@ package sdk
 	entry:        string & =~"^\\./.+"
 	extensions: [...#PluginExtensionEntry] & [_, ...]
 }
+
+#OperatorExecutionFact: {
+	execution_id: string & !=""
+	kind: "waiver" | "chaos" | "runbook" | "runner" | "provider-generation"
+	step: string & !=""
+	status: string & !=""
+	detail_json: string
+}
+
+#RunbookDiagnosis: {
+	conditions: [...string & !=""]
+	evidence_json: string
+}
+
+#RunbookExecutionResult: {
+	execution_id: string & !=""
+	status: "completed" | "blocked" | "unmatched"
+	completed_actions: [...string & !=""]
+	reason: string & !=""
+}
+
+#WaiverExecutionState: {
+	decision_id: string
+	status: "missing" | "requested" | "approved" | "expired" | "revoked"
+	requester?: string & !=""
+	approved_by?: string & !=""
+	declaration?: #WaiverDeclaration
+	policy_fingerprint?: string & !=""
+	revision: int & >=0
+	if status == "approved" {
+		approved_by: string & !=""
+		declaration: #WaiverDeclaration
+	}
+}
+
+#LocalRunnerJob: {
+	job_id: string & !=""
+	argv: [string & !="", ...string]
+	cwd: string & !=""
+	env?: [string]: string
+	timeout_ms?: int & >0
+	max_output_bytes?: int & >0
+}
+
+#RunnerExecutionResult: {
+	job_id: string & !=""
+	provider_id: string & !=""
+	status: "succeeded" | "failed"
+	exit_code: int
+	stdout: string
+	stderr: string
+	timed_out: bool
+	if status == "succeeded" {
+		exit_code: 0
+		timed_out: false
+	}
+}
+
+#GeneratedProviderReceipt: {
+	provider_id: string & !=""
+	source_path: string & !=""
+	digest: string & =~"^[a-f0-9]{64}$"
+	signature: string & !=""
+	public_key: string & !=""
+	operation_count: int & >0
+}
+
+// A complete SDK wire document, used by the package's executed fixture gate.
+#Sdk: #WaiverDeclaration | #ChaosDeclaration | #RunbookDeclaration |
+	#GenerateProviderRequest | #RunnerDeclaration | #PluginDeclaration |
+	#OperatorExecutionFact | #RunbookDiagnosis | #RunbookExecutionResult |
+	#WaiverExecutionState | #LocalRunnerJob | #RunnerExecutionResult |
+	#GeneratedProviderReceipt

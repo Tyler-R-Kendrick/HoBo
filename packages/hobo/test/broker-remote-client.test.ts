@@ -23,6 +23,7 @@ import {
 import type { JsonValue } from "../src/json.js";
 import {
 	BROKER,
+	CREDENTIAL,
 	client,
 	DISCOVERY,
 	discoveryFor,
@@ -31,6 +32,70 @@ import {
 	withField,
 	without,
 } from "./support/remote-broker-fixtures.js";
+
+describe("remote deployment endpoint safety", () => {
+	it.each([
+		"https://other.example/v1/place",
+		"http://broker.example/v1/place",
+		"https://user:pass@broker.example/v1/place",
+	])("refuses unsafe discovered placement endpoint %s before sending credentials", async (placeEndpoint) => {
+		const { client: remote, seen } = client([], {
+			...DISCOVERY,
+			placeEndpoint,
+		});
+		await expect(
+			remote.place({
+				bindleName: "app",
+				projectDir: "/app",
+				credential: CREDENTIAL,
+			}),
+		).rejects.toMatchObject({ code: "HOBO_BROKER_ENDPOINT_UNSAFE" });
+		expect(seen).toHaveLength(0);
+	});
+
+	it("does not follow redirects carrying anonymous-session POST bodies", async () => {
+		const { client: remote, seen } = client([{ status: 307 }]);
+		await expect(remote.createAnonymousSession()).rejects.toMatchObject({
+			code: "HOBO_ANON_SESSION_FAILED",
+		});
+		expect(seen[0]?.init.redirect).toBe("error");
+	});
+
+	it("refuses a cross-origin claim endpoint before sending the claim token", async () => {
+		const { client: remote, seen } = client([], {
+			...DISCOVERY,
+			claimEndpoint: "https://other.example/claim",
+		});
+		await expect(
+			remote.claim({
+				claimToken: "claim-test-token",
+				account: "account-1",
+				credential: CREDENTIAL,
+			}),
+		).rejects.toMatchObject({ code: "HOBO_BROKER_ENDPOINT_UNSAFE" });
+		expect(seen).toHaveLength(0);
+	});
+
+	it("blocks redirects on credential-bearing placement and claim requests", async () => {
+		const { client: remote, seen } = client([{ status: 307 }]);
+		await expect(
+			remote.place({
+				bindleName: "app",
+				projectDir: "/app",
+				credential: CREDENTIAL,
+			}),
+		).rejects.toThrow();
+		await expect(
+			remote.claim({
+				claimToken: "claim-test-token",
+				account: "account-1",
+				credential: CREDENTIAL,
+			}),
+		).rejects.toThrow();
+		expect(seen).toHaveLength(2);
+		expect(seen.every(({ init }) => init.redirect === "error")).toBe(true);
+	});
+});
 
 describe("construction", () => {
 	it("strips trailing slashes from the broker URI", () => {

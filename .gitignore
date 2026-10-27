@@ -38,6 +38,10 @@ sandboxes/
 .tools/
 # Local yard/broker tooling installs (prefer $HOBO_HOME; belt-and-suspenders)
 .hobo/
+# OS-released codegen/build lock database, sidecars and interrupted staging trees.
+.hobo-codegen.lock
+.hobo-codegen.lock-*
+.hobo-codegen-*
 
 # CI fixture runner append-only event logs (local + CI artifacts)
 test-results/

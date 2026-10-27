@@ -32,7 +32,7 @@ export const CANONICAL_VERBS: readonly Verb[] = [
 		name: "identity",
 		role: "identity",
 		summary:
-			"Observe continuous identity migration status (status/inspect; zero Bindle config)",
+			"Inspect migration identity (status/inspect) or manage auth.md agents (agent discover/register/status/claim/poll/token/rotate/revoke)",
 	},
 	{
 		name: "trails",
@@ -299,6 +299,34 @@ export function verbHelpText(
 			: options.implemented
 				? "Status: implemented in this composition\n"
 				: "Status: not yet implemented in this composition\n";
+
+	if (verb.name === "identity") {
+		return `HoBo identity
+
+Usage:
+  hobo identity status
+  hobo identity inspect <migration-id>
+  hobo identity agent discover <https-resource>
+  hobo identity agent register <agent.json>
+  hobo identity agent status|claim|poll|token|rotate|revoke <https-resource> <registration-ref>
+
+Role: ${verb.role}
+${statusLine}
+Agent registration config (agent.json):
+  {"resource":"https://broker.example/","binding":{"sessionId":"session-1","tenantId":"tenant-1","projectId":"my-app","audience":"broker-api","service":"https://broker.example/"},"requestedScopes":["deploy:write"]}
+
+Metadata controls registration and scopes. The selected broker advertises
+resourceMetadataUrl; placement uses a server-issued token obtained through
+private_key_jwt. Keys and claim-poll credentials remain in owner-only HOBO_HOME
+files. token verifies exchange and prints references and expiry only.
+
+Agent claim returns a human approval URL; poll completes that principal claim.
+Human login and infrastructure ownership remain independent. After hobo claim
+binds infrastructure, required rotation gates further agent management.
+rotate uses the advertised endpoint and verifies replacement key proof.
+revoke refuses further agent token exchange and placement.
+`;
+	}
 
 	if (verb.name === "new") {
 		return `HoBo new

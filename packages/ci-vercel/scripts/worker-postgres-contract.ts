@@ -28,11 +28,29 @@ try {
 	await Promise.all([
 		health.mark("queue", true),
 		health.mark("schedule", true),
-		health.mark("repair", true),
 	]);
+	await health.finishRepair(0, true, await health.startRepair());
+	assert.equal(await health.ready(), false);
+	await health.finishRepair(1, true, await health.startRepair());
 	assert.equal(await health.ready(), true);
+	assert.equal(await health.repairComplete(1), true);
 	await health.mark("repair", false);
 	assert.equal(await health.ready(), false);
+	assert.equal(await health.repairComplete(1), false);
+	const staleAttempt = await health.startRepair();
+	await health.finishRepair(0, false, await health.startRepair());
+	await health.finishRepair(0, true, staleAttempt);
+	await health.finishRepair(1, true, await health.startRepair());
+	assert.equal(await health.ready(), false);
+	await health.finishRepair(0, true, await health.startRepair());
+	assert.equal(await health.ready(), true);
+	await pool.query(
+		"UPDATE hobo_ci_worker_health SET success_at=clock_timestamp()-interval '45 minutes' WHERE component='repair-queued'",
+	);
+	assert.equal(await health.ready(), false);
+	assert.equal(await health.repairComplete(1), false);
+	await health.finishRepair(1, true, await health.startRepair());
+	assert.equal(await health.ready(), true);
 	const scan = await claims.startScan("123");
 	assert.ok(scan);
 	assert.equal(await claims.startScan("123"), undefined);
@@ -63,6 +81,15 @@ try {
 	assert.equal(await claims.limited("123", now), true);
 	const queued = new PostgresQueuedJobRepairClaims(pool, "123");
 	await queued.initialize();
+	const queuedLock = await queued.start(["example"]);
+	assert.ok(queuedLock && queuedLock !== "busy" && queuedLock !== "deferred");
+	assert.equal(await queued.start(["example"]), "busy");
+	await queuedLock.checkpoint(queuedLock.cursor, 60000);
+	await queuedLock.close();
+	assert.equal(await queued.start(["example"]), "deferred");
+	await pool.query(
+		"UPDATE hobo_ci_queued_scans SET due_ms=0 WHERE app_id='123'",
+	);
 	const sequential = await Promise.race([
 		runRepairs([
 			async () => {
@@ -77,7 +104,7 @@ try {
 			},
 			async () => {
 				const lock = await queued.start(["example"]);
-				assert.ok(lock);
+				assert.ok(lock && lock !== "busy" && lock !== "deferred");
 				try {
 					await pool.query("SELECT 1");
 					assert.equal(await lock.take(1), true);

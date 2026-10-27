@@ -25,7 +25,7 @@ import * as icu from "../src/sandbox-runner-icu.js";
 
 describe("isolated runner bootstrap", () => {
 	it("keeps JIT out of command metadata and launches only after validated input", async () => {
-		const secret = "c2luZ2xlLXVzZS1maXh0dXJl";
+		const secret = "TESTONLY";
 		const commands: unknown[] = [];
 		const files: { path: string; content: Buffer; mode: number }[][] = [];
 		type CommandOptions = { cmd: string; args: string[]; cwd: string };
@@ -289,26 +289,41 @@ describe("isolated runner bootstrap", () => {
 			const runner = join(root, "hobo-ci-runner");
 			mkdirSync(runner);
 			mkdirSync(join(root, ".hobo-ci-home"));
+			const caBundle = join(root, "ca-bundle.pem");
+			writeFileSync(caBundle, "fixture certificate bundle");
 			writeFileSync(join(root, ".hobo-ci-prepared"), "");
-			writeFileSync(join(root, ".hobo-ci-jit"), "c2luZ2xlLXVzZQ==", {
+			writeFileSync(join(root, ".hobo-ci-jit"), "unit test JIT fixture", {
 				mode: 0o600,
 			});
 			const scriptPath = join(runner, "run.sh");
 			writeFileSync(
 				scriptPath,
-				'#!/bin/sh\n[ "$1" = --jitconfig ] && [ "$2" = c2luZ2xlLXVzZQ== ] && [ -z "${HOST_CREDENTIAL+x}" ] && [ "$USER" = "$(id -un)" ] && [ -d "$HOME" ] && [ -w "$HOME" ] || exit 42\nprintf \'run\\n\' >> ../runs\nprintf \'home\\n\' > "$HOME/probe"\n',
+				`#!/bin/sh
+[ "$1" = --jitconfig ] && [ "$2" = "unit test JIT fixture" ] && [ -z "\${HOST_CREDENTIAL+x}" ] && [ "$USER" = "$(id -un)" ] && [ -d "$HOME" ] && [ -w "$HOME" ] || exit 42
+[ "$NODE_USE_SYSTEM_CA" = 1 ] && [ "$NODE_EXTRA_CA_CERTS" = "${caBundle}" ] && [ "$AWS_CA_BUNDLE" = "$NODE_EXTRA_CA_CERTS" ] && [ "$CARGO_HTTP_CAINFO" = "$NODE_EXTRA_CA_CERTS" ] && [ "$CURL_CA_BUNDLE" = "$NODE_EXTRA_CA_CERTS" ] && [ "$GIT_SSL_CAINFO" = "$NODE_EXTRA_CA_CERTS" ] && [ "$GRPC_DEFAULT_SSL_ROOTS_FILE_PATH" = "$NODE_EXTRA_CA_CERTS" ] && [ "$NPM_CONFIG_CAFILE" = "$NODE_EXTRA_CA_CERTS" ] && [ "$PIP_CERT" = "$NODE_EXTRA_CA_CERTS" ] && [ "$REQUESTS_CA_BUNDLE" = "$NODE_EXTRA_CA_CERTS" ] && [ "$SSL_CERT_FILE" = "$NODE_EXTRA_CA_CERTS" ] && [ -z "\${NODE_TLS_REJECT_UNAUTHORIZED+x}" ] || exit 43
+printf 'run\\n' >> ../runs
+printf 'home\\n' > "$HOME/probe"
+`,
 			);
 			chmodSync(scriptPath, 0o755);
-			const script = START_SANDBOX_RUNNER.replaceAll("/vercel/sandbox", root);
+			const script = START_SANDBOX_RUNNER.replaceAll(
+				"/vercel/sandbox",
+				root,
+			).replaceAll("/etc/ssl/certs/ca-certificates.crt", caBundle);
 			execFileSync("bash", ["-c", script], {
-				env: { ...process.env, HOST_CREDENTIAL: "must-not-reach-runner" },
+				env: {
+					...process.env,
+					HOST_CREDENTIAL: "must-not-reach-runner",
+					NODE_EXTRA_CA_CERTS: "/host/untrusted.pem",
+					NODE_TLS_REJECT_UNAUTHORIZED: "0",
+				},
 				stdio: "pipe",
 			});
 			expect(existsSync(join(root, ".hobo-ci-jit"))).toBe(false);
 			expect(readFileSync(join(root, ".hobo-ci-home", "probe"), "utf8")).toBe(
 				"home\n",
 			);
-			writeFileSync(join(root, ".hobo-ci-jit"), "c2luZ2xlLXVzZQ==", {
+			writeFileSync(join(root, ".hobo-ci-jit"), "unit test JIT fixture", {
 				mode: 0o600,
 			});
 			expect(() =>
@@ -316,6 +331,28 @@ describe("isolated runner bootstrap", () => {
 			).toThrow();
 			expect(readFileSync(join(root, "runs"), "utf8")).toBe("run\n");
 			expect(existsSync(join(root, ".hobo-ci-jit"))).toBe(false);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it("refuses to start when the trusted CA bundle is missing", () => {
+		const root = mkdtempSync(join(tmpdir(), "hobo-sandbox-no-ca-"));
+		try {
+			mkdirSync(join(root, "hobo-ci-runner"));
+			mkdirSync(join(root, ".hobo-ci-home"));
+			writeFileSync(join(root, ".hobo-ci-prepared"), "");
+			writeFileSync(join(root, ".hobo-ci-jit"), "unit test JIT fixture");
+			const script = START_SANDBOX_RUNNER.replaceAll(
+				"/vercel/sandbox",
+				root,
+			).replaceAll(
+				"/etc/ssl/certs/ca-certificates.crt",
+				join(root, "missing.pem"),
+			);
+			expect(() =>
+				execFileSync("bash", ["-c", script], { stdio: "pipe" }),
+			).toThrow();
 		} finally {
 			rmSync(root, { recursive: true, force: true });
 		}

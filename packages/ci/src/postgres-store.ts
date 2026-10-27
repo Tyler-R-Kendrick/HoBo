@@ -31,7 +31,7 @@ import {
 	sandboxProxyOnlyUsageQuote,
 	sandboxUsageQuote,
 } from "./sandbox-pricing.js";
-import { LeaseStore } from "./store.js";
+import { LeaseStore, type RateReattestation } from "./store.js";
 
 const MAX_WEBHOOK_BYTES = 1024 * 1024;
 const WEBHOOK_BODY_REPLAY_WINDOW_MS = 24 * 60 * 60 * 1000;
@@ -582,6 +582,38 @@ export class PostgresCiStore {
 	}
 	configure(config: Configuration, revision: number, at: string) {
 		return this.tx((c) => this.configureInside(c, config, revision, at));
+	}
+	/** Atomically re-attest a zero-credit rate without changing its usage snapshot. */
+	reattestRate(input: RateReattestation, revision: number, at: string) {
+		return this.tx(async (client) => {
+			const db = new DatabaseSync(":memory:");
+			const store = new LeaseStore(":memory:", db);
+			try {
+				const previous = await this.readConfiguration(client);
+				if (previous)
+					db.prepare(
+						"INSERT INTO configuration_state(id,body) VALUES(1,?)",
+					).run(toJsonString(ConfigurationStateSchema, previous));
+				const state = store.reattestRate(input, revision, at);
+				for (const event of store.events())
+					await this.event(
+						client,
+						event.type,
+						event.at,
+						event.detail,
+						event.accountId,
+						event.leaseId,
+					);
+				const body = toJsonString(ConfigurationStateSchema, state);
+				await client.query(
+					"INSERT INTO hobo_ci_configuration(partition_id,body) VALUES($1,$2) ON CONFLICT(partition_id) DO UPDATE SET body=EXCLUDED.body",
+					[this.partition, body],
+				);
+				return state;
+			} finally {
+				store.close();
+			}
+		});
 	}
 	configureWithRecord(
 		config: Configuration,

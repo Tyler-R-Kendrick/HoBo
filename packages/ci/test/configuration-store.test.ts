@@ -7,6 +7,9 @@ import {
 	type Configuration,
 	ConfigurationSchema,
 	JobSchema,
+	LeaseSchema,
+	SandboxAllowanceSchema,
+	SandboxPricingSchema,
 } from "../src/_generated/ci_pb.js";
 import { parseConfiguration } from "../src/config.js";
 import { parsePipeline } from "../src/execution.js";
@@ -69,6 +72,134 @@ function original() {
 }
 
 describe("durable account policy and usage snapshots", () => {
+	it("re-attests zero-credit Sandbox rates without advancing usage evidence", async () => {
+		const store = new LeaseStore(":memory:");
+		try {
+			const config = await configuration();
+			const account = config.accounts[0];
+			const offer = account?.offers[0];
+			if (!account || !offer) throw new Error("fixture");
+			offer.provider = "vercel";
+			offer.backend = "sandbox";
+			offer.freeMinutes = 0;
+			offer.spentMicros = 4321;
+			offer.validUntil = "2026-10-27T13:00:00Z";
+			offer.sourceUrl = "https://vercel.com/docs/sandbox/pricing";
+			offer.sandboxPricing = create(SandboxPricingSchema, {
+				vcpus: 2,
+				memoryMb: 4096,
+				cpuMicrosPerVcpuHour: 1,
+				memoryMicrosPerGbHour: 1,
+				creationMicros: 1,
+				maxEgressBytes: 10,
+				egressMicrosPerGb: 1,
+				proxyMicrosPerGb: 1,
+				proxyFixedMicros: 1,
+				bootstrapFixedMicros: 1,
+				networkHeadroomBytes: 1,
+			});
+			store.configure(config, 0, NOW);
+			const input = {
+				accountId: account.id,
+				offerId: offer.id,
+				checkedAt: NOW,
+				validUntil: "2026-10-28T12:00:00Z",
+				sourceUrl: offer.sourceUrl,
+			};
+			const saved = store.reattestRate(input, 1, NOW);
+			expect(saved.revision).toBe(2);
+			const after = saved.configuration?.accounts[0]?.offers[0];
+			expect(after?.observedAt).toBe(offer.observedAt);
+			expect(after?.spentMicros).toBe(4321);
+			expect(after?.validUntil).toBe(input.validUntil);
+			expect(after?.sandboxPricing).toEqual(offer.sandboxPricing);
+			const afterAccount = saved.configuration?.accounts[0];
+			if (!afterAccount) throw new Error("missing saved account");
+			const future = "2026-10-27T14:00:00Z";
+			expect(route(afterAccount, [], future)).toBeDefined();
+			const spent = create(LeaseSchema, {
+				accountId: account.id,
+				offerId: offer.id,
+				state: "completed",
+				paidMicros: account.budgetMicros,
+				usageCompletedAt: NOW,
+			});
+			expect(route(afterAccount, [spent], future)).toBeUndefined();
+			expect(store.events().at(-1)?.type).toBe("ci.RateReattested");
+			expect(() => store.reattestRate(input, 1, NOW)).toThrow(
+				/revision conflict/,
+			);
+			store.rebuild();
+			expect(store.configuration()).toEqual(saved);
+			const expired = "2026-10-28T13:00:00Z";
+			const renewed = store.reattestRate(
+				{ ...input, checkedAt: expired, validUntil: "2026-10-29T13:00:00Z" },
+				2,
+				expired,
+			);
+			expect(renewed.configuration?.accounts[0]?.offers[0]?.observedAt).toBe(
+				offer.observedAt,
+			);
+		} finally {
+			store.close();
+		}
+	});
+	it("refuses stale, future, untrusted, free-credit or overly long attestations", async () => {
+		const store = new LeaseStore(":memory:");
+		try {
+			const config = await configuration();
+			const account = config.accounts[0];
+			const offer = account?.offers[0];
+			if (!account || !offer) throw new Error("fixture");
+			offer.provider = "vercel";
+			offer.backend = "sandbox";
+			offer.freeMinutes = 0;
+			offer.validUntil = "2026-10-27T13:00:00Z";
+			offer.sourceUrl = "https://vercel.com/docs/sandbox/pricing";
+			offer.sandboxPricing = create(SandboxPricingSchema, {
+				vcpus: 2,
+				memoryMb: 4096,
+				cpuMicrosPerVcpuHour: 1,
+				memoryMicrosPerGbHour: 1,
+				creationMicros: 1,
+				maxEgressBytes: 10,
+				egressMicrosPerGb: 1,
+				proxyMicrosPerGb: 1,
+				proxyFixedMicros: 1,
+				bootstrapFixedMicros: 1,
+				networkHeadroomBytes: 1,
+			});
+			store.configure(config, 0, NOW);
+			const base = {
+				accountId: account.id,
+				offerId: offer.id,
+				checkedAt: NOW,
+				validUntil: "2026-10-28T12:00:00Z",
+				sourceUrl: offer.sourceUrl,
+			};
+			for (const input of [
+				{ ...base, accountId: "other" },
+				{ ...base, sourceUrl: "https://example.com/" },
+				{ ...base, checkedAt: "2026-10-27T12:00:01Z" },
+				{ ...base, checkedAt: "2026-10-27T11:54:59Z" },
+				{ ...base, validUntil: "2026-10-28T12:00:01Z" },
+				{ ...base, validUntil: offer.validUntil },
+			])
+				expect(() => store.reattestRate(input, 1, NOW)).toThrow();
+			const withCredit = clone(config);
+			const credited = withCredit.accounts[0]?.offers[0];
+			if (!credited) throw new Error("fixture");
+			credited.sandboxAllowance = create(SandboxAllowanceSchema, {});
+			credited.observedAt = "2026-10-27T12:00:01Z";
+			store.configure(withCredit, 1, "2026-10-27T12:00:01Z");
+			expect(() => store.reattestRate(base, 2, "2026-10-27T12:00:01Z")).toThrow(
+				/attestation offer/,
+			);
+			expect(store.configuration()?.revision).toBe(2);
+		} finally {
+			store.close();
+		}
+	});
 	it("atomically revisions policy and protobuf setup records, reopens and rebuilds both", async () => {
 		const path = await disk();
 		const config = await configuration();

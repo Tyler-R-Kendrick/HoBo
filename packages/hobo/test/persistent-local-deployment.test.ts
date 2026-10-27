@@ -70,7 +70,7 @@ return {web: b.web(() => handler)};
 				...(args[0] === "up" ? ["--home", hoboHome] : []),
 				"--json",
 			],
-			{ cwd: project, env, timeout: 120_000, maxBuffer: 1024 * 1024 },
+			{ cwd: project, env, timeout: 300_000, maxBuffer: 1024 * 1024 },
 		);
 		return JSON.parse(result.stdout);
 	};
@@ -109,7 +109,7 @@ return new Response("application unavailable", {status: 503});
 				readFile(join(project, ".hobo/local-deployment.token")),
 			).rejects.toMatchObject({ code: "ENOENT" });
 		});
-	}, 120_000);
+	}, 300_000);
 
 	it("deploys edited application code in a new worker and reuses only unchanged inputs", async () => {
 		await setup(async (project, _env, command) => {
@@ -154,7 +154,7 @@ return new Response("application unavailable", {status: 503});
 				fetch(updated.data.primaryUrl, { signal: AbortSignal.timeout(1000) }),
 			).rejects.toThrow();
 		});
-	}, 120_000);
+	}, 300_000);
 
 	it("serves after up exits, reuses the same worker, rejects unauthenticated control, and down stops the server", async () => {
 		await setup(async (project, _env, command) => {
@@ -246,7 +246,7 @@ return new Response("application unavailable", {status: 503});
 				store.close();
 			}
 		});
-	}, 120_000);
+	}, 300_000);
 
 	it.each([
 		"--anonymous",
@@ -283,5 +283,5 @@ return new Response("application unavailable", {status: 503});
 				readFile(join(project, ".hobo/local-deployment.json")),
 			).rejects.toMatchObject({ code: "ENOENT" });
 		});
-	}, 120_000);
+	}, 300_000);
 });

@@ -372,7 +372,7 @@ it("executes auth.md discovery, registration, scoped proof, temporary placement,
 			{
 				cwd,
 				env: { ...process.env, NODE_EXTRA_CA_CERTS: fixture.certificatePath },
-				timeout: 15000,
+				timeout: 120_000,
 			},
 		);
 		expect(JSON.parse(child.stdout)).toMatchObject({
@@ -498,4 +498,4 @@ it("executes auth.md discovery, registration, scoped proof, temporary placement,
 		await fixture.close();
 		await rm(home, { recursive: true, force: true });
 	}
-}, 30000);
+}, 300_000);

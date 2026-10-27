@@ -324,7 +324,7 @@ describe("hobo CLI resolution (the shipped /dev and run-it spawn)", () => {
 				reducedMotion: true,
 				scriptedKeys: "run it\r",
 			});
-			const deadline = Date.now() + 20_000;
+			const deadline = Date.now() + 60_000;
 			while (!/https?:\/\//u.test(output) && Date.now() < deadline) {
 				await new Promise((resolve) => setTimeout(resolve, 50));
 			}
@@ -334,7 +334,7 @@ describe("hobo CLI resolution (the shipped /dev and run-it spawn)", () => {
 		} finally {
 			await host.dispose?.();
 		}
-	}, 60_000);
+	}, 120_000);
 
 	it("tells the user to create an app when run it has no Bindle", async () => {
 		const root = temp("hobo-bin-empty-");

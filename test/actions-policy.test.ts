@@ -116,8 +116,45 @@ test("the preserved CI job-disable policy remains enforced", async () => {
 	assert.equal(lint(root).status, 0);
 });
 
+test("the optional JIT smoke verifies runner identity without the full workflow steps", () => {
+	assert.match(
+		template,
+		/jit_only:\n\s+description:[^\n]+\n\s+required: false\n\s+type: boolean\n\s+default: false/,
+	);
+	assert.equal(
+		(template.match(/if: \$\{\{ !inputs\.jit_only \}\}/g) ?? []).length,
+		4,
+	);
+	const match = template.match(
+		/      - name: Verify HoBo JIT runner\n[\s\S]+?        run: \|\n([\s\S]+?)      - uses: actions\/checkout@/,
+	);
+	assert.ok(match?.[1]);
+	const script = match[1]
+		.split("\n")
+		.map((line) => line.slice(10))
+		.join("\n");
+	const env = {
+		PATH: process.env.PATH,
+		RUNNER_NAME: "hobo-12345678-1234-4234-8234-123456789abc",
+		RUNNER_ENVIRONMENT: "self-hosted",
+		GITHUB_EVENT_NAME: "workflow_dispatch",
+		GITHUB_RUN_ID: "100",
+		GITHUB_RUN_ATTEMPT: "1",
+	};
+	const run = (runnerEnvironment: string) =>
+		spawnSync("bash", ["-c", script], {
+			env: { ...env, RUNNER_ENVIRONMENT: runnerEnvironment },
+			encoding: "utf8",
+		});
+	const success = run("self-hosted");
+	assert.equal(success.status, 0, success.stderr);
+	assert.match(success.stdout, /hobo-jit-smoke run=100 attempt=1 runner=hobo-/);
+	assert.notEqual(run("github-hosted").status, 0);
+});
+
 async function smokeFixture() {
 	const root = await fixture();
+	const isolatedEnv = { PATH: process.env.PATH };
 	for (const args of [
 		["init", "--quiet"],
 		[
@@ -134,12 +171,17 @@ async function smokeFixture() {
 			"smoke fixture",
 		],
 	]) {
-		const result = spawnSync("git", args, { cwd: root, encoding: "utf8" });
+		const result = spawnSync("git", args, {
+			cwd: root,
+			encoding: "utf8",
+			env: isolatedEnv,
+		});
 		assert.equal(result.status, 0, result.stderr);
 	}
 	const revision = spawnSync("git", ["rev-parse", "HEAD"], {
 		cwd: root,
 		encoding: "utf8",
+		env: isolatedEnv,
 	});
 	assert.equal(revision.status, 0, revision.stderr);
 	const sha = revision.stdout.trim();
@@ -157,7 +199,7 @@ async function smokeFixture() {
 		.map((line) => line.slice(10))
 		.join("\n");
 	const env = {
-		PATH: process.env.PATH,
+		...isolatedEnv,
 		RUNNER_NAME: "hobo-12345678-1234-4234-8234-123456789abc",
 		RUNNER_ENVIRONMENT: "self-hosted",
 		GITHUB_EVENT_NAME: "workflow_dispatch",

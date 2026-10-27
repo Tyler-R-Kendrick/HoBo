@@ -58,6 +58,7 @@ export function createControlAuthenticator(json: string): ControlAuthenticator {
 						"policy:write",
 						"repositories:write",
 						"operations:write",
+						"observations:write",
 					].includes(scope),
 			)
 		)
@@ -415,6 +416,7 @@ export function createControlPlane(options: {
 					trustedRefs: input.allowedRefs,
 					trustedRepositoryAcknowledged: input.trustedRepositoryAcknowledged,
 					publicRepoAcknowledged: input.publicRepositoryAcknowledged,
+					allowAllPullRequests: input.allowAllPullRequests,
 					runnerGroupId: input.runnerGroupId || 1,
 					assets: options.assets,
 				});
@@ -451,6 +453,11 @@ export function createControlPlane(options: {
 						const plan = parseOnboardingPlan(
 							toJsonString(OnboardingPlanSchema, op.plan),
 						);
+						if (plan.allowAllPullRequests)
+							throw new ControlError(
+								409,
+								"isolated runner required for pull requests",
+							);
 						repositoryScope(
 							principal,
 							plan.repositoryId,

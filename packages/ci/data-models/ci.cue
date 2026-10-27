@@ -1,8 +1,50 @@
 package ci
 
+#SandboxAllowance: {
+ cpuVcpuMs: int & >=0
+ memoryMbMs: int & >=0
+ egressBytes: int & >=0
+ creations: int & >=0
+ proxyBytes: int & >=0
+ proxySessions: int & >=0
+ proxyControlCalls?: int & >=0
+}
+#SandboxPricing: {
+ vcpus: int & >=1 & <=32
+ memoryMb: int & >=1 & <=1048576
+ cpuMicrosPerVcpuHour: int & >=1
+ memoryMicrosPerGbHour: int & >=1
+ creationMicros: int & >=1
+ egressMicrosPerGb: int & >=1
+ maxEgressBytes: int & >=1
+ proxyMicrosPerGb: int & >=1
+ proxyFixedMicros: int & >=1
+ networkHeadroomBytes: int & >=1
+ bootstrapFixedMicros: int & >=1
+ proxyVmRequired?: bool
+ proxyVmVcpus?: int & >=0 & <=32
+ proxyVmMemoryMb?: int & >=0 & <=1048576
+ proxyVmExtraMs?: int & >=0
+ proxyVmNetworkBytes?: int & >=0
+ proxyVmNetworkHeadroomBytes?: int & >=0
+ region?: string
+ proxyControlMaxCalls?: int & >=0
+ proxyControlCallMicros?: int & >=0
+ plan?: "" | "hobby" | "pro" | "enterprise"
+}
+#SandboxMeasuredUsage: {
+ sessionId: string & !=""
+ cpuMs: int & >=0
+ durationMs: int & >=0
+ memoryMb: int & >=1
+ vcpus: int & >=1
+ egressBytes: int & >=0
+ ingressBytes: int & >=0
+ stoppedAt: string & !=""
+}
 #Offer: {
  id: string & !=""
- provider: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "dagger" | "cloudflare"
+ provider: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "dagger" | "cloudflare" | "vercel"
  providerAccountId: string & !=""
  enabled: bool
  runsOn: string & !=""
@@ -15,7 +57,9 @@ package ci
  validUntil: string & !=""
  sourceUrl: string & =~"^https://"
  bridgeAcknowledged: bool
- backend?: "" | "gh-actions" | "dagger" | "cf"
+ backend?: "" | "gh-actions" | "dagger" | "cf" | "sandbox"
+ sandboxPricing?: #SandboxPricing
+ sandboxAllowance?: #SandboxAllowance
 }
 #Account: {
  id: string & !=""
@@ -33,16 +77,31 @@ package ci
  repository: string & =~"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
  repositoryId: int & >0
  installationId: int & >0
- bridgeWorkflow: string & =~"^[A-Za-z0-9_-]+[.]ya?ml$"
- bridgeSha: string & =~"^[a-f0-9]{40}$"
  runnerGroupId: int & >=1
- allowedEvents: [...("push" | "workflow_dispatch")]
+ allowedEvents: [...("push" | "workflow_dispatch" | "pull_request")]
  allowedRefs: [...string]
  trustedRepositoryAcknowledged: true
+ publicRepositoryAcknowledged?: bool
+ allowAllPullRequests?: bool
+} & ({
+ isolatedOnly: true
+ acceptAllMatchingRepositoryJobs: true
+ publicRepositoryAcknowledged: true
+ allowAllPullRequests?: false
+ allowedEvents: []
+ allowedRefs: []
+ bridgeWorkflow?: ""
+ bridgeSha?: ""
+ bridgeRef?: ""
+ dispatcherActorId?: 0
+} | {
+ isolatedOnly?: false
+ acceptAllMatchingRepositoryJobs?: false
+ bridgeWorkflow: string & =~"^[A-Za-z0-9_-]+[.]ya?ml$"
+ bridgeSha: string & =~"^[a-f0-9]{40}$"
  bridgeRef: string & =~"^[A-Za-z0-9_/-]+$"
  dispatcherActorId: int & >0
- publicRepositoryAcknowledged?: bool
-}
+})
 #Configuration: {accounts: [...#Account], connections: [...#Connection]}
 #ConfigurationState: {revision: int & >=1, configuration: #Configuration, updatedAt: string & !=""}
 #ControlRecord: {key: string & !="", accountId: string & !="", bodyJson: string & !="", updatedAt: string & !=""}
@@ -54,13 +113,21 @@ package ci
  allowedRefs?: [...(string & =~"^refs/heads/")]
  trustedRepositoryAcknowledged: true
  publicRepositoryAcknowledged?: bool
-}
+ allowAllPullRequests?: bool
+} & ({
+ acceptAllMatchingRepositoryJobs: true
+ publicRepositoryAcknowledged: true
+ allowAllPullRequests?: false
+ allowedRefs?: []
+} | {
+ acceptAllMatchingRepositoryJobs?: false
+})
 #ReconcileRequest: {hostRunId: int & >0}
 #ControlCredential: {
  accountId: string & =~"^[A-Za-z0-9_-]{1,80}$"
  installationIds: [...(int & >0)]
  tokenSha256: string & =~"^[a-f0-9]{64}$"
- scopes: [...("policy:read" | "policy:write" | "repositories:write" | "operations:write")]
+ scopes: [...("policy:read" | "policy:write" | "repositories:write" | "operations:write" | "observations:write")]
 }
 #ControlCredentials: {tokens: [#ControlCredential, ...#ControlCredential]}
 #Job: {
@@ -68,6 +135,7 @@ package ci
  repositoryId: int & >0, installationId: int & >0
  repository: string & !="", labels: [...string]
  action: "queued" | "in_progress" | "completed", runnerName: string
+ isolatedRequired?: bool
 }
 #Lease: {
  id: string & !="", accountId: string & !="", offerId: string & !=""
@@ -82,11 +150,22 @@ package ci
  freeValidUntil: string, billedFreeMinutes: number & >=0
  pipelineId?: string, result?: #PipelineResult, pipelineDigest?: string
  usageCompletedAt?: string
+ sandboxName?: string, sandboxSessionId?: string, sandboxCommandId?: string
+ sandboxStage?: "" | "pending" | "creating" | "created" | "registering" | "starting" | "running" | "stopping" | "stopped"
+ sandboxPricing?: #SandboxPricing
+ sandboxReservedAllowance?: #SandboxAllowance
+ sandboxUsedAllowance?: #SandboxAllowance
+ proxySandboxName?: string, proxySandboxSessionId?: string, proxySandboxCommandId?: string
+ proxySandboxStage?: "" | "creating" | "created" | "starting" | "running" | "stopping" | "stopped"
+ sandboxStoppedUsage?: #SandboxMeasuredUsage
+ proxyStoppedUsage?: #SandboxMeasuredUsage
+ sandboxStopFromStage?: "" | "pending" | "created" | "registering" | "starting" | "running"
+ runnerDeletionConfirmed?: bool
 }
 #CiEvent: {type: string & !="", accountId: string, leaseId: string, at: string & !="", detail: string}
 #Snapshot: {leases: [...#Lease], events: [...#CiEvent]}
 
-#Ci: #BudgetSignal | #BudgetRoutingPolicy | #Offer | #Account | #Connection | #Configuration | #ConfigurationState | #ControlRecord | #AccountState | #RepositorySetupRequest | #ReconcileRequest | #ControlCredential | #ControlCredentials | #Job | #Lease | #CiEvent | #Snapshot | #PipelineStep | #Pipeline | #PipelineStepResult | #PipelineArtifact | #PipelineResult
+#Ci: #SandboxMeasuredUsage | #SandboxAllowance | #SandboxPricing | #DesiredCiPolicy | #BudgetSignal | #BudgetRoutingPolicy | #Offer | #Account | #Connection | #Configuration | #ConfigurationState | #ControlRecord | #AccountState | #RepositorySetupRequest | #ReconcileRequest | #ControlCredential | #ControlCredentials | #Job | #Lease | #CiEvent | #Snapshot | #PipelineStep | #Pipeline | #PipelineStepResult | #PipelineArtifact | #PipelineResult
 
 #PipelineStep: {id: string & !="", argv: [string & !="", ...string], cwd: string, env: [string]: string}
 #Pipeline: {
@@ -120,4 +199,26 @@ package ci
  accountId: string & !="", tenantId: string & !=""
  normalOfferIds: [...(string & !="")]
  thresholds: [#BudgetRoutingRule, ...#BudgetRoutingRule]
+}
+
+// Desired policy does not contain runtime-owned balances, observations or leases.
+#CiPolicyProvider: {
+ id: string & =~"^[A-Za-z0-9_-]{1,80}$"
+ kind: "github" | "blacksmith" | "depot" | "warpbuild" | "kubernetes" | "vercel"
+ connectionRef: string & !=""
+ runsOn: string & =~"^[A-Za-z0-9_.-]{1,100}$"
+ enabled?: bool
+}
+#CiPolicyPool: {label: "hobo", os: "linux", architecture: "x64"}
+#CiPolicyBudget: {scope: "ci-account", currency: "USD", limitMicros?: int & >=0 & <=9007199254740991, period: "manual", timeZone: "UTC"}
+#CiPolicyThreshold: {fraction: number & >0 & <=1, allow?: [...(string & =~"^[A-Za-z0-9_-]{1,80}$")]}
+#CiPolicyRouting: {strategy: "lowest-total-incremental-cost", noEligibleProvider: "queue", unknownAllocation: "zero"}
+#DesiredCiPolicy: {
+ accountId: string & =~"^[A-Za-z0-9_-]{1,80}$"
+ tenantId: string & =~"^[A-Za-z0-9_-]{1,80}$"
+ pool: #CiPolicyPool
+ providers: [#CiPolicyProvider, ...#CiPolicyProvider]
+ budget: #CiPolicyBudget
+ routing: #CiPolicyRouting
+ thresholds?: [...#CiPolicyThreshold]
 }

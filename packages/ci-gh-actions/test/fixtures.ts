@@ -192,6 +192,7 @@ export class ContractApi implements GithubTransport {
 			return Response.json({
 				id: Number(path.split("/").at(-1)),
 				run_id: 11,
+				run_attempt: 1,
 				status: this.jobStatus,
 				labels: ["hobo"],
 			});

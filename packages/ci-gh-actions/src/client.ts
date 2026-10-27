@@ -7,7 +7,11 @@ import {
 import {
 	AccountSchema,
 	AccountStateSchema,
+	BudgetSignalSchema,
+	ConnectionSchema,
+	DesiredCiPolicySchema,
 	LeaseSchema,
+	parseCiPolicy,
 	ReconcileRequestSchema,
 	RepositorySetupRequestSchema,
 	SnapshotSchema,
@@ -85,12 +89,16 @@ function encode<Desc extends DescMessage>(
 }
 
 /** Account tokens are obtained per operation; tenant routing always uses /self. */
-export function createCiRelayClient(options: {
-	origin: string;
-	accountToken: () => string | Promise<string>;
-	fetch?: typeof fetch;
-	allowInsecureLoopback?: boolean;
-}) {
+export function createCiRelayClient(
+	options: {
+		origin: string;
+		fetch?: typeof fetch;
+		allowInsecureLoopback?: boolean;
+	} & (
+		| { accountToken: () => string | Promise<string>; ownerSession?: never }
+		| { ownerSession: true; accountToken?: never }
+	),
+) {
 	const base = origin(options.origin, options.allowInsecureLoopback ?? false);
 	const send = options.fetch ?? fetch;
 	async function request<Desc extends DescMessage>(
@@ -99,16 +107,22 @@ export function createCiRelayClient(options: {
 		schema: Desc,
 		body?: string,
 		match?: string,
+		version: "v1" | "v2" = "v1",
 	): Promise<ProtobufMessage<Desc>> {
-		let token: string;
-		try {
-			token = await options.accountToken();
-		} catch {
-			return invalid("account credentials unavailable");
+		const headers = new Headers();
+		if (options.ownerSession) {
+			headers.set("X-HoBo-Owner-Control", "1");
+		} else {
+			let token: string;
+			try {
+				token = await options.accountToken();
+			} catch {
+				return invalid("account credentials unavailable");
+			}
+			if (!token || /\s/.test(token) || token.length > 1024)
+				invalid("invalid account credentials");
+			headers.set("Authorization", `Bearer ${token}`);
 		}
-		if (!token || /\s/.test(token) || token.length > 1024)
-			invalid("invalid account credentials");
-		const headers = new Headers({ Authorization: `Bearer ${token}` });
 		if (method !== "GET") headers.set("Content-Type", "application/json");
 		if (match !== undefined) headers.set("If-Match", match);
 		const init: RequestInit = {
@@ -116,11 +130,12 @@ export function createCiRelayClient(options: {
 			headers,
 			redirect: "error",
 			signal: AbortSignal.timeout(30000),
+			credentials: "same-origin",
 		};
 		if (body !== undefined) init.body = body;
 		let response: Response;
 		try {
-			response = await send(`${base}/v1/accounts/self/${path}`, init);
+			response = await send(`${base}/${version}/accounts/self/${path}`, init);
 		} catch {
 			throw new CiRelayClientError(
 				0,
@@ -167,8 +182,65 @@ export function createCiRelayClient(options: {
 			const body = encode(AccountSchema, account);
 			return request("policy", "PUT", AccountStateSchema, body, match);
 		},
+		putDesiredPolicy(
+			policy: ProtobufInput<typeof DesiredCiPolicySchema>,
+			version: { revision: number },
+		) {
+			let body: string;
+			try {
+				body = toJsonString(
+					DesiredCiPolicySchema,
+					parseCiPolicy(JSON.stringify(policy)),
+				);
+			} catch {
+				return invalid("invalid desired CI policy");
+			}
+			return request(
+				"policy",
+				"PUT",
+				AccountStateSchema,
+				body,
+				revision(version.revision),
+				"v2",
+			);
+		},
+		getSignalState() {
+			return request(
+				"signals",
+				"GET",
+				AccountStateSchema,
+				undefined,
+				undefined,
+				"v2",
+			);
+		},
+		publishBudgetSignal(
+			signal: ProtobufInput<typeof BudgetSignalSchema>,
+			version: { revision: number },
+		) {
+			return request(
+				"signals",
+				"POST",
+				AccountStateSchema,
+				encode(BudgetSignalSchema, signal),
+				revision(version.revision),
+				"v2",
+			);
+		},
 		getInstallations() {
 			return request("installations", "GET", OnboardingPrincipalSchema);
+		},
+		connectIsolatedRepository(
+			input: ProtobufInput<typeof RepositorySetupRequestSchema>,
+			version: { revision: number },
+		) {
+			return request(
+				"repositories/isolated-connect",
+				"POST",
+				ConnectionSchema,
+				encode(RepositorySetupRequestSchema, input),
+				revision(version.revision),
+			);
 		},
 		prepareRepository(
 			input: ProtobufInput<typeof RepositorySetupRequestSchema>,

@@ -9,16 +9,114 @@ HoBo CI is a sibling SDK family in the HoBo monorepo:
 | [`@hobo/ci-dagger`](../ci-dagger/README.md) | Implemented native Dagger SDK adapter |
 | [`@hobo/ci-cf`](../ci-cf/README.md) | Implemented native Cloudflare CI adapter |
 
+A Sandbox offer requires a trusted current rate card for CPU, provisioned
+memory, creation, network, proxy, bootstrap and any host charges. The quote reserves
+resource usage for the maximum runtime using integer microdollars; optional
+`SandboxAllowance` values represent verified remaining free CPU vCPU-ms,
+memory MB-ms, egress bytes, creation count, proxy bytes and proxy sessions.
+When an isolated proxy VM is required, the quote includes both VMs' CPU,
+provisioned memory and network, two creations, a bounded number of metered
+control-plane calls, and explicit bootstrap estimates. Both VMs must use the
+same Vercel project, region and published rate card to share an allowance. The
+plan's vCPU and session-duration limits are checked before reserving. The proxy's
+public ingress, DNS, TLS and other platform overhead are not bounded by the
+application quota. Each dimension is reserved across concurrent jobs and settled
+against observed usage. An omitted allowance means zero, not an inferred provider free tier.
+`observedAt` must describe the inclusive provider snapshot; a rate or allowance
+change needs a newer timestamp. Network headroom and proxy rates are configured
+estimates: Vercel's billed TLS, DNS, Function CPU, memory, request and transfer
+charges are not completely measured by the payload proxy. The trusted publisher
+must set nonzero per-resource rates and a separate nonzero `bootstrapFixedMicros`
+estimate for fetching and uploading the 228 MB runner archive on every launch. Actual spend may exceed
+the reservation. HoBo records overruns and blocks subsequent unaffordable work;
+this estimate is not a hard billing cap or proof of the globally cheapest price.
+A publisher must obtain and refresh provider-specific rates and free balances;
+no live Vercel inventory or price verification is built into this package.
+
+## PostgreSQL hosting adapter
+
+`PostgresCiStore` (`@hobo/ci/postgres`) stores journal events, leases, queued
+jobs, terminal tombstones, policy records, and verified webhook deliveries in
+PostgreSQL tables. Mutations lock a partition row, check policy revisions and
+commit all affected records together. GitHub and provider calls run outside the
+transaction. A scoped index lets recovery read active leases and their latest
+launch intents without reading historical jobs or the entire event journal.
+
+A partition's first open atomically imports an existing SQLite snapshot and
+retains that original snapshot in `hobo_ci_snapshot_backups`. The migration
+preserves event and inbox ordering, claim state, deduplication fingerprints and
+control records. A database constraint prevents an older snapshot-based relay
+from overwriting the migrated partition. **Rollback to old relay code is not
+supported:** the backup predates subsequent native writes. Drain old relay
+instances before migration, back up PostgreSQL, and restore only after reconciling
+all active runners and post-migration journal changes.
+
+The previous 28/32 MiB serialized-snapshot thresholds no longer apply. The
+partition lock still serializes all mutations for all accounts in that partition;
+account lease history is read for routing, and journal events, terminal tombstones
+and delivery fingerprints are not automatically archived. Monitor transaction
+latency and database growth and implement retention before operating at sustained
+scale. Removing completed webhook bytes from the current row does not erase
+PostgreSQL MVCC, WAL, replicas or backups; apply appropriate retention policies.
+
+The signed webhook body is hashed independently of GitHub's unsigned delivery
+ID and event headers. Exact byte-identical bodies for one installation received
+within 24 hours are acknowledged as duplicates without creating another inbox
+row, even if their delivery IDs differ. Such bodies represent the same signed
+payload; different payload bytes remain distinct. At ingress, the event header
+must agree with the authenticated body shape before this check. The first
+accepted delivery retains its ID and fingerprint, including for an authenticated
+but unconnected installation; a duplicate alias is not stored as a new ID.
+Completed legacy snapshots whose raw payload was already erased cannot acquire
+a body hash retroactively.
+
+Admission is limited to 600 distinct bodies per installation per rolling minute
+10,000 outstanding deliveries and 64 MiB of outstanding payloads per installation. A limit refusal does not
+acknowledge an unrecorded delivery; GitHub delivery repair and monitoring must be
+operational, and operators should review these ceilings against expected load.
+These controls do not replace signature validation or GitHub-side access control.
+
+A verified in-progress assignment records the exact repository, job and attempt
+against its runner lease. It suppresses stale queued demand and cancels only an
+unlaunched duplicate reservation. Launched or ambiguous hosts retain their
+budget until reconciled. A job may be released for requeue only after a fresh
+GitHub job read proves it is queued and the assignment owner still matches.
+
+A sandbox byte quota can be bound to a verified account, lease, session and
+configuration revision. Each successful reservation commits before forwarding;
+ambiguous writes are not refunded. This primitive requires an authenticated
+proxy and a trusted policy-derived ceiling before it can enforce an egress cap.
+Verified sandbox charges can exceed reservations and are recorded as actual cost
+with a `ci.BudgetOverrun` event; such a reservation is not a hard spending cap.
+
+Sandbox offers do not use runner-minute free balances. A trusted, current provider
+observation may instead supply remaining CPU, memory, network, creation and proxy
+resource allowances. Admission subtracts held reservations and usage settled
+since that observation. Each lease freezes its reserved quantities; settlement
+records measured consumption no greater than those quantities, so a later job
+cannot reuse the same credits. Missing allowance evidence counts as zero free
+units. An observation is only as reliable as its publisher; this accounting
+alone does not verify vendor entitlements or billed usage.
+
+Run the real PostgreSQL integration contract against a disposable local database
+by setting `HOBO_CI_TEST_POSTGRES` and executing
+`node --import tsx packages/ci/scripts/postgres-contract.ts`. It checks concurrent
+reservations, revision and settlement fencing, quota races, webhook deduplication,
+quarantine/replay, snapshot migration, old-writer refusal, admission beyond 32 MiB,
+and adapter reopen. It does not verify deployed provider billing.
+
 The GitHub Actions target keeps the original workflow and its logs, artifacts,
 permissions, environments, dependencies and status checks. After one-time repository
 connection, user workflows select `runs-on: hobo`.
 
 Routing considers only enabled, acknowledged provider offers owned by this account.
 It reserves the complete host timeout, including startup, under a durable transaction.
-Usable measured free allocation is consumed across providers first; then HoBo's
-existing `@hobo/dispatcher` chooses the cheapest paid candidate. Remaining partial
-free minutes are used before an entirely paid offering, provided the possible paid
-remainder fits both budgets. A job stays on its selected machine until it finishes.
+HoBo chooses the lowest projected paid cost for the complete host reservation,
+after applying each provider's usable measured free allocation. Fully free offers
+therefore win over paid offers. On equal projected cost, usable free allocation is
+preferred before `@hobo/dispatcher` applies its deterministic tie-breaking. A
+partial free allowance does not force a more expensive paid remainder.
+A job stays on its selected machine until it finishes.
 Provider budgets and concurrency limits can cause another eligible provider to win.
 If none qualifies, the job remains durably queued. Allocation must remain valid for
 the entire reserved host duration to count as free.
@@ -28,6 +126,35 @@ limit and evidence URL. Prices are account-supplied integer USD microdollars per
 minute, including applicable platform fees; this package ships no vendor price
 catalog or assumed marketing allowances. One microdollar is $0.000001. Each provider
 account entitlement has one account/offer owner; there is no cross-tenant pooling.
+
+`Offer.freeMinutes` is measured in **minutes on the selected runner SKU**, not
+in the provider's shared base-unit minutes. Blacksmith's x64 free balance and
+Depot's included balance are measured in 2-vCPU Linux equivalents, so a 4-vCPU
+runner consumes two base minutes for each runner minute. Convert a freshly
+measured balance before publishing the offer:
+
+```ts
+import { providerFreeRunnerMinutes } from '@hobo/ci';
+
+const freeMinutes = providerFreeRunnerMinutes({
+  provider: 'blacksmith',
+  runsOn: 'blacksmith-4vcpu-ubuntu-2404',
+  remainingBaseMinutes: 100,
+}); // 50 runner minutes
+```
+
+The helper recognizes the documented x64 Linux Blacksmith and Depot labels only,
+rejects unknown SKUs, and rounds fractional conversions down so it cannot grant
+more allocation than observed. Its conversion rules are based on the [Blacksmith
+runner documentation](https://docs.blacksmith.sh/blacksmith-runners/overview)
+and [Depot runner types](https://depot.dev/docs/github-actions/runner-types).
+It does not fetch, authenticate or independently verify vendor balances or prices;
+the trusted observation publisher must do that and supply an evidence timestamp
+and expiry. Pricing and entitlements may change. The single-offer-per-provider-
+account rule prevents double-spending the shared entitlement, but means switching
+SKUs requires replacing that offer after its active leases have settled.
+Depot measures usage by the second; the host's whole-minute settlement is a
+conservative estimate, not a replacement for a vendor invoice.
 
 Usage snapshots are inclusive. `Account.spentMicros` must include all completed
 usage through `Account.usageObservedAt`; each `Offer.spentMicros` and remaining
@@ -95,7 +222,7 @@ Bind eligible account offer IDs to real, account-scoped backend contexts;
 construct `new PipelineScheduler(store, account.id, bindings)` for that account.
 The scheduler rejects another account even if its offer IDs are identical.
 `Offer.backend` is `gh-actions` (the legacy empty default), `dagger`, or `cf`.
-The scheduler filters missing/incompatible backend bindings before free-first
+The scheduler filters missing/incompatible backend bindings before lowest-cost
 ranking. Native reservations cover the pipeline's bounded runtime rounded to a
 minute plus account startup allowance, within the account maximum.
 
@@ -128,6 +255,9 @@ corpus, budget policy regressions and the SDK protocol contracts.
 `ConfigurationState` and its audit event with compare-and-swap semantics. Active
 leases prevent destructive provider or repository identity changes. Configuration
 and generated control-operation records are replayed with the lease projections.
+While leases are active, the same transaction rejects expanding a connection's
+event or branch allowlists or enabling all pull requests. Narrowing these
+allowlists remains available to revoke authority during in-flight checks.
 The GitHub relay exposes account-scoped policy/repository APIs over this actor.
 
 `Account.usageObservedAt` and `Offer.observedAt` are inclusive usage-snapshot
@@ -141,6 +271,13 @@ publisher; this SDK does not invent vendor balances or invoice accuracy.
 Connections permit public repositories only with explicit
 `publicRepositoryAcknowledged` and the existing repository-wide trust contract.
 No new demand may use a connection revoked while asynchronous validation awaited.
+An `isolatedOnly` connection has no workflow bridge and reserves only isolated
+runner offers, including for private pushes. It requires explicit
+`acceptAllMatchingRepositoryJobs` and `publicRepositoryAcknowledged` consent,
+and must have empty event and branch filters: every matching job may run.
+Changing that isolation mode
+requires draining active leases. The local workflow-bridge store leaves such
+jobs queued rather than selecting a shared host.
 
 
 Broker-to-CI routing contracts include `BudgetSignal` and `BudgetRoutingPolicy`.
@@ -148,3 +285,42 @@ The Station adapter changes offer eligibility through the account API and stores
 per-threshold cycle/crossed maps on `Account`. The journal rejects discarded or
 regressed watermarks and same-cycle state changes; replay preserves ordering.
 Inclusive monetary snapshots remain independent of routing signal state.
+
+
+## Author CI policy
+
+`defineCiPolicy` constructs a frozen, generated desired-policy record without
+performing network requests or embedding provider credentials. Connection refs
+name Station-owned bindings; they are resolved and authorized by the host at
+apply time. The policy cannot contain spent amounts, free balances, signal
+watermarks or lease records. The parser accepts only the existing trusted Linux
+x64 `hobo` pool, explicit runner labels, USD microdollar account caps and a
+manual budget period; it rejects automatic rollover until that is implemented.
+Empty threshold `allow` arrays mean pause when the threshold is active.
+
+```ts
+import { defineCiPolicy } from '@hobo/ci';
+
+const policy = defineCiPolicy({
+  accountId: 'acme', tenantId: 'acme',
+  pool: { label: 'hobo', os: 'linux', architecture: 'x64' },
+  providers: [
+    { id: 'github', kind: 'github', connectionRef: 'github-ci', runsOn: 'ubuntu-24.04', enabled: true },
+    { id: 'blacksmith', kind: 'blacksmith', connectionRef: 'blacksmith-ci', runsOn: 'blacksmith-2vcpu-ubuntu-2404', enabled: true },
+    { id: 'isolated', kind: 'vercel', connectionRef: 'vercel-ci', runsOn: 'sandbox', enabled: true },
+  ],
+  budget: { scope: 'ci-account', currency: 'USD', limitMicros: 100_000_000, period: 'manual', timeZone: 'UTC' },
+  routing: { strategy: 'lowest-total-incremental-cost', noEligibleProvider: 'queue', unknownAllocation: 'zero' },
+  thresholds: [{ fraction: 1, allow: [] }],
+});
+```
+
+Authoring does not itself create provider Connections or publish policy. A
+managed host must authorize each Connection, store operator intent separately
+from dynamic budget/health eligibility, and expose a server-side desired-policy
+write boundary; `putPolicy(Account)` is a legacy full-state API and must not be
+treated as a safe desired-only write. Policy contracts, CUE fixtures, the
+`desired-policy` Pact and `test/policy.test.ts` cover authoring.
+The `vercel` declaration must match a separately provisioned Sandbox offer; its
+`runsOn` value identifies that offer and is not a GitHub runner label. Public
+repository and pull request jobs currently require an isolated Sandbox offer.

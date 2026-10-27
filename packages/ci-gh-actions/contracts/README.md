@@ -31,7 +31,7 @@ pnpm --filter @hobo/ci-gh-actions test
 The [connected acceptance lane](../acceptance/README.md) additionally runs the
 shipped service, automatic worker, SQLite journal, OIDC/JWKS validation, JIT
 claim, host process and actual `act` jobs. A strict local remote boundary supplies
-provider APIs. It verifies free-first routing, paid-price selection, provider
+provider APIs. It verifies zero-cost routing, paid-price selection, provider
 and account budgets, replay and restart. Live GitHub queue consumption and nested
 runner compatibility on vendor machines require execution evidence from those
 machines.

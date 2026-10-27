@@ -1,0 +1,39 @@
+{
+  "name": "@hobo/ci-vercel",
+  "version": "0.0.1",
+  "description": "Vercel HTTP transport for the HoBo CI relay",
+  "license": "MIT",
+  "private": true,
+  "type": "module",
+  "engines": {
+    "node": "24.x"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "dependencies": {
+    "@bufbuild/protobuf": "2.12.1",
+    "@hobo/ci": "workspace:*",
+    "@hobo/ci-gh-actions": "workspace:*",
+    "@neon/functions": "0.11.0",
+    "@vercel/oidc": "4.0.0",
+    "@vercel/queue": "0.10.0",
+    "@vercel/sandbox": "3.9.0",
+    "jose": "6.2.4",
+    "pg": "8.22.0",
+    "zod": "^4.1.13"
+  },
+  "devDependencies": {
+    "@types/pg": "8.15.5",
+    "esbuild": "0.28.1"
+  },
+  "scripts": {
+    "build": "node --import tsx scripts/generate-assets.mts && node --import tsx scripts/generate-proxy-bundle.mts && tsc -p tsconfig.json",
+    "typecheck": "tsc --noEmit -p tsconfig.check.json",
+    "lint": "biome check .",
+    "test": "node --import tsx scripts/generate-proxy-bundle.mts --check && vitest run"
+  }
+}

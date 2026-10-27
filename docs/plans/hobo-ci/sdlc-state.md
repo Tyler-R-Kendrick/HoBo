@@ -1,8 +1,9 @@
 # HoBo.CI delivery state
 
-- Current phase: final independent review and delivery
-- Current branch: `feat/hobo-ci-production`
-- Current PR: [#1596](https://github.com/Tyler-R-Kendrick/HoBo/pull/1596)
+- Current phase: lowest-cost routing implementation and managed Vercel hosting planning
+- Current branch: `feat/ci-cheapest-routing`.
+- Prior production PR: [#1596](https://github.com/Tyler-R-Kendrick/HoBo/pull/1596),
+  squash `4e2e7ca2c0360224e3beb1a982834e80495bb3d8`.
 - Prior SDK delivery: [#1594](https://github.com/Tyler-R-Kendrick/HoBo/pull/1594),
   squash `a262136d98e6699f8093c45fb36e32ea0a931864`; its closure record was #1595.
 - Current user acceptance: deployable service and a testable `runs-on: hobo` branch,
@@ -11,12 +12,35 @@
 - Isolated implementation/review covered onboarding, runtime lifecycle,
   deployment, connected acceptance, host shutdown and workflow policy.
 
+## Selected hosting follow-up
+
+The user selected Vercel hosting that exposes a public relay. Functions/Services
+will receive GitHub webhooks, policy/onboarding requests and OIDC/JIT claims;
+transactional external state and queue-driven workers will own durable admission
+and reconciliation. An outbound Daemon is optional for continuous polling, not
+the public HTTP listener. Existing SQLite/container assets remain self-hosted
+adapters and regression references, not a prerequisite VM deployment.
+
+The [hosting and policy plan](hosting-and-policy-plan.md) records the source
+audit, official platform constraints, adversarial/YAGNI/rubber-duck passes,
+SDK desired-state and Station Connection design, and contract-based delivery
+slices. Implementation and resource provisioning have not started in this
+follow-up. The user requested lowest total cost and temporary execution; routing
+compares projected charges after applicable free allocation. The Vercel adapter
+and temporary preview deployment remain planned work. No hosting accounts, secret
+inventories or other repositories were probed, and no provider resource was
+created. Separate architecture and
+adversarial reviews identified and closed the legacy-write, Connection-resolution,
+identity-linking, shared-parent-budget and repair-schedule gaps. Scoped CLI/design
+documentation checks and relative-link checks passed. The current branch also
+updates runtime ranking and its regression tests for lowest projected cost.
+
 ## Production repairs
 
 Persistent account policy/operation state, tenant-scoped authenticated API,
 repository setup PRs and verified protected pins, token-bound installation authority,
 secret-file deployment, process owner fencing, bounded drain, process-group cleanup,
-public-repository opt-in, async revocation fencing, paginated discovery, inclusive
+private-repository bridge fencing, async revocation fencing, paginated discovery, inclusive
 usage snapshots, monotonic ready operations and readonly-backup restore are implemented.
 The Station bridge consumes actual Broker budget facts and persists threshold
 ordering with account policy. Independent review found dispatch/JIT authority
@@ -29,8 +53,9 @@ Thirteen compiled runtime modules match fresh compilation of the source.
 PR-base validation passed all 16 relevant checks. The first exact-six design
 review identified two documentation contradictions: obsolete spend-baseline
 instructions and a live-test recipe that replaced the reviewed manual workflow
-with the local act fixture. Both instructions are corrected; a refreshed
-current-head review must acknowledge the fixes before merge.
+with the local act fixture. Both instructions were corrected; the refreshed
+cycle1 review unanimously approved head `976919abe63fe1244792f1fdbe9c65bc40df2eea`
+before #1596 was squash-merged.
 
 The two independent P2 findings are resolved: dispatch re-resolves authority after
 GitHub reads; JIT rechecks original branch/event authority after host checks.

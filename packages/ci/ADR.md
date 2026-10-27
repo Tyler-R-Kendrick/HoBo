@@ -20,7 +20,7 @@ and invoice reconciliation before production billing claims.
 
 Routing has no network effects. The integration's durable actor commits a
 `ci.LeaseReserved` event and its outbox projection in one SQLite transaction before
-external launch. Tests cover free-first ordering, cheapest-paid fallback, account
+external launch. Tests cover lowest projected cost after free allocations, account
 and provider budget rejection, expiry, pending reservations, isolation and replay.
 
 The pure SDK boundary is pinned by generated protobuf JSON roundtrip tests and CUE

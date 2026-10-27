@@ -1,10 +1,16 @@
 # HoBo.CI production delivery
 
 The original SDK delivery (#1594, closed by #1595) established the routing and
-portable execution contracts. The production continuation on
-`feat/hobo-ci-production` completes the hosted service and an executable path to
-test this branch. The target remains one-line workflow authoring:
-`runs-on: hobo` after repository onboarding.
+portable execution contracts. The production continuation (#1596) added the
+deployable Linux relay and an executable local acceptance path. A reachable
+managed service still requires independent hosting, durable infrastructure,
+App provisioning and provider Connections before workflows depend on it.
+The target remains one-line workflow authoring: `runs-on: hobo` after onboarding.
+
+The user selected Vercel Functions/Services for managed relay hosting. See the
+[hosting and SDK policy plan](hosting-and-policy-plan.md) for the selected
+HTTP/database/queue architecture, alternatives, adversarial findings, proposed
+SDK configuration and implementation acceptance gates.
 
 ## Implemented production path
 
@@ -20,10 +26,11 @@ test this branch. The target remains one-line workflow authoring:
   isolation, local readiness, secret-file bindings and process-lifetime OS lock.
 - Nonroot Compose/Kubernetes deployment assets, persistent volume, read-only root,
   online WAL backup, locked offline restore, integrity checks and crash recovery.
-- Public repository opt-in with the repository-wide trusted-workload boundary;
-  no fork/PR provisioning. Revocation during asynchronous intake, dispatch or JIT checks cannot admit
+- Private repositories with a repository-wide trusted-workload boundary; public
+  repositories and fork/PR provisioning are refused by the workflow bridge.
+  Revocation during asynchronous intake, dispatch or JIT checks cannot admit
   work under the old branch/event rules.
-- Free-first routing and cheapest paid fallback across GitHub, Blacksmith, Depot,
+- Lowest projected cost after applicable free allocations across GitHub, Blacksmith, Depot,
   WarpBuild and isolated Kubernetes host labels. Fresh complete usage snapshots
   can be published through policy without restart. Inclusive usage watermarks
   prevent late reconciliation from duplicating observed spend/free consumption.

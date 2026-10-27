@@ -50,6 +50,10 @@ export {
 	stationEvent,
 } from "./events.js";
 export {
+	createHostedCiBudgetRoutingBridge,
+	type HostedCiBudgetRoutingClient,
+} from "./hosted-ci-routing.js";
+export {
 	type CreateStationOfferingRegistryOptions,
 	createStationOfferingRegistry,
 	type StationOfferingRegistration,

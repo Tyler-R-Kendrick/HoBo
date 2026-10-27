@@ -1,6 +1,8 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { clone } from "@bufbuild/protobuf";
+import { OfferSchema } from "@hobo/ci";
 import { afterEach, describe, expect, it } from "vitest";
 import { LeaseStore } from "../src/store.js";
 import { harness, job, NOW, queued, reserve, signed } from "./fixtures.js";
@@ -123,6 +125,70 @@ it("readmits a reserved free host when refreshed evidence has no remaining balan
 	expect(h.api.dispatches).toBe(0);
 	expect(h.store.get(lease.id)?.state).toBe("cancelled");
 	expect(h.store.pendingJobs()).toHaveLength(1);
+});
+it("requeues an unlaunched reservation when a cheaper host becomes eligible", async () => {
+	const h = setup();
+	const account = h.configuration.accounts[0];
+	const expensive = account?.offers[0];
+	if (!account || !expensive) throw new Error("missing offer");
+	expensive.freeMinutes = 0;
+	const original = await reserve(h);
+	const cheaper = clone(OfferSchema, expensive);
+	cheaper.id = "github-cheaper";
+	cheaper.provider = "github";
+	cheaper.providerAccountId = "github-account";
+	cheaper.runsOn = "ubuntu-24.04";
+	cheaper.priceMicrosPerMinute = 1000;
+	account.offers.push(cheaper);
+
+	await h.relay.dispatchPending();
+	expect(h.api.dispatches).toBe(0);
+	expect(h.store.get(original.id)?.state).toBe("cancelled");
+	expect(h.store.pendingJobs().map((entry) => entry.id)).toEqual([1]);
+
+	h.api.strictLeaseId = false;
+	h.api.hostLabel = cheaper.runsOn;
+	await h.relay.dispatchPending();
+	const replacement = h.store.all().find((entry) => entry.id !== original.id);
+	expect(replacement).toMatchObject({
+		offerId: cheaper.id,
+		state: "dispatched",
+	});
+	expect(h.api.dispatches).toBe(1);
+});
+it("keeps the existing reservation when the new host costs the same", async () => {
+	const h = setup();
+	const account = h.configuration.accounts[0];
+	const offer = account?.offers[0];
+	if (!account || !offer) throw new Error("missing offer");
+	offer.freeMinutes = 0;
+	const original = await reserve(h);
+	const equal = clone(OfferSchema, offer);
+	equal.id = "equal";
+	equal.providerAccountId = "another-account";
+	account.offers.push(equal);
+	await h.relay.dispatchPending();
+	expect(h.api.dispatches).toBe(1);
+	expect(h.store.get(original.id)?.state).toBe("dispatched");
+	expect(h.store.pendingJobs()).toHaveLength(0);
+});
+it("does not reroute a dispatched host when a cheaper host appears", async () => {
+	const h = setup();
+	const account = h.configuration.accounts[0];
+	const offer = account?.offers[0];
+	if (!account || !offer) throw new Error("missing offer");
+	offer.freeMinutes = 0;
+	const original = await reserve(h);
+	await h.relay.dispatchPending();
+	const cheaper = clone(OfferSchema, offer);
+	cheaper.id = "cheaper";
+	cheaper.providerAccountId = "another-account";
+	cheaper.priceMicrosPerMinute = 1;
+	account.offers.push(cheaper);
+	await h.relay.dispatchPending();
+	expect(h.api.dispatches).toBe(1);
+	expect(h.store.get(original.id)?.state).toBe("dispatched");
+	expect(h.store.pendingJobs()).toHaveLength(0);
 });
 it("does not extend a pinned free window merely because fresh evidence expires later", async () => {
 	const h = setup();

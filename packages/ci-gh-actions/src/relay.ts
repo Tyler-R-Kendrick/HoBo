@@ -100,7 +100,9 @@ export class Relay {
 	private trustedOriginal(run: GithubRun, connection: Connection): boolean {
 		return (
 			run.repository.id === connection.repositoryId &&
-			(run.repository.private || connection.publicRepositoryAcknowledged) &&
+			// A shared label can be claimed by any queued job, including a fork PR.
+			// The workflow bridge does not isolate the nested runner from host credentials.
+			run.repository.private &&
 			run.head_repository?.id === connection.repositoryId &&
 			connection.allowedEvents.includes(run.event) &&
 			connection.allowedRefs.includes(`refs/heads/${run.head_branch}`)
@@ -261,6 +263,28 @@ export class Relay {
 			repriced.paidMicros <= lease.reservedPaidMicros
 		);
 	}
+	/** A reserved host has no external side effect yet, so a cheaper host can
+	 * replace it. Already dispatched and uncertain hosts must never be moved. */
+	private hasCheaperHost(lease: Lease): boolean {
+		const account = this.account(lease);
+		const offer = providerOffer(account, lease);
+		const others = this.options.store
+			.all()
+			.filter((entry) => entry.id !== lease.id);
+		const now = this.now();
+		const current = route({ ...account, offers: [offer] }, others, now);
+		const cheapest = route(
+			{
+				...account,
+				offers: account.offers.filter(
+					(entry) => !entry.backend || entry.backend === "gh-actions",
+				),
+			},
+			others,
+			now,
+		);
+		return !!current && !!cheapest && cheapest.paidMicros < current.paidMicros;
+	}
 	/** Durable outbox drain. A launch intent is committed before network I/O. */
 	async dispatchPending(): Promise<void> {
 		for (const job of this.options.store.pendingJobs()) {
@@ -315,7 +339,7 @@ export class Relay {
 					);
 					continue;
 				}
-				if (!this.launchEligible(candidate)) {
+				if (!this.launchEligible(candidate) || this.hasCheaperHost(candidate)) {
 					this.options.store.cancelAndRequeue(
 						candidate.id,
 						this.queuedDemand(candidate),

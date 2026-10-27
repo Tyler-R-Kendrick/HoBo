@@ -10,7 +10,232 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file ci.proto.
  */
 export const file_ci: GenFile = /*@__PURE__*/
-  fileDesc("CghjaS5wcm90bxIKaG9iby5jaS52MSLJAgoFT2ZmZXISCgoCaWQYASABKAkSEAoIcHJvdmlkZXIYAiABKAkSGwoTcHJvdmlkZXJfYWNjb3VudF9pZBgDIAEoCRIPCgdlbmFibGVkGAQgASgIEg8KB3J1bnNfb24YBSABKAkSFAoMZnJlZV9taW51dGVzGAYgASgBEh8KF3ByaWNlX21pY3Jvc19wZXJfbWludXRlGAcgASgBEhUKDWJ1ZGdldF9taWNyb3MYCCABKAESFAoMc3BlbnRfbWljcm9zGAkgASgBEhMKC2NvbmN1cnJlbmN5GAogASgNEhMKC29ic2VydmVkX2F0GAsgASgJEhMKC3ZhbGlkX3VudGlsGAwgASgJEhIKCnNvdXJjZV91cmwYDSABKAkSGwoTYnJpZGdlX2Fja25vd2xlZGdlZBgOIAEoCBIPCgdiYWNrZW5kGA8gASgJIssDCgdBY2NvdW50EgoKAmlkGAEgASgJEhUKDWJ1ZGdldF9taWNyb3MYAiABKAESFAoMc3BlbnRfbWljcm9zGAMgASgBEhsKE21heF9ydW50aW1lX21pbnV0ZXMYBCABKA0SFwoPc3RhcnR1cF9taW51dGVzGAUgASgNEiEKBm9mZmVycxgGIAMoCzIRLmhvYm8uY2kudjEuT2ZmZXISGQoRdXNhZ2Vfb2JzZXJ2ZWRfYXQYByABKAkSSwoVcm91dGluZ19zaWduYWxfY3ljbGVzGAggAygLMiwuaG9iby5jaS52MS5BY2NvdW50LlJvdXRpbmdTaWduYWxDeWNsZXNFbnRyeRJNChZyb3V0aW5nX3NpZ25hbF9jcm9zc2VkGAkgAygLMi0uaG9iby5jaS52MS5BY2NvdW50LlJvdXRpbmdTaWduYWxDcm9zc2VkRW50cnkaOgoYUm91dGluZ1NpZ25hbEN5Y2xlc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoDToCOAEaOwoZUm91dGluZ1NpZ25hbENyb3NzZWRFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAg6AjgBItoCCgpDb25uZWN0aW9uEhIKCmFjY291bnRfaWQYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRIVCg1yZXBvc2l0b3J5X2lkGAMgASgBEhcKD2luc3RhbGxhdGlvbl9pZBgEIAEoARIXCg9icmlkZ2Vfd29ya2Zsb3cYBSABKAkSEgoKYnJpZGdlX3NoYRgGIAEoCRIXCg9ydW5uZXJfZ3JvdXBfaWQYByABKA0SFgoOYWxsb3dlZF9ldmVudHMYCCADKAkSFAoMYWxsb3dlZF9yZWZzGAkgAygJEicKH3RydXN0ZWRfcmVwb3NpdG9yeV9hY2tub3dsZWRnZWQYCiABKAgSEgoKYnJpZGdlX3JlZhgLIAEoCRIbChNkaXNwYXRjaGVyX2FjdG9yX2lkGAwgASgBEiYKHnB1YmxpY19yZXBvc2l0b3J5X2Fja25vd2xlZGdlZBgNIAEoCCJjCg1Db25maWd1cmF0aW9uEiUKCGFjY291bnRzGAEgAygLMhMuaG9iby5jaS52MS5BY2NvdW50EisKC2Nvbm5lY3Rpb25zGAIgAygLMhYuaG9iby5jaS52MS5Db25uZWN0aW9uImwKEkNvbmZpZ3VyYXRpb25TdGF0ZRIQCghyZXZpc2lvbhgBIAEoDRIwCg1jb25maWd1cmF0aW9uGAIgASgLMhkuaG9iby5jaS52MS5Db25maWd1cmF0aW9uEhIKCnVwZGF0ZWRfYXQYAyABKAkiVwoNQ29udHJvbFJlY29yZBILCgNrZXkYASABKAkSEgoKYWNjb3VudF9pZBgCIAEoCRIRCglib2R5X2pzb24YAyABKAkSEgoKdXBkYXRlZF9hdBgEIAEoCSKHAQoMQWNjb3VudFN0YXRlEhAKCHJldmlzaW9uGAEgASgNEiQKB2FjY291bnQYAiABKAsyEy5ob2JvLmNpLnYxLkFjY291bnQSKwoLY29ubmVjdGlvbnMYAyADKAsyFi5ob2JvLmNpLnYxLkNvbm5lY3Rpb24SEgoKdXBkYXRlZF9hdBgEIAEoCSLcAQoWUmVwb3NpdG9yeVNldHVwUmVxdWVzdBISCgpyZXBvc2l0b3J5GAEgASgJEhUKDXJlcG9zaXRvcnlfaWQYAiABKAESFwoPaW5zdGFsbGF0aW9uX2lkGAMgASgBEhcKD3J1bm5lcl9ncm91cF9pZBgEIAEoDRIUCgxhbGxvd2VkX3JlZnMYBSADKAkSJwofdHJ1c3RlZF9yZXBvc2l0b3J5X2Fja25vd2xlZGdlZBgGIAEoCBImCh5wdWJsaWNfcmVwb3NpdG9yeV9hY2tub3dsZWRnZWQYByABKAgiJwoQUmVjb25jaWxlUmVxdWVzdBITCgtob3N0X3J1bl9pZBgBIAEoASJnChFDb250cm9sQ3JlZGVudGlhbBISCgphY2NvdW50X2lkGAEgASgJEhgKEGluc3RhbGxhdGlvbl9pZHMYAiADKAESFAoMdG9rZW5fc2hhMjU2GAMgASgJEg4KBnNjb3BlcxgEIAMoCSJDChJDb250cm9sQ3JlZGVudGlhbHMSLQoGdG9rZW5zGAEgAygLMh0uaG9iby5jaS52MS5Db250cm9sQ3JlZGVudGlhbCKvAQoDSm9iEgoKAmlkGAEgASgBEg4KBnJ1bl9pZBgCIAEoARITCgtydW5fYXR0ZW1wdBgDIAEoDRIVCg1yZXBvc2l0b3J5X2lkGAQgASgBEhcKD2luc3RhbGxhdGlvbl9pZBgFIAEoARISCgpyZXBvc2l0b3J5GAYgASgJEg4KBmxhYmVscxgHIAMoCRIOCgZhY3Rpb24YCCABKAkSEwoLcnVubmVyX25hbWUYCSABKAkiqgUKBUxlYXNlEgoKAmlkGAEgASgJEhIKCmFjY291bnRfaWQYAiABKAkSEAoIb2ZmZXJfaWQYAyABKAkSEAoIcHJvdmlkZXIYBCABKAkSDgoGam9iX2lkGAUgASgBEhcKD29yaWdpbmFsX3J1bl9pZBgGIAEoARITCgtydW5fYXR0ZW1wdBgHIAEoDRIVCg1yZXBvc2l0b3J5X2lkGAggASgBEhIKCnJlcG9zaXRvcnkYCSABKAkSFwoPaW5zdGFsbGF0aW9uX2lkGAogASgBEg0KBXN0YXRlGAsgASgJEhgKEHJlc2VydmVkX21pbnV0ZXMYDCABKAESHQoVcmVzZXJ2ZWRfZnJlZV9taW51dGVzGA0gASgBEhwKFHJlc2VydmVkX3BhaWRfbWljcm9zGA4gASgBEhMKC3J1bm5lcl9uYW1lGA8gASgJEhIKCmNyZWF0ZWRfYXQYECABKAkSEwoLaG9zdF9ydW5faWQYESABKAESEQoJcnVubmVyX2lkGBIgASgBEhUKDWFjdHVhbF9qb2JfaWQYEyABKAESFgoOYmlsbGVkX21pbnV0ZXMYFCABKAESEwoLcGFpZF9taWNyb3MYFSABKAESEgoKc2V0dGxlZF9hdBgWIAEoCRIfChdwcmljZV9taWNyb3NfcGVyX21pbnV0ZRgXIAEoARIYChBmcmVlX3ZhbGlkX3VudGlsGBggASgJEhsKE2JpbGxlZF9mcmVlX21pbnV0ZXMYGSABKAESEwoLcGlwZWxpbmVfaWQYGiABKAkSKgoGcmVzdWx0GBsgASgLMhouaG9iby5jaS52MS5QaXBlbGluZVJlc3VsdBIXCg9waXBlbGluZV9kaWdlc3QYHCABKAkSGgoSdXNhZ2VfY29tcGxldGVkX2F0GB0gASgJIlkKB0NpRXZlbnQSDAoEdHlwZRgBIAEoCRISCgphY2NvdW50X2lkGAIgASgJEhAKCGxlYXNlX2lkGAMgASgJEgoKAmF0GAQgASgJEg4KBmRldGFpbBgFIAEoCSJSCghTbmFwc2hvdBIhCgZsZWFzZXMYASADKAsyES5ob2JvLmNpLnYxLkxlYXNlEiMKBmV2ZW50cxgCIAMoCzITLmhvYm8uY2kudjEuQ2lFdmVudCKRAQoMUGlwZWxpbmVTdGVwEgoKAmlkGAEgASgJEgwKBGFyZ3YYAiADKAkSCwoDY3dkGAMgASgJEi4KA2VudhgEIAMoCzIhLmhvYm8uY2kudjEuUGlwZWxpbmVTdGVwLkVudkVudHJ5GioKCEVudkVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiowEKCFBpcGVsaW5lEgoKAmlkGAEgASgJEhIKCmFjY291bnRfaWQYAiABKAkSJwoFc3RlcHMYAyADKAsyGC5ob2JvLmNpLnYxLlBpcGVsaW5lU3RlcBIWCg5hcnRpZmFjdF9wYXRocxgEIAMoCRIXCg90aW1lb3V0X3NlY29uZHMYBSABKA0SHQoVcmVxdWlyZWRfY2FwYWJpbGl0aWVzGAYgAygJIlMKElBpcGVsaW5lU3RlcFJlc3VsdBIKCgJpZBgBIAEoCRIRCglleGl0X2NvZGUYAiABKAUSDgoGc3Rkb3V0GAMgASgJEg4KBnN0ZGVychgEIAEoCSI+ChBQaXBlbGluZUFydGlmYWN0EgwKBHBhdGgYASABKAkSDAoEZGF0YRgCIAEoDBIOCgZzaGEyNTYYAyABKAkirAEKDlBpcGVsaW5lUmVzdWx0EgoKAmlkGAEgASgJEg8KB2JhY2tlbmQYAiABKAkSDgoGc3RhdHVzGAMgASgJEi0KBXN0ZXBzGAQgAygLMh4uaG9iby5jaS52MS5QaXBlbGluZVN0ZXBSZXN1bHQSLwoJYXJ0aWZhY3RzGAUgAygLMhwuaG9iby5jaS52MS5QaXBlbGluZUFydGlmYWN0Eg0KBWVycm9yGAYgASgJIqYBChBCdWRnZXRTaWduYWxEYXRhEhEKCXRlbmFudF9pZBgBIAEoCRIaChJ0aHJlc2hvbGRfZnJhY3Rpb24YAiABKAESFQoNdGhyZXNob2xkX3VzZBgDIAEoARISCgpidWRnZXRfdXNkGAQgASgBEhUKDW5ldF9zcGVudF91c2QYBSABKAESDQoFY3ljbGUYBiABKA0SEgoKc2lnbmFsX2tleRgHIAEoCSJICgxCdWRnZXRTaWduYWwSDAoEdHlwZRgBIAEoCRIqCgRkYXRhGAIgASgLMhwuaG9iby5jaS52MS5CdWRnZXRTaWduYWxEYXRhIkIKEUJ1ZGdldFJvdXRpbmdSdWxlEhoKEnRocmVzaG9sZF9mcmFjdGlvbhgBIAEoARIRCglvZmZlcl9pZHMYAiADKAkiiQEKE0J1ZGdldFJvdXRpbmdQb2xpY3kSEgoKYWNjb3VudF9pZBgBIAEoCRIRCgl0ZW5hbnRfaWQYAiABKAkSGAoQbm9ybWFsX29mZmVyX2lkcxgDIAMoCRIxCgp0aHJlc2hvbGRzGAQgAygLMh0uaG9iby5jaS52MS5CdWRnZXRSb3V0aW5nUnVsZWIGcHJvdG8z");
+  fileDesc("CghjaS5wcm90bxIKaG9iby5jaS52MSKwAQoQU2FuZGJveEFsbG93YW5jZRITCgtjcHVfdmNwdV9tcxgBIAEoARIUCgxtZW1vcnlfbWJfbXMYAiABKAESFAoMZWdyZXNzX2J5dGVzGAMgASgBEhEKCWNyZWF0aW9ucxgEIAEoARITCgtwcm94eV9ieXRlcxgFIAEoARIWCg5wcm94eV9zZXNzaW9ucxgGIAEoARIbChNwcm94eV9jb250cm9sX2NhbGxzGAcgASgBItYECg5TYW5kYm94UHJpY2luZxINCgV2Y3B1cxgBIAEoDRIRCgltZW1vcnlfbWIYAiABKA0SIAoYY3B1X21pY3Jvc19wZXJfdmNwdV9ob3VyGAMgASgBEiEKGW1lbW9yeV9taWNyb3NfcGVyX2diX2hvdXIYBCABKAESFwoPY3JlYXRpb25fbWljcm9zGAUgASgBEhwKFGVncmVzc19taWNyb3NfcGVyX2diGAYgASgBEhgKEG1heF9lZ3Jlc3NfYnl0ZXMYByABKAESGwoTcHJveHlfbWljcm9zX3Blcl9nYhgIIAEoARIaChJwcm94eV9maXhlZF9taWNyb3MYCSABKAESHgoWbmV0d29ya19oZWFkcm9vbV9ieXRlcxgKIAEoARIeChZib290c3RyYXBfZml4ZWRfbWljcm9zGAsgASgBEhkKEXByb3h5X3ZtX3JlcXVpcmVkGAwgASgIEhYKDnByb3h5X3ZtX3ZjcHVzGA0gASgNEhoKEnByb3h5X3ZtX21lbW9yeV9tYhgOIAEoDRIZChFwcm94eV92bV9leHRyYV9tcxgPIAEoARIeChZwcm94eV92bV9uZXR3b3JrX2J5dGVzGBAgASgBEicKH3Byb3h5X3ZtX25ldHdvcmtfaGVhZHJvb21fYnl0ZXMYESABKAESDgoGcmVnaW9uGBIgASgJEh8KF3Byb3h5X2NvbnRyb2xfbWF4X2NhbGxzGBMgASgBEiEKGXByb3h5X2NvbnRyb2xfY2FsbF9taWNyb3MYFCABKAESDAoEcGxhbhgVIAEoCSKyAQoUU2FuZGJveE1lYXN1cmVkVXNhZ2USEgoKc2Vzc2lvbl9pZBgBIAEoCRIOCgZjcHVfbXMYAiABKAESEwoLZHVyYXRpb25fbXMYAyABKAESEQoJbWVtb3J5X21iGAQgASgBEg0KBXZjcHVzGAUgASgBEhQKDGVncmVzc19ieXRlcxgGIAEoARIVCg1pbmdyZXNzX2J5dGVzGAcgASgBEhIKCnN0b3BwZWRfYXQYCCABKAkitwMKBU9mZmVyEgoKAmlkGAEgASgJEhAKCHByb3ZpZGVyGAIgASgJEhsKE3Byb3ZpZGVyX2FjY291bnRfaWQYAyABKAkSDwoHZW5hYmxlZBgEIAEoCBIPCgdydW5zX29uGAUgASgJEhQKDGZyZWVfbWludXRlcxgGIAEoARIfChdwcmljZV9taWNyb3NfcGVyX21pbnV0ZRgHIAEoARIVCg1idWRnZXRfbWljcm9zGAggASgBEhQKDHNwZW50X21pY3JvcxgJIAEoARITCgtjb25jdXJyZW5jeRgKIAEoDRITCgtvYnNlcnZlZF9hdBgLIAEoCRITCgt2YWxpZF91bnRpbBgMIAEoCRISCgpzb3VyY2VfdXJsGA0gASgJEhsKE2JyaWRnZV9hY2tub3dsZWRnZWQYDiABKAgSDwoHYmFja2VuZBgPIAEoCRIzCg9zYW5kYm94X3ByaWNpbmcYECABKAsyGi5ob2JvLmNpLnYxLlNhbmRib3hQcmljaW5nEjcKEXNhbmRib3hfYWxsb3dhbmNlGBEgASgLMhwuaG9iby5jaS52MS5TYW5kYm94QWxsb3dhbmNlIssDCgdBY2NvdW50EgoKAmlkGAEgASgJEhUKDWJ1ZGdldF9taWNyb3MYAiABKAESFAoMc3BlbnRfbWljcm9zGAMgASgBEhsKE21heF9ydW50aW1lX21pbnV0ZXMYBCABKA0SFwoPc3RhcnR1cF9taW51dGVzGAUgASgNEiEKBm9mZmVycxgGIAMoCzIRLmhvYm8uY2kudjEuT2ZmZXISGQoRdXNhZ2Vfb2JzZXJ2ZWRfYXQYByABKAkSSwoVcm91dGluZ19zaWduYWxfY3ljbGVzGAggAygLMiwuaG9iby5jaS52MS5BY2NvdW50LlJvdXRpbmdTaWduYWxDeWNsZXNFbnRyeRJNChZyb3V0aW5nX3NpZ25hbF9jcm9zc2VkGAkgAygLMi0uaG9iby5jaS52MS5BY2NvdW50LlJvdXRpbmdTaWduYWxDcm9zc2VkRW50cnkaOgoYUm91dGluZ1NpZ25hbEN5Y2xlc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoDToCOAEaOwoZUm91dGluZ1NpZ25hbENyb3NzZWRFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAg6AjgBIr8DCgpDb25uZWN0aW9uEhIKCmFjY291bnRfaWQYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRIVCg1yZXBvc2l0b3J5X2lkGAMgASgBEhcKD2luc3RhbGxhdGlvbl9pZBgEIAEoARIXCg9icmlkZ2Vfd29ya2Zsb3cYBSABKAkSEgoKYnJpZGdlX3NoYRgGIAEoCRIXCg9ydW5uZXJfZ3JvdXBfaWQYByABKA0SFgoOYWxsb3dlZF9ldmVudHMYCCADKAkSFAoMYWxsb3dlZF9yZWZzGAkgAygJEicKH3RydXN0ZWRfcmVwb3NpdG9yeV9hY2tub3dsZWRnZWQYCiABKAgSEgoKYnJpZGdlX3JlZhgLIAEoCRIbChNkaXNwYXRjaGVyX2FjdG9yX2lkGAwgASgBEiYKHnB1YmxpY19yZXBvc2l0b3J5X2Fja25vd2xlZGdlZBgNIAEoCBIfChdhbGxvd19hbGxfcHVsbF9yZXF1ZXN0cxgOIAEoCBIVCg1pc29sYXRlZF9vbmx5GA8gASgIEisKI2FjY2VwdF9hbGxfbWF0Y2hpbmdfcmVwb3NpdG9yeV9qb2JzGBAgASgIImMKDUNvbmZpZ3VyYXRpb24SJQoIYWNjb3VudHMYASADKAsyEy5ob2JvLmNpLnYxLkFjY291bnQSKwoLY29ubmVjdGlvbnMYAiADKAsyFi5ob2JvLmNpLnYxLkNvbm5lY3Rpb24ibAoSQ29uZmlndXJhdGlvblN0YXRlEhAKCHJldmlzaW9uGAEgASgNEjAKDWNvbmZpZ3VyYXRpb24YAiABKAsyGS5ob2JvLmNpLnYxLkNvbmZpZ3VyYXRpb24SEgoKdXBkYXRlZF9hdBgDIAEoCSJXCg1Db250cm9sUmVjb3JkEgsKA2tleRgBIAEoCRISCgphY2NvdW50X2lkGAIgASgJEhEKCWJvZHlfanNvbhgDIAEoCRISCgp1cGRhdGVkX2F0GAQgASgJIocBCgxBY2NvdW50U3RhdGUSEAoIcmV2aXNpb24YASABKA0SJAoHYWNjb3VudBgCIAEoCzITLmhvYm8uY2kudjEuQWNjb3VudBIrCgtjb25uZWN0aW9ucxgDIAMoCzIWLmhvYm8uY2kudjEuQ29ubmVjdGlvbhISCgp1cGRhdGVkX2F0GAQgASgJIqoCChZSZXBvc2l0b3J5U2V0dXBSZXF1ZXN0EhIKCnJlcG9zaXRvcnkYASABKAkSFQoNcmVwb3NpdG9yeV9pZBgCIAEoARIXCg9pbnN0YWxsYXRpb25faWQYAyABKAESFwoPcnVubmVyX2dyb3VwX2lkGAQgASgNEhQKDGFsbG93ZWRfcmVmcxgFIAMoCRInCh90cnVzdGVkX3JlcG9zaXRvcnlfYWNrbm93bGVkZ2VkGAYgASgIEiYKHnB1YmxpY19yZXBvc2l0b3J5X2Fja25vd2xlZGdlZBgHIAEoCBIfChdhbGxvd19hbGxfcHVsbF9yZXF1ZXN0cxgIIAEoCBIrCiNhY2NlcHRfYWxsX21hdGNoaW5nX3JlcG9zaXRvcnlfam9icxgJIAEoCCInChBSZWNvbmNpbGVSZXF1ZXN0EhMKC2hvc3RfcnVuX2lkGAEgASgBImcKEUNvbnRyb2xDcmVkZW50aWFsEhIKCmFjY291bnRfaWQYASABKAkSGAoQaW5zdGFsbGF0aW9uX2lkcxgCIAMoARIUCgx0b2tlbl9zaGEyNTYYAyABKAkSDgoGc2NvcGVzGAQgAygJIkMKEkNvbnRyb2xDcmVkZW50aWFscxItCgZ0b2tlbnMYASADKAsyHS5ob2JvLmNpLnYxLkNvbnRyb2xDcmVkZW50aWFsIsoBCgNKb2ISCgoCaWQYASABKAESDgoGcnVuX2lkGAIgASgBEhMKC3J1bl9hdHRlbXB0GAMgASgNEhUKDXJlcG9zaXRvcnlfaWQYBCABKAESFwoPaW5zdGFsbGF0aW9uX2lkGAUgASgBEhIKCnJlcG9zaXRvcnkYBiABKAkSDgoGbGFiZWxzGAcgAygJEg4KBmFjdGlvbhgIIAEoCRITCgtydW5uZXJfbmFtZRgJIAEoCRIZChFpc29sYXRlZF9yZXF1aXJlZBgKIAEoCCKFCgoFTGVhc2USCgoCaWQYASABKAkSEgoKYWNjb3VudF9pZBgCIAEoCRIQCghvZmZlcl9pZBgDIAEoCRIQCghwcm92aWRlchgEIAEoCRIOCgZqb2JfaWQYBSABKAESFwoPb3JpZ2luYWxfcnVuX2lkGAYgASgBEhMKC3J1bl9hdHRlbXB0GAcgASgNEhUKDXJlcG9zaXRvcnlfaWQYCCABKAESEgoKcmVwb3NpdG9yeRgJIAEoCRIXCg9pbnN0YWxsYXRpb25faWQYCiABKAESDQoFc3RhdGUYCyABKAkSGAoQcmVzZXJ2ZWRfbWludXRlcxgMIAEoARIdChVyZXNlcnZlZF9mcmVlX21pbnV0ZXMYDSABKAESHAoUcmVzZXJ2ZWRfcGFpZF9taWNyb3MYDiABKAESEwoLcnVubmVyX25hbWUYDyABKAkSEgoKY3JlYXRlZF9hdBgQIAEoCRITCgtob3N0X3J1bl9pZBgRIAEoARIRCglydW5uZXJfaWQYEiABKAESFQoNYWN0dWFsX2pvYl9pZBgTIAEoARIWCg5iaWxsZWRfbWludXRlcxgUIAEoARITCgtwYWlkX21pY3JvcxgVIAEoARISCgpzZXR0bGVkX2F0GBYgASgJEh8KF3ByaWNlX21pY3Jvc19wZXJfbWludXRlGBcgASgBEhgKEGZyZWVfdmFsaWRfdW50aWwYGCABKAkSGwoTYmlsbGVkX2ZyZWVfbWludXRlcxgZIAEoARITCgtwaXBlbGluZV9pZBgaIAEoCRIqCgZyZXN1bHQYGyABKAsyGi5ob2JvLmNpLnYxLlBpcGVsaW5lUmVzdWx0EhcKD3BpcGVsaW5lX2RpZ2VzdBgcIAEoCRIaChJ1c2FnZV9jb21wbGV0ZWRfYXQYHSABKAkSFAoMc2FuZGJveF9uYW1lGB4gASgJEhoKEnNhbmRib3hfc2Vzc2lvbl9pZBgfIAEoCRIaChJzYW5kYm94X2NvbW1hbmRfaWQYICABKAkSFQoNc2FuZGJveF9zdGFnZRghIAEoCRIzCg9zYW5kYm94X3ByaWNpbmcYIiABKAsyGi5ob2JvLmNpLnYxLlNhbmRib3hQcmljaW5nEkAKGnNhbmRib3hfcmVzZXJ2ZWRfYWxsb3dhbmNlGCMgASgLMhwuaG9iby5jaS52MS5TYW5kYm94QWxsb3dhbmNlEjwKFnNhbmRib3hfdXNlZF9hbGxvd2FuY2UYJCABKAsyHC5ob2JvLmNpLnYxLlNhbmRib3hBbGxvd2FuY2USGgoScHJveHlfc2FuZGJveF9uYW1lGCUgASgJEiAKGHByb3h5X3NhbmRib3hfc2Vzc2lvbl9pZBgmIAEoCRIgChhwcm94eV9zYW5kYm94X2NvbW1hbmRfaWQYJyABKAkSGwoTcHJveHlfc2FuZGJveF9zdGFnZRgoIAEoCRI/ChVzYW5kYm94X3N0b3BwZWRfdXNhZ2UYKSABKAsyIC5ob2JvLmNpLnYxLlNhbmRib3hNZWFzdXJlZFVzYWdlEj0KE3Byb3h5X3N0b3BwZWRfdXNhZ2UYKiABKAsyIC5ob2JvLmNpLnYxLlNhbmRib3hNZWFzdXJlZFVzYWdlEh8KF3NhbmRib3hfc3RvcF9mcm9tX3N0YWdlGCsgASgJEiEKGXJ1bm5lcl9kZWxldGlvbl9jb25maXJtZWQYLCABKAgiWQoHQ2lFdmVudBIMCgR0eXBlGAEgASgJEhIKCmFjY291bnRfaWQYAiABKAkSEAoIbGVhc2VfaWQYAyABKAkSCgoCYXQYBCABKAkSDgoGZGV0YWlsGAUgASgJIlIKCFNuYXBzaG90EiEKBmxlYXNlcxgBIAMoCzIRLmhvYm8uY2kudjEuTGVhc2USIwoGZXZlbnRzGAIgAygLMhMuaG9iby5jaS52MS5DaUV2ZW50IpEBCgxQaXBlbGluZVN0ZXASCgoCaWQYASABKAkSDAoEYXJndhgCIAMoCRILCgNjd2QYAyABKAkSLgoDZW52GAQgAygLMiEuaG9iby5jaS52MS5QaXBlbGluZVN0ZXAuRW52RW50cnkaKgoIRW52RW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASKjAQoIUGlwZWxpbmUSCgoCaWQYASABKAkSEgoKYWNjb3VudF9pZBgCIAEoCRInCgVzdGVwcxgDIAMoCzIYLmhvYm8uY2kudjEuUGlwZWxpbmVTdGVwEhYKDmFydGlmYWN0X3BhdGhzGAQgAygJEhcKD3RpbWVvdXRfc2Vjb25kcxgFIAEoDRIdChVyZXF1aXJlZF9jYXBhYmlsaXRpZXMYBiADKAkiUwoSUGlwZWxpbmVTdGVwUmVzdWx0EgoKAmlkGAEgASgJEhEKCWV4aXRfY29kZRgCIAEoBRIOCgZzdGRvdXQYAyABKAkSDgoGc3RkZXJyGAQgASgJIj4KEFBpcGVsaW5lQXJ0aWZhY3QSDAoEcGF0aBgBIAEoCRIMCgRkYXRhGAIgASgMEg4KBnNoYTI1NhgDIAEoCSKsAQoOUGlwZWxpbmVSZXN1bHQSCgoCaWQYASABKAkSDwoHYmFja2VuZBgCIAEoCRIOCgZzdGF0dXMYAyABKAkSLQoFc3RlcHMYBCADKAsyHi5ob2JvLmNpLnYxLlBpcGVsaW5lU3RlcFJlc3VsdBIvCglhcnRpZmFjdHMYBSADKAsyHC5ob2JvLmNpLnYxLlBpcGVsaW5lQXJ0aWZhY3QSDQoFZXJyb3IYBiABKAkipgEKEEJ1ZGdldFNpZ25hbERhdGESEQoJdGVuYW50X2lkGAEgASgJEhoKEnRocmVzaG9sZF9mcmFjdGlvbhgCIAEoARIVCg10aHJlc2hvbGRfdXNkGAMgASgBEhIKCmJ1ZGdldF91c2QYBCABKAESFQoNbmV0X3NwZW50X3VzZBgFIAEoARINCgVjeWNsZRgGIAEoDRISCgpzaWduYWxfa2V5GAcgASgJIkgKDEJ1ZGdldFNpZ25hbBIMCgR0eXBlGAEgASgJEioKBGRhdGEYAiABKAsyHC5ob2JvLmNpLnYxLkJ1ZGdldFNpZ25hbERhdGEiQgoRQnVkZ2V0Um91dGluZ1J1bGUSGgoSdGhyZXNob2xkX2ZyYWN0aW9uGAEgASgBEhEKCW9mZmVyX2lkcxgCIAMoCSKJAQoTQnVkZ2V0Um91dGluZ1BvbGljeRISCgphY2NvdW50X2lkGAEgASgJEhEKCXRlbmFudF9pZBgCIAEoCRIYChBub3JtYWxfb2ZmZXJfaWRzGAMgAygJEjEKCnRocmVzaG9sZHMYBCADKAsyHS5ob2JvLmNpLnYxLkJ1ZGdldFJvdXRpbmdSdWxlYgZwcm90bzM");
+
+/**
+ * Conservative Sandbox rate card. All monetary values are integer microdollars.
+ * The caller must obtain independently verified current rates and measured usage.
+ * Remaining verified free allocation, in resource units at the Offer observed_at snapshot.
+ *
+ * @generated from message hobo.ci.v1.SandboxAllowance
+ */
+export type SandboxAllowance = Message<"hobo.ci.v1.SandboxAllowance"> & {
+  /**
+   * @generated from field: double cpu_vcpu_ms = 1;
+   */
+  cpuVcpuMs: number;
+
+  /**
+   * @generated from field: double memory_mb_ms = 2;
+   */
+  memoryMbMs: number;
+
+  /**
+   * @generated from field: double egress_bytes = 3;
+   */
+  egressBytes: number;
+
+  /**
+   * @generated from field: double creations = 4;
+   */
+  creations: number;
+
+  /**
+   * @generated from field: double proxy_bytes = 5;
+   */
+  proxyBytes: number;
+
+  /**
+   * @generated from field: double proxy_sessions = 6;
+   */
+  proxySessions: number;
+
+  /**
+   * @generated from field: double proxy_control_calls = 7;
+   */
+  proxyControlCalls: number;
+};
+
+/**
+ * Describes the message hobo.ci.v1.SandboxAllowance.
+ * Use `create(SandboxAllowanceSchema)` to create a new message.
+ */
+export const SandboxAllowanceSchema: GenMessage<SandboxAllowance> = /*@__PURE__*/
+  messageDesc(file_ci, 0);
+
+/**
+ * @generated from message hobo.ci.v1.SandboxPricing
+ */
+export type SandboxPricing = Message<"hobo.ci.v1.SandboxPricing"> & {
+  /**
+   * @generated from field: uint32 vcpus = 1;
+   */
+  vcpus: number;
+
+  /**
+   * @generated from field: uint32 memory_mb = 2;
+   */
+  memoryMb: number;
+
+  /**
+   * @generated from field: double cpu_micros_per_vcpu_hour = 3;
+   */
+  cpuMicrosPerVcpuHour: number;
+
+  /**
+   * @generated from field: double memory_micros_per_gb_hour = 4;
+   */
+  memoryMicrosPerGbHour: number;
+
+  /**
+   * @generated from field: double creation_micros = 5;
+   */
+  creationMicros: number;
+
+  /**
+   * @generated from field: double egress_micros_per_gb = 6;
+   */
+  egressMicrosPerGb: number;
+
+  /**
+   * @generated from field: double max_egress_bytes = 7;
+   */
+  maxEgressBytes: number;
+
+  /**
+   * @generated from field: double proxy_micros_per_gb = 8;
+   */
+  proxyMicrosPerGb: number;
+
+  /**
+   * @generated from field: double proxy_fixed_micros = 9;
+   */
+  proxyFixedMicros: number;
+
+  /**
+   * @generated from field: double network_headroom_bytes = 10;
+   */
+  networkHeadroomBytes: number;
+
+  /**
+   * @generated from field: double bootstrap_fixed_micros = 11;
+   */
+  bootstrapFixedMicros: number;
+
+  /**
+   * When true, a second ephemeral Sandbox forwards network traffic for this job.
+   * Both sessions must use the same project, region, and rate/allowance bucket.
+   *
+   * @generated from field: bool proxy_vm_required = 12;
+   */
+  proxyVmRequired: boolean;
+
+  /**
+   * @generated from field: uint32 proxy_vm_vcpus = 13;
+   */
+  proxyVmVcpus: number;
+
+  /**
+   * @generated from field: uint32 proxy_vm_memory_mb = 14;
+   */
+  proxyVmMemoryMb: number;
+
+  /**
+   * @generated from field: double proxy_vm_extra_ms = 15;
+   */
+  proxyVmExtraMs: number;
+
+  /**
+   * @generated from field: double proxy_vm_network_bytes = 16;
+   */
+  proxyVmNetworkBytes: number;
+
+  /**
+   * @generated from field: double proxy_vm_network_headroom_bytes = 17;
+   */
+  proxyVmNetworkHeadroomBytes: number;
+
+  /**
+   * @generated from field: string region = 18;
+   */
+  region: string;
+
+  /**
+   * @generated from field: double proxy_control_max_calls = 19;
+   */
+  proxyControlMaxCalls: number;
+
+  /**
+   * @generated from field: double proxy_control_call_micros = 20;
+   */
+  proxyControlCallMicros: number;
+
+  /**
+   * @generated from field: string plan = 21;
+   */
+  plan: string;
+};
+
+/**
+ * Describes the message hobo.ci.v1.SandboxPricing.
+ * Use `create(SandboxPricingSchema)` to create a new message.
+ */
+export const SandboxPricingSchema: GenMessage<SandboxPricing> = /*@__PURE__*/
+  messageDesc(file_ci, 1);
+
+/**
+ * Durable provider-confirmed terminal session usage. No absent record means zero usage.
+ *
+ * @generated from message hobo.ci.v1.SandboxMeasuredUsage
+ */
+export type SandboxMeasuredUsage = Message<"hobo.ci.v1.SandboxMeasuredUsage"> & {
+  /**
+   * @generated from field: string session_id = 1;
+   */
+  sessionId: string;
+
+  /**
+   * @generated from field: double cpu_ms = 2;
+   */
+  cpuMs: number;
+
+  /**
+   * @generated from field: double duration_ms = 3;
+   */
+  durationMs: number;
+
+  /**
+   * @generated from field: double memory_mb = 4;
+   */
+  memoryMb: number;
+
+  /**
+   * @generated from field: double vcpus = 5;
+   */
+  vcpus: number;
+
+  /**
+   * @generated from field: double egress_bytes = 6;
+   */
+  egressBytes: number;
+
+  /**
+   * @generated from field: double ingress_bytes = 7;
+   */
+  ingressBytes: number;
+
+  /**
+   * @generated from field: string stopped_at = 8;
+   */
+  stoppedAt: string;
+};
+
+/**
+ * Describes the message hobo.ci.v1.SandboxMeasuredUsage.
+ * Use `create(SandboxMeasuredUsageSchema)` to create a new message.
+ */
+export const SandboxMeasuredUsageSchema: GenMessage<SandboxMeasuredUsage> = /*@__PURE__*/
+  messageDesc(file_ci, 2);
 
 /**
  * All costs are integer USD microdollars. Allocations are runner minutes.
@@ -92,6 +317,16 @@ export type Offer = Message<"hobo.ci.v1.Offer"> & {
    * @generated from field: string backend = 15;
    */
   backend: string;
+
+  /**
+   * @generated from field: hobo.ci.v1.SandboxPricing sandbox_pricing = 16;
+   */
+  sandboxPricing?: SandboxPricing | undefined;
+
+  /**
+   * @generated from field: hobo.ci.v1.SandboxAllowance sandbox_allowance = 17;
+   */
+  sandboxAllowance?: SandboxAllowance | undefined;
 };
 
 /**
@@ -99,7 +334,7 @@ export type Offer = Message<"hobo.ci.v1.Offer"> & {
  * Use `create(OfferSchema)` to create a new message.
  */
 export const OfferSchema: GenMessage<Offer> = /*@__PURE__*/
-  messageDesc(file_ci, 0);
+  messageDesc(file_ci, 3);
 
 /**
  * @generated from message hobo.ci.v1.Account
@@ -156,7 +391,7 @@ export type Account = Message<"hobo.ci.v1.Account"> & {
  * Use `create(AccountSchema)` to create a new message.
  */
 export const AccountSchema: GenMessage<Account> = /*@__PURE__*/
-  messageDesc(file_ci, 1);
+  messageDesc(file_ci, 4);
 
 /**
  * @generated from message hobo.ci.v1.Connection
@@ -226,6 +461,27 @@ export type Connection = Message<"hobo.ci.v1.Connection"> & {
    * @generated from field: bool public_repository_acknowledged = 13;
    */
   publicRepositoryAcknowledged: boolean;
+
+  /**
+   * Explicitly permits isolated pull_request runs for any target branch.
+   *
+   * @generated from field: bool allow_all_pull_requests = 14;
+   */
+  allowAllPullRequests: boolean;
+
+  /**
+   * Only an isolated runner may accept jobs for this repository.
+   *
+   * @generated from field: bool isolated_only = 15;
+   */
+  isolatedOnly: boolean;
+
+  /**
+   * Explicit consent to run every matching repository job on isolated runners.
+   *
+   * @generated from field: bool accept_all_matching_repository_jobs = 16;
+   */
+  acceptAllMatchingRepositoryJobs: boolean;
 };
 
 /**
@@ -233,7 +489,7 @@ export type Connection = Message<"hobo.ci.v1.Connection"> & {
  * Use `create(ConnectionSchema)` to create a new message.
  */
 export const ConnectionSchema: GenMessage<Connection> = /*@__PURE__*/
-  messageDesc(file_ci, 2);
+  messageDesc(file_ci, 5);
 
 /**
  * @generated from message hobo.ci.v1.Configuration
@@ -255,7 +511,7 @@ export type Configuration = Message<"hobo.ci.v1.Configuration"> & {
  * Use `create(ConfigurationSchema)` to create a new message.
  */
 export const ConfigurationSchema: GenMessage<Configuration> = /*@__PURE__*/
-  messageDesc(file_ci, 3);
+  messageDesc(file_ci, 6);
 
 /**
  * Revisioned platform configuration, committed with its audit event.
@@ -284,7 +540,7 @@ export type ConfigurationState = Message<"hobo.ci.v1.ConfigurationState"> & {
  * Use `create(ConfigurationStateSchema)` to create a new message.
  */
 export const ConfigurationStateSchema: GenMessage<ConfigurationState> = /*@__PURE__*/
-  messageDesc(file_ci, 4);
+  messageDesc(file_ci, 7);
 
 /**
  * Opaque protobuf-JSON operation records, parsed by their owning integration.
@@ -318,7 +574,7 @@ export type ControlRecord = Message<"hobo.ci.v1.ControlRecord"> & {
  * Use `create(ControlRecordSchema)` to create a new message.
  */
 export const ControlRecordSchema: GenMessage<ControlRecord> = /*@__PURE__*/
-  messageDesc(file_ci, 5);
+  messageDesc(file_ci, 8);
 
 /**
  * @generated from message hobo.ci.v1.AccountState
@@ -350,7 +606,7 @@ export type AccountState = Message<"hobo.ci.v1.AccountState"> & {
  * Use `create(AccountStateSchema)` to create a new message.
  */
 export const AccountStateSchema: GenMessage<AccountState> = /*@__PURE__*/
-  messageDesc(file_ci, 6);
+  messageDesc(file_ci, 9);
 
 /**
  * @generated from message hobo.ci.v1.RepositorySetupRequest
@@ -390,6 +646,16 @@ export type RepositorySetupRequest = Message<"hobo.ci.v1.RepositorySetupRequest"
    * @generated from field: bool public_repository_acknowledged = 7;
    */
   publicRepositoryAcknowledged: boolean;
+
+  /**
+   * @generated from field: bool allow_all_pull_requests = 8;
+   */
+  allowAllPullRequests: boolean;
+
+  /**
+   * @generated from field: bool accept_all_matching_repository_jobs = 9;
+   */
+  acceptAllMatchingRepositoryJobs: boolean;
 };
 
 /**
@@ -397,7 +663,7 @@ export type RepositorySetupRequest = Message<"hobo.ci.v1.RepositorySetupRequest"
  * Use `create(RepositorySetupRequestSchema)` to create a new message.
  */
 export const RepositorySetupRequestSchema: GenMessage<RepositorySetupRequest> = /*@__PURE__*/
-  messageDesc(file_ci, 7);
+  messageDesc(file_ci, 10);
 
 /**
  * @generated from message hobo.ci.v1.ReconcileRequest
@@ -414,7 +680,7 @@ export type ReconcileRequest = Message<"hobo.ci.v1.ReconcileRequest"> & {
  * Use `create(ReconcileRequestSchema)` to create a new message.
  */
 export const ReconcileRequestSchema: GenMessage<ReconcileRequest> = /*@__PURE__*/
-  messageDesc(file_ci, 8);
+  messageDesc(file_ci, 11);
 
 /**
  * @generated from message hobo.ci.v1.ControlCredential
@@ -446,7 +712,7 @@ export type ControlCredential = Message<"hobo.ci.v1.ControlCredential"> & {
  * Use `create(ControlCredentialSchema)` to create a new message.
  */
 export const ControlCredentialSchema: GenMessage<ControlCredential> = /*@__PURE__*/
-  messageDesc(file_ci, 9);
+  messageDesc(file_ci, 12);
 
 /**
  * @generated from message hobo.ci.v1.ControlCredentials
@@ -463,7 +729,7 @@ export type ControlCredentials = Message<"hobo.ci.v1.ControlCredentials"> & {
  * Use `create(ControlCredentialsSchema)` to create a new message.
  */
 export const ControlCredentialsSchema: GenMessage<ControlCredentials> = /*@__PURE__*/
-  messageDesc(file_ci, 10);
+  messageDesc(file_ci, 13);
 
 /**
  * @generated from message hobo.ci.v1.Job
@@ -513,6 +779,11 @@ export type Job = Message<"hobo.ci.v1.Job"> & {
    * @generated from field: string runner_name = 9;
    */
   runnerName: string;
+
+  /**
+   * @generated from field: bool isolated_required = 10;
+   */
+  isolatedRequired: boolean;
 };
 
 /**
@@ -520,7 +791,7 @@ export type Job = Message<"hobo.ci.v1.Job"> & {
  * Use `create(JobSchema)` to create a new message.
  */
 export const JobSchema: GenMessage<Job> = /*@__PURE__*/
-  messageDesc(file_ci, 11);
+  messageDesc(file_ci, 14);
 
 /**
  * @generated from message hobo.ci.v1.Lease
@@ -670,6 +941,83 @@ export type Lease = Message<"hobo.ci.v1.Lease"> & {
    * @generated from field: string usage_completed_at = 29;
    */
   usageCompletedAt: string;
+
+  /**
+   * Native isolated host identity. A session never resumes after its runner starts.
+   *
+   * @generated from field: string sandbox_name = 30;
+   */
+  sandboxName: string;
+
+  /**
+   * @generated from field: string sandbox_session_id = 31;
+   */
+  sandboxSessionId: string;
+
+  /**
+   * @generated from field: string sandbox_command_id = 32;
+   */
+  sandboxCommandId: string;
+
+  /**
+   * @generated from field: string sandbox_stage = 33;
+   */
+  sandboxStage: string;
+
+  /**
+   * @generated from field: hobo.ci.v1.SandboxPricing sandbox_pricing = 34;
+   */
+  sandboxPricing?: SandboxPricing | undefined;
+
+  /**
+   * @generated from field: hobo.ci.v1.SandboxAllowance sandbox_reserved_allowance = 35;
+   */
+  sandboxReservedAllowance?: SandboxAllowance | undefined;
+
+  /**
+   * @generated from field: hobo.ci.v1.SandboxAllowance sandbox_used_allowance = 36;
+   */
+  sandboxUsedAllowance?: SandboxAllowance | undefined;
+
+  /**
+   * @generated from field: string proxy_sandbox_name = 37;
+   */
+  proxySandboxName: string;
+
+  /**
+   * @generated from field: string proxy_sandbox_session_id = 38;
+   */
+  proxySandboxSessionId: string;
+
+  /**
+   * @generated from field: string proxy_sandbox_command_id = 39;
+   */
+  proxySandboxCommandId: string;
+
+  /**
+   * @generated from field: string proxy_sandbox_stage = 40;
+   */
+  proxySandboxStage: string;
+
+  /**
+   * @generated from field: hobo.ci.v1.SandboxMeasuredUsage sandbox_stopped_usage = 41;
+   */
+  sandboxStoppedUsage?: SandboxMeasuredUsage | undefined;
+
+  /**
+   * @generated from field: hobo.ci.v1.SandboxMeasuredUsage proxy_stopped_usage = 42;
+   */
+  proxyStoppedUsage?: SandboxMeasuredUsage | undefined;
+
+  /**
+   * @generated from field: string sandbox_stop_from_stage = 43;
+   */
+  sandboxStopFromStage: string;
+
+  /**
+   * @generated from field: bool runner_deletion_confirmed = 44;
+   */
+  runnerDeletionConfirmed: boolean;
 };
 
 /**
@@ -677,7 +1025,7 @@ export type Lease = Message<"hobo.ci.v1.Lease"> & {
  * Use `create(LeaseSchema)` to create a new message.
  */
 export const LeaseSchema: GenMessage<Lease> = /*@__PURE__*/
-  messageDesc(file_ci, 12);
+  messageDesc(file_ci, 15);
 
 /**
  * @generated from message hobo.ci.v1.CiEvent
@@ -714,7 +1062,7 @@ export type CiEvent = Message<"hobo.ci.v1.CiEvent"> & {
  * Use `create(CiEventSchema)` to create a new message.
  */
 export const CiEventSchema: GenMessage<CiEvent> = /*@__PURE__*/
-  messageDesc(file_ci, 13);
+  messageDesc(file_ci, 16);
 
 /**
  * @generated from message hobo.ci.v1.Snapshot
@@ -736,7 +1084,7 @@ export type Snapshot = Message<"hobo.ci.v1.Snapshot"> & {
  * Use `create(SnapshotSchema)` to create a new message.
  */
 export const SnapshotSchema: GenMessage<Snapshot> = /*@__PURE__*/
-  messageDesc(file_ci, 14);
+  messageDesc(file_ci, 17);
 
 /**
  * A portable command pipeline. The backend binds its source workspace separately.
@@ -770,7 +1118,7 @@ export type PipelineStep = Message<"hobo.ci.v1.PipelineStep"> & {
  * Use `create(PipelineStepSchema)` to create a new message.
  */
 export const PipelineStepSchema: GenMessage<PipelineStep> = /*@__PURE__*/
-  messageDesc(file_ci, 15);
+  messageDesc(file_ci, 18);
 
 /**
  * @generated from message hobo.ci.v1.Pipeline
@@ -812,7 +1160,7 @@ export type Pipeline = Message<"hobo.ci.v1.Pipeline"> & {
  * Use `create(PipelineSchema)` to create a new message.
  */
 export const PipelineSchema: GenMessage<Pipeline> = /*@__PURE__*/
-  messageDesc(file_ci, 16);
+  messageDesc(file_ci, 19);
 
 /**
  * @generated from message hobo.ci.v1.PipelineStepResult
@@ -844,7 +1192,7 @@ export type PipelineStepResult = Message<"hobo.ci.v1.PipelineStepResult"> & {
  * Use `create(PipelineStepResultSchema)` to create a new message.
  */
 export const PipelineStepResultSchema: GenMessage<PipelineStepResult> = /*@__PURE__*/
-  messageDesc(file_ci, 17);
+  messageDesc(file_ci, 20);
 
 /**
  * @generated from message hobo.ci.v1.PipelineArtifact
@@ -871,7 +1219,7 @@ export type PipelineArtifact = Message<"hobo.ci.v1.PipelineArtifact"> & {
  * Use `create(PipelineArtifactSchema)` to create a new message.
  */
 export const PipelineArtifactSchema: GenMessage<PipelineArtifact> = /*@__PURE__*/
-  messageDesc(file_ci, 18);
+  messageDesc(file_ci, 21);
 
 /**
  * @generated from message hobo.ci.v1.PipelineResult
@@ -913,7 +1261,7 @@ export type PipelineResult = Message<"hobo.ci.v1.PipelineResult"> & {
  * Use `create(PipelineResultSchema)` to create a new message.
  */
 export const PipelineResultSchema: GenMessage<PipelineResult> = /*@__PURE__*/
-  messageDesc(file_ci, 19);
+  messageDesc(file_ci, 22);
 
 /**
  * Broker facts consumed by the Station CI routing bridge.
@@ -962,7 +1310,7 @@ export type BudgetSignalData = Message<"hobo.ci.v1.BudgetSignalData"> & {
  * Use `create(BudgetSignalDataSchema)` to create a new message.
  */
 export const BudgetSignalDataSchema: GenMessage<BudgetSignalData> = /*@__PURE__*/
-  messageDesc(file_ci, 20);
+  messageDesc(file_ci, 23);
 
 /**
  * @generated from message hobo.ci.v1.BudgetSignal
@@ -984,7 +1332,7 @@ export type BudgetSignal = Message<"hobo.ci.v1.BudgetSignal"> & {
  * Use `create(BudgetSignalSchema)` to create a new message.
  */
 export const BudgetSignalSchema: GenMessage<BudgetSignal> = /*@__PURE__*/
-  messageDesc(file_ci, 21);
+  messageDesc(file_ci, 24);
 
 /**
  * @generated from message hobo.ci.v1.BudgetRoutingRule
@@ -1006,7 +1354,7 @@ export type BudgetRoutingRule = Message<"hobo.ci.v1.BudgetRoutingRule"> & {
  * Use `create(BudgetRoutingRuleSchema)` to create a new message.
  */
 export const BudgetRoutingRuleSchema: GenMessage<BudgetRoutingRule> = /*@__PURE__*/
-  messageDesc(file_ci, 22);
+  messageDesc(file_ci, 25);
 
 /**
  * @generated from message hobo.ci.v1.BudgetRoutingPolicy
@@ -1038,5 +1386,5 @@ export type BudgetRoutingPolicy = Message<"hobo.ci.v1.BudgetRoutingPolicy"> & {
  * Use `create(BudgetRoutingPolicySchema)` to create a new message.
  */
 export const BudgetRoutingPolicySchema: GenMessage<BudgetRoutingPolicy> = /*@__PURE__*/
-  messageDesc(file_ci, 23);
+  messageDesc(file_ci, 26);
 

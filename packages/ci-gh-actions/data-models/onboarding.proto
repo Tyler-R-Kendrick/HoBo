@@ -31,6 +31,7 @@ message OnboardingPlan {
   repeated OnboardingFile files = 16;
   string relay_url = 17;
   string plan_digest = 18;
+  bool allow_all_pull_requests = 19;
 }
 message OnboardingApplyResult {
   string status = 1;
@@ -61,4 +62,5 @@ message GithubAppManifest {
   bool public = 6;
   repeated string default_events = 7 [json_name = "default_events"];
   map<string, string> default_permissions = 8 [json_name = "default_permissions"];
+  repeated string callback_urls = 9 [json_name = "callback_urls"];
 }

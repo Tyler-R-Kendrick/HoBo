@@ -191,6 +191,28 @@ describe("repository onboarding authorization and failure boundaries", () => {
 		).rejects.toThrow("acknowledgment required");
 		subject.complete();
 	});
+	it("requires a server-provided isolated host before preparing an all-PR grant", async () => {
+		const subject = port([]);
+		await expect(
+			prepareOnboarding(subject.github, {
+				...fixtures.options,
+				allowAllPullRequests: true,
+			}),
+		).rejects.toThrow("isolated runner required");
+		subject.complete();
+	});
+	it("binds the explicit all-PR grant into the reviewed plan digest", async () => {
+		const subject = port(prepare);
+		const result = await prepareOnboarding(subject.github, {
+			...fixtures.options,
+			allowAllPullRequests: true,
+			isolatedHostAvailable: true,
+		});
+		expect(result.allowAllPullRequests).toBe(true);
+		expect(result.planDigest).not.toBe(plan().planDigest);
+		expect(result.installBranch).not.toBe(plan().installBranch);
+		subject.complete();
+	});
 	it("requires explicit real HTTPS registration callback URLs", () => {
 		expect(() =>
 			createGithubAppManifest({
@@ -348,34 +370,107 @@ describe("repository onboarding authorization and failure boundaries", () => {
 		).rejects.toThrow("identity changed");
 		subject.complete();
 	});
-	it("requires public repository opt-in and retains it in the generated plan", async () => {
+	it.each([
+		[false, false],
+		[true, false],
+		[false, true],
+	])("rejects public onboarding without acknowledgment %s and an isolated host %s", async (acknowledged, isolatedHostAvailable) => {
 		const repo = {
 			id: 42,
 			full_name: "widget/repo",
 			private: false,
 			default_branch: "main",
 		};
-		const deny = port(
+		const subject = port(
 			identity.slice(0, 4),
 			new Map([[3, changedResponse(identity[3] ?? "", repo)]]),
 		);
 		await expect(
-			prepareOnboarding(deny.github, fixtures.options),
-		).rejects.toThrow("public repository acknowledgment");
-		deny.complete();
-		const allow = port(
-			prepare,
-			new Map([[3, changedResponse(identity[3] ?? "", repo)]]),
+			prepareOnboarding(subject.github, {
+				...fixtures.options,
+				publicRepoAcknowledged: acknowledged,
+				isolatedHostAvailable,
+			}),
+		).rejects.toThrow(
+			"public repositories require acknowledgment and an isolated runner provider",
 		);
-		expect(
-			(
-				await prepareOnboarding(allow.github, {
-					...fixtures.options,
-					publicRepoAcknowledged: true,
-				})
-			).publicRepoAcknowledged,
-		).toBe(true);
-		allow.complete();
+		subject.complete();
+	});
+	it("requires the isolated host again when applying or connecting a public setup", async () => {
+		const repo = {
+			id: 42,
+			full_name: "widget/repo",
+			private: false,
+			default_branch: "main",
+		};
+		const publicResponse = changedResponse(identity[3] ?? "", repo);
+		const subject = port(prepare, new Map([[3, publicResponse]]));
+		const publicPlan = await prepareOnboarding(subject.github, {
+			...fixtures.options,
+			publicRepoAcknowledged: true,
+			isolatedHostAvailable: true,
+		});
+		expect(publicPlan.publicRepoAcknowledged).toBe(true);
+		subject.complete();
+		for (const phase of ["apply", "connect"] as const) {
+			const disabled = port(
+				identity.slice(0, 4),
+				new Map([[3, publicResponse]]),
+			);
+			const operation =
+				phase === "apply"
+					? applyOnboarding(disabled.github, fixtures.principal, publicPlan)
+					: connectRepository(disabled.github, fixtures.principal, publicPlan);
+			await expect(operation).rejects.toThrow(
+				"public repositories require acknowledgment and an isolated runner provider",
+			);
+			disabled.complete();
+			const enabled = port(identity, new Map([[3, publicResponse]]));
+			let count = 0;
+			const github: OnboardingGithubPort = {
+				appRequest: (...args) => {
+					count++;
+					return enabled.github.appRequest(...args);
+				},
+				request: (...args) => {
+					count++;
+					if (count > 5)
+						return Promise.resolve(new Response(null, { status: 503 }));
+					return enabled.github.request(...args);
+				},
+			};
+			const authorized =
+				phase === "apply"
+					? applyOnboarding(github, fixtures.principal, publicPlan, true)
+					: connectRepository(github, fixtures.principal, publicPlan, true);
+			await expect(authorized).rejects.toThrow(
+				"GitHub onboarding request failed (503)",
+			);
+			expect(count).toBe(6);
+			enabled.complete();
+		}
+	});
+	it("rejects a private setup that becomes public without a reviewed public acknowledgment", async () => {
+		const publicResponse = changedResponse(identity[3] ?? "", {
+			id: 42,
+			full_name: "widget/repo",
+			private: false,
+			default_branch: "main",
+		});
+		for (const phase of ["apply", "connect"] as const) {
+			const subject = port(
+				identity.slice(0, 4),
+				new Map([[3, publicResponse]]),
+			);
+			const operation =
+				phase === "apply"
+					? applyOnboarding(subject.github, fixtures.principal, plan(), true)
+					: connectRepository(subject.github, fixtures.principal, plan(), true);
+			await expect(operation).rejects.toThrow(
+				"public repositories require acknowledgment and an isolated runner provider",
+			);
+			subject.complete();
+		}
 	});
 	it("rejects a bot login mismatch rather than substituting the App ID as actor", async () => {
 		const subject = port(

@@ -173,10 +173,35 @@ with explicit notes. Synthesis does not call clouds or take ownership of Junctio
 
 ## CI budget routing
 
-`createCiBudgetRoutingBridge()` turns tenant-scoped Broker
+For the hosted relay, publish the desired policy with
+`createCiRelayClient().putDesiredPolicy(policy, {revision})`. Set its thresholds
+in the SDK policy, then connect a scoped observation publisher to Broker:
+
+```ts
+import { createCiRelayClient } from "@hobo/ci-gh-actions/client";
+import { createHostedCiBudgetRoutingBridge } from "@hobo/stations";
+
+const bridge = createHostedCiBudgetRoutingBridge({
+  accountId: "acme",
+  tenantId: "acme",
+  client: createCiRelayClient({
+    origin: "https://ci.example.com",
+    accountToken: () => readObservationToken(), // observations:write
+  }),
+});
+// Deliver Broker's {type, data} facts and acknowledge only after success.
+await bridge.accept(JSON.stringify({ type: signal.type, data: signal.data }));
+```
+
+The hosted bridge retries revision conflicts up to five times. Replaying an
+already applied fact is idempotent. Policy thresholds and enabled providers
+remain operator-owned; the signal publisher cannot change provider balances or
+operator intent. The subscriber must retain and retry failed facts.
+
+For the legacy self-hosted v1 relay, `createCiBudgetRoutingBridge()` turns tenant-scoped Broker
 `budget.ThresholdCrossed` and `budget.Recovered` facts into eligibility changes
-on a HoBo CI account. The relay continues to select free allocations first and
-then the cheapest eligible paid offer within its account and provider budgets.
+on a HoBo CI account. The relay selects the eligible offer with the lowest
+projected cost after applicable free allocation, within account and provider budgets.
 Offer IDs below refer to offers already configured on that account.
 
 ```ts

@@ -21,7 +21,7 @@ const errors: string[] = [];
 // the disabled-CI policy). Updating it requires an explicit policy review.
 const acceptanceFile = "hobo-ci-acceptance.yml";
 const acceptanceDigest =
-	"cd307e582a3e4157762bd96e51764178f90c4d03f56118a2acf2bb1d84ec302b";
+	"6268254eb20f2767bace1bcd82f9ffbf767746e5be71399f3dc8f7d083861a02";
 for (const file of recognizedFiles) {
 	if (file !== acceptanceFile) {
 		errors.push(

@@ -118,6 +118,46 @@ function fixture(options: { limit?: number; failJobs?: boolean } = {}) {
 }
 
 describe("queued job repair", () => {
+	it("waits for this deployment's completed scan before treating idle as healthy", async () => {
+		let complete = false;
+		const repair = createQueuedJobRepair({
+			store: { configuration: async () => configuration },
+			github: { request: vi.fn(async () => new Response()) },
+			claims: { start: async () => undefined },
+			idleComplete: async () => complete,
+			relay: async () => ({ processWebhook: vi.fn(async () => "ignored") }),
+		});
+		expect(await repair()).toEqual({
+			more: true,
+			truncated: false,
+			failed: false,
+			skipped: true,
+		});
+		complete = true;
+		expect(await repair()).toEqual({
+			more: false,
+			truncated: false,
+			failed: false,
+			skipped: true,
+		});
+	});
+	it.each([
+		"busy",
+		"deferred",
+	] as const)("does not report a completed scan when work is %s", async (state) => {
+		const repair = createQueuedJobRepair({
+			store: { configuration: async () => configuration },
+			github: { request: vi.fn(async () => new Response()) },
+			claims: { start: async () => state },
+			relay: async () => ({ processWebhook: vi.fn(async () => "ignored") }),
+		});
+		expect(await repair()).toEqual({
+			more: true,
+			truncated: false,
+			failed: false,
+			skipped: true,
+		});
+	});
 	it("recovers only queued hobo jobs through the existing verified relay", async () => {
 		const f = fixture();
 		expect(await f.run()).toMatchObject({ failed: false });

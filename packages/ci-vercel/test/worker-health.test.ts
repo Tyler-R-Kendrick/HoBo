@@ -10,7 +10,7 @@ describe("deployment-scoped worker health", () => {
 			rowCount: 1,
 			oid: 0,
 			fields: [],
-			rows: [{ count: "3" }],
+			rows: [{ count: "4" }],
 		}));
 		try {
 			const current = new PostgresWorkerHealth(pool, "dpl_current");
@@ -21,7 +21,14 @@ describe("deployment-scoped worker health", () => {
 			expect(query.mock.calls[0]?.[1]).toEqual(["dpl_previous:repair", false]);
 			expect(query.mock.calls[1]?.[1]).toEqual(["dpl_current:repair", true]);
 			expect(query.mock.calls[2]?.[1]).toEqual([
-				["dpl_current:queue", "dpl_current:schedule", "dpl_current:repair"],
+				[
+					"dpl_current:queue",
+					"dpl_current:schedule",
+					"dpl_current:repair-deliveries",
+					"dpl_current:repair-queued",
+				],
+				["dpl_current:repair-deliveries", "dpl_current:repair-queued"],
+				"dpl_current:repair",
 			]);
 		} finally {
 			query.mockRestore();
@@ -35,7 +42,7 @@ describe("deployment-scoped worker health", () => {
 			rowCount: 1,
 			oid: 0,
 			fields: [],
-			rows: [{ count: "3" }],
+			rows: [{ count: "4" }],
 		}));
 		try {
 			expect(() => new PostgresWorkerHealth(pool, "dpl_bad:repair")).toThrow(

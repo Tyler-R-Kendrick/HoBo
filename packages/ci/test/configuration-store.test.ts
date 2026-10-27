@@ -504,4 +504,168 @@ describe("durable account policy and usage snapshots", () => {
 			store.close();
 		}
 	});
+	it("attributes late Sandbox events without disturbing a replacement reservation or assignment", async () => {
+		const store = new LeaseStore(":memory:");
+		try {
+			const config = await configuration();
+			const account = config.accounts[0];
+			const offer = account?.offers[0];
+			if (!account || !offer) throw new Error("fixture");
+			offer.concurrency = 3;
+			store.configure(config, 0, NOW);
+			const old = store.reserve(account, original(), NOW);
+			if (!old) throw new Error("old reservation");
+			store.transition(
+				old.id,
+				["reserved"],
+				(lease) => {
+					lease.state = "completed";
+					lease.provider = "vercel";
+					lease.sandboxStage = "stopped";
+					lease.runnerDeletionConfirmed = true;
+					lease.settledAt = NOW;
+					lease.usageCompletedAt = NOW;
+					lease.paidMicros = 4321;
+				},
+				"ci.HostSettled",
+				NOW,
+			);
+			const job = original();
+			job.id = 2;
+			job.runId = 12;
+			const replacement = store.reserve(account, job, NOW);
+			if (!replacement) throw new Error("replacement reservation");
+			const late = create(JobSchema, {
+				...job,
+				action: "in_progress",
+				runnerName: old.runnerName,
+			});
+			store.observe(create(JobSchema, { ...late, installationId: 42 }), NOW);
+			store.observe(
+				create(JobSchema, { ...late, repository: "other/repository" }),
+				NOW,
+			);
+			store.observe(create(JobSchema, { ...late, repositoryId: 42 }), NOW);
+			expect(store.get(old.id)?.actualJobId).toBe(0);
+			store.observe(late, NOW);
+			expect(store.get(old.id)?.actualJobId).toBe(job.id);
+			expect(store.get(old.id)?.paidMicros).toBe(4321);
+			expect(store.get(replacement.id)?.state).toBe("reserved");
+			expect(store.assignedJob(job)).toBeUndefined();
+			store.transition(
+				replacement.id,
+				["reserved"],
+				(lease) => {
+					lease.state = "running";
+				},
+				"ci.RunnerStarted",
+				NOW,
+			);
+			store.observe(
+				create(JobSchema, { ...late, runnerName: replacement.runnerName }),
+				NOW,
+			);
+			const assignment = store.assignedJob(job);
+			expect(assignment?.leaseId).toBe(replacement.id);
+			store.observe(late, NOW);
+			expect(store.assignedJob(job)).toEqual(assignment);
+			expect(() =>
+				store.observe(create(JobSchema, { ...late, id: 3 }), NOW),
+			).toThrow(/assignment conflict/);
+			expect(store.get(old.id)?.paidMicros).toBe(4321);
+		} finally {
+			store.close();
+		}
+	});
+	it("preserves pending demand and terminal tombstones on late Sandbox events", async () => {
+		const store = new LeaseStore(":memory:");
+		try {
+			const config = await configuration();
+			const account = config.accounts[0];
+			if (!account) throw new Error("fixture");
+			store.configure(config, 0, NOW);
+			const old = store.reserve(account, original(), NOW);
+			if (!old) throw new Error("old reservation");
+			store.transition(
+				old.id,
+				["reserved"],
+				(lease) => {
+					lease.state = "completed";
+					lease.provider = "vercel";
+					lease.sandboxStage = "stopped";
+					lease.runnerDeletionConfirmed = true;
+					lease.settledAt = NOW;
+					lease.paidMicros = 1234;
+				},
+				"ci.HostSettled",
+				NOW,
+			);
+			const job = create(JobSchema, { ...original(), id: 2, runId: 12 });
+			store.queue(original(), NOW);
+			store.queue(job, NOW);
+			const late = create(JobSchema, {
+				...job,
+				action: "in_progress",
+				runnerName: old.runnerName,
+			});
+			store.observe(late, NOW);
+			expect(store.pendingJobs().map((entry) => entry.id)).toEqual([1, job.id]);
+			store.rebuild();
+			expect(store.pendingJobs().map((entry) => entry.id)).toEqual([1, job.id]);
+			expect(store.assignedJob(job)).toBeUndefined();
+			store.observe(create(JobSchema, { ...late, action: "completed" }), NOW);
+			expect(store.pendingJobs().map((entry) => entry.id)).toEqual([1]);
+			store.observe(late, NOW);
+			store.queue(job, NOW);
+			expect(store.pendingJobs().map((entry) => entry.id)).toEqual([1]);
+			expect(store.assignedJob(job)).toBeUndefined();
+			expect(store.get(old.id)?.actualJobId).toBe(job.id);
+			expect(store.get(old.id)?.paidMicros).toBe(1234);
+		} finally {
+			store.close();
+		}
+	});
+	it("cancels an unlaunched replacement when a settled runner's job is confirmed completed", async () => {
+		const store = new LeaseStore(":memory:");
+		try {
+			const config = await configuration();
+			const account = config.accounts[0];
+			const offer = account?.offers[0];
+			if (!account || !offer) throw new Error("fixture");
+			offer.concurrency = 2;
+			store.configure(config, 0, NOW);
+			const old = store.reserve(account, original(), NOW);
+			if (!old) throw new Error("old reservation");
+			store.transition(
+				old.id,
+				["reserved"],
+				(lease) => {
+					lease.state = "completed";
+					lease.provider = "vercel";
+					lease.sandboxStage = "stopped";
+					lease.runnerDeletionConfirmed = true;
+					lease.settledAt = NOW;
+				},
+				"ci.HostSettled",
+				NOW,
+			);
+			const job = create(JobSchema, { ...original(), id: 2, runId: 12 });
+			const replacement = store.reserve(account, job, NOW);
+			if (!replacement) throw new Error("replacement reservation");
+			store.observe(
+				create(JobSchema, {
+					...job,
+					action: "completed",
+					runnerName: old.runnerName,
+				}),
+				NOW,
+			);
+			expect(store.get(old.id)?.actualJobId).toBe(job.id);
+			expect(store.get(replacement.id)?.state).toBe("cancelled");
+			store.rebuild();
+			expect(store.get(replacement.id)?.state).toBe("cancelled");
+		} finally {
+			store.close();
+		}
+	});
 });

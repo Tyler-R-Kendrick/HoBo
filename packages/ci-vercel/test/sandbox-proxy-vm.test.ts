@@ -42,6 +42,9 @@ describe("proxy VM bootstrap", () => {
 				expectedIssuer: "https://oidc.vercel.com.evil.example/team-example",
 			}),
 		).toThrow("invalid sandbox issuer");
+		for (const teamId of ["team_example/other", "../other", "team?x=y"]) {
+			expect(() => parseProxyVmConfig({ ...config, teamId })).toThrow();
+		}
 	});
 	it("creates the fresh VM workdir before uploading credentials or launching", async () => {
 		const operations: string[] = [];
@@ -189,8 +192,171 @@ describe("per-lease proxy quota", () => {
 		expect(await ledger.reserveSandboxEgress("sbx_good", 1)).toBe(false);
 		expect(send).toHaveBeenCalledTimes(1);
 	});
+	it("streams beyond the rolling control-call limit using bounded durable blocks", async () => {
+		const reservations: number[] = [];
+		const send: typeof fetch = async (_url, init) => {
+			reservations.push(JSON.parse(String(init?.body)).bytes);
+			return new Response(null, {
+				status: reservations.length <= 600 ? 204 : 429,
+			});
+		};
+		const limit = 256 * 1024 * 1024;
+		const ledger = createProxyQuotaLedger(
+			{ ...config, maxEgressBytes: limit, maxControlCalls: 4096 },
+			send,
+		);
+		// At 64 KiB per control call this 50 MiB transfer would require 800
+		// calls and the real 600/minute limit would truncate the response.
+		for (let i = 0; i < 800; i++)
+			expect(await ledger.reserveSandboxEgress("sbx_good", 64 * 1024)).toBe(
+				true,
+			);
+		expect(reservations.length).toBeLessThan(70);
+		expect(Math.max(...reservations)).toBe(4 * 1024 * 1024);
+		expect(reservations.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(limit);
+	});
+	it("splits a large stream chunk into reservations within the endpoint limit", async () => {
+		const reservations: number[] = [];
+		const send: typeof fetch = async (_url, init) => {
+			reservations.push(JSON.parse(String(init?.body)).bytes);
+			return new Response(null, { status: 204 });
+		};
+		const ledger = createProxyQuotaLedger(
+			{ ...config, maxEgressBytes: 256 * 1024 * 1024 },
+			send,
+		);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 9 * 1024 * 1024)).toBe(
+			true,
+		);
+		expect(reservations).toHaveLength(3);
+		expect(Math.max(...reservations)).toBeLessThanOrEqual(4 * 1024 * 1024);
+		expect(reservations.reduce((a, b) => a + b, 0)).toBe(9 * 1024 * 1024);
+	});
+	it("uses only the remaining allowance for a small quota", async () => {
+		const reservations: number[] = [];
+		const send: typeof fetch = async (_url, init) => {
+			reservations.push(JSON.parse(String(init?.body)).bytes);
+			return new Response(null, { status: 204 });
+		};
+		const ledger = createProxyQuotaLedger(
+			{ ...config, maxEgressBytes: 150_000 },
+			send,
+		);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 60_000)).toBe(true);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 60_000)).toBe(true);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 30_000)).toBe(true);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 1)).toBe(false);
+		expect(reservations).toEqual([65536, 65536, 18928]);
+	});
+	it("does not forward a large chunk or refund an ambiguous partial reservation", async () => {
+		const send = vi
+			.fn<typeof fetch>()
+			.mockResolvedValueOnce(new Response(null, { status: 204 }))
+			.mockRejectedValueOnce(new Error("lost"));
+		const ledger = createProxyQuotaLedger(
+			{ ...config, maxEgressBytes: 8 * 1024 * 1024 },
+			send,
+		);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 8 * 1024 * 1024)).toBe(
+			false,
+		);
+		// The first successful block remains usable; the ambiguous second one
+		// consumes the remainder without being refunded or retried.
+		expect(await ledger.reserveSandboxEgress("sbx_good", 4 * 1024 * 1024)).toBe(
+			true,
+		);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 1)).toBe(false);
+		expect(send).toHaveBeenCalledTimes(2);
+	});
+	it("returns to small blocks after idle credit expires", async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(0);
+		const reservations: number[] = [];
+		const send: typeof fetch = async (_url, init) => {
+			reservations.push(JSON.parse(String(init?.body)).bytes);
+			return new Response(null, { status: 204 });
+		};
+		const ledger = createProxyQuotaLedger(
+			{ ...config, maxEgressBytes: 256 * 1024 * 1024 },
+			send,
+		);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 64 * 1024)).toBe(true);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 64 * 1024)).toBe(true);
+		vi.advanceTimersByTime(5001);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 1)).toBe(true);
+		expect(reservations).toEqual([65536, 131072, 65536]);
+	});
 });
 describe("proxy VM binding and streaming", () => {
+	it("verifies a signed token issued under the exact Vercel team ID", async () => {
+		const signing = await generateKeyPair("RS256", { extractable: true });
+		const publicKey = await exportJWK(signing.publicKey);
+		publicKey.kid = "team-id-key";
+		publicKey.alg = "RS256";
+		const lookup = vi.fn(async () => Response.json({ keys: [publicKey] }));
+		vi.stubGlobal("fetch", lookup);
+		const ledger = { reserveSandboxEgress: vi.fn(async () => false) };
+		const handler = createSandboxProxyVmHandler(config, { ledger });
+		expect((await bind(handler)).status).toBe(204);
+		const token = await new SignJWT({
+			team_id: config.teamId,
+			project_id: config.projectId,
+			sandbox_id: "sbx_good",
+		})
+			.setProtectedHeader({ alg: "RS256", kid: "team-id-key" })
+			.setIssuer(`https://oidc.vercel.com/${config.teamId}`)
+			.setAudience(`${config.proxyOrigin}/sandbox/egress`)
+			.setExpirationTime("5m")
+			.sign(signing.privateKey);
+		const response = await handler(
+			new Request(`${config.proxyOrigin}/sandbox/egress/path`, {
+				headers: {
+					"vercel-sandbox-oidc-token": token,
+					"vercel-forwarded-host": "github.com",
+					"vercel-forwarded-scheme": "https",
+					"vercel-forwarded-port": "443",
+					"vercel-forwarded-path": "/path",
+				},
+			}),
+		);
+		expect(response.status).toBe(429);
+		expect(lookup).toHaveBeenCalledTimes(1);
+		expect(ledger.reserveSandboxEgress).toHaveBeenCalledOnce();
+	});
+	it("keeps the SDK denial response if logging fails", async () => {
+		const log = vi.spyOn(console, "error").mockImplementation(() => {
+			throw new Error("log stream unavailable");
+		});
+		try {
+			const handler = createSandboxProxyVmHandler(config);
+			expect((await bind(handler)).status).toBe(204);
+			const response = await handler(request());
+			expect(response.status).toBe(403);
+			expect(await response.text()).toBe("Forbidden");
+		} finally {
+			log.mockRestore();
+		}
+	});
+	it("records only a fixed SDK denial category once without request data", async () => {
+		const log = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			const ledger = { reserveSandboxEgress: vi.fn(async () => true) };
+			const handler = createSandboxProxyVmHandler(config, { ledger });
+			expect((await bind(handler)).status).toBe(204);
+			for (let i = 0; i < 2; i++) {
+				const response = await handler(request());
+				expect(response.status).toBe(403);
+				expect(await response.text()).toBe("Forbidden");
+			}
+			expect(log).toHaveBeenCalledOnce();
+			expect(log).toHaveBeenCalledWith(
+				JSON.stringify({ event: "hobo_ci_proxy_denied", stage: "headers" }),
+			);
+			expect(ledger.reserveSandboxEgress).not.toHaveBeenCalled();
+		} finally {
+			log.mockRestore();
+		}
+	});
 	it("rejects a forged token through the real SDK signature verifier", async () => {
 		const issuer = "https://oidc.vercel.com/team-forged-signature";
 		const proxyConfig = parseProxyVmConfig({
@@ -217,28 +383,43 @@ describe("proxy VM binding and streaming", () => {
 			.setAudience(`${config.proxyOrigin}/sandbox/egress`)
 			.setExpirationTime("5m")
 			.sign(signing.privateKey);
-		const response = await handler(
-			new Request(`${config.proxyOrigin}/sandbox/egress/path`, {
-				headers: {
-					"vercel-sandbox-oidc-token": token,
-					"vercel-forwarded-host": "github.com",
-					"vercel-forwarded-scheme": "https",
-					"vercel-forwarded-port": "443",
-					"vercel-forwarded-path": "/path",
-				},
-			}),
-		);
-		expect(response.status).toBe(403);
-		expect(lookup).toHaveBeenCalledTimes(1);
-		expect(ledger.reserveSandboxEgress).not.toHaveBeenCalled();
+		const log = vi.spyOn(console, "error").mockImplementation(() => {});
+		try {
+			const response = await handler(
+				new Request(`${config.proxyOrigin}/sandbox/egress/path`, {
+					headers: {
+						"vercel-sandbox-oidc-token": token,
+						"vercel-forwarded-host": "github.com",
+						"vercel-forwarded-scheme": "https",
+						"vercel-forwarded-port": "443",
+						"vercel-forwarded-path": "/path",
+					},
+				}),
+			);
+			expect(response.status).toBe(403);
+			expect(lookup).toHaveBeenCalledTimes(1);
+			expect(log).toHaveBeenCalledWith(
+				JSON.stringify({
+					event: "hobo_ci_proxy_denied",
+					stage: "jwt_signature",
+				}),
+			);
+			expect(ledger.reserveSandboxEgress).not.toHaveBeenCalled();
+		} finally {
+			log.mockRestore();
+		}
 	});
-	it("passes only the pinned team and global issuers to the signature verifier", async () => {
+	it("passes only the exact pinned slug, team ID and global issuers to the signature verifier", async () => {
 		// The injected verifier is deliberately a rejection stub: acceptance of an
 		// issuer by the prefilter must never itself authorize an unsigned token.
 		const verifier = vi.fn(async () => new Response(null, { status: 403 }));
 		const handler = createSandboxProxyVmHandler(config, { proxy: verifier });
 		expect((await bind(handler)).status).toBe(204);
-		for (const issuer of [config.expectedIssuer, "https://oidc.vercel.com"]) {
+		for (const issuer of [
+			config.expectedIssuer,
+			`https://oidc.vercel.com/${config.teamId}`,
+			"https://oidc.vercel.com",
+		]) {
 			const incoming = new Request(
 				`${config.proxyOrigin}/sandbox/egress/path`,
 				{
@@ -249,7 +430,23 @@ describe("proxy VM binding and streaming", () => {
 			);
 			expect((await handler(incoming)).status).toBe(403);
 		}
-		expect(verifier).toHaveBeenCalledTimes(2);
+		expect(verifier).toHaveBeenCalledTimes(3);
+		for (const issuer of [
+			"https://oidc.vercel.com/team_other",
+			`https://oidc.vercel.com/${config.teamId}/other`,
+			`https://oidc.vercel.com/${config.teamId}.attacker`,
+		]) {
+			const incoming = new Request(
+				`${config.proxyOrigin}/sandbox/egress/path`,
+				{
+					headers: {
+						"vercel-sandbox-oidc-token": unsignedToken("sbx_good", issuer),
+					},
+				},
+			);
+			expect((await handler(incoming)).status).toBe(403);
+		}
+		expect(verifier).toHaveBeenCalledTimes(3);
 	});
 	it("rejects a different team or project before attempting signature verification", async () => {
 		const verifier = vi.fn(async () => new Response(null, { status: 403 }));

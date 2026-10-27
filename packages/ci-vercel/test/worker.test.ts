@@ -225,9 +225,74 @@ describe("hosted worker", () => {
 		});
 		await worker.run({ source: "hobo-ci", name: "hobo-ci-repair" });
 		expect(continuation).toHaveBeenCalledOnce();
-		expect(marks).toEqual([
-			["queue", true],
-			["repair", false],
-		]);
+		expect(marks).toEqual([["queue", true]]);
+	});
+	it("keeps completed-scan health during progress without clearing a real failure", async () => {
+		const health = new Map<string, boolean>();
+		let phase = 0;
+		const worker = createHostedWorker({
+			tick: async () => {},
+			repair: async () => {
+				phase++;
+				if (phase === 4) throw new Error("repair failed");
+				return { truncated: false, more: [1, 3, 5].includes(phase) };
+			},
+			continueRepair: async () => {},
+			health: {
+				mark: async (component, ok) => {
+					health.set(component, ok);
+				},
+				ready: async () =>
+					["queue", "schedule", "repair"].every(
+						(component) => health.get(component) === true,
+					),
+			},
+		});
+		await worker.run(scheduled);
+		expect(await worker.ready()).toBe(false);
+		await worker.run({ source: "hobo-ci", name: "hobo-ci-repair" });
+		expect(await worker.ready()).toBe(true);
+		await worker.run({ source: "hobo-ci", name: "hobo-ci-repair" });
+		expect(await worker.ready()).toBe(true);
+		await expect(
+			worker.run({ source: "hobo-ci", name: "hobo-ci-repair" }),
+		).rejects.toThrow("hosted worker failed");
+		expect(await worker.ready()).toBe(false);
+		await worker.run({ source: "hobo-ci", name: "hobo-ci-repair" });
+		expect(await worker.ready()).toBe(false);
+		await worker.run({ source: "hobo-ci", name: "hobo-ci-repair" });
+		expect(await worker.ready()).toBe(true);
+	});
+	it("expires the last complete scan despite repeated partial progress", async () => {
+		let now = 0;
+		let complete = true;
+		const success = new Map<string, number>();
+		const worker = createHostedWorker({
+			tick: async () => {},
+			repair: async () => ({ truncated: false, more: !complete }),
+			continueRepair: async () => {},
+			health: {
+				mark: async (component, ok) => {
+					if (ok) success.set(component, now);
+					else success.delete(component);
+				},
+				ready: async () =>
+					["queue", "schedule", "repair"].every((component) => {
+						const at = success.get(component);
+						return at !== undefined && now - at < 45 * 60_000;
+					}),
+			},
+		});
+		await worker.run(scheduled);
+		expect(await worker.ready()).toBe(true);
+		complete = false;
+		for (const minutes of [15, 30, 44]) {
+			now = minutes * 60_000;
+			await worker.run(scheduled);
+			expect(await worker.ready()).toBe(true);
+		}
+		now = 45 * 60_000;
+		await worker.run(scheduled);
+		expect(await worker.ready()).toBe(false);
 	});
 });

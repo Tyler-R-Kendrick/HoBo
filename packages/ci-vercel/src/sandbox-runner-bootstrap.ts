@@ -3,6 +3,10 @@ import {
 	downloadSandboxRunner,
 	SANDBOX_RUNNER_SHA256,
 } from "./sandbox-runner-archive.js";
+import {
+	downloadSandboxIcu,
+	SANDBOX_ICU_SHA256,
+} from "./sandbox-runner-icu.js";
 import { ensureSandboxWorkdir } from "./sandbox-workdir.js";
 
 /**
@@ -18,6 +22,14 @@ umask 077
 cd /vercel/sandbox
 test "$(uname -s)" = Linux
 test "$(uname -m)" = x86_64
+test -r /etc/os-release
+. /etc/os-release
+test "$ID" = ubuntu
+test "$VERSION_ID" = 26.04
+test -f hobo-ci-icu.deb
+printf '%s  %s\\n' ${SANDBOX_ICU_SHA256} hobo-ci-icu.deb | sha256sum --check --status
+sudo -n env DEBIAN_FRONTEND=noninteractive dpkg -i hobo-ci-icu.deb
+rm -f hobo-ci-icu.deb
 test -f hobo-ci-runner.tar.gz
 printf '%s  %s\\n' ${SANDBOX_RUNNER_SHA256} hobo-ci-runner.tar.gz | sha256sum --check --status
 mkdir -m 700 hobo-ci-runner
@@ -79,11 +91,17 @@ export async function prepareSandboxRunner(
 	fetcher: typeof fetch = fetch,
 ): Promise<void> {
 	const archive = await downloadSandboxRunner(fetcher);
+	const icu = await downloadSandboxIcu(fetcher);
 	await ensureSandboxWorkdir(sandbox);
 	await sandbox.writeFiles([
 		{
 			path: "/vercel/sandbox/hobo-ci-runner.tar.gz",
 			content: archive,
+			mode: 0o600,
+		},
+		{
+			path: "/vercel/sandbox/hobo-ci-icu.deb",
+			content: icu,
 			mode: 0o600,
 		},
 	]);

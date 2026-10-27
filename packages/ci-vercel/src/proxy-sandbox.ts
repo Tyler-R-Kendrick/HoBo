@@ -136,7 +136,7 @@ export async function startProxySandbox(
 		result.commandId,
 		result.readinessNonce,
 	);
-	if (!probe.ready) throw new ProxyStartupError(probe.reason);
+	if (probe.ready === false) throw new ProxyStartupError(probe.reason);
 	return { commandId: result.commandId };
 }
 export const discoverProxySandbox = discoverIsolatedSandbox;

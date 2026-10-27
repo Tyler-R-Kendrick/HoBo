@@ -53,6 +53,30 @@ describe("isolated Sandbox creation", () => {
 				sandboxCreateParameters({ ...config, allowedDomains: [pattern] }),
 			).toThrow();
 	});
+	it("forwards explicit GitHub Actions setup, checkout, Node and artifact hosts", () => {
+		const domains = [
+			"github.com",
+			"api.github.com",
+			"codeload.github.com",
+			"raw.githubusercontent.com",
+			"nodejs.org",
+			"release-assets.githubusercontent.com",
+			"*.actions.githubusercontent.com",
+			"*.blob.core.windows.net",
+		];
+		const request = sandboxCreateParameters({
+			...config,
+			allowedDomains: domains,
+		});
+		expect(request.networkPolicy.allow).toEqual(
+			Object.fromEntries(
+				domains.map((domain) => [domain, [{ forwardURL: config.forwardUrl }]]),
+			),
+		);
+		expect(request.networkPolicy.allow).not.toHaveProperty(
+			"registry.npmjs.org",
+		);
+	});
 	it.each([
 		"*",
 		"*.github.com",

@@ -2,7 +2,7 @@ import { toJsonString } from "@bufbuild/protobuf";
 import type { CiEvent } from "@hobo/ci";
 import { z } from "zod";
 import { JitBootstrapResponseSchema } from "./_generated/jit_bootstrap_response_pb.js";
-import type { GithubTransport } from "./github.js";
+import { type GithubTransport, getJob } from "./github.js";
 import {
 	HostedRelay,
 	type HostedRelayStore,
@@ -236,11 +236,36 @@ export function createHostedRelayRuntime(options: {
 				try {
 					if (lease.provider === "vercel" && lease.sandboxName) {
 						const host = options.isolatedHost ?? options.isolatedRecoveryHost;
-						if (host)
+						if (host) {
+							let assignedJobCompleted = false;
+							if (
+								options.isolatedHost &&
+								lease.state !== "uncertain" &&
+								lease.actualJobId > 0 &&
+								lease.runnerName
+							) {
+								try {
+									const job = await getJob(
+										options.github,
+										lease.installationId,
+										lease.repository,
+										lease.actualJobId,
+									);
+									assignedJobCompleted =
+										job.id === lease.actualJobId &&
+										job.status === "completed" &&
+										job.runner_name === lease.runnerName;
+								} catch {
+									// Failed or ambiguous GitHub reads cannot authorize a stop.
+								}
+							}
 							await host.reconcile(
 								lease.id,
-								!options.isolatedHost || lease.state === "uncertain",
+								!options.isolatedHost ||
+									lease.state === "uncertain" ||
+									assignedJobCompleted,
 							);
+						}
 						continue;
 					}
 					if (lease.hostRunId > 0)

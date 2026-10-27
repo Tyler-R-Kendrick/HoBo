@@ -1,5 +1,10 @@
 import { randomUUID } from "node:crypto";
-import { create, fromJsonString, toJsonString } from "@bufbuild/protobuf";
+import {
+	clone,
+	create,
+	fromJsonString,
+	toJsonString,
+} from "@bufbuild/protobuf";
 import {
 	AccountSchema,
 	AccountStateSchema,
@@ -12,6 +17,7 @@ import {
 	type ControlRecord,
 	DesiredCiPolicySchema,
 	LeaseSchema,
+	OfferSchema,
 	parseCiPolicy,
 	parseConfiguration,
 	ReconcileRequestSchema,
@@ -174,6 +180,11 @@ export function createHostedControlPlane(options: {
 	authenticate: ControlAuthenticator;
 	publicOrigin: string;
 	assets: { workflow: string; bootstrap: string };
+	runtimeDiagnostic?: () => {
+		sandboxEnabled: boolean;
+		allowedDomains: readonly string[];
+		deploymentId: string | null;
+	};
 }) {
 	const { store, relay } = options;
 	async function state(): Promise<ConfigurationState> {
@@ -249,6 +260,18 @@ export function createHostedControlPlane(options: {
 								: "policy:write";
 			if (!principal.scopes.includes(required))
 				throw new ControlError(403, "account scope required");
+			if (path === "/v2/accounts/self/runtime" && request.method === "GET") {
+				if (!options.runtimeDiagnostic)
+					throw new ControlError(404, "runtime diagnostic unavailable");
+				const current = await state();
+				if (
+					!current.configuration?.accounts.some(
+						(account) => account.id === principal.accountId,
+					)
+				)
+					throw new ControlError(404, "account not found");
+				return response(200, JSON.stringify(options.runtimeDiagnostic()));
+			}
 			if (
 				path === "/v1/accounts/self/installations" &&
 				request.method === "GET"
@@ -327,6 +350,57 @@ export function createHostedControlPlane(options: {
 					principal.accountId,
 					toJsonString(DesiredCiPolicySchema, desired),
 				);
+				return response(
+					200,
+					policyState(saved, principal.accountId),
+					saved.revision,
+				);
+			}
+			if (path === "/v2/accounts/self/providers" && request.method === "PUT") {
+				const expected = revision(request);
+				const incoming = fromJsonString(OfferSchema, await readBody(request));
+				const current = await state();
+				const config = current.configuration;
+				if (!config || current.revision !== expected)
+					throw new ControlError(409, "configuration revision conflict");
+				const account = config.accounts.find(
+					(entry) => entry.id === principal.accountId,
+				);
+				if (!account) throw new ControlError(404, "account not found");
+				const offer = account.offers.find((entry) => entry.id === incoming.id);
+				if (!offer) throw new ControlError(404, "provider offer not found");
+				const next = clone(OfferSchema, offer);
+				next.budgetMicros = incoming.budgetMicros;
+				next.concurrency = incoming.concurrency;
+				if (next.budgetMicros > account.budgetMicros)
+					throw new ControlError(400, "provider budget exceeds account budget");
+				if (
+					next.sandboxPricing &&
+					incoming.sandboxPricing &&
+					incoming.sandboxPricing.bootstrapFixedMicros <
+						next.sandboxPricing.bootstrapFixedMicros
+				)
+					throw new ControlError(
+						403,
+						"bootstrap estimate cannot be lowered through provider policy",
+					);
+				if (next.sandboxPricing && incoming.sandboxPricing)
+					next.sandboxPricing.bootstrapFixedMicros =
+						incoming.sandboxPricing.bootstrapFixedMicros;
+				if (
+					toJsonString(OfferSchema, next) !==
+					toJsonString(OfferSchema, incoming)
+				)
+					throw new ControlError(
+						400,
+						"provider configuration cannot change binding or usage evidence",
+					);
+				const index = account.offers.findIndex(
+					(entry) => entry.id === offer.id,
+				);
+				account.offers[index] = next;
+				parseConfiguration(toJsonString(ConfigurationSchema, config));
+				const saved = await store.configure(config, expected, relay.now());
 				return response(
 					200,
 					policyState(saved, principal.accountId),

@@ -132,7 +132,7 @@ describe("persistent interchangeable pipeline scheduler", () => {
 		expect(h.calls).toEqual([]);
 		expect(h.store.all()).toEqual([]);
 	});
-	it("uses fully free backends then chooses lower total cost over partial free allocations", async () => {
+	it("uses free allocations before the cheapest paid backend", async () => {
 		const h = setup();
 		expect(
 			(await h.scheduler.execute(h.account, pipeline("first"))).backend,
@@ -140,18 +140,24 @@ describe("persistent interchangeable pipeline scheduler", () => {
 		expect(
 			(await h.scheduler.execute(h.account, pipeline("second"))).backend,
 		).toBe("gh-actions");
-		// Each pipeline reserves two minutes and settles one. Only one free minute
-		// remains per initial backend; its paid remainder exceeds the CF host cost.
+		// Each pipeline reserves two minutes and settles one. Consume the remaining
+		// free minute on each initial backend before selecting the paid CF host.
 		expect(
 			(await h.scheduler.execute(h.account, pipeline("third"))).backend,
-		).toBe("cf");
+		).toBe("dagger");
 		expect(
 			(await h.scheduler.execute(h.account, pipeline("fourth"))).backend,
-		).toBe("cf");
+		).toBe("gh-actions");
 		expect(
 			(await h.scheduler.execute(h.account, pipeline("fifth"))).backend,
 		).toBe("cf");
-		expect(h.calls).toEqual(["dagger", "gh-actions", "cf", "cf", "cf"]);
+		expect(h.calls).toEqual([
+			"dagger",
+			"gh-actions",
+			"dagger",
+			"gh-actions",
+			"cf",
+		]);
 		expect(h.store.all().every((lease) => lease.state === "completed")).toBe(
 			true,
 		);

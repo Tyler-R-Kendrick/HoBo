@@ -89,6 +89,7 @@ export interface SandboxLeaseStore extends HostedRelayStore {
 		observed: {
 			state: string;
 			runnerId: number;
+			actualJobId: number;
 			sandboxSessionId: string;
 			sandboxCommandId: string;
 			sandboxStage: string;
@@ -149,11 +150,14 @@ export function createSandboxController(options: {
 		usage: SandboxUsage | undefined,
 		proxyUsage?: SandboxUsage,
 	) => Promise<{ paidMicros: number; usedAllowance?: SandboxAllowance }>;
-	/** This must use verified GitHub observations, including actual assigned job,
-	 * and distinguish a confirmed idle runner from an unknown assignment. */
+	/** Assignment is distinct from billing; unknown is never asserted idle. */
 	assignment: (
 		lease: Lease,
-	) => Promise<{ kind: "assigned"; jobId: number } | { kind: "unassigned" }>;
+	) => Promise<
+		| { kind: "assigned"; jobId: number }
+		| { kind: "unassigned" }
+		| { kind: "unknown" }
+	>;
 	/** Return original demand only if GitHub confirms it is still queued. */
 	unmet: (lease: Lease) => Promise<Job | undefined>;
 	/** Receives only fixed phase names, lease identity and a sanitized HTTP status. */
@@ -885,6 +889,7 @@ export function createSandboxController(options: {
 				{
 					state: lease.state,
 					runnerId: lease.runnerId,
+					actualJobId: lease.actualJobId,
 					sandboxSessionId: lease.sandboxSessionId,
 					sandboxCommandId: lease.sandboxCommandId,
 					sandboxStage: lease.sandboxStage,

@@ -21,6 +21,7 @@ import {
 	START_SANDBOX_RUNNER,
 	startSandboxRunner,
 } from "../src/sandbox-runner-bootstrap.js";
+import * as icu from "../src/sandbox-runner-icu.js";
 
 describe("isolated runner bootstrap", () => {
 	it("keeps JIT out of command metadata and launches only after validated input", async () => {
@@ -78,10 +79,99 @@ describe("isolated runner bootstrap", () => {
 		expect(writes).toBe(0);
 	});
 
+	it("does not upload either archive if the ICU package is forged", async () => {
+		const download = vi
+			.spyOn(archive, "downloadSandboxRunner")
+			.mockResolvedValue(Buffer.from("verified runner"));
+		let writes = 0;
+		const sandbox: SandboxRunnerBootstrapPort = {
+			async writeFiles() {
+				writes++;
+			},
+			async runCommand() {
+				throw new Error("must not run");
+			},
+		};
+		try {
+			await expect(
+				prepareSandboxRunner(sandbox, async () => new Response("forged ICU")),
+			).rejects.toThrow("checksum mismatch");
+			expect(writes).toBe(0);
+		} finally {
+			download.mockRestore();
+		}
+	});
+
+	it("checks the ICU checksum in the guest before running the installer", () => {
+		const root = mkdtempSync(join(tmpdir(), "hobo-sandbox-icu-"));
+		try {
+			writeFileSync(join(root, "hobo-ci-icu.deb"), "forged ICU");
+			const osRelease = join(root, "os-release");
+			writeFileSync(osRelease, "ID=ubuntu\nVERSION_ID=26.04\n");
+			const bin = join(root, "bin");
+			mkdirSync(bin);
+			writeFileSync(
+				join(bin, "uname"),
+				'#!/bin/sh\n[ "$1" = -s ] && echo Linux || echo x86_64\n',
+				{ mode: 0o755 },
+			);
+			writeFileSync(join(bin, "sudo"), "#!/bin/sh\ntouch installed-marker\n", {
+				mode: 0o755,
+			});
+			const script = PREPARE_SANDBOX_RUNNER.replaceAll(
+				"/vercel/sandbox",
+				root,
+			).replaceAll("/etc/os-release", osRelease);
+			expect(() =>
+				execFileSync("bash", ["-c", script], {
+					env: { PATH: `${bin}:/usr/bin:/bin` },
+					stdio: "pipe",
+				}),
+			).toThrow();
+			expect(existsSync(join(root, "installed-marker"))).toBe(false);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
+	it("does not install the Ubuntu package on a different image", () => {
+		const root = mkdtempSync(join(tmpdir(), "hobo-sandbox-image-"));
+		try {
+			const osRelease = join(root, "os-release");
+			writeFileSync(osRelease, "ID=debian\nVERSION_ID=13\n");
+			const bin = join(root, "bin");
+			mkdirSync(bin);
+			writeFileSync(
+				join(bin, "uname"),
+				'#!/bin/sh\n[ "$1" = -s ] && echo Linux || echo x86_64\n',
+				{ mode: 0o755 },
+			);
+			writeFileSync(join(bin, "sudo"), "#!/bin/sh\ntouch installed-marker\n", {
+				mode: 0o755,
+			});
+			const script = PREPARE_SANDBOX_RUNNER.replaceAll(
+				"/vercel/sandbox",
+				root,
+			).replaceAll("/etc/os-release", osRelease);
+			expect(() =>
+				execFileSync("bash", ["-c", script], {
+					env: { PATH: `${bin}:/usr/bin:/bin` },
+					stdio: "pipe",
+				}),
+			).toThrow();
+			expect(existsSync(join(root, "installed-marker"))).toBe(false);
+		} finally {
+			rmSync(root, { recursive: true, force: true });
+		}
+	});
+
 	it("creates the fresh VM workdir before uploading the verified runner", async () => {
 		const download = vi
 			.spyOn(archive, "downloadSandboxRunner")
 			.mockResolvedValue(Buffer.from("verified archive"));
+		const downloadIcu = vi
+			.spyOn(icu, "downloadSandboxIcu")
+			.mockResolvedValue(Buffer.from("verified ICU package"));
 		const operations: string[] = [];
 		const sandbox: SandboxRunnerBootstrapPort = {
 			async writeFiles(files) {
@@ -101,6 +191,7 @@ describe("isolated runner bootstrap", () => {
 			]);
 		} finally {
 			download.mockRestore();
+			downloadIcu.mockRestore();
 		}
 	});
 
@@ -108,10 +199,30 @@ describe("isolated runner bootstrap", () => {
 		const root = mkdtempSync(join(tmpdir(), "hobo-sandbox-prep-"));
 		try {
 			writeFileSync(join(root, "hobo-ci-runner.tar.gz"), "forged");
-			const script = PREPARE_SANDBOX_RUNNER.replaceAll("/vercel/sandbox", root);
+			const icuFile = join(root, "hobo-ci-icu.deb");
+			writeFileSync(icuFile, "verified ICU fixture");
+			const icuHash = createHash("sha256")
+				.update(readFileSync(icuFile))
+				.digest("hex");
+			const osRelease = join(root, "os-release");
+			writeFileSync(osRelease, "ID=ubuntu\nVERSION_ID=26.04\n");
+			const bin = join(root, "bin");
+			mkdirSync(bin);
+			for (const [name, contents] of [
+				[
+					"uname",
+					"#!/bin/sh\n[ \"$1\" = -s ] && printf 'Linux\\n' || printf 'x86_64\\n'\n",
+				],
+				["sudo", "#!/bin/sh\nexit 0\n"],
+			] as const) {
+				writeFileSync(join(bin, name), contents, { mode: 0o755 });
+			}
+			const script = PREPARE_SANDBOX_RUNNER.replaceAll("/vercel/sandbox", root)
+				.replaceAll("/etc/os-release", osRelease)
+				.replace(icu.SANDBOX_ICU_SHA256, icuHash);
 			expect(() =>
 				execFileSync("bash", ["-c", script], {
-					env: { PATH: "/usr/bin:/bin" },
+					env: { PATH: `${bin}:/usr/bin:/bin` },
 					stdio: "pipe",
 				}),
 			).toThrow();
@@ -134,24 +245,38 @@ describe("isolated runner bootstrap", () => {
 			const hash = createHash("sha256")
 				.update(readFileSync(file))
 				.digest("hex");
-			const script = PREPARE_SANDBOX_RUNNER.replaceAll(
-				"/vercel/sandbox",
-				root,
-			).replace(archive.SANDBOX_RUNNER_SHA256, hash);
+			const icuFile = join(root, "hobo-ci-icu.deb");
+			writeFileSync(icuFile, "verified ICU fixture");
+			const icuHash = createHash("sha256")
+				.update(readFileSync(icuFile))
+				.digest("hex");
+			const osRelease = join(root, "os-release");
+			writeFileSync(osRelease, "ID=ubuntu\nVERSION_ID=26.04\n");
+			const script = PREPARE_SANDBOX_RUNNER.replaceAll("/vercel/sandbox", root)
+				.replaceAll("/etc/os-release", osRelease)
+				.replace(archive.SANDBOX_RUNNER_SHA256, hash)
+				.replace(icu.SANDBOX_ICU_SHA256, icuHash);
 			const bin = join(root, "bin");
 			mkdirSync(bin);
 			const uname = join(bin, "uname");
 			writeFileSync(
 				uname,
-				'#!/bin/sh\n[ "$1" = -s ] && printf \'Linux\\n\' || printf \'x86_64\\n\'\n',
+				"#!/bin/sh\n[ \"$1\" = -s ] && printf 'Linux\\n' || printf 'x86_64\\n'\n",
 			);
 			chmodSync(uname, 0o755);
+			const sudo = join(bin, "sudo");
+			writeFileSync(
+				sudo,
+				'#!/bin/sh\n[ "$1" = -n ] && [ "$2" = env ] && [ "$3" = DEBIAN_FRONTEND=noninteractive ] && [ "$4" = dpkg ] && [ "$5" = -i ] && [ "$6" = hobo-ci-icu.deb ] && [ -f "$6" ]\n',
+			);
+			chmodSync(sudo, 0o755);
 			execFileSync("bash", ["-c", script], {
 				env: { ...process.env, PATH: `${bin}:${process.env.PATH ?? ""}` },
 				stdio: "pipe",
 			});
 			expect(existsSync(join(root, ".hobo-ci-prepared"))).toBe(true);
 			expect(existsSync(file)).toBe(false);
+			expect(existsSync(icuFile)).toBe(false);
 			expect(statSync(join(root, ".hobo-ci-home")).mode & 0o777).toBe(0o700);
 		} finally {
 			rmSync(root, { recursive: true, force: true });

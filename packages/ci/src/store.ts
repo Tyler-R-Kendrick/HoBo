@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import { create, fromJsonString, toJsonString } from "@bufbuild/protobuf";
+import {
+	clone,
+	create,
+	fromJsonString,
+	toJsonString,
+} from "@bufbuild/protobuf";
 import { z } from "zod";
 import { allocationQuote } from "./accounting.js";
 import {
@@ -22,8 +27,17 @@ import {
 	parseConfiguration,
 	route,
 	SandboxAllowanceSchema,
+	type SandboxPricing,
 	SandboxPricingSchema,
 } from "./index.js";
+
+/** A conservative bootstrap increase is operator policy, not a new usage observation. */
+function observedSandboxPricing(pricing: SandboxPricing | undefined): string {
+	if (!pricing) return "";
+	const observed = clone(SandboxPricingSchema, pricing);
+	observed.bootstrapFixedMicros = 0;
+	return toJsonString(SandboxPricingSchema, observed);
+}
 
 /** Single-writer partition. Events and their materialized lease view commit together. */
 export class LeaseStore {
@@ -155,12 +169,12 @@ export class LeaseStore {
 							offer.spentMicros !== oldOffer.spentMicros ||
 							offer.validUntil !== oldOffer.validUntil ||
 							offer.sourceUrl !== oldOffer.sourceUrl ||
-							(oldOffer.sandboxPricing
-								? toJsonString(SandboxPricingSchema, oldOffer.sandboxPricing)
-								: "") !==
-								(offer.sandboxPricing
-									? toJsonString(SandboxPricingSchema, offer.sandboxPricing)
-									: "") ||
+							observedSandboxPricing(oldOffer.sandboxPricing) !==
+								observedSandboxPricing(offer.sandboxPricing) ||
+							(oldOffer.sandboxPricing &&
+								offer.sandboxPricing &&
+								offer.sandboxPricing.bootstrapFixedMicros <
+									oldOffer.sandboxPricing.bootstrapFixedMicros) ||
 							(oldOffer.sandboxAllowance
 								? toJsonString(
 										SandboxAllowanceSchema,
@@ -576,13 +590,34 @@ export class LeaseStore {
 				const lease = this.all().find(
 					(candidate) =>
 						candidate.repositoryId === job.repositoryId &&
+						candidate.installationId === job.installationId &&
+						candidate.repository.toLowerCase() ===
+							job.repository.toLowerCase() &&
 						candidate.runnerName === job.runnerName,
 				);
-				if (lease && ACTIVE_STATES.has(lease.state)) {
+				const settledSandbox =
+					lease?.state === "completed" &&
+					lease.provider === "vercel" &&
+					lease.sandboxStage === "stopped" &&
+					lease.runnerDeletionConfirmed &&
+					!!lease.settledAt;
+				if (lease && (ACTIVE_STATES.has(lease.state) || settledSandbox)) {
 					if (lease.actualJobId && lease.actualJobId !== job.id)
 						throw new Error("runner job assignment conflict");
 					lease.actualJobId = job.id;
-					this.append(lease, "ci.JobObserved", at);
+					this.append(
+						lease,
+						settledSandbox ? "ci.LateJobObserved" : "ci.JobObserved",
+						at,
+					);
+					if (settledSandbox && job.action !== "completed") return;
+					if (
+						job.action === "in_progress" &&
+						this.db
+							.prepare("SELECT 1 FROM terminal_jobs WHERE job_key=?")
+							.get(`${job.repositoryId}:${job.id}:${job.runAttempt}`)
+					)
+						return;
 					// GitHub can assign a different queued job to this label. Release
 					// only duplicate reservations that have not launched a host yet.
 					if (job.action === "in_progress" || job.action === "completed") {
@@ -802,9 +837,10 @@ export class LeaseStore {
 					continue;
 				}
 				const lease = fromJsonString(LeaseSchema, event.detail);
-				this.db
-					.prepare("DELETE FROM pending_jobs WHERE job_key=?")
-					.run(this.leaseKey(lease));
+				if (event.type !== "ci.LateJobObserved")
+					this.db
+						.prepare("DELETE FROM pending_jobs WHERE job_key=?")
+						.run(this.leaseKey(lease));
 				this.db
 					.prepare(
 						"INSERT INTO leases(id,job_key,body) VALUES (?,?,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body",

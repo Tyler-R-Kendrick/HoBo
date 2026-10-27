@@ -19,7 +19,9 @@ import {
 } from "./sandbox-egress-proxy.js";
 import { ensureSandboxWorkdir } from "./sandbox-workdir.js";
 
-const QUOTA_BLOCK_BYTES = 64 * 1024;
+const QUOTA_MIN_BLOCK_BYTES = 64 * 1024;
+// Match the durable quota endpoint's maximum for one reservation.
+const QUOTA_MAX_BLOCK_BYTES = 4 * 1024 * 1024;
 const MAX_REQUESTS = 10_000;
 const MAX_ACTIVE = 8;
 const MAX_TOKEN_BYTES = 8192;
@@ -31,7 +33,7 @@ const Config = z
 		leaseId: z.string().uuid(),
 		proxySessionId: z.string().regex(/^sbx_[A-Za-z0-9_-]+$/),
 		quotaToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
-		teamId: z.string().min(1).max(120),
+		teamId: z.string().regex(/^[A-Za-z0-9_-]{1,120}$/),
 		projectId: z.string().min(1).max(120),
 		hosts: z.array(z.string()).min(1).max(100),
 		maxEgressBytes: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
@@ -95,7 +97,18 @@ export function createProxyQuotaLedger(
 	config: ProxyVmConfig,
 	send: typeof fetch = fetch,
 ): SandboxEgressLedger {
+	// Large transfers need fewer durable control calls. Bound the block relative
+	// to the lease quota and start small again after an idle credit expires.
+	const maxBlockBytes = Math.max(
+		QUOTA_MIN_BLOCK_BYTES,
+		Math.min(
+			QUOTA_MAX_BLOCK_BYTES,
+			Math.floor(config.maxEgressBytes / 16 / QUOTA_MIN_BLOCK_BYTES) *
+				QUOTA_MIN_BLOCK_BYTES,
+		),
+	);
 	let credits = 0;
+	let blockBytes = QUOTA_MIN_BLOCK_BYTES;
 	let boundSandboxId: string | undefined;
 	let creditExpiresAt = 0;
 	let committed = 0;
@@ -112,49 +125,55 @@ export function createProxyQuotaLedger(
 			const operation = tail.then(async () => {
 				if (boundSandboxId !== undefined && boundSandboxId !== sandboxId)
 					return false;
-				if (Date.now() >= creditExpiresAt) credits = 0;
-				if (bytes <= credits) {
-					credits -= bytes;
-					return true;
-				}
-				const needed = bytes - credits;
-				const remaining = config.maxEgressBytes - committed;
-				if (needed > remaining || attempts >= config.maxControlCalls)
-					return false;
-				const rounded =
-					Math.ceil(needed / QUOTA_BLOCK_BYTES) * QUOTA_BLOCK_BYTES;
-				const reserve = Math.min(remaining, rounded);
-				attempts++;
-				try {
-					const response = await send(
-						`${origin(config.relayOrigin)}/internal/sandbox/quota`,
-						{
-							method: "POST",
-							headers: {
-								authorization: `Bearer ${config.quotaToken}`,
-								"content-type": "application/json",
+				for (;;) {
+					if (Date.now() >= creditExpiresAt) {
+						credits = 0;
+						blockBytes = QUOTA_MIN_BLOCK_BYTES;
+					}
+					if (bytes <= credits) {
+						credits -= bytes;
+						return true;
+					}
+					const needed = bytes - credits;
+					const remaining = config.maxEgressBytes - committed;
+					if (needed > remaining || attempts >= config.maxControlCalls)
+						return false;
+					const rounded =
+						Math.ceil(Math.min(needed, QUOTA_MAX_BLOCK_BYTES) / blockBytes) *
+						blockBytes;
+					const reserve = Math.min(remaining, QUOTA_MAX_BLOCK_BYTES, rounded);
+					attempts++;
+					try {
+						const response = await send(
+							`${origin(config.relayOrigin)}/internal/sandbox/quota`,
+							{
+								method: "POST",
+								headers: {
+									authorization: `Bearer ${config.quotaToken}`,
+									"content-type": "application/json",
+								},
+								body: JSON.stringify({
+									leaseId: config.leaseId,
+									proxySessionId: config.proxySessionId,
+									sandboxId,
+									bytes: reserve,
+									requestId: randomUUID(),
+								}),
+								redirect: "error",
+								signal: AbortSignal.timeout(5000),
 							},
-							body: JSON.stringify({
-								leaseId: config.leaseId,
-								proxySessionId: config.proxySessionId,
-								sandboxId,
-								bytes: reserve,
-								requestId: randomUUID(),
-							}),
-							redirect: "error",
-							signal: AbortSignal.timeout(5000),
-						},
-					);
-					// Every attempted reservation is consumed locally even if its result is lost.
-					committed += reserve;
-					if (response.status !== 204) return false;
-					boundSandboxId = sandboxId;
-					creditExpiresAt = Date.now() + 5000;
-					credits += reserve - bytes;
-					return true;
-				} catch {
-					committed += reserve;
-					return false;
+						);
+						// Every attempted reservation is consumed locally even if its result is lost.
+						committed += reserve;
+						if (response.status !== 204) return false;
+						boundSandboxId = sandboxId;
+						creditExpiresAt = Date.now() + 5000;
+						credits += reserve;
+						blockBytes = Math.min(maxBlockBytes, blockBytes * 2);
+					} catch {
+						committed += reserve;
+						return false;
+					}
 				}
 			});
 			tail = operation.then(
@@ -177,6 +196,33 @@ function authorizedBearer(
 		.update(value ?? "")
 		.digest();
 	return timingSafeEqual(expected, actual);
+}
+
+/** Only fixed categories are logged: SDK exceptions can contain request data. */
+function proxyVerificationFailure(error: Error): string {
+	if (error.message === "Missing required proxy headers") return "headers";
+	if (error.message === "Invalid proxied request URL") return "forwarded_url";
+	if (error.message === "Missing OIDC issuer") return "issuer_missing";
+	if (error.message === "Invalid OIDC issuer") return "issuer_invalid";
+	if (error.message === "Missing required claims in OIDC token")
+		return "claims";
+	const code = "code" in error ? error.code : undefined;
+	switch (code) {
+		case "ERR_JWT_CLAIM_VALIDATION_FAILED":
+			return "jwt_claim";
+		case "ERR_JWT_EXPIRED":
+			return "jwt_expired";
+		case "ERR_JWS_SIGNATURE_VERIFICATION_FAILED":
+			return "jwt_signature";
+		case "ERR_JWKS_TIMEOUT":
+			return "jwks_timeout";
+		case "ERR_JWKS_NO_MATCHING_KEY":
+			return "jwks_no_key";
+		case "ERR_JWKS_INVALID":
+			return "jwks_invalid";
+		default:
+			return "other";
+	}
 }
 
 const UnverifiedToken = z.object({
@@ -203,9 +249,11 @@ function plausibleToken(token: string | null, config: ProxyVmConfig): boolean {
 		const claim = parsed.data;
 		const audience = `${origin(config.proxyOrigin)}/sandbox/egress`;
 		return (
-			// Only the configured team issuer or Vercel's documented global
-			// issuer may reach the SDK's dynamically resolved JWKS endpoint.
+			// Vercel can issue tokens under either the configured team slug or
+			// its immutable team ID. Both remain bound to the exact team claim;
+			// the SDK still verifies issuer, audience, signature and lifetime.
 			(claim.iss === config.expectedIssuer ||
+				claim.iss === `https://oidc.vercel.com/${config.teamId}` ||
 				claim.iss === "https://oidc.vercel.com") &&
 			// The SDK validates exp when present but does not require it.
 			// Apply its documented 60-second clock tolerance before verification;
@@ -261,6 +309,7 @@ export function createSandboxProxyVmHandler(
 	const ledger = options.ledger ?? createProxyQuotaLedger(config);
 	let verifiedRequests = 0;
 	let boundSandboxId: string | undefined;
+	const reportedFailures = new Set<string>();
 	const verified = createVerifiedSandboxEgressHandler({
 		teamId: config.teamId,
 		projectId: config.projectId,
@@ -270,16 +319,33 @@ export function createSandboxProxyVmHandler(
 		maxRequestBytes: config.maxRequestBytes,
 		maxResponseBytes: config.maxResponseBytes,
 	});
+	const verifiedHandler: ProxyHandler = async (request, meta) => {
+		if (!boundSandboxId || meta.sandboxId !== boundSandboxId)
+			return new Response(null, { status: 403 });
+		verifiedRequests++;
+		if (verifiedRequests > MAX_REQUESTS)
+			return new Response(null, { status: 429 });
+		return verified(request, meta);
+	};
 	const proxy =
 		options.proxy ??
-		(options.wrapProxy ?? defineSandboxProxy)(async (request, meta) => {
-			if (!boundSandboxId || meta.sandboxId !== boundSandboxId)
-				return new Response(null, { status: 403 });
-			verifiedRequests++;
-			if (verifiedRequests > MAX_REQUESTS)
-				return new Response(null, { status: 429 });
-			return verified(request, meta);
-		});
+		(options.wrapProxy
+			? options.wrapProxy(verifiedHandler)
+			: defineSandboxProxy(verifiedHandler, (_request, error) => {
+					const stage = proxyVerificationFailure(error);
+					// At most one message per fixed category, even for hostile traffic.
+					if (!reportedFailures.has(stage)) {
+						reportedFailures.add(stage);
+						try {
+							console.error(
+								JSON.stringify({ event: "hobo_ci_proxy_denied", stage }),
+							);
+						} catch {
+							// Telemetry must not affect the denial response.
+						}
+					}
+					return new Response("Forbidden", { status: 403 });
+				}));
 	let windowStarted = Date.now();
 	let preAuthRequests = 0;
 	let active = 0;

@@ -117,6 +117,28 @@ describe("Sandbox composite costs", () => {
 		offer.budgetMicros = 9_096_770;
 		expect(route(a, [], at)).toBeUndefined();
 	});
+	it("requires evidence to cover the extra proxy VM duration", () => {
+		const a = account();
+		const offer = a.offers[0];
+		if (!offer?.sandboxPricing) throw new Error("missing fixture");
+		Object.assign(offer.sandboxPricing, {
+			proxyVmRequired: true,
+			proxyVmVcpus: 1,
+			proxyVmMemoryMb: 2048,
+			proxyVmExtraMs: 60_000,
+			proxyVmNetworkBytes: 2_000_000_000,
+			proxyVmNetworkHeadroomBytes: 100,
+			region: "iad1",
+			plan: "pro",
+			proxyControlMaxCalls: 100,
+			proxyControlCallMicros: 3,
+		});
+		offer.priceMicrosPerMinute = 0;
+		offer.validUntil = "2026-10-26T13:00:59.999Z";
+		expect(route(a, [], at)).toBeUndefined();
+		offer.validUntil = "2026-10-26T13:01:00Z";
+		expect(route(a, [], at)?.offer.id).toBe("sandbox");
+	});
 	it("rejects values whose total cannot be represented as safe integer micros", () => {
 		const p = pricing();
 		p.cpuMicrosPerVcpuHour = Number.MAX_SAFE_INTEGER;
@@ -241,6 +263,53 @@ describe("Sandbox composite costs", () => {
 		expect(second?.paidMicros).toBe(14_195_372);
 		expect(second?.sandboxReservedAllowance?.creations).toBe(0);
 		expect(second?.sandboxReservedAllowance?.proxyControlCalls).toBe(0);
+	});
+	it("prioritizes remaining proxy control call allowance and accounts for reservations", () => {
+		const a = account();
+		const sandbox = a.offers[0];
+		if (!sandbox?.sandboxPricing) throw new Error("missing fixture");
+		Object.assign(sandbox.sandboxPricing, {
+			proxyVmRequired: true,
+			proxyVmVcpus: 1,
+			proxyVmMemoryMb: 2048,
+			proxyVmExtraMs: 60_000,
+			proxyVmNetworkBytes: 2_000_000_000,
+			proxyVmNetworkHeadroomBytes: 100,
+			region: "iad1",
+			plan: "pro",
+			proxyControlMaxCalls: 100,
+			proxyControlCallMicros: 3,
+		});
+		sandbox.priceMicrosPerMinute = 0;
+		sandbox.concurrency = 2;
+		sandbox.sandboxAllowance = create(SandboxAllowanceSchema, {
+			proxyControlCalls: 100,
+		});
+		a.offers.push(
+			create(OfferSchema, {
+				id: "paid",
+				provider: "github",
+				providerAccountId: "gh",
+				enabled: true,
+				bridgeAcknowledged: true,
+				priceMicrosPerMinute: 1,
+				budgetMicros: 20_000_000,
+				concurrency: 2,
+				observedAt: "2026-10-26T11:00:00Z",
+				validUntil: "2026-10-26T14:00:00Z",
+			}),
+		);
+		const first = route(a, [], at);
+		expect(first?.offer.id).toBe("sandbox");
+		expect(first?.sandboxReservedAllowance?.proxyControlCalls).toBe(100);
+		const held = create(LeaseSchema, {
+			accountId: a.id,
+			offerId: sandbox.id,
+			state: "reserved",
+			sandboxReservedAllowance: first?.sandboxReservedAllowance,
+			reservedPaidMicros: first?.paidMicros,
+		});
+		expect(route(a, [held], at)?.offer.id).toBe("paid");
 	});
 	it("settles both sessions and refuses missing proxy usage", () => {
 		const p = pricing();

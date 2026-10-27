@@ -269,6 +269,7 @@ try {
 	const fence = {
 		state: sandbox.state,
 		runnerId: sandbox.runnerId,
+		actualJobId: sandbox.actualJobId,
 		sandboxSessionId: sandbox.sandboxSessionId,
 		sandboxCommandId: sandbox.sandboxCommandId,
 		sandboxStage: sandbox.sandboxStage,
@@ -874,6 +875,7 @@ try {
 	const nativeFence = {
 		state: running.state,
 		runnerId: running.runnerId,
+		actualJobId: running.actualJobId,
 		sandboxSessionId: running.sandboxSessionId,
 		sandboxCommandId: running.sandboxCommandId,
 		sandboxStage: running.sandboxStage,
@@ -1003,7 +1005,9 @@ try {
 			entry.state = "running";
 			entry.sandboxName = "guest-test";
 			entry.sandboxSessionId = "guest-session";
-			entry.sandboxStage = "created";
+			entry.sandboxCommandId = "guest-command";
+			entry.runnerId = 31;
+			entry.sandboxStage = "running";
 			entry.proxySandboxCommandId = "proxy-command";
 			entry.proxySandboxStage = "running";
 		},
@@ -1101,6 +1105,7 @@ try {
 		["running"],
 		(entry) => {
 			entry.sandboxStage = "stopped";
+			entry.runnerDeletionConfirmed = true;
 			entry.sandboxStoppedUsage = create(SandboxMeasuredUsageSchema, {
 				sessionId: "guest-session",
 				durationMs: 60000,
@@ -1136,7 +1141,8 @@ try {
 	);
 	const fence2 = {
 		state: stopped.state,
-		runnerId: 0,
+		runnerId: 31,
+		actualJobId: 0,
 		sandboxSessionId: stopped.sandboxSessionId,
 		sandboxCommandId: stopped.sandboxCommandId,
 		sandboxStage: stopped.sandboxStage,
@@ -1188,6 +1194,19 @@ try {
 		),
 		/differs from verified usage/,
 	);
+	assert.equal(
+		await proxyStore.settleSandboxObserved(
+			twoLease.id,
+			now,
+			now,
+			{ ...fence2, actualJobId: 100 },
+			quote2.paidMicros,
+			undefined,
+			quote2.usedAllowance,
+		),
+		undefined,
+		"settlement must fence concurrent job attribution",
+	);
 	assert(
 		await proxyStore.settleSandboxObserved(
 			twoLease.id,
@@ -1199,11 +1218,48 @@ try {
 			quote2.usedAllowance,
 		),
 	);
+	const settledUnknown = await proxyStore.get(twoLease.id);
+	assert.equal(settledUnknown?.actualJobId, 0);
+	assert.equal(settledUnknown?.paidMicros, quote2.paidMicros);
+	assert(
+		(await proxyStore.events()).some(
+			(event) => event.type === "ci.AssignmentUnknown",
+		),
+	);
 	assert.equal(await proxyStore.authenticateSandboxProxy(token), undefined);
 	const partialJob = job(7001);
 	partialJob.isolatedRequired = true;
-	const partial = await proxyStore.reserve(proxyAccount, partialJob, now, 1);
+	let partial = await proxyStore.reserve(proxyAccount, partialJob, now, 1);
 	if (!partial) throw new Error("partial reservation missing");
+	const late = job(7001);
+	late.action = "in_progress";
+	late.runnerName = twoLease.runnerName;
+	await proxyStore.observe(late, now, 1);
+	assert.equal((await proxyStore.get(twoLease.id))?.actualJobId, late.id);
+	assert.equal(
+		(await proxyStore.get(twoLease.id))?.paidMicros,
+		quote2.paidMicros,
+	);
+	assert.equal((await proxyStore.get(partial.id))?.state, "reserved");
+	assert.equal(await proxyStore.assignedJob(late), undefined);
+	await proxyStore.observe(late, now, 1);
+	const conflicting = job(7003);
+	conflicting.action = "in_progress";
+	conflicting.runnerName = twoLease.runnerName;
+	await assert.rejects(
+		proxyStore.observe(conflicting, now, 1),
+		/assignment conflict/,
+	);
+	late.action = "completed";
+	await proxyStore.observe(late, now, 1);
+	late.action = "in_progress";
+	await proxyStore.observe(late, now, 1);
+	assert.equal(await proxyStore.assignedJob(late), undefined);
+	assert.equal((await proxyStore.get(partial.id))?.state, "cancelled");
+	const replacementJob = job(7004);
+	replacementJob.isolatedRequired = true;
+	partial = await proxyStore.reserve(proxyAccount, replacementJob, now, 1);
+	if (!partial) throw new Error("replacement reservation missing");
 	const proxyOnly = await proxyStore.transition(
 		partial.id,
 		["reserved"],
@@ -1246,6 +1302,7 @@ try {
 	const partialFence = {
 		state: proxyOnly.state,
 		runnerId: 0,
+		actualJobId: 0,
 		sandboxSessionId: "",
 		sandboxCommandId: "",
 		sandboxStage: "pending",
@@ -1312,6 +1369,7 @@ try {
 	const preFence = {
 		state: preJit.state,
 		runnerId: 0,
+		actualJobId: 0,
 		sandboxSessionId: preJit.sandboxSessionId,
 		sandboxCommandId: "",
 		sandboxStage: "stopped",
@@ -1397,6 +1455,7 @@ try {
 			{
 				state: unknown.state,
 				runnerId: 0,
+				actualJobId: 0,
 				sandboxSessionId: unknown.sandboxSessionId,
 				sandboxCommandId: "",
 				sandboxStage: "stopped",

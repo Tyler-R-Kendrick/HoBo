@@ -32,6 +32,12 @@ export {
 	type StationYardCatalogInput,
 } from "./capability-coverage.js";
 export {
+	type CiBudgetRoutingBridge,
+	type CiBudgetRoutingClient,
+	type CiBudgetRoutingOutcome,
+	createCiBudgetRoutingBridge,
+} from "./ci-routing.js";
+export {
 	createStationBindleRuntimeContext,
 	type StationConnectionResolver,
 } from "./connector-context.js";
@@ -146,4 +152,5 @@ export {
 	STATION_SCHEMA_VERSION,
 } from "./types.js";
 
+// public-contract: stable package identity for Station integrations and diagnostics.
 export const HOBO_STATIONS_PACKAGE = "@hobo/stations";

@@ -10,7 +10,7 @@ import type { Message } from "@bufbuild/protobuf";
  * Describes the file ci.proto.
  */
 export const file_ci: GenFile = /*@__PURE__*/
-  fileDesc("CghjaS5wcm90bxIKaG9iby5jaS52MSLJAgoFT2ZmZXISCgoCaWQYASABKAkSEAoIcHJvdmlkZXIYAiABKAkSGwoTcHJvdmlkZXJfYWNjb3VudF9pZBgDIAEoCRIPCgdlbmFibGVkGAQgASgIEg8KB3J1bnNfb24YBSABKAkSFAoMZnJlZV9taW51dGVzGAYgASgBEh8KF3ByaWNlX21pY3Jvc19wZXJfbWludXRlGAcgASgBEhUKDWJ1ZGdldF9taWNyb3MYCCABKAESFAoMc3BlbnRfbWljcm9zGAkgASgBEhMKC2NvbmN1cnJlbmN5GAogASgNEhMKC29ic2VydmVkX2F0GAsgASgJEhMKC3ZhbGlkX3VudGlsGAwgASgJEhIKCnNvdXJjZV91cmwYDSABKAkSGwoTYnJpZGdlX2Fja25vd2xlZGdlZBgOIAEoCBIPCgdiYWNrZW5kGA8gASgJIpsBCgdBY2NvdW50EgoKAmlkGAEgASgJEhUKDWJ1ZGdldF9taWNyb3MYAiABKAESFAoMc3BlbnRfbWljcm9zGAMgASgBEhsKE21heF9ydW50aW1lX21pbnV0ZXMYBCABKA0SFwoPc3RhcnR1cF9taW51dGVzGAUgASgNEiEKBm9mZmVycxgGIAMoCzIRLmhvYm8uY2kudjEuT2ZmZXIisgIKCkNvbm5lY3Rpb24SEgoKYWNjb3VudF9pZBgBIAEoCRISCgpyZXBvc2l0b3J5GAIgASgJEhUKDXJlcG9zaXRvcnlfaWQYAyABKAESFwoPaW5zdGFsbGF0aW9uX2lkGAQgASgBEhcKD2JyaWRnZV93b3JrZmxvdxgFIAEoCRISCgpicmlkZ2Vfc2hhGAYgASgJEhcKD3J1bm5lcl9ncm91cF9pZBgHIAEoDRIWCg5hbGxvd2VkX2V2ZW50cxgIIAMoCRIUCgxhbGxvd2VkX3JlZnMYCSADKAkSJwofdHJ1c3RlZF9yZXBvc2l0b3J5X2Fja25vd2xlZGdlZBgKIAEoCBISCgpicmlkZ2VfcmVmGAsgASgJEhsKE2Rpc3BhdGNoZXJfYWN0b3JfaWQYDCABKAEiYwoNQ29uZmlndXJhdGlvbhIlCghhY2NvdW50cxgBIAMoCzITLmhvYm8uY2kudjEuQWNjb3VudBIrCgtjb25uZWN0aW9ucxgCIAMoCzIWLmhvYm8uY2kudjEuQ29ubmVjdGlvbiKvAQoDSm9iEgoKAmlkGAEgASgBEg4KBnJ1bl9pZBgCIAEoARITCgtydW5fYXR0ZW1wdBgDIAEoDRIVCg1yZXBvc2l0b3J5X2lkGAQgASgBEhcKD2luc3RhbGxhdGlvbl9pZBgFIAEoARISCgpyZXBvc2l0b3J5GAYgASgJEg4KBmxhYmVscxgHIAMoCRIOCgZhY3Rpb24YCCABKAkSEwoLcnVubmVyX25hbWUYCSABKAkijgUKBUxlYXNlEgoKAmlkGAEgASgJEhIKCmFjY291bnRfaWQYAiABKAkSEAoIb2ZmZXJfaWQYAyABKAkSEAoIcHJvdmlkZXIYBCABKAkSDgoGam9iX2lkGAUgASgBEhcKD29yaWdpbmFsX3J1bl9pZBgGIAEoARITCgtydW5fYXR0ZW1wdBgHIAEoDRIVCg1yZXBvc2l0b3J5X2lkGAggASgBEhIKCnJlcG9zaXRvcnkYCSABKAkSFwoPaW5zdGFsbGF0aW9uX2lkGAogASgBEg0KBXN0YXRlGAsgASgJEhgKEHJlc2VydmVkX21pbnV0ZXMYDCABKAESHQoVcmVzZXJ2ZWRfZnJlZV9taW51dGVzGA0gASgBEhwKFHJlc2VydmVkX3BhaWRfbWljcm9zGA4gASgBEhMKC3J1bm5lcl9uYW1lGA8gASgJEhIKCmNyZWF0ZWRfYXQYECABKAkSEwoLaG9zdF9ydW5faWQYESABKAESEQoJcnVubmVyX2lkGBIgASgBEhUKDWFjdHVhbF9qb2JfaWQYEyABKAESFgoOYmlsbGVkX21pbnV0ZXMYFCABKAESEwoLcGFpZF9taWNyb3MYFSABKAESEgoKc2V0dGxlZF9hdBgWIAEoCRIfChdwcmljZV9taWNyb3NfcGVyX21pbnV0ZRgXIAEoARIYChBmcmVlX3ZhbGlkX3VudGlsGBggASgJEhsKE2JpbGxlZF9mcmVlX21pbnV0ZXMYGSABKAESEwoLcGlwZWxpbmVfaWQYGiABKAkSKgoGcmVzdWx0GBsgASgLMhouaG9iby5jaS52MS5QaXBlbGluZVJlc3VsdBIXCg9waXBlbGluZV9kaWdlc3QYHCABKAkiWQoHQ2lFdmVudBIMCgR0eXBlGAEgASgJEhIKCmFjY291bnRfaWQYAiABKAkSEAoIbGVhc2VfaWQYAyABKAkSCgoCYXQYBCABKAkSDgoGZGV0YWlsGAUgASgJIlIKCFNuYXBzaG90EiEKBmxlYXNlcxgBIAMoCzIRLmhvYm8uY2kudjEuTGVhc2USIwoGZXZlbnRzGAIgAygLMhMuaG9iby5jaS52MS5DaUV2ZW50IpEBCgxQaXBlbGluZVN0ZXASCgoCaWQYASABKAkSDAoEYXJndhgCIAMoCRILCgNjd2QYAyABKAkSLgoDZW52GAQgAygLMiEuaG9iby5jaS52MS5QaXBlbGluZVN0ZXAuRW52RW50cnkaKgoIRW52RW50cnkSCwoDa2V5GAEgASgJEg0KBXZhbHVlGAIgASgJOgI4ASKjAQoIUGlwZWxpbmUSCgoCaWQYASABKAkSEgoKYWNjb3VudF9pZBgCIAEoCRInCgVzdGVwcxgDIAMoCzIYLmhvYm8uY2kudjEuUGlwZWxpbmVTdGVwEhYKDmFydGlmYWN0X3BhdGhzGAQgAygJEhcKD3RpbWVvdXRfc2Vjb25kcxgFIAEoDRIdChVyZXF1aXJlZF9jYXBhYmlsaXRpZXMYBiADKAkiUwoSUGlwZWxpbmVTdGVwUmVzdWx0EgoKAmlkGAEgASgJEhEKCWV4aXRfY29kZRgCIAEoBRIOCgZzdGRvdXQYAyABKAkSDgoGc3RkZXJyGAQgASgJIj4KEFBpcGVsaW5lQXJ0aWZhY3QSDAoEcGF0aBgBIAEoCRIMCgRkYXRhGAIgASgMEg4KBnNoYTI1NhgDIAEoCSKsAQoOUGlwZWxpbmVSZXN1bHQSCgoCaWQYASABKAkSDwoHYmFja2VuZBgCIAEoCRIOCgZzdGF0dXMYAyABKAkSLQoFc3RlcHMYBCADKAsyHi5ob2JvLmNpLnYxLlBpcGVsaW5lU3RlcFJlc3VsdBIvCglhcnRpZmFjdHMYBSADKAsyHC5ob2JvLmNpLnYxLlBpcGVsaW5lQXJ0aWZhY3QSDQoFZXJyb3IYBiABKAliBnByb3RvMw");
+  fileDesc("CghjaS5wcm90bxIKaG9iby5jaS52MSLJAgoFT2ZmZXISCgoCaWQYASABKAkSEAoIcHJvdmlkZXIYAiABKAkSGwoTcHJvdmlkZXJfYWNjb3VudF9pZBgDIAEoCRIPCgdlbmFibGVkGAQgASgIEg8KB3J1bnNfb24YBSABKAkSFAoMZnJlZV9taW51dGVzGAYgASgBEh8KF3ByaWNlX21pY3Jvc19wZXJfbWludXRlGAcgASgBEhUKDWJ1ZGdldF9taWNyb3MYCCABKAESFAoMc3BlbnRfbWljcm9zGAkgASgBEhMKC2NvbmN1cnJlbmN5GAogASgNEhMKC29ic2VydmVkX2F0GAsgASgJEhMKC3ZhbGlkX3VudGlsGAwgASgJEhIKCnNvdXJjZV91cmwYDSABKAkSGwoTYnJpZGdlX2Fja25vd2xlZGdlZBgOIAEoCBIPCgdiYWNrZW5kGA8gASgJIssDCgdBY2NvdW50EgoKAmlkGAEgASgJEhUKDWJ1ZGdldF9taWNyb3MYAiABKAESFAoMc3BlbnRfbWljcm9zGAMgASgBEhsKE21heF9ydW50aW1lX21pbnV0ZXMYBCABKA0SFwoPc3RhcnR1cF9taW51dGVzGAUgASgNEiEKBm9mZmVycxgGIAMoCzIRLmhvYm8uY2kudjEuT2ZmZXISGQoRdXNhZ2Vfb2JzZXJ2ZWRfYXQYByABKAkSSwoVcm91dGluZ19zaWduYWxfY3ljbGVzGAggAygLMiwuaG9iby5jaS52MS5BY2NvdW50LlJvdXRpbmdTaWduYWxDeWNsZXNFbnRyeRJNChZyb3V0aW5nX3NpZ25hbF9jcm9zc2VkGAkgAygLMi0uaG9iby5jaS52MS5BY2NvdW50LlJvdXRpbmdTaWduYWxDcm9zc2VkRW50cnkaOgoYUm91dGluZ1NpZ25hbEN5Y2xlc0VudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoDToCOAEaOwoZUm91dGluZ1NpZ25hbENyb3NzZWRFbnRyeRILCgNrZXkYASABKAkSDQoFdmFsdWUYAiABKAg6AjgBItoCCgpDb25uZWN0aW9uEhIKCmFjY291bnRfaWQYASABKAkSEgoKcmVwb3NpdG9yeRgCIAEoCRIVCg1yZXBvc2l0b3J5X2lkGAMgASgBEhcKD2luc3RhbGxhdGlvbl9pZBgEIAEoARIXCg9icmlkZ2Vfd29ya2Zsb3cYBSABKAkSEgoKYnJpZGdlX3NoYRgGIAEoCRIXCg9ydW5uZXJfZ3JvdXBfaWQYByABKA0SFgoOYWxsb3dlZF9ldmVudHMYCCADKAkSFAoMYWxsb3dlZF9yZWZzGAkgAygJEicKH3RydXN0ZWRfcmVwb3NpdG9yeV9hY2tub3dsZWRnZWQYCiABKAgSEgoKYnJpZGdlX3JlZhgLIAEoCRIbChNkaXNwYXRjaGVyX2FjdG9yX2lkGAwgASgBEiYKHnB1YmxpY19yZXBvc2l0b3J5X2Fja25vd2xlZGdlZBgNIAEoCCJjCg1Db25maWd1cmF0aW9uEiUKCGFjY291bnRzGAEgAygLMhMuaG9iby5jaS52MS5BY2NvdW50EisKC2Nvbm5lY3Rpb25zGAIgAygLMhYuaG9iby5jaS52MS5Db25uZWN0aW9uImwKEkNvbmZpZ3VyYXRpb25TdGF0ZRIQCghyZXZpc2lvbhgBIAEoDRIwCg1jb25maWd1cmF0aW9uGAIgASgLMhkuaG9iby5jaS52MS5Db25maWd1cmF0aW9uEhIKCnVwZGF0ZWRfYXQYAyABKAkiVwoNQ29udHJvbFJlY29yZBILCgNrZXkYASABKAkSEgoKYWNjb3VudF9pZBgCIAEoCRIRCglib2R5X2pzb24YAyABKAkSEgoKdXBkYXRlZF9hdBgEIAEoCSKHAQoMQWNjb3VudFN0YXRlEhAKCHJldmlzaW9uGAEgASgNEiQKB2FjY291bnQYAiABKAsyEy5ob2JvLmNpLnYxLkFjY291bnQSKwoLY29ubmVjdGlvbnMYAyADKAsyFi5ob2JvLmNpLnYxLkNvbm5lY3Rpb24SEgoKdXBkYXRlZF9hdBgEIAEoCSLcAQoWUmVwb3NpdG9yeVNldHVwUmVxdWVzdBISCgpyZXBvc2l0b3J5GAEgASgJEhUKDXJlcG9zaXRvcnlfaWQYAiABKAESFwoPaW5zdGFsbGF0aW9uX2lkGAMgASgBEhcKD3J1bm5lcl9ncm91cF9pZBgEIAEoDRIUCgxhbGxvd2VkX3JlZnMYBSADKAkSJwofdHJ1c3RlZF9yZXBvc2l0b3J5X2Fja25vd2xlZGdlZBgGIAEoCBImCh5wdWJsaWNfcmVwb3NpdG9yeV9hY2tub3dsZWRnZWQYByABKAgiJwoQUmVjb25jaWxlUmVxdWVzdBITCgtob3N0X3J1bl9pZBgBIAEoASJnChFDb250cm9sQ3JlZGVudGlhbBISCgphY2NvdW50X2lkGAEgASgJEhgKEGluc3RhbGxhdGlvbl9pZHMYAiADKAESFAoMdG9rZW5fc2hhMjU2GAMgASgJEg4KBnNjb3BlcxgEIAMoCSJDChJDb250cm9sQ3JlZGVudGlhbHMSLQoGdG9rZW5zGAEgAygLMh0uaG9iby5jaS52MS5Db250cm9sQ3JlZGVudGlhbCKvAQoDSm9iEgoKAmlkGAEgASgBEg4KBnJ1bl9pZBgCIAEoARITCgtydW5fYXR0ZW1wdBgDIAEoDRIVCg1yZXBvc2l0b3J5X2lkGAQgASgBEhcKD2luc3RhbGxhdGlvbl9pZBgFIAEoARISCgpyZXBvc2l0b3J5GAYgASgJEg4KBmxhYmVscxgHIAMoCRIOCgZhY3Rpb24YCCABKAkSEwoLcnVubmVyX25hbWUYCSABKAkiqgUKBUxlYXNlEgoKAmlkGAEgASgJEhIKCmFjY291bnRfaWQYAiABKAkSEAoIb2ZmZXJfaWQYAyABKAkSEAoIcHJvdmlkZXIYBCABKAkSDgoGam9iX2lkGAUgASgBEhcKD29yaWdpbmFsX3J1bl9pZBgGIAEoARITCgtydW5fYXR0ZW1wdBgHIAEoDRIVCg1yZXBvc2l0b3J5X2lkGAggASgBEhIKCnJlcG9zaXRvcnkYCSABKAkSFwoPaW5zdGFsbGF0aW9uX2lkGAogASgBEg0KBXN0YXRlGAsgASgJEhgKEHJlc2VydmVkX21pbnV0ZXMYDCABKAESHQoVcmVzZXJ2ZWRfZnJlZV9taW51dGVzGA0gASgBEhwKFHJlc2VydmVkX3BhaWRfbWljcm9zGA4gASgBEhMKC3J1bm5lcl9uYW1lGA8gASgJEhIKCmNyZWF0ZWRfYXQYECABKAkSEwoLaG9zdF9ydW5faWQYESABKAESEQoJcnVubmVyX2lkGBIgASgBEhUKDWFjdHVhbF9qb2JfaWQYEyABKAESFgoOYmlsbGVkX21pbnV0ZXMYFCABKAESEwoLcGFpZF9taWNyb3MYFSABKAESEgoKc2V0dGxlZF9hdBgWIAEoCRIfChdwcmljZV9taWNyb3NfcGVyX21pbnV0ZRgXIAEoARIYChBmcmVlX3ZhbGlkX3VudGlsGBggASgJEhsKE2JpbGxlZF9mcmVlX21pbnV0ZXMYGSABKAESEwoLcGlwZWxpbmVfaWQYGiABKAkSKgoGcmVzdWx0GBsgASgLMhouaG9iby5jaS52MS5QaXBlbGluZVJlc3VsdBIXCg9waXBlbGluZV9kaWdlc3QYHCABKAkSGgoSdXNhZ2VfY29tcGxldGVkX2F0GB0gASgJIlkKB0NpRXZlbnQSDAoEdHlwZRgBIAEoCRISCgphY2NvdW50X2lkGAIgASgJEhAKCGxlYXNlX2lkGAMgASgJEgoKAmF0GAQgASgJEg4KBmRldGFpbBgFIAEoCSJSCghTbmFwc2hvdBIhCgZsZWFzZXMYASADKAsyES5ob2JvLmNpLnYxLkxlYXNlEiMKBmV2ZW50cxgCIAMoCzITLmhvYm8uY2kudjEuQ2lFdmVudCKRAQoMUGlwZWxpbmVTdGVwEgoKAmlkGAEgASgJEgwKBGFyZ3YYAiADKAkSCwoDY3dkGAMgASgJEi4KA2VudhgEIAMoCzIhLmhvYm8uY2kudjEuUGlwZWxpbmVTdGVwLkVudkVudHJ5GioKCEVudkVudHJ5EgsKA2tleRgBIAEoCRINCgV2YWx1ZRgCIAEoCToCOAEiowEKCFBpcGVsaW5lEgoKAmlkGAEgASgJEhIKCmFjY291bnRfaWQYAiABKAkSJwoFc3RlcHMYAyADKAsyGC5ob2JvLmNpLnYxLlBpcGVsaW5lU3RlcBIWCg5hcnRpZmFjdF9wYXRocxgEIAMoCRIXCg90aW1lb3V0X3NlY29uZHMYBSABKA0SHQoVcmVxdWlyZWRfY2FwYWJpbGl0aWVzGAYgAygJIlMKElBpcGVsaW5lU3RlcFJlc3VsdBIKCgJpZBgBIAEoCRIRCglleGl0X2NvZGUYAiABKAUSDgoGc3Rkb3V0GAMgASgJEg4KBnN0ZGVychgEIAEoCSI+ChBQaXBlbGluZUFydGlmYWN0EgwKBHBhdGgYASABKAkSDAoEZGF0YRgCIAEoDBIOCgZzaGEyNTYYAyABKAkirAEKDlBpcGVsaW5lUmVzdWx0EgoKAmlkGAEgASgJEg8KB2JhY2tlbmQYAiABKAkSDgoGc3RhdHVzGAMgASgJEi0KBXN0ZXBzGAQgAygLMh4uaG9iby5jaS52MS5QaXBlbGluZVN0ZXBSZXN1bHQSLwoJYXJ0aWZhY3RzGAUgAygLMhwuaG9iby5jaS52MS5QaXBlbGluZUFydGlmYWN0Eg0KBWVycm9yGAYgASgJIqYBChBCdWRnZXRTaWduYWxEYXRhEhEKCXRlbmFudF9pZBgBIAEoCRIaChJ0aHJlc2hvbGRfZnJhY3Rpb24YAiABKAESFQoNdGhyZXNob2xkX3VzZBgDIAEoARISCgpidWRnZXRfdXNkGAQgASgBEhUKDW5ldF9zcGVudF91c2QYBSABKAESDQoFY3ljbGUYBiABKA0SEgoKc2lnbmFsX2tleRgHIAEoCSJICgxCdWRnZXRTaWduYWwSDAoEdHlwZRgBIAEoCRIqCgRkYXRhGAIgASgLMhwuaG9iby5jaS52MS5CdWRnZXRTaWduYWxEYXRhIkIKEUJ1ZGdldFJvdXRpbmdSdWxlEhoKEnRocmVzaG9sZF9mcmFjdGlvbhgBIAEoARIRCglvZmZlcl9pZHMYAiADKAkiiQEKE0J1ZGdldFJvdXRpbmdQb2xpY3kSEgoKYWNjb3VudF9pZBgBIAEoCRIRCgl0ZW5hbnRfaWQYAiABKAkSGAoQbm9ybWFsX29mZmVyX2lkcxgDIAMoCRIxCgp0aHJlc2hvbGRzGAQgAygLMh0uaG9iby5jaS52MS5CdWRnZXRSb3V0aW5nUnVsZWIGcHJvdG8z");
 
 /**
  * All costs are integer USD microdollars. Allocations are runner minutes.
@@ -134,6 +134,21 @@ export type Account = Message<"hobo.ci.v1.Account"> & {
    * @generated from field: repeated hobo.ci.v1.Offer offers = 6;
    */
   offers: Offer[];
+
+  /**
+   * @generated from field: string usage_observed_at = 7;
+   */
+  usageObservedAt: string;
+
+  /**
+   * @generated from field: map<string, uint32> routing_signal_cycles = 8;
+   */
+  routingSignalCycles: { [key: string]: number };
+
+  /**
+   * @generated from field: map<string, bool> routing_signal_crossed = 9;
+   */
+  routingSignalCrossed: { [key: string]: boolean };
 };
 
 /**
@@ -206,6 +221,11 @@ export type Connection = Message<"hobo.ci.v1.Connection"> & {
    * @generated from field: double dispatcher_actor_id = 12;
    */
   dispatcherActorId: number;
+
+  /**
+   * @generated from field: bool public_repository_acknowledged = 13;
+   */
+  publicRepositoryAcknowledged: boolean;
 };
 
 /**
@@ -236,6 +256,214 @@ export type Configuration = Message<"hobo.ci.v1.Configuration"> & {
  */
 export const ConfigurationSchema: GenMessage<Configuration> = /*@__PURE__*/
   messageDesc(file_ci, 3);
+
+/**
+ * Revisioned platform configuration, committed with its audit event.
+ *
+ * @generated from message hobo.ci.v1.ConfigurationState
+ */
+export type ConfigurationState = Message<"hobo.ci.v1.ConfigurationState"> & {
+  /**
+   * @generated from field: uint32 revision = 1;
+   */
+  revision: number;
+
+  /**
+   * @generated from field: hobo.ci.v1.Configuration configuration = 2;
+   */
+  configuration?: Configuration | undefined;
+
+  /**
+   * @generated from field: string updated_at = 3;
+   */
+  updatedAt: string;
+};
+
+/**
+ * Describes the message hobo.ci.v1.ConfigurationState.
+ * Use `create(ConfigurationStateSchema)` to create a new message.
+ */
+export const ConfigurationStateSchema: GenMessage<ConfigurationState> = /*@__PURE__*/
+  messageDesc(file_ci, 4);
+
+/**
+ * Opaque protobuf-JSON operation records, parsed by their owning integration.
+ *
+ * @generated from message hobo.ci.v1.ControlRecord
+ */
+export type ControlRecord = Message<"hobo.ci.v1.ControlRecord"> & {
+  /**
+   * @generated from field: string key = 1;
+   */
+  key: string;
+
+  /**
+   * @generated from field: string account_id = 2;
+   */
+  accountId: string;
+
+  /**
+   * @generated from field: string body_json = 3;
+   */
+  bodyJson: string;
+
+  /**
+   * @generated from field: string updated_at = 4;
+   */
+  updatedAt: string;
+};
+
+/**
+ * Describes the message hobo.ci.v1.ControlRecord.
+ * Use `create(ControlRecordSchema)` to create a new message.
+ */
+export const ControlRecordSchema: GenMessage<ControlRecord> = /*@__PURE__*/
+  messageDesc(file_ci, 5);
+
+/**
+ * @generated from message hobo.ci.v1.AccountState
+ */
+export type AccountState = Message<"hobo.ci.v1.AccountState"> & {
+  /**
+   * @generated from field: uint32 revision = 1;
+   */
+  revision: number;
+
+  /**
+   * @generated from field: hobo.ci.v1.Account account = 2;
+   */
+  account?: Account | undefined;
+
+  /**
+   * @generated from field: repeated hobo.ci.v1.Connection connections = 3;
+   */
+  connections: Connection[];
+
+  /**
+   * @generated from field: string updated_at = 4;
+   */
+  updatedAt: string;
+};
+
+/**
+ * Describes the message hobo.ci.v1.AccountState.
+ * Use `create(AccountStateSchema)` to create a new message.
+ */
+export const AccountStateSchema: GenMessage<AccountState> = /*@__PURE__*/
+  messageDesc(file_ci, 6);
+
+/**
+ * @generated from message hobo.ci.v1.RepositorySetupRequest
+ */
+export type RepositorySetupRequest = Message<"hobo.ci.v1.RepositorySetupRequest"> & {
+  /**
+   * @generated from field: string repository = 1;
+   */
+  repository: string;
+
+  /**
+   * @generated from field: double repository_id = 2;
+   */
+  repositoryId: number;
+
+  /**
+   * @generated from field: double installation_id = 3;
+   */
+  installationId: number;
+
+  /**
+   * @generated from field: uint32 runner_group_id = 4;
+   */
+  runnerGroupId: number;
+
+  /**
+   * @generated from field: repeated string allowed_refs = 5;
+   */
+  allowedRefs: string[];
+
+  /**
+   * @generated from field: bool trusted_repository_acknowledged = 6;
+   */
+  trustedRepositoryAcknowledged: boolean;
+
+  /**
+   * @generated from field: bool public_repository_acknowledged = 7;
+   */
+  publicRepositoryAcknowledged: boolean;
+};
+
+/**
+ * Describes the message hobo.ci.v1.RepositorySetupRequest.
+ * Use `create(RepositorySetupRequestSchema)` to create a new message.
+ */
+export const RepositorySetupRequestSchema: GenMessage<RepositorySetupRequest> = /*@__PURE__*/
+  messageDesc(file_ci, 7);
+
+/**
+ * @generated from message hobo.ci.v1.ReconcileRequest
+ */
+export type ReconcileRequest = Message<"hobo.ci.v1.ReconcileRequest"> & {
+  /**
+   * @generated from field: double host_run_id = 1;
+   */
+  hostRunId: number;
+};
+
+/**
+ * Describes the message hobo.ci.v1.ReconcileRequest.
+ * Use `create(ReconcileRequestSchema)` to create a new message.
+ */
+export const ReconcileRequestSchema: GenMessage<ReconcileRequest> = /*@__PURE__*/
+  messageDesc(file_ci, 8);
+
+/**
+ * @generated from message hobo.ci.v1.ControlCredential
+ */
+export type ControlCredential = Message<"hobo.ci.v1.ControlCredential"> & {
+  /**
+   * @generated from field: string account_id = 1;
+   */
+  accountId: string;
+
+  /**
+   * @generated from field: repeated double installation_ids = 2;
+   */
+  installationIds: number[];
+
+  /**
+   * @generated from field: string token_sha256 = 3;
+   */
+  tokenSha256: string;
+
+  /**
+   * @generated from field: repeated string scopes = 4;
+   */
+  scopes: string[];
+};
+
+/**
+ * Describes the message hobo.ci.v1.ControlCredential.
+ * Use `create(ControlCredentialSchema)` to create a new message.
+ */
+export const ControlCredentialSchema: GenMessage<ControlCredential> = /*@__PURE__*/
+  messageDesc(file_ci, 9);
+
+/**
+ * @generated from message hobo.ci.v1.ControlCredentials
+ */
+export type ControlCredentials = Message<"hobo.ci.v1.ControlCredentials"> & {
+  /**
+   * @generated from field: repeated hobo.ci.v1.ControlCredential tokens = 1;
+   */
+  tokens: ControlCredential[];
+};
+
+/**
+ * Describes the message hobo.ci.v1.ControlCredentials.
+ * Use `create(ControlCredentialsSchema)` to create a new message.
+ */
+export const ControlCredentialsSchema: GenMessage<ControlCredentials> = /*@__PURE__*/
+  messageDesc(file_ci, 10);
 
 /**
  * @generated from message hobo.ci.v1.Job
@@ -292,7 +520,7 @@ export type Job = Message<"hobo.ci.v1.Job"> & {
  * Use `create(JobSchema)` to create a new message.
  */
 export const JobSchema: GenMessage<Job> = /*@__PURE__*/
-  messageDesc(file_ci, 4);
+  messageDesc(file_ci, 11);
 
 /**
  * @generated from message hobo.ci.v1.Lease
@@ -437,6 +665,11 @@ export type Lease = Message<"hobo.ci.v1.Lease"> & {
    * @generated from field: string pipeline_digest = 28;
    */
   pipelineDigest: string;
+
+  /**
+   * @generated from field: string usage_completed_at = 29;
+   */
+  usageCompletedAt: string;
 };
 
 /**
@@ -444,7 +677,7 @@ export type Lease = Message<"hobo.ci.v1.Lease"> & {
  * Use `create(LeaseSchema)` to create a new message.
  */
 export const LeaseSchema: GenMessage<Lease> = /*@__PURE__*/
-  messageDesc(file_ci, 5);
+  messageDesc(file_ci, 12);
 
 /**
  * @generated from message hobo.ci.v1.CiEvent
@@ -481,7 +714,7 @@ export type CiEvent = Message<"hobo.ci.v1.CiEvent"> & {
  * Use `create(CiEventSchema)` to create a new message.
  */
 export const CiEventSchema: GenMessage<CiEvent> = /*@__PURE__*/
-  messageDesc(file_ci, 6);
+  messageDesc(file_ci, 13);
 
 /**
  * @generated from message hobo.ci.v1.Snapshot
@@ -503,7 +736,7 @@ export type Snapshot = Message<"hobo.ci.v1.Snapshot"> & {
  * Use `create(SnapshotSchema)` to create a new message.
  */
 export const SnapshotSchema: GenMessage<Snapshot> = /*@__PURE__*/
-  messageDesc(file_ci, 7);
+  messageDesc(file_ci, 14);
 
 /**
  * A portable command pipeline. The backend binds its source workspace separately.
@@ -537,7 +770,7 @@ export type PipelineStep = Message<"hobo.ci.v1.PipelineStep"> & {
  * Use `create(PipelineStepSchema)` to create a new message.
  */
 export const PipelineStepSchema: GenMessage<PipelineStep> = /*@__PURE__*/
-  messageDesc(file_ci, 8);
+  messageDesc(file_ci, 15);
 
 /**
  * @generated from message hobo.ci.v1.Pipeline
@@ -579,7 +812,7 @@ export type Pipeline = Message<"hobo.ci.v1.Pipeline"> & {
  * Use `create(PipelineSchema)` to create a new message.
  */
 export const PipelineSchema: GenMessage<Pipeline> = /*@__PURE__*/
-  messageDesc(file_ci, 9);
+  messageDesc(file_ci, 16);
 
 /**
  * @generated from message hobo.ci.v1.PipelineStepResult
@@ -611,7 +844,7 @@ export type PipelineStepResult = Message<"hobo.ci.v1.PipelineStepResult"> & {
  * Use `create(PipelineStepResultSchema)` to create a new message.
  */
 export const PipelineStepResultSchema: GenMessage<PipelineStepResult> = /*@__PURE__*/
-  messageDesc(file_ci, 10);
+  messageDesc(file_ci, 17);
 
 /**
  * @generated from message hobo.ci.v1.PipelineArtifact
@@ -638,7 +871,7 @@ export type PipelineArtifact = Message<"hobo.ci.v1.PipelineArtifact"> & {
  * Use `create(PipelineArtifactSchema)` to create a new message.
  */
 export const PipelineArtifactSchema: GenMessage<PipelineArtifact> = /*@__PURE__*/
-  messageDesc(file_ci, 11);
+  messageDesc(file_ci, 18);
 
 /**
  * @generated from message hobo.ci.v1.PipelineResult
@@ -680,5 +913,130 @@ export type PipelineResult = Message<"hobo.ci.v1.PipelineResult"> & {
  * Use `create(PipelineResultSchema)` to create a new message.
  */
 export const PipelineResultSchema: GenMessage<PipelineResult> = /*@__PURE__*/
-  messageDesc(file_ci, 12);
+  messageDesc(file_ci, 19);
+
+/**
+ * Broker facts consumed by the Station CI routing bridge.
+ *
+ * @generated from message hobo.ci.v1.BudgetSignalData
+ */
+export type BudgetSignalData = Message<"hobo.ci.v1.BudgetSignalData"> & {
+  /**
+   * @generated from field: string tenant_id = 1;
+   */
+  tenantId: string;
+
+  /**
+   * @generated from field: double threshold_fraction = 2;
+   */
+  thresholdFraction: number;
+
+  /**
+   * @generated from field: double threshold_usd = 3;
+   */
+  thresholdUsd: number;
+
+  /**
+   * @generated from field: double budget_usd = 4;
+   */
+  budgetUsd: number;
+
+  /**
+   * @generated from field: double net_spent_usd = 5;
+   */
+  netSpentUsd: number;
+
+  /**
+   * @generated from field: uint32 cycle = 6;
+   */
+  cycle: number;
+
+  /**
+   * @generated from field: string signal_key = 7;
+   */
+  signalKey: string;
+};
+
+/**
+ * Describes the message hobo.ci.v1.BudgetSignalData.
+ * Use `create(BudgetSignalDataSchema)` to create a new message.
+ */
+export const BudgetSignalDataSchema: GenMessage<BudgetSignalData> = /*@__PURE__*/
+  messageDesc(file_ci, 20);
+
+/**
+ * @generated from message hobo.ci.v1.BudgetSignal
+ */
+export type BudgetSignal = Message<"hobo.ci.v1.BudgetSignal"> & {
+  /**
+   * @generated from field: string type = 1;
+   */
+  type: string;
+
+  /**
+   * @generated from field: hobo.ci.v1.BudgetSignalData data = 2;
+   */
+  data?: BudgetSignalData | undefined;
+};
+
+/**
+ * Describes the message hobo.ci.v1.BudgetSignal.
+ * Use `create(BudgetSignalSchema)` to create a new message.
+ */
+export const BudgetSignalSchema: GenMessage<BudgetSignal> = /*@__PURE__*/
+  messageDesc(file_ci, 21);
+
+/**
+ * @generated from message hobo.ci.v1.BudgetRoutingRule
+ */
+export type BudgetRoutingRule = Message<"hobo.ci.v1.BudgetRoutingRule"> & {
+  /**
+   * @generated from field: double threshold_fraction = 1;
+   */
+  thresholdFraction: number;
+
+  /**
+   * @generated from field: repeated string offer_ids = 2;
+   */
+  offerIds: string[];
+};
+
+/**
+ * Describes the message hobo.ci.v1.BudgetRoutingRule.
+ * Use `create(BudgetRoutingRuleSchema)` to create a new message.
+ */
+export const BudgetRoutingRuleSchema: GenMessage<BudgetRoutingRule> = /*@__PURE__*/
+  messageDesc(file_ci, 22);
+
+/**
+ * @generated from message hobo.ci.v1.BudgetRoutingPolicy
+ */
+export type BudgetRoutingPolicy = Message<"hobo.ci.v1.BudgetRoutingPolicy"> & {
+  /**
+   * @generated from field: string account_id = 1;
+   */
+  accountId: string;
+
+  /**
+   * @generated from field: string tenant_id = 2;
+   */
+  tenantId: string;
+
+  /**
+   * @generated from field: repeated string normal_offer_ids = 3;
+   */
+  normalOfferIds: string[];
+
+  /**
+   * @generated from field: repeated hobo.ci.v1.BudgetRoutingRule thresholds = 4;
+   */
+  thresholds: BudgetRoutingRule[];
+};
+
+/**
+ * Describes the message hobo.ci.v1.BudgetRoutingPolicy.
+ * Use `create(BudgetRoutingPolicySchema)` to create a new message.
+ */
+export const BudgetRoutingPolicySchema: GenMessage<BudgetRoutingPolicy> = /*@__PURE__*/
+  messageDesc(file_ci, 23);
 

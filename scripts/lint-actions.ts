@@ -1,4 +1,5 @@
 #!/usr/bin/env node
+import { createHash } from "node:crypto";
 import { existsSync, readdirSync, readFileSync } from "node:fs";
 import { join } from "node:path";
 
@@ -6,7 +7,7 @@ const root = join(process.cwd(), ".github");
 const workflowDir = join(root, "workflows");
 const disabledWorkflowDir = join(root, "workflows-disabled");
 const recognizedFiles = existsSync(workflowDir)
-	? readdirSync(workflowDir).filter((name) => /\.ya?ml$/.test(name))
+	? readdirSync(workflowDir).filter((name) => /\.ya?ml$/i.test(name))
 	: [];
 const files = existsSync(disabledWorkflowDir)
 	? readdirSync(disabledWorkflowDir)
@@ -14,10 +15,28 @@ const files = existsSync(disabledWorkflowDir)
 			.sort()
 	: [];
 const errors: string[] = [];
-if (recognizedFiles.length > 0) {
-	errors.push(
-		`.github/workflows must contain no workflow files (found ${recognizedFiles.join(", ")})`,
+// The user-authorized manual acceptance recipe is the only enabled workflow.
+// Pin its complete reviewed surface rather than accepting arbitrary YAML under
+// the approved filename (extra events/jobs/permissions would otherwise bypass
+// the disabled-CI policy). Updating it requires an explicit policy review.
+const acceptanceFile = "hobo-ci-acceptance.yml";
+const acceptanceDigest =
+	"cd307e582a3e4157762bd96e51764178f90c4d03f56118a2acf2bb1d84ec302b";
+for (const file of recognizedFiles) {
+	if (file !== acceptanceFile) {
+		errors.push(
+			`${file}: enabled workflow is not the approved manual HoBo acceptance workflow`,
+		);
+		continue;
+	}
+	const text = readFileSync(join(workflowDir, file), "utf8").replaceAll(
+		"\r\n",
+		"\n",
 	);
+	if (createHash("sha256").update(text).digest("hex") !== acceptanceDigest)
+		errors.push(
+			`${file}: manual HoBo acceptance workflow differs from its reviewed recipe`,
+		);
 }
 
 for (const file of files) {
@@ -88,5 +107,5 @@ if (errors.length > 0) {
 	process.exit(1);
 }
 console.log(
-	`actions lint ok: ${files.length} disabled workflow file(s); .github/workflows is empty`,
+	`actions lint ok: ${files.length} disabled workflow file(s); ${recognizedFiles.length} reviewed manual HoBo acceptance workflow(s)`,
 );

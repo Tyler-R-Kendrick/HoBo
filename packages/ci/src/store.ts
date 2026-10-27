@@ -6,12 +6,19 @@ import {
 	ACTIVE_STATES,
 	type Account,
 	CiEventSchema,
+	type Configuration,
+	ConfigurationSchema,
+	type ConfigurationState,
+	ConfigurationStateSchema,
+	type ControlRecord,
+	ControlRecordSchema,
 	type Job,
 	JobSchema,
 	type Lease,
 	LeaseSchema,
 	type Pipeline,
 	type PipelineResult,
+	parseConfiguration,
 	route,
 } from "./index.js";
 
@@ -24,7 +31,9 @@ export class LeaseStore {
    CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY, body TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS leases (id TEXT PRIMARY KEY, job_key TEXT NOT NULL, body TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS terminal_jobs (job_key TEXT PRIMARY KEY);
-   CREATE TABLE IF NOT EXISTS pending_jobs (job_key TEXT PRIMARY KEY, body TEXT NOT NULL);`);
+   CREATE TABLE IF NOT EXISTS pending_jobs (job_key TEXT PRIMARY KEY, body TEXT NOT NULL);
+   CREATE TABLE IF NOT EXISTS configuration_state (id INTEGER PRIMARY KEY CHECK(id=1), body TEXT NOT NULL);
+   CREATE TABLE IF NOT EXISTS control_records (key TEXT PRIMARY KEY, body TEXT NOT NULL);`);
 	}
 	close(): void {
 		this.db.close();
@@ -54,6 +63,196 @@ export class LeaseStore {
 			.prepare("SELECT body FROM events ORDER BY seq")
 			.all()
 			.map((row) => fromJsonString(CiEventSchema, z.string().parse(row.body)));
+	}
+	configuration(): ConfigurationState | undefined {
+		const row = this.db
+			.prepare("SELECT body FROM configuration_state WHERE id=1")
+			.get();
+		return row
+			? fromJsonString(ConfigurationStateSchema, z.string().parse(row.body))
+			: undefined;
+	}
+	/** Compare-and-swap platform policy, with its audit event in the lease partition. */
+	configure(
+		configuration: Configuration,
+		expectedRevision: number,
+		at: string,
+	): ConfigurationState {
+		return this.transaction(() => {
+			const previous = this.configuration();
+			if ((previous?.revision ?? 0) !== expectedRevision)
+				throw new Error("configuration revision conflict");
+			if (
+				!Number.isSafeInteger(expectedRevision) ||
+				expectedRevision < 0 ||
+				expectedRevision >= 4294967295
+			)
+				throw new Error("invalid configuration revision");
+			const parsed = parseConfiguration(
+				toJsonString(ConfigurationSchema, configuration),
+			);
+			for (const old of previous?.configuration?.accounts ?? []) {
+				const next = parsed.accounts.find((account) => account.id === old.id);
+				for (const [key, cycle] of Object.entries(old.routingSignalCycles)) {
+					const nextCycle = next?.routingSignalCycles[key] ?? 0;
+					if (nextCycle < cycle)
+						throw new Error("routing signal watermark cannot move backwards");
+					if (
+						nextCycle === cycle &&
+						next?.routingSignalCrossed[key] !== old.routingSignalCrossed[key]
+					)
+						throw new Error("routing signal state requires a newer cycle");
+				}
+			}
+			for (const account of parsed.accounts) {
+				if (
+					account.usageObservedAt &&
+					Date.parse(account.usageObservedAt) > Date.parse(at)
+				)
+					throw new Error("future account usage snapshot");
+				const old = previous?.configuration?.accounts.find(
+					(entry) => entry.id === account.id,
+				);
+				if (
+					old?.usageObservedAt &&
+					(!account.usageObservedAt ||
+						Date.parse(account.usageObservedAt) <
+							Date.parse(old.usageObservedAt))
+				)
+					throw new Error("account usage snapshot cannot move backwards");
+				for (const offer of account.offers) {
+					const oldOffer = old?.offers.find((entry) => entry.id === offer.id);
+					if (
+						oldOffer &&
+						Date.parse(offer.observedAt) < Date.parse(oldOffer.observedAt)
+					)
+						throw new Error("provider usage snapshot cannot move backwards");
+				}
+			}
+			for (const lease of this.all().filter((entry) =>
+				ACTIVE_STATES.has(entry.state),
+			)) {
+				const oldAccount = previous?.configuration?.accounts.find(
+					(entry) => entry.id === lease.accountId,
+				);
+				const nextAccount = parsed.accounts.find(
+					(entry) => entry.id === lease.accountId,
+				);
+				const oldOffer = oldAccount?.offers.find(
+					(entry) => entry.id === lease.offerId,
+				);
+				const nextOffer = nextAccount?.offers.find(
+					(entry) => entry.id === lease.offerId,
+				);
+				if (
+					!nextAccount ||
+					!nextOffer ||
+					nextOffer.provider !== lease.provider ||
+					(oldOffer &&
+						(oldOffer.providerAccountId !== nextOffer.providerAccountId ||
+							oldOffer.runsOn !== nextOffer.runsOn ||
+							oldOffer.backend !== nextOffer.backend))
+				)
+					throw new Error("active lease prevents provider identity change");
+				if (!lease.pipelineId) {
+					const old = previous?.configuration?.connections.find(
+						(entry) => entry.repositoryId === lease.repositoryId,
+					);
+					const next = parsed.connections.find(
+						(entry) => entry.repositoryId === lease.repositoryId,
+					);
+					if (
+						!next ||
+						next.accountId !== lease.accountId ||
+						next.repository !== lease.repository ||
+						next.installationId !== lease.installationId ||
+						(old &&
+							(old.bridgeWorkflow !== next.bridgeWorkflow ||
+								old.bridgeSha !== next.bridgeSha ||
+								old.bridgeRef !== next.bridgeRef ||
+								old.runnerGroupId !== next.runnerGroupId ||
+								old.dispatcherActorId !== next.dispatcherActorId ||
+								old.publicRepositoryAcknowledged !==
+									next.publicRepositoryAcknowledged))
+					)
+						throw new Error("active lease prevents repository binding change");
+				}
+			}
+			const state = create(ConfigurationStateSchema, {
+				revision: expectedRevision + 1,
+				configuration: parsed,
+				updatedAt: at,
+			});
+			const detail = toJsonString(ConfigurationStateSchema, state);
+			this.db.prepare("INSERT INTO events(body) VALUES (?)").run(
+				toJsonString(
+					CiEventSchema,
+					create(CiEventSchema, {
+						type: "ci.ConfigurationChanged",
+						at,
+						detail,
+					}),
+				),
+			);
+			this.db
+				.prepare(
+					"INSERT INTO configuration_state(id,body) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body",
+				)
+				.run(detail);
+			return state;
+		});
+	}
+	controlRecord(key: string): ControlRecord | undefined {
+		const row = this.db
+			.prepare("SELECT body FROM control_records WHERE key=?")
+			.get(key);
+		return row
+			? fromJsonString(ControlRecordSchema, z.string().parse(row.body))
+			: undefined;
+	}
+	putControlRecord(
+		key: string,
+		accountId: string,
+		bodyJson: string,
+		at: string,
+	): void {
+		if (
+			!/^[A-Za-z0-9:_-]{1,200}$/.test(key) ||
+			!/^[A-Za-z0-9_-]{1,80}$/.test(accountId) ||
+			Buffer.byteLength(bodyJson) > 1024 * 1024
+		)
+			throw new Error("invalid control record");
+		z.record(z.string(), z.json()).parse(JSON.parse(bodyJson));
+		this.transaction(() => {
+			const old = this.controlRecord(key);
+			if (old && old.accountId !== accountId)
+				throw new Error("control record belongs to another account");
+			const detail = toJsonString(
+				ControlRecordSchema,
+				create(ControlRecordSchema, {
+					key,
+					accountId,
+					bodyJson,
+					updatedAt: at,
+				}),
+			);
+			this.db.prepare("INSERT INTO events(body) VALUES (?)").run(
+				toJsonString(
+					CiEventSchema,
+					create(CiEventSchema, {
+						type: "ci.ControlRecordUpdated",
+						at,
+						accountId,
+						detail,
+					}),
+				),
+			);
+			this.db
+				.prepare(
+					"INSERT INTO control_records(key,body) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET body=excluded.body",
+				)
+				.run(key, detail);
+		});
 	}
 	private leaseKey(lease: Lease): string {
 		return lease.pipelineId
@@ -302,6 +501,7 @@ export class LeaseStore {
 					lease.priceMicrosPerMinute,
 			);
 			lease.settledAt = at;
+			lease.usageCompletedAt = completedAt;
 			if (result) lease.result = result;
 			this.append(lease, "ci.HostSettled", at);
 			if (unmet) this.queueInside(unmet, at);
@@ -350,9 +550,27 @@ export class LeaseStore {
 	rebuild(): void {
 		this.transaction(() => {
 			this.db.exec(
-				"DELETE FROM leases; DELETE FROM pending_jobs; DELETE FROM terminal_jobs;",
+				"DELETE FROM leases; DELETE FROM pending_jobs; DELETE FROM terminal_jobs; DELETE FROM configuration_state; DELETE FROM control_records;",
 			);
 			for (const event of this.events()) {
+				if (event.type === "ci.ConfigurationChanged") {
+					fromJsonString(ConfigurationStateSchema, event.detail);
+					this.db
+						.prepare(
+							"INSERT INTO configuration_state(id,body) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body",
+						)
+						.run(event.detail);
+					continue;
+				}
+				if (event.type === "ci.ControlRecordUpdated") {
+					const record = fromJsonString(ControlRecordSchema, event.detail);
+					this.db
+						.prepare(
+							"INSERT INTO control_records(key,body) VALUES (?,?) ON CONFLICT(key) DO UPDATE SET body=excluded.body",
+						)
+						.run(record.key, event.detail);
+					continue;
+				}
 				if (["ci.JobQueued", "ci.JobCompleted"].includes(event.type)) {
 					const job = fromJsonString(JobSchema, event.detail);
 					const key = `${job.repositoryId}:${job.id}:${job.runAttempt}`;

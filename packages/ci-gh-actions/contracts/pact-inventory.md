@@ -29,9 +29,11 @@ handlers, so contract mismatches cannot become successful uncertainty tests.
 The relay lifecycle suite separately exercises budget reservations, webhook
 intake, host identity checks, and recovery with injected dependencies. This
 artifact does not establish live workflow dispatch, vendor acceptance of nested
-runners, JIT execution, provider pricing, or billing accuracy. Repository/run/job
-read boundaries, OIDC JWKS, and webhook delivery need their own provider-facing
-contract artifacts before a complete boundary inventory can be claimed.
+runners, JIT execution, provider pricing, or billing accuracy. Repository/run/job reads and webhook delivery are covered by the local relay
+protocol and HTTP contracts. The connected acceptance lane verifies RS256/JWKS
+against a locally served keyset. See [the current inventory](README.md) for the
+onboarding, control-plane, client and service boundaries; none is remote
+GitHub or vendor verification.
 
 Run the package test command or target
 `contracts/github-app.consumer.test.ts` with Vitest. No live credentials or

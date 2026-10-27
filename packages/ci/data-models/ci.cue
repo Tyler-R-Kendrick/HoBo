@@ -24,6 +24,9 @@ package ci
  maxRuntimeMinutes: int & >=1 & <=330
  startupMinutes: int & >=1 & <=20
  offers: [...#Offer]
+ usageObservedAt?: string
+ routingSignalCycles?: [string]: int & >0 & <=4294967295
+ routingSignalCrossed?: [string]: bool
 }
 #Connection: {
  accountId: string & !=""
@@ -38,8 +41,28 @@ package ci
  trustedRepositoryAcknowledged: true
  bridgeRef: string & =~"^[A-Za-z0-9_/-]+$"
  dispatcherActorId: int & >0
+ publicRepositoryAcknowledged?: bool
 }
 #Configuration: {accounts: [...#Account], connections: [...#Connection]}
+#ConfigurationState: {revision: int & >=1, configuration: #Configuration, updatedAt: string & !=""}
+#ControlRecord: {key: string & !="", accountId: string & !="", bodyJson: string & !="", updatedAt: string & !=""}
+#AccountState: {revision: int & >=1, account?: #Account, connections: [...#Connection], updatedAt: string & !=""}
+#RepositorySetupRequest: {
+ repository: string & =~"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$"
+ repositoryId?: int & >=0, installationId?: int & >=0
+ runnerGroupId?: int & >=0
+ allowedRefs?: [...(string & =~"^refs/heads/")]
+ trustedRepositoryAcknowledged: true
+ publicRepositoryAcknowledged?: bool
+}
+#ReconcileRequest: {hostRunId: int & >0}
+#ControlCredential: {
+ accountId: string & =~"^[A-Za-z0-9_-]{1,80}$"
+ installationIds: [...(int & >0)]
+ tokenSha256: string & =~"^[a-f0-9]{64}$"
+ scopes: [...("policy:read" | "policy:write" | "repositories:write" | "operations:write")]
+}
+#ControlCredentials: {tokens: [#ControlCredential, ...#ControlCredential]}
 #Job: {
  id: int & >0, runId: int & >0, runAttempt: int & >=1
  repositoryId: int & >0, installationId: int & >0
@@ -58,11 +81,12 @@ package ci
  billedMinutes: number & >=0, paidMicros: int & >=0, settledAt: string, priceMicrosPerMinute: int & >=0
  freeValidUntil: string, billedFreeMinutes: number & >=0
  pipelineId?: string, result?: #PipelineResult, pipelineDigest?: string
+ usageCompletedAt?: string
 }
 #CiEvent: {type: string & !="", accountId: string, leaseId: string, at: string & !="", detail: string}
 #Snapshot: {leases: [...#Lease], events: [...#CiEvent]}
 
-#Ci: #Offer | #Account | #Connection | #Configuration | #Job | #Lease | #CiEvent | #Snapshot | #PipelineStep | #Pipeline | #PipelineStepResult | #PipelineArtifact | #PipelineResult
+#Ci: #BudgetSignal | #BudgetRoutingPolicy | #Offer | #Account | #Connection | #Configuration | #ConfigurationState | #ControlRecord | #AccountState | #RepositorySetupRequest | #ReconcileRequest | #ControlCredential | #ControlCredentials | #Job | #Lease | #CiEvent | #Snapshot | #PipelineStep | #Pipeline | #PipelineStepResult | #PipelineArtifact | #PipelineResult
 
 #PipelineStep: {id: string & !="", argv: [string & !="", ...string], cwd: string, env: [string]: string}
 #Pipeline: {
@@ -79,4 +103,21 @@ package ci
  id: string & !="", backend: "" | "gh-actions" | "dagger" | "cf"
  status: "succeeded" | "failed" | "cancelled" | "timed_out" | "uncertain" | "blocked"
  steps: [...#PipelineStepResult], artifacts: [...#PipelineArtifact], error: string
+}
+
+#BudgetSignalData: {
+ tenantId: string & !=""
+ thresholdFraction: number & >0 & <=1
+ thresholdUsd: number & >=0
+ budgetUsd: number & >0
+ netSpentUsd: number
+ cycle: int & >0 & <=4294967295
+ signalKey: string & =~"^budget:"
+}
+#BudgetSignal: {type: "budget.ThresholdCrossed" | "budget.Recovered", data: #BudgetSignalData}
+#BudgetRoutingRule: {thresholdFraction: number & >0 & <=1, offerIds: [...(string & !="")]}
+#BudgetRoutingPolicy: {
+ accountId: string & !="", tenantId: string & !=""
+ normalOfferIds: [...(string & !="")]
+ thresholds: [#BudgetRoutingRule, ...#BudgetRoutingRule]
 }

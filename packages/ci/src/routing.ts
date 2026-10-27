@@ -12,6 +12,11 @@ export const ACTIVE_STATES = new Set([
 
 /** Pure ranking input; availability is measured per customer-owned account. */
 export function route(account: Account, leases: readonly Lease[], now: string) {
+	if (
+		account.usageObservedAt &&
+		Date.parse(account.usageObservedAt) > Date.parse(now)
+	)
+		return undefined;
 	const active = leases.filter(
 		(lease) => lease.accountId === account.id && ACTIVE_STATES.has(lease.state),
 	);
@@ -22,7 +27,14 @@ export function route(account: Account, leases: readonly Lease[], now: string) {
 	const held = active.reduce((sum, lease) => sum + lease.reservedPaidMicros, 0);
 	const spent =
 		account.spentMicros +
-		settled.reduce((sum, lease) => sum + lease.paidMicros, 0);
+		settled
+			.filter(
+				(lease) =>
+					!account.usageObservedAt ||
+					Date.parse(lease.usageCompletedAt || lease.settledAt) >
+						Date.parse(account.usageObservedAt),
+			)
+			.reduce((sum, lease) => sum + lease.paidMicros, 0);
 	const candidates = account.offers.flatMap((offer) => {
 		if (
 			!offer.enabled ||
@@ -36,7 +48,9 @@ export function route(account: Account, leases: readonly Lease[], now: string) {
 		const used = settled.filter((lease) => lease.offerId === offer.id);
 		const usedFree = used
 			.filter(
-				(lease) => Date.parse(lease.settledAt) >= Date.parse(offer.observedAt),
+				(lease) =>
+					Date.parse(lease.usageCompletedAt || lease.settledAt) >
+					Date.parse(offer.observedAt),
 			)
 			.reduce((sum, lease) => sum + lease.billedFreeMinutes, 0);
 		const free =
@@ -57,7 +71,13 @@ export function route(account: Account, leases: readonly Lease[], now: string) {
 		);
 		const providerSpent =
 			offer.spentMicros +
-			used.reduce((sum, lease) => sum + lease.paidMicros, 0) +
+			used
+				.filter(
+					(lease) =>
+						Date.parse(lease.usageCompletedAt || lease.settledAt) >
+						Date.parse(offer.observedAt),
+				)
+				.reduce((sum, lease) => sum + lease.paidMicros, 0) +
 			reserved.reduce((sum, lease) => sum + lease.reservedPaidMicros, 0);
 		if (
 			spent + held + paid > account.budgetMicros ||

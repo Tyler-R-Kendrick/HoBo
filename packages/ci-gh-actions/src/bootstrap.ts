@@ -1,5 +1,6 @@
 import { spawn } from "node:child_process";
 import { createHash } from "node:crypto";
+import { readdirSync, readFileSync } from "node:fs";
 import { mkdtemp, rm, writeFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
@@ -52,40 +53,126 @@ export function runHostProcess(
 			stdio: "inherit",
 			detached: true,
 		});
-		let killed = false;
+		let cancelled = false;
+		let stopping = false;
+		let settled = false;
+		let exited = false;
+		let exitCode: number | null = null;
+		let failure: Error | undefined;
 		let hardStop: NodeJS.Timeout | undefined;
+		let deadline: NodeJS.Timeout | undefined;
+		let poll: NodeJS.Timeout | undefined;
 		const signal = (name: NodeJS.Signals) => {
-			if (child.pid) {
-				try {
-					process.kill(-child.pid, name);
-				} catch {
-					/* Process group already stopped. */
-				}
+			if (!child.pid) return;
+			try {
+				process.kill(-child.pid, name);
+			} catch (error) {
+				if (
+					!(error instanceof Error && "code" in error && error.code === "ESRCH")
+				)
+					failure = new Error(
+						"runner process group shutdown could not be confirmed",
+					);
 			}
 		};
-		const stop = () => {
-			if (killed) return;
-			killed = true;
-			signal("SIGTERM");
-			hardStop = setTimeout(() => signal("SIGKILL"), 10000);
+		const groupRunning = () => {
+			if (!child.pid) return false;
+			try {
+				process.kill(-child.pid, 0);
+			} catch (error) {
+				if (error instanceof Error && "code" in error && error.code === "ESRCH")
+					return false;
+				throw error;
+			}
+			if (process.platform !== "linux") return true;
+			// A container's PID 1 can leave killed orphans as zombies. They cannot
+			// execute, but kill(0) still sees their group, so inspect live members.
+			for (const pid of readdirSync("/proc")) {
+				if (!/^\d+$/.test(pid)) continue;
+				let status: string;
+				try {
+					status = readFileSync(`/proc/${pid}/stat`, "utf8");
+				} catch (error) {
+					if (
+						error instanceof Error &&
+						"code" in error &&
+						error.code === "ENOENT"
+					)
+						continue;
+					throw error;
+				}
+				const fields = status.slice(status.lastIndexOf(")") + 2).split(" ");
+				if (
+					Number(fields[2]) === child.pid &&
+					!["Z", "X"].includes(fields[0] ?? "")
+				)
+					return true;
+			}
+			return false;
 		};
-		const timer = setTimeout(stop, timeout);
-		process.once("SIGTERM", stop);
-		process.once("SIGINT", stop);
-		const cleanup = () => {
+		const finish = (error?: Error) => {
+			if (settled) return;
+			settled = true;
 			clearTimeout(timer);
 			clearTimeout(hardStop);
+			clearTimeout(deadline);
+			clearInterval(poll);
 			process.off("SIGTERM", stop);
 			process.off("SIGINT", stop);
+			if (error) reject(error);
+			else resolve();
 		};
+		const check = () => {
+			try {
+				if (!exited || groupRunning()) return;
+				finish(
+					failure ??
+						(exitCode === 0 && !cancelled
+							? undefined
+							: new Error("runner host process failed or timed out")),
+				);
+			} catch {
+				failure = new Error(
+					"runner process group shutdown could not be confirmed",
+				);
+			}
+		};
+		const shutdown = () => {
+			if (stopping || settled) return;
+			stopping = true;
+			clearTimeout(timer);
+			signal("SIGTERM");
+			hardStop = setTimeout(() => signal("SIGKILL"), 10000);
+			deadline = setTimeout(() => {
+				signal("SIGKILL");
+				finish(
+					new Error("runner process group shutdown could not be confirmed"),
+				);
+			}, 12000);
+			poll = setInterval(check, 25);
+			check();
+		};
+		const stop = () => {
+			if (settled) return;
+			cancelled = true;
+			shutdown();
+		};
+		const timer = setTimeout(stop, timeout);
+		process.on("SIGTERM", stop);
+		process.on("SIGINT", stop);
 		child.once("error", (error) => {
-			cleanup();
-			reject(error);
+			if (!child.pid) finish(error);
+			else {
+				failure = error;
+				shutdown();
+			}
 		});
 		child.once("exit", (code) => {
-			cleanup();
-			if (code === 0 && !killed) resolve();
-			else reject(new Error("runner host process failed or timed out"));
+			exited = true;
+			exitCode = code;
+			// Successful parents can also leave background work; it belongs to this host.
+			shutdown();
+			check();
 		});
 	});
 }

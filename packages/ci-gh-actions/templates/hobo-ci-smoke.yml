@@ -1,0 +1,65 @@
+# Manual original-job acceptance on an actual HoBo ephemeral Actions runner.
+# Runner identity and checkout evidence do not attest to provider routing;
+# reconcile this run with the account relay's lease/provider records separately.
+name: HoBo runner acceptance
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: hobo-ci-acceptance-${{ github.ref }}
+  cancel-in-progress: false
+jobs:
+  smoke:
+    runs-on: hobo
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Verify runner identity and checked-out revision
+        env:
+          EXPECTED_REPOSITORY: ${{ github.repository }}
+          EXPECTED_REF: ${{ github.ref }}
+          EXPECTED_SHA: ${{ github.sha }}
+        run: |
+          node --input-type=module <<'NODE'
+          import assert from 'node:assert/strict';
+          import { execFileSync } from 'node:child_process';
+          import { writeFileSync } from 'node:fs';
+          const env = process.env;
+          assert.match(env.RUNNER_NAME ?? '', /^hobo-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$/, 'expected a HoBo JIT runner name');
+          assert.equal(env.RUNNER_ENVIRONMENT, 'self-hosted', 'expected an actual self-hosted Actions runner');
+          assert.equal(env.GITHUB_EVENT_NAME, 'workflow_dispatch', 'acceptance is manual only');
+          for (const [actual, expected] of [['GITHUB_REPOSITORY', 'EXPECTED_REPOSITORY'], ['GITHUB_REF', 'EXPECTED_REF'], ['GITHUB_SHA', 'EXPECTED_SHA']]) {
+            assert.ok(env[expected], `${expected} is required`);
+            assert.equal(env[actual], env[expected], `${actual} differs from workflow context`);
+          }
+          assert.match(env.EXPECTED_SHA, /^[a-f0-9]{40}$/, 'expected a full reviewed commit SHA');
+          const checkoutSha = execFileSync('git', ['rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
+          assert.equal(checkoutSha, env.EXPECTED_SHA, 'checkout differs from the dispatched revision');
+          const evidence = {
+            schemaVersion: 1,
+            repository: env.GITHUB_REPOSITORY,
+            ref: env.GITHUB_REF,
+            sha: checkoutSha,
+            runId: env.GITHUB_RUN_ID,
+            runAttempt: env.GITHUB_RUN_ATTEMPT,
+            runnerName: env.RUNNER_NAME,
+            runnerEnvironment: env.RUNNER_ENVIRONMENT,
+            routingAttestation: false,
+          };
+          writeFileSync('hobo-ci-acceptance.json', JSON.stringify(evidence, null, 2) + '\n');
+          console.log(JSON.stringify(evidence));
+          NODE
+      - name: Upload runner and checkout evidence
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: hobo-runner-acceptance-${{ github.run_id }}-${{ github.run_attempt }}
+          path: hobo-ci-acceptance.json
+          if-no-files-found: error
+          retention-days: 7

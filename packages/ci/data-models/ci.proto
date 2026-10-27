@@ -26,6 +26,9 @@ message Account {
   uint32 max_runtime_minutes = 4;
   uint32 startup_minutes = 5;
   repeated Offer offers = 6;
+  string usage_observed_at = 7;
+  map<string, uint32> routing_signal_cycles = 8;
+  map<string, bool> routing_signal_crossed = 9;
 }
 message Connection {
   string account_id = 1;
@@ -40,11 +43,48 @@ message Connection {
   bool trusted_repository_acknowledged = 10;
   string bridge_ref = 11;
   double dispatcher_actor_id = 12;
+  bool public_repository_acknowledged = 13;
 }
 message Configuration {
   repeated Account accounts = 1;
   repeated Connection connections = 2;
 }
+// Revisioned platform configuration, committed with its audit event.
+message ConfigurationState {
+  uint32 revision = 1;
+  Configuration configuration = 2;
+  string updated_at = 3;
+}
+// Opaque protobuf-JSON operation records, parsed by their owning integration.
+message ControlRecord {
+  string key = 1;
+  string account_id = 2;
+  string body_json = 3;
+  string updated_at = 4;
+}
+message AccountState {
+  uint32 revision = 1;
+  Account account = 2;
+  repeated Connection connections = 3;
+  string updated_at = 4;
+}
+message RepositorySetupRequest {
+  string repository = 1;
+  double repository_id = 2;
+  double installation_id = 3;
+  uint32 runner_group_id = 4;
+  repeated string allowed_refs = 5;
+  bool trusted_repository_acknowledged = 6;
+  bool public_repository_acknowledged = 7;
+}
+message ReconcileRequest { double host_run_id = 1; }
+message ControlCredential {
+  string account_id = 1;
+  repeated double installation_ids = 2;
+  string token_sha256 = 3;
+  repeated string scopes = 4;
+}
+message ControlCredentials { repeated ControlCredential tokens = 1; }
 message Job {
   double id = 1;
   double run_id = 2;
@@ -85,6 +125,7 @@ message Lease {
   string pipeline_id = 26;
   hobo.ci.v1.PipelineResult result = 27;
   string pipeline_digest = 28;
+  string usage_completed_at = 29;
 }
 message CiEvent {
   string type = 1;
@@ -132,4 +173,26 @@ message PipelineResult {
   repeated PipelineStepResult steps = 4;
   repeated PipelineArtifact artifacts = 5;
   string error = 6;
+}
+
+// Broker facts consumed by the Station CI routing bridge.
+message BudgetSignalData {
+  string tenant_id = 1;
+  double threshold_fraction = 2;
+  double threshold_usd = 3;
+  double budget_usd = 4;
+  double net_spent_usd = 5;
+  uint32 cycle = 6;
+  string signal_key = 7;
+}
+message BudgetSignal { string type = 1; BudgetSignalData data = 2; }
+message BudgetRoutingRule {
+  double threshold_fraction = 1;
+  repeated string offer_ids = 2;
+}
+message BudgetRoutingPolicy {
+  string account_id = 1;
+  string tenant_id = 2;
+  repeated string normal_offer_ids = 3;
+  repeated BudgetRoutingRule thresholds = 4;
 }

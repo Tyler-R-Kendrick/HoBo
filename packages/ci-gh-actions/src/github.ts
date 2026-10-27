@@ -5,7 +5,7 @@ export interface GithubTransport {
 	request(
 		installationId: number,
 		path: string,
-		method?: "GET" | "POST" | "DELETE",
+		method?: "GET" | "POST" | "PUT" | "PATCH" | "DELETE",
 		body?: string,
 	): Promise<Response>;
 }
@@ -94,60 +94,147 @@ export async function getJob(
 		.parse(await response.json());
 }
 
-/** Installation credentials stay in the relay. Broker injection is supported by GithubTransport. */
+export interface GithubAppTransport extends GithubTransport {
+	appRequest(path: string): Promise<Response>;
+}
+
+/** Only relative GitHub API paths; encoded separators cannot change the resource scope. */
+export function githubApiUrl(path: string): string {
+	const [pathname] = path.split("?");
+	if (
+		!pathname ||
+		(!/^\/(?:repos|app|users)\b\/[A-Za-z0-9_.%/-]+$/.test(pathname) &&
+			pathname !== "/app")
+	)
+		throw new Error("invalid GitHub API path");
+	if (
+		/%(?:2f|5c|00)/i.test(pathname) ||
+		pathname
+			.split("/")
+			.some((part) => [".", ".."].includes(decodeURIComponent(part)))
+	)
+		throw new Error("invalid GitHub API path");
+	const url = new URL(path, "https://api.github.com");
+	if (
+		url.origin !== "https://api.github.com" ||
+		url.hash ||
+		url.username ||
+		url.password
+	)
+		throw new Error("invalid GitHub API path");
+	const keys = new Set<string>();
+	for (const [key, value] of url.searchParams) {
+		if (
+			keys.has(key) ||
+			!["event", "per_page", "page", "ref", "state", "head"].includes(key) ||
+			!value ||
+			value.length > 200 ||
+			Array.from(value).some((character) => {
+				const point = character.codePointAt(0) ?? 0;
+				return point < 32 || point === 127;
+			})
+		)
+			throw new Error("invalid GitHub API query");
+		keys.add(key);
+		if (
+			(key === "per_page" || key === "page") &&
+			(!/^\d+$/.test(value) ||
+				Number(value) < 1 ||
+				Number(value) > (key === "per_page" ? 100 : 1000))
+		)
+			throw new Error("invalid GitHub API pagination");
+		if (key === "event" && value !== "workflow_dispatch")
+			throw new Error("invalid GitHub API event");
+		if (key === "state" && !["all", "open", "closed"].includes(value))
+			throw new Error("invalid GitHub API state");
+	}
+	return url.href;
+}
+
+/** App keys never leave the relay; concurrent lookups share short-lived installation tokens. */
 export function createGithubAppTransport(options: {
 	appId: string;
 	privateKey: string;
 	fetch?: typeof fetch;
 	now?: () => number;
-}): GithubTransport {
+}): GithubAppTransport {
 	const send = options.fetch ?? fetch;
 	const now = options.now ?? Date.now;
-	return {
-		async request(installationId, path, method = "GET", body) {
-			if (
-				!/^\/(repos|app)\/[A-Za-z0-9_./-]+(?:\?event=workflow_dispatch&per_page=100)?$/.test(
-					path,
-				) ||
-				path.includes("..")
-			)
-				throw new Error("invalid GitHub API path");
-			const issued = Math.floor(now() / 1000) - 60;
-			const header = Buffer.from(
-				JSON.stringify({ alg: "RS256", typ: "JWT" }),
-			).toString("base64url");
-			const payload = Buffer.from(
-				JSON.stringify({ iat: issued, exp: issued + 600, iss: options.appId }),
-			).toString("base64url");
-			const signingInput = `${header}.${payload}`;
-			const signature = createSign("RSA-SHA256")
-				.update(signingInput)
-				.sign(options.privateKey)
-				.toString("base64url");
-			const common = {
-				Accept: "application/vnd.github+json",
-				"X-GitHub-Api-Version": "2026-03-10",
-				"Content-Type": "application/json",
-			};
-			const tokenResponse = await send(
-				`https://api.github.com/app/installations/${installationId}/access_tokens`,
+	const tokens = new Map<number, { token: string; expiresAt: number }>();
+	const minting = new Map<number, Promise<string>>();
+	const common = {
+		Accept: "application/vnd.github+json",
+		"X-GitHub-Api-Version": "2026-03-10",
+		"Content-Type": "application/json",
+	};
+	function jwt(): string {
+		const issued = Math.floor(now() / 1000) - 60;
+		const header = Buffer.from(
+			JSON.stringify({ alg: "RS256", typ: "JWT" }),
+		).toString("base64url");
+		const payload = Buffer.from(
+			JSON.stringify({ iat: issued, exp: issued + 600, iss: options.appId }),
+		).toString("base64url");
+		const input = `${header}.${payload}`;
+		return `${input}.${createSign("RSA-SHA256").update(input).sign(options.privateKey).toString("base64url")}`;
+	}
+	async function installationToken(id: number): Promise<string> {
+		if (!Number.isSafeInteger(id) || id <= 0)
+			throw new Error("invalid installation id");
+		const cached = tokens.get(id);
+		if (cached && cached.expiresAt > now() + 60_000) return cached.token;
+		const pending = minting.get(id);
+		if (pending) return pending;
+		const task = (async () => {
+			const response = await send(
+				`https://api.github.com/app/installations/${id}/access_tokens`,
 				{
 					method: "POST",
-					headers: {
-						...common,
-						Authorization: `Bearer ${signingInput}.${signature}`,
-					},
+					headers: { ...common, Authorization: `Bearer ${jwt()}` },
 					redirect: "error",
 					signal: AbortSignal.timeout(15000),
 				},
 			);
-			if (!tokenResponse.ok)
+			if (!response.ok)
 				throw new Error(
-					`GitHub App authentication failed (${tokenResponse.status})`,
+					`GitHub App authentication failed (${response.status})`,
 				);
-			const token = z
-				.object({ token: z.string().min(1) })
-				.parse(await tokenResponse.json()).token;
+			const result = z
+				.object({ token: z.string().min(1), expires_at: z.string().optional() })
+				.parse(await response.json());
+			if (result.expires_at && Number.isFinite(Date.parse(result.expires_at)))
+				tokens.set(id, {
+					token: result.token,
+					expiresAt: Math.min(
+						Date.parse(result.expires_at),
+						now() + 50 * 60000,
+					),
+				});
+			return result.token;
+		})().finally(() => minting.delete(id));
+		minting.set(id, task);
+		return task;
+	}
+	return {
+		async appRequest(path) {
+			const url = githubApiUrl(path);
+			if (
+				!/^\/app(?:\/installations\/\d+)?$/.test(new URL(url).pathname) &&
+				!/^\/repos\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/installation$/.test(
+					new URL(url).pathname,
+				) &&
+				!/^\/users\/[A-Za-z0-9_.%[\]-]+$/.test(new URL(url).pathname)
+			)
+				throw new Error("unsupported GitHub App metadata request");
+			return send(url, {
+				headers: { ...common, Authorization: `Bearer ${jwt()}` },
+				redirect: "error",
+				signal: AbortSignal.timeout(15000),
+			});
+		},
+		async request(installationId, path, method = "GET", body) {
+			const url = githubApiUrl(path);
+			const token = await installationToken(installationId);
 			const init: RequestInit = {
 				method,
 				headers: { ...common, Authorization: `Bearer ${token}` },
@@ -155,7 +242,9 @@ export function createGithubAppTransport(options: {
 				signal: AbortSignal.timeout(15000),
 			};
 			if (body !== undefined) init.body = body;
-			return send(`https://api.github.com${path}`, init);
+			const response = await send(url, init);
+			if (response.status === 401) tokens.delete(installationId);
+			return response;
 		},
 	};
 }

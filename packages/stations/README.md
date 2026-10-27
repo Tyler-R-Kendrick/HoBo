@@ -171,6 +171,68 @@ excluded; unknown health/location signals produce a degraded best-effort plan
 with explicit notes. Synthesis does not call clouds or take ownership of Junction overlay configuration. See
 [ADR-0143](../../docs/design/adr/07-portability-extensibility.md#adr-0143).
 
+## CI budget routing
+
+`createCiBudgetRoutingBridge()` turns tenant-scoped Broker
+`budget.ThresholdCrossed` and `budget.Recovered` facts into eligibility changes
+on a HoBo CI account. The relay continues to select free allocations first and
+then the cheapest eligible paid offer within its account and provider budgets.
+Offer IDs below refer to offers already configured on that account.
+
+```ts
+import type { BudgetSignal } from "@hobo/broker";
+import { createCiRelayClient } from "@hobo/ci-gh-actions/client";
+import { createCiBudgetRoutingBridge } from "@hobo/stations";
+
+export function ciBudgetSubscriber(accountToken: () => Promise<string>) {
+  const bridge = createCiBudgetRoutingBridge({
+    client: createCiRelayClient({
+      origin: "https://ci.example.com",
+      accountToken,
+    }),
+    policy: {
+      accountId: "acme",
+      tenantId: "acme",
+      normalOfferIds: ["github", "blacksmith", "depot", "k8"],
+      thresholds: [
+        { thresholdFraction: 0.8, offerIds: ["depot", "k8"] },
+        { thresholdFraction: 1, offerIds: ["k8"] },
+      ],
+    },
+  });
+  return {
+    deliver: (signal: BudgetSignal) =>
+      bridge.accept(JSON.stringify({ type: signal.type, data: signal.data })),
+    reconcile: () => bridge.reconcile(),
+  };
+}
+```
+
+Attach `deliver` to the existing Broker budget-fact subscription, passing only
+its `{type, data}` projection. The host supplies the account-token callback from
+its secret binding. A revision conflict propagates to the subscriber; retry the
+same journal fact after rereading policy. Do not acknowledge a failed delivery.
+
+The bridge rejects malformed and foreign-tenant facts before calling the relay.
+It persists each threshold's cycle and crossed state in the account's revisioned
+policy, so restart and duplicate delivery preserve ordering. The highest active
+configured threshold selects the profile, including when different thresholds
+arrive out of order. Recovery restores the next active profile or
+`normalOfferIds`. An empty offer list explicitly pauses admission. Unknown offer
+IDs fail without a policy write.
+
+Call `reconcile()` after changing the configured profiles to apply them to the
+persisted crossing state without inventing another Broker event. Changes affect
+future execution eligibility; they do not migrate a running job. The bridge
+preserves monetary snapshots and lease accounting. Its runtime dependencies are
+the shared CI protobuf contracts and a structural policy-client port; it does
+not import the Broker or GitHub Actions runtime.
+
+Tests feed real `foldBudgetSignals()` output into the bridge and durable relay
+policy, then exercise CI routing, recovery, replay and conflict handling. The
+Station Pact artifact pins the policy read/write boundary. These tests require
+no live provider account.
+
 ## Honesty
 
 - Control-plane isolation primitive; not a multi-tenant hosted product by itself.

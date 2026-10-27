@@ -53,3 +53,22 @@ input digest and final result; snapshots/read-store projections replay them.
 A new logical execution identity prevents Dagger cache reuse across side-effect
 runs. Replay retains its original identity and never invokes another provider.
 Native pipeline IDs are distinct from repository-scoped GitHub job keys.
+
+
+Production control-plane policy and setup operations use generated
+`ConfigurationState`, `ControlRecord`, `AccountState`, `RepositorySetupRequest`,
+`ReconcileRequest` and credential-binding messages. The same SQLite actor commits
+configuration CAS and audit events; rebuild projects all three record families.
+Active leases fence identity changes. Usage snapshots are inclusive and account
+for physical completion rather than delayed reconciliation. Shared TypeScript,
+protobuf/CUE fixtures, durable restart/race tests and HTTP Pacts protect these
+boundaries. No live provider permission or invoice fact follows from local tests.
+
+
+Budget routing uses shared generated Broker-fact/profile contracts. Account
+signal-cycle and crossed-state maps are persisted in the same policy transaction;
+configuration cannot discard/regress cycles or alter a flag without a newer
+cycle. Station owns the Broker subscription and maps the highest active threshold
+to eligible offers, leaving financial accounting and the durable reservation
+ledger in CI. This keeps platform routing and CI admission consistent under
+replay, restart, and concurrent policy changes.

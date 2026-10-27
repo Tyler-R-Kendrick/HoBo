@@ -1,0 +1,37 @@
+# HoBo CI GitHub Actions contract coverage
+
+The Pact artifacts in this directory are hand-authored boundary expectations.
+Consumer tests exercise shipped code with strict injected remote responses;
+provider tests exercise the relay over real loopback HTTP. They do not claim
+GitHub or vendor verification, a published Pact broker, or a live runner pass.
+
+| Artifact | Executed boundary |
+| --- | --- |
+| `github-app-boundary.pact.json` | Signed App JWT exchange, installation credentials, dispatch and JIT registration, error and redirect handling |
+| `relay-boundary.pact.json` | Signed webhook intake and single-use authenticated JIT claims |
+| `onboarding-boundary.pact.json` | App/installation/repository discovery, reviewed setup branch and pull request, merged-source verification and protected bridge connection |
+| `control-plane-boundary.pact.json` | Account authentication and scopes, revisioned policy, stored setup operations and lease reconciliation |
+| `service-boundary.pact.json` | Service readiness and admission over HTTP |
+| `actions-backend.pact.json` | Portable pipeline execution through the Actions backend |
+
+`control-plane-client.consumer.test.ts` checks the typed SDK against applicable
+control-plane interactions and separately tests its remaining methods, strict
+protobuf wire parsing, credential handling and error behavior.
+`backend-swap.consumer.test.ts` runs the same portable pipeline cases through
+Actions, Dagger and Cloudflare implementations. Negative wire cases stay in the
+owning HTTP provider tests; client coverage does not fabricate requests for
+payloads its API cannot express.
+
+Run the owning package suite from the monorepo root:
+
+```sh
+pnpm --filter @hobo/ci-gh-actions test
+```
+
+The [connected acceptance lane](../acceptance/README.md) additionally runs the
+shipped service, automatic worker, SQLite journal, OIDC/JWKS validation, JIT
+claim, host process and actual `act` jobs. A strict local remote boundary supplies
+provider APIs. It verifies free-first routing, paid-price selection, provider
+and account budgets, replay and restart. Live GitHub queue consumption and nested
+runner compatibility on vendor machines require execution evidence from those
+machines.

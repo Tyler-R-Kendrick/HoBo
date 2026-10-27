@@ -731,7 +731,8 @@ describe("every verb, run bare", () => {
 		const text = formatHoboCodeResult(outcome);
 		expect(text.endsWith("\n")).toBe(true);
 		expect(text.trim().length).toBeGreaterThan(0);
-	}, 60_000); // a slow one. // tight for those on a loaded machine, and a flaky sweep is worse than // Some verbs probe the machine or start a runtime; the default 10s is
+		// Runtime-probing verbs can exceed a minute on cold mounted filesystems.
+	}, 180_000);
 });
 
 describe("what dispatch says it did", () => {
@@ -752,8 +753,9 @@ describe("what dispatch says it did", () => {
 			env: isolatedEnv(),
 			hoboHome,
 			cwd,
-			...(options.dense === undefined ? {} : { dense: options.dense }),
+			dense: options.dense,
 		});
+		// SAFETY: dispatch results carry optional human-readable text.
 		const text = (outcome.data as { text?: string } | undefined)?.text ?? "";
 		return { outcome, text };
 	}
@@ -785,7 +787,7 @@ describe("what dispatch says it did", () => {
 
 	it.each([
 		[["dispatch"]],
-		[[] as string[]],
+		[[]],
 	])("refuses %s with no prompt and no terminal", async (args) => {
 		// With a TTY this opens the interactive shell. Without one — a script,
 		// a CI job, a pipe — there is nobody to ask, and the alternatives are
@@ -845,6 +847,7 @@ describe("what dispatch says it did", () => {
 			"dispatch",
 			"refactor the parser",
 		]);
+		// SAFETY: dispatch results carry an optional task with its full identifier.
 		const taskId = (outcome.data as { task?: { taskId?: string } } | undefined)
 			?.task?.taskId;
 		expect(taskId).toMatch(/^task-/u);

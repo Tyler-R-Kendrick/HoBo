@@ -721,7 +721,7 @@ The root cause was a contract that mandated an art style while supplying no art 
 ## ADR-0149
 **HoBo Rubberhose is the product identity; the pixel-RPG is a separate game project.**
 
-**Status:** Accepted — supersedes clauses 1 and 3 of [ADR-0148](#adr-0148); restores the art intent of [ADR-0150](#adr-0150) and [ADR-0147](#adr-0147) under a buildable contract.
+**Status:** Accepted — supersedes clauses 1 and 3 of [ADR-0148](#adr-0148); restores the art intent of [ADR-0150](#adr-0150) and [ADR-0147](#adr-0147) under a buildable contract. The separate game package described below was removed by owner decision on 2026-10-26; the Rubberhose identity and art-sourcing rules remain binding.
 
 ### Context
 [ADR-0148](#adr-0148) diagnosed a real defect and drew the wrong conclusion from it.

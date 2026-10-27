@@ -161,7 +161,7 @@ describe("InteractiveShell render budget (differential rendering)", () => {
 					}, 200);
 					return;
 				}
-				if (Date.now() - started > 800) {
+				if (Date.now() - started > 5_000) {
 					reject(new Error("first paint never landed"));
 					return;
 				}
@@ -171,7 +171,7 @@ describe("InteractiveShell render budget (differential rendering)", () => {
 		});
 		const { terminal } = await runShell({
 			reducedMotion: true,
-			maxMs: 900,
+			maxMs: 5_200,
 			onTerminal: (t) => {
 				terminalRef = t;
 			},

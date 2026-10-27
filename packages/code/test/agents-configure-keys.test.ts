@@ -71,6 +71,7 @@ const agent = (
 	...patch,
 });
 
+// SAFETY: the complete fixture supplies every required configure-state field.
 const state = (
 	patch: Partial<AgentsConfigureState> = {},
 ): AgentsConfigureState =>
@@ -410,7 +411,9 @@ describe("picking a model", () => {
 	});
 
 	it("takes l as forward", () => {
-		expect(press(picking(), "l").modelCursor).toBe(1);
+		expect(press(picking({ modelId: "openai/gpt-5" }), "l").modelCursor).toBe(
+			1,
+		);
 	});
 
 	it("moves back through the catalogue", () => {
@@ -418,7 +421,18 @@ describe("picking a model", () => {
 	});
 
 	it("takes h as back", () => {
-		expect(press(picking({ modelCursor: 1 }), "h").modelCursor).toBe(0);
+		expect(
+			press(picking({ modelCursor: 1, modelId: "ollama/qwen" }), "h")
+				.modelCursor,
+		).toBe(0);
+	});
+
+	it("types h and l into a custom model instead of cycling", () => {
+		const custom = press(picking({ modelId: "openai/gpt-5" }), "x");
+		const next = press(custom, "h");
+		expect(next.model).toBe("gpt-5xh");
+		expect(next.modelCursor).toBe(0);
+		expect(press(next, "l").model).toBe("gpt-5xhl");
 	});
 
 	it("writes the runtime id into the model field", () => {

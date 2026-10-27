@@ -18,7 +18,7 @@ package does not silently intercept it. See [ADR.md](./ADR.md).
 | Pattern | Versioned semantic concept with renderings |
 | Starter | Multi-file project rendering (`starter.cli.*`, OpenUI) |
 | Rendering | Snippet, file, project, markdown, VS Code, or effects |
-| Catalog | Parsed patterns + content digest |
+| Catalog | Parsed patterns + content digest; rendering reads share one manifest-path lookup per loaded catalog |
 | Index | Generated retrieval projection |
 | Fixture | Parse/render proof only. Starter Gherkin under `patterns/**/features/` is catalog data, not the repo behavior lane. |
 

@@ -2600,6 +2600,38 @@ export async function runHoboCodeCli(
 	}
 
 	if (verb === "mux") {
+		const subcommand = args[0];
+		if (
+			subcommand !== undefined &&
+			!["tab", "pane", "attach", "focus", "detach", "stop", "list"].includes(
+				subcommand,
+			)
+		) {
+			return ok(
+				"HOBO_CODE_MUX",
+				panel("mux", [
+					"tab · create or select a tab",
+					"pane · split or manage a pane",
+					"attach · attach a session",
+					"focus · focus a session, tab, or pane",
+					"detach · detach a session",
+					"stop · stop a session",
+					"list · list sessions",
+				]),
+				{ subcommand },
+			);
+		}
+		if (subcommand === "list") {
+			const listed = await (deps.muxRunner ?? tmuxRunner()).run([
+				"list-sessions",
+				"-F",
+				"#{session_name}",
+			]);
+			const output = listed.code === 0 ? listed.stdout : "no sessions";
+			return ok("HOBO_CODE_MUX", output, {
+				sessions: output.split("\n").filter((line) => line.length > 0),
+			});
+		}
 		const probes = defaultProbes(env);
 		const agents = detectAgents(probes);
 		// Agents work in the declared devenv workspace, not wherever the shell
@@ -2865,13 +2897,12 @@ export async function runHoboCodeCli(
 				: targets;
 			const plan = planMux(session, remoteTargets);
 			if (agents.length === 0) {
-				return fail(
-					"HOBO_CODE_MUX_NO_AGENTS",
-					panel("✕ mux", [
+				return ok(
+					"HOBO_CODE_MUX",
+					panel("mux", [
 						"no agents detected on this machine",
 						"install one (claude, codex, cursor-agent, opencode, …) or run hobo-code alone",
 					]),
-					["hobo-code agent", "hobo-code config"],
 					{ agents, plan },
 				);
 			}

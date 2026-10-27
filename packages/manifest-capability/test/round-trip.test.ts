@@ -26,6 +26,7 @@ import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 
+import type { JsonObject } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
 import { parseCapabilityProfile } from "../src/descriptor.js";
@@ -73,14 +74,17 @@ const REQUIREMENT_KEYS = [
 ] as const;
 
 function projectRequirement(
-	body: Record<string, unknown>,
+	body: JsonObject,
 ): CapabilityRequirementInput | undefined {
 	if (!Array.isArray(body.requiredProfiles)) return undefined;
-	const projected: Record<string, unknown> = {};
-	for (const key of REQUIREMENT_KEYS) {
-		if (key in body) projected[key] = body[key];
-	}
-	return projected as unknown as CapabilityRequirementInput;
+	const projected = Object.fromEntries(
+		REQUIREMENT_KEYS.filter((key) => key in body).map((key) => [
+			key,
+			body[key],
+		]),
+	);
+	// SAFETY: requiredProfiles is present and the projection retains only input keys.
+	return projected as CapabilityRequirementInput;
 }
 
 type Fixture = {
@@ -94,17 +98,14 @@ function fixturesFromJsonl(relative: string): readonly Fixture[] {
 	for (const [index, line] of lines.entries()) {
 		const trimmed = line.trim();
 		if (trimmed === "" || trimmed.startsWith("#")) continue;
+		// SAFETY: committed JSONL fixtures follow the selection-case shape.
 		const parsed = JSON.parse(trimmed) as {
 			name?: string;
-			input?: readonly unknown[];
+			input?: readonly { requirement?: JsonObject }[];
 		};
 		for (const entry of parsed.input ?? []) {
-			if (typeof entry !== "object" || entry === null) continue;
-			const requirement = (entry as Record<string, unknown>).requirement;
-			if (typeof requirement !== "object" || requirement === null) continue;
-			const projected = projectRequirement(
-				requirement as Record<string, unknown>,
-			);
+			if (!entry.requirement) continue;
+			const projected = projectRequirement(entry.requirement);
 			if (projected === undefined) continue;
 			found.push({
 				origin: `${relative}:${index + 1} (${parsed.name ?? "unnamed"})`,
@@ -117,16 +118,17 @@ function fixturesFromJsonl(relative: string): readonly Fixture[] {
 
 function fixturesFromPact(relative: string): readonly Fixture[] {
 	const found: Fixture[] = [];
+	// SAFETY: committed PACT fixtures follow the interaction shape projected here.
 	const pact = JSON.parse(repoFile(relative)) as {
 		interactions?: readonly {
 			description?: string;
-			request?: { body?: unknown };
+			request?: { body?: JsonObject };
 		}[];
 	};
 	for (const interaction of pact.interactions ?? []) {
 		const body = interaction.request?.body;
-		if (typeof body !== "object" || body === null) continue;
-		const projected = projectRequirement(body as Record<string, unknown>);
+		if (!body) continue;
+		const projected = projectRequirement(body);
 		if (projected === undefined) continue;
 		found.push({
 			origin: `${relative} (${interaction.description ?? "unnamed"})`,
@@ -142,6 +144,7 @@ function fixturesFromPact(relative: string): readonly Fixture[] {
  * entry that goes stale fails the harvest assertion instead of rotting into
  * prose nobody rechecks.
  */
+// SAFETY: the committed inventory declares the consumed PACT paths.
 const PACT_INVENTORY = JSON.parse(
 	readFileSync(
 		fileURLToPath(new URL("../contracts/pact-inventory.json", import.meta.url)),
@@ -174,7 +177,28 @@ describe("capability requirement round trip over existing repo fixtures", () => 
 			"packages/capability-profiles/test/selection.cases.jsonl:20 (enforces required structured features)",
 			"packages/capability-profiles/test/selection.cases.jsonl:21 (admits a candidate that satisfies the feature)",
 			"packages/capability-profiles/test/selection.cases.jsonl:22 (enforces a required runtime model)",
+			"packages/capability-profiles/test/selection.cases.jsonl:37 (denies a native implementation the requirement excludes)",
+			"packages/capability-profiles/test/selection.cases.jsonl:38 (denies a pack the requirement excludes)",
 			"packages/capability-profiles/test/selection.cases.jsonl:4 (accepts D1 for a relational requirement)",
+			"packages/capability-profiles/test/selection.cases.jsonl:40 (denies a bridge the requirement excludes)",
+			"packages/capability-profiles/test/selection.cases.jsonl:44 (rejects a candidate that does not support the required runtime)",
+			"packages/capability-profiles/test/selection.cases.jsonl:45 (rejects a candidate supporting none of the allowed runtimes)",
+			"packages/capability-profiles/test/selection.cases.jsonl:46 (admits a candidate supporting one of several allowed runtimes)",
+			"packages/capability-profiles/test/selection.cases.jsonl:48 (satisfies an at-least feature at the bound)",
+			"packages/capability-profiles/test/selection.cases.jsonl:49 (rejects an at-least feature one below the bound)",
+			"packages/capability-profiles/test/selection.cases.jsonl:50 (rejects an at-least feature the candidate does not declare at all)",
+			"packages/capability-profiles/test/selection.cases.jsonl:51 (rejects an at-least feature whose declared value is not a number)",
+			"packages/capability-profiles/test/selection.cases.jsonl:52 (satisfies an at-most feature at the bound and rejects one above)",
+			"packages/capability-profiles/test/selection.cases.jsonl:53 (rejects an at-most feature above the bound)",
+			"packages/capability-profiles/test/selection.cases.jsonl:54 (satisfies a one-of feature)",
+			"packages/capability-profiles/test/selection.cases.jsonl:55 (rejects a one-of feature outside the set)",
+			"packages/capability-profiles/test/selection.cases.jsonl:56 (satisfies includes-all when the candidate declares a superset)",
+			"packages/capability-profiles/test/selection.cases.jsonl:57 (rejects includes-all when one member is missing)",
+			"packages/capability-profiles/test/selection.cases.jsonl:58 (rejects includes-all when the declared value is not a list)",
+			"packages/capability-profiles/test/selection.cases.jsonl:59 (ignores a feature the requirement marks optional)",
+			"packages/capability-profiles/test/selection.cases.jsonl:61 (rejects an unsatisfied guarantee)",
+			"packages/capability-profiles/test/selection.cases.jsonl:62 (admits a satisfied guarantee)",
+			"packages/capability-profiles/test/selection.cases.jsonl:65 (rejects a candidate missing a required migration profile)",
 			"packages/cloud/test/profile-matching.cases.jsonl:4 (satisfies a relational requirement through the refinement graph)",
 			"packages/data-postgres/contracts/pacts/postgres-conformance.pact.json (a relational-but-not-Postgres product is rejected rather than ranked lower)",
 		]);
@@ -326,6 +350,7 @@ const GOLDEN_OFFERS = [
 ] as const;
 
 const goldenRegistryDigests = GOLDEN_OFFERS.map((name) => {
+	// SAFETY: committed golden offers declare their registry digest.
 	const offer = JSON.parse(
 		repoFile(`packages/recipes/test/golden/${name}.offer.json`),
 	) as { profileRegistryDigest?: string };

@@ -27,7 +27,8 @@ and records the rationale in `dispatch.Decided` (ADR-0071).
 
 - **Replay lane (default):** injected mocked fetch + fixture executor;
   tests assert exact CreateBuild request formation and the recorded
-  cache-fact sequence — no network.
+  cache-fact sequence — no network. Successful build registration requires
+  non-empty build IDs and tokens.
 - **Live lane (credential-gated):** `DEPOT_PROJECT_TOKEN` (broker-minted
   short-lived project token) + the `depot` CLI executor; a missing
   executor or token fails closed with typed gates.

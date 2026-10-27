@@ -199,8 +199,7 @@ export default defineConfig({
 			 * deleted, not met. Raise each number as the real one improves; never
 			 * lower one to make a red build green.
 			 *
-			 * The remaining sub-80 packages are pixel-village (browser-only
-			 * surface), runtime-wasm (shells out to jco/wasmtime) and
+			 * The remaining sub-80 packages are runtime-wasm (shells out to jco/wasmtime) and
 			 * `packages/code` at ~79.5 (CLI entrypoints and interactive
 			 * closures) — each needs a harness, not more of the same tests.
 			 */
@@ -283,7 +282,6 @@ export default defineConfig({
 				"packages/mcp/**": { statements: 95, branches: 82, functions: 96, lines: 97 },
 				"packages/packs/**": { statements: 83, branches: 80, functions: 85, lines: 83 },
 				"packages/patterns/**": { statements: 88, branches: 80, functions: 93, lines: 89 },
-				"packages/pixel-village/**": { statements: 59, branches: 57, functions: 62, lines: 60 },
 				"packages/policy/**": { statements: 92, branches: 92, functions: 91, lines: 92 },
 				"packages/providers/provider-aws/**": { statements: 91, branches: 79, functions: 96, lines: 91 },
 				"packages/providers/provider-ax/**": { statements: 95, branches: 79, functions: 98, lines: 98 },

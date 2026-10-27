@@ -1,6 +1,6 @@
 ---
 name: design-md
-description: Google DESIGN.md visual identity for coding agents. HoBo truth is site/DESIGN.md (HoBo Rubberhose: Steamboat Willie/Cuphead ink-on-paper, thick ink outlines, hard sticker shadows, black and white with rare spark/go accents). packages/pixel-village owns a separate HoBo Pixel identity that binds only itself (ADR-0149). Lint with designmd; pre-commit runs pnpm run design:lint for all web UI packages.
+description: Google DESIGN.md visual identity for coding agents. HoBo truth is site/DESIGN.md (HoBo Rubberhose: Steamboat Willie/Cuphead ink-on-paper, thick ink outlines, hard sticker shadows, black and white with rare spark/go accents). Lint with designmd; pre-commit runs pnpm run design:lint for all web UI packages.
 ---
 
 # design-md (HoBo)
@@ -24,12 +24,11 @@ Do not wait for “run design lint” or “use /impeccable”. Read the owning 
 | **`site/DESIGN.md`** | Public product identity (ADR-0149) |
 | **`packages/code/DESIGN.md`** | `hobo-code` TUI, dashboard, Evidence |
 | **`packages/control-yard/DESIGN.md`** | Control-yard only |
-| **`packages/pixel-village/DESIGN.md`** | Pixel village only (separate identity) |
 | **`pnpm run design:lint`** | Repo-wide gate — every web UI `DESIGN.md` (pre-commit + agent done-check) |
 
 ## Aesthetic (non-negotiable)
 
-**Top-down pixel RPG** (ADR-0148) — art authored on a 16px grid and scaled by integers only, hard `#3f2631` outlines, square corners (every radius is `0`), warm earth against cool slate with grass/danger/accent as the functional colours, Kenney CC0 pixel display faces for headings and `system-ui` for body copy. **Art is sourced, never drawn in renderer code** — building props from rects and lines is what produced the surface this replaced. The earlier rubberhose/Steamboat-Willie contract and the Bo art bible are retired.
+**HoBo Rubberhose** (ADR-0149) — Steamboat Willie/Cuphead ink on paper, thick outlines, hard sticker shadows, title-card lettering, and black-and-white day/night inversion with rare spark/go accents. **Art is sourced, never drawn in renderer code.** Bo and the rubberhose art bible are canonical.
 
 ### Do
 

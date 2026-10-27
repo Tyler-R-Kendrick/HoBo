@@ -166,7 +166,9 @@ export function createDepotClient(options: DepotClientOptions): DepotClient {
 			if (
 				!isJsonObject(payload) ||
 				!isJsonString(payload.build_id) ||
-				!isJsonString(payload.build_token)
+				payload.build_id.length === 0 ||
+				!isJsonString(payload.build_token) ||
+				payload.build_token.length === 0
 			) {
 				throw new DepotApiError(
 					"runner-depot: CreateBuild response missing build_id/build_token",

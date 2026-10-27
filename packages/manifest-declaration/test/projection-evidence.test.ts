@@ -48,7 +48,7 @@ function read(relativePath: string): string {
 const REQUIREMENT = read("packages/manifest-capability/src/requirement.ts");
 const CANDIDATE = read("packages/manifest-request/src/candidate.ts");
 const SELECTION = read("packages/capability-profiles/src/selection.ts");
-const PLAN_TYPES = read("packages/cloud/src/plan-types.ts");
+const PLAN_TYPES = read("packages/manifest-plan/src/index.ts");
 const PLACEMENT = read("packages/cloud/src/planner/placement.ts");
 const OWN_SOURCE = read("packages/manifest-declaration/src/index.ts");
 
@@ -152,7 +152,7 @@ describe("what a projection would still have to carry", () => {
 		// SAFETY: this is the repository-owned hello-bindle manifest fixture.
 		const manifest = JSON.parse(
 			read("packages/cloud/test/fixtures/hello-bindle.manifest.json"),
-		// SAFETY: this fixture is the repository-owned manifest shape under test.
+			// SAFETY: this fixture is the repository-owned manifest shape under test.
 		) as { resources: Record<string, { bind?: string[] }> };
 		expect(manifest.resources.service?.bind).toEqual(["sessions", "assets"]);
 		for (const bound of manifest.resources.service?.bind ?? []) {

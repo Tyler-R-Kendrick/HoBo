@@ -144,6 +144,26 @@ export type DeploymentPlan = {
 	readonly [deploymentPlanBrand]: "DeploymentPlan";
 };
 
+export interface ResourcePlanAuthoring {
+	name: string;
+	port: string;
+	provider: string;
+	deps: string[];
+	strategy?: string;
+	region?: string;
+	deploymentId?: string;
+	productId?: string;
+	realizationParameters?: Readonly<JsonObject>;
+	nonPortableRows?: readonly string[];
+}
+
+export interface DeploymentPlanAuthoring {
+	schema: typeof DEPLOYMENT_PLAN_SCHEMA;
+	resources: ResourcePlanAuthoring[];
+	dependencyOrder: string[];
+	objective: string;
+}
+
 export type PlanHash = `sha256:${string}`;
 
 export class ResourcePlanError extends Error {

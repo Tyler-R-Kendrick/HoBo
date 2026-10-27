@@ -21,16 +21,18 @@ test("hasWebFramework detects astro", () => {
 	assert.equal(hasWebFramework({ dependencies: { vitest: "^3.0.0" } }), false);
 });
 
-test("listWebUiProjects finds site DESIGN.md on real repo", () => {
+test("listWebUiProjects finds site DESIGN.md on real repo", {
+	timeout: 600_000,
+}, () => {
 	const projects = listWebUiProjects();
 	const site = projects.find((p) => p.rel === "site");
 	assert.ok(site, "site must be discovered as web UI");
 	assert.ok(site.designMd?.endsWith("site/DESIGN.md"));
 });
 
-// designmd binary startup is slow on cold CI runners; allow more than 5s.
+// Repository scans and designmd startup are slow on cold CI and mounted filesystems.
 test("runDesignMdCheck passes on real site DESIGN.md", {
-	timeout: 120_000,
+	timeout: 600_000,
 }, () => {
 	const { ok, results, projects } = runDesignMdCheck();
 	assert.ok(projects.length >= 1);

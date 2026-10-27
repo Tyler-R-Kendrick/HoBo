@@ -149,6 +149,5 @@ Current design examples align to this map:
 | `@hobo/management` | Pure Station/Connection/broker projection ops shared by CLI, MCP, control API |
 | `@hobo/control-api` | Local-first HTTP + SSE adapter over management |
 | `@hobo/control-yard` | Phaser Yard game UI + asset index + OpenUI generative sheets (HoBo Rubberhose) |
-| `@hobo/pixel-village` | The pixel-RPG game project — separate identity (`HoBo Pixel`), binds nothing outside itself (ADR-0149) |
 
 

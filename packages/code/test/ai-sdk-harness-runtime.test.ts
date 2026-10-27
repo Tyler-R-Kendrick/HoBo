@@ -240,6 +240,7 @@ describe("custom HarnessV1 adapters", () => {
 		});
 	});
 
+	// Cold imports of the installed adapter exceed a minute on mounted filesystems.
 	it("loads an installed builtin adapter without switching on agent id", async () => {
 		const spec = parseHarnessSpec({
 			id: "pi",
@@ -250,7 +251,7 @@ describe("custom HarnessV1 adapters", () => {
 		const harness = await createHarnessV1(spec);
 		expect(harness.specificationVersion).toBe("harness-v1");
 		expect(harness.harnessId).toBe("pi");
-	}, 15_000);
+	}, 120_000);
 
 	it("loads a builtin adapter via the injected importer instead of a switch on id", async () => {
 		const spec = parseHarnessSpec({

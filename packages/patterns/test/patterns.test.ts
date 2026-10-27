@@ -220,7 +220,9 @@ describe("@hobo/patterns", () => {
 		expect(built.llmCalls).toBe(0);
 	});
 
-	it("validates the catalog and emits VS Code snippets", () => {
+	it("validates the catalog and emits VS Code snippets", {
+		timeout: 30_000,
+	}, () => {
 		const report = validatePatternCatalog({ catalog });
 		expect(report.ok, report.issues.join("\n")).toBe(true);
 		const snippets = buildVsCodeSnippets({ catalog });

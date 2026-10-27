@@ -850,3 +850,11 @@ into pane commands or remote hosts; a missing installed agent fails closed.
 ## Package layout
 
 `src/`, `test/`, `contracts/`, `data-models/` — konsistent production package.
+
+Vitest clears inherited Git repository selectors before loading tests, so a
+pre-commit run cannot redirect temporary repositories, worktrees, or indexes to
+the checkout being committed. Tests still set those variables explicitly for
+their own temporary repositories. Set `HOBO_TEST_MAX_WORKERS` to bound Vitest
+workers on slow or memory-constrained hosts and `HOBO_TEST_TIMEOUT` to adjust
+the default per-test and hook budgets. Turbo's strict environment passes both
+through and keeps task hashes stable across pre-commit runs.

@@ -233,7 +233,7 @@ Canonical detail lives in [`docs/design/technical-standards.md`](docs/design/tec
 
 Visual work is a first-class gate, same as typecheck and PACT. **Do not wait for the user to say “run design lint” or “use /impeccable.”** If you touch a visual surface, apply the design system while editing and run the linters before you claim the work is done.
 
-A change is visual when it touches any of: `site/`, `packages/code` TUI/dashboard/Evidence HTML, `packages/control-yard`, `packages/pixel-village`, a package `DESIGN.md`, CSS/HTML chrome, `tui-*.ts(x)`, `interactive-shell.ts`, `session-dashboard.ts`, `evidence-chrome.ts`, or rendered copy/color/layout/motion.
+A change is visual when it touches any of: `site/`, `packages/code` TUI/dashboard/Evidence HTML, `packages/control-yard`, a package `DESIGN.md`, CSS/HTML chrome, `tui-*.ts(x)`, `interactive-shell.ts`, `session-dashboard.ts`, `evidence-chrome.ts`, or rendered copy/color/layout/motion.
 
 ### Authority
 
@@ -242,7 +242,6 @@ A change is visual when it touches any of: `site/`, `packages/code` TUI/dashboar
 | Public site | [`site/DESIGN.md`](site/DESIGN.md) | `site/src/styles/` |
 | `hobo-code` TUI + occupancy dashboard + Evidence | [`packages/code/DESIGN.md`](packages/code/DESIGN.md) | `tui-tokens.ts`, `tui-components.tsx`, `evidence-chrome.ts` |
 | Control-yard | [`packages/control-yard/DESIGN.md`](packages/control-yard/DESIGN.md) | that package only |
-| Pixel village | [`packages/pixel-village/DESIGN.md`](packages/pixel-village/DESIGN.md) | that package only (ADR-0149) |
 
 `site/DESIGN.md` is the product identity (ADR-0149). Do not run `/impeccable document` at the repo root. Do not invent a fourth identity.
 

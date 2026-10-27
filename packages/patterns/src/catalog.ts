@@ -82,14 +82,14 @@ export function loadPatternCatalog(
 		...walkNamed(root, "pattern.json").map((file) =>
 			finalizePattern(
 				file,
-				parsePatternManifest(JSON.parse(readFileSync(file, "utf8")) as unknown),
+				parsePatternManifest(JSON.parse(readFileSync(file, "utf8"))),
 			),
 		),
 		...walkNamed(atomsRoot, "meta.json").map((file) =>
 			finalizePattern(
 				file,
 				parseAtomAsPattern(
-					JSON.parse(readFileSync(file, "utf8")) as unknown,
+					JSON.parse(readFileSync(file, "utf8")),
 					relative(atomsRoot, dirname(file)),
 				),
 			),
@@ -109,6 +109,28 @@ export function loadPatternCatalog(
 	return { root, digest, patterns };
 }
 
+const manifestIndexes = new WeakMap<
+	PatternCatalog,
+	ReadonlyMap<string, string>
+>();
+
+function manifestIndex(catalog: PatternCatalog): ReadonlyMap<string, string> {
+	const cached = manifestIndexes.get(catalog);
+	if (cached) return cached;
+	const index = new Map<string, string>();
+	const files = [catalog.root, defaultAtomsRoot()].flatMap((root) => [
+		...walkNamed(root, "pattern.json"),
+		...walkNamed(root, "meta.json"),
+	]);
+	for (const file of files) {
+		// SAFETY: loadPatternCatalog validates these manifests before indexing.
+		const raw = JSON.parse(readFileSync(file, "utf8")) as { id?: string };
+		if (raw.id && !index.has(raw.id)) index.set(raw.id, file);
+	}
+	manifestIndexes.set(catalog, index);
+	return index;
+}
+
 export function readRenderingBody(
 	catalog: PatternCatalog,
 	pattern: PatternManifest,
@@ -120,19 +142,8 @@ export function readRenderingBody(
 	if (!rendering) {
 		throw new Error(`${pattern.id}: unknown rendering ${renderingId}`);
 	}
-	const roots = [catalog.root, defaultAtomsRoot()];
-	const file = roots
-		.flatMap((root) => [
-			...walkNamed(root, "pattern.json"),
-			...walkNamed(root, "meta.json"),
-		])
-		.find((path) => {
-			const dir = dirname(path);
-			if (!existsSync(join(dir, rendering.sourcePath))) return false;
-			const raw = JSON.parse(readFileSync(path, "utf8")) as { id?: unknown };
-			return raw.id === pattern.id;
-		});
-	if (!file) {
+	const file = manifestIndex(catalog).get(pattern.id);
+	if (!file || !existsSync(join(dirname(file), rendering.sourcePath))) {
 		throw new Error(`${pattern.id}: catalog file missing`);
 	}
 	return readFileSync(join(dirname(file), rendering.sourcePath), "utf8");

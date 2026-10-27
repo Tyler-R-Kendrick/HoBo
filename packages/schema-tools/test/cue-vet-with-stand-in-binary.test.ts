@@ -38,7 +38,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import {
 	ensureCueBinary,
@@ -50,7 +50,15 @@ import {
 const dirs: string[] = [];
 const originalPath = process.env.PATH;
 
+beforeEach(() => {
+	vi.stubGlobal(
+		"fetch",
+		vi.fn().mockRejectedValue(new Error("offline test fixture")),
+	);
+});
+
 afterEach(() => {
+	vi.unstubAllGlobals();
 	process.env.PATH = originalPath;
 	for (const dir of dirs.splice(0))
 		rmSync(dir, { recursive: true, force: true });
@@ -106,13 +114,13 @@ function dataModelPackage(fixtures: {
 		mkdirSync(dir, { recursive: true });
 		for (const name of names) writeFileSync(join(dir, name), "{}\n");
 	}
+	// SAFETY: the vet reads exactly the package fields supplied above.
 	return {
 		root,
 		pkg: {
 			name: "orders",
 			dataModelsDir,
 			cueSchemas: [schema],
-			// SAFETY: the vet reads exactly the fields named above.
 		} as never,
 	};
 }
@@ -123,6 +131,23 @@ describe("finding the CUE binary", () => {
 		// The bare name means it resolved through PATH rather than falling
 		// through to the cache or the download.
 		expect(await ensureCueBinary(tempDir())).toBe("cue");
+	});
+
+	it("ignores a `cue` whose version probe fails", async () => {
+		const dir = tempDir("hobo-cue-bin-");
+		const bin = join(dir, "cue");
+		writeFileSync(
+			bin,
+			[
+				"#!/usr/bin/env node",
+				'process.stdout.write("cue version v0.14.0\\n");',
+				"process.exit(1);",
+			].join("\n"),
+			{ mode: 0o755 },
+		);
+		chmodSync(bin, 0o755);
+		process.env.PATH = `${dir}:${dirname(process.execPath)}`;
+		await expect(ensureCueBinary(tempDir())).rejects.toThrow();
 	});
 
 	it("ignores a `cue` whose version does not match", async () => {

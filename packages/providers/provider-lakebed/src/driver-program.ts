@@ -1,4 +1,4 @@
-import type { JsonObject } from "./json.js";
+import { isJsonString, type JsonObject } from "./json.js";
 
 // Lakebed realizes resources through its deploy API as a DRIVER (Plan 25
 // driver taxonomy: terraform/template/echo/container/custom-webhook), NOT an
@@ -66,7 +66,7 @@ export function assertDriverProgram(program: DriverProgram): DriverProgram {
 		names.set(resource.name, resource);
 	}
 	for (const value of Object.values(program.outputs)) {
-		if (!value.startsWith("${resources.")) {
+		if (!isJsonString(value) || !value.startsWith("${resources.")) {
 			continue;
 		}
 		const match = OUTPUT_REF.exec(value);

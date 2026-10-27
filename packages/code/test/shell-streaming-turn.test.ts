@@ -85,6 +85,7 @@ async function drive(scriptedKeys: string, options: StreamOptions = {}) {
 	const streamed: string[] = [];
 	const workspacePrompts: string[] = [];
 	let approvalsAsked = 0;
+	// SAFETY: the scripted-driver options are the shape the shell declares.
 	const code = await runInteractiveShell({
 		stdin: new PassThrough(),
 		stdout: new Writable({
@@ -126,16 +127,15 @@ async function drive(scriptedKeys: string, options: StreamOptions = {}) {
 				? {
 						pendingApprovalFor: async () => {
 							approvalsAsked += 1;
-							// SAFETY: the fixture stands in for the gate the host builds.
 							return {
-								kind: "promote",
-								summary: "promote 1 file",
-							} as never;
+								runId: "run-1",
+								sandboxRoot: "/sandbox/run-1",
+								changes: [{ status: "M", path: "README.md" }],
+							};
 						},
 					}
 				: undefined),
 		},
-		// SAFETY: the scripted-driver options are the shape the shell declares.
 	} as never);
 	return {
 		code,

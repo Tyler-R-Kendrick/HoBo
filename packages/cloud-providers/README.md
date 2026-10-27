@@ -143,6 +143,8 @@ The rules, and why each one is there:
   (reading its `PROVIDER_ID`), a provider id string, or `{ id }` — and it is
   still stated, never inferred, because inferring one from a Yard name or a
   product-id prefix is the load-bearing naming convention ADR-0144 forbids.
+  ES module namespace objects are accepted directly; no plain-object copy is
+  needed.
 - **No bare strings where a vocabulary exists.** Capability profiles come from
   `capability` in `@hobo/core` (`capability.data.postgres`, not
   `"data.postgres/v1"`) and Camp environments from `ENV_TYPES`. A typo is a

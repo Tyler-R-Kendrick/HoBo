@@ -18,7 +18,9 @@ const privateServe = await host.servePrivate({
 });
 ```
 
-Wired by the composition root (`hobo yard init --host wasm`).
+Wired by the composition root (`hobo yard init --host wasm`). Generated guests
+apply `x-hobo-bindle-env` and per-key mesh headers to `process.env` before the
+application fetch handler runs.
 
 ## Toolchain resolution
 

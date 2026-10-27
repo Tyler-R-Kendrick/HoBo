@@ -442,7 +442,13 @@ export function reduceAgentsConfigureKey(
 	}
 
 	if (key === "\x1b[C" || key === "l" || key === "\x1b[D" || key === "h") {
-		if (ready.field === "model" && ready.modelOffers.length > 0) {
+		if (
+			ready.field === "model" &&
+			ready.modelOffers.length > 0 &&
+			(key === "\x1b[C" ||
+				key === "\x1b[D" ||
+				(ready.modelId.length > 0 && (key === "l" || key === "h")))
+		) {
 			const delta: 1 | -1 = key === "\x1b[C" || key === "l" ? 1 : -1;
 			const cycled = cycleBoModelOffer(
 				ready.modelOffers,

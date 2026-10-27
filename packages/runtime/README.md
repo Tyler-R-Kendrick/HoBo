@@ -33,3 +33,6 @@ These are different concerns that share a word:
   replay engine.
 
 The glossary's "Runtime" entry records the same disambiguation.
+
+`WorkflowFailure` preserves an omitted step or cause as `undefined` rather than
+manufacturing placeholder values.

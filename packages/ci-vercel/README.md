@@ -9,8 +9,12 @@ the database, queue, scheduler and GitHub repair path to have recently succeeded
 a new deployment reports unready until its first repair scan completes. A
 successful partial scan retains the last completed-scan health while it queues
 its continuation. Actual scan failures mark the relay unready, and completed-scan
-health expires after 45 minutes. The webhook intake is available during initial
-repair.
+health expires after 45 minutes. Delivery and queued-job scanners record their
+completed cycles independently, since their pagination can finish on different
+wakeups. A new deployment waits for both scanners to complete; a queued scan
+may wait for the existing ten-minute cooldown. This is scanner liveness, not a
+point-in-time guarantee that every repository is covered after inventory changes.
+The webhook intake is available during initial repair.
 
 The queue uses **parse, don't validate**: `QueueMessageSchema` parses provider
 input into derived types for a committed-delivery wakeup, a scheduled or

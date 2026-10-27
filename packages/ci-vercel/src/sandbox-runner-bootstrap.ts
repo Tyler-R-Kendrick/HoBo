@@ -26,6 +26,8 @@ test -r /etc/os-release
 . /etc/os-release
 test "$ID" = ubuntu
 test "$VERSION_ID" = 26.04
+test -r /etc/ssl/certs/ca-certificates.crt
+test -s /etc/ssl/certs/ca-certificates.crt
 test -f hobo-ci-icu.deb
 printf '%s  %s\\n' ${SANDBOX_ICU_SHA256} hobo-ci-icu.deb | sha256sum --check --status
 sudo -n env DEBIAN_FRONTEND=noninteractive dpkg -i hobo-ci-icu.deb
@@ -56,8 +58,11 @@ rm -f .hobo-ci-jit
 trap - EXIT
 test -n "$jit"
 test -d .hobo-ci-home
+ca_bundle=/etc/ssl/certs/ca-certificates.crt
+test -r "$ca_bundle"
+test -s "$ca_bundle"
 cd hobo-ci-runner
-exec env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HOME=/vercel/sandbox/.hobo-ci-home USER="$(id -un)" LANG=C.UTF-8 ./run.sh --jitconfig "$jit"
+exec env -i PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin HOME=/vercel/sandbox/.hobo-ci-home USER="$(id -un)" LANG=C.UTF-8 NODE_EXTRA_CA_CERTS="$ca_bundle" NODE_USE_SYSTEM_CA=1 AWS_CA_BUNDLE="$ca_bundle" CARGO_HTTP_CAINFO="$ca_bundle" CURL_CA_BUNDLE="$ca_bundle" GIT_SSL_CAINFO="$ca_bundle" GRPC_DEFAULT_SSL_ROOTS_FILE_PATH="$ca_bundle" NPM_CONFIG_CAFILE="$ca_bundle" PIP_CERT="$ca_bundle" REQUESTS_CA_BUNDLE="$ca_bundle" SSL_CERT_FILE="$ca_bundle" ./run.sh --jitconfig "$jit"
 `;
 
 export interface SandboxRunnerBootstrapPort {

@@ -265,30 +265,38 @@ export async function createVercelApplication(options: {
 						claims,
 						isAccepted: (deliveryId) => store.hasWebhook(deliveryId),
 					});
-					return runRepairs([
-						repairDeliveries,
-						createQueuedJobRepair({
-							store,
-							github,
-							claims: queuedClaims,
-							relay: async () => {
-								const state = await store.configuration();
-								if (!state?.configuration)
-									throw new Error("configuration unavailable");
-								const relayOptions: ConstructorParameters<
-									typeof HostedRelay
-								>[0] = {
-									config: state.configuration,
-									store,
-									github,
-									identity,
-									webhookSecret: secret,
-									...execution.relay,
-								};
-								return new HostedRelay(relayOptions);
-							},
-						}),
-					]);
+					return runRepairs(
+						[
+							repairDeliveries,
+							createQueuedJobRepair({
+								store,
+								github,
+								claims: queuedClaims,
+								idleComplete: () => health.repairComplete(1),
+								relay: async () => {
+									const state = await store.configuration();
+									if (!state?.configuration)
+										throw new Error("configuration unavailable");
+									const relayOptions: ConstructorParameters<
+										typeof HostedRelay
+									>[0] = {
+										config: state.configuration,
+										store,
+										github,
+										identity,
+										webhookSecret: secret,
+										...execution.relay,
+									};
+									return new HostedRelay(relayOptions);
+								},
+							}),
+						],
+						{
+							start: () => health.startRepair(),
+							finish: (index, ok, startedAt) =>
+								health.finishRepair(index, ok, startedAt),
+						},
+					);
 				});
 			} finally {
 				await onboarding?.cleanup();

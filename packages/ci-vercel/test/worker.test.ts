@@ -35,6 +35,46 @@ function setup() {
 }
 
 describe("hosted worker", () => {
+	it("records each completed repair cycle independently across wakeups", async () => {
+		const marks: [number, boolean, string][] = [];
+		let clock = 0;
+		const evidence = {
+			start: async () => String(++clock),
+			finish: async (index: number, ok: boolean, at: string) => {
+				marks.push([index, ok, at]);
+			},
+		};
+		await runRepairs(
+			[
+				async () => ({ more: false, truncated: false }),
+				async () => ({ more: true, truncated: false, skipped: true }),
+			],
+			evidence,
+		);
+		expect(marks).toEqual([[0, true, "1"]]);
+		await runRepairs(
+			[
+				async () => ({ more: true, truncated: false }),
+				async () => ({ more: false, truncated: false }),
+			],
+			evidence,
+		);
+		expect(marks).toEqual([
+			[0, true, "1"],
+			[1, true, "4"],
+		]);
+		await runRepairs(
+			[
+				async () => ({ more: true, truncated: true }),
+				async () => ({ more: false, truncated: false, failed: true }),
+			],
+			evidence,
+		);
+		expect(marks.slice(2)).toEqual([
+			[0, false, "5"],
+			[1, false, "6"],
+		]);
+	});
 	it("continues repair and preserves failures when the logging sink throws", async () => {
 		const log = vi.spyOn(console, "error").mockImplementation(() => {
 			throw new Error("logging unavailable");

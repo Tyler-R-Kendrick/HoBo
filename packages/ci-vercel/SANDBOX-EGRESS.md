@@ -64,6 +64,17 @@ the exact hosts used by the workflow's dependencies and redirect targets too;
 this list is not exhaustive. GitHub can download an action during job setup
 even when the action's workflow step is conditional, so its hosts must be
 allowed before the job starts.
+
+Vercel's firewall terminates TLS with its Sandbox proxy CA, which the managed
+image includes in `/etc/ssl/certs/ca-certificates.crt`. Runner preparation
+requires the system bundle, and the clean runner environment explicitly points
+Node, OpenSSL, Git, curl and common package clients at it. TLS verification
+remains enabled; inherited host credentials and TLS-disabling variables are
+not passed into the runner. A live Sandbox forwarding test reproduced Node's
+`SELF_SIGNED_CERT_IN_CHAIN` without the bundle and returned HTTP 200 with the
+bundle. Java and other runtimes with independent trust stores may require
+their own trusted CA configuration.
+
 A live Sandbox test verified forwarding of a GitHub
 Actions subdomain and denial of the parent, a suffix-confusion host and a direct
 IP. A second test sent an Actions subdomain request through the bundled proxy,

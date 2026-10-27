@@ -63,6 +63,8 @@ const JobPage = z.object({
 export interface QueuedRepairClaims {
 	start(keys: readonly string[]): Promise<
 		| undefined
+		| "busy"
+		| "deferred"
 		| {
 				key: string;
 				cursor: Cursor;
@@ -114,7 +116,7 @@ export class PostgresQueuedJobRepairClaims implements QueuedRepairClaims {
 			if (!locked) {
 				released = true;
 				client.release();
-				return undefined;
+				return "busy" as const;
 			}
 			for (const key of keys)
 				await client.query(
@@ -127,8 +129,14 @@ export class PostgresQueuedJobRepairClaims implements QueuedRepairClaims {
 			);
 			const row = result.rows[0];
 			if (!row) {
+				// A partial scan may have been delayed by the shared API budget.
+				// It is not complete while a key will resume within a minute.
+				const deferred = await client.query(
+					"SELECT 1 FROM hobo_ci_queued_scans WHERE app_id=$1 AND scan_key=ANY($2::text[]) AND due_ms <= EXTRACT(EPOCH FROM clock_timestamp())*1000+60000 LIMIT 1",
+					[this.appId, keys],
+				);
 				await close();
-				return undefined;
+				return deferred.rowCount ? ("deferred" as const) : undefined;
 			}
 			const cursor = Cursor.parse(row.cursor);
 			const take = async (count: number) => {
@@ -188,11 +196,14 @@ export function createQueuedJobRepair(options: {
 	github: GithubTransport;
 	claims: QueuedRepairClaims;
 	relay: () => Promise<Pick<HostedRelay, "processWebhook">>;
+	/** Whether this deployment has recent completed scanner evidence. */
+	idleComplete?: () => Promise<boolean>;
 }) {
 	return async function repair(): Promise<{
 		more: boolean;
 		truncated: false;
 		failed: boolean;
+		skipped?: boolean;
 	}> {
 		const config = (await options.store.configuration())?.configuration;
 		if (!config) throw new Error("configuration unavailable");
@@ -204,7 +215,17 @@ export function createQueuedJobRepair(options: {
 			})),
 		);
 		const scan = await options.claims.start(entries.map((entry) => entry.key));
-		if (!scan) return { more: false, truncated: false, failed: false };
+		if (scan === "busy" || scan === "deferred")
+			return { more: true, truncated: false, failed: false, skipped: true };
+		if (!scan)
+			return entries.length === 0
+				? { more: false, truncated: false, failed: false }
+				: {
+						more: !(await options.idleComplete?.()),
+						truncated: false,
+						failed: false,
+						skipped: true,
+					};
 		const cursor = Cursor.parse(scan.cursor);
 		try {
 			const entry = entries.find((candidate) => candidate.key === scan.key);

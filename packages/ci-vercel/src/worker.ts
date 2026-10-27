@@ -126,19 +126,32 @@ export async function runRepairs(
 		more: boolean;
 		truncated: boolean;
 		failed?: boolean;
+		skipped?: boolean;
 	}>)[],
+	evidence?: {
+		start(): Promise<string>;
+		finish(index: number, ok: boolean, startedAt: string): Promise<void>;
+	},
 ) {
 	let failed = false,
 		more = false,
 		truncated = false;
 	for (const [index, repair] of repairs.entries()) {
+		let startedAt: string | undefined;
 		try {
+			startedAt = await evidence?.start();
 			const result = await repair();
 			if (result.failed)
 				reportWorkerFailure("repair-scanner", undefined, index);
 			failed ||= result.failed === true;
 			more ||= result.more;
 			truncated ||= result.truncated;
+			if (evidence && startedAt) {
+				if (result.failed || result.truncated)
+					await evidence.finish(index, false, startedAt);
+				else if (!result.more && !result.skipped)
+					await evidence.finish(index, true, startedAt);
+			}
 		} catch (error) {
 			reportWorkerFailure(
 				"repair-scanner",
@@ -146,6 +159,7 @@ export async function runRepairs(
 				index,
 			);
 			failed = true;
+			if (evidence && startedAt) await evidence.finish(index, false, startedAt);
 		}
 	}
 	return { failed, more, truncated };

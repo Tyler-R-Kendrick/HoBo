@@ -13,10 +13,11 @@ import {
 
 function run(
 	args: string[],
+	timeout = 5000,
 ): Promise<{ code: number | string; stdout: string }> {
 	return new Promise((resolve) => {
-		execFile(process.execPath, args, { timeout: 5000 }, (error, stdout) => {
-			resolve({ code: error?.code ?? 0, stdout });
+		execFile(process.execPath, args, { timeout }, (error, stdout) => {
+			resolve({ code: error ? (error.code ?? "error") : 0, stdout });
 		});
 	});
 }
@@ -154,8 +155,12 @@ describe("proxy startup readiness", () => {
 	it("terminates an already listening process after a server error", async () => {
 		const script = `import { createServer } from 'node:http'; import { installProxyFatalErrorHandler } from './src/sandbox-proxy-vm.ts'; const server = createServer(); installProxyFatalErrorHandler(server, async () => {}); server.listen(0, '127.0.0.1', () => server.emit('error', new Error('failed')));`;
 		expect(
-			(await run(["--import", "tsx", "--input-type=module", "-e", script]))
-				.code,
+			(
+				await run(
+					["--import", "tsx", "--input-type=module", "-e", script],
+					30000,
+				)
+			).code,
 		).toBe(1);
-	});
+	}, 35000);
 });

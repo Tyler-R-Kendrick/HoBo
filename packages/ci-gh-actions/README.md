@@ -72,6 +72,9 @@ restore from a read-only backup. `/healthz` reports process liveness; `/readyz`
 reports recovered local partition readiness and becomes unavailable during drain.
 External provider execution is verified by the separate runner acceptance path.
 A failed or hanging readiness probe cannot keep admissions open indefinitely.
+Process-spawning restore tests use a 15-second Vitest deadline for slow local
+filesystems and parallel package runs; database and child-process locks retain
+their own shorter timeouts.
 
 Configure these bindings; secret values stay in the hosting platform's secret
 files or secret manager:

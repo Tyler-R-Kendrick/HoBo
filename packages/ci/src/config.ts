@@ -12,6 +12,11 @@ export function parseConfiguration(json: string): Configuration {
 		accountIds.add(account.id);
 		micros(account.budgetMicros, account.spentMicros);
 		if (
+			account.usageObservedAt &&
+			!Number.isFinite(Date.parse(account.usageObservedAt))
+		)
+			throw new Error("invalid account usage snapshot");
+		if (
 			!Number.isInteger(account.maxRuntimeMinutes) ||
 			account.maxRuntimeMinutes < 1 ||
 			account.maxRuntimeMinutes > 330 ||

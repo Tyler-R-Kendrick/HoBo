@@ -5,7 +5,7 @@ HoBo CI is a sibling SDK family in the HoBo monorepo:
 | SDK | State |
 | --- | --- |
 | `@hobo/ci` | Portable pipelines, allocation routing and durable budget reservations |
-| [`@hobo/ci-gh-actions`](../ci-gh-actions/README.md) | Executable experimental hosted relay and JIT-runner bridge |
+| [`@hobo/ci-gh-actions`](../ci-gh-actions/README.md) | Hosted relay, tenant API, repository installer and JIT-runner host |
 | [`@hobo/ci-dagger`](../ci-dagger/README.md) | Implemented native Dagger SDK adapter |
 | [`@hobo/ci-cf`](../ci-cf/README.md) | Implemented native Cloudflare CI adapter |
 
@@ -43,8 +43,8 @@ boundary. Routing is pure over the account, persisted leases and injected time.
 The relay owns the `ci.*` command/event lifecycle and SQLite projection (see its ADR).
 
 Validation: `pnpm --filter @hobo/ci build`, `pnpm --filter @hobo/ci test`,
-`pnpm codegen -- --filter packages/ci`, and
-`pnpm codegen:check -- --filter packages/ci`.
+`pnpm codegen --filter packages/ci`, and
+`pnpm codegen:check --filter packages/ci`.
 
 
 ## Swap execution backends
@@ -116,3 +116,23 @@ and `pnpm --filter @hobo/ci-gh-actions test:act --act /tmp/hobo-ci-tools/act`
 for actual local workflow execution. See its `act/README.md` for evidence and
 boundary details. The ordinary test lane includes the cross-backend command
 corpus, budget policy regressions and the SDK protocol contracts.
+
+## Persistent platform policy
+
+`LeaseStore.configure(configuration, expectedRevision, at)` commits generated
+`ConfigurationState` and its audit event with compare-and-swap semantics. Active
+leases prevent destructive provider or repository identity changes. Configuration
+and generated control-operation records are replayed with the lease projections.
+The GitHub relay exposes account-scoped policy/repository APIs over this actor.
+
+`Account.usageObservedAt` and `Offer.observedAt` are inclusive usage-snapshot
+watermarks. Published spent amounts include all completed usage through the
+watermark; free minutes are the remaining allocation then. Only later completed
+local usage is added. `Lease.usageCompletedAt` separates actual completion from
+late reconciliation, so refresh does not charge already-observed jobs twice.
+Snapshots must be complete, fresh and from the account's trusted platform
+publisher; this SDK does not invent vendor balances or invoice accuracy.
+
+Connections permit public repositories only with explicit
+`publicRepositoryAcknowledged` and the existing repository-wide trust contract.
+No new demand may use a connection revoked while asynchronous validation awaited.

@@ -29,13 +29,18 @@ minute, including applicable platform fees; this package ships no vendor price
 catalog or assumed marketing allowances. One microdollar is $0.000001. Each provider
 account entitlement has one account/offer owner; there is no cross-tenant pooling.
 
-`spentMicros` is an immutable external-spend baseline for this relay partition's
-budget period. The relay adds its settled costs and outstanding reservations. Do
-not replace the baseline with a provider total that already includes these leases.
-Refreshing free balance evidence can change `observedAt`/`freeMinutes`; outstanding
-reservations are always subtracted conservatively. This first version has no
-invoice ingestion or automatic monthly budget rollover. Start a new budget-period
-partition only after reconciling all active leases; retain the old journal for audit.
+Usage snapshots are inclusive. `Account.spentMicros` must include all completed
+usage through `Account.usageObservedAt`; each `Offer.spentMicros` and remaining
+`freeMinutes` must include consumption through that offer's `observedAt`.
+Publish the amount/balance and its watermark together. Routing adds only local
+usage completed after the corresponding watermark and always holds outstanding
+reservations. A late settlement uses its actual completion time. If the account
+watermark is omitted, its spend is an external-only baseline and every local
+settlement is added; do not combine that mode with an inclusive account total.
+
+There is no automatic invoice ingestion or monthly budget rollover. Start a new
+budget-period partition only after reconciling all active leases; retain the old
+journal for audit.
 
 Contracts are generated from `data-models/ci.proto`; CUE constraints and valid/invalid
 fixtures are exercised by schema-tools. `parseConfiguration` is the configuration

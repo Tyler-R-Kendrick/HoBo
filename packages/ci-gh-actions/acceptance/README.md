@@ -59,10 +59,15 @@ node --import tsx packages/ci-gh-actions/scripts/acceptance.ts --live-verify --r
 Success is only a permission probe, not a live workflow pass. A 403 is a failed
 probe. The local lane does not repair permissions or conceal this result.
 
-For live execution, install the relay and trusted host workflow first, then copy
-`workflow.yml` unchanged to `.github/workflows/hobo-ci-acceptance.yml` in this
-repository and dispatch it with GitHub. Without local fixture environment values,
-the original job requires the actual `RUNNER_NAME` to start with `hobo-`. Verify
-that the original GitHub job completed on that runner and correlate its lease,
-provider host completion, cleanup and settlement in the relay; a successful
-provider host workflow alone does not establish original-job completion.
+For live execution, install the relay and trusted host workflow first, then use
+the existing `.github/workflows/hobo-ci-acceptance.yml` in this repository. Its
+reviewed source is `../templates/hobo-ci-smoke.yml`; keep those bytes unchanged.
+The local `acceptance/workflow.yml` belongs only to act and must not replace that
+manual GitHub recipe. After GitHub discovers the manual workflow on the default
+branch, it can be dispatched for the selected branch.
+
+The manual recipe checks the actual self-hosted `hobo-<lease UUID>` runner,
+repository, ref and checked-out SHA, then uploads that evidence. Verify that the
+original GitHub job completed on that runner and correlate its lease, provider
+host completion, cleanup and settlement in the relay; a successful provider host
+workflow alone does not establish original-job completion.

@@ -26,7 +26,11 @@ Validation passed: 588 tests across CI/Actions/Dagger/Cloudflare/Stations,
 executions with three rejecting fault runs, and seven actual container checks.
 Final image: `sha256:bc5b475c243ccb2ec172575dde3669cf4b178559b2e77a1e0833775e20d2a7cd`.
 Thirteen compiled runtime modules match fresh compilation of the source.
-Current-head PR-base validation and exact-six design review precede merge.
+PR-base validation passed all 16 relevant checks. The first exact-six design
+review identified two documentation contradictions: obsolete spend-baseline
+instructions and a live-test recipe that replaced the reviewed manual workflow
+with the local act fixture. Both instructions are corrected; a refreshed
+current-head review must acknowledge the fixes before merge.
 
 The two independent P2 findings are resolved: dispatch re-resolves authority after
 GitHub reads; JIT rechecks original branch/event authority after host checks.

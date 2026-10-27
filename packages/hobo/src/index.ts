@@ -135,6 +135,7 @@ export {
 export {
 	type ComposedHoboCliOptions,
 	createComposedHoboCli,
+	removeOwnedDirsOnSignals,
 } from "./cli.js";
 export {
 	type CloudflareClient,

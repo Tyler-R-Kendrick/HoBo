@@ -9,6 +9,12 @@
  *
  * Explicit `HOBO_CODE_HOBO_BIN` / `HOBO_BIN` still forces a child-process spawn
  * (test stubs). There is no PATH fallback to a bare `hobo` name.
+ *
+ * The composition keeps its throwaway event store in a `hobo-yard-*` directory
+ * it owns, removed when the process exits. The `hobo-code` entry point also
+ * asks for it to be removed on a signal (`removeComposedDirsOnSignals`), which
+ * takes effect when the composition is loaded, so a hobo-code that never runs
+ * a `/hobo` verb never loads it.
  */
 import { existsSync } from "node:fs";
 import { dirname, join } from "node:path";
@@ -47,6 +53,20 @@ export type ComposedHoboCli = {
 		readonly stderr: string;
 	}>;
 };
+
+/** Whether this process's entry point asked for signal removal. */
+let entryRemovesDirsOnSignals = false;
+
+/**
+ * For the `hobo-code` entry point only: once this process loads the
+ * composition, the directories it owns are also removed on SIGTERM, SIGHUP,
+ * SIGINT and SIGQUIT (`removeOwnedDirsOnSignals` from `@hobo/hobo`, which
+ * leaves a signal the process handles itself to that handler). A library
+ * caller never asks, so loading the composition installs no handler.
+ */
+export function removeComposedDirsOnSignals(): void {
+	entryRemovesDirsOnSignals = true;
+}
 
 export function explicitHoboBinOverride(
 	env: NodeJS.ProcessEnv = process.env,
@@ -163,11 +183,20 @@ export async function loadCreateComposedHoboCli(
 	// SAFETY: parsed or fixture value is the named domain type after this assertion.
 	const mod = (await import(pathToFileURL(file).href)) as {
 		readonly createComposedHoboCli?: () => ComposedHoboCli;
+		readonly removeOwnedDirsOnSignals?: () => void;
 	};
 	if (!(mod.createComposedHoboCli instanceof Function)) {
 		throw new Error(
 			"@hobo/hobo dist/cli.js has no createComposedHoboCli export",
 		);
+	}
+	// A dist built before the export has none: its store is then removed on
+	// exit only, as it was, rather than failing the verb over a cleanup.
+	if (
+		entryRemovesDirsOnSignals &&
+		mod.removeOwnedDirsOnSignals instanceof Function
+	) {
+		mod.removeOwnedDirsOnSignals();
 	}
 	return mod.createComposedHoboCli;
 }

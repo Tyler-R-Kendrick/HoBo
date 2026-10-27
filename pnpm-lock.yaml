@@ -1285,6 +1285,9 @@ importers:
       '@bytecodealliance/jco':
         specifier: 1.24.3
         version: 1.24.3
+      '@hobo/adapter-opensesame':
+        specifier: workspace:*
+        version: link:../adapters/adapter-opensesame
       '@hobo/auth-md':
         specifier: workspace:*
         version: link:../auth-md

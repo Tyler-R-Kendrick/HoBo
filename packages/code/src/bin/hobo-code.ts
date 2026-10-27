@@ -18,6 +18,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { formatHoboCodeResult, runHoboCodeCli } from "../cli.js";
+import { removeComposedDirsOnSignals } from "../composed-hobo.js";
 import type { DevMachine } from "../dev-machines.js";
 import { resolveShellEngine } from "../engine-resolve.js";
 import { runGitTerminalPane } from "../git-terminal-pane.js";
@@ -40,6 +41,20 @@ import { startSessionControlServer } from "../session-control-server.js";
 import type { ShellEngine } from "../shell-engine.js";
 import { createDefaultShellHost } from "../shell-host.js";
 import { runResidentSshAgentProxy } from "../ssh-agent-proxy.js";
+
+// This is the process's entry point: when a `/hobo` verb composes HoBo here,
+// its `hobo-yard-*` store is removed on a signal too, not only on exit.
+removeComposedDirsOnSignals();
+
+// The launcher (bin/hobo-code.mjs) runs this process in a session of its own
+// and passes on the signals that end hobo-code. Killed outright, it passes on
+// nothing: its end of the IPC channel closes, and this process takes that as
+// the hangup it is otherwise never sent, so the shell restores the terminal
+// and the composed store is removed.
+if (process.channel !== undefined && process.platform !== "win32") {
+	process.once("disconnect", () => process.kill(process.pid, "SIGHUP"));
+	process.channel.unref();
+}
 
 const rawArgv = process.argv.slice(2);
 const json = rawArgv.includes("--json");

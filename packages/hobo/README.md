@@ -21,6 +21,25 @@ await cli.run(["up", "--json"], { cwd: projectDir });
 - `createDefaultCollectionTarget(projectDir?)` — the default collect target.
 
 Composed binaries: `dist/bin/hobo.js` (product `hobo`) and `dist/bin/hobo-mcp.js`.
+`createDefaultYardRuntime()` without a `dataDir` keeps its throwaway event store in a
+`hobo-yard-*` directory under `TMPDIR` that the process owns and removes when it exits,
+an uncaught error included (`src/owned-temp-dir.ts`). The `hobo` binary instead passes a
+persistent data directory under `HOBO_HOME`; `hobo-mcp`, `createComposedHoboCli()` and
+`@hobo/code`'s in-process runner use the temporary default. A `dataDir` you pass is yours
+and is never removed. As entry points, the binaries also remove owned temporary directories
+(and the live Pulumi lane's workspace) on SIGTERM, SIGHUP, SIGINT or SIGQUIT
+(`removeOwnedDirsOnSignals`), and so does `hobo-code`, which composes in process: its entry
+asks for the same removal through that export of `src/cli.ts`, and it takes effect when a
+`/hobo` verb loads the composition. The `hobo-code` bin is a launcher that passes those four
+signals, a closing terminal's SIGHUP included, on to the child that composes, and that child
+takes a launcher killed outright as a hangup (`packages/code/README.md`).
+When nothing else in the process listens for the signal, the directories are removed and
+the signal raised again, so the process still ends by it (status 128+n). When something
+else handles the signal (`hobo serve control` stops gracefully on SIGTERM and SIGINT and
+exits 0; `hobo-code`'s shell quits on all four), that handler decides how the
+process ends, and the directories are removed on `exit`. The library itself installs no
+signal handler, so a host that embeds it keeps its own signal handling. SIGKILL and a
+crash are out of reach.
 Canonical verb list: **42** verbs in `@hobo/cli` (`packages/cli/src/shell/verbs.ts`).
 
 ## CLI verification and remote deployment safety
@@ -101,10 +120,45 @@ as a live deployment. IaC selection lives in `src/compose.ts`:
 |---|---|
 | Persistent local Yard worker | Product default with a loadable source Bindle |
 | In-memory Pulumi stand-in | Explicitly injected library/test runtime |
-| Real Pulumi Automation/CLI | `HOBO_PULUMI_LIVE=1` (engine- and credential-gated) |
+| Real Pulumi Automation/CLI | `HOBO_PULUMI_LIVE=1` (engine- and credential-gated); its programs and `file://` state go in `HOBO_PULUMI_WORKDIR`, which is kept, else in a `hobo-pulumi-live-*` directory removed when the process ends (one `hobo:` line on stderr names it), so set `HOBO_PULUMI_WORKDIR` to keep the state |
 | Direct-HTTP resolver plane | a cloud credential **plus** `HOBO_DEPLOY_RESOLVERS=1` (opt-in) |
 | Live Cloudflare Workers | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` |
 | Live Vercel | `VERCEL_TOKEN` |
+
+**Credentials from OpenSesame (`HOBO_CREDENTIALS=opensesame`, [ADR-0170](../../docs/design/adr/02-identity-security.md#adr-0170)).**
+The composed `hobo` then relaunches itself once, before composing anything, as
+`opensesame dev --agent --schema <generated> run -- <this invocation>` (through
+[`@hobo/adapter-opensesame`](../adapters/adapter-opensesame/README.md)), reading
+`hobo.credentials.json` (references only) from the directory the verb works in
+(`--cwd`, else the working directory), and exits
+with the run's status: the command's own, 77 for a tripwire, 128+n for a signal,
+1 for a run that left placeholders or never started. The relaunched process
+holds an `osr_` surrogate in `VERCEL_TOKEN`; `selectIacProvider` refuses anything
+else with `OPENSESAME_PLACEHOLDERS_ONLY` before any request (it runs when the
+runtime is composed, so a placeholder run stops there with status 1). Vercel only; AWS is
+not brokered. `src/credentials-opensesame.ts`. An invocation that runs no verb
+(`--help`, no verb, an unknown verb or option) needs no credential: it is answered
+without starting OpenSesame, composed with none.
+
+`hobo-mcp` relaunches the same way (its tools run the same verbs), stdin and stdout
+passing through to the relaunched server, but only with `OPENSESAME_STORE_PASSWORD`
+in its environment: its stdin is the MCP stream, which OpenSesame would otherwise
+read the store passphrase from. Without it, it starts nothing and exits 1 with one
+`hobo: OPENSESAME_STORE_PASSWORD_REQUIRED` line. The library entry points
+(`createComposedHoboCli`, `createDefaultYardRuntime`, `openBareMetalYard`) never
+relaunch; outside a proxied run they throw the typed `OpenSesameCredentialsError`
+when the runtime is composed.
+
+The relaunch gets only the Node options that read no environment or code from disk
+(`src/relaunch-node-options.ts`): `node --env-file=.env hobo up` does not re-read
+`.env` in the run, and `--require`, any `--import` but hobo's own TypeScript loader,
+and `--inspect` are left out too, from the command line and from `NODE_OPTIONS`, and
+named on one `hobo:` line. A relaunched process that still holds another provider's credential
+(`CLOUDFLARE_API_TOKEN`, `AWS_*`, `PULUMI_ACCESS_TOKEN`, … beside its surrogate) is
+refused with `OPENSESAME_CREDENTIALS_BESIDE_SURROGATE`, which names the variables and
+never their values. `HOBO_PULUMI_LIVE=1` is refused there too
+(`OPENSESAME_LANE_NOT_BROKERED`): the live Pulumi engine authenticates with credentials
+found outside OpenSesame, which only brokers Vercel's token.
 
 Related execution paths:
 

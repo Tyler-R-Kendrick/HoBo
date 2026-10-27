@@ -34,6 +34,8 @@ export interface PrepareOnboardingOptions {
 	trustedRefs: readonly string[];
 	trustedRepositoryAcknowledged: boolean;
 	publicRepoAcknowledged?: boolean;
+	allowAllPullRequests?: boolean;
+	isolatedHostAvailable?: boolean;
 	runnerGroupId?: number;
 	assets: { workflow: string; bootstrap: string };
 }
@@ -187,9 +189,11 @@ export function createGithubAppManifest(options: {
 		hookAttributes: { url: `${relay}/github/webhooks`, active: true },
 		redirectUrl: callback(options.manifestCallbackUrl),
 		setupUrl: callback(options.installationCallbackUrl),
+		callbackUrls: [`${relay}/v1/app-registration/oauth/callback`],
 		public: true,
 		defaultEvents: ["workflow_job", "workflow_run"],
-		defaultPermissions: { ...REQUIRED_PERMISSIONS },
+		// Required for GitHub App user tokens to verify an organization administrator.
+		defaultPermissions: { ...REQUIRED_PERMISSIONS, members: "read" },
 	});
 }
 /** GitHub's manifest uses snake_case; protobuf JSON names are explicitly pinned. */
@@ -204,7 +208,7 @@ async function identity(
 	installationId: number,
 	repository: string,
 	expectedRepositoryId: number,
-	publicAcknowledged: boolean,
+	publicAccess: { acknowledged: boolean; isolatedHostAvailable: boolean },
 ) {
 	const app = z
 		.object({ id: Id, slug: z.string().regex(/^[A-Za-z0-9_-]+$/) })
@@ -242,8 +246,13 @@ async function identity(
 		repo.full_name.toLowerCase() !== repository.toLowerCase()
 	)
 		throw new Error("GitHub repository identity changed");
-	if (!repo.private && !publicAcknowledged)
-		throw new Error("public repository acknowledgment required");
+	if (
+		!repo.private &&
+		!(publicAccess.acknowledged && publicAccess.isolatedHostAvailable)
+	)
+		throw new Error(
+			"public repositories require acknowledgment and an isolated runner provider",
+		);
 	branchName(repo.default_branch);
 	const bot = z
 		.object({ id: Id, login: z.string(), type: z.literal("Bot") })
@@ -338,12 +347,17 @@ export async function prepareOnboarding(
 	const relay = origin(options.relayUrl);
 	if (!options.trustedRepositoryAcknowledged)
 		throw new Error("trusted repository acknowledgment required");
+	if (options.allowAllPullRequests && !options.isolatedHostAvailable)
+		throw new Error("isolated runner required for pull requests");
 	const { repo, bot } = await identity(
 		github,
 		options.installationId,
 		options.repository,
 		options.expectedRepositoryId,
-		options.publicRepoAcknowledged ?? false,
+		{
+			acknowledged: options.publicRepoAcknowledged === true,
+			isolatedHostAvailable: options.isolatedHostAvailable === true,
+		},
 	);
 	const ref = Ref.parse(
 		await json(
@@ -389,6 +403,7 @@ export async function prepareOnboarding(
 		dispatcherActorId: bot.id,
 		trustedRefs: [...options.trustedRefs].sort(),
 		publicRepoAcknowledged: options.publicRepoAcknowledged ?? false,
+		allowAllPullRequests: options.allowAllPullRequests ?? false,
 		trustedRepositoryAcknowledged: true,
 		files: [
 			create(OnboardingFileSchema, {
@@ -489,13 +504,17 @@ async function findPullRequest(
 async function planIdentity(
 	github: OnboardingGithubPort,
 	plan: OnboardingPlan,
+	isolatedHostAvailable: boolean,
 ) {
 	const found = await identity(
 		github,
 		plan.installationId,
 		plan.repository,
 		plan.repositoryId,
-		plan.publicRepoAcknowledged,
+		{
+			acknowledged: plan.publicRepoAcknowledged,
+			isolatedHostAvailable,
+		},
 	);
 	if (
 		found.repo.default_branch !== plan.defaultBranch ||
@@ -509,10 +528,11 @@ export async function applyOnboarding(
 	github: OnboardingGithubPort,
 	principal: Pick<OnboardingPrincipal, "accountId" | "installationIds">,
 	input: OnboardingPlan,
+	isolatedHostAvailable = false,
 ): Promise<OnboardingApplyResult> {
 	const plan = checkedPlan(input);
 	authorize(principal, plan.accountId, plan.installationId);
-	await planIdentity(github, plan);
+	await planIdentity(github, plan, isolatedHostAvailable);
 	const prefix = `/repos/${plan.repository}`;
 	let branchResponse = await api(
 		github,
@@ -688,10 +708,11 @@ export async function connectRepository(
 	github: OnboardingGithubPort,
 	principal: Pick<OnboardingPrincipal, "accountId" | "installationIds">,
 	input: OnboardingPlan,
+	isolatedHostAvailable = false,
 ): Promise<Connection> {
 	const plan = checkedPlan(input);
 	authorize(principal, plan.accountId, plan.installationId);
-	await planIdentity(github, plan);
+	await planIdentity(github, plan, isolatedHostAvailable);
 	const prefix = `/repos/${plan.repository}`;
 	const pr = await findPullRequest(github, plan);
 	if (!pr?.merged_at || !pr.merge_commit_sha)
@@ -773,9 +794,12 @@ export async function connectRepository(
 		bridgeRef: plan.bridgeRef,
 		runnerGroupId: plan.runnerGroupId,
 		dispatcherActorId: plan.dispatcherActorId,
-		allowedEvents: ["push", "workflow_dispatch"],
+		allowedEvents: plan.allowAllPullRequests
+			? ["push", "workflow_dispatch", "pull_request"]
+			: ["push", "workflow_dispatch"],
 		allowedRefs: [...plan.trustedRefs],
 		trustedRepositoryAcknowledged: true,
 		publicRepositoryAcknowledged: plan.publicRepoAcknowledged,
+		allowAllPullRequests: plan.allowAllPullRequests,
 	});
 }

@@ -1,0 +1,13 @@
+syntax = "proto3";
+package hobo.ci.vercel.v1;
+
+// A GitHub delivery was committed to the inbox and may be processed.
+message HostedQueueWakeup {
+  string delivery_id = 1;
+}
+
+// The private queue invokes independent scheduled or continuation repair.
+message HostedQueueRepair {
+  string source = 1;
+  string name = 2;
+}

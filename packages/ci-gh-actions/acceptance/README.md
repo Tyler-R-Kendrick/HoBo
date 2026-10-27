@@ -59,6 +59,23 @@ node --import tsx packages/ci-gh-actions/scripts/acceptance.ts --live-verify --r
 Success is only a permission probe, not a live workflow pass. A 403 is a failed
 probe. The local lane does not repair permissions or conceal this result.
 
+For the first JIT-only check, the reviewed manual acceptance workflow supports
+`jit_only=true`. It avoids checkout, external actions and artifacts so it can
+establish runner registration and a shell step before testing larger transfers.
+After the App installation is bound, provision a current Sandbox offer and
+account policy, enable the isolated host, and connect the repository with the
+universal shared-label acknowledgment described in [onboarding](../ONBOARDING.md).
+Dispatch the reviewed branch with:
+
+```sh
+gh workflow run hobo-ci-acceptance.yml --ref "$REVIEWED_BRANCH" -f jit_only=true
+```
+
+Correlate the GitHub run and runner name with the relay lease, then verify both
+Sandbox sessions stopped and usage was settled. A passing shell step alone does
+not prove provider selection, cleanup or billing, and this mode does not test
+checkout or artifacts. The default dispatch runs the full acceptance recipe.
+
 For live execution, install the relay and trusted host workflow first, then use
 the existing `.github/workflows/hobo-ci-acceptance.yml` in this repository. Its
 reviewed source is `../templates/hobo-ci-smoke.yml`; keep those bytes unchanged.

@@ -117,6 +117,19 @@ describe("durable account policy and usage snapshots", () => {
 			if (!c) throw new Error("fixture");
 			c.bridgeSha = "a".repeat(40);
 			expect(() => store.configure(changed, 1, NOW)).toThrow(/active lease/);
+			const isolated = clone(config);
+			const isolatedConnection = isolated.connections[0];
+			if (!isolatedConnection) throw new Error("fixture");
+			isolatedConnection.isolatedOnly = true;
+			isolatedConnection.acceptAllMatchingRepositoryJobs = true;
+			isolatedConnection.publicRepositoryAcknowledged = true;
+			isolatedConnection.allowedEvents = [];
+			isolatedConnection.allowedRefs = [];
+			isolatedConnection.bridgeWorkflow = "";
+			isolatedConnection.bridgeSha = "";
+			isolatedConnection.bridgeRef = "";
+			isolatedConnection.dispatcherActorId = 0;
+			expect(() => store.configure(isolated, 1, NOW)).toThrow(/active lease/);
 			const changedProvider = clone(config);
 			const o = changedProvider.accounts[0]?.offers[0];
 			if (!o) throw new Error("fixture");
@@ -124,6 +137,23 @@ describe("durable account policy and usage snapshots", () => {
 			expect(() => store.configure(changedProvider, 1, NOW)).toThrow(
 				/active lease/,
 			);
+			for (const broaden of [
+				(connection: NonNullable<typeof c>) => {
+					connection.allowAllPullRequests = true;
+				},
+				(connection: NonNullable<typeof c>) => {
+					connection.allowedEvents.push("pull_request");
+				},
+				(connection: NonNullable<typeof c>) => {
+					connection.allowedRefs.push("refs/heads/other");
+				},
+			]) {
+				const expanded = clone(config);
+				const connection = expanded.connections[0];
+				if (!connection) throw new Error("fixture");
+				broaden(connection);
+				expect(() => store.configure(expanded, 1, NOW)).toThrow(/active lease/);
+			}
 			a.budgetMicros = 200000;
 			expect(store.configure(config, 1, NOW).revision).toBe(2);
 			expect(store.all()).toHaveLength(1);
@@ -132,6 +162,28 @@ describe("durable account policy and usage snapshots", () => {
 					.events()
 					.filter((event) => event.type === "ci.ConfigurationChanged"),
 			).toHaveLength(2);
+		} finally {
+			store.close();
+		}
+	});
+	it("never routes an isolated-only repository through the local workflow bridge", async () => {
+		const store = new LeaseStore(":memory:");
+		try {
+			const config = await configuration();
+			const account = config.accounts[0];
+			const connection = config.connections[0];
+			if (!account || !connection) throw new Error("fixture");
+			connection.isolatedOnly = true;
+			connection.acceptAllMatchingRepositoryJobs = true;
+			connection.publicRepositoryAcknowledged = true;
+			connection.allowedEvents = [];
+			connection.allowedRefs = [];
+			connection.bridgeWorkflow = "";
+			connection.bridgeSha = "";
+			connection.bridgeRef = "";
+			connection.dispatcherActorId = 0;
+			store.configure(config, 0, NOW);
+			expect(store.reserve(account, original(), NOW)).toBeUndefined();
 		} finally {
 			store.close();
 		}
@@ -198,6 +250,80 @@ describe("durable account policy and usage snapshots", () => {
 			store.close();
 		}
 	});
+	it("settles an exact fractional free reservation after an inclusive snapshot without exceeding its cap", async () => {
+		const store = new LeaseStore(":memory:");
+		try {
+			const config = await configuration();
+			const account = config.accounts[0];
+			const offer = account?.offers[0];
+			if (!account || !offer) throw new Error("fixture");
+			account.maxRuntimeMinutes = 9;
+			account.startupMinutes = 1;
+			account.budgetMicros = 900;
+			offer.budgetMicros = 900;
+			offer.freeMinutes = 9.1;
+			offer.priceMicrosPerMinute = 1000;
+			store.configure(config, 0, NOW);
+			const lease = store.reserve(account, original(), NOW);
+			if (!lease) throw new Error("fixture reservation");
+			expect(lease.reservedPaidMicros).toBe(900);
+			account.usageObservedAt = "2026-10-27T12:20:00Z";
+			account.spentMicros = 900;
+			offer.observedAt = account.usageObservedAt;
+			offer.freeMinutes = 0;
+			offer.spentMicros = 900;
+			store.configure(config, 1, "2026-10-27T12:21:00Z");
+			const settled = store.settle(
+				lease.id,
+				0,
+				10,
+				"2026-10-27T12:30:00Z",
+				undefined,
+				"2026-10-27T12:10:00Z",
+			);
+			expect(settled).toMatchObject({
+				billedFreeMinutes: 9.1,
+				paidMicros: 900,
+				usageCompletedAt: "2026-10-27T12:10:00Z",
+			});
+			expect(settled?.paidMicros).toBeLessThanOrEqual(lease.reservedPaidMicros);
+			expect(
+				route(account, store.all(), "2026-10-27T12:30:00Z"),
+			).toBeUndefined();
+		} finally {
+			store.close();
+		}
+	});
+	it("settles fractional billed duration exactly and rejects unsafe quantities atomically", async () => {
+		const store = new LeaseStore(":memory:");
+		try {
+			const config = await configuration();
+			const account = config.accounts[0];
+			const offer = account?.offers[0];
+			if (!account || !offer) throw new Error("fixture");
+			account.maxRuntimeMinutes = 9;
+			account.startupMinutes = 1;
+			offer.freeMinutes = 9.1;
+			offer.priceMicrosPerMinute = 1000;
+			const lease = store.reserve(account, original(), NOW);
+			if (!lease) throw new Error("fixture reservation");
+			expect(() =>
+				store.settle(lease.id, 0, Number.MAX_SAFE_INTEGER + 1, NOW),
+			).toThrow(/invalid settlement/);
+			expect(() =>
+				store.settle(lease.id, 0, Number.MAX_SAFE_INTEGER, NOW),
+			).toThrow(/unsafe settlement cost/);
+			expect(store.get(lease.id)?.state).toBe("reserved");
+			const settled = store.settle(lease.id, 0, 9.35, NOW);
+			expect(settled).toMatchObject({
+				billedMinutes: 9.35,
+				billedFreeMinutes: 9.1,
+				paidMicros: 250,
+			});
+		} finally {
+			store.close();
+		}
+	});
 	it("persists budget signal ordering across reopen and rejects stale or discarded watermarks", async () => {
 		const path = await disk();
 		let store = new LeaseStore(path);
@@ -255,6 +381,125 @@ describe("durable account policy and usage snapshots", () => {
 			expect(() => store.configure(config, 1, NOW)).toThrow(/backwards/);
 			expect(store.configuration()?.revision).toBe(1);
 			expect(store.events()).toHaveLength(1);
+		} finally {
+			store.close();
+		}
+	});
+	it("requires newer provider and account observation facts and rejects future provider observations", async () => {
+		const store = new LeaseStore(":memory:");
+		try {
+			const config = await configuration();
+			const account = config.accounts[0];
+			const offer = account?.offers[0];
+			if (!account || !offer) throw new Error("fixture");
+			account.usageObservedAt = offer.observedAt;
+			store.configure(config, 0, NOW);
+			for (const field of [
+				"freeMinutes",
+				"priceMicrosPerMinute",
+				"spentMicros",
+			] as const) {
+				const modified = clone(config);
+				const changed = modified.accounts[0]?.offers[0];
+				if (!changed) throw new Error("fixture");
+				changed[field] += 1;
+				expect(() => store.configure(modified, 1, NOW)).toThrow(
+					/newer observation/,
+				);
+			}
+			for (const field of ["validUntil", "sourceUrl"] as const) {
+				const modified = clone(config);
+				const changed = modified.accounts[0]?.offers[0];
+				if (!changed) throw new Error("fixture");
+				changed[field] =
+					field === "validUntil"
+						? "2026-10-29T12:00:00Z"
+						: "https://example.com/new";
+				expect(() => store.configure(modified, 1, NOW)).toThrow(
+					/newer observation/,
+				);
+			}
+			const modified = clone(config);
+			if (!modified.accounts[0]) throw new Error("fixture");
+			modified.accounts[0].spentMicros += 1;
+			expect(() => store.configure(modified, 1, NOW)).toThrow(
+				/newer observation/,
+			);
+			offer.observedAt = "2026-10-28T11:00:00Z";
+			expect(() => store.configure(config, 1, NOW)).toThrow(/future provider/);
+			offer.observedAt = "2026-10-27T11:01:00Z";
+			offer.freeMinutes = 0;
+			account.usageObservedAt = offer.observedAt;
+			account.spentMicros = 1;
+			expect(store.configure(config, 1, NOW).revision).toBe(2);
+		} finally {
+			store.close();
+		}
+	});
+	it("records actual assignment, cancels only unlaunched duplicates, and retains markers during rebuild", async () => {
+		const store = new LeaseStore(":memory:");
+		try {
+			const config = await configuration();
+			const account = config.accounts[0];
+			const offer = account?.offers[0];
+			if (!account || !offer) throw new Error("fixture");
+			offer.concurrency = 3;
+			store.configure(config, 0, NOW);
+			const first = store.reserve(account, original(), NOW);
+			if (!first) throw new Error("first reservation");
+			const otherJob = original();
+			otherJob.id = 2;
+			otherJob.runId = 12;
+			const second = store.reserve(account, otherJob, NOW);
+			if (!second) throw new Error("second reservation");
+			store.transition(
+				first.id,
+				["reserved"],
+				(entry) => {
+					entry.state = "running";
+				},
+				"ci.RunnerStarted",
+				NOW,
+			);
+			const assigned = original();
+			assigned.id = 2;
+			assigned.runId = 12;
+			assigned.action = "in_progress";
+			assigned.runnerName = first.runnerName;
+			store.observe(assigned, NOW);
+			expect(store.get(first.id)?.actualJobId).toBe(2);
+			expect(store.get(second.id)?.state).toBe("cancelled");
+			const before = store.assignedJob(otherJob);
+			expect(before?.leaseId).toBe(first.id);
+			expect(store.reserve(account, otherJob, NOW)).toBeUndefined();
+			expect(
+				store.clearAssignedJob(otherJob, first.id, before?.version ?? "", NOW),
+			).toBe(false);
+			store.observe(assigned, NOW);
+			const current = store.assignedJob(otherJob);
+			expect(current?.version).not.toBe(before?.version);
+			const contradictory = original();
+			contradictory.id = 3;
+			contradictory.action = "in_progress";
+			contradictory.runnerName = first.runnerName;
+			expect(() => store.observe(contradictory, NOW)).toThrow(
+				/assignment conflict/,
+			);
+			store.rebuild();
+			expect(store.assignedJob(otherJob)).toEqual(current);
+			store.settle(first.id, 0, 1, NOW);
+			expect(
+				store.clearAssignedJob(otherJob, first.id, before?.version ?? "", NOW),
+			).toBe(false);
+			expect(
+				store.clearAssignedJob(otherJob, "wrong", current?.version ?? "", NOW),
+			).toBe(false);
+			expect(
+				store.clearAssignedJob(otherJob, first.id, current?.version ?? "", NOW),
+			).toBe(true);
+			expect(store.reserve(account, otherJob, NOW)).toBeDefined();
+			store.rebuild();
+			expect(store.assignedJob(otherJob)).toBeUndefined();
 		} finally {
 			store.close();
 		}

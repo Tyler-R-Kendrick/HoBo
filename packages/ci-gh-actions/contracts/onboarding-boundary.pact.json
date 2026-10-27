@@ -93,8 +93,12 @@
           "contents": "write",
           "workflows": "write",
           "metadata": "read",
-          "pull_requests": "write"
-        }
+          "pull_requests": "write",
+          "members": "read"
+        },
+        "callback_urls": [
+          "https://ci.hobo.test/v1/app-registration/oauth/callback"
+        ]
       },
       "shas": {
         "base": "1111111111111111111111111111111111111111",

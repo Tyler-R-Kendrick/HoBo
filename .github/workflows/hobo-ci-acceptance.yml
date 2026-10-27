@@ -4,6 +4,12 @@
 name: HoBo runner acceptance
 on:
   workflow_dispatch:
+    inputs:
+      jit_only:
+        description: Verify runner registration without checkout or artifacts
+        required: false
+        type: boolean
+        default: false
 permissions:
   contents: read
 concurrency:
@@ -14,14 +20,26 @@ jobs:
     runs-on: hobo
     timeout-minutes: 10
     steps:
+      - name: Verify HoBo JIT runner
+        if: ${{ inputs.jit_only }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${RUNNER_NAME:-}" =~ ^hobo-[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$ ]]
+          test "${RUNNER_ENVIRONMENT:-}" = self-hosted
+          test "${GITHUB_EVENT_NAME:-}" = workflow_dispatch
+          printf 'hobo-jit-smoke run=%s attempt=%s runner=%s\n' "$GITHUB_RUN_ID" "$GITHUB_RUN_ATTEMPT" "$RUNNER_NAME"
       - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
+        if: ${{ !inputs.jit_only }}
         with:
           ref: ${{ github.sha }}
           persist-credentials: false
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        if: ${{ !inputs.jit_only }}
         with:
           node-version: '24'
       - name: Verify runner identity and checked-out revision
+        if: ${{ !inputs.jit_only }}
         env:
           EXPECTED_REPOSITORY: ${{ github.repository }}
           EXPECTED_REF: ${{ github.ref }}
@@ -57,6 +75,7 @@ jobs:
           console.log(JSON.stringify(evidence));
           NODE
       - name: Upload runner and checkout evidence
+        if: ${{ !inputs.jit_only }}
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
           name: hobo-runner-acceptance-${{ github.run_id }}-${{ github.run_attempt }}

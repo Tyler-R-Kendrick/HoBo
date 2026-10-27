@@ -37,13 +37,15 @@
   "dependencies": {
     "@hobo/ci": "workspace:*",
     "@bufbuild/protobuf": "2.12.1",
-    "zod": "^4.1.13"
+    "zod": "^4.1.13",
+    "pg": "8.22.0"
   },
   "devDependencies": {
     "@hobo/ci-dagger": "workspace:*",
     "@hobo/ci-cf": "workspace:*",
     "@dagger.io/dagger": "0.21.11",
     "@cloudflare/workers-types": "5.20260730.1",
-    "yaml": "2.9.0"
+    "yaml": "2.9.0",
+    "@types/pg": "8.15.5"
   }
 }

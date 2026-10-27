@@ -48,7 +48,7 @@ account lease API's actual job attribution to inspect routing and settlement.
 Stations exports `createCiBudgetRoutingBridge` over the typed relay client.
 Subscribe it to the existing Broker `budget.ThresholdCrossed` and
 `budget.Recovered` facts for the account's tenant. A profile chooses the eligible
-provider offers; CI still consumes their free allocations before paid routing.
+provider offers; CI chooses the lowest projected charge after applicable free allocation.
 The highest active configured threshold wins. Recovery restores the lower or
 normal profile, and an empty offer list pauses new admissions.
 
@@ -111,11 +111,12 @@ adapter. App keys and installation tokens remain in the relay.
 
 The GitHub App needs Actions, Administration, Contents, Workflows and Pull requests
 write access, plus Metadata read. Subscribe to `workflow_job` and `workflow_run`.
-The registration helper `createGithubAppManifest` produces the GitHub manifest
-contract. Its registration and installation callback URLs must point to real
-handlers supplied by the platform registering the App; it does not invent a
-working OAuth callback. App registration and secret storage are operator/platform
-provisioning steps. Customer repository setup is handled by the APIs below.
+The hosted Vercel adapter supplies the App bootstrap and OAuth callbacks described
+below. Self-hosted deployments must mount equivalent authenticated callbacks and
+provide encrypted secret storage. Customer repository setup is handled by the
+account APIs below.
+
+[Hosted GitHub App bootstrap and account onboarding](ONBOARDING.md) describes the operator and account flows.
 
 ## Connect a repository
 
@@ -132,9 +133,8 @@ const ci = createCiRelayClient({
   accountToken: () => process.env.HOBO_CI_ACCOUNT_TOKEN!,
 });
 const setup = await ci.prepareRepository({
-  repository: 'Tyler-R-Kendrick/HoBo',
+  repository: 'example/private-repository',
   trustedRepositoryAcknowledged: true,
-  publicRepositoryAcknowledged: true,
   allowedRefs: ['refs/heads/main', 'refs/heads/feat/hobo-ci-production'],
 });
 const pending = await ci.applySetup(setup.id);
@@ -194,9 +194,10 @@ drain the existing hosts before rotating those identities. A connection revoked
 while webhook REST validation is awaiting cannot admit new demand under its old
 binding.
 
-By default, routing consumes usable measured free allocation across eligible
-providers before selecting the cheapest paid offer. It reserves worst-case runtime
-plus startup, checks account/provider budgets and concurrency, and rechecks delayed
+By default, routing selects the eligible offer with the lowest projected charge
+after applying its usable measured free allocation. Fully free offers win over paid
+offers; a partial free balance does not force a more expensive host. The relay
+reserves worst-case runtime plus startup, checks account/provider budgets and concurrency, and rechecks delayed
 launches. Original Actions jobs and portable native pipelines share the ledger.
 Prices use integer USD microdollars; allocations use normalized runner minutes.
 
@@ -230,13 +231,19 @@ must be connected to GitHub with its supported label and supply accurate budget
 inputs. A Kubernetes host is a disposable runner machine, not a nested privileged
 Docker socket exposed by the relay. The relay image itself executes no customer jobs.
 
-The supported trust boundary is repository-wide trusted execution: private repos,
-or explicitly acknowledged public repos with only trusted `hobo` workloads. Fork
-and PR provisioning are refused. GitHub matches labels, not a requested job ID;
-refusing provisioning alone does not prevent assignment of another queued matching
-job. Prevent untrusted jobs from entering that runner pool. The host and nested
-runner share a provider machine, so this protocol does not claim isolation for
-untrusted public forks.
+The workflow bridge requires a private repository with a repository-wide trusted
+execution boundary. Private visibility alone does not establish this boundary:
+everyone who can start a workflow or submit a fork pull request that can execute
+with `runs-on: hobo` must be trusted with the host environment and its credentials.
+GitHub matches labels, not a requested job ID; refusing provisioning for an event
+does not prevent another queued matching job from claiming an already registered
+runner. The host and nested runner share a provider machine, so the bridge cannot
+isolate untrusted workloads. See [GitHub's self-hosted runner security guidance](https://docs.github.com/en/actions/reference/security/secure-use#hardening-for-self-hosted-runners).
+
+Public repositories and PR provisioning are refused, even when public repository
+acknowledgment is set. Drain registered runners before changing a private repository
+to public: GitHub visibility changes cannot be made atomic with a relay admission
+check.
 
 OIDC audience, repository, run attempt, workflow path/SHA, App bot actor, provider
 label and lease title are verified before JIT registration. JIT is single use.

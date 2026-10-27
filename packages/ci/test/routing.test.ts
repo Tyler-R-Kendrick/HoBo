@@ -1,4 +1,4 @@
-import { create, toJsonString } from "@bufbuild/protobuf";
+import { clone, create, toJsonString } from "@bufbuild/protobuf";
 import { describe, expect, it } from "vitest";
 import {
 	AccountSchema,
@@ -66,11 +66,80 @@ describe("account allocation routing", () => {
 		expect(selected?.offer.id).toBe("depot");
 		expect(selected?.paidMicros).toBe(10000);
 	});
-	it("uses the last partial free allocation before an all-paid provider", () => {
+	it("chooses the cheaper total reservation over a more expensive partial free allocation", () => {
 		const a = account();
 		a.offers = [offer("gh", 1, 1000), offer("blacksmith", 0, 100)];
+		const choice = route(a, [], now);
+		expect(choice?.offer.id).toBe("blacksmith");
+		expect(choice?.paidMicros).toBe(1000);
+	});
+	it("prefers usable free allocation when total projected charges tie", () => {
+		const a = account();
+		a.offers = [offer("a", 0, 90), offer("z", 1, 100)];
+		const choice = route(a, [], now);
+		expect(choice?.offer.id).toBe("z");
+		expect(choice?.paidMicros).toBe(900);
+		expect(choice?.freeMinutes).toBe(1);
+	});
+	it("prefers a fully free allocation over a higher-priced provider", () => {
+		const a = account();
+		a.offers = [offer("gh", 10, 9999), offer("blacksmith", 0, 1)];
 		expect(route(a, [], now)?.offer.id).toBe("gh");
-		expect(route(a, [], now)?.paidMicros).toBe(9000);
+		expect(route(a, [], now)?.paidMicros).toBe(0);
+	});
+	it("prices fractional allocation exactly at a microdollar boundary", () => {
+		const a = account();
+		a.offers = [offer("a", 9.1, 1001), offer("z", 9.1, 1000)];
+		a.budgetMicros = 899;
+		expect(route(a, [], now)).toBeUndefined();
+		a.budgetMicros = 900;
+		const choice = route(a, [], now);
+		expect(choice?.offer.id).toBe("z");
+		expect(choice?.freeMinutes).toBe(9.1);
+		expect(choice?.paidMicros).toBe(900);
+	});
+	it("subtracts fractional active and settled free usage with decimal arithmetic", () => {
+		const a = account();
+		a.offers = [offer("gh", 0.3, 1000)];
+		const held = lease("gh", 0.1, 9900);
+		const heldChoice = route(a, [held], now);
+		expect(heldChoice?.freeMinutes).toBe(0.2);
+		expect(heldChoice?.paidMicros).toBe(9800);
+		const settled = lease("gh", 0);
+		Object.assign(settled, {
+			state: "completed",
+			billedFreeMinutes: 0.1,
+			settledAt: now,
+		});
+		const settledChoice = route(a, [settled], now);
+		expect(settledChoice?.freeMinutes).toBe(0.2);
+		expect(settledChoice?.paidMicros).toBe(9800);
+		settled.billedFreeMinutes = 0.2;
+		expect(route(a, [held, settled], now)?.freeMinutes).toBe(0);
+	});
+	it("accounts for scientific-notation free minutes without under-reserving", () => {
+		const a = account();
+		const o = offer("gh", 1e-7, 10000000);
+		a.offers = [o];
+		a.budgetMicros = 100000000;
+		o.budgetMicros = 100000000;
+		expect(route(a, [], now)?.paidMicros).toBe(99999999);
+	});
+	it("never rounds an unrepresentable remaining free balance upward when persisting it", () => {
+		const a = account();
+		a.offers = [offer("gh", 0.1, 1000)];
+		const held = lease("gh", 1e-18, 10000);
+		const choice = route(a, [held], now);
+		expect(choice?.freeMinutes).toBeLessThan(0.1);
+		expect(choice?.paidMicros).toBe(9901);
+	});
+	it("selects the cheapest affordable offer after accounting for outstanding free reservations", () => {
+		const a = account();
+		a.offers = [offer("gh", 10, 1000), offer("blacksmith", 0, 100)];
+		const existing = lease("gh", 9, 1000);
+		expect(route(a, [existing], now)?.offer.id).toBe("blacksmith");
+		a.budgetMicros = 1999;
+		expect(route(a, [existing], now)).toBeUndefined();
 	});
 	it("rejects every candidate when hard budgets are exhausted", () => {
 		const a = account();
@@ -191,6 +260,55 @@ describe("configuration boundary", () => {
 		expect(() =>
 			parseConfiguration(toJsonString(ConfigurationSchema, c)),
 		).toThrow(/pinned/);
+	});
+	it("permits an isolated-only connection without a workflow bridge", () => {
+		const c = config();
+		const connection = present(c.connections[0]);
+		connection.isolatedOnly = true;
+		connection.acceptAllMatchingRepositoryJobs = true;
+		connection.publicRepositoryAcknowledged = true;
+		connection.allowedEvents = [];
+		connection.allowedRefs = [];
+		connection.bridgeWorkflow = "";
+		connection.bridgeSha = "";
+		connection.bridgeRef = "";
+		connection.dispatcherActorId = 0;
+		expect(
+			parseConfiguration(toJsonString(ConfigurationSchema, c)).connections[0]
+				?.isolatedOnly,
+		).toBe(true);
+		for (const mutate of [
+			() => (connection.bridgeWorkflow = "host.yml"),
+			() => (connection.bridgeSha = "a".repeat(40)),
+			() => (connection.bridgeRef = "main"),
+			() => (connection.dispatcherActorId = 123),
+		]) {
+			mutate();
+			expect(() =>
+				parseConfiguration(toJsonString(ConfigurationSchema, c)),
+			).toThrow(/isolated connection/);
+			connection.bridgeWorkflow = "";
+			connection.bridgeSha = "";
+			connection.bridgeRef = "";
+			connection.dispatcherActorId = 0;
+		}
+		for (const [key, value] of [
+			["acceptAllMatchingRepositoryJobs", false],
+			["publicRepositoryAcknowledged", false],
+			["allowAllPullRequests", true],
+			["allowedEvents", ["push"]],
+			["allowedRefs", ["refs/heads/main"]],
+		] as const) {
+			const modified = clone(ConfigurationSchema, c);
+			Object.assign(present(modified.connections[0]), { [key]: value });
+			expect(() =>
+				parseConfiguration(toJsonString(ConfigurationSchema, modified)),
+			).toThrow(/consent/);
+		}
+		connection.isolatedOnly = false;
+		expect(() =>
+			parseConfiguration(toJsonString(ConfigurationSchema, c)),
+		).toThrow();
 	});
 	it("requires acknowledgment of the shared label trust boundary", () => {
 		const c = config();

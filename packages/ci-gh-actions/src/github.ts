@@ -27,6 +27,16 @@ const Run = z.object({
 		private: z.boolean(),
 	}),
 	head_repository: z.object({ id: z.number().int().positive() }).nullable(),
+	pull_requests: z
+		.array(
+			z.object({
+				base: z.object({
+					ref: z.string(),
+					repo: z.object({ id: z.number().int().positive() }),
+				}),
+			}),
+		)
+		.optional(),
 });
 export type GithubRun = z.infer<typeof Run>;
 export async function getRun(
@@ -90,6 +100,8 @@ export async function getJob(
 			run_id: z.number().int().positive(),
 			status: z.string(),
 			labels: z.array(z.string()),
+			runner_name: z.string().nullable().optional(),
+			run_attempt: z.number().int().positive().optional(),
 		})
 		.parse(await response.json());
 }
@@ -126,7 +138,16 @@ export function githubApiUrl(path: string): string {
 	for (const [key, value] of url.searchParams) {
 		if (
 			keys.has(key) ||
-			!["event", "per_page", "page", "ref", "state", "head"].includes(key) ||
+			![
+				"event",
+				"per_page",
+				"page",
+				"ref",
+				"state",
+				"head",
+				"status",
+				"filter",
+			].includes(key) ||
 			!value ||
 			value.length > 200 ||
 			Array.from(value).some((character) => {
@@ -145,6 +166,15 @@ export function githubApiUrl(path: string): string {
 			throw new Error("invalid GitHub API pagination");
 		if (key === "event" && value !== "workflow_dispatch")
 			throw new Error("invalid GitHub API event");
+		if (
+			key === "status" &&
+			!["queued", "in_progress", "waiting", "pending", "requested"].includes(
+				value,
+			)
+		)
+			throw new Error("invalid GitHub API status");
+		if (key === "filter" && value !== "latest")
+			throw new Error("invalid GitHub API filter");
 		if (key === "state" && !["all", "open", "closed"].includes(value))
 			throw new Error("invalid GitHub API state");
 	}

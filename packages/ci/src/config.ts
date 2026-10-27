@@ -1,5 +1,9 @@
 import { fromJsonString } from "@bufbuild/protobuf";
 import { type Configuration, ConfigurationSchema } from "./_generated/ci_pb.js";
+import {
+	validateSandboxAllowance,
+	validateSandboxPricing,
+} from "./sandbox-pricing.js";
 
 export function parseConfiguration(json: string): Configuration {
 	const config = fromJsonString(ConfigurationSchema, json);
@@ -41,11 +45,15 @@ export function parseConfiguration(json: string): Configuration {
 			if (!/^[a-zA-Z0-9_-]{1,80}$/.test(offer.id) || ids.has(offer.id))
 				throw new Error("invalid or duplicate offer");
 			ids.add(offer.id);
-			if (!["", "gh-actions", "dagger", "cf"].includes(offer.backend))
+			if (
+				!["", "gh-actions", "dagger", "cf", "sandbox"].includes(offer.backend)
+			)
 				throw new Error("unsupported execution backend");
 			if (
 				(offer.provider === "dagger" && offer.backend !== "dagger") ||
-				(offer.provider === "cloudflare" && offer.backend !== "cf")
+				(offer.provider === "cloudflare" && offer.backend !== "cf") ||
+				(offer.provider === "vercel" && offer.backend !== "sandbox") ||
+				(offer.backend === "sandbox" && offer.provider !== "vercel")
 			)
 				throw new Error(
 					"native provider requires its matching execution backend",
@@ -59,9 +67,28 @@ export function parseConfiguration(json: string): Configuration {
 					"kubernetes",
 					"dagger",
 					"cloudflare",
+					"vercel",
 				].includes(offer.provider)
 			)
 				throw new Error("unsupported provider");
+			if (offer.backend === "sandbox") {
+				if (!offer.sandboxPricing || offer.freeMinutes !== 0)
+					throw new Error(
+						"sandbox requires a rate card and no unmodeled free allocation",
+					);
+				validateSandboxPricing(offer.sandboxPricing);
+				if (
+					offer.sandboxPricing.proxyVmRequired &&
+					offer.priceMicrosPerMinute !== 0
+				)
+					throw new Error(
+						"two-VM direct Sandbox cannot claim an unmetered host rate",
+					);
+				if (offer.sandboxAllowance)
+					validateSandboxAllowance(offer.sandboxAllowance);
+			} else if (offer.sandboxPricing || offer.sandboxAllowance) {
+				throw new Error("sandbox pricing requires sandbox backend");
+			}
 			micros(offer.priceMicrosPerMinute, offer.budgetMicros, offer.spentMicros);
 			const key = `${offer.provider}:${offer.providerAccountId}`;
 			if (!offer.providerAccountId || entitlements.has(key))
@@ -112,22 +139,48 @@ export function parseConfiguration(json: string): Configuration {
 			connection.repositoryId,
 			connection.installationId,
 			connection.runnerGroupId,
-			connection.dispatcherActorId,
 		);
-		if (!/^[a-zA-Z0-9_/-]{1,100}$/.test(connection.bridgeRef))
-			throw new Error("protected bridge branch or tag ref required");
+		if (connection.isolatedOnly) {
+			if (
+				!connection.acceptAllMatchingRepositoryJobs ||
+				!connection.publicRepositoryAcknowledged ||
+				connection.allowAllPullRequests ||
+				connection.allowedEvents.length !== 0 ||
+				connection.allowedRefs.length !== 0
+			)
+				throw new Error(
+					"isolated connection requires consent to all repository jobs and public repository acknowledgment, without event or ref filters",
+				);
+			if (
+				connection.bridgeWorkflow ||
+				connection.bridgeSha ||
+				connection.bridgeRef ||
+				connection.dispatcherActorId !== 0
+			)
+				throw new Error("isolated connection cannot specify a workflow bridge");
+		} else {
+			if (connection.acceptAllMatchingRepositoryJobs)
+				throw new Error(
+					"accepting all repository jobs requires isolated-only mode",
+				);
+			positiveId(connection.dispatcherActorId);
+			if (!/^[a-zA-Z0-9_/-]{1,100}$/.test(connection.bridgeRef))
+				throw new Error("protected bridge branch or tag ref required");
+			if (
+				!/^[a-zA-Z0-9_-]+\.ya?ml$/.test(connection.bridgeWorkflow) ||
+				!/^[a-f0-9]{40}$/.test(connection.bridgeSha)
+			)
+				throw new Error("bridge workflow requires a pinned commit SHA");
+		}
 		if (
-			!/^[a-zA-Z0-9_-]+\.ya?ml$/.test(connection.bridgeWorkflow) ||
-			!/^[a-f0-9]{40}$/.test(connection.bridgeSha)
-		)
-			throw new Error("bridge workflow requires a pinned commit SHA");
-		if (
-			connection.allowedEvents.length === 0 ||
-			connection.allowedEvents.some(
-				(event) => !["push", "workflow_dispatch"].includes(event),
-			) ||
-			connection.allowedRefs.length === 0 ||
-			connection.allowedRefs.some((ref) => !ref.startsWith("refs/heads/"))
+			!connection.isolatedOnly &&
+			(connection.allowedEvents.length === 0 ||
+				connection.allowedEvents.some(
+					(event) =>
+						!["push", "workflow_dispatch", "pull_request"].includes(event),
+				) ||
+				connection.allowedRefs.length === 0 ||
+				connection.allowedRefs.some((ref) => !ref.startsWith("refs/heads/")))
 		)
 			throw new Error("explicit trusted branch and event allowlists required");
 	}

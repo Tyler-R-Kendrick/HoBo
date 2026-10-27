@@ -17,6 +17,7 @@ package ghactions
 	dispatcherActorId: number & >0
 	trustedRefs: [string & =~"^refs/heads/.+", ...string & =~"^refs/heads/.+"]
 	publicRepoAcknowledged?: bool
+	allowAllPullRequests?: bool
 	trustedRepositoryAcknowledged: true
 	files: [#OnboardingFile, #OnboardingFile]
 	relayUrl: string & =~"^https://[^/]+/?$"
@@ -31,8 +32,9 @@ package ghactions
 	hook_attributes: #GithubAppHookAttributes
 	redirect_url: string & =~"^https://"
 	setup_url: string & =~"^https://"
+	callback_urls: [string & =~"^https://", ...string & =~"^https://"]
 	public?: bool
 	default_events: ["workflow_job", "workflow_run"]
-	default_permissions: {actions: "write", administration: "write", contents: "write", workflows: "write", metadata: "read", pull_requests: "write"}
+	default_permissions: {actions: "write", administration: "write", contents: "write", workflows: "write", metadata: "read", pull_requests: "write", members: "read"}
 }
 #Onboarding: #JitBootstrapResponse | #OnboardingPrincipal | #OnboardingFile | #OnboardingPlan | #OnboardingApplyResult | #OnboardingOperation | #GithubAppHookAttributes | #GithubAppManifest

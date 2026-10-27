@@ -1,5 +1,12 @@
 import { createDispatcherRegistry, decideDispatch } from "@hobo/dispatcher";
-import type { Account, Lease, Offer } from "./_generated/ci_pb.js";
+import type {
+	Account,
+	Lease,
+	Offer,
+	SandboxAllowance,
+} from "./_generated/ci_pb.js";
+import { allocationQuote } from "./accounting.js";
+import { sandboxReservationQuote } from "./sandbox-pricing.js";
 
 export const ACTIVE_STATES = new Set([
 	"reserved",
@@ -52,23 +59,77 @@ export function route(account: Account, leases: readonly Lease[], now: string) {
 					Date.parse(lease.usageCompletedAt || lease.settledAt) >
 					Date.parse(offer.observedAt),
 			)
-			.reduce((sum, lease) => sum + lease.billedFreeMinutes, 0);
-		const free =
+			.map((lease) => lease.billedFreeMinutes);
+		// Sandbox charges are multidimensional and cannot consume host-minute credits.
+		if (
+			offer.backend === "sandbox" &&
+			(!offer.sandboxPricing ||
+				offer.freeMinutes !== 0 ||
+				(offer.sandboxPricing.proxyVmRequired &&
+					offer.priceMicrosPerMinute !== 0))
+		)
+			return [];
+		const allocation =
 			Date.parse(offer.validUntil) < Date.parse(now) + minutes * 60000
-				? 0
-				: Math.max(
-						0,
-						offer.freeMinutes -
-							usedFree -
-							reserved.reduce(
-								(sum, lease) => sum + lease.reservedFreeMinutes,
-								0,
-							),
+				? allocationQuote(0, [], minutes, offer.priceMicrosPerMinute)
+				: allocationQuote(
+						offer.freeMinutes,
+						[
+							...usedFree,
+							...reserved.map((lease) => lease.reservedFreeMinutes),
+						],
+						minutes,
+						offer.priceMicrosPerMinute,
 					);
-		const reservedFree = Math.min(free, minutes);
-		const paid = Math.ceil(
-			(minutes - reservedFree) * offer.priceMicrosPerMinute,
-		);
+		let { free, reservedFree, paid } = allocation;
+		let sandboxReservedAllowance: SandboxAllowance | undefined;
+		if (offer.backend === "sandbox") {
+			if (
+				offer.sandboxAllowance &&
+				(reserved.some((lease) => !lease.sandboxReservedAllowance) ||
+					used.some(
+						(lease) =>
+							Date.parse(lease.usageCompletedAt || lease.settledAt) >
+								Date.parse(offer.observedAt) && !lease.sandboxUsedAllowance,
+					))
+			)
+				return [];
+			if (
+				!offer.sandboxPricing ||
+				Date.parse(offer.validUntil) < Date.parse(now) + minutes * 60000
+			)
+				return [];
+			try {
+				const quote = sandboxReservationQuote(
+					offer.sandboxPricing,
+					minutes,
+					offer.priceMicrosPerMinute,
+					offer.sandboxAllowance,
+					[
+						...reserved.flatMap((lease) =>
+							lease.sandboxReservedAllowance
+								? [lease.sandboxReservedAllowance]
+								: [],
+						),
+						...used
+							.filter(
+								(lease) =>
+									Date.parse(lease.usageCompletedAt || lease.settledAt) >
+									Date.parse(offer.observedAt),
+							)
+							.flatMap((lease) =>
+								lease.sandboxUsedAllowance ? [lease.sandboxUsedAllowance] : [],
+							),
+					],
+				);
+				paid = quote.paidMicros;
+				sandboxReservedAllowance = quote.reservedAllowance;
+			} catch {
+				return [];
+			}
+			free = 0;
+			reservedFree = 0;
+		}
 		const providerSpent =
 			offer.spentMicros +
 			used
@@ -84,13 +145,34 @@ export function route(account: Account, leases: readonly Lease[], now: string) {
 			providerSpent + paid > offer.budgetMicros
 		)
 			return [];
-		return [{ offer, free, reservedFree, paid }];
+		return [{ offer, free, reservedFree, paid, sandboxReservedAllowance }];
 	});
-	// Consume remaining usable free allocations before comparing paid prices.
-	// Jobs cannot be split between machines; reserve enough for the entire host.
-	const freeCandidates = candidates.filter((candidate) => candidate.free > 0);
-	const eligible = freeCandidates.length > 0 ? freeCandidates : candidates;
-	if (eligible.length === 0) return undefined;
+	// A job cannot split across offers. Compare the rounded paid cost of the
+	// entire reservation before preferring free headroom on equal-cost offers.
+	if (candidates.length === 0) return undefined;
+	const lowestPaidMicros = candidates.reduce(
+		(lowest, candidate) => Math.min(lowest, candidate.paid),
+		Number.POSITIVE_INFINITY,
+	);
+	const cheapest = candidates.filter(
+		(candidate) => candidate.paid === lowestPaidMicros,
+	);
+	const freeCandidates = cheapest.filter((candidate) => {
+		const allowance = candidate.sandboxReservedAllowance;
+		return (
+			candidate.reservedFree > 0 ||
+			(allowance !== undefined &&
+				(allowance.cpuVcpuMs > 0 ||
+					allowance.memoryMbMs > 0 ||
+					allowance.egressBytes > 0 ||
+					allowance.creations > 0 ||
+					allowance.proxyBytes > 0 ||
+					allowance.proxySessions > 0))
+		);
+	});
+	const eligible = freeCandidates.length > 0 ? freeCandidates : cheapest;
+	// Dispatcher ranks the lowest-cost shortlist, retaining its native credit
+	// rationale and deterministic tie-breaking.
 	const decision = decideDispatch({
 		category: "runner",
 		dispatchId: "ci-route",
@@ -124,6 +206,7 @@ export function route(account: Account, leases: readonly Lease[], now: string) {
 		minutes,
 		freeMinutes: selected.reservedFree,
 		paidMicros: selected.paid,
+		sandboxReservedAllowance: selected.sandboxReservedAllowance,
 		decision: decision.dispatchEvent,
 	};
 }

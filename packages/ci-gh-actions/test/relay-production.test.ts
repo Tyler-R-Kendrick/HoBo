@@ -42,10 +42,7 @@ it.each([
 	"public",
 ])("rechecks %s authority after REST awaits before reserving or persisting demand", async (change) => {
 	const h = setup();
-	if (change === "public") {
-		connection(h).publicRepositoryAcknowledged = true;
-		h.api.original.repository.private = false;
-	}
+	if (change === "public") connection(h).publicRepositoryAcknowledged = true;
 	h.store.configure(h.configuration, 0, NOW);
 	const entered = deferred();
 	const gate = deferred();
@@ -75,7 +72,7 @@ it.each([
 		if (change === "removed") next.connections = [];
 		if (change === "branch") updated.allowedRefs = ["refs/heads/new-trusted"];
 		if (change === "event") updated.allowedEvents = ["workflow_dispatch"];
-		if (change === "public") updated.publicRepositoryAcknowledged = false;
+		if (change === "public") h.api.original.repository.private = false;
 		const state = h.store.configure(next, 1, NOW);
 		if (!state.configuration) throw new Error("committed policy missing");
 		h.relay.options.config = state.configuration;
@@ -93,28 +90,41 @@ it.each([
 	expect(h.store.configure(h.configuration, 2, NOW).revision).toBe(3);
 });
 
-it("runs and settles a trusted public repository only after explicit public opt-in", async () => {
+it("refuses an acknowledged public repository even for a trusted push", async () => {
 	const h = setup();
 	connection(h).publicRepositoryAcknowledged = true;
 	h.api.original.repository.private = false;
-	h.api.host.repository = { id: 101, private: false };
+	const payload = signed(queued());
+	expect(
+		await h.relay.webhook(payload.body, payload.signature, "workflow_job"),
+	).toBe("ignored");
+	await h.relay.dispatchPending();
+	expect(h.store.all()).toEqual([]);
+	expect(h.api.dispatches).toBe(0);
+	expect(h.api.registrations).toBe(0);
+});
+
+it("cancels before dispatch if an opted-in repository becomes public after reservation", async () => {
+	const h = setup();
+	connection(h).publicRepositoryAcknowledged = true;
+	const lease = await reserve(h);
+	h.api.original.repository.private = false;
+	await h.relay.dispatchPending();
+	expect(h.api.dispatches).toBe(0);
+	expect(h.store.get(lease.id)?.state).toBe("cancelled");
+});
+
+it("refuses JIT if an opted-in repository becomes public after host dispatch", async () => {
+	const h = setup();
+	connection(h).publicRepositoryAcknowledged = true;
 	const lease = await reserve(h);
 	await h.relay.dispatchPending();
-	expect(h.api.dispatches).toBe(1);
-	expect(await h.relay.claim(lease.id, "valid")).toMatchObject({
-		encodedJitConfig: "c2VjcmV0",
-	});
-	h.api.host.status = "completed";
-	h.api.jobStatus = "completed";
-	await h.relay.reconcile(lease.id, 22);
-	expect(h.store.get(lease.id)).toMatchObject({
-		state: "completed",
-		hostRunId: 22,
-		runnerId: 42,
-		billedMinutes: 1,
-	});
-	expect(h.api.registrations).toBe(1);
-	expect(h.api.deletes).toBe(1);
+	h.api.original.repository.private = false;
+	h.api.host.repository.private = false;
+	await expect(h.relay.claim(lease.id, "valid")).rejects.toThrow(
+		/authority revoked/,
+	);
+	expect(h.api.registrations).toBe(0);
 });
 
 it.each([
@@ -276,6 +286,8 @@ it.each([
 	"event",
 ])("does not dispatch after %s authority is revoked during GitHub reads", async (change) => {
 	const h = setup();
+	connection(h).allowedRefs.push("refs/heads/other");
+	connection(h).allowedEvents.push("workflow_dispatch");
 	h.store.configure(h.configuration, 0, NOW);
 	const lease = await reserve(h);
 	const entered = deferred();
@@ -312,6 +324,8 @@ it.each([
 	"event",
 ])("does not issue JIT after %s authority is revoked during host checks", async (change) => {
 	const h = setup();
+	connection(h).allowedRefs.push("refs/heads/other");
+	connection(h).allowedEvents.push("workflow_dispatch");
 	h.store.configure(h.configuration, 0, NOW);
 	const lease = await reserve(h);
 	await h.relay.dispatchPending();

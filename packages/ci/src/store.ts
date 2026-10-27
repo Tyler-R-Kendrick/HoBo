@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
 import { create, fromJsonString, toJsonString } from "@bufbuild/protobuf";
 import { z } from "zod";
+import { allocationQuote } from "./accounting.js";
 import {
 	ACTIVE_STATES,
 	type Account,
@@ -20,20 +21,36 @@ import {
 	type PipelineResult,
 	parseConfiguration,
 	route,
+	SandboxAllowanceSchema,
+	SandboxPricingSchema,
 } from "./index.js";
 
 /** Single-writer partition. Events and their materialized lease view commit together. */
 export class LeaseStore {
 	private readonly db: DatabaseSync;
-	constructor(path: string) {
-		this.db = new DatabaseSync(path);
+	constructor(path: string, database?: DatabaseSync) {
+		this.db = database ?? new DatabaseSync(path);
 		this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
    CREATE TABLE IF NOT EXISTS events (seq INTEGER PRIMARY KEY, body TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS leases (id TEXT PRIMARY KEY, job_key TEXT NOT NULL, body TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS terminal_jobs (job_key TEXT PRIMARY KEY);
+   CREATE TABLE IF NOT EXISTS assigned_jobs (job_key TEXT PRIMARY KEY, lease_id TEXT NOT NULL, version TEXT NOT NULL DEFAULT '');
    CREATE TABLE IF NOT EXISTS pending_jobs (job_key TEXT PRIMARY KEY, body TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS configuration_state (id INTEGER PRIMARY KEY CHECK(id=1), body TEXT NOT NULL);
    CREATE TABLE IF NOT EXISTS control_records (key TEXT PRIMARY KEY, body TEXT NOT NULL);`);
+		const assignmentColumns = this.db
+			.prepare("PRAGMA table_info(assigned_jobs)")
+			.all();
+		if (!assignmentColumns.some((column) => column.name === "version"))
+			this.db.exec(
+				"ALTER TABLE assigned_jobs ADD COLUMN version TEXT NOT NULL DEFAULT ''",
+			);
+		for (const row of this.db
+			.prepare("SELECT job_key FROM assigned_jobs WHERE version='' ")
+			.all())
+			this.db
+				.prepare("UPDATE assigned_jobs SET version=? WHERE job_key=?")
+				.run(randomUUID(), z.string().parse(row.job_key));
 	}
 	close(): void {
 		this.db.close();
@@ -120,8 +137,41 @@ export class LeaseStore {
 							Date.parse(old.usageObservedAt))
 				)
 					throw new Error("account usage snapshot cannot move backwards");
+				if (
+					old?.usageObservedAt &&
+					account.usageObservedAt === old.usageObservedAt &&
+					account.spentMicros !== old.spentMicros
+				)
+					throw new Error("account usage facts require a newer observation");
 				for (const offer of account.offers) {
 					const oldOffer = old?.offers.find((entry) => entry.id === offer.id);
+					if (Date.parse(offer.observedAt) > Date.parse(at))
+						throw new Error("future provider usage snapshot");
+					if (
+						oldOffer &&
+						offer.observedAt === oldOffer.observedAt &&
+						(offer.freeMinutes !== oldOffer.freeMinutes ||
+							offer.priceMicrosPerMinute !== oldOffer.priceMicrosPerMinute ||
+							offer.spentMicros !== oldOffer.spentMicros ||
+							offer.validUntil !== oldOffer.validUntil ||
+							offer.sourceUrl !== oldOffer.sourceUrl ||
+							(oldOffer.sandboxPricing
+								? toJsonString(SandboxPricingSchema, oldOffer.sandboxPricing)
+								: "") !==
+								(offer.sandboxPricing
+									? toJsonString(SandboxPricingSchema, offer.sandboxPricing)
+									: "") ||
+							(oldOffer.sandboxAllowance
+								? toJsonString(
+										SandboxAllowanceSchema,
+										oldOffer.sandboxAllowance,
+									)
+								: "") !==
+								(offer.sandboxAllowance
+									? toJsonString(SandboxAllowanceSchema, offer.sandboxAllowance)
+									: ""))
+					)
+						throw new Error("provider usage facts require a newer observation");
 					if (
 						oldOffer &&
 						Date.parse(offer.observedAt) < Date.parse(oldOffer.observedAt)
@@ -167,13 +217,21 @@ export class LeaseStore {
 						next.repository !== lease.repository ||
 						next.installationId !== lease.installationId ||
 						(old &&
-							(old.bridgeWorkflow !== next.bridgeWorkflow ||
+							(old.isolatedOnly !== next.isolatedOnly ||
+								old.acceptAllMatchingRepositoryJobs !==
+									next.acceptAllMatchingRepositoryJobs ||
+								old.bridgeWorkflow !== next.bridgeWorkflow ||
 								old.bridgeSha !== next.bridgeSha ||
 								old.bridgeRef !== next.bridgeRef ||
 								old.runnerGroupId !== next.runnerGroupId ||
 								old.dispatcherActorId !== next.dispatcherActorId ||
 								old.publicRepositoryAcknowledged !==
-									next.publicRepositoryAcknowledged))
+									next.publicRepositoryAcknowledged ||
+								(!old.allowAllPullRequests && next.allowAllPullRequests) ||
+								next.allowedEvents.some(
+									(event) => !old.allowedEvents.includes(event),
+								) ||
+								next.allowedRefs.some((ref) => !old.allowedRefs.includes(ref))))
 					)
 						throw new Error("active lease prevents repository binding change");
 				}
@@ -334,10 +392,19 @@ export class LeaseStore {
 			.run(lease.id, this.leaseKey(lease), body);
 	}
 	reserve(account: Account, job: Job, at: string): Lease | undefined {
+		// This local adapter only launches trusted GitHub workflow bridges.
+		if (job.isolatedRequired) return undefined;
 		return this.transaction(() => {
+			const binding = this.configuration()?.configuration?.connections.find(
+				(entry) => entry.repositoryId === job.repositoryId,
+			);
+			if (binding?.isolatedOnly) return undefined;
 			const key = `${job.repositoryId}:${job.id}:${job.runAttempt}`;
 			if (
-				this.db.prepare("SELECT 1 FROM terminal_jobs WHERE job_key=?").get(key)
+				this.db
+					.prepare("SELECT 1 FROM terminal_jobs WHERE job_key=?")
+					.get(key) ||
+				this.db.prepare("SELECT 1 FROM assigned_jobs WHERE job_key=?").get(key)
 			)
 				return undefined;
 			const leases = this.all();
@@ -411,6 +478,7 @@ export class LeaseStore {
 		const key = `${job.repositoryId}:${job.id}:${job.runAttempt}`;
 		if (
 			this.db.prepare("SELECT 1 FROM terminal_jobs WHERE job_key=?").get(key) ||
+			this.db.prepare("SELECT 1 FROM assigned_jobs WHERE job_key=?").get(key) ||
 			this.db.prepare("SELECT 1 FROM pending_jobs WHERE job_key=?").get(key) ||
 			this.all().some(
 				(lease) =>
@@ -440,6 +508,50 @@ export class LeaseStore {
 			.all()
 			.map((row) => fromJsonString(JobSchema, z.string().parse(row.body)));
 	}
+	assignedJob(job: Job): { leaseId: string; version: string } | undefined {
+		const row = this.db
+			.prepare("SELECT lease_id,version FROM assigned_jobs WHERE job_key=?")
+			.get(`${job.repositoryId}:${job.id}:${job.runAttempt}`);
+		return row
+			? {
+					leaseId: z.string().parse(row.lease_id),
+					version: z.string().parse(row.version),
+				}
+			: undefined;
+	}
+	/** Call only after GitHub verifies this exact job is queued and its owner is terminal. */
+	clearAssignedJob(
+		job: Job,
+		leaseId: string,
+		version: string,
+		at: string,
+	): boolean {
+		return this.transaction(() => {
+			const lease = this.get(leaseId);
+			if (!lease || ACTIVE_STATES.has(lease.state)) return false;
+			const key = `${job.repositoryId}:${job.id}:${job.runAttempt}`;
+			const changed =
+				this.db
+					.prepare(
+						"DELETE FROM assigned_jobs WHERE job_key=? AND lease_id=? AND version=?",
+					)
+					.run(key, leaseId, version).changes === 1;
+			if (changed)
+				this.db.prepare("INSERT INTO events(body) VALUES (?)").run(
+					toJsonString(
+						CiEventSchema,
+						create(CiEventSchema, {
+							type: "ci.JobAssignmentCleared",
+							at,
+							leaseId,
+							detail: toJsonString(JobSchema, job),
+						}),
+					),
+				);
+			return changed;
+		});
+	}
+
 	observe(job: Job, at: string): void {
 		this.transaction(() => {
 			if (job.action === "completed") {
@@ -448,6 +560,7 @@ export class LeaseStore {
 					.prepare("INSERT OR IGNORE INTO terminal_jobs(job_key) VALUES (?)")
 					.run(key);
 				this.db.prepare("DELETE FROM pending_jobs WHERE job_key=?").run(key);
+				this.db.prepare("DELETE FROM assigned_jobs WHERE job_key=?").run(key);
 				this.db.prepare("INSERT INTO events(body) VALUES (?)").run(
 					toJsonString(
 						CiEventSchema,
@@ -466,8 +579,59 @@ export class LeaseStore {
 						candidate.runnerName === job.runnerName,
 				);
 				if (lease && ACTIVE_STATES.has(lease.state)) {
+					if (lease.actualJobId && lease.actualJobId !== job.id)
+						throw new Error("runner job assignment conflict");
 					lease.actualJobId = job.id;
 					this.append(lease, "ci.JobObserved", at);
+					// GitHub can assign a different queued job to this label. Release
+					// only duplicate reservations that have not launched a host yet.
+					if (job.action === "in_progress" || job.action === "completed") {
+						if (job.action === "in_progress") {
+							const key = `${job.repositoryId}:${job.id}:${job.runAttempt}`;
+							const prior = this.db
+								.prepare("SELECT lease_id FROM assigned_jobs WHERE job_key=?")
+								.get(key);
+							if (prior && prior.lease_id !== lease.id)
+								throw new Error("job assigned to another runner");
+							const version = randomUUID();
+							this.db
+								.prepare(
+									"INSERT INTO assigned_jobs(job_key,lease_id,version) VALUES(?,?,?) ON CONFLICT(job_key) DO UPDATE SET version=excluded.version",
+								)
+								.run(key, lease.id, version);
+							this.db.prepare("INSERT INTO events(body) VALUES (?)").run(
+								toJsonString(
+									CiEventSchema,
+									create(CiEventSchema, {
+										type: "ci.JobAssigned",
+										at,
+										accountId: lease.accountId,
+										leaseId: lease.id,
+										detail: JSON.stringify({
+											job: JSON.parse(toJsonString(JobSchema, job)),
+											version,
+										}),
+									}),
+								),
+							);
+						}
+						for (const duplicate of this.all()) {
+							if (
+								duplicate.id !== lease.id &&
+								duplicate.accountId === lease.accountId &&
+								duplicate.repositoryId === job.repositoryId &&
+								duplicate.jobId === job.id &&
+								duplicate.runAttempt === job.runAttempt &&
+								duplicate.state === "reserved"
+							) {
+								duplicate.state = "cancelled";
+								this.append(duplicate, "ci.LeaseCancelled", at);
+							}
+						}
+						this.db
+							.prepare("DELETE FROM pending_jobs WHERE job_key=?")
+							.run(`${job.repositoryId}:${job.id}:${job.runAttempt}`);
+					}
 				}
 			}
 			// Original-job completion NEVER releases a host reservation.
@@ -487,19 +651,27 @@ export class LeaseStore {
 			if (!lease || !ACTIVE_STATES.has(lease.state)) return undefined;
 			if (lease.hostRunId !== 0 && lease.hostRunId !== hostRunId)
 				throw new Error("host run mismatch");
-			if (!Number.isFinite(billedMinutes) || billedMinutes < 0)
+			if (
+				!Number.isFinite(billedMinutes) ||
+				billedMinutes < 0 ||
+				billedMinutes > Number.MAX_SAFE_INTEGER
+			)
 				throw new Error("invalid settlement");
 			lease.hostRunId = hostRunId;
 			lease.state = "completed";
 			lease.billedMinutes = billedMinutes;
-			lease.billedFreeMinutes =
+			const quote = allocationQuote(
 				Date.parse(completedAt) <= Date.parse(lease.freeValidUntil)
-					? Math.min(billedMinutes, lease.reservedFreeMinutes)
-					: 0;
-			lease.paidMicros = Math.ceil(
-				Math.max(0, billedMinutes - lease.billedFreeMinutes) *
-					lease.priceMicrosPerMinute,
+					? lease.reservedFreeMinutes
+					: 0,
+				[],
+				billedMinutes,
+				lease.priceMicrosPerMinute,
 			);
+			if (!Number.isSafeInteger(quote.paid))
+				throw new Error("unsafe settlement cost");
+			lease.billedFreeMinutes = quote.reservedFree;
+			lease.paidMicros = quote.paid;
 			lease.settledAt = at;
 			lease.usageCompletedAt = completedAt;
 			if (result) lease.result = result;
@@ -550,7 +722,7 @@ export class LeaseStore {
 	rebuild(): void {
 		this.transaction(() => {
 			this.db.exec(
-				"DELETE FROM leases; DELETE FROM pending_jobs; DELETE FROM terminal_jobs; DELETE FROM configuration_state; DELETE FROM control_records;",
+				"DELETE FROM leases; DELETE FROM pending_jobs; DELETE FROM terminal_jobs; DELETE FROM assigned_jobs; DELETE FROM configuration_state; DELETE FROM control_records;",
 			);
 			for (const event of this.events()) {
 				if (event.type === "ci.ConfigurationChanged") {
@@ -571,10 +743,43 @@ export class LeaseStore {
 						.run(record.key, event.detail);
 					continue;
 				}
+				if (
+					["ci.JobAssigned", "ci.JobAssignmentCleared"].includes(event.type)
+				) {
+					const wrapped = z
+						.object({ job: z.json(), version: z.string() })
+						.safeParse(JSON.parse(event.detail));
+					const job = fromJsonString(
+						JobSchema,
+						wrapped.success ? JSON.stringify(wrapped.data.job) : event.detail,
+					);
+					const key = `${job.repositoryId}:${job.id}:${job.runAttempt}`;
+					if (event.type === "ci.JobAssigned")
+						this.db
+							.prepare(
+								"INSERT INTO assigned_jobs(job_key,lease_id,version) VALUES (?,?,?) ON CONFLICT(job_key) DO UPDATE SET lease_id=excluded.lease_id,version=excluded.version",
+							)
+							.run(
+								key,
+								event.leaseId,
+								wrapped.success ? wrapped.data.version : randomUUID(),
+							);
+					else
+						this.db
+							.prepare(
+								"DELETE FROM assigned_jobs WHERE job_key=? AND lease_id=?",
+							)
+							.run(key, event.leaseId);
+					continue;
+				}
+
 				if (["ci.JobQueued", "ci.JobCompleted"].includes(event.type)) {
 					const job = fromJsonString(JobSchema, event.detail);
 					const key = `${job.repositoryId}:${job.id}:${job.runAttempt}`;
 					if (event.type === "ci.JobCompleted") {
+						this.db
+							.prepare("DELETE FROM assigned_jobs WHERE job_key=?")
+							.run(key);
 						this.db
 							.prepare(
 								"INSERT OR IGNORE INTO terminal_jobs(job_key) VALUES (?)",

@@ -35,10 +35,11 @@ response limit; it cannot handle larger workflow transfers.
 The proxy reserves traffic in durable blocks before forwarding. Blocks start at
 64 KiB and grow during sustained transfers. The growth cap is one sixteenth of
 the configured allowance, bounded between 64 KiB and 4 MiB. An individual
-larger stream chunk is split into grants of at most 4 MiB. Unused grants expire after five seconds and
-still count against the allowance, so a small idle request does not reserve a
-large block. A denied grant fails the stream closed; the rate limit and total
-allowance can still constrain exceptionally large or fast transfers.
+larger stream chunk is split into grants of at most 4 MiB. Unused grants expire
+after five seconds and still count against the allowance, so a small idle
+request does not reserve a large block. A denied grant fails the stream closed;
+the rate limit and total allowance can still constrain exceptionally large or
+fast transfers.
 Each proxied request also has a 120-second absolute deadline.
 
 The quota measures application traffic and does not guarantee an exact bill or
@@ -55,6 +56,14 @@ wildcard patterns are `*.actions.githubusercontent.com` and
 matches the parent domain. The Azure Blob wildcard includes accounts outside
 GitHub, so enabling it allows jobs to send data to any publicly reachable Azure
 Blob account under that suffix. Configure it only when that egress is acceptable.
+A typical GitHub Actions runner using checkout, Node setup, and artifacts may
+need `github.com`, `api.github.com`, `codeload.github.com`,
+`raw.githubusercontent.com`, `nodejs.org`, `release-assets.githubusercontent.com`,
+`*.actions.githubusercontent.com`, and `*.blob.core.windows.net`. Configure
+the exact hosts used by the workflow's dependencies and redirect targets too;
+this list is not exhaustive. GitHub can download an action during job setup
+even when the action's workflow step is conditional, so its hosts must be
+allowed before the job starts.
 A live Sandbox test verified forwarding of a GitHub
 Actions subdomain and denial of the parent, a suffix-confusion host and a direct
 IP. A second test sent an Actions subdomain request through the bundled proxy,

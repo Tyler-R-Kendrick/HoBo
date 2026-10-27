@@ -1,4 +1,8 @@
-import { createServer, type IncomingMessage } from "node:http";
+import {
+	createServer,
+	type IncomingMessage,
+	type RequestListener,
+} from "node:http";
 import { toJsonString } from "@bufbuild/protobuf";
 import { JitBootstrapResponseSchema } from "./_generated/jit_bootstrap_response_pb.js";
 import type { Relay } from "./relay.js";
@@ -15,8 +19,10 @@ async function body(request: IncomingMessage): Promise<Buffer> {
 	return Buffer.concat(chunks);
 }
 
-export function createRelayServer(relay: Relay) {
-	return createServer(async (request, response) => {
+export function createRelayRequestHandler(
+	relay: Pick<Relay, "webhook" | "claim">,
+): RequestListener {
+	return async (request, response) => {
 		response.setHeader("Content-Type", "application/json");
 		response.setHeader("Cache-Control", "no-store");
 		if (request.method === "GET" && request.url === "/healthz") {
@@ -70,5 +76,9 @@ export function createRelayServer(relay: Relay) {
 			return;
 		}
 		response.writeHead(404).end('{"error":"not found"}');
-	});
+	};
+}
+
+export function createRelayServer(relay: Pick<Relay, "webhook" | "claim">) {
+	return createServer(createRelayRequestHandler(relay));
 }

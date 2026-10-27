@@ -17,8 +17,9 @@ transaction; no network operation runs in the transaction. Durable reserved leas
 form the outbox. Intent is persisted before dispatch/JIT creation. An ambiguous
 result remains held and is never automatically retried. Replay reconstructs leases,
 pending jobs and terminal tombstones. SQLite is the adapter, not the SDK contract.
-A shared storage-journal/Broker event-envelope adapter remains a tracked platform
-integration task; this package owns its initial narrow journal schema.
+The authenticated account API is a platform composition boundary over the shared
+CI actor. A platform can inject its own authentication authority; the deployable
+file adapter binds token hashes and GitHub installations to an account.
 
 All persisted contracts are generated from `../ci/data-models/ci.proto`. Zod parses
 external GitHub REST/webhook subsets and OIDC claims once at the I/O boundary. CUE
@@ -31,7 +32,7 @@ another lease's title. Protected ref dispatch plus SHA verification establishes
 reviewed workflow content. Repository-wide trusted execution is still mandatory:
 GitHub cannot bind a JIT runner to one job ID, and nested processes share a machine.
 No live provider, production isolation, invoice accuracy or multi-region durability
-claim follows from these tests. See README trust limits and implementation backlog.
+claim follows from these tests. See README trust limits and deployment acceptance.
 
 Parse, don't validate: Zod and protobuf constructors establish parsed domain types
 at external boundaries. The local JIT response type is generated from this package's
@@ -44,3 +45,32 @@ Multiple historical leases for one job are valid. At most one active planned lea
 is deduplicated in the writer transaction; a verified queued original job is
 requeued atomically with host settlement. This prevents reordered webhook delivery
 or runner assignment from stranding work. Replay preserves this re-admission.
+
+
+The production service owns HTTP admission/readiness, isolated reconciliation
+ticks, bounded drain and a process-lifetime kernel partition lock. Account policy
+and server-created onboarding operations survive restart/rebuild. CAS prevents
+lost updates; active leases fence provider/bridge identity changes. Setup uses a
+normal repository PR and verifies merged bytes before locking and rechecking its
+bridge branch. The client never supplies replacement server plan files. Public
+repositories require explicit trust acknowledgment in addition to existing checks.
+
+Deployable Node24 artifacts include actual secret-file handling, UID1000,
+read-only root, durable volume, health probes, online backup and locked offline
+restore. The connected acceptance lane exercises signed HTTP, real RS256/JWKS,
+JIT authorization, the shipped process launcher and real act jobs in one lease
+chain. Live GitHub assignment is separately evidenced by a manual literal
+`runs-on: hobo` recipe. Authentication/HTTP/provider/deployment Pacts, generated
+protobuf/CUE, real POSIX process tests and an actual container lifecycle prevent
+a skipped job or simulated dispatch from masquerading as a live runner proof.
+
+
+HoBo platform budget facts reach CI through the Station budget-routing bridge.
+Generated Broker-signal and routing-profile contracts live in `@hobo/ci`, while
+Station owns the subscription adapter over the authenticated account client.
+Each threshold persists its cycle and crossed flag with policy, and eligibility
+uses the highest active configured threshold. CAS protects concurrent updates;
+old/replayed facts cannot regress watermarks. Empty profiles pause admission,
+recovery restores the applicable profile, and existing leases retain identity.
+This composes the existing Broker budget plane with CI without importing Station
+or Broker runtime dependencies into the relay deployment.

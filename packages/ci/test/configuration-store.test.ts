@@ -198,6 +198,49 @@ describe("durable account policy and usage snapshots", () => {
 			store.close();
 		}
 	});
+	it("persists budget signal ordering across reopen and rejects stale or discarded watermarks", async () => {
+		const path = await disk();
+		let store = new LeaseStore(path);
+		try {
+			const config = await configuration();
+			const account = config.accounts[0];
+			if (!account) throw new Error("fixture");
+			const key = "broker:example:1";
+			account.routingSignalCycles[key] = 1;
+			account.routingSignalCrossed[key] = true;
+			store.configure(config, 0, NOW);
+			store.close();
+			store = new LeaseStore(path);
+			store.rebuild();
+			expect(
+				store.configuration()?.configuration?.accounts[0]?.routingSignalCycles[
+					key
+				],
+			).toBe(1);
+			const missing = clone(config);
+			const missingAccount = missing.accounts[0];
+			if (!missingAccount) throw new Error("fixture");
+			delete missingAccount.routingSignalCycles[key];
+			delete missingAccount.routingSignalCrossed[key];
+			expect(() => store.configure(missing, 1, NOW)).toThrow(
+				/watermark cannot move backwards/,
+			);
+			account.routingSignalCrossed[key] = false;
+			expect(() => store.configure(config, 1, NOW)).toThrow(/newer cycle/);
+			account.routingSignalCycles[key] = 2;
+			expect(store.configure(config, 1, NOW).revision).toBe(2);
+			expect(() =>
+				store.configure(create(ConfigurationSchema), 2, NOW),
+			).toThrow(/watermark cannot move backwards/);
+			delete account.routingSignalCrossed[key];
+			expect(() => store.configure(config, 2, NOW)).toThrow(
+				/invalid routing signal state/,
+			);
+			expect(store.configuration()?.revision).toBe(2);
+		} finally {
+			store.close();
+		}
+	});
 	it("refuses future and backwards usage watermarks without mutating its journal", async () => {
 		const store = new LeaseStore(":memory:");
 		try {

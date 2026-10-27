@@ -1,0 +1,163 @@
+import { create, fromJsonString, toJsonString } from "@bufbuild/protobuf";
+import {
+	type Account,
+	AccountSchema,
+	type AccountState,
+	BudgetRoutingPolicySchema,
+	BudgetSignalSchema,
+} from "@hobo/ci";
+
+/** The account-scoped relay client implements this port without a Station dependency. */
+export interface CiBudgetRoutingClient {
+	getPolicy(): Promise<AccountState>;
+	putPolicy(
+		account: Account,
+		options: { revision: number },
+	): Promise<AccountState>;
+}
+
+export interface CiBudgetRoutingOutcome {
+	changed: boolean;
+	revision: number;
+}
+
+export interface CiBudgetRoutingBridge {
+	/** Deliver the Broker fact's {type,data}; retry a revision conflict from the journal. */
+	accept(serializedBrokerFact: string): Promise<CiBudgetRoutingOutcome>;
+	/** Apply a changed routing profile to the already persisted signal state. */
+	reconcile(): Promise<CiBudgetRoutingOutcome>;
+}
+
+type CiBudgetRoutingPolicyInput = NonNullable<
+	Parameters<typeof create<typeof BudgetRoutingPolicySchema>>[1]
+>;
+
+function uniqueOfferIds(ids: readonly string[]): readonly string[] {
+	if (
+		ids.some((id) => !/^[a-zA-Z0-9_-]{1,80}$/.test(id)) ||
+		new Set(ids).size !== ids.length
+	)
+		throw new Error("invalid or duplicate CI routing offer identifier");
+	return Object.freeze([...ids]);
+}
+
+/** Translate tenant-scoped Broker budget transitions into durable CI eligibility.
+ * Monetary snapshots and active leases remain owned by the relay. Profile changes
+ * affect future admissions; they never move or repeat an already admitted job.
+ */
+export function createCiBudgetRoutingBridge(options: {
+	policy: CiBudgetRoutingPolicyInput;
+	client: CiBudgetRoutingClient;
+}): CiBudgetRoutingBridge {
+	const policy = fromJsonString(
+		BudgetRoutingPolicySchema,
+		toJsonString(
+			BudgetRoutingPolicySchema,
+			create(BudgetRoutingPolicySchema, options.policy),
+		),
+	);
+	if (
+		!/^[a-zA-Z0-9_-]{1,80}$/.test(policy.accountId) ||
+		!policy.tenantId ||
+		policy.thresholds.length === 0 ||
+		policy.thresholds.some(
+			(rule) =>
+				!Number.isFinite(rule.thresholdFraction) ||
+				rule.thresholdFraction <= 0 ||
+				rule.thresholdFraction > 1,
+		) ||
+		new Set(policy.thresholds.map((rule) => rule.thresholdFraction)).size !==
+			policy.thresholds.length
+	)
+		throw new Error("invalid CI budget routing policy");
+	const accountId = policy.accountId;
+	const tenantId = policy.tenantId;
+	const normal = uniqueOfferIds(policy.normalOfferIds);
+	const thresholds = Object.freeze(
+		policy.thresholds
+			.map((rule) =>
+				Object.freeze({
+					fraction: rule.thresholdFraction,
+					offerIds: uniqueOfferIds(rule.offerIds),
+				}),
+			)
+			.sort((left, right) => right.fraction - left.fraction),
+	);
+	const key = (fraction: number) => `broker:${tenantId}:${fraction}`;
+
+	async function state() {
+		const current = await options.client.getPolicy();
+		if (current.account?.id !== accountId)
+			throw new Error("CI routing account does not match relay policy");
+		const account = fromJsonString(
+			AccountSchema,
+			toJsonString(AccountSchema, current.account),
+		);
+		const offers = new Set(account.offers.map((offer) => offer.id));
+		if (
+			[normal, ...thresholds.map((rule) => rule.offerIds)].some((ids) =>
+				ids.some((id) => !offers.has(id)),
+			)
+		)
+			throw new Error("CI routing profile references an unknown offer");
+		return { account, revision: current.revision };
+	}
+	function eligibility(account: Account): boolean {
+		const profile =
+			thresholds.find(
+				(rule) => account.routingSignalCrossed[key(rule.fraction)] === true,
+			)?.offerIds ?? normal;
+		const allowed = new Set(profile);
+		let changed = false;
+		for (const offer of account.offers) {
+			const enabled = allowed.has(offer.id);
+			if (enabled !== offer.enabled) changed = true;
+			offer.enabled = enabled;
+		}
+		return changed;
+	}
+	async function write(account: Account, revision: number) {
+		const saved = await options.client.putPolicy(account, { revision });
+		return { changed: true, revision: saved.revision };
+	}
+	return Object.freeze({
+		async accept(serializedBrokerFact: string) {
+			const signal = fromJsonString(BudgetSignalSchema, serializedBrokerFact);
+			const data = signal.data;
+			const crossed = signal.type === "budget.ThresholdCrossed";
+			if (
+				!data ||
+				data.tenantId !== tenantId ||
+				(!crossed && signal.type !== "budget.Recovered") ||
+				!Number.isFinite(data.budgetUsd) ||
+				data.budgetUsd <= 0 ||
+				!Number.isFinite(data.thresholdFraction) ||
+				data.thresholdFraction <= 0 ||
+				data.thresholdFraction > 1 ||
+				!Number.isFinite(data.thresholdUsd) ||
+				data.thresholdUsd !==
+					Number((data.thresholdFraction * data.budgetUsd).toFixed(9)) ||
+				!Number.isFinite(data.netSpentUsd) ||
+				data.netSpentUsd >= data.thresholdUsd !== crossed ||
+				data.cycle < 1 ||
+				data.signalKey !==
+					`budget:${tenantId}:${data.thresholdFraction}:${crossed ? "crossed" : "recovered"}:${data.cycle}`
+			)
+				throw new Error("invalid or foreign CI budget signal");
+			const { account, revision } = await state();
+			const signalKey = key(data.thresholdFraction);
+			if (data.cycle <= (account.routingSignalCycles[signalKey] ?? 0))
+				return { changed: false, revision };
+			account.routingSignalCycles[signalKey] = data.cycle;
+			account.routingSignalCrossed[signalKey] = crossed;
+			eligibility(account);
+			return write(account, revision);
+		},
+		async reconcile() {
+			const { account, revision } = await state();
+			return eligibility(account)
+				? write(account, revision)
+				: { changed: false, revision };
+		},
+	});
+}

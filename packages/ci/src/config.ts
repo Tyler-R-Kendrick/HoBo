@@ -11,6 +11,18 @@ export function parseConfiguration(json: string): Configuration {
 			throw new Error("invalid or duplicate account");
 		accountIds.add(account.id);
 		micros(account.budgetMicros, account.spentMicros);
+		const signalKeys = Object.keys(account.routingSignalCycles);
+		if (
+			signalKeys.length !== Object.keys(account.routingSignalCrossed).length ||
+			signalKeys.some(
+				(key) =>
+					!key.startsWith("broker:") ||
+					key.length > 300 ||
+					!Object.hasOwn(account.routingSignalCrossed, key) ||
+					(account.routingSignalCycles[key] ?? 0) < 1,
+			)
+		)
+			throw new Error("invalid routing signal state");
 		if (
 			account.usageObservedAt &&
 			!Number.isFinite(Date.parse(account.usageObservedAt))

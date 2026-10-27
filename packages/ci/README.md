@@ -136,3 +136,10 @@ publisher; this SDK does not invent vendor balances or invoice accuracy.
 Connections permit public repositories only with explicit
 `publicRepositoryAcknowledged` and the existing repository-wide trust contract.
 No new demand may use a connection revoked while asynchronous validation awaited.
+
+
+Broker-to-CI routing contracts include `BudgetSignal` and `BudgetRoutingPolicy`.
+The Station adapter changes offer eligibility through the account API and stores
+per-threshold cycle/crossed maps on `Account`. The journal rejects discarded or
+regressed watermarks and same-cycle state changes; replay preserves ordering.
+Inclusive monetary snapshots remain independent of routing signal state.

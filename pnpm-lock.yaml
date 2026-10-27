@@ -618,6 +618,9 @@ importers:
       '@hobo/ci-dagger':
         specifier: workspace:*
         version: link:../ci-dagger
+      yaml:
+        specifier: 2.9.0
+        version: 2.9.0
 
   packages/ci-guard:
     devDependencies:
@@ -2317,9 +2320,15 @@ importers:
 
   packages/stations:
     dependencies:
+      '@bufbuild/protobuf':
+        specifier: 2.12.1
+        version: 2.12.1
       '@hobo/bindles':
         specifier: workspace:*
         version: link:../bindles
+      '@hobo/ci':
+        specifier: workspace:*
+        version: link:../ci
       '@hobo/connectivity':
         specifier: workspace:*
         version: link:../connectivity

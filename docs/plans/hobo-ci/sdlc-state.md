@@ -1,47 +1,44 @@
-# HoBo.CI session delivery state
+# HoBo.CI delivery state
 
-- Delivery branch: `feat/hobo-ci` (squash-merged)
-- Phase: closed
-- Foundation commit: `2a71e90fa`
-- Scope: monorepo SDKs, provider contracts, portable execution and local act tests
-- External resources created for validation: none
-- Parent owns shared contracts, registry/lock changes, review and merge.
-- SDK implementation and act harness were reviewed independently and repaired.
-- Designer consensus: required by SDK/API/docs path classification; current-head
-  council evidence is recorded in the local OptimizeXP review bus before merge.
-- PR: [#1594](https://github.com/Tyler-R-Kendrick/HoBo/pull/1594), squash-merged to `main`.
-- Merge commit: `a262136d98e6699f8093c45fb36e32ea0a931864`.
-- Reviewed head: `56fdbe73b6f09dc3a39b94bb5f8310cc17e4fb9b`.
-- Council: `hobo-ci-1594/sdk-closeout`, cycle 2, unanimous **yay**.
-- Consensus entry: `sdk-closeout-cycle-2-consensus`.
-- Proposal digest: `2251301bd67552f2e0337c69a4de34ef99e051a7520ac30ec247a1601188ee7e`.
-- Current-head assertion and review closure: `2026-10-26T23:51:40.751Z` immediately before merge.
-- Validation: 238 CI SDK/contract tests; 22 protocol regressions; 19 PR-base
-  repository checks; 40 actual act jobs plus zero-budget refusal.
-- PR review threads: none unresolved. CodeRabbit skipped its automatic review;
-  independent technical review and the SDK/DX council supplied assessment.
+- Current phase: production implementation and branch validation
+- Current branch: `feat/hobo-ci-production`
+- Prior SDK delivery: [#1594](https://github.com/Tyler-R-Kendrick/HoBo/pull/1594),
+  squash `a262136d98e6699f8093c45fb36e32ea0a931864`; its closure record was #1595.
+- Current user acceptance: deployable service and a testable `runs-on: hobo` branch,
+  not an experimental/scaffold-only release.
+- Parent owns shared contracts, composition, docs, gates and PR delivery.
+- Isolated implementation/review covered onboarding, runtime lifecycle,
+  deployment, connected acceptance, host shutdown and workflow policy.
 
-## Acceptance
+## Production repairs
 
-GitHub Actions, Dagger and Cloudflare implement one portable command contract.
-Provider selection respects usable credits, prices, account/provider budgets,
-concurrency, expiry and backend capability. Replay is durable; only definitive
-pre-allocation refusal can fail over. Real local act workflow execution is
-asserted from job identities and independent artifacts, not exit status alone.
+Persistent account policy/operation state, tenant-scoped authenticated API,
+repository setup PRs and verified protected pins, token-bound installation authority,
+secret-file deployment, process owner fencing, bounded drain, process-group cleanup,
+public-repository opt-in, async revocation fencing, paginated discovery, inclusive
+usage snapshots, monotonic ready operations and readonly-backup restore are implemented.
+The Station bridge consumes actual Broker budget facts and persists threshold
+ordering with account policy. Independent review found dispatch/JIT authority
+revocation races; both are fixed with deferred-request regression tests.
+Final package/schema/acceptance/image validation is in progress.
 
-## Review repairs
+## Evidence and boundary
 
-Delayed expiry, changed credit facts, displaced Actions demand, uncertain launch,
-abort/rejection races, input mutation, artifact truncation/size, UTF-8 bounds,
-Cloudflare timeout/snapshot rules, account-bound scheduler contexts and Dagger command caching/teardown have
-regression coverage. No live-provider proof is claimed by these tests.
+Actual local act execution, full connected protocol tests and the nonroot image
+lifecycle are independently observable. An actual GitHub queue/vendor run remains
+unverified: runner-management API permission was HTTP403, and automatic approval
+review rejected an additional optional live probe under the prior contract-only
+scope. No extra repository/App/provider resource was created to bypass this.
 
-Native pre-launch crash recovery cancels untouched reservations for fresh
-admission; running intents remain uncertain. Disk reopen, journal rebuild and
-completed-result replay are verified independently.
+The active acceptance workflow is manual-only and has literal `runs-on: hobo`;
+all preserved hosted CI remains disabled. Do not label a local/permission/identity
+check as successful remote runner execution. See README for exact test commands.
 
-The SDK council rejected a broken documented pnpm invocation; the corrected
-installer and harness commands passed, including 40 actual workflow jobs.
-Closeout also repaired cross-cycle validation of resolved council findings:
-22 protocol regressions pass, including current-cycle deletion and historical
-tampering rejection. Resolved records remain auditable in the append-only bus.
+## Prior review history
+
+The original SDK head `56fdbe73b6f09dc3a39b94bb5f8310cc17e4fb9b` passed
+238 package tests,22 protocol regressions,19 PR-base checks and40 actual act jobs.
+Its exact-six SDK/DX review was unanimous yay (cycle2,
+`sdk-closeout-cycle-2-consensus`; proposal
+`2251301bd67552f2e0337c69a4de34ef99e051a7520ac30ec247a1601188ee7e`).
+That approval applies to that historical head, not the production continuation.

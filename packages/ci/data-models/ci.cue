@@ -25,6 +25,8 @@ package ci
  startupMinutes: int & >=1 & <=20
  offers: [...#Offer]
  usageObservedAt?: string
+ routingSignalCycles?: [string]: int & >0 & <=4294967295
+ routingSignalCrossed?: [string]: bool
 }
 #Connection: {
  accountId: string & !=""
@@ -84,7 +86,7 @@ package ci
 #CiEvent: {type: string & !="", accountId: string, leaseId: string, at: string & !="", detail: string}
 #Snapshot: {leases: [...#Lease], events: [...#CiEvent]}
 
-#Ci: #Offer | #Account | #Connection | #Configuration | #ConfigurationState | #ControlRecord | #AccountState | #RepositorySetupRequest | #ReconcileRequest | #ControlCredential | #ControlCredentials | #Job | #Lease | #CiEvent | #Snapshot | #PipelineStep | #Pipeline | #PipelineStepResult | #PipelineArtifact | #PipelineResult
+#Ci: #BudgetSignal | #BudgetRoutingPolicy | #Offer | #Account | #Connection | #Configuration | #ConfigurationState | #ControlRecord | #AccountState | #RepositorySetupRequest | #ReconcileRequest | #ControlCredential | #ControlCredentials | #Job | #Lease | #CiEvent | #Snapshot | #PipelineStep | #Pipeline | #PipelineStepResult | #PipelineArtifact | #PipelineResult
 
 #PipelineStep: {id: string & !="", argv: [string & !="", ...string], cwd: string, env: [string]: string}
 #Pipeline: {
@@ -101,4 +103,21 @@ package ci
  id: string & !="", backend: "" | "gh-actions" | "dagger" | "cf"
  status: "succeeded" | "failed" | "cancelled" | "timed_out" | "uncertain" | "blocked"
  steps: [...#PipelineStepResult], artifacts: [...#PipelineArtifact], error: string
+}
+
+#BudgetSignalData: {
+ tenantId: string & !=""
+ thresholdFraction: number & >0 & <=1
+ thresholdUsd: number & >=0
+ budgetUsd: number & >0
+ netSpentUsd: number
+ cycle: int & >0 & <=4294967295
+ signalKey: string & =~"^budget:"
+}
+#BudgetSignal: {type: "budget.ThresholdCrossed" | "budget.Recovered", data: #BudgetSignalData}
+#BudgetRoutingRule: {thresholdFraction: number & >0 & <=1, offerIds: [...(string & !="")]}
+#BudgetRoutingPolicy: {
+ accountId: string & !="", tenantId: string & !=""
+ normalOfferIds: [...(string & !="")]
+ thresholds: [#BudgetRoutingRule, ...#BudgetRoutingRule]
 }

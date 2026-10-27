@@ -27,6 +27,8 @@ message Account {
   uint32 startup_minutes = 5;
   repeated Offer offers = 6;
   string usage_observed_at = 7;
+  map<string, uint32> routing_signal_cycles = 8;
+  map<string, bool> routing_signal_crossed = 9;
 }
 message Connection {
   string account_id = 1;
@@ -171,4 +173,26 @@ message PipelineResult {
   repeated PipelineStepResult steps = 4;
   repeated PipelineArtifact artifacts = 5;
   string error = 6;
+}
+
+// Broker facts consumed by the Station CI routing bridge.
+message BudgetSignalData {
+  string tenant_id = 1;
+  double threshold_fraction = 2;
+  double threshold_usd = 3;
+  double budget_usd = 4;
+  double net_spent_usd = 5;
+  uint32 cycle = 6;
+  string signal_key = 7;
+}
+message BudgetSignal { string type = 1; BudgetSignalData data = 2; }
+message BudgetRoutingRule {
+  double threshold_fraction = 1;
+  repeated string offer_ids = 2;
+}
+message BudgetRoutingPolicy {
+  string account_id = 1;
+  string tenant_id = 2;
+  repeated string normal_offer_ids = 3;
+  repeated BudgetRoutingRule thresholds = 4;
 }

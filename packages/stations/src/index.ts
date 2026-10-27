@@ -32,6 +32,12 @@ export {
 	type StationYardCatalogInput,
 } from "./capability-coverage.js";
 export {
+	type CiBudgetRoutingBridge,
+	type CiBudgetRoutingClient,
+	type CiBudgetRoutingOutcome,
+	createCiBudgetRoutingBridge,
+} from "./ci-routing.js";
+export {
 	createStationBindleRuntimeContext,
 	type StationConnectionResolver,
 } from "./connector-context.js";

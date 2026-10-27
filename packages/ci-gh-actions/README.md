@@ -1,166 +1,262 @@
-# HoBo CI gh-actions
+# HoBo CI GitHub Actions
 
-`@hobo/ci-gh-actions` implements an **experimental, locally tested** hosted relay
-for the original GitHub Actions job selected by `runs-on: hobo`. Live provider
-execution has not been verified. The account/repository onboarding UI, Station/Broker
-service integration and hosted deployment are not shipped by this change.
+`@hobo/ci-gh-actions` provides the hosted HoBo CI relay, account API, repository
+installer and ephemeral GitHub Actions runner host. Once the repository's setup
+PR is merged and its connection activated, workflows select HoBo with one line:
 
-The relay receives signed GitHub App webhooks, resolves an installed repository to
-its HoBo account, reserves budget and starts an account-owned provider host. That
-host obtains a single-use JIT runner configuration using GitHub OIDC and runs the
-official Actions runner with the `hobo` label. GitHub assigns the original queued
-job to that runner; its original workflow remains the source of truth.
+```yaml
+runs-on: hobo
+```
 
-| Provider | Current execution path | Readiness |
+HoBo reserves the account's budget before dispatching a provider host. That host
+claims a single-use JIT configuration with GitHub OIDC and starts the official
+Actions runner. GitHub assigns an original queued job to that runner. The
+original workflow, checkout, job token, logs and artifacts stay in GitHub Actions.
+
+## Test this branch
+
+Run from the monorepo root with Node 24, Linux x64, bash and git:
+
+```sh
+pnpm exec turbo run build --filter=@hobo/ci-gh-actions --concurrency=100%
+pnpm --filter @hobo/ci-gh-actions act:install --directory /tmp/hobo-ci-tools
+pnpm --filter @hobo/ci-gh-actions test:acceptance --act /tmp/hobo-ci-tools/act --evidence /tmp/hobo-ci-acceptance
+```
+
+This is a connected test of signed HTTP intake, durable reservations, dispatch,
+RS256 OIDC/JWKS, JIT authorization, the shipped host process launcher, actual act
+workflow execution, signed completion, runner cleanup and settlement. Seven
+original jobs consume five providers' free allocations, select the cheapest paid
+provider and exercise provider-budget fallback. The exhausted account launches
+no eighth job. Reopening and replaying the database preserves billing and results.
+Missing JIT authorization, provider mismatch and skipped execution fail the test.
+See [acceptance evidence](acceptance/README.md).
+
+The local GitHub/provider boundary is simulated; the host commands really execute.
+A local pass does not establish that GitHub assigned a real job or that a vendor
+provisioned a machine. This branch also contains the manual GitHub workflow
+[HoBo CI acceptance](../../.github/workflows/hobo-ci-acceptance.yml), with literal
+`runs-on: hobo`, a bounded runtime, pinned actions and read-only repository access.
+It requires an installed, connected relay and actual runner credentials. GitHub
+must first discover its definition on the default branch; it can then be dispatched
+for a selected branch. Its artifact records the actual self-hosted runner name,
+repository, ref and checked-out SHA. Match its `hobo-<lease UUID>` runner to the
+account lease API's actual job attribution to inspect routing and settlement.
+
+## Follow HoBo platform budgets
+
+Stations exports `createCiBudgetRoutingBridge` over the typed relay client.
+Subscribe it to the existing Broker `budget.ThresholdCrossed` and
+`budget.Recovered` facts for the account's tenant. A profile chooses the eligible
+provider offers; CI still consumes their free allocations before paid routing.
+The highest active configured threshold wins. Recovery restores the lower or
+normal profile, and an empty offer list pauses new admissions.
+
+[The Station example](../stations/README.md#ci-budget-routing) shows the wiring.
+Signal cycles and crossed state persist with account policy; delayed facts and
+replay cannot undo a newer transition. CAS conflicts are retried by the journal
+consumer, and `reconcile()` applies rule changes to existing signal state.
+Already running jobs retain their reservation and finish on their chosen host.
+
+## Deploy the relay
+
+[Compose, Kubernetes, image build, TLS, backup and recovery](deploy/README.md)
+are included. The runtime uses Node 24, UID/GID 1000, a read-only root filesystem,
+a writable temporary directory and one persistent SQLite directory. A kernel
+`flock` fences each partition's owner; process death releases the lock without
+unsafe stale-PID removal. Kubernetes uses one replica and `Recreate`.
+
+The tested container lifecycle includes authenticated policy changes, restart
+persistence, duplicate-owner refusal, online backup, graceful SIGTERM and offline
+restore from a read-only backup. `/healthz` reports process liveness; `/readyz`
+reports recovered local partition readiness and becomes unavailable during drain.
+External provider execution is verified by the separate runner acceptance path.
+A failed or hanging readiness probe cannot keep admissions open indefinitely.
+
+Configure these bindings; secret values stay in the hosting platform's secret
+files or secret manager:
+
+| Binding | Purpose |
+| --- | --- |
+| `HOBO_CI_PUBLIC_URL` | Public HTTPS origin; TLS terminates at the reverse proxy |
+| `HOBO_CI_DB` | Persistent database path, including its adjacent lock file |
+| `HOBO_CI_GITHUB_APP_ID` | Shared HoBo GitHub App ID |
+| `HOBO_CI_GITHUB_APP_KEY_FILE` | RSA App private key file |
+| `HOBO_CI_WEBHOOK_SECRET_FILE` | GitHub webhook secret file; legacy secret env binding also supported |
+| `HOBO_CI_CONTROL_TOKENS_FILE` | Account/installation authority and bearer-token hashes |
+| `HOBO_CI_CONFIG` | Optional initial policy seed; persisted configuration wins after first start |
+| `HOBO_CI_HOST`, `HOBO_CI_PORT` | Listen address; defaults to `127.0.0.1:8787` |
+
+The control-token file uses generated `@hobo/ci` protobuf JSON:
+
+```json
+{
+  "tokens": [{
+    "accountId": "your-hobo-account",
+    "installationIds": [12345],
+    "tokenSha256": "replace-with-64-lowercase-hex-digest-of-your-client-token",
+    "scopes": ["policy:read", "policy:write", "repositories:write", "operations:write"]
+  }]
+}
+```
+
+Generate random client tokens of at least 32 characters. Hash the exact bearer
+value, without a trailing newline. Tokens are never stored in the journal or
+returned by the API. Installations are bound to one HoBo account by the trusted
+platform provisioning process; request JSON cannot grant itself another account's
+installation. Multiple keys for the same account support scoped clients and
+rotation. Keep the file private and restart the service after credential rotation.
+A platform host can inject its own `ControlAuthenticator` instead of the file
+adapter. App keys and installation tokens remain in the relay.
+
+The GitHub App needs Actions, Administration, Contents, Workflows and Pull requests
+write access, plus Metadata read. Subscribe to `workflow_job` and `workflow_run`.
+The registration helper `createGithubAppManifest` produces the GitHub manifest
+contract. Its registration and installation callback URLs must point to real
+handlers supplied by the platform registering the App; it does not invent a
+working OAuth callback. App registration and secret storage are operator/platform
+provisioning steps. Customer repository setup is handled by the APIs below.
+
+## Connect a repository
+
+Use `createCiRelayClient` from `@hobo/ci-gh-actions/client` or the root SDK. Its
+HTTPS client sends generated protobuf JSON, parses generated responses, refuses
+redirects and keeps bearer tokens out of errors. The control API uses the current
+policy revision as an ETag; writes require `If-Match` and return `409` on conflict.
+
+```ts
+import { createCiRelayClient } from '@hobo/ci-gh-actions/client';
+
+const ci = createCiRelayClient({
+  origin: process.env.HOBO_CI_PUBLIC_URL!,
+  accountToken: () => process.env.HOBO_CI_ACCOUNT_TOKEN!,
+});
+const setup = await ci.prepareRepository({
+  repository: 'Tyler-R-Kendrick/HoBo',
+  trustedRepositoryAcknowledged: true,
+  publicRepositoryAcknowledged: true,
+  allowedRefs: ['refs/heads/main', 'refs/heads/feat/hobo-ci-production'],
+});
+const pending = await ci.applySetup(setup.id);
+console.log(pending.result?.pullRequestUrl);
+// After that PR passes the repository's normal merge policy:
+const current = await ci.getPolicy();
+await ci.connectSetup(setup.id, { revision: current.revision });
+```
+
+The server discovers the repository ID and default branch. It selects the sole
+bound installation automatically; accounts with multiple installations select
+one returned by `getInstallations()`. Omitted branch allowlists default to the
+repository's default branch. Explicit allowlists can include the branch under test.
+Create an account policy before preparing a repository.
+
+Preparation verifies the App, installation permissions, installation/repository
+association, repository ID and App bot identity. The reviewed plan contains only
+the shipped host workflow and bootstrap source. Applying creates a deterministic
+setup branch and PR; it does not bypass default-branch protection. GitHub's normal
+review policy controls merging. Retrying an uncertain setup discovers the same
+branch/PR rather than blindly duplicating it. A reused branch with extra changes
+is refused.
+
+Connection verifies the merged bytes and pins a dedicated locked, administrator-
+enforced bridge branch. It verifies the pin and protection again before committing
+the account connection. Automatic setup installs `.hobo-ci/bootstrap.mts`, which
+works even when the customer repository declares CommonJS. The relay origin is
+rendered into the reviewed host workflow, so a repository variable is not required.
+Clients refer to a server-owned setup operation ID for apply/connect; they cannot
+submit replacement bootstrap files. Setup state survives journal rebuild/restart,
+and a late apply result cannot regress a ready connection to pending.
+
+## Account routing and operations
+
+| Method | Account endpoint | Required scope |
 | --- | --- | --- |
-| GitHub | Companion workflow on an explicitly configured GitHub-hosted label | Experimental bridge |
-| Blacksmith | Companion workflow on an account-connected Blacksmith label | Experimental bridge |
-| Depot | Companion workflow on an account-connected Depot label | Experimental bridge |
-| WarpBuild | Companion workflow on an account-connected WarpBuild label | Experimental bridge |
-| Kubernetes | Companion workflow on operator-owned isolated ephemeral host runners | Experimental bridge; direct pod adapter deferred |
+| GET / PUT | `/v1/accounts/self/policy` | `policy:read` / `policy:write` |
+| GET | `/v1/accounts/self/installations` | `policy:read` |
+| POST | `/v1/accounts/self/repositories/prepare` | `repositories:write` |
+| GET | `/v1/accounts/self/repositories/{operation}` | `policy:read` |
+| POST | `/v1/accounts/self/repositories/{operation}/apply` | `repositories:write` |
+| POST | `/v1/accounts/self/repositories/{operation}/connect` | `repositories:write` plus current revision |
+| GET | `/v1/accounts/self/leases` or `/leases/{id}` | `policy:read` |
+| POST | `/v1/accounts/self/leases/{id}/reconcile` | `operations:write` |
 
-These vendors are independent providers. The relay does not assume a public vendor
-API accepts arbitrary GitHub JIT credentials. Bridge compatibility, provider terms,
-isolation and actual usage must be tested in the customer's own accounts before
-setting `enabled` and `bridgeAcknowledged`. Existing `@hobo/runner-*` packages dispatch
-separate workflows and are not used to impersonate original-job execution here.
+The last endpoint accepts generated `ReconcileRequest` JSON containing a verified
+`hostRunId`. It still checks the host's identity, protected source, provider label,
+completion and runner cleanup. It cannot force-release running or ambiguous work.
+Lease/event lists return at most 100 account records. Account IDs are taken from
+authentication, and foreign repository/lease access fails before provider mutation.
 
-## Connect a repository once
+`putPolicy(account, {revision})` changes budgets and publishes fresh allocation
+facts without restarting the relay. Configuration and its audit event commit
+atomically in the lease journal. Read models, setup records and policy can be rebuilt.
+Changing/removing an active provider identity or repository bridge pin is refused;
+drain the existing hosts before rotating those identities. A connection revoked
+while webhook REST validation is awaiting cannot admit new demand under its old
+binding.
 
-1. Deploy this relay with Node 24+, a persistent local SQLite volume and an HTTPS
-   origin. Run one active relay process per database partition. Do not mount a WAL
-   database across multiple machines. Publish `/github/webhooks` and `/v1/leases/*/jit`.
-2. Create/install a HoBo GitHub App on the selected repository. Subscribe to
-   `workflow_job` and `workflow_run`; give repository **Actions: read/write**,
-   **Administration: read/write** (repository runner JIT registration/deletion), and
-   Metadata read. App-installation/repository ownership must be established in the
-   HoBo platform before writing a Connection. The relay has no public connection
-   mutation API. Record the installation ID, repository ID, and the App bot's actor
-   user ID (`dispatcherActorId`, not the App ID).
-3. Copy [`templates/hobo-ci-host.yml`](templates/hobo-ci-host.yml) to the connected
-   repo's `.github/workflows/hobo-ci-host.yml`. Copy [`src/bootstrap.ts`](src/bootstrap.ts)
-   to `.hobo-ci/bootstrap.ts`. Merge both to its default branch so GitHub enables
-   `workflow_dispatch`. Create a protected tag for that reviewed commit. Configure
-   `bridgeRef` as that tag and `bridgeSha` as its 40-character commit SHA. Both are
-   checked: GitHub dispatch requires a branch/tag; OIDC and REST verification require
-   the pinned code. Updating bootstrap or its runner version requires a new reviewed
-   commit, tag and SHA.
-4. Set repository variable `HOBO_CI_RELAY_URL` to the relay's HTTPS origin. Connect
-   the provider accounts to GitHub and use their actual supported Linux x64 labels.
-   Kubernetes host runners must be disposable, isolated and have required runner
-   system libraries installed. Every eligible host needs outbound access to GitHub
-   and the relay. Node setup and runner download occur inside the reserved host time.
-5. Create configuration using [`examples/config.json`](examples/config.json). All
-   offers in the example are disabled and stale. Enter verified usage evidence,
-   rates, budgets, trusted refs and real IDs; acknowledge bridge readiness only after
-   live acceptance. `runnerGroupId` must be the repository runner group accepted by
-   GitHub's JIT endpoint for this installation (often 1; verify rather than assume).
-6. Set relay environment and build/start it:
+By default, routing consumes usable measured free allocation across eligible
+providers before selecting the cheapest paid offer. It reserves worst-case runtime
+plus startup, checks account/provider budgets and concurrency, and rechecks delayed
+launches. Original Actions jobs and portable native pipelines share the ledger.
+Prices use integer USD microdollars; allocations use normalized runner minutes.
 
-   ```sh
-   HOBO_CI_CONFIG=/data/ci-config.json
-   HOBO_CI_DB=/data/ci.sqlite
-   HOBO_CI_PUBLIC_URL=https://ci.example.com
-   HOBO_CI_GITHUB_APP_ID=your-app-id
-   HOBO_CI_GITHUB_APP_KEY_FILE=/run/secrets/github-app.pem
-   HOBO_CI_WEBHOOK_SECRET=your-high-entropy-webhook-secret-at-least-32-characters
-   # Export these in your deployment's secret/config binding, then:
-   pnpm exec turbo run build --filter @hobo/ci-gh-actions... --concurrency=100%
-   pnpm --filter @hobo/ci-gh-actions start
-   ```
+Allocation snapshots are trusted platform/provider inputs, not discovered vendor
+entitlements. `Offer.freeMinutes` is remaining free allocation at `observedAt`;
+`Offer.spentMicros` already includes all completed usage through that inclusive
+watermark. `Account.spentMicros` uses the same semantics when `usageObservedAt`
+is supplied. Only later completed local usage is added. Settlement records actual
+usage completion separately from late reconciliation, preventing double charging
+when a refreshed snapshot already includes that work. Snapshots cannot move
+backward or place account usage in the future. Expired price/allocation evidence
+refuses admission until refreshed; unknown balances are never assumed free.
 
-   Default listen address is `127.0.0.1:8787`; set `HOBO_CI_HOST` and `HOBO_CI_PORT`
-   for your reverse proxy/container. TLS terminates at that proxy. Installation
-   tokens are minted only inside the relay; workflows receive only JIT material.
-   An injected `GithubTransport` can use the HoBo Broker instead of a local App key.
-7. User workflows now change one line:
+The publisher must supply complete snapshots and normalized prices for all billed
+components. Provider-native spending controls remain the external billing ceiling.
+Admission budgets do not migrate or terminate a running GitHub job mid-step.
 
-   ```yaml
-   jobs:
-     test:
-       runs-on: hobo
-       steps:
-         - uses: actions/checkout@v4
-         - run: npm test
-   ```
+## Supported runner hosts
 
-## Trust and routing limits
+| Provider | Host selected by the relay |
+| --- | --- |
+| GitHub | Configured GitHub-hosted Linux x64 label |
+| Blacksmith | Account-connected Blacksmith Linux x64 label |
+| Depot | Account-connected Depot Linux x64 label |
+| WarpBuild | Account-connected WarpBuild Linux x64 label |
+| Kubernetes | Operator-owned isolated, disposable Linux x64 host runner label |
 
-Initial scope is **trusted private repositories, Linux x64, bare `hobo`, push or
-workflow_dispatch, explicitly allowed branches**. Public repositories and fork/PR
-provisioning are refused. All workflows capable of queuing `hobo` jobs in a connected
-repository must be trusted; all writers who can change/dispatch the companion
-workflow must be trusted CI/billing administrators. `trustedRepositoryAcknowledged`
-is mandatory. Branch/event checks control provisioning; they do not constrain
-GitHub's eventual runner assignment. GitHub can assign any compatible queued job to
-a repo-scoped `hobo` runner, including an otherwise ignored workflow. Bare labels
-cannot enforce per-job trust, machine selection or branch isolation. Use separate
-repositories/runner-group workflow policies before supporting untrusted workloads.
+These are implementations of the reviewed companion-workflow/JIT host protocol.
+They do not assume undocumented vendor APIs accept GitHub credentials. Each provider
+must be connected to GitHub with its supported label and supply accurate budget
+inputs. A Kubernetes host is a disposable runner machine, not a nested privileged
+Docker socket exposed by the relay. The relay image itself executes no customer jobs.
 
-The host App-bot identity, repository, run attempt, workflow path/SHA, lease title,
-OIDC audience and provider label are checked before JIT registration. JIT cannot be
-claimed twice. Bootstrap verifies the runner archive checksum, masks JIT material,
-forwards cancellation to the child process group, and passes an explicit environment
-allowlist to avoid outer `GITHUB_*`, `RUNNER_*` and credential inheritance. The child
-shares a machine with its host workflow; this is why repository-wide trust and
-provider isolation acceptance are required.
+The supported trust boundary is repository-wide trusted execution: private repos,
+or explicitly acknowledged public repos with only trusted `hobo` workloads. Fork
+and PR provisioning are refused. GitHub matches labels, not a requested job ID;
+refusing provisioning alone does not prevent assignment of another queued matching
+job. Prevent untrusted jobs from entering that runner pool. The host and nested
+runner share a provider machine, so this protocol does not claim isolation for
+untrusted public forks.
 
-Routing reserves `maxRuntimeMinutes + startupMinutes`, then holds that reservation
-until REST verifies that the outer `host` job stopped and runner cleanup succeeded.
-Original-job completion only records actual runner/job attribution. Settlement uses
-the outer job's start/end, rounded up, and the price pinned in its lease. It includes
-startup, idle and cleanup; it excludes provider queue delay. These are routing usage
-estimates, not provider invoices. Unknown/stale headroom is never assumed free.
-Budgets apply at job admission; a running job is not migrated mid-execution.
+OIDC audience, repository, run attempt, workflow path/SHA, App bot actor, provider
+label and lease title are verified before JIT registration. JIT is single use.
+Bootstrap checks the official runner archive checksum, filters inherited credentials
+and context, and waits for all executable descendants to stop after cancellation.
+Settlement waits for verified outer-host completion and runner cleanup and includes
+startup, idle and cleanup time. Actual runner attribution requeues displaced demand
+without duplicate charging. Recovery paginates host discovery; ambiguous results
+or exhausted discovery windows retain reservations for authenticated reconciliation.
 
-## Recovery and validation
+## Portable pipelines
 
-The worker drains pending jobs and outbox intents every five seconds. Duplicate
-webhooks do not duplicate leases. SQLite events and projections commit atomically.
-Restart changes interrupted dispatch/claim intents to `uncertain`. Uncertain launches
-are never blindly retried or released by age. The worker discovers completed hosts
-among the latest 100 companion runs and polls known host IDs; `workflow_run` completion
-webhooks also reconcile them. Older/ambiguous launches require an operator to identify
-the unique App-dispatched host run and invoke the SDK's `relay.reconcile(leaseId, runId)`.
-No host means **retain reservation** until its absence has been independently proved;
-this version deliberately provides no force-release HTTP endpoint. Back up the DB,
-keep configuration offer identities stable while leases are active, and retain
-journal history. `LeaseStore.rebuild()` reconstructs query projections from events.
+`createActionsBackend({workspace})` executes the common parsed pipeline in a bound
+runner/act workspace; Dagger and Cloudflare implement the same portable command and
+artifact contract. `@hobo/ci/scheduler` supplies account-bound allocation admission
+for those contexts. Workers use `@hobo/ci/execution`; the Node journal stays outside
+the Worker bundle. See [shared CI SDK](../ci/README.md).
 
-Run package `build`, `typecheck`, `test`, `lint`, shared `codegen:check -- --filter packages/ci`,
-and the repository's relevant gates. Tests cover signed intake, real local HTTP,
-RS256 identities, budgets, races, crash recovery, JIT single use and provider request
-contracts. They use simulated dependencies. They do not prove live provider acceptance.
-The live release checklist is [the implementation plan](../../docs/plans/hobo-ci/README.md).
-
-When a runner executes another queued job, reconciliation independently checks
-its planned job and atomically requeues unmet demand after settling the host.
-Historical leases do not suppress replacement capacity; terminal tombstones and
-active reservations still deduplicate repeated delivery. Pre-launch evidence,
-prices and budgets are rechecked; stale unlaunched demand is safely readmitted.
-A delayed host cannot claim JIT after its free evidence becomes stale. If a provider
-starts a queued host after the credit window ends, bootstrap can still incur cost;
-settlement conservatively treats usage outside the pinned window as paid. Provider
-spend controls and native queue cancellation are required for an external billing
-ceiling. The current relay enforces budget admission using configured evidence.
-
-
-## Portable pipelines and local workflows
-
-`createActionsBackend({workspace})` runs the shared parsed `@hobo/ci` pipeline in
-an explicitly bound original runner or `act` workspace. It preserves sequential
-files, isolates step env, rejects artifact/cwd escapes and waits for process-group
-termination before acknowledging cancellation. It does not remotely execute an
-Actions job from the relay process. Dagger and Cloudflare factories implement the
-same command/artifact contract; see `contracts/backend-swap.consumer.test.ts`.
-All backends reserve `HOBO_CI_EXECUTION_ID` for the logical execution identity.
-
-`LeaseStore` now belongs to `@hobo/ci/store`; this package keeps its compatibility
-export. Native pipelines and original GitHub jobs share account/provider budget
-and free-minute reservations. Original `runs-on: hobo` jobs only select
-`gh-actions` offers; native pipeline routing selects compatible bound backends.
-
-Actual local workflow verification is available through `act:install` and
-`test:act`; `act/README.md` documents the pinned binary, unchanged workflow,
-40 executed jobs and zero-launch budget refusal. These tests create no remote
-App, repository or provider resources.
+Validation includes TypeScript, generated protobuf/CUE fixtures, HTTP/App/provider
+Pacts, real process lifecycle tests, connected act acceptance, deployment conformance
+and an actual nonroot container lifecycle. Live GitHub assignment and vendor
+provisioning remain separate release evidence; failed permissions or missing JIT
+must never be reported as a successful runner test.

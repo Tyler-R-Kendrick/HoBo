@@ -100,7 +100,7 @@ export class Relay {
 	private trustedOriginal(run: GithubRun, connection: Connection): boolean {
 		return (
 			run.repository.id === connection.repositoryId &&
-			run.repository.private &&
+			(run.repository.private || connection.publicRepositoryAcknowledged) &&
 			run.head_repository?.id === connection.repositoryId &&
 			connection.allowedEvents.includes(run.event) &&
 			connection.allowedRefs.includes(`refs/heads/${run.head_branch}`)
@@ -114,7 +114,7 @@ export class Relay {
 		return (
 			run.actor.id === connection.dispatcherActorId &&
 			run.repository.id === lease.repositoryId &&
-			run.repository.private &&
+			(run.repository.private || connection.publicRepositoryAcknowledged) &&
 			run.head_repository?.id === lease.repositoryId &&
 			run.event === "workflow_dispatch" &&
 			run.run_attempt === 1 &&
@@ -192,8 +192,16 @@ export class Relay {
 			),
 			getJob(this.options.github, job.installationId, job.repository, job.id),
 		]);
+		// The platform may rotate/revoke a connection while the REST checks await.
+		// Resolve authority again before committing demand under that connection.
+		const admitted = this.connection(
+			job.repositoryId,
+			job.installationId,
+			job.repository,
+		);
 		if (
-			!this.trustedOriginal(run, connection) ||
+			!admitted ||
+			!this.trustedOriginal(run, admitted) ||
 			(payload.workflow_job.run_attempt !== undefined &&
 				run.run_attempt !== payload.workflow_job.run_attempt) ||
 			currentJob.status !== "queued" ||
@@ -204,7 +212,7 @@ export class Relay {
 			return "ignored";
 		job.runAttempt = run.run_attempt;
 		const account = this.options.config.accounts.find(
-			(account) => account.id === connection.accountId,
+			(account) => account.id === admitted.accountId,
 		);
 		if (!account) throw new Error("account missing");
 		this.options.store.queue(job, this.now());
@@ -272,9 +280,7 @@ export class Relay {
 			.all()
 			.filter((lease) => lease.state === "reserved")) {
 			try {
-				const connection = this.binding(candidate);
-				const account = this.account(candidate);
-				const offer = providerOffer(account, candidate);
+				this.binding(candidate);
 				const [currentJob, originalRun] = await Promise.all([
 					getJob(
 						this.options.github,
@@ -289,6 +295,9 @@ export class Relay {
 						candidate.originalRunId,
 					),
 				]);
+				// Authority may narrow while the GitHub reads are in flight.
+				const connection = this.binding(candidate);
+				const offer = providerOffer(this.account(candidate), candidate);
 				if (
 					currentJob.status !== "queued" ||
 					!this.trustedOriginal(originalRun, connection) ||
@@ -368,32 +377,49 @@ export class Relay {
 	async claim(id: string, token: string): Promise<JitBootstrapResponse> {
 		const lease = this.options.store.get(id);
 		if (!lease) throw new Error("unknown lease");
-		const connection = this.binding(lease);
 		const claims = await this.options.identity.verify(token);
 		if (
 			claims.repository_id !== String(lease.repositoryId) ||
 			claims.repository.toLowerCase() !== lease.repository.toLowerCase() ||
-			claims.workflow_sha !== connection.bridgeSha ||
-			claims.workflow_ref.split("@")[0] !==
-				`${lease.repository}/.github/workflows/${connection.bridgeWorkflow}` ||
 			claims.run_attempt !== "1"
 		)
 			throw new Error("identity does not own lease");
 		const runId = Number(claims.run_id);
-		const run = await getRun(
-			this.options.github,
-			lease.installationId,
-			lease.repository,
-			runId,
-		);
-		if (!this.trustedHost(run, connection, lease) || run.status === "completed")
-			throw new Error("untrusted host workflow");
+		const [run, originalRun] = await Promise.all([
+			getRun(
+				this.options.github,
+				lease.installationId,
+				lease.repository,
+				runId,
+			),
+			getRun(
+				this.options.github,
+				lease.installationId,
+				lease.repository,
+				lease.originalRunId,
+			),
+		]);
 		const host = await getHostJob(
 			this.options.github,
 			lease.installationId,
 			lease.repository,
 			runId,
 		);
+		// Recheck current branch/event authority after every external read and before JIT.
+		const connection = this.binding(lease);
+		if (
+			claims.workflow_sha !== connection.bridgeSha ||
+			claims.workflow_ref.split("@")[0] !==
+				`${lease.repository}/.github/workflows/${connection.bridgeWorkflow}`
+		)
+			throw new Error("identity does not own lease");
+		if (!this.trustedHost(run, connection, lease) || run.status === "completed")
+			throw new Error("untrusted host workflow");
+		if (
+			!this.trustedOriginal(originalRun, connection) ||
+			originalRun.run_attempt !== lease.runAttempt
+		)
+			throw new Error("original workflow authority revoked");
 		if (
 			host.status !== "in_progress" ||
 			host.labels.length !== 1 ||
@@ -475,26 +501,40 @@ export class Relay {
 		)
 			return;
 		const connection = this.binding(lease);
-		const response = await this.options.github.request(
-			lease.installationId,
-			`/repos/${lease.repository}/actions/workflows/${connection.bridgeWorkflow}/runs?event=workflow_dispatch&per_page=100`,
-		);
-		if (!response.ok) throw new Error("host discovery unavailable");
-		const result = z
-			.object({
-				workflow_runs: z.array(
-					z.object({
-						id: z.number().int().positive(),
-						display_title: z.string(),
-					}),
+		const matches: { id: number; display_title: string }[] = [];
+		for (let page = 1; page <= 10; page++) {
+			const response = await this.options.github.request(
+				lease.installationId,
+				`/repos/${lease.repository}/actions/workflows/${connection.bridgeWorkflow}/runs?event=workflow_dispatch&per_page=100${page === 1 ? "" : `&page=${page}`}`,
+			);
+			if (!response.ok) throw new Error("host discovery unavailable");
+			const result = z
+				.object({
+					workflow_runs: z.array(
+						z.object({
+							id: z.number().int().positive(),
+							display_title: z.string(),
+						}),
+					),
+				})
+				.parse(await response.json());
+			matches.push(
+				...result.workflow_runs.filter(
+					(run) => run.display_title === `HoBo lease ${lease.id}`,
 				),
-			})
-			.parse(await response.json());
-		const matches = result.workflow_runs.filter(
-			(run) => run.display_title === `HoBo lease ${lease.id}`,
+			);
+			if (matches.length > 1)
+				throw new Error(
+					"host discovery is ambiguous; operator reconciliation required",
+				);
+			if (result.workflow_runs.length < 100) {
+				if (matches[0]) await this.reconcile(id, matches[0].id);
+				return;
+			}
+		}
+		throw new Error(
+			"host discovery window exhausted; operator reconciliation required",
 		);
-		if (matches.length !== 1 || !matches[0]) return; // Ambiguous/older-than-window runs need operator reconciliation.
-		await this.reconcile(id, matches[0].id);
 	}
 	async reconcile(id: string, hostRunId: number): Promise<void> {
 		const lease = this.options.store.get(id);

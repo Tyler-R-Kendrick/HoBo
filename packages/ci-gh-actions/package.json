@@ -6,12 +6,18 @@
   "type": "module",
   "private": true,
   "files": [
-    "dist"
+    "dist",
+    "templates",
+    "src/bootstrap.ts"
   ],
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "default": "./dist/index.js"
+    },
+    "./client": {
+      "types": "./dist/client.d.ts",
+      "default": "./dist/client.js"
     }
   },
   "scripts": {
@@ -21,7 +27,12 @@
     "test": "vitest run",
     "start": "node dist/main.js",
     "test:act": "node --import tsx scripts/act-harness.ts",
-    "act:install": "node --import tsx scripts/act-install.ts"
+    "act:install": "node --import tsx scripts/act-install.ts",
+    "test:acceptance": "node --import tsx scripts/acceptance.ts",
+    "deploy:check": "node --import tsx scripts/check-deployment.ts",
+    "ops": "node dist/ops.js",
+    "pretest": "node --experimental-strip-types ../../scripts/ensure-built.mts",
+    "pretest:acceptance": "node --experimental-strip-types ../../scripts/ensure-built.mts"
   },
   "dependencies": {
     "@hobo/ci": "workspace:*",
@@ -32,6 +43,7 @@
     "@hobo/ci-dagger": "workspace:*",
     "@hobo/ci-cf": "workspace:*",
     "@dagger.io/dagger": "0.21.11",
-    "@cloudflare/workers-types": "5.20260730.1"
+    "@cloudflare/workers-types": "5.20260730.1",
+    "yaml": "2.9.0"
   }
 }

@@ -11,11 +11,13 @@ A developer or agent should be able to describe an app once, then let HoBo place
 ## HoBo.CI
 
 [HoBo.CI](./packages/ci/README.md) adds allocation-first CI routing as sibling SDK packages.
-The [GitHub Actions relay](./packages/ci-gh-actions/README.md) is the first experimental
-target for `runs-on: hobo`, with GitHub, Blacksmith, Depot, WarpBuild and operator-owned
-host bridges. Dagger and Cloudflare CI implement the same portable pipeline contract.
-A shared budget ledger, cross-backend command corpus and executable `act` harness
-verify substitution locally. Hosted deployment remains a separate release workflow.
+The [GitHub Actions service](./packages/ci-gh-actions/README.md) supports `runs-on: hobo`
+with an authenticated account API, durable policy, repository setup PRs, JIT runner
+hosts and Compose/Kubernetes deployment assets. GitHub, Blacksmith, Depot, WarpBuild
+and operator-owned hosts share allocation-first budget routing. Dagger and Cloudflare
+CI implement the same portable pipeline contract. Connected `act` acceptance and an
+actual container lifecycle test verify local execution and deployment; the manual
+HoBo workflow separately verifies real GitHub runner assignment.
 
 ## Why HoBo exists
 
@@ -134,7 +136,7 @@ Lint workflow/package-manager wiring before pushing CI changes:
 pnpm run actions:lint
 ```
 
-Hosted GitHub Actions runners are intentionally disabled to prevent CI spend. Every workflow job carries an explicit `if: \${{ false }}` gate, and `pnpm run actions:lint` verifies that shutdown. Re-enable runners only through a reviewed change that removes those gates after the runner budget is approved.
+General hosted GitHub Actions CI remains disabled to prevent unbudgeted spend. The sole active exception is the manually dispatched [HoBo runner acceptance workflow](./.github/workflows/hobo-ci-acceptance.yml), whose literal `runs-on: hobo` requires the budgeted relay. `pnpm run actions:lint` permits only that reviewed recipe and checks that every preserved legacy job remains disabled.
 
 For a local release-quality verification pass, use `pnpm run verify:full`. The opt-in `pnpm run verify:extended` adds coverage, mutation, property, and fuzz testing.
 
@@ -184,7 +186,7 @@ The `docs:freshness` gate enforces the minimum rule: changes under `src/`, `scri
 
 ## CI and gates
 
-Hosted GitHub Actions workflows are disabled. The preserved workflow definitions under [`.github/workflows-disabled/`](./.github/workflows-disabled/) do not run because GitHub only discovers workflow files directly under `.github/workflows/`, which is intentionally empty. Checks that read a workflow definition, such as `ship:gap-closure`, look in both directories, so moving the definitions between them neither fails nor skips those checks.
+General hosted GitHub Actions workflows remain disabled. The preserved workflow definitions under [`.github/workflows-disabled/`](./.github/workflows-disabled/) do not run. The sole definition in `.github/workflows/` is the manual HoBo runner acceptance recipe; it has no hosted fallback or automatic trigger. Checks that read a workflow definition, such as `ship:gap-closure`, look in both directories, so moving the definitions between them neither fails nor skips those checks.
 
 Run the verification lanes locally:
 

@@ -91,6 +91,19 @@ export class LeaseStore {
 			const parsed = parseConfiguration(
 				toJsonString(ConfigurationSchema, configuration),
 			);
+			for (const old of previous?.configuration?.accounts ?? []) {
+				const next = parsed.accounts.find((account) => account.id === old.id);
+				for (const [key, cycle] of Object.entries(old.routingSignalCycles)) {
+					const nextCycle = next?.routingSignalCycles[key] ?? 0;
+					if (nextCycle < cycle)
+						throw new Error("routing signal watermark cannot move backwards");
+					if (
+						nextCycle === cycle &&
+						next?.routingSignalCrossed[key] !== old.routingSignalCrossed[key]
+					)
+						throw new Error("routing signal state requires a newer cycle");
+				}
+			}
 			for (const account of parsed.accounts) {
 				if (
 					account.usageObservedAt &&

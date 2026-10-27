@@ -16,7 +16,10 @@ import { createHash } from "node:crypto";
 // replaces, because the check runs over added and modified files only. The
 // constant has been exported without a `// public-contract:` marker since it
 // was written; touching this file is what surfaced it.
-import { DEPLOYMENT_PLAN_SCHEMA } from "@hobo/manifest-plan";
+import {
+	DEPLOYMENT_PLAN_SCHEMA,
+	type DeploymentPlanAuthoring as DeploymentPlan,
+} from "@hobo/manifest-plan";
 import { isJsonObject, type JsonObject, type JsonValue } from "./json.js";
 
 // ── The declaration manifest, re-exported from its owner ────────────────────
@@ -58,81 +61,10 @@ export type CapabilityVerdict =
 	| { kind: "partial"; missing: string[] }
 	| { kind: "none" };
 
-// ── Why the plan manifest is NOT re-exported here ───────────────────────────
-//
-// `ResourcePlan` and `DeploymentPlan` also live in `@hobo/manifest-plan`, and
-// the intent was to re-export them the same way the declaration shapes above
-// are. Measured, they cannot be — not because of the brand, which is
-// mechanically removable, but because of one field:
-//
-//   1. `@hobo/manifest-plan` exports only the branded, deeply-readonly parsed
-//      types. Re-exporting them directly fails 8 places in `src/` alone: the
-//      three object literals that build plans (`planner/plan.ts` twice,
-//      `cd/fixtures.ts`) and `plan.ts`'s `node.region = outcome.region`.
-//   2. Stripping the brand and the readonly modifiers with a mapped type
-//      leaves exactly one error, and it is a genuine divergence rather than a
-//      typing artifact: `@hobo/manifest-plan` narrows `realizationParameters`
-//      to `Record<string, PlanParameterValue>` (JSON values only, because a
-//      `Date`, a function or an `undefined` canonicalizes to something other
-//      than itself and would move the plan digest), while this package types
-//      it `JsonObject` all the way back through
-//      `planner/profile-matching.ts` to `@hobo/yards`' `BindingRow.properties`.
-//      `@hobo/yards`' own authoring surface (`yard.ts`) already says
-//      `Record<string, JsonValue>`; `binding.ts` is the outlier.
-//
-// Closing (2) is a three-file narrowing in `packages/cloud/src/planner/` and
-// `packages/yards/src/binding.ts` — outside the file ownership of the swarm
-// that wrote this note, so it is recorded rather than taken. Until it lands the
-// two declarations are kept in parity by
-// `packages/manifest-round-trip/test/upstream-parity.test.ts`, which reads both
-// files and fails on any field, optionality or value-type drift.
-
-// domain-view: resolved plan node; wire form is ResourcePlan in data-models/cloud.proto.
-export interface ResourcePlan {
-	name: string;
-	port: string;
-	provider: string;
-	deps: string[];
-	strategy?: string;
-	region?: string;
-	deploymentId?: string;
-	/**
-	 * The provider offering this node resolves to, when the plan was built with
-	 * Yard binding authority (ADR-0157). This is what a deployment driver keys
-	 * on to find the resolver that can allocate the resource: without it a
-	 * driver would have to re-derive the product from the port, which is the
-	 * naming-convention inference ADR-0144 forbids.
-	 *
-	 * Absent on the legacy port-only planning path, where no Yard supplied a
-	 * catalog to select from. Absent means "not decided here", never "any
-	 * product will do" — a driver that cannot find a product must fail closed.
-	 */
-	productId?: string;
-	/**
-	 * Yard-scoped, provider-native realization parameters merged from the
-	 * applied Yard binding rows — the *configuration* half of a Yard binding
-	 * (ADR-0157). The row selects which product realizes the profile; these
-	 * parameterize how it is realized in this Yard (replica counts, resource
-	 * limits, service class).
-	 *
-	 * Provider-native by construction, therefore a non-portable surface: the
-	 * rows responsible are named in `nonPortableRows` so the PortabilityReport
-	 * can attribute the loss rather than merely report that something was lost.
-	 * Never carries credential material — the parse boundary refuses
-	 * credential-shaped keys before a row ever reaches a plan.
-	 */
-	realizationParameters?: Readonly<JsonObject>;
-	/** Canonical keys of the applied rows that contributed realization parameters. */
-	nonPortableRows?: readonly string[];
-}
-
-// domain-view: content-addressed plan DAG; wire form is DeploymentPlan in data-models/cloud.proto.
-export interface DeploymentPlan {
-	schema: typeof DEPLOYMENT_PLAN_SCHEMA;
-	resources: ResourcePlan[];
-	dependencyOrder: string[];
-	objective: string;
-}
+export type {
+	DeploymentPlanAuthoring as DeploymentPlan,
+	ResourcePlanAuthoring as ResourcePlan,
+} from "@hobo/manifest-plan";
 
 // domain-view: ranked candidate inside match.Decided; wire form is RankedCandidate in data-models/cloud.proto.
 export interface RankedCandidate {
@@ -201,19 +133,13 @@ export interface PlanRemediation {
 
 export type PlanHash = `sha256:${string}`;
 
-// `unknown` in: this is the pre-serialization pass for `JSON.stringify`, so it
-// walks whatever it is handed and never reads a typed field. Requiring
-// `JsonValue` only forced `canonicalPlanJson` to launder a `DeploymentPlan`
-// that was about to be stringified anyway.
-function sortKeys(value: unknown): JsonValue {
+function sortKeys(value: JsonValue | DeploymentPlan): JsonValue {
 	if (Array.isArray(value)) return value.map(sortKeys);
 	if (value && isJsonObject(value)) {
 		return Object.fromEntries(
-			// SAFETY: `Object.keys(value as JsonObject)` is required at this I/O or test boundary.
-			Object.keys(value as JsonObject)
+			Object.keys(value)
 				.sort()
-				// SAFETY: `.map((key) => [key, sortKeys((value as JsonObject)[key])]),` is required at this I/O or test boundary.
-				.map((key) => [key, sortKeys((value as JsonObject)[key])]),
+				.map((key) => [key, sortKeys(value[key])]),
 		);
 	}
 	// SAFETY: everything that is not an array or object here is a JSON scalar by

@@ -34,16 +34,6 @@
 			}
 		},
 		{
-			"includes": ["packages/pixel-village/public/index.html"],
-			"linter": {
-				"rules": {
-					"a11y": {
-						"noNoninteractiveTabindex": "off"
-					}
-				}
-			}
-		},
-		{
 			"includes": ["packages/code/src/tui-components.tsx"],
 			"linter": {
 				"rules": {

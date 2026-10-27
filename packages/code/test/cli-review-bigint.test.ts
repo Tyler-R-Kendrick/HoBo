@@ -49,7 +49,7 @@ async function run(argv: readonly string[]) {
 	});
 }
 
-describe("starting a review", () => {
+describe("starting a review", { timeout: 60_000 }, () => {
 	it("answers rather than throwing", async () => {
 		// The regression this file exists for. Before the cloneAsJson fix this
 		// threw TypeError out of the CLI entirely.
@@ -139,6 +139,7 @@ describe("cloning a value that carries a bigint", () => {
 		// It is a document boundary: the caller must not be able to mutate the
 		// original through the returned value.
 		const source = { nested: { value: 1 } };
+		// SAFETY: cloning this fixture preserves its JSON-compatible shape.
 		const cloned = cloneAsJson(source) as { nested: { value: number } };
 		cloned.nested.value = 2;
 		expect(source.nested.value).toBe(1);

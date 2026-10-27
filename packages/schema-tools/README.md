@@ -25,6 +25,10 @@ pnpm --filter @hobo/schema-tools run lint
 pnpm --filter @hobo/schema-tools run test
 ```
 
+Offline failure tests mock `fetch`; they never depend on a real CUE download
+failing on the host. Toolchain selection requires a successful version probe
+with the pinned CUE version.
+
 ## Parse, don't validate
 
 CLI argv crosses one parser boundary and becomes the frozen derived type

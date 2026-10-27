@@ -27,7 +27,8 @@ Matching surface: `LAKEBED_TRAFFIC_ROUTING_PROFILE` declares
 
 - **Realization is a Driver, not IaC**: `realize()` emits a
   `hobo.driver-program/v1` targeting the `lakebed-deploy` driver — one
-  Capsule deploy per deployment.
+  Capsule deploy per deployment. Output-reference validation ignores non-string
+  values rather than treating them as references.
 - **Opt-in approval**: `hobo add lakebed` registers **held**; a second
   `hobo add lakebed` approves (HOBO-710 semantics) — deploying to the
   competitor's runtime is an explicit operator decision.

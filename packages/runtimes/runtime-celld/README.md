@@ -47,3 +47,5 @@ variables and `NODE_EXTRA_CA_CERTS` are all in `turbo.json`
 `celld deploy` bundles with esbuild. `CELLD_ESBUILD` overrides the path;
 otherwise `test/helpers/toolchain.ts` resolves the native esbuild binary the
 workspace already installs. Neither lookup can turn a live test into a skip.
+Baremetal diagnostics bind an ephemeral loopback port rather than assuming the
+default 8080 is free.

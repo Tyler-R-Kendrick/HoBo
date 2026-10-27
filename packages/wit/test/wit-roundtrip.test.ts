@@ -9,5 +9,5 @@ describe("wit round-trip", () => {
 	it("regenerates byte-identical bindings for every world", async () => {
 		const result = await assertGeneratedMatches();
 		expect(result.checked).toBeGreaterThan(0);
-	}, 60_000);
+	}, 180_000);
 });

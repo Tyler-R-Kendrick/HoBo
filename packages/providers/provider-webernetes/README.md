@@ -18,6 +18,8 @@ which answers same-origin at `/api/anon/host/<id>/`.
 | `kv` | `webernetes:kv` | Local KV | `key-value` |
 | `queue` | `webernetes:queue` | Local queue | `queue` |
 
+`WEBERNETES_PORTS` is the frozen source of this admitted port list.
+
 The compute row is deliberately one feature shorter than a hosted provider's:
 there is no `managed`, because nobody operates a pod on a developer's machine.
 A requirement that asks for `managed` gets a **partial** match naming it, which

@@ -2,6 +2,7 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
 	test: {
+		setupFiles: ["test/isolate-git-env.ts"],
 		// Optimizexp feature binding tests live under .optimizexp/ and run via root test:file
 		exclude: ["**/node_modules/**", "**/dist/**", "**/.optimizexp/**"],
 		// This suite drives real subprocesses — `git init`, commit, `worktree
@@ -13,7 +14,11 @@ export default defineConfig({
 		// timed out at 10.4s under a 4-way `turbo run test` on a 4-core box
 		// while passing in isolation. 20s is the subprocess allowance; a real
 		// hang still fails, it just fails for being a hang.
-		testTimeout: 20_000,
-		hookTimeout: 20_000,
+		testTimeout: Number(process.env.HOBO_TEST_TIMEOUT ?? 20_000),
+		hookTimeout: Number(process.env.HOBO_TEST_TIMEOUT ?? 20_000),
+		maxWorkers:
+			process.env.HOBO_TEST_MAX_WORKERS === undefined
+				? undefined
+				: Number(process.env.HOBO_TEST_MAX_WORKERS),
 	},
 });

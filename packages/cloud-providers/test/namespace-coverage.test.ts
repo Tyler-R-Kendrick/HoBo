@@ -91,7 +91,7 @@ describe("namespace reaches everything its catalog declares", () => {
 				(ns as { Yard: () => { bindings: readonly { productId?: string }[] } })
 					.Yard()
 					.bindings.map((row) => row.productId)
-				.filter((id): id is string => id !== undefined),
+					.filter((id): id is string => id !== undefined),
 			);
 			// SAFETY: provider namespaces are closed string-keyed export objects.
 			const reachable = productIdsFrom(ns as NamespaceObject);
@@ -126,7 +126,7 @@ describe("namespace reaches everything its catalog declares", () => {
 				// SAFETY: these names are the closed regression vocabulary above.
 				(aws as Record<string, SlotFactory>)[factory],
 				`aws.${factory} must be reachable from @hobo/cloud-providers`,
-			).toBe("function");
+			).toBeTypeOf("function");
 		}
 		expect(
 			// SAFETY: `ecs.service` is the nested factory exported by the namespace.

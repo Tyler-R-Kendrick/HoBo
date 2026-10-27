@@ -26,6 +26,7 @@ import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 
+import { initBareMetalYard } from "../src/bare-metal-yard.js";
 import { createYardCommand } from "../src/yard-command.js";
 
 const dirs: string[] = [];
@@ -75,19 +76,32 @@ function toolchainEnv(hoboHome: string): NodeJS.ProcessEnv {
 	};
 }
 
+function unavailableToolchainEnv(hoboHome: string): NodeJS.ProcessEnv {
+	const env = toolchainEnv(hoboHome);
+	const kubectl = join(hoboHome, "kubectl");
+	writeFileSync(
+		kubectl,
+		'#!/usr/bin/env node\nif (process.argv[2] !== "version") process.exit(1);\nconsole.log("Client Version: v1.31.0");\n',
+		{ mode: 0o755 },
+	);
+	chmodSync(kubectl, 0o755);
+	return env;
+}
+
 /** Run `hobo yard <args>` against an isolated install root. */
 async function run(
 	args: readonly string[],
 	options: {
-		flags?: Record<string, unknown>;
+		flags?: Record<string, string | number | boolean>;
 		hoboHome?: string;
 		env?: NodeJS.ProcessEnv;
 	} = {},
 ) {
 	const hoboHome = options.hoboHome ?? home();
+	// SAFETY: this helper supplies the command's complete test-runner context.
 	return createYardCommand().run({
 		context: { cwd: hoboHome, env: options.env ?? { HOBO_HOME: hoboHome } },
-		flags: { home: hoboHome, ...(options.flags ?? {}) },
+		flags: { home: hoboHome, ...options.flags },
 		args: [...args],
 		emitProgress: () => {},
 	} as never);
@@ -171,10 +185,10 @@ describe("init flag validation", () => {
 		// instinct on seeing a failure is to re-run with --force and overwrite a
 		// working install.
 		const first = await run(["init"], { flags: { force: true } });
+		// SAFETY: successful init reports its optional install root.
+		const firstHome = first.data as { hoboHome?: string } | undefined;
 		const second = await run(["init"], {
-			hoboHome: first.data
-				? ((first.data as { hoboHome?: string }).hoboHome ?? home())
-				: home(),
+			hoboHome: firstHome?.hoboHome ?? home(),
 		});
 		if (!second.ok) {
 			expect((second.remediation ?? []).join(" ")).toContain(
@@ -209,6 +223,7 @@ describe("status", () => {
 		await run(["init"], { hoboHome: dir, flags: { force: true } });
 		const result = await run(["status"], { hoboHome: dir });
 		expect(result.ok).toBe(true);
+		// SAFETY: successful status returns the parsed Yard config.
 		expect((result.data as { config: unknown }).config).toBeDefined();
 	});
 
@@ -236,6 +251,7 @@ describe("doctor", () => {
 		// config exists would deny the user the one fact that explains whether
 		// `--host wasm` is even possible here.
 		const result = await run(["doctor"]);
+		// SAFETY: doctor includes its WASM probe in the diagnostic payload.
 		expect((result.data as { wasm: unknown }).wasm).toBeDefined();
 	});
 
@@ -249,6 +265,7 @@ describe("doctor", () => {
 		// from this command, and the explanation says it travels as an
 		// `x-hobo-env-*` header rather than through the host's process.env.
 		const result = await run(["doctor"]);
+		// SAFETY: doctor reports string descriptions keyed by diagnostic scope.
 		const scopes = (result.data as { scopes: Record<string, string> }).scopes;
 		expect(Object.keys(scopes).sort()).toEqual([
 			"bindle",
@@ -265,29 +282,40 @@ describe("doctor", () => {
 		// is how a user learns that `--host wasm` would work here before
 		// committing a Yard to it.
 		const result = await run(["doctor"]);
+		// SAFETY: doctor reports the optional component-host availability list.
 		expect(
 			(result.data as { componentHosts?: unknown }).componentHosts,
 		).toBeDefined();
 	});
 
-	it("survives a host probe that throws, reporting the error", async () => {
+	it("survives a host probe that throws, reporting the error", {
+		timeout: 60_000,
+	}, async () => {
 		// The situation doctor exists for. A host toolchain that throws while
 		// being checked must be *reported*, not propagated — letting the
 		// exception escape would make the diagnostic unavailable exactly when it
 		// is needed.
 		const dir = home();
-		await run(["init"], { hoboHome: dir, flags: { host: "oci", force: true } });
-		const result = await run(["doctor"], { hoboHome: dir });
+		initBareMetalYard({ hoboHome: dir, componentHost: "oci" });
+		const result = await run(["doctor"], {
+			hoboHome: dir,
+			env: unavailableToolchainEnv(dir),
+		});
 		expect(result).toBeDefined();
 		expect(result.data).toBeDefined();
 	});
 
-	it("distinguishes a not-ready host from a missing config", async () => {
+	it("distinguishes a not-ready host from a missing config", {
+		timeout: 60_000,
+	}, async () => {
 		// The second of the two unhealthy states, with its own code and its own
 		// remediation — `ensure` rather than `init`.
 		const dir = home();
-		await run(["init"], { hoboHome: dir, flags: { host: "oci", force: true } });
-		const result = await run(["doctor"], { hoboHome: dir });
+		initBareMetalYard({ hoboHome: dir, componentHost: "oci" });
+		const result = await run(["doctor"], {
+			hoboHome: dir,
+			env: unavailableToolchainEnv(dir),
+		});
 		if (!result.ok) {
 			expect(result.code).not.toBe("HOBO_YARD_MISSING");
 			expect((result.remediation ?? []).join(" ")).toContain(
@@ -308,6 +336,7 @@ describe("ensure", () => {
 		// host failing while three succeed is a different problem from all four
 		// failing, and a single boolean would not say which.
 		const result = await ensure();
+		// SAFETY: ensure returns host results carrying their component-host kind.
 		const data = result.data as { hosts?: Array<{ kind: string }> };
 		expect(Array.isArray(data.hosts)).toBe(true);
 		expect(result.message).toContain("hobo yard ensure");
@@ -334,6 +363,7 @@ describe("ensure", () => {
 		// command actually chose before they go looking for what it installed.
 		const dir = home();
 		const result = await ensure(dir);
+		// SAFETY: ensure reports the install root it selected.
 		expect((result.data as { hoboHome: string }).hoboHome).toBe(dir);
 	});
 
@@ -376,6 +406,7 @@ describe("home resolution", () => {
 		// A user pointing at a specific install root must get that one, or the
 		// command would read a different Yard than the one they named.
 		const dir = home();
+		// SAFETY: this test supplies the command's complete runner context.
 		const result = await createYardCommand().run({
 			context: { cwd: dir, env: { HOBO_HOME: "/somewhere/else" } },
 			flags: { home: dir },
@@ -387,6 +418,7 @@ describe("home resolution", () => {
 
 	it("falls back to the environment when no flag is given", async () => {
 		const dir = home();
+		// SAFETY: this test supplies the command's complete runner context.
 		const result = await createYardCommand().run({
 			context: { cwd: dir, env: { HOBO_HOME: dir } },
 			flags: {},

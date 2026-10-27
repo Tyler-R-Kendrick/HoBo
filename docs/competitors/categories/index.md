@@ -1,10 +1,3 @@
----
-type: Competitive Reference
-title: "Competitor categories"
-description: "Index of the thirteen competitor categories and their membership counts."
-tags: [hobo, competitors, category]
----
-
 # Competitor categories
 
 > Thirteen closed categories. Membership is many-to-many and is declared in each canonical capture's `competitor.categories` front matter — never on this page. See [`../metadata-contract.md`](../metadata-contract.md).

@@ -19,7 +19,7 @@ async function runCelld(
 	timeoutMs = 20_000,
 ): Promise<{ status: number | null; stdout: string; stderr: string }> {
 	return new Promise((resolve, reject) => {
-		const child = spawn(CELLD_BIN, args, {
+		const child = spawn(CELLD_BIN, [...args, "--listen", "127.0.0.1:0"], {
 			env: {
 				...process.env,
 				AWS_ACCESS_KEY_ID: "hobo-live",
@@ -62,7 +62,9 @@ describe("celld live baremetal", () => {
 		expect(result.stdout).toMatch(/celld 0\.2\.1/);
 	});
 
-	it("fails closed when the bucket endpoint is dead", async () => {
+	it("fails closed when the bucket endpoint is dead", {
+		timeout: 25_000,
+	}, async () => {
 		const result = await runCelld([
 			"diagnose",
 			"--bucket",

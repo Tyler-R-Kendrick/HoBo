@@ -1,3 +1,4 @@
+import { execFileSync } from "node:child_process";
 import {
 	existsSync,
 	mkdirSync,
@@ -7,17 +8,17 @@ import {
 } from "node:fs";
 import { join } from "node:path";
 
+import type {
+	DestroyResult,
+	RefreshResult,
+	UpResult,
+} from "@pulumi/pulumi/automation/index.js";
 import {
 	createPerResourceStackKey,
 	outputsToBindings,
 	PINNED_PULUMI_AUTOMATION_VERSION,
 } from "./iac-pulumi-automation-adapter.js";
-import {
-	cloneAsJson,
-	type JsonBag,
-	type JsonObject,
-	type JsonValue,
-} from "./json.js";
+import { cloneAsJson, type JsonBag, type JsonObject } from "./json.js";
 import {
 	PULUMI_CLI_MISSING,
 	PulumiEngineUnavailableError,
@@ -65,9 +66,9 @@ interface AutomationStackLike {
 	preview(): Promise<{
 		changeSummary?: Record<string, number>;
 	}>;
-	up(): Promise<JsonValue>;
-	refresh(): Promise<JsonValue>;
-	destroy(): Promise<JsonValue>;
+	up(): Promise<UpResult>;
+	refresh(): Promise<RefreshResult>;
+	destroy(): Promise<DestroyResult>;
 	outputs(): Promise<Record<string, { value: unknown }>>;
 }
 
@@ -110,12 +111,8 @@ export function createPulumiAutomationApiEngine(
 			// ESM resolver rejects directory subpath imports (ERR_UNSUPPORTED_DIR_IMPORT).
 			// SAFETY: `automation = (await import(` is required at this I/O or test boundary.
 			const loaded = await import("@pulumi/pulumi/automation/index.js");
-			// SAFETY: @pulumi/pulumi automation index is the typed Automation module.
-			// Two-step: the module namespace and `AutomationModuleLike` overlap
-			// only in the members this engine calls, which is the point of the
-			// structural stand-in -- TypeScript is right that they are not the
-			// same type, and the cast is where that narrowing is recorded.
-			automation = loaded as unknown as AutomationModuleLike;
+			// SAFETY: the engine uses only the LocalWorkspace surface declared here.
+			automation = loaded as AutomationModuleLike;
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error);
 			throw new PulumiEngineUnavailableError(
@@ -145,10 +142,26 @@ export function createPulumiAutomationApiEngine(
 		return dir;
 	}
 
+	let engineVerified = options.automation !== undefined;
+	function ensureEngineAvailable(): void {
+		if (engineVerified) return;
+		try {
+			execFileSync("pulumi", ["version"], { stdio: "pipe", env: envVars() });
+		} catch (error) {
+			throw new PulumiEngineUnavailableError(
+				PULUMI_CLI_MISSING,
+				// SAFETY: the process failure is reported through the provider error boundary.
+				`pulumi engine is not available for Automation API workspaces: ${(error as Error).message}`,
+			);
+		}
+		engineVerified = true;
+	}
+
 	async function stackFor(
 		program: IacProgramLike,
 		resource: IacResourceLike,
 	): Promise<{ stack: AutomationStackLike; stackKey: string }> {
+		ensureEngineAvailable();
 		const auto = await loadAutomation();
 		mkdirSync(stateDir, { recursive: true });
 		const stackKey = createPerResourceStackKey(program, resource.name);

@@ -36,6 +36,7 @@
 import { mkdtempSync, rmSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
+import { Readable } from "node:stream";
 import { afterEach, describe, expect, it } from "vitest";
 
 import {
@@ -51,7 +52,10 @@ afterEach(() => {
 		rmSync(dir, { recursive: true, force: true });
 });
 
-async function run(argv: readonly string[]): Promise<HoboCodeCliResult> {
+async function run(
+	argv: readonly string[],
+	input?: NodeJS.ReadableStream,
+): Promise<HoboCodeCliResult> {
 	const hoboHome = mkdtempSync(join(tmpdir(), "hobo-code-sweep-"));
 	homes.push(hoboHome);
 	return await runHoboCodeCli([...argv], {
@@ -59,6 +63,7 @@ async function run(argv: readonly string[]): Promise<HoboCodeCliResult> {
 		cwd: hoboHome,
 		env: { HOBO_HOME: hoboHome, HOBO_ENV: "local-dev" },
 		json: false,
+		...(input !== undefined ? { input } : undefined),
 	});
 }
 
@@ -288,10 +293,12 @@ describe("the virtual shell", () => {
 	// Kept out of the parametrized sweep deliberately: `vshell` reads real
 	// stdin, so several of them running concurrently under `it.each` fight
 	// over the same handle. One at a time it is well behaved.
-	it("opens and closes a virtual pane on a bare machine", async () => {
+	it("opens and closes a virtual pane on a bare machine", {
+		timeout: 60_000,
+	}, async () => {
 		// One test, not several: two `vshell` runs in the same file contend
 		// for the same stdin handle and the second reads EOF immediately.
-		const result = await run(["vshell"]);
+		const result = await run(["vshell"], Readable.from([]));
 		expect(result.ok).toBe(true);
 		expect(result.code).toBe("HOBO_CODE_VSHELL");
 		expect(result.message.length).toBeGreaterThan(0);

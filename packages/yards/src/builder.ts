@@ -74,12 +74,7 @@ import {
 	defineYard,
 	type StationManifest,
 } from "./define.js";
-import {
-	isJsonObject,
-	isJsonString,
-	type JsonValue,
-	type StringBag,
-} from "./json.js";
+import { isJsonString, type JsonValue, type StringBag } from "./json.js";
 import type { Yard } from "./yard.js";
 
 export type BuilderErrorCode =
@@ -123,7 +118,7 @@ export type ProviderRef =
 /** Resolves the three accepted spellings of "which provider" to a provider id. */
 export function providerIdOf(provider: ProviderRef): string {
 	if (isJsonString(provider) && provider.length > 0) return provider;
-	if (provider !== null && isJsonObject(provider)) {
+	if (provider !== null && provider !== undefined) {
 		// SAFETY: `const namespaceId = (provider as Partial<ProviderNamespaceRef>).PROVIDER_ID;` is required at this I/O or test boundary.
 		const namespaceId = (provider as Partial<ProviderNamespaceRef>).PROVIDER_ID;
 		if (isJsonString(namespaceId) && namespaceId.length > 0) {

@@ -71,7 +71,7 @@ describe("required runtimes + broker hard-fail", () => {
 		}
 		// First placement equips the isolated wasm toolchain (a wasmtime
 		// download) into the throwaway HOBO_HOME — far beyond the 10s default.
-	}, 90_000);
+	}, 300_000);
 
 	it("hard-fails wasm-component when runtime-wasm not installed", async () => {
 		const hoboHome = await mkdtemp(join(tmpdir(), "hobo-rt-wasm-reject-"));

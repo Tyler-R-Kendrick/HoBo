@@ -1,7 +1,0 @@
-{
-  "skipped": true,
-  "reason": "ANTHROPIC_API_KEY is not set (offline run)",
-  "generatedAt": "2026-08-03T23:45:55.402Z",
-  "model": "claude-fable-5",
-  "rubric": "docs/validation/hyx-rubric.yaml"
-}

@@ -96,12 +96,10 @@ All unused-symbol findings were closed by deleting or wiring up the code. None w
 silenced by renaming to `_`, which is what `--unsafe` does and which would have left
 the dead code in place under a uglier name.
 
-### The two suppressions
+### The remaining suppression
 
-Both carry a written reason at the site: the pixel-village yard host
-(`role="application"` *is* an interactive widget — the tabindex is what makes it
-keyboard-operable, and the rule does not model that role), and a `greet()` in a
-Vercel deploy fixture reachable only through an inline `onclick`.
+The `greet()` in a Vercel deploy fixture is reachable only through an inline
+`onclick` and carries a written reason at the site.
 
 ## What was left after pass 1
 

@@ -60,14 +60,11 @@ export class RetryableError extends RuntimeAuthoringError {
 export class WorkflowFailure extends RuntimeAuthoringError {
 	readonly code = "workflow.failed" as const;
 	readonly step: string | undefined;
-	readonly cause: Error;
+	readonly cause: Error | undefined;
 	constructor(message: string, options: { step?: string; cause?: Error } = {}) {
 		super(message);
 		this.name = "WorkflowFailure";
 		this.step = options.step;
-		this.cause =
-			options.cause instanceof Error
-				? options.cause
-				: new Error(String(options.cause ?? ""));
+		this.cause = options.cause;
 	}
 }

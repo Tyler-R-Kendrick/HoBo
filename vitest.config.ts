@@ -44,7 +44,7 @@ export default defineConfig({
     //    the suite and reports failures against code nobody edited.
     //  - Playwright specs drive a real browser through `@playwright/test`, whose
     //    `test.describe` has no meaning under vitest. They run from their own
-    //    `playwright.config.ts` (see `packages/pixel-village`).
+    //    Playwright configuration.
     //
     // The bare root run is still not the repo-wide gate — packages carry their
     // own vitest configs with their own environments and setup files, and running
@@ -58,8 +58,8 @@ export default defineConfig({
       "**/e2e/**",
       "**/*.spec.ts",
     ],
-    testTimeout: 10_000,
-    hookTimeout: 10_000,
+    testTimeout: Number(process.env.HOBO_TEST_TIMEOUT ?? 10_000),
+    hookTimeout: Number(process.env.HOBO_TEST_TIMEOUT ?? 10_000),
     coverage: { enabled: false },
     reporters: ["dot"],
   },

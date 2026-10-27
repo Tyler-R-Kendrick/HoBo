@@ -322,9 +322,10 @@ describe("the lifecycle log", () => {
 		]);
 	});
 
-	it("appends a closed event carrying the status and reason", () => {
+	it("appends a closed event carrying the status and reason", async () => {
 		const journal = journalFor();
 		journal.close(result("failed", "compiler exploded"));
+		await expect(journal.done).rejects.toThrow("compiler exploded");
 		expect(journal.lifecycleEvents[1]).toMatchObject({
 			kind: "closed",
 			status: "failed",

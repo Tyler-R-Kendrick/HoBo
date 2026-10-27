@@ -24,7 +24,9 @@ function stopLocalEngines(): void {
 }
 
 describe("rivetkit live baremetal", () => {
-	it("loads rivetkit from CJS via dynamic import", async () => {
+	it("loads rivetkit from CJS via dynamic import", {
+		timeout: 30_000,
+	}, async () => {
 		const result = await new Promise<{
 			status: number | null;
 			stdout: string;

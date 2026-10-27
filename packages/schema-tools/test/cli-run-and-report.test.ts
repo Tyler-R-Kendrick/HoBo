@@ -31,7 +31,7 @@ import {
 } from "node:fs";
 import { tmpdir } from "node:os";
 import { dirname, join } from "node:path";
-import { afterEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 import { runCli } from "../src/cli.js";
 import { vetReportEnvelope } from "../src/cue.js";
@@ -39,7 +39,15 @@ import { vetReportEnvelope } from "../src/cue.js";
 const dirs: string[] = [];
 const originalPath = process.env.PATH;
 
+beforeEach(() => {
+	vi.stubGlobal(
+		"fetch",
+		vi.fn().mockRejectedValue(new Error("offline test fixture")),
+	);
+});
+
 afterEach(() => {
+	vi.unstubAllGlobals();
 	process.env.PATH = originalPath;
 	for (const dir of dirs.splice(0))
 		rmSync(dir, { recursive: true, force: true });

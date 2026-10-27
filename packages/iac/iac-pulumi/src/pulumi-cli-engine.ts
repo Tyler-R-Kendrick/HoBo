@@ -436,7 +436,8 @@ interface PreviewChange {
 
 function parsePreviewSummary(raw: string): ChangeSummary {
 	try {
-		const parsed = parseJsonObject(raw);
+		// SAFETY: CLI stdout is parsed at this I/O boundary and narrowed below.
+		const parsed = JSON.parse(raw) as JsonObject;
 		const summary = isJsonObject(parsed.changeSummary)
 			? parsed.changeSummary
 			: {};

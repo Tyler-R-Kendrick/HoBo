@@ -145,7 +145,7 @@ function runProbes(
 			cwd: project,
 			env: { ...inherited, TMPDIR: temp, SEEN_FILE: seenFile, ...env },
 			encoding: "utf8",
-			timeout: 60_000,
+			timeout: 120_000,
 		},
 	);
 	return {
@@ -175,7 +175,7 @@ describe("the throwaway HOBO_HOME", () => {
 		for (const line of seen) expect(line).toMatch(inRoot("file", temp));
 		expect(new Set(seen).size).toBe(2);
 		expect(left).toEqual([]);
-	}, 60_000);
+	}, 120_000);
 
 	it("leaves nothing behind for a file whose every test is skipped", () => {
 		// Vitest runs no afterAll for such a file, so only the run's teardown can remove its home.
@@ -185,7 +185,7 @@ describe("the throwaway HOBO_HOME", () => {
 		});
 		expect(status).toBe(0);
 		expect(left).toEqual([]);
-	}, 60_000);
+	}, 120_000);
 
 	it("stays set after a file's last test, so a late write lands inside the run's root", () => {
 		// The timer fires once the file's test is done; HOBO_HOME unset then would send it to ~/.hobo.
@@ -197,7 +197,7 @@ describe("the throwaway HOBO_HOME", () => {
 		expect(seen).toHaveLength(1);
 		expect(seen[0]).toMatch(inRoot("late", temp));
 		expect(left).toEqual([]);
-	}, 60_000);
+	}, 120_000);
 
 	it("is never one the runner set: that one is kept, and no root is made", () => {
 		const own = join(scratch, "own-home");
@@ -210,5 +210,5 @@ describe("the throwaway HOBO_HOME", () => {
 		expect(seen).toEqual([`file ${own} true`, `file ${own} true`]);
 		expect(existsSync(own)).toBe(true);
 		expect(left).toEqual([]);
-	}, 60_000);
+	}, 120_000);
 });

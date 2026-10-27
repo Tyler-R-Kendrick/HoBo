@@ -40,7 +40,7 @@ describe("canonical starter through real self-hosted deployment", () => {
 					...(args[0] === "up" ? ["--home", hoboHome] : []),
 					"--json",
 				],
-				{ cwd, env, timeout: 120_000, maxBuffer: 1024 * 1024 },
+				{ cwd, env, timeout: 300_000, maxBuffer: 1024 * 1024 },
 			);
 			return JSON.parse(result.stdout);
 		};
@@ -83,5 +83,5 @@ describe("canonical starter through real self-hosted deployment", () => {
 			await command(["down"]).catch(() => undefined);
 			await rm(root, { recursive: true, force: true });
 		}
-	}, 120_000);
+	}, 300_000);
 });

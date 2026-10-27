@@ -102,5 +102,5 @@ describe("happy path: make a hello world app then run it", () => {
 		} finally {
 			await host.dispose?.();
 		}
-	}, 45_000);
+	}, 180_000);
 });

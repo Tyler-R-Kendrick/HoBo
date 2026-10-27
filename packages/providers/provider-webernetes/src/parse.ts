@@ -25,11 +25,11 @@ export type { JsonObject, JsonValue } from "./json.js";
 export type WebernetesPortKind = "compute" | "kv" | "queue";
 
 /** Every port the equivalence table actually claims. */
-export const WEBERNETES_PORTS = [
+export const WEBERNETES_PORTS = Object.freeze([
 	"compute",
 	"kv",
 	"queue",
-] satisfies readonly WebernetesPortKind[];
+]) satisfies readonly WebernetesPortKind[];
 
 export type WebernetesFeature = string & {
 	readonly __webernetesFeature: unique symbol;

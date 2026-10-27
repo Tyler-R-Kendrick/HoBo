@@ -56,15 +56,14 @@ lowest-common-denominator abstraction that hides the provider.
   dependency** for gates or publish (`pnpm run site:deploy`). Checkin gates
   run only through agent hooks / githooks (`pnpm agent:check`); agents must
   not wait on, cancel, or re-request Action runners.
-- A control-plane UI (`@hobo/control-yard`) and a separate pixel-RPG game
-  project (`@hobo/pixel-village`).
+- A control-plane UI (`@hobo/control-yard`).
 - Design suite, ADRs and traceability under `docs/design/`; proofs under
   `src/draft/`; gates run through `pnpm agent:check`.
 
 ## Capabilities and Constraints
 
 - Active design + executable contract/proof repository with a production
-  `packages/` workspace (78 package manifests).
+  `packages/` workspace (127 package manifests).
 - The canonical `hobo` verb set dispatches against the local lane.
 - Live Vercel/Cloudflare paths and `HOBO_PULUMI_LIVE=1` are credential- or
   engine-gated, not default.
@@ -82,14 +81,12 @@ lowest-common-denominator abstraction that hides the provider.
 - **Bo is the character.** `bo-idle`, `bo-walk`, `bo-walk-left` in
   `site/public/parallax/`, plus five generated action sheets in
   `site/public/bo-actions/` (site-only, geometry in `sheets.json`).
-- `@hobo/pixel-village` owns a **separate** `HoBo Pixel` identity, scoped to
-  that package and binding nothing outside it.
 - This identity was once replaced and then restored by owner decision
   ([ADR-0149](docs/design/adr/07-portability-extensibility.md#adr-0149)). The
   governing rule from that reversal: **an implementation problem is never
   grounds to replace a product identity**, and art is authored as art and
   vendored as assets — never assembled from `rect`/`line` primitives in a
-  renderer. `pnpm run design:lint` validates all three DESIGN.md files.
+  renderer. `pnpm run design:lint` validates the active DESIGN.md files.
 
 ## Evidence on Hand
 

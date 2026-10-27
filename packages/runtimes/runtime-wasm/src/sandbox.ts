@@ -567,6 +567,9 @@ function resolveFetchHandler(mod, resourceName) {
 
 const handler = resolveFetchHandler(mod, RESOURCE);
 
+const isJsonObject = (value) => Object.prototype.toString.call(value) === "[object Object]";
+const isJsonString = (value) => typeof value === "string";
+
 function applyMeshEnv(request) {
   const g = globalThis;
   g.process = g.process || {};

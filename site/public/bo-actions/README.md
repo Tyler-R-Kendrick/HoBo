@@ -1,8 +1,7 @@
 # Bo action sheets — site use only
 
 Five generated Bo animation sheets, for use on **sites**. They are deliberately
-**not** game assets: `@hobo/pixel-village` renders `HoBo Pixel` and does not use
-these, and `@hobo/control-yard` does not load them either.
+**not** game assets: `@hobo/control-yard` does not load them.
 
 ## The sheets
 
@@ -44,8 +43,7 @@ The hand-authored Bo lives in [`../parallax/`](../parallax/) —
 
 ## Rules
 
-- **Site surfaces only.** Do not import these into `@hobo/pixel-village` or
-  `@hobo/control-yard`.
+- **Site surfaces only.** Do not import these into `@hobo/control-yard`.
 - **Anchor at the feet.** See above.
 - **They do not override the parallax Bo.** Where an idle or walk cycle is
   needed, use `../parallax/`; these cover actions that art does not.

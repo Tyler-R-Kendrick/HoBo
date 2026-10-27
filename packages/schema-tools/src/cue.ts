@@ -12,25 +12,27 @@ import {
 import { arch, homedir, platform } from "node:os";
 import { basename, dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
-import type { CueVetResult, CueViolation, DataModelPackage } from "./types.js";
 import { isJsonNumber } from "./json.js";
-
+import type { CueVetResult, CueViolation, DataModelPackage } from "./types.js";
 
 const CUE_VERSION = "v0.14.0";
 
-function cuePlatform(): string {
-	const os = platform();
+function cuePlatform(os = platform()): string {
 	if (os === "linux") return "linux";
 	if (os === "darwin") return "darwin";
 	if (os === "win32") return "windows";
 	throw new Error(`unsupported platform for CUE download: ${os}`);
 }
 
-function cueArch(): string {
-	const cpu = arch();
+function cueArch(cpu = arch()): string {
 	if (cpu === "x64") return "amd64";
 	if (cpu === "arm64") return "arm64";
 	throw new Error(`unsupported architecture for CUE download: ${cpu}`);
+}
+
+export function cueArchiveName(os = platform(), cpu = arch()): string {
+	const extension = os === "win32" ? "zip" : "tar.gz";
+	return `cue_${CUE_VERSION}_${cuePlatform(os)}_${cueArch(cpu)}.${extension}`;
 }
 
 function cachedCuePath(repoRoot: string): string {
@@ -55,8 +57,7 @@ async function runCommand(
 					reject(new Error(`command not found: ${command}`));
 					return;
 				}
-				const code =
-					isJsonNumber(error?.code) ? error.code : error ? 1 : 0;
+				const code = isJsonNumber(error?.code) ? error.code : error ? 1 : 0;
 				resolvePromise({
 					stdout: String(stdout),
 					stderr: String(stderr),
@@ -71,7 +72,8 @@ async function pathCueMatches(cuePath: string): Promise<boolean> {
 	try {
 		const result = await runCommand(cuePath, ["version"]);
 		return (
-			result.stdout.includes(CUE_VERSION) || result.stdout.includes("0.14.0")
+			result.code === 0 &&
+			(result.stdout.includes(CUE_VERSION) || result.stdout.includes("0.14.0"))
 		);
 	} catch {
 		return false;
@@ -83,9 +85,7 @@ async function downloadCue(repoRoot: string): Promise<string> {
 	if (existsSync(target)) return target;
 
 	const os = cuePlatform();
-	const cpu = cueArch();
-	const archiveExtension = os === "windows" ? "zip" : "tar.gz";
-	const archive = `cue_${CUE_VERSION}_${os}_${cpu}.${archiveExtension}`;
+	const archive = cueArchiveName();
 	const url = `https://github.com/cue-lang/cue/releases/download/${CUE_VERSION}/${archive}`;
 	const cacheDir = join(repoRoot, ".tools", "cue", CUE_VERSION);
 	await mkdir(cacheDir, { recursive: true });

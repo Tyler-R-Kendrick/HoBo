@@ -25,10 +25,12 @@ today, all pinned to `PINNED_PULUMI_AUTOMATION_VERSION` (`3.130.0`):
   same rendered per-resource YAML programs against a `file://` state backend, no
   hand-rolled shell-out. Fails closed with typed errors when the `@pulumi/pulumi`
   module (`pulumi-automation-module-missing`) or the embedded engine binary
-  (`pulumi-cli-missing`) is unavailable. `snapshot()` enumerates the estate by
+  (`pulumi-cli-missing`) is unavailable. The real path preflights the binary
+  before loading the Automation module. `snapshot()` enumerates the estate by
   parsing file-backend checkpoints directly (sync, engine-free).
 - **CLI** (`createPulumiCliAutomationEngine`) — drives the pinned `pulumi` binary
   directly; kept for the `HOBO_PULUMI_BIN` test seam and as an explicit opt-in.
+  Invalid preview JSON fails dirty so apply cannot mistake it for a clean plan.
 
 The composed runtime's live lane (`HOBO_PULUMI_LIVE=1`, see `@hobo/hobo`
 `compose.ts`) defaults to the Automation API engine; `HOBO_PULUMI_LIVE_ENGINE=cli`

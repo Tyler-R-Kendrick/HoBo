@@ -22,6 +22,8 @@ refuses), not `unknown`. Parsed `realizationParameters` are `JsonObject`
 `parseDeploymentPlan` and `parseResourcePlan` are the only way to obtain a
 `DeploymentPlan` or a `ResourcePlan`: both types are branded, so a raw record
 cannot be cast into one and no consumer downstream has to re-validate.
+`ResourcePlanAuthoring` and `DeploymentPlanAuthoring` are the unbranded planner
+construction shapes; `@hobo/cloud` re-exports them as its legacy public names.
 
 ## Where this sits in the event architecture
 

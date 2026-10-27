@@ -1,5 +1,5 @@
 import { clone } from "@bufbuild/protobuf";
-import { ConfigurationSchema } from "@hobo/ci";
+import { ConfigurationSchema, OfferSchema } from "@hobo/ci";
 import { afterEach, expect, it } from "vitest";
 import { HostedRelay, type HostedRelayStore } from "../src/hosted-relay.js";
 import {
@@ -122,6 +122,70 @@ async function reserve(h: ReturnType<typeof setup>) {
 	h.api.host.display_title = `HoBo lease ${lease.id}`;
 	return lease;
 }
+
+it("requeues a paid reservation when a partial free host becomes available", async () => {
+	const h = setup();
+	const account = h.configuration.accounts[0];
+	const paid = account?.offers[0];
+	if (!account || !paid) throw new Error("missing offer");
+	paid.freeMinutes = 0;
+	paid.priceMicrosPerMinute = 1;
+	paid.observedAt = "2026-10-26T11:00:00Z";
+	h.store.configure(h.configuration, 1, NOW);
+	const original = await reserve(h);
+	const free = clone(OfferSchema, paid);
+	free.id = "partial-free";
+	free.providerAccountId = "another-account";
+	free.freeMinutes = 1;
+	free.priceMicrosPerMinute = 1000;
+	account.offers.push(free);
+	h.store.configure(h.configuration, 2, NOW);
+	await h.relay.dispatchPending();
+	expect(h.api.dispatches).toBe(0);
+	expect(h.store.get(original.id)?.state).toBe("cancelled");
+	expect(h.store.pendingJobs()).toHaveLength(1);
+	h.api.strictLeaseId = false;
+	h.api.hostLabel = free.runsOn;
+	await h.relay.dispatchPending();
+	expect(h.store.all().find((entry) => entry.id !== original.id)).toMatchObject(
+		{
+			offerId: free.id,
+			state: "dispatched",
+		},
+	);
+});
+
+it("reserves newly measured free minutes on the same unlaunched host", async () => {
+	const h = setup();
+	const offer = h.configuration.accounts[0]?.offers[0];
+	if (!offer) throw new Error("missing offer");
+	offer.freeMinutes = 0;
+	offer.observedAt = "2026-10-26T11:00:00Z";
+	h.store.configure(h.configuration, 1, NOW);
+	const original = await reserve(h);
+	offer.freeMinutes = 1;
+	offer.observedAt = "2026-10-26T11:30:00Z";
+	h.store.configure(h.configuration, 2, NOW);
+	await h.relay.dispatchPending();
+	expect(h.api.dispatches).toBe(0);
+	expect(h.store.get(original.id)?.state).toBe("cancelled");
+	h.api.strictLeaseId = false;
+	await h.relay.dispatchPending();
+	expect(h.store.all().find((entry) => entry.id !== original.id)).toMatchObject(
+		{
+			offerId: offer.id,
+			reservedFreeMinutes: 1,
+			state: "dispatched",
+		},
+	);
+	const replacement = h.store.all().find((entry) => entry.id !== original.id);
+	offer.freeMinutes = 2;
+	offer.observedAt = "2026-10-26T11:45:00Z";
+	h.store.configure(h.configuration, 3, NOW);
+	await h.relay.dispatchPending();
+	expect(h.api.dispatches).toBe(1);
+	expect(h.store.get(replacement?.id ?? "")?.state).toBe("dispatched");
+});
 
 function setIsolatedOnly(h: ReturnType<typeof setup>, duringLease = false) {
 	const connection = h.configuration.connections[0];

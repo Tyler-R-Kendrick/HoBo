@@ -66,12 +66,24 @@ describe("account allocation routing", () => {
 		expect(selected?.offer.id).toBe("depot");
 		expect(selected?.paidMicros).toBe(10000);
 	});
-	it("chooses the cheaper total reservation over a more expensive partial free allocation", () => {
+	it("uses partial free allocation before a cheaper fully paid offer", () => {
 		const a = account();
 		a.offers = [offer("gh", 1, 1000), offer("blacksmith", 0, 100)];
 		const choice = route(a, [], now);
+		expect(choice?.offer.id).toBe("gh");
+		expect(choice?.freeMinutes).toBe(1);
+		expect(choice?.paidMicros).toBe(9000);
+	});
+	it("chooses the cheapest paid remainder among free-consuming offers", () => {
+		const a = account();
+		a.offers = [
+			offer("gh", 1, 1000),
+			offer("blacksmith", 2, 500),
+			offer("depot", 0, 1),
+		];
+		const choice = route(a, [], now);
 		expect(choice?.offer.id).toBe("blacksmith");
-		expect(choice?.paidMicros).toBe(1000);
+		expect(choice?.paidMicros).toBe(4000);
 	});
 	it("prefers usable free allocation when total projected charges tie", () => {
 		const a = account();
@@ -133,13 +145,38 @@ describe("account allocation routing", () => {
 		expect(choice?.freeMinutes).toBeLessThan(0.1);
 		expect(choice?.paidMicros).toBe(9901);
 	});
-	it("selects the cheapest affordable offer after accounting for outstanding free reservations", () => {
+	it("accounts for outstanding free reservations and budgets", () => {
 		const a = account();
 		a.offers = [offer("gh", 10, 1000), offer("blacksmith", 0, 100)];
 		const existing = lease("gh", 9, 1000);
+		expect(route(a, [existing], now)?.offer.id).toBe("gh");
+		existing.reservedFreeMinutes = 10;
+		expect(route(a, [existing], now)?.offer.id).toBe("blacksmith");
+		existing.reservedFreeMinutes = 9;
+		a.budgetMicros = 2000;
 		expect(route(a, [existing], now)?.offer.id).toBe("blacksmith");
 		a.budgetMicros = 1999;
 		expect(route(a, [existing], now)).toBeUndefined();
+	});
+	it("uses a paid provider when the free provider has no concurrency remaining", () => {
+		const a = account();
+		a.offers = [offer("gh", 10, 1000), offer("blacksmith", 0, 100)];
+		present(a.offers[0]).concurrency = 1;
+		const existing = lease("gh", 1, 0);
+		const choice = route(a, [existing], now);
+		expect(choice?.offer.id).toBe("blacksmith");
+		expect(choice?.paidMicros).toBe(1000);
+	});
+	it("requires offer evidence to cover the entire reservation", () => {
+		const a = account();
+		const stale = offer("gh", 0, 1);
+		stale.validUntil = "2026-10-26T12:09:59.999Z";
+		a.offers = [stale];
+		expect(route(a, [], now)).toBeUndefined();
+		a.offers.push(offer("blacksmith", 0, 2));
+		expect(route(a, [], now)?.offer.id).toBe("blacksmith");
+		stale.validUntil = "2026-10-26T12:10:00Z";
+		expect(route(a, [], now)?.offer.id).toBe("gh");
 	});
 	it("rejects every candidate when hard budgets are exhausted", () => {
 		const a = account();

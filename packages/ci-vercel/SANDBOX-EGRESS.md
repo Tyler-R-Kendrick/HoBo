@@ -64,6 +64,16 @@ registration outcome cannot be proven, the controller stops known VMs but
 holds the reservation for investigation instead of assuming zero usage or an
 idle runner.
 
+The Ubuntu 26.04 Sandbox image does not include ICU, which the GitHub runner's
+.NET runtime requires. The relay also downloads the fixed 11,456,466-byte
+Ubuntu `libicu78` 78.2-2ubuntu1 package from `snapshot.ubuntu.com`, verifies its
+pinned SHA-256 and size, and uploads it to the guest. The guest checks the hash
+again and installs the package noninteractively before runner registration.
+The package's `/usr/share/doc/libicu78/copyright` contains the ICU MIT license
+and Debian packaging notices. The relay needs HTTPS access to the Ubuntu
+snapshot host; the guest does not need that host in its egress allowlist. The
+quote must include this additional package transfer and installation time.
+
 A live, nonpersistent Vercel Sandbox verified the pinned runner 2.338.2 archive
 digest and its native library dependencies, and `Runner.Listener --version`
 returned `2.338.2`. Its default user was `vercel-sandbox` and `/home/ubuntu`

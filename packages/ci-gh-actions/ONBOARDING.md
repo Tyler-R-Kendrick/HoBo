@@ -81,6 +81,12 @@ for this shared-label mode. Routing and budget reservations cover the runner;
 GitHub may assign it a different matching job from the one that triggered the
 reservation. Revoking a connection or changing policy does not instantly stop
 an already-live runner, which may accept a job while revocation is being applied.
+When GitHub confirms that the job assigned to a runner has completed, HoBo stops
+that runner and records its usage. Cancelling the original queued job does not
+by itself prove that a shared-label runner is idle: it may accept a different
+matching job and can remain online until its bounded Sandbox timeout. Each
+worker wakeup checks GitHub for the status of assigned active Sandbox jobs;
+operators should account for that per-runner API traffic as concurrency grows.
 GitHub App identity, installation permissions, and
 repository identity are verified before storing the connection.
 The repository's workflow can then use `runs-on: hobo` when the hosted isolated

@@ -418,7 +418,7 @@ export class HostedRelay {
 			repriced.paidMicros <= lease.reservedPaidMicros
 		);
 	}
-	/** A reserved host has no external side effect yet, so a cheaper host can
+	/** A reserved host has no external side effect yet, so a preferred host can
 	 * replace it. Already dispatched and uncertain hosts must never be moved. */
 	private async hasCheaperHost(lease: Lease): Promise<boolean> {
 		const account = this.account(lease);
@@ -438,7 +438,17 @@ export class HostedRelay {
 			others,
 			now,
 		);
-		return !!current && !!cheapest && cheapest.paidMicros < current.paidMicros;
+		if (!current || !cheapest) return false;
+		// A refreshed allocation for the same offer is not reflected in the
+		// existing reservation. Requeue it so the new free balance is reserved.
+		if (current.freeMinutes > lease.reservedFreeMinutes) return true;
+		const currentFree = current.freeMinutes > 0;
+		const preferredFree = cheapest.freeMinutes > 0;
+		return (
+			(preferredFree && !currentFree) ||
+			(preferredFree === currentFree &&
+				cheapest.paidMicros < current.paidMicros)
+		);
 	}
 	/** Durable outbox drain. A launch intent is committed before network I/O. */
 	async dispatchPending(): Promise<void> {

@@ -1,13 +1,16 @@
 # HoBo CI Vercel relay
 
 This package provides a Vercel Node Function HTTP boundary, a Postgres-backed
-relay, a private queue consumer, and an independent Vercel Cron Job. Signed
+relay, a private queue consumer, and an independent scheduler. Signed
 GitHub deliveries are committed before acknowledgement. Queue notifications
-wake the worker immediately; the Cron Job recovers committed work whose wakeup
+wake the worker immediately; the scheduler recovers committed work whose wakeup
 was lost and asks GitHub to redeliver failed App deliveries. `/readyz` requires
-the database, queue, Cron Job and GitHub repair path to have recently succeeded;
-a new deployment reports unready until its first scheduled repair succeeds. The
-webhook intake is available during that initial period.
+the database, queue, scheduler and GitHub repair path to have recently succeeded;
+a new deployment reports unready until its first repair scan completes. A
+successful partial scan retains the last completed-scan health while it queues
+its continuation. Actual scan failures mark the relay unready, and completed-scan
+health expires after 45 minutes. The webhook intake is available during initial
+repair.
 
 The queue uses **parse, don't validate**: `QueueMessageSchema` parses provider
 input into derived types for a committed-delivery wakeup, a scheduled or

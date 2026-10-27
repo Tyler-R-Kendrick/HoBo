@@ -172,6 +172,54 @@ it("keeps the existing reservation when the new host costs the same", async () =
 	expect(h.store.get(original.id)?.state).toBe("dispatched");
 	expect(h.store.pendingJobs()).toHaveLength(0);
 });
+it("requeues an unlaunched paid host when a partial free allocation becomes available", async () => {
+	const h = setup();
+	const account = h.configuration.accounts[0];
+	const offer = account?.offers[0];
+	if (!account || !offer) throw new Error("missing offer");
+	offer.freeMinutes = 0;
+	offer.priceMicrosPerMinute = 1;
+	const original = await reserve(h);
+	const free = clone(OfferSchema, offer);
+	free.id = "partial-free";
+	free.providerAccountId = "another-account";
+	free.freeMinutes = 1;
+	free.priceMicrosPerMinute = 1000;
+	account.offers.push(free);
+	await h.relay.dispatchPending();
+	expect(h.api.dispatches).toBe(0);
+	expect(h.store.get(original.id)?.state).toBe("cancelled");
+	expect(h.store.pendingJobs()).toHaveLength(1);
+	h.api.strictLeaseId = false;
+	h.api.hostLabel = free.runsOn;
+	await h.relay.dispatchPending();
+	expect(h.store.all().find((entry) => entry.id !== original.id)).toMatchObject(
+		{
+			offerId: free.id,
+			state: "dispatched",
+		},
+	);
+});
+it("reserves newly measured free minutes on the same unlaunched host", async () => {
+	const h = setup();
+	const offer = h.configuration.accounts[0]?.offers[0];
+	if (!offer) throw new Error("missing offer");
+	offer.freeMinutes = 0;
+	const original = await reserve(h);
+	offer.freeMinutes = 1;
+	await h.relay.dispatchPending();
+	expect(h.api.dispatches).toBe(0);
+	expect(h.store.get(original.id)?.state).toBe("cancelled");
+	h.api.strictLeaseId = false;
+	await h.relay.dispatchPending();
+	expect(h.store.all().find((entry) => entry.id !== original.id)).toMatchObject(
+		{
+			offerId: offer.id,
+			reservedFreeMinutes: 1,
+			state: "dispatched",
+		},
+	);
+});
 it("does not reroute a dispatched host when a cheaper host appears", async () => {
 	const h = setup();
 	const account = h.configuration.accounts[0];
@@ -185,6 +233,7 @@ it("does not reroute a dispatched host when a cheaper host appears", async () =>
 	cheaper.providerAccountId = "another-account";
 	cheaper.priceMicrosPerMinute = 1;
 	account.offers.push(cheaper);
+	offer.freeMinutes = 1;
 	await h.relay.dispatchPending();
 	expect(h.api.dispatches).toBe(1);
 	expect(h.store.get(original.id)?.state).toBe("dispatched");

@@ -48,7 +48,7 @@ account lease API's actual job attribution to inspect routing and settlement.
 Stations exports `createCiBudgetRoutingBridge` over the typed relay client.
 Subscribe it to the existing Broker `budget.ThresholdCrossed` and
 `budget.Recovered` facts for the account's tenant. A profile chooses the eligible
-provider offers; CI chooses the lowest projected charge after applicable free allocation.
+provider offers; CI prioritizes usable free allocation, then the lowest projected charge.
 The highest active configured threshold wins. Recovery restores the lower or
 normal profile, and an empty offer list pauses new admissions.
 
@@ -194,9 +194,12 @@ drain the existing hosts before rotating those identities. A connection revoked
 while webhook REST validation is awaiting cannot admit new demand under its old
 binding.
 
-By default, routing selects the eligible offer with the lowest projected charge
-after applying its usable measured free allocation. Fully free offers win over paid
-offers; a partial free balance does not force a more expensive host. The relay
+By default, routing selects eligible offers that consume measured free allocation
+first, choosing the lowest projected paid charge among them. When no eligible offer
+can consume free allocation, routing selects the cheapest paid offer. A partial free
+balance can leave a paid remainder more expensive than a fully paid host. Pricing
+and allocation evidence must cover the entire reserved host duration, including
+any extra Sandbox proxy VM duration. The relay
 reserves worst-case runtime plus startup, checks account/provider budgets and concurrency, and rechecks delayed
 launches. Original Actions jobs and portable native pipelines share the ledger.
 Prices use integer USD microdollars; allocations use normalized runner minutes.

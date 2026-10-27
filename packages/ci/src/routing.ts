@@ -47,7 +47,8 @@ export function route(account: Account, leases: readonly Lease[], now: string) {
 			!offer.enabled ||
 			!offer.bridgeAcknowledged ||
 			Date.parse(offer.observedAt) > Date.parse(now) ||
-			Date.parse(offer.validUntil) <= Date.parse(now)
+			Date.parse(offer.validUntil) <= Date.parse(now) ||
+			Date.parse(offer.validUntil) < Date.parse(now) + minutes * 60000
 		)
 			return [];
 		const reserved = active.filter((lease) => lease.offerId === offer.id);
@@ -69,18 +70,12 @@ export function route(account: Account, leases: readonly Lease[], now: string) {
 					offer.priceMicrosPerMinute !== 0))
 		)
 			return [];
-		const allocation =
-			Date.parse(offer.validUntil) < Date.parse(now) + minutes * 60000
-				? allocationQuote(0, [], minutes, offer.priceMicrosPerMinute)
-				: allocationQuote(
-						offer.freeMinutes,
-						[
-							...usedFree,
-							...reserved.map((lease) => lease.reservedFreeMinutes),
-						],
-						minutes,
-						offer.priceMicrosPerMinute,
-					);
+		const allocation = allocationQuote(
+			offer.freeMinutes,
+			[...usedFree, ...reserved.map((lease) => lease.reservedFreeMinutes)],
+			minutes,
+			offer.priceMicrosPerMinute,
+		);
 		let { free, reservedFree, paid } = allocation;
 		let sandboxReservedAllowance: SandboxAllowance | undefined;
 		if (offer.backend === "sandbox") {
@@ -94,9 +89,13 @@ export function route(account: Account, leases: readonly Lease[], now: string) {
 					))
 			)
 				return [];
+			if (!offer.sandboxPricing) return [];
+			const extraMs = offer.sandboxPricing.proxyVmRequired
+				? offer.sandboxPricing.proxyVmExtraMs
+				: 0;
 			if (
-				!offer.sandboxPricing ||
-				Date.parse(offer.validUntil) < Date.parse(now) + minutes * 60000
+				Date.parse(offer.validUntil) <
+				Date.parse(now) + minutes * 60000 + extraMs
 			)
 				return [];
 			try {
@@ -147,17 +146,10 @@ export function route(account: Account, leases: readonly Lease[], now: string) {
 			return [];
 		return [{ offer, free, reservedFree, paid, sandboxReservedAllowance }];
 	});
-	// A job cannot split across offers. Compare the rounded paid cost of the
-	// entire reservation before preferring free headroom on equal-cost offers.
+	// Prefer consuming available free allocation, then compare the full paid
+	// reservation within that group. A single job cannot split across offers.
 	if (candidates.length === 0) return undefined;
-	const lowestPaidMicros = candidates.reduce(
-		(lowest, candidate) => Math.min(lowest, candidate.paid),
-		Number.POSITIVE_INFINITY,
-	);
-	const cheapest = candidates.filter(
-		(candidate) => candidate.paid === lowestPaidMicros,
-	);
-	const freeCandidates = cheapest.filter((candidate) => {
+	const freeCandidates = candidates.filter((candidate) => {
 		const allowance = candidate.sandboxReservedAllowance;
 		return (
 			candidate.reservedFree > 0 ||
@@ -167,10 +159,18 @@ export function route(account: Account, leases: readonly Lease[], now: string) {
 					allowance.egressBytes > 0 ||
 					allowance.creations > 0 ||
 					allowance.proxyBytes > 0 ||
-					allowance.proxySessions > 0))
+					allowance.proxySessions > 0 ||
+					allowance.proxyControlCalls > 0))
 		);
 	});
-	const eligible = freeCandidates.length > 0 ? freeCandidates : cheapest;
+	const prioritized = freeCandidates.length > 0 ? freeCandidates : candidates;
+	const lowestPaidMicros = prioritized.reduce(
+		(lowest, candidate) => Math.min(lowest, candidate.paid),
+		Number.POSITIVE_INFINITY,
+	);
+	const eligible = prioritized.filter(
+		(candidate) => candidate.paid === lowestPaidMicros,
+	);
 	// Dispatcher ranks the lowest-cost shortlist, retaining its native credit
 	// rationale and deterministic tie-breaking.
 	const decision = decideDispatch({

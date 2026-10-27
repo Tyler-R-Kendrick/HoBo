@@ -21,6 +21,7 @@ import {
 	statSync,
 } from "node:fs";
 import { createRequire } from "node:module";
+import { constants } from "node:os";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -178,6 +179,17 @@ function tryRebuildDist() {
 	return false;
 }
 
+/**
+ * The child runs in a session of its own where the platform allows it, so the
+ * terminal's hangup never reaches it, nor does a signal sent to hobo-code:
+ * this launcher passes on every signal that ends hobo-code (below). Its IPC
+ * channel covers the one end that passes nothing on, the launcher killed
+ * outright: the channel closes, and the child takes that as a hangup
+ * (`src/bin/hobo-code.ts`).
+ */
+const detached = process.platform !== "win32";
+const childStdio = ["inherit", "inherit", "inherit", "ipc"];
+
 function runFromSource() {
 	if (!existsSync(srcBin)) {
 		process.stderr.write(
@@ -189,10 +201,10 @@ function runFromSource() {
 		process.execPath,
 		["--import", "tsx", srcBin, ...process.argv.slice(2)],
 		{
-			stdio: "inherit",
+			stdio: childStdio,
 			env: process.env,
 			cwd: pkgRoot,
-			detached: process.platform !== "win32",
+			detached,
 		},
 	);
 }
@@ -230,21 +242,26 @@ if (!useSource && !existsSync(distBin)) {
 const run = useSource
 	? runFromSource()
 	: spawn(process.execPath, [distBin, ...process.argv.slice(2)], {
-			stdio: "inherit",
+			stdio: childStdio,
 			env: process.env,
-			detached: process.platform !== "win32",
+			detached,
 		});
-const interrupt = () => run.kill("SIGINT");
-const terminate = () => run.kill("SIGTERM");
-process.on("SIGINT", interrupt);
-process.on("SIGTERM", terminate);
+// Every signal that ends hobo-code goes on to a detached child, the closing
+// terminal's SIGHUP included, and hobo-code waits for the child to end: the
+// terminal is handed back once the child has restored it. A child that is not
+// detached gets the console's own events.
+const forwarded = detached
+	? ["SIGINT", "SIGTERM", "SIGHUP", "SIGQUIT"]
+	: ["SIGINT", "SIGTERM"];
+const forward = (signal) => run.kill(signal);
+for (const signal of forwarded) process.on(signal, forward);
 const result = await new Promise((resolve) => {
 	run.once("error", (error) => resolve({ error }));
 	run.once("exit", (status, signal) => resolve({ status, signal }));
 });
-process.off("SIGINT", interrupt);
-process.off("SIGTERM", terminate);
+for (const signal of forwarded) process.off(signal, forward);
 if (result.error) process.stderr.write(`hobo-code: ${result.error.message}\n`);
+// A child ended by signal n: 128+n, as a shell reports it.
 process.exitCode =
 	result.status ??
-	(result.signal === "SIGINT" ? 130 : result.signal === "SIGTERM" ? 143 : 1);
+	(result.signal ? 128 + (constants.signals[result.signal] ?? 0) : 1);

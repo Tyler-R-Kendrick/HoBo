@@ -51,6 +51,16 @@ Skip code rebuild with `HOBO_CODE_SKIP_STALE_REBUILD=1`. Force source with
 `HOBO_CODE_FROM_SOURCE=1`. If even src cannot load, run
 `pnpm exec turbo run build --filter=@hobo/code`.
 
+The launcher runs `dist/bin/hobo-code.js` (or `src/` via tsx) as a child, in a
+session of its own except on Windows, so neither a signal sent to `hobo-code`
+nor the terminal's hangup reaches that child directly. The launcher passes
+SIGINT, SIGTERM, SIGHUP and SIGQUIT on to it, the SIGHUP of a closing terminal
+included, waits for it to end, and exits with its status, or 128+n when it
+ends by signal n. Killed outright (SIGKILL), the launcher passes nothing on:
+the child sees its IPC channel to the launcher close and quits as on SIGHUP.
+On Windows the child shares the console, and only SIGINT and SIGTERM are
+passed on.
+
 | Binary | Product |
 |---|---|
 | **`hobo-code`** | App-building coding agent plus local browser-debug deployment (this package) |
@@ -531,7 +541,14 @@ deps (`@hobo/adapter-hono`, `@hobo/bindles`, `hono`) so `src/bindle.ts` loads
 without `pnpm install`. Set `HOBO_CODE_HOBO_BIN` only for an explicit
 child-process override (tests). Use `/hobo <args>` for the full control plane
 (also in-process via `createComposedHoboCli`), for example `/hobo yard status`
-or `/hobo plan`.
+or `/hobo plan`. That composition keeps a throwaway event store in a
+`hobo-yard-*` directory under `TMPDIR`, removed when hobo-code exits and, since
+the entry point asks for it (`removeOwnedDirsOnSignals`, loaded beside
+`createComposedHoboCli`), on SIGTERM, SIGHUP, SIGINT or SIGQUIT as well,
+which the launcher passes on to the process that holds the store (above). The
+shell quits on each of the four: it leaves the alternate screen, shows the
+cursor and restores the terminal's settings, and hobo-code's status is the
+quit's (0).
 
 | lazygit workflow | HoBo Code workbench |
 |---|---|

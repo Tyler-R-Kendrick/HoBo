@@ -48,7 +48,7 @@ Shared temp contract: `hobo.temporary-environment-station/v1` in `@hobo/core` (`
 
 | Adapter | Default | Live |
 |---|---|---|
-| `@hobo/iac-pulumi` | **In-memory** Automation stand-in | `HOBO_PULUMI_LIVE=1` (+ engine binary/module) |
+| `@hobo/iac-pulumi` | **In-memory** Automation stand-in | `HOBO_PULUMI_LIVE=1` (+ engine binary/module). Its programs and `file://` state go in `HOBO_PULUMI_WORKDIR`, which is kept; without it, in a `hobo-pulumi-live-*` directory **deleted when the process exits**, said on one `hobo:` line on stderr. Set `HOBO_PULUMI_WORKDIR` to keep the state |
 | `@hobo/iac-terraform` | Offline/test | CLI engine when binary present |
 | `@hobo/iac-crossplane` | Offline/test | Cluster-gated |
 
@@ -85,7 +85,7 @@ failure exits non-zero and the archived evidence names the failing samples.
 | Source | Providers | Status |
 |---|---|---|
 | Process environment (`VERCEL_TOKEN`, `CLOUDFLARE_API_TOKEN`) | Vercel, Cloudflare | Default; the process holds the credential |
-| `@hobo/adapter-opensesame` — run under `opensesame dev --agent run`, hold an `osr_` surrogate | **Vercel** | **Real-lane verified, locally**: `test:real` against the real `opensesame`, the plugin's test build and a recording TLS upstream (needs `HOBO_OPENSESAME_KIT`, fails rather than skips; no public test-build asset). Not yet wired into `hobo up` |
+| `@hobo/adapter-opensesame` — run under `opensesame dev --agent run`, hold an `osr_` surrogate | **Vercel** | **Real-lane verified, locally**: `test:real` against the real `opensesame`, the plugin's test build and a recording TLS upstream (needs `HOBO_OPENSESAME_KIT`, fails rather than skips; no public test-build asset). The composed `hobo` uses it with `HOBO_CREDENTIALS=opensesame` (relaunches itself under OpenSesame; refuses a placeholder with `OPENSESAME_PLACEHOLDERS_ONLY`), shown against the stand-in binary, and against the real `opensesame` without the plugin (placeholder refused, SIGTERM 143); surrogate delivery from the composed `hobo` not yet run |
 | `@hobo/adapter-opensesame` | AWS | **Refused** (`provider_not_brokered`): SigV4 signs in process from a live key, and OpenSesame's STS mint does not exist yet |
 
 A proxied run whose plugin is missing or off exits 0 with a placeholder; the adapter reports that as `placeholders_only`, never as a pass.

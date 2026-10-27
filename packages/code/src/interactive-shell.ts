@@ -3850,9 +3850,11 @@ export async function runInteractiveShell(
 
 	// Signals must restore the terminal too: closing the emulator or `kill`
 	// otherwise leaves raw mode, a hidden cursor and bracketed paste enabled.
+	// hobo-code's launcher passes SIGINT and SIGQUIT on as well, and in raw
+	// mode neither comes from the keyboard: each asks the shell to quit.
+	const quitSignals = ["SIGTERM", "SIGHUP", "SIGINT", "SIGQUIT"] as const;
 	const onSignal = () => requestQuit();
-	process.once("SIGTERM", onSignal);
-	process.once("SIGHUP", onSignal);
+	for (const signal of quitSignals) process.once(signal, onSignal);
 
 	try {
 		await done;
@@ -3860,8 +3862,7 @@ export async function runInteractiveShell(
 		clearInterval(tick);
 		clearInterval(paneTick);
 		if (maxMsTimer) clearTimeout(maxMsTimer);
-		process.removeListener("SIGTERM", onSignal);
-		process.removeListener("SIGHUP", onSignal);
+		for (const signal of quitSignals) process.removeListener(signal, onSignal);
 		resizeStream.off?.("resize", onTerminalResize);
 		resizeStream.removeListener?.("resize", onTerminalResize);
 		// Leave the alternate screen (and raw mode) even if the driver threw —

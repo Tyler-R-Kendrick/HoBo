@@ -569,6 +569,68 @@ it("attributes delayed job completion to the job's own attempt after a rerun sta
 	expect(await h.relay.processWebhook(body, "workflow_job")).toBe("ignored");
 	expect(seen).toEqual([1]);
 });
+it("records the fresh completed job when a queued webhook arrives late", async () => {
+	const h = setup();
+	h.api.jobStatus = "completed";
+	const seen: string[] = [];
+	const observe = h.asyncStore.observe.bind(h.asyncStore);
+	h.asyncStore.observe = async (job, at, revision) => {
+		seen.push(job.action);
+		await observe(job, at, revision);
+	};
+	expect(
+		await h.relay.processWebhook(
+			Buffer.from(JSON.stringify(queued())),
+			"workflow_job",
+		),
+	).toBe("ignored");
+	expect(seen).toEqual(["completed"]);
+	expect(h.store.all()).toHaveLength(0);
+	// A terminal observation fences a subsequent stale queue attempt.
+	h.store.queue(job(), NOW);
+	expect(h.store.pendingJobs()).toHaveLength(0);
+});
+it("does not record a terminal event from a stale webhook while GitHub reports waiting", async () => {
+	const h = setup();
+	h.api.jobStatus = "waiting";
+	const seen: string[] = [];
+	const observe = h.asyncStore.observe.bind(h.asyncStore);
+	h.asyncStore.observe = async (entry, at, revision) => {
+		seen.push(entry.action);
+		await observe(entry, at, revision);
+	};
+	const completed = { ...queued(), action: "completed" };
+	expect(
+		await h.relay.processWebhook(
+			Buffer.from(JSON.stringify(completed)),
+			"workflow_job",
+		),
+	).toBe("ignored");
+	expect(seen).toEqual([]);
+	// The skipped stale event must not install a terminal tombstone.
+	h.store.queue(job(), NOW);
+	expect(h.store.pendingJobs()).toHaveLength(1);
+});
+it("records an in-progress observation when an older completed webhook arrives", async () => {
+	const h = setup();
+	h.api.jobStatus = "in_progress";
+	const seen: string[] = [];
+	const observe = h.asyncStore.observe.bind(h.asyncStore);
+	h.asyncStore.observe = async (entry, at, revision) => {
+		seen.push(entry.action);
+		await observe(entry, at, revision);
+	};
+	const completed = { ...queued(), action: "completed" };
+	expect(
+		await h.relay.processWebhook(
+			Buffer.from(JSON.stringify(completed)),
+			"workflow_job",
+		),
+	).toBe("ignored");
+	expect(seen).toEqual(["in_progress"]);
+	h.store.queue(job(), NOW);
+	expect(h.store.pendingJobs()).toHaveLength(1);
+});
 it("retains a delivery for retry when GitHub omits the job attempt", async () => {
 	const h = setup();
 	const request = h.api.request.bind(h.api);

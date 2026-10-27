@@ -31,7 +31,7 @@ const Config = z
 		leaseId: z.string().uuid(),
 		proxySessionId: z.string().regex(/^sbx_[A-Za-z0-9_-]+$/),
 		quotaToken: z.string().regex(/^[A-Za-z0-9_-]{43}$/),
-		teamId: z.string().min(1).max(120),
+		teamId: z.string().regex(/^[A-Za-z0-9_-]{1,120}$/),
 		projectId: z.string().min(1).max(120),
 		hosts: z.array(z.string()).min(1).max(100),
 		maxEgressBytes: z.number().int().positive().max(Number.MAX_SAFE_INTEGER),
@@ -179,6 +179,33 @@ function authorizedBearer(
 	return timingSafeEqual(expected, actual);
 }
 
+/** Only fixed categories are logged: SDK exceptions can contain request data. */
+function proxyVerificationFailure(error: Error): string {
+	if (error.message === "Missing required proxy headers") return "headers";
+	if (error.message === "Invalid proxied request URL") return "forwarded_url";
+	if (error.message === "Missing OIDC issuer") return "issuer_missing";
+	if (error.message === "Invalid OIDC issuer") return "issuer_invalid";
+	if (error.message === "Missing required claims in OIDC token")
+		return "claims";
+	const code = "code" in error ? error.code : undefined;
+	switch (code) {
+		case "ERR_JWT_CLAIM_VALIDATION_FAILED":
+			return "jwt_claim";
+		case "ERR_JWT_EXPIRED":
+			return "jwt_expired";
+		case "ERR_JWS_SIGNATURE_VERIFICATION_FAILED":
+			return "jwt_signature";
+		case "ERR_JWKS_TIMEOUT":
+			return "jwks_timeout";
+		case "ERR_JWKS_NO_MATCHING_KEY":
+			return "jwks_no_key";
+		case "ERR_JWKS_INVALID":
+			return "jwks_invalid";
+		default:
+			return "other";
+	}
+}
+
 const UnverifiedToken = z.object({
 	iss: z.string(),
 	aud: z.union([z.string(), z.array(z.string())]),
@@ -203,9 +230,11 @@ function plausibleToken(token: string | null, config: ProxyVmConfig): boolean {
 		const claim = parsed.data;
 		const audience = `${origin(config.proxyOrigin)}/sandbox/egress`;
 		return (
-			// Only the configured team issuer or Vercel's documented global
-			// issuer may reach the SDK's dynamically resolved JWKS endpoint.
+			// Vercel can issue tokens under either the configured team slug or
+			// its immutable team ID. Both remain bound to the exact team claim;
+			// the SDK still verifies issuer, audience, signature and lifetime.
 			(claim.iss === config.expectedIssuer ||
+				claim.iss === `https://oidc.vercel.com/${config.teamId}` ||
 				claim.iss === "https://oidc.vercel.com") &&
 			// The SDK validates exp when present but does not require it.
 			// Apply its documented 60-second clock tolerance before verification;
@@ -261,6 +290,7 @@ export function createSandboxProxyVmHandler(
 	const ledger = options.ledger ?? createProxyQuotaLedger(config);
 	let verifiedRequests = 0;
 	let boundSandboxId: string | undefined;
+	const reportedFailures = new Set<string>();
 	const verified = createVerifiedSandboxEgressHandler({
 		teamId: config.teamId,
 		projectId: config.projectId,
@@ -270,16 +300,33 @@ export function createSandboxProxyVmHandler(
 		maxRequestBytes: config.maxRequestBytes,
 		maxResponseBytes: config.maxResponseBytes,
 	});
+	const verifiedHandler: ProxyHandler = async (request, meta) => {
+		if (!boundSandboxId || meta.sandboxId !== boundSandboxId)
+			return new Response(null, { status: 403 });
+		verifiedRequests++;
+		if (verifiedRequests > MAX_REQUESTS)
+			return new Response(null, { status: 429 });
+		return verified(request, meta);
+	};
 	const proxy =
 		options.proxy ??
-		(options.wrapProxy ?? defineSandboxProxy)(async (request, meta) => {
-			if (!boundSandboxId || meta.sandboxId !== boundSandboxId)
-				return new Response(null, { status: 403 });
-			verifiedRequests++;
-			if (verifiedRequests > MAX_REQUESTS)
-				return new Response(null, { status: 429 });
-			return verified(request, meta);
-		});
+		(options.wrapProxy
+			? options.wrapProxy(verifiedHandler)
+			: defineSandboxProxy(verifiedHandler, (_request, error) => {
+					const stage = proxyVerificationFailure(error);
+					// At most one message per fixed category, even for hostile traffic.
+					if (!reportedFailures.has(stage)) {
+						reportedFailures.add(stage);
+						try {
+							console.error(
+								JSON.stringify({ event: "hobo_ci_proxy_denied", stage }),
+							);
+						} catch {
+							// Telemetry must not affect the denial response.
+						}
+					}
+					return new Response("Forbidden", { status: 403 });
+				}));
 	let windowStarted = Date.now();
 	let preAuthRequests = 0;
 	let active = 0;

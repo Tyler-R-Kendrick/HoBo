@@ -257,7 +257,7 @@ export function createSandboxComposition(options: {
 			);
 		},
 		assignment: async (lease) => {
-			if (!lease.actualJobId) throw new Error("runner assignment unavailable");
+			if (!lease.actualJobId) return { kind: "unknown" };
 			const job = await getJob(
 				github,
 				lease.installationId,

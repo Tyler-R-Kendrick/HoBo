@@ -314,7 +314,21 @@ export class HostedRelay {
 		// identity; attempt is always read from the authoritative workflow run.
 		job.runAttempt = currentJob.run_attempt;
 		job.runnerName = currentJob.runner_name ?? "";
-		await this.options.store.observe(job, this.now(), admittedRevision);
+		// Webhook delivery can be delayed or reordered. Assignment and terminal
+		// fences must reflect the fresh GitHub job state, not an older event action.
+		if (
+			currentJob.status === "queued" ||
+			currentJob.status === "in_progress" ||
+			currentJob.status === "completed"
+		) {
+			const observation = clone(JobSchema, job);
+			observation.action = currentJob.status;
+			await this.options.store.observe(
+				observation,
+				this.now(),
+				admittedRevision,
+			);
+		}
 		const isolatedRequired =
 			admitted.isolatedOnly ||
 			!run.repository.private ||

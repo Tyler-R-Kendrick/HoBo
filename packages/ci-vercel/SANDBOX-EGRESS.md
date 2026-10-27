@@ -59,10 +59,15 @@ run through it.
 
 The pinned GitHub runner archive is about 218 MiB. The relay buffers and hashes
 it before upload, and the SDK also buffers a compressed transfer. The quote
-must include Function memory, CPU and transfer costs. If assignment or JIT
-registration outcome cannot be proven, the controller stops known VMs but
-holds the reservation for investigation instead of assuming zero usage or an
-idle runner.
+must include Function memory, CPU and transfer costs. Once both VMs have stopped
+and the runner is deleted, the controller settles their measured usage even if
+the assigned job is unknown. That is recorded as unknown, not idle; later
+authenticated GitHub observations may attach the job to the settled runner.
+Unconfirmed registration, stop, deletion, or measured usage still holds the
+reservation. A delayed in-progress observation for a stopped runner does not
+cancel newer work; confirmed job completion cancels unlaunched reservations
+for that job. A GitHub status change between preflight and launch can still
+cause an extra, budgeted VM to be provisioned.
 
 The Ubuntu 26.04 Sandbox image does not include ICU, which the GitHub runner's
 .NET runtime requires. The relay also downloads the fixed 11,456,466-byte

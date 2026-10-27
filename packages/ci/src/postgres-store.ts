@@ -832,13 +832,40 @@ export class PostgresCiStore {
 					.find(
 						(l) =>
 							l.repositoryId === job.repositoryId &&
+							l.installationId === job.installationId &&
+							l.repository.toLowerCase() === job.repository.toLowerCase() &&
 							l.runnerName === job.runnerName,
 					);
-				if (lease && ACTIVE_STATES.has(lease.state)) {
+				const settledSandbox =
+					lease?.state === "completed" &&
+					lease.provider === "vercel" &&
+					lease.sandboxStage === "stopped" &&
+					lease.runnerDeletionConfirmed &&
+					!!lease.settledAt;
+				if (lease && (ACTIVE_STATES.has(lease.state) || settledSandbox)) {
 					if (lease.actualJobId && lease.actualJobId !== job.id)
 						throw new Error("runner job assignment conflict");
 					lease.actualJobId = job.id;
-					await this.append(c, lease, "ci.JobObserved", at);
+					await this.append(
+						c,
+						lease,
+						settledSandbox ? "ci.LateJobObserved" : "ci.JobObserved",
+						at,
+					);
+					// A stopped runner cannot take new work. Late in-progress
+					// assignment is attribution only; a fresh completion must still
+					// cancel reservations for the now-terminal job.
+					if (settledSandbox && job.action !== "completed") return;
+					// Terminal observations win over delayed in-progress deliveries.
+					const terminal =
+						job.action === "in_progress" &&
+						(
+							await c.query(
+								"SELECT 1 FROM hobo_ci_terminal_jobs WHERE partition_id=$1 AND job_key=$2",
+								[this.partition, this.jobKey(job)],
+							)
+						).rowCount;
+					if (terminal) return;
 					if (job.action === "in_progress" || job.action === "completed") {
 						if (job.action === "in_progress") {
 							const assigned = (
@@ -1550,6 +1577,7 @@ export class PostgresCiStore {
 			Lease,
 			| "state"
 			| "runnerId"
+			| "actualJobId"
 			| "sandboxSessionId"
 			| "sandboxCommandId"
 			| "sandboxStage"
@@ -1579,6 +1607,7 @@ export class PostgresCiStore {
 				!ACTIVE_STATES.has(lease.state) ||
 				lease.state !== observed.state ||
 				lease.runnerId !== observed.runnerId ||
+				lease.actualJobId !== observed.actualJobId ||
 				lease.sandboxSessionId !== observed.sandboxSessionId ||
 				lease.sandboxCommandId !== observed.sandboxCommandId ||
 				lease.sandboxStage !== observed.sandboxStage
@@ -1586,6 +1615,18 @@ export class PostgresCiStore {
 				return undefined;
 			if (lease.provider !== "vercel" || !lease.sandboxPricing)
 				throw new Error("sandbox pricing identity missing");
+			// An unknown post-start assignment can be financially settled only
+			// by the two-VM path, which revalidates both measured stop proofs,
+			// proxy meters and runner deletion below.
+			if (
+				lease.runnerId &&
+				!lease.actualJobId &&
+				lease.sandboxStopFromStage !== "registering" &&
+				!lease.sandboxPricing.proxyVmRequired
+			)
+				throw new Error(
+					"unknown assignment requires measured proxy settlement",
+				);
 			if (
 				!lease.sandboxPricing.proxyVmRequired &&
 				(!lease.sandboxSessionId ||
@@ -1788,6 +1829,19 @@ export class PostgresCiStore {
 			lease.settledAt = at;
 			lease.usageCompletedAt = completedAt;
 			await this.append(client, lease, "ci.HostSettled", at);
+			if (
+				lease.runnerId &&
+				!lease.actualJobId &&
+				lease.sandboxStopFromStage !== "registering"
+			)
+				await this.event(
+					client,
+					"ci.AssignmentUnknown",
+					at,
+					toJsonString(LeaseSchema, lease),
+					lease.accountId,
+					lease.id,
+				);
 			if (chargedMicros > lease.reservedPaidMicros)
 				await this.append(client, lease, "ci.BudgetOverrun", at);
 			if (unmet) await this.queueInside(client, unmet, at);

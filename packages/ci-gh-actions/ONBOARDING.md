@@ -107,6 +107,8 @@ isolated jobs under branch or event restrictions.
 The Vercel composition enables the isolated host only when Sandbox is explicitly
 configured. Without that configuration, isolated onboarding and dispatch fail
 closed. Workflow-bridge admission, dispatch and JIT claims remain disabled.
+Bridge setup requests fail before creating a plan or modifying the repository;
+use isolated onboarding for this relay.
 Configuration alone does not prove the live runner, provider identity or costs.
 
 Account budgets and provider eligibility apply to each runner. Budget estimates

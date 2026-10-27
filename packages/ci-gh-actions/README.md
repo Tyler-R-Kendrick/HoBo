@@ -220,6 +220,21 @@ when a refreshed snapshot already includes that work. Snapshots cannot move
 backward or place account usage in the future. Expired price/allocation evidence
 refuses admission until refreshed; unknown balances are never assumed free.
 
+For a Vercel Sandbox offer with `freeMinutes` zero and no `sandboxAllowance`,
+an account token with `observations:write` may call `reattestRate` to extend
+only the expiry of the existing rate evidence. The publisher must first check
+the complete current pricing and estimate every billed component against the
+offer's `sourceUrl`. Pass the offer ID, source URL, check time and new expiry,
+along with the current configuration revision. The check time must be at most
+five minutes old and the new expiry at most 24 hours after it. The operation
+records the publisher's assertion in the audit log; the relay does not fetch or
+verify vendor prices. It preserves the usage watermark, spend, rate card and
+all budget settings. An offer with any free entitlement requires a fresh
+complete allocation observation instead. Expired evidence continues to refuse
+admission until a trusted publisher refreshes it. The estimate is not a hard
+cap on the provider invoice, and a shared vendor credit is not an exclusive
+free allocation.
+
 The publisher must supply complete snapshots and normalized prices for all billed
 components. Provider-native spending controls remain the external billing ceiling.
 Admission budgets do not migrate or terminate a running GitHub job mid-step.
@@ -239,6 +254,16 @@ They do not assume undocumented vendor APIs accept GitHub credentials. Each prov
 must be connected to GitHub with its supported label and supply accurate budget
 inputs. A Kubernetes host is a disposable runner machine, not a nested privileged
 Docker socket exposed by the relay. The relay image itself executes no customer jobs.
+
+Provider connection requirements apply independently of HoBo. Blacksmith,
+Depot GitHub Actions runners and WarpBuild require organization-owned repositories;
+they cannot run a personal-account repository merely by adding an offer to HoBo.
+See the [Blacksmith quickstart](https://docs.blacksmith.sh/introduction/quickstart),
+[Depot runner overview](https://depot.dev/docs/github-actions/overview) and
+[WarpBuild migration guide](https://www.warpbuild.com/migrate/github-hosted-to-warpbuild).
+The Vercel relay currently enables only the isolated Sandbox host and refuses this
+companion-workflow bridge. The bridge hosts listed here are supported by the
+separate trusted-repository relay, not live provider connections on Vercel.
 
 The workflow bridge requires a private repository with a repository-wide trusted
 execution boundary. Private visibility alone does not establish this boundary:

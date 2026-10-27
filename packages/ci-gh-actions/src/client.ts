@@ -218,6 +218,25 @@ export function createCiRelayClient(
 				"v2",
 			);
 		},
+		/** A trusted publisher re-attests a zero-credit rate, not an allocation. */
+		reattestRate(
+			input: {
+				offerId: string;
+				checkedAt: string;
+				validUntil: string;
+				sourceUrl: string;
+			},
+			version: { revision: number },
+		) {
+			return request(
+				"rate-observations",
+				"POST",
+				AccountStateSchema,
+				JSON.stringify(input),
+				revision(version.revision),
+				"v2",
+			);
+		},
 		getSignalState() {
 			return request(
 				"signals",

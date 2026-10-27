@@ -112,12 +112,16 @@ after the job. It downloads and verifies the runner archive before uploading it 
 the runner VM. Both VMs, their network usage, and quota-control calls are
 included in the reservation and settlement estimate.
 
-Live production testing has registered a JIT runner, assigned a GitHub job to
-it, and passed job setup; the full checkout and artifact workflow is still
-being verified. Live Sandbox tests on a Pro team also verified 16 MiB transfers
-through an exposed port and matched forwarding identity claims to the guest
-session; see [Sandbox egress](SANDBOX-EGRESS.md). The gateway's maximum transfer
-size remains unverified.
+On October 27, 2026, [the full GitHub acceptance workflow](https://github.com/Tyler-R-Kendrick/HoBo/actions/runs/40569580252/attempts/2)
+passed on a Vercel Sandbox runner: setup, checkout, Node setup, runner identity and
+checked-out revision verification, artifact upload and post-job steps succeeded.
+The matching relay lease recorded the job, stopped both Sandboxes, deleted the
+runner and settled the measured usage. This verifies the Vercel path for that
+workflow and configuration; it does not verify external runner vendors or every
+workflow's dependencies. Live Sandbox tests on a Pro team also verified 16 MiB
+transfers through an exposed port and matched forwarding identity claims to the
+guest session; see [Sandbox egress](SANDBOX-EGRESS.md). The gateway's maximum
+transfer size remains unverified.
 The Vercel runtime admits isolated jobs only when Sandbox is explicitly configured;
 without it, readiness remains false and isolated jobs are not launched. Recovery
 first fences in-flight launch states and retains ambiguous create

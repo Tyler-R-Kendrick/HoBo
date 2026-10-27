@@ -39,6 +39,15 @@ function observedSandboxPricing(pricing: SandboxPricing | undefined): string {
 	return toJsonString(SandboxPricingSchema, observed);
 }
 
+/** A trusted publisher confirms an existing conservative, zero-credit rate. */
+export interface RateReattestation {
+	accountId: string;
+	offerId: string;
+	checkedAt: string;
+	validUntil: string;
+	sourceUrl: string;
+}
+
 /** Single-writer partition. Events and their materialized lease view commit together. */
 export class LeaseStore {
 	private readonly db: DatabaseSync;
@@ -263,6 +272,98 @@ export class LeaseStore {
 						type: "ci.ConfigurationChanged",
 						at,
 						detail,
+					}),
+				),
+			);
+			this.db
+				.prepare(
+					"INSERT INTO configuration_state(id,body) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body",
+				)
+				.run(detail);
+			return state;
+		});
+	}
+	/** Renew only rate evidence; never advance the financial usage watermark. */
+	reattestRate(
+		input: RateReattestation,
+		expectedRevision: number,
+		at: string,
+	): ConfigurationState {
+		return this.transaction(() => {
+			const previous = this.configuration();
+			if ((previous?.revision ?? 0) !== expectedRevision)
+				throw new Error("configuration revision conflict");
+			if (
+				!Number.isSafeInteger(expectedRevision) ||
+				expectedRevision < 1 ||
+				expectedRevision >= 4294967295 ||
+				!previous?.configuration
+			)
+				throw new Error("invalid configuration revision");
+			const now = Date.parse(at);
+			const checked = Date.parse(input.checkedAt);
+			const until = Date.parse(input.validUntil);
+			if (
+				!Number.isFinite(now) ||
+				!Number.isFinite(checked) ||
+				!Number.isFinite(until) ||
+				checked > now ||
+				checked < now - 5 * 60_000 ||
+				until <= now ||
+				until > checked + 24 * 60 * 60_000
+			)
+				throw new Error("invalid rate attestation time");
+			const config = clone(ConfigurationSchema, previous.configuration);
+			const account = config.accounts.find(
+				(entry) => entry.id === input.accountId,
+			);
+			const offer = account?.offers.find((entry) => entry.id === input.offerId);
+			if (
+				offer?.provider !== "vercel" ||
+				offer.backend !== "sandbox" ||
+				!offer.sandboxPricing ||
+				offer.freeMinutes !== 0 ||
+				offer.sandboxAllowance !== undefined ||
+				!offer.sourceUrl ||
+				offer.sourceUrl !== input.sourceUrl ||
+				until <= Date.parse(offer.validUntil)
+			)
+				throw new Error("invalid rate attestation offer");
+			const oldValidUntil = offer.validUntil;
+			offer.validUntil = input.validUntil;
+			const parsed = parseConfiguration(
+				toJsonString(ConfigurationSchema, config),
+			);
+			const state = create(ConfigurationStateSchema, {
+				revision: expectedRevision + 1,
+				configuration: parsed,
+				updatedAt: at,
+			});
+			const detail = toJsonString(ConfigurationStateSchema, state);
+			this.db.prepare("INSERT INTO events(body) VALUES (?)").run(
+				toJsonString(
+					CiEventSchema,
+					create(CiEventSchema, {
+						type: "ci.ConfigurationChanged",
+						at,
+						detail,
+					}),
+				),
+			);
+			this.db.prepare("INSERT INTO events(body) VALUES (?)").run(
+				toJsonString(
+					CiEventSchema,
+					create(CiEventSchema, {
+						type: "ci.RateReattested",
+						at,
+						accountId: input.accountId,
+						detail: JSON.stringify({
+							offerId: input.offerId,
+							sourceUrl: input.sourceUrl,
+							checkedAt: input.checkedAt,
+							oldValidUntil,
+							validUntil: input.validUntil,
+						}),
 					}),
 				),
 			);
@@ -760,6 +861,7 @@ export class LeaseStore {
 				"DELETE FROM leases; DELETE FROM pending_jobs; DELETE FROM terminal_jobs; DELETE FROM assigned_jobs; DELETE FROM configuration_state; DELETE FROM control_records;",
 			);
 			for (const event of this.events()) {
+				if (event.type === "ci.RateReattested") continue;
 				if (event.type === "ci.ConfigurationChanged") {
 					fromJsonString(ConfigurationStateSchema, event.detail);
 					this.db

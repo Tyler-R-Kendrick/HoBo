@@ -31,6 +31,7 @@ const migrationPartition = `test-${randomUUID()}`;
 const isolationPartition = `test-${randomUUID()}`;
 const isolatedOnlyPartition = `test-${randomUUID()}`;
 const proxyPartition = `test-${randomUUID()}`;
+const ratePartition = `test-${randomUUID()}`;
 const pool = new Pool({ connectionString, max: 12 });
 const store = new PostgresCiStore(pool, partition);
 const second = new PostgresCiStore(pool, partition);
@@ -751,6 +752,71 @@ try {
 			networkHeadroomBytes: 1,
 		}),
 	});
+	// Rate-only re-attestation never moves the usage watermark or free snapshot.
+	const rateStore = new PostgresCiStore(pool, ratePartition);
+	const rateSecond = new PostgresCiStore(pool, ratePartition);
+	const rateConfig = clone(ConfigurationSchema, config);
+	const rateAccount = rateConfig.accounts[0];
+	if (!rateAccount) throw new Error("missing rate account");
+	const rateOffer = clone(OfferSchema, isolatedOffer);
+	rateAccount.budgetMicros = 20_000_000;
+	rateOffer.budgetMicros = 20_000_000;
+	rateOffer.priceMicrosPerMinute = 0;
+	rateOffer.enabled = true;
+	rateOffer.bridgeAcknowledged = true;
+	rateOffer.concurrency = 1;
+	rateOffer.observedAt = "2026-10-27T11:00:00Z";
+	rateOffer.sandboxAllowance = undefined;
+	rateOffer.validUntil = "2026-10-27T13:00:00Z";
+	rateOffer.sourceUrl = "https://vercel.com/docs/sandbox/pricing";
+	rateAccount.offers = [rateOffer];
+	await rateStore.configure(rateConfig, 0, now);
+	const rateJob = job(4999);
+	rateJob.isolatedRequired = true;
+	const rateLease = await rateStore.reserve(rateAccount, rateJob, now, 1);
+	assert(rateLease);
+	const rateInput = {
+		accountId: rateAccount.id,
+		offerId: rateOffer.id,
+		checkedAt: now,
+		validUntil: "2026-10-28T12:00:00Z",
+		sourceUrl: rateOffer.sourceUrl,
+	};
+	const rateRace = await Promise.allSettled([
+		rateStore.reattestRate(rateInput, 1, now),
+		rateSecond.reattestRate(rateInput, 1, now),
+	]);
+	assert.equal(
+		rateRace.filter((result) => result.status === "fulfilled").length,
+		1,
+	);
+	assert.equal(
+		rateRace.filter((result) => result.status === "rejected").length,
+		1,
+	);
+	const afterRate = (await rateStore.configuration())?.configuration
+		?.accounts[0]?.offers[0];
+	assert.equal(afterRate?.observedAt, rateOffer.observedAt);
+	assert.equal(afterRate?.spentMicros, rateOffer.spentMicros);
+	assert.equal(afterRate?.validUntil, rateInput.validUntil);
+	assert.equal(
+		(await rateStore.get(rateLease.id))?.reservedPaidMicros,
+		rateLease.reservedPaidMicros,
+	);
+	assert.equal(
+		(await rateStore.events()).filter(
+			(event) => event.type === "ci.RateReattested",
+		).length,
+		1,
+	);
+	await assert.rejects(
+		rateStore.reattestRate(
+			{ ...rateInput, sourceUrl: "https://attacker.example" },
+			2,
+			now,
+		),
+	);
+	assert.equal((await rateStore.configuration())?.revision, 2);
 	isolatedAccount.offers.push(isolatedOffer);
 	// Even if a caller forgets to mark a private push as isolated, the stored
 	// connection policy prevents this repository from selecting a bridge.
@@ -1578,6 +1644,7 @@ try {
 				isolationPartition,
 				isolatedOnlyPartition,
 				proxyPartition,
+				ratePartition,
 			],
 		]);
 	}

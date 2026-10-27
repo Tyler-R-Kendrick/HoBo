@@ -45,6 +45,11 @@ function setup(
 	const sync = h.store;
 	const store = {
 		configuration: async () => sync.configuration(),
+		reattestRate: async (
+			input: Parameters<typeof sync.reattestRate>[0],
+			rev: number,
+			at: string,
+		) => sync.reattestRate(input, rev, at),
 		configure: async (
 			config: Parameters<typeof sync.configure>[0],
 			rev: number,
@@ -288,6 +293,7 @@ describe("bridge-free isolated onboarding", () => {
 	};
 	it("connects through the SDK after verifying the installation, without mutating GitHub", async () => {
 		const t = setup();
+		t.relay.options.denyUnisolated = true;
 		t.relay.options.isolatedHost = {
 			launch: async () => {},
 			reconcile: async () => {},
@@ -399,6 +405,99 @@ describe("bridge-free isolated onboarding", () => {
 });
 
 describe("hosted asynchronous account control", () => {
+	it("limits rate re-attestation to a scoped trusted publisher and existing zero-credit offer", async () => {
+		const t = setup();
+		const state = await t.store.configuration();
+		const config = state?.configuration;
+		const account = config?.accounts[0];
+		if (!config || !account) throw new Error("missing account");
+		account.offers.push(
+			create(OfferSchema, {
+				id: "sandbox-rate",
+				provider: "vercel",
+				providerAccountId: "vercel-a",
+				backend: "sandbox",
+				runsOn: "sandbox-2",
+				enabled: true,
+				bridgeAcknowledged: true,
+				concurrency: 1,
+				budgetMicros: 100000,
+				observedAt: "2026-10-26T00:00:00Z",
+				validUntil: "2026-10-26T13:00:00Z",
+				sourceUrl: "https://vercel.com/docs/sandbox/pricing",
+				sandboxPricing: create(SandboxPricingSchema, {
+					vcpus: 2,
+					memoryMb: 4096,
+					maxEgressBytes: 100000,
+					cpuMicrosPerVcpuHour: 10,
+					memoryMicrosPerGbHour: 1,
+					creationMicros: 1,
+					egressMicrosPerGb: 1,
+					proxyMicrosPerGb: 1,
+					proxyFixedMicros: 1,
+					networkHeadroomBytes: 1,
+					bootstrapFixedMicros: 1,
+				}),
+			}),
+		);
+		await t.store.configure(config, 1, NOW);
+		const input = {
+			offerId: "sandbox-rate",
+			checkedAt: NOW,
+			validUntil: "2026-10-27T12:00:00Z",
+			sourceUrl: "https://vercel.com/docs/sandbox/pricing",
+		};
+		expect(
+			(
+				await t.request(
+					"/v2/accounts/self/rate-observations",
+					"POST",
+					"admin",
+					input,
+					2,
+				)
+			).status,
+		).toBe(403);
+		expect(
+			(
+				await t.request(
+					"/v2/accounts/self/rate-observations",
+					"POST",
+					"observer",
+					input,
+					1,
+				)
+			).status,
+		).toBe(409);
+		expect(
+			(
+				await t.request(
+					"/v2/accounts/self/rate-observations",
+					"POST",
+					"observer",
+					{ ...input, sourceUrl: "https://attacker.example" },
+					2,
+				)
+			).status,
+		).toBe(400);
+		const observer = createCiRelayClient({
+			origin: "https://relay.example",
+			accountToken: () => "observer",
+			fetch: async (url, init) =>
+				(await t.handler(new Request(url, init))) ??
+				new Response(null, { status: 404 }),
+		});
+		expect((await observer.reattestRate(input, { revision: 2 })).revision).toBe(
+			3,
+		);
+		const after = (
+			await t.store.configuration()
+		)?.configuration?.accounts[0]?.offers.find(
+			(offer) => offer.id === input.offerId,
+		);
+		expect(after?.observedAt).toBe("2026-10-26T00:00:00Z");
+		expect(after?.validUntil).toBe(input.validUntil);
+	});
 	it("restricts runtime diagnostics to policy readers of existing accounts", async () => {
 		const diagnostic = vi.fn(() => ({
 			sandboxEnabled: true,
@@ -526,6 +625,92 @@ describe("hosted asynchronous account control", () => {
 		);
 		expect(response.status).not.toBe(201);
 		expect(t.h.api.violations).toEqual([]);
+	});
+	it("does not prepare a bridge that the hosted relay cannot execute", async () => {
+		const t = setup();
+		t.relay.options.denyUnisolated = true;
+		const githubRequest = vi.spyOn(t.github, "request");
+		const record = vi.spyOn(t.store, "putControlRecordMonotonic");
+		const response = await t.request(
+			"/v1/accounts/self/repositories/prepare",
+			"POST",
+			"admin",
+			{
+				repository: "org/repo",
+				repositoryId: 101,
+				installationId: 10,
+				allowedRefs: ["refs/heads/main"],
+				trustedRepositoryAcknowledged: true,
+			},
+		);
+		expect(response.status).toBe(409);
+		expect(await response.text()).toContain("workflow bridge is unavailable");
+		expect(githubRequest).not.toHaveBeenCalled();
+		expect(record).not.toHaveBeenCalled();
+	});
+	it.each([
+		"apply",
+		"connect",
+	])("refuses to %s an existing bridge plan after bridge execution is disabled", async (action) => {
+		const t = setup();
+		const fixture = z
+			.object({
+				metadata: z.object({ consumerFixtures: z.object({ plan: z.json() }) }),
+			})
+			.parse(
+				JSON.parse(
+					readFileSync(
+						new URL(
+							"../contracts/onboarding-boundary.pact.json",
+							import.meta.url,
+						),
+						"utf8",
+					),
+				),
+			);
+		const original = parseOnboardingPlan(
+			JSON.stringify(fixture.metadata.consumerFixtures.plan),
+		);
+		const plan = {
+			...original,
+			accountId: "account-a",
+			installationId: 10,
+			repository: "org/repo",
+			repositoryId: 101,
+			dispatcherActorId: 123,
+			installBranch: "",
+			bridgeRef: "",
+			planDigest: "",
+		};
+		const hash = (value: string) =>
+			createHash("sha256").update(value).digest("hex");
+		const suffix = hash(toJsonString(OnboardingPlanSchema, plan)).slice(0, 20);
+		plan.installBranch = `hobo-ci-install-${suffix}`;
+		plan.bridgeRef = `hobo-ci-bridge-${suffix}`;
+		plan.planDigest = hash(toJsonString(OnboardingPlanSchema, plan));
+		const id = "00000000-0000-4000-8000-000000000001";
+		t.h.store.putControlRecord(
+			`onboarding:${id}`,
+			"account-a",
+			toJsonString(
+				OnboardingOperationSchema,
+				create(OnboardingOperationSchema, { id, plan, status: "planned" }),
+			),
+			NOW,
+		);
+		t.relay.options.denyUnisolated = true;
+		const githubRequest = vi.spyOn(t.github, "request");
+		const response = await t.request(
+			`/v1/accounts/self/repositories/${id}/${action}`,
+			"POST",
+			"admin",
+		);
+		expect(response.status).toBe(409);
+		expect(await response.text()).toContain("workflow bridge is unavailable");
+		expect(githubRequest).not.toHaveBeenCalled();
+		expect(t.h.store.controlRecord(`onboarding:${id}`)?.bodyJson).toContain(
+			'"status":"planned"',
+		);
 	});
 	it.each([
 		"apply",

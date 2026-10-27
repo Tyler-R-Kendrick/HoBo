@@ -50,6 +50,17 @@ import {
 } from "./onboarding.js";
 
 interface HostedControlStore extends HostedRelayStore {
+	reattestRate(
+		input: {
+			accountId: string;
+			offerId: string;
+			checkedAt: string;
+			validUntil: string;
+			sourceUrl: string;
+		},
+		revision: number,
+		at: string,
+	): Promise<ConfigurationState>;
 	configure(
 		config: Configuration,
 		revision: number,
@@ -251,7 +262,9 @@ export function createHostedControlPlane(options: {
 					? path === "/v2/accounts/self/signals"
 						? "observations:write"
 						: "policy:read"
-					: path.endsWith("/observations") || path.endsWith("/signals")
+					: path.endsWith("/observations") ||
+							path.endsWith("/rate-observations") ||
+							path.endsWith("/signals")
 						? "observations:write"
 						: path.includes("/repositories/")
 							? "repositories:write"
@@ -472,6 +485,31 @@ export function createHostedControlPlane(options: {
 				account.routingSignalCrossed[key] = crossed;
 				const saved = await store.configure(
 					current.configuration,
+					expected,
+					relay.now(),
+				);
+				return response(
+					200,
+					policyState(saved, principal.accountId),
+					saved.revision,
+				);
+			}
+			if (
+				path === "/v2/accounts/self/rate-observations" &&
+				request.method === "POST"
+			) {
+				const expected = revision(request);
+				const input = z
+					.object({
+						offerId: z.string().min(1).max(100),
+						checkedAt: z.string().min(1).max(40),
+						validUntil: z.string().min(1).max(40),
+						sourceUrl: z.string().min(1).max(2048),
+					})
+					.strict()
+					.parse(JSON.parse(await readBody(request)));
+				const saved = await store.reattestRate(
+					{ ...input, accountId: principal.accountId },
 					expected,
 					relay.now(),
 				);
@@ -806,6 +844,14 @@ export function createHostedControlPlane(options: {
 					input.repository,
 					input.installationId,
 				);
+				// A plan produced here always installs the shared-host bridge. Do not
+				// create an unusable plan on a deployment that denies that execution
+				// path; isolated repositories use the separate isolated-connect route.
+				if (relay.options.denyUnisolated)
+					throw new ControlError(
+						409,
+						"workflow bridge is unavailable on this relay",
+					);
 				if (!input.repositoryId || input.allowedRefs.length === 0) {
 					const lookup = await options.github.request(
 						input.installationId,
@@ -899,6 +945,13 @@ export function createHostedControlPlane(options: {
 					plan.repository,
 					plan.installationId,
 				);
+				// Plans may outlive a deployment or be prepared by another one. Do
+				// not install files or store a connection if this relay cannot run it.
+				if (relay.options.denyUnisolated)
+					throw new ControlError(
+						409,
+						"workflow bridge is unavailable on this relay",
+					);
 				if (setup[2] === "apply") {
 					if (op.status === "ready")
 						return response(200, toJsonString(OnboardingOperationSchema, op));

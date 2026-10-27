@@ -19,7 +19,9 @@ import {
 } from "./sandbox-egress-proxy.js";
 import { ensureSandboxWorkdir } from "./sandbox-workdir.js";
 
-const QUOTA_BLOCK_BYTES = 64 * 1024;
+const QUOTA_MIN_BLOCK_BYTES = 64 * 1024;
+// Match the durable quota endpoint's maximum for one reservation.
+const QUOTA_MAX_BLOCK_BYTES = 4 * 1024 * 1024;
 const MAX_REQUESTS = 10_000;
 const MAX_ACTIVE = 8;
 const MAX_TOKEN_BYTES = 8192;
@@ -95,7 +97,18 @@ export function createProxyQuotaLedger(
 	config: ProxyVmConfig,
 	send: typeof fetch = fetch,
 ): SandboxEgressLedger {
+	// Large transfers need fewer durable control calls. Bound the block relative
+	// to the lease quota and start small again after an idle credit expires.
+	const maxBlockBytes = Math.max(
+		QUOTA_MIN_BLOCK_BYTES,
+		Math.min(
+			QUOTA_MAX_BLOCK_BYTES,
+			Math.floor(config.maxEgressBytes / 16 / QUOTA_MIN_BLOCK_BYTES) *
+				QUOTA_MIN_BLOCK_BYTES,
+		),
+	);
 	let credits = 0;
+	let blockBytes = QUOTA_MIN_BLOCK_BYTES;
 	let boundSandboxId: string | undefined;
 	let creditExpiresAt = 0;
 	let committed = 0;
@@ -112,49 +125,55 @@ export function createProxyQuotaLedger(
 			const operation = tail.then(async () => {
 				if (boundSandboxId !== undefined && boundSandboxId !== sandboxId)
 					return false;
-				if (Date.now() >= creditExpiresAt) credits = 0;
-				if (bytes <= credits) {
-					credits -= bytes;
-					return true;
-				}
-				const needed = bytes - credits;
-				const remaining = config.maxEgressBytes - committed;
-				if (needed > remaining || attempts >= config.maxControlCalls)
-					return false;
-				const rounded =
-					Math.ceil(needed / QUOTA_BLOCK_BYTES) * QUOTA_BLOCK_BYTES;
-				const reserve = Math.min(remaining, rounded);
-				attempts++;
-				try {
-					const response = await send(
-						`${origin(config.relayOrigin)}/internal/sandbox/quota`,
-						{
-							method: "POST",
-							headers: {
-								authorization: `Bearer ${config.quotaToken}`,
-								"content-type": "application/json",
+				for (;;) {
+					if (Date.now() >= creditExpiresAt) {
+						credits = 0;
+						blockBytes = QUOTA_MIN_BLOCK_BYTES;
+					}
+					if (bytes <= credits) {
+						credits -= bytes;
+						return true;
+					}
+					const needed = bytes - credits;
+					const remaining = config.maxEgressBytes - committed;
+					if (needed > remaining || attempts >= config.maxControlCalls)
+						return false;
+					const rounded =
+						Math.ceil(Math.min(needed, QUOTA_MAX_BLOCK_BYTES) / blockBytes) *
+						blockBytes;
+					const reserve = Math.min(remaining, QUOTA_MAX_BLOCK_BYTES, rounded);
+					attempts++;
+					try {
+						const response = await send(
+							`${origin(config.relayOrigin)}/internal/sandbox/quota`,
+							{
+								method: "POST",
+								headers: {
+									authorization: `Bearer ${config.quotaToken}`,
+									"content-type": "application/json",
+								},
+								body: JSON.stringify({
+									leaseId: config.leaseId,
+									proxySessionId: config.proxySessionId,
+									sandboxId,
+									bytes: reserve,
+									requestId: randomUUID(),
+								}),
+								redirect: "error",
+								signal: AbortSignal.timeout(5000),
 							},
-							body: JSON.stringify({
-								leaseId: config.leaseId,
-								proxySessionId: config.proxySessionId,
-								sandboxId,
-								bytes: reserve,
-								requestId: randomUUID(),
-							}),
-							redirect: "error",
-							signal: AbortSignal.timeout(5000),
-						},
-					);
-					// Every attempted reservation is consumed locally even if its result is lost.
-					committed += reserve;
-					if (response.status !== 204) return false;
-					boundSandboxId = sandboxId;
-					creditExpiresAt = Date.now() + 5000;
-					credits += reserve - bytes;
-					return true;
-				} catch {
-					committed += reserve;
-					return false;
+						);
+						// Every attempted reservation is consumed locally even if its result is lost.
+						committed += reserve;
+						if (response.status !== 204) return false;
+						boundSandboxId = sandboxId;
+						creditExpiresAt = Date.now() + 5000;
+						credits += reserve;
+						blockBytes = Math.min(maxBlockBytes, blockBytes * 2);
+					} catch {
+						committed += reserve;
+						return false;
+					}
 				}
 			});
 			tail = operation.then(

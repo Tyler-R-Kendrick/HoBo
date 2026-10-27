@@ -32,6 +32,15 @@ by default; readiness also requires successful runtime and worker health checks.
 The older Function-hosted `createSandboxEgressProxy` has a 4 MiB request and
 response limit; it cannot handle larger workflow transfers.
 
+The proxy reserves traffic in durable blocks before forwarding. Blocks start at
+64 KiB and grow during sustained transfers. The growth cap is one sixteenth of
+the configured allowance, bounded between 64 KiB and 4 MiB. An individual
+larger stream chunk is split into grants of at most 4 MiB. Unused grants expire after five seconds and
+still count against the allowance, so a small idle request does not reserve a
+large block. A denied grant fails the stream closed; the rate limit and total
+allowance can still constrain exceptionally large or fast transfers.
+Each proxied request also has a 120-second absolute deadline.
+
 The quota measures application traffic and does not guarantee an exact bill or
 hard spend cap. In particular, traffic to the publicly exposed port can be
 billed before authentication; TLS, DNS, retries and platform metering can add

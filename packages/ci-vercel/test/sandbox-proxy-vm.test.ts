@@ -192,6 +192,100 @@ describe("per-lease proxy quota", () => {
 		expect(await ledger.reserveSandboxEgress("sbx_good", 1)).toBe(false);
 		expect(send).toHaveBeenCalledTimes(1);
 	});
+	it("streams beyond the rolling control-call limit using bounded durable blocks", async () => {
+		const reservations: number[] = [];
+		const send: typeof fetch = async (_url, init) => {
+			reservations.push(JSON.parse(String(init?.body)).bytes);
+			return new Response(null, {
+				status: reservations.length <= 600 ? 204 : 429,
+			});
+		};
+		const limit = 256 * 1024 * 1024;
+		const ledger = createProxyQuotaLedger(
+			{ ...config, maxEgressBytes: limit, maxControlCalls: 4096 },
+			send,
+		);
+		// At 64 KiB per control call this 50 MiB transfer would require 800
+		// calls and the real 600/minute limit would truncate the response.
+		for (let i = 0; i < 800; i++)
+			expect(await ledger.reserveSandboxEgress("sbx_good", 64 * 1024)).toBe(
+				true,
+			);
+		expect(reservations.length).toBeLessThan(70);
+		expect(Math.max(...reservations)).toBe(4 * 1024 * 1024);
+		expect(reservations.reduce((a, b) => a + b, 0)).toBeLessThanOrEqual(limit);
+	});
+	it("splits a large stream chunk into reservations within the endpoint limit", async () => {
+		const reservations: number[] = [];
+		const send: typeof fetch = async (_url, init) => {
+			reservations.push(JSON.parse(String(init?.body)).bytes);
+			return new Response(null, { status: 204 });
+		};
+		const ledger = createProxyQuotaLedger(
+			{ ...config, maxEgressBytes: 256 * 1024 * 1024 },
+			send,
+		);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 9 * 1024 * 1024)).toBe(
+			true,
+		);
+		expect(reservations).toHaveLength(3);
+		expect(Math.max(...reservations)).toBeLessThanOrEqual(4 * 1024 * 1024);
+		expect(reservations.reduce((a, b) => a + b, 0)).toBe(9 * 1024 * 1024);
+	});
+	it("uses only the remaining allowance for a small quota", async () => {
+		const reservations: number[] = [];
+		const send: typeof fetch = async (_url, init) => {
+			reservations.push(JSON.parse(String(init?.body)).bytes);
+			return new Response(null, { status: 204 });
+		};
+		const ledger = createProxyQuotaLedger(
+			{ ...config, maxEgressBytes: 150_000 },
+			send,
+		);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 60_000)).toBe(true);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 60_000)).toBe(true);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 30_000)).toBe(true);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 1)).toBe(false);
+		expect(reservations).toEqual([65536, 65536, 18928]);
+	});
+	it("does not forward a large chunk or refund an ambiguous partial reservation", async () => {
+		const send = vi
+			.fn<typeof fetch>()
+			.mockResolvedValueOnce(new Response(null, { status: 204 }))
+			.mockRejectedValueOnce(new Error("lost"));
+		const ledger = createProxyQuotaLedger(
+			{ ...config, maxEgressBytes: 8 * 1024 * 1024 },
+			send,
+		);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 8 * 1024 * 1024)).toBe(
+			false,
+		);
+		// The first successful block remains usable; the ambiguous second one
+		// consumes the remainder without being refunded or retried.
+		expect(await ledger.reserveSandboxEgress("sbx_good", 4 * 1024 * 1024)).toBe(
+			true,
+		);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 1)).toBe(false);
+		expect(send).toHaveBeenCalledTimes(2);
+	});
+	it("returns to small blocks after idle credit expires", async () => {
+		vi.useFakeTimers();
+		vi.setSystemTime(0);
+		const reservations: number[] = [];
+		const send: typeof fetch = async (_url, init) => {
+			reservations.push(JSON.parse(String(init?.body)).bytes);
+			return new Response(null, { status: 204 });
+		};
+		const ledger = createProxyQuotaLedger(
+			{ ...config, maxEgressBytes: 256 * 1024 * 1024 },
+			send,
+		);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 64 * 1024)).toBe(true);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 64 * 1024)).toBe(true);
+		vi.advanceTimersByTime(5001);
+		expect(await ledger.reserveSandboxEgress("sbx_good", 1)).toBe(true);
+		expect(reservations).toEqual([65536, 131072, 65536]);
+	});
 });
 describe("proxy VM binding and streaming", () => {
 	it("verifies a signed token issued under the exact Vercel team ID", async () => {

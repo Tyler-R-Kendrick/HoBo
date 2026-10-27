@@ -9,6 +9,7 @@ enum ArtifactKind {
   ARTIFACT_KIND_UNSPECIFIED = 0;
   ARTIFACT_KIND_WASM_COMPONENT = 1;
   ARTIFACT_KIND_OCI_CONTAINER = 2;
+  ARTIFACT_KIND_NODE_APP = 3;
 }
 
 message ServiceDeclaration {

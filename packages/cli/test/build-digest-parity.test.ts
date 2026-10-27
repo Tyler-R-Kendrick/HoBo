@@ -7,6 +7,7 @@ import { componentizeHelloBindle } from "@hobo/componentize";
 import { describe, expect, it } from "vitest";
 import { runCodegen } from "../src/codegen/run-codegen.js";
 import {
+	createBuildCommand,
 	createHoboCli,
 	runBuild,
 	writeBuildFixtureProject,
@@ -38,6 +39,7 @@ describe("build digest parity", () => {
 
 		await withHelloBindleProject(async (projectRoot) => {
 			const buildResult = await runBuild({
+				requireRealComponentize: false,
 				json: true,
 				projectRoot,
 				targetRuntime: "auto",
@@ -57,7 +59,11 @@ describe("build digest parity", () => {
 		process.env.SOURCE_DATE_EPOCH = GOLDEN_DIGEST.sourceDateEpoch;
 		try {
 			await withHelloBindleProject(async (projectRoot) => {
-				const cli = await createHoboCli().run(["build", "--json"], {
+				const cli = await createHoboCli({
+					commands: {
+						build: createBuildCommand({ requireRealComponentize: false }),
+					},
+				}).run(["build", "--json"], {
 					cwd: projectRoot,
 				});
 				const envelope = JSON.parse(cli.stdout);

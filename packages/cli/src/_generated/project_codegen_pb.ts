@@ -4,13 +4,15 @@
 
 import type { GenFile, GenMessage } from "@bufbuild/protobuf/codegenv2";
 import { fileDesc, messageDesc } from "@bufbuild/protobuf/codegenv2";
+import type { Value } from "@bufbuild/protobuf/wkt";
+import { file_google_protobuf_struct } from "@bufbuild/protobuf/wkt";
 import type { Message } from "@bufbuild/protobuf";
 
 /**
  * Describes the file project_codegen.proto.
  */
 export const file_project_codegen: GenFile = /*@__PURE__*/
-  fileDesc("ChVwcm9qZWN0X2NvZGVnZW4ucHJvdG8SC2hvYm8uY2xpLnYxIjAKD0NvZGVnZW5BcnRpZmFjdBIMCgRwYXRoGAEgASgJEg8KB2NvbnRlbnQYAiABKAkiWgoKRHJpZnRFbnRyeRIMCgRwYXRoGAEgASgJEg4KBnN0YXR1cxgCIAEoCRIXCg9leHBlY3RlZF9kaWdlc3QYAyABKAkSFQoNYWN0dWFsX2RpZ2VzdBgEIAEoCSI/Cg1Db2RlZ2VuUmVwb3J0EgwKBG1vZGUYASABKAkSDwoHd3JpdHRlbhgCIAMoCRIPCgdjaGVja2VkGAMgAygJIoMBCg1UcmFpbmFibGVTdHViEhIKCm1ldGhvZF9yZWYYASABKAkSEwoLZXhwb3J0X25hbWUYAiABKAkSEAoIcmVzb3VyY2UYAyABKAkSEQoJdHlwZV9uYW1lGAQgASgJEhQKDGNvbnRyYWN0X3JlZhgFIAEoCRIOCgZvcmlnaW4YBiABKAliBnByb3RvMw");
+  fileDesc("ChVwcm9qZWN0X2NvZGVnZW4ucHJvdG8SC2hvYm8uY2xpLnYxImAKD0NvZGVnZW5BcnRpZmFjdBIMCgRwYXRoGAEgASgJEg8KB2NvbnRlbnQYAiABKAkSGwoOYmluYXJ5X2NvbnRlbnQYAyABKAxIAIgBAUIRCg9fYmluYXJ5X2NvbnRlbnQiWgoKRHJpZnRFbnRyeRIMCgRwYXRoGAEgASgJEg4KBnN0YXR1cxgCIAEoCRIXCg9leHBlY3RlZF9kaWdlc3QYAyABKAkSFQoNYWN0dWFsX2RpZ2VzdBgEIAEoCSI/Cg1Db2RlZ2VuUmVwb3J0EgwKBG1vZGUYASABKAkSDwoHd3JpdHRlbhgCIAMoCRIPCgdjaGVja2VkGAMgAygJIoMBCg1UcmFpbmFibGVTdHViEhIKCm1ldGhvZF9yZWYYASABKAkSEwoLZXhwb3J0X25hbWUYAiABKAkSEAoIcmVzb3VyY2UYAyABKAkSEQoJdHlwZV9uYW1lGAQgASgJEhQKDGNvbnRyYWN0X3JlZhgFIAEoCRIOCgZvcmlnaW4YBiABKAkirgMKEkNvZGVnZW5GaWVsZFNjaGVtYRIMCgRraW5kGAEgASgJEjsKBmZpZWxkcxgCIAMoCzIrLmhvYm8uY2xpLnYxLkNvZGVnZW5GaWVsZFNjaGVtYS5GaWVsZHNFbnRyeRIuCgVpdGVtcxgDIAEoCzIfLmhvYm8uY2xpLnYxLkNvZGVnZW5GaWVsZFNjaGVtYRIxCgh2YXJpYW50cxgEIAMoCzIfLmhvYm8uY2xpLnYxLkNvZGVnZW5GaWVsZFNjaGVtYRITCgt2YWx1ZXNfanNvbhgFIAMoCRIQCghvcHRpb25hbBgGIAEoCBIQCghudWxsYWJsZRgHIAEoCBIRCglyZWZlcmVuY2UYCCABKAkSLgoFdHVwbGUYCSADKAsyHy5ob2JvLmNsaS52MS5Db2RlZ2VuRmllbGRTY2hlbWESDgoGZm9ybWF0GAogASgJEg4KBmNsb3NlZBgLIAEoCBpOCgtGaWVsZHNFbnRyeRILCgNrZXkYASABKAkSLgoFdmFsdWUYAiABKAsyHy5ob2JvLmNsaS52MS5Db2RlZ2VuRmllbGRTY2hlbWE6AjgBIkoKFEdlbmVyYXRlZFJlc291cmNlUHV0EgsKA2tleRgBIAEoCRIlCgV2YWx1ZRgCIAEoCzIWLmdvb2dsZS5wcm90b2J1Zi5WYWx1ZSInChhHZW5lcmF0ZWRSZXNvdXJjZVJlbW92ZWQSCwoDa2V5GAEgASgJIqYBChlHZW5lcmF0ZWRSZXNvdXJjZVNuYXBzaG90EkIKBnZhbHVlcxgBIAMoCzIyLmhvYm8uY2xpLnYxLkdlbmVyYXRlZFJlc291cmNlU25hcHNob3QuVmFsdWVzRW50cnkaRQoLVmFsdWVzRW50cnkSCwoDa2V5GAEgASgJEiUKBXZhbHVlGAIgASgLMhYuZ29vZ2xlLnByb3RvYnVmLlZhbHVlOgI4AWIGcHJvdG8z", [file_google_protobuf_struct]);
 
 /**
  * One generated file, project-root-relative.
@@ -27,6 +29,11 @@ export type CodegenArtifact = Message<"hobo.cli.v1.CodegenArtifact"> & {
    * @generated from field: string content = 2;
    */
   content: string;
+
+  /**
+   * @generated from field: optional bytes binary_content = 3;
+   */
+  binaryContent?: Uint8Array | undefined;
 };
 
 /**
@@ -146,4 +153,132 @@ export type TrainableStub = Message<"hobo.cli.v1.TrainableStub"> & {
  */
 export const TrainableStubSchema: GenMessage<TrainableStub> = /*@__PURE__*/
   messageDesc(file_project_codegen, 3);
+
+/**
+ * Recursive field contract shared by source parsing, generated types, runtime
+ * validation, and examples. Literals use canonical JSON to preserve scalar kinds.
+ *
+ * @generated from message hobo.cli.v1.CodegenFieldSchema
+ */
+export type CodegenFieldSchema = Message<"hobo.cli.v1.CodegenFieldSchema"> & {
+  /**
+   * @generated from field: string kind = 1;
+   */
+  kind: string;
+
+  /**
+   * @generated from field: map<string, hobo.cli.v1.CodegenFieldSchema> fields = 2;
+   */
+  fields: { [key: string]: CodegenFieldSchema };
+
+  /**
+   * @generated from field: hobo.cli.v1.CodegenFieldSchema items = 3;
+   */
+  items?: CodegenFieldSchema | undefined;
+
+  /**
+   * @generated from field: repeated hobo.cli.v1.CodegenFieldSchema variants = 4;
+   */
+  variants: CodegenFieldSchema[];
+
+  /**
+   * @generated from field: repeated string values_json = 5;
+   */
+  valuesJson: string[];
+
+  /**
+   * @generated from field: bool optional = 6;
+   */
+  optional: boolean;
+
+  /**
+   * @generated from field: bool nullable = 7;
+   */
+  nullable: boolean;
+
+  /**
+   * @generated from field: string reference = 8;
+   */
+  reference: string;
+
+  /**
+   * @generated from field: repeated hobo.cli.v1.CodegenFieldSchema tuple = 9;
+   */
+  tuple: CodegenFieldSchema[];
+
+  /**
+   * @generated from field: string format = 10;
+   */
+  format: string;
+
+  /**
+   * @generated from field: bool closed = 11;
+   */
+  closed: boolean;
+};
+
+/**
+ * Describes the message hobo.cli.v1.CodegenFieldSchema.
+ * Use `create(CodegenFieldSchemaSchema)` to create a new message.
+ */
+export const CodegenFieldSchemaSchema: GenMessage<CodegenFieldSchema> = /*@__PURE__*/
+  messageDesc(file_project_codegen, 4);
+
+/**
+ * Durable generated API events use these payloads in core EventEnvelope.data.
+ *
+ * @generated from message hobo.cli.v1.GeneratedResourcePut
+ */
+export type GeneratedResourcePut = Message<"hobo.cli.v1.GeneratedResourcePut"> & {
+  /**
+   * @generated from field: string key = 1;
+   */
+  key: string;
+
+  /**
+   * @generated from field: google.protobuf.Value value = 2;
+   */
+  value?: Value | undefined;
+};
+
+/**
+ * Describes the message hobo.cli.v1.GeneratedResourcePut.
+ * Use `create(GeneratedResourcePutSchema)` to create a new message.
+ */
+export const GeneratedResourcePutSchema: GenMessage<GeneratedResourcePut> = /*@__PURE__*/
+  messageDesc(file_project_codegen, 5);
+
+/**
+ * @generated from message hobo.cli.v1.GeneratedResourceRemoved
+ */
+export type GeneratedResourceRemoved = Message<"hobo.cli.v1.GeneratedResourceRemoved"> & {
+  /**
+   * @generated from field: string key = 1;
+   */
+  key: string;
+};
+
+/**
+ * Describes the message hobo.cli.v1.GeneratedResourceRemoved.
+ * Use `create(GeneratedResourceRemovedSchema)` to create a new message.
+ */
+export const GeneratedResourceRemovedSchema: GenMessage<GeneratedResourceRemoved> = /*@__PURE__*/
+  messageDesc(file_project_codegen, 6);
+
+/**
+ * @generated from message hobo.cli.v1.GeneratedResourceSnapshot
+ */
+export type GeneratedResourceSnapshot = Message<"hobo.cli.v1.GeneratedResourceSnapshot"> & {
+  /**
+   * @generated from field: map<string, google.protobuf.Value> values = 1;
+   */
+  values: { [key: string]: Value };
+};
+
+/**
+ * Describes the message hobo.cli.v1.GeneratedResourceSnapshot.
+ * Use `create(GeneratedResourceSnapshotSchema)` to create a new message.
+ */
+export const GeneratedResourceSnapshotSchema: GenMessage<GeneratedResourceSnapshot> = /*@__PURE__*/
+  messageDesc(file_project_codegen, 7);
 

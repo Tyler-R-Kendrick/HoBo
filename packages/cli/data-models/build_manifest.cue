@@ -4,7 +4,7 @@ package build_manifest
 #ServiceName: string & =~"^[a-z][a-z0-9-]*$"
 #RelativePath: string & !~"/^\\//" & !~"/\\.\\./"
 
-#ArtifactKind: "wasm-component" | "oci-container"
+#ArtifactKind: "wasm-component" | "oci-container" | "node-app"
 
 #ServiceDeclaration: {
 	name:         #ServiceName
@@ -27,6 +27,9 @@ package build_manifest
 
 	if kind == "oci-container" {
 		fallback_reason: string & !=""
+	}
+	if kind == "node-app" {
+		runtime: "node"
 	}
 	if kind == "wasm-component" {
 		fallback_reason?: !=""

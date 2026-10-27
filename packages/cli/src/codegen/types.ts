@@ -1,4 +1,5 @@
-import { type JsonObject } from "../json.js";
+import type { JsonObject } from "../json.js";
+
 // The project codegen engine behind `hobo codegen`/`hobo stub` and the
 // `hobo build` freshness gate. Record types (artifacts, drift entries,
 // reports, trainable stubs) are the GENERATED protobuf types from
@@ -20,7 +21,10 @@ export {
 	TrainableStubSchema,
 } from "../_generated/project_codegen_pb.js";
 
-import type { CodegenArtifact } from "../_generated/project_codegen_pb.js";
+import type {
+	CodegenArtifact,
+	TrainableStub,
+} from "../_generated/project_codegen_pb.js";
 
 /** Project-relative locations of the codegen source inputs. */
 export interface CodegenSourceLayout {
@@ -66,6 +70,8 @@ export interface CodegenLayout {
 	readonly sources: CodegenSourceLayout;
 	/** Roots the engine owns; tree write/compare operate on these. */
 	readonly generatedRoots: readonly string[];
+	/** Exact generated files owned alongside directory roots; siblings remain untouched. */
+	readonly ownedFiles?: readonly string[];
 	readonly files: CodegenGeneratedFiles;
 	readonly imports: CodegenGeneratedImports;
 }
@@ -78,6 +84,7 @@ export interface CodegenLayout {
 export interface CodegenEngine {
 	readonly layout: CodegenLayout;
 	generate(projectRoot: string): Promise<readonly CodegenArtifact[]>;
+	describeTrainables?(projectRoot: string): Promise<readonly TrainableStub[]>;
 }
 
 export class CodegenError extends Error {
@@ -104,11 +111,11 @@ export function defaultCodegenLayout(): CodegenLayout {
 		generatedRoots: [".hobo/generated", "src/_generated"],
 		files: {
 			manifest: ".hobo/generated/codegen-manifest.json",
-			apiTree: "src/_generated/api-tree.d.ts",
+			apiTree: "src/_generated/api-tree.ts",
 			bindings: "src/_generated/bindings.d.ts",
-			hooks: "src/_generated/hooks.d.ts",
-			steps: "src/_generated/steps.d.ts",
-			workflows: "src/_generated/workflows.d.ts",
+			hooks: "src/_generated/hooks.ts",
+			steps: "src/_generated/steps.ts",
+			workflows: "src/_generated/workflows.ts",
 			withOptions: "src/_generated/with-options.d.ts",
 			trainables: "src/_generated/trainables.ts",
 		},

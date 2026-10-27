@@ -1,8 +1,12 @@
 import type { Dirent } from "node:fs";
-import { mkdir, readdir, readFile, rm, writeFile } from "node:fs/promises";
+import { mkdir, readdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join, relative, resolve } from "node:path";
+import { create } from "@bufbuild/protobuf";
 import { createRealComponentize } from "@hobo/componentize";
 import type { CodegenFixtureOptions } from "../codegen/fixture.js";
+import { recoverGeneratedTree, writeGeneratedTree } from "../codegen/tree.js";
+import { CodegenArtifactSchema } from "../codegen/types.js";
+import { isJsonString, type JsonObject, type JsonValue } from "../json.js";
 import {
 	assertGeneratedFresh,
 	writeCodegenFixtureProject,
@@ -13,6 +17,10 @@ import {
 	defaultComponentize,
 	toWasmBuildArtifact,
 } from "./componentize-adapter.js";
+import {
+	buildContainerImage,
+	type ContainerBuildFn,
+} from "./container-build.js";
 import { BuildError } from "./errors.js";
 import {
 	appendEvent,
@@ -30,8 +38,10 @@ import {
 	type ServiceDeclaration,
 	type TargetRuntime,
 } from "./parse.js";
-import { isJsonString, type JsonValue, type JsonObject } from "../json.js";
-
+import {
+	buildTypeScriptApp,
+	hasGeneratedTypeScriptApp,
+} from "./typescript-app-build.js";
 
 // public-contract: the documented on-disk location of the build manifest.
 export const BUILD_MANIFEST_PATH = ".hobo/build/build-manifest.json";
@@ -60,6 +70,9 @@ const DEFAULT_SERVICES: readonly ServiceDeclaration[] = Object.freeze([
 
 export type RunBuildOptions = BuildRequest & {
 	readonly componentize?: ComponentizeFn;
+	/** Defaults to true. Only explicit library fixtures may select the contract artifact lane. */
+	readonly requireRealComponentize?: boolean;
+	readonly containerBuild?: ContainerBuildFn;
 	// public-contract: test seam for the HOBO_COMPONENTIZE_REAL toolchain probe;
 	// defaults to @hobo/componentize createRealComponentize.
 	readonly realComponentizeFactory?: typeof createRealComponentize;
@@ -72,11 +85,11 @@ type BuiltArtifact = {
 
 export async function runBuild(request: RunBuildOptions): Promise<BuildResult> {
 	const projectRoot = resolve(request.projectRoot);
+	await recoverGeneratedTree(projectRoot);
 	const targetRuntime = request.targetRuntime;
 	const sourceDateEpoch = request.sourceDateEpoch;
-	const componentize =
-		request.componentize ??
-		(await selectComponentize(request.realComponentizeFactory));
+	const requireReal = request.requireRealComponentize !== false;
+	const nodeApp = await hasGeneratedTypeScriptApp(projectRoot);
 
 	let events: BuildEvent[] = [
 		{
@@ -87,10 +100,30 @@ export async function runBuild(request: RunBuildOptions): Promise<BuildResult> {
 	];
 
 	await assertGeneratedFreshWrapper(projectRoot);
-	const services = await discoverServices(projectRoot);
-	await rm(join(projectRoot, ".hobo/build"), { recursive: true, force: true });
-
-	const builtArtifacts: BuiltArtifact[] = [];
+	if (nodeApp && targetRuntime !== "auto")
+		throw new BuildError(
+			"HOBO_BUILD_RUNTIME_INVALID",
+			`Plain TypeScript app packaging targets Node; explicit ${targetRuntime} requires declared services with that runtime`,
+			{ runtime: targetRuntime },
+		);
+	const services = nodeApp ? [] : await discoverServices(projectRoot);
+	const componentize = services.some(
+		(service) => !fallbackReasonFor(service, targetRuntime),
+	)
+		? (request.componentize ??
+			(await selectComponentize(request.realComponentizeFactory, requireReal)))
+		: undefined;
+	const containerBuild =
+		request.containerBuild ?? (requireReal ? buildContainerImage : undefined);
+	const builtArtifacts: BuiltArtifact[] = nodeApp
+		? [...(await buildTypeScriptApp(projectRoot))]
+		: [];
+	for (const built of builtArtifacts)
+		events = appendEvent(events, {
+			type: "build.ArtifactProduced",
+			service: built.artifact.service,
+			artifact: built.artifact,
+		});
 	for (const service of services) {
 		const built = await buildService({
 			projectRoot,
@@ -98,6 +131,7 @@ export async function runBuild(request: RunBuildOptions): Promise<BuildResult> {
 			targetRuntime,
 			sourceDateEpoch,
 			componentize,
+			containerBuild,
 		});
 		builtArtifacts.push(built);
 		events = appendEvent(events, {
@@ -107,12 +141,25 @@ export async function runBuild(request: RunBuildOptions): Promise<BuildResult> {
 		});
 	}
 
-	await writeBuildOutputs(projectRoot, builtArtifacts);
-
 	const manifest = projectBuildManifest(events, targetRuntime, sourceDateEpoch);
 	const manifestContent = stableStringify(manifest);
 	const manifestDigest = sha256Text(manifestContent);
-	await writeFile(join(projectRoot, BUILD_MANIFEST_PATH), manifestContent);
+	await writeGeneratedTree(
+		projectRoot,
+		[
+			...builtArtifacts.map((built) =>
+				create(CodegenArtifactSchema, {
+					path: built.artifact.path,
+					binaryContent: built.bytes,
+				}),
+			),
+			create(CodegenArtifactSchema, {
+				path: BUILD_MANIFEST_PATH,
+				content: manifestContent,
+			}),
+		],
+		[".hobo/build"],
+	);
 
 	events = appendEvent(events, {
 		type: "build.Completed",
@@ -160,15 +207,16 @@ export async function writeBuildFixtureProject(
 // silently falls back to the synthetic floor once the real lane was requested.
 async function selectComponentize(
 	factory: typeof createRealComponentize = createRealComponentize,
+	requireReal = true,
 ): Promise<ComponentizeFn> {
-	if (process.env.HOBO_COMPONENTIZE_REAL !== "1") {
+	if (!requireReal && process.env.HOBO_COMPONENTIZE_REAL !== "1") {
 		return defaultComponentize;
 	}
 	const real = await factory();
 	if (!real.available) {
 		throw new BuildError(
 			"HOBO_BUILD_COMPONENTIZE_TOOLCHAIN",
-			"HOBO_COMPONENTIZE_REAL=1 but @bytecodealliance/componentize-js is not importable; refusing to fall back to the synthetic contract-shaped floor",
+			"Real componentization is required but @bytecodealliance/componentize-js is not importable; refusing to emit synthetic component bytes",
 			{ requested: "real", available: false },
 		);
 	}
@@ -222,10 +270,18 @@ async function buildService(input: {
 	readonly service: ServiceDeclaration;
 	readonly targetRuntime: TargetRuntime;
 	readonly sourceDateEpoch: string;
-	readonly componentize: ComponentizeFn;
+	readonly componentize: ComponentizeFn | undefined;
+	readonly containerBuild: ContainerBuildFn | undefined;
 }): Promise<BuiltArtifact> {
 	const fallbackReason = fallbackReasonFor(input.service, input.targetRuntime);
 	if (fallbackReason) {
+		if (input.containerBuild)
+			return input.containerBuild({
+				projectRoot: input.projectRoot,
+				service: input.service,
+				sourceDateEpoch: input.sourceDateEpoch,
+				fallbackReason,
+			});
 		return buildOciFallback({
 			projectRoot: input.projectRoot,
 			service: input.service,
@@ -234,6 +290,11 @@ async function buildService(input: {
 	}
 
 	try {
+		if (!input.componentize)
+			throw new BuildError(
+				"HOBO_BUILD_INTERNAL",
+				"Service componentizer is unavailable",
+			);
 		const result = await input.componentize({
 			sourceRoot: join(input.projectRoot, input.service.sourceRoot),
 			sourceDateEpoch: input.sourceDateEpoch,
@@ -317,19 +378,6 @@ async function buildOciFallback(input: {
 		},
 		bytes,
 	};
-}
-
-async function writeBuildOutputs(
-	projectRoot: string,
-	builtArtifacts: readonly BuiltArtifact[],
-): Promise<void> {
-	await mkdir(join(projectRoot, BUILD_ARTIFACT_DIR), { recursive: true });
-	for (const built of builtArtifacts) {
-		await writeFile(join(projectRoot, built.artifact.path), built.bytes);
-	}
-	await mkdir(dirname(join(projectRoot, BUILD_MANIFEST_PATH)), {
-		recursive: true,
-	});
 }
 
 function fallbackReasonFor(

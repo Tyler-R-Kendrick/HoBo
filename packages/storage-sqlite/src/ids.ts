@@ -2,9 +2,14 @@
 
 const CROCKFORD = "0123456789ABCDEFGHJKMNPQRSTVWXYZ";
 
-export function createUlidGenerator(clock: { now(): string }): () => string {
-	let lastMs = 0;
-	let counter = 0;
+export function createUlidGenerator(
+	clock: { now(): string },
+	initialCounter = 0,
+): () => string {
+	if (!Number.isSafeInteger(initialCounter) || initialCounter < 0)
+		throw new TypeError("initialCounter must be a nonnegative safe integer");
+	let lastMs = Date.parse(clock.now());
+	let counter = initialCounter - 1;
 
 	return () => {
 		const nowMs = Date.parse(clock.now());

@@ -60,7 +60,7 @@ Product: hobo
 
 ### identity
 - Role: identity
-- Summary: Observe continuous identity migration status (status/inspect; zero Bindle config)
+- Summary: Inspect migration identity (status/inspect) or manage auth.md agents (agent discover/register/status/claim/poll/token/rotate/revoke)
 - CLI: `hobo identity`
 - MCP tool: `identity`
 - Capability: { port: hobo:mcp, resource: tool:identity, verb: call }

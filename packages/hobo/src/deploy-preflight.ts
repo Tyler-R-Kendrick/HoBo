@@ -59,7 +59,7 @@ export function describeDeployTarget(
 	// Mirrors selectIacProvider: the resolver lane sits INSIDE the
 	// credential-gated bracket, so it can only replace the bespoke clients and
 	// never the credential-free default.
-	const resolvers = has(env, RESOLVER_LANE_ENV);
+	const resolvers = env[RESOLVER_LANE_ENV] === "1";
 
 	if (cloudflareToken && cloudflareAccount) {
 		return {

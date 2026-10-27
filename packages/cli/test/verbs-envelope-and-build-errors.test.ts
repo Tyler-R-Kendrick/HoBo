@@ -24,8 +24,10 @@ import { describe, expect, it } from "vitest";
 import {
 	BuildCliError,
 	BuildError,
+	type BuildErrorCode,
 	remediationFor,
 } from "../src/build/errors.js";
+import type { JsonObject } from "../src/json.js";
 import { CliError } from "../src/shell/errors.js";
 import {
 	CANONICAL_VERBS,
@@ -35,7 +37,11 @@ import {
 	verbHelpText,
 	verbNames,
 } from "../src/shell/verbs.js";
-import { buildEnvelope, publicContext } from "../src/types/envelope.js";
+import {
+	buildEnvelope,
+	type CommandResult,
+	publicContext,
+} from "../src/types/envelope.js";
 
 const CONTEXT = {
 	cwd: "/work",
@@ -174,6 +180,7 @@ describe("publicContext", () => {
 		// `?? null`. An undefined identity would disappear from the JSON
 		// entirely, and a consumer checking `"identity" in context` would get a
 		// different answer than one checking `context.identity === null`.
+		// SAFETY: deliberately malformed identity exercises the projection's missing-field fallback.
 		expect(
 			publicContext({ ...CONTEXT, identity: undefined } as never).identity,
 		).toBeNull();
@@ -191,7 +198,7 @@ describe("publicContext", () => {
 	it("rebuilds the object rather than passing the caller's through", () => {
 		// The projection is what stops an internal field being added to the
 		// context later and silently appearing in every envelope on stdout.
-		const extended = { ...CONTEXT, secretToken: "s3cr3t" } as never;
+		const extended = { ...CONTEXT, secretToken: "s3cr3t" };
 		const projected = publicContext(extended);
 		expect(Object.hasOwn(projected, "secretToken")).toBe(false);
 		expect(JSON.stringify(projected)).not.toContain("s3cr3t");
@@ -199,7 +206,7 @@ describe("publicContext", () => {
 });
 
 describe("buildEnvelope", () => {
-	function envelope(result: Record<string, unknown> = {}) {
+	function envelope(result: CommandResult = {}) {
 		return buildEnvelope({ verb: "up", context: CONTEXT, result });
 	}
 
@@ -280,9 +287,10 @@ describe("buildEnvelope", () => {
 	});
 
 	it("projects the context rather than embedding it whole", () => {
+		const context = { ...CONTEXT, secretToken: "s3cr3t" };
 		const built = buildEnvelope({
 			verb: "up",
-			context: { ...CONTEXT, secretToken: "s3cr3t" } as never,
+			context,
 			result: {},
 		});
 		expect(JSON.stringify(built)).not.toContain("s3cr3t");
@@ -290,8 +298,8 @@ describe("buildEnvelope", () => {
 });
 
 describe("build error remediation", () => {
-	function remediation(code: string, detail: Record<string, unknown> = {}) {
-		return remediationFor(new BuildError(code as never, "boom", detail));
+	function remediation(code: BuildErrorCode, detail: JsonObject = {}) {
+		return remediationFor(new BuildError(code, "boom", detail));
 	}
 
 	it("tells a drifted codegen to re-run codegen", () => {
@@ -311,12 +319,12 @@ describe("build error remediation", () => {
 		expect(remediation("HOBO_BUILD_USAGE")[0]).toContain("hobo build --help");
 	});
 
-	it("names both ways out of a componentize toolchain failure", () => {
-		// Install the pinned toolchain, or drop back to the synthetic floor.
-		// Naming only the install would strand anyone who cannot install it.
+	it("requires the real toolchain for product builds", () => {
+		// Product remediation must not suggest bypassing executable artifact generation.
 		const text = remediation("HOBO_BUILD_COMPONENTIZE_TOOLCHAIN")[0] ?? "";
 		expect(text).toContain("componentize-js");
-		expect(text).toContain("HOBO_COMPONENTIZE_REAL");
+		expect(text).toContain("Product builds require real componentization");
+		expect(text).not.toContain("unset HOBO_COMPONENTIZE_REAL");
 	});
 
 	it("sends a componentize failure to the service source", () => {
@@ -338,7 +346,7 @@ describe("build error remediation", () => {
 			"HOBO_BUILD_RUNTIME_INVALID",
 			"HOBO_BUILD_SERVICE_INVALID",
 			"HOBO_BUILD_CODEGEN_FAILED",
-		]) {
+		] as const) {
 			expect(remediation(code)[0]).toContain("--json");
 		}
 	});
@@ -349,7 +357,7 @@ describe("build error remediation", () => {
 			"HOBO_BUILD_USAGE",
 			"HOBO_BUILD_INTERNAL",
 			"HOBO_BUILD_CODEGEN_DRIFT",
-		]) {
+		] as const) {
 			expect(remediation(code).length).toBeGreaterThan(0);
 		}
 	});

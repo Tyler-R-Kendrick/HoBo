@@ -45,6 +45,8 @@ promotion stays `hobo-code promote`.
 CLI starter bodies live under `patterns/starter/cli/<alias>/project/` and are
 the only source for `hobo new -t todo|api|agent|fullstack`. The OpenUI starter
 is `starter.code.openui-astryx-bindle`, classified as an OpenUI/Harness starter.
+CLI starter ignore files exclude the local codegen/build lock database, its
+SQLite sidecars and interrupted staging trees so recovery state stays local.
 
 Atomic snippets live in [`atoms/`](./atoms/README.md) and load with the rest of
 the catalog. Chat emit uses the same trees.

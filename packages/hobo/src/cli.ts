@@ -1,5 +1,6 @@
 import type { CollectionTarget } from "@hobo/bindles";
 import {
+	createBuildCommand,
 	createCollectCommand,
 	createDevCommand,
 	createDownCommand,
@@ -23,6 +24,7 @@ import { createGithubRunnerCatalogEntry } from "@hobo/runner-github";
 import { createAccessCommand } from "./access-command.js";
 import { createAddCommand, registerInstallable } from "./add-command.js";
 import { createAttestCommand } from "./attest-command.js";
+import { createAuthMdIdentityCommand } from "./auth-md-command.js";
 import { createBrokerCommand } from "./broker-command.js";
 import { createBrokerAwareUpCommand } from "./broker-up-command.js";
 import { createCanDeployCommand } from "./can-deploy-command.js";
@@ -46,6 +48,7 @@ import { createImportCommand } from "./import-command.js";
 import { createIncidentCommand } from "./incident-command.js";
 import { createInspectCommand } from "./inspect-command.js";
 import { isJsonString } from "./json.js";
+import { createLocalDeploymentDownCommand } from "./local-deployment.js";
 import { createLocalProvider } from "./local-provider.js";
 import { createBrokerAwareLoginCommand } from "./login-command.js";
 import { createLogsCommand } from "./logs-command.js";
@@ -74,6 +77,10 @@ export interface ComposedHoboCliOptions {
 	// Injecting one lets a caller (e.g. a test) hold the runtime so it can close
 	// `runtime.store` afterward.
 	readonly yardRuntime?: YardRuntime;
+	/** Binaries set this even when injecting the assembled production runtime. */
+	readonly requireRealExecution?: boolean;
+	/** Host transport injection for agent-principal discovery and TLS trust. */
+	readonly authMdFetch?: typeof fetch;
 	// Override the default offline DevRuntime `hobo dev` boots.
 	readonly devRuntime?: DevRuntime;
 	// Override the default `hobo collect` target.
@@ -144,12 +151,23 @@ export function createComposedHoboCli(
 	options: ComposedHoboCliOptions = {},
 ): HoboCli {
 	const runtime = options.yardRuntime ?? createDefaultYardRuntime();
+	const explicitFixture =
+		options.yardRuntime !== undefined && options.requireRealExecution !== true;
+	const cloudConfigured =
+		process.env.HOBO_PULUMI_LIVE === "1" ||
+		Boolean(
+			(process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ACCOUNT_ID) ||
+				process.env.VERCEL_TOKEN,
+		);
+	const deployRuntime =
+		explicitFixture || cloudConfigured ? runtime : undefined;
 	// `sandbox` and its `test` alias share one command; each run() boots its OWN
 	// fresh runtime-local Camp (isolation), so no shared runtime is threaded here.
 	const sandbox = createSandboxCommand();
 
 	return createHoboCli({
 		commands: {
+			build: createBuildCommand({ requireRealComponentize: true }),
 			// Local loop: open the Yard, place the Bindle into a Camp, run the Camp's
 			// component host (services__* + bindle env + external-only TCP).
 			dev: createDevCommand(
@@ -210,7 +228,11 @@ export function createComposedHoboCli(
 			// Always place through the embedded broker-runtime (prefer wasm-sandbox yards).
 			// Remote --broker / --anonymous paths use discovery + credential presenter.
 			// The cloud mock `createUpCommand` remains for tests that wire it directly.
-			up: createBrokerAwareUpCommand({ runtime }),
+			up: createBrokerAwareUpCommand({
+				...(deployRuntime ? { runtime: deployRuntime } : undefined),
+				persistentLocal: !explicitFixture,
+				authMdFetch: options.authMdFetch ?? fetch,
+			}),
 			// Identity plane: persist profile + optional default broker association.
 			// The composition root injects the platform fetch — the login/grant
 			// modules never reach for the global, so tests drive them offline.
@@ -218,7 +240,11 @@ export function createComposedHoboCli(
 			// Durable Connections: authorize once, mint short-lived tokens thereafter.
 			connection: createConnectionCommand(),
 			// Continuous identity migration observe surface (Matching/policy-driven; zero Bindle config).
-			identity: createIdentityCommand(),
+			identity: createAuthMdIdentityCommand({
+				fallback: createIdentityCommand(),
+				fetchImpl: options.authMdFetch ?? fetch,
+				store: runtime.store,
+			}),
 			// Continuous migration Trails observe surface (identity hands-off + app-authored recipes).
 			trails: createTrailsCommand(),
 			// Elevated / cross-env access request + break-glass (short-lived capability).
@@ -229,7 +255,11 @@ export function createComposedHoboCli(
 			deploy: createDeployCommand(),
 			// CD failure disposition (A2H default / sandboxed self-heal).
 			incident: createIncidentCommand(),
-			down: createDownCommand({ runtime }),
+			down: createLocalDeploymentDownCommand(
+				deployRuntime
+					? createDownCommand({ runtime: deployRuntime })
+					: undefined,
+			),
 			doctor: createDoctorCommand(),
 			messaging: createMessagingCommand(),
 			verify: createVerifyCommand(),
@@ -248,7 +278,10 @@ export function createComposedHoboCli(
 			inspect: createInspectCommand({ runtime }),
 			drift: createDriftCommand({ runtime }),
 			attest: createAttestCommand({ runtime }),
-			claim: createClaimCommand({ runtime }),
+			claim: createClaimCommand({
+				runtime,
+				fetchImpl: options.authMdFetch ?? fetch,
+			}),
 			// Anonymous-to-owned: what HoBo can deploy before a provider login,
 			// and the proposal a human consents to before anything is created.
 			recipes: createRecipesCommand(),

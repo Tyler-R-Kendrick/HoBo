@@ -41,7 +41,10 @@ export type ContextFactory = (
 export async function defaultContextFactory(
 	request: ContextFactoryRequest,
 ): Promise<CliContext> {
-	const projectDir = await findProjectDir(request.cwd);
+	const projectDir = await findProjectDir(
+		request.cwd,
+		["codegen", "stub", "build"].includes(request.verb),
+	);
 	if (request.requiresProject && !projectDir) {
 		throw new NoBindleError(request.cwd, {
 			monorepo: await looksLikeHoboMonorepo(request.cwd),
@@ -59,7 +62,10 @@ export async function defaultContextFactory(
 	};
 }
 
-async function findProjectDir(startDir: string): Promise<string | null> {
+async function findProjectDir(
+	startDir: string,
+	typescriptAuthoring = false,
+): Promise<string | null> {
 	let current = path.resolve(startDir);
 	while (true) {
 		for (const marker of markers) {
@@ -67,6 +73,11 @@ async function findProjectDir(startDir: string): Promise<string | null> {
 				return current;
 			}
 		}
+		if (
+			typescriptAuthoring &&
+			(await exists(path.join(current, "tsconfig.json")))
+		)
+			return current;
 
 		const parent = path.dirname(current);
 		if (parent === current) {

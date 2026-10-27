@@ -7,6 +7,74 @@ assertion verification, human claim, and the rotation/revocation that follows.
 > **auth.md is agent identity, not infrastructure ownership.** Everything in
 > this package exists to keep those two apart.
 
+## CLI integration
+
+The composed `hobo` binary exposes the agent plane independently of human
+`hobo login` and infrastructure `hobo claim`:
+
+```sh
+hobo identity agent discover https://broker.example
+hobo identity agent register agent.json
+hobo identity agent status https://broker.example/ <registration-ref>
+hobo identity agent token https://broker.example/ <registration-ref>
+hobo up --broker https://broker.example --anonymous
+hobo identity agent claim https://broker.example/ <registration-ref>
+# Approve the returned claim URL in a human browser, then poll.
+hobo identity agent poll https://broker.example/ <registration-ref>
+hobo claim <account> --broker https://broker.example --token <infrastructure-claim-token>
+hobo identity agent rotate https://broker.example/ <registration-ref>
+hobo identity agent revoke https://broker.example/ <registration-ref>
+```
+
+`agent.json` supplies the exact requested scope and authorization binding:
+
+```json
+{
+  "resource": "https://broker.example/",
+  "binding": {
+    "sessionId": "session-1",
+    "tenantId": "tenant-1",
+    "projectId": "my-app",
+    "audience": "broker-api",
+    "service": "https://broker.example/"
+  },
+  "requestedScopes": ["deploy:write"]
+}
+```
+
+For deployment, `projectId` must match the bindle name or `HOBO_PROJECT`;
+`HOBO_TENANT` can select the intended tenant. Multiple matching registrations
+are refused. The broker advertises its protected resource metadata through
+`resourceMetadataUrl`; its placement endpoint must fall inside that resource.
+All endpoints can be self-hosted. A network broker remains an explicit choice.
+Identity lifecycle commands use standard protected-resource metadata first. If
+that document is absent (HTTP 404 or 410), they rediscover the selected broker's
+advertisement and follow its same-origin HTTPS `resourceMetadataUrl`. Malformed
+or denied standard metadata fails closed; a changed registered resource is
+refused. The HTTPS product test exposes only the custom metadata endpoint.
+
+The authorization server must advertise `private_key_jwt` and a supported
+signing algorithm in its OAuth authorization-server metadata. The CLI signs a
+short-lived, unique, token-endpoint-bound assertion with the registered key,
+then sends the server-issued scoped access token to placement. Private keys
+are never used as bearer tokens. `token` verifies the exchange and returns only
+references and expiry. TLS and redirect checks remain enabled.
+
+Registrations, keys, and claim-poll material persist under
+`$HOBO_HOME/auth-md/registrations` in owner-only files. Public results and durable
+`authmd.*` facts contain references, scopes, and binding information, without
+credential material. Human login and infrastructure ownership do not change
+when an agent registers or completes its principal claim. After a recorded
+infrastructure claim, management requires a human-bound agent and any required
+key rotation. Rotation and revocation use the endpoints advertised by the
+registration; rotation proves the replacement key through a fresh token
+exchange before reporting success. Revoked references cannot be reused by a
+new local registration.
+
+`packages/hobo/test/auth-md-https.test.ts` proves discovery, registration,
+actual signed-key token exchange, protected broker placement, independent
+claims, scope refusals, rotation, and revocation against a local HTTPS server.
+
 ## Three independent state machines
 
 HoBo tracks three things that are easy — and dangerous — to conflate. This
@@ -80,14 +148,14 @@ parser boundary in [`src/types.ts`](src/types.ts) and
 (`HttpsUrl`, `Scope`, `Instant`, `RegistrationRef`, `SessionBinding`). Nothing
 downstream re-checks a string.
 
-Flows are event-driven. Each command (register, initiate claim, poll claim,
-rotate, revoke) is handled by the agent-principal actor — one actor instance per
-`registrationRef`, which is also the stream key — and the actor appends
-`authmd.*` events to the event store rather than mutating a read model.
-`foldAgentPrincipalEvents` is the materialized view / projection over that
-stream, and `AgentPrincipalView` doubles as the snapshot persisted in the read
-store for current-state reads. Every event is refs-only, so replay can never
-resurrect key material.
+The library's agent-principal actor appends refs-only `authmd.*` facts to an
+event store; `foldAgentPrincipalEvents` materializes their public view. The
+composed CLI uses the same registration, claim, token, and lifecycle primitives
+and appends those facts to a stream scoped by tenant, project, resource, and
+registration reference. Its owner-only custody record persists the keys and
+claim-poll material required across CLI processes, together with the parsed
+principal and deployment bindings. Status reads that private record through
+the domain parsers. Public event replay never reconstructs key material.
 
 Wire forms and their constraints live in
 [`data-models/auth_md.proto`](data-models/auth_md.proto) and
@@ -150,7 +218,13 @@ pnpm --filter @hobo/auth-md run build
 pnpm --filter @hobo/auth-md run test
 ```
 
-Every test is offline and injects a fetch fixture; there is no live-service lane.
+Transport deadlines remain active while reading the response body. The stalled-body
+regression checks cancellation after headers, alongside successful streaming reads.
+
+Tests include bounded transport fixtures and real self-hosted HTTPS exchanges
+with Ed25519, ES256, and RS256 assertions. The composed CLI lifecycle proof is
+`packages/hobo/test/auth-md-https.test.ts`. These checks require no hosted broker,
+relay, identity service, or cloud account.
 
 ## Sources
 

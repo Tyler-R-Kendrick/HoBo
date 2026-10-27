@@ -24,6 +24,8 @@
 	},
 	"dependencies": {
 		"@bytecodealliance/jco": "1.24.3",
+		"@bufbuild/protobuf": "2.12.1",
+		"@hobo/auth-md": "workspace:*",
 		"@hobo/bindings": "workspace:*",
 		"@hobo/bindles": "workspace:*",
 		"@hobo/broker": "workspace:*",

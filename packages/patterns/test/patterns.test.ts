@@ -257,6 +257,17 @@ describe("@hobo/patterns", () => {
 		const files = renderCliStarterFiles({ name: "shop", template: "todo" });
 		expect(files.get("app.ts")).toContain('template: "todo"');
 	});
+	it.each([
+		"todo",
+		"api",
+		"agent",
+		"fullstack",
+	] as const)("ignores codegen/build recovery state in the %s starter", (template) => {
+		const files = renderCliStarterFiles({ name: "shop", template });
+		expect(files.get(".gitignore")).toContain(
+			".hobo-codegen.lock\n.hobo-codegen.lock-*\n.hobo-codegen-*\n",
+		);
+	});
 
 	it("explains a match", () => {
 		const text = explainPatternMatch({

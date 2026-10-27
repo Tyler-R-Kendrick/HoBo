@@ -5,16 +5,22 @@ import { describe, expect, it } from "vitest";
 import { runCodegen } from "../src/codegen/run-codegen.js";
 import {
 	BUILD_MANIFEST_PATH,
+	createBuildCommand,
 	createHoboCli,
 	writeBuildFixtureProject,
 } from "../src/index.js";
-import { type JsonValue } from "../src/json.js";
+import type { JsonValue } from "../src/json.js";
 
+function createFixtureCli() {
+	return createHoboCli({
+		commands: { build: createBuildCommand({ requireRealComponentize: false }) },
+	});
+}
 
 describe("hobo build", () => {
 	it("emits wasm and OCI fallback artifacts with JSON digests", async () => {
 		await withSeededBuildProject(async (projectRoot) => {
-			const result = await createHoboCli().run(["build", "--json"], {
+			const result = await createFixtureCli().run(["build", "--json"], {
 				cwd: projectRoot,
 			});
 
@@ -49,12 +55,18 @@ describe("hobo build", () => {
 
 		await withSeededBuildProject(async (projectRoot) => {
 			const first = JSON.parse(
-				(await createHoboCli().run(["build", "--json"], { cwd: projectRoot }))
-					.stdout,
+				(
+					await createFixtureCli().run(["build", "--json"], {
+						cwd: projectRoot,
+					})
+				).stdout,
 			);
 			const second = JSON.parse(
-				(await createHoboCli().run(["build", "--json"], { cwd: projectRoot }))
-					.stdout,
+				(
+					await createFixtureCli().run(["build", "--json"], {
+						cwd: projectRoot,
+					})
+				).stdout,
 			);
 
 			expect(second.data.artifacts).toEqual(first.data.artifacts);
@@ -63,8 +75,11 @@ describe("hobo build", () => {
 
 		await withSeededBuildProject(async (projectRoot) => {
 			const fresh = JSON.parse(
-				(await createHoboCli().run(["build", "--json"], { cwd: projectRoot }))
-					.stdout,
+				(
+					await createFixtureCli().run(["build", "--json"], {
+						cwd: projectRoot,
+					})
+				).stdout,
 			);
 			expect(fresh.data.artifacts).toEqual(cleanCheckoutArtifacts);
 		});
@@ -77,7 +92,7 @@ describe("hobo build", () => {
 				"stale generated file\n",
 			);
 
-			const result = await createHoboCli().run(["build", "--json"], {
+			const result = await createFixtureCli().run(["build", "--json"], {
 				cwd: projectRoot,
 			});
 			const envelope = JSON.parse(result.stdout);
@@ -118,7 +133,7 @@ describe("hobo build", () => {
 			});
 			await seedGeneratedTree(projectRoot);
 
-			const result = await createHoboCli().run(["build", "--json"], {
+			const result = await createFixtureCli().run(["build", "--json"], {
 				cwd: projectRoot,
 			});
 			const envelope = JSON.parse(result.stdout);
@@ -147,7 +162,7 @@ describe("hobo build", () => {
 		process.env.HOBO_RUNTIME = "container";
 		try {
 			await withSeededBuildProject(async (projectRoot) => {
-				const result = await createHoboCli().run(["build", "--json"], {
+				const result = await createFixtureCli().run(["build", "--json"], {
 					cwd: projectRoot,
 				});
 				expect(result.exitCode).toBe(0);
@@ -182,7 +197,7 @@ describe("hobo build", () => {
 			});
 			await seedGeneratedTree(projectRoot);
 
-			const result = await createHoboCli().run(["build", "--json"], {
+			const result = await createFixtureCli().run(["build", "--json"], {
 				cwd: projectRoot,
 			});
 			const artifacts = byService(JSON.parse(result.stdout).data.artifacts);

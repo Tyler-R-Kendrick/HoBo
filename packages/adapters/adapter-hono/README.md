@@ -59,3 +59,9 @@ as events through the runtime's actors; durable state lives in the event
 store, queries read from projections over materialized views with cached
 snapshots, and historical snapshots persist in the read store behind the
 adapter rather than in the adapter itself.
+
+The adapter calls `app.fetch(request)` with one argument. Its structural
+`HonoFetchApp` contract therefore requires only that call, allowing Hono's own
+environment and execution-context parameter types to remain framework-owned.
+`examples/hello-bindle` typechecking covers the Hono-to-Bindle authoring boundary;
+its runtime tests cover request forwarding. This changes no wire records.

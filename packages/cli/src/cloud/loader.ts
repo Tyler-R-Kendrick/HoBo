@@ -11,6 +11,11 @@ import {
 } from "@hobo/bindles";
 import { isJsonObject, isJsonString, type JsonValue } from "../json.js";
 import { BindleImportError } from "../shell/errors.js";
+import {
+	type AppHttpModule,
+	httpDefinitionFromModule,
+	loadTypeScriptHttpDefinition,
+} from "./typescript-app-loader.js";
 
 // The TypeScript-source bindle loader (docs/plans/0006 item 3-1). It
 // materializes the collection target the cloud verbs operate on from the
@@ -52,13 +57,16 @@ export async function loadBindleDefinition(
 	projectDir: string,
 ): Promise<BindleDefinition | null> {
 	for (const candidate of BINDLE_SOURCE_CANDIDATES) {
+		if (candidate === "dist/app.js") {
+			const application = await loadTypeScriptHttpDefinition(projectDir);
+			if (application) return application;
+		}
 		const absolute = path.join(projectDir, candidate);
 		if (!existsSync(absolute)) {
 			continue;
 		}
 
-		type BindleModule = {
-			default?: JsonValue;
+		type BindleModule = AppHttpModule & {
 			bindle?: JsonValue;
 		};
 		let module: BindleModule;
@@ -73,9 +81,15 @@ export async function loadBindleDefinition(
 		}
 
 		const definition = module.default ?? module.bindle;
-		return definition !== undefined && isBindleDefinition(definition)
-			? definition
-			: null;
+		if (definition !== undefined && isBindleDefinition(definition))
+			return definition;
+		if (candidate.includes("app.")) {
+			const application = httpDefinitionFromModule(
+				path.basename(projectDir),
+				module,
+			);
+			if (application) return application;
+		}
 	}
 
 	return null;
@@ -83,7 +97,7 @@ export async function loadBindleDefinition(
 
 // `error` is a `catch` binding, which is `unknown`; the body already handles
 // that with `error instanceof Error ? … : String(error)`.
-function isUncompiledTypeScript(candidate: string, error: unknown): boolean {
+function isUncompiledTypeScript<T>(candidate: string, error: T): boolean {
 	if (!/\.(ts|mts)$/u.test(candidate)) return false;
 	const message = error instanceof Error ? error.message : String(error);
 	return /ERR_UNKNOWN_FILE_EXTENSION|Unknown file extension|\.ts['"]/u.test(
@@ -93,7 +107,7 @@ function isUncompiledTypeScript(candidate: string, error: unknown): boolean {
 
 // `unknown`: this tests a value pulled off an imported ESM namespace, which is
 // exactly the untyped input a type guard exists for.
-function isBindleDefinition(value: unknown): value is BindleDefinition {
+function isBindleDefinition<T>(value: T): value is T & BindleDefinition {
 	if (value === null || !isJsonObject(value)) {
 		return false;
 	}

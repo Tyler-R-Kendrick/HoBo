@@ -4,6 +4,7 @@ import { tmpdir } from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { test } from "vitest";
+import { CANONICAL_VERBS } from "../packages/cli/src/shell/verbs.js";
 
 import {
 	checkCliDocs,
@@ -24,7 +25,11 @@ test("canonical CLI spec maps every verb to an implementation issue", async () =
 	// `deploy` is the attested CD observe family (status|logs|rollback), not lifecycle shipping.
 	assert.equal(verbs.has("deploy"), true);
 	assert.equal(verbs.has("trails"), true);
-	assert.equal(verbs.has("yard"), false);
+	assert.equal(verbs.has("yard"), true);
+	assert.deepEqual(
+		[...verbs.keys()].sort(),
+		CANONICAL_VERBS.map((verb) => verb.name).sort(),
+	);
 	assert.equal(verbs.has("forge"), false);
 
 	for (const verb of spec.verbs) {
@@ -51,13 +56,13 @@ test("fenced command examples reject retired lifecycle verbs", async () => {
 	const spec = await loadCliSpec(root);
 	const problems = lintMarkdownContent(
 		"bad.md",
-		["```bash", "hobo destroy --camp prod", "hobo yard up", "```"].join("\n"),
+		["```bash", "hobo destroy --camp prod", "hobo teardown", "```"].join("\n"),
 		spec,
 	);
 
 	assert.deepEqual(
 		problems.map((problem) => problem.command),
-		["hobo destroy", "hobo yard"],
+		["hobo destroy", "hobo teardown"],
 	);
 });
 
@@ -71,7 +76,7 @@ test("cli package summaries reject retired and unknown pipe-delimited verbs", as
 
 	assert.deepEqual(
 		problems.map((problem) => problem.command),
-		["hobo yard", "hobo forge"],
+		["hobo forge"],
 	);
 });
 

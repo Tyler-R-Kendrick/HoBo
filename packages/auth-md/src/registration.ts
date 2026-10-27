@@ -14,6 +14,11 @@ import type { AuthMdDiscovery } from "./discovery.js";
 import { authMdError } from "./errors.js";
 import type { HttpPort } from "./http.js";
 import { requestJson } from "./http.js";
+import {
+	type AuthMdJsonValue,
+	authMdJsonObject,
+	authMdJsonString,
+} from "./json.js";
 import type { SensitiveRef } from "./redaction.js";
 import { createSensitive } from "./redaction.js";
 import type {
@@ -44,6 +49,8 @@ export interface AgentRegistration {
 	readonly expiresAt?: Instant;
 	/** Where a human starts the claim, when the service advertises one. */
 	readonly claimEndpoint?: HttpsUrl;
+	readonly rotationEndpoint?: HttpsUrl;
+	readonly revocationEndpoint?: HttpsUrl;
 	readonly phase: "pre-claim";
 }
 
@@ -114,16 +121,10 @@ export async function registerAnonymousAgent(
 }
 
 function parseRegistrationResponse(
-	raw: unknown,
+	raw: AuthMdJsonValue,
 	options: RegisterAnonymousAgentOptions,
 ): AgentRegistration {
-	if (typeof raw !== "object" || raw === null || Array.isArray(raw)) {
-		throw authMdError(
-			"AUTHMD_METADATA_INVALID",
-			"registration response must be a JSON object",
-		);
-	}
-	const record = raw as Record<string, unknown>;
+	const record = authMdJsonObject(raw, "registration response");
 	const registrationRef = parseRegistrationRef(record.registration_ref);
 	const granted = parseScopes(record.granted_scopes, "granted_scopes");
 
@@ -141,7 +142,7 @@ function parseRegistrationResponse(
 	}
 
 	const material = record.private_key ?? record.key_material;
-	if (typeof material !== "string" || material.length === 0) {
+	if (!authMdJsonString(material) || material.length === 0) {
 		throw authMdError(
 			"AUTHMD_METADATA_INVALID",
 			"registration response carried no agent key material",
@@ -154,7 +155,7 @@ function parseRegistrationResponse(
 			? instantFrom((options.now ?? (() => new Date()))())
 			: parseInstant(record.issued_at, "issued_at");
 
-	return Object.freeze({
+	const registration: AgentRegistration = {
 		registrationRef,
 		preClaimScopes: granted,
 		keyMaterial: createSensitive(
@@ -164,14 +165,29 @@ function parseRegistrationResponse(
 		),
 		binding: options.binding,
 		issuedAt,
-		...(record.expires_at === undefined
-			? {}
-			: { expiresAt: parseInstant(record.expires_at, "expires_at") }),
-		...(record.claim_endpoint === undefined
-			? {}
-			: {
-					claimEndpoint: parseHttpsUrl(record.claim_endpoint, "claim_endpoint"),
-				}),
-		phase: "pre-claim" as const,
-	});
+		phase: "pre-claim",
+	};
+	if (record.expires_at !== undefined)
+		Object.assign(registration, {
+			expiresAt: parseInstant(record.expires_at, "expires_at"),
+		});
+	if (record.claim_endpoint !== undefined)
+		Object.assign(registration, {
+			claimEndpoint: parseHttpsUrl(record.claim_endpoint, "claim_endpoint"),
+		});
+	if (record.rotation_endpoint !== undefined)
+		Object.assign(registration, {
+			rotationEndpoint: parseHttpsUrl(
+				record.rotation_endpoint,
+				"rotation_endpoint",
+			),
+		});
+	if (record.revocation_endpoint !== undefined)
+		Object.assign(registration, {
+			revocationEndpoint: parseHttpsUrl(
+				record.revocation_endpoint,
+				"revocation_endpoint",
+			),
+		});
+	return Object.freeze(registration);
 }

@@ -2,6 +2,18 @@ import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 
 import { create } from "@bufbuild/protobuf";
+import type { CodegenFieldSchema } from "../_generated/project_codegen_pb.js";
+import { isJsonObject, type JsonValue } from "../json.js";
+import { scanAmbientTrainableClasses } from "./ambient-trainables.js";
+import { isPlainIdentifier } from "./identifiers.js";
+import { renderRuntimeArtifacts } from "./runtime-artifacts.js";
+import {
+	exampleSchemaValue,
+	parseFieldSchema,
+	renderSchemaType,
+	schemaRuntimeSource,
+	serializedSchema,
+} from "./schema.js";
 import {
 	digest,
 	pascalCase,
@@ -9,26 +21,21 @@ import {
 	toStableValue,
 	union,
 } from "./text.js";
-import { scanAmbientTrainableClasses } from "./ambient-trainables.js";
 import { buildTrainables, scanTrainableDirectives } from "./trainables.js";
 import {
 	type CodegenArtifact,
 	CodegenArtifactSchema,
 	type CodegenEngine,
 	CodegenError,
-	type CodegenGeneratedImports,
 	type CodegenLayout,
 	type CodegenSourceLayout,
 	defaultCodegenLayout,
 } from "./types.js";
-import { type JsonValue } from "../json.js";
-
 
 // The default project codegen engine: reads the WIT/Zod/allow/bindle sources
 // from the layout, normalizes them into a deterministic source model, and
-// renders the checked-in `.d.ts` views plus the codegen manifest. Output is
-// byte-compatible with the promoted hobo-codegen-cli-contract proof, so the
-// golden build digests hold.
+// renders executable resource APIs, schema-derived types, and the manifest.
+// Runtime effects use the existing EventStore and workflow ports.
 
 export interface ProjectCodegenEngineOptions {
 	readonly layout?: CodegenLayout;
@@ -46,7 +53,7 @@ export function createProjectCodegenEngine(
 			const directives = await scanTrainableDirectives(projectRoot, layout);
 			const ambient = await scanAmbientTrainableClasses(projectRoot, layout);
 			const trainables = buildTrainables(model, layout, directives, ambient);
-			const { files, imports } = layout;
+			const { files } = layout;
 			const artifact = (path: string, content: string) =>
 				create(CodegenArtifactSchema, { path, content });
 
@@ -64,12 +71,25 @@ export function createProjectCodegenEngine(
 						bindles: model.bindles.map((bindle) => bindle.name),
 					}),
 				),
-				artifact(files.apiTree, renderApiTree(model, imports)),
 				artifact(files.bindings, renderBindings(model)),
-				artifact(files.hooks, renderHooks(model, imports)),
-				artifact(files.steps, renderStepSignatures(model, imports)),
-				artifact(files.workflows, renderWorkflowSignatures(model, imports)),
 				artifact(files.withOptions, renderWithOptions(model)),
+				...renderRuntimeArtifacts(model, layout, {
+					validationSource: schemaRuntimeSource(),
+					schemas: {
+						...Object.fromEntries(
+							[...(model.definitions ?? [])].map(([name, schema]) => [
+								name,
+								serializedSchema(schema),
+							]),
+						),
+						...Object.fromEntries(
+							model.resources.map((resource) => [
+								resource.name,
+								resource.schema ? serializedSchema(resource.schema) : {},
+							]),
+						),
+					},
+				}),
 				trainables.artifact,
 				...trainables.declaredArtifacts,
 			];
@@ -142,15 +162,10 @@ async function readJsonSource(
 }
 
 // Raw JSON views (post-toStableValue everything is plain objects/arrays).
-interface RawField {
-	readonly type?: string;
-	readonly values?: readonly string[];
-}
 interface RawZod {
-	readonly resources?: Record<
-		string,
-		{ readonly fields?: Record<string, RawField> }
-	>;
+	readonly resources?: Record<string, JsonValue>;
+	readonly definitions?: Record<string, JsonValue>;
+	readonly $defs?: Record<string, JsonValue>;
 }
 interface RawAllow {
 	readonly scopes?: Record<string, { readonly grants?: readonly string[] }>;
@@ -171,13 +186,17 @@ export interface SourceModelField {
 	readonly name: string;
 	readonly type: string;
 	/** Deterministic example value used for contract-backed trainable stubs. */
-	readonly example: JsonValue;
+	readonly example: JsonValue | undefined;
+	readonly schema?: CodegenFieldSchema;
+	readonly optional?: boolean;
 }
 
 export interface SourceModelResource {
 	readonly name: string;
 	readonly typeName: string;
 	readonly fields: readonly SourceModelField[];
+	readonly schema?: CodegenFieldSchema;
+	readonly example?: JsonValue;
 }
 
 export interface SourceModelBindle {
@@ -200,6 +219,7 @@ export interface SourceModel {
 		readonly grants: readonly string[];
 	}[];
 	readonly bindles: readonly SourceModelBindle[];
+	readonly definitions?: ReadonlyMap<string, CodegenFieldSchema>;
 }
 
 function normalizeSourceModel(
@@ -221,19 +241,77 @@ function normalizeSourceModel(
 	// SAFETY: `const bindle = toStableValue(sources.bindle) as RawBindleFile;` is required at this I/O or test boundary.
 	const bindle = toStableValue(sources.bindle) as RawBindleFile;
 
-	const resources = Object.entries(zod.resources ?? {})
-		.map(([name, resource]) => ({
-			name,
-			typeName: pascalCase(name),
-			fields: Object.entries(resource.fields ?? {}).map(
-				([fieldName, field]) => ({
+	const schemas = new Map(
+		Object.entries(zod.resources ?? {}).map(([name, raw]) => {
+			if (!isJsonObject(raw))
+				throw new CodegenError(
+					"HOBO_CODEGEN_SOURCE_PARSE",
+					`Resource ${name} must define a schema`,
+				);
+			return [
+				name,
+				parseFieldSchema(
+					{ type: "object", ...Object.fromEntries(Object.entries(raw)) },
+					`resources.${name}`,
+				),
+			] as const;
+		}),
+	);
+	const definitions = new Map(
+		Object.entries({ ...zod.definitions, ...zod.$defs }).map(
+			([name, raw]) =>
+				[name, parseFieldSchema(raw, `definitions.${name}`)] as const,
+		),
+	);
+	const allSchemas = new Map([...definitions, ...schemas]);
+	const typeNames = new Set([
+		"ResourceName",
+		"HoboApiTree",
+		"StepSignatures",
+		"WorkflowSignatures",
+	]);
+	for (const [name, schema] of [...definitions, ...schemas]) {
+		const typeName = pascalCase(name);
+		if (!isPlainIdentifier(typeName) || typeNames.has(typeName))
+			throw new CodegenError(
+				"HOBO_CODEGEN_SOURCE_PARSE",
+				`Schema ${JSON.stringify(name)} generates an invalid or duplicate type name ${JSON.stringify(typeName)}`,
+				{ file: layout.zod },
+			);
+		typeNames.add(typeName);
+		const checkReferences = (node: CodegenFieldSchema): void => {
+			if (node.kind === "ref" && !allSchemas.has(node.reference))
+				throw new CodegenError(
+					"HOBO_CODEGEN_SOURCE_PARSE",
+					`Schema ${JSON.stringify(name)} references unknown schema ${JSON.stringify(node.reference)}`,
+					{ file: layout.zod },
+				);
+			for (const child of Object.values(node.fields)) checkReferences(child);
+			for (const child of [...node.variants, ...node.tuple])
+				checkReferences(child);
+			if (node.items) checkReferences(node.items);
+		};
+		checkReferences(schema);
+	}
+	const resources = [...schemas]
+		.map(([name, schema]) => {
+			const example = exampleSchemaValue(schema, allSchemas);
+			return {
+				name,
+				typeName: pascalCase(name),
+				schema,
+				example,
+				fields: Object.entries(schema.fields).map(([fieldName, field]) => ({
 					name: fieldName,
-					type: renderFieldType(field),
-					example: exampleFieldValue(field),
-				}),
-			),
-		}))
+					type: renderSchemaType(field),
+					example: isJsonObject(example) ? example[fieldName] : undefined,
+					schema: field,
+					optional: field.optional,
+				})),
+			};
+		})
 		.sort((left, right) => left.name.localeCompare(right.name));
+
 	if (resources.length === 0) {
 		throw new CodegenError(
 			"HOBO_CODEGEN_SOURCE_PARSE",
@@ -241,7 +319,6 @@ function normalizeSourceModel(
 			{ file: layout.zod },
 		);
 	}
-
 	const scopes = Object.entries(allow.scopes ?? {})
 		.map(([name, scope]) => ({
 			name,
@@ -262,7 +339,7 @@ function normalizeSourceModel(
 		}))
 		.sort((left, right) => left.name.localeCompare(right.name));
 
-	return { rawSources, resources, scopes, bindles };
+	return { rawSources, resources, scopes, bindles, definitions };
 }
 
 function assertValidWitSource(source: string, witPath: string): void {
@@ -282,140 +359,49 @@ function assertValidWitSource(source: string, witPath: string): void {
 	}
 }
 
-function renderFieldType(field: RawField): string {
-	if (field.type === "string") return "string";
-	if (field.type === "number") return "number";
-	if (field.type === "boolean") return "boolean";
-	if (field.type === "enum") return union(field.values ?? []);
-	return "unknown";
-}
-
-function exampleFieldValue(field: RawField): JsonValue {
-	if (field.type === "string") return "example";
-	if (field.type === "number") return 0;
-	if (field.type === "boolean") return false;
-	if (field.type === "enum") return [...(field.values ?? [])].sort()[0] ?? null;
-	return null;
-}
-
-function renderApiTree(
-	model: SourceModel,
-	imports: CodegenGeneratedImports,
-): string {
-	const rows = model.resources
-		.map((resource) => {
-			const scope = findScopeForResource(model, resource.name);
-			const bindle = findBindleForResource(model, resource.name);
-			return `    ${resource.name}: { type: ${resource.typeName}; query: "${resource.name}.query"; subscribe: "${resource.name}.subscribe"; scope: "${scope}"; bindle: "${bindle}"; };`;
-		})
-		.join("\n");
-
-	return (
-		`import type { ${model.resources.map((resource) => resource.typeName).join(", ")} } from ${JSON.stringify(imports.bindingsSpecifier)};\n\n` +
-		`export interface HoboApiTree {\n  resources: {\n${rows}\n  };\n}\n\n` +
-		`export declare const api: HoboApiTree;\n`
-	);
+function propertyName(name: string): string {
+	return isPlainIdentifier(name) ? name : JSON.stringify(name);
 }
 
 function renderBindings(model: SourceModel): string {
 	const interfaces = model.resources
 		.map((resource) => {
 			const fields = resource.fields
-				.map((field) => `  ${field.name}: ${field.type};`)
+				.map(
+					(field) =>
+						`  ${propertyName(field.name)}${field.optional ? "?" : ""}: ${field.type};`,
+				)
 				.join("\n");
-			return `export interface ${resource.typeName} {\n${fields}\n}`;
+			return resource.schema &&
+				(resource.schema.kind !== "object" || resource.schema.items)
+				? `export type ${resource.typeName} = ${renderSchemaType(resource.schema)};`
+				: `export interface ${resource.typeName} {\n${fields}\n}`;
 		})
 		.join("\n\n");
 	const resourceNames = union(model.resources.map((resource) => resource.name));
 
-	return `${interfaces}\n\nexport type ResourceName = ${resourceNames};\n`;
-}
-
-function renderHooks(
-	model: SourceModel,
-	generatedImports: CodegenGeneratedImports,
-): string {
-	const imports = `import type { ${model.resources.map((resource) => resource.typeName).join(", ")} } from ${JSON.stringify(generatedImports.bindingsSpecifier)};`;
-	const hooks = model.resources
-		.flatMap((resource) => [
-			`export declare function use${resource.typeName}Query(input?: { limit?: number }): Promise<readonly ${resource.typeName}[]>;`,
-			`export declare function use${resource.typeName}Subscription(handler: (event: ${resource.typeName}) => void): () => void;`,
-		])
-		.join("\n");
-
-	return `${imports}\n\n${hooks}\n`;
-}
-
-function renderStepSignatures(
-	model: SourceModel,
-	generatedImports: CodegenGeneratedImports,
-): string {
-	const imports = `import type { ${model.resources.map((resource) => resource.typeName).join(", ")} } from ${JSON.stringify(generatedImports.bindingsSpecifier)};`;
-	const entries = model.bindles
-		.flatMap((bindle) =>
-			bindle.steps.map((step) => {
-				const resource = model.resources.find((candidate) =>
-					step.startsWith(`${candidate.name}.`),
-				);
-				// The model always has >=1 resource (normalizeSourceModel throws).
-				const typeName = (resource ?? model.resources[0])?.typeName ?? "never";
-				return `  "${step}": { input: ${typeName}; output: ${typeName}; };`;
-			}),
+	const definitions = [...(model.definitions ?? [])]
+		.map(
+			([name, schema]) =>
+				`export type ${pascalCase(name)} = ${renderSchemaType(schema)};`,
 		)
 		.join("\n");
-
-	return `${imports}\n\nexport interface StepSignatures {\n${entries}\n}\n`;
-}
-
-function renderWorkflowSignatures(
-	model: SourceModel,
-	generatedImports: CodegenGeneratedImports,
-): string {
-	const imports = `import type { ResourceName } from ${JSON.stringify(generatedImports.bindingsSpecifier)};`;
-	const entries = model.bindles
-		.flatMap((bindle) =>
-			bindle.workflows.map(
-				(workflow) =>
-					`  "${workflow}": { resources: readonly ResourceName[]; provider: "${bindle.provider}"; };`,
-			),
-		)
-		.join("\n");
-
-	return `${imports}\n\nexport interface WorkflowSignatures {\n${entries}\n}\n`;
+	return `${interfaces}\n${definitions}\nexport type ResourceName = ${resourceNames};\n`;
 }
 
 function renderWithOptions(model: SourceModel): string {
 	const providerEntries = model.bindles
 		.map((bindle) => {
 			const options = bindle.with
-				.map((entry) => `    ${entry.name}: ${union(entry.values)};`)
+				.map(
+					(entry) => `    ${propertyName(entry.name)}: ${union(entry.values)};`,
+				)
 				.join("\n");
-			return `  | { provider: "${bindle.provider}"; options: {\n${options}\n    } }`;
+			return `  | { provider: ${JSON.stringify(bindle.provider)}; options: {\n${options}\n    } }`;
 		})
 		.join("\n");
 
-	return `export type ProviderWithOptions =\n${providerEntries};\n`;
-}
-
-function findScopeForResource(
-	model: SourceModel,
-	resourceName: string,
-): string {
-	return (
-		model.scopes.find((scope) =>
-			scope.grants.some((grant) => grant.startsWith(`${resourceName}.`)),
-		)?.name ?? "none"
-	);
-}
-
-function findBindleForResource(
-	model: SourceModel,
-	resourceName: string,
-): string {
-	return (
-		model.bindles.find((bindle) => bindle.resources.includes(resourceName))
-			?.name ?? "none"
-	);
+	return `export type ProviderWithOptions =\n${providerEntries || "never"};\n`;
 }
 
 function digestSources(

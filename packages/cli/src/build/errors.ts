@@ -1,6 +1,5 @@
-import { CliError } from "../shell/errors.js";
 import { isJsonNumber, type JsonObject } from "../json.js";
-
+import { CliError } from "../shell/errors.js";
 
 export type BuildErrorCode =
 	| "HOBO_BUILD_USAGE"
@@ -20,11 +19,7 @@ export class BuildError extends Error {
 	readonly code: BuildErrorCode;
 	readonly detail: JsonObject;
 
-	constructor(
-		code: BuildErrorCode,
-		message: string,
-		detail: JsonObject = {},
-	) {
+	constructor(code: BuildErrorCode, message: string, detail: JsonObject = {}) {
 		super(message);
 		this.name = "BuildError";
 		this.code = code;
@@ -34,12 +29,11 @@ export class BuildError extends Error {
 
 export class BuildCliError extends CliError {
 	constructor(error: BuildError) {
-		const exitCode =
-			isJsonNumber(error.detail.exitCode)
-				? error.detail.exitCode
-				: error.code === "HOBO_BUILD_USAGE"
-					? 2
-					: 1;
+		const exitCode = isJsonNumber(error.detail.exitCode)
+			? error.detail.exitCode
+			: error.code === "HOBO_BUILD_USAGE"
+				? 2
+				: 1;
 		super(error.message, exitCode, error.code, remediationFor(error));
 		this.name = "BuildCliError";
 	}
@@ -55,7 +49,7 @@ export function remediationFor(error: BuildError): readonly string[] {
 			return ["Run `hobo build --help` for supported flags."];
 		case "HOBO_BUILD_COMPONENTIZE_TOOLCHAIN":
 			return [
-				"Install @bytecodealliance/componentize-js (pinned toolchain) or unset HOBO_COMPONENTIZE_REAL to use the synthetic contract-shaped floor.",
+				"Install @bytecodealliance/componentize-js (pinned toolchain). Product builds require real componentization; synthetic componentizers are available only through explicitly injected library fixtures.",
 			];
 		default:
 			return error.code === "HOBO_BUILD_COMPONENTIZE_FAILED"

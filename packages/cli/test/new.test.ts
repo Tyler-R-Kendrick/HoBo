@@ -242,7 +242,7 @@ describe("hobo new scaffold", () => {
 				await readFile(path.join(projectDir, ".git", "HEAD"), "utf8"),
 			).toBe("ref: refs/heads/main\n");
 			expect(await readFile(path.join(projectDir, ".gitignore"), "utf8")).toBe(
-				"coverage/\n.hobo/\nnode_modules/\ndist/\n",
+				"coverage/\n.hobo/\n.hobo-codegen.lock\n.hobo-codegen.lock-*\n.hobo-codegen-*\nnode_modules/\ndist/\n",
 			);
 
 			// SAFETY: `const envelope = JSON.parse(result.stdout) as {` is required at this I/O or test boundary.

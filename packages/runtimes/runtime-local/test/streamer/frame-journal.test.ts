@@ -37,6 +37,7 @@ import {
 	parseSeq,
 	StreamerBackpressureError,
 	StreamerClosedError,
+	type StreamerRunResult,
 } from "@hobo/core";
 import { describe, expect, it } from "vitest";
 
@@ -59,7 +60,7 @@ function journalFor(bufferLimit = 8) {
 const result = (
 	status: "succeeded" | "failed" | "cancelled",
 	reason = "done",
-) => ({ runId: RUN, status, reason }) as never;
+): StreamerRunResult => ({ run_id: RUN, runId: RUN, status, reason });
 
 /** Take `count` frames from a reader attached at `fromSeq`. */
 async function take(
@@ -173,7 +174,8 @@ describe("backpressure", () => {
 			journal.write(DEFAULT_STREAM_NAME, "c");
 			expect.unreachable("write should have shed");
 		} catch (error) {
-			expect((error as StreamerBackpressureError).message).toMatch(/2/);
+			if (!(error instanceof StreamerBackpressureError)) throw error;
+			expect(error.message).toMatch(/2/);
 		}
 	});
 
@@ -285,6 +287,23 @@ describe("closing", () => {
 		const settled = journal.done.catch((error: Error) => error);
 		journal.close(result("failed", "compiler exploded"));
 		expect((await settled).message).toMatch(/compiler exploded/);
+	});
+
+	it("allows frame-only readers and late completion waiters on a failed run", async () => {
+		const journal = journalFor();
+		journal.write(DEFAULT_STREAM_NAME, "compiler output");
+		journal.close(result("failed", "compiler exploded"));
+		const chunks: unknown[] = [];
+		for await (const frame of journal.attachReader(parseSeq(1))) {
+			chunks.push(frame.chunk);
+		}
+		// Completion is a separate optional channel. Draining output must not
+		// cause an unhandled rejection before a caller chooses to await it.
+		await new Promise<void>((resolve) => setImmediate(resolve));
+		expect(chunks).toEqual(["compiler output"]);
+		await expect(journal.done).rejects.toThrow("compiler exploded");
+		// The original promise stays rejected for every explicit waiter.
+		await expect(journal.done).rejects.toThrow("compiler exploded");
 	});
 
 	it("resolves done on a cancelled run", async () => {

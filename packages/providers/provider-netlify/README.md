@@ -36,7 +36,7 @@ HoBo owns the account and pays the bill, and the two are never collapsed into on
 The definition implements **`web.static/v1` and `web.hosted/v1` only**. Netlify
 Functions, Edge Functions, and SSR are real Netlify capabilities, but they are
 not verified on the anonymous `--no-build` path, so a requirement that asks for
-`api.http/v1`, `web.ssr/v1`, or any `service.*` profile is **rejected** rather
+`api.http/v1`, `web.ssr/v1`, or any service profile is **rejected** rather
 than quietly served by a definition that never proved it. Absent capabilities are
 declared `false` rather than omitted, because an omitted key is
 indistinguishable from an unread one.
@@ -243,3 +243,15 @@ One anonymous deploy produces one site, and its facts travel like this:
   `hobo claim` queries for current status, so asking whether the site changed
   hands reads a projection rather than re-running the CLI — and the answer
   carries a redacted custody locator, never the claim URL.
+
+### Receipt scanner regression coverage
+
+The receipt scanner follows custom `toJSON` projections and tracks visited
+objects. It scans the returned projection for supported `toJSON` objects and
+avoids revisiting cyclic or shared objects. This is a credential-shape scanner,
+not a full JSON serializer or proof that arbitrary secrets cannot escape.
+Custom serializers that depend on the JSON property key are not modeled. `test/custody-scanner-transport.test.ts`
+pins safe locators, leaking projections, cycles, and shared references.
+This changes no wire records; existing receipt Protobuf/CUE models and provider
+contract tests remain the serialization gates. The package TypeScript check
+covers the scanner implementation.

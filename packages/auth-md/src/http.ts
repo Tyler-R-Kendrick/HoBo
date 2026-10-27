@@ -8,6 +8,7 @@
  * presented to somebody else's service.
  */
 import { authMdError } from "./errors.js";
+import { type AuthMdJsonValue, parseAuthMdJson } from "./json.js";
 import type { HttpsUrl } from "./types.js";
 import { parseHttpsUrl } from "./types.js";
 
@@ -33,6 +34,8 @@ export interface HttpRequestOptions {
 	readonly method?: "GET" | "POST";
 	readonly accept?: string;
 	readonly jsonBody?: unknown;
+	readonly formBody?: Readonly<Record<string, string>>;
+	readonly rejectRedirects?: boolean;
 	readonly headers?: Readonly<Record<string, string>>;
 }
 
@@ -50,9 +53,21 @@ export async function requestBounded(
 
 	let currentUrl = originalUrl;
 	for (let hop = 0; hop <= MAX_SAME_HOST_REDIRECTS; hop += 1) {
-		const response = await fetchOnce(port, currentUrl, timeoutMs, options);
+		const { response, body } = await fetchOnce(
+			port,
+			currentUrl,
+			timeoutMs,
+			maxBytes,
+			options,
+		);
 
 		if (REDIRECT_STATUSES.has(response.status)) {
+			if (options.rejectRedirects)
+				throw authMdError(
+					"AUTHMD_DISCOVERY_FAILED",
+					"credential-bearing request refused a redirect",
+					{ url: currentUrl },
+				);
 			currentUrl = nextRedirectTarget(response, currentUrl, originalHost);
 			continue;
 		}
@@ -69,7 +84,7 @@ export async function requestBounded(
 			url: currentUrl,
 			status: response.status,
 			contentType: response.headers.get("content-type") ?? undefined,
-			body: await readBounded(response, maxBytes, currentUrl),
+			body,
 		};
 	}
 
@@ -84,13 +99,13 @@ export async function requestJson(
 	port: HttpPort,
 	target: string,
 	options: HttpRequestOptions = {},
-): Promise<unknown> {
+): Promise<AuthMdJsonValue> {
 	const response = await requestBounded(port, target, {
 		accept: "application/json",
 		...options,
 	});
 	try {
-		return JSON.parse(response.body) as unknown;
+		return parseAuthMdJson(response.body);
 	} catch {
 		throw authMdError(
 			"AUTHMD_METADATA_INVALID",
@@ -104,28 +119,46 @@ async function fetchOnce(
 	port: HttpPort,
 	url: HttpsUrl,
 	timeoutMs: number,
+	maxBytes: number,
 	options: HttpRequestOptions,
-): Promise<Response> {
+): Promise<{ response: Response; body: string }> {
 	const controller = new AbortController();
 	const timer = setTimeout(() => {
 		controller.abort();
 	}, timeoutMs);
 	try {
-		const headers: Record<string, string> = { ...(options.headers ?? {}) };
-		if (options.accept !== undefined) headers.accept = options.accept;
-		if (options.jsonBody !== undefined) {
-			headers["content-type"] = "application/json";
-		}
-		return await port.fetchImpl(url, {
+		const headers = new Headers(options.headers);
+		if (options.accept !== undefined) headers.set("accept", options.accept);
+		if (options.jsonBody !== undefined && options.formBody !== undefined)
+			throw authMdError(
+				"AUTHMD_METADATA_INVALID",
+				"request cannot combine JSON and form bodies",
+			);
+		if (options.jsonBody !== undefined)
+			headers.set("content-type", "application/json");
+		if (options.formBody !== undefined)
+			headers.set("content-type", "application/x-www-form-urlencoded");
+		const response = await port.fetchImpl(url, {
 			method: options.method ?? "GET",
 			headers,
 			// Manual: cross-host redirects are rejected below, not followed.
 			redirect: "manual",
 			signal: controller.signal,
-			...(options.jsonBody === undefined
-				? {}
-				: { body: JSON.stringify(options.jsonBody) }),
+			body:
+				options.formBody !== undefined
+					? new URLSearchParams(options.formBody).toString()
+					: options.jsonBody !== undefined
+						? JSON.stringify(options.jsonBody)
+						: null,
 		});
+		// Keep the request deadline active through the last response byte.
+		if (response.status >= 200 && response.status < 300)
+			return {
+				response,
+				body: await readBounded(response, maxBytes, url, controller.signal),
+			};
+		void response.body?.cancel().catch(() => {});
+		return { response, body: "" };
 	} catch (cause) {
 		throw authMdError(
 			"AUTHMD_DISCOVERY_FAILED",
@@ -174,29 +207,34 @@ async function readBounded(
 	response: Response,
 	maxBytes: number,
 	url: HttpsUrl,
+	signal: AbortSignal,
 ): Promise<string> {
 	const declared = response.headers.get("content-length");
 	if (declared !== null && Number.parseInt(declared, 10) > maxBytes) {
+		void response.body?.cancel().catch(() => {});
 		throw tooLarge(url, maxBytes);
 	}
 
 	const stream = response.body;
-	if (stream && typeof stream.getReader === "function") {
+	if (stream) {
 		const reader = stream.getReader();
 		const decoder = new TextDecoder();
 		let received = 0;
 		let text = "";
-		for (;;) {
-			const { done, value } = await reader.read();
-			if (done) break;
-			received += value.byteLength;
-			if (received > maxBytes) {
-				await reader.cancel();
-				throw tooLarge(url, maxBytes);
+		try {
+			for (;;) {
+				const { done, value } = await readBeforeDeadline(reader, signal);
+				if (done) break;
+				received += value.byteLength;
+				if (received > maxBytes) {
+					throw tooLarge(url, maxBytes);
+				}
+				text += decoder.decode(value, { stream: true });
 			}
-			text += decoder.decode(value, { stream: true });
+			return text + decoder.decode();
+		} finally {
+			void reader.cancel().catch(() => {});
 		}
-		return text + decoder.decode();
 	}
 
 	const text = await response.text();
@@ -204,6 +242,23 @@ async function readBounded(
 		throw tooLarge(url, maxBytes);
 	}
 	return text;
+}
+
+async function readBeforeDeadline(
+	reader: ReadableStreamDefaultReader<Uint8Array>,
+	signal: AbortSignal,
+): Promise<ReadableStreamReadResult<Uint8Array>> {
+	signal.throwIfAborted();
+	let abort = () => {};
+	const deadline = new Promise<never>((_resolve, reject) => {
+		abort = () => reject(new Error("Response body deadline exceeded"));
+		signal.addEventListener("abort", abort, { once: true });
+	});
+	try {
+		return await Promise.race([reader.read(), deadline]);
+	} finally {
+		signal.removeEventListener("abort", abort);
+	}
 }
 
 function tooLarge(url: HttpsUrl, maxBytes: number) {

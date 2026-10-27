@@ -74,7 +74,7 @@ afterEach(() => {
 describe("HOBO_COMPONENTIZE_REAL wiring in runBuild", () => {
 	it("fails closed when the real lane is requested but unavailable", async () => {
 		process.env.HOBO_COMPONENTIZE_REAL = "1";
-		await withTempProject(async (projectRoot) => {
+		await withSeededProject(async (projectRoot) => {
 			const failure = runBuild({
 				json: true,
 				projectRoot,
@@ -98,6 +98,7 @@ describe("HOBO_COMPONENTIZE_REAL wiring in runBuild", () => {
 		process.env.HOBO_COMPONENTIZE_REAL = "1";
 		await withSeededProject(async (projectRoot) => {
 			const result = await runBuild({
+				requireRealComponentize: false,
 				json: true,
 				projectRoot,
 				targetRuntime: "wasm",
@@ -114,9 +115,10 @@ describe("HOBO_COMPONENTIZE_REAL wiring in runBuild", () => {
 		});
 	});
 
-	it("keeps the synthetic floor as default when the env flag is unset", async () => {
+	it("permits the contract floor only for explicitly selected library fixtures", async () => {
 		await withSeededProject(async (projectRoot) => {
 			const result = await runBuild({
+				requireRealComponentize: false,
 				json: true,
 				projectRoot,
 				targetRuntime: "wasm",

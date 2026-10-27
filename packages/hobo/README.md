@@ -14,32 +14,108 @@ await cli.run(["up", "--json"], { cwd: projectDir });
 ```
 
 - `createComposedHoboCli(options?)` — the composed CLI (one shared YardRuntime
-  across plan/up/down; login/new/build/codegen keep the `@hobo/cli` defaults).
+  across plan/up/down; login uses the broker-aware handler; new/build/codegen
+  use the `@hobo/cli` handlers).
 - `createDefaultYardRuntime(options?)` — the default cloud runtime.
 - `createDefaultDevRuntime(options?)` — the default offline dev runtime.
 - `createDefaultCollectionTarget(projectDir?)` — the default collect target.
 
 Composed binaries: `dist/bin/hobo.js` (product `hobo`) and `dist/bin/hobo-mcp.js`.
-Canonical verb list: **38** verbs in `@hobo/cli` (`packages/cli/src/shell/verbs.ts`).
+Canonical verb list: **42** verbs in `@hobo/cli` (`packages/cli/src/shell/verbs.ts`).
 
-## HONEST SCOPE (default deploy lane)
+## CLI verification and remote deployment safety
 
-Default `up` / `down` / `plan` drive the real `@hobo/iac-pulumi` adapter with an
-**in-memory Automation-API stand-in** (offline, deterministic). That is **not**
-a live cloud apply. Selection lives in `src/compose.ts` (`selectIacProvider`):
+### Self-hosted control plane
+
+The embedded local broker is the default. Hosted brokers, hosting relays, and
+hosted identity services are not prerequisites for local placement or serving.
+A network broker is selected only through `--broker`/`--broker-uri`,
+`HOBO_BROKER`/`HOBO_BROKER_URI`, or an explicitly saved profile association.
+That endpoint can be self-hosted; "remote" describes transport, not a mandatory
+hosted service. There is no automatic fallback to a hosted broker.
+
+`test/self-hosted-broker.test.ts` runs local placement with remote
+discovery/client factories unavailable. `test/persistent-local-deployment.test.ts`
+executes the product binary in separate processes: `up` returns a reachable app,
+unchanged `up` reuses the running lease, changed source or build artifacts replace
+the worker, and `down` closes it. Local anonymous and
+temporary launches have an expiry timer (one hour by default). Host toolchains
+may need to be installed or downloaded separately. Anonymous/temporary flags
+alone do not select a hosted broker; without an explicitly configured network
+broker, the command remains local.
+Local deployment operations use an OS-released SQLite lock, so an interrupted
+or killed CLI cannot leave a permanent lock that blocks subsequent launches.
+An application probe returning a server error rejects deployment and closes
+the worker before a receipt or control token is persisted.
+Auth.md credential lifecycle operations serialize local reads, remote key
+changes, and persistence under the same kind of lock; simultaneous rotations or
+deployment associations cannot overwrite newer credential state.
+Cloud-provider deployment still requires the selected provider's API, but it
+does not imply a hosted HoBo broker or relay requirement.
+
+`test/command-inventory.test.ts` checks every canonical command is wired and
+offers offline help. Command-specific tests exercise successful operations and
+refusals; help alone does not establish deployment readiness.
+
+Remote placement and claim endpoints must remain on the selected broker's
+origin and contain no URL credentials (`HOBO_BROKER_ENDPOINT_UNSAFE`). Anonymous
+session discovery may use a separate HTTPS host, but placement credentials and
+claim tokens cannot be forwarded there. Session, placement, and claim POSTs
+refuse redirects. `test/broker-remote-*.test.ts` pins this HTTP boundary.
+`HOBO_DEPLOY_RESOLVERS=1` opts credentialed Cloudflare/Vercel deployments into
+the resolver lane, unless an explicit Pulumi adapter or live Pulumi setting
+takes precedence. Other values do not opt in.
+
+`identity agent discover|register|status|claim|poll|token|rotate|revoke` exposes
+`@hobo/auth-md` in the composed CLI. An explicitly selected broker can advertise
+its protected resource through `resourceMetadataUrl`; a matching registration
+then authenticates placement through a real `private_key_jwt` token exchange.
+Human login, agent-principal claim, and infrastructure claim remain independent.
+Infrastructure claim gates further agent management on the required key rotation;
+revocation refuses further token exchange and placement. Credentials stay in
+owner-only local files. `test/auth-md-https.test.ts` proves the complete flow over
+self-hosted HTTPS, including scope refusals, replacement-key proof, and revocation.
+See [auth.md CLI configuration](../auth-md/README.md#cli-integration).
+
+Local launch, receipt, and lifecycle event payloads have executable
+Protobuf/CUE contracts in `data-models/composition.*`. Credential material stays
+in separate owner-only files; receipts and lifecycle facts contain references.
+Live provider acceptance requires a reachable target and that provider's
+credentials when applicable.
+
+## Deployment and build execution
+
+Without a selected live cloud backend, product `up` hosts the source Bindle in
+a persistent self-hosted worker using the existing local Yard serving engine.
+The CLI returns only after a real HTTP readiness probe. Authenticated loopback
+control verifies lease and process identity for reuse and shutdown. Temporary
+expiry closes the server and records teardown. No broker or relay account is
+needed. `hobo dev --serve` remains the foreground development loop.
+
+Explicit cloud configuration selects the existing live IaC providers.
+`createDefaultYardRuntime` also remains available for explicitly injected
+deterministic library fixtures; product `up` does not treat its in-memory backend
+as a live deployment. IaC selection lives in `src/compose.ts`:
 
 | Path | When |
 |---|---|
-| In-memory Pulumi stand-in | **Default** (no special env) |
+| Persistent local Yard worker | Product default with a loadable source Bindle |
+| In-memory Pulumi stand-in | Explicitly injected library/test runtime |
 | Real Pulumi Automation/CLI | `HOBO_PULUMI_LIVE=1` (engine- and credential-gated) |
 | Direct-HTTP resolver plane | a cloud credential **plus** `HOBO_DEPLOY_RESOLVERS=1` (opt-in) |
 | Live Cloudflare Workers | `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` |
 | Live Vercel | `VERCEL_TOKEN` |
 
-Related honesty elsewhere in this package:
+Related execution paths:
 
 - **`hobo login`** — fixture/OIDC session under `HOBO_HOME`; full production OIDC/SPIRE is not the default (`src/login-command.ts` `HONEST SCOPE`).
-- **WASM build path** — when `hobo build` uses `@hobo/componentize`, artifacts are **synthetic wasm contract bytes**, not a real jco/`componentize-js` pipeline (see [`packages/componentize/README.md`](../componentize/README.md)).
+- **Build paths** — compiler-backed app imprints produce real Node bundles with
+  runtime assets. Product WASM builds require the real componentizer; product
+  container builds use a service Dockerfile with Docker Buildx or self-hosted
+  BuildKit (`HOBO_CONTAINER_BUILDER=buildctl`). OCI archives include actual
+  manifests, configuration and filesystem layers, with blob hashes and rootfs
+  diff IDs verified. All output files and the manifest are replaced together
+  after successful generation. Toolchain failures preserve the previous build.
 
 **Pre-release:** `@hobo/hobo` is **not published to npm** as a stable install story yet. Prefer the monorepo workspace binary until publish hygiene and CI-proven release land. Ship targets: [`docs/design/launch-ship-targets.md`](../../docs/design/launch-ship-targets.md), [ADR-0140](../../docs/design/adr/07-portability-extensibility.md#adr-0140).
 
@@ -172,7 +248,8 @@ become `ResolveRequest.desired`.
 
 1. an explicit Pulumi `adapter` override, or `HOBO_PULUMI_LIVE=1` → the Pulumi
    lane (unchanged);
-2. no cloud credential at all → the in-memory Pulumi stand-in (unchanged);
+2. no cloud credential at all → the library runtime's in-memory Pulumi backend;
+   product `up` uses the persistent local source-Bindle path instead;
 3. a cloud credential **plus `HOBO_DEPLOY_RESOLVERS=1`** → the resolver plane
    (Cloudflare when `CLOUDFLARE_API_TOKEN` + `CLOUDFLARE_ACCOUNT_ID` are set,
    else Vercel when `VERCEL_TOKEN` is);
@@ -239,6 +316,19 @@ refused rather than shadowed.
   resolves at call time; provider error text is redacted by the resolvers
   themselves (`redactCloudflareText` and the Vercel equivalent) and re-raised
   here rather than re-redacted.
-- **`describeDeployTarget` (`src/deploy-preflight.ts`) does not yet know about
-  this lane** and still reports `cloudflare`/`vercel`/`in-memory` only; that file
-  was outside this change.
+- **Preflight reports the resolver lane separately from the backend.**
+  `describeDeployTarget` returns `lane: "resolver"` for credentialed
+  Cloudflare/Vercel with `HOBO_DEPLOY_RESOLVERS=1`. It does not model explicit
+  Pulumi adapter overrides or `HOBO_PULUMI_LIVE=1`; use `selectIacProvider`
+  precedence above to determine those paths. Credential presence and a
+  preflight `live` flag do not establish provider authorization or readiness.
+
+## Local server and guest execution checks
+
+`serve control` removes both signal handlers when either shutdown signal fires,
+and propagates close failures to the command rather than producing an unhandled
+rejection. `test/serve-control-command.test.ts` exercises binding, shutdown on
+either signal, and returned URLs; it does not directly assert listener counts
+or inject a close failure. The WASM guest execution test also checks tenant
+environment injection through the separately bundled guest entry, which host
+typechecking cannot cover.

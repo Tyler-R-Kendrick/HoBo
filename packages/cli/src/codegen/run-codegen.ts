@@ -1,8 +1,12 @@
 import { resolve } from "node:path";
 
 import { create, toJson } from "@bufbuild/protobuf";
-import { createProjectCodegenEngine } from "./engine.js";
-import { compareGeneratedTree, writeGeneratedTree } from "./tree.js";
+import { selectProjectCodegenEngine } from "./project-engine.js";
+import {
+	compareGeneratedTree,
+	recoverGeneratedTree,
+	writeGeneratedTree,
+} from "./tree.js";
 import {
 	type CodegenEngine,
 	CodegenError,
@@ -30,8 +34,9 @@ export async function runCodegen(
 	request: CodegenRequest,
 	deps: CodegenDependencies = {},
 ): Promise<CodegenReport> {
-	const engine = deps.engine ?? createProjectCodegenEngine();
 	const projectRoot = resolve(request.projectRoot);
+	await recoverGeneratedTree(projectRoot, deps.engine?.layout);
+	const engine = deps.engine ?? (await selectProjectCodegenEngine(projectRoot));
 	const artifacts = await engine.generate(projectRoot);
 	const paths = artifacts.map((artifact) => artifact.path);
 
@@ -40,6 +45,7 @@ export async function runCodegen(
 			projectRoot,
 			artifacts,
 			engine.layout.generatedRoots,
+			{ ownedFiles: engine.layout.ownedFiles },
 		);
 		if (drift.length > 0) {
 			throw new CodegenError(
@@ -55,6 +61,7 @@ export async function runCodegen(
 		projectRoot,
 		artifacts,
 		engine.layout.generatedRoots,
+		{ ownedFiles: engine.layout.ownedFiles },
 	);
 	return create(CodegenReportSchema, { mode: "write", written: paths });
 }

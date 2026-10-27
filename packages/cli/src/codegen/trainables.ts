@@ -390,7 +390,9 @@ function rebased(specifier: string, fromDir: string, toDir: string): string {
 
 /** The deterministic example object literal for a resource's fields. */
 function exampleLiteral(resource: SourceModelResource): string {
+	if (resource.example !== undefined) return JSON.stringify(resource.example);
 	const fields = resource.fields
+		.filter((field) => field.example !== undefined)
 		.map(
 			(field) =>
 				`${JSON.stringify(field.name)}: ${JSON.stringify(field.example)}`,

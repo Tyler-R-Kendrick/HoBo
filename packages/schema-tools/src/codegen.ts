@@ -15,6 +15,7 @@ import { tmpdir } from "node:os";
 import { delimiter, dirname, join, relative } from "node:path";
 import { ensureCueBinary, vetCueConstraints } from "./cue.js";
 import { discoverDataModelPackages, hydrateCueSchemas } from "./discover.js";
+import { isJsonNumber, type JsonObject } from "./json.js";
 import { resolveFromModule } from "./parse.js";
 import {
 	type CodegenInvocation,
@@ -24,8 +25,6 @@ import {
 	type DataModelPackage,
 	type DriftEntry,
 } from "./types.js";
-import { isJsonNumber, type JsonObject } from "./json.js";
-
 
 async function runCommand(
 	command: string,
@@ -49,8 +48,7 @@ async function runCommand(
 					reject(new Error(`command not found: ${command}`));
 					return;
 				}
-				const code =
-					isJsonNumber(error?.code) ? error.code : error ? 1 : 0;
+				const code = isJsonNumber(error?.code) ? error.code : error ? 1 : 0;
 				resolvePromise({
 					stdout: String(stdout),
 					stderr: String(stderr),
@@ -352,8 +350,8 @@ export async function writeManifest(
 export async function preflightBuf(
 	invocation: CodegenInvocation,
 ): Promise<void> {
-	await ensureCueBinary(invocation.repoRoot);
 	if (!existsSync(invocation.bufTemplate)) {
 		throw new Error(`buf template missing: ${invocation.bufTemplate}`);
 	}
+	await ensureCueBinary(invocation.repoRoot);
 }

@@ -3,8 +3,9 @@ import { CHAOS_SCHEMA } from "./schema.js";
 
 // Greenfield declaration factory (walkthrough §6.4): a chaos experiment is a
 // typed hypothesis — steady-state invariant, injected fault, bounded blast
-// radius, abort trip-wire. Honest scope: the declaration contract only; the
-// fork-lane execution engine is a separate initiative.
+// radius, abort trip-wire. executeChaosExperiment executes the declaration
+// against an isolated target/Camp membrane, records actual fault observations,
+// checks executable invariants, and restores injected faults.
 
 // domain-view: authored chaos injection; wire form is ChaosInjection in data-models/sdk.proto.
 export interface ChaosInjection {
@@ -59,6 +60,6 @@ export function chaos(name: string, spec: ChaosSpec): ChaosDeclaration {
 		steadyState,
 		inject: { fault, target },
 		blastRadius,
-		...(abortIf !== undefined ? { abortIf } : {}),
+		...(abortIf !== undefined ? { abortIf } : undefined),
 	});
 }

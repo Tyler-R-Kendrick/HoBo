@@ -22,7 +22,7 @@ package authmd
 #InfrastructurePhaseRecord: "temporary" | "owner-controlled" | "expired"
 
 #ProtectedResourceMetadataRecord: {
-	resource:                         #HttpsUrl
+	resource: #HttpsUrl
 	authorization_servers: [...#HttpsUrl]
 	scopes_supported: [...#Scope]
 	bearer_methods_supported: [...string]
@@ -61,6 +61,8 @@ package authmd
 	issued_at:            #Iso8601
 	expires_at?:          #Iso8601
 	phase:                "pre-claim" | "human-bound" | "revoked"
+	rotation_endpoint?:   #HttpsUrl
+	revocation_endpoint?: #HttpsUrl
 }
 
 #AgentPrincipalClaimRefRecord: {
@@ -97,4 +99,94 @@ package authmd
 	phase:            #AgentPrincipalPhaseRecord
 	scopes: [...#Scope]
 	detail?: string
+}
+
+#AgentAccessTokenRecord: {
+	registration_ref:     string & !=""
+	access_token_locator: #MaterialLocator
+	token_type:           "Bearer"
+	scopes: [...#Scope]
+	binding:    #SessionBindingRecord
+	issued_at:  #Iso8601
+	expires_at: #Iso8601
+	issuer:     #HttpsUrl
+}
+
+#ClaimedAgentPrincipalRecord: {
+	registration_ref: string & !=""
+	phase:            "human-bound"
+	human_subject:    string & !=""
+	binding:          #SessionBindingRecord
+	pre_claim_scopes: [...#Scope]
+	post_claim_scopes: [...#Scope]
+	claimed_at:                        #Iso8601
+	rotate_after_infrastructure_claim: bool
+	rotation_satisfied:                bool
+}
+
+#ClaimInitiationRecord: {
+	registration_ref: string & !=""
+	claim_url:        #HttpsUrl
+	poll_endpoint:    #HttpsUrl
+	expires_at:       #Iso8601
+	interval_seconds: number & >=0
+	requested_post_claim_scopes: [...#Scope]
+	poll_token_locator: #MaterialLocator
+}
+
+#RevokedAgentPrincipalRecord: {revoked_at: #Iso8601}
+
+#CliAuthMdStateRecord: {
+	let ref = registration_ref
+	let session = binding
+	let scopes = pre_claim_scopes
+	schema_version:   "hobo.cli-authmd/v1"
+	resource:         #HttpsUrl
+	registration_ref: string & !=""
+	binding:          #SessionBindingRecord
+	pre_claim_scopes: [...#Scope]
+	key_material_locator: #MaterialLocator
+	issued_at:            #Iso8601
+	expires_at?:          #Iso8601
+	claim_endpoint?:      #HttpsUrl
+	rotation_endpoint?:   #HttpsUrl
+	revocation_endpoint?: #HttpsUrl
+	revoked?:             #RevokedAgentPrincipalRecord
+	deployments?: [...string & !=""]
+	owned_deployments?: [...string & !=""]
+	initiation?: #ClaimInitiationRecord & {registration_ref: ref}
+	principal?: #ClaimedAgentPrincipalRecord & {registration_ref: ref, binding: session, pre_claim_scopes: scopes}
+}
+
+// Owner-only local custody boundary, NEVER a public wire/event shape.
+#StoredCliAuthMdClaimInitiationRecord: {
+	registration_ref: string & !=""
+	claim_url:        #HttpsUrl
+	poll_endpoint:    #HttpsUrl
+	expires_at:       #Iso8601
+	interval_seconds: number & >=0
+	requested_post_claim_scopes: [...#Scope]
+	poll_material: string & !=""
+}
+
+#StoredCliAuthMdStateRecord: {
+	let ref = registration_ref
+	let session = binding
+	let scopes = pre_claim_scopes
+	schema_version:   "hobo.cli-authmd/v1"
+	resource:         #HttpsUrl
+	registration_ref: string & !=""
+	binding:          #SessionBindingRecord
+	pre_claim_scopes: [...#Scope]
+	private_key:          string
+	issued_at:            #Iso8601
+	expires_at?:          #Iso8601
+	claim_endpoint?:      #HttpsUrl
+	rotation_endpoint?:   #HttpsUrl
+	revocation_endpoint?: #HttpsUrl
+	revoked?:             #RevokedAgentPrincipalRecord
+	deployments?: [...string & !=""]
+	owned_deployments?: [...string & !=""]
+	initiation?: #StoredCliAuthMdClaimInitiationRecord & {registration_ref: ref}
+	principal?: #ClaimedAgentPrincipalRecord & {registration_ref: ref, binding: session, pre_claim_scopes: scopes}
 }

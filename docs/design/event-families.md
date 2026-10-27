@@ -16,14 +16,16 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `aggregate.*` | `aggregate.PastTenseFact` |
 | `access.*` | `access.MembershipAssigned`, `access.MembershipRevoked`, `access.CrossEnvGranted`, `access.CrossEnvExpired`, `access.ElevatedMinted`, `access.ElevatedDenied`, `access.BreakGlassRequested`, `access.BreakGlassGranted`, `access.BreakGlassExpired`, `access.BreakGlassReviewed`, `access.OverlayJoinDenied`, `access.PolicyPackActivated` |
 | `alert.*` | `alert.Fired`, `alert.Grouped`, `alert.Routed`, `alert.Silenced`, `alert.Inhibited`, `alert.Deduped`, `alert.InhibitionCycleRejected`, `alert.Resolved` |
+| `authmd.*` | `authmd.AgentRegistered`, `authmd.ClaimInitiated`, `authmd.PrincipalClaimed`, `authmd.ScopeWideningDenied`, `authmd.CredentialsRotated`, `authmd.PrincipalRevoked` — agent identity events in `packages/auth-md/src/events.ts`, composed through the CLI agent identity flow |
 | `bindle.*` | `bindle.ResourcesCollected`, `bindle.ManifestProduced` |
 | `binding.*` | `binding.Resolved` (plan-phase profile→product+connectivity selection per edge), `binding.Projected` (deploy-time workload wiring; **not** per-activation client construction), `binding.Unavailable` (fail-closed refusal with remediation). Yard binding **rows** are carried on `yard.Registered` rather than a separate declaration event, so row state is never duplicated; rotation/revocation facts stay on the claim coordinator (`@hobo/claims`) ([ADR-0157](./adr/07-portability-extensibility.md#adr-0157)) |
 | `breakglass.*` | `breakglass.Requested`, `breakglass.Approved`, `breakglass.Started`, `breakglass.Used`, `breakglass.Revoked` |
 | `broker.*` | `broker.Requested`, `broker.Resolved`, `broker.Rejected`, `broker.ScaleRequested`, `broker.DeliverySubmitted`, `broker.ResolutionSigned`, `broker.EnvironmentPublished`, `broker.EnvironmentApproved` |
+| `build.*` | `build.Started`, `build.ArtifactProduced`, `build.Completed`, `build.Failed` — CLI build events in `packages/cli/src/build/events.ts` |
 | `camp.*` | `camp.Created`, `camp.RuntimeBound` |
 | `budget.*` | `budget.ThresholdCrossed`, `budget.Recovered`, `budget.CreditApplied` |
 | `capability.*` | `capability.Denied`, `capability.GrantDenied` |
-| `chaos.*` | `chaos.ExperimentStarted`, `chaos.FaultInjected` |
+| `chaos.*` | `chaos.ExperimentStarted`, `chaos.FaultInjected`, `chaos.FaultRemoved`, `chaos.SteadyStateChecked`, `chaos.ExperimentCompleted`, `chaos.Aborted` |
 | `component.*` | `component.Loaded`, `component.Invoked`, `component.Trapped`, `component.TornDown` |
 | `compat.*` | `compat.GatePassed`, `compat.GateFailed` |
 | `config.*` | `config.Resolved` |
@@ -37,7 +39,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `delta.*` | `delta.Opened`, `delta.Applied` |
 | `deploy.*` | `deploy.PreviewUrlAssigned`, `deploy.PreviewTeardownRequested` |
 | `dev.*` | `dev.SessionStarted`, `dev.RequestServed`, `dev.HandlerReloaded`, `dev.ReloadFailed`, `dev.CodegenRan`, `dev.SessionStopped` |
-| `deployment.*` | `deployment.Planned`, `deployment.PlanRejected`, `deployment.ApplyStarted`, `deployment.ResourceApplied`, `deployment.ApplySucceeded`, `deployment.ApplyFailed`, `deployment.StatusObserved`, `deployment.Deployed`, `deployment.RolledBack` |
+| `deployment.*` | `deployment.Planned`, `deployment.PlanRejected`, `deployment.ApplyStarted`, `deployment.ResourceApplied`, `deployment.ApplySucceeded`, `deployment.ApplyFailed`, `deployment.StatusObserved`, `deployment.Deployed`, `deployment.RolledBack`, `deployment.LocalStarted`, `deployment.LocalStopped` (persistent local lifecycle, Protobuf/CUE payloads in `packages/hobo/data-models/composition.*`) |
 | `derivative.*` | `derivative.UpgradeStarted`, `derivative.UpgradeSucceeded` |
 | `dispatch.*` | `dispatch.Decided`, `dispatch.ReservationReserved`, `dispatch.ReservationConfirmed`, `dispatch.ReservationReleased`, `dispatch.ReservationExpired` |
 | `drift.*` | `drift.RemediationRouted`, `drift.DiffProposed` |
@@ -49,6 +51,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `experiment.*` | `experiment.Assigned` (sampled), `experiment.Exposed` (sampled), `experiment.Concluded` |
 | `flag.*` | `flag.Defined`, `flag.Changed`, `flag.Evaluated` (sampled), `flag.Archived`, `flag.KillSwitch` |
 | `gatekeeper.*` | `gatekeeper.Decided` |
+| `generated.*` | `generated.ResourcePut`, `generated.ResourceRemoved` — executable generated resource APIs backed by the core EventStore; Protobuf/CUE payloads live in `packages/cli/data-models/project_codegen.*` |
 | `gen.*` | `gen.Requested`, `gen.PluginCertified` |
 | `golden.*` | `golden.Ran`, `golden.Passed` |
 | `governance.*` | `governance.ResidencyEnforced` |
@@ -71,7 +74,7 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `pam.*` | `pam.SessionStarted`, `pam.SessionRenewed`, `pam.SessionEnded`, `pam.SessionDenied`, `pam.GatewayStarted`, `pam.GatewayStopped` |
 | `pack.*` | `pack.Imported` |
 | `pipeline.*` | `pipeline.Triggered`, `pipeline.Completed` |
-| `policy.*` | `policy.Decided`, `policy.ObligationCreated`, `policy.ObligationSatisfied` |
+| `policy.*` | `policy.Decided`, `policy.ObligationCreated`, `policy.ObligationSatisfied`, `policy.WaiverRequested`, `policy.WaiverApproved`, `policy.WaiverExpired`, `policy.WaiverRevoked` |
 | `projection.*` | `projection.Declared`, `projection.Lagged` |
 | `provider.*` | `provider.Registered`, `provider.Approved`, `provider.Deprecated` |
 | `messaging.*` | `messaging.topic.created`, `messaging.subscription.created`, `messaging.dead_lettered`, `messaging.delivery.permanent_failure` (+ 6 more lowercase literals in `@hobo/core` ports/messaging.ts — naming diverges from `aggregate.PastTenseFact`; rename tracked in GAPS.md REM) |
@@ -83,7 +86,8 @@ This catalog is the canonical event-family inventory for design docs. Add a fami
 | `resourcedef.*` | `resourcedef.Registered`, `resourcedef.Updated` (design-only: no emitter ships yet — emission from the registry write path is tracked in GAPS.md) |
 | `rollout.*` | `rollout.Started`, `rollout.Stepped`, `rollout.Promoted`, `rollout.RolledBack`, `rollout.Failed` |
 | `run.*` | `run.Started`, `run.StepCompleted` |
-| `runbook.*` | `runbook.Defined`, `runbook.Triggered`, `runbook.StepCompleted`, `runbook.Completed`, `runbook.Failed` |
+| `runbook.*` | `runbook.Defined`, `runbook.Triggered`, `runbook.Diagnosed`, `runbook.FixBlocked`, `runbook.RemediationStarted`, `runbook.RemediationCompleted`, `runbook.StepCompleted`, `runbook.Completed`, `runbook.Failed` |
+| `sdk.*` | `sdk.ExecutionFact` — provider generation and runner execution receipts; Protobuf/CUE payloads in `packages/sdk/data-models/sdk.*` |
 | `routing.*` | `routing.ReplanProposed`, `routing.ReplanHeld`, `routing.ReplanDenied`, `routing.Reapplied`, `routing.RampAdvanced` |
 | `saga.*` | `saga.Started`, `saga.StepEmitted`, `saga.Completed`, `saga.Compensated` |
 | `secret.*` | `secret.Accessed`, `secret.Unavailable` |

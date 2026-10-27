@@ -441,6 +441,10 @@ importers:
   packages/agent-skills: {}
 
   packages/auth-md:
+    dependencies:
+      '@bufbuild/protobuf':
+        specifier: 2.12.1
+        version: 2.12.1
     devDependencies:
       '@types/node':
         specifier: ^22.15.29
@@ -667,6 +671,9 @@ importers:
       '@hobo/patterns':
         specifier: workspace:*
         version: link:../patterns
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.12
       ts-autocode-grounding:
         specifier: workspace:*
         version: link:../../external/ts-autocode/packages/grounding
@@ -1219,9 +1226,15 @@ importers:
 
   packages/hobo:
     dependencies:
+      '@bufbuild/protobuf':
+        specifier: 2.12.1
+        version: 2.12.1
       '@bytecodealliance/jco':
         specifier: 1.24.3
         version: 1.24.3
+      '@hobo/auth-md':
+        specifier: workspace:*
+        version: link:../auth-md
       '@hobo/bindings':
         specifier: workspace:*
         version: link:../bindings
@@ -2286,6 +2299,9 @@ importers:
 
   packages/sdk:
     dependencies:
+      '@bufbuild/protobuf':
+        specifier: 2.12.1
+        version: 2.12.1
       '@hobo/cloud':
         specifier: workspace:*
         version: link:../cloud
@@ -2298,10 +2314,22 @@ importers:
       '@hobo/dispatcher':
         specifier: workspace:*
         version: link:../dispatcher
+      esbuild:
+        specifier: ^0.25.0
+        version: 0.25.12
     devDependencies:
       '@hobo/contract-harness':
         specifier: workspace:*
         version: link:../contract-harness
+      '@hobo/runner-github':
+        specifier: workspace:*
+        version: link:../providers/runner-github
+      '@hobo/runtime-local':
+        specifier: workspace:*
+        version: link:../runtimes/runtime-local
+      typescript:
+        specifier: ^6.0.3
+        version: 6.0.3
       vitest:
         specifier: ^4.1.9
         version: 4.1.9(@opentelemetry/api@1.9.1)(@types/node@26.0.1)(@vitest/coverage-v8@4.1.10(vitest@4.1.9))(vite@8.1.2(@types/node@26.0.1)(esbuild@0.28.1)(jiti@2.7.0)(terser@5.48.0)(tsx@4.22.4)(yaml@2.9.0))

@@ -1,12 +1,11 @@
 import { deepFreeze, SdkDeclarationError } from "./errors.js";
 import { GENERATE_PROVIDER_SCHEMA } from "./schema.js";
 
-// Greenfield declaration factory (walkthrough §2.1): "a provider that doesn't
-// exist yet" is generated through scaffold → LLM-fill → sandbox-conformance →
-// sign, then registered like any signed plugin. Honest scope: this factory
-// parses and freezes the generation REQUEST; the generation pipeline itself
-// (and the signed conformance report it must produce) is a separate
-// initiative — the async shape matches the walkthrough's `await` usage site.
+// Parsed generation request consumed by executeProviderGeneration. The execution
+// pipeline fetches documentation, synthesizes an OpenAPI model through a configured
+// (optionally self-hosted) model when needed, emits a callable HTTP provider,
+// exercises every operation, and signs the verified artifact. Request creation
+// itself performs no external effects; the operator supplies execution context.
 
 // The fixed pipeline stages a generation request declares, in order.
 export const GENERATE_PROVIDER_PIPELINE = Object.freeze([

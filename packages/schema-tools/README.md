@@ -42,3 +42,11 @@ event store, and serves no runtime read store. A codegen run is a deterministic
 command; the checked-in `src/_generated/` trees are the snapshot the drift gate
 compares against, `--check` folds tree-vs-regenerated output into a drift
 projection, and CI consumes the report envelope as a pipeline fact.
+
+Preflight checks the local buf template before resolving/downloading CUE, so a
+missing template fails immediately without requiring network or toolchain setup.
+The CUE lane needs the pinned v0.14.0 binary on PATH or in the documented local
+cache. A missing binary is a setup failure, not a passing schema check.
+`test/cli-error-paths.test.ts` and `test/cue-helpers-and-formatting.test.ts` pin
+preflight diagnostics and JSON error envelopes; `test/codegen-pipeline.test.ts`
+exercises real generation, drift checks, and valid/invalid CUE fixtures.

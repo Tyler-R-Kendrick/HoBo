@@ -1,14 +1,13 @@
+import { isJsonObject, type JsonObject, type JsonValue } from "../json.js";
 import type { CliFlags } from "../shell/parse.js";
 import type { CliContext } from "../types/envelope.js";
 import { BuildError } from "./errors.js";
-import { isJsonObject, type JsonValue, type JsonObject } from "../json.js";
-
 
 // public-contract: the manifest's `schema` version discriminator — the constant is the contract.
 export const BUILD_MANIFEST_SCHEMA = "hobo.build-manifest/v1" as const;
 const DEFAULT_SOURCE_DATE_EPOCH = "2026-01-01T00:00:00.000Z";
 
-export type ArtifactKind = "wasm-component" | "oci-container";
+export type ArtifactKind = "wasm-component" | "oci-container" | "node-app";
 
 // domain-view: parsed CLI-facing type (string unions, branded ids, literal fields); the package's data-models/*.proto is its wire contract (technical-standards.md).
 export type ServiceDeclaration = {
@@ -156,10 +155,20 @@ function parseBuildArtifact(raw: JsonValue): BuildArtifact {
 	// SAFETY: `const record = raw as JsonObject;` is required at this I/O or test boundary.
 	const record = raw as JsonObject;
 	const kind = String(record.kind ?? "");
-	if (kind !== "wasm-component" && kind !== "oci-container") {
+	if (
+		kind !== "wasm-component" &&
+		kind !== "oci-container" &&
+		kind !== "node-app"
+	) {
 		throw new BuildError(
 			"HOBO_BUILD_SOURCE_PARSE",
 			`Invalid artifact kind "${kind}".`,
+		);
+	}
+	if (kind === "node-app" && record.runtime !== "node") {
+		throw new BuildError(
+			"HOBO_BUILD_SOURCE_PARSE",
+			"Node app artifacts require runtime node.",
 		);
 	}
 
@@ -281,10 +290,7 @@ function assertRelativePath(path: string, label: string): void {
 	}
 }
 
-function defaultEntrypoint(
-	record: JsonObject,
-	name: string,
-): string {
+function defaultEntrypoint(record: JsonObject, name: string): string {
 	const language = normalizeLanguage(String(record.language ?? "ts"));
 	const file = language === "python" ? "app.py" : "service.ts";
 	return `services/${name}/src/${file}`;

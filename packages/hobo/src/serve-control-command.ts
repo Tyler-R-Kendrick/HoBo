@@ -90,9 +90,11 @@ export function createServeControlCommand(
 			}
 
 			// Hold process open until signal (local serve path).
-			await new Promise<void>((resolve) => {
+			await new Promise<void>((resolve, reject) => {
 				const stop = () => {
-					void server.close().finally(resolve);
+					process.removeListener("SIGINT", stop);
+					process.removeListener("SIGTERM", stop);
+					void server.close().then(resolve, reject);
 				};
 				process.once("SIGINT", stop);
 				process.once("SIGTERM", stop);

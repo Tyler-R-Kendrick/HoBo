@@ -86,7 +86,10 @@ The reviewed sibling `ci-gh-actions` workflow and bootstrap files are embedded
 into the build by `scripts/generate-assets.mts`; a contract test verifies their
 contents match the sources. A deployment must verify rewrites, the private queue
 trigger and scheduler before production use. Contract tests run without live
-GitHub or Vercel credentials.
+GitHub or Vercel credentials. The real-process proxy shutdown test uses a
+35-second Vitest deadline so cold TypeScript startup on slower filesystems is
+not mistaken for a shutdown failure; its child-process timeout stays bounded
+at 30 seconds.
 
 The isolated Sandbox runner integration is configured via
 `HOBO_CI_SANDBOX_ENABLED=1`, `HOBO_CI_SANDBOX_TEAM_ID`,

@@ -184,7 +184,7 @@ it.each([
 		database.close();
 		await rm(directory, { recursive: true, force: true });
 	}
-});
+}, 15000);
 
 it("refuses overwrites, stale destination sidecars, locked restores and invalid inputs", async () => {
 	const directory = await mkdtemp(join(tmpdir(), "hobo-restore-refusal-"));

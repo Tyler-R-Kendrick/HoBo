@@ -31,6 +31,7 @@ import {
 } from "./handler.js";
 import { createOwnerControlDelegation } from "./owner-control.js";
 import { createQueueWakeupHandler } from "./queue-forwarding.js";
+import { runtimeDiagnostic } from "./runtime-diagnostic.js";
 import { createSandboxComposition } from "./sandbox-composition.js";
 import { createSandboxProxyQuotaHandler } from "./sandbox-proxy-quota.js";
 import { createScheduledRepairHandler } from "./scheduled-repair.js";
@@ -210,6 +211,11 @@ export async function createVercelApplication(options: {
 				authenticate,
 				publicOrigin: url.origin,
 				assets,
+				runtimeDiagnostic: () =>
+					runtimeDiagnostic({
+						deploymentId: env.VERCEL_DEPLOYMENT_ID,
+						sandbox,
+					}),
 			})(delegateOwnerControl ? await delegateOwnerControl(request) : request);
 		};
 		const runtimeOptions: Parameters<typeof createHostedRelayRuntime>[0] = {

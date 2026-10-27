@@ -172,6 +172,7 @@ and a late apply result cannot regress a ready connection to pending.
 | Method | Account endpoint | Required scope |
 | --- | --- | --- |
 | GET | `/v1/accounts/self/policy` | `policy:read` |
+| GET | `/v2/accounts/self/runtime` | `policy:read` |
 | PUT | `/v2/accounts/self/policy` | `policy:write` plus current revision |
 | PUT | `/v2/accounts/self/providers` | `policy:write` plus current revision |
 | GET | `/v1/accounts/self/installations` | `policy:read` |
@@ -187,6 +188,9 @@ The last endpoint accepts generated `ReconcileRequest` JSON containing a verifie
 completion and runner cleanup. It cannot force-release running or ambiguous work.
 Lease/event lists return at most 100 account records. Account IDs are taken from
 authentication, and foreign repository/lease access fails before provider mutation.
+On Vercel, the runtime endpoint returns the Sandbox enablement flag, loaded
+allowed-domain patterns, and deployment ID for the process serving the request.
+It does not report credentials, URLs, or settings of an individual runner.
 
 `putPolicy(account, {revision})` changes budgets and publishes fresh allocation
 facts without restarting the relay. Configuration and its audit event commit

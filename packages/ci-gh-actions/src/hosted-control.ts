@@ -180,6 +180,11 @@ export function createHostedControlPlane(options: {
 	authenticate: ControlAuthenticator;
 	publicOrigin: string;
 	assets: { workflow: string; bootstrap: string };
+	runtimeDiagnostic?: () => {
+		sandboxEnabled: boolean;
+		allowedDomains: readonly string[];
+		deploymentId: string | null;
+	};
 }) {
 	const { store, relay } = options;
 	async function state(): Promise<ConfigurationState> {
@@ -255,6 +260,18 @@ export function createHostedControlPlane(options: {
 								: "policy:write";
 			if (!principal.scopes.includes(required))
 				throw new ControlError(403, "account scope required");
+			if (path === "/v2/accounts/self/runtime" && request.method === "GET") {
+				if (!options.runtimeDiagnostic)
+					throw new ControlError(404, "runtime diagnostic unavailable");
+				const current = await state();
+				if (
+					!current.configuration?.accounts.some(
+						(account) => account.id === principal.accountId,
+					)
+				)
+					throw new ControlError(404, "account not found");
+				return response(200, JSON.stringify(options.runtimeDiagnostic()));
+			}
 			if (
 				path === "/v1/accounts/self/installations" &&
 				request.method === "GET"

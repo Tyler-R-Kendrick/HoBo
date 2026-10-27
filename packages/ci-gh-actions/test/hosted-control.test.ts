@@ -32,7 +32,13 @@ const stores: LeaseStore[] = [];
 afterEach(() => {
 	for (const store of stores.splice(0)) store.close();
 });
-function setup() {
+function setup(
+	runtimeDiagnostic?: () => {
+		sandboxEnabled: boolean;
+		allowedDomains: readonly string[];
+		deploymentId: string | null;
+	},
+) {
 	const h = harness();
 	stores.push(h.store);
 	h.store.configure(h.configuration, 0, NOW);
@@ -125,7 +131,7 @@ function setup() {
 		},
 	};
 	let revoked = false;
-	const handler = createHostedControlPlane({
+	const controlOptions: Parameters<typeof createHostedControlPlane>[0] = {
 		relay,
 		store,
 		github,
@@ -159,10 +165,18 @@ function setup() {
 									installationIds: [11],
 									scopes: ["policy:read", "policy:write", "repositories:write"],
 								}
-							: undefined,
+							: auth === "Bearer missing-account"
+								? {
+										accountId: "missing-account",
+										installationIds: [],
+										scopes: ["policy:read"],
+									}
+								: undefined,
 		publicOrigin: "https://relay.example",
 		assets: { workflow: "fixture", bootstrap: "fixture" },
-	});
+	};
+	if (runtimeDiagnostic) controlOptions.runtimeDiagnostic = runtimeDiagnostic;
+	const handler = createHostedControlPlane(controlOptions);
 	async function request<T>(
 		path: string,
 		method = "GET",
@@ -385,6 +399,40 @@ describe("bridge-free isolated onboarding", () => {
 });
 
 describe("hosted asynchronous account control", () => {
+	it("restricts runtime diagnostics to policy readers of existing accounts", async () => {
+		const diagnostic = vi.fn(() => ({
+			sandboxEnabled: true,
+			allowedDomains: ["github.com", "*.actions.githubusercontent.com"],
+			deploymentId: "dpl_ABC123",
+		}));
+		const t = setup(diagnostic);
+		expect(
+			(await t.request("/v2/accounts/self/runtime", "GET", "invalid")).status,
+		).toBe(401);
+		expect(
+			(await t.request("/v2/accounts/self/runtime", "GET", "observer")).status,
+		).toBe(403);
+		expect(
+			(await t.request("/v2/accounts/self/runtime", "GET", "missing-account"))
+				.status,
+		).toBe(404);
+		expect((await t.request("/v2/accounts/self/runtime", "POST")).status).toBe(
+			404,
+		);
+		expect(diagnostic).not.toHaveBeenCalled();
+		const result = await t.request("/v2/accounts/self/runtime");
+		expect(result.status).toBe(200);
+		expect(result.headers.get("cache-control")).toBe("no-store");
+		expect(await result.json()).toEqual({
+			sandboxEnabled: true,
+			allowedDomains: ["github.com", "*.actions.githubusercontent.com"],
+			deploymentId: "dpl_ABC123",
+		});
+		expect(diagnostic).toHaveBeenCalledTimes(1);
+		expect((await setup().request("/v2/accounts/self/runtime")).status).toBe(
+			404,
+		);
+	});
 	it.each([
 		"refs",
 		"events",

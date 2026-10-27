@@ -511,3 +511,16 @@ Append-only outcomes for sdlc coordinator runs. Newest entries at the bottom.
 - **Implemented:** durable tenant policy and setup state, repo discovery/PR install/protected pin, scoped client, public opt-in, binding revocation fencing, usage watermarks, bounded runtime/owner lock, packaged deployment, backup/restore and manual HoBo workflow.
 - **Evidence:** actual connected seven-job act run and three failing controls; actual nonroot image lifecycle (including policy/CAS/tenant checks, restart/owner fencing/SIGTERM and readonly-backup restore); generated/HTTP/Pact/process tests. Final branch gate totals are recorded at completion.
 - **External boundary:** runner-management API returned403; automatic approval review rejected an additional optional live GitHub permission probe citing earlier contract-only scope. No live test passed or external setup bypassed.
+
+
+### 2026-10-26 — HoBo CI production acceptance and delivery
+
+Production continuation PR #1596 covers the hosted relay, repository installer,
+account client/API, deployment and Station budget bridge. Independent review
+reproduced two authority-revocation races; both were repaired and 27 regressions
+independently rerun. Final owning suites pass 588 tests, with 16 relevant staged
+gates, seven connected act executions, three rejecting fault runs and seven actual
+container lifecycle checks. Exact-six current-head review and PR-base gates are
+required before squash merge. Actual GitHub/vendor execution remains unverified:
+runner access was HTTP403 and automatic review rejected an extra optional probe;
+no external account/repository resources were created.

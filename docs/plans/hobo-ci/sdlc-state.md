@@ -1,7 +1,8 @@
 # HoBo.CI delivery state
 
-- Current phase: production implementation and branch validation
+- Current phase: final independent review and delivery
 - Current branch: `feat/hobo-ci-production`
+- Current PR: [#1596](https://github.com/Tyler-R-Kendrick/HoBo/pull/1596)
 - Prior SDK delivery: [#1594](https://github.com/Tyler-R-Kendrick/HoBo/pull/1594),
   squash `a262136d98e6699f8093c45fb36e32ea0a931864`; its closure record was #1595.
 - Current user acceptance: deployable service and a testable `runs-on: hobo` branch,
@@ -20,7 +21,18 @@ usage snapshots, monotonic ready operations and readonly-backup restore are impl
 The Station bridge consumes actual Broker budget facts and persists threshold
 ordering with account policy. Independent review found dispatch/JIT authority
 revocation races; both are fixed with deferred-request regression tests.
-Final package/schema/acceptance/image validation is in progress.
+Validation passed: 588 tests across CI/Actions/Dagger/Cloudflare/Stations,
+16 relevant staged gates, generated protobuf/CUE checks, seven connected act
+executions with three rejecting fault runs, and seven actual container checks.
+Final image: `sha256:bc5b475c243ccb2ec172575dde3669cf4b178559b2e77a1e0833775e20d2a7cd`.
+Thirteen compiled runtime modules match fresh compilation of the source.
+Current-head PR-base validation and exact-six design review precede merge.
+
+The two independent P2 findings are resolved: dispatch re-resolves authority after
+GitHub reads; JIT rechecks original branch/event authority after host checks.
+The independent reviewer reran 27 lifecycle/revocation regressions successfully.
+Runtime/backups execute without root; persisted threshold flags reject rollback
+with HTTP409 and survive actual service restart.
 
 ## Evidence and boundary
 

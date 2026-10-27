@@ -14,7 +14,7 @@ const allowedDownloadHosts = new Set([
 	"objects.githubusercontent.com",
 ]);
 
-async function beforeDeadline<T>(
+export async function beforeDeadline<T>(
 	operation: Promise<T>,
 	signal: AbortSignal,
 ): Promise<T> {

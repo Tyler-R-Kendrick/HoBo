@@ -76,16 +76,11 @@ const connection = create(ConnectionSchema, {
 	repository: "example/repository",
 	repositoryId: 1,
 	installationId: 1,
-	bridgeWorkflow: "host.yml",
-	bridgeSha: "0000000000000000000000000000000000000000",
-	bridgeRef: "main",
 	runnerGroupId: 1,
-	dispatcherActorId: 1,
-	allowedEvents: ["pull_request"],
-	allowedRefs: ["refs/heads/main"],
+	isolatedOnly: true,
+	acceptAllMatchingRepositoryJobs: true,
 	trustedRepositoryAcknowledged: true,
 	publicRepositoryAcknowledged: true,
-	allowAllPullRequests: true,
 });
 const configuration = create(ConfigurationSchema, {
 	accounts: [account],

@@ -63,10 +63,16 @@ After the App installation is bound to the account, the SDK can connect a
 repository without creating a companion workflow. A verified owner using the
 same browser and origin can create the SDK client with
 `createCiRelayClient({ origin: window.location.origin, ownerSession: true })`;
-the owner session delegates `getPolicy`, `getInstallations`, `putDesiredPolicy`
-and `connectIsolatedRepository`, without exposing the account token to the
-browser. Other SDK methods require their normal account credentials; the hosted
-control plane disables the legacy `putPolicy` method.
+the owner session delegates `getPolicy`, `getInstallations`, `putDesiredPolicy`,
+`putProvider`, and `connectIsolatedRepository`, without exposing the account
+token to the browser. Other SDK methods require their normal account credentials;
+the hosted control plane disables the legacy `putPolicy` method.
+To update an existing provider, copy its offer from `getPolicy()` and call
+`putProvider(offer, { revision })` with that response's revision. The operation
+can change the provider budget and concurrency and conservatively increase the
+Sandbox bootstrap estimate. Provider budget cannot exceed the account budget.
+The provider binding and usage observation remain unchanged; use the separate
+observation workflow for updated provider pricing or a lower estimate.
 Other clients supply an account token with the required scopes. Call
 `client.connectIsolatedRepository({ repository: "owner/repo", installationId,
 trustedRepositoryAcknowledged: true, publicRepositoryAcknowledged: true,
@@ -81,6 +87,12 @@ for this shared-label mode. Routing and budget reservations cover the runner;
 GitHub may assign it a different matching job from the one that triggered the
 reservation. Revoking a connection or changing policy does not instantly stop
 an already-live runner, which may accept a job while revocation is being applied.
+When GitHub confirms that the job assigned to a runner has completed, HoBo stops
+that runner and records its usage. Cancelling the original queued job does not
+by itself prove that a shared-label runner is idle: it may accept a different
+matching job and can remain online until its bounded Sandbox timeout. Each
+worker wakeup checks GitHub for the status of assigned active Sandbox jobs;
+operators should account for that per-runner API traffic as concurrency grows.
 GitHub App identity, installation permissions, and
 repository identity are verified before storing the connection.
 The repository's workflow can then use `runs-on: hobo` when the hosted isolated

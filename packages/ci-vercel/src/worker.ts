@@ -100,7 +100,11 @@ export function createHostedWorker(options: {
 				if (result.truncated) throw new Error("delivery history incomplete");
 				if (result.more) await options.continueRepair();
 				if (result.failed) throw new Error("delivery repair failed");
-				if (!result.skipped) await options.health.mark("repair", !result.more);
+				// Successful partial progress is neither a completed scan nor a
+				// failure. Preserve the last completed scan's health until the
+				// continuation finishes or that evidence expires.
+				if (!result.skipped && !result.more)
+					await options.health.mark("repair", true);
 			} catch (error) {
 				reportWorkerFailure(
 					"repair",

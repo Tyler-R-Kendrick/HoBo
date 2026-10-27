@@ -27,6 +27,7 @@ import {
 	stopProxySandbox,
 } from "./proxy-sandbox.js";
 import { createSandboxController } from "./sandbox-controller.js";
+import { validateSandboxDomains } from "./sandbox-domains.js";
 
 function required(env: NodeJS.ProcessEnv, name: string): string {
 	const value = env[name];
@@ -257,7 +258,7 @@ export function createSandboxComposition(options: {
 			);
 		},
 		assignment: async (lease) => {
-			if (!lease.actualJobId) throw new Error("runner assignment unavailable");
+			if (!lease.actualJobId) return { kind: "unknown" };
 			const job = await getJob(
 				github,
 				lease.installationId,
@@ -295,5 +296,11 @@ export function createSandboxComposition(options: {
 			});
 		},
 	});
-	return { host };
+	return {
+		host,
+		allowedDomains: () => {
+			validateSandboxDomains(domains);
+			return [...domains];
+		},
+	};
 }

@@ -11,6 +11,7 @@ import {
 	ConnectionSchema,
 	DesiredCiPolicySchema,
 	LeaseSchema,
+	OfferSchema,
 	parseCiPolicy,
 	ReconcileRequestSchema,
 	RepositorySetupRequestSchema,
@@ -200,6 +201,19 @@ export function createCiRelayClient(
 				"PUT",
 				AccountStateSchema,
 				body,
+				revision(version.revision),
+				"v2",
+			);
+		},
+		putProvider(
+			offer: ProtobufInput<typeof OfferSchema>,
+			version: { revision: number },
+		) {
+			return request(
+				"providers",
+				"PUT",
+				AccountStateSchema,
+				encode(OfferSchema, offer),
 				revision(version.revision),
 				"v2",
 			);

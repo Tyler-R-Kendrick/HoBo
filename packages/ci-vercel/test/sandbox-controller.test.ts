@@ -98,6 +98,7 @@ function fixture(
 				Lease,
 				| "state"
 				| "runnerId"
+				| "actualJobId"
 				| "sandboxSessionId"
 				| "sandboxCommandId"
 				| "sandboxStage"
@@ -108,6 +109,7 @@ function fixture(
 			if (
 				lease.state !== observed.state ||
 				lease.runnerId !== observed.runnerId ||
+				lease.actualJobId !== observed.actualJobId ||
 				lease.sandboxSessionId !== observed.sandboxSessionId ||
 				lease.sandboxCommandId !== observed.sandboxCommandId ||
 				lease.sandboxStage !== observed.sandboxStage
@@ -208,10 +210,9 @@ function fixture(
 		installationId: 2,
 		runnerGroupId: 1,
 	});
-	const assignment = vi.fn(async () => ({
-		kind: "assigned" as const,
-		jobId: 99,
-	}));
+	const assignment = vi.fn<
+		() => Promise<{ kind: "assigned"; jobId: number } | { kind: "unknown" }>
+	>(async () => ({ kind: "assigned", jobId: 99 }));
 	const controller = createSandboxController({
 		store,
 		github,
@@ -635,6 +636,40 @@ describe("isolated runner lifecycle", () => {
 		});
 		expect(f.pending.map((entry) => entry.id)).toEqual([11]);
 		expect(f.driver.stop).toHaveBeenCalledTimes(1);
+	});
+	it("settles measured usage without asserting that an unknown runner was idle", async () => {
+		const f = fixture(true);
+		f.assignment.mockResolvedValue({ kind: "unknown" });
+		await f.controller.launch(id);
+		await f.controller.reconcile(id);
+		expect(f.read()).toMatchObject({
+			state: "completed",
+			actualJobId: 0,
+			paidMicros: 123,
+			sandboxStage: "stopped",
+			proxySandboxStage: "stopped",
+			runnerDeletionConfirmed: true,
+		});
+	});
+	it("does not settle if assignment arrives after the observation", async () => {
+		const f = fixture(true);
+		f.assignment.mockResolvedValue({ kind: "unknown" });
+		const settle = f.store.settleSandboxObserved.bind(f.store);
+		f.store.settleSandboxObserved = async (...args) => {
+			await f.store.transition(
+				id,
+				["running"],
+				(lease) => {
+					lease.actualJobId = 98;
+				},
+				"ci.JobObserved",
+				now,
+			);
+			return settle(...args);
+		};
+		await f.controller.launch(id);
+		await f.controller.reconcile(id);
+		expect(f.read()).toMatchObject({ state: "running", actualJobId: 98 });
 	});
 	it("discovers a VM after a lost create response, stops it and accounts before releasing budget", async () => {
 		const f = fixture();

@@ -32,6 +32,16 @@ by default; readiness also requires successful runtime and worker health checks.
 The older Function-hosted `createSandboxEgressProxy` has a 4 MiB request and
 response limit; it cannot handle larger workflow transfers.
 
+The proxy reserves traffic in durable blocks before forwarding. Blocks start at
+64 KiB and grow during sustained transfers. The growth cap is one sixteenth of
+the configured allowance, bounded between 64 KiB and 4 MiB. An individual
+larger stream chunk is split into grants of at most 4 MiB. Unused grants expire
+after five seconds and still count against the allowance, so a small idle
+request does not reserve a large block. A denied grant fails the stream closed;
+the rate limit and total allowance can still constrain exceptionally large or
+fast transfers.
+Each proxied request also has a 120-second absolute deadline.
+
 The quota measures application traffic and does not guarantee an exact bill or
 hard spend cap. In particular, traffic to the publicly exposed port can be
 billed before authentication; TLS, DNS, retries and platform metering can add
@@ -46,6 +56,14 @@ wildcard patterns are `*.actions.githubusercontent.com` and
 matches the parent domain. The Azure Blob wildcard includes accounts outside
 GitHub, so enabling it allows jobs to send data to any publicly reachable Azure
 Blob account under that suffix. Configure it only when that egress is acceptable.
+A typical GitHub Actions runner using checkout, Node setup, and artifacts may
+need `github.com`, `api.github.com`, `codeload.github.com`,
+`raw.githubusercontent.com`, `nodejs.org`, `release-assets.githubusercontent.com`,
+`*.actions.githubusercontent.com`, and `*.blob.core.windows.net`. Configure
+the exact hosts used by the workflow's dependencies and redirect targets too;
+this list is not exhaustive. GitHub can download an action during job setup
+even when the action's workflow step is conditional, so its hosts must be
+allowed before the job starts.
 A live Sandbox test verified forwarding of a GitHub
 Actions subdomain and denial of the parent, a suffix-confusion host and a direct
 IP. A second test sent an Actions subdomain request through the bundled proxy,
@@ -59,10 +77,25 @@ run through it.
 
 The pinned GitHub runner archive is about 218 MiB. The relay buffers and hashes
 it before upload, and the SDK also buffers a compressed transfer. The quote
-must include Function memory, CPU and transfer costs. If assignment or JIT
-registration outcome cannot be proven, the controller stops known VMs but
-holds the reservation for investigation instead of assuming zero usage or an
-idle runner.
+must include Function memory, CPU and transfer costs. Once both VMs have stopped
+and the runner is deleted, the controller settles their measured usage even if
+the assigned job is unknown. That is recorded as unknown, not idle; later
+authenticated GitHub observations may attach the job to the settled runner.
+Unconfirmed registration, stop, deletion, or measured usage still holds the
+reservation. A delayed in-progress observation for a stopped runner does not
+cancel newer work; confirmed job completion cancels unlaunched reservations
+for that job. A GitHub status change between preflight and launch can still
+cause an extra, budgeted VM to be provisioned.
+
+The Ubuntu 26.04 Sandbox image does not include ICU, which the GitHub runner's
+.NET runtime requires. The relay also downloads the fixed 11,456,466-byte
+Ubuntu `libicu78` 78.2-2ubuntu1 package from `snapshot.ubuntu.com`, verifies its
+pinned SHA-256 and size, and uploads it to the guest. The guest checks the hash
+again and installs the package noninteractively before runner registration.
+The package's `/usr/share/doc/libicu78/copyright` contains the ICU MIT license
+and Debian packaging notices. The relay needs HTTPS access to the Ubuntu
+snapshot host; the guest does not need that host in its egress allowlist. The
+quote must include this additional package transfer and installation time.
 
 A live, nonpersistent Vercel Sandbox verified the pinned runner 2.338.2 archive
 digest and its native library dependencies, and `Runner.Listener --version`

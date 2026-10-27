@@ -134,9 +134,38 @@ describe("Sandbox billing team binding", () => {
 			},
 		});
 		if (!composition) throw new Error("sandbox composition unavailable");
+		expect(composition.allowedDomains()).toEqual(["github.com"]);
+		composition.allowedDomains().push("example.com");
+		expect(composition.allowedDomains()).toEqual(["github.com"]);
 		await composition.host.launch(lease.id);
 		expect(transition).toHaveBeenCalledTimes(accepted ? 1 : 0);
 		expect(cancelAndRequeue).toHaveBeenCalledTimes(accepted ? 0 : 1);
+		await pool.end();
+	});
+	it.each([
+		{ domains: ["https://secret.example/token"] },
+		{ domains: [] },
+		{ domains: ["github.com", "github.com"] },
+		{ domains: Array.from({ length: 101 }, (_, i) => `host${i}.example.com`) },
+	])("never reports invalid Sandbox domains %#", async ({ domains }) => {
+		const pool = new pg.Pool();
+		const sandbox = createSandboxComposition({
+			env: {
+				HOBO_CI_SANDBOX_ENABLED: "1",
+				HOBO_CI_SANDBOX_TEAM_ID: "team_real",
+				HOBO_CI_SANDBOX_PROJECT_ID: "prj_real",
+				HOBO_CI_SANDBOX_ISSUER: "https://oidc.vercel.com/team",
+				HOBO_CI_SANDBOX_DOMAINS_JSON: JSON.stringify(domains),
+			},
+			publicOrigin: "https://ci.example.com",
+			store: new PostgresCiStore(pool),
+			github: {
+				request: async () => {
+					throw new Error("unexpected call");
+				},
+			},
+		});
+		expect(() => sandbox?.allowedDomains()).toThrow();
 		await pool.end();
 	});
 });

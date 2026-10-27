@@ -1,13 +1,16 @@
 # HoBo CI Vercel relay
 
 This package provides a Vercel Node Function HTTP boundary, a Postgres-backed
-relay, a private queue consumer, and an independent Vercel Cron Job. Signed
+relay, a private queue consumer, and an independent scheduler. Signed
 GitHub deliveries are committed before acknowledgement. Queue notifications
-wake the worker immediately; the Cron Job recovers committed work whose wakeup
+wake the worker immediately; the scheduler recovers committed work whose wakeup
 was lost and asks GitHub to redeliver failed App deliveries. `/readyz` requires
-the database, queue, Cron Job and GitHub repair path to have recently succeeded;
-a new deployment reports unready until its first scheduled repair succeeds. The
-webhook intake is available during that initial period.
+the database, queue, scheduler and GitHub repair path to have recently succeeded;
+a new deployment reports unready until its first repair scan completes. A
+successful partial scan retains the last completed-scan health while it queues
+its continuation. Actual scan failures mark the relay unready, and completed-scan
+health expires after 45 minutes. The webhook intake is available during initial
+repair.
 
 The queue uses **parse, don't validate**: `QueueMessageSchema` parses provider
 input into derived types for a committed-delivery wakeup, a scheduled or
@@ -85,24 +88,32 @@ The isolated Sandbox runner integration is configured via
 `HOBO_CI_SANDBOX_ENABLED=1`, `HOBO_CI_SANDBOX_TEAM_ID`,
 `HOBO_CI_SANDBOX_PROJECT_ID`, `HOBO_CI_SANDBOX_ISSUER` (the pinned Vercel
 team issuer), and `HOBO_CI_SANDBOX_DOMAINS_JSON`
-(an explicit hostname allowlist). The only permitted wildcard patterns are
+(an explicit hostname allowlist). GitHub runner setup, checkout, Node setup,
+and artifact transfer can require `github.com`, `api.github.com`,
+`codeload.github.com`, `raw.githubusercontent.com`, `nodejs.org`,
+`release-assets.githubusercontent.com`, `*.actions.githubusercontent.com`,
+and `*.blob.core.windows.net`. Add the hosts used by each workflow's own
+dependencies and redirect targets; this list does not cover every workflow.
+The only permitted wildcard patterns are
 `*.actions.githubusercontent.com` and `*.blob.core.windows.net`, which GitHub
 documents for runner traffic. The Azure Blob suffix includes third-party storage
 accounts; enabling it permits job traffic to those accounts as well.
 `HOBO_CI_SANDBOX_PLAN` defaults to `hobby`. It requires a
 matching two-VM Sandbox offer with current pricing and allocation evidence. The
-proxy also accepts Vercel's global issuer when the signed token matches the
-expected audience, team, project, and bound Sandbox. It does not accept another
-team's issuer path.
+proxy also accepts Vercel's global issuer and the exact team-ID issuer when the
+signed token matches the expected audience, team, project, and bound Sandbox.
+It does not accept another team's issuer path.
 The implementation creates a temporary proxy VM before the runner VM and stops both
 after the job. It downloads and verifies the runner archive before uploading it to
 the runner VM. Both VMs, their network usage, and quota-control calls are
 included in the reservation and settlement estimate.
 
-This path has not yet been verified end to end in production. Live Sandbox tests on a Pro team verified
-16 MiB transfers through an exposed port and matched forwarding identity claims
-to the guest session; see [Sandbox egress](SANDBOX-EGRESS.md). The gateway's
-maximum transfer size and a real GitHub JIT workflow still need verification.
+Live production testing has registered a JIT runner, assigned a GitHub job to
+it, and passed job setup; the full checkout and artifact workflow is still
+being verified. Live Sandbox tests on a Pro team also verified 16 MiB transfers
+through an exposed port and matched forwarding identity claims to the guest
+session; see [Sandbox egress](SANDBOX-EGRESS.md). The gateway's maximum transfer
+size remains unverified.
 The Vercel runtime admits isolated jobs only when Sandbox is explicitly configured;
 without it, readiness remains false and isolated jobs are not launched. Recovery
 first fences in-flight launch states and retains ambiguous create
@@ -119,12 +130,12 @@ provider metering and Function usage can differ from the estimate. CPU usage
 is charged conservatively because the provider has not documented the
 aggregation of its CPU metric.
 
-If GitHub assignment evidence is missing after a Sandbox stops, the relay holds
-the reservation rather than assuming the runner was idle. After an ambiguous
-GitHub JIT registration, the relay looks for the unique runner by its
+Once both Sandboxes have stopped, their measured usage is available, and runner
+deletion is confirmed, the relay settles the cost even if assignment is unknown;
+later GitHub observations can attach the job without declaring the runner idle.
+After an ambiguous GitHub JIT registration, the relay looks for the unique runner by its
 deterministic name and deletes it before settling. An absent or ambiguous
 lookup holds the reservation because the original request could still finish;
-there is no automated operator resolution for that case or missing assignment
-evidence yet. A VM whose create response was lost is
+there is no automated operator resolution for that case yet. A VM whose create response was lost is
 looked up by deterministic name and stopped; the reservation stays held until
 its identity, termination and usage are proven.

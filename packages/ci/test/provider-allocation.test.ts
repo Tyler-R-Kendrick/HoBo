@@ -72,9 +72,12 @@ describe("provider allocation conversion", () => {
 			startupMinutes: 1,
 			offers: [blacksmith, depot],
 		});
-		// Eight base minutes cover only two minutes on the 8-vCPU host;
-		// Depot's fully paid reservation is therefore cheaper.
-		expect(route(account, [], "2026-10-26T12:00:00Z")?.offer.id).toBe("depot");
+		// Eight base minutes cover two minutes on the 8-vCPU host. Consume
+		// those minutes first, even though Depot's paid reservation is cheaper.
+		const choice = route(account, [], "2026-10-26T12:00:00Z");
+		expect(choice?.offer.id).toBe("blacksmith");
+		expect(choice?.freeMinutes).toBe(2);
+		expect(choice?.paidMicros).toBe(8000);
 	});
 	it("does not guess conversion for unsupported SKUs or invalid balances", () => {
 		for (const runsOn of [

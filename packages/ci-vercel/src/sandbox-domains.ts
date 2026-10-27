@@ -19,6 +19,17 @@ export function validSandboxDomainPattern(pattern: string): boolean {
 	return validHostname(pattern);
 }
 
+/** Validate the exact domain list accepted for Sandbox forwarding. */
+export function validateSandboxDomains(domains: readonly string[]): void {
+	if (domains.length === 0 || domains.length > 100)
+		throw new Error("sandbox requires explicit allowed domains");
+	if (
+		new Set(domains).size !== domains.length ||
+		domains.some((domain) => !validSandboxDomainPattern(domain))
+	)
+		throw new Error("invalid or repeated sandbox destination");
+}
+
 /** A wildcard matches subdomains only, with a whole-label boundary. */
 export function matchesSandboxDomain(
 	hostname: string,

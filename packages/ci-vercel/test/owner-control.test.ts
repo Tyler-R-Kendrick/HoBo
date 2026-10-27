@@ -28,6 +28,7 @@ describe("owner session control delegation", () => {
 		["/v1/accounts/self/policy", "GET"],
 		["/v1/accounts/self/installations", "GET"],
 		["/v2/accounts/self/policy", "PUT"],
+		["/v2/accounts/self/providers", "PUT"],
 		["/v1/accounts/self/repositories/isolated-connect", "POST"],
 	])("delegates verified owner access for %s %s", async (path, method) => {
 		const resolve = vi.fn(async () => "server-side-token");
@@ -50,6 +51,13 @@ describe("owner session control delegation", () => {
 		["/v1/accounts/self/repositories/isolated-connect/extra", "POST", {}],
 		["/v1/accounts/self/policy", "POST", {}],
 		["/v1/accounts/self/policy", "PUT", {}],
+		["/v2/accounts/self/providers/extra", "PUT", {}],
+		["/v2/accounts/self/providers", "POST", {}],
+		[
+			"/v2/accounts/self/providers",
+			"PUT",
+			{ origin: "https://attacker.example" },
+		],
 		["/v1/accounts/self/policy", "GET", { origin: "https://attacker.example" }],
 		["/v1/accounts/self/policy", "GET", { "x-hobo-owner-control": "" }],
 		["/v1/accounts/self/policy", "PUT", { "content-type": "text/plain" }],
@@ -114,5 +122,31 @@ describe("owner session control delegation", () => {
 		});
 		expect((await client.getPolicy()).revision).toBe(1);
 		expect(resolve).toHaveBeenCalledOnce();
+	});
+	it("routes SDK provider updates through the verified owner session", async () => {
+		const delegate = createOwnerControlDelegation({
+			publicOrigin: origin,
+			resolve: async () => "server-side-token",
+		});
+		const client = createCiRelayClient({
+			origin,
+			ownerSession: true,
+			fetch: async (input, init) => {
+				const headers = new Headers(init?.headers);
+				expect(headers.has("authorization")).toBe(false);
+				headers.set("origin", origin);
+				const req = await delegate(new Request(input, { ...init, headers }));
+				expect(new URL(req.url).pathname).toBe("/v2/accounts/self/providers");
+				expect(req.method).toBe("PUT");
+				expect(req.headers.get("if-match")).toBe('"4"');
+				expect(req.headers.get("authorization")).toBe(
+					"Bearer server-side-token",
+				);
+				return Response.json({ revision: 5 });
+			},
+		});
+		expect(
+			(await client.putProvider({ id: "sandbox-a" }, { revision: 4 })).revision,
+		).toBe(5);
 	});
 });

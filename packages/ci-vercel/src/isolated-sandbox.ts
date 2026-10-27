@@ -1,5 +1,5 @@
 import { Sandbox, type Session } from "@vercel/sandbox";
-import { validSandboxDomainPattern } from "./sandbox-domains.js";
+import { validateSandboxDomains } from "./sandbox-domains.js";
 import {
 	prepareSandboxRunner,
 	sandboxRunnerBootstrapPort,
@@ -58,12 +58,9 @@ export function sandboxCreateParameters(
 		forward.hash
 	)
 		throw new Error("invalid sandbox forward URL");
-	if (config.allowedDomains.length === 0 || config.allowedDomains.length > 100)
-		throw new Error("sandbox requires explicit allowed domains");
+	validateSandboxDomains(config.allowedDomains);
 	const allowed: Record<string, { forwardURL: string }[]> = Object.create(null);
 	for (const domain of config.allowedDomains) {
-		if (!validSandboxDomainPattern(domain) || allowed[domain])
-			throw new Error("invalid or repeated sandbox destination");
 		allowed[domain] = [{ forwardURL: forward.href }];
 	}
 	if (config.region && !/^[a-z0-9]{3,8}$/.test(config.region))

@@ -19,7 +19,9 @@ export function createOwnerControlDelegation(options: {
 			(request.method === "GET" &&
 				(path === "/v1/accounts/self/policy" ||
 					path === "/v1/accounts/self/installations")) ||
-			(request.method === "PUT" && path === "/v2/accounts/self/policy") ||
+			(request.method === "PUT" &&
+				(path === "/v2/accounts/self/policy" ||
+					path === "/v2/accounts/self/providers")) ||
 			(request.method === "POST" &&
 				path === "/v1/accounts/self/repositories/isolated-connect");
 		if (

@@ -1,6 +1,11 @@
 import { randomUUID } from "node:crypto";
 import { DatabaseSync } from "node:sqlite";
-import { create, fromJsonString, toJsonString } from "@bufbuild/protobuf";
+import {
+	clone,
+	create,
+	fromJsonString,
+	toJsonString,
+} from "@bufbuild/protobuf";
 import { z } from "zod";
 import { allocationQuote } from "./accounting.js";
 import {
@@ -22,8 +27,17 @@ import {
 	parseConfiguration,
 	route,
 	SandboxAllowanceSchema,
+	type SandboxPricing,
 	SandboxPricingSchema,
 } from "./index.js";
+
+/** A conservative bootstrap increase is operator policy, not a new usage observation. */
+function observedSandboxPricing(pricing: SandboxPricing | undefined): string {
+	if (!pricing) return "";
+	const observed = clone(SandboxPricingSchema, pricing);
+	observed.bootstrapFixedMicros = 0;
+	return toJsonString(SandboxPricingSchema, observed);
+}
 
 /** Single-writer partition. Events and their materialized lease view commit together. */
 export class LeaseStore {
@@ -155,12 +169,12 @@ export class LeaseStore {
 							offer.spentMicros !== oldOffer.spentMicros ||
 							offer.validUntil !== oldOffer.validUntil ||
 							offer.sourceUrl !== oldOffer.sourceUrl ||
-							(oldOffer.sandboxPricing
-								? toJsonString(SandboxPricingSchema, oldOffer.sandboxPricing)
-								: "") !==
-								(offer.sandboxPricing
-									? toJsonString(SandboxPricingSchema, offer.sandboxPricing)
-									: "") ||
+							observedSandboxPricing(oldOffer.sandboxPricing) !==
+								observedSandboxPricing(offer.sandboxPricing) ||
+							(oldOffer.sandboxPricing &&
+								offer.sandboxPricing &&
+								offer.sandboxPricing.bootstrapFixedMicros <
+									oldOffer.sandboxPricing.bootstrapFixedMicros) ||
 							(oldOffer.sandboxAllowance
 								? toJsonString(
 										SandboxAllowanceSchema,

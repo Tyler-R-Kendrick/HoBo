@@ -4,8 +4,11 @@ import { create, toJsonString } from "@bufbuild/protobuf";
 import {
 	AccountSchema,
 	effectiveCiAccount,
+	LeaseSchema,
 	OfferSchema,
 	parseCiPolicy,
+	parsePipeline,
+	route,
 	SandboxAllowanceSchema,
 	SandboxPricingSchema,
 } from "@hobo/ci";
@@ -698,6 +701,216 @@ describe("hosted asynchronous account control", () => {
 		);
 		if (!saved) throw new Error("missing account");
 		expect(effectiveCiAccount(saved, compiled).offers[1]?.enabled).toBe(true);
+	});
+	it("configures an existing provider without changing usage evidence or an active reservation", async () => {
+		const t = setup();
+		const state = await t.store.configuration();
+		const configuration = state?.configuration;
+		const account = configuration?.accounts[0];
+		if (!account || !configuration) throw new Error("missing account");
+		account.offers.push(
+			create(OfferSchema, {
+				id: "sandbox-a",
+				provider: "vercel",
+				providerAccountId: "vercel-account-a",
+				backend: "sandbox",
+				runsOn: "sandbox-2",
+				enabled: true,
+				bridgeAcknowledged: true,
+				concurrency: 2,
+				budgetMicros: 100000,
+				spentMicros: 5,
+				observedAt: "2026-10-26T00:00:00Z",
+				validUntil: "2026-10-27T00:00:00Z",
+				sourceUrl: "https://example.com/pricing",
+				sandboxAllowance: create(SandboxAllowanceSchema, {
+					cpuVcpuMs: 3000,
+				}),
+				sandboxPricing: create(SandboxPricingSchema, {
+					vcpus: 2,
+					memoryMb: 4096,
+					maxEgressBytes: 100000,
+					cpuMicrosPerVcpuHour: 10,
+					memoryMicrosPerGbHour: 1,
+					creationMicros: 1,
+					egressMicrosPerGb: 1,
+					proxyMicrosPerGb: 1,
+					proxyFixedMicros: 1,
+					networkHeadroomBytes: 1,
+					bootstrapFixedMicros: 5,
+				}),
+			}),
+		);
+		await t.store.configure(configuration, 1, NOW);
+		const pipeline = parsePipeline(
+			JSON.stringify({
+				id: "test-provider-policy",
+				accountId: account.id,
+				timeoutSeconds: 60,
+				steps: [{ id: "check", argv: ["true"] }],
+			}),
+		);
+		const lease = t.h.store.reservePipeline(
+			account,
+			pipeline,
+			"provider-policy-input",
+			["sandbox-a"],
+			NOW,
+		);
+		if (!lease) throw new Error("missing active reservation");
+		const original = account.offers.find((offer) => offer.id === "sandbox-a");
+		if (!original?.sandboxPricing) throw new Error("missing Sandbox offer");
+		const candidate = JSON.parse(toJsonString(OfferSchema, original));
+		candidate.budgetMicros = 120000;
+		candidate.concurrency = 1;
+		candidate.sandboxPricing.bootstrapFixedMicros = 10;
+		expect(
+			(
+				await t.request(
+					"/v2/accounts/self/providers",
+					"PUT",
+					"admin",
+					{ ...candidate, budgetMicros: account.budgetMicros + 1 },
+					2,
+				)
+			).status,
+		).toBe(400);
+		expect(
+			(
+				await t.request(
+					"/v2/accounts/self/providers",
+					"PUT",
+					"admin",
+					candidate,
+					2,
+				)
+			).status,
+		).toBe(200);
+		const next = (
+			await t.store.configuration()
+		)?.configuration?.accounts[0]?.offers.find(
+			(offer) => offer.id === "sandbox-a",
+		);
+		expect(next?.budgetMicros).toBe(120000);
+		expect(next?.concurrency).toBe(1);
+		expect(next?.sandboxPricing?.bootstrapFixedMicros).toBe(10);
+		expect(next?.observedAt).toBe(original.observedAt);
+		expect(next?.spentMicros).toBe(original.spentMicros);
+		expect(next?.sandboxAllowance).toEqual(original.sandboxAllowance);
+		expect(t.h.store.get(lease.id)?.reservedPaidMicros).toBe(
+			lease.reservedPaidMicros,
+		);
+		const savedAccount = (await t.store.configuration())?.configuration
+			?.accounts[0];
+		if (!savedAccount || !next) throw new Error("missing saved account");
+		const policyAccount = { ...savedAccount, offers: [next] };
+		const withoutHistory = route(policyAccount, [], NOW);
+		if (!withoutHistory) throw new Error("missing Sandbox quote");
+		const settled = create(LeaseSchema, {
+			accountId: account.id,
+			offerId: next.id,
+			state: "completed",
+			paidMicros: withoutHistory.paidMicros + 1,
+			usageCompletedAt: "2026-10-26T01:00:00Z",
+			sandboxUsedAllowance: create(SandboxAllowanceSchema, { cpuVcpuMs: 3000 }),
+		});
+		const withHistory = route(policyAccount, [settled], NOW);
+		expect(withoutHistory.sandboxReservedAllowance?.cpuVcpuMs).toBe(3000);
+		expect(withHistory?.sandboxReservedAllowance?.cpuVcpuMs ?? 0).toBe(0);
+		const cap = withoutHistory.paidMicros + settled.paidMicros - 1;
+		const capped = {
+			...policyAccount,
+			budgetMicros: cap,
+			offers: [{ ...next, budgetMicros: cap }],
+		};
+		expect(route(capped, [], NOW)).toBeDefined();
+		expect(route(capped, [settled], NOW)).toBeUndefined();
+		expect((await t.store.configuration())?.revision).toBe(3);
+		// An equal estimate is allowed, but lowering it needs a fresh observation.
+		expect(
+			(
+				await t.request(
+					"/v2/accounts/self/providers",
+					"PUT",
+					"admin",
+					candidate,
+					3,
+				)
+			).status,
+		).toBe(200);
+		candidate.sandboxPricing.bootstrapFixedMicros = 9;
+		expect(
+			(
+				await t.request(
+					"/v2/accounts/self/providers",
+					"PUT",
+					"admin",
+					candidate,
+					4,
+				)
+			).status,
+		).toBe(403);
+		expect((await t.store.configuration())?.revision).toBe(4);
+	});
+	it("rejects cross-tenant, stale, unauthorized, invented or forged provider updates", async () => {
+		const t = setup();
+		const offer = (await t.store.configuration())?.configuration?.accounts[0]
+			?.offers[0];
+		if (!offer) throw new Error("missing offer");
+		const body = JSON.parse(toJsonString(OfferSchema, offer));
+		for (const [token, revision, expected] of [
+			["invalid", 1, 401],
+			["observer", 1, 403],
+			["neighbor", 1, 404],
+			["admin", 0, 409],
+		] as const) {
+			expect(
+				(
+					await t.request(
+						"/v2/accounts/self/providers",
+						"PUT",
+						token,
+						body,
+						revision,
+					)
+				).status,
+			).toBe(expected);
+		}
+		for (const [field, value] of [
+			["providerAccountId", "other"],
+			["observedAt", "2026-10-26T01:00:00Z"],
+			["sourceUrl", "https://other.example"],
+			["freeMinutes", 999],
+			["spentMicros", 0],
+			["priceMicrosPerMinute", 1],
+			["enabled", false],
+		] as const) {
+			const changed = { ...body, [field]: value };
+			if (field === "spentMicros") changed.spentMicros = 999;
+			expect(
+				(
+					await t.request(
+						"/v2/accounts/self/providers",
+						"PUT",
+						"admin",
+						changed,
+						1,
+					)
+				).status,
+			).toBe(400);
+		}
+		expect(
+			(
+				await t.request(
+					"/v2/accounts/self/providers",
+					"PUT",
+					"admin",
+					{ ...body, id: "invented" },
+					1,
+				)
+			).status,
+		).toBe(404);
+		expect((await t.store.configuration())?.revision).toBe(1);
 	});
 	it("accepts current Sandbox prices and verified free snapshots without letting observations alter resource limits", async () => {
 		const t = setup();

@@ -171,7 +171,9 @@ and a late apply result cannot regress a ready connection to pending.
 
 | Method | Account endpoint | Required scope |
 | --- | --- | --- |
-| GET / PUT | `/v1/accounts/self/policy` | `policy:read` / `policy:write` |
+| GET | `/v1/accounts/self/policy` | `policy:read` |
+| PUT | `/v2/accounts/self/policy` | `policy:write` plus current revision |
+| PUT | `/v2/accounts/self/providers` | `policy:write` plus current revision |
 | GET | `/v1/accounts/self/installations` | `policy:read` |
 | POST | `/v1/accounts/self/repositories/prepare` | `repositories:write` |
 | GET | `/v1/accounts/self/repositories/{operation}` | `policy:read` |

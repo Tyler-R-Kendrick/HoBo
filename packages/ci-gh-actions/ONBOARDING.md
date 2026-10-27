@@ -63,10 +63,16 @@ After the App installation is bound to the account, the SDK can connect a
 repository without creating a companion workflow. A verified owner using the
 same browser and origin can create the SDK client with
 `createCiRelayClient({ origin: window.location.origin, ownerSession: true })`;
-the owner session delegates `getPolicy`, `getInstallations`, `putDesiredPolicy`
-and `connectIsolatedRepository`, without exposing the account token to the
-browser. Other SDK methods require their normal account credentials; the hosted
-control plane disables the legacy `putPolicy` method.
+the owner session delegates `getPolicy`, `getInstallations`, `putDesiredPolicy`,
+`putProvider`, and `connectIsolatedRepository`, without exposing the account
+token to the browser. Other SDK methods require their normal account credentials;
+the hosted control plane disables the legacy `putPolicy` method.
+To update an existing provider, copy its offer from `getPolicy()` and call
+`putProvider(offer, { revision })` with that response's revision. The operation
+can change the provider budget and concurrency and conservatively increase the
+Sandbox bootstrap estimate. Provider budget cannot exceed the account budget.
+The provider binding and usage observation remain unchanged; use the separate
+observation workflow for updated provider pricing or a lower estimate.
 Other clients supply an account token with the required scopes. Call
 `client.connectIsolatedRepository({ repository: "owner/repo", installationId,
 trustedRepositoryAcknowledged: true, publicRepositoryAcknowledged: true,

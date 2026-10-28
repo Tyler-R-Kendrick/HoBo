@@ -181,6 +181,47 @@ describe("repository onboarding authorization and failure boundaries", () => {
 			}),
 		).toThrow("HTTPS origin");
 	});
+	it.each([
+		"https://localhost",
+		"https://dev.localhost.",
+		"https://127.1",
+		"https://0.0.0.0",
+		"https://10.1.2.3",
+		"https://100.64.0.1",
+		"https://169.254.1.1",
+		"https://172.31.2.3",
+		"https://192.168.2.3",
+		"https://[::1]",
+		"https://[::]",
+		"https://[::ffff:127.0.0.1]",
+		"https://[::ffff:10.0.0.1]",
+		"https://[fd00::1]",
+		"https://[fe80::1]",
+	])("rejects unreachable GitHub App webhook origin %s", (relayUrl) => {
+		expect(() =>
+			createGithubAppManifest({
+				name: "HoBo",
+				manifestCallbackUrl: "https://ci.test/manifest",
+				installationCallbackUrl: "https://ci.test/installed",
+				relayUrl,
+			}),
+		).toThrow("public HTTPS tunnel");
+	});
+	it.each([
+		"manifestCallbackUrl",
+		"installationCallbackUrl",
+	] as const)("accepts a browser-local GitHub App %s", (field) => {
+		const manifest = createGithubAppManifest({
+			name: "HoBo",
+			relayUrl: "https://ci.test",
+			manifestCallbackUrl: "https://ci.test/manifest",
+			installationCallbackUrl: "https://ci.test/installed",
+			[field]: "https://localhost/callback",
+		});
+		expect(manifest.hookAttributes?.url).toBe(
+			"https://ci.test/github/webhooks",
+		);
+	});
 	it("refuses repository-wide runner trust without acknowledgment before network", async () => {
 		const subject = port([]);
 		await expect(

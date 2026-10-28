@@ -18,12 +18,14 @@ import {
 	ConfigurationStateSchema,
 	type ControlRecord,
 	ControlRecordSchema,
+	effectiveCiAccount,
 	type Job,
 	JobSchema,
 	type Lease,
 	LeaseSchema,
 	type Pipeline,
 	type PipelineResult,
+	parseCiPolicy,
 	parseConfiguration,
 	route,
 	SandboxAllowanceSchema,
@@ -51,6 +53,8 @@ export interface RateReattestation {
 /** Single-writer partition. Events and their materialized lease view commit together. */
 export class LeaseStore {
 	private readonly db: DatabaseSync;
+	private transactionDepth = 0;
+	private savepointSequence = 0;
 	constructor(path: string, database?: DatabaseSync) {
 		this.db = database ?? new DatabaseSync(path);
 		this.db.exec(`PRAGMA journal_mode=WAL; PRAGMA busy_timeout=5000;
@@ -79,14 +83,22 @@ export class LeaseStore {
 		this.db.close();
 	}
 	private transaction<T>(fn: () => T): T {
-		this.db.exec("BEGIN IMMEDIATE");
+		const nested = this.transactionDepth > 0;
+		const savepoint = `hobo_ci_${++this.savepointSequence}`;
+		this.db.exec(nested ? `SAVEPOINT ${savepoint}` : "BEGIN IMMEDIATE");
+		this.transactionDepth++;
 		try {
 			const result = fn();
-			this.db.exec("COMMIT");
+			this.db.exec(nested ? `RELEASE SAVEPOINT ${savepoint}` : "COMMIT");
 			return result;
 		} catch (error) {
-			this.db.exec("ROLLBACK");
+			if (nested) {
+				this.db.exec(`ROLLBACK TO SAVEPOINT ${savepoint}`);
+				this.db.exec(`RELEASE SAVEPOINT ${savepoint}`);
+			} else this.db.exec("ROLLBACK");
 			throw error;
+		} finally {
+			this.transactionDepth--;
 		}
 	}
 	all(): Lease[] {
@@ -280,6 +292,21 @@ export class LeaseStore {
 					"INSERT INTO configuration_state(id,body) VALUES (1,?) ON CONFLICT(id) DO UPDATE SET body=excluded.body",
 				)
 				.run(detail);
+			return state;
+		});
+	}
+	/** Commit account settings and desired intent in one revision-fenced transaction. */
+	configureWithRecord(
+		configuration: Configuration,
+		expectedRevision: number,
+		at: string,
+		key: string,
+		accountId: string,
+		bodyJson: string,
+	): ConfigurationState {
+		return this.transaction(() => {
+			const state = this.configure(configuration, expectedRevision, at);
+			this.putControlRecord(key, accountId, bodyJson, at);
 			return state;
 		});
 	}
@@ -510,10 +537,28 @@ export class LeaseStore {
 		// This local adapter only launches trusted GitHub workflow bridges.
 		if (job.isolatedRequired) return undefined;
 		return this.transaction(() => {
-			const binding = this.configuration()?.configuration?.connections.find(
+			const configuration = this.configuration()?.configuration;
+			const binding = configuration?.connections.find(
 				(entry) => entry.repositoryId === job.repositoryId,
 			);
+			if (
+				configuration &&
+				(!binding ||
+					binding.installationId !== job.installationId ||
+					binding.repository.toLowerCase() !== job.repository.toLowerCase() ||
+					binding.accountId !== account.id)
+			)
+				return undefined;
 			if (binding?.isolatedOnly) return undefined;
+			const current = configuration
+				? configuration.accounts.find((entry) => entry.id === account.id)
+				: account;
+			if (!current || (binding && binding.accountId !== current.id))
+				return undefined;
+			const desired = this.controlRecord(`ci-policy:${current.id}`);
+			const effective = desired
+				? effectiveCiAccount(current, parseCiPolicy(desired.bodyJson))
+				: current;
 			const key = `${job.repositoryId}:${job.id}:${job.runAttempt}`;
 			if (
 				this.db
@@ -536,8 +581,8 @@ export class LeaseStore {
 			}
 			const selected = route(
 				{
-					...account,
-					offers: account.offers.filter(
+					...effective,
+					offers: effective.offers.filter(
 						(offer) => !offer.backend || offer.backend === "gh-actions",
 					),
 				},

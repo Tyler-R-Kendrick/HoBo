@@ -2,17 +2,82 @@ import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import {
 	ciEnvironmentPolicySha256,
+	ciEnvironmentSecretsSha256,
 	parseCiProjectConfig,
 	selectCiEnvironment,
 } from "../src/project-config.js";
-import { ciProjectJsonSchema } from "../src/project-schema.js";
+import {
+	CiProjectDocumentSchema,
+	ciProjectJsonSchema,
+} from "../src/project-schema.js";
 
 const examplePath = new URL("../examples/project/ci.json", import.meta.url);
 function source() {
 	return JSON.parse(readFileSync(examplePath, "utf8"));
 }
 
+function inlineSource() {
+	const input = source();
+	for (const name of ["local", "integration"]) {
+		const environment = input.environments[name];
+		environment.secrets = structuredClone(input.definitions.secrets.relay);
+		environment.policy.pool = structuredClone(input.definitions.pools.linux);
+		environment.policy.routing = structuredClone(
+			input.definitions.routing.freeThenCheapest,
+		);
+		environment.policy.budget = structuredClone(
+			input.definitions.budgets[name],
+		);
+		environment.policy.providers = [
+			structuredClone(
+				input.definitions.providers[
+					name === "local" ? "localGithub" : "integrationSandbox"
+				],
+			),
+		];
+	}
+	delete input.definitions;
+	return input;
+}
+
 describe("typed project component references", () => {
+	it.each([
+		"inline",
+		"mixed",
+	])("accepts %s components across environments with identical policy and secret digests", async (mode) => {
+		const referenced = source();
+		const inline = inlineSource();
+		const input = mode === "inline" ? inline : source();
+		if (mode === "mixed") {
+			input.environments.local.policy.pool =
+				inline.environments.local.policy.pool;
+			input.environments.integration.policy.routing =
+				inline.environments.integration.policy.routing;
+			input.environments.local.secrets = inline.environments.local.secrets;
+			input.environments.integration.policy.providers =
+				inline.environments.integration.policy.providers;
+		} else {
+			expect(input).not.toHaveProperty("definitions");
+			expect(JSON.stringify(input)).not.toContain('"$ref"');
+		}
+		expect(CiProjectDocumentSchema.safeParse(input).success).toBe(true);
+		const expected = parseCiProjectConfig(JSON.stringify(referenced));
+		const actual = parseCiProjectConfig(JSON.stringify(input));
+		for (const name of ["local", "integration"]) {
+			expect(await ciEnvironmentPolicySha256(actual, name)).toBe(
+				await ciEnvironmentPolicySha256(expected, name),
+			);
+			expect(await ciEnvironmentSecretsSha256(actual, name)).toBe(
+				await ciEnvironmentSecretsSha256(expected, name),
+			);
+		}
+	});
+	it("validates inline components just as strictly as referenced components", () => {
+		const input = inlineSource();
+		input.environments.local.policy.pool.os = "windows";
+		expect(CiProjectDocumentSchema.safeParse(input).success).toBe(false);
+		expect(() => parseCiProjectConfig(JSON.stringify(input))).toThrow();
+	});
 	it("ships the exact schema generated from the runtime authoring contract", () => {
 		expect(
 			JSON.parse(

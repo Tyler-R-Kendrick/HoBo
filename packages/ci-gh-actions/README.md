@@ -136,6 +136,36 @@ publicly reachable. Credentials are sent only to the trusted control origin.
 Amounts are USD microdollars. Each policy still requires separately provisioned
 providers and a repository connection on its selected relay.
 
+The [project JSON Schema](schema/ci-project.schema.json) defines the configuration
+format using JSON Schema draft 2020-12. The example's `$schema` annotation points
+editors to that schema, and the package exports it as
+`@hobo/ci-gh-actions/schema/ci-project.schema.json`. The parser uses its shipped
+schemas and never fetches the `$schema` URL while loading configuration.
+
+Put reusable values in the document's typed `definitions` registries. For
+example, define the Linux pool and routing strategy once, then use these policy
+fields in every environment that shares them:
+
+```json
+{
+  "pool": { "$ref": "#/definitions/pools/linux" },
+  "routing": { "$ref": "#/definitions/routing/freeThenCheapest" }
+}
+```
+
+The registries cover `pools`, `routing`, `budgets`, `providers`, and `secrets`.
+Provider array entries can reference individual provider definitions; an
+entire secret-requirement map can reference a named `secrets` definition.
+References must point to an existing value in the correct registry within the
+same document. They cannot include sibling overrides, chain to other references,
+or load another file or URL. Both stored definitions and resolved environments
+are validated. The schema's `$defs` define reusable **types**; the configuration's
+`definitions` hold reusable **values**. The example uses one shared pool, routing
+strategy and secret declaration set, and separate budgets for its different
+local and integration spending limits. Secret values remain outside both.
+Policy and secret-declaration digests are calculated from resolved values, so
+changing a referenced definition changes every affected environment's digest.
+
 Each environment may declare the names of its required secrets under `secrets`.
 For example, `"HOBO_CI_ACCOUNT_TOKEN": { "requiredFor": ["deployment"] }`
 declares a requirement without recording a value. Names are uppercase identifiers;
@@ -215,10 +245,10 @@ The same operations are available from `@hobo/ci-gh-actions/project-config`:
 
 An organization can supply its own config with `--organization-config PATH`.
 Repository profiles replace entire same-named organization profiles; they are
-not merged field by field. Within a single file, `templates` provide reusable
-partial profiles and an environment may select one using `extends`. Environment
-fields recursively override template object fields; arrays are replaced. Templates
-cannot extend other templates or cross the organization/repository file boundary.
+not merged field by field. Each input document resolves its own typed references;
+repository references cannot reach organization definitions. Existing `templates`
+and `extends` inputs remain supported for compatibility; use typed definitions
+and references for reusable configuration components.
 The selected environment's trusted target and policy
 digest must still come from a source independent of both files. Distinct
 profiles require distinct `(origin, accountId)` pairs; separate origins can

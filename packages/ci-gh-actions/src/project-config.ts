@@ -6,6 +6,10 @@ import {
 } from "@hobo/ci";
 import { z } from "zod";
 import { createCiRelayClient } from "./client.js";
+import {
+	CiProjectDocumentSchema,
+	resolveCiProjectReferences,
+} from "./project-schema.js";
 
 const environmentName = /^[A-Za-z][A-Za-z0-9_-]{0,63}$/;
 const ExplicitEnvironment = z.string().regex(environmentName);
@@ -74,11 +78,15 @@ export interface CiProjectConfig {
 	readonly environments: Readonly<Record<string, CiProjectEnvironment>>;
 }
 
-export interface CiProjectConfigInput {
+interface LegacyCiProjectConfigInput {
 	defaultEnvironment?: string;
 	templates?: Record<string, CiProjectEnvironmentTemplate>;
 	environments?: Record<string, CiProjectEnvironmentInput>;
 }
+
+export type CiProjectConfigInput =
+	| LegacyCiProjectConfigInput
+	| z.input<typeof CiProjectDocumentSchema>;
 
 type DeepPartial<T> = T extends readonly unknown[]
 	? T
@@ -219,7 +227,8 @@ export function parseCiProjectConfig(
 			throw new Error("project configuration too large");
 		if (organization && !validatedConfigs.has(organization))
 			throw new Error("organization configuration is not validated");
-		const input = ProjectInput.parse(JSON.parse(json));
+		const authored = CiProjectDocumentSchema.parse(JSON.parse(json));
+		const input = ProjectInput.parse(resolveCiProjectReferences(authored));
 		const entries = Object.entries(input.environments ?? {});
 		const environments = Object.fromEntries(
 			entries.map(([name, rawEntry]) => {

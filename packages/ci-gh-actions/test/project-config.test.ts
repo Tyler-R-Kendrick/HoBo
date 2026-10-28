@@ -82,7 +82,9 @@ describe("repository CI environment configuration", () => {
 		).toBe(true);
 		expect(() => requiredCiSecrets(config, "", "deployment")).toThrow();
 		// SAFETY: This deliberately bypasses the type to test runtime input validation.
-		expect(() => requiredCiSecrets(config, "local", "other" as never)).toThrow();
+		expect(() =>
+			requiredCiSecrets(config, "local", "other" as never),
+		).toThrow();
 	});
 
 	it("rejects inline values, unsupported secret sources and invalid declarations", () => {

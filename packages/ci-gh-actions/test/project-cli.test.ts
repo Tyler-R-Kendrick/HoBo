@@ -10,6 +10,7 @@ import { z } from "zod";
 import { runCiProjectCli } from "../src/project-cli.js";
 import {
 	ciEnvironmentPolicySha256,
+	ciEnvironmentSecretsSha256,
 	parseCiProjectConfig,
 } from "../src/project-config.js";
 
@@ -64,6 +65,80 @@ async function policyPin(
 const servers: Server[] = [];
 const directories: string[] = [];
 const execute = promisify(execFile);
+
+it("checks reviewed environment requirements against explicitly approved mounted secrets without printing values", async () => {
+	const directory = await mkdtemp(join(tmpdir(), "hobo-ci-secrets-cli-"));
+	directories.push(directory);
+	const configInput = {
+		defaultEnvironment: "test",
+		environments: {
+			test: {
+				relayOrigin: "https://trusted.example.test",
+				policy: policy("account", 100),
+				secrets: { CONTROL_TOKEN: { requiredFor: ["deployment"] } },
+			},
+		},
+	};
+	const configFile = join(directory, "ci.json");
+	await writeFile(configFile, JSON.stringify(configInput));
+	await writeFile(join(directory, "CONTROL_TOKEN"), "actual-secret-value\n");
+	const digest = await ciEnvironmentSecretsSha256(
+		parseCiProjectConfig(JSON.stringify(configInput)),
+		"test",
+	);
+	const args = [
+		"check-secrets",
+		"--config",
+		configFile,
+		"--environment",
+		"test",
+		"--phase",
+		"deployment",
+		"--secret-dir",
+		directory,
+		"--trusted-origin",
+		"https://trusted.example.test",
+		"--trusted-account",
+		"account",
+		"--trusted-secrets-sha256",
+		digest,
+		"--allow-secret",
+		"CONTROL_TOKEN",
+	];
+	let output = "";
+	await runCiProjectCli(args, {
+		write: (chunk) => {
+			output += chunk;
+		},
+	});
+	expect(JSON.parse(output)).toEqual({
+		environment: "test",
+		phase: "deployment",
+		checked: ["CONTROL_TOKEN"],
+	});
+	expect(output).not.toContain("actual-secret-value");
+	await expect(
+		runCiProjectCli(
+			args.filter(
+				(_part, i) =>
+					i !== args.indexOf("--allow-secret") &&
+					i !== args.indexOf("--allow-secret") + 1,
+			),
+		),
+	).rejects.toThrow("operator-approved");
+	const swapped = [...args];
+	swapped[swapped.indexOf("--trusted-secrets-sha256") + 1] = "0".repeat(64);
+	await rm(join(directory, "CONTROL_TOKEN"));
+	await expect(runCiProjectCli(swapped)).rejects.toThrow(
+		"untrusted secret requirements",
+	);
+	const wrongTarget = [...args];
+	wrongTarget[wrongTarget.indexOf("--trusted-origin") + 1] =
+		"https://wrong.example.test";
+	await expect(runCiProjectCli(wrongTarget)).rejects.toThrow(
+		"binding is not trusted",
+	);
+});
 afterEach(async () => {
 	for (const server of servers.splice(0))
 		await new Promise<void>((resolve, reject) =>

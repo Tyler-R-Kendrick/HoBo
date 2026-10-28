@@ -41,13 +41,24 @@ export {
 	type CiProjectConfig,
 	type CiProjectConfigInput,
 	type CiProjectEnvironment,
+	type CiSecretPhase,
+	type CiSecretRequirement,
 	type ConfiguredCiRelayOptions,
 	ciEnvironmentPolicySha256,
+	ciEnvironmentSecretsSha256,
 	createConfiguredCiRelayClient,
 	defineCiProjectConfig,
 	parseCiProjectConfig,
+	requiredCiSecrets,
 	selectCiEnvironment,
 } from "./project-config.js";
+export {
+	type CiResolvedSecrets,
+	type CiSecretResolver,
+	createCiEnvironmentSecretResolver,
+	createCiSecretDirectoryResolver,
+	resolveCiSecrets,
+} from "./project-secrets.js";
 export {
 	createQueuedJobRepair,
 	PostgresQueuedJobRepairClaims,

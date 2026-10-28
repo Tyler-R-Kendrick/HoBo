@@ -4,9 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import {
 	applyCiEnvironmentPolicy,
 	ciEnvironmentPolicySha256,
+	ciEnvironmentSecretsSha256,
 	createConfiguredCiRelayClient,
 	defineCiProjectConfig,
 	parseCiProjectConfig,
+	requiredCiSecrets,
 	selectCiEnvironment,
 } from "../src/project-config.js";
 
@@ -52,6 +54,112 @@ const targets = [
 ];
 
 describe("repository CI environment configuration", () => {
+	it("declares immutable environment-specific secret requirements without values", () => {
+		const source = input();
+		const secrets = {
+			HOBO_CONTROL_TOKEN: { requiredFor: ["deployment", "execution"] as const },
+			GITHUB_APP_KEY: { requiredFor: ["execution"] as const },
+		};
+		const config = defineCiProjectConfig({
+			...source,
+			environments: {
+				...source.environments,
+				local: { ...source.environments.local, secrets },
+			},
+		});
+		expect(requiredCiSecrets(config, "local", "deployment")).toEqual([
+			"HOBO_CONTROL_TOKEN",
+		]);
+		expect(requiredCiSecrets(config, "local", "execution")).toEqual([
+			"GITHUB_APP_KEY",
+			"HOBO_CONTROL_TOKEN",
+		]);
+		expect(requiredCiSecrets(config, "integration", "execution")).toEqual([]);
+		const selected = selectCiEnvironment(config, "local");
+		expect(Object.isFrozen(selected.secrets)).toBe(true);
+		expect(
+			Object.isFrozen(selected.secrets.HOBO_CONTROL_TOKEN?.requiredFor),
+		).toBe(true);
+		expect(() => requiredCiSecrets(config, "", "deployment")).toThrow();
+		// SAFETY: This deliberately bypasses the type to test runtime input validation.
+		expect(() => requiredCiSecrets(config, "local", "other" as never)).toThrow();
+	});
+
+	it("rejects inline values, unsupported secret sources and invalid declarations", () => {
+		const base = input();
+		for (const secrets of [
+			{ TOKEN: { requiredFor: ["execution"], value: "hidden-value" } },
+			{
+				TOKEN: {
+					requiredFor: ["deployment"],
+					source: "https://secret.example",
+				},
+			},
+			{ TOKEN: { requiredFor: [] } },
+			{ TOKEN: { requiredFor: ["execution", "execution"] } },
+			{ TOKEN: { requiredFor: ["unknown"] } },
+			{ "bad-name": { requiredFor: ["execution"] } },
+		]) {
+			const text = JSON.stringify({
+				...base,
+				environments: { local: { ...base.environments.local, secrets } },
+			});
+			expect(() => parseCiProjectConfig(text)).toThrow(
+				"invalid CI project configuration",
+			);
+			try {
+				parseCiProjectConfig(text);
+			} catch (error) {
+				expect(String(error)).not.toContain("hidden-value");
+			}
+		}
+	});
+
+	it("pins secret declarations and their target independently from the policy digest", async () => {
+		const base = input();
+		const config = (
+			secrets:
+				| Readonly<Record<string, { readonly requiredFor: readonly string[] }>>
+				| undefined,
+			relayOrigin = base.environments.local.relayOrigin,
+		) =>
+			parseCiProjectConfig(
+				JSON.stringify({
+					...base,
+					environments: {
+						...base.environments,
+						local: { ...base.environments.local, relayOrigin, secrets },
+					},
+				}),
+			);
+		const first = config({
+			A: { requiredFor: ["execution", "deployment"] },
+			B: { requiredFor: ["execution"] },
+		});
+		const equivalent = config({
+			B: { requiredFor: ["execution"] },
+			A: { requiredFor: ["deployment", "execution"] },
+		});
+		const changed = config({
+			A: { requiredFor: ["deployment"] },
+			B: { requiredFor: ["execution"] },
+		});
+		expect(await ciEnvironmentSecretsSha256(first, "local")).toBe(
+			await ciEnvironmentSecretsSha256(equivalent, "local"),
+		);
+		expect(await ciEnvironmentSecretsSha256(first, "local")).not.toBe(
+			await ciEnvironmentSecretsSha256(changed, "local"),
+		);
+		expect(await ciEnvironmentPolicySha256(first, "local")).toBe(
+			await ciEnvironmentPolicySha256(changed, "local"),
+		);
+		expect(await ciEnvironmentSecretsSha256(first, "local")).not.toBe(
+			await ciEnvironmentSecretsSha256(
+				config(first.environments.local?.secrets, "http://127.0.0.1:9090"),
+				"local",
+			),
+		);
+	});
 	it("loads the shipped local and hosted example profiles", () => {
 		const config = parseCiProjectConfig(
 			readFileSync(

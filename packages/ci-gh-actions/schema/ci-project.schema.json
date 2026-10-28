@@ -1,0 +1,714 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "$schema": {
+      "type": "string",
+      "maxLength": 2048
+    },
+    "defaultEnvironment": {
+      "$ref": "#/$defs/__schema0"
+    },
+    "definitions": {
+      "$ref": "#/$defs/Definitions"
+    },
+    "templates": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/__schema0"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/__schema25"
+      },
+      "maxProperties": 32
+    },
+    "environments": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/__schema0"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/__schema39"
+      },
+      "maxProperties": 32
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "__schema0": {
+      "type": "string",
+      "pattern": "^[A-Za-z][A-Za-z0-9_-]{0,63}$"
+    },
+    "Definitions": {
+      "type": "object",
+      "properties": {
+        "pools": {
+          "$ref": "#/$defs/__schema1"
+        },
+        "routing": {
+          "$ref": "#/$defs/__schema5"
+        },
+        "budgets": {
+          "$ref": "#/$defs/__schema9"
+        },
+        "providers": {
+          "$ref": "#/$defs/__schema15"
+        },
+        "secrets": {
+          "$ref": "#/$defs/__schema21"
+        }
+      },
+      "additionalProperties": false
+    },
+    "__schema1": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/__schema0"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Pool"
+      },
+      "maxProperties": 32
+    },
+    "Pool": {
+      "type": "object",
+      "properties": {
+        "label": {
+          "$ref": "#/$defs/__schema2"
+        },
+        "os": {
+          "$ref": "#/$defs/__schema3"
+        },
+        "architecture": {
+          "$ref": "#/$defs/__schema4"
+        }
+      },
+      "required": [
+        "label",
+        "os",
+        "architecture"
+      ],
+      "additionalProperties": false
+    },
+    "__schema2": {
+      "type": "string",
+      "const": "hobo"
+    },
+    "__schema3": {
+      "type": "string",
+      "const": "linux"
+    },
+    "__schema4": {
+      "type": "string",
+      "const": "x64"
+    },
+    "__schema5": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/__schema0"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Routing"
+      },
+      "maxProperties": 32
+    },
+    "Routing": {
+      "type": "object",
+      "properties": {
+        "strategy": {
+          "$ref": "#/$defs/__schema6"
+        },
+        "noEligibleProvider": {
+          "$ref": "#/$defs/__schema7"
+        },
+        "unknownAllocation": {
+          "$ref": "#/$defs/__schema8"
+        }
+      },
+      "required": [
+        "strategy",
+        "noEligibleProvider",
+        "unknownAllocation"
+      ],
+      "additionalProperties": false
+    },
+    "__schema6": {
+      "type": "string",
+      "const": "lowest-total-incremental-cost"
+    },
+    "__schema7": {
+      "type": "string",
+      "const": "queue"
+    },
+    "__schema8": {
+      "type": "string",
+      "const": "zero"
+    },
+    "__schema9": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/__schema0"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Budget"
+      },
+      "maxProperties": 32
+    },
+    "Budget": {
+      "type": "object",
+      "properties": {
+        "scope": {
+          "$ref": "#/$defs/__schema10"
+        },
+        "currency": {
+          "$ref": "#/$defs/__schema11"
+        },
+        "limitMicros": {
+          "$ref": "#/$defs/__schema12"
+        },
+        "period": {
+          "$ref": "#/$defs/__schema13"
+        },
+        "timeZone": {
+          "$ref": "#/$defs/__schema14"
+        }
+      },
+      "required": [
+        "scope",
+        "currency",
+        "limitMicros",
+        "period",
+        "timeZone"
+      ],
+      "additionalProperties": false
+    },
+    "__schema10": {
+      "type": "string",
+      "const": "ci-account"
+    },
+    "__schema11": {
+      "type": "string",
+      "const": "USD"
+    },
+    "__schema12": {
+      "type": "integer",
+      "minimum": 0,
+      "maximum": 9007199254740991
+    },
+    "__schema13": {
+      "type": "string",
+      "const": "manual"
+    },
+    "__schema14": {
+      "type": "string",
+      "const": "UTC"
+    },
+    "__schema15": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/__schema0"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/Provider"
+      },
+      "maxProperties": 32
+    },
+    "Provider": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/__schema16"
+        },
+        "kind": {
+          "$ref": "#/$defs/__schema17"
+        },
+        "connectionRef": {
+          "$ref": "#/$defs/__schema18"
+        },
+        "runsOn": {
+          "$ref": "#/$defs/__schema19"
+        },
+        "enabled": {
+          "$ref": "#/$defs/__schema20"
+        }
+      },
+      "required": [
+        "id",
+        "kind",
+        "connectionRef",
+        "runsOn"
+      ],
+      "additionalProperties": false
+    },
+    "__schema16": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_-]{1,80}$"
+    },
+    "__schema17": {
+      "type": "string",
+      "enum": [
+        "github",
+        "blacksmith",
+        "depot",
+        "warpbuild",
+        "kubernetes",
+        "vercel"
+      ]
+    },
+    "__schema18": {
+      "type": "string",
+      "pattern": "^[A-Za-z0-9_.:/-]{1,200}$"
+    },
+    "__schema19": {
+      "type": "string",
+      "pattern": "^(?![Hh][Oo][Bb][Oo]$)[A-Za-z0-9_.-]{1,100}$"
+    },
+    "__schema20": {
+      "type": "boolean"
+    },
+    "__schema21": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/__schema0"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/SecretRequirements"
+      },
+      "maxProperties": 32
+    },
+    "SecretRequirements": {
+      "type": "object",
+      "propertyNames": {
+        "$ref": "#/$defs/__schema22"
+      },
+      "additionalProperties": {
+        "$ref": "#/$defs/__schema23"
+      },
+      "maxProperties": 64
+    },
+    "__schema22": {
+      "type": "string",
+      "pattern": "^[A-Z][A-Z0-9_]{0,63}$"
+    },
+    "__schema23": {
+      "type": "object",
+      "properties": {
+        "requiredFor": {
+          "minItems": 1,
+          "maxItems": 2,
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema24"
+          },
+          "uniqueItems": true
+        }
+      },
+      "required": [
+        "requiredFor"
+      ],
+      "additionalProperties": false
+    },
+    "__schema24": {
+      "type": "string",
+      "enum": [
+        "deployment",
+        "execution"
+      ]
+    },
+    "__schema25": {
+      "type": "object",
+      "properties": {
+        "relayOrigin": {
+          "$ref": "#/$defs/__schema26"
+        },
+        "githubWebhookOrigin": {
+          "$ref": "#/$defs/__schema28"
+        },
+        "allowInsecureLoopback": {
+          "$ref": "#/$defs/__schema30"
+        },
+        "secrets": {
+          "$ref": "#/$defs/__schema32"
+        },
+        "policy": {
+          "$ref": "#/$defs/__schema34"
+        }
+      },
+      "additionalProperties": false
+    },
+    "__schema26": {
+      "$ref": "#/$defs/__schema27"
+    },
+    "__schema27": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "__schema28": {
+      "$ref": "#/$defs/__schema29"
+    },
+    "__schema29": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2048
+    },
+    "__schema30": {
+      "$ref": "#/$defs/__schema31"
+    },
+    "__schema31": {
+      "type": "boolean"
+    },
+    "__schema32": {
+      "$ref": "#/$defs/__schema33"
+    },
+    "__schema33": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/SecretRequirements"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$ref": {
+              "type": "string",
+              "pattern": "^#\\/definitions\\/secrets\\/[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            }
+          },
+          "required": [
+            "$ref"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema34": {
+      "type": "object",
+      "properties": {
+        "accountId": {
+          "$ref": "#/$defs/__schema16"
+        },
+        "tenantId": {
+          "$ref": "#/$defs/__schema16"
+        },
+        "pool": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "$ref": "#/$defs/__schema2"
+                },
+                "os": {
+                  "$ref": "#/$defs/__schema3"
+                },
+                "architecture": {
+                  "$ref": "#/$defs/__schema4"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "$ref": {
+                  "type": "string",
+                  "pattern": "^#\\/definitions\\/pools\\/[A-Za-z][A-Za-z0-9_-]{0,63}$"
+                }
+              },
+              "required": [
+                "$ref"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "routing": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "strategy": {
+                  "$ref": "#/$defs/__schema6"
+                },
+                "noEligibleProvider": {
+                  "$ref": "#/$defs/__schema7"
+                },
+                "unknownAllocation": {
+                  "$ref": "#/$defs/__schema8"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "$ref": {
+                  "type": "string",
+                  "pattern": "^#\\/definitions\\/routing\\/[A-Za-z][A-Za-z0-9_-]{0,63}$"
+                }
+              },
+              "required": [
+                "$ref"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "budget": {
+          "anyOf": [
+            {
+              "type": "object",
+              "properties": {
+                "scope": {
+                  "$ref": "#/$defs/__schema10"
+                },
+                "currency": {
+                  "$ref": "#/$defs/__schema11"
+                },
+                "limitMicros": {
+                  "$ref": "#/$defs/__schema12"
+                },
+                "period": {
+                  "$ref": "#/$defs/__schema13"
+                },
+                "timeZone": {
+                  "$ref": "#/$defs/__schema14"
+                }
+              },
+              "additionalProperties": false
+            },
+            {
+              "type": "object",
+              "properties": {
+                "$ref": {
+                  "type": "string",
+                  "pattern": "^#\\/definitions\\/budgets\\/[A-Za-z][A-Za-z0-9_-]{0,63}$"
+                }
+              },
+              "required": [
+                "$ref"
+              ],
+              "additionalProperties": false
+            }
+          ]
+        },
+        "providers": {
+          "$ref": "#/$defs/__schema35"
+        },
+        "thresholds": {
+          "$ref": "#/$defs/__schema37"
+        }
+      },
+      "additionalProperties": false
+    },
+    "__schema35": {
+      "minItems": 1,
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema36"
+      }
+    },
+    "__schema36": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Provider"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$ref": {
+              "type": "string",
+              "pattern": "^#\\/definitions\\/providers\\/[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            }
+          },
+          "required": [
+            "$ref"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema37": {
+      "maxItems": 100,
+      "type": "array",
+      "items": {
+        "$ref": "#/$defs/__schema38"
+      }
+    },
+    "__schema38": {
+      "type": "object",
+      "properties": {
+        "fraction": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 1
+        },
+        "allow": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/__schema16"
+          }
+        }
+      },
+      "required": [
+        "fraction",
+        "allow"
+      ],
+      "additionalProperties": false
+    },
+    "__schema39": {
+      "anyOf": [
+        {
+          "type": "object",
+          "properties": {
+            "relayOrigin": {
+              "$ref": "#/$defs/__schema27"
+            },
+            "githubWebhookOrigin": {
+              "$ref": "#/$defs/__schema29"
+            },
+            "allowInsecureLoopback": {
+              "$ref": "#/$defs/__schema31"
+            },
+            "secrets": {
+              "$ref": "#/$defs/__schema33"
+            },
+            "policy": {
+              "$ref": "#/$defs/Policy"
+            }
+          },
+          "required": [
+            "relayOrigin",
+            "policy"
+          ],
+          "additionalProperties": false
+        },
+        {
+          "type": "object",
+          "properties": {
+            "relayOrigin": {
+              "$ref": "#/$defs/__schema26"
+            },
+            "githubWebhookOrigin": {
+              "$ref": "#/$defs/__schema28"
+            },
+            "allowInsecureLoopback": {
+              "$ref": "#/$defs/__schema30"
+            },
+            "secrets": {
+              "$ref": "#/$defs/__schema32"
+            },
+            "policy": {
+              "$ref": "#/$defs/__schema34"
+            },
+            "extends": {
+              "$ref": "#/$defs/__schema0"
+            }
+          },
+          "required": [
+            "extends"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "Policy": {
+      "type": "object",
+      "properties": {
+        "accountId": {
+          "$ref": "#/$defs/__schema16"
+        },
+        "tenantId": {
+          "$ref": "#/$defs/__schema16"
+        },
+        "pool": {
+          "$ref": "#/$defs/__schema40"
+        },
+        "routing": {
+          "$ref": "#/$defs/__schema41"
+        },
+        "budget": {
+          "$ref": "#/$defs/__schema42"
+        },
+        "providers": {
+          "$ref": "#/$defs/__schema35"
+        },
+        "thresholds": {
+          "$ref": "#/$defs/__schema37"
+        }
+      },
+      "required": [
+        "accountId",
+        "tenantId",
+        "pool",
+        "routing",
+        "budget",
+        "providers"
+      ],
+      "additionalProperties": false
+    },
+    "__schema40": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Pool"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$ref": {
+              "type": "string",
+              "pattern": "^#\\/definitions\\/pools\\/[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            }
+          },
+          "required": [
+            "$ref"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema41": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Routing"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$ref": {
+              "type": "string",
+              "pattern": "^#\\/definitions\\/routing\\/[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            }
+          },
+          "required": [
+            "$ref"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    },
+    "__schema42": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Budget"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "$ref": {
+              "type": "string",
+              "pattern": "^#\\/definitions\\/budgets\\/[A-Za-z][A-Za-z0-9_-]{0,63}$"
+            }
+          },
+          "required": [
+            "$ref"
+          ],
+          "additionalProperties": false
+        }
+      ]
+    }
+  },
+  "$id": "https://raw.githubusercontent.com/Tyler-R-Kendrick/HoBo/main/packages/ci-gh-actions/schema/ci-project.schema.json",
+  "title": "HoBo CI project configuration"
+}

@@ -35,6 +35,20 @@ export {
 } from "./oidc.js";
 export * from "./onboarding.js";
 export {
+	applyCiEnvironmentPolicy,
+	type CiEnvironmentCredentialScope,
+	type CiPolicyApplyOptions,
+	type CiProjectConfig,
+	type CiProjectConfigInput,
+	type CiProjectEnvironment,
+	type ConfiguredCiRelayOptions,
+	ciEnvironmentPolicySha256,
+	createConfiguredCiRelayClient,
+	defineCiProjectConfig,
+	parseCiProjectConfig,
+	selectCiEnvironment,
+} from "./project-config.js";
+export {
 	createQueuedJobRepair,
 	PostgresQueuedJobRepairClaims,
 } from "./queued-job-repair.js";

@@ -30,15 +30,28 @@ export async function startRelayFromEnvironment(
 	env: NodeJS.ProcessEnv = process.env,
 ) {
 	const publicUrl = new URL(required(env, "HOBO_CI_PUBLIC_URL"));
+	const requestedHost = env.HOBO_CI_HOST ?? "127.0.0.1";
+	// HTTP is only useful for a local, explicitly opted-in relay. In particular,
+	// an HTTP public URL must not be paired with a wildcard listener, where
+	// account bearer tokens and webhook payloads could escape the host.
+	const localHttp =
+		env.HOBO_CI_ALLOW_INSECURE_LOOPBACK === "1" &&
+		publicUrl.protocol === "http:" &&
+		["127.0.0.1", "localhost"].includes(publicUrl.hostname) &&
+		["127.0.0.1", "localhost"].includes(requestedHost);
 	if (
-		publicUrl.protocol !== "https:" ||
+		(publicUrl.protocol !== "https:" && !localHttp) ||
 		publicUrl.username ||
 		publicUrl.password ||
 		publicUrl.pathname !== "/" ||
 		publicUrl.search ||
 		publicUrl.hash
 	)
-		throw new Error("relay public URL must be an HTTPS origin");
+		throw new Error(
+			"relay public URL must be an HTTPS origin or explicitly enabled loopback HTTP origin with a loopback listener",
+		);
+	// Do not rely on DNS/hosts resolution of `localhost` for an insecure bind.
+	const host = localHttp ? "127.0.0.1" : requestedHost;
 	const port = Number(env.HOBO_CI_PORT ?? "8787");
 	if (!Number.isInteger(port) || port < 1 || port > 65535)
 		throw new Error("invalid relay port");
@@ -95,7 +108,7 @@ export async function startRelayFromEnvironment(
 		const service = createRelayService({
 			relay,
 			store,
-			host: env.HOBO_CI_HOST ?? "127.0.0.1",
+			host,
 			port,
 			controlHandler,
 			// Deployment readiness is local partition integrity. A real runner acceptance

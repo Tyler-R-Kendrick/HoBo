@@ -3,9 +3,11 @@ import { create } from "@bufbuild/protobuf";
 import {
 	type Configuration,
 	type Connection,
+	effectiveCiAccount,
 	type Job,
 	JobSchema,
 	type Lease,
+	parseCiPolicy,
 	providerOffer,
 	route,
 } from "@hobo/ci";
@@ -91,11 +93,16 @@ export class Relay {
 		return connection;
 	}
 	private account(lease: Lease) {
-		const account = this.options.config.accounts.find(
+		const config =
+			this.options.store.configuration()?.configuration ?? this.options.config;
+		const account = config.accounts.find(
 			(account) => account.id === lease.accountId,
 		);
 		if (!account) throw new Error("account revoked");
-		return account;
+		const desired = this.options.store.controlRecord(`ci-policy:${account.id}`);
+		return desired
+			? effectiveCiAccount(account, parseCiPolicy(desired.bodyJson))
+			: account;
 	}
 	private trustedOriginal(run: GithubRun, connection: Connection): boolean {
 		return (

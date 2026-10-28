@@ -1,4 +1,5 @@
 import { createHash } from "node:crypto";
+import { BlockList, isIP } from "node:net";
 import { create, fromJsonString, toJsonString } from "@bufbuild/protobuf";
 import { type Connection, ConnectionSchema } from "@hobo/ci";
 import { z } from "zod";
@@ -117,6 +118,35 @@ function origin(input: string): string {
 		throw new Error("relay must be an HTTPS origin");
 	return url.origin;
 }
+
+// Reject literal destinations GitHub.com cannot reach. Hostnames still require
+// an independently reachable public HTTPS endpoint, such as a local tunnel.
+const unreachableWebhookAddresses = new BlockList();
+unreachableWebhookAddresses.addSubnet("0.0.0.0", 8, "ipv4");
+unreachableWebhookAddresses.addSubnet("10.0.0.0", 8, "ipv4");
+unreachableWebhookAddresses.addSubnet("100.64.0.0", 10, "ipv4");
+unreachableWebhookAddresses.addSubnet("127.0.0.0", 8, "ipv4");
+unreachableWebhookAddresses.addSubnet("169.254.0.0", 16, "ipv4");
+unreachableWebhookAddresses.addSubnet("172.16.0.0", 12, "ipv4");
+unreachableWebhookAddresses.addSubnet("192.168.0.0", 16, "ipv4");
+unreachableWebhookAddresses.addAddress("::1", "ipv6");
+unreachableWebhookAddresses.addAddress("::", "ipv6");
+unreachableWebhookAddresses.addSubnet("fc00::", 7, "ipv6");
+unreachableWebhookAddresses.addSubnet("fe80::", 10, "ipv6");
+function assertGithubReachable(url: URL): void {
+	const hostname = url.hostname.toLowerCase().replace(/\.$/, "");
+	const host = hostname.startsWith("[") ? hostname.slice(1, -1) : hostname;
+	const family = isIP(host);
+	if (
+		host === "localhost" ||
+		host.endsWith(".localhost") ||
+		(family === 4 && unreachableWebhookAddresses.check(host, "ipv4")) ||
+		(family === 6 && unreachableWebhookAddresses.check(host, "ipv6"))
+	)
+		throw new Error(
+			"GitHub App webhook origin must be publicly reachable; use a public HTTPS tunnel for local development",
+		);
+}
 function repositoryName(input: string): void {
 	if (
 		!/^[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+$/.test(input) ||
@@ -175,6 +205,7 @@ export function createGithubAppManifest(options: {
 	installationCallbackUrl: string;
 }): GithubAppManifest {
 	const relay = origin(options.relayUrl);
+	assertGithubReachable(new URL(relay));
 	const callback = (value: string) => {
 		const url = new URL(value);
 		if (url.protocol !== "https:" || url.username || url.password || url.hash)

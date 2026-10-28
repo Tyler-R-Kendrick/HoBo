@@ -1,6 +1,11 @@
 import { createHash, randomUUID, timingSafeEqual } from "node:crypto";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import { create, fromJsonString, toJsonString } from "@bufbuild/protobuf";
+import {
+	clone,
+	create,
+	fromJsonString,
+	toJsonString,
+} from "@bufbuild/protobuf";
 import {
 	AccountSchema,
 	AccountStateSchema,
@@ -8,7 +13,9 @@ import {
 	ConfigurationSchema,
 	type ControlCredential,
 	ControlCredentialsSchema,
+	DesiredCiPolicySchema,
 	LeaseSchema,
+	parseCiPolicy,
 	parseConfiguration,
 	ReconcileRequestSchema,
 	RepositorySetupRequestSchema,
@@ -210,7 +217,11 @@ export function createControlPlane(options: {
 		response: ServerResponse,
 	): Promise<boolean> => {
 		const path = request.url?.split("?")[0] ?? "";
-		if (!path.startsWith("/v1/accounts/self/")) return false;
+		if (
+			!path.startsWith("/v1/accounts/self/") &&
+			!path.startsWith("/v2/accounts/self/")
+		)
+			return false;
 		try {
 			const principal = await options.authenticate(
 				request.headers.authorization,
@@ -228,7 +239,92 @@ export function createControlPlane(options: {
 			if (!principal.scopes.includes(scope))
 				throw new ControlError(403, "account scope required");
 			const current = configuration();
-			if (
+			if (path === "/v2/accounts/self/policy" && request.method === "PUT") {
+				const expected = revision(request);
+				const input = await body(request);
+				let desired: ReturnType<typeof parseCiPolicy>;
+				try {
+					desired = parseCiPolicy(input);
+				} catch {
+					throw new ControlError(400, "invalid desired CI policy");
+				}
+				if (desired.accountId !== principal.accountId)
+					throw new ControlError(
+						403,
+						"account policy belongs to another account",
+					);
+				const state = store.configuration();
+				if (!state?.configuration || state.revision !== expected)
+					throw new ControlError(409, "configuration revision conflict");
+				const config = clone(ConfigurationSchema, state.configuration);
+				const account = config.accounts.find(
+					(entry) => entry.id === principal.accountId,
+				);
+				if (!account)
+					throw new ControlError(409, "trusted account bootstrap required");
+				if (desired.providers.length !== account.offers.length)
+					throw new ControlError(
+						409,
+						"provider inventory requires trusted provisioning",
+					);
+				for (const provider of desired.providers) {
+					const offer = account.offers.find(
+						(entry) => entry.id === provider.id,
+					);
+					if (
+						!offer ||
+						offer.provider !== provider.kind ||
+						offer.providerAccountId !== provider.connectionRef ||
+						offer.runsOn !== provider.runsOn ||
+						(provider.kind === "vercel"
+							? offer.backend !== "sandbox"
+							: !!offer.backend && offer.backend !== "gh-actions")
+					)
+						throw new ControlError(
+							409,
+							"provider binding requires trusted provisioning",
+						);
+					if (offer.backend === "sandbox")
+						throw new ControlError(
+							409,
+							"sandbox providers are unavailable on this relay",
+						);
+				}
+				if (!desired.budget) throw new ControlError(400, "budget required");
+				account.budgetMicros = desired.budget.limitMicros;
+				const saved = store.configureWithRecord(
+					config,
+					expected,
+					relay.now(),
+					`ci-policy:${principal.accountId}`,
+					principal.accountId,
+					toJsonString(DesiredCiPolicySchema, desired),
+				);
+				if (!saved.configuration)
+					throw new Error("configuration commit missing");
+				relay.options.config = saved.configuration;
+				try {
+					options.onChange?.();
+				} catch {
+					/* A committed policy remains committed if notification fails. */
+				}
+				send(
+					response,
+					200,
+					toJsonString(
+						AccountStateSchema,
+						create(AccountStateSchema, {
+							revision: saved.revision,
+							account,
+							connections: config.connections.filter(
+								(entry) => entry.accountId === principal.accountId,
+							),
+							updatedAt: saved.updatedAt,
+						}),
+					),
+					saved.revision,
+				);
+			} else if (
 				path === "/v1/accounts/self/installations" &&
 				request.method === "GET"
 			) {
@@ -276,6 +372,8 @@ export function createControlPlane(options: {
 						403,
 						"account policy belongs to another account",
 					);
+				if (store.controlRecord(`ci-policy:${principal.accountId}`))
+					throw new ControlError(410, "use v2 desired policy for this account");
 				const latest = configuration();
 				const next = create(ConfigurationSchema, {
 					accounts: [

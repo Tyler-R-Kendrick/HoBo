@@ -25,7 +25,7 @@ an image or commit them:
 | --- | --- |
 | `HOBO_CI_CONFIG` | `/etc/hobo-ci/config.json` |
 | `HOBO_CI_DB` | `/var/lib/hobo-ci/relay.sqlite` |
-| `HOBO_CI_PUBLIC_URL` | Public HTTPS origin, without a path |
+| `HOBO_CI_PUBLIC_URL` | Public HTTPS origin, without a path; local HTTP requires the explicit loopback-only mode below |
 | `HOBO_CI_GITHUB_APP_ID` | GitHub App identifier |
 | `HOBO_CI_GITHUB_APP_KEY_FILE` | `/run/secrets/github-app-key.pem` |
 | `HOBO_CI_WEBHOOK_SECRET_FILE` | `/run/secrets/webhook-secret` |
@@ -104,6 +104,39 @@ Supply your own hostname and point DNS at that proxy before enabling GitHub
 webhook delivery. HTTPS terminates at the proxy; the relay does not issue
 certificates. Verify the public `/readyz` URL and webhook signature handling.
 Keep the control API behind its account-scoped bearer authorization as well.
+
+## Local development
+
+The URL used by a local control client can differ from the GitHub-facing public
+URL. The Compose manifest listens inside the container and publishes its HTTP
+port on host loopback only. A local client can therefore use
+`http://127.0.0.1:8787` with `allowInsecureLoopback: true`; credentials remain
+in the local token binding rather than in the project configuration. Use a
+separate local configuration and `HOBO_CI_DATA_VOLUME=hobo-ci-local` so its
+budget and lease journal are independent of a hosted environment.
+
+For offline development with simulated GitHub delivery, `HOBO_CI_PUBLIC_URL`
+can be a reserved HTTPS origin such as `https://local.invalid`. This is an
+identity placeholder; GitHub cannot deliver webhooks or reach runner callbacks
+at that address. To receive real GitHub events, set `HOBO_CI_PUBLIC_URL` to a
+public HTTPS tunnel or reverse proxy pointing to the local container, and
+register that public URL with the GitHub App. The repo-local control endpoint
+can remain `http://127.0.0.1:8787`.
+
+The standalone relay currently runs its trusted companion-workflow bridge for
+private repositories. It does not provide the Vercel adapter's isolated Sandbox
+host for public-repository or pull-request jobs. Use the hosted isolated relay
+for those jobs; changing the control endpoint does not add a runner backend.
+
+A relay process bound directly to loopback can instead opt into an HTTP public
+origin by setting `HOBO_CI_PUBLIC_URL=http://127.0.0.1:8787`,
+`HOBO_CI_HOST=127.0.0.1`, and `HOBO_CI_ALLOW_INSECURE_LOOPBACK=1`. This mode
+rejects wildcard and non-loopback listeners and binds `localhost` to numeric
+loopback without DNS resolution. Use the listener's port in the public URL
+unless a local proxy maps it separately. This mode works in a container with
+host networking where supported; the normal Compose bridge listener uses the
+separate public HTTPS URL described above. GitHub still cannot reach a loopback
+address, so use the public HTTPS tunnel mode for real GitHub traffic.
 
 ## Kubernetes
 

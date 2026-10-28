@@ -121,6 +121,70 @@ account APIs below.
 
 [Hosted GitHub App bootstrap and account onboarding](ONBOARDING.md) describes the operator and account flows.
 
+## Repository and organization environments
+
+A repository can keep named relay endpoints and their desired budget policies
+in `.hobo/ci.json`. Start with the [two-environment example](examples/project/ci.json),
+then replace the example origins, accounts, provider bindings and budgets with
+those provisioned for your environments. The local example uses
+`http://127.0.0.1:8787`; an integration environment can point to a hosted relay,
+such as `https://hobo-ci.vercel.app` when that is the relay for its account.
+An optional `githubWebhookOrigin` records the separate public HTTPS origin
+used for GitHub delivery, such as a tunnel to the local container. It is
+configuration metadata: it neither registers the App nor proves the hostname is
+publicly reachable. Credentials are sent only to the trusted control origin.
+Amounts are USD microdollars. Each policy still requires separately provisioned
+providers and a repository connection on its selected relay.
+
+Build the package, then inspect a profile without credentials or writes:
+
+```sh
+mkdir -p .hobo
+cp packages/ci-gh-actions/examples/project/ci.json .hobo/ci.json
+pnpm --filter @hobo/ci-gh-actions build
+pnpm --filter @hobo/ci-gh-actions project inspect --environment local
+pnpm --filter @hobo/ci-gh-actions project inspect --environment integration
+```
+
+Inspection prints the selected account, origin, budget and canonical policy
+SHA-256. Review the selected policy in a trusted source and record its digest
+outside the repository. Applying requires an explicit environment, a separately
+trusted origin and account, the reviewed policy digest, and an account token:
+
+```sh
+pnpm --filter @hobo/ci-gh-actions project apply \
+  --environment local \
+  --trusted-origin http://127.0.0.1:8787 \
+  --trusted-account local-ci \
+  --trusted-policy-sha256 "$REVIEWED_POLICY_SHA256" \
+  --token-file /path/to/local-account-token
+```
+
+Use a different trusted tuple and token for integration. The target and digest
+are checked before obtaining credentials; the relay account and revision are
+checked before writing. Do not automatically approve a digest calculated from
+an untrusted pull request, or apply its configuration with privileged credentials.
+The same operations are available from `@hobo/ci-gh-actions/project-config`:
+`defineCiProjectConfig`, `parseCiProjectConfig`, `selectCiEnvironment`,
+`ciEnvironmentPolicySha256`, `createConfiguredCiRelayClient`, and
+`applyCiEnvironmentPolicy`.
+
+An organization can supply its own config with `--organization-config PATH`.
+Repository profiles replace entire same-named organization profiles; they are
+not merged field by field. The selected environment's trusted target and policy
+digest must still come from a source independent of both files. Distinct
+profiles require distinct `(origin, accountId)` pairs; separate origins can
+still share storage, so provision separate relay stores and account credentials
+when environments need separate billing.
+
+These profiles select the control endpoint and policy; they do not change the
+GitHub App webhook. For live jobs, register each environment's publicly
+reachable HTTPS webhook and connect the repository to the intended relay. The
+default `runs-on: hobo` label is shared: do not run multiple relays for the same
+repository and label at once, since GitHub can assign a job to either runner.
+Switch the active App/relay ownership before using another environment. Local
+offline tests can use simulated GitHub delivery; see [local deployment](deploy/README.md).
+
 ## Connect a repository
 
 Use `createCiRelayClient` from `@hobo/ci-gh-actions/client` or the root SDK. Its

@@ -18,6 +18,10 @@
     "./client": {
       "types": "./dist/client.d.ts",
       "default": "./dist/client.js"
+    },
+    "./project-config": {
+      "types": "./dist/project-config.d.ts",
+      "default": "./dist/project-config.js"
     }
   },
   "scripts": {
@@ -31,6 +35,7 @@
     "test:acceptance": "node --import tsx scripts/acceptance.ts",
     "deploy:check": "node --import tsx scripts/check-deployment.ts",
     "ops": "node dist/ops.js",
+    "project": "node dist/project-cli.js",
     "pretest": "node --experimental-strip-types ../../scripts/ensure-built.mts",
     "pretest:acceptance": "node --experimental-strip-types ../../scripts/ensure-built.mts"
   },

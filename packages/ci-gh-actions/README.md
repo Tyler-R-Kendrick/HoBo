@@ -142,6 +142,12 @@ editors to that schema, and the package exports it as
 `@hobo/ci-gh-actions/schema/ci-project.schema.json`. The parser uses its shipped
 schemas and never fetches the `$schema` URL while loading configuration.
 
+References are optional. Each pool, routing policy, budget, provider entry and
+secret-requirement map accepts either a complete inline definition or a `$ref`.
+You can mix both forms in the same environment and duplicate inline definitions
+across environments. Omit `definitions` entirely when everything is inline.
+Both forms receive the same validation and resolve to the same policy.
+
 Put reusable values in the document's typed `definitions` registries. For
 example, define the Linux pool and routing strategy once, then use these policy
 fields in every environment that shares them:
